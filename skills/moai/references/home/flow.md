@@ -1,6 +1,6 @@
 # MoAI evidence and handoff
 
-Apply this file only in a project configured for MoAI; the project's own CLAUDE.md wins where it conflicts with this file.
+Apply this file only in a project configured for MoAI or when the user invokes MoAI; the project's own CLAUDE.md wins where it conflicts with this file.
 
 - Make the smallest change that meets the agreed acceptance criteria. Use the project's verification commands; record the tested revision, the exact checks, and any check that was skipped or failed. Missing evidence is never a PASS.
 - Keep implementation and independent review distinct when the configured workflow requires it; a reviewer checks the candidate revision, not a stale one.

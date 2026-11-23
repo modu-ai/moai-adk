@@ -2,20 +2,23 @@
 //! decision 6845654776; SPEC-20261122-claude-md-home-routing, SPEC-20261122-claude-md-flow-rule).
 //!
 //! The routing text is one package file, `references/home/routing.md`, rendered for the host
-//! (`{invoke}` becomes `/moai`) and written as the whole file `rules/moai.md` of a Claude config
-//! folder (`CLAUDE_CONFIG_DIR`, else `~/.claude`); the flow rule `references/home/flow.md` is
-//! written beside it as `rules/moai/flow.md`. Both are planned together for each config folder
-//! (the resolved one, and every `--config-dir` the user picks) and shown in the preview. The
-//! `moai-routing` block that an earlier version wrote into the folder's `CLAUDE.md` is no longer
-//! refreshed; its removal is a separate pick (`remove_old_block`) and only happens while the block
-//! still holds the bytes that version recorded and the routing file is in place. The Codex
-//! section that an even earlier version wrote into `~/.codex/AGENTS.md` is no longer written
+//! (`{invoke}` becomes `/moai`) and written as the whole file `rules/moai.md` of the default
+//! Claude config folder `~/.claude`, the one place moai keeps the copy; the flow rule
+//! `references/home/flow.md` is written beside it as `rules/moai/flow.md`. Both are planned
+//! together and shown in the preview. Any other folder (the one `CLAUDE_CONFIG_DIR` names, each
+//! `--config-dir` the user picks) holds no copy: its row says `linked` when its `rules` is a
+//! link to `~/.claude/rules` (also while that folder is not made yet) and `not_linked`, with the
+//! way to read the one copy, otherwise; moai makes no link. The `moai-routing` block that an
+//! earlier version wrote into the folder's `CLAUDE.md` is no longer refreshed; its removal is a
+//! separate pick (`remove_old_block`) and only happens while the block still holds the bytes
+//! that version recorded and the routing file is in place. The Codex section that an even
+//! earlier version wrote into `~/.codex/AGENTS.md` is no longer written
 //! (SPEC-20261122-codex-home-update-removed); a receipt that names it is skipped.
 //!
 //! `plan` writes nothing. A whole file is moai's own only while it holds the bytes moai last
 //! wrote (`home-routing/rules-<folder id>.json`); anything else, and any link or file that is
 //! not UTF-8, is a `conflict` and is kept. Only a refused `CLAUDE_CONFIG_DIR` (or an unreadable
-//! state file) blocks a folder. `apply` re-plans, refuses any other digest, keeps the before
+//! state file) blocks the layer. `apply` re-plans, refuses any other digest, keeps the before
 //! bytes in a receipt whose entries name their kind and config folder; `revert` restores a file
 //! only while it still holds the bytes the apply wrote, skips and names a file changed since,
 //! and removes a folder the apply made only when it is empty. Hosts without a user-level
@@ -63,14 +66,16 @@ pub const NOT_SUPPORTED: [(&str, &str); 2] = [
 /// The picks beyond the default config folder.
 #[derive(Clone, Debug, Default)]
 pub struct Options {
-    /// Further Claude config folders (absolute), each planned like the default one.
+    /// Further Claude config folders (absolute), each a row that reads the default folder's copy
+    /// and writes nothing.
     pub config_dirs: Vec<PathBuf>,
     /// Remove the earlier block from each folder's `CLAUDE.md` where it is unedited.
     pub remove_old_block: bool,
 }
 
-/// One config folder's plan. `section` is the routing file; when only the flow file changes it
-/// carries that action, so a caller that reads this row alone still sees a write.
+/// One config folder's plan: the default folder `~/.claude` first, then one row per other folder.
+/// `section` is the routing file; when only the flow file changes it carries that action, so a
+/// caller that reads this row alone still sees a write.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct HostPlan {
@@ -307,28 +312,32 @@ fn plan_inner(
     let mut folders = Vec::new();
     if only.contains(&"claude") {
         let routing_text = render(&src, "claude")?;
-        let mut dirs = vec![(crate::host_home::resolve_named("claude", &home), true)];
-        for d in &opts.config_dirs {
-            if !dirs.iter().any(|(r, _)| r.as_ref().ok() == Some(d)) {
-                dirs.push((Ok(d.clone()), false));
+        // The one copy is always `~/.claude`; `CLAUDE_CONFIG_DIR` only adds a row for the folder
+        // it names, and a refused variable blocks the layer.
+        let default_dir = home.join(crate::host_home::Host::Claude.default_dir());
+        let profile = crate::host_home::resolve_named("claude", &home);
+        let first = profile.clone().map(|_| default_dir.clone());
+        folders.push(rules::plan_folder(
+            &home,
+            first,
+            &routing_text,
+            flow.as_deref(),
+            opts.remove_old_block,
+        ));
+        let picks: Vec<PathBuf> = profile
+            .into_iter()
+            .chain(opts.config_dirs.iter().cloned())
+            .collect();
+        for dir in picks {
+            if rules::same_folder(&dir, &default_dir)
+                || folders
+                    .iter()
+                    .any(|f| f.row.config_dir == dir.to_string_lossy())
+            {
+                continue;
             }
-        }
-        for (dir, is_default) in dirs {
-            let mut folder = rules::plan_folder(
-                &home,
-                dir,
-                is_default,
-                &routing_text,
-                flow.as_deref(),
-                opts.remove_old_block,
-            );
-            // A folder that reaches an earlier folder's file through a link is a reference.
-            for earlier in &folders {
-                if folder.reference(earlier) {
-                    break;
-                }
-            }
-            folders.push(folder);
+            let consumer = rules::consumer_folder(&dir, &folders[0]);
+            folders.push(consumer);
         }
     }
     let mut plan = Plan {

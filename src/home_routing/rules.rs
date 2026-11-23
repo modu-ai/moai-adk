@@ -1,14 +1,16 @@
 //! The whole-file targets of the routing layer: `rules/moai.md` and `rules/moai/flow.md` inside
-//! a Claude config folder, and the removal of the earlier `moai-routing` block from that
-//! folder's `CLAUDE.md` (SPEC-20261122-claude-md-home-routing, SPEC-20261122-claude-md-flow-rule).
+//! the default Claude config folder `~/.claude`, and the removal of the earlier `moai-routing`
+//! block from that folder's `CLAUDE.md` (SPEC-20261122-claude-md-home-routing,
+//! SPEC-20261122-claude-md-flow-rule). Any other folder is a consumer row that writes nothing.
 //!
 //! A rules file is moai's own only while it holds the bytes moai last wrote, the way the style
-//! file is (`home_style`): the record is one state file per config folder,
+//! file is (`home_style`): the record is one state file for the default folder (older receipts and
+//! state files may name other folders),
 //! `home-routing/rules-<12 hex of the sha256 of the folder path>.json`, holding both files'
 //! last-written digests. Anything else is a `conflict` and is kept. A link on the way (the
 //! config folder, `rules`, `rules/moai` or the file itself) and a file that is not UTF-8 are
-//! conflicts too; only a refused `CLAUDE_CONFIG_DIR` (or an unreadable state file) blocks a
-//! folder. The earlier block stays in the user's `CLAUDE.md` until the removal is picked; the
+//! conflicts too; only a refused `CLAUDE_CONFIG_DIR` (or an unreadable state file) blocks the
+//! layer. The earlier block stays in the user's `CLAUDE.md` until the removal is picked; the
 //! removal needs the routing file in place and moai's own, and the block bytes equal to the
 //! baseline the earlier version recorded in `home-routing/claude.json`.
 //!
@@ -321,42 +323,155 @@ impl Folder {
                 || self.flow.iter().any(|p| is_write(&p.action))
                 || self.old.iter().any(|p| p.action == "remove"))
     }
+}
 
-    /// A folder that reaches a file an `earlier` folder already plans (its `rules` folder is a
-    /// link into that folder's, the way a shared profile links `agents` and `output-styles`)
-    /// holds no second copy: that file's row says `linked`, names the folder it is planned for,
-    /// and nothing is written or recorded for this folder. A conflict stays a conflict. Returns
-    /// whether any file was turned into a reference.
-    pub fn reference(&mut self, earlier: &Folder) -> bool {
-        let mut referenced = false;
-        for (mine, theirs) in [
-            (&mut self.routing, &earlier.routing),
-            (&mut self.flow, &earlier.flow),
-        ] {
-            let (Some(m), Some(t)) = (mine.as_mut(), theirs.as_ref()) else {
-                continue;
-            };
-            if m.path == t.path && m.action != "conflict" {
-                m.action = "linked".into();
-                m.detail = Some(format!(
-                    "reached through a link: the file is the one planned for {}; no second copy",
-                    earlier.row.config_dir
-                ));
-                referenced = true;
-            }
-        }
-        if referenced {
-            self.row.section = self.routing.clone();
-            self.row.flow = self.flow.clone();
-        }
-        referenced
+/// Two paths name the same folder: equal real paths, or equal as written when either cannot be
+/// resolved.
+pub(super) fn same_folder(a: &Path, b: &Path) -> bool {
+    match (fs::canonicalize(a), fs::canonicalize(b)) {
+        (Ok(x), Ok(y)) => x == y,
+        _ => a == b,
     }
 }
 
+/// `path` with every link resolved as far as it exists, and the part that does not exist yet
+/// appended as written; `None` when that part holds `..` or anything but plain names.
+fn resolved_loosely(path: &Path) -> Option<PathBuf> {
+    let mut rest = Vec::new();
+    let mut cur = path.to_path_buf();
+    loop {
+        match fs::canonicalize(&cur) {
+            Ok(mut real) => {
+                real.extend(rest.iter().rev());
+                return Some(real);
+            }
+            Err(_) => {
+                rest.push(cur.file_name()?.to_os_string());
+                cur = cur.parent()?.to_path_buf();
+            }
+        }
+    }
+}
+
+/// Why a folder other than the default one does not read the default folder's `rules`; `None`
+/// when its `rules` is a link to it, also while that folder does not exist yet.
+fn not_reaching(dir: &Path, default_rules: &Path) -> Option<String> {
+    let rules = dir.join("rules");
+    match fs::symlink_metadata(&rules) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            Some(format!("{} does not exist", rules.display()))
+        }
+        Err(_) => Some(format!("{} is unreadable", rules.display())),
+        Ok(m) if m.file_type().is_symlink() => {
+            let target = fs::read_link(&rules).ok()?;
+            let target = if target.is_absolute() {
+                target
+            } else {
+                dir.join(target)
+            };
+            match (resolved_loosely(&target), resolved_loosely(default_rules)) {
+                (Some(a), Some(b)) if a == b => None,
+                _ => Some(format!(
+                    "{} is a link to {}, not to {}",
+                    rules.display(),
+                    target.display(),
+                    default_rules.display()
+                )),
+            }
+        }
+        Ok(_) => Some(format!(
+            "{} is a real folder or file, not a link",
+            rules.display()
+        )),
+    }
+}
+
+/// A folder other than the default one (the one `CLAUDE_CONFIG_DIR` names, or one the user
+/// picked) holds no copy: its row says `linked` when its `rules` is a link to the default
+/// folder's (the file is the one planned there, a conflict there stays a conflict) and
+/// `not_linked` with the way to read the one copy otherwise. Nothing is written and no state is
+/// kept for it; making the link is the user's.
+pub(super) fn consumer_folder(dir: &Path, default: &Folder) -> Folder {
+    let row = |preflight: &str, reason: Option<String>, section, flow| HostPlan {
+        host: "claude".into(),
+        config_dir: dir.to_string_lossy().into_owned(),
+        file: dir.join(RULES_FILE).to_string_lossy().into_owned(),
+        preflight: preflight.into(),
+        blocked_reason: reason,
+        section,
+        flow,
+        old_block: None,
+    };
+    let folder = |row: HostPlan, routing: Option<FilePlan>, flow: Option<FilePlan>| Folder {
+        row,
+        dir: None,
+        id: String::new(),
+        routing,
+        flow,
+        old: None,
+    };
+    let Some(default_dir) = default.dir.as_deref() else {
+        let why = default
+            .row
+            .blocked_reason
+            .clone()
+            .unwrap_or_else(|| "the default folder is blocked".into());
+        return folder(
+            row(
+                "blocked",
+                Some(format!(
+                    "the default folder {} is blocked: {why}",
+                    default.row.config_dir
+                )),
+                None,
+                None,
+            ),
+            None,
+            None,
+        );
+    };
+    let default_rules = default_dir.join("rules");
+    let why = not_reaching(dir, &default_rules);
+    let consume = |rel: &str, theirs: &Option<FilePlan>| -> Option<FilePlan> {
+        let t = theirs.as_ref()?;
+        let mut p = t.clone();
+        match &why {
+            None if t.action != "conflict" => {
+                p.action = "linked".into();
+                p.detail = Some(format!(
+                    "reached through a link: the file is the one planned for {}; no second copy",
+                    default.row.config_dir
+                ));
+            }
+            None => {}
+            Some(why) => {
+                p.path = dir.join(rel).to_string_lossy().into_owned();
+                p.action = "not_linked".into();
+                p.expected_sha256 = None;
+                p.baseline_sha256 = None;
+                p.detail = Some(format!(
+                    "moai keeps the one copy in {}; it writes none here. {why}; to read it here, link {} to {} or import its files from this folder's CLAUDE.md (moai makes no link and changes nothing here)",
+                    default.row.config_dir,
+                    dir.join("rules").display(),
+                    default_rules.display()
+                ));
+            }
+        }
+        Some(p)
+    };
+    let routing = consume(RULES_FILE, &default.routing);
+    let flow = consume(FLOW_FILE, &default.flow);
+    folder(
+        row("ok", None, routing.clone(), flow.clone()),
+        routing,
+        flow,
+    )
+}
+
+/// The default folder's plan: `dir` is `~/.claude`, or the refusal of `CLAUDE_CONFIG_DIR`.
 pub(super) fn plan_folder(
     home: &Path,
     dir: Result<PathBuf>,
-    is_default: bool,
     routing_text: &str,
     flow_text: Option<&str>,
     pick: bool,
@@ -389,18 +504,24 @@ pub(super) fn plan_folder(
     };
     let (rpath, rcur) = target(home, &dir, RULES_FILE);
     let routing = whole_file_plan(&rpath, &rcur, state.routing_sha256.as_deref(), routing_text);
-    let flow = flow_text.map(|t| {
+    let mut flow = flow_text.map(|t| {
         let (path, cur) = target(home, &dir, FLOW_FILE);
         whole_file_plan(&path, &cur, state.flow_sha256.as_deref(), t)
     });
+    // `update` asks the routing row alone whether anything is written, so a flow write behind a
+    // routing conflict would make its "nothing to apply" untrue: the flow file waits.
+    if routing.action == "conflict" {
+        if let Some(f) = flow.as_mut().filter(|f| is_write(&f.action)) {
+            f.action = "held".into();
+            f.detail = Some(format!(
+                "{RULES_FILE} is a conflict; this file waits until that is resolved"
+            ));
+        }
+    }
     let in_place =
         matches!(&rcur, Cur::Bytes(b) if state.routing_sha256.as_deref() == Some(sha(b).as_str()));
-    // Only the default folder has a baseline: the earlier version wrote its block there alone.
-    let baseline = if is_default {
-        read_state(home, "claude").ok().and_then(|s| s.block_sha256)
-    } else {
-        None
-    };
+    // The earlier block's baseline belongs to the default folder, where moai keeps the one copy.
+    let baseline = read_state(home, "claude").ok().and_then(|s| s.block_sha256);
     let old = old_block_plan(home, &dir, baseline.as_deref(), pick, in_place);
     // `update` asks the routing row alone whether anything is written: when only the flow file
     // changes, the row carries that action so the layer still counts as a write.

@@ -124,11 +124,12 @@ fn s(p: &Path) -> String {
     p.to_str().unwrap().to_string()
 }
 
-/// REQ-1, REQ-2: the routing section goes to `$CLAUDE_CONFIG_DIR/CLAUDE.md`, and revert takes it
-/// back from there; nothing under `~/.claude`, and no file in the folder `CODEX_HOME` names (moai
-/// no longer writes there).
+/// REQ-1, REQ-11: with `CLAUDE_CONFIG_DIR` set, the routing files still go to `~/.claude/rules`
+/// (the one copy) and revert takes them back from there; the folder the variable names gets a row
+/// that writes nothing, and no file lands in the folder `CODEX_HOME` names (moai no longer writes
+/// there).
 #[test]
-fn routing_writes_and_reverts_in_the_relocated_folders() {
+fn routing_writes_and_reverts_in_the_default_folder_whatever_the_variables_say() {
     let w = World::new();
     let conf = w.outside("claude-conf");
     let cx = w.outside("codex-home");
@@ -137,10 +138,14 @@ fn routing_writes_and_reverts_in_the_relocated_folders() {
     let plan = ok(&w.run(&vars, true, &["home-routing-plan", w.h(), w.pkg()]));
     assert_eq!(
         host(&plan, "claude")["file"],
-        json!(s(&conf.join("rules/moai.md"))),
+        json!(s(&w.base.join(".claude/rules/moai.md"))),
         "{plan}"
     );
-    assert_eq!(plan["hosts"].as_array().unwrap().len(), 1, "{plan}");
+    // The default folder first, then the folder the variable names as a row that writes nothing.
+    let rows = plan["hosts"].as_array().unwrap();
+    assert_eq!(rows.len(), 2, "{plan}");
+    assert_eq!(rows[1]["config_dir"], json!(s(&conf)), "{plan}");
+    assert_eq!(rows[1]["section"]["action"], json!("not_linked"), "{plan}");
     let applied = ok(&w.run(
         &vars,
         true,
@@ -154,11 +159,14 @@ fn routing_writes_and_reverts_in_the_relocated_folders() {
             PERM,
         ],
     ));
-    assert!(conf.join("rules/moai.md").is_file(), "{applied}");
-    assert!(conf.join("rules/moai/flow.md").is_file(), "{applied}");
-    assert!(!conf.join("CLAUDE.md").exists(), "{applied}");
+    assert!(w.base.join(".claude/rules/moai.md").is_file(), "{applied}");
+    assert!(
+        w.base.join(".claude/rules/moai/flow.md").is_file(),
+        "{applied}"
+    );
+    assert!(!w.base.join(".claude/CLAUDE.md").exists(), "{applied}");
+    assert!(!conf.exists(), "nothing is written in the profile folder");
     assert!(!cx.join("AGENTS.md").exists());
-    assert!(!w.base.join(".claude").exists());
     assert!(!w.base.join(".codex").exists());
     let receipt = applied["receipt"].as_str().unwrap().to_string();
     ok(&w.run(
@@ -173,8 +181,8 @@ fn routing_writes_and_reverts_in_the_relocated_folders() {
             PERM,
         ],
     ));
-    assert!(!conf.join("rules/moai.md").exists());
-    assert!(!conf.join("rules/moai/flow.md").exists());
+    assert!(!w.base.join(".claude/rules/moai.md").exists());
+    assert!(!w.base.join(".claude/rules/moai/flow.md").exists());
 }
 
 /// REQ-5: a home that is not the account's own home keeps the folders under it, whatever the
@@ -382,16 +390,17 @@ fn a_linked_config_folder_is_refused_not_followed() {
         true,
         &["home-routing-plan", w.h(), w.pkg()],
     ));
-    // A linked config folder is a conflict naming the link, not a block (the layer stays ok).
-    let claude = host(&plan, "claude");
-    assert_eq!(claude["preflight"], json!("ok"), "{plan}");
-    assert_eq!(claude["section"]["action"], json!("conflict"), "{plan}");
+    // The one copy stays in the default folder; the linked config folder gets a row that writes
+    // nothing and is not followed (the layer stays ok, not blocked).
+    let rows = plan["hosts"].as_array().unwrap();
+    assert_eq!(rows.len(), 2, "{plan}");
+    assert_eq!(rows[0]["section"]["action"], json!("create"), "{plan}");
+    assert_eq!(rows[1]["config_dir"], json!(l), "{plan}");
+    assert_eq!(rows[1]["preflight"], json!("ok"), "{plan}");
+    assert_eq!(rows[1]["section"]["action"], json!("not_linked"), "{plan}");
     assert!(
-        claude["section"]["detail"]
-            .as_str()
-            .unwrap()
-            .contains("symlink"),
-        "{plan}"
+        fs::read_dir(&real).unwrap().next().is_none(),
+        "nothing is written through the link"
     );
     let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
     let plan = ok(&w.run(
@@ -445,11 +454,10 @@ fn a_linked_config_folder_is_refused_not_followed() {
         true,
         &["home-routing-plan", w.h(), w.pkg()],
     ));
-    assert_eq!(
-        host(&plan, "claude")["section"]["action"],
-        json!("conflict"),
-        "{plan}"
-    );
+    let rows = plan["hosts"].as_array().unwrap();
+    assert_eq!(rows.len(), 2, "{plan}");
+    assert_eq!(rows[1]["config_dir"], json!(fl), "{plan}");
+    assert_eq!(rows[1]["section"]["action"], json!("not_linked"), "{plan}");
     assert_eq!(fs::read_dir(&far_real).unwrap().count(), 0);
 }
 
@@ -717,7 +725,7 @@ fn copy_tree(from: &Path, to: &Path) {
 /// SPEC-20261122-html-report-install AC-4: from a release laid out as installed (a copy of the
 /// binary in `versions/a/bin` of the HOME state folder, `skills/moai`, `skills/moai-html-report` and
 /// `agents` beside it), `moai update` puts both skill folders under `$CLAUDE_CONFIG_DIR/skills`
-/// and makes no `.claude` folder under the temporary HOME.
+/// and writes only the routing rules, no skill, under `~/.claude` of the temporary HOME.
 #[test]
 fn the_html_report_skill_follows_claude_config_dir_beside_the_moai_skill() {
     let w = World::new();
@@ -765,5 +773,8 @@ fn the_html_report_skill_follows_claude_config_dir_beside_the_moai_skill() {
     assert_eq!(r["extra_skills_result"]["state"], json!("applied"), "{r}");
     assert!(conf.join("skills/moai/SKILL.md").is_file(), "{r}");
     assert!(conf.join("skills").join(skill).join("SKILL.md").is_file());
-    assert!(!w.base.join(".claude").exists());
+    // The routing rules of the same update go to the default folder, the one copy; no skill and
+    // no other file lands there.
+    assert!(w.base.join(".claude/rules/moai.md").is_file(), "{r}");
+    assert!(!w.base.join(".claude/skills").exists(), "{r}");
 }

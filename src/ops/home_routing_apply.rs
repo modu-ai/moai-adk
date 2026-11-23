@@ -4,9 +4,9 @@ use std::path::PathBuf;
 
 /// Write a previewed routing section into HOME
 ///
-/// Apply a previewed MoAI routing plan (#2638): the routing file and the flow rule in each
-/// previewed Claude config folder, and the earlier block's removal when it was picked, with a
-/// receipt holding the before bytes. The digest must match a fresh preview made with the same
+/// Apply a previewed MoAI routing plan (#2638): the routing file and the flow rule in
+/// `~/.claude`, and the earlier block's removal when it was picked, with a receipt holding the
+/// before bytes. Other config folders in the preview are rows that write nothing. The digest must match a fresh preview made with the same
 /// `--config-dir` and `--remove-old-block`.
 #[derive(clap::Args)]
 pub struct Args {
@@ -20,7 +20,7 @@ pub struct Args {
     /// Caller-supplied permission reference (recorded; not an authorization verifier).
     #[arg(long)]
     permission_reference: String,
-    /// The extra Claude config folders the preview was made with (absolute path); repeat for several.
+    /// The extra Claude config folders the preview reported (absolute path); repeat for several.
     #[arg(long = "config-dir")]
     config_dir: Vec<PathBuf>,
     /// The removal of the earlier block, if the preview was made with it.

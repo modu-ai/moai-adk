@@ -329,7 +329,8 @@ fn flow_plan_text_has_no_paths_key_and_stays_within_its_limits() {
 }
 
 #[test]
-fn flow_plan_each_config_dir_gets_the_flow_file_with_its_own_state() {
+fn flow_plan_only_the_default_folder_gets_the_flow_file_and_the_state() {
+    // The default folder is the one copy; each picked folder is a row that writes nothing.
     let w = World::new();
     let a = w.base.join("extra/a");
     let b = w.base.join("extra/b");
@@ -341,18 +342,20 @@ fn flow_plan_each_config_dir_gets_the_flow_file_with_its_own_state() {
     ];
     let plan = w.plan(&extra);
     assert_eq!(plan["hosts"].as_array().unwrap().len(), 3, "{plan}");
-    for d in [&w.default_dir(), &a, &b] {
-        assert_eq!(flow_action(&plan, d), "create", "{plan}");
+    assert_eq!(flow_action(&plan, &w.default_dir()), "create", "{plan}");
+    for d in [&a, &b] {
+        assert_eq!(flow_action(&plan, d), "not_linked", "{plan}");
     }
     let r = ok(&w.apply_out(plan["plan_digest"].as_str().unwrap(), &extra));
     assert_eq!(r["state"], json!("applied"), "{r}");
-    for d in [&w.default_dir(), &a, &b] {
-        assert!(d.join("rules/moai/flow.md").is_file(), "{}", d.display());
-        assert!(d.join("rules/moai.md").is_file(), "{}", d.display());
+    assert!(w.default_dir().join("rules/moai/flow.md").is_file());
+    assert!(w.default_dir().join("rules/moai.md").is_file());
+    for d in [&a, &b] {
+        assert!(!d.exists(), "nothing is written in {}", d.display());
     }
     assert_eq!(
         w.rules_state_files().len(),
-        3,
+        1,
         "{:?}",
         w.rules_state_files()
     );
@@ -600,6 +603,11 @@ fn flow_text_binds_only_a_project_configured_for_moai() {
             "{rel}: rules ahead of the condition: {before:?}"
         );
         assert!(!first_rule.trim().is_empty());
+        // REQ-6 names both ways in: a configured project, or the user invoking MoAI.
+        assert!(
+            first_rule.contains("or when the user invokes MoAI"),
+            "{rel}: the condition is narrower than REQ-6: {first_rule:?}"
+        );
     }
     assert!(
         shipped("references/home/routing.md").contains("never changes another project's workflow"),
@@ -679,23 +687,70 @@ fn target_the_routing_file_lands_in_the_default_folder_and_claude_md_stays() {
 }
 
 #[test]
-fn target_the_routing_file_follows_claude_config_dir() {
+fn target_claude_config_dir_never_moves_the_one_copy_out_of_the_default_folder() {
+    // (b) A session whose CLAUDE_CONFIG_DIR names a profile: the default folder gets both files
+    // and the profile gets nothing (the user's decision: `~/.claude` is the only source).
     let w0 = World::new();
     let conf = w0.base.join("elsewhere/conf");
     write(&conf.join("CLAUDE.md"), "theirs\n");
     let w = w0.var("CLAUDE_CONFIG_DIR", conf.as_os_str());
     let plan = w.plan(&[]);
+    assert_eq!(plan["hosts"].as_array().unwrap().len(), 2, "{plan}");
     assert_eq!(
-        row(&plan, &conf)["file"],
-        json!(s(&conf.join("rules/moai.md")))
+        plan["hosts"][0]["config_dir"],
+        json!(s(&w.default_dir())),
+        "the default folder is always the first row: {plan}"
     );
+    assert_eq!(
+        row(&plan, &w.default_dir())["file"],
+        json!(s(&w.default_dir().join("rules/moai.md")))
+    );
+    assert_eq!(routing_action(&plan, &w.default_dir()), "create", "{plan}");
+    assert_eq!(routing_action(&plan, &conf), "not_linked", "{plan}");
+    assert_eq!(flow_action(&plan, &conf), "not_linked", "{plan}");
+    // The row tells the user how the profile reads the one copy; moai makes no link.
+    let detail = row(&plan, &conf)["section"]["detail"].as_str().unwrap();
+    assert!(
+        detail.contains(&s(&conf.join("rules")))
+            && detail.contains(&s(&w.default_dir().join("rules"))),
+        "{detail}"
+    );
+    let before = w.home.snapshot();
     w.apply(&[]);
-    assert!(conf.join("rules/moai.md").is_file());
-    assert!(conf.join("rules/moai/flow.md").is_file());
-    assert!(!w.default_dir().exists());
+    assert!(w.default_dir().join("rules/moai.md").is_file());
+    assert!(w.default_dir().join("rules/moai/flow.md").is_file());
+    assert!(
+        !conf.join("rules").exists(),
+        "no copy and no link in the profile"
+    );
     assert_eq!(
         fs::read_to_string(conf.join("CLAUDE.md")).unwrap(),
         "theirs\n"
+    );
+    assert_ne!(w.home.snapshot(), before);
+    // The state belongs to the default folder, so a plain session later sees nothing to do.
+    assert_eq!(
+        w.rules_state_files().len(),
+        1,
+        "{:?}",
+        w.rules_state_files()
+    );
+    let plain = World {
+        vars: Vec::new(),
+        home: w.home,
+        base: w.base.clone(),
+        pkg: w.pkg.clone(),
+    };
+    let again = plain.plan(&[]);
+    assert_eq!(
+        routing_action(&again, &plain.default_dir()),
+        "unchanged",
+        "{again}"
+    );
+    assert_eq!(
+        flow_action(&again, &plain.default_dir()),
+        "unchanged",
+        "{again}"
     );
 }
 
@@ -786,7 +841,7 @@ fn target_a_link_or_a_file_that_is_not_utf8_is_a_conflict_not_a_block() {
 }
 
 #[test]
-fn target_a_rules_link_into_the_default_folder_is_followed_and_any_other_is_refused() {
+fn target_a_profile_rules_link_to_the_default_folder_is_linked_and_any_other_is_not() {
     let w0 = World::new();
     let conf = w0.base.join("elsewhere/conf");
     let real = w0.default_dir().join("rules");
@@ -795,13 +850,17 @@ fn target_a_rules_link_into_the_default_folder_is_followed_and_any_other_is_refu
     symlink(&real, conf.join("rules")).unwrap();
     let w = w0.var("CLAUDE_CONFIG_DIR", conf.as_os_str());
     let plan = w.plan(&[]);
-    assert_eq!(routing_action(&plan, &conf), "create", "{plan}");
-    assert_eq!(row(&plan, &conf)["file"], json!(s(&real.join("moai.md"))));
+    assert_eq!(routing_action(&plan, &w.default_dir()), "create", "{plan}");
+    assert_eq!(routing_action(&plan, &conf), "linked", "{plan}");
+    assert_eq!(flow_action(&plan, &conf), "linked", "{plan}");
     w.apply(&[]);
     assert!(real.join("moai.md").is_file());
     assert!(real.join("moai/flow.md").is_file());
+    assert!(fs::symlink_metadata(conf.join("rules"))
+        .unwrap()
+        .is_symlink());
 
-    // A link to any other folder is a conflict naming the link; nothing is written there.
+    // A link to any other folder is not a reference: the row names the link and writes nothing.
     let w0 = World::new();
     let conf = w0.base.join("elsewhere/conf2");
     let other = w0.base.join("elsewhere/other");
@@ -810,7 +869,7 @@ fn target_a_rules_link_into_the_default_folder_is_followed_and_any_other_is_refu
     symlink(&other, conf.join("rules")).unwrap();
     let w = w0.var("CLAUDE_CONFIG_DIR", conf.as_os_str());
     let plan = w.plan(&[]);
-    assert_eq!(routing_action(&plan, &conf), "conflict", "{plan}");
+    assert_eq!(routing_action(&plan, &conf), "not_linked", "{plan}");
     assert!(
         row(&plan, &conf)["section"]["detail"]
             .as_str()
@@ -818,8 +877,98 @@ fn target_a_rules_link_into_the_default_folder_is_followed_and_any_other_is_refu
             .contains(&s(&conf.join("rules"))),
         "{plan}"
     );
-    w.apply_out(plan["plan_digest"].as_str().unwrap(), &[]);
+    w.apply(&[]);
     assert!(w.children(&other).is_empty());
+    assert!(w.default_dir().join("rules/moai.md").is_file());
+}
+
+#[test]
+fn target_a_profile_link_whose_target_is_not_there_yet_is_still_linked() {
+    // (c2) The profile's `rules` points at `~/.claude/rules`, which no run has created yet: the
+    // link is the right one, so the row says `linked`, never "a link to another folder".
+    let w0 = World::new();
+    let conf = w0.base.join("elsewhere/conf");
+    fs::create_dir_all(&conf).unwrap();
+    symlink(w0.default_dir().join("rules"), conf.join("rules")).unwrap();
+    assert!(!w0.default_dir().exists());
+    let w = w0.var("CLAUDE_CONFIG_DIR", conf.as_os_str());
+    let plan = w.plan(&[]);
+    assert_eq!(routing_action(&plan, &conf), "linked", "{plan}");
+    assert_eq!(flow_action(&plan, &conf), "linked", "{plan}");
+    let detail = row(&plan, &conf)["section"]["detail"].as_str().unwrap();
+    assert!(!detail.contains("other than"), "{detail}");
+    w.apply(&[]);
+    assert!(w.default_dir().join("rules/moai.md").is_file());
+    // The link now reaches the file, and a second preview has nothing left to write.
+    assert!(conf.join("rules/moai.md").is_file());
+    let again = w.plan(&[]);
+    assert_eq!(
+        routing_action(&again, &w.default_dir()),
+        "unchanged",
+        "{again}"
+    );
+    assert_eq!(routing_action(&again, &conf), "linked", "{again}");
+}
+
+#[test]
+fn target_a_profile_with_its_own_rules_folder_is_not_linked_and_keeps_every_byte() {
+    let w0 = World::new();
+    let conf = w0.base.join("elsewhere/conf");
+    write(&conf.join("rules/mine.md"), "mine\n");
+    let w = w0.var("CLAUDE_CONFIG_DIR", conf.as_os_str());
+    let plan = w.plan(&[]);
+    assert_eq!(routing_action(&plan, &conf), "not_linked", "{plan}");
+    w.apply(&[]);
+    assert_eq!(w.children(&conf.join("rules")), ["mine.md"]);
+    assert_eq!(
+        fs::read_to_string(conf.join("rules/mine.md")).unwrap(),
+        "mine\n"
+    );
+}
+
+#[test]
+fn target_a_refused_variable_still_leaves_a_blocked_default_row_and_no_consumer() {
+    let w = World::new().var("CLAUDE_CONFIG_DIR", "relative/dir");
+    let extra = w.base.join("extra/a");
+    let plan = w.plan(&["--config-dir", extra.to_str().unwrap()]);
+    for h in plan["hosts"].as_array().unwrap() {
+        assert!(h["section"].is_null(), "{plan}");
+        assert!(h["flow"].is_null(), "{plan}");
+    }
+    assert_eq!(
+        plan["hosts"][0]["config_dir"],
+        json!(s(&w.default_dir())),
+        "{plan}"
+    );
+    assert_eq!(plan["hosts"][0]["preflight"], json!("blocked"), "{plan}");
+    let r = ok(&w.apply_out(
+        plan["plan_digest"].as_str().unwrap(),
+        &["--config-dir", extra.to_str().unwrap()],
+    ));
+    assert_eq!(r["state"], json!("unchanged"), "{r}");
+    assert!(!w.default_dir().exists() && !extra.exists());
+}
+
+#[test]
+fn target_a_conflict_in_the_routing_file_holds_the_flow_file_and_the_preview_says_so() {
+    // The `update` preview reads the routing row only; a flow write behind a routing conflict
+    // would make "nothing to apply" untrue, so the flow file waits until the conflict is gone.
+    let w = World::new();
+    write(&w.default_dir().join("rules/moai.md"), "my routing\n");
+    let plan = w.plan(&[]);
+    assert_eq!(
+        routing_action(&plan, &w.default_dir()),
+        "conflict",
+        "{plan}"
+    );
+    assert_eq!(flow_action(&plan, &w.default_dir()), "held", "{plan}");
+    let r = ok(&w.apply_out(plan["plan_digest"].as_str().unwrap(), &[]));
+    assert_eq!(r["state"], json!("unchanged"), "{r}");
+    assert!(!w.default_dir().join("rules/moai").exists());
+    assert_eq!(
+        fs::read_to_string(w.default_dir().join("rules/moai.md")).unwrap(),
+        "my routing\n"
+    );
 }
 
 // ---- removal_ ------------------------------------------------------------------------------
@@ -1210,11 +1359,10 @@ fn revert_a_legacy_receipt_entry_without_a_kind_still_reverts() {
 // ---- folders_ ------------------------------------------------------------------------------
 
 #[test]
-fn folders_each_picked_folder_gets_its_own_files_and_state() {
+fn folders_a_picked_folder_gets_no_copy_and_the_default_folder_keeps_the_only_state() {
     let w = World::new();
     let a = w.base.join("extra/a");
     let b = w.base.join("extra/b");
-    let untouched = w.base.join("extra/untouched");
     let extra = [
         "--config-dir",
         a.to_str().unwrap(),
@@ -1236,36 +1384,33 @@ fn folders_each_picked_folder_gets_its_own_files_and_state() {
     assert_eq!(w.plan(&dup)["hosts"].as_array().unwrap().len(), 3);
     let r = w.apply(&extra);
     assert_eq!(r["state"], json!("applied"), "{r}");
+    assert_eq!(
+        fs::read_to_string(default_dir.join("rules/moai.md")).unwrap(),
+        shipped_routing_text()
+    );
     for d in [&a, &b] {
-        assert_eq!(
-            fs::read_to_string(d.join("rules/moai.md")).unwrap(),
-            shipped_routing_text()
-        );
+        assert!(!d.exists(), "no copy in {}", d.display());
     }
-    assert!(!untouched.exists());
     let names = w.rules_state_files();
-    assert_eq!(names.len(), 3, "{names:?}");
-    assert!(names.iter().all(|n| {
-        let hex = n
-            .strip_prefix("rules-")
-            .and_then(|x| x.strip_suffix(".json"))
-            .unwrap_or("");
-        hex.len() == 12 && hex.bytes().all(|c| c.is_ascii_hexdigit())
-    }));
-    // A change in one folder is seen there only.
+    assert_eq!(names.len(), 1, "{names:?}");
+    let hex = names[0]
+        .strip_prefix("rules-")
+        .and_then(|x| x.strip_suffix(".json"))
+        .unwrap_or("");
+    assert!(
+        hex.len() == 12 && hex.bytes().all(|c| c.is_ascii_hexdigit()),
+        "{names:?}"
+    );
+    // Each picked folder is told what to do, and the default folder is judged on its own.
     write(&a.join("rules/moai.md"), "mine\n");
     let plan = w.plan(&extra);
-    assert_eq!(routing_action(&plan, &a), "conflict", "{plan}");
-    assert_eq!(routing_action(&plan, &b), "unchanged", "{plan}");
-    assert_eq!(
-        routing_action(&plan, &w.default_dir()),
-        "unchanged",
-        "{plan}"
-    );
+    assert_eq!(routing_action(&plan, &a), "not_linked", "{plan}");
+    assert_eq!(routing_action(&plan, &b), "not_linked", "{plan}");
+    assert_eq!(routing_action(&plan, &default_dir), "unchanged", "{plan}");
 }
 
 #[test]
-fn folders_a_conflict_in_one_folder_does_not_stop_the_others() {
+fn folders_a_picked_folders_own_rules_never_stop_the_default_copy() {
     let w = World::new();
     let a = w.base.join("extra/a");
     let b = w.base.join("extra/b");
@@ -1281,7 +1426,7 @@ fn folders_a_conflict_in_one_folder_does_not_stop_the_others() {
         fs::read_to_string(a.join("rules/moai.md")).unwrap(),
         "theirs\n"
     );
-    assert!(b.join("rules/moai.md").is_file());
+    assert!(!b.exists());
     assert!(w.default_dir().join("rules/moai.md").is_file());
 }
 
@@ -1346,8 +1491,8 @@ fn folders_a_reference_to_an_edited_file_stays_a_conflict() {
 
 #[test]
 fn folders_a_link_that_leaves_the_default_folder_is_not_a_reference() {
-    // A `rules` link to a folder outside the default config folder keeps being refused: moai
-    // follows a link only into the default folder (SPEC decision D-2).
+    // A `rules` link to a folder outside the default config folder is no reference: the row says
+    // `not_linked` and nothing is written through it (SPEC decision D-2).
     let w = World::new();
     w.apply(&[]);
     let outside = w.base.join("elsewhere/rules");
@@ -1356,7 +1501,7 @@ fn folders_a_link_that_leaves_the_default_folder_is_not_a_reference() {
     fs::create_dir_all(&profile).unwrap();
     symlink(&outside, profile.join("rules")).unwrap();
     let plan = w.plan(&["--config-dir", profile.to_str().unwrap()]);
-    assert_eq!(routing_action(&plan, &profile), "conflict", "{plan}");
+    assert_eq!(routing_action(&plan, &profile), "not_linked", "{plan}");
     w.apply(&["--config-dir", profile.to_str().unwrap()]);
     assert!(
         !outside.join("moai.md").exists() && !outside.join("moai").exists(),
@@ -1373,14 +1518,14 @@ fn folders_a_relative_config_dir_is_refused() {
 }
 
 #[test]
-fn folders_revert_takes_the_folders_from_the_receipt() {
+fn folders_revert_takes_the_files_from_the_receipt() {
     let w = World::new();
     let a = w.base.join("extra/a");
     let extra = ["--config-dir", a.to_str().unwrap()];
     let id = w.apply(&extra)["receipt"].as_str().unwrap().to_string();
     let v = w.revert(&id);
     assert_eq!(v["reverted"], json!(["claude"]), "{v}");
-    assert_eq!(v["files"].as_array().unwrap().len(), 4, "{v}");
-    assert!(!a.join("rules/moai.md").exists());
+    assert_eq!(v["files"].as_array().unwrap().len(), 2, "{v}");
+    assert!(!a.exists());
     assert!(!w.default_dir().join("rules/moai.md").exists());
 }
