@@ -393,7 +393,12 @@ fn reclaim_lets_the_new_holder_close_a_review_card() {
 #[test]
 fn reclaim_can_hand_an_active_card_back_to_the_ready_queue() {
     let w = world();
-    let added = result(&w.card(None, &["add", "--title", "t", "--scope", "src/a/"]));
+    let added = result(&w.card(
+        None,
+        &[
+            "add", "--title", "t", "--scope", "src/a/", "--ac", "fixture",
+        ],
+    ));
     let card = added["name"].as_str().unwrap().to_string();
     result(&w.card(None, &["ready", &card]));
     result(&w.card(Some(S_A), &["take", &card]));
@@ -409,7 +414,18 @@ fn reclaim_refusals_change_nothing() {
     let w = world();
     let card = w.stuck_review_card();
     // A card that is not stuck at all: its lease is live.
-    let live = result(&w.card(None, &["add", "--title", "live", "--scope", "src/live/"]));
+    let live = result(&w.card(
+        None,
+        &[
+            "add",
+            "--title",
+            "live",
+            "--scope",
+            "src/live/",
+            "--ac",
+            "fixture",
+        ],
+    ));
     let live = live["name"].as_str().unwrap().to_string();
     result(&w.card(None, &["ready", &live]));
     result(&w.card(Some(S_A), &["take", &live]));

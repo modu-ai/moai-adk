@@ -142,7 +142,9 @@ impl Fx {
     /// A new card whose reservation names `branch`: returns its name and generation.
     fn reserve(&self, branch: &str) -> (String, String) {
         let scope = format!("src/{}.rs", branch.replace('/', "_"));
-        let added = self.ledger(&["card", "add", "--title", "t", "--scope", &scope]);
+        let added = self.ledger(&[
+            "card", "add", "--title", "t", "--scope", &scope, "--ac", "fixture",
+        ]);
         let name = added["name"].as_str().unwrap().to_string();
         self.ledger(&["card", "ready", &name]);
         let taken = self.ledger(&[

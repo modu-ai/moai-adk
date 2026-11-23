@@ -58,6 +58,8 @@ fn two_ready_cards() -> (TempHome, String) {
                 "add",
                 "--title",
                 title,
+                "--ac",
+                "fixture",
                 "--scope",
                 "apps/demo/",
                 "--project",

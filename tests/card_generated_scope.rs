@@ -75,7 +75,7 @@ fn registered() -> (TempHome, String) {
 
 /// Adds a card with the given scope entries and makes it ready; returns its name.
 fn ready_card(home: &TempHome, project: &str, scope: &[&str]) -> String {
-    let mut args = vec!["card", "add", "--title", "t"];
+    let mut args = vec!["card", "add", "--title", "t", "--ac", "fixture"];
     for s in scope {
         args.extend_from_slice(&["--scope", s]);
     }

@@ -141,7 +141,8 @@ impl World {
         l.conn().query_row(sql, [], |r| r.get(0)).unwrap()
     }
 
-    /// Adds a card with `scope` and `criteria` criteria, and makes it ready. Returns its name.
+    /// Adds a card with `scope` and `criteria` criteria (at least one: `card ready` refuses a card
+    /// without one), and makes it ready. Returns its name.
     fn ready_card(&self, scope: &str, criteria: usize, priority: &str) -> String {
         let mut args = vec![
             "add",
@@ -152,7 +153,7 @@ impl World {
             "--priority",
             priority,
         ];
-        for _ in 0..criteria {
+        for _ in 0..criteria.max(1) {
             args.extend_from_slice(&["--ac", "it works"]);
         }
         let added = result(&self.card(None, &args));
@@ -383,7 +384,7 @@ fn next_orders_by_priority_then_number_and_says_why_a_card_is_skipped() {
     let clash = w.ready_card("held/deep/x.rs", 0, "p1");
     let also = w.ready_card("also/", 0, "p0");
     // A card without a scope: `take` refuses it, so `next` does not offer it.
-    let bare = result(&w.card(None, &["add", "--title", "bare"]))["name"]
+    let bare = result(&w.card(None, &["add", "--title", "bare", "--ac", "fixture"]))["name"]
         .as_str()
         .unwrap()
         .to_string();

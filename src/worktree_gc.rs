@@ -2030,7 +2030,7 @@ mod tests {
                 kind: None,
                 priority: None,
                 scope: &scope,
-                criteria: &[],
+                criteria: &["fixture".to_string()],
                 by: None,
             },
         )

@@ -112,7 +112,7 @@ impl World {
 
     /// A `ready` card without a write scope (`--scope` is left out of `card add`).
     fn empty_card(&self, title: &str) -> String {
-        let added = result(&self.card(None, &["add", "--title", title]));
+        let added = result(&self.card(None, &["add", "--title", title, "--ac", "fixture"]));
         let name = added["name"].as_str().unwrap().to_string();
         result(&self.card(None, &["ready", &name]));
         name
@@ -203,7 +203,12 @@ fn a_given_scope_is_kept_on_the_card() {
 #[test]
 fn an_own_scope_is_never_changed_by_take() {
     let w = world();
-    let added = result(&w.card(None, &["add", "--title", "own", "--scope", "src/a.rs"]));
+    let added = result(&w.card(
+        None,
+        &[
+            "add", "--title", "own", "--scope", "src/a.rs", "--ac", "fixture",
+        ],
+    ));
     let name = added["name"].as_str().unwrap().to_string();
     result(&w.card(None, &["ready", &name]));
     let took = result(&w.card(Some(S_A), &["take", &name, "--scope", "src/b.rs"]));

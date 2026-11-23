@@ -168,6 +168,8 @@ impl Fx {
             "add",
             "--title",
             "t",
+            "--ac",
+            "fixture",
             "--scope",
             &scope,
             "--project",
