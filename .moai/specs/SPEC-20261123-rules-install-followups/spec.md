@@ -63,4 +63,10 @@ parent: SPEC-20261122-claude-md-home-routing
 
 ## Result
 
-(written at SYNC)
+Base `bba86859fc` (the integration tip). Commits on `spec/rules-install-followups-20261123`: the SPEC, the RED tests with the behaviour-preserving function, the fix, and the commit of this Result.
+
+- AC-1: met. RED: with `routing_recheck_moved` still comparing row counts, `cargo nextest run --lib -E 'test(routing_recheck)'` ran 4 tests, 3 passed and `routing_recheck_sees_a_changed_digest_beside_a_profile_row` failed (`assertion failed: routing_recheck_moved(1, &previewed, &plan(["/h/.claude", "/p"], "new"))`). GREEN: after the distinct-host count the same filter plus `user_layer_tests` ran 8 tests, 8 passed. The row-count comparison is the stub of the RED run itself, so it is the mutant that this test kills.
+- AC-2: met. `cargo nextest run --test claude_md_home_cli -E 'test(target_a_relative_)'` passed on the current code (1 test: the relative `../.claude/rules` link reads `linked` before and after the apply, and `../other` reads `not_linked`). With `dir.join(target)` replaced by `target` in `src/home_routing/rules.rs` the same test failed at the profile row (`left: "not_linked", right: "linked"`, with the detail "is a link to ../.claude/rules"); the file was restored by hand and `git status --short` showed no tracked change.
+- AC-3: met. `cargo nextest run --test claude_md_home_cli --test host_home_cli --test update_user_layer_cli --test home_routing_cli`: 93 run, 93 passed.
+- Not pinned by a test (D-3): that the apply calls `routing_recheck_moved` at all. No command-line run can change the routing plan between the preview and the apply, so a mutant that removes the call survives; it was not run, and the call is on one line of `src/update.rs` read in the diff.
+- Not done and not in scope: the agent-layer comparison at the same place (`agent_hosts.len() == fresh.agents.hosts.len()`) has one row per host and was left as it is.
