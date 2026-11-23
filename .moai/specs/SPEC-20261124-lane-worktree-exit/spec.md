@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-lane-worktree-exit
 title: "the card loop leaves the worktree after the hand-back, and a lane asks by note, never by a selection prompt"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7821 (2026-11-23T19:29:19Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7820 에 답함): 판 2 를 선택지 (A) 로 승인해요, 노트 7797 의 수리 방향대로 REQ-1·REQ-2, 카드 번호 제거, Scope 백틱; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:a7878df7dc978e0e420d4da7d2984fa0720f86eda0364cfa023fd4b3a80f34a8"
 ---
 
 # the card loop leaves the worktree after the hand-back, and a lane asks by note, never by a selection prompt
