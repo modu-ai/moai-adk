@@ -1829,8 +1829,8 @@ fn session_check_names_the_conversation_language() {
 
 /// Writes `bytes` as the project profile of `root`, in the folder session-check reads.
 fn write_profile_bytes(root: &Path, bytes: &[u8]) {
-    fs::create_dir_all(root.join(".moai")).unwrap();
-    fs::write(root.join(".moai/project.yaml"), bytes).unwrap();
+    fs::create_dir_all(moai_cli::state_root::path(root, "")).unwrap();
+    fs::write(moai_cli::state_root::path(root, "project.yaml"), bytes).unwrap();
 }
 
 /// A valid profile; `work_flow` is added when given.
@@ -1848,7 +1848,7 @@ fn write_profile(root: &Path, work_flow: Option<Value>) {
 }
 
 /// SPEC-20261123-work-flow-readers AC-1: the profile's flow and integration branch are named.
-/// The binary runs with the fixture's own empty HOME, so the real `$HOME/.moai` is never read.
+/// The binary runs with the fixture's own empty HOME, so the real home state is never read.
 #[test]
 fn session_check_names_the_profile_work_flow() {
     let (_d, root) = repo("NeXT");
@@ -1869,7 +1869,7 @@ fn session_check_names_the_profile_work_flow() {
 #[test]
 fn session_check_without_work_flow_is_unchanged() {
     let (_none, none) = repo("NeXT");
-    fs::create_dir_all(none.join(".moai")).unwrap();
+    fs::create_dir_all(moai_cli::state_root::path(&none, "")).unwrap();
     let (_broken, broken) = repo("NeXT");
     write_profile_bytes(&broken, b"{ not a profile");
     let (_plain, plain) = repo("NeXT");
