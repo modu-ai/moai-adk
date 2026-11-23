@@ -2011,6 +2011,17 @@ fn count_hosts(p: &crate::home_style::Plan) -> usize {
     hosts.len()
 }
 
+/// Whether the routing plan computed at apply time differs from the confirmed one. The digests
+/// are compared only when the same hosts are applied as were previewed; the previewed plan has
+/// one row per config folder, so the hosts are counted by name, not by row.
+fn routing_recheck_moved(
+    confirmed_hosts: usize,
+    previewed: &crate::home_routing::Plan,
+    now: &crate::home_routing::Plan,
+) -> bool {
+    confirmed_hosts == previewed.hosts.len() && now.plan_digest != previewed.plan_digest
+}
+
 fn agents_write_anything(p: &crate::agent_install::Plan) -> bool {
     p.hosts
         .iter()
@@ -2294,9 +2305,7 @@ fn update_command_core(
     })());
     let routing = part((|| {
         let p = crate::home_routing::plan_for(home, &package, &routing_hosts)?;
-        if routing_hosts.len() == fresh.routing.hosts.len()
-            && p.plan_digest != fresh.routing.plan_digest
-        {
+        if routing_recheck_moved(routing_hosts.len(), &fresh.routing, &p) {
             return Ok(
                 json!({"state": "refused", "reason": "the routing plan changed after the confirmed preview; nothing written"}),
             );
@@ -3591,5 +3600,75 @@ mod user_layer_tests {
         assert_eq!(hosts(&g.agents), "");
         assert_eq!(hosts(&g.routing), "");
         assert_eq!(hosts(&g.style), "");
+    }
+}
+
+#[cfg(test)]
+mod routing_recheck_tests {
+    use super::*;
+    use crate::home_routing::{HostPlan, Plan};
+
+    fn row(dir: &str) -> HostPlan {
+        HostPlan {
+            host: "claude".into(),
+            config_dir: dir.into(),
+            file: format!("{dir}/rules/moai.md"),
+            preflight: "ok".into(),
+            blocked_reason: None,
+            section: None,
+            flow: None,
+            old_block: None,
+        }
+    }
+
+    fn plan(dirs: &[&str], digest: &str) -> Plan {
+        Plan {
+            schema_version: 1,
+            home: "/h".into(),
+            package_digest: "p".into(),
+            source_sha256: "s".into(),
+            flow_source_sha256: None,
+            hosts: dirs.iter().map(|d| row(d)).collect(),
+            not_supported: Vec::new(),
+            plan_digest: digest.into(),
+        }
+    }
+
+    #[test]
+    fn routing_recheck_sees_a_changed_digest_beside_a_profile_row() {
+        // One host, two rows (the default folder and a profile): the digest still counts.
+        let previewed = plan(&["/h/.claude", "/p"], "old");
+        assert!(routing_recheck_moved(
+            1,
+            &previewed,
+            &plan(&["/h/.claude", "/p"], "new")
+        ));
+    }
+
+    #[test]
+    fn routing_recheck_sees_a_changed_digest_with_one_row() {
+        let previewed = plan(&["/h/.claude"], "old");
+        assert!(routing_recheck_moved(
+            1,
+            &previewed,
+            &plan(&["/h/.claude"], "new")
+        ));
+    }
+
+    #[test]
+    fn routing_recheck_leaves_an_unchanged_digest_alone() {
+        let previewed = plan(&["/h/.claude", "/p"], "same");
+        assert!(!routing_recheck_moved(
+            1,
+            &previewed,
+            &plan(&["/h/.claude", "/p"], "same")
+        ));
+    }
+
+    #[test]
+    fn routing_recheck_skips_the_comparison_when_fewer_hosts_were_confirmed() {
+        // A blocked skill copy leaves a host out of the apply: that plan differs on purpose.
+        let previewed = plan(&["/h/.claude", "/p"], "old");
+        assert!(!routing_recheck_moved(0, &previewed, &plan(&[], "new")));
     }
 }
