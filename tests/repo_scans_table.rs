@@ -209,6 +209,7 @@ fn named_files(scans: &[Value]) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     for scan in scans {
         names.extend(strings(&scan["rules"]));
+        names.extend(strings(&scan["readers"]));
         for test in strings(&scan["tests"]) {
             names.insert(test_file(&test).to_string());
         }
@@ -428,6 +429,10 @@ fn every_exemption_has_a_reason_and_appears_once() {
 /// need no scan, each with its reason. None today.
 const INCLUDE_STR_EXEMPT: &[(&str, &str)] = &[];
 
+fn include_str_exempt(file: &str, _path: &str) -> bool {
+    INCLUDE_STR_EXEMPT.iter().any(|(p, _)| *p == file)
+}
+
 /// The repository paths (relative to the root, with `/`) a Rust file at `file` reads with
 /// `include_str!("<literal>")`, for the literals that leave `tests/`. A literal without `..` and a
 /// path that stays inside `tests/` are not repository reads of this kind.
@@ -474,24 +479,34 @@ fn scope_covers(scan: &Value, path: &str) -> bool {
     })
 }
 
-/// The `file reads path` lines of the readers that no `always` scan covers: the file is one of the
-/// rule files of an `always` scan whose scope holds the path it reads. `exempt` lists the files
-/// kept out, each with its reason (`INCLUDE_STR_EXEMPT` or `FILE_READ_EXEMPT`).
+/// Whether a scan names `file`: as one of its rule files or as one of its `readers`, the tests of
+/// a `reads-` scan that open the scope files and that its check runs. A reader is no rule file of
+/// a `reads-` scan, because a change of any one of dozens of readers would then select and cross-hit
+/// the whole group (SPEC-20261123-land-file-read-scans D-6).
+fn names_file(scan: &Value, file: &str) -> bool {
+    strings(&scan["rules"])
+        .iter()
+        .chain(strings(&scan["readers"]).iter())
+        .any(|r| r == file)
+}
+
+/// The `file reads path` lines of the readers that no `always` scan covers: the file is named by an
+/// `always` scan (`names_file`) whose scope holds the path it reads. `exempt(file, path)` is
+/// true for a pair kept out (`INCLUDE_STR_EXEMPT` or `FILE_READ_EXEMPT`, each with its reason).
 fn uncovered_readers(
     readers: &BTreeMap<String, Vec<String>>,
     scans: &[Value],
-    exempt: &[(&str, &str)],
+    exempt: &dyn Fn(&str, &str) -> bool,
 ) -> Vec<String> {
-    let exempt: BTreeSet<&str> = exempt.iter().map(|(p, _)| *p).collect();
     let mut out = Vec::new();
     for (file, paths) in readers {
-        if exempt.contains(file.as_str()) {
-            continue;
-        }
         for path in paths {
+            if exempt(file, path) {
+                continue;
+            }
             let covered = scans.iter().any(|scan| {
                 scan["always"] == Value::Bool(true)
-                    && strings(&scan["rules"]).iter().any(|r| r == file)
+                    && names_file(scan, file)
                     && scope_covers(scan, path)
             });
             if !covered {
@@ -540,7 +555,7 @@ fn every_include_str_reader_of_a_repository_file_has_an_always_scan() {
         readers.contains_key("tests/green_test_lock.rs"),
         "the reader scan finds no include_str! reader at all: {readers:?}"
     );
-    let uncovered = uncovered_readers(&readers, &load(), INCLUDE_STR_EXEMPT);
+    let uncovered = uncovered_readers(&readers, &load(), &include_str_exempt);
     assert!(
         uncovered.is_empty(),
         "a test reads a repository file with include_str! and no `always` scan names it as a rule \
@@ -564,7 +579,7 @@ fn the_include_str_check_sees_a_reader_with_no_scan_and_skips_what_it_should() {
         include_str_paths("tests/zz_reader.rs", text),
     )]);
     assert_eq!(
-        uncovered_readers(&readers, &load(), INCLUDE_STR_EXEMPT),
+        uncovered_readers(&readers, &load(), &include_str_exempt),
         ["tests/zz_reader.rs reads src/zz_new_table.rs"]
     );
 }
@@ -586,9 +601,140 @@ fn the_green_test_lock_reader_is_covered_by_its_source_table() {
 
 // ---- readers that open a checked-in file at run time (SPEC-20261123-land-file-read-scans) ----
 
-/// Integration test files that name `CARGO_MANIFEST_DIR`, read, and spell tracked paths only as
-/// names inside the temporary projects they build, each with its reason. None yet.
-const FILE_READ_EXEMPT: &[(&str, &str)] = &[];
+/// What a reader spells that is no read of the checkout: `(file, paths, reason)`. The paths are
+/// names the test writes into the temporary project it builds (or lists as text); an empty list
+/// keeps the whole file out. The reason says how that was read from the file.
+///
+/// Only the paths that change often are listed: `src/lib.rs`, `src/main.rs`, `README.md` and the
+/// `.moai/specs` folder. A fixture name left in a scope only adds a run (D-2).
+const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
+    (
+        "tests/atlas_query_cli.rs",
+        &["src/lib.rs"],
+        "writes src/lib.rs into the temporary project (`write(root, ..)`) and names it in the query",
+    ),
+    (
+        "tests/audit_admission.rs",
+        &["README.md"],
+        "`fs::write` into its TempDir repository, then `git add README.md` there",
+    ),
+    (
+        "tests/boundary_repro.rs",
+        &["README.md", "src/main.rs"],
+        "README.md is written into its TempDir repository; src/main.rs is an argument of `overlap(..)`, a path text compared with another, never opened",
+    ),
+    (
+        "tests/bundle_body_cli.rs",
+        &["README.md", ".moai/specs"],
+        "`put(..)` writes README.md and `.moai/specs/<id>/spec.md` into the fixture repository it builds",
+    ),
+    (
+        "tests/bundle_build_cli.rs",
+        &["README.md", ".moai/specs"],
+        "`put(..)` writes README.md and `.moai/specs/<id>/spec.md` into the fixture repository it builds",
+    ),
+    (
+        "tests/bundle_verify_cli.rs",
+        &["README.md", ".moai/specs"],
+        "`put(..)` and `fs::write` put README.md and `.moai/specs/<id>/spec.md` into the fixture worktree it builds",
+    ),
+    (
+        "tests/card_finish_cli.rs",
+        &[".moai/specs"],
+        "joins `.moai/specs` onto the temporary project it builds",
+    ),
+    (
+        "tests/card_line_lease_cli.rs",
+        &["src/lib.rs"],
+        "a path leased in its temporary ledger, never opened",
+    ),
+    (
+        "tests/check_affected_modes_cli.rs",
+        &["README.md"],
+        "`put(p, \"README.md\", ..)` into the fixture repository it builds",
+    ),
+    (
+        "tests/code_atlas_reference.rs",
+        &["src/lib.rs"],
+        "`fs::write` into the temporary project it builds",
+    ),
+    (
+        "tests/freshness_fixture.rs",
+        &["src/lib.rs"],
+        "a file body in the map of fixture file contents",
+    ),
+    (
+        "tests/gate_collect.rs",
+        &["src/lib.rs"],
+        "committed into the fixture repository (`commit(d, &[(\"src/lib.rs\", ..)])`)",
+    ),
+    (
+        "tests/ops_table_gen_cli.rs",
+        &["src/main.rs", "src/lib.rs"],
+        "the shared file names it looks for in the research table text",
+    ),
+    (
+        "tests/product_cli.rs",
+        &[".moai/specs"],
+        "`is_dir` check of one named SPEC id, no content read; a change inside `.moai/specs` cannot break it",
+    ),
+    (
+        "tests/project_flow_closing.rs",
+        &["README.md"],
+        "`fs::write` into its TempDir project",
+    ),
+    (
+        "tests/repo_scans_cli.rs",
+        &["README.md", "src/lib.rs"],
+        "changed-path arguments of the judge and fixture writes (`fx.write(..)`)",
+    ),
+    (
+        "tests/repo_scans_table.rs",
+        &["src/lib.rs", ".moai/specs"],
+        "names in the exemption list and the fixture tests of this file",
+    ),
+    (
+        "tests/review_check_cli.rs",
+        &["src/lib.rs"],
+        "`write(&repo, ..)` into the fixture repository it builds",
+    ),
+    (
+        "tests/review_checklist_cli.rs",
+        &["README.md"],
+        "`write(&repo, ..)` into the fixture repository it builds",
+    ),
+    (
+        "tests/run_verify.rs",
+        &["README.md", "src/lib.rs"],
+        "written or copied into its TempDir project (`fs::copy(.., dir.path().join(..))`)",
+    ),
+    (
+        "tests/spec_branch_name_first.rs",
+        &["src/main.rs", ".moai/specs"],
+        "paths a fixture tool call writes under its temporary root",
+    ),
+    (
+        "tests/spec_cli.rs",
+        &["README.md", ".moai/specs"],
+        "README.md is written into the specs folder of its temporary project; `.moai/specs` is joined onto that project",
+    ),
+    (
+        "tests/update_route.rs",
+        &[".moai/specs"],
+        "writes `.moai/specs/SPEC-1/spec.md` under its temporary root",
+    ),
+    (
+        "tests/worktree_cli.rs",
+        &["README.md", "src/lib.rs"],
+        "`fs::write` into its temporary repository and path names in the overlap lists",
+    ),
+];
+
+fn file_read_exempt(file: &str, path: &str) -> bool {
+    FILE_READ_EXEMPT
+        .iter()
+        .any(|(f, paths, _)| *f == file && (paths.is_empty() || paths.contains(&path)))
+}
 
 /// The calls that open a file or a folder while the test runs.
 const FILE_READ_CALLS: &[&str] = &["read_to_string(", "fs::read(", "read_dir(", "File::open("];
@@ -618,7 +764,12 @@ impl Tracked {
         TRACKED.get_or_init(|| {
             let mut git = std::process::Command::new("git");
             git.arg("-C").arg(root()).args(["ls-files", "-z"]);
-            for key in ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"] {
+            for key in [
+                "GIT_DIR",
+                "GIT_WORK_TREE",
+                "GIT_INDEX_FILE",
+                "GIT_COMMON_DIR",
+            ] {
                 git.env_remove(key);
             }
             match git.output() {
@@ -641,12 +792,101 @@ impl Tracked {
     }
 }
 
-/// The repository paths a test file spells as string literals and so may read (RED stub).
-fn file_read_paths(_text: &str, _tracked: &Tracked) -> Vec<String> {
-    Vec::new()
+impl Tracked {
+    /// The tracked path a string literal names, if it names one: no space or backslash, cut
+    /// before a placeholder (`{`, `<`, `*`, `$`), outside `tests/`, `target/` and `.git/`. A file
+    /// counts at any depth, a folder only with two segments or more (`docs` alone is the name
+    /// of a folder in the temporary projects the tests build).
+    fn repo_path(&self, literal: &str) -> Option<String> {
+        if literal.chars().any(|c| c.is_whitespace() || c == '\\') {
+            return None;
+        }
+        let cut = literal
+            .find(['{', '<', '*', '$'])
+            .map_or(literal, |at| &literal[..at]);
+        let path = cut.trim_start_matches("./").trim_matches('/');
+        let first = path.split('/').next().unwrap_or("");
+        if path.is_empty() || path.contains("..") || ["tests", "target", ".git"].contains(&first) {
+            return None;
+        }
+        let is_file = self.files.contains(path);
+        let is_folder = path.contains('/') && self.dirs.contains(path);
+        (is_file || is_folder).then(|| path.to_string())
+    }
 }
 
-/// Every top-level `tests/*.rs` file with the repository paths it may read at run time.
+/// The string literals of Rust source, escapes as written. Line and block comments, raw strings
+/// and the character literals `'"'` and `'\"'` are skipped so their quotes pair nothing.
+fn string_literals(text: &str) -> Vec<String> {
+    let b = text.as_bytes();
+    let ident = |c: u8| c.is_ascii_alphanumeric() || c == b'_';
+    let (mut out, mut i) = (Vec::new(), 0);
+    while i < b.len() {
+        match b[i] {
+            b'/' if b.get(i + 1) == Some(&b'/') => {
+                while i < b.len() && b[i] != b'\n' {
+                    i += 1;
+                }
+            }
+            b'/' if b.get(i + 1) == Some(&b'*') => {
+                i += 2;
+                while i + 1 < b.len() && !(b[i] == b'*' && b[i + 1] == b'/') {
+                    i += 1;
+                }
+                i += 2;
+            }
+            b'\'' if b.get(i + 1) == Some(&b'"') && b.get(i + 2) == Some(&b'\'') => i += 3,
+            b'\'' if b.get(i + 1..i + 4) == Some(b"\\\"'") => i += 4,
+            b'r' if i == 0 || !ident(b[i - 1]) => {
+                let hashes = b[i + 1..].iter().take_while(|c| **c == b'#').count();
+                if b.get(i + 1 + hashes) != Some(&b'"') {
+                    i += 1;
+                    continue;
+                }
+                let mut close = vec![b'"'];
+                close.extend(std::iter::repeat_n(b'#', hashes));
+                let body = i + 2 + hashes;
+                match b[body..].windows(close.len()).position(|w| w == &close[..]) {
+                    Some(end) => i = body + end + close.len(),
+                    None => break,
+                }
+            }
+            b'"' => {
+                let start = i + 1;
+                i = start;
+                while i < b.len() && b[i] != b'"' {
+                    i += if b[i] == b'\\' { 2 } else { 1 };
+                }
+                if i >= b.len() {
+                    break;
+                }
+                out.push(text[start..i].to_string());
+                i += 1;
+            }
+            _ => i += 1,
+        }
+    }
+    out
+}
+
+/// The repository paths a test file spells as string literals and so may read: a file that names
+/// `CARGO_MANIFEST_DIR` and calls one of `FILE_READ_CALLS`, with the tracked paths of its literals.
+/// A path built from pieces is not seen (SPEC-20261123-land-file-read-scans D-2).
+fn file_read_paths(text: &str, tracked: &Tracked) -> Vec<String> {
+    if !text.contains("CARGO_MANIFEST_DIR") || !FILE_READ_CALLS.iter().any(|c| text.contains(c)) {
+        return Vec::new();
+    }
+    let mut out: Vec<String> = string_literals(text)
+        .iter()
+        .filter_map(|literal| tracked.repo_path(literal))
+        .collect();
+    out.sort();
+    out.dedup();
+    out
+}
+
+/// Every top-level `tests/*.rs` file with the repository paths it may read at run time, before
+/// `FILE_READ_EXEMPT` is applied.
 fn file_readers() -> BTreeMap<String, Vec<String>> {
     let mut files = Vec::new();
     walk(&root().join("tests"), &mut files);
@@ -665,9 +905,45 @@ fn file_readers() -> BTreeMap<String, Vec<String>> {
 }
 
 /// The `always` scans that name a top-level test file as a rule file and run no check with
-/// `--test <stem>` for it (RED stub).
-fn scans_not_running_readers(_scans: &[Value]) -> Vec<String> {
-    Vec::new()
+/// `--test <stem>` for it: the `readers` of a scan that has them, else its rule files. A scan
+/// without `always` claims no coverage and is not held to this.
+fn scans_not_running_readers(scans: &[Value]) -> Vec<String> {
+    let mut out = Vec::new();
+    for scan in scans.iter().filter(|s| s["always"] == Value::Bool(true)) {
+        let checks = strings(&scan["checks"]);
+        let run: BTreeSet<&str> = checks
+            .iter()
+            .flat_map(|c| {
+                let words: Vec<&str> = c.split_whitespace().collect();
+                words
+                    .windows(2)
+                    .filter(|w| w[0] == "--test")
+                    .map(|w| w[1])
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        // a scan with `readers` runs those; its rule files only anchor it (D-6)
+        let named = if scan["readers"].is_array() {
+            strings(&scan["readers"])
+        } else {
+            strings(&scan["rules"])
+        };
+        for rule in named {
+            let stem = rule
+                .strip_prefix("tests/")
+                .and_then(|r| r.strip_suffix(".rs"))
+                .filter(|s| !s.contains('/'));
+            if let Some(stem) = stem {
+                if !run.contains(stem) {
+                    out.push(format!(
+                        "{}: {rule} is a rule file but no check runs --test {stem}",
+                        id(scan)
+                    ));
+                }
+            }
+        }
+    }
+    out
 }
 
 #[test]
@@ -733,7 +1009,7 @@ fn an_uncovered_file_reader_is_named_and_a_covering_always_scan_clears_it() {
         vec!["skills/moai/SKILL.md".to_string()],
     )]);
     assert_eq!(
-        uncovered_readers(&readers, &[], FILE_READ_EXEMPT),
+        uncovered_readers(&readers, &[], &|_, _| false),
         ["tests/zz_reader.rs reads skills/moai/SKILL.md"]
     );
     let scan = |extra: Value| {
@@ -744,7 +1020,8 @@ fn an_uncovered_file_reader_is_named_and_a_covering_always_scan_clears_it() {
         }
         s
     };
-    assert!(uncovered_readers(&readers, &[scan(json!({}))], &[]).is_empty());
+    let none = |_: &str, _: &str| false;
+    assert!(uncovered_readers(&readers, &[scan(json!({}))], &none).is_empty());
     // without `always`, with another rule file or with a scope elsewhere it stays uncovered
     for broken in [
         json!({"always": false}),
@@ -752,13 +1029,16 @@ fn an_uncovered_file_reader_is_named_and_a_covering_always_scan_clears_it() {
         json!({"scope": [{"prefix": "docs/"}]}),
     ] {
         assert_eq!(
-            uncovered_readers(&readers, &[scan(broken)], &[]).len(),
+            uncovered_readers(&readers, &[scan(broken)], &none).len(),
             1,
             "a scan that does not cover the reader must not clear it"
         );
     }
-    let exempt = [("tests/zz_reader.rs", "fixture names only")];
-    assert!(uncovered_readers(&readers, &[], &exempt).is_empty());
+    // an exemption keeps out the named path of the named file and nothing else
+    let one = |f: &str, p: &str| f == "tests/zz_reader.rs" && p == "skills/moai/SKILL.md";
+    assert!(uncovered_readers(&readers, &[], &one).is_empty());
+    let other_path = |f: &str, p: &str| f == "tests/zz_reader.rs" && p == "docs/a.md";
+    assert_eq!(uncovered_readers(&readers, &[], &other_path).len(), 1);
 }
 
 #[test]
@@ -769,7 +1049,7 @@ fn every_file_reader_has_an_always_scan_or_an_exemption() {
         "the reader scan finds only {} readers: {readers:?}",
         readers.len()
     );
-    let uncovered = uncovered_readers(&readers, &load(), FILE_READ_EXEMPT);
+    let uncovered = uncovered_readers(&readers, &load(), &file_read_exempt);
     assert!(
         uncovered.is_empty(),
         "a test reads a checked-in file at run time and no `always` scan names it as a rule file \
@@ -799,19 +1079,34 @@ fn a_scan_that_names_a_reader_but_never_runs_the_readers_is_named() {
     let runs = json!(["cargo test --offline --locked --test other --test zz_reader"]);
     assert!(scans_not_running_readers(&[scan(runs, true)]).is_empty());
     // a scan without `always` claims no coverage, so it is not held to this
-    assert!(scans_not_running_readers(&[scan(other, false)]).is_empty());
+    assert!(scans_not_running_readers(&[scan(other.clone(), false)]).is_empty());
+    // a scan with `readers` is held to those, and its rule file only anchors it
+    let mut grouped = scan(other, true);
+    grouped["rules"] = json!(["tests/anchor.rs"]);
+    grouped["readers"] = json!(["tests/zz_reader.rs"]);
+    assert_eq!(
+        scans_not_running_readers(&[grouped.clone()]),
+        ["reads-zz: tests/zz_reader.rs is a rule file but no check runs --test zz_reader"]
+    );
+    grouped["checks"] = json!(["cargo test --offline --locked --test zz_reader"]);
+    assert!(scans_not_running_readers(&[grouped]).is_empty());
 }
 
 #[test]
 fn file_read_exemptions_are_readers_with_a_reason_once() {
     let readers = file_readers();
     let mut seen = BTreeSet::new();
-    for (path, reason) in FILE_READ_EXEMPT {
-        assert!(!reason.trim().is_empty(), "{path}: no reason");
-        assert!(seen.insert(*path), "{path} appears twice");
-        assert!(
-            readers.contains_key(*path),
-            "{path}: FILE_READ_EXEMPT names a file the reader scan no longer finds"
-        );
+    for (file, paths, reason) in FILE_READ_EXEMPT {
+        assert!(!reason.trim().is_empty(), "{file}: no reason");
+        assert!(seen.insert(*file), "{file} appears twice");
+        let spelled = readers.get(*file).unwrap_or_else(|| {
+            panic!("{file}: FILE_READ_EXEMPT names a file the reader scan no longer finds")
+        });
+        for path in *paths {
+            assert!(
+                spelled.iter().any(|p| p == path),
+                "{file}: FILE_READ_EXEMPT names {path}, which the file no longer spells"
+            );
+        }
     }
 }

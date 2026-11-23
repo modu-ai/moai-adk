@@ -2,7 +2,7 @@
 id: SPEC-20261123-land-file-read-scans
 title: "the repo-scans table covers every integration test that reads a checked-in file at run time, not only those that use include_str!"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-23
 ---
 
@@ -39,10 +39,10 @@ created: 2026-11-23
 
 - REQ-1: When the table test runs, the table test shall list each top-level integration test file that names `CARGO_MANIFEST_DIR`, calls `read_to_string`, `fs::read`, `read_dir` or `File::open`, and spells a repository path as a string literal, together with the paths it spells · failure: none — a file that spells none is no reader.
 - REQ-2 (REQ-1): When a string literal of a reader has no space and names an existing file or an existing folder of two segments or more outside `tests/`, the reader scan shall count it as a spelled repository path · failure: none — the cut before a placeholder and the folder rule are D-2 and D-3, and a one-segment folder name such as `docs` is a fixture folder name, not a read.
-- REQ-3 (REQ-1): IF a path a reader spells is not in the scope of an `always` scan that names the reader as a rule file and the reader is not in the exemption list, THEN the table test shall fail and name the reader and the path · failure: none — the message names the two ways out, a table entry or an exemption with its reason.
-- REQ-4: The table shall carry `always` scans that name every reader of the current tree as a rule file with the paths it spells in their scopes except the readers of the exemption list · failure: REQ-3 makes a missing entry fail.
-- REQ-5: When an `always` scan names a top-level test file as a rule file, the table test shall require one check of that scan to run that test target with `--test <stem>` · failure: none — a scan that names a reader and does not run it would cover nothing.
-- REQ-6: IF the exemption list names a file that the reader scan does not find or names a file twice or gives a file no reason THEN the table test shall fail · failure: none — the list keeps no stale line.
+- REQ-3 (REQ-1): IF a path a reader spells is not in the scope of an `always` scan that names the reader in its rules or its readers and the pair of the reader and the path is not in the exemption list, THEN the table test shall fail and name the reader and the path · failure: none — the message names the two ways out, a table entry or an exemption with its reason.
+- REQ-4: The table shall carry `always` scans that name every reader of the current tree in their rules or readers with the paths it spells in their scopes except the pairs of the exemption list · failure: REQ-3 makes a missing entry fail.
+- REQ-5: When an `always` scan names a top-level test file in its readers or else in its rules, the table test shall require one check of that scan to run that test target with `--test <stem>` · failure: none — a scan that names a reader and does not run it would cover nothing.
+- REQ-6: IF the exemption list names a file that the reader scan does not find or names a path the file does not spell or names a file twice or gives a file no reason THEN the table test shall fail · failure: none — the list keeps no stale line.
 - REQ-7: The table test shall keep the `include_str!` check of `SPEC-20261123-land-repo-scans` and cover its paths through the same function as the new reader paths · failure: none — the earlier test names stay.
 - REQ-8: When a fixture test file spells a repository path and has no covering scan, the table test shall name it · failure: none — the fixture case runs on every table test.
 - REQ-9: The table test shall find `tests/mode_workflow_steps.rs` as a reader of `skills/moai/workflows` in the current tree · failure: none — a reader scan that finds nothing fails this one.
@@ -50,19 +50,19 @@ created: 2026-11-23
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2, REQ-9): the reader scan finds `tests/mode_workflow_steps.rs` with `skills/moai/workflows`, finds a fixture file that reads `skills/moai/SKILL.md` through `fs::read_to_string` with `CARGO_MANIFEST_DIR`, skips a one-segment folder literal, a literal with a space, a literal outside the repository and a path inside `tests/` · verify: `cargo nextest run --locked --offline --test repo_scans_table -E 'test(/file_read_/)'`
-- AC-2 (REQ-3, REQ-8): a reader with no covering scan is named with its path, and the same reader passes after it is added as a rule file of an `always` scan whose scope holds the path · verify: `cargo nextest run --locked --offline --test repo_scans_table -E 'test(/uncovered_file_reader/)'`
+- AC-2 (REQ-3, REQ-8): a reader with no covering scan is named with its path, and the same reader passes after an `always` scan names it in its rules or readers with the path in its scope · verify: `cargo nextest run --locked --offline --test repo_scans_table -E 'test(/uncovered_file_reader/)'`
 - AC-3 (REQ-3, REQ-4): every reader of the current tree has a covering `always` scan or an exemption with its reason · verify: `cargo nextest run --locked --offline --test repo_scans_table -E 'test(/every_file_reader/)'`
-- AC-4 (REQ-5): every `always` scan runs the test targets it names as rule files, and a fixture scan that names a test target its checks do not run fails · verify: `cargo nextest run --locked --offline --test repo_scans_table -E 'test(/runs_the_readers/)'`
+- AC-4 (REQ-5): every `always` scan runs the test targets it names in its readers (else in its rules), and a fixture scan that names a test target its checks do not run fails · verify: `cargo nextest run --locked --offline --test repo_scans_table -E 'test(/runs_the_readers/)'`
 - AC-5 (REQ-6): every exemption is a reader the scan still finds, has a reason and appears once · verify: `cargo nextest run --locked --offline --test repo_scans_table -E 'test(/file_read_exemptions/)'`
 - AC-6 (REQ-7): the `include_str!` tests of the earlier SPEC still pass through the shared function · verify: `cargo nextest run --locked --offline --test repo_scans_table -E 'test(/include_str/)'`
-- AC-7 (REQ-4): the whole table test passes and `moai repo-scans --refs` on a head that edits `skills/moai/workflows/work.md` lists a reads scan in `own_hits` and its check · verify: `cargo nextest run --locked --offline --test repo_scans_table --test repo_scans_cli`
+- AC-7 (REQ-4): the whole table test passes and `moai repo-scans --refs` on a head that edits `skills/moai/workflows/work.md` lists a reads scan in `own_hits` and its check · verify: `cargo nextest run --locked --offline --test repo_scans_table --test repo_scans_cli`; the case is `always_reads_scan_needs_its_checks_for_a_head_that_edits_a_file_its_readers_open`
 - AC-8 (REQ-8): deleting the reader scan makes the table test fail (guard mutants M1 to M4 of the Result) · verify: the `guard-mutant:` lines of the READY note
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261123-land-file-read-scans/**`, `tools/repo_scans.json`, `tests/repo_scans_table.rs`
+- write: `.moai/specs/SPEC-20261123-land-file-read-scans/**`, `tools/repo_scans.json`, `tests/repo_scans_table.rs`, `tests/repo_scans_cli.rs` (two no-hit cases moved off `README.md`, one new case; the card scope was widened by this one file)
 - write only if a test needs it: `src/repo_scans.rs`, `skills/moai/references/source-manifest.json` (hash only)
-- read-only: `src/check_affected.rs`, `src/card/land/scans.rs`, `tests/repo_scans_cli.rs`, `tests/areas.toml`, every reader test file
+- read-only: `src/check_affected.rs`, `src/card/land/scans.rs`, `tests/areas.toml`, every reader test file
 - forbidden: `src/card/land.rs`, `src/bundle.rs`, `src/profile.rs`, `skills/**` other than the manifest hash, any other path, the real HOME
 
 ## Plan
@@ -76,7 +76,7 @@ created: 2026-11-23
 ## Risks
 
 - R-1 over-approximation: a reader that spells `src/lib.rs` only as the name of a file in its temporary project gets that path in its scope, so a head that touches `src/lib.rs` runs its test too. A wider scope only adds a run; it never hides one. Fixture-only readers (every spelled path is a fixture name) go to the exemption list, each with the reason read from its file.
-- R-2 groups are big: a head that edits a workflow text runs every test of the `skills` group. One cargo command compiles them once; the receipt is one step per group. The leader may split a group in a later card when the run time shows it.
+- R-2 groups are big: a head that edits a workflow text runs every test of the `skills` group (70 readers when written). One cargo command compiles them once; the receipt is one step per group. The leader may split a group in a later card when the run time shows it. Editing one reader does not run the group (D-6).
 - R-3 the test-area-crates card renames test targets: it must change the `--test <stem>` names of this table in the same card; AC-4 turns a missed one red.
 - R-4 the exemption list can hide a real read added later to an exempt file: the list is a reviewed list with reasons, like `EXEMPT` for the walkers, and REQ-6 keeps it from going stale.
 - R-5 landings run in observe mode (`work_flow.land_verdict`): the new scans change what the landing would require, not what it refuses today. The would-refuse count with the new scans is recorded in the Result; the switch to enforce stays the user's recorded decision.
@@ -85,11 +85,13 @@ created: 2026-11-23
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | One `always` scan per area with all its readers as rule files and one multi-`--test` check, not one scan per reader | the measured 105 readers would be 105 receipt steps for one workflow edit (`scan:<id>` is one step per scan, `SPEC-20261123-land-repo-scans` D-3); `check_affected.rs:138-147` already reads every `--test` of a check | split a group into scans by listing the same readers in two entries |
+| D-1 | One `always` scan per area with all its readers in a `readers` list and one multi-`--test` check, not one scan per reader | the measured 105 readers would be 105 receipt steps for one workflow edit (`scan:<id>` is one step per scan, `SPEC-20261123-land-repo-scans` D-3); `check_affected.rs:138-147` already reads every `--test` of a check | split a group into scans by listing the same readers in two entries |
 | D-2 | The reader scan reads string literals only and takes every tracked-looking one (over-approximation), with a reviewed exemption list for fixture-only files | the paths come through constants, helper arguments and `.join` chains, so a statement-level parser would miss reads; a text match is a hypothesis (CLAUDE.md), so a wrong match costs an exemption line, a missed read costs a red NeXT | tighten the literal rule in `file_read_paths` |
 | D-3 | Folder literals count at two segments or more, file literals at any depth | `docs`, `src`, `skills` alone are the names of temporary project folders in 60+ fixtures | count single folders too and add them to the exemption list |
 | D-4 | The check is `tests/*.rs` top level only, in the table test, no product code | the card names that set (147 files); `src/repo_scans.rs` and the landing stay unchanged, so the landing's observe mode and receipts need no change | move `file_read_paths` into `src/repo_scans.rs` in a later card |
 | D-5 | REQ-5 asks every `always` scan to run the test targets it names | a scan that lists a reader without running it would pass REQ-3 and still miss the case | drop REQ-5 and its test |
+| D-6 (revision 2) | The readers of a `reads-` scan sit in a new `readers` key, not in `rules`; its one rule file is `tests/repo_scans_table.rs`, the test that keeps the scan whole | `check affected` selects a scan's targets when any rule file changed (`check_affected.rs:109-117`) and the judge cross-hits on a rule change: with 70 readers as rule files, editing one test of the `skills` group would run all 70 and a lane editing one reader would force a re-merge check against any `skills/` change on the tip. The parser ignores unknown keys (`src/repo_scans.rs` reads `id`, `rules`, `scope`, `checks`, `always`), so no product code changes | move the names from `readers` to `rules` and drop the `readers` lines of `names_file` and `scans_not_running_readers` |
+| D-7 (revision 2) | The exemption is `(file, paths, reason)` per path, and lists only the names that change often: `src/lib.rs`, `src/main.rs`, `README.md` and `.moai/specs` | measured on the tree: 24 files spell those four as names inside the temporary projects they build, and `src/lib.rs`, `README.md` and `.moai/specs` change in most cards, so each would make an unrelated test run on every card; rarer fixture names (`Cargo.toml`, `.gitignore`, `.moai-cli/..`) stay in scopes (D-2) | list more names, or empty the list and accept the extra runs |
 
 ## Result
 
