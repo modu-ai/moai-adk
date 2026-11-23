@@ -631,6 +631,9 @@ fn resolve_glm_model_name(display: &str, ctx: &Context) -> String {
         "ANTHROPIC_DEFAULT_SONNET_MODEL"
     } else if lower.contains("haiku") {
         "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+    } else if lower.contains("fable") {
+        // The glm launcher maps the fable alias too (SPEC-20261123-glm-54-followups D-5).
+        "ANTHROPIC_DEFAULT_FABLE_MODEL"
     } else if !lower.starts_with("claude") {
         return cleaned.to_string();
     } else {
@@ -706,10 +709,11 @@ const GLM_CONTEXT_WINDOWS: [(&str, i64); 3] = [
     ("glm-5.3", 1_000_000),
     ("glm-5.4", 1_000_000),
 ];
-const GLM_ENV_SLOTS: [&str; 3] = [
+const GLM_ENV_SLOTS: [&str; 4] = [
     "ANTHROPIC_DEFAULT_OPUS_MODEL",
     "ANTHROPIC_DEFAULT_SONNET_MODEL",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "ANTHROPIC_DEFAULT_FABLE_MODEL",
 ];
 
 /// `resolveContextWindowOverride`: `MOAI_STATUSLINE_CONTEXT_SIZE`, then `llm.yaml`

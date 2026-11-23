@@ -73,7 +73,7 @@ decision owner and may override it with justification.
 super-advisor retains provider-aware advice without replacing an independent audit:
 
 - **GLM carve-out**: under `moai glm`, super-advisor runs on the session's GLM
-  reasoning model (glm-5.3) with the session's effort — the natural consequence of
+  reasoning model (glm-5.4) with the session's effort — the natural consequence of
   inheriting: the runtime resolves the session model.
 - **Independent advice**: the orchestrator may consult super-advisor about uncertain results. This advisory consultation does not replace sync-auditor evaluation or reactivate retired CG roles.
 
