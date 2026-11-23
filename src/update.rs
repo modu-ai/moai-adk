@@ -2012,19 +2012,23 @@ fn count_hosts(p: &crate::home_style::Plan) -> usize {
 }
 
 /// Whether the routing plan computed at apply time differs from the confirmed one. The digests
-/// are compared only when the same hosts are applied as were previewed; the previewed plan has
-/// one row per config folder, so the hosts are counted by name, not by row.
+/// are compared only when the same hosts are applied as were previewed. Both sides have one
+/// name per config folder row (the previewed plan has a row per folder, and `gate_on_skills`
+/// copies one name per row), so each side is counted by distinct name, never by row.
 fn routing_recheck_moved(
-    confirmed_hosts: usize,
+    confirmed: &[&str],
     previewed: &crate::home_routing::Plan,
     now: &crate::home_routing::Plan,
 ) -> bool {
+    let confirmed_hosts = confirmed
+        .iter()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
     let previewed_hosts = previewed
         .hosts
         .iter()
         .map(|h| h.host.as_str())
-        .collect::<std::collections::BTreeSet<_>>()
-        .len();
+        .collect::<std::collections::BTreeSet<_>>();
     confirmed_hosts == previewed_hosts && now.plan_digest != previewed.plan_digest
 }
 
@@ -2039,7 +2043,7 @@ fn routing_part(
     permission: &str,
 ) -> Result<serde_json::Value> {
     let p = crate::home_routing::plan_for(home, package, hosts)?;
-    if routing_recheck_moved(hosts.len(), previewed, &p) {
+    if routing_recheck_moved(hosts, previewed, &p) {
         return Ok(
             json!({"state": "refused", "reason": "the routing plan changed after the confirmed preview; nothing written"}),
         );
@@ -3659,10 +3663,11 @@ mod routing_recheck_tests {
 
     #[test]
     fn routing_recheck_sees_a_changed_digest_beside_a_profile_row() {
-        // One host, two rows (the default folder and a profile): the digest still counts.
+        // One host, two rows (the default folder and a profile): the digest still counts. The
+        // confirmed names are what `gate_on_skills` gives, one per row.
         let previewed = plan(&["/h/.claude", "/p"], "old");
         assert!(routing_recheck_moved(
-            1,
+            &["claude", "claude"],
             &previewed,
             &plan(&["/h/.claude", "/p"], "new")
         ));
@@ -3672,7 +3677,7 @@ mod routing_recheck_tests {
     fn routing_recheck_sees_a_changed_digest_with_one_row() {
         let previewed = plan(&["/h/.claude"], "old");
         assert!(routing_recheck_moved(
-            1,
+            &["claude"],
             &previewed,
             &plan(&["/h/.claude"], "new")
         ));
@@ -3682,7 +3687,7 @@ mod routing_recheck_tests {
     fn routing_recheck_leaves_an_unchanged_digest_alone() {
         let previewed = plan(&["/h/.claude", "/p"], "same");
         assert!(!routing_recheck_moved(
-            1,
+            &["claude", "claude"],
             &previewed,
             &plan(&["/h/.claude", "/p"], "same")
         ));
@@ -3699,7 +3704,8 @@ mod routing_recheck_tests {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"));
         let pkg = root.join("skills/moai");
         let agents = root.join(crate::agent_defs::SOURCE_DIR);
-        let mut layer = user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
+        let mut layer =
+            user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
         // The preview of a session with a profile folder: the default row plus the profile row.
         let mut profile = layer.routing.hosts[0].clone();
         profile.config_dir = "/p".into();
@@ -3710,13 +3716,13 @@ mod routing_recheck_tests {
         let mut now = layer.routing.clone();
         now.plan_digest = "moved".into();
         assert!(
-            routing_recheck_moved(confirmed.len(), &layer.routing, &now),
+            routing_recheck_moved(&confirmed, &layer.routing, &now),
             "confirmed {confirmed:?} for {} rows",
             layer.routing.hosts.len()
         );
         // The same digest is left alone.
         assert!(!routing_recheck_moved(
-            confirmed.len(),
+            &confirmed,
             &layer.routing,
             &layer.routing.clone()
         ));
@@ -3754,6 +3760,6 @@ mod routing_recheck_tests {
     fn routing_recheck_skips_the_comparison_when_fewer_hosts_were_confirmed() {
         // A blocked skill copy leaves a host out of the apply: that plan differs on purpose.
         let previewed = plan(&["/h/.claude", "/p"], "old");
-        assert!(!routing_recheck_moved(0, &previewed, &plan(&[], "new")));
+        assert!(!routing_recheck_moved(&[], &previewed, &plan(&[], "new")));
     }
 }
