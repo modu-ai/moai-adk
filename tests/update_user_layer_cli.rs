@@ -293,7 +293,7 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     assert!(fs::read_to_string(home.join(".claude/rules/moai.md"))
         .unwrap()
         .contains("(/moai)"));
-    assert!(home.join(".claude/rules/moai/flow.md").is_file());
+    assert!(home.join(".claude/rules/moai-flow.md").is_file());
     assert!(!home.join(".claude/CLAUDE.md").exists());
     for gone in [".codex", ".agents", ".omp"] {
         assert!(!home.join(gone).exists(), "{gone} was made");
@@ -1290,7 +1290,7 @@ fn update_confirm_never_removes_the_old_block_only_its_own_pick_does() {
     let r = result(&run(&exe, &home, &["update", "--confirm", &top]));
     assert_eq!(r["routing_result"]["state"], json!("applied"), "{r}");
     assert!(home.join(".claude/rules/moai.md").is_file());
-    assert!(home.join(".claude/rules/moai/flow.md").is_file());
+    assert!(home.join(".claude/rules/moai-flow.md").is_file());
     assert_eq!(fs::read_to_string(&claude_md).unwrap(), text);
     // With the rules file in place the block is only offered; a second confirm still keeps it.
     let p = result(&run(&exe, &home, &["update"]));
