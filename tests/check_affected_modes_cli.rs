@@ -224,7 +224,7 @@ fn path_import_files() -> Vec<(&'static str, &'static str)> {
         ("tests/common/mod.rs", "pub mod git;\n"),
         ("tests/common/git.rs", "pub fn g() {}\n"),
         ("tests/common/spawn_cap.rs", "pub fn s() {}\n"),
-        ("tests/common/deep/x.rs", "pub fn d() {}\n"),
+        ("tests/common/deep.rs/x.rs", "pub fn d() {}\n"),
         (
             "tests/alpha_cli.rs",
             "mod common;\nuse common::git::g;\nfn main() { g() }\n",
@@ -243,7 +243,7 @@ fn path_import_files() -> Vec<(&'static str, &'static str)> {
         ),
         (
             "tests/deep_user.rs",
-            "#[path = \"common/deep/x.rs\"]\nmod x;\nfn main() { x::d() }\n",
+            "#[path = \"common/deep.rs/x.rs\"]\nmod x;\nfn main() { x::d() }\n",
         ),
         ("tests/gamma_plain.rs", PLAIN),
     ]
@@ -277,12 +277,14 @@ fn common_path_import_keeps_its_users_in_both_selections() {
 }
 
 // AC-10: a deeper helper path keeps every `mod common` consumer in the lane, adds the tests that
-// import that very file by path, and leaves the other path importers out.
+// import that very file by path, and leaves the other path importers out. The folder is named
+// `deep.rs` so that a rule reading any `common/<name>.rs/…` path as a sub-module file would narrow
+// the lane and fail here.
 #[test]
 fn common_deeper_path_keeps_every_consumer_and_its_path_users() {
     let repo = Repo::new(
         &path_import_files(),
-        &[("tests/common/deep/x.rs", "pub fn d() {}\n// b\n")],
+        &[("tests/common/deep.rs/x.rs", "pub fn d() {}\n// b\n")],
     );
     let (lane, full) = lane_and_full(&repo);
     for (label, set) in [("lane", &lane), ("full", &full)] {
