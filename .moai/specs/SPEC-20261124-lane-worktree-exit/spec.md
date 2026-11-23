@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-lane-worktree-exit
 title: "the card loop leaves the worktree after the hand-back, and a lane asks by note, never by a selection prompt"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7776 (2026-11-23T18:32:22Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7775 에 답함): 판 1 과 선택지 (A) 승인, 쓰기 범위 승인, 새 문단 핀은 문장 전체를 비교; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:705fafb24b54007d91cd0850298eaff662fbf82f91b73ad38bf89d474eb7c74e"
 ---
 
 # the card loop leaves the worktree after the hand-back, and a lane asks by note, never by a selection prompt
@@ -15,6 +20,12 @@ Card C-422 (recurrence prevention). The same class of block happened twice: lane
 The card also asks that the same text confirm the other rule a lane already follows: it never opens a selection prompt for the person and asks by a `LANE-BLOCKED kind=decision` note. `work.md` says "never a question to the user" but not the prompt itself, and an existing pin forbids naming a host question tool in `work.md`.
 
 Readers: lanes that run the card loop, the leader that dispatches the next card, and the auditor of this change.
+
+## Interview
+
+- Q1: Is the exit a new procedure step? -> A: No (D-1). The hand-back already lives in one paragraph of `work.md`, and `work_steps_run_in_order` pins the seven step keys.
+- Q2: May `work.md` name the host's selection tool? -> A: No (D-2). `work_decision_becomes_a_blocked_note_on_the_card` forbids `AskUserQuestion`, `request_user_input` and `question tool`; the sentence says "selection prompt" instead.
+- Q3: Does a new test file need a `tools/repo_scans.json` entry? -> A: No (D-3). The new tests live in `tests/next_flow_skill_scan.rs`, which already reads `work.md`.
 
 ## Non-goals
 
