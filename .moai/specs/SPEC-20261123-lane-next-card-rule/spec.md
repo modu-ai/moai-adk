@@ -85,4 +85,5 @@ Status: SPEC draft (revision 1); 승인은 사용자 몫이에요. 글 네 곳�
 - AC-3: met — 같은 실행의 `ac8_`; 뮤턴트 M5 가 `ac8_` 에서 exit 100.
 - AC-4: met — 같은 실행의 `ac2_`; 뮤턴트 M1(문장 제거)이 `ac2_` 에서 exit 100.
 - AC-5: met — 같은 실행에서 `repo_claude_md`, `next_flow_skill_scan`, `core_rules_2876`, `product_cli skill_package::` 가 전부 통과해요. 한도는 `wc -l CLAUDE.md` 120, `wc -c next-flow.md` 7778.
+- 감사 FAIL 수리(AUDIT #395, B1·N2): `tests/lane_completion_handshake.rs` 의 `claude_md()` 에서 `CLAUDE.md <= 120 줄` assert 를 지웠어요. 200줄 한도는 `tests/repo_claude_md.rs` 의 `tracked_claude_md_keeps_one_managed_section_within_200_lines` 가 지켜요. "줄 수를 늘리지 않음"(REQ-7)은 `wc -l CLAUDE.md` 120 으로 보여요(이 수리는 `CLAUDE.md` 를 바꾸지 않았어요). 한 줄을 더한 121줄 프로브에서 `binary(lane_completion_handshake)` 7개가 통과했고(`target/next-card-rule/repair-b1-121.log`), 프로브는 되돌렸어요. `docs/lane-rules.md` 의 "One card at a time" 둘째 줄에 등록된 리더 조건을 더했어요(`only when no leader is registered; with a registered leader the lane waits for that leader's dispatch`).
 - 이 SPEC 이 하지 않은 일: 감사 후속 E(핸드셰이크 SPEC 크기)·F(trailer-check 범위), 전역 흐름 규칙 글과 출력 스타일 원본(다른 카드).

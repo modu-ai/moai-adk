@@ -189,10 +189,6 @@ const SHARED: [&str; 2] = ["no registered leader", "for that leader's dispatch"]
 fn claude_md() -> String {
     let text = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("CLAUDE.md"))
         .unwrap_or_else(|e| panic!("CLAUDE.md: {e}"));
-    assert!(
-        text.lines().count() <= 120,
-        "CLAUDE.md grew past 120 lines (SPEC REQ-7)"
-    );
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
