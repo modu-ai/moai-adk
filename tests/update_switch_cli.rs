@@ -137,7 +137,7 @@ fn confirm_switch_alone_replaces_only_the_script_and_keeps_the_old_one() {
     assert_eq!(fs::read(&saved).unwrap(), V1);
     assert_eq!(
         r["revert"]["switch"],
-        json!(format!("moai-cli update --revert-switch {stamp}")),
+        json!(format!("moai update --revert-switch {stamp}")),
         "{r}"
     );
     // The skills layer was not confirmed, so it was not written.
@@ -165,7 +165,7 @@ fn confirm_and_confirm_switch_together_apply_the_layer_then_the_script() {
     let stamp = r["switch_result"]["stamp"].as_str().unwrap();
     assert_eq!(
         r["revert"]["switch"],
-        json!(format!("moai-cli update --revert-switch {stamp}")),
+        json!(format!("moai update --revert-switch {stamp}")),
         "{r}"
     );
     assert_eq!(r["revert_order"][0], json!("switch"), "{r}");

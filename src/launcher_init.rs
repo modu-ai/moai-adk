@@ -465,7 +465,7 @@ fn default_profile(folder: &str, _host: &str) -> Result<profile::Profile, String
     let value: Value = json!({
         "schema_version": 2,
         "project_id": project_id,
-        "purpose": "Created by moai-cli on first launch; refine it in the project interview",
+        "purpose": "Created by moai on first launch; refine it in the project interview",
         "tools": ["unspecified"],
         "development_methods": ["unspecified"],
         "hosts": [host],

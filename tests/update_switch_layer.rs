@@ -270,7 +270,7 @@ fn apply_saves_v1_and_installs_v2() {
     );
     assert_eq!(
         r["revert"],
-        json!(format!("moai-cli update --revert-switch {STAMP}"))
+        json!(format!("moai update --revert-switch {STAMP}"))
     );
     assert_eq!(
         r["revert_plain"],
@@ -529,7 +529,7 @@ fn revert_switch_runs_alone_and_is_refused_beside_a_confirming_flag() {
     assert_eq!(h.read(), V1);
     // An apply result's `revert` line comes first in the revert order.
     let order = moai_cli::update::revert_order(&json!({
-        "switch": "moai-cli update --revert-switch X", "home": "h", "agents": "a"
+        "switch": "moai update --revert-switch X", "home": "h", "agents": "a"
     }));
     assert_eq!(order, vec!["switch", "home", "agents"]);
 }
