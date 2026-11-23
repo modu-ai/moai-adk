@@ -203,7 +203,13 @@ pub struct Candidate {
     pub kind: String,
     pub priority: String,
     pub write_scope: Vec<String>,
+    /// Set when `write_scope` is not the card's own but what a take would fill it with
+    /// (`spec` or `last_reservation`); `None` for a card that has its own scope.
+    pub scope_source: Option<&'static str>,
 }
+
+/// What a take would fill an empty scope with, by card: the scope and where it came from.
+pub type ScopeFill<'a> = &'a dyn Fn(i64) -> Option<(Vec<String>, &'static str)>;
 
 /// Why a card is not offered.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -261,6 +267,18 @@ pub struct Next {
 /// the cards it cannot take. Read-only; `holder` is `None` for a caller without a session id,
 /// who holds nothing.
 pub fn next(conn: &Connection, holder: Option<&str>) -> Result<Next, LedgerError> {
+    next_filled(conn, holder, &|_| None)
+}
+
+/// [`next`], where a `ready` card with an empty scope is offered when `fill` names the scope a
+/// take would give it (SPEC-20261123-take-scope-stored). The filled scope goes through the same
+/// overlap check as an own scope, and nothing is written. A card `fill` gives nothing for stays
+/// skipped as `empty_scope`.
+pub fn next_filled(
+    conn: &Connection,
+    holder: Option<&str>,
+    fill: ScopeFill<'_>,
+) -> Result<Next, LedgerError> {
     let now: i64 = conn.query_row("SELECT unixepoch()", [], |r| r.get(0))?;
     let mut stmt = conn.prepare(
         "SELECT card_id, title, kind, state, priority, write_scope FROM card \
@@ -324,7 +342,14 @@ pub fn next(conn: &Connection, holder: Option<&str>) -> Result<Next, LedgerError
             continue;
         }
         // A scope that is not a list of strings is no scope: `take` could not use it either.
-        let scope: Vec<String> = serde_json::from_str(&write_scope).unwrap_or_default();
+        let mut scope: Vec<String> = serde_json::from_str(&write_scope).unwrap_or_default();
+        let mut scope_source = None;
+        if scope.is_empty() {
+            if let Some((filled, source)) = fill(card_id) {
+                scope = filled;
+                scope_source = Some(source);
+            }
+        }
         let reason = if scope.is_empty() {
             Some(SkipReason::EmptyScope)
         } else {
@@ -350,6 +375,7 @@ pub fn next(conn: &Connection, holder: Option<&str>) -> Result<Next, LedgerError
                 kind,
                 priority,
                 write_scope: scope,
+                scope_source,
             }),
         }
     }

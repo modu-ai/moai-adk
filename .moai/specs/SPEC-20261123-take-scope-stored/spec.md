@@ -58,8 +58,8 @@ created: 2026-11-23
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261123-take-scope-stored/**`, `tests/card_take_scope_cli.rs` (new), `src/card/take_scope.rs` (new: the SPEC `write:` list read, the shared fill choice, the store), `src/card/mod.rs` (one module line), `src/card/dispatch.rs` (`take`), `src/card/work.rs` (`next`: the fill of a card it would skip, made in the answer layer)
-- read-only: every other file, the real HOME; `src/ledger/workflow.rs` and `src/ledger/reservation.rs` are not edited: the reservation's own overlap check runs first and the scope is kept on the card afterwards, and `next` fills in its answer without changing the ledger read
+- write: `.moai/specs/SPEC-20261123-take-scope-stored/**`, `tests/card_take_scope_cli.rs` (new), `src/card/take_scope.rs` (new: the SPEC `write:` list read, the shared fill choice, the store), `src/card/mod.rs` (one module line), `src/card/dispatch.rs` (`take`), `src/card/work.rs` (`next`: passes the fill choice), `src/ledger/workflow.rs` (`next_filled`: the ledger read takes a fill function and runs the overlap check on the filled scope; `next` keeps its signature and answer)
+- read-only: every other file, the real HOME; `src/ledger/reservation.rs` is not edited: the reservation's own overlap check runs first and the scope is kept on the card afterwards
 - tier 2: an independent audit of the exact head (a ledger rule)
 - history: the SPEC, the red tests and the first piece were written on an earlier branch (`spec/take-scope-stored-20261121`, never landed); this branch starts again from the integration tip and takes them over, so the second piece no longer waits for other cards
 
@@ -70,7 +70,7 @@ created: 2026-11-23
 3. `take_scope.rs`: read the `write:` list of a SPEC folder (bounded, no symlink out of the project) and answer a list or none.
 4. `take_scope::store`: after a successful reservation, keep the scope on a card whose own scope is empty, with one `card.scope` event; `reserve` and `reserve_own_scope` keep their results.
 5. `dispatch::take`: choose the scope by the order of D-1, add `scope_source` to the answer, refusal text with the two ways out (first piece: REQ-1 to REQ-8).
-6. `card next` (`work.rs`) uses the same choice for the cards the ledger read skips as `empty_scope`: a card that a take could fill and that meets no overlap moves to `ready` with its filled scope and `scope_source` (REQ-9); nothing is written.
+6. `card next` uses the same choice (`take_scope::choose`, shared with `take`) for the cards the ledger read would skip as `empty_scope`: `workflow::next_filled` takes it as a fill function, so a card that a take could fill and that meets no overlap is offered as `ready` with its filled scope and `scope_source` (REQ-9); nothing is written.
 7. The unnarrowed `check affected` set, then an independent audit (tier 2).
 
 ## Risks

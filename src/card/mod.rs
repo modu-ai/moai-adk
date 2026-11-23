@@ -35,6 +35,7 @@ pub mod landed;
 pub mod precheck;
 pub mod remote_copy;
 pub mod spec_link;
+pub mod take_scope;
 pub mod timeline;
 pub mod verdict;
 pub mod wait;

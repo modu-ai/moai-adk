@@ -20,6 +20,7 @@ use super::dispatch::{checked_scope, reservation_json, DEFAULT_LEASE_SECS};
 use super::input::{self, CardRef};
 use super::landed;
 use super::spec_link;
+use super::take_scope;
 use crate::forge::connector::{HostConnector, HostKind, PrPhase, ProjectRef};
 use crate::ledger::reservation;
 use crate::ledger::scope_return;
@@ -69,7 +70,17 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
         }
         Err(e) => return Err(e.to_string()),
     };
-    let mut found = workflow::next(ledger.conn(), holder).map_err(|e| e.to_string())?;
+    // A `ready` card with an empty scope is offered with the scope a take would fill it with
+    // (SPEC-20261123-take-scope-stored): the same choice as `take`, so `next` never offers what
+    // `take` would refuse for want of a source. A source over a limit is no fill.
+    let fill = |card_id: i64| -> Option<(Vec<String>, &'static str)> {
+        let (_, spec) = spec_link::kind_and_spec(ledger.conn(), card_id).ok()??;
+        let (scope, source) =
+            take_scope::choose(project, ledger.conn(), card_id, spec.as_deref()).ok()??;
+        Some((scope, source.word()))
+    };
+    let mut found =
+        workflow::next_filled(ledger.conn(), holder, &fill).map_err(|e| e.to_string())?;
     // A `ready` card whose landing is proven is not offered again: it leaves `ready` for
     // `skipped` with `reason: "already_landed"` and the proof (`card finish` closes it).
     let landing = landed::find(project, ledger.conn(), &landed::candidates(&found))?;
@@ -98,11 +109,15 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
     }
     let mut ready: Vec<Value> = Vec::new();
     for c in &found.ready {
-        ready.push(json!({
+        let mut v = json!({
             "name": input::card_name(c.card_id), "card_id": c.card_id, "title": c.title,
             "kind": c.kind, "priority": c.priority, "write_scope": c.write_scope,
             "spec": spec_of(c.card_id)?,
-        }));
+        });
+        if let Some(source) = c.scope_source {
+            v["scope_source"] = json!(source);
+        }
+        ready.push(v);
     }
     let mut skipped: Vec<Value> = found
         .skipped
