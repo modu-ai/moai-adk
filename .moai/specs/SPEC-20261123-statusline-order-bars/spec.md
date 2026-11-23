@@ -112,4 +112,61 @@ parent: SPEC-20261122-statusline-limits-left
 
 ## Result
 
-(구현 뒤 SYNC 에서 적어요.)
+구현했어요(2026-11-23, 브랜치 `spec/20261123-statusline-order-bars`, 코드 커밋 head `cf4ba47cd5215df2d407bfdb83ede1e40d10ec89`). red 테스트는 SPEC 커밋 `53fc2fecc4` 위에 `b1f6fd1ae5` 로 먼저 커밋했어요. 감사는 아직이에요.
+
+- red(`b1f6fd1ae5`, 옛 코드): `cargo test --offline --locked --lib statusline::` exit 101, 181 passed 34 failed. `--test statusline_cards` exit 101, 14 passed 19 failed. `--test statusline_flow` 2 passed 3 failed. `--test statusline_numbers_only` 2 passed 3 failed. `--test statusline_worktree_label` 3 passed 4 failed. `--test statusline_counts_refresh` 8 passed 5 failed. 앞의 여섯 줄 모두 exit 101.
+- green(head `cf4ba47cd5` 에서 레인이 다시 돌림, 로그 `target/lane-notes/verify.log`): lib 215 passed, `statusline_cards` 33 passed 1 ignored, `statusline_counts_refresh` 13, `statusline_flow` 5, `statusline_git_env` 27, `statusline_golden` 1, `statusline_guard_false_positive` 3, `statusline_home_state` 12, `statusline_integration_distance` 7, `statusline_numbers_only` 5, `statusline_tag_order` 3, `statusline_worktree_label` 7, `status_line_cli` 16 가 모두 exit 0, failed 0. `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0, `cargo fmt --check` exit 0, `git diff --check` exit 0, `moai spec check` exit 0.
+- 결정 D-1(막대는 남은 비율), D-2(내 카드는 단계 아이콘을 그대로 달아요), D-3(그라데이션 없이 두 색)은 위 Decisions 표에 이유와 되돌리는 방법이 있어요.
+
+- AC-1: met — `statusline::render::flow_line_tests::the_versions_open_the_flow_line_and_my_card_closes_it` 가 가장 넓은 흐름 줄 `🤖 2.1.330 | 🗿 4.2648.20 | 🗂️ 176 → 🟡 6 → 📨 13 → 🛬 8 → ✅ 6 | 🚧 7 🙋 9 | 🎯 C-12 🟡`, `claude_version`·`moai_version`·`cards` 옵션이 각자의 항목과 구분자만 숨기는 것, 흐름이 없을 때 두 버전만(`🤖 2.1.330 | 🗿 4.2648.20`), 버전이 없을 때 흐름만 나오는 것을 고정해요.
+- AC-2: met — `statusline::render::flow_line_tests::every_form_is_exactly_its_string_and_changes_at_its_boundary` 가 Layouts 표의 F0~F7 문자열 그대로와 각 모양의 경계 폭 N 에서 그 모양, N-1 에서 다음 모양(`🤖`, `🗿`, `🗂️`, `🟡`, `📨`, `🛬`, `✅` 순서로 빠지고 내 카드와 `🚧 🙋` 는 남음)을 고정해요.
+- AC-3: met — `statusline::render::window_tests::the_bar_has_ten_cells_and_changes_at_each_tenth` 가 남은 비율 0·9·10·11·19·20·99·100 의 막대 `░░░░░░░░░░`·`░░░░░░░░░░`·`█░░░░░░░░░`·`█░░░░░░░░░`·`█░░░░░░░░░`·`██░░░░░░░░`·`█████████░`·`██████████`, 100 을 넘거나 0 보다 작은 입력의 0~10 칸 한정, 0~100 모든 값에서 열 칸 중 `left / 10` 칸이 찬 것, `🔋`/`🪫` 가 29 남음 이하에서 바뀌는 경계를 고정해요.
+- AC-4: met — `statusline::render::window_tests::the_row_shows_what_is_left_of_each_window` 가 `🔋 CW ███████░░░ 73% | 🔋 5H ████░░░░░░ 49% (43m) | 🔋 7D ████████░░ 87% (3d 22h)` 와 5시간 창이 없는 줄, 콜론이 없는 것을 고정해요.
+- AC-5: met — `statusline::render::window_tests::unknown_windows_and_the_hide_list_stay_as_they_were` 가 `CW n/a | 7D n/a` 에 아이콘과 `█`·`░` 가 없는 것과 `context`·`usage_5h`·`usage_7d` 숨김을, `tests/statusline_cards.rs` 의 `line_three_ladder_unknown_windows_never_draw_a_bar` 가 바이너리의 모든 폭에서 같은 것을 고정해요.
+- AC-6: met — `tests/statusline_cards.rs` 의 `line_three_ladder_every_form_is_the_string_of_the_layouts_section` 이 한도 줄의 모든 모양의 문자열과 폭, 폭 N+2 에서 그 모양, N+1 에서 다음 모양을, `line_three_ladder_without_a_usable_columns_and_below_the_narrowest` 가 `COLUMNS` 없음과 가장 좁은 폭 아래의 모양을 고정해요.
+- AC-7: met — `statusline::render::window_tests::the_colored_bar_has_the_plain_text` 가 두 테마(`catppuccin-mocha`, `catppuccin-latte`)에서 색 있는 줄에서 이스케이프를 뺀 글이 색 없는 줄과 같은 것과 채운 칸·빈 칸이 서로 다른 색 구간인 것을 고정해요.
+- AC-8: met — `--test statusline_golden` 이 골든 파일 전부의 실제 바이너리 출력을 고정해요. `tools/statusline_golden.py --write` 로 골든 파일 108개를 다시 썼고 바뀐 plain 파일 36개를 옛 것과 하나씩 비교했어요(레인이 `git show` 로 옛 파일을 읽어 비교). 줄 1(누구·어디)의 글과 한도 숫자·카운트다운은 바뀌지 않았고, 두 버전이 둘째 줄로 옮겨졌고 셋째 줄에 막대가 생겼어요. 줄 1 이 없는 세 사례(`a06`, `a09`, `a15`)는 옛 첫 줄이던 한도 줄 자리에 버전 줄이 올라와 맨 윗줄이 `🗿 …` 로 달라졌고, 막대의 채운 칸 수는 모든 골든 줄에서 숫자의 `left × 10 / 100` 내림과 같아요. 버전 글자는 하네스가 읽은 빌드 버전(`4.2647.0` → `4.2648.0`)이라 다시 쓰면 함께 바뀌어요.
+- AC-9: met — `tests/statusline_numbers_only.rs` 의 옛 "막대 낱말 없음" 세 테스트를 `the_renderer_draws_the_bar_and_carries_no_color_gradient_and_no_card_numbers`, `the_statusline_doc_describes_the_bars_and_the_line_order`, `the_statusline_tests_pin_the_bar` 로 바꿨고, `docs/rust-product-path.md` 가 새 줄 순서와 막대를 말해요(`--test statusline_numbers_only` 5 passed).
+
+### 실제 바이너리 출력
+
+`target/debug/moai-cli statusline --render-budget-ms 3600000 --now-unix 1738429000`, 입력 `tests/fixtures/statusline/stdin/a02-doc-full.json`, 임시 `HOME` 과 프로젝트, `NO_COLOR=1`, `COLUMNS` 140·80·60·45·30(모두 exit 0):
+
+```
+--- COLUMNS=140
+🧠 Opus high·t | 📡 anthropics/claude-code, ⬇️ n/a 🔀 n/a | 🌳 feature-xyz | 🔗 #1234 pending
+🤖 2.1.90 | 🗿 4.2648.0
+🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59% (4d 23h)
+--- COLUMNS=80
+🧠 Opus high·t | 📡 anthropics/claude-code | 🌳 feature-xyz | 🔗 #1234 pending
+🤖 2.1.90 | 🗿 4.2648.0
+🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59% (4d 23h)
+--- COLUMNS=60
+🧠 Opus high | 📡 claude-code | 🌳 feature-xyz | 🔗 #1234
+🤖 2.1.90 | 🗿 4.2648.0
+🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59% (4d 23h)
+--- COLUMNS=45
+🧠 Opus | 🌳 feature-xyz | 🔗 #1234
+🤖 2.1.90 | 🗿 4.2648.0
+🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59%
+--- COLUMNS=30
+🧠 Opus | 🌳 feature-xyz
+🤖 2.1.90 | 🗿 4.2648.0
+🔋 CW 92% | 🔋 7D 59%
+```
+
+원장이 있는 예(`tests/fixtures/statusline-claude/golden/b14-card-counts-waiting.plain.txt`):
+
+```
+🧠 Opus high·t | 📡 anthropics/claude-code, ⬇️ 46 🔀 0 | 🌳 feature-xyz | 🅱️ main | 🔗 #1234 pending
+🤖 2.1.90 | 🗿 4.2648.0 | 🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5
+🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59% (4d 23h)
+```
+
+### 하지 않았거나 확인하지 못한 것
+
+- 파이썬 테스트 모듈은 손으로 돌리지 않았어요(골든 도구는 `--write` 로만 썼고 검증은 Rust 테스트 `statusline_golden` 이 해요).
+- 원격 CI 실행은 읽지 않았어요.
+- Windows 와 Linux 에서는 돌리지 않았어요.
+- 한국어 로케일 터미널에서 `█`/`░` 의 칸 폭은 보지 못했어요(위 Risks 1).
+- 독립 감사는 아직이에요.
