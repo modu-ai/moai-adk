@@ -135,3 +135,9 @@ AUDIT #398 on head `1df1b93c88` was FAIL (B1, B2; non-blocking N1 to N6). The us
 ### Repair after the audit PASS (landing hold, one item)
 
 - Landing hold: on NeXT `c272ce2b2e` (merged into the branch) `every_file_reader_has_an_always_scan_or_an_exemption` was red because the new `tests/help_text_names_moai.rs` reads seven `src/` files and no `reads-` scan named it; it is now a rule file and `--test` target of `reads-src`, and `src/launcher_terminal.rs` and `src/state_root.rs` joined that scan's scope (data only, `tools/repo_scans.json`; `repo_scans_table`, `repo_scans_cli` and `help_text_names_moai` pass, 48 of 48).
+
+### Repair after the audit FAIL of the landing-hold delta
+
+- Audit blocker B1: on NeXT `7f3bde17c1` (merged into the branch) `every_file_reader_has_an_always_scan_or_an_exemption` was red on four pairs of `tests/e2e_temp_home_cli.rs` (`CLAUDE.md`, `skills/moai`, `skills/moai/references/audit.md`, `src/main.rs`). The test is now a rule file and `--test` target of `reads-skills`, `reads-root-files` and `reads-src`, which already held those paths in their scope (data only, `tools/repo_scans.json`; the exemption list in `tests/repo_scans_table.rs` is not used because that file is reserved by C-403).
+- Of the four pairs only `skills/moai` is a real read of the repository: the `CLAUDE.md`, `skills/moai/references/audit.md` and `src/main.rs` pairs name files inside the temporary HOME the test builds, so they are covered by an `always` scan as a precaution, not because the test reads the checked-in file.
+- On the merged tree `repo_scans_table`, `repo_scans_cli` and `e2e_temp_home_cli` pass, 56 of 56; no other new reader was found.
