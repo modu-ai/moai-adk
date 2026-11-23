@@ -973,13 +973,130 @@ fn file_read_paths_finds_what_a_reader_spells_and_skips_the_rest() {
             "src/ops"
         ]
     );
-    // no manifest dir, or no read call: not a reader
+    // no manifest dir: not a reader
     let no_root = reader.replace("CARGO_MANIFEST_DIR", "OTHER");
     assert!(file_read_paths(&no_root, &tracked).is_empty());
-    let no_read = reader
-        .replace("read_to_string(", "x(")
-        .replace("read_dir(", "y(");
-    assert!(file_read_paths(&no_read, &tracked).is_empty());
+}
+
+/// SPEC-20261123-land-scan-more-readers D-2: a file that names the manifest dir and spells a
+/// repository path is a reader whether or not it calls a read function; it may hand the path to a
+/// binary or a script.
+#[test]
+fn file_read_paths_counts_a_file_with_no_read_call() {
+    let tracked = Tracked::from_paths(["skills/moai/SKILL.md", "tools/x.py"]);
+    let hands_a_path_over = "const P: &str = concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/skills/moai\");\n\
+        fn run() { Command::new(BIN).arg(P).arg(\"tools/x.py\").output().unwrap(); }\n";
+    assert_eq!(
+        file_read_paths(hands_a_path_over, &tracked),
+        ["skills/moai", "tools/x.py"]
+    );
+    let no_root = hands_a_path_over.replace("CARGO_MANIFEST_DIR", "OTHER");
+    assert!(file_read_paths(&no_root, &tracked).is_empty());
+    let no_path = "fn f() { let _ = env!(\"CARGO_MANIFEST_DIR\"); let _ = \"notes/y.txt\"; }\n";
+    assert!(file_read_paths(no_path, &tracked).is_empty());
+}
+
+/// D-3: `tools` is the script folder next to an interpreter literal and a temporary project name
+/// everywhere else.
+#[test]
+fn file_read_paths_counts_the_tools_folder_next_to_an_interpreter() {
+    let tracked = Tracked::from_paths(["tools/zz_script.py", "src/lib.rs"]);
+    let runs_a_script = "fn f() { Command::new(\"python3\").arg(Path::new(env!(\"CARGO_MANIFEST_DIR\")).join(\"tools\")); }\n";
+    assert_eq!(file_read_paths(runs_a_script, &tracked), ["tools"]);
+    for (what, text) in [
+        ("shell", runs_a_script.replace("\"python3\"", "\"bash\"")),
+        ("sh", runs_a_script.replace("\"python3\"", "\"sh\"")),
+    ] {
+        assert_eq!(file_read_paths(&text, &tracked), ["tools"], "{what}");
+    }
+    // no interpreter literal, no manifest dir, or no tracked `tools` folder: not a script run
+    let no_interpreter = runs_a_script.replace("\"python3\"", "\"git\"");
+    assert!(file_read_paths(&no_interpreter, &tracked).is_empty());
+    let no_root = runs_a_script.replace("CARGO_MANIFEST_DIR", "OTHER");
+    assert!(file_read_paths(&no_root, &tracked).is_empty());
+    let no_tools_folder = Tracked::from_paths(["src/lib.rs"]);
+    assert!(file_read_paths(runs_a_script, &no_tools_folder).is_empty());
+}
+
+/// D-1: `include_bytes!` leaves the test tree the same way `include_str!` does.
+#[test]
+fn include_bytes_is_read_like_include_str() {
+    let text = "const A: &[u8] = include_bytes!(\"../install/zz.sh\");\n\
+                const B: &[u8] = include_bytes!(\"fixtures/x.bin\");\n\
+                const C: &[u8] = include_bytes!(\"../tests/fixtures/y.bin\");\n\
+                const D: &str = include_str!(\"../src/zz.rs\");\n";
+    assert_eq!(
+        include_str_paths("tests/zz_reader.rs", text),
+        ["install/zz.sh", "src/zz.rs"]
+    );
+}
+
+/// D-4 and the live tree: the five readers of the card and `e2e_temp_home_cli` are found.
+#[test]
+fn the_more_readers_in_the_live_tree_are_found() {
+    let reads = file_readers();
+    // Tails, not whole paths: this file is a reader itself, and a whole tracked path spelled here
+    // would need an exemption of its own (and `.moai/specs` literals move the state-folder baseline).
+    for (file, tail) in [
+        ("tests/statusline_golden.rs", "/statusline_golden.py"),
+        ("tests/atlas_three_arm.rs", "tools"),
+        ("tests/ui_summary_terminal_cli.rs", "skills/moai"),
+        ("tests/e2e_temp_home_cli.rs", "skills/moai"),
+    ] {
+        let paths = reads
+            .get(file)
+            .unwrap_or_else(|| panic!("the reader scan does not find {file}"));
+        assert!(paths.iter().any(|p| p.ends_with(tail)), "{file}: {paths:?}");
+    }
+    let bytes = include_str_readers();
+    for (file, tail) in [
+        ("tests/update_switch_layer.rs", "/preview/moai.v1"),
+        ("tests/update_switch_cli.rs", "/preview/moai.v1"),
+        ("tests/update_switch_cli.rs", "/moai-switch.sh"),
+    ] {
+        let paths = bytes
+            .get(file)
+            .unwrap_or_else(|| panic!("the include scan does not find {file}"));
+        assert!(paths.iter().any(|p| p.ends_with(tail)), "{file}: {paths:?}");
+    }
+}
+
+/// REQ-6: each planted shape with no scan is named with its path, and an `always` scan that names
+/// the file with the path in its scope clears it.
+#[test]
+fn a_planted_shape_without_a_scan_is_named_and_a_scan_clears_it() {
+    let tracked = Tracked::from_paths(["install/zz.sh", "skills/moai/SKILL.md", "tools/zz.py"]);
+    let bytes = "const A: &[u8] = include_bytes!(\"../install/zz.sh\");\n";
+    let no_read =
+        "const P: &str = concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/skills/moai\");\nfn r() { run(P); }\n";
+    let script = "fn r() { Command::new(\"python3\").arg(Path::new(env!(\"CARGO_MANIFEST_DIR\")).join(\"tools\")); }\n";
+    let readers = BTreeMap::from([
+        (
+            "tests/zz_bytes.rs".to_string(),
+            include_str_paths("tests/zz_bytes.rs", bytes),
+        ),
+        (
+            "tests/zz_no_read.rs".to_string(),
+            file_read_paths(no_read, &tracked),
+        ),
+        (
+            "tests/zz_script.rs".to_string(),
+            file_read_paths(script, &tracked),
+        ),
+    ]);
+    let none = |_: &str, _: &str| false;
+    assert_eq!(
+        uncovered_readers(&readers, &[], &none),
+        [
+            "tests/zz_bytes.rs reads install/zz.sh",
+            "tests/zz_no_read.rs reads skills/moai",
+            "tests/zz_script.rs reads tools"
+        ]
+    );
+    let scan = json!({"id": "reads-zz", "always": true,
+        "rules": ["tests/zz_bytes.rs", "tests/zz_no_read.rs", "tests/zz_script.rs"],
+        "scope": [{"prefix": "install/"}, {"prefix": "skills/moai"}, {"prefix": "tools"}]});
+    assert!(uncovered_readers(&readers, &[scan], &none).is_empty());
 }
 
 /// SPEC-20261123-land-file-read-scans D-8: a test that formats the root into the path
