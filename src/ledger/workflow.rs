@@ -1667,6 +1667,12 @@ pub fn record_verdict(
         if !exists {
             return Ok(Err(WorkflowError::CardNotFound(card_id)));
         }
+        // SPEC-20261122-card-roles REQ-2 and REQ-6: the writer of a verdict is none of the
+        // card's authors and, when the leader assigned an auditor, is that auditor. Read in the
+        // write transaction, so a reservation or an assignment made in between cannot slip by.
+        if let Some(why) = verdict_writer_refusal(tx, card_id, verdict.reviewer)? {
+            return Ok(Err(WorkflowError::InvalidInput(why)));
+        }
         let mut st = tx.prepare(
             "SELECT event_id, payload FROM event WHERE card_id = ?1 AND kind = ?2 \
              ORDER BY event_id",
@@ -1694,6 +1700,46 @@ pub fn record_verdict(
             written: true,
         }))
     })?
+}
+
+/// The event kind of an audit assignment (`card assign`, SPEC-20261122-card-roles).
+pub const AUDIT_ASSIGNED_KIND: &str = "card.audit_assigned";
+
+/// The reason a session may not write a verdict of the card, or `None` when it may: it holds or
+/// ever held a reservation of the card (the agent that implemented a change never writes its
+/// verdict), or an auditor was assigned and it is another session.
+fn verdict_writer_refusal(
+    conn: &Connection,
+    card_id: i64,
+    reviewer: &str,
+) -> Result<Option<String>, LedgerError> {
+    let name = format!("C-{card_id}");
+    let holders = reservation_holders(conn, card_id)?;
+    if holders
+        .iter()
+        .any(|h| crate::trailers::same_identity(h, reviewer))
+    {
+        return Ok(Some(format!(
+            "this session held {name}, and the agent that implemented a change never writes its \
+             verdict; nothing was written"
+        )));
+    }
+    let assigned: Option<String> = conn
+        .query_row(
+            "SELECT payload FROM event WHERE card_id = ?1 AND kind = ?2 \
+             ORDER BY event_id DESC LIMIT 1",
+            params![card_id, AUDIT_ASSIGNED_KIND],
+            |r| r.get::<_, String>(0),
+        )
+        .optional()?
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .and_then(|v| v.get("auditor")?.as_str().map(str::to_string));
+    Ok(match assigned {
+        Some(auditor) if !crate::trailers::same_identity(&auditor, reviewer) => Some(format!(
+            "the auditor assigned to {name} is {auditor}, not this session; nothing was written"
+        )),
+        _ => None,
+    })
 }
 
 /// The verdict events of the card, oldest first. A row whose payload is not a verdict (a hand
