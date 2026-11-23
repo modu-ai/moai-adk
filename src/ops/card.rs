@@ -429,7 +429,11 @@ enum Action {
     /// holder, generation and lease end, the new holder, `--by` and `--reason`. Nothing checks that
     /// the old holder is really gone: say in `--reason` what was found (process ended, pull request
     /// merged, uncommitted work). The old generation is stale from then on. The new holder is this
-    /// session's own id, never typed.
+    /// session's own id, never typed. The new holder continues in the recorded worktree, so
+    /// commits that sit on no remote-tracking ref do not stop the takeover: the event and the
+    /// answer name them as `kept_commits` (the count and up to twenty ids, newest first). An
+    /// uncommitted change in that worktree does stop it (`conflict`, nothing written): commit or
+    /// give it up first.
     Reclaim {
         /// `C-12`.
         card: String,

@@ -683,7 +683,7 @@ pub fn reclaim(
     let card_id = card_id("reclaim", reference)?;
     let by = actor(Some(req.by), "reclaim")?;
     let reason = reclaim_reason(req.reason)?;
-    takeover_gates(project, home, card_id, req.to_holder)?;
+    let kept = takeover_gates(project, home, card_id, req.to_holder)?;
     let early = early_reclaim::assess(project, home, card_id, req.to_holder);
     let reason = match &early {
         early_reclaim::Early::Proven(proof) => early_reason(&reason, &proof.text)?,
@@ -691,8 +691,16 @@ pub fn reclaim(
     };
     let (id, mut ledger) = open_for_write(project, home)?;
     let lease_secs = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
-    let taken = match &early {
-        early_reclaim::Early::Proven(proof) => reservation::reclaim_early(
+    let proof = match &early {
+        early_reclaim::Early::Proven(proof) => Some(reservation::EarlyProof {
+            holder: &proof.holder,
+            detail: &proof.detail,
+        }),
+        _ => None,
+    };
+    let taken = match (&kept, &proof) {
+        // The worktree was read: the event names the commits the takeover keeps.
+        (Some(kept), _) => reservation::reclaim_keeping(
             &mut ledger,
             card_id,
             req.to_holder,
@@ -700,12 +708,20 @@ pub fn reclaim(
             &by,
             &reason,
             lease_secs,
-            &reservation::EarlyProof {
-                holder: &proof.holder,
-                detail: &proof.detail,
-            },
+            proof.as_ref(),
+            kept,
         ),
-        _ => reservation::reclaim(
+        (None, Some(proof)) => reservation::reclaim_early(
+            &mut ledger,
+            card_id,
+            req.to_holder,
+            req.generation,
+            &by,
+            &reason,
+            lease_secs,
+            proof,
+        ),
+        (None, None) => reservation::reclaim(
             &mut ledger,
             card_id,
             req.to_holder,
@@ -722,13 +738,17 @@ pub fn reclaim(
         }
         _ => e.to_string(),
     })?;
-    Ok(json!({
+    let mut answer = json!({
         "action": "reclaim", "project_id": id,
         "reservation": reservation_json(&out.reservation),
         "previous": reservation_json(&out.previous),
         "by": by, "reason": reason, "state": out.card_state,
         "events": 1, "writes": true,
-    }))
+    });
+    if let Some(kept) = kept {
+        answer["kept_commits"] = kept;
+    }
+    Ok(answer)
 }
 
 /// The card's state now, `None` when there is no such card.
@@ -751,30 +771,102 @@ fn card_state(ledger: &ledger::WriteLedger, card_id: i64) -> Result<Option<Strin
 /// reclaim would orphan. The holder-liveness gate has no mechanical join yet — the session
 /// registry records no host session id — so it stays a follow-up (card C-43 note 2836).
 /// Refusals keep the `conflict in` wording so `contract::classify` maps them to `conflict`.
-fn takeover_gates(project: &Path, home: &Path, card_id: i64, to_holder: &str) -> Result<()> {
+///
+/// The answer is the commits the takeover keeps (`kept_commits`, SPEC-20261124-reclaim-keeps-
+/// worktree): only an uncommitted change stops the takeover, unpushed commits stay in the same
+/// worktree for the new holder. `None` when no worktree was read.
+fn takeover_gates(
+    project: &Path,
+    home: &Path,
+    card_id: i64,
+    to_holder: &str,
+) -> Result<Option<Value>> {
     let id = crate::ledger::command::project_id_of(project)
         .map_err(|e| format!("card reclaim refused: {e}"))?;
     // Read-only peek: an absent ledger reaches its own refusal at `open_for_write`, and the
     // peek never creates anything (`open_read_only`).
     let Ok(ro) = ledger::open_read_only(home, &id) else {
-        return Ok(());
+        return Ok(None);
     };
     let current = reservation::current(ro.conn(), card_id).map_err(|e| e.to_string())?;
     let Some(cur) = current else {
-        return Ok(()); // the ledger refuses with its own `no reservation`
+        return Ok(None); // the ledger refuses with its own `no reservation`
     };
     if cur.holder == to_holder {
-        return Ok(()); // a self-reclaim renews its own reservation
+        return Ok(None); // a self-reclaim renews its own reservation
     }
-    worktree_gate(project, cur.worktree.as_deref())
+    takeover_worktree_gate(project, cur.worktree.as_deref())
 }
 
 /// REQ-1..3: refuse a worktree that exists and holds uncommitted or unpushed work, go on
 /// only when the path is known to be gone (nothing there can be orphaned), refuse as
 /// unverifiable when the path cannot be told apart from "gone" or git cannot be read.
 pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()> {
-    let Some(wt) = worktree.filter(|w| !w.is_empty()) else {
+    let Some(read) = read_worktree(project, worktree)? else {
         return Ok(());
+    };
+    if read.uncommitted > 0 || read.unpushed > 0 {
+        return Err(format!(
+            "card conflict in worktree dirty: {} holds {} uncommitted change(s) \
+             and {} unpushed commit(s); a reclaim would orphan them",
+            read.wt, read.uncommitted, read.unpushed
+        ));
+    }
+    Ok(())
+}
+
+/// What the takeover gate keeps: the unpushed commits of the recorded worktree. The new holder
+/// continues in the same worktree on the same branch, so these commits are not lost, and a lane
+/// never pushes, so "unpushed" is the normal state of an open card
+/// (SPEC-20261124-reclaim-keeps-worktree REQ-1, REQ-3).
+const KEPT_COMMIT_IDS: usize = 20;
+
+/// REQ-1, REQ-2, REQ-4 of SPEC-20261124-reclaim-keeps-worktree: the gate of a takeover of an
+/// ended lease. It refuses what a takeover really loses, an uncommitted change, whether or not
+/// commits stand beside it, and refuses as unreadable when git cannot count the unpushed commits.
+/// Unpushed commits pass and are returned as `kept_commits` (the count and up to twenty ids,
+/// newest first). `None` when no worktree is recorded or its path is known to be gone.
+fn takeover_worktree_gate(project: &Path, worktree: Option<&str>) -> Result<Option<Value>> {
+    let Some(read) = read_worktree(project, worktree)? else {
+        return Ok(None);
+    };
+    if read.uncommitted > 0 {
+        return Err(format!(
+            "card conflict in worktree dirty: {} holds {} uncommitted change(s) \
+             and {} unpushed commit(s); a reclaim would orphan the uncommitted changes",
+            read.wt, read.uncommitted, read.unpushed
+        ));
+    }
+    let ids = unpushed_ids(
+        Path::new(&read.wt),
+        "HEAD",
+        read.integration.as_deref(),
+        KEPT_COMMIT_IDS,
+    )
+    .ok_or_else(|| {
+        format!(
+            "card conflict in worktree unknown: the worktree {} could not be read: git could not \
+             list its unpushed commits",
+            read.wt
+        )
+    })?;
+    Ok(Some(json!({ "count": read.unpushed, "ids": ids })))
+}
+
+/// What one read of a recorded worktree found.
+struct WorktreeRead {
+    wt: String,
+    uncommitted: u64,
+    unpushed: u64,
+    integration: Option<String>,
+}
+
+/// The one read both gates share: `Ok(None)` when no worktree is recorded or its path is known
+/// to be gone (nothing there can be orphaned), a refusal when the path cannot be told apart from
+/// "gone" or git cannot be read, else the counts of uncommitted changes and unpushed commits.
+fn read_worktree(project: &Path, worktree: Option<&str>) -> Result<Option<WorktreeRead>> {
+    let Some(wt) = worktree.filter(|w| !w.is_empty()) else {
+        return Ok(None);
     };
     // The reason git or the file system gave comes with the refusal (SPEC-20261122-test-defects-
     // session-reclaim REQ-18).
@@ -792,7 +884,7 @@ pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()
     }
     // `Path::exists` turns a permission error into "gone"; only a clean "not found" is gone.
     match path.try_exists() {
-        Ok(false) => return Ok(()),
+        Ok(false) => return Ok(None),
         Ok(true) => {}
         Err(e) => return Err(unreadable(&e.to_string())),
     }
@@ -815,15 +907,15 @@ pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()
     .iter()
     .filter(|e| !super::early_reclaim::is_tool_cache_entry(&state, e))
     .count() as u64;
-    let unpushed = unpushed_commits(path, "HEAD", integration_ref(project, path).as_deref())
+    let integration = integration_ref(project, path);
+    let unpushed = unpushed_commits(path, "HEAD", integration.as_deref())
         .ok_or_else(|| unreadable("git could not count its unpushed commits"))?;
-    if uncommitted > 0 || unpushed > 0 {
-        return Err(format!(
-            "card conflict in worktree dirty: {wt} holds {uncommitted} uncommitted change(s) \
-             and {unpushed} unpushed commit(s); a reclaim would orphan them"
-        ));
-    }
-    Ok(())
+    Ok(Some(WorktreeRead {
+        wt: wt.to_string(),
+        uncommitted,
+        unpushed,
+        integration,
+    }))
 }
 
 /// The integration branch the `m-flow` work flow of the profile in `dir` names, if any.
@@ -857,6 +949,21 @@ pub(super) fn unpushed_commits(dir: &Path, tip: &str, integration: Option<&str>)
     let mut args = vec!["rev-list", "--count", tip, "--not", "--remotes"];
     args.extend(integration);
     git_output(dir, &args)?.trim().parse().ok()
+}
+
+/// The ids of the first `max` commits of `tip` that are on no remote-tracking ref and, when
+/// `integration` names a ref, not in it either, newest first. `None` when git cannot answer.
+fn unpushed_ids(
+    dir: &Path,
+    tip: &str,
+    integration: Option<&str>,
+    max: usize,
+) -> Option<Vec<String>> {
+    let limit = format!("--max-count={max}");
+    let mut args = vec!["rev-list", limit.as_str(), tip, "--not", "--remotes"];
+    args.extend(integration);
+    let out = git_output(dir, &args)?;
+    Some(out.lines().map(str::to_string).collect())
 }
 
 /// The standard output of one read-only git command in `dir`: the environment is scrubbed like
