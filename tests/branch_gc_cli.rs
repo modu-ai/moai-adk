@@ -79,7 +79,10 @@ fn fixture() -> Fx {
     git(&project, &["checkout", "-q", "-b", "feat/open", "main"]);
     commit_file(&project, "open.txt");
     git(&project, &["checkout", "-q", "-b", "integ", "main"]);
-    git(&project, &["merge", "-q", "--no-ff", "-m", "land", "feat/done"]);
+    git(
+        &project,
+        &["merge", "-q", "--no-ff", "-m", "land", "feat/done"],
+    );
     git(
         &project,
         &["symbolic-ref", "refs/heads/alias", "refs/heads/feat/done"],
@@ -282,7 +285,11 @@ fn ac1_the_branch_checked_out_in_the_primary_checkout_is_kept() {
     let fx = fixture();
     git(&fx.project, &["checkout", "-q", "feat/at-base"]);
     let plan = fx.plan();
-    assert_eq!(kept(&plan, "feat/at-base"), strs(&["checked_out"]), "{plan}");
+    assert_eq!(
+        kept(&plan, "feat/at-base"),
+        strs(&["checked_out"]),
+        "{plan}"
+    );
     assert!(!deleted_set(&plan).contains(&"feat/at-base".to_string()));
 }
 
@@ -318,6 +325,13 @@ fn ac2_the_local_branch_the_integration_ref_names_is_preserved() {
     let v = fx.plan_envelope("release/x");
     assert_eq!(v["ok"], json!(true), "{v}");
     assert_eq!(kept(&v["result"], "release/x"), strs(&["preserved"]));
+}
+
+#[test]
+fn ac2_an_integration_ref_that_looks_like_an_option_is_refused() {
+    let fx = fixture();
+    let err = moai_cli::branch_gc::plan(&fx.project, "--all", Some(fx.home.path())).unwrap_err();
+    assert!(err.contains("must not start"), "{err}");
 }
 
 // ---- AC-3: an unreadable profile or ledger rules no reservation out
@@ -360,7 +374,10 @@ fn ac3_a_project_without_a_profile_has_no_reservations() {
     )
     .unwrap();
     let plan = fx.plan();
-    assert!(deleted_set(&plan).contains(&"card/held".to_string()), "{plan}");
+    assert!(
+        deleted_set(&plan).contains(&"card/held".to_string()),
+        "{plan}"
+    );
 }
 
 // ---- AC-4: read-only, and the digest
@@ -370,7 +387,10 @@ fn ac3_a_project_without_a_profile_has_no_reservations() {
 fn state_of(fx: &Fx) -> (String, String, Vec<u8>, BTreeMap<String, Vec<u8>>) {
     let refs = git(
         &fx.project,
-        &["for-each-ref", "--format=%(refname) %(objectname) %(symref)"],
+        &[
+            "for-each-ref",
+            "--format=%(refname) %(objectname) %(symref)",
+        ],
     );
     let list = git(&fx.project, &["worktree", "list", "--porcelain"]);
     let file = ledger::ledger_path(fx.home.path(), "demo").unwrap();
@@ -459,9 +479,15 @@ fn ac5_apply_deletes_exactly_the_delete_rows() {
         assert_eq!(row["status"], json!("deleted"), "{v}");
         assert_eq!(row["tip"], json!(tip), "{v}");
     }
+    // `alias` is a symbolic ref to `feat/done`: it is kept, and once its target is gone git no
+    // longer lists it as a branch, though the ref itself is still there.
+    assert_eq!(
+        git(&fx.project, &["symbolic-ref", "refs/heads/alias"]).trim(),
+        "refs/heads/feat/done"
+    );
     let mut want: Vec<String> = before
         .into_iter()
-        .filter(|b| !delete.contains(b))
+        .filter(|b| !delete.contains(b) && b != "alias")
         .collect();
     want.sort();
     let mut have = fx.branches();
@@ -488,7 +514,10 @@ fn ac6_a_wrong_or_stale_digest_or_no_permission_refuses_and_deletes_nothing() {
     let wrong = fx.apply("sha256:0000");
     assert_eq!(wrong["ok"], json!(false), "{wrong}");
     assert!(
-        wrong["error"]["message"].as_str().unwrap().contains("digest"),
+        wrong["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("digest"),
         "{wrong}"
     );
     assert_eq!(fx.branches(), before);
@@ -536,7 +565,10 @@ fn ac7_a_branch_that_moved_or_was_checked_out_after_the_digest_check_is_refused(
         Some(fx.home.path()),
         &|branch| match branch {
             "feat/at-base" => {
-                git(&project, &["update-ref", "refs/heads/feat/at-base", &moved_to]);
+                git(
+                    &project,
+                    &["update-ref", "refs/heads/feat/at-base", &moved_to],
+                );
             }
             "release/x" => {
                 git(
@@ -602,7 +634,10 @@ fn ac8_a_branch_git_refuses_to_delete_stays_and_the_rest_go_on() {
     // `feat/done` not fully merged although the integration branch has it.
     git(&fx.project, &["checkout", "-q", "main"]);
     let plan = fx.plan();
-    assert!(deleted_set(&plan).contains(&"feat/done".to_string()), "{plan}");
+    assert!(
+        deleted_set(&plan).contains(&"feat/done".to_string()),
+        "{plan}"
+    );
     let v = fx.apply(plan["plan_digest"].as_str().unwrap());
     assert_eq!(v["ok"], json!(true), "{v}");
     let r = &v["result"];
@@ -629,7 +664,10 @@ fn ac8_a_branch_git_refuses_to_delete_stays_and_the_rest_go_on() {
 fn ac9_apply_leaves_the_remote_and_the_remote_tracking_refs_alone() {
     let fx = fixture();
     let remote = fx.home.path().join("origin.git");
-    git(&fx.project, &["init", "-q", "--bare", remote.to_str().unwrap()]);
+    git(
+        &fx.project,
+        &["init", "-q", "--bare", remote.to_str().unwrap()],
+    );
     git(
         &fx.project,
         &["remote", "add", "origin", remote.to_str().unwrap()],
@@ -659,7 +697,7 @@ fn ac9_apply_leaves_the_remote_and_the_remote_tracking_refs_alone() {
 #[test]
 fn ac10_both_commands_are_in_the_help_listing_with_a_summary() {
     let fx = fixture();
-    let out = fx.moai(&["help", "all"]);
+    let out = fx.moai(&["help", "--all"]);
     let text = String::from_utf8_lossy(&out.stdout).into_owned();
     for name in ["branch-gc-plan", "branch-gc-apply"] {
         let line = text
