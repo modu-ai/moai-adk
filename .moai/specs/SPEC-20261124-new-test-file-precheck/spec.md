@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261124-new-test-file-precheck
 title: "check affected stops before the heavy steps when an added test file is missing from the area table or the state-folder allow list"
-status: approved
-revision: 2
+status: draft
+revision: 3
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-23
-  basis: "리더 결정 노트 7844 (2026-11-23T20:08:14Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7843 에 답함): (A) 판 2 승인, AC-6·AC-7 테스트를 src/check_affected.rs 단위 테스트로 옮기고 verify 명령 둘만 바꿔요, 쓰기 범위 그대로, 앞 조건 넷 그대로; 레인은 그 노트를 인용만 해요"
-  digest: "sha256:9c2e85166cbf944bb290c1febba64cd017745ef914f8e8229a0d248e7361e10b"
 ---
 
 # check affected stops before the heavy steps when an added test file is missing from the area table or the state-folder allow list
@@ -59,7 +54,7 @@ approval:
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261124-new-test-file-precheck/**`, `src/check_affected.rs`, `tests/check_affected_tables_cli.rs`(새), `docs/design-review/appendix/operations/check.md`, `docs/lane-rules.md`
+- write: `.moai/specs/SPEC-20261124-new-test-file-precheck/**`, `src/check_affected.rs`, `tests/check_affected_tables_cli.rs`(새), `docs/design-review/appendix/operations/check.md`, `docs/lane-rules.md`, `tools/repo_scans.json`(항목 하나만)
 - read-only: `tests/areas.toml`, `tests/test_area_layout.rs`, `tests/state_folder_literal_scan.rs`, `tests/fixtures/state_folder_literals/allow.tsv`, `tests/check_affected_cli.rs`, `SPEC-20261122-check-light-stop`
 - forbidden: `tests/areas.toml` 와 `allow.tsv` 의 규칙·내용 변경, `src/lib.rs`, 새 Python 시험, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것, 실제 HOME, 다른 레인의 파일
 
@@ -86,7 +81,8 @@ approval:
 | D-3 | 두 표는 읽기만 하고 규칙은 그대로예요 | 사용자 지시 "표를 풀지 않는다" | 없음 |
 | D-4 | observe 단계 없이 처음부터 막아요 | 새 규칙이 아니라 저장소의 두 시험이 이미 막는 규칙을 앞으로 당긴 것이고, 오탐은 AC-6 으로 재요 | 단계를 계획에서 빼기 |
 | D-5 | 첫 낱말이 미등록일 때 줄은 낱말 하나와 영역 이름들을 말하고, 어느 영역인지는 고르지 않아요 | 영역 선택은 사람(파일의 성격)의 일이에요 | 없음 |
-| D-6 | AC-6 와 AC-7 의 시험은 `tests/` 가 아니라 `src/check_affected.rs` 의 단위 시험이에요 | 저장소를 걷고 체크인된 문서를 읽는 시험 파일은 `tests/repo_scans_table.rs` 가 `tools/repo_scans.json` 등록이나 EXEMPT 를 요구하는데(영향 시험 실행에서 두 시험이 실패했어요), 두 파일은 이 SPEC 의 쓰기 범위 밖이에요. 그 스캔은 `tests/*.rs` 만 보고, `check affected` 는 `--lib` 를 늘 돌려요 | 시험을 `tests/` 로 옮기고 스캔에 등록하기 |
+| D-6 | AC-6 와 AC-7 의 시험은 `tests/` 가 아니라 `src/check_affected.rs` 의 단위 시험이에요 | 저장소를 걷고 체크인된 문서를 읽는 시험 파일은 `tests/repo_scans_table.rs` 가 `tools/repo_scans.json` 등록이나 EXEMPT 를 요구하는데(영향 시험 실행에서 두 시험이 실패했어요), 두 파일은 이 SPEC 의 쓰기 범위 밖이에요. `check affected` 는 `--lib` 를 늘 돌려요. 판 2 는 그 스캔이 `tests/*.rs` 만 본다고 잘못 적었어요: `src/` 의 파일도 `CARGO_MANIFEST_DIR` 와 디렉터리 걷기가 있으면 걸려요(판 3, D-7) | 시험을 `tests/` 로 옮기고 스캔에 등록하기 |
+| D-7 | `tools/repo_scans.json` 에 항목 하나 `table-step-matches-the-two-repository-tests` 를 더해요 | 저장소를 읽는 단위 테스트의 등록 자리는 이 파일이고(`home-written-names-in-the-table` 같은 항목), 우회는 가드 회피예요. 예약 범위 확장은 리더 결정 노트로 받았어요 | 그 항목을 지우고 두 테스트를 빼기 |
 
 ## Result
 
