@@ -45,3 +45,13 @@ SPEC 의 `- AC-9 … - AC-10 …` 처럼 목록 항목 둘이 한 줄에 붙으�
 2. Write the tests of AC-1 to AC-5 first and watch them fail.
 3. Add a `glued_item` helper to `src/spec_doc.rs` and call it from `body()` for the four item sections, skipping fenced lines, backtick spans and a ` - ` that follows an id.
 4. Run the `spec_doc` tests and `moai spec check --all`, then write the Result with each AC and the count.
+
+## Result
+
+- AC-1: met — `spec_doc a_glued_item_is_an_error_with_its_line_and_id` (nextest, pass; RED first, 4 failed with 0 `item_glued` findings, exit 100)
+- AC-2: met — `glued_items_are_found_in_every_item_section` (pass; a mutant that drops `Decisions` and `Result` from the checked sections fails it)
+- AC-3: met — `text_that_only_looks_glued_is_not_an_error` (pass; mutants that drop the after-an-id rule, the backtick rule or the fence rule each fail it)
+- AC-4: met — all 31 tests of `--test spec_doc` pass, the 27 older ones unchanged
+- AC-5: met — `a_glued_item_is_a_warning_in_a_go_generation_spec` (pass)
+- AC-6: met — `moai spec check SPEC-20261123-spec-check-glued-items` 0 errors 0 warnings; the build of this branch run as `moai-cli spec check --all` over 338 SPEC files gives 0 `item_glued` findings (0 errors, 25 warnings, none of them `item_glued`); no SPEC needed an edit
+- Gap: a first item written without a list marker (`AC-1 …`, which the parser reads as an item) is not checked, because REQ-1 names list items; a decision for a later revision.
