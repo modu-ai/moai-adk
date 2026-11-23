@@ -21,32 +21,32 @@ Four technical rules make the flow run. They describe how it works; they are not
 - A lane only commits: no push, no pull request and no merge of a moved integration tip. A background session never pushes and never opens a pull request.
 - A lane submits two things and nothing else: its head commit and the base its checks ran on. It adds one `moai card note` whose first line is `LANE-READY-INTEGRATION <card> head=<40 hex>` and names the base in the lines below it.
 - The READY note carries one line per new guard test in its body: `guard-mutant: <test> | <code removed or flipped> | exit <n>`, where `<n>` is the non-zero exit code the test gave on a copy that lacks the guarded code, or `guard-mutant: none | <reason>` when the change adds no guard test. A guard test that passes with its code removed is not a guard (four times on 2026-11-23); the lane runs that mutant once per new guard test before it reports READY. `moai bundle check` lists a missing, unreadable or `exit 0` line as a warning; it cannot tell whether a line is true, so the auditor reads it.
-- A decision the lane cannot make goes on the card as a blocked note (`workflows/work.md`); the lane takes the next card.
+- A decision the lane cannot make goes on the card as a blocked note (`workflows/work.md`); with no registered leader the lane takes the next card, and with a registered leader it waits for that leader's dispatch.
 - A `LANE-READY-INTEGRATION`, READY, REPAIRED or MERGE-READY note and a `LANE-DONE` line on the screen hand a card back; none of them is done in the ledger. How the session is cleared and the next card starts goes in two stages.
 
 ### Completion message (a lane to the leader)
 
-- A lane writes its HANDOFF note and gives the card back before it sends any message.
+- A lane writes its READY or REPAIRED note and gives the card back before it sends any message.
 - When a registered leader holds a live lease, the lane then sends that leader one cross-session message that names the card and the head.
-- The lane reads the leader's session id with `moai session-register --show --name leader` and addresses exactly that session; it never sends to a row picked by the name `leader`, because another project's session can carry that name.
-- Without a registered leader, a live lease or a cross-session channel, or when the send is refused or held, the lane writes the ledger note only and sends nothing more for that card; the leader's ledger watch picks the note up. One message per finished card, no retry loop.
-- The message is a notice, not proof: a lane message alone never shows a card done, and the ledger decides.
+- The lane reads the leader's session id with `moai session-register --show --name leader` and addresses exactly that session; it never sends to a row picked by the name `leader`, because another project's session can carry that name. The lane matches that id to a row of the host's session list; with no matching row it sends nothing.
+- Without a registered leader, a live lease or a cross-session channel, or when the send is refused or held, the lane writes the ledger note only; the leader's ledger watch picks the note up. One message per finished card, no retry loop. `LANE-DONE` is the lane's last line, after the message when one is sent.
+- The message is a notice, not proof: the ledger decides.
 - A lane never sends `/clear` to itself, and never takes its next card on its own while a leader is registered.
-- No `moai` command sends this message yet; `moai host-wake` addresses a session by name, which the address rule forbids, so a lane sends with the host's own message tool until a command takes the registered id (see SPEC-20261122-session-messages for the wake that exists).
+- No `moai` command sends this message yet: `moai host-wake` addresses a session by name, which the address rule forbids, so a lane uses the host's own message tool (SPEC-20261122-session-messages).
 
 ### Transition (the leader and a lane-terminal manager today)
 
 - When the leader gets the message, it reads the ledger first, and sends `/clear` and then the next card's dispatch only when the ledger shows the card done or released and nothing is open.
 - A message the ledger does not back starts nothing: the leader sends no `/clear` and no dispatch, and waits for the ledger.
-- The leader writes a dispatch, an answer and the line after `/clear` in the user's conversation language; only a prompt to a subagent is English, and commands, paths, card ids and protocol lines stay verbatim.
-- The leader sends `/clear` to the exact existing window only after the ledger shows the lane's card done or released (a safe hand-back that keeps the checkpoint and the candidate head for the audit), and only when nothing is open: no card in review, no live reservation, no run of the lane's own, no unsaved change, no input or selection prompt on the screen and nothing unknown.
+- The lane's message and the leader's dispatch, answer and line after `/clear` are written in the user's conversation language; only a prompt to a subagent is English, and commands, paths, card ids and protocol lines stay verbatim.
+- The leader sends `/clear` to the exact existing window only when nothing is open: no card in review, no live reservation, no run of the lane's own, no unsaved change, no input or selection prompt on the screen and nothing unknown.
 - A fixed delay after `/clear` proves nothing. The leader confirms that the new session is ready, sends the next line once, and confirms that session's reservation of the new card (the ACK). When the ACK is not seen it inspects the window and does not send again.
 - A new window is opened only when the existing one cannot be recovered.
 
 ### Final flow
 
 - `/clear` and a lane-terminal manager are not conditions of dispatch. The start signal is the card verified and landed on the local integration branch, then done with its reservation released in the ledger.
-- The worker reserves the next eligible card once, and an automatic restart runs only through the existing HOLD, ownership, priority and safety checks.
+- With no registered leader the worker reserves the next eligible card once, and an automatic restart runs only through the existing HOLD, ownership, priority and safety checks.
 - Waiting for an audit and the hand-back of a card are separate from done and start nothing. A worker clearing its own session is not documented as a guarantee.
 
 ## Landing

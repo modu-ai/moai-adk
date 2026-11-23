@@ -50,7 +50,7 @@ const MATCH: &str = "The lane matches that id to a row of the host's session lis
 /// REQ-4: the address.
 const ADDRESS: &str = "The lane reads the leader's session id with `moai session-register --show --name leader` and addresses exactly that session; it never sends to a row picked by the name `leader`, because another project's session can carry that name.";
 /// The message is a notice only (Transition rule, ledger first).
-const NOTICE: &str = "The message is a notice, not proof: a lane message alone never shows a card done, and the ledger decides.";
+const NOTICE: &str = "The message is a notice, not proof: the ledger decides.";
 /// REQ-7: what a lane never does.
 const LANE_NEVER: &str = "A lane never sends `/clear` to itself, and never takes its next card on its own while a leader is registered.";
 /// REQ-5: the leader reads the ledger first.
@@ -58,7 +58,7 @@ const LEADER: &str = "When the leader gets the message, it reads the ledger firs
 /// REQ-6: a notice the ledger does not back.
 const LEADER_ELSE: &str = "A message the ledger does not back starts nothing: the leader sends no `/clear` and no dispatch, and waits for the ledger.";
 /// REQ-8: the sending command is not implemented.
-const GAP: &str = "No `moai` command sends this message yet; `moai host-wake` addresses a session by name, which the address rule forbids, so a lane sends with the host's own message tool until a command takes the registered id (see SPEC-20261122-session-messages for the wake that exists).";
+const GAP: &str = "No `moai` command sends this message yet: `moai host-wake` addresses a session by name, which the address rule forbids, so a lane uses the host's own message tool (SPEC-20261122-session-messages).";
 /// REQ-9: the language of the leader's lines.
 const LANG: &str = "The lane's message and the leader's dispatch, answer and line after `/clear` are written in the user's conversation language; only a prompt to a subagent is English, and commands, paths, card ids and protocol lines stay verbatim.";
 /// Audit #373 B2: a blocked card moves the lane on only when no leader is registered.
@@ -154,6 +154,11 @@ fn ac4_the_missing_command_and_the_language_rule_are_written_down() {
 fn ac6_a_blocked_card_moves_the_lane_on_only_when_no_leader_is_registered() {
     let nf = next_flow();
     assert_has(&nf, NEXT_FLOW, BLOCKED);
+    assert_has(
+        &nf,
+        NEXT_FLOW,
+        "With no registered leader the worker reserves the next eligible card once,",
+    );
     let w = work();
     for needle in [
         "With no registered leader, take the next card; with a registered leader, leave the blocked card as its note and wait for that leader's dispatch.",

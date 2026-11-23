@@ -2,7 +2,7 @@
 id: SPEC-20261123-lane-completion-handshake
 title: "A lane that hands a card back sends the leader one cross-session notice, the leader reads the ledger first and then clears and dispatches"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-23
 ---
 
@@ -34,7 +34,7 @@ Why the managed `CLAUDE.md` block, the output style and the agent definitions ar
 
 ## Requirements
 
-- REQ-1: When a lane hands a card back, the `flows/next-flow` text shall tell the lane to write its HANDOFF note and give the card back before it sends any message · failure: none — the order is a text rule.
+- REQ-1: When a lane hands a card back, the `flows/next-flow` text shall tell the lane to write its READY or REPAIRED note (the `LANE-READY-INTEGRATION` note included) and give the card back before it sends any message · failure: none — the order is a text rule. Revision 2 replaces the term HANDOFF, which no other text defines.
 - REQ-2: When a lane has handed its card back and a leader is registered with a live lease, the `flows/next-flow` text shall tell the lane to send one cross-session message that names the card and the head, to the leader's registered session.
 - REQ-3 (REQ-2): IF no leader is registered, the lease has ended, the host offers no cross-session channel or the send is refused or held, THEN the `flows/next-flow` text shall tell the lane to write the ledger note only, and to send nothing more for that card.
 - REQ-4: The `flows/next-flow` text shall tell the lane to read the leader's session id with `moai session-register --show --name leader` and never to address a row picked by the name `leader`.
@@ -42,10 +42,13 @@ Why the managed `CLAUDE.md` block, the output style and the agent definitions ar
 - REQ-6 (REQ-5): IF the ledger does not show the card done or released, THEN the `flows/next-flow` text shall tell the leader to send no `/clear` and no dispatch and to wait for the ledger.
 - REQ-7: The `flows/next-flow` text shall tell a lane never to send `/clear` to itself and never to take its next card on its own while a leader is registered.
 - REQ-8: The `flows/next-flow` text shall say that no `moai` command sends the message yet, pointing to SPEC-20261122-session-messages for the wake that exists.
-- REQ-9: The `flows/next-flow` text shall tell the leader to write a dispatch, an answer and the line after `/clear` in the user's conversation language, and only a subagent prompt in English.
+- REQ-9: The `flows/next-flow` text shall tell the lane to write its message, and the leader to write a dispatch, an answer and the line after `/clear`, in the user's conversation language, and only a subagent prompt in English.
 - REQ-10: The `workflows/work.md` text shall carry the lane's sentences of REQ-1 to REQ-4 and REQ-7 in short form and point to `flows/next-flow`.
-- REQ-11: The flow reference's byte budget in `tests/next_flow_skill_scan.rs` shall be 7168 bytes, its own constant, while the audit contract keeps 6144 bytes · failure: none — the scan test reads both.
+- REQ-11: The flow reference's byte budget in `tests/next_flow_skill_scan.rs` shall be 8192 bytes, its own constant, while the audit contract keeps 6144 bytes · failure: none — the scan test reads both. Revision 2 raises 7168 to 8192 (decision D-2).
 - REQ-12: The source manifest of the skill package shall carry the new digests of the two changed files · failure: none — the existing package test reads it.
+- REQ-13: IF a lane's card is blocked on a decision, THEN the `flows/next-flow` and `workflows/work.md` text shall tell the lane to take the next card only when no leader is registered, and otherwise to leave the blocked card as its note and wait for the leader's dispatch; the Final flow sentence carries the same condition.
+- REQ-14: The `flows/next-flow` text shall say one message per finished card with no retry loop, and that `LANE-DONE` is the lane's last line, after the message when one is sent.
+- REQ-15: The `flows/next-flow` text shall tell the lane to match the registered session id to a row of the host's session list and to send nothing when no row matches (R-2).
 
 ## Acceptance
 
@@ -54,6 +57,13 @@ Why the managed `CLAUDE.md` block, the output style and the agent definitions ar
 - AC-3 (REQ-5, REQ-6): the leader's sentence reads the ledger first and the notice without a ledger change starts nothing · verify: `cargo test --offline --locked --test lane_completion_handshake ac3_`
 - AC-4 (REQ-8, REQ-9): the text names the missing sending command with the SPEC it points to, and the language rule for the leader's lines · verify: `cargo test --offline --locked --test lane_completion_handshake ac4_`
 - AC-5 (REQ-11, REQ-12): the package's manifest and word scans pass with the changed files · verify: `cargo test --offline --locked --test next_flow_skill_scan` and `cargo test --offline --locked --test product_cli skill_package::`
+
+- AC-6 (REQ-13, REQ-14, REQ-15): a blocked card moves the lane on only with no registered leader in both files and in the Final flow sentence; the retry and last-line sentences and the id-to-row match are pinned · verify: `cargo nextest run --test lane_completion_handshake` (ac1_, ac2_, ac6_)
+
+## Decisions
+
+- D-1 (revision 2, 2026-11-23, audit #373 FAIL, leader decision, reversible, category none): the blocked-card sentences gain the "no registered leader" condition (B2); HANDOFF becomes "READY or REPAIRED note" (N3); the retry and last-line sentences are pinned (N1, N4); N2, N5 and N7 are done in the same slice. N6 stays: this SPEC remains in English.
+- D-2 (revision 2, 2026-11-23, leader decision "shorten first, raise the budget only if that fails", reversible, category none): after the one merge of the integration tip, `next-flow.md` was 7699 bytes against 7168, because the guard-mutant line of another card (about 600 bytes) joined the file. Shortening this slice's own sentences and one duplicate in Transition left 7686 bytes before the revision-2 sentences and 7712 after them (`wc -c`); the rest could only come from rules and pins of the flow's base text and of the other card, which this slice does not own. The budget is now 8192 bytes (8 KiB). The audit contract keeps 6144.
 
 ## Scope
 
@@ -77,7 +87,7 @@ Why the managed `CLAUDE.md` block, the output style and the agent definitions ar
 
 ## Result
 
-Status: SPEC draft (revision 1); the user approves it. One slice: the skill text and its tests; the flow rule file and the output style follow after the home routing card lands (Non-goals).
+Status: SPEC draft (revision 2, audit #373 repair); the user approves it. One slice: the skill text and its tests; the flow rule file and the output style follow after the home routing card lands (Non-goals).
 
 - `skills/moai/references/flows/next-flow.md`: a "Completion message" section (the order, the one message, the address, the ledger-only fallback, the notice rule, the lane's two refusals, the missing command) and the leader's three sentences at the top of "Transition". `skills/moai/workflows/work.md`: the short form before the lane-commands paragraph.
 - `tests/next_flow_skill_scan.rs`: `FLOW_REF_LIMIT` 7168 for the flow reference (it was 6144 and the file is 7100 bytes now); the audit contract keeps 6144.
@@ -86,5 +96,7 @@ Status: SPEC draft (revision 1); the user approves it. One slice: the skill text
 - AC-2: met — `lane_completion_handshake` `ac2_` (1 passed).
 - AC-3: met — `lane_completion_handshake` `ac3_` (1 passed); the leader's sentences stand between the Transition and Final flow headings.
 - AC-4: met — `lane_completion_handshake` `ac4_` (1 passed).
-- AC-5: met — `cargo nextest run` of `next_flow_skill_scan`, `core_rules_2876` and `product_cli` `skill_package::` together with the new file: 79 passed, 0 failed (the run first failed on the flow reference's 6144-byte budget, which REQ-11 changes).
+- AC-5: met — `cargo nextest run --offline --locked -E 'binary(lane_completion_handshake) | binary(next_flow_skill_scan) | binary(core_rules_2876) | (binary(product_cli) & test(/skill_package::/))'` at the repair head: 80 passed, 0 failed (the budget is now 8192, D-2).
+- AC-6: met — `lane_completion_handshake` `ac6_` and the extended `ac1_`/`ac2_` pass in the same run; each was RED before the text change (`target/handshake/red2.log`: ac1, ac2, ac4 and ac6 failed).
+- Revision 2 (audit #373 FAIL): B1 the merged file is 7712 bytes and the budget 8192 (D-2); B2 the blocked-card sentences in `next-flow.md` (A lane, Final flow) and `work.md` name the no-leader condition; N1 N3 N4 pinned, N2 N5 N7 done (see D-1).
 - Not done here: the flow rule file and output style sources under the home folder of the skill package (held by another card); a `moai` command that sends the message by registered id (REQ-8 names the gap); the follow-up of the Plan step 4 is the card note.

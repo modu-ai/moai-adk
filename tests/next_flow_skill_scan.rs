@@ -76,10 +76,11 @@ const BUILD_RULE: [&str; 8] = [
 /// REQ-5 and REQ-6: the byte budget of the flow reference and of the audit contract.
 const REF_LIMIT: usize = 6144;
 
-/// The flow reference's own budget, 7 KiB: raised from `REF_LIMIT` by
-/// SPEC-20261123-lane-completion-handshake for the completion-message section (about 1.8 KB);
-/// the audit contract keeps `REF_LIMIT`.
-const FLOW_REF_LIMIT: usize = 7168;
+/// The flow reference's own budget, 8 KiB: raised from `REF_LIMIT` (6 KiB) to 7 KiB by
+/// SPEC-20261123-lane-completion-handshake for the completion-message section, and to 8 KiB by
+/// its audit repair, after the guard-mutant line joined the file; the audit contract keeps
+/// `REF_LIMIT`.
+const FLOW_REF_LIMIT: usize = 8192;
 
 /// REQ-5: the flow reference and the meaning it alone explains.
 const FLOW_REF: &str = "references/flows/next-flow.md";
