@@ -96,6 +96,7 @@ approval:
 - AC-5: 충족. `git diff --stat acf8ab1997..HEAD -- src` → `src/identity.rs` 한 파일(169 추가, 5 삭제), 호출부 파일 변경 0.
 - 뮤턴트(시험마다 하나, 적용을 `git diff --stat` 으로 확인하고 되돌린 뒤 `git diff --stat` 이 비어 있음을 확인): ① `Some(h)` 가지가 받은 HOME 대신 다른 값을 읽음 → exit 100 (AC-1·AC-3·AC-2 실패) ② `None` 이 환경 HOME 으로 폴백 → exit 100 (AC-2 실패) ③ `refuse_symlink(&root, "home state root")` 삭제 → exit 100 (AC-2·AC-3 실패) ④ `identity` 가 빈 HOME 을 거르지 않음 → exit 100 (AC-4 실패).
 - 실제 HOME: 이 조각의 시험은 부모 프로세스에서 `identity()` 를 부르지 않고(`identity_in` 에 임시 폴더나 `None` 만 넘겨요), 환경 HOME 을 바꿔야 하는 시험은 자식 프로세스에 임시 폴더 HOME 을 줘요. 실제 HOME 의 읽기 전후 비교(atime)는 이 조각에서 재지 않았어요(not_run). 실제 HOME 읽기가 얼마나 줄었는지는 C-406 가드를 다시 돌려 재야 하고 unverified 예요(D-4).
+- 수리: `check affected`(head `16b01f6d05`)의 test 단계가 `state_dir_tests::project_state_dir_is_spelled_once` 하나를 실패시켰어요(2659개 중 2658 통과). 시험 도우미가 상태 폴더 이름을 글자로 적어서 저장소의 "상태 폴더 이름은 한 곳에서만" 검사에 걸렸고, `crate::HOME_STATE_DIR` 로 바꿨어요(커밋 `c88fd1346d`). 그 헤드에서 `home_arg_tests` 4개와 `state_dir_tests` 3개 7개가 통과(exit 0), `cargo fmt --all -- --check`·`git diff --check`·`cargo clippy --locked --offline --all-targets -- -D warnings` 가 모두 exit 0 이에요.
 - 카드 기준 1(identity 가 env HOME 을 직접 읽지 않고 받은 HOME 을 씀)은 부분 충족이에요: `identity_in` 은 환경 변수를 읽지 않고, `identity` 어댑터 한 곳만 읽어요. 호출부가 아직 `identity` 를 불러요(조각 2·3).
 - 카드 기준 2(기준선 줄이 줄고 줄어든 테스트가 enforce 에서 통과)는 충족하지 않았어요(not met): 호출부 변경 없음, `baseline.tsv` 는 C-406 이 쥐고 있어요(조각 4).
 - 후속: 조각 2a·2b·3 은 조각을 시작할 때 범위 확장을 리더 노트로 받아요. `layout::default_home_root` 는 카드 C-410.
