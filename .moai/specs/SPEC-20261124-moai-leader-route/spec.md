@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261124-moai-leader-route
 title: "`/moai leader` is a ninth route: the window that types it registers as the coordination window, reads the ledger, lands audited heads and releases the registration when it ends"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
 parent: SPEC-20261122-next-flow-skills-agents
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7838 (2026-11-23T19:53:19Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7837 에 답함): 판 1 승인, D-1 부터 D-6 그대로; 사용자 선택 2026-11-22T23:49:36Z 를 함께 근거로 해요; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:80f3cd406000f62c6a34abd4096312db32326bee5272c79b74ff22e0ae2908c5"
 ---
 
 # The LEADER route of the moai skill
@@ -62,23 +67,23 @@ parent: SPEC-20261122-next-flow-skills-agents
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): the route table holds the nine routes and `workflows/leader.md` exists, the skill entry names `leader` as a first word beside `work`, and a request that starts with a dash option picks no route · verify: `cargo test --locked --offline --test next_flow_skill_scan routes_`
-- AC-2 (REQ-3, REQ-4): the workflow reads `session-register --show --name leader` before it registers, registers with `--mode leader` only on `free`, keeps the `instance`, stops on `conflict` naming the lease end, and reports any other refusal as an error · verify: `cargo test --locked --offline --test moai_leader_route register_`
-- AC-3 (REQ-5, REQ-6, REQ-7, REQ-8): the workflow renews with `--instance` before it reads the ledger, names `card inbox`, `card wait` and `card next` as its input, points to the two sections of `flows/next-flow` and holds none of their sentences, sends the audit to another session, lands with `--by leader` after a `PASS` for the exact head, and sorts a decision note by the open-question order · verify: `cargo test --locked --offline --test moai_leader_route round_`
-- AC-4 (REQ-9, REQ-10): the workflow releases with `--release --instance`, says a closed window releases nothing and the lanes then write the ledger note only, describes no standing role, and the scrub of the shipped texts (parent REQ-8: no resident leader, no leader mode, no mode flag) passes with the new file · verify: `cargo test --locked --offline --test moai_leader_route end_` and `cargo test --locked --offline --test next_flow_skill_scan scrub_`
+- AC-2 (REQ-3, REQ-4): the workflow reads `session-register --show --name leader` before it registers, registers with `--mode leader` only on `free`, keeps the `instance`, stops on `conflict` naming the lease end, and reports any other refusal as an error · verify: `cargo test --locked --offline --test leader_route register_`
+- AC-3 (REQ-5, REQ-6, REQ-7, REQ-8): the workflow renews with `--instance` before it reads the ledger, names `card inbox`, `card wait` and `card next` as its input, points to the two sections of `flows/next-flow` and holds none of their sentences, sends the audit to another session, lands with `--by leader` after a `PASS` for the exact head, and sorts a decision note by the open-question order · verify: `cargo test --locked --offline --test leader_route round_`
+- AC-4 (REQ-9, REQ-10): the workflow releases with `--release --instance`, says a closed window releases nothing and the lanes then write the ledger note only, describes no standing role, and the scrub of the shipped texts (parent REQ-8: no resident leader, no leader mode, no mode flag) passes with the new file · verify: `cargo test --locked --offline --test leader_route end_` and `cargo test --locked --offline --test next_flow_skill_scan scrub_`
 - AC-5 (REQ-11, REQ-12): the chain table has the LEADER row, the Orca table has the LEADER row, `leader.md` is within 6144 bytes and the source manifest carries the digest of every package file the change adds or edits · verify: `cargo test --locked --offline --test agent_defs_package chains_`, `cargo test --locked --offline --test orca_optional_3005`, `cargo test --locked --offline --test product_cli skill_package::` and `cargo test --locked --offline --test source_manifest_facts`
 - AC-6: every older pin that counted eight routes now counts nine, and the neighbouring checks pass · verify: `cargo fmt --check` and `cargo clippy --locked --offline --all-targets -- -D warnings`
 
 ## Scope
 
 - this slice, write: `.moai/specs/SPEC-20261124-moai-leader-route/**`
-- text slice, write (after the leader's approval): `skills/moai/workflows/leader.md` (new), `skills/moai/SKILL.md`, `skills/moai/references/routes.json`, `skills/moai/references/chains/index.md`, `skills/moai/references/adapters/orca.md` (one table row), `skills/moai/references/source-manifest.json`, `tests/moai_leader_route.rs` (new), `tests/next_flow_skill_scan.rs`, `tests/product_cli.rs`, `tests/agent_defs_package.rs`, `tests/orca_optional_3005.rs`, the row of the parent SPEC's REQ-1 and AC-1 (`.moai/specs/SPEC-20261122-next-flow-skills-agents/spec.md`, one revision), and any other test the inventory of step 1 finds that counts the routes
+- text slice, write (after the leader's approval): `skills/moai/workflows/leader.md` (new), `skills/moai/SKILL.md`, `skills/moai/references/routes.json`, `skills/moai/references/chains/index.md`, `skills/moai/references/adapters/orca.md` (one table row), `skills/moai/references/source-manifest.json`, `tests/leader_route.rs` (new), `tests/next_flow_skill_scan.rs`, `tests/product_cli.rs`, `tests/agent_defs_package.rs`, `tests/orca_optional_3005.rs`, the row of the parent SPEC's REQ-1 and AC-1 (`.moai/specs/SPEC-20261122-next-flow-skills-agents/spec.md`, one revision), and any other test the inventory of step 1 finds that counts the routes
 - read-only: `skills/moai/references/flows/next-flow.md`, `skills/moai/workflows/work.md`, `skills/moai/references/internal/loop.md`, `src/leader_round/registration.rs`, `src/lane_registry.rs`
 - forbidden: `skills/moai/references/flows/next-flow.md`, `skills/moai/workflows/work.md`, the folder `skills/moai/references/home`, every Rust source file, the real HOME, the network, the integration branch
 
 ## Plan
 
 1. Inventory: run `grep -rn` for each route name and each count of eight over `tests/`, `src/`, `tools/`, `skills/` and `docs/` outside the closed SPECs, and list each pin that must follow (the four named under "What exists" and any other).
-2. RED: `tests/moai_leader_route.rs` with the prefixes `register_`, `round_` and `end_`, and the nine-route form of the old pins; each fails on the current text.
+2. RED: `tests/leader_route.rs` with the prefixes `register_`, `round_` and `end_`, and the nine-route form of the old pins; each fails on the current text.
 3. GREEN: `workflows/leader.md` (outline: Input, Output, Procedure with the five stages register → round → dispatch → land → end, Exceptions and Permissions, Completion Check), the route table entry, the skill entry sentence, the chain row, the Orca row.
 4. The parent SPEC's REQ-1 and AC-1 change to nine routes in one revision, with decision D-21 naming this SPEC.
 5. Manifest digests with `python3 -I tools/source_manifest.py write` then `check`; one-word guard mutants for each new pin; `moai spec check`; `moai trailer-check`; one `check affected` at the READY head.
