@@ -68,6 +68,23 @@ line=${line#"${line%%[![:space:]]*}"}
 line=${line%"${line##*[![:space:]]}"}
 case "$line" in refs/heads/?*) name=${line#refs/heads/} ;; *) exit 0 ;; esac
 input=$(cat)
+# A branch that was deleted is only written down here, one line per ref, for the worktree cleanup
+# to read later (SPEC-20261123-worktree-slots): nothing is removed and no program is started.
+# A line is a hint: the cleanup reads the ref again before it acts on it.
+if [ "$1" = committed ]; then
+  gone=
+  while IFS=' ' read -r qold qnew qref; do
+    case "$qref" in
+      refs/heads/?*) case "$qnew" in *[!0]*) ;; *) gone="$gone$qref
+" ;; esac ;;
+    esac
+  done <<EOF
+$input
+EOF
+  if [ -n "$gone" ]; then
+    mkdir -p "$common/moai" 2>/dev/null && printf '%s' "$gone" >> "$common/moai/worktree-cleanup-queue" 2>/dev/null
+  fi
+fi
 lowered=$(printf '%s\n%s\n' "$name" "$input" | tr 'A-Z' 'a-z')
 nl='
 '
