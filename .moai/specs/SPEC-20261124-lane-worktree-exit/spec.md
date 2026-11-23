@@ -1,21 +1,16 @@
 ---
 id: SPEC-20261124-lane-worktree-exit
 title: "the card loop leaves the worktree after the hand-back, and a lane asks by note, never by a selection prompt"
-status: approved
-revision: 1
+status: draft
+revision: 2
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-23
-  basis: "리더 결정 노트 7776 (2026-11-23T18:32:22Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7775 에 답함): 판 1 과 선택지 (A) 승인, 쓰기 범위 승인, 새 문단 핀은 문장 전체를 비교; 레인은 그 노트를 인용만 해요"
-  digest: "sha256:705fafb24b54007d91cd0850298eaff662fbf82f91b73ad38bf89d474eb7c74e"
 ---
 
 # the card loop leaves the worktree after the hand-back, and a lane asks by note, never by a selection prompt
 
 ## Intent
 
-Card C-422 (recurrence prevention). The same class of block happened twice: lane `agent-2` stayed inside the isolated worktree session of its previous card after the READY note, so the next dispatch (C-359 after C-415, C-420 after C-359) could not run `git worktree add` — the guard refused it (C-359 note 7750, C-420 leader note). `CLAUDE.md` flow step 9 and `docs/lane-rules.md` already say "leave with `ExitWorktree(keep)`", but `skills/moai/workflows/work.md`, the text a lane actually reads in its card loop, has no step or sentence for it. The rule must sit where the lane reads, and a test must pin the sentence so it cannot silently drop out.
+Recurrence prevention. The same class of block happened twice: lane `agent-2` stayed inside the isolated worktree session of its previous card after the READY note, so the next dispatch (once after the lane's first card, once after its second) could not run `git worktree add` — the guard refused it (the blocked-dispatch note of the first and the leader note of the second say so). `CLAUDE.md` flow step 9 and `docs/lane-rules.md` already say "leave with `ExitWorktree(keep)`", but `skills/moai/workflows/work.md`, the text a lane actually reads in its card loop, has no step or sentence for it. The rule must sit where the lane reads, and a test must pin the sentence so it cannot silently drop out.
 
 The card also asks that the same text confirm the other rule a lane already follows: it never opens a selection prompt for the person and asks by a `LANE-BLOCKED kind=decision` note. `work.md` says "never a question to the user" but not the prompt itself, and an existing pin forbids naming a host question tool in `work.md`.
 
@@ -37,36 +32,39 @@ Readers: lanes that run the card loop, the leader that dispatches the next card,
 
 ## Requirements
 
-- REQ-1: When a session that works a card has written its READY, REPAIRED or blocked note and its `LANE-DONE` line, the WORK workflow shall tell the session to call `ExitWorktree(keep)` before it takes or enters any other worktree.
-- REQ-2 (REQ-1): IF the card's worktree still holds an uncommitted change, THEN the WORK workflow shall tell the session to commit it or name it in the note before it leaves, and never to remove the worktree.
+- REQ-1: When a session that works a card has written its READY, REPAIRED or blocked note and given the card back, the WORK workflow shall tell the session to call `ExitWorktree(keep)` and then to write `LANE-DONE` as the last line of the turn, before it takes or enters any other worktree.
+- REQ-2 (REQ-1): IF the card's worktree holds an uncommitted change when the session is about to write a READY, REPAIRED or blocked note, THEN the WORK workflow shall tell the session to commit it before it writes the note, never to commit after a READY or REPAIRED note, and never to remove the worktree.
 - REQ-3: The WORK workflow shall tell a session that works a card never to open a selection prompt and to put what it needs decided in a `LANE-BLOCKED kind=decision` note.
 - REQ-4 (REQ-3): The WORK workflow shall make that statement without naming a host question tool.
 
 ## Acceptance
 
-- AC-1 (REQ-1): `work.md` has one hand-back paragraph that names `ExitWorktree(keep)` after the `LANE-DONE` line and `EnterWorktree` with a `path` for the next card, and it stands after the paragraph that writes the READY note · verify: `cargo nextest run --locked --offline --test next_flow_skill_scan work_leaves_the_card_worktree_after_the_hand_back`
-- AC-2 (REQ-2): the same paragraph names the uncommitted-change check and forbids removing the worktree · verify: `cargo nextest run --locked --offline --test next_flow_skill_scan work_leaves_the_card_worktree_after_the_hand_back`
+- AC-1 (REQ-1): `work.md` has one hand-back paragraph that calls `ExitWorktree(keep)` after the note, the card's hand-back and the message to the leader, then names `LANE-DONE` as the last line of the turn, and `EnterWorktree` with a `path` for the next card, and it stands after the paragraph that writes the READY note · verify: `cargo nextest run --locked --offline --test next_flow_skill_scan work_leaves_the_card_worktree_after_the_hand_back`
+- AC-2 (REQ-2): the same paragraph puts the `git status --short` check before the note, forbids a commit after a READY or REPAIRED note, and forbids removing the worktree, in the order of `docs/lane-rules.md` · verify: `cargo nextest run --locked --offline --test next_flow_skill_scan work_leaves_the_card_worktree_after_the_hand_back`
 - AC-3 (REQ-3): the "Exceptions and Permissions" section says that a session that works a card never opens a selection prompt and names the `LANE-BLOCKED kind=decision` note · verify: `cargo nextest run --locked --offline --test next_flow_skill_scan work_asks_by_note_and_never_by_a_selection_prompt`
 - AC-4 (REQ-4): `work.md` still names none of `AskUserQuestion`, `request_user_input` and `question tool` · verify: `cargo nextest run --locked --offline --test next_flow_skill_scan work_decision_becomes_a_blocked_note_on_the_card`
 - AC-5 (REQ-1): the `sha256` of `workflows/work.md` in `source-manifest.json` matches the file · verify: `cargo nextest run --locked --offline --test source_manifest_facts`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261124-lane-worktree-exit/spec.md`, `skills/moai/workflows/work.md`, `skills/moai/references/source-manifest.json` (the `sha256` of `work.md` only), `tests/next_flow_skill_scan.rs`
+- write: `.moai/specs/SPEC-20261124-lane-worktree-exit/spec.md`, `skills/moai/workflows/work.md`, `skills/moai/references/source-manifest.json`, `tests/next_flow_skill_scan.rs`
 - read-only: `CLAUDE.md`, `docs/lane-rules.md`, `tests/lane_completion_handshake.rs`, `tests/lane_next_rules.rs`, `tests/source_manifest_facts.rs`
-- forbidden: `tools/repo_scans.json` (no new file is read; the new tests live in a file that already reads `work.md`), every other file of `skills/moai`
+- forbidden: `tools/repo_scans.json`
+
+Only the sha256 line of the work workflow changes in the manifest, and no other file under the skill folder is touched. `tools/repo_scans.json` stays as it is because no new file is read (D-3).
 
 ## Plan
 
 1. RED: two tests in `tests/next_flow_skill_scan.rs` — `work_leaves_the_card_worktree_after_the_hand_back` and `work_asks_by_note_and_never_by_a_selection_prompt`; both fail on the current `work.md`.
-2. GREEN: one paragraph after the hand-back paragraph of `work.md` (exit after `LANE-DONE`, the uncommitted check, the next card entered by `EnterWorktree` with the path the leader made or made after the exit) and one sentence in "Exceptions and Permissions".
+2. GREEN: one paragraph after the hand-back paragraph of `work.md` (revision 2 order of `docs/lane-rules.md`: the `git status --short` check before the note, no commit after a READY or REPAIRED note, `ExitWorktree(keep)` after the note and the hand-back, `LANE-DONE` as the last line of the turn, the next card entered by `EnterWorktree` with the path the leader made or made after the exit) and one sentence in "Exceptions and Permissions".
 3. Update the `sha256` of `workflows/work.md` in `source-manifest.json`.
 4. Guard mutants: remove each new sentence and see its test fail.
 5. SYNC: Result with each AC met or not met, then the READY note with the `check affected` receipt.
 
 ## Risks
 
-- `LANE-DONE` must stay the last line the lane writes (`tests/lane_completion_handshake.rs`): `ExitWorktree(keep)` is a tool call and prints no line, and the paragraph says so.
+- `LANE-DONE` must stay the last line the lane writes (`tests/lane_completion_handshake.rs`): `ExitWorktree(keep)` is a tool call that comes before it, and the paragraph says `LANE-DONE` is the last line of the turn, after that tool call.
+- A commit after the READY or REPAIRED note makes the branch pass the head the note names; the paragraph forbids that commit and puts the clean-tree check before the note (revision 2, after the first audit).
 - The `sha256` in the manifest goes stale with every edit of `work.md`; `source_manifest_facts` notices, and step 3 repairs it.
 - A lane that is not in a worktree entered by `EnterWorktree` (entered by a shell `cd`) gets a no-op from `ExitWorktree`; `docs/lane-rules.md` already says to start the next card with `EnterWorktree`, and the new paragraph repeats that the next card starts outside every card worktree.
 
