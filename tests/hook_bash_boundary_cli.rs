@@ -699,6 +699,7 @@ fn all_cases() -> Vec<Case> {
     all.extend(audit_denied_cases());
     all.extend(second_audit_denied_cases());
     all.extend(third_audit_denied_cases());
+    all.extend(fourth_audit_denied_cases());
     all
 }
 
@@ -2248,6 +2249,128 @@ fn ac16_the_third_audit_table_denied_and_allowed_shapes() {
     let mut cases = third_audit_denied_cases();
     cases.extend(third_audit_allowed_cases());
     run_table(&World::new(), "third-audit", &cases);
+}
+
+// ------------------------------------------------------------------- AC-17
+//
+// The fourth audit repair (AUDIT #403 delta 4, note 7818), the S-1 branch only, closed by two rules:
+// a word of a shell start, `emulate`, `set`, `setopt` or `unsetopt` where an option may stand is
+// `unreadable` when an expansion decides any part of it, and a one-letter option is judged by the
+// option the zsh manual names for it (`-T` is `CDABLE_VARS`), in every place that reads options.
+
+fn fourth_audit_denied_cases() -> Vec<Case> {
+    use S::Own;
+    let ur = "unreadable";
+    let cd = "o=/opt/moai-boundary-outside; cd o && rm -rf ./*";
+    let mut cases = Vec::new();
+    // One-letter `-T` (`CDABLE_VARS`) in every place that reads options, alone and in a cluster.
+    for start in [
+        "zsh -T -c",
+        "zsh -fT -c",
+        "zsh -Tf -c",
+        "zsh +T -c",
+        "zsh -f -T -c",
+        "bash -T -c",
+        "sh -xT -c",
+        "emulate zsh -T -c",
+        "emulate -LT zsh -c",
+        "emulate -L -T zsh -c",
+    ] {
+        cases.push(d(Own, &format!("{start} '{cd}'"), ur));
+    }
+    for head in [
+        "set -T",
+        "set -fT",
+        "set -eT",
+        "set +T",
+        "setopt -T",
+        "setopt -fT",
+        "unsetopt -T",
+    ] {
+        cases.push(d(Own, &format!("{head}; {cd}"), ur));
+    }
+    // An option name or a whole option word that an expansion decides, in every spelling.
+    for start in [
+        "zsh -o$O -c",
+        "zsh -o\"$O\" -c",
+        "bash -O$O -c",
+        "zsh -fo$O -c",
+        "zsh -fo \"$O\" -c",
+        "bash -xO \"$O\" -c",
+        "zsh \"$O\" -c",
+        "zsh $O -c",
+        "sh \"$O\" -c",
+        "bash ${O} -c",
+        "zsh -f \"$O\" -c",
+        "zsh -f $(echo -T) -c",
+        "zsh -f `echo -T` -c",
+        "emulate zsh \"$O\" -c",
+        "emulate zsh $O -c",
+        "emulate \"$O\" zsh -c",
+        "emulate zsh -o$O -c",
+        "emulate zsh -fo \"$O\" -c",
+        "emulate -L zsh -$O -c",
+    ] {
+        cases.push(d(Own, &format!("{start} '{cd}'"), ur));
+    }
+    // The value of `-o` and `-O` behind other letters is an option name, named or decided.
+    for start in [
+        "zsh -fo cdablevars -c",
+        "zsh -eo cd_able_vars -c",
+        "bash -xO cdable_vars -c",
+        "zsh -oc cdablevars",
+        "zsh -foc cdablevars",
+        "emulate zsh -fo cdablevars -c",
+        "emulate zsh -L -o CDABLE_VARS -c",
+    ] {
+        cases.push(d(Own, &format!("{start} '{cd}'"), ur));
+    }
+    cases.push(d(Own, &format!("set -eo cdablevars; {cd}"), ur));
+    cases.push(d(Own, &format!("set -fo \"$O\"; {cd}"), ur));
+    cases.push(d(Own, &format!("setopt -o cdablevars; {cd}"), ur));
+    // A shell start whose first word is not readable is an option or the script, and the line does
+    // not say which: it is denied like an option.
+    cases.push(d(Own, "bash \"$SCRIPT\"", ur));
+    cases.push(d(Own, "zsh $HOME/run.sh arg", ur));
+    cases
+}
+
+fn fourth_audit_allowed_cases() -> Vec<Case> {
+    use S::Own;
+    vec![
+        // Letters that name no `cd` lookup option, alone and in a cluster.
+        a(Own, "zsh -f -c 'ls'"),
+        a(Own, "zsh -fx -c 'cd src && ls'"),
+        a(Own, "bash -xe -c 'ls'"),
+        a(Own, "bash -euo pipefail -c 'ls'"),
+        a(Own, "zsh -fo extendedglob -c 'ls'"),
+        a(Own, "zsh -oc extendedglob 'ls'"),
+        a(Own, "set -e"),
+        a(Own, "set -eu"),
+        a(Own, "set -x"),
+        a(Own, "set +e"),
+        a(Own, "set -eo pipefail"),
+        a(Own, "setopt extendedglob"),
+        a(Own, "unsetopt nomatch"),
+        a(Own, "emulate -L zsh -c 'ls'"),
+        a(Own, "emulate -LR zsh"),
+        // An expansion after the first operand is an argument, and after `--` nothing is an option.
+        a(Own, "bash -c 'ls' \"$X\""),
+        a(Own, "bash -c 'echo \"$1\"' _ \"$X\""),
+        a(Own, "bash tools/run.sh \"$ARG\""),
+        a(Own, "bash -- \"$SCRIPT\""),
+        a(Own, "sh -c 'ls' -- $X"),
+        // `set` takes a list as data.
+        a(Own, "set -- \"$@\""),
+        a(Own, "set -e -- $X"),
+    ]
+}
+
+#[test]
+fn ac17_the_fourth_audit_table_denied_and_allowed_shapes() {
+    let mut cases = fourth_audit_denied_cases();
+    cases.extend(fourth_audit_allowed_cases());
+    run_table(&World::new(), "fourth-audit", &cases);
 }
 
 #[test]

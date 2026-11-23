@@ -1157,6 +1157,100 @@ fn shell_option_unreadable(value: Option<&Word>) -> bool {
     value.is_some_and(|v| v.dynamic || names_cd_lookup_option(&v.text()))
 }
 
+/// The single-letter options of zsh, copied from zshoptions(1) "SINGLE LETTER OPTIONS", "Default
+/// set" (zsh 5.9, manual dated May 14, 2022, read 2026-11-23T23:45:41Z, extracted text sha256
+/// 198a32a76b5ae77b99dd69d9cb6702b5a393b9a25cde99901e4c625fc70df82d). A letter is judged by the
+/// option it names, with the same rule as a spelled-out name (D-17). The "sh/ksh emulation set"
+/// gives `-T` another meaning (`TRAPS_ASYNC`); the mode a shell is in is not readable from the
+/// text, so the default set is the one judged.
+const ZSH_SHORT_OPTIONS: &[(char, &str)] = &[
+    ('0', "CORRECT"),
+    ('1', "PRINT_EXIT_VALUE"),
+    ('2', "NO_BAD_PATTERN"),
+    ('3', "NO_NOMATCH"),
+    ('4', "GLOB_DOTS"),
+    ('5', "NOTIFY"),
+    ('6', "BG_NICE"),
+    ('7', "IGNORE_EOF"),
+    ('8', "MARK_DIRS"),
+    ('9', "AUTO_LIST"),
+    ('B', "NO_BEEP"),
+    ('C', "NO_CLOBBER"),
+    ('D', "PUSHD_TO_HOME"),
+    ('E', "PUSHD_SILENT"),
+    ('F', "NO_GLOB"),
+    ('G', "NULL_GLOB"),
+    ('H', "RM_STAR_SILENT"),
+    ('I', "IGNORE_BRACES"),
+    ('J', "AUTO_CD"),
+    ('K', "NO_BANG_HIST"),
+    ('L', "SUN_KEYBOARD_HACK"),
+    ('M', "SINGLE_LINE_ZLE"),
+    ('N', "AUTO_PUSHD"),
+    ('O', "CORRECT_ALL"),
+    ('P', "RC_EXPAND_PARAM"),
+    ('Q', "PATH_DIRS"),
+    ('R', "LONG_LIST_JOBS"),
+    ('S', "REC_EXACT"),
+    ('T', "CDABLE_VARS"),
+    ('U', "MAIL_WARNING"),
+    ('V', "NO_PROMPT_CR"),
+    ('W', "AUTO_RESUME"),
+    ('X', "LIST_TYPES"),
+    ('Y', "MENU_COMPLETE"),
+    ('Z', "ZLE"),
+    ('a', "ALL_EXPORT"),
+    ('e', "ERR_EXIT"),
+    ('f', "NO_RCS"),
+    ('g', "HIST_IGNORE_SPACE"),
+    ('h', "HIST_IGNORE_DUPS"),
+    ('i', "INTERACTIVE"),
+    ('k', "INTERACTIVE_COMMENTS"),
+    ('l', "LOGIN"),
+    ('m', "MONITOR"),
+    ('n', "NO_EXEC"),
+    ('p', "PRIVILEGED"),
+    ('r', "RESTRICTED"),
+    ('s', "SHIN_STDIN"),
+    ('t', "SINGLE_COMMAND"),
+    ('u', "NO_UNSET"),
+    ('v', "VERBOSE"),
+    ('w', "CHASE_LINKS"),
+    ('x', "XTRACE"),
+    ('y', "SH_WORD_SPLIT"),
+];
+
+/// What one single-dash option word (`-fT`, `+o`, `-xo`) does where a shell reads options.
+#[derive(Default)]
+struct ShortOptions {
+    /// A letter of the word names an option of the `cd` lookup (`-T` is `CDABLE_VARS`).
+    cd_lookup: bool,
+    /// A letter (`o`, `O`) takes the next word as an option name.
+    takes_name: bool,
+}
+
+/// The one reading of an option cluster for every place that takes shell options: a shell start,
+/// `emulate`, `set`, `setopt` and `unsetopt` (D-17). Every letter is read, because a cluster can
+/// hold the letter of a lookup option behind other letters (`-fT`) or behind `o` and `O` (zsh
+/// reads `-o` and goes on with the letters that follow). A `--` word is a long option, which
+/// `names_cd_lookup_option` judges by name.
+fn scan_short_options(text: &str) -> ShortOptions {
+    let mut scan = ShortOptions::default();
+    if text.starts_with("--") {
+        return scan;
+    }
+    let Some(cluster) = text.strip_prefix(['-', '+']) else {
+        return scan;
+    };
+    for c in cluster.chars() {
+        scan.takes_name |= matches!(c, 'o' | 'O');
+        scan.cd_lookup |= ZSH_SHORT_OPTIONS
+            .iter()
+            .any(|&(letter, name)| letter == c && names_cd_lookup_option(name));
+    }
+    scan
+}
+
 /// `setopt`, `unsetopt`, `shopt` and `set` that turn an option of the `cd` lookup on or off, or
 /// (`set -A`, `+A`) assign an array such as the `cdpath` of zsh. A word of `setopt` that an
 /// expansion decides is unreadable too; the option list of `set` is data.
@@ -1178,12 +1272,16 @@ fn changes_cd_lookup(name: &str, args: &[Word]) -> bool {
         if names_cd_lookup_option(&text) {
             return true;
         }
-        if name == "set" {
+        if matches!(name, "set" | "setopt" | "unsetopt") {
             let cluster = !text.starts_with("--") && (w.is_option() || text.starts_with('+'));
-            if cluster && text[1..].contains('A') {
-                return true;
+            if cluster {
+                // The letters of the cluster are judged by the option they name (D-17).
+                let scan = scan_short_options(&text);
+                if scan.cd_lookup || (name == "set" && text[1..].contains('A')) {
+                    return true;
+                }
+                option_value = scan.takes_name;
             }
-            option_value = text == "-o" || text == "+o";
         }
     }
     false
@@ -1991,6 +2089,11 @@ impl Walker<'_> {
             let w = &args[i];
             i += 1;
             if w.dynamic {
+                // Before the first operand a word is an option or the script, and an expansion
+                // decides which (`"$O" -c …`, `-o$O`): every form is unreadable (D-17).
+                if operands.is_empty() {
+                    return Err(Class::Unreadable);
+                }
                 operands.push(w);
                 continue;
             }
@@ -2000,21 +2103,26 @@ impl Walker<'_> {
             } else if t == "--" {
                 operands.extend(&args[i..]);
                 break;
-            } else if matches!(
-                t.as_str(),
-                "-o" | "+o" | "-O" | "+O" | "--rcfile" | "--init-file"
-            ) {
-                // The value of `-o`, `+o`, `-O` and `+O` is a shell option; the value of the
-                // other two is a file.
-                if t.ends_with(['o', 'O']) && shell_option_unreadable(args.get(i)) {
-                    return Err(Class::Unreadable);
-                }
+            } else if matches!(t.as_str(), "--rcfile" | "--init-file") {
+                // The value of these two is a file.
                 i += 1;
             } else if w.is_option() || t.starts_with('+') {
                 // `--cdablevars`, `-ocdablevars`, `--no-cdable-vars`: a start option that names a
-                // `cd` lookup option is judged like `setopt` (D-12).
+                // `cd` lookup option is judged like `setopt` (D-12); a letter such as `-T` is
+                // judged by the option it names, and the value of `-o` and `-O` (also behind
+                // other letters, `-fo`) is a shell option name (D-17).
                 if names_cd_lookup_option(&t) {
                     return Err(Class::Unreadable);
+                }
+                let scan = scan_short_options(&t);
+                if scan.cd_lookup {
+                    return Err(Class::Unreadable);
+                }
+                if scan.takes_name {
+                    if shell_option_unreadable(args.get(i)) {
+                        return Err(Class::Unreadable);
+                    }
+                    i += 1;
                 }
                 let cluster = t.trim_start_matches(['-', '+']);
                 if !t.starts_with("--") && cluster.contains('c') {
@@ -2067,17 +2175,23 @@ impl Walker<'_> {
             let w = &args[i];
             i += 1;
             if w.dynamic {
-                continue;
+                // Any word of `emulate` may be an option an expansion decides (D-17).
+                return Err(Class::Unreadable);
             }
             let t = w.text();
-            if matches!(t.as_str(), "-o" | "+o") {
-                if shell_option_unreadable(args.get(i)) {
-                    return Err(Class::Unreadable);
-                }
-                i += 1;
-            } else if t.starts_with(['-', '+']) {
+            if t.starts_with(['-', '+']) {
                 if names_cd_lookup_option(&t) {
                     return Err(Class::Unreadable);
+                }
+                let scan = scan_short_options(&t);
+                if scan.cd_lookup {
+                    return Err(Class::Unreadable);
+                }
+                if scan.takes_name {
+                    if shell_option_unreadable(args.get(i)) {
+                        return Err(Class::Unreadable);
+                    }
+                    i += 1;
                 }
                 if t.starts_with('-') && !t.starts_with("--") && t[1..].contains('c') {
                     return match args.get(i) {
