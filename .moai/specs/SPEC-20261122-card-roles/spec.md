@@ -102,4 +102,11 @@ Slices 2 and 3, revision 3, on the branch after the merge of the integration tip
 - The `moai check affected` receipt of the head is in the READY note of the card.
 - By the leader's word (decision of 2026-11-22 on the lane's blocked note, and note 7563): the line `pub mod roles;` in `src/card/mod.rs` and the assign row of the operations table; revision 3 also drops the verdict row of revision 1 from that table, where `card verdict` already has the row of SPEC-20261123-landing-reads-verdict.
 - Not run: a full test run outside the affected set, the Windows type check, a mutant on the identity shape check (the unit test pins the shapes).
+Revision 4 (the card of the non-blocking audit findings N1 to N3). Approval basis: the leader's decision note 7632 on that card (2026-11-23T15:28:55Z), which approves this revision with the refusal of option (a) of note 7631. Numbers come from runs made for this result in the worktree of the card.
+
+- AC-4 met (REQ-4, now through `trailers::same_identity`): `assign_author_identities_are_refused` and the new `assign_author_spellings_are_refused` passed (the upper-case spelling, the `:<12hex>` suffix and both together are refused, nothing is written, a session that never held the card is still accepted).
+- AC-7 met (REQ-8): the new `assign_identity_shapes_are_checked_with_a_reason` passed: `agent-4`, `lane-3`, `abc`, a bad suffix and a short suffix are refused naming the value and the word `session`, and a session id with a worktree suffix is accepted and stored as given; the lib unit test `session_identities_are_session_ids_with_an_optional_worktree_key` pins the shapes.
+- AC-5 stays met with an exact count: the `>=` check of `assign_rows_…` is now `assert_eq!` on the event count before and after each refusal (finding N3).
+- Red first: before the code change both new tests failed because the assignment was written (exit 0 where 1 was expected).
+- Guard mutants (each undone by the inverse edit, `git status` clean after): M1 exact-string holder comparison back in `assign` killed by `assign_author_spellings_are_refused` (exit 100); M2 shape check off (`if false && …`) killed by `assign_identity_shapes_are_checked_with_a_reason` (exit 100).
 - closure_status: open until the audit.
