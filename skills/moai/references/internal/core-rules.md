@@ -45,3 +45,7 @@ Rules with their full text, source and enforcer live in the moai-adk repository'
 
 23. Report completion only after verifying the actual changes and confirming an independent AUDIT result. A command acknowledgement or the existence of a file is not success. A local report file is saved under `~/.moai/reports/<project>/` in the user-level MoAI home, never under the repository.
 24. Take every number and state in a report from a command run for that report, and name the command next to it. An empty output is not zero: say whether the command prints nothing for "none" or also on a failure, and count a paged list only after reading every page. After a write, read the written thing back and report what the read shows, not what was sent. Write a time only from a clock read in the same step (`date -u`).
+
+## Code navigation
+
+25. Code navigation uses only the host's official LSP plugins, `<language>-lsp@claude-plugins-official`. A language server comes from the language's own tool route that the plugin's README lists (rustup, npm, pip or pipx, go install, gem, dotnet tool), never with Homebrew; a server whose README lists no such route is the user's choice. When the plugin or its server is missing, show the install commands as a selection (a `guarded` setting) before installing, and go on after the install and `/reload-plugins`; if the user declines or the install fails, use search and read tools and say in the report that no LSP was used.

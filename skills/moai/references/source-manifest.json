@@ -165,12 +165,12 @@
       }
     },
     "references/internal/core-rules.md": {
-      "sha256": "d5bc05f7295b8eaa41adf9e9ad8583d2be79cc85c56dc790edde78f73448f34a",
+      "sha256": "8356c0ffa0b1455a761feecbbe3832f0ee2969fd1c114db9bb50be33c00d9b9f",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-core-rules",
         "adoption": "adapted",
-        "reason": "Written for rc.2 #2876 (I4 of #2871: rules inside the moai skill, only what changes behaviour on every host) from the MoAI ADK Go generation .claude/rules/moai/** at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): of 113 rule files 1 kept and 9 merged (core/moai-constitution, core/agent-common-protocol, core/native-idiom-and-register, core/verification-claim-integrity, workflow/graceful-exit-mutation-contract, workflow/read-only-status-contract; git, security, dependency and CI-repair rules went to internal/git-safety, internal/review and workflows/run.md), 103 dropped as Go-only, host-specific or already covered (comparison table in the #2876 pull request). Host-neutral wording, no host tool names; at most 4096 bytes (tests/core_rules_2876.rs). Read once per session through the route table's `core_rules` entry, which SKILL.md names, and by every base agent through `reads:`. Rules 19-21 (public prior art, no design for unrequested cases, code wins over instruction files) and the report-first sentence of rule 18 added by #3096 S1 (user instruction 2026-11-16); still at most 4096 bytes."
+        "reason": "Written for rc.2 #2876 (I4 of #2871: rules inside the moai skill, only what changes behaviour on every host) from the MoAI ADK Go generation .claude/rules/moai/** at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): of 113 rule files 1 kept and 9 merged (core/moai-constitution, core/agent-common-protocol, core/native-idiom-and-register, core/verification-claim-integrity, workflow/graceful-exit-mutation-contract, workflow/read-only-status-contract; git, security, dependency and CI-repair rules went to internal/git-safety, internal/review and workflows/run.md), 103 dropped as Go-only, host-specific or already covered (comparison table in the #2876 pull request). Host-neutral wording, no host tool names; at most 4096 bytes (tests/core_rules_2876.rs). Read once per session through the route table's `core_rules` entry, which SKILL.md names, and by every base agent through `reads:`. Rules 19-21 (public prior art, no design for unrequested cases, code wins over instruction files) and the report-first sentence of rule 18 added by #3096 S1 (user instruction 2026-11-16); still at most 4096 bytes. Rule 25 (official LSP plugins only, no Homebrew, install after the user's pick) added by SPEC-20261123-lsp-official-plugins; the byte cap is 5632."
       }
     },
     "references/internal/decide.md": {
@@ -417,12 +417,12 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "c4c57efd782d073e6cb08e53ae185ab52c8d233194245ffaabe2bffebef967d7",
+      "sha256": "4f109c48bc762bc18fa47d193381029e001a5a8082ac84b7c6dfb927b891aa05",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
         "adoption": "new",
-        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B). Step 2 says the root instruction files are moved, not copied, into the backup's root-files/ and that a not-copied restore says why (#2936 S1b repair, audit 6879582411 B2). Step 2 adds the staying-layout backup_ignore stop and the re-proposal of reverted Go settings (#2936 S-AGENTS-STAY, decision 6901387505). Step 3's work-ledger bullet names the fixed place of the ledger-register pick and the Completion Check gains its paragraph (install-flow survey 2026-11-21 finding G13; leader decision 2026-11-20T23:28Z)."
+        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B). Step 2 says the root instruction files are moved, not copied, into the backup's root-files/ and that a not-copied restore says why (#2936 S1b repair, audit 6879582411 B2). Step 2 adds the staying-layout backup_ignore stop and the re-proposal of reverted Go settings (#2936 S-AGENTS-STAY, decision 6901387505). Step 3's work-ledger bullet names the fixed place of the ledger-register pick and the Completion Check gains its paragraph (install-flow survey 2026-11-21 finding G13; leader decision 2026-11-20T23:28Z). Step 6a offers the official LSP plugins and recommended official plugins and step 1 reads `lsp_plugins` (SPEC-20261123-lsp-official-plugins)."
       }
     },
     "workflows/read.md": {
