@@ -5,6 +5,7 @@
 
 mod common;
 use common::home::TempHome;
+use common::CleanEnv;
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
@@ -225,7 +226,7 @@ fn a_fake_server_leaves_its_marker_without_a_path() {
     let marker = marker_dir.path().join("started");
     fake_server(bin.path(), "rust-analyzer", &marker);
     let status = std::process::Command::new(bin.path().join("rust-analyzer"))
-        .env_clear()
+        .clean_env()
         .stdin(Stdio::null())
         .status()
         .unwrap();
