@@ -310,8 +310,47 @@ fn ledger_area_files(root: &Path) -> Vec<PathBuf> {
             out.push(path);
         }
     }
+    // A moved area crate (`tests/<area>/main.rs`, SPEC-20261123-test-area-crates) keeps the
+    // ledger files as modules: the ledger area is the files named `ledger*` inside it too.
+    for area in area_crate_dirs(&tests) {
+        for entry in fs::read_dir(&area).unwrap() {
+            let path = entry.unwrap().path();
+            let stem = path.file_stem().and_then(|n| n.to_str()).unwrap_or("");
+            if path.is_file()
+                && stem.starts_with("ledger")
+                && path.extension().is_some_and(|e| e == "rs")
+            {
+                out.push(path);
+            }
+        }
+    }
     out.sort();
     out
+}
+
+/// The folders of `tests` that hold a `main.rs`: moved area crates.
+fn area_crate_dirs(tests: &Path) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = fs::read_dir(tests)
+        .unwrap()
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.is_dir() && p.join("main.rs").is_file())
+        .collect();
+    out.sort();
+    out
+}
+
+/// A test file by its file name: `tests/<name>` or, once its area moved, `tests/<area>/<name>`.
+fn test_file(root: &Path, name: &str) -> PathBuf {
+    let tests = root.join("tests");
+    let top = tests.join(name);
+    if top.is_file() {
+        return top;
+    }
+    area_crate_dirs(&tests)
+        .into_iter()
+        .map(|area| area.join(name))
+        .find(|p| p.is_file())
+        .unwrap_or(top)
 }
 
 /// Scan A, ledger area: the number of files read and one `path:line name` per direct way to the
@@ -321,7 +360,12 @@ fn ledger_area_problems(root: &Path) -> (usize, Vec<String>) {
     let mut found = Vec::new();
     for path in &files {
         let name = rel(root, path);
-        if LEGACY_LEDGER_NAMED.contains(&name.as_str()) {
+        // The legacy pair is skipped by file name, so it stays skipped inside an area crate.
+        let file = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if LEGACY_LEDGER_NAMED
+            .iter()
+            .any(|legacy| legacy.rsplit('/').next() == Some(file))
+        {
             continue;
         }
         let text = fs::read_to_string(path).unwrap();
@@ -383,15 +427,16 @@ fn ledger_tests_run_the_binary_only_through_temp_home() {
 fn the_ledger_area_still_uses_temp_home() {
     // A scan that finds no direct binary use is empty also when the tests stopped using the
     // helper altogether: at least the CLI test of P1 must go through it.
-    let text = fs::read_to_string(Path::new(ROOT).join("tests/ledger_cli.rs")).unwrap();
-    assert!(text.contains("home.command("), "tests/ledger_cli.rs");
+    let text = fs::read_to_string(test_file(Path::new(ROOT), "ledger_cli.rs")).unwrap();
+    assert!(text.contains("home.command("), "ledger_cli.rs");
 }
 
 #[test]
 fn the_legacy_ledger_named_list_does_not_grow() {
     assert_eq!(LEGACY_LEDGER_NAMED.len(), 2);
     for name in LEGACY_LEDGER_NAMED {
-        let text = fs::read_to_string(Path::new(ROOT).join(name)).unwrap();
+        let file = name.rsplit('/').next().unwrap();
+        let text = fs::read_to_string(test_file(Path::new(ROOT), file)).unwrap();
         // they still carry their reason: a plain temporary HOME of their own
         assert!(text.contains("\"HOME\""), "{name}");
     }
@@ -649,6 +694,41 @@ fn scan_a_names_the_file_and_line_of_a_direct_binary_use() {
             "tests/ledger_bad.rs:4 runs the binary through MOAI_BIN; use TempHome::command",
             "tests/ledger_more/deep.rs:1 runs the binary through CARGO_BIN_EXE_; use TempHome::command",
         ]
+    );
+}
+
+/// After the card area moves, its ledger files are modules of `tests/card/`: the scan still
+/// reads them by their `ledger*` name, skips the legacy pair by file name and ignores the rest.
+#[test]
+fn scan_a_reads_ledger_modules_inside_a_moved_area_crate() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let area = dir.path().join("tests/card");
+    fs::create_dir_all(&area).unwrap();
+    fs::write(area.join("main.rs"), "mod ledger_bad;\n").unwrap();
+    fs::write(
+        area.join("ledger_bad.rs"),
+        "fn t() { Command::new(common::MOAI_BIN); }\n",
+    )
+    .unwrap();
+    fs::write(
+        area.join("ledger_forge_only_cli.rs"),
+        "fn t() { Command::new(common::MOAI_BIN); }\n",
+    )
+    .unwrap();
+    fs::write(
+        area.join("card_free.rs"),
+        "fn t() { Command::new(common::MOAI_BIN); }\n",
+    )
+    .unwrap();
+    let (files, problems) = ledger_area_problems(dir.path());
+    assert_eq!(files, 2, "{problems:?}");
+    assert_eq!(
+        problems,
+        vec!["tests/card/ledger_bad.rs:1 runs the binary through MOAI_BIN; use TempHome::command"]
+    );
+    assert_eq!(
+        test_file(dir.path(), "ledger_bad.rs"),
+        area.join("ledger_bad.rs")
     );
 }
 
