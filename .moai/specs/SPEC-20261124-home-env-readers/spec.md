@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-home-env-readers
 title: "환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 1조각은 layout 이 HOME 을 받아요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7680 (2026-11-23T16:23:19Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 7677 의 결정 1 (a): 판 1 승인, 조각 1 은 src/layout.rs 와 그 테스트·SPEC 안만); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:f5ca20be04d83880689839b23b79d7a58bca6200a8e07d306bc57039763c579e"
 ---
 
 # 환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 1조각은 layout 이 HOME 을 받아요
