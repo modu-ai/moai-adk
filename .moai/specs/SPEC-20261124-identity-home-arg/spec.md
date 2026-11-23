@@ -87,4 +87,15 @@ approval:
 
 ## Result
 
-(RUN 뒤에 채워요.)
+조각 1 의 구현 head 는 `d6a866d911`(가지 `spec/identity-home-arg-20261124`, 기준 `acf8ab1997`)이에요. RED 는 `identity_in` 이 없어 컴파일이 실패했고(`cargo nextest run --offline --locked --lib -E 'test(home_arg_tests)'` → exit 101, `unresolved import super::identity_in`), 구현 뒤 같은 명령이 exit 0, 4 passed, 1765 skipped 였어요. 로그는 `target/c409/` 에 있었고 카드가 열려 있는 동안만 둬요.
+
+- AC-1: 충족. `identity_in_uses_the_home_it_is_given` passed — 임시 폴더를 넘기면 `home_state_root` 가 `home_root::path(<그 폴더>)` 이고 그 폴더 아래에 있어요.
+- AC-2: 충족. `identity_in_without_a_home_ignores_the_environment_home` passed — 자식 프로세스의 환경 HOME 에 `.moai-cli` 가 심볼릭 링크인 폴더를 주면 `identity` 는 `home state root is a symlink; refused` 로 거부되고 `identity_in(path, None)` 은 `home_state_root: null` 로 답해요.
+- AC-3: 충족. `identity_in_refuses_a_symlinked_home_state_root` passed — 넘긴 HOME 의 `.moai-cli` 가 심볼릭 링크면 같은 거부 문장이에요.
+- AC-4: 충족. `identity_equals_identity_in_with_the_environment_home` passed — 환경 HOME 이 설정·빈 값·없음일 때 `identity(path)` 가 `identity_in(path, 같은 값)` 과 같은 답이에요(자식 프로세스 셋, 부모는 환경을 바꾸지 않아요).
+- AC-5: 충족. `git diff --stat acf8ab1997..HEAD -- src` → `src/identity.rs` 한 파일(169 추가, 5 삭제), 호출부 파일 변경 0.
+- 뮤턴트(시험마다 하나, 적용을 `git diff --stat` 으로 확인하고 되돌린 뒤 `git diff --stat` 이 비어 있음을 확인): ① `Some(h)` 가지가 받은 HOME 대신 다른 값을 읽음 → exit 100 (AC-1·AC-3·AC-2 실패) ② `None` 이 환경 HOME 으로 폴백 → exit 100 (AC-2 실패) ③ `refuse_symlink(&root, "home state root")` 삭제 → exit 100 (AC-2·AC-3 실패) ④ `identity` 가 빈 HOME 을 거르지 않음 → exit 100 (AC-4 실패).
+- 실제 HOME: 이 조각의 시험은 부모 프로세스에서 `identity()` 를 부르지 않고(`identity_in` 에 임시 폴더나 `None` 만 넘겨요), 환경 HOME 을 바꿔야 하는 시험은 자식 프로세스에 임시 폴더 HOME 을 줘요. 실제 HOME 의 읽기 전후 비교(atime)는 이 조각에서 재지 않았어요(not_run). 실제 HOME 읽기가 얼마나 줄었는지는 C-406 가드를 다시 돌려 재야 하고 unverified 예요(D-4).
+- 카드 기준 1(identity 가 env HOME 을 직접 읽지 않고 받은 HOME 을 씀)은 부분 충족이에요: `identity_in` 은 환경 변수를 읽지 않고, `identity` 어댑터 한 곳만 읽어요. 호출부가 아직 `identity` 를 불러요(조각 2·3).
+- 카드 기준 2(기준선 줄이 줄고 줄어든 테스트가 enforce 에서 통과)는 충족하지 않았어요(not met): 호출부 변경 없음, `baseline.tsv` 는 C-406 이 쥐고 있어요(조각 4).
+- 후속: 조각 2a·2b·3 은 조각을 시작할 때 범위 확장을 리더 노트로 받아요. `layout::default_home_root` 는 카드 C-410.
