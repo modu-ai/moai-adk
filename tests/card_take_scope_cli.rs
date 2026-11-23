@@ -138,6 +138,21 @@ impl World {
         id
     }
 
+    /// A SPEC whose `## Scope` section is the text given, verbatim; returns its id.
+    fn spec_with_scope(&self, slug: &str, scope: &str) -> String {
+        let id = format!("SPEC-20261123-{slug}");
+        let body = format!(
+            "---\nid: {id}\ntitle: \"a demo\"\nstatus: draft\nrevision: 1\ncreated: 2026-11-23\n---\n\n\
+             # a demo\n\n## Intent\n\nA demo.\n\n## Requirements\n\n- REQ-1: The tool shall do a thing.\n\n\
+             ## Acceptance\n\n- AC-1 (REQ-1): it does the thing.\n  verify: `true`\n\n\
+             ## Scope\n\n{scope}\n\n## Plan\n\n1. Do it.\n"
+        );
+        let dir = self.root.join(moai_cli::spec_doc::SPECS_DIR).join(&id);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("spec.md"), body).unwrap();
+        id
+    }
+
     fn link(&self, card: &str, spec: &str) {
         result(&self.card(None, &["spec", card, spec]));
     }
@@ -350,4 +365,174 @@ fn next_lists_what_take_can_fill() {
     assert_eq!(empty["reason"], json!("empty_scope"), "{empty}");
     // `next` only reads: the cards still have no scope of their own.
     assert_eq!(w.own_scope(&from_spec), json!([]));
+}
+
+// Scope sections copied from real SPECs of this repository (the kinds a fill met on the real
+// SPEC set, audit of the first head): a `write:` list whose spans are not paths, one that wraps
+// into prose, one that repeats a path. Only the lines of `## Scope` that matter are kept.
+
+/// `SPEC-20261119-bundle-build`: backtick spans that are code, not paths (`pub mod build;`).
+const SCOPE_CODE_SPAN: &str = "- write: `src/bundle.rs` (the line `pub mod build;`, the merge-driver list, and what `build` takes from the module), `src/bundle/build.rs`, `src/ops/bundle.rs`, `tests/bundle_build_cli.rs`.\n- read-only: `src/home_workdir.rs`, `src/worktree.rs`.";
+
+/// `SPEC-20261121-remove-codex-project-layer`: a `write:` line that is prose, no backticks (the
+/// words `the`, `and`, `listed` were read as paths).
+const SCOPE_PROSE_LINE: &str = "- write: `.moai/specs/SPEC-20261121-remove-codex-project-layer/**`\n- write: `src/project_hosts.rs`, `src/project_update.rs`\n- write: the tests and fixtures that call an API this slice removes, and the Codex-only test files of the project layer and the hook adapters, listed in the impact report (sections 2.3 and 2.5)\n- read-only: every other file";
+
+/// `SPEC-20261119-card-scope-widen`: an option (`--reason`) in the middle of a path's note.
+const SCOPE_OPTION_SPAN: &str = "- write: `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `src/ops/card.rs` (the new `--reason` option and the help only), `tests/card_scope_widen_cli.rs`\n- read-only: `src/ledger/schema.rs`";
+
+/// `SPEC-20261122-worktree-place`: an untagged list whose items name the same file first.
+const SCOPE_REPEATED_PATH: &str = "- The path keystone (the functions the others call): `src/home_workdir.rs` (worktree_dir, worktrees_root), `src/lib.rs` (the WORKTREES_DIR constant).\n- The local exclude helper (one function every creator calls): `src/home_workdir.rs`; it reads `git rev-parse --git-common-dir`.\n- Creators of new worktrees: `src/worktree.rs` (the worktree command), `src/claude.rs` (the launcher).\n- Checkers and guards: `src/hooks.rs` (the hook path check).";
+
+/// `SPEC-20261123-audit-slot`: a clean list that wraps paths and notes the way real SPECs do.
+const SCOPE_CLEAN: &str = "- write:\n  - `.moai/specs/SPEC-20261123-audit-slot/spec.md`\n  - `src/audit_slot.rs` (new)\n  - `src/lib.rs` (one `pub mod` line)\n  - `tests/audit_slot_cli.rs` (new)\n- read-only: everything else";
+
+/// B1 (REQ-10): a SPEC list with an entry that is not a path shape fills nothing: the take is
+/// refused with the SPEC file and both ways out, the card stays empty, `card next` skips it, and
+/// nothing is reserved or written.
+#[test]
+fn a_spec_list_with_a_word_is_refused_not_stored() {
+    let kinds: [(&str, &str, &str); 3] = [
+        ("code-span", SCOPE_CODE_SPAN, "pub mod build;"),
+        ("prose-line", SCOPE_PROSE_LINE, "the"),
+        ("option-span", SCOPE_OPTION_SPAN, "--reason"),
+    ];
+    for (slug, scope, word) in kinds {
+        let w = world();
+        let name = w.empty_card(slug);
+        let spec = w.spec_with_scope(slug, scope);
+        w.link(&name, &spec);
+        let events = w.count("SELECT count(*) FROM event");
+        let message = refusal(&w.card(Some(S_A), &["take", &name]));
+        let spec_file = format!(".moai/specs/{spec}/spec.md");
+        assert!(message.contains(&spec_file), "{slug}: {message}");
+        assert!(message.contains(&format!("`{word}`")), "{slug}: {message}");
+        assert!(
+            message.contains(&format!("card take {name} --scope <path>")),
+            "{slug}: {message}"
+        );
+        assert!(
+            message.contains(&format!("card scope {name} --scope <path>")),
+            "{slug}: {message}"
+        );
+        assert_eq!(w.count("SELECT count(*) FROM event"), events, "{slug}");
+        assert_eq!(w.count("SELECT count(*) FROM reservation"), 0, "{slug}");
+        assert_eq!(w.own_scope(&name), json!([]), "{slug}");
+        let next = w.next(Some(S_B));
+        assert!(
+            next["ready"].as_array().unwrap().is_empty(),
+            "{slug}: {next}"
+        );
+        let skipped = next["skipped"].as_array().unwrap();
+        let card = skipped.iter().find(|c| c["name"] == json!(name));
+        assert_eq!(
+            card.map(|c| c["reason"].clone()),
+            Some(json!("empty_scope")),
+            "{slug}: {next}"
+        );
+    }
+}
+
+/// B1 (REQ-10): a real list of paths with notes and wrapped list items still fills.
+#[test]
+fn a_clean_real_spec_list_still_fills() {
+    let w = world();
+    let name = w.empty_card("clean");
+    let spec = w.spec_with_scope("clean", SCOPE_CLEAN);
+    w.link(&name, &spec);
+    let took = result(&w.card(Some(S_A), &["take", &name]));
+    assert_eq!(took["scope_source"], json!("spec"), "{took}");
+    assert_eq!(
+        took["reservation"]["write_scope"],
+        json!([
+            ".moai/specs/SPEC-20261123-audit-slot/spec.md",
+            "src/audit_slot.rs",
+            "src/lib.rs",
+            "tests/audit_slot_cli.rs"
+        ]),
+        "{took}"
+    );
+}
+
+/// B1 (REQ-11): a path the list names twice is reserved once; the answer says what was merged.
+#[test]
+fn a_spec_list_that_repeats_a_path_is_merged() {
+    let w = world();
+    let name = w.empty_card("repeat");
+    let spec = w.spec_with_scope("repeat", SCOPE_REPEATED_PATH);
+    w.link(&name, &spec);
+    let took = result(&w.card(Some(S_A), &["take", &name]));
+    assert_eq!(took["scope_source"], json!("spec"), "{took}");
+    assert_eq!(
+        took["reservation"]["write_scope"],
+        // An untagged list item gives its first path only: four items, three different paths.
+        json!(["src/home_workdir.rs", "src/hooks.rs", "src/worktree.rs"]),
+        "{took}"
+    );
+    let warnings = took["warnings"].to_string();
+    assert!(warnings.contains("src/home_workdir.rs"), "{took}");
+    assert!(warnings.contains("merged"), "{took}");
+    assert_eq!(w.own_scope(&name), took["reservation"]["write_scope"]);
+}
+
+/// B2 (REQ-4): the fill takes the newest reservation, not the oldest.
+#[test]
+fn the_last_reservation_is_the_newest_one() {
+    let w = world();
+    let name = w.empty_card("two takes");
+    result(&w.card(Some(S_A), &["take", &name, "--scope", "src/first.rs"]));
+    result(&w.card(Some(S_A), &["release", &name, "--generation", "1"]));
+    // The card keeps `src/first.rs`; the second reservation takes a different scope for it.
+    result(&w.card(Some(S_A), &["take", &name, "--scope", "src/second.rs"]));
+    result(&w.card(Some(S_A), &["release", &name, "--generation", "2"]));
+    w.sql("UPDATE card SET write_scope = '[]' WHERE card_id = 1");
+    let took = result(&w.card(Some(S_B), &["take", &name]));
+    assert_eq!(took["scope_source"], json!("last_reservation"), "{took}");
+    assert_eq!(took["reservation"]["write_scope"], json!(["src/second.rs"]));
+    assert_eq!(w.own_scope(&name), json!(["src/second.rs"]));
+}
+
+/// B3 (REQ-9, REQ-7): `card next` runs the overlap check on the scope it fills in, so a card
+/// whose fill meets another card's active reservation is skipped as `scope_overlap`.
+#[test]
+fn next_skips_a_fill_that_overlaps_a_held_scope() {
+    let w = world();
+    let holder = w.empty_card("holder");
+    result(&w.card(Some(S_A), &["take", &holder, "--scope", "src/x.rs"]));
+    let name = w.empty_card("filled");
+    let spec = w.spec("fill-next-overlap", &["src/x.rs".into()]);
+    w.link(&name, &spec);
+    let next = w.next(Some(S_B));
+    let ready = next["ready"].as_array().unwrap();
+    assert!(
+        ready.iter().all(|c| c["name"] != json!(name)),
+        "{name} is offered although its fill overlaps {holder}: {next}"
+    );
+    let skipped = next["skipped"].as_array().unwrap();
+    let card = skipped
+        .iter()
+        .find(|c| c["name"] == json!(name))
+        .unwrap_or_else(|| panic!("no {name} in {next}"));
+    assert_eq!(card["reason"], json!("scope_overlap"), "{card}");
+}
+
+/// N2 (REQ-12): a comma inside a `--scope` value is refused, for a take and for `card scope`; one
+/// `--scope` names one path.
+#[test]
+fn a_comma_in_a_scope_value_is_refused() {
+    let w = world();
+    let name = w.empty_card("commas");
+    let message = refusal(&w.card(
+        Some(S_A),
+        &["take", &name, "--scope", "src/a.rs,src/b.rs"],
+    ));
+    assert!(message.contains("comma"), "{message}");
+    assert!(message.contains("one `--scope` per path"), "{message}");
+    assert_eq!(w.count("SELECT count(*) FROM reservation"), 0);
+    let message = refusal(&w.card(
+        None,
+        &["scope", &name, "--scope", "src/a.rs,src/b.rs", "--by", "leader"],
+    ));
+    assert!(message.contains("comma"), "{message}");
+    assert_eq!(w.own_scope(&name), json!([]));
 }
