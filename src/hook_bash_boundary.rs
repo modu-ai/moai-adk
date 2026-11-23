@@ -131,6 +131,7 @@ const TRIGGERS_MORE: &[&str] = &[
     "alias",
     "enable",
     "setopt",
+    "emulate",
     "cdpath",
     "cdable",
 ];
@@ -1150,6 +1151,12 @@ fn names_cd_lookup_option(text: &str) -> bool {
     flat.contains("cdablevars") || flat.contains("cdpath")
 }
 
+/// The word after a shell start option `-o`, `+o`, `-O` or `+O` (or after `emulate -o`): an
+/// option of the `cd` lookup, or a name an expansion decides, leaves the folder unreadable.
+fn shell_option_unreadable(value: Option<&Word>) -> bool {
+    value.is_some_and(|v| v.dynamic || names_cd_lookup_option(&v.text()))
+}
+
 /// `setopt`, `unsetopt`, `shopt` and `set` that turn an option of the `cd` lookup on or off, or
 /// (`set -A`, `+A`) assign an array such as the `cdpath` of zsh. A word of `setopt` that an
 /// expansion decides is unreadable too; the option list of `set` is data.
@@ -1535,6 +1542,7 @@ impl Walker<'_> {
                 "find" => return self.find(args, &prefix, stdin, state, depth),
                 "git" => return self.git(args, &prefix, state, depth),
                 "eval" => return self.eval(args, &with_prefix(state, &prefix), depth),
+                "emulate" => return self.emulate(args, &with_prefix(state, &prefix), depth),
                 "xargs" => return xargs(args),
                 "parallel" => {
                     return if args
@@ -1996,8 +2004,18 @@ impl Walker<'_> {
                 t.as_str(),
                 "-o" | "+o" | "-O" | "+O" | "--rcfile" | "--init-file"
             ) {
+                // The value of `-o`, `+o`, `-O` and `+O` is a shell option; the value of the
+                // other two is a file.
+                if t.ends_with(['o', 'O']) && shell_option_unreadable(args.get(i)) {
+                    return Err(Class::Unreadable);
+                }
                 i += 1;
             } else if w.is_option() || t.starts_with('+') {
+                // `--cdablevars`, `-ocdablevars`, `--no-cdable-vars`: a start option that names a
+                // `cd` lookup option is judged like `setopt` (D-12).
+                if names_cd_lookup_option(&t) {
+                    return Err(Class::Unreadable);
+                }
                 let cluster = t.trim_start_matches(['-', '+']);
                 if !t.starts_with("--") && cluster.contains('c') {
                     command_string = true;
@@ -2036,6 +2054,39 @@ impl Walker<'_> {
         }
         if stdin.piped || stdin.redirected {
             return Err(Class::Unreadable);
+        }
+        Ok(())
+    }
+
+    /// zsh `emulate [-lLR] [shell] [-o OPTION]… [-c STRING]`: it sets shell options like a shell
+    /// start does, so an option that changes where `cd` lands (or that an expansion decides) is
+    /// unreadable, and the `-c` string is judged as if it stood alone.
+    fn emulate(&mut self, args: &[Word], state: &State, depth: usize) -> Verdict {
+        let mut i = 0;
+        while i < args.len() {
+            let w = &args[i];
+            i += 1;
+            if w.dynamic {
+                continue;
+            }
+            let t = w.text();
+            if matches!(t.as_str(), "-o" | "+o") {
+                if shell_option_unreadable(args.get(i)) {
+                    return Err(Class::Unreadable);
+                }
+                i += 1;
+            } else if t.starts_with(['-', '+']) {
+                if names_cd_lookup_option(&t) {
+                    return Err(Class::Unreadable);
+                }
+                if t.starts_with('-') && !t.starts_with("--") && t[1..].contains('c') {
+                    return match args.get(i) {
+                        Some(s) if s.dynamic => Err(Class::Unreadable),
+                        Some(s) => self.walk(&s.text(), &mut state.clone(), depth + 1),
+                        None => Ok(()),
+                    };
+                }
+            }
         }
         Ok(())
     }
@@ -2420,7 +2471,7 @@ impl Walker<'_> {
                 let track = p
                     .opts
                     .iter()
-                    .any(|(o, _)| o == "-t" || o == "--track" || o.starts_with("--track="));
+                    .any(|(o, _)| o == "-t" || long_matches(o, "--track"));
                 let named = NAME_SLOTS.iter().any(|f| !p.values_of(f).is_empty());
                 if track && !named && name != "worktree" {
                     if let Some(start) = p.pos.first() {
@@ -2891,15 +2942,63 @@ fn peel(spec: &WrapSpec, args: &[Word]) -> Result<usize, Peel> {
     Ok(i.min(args.len()))
 }
 
+/// Full names of git options that are also the start of a longer option this file knows. git takes
+/// the exact name before any prefix, so these never stand for the longer one (`--force` is its own
+/// option of `checkout` and `switch`, not `--force-create`).
+const EXACT_WINS: &[&str] = &["--force"];
+
+/// The one rule for a long option written in a git command line (D-16): git takes any
+/// unambiguous prefix of a long option name (`--roo` for `--root`, `--upload-pa=…` for
+/// `--upload-pack=…`), so `typed` (the word, with or without an attached `=value`) matches `full`
+/// when its name part is a non-empty start of it. A prefix that git finds ambiguous is an error
+/// there, so matching every prefix never lets through a command git would run. The global options
+/// before the subcommand are not prefix-matched by git and do not come here.
+fn long_matches(typed: &str, full: &str) -> bool {
+    let (Some(t), Some(f)) = (typed.strip_prefix("--"), full.strip_prefix("--")) else {
+        return false;
+    };
+    let name = t.split_once('=').map_or(t, |(n, _)| n);
+    if name.is_empty() || !f.starts_with(name) {
+        return false;
+    }
+    name == f || !EXACT_WINS.contains(&format!("--{name}").as_str())
+}
+
+/// `typed` names `flag`: a short flag by its text, a long flag by [`long_matches`].
+fn same_flag(typed: &str, flag: &str) -> bool {
+    if flag.starts_with("--") {
+        long_matches(typed, flag)
+    } else {
+        typed == flag
+    }
+}
+
+/// A word that a substitution or expansion decides, but whose readable part already names the
+/// option that carries a program, with the value written against it (`--upload-pack=$X`,
+/// `-u"$X"`, `-qu"$X"`, `--upload-pa$X`): the program is unreadable, like the separate form.
+fn attached_dynamic_value(literal: &str, shorts: &[char], longs: &[&str]) -> bool {
+    if literal.starts_with("--") {
+        longs.iter().any(|long| long_matches(literal, long))
+    } else if literal.starts_with('-') && literal.len() > 1 {
+        shorts.iter().any(|c| literal[1..].contains(*c))
+    } else {
+        false
+    }
+}
+
 /// The values of the options that carry a command: a short letter (`-x CMD`, `-xCMD`, or a
-/// cluster that ends in it) and a long name (`--exec CMD`, `--exec=CMD`). A value that a
-/// substitution decides is unreadable.
+/// cluster that ends in it) and a long name (`--exec CMD`, `--exec=CMD`, and any prefix of the
+/// name, [`long_matches`]). A value that a substitution decides is unreadable, written apart from
+/// the option or against it.
 fn option_values(rest: &[Word], shorts: &[char], longs: &[&str], out: &mut Vec<String>) -> Verdict {
     let mut i = 0;
     while i < rest.len() {
         let w = &rest[i];
         i += 1;
         if w.dynamic {
+            if attached_dynamic_value(&w.text(), shorts, longs) {
+                return Err(Class::Unreadable);
+            }
             continue;
         }
         let t = w.text();
@@ -2912,10 +3011,11 @@ fn option_values(rest: &[Word], shorts: &[char], longs: &[&str], out: &mut Vec<S
         let mut take_next = false;
         if t.starts_with("--") {
             for long in longs {
-                if t == *long {
-                    take_next = true;
-                } else if let Some(v) = t.strip_prefix(&format!("{long}=")) {
-                    out.push(v.to_owned());
+                if long_matches(&t, long) {
+                    match t.split_once('=') {
+                        Some((_, v)) => out.push(v.to_owned()),
+                        None => take_next = true,
+                    }
                 }
             }
         } else {
@@ -3116,7 +3216,7 @@ fn classify_git(name: &str, rest: &[Word]) -> Result<GitKind, Class> {
     let first_pos = || rest.iter().find(|w| !w.is_option()).map(Word::text);
     let any_flag = |flags: &[&str]| {
         rest.iter()
-            .any(|w| !w.dynamic && flags.contains(&w.text().as_str()))
+            .any(|w| !w.dynamic && flags.iter().any(|f| same_flag(&w.text(), f)))
     };
     let positionals = rest.iter().filter(|w| !w.is_option()).count();
     Ok(match name {
@@ -3330,6 +3430,16 @@ fn data_slots(sub: &str) -> &'static [&'static str] {
     }
 }
 
+/// `typed` is the option of a slot (an option whose next word is its value): a short slot by its
+/// text, a long slot by [`long_matches`] when no value is attached to it with `=`.
+fn slot_named(typed: &str, slot: &str) -> bool {
+    if slot.starts_with("--") {
+        !typed.contains('=') && long_matches(typed, slot)
+    } else {
+        typed == slot
+    }
+}
+
 /// Options whose next word is a branch name, for the ref checks.
 const NAME_SLOTS: &[&str] = &[
     "-b",
@@ -3370,10 +3480,10 @@ impl<'a> Parsed<'a> {
                 continue;
             }
             if w.is_option() {
-                if slots.contains(&t.as_str()) {
+                if slots.iter().any(|s| slot_named(&t, s)) {
                     i += 1;
                     p.opts.push((t, None));
-                } else if NAME_SLOTS.contains(&t.as_str())
+                } else if NAME_SLOTS.iter().any(|s| slot_named(&t, s))
                     && matches!(sub, "checkout" | "switch" | "worktree")
                 {
                     let value = rest.get(i);
@@ -3397,7 +3507,7 @@ impl<'a> Parsed<'a> {
     }
 
     fn has(&self, flag: &str) -> bool {
-        self.opts.iter().any(|(o, _)| o == flag)
+        self.opts.iter().any(|(o, _)| same_flag(o, flag))
     }
 
     fn has_any(&self, flags: &[&str]) -> bool {
@@ -3405,14 +3515,22 @@ impl<'a> Parsed<'a> {
     }
 
     fn values_of(&self, flag: &str) -> Vec<String> {
-        let mut out: Vec<String> = self
-            .opts
-            .iter()
-            .filter(|(o, _)| o == flag)
-            .filter_map(|(_, v)| v.clone())
-            .collect();
-        // `-Bname` attached to the flag.
-        for (o, _) in &self.opts {
+        let mut out: Vec<String> = Vec::new();
+        for (o, v) in &self.opts {
+            if flag.starts_with("--") {
+                // A long flag or any prefix of it, with the value apart or against it.
+                if long_matches(o, flag) {
+                    match o.split_once('=') {
+                        Some((_, attached)) => out.push(attached.to_owned()),
+                        None => out.extend(v.clone()),
+                    }
+                }
+                continue;
+            }
+            if o == flag {
+                out.extend(v.clone());
+            }
+            // `-Bname` attached to the flag.
             if flag.len() == 2 && o.len() > 2 && o.starts_with(flag) && !o.starts_with("--") {
                 out.push(o[2..].to_owned());
             }
@@ -3485,11 +3603,9 @@ fn hook_checks(name: &str, p: &Parsed, rest: &[Word]) -> Verdict {
         return Err(Class::Unreadable);
     }
     for (o, _) in &p.opts {
-        if let Some(long) = o.strip_prefix("--") {
-            // An unambiguous prefix of a long option is accepted: `--no-v` and longer.
-            if long.len() >= 4 && "no-verify".starts_with(long) && long.starts_with("no-v") {
-                return Err(Class::HookSkip);
-            }
+        // Any prefix of `--no-verify` that no other option shares (`--no-v` and longer).
+        if o.starts_with("--no-v") && long_matches(o, "--no-verify") {
+            return Err(Class::HookSkip);
         }
     }
     if name == "commit" {
@@ -3525,4 +3641,65 @@ fn hook_checks(name: &str, p: &Parsed, rest: &[Word]) -> Verdict {
         }
     }
     Ok(())
+}
+
+/// D-16: the one rule for a long git option written as a prefix of its name (AC-16).
+#[cfg(test)]
+mod long_option_rule_tests {
+    use super::{attached_dynamic_value, long_matches, same_flag, slot_named};
+
+    #[test]
+    fn a_prefix_of_the_name_matches_with_or_without_an_attached_value() {
+        assert!(long_matches("--root", "--root"));
+        assert!(long_matches("--roo", "--root"));
+        assert!(long_matches("--r", "--root"));
+        assert!(long_matches("--upload-pa=git-upload-pack", "--upload-pack"));
+        assert!(!long_matches("--rootx", "--root"));
+        assert!(!long_matches("--onto", "--root"));
+    }
+
+    #[test]
+    fn a_lone_dash_pair_a_short_flag_and_a_missing_name_match_nothing() {
+        assert!(!long_matches("--", "--root"));
+        assert!(!long_matches("--=x", "--root"));
+        assert!(!long_matches("-r", "--root"));
+        assert!(!long_matches("--root", "-r"));
+        assert!(!long_matches("root", "--root"));
+    }
+
+    #[test]
+    fn the_exact_name_of_another_option_wins_over_a_longer_one() {
+        assert!(!long_matches("--force", "--force-create"));
+        assert!(long_matches("--force-cr", "--force-create"));
+        assert!(long_matches("--force", "--force"));
+    }
+
+    #[test]
+    fn a_short_flag_is_compared_by_its_text_only() {
+        assert!(same_flag("-d", "-d"));
+        assert!(!same_flag("-dd", "-d"));
+        assert!(same_flag("--detac", "--detach"));
+    }
+
+    #[test]
+    fn a_slot_takes_its_value_from_the_next_word_only_without_an_equals_sign() {
+        assert!(slot_named("--exe", "--exec"));
+        assert!(!slot_named("--exe=x", "--exec"));
+        assert!(slot_named("-x", "-x"));
+        assert!(!slot_named("-xy", "-x"));
+    }
+
+    #[test]
+    fn a_dynamic_word_that_names_a_program_option_with_the_value_against_it_is_found() {
+        let longs = ["--upload-pack"];
+        assert!(attached_dynamic_value("--upload-pack=", &[], &longs));
+        assert!(attached_dynamic_value("--upload-pa", &[], &longs));
+        assert!(attached_dynamic_value("-u", &['u'], &longs));
+        assert!(attached_dynamic_value("-qu", &['u'], &longs));
+        assert!(!attached_dynamic_value("--depth=", &['u'], &longs));
+        assert!(!attached_dynamic_value("-q", &['u'], &longs));
+        assert!(!attached_dynamic_value("--", &['u'], &longs));
+        assert!(!attached_dynamic_value("", &['u'], &longs));
+        assert!(!attached_dynamic_value("x-u", &['u'], &longs));
+    }
 }

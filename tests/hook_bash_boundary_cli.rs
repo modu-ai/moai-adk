@@ -698,6 +698,7 @@ fn all_cases() -> Vec<Case> {
     all.extend(unreadable_cases());
     all.extend(audit_denied_cases());
     all.extend(second_audit_denied_cases());
+    all.extend(third_audit_denied_cases());
     all
 }
 
@@ -2090,6 +2091,153 @@ fn ac15_the_second_audit_table_denied_and_allowed_shapes() {
     let mut cases = second_audit_denied_cases();
     cases.extend(second_audit_allowed_cases());
     run_table(&World::new(), "second-audit", &cases);
+}
+
+// ------------------------------------------------------------------- AC-16
+//
+// The third audit repair (AUDIT #403 delta 3, note 7769), three families closed by a rule: a shell
+// start option that changes where `cd` lands (S-1, judged like `setopt`), a long option written as
+// a prefix of its name (S-2, git takes any unambiguous prefix, compared in one place), and a dynamic
+// value written against the option that carries a program (S-3, unreadable like the separate form).
+
+fn third_audit_denied_cases() -> Vec<Case> {
+    use S::{Main, Own};
+    let (de, pr, ur) = ("delete-outside", "protected-ref", "unreadable");
+    vec![
+        // S-1: a shell start option names a `cd` lookup option, in every spelling.
+        d(
+            Own,
+            "zsh -o cdablevars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "zsh --cdablevars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "zsh --cdable-vars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "bash -O cdable_vars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "sh -O cdable_vars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "zsh -ocdablevars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "zsh +o cdablevars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "emulate zsh -o cdablevars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(Own, "bash -o $OPT -c 'ls'", ur),
+        d(Own, "bash -O \"$OPT\" -c 'ls'", ur),
+        d(Own, "env CDPATH=/opt zsh -o cdablevars -c 'ls'", ur),
+        // S-2: a long option written as a prefix of its name.
+        d(Own, "git rebase --roo NeXT", pr),
+        d(Own, "git rebase --ro NeXT", pr),
+        d(Own, "git rebase -f --roo NeXT", pr),
+        d(Own, "git rebase --root --onto lane/own NeXT", pr),
+        d(Own, "git push --mir origin", pr),
+        d(Own, "git push --al origin", pr),
+        d(Own, "git checkout --orph NeXT", pr),
+        d(Own, "git switch --crea NeXT", pr),
+        d(Own, "git clone --upload-pa='rm -rf {OUT}/x' . y", de),
+        d(Own, "git clone --upload-pa 'rm -rf {OUT}/x' . y", de),
+        d(Own, "git fetch --upload-pac='rm -rf {OUT}/x' .", de),
+        d(Own, "git fetch --upload-pac 'rm -rf {OUT}/x' .", de),
+        d(Own, "git ls-remote --upload-pa='rm -rf {OUT}/x' .", de),
+        d(Own, "git push --receive-pa='rm -rf {OUT}/x' .", de),
+        d(Own, "git push --exe='rm -rf {OUT}/x' .", de),
+        d(Own, "git rebase --exe='rm -rf {OUT}/x' HEAD~1", de),
+        d(Own, "git rebase --exe 'rm -rf {OUT}/x' HEAD~1", de),
+        d(Own, "git difftool --extc='rm -rf {OUT}/x' HEAD~1", de),
+        d(Own, "git grep --open-files-in-p='rm -rf {OUT}/x' foo", de),
+        d(
+            Own,
+            "git filter-branch --tree-fi='rm -rf {OUT}/x' -- HEAD",
+            de,
+        ),
+        d(Main, "git rebase --roo NeXT", pr),
+        // S-3: a dynamic value written against the option that carries a program is unreadable,
+        // like the separate form.
+        d(Own, "git clone --upload-pack=\"$(echo rm)\" . y", ur),
+        d(Own, "git clone --upload-pack=${X} . y", ur),
+        d(Own, "git clone --upload-pack=`echo rm` . y", ur),
+        d(Own, "git clone --upload-pack=$X . y", ur),
+        d(Own, "git clone -u\"$X\" . y", ur),
+        d(Own, "git clone -qu\"$X\" . y", ur),
+        d(Own, "git clone --upload-pa=$X . y", ur),
+        d(Own, "git grep -O\"$X\" foo", ur),
+        d(Own, "git ls-remote --upload-pack=$X .", ur),
+        d(Own, "git difftool --extcmd=$X HEAD~1", ur),
+        d(Own, "git difftool -x\"$X\" HEAD~1", ur),
+        d(Own, "git rebase --exec=$X HEAD~1", ur),
+        d(Own, "git rebase -x\"$X\" HEAD~1", ur),
+        d(Own, "git push --receive-pack=\"$X\" .", ur),
+        d(Own, "git filter-branch --tree-filter=\"$X\" -- HEAD", ur),
+    ]
+}
+
+fn third_audit_allowed_cases() -> Vec<Case> {
+    use S::Own;
+    vec![
+        // S-1: start options that name no `cd` lookup option.
+        a(Own, "bash -O extglob -c 'ls'"),
+        a(Own, "zsh -o extendedglob -c 'ls'"),
+        a(Own, "bash -o pipefail -c 'cd src && ls'"),
+        a(Own, "zsh -o nomatch -c 'ls'"),
+        a(Own, "sh -c 'cd src && ls'"),
+        a(Own, "emulate -L zsh"),
+        a(Own, "emulate zsh -c 'ls'"),
+        a(Own, "bash --norc -c 'ls'"),
+        a(Own, "bash --rcfile ~/.cdablevars -c 'ls'"),
+        // S-2: prefixes that name nothing dangerous, and values that are harmless programs.
+        a(Own, "git rebase --root lane/own"),
+        a(Own, "git rebase --roo lane/own"),
+        a(Own, "git clone --upload-pa=git-upload-pack . y"),
+        a(Own, "git fetch --upload-pac=git-upload-pack ."),
+        a(
+            Own,
+            "git push --receive-pa=git-receive-pack origin lane/own",
+        ),
+        a(Own, "git rebase --exe='make test' HEAD~1"),
+        a(Own, "git difftool --extc=meld HEAD~1"),
+        a(Own, "git grep --open-files-in-p=less foo"),
+        a(Own, "git push --tag origin v1"),
+        a(Own, "git checkout --force lane/other"),
+        a(Own, "git switch --crea lane/new"),
+        // S-3: a dynamic value against an option that carries no program.
+        a(Own, "git clone --depth=\"$N\" . y"),
+        a(Own, "git clone --branch=$B . y"),
+        a(Own, "git clone -q\"$X\" . y"),
+        a(Own, "git grep -n\"$X\" foo"),
+        a(Own, "git grep -e \"$PAT\" src"),
+        a(Own, "git log --format=\"$F\" -1"),
+        a(Own, "git ls-remote --heads $URL"),
+    ]
+}
+
+#[test]
+fn ac16_the_third_audit_table_denied_and_allowed_shapes() {
+    let mut cases = third_audit_denied_cases();
+    cases.extend(third_audit_allowed_cases());
+    run_table(&World::new(), "third-audit", &cases);
 }
 
 #[test]
