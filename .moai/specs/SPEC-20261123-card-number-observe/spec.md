@@ -80,6 +80,7 @@ approval:
 - RED(구현 전): `cargo nextest run --offline --locked --test spec_card_number_observe` 가 6개 중 4개 실패(알림 없음), 2개 통과(실제 SPEC 읽기·문장 핀은 처음부터 맞는 특성화), exit 100.
 - 구현 뒤: 같은 명령이 6개 모두 통과. 합친 뒤 `cargo nextest run --offline --locked --test repo_scans_table --test spec_card_number_observe` 가 28개 모두 통과, exit 0. 등록 전에는 `repo_scans_table` 의 `every_walking_test_file_is_listed_or_exempt` 와 `every_file_reader_has_an_always_scan_or_an_exemption` 가 이 테스트 파일 때문에 실패했어요.
 - guard-mutant 6개를 하나씩 넣어 모두 exit 100: ① 날짜 비교 삭제 → 3개 실패, ② 낱말 시작 검사 삭제 → 3개 실패, ③ 경고를 오류로(`doc.warn` → `doc.error`) → 2개 실패, ④ `approval.at` 갈래 삭제 → 1개 실패, ⑤ 새 형식 id 검사 삭제 → 1개 실패, ⑥ 핀 테스트의 문장 비교 삭제 → 1개 실패. 매번 `git checkout` 으로 되돌렸어요.
+- `check affected` 첫 실행(head `1c66b05cf7`)은 `state_folder_literal_scan` 1개로 FAIL(3832개 중 1개, 새 테스트 파일이 상태 폴더 이름을 글자 그대로 두 번 써서 `tests/fixtures/state_folder_literals/allow.tsv` 밖이라고 걸림, 로그 `04-test.log`). 이름을 `spec_doc::SPECS_DIR` 상수로 바꾸고 주석에서 빼서 고쳤고, `cargo nextest run --offline --locked --test state_folder_literal_scan --test spec_card_number_observe --test repo_scans_table` 34개 통과(exit 0)를 읽은 뒤 새 head 에서 `check affected` 를 다시 돌렸어요.
 
 - AC-1: met — `a_new_spec_with_card_numbers_gets_one_observe_warning` 통과. 경고 하나(번호 둘, 첫 줄 번호와 개수만 말하고 SPEC 글은 안 담아요), 낱말 안의 `AC-1`·`SPEC-…`·`ABC-5` 는 안 세고, 번호를 깬 같은 글과 오류 수가 같아요. 보조 `only_a_card_number_at_a_word_start_counts` 통과.
 - AC-2: met — `a_revised_spec_is_judged_by_its_approval_date` 통과. `created` 가 옛날이어도 `approval.at` 이 `2026-11-25` 면 경고 하나, `2026-11-24` 면 없어요.

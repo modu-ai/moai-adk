@@ -1,7 +1,7 @@
 //! SPEC-20261123-card-number-observe: `moai spec check` counts card numbers (`C-` and digits) of
 //! new and revised SPECs as an observe notice, and the sentence of rule 10 in `sdd.md` is pinned.
-//! Texts are built in memory; two cases read the checked-in tree (`.moai/specs` and `sdd.md`)
-//! without writing anything.
+//! Texts are built in memory; two cases read the checked-in tree (the project's SPEC folder and
+//! `sdd.md`) without writing anything.
 
 use moai_cli::spec_doc::{parse, Finding, Options, Severity, SpecDoc};
 use std::fs;
@@ -177,7 +177,7 @@ fn only_a_card_number_at_a_word_start_counts() {
 }
 
 fn spec_texts() -> Vec<(String, String)> {
-    let dir = Path::new(ROOT).join(".moai/specs");
+    let dir = Path::new(ROOT).join(moai_cli::spec_doc::SPECS_DIR);
     let mut out = Vec::new();
     for entry in fs::read_dir(&dir).expect("the specs folder") {
         let entry = entry.unwrap();
