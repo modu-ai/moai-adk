@@ -1962,3 +1962,232 @@ fn refs_audit_floor_list_is_pointed_to() {
         "agents/audit.md lacks the floor-list pointer"
     );
 }
+
+// SPEC-20261123-self-check-rust-only: two items of the self-check list say that tests are Rust
+// only and that only the cargo checks of the repo-scans list are run, and the audit-brief bullet
+// of the flow reference names the scan tests and records each as a step of the PASS receipt. Each
+// sentence is pinned whole, and a text that keeps its words and reverses its meaning fails.
+
+const SELF_CHECK: &str = "references/internal/self-check.md";
+
+/// The byte size of the flow reference on the integration tip that landed the cargo-only pin
+/// (leader dispatch of 2026-11-23); the restored meanings fit inside it.
+const FLOW_REF_TIP_BYTES: usize = 7974;
+
+/// The first line of `text` that holds `marker`, a list item found by its first words so that a
+/// renumbered list does not break the pin.
+fn item_holding<'a>(text: &'a str, marker: &str) -> Option<&'a str> {
+    text.lines().find(|l| l.contains(marker))
+}
+
+/// What item 3 of the self-check list (`Whole binaries:`) gets wrong: it must say that tests are
+/// Rust only, run the cargo checks of the scan table and the macOS-only tests, and name no Python
+/// test.
+fn self_check_tests_item_problems(text: &str) -> Vec<String> {
+    let Some(item) = item_holding(text, "Whole binaries:") else {
+        return vec![format!("{SELF_CHECK} has no `Whole binaries:` item")];
+    };
+    let lower = item.to_lowercase();
+    let mut problems: Vec<String> = ["python", "unittest"]
+        .iter()
+        .filter(|word| lower.contains(**word))
+        .map(|word| format!("item 3 names {word:?}: {item}"))
+        .collect();
+    for part in [
+        "Tests are Rust only",
+        "`--test <name>`",
+        "every `cargo` check of `tools/repo_scans.json`",
+        "`cfg(target_os)`",
+    ] {
+        if !item.contains(part) {
+            problems.push(format!("item 3 lacks {part:?}: {item}"));
+        }
+    }
+    problems
+}
+
+/// What item 5 (`Files tests read:`) gets wrong: the repo-scans command must be named and its
+/// list read as cargo checks only, with a Python line left out. The phrase is read whole from
+/// `needs;` so that `never run only …` is not the sentence.
+fn self_check_repo_scans_item_problems(text: &str) -> Vec<String> {
+    let Some(item) = item_holding(text, "Files tests read:") else {
+        return vec![format!("{SELF_CHECK} has no `Files tests read:` item")];
+    };
+    [
+        "`moai repo-scans --refs <tip> HEAD` lists the repo-wide scans",
+        "needs; run only their `cargo` checks and leave out a Python line",
+    ]
+    .iter()
+    .filter(|part| !item.contains(**part))
+    .map(|part| format!("item 5 lacks {part:?}: {item}"))
+    .collect()
+}
+
+/// SPEC-20261123-self-check-rust-only AC-1 (REQ-1): the tests item of the self-check list says
+/// that tests are Rust only and names no Python test.
+#[test]
+fn self_check_tests_item_names_no_python_test() {
+    let problems = self_check_tests_item_problems(&read(SELF_CHECK));
+    assert!(problems.is_empty(), "{problems:?}");
+}
+
+/// SPEC-20261123-self-check-rust-only AC-2 (REQ-2): the files item runs only the cargo checks of
+/// the repo-scans list and leaves out its Python lines.
+#[test]
+fn self_check_repo_scans_item_runs_cargo_checks_only() {
+    let problems = self_check_repo_scans_item_problems(&read(SELF_CHECK));
+    assert!(problems.is_empty(), "{problems:?}");
+}
+
+/// SPEC-20261123-self-check-rust-only AC-3 (REQ-3): each item with its words kept and its
+/// meaning reversed, or with the sentence removed, is a problem; each mutant really changes the
+/// text.
+#[test]
+fn self_check_pins_reject_reversed_sentences() {
+    let text = read(SELF_CHECK);
+    let item3 = item_holding(&text, "Whole binaries:")
+        .unwrap_or_else(|| panic!("{SELF_CHECK} has no `Whole binaries:` item"))
+        .to_string();
+    let item5 = item_holding(&text, "Files tests read:")
+        .unwrap_or_else(|| panic!("{SELF_CHECK} has no `Files tests read:` item"))
+        .to_string();
+    let item3_mutants = [
+        (
+            "Rust-only sentence reversed",
+            item3.replace("Tests are Rust only", "Tests are not Rust only"),
+        ),
+        (
+            "Rust-only sentence removed",
+            item3.replace("Tests are Rust only", ""),
+        ),
+        (
+            "Python tests asked for again",
+            format!("{item3} Also run the Python tests of the area."),
+        ),
+        (
+            "cargo word dropped from the table checks",
+            item3.replace("every `cargo` check of", "every check of"),
+        ),
+    ];
+    for (name, mutant) in item3_mutants {
+        assert!(mutant != item3, "{name}: the mutant did not change item 3");
+        assert!(
+            !self_check_tests_item_problems(&text.replace(&item3, &mutant)).is_empty(),
+            "{name}: the pin passes without the sentence"
+        );
+    }
+    let item5_mutants = [
+        (
+            "meaning reversed",
+            item5.replace(
+                "run only their `cargo` checks and leave out a Python line",
+                "run all their checks and include a Python line",
+            ),
+        ),
+        (
+            "Python line kept",
+            item5.replace("leave out a Python line", "leave in a Python line"),
+        ),
+        (
+            "sentence negated",
+            item5.replace("needs; run only", "needs; never run only"),
+        ),
+        (
+            "clause removed",
+            item5.replace(
+                "run only their `cargo` checks and leave out a Python line",
+                "",
+            ),
+        ),
+    ];
+    for (name, mutant) in item5_mutants {
+        assert!(mutant != item5, "{name}: the mutant did not change item 5");
+        assert!(
+            !self_check_repo_scans_item_problems(&text.replace(&item5, &mutant)).is_empty(),
+            "{name}: the pin passes without the sentence"
+        );
+    }
+}
+
+/// What the audit-brief bullet of the flow reference lacks of its restored meanings, beside the
+/// cargo-only reading: the brief names the scan tests the command picks, and each is recorded as a
+/// receipt step of the PASS. Both phrases are read from their start, so `never name` and `never
+/// record` are not the sentence.
+fn flow_scan_receipt_problems(flow: &str) -> Vec<String> {
+    let mut problems = repo_scans_cargo_only_problems(flow);
+    let Some(bullet) = flow.lines().find(|l| l.contains("moai repo-scans")) else {
+        return problems;
+    };
+    for part in [
+        "Audit brief: name the scan tests `moai repo-scans --refs <tip> <head>` picks;",
+        ", and record each as a receipt step `scan:<id>` of the PASS",
+    ] {
+        if !bullet.contains(part) {
+            problems.push(format!("the audit-brief bullet lacks {part:?}: {bullet}"));
+        }
+    }
+    problems
+}
+
+/// SPEC-20261123-self-check-rust-only AC-6 (REQ-5, REQ-6): the audit-brief bullet names the scan
+/// tests and records each as a receipt step of the PASS, and the flow reference stays at the size
+/// the integration tip has.
+#[test]
+fn land_scans_the_flow_names_the_scan_tests_and_the_pass_receipt_step() {
+    let flow = read(FLOW_REF);
+    let problems = flow_scan_receipt_problems(&flow);
+    assert!(problems.is_empty(), "{problems:?}");
+    assert!(
+        flow.len() <= FLOW_REF_TIP_BYTES,
+        "{FLOW_REF} is {} bytes, over {FLOW_REF_TIP_BYTES}",
+        flow.len()
+    );
+}
+
+/// SPEC-20261123-self-check-rust-only AC-7 (REQ-7): the bullet without a restored meaning, with
+/// its words kept and one meaning reversed, or with the cargo-only reading reversed, is a
+/// problem; each mutant really changes the text.
+#[test]
+fn land_scans_the_flow_scan_receipt_mutants_are_caught() {
+    let flow = read(FLOW_REF);
+    let bullet = flow
+        .lines()
+        .find(|l| l.contains("moai repo-scans"))
+        .unwrap_or_else(|| panic!("{FLOW_REF} names no `moai repo-scans`"))
+        .to_string();
+    let mutants = [
+        (
+            "scan tests not named",
+            bullet.replace("name the scan tests ", ""),
+        ),
+        (
+            "naming reversed",
+            bullet.replace("name the scan tests", "never name the scan tests"),
+        ),
+        (
+            "recording reversed",
+            bullet.replace("and record each", "and never record each"),
+        ),
+        (
+            "receipt step moved off the PASS",
+            bullet.replace("of the PASS", "of a failed run"),
+        ),
+        (
+            "cargo-only reading reversed",
+            bullet
+                .replace(
+                    "run only their `cargo` checks",
+                    "run all their checks, not only their `cargo` checks",
+                )
+                .replace("leaving out a Python line", "including a Python line"),
+        ),
+    ];
+    for (name, mutant) in mutants {
+        let text = flow.replace(&bullet, &mutant);
+        assert!(text != flow, "{name}: the mutant did not change the text");
+        assert!(
+            !flow_scan_receipt_problems(&text).is_empty(),
+            "{name}: the pin passes without the sentence"
+        );
+    }
+}
