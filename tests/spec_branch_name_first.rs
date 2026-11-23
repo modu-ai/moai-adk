@@ -236,11 +236,16 @@ const CHECK_SH: &str =
 
 /// A repository on `branch` with a failing check, a SPEC folder for `ID` and a RED commit.
 fn tdd_repo(branch: &str) -> (tempfile::TempDir, PathBuf) {
+    tdd_repo_with(branch, |root| write_spec(root, ID))
+}
+
+/// [`tdd_repo`] with the SPEC written by `spec`.
+fn tdd_repo_with(branch: &str, spec: impl Fn(&Path)) -> (tempfile::TempDir, PathBuf) {
     let (d, root) = repo(branch);
     fs::write(root.join("check.sh"), CHECK_SH).unwrap();
     fs::create_dir_all(root.join("src")).unwrap();
     fs::write(root.join("src/lib.txt"), "broken\n").unwrap();
-    write_spec(&root, ID);
+    spec(&root);
     git(&root, &["add", "-A"]);
     git(&root, &["commit", "-q", "-m", "check"]);
     fs::create_dir_all(root.join("tests")).unwrap();
@@ -283,6 +288,25 @@ fn name_first_tdd_resolves_both_forms_and_repair_suffixes_to_one_spec() {
         assert_eq!((code, &v["ok"]), (0, &json!(true)), "{branch}: {v}");
         assert_eq!(v["result"]["record"]["spec"], json!(ID), "{branch}: {v}");
     }
+}
+
+/// SPEC-20261124-lane-branch-after-spec AC-5 (REQ-5): a branch whose name reads no SPEC file but
+/// whose SPEC says `branch: <the branch>` runs its `moai tdd red` cycle under that SPEC.
+#[test]
+fn a_linked_branch_reaches_tdd() {
+    let linked = "SPEC-20261124-other";
+    let (_d, root) = tdd_repo_with("spec/lane-x-20261124", |root| {
+        let folder = root.join(".moai/specs").join(linked);
+        fs::create_dir_all(&folder).unwrap();
+        let text = format!(
+            "---\nid: {linked}\ntitle: \"demo\"\nstatus: draft\nrevision: 1\ncreated: 2026-11-24\n\
+             branch: spec/lane-x-20261124\n---\n\n## Intent\n\nx\n"
+        );
+        fs::write(folder.join("spec.md"), text).unwrap();
+    });
+    let (code, v) = tdd_red(&root);
+    assert_eq!((code, &v["ok"]), (0, &json!(true)), "{v}");
+    assert_eq!(v["result"]["record"]["spec"], json!(linked), "{v}");
 }
 
 /// AC-5 (REQ-5): `moai tdd red` refuses a name that reads as two SPEC ids, with the reason.
