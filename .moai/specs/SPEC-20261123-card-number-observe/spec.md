@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261123-card-number-observe
 title: "spec check counts card numbers of new and revised SPECs as an observe notice"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-23
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7729 (2026-11-23T17:30:42Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님): 판 1 승인, 경계 날짜 2026-11-25 그대로. 레인은 그 노트를 인용해 옮겨 적었어요"
+  digest: "sha256:1e13faabd56531a60658247f8d8002aa10c9fe7f1bac0881c15ac047176bdcc0"
 ---
 
 # spec check counts card numbers of new and revised SPECs as an observe notice
