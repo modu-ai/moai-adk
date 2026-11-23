@@ -471,7 +471,7 @@ fn ac3_a_compact_start_names_the_newest_resume_note() {
     fx.note(card, "resume lowercase");
     assert_eq!(
         fx.context("compact"),
-        format!("{first}\nAfter compaction read the notes of C-{card}: no RESUME note yet")
+        format!("{first}\nC-{card} has no RESUME note yet (moai card show C-{card})")
     );
     let old = fx.note(card, "RESUME C-1 old");
     let newest = fx.note(card, "RESUME C-1 newest\nbody");
@@ -480,8 +480,7 @@ fn ac3_a_compact_start_names_the_newest_resume_note() {
     assert_eq!(
         fx.context("compact"),
         format!(
-            "{first}\nAfter compaction first read RESUME note #{newest} of C-{card} \
-             (moai card show C-{card})"
+            "{first}\nThe newest RESUME note of C-{card} is #{newest} (moai card show C-{card})"
         )
     );
     for source in ["startup", "resume", "clear"] {

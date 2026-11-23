@@ -72,14 +72,15 @@ pub fn context(
                 ));
                 if input.get("source").and_then(Value::as_str) == Some("compact") {
                     second = Some(match card.resume_note {
+                        // A statement of fact, not an order: the host documents that context
+                        // added at a session start is read as information.
                         Some(note) => format!(
-                            "After compaction first read RESUME note #{note} of C-{id} \
-                             (moai card show C-{id})",
+                            "The newest RESUME note of C-{id} is #{note} (moai card show C-{id})",
                             id = card.id
                         ),
                         None => format!(
-                            "After compaction read the notes of C-{}: no RESUME note yet",
-                            card.id
+                            "C-{id} has no RESUME note yet (moai card show C-{id})",
+                            id = card.id
                         ),
                     });
                 }
