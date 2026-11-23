@@ -556,9 +556,18 @@ fn a_saved_codex_value_is_left_out_when_another_tool_is_written() {
 // SPEC-20261122-model-fast-pair: the API refuses an Opus 4.8 request with fast mode from
 // 2026-11-30, and moai never turns fast mode on, so no table row, saved entry or written choice
 // may name the Opus 4.8 family or hold a fast-mode key.
+// The family match ends there or goes on with `-`, `[` or `@`; a digit after it is another model
+// (`opus-4-80`), the same shape as `is_opus_48` in `claude_settings_merge`.
 fn names_opus_48(id: &str) -> bool {
     let lower = id.to_ascii_lowercase();
-    lower.contains("opus-4-8") || lower.contains("opus-4.8")
+    ["opus-4-8", "opus-4.8"].iter().any(|family| {
+        lower.match_indices(family).any(|(at, _)| {
+            matches!(
+                lower[at + family.len()..].chars().next(),
+                None | Some('-' | '[' | '@')
+            )
+        })
+    })
 }
 
 #[test]

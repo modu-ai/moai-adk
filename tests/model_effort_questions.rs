@@ -778,11 +778,18 @@ fn fast_pair_no_model_question_offers_an_opus_48_id() {
             let q = model_question(tool, role).expect("known tool and role");
             assert!(!q.options.is_empty(), "{tool} {role}");
             for value in values(&q) {
+                // The match ends there or goes on with `-`, `[` or `@`; a digit after it is
+                // another model, the same shape as `is_opus_48` in `claude_settings_merge`.
                 let lower = value.to_ascii_lowercase();
-                assert!(
-                    !lower.contains("opus-4-8") && !lower.contains("opus-4.8"),
-                    "{tool} {role}: {value}"
-                );
+                let names_family = ["opus-4-8", "opus-4.8"].iter().any(|family| {
+                    lower.match_indices(family).any(|(at, _)| {
+                        matches!(
+                            lower[at + family.len()..].chars().next(),
+                            None | Some('-' | '[' | '@')
+                        )
+                    })
+                });
+                assert!(!names_family, "{tool} {role}: {value}");
             }
         }
     }
