@@ -88,7 +88,13 @@ mod scrub_tests {
         ] {
             assert!(removed_by_prefix(name), "{name} should be removed");
         }
-        for name in ["GIT_TRACKER", "GIT_AUTHOR_NAME", "TRACE", "PATH", "GIT_CONFIG_GLOBAL"] {
+        for name in [
+            "GIT_TRACKER",
+            "GIT_AUTHOR_NAME",
+            "TRACE",
+            "PATH",
+            "GIT_CONFIG_GLOBAL",
+        ] {
             assert!(!removed_by_prefix(name), "{name} should stay");
         }
     }
