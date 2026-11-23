@@ -20,6 +20,8 @@ For every card: the take outcome, what each stage produced, and either the lande
 6. **land** — Land the audited head with `moai card land <card> --head <40 hex>` and `--by leader`. The land command accepts only `--by leader` today, so the session that lands must be the one the project allows to land; any other session stops here and leaves the card with a note that names the head; that card is handed back, not done.
 7. **repeat** — Go back to the take step until no card is left: `moai card next` names no card you can take. A READY note or a `LANE-DONE` line is not the start signal: take the next card once, when the ledger shows the previous card done or released (`flows/next-flow`). Then report the landed cards and the blocked ones, each with its reason, and end.
 
+When a card is handed back, write the HANDOFF note and give the card back first; only then, with a registered leader, send it one cross-session message (`flows/next-flow`, "Completion message"). Read its session id with `moai session-register --show --name leader` and address exactly that session, never a row picked by name. With no leader, no live lease or no channel, write the ledger note only. The message is a notice, not proof: never send `/clear` to yourself and never take the next card on your own while a leader is registered.
+
 Where the project offers lane commands that run a card in a lane of its own, a step may run there; if the lane commands are missing, say so and run the step in the current session.
 
 ## Exceptions and Permissions

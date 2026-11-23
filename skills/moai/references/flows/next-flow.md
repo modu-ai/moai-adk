@@ -23,8 +23,21 @@ Four technical rules make the flow run. They describe how it works; they are not
 - A decision the lane cannot make goes on the card as a blocked note (`workflows/work.md`); the lane takes the next card.
 - A `LANE-READY-INTEGRATION`, READY, REPAIRED or MERGE-READY note and a `LANE-DONE` line on the screen hand a card back; none of them is done in the ledger. How the session is cleared and the next card starts goes in two stages.
 
+### Completion message (a lane to the leader)
+
+- A lane writes its HANDOFF note and gives the card back before it sends any message.
+- When a registered leader holds a live lease, the lane then sends that leader one cross-session message that names the card and the head.
+- The lane reads the leader's session id with `moai session-register --show --name leader` and addresses exactly that session; it never sends to a row picked by the name `leader`, because another project's session can carry that name.
+- Without a registered leader, a live lease or a cross-session channel, or when the send is refused or held, the lane writes the ledger note only and sends nothing more for that card; the leader's ledger watch picks the note up. One message per finished card, no retry loop.
+- The message is a notice, not proof: a lane message alone never shows a card done, and the ledger decides.
+- A lane never sends `/clear` to itself, and never takes its next card on its own while a leader is registered.
+- No `moai` command sends this message yet; `moai host-wake` addresses a session by name, which the address rule forbids, so a lane sends with the host's own message tool until a command takes the registered id (see SPEC-20261122-session-messages for the wake that exists).
+
 ### Transition (the leader and a lane-terminal manager today)
 
+- When the leader gets the message, it reads the ledger first, and sends `/clear` and then the next card's dispatch only when the ledger shows the card done or released and nothing is open.
+- A message the ledger does not back starts nothing: the leader sends no `/clear` and no dispatch, and waits for the ledger.
+- The leader writes a dispatch, an answer and the line after `/clear` in the user's conversation language; only a prompt to a subagent is English, and commands, paths, card ids and protocol lines stay verbatim.
 - The leader sends `/clear` to the exact existing window only after the ledger shows the lane's card done or released (a safe hand-back that keeps the checkpoint and the candidate head for the audit), and only when nothing is open: no card in review, no live reservation, no run of the lane's own, no unsaved change, no input or selection prompt on the screen and nothing unknown.
 - A fixed delay after `/clear` proves nothing. The leader confirms that the new session is ready, sends the next line once, and confirms that session's reservation of the new card (the ACK). When the ACK is not seen it inspects the window and does not send again.
 - A new window is opened only when the existing one cannot be recovered.
