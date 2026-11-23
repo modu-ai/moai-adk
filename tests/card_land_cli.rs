@@ -3126,6 +3126,77 @@ fn ac38_a_cleanup_that_cannot_run_is_reported_and_the_landing_stands() {
     );
 }
 
+/// AC-39 (SPEC-20261123-landing-cleanup-real-clock AC-1, AC-4): on the real clock, with no clock
+/// seam, a landing removes the closed card's clean merged worktree and counts the removal in
+/// `writes`. Every worktree in this test is seconds old.
+#[test]
+fn ac39_a_landing_on_the_real_clock_removes_the_closed_cards_clean_worktree() {
+    let w = World::new();
+    let mine = w.linked_worktree("wt-mine");
+    let card = w.card_in("apps/a/", &mine, None, &["one"]);
+    let got = w.lands(&card, &["1=the test"]);
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["cleanup"]["error"], json!(null), "{got}");
+    assert_eq!(got["cleanup"]["applied"], json!(true), "{got}");
+    assert_eq!(
+        got["cleanup"]["worktrees"][0]["status"],
+        json!("removed"),
+        "{got}"
+    );
+    assert!(!mine.exists() && !w.registered(&mine), "{got}");
+    assert_eq!(got["writes"], json!(true), "{got}");
+}
+
+/// AC-39 (second half): on the real clock a landing keeps a worktree with a tracked change and one
+/// whose `target` links outside; what lies outside, and the changed file, are as they were.
+#[cfg(unix)]
+#[test]
+fn ac39_a_landing_on_the_real_clock_keeps_a_dirty_and_a_linked_target_worktree() {
+    // One landing per fixture: the candidate is made on the fixture's own tip.
+    for case in ["dirty", "linked"] {
+        let w = World::new();
+        let outside = fs::canonicalize(w.dir.path()).unwrap().join("outside");
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("keep.txt"), "do not touch\n").unwrap();
+        let wt = w.linked_worktree("wt-case");
+        let mut tracked = None;
+        if case == "dirty" {
+            let listed = git(&wt, &["ls-files"]);
+            let file = wt.join(listed.lines().next().expect("a tracked file"));
+            fs::write(&file, "changed after the card\n").unwrap();
+            tracked = Some(file);
+        } else {
+            std::os::unix::fs::symlink(&outside, wt.join("target")).unwrap();
+        }
+        let card = w.card_in("apps/a/", &wt, None, &["one"]);
+        let got = w.lands(&card, &["1=the test"]);
+        assert_eq!(got["closed"], json!(true), "{case}: {got}");
+        assert_eq!(got["cleanup"]["applied"], json!(false), "{case}: {got}");
+        assert_eq!(
+            got["cleanup"]["worktrees"][0]["action"],
+            json!("skip"),
+            "{case}: {got}"
+        );
+        assert!(wt.is_dir() && w.registered(&wt), "{case}: it was removed");
+        assert_eq!(
+            fs::read_to_string(outside.join("keep.txt")).unwrap(),
+            "do not touch\n",
+            "{case}"
+        );
+        if let Some(file) = tracked {
+            assert_eq!(
+                fs::read_to_string(&file).unwrap(),
+                "changed after the card\n"
+            );
+        } else {
+            assert!(fs::symlink_metadata(wt.join("target"))
+                .unwrap()
+                .file_type()
+                .is_symlink());
+        }
+    }
+}
+
 /// AC-22 (REQ-8, REQ-24): a call killed after the start row and before the move, then a FAIL by
 /// another reviewer: the call run again refuses with `verdict_fail`, the branch stays at the tip
 /// and no landing is written; the same reviewer's later PASS lands the head once, and the landing
