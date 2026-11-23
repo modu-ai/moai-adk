@@ -389,11 +389,17 @@ fn one(
             Outcome::Result("settled_with_kept".to_string()),
         )
     };
-    if let Some(lost) = end(ledger, &steps, &outcome)? {
-        return Ok(lost);
-    }
-    let mut answer = name(status);
-    answer["attempt"] = json!(attempt);
+    // The run has acted by now. An attempt whose lease ended writes no line, but its answer still
+    // names what it removed and deleted, so the caller (and `wrote`) is not told "nothing"
+    // (SPEC-20261123-cleanup-outbox-followups D-5).
+    let mut answer = match end(ledger, &steps, &outcome)? {
+        Some(lost) => lost,
+        None => {
+            let mut done = name(status);
+            done["attempt"] = json!(attempt);
+            done
+        }
+    };
     answer["worktrees"] = Value::Array(worktrees.iter().map(Target::json).collect());
     answer["branches"] = Value::Array(branches.iter().map(Target::json).collect());
     answer["queue"] = Value::Array(queue.iter().map(Target::json).collect());

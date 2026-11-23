@@ -62,7 +62,9 @@
 //!
 //! A slot or queue path that is a symlink, FIFO, device, folder or hard link is refused before
 //! anything is written: acquire exits 125 without running COMMAND (`status` lists it under
-//! `refused`). The default folder is `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots`.
+//! `refused`). The default folder is `${XDG_CACHE_HOME:-~/.cache}/moai/heavy-slots`; builds from
+//! before the name change used `…/moai-cli/heavy-slots`, whose `limits.json` is read while the
+//! default folder has none and whose held slots `status` shows (`earlier_folder`).
 //! Unix only; elsewhere both operations refuse.
 //!
 //! #2930 R-2: the machine's limits live in one file beside the slots, `<folder>/limits.json`
@@ -162,8 +164,19 @@ pub struct LimitsFile {
 
 /// The limits file in `folder`: `None` when there is none. A path that is not a plain file
 /// (a symlink, even to a valid file, or a folder), a file over 4096 bytes, JSON that does not
-/// parse, an unknown key or `max` 0 is an error — the caller runs nothing.
+/// parse, an unknown key or `max` 0 is an error — the caller runs nothing. For the default
+/// folder without a file of its own, the earlier folder's file is read by the same rules.
 pub fn read_limits_file(folder: &Path) -> Result<Option<LimitsFile>> {
+    match read_limits_in(folder)? {
+        Some(f) => Ok(Some(f)),
+        None => match earlier_dir(folder) {
+            Some(earlier) => read_limits_in(&earlier),
+            None => Ok(None),
+        },
+    }
+}
+
+fn read_limits_in(folder: &Path) -> Result<Option<LimitsFile>> {
     use std::io::Read;
     let path = folder.join(LIMITS_FILE);
     let meta = match std::fs::symlink_metadata(&path) {
@@ -548,13 +561,31 @@ pub fn build_folder_note(
     ))
 }
 
-/// `${XDG_CACHE_HOME:-$HOME/.cache}/moai-cli/heavy-slots`, the Python tool's folder.
+/// `${XDG_CACHE_HOME:-$HOME/.cache}`, the user's cache folder.
+fn cache_dir() -> Result<PathBuf> {
+    Ok(
+        match std::env::var_os("XDG_CACHE_HOME").filter(|v| !v.is_empty()) {
+            Some(x) => PathBuf::from(x),
+            None => {
+                PathBuf::from(std::env::var_os("HOME").ok_or("HOME is not set")?).join(".cache")
+            }
+        },
+    )
+}
+
+/// `${XDG_CACHE_HOME:-$HOME/.cache}/moai/heavy-slots`, the Python tool's folder too.
 pub fn default_dir() -> Result<PathBuf> {
-    let base = match std::env::var_os("XDG_CACHE_HOME").filter(|v| !v.is_empty()) {
-        Some(x) => PathBuf::from(x),
-        None => PathBuf::from(std::env::var_os("HOME").ok_or("HOME is not set")?).join(".cache"),
-    };
-    Ok(base.join("moai-cli").join("heavy-slots"))
+    Ok(cache_dir()?.join("moai").join("heavy-slots"))
+}
+
+/// The folder of the builds from before the name change, `<cache>/moai-cli/heavy-slots`, when
+/// `folder` is the default folder: only then does the earlier folder matter. It is read, never
+/// written, moved or made (SPEC-20261121-moai-name D-10, D-11).
+pub fn earlier_dir(folder: &Path) -> Option<PathBuf> {
+    if default_dir().ok().as_deref() != Some(folder) {
+        return None;
+    }
+    Some(cache_dir().ok()?.join("moai-cli").join("heavy-slots"))
 }
 
 /// `load 1.23/0.98/0.75; disk free 41.2 GiB at <folder>` — what is known of the machine now.
@@ -1616,7 +1647,7 @@ mod sys {
             }
             Err(_) => Value::Null,
         };
-        Ok(json!({
+        let mut answer = json!({
             "folder": folder.display().to_string(),
             "held": held,
             "refused": refused,
@@ -1624,7 +1655,15 @@ mod sys {
             "stale_waiting": stale_waiting,
             "machine": machine_line(folder),
             "writes": false,
-        }))
+        });
+        // The default folder also shows what an older build still holds in the earlier one
+        // (read only); an earlier folder that cannot be read answers `null`.
+        if let Some(earlier) = super::earlier_dir(folder) {
+            if fs::symlink_metadata(&earlier).is_ok_and(|m| m.is_dir()) {
+                answer["earlier_folder"] = status(&earlier).unwrap_or(Value::Null);
+            }
+        }
+        Ok(answer)
     }
 }
 

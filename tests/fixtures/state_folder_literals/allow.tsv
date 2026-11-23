@@ -200,6 +200,7 @@ tests/recovery_cli.rs	1	3
 tests/recurring_problems_rule.rs	0	1
 tests/release_suite.rs	1	4
 tests/repo_claude_md.rs	2	9
+tests/repo_scans_table.rs	0	17
 tests/report_rules_core.rs	0	1
 tests/reports_move_cli.rs	62	13
 tests/retired_hosts_layer.rs	5	0

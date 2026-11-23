@@ -35,6 +35,7 @@ pub mod land;
 pub mod landed;
 pub mod precheck;
 pub mod remote_copy;
+pub mod roles;
 pub mod spec_link;
 pub mod take_scope;
 pub mod timeline;

@@ -1146,6 +1146,82 @@ fn item(line: &str, prefix: &str) -> Option<(u32, String)> {
     Some((n, text))
 }
 
+/// The id prefixes of the list items of the item sections.
+const ITEM_PREFIXES: [&str; 3] = ["REQ-", "AC-", "D-"];
+
+/// Whether `before` ends in an id (`AC-3`) that starts a word: the prefix is not the tail of
+/// a longer word (`CD-1` is not a `D-1`).
+fn ends_in_id(before: &str) -> bool {
+    if !before.ends_with(|c: char| c.is_ascii_digit()) {
+        return false;
+    }
+    let head = before.trim_end_matches(|c: char| c.is_ascii_digit());
+    ITEM_PREFIXES.iter().any(|p| {
+        head.strip_suffix(p)
+            .is_some_and(|w| !w.ends_with(|c: char| c.is_alphanumeric() || c == '_'))
+    })
+}
+
+/// The ids of the items that start inside a line that already starts one: the `- <id>` items
+/// after the first. The next item follows a space (` - AC-2`) or the closing backtick of a
+/// span (`` `a`- AC-2 ``). A dash inside a paired backtick span, or right after an id that
+/// starts a word (`AC-3 - AC-5`), is text; so is a line that is not itself a list item of one
+/// of the [`ITEM_PREFIXES`]. A last backtick with no partner is a letter, not a span.
+fn glued_ids(line: &str) -> Vec<String> {
+    let (listed, t) = unlisted(line);
+    if !listed || !ITEM_PREFIXES.iter().any(|p| item(t, p).is_some()) {
+        return Vec::new();
+    }
+    let total = t.matches('`').count();
+    let mut ids = Vec::new();
+    for (dash, _) in t.match_indices("- ") {
+        let ticks = t[..dash].matches('`').count();
+        let in_span = ticks % 2 == 1 && ticks < total;
+        let separated = match t[..dash].chars().next_back() {
+            Some(' ') => !in_span && !ends_in_id(t[..dash].trim_end()),
+            Some('`') => ticks % 2 == 0,
+            _ => false,
+        };
+        if !separated {
+            continue;
+        }
+        let rest = t[dash + 2..].trim_start();
+        if let Some((p, n)) = ITEM_PREFIXES
+            .iter()
+            .find_map(|p| item(rest, p).map(|(n, _)| (*p, n)))
+        {
+            ids.push(format!("{p}{n}"));
+        }
+    }
+    ids
+}
+
+/// Reports every item that starts inside the line of another item (`item_glued`), outside
+/// fenced code.
+fn glued_items(doc: &mut SpecDoc, content: &[(usize, &str)]) {
+    let mut fence: Option<&str> = None;
+    for (n, line) in content {
+        let t = line.trim_start();
+        if let Some(mark) = fence {
+            if t.starts_with(mark) {
+                fence = None;
+            }
+            continue;
+        }
+        if t.starts_with("```") || t.starts_with("~~~") {
+            fence = Some(&t[..3]);
+            continue;
+        }
+        for id in glued_ids(line) {
+            doc.error(
+                "item_glued",
+                Some(*n),
+                format!("{id} starts on the same line as another item; put each list item on its own line"),
+            );
+        }
+    }
+}
+
 /// A line without its list marker (`- `, `* `, `+ `), if it has one.
 fn unlisted(line: &str) -> (bool, &str) {
     let t = line.trim_start();
@@ -1288,6 +1364,12 @@ fn body(lines: &[&str], start: usize, doc: &mut SpecDoc) {
     }
     for (name, at, content) in &sections {
         let blank = content.iter().all(|(_, l)| l.trim().is_empty());
+        if matches!(
+            name.as_str(),
+            "Requirements" | "Acceptance" | "Decisions" | "Result"
+        ) {
+            glued_items(doc, content);
+        }
         match name.as_str() {
             "Intent" | "Plan" | "Non-goals" | "Risks" if blank => doc.error(
                 "section_empty",

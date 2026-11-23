@@ -437,6 +437,39 @@ fn conversation_line(home: Option<&Path>) -> Option<String> {
     ))
 }
 
+/// The one sentence that names the flow and the integration branch the project profile records
+/// (SPEC-20261123-work-flow-readers REQ-1), with `(absent locally)` when this clone has no
+/// local branch of that name (REQ-3). `None` — and so the text session-check always had —
+/// when the profile is missing, unreadable or names no `work_flow` (REQ-2). Both values were
+/// validated by the profile reader, so neither carries a space or a control character.
+fn work_flow_line(cwd: &Path) -> Option<String> {
+    let (profile, _) = crate::profile::read_profile(cwd).ok()?;
+    let work_flow = profile.work_flow?;
+    let mut line = format!("Work flow `{}`", work_flow.flow);
+    if let Some(branch) = work_flow.integration_branch.as_deref() {
+        line.push_str(&format!(", integration branch `{branch}`"));
+        if local_branch_absent(cwd, branch) {
+            line.push_str(" (absent locally)");
+        }
+    }
+    line.push('.');
+    Some(line)
+}
+
+/// Whether git says this clone has no local branch `branch`: exit code 1 of
+/// `rev-parse --verify --quiet`. A lookup that cannot run, or fails any other way, is not
+/// "absent" and adds no note.
+fn local_branch_absent(cwd: &Path, branch: &str) -> bool {
+    let mut cmd = std::process::Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    cmd.arg("-C")
+        .arg(cwd)
+        .args(["rev-parse", "--verify", "--quiet"])
+        .arg(format!("refs/heads/{branch}"))
+        .output()
+        .is_ok_and(|out| out.status.code() == Some(1))
+}
+
 /// session-check: a short, fixed-vocabulary state summary for the model. Never blocks. After a
 /// compaction (`source: "compact"`, exactly that string) it adds [`COMPACTED`] and, if the work
 /// has a card, points at its newest `moai-resume:` comment; any other `source`, or none, gives
@@ -470,6 +503,10 @@ fn session_check(input: &Value, cwd: &Path) -> Verdict {
         env!("CARGO_PKG_VERSION"),
         crate::state_root::dir(cwd),
     );
+    if let Some(line) = work_flow_line(cwd) {
+        text.push(' ');
+        text.push_str(&line);
+    }
     // On every start, resume and compaction, so a compacted session keeps the
     // conversation language the user chose.
     if let Some(line) = conversation_line(std::env::var_os("HOME").as_deref().map(Path::new)) {

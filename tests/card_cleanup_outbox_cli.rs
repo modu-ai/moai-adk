@@ -1449,6 +1449,70 @@ fn fu1_an_executor_whose_lease_ended_reports_lease_lost_and_the_next_run_settles
     assert_eq!(w.events(&card, "cleanup.result"), 1);
 }
 
+/// FU-1 (REQ-3, audit N-1): the `lease_lost` answer of a run that did remove its worktree and
+/// delete its branch says so, so `cleanup::wrote` is true for it, while the ledger still gets no
+/// line from that run.
+#[test]
+fn fu1_a_lease_lost_answer_names_what_the_run_removed_and_the_ledger_gets_no_line() {
+    let w = World::new();
+    let (card, claimer, wt, branch) = w.pending("fu1-carry");
+    w.release(&claimer);
+    let steps_before = w.events(&card, "cleanup.step");
+    let events_before = w.all_events();
+    let got = w.run_pending_with(&Options {
+        lease_secs: 0,
+        ..Options::default()
+    });
+    let entry = World::entry(&got, &card);
+    assert_eq!(entry["status"], json!("lease_lost"), "{got}");
+    assert!(!wt.exists() && !w.has_branch(&branch), "{got}");
+
+    // The answer names the worktree and the branch this run really removed.
+    let worktrees = entry["worktrees"].as_array().unwrap();
+    assert_eq!(worktrees.len(), 1, "{got}");
+    assert_eq!(worktrees[0]["status"], json!("removed"), "{got}");
+    let branches = entry["branches"].as_array().unwrap();
+    assert_eq!(branches.len(), 1, "{got}");
+    assert_eq!(branches[0]["branch"], json!(branch), "{got}");
+    assert_eq!(branches[0]["status"], json!("deleted"), "{got}");
+    assert!(cleanup::wrote(&got), "{got}");
+    assert_eq!(entry["attempt"], json!(2), "{got}");
+
+    // The ledger gets nothing from this run: no step, no result, no new event but the claim.
+    assert_eq!(w.events(&card, "cleanup.step"), steps_before);
+    assert_eq!(w.events(&card, "cleanup.result"), 0);
+    assert_eq!(w.all_events(), events_before + 1, "only the claim is new");
+
+    // The next run finds both gone and settles the request.
+    let next = w.run_pending();
+    let again = World::entry(&next, &card);
+    assert_eq!(again["status"], json!("settled"), "{next}");
+    assert_eq!(again["worktrees"][0]["status"], json!("absent"), "{next}");
+    assert_eq!(again["branches"][0]["status"], json!("absent"), "{next}");
+    assert!(!cleanup::wrote(&next), "{next}");
+}
+
+/// FU-1 (REQ-3, audit N-1): a `lease_lost` answer of a run that removed nothing carries no
+/// removal, so `wrote` stays false for it.
+#[test]
+fn fu1_a_lease_lost_answer_of_a_run_that_removed_nothing_says_so() {
+    let w = World::new();
+    let (card, _claimer, wt, branch) = w.pending("fu1-kept");
+    // The claimer keeps its reservation: the worktree is held, nothing can be removed, and a lease
+    // of zero seconds ends before the run does.
+    let got = w.run_pending_with(&Options {
+        lease_secs: 0,
+        ..Options::default()
+    });
+    let entry = World::entry(&got, &card);
+    assert_eq!(entry["status"], json!("lease_lost"), "{got}");
+    assert!(wt.is_dir() && w.has_branch(&branch), "{got}");
+    assert!(!cleanup::wrote(&got), "{got}");
+    let worktrees = entry["worktrees"].as_array().unwrap();
+    assert_eq!(worktrees.len(), 1, "{got}");
+    assert_ne!(worktrees[0]["status"], json!("removed"), "{got}");
+}
+
 /// FU-2 (REQ-4): after a run that died without a trace, the next attempt leaves one `abandoned`
 /// line for it, and only for it.
 #[test]
@@ -1484,6 +1548,35 @@ fn fu2_the_next_attempt_leaves_one_abandoned_line_for_a_run_that_died() {
     let again = w.run_pending();
     assert_eq!(again["requests"], json!([]), "{again}");
     assert_eq!(w.steps_of_kind(&card, "attempt").len(), 1);
+}
+
+/// FU-2 (REQ-4, audit N-3): the ledger cannot tell a run that died from a run that finished after
+/// its lease ended (it wrote nothing either way), so the `abandoned` line says both.
+#[test]
+fn fu2_the_abandoned_line_of_a_run_whose_lease_ended_does_not_claim_it_died() {
+    let w = World::new();
+    let (card, claimer, _wt, _branch) = w.pending("fu2-lost");
+    w.release(&claimer);
+    let lost = w.run_pending_with(&Options {
+        lease_secs: 0,
+        ..Options::default()
+    });
+    assert_eq!(
+        World::entry(&lost, &card)["status"],
+        json!("lease_lost"),
+        "{lost}"
+    );
+    let done = w.run_pending();
+    assert_eq!(World::entry(&done, &card)["abandoned_attempt"], json!(2));
+    let lines = w.steps_of_kind(&card, "attempt");
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert_eq!(lines[0]["status"], json!("abandoned"));
+    let detail = lines[0]["detail"].as_str().unwrap_or_default();
+    assert!(
+        detail.contains("no end of it was recorded")
+            && detail.contains("died, or its lease ended before it finished"),
+        "{detail}"
+    );
 }
 
 /// FU-3 (REQ-5): the ref queue a run drains leaves one `queue` step per ref; no queue, no step.
@@ -1549,6 +1642,15 @@ impl World {
     /// `moai card <args>` started in a process group of its own and not waited for, so a test can
     /// kill the whole group the way `kill -9` on a stuck run would.
     fn spawn_card(&self, session: &str, args: &[&str]) -> std::process::Child {
+        self.spawn_card_with(session, args, Stdio::null())
+    }
+
+    /// The same, with the answer read from a pipe (`wait_with_output`).
+    fn spawn_card_piped(&self, session: &str, args: &[&str]) -> std::process::Child {
+        self.spawn_card_with(session, args, Stdio::piped())
+    }
+
+    fn spawn_card_with(&self, session: &str, args: &[&str], stdout: Stdio) -> std::process::Child {
         use std::os::unix::process::CommandExt;
         self.write_profile();
         let mut all = vec!["card"];
@@ -1561,7 +1663,7 @@ impl World {
         }
         cmd.env(SESSION_VAR, session)
             .stdin(Stdio::null())
-            .stdout(Stdio::null())
+            .stdout(stdout)
             .stderr(Stdio::null())
             .process_group(0);
         cmd.spawn().expect("start moai")
@@ -1661,4 +1763,81 @@ fn fu2_a_killed_executor_leaves_its_lease_and_the_next_attempt_names_it() {
     assert_eq!(lines[0]["status"], json!("abandoned"));
     assert!(!w.has_branch("lane/kill"));
     assert_eq!(w.events(&card, "cleanup.result"), 1);
+}
+
+/// FU-1 (REQ-3, audit N-1), the real thing: the closing command is held in the middle of the
+/// branch delete while its lease is handed over (the lease of its attempt ends in the ledger), then
+/// let go. It deletes the branch, finds its lease ended, and answers `lease_lost` with the
+/// worktree and the branch it did remove, and the ledger gets no line from it.
+#[cfg(unix)]
+#[test]
+fn fu1_a_real_executor_whose_lease_ends_under_it_answers_what_it_deleted() {
+    let w = World::new();
+    let wt = w.linked_worktree("wt-handover");
+    w.branch("lane/handover");
+    let marker = w.outside("handover-marker");
+    let go = w.outside("handover-go");
+    let hook = w.project.join(".git/hooks/reference-transaction");
+    // Holds the delete of the card's branch in its `prepared` phase until the test lets it go.
+    common::write_executable(
+        &hook,
+        &format!(
+            "#!/bin/sh\n[ \"$1\" = prepared ] || exit 0\nwhile read old new ref; do\n  case \"$ref\" in\n    refs/heads/lane/handover) : > '{}'; n=0; while [ ! -e '{}' ] && [ $n -lt 300 ]; do sleep 0.1; n=$((n+1)); done; exit 0 ;;\n  esac\ndone\nexit 0\n",
+            marker.display(),
+            go.display()
+        ),
+    );
+    let card = w.card_in("apps/h/", &wt, Some("lane/handover"), &["one"]);
+    let child = w.spawn_card_piped(
+        S_A,
+        &[
+            "finish",
+            &card,
+            "--head",
+            &w.head,
+            "--met",
+            "1=the test",
+            "--by",
+            "leader",
+        ],
+    );
+    for _ in 0..200 {
+        if marker.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    assert!(marker.exists(), "the branch delete never started");
+    assert!(!wt.exists(), "the worktree step ran before the branch step");
+
+    // The lease is handed over: in this throwaway ledger the append-only guard is lifted so the
+    // lease of the running attempt can end now.
+    let file = ledger::ledger_path(w.home.path(), "demo").unwrap();
+    let conn = rusqlite::Connection::open(&file).unwrap();
+    conn.execute_batch(
+        "DROP TRIGGER event_no_update; \
+         UPDATE event SET payload = json_set(payload, '$.lease_until', 1) \
+         WHERE kind = 'cleanup.started';",
+    )
+    .unwrap();
+    drop(conn);
+    fs::write(&go, b"").unwrap();
+    let out = child
+        .wait_with_output()
+        .expect("wait for the closing command");
+    let got = result(&out);
+    // `World::outbox` wants an answer without an `error`; a lost lease is one by design.
+    let entry = World::entry(&got["cleanup_outbox"], &card);
+    eprintln!("LEASE-LOST-ANSWER {entry}");
+    assert_eq!(entry["status"], json!("lease_lost"), "{got}");
+    assert_eq!(entry["worktrees"][0]["status"], json!("removed"), "{got}");
+    assert_eq!(entry["branches"][0]["status"], json!("deleted"), "{got}");
+    assert!(cleanup::wrote(&got["cleanup_outbox"]), "{got}");
+    assert!(!w.has_branch("lane/handover"), "{got}");
+
+    // The ledger holds the request and the claim of the lost attempt, and nothing more.
+    assert_eq!(w.events(&card, "cleanup.requested"), 1);
+    assert_eq!(w.events(&card, "cleanup.started"), 1);
+    assert_eq!(w.events(&card, "cleanup.result"), 0);
+    assert_eq!(w.events(&card, "cleanup.step"), 0);
 }

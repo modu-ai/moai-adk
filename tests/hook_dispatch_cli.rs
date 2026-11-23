@@ -1827,6 +1827,93 @@ fn session_check_names_the_conversation_language() {
     assert!(!ctx.contains("Korean"), "{ctx}");
 }
 
+/// Writes `bytes` as the project profile of `root`, in the folder session-check reads.
+fn write_profile_bytes(root: &Path, bytes: &[u8]) {
+    fs::create_dir_all(moai_cli::state_root::path(root, "")).unwrap();
+    fs::write(moai_cli::state_root::path(root, "project.yaml"), bytes).unwrap();
+}
+
+/// A valid profile; `work_flow` is added when given.
+fn write_profile(root: &Path, work_flow: Option<Value>) {
+    let mut profile = json!({
+        "schema_version": 2, "project_id": "demo", "purpose": "Fixture",
+        "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
+        "decisions": [{"id": "d1", "topic": "tools", "value": "Rust",
+            "source": "user", "scope": "project"}],
+    });
+    if let Some(wf) = work_flow {
+        profile["work_flow"] = wf;
+    }
+    write_profile_bytes(root, profile.to_string().as_bytes());
+}
+
+/// SPEC-20261123-work-flow-readers AC-1: the profile's flow and integration branch are named.
+/// The binary runs with the fixture's own empty HOME, so the real home state is never read.
+#[test]
+fn session_check_names_the_profile_work_flow() {
+    let (_d, root) = repo("NeXT");
+    write_profile(
+        &root,
+        Some(json!({"flow": "m-flow", "integration_branch": "NeXT"})),
+    );
+    let text = session_context("claude", &root, None);
+    assert!(
+        text.contains("Work flow `m-flow`, integration branch `NeXT`."),
+        "{text}"
+    );
+    assert!(!text.contains("absent locally"), "{text}");
+}
+
+/// AC-2: no profile, a profile that does not parse and a profile without `work_flow` all answer
+/// exactly as before, so the three answers are one text without the new sentence.
+#[test]
+fn session_check_without_work_flow_is_unchanged() {
+    let (_none, none) = repo("NeXT");
+    fs::create_dir_all(moai_cli::state_root::path(&none, "")).unwrap();
+    let (_broken, broken) = repo("NeXT");
+    write_profile_bytes(&broken, b"{ not a profile");
+    let (_plain, plain) = repo("NeXT");
+    write_profile(&plain, None);
+    let base = session_context("claude", &none, None);
+    assert!(!base.contains("Work flow"), "{base}");
+    assert_eq!(session_context("claude", &broken, None), base);
+    assert_eq!(session_context("claude", &plain, None), base);
+}
+
+/// AC-3: a recorded integration branch this clone lacks is named in the same sentence.
+#[test]
+fn session_check_flags_a_missing_integration_branch() {
+    let (_d, root) = repo("main");
+    write_profile(
+        &root,
+        Some(json!({"flow": "m-flow", "integration_branch": "NeXT"})),
+    );
+    let text = session_context("claude", &root, None);
+    assert!(
+        text.contains("Work flow `m-flow`, integration branch `NeXT` (absent locally)."),
+        "{text}"
+    );
+}
+
+/// A folder that is no git repository (`git` exits 128, not 1) gives no "absent locally" note:
+/// a lookup that cannot run is not an absent branch.
+#[test]
+fn session_check_outside_a_git_repository_adds_no_absent_note() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let root = fs::canonicalize(dir.path()).unwrap();
+    fs::create_dir_all(root.join("home")).unwrap();
+    write_profile(
+        &root,
+        Some(json!({"flow": "m-flow", "integration_branch": "NeXT"})),
+    );
+    let text = session_context("claude", &root, None);
+    assert!(
+        text.contains("Work flow `m-flow`, integration branch `NeXT`."),
+        "{text}"
+    );
+    assert!(!text.contains("absent locally"), "{text}");
+}
+
 #[test]
 fn only_the_exact_compact_source_changes_the_answer() {
     let (_d, root) = repo("issue/77-k");

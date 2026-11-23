@@ -229,3 +229,28 @@ fn omp_has_an_entry_spelling_and_a_wake_that_a_lane_can_end() {
 // Retired with the MODE-LEADER route (SPEC-20261122-next-flow-skills-agents REQ-2): `the_leader_pulse_is_built_by_the_cli_and_sent_by_the_skill` pinned the leader pulse.
 
 // Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `a_message_is_received_when_its_ack_line_is_read_and_orca_abilities_are_judged_apart` pinned the Orca acknowledgement rules of both modes.
+
+/// SPEC-20261123-work-flow-readers REQ-4 (D-3): the WORK take step tells the session to read the
+/// flow and the integration branch from the profile with `moai work-flow-plan`, and to name both
+/// in its first card note. The values are read, never typed into the text.
+#[test]
+fn work_take_reads_the_profile_flow_and_integration_branch() {
+    let work = workflow("work.md");
+    let take = work
+        .lines()
+        .find(|l| l.starts_with("1. **take**"))
+        .expect("work.md has a take step");
+    for text in [
+        "`moai work-flow-plan --project .`",
+        "flow and the integration branch",
+        "first note",
+    ] {
+        assert!(take.contains(text), "the take step lacks {text:?}: {take}");
+    }
+    for value in ["NeXT", "m-flow"] {
+        assert!(
+            !take.contains(value),
+            "the take step types the value {value}"
+        );
+    }
+}
