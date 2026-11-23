@@ -314,6 +314,30 @@ fn scenario_new_install_writes_exactly_the_previewed_files() {
     assert_eq!(w.digest(), before, "a foreign digest wrote something");
 
     w.confirm(&digest_of(&p));
+    // The installed agent files are what this tree renders from its sources: Claude Code reads
+    // `name` and `description` from their frontmatter.
+    let defs = moai_cli::agent_defs::package_agents(
+        &w.root.join("ver/agents"),
+        &w.root.join("ver/skills/moai"),
+    )
+    .unwrap();
+    assert_eq!(defs.len(), 5, "the five base agents");
+    for def in &defs {
+        let rendered = moai_cli::agent_defs::render(def, "claude").unwrap();
+        // Claude Code keeps the base agents in `agents/moai/`.
+        let installed = fs::read_to_string(
+            w.home
+                .join(".claude/agents/moai")
+                .join(format!("{}.md", def.name)),
+        )
+        .unwrap();
+        assert_eq!(installed, rendered.text, "{}", rendered.path);
+        assert!(
+            installed.starts_with(&format!("---\nname: {}\n", def.name)),
+            "{}",
+            rendered.path
+        );
+    }
     let home_files = files_under(&w.home);
     for (layer, path, _) in &rows {
         assert!(

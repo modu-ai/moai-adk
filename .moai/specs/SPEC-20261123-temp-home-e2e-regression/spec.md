@@ -84,4 +84,38 @@ Claude Code 재설계(R1-R5)가 조각마다 착지했어요: 공통 rules 설�
 
 ## Result
 
-(draft: 아직 구현 전)
+시험 파일 `tests/e2e_temp_home_cli.rs` 의 시나리오 10개를 구현했어요. 이 SPEC 은 사용자 승인을 받았고(카드 원장에 사용자 선택으로 적힘, 2026-11-23T12:39:01Z), 이 레인은 frontmatter 의 `approval` 을 쓰지 않았어요. 제품 코드(`src/**`)는 바꾸지 않았어요.
+
+### 실행 기록 (2026-11-23, 이 워크트리)
+
+- `moai heavy-slot-acquire --name temp-home-e2e --max 4 -- env RUSTC_WRAPPER=sccache cargo test --locked --test e2e_temp_home_cli -- --test-threads=2`: exit 0, 10 passed, 0 failed (25.48s, 에이전트 단언을 더한 시험 파일).
+- 임시 저장소 카드 한 바퀴의 착지: 시험 자료 병합 SHA 는 실행마다 달라요(한 실행의 예: 착지 head `ceb3dd2f65`, 기준 `42c0ee66ae`). 시험은 `git rev-parse refs/heads/integ` 가 착지 head 와 같은지 단언해요.
+- 카드 한 바퀴가 착지에서 거절한 이유 셋(시험을 쓰는 동안 관찰, 모두 제품이 의도한 거절): `authors_unknown`(레인 커밋에 `Moai-Session` 트레일러 없음), `lander_review`(착지 세션이 감사 세션과 달라야 함), `receipt_missing`(PASS 가 이 head 의 영수증을 인용해야 함). 시험은 도구가 찍은 트레일러, 세 번째 세션, 영수증 단계로 이를 채워요.
+
+### 뮤턴트 (스크래치패드 복제본 `d4a992010b`, 한 줄 변이, 각 시나리오만 실행)
+
+- `tools/mutate.py` 는 복제본에서 오프라인 의존성(`cap-fs-ext`)을 못 찾아 네 개 모두 `error` 로 끝났어요. 죽은 것으로 세지 않았어요. 같은 한 줄 변이를 복제본에 손으로 적용해서 cargo 로 돌렸어요.
+- `scenario_conflict_and_personal_files_are_kept`: `src/home_routing/rules.rs` 의 편집된 파일 판정 `"conflict"` → `"merge"`: exit 101 (죽음).
+- `scenario_rollback_each_layer_returns_the_files_it_changed`: 같은 파일의 `user_changed_since_apply` 건너뛰기 조건에 `false &&`: exit 101 (죽음, 사용자가 고친 파일이 지워져요).
+- `scenario_hook_entry_exits_zero_and_writes_nothing_into_the_project`: `src/hook_entry.rs` 의 영수증 실패 갈래 `stdout: String::new()` → `String::from("x")`: exit 101 (죽음).
+- `scenario_root_checker_names_a_path_outside_the_root`: 시험 도우미의 `!Path::new(word).starts_with(root)` → `false`: exit 101 (죽음).
+
+### 인수 기준
+
+- AC-1: met — 시나리오 `scenario_root_checker_*`, `scenario_root_every_answer_*` 통과, 도우미 변이 exit 101.
+- AC-2: met — `scenario_new_install_*` 와 `scenario_non_moai_project_*` 통과: 미리보기의 4층(스킬, 에이전트, 라우팅 rules·flow, 스타일 파일과 settings) 파일이 모두 쓰였고 그 밖에는 MoAI 상태 폴더(`.moai`, `.moai-cli`)뿐이며, 틀린 digest 는 아무것도 쓰지 않고, 옆 프로젝트와 안에서 시작한 git 프로젝트의 트리 digest 는 그대로예요. 설치된 에이전트 5개는 이 트리의 `agent_defs::render` 결과와 바이트가 같고 frontmatter 가 `name: moai-…` 로 시작해요.
+- AC-3: met — `scenario_two_updates_*`: 바뀐 세 파일만 쓰고, 같은 패키지의 다음 실행은 `nothing_to_apply` 와 digest 0 차이.
+- AC-4: met — `scenario_conflict_and_personal_files_are_kept`: 손으로 고친 스킬 파일과 라우팅 파일, UTF-8 이 아닌 flow 파일은 `conflict`, 링크로 바뀐 스타일 파일은 `blocked`(보고된 행동). 모두 바이트 그대로이고 링크 너머 파일에도 쓰지 않았어요. 사용자 자신의 rules, agents, skills, `CLAUDE.md` 와 다른 도구의 settings 키도 그대로예요.
+- AC-5: not met as written — 세 층의 되돌리기는 사용자가 볼 수 있는 파일(MoAI 상태 폴더 밖)을 적용 전 그대로 돌리고, 적용 뒤 사용자가 고친 파일은 지키며 답에 파일 이름이 나와요. 끊긴 갱신은 `recovery-plan`·`recovery-apply` 로 스킬 폴더 digest 가 이전과 같아졌어요. 그러나 REQ-8/AC-5 가 적은 "HOME 트리 전체 digest 가 같다"는 거짓이에요: 되돌린 뒤에도 MoAI 상태 폴더에 영수증이 남아요(`.moai/home-routing/receipts/...`, `.moai/agents/receipts/...`, `.moai/home-style/receipts/...` 와 층 상태 파일). 이 레인은 REQ 를 약하게 바꾸지 않았어요. 문구를 "MoAI 상태 폴더 밖 파일" 로 고치는 판 2 와 새 승인은 사용자 몫이에요(리더 노트 참조).
+- AC-6: met — `scenario_hook_entry_*`: 세 이름 × MoAI/일반 프로젝트 × 5가지 입력(이벤트, 빈 입력, JSON 아님, 객체 아님, UTF-8 아님)이 exit 0, 출력은 비었거나 JSON 한 문서이고 프로젝트 digest 는 그대로예요(변수 `CLAUDE_PROJECT_DIR` 경로도). 참고: MoAI 프로젝트 판별은 `.moai/project.yaml`(훅 진입점)이고 카드·장부 쪽 프로필은 `.moai-cli/project.yaml`(`PROJECT_STATE_DIR`)이에요. 이 시나리오는 훅 쪽 파일만 써요.
+- AC-7: met — `scenario_card_cycle_*`: 받기, `card check`(범위 안 true, 밖 not true), 레인 워크트리 커밋, 준비 노트, `review`, 다른 세션의 PASS(영수증 포함), 세 번째 세션의 `card land --by leader` 가 통합 브랜치를 착지 head 로 옮기고 카드를 `done` 으로 닫았으며 `card next` 가 두 번째 카드를 `ready` 로 답했어요.
+- AC-8: met for the file run — 시험 파일 전체 10 passed (exit 0). `moai check affected --list 1e8114aba0..HEAD` 가 `e2e_temp_home_cli` 를 고른 것을 봤어요. `check affected` 본 실행의 영수증은 READY 노트에 있어요.
+
+### 이 SPEC 이 하지 않은 것 (not_run, 사용자 결정 D-1 = 빼고 운영자 단계로)
+
+운영자가 임시 HOME 과 `CLAUDE_CONFIG_DIR=<임시 HOME>/.claude` 로 `claude` 를 띄워(`docs/host-live-session-checklist.md` §3 의 격리, 실제 `~/.claude`·`~/.moai` 금지) 아래를 직접 확인해요. 이 레인은 실제 `claude` 를 실행하지 않았어요.
+
+1. 임시 HOME 에 `moai update --confirm` 으로 설치한 뒤 `/memory`: `~/.claude/rules/moai.md` 와 `rules/moai/flow.md` 가 보이는지, 프로젝트 `CLAUDE.md` 가 보이는지. not_run.
+2. `/hooks`: 프로젝트 훅 설치(다음 조각)가 착지한 뒤에만 의미가 있어요. not_run.
+3. 주 세션에서 `/moai` 가 나오고 한 경로가 도는지, `/agents` 에 `moai-plan`·`moai-research`·`moai-impl`·`moai-audit`·`moai-docs` 가 보이는지, 각 종류의 에이전트를 한 번씩 부르는지(하네스 에이전트는 프로젝트가 만든 뒤). not_run.
+4. `claude -p --output-format stream-json --verbose` 의 `system/init` 과 `plugin_errors`(비어 있음), `--init-only` 훅 시험(커버리지 노트 A37). not_run.
