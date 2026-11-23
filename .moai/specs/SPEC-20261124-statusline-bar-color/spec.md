@@ -90,3 +90,21 @@ approval:
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | 단계표는 옵션 B(초록 70 이상, 노랑 50~69, 주황 30~49, 빨강 30 미만; 빨강은 `LOW_LEFT_PERCENT`)로 해요. 리더 결정 노트 7989 가 승인했어요 | 노트 7983 은 빨강을 `LOW_LEFT_PERCENT`(=30, 10 이 아님)에 맞추라고 했고 50/25/10 은 그것과 모순이며 10 미만은 채운 칸이 없어요(읽고 잰 것 2, 3) | `render.rs` 의 `LEVEL_GREEN_FROM`·`LEVEL_YELLOW_FROM` 과 빨강 경계를 바꾸고 AC-2 기대값을 같이 바꿔요 |
+
+## Result
+
+구현했어요(2026-11-24, 브랜치 `spec/statusline-bar-color-20261124`, 기준 NeXT `67ba15244f`). 감사는 아직이에요.
+
+- RED(커밋 `0106d272e5`): `cargo nextest run --lib -E 'test(statusline::render::window_tests)'` exit 100, 14개 중 3개 실패(단계 색, 단계 경계, 채운 칸만 칠하기). 네 번째 새 테스트(`the_level_color_leaves_the_plain_text_alone`)는 지금 코드에서도 통과하는 REQ-5 가드예요.
+- 구현(커밋 `f1189d4785`): `Theme.level`(초록, 노랑, 주황, 빨강), 상수 `LEVEL_GREEN_FROM`(70)·`LEVEL_YELLOW_FROM`(50), `level_color`(빨강은 `LOW_LEFT_PERCENT`=30 미만), `Window::known` 의 채운 칸 색. green: `cargo nextest run --lib -E 'test(statusline::)'` exit 0, 224 passed 0 failed.
+- 골든(커밋 `71e6c3a8b6`): `python3 -I tools/statusline_golden.py --bin target/debug/moai-cli --write --variant ansi` 와 `--variant ansi256`(골든 생성 도구이고 직접 돌린 테스트 모듈이 아니에요). `.ansi.txt` 21개와 `.ansi256.txt` 21개가 바뀌고 `.plain.txt` 는 0개, `cases.json` 은 바이너리 sha256 76줄뿐이에요. `--check` 114 outputs ok.
+- 단계 경계 3곳은 N/N+1 로 고정했어요(70/69, 50/49, 30/29). Ansi256 프로필의 네 색은 서로 다르고(151, 223, 216, 211) 줄의 기본색(189)과도 달라요(`target/debug/moai-cli statusline` 로 읽음).
+- 남은 비율 0~9 의 막대는 채운 칸이 없어서 빨강이 칠해지지 않아요(10~29 에서 1~2칸). 계획대로예요.
+
+- AC-1: met — `statusline::render::window_tests::the_filled_cells_carry_the_level_color` 가 두 테마와 두 프로필에서 `CW`·`5H`·`7D` 의 채운 칸이 단계 색 한 조각이고 그 뒤에 흐린 색 빈 칸이 이어짐을 바이트로 고정해요(초록, 노랑, 주황, 빨강과 채운 칸 0개·10개 모양 포함).
+- AC-2: met — `the_level_color_changes_at_each_step_point` 가 100, 71, 70 초록 / 69~50 노랑 / 49~30 주황 / 29~10 빨강을 손으로 적은 표로 고정하고, 100 에서 10 까지 색이 거꾸로 가지 않음과 세 상수가 70, 50, 30 임을 확인해요.
+- AC-3: met — `only_the_filled_cells_take_the_level_color` 가 세 채운 칸 조각을 빼면 단계 색 이스케이프가 줄에 남지 않음과, 남은 비율 9 의 막대가 흐린 색 조각 하나뿐임을 고정해요.
+- AC-4: met — `the_level_color_leaves_the_plain_text_alone` 이 0~100 의 모든 남은 비율에서 색 없는 줄에 이스케이프가 없고 색 있는 줄에서 이스케이프를 뺀 글자가 같음을 두 테마·두 프로필로 고정해요. `.plain.txt` 변경은 `git diff --name-only` 에서 0개예요.
+- AC-5: met — `cargo nextest run --test statusline_golden` exit 0, 1 passed(`statusline_matches_every_claude_golden`, 골든 114개).
+
+guard-mutant 둘은 복사본이 아니라 이 워크트리에서 한 줄씩 바꾸고 `git checkout -- src/statusline/render.rs` 로 되돌렸어요(되돌린 뒤 `git status --short` 0줄). 색 빼기(채운 칸 `color: ""`)는 `window_tests` 14개 중 3개가 실패(exit 100), 단계 순서 뒤집기(`level[0]`↔`level[3]`, `[1]`↔`[2]`)도 같은 3개가 실패(exit 100)해요.
