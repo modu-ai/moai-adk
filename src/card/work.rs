@@ -75,9 +75,8 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
     // `take` would refuse for want of a source. A source over a limit is no fill.
     let fill = |card_id: i64| -> Option<(Vec<String>, &'static str)> {
         let (_, spec) = spec_link::kind_and_spec(ledger.conn(), card_id).ok()??;
-        let (scope, source) =
-            take_scope::choose(project, ledger.conn(), card_id, spec.as_deref()).ok()??;
-        Some((scope, source.word()))
+        let fill = take_scope::choose(project, ledger.conn(), card_id, spec.as_deref()).ok()??;
+        Some((fill.scope, fill.source.word()))
     };
     let mut found =
         workflow::next_filled(ledger.conn(), holder, &fill).map_err(|e| e.to_string())?;

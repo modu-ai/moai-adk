@@ -159,6 +159,16 @@ pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<Stri
             i + 1
         ));
     }
+    // One `--scope` names one path and a glob here has no braces, so a comma is never part of a
+    // path: it is a list typed into one value, which would be stored as a single pattern that
+    // matches nothing (SPEC-20261123-take-scope-stored REQ-12).
+    if let Some(i) = entries.iter().position(|e| e.contains(',')) {
+        return Err(format!(
+            "card {action} refused: scope entry {} has a comma; one `--scope` per path (repeat the \
+             option), a comma does not separate paths",
+            i + 1
+        ));
+    }
     let scope =
         input::validate_scope(entries).map_err(|e| format!("card {action} refused: {e}"))?;
     if scope.len() > reservation::MAX_SCOPE_PATTERNS {
@@ -194,9 +204,10 @@ pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<Stri
 /// card's live reservation must be at it, else a `conflict` that names the generation the card
 /// has (or that it is not held), checked in the same write transaction (card C-129, SPEC
 /// SPEC-20261119-card-scope-widen-followup REQ-4 and REQ-5). A card added without `--scope` is
-/// skipped by `card next`
-/// (`empty_scope`), and nothing else sets a card's own scope (card C-53). Any other state is a
-/// conflict that names it; nothing is written then.
+/// skipped by `card next` (`empty_scope`) until it has a scope: this command sets it, and so does
+/// `take`, which keeps a given scope or fills an empty one from the card's SPEC or its last
+/// reservation (SPEC-20261123-take-scope-stored). Any other state is a conflict that names it;
+/// nothing is written then.
 pub fn scope(
     project: &Path,
     home: &Path,
@@ -396,12 +407,16 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     let own = take_scope::own_scope(ledger.conn(), card_id)
         .map_err(|e| ledger::LedgerError::from(e).to_string())?;
     let own_is_empty = own.as_ref().is_some_and(Vec::is_empty);
+    let mut merged: Vec<String> = Vec::new();
     let (scope, source) = match given {
         Some(scope) => (Some(scope), take_scope::Source::Given),
         None if own_is_empty => {
             let spec_id = linked.as_ref().and_then(|(_, spec)| spec.as_deref());
             match take_scope::choose(project, ledger.conn(), card_id, spec_id)? {
-                Some((scope, source)) => (Some(scope), source),
+                Some(fill) => {
+                    merged = fill.merged;
+                    (Some(fill.scope), fill.source)
+                }
                 None => return Err(take_scope::no_source_message(&input::card_name(card_id))),
             }
         }
@@ -428,6 +443,15 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     }
     .map_err(|e| e.to_string())?;
     let mut warnings: Vec<String> = warning.into_iter().collect();
+    if !merged.is_empty() {
+        let names: Vec<String> = merged.iter().map(|p| format!("`{p}`")).collect();
+        warnings.push(format!(
+            "{}: the `write:` list of the SPEC names {} more than once; each path is reserved \
+             once (merged)",
+            input::card_name(card_id),
+            names.join(", ")
+        ));
+    }
     if own_is_empty && source != take_scope::Source::Card {
         // The take already succeeded; a scope that could not be kept is a warning, never a
         // failure that would leave the card taken and reported refused.

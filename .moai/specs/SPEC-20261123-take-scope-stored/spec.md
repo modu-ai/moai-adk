@@ -32,6 +32,9 @@ created: 2026-11-23
 - REQ-7: The take shall store a filled or given scope on the card only after the reservation, whose own overlap check runs first, has been made, so a scope that overlaps another card's active reservation is refused and leaves the card as it was.
 - REQ-8: If a SPEC `write:` list holds more than 64 paths, then the take shall be refused with the 64-path limit named and nothing written.
 - REQ-9: `card next` shall list a `ready` card whose empty scope a take would fill from its SPEC or its last reservation, showing the filled scope and its `scope_source`, instead of skipping it as `empty_scope`.
+- REQ-10: If an entry of the SPEC `write:` list is not shaped like a path (it has white space or a comma, starts with `-`, or has no `/`, glob character or file extension), then the take shall refuse, fill nothing and name the SPEC file, the entry, `card take <C-n> --scope <path>` and `card scope <C-n> --scope <path>`. · failure: the card stays empty and `card next` skips it as `empty_scope`.
+- REQ-11: When the SPEC `write:` list names a path more than once, the take shall reserve and store the path once and name the merged paths in the `warnings` of its answer. · failure: none — a merged list that still breaks REQ-8 or REQ-10 is refused by them.
+- REQ-12: If a `--scope` value holds a comma, then the command shall refuse it and say that one `--scope` names one path. · failure: nothing is written, for `take` and for `card scope`.
 
 ## Acceptance
 
@@ -55,12 +58,22 @@ created: 2026-11-23
   verify: `cargo test --locked --offline --test ledger_reservation --test card_scope_widen_cli`
 - AC-11 (REQ-8, REQ-9): `card next` leaves a card with a SPEC list of 65 paths skipped as `empty_scope`, so it never offers what a take would refuse.
   verify: `cargo test --locked --offline --test card_take_scope_cli next_skips_a_fill_a_take_would_refuse`
-- AC-10 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9): the SPEC passes the checker.
+- AC-12 (REQ-10): on `## Scope` sections copied from three real SPECs (a code span `pub mod build;`, a prose line whose words were read as paths, an option span `--reason`), a take is refused naming the SPEC file, the entry and both ways out, the ledger is unchanged, the card keeps no scope and `card next` skips it as `empty_scope`; a clean real list still fills.
+  verify: `cargo nextest run --locked --offline --test card_take_scope_cli -E 'test(a_spec_list_with_a_word_is_refused_not_stored) | test(a_clean_real_spec_list_still_fills)'`
+- AC-13 (REQ-11): a real untagged list whose items name `src/home_workdir.rs` twice is taken with the path once and a `merged` warning.
+  verify: `cargo nextest run --locked --offline --test card_take_scope_cli -E 'test(a_spec_list_that_repeats_a_path_is_merged)'`
+- AC-14 (REQ-12): `take --scope a,b` and `card scope --scope a,b` are refused naming the comma and `one --scope per path`, with nothing reserved and the card scope unchanged.
+  verify: `cargo nextest run --locked --offline --test card_take_scope_cli -E 'test(a_comma_in_a_scope_value_is_refused)'`
+- AC-15 (REQ-4): a card with two earlier reservations gets the newest one's scope.
+  verify: `cargo nextest run --locked --offline --test card_take_scope_cli -E 'test(the_last_reservation_is_the_newest_one)'`
+- AC-16 (REQ-7, REQ-9): `card next` skips a card whose fill overlaps another card's active reservation as `scope_overlap` and does not offer it.
+  verify: `cargo nextest run --locked --offline --test card_take_scope_cli -E 'test(next_skips_a_fill_that_overlaps_a_held_scope)'`
+- AC-10 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9, REQ-10, REQ-11, REQ-12): the SPEC passes the checker.
   verify: `moai spec check SPEC-20261123-take-scope-stored`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261123-take-scope-stored/**`, `tests/card_take_scope_cli.rs` (new), `src/card/take_scope.rs` (new: the SPEC `write:` list read, the shared fill choice, the store), `src/card/mod.rs` (one module line), `src/card/dispatch.rs` (`take`), `src/card/work.rs` (`next`: passes the fill choice), `src/ledger/workflow.rs` (`next_filled`: the ledger read takes a fill function and runs the overlap check on the filled scope; `next` keeps its signature and answer)
+- write: `.moai/specs/SPEC-20261123-take-scope-stored/**`, `tests/card_take_scope_cli.rs` (new), `src/card/take_scope.rs` (new: the SPEC `write:` list read, the shared fill choice, the store), `src/card/mod.rs` (one module line), `src/card/dispatch.rs` (`take`), `src/card/work.rs` (`next`: passes the fill choice), `src/ledger/workflow.rs` (`next_filled`: the ledger read takes a fill function and runs the overlap check on the filled scope; `next` keeps its signature and answer), `src/ops/card.rs` and `docs/design-review/appendix/operations/card.md` (the help and the page say what a take fills and refuses; repair of the first audit)
 - read-only: every other file, the real HOME; `src/ledger/reservation.rs` is not edited: the reservation's own overlap check runs first and the scope is kept on the card afterwards
 - tier 2: an independent audit of the exact head (a ledger rule)
 - history: the SPEC, the red tests and the first piece were written on an earlier branch (`spec/take-scope-stored-20261121`, never landed); this branch starts again from the integration tip and takes them over, so the second piece no longer waits for other cards
@@ -88,6 +101,9 @@ created: 2026-11-23
 | D-1 | the order is the given scope, the card's own, the SPEC list, the last reservation | the report names this order; the card's own scope stays the authority | change the order |
 | D-2 | a SPEC list over 64 paths refuses instead of falling through to the last reservation | a SPEC that names the work in full should not be silently replaced by an older scope | fall through instead |
 | D-3 | the fill is stored on the card with a `card.scope` event | the stored scope is what makes the card visible to `card next` after the release | keep the fill on the reservation only |
+| D-4 | a path the SPEC list names twice is merged into one, with a `merged` warning, instead of refused | the first audit found 10 of 321 real SPECs refused for a repeat with no way out; the repeat is a note, not a mistake (leader decision 2026-11-23, the lane chose) | refuse a repeat as `--scope` does |
+| D-5 | every entry of a SPEC list must be shaped like a path (no white space or comma, no leading `-`, a `/`, a glob character or a file extension), else the whole list is refused | the first audit stored 61 words (`the`, `--reason`, `pub mod build;`) as paths from 311 real SPECs; a bare file name without an extension (`HEADVER`) is refused too and is named with `--scope` (leader decision 2026-11-23) | accept words and let the taker narrow |
+| D-6 | the comma check is in the shared `checked_scope`, so `add`, `scope`, `take`, `review`, `give-back` and `line-lease` all refuse a comma in a value | one place; the glob has no braces, so no path of a scope holds a comma | check in `take` only |
 
 ## Result
 

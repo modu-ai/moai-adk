@@ -72,21 +72,97 @@ pub fn last_reservation(conn: &Connection, card_id: i64) -> rusqlite::Result<Vec
     rows.collect()
 }
 
+/// What a take fills an empty-scope card with, and where it came from.
+#[derive(Debug)]
+pub struct Fill {
+    pub scope: Vec<String>,
+    pub source: Source,
+    /// Paths a SPEC list named more than once; each is in `scope` once.
+    pub merged: Vec<String>,
+}
+
+/// Whether a `write:` entry of a SPEC has the shape of a path or a glob: no white space, no comma,
+/// no leading `-`, and a `/`, a glob character or a file extension. A SPEC's list is prose the
+/// reader scanned for paths, so a span that is a word, an option or code (`the`, `--reason`,
+/// `pub mod build;`) must not become the card's scope.
+fn path_shaped(entry: &str) -> bool {
+    if entry.is_empty()
+        || entry.starts_with('-')
+        || entry.contains(|c: char| c.is_whitespace() || c == ',')
+    {
+        return false;
+    }
+    if entry.contains(['/', '*', '?', '[', '{']) {
+        return true;
+    }
+    // A bare file name: an extension of 1 to 10 letters or digits after the last dot.
+    entry.rsplit_once('.').is_some_and(|(_, ext)| {
+        (1..=10).contains(&ext.len()) && ext.bytes().all(|b| b.is_ascii_alphanumeric())
+    })
+}
+
+/// `list` with each entry once (the first place kept), and the entries that were there again.
+fn merge_repeats(list: &[String]) -> (Vec<String>, Vec<String>) {
+    let mut kept: Vec<String> = Vec::with_capacity(list.len());
+    let mut repeated: Vec<String> = Vec::new();
+    for entry in list {
+        let entry = entry.trim();
+        if kept.iter().any(|k| k == entry) {
+            if !repeated.iter().any(|r| r == entry) {
+                repeated.push(entry.to_string());
+            }
+        } else {
+            kept.push(entry.to_string());
+        }
+    }
+    (kept, repeated)
+}
+
+/// The refusal for a SPEC list that cannot fill the scope: the file, the reason, the two ways out.
+fn spec_refusal(card: &str, file: &str, why: &str) -> String {
+    format!(
+        "card take refused: the `write:` list of {file} cannot fill the scope of {card} ({why}); \
+         correct that list, or name the paths with `card take {card} --scope <path>` (repeat it \
+         per path), or set them first with `card scope {card} --scope <path>`"
+    )
+}
+
 /// What a take would fill an empty-scope card with: the `write:` list of the SPEC the card names,
 /// else the scope of its last reservation, each checked as a typed `--scope` is (the same limits
-/// as `reserve`). `Ok(None)` when no source gives a path; `Err` when a source is there but over a
-/// limit, so a SPEC that names the work in full is never silently replaced by an older scope.
-/// `take` and `card next` share this choice, so `next` offers exactly what `take` would accept.
+/// as `reserve`). `Ok(None)` when no source gives a path; `Err` when a source is there but cannot
+/// be used (over a limit, or an entry that is not a path), so a SPEC that names the work in full
+/// is never silently replaced by an older scope and a word is never stored as a path. A path a
+/// SPEC list names twice is merged into one (decision D-4). `take` and `card next` share this
+/// choice, so `next` offers exactly what `take` would accept.
 pub fn choose(
     project: &Path,
     conn: &Connection,
     card_id: i64,
     spec: Option<&str>,
-) -> Result<Option<(Vec<String>, Source)>, String> {
+) -> Result<Option<Fill>, String> {
     let from_spec = spec_list(project, spec);
-    if !from_spec.is_empty() {
-        let scope = super::dispatch::checked_scope("take", &from_spec)?;
-        return Ok(Some((scope, Source::Spec)));
+    if let (false, Some(id)) = (from_spec.is_empty(), spec) {
+        let card = super::input::card_name(card_id);
+        let file = format!("{}/{id}/spec.md", spec_doc::SPECS_DIR);
+        let (list, merged) = merge_repeats(&from_spec);
+        if let Some(i) = list.iter().position(|e| !path_shaped(e)) {
+            let why = format!(
+                "entry {} `{}` is not a path: a path has no space or comma, does not start with \
+                 `-`, and has a `/`, a glob character or a file extension",
+                i + 1,
+                list[i]
+            );
+            return Err(spec_refusal(&card, &file, &why));
+        }
+        let scope = super::dispatch::checked_scope("take", &list).map_err(|e| {
+            let why = e.strip_prefix("card take refused: ").unwrap_or(&e);
+            spec_refusal(&card, &file, why)
+        })?;
+        return Ok(Some(Fill {
+            scope,
+            source: Source::Spec,
+            merged,
+        }));
     }
     let last =
         last_reservation(conn, card_id).map_err(|e| ledger::LedgerError::from(e).to_string())?;
@@ -94,7 +170,11 @@ pub fn choose(
         return Ok(None);
     }
     let scope = super::dispatch::checked_scope("take", &last)?;
-    Ok(Some((scope, Source::LastReservation)))
+    Ok(Some(Fill {
+        scope,
+        source: Source::LastReservation,
+        merged: Vec::new(),
+    }))
 }
 
 /// The refusal for a card that has no scope and nothing to fill it from: both ways out.
