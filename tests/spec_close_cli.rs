@@ -458,6 +458,97 @@ fn close_with_a_card_marks_it_done() {
     assert!(!r["next"].to_string().contains("C-1"), "{r}");
 }
 
+/// SPEC-20261123-cleanup-outbox-followups REQ-6: `spec close --card` closes the card through
+/// `card done`, so the cleanup executor runs after the close: a clean, merged worktree and its
+/// merged branch are gone and the answer's `card` carries the `cleanup_outbox` key.
+#[test]
+fn fu4_close_with_a_card_runs_the_cleanup_outbox() {
+    let w = World::new();
+    // The profile names `main` as the integration branch the cleanup measures "merged" against.
+    let cfg = moai_cli::state_root::path(&w.project, "project.yaml");
+    fs::create_dir_all(cfg.parent().unwrap()).unwrap();
+    fs::write(
+        &cfg,
+        "{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \
+         \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \
+         \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"main\"}}",
+    )
+    .unwrap();
+    w.merged(true, MET);
+
+    let wt = fs::canonicalize(&w.dir).unwrap().join("wt-fu4");
+    w.git(&[
+        "worktree",
+        "add",
+        "-q",
+        "--detach",
+        wt.to_str().unwrap(),
+        "main",
+    ]);
+    w.git(&["branch", "lane/fu4", "main"]);
+    ok(&w.card(&[
+        "add", "--title", "t", "--kind", "fix", "--scope", "src/", "--ac", "it works",
+    ]));
+    ok(&w.card(&["ready", "C-1"]));
+    ok(&w.card(&[
+        "take",
+        "C-1",
+        "--worktree",
+        wt.to_str().unwrap(),
+        "--branch",
+        "lane/fu4",
+    ]));
+    ok(&w.card(&["spec", "C-1", ID]));
+    ok(&w.card(&[
+        "criterion",
+        "C-1",
+        "1",
+        "--generation",
+        "1",
+        "--met",
+        "--evidence",
+        "test passed",
+    ]));
+    ok(&w.card(&["review", "C-1", "--generation", "1"]));
+    // An m-flow project closes a card on its local landing: the merged tip stands for it.
+    let tip = w.git(&["rev-parse", "main"]);
+    ok(&w.card(&["landed", "C-1", "--head", &tip, "--by", "leader"]));
+
+    // The cleanup treats a worktree changed less than a day ago as in use: its clock is moved on.
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let mut cmd = w.home.command(&[
+        "spec",
+        "close",
+        ID,
+        "--project",
+        w.p(),
+        "--card",
+        "C-1",
+        "--generation",
+        "1",
+    ]);
+    cmd.env("MOAI_FORGE_GH_BIN", &w.gh)
+        .env(SESSION_VAR, S_A)
+        .env(
+            moai_cli::worktree_cleanup::NOW_SEAM,
+            (now + 3 * 86_400).to_string(),
+        )
+        .env("PATH", std::env::var("PATH").unwrap_or_default());
+    let r = ok(&cmd.output().expect("run moai"));
+    assert_eq!(r["card"]["state"], "done", "{r}");
+    let outbox = &r["card"]["cleanup_outbox"];
+    assert_eq!(outbox["error"], json!(null), "{r}");
+    assert_eq!(outbox["requests"][0]["status"], "settled", "{r}");
+    assert!(!wt.exists(), "the worktree is still there: {r}");
+    assert!(
+        w.git(&["for-each-ref", "refs/heads/lane/fu4"]).is_empty(),
+        "the branch is still there: {r}"
+    );
+}
+
 #[test]
 fn a_card_refusal_changes_nothing() {
     // `card done` refuses: the pull request is not merged.
