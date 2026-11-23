@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-lane-branch-after-spec
 title: "레인 브랜치 이름이 SPEC 슬러그와 달라도, SPEC 이 그 브랜치를 가리키면 코드 쓰기가 열려요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7875 (2026-11-23T20:46:12Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7874 에 대한 답): (A) 판 1 승인, 길 (a) 앞머리 branch: 줄, D-1~D-4, REQ-1~8, AC-1~8, 조건 둘(훅 tier 2 감사와 guard-mutant 줄, 스캔은 한 단계만 읽고 링크를 따라가지 않는 테스트 하나)을 AC-9 와 D-5 로 옮겼어요; 리더가 노트에 적었고 레인은 그 노트를 옮겨 적었어요"
+  digest: "sha256:0570b6475097f9b35980b879a7aaeebe9885924c488506fc0d61d7b798b4157b"
 ---
 
 # 레인 브랜치 이름이 SPEC 슬러그와 달라도, SPEC 이 그 브랜치를 가리키면 코드 쓰기가 열려요
@@ -52,6 +57,7 @@ created: 2026-11-24
 - AC-6 (REQ-6): `branch` raises no `fm_unknown_key` warning, and another unknown key still does · verify: `cargo nextest run --locked --offline --test spec_doc branch_is_a_known_spec_key`
 - AC-7 (REQ-7): the refusal text names `branch:` · verify: `cargo nextest run --locked --offline --test spec_before_code_hook a_spec_that_names_the_branch_opens_code_writes`
 - AC-8 (REQ-8): `docs/leader-rules.md` has the lane-branch naming paragraph · verify: `rg -c "Naming a lane branch" docs/leader-rules.md`
+- AC-9 (REQ-3): the scan reads only the direct children of `.moai/specs/` and follows no link: a `spec.md` one folder deeper and a `spec.md` that is a symbolic link open nothing · verify: `cargo nextest run --locked --offline --test spec_before_code_hook the_scan_reads_one_level_and_follows_no_link`
 
 ## Scope
 
@@ -63,7 +69,7 @@ created: 2026-11-24
 
 ## Plan
 
-1. RED: the four hook tests, the `moai tdd` test and the `spec_doc` test; each fails on the current code (the link is not read; `branch` warns as unknown).
+1. RED: the five hook tests (the fifth is `the_scan_reads_one_level_and_follows_no_link`), the `moai tdd` test and the `spec_doc` test; each fails on the current code (the link is not read; `branch` warns as unknown).
 2. GREEN: in `src/spec_branch.rs` add the link scan to `resolve` (only after the name-based reading finds no existing SPEC file); add `branch` to `KNOWN_KEYS` in `src/spec_doc.rs`; extend `SPEC_FIRST` in `src/hook_guards.rs`.
 3. `docs/leader-rules.md`: one paragraph "Naming a lane branch".
 4. Guard mutants: remove the scan, the folder-equals-id check, the status check, the symlink check and the two-ids arm one at a time and see the named test fail.
@@ -84,3 +90,4 @@ created: 2026-11-24
 | D-2 | The link is read only when the name-based reading finds no existing SPEC file | the common path stays as it was and costs nothing; a branch whose own SPEC exists is judged as before | drop the early return |
 | D-3 | A link counts only for a `draft` or `approved` SPEC whose folder equals its `id:` and is not a link | a landed or archived SPEC must not unlock a reused branch name; the folder rule is the existing SPEC id rule | none |
 | D-4 | `moai spec new` does not write the line | keeps this change to the reader; the lane writes one line | add `--branch` to `moai spec new` by a later SPEC |
+| D-5 | The scan reads one level of `.moai/specs/` and follows no link; the hook change is audited at tier 2 | the leader's conditions at approval (note 7875): the hook is a security gate; the READY note carries one guard-mutant line for "a name-read SPEC is never scanned past" and one for each REQ-3 refusal | none |
