@@ -580,6 +580,12 @@ enum Action {
     /// session that wrote the note, whatever `--by` says, and `card show` prints it. The text is
     /// at most 1 MiB, with no control character but tabs and line breaks, and no word with the
     /// shape of a secret: `card export` writes notes out. The answer's `ref` names the note.
+    ///
+    /// A note whose first line starts with `LANE-READY-INTEGRATION`, `REPAIRED` or `READY ` hands
+    /// a head back and must read `<marker> <card> head=<40 lowercase hex>`. It is kept only when
+    /// a worktree that is at that head holds `target/check-affected-<head12>/summary.txt` with
+    /// the `result=PASS` line of a bare `moai check affected` run of that head (a `--lane` run is
+    /// no receipt). Otherwise the note is refused with the way out and nothing is written.
     Note {
         /// `C-12`.
         card: String,

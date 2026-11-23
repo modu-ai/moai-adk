@@ -491,3 +491,26 @@ fn page_describes_the_two_selections() {
         assert!(page.contains(word), "check.md does not say `{word}`");
     }
 }
+
+// SPEC-20261124-ready-receipt-followup AC-7: the page names the word a `--lane` run writes, the
+// markers the gate judges and the bare run a READY receipt comes from.
+#[test]
+fn the_operations_page_names_the_lane_word() {
+    let page = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("docs/design-review/appendix/operations/check.md"),
+    )
+    .unwrap();
+    for word in [
+        "selection=lane",
+        "LANE-READY-INTEGRATION",
+        "REPAIRED",
+        "summary.txt",
+    ] {
+        assert!(page.contains(word), "check.md does not say `{word}`");
+    }
+    assert!(
+        !page.contains("레인이 READY 를 쓰기 전에는 `--lane`"),
+        "check.md still sends a lane to `--lane` before READY"
+    );
+}

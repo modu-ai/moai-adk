@@ -1984,9 +1984,10 @@ fn marker_of(body: &str) -> Option<Marker> {
         Some(Marker::Blocked)
     } else if audit && first.contains("verdict: PASS") {
         Some(Marker::Audited)
-    } else if first.starts_with("LANE-READY-INTEGRATION")
-        || first.starts_with("MERGE-READY")
-        || first.starts_with("READY ")
+    } else if matches!(
+        crate::card::ready_receipt::marker_of_line(first),
+        Some("LANE-READY-INTEGRATION" | "READY")
+    ) || first.starts_with("MERGE-READY")
         || first.starts_with("감사 요청")
         || (first.starts_with("LANE-DONE")
             && (first.contains("audit requested") || first.contains("감사 요청")))
@@ -3852,6 +3853,34 @@ mod marker_tests {
         assert_eq!(marker_of("MERGE-READY"), Some(Marker::Submitted));
         assert_eq!(marker_of("MERGE-READYX"), Some(Marker::Submitted));
         assert_eq!(marker_of("XMERGE-READY"), None);
+    }
+
+    /// SPEC-20261124-ready-receipt-followup REQ-1: the status line counts a hand-back first line
+    /// exactly when the one marker judge of the receipt gate says `LANE-READY-INTEGRATION` or
+    /// `READY` (`REPAIRED` is not counted here, and `MERGE-READY` keeps its own prefix rule).
+    #[test]
+    fn status_line_marker_follows_marker_of_line() {
+        for line in [
+            "LANE-READY-INTEGRATION C-1 head=abc",
+            "LANE-READY-INTEGRATION: C-1 head=abc",
+            "  LANE-READY-INTEGRATION C-1",
+            "READY C-1 head=abc",
+            "  READY C-1 head=abc",
+            "REPAIRED C-1 head=abc",
+            "READYX",
+            "see READY x",
+            "",
+        ] {
+            let counted = matches!(
+                crate::card::ready_receipt::marker_of_line(line),
+                Some("LANE-READY-INTEGRATION" | "READY")
+            );
+            assert_eq!(
+                marker_of(line) == Some(Marker::Submitted),
+                counted,
+                "{line:?}"
+            );
+        }
     }
 
     /// A marker word only counts on the first line: each word on line two is no marker.

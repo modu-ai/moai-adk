@@ -1067,8 +1067,15 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     }
     drop(held);
     let pass = results.iter().all(|(_, c)| *c == 0);
+    // A `--lane` run says so right after `scans=`; the bare line has no such word
+    // (SPEC-20261124-ready-receipt-followup REQ-6, REQ-9).
+    let lane_word = if opts.pick == Pick::Lane {
+        " selection=lane"
+    } else {
+        ""
+    };
     let mut line = format!(
-        "check-affected base={} head={} targets={} scans={} test-threads={}",
+        "check-affected base={} head={} targets={} scans={}{lane_word} test-threads={}",
         short(&facts.base),
         short(&facts.head),
         sel.rust.len(),
