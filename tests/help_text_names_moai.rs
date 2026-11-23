@@ -4,8 +4,8 @@
 //! Each row is one fixed sentence of the program. The message is built deep inside an apply
 //! or a launch that needs a real project or a key vault to reach, so the row pins the wording
 //! where it is written: the sentence with the new name must be there and the sentence with the
-//! old name must not. Sentences that name a file or folder on disk (`bin/moai-cli`,
-//! `~/.moai-cli/...`) are other slices and are not rows here.
+//! old name must not. Sentences that name a file or a state folder on disk (`bin/moai-cli`,
+//! the earlier home folder) are other slices and are not rows here.
 
 use std::fs;
 use std::path::Path;
@@ -54,25 +54,31 @@ const SENTENCES: [(&str, &str, &str); 8] = [
     ),
 ];
 
-/// The help goldens are the text a person sees. `moai-cli` may stay in them only as the state
-/// folder (`.moai-cli`, `~/.moai-cli`) until the folder moves (slice 7), and in the one
+/// The help goldens are the text a person sees. `moai-cli` may stay in them only as the name of
+/// the earlier state folder (a dot comes right before it) until the folder moves (slice 7), and in the one
 /// `bin-names-plan` sentence that names the file on disk until the file is renamed (slice 5,
 /// decision D-6); at 60 columns that sentence wraps and the file name stands alone on a line.
 #[test]
 fn the_help_goldens_keep_the_old_name_only_for_folders_and_the_alias_file() {
     const NAME: &str = "moai-cli";
     const ALIAS_LEAD: &str = "Preview the moai link beside";
+    // The eight goldens `tests/help_layout.rs` compares, named one by one;
+    // a golden added there is added here.
+    const GOLDENS: [&str; 8] = [
+        "all-60.txt",
+        "all-80.txt",
+        "all-dumb.txt",
+        "all.txt",
+        "root-60.txt",
+        "root-80.txt",
+        "root-dumb.txt",
+        "root.txt",
+    ];
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/help");
-    let mut names: Vec<_> = fs::read_dir(&dir)
-        .unwrap()
-        .map(|e| e.unwrap().path())
-        .filter(|p| p.extension().is_some_and(|x| x == "txt"))
-        .collect();
-    names.sort();
-    assert!(names.len() >= 8, "the goldens moved: {names:?}");
     let mut wrong = Vec::new();
-    for path in names {
-        let text = fs::read_to_string(&path).unwrap();
+    for name in GOLDENS {
+        let path = dir.join(name);
+        let text = fs::read_to_string(&path).unwrap_or_else(|e| panic!("{name}: {e}"));
         let mut before = "";
         for (i, line) in text.lines().enumerate() {
             let alias_file = line.trim_end().ends_with(&format!("{ALIAS_LEAD} {NAME}"))
@@ -80,12 +86,7 @@ fn the_help_goldens_keep_the_old_name_only_for_folders_and_the_alias_file() {
             if !alias_file {
                 for (at, _) in line.match_indices(NAME) {
                     if !line[..at].ends_with('.') {
-                        wrong.push(format!(
-                            "{}:{}: {}",
-                            path.file_name().unwrap().to_string_lossy(),
-                            i + 1,
-                            line.trim()
-                        ));
+                        wrong.push(format!("{name}:{}: {}", i + 1, line.trim()));
                     }
                 }
             }

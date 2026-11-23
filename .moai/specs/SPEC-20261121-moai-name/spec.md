@@ -96,8 +96,8 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 - AC-5 (REQ-5): `--version` 의 첫 줄이 두 바이너리 이름 모두에서 `moai <version> (rust)` 이고 usage·help 이름이 `moai` 예요 — 조각 1b · verify: `cargo nextest run --test cli_name_moai -E 'test(both_names_print_the_same_output)'`, `cargo nextest run --test help_layout -E 'test(every_name_prints_moai_and_the_version_line_is_unchanged)'`, `cargo nextest run --bin moai-cli -E 'test(every_binary_name_renders_the_same_moai_help)'`
 - AC-6 (REQ-6): 이 문서의 Occurrence table 이 종류별 줄 수·의미·조각을 전부 나열해요 · verify: `moai spec check SPEC-20261121-moai-name` 의 errors 가 0 이에요.
 - AC-7 (REQ-8): 실제 바이너리가 찍은 첫 줄을 읽는 `install-inspect` 테스트가 `moai <ver> (rust)` 와 `moai-cli <ver> (rust)` 를 모두 받고, 스모크 도구의 정규식과 README 두 곳의 서명, 문서 테스트의 기대가 새 서명이에요 — 조각 1b 수리 · verify: `cargo nextest run --test install_candidates -E 'test(every_moai_is_listed_in_order_and_told_apart_without_writing)'`. Python 쪽(`tools/smoke/smoke.py`, `tests/oss_docs_test.py`)은 고치기만 했고 돌리지 않았어요: 손으로도 `moai check affected` 로도 돌지 않으므로 `not_run` 이고, 원격 CI 의 첫 실행이 그 확인이에요.
-- AC-8 (REQ-9): 거절·경고·안내 문장이 `moai` 를 말하고 옛 이름의 문장은 소스에 없어요 · verify: `cargo nextest run --test user_text_names_moai -E 'test(every_refusal_and_note_sentence_names_moai)'`, `cargo nextest run --test skill_name_collision`, `cargo nextest run --test update_switch_cli --test update_switch_layer`, `cargo nextest run --lib -E 'test(/key_vault/)'`
-- AC-9 (REQ-10): 도움말 골든의 `moai-cli` 는 상태 폴더 경로와 `bin-names-plan` 의 파일 문장 둘뿐이에요 · verify: `cargo nextest run --test user_text_names_moai -E 'test(the_help_goldens_keep_the_old_name_only_for_folders_and_the_alias_file)'`, `cargo nextest run --test help_layout -E 'test(moai_cli_help_names_no_command_moai_cli)'`
+- AC-8 (REQ-9): 거절·경고·안내 문장이 `moai` 를 말하고 옛 이름의 문장은 소스에 없어요 · verify: `cargo nextest run --test help_text_names_moai -E 'test(every_refusal_and_note_sentence_names_moai)'`, `cargo nextest run --test skill_name_collision`, `cargo nextest run --test update_switch_cli --test update_switch_layer`, `cargo nextest run --lib -E 'test(/key_vault/)'`
+- AC-9 (REQ-10): 도움말 골든의 `moai-cli` 는 상태 폴더 경로와 `bin-names-plan` 의 파일 문장 둘뿐이에요 · verify: `cargo nextest run --test help_text_names_moai -E 'test(the_help_goldens_keep_the_old_name_only_for_folders_and_the_alias_file)'`, `cargo nextest run --test help_layout -E 'test(moai_cli_help_names_no_command_moai_cli)'`
 
 ## Scope
 
@@ -105,7 +105,7 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 - read-only: `src/install.rs`(이미 두 이름을 받음), 조사 자료(리더 scratchpad `mcli/`)
 - write (조각 1b): 이 SPEC 폴더, `src/main.rs`(clap `name` 한 줄과 그 위 주석, 단위 테스트 `every_binary_name_renders_the_same_moai_help` 의 기대값, 이름을 설명하는 주석), `src/lib.rs`·`src/bin/moai.rs`(주석만), `tests/cli_name_moai.rs`, `tests/help_layout.rs`
 - write (조각 1b 수리, 개정 4): `tests/install_candidates.rs`(실제 바이너리 버전 줄 기대), `tools/smoke/smoke.py`(버전 줄 정규식 한 곳), `README.md`·`README.ko.md`(서명 인용 한 줄씩), `tests/oss_docs_test.py`(서명 기대 한 줄), 이 SPEC 폴더. Python 파일은 위 한 줄씩만 고쳐요.
-- write (조각 2, 개정 5): 이 SPEC 폴더, `src/update.rs`(Go 시대 스킬 안내 문장 한 곳), `src/update/switch.rs`(되돌리기 명령 두 곳), `src/go_state.rs`(경고 두 곳), `src/session.rs`·`src/launcher_terminal.rs`(키 보관함 안내), `src/key_vault.rs`(거절 문장 한 곳과 그 단위 테스트), `src/launcher_init.rs`(첫 실행 profile 의 purpose 문장), `src/state_root.rs`(더 새로운 표식 거절 문장), `src/claude.rs`(설정 백업 폴더의 ignore 머리말), `tests/skill_name_collision.rs`, `tests/update_switch_cli.rs`, `tests/update_switch_layer.rs`, `tests/placeholder_profile_guard.rs`, `tests/user_text_names_moai.rs`(새)
+- write (조각 2, 개정 5): 이 SPEC 폴더, `src/update.rs`(Go 시대 스킬 안내 문장 한 곳), `src/update/switch.rs`(되돌리기 명령 두 곳), `src/go_state.rs`(경고 두 곳), `src/session.rs`·`src/launcher_terminal.rs`(키 보관함 안내), `src/key_vault.rs`(거절 문장 한 곳과 그 단위 테스트), `src/launcher_init.rs`(첫 실행 profile 의 purpose 문장), `src/state_root.rs`(더 새로운 표식 거절 문장), `src/claude.rs`(설정 백업 폴더의 ignore 머리말), `tests/skill_name_collision.rs`, `tests/update_switch_cli.rs`, `tests/update_switch_layer.rs`, `tests/placeholder_profile_guard.rs`, `tests/help_text_names_moai.rs`(새)
 - forbidden: 다른 카드가 쥔 파일(상태 폴더 resolver·상수는 path-root 카드, Python 파일은 Rust-only 카드), 조각 4·10 의 파일, 설치된 홈 상태 폴더(`.moai`, `.moai-cli`), `Cargo.toml` 의 패키지·bin 이름과 `install.sh`(조각 5, 이번 조각이 아니에요), 카드 번호를 SPEC id·브랜치·커밋·코드에 넣기
 
 ## Plan
@@ -134,7 +134,7 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 ### Plan 2 (개정 5)
 
 1. 찾기: 빌드한 두 바이너리의 `-h`·`--help`·`help --all` 과 모든 명령의 `--help` 출력에서 명령 이름으로 쓰인 `moai-cli` 를 찾아요(기준 출력). 소스에서는 따옴표 안의 사용자 문장만 골라요(주석·파일 경로·테스트 입력 제외).
-2. RED: 기대값을 새 문장으로 먼저 고친 테스트들(`update_switch_cli`, `update_switch_layer`, `skill_name_collision`, `key_vault` 단위 테스트)과 새 `tests/user_text_names_moai.rs` 의 문장 표가 옛 이름 때문에 실패하는 것을 먼저 봐요.
+2. RED: 기대값을 새 문장으로 먼저 고친 테스트들(`update_switch_cli`, `update_switch_layer`, `skill_name_collision`, `key_vault` 단위 테스트)과 새 `tests/help_text_names_moai.rs` 의 문장 표가 옛 이름 때문에 실패하는 것을 먼저 봐요.
 3. 소스 문장을 `moai` 로 바꿔요(Scope 의 파일만). 문장 바깥의 코드는 그대로예요(키 보관함 유도선 포함).
 4. 도움말 골든은 허용된 줄(상태 폴더 경로, `bin-names-plan` 의 파일 문장)만 남은 것을 `the_help_goldens_keep_the_old_name_only_for_folders_and_the_alias_file` 로 고정해요.
 5. 실제 바이너리 출력을 읽는 테스트를 `moai-cli 4\.|version_line|--version|revert-switch|moai-cli` 로 찾아 nextest 로 모두 돌려요.
@@ -202,7 +202,7 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 2026-11-23, 브랜치 `spec/moai-name-20261121`, base NeXT `568bc8956c41be8cae7bbcd518e37fcf5239d5c3`.
 
 - 먼저 본 것: 두 바이너리의 `-h`·`--help`·`help --all` 과 모든 명령의 `--help`(최상위 237개 단어, `bundle verify` 등 일부 하위 명령 포함)에서 명령 이름으로 쓰인 `moai-cli` 는 `bin-names-plan` 의 파일 문장과 `bundle verify` 의 플래그 `--moai-cli`(이름 자체가 인터페이스, 조각 5 이후) 뿐이에요. 도움말 골든(`tests/fixtures/help/*.txt` 8개)에 남은 `moai-cli` 는 상태 폴더 경로(조각 7)와 `bin-names-plan` 파일 문장(결정 D-6) 뿐이라 골든 파일 내용은 바꾸지 않았어요.
-- AC-8: met — 문장 11곳(Go 시대 스킬 안내 `update.rs`, 되돌리기 명령 `update/switch.rs` 2곳, 상태 이전 경고 `go_state.rs` 2곳, 키 보관함 안내 `session.rs`·`launcher_terminal.rs`, 거절 `key_vault.rs`, 첫 실행 purpose `launcher_init.rs`, 더 새로운 표식 `state_root.rs`, 설정 백업 머리말 `claude.rs`)을 `moai` 로 바꿨어요. RED: 기대값을 먼저 새 문장으로 고친 테스트와 새 `tests/user_text_names_moai.rs` 가 옛 문장 때문에 7개 실패(exit 100, `target/moai-name-help/red.log`), 바꾼 뒤 초록 52/52(exit 0).
+- AC-8: met — 문장 11곳(Go 시대 스킬 안내 `update.rs`, 되돌리기 명령 `update/switch.rs` 2곳, 상태 이전 경고 `go_state.rs` 2곳, 키 보관함 안내 `session.rs`·`launcher_terminal.rs`, 거절 `key_vault.rs`, 첫 실행 purpose `launcher_init.rs`, 더 새로운 표식 `state_root.rs`, 설정 백업 머리말 `claude.rs`)을 `moai` 로 바꿨어요. RED: 기대값을 먼저 새 문장으로 고친 테스트와 새 `tests/help_text_names_moai.rs` 가 옛 문장 때문에 7개 실패(exit 100, `target/moai-name-help/red.log`), 바꾼 뒤 초록 52/52(exit 0).
 - AC-9: met — `the_help_goldens_keep_the_old_name_only_for_folders_and_the_alias_file` 와 기존 `moai_cli_help_names_no_command_moai_cli` 통과.
 - 뮤턴트: 소스 문장 4곳(`session.rs`·`update/switch.rs`·`update.rs`·`key_vault.rs`)과 골든 한 줄을 옛 이름으로 되돌렸더니 8개 테스트가 실패(exit 100): 문장 표 테스트, 골든 guard, `skill_name_collision` 2개, `key_vault` 단위 테스트, `update_switch_layer`·`update_switch_cli` 3개. 커밋 뒤에 넣었고 `git checkout` 으로 되돌린 뒤 `git status` 가 깨끗한 것을 확인했어요.
 - 실제 바이너리 출력을 읽는 테스트: 바꾼 문장을 읽는 곳(`update_*`, `go_state_*`, `key_*`, `launcher_*`, `state_root_cli`, `claude_*`, `session_*`, `home_install_*`, `project_update_*`)과 1b 수리 때 찾은 버전 줄을 읽는 곳을 합친 83개 통합 테스트 대상을 nextest 명시 `--test` 로 heavy-slot 4 에서 돌려 1256개 통과(exit 0, `target/moai-name-help/real-output.log`).
