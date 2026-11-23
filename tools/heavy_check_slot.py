@@ -54,7 +54,7 @@ has `alive` and `holders`), and a slot file is never edited or deleted by hand. 
 can list a held slot with an empty record (#2599).
 
 Every caller on one machine should pass the same --max; a smaller --max only looks at
-the first slots. The default folder is ${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots.
+the first slots. The default folder is ${XDG_CACHE_HOME:-~/.cache}/moai/heavy-slots.
 Unix only (flock); elsewhere the tool refuses with exit 2.
 
 Sources read 2026-11-12: Python `fcntl.flock` (3.13 built-in help: "See the Unix manual
@@ -325,7 +325,7 @@ def busy(name, why, folder):
 
 def default_dir():
     base = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
-    return os.path.join(base, "moai-cli", "heavy-slots")
+    return os.path.join(base, "moai", "heavy-slots")
 
 
 class NotASlotFile(Exception):
