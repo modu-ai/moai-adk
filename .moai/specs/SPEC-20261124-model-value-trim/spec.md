@@ -64,3 +64,13 @@ Related: SPEC-20261122-model-fast-pair (REQ-3, D-2). 그 SPEC 의 경계 수리(
 | --- | --- | --- | --- |
 | D-1 | 일치 판정에만 `trim()` 을 쓰고 `carry` 와 `one_line` 은 그대로 둬요 | 병합 원문을 바꾸지 않고 막는 범위만 넓히는 가장 작은 변경이에요(C-436 본문) | `is_opus_48` 의 `.trim()` 한 호출을 빼요 |
 | D-2 | 별도 SPEC 을 만들어요 | 브랜치 이름 `spec/model-value-trim-20261124` 에 맞는 날짜의 SPEC 이 없으면 훅이 코드 쓰기를 막아요(C-436 배차) | SPEC-20261122-model-fast-pair 의 Result 에 옮겨 적고 이 SPEC 을 닫아요 |
+
+## Result
+
+코드 커밋 5eb95bb771, 2026-11-24 에 그 트리로 빌드해서 돌렸어요(로그는 `target/model-value-trim/`, 카드가 열려 있는 동안만 남아요).
+
+- AC-1: met. RED 먼저: 새 테스트를 쓰고 코드는 그대로 둔 채 `cargo nextest run --lib -E 'test(fast_pair)'` 를 돌렸어요. 5개 중 4개 통과, 1개 실패(`"claude-opus-4-8 " + fastMode` 가 `blocked` 가 아니라 `mergeable`), exit 100. GREEN: `is_opus_48` 이 `model.trim()` 의 소문자 사본으로 맞춘 뒤 `cargo nextest run --lib -E 'test(fast_pair) | test(claude_settings_merge)'` 는 12개 중 12개 통과, exit 0. 가드 뮤턴트(`.trim()` 만 뺌, diff 1줄 확인): 5개 중 4개 통과, 1개 실패(`fast_pair_a_space_around_an_opus_48_value_does_not_hide_it`), exit 100; `git checkout -- src/claude_settings_merge.rs` 로 되돌린 뒤 `git status --short` 에 변경이 없었어요.
+- AC-2: met. `fast_pair_a_space_keeps_a_near_id_mergeable_and_the_carried_text_as_read` 가 `claude-opus-4-80 `, `claude-opus-4.85 `, ` claude-opus-4-7 ` 를 두 fast mode 키 옆에서 `mergeable` 로 확인해요. 핀 테스트라 RED 없이 바로 통과했고 trim 뮤턴트에서도 통과했어요(경계 규칙은 trim 이 건드리지 않아요).
+- AC-3: met. 같은 테스트가 fast mode 키 없는 ` claude-opus-4-8 ` 의 `carry` 가 공백 포함 원문 그대로임을 확인해요(핀 테스트, RED 없음).
+- 안 돌린 것: `check affected` 와 전체 `cargo test` 는 이 Result 를 쓸 때까지 돌리지 않았어요. 영수증은 카드의 READY 노트에 있어요.
+- 미확인: Claude Code 가 모델 값을 다듬는지는 확인하지 않았어요(Non-goals).
