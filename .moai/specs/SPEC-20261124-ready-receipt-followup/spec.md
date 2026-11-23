@@ -95,4 +95,16 @@ approval:
 
 ## Result
 
-(구현 뒤에 채워요.)
+구현은 브랜치 `spec/ready-receipt-followup-20261124`(기준 NeXT `6fd89cec16`)의 커밋 SPEC 초안 `a9f9e3080d` → 승인 머리말 `d73530afae`(리더 노트 7865) → RED `21e6016b43` → GREEN `e22f6dfab4` → 도움말 `9a7632c357` 순서예요. RED 는 새·바뀐 테스트 11개 실패(`target/c420/red.log`), 도움말 RED 는 1개 실패(`target/c420/red2.log`)였어요. GREEN 뒤 라이브러리와 통합 테스트 세 파일(`card_ready_receipt_cli`, `check_affected_cli`, `check_affected_modes_cli`) 1828개 모두 통과(`target/c420/green2.log`, exit 0), 도움말 테스트와 건너뛰는 낱말 테스트 2개 통과(`target/c420/green3.log`).
+
+- AC-1: met — `marker_of_line_table`, `inbox_family_follows_marker_of_line`, `status_line_marker_follows_marker_of_line`(라이브러리)와 `a_glued_marker_is_one_rule_for_gate_inbox_and_status_line` passed. 글자가 붙은 `LANE-READY-INTEGRATION:` 와 `REPAIRED-X` 는 영수증이 있어도 모양이 틀려 거절되고 inbox 는 앞의 것을 READY 로 세요.
+- AC-2: met — `a_marker_line_of_the_wrong_shape_is_refused` passed(글자 붙은 마커, `READY` 모양 넷 포함).
+- AC-3: met — `a_plain_ready_note_needs_the_receipt_and_merge_ready_does_not` passed(영수증 없는 `READY` 거절, 있으면 받음, `MERGE-READY` 는 영수증 없이 받음).
+- AC-4: met — `the_summary_line_says_a_lane_run` passed(`--lane` 줄은 `scans=` 바로 뒤 `selection=lane`, 맨 줄은 낱말 없음, `summary.txt` 가 답의 줄과 같음). 맨 줄의 낱말 순서는 기존 `a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail` 이 그대로 못박아요.
+- AC-5: met — `a_lane_receipt_is_refused_with_the_bare_command`, `a_lane_summary_line_is_no_receipt` passed.
+- AC-6: met — `the_note_help_names_the_receipt_gate`, `other_notes_are_kept_and_there_is_no_skip_flag` passed. `src/ops/card.rs` 는 C-428 이 놓은 뒤 `card scope`(같은 generation, 노트 7865 결정 4 (a))로 예약 범위에 더했어요.
+- AC-7: met — `the_operations_page_names_the_lane_word` passed(`check.md` 25·54 줄).
+- 뮤턴트(적용을 `git diff --stat` 으로 확인하고 되돌린 뒤 `git status` 가 깨끗함을 확인): ① `judge` 의 `selection=lane` 검사 → `selection=never`: exit 100(2개 실패) ② `READY ` 표식을 `READYX ` 로: exit 100(2개) ③ 관문의 `trim_start()` 삭제: exit 100(2개) ④ 요약 줄의 `selection=lane` 낱말을 `""` 로: exit 100(1개). 도움말 문단은 RED 실행(문단 없음)이 같은 실패를 보였어요.
+- 구현 중 알게 된 것: 상태줄의 기존 테스트가 앞 공백이 있는 `READY` 를 표식이 아니라고 못박아요(`the_words_that_are_no_marker_change_nothing`). 그래서 `marker_of_line` 은 앞 공백을 건드리지 않는 접두어 판정이고, 앞 공백을 걷어내는 `card inbox` 와 관문이 걷은 뒤 불러요(관문은 걷은 뒤에도 모양이 틀려 거절). 상태줄은 앞 공백을 걷지 않아요(그 SPEC 의 선택).
+- 실제 장부의 첫 줄(`moai card export` 한 번, 433 카드·7894 노트, 내보낸 뒤 읽은 시각 2026-11-23T21:03Z 이전): `LANE-READY-INTEGRATION` 290(모양이 틀린 것 67, 대부분 `LANE-READY-INTEGRATION agent-N …`), `READY ` 145(틀린 것 139, 예 `READY (slice …)`·`READY agent-…`), `REPAIRED` 51(틀린 것 18, 예 `REPAIRED-CORRECTION …`). 이 SPEC 뒤로는 그 옛 모양을 쓰면 거절되고 거절 문장이 모양을 알려 줘요. 장부의 옛 노트는 바뀌지 않아요.
+- 범위 밖·미검증: `MERGE-READY` 는 관문에 넣지 않았어요(결정 1 의 B). 상태줄이 `REPAIRED` 를 Submitted 로 세게 하는 일은 하지 않았어요. 멈춘 git 자식은 테스트하지 않았어요. 전체 `check affected` 는 READY head 에서 한 번 돌려요.
