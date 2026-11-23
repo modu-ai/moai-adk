@@ -1,7 +1,7 @@
 //! SPEC-20261123-temp-home-e2e-regression: the landed Claude Code redesign run end to end through
 //! the real binary, in a temporary version folder, a temporary HOME and temporary projects. Every
-//! command is a copy of the built binary with a clean environment; the real `~/.claude` and
-//! `~/.moai` are never read or written. A real `claude` is never started (the operator steps are
+//! command is a copy of the built binary with a clean environment; the real Claude config and
+//! MoAI state folders are never read or written. A real `claude` is never started (the operator steps are
 //! in the SPEC Result as `not_run`).
 #![cfg(unix)]
 
@@ -253,7 +253,7 @@ fn files_under(dir: &Path) -> Vec<PathBuf> {
 }
 
 fn is_state_folder(rel: &Path) -> bool {
-    rel.starts_with(".moai") || rel.starts_with(".moai-cli")
+    rel.starts_with(moai_cli::state_root::MOAI_DIR) || rel.starts_with(moai_cli::PROJECT_STATE_DIR)
 }
 
 // ---- scenarios ----------------------------------------------------------------------------------
@@ -799,7 +799,9 @@ fn scenario_hook_entry_exits_zero_and_writes_nothing_into_the_project() {
     let moai = w.root.join("work/moai-proj");
     let plain = w.root.join("work/plain");
     write(
-        &moai.join(".moai/project.yaml"),
+        &moai
+            .join(moai_cli::state_root::MOAI_DIR)
+            .join("project.yaml"),
         "{\"schema_version\":2,\"project_id\":\"demo\"}\n",
     );
     write(&moai.join("src/main.rs"), "fn main() {}\n");
