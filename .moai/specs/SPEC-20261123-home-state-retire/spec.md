@@ -104,7 +104,7 @@ The HOME resolver and the fixture move go in a later slice with its own requirem
 
 ## Result
 
-Revision 3 cut the resolver change back out of this slice. Checked on the head that carries this text, in this worktree, `cargo nextest` with `-j 4` in a heavy slot; the full unfiltered suite is the pull request's CI run.
+Revision 3 cut the resolver change back out of this slice; revision 4 repairs the audit of that head (AC-10, decision D-5). Checked on the head that carries this text, in this worktree, `cargo nextest` with `-j 4` in a heavy slot; the full unfiltered suite is the pull request's CI run.
 
 - AC-1: met — `home_state_retire_cli` `the_preview_*` pass (listing by lstat, one move, `none`, writes nothing).
 - AC-2: met — `blocked_*` pass (link, plain file, link as `.moai`, file as `archive`, taken name, held-open child, running binary inside, unreadable process table).
@@ -113,6 +113,7 @@ Revision 3 cut the resolver change back out of this slice. Checked on the head t
 - AC-5: met — `the_revert_*` pass (same tree and modes, `revert_partial` on a replaced entry or a recreated folder, second revert changes nothing).
 - AC-6: met — `a_crash_*` pass (the four injected fault points of the journal and the one between the manifest and the journal).
 - AC-8: met — `help_layout` goldens and `state_folder_literal_scan` pass; the help text exists for the three commands.
-- AC-9: met — one run of the binary built from the head in a throwaway HOME (preview, a held-open child that blocks, refusals, apply, revert, second revert, link and absent cases); the table is in the READY note.
+- AC-9: met — one run of the binary built from the head in a throwaway HOME (preview, a held-open child that blocks, refusals, apply, revert, second revert, link and absent cases); the table is in the READY note. The repair round ran it again for the stop between the manifest and the journal (preview of the same clock stays `retire` with the same digest, the rerun finishes, the tree equals the first, revert with a placeholder or empty reference moves nothing, revert restores vault 0700 and key 0600).
+- AC-10: met — `blocked_at_501`, `blocked_while_a_program_holds`, `blocked_when_a_manifest`, `the_revert_refuses_an_empty` and `a_crash_between` pass; seven guard mutants (revert reference check removed, limit `>=`, one more listed entry, file-open ignored, every manifest taken as ours, own manifest still taken, orphan manifest not replaced) each fail their test.
 
 Not in this slice: the HOME resolver change, the `state_root` helper removal, the mover's read points, `committed_aliases`/`earlier_ids_of`, the fixture move and the `moai update` hook-up.
