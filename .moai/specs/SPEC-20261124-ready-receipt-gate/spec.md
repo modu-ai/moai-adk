@@ -7,8 +7,8 @@ created: 2026-11-24
 approval:
   by: leader
   at: 2026-11-23
-  basis: "리더 결정 노트 7687 (2026-11-23T16:31:42Z, 사용자 위임 2026-11-23T13:57Z, 노트 7686 의 결정 1 (a) 판 1 승인과 FAIL 때도 summary.txt·같은 head 워크트리 여럿 허용의 다듬기, 결정 2 (a), 결정 3 미리 승인); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
-  digest: "sha256:01015883aea1d1517177c39db38fe13aa655d022782b8f02ca5d0b7adfd3f33a"
+  basis: "리더 결정 노트 7687 (2026-11-23T16:31:42Z, 사용자 위임 2026-11-23T13:57Z, 노트 7686 의 결정 1 (a) 판 1 승인과 FAIL 때도 summary.txt·같은 head 워크트리 여럿 허용의 다듬기, 결정 2 (a), 결정 3 미리 승인)과 노트 7693 (2026-11-23T16:42:32Z, 영수증 요약 줄의 base 가 노트 head 의 조상이어야 한다는 한 줄을 판 1 안의 다듬기로 승인: REQ-11, AC-11, D-7); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:7dd9648060976b200f6f1ad5b6bf6d7119bfcfcb62f94d264d292f7dd2b11817"
 ---
 
 # A READY or REPAIRED note is refused without a PASS check-affected receipt of the same head
@@ -50,6 +50,7 @@ approval:
 - REQ-8 (REQ-7): IF `summary.txt` cannot be written, THEN `moai check affected` shall refuse with the path and the reason.
 - REQ-9: WHEN the first line of a note starts with neither marker, the `card note` command shall accept or refuse it exactly as before. · failure: none — such a note takes the path it took before this SPEC
 - REQ-10: The `card note` command shall have no flag, word or kind that skips the receipt check.
+- REQ-11 (REQ-5): IF the `base` of the summary line of a receipt is not an ancestor of the head the note names, THEN the `card note` command shall count it as no receipt and say so.
 
 ## Acceptance
 
@@ -63,7 +64,8 @@ approval:
 - AC-8 (REQ-8): `summary.txt` 자리에 폴더가 이미 있어서 쓸 수 없으면 `write_summary` 가 그 경로와 이유를 적은 오류를 답해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(write_summary_names_the_path_and_the_reason)'`
 - AC-9 (REQ-7, REQ-4, REQ-6): 첫 단계(`git diff --check`)가 실패하는 커밋에서 `moai check affected` 를 돌리면 `summary.txt` 가 있고 `result=FAIL` 이에요. 그 head 의 READY 노트는 거절되고 거절 문장이 그 워크트리의 영수증이 `result=FAIL` 이라고 말해요. · verify: `cargo nextest run --offline --locked --test card_ready_receipt_cli -E 'test(a_failed_run_leaves_a_fail_receipt_and_the_refusal_says_so)'`
 - AC-10 (REQ-3): 같은 head 를 HEAD 로 둔 워크트리가 둘이고(하나는 영수증 없음, 하나는 PASS 영수증) READY 노트를 받아요. 둘 다 없거나 FAIL 이면 거절 문장이 둘 다 적어요. · verify: `cargo nextest run --offline --locked --test card_ready_receipt_cli -E 'test(any_worktree_with_the_head_and_a_pass_receipt_is_enough)'`
-- AC-11 (REQ-1..REQ-10): 이 SPEC 이 쓰는 파일 밖의 `src` 파일 diff 가 0이에요. · verify: `git diff --stat <base>..<head> -- src`
+- AC-11 (REQ-11): 요약 줄의 `base` 가 노트 head 의 조상이 아닌 영수증(head 와 이어지지 않는 커밋)은 PASS 여도 거절되고 거절 문장이 그 base 가 head 의 조상이 아니라고 말해요. 조상인 base 면 받아요. · verify: `cargo nextest run --offline --locked --test card_ready_receipt_cli -E 'test(a_receipt_whose_base_is_not_an_ancestor_of_the_head_is_refused)'`
+- AC-12 (REQ-1..REQ-11): 이 SPEC 이 쓰는 파일 밖의 `src` 파일 diff 가 0이에요. · verify: `git diff --stat <base>..<head> -- src`
 
 ## Scope
 
@@ -97,6 +99,7 @@ approval:
 | D-4 | 문서 전용 head 의 표기를 만들지 않아요. 문서 전용 head 도 `check affected` 영수증이 있어야 해요 | 문서만 바꾼 범위에서 `--list` 가 전체 대상 151개를 골라 영수증을 만들 수 있다고 측정했어요. 별도 표기는 우회 길이 돼요(카드 본문은 "SPEC 이 정하는 표기"를 허용했고 이 SPEC 은 "없음"으로 정해요) | 표기를 SPEC 개정으로 더하기 |
 | D-5 | 영수증 파일 이름은 `summary.txt`, 내용은 답의 `summary` 줄 한 줄과 줄바꿈 하나예요 | 답에 이미 있는 줄을 그대로 써서 새 형식을 만들지 않아요 | 파일 이름 바꾸기 |
 | D-6 | `summary.txt` 은 FAIL 일 때도 써서 거절 문장이 FAIL 을 말해요. 같은 head 를 HEAD 로 둔 워크트리가 여럿(감사 슬롯 등)이면 PASS 영수증이 있는 곳 아무 것이나 받아요 | 리더 결정 노트 7687 (판 1 안의 다듬기) | 두 줄(REQ-7 의 `whether…` 와 REQ-3 의 `any`)을 되돌리기 |
+| D-7 | 받는 영수증의 요약 줄 `base` 는 노트 head 의 조상이어야 해요(`git merge-base --is-ancestor <base> <head>`, 줄이 적은 12자리 그대로). head 와 같아도 조상으로 봐요. 조상이 아니거나 이 저장소에 없는 커밋이면 영수증이 없는 것과 같아요 | 리더 결정 노트 7693 (같은 갈래의 두 번째 재발: 레인이 적은 base 가 head 의 조상이 아니었어요, 감사 #403 델타 B-7) | REQ-11 과 `ready_receipt.rs` 의 조상 검사 한 곳을 지우기 |
 
 ## Result
 
