@@ -702,7 +702,10 @@ fn ac11_a_fast_forward_landing_needs_the_scans_of_its_range() {
     let card = w.review_card();
     let cand = w.fast_forward_adding("tests/branch_gc_cli.rs");
     assert_eq!(
-        git(&w.project, &["rev-list", "--merges", &format!("{}..{cand}", w.tip)]),
+        git(
+            &w.project,
+            &["rev-list", "--merges", &format!("{}..{cand}", w.tip)]
+        ),
         "",
         "the fixture head has a merge commit on its line"
     );
