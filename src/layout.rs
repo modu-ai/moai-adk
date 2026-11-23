@@ -54,8 +54,23 @@ pub fn default_home_root_in(home: Option<&Path>) -> Option<PathBuf> {
 }
 
 /// SPEC-20261124-home-state-link-refusal: refuses a symbolic link between the home state root
-/// and the folder that is written. Skeleton: it refuses nothing yet.
-pub fn refuse_linked_home_path(_home_root: &Path, _path: &Path) -> Result<()> {
+/// and the folder that is written. A path below `home_root` is walked one component at a time,
+/// the root first (`home state root is a symlink; refused`) and then every folder down to the
+/// written one (`home state folder is a symlink; refused`); a folder that does not exist yet
+/// counts as no link. A path outside `home_root` is accepted without reading any link: a
+/// folder the caller chose outside the home state may sit behind a link of its own (a
+/// temporary folder on macOS does). `path` is compared by its components, so a trailing slash
+/// or an inner `.` reads as the same folder. Reads only; it writes nothing.
+pub fn refuse_linked_home_path(home_root: &Path, path: &Path) -> Result<()> {
+    let Ok(below) = path.strip_prefix(home_root) else {
+        return Ok(());
+    };
+    crate::identity::refuse_symlink(home_root, "home state root")?;
+    let mut at = home_root.to_path_buf();
+    for part in below.components() {
+        at.push(part);
+        crate::identity::refuse_symlink(&at, "home state folder")?;
+    }
     Ok(())
 }
 

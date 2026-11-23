@@ -20,6 +20,10 @@
 //! observations list as held (HOLD, unconfirmed handoff) and, without those observations, the
 //! hold check itself (`hold_check_not_run`). A fact that cannot be read blocks with its name.
 //!
+//! A root below `<HOME>/.moai` is refused when `.moai` or a folder between it and the root is a
+//! symbolic link (SPEC-20261124-home-state-link-refusal); the apply recomputes the plan first,
+//! so it is refused the same way before it writes anything.
+//!
 //! The plan writes nothing (git runs with `--no-optional-locks` and a scrubbed environment).
 //! The apply recomputes the plan, refuses before any write unless the digest is the same,
 //! re-checks each candidate for processes and open files right before moving it, and moves it
@@ -142,6 +146,19 @@ fn check_root(root: &Path) -> Result<()> {
     Ok(())
 }
 
+/// SPEC-20261124-home-state-link-refusal REQ-6, REQ-7: a root below the HOME state folder
+/// `<HOME>/.moai` is refused when `.moai` or a folder between it and the root is a symbolic link,
+/// because the apply creates the root and moves worktrees into it. A root outside `<HOME>/.moai`
+/// is the caller's own choice and is not read for links (a temporary folder on macOS is one).
+fn refuse_linked_move_root(root: &Path) -> Result<()> {
+    match crate::home_workdir::home() {
+        Ok(home) if home.is_absolute() => {
+            crate::layout::refuse_linked_home_path(&crate::home_workdir::root(&home), root)
+        }
+        _ => Ok(()),
+    }
+}
+
 fn has_submodules(wt: &Path) -> Option<bool> {
     if wt.join(".gitmodules").exists() {
         return Some(true);
@@ -200,6 +217,7 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
         }
     }
     check_root(root)?;
+    refuse_linked_move_root(root)?;
     crate::worktree::refuse_in_build_folder(root, "--root")?;
     let top = git(
         project,
