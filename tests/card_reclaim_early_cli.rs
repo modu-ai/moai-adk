@@ -80,12 +80,18 @@ fn world() -> World {
 
 impl World {
     fn card(&self, session: Option<&str>, args: &[&str]) -> Output {
+        self.card_env(session, args, &[])
+    }
+
+    /// The same, with `extra` variables added to the command's environment.
+    fn card_env(&self, session: Option<&str>, args: &[&str], extra: &[(&str, &str)]) -> Output {
         let mut all = vec!["card"];
         all.extend_from_slice(args);
         let project = self.project.to_str().unwrap();
         all.extend_from_slice(&["--project", project]);
         let mut cmd = self.home.command(&all);
         cmd.env("PATH", &self.path_env);
+        cmd.envs(extra.iter().copied());
         if let Some(id) = session {
             cmd.env(SESSION_VAR, id);
         }
@@ -566,6 +572,66 @@ fn a_name_with_a_space_is_read_as_written() {
     let got = result(&w.reclaim(&sid(2), &card, "1"));
     assert_eq!(got["reservation"]["generation"], json!(2));
     assert!(cache.exists(), "the proof deleted a file");
+}
+
+/// AC-10 (REQ-11, REQ-12): git writes to its standard error when a trace variable is set, and
+/// the reclaim reads any such line as an unreadable worktree; the trace variables of the shell
+/// that runs the reclaim never reach the git children, so a clean worktree is still reclaimed
+/// and a dirty one is still refused for its work, not for the trace.
+#[test]
+fn a_git_trace_variable_does_not_make_a_worktree_unreadable() {
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/traced/");
+    w.register_gone(NAME, &sid(1));
+    let before = w.dump();
+    let trace = [
+        ("GIT_TRACE", "1"),
+        ("GIT_TRACE2", "1"),
+        ("GIT_TRACE_SETUP", "1"),
+    ];
+    let reclaim = |generation: &str| {
+        w.card_env(
+            Some(&sid(2)),
+            &[
+                "reclaim",
+                &card,
+                "--generation",
+                generation,
+                "--by",
+                "leader",
+                "--reason",
+                REASON,
+            ],
+            &trace,
+        )
+    };
+
+    fs::write(w.wt.join("draft.md"), "x\n").unwrap();
+    let m = w.refused_and_unchanged(reclaim("1"), "worktree dirty", &before);
+    assert!(m.contains("holds 1 uncommitted change(s)"), "{m}");
+    fs::remove_file(w.wt.join("draft.md")).unwrap();
+
+    let got = result(&reclaim("1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+/// AC-12 (REQ-16): git's own configuration can switch the trace2 target to standard error
+/// (`trace2.normalTarget`), which the reclaim reads as an unreadable worktree; the git children
+/// switch the target off, so a clean worktree is still reclaimed.
+#[test]
+fn a_trace2_config_does_not_make_a_worktree_unreadable() {
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/traced2/");
+    w.register_gone(NAME, &sid(1));
+    // The user-level configuration of the temporary home, which every git child reads.
+    fs::write(
+        w.home.path().join(".gitconfig"),
+        "[trace2]\n\tnormalTarget = 2\n",
+    )
+    .unwrap();
+
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
 }
 
 /// AC-5 (REQ-5, REQ-7): the event keeps its kind, carries the proof in its own field, and the
