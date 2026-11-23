@@ -613,7 +613,11 @@ mod tests {
 
     #[test]
     fn fast_pair_a_space_keeps_a_near_id_mergeable_and_the_carried_text_as_read() {
-        for near in ["claude-opus-4-80 ", "claude-opus-4.85 ", " claude-opus-4-7 "] {
+        for near in [
+            "claude-opus-4-80 ",
+            "claude-opus-4.85 ",
+            " claude-opus-4-7 ",
+        ] {
             for key in ["fastMode", "fastModePerSessionOptIn"] {
                 let row = pair_row(near, key);
                 assert_eq!(row.state, "mergeable", "{near:?} + {key}");
