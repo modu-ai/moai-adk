@@ -149,7 +149,10 @@ impl World {
 
     /// The same, with the reservation naming the branch `branch`.
     fn taken_on(&self, holder: &str, worktree: Option<&Path>, scope: &str, branch: &str) -> String {
-        let added = result(&self.card(None, &["add", "--title", "t", "--scope", scope]));
+        let added = result(&self.card(
+            None,
+            &["add", "--title", "t", "--scope", scope, "--ac", "fixture"],
+        ));
         let name = added["name"].as_str().unwrap().to_string();
         result(&self.card(None, &["ready", &name]));
         let wt = worktree.map(|w| w.to_str().unwrap().to_string());

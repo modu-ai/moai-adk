@@ -87,7 +87,8 @@ impl World {
         let added = result(&self.card(
             None,
             &[
-                "add", "--title", "fixture", "--kind", "task", "--scope", "apps/a/",
+                "add", "--title", "fixture", "--kind", "task", "--scope", "apps/a/", "--ac",
+                "fixture",
             ],
         ));
         let name = added["name"].as_str().unwrap().to_string();

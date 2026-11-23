@@ -102,8 +102,33 @@ impl World {
             .as_str()
             .unwrap()
             .to_string();
-        result(&self.card(None, &["ready", &name]));
+        if criteria.is_empty() {
+            // `card ready` refuses a card without a criterion; one that is `ready` without any
+            // (made before that rule) is only reachable through the ledger.
+            self.sql(&format!(
+                "UPDATE card SET state = 'ready' WHERE card_id = {}",
+                &name[2..]
+            ));
+        } else {
+            result(&self.card(None, &["ready", &name]));
+        }
         name
+    }
+
+    /// Takes a `ready` card that has no criterion through the ledger library: `card take` refuses
+    /// such a card, and this test needs one that is held.
+    fn take_without_criterion(&self, session: &str, card: &str) {
+        let mut l = ledger::open_write(self.home.path(), "demo").unwrap();
+        ledger::reservation::reserve(
+            &mut l,
+            card[2..].parse().unwrap(),
+            session,
+            &["apps/bo/".to_string()],
+            3600,
+            Some("/work/tree"),
+            Some("card/work"),
+        )
+        .unwrap();
     }
 
     fn take(&self, session: &str, card: &str) {
@@ -333,7 +358,7 @@ fn a_card_made_without_a_criterion_can_be_closed_once_one_is_added_and_met() {
     let w = world();
     w.host_pr(7);
     let card = w.ready(&[]);
-    w.take(S_A, &card);
+    w.take_without_criterion(S_A, &card);
     result(&w.card(
         Some(S_A),
         &["pr", &card, "7", "--generation", "1", "--repo", "octo/demo"],

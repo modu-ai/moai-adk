@@ -101,7 +101,9 @@ impl World {
 
     /// A ready card of `kind` with one write scope of its own; returns its name.
     fn ready_card(&self, kind: &str, scope: &str) -> String {
-        let added = ok(&self.card(&["add", "--title", "t", "--kind", kind, "--scope", scope]));
+        let added = ok(&self.card(&[
+            "add", "--title", "t", "--kind", kind, "--scope", scope, "--ac", "fixture",
+        ]));
         let name = added["name"].as_str().unwrap().to_string();
         ok(&self.card(&["ready", &name]));
         name

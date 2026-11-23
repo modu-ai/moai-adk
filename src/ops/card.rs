@@ -172,7 +172,8 @@ enum Action {
     /// Writes the ledger. Make a draft card ready to be taken
     ///
     /// Writes the ledger. A `draft` (or `hold`) card becomes `ready`, with one `card.ready` event.
-    /// The ledger must already exist.
+    /// A card with no `open` or `met` criterion is refused and the answer names `card criterion-add`:
+    /// such a card could never be closed. The ledger must already exist.
     Ready {
         /// `C-12`.
         card: String,
@@ -238,7 +239,8 @@ enum Action {
     /// `scope_source` is `given`, `card`, `spec` or `last_reservation`). With no source the take
     /// is refused and names `card take <C-n> --scope <path>` and `card scope <C-n> --scope <path>`.
     /// A `--scope` value is one path: a comma in it is refused.
-    /// Refused when the card is not `ready`, is already held, or its scope overlaps another
+    /// Refused when the card is not `ready`, is already held, has no `open` or `met` criterion
+    /// (the answer names `card criterion-add`), or its scope overlaps another
     /// card's reservation (`conflict`). The answer's `generation` is what `release` and
     /// `handoff` need. The holder is this session's own id (`CLAUDE_CODE_SESSION_ID` or
     /// `CODEX_THREAD_ID`), never typed; a session without one is refused. The answer's `spec`

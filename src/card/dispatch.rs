@@ -120,6 +120,9 @@ pub fn ready(project: &Path, home: &Path, reference: &str, by: Option<&str>) -> 
                     "card ready refused: C-{card_id} has a live reservation; release or hand it over first"
                 )));
             }
+            if let Some(why) = no_criteria_refusal(tx, "ready", card_id)? {
+                return Ok(Err(why));
+            }
             tx.execute(
                 "UPDATE card SET state = 'ready', updated_at = ?2 WHERE card_id = ?1",
                 params![card_id, now],
@@ -142,6 +145,32 @@ pub fn ready(project: &Path, home: &Path, reference: &str, by: Option<&str>) -> 
         "name": input::card_name(card_id), "card_id": card_id,
         "from": from, "state": "ready", "rev": rev, "events": 1, "writes": true,
     }))
+}
+
+/// The refusal for a card that has no counted criterion: no `open` or `met` row (a `withdrawn` row
+/// does not count), or `None` when it has one. A card without one can never be closed, because
+/// `card_done_guard` and `card finish` both need a met criterion. A card that does not exist has
+/// none either, so the callers run this after the checks that own that case. `action` is `ready`
+/// or `take`.
+fn no_criteria_refusal(
+    conn: &rusqlite::Connection,
+    action: &str,
+    card_id: i64,
+) -> rusqlite::Result<Option<String>> {
+    let counted: i64 = conn.query_row(
+        "SELECT count(*) FROM card_ac WHERE card_id = ?1 AND status <> 'withdrawn'",
+        [card_id],
+        |r| r.get(0),
+    )?;
+    if counted > 0 {
+        return Ok(None);
+    }
+    let name = input::card_name(card_id);
+    Ok(Some(format!(
+        "card {action} refused: {name} has no acceptance criterion that is not withdrawn, so it \
+         could never be closed; add one with `moai card criterion-add {name} --ac <text>`; nothing \
+         was changed"
+    )))
 }
 
 /// The reservation states that hold a card (the ones `card ready` also refuses).
@@ -404,6 +433,25 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         return Err(format!(
             "card take refused: --require-approved-spec: {why}; nothing was taken"
         ));
+    }
+    // A `ready` card without a counted criterion is refused here; a missing card, a card in
+    // another state and a held card keep the refusal `reserve` gives them.
+    let is_ready: bool = ledger
+        .conn()
+        .query_row(
+            "SELECT state = 'ready' FROM card WHERE card_id = ?1",
+            [card_id],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?
+        .unwrap_or(false);
+    if is_ready {
+        if let Some(why) =
+            no_criteria_refusal(ledger.conn(), "take", card_id).map_err(|e| e.to_string())?
+        {
+            return Err(why);
+        }
     }
     let lease = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
     // Where the scope comes from (SPEC-20261123-take-scope-stored): the given one, the card's

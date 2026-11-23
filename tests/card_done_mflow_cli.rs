@@ -87,6 +87,17 @@ fn world(mflow: bool) -> (TempHome, String, i64, String) {
         ],
     ));
     let name = added["name"].as_str().unwrap().to_string();
+    // The met criterion goes in before `card ready`, which refuses a card without one.
+    let mut w: WriteLedger = ledger::open_write(home.path(), "demo").unwrap();
+    w.with_write_tx(|tx, now| {
+        Ok(tx.execute(
+            "INSERT INTO card_ac (card_id, seq, text, status, evidence_ref, updated_at) \
+             VALUES (1, 1, 'works', 'met', 'fixture', ?1)",
+            rusqlite::params![now],
+        )?)
+    })
+    .unwrap();
+    drop(w);
     result(&run(&home, &["card", "ready", &name, "--project", &p]));
     let mut w: WriteLedger = ledger::open_write(home.path(), "demo").unwrap();
     let r = moai_cli::ledger::reservation::reserve(
@@ -100,14 +111,6 @@ fn world(mflow: bool) -> (TempHome, String, i64, String) {
     )
     .unwrap();
     let generation = r.generation;
-    w.with_write_tx(|tx, now| {
-        Ok(tx.execute(
-            "INSERT INTO card_ac (card_id, seq, text, status, evidence_ref, updated_at) \
-             VALUES (1, 1, 'works', 'met', 'fixture', ?1)",
-            rusqlite::params![now],
-        )?)
-    })
-    .unwrap();
     moai_cli::ledger::workflow::review(&mut w, 1, S_A, generation).unwrap();
     drop(w);
     // The profile goes last: some card commands rewrite it (the id stub), and done must read
