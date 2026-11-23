@@ -77,4 +77,15 @@ approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7890 of card
 
 ## Result
 
-(작성 전: 승인과 구현이 끝난 뒤 채워요.)
+판 1, 통합 팁 `6054432304` 에서 딴 브랜치예요(팁이 안 움직여서 머지가 없었어요). 승인 근거는 리더 결정 노트 7890(2026-11-23T20:57:14Z)이고 `D-1` (a) 예요. 승인 뒤 `## Interview` 구역을 하나 넣었고 요구사항의 digest 는 그대로예요(`spec show` 로 확인). 숫자는 이 결과를 쓰려고 이 워크트리에서 돌린 실행에서 나온 거예요.
+
+- AC-1 met (REQ-1): `a_wrapper_that_ends_leaves_nothing_in_its_tmpdir` 가 exit 0, exit 7, `kill -TERM`, `kill -INT`, `kill -HUP` 다섯 경우에 비공개 `TMPDIR` 가 비어 있고 신호 경우는 143 으로 끝남을 확인해요. `cargo test --locked --offline --test test_home_guard` 41개 통과(exit 0).
+- AC-2 met (REQ-2): scratch crate 의 plant `plant_tmpdir_is_private` 가 중첩 nextest 안에서 `TMPDIR` 가 `…/private-tmp` 로 끝남을 봐요. 구현 전에는 FAIL(RED, 같은 명령 exit 101, `nextest_applies_the_repository_configuration_to_a_scratch_crate` 실패), 구현 뒤에는 PASS.
+- AC-3 met (REQ-3): `nextest()` 도우미가 끝난 뒤 비공개 `TMPDIR` 에서 `moai-test-home` 로 시작하는 이름을 찾아 실패해요. M1 이 이 검사와 래퍼 테스트로 잡혔어요.
+- AC-4 met (REQ-1, REQ-2): 파일 전체를 비공개 `TMPDIR` 로 돌린 뒤(41개 통과, exit 0) `find <그 폴더> -mindepth 1` 이 0개였어요(테스트가 아닌 손 확인).
+- guard-mutant(각각 한 번 적용하고 `git checkout` 으로 되돌렸고, 되돌린 뒤 `git status` 는 깨끗했어요): M1 `tools/test_home_guard.sh` 의 trap 에서 `rm -f "$ref"` 제거 → `a_wrapper_that_ends_leaves_nothing_in_its_tmpdir` 와 중첩 nextest 도우미 검사가 잡음(여섯 테스트 실패, cargo exit 101). M2 `trap 'exit 143' HUP INT TERM` 제거 → `a_wrapper_that_ends_leaves_nothing_in_its_tmpdir` 만 실패(40 통과 1 실패, exit 101). M3 `nextest()` 의 `TMPDIR` 설정 제거 → `nextest_applies_the_repository_configuration_to_a_scratch_crate` 실패(`TMPDIR is "/var/folders/…/T/"`, exit 101).
+- 고치지 않은 것(`D-1` (a)): 래퍼가 SIGKILL 을 맞았을 때 남는 `moai-test-home.*` 폴더와 `moai-test-home-ref.*` 파일. 리더가 지운 339개의 원인이 이 경로인지는 못 봤고, 다시 쌓이는 게 보이면 (b) 를 후속 카드로 해요.
+- `c105-plan-*` 의 만든 곳은 `tests/profile_plan_cli.rs:46`, `:346`(통합 팁 `466b59fc62` 기준)이고 `SPEC-20261124-test-temp-names`(`70fc6cb75e`)가 이미 고쳤어요. 이 SPEC 이 고친 것이 아니에요.
+- Not run: 전체 `cargo test`, Linux·Windows 에서의 신호 경우, 시스템 임시 폴더 전체를 보는 테스트(다른 레인의 실행과 겹쳐서 테스트로 만들 수 없어요).
+- `moai check affected` 영수증은 카드의 READY 노트에 있어요.
+- closure_status: open until the audit.
