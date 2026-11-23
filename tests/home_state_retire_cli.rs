@@ -196,6 +196,16 @@ fn exists(p: &Path) -> bool {
     fs::symlink_metadata(p).is_ok()
 }
 
+/// The earlier state folder of `home`: the one name the tests below spell through one place.
+fn older(home: &Path) -> PathBuf {
+    home.join(".moai-cli")
+}
+
+/// The Go-generation `~/.moai` of `home`.
+fn moai(home: &Path) -> PathBuf {
+    home.join(".moai")
+}
+
 fn archive(home: &Path) -> PathBuf {
     home.join(".moai/archive").join(format!("moai-cli-{STAMP}"))
 }
@@ -249,20 +259,20 @@ fn holding_open(file: &Path) -> Kill {
 /// The earlier home with `extra` more loose files, so the folder holds exactly `total` entries.
 fn home_with_entries(total: usize) -> (tempfile::TempDir, PathBuf) {
     let (d, home) = earlier_home();
-    let have = fs::read_dir(home.join(".moai-cli")).unwrap().count();
+    let have = fs::read_dir(older(&home)).unwrap().count();
     for i in 0..total - have {
         write(&home, &format!(".moai-cli/bulk-{i:04}.txt"), "x\n");
     }
-    assert_eq!(fs::read_dir(home.join(".moai-cli")).unwrap().count(), total);
+    assert_eq!(fs::read_dir(older(&home)).unwrap().count(), total);
     (d, home)
 }
 
 fn manifest(home: &Path) -> PathBuf {
-    home.join(format!(".moai/archive/state-retire-manifest-{STAMP}.json"))
+    moai(home).join(format!("archive/state-retire-manifest-{STAMP}.json"))
 }
 
 fn journal(home: &Path) -> PathBuf {
-    home.join(format!(".moai/archive/move-journal-{STAMP}.json"))
+    moai(home).join(format!("archive/move-journal-{STAMP}.json"))
 }
 
 fn blocks(p: &Value) -> Vec<String> {
@@ -344,7 +354,7 @@ fn blocked_when_the_earlier_folder_is_a_link_or_a_plain_file() {
     let dir = tempfile::tempdir().unwrap();
     let home = fs::canonicalize(dir.path()).unwrap();
     fs::create_dir_all(home.join("elsewhere")).unwrap();
-    symlink(home.join("elsewhere"), home.join(".moai-cli")).unwrap();
+    symlink(home.join("elsewhere"), older(&home)).unwrap();
     let p = plan(&home);
     assert_eq!(p["action"], json!("blocked"), "{p}");
     assert_eq!(blocks(&p), ["earlier_folder_is_a_link"]);
@@ -361,9 +371,9 @@ fn blocked_when_the_earlier_folder_is_a_link_or_a_plain_file() {
 #[test]
 fn blocked_when_moai_or_its_archive_folder_is_not_a_folder_or_the_name_is_taken() {
     let (_d, home) = earlier_home();
-    fs::remove_dir_all(home.join(".moai")).unwrap();
+    fs::remove_dir_all(moai(&home)).unwrap();
     fs::create_dir_all(home.join("elsewhere")).unwrap();
-    symlink(home.join("elsewhere"), home.join(".moai")).unwrap();
+    symlink(home.join("elsewhere"), moai(&home)).unwrap();
     assert_eq!(blocks(&plan(&home)), ["moai_folder_not_a_folder"]);
 
     let (_d, home) = earlier_home();
@@ -411,7 +421,7 @@ fn blocked_at_501_entries_and_planned_at_500_entries() {
     assert_eq!(blocks(&p), Vec::<String>::new());
     let applied = apply(&home, &digest_of(&p));
     assert_eq!(applied["ok"], json!(true), "{applied}");
-    assert!(!exists(&home.join(".moai-cli")));
+    assert!(!exists(&older(&home)));
 
     let (_d, home) = home_with_entries(501);
     let before = tree(&home);
@@ -520,17 +530,14 @@ fn path_guidance_lists_the_entries_that_name_the_earlier_folder_and_touches_no_s
 #[test]
 fn the_apply_moves_the_folder_whole_and_keeps_bytes_modes_and_go_files() {
     let (_d, home) = earlier_home();
-    let old_before = tree(&home.join(".moai-cli"));
-    let moai_before: Tree = tree(&home.join(".moai"));
+    let old_before = tree(&older(&home));
+    let moai_before: Tree = tree(&moai(&home));
     let p = plan(&home);
     let v = apply(&home, &digest_of(&p));
     assert_eq!(v["ok"], json!(true), "{v}");
     assert_eq!(v["result"]["state"], json!("applied"));
     assert_eq!(v["result"]["moved"], json!(1));
-    assert!(
-        !exists(&home.join(".moai-cli")),
-        "no earlier folder is left"
-    );
+    assert!(!exists(&older(&home)), "no earlier folder is left");
     assert_eq!(
         old_before,
         tree(&archive(&home)),
@@ -549,7 +556,7 @@ fn the_apply_moves_the_folder_whole_and_keeps_bytes_modes_and_go_files() {
             & 0o777,
         0o600
     );
-    let moai_after: Tree = tree(&home.join(".moai"))
+    let moai_after: Tree = tree(&moai(&home))
         .into_iter()
         .filter(|(r, ..)| !r.starts_with("/archive"))
         .collect();
@@ -603,17 +610,13 @@ fn the_apply_refuses_a_stale_token_a_missing_reference_and_writes_nothing() {
 #[test]
 fn the_revert_restores_the_tree_and_a_second_revert_changes_nothing() {
     let (_d, home) = earlier_home();
-    let before = tree(&home.join(".moai-cli"));
+    let before = tree(&older(&home));
     let p = plan(&home);
     assert_eq!(apply(&home, &digest_of(&p))["ok"], json!(true));
     let r = revert(&home);
     assert_eq!(r["ok"], json!(true), "{r}");
     assert_eq!(r["result"]["state"], json!("reverted"), "{r}");
-    assert_eq!(
-        before,
-        tree(&home.join(".moai-cli")),
-        "bytes and modes restored"
-    );
+    assert_eq!(before, tree(&older(&home)), "bytes and modes restored");
     assert!(exists(&home.join(".moai/archive")), "nothing is deleted");
     let again = revert(&home);
     assert_eq!(again["result"]["changed"], json!(false), "{again}");
@@ -648,13 +651,13 @@ fn the_revert_refuses_when_the_earlier_folder_came_back_or_the_entry_was_replace
     let r = revert(&home);
     assert_eq!(r["result"]["state"], json!("revert_partial"), "{r}");
     assert!(exists(&archive(&home).join("other.txt")));
-    assert!(!exists(&home.join(".moai-cli")));
+    assert!(!exists(&older(&home)));
 }
 
 #[test]
 fn the_revert_refuses_an_empty_or_placeholder_reference_and_leaves_the_archive_as_it_is() {
     let (_d, home) = earlier_home();
-    let before = tree(&home.join(".moai-cli"));
+    let before = tree(&older(&home));
     let p = plan(&home);
     assert_eq!(apply(&home, &digest_of(&p))["ok"], json!(true));
     let archived = tree(&home);
@@ -667,11 +670,11 @@ fn the_revert_refuses_an_empty_or_placeholder_reference_and_leaves_the_archive_a
             tree(&home),
             "`{bad}`: the archive stays where it is"
         );
-        assert!(!exists(&home.join(".moai-cli")), "`{bad}`");
+        assert!(!exists(&older(&home)), "`{bad}`");
     }
     let r = revert(&home);
     assert_eq!(r["ok"], json!(true), "{r}");
-    assert_eq!(before, tree(&home.join(".moai-cli")));
+    assert_eq!(before, tree(&older(&home)));
 }
 
 // ---- crashes ---------------------------------------------------------------------------------
@@ -679,7 +682,7 @@ fn the_revert_refuses_an_empty_or_placeholder_reference_and_leaves_the_archive_a
 #[test]
 fn a_crash_between_the_manifest_and_the_journal_is_finished_by_a_rerun_of_the_same_clock() {
     let (_d, home) = earlier_home();
-    let before = tree(&home.join(".moai-cli"));
+    let before = tree(&older(&home));
     let p = plan(&home);
     let digest = digest_of(&p);
     let crashed = apply_with(
@@ -696,7 +699,7 @@ fn a_crash_between_the_manifest_and_the_journal_is_finished_by_a_rerun_of_the_sa
     );
     assert!(exists(&manifest(&home)), "the manifest was written");
     assert!(!exists(&journal(&home)), "the journal was not");
-    assert_eq!(before, tree(&home.join(".moai-cli")), "nothing moved");
+    assert_eq!(before, tree(&older(&home)), "nothing moved");
 
     // The manifest left behind is this step's own: the same clock is not `stamp_taken`.
     let again = plan(&home);
@@ -710,7 +713,7 @@ fn a_crash_between_the_manifest_and_the_journal_is_finished_by_a_rerun_of_the_sa
     let done = apply(&home, &digest);
     assert_eq!(done["ok"], json!(true), "{done}");
     assert_eq!(done["result"]["state"], json!("applied"), "{done}");
-    assert!(!exists(&home.join(".moai-cli")));
+    assert!(!exists(&older(&home)));
     assert_eq!(before, tree(&archive(&home)));
     let m: Value = serde_json::from_slice(&fs::read(manifest(&home)).unwrap()).unwrap();
     assert_eq!(
@@ -722,7 +725,7 @@ fn a_crash_between_the_manifest_and_the_journal_is_finished_by_a_rerun_of_the_sa
 
     let r = revert(&home);
     assert_eq!(r["ok"], json!(true), "{r}");
-    assert_eq!(before, tree(&home.join(".moai-cli")));
+    assert_eq!(before, tree(&older(&home)));
 }
 
 #[test]
@@ -734,7 +737,7 @@ fn a_crash_at_any_journal_step_is_finished_by_a_rerun_or_undone_by_the_revert() 
         "before_commit",
     ] {
         let (_d, home) = earlier_home();
-        let before = tree(&home.join(".moai-cli"));
+        let before = tree(&older(&home));
         let p = plan(&home);
         let digest = digest_of(&p);
         let crashed = apply_with(
@@ -753,12 +756,12 @@ fn a_crash_at_any_journal_step_is_finished_by_a_rerun_or_undone_by_the_revert() 
             // Nothing moved yet: the rerun with the same clock and token finishes the move.
             let again = apply(&home, &digest);
             assert_eq!(again["ok"], json!(true), "{point}: {again}");
-            assert!(!exists(&home.join(".moai-cli")), "{point}");
+            assert!(!exists(&older(&home)), "{point}");
             assert_eq!(before, tree(&archive(&home)), "{point}");
         } else {
             let r = revert(&home);
             assert_eq!(r["ok"], json!(true), "{point}: {r}");
-            assert_eq!(before, tree(&home.join(".moai-cli")), "{point}: undone");
+            assert_eq!(before, tree(&older(&home)), "{point}: undone");
             assert!(
                 !exists(&archive(&home)),
                 "{point}: nothing left in the archive"
