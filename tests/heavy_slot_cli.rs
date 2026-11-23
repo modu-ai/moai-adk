@@ -1499,7 +1499,15 @@ fn the_default_folder_is_moai_and_nothing_is_made_under_the_earlier_one() {
     let out = default_folder_run(
         home.path(),
         cache.path(),
-        &["heavy-slot-acquire", "--max", "1", "--name", "t", "--", "true"],
+        &[
+            "heavy-slot-acquire",
+            "--max",
+            "1",
+            "--name",
+            "t",
+            "--",
+            "true",
+        ],
     );
     assert!(out.status.success(), "{}", text(&out));
     assert!(
