@@ -102,7 +102,18 @@ The audit found that `reclaim` runs `takeover_gates` for every reservation, what
 
 ## Result
 
-Status: revision 1 was approved by the leader (note 7826, a leader judgment and not the user's own pick) and built; the audit of head 31c0cdf0d5 failed it (note 7893). Revision 2 is a draft; this Result is rewritten when its repair is built, and the sentence "Every other refusal … early reclaim of a live lease … is as before" below was wrong for revision 1 and is replaced then.
+Status: revision 1 was approved by the leader (note 7826) and built; the audit of head 31c0cdf0d5 failed it (note 7893, B1: a live lease was judged by the lenient gate, so its refusal text changed). Revision 2 was approved by the leader (note 7903; both are leader judgments and not the user's own pick) and the repair is built. Revision 1 results below stay as measured on that head; the revision 2 results follow them.
+
+Revision 2 repair:
+- `src/card/dispatch.rs`: `takeover_gates` reads the ledger clock on the handle it already holds and calls the lenient `takeover_worktree_gate` only for a `held` reservation whose lease ended (`reservation::lease_ended`); everything else (a live lease, a reservation that is not `held`, a clock that cannot be read) calls the strict `worktree_gate` and returns no `kept_commits`. The refusal of a live lease with an unpushed commit is `card conflict in worktree dirty: <path> holds 0 uncommitted change(s) and 1 unpushed commit(s); a reclaim would orphan them` again.
+- `tests/card_reclaim_cli.rs`: `a_live_lease_keeps_the_strict_gate_and_its_refusal_text` (RED commit `f05a9571be`, failed on the revision 1 code with `reservation conflict in card: the lease runs until …`, exit 100; log `target/c428/red2-run.log`) and `the_kept_commit_list_is_capped_at_twenty_ids` (passed before the repair, it only pins the 20/21 boundary).
+- `docs/design-review/appendix/operations/card.md`: the event key list names `kept_commits` and the live-lease rule.
+- Results: `cargo nextest run --locked --offline --test card_reclaim_cli --test card_reclaim_early_cli`, 60 tests, 60 passed, exit 0 (log `target/c428/green2-run.log`).
+- AC-7 met: `a_live_lease_keeps_the_strict_gate_and_its_refusal_text` passes (prefix `card conflict in worktree dirty`, the old tail, every ledger row unchanged; the same card is reclaimed with `kept_commits` count 1 after its lease ended).
+- AC-8 met: `the_kept_commit_list_is_capped_at_twenty_ids` passes (20 commits: count 20, 20 ids; 21 commits: count 21, 20 ids).
+- Guard mutants (applied by an edit, diff not empty, restored with `git checkout -- src/card/dispatch.rs`, no compile error in either log, logs in `target/c428/`): the lenient gate for every reservation (`if lease_ended || true`): exit 100, `a_live_lease_keeps_the_strict_gate_and_its_refusal_text` fails (`m5-lenient-always.log`); the lease-end test inverted (`!reservation::lease_ended`): exit 100, nine tests fail, among them `a_live_lease_keeps_the_strict_gate_and_its_refusal_text` (`m6-lease-ended-inverted.log`).
+
+Revision 1 results:
 
 As built:
 - `src/card/dispatch.rs`: `worktree_gate` keeps its text and counts for the early proof; both gates share one read (`read_worktree`). The new `takeover_worktree_gate` refuses an uncommitted change only (the message keeps the prefix `holds N uncommitted change(s) and M unpushed commit(s)` and ends `a reclaim would orphan the uncommitted changes`), refuses as unreadable when git cannot count or list the commits, and returns `kept_commits` (`count`, up to twenty `ids`, newest first). `reclaim` passes it to the ledger and into the answer.
@@ -126,6 +137,9 @@ Guard mutants (each applied by an edit, confirmed with a non-empty diff, run on 
 - the strict gate of the early proof ignores unpushed commits: exit 100 on `card_reclaim_early_cli` (6 tests fail).
 - an unreadable commit count read as none: the count guard alone survived (exit 0), because the listing of the ids refuses the same worktree; both guards removed together fail `reclaim_refuses_a_worktree_whose_unpushed_commits_cannot_be_counted` (exit 100). The two guards cover each other on purpose.
 
-Refusals that disappear: a takeover of an ended lease no longer refuses a worktree that holds only unpushed commits. Every other refusal (uncommitted change, unreadable path or git, relative path, early reclaim of a live lease) is as before.
+Refusals that disappear: a takeover of an ended lease no longer refuses a worktree that holds only unpushed commits. Every other refusal (uncommitted change, unreadable path or git, relative path) is as before. The live-lease refusal of an unpushed commit is as before only from revision 2 on; head 31c0cdf0d5 of revision 1 changed its text, which the audit found and revision 2 repairs.
 
-Gaps: the `check affected` receipt is in the READY note, not here.
+Gaps (also in the READY note; the `check affected` receipt is there, not here):
+- Follow-up, not blocking: the `card reclaim` help sentence in `src/ops/card.rs` says that commits on no remote-tracking ref do not stop the takeover; for an early reclaim of a live lease that is too wide. Card C-420 holds the file on 2026-11-24, so a scope request follows when it is free.
+- Audit notes N1 (uncounted drafts beside commits pass the takeover gate, a non-goal), N2 (`kept_commits` reads `HEAD`, not the reserved branch, as the gate always did) and N4 (the count guard alone survives a mutant, the id-list guard covers it) are kept as they are.
+- No Windows or Linux result; Mac fixtures only.
