@@ -153,7 +153,7 @@ L4 의 `🅱️ v2026.11.0` 처럼 좁은 모양은 이름만 남기고 `(🏷�
 
 ## Result
 
-구현했어요(2026-11-23, 브랜치 `spec/20261123-statusline-order-bars`, 개정 2 까지 구현한 코드 커밋 head `3d929c4a07d20359806e7cb6a6fdcf961d991bef`). 개정 1(둘째·셋째 줄)은 red 테스트 `b1f6fd1ae5` 를 먼저 커밋한 뒤 코드 `cf4ba47cd5` 로, 개정 2(첫 줄)는 SPEC 커밋 `1a5d439858` 위에 red 테스트 `352d54a5e1`·`d4f7303c9c` 를 먼저 커밋한 뒤 코드 `3d929c4a07` 로 구현했어요. 감사는 아직이에요.
+구현했어요(2026-11-23, 브랜치 `spec/20261123-statusline-order-bars`, 개정 2 까지 구현한 코드 커밋 head `3d929c4a07d20359806e7cb6a6fdcf961d991bef`). 개정 1(둘째·셋째 줄)은 red 테스트 `b1f6fd1ae5` 를 먼저 커밋한 뒤 코드 `cf4ba47cd5` 로, 개정 2(첫 줄)는 SPEC 커밋 `1a5d439858` 위에 red 테스트 `352d54a5e1`·`d4f7303c9c` 를 먼저 커밋한 뒤 코드 `3d929c4a07` 로 구현했어요. 독립 감사(읽기 전용 `moai-audit`, tier 1)는 차단 결함 없이 끝났고 비차단 메모의 낡은 주석 2곳과 문서 1문장은 이어지는 커밋에서 고쳤어요(동작 변화 없음). 증거는 카드의 READY 노트에 있어요.
 
 - red(개정 1, `b1f6fd1ae5`, 옛 코드): `cargo test --offline --locked --lib statusline::` exit 101, 181 passed 34 failed. `--test statusline_cards` exit 101, 14 passed 19 failed. `--test statusline_flow` 2 passed 3 failed. `--test statusline_numbers_only` 2 passed 3 failed. `--test statusline_worktree_label` 3 passed 4 failed. `--test statusline_counts_refresh` 8 passed 5 failed. 모두 exit 101.
 - red(개정 2, `352d54a5e1`·`d4f7303c9c`, 옛 코드): `--lib statusline::` exit 101, 194 passed 23 failed. `--test statusline_first_line` exit 101, 0 passed 5 failed. `statusline_cards` 23 passed 10 failed. `statusline_git_env` 18 passed 9 failed. `statusline_integration_distance` 0 passed 7 failed. `statusline_worktree_label` 1 passed 6 failed. `statusline_flow` 4 passed 1 failed. `statusline_numbers_only` 4 passed 1 failed. 모두 exit 101이고, 실패는 동작 때문이에요(예: detached 사례가 `🅱️ 74aa922 +1` 을 써서 `🅱️ v2026.11.0(🏷️ 2894f90)` 와 달랐어요).
@@ -247,4 +247,4 @@ integration tip (7): 8c55a9b   HEAD (7): c037295   HEAD file: c037295e40cadb6dcd
 - 개정 2: "detached `HEAD` 가 `🌳` 를 지어내는" 뮤턴트는 제가 돌리지 않았어요(AC-11 의 테스트가 `🌳` 없음과 짧은 커밋 없음을 단언하는 것만 읽었어요). 돌린 뮤턴트는 "tip 을 `HEAD` 에서 읽기" 하나예요.
 - 개정 2: 첫 줄에서 빠진 거리·ahead/behind·미커밋 계산(`where_items`, `Where`, `Marks`, git 숫자 캐시)은 지우지 않았어요(D-12). 화면에 안 나오는 코드가 남아 있고, 정리는 다음 카드의 몫이에요. `cargo clippy --all-targets -D warnings` 는 exit 0 이라 죽은 코드 경고는 없었어요.
 - 통합 브랜치 tip 이 `0dfdfb31dc` 에서 `b3ba2b30d5` 로 다시 움직였지만 흐름 규칙대로 따라가지 않았어요. 합칠 때의 충돌은 착지하는 쪽이 다뤄요.
-- 독립 감사는 아직이에요.
+- 독립 감사는 첫 head `5e45be7bd4` 에서 받았고, 그 뒤 고친 주석·문서 변경분은 감사 에이전트가 변경분만 다시 읽어요(결과는 READY 노트). 감사 판정 줄은 리더가 기록해요.

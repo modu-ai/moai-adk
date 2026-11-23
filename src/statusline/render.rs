@@ -50,9 +50,10 @@ pub struct Theme {
     pub issues: &'static str,
     /// `🔀` open pull requests and `🔗` the request of the branch (pink).
     pub prs: &'static str,
-    /// `🌳` worktree and `🅱️` branch with their ahead and dirty marks (green).
+    /// `🅱️` integration branch with its tip and `🌳` checked-out branch (green).
     pub branch: &'static str,
-    /// `🧭` distance to the integration branch (yellow).
+    /// `🧭` distance to the integration branch (yellow); no layout prints it since
+    /// SPEC-20261123-statusline-order-bars REQ-11, the colour stays with the unused distance code.
     pub distance: &'static str,
     /// `▶️` cards being worked on (maroon).
     pub cards_active: &'static str,

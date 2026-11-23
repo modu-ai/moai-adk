@@ -983,9 +983,9 @@ no value is left out together with its separator.
    countdown, written without the words `resets in`: `(<d>d <h>h)` at a day or more,
    `(<h>h <m>m)` under a day and `(<m>m)` under an hour, measured from the render's clock, when
    Claude Code gives a reset time. Since #2928 user instruction 6878415244 the tag is on line 1, not
-   here; the worktree label closes line 2, after the branch and the pull-request link (the user's
-   picked layout of 2026-11-20, SPEC-20261120-statusline-layout and
-   SPEC-20261121-statusline-detached). The limits are the last line: line 3 while lines 1 and 2 are
+   here; the worktree label no longer closes line 2: it did in the user's picked layout of
+   2026-11-20 (SPEC-20261120-statusline-layout and SPEC-20261121-statusline-detached), and the
+   first line now shows the checked-out branch instead (SPEC-20261123-statusline-order-bars). The limits are the last line: line 3 while lines 1 and 2 are
    shown, and one line up when an empty line is left out. The `🌳` of the first line is the
    checked-out branch, in a linked worktree and in the main checkout alike, and not the name the
    host gave the worktree (`worktree.name`, else `workspace.git_worktree`), which the first line no
