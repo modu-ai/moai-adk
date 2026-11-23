@@ -129,7 +129,6 @@ const TRIGGERS_MORE: &[&str] = &[
     "caffeinate",
     // The words that change how a command word or a `cd` operand is looked up (D-12).
     "alias",
-    "hash",
     "enable",
     "setopt",
     "cdpath",

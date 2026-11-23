@@ -1730,6 +1730,17 @@ fn second_audit_denied_cases() -> Vec<Case> {
             "export cdpath=/opt; cd moai-boundary-outside && rm -rf ./*",
             ur,
         ),
+        // The array named by a variable, or tied to `CDPATH`, cannot be followed.
+        d(
+            Own,
+            "a=cdpath; set -A $a /opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "typeset -T CDPATH cdpath; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
         d(
             Own,
             "declare -x CDPATH=/opt; cd moai-boundary-outside && rm -rf ./*",
