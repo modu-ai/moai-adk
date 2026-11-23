@@ -852,8 +852,12 @@ fn a_link_in_the_place_of_the_log_is_listed_and_not_read_through() {
 
 /// One agent build folder under the fixture HOME: cargo output and, when `owner` is given, the
 /// owner record `tools/build_folder.py env` writes (`.moai-build.json`).
+fn agent_dir(fx: &Fixture, name: &str) -> PathBuf {
+    fx.home.join(".moai/build").join(name)
+}
+
 fn agent_build(fx: &Fixture, name: &str, owner: Option<(&Path, &Path)>) -> PathBuf {
-    let dir = fx.home.join(".moai/build").join(name);
+    let dir = agent_dir(fx, name);
     cargo_output(&dir);
     if let Some((common, worktree)) = owner {
         fs::write(
@@ -1003,10 +1007,10 @@ fn a_fresh_worktree_without_commits_keeps_its_build_folder() {
     assert!(reasons(f).contains(&"worktree_live".to_string()), "{f}");
 }
 
-/// A folder under `<HOME>/.moai/build/` that holds nothing but its owner record: what the
-/// retired `lane-env` left behind once the build moved into the worktree's own `target/`.
+/// An agent build folder that holds nothing but its owner record: what the retired `lane-env`
+/// left behind once the build moved into the worktree's own `target/`.
 fn marker_only(fx: &Fixture, name: &str, owner: (&Path, &Path)) -> PathBuf {
-    let dir = fx.home.join(".moai/build").join(name);
+    let dir = agent_dir(fx, name);
     fs::create_dir_all(&dir).unwrap();
     fs::write(
         dir.join(".moai-build.json"),
@@ -1029,7 +1033,7 @@ fn marker_only(fx: &Fixture, name: &str, owner: (&Path, &Path)) -> PathBuf {
 fn a_folder_holding_only_the_owner_record_is_a_marker_only_trim_row() {
     let fx = fixture();
     let common = fs::canonicalize(fx.root.join(".git")).unwrap();
-    let gone = fx.root.join(".moai-cli/worktrees/gone");
+    let gone = wt(&fx, "gone");
     marker_only(&fx, "repo-m-gone", (&common, &gone));
     marker_only(&fx, "repo-m-merged", (&common, &wt(&fx, "a")));
     marker_only(&fx, "repo-m-live", (&common, &wt(&fx, "p")));
@@ -1039,10 +1043,9 @@ fn a_folder_holding_only_the_owner_record_is_a_marker_only_trim_row() {
     let extra = marker_only(&fx, "repo-m-extra", (&common, &gone));
     fs::write(extra.join("notes.md"), "evidence\n").unwrap();
     agent_build(&fx, "repo-cargo", Some((&common, &gone)));
-    let empty = fx.home.join(".moai/build/repo-empty");
-    fs::create_dir_all(&empty).unwrap();
+    fs::create_dir_all(agent_dir(&fx, "repo-empty")).unwrap();
 
-    let build = fx.home.join(".moai/build");
+    let build = agent_dir(&fx, "x").parent().unwrap().to_path_buf();
     let before = snapshot(&build);
     let r = optimize(&fx, Some(&observations(&fx)), now_plus_days(1), &[]);
     for (end, why) in [
@@ -1098,7 +1101,7 @@ fn a_folder_holding_only_the_owner_record_is_a_marker_only_trim_row() {
 fn agent_build_folder_rows_say_nothing_needs_the_folder() {
     let fx = fixture();
     let common = fs::canonicalize(fx.root.join(".git")).unwrap();
-    let gone = fx.root.join(".moai-cli/worktrees/gone");
+    let gone = wt(&fx, "gone");
     agent_build(&fx, "repo-gone", Some((&common, &gone)));
     marker_only(&fx, "repo-m-gone", (&common, &gone));
     agent_build(&fx, "repo-nomark", None);

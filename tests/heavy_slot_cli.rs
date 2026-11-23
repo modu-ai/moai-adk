@@ -1460,6 +1460,8 @@ struct BuildFx {
     two: PathBuf,
     nested: PathBuf,
     cargo: PathBuf,
+    /// The retired home build root under the fixture HOME (never made).
+    build: PathBuf,
 }
 
 fn build_fx() -> BuildFx {
@@ -1498,6 +1500,7 @@ fn build_fx() -> BuildFx {
     common::write_executable(&cargo, "#!/bin/sh\nexit 0\n");
     BuildFx {
         _d: d,
+        build: home.join(".moai/build"),
         root,
         repo,
         home,
@@ -1538,7 +1541,7 @@ impl BuildFx {
 
 /// A wrapped `cargo` builds in its worktree's own `target/`: it is warned about when
 /// `CARGO_TARGET_DIR` names the retired per-lane folder, a folder under the retired home build
-/// root `<HOME>/.moai/build` (this worktree's own old folder included) or a folder inside
+/// root under HOME (this worktree's own old folder included) or a folder inside
 /// another worktree. An unset or empty value, this worktree's own `target/`, a relative `target`
 /// and any other folder say nothing, and neither does another command. The warning is one line
 /// that names the folder, the reason and the worktree's own `target/`, and the command still
@@ -1546,7 +1549,7 @@ impl BuildFx {
 #[test]
 fn a_cargo_run_is_warned_about_a_retired_or_foreign_build_folder() {
     let f = build_fx();
-    let build = f.home.join(".moai/build");
+    let build = f.build.clone();
     let silent: Vec<(&Path, Option<PathBuf>)> = vec![
         (&f.one, None),
         (&f.one, Some(PathBuf::new())),
@@ -1593,8 +1596,7 @@ fn a_cargo_run_is_warned_about_a_retired_or_foreign_build_folder() {
         );
         assert!(err.contains("unset CARGO_TARGET_DIR"), "{err}");
         assert!(
-            !err.contains(".moai/build/repo-wt-one`")
-                && !err.contains("this worktree's build folder"),
+            !err.contains("this worktree's build folder"),
             "the former advice is gone: {err}"
         );
         let lines = err
@@ -1608,9 +1610,9 @@ fn a_cargo_run_is_warned_about_a_retired_or_foreign_build_folder() {
     common::write_executable(&other, "#!/bin/sh\nexit 0\n");
     let err = f.stderr_of(&f.one, Some(&f.home), Some(&f.repo.join("target")), &other);
     assert!(!err.contains("CARGO_TARGET_DIR"), "{err}");
-    // Off Windows USERPROFILE is never the home: with HOME unset, a folder under
-    // `<USERPROFILE>/.moai/build` is no retired home folder, while another worktree's folder
-    // is still found without a HOME.
+    // Off Windows USERPROFILE is never the home: with HOME unset, a folder under the build
+    // root of USERPROFILE is no retired home folder, while another worktree's folder is still
+    // found without a HOME.
     let err = f.stderr_of(&f.one, None, Some(&build.join("repo-wt-one")), &f.cargo);
     assert!(!err.contains("CARGO_TARGET_DIR"), "{err}");
     let err = f.stderr_of(&f.one, None, Some(&f.repo.join("target")), &f.cargo);
@@ -1622,7 +1624,7 @@ fn a_cargo_run_is_warned_about_a_retired_or_foreign_build_folder() {
 #[test]
 fn heavy_slot_acquire_makes_nothing_under_home() {
     let f = build_fx();
-    let retired = f.home.join(".moai/build/repo-wt-one");
+    let retired = f.build.join("repo-wt-one");
     for home in [Some(f.home.as_path()), None] {
         let err = f.stderr_of(&f.one, home, Some(&retired), &f.cargo);
         assert_eq!(
