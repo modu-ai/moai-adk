@@ -501,7 +501,7 @@ fn classify_inner(
                     "refuse",
                     found.conflict.clone().unwrap_or_else(|| {
                         format!(
-                            "{MOAI_DIR}/{decided_by} is from a newer moai-cli; this build leaves it alone"
+                            "{MOAI_DIR}/{decided_by} is from a newer moai; this build leaves it alone"
                         )
                     }),
                 ),

@@ -1636,7 +1636,7 @@ fn keep_out_of_git(backups: &Path) -> Result<()> {
         .open(&ignore)
         .and_then(|mut f| {
             use std::io::Write;
-            f.write_all(b"# moai-cli settings backups (#2383): never committed\n*\n")
+            f.write_all(b"# moai settings backups (#2383): never committed\n*\n")
         });
     match made {
         Ok(()) => Ok(()),

@@ -290,7 +290,7 @@ mod tests {
             "no role: a plain host session; no role or session name is added (#2053)",
             "model aliases map to z.ai models for this session: opus to glm-5.4[1m]",
             NOTE_ADVISOR_OMITTED_GLM,
-            "ANTHROPIC_AUTH_TOKEN comes from the moai-cli key vault; it is passed to the host process only",
+            "ANTHROPIC_AUTH_TOKEN comes from the moai key vault; it is passed to the host process only",
         ]});
         let number = vec![
             "agent number 21 taken: next after live agent-20 (store /x)".to_string(),

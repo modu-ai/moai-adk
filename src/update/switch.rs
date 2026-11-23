@@ -183,7 +183,7 @@ pub fn plan(home: &Path) -> Result<Layer> {
         "summary": summary_line,
         "confirm_token": token,
         "apply_flag": token.as_ref().map(|t| format!("--confirm-switch {t}")),
-        "revert_with": "moai-cli update --revert-switch <stamp>",
+        "revert_with": "moai update --revert-switch <stamp>",
         "go_bin": go_bin_report(home),
         "notes": notes(),
         "original_kept": true,
@@ -381,7 +381,7 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
         "stamp": stamp,
         "saved": saved.display().to_string(),
         "v2_sha256": V2_SHA256,
-        "revert": format!("moai-cli update --revert-switch {stamp}"),
+        "revert": format!("moai update --revert-switch {stamp}"),
         "revert_plain": format!("mv \"{}\" \"{}\"", saved.display(), file.display()),
     }))
 }

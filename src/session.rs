@@ -827,7 +827,7 @@ fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<V
                 Ok(Some((_, source))) => {
                     key_source = Some(source.name());
                     match source {
-                        KeySource::Vault(_) => notes.push("ANTHROPIC_AUTH_TOKEN comes from the moai-cli key vault; it is passed to the host process only"),
+                        KeySource::Vault(_) => notes.push("ANTHROPIC_AUTH_TOKEN comes from the moai key vault; it is passed to the host process only"),
                         KeySource::Env => {}
                     }
                 }

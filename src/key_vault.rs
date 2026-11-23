@@ -519,7 +519,7 @@ fn open_sealed(
         )
     };
     let Some(rest) = bytes.strip_prefix(MAGIC) else {
-        return Err(refuse("is not a moai-cli vault entry (no MOAIKV1 header)"));
+        return Err(refuse("is not a moai vault entry (no MOAIKV1 header)"));
     };
     if rest.len() < NONCE_LEN + TAG_LEN {
         return Err(refuse("is too short to be a vault entry"));
@@ -1369,6 +1369,11 @@ mod tests {
         fs::write(&path, format!("{value}\n")).unwrap();
         let b = read_entry(home, &p, "glm").unwrap_err();
         assert!(b.reason.contains("no MOAIKV1 header"), "{}", b.reason);
+        assert!(
+            b.reason.contains("is not a moai vault entry") && !b.reason.contains("moai-cli"),
+            "{}",
+            b.reason
+        );
         check(b);
         // Copied to the shared folder or to another provider name: does not decrypt.
         fs::write(&path, &bytes).unwrap();
