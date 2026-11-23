@@ -84,15 +84,39 @@ impl Fixture {
 
     /// The lines of one render of the session in the project folder.
     fn render(&self) -> String {
-        let stdin = serde_json::json!({
+        self.render_as(None)
+    }
+
+    /// The `counts` of the session cache record a render of `session` wrote; `None` when it wrote
+    /// none, which a render does when its distance call could not answer.
+    fn cached_counts(&self, session: &str) -> Option<serde_json::Value> {
+        let file = self
+            .home
+            .join("tmp")
+            .join("moai-statusline")
+            .join(format!("{session}.json"));
+        let text = fs::read_to_string(file).ok()?;
+        let record: serde_json::Value = serde_json::from_str(&text).unwrap();
+        Some(record["counts"].clone())
+    }
+
+    /// One render; with a session id its numbers are cached under this fixture's `TMPDIR`.
+    fn render_as(&self, session: Option<&str>) -> String {
+        let mut stdin = serde_json::json!({
             "model": {"display_name": "Opus"},
             "workspace": {"current_dir": self.project, "project_dir": self.project},
         });
+        if let Some(id) = session {
+            stdin["session_id"] = id.into();
+        }
+        let tmp = self.home.join("tmp");
+        fs::create_dir_all(&tmp).unwrap();
         let mut cmd = Command::new(common::MOAI_BIN);
         cmd.args(["statusline", "--render-budget-ms", &WITHIN.to_string()])
             .current_dir(&self.project)
             .clean_env()
             .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("TMPDIR", &tmp)
             .env("HOME", &self.home)
             .env("MOAI_HOME", self.home.join(moai_cli::home_root::MOAI_DIR))
             .env("NO_COLOR", "1")
@@ -218,6 +242,26 @@ fn the_integration_branch_itself_shows_both_items() {
     f.own_upstream(INTEGRATION);
     let out = f.render();
     assert_first_line(&f, &out, Some(INTEGRATION), INTEGRATION);
+}
+
+/// The distance call hands git the range `refs/heads/<integration>...HEAD`; a file of the work
+/// tree with that very name must not make git stop with "ambiguous argument". The line shows no
+/// number, so the proof is the session cache record, which a failed distance call never writes:
+/// it holds the real 2 ahead and 1 behind.
+#[test]
+fn a_file_named_like_the_range_does_not_stop_the_distance_call() {
+    let f = Fixture::new();
+    lane_two_ahead_one_behind(&f, "lane");
+    let range = f.project.join("refs").join("heads");
+    fs::create_dir_all(&range).unwrap();
+    fs::write(range.join(format!("{INTEGRATION}...HEAD")), "").unwrap();
+    let out = f.render_as(Some("s-range-file"));
+    assert_first_line(&f, &out, Some(INTEGRATION), "lane");
+    let counts = f
+        .cached_counts("s-range-file")
+        .expect("the distance call answered, so the render wrote its cache record");
+    assert_eq!(counts["ahead"], 2, "{counts}");
+    assert_eq!(counts["behind"], 1, "{counts}");
 }
 
 /// When the integration branch is not a local branch, nothing is measured and the commit part says
