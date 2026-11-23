@@ -2704,7 +2704,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     };
     if folder_moves {
         warnings.push(format!(
-            "Stop moai-cli commands and agent sessions in this project before the apply: the \
+            "Stop moai commands and agent sessions in this project before the apply: the \
              Go .moai/ becomes {go_backup}, a new .moai/ is made and the {LEGACY_ROOT} product \
              state moves into it."
         ));
@@ -2836,7 +2836,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
                 "legacy_state",
             ));
             warnings.push(format!(
-                "Stop moai-cli commands and agent sessions in this project before the apply: a \
+                "Stop moai commands and agent sessions in this project before the apply: a \
                  new .moai/ is made and the {LEGACY_ROOT} product state moves into it."
             ));
             moves
