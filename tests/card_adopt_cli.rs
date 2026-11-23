@@ -456,6 +456,30 @@ fn ac3_adopt_continues_the_card_at_the_next_generation() {
     result(&new);
 }
 
+/// AC-1 (REQ-1): the session an entry names now is never listed in its own `previous_sessions`,
+/// also when an older session of the lane comes back after a /clear and a second /clear.
+#[test]
+fn ac1_a_session_that_comes_back_is_not_its_own_predecessor() {
+    let w = world();
+    result(&w.register(NAME, &sid(1), &w.wt_a, false));
+    w.clear(NAME, &sid(2), &w.wt_a);
+    w.clear(NAME, &sid(3), &w.wt_a);
+    assert_eq!(
+        w.entry(NAME)["previous_sessions"],
+        json!([sid(2), sid(1)]),
+        "the replaced sessions, newest first"
+    );
+
+    w.clear(NAME, &sid(1), &w.wt_a);
+    let entry = w.entry(NAME);
+    assert_eq!(entry["session"], json!(sid(1)));
+    assert_eq!(
+        entry["previous_sessions"],
+        json!([sid(3), sid(2)]),
+        "the returning session is not its own predecessor"
+    );
+}
+
 /// AC-3: a card in `review` is adopted too and stays in `review`.
 #[test]
 fn ac3_a_card_in_review_is_adopted_and_stays_in_review() {
