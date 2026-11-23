@@ -400,25 +400,28 @@ fn parse_trailers(output: &str) -> (BTreeMap<String, String>, bool) {
 
 // ---- card next ---------------------------------------------------------------------------------
 
-/// The `ready` cards `card next` would offer or has skipped only for a scope reason: the ones a
-/// landing proof can still remove.
+/// The `ready` cards `card next` would offer or has skipped only for a scope reason or for want of
+/// a criterion: the ones a landing proof can still remove.
 pub fn candidates(found: &Next) -> Vec<i64> {
     let mut ids: Vec<i64> = found.ready.iter().map(|c| c.card_id).collect();
     ids.extend(
         found
             .skipped
             .iter()
-            .filter(|s| is_scope_skip(s))
+            .filter(|s| is_landable_skip(s))
             .map(|s| s.card_id),
     );
     ids
 }
 
-fn is_scope_skip(s: &workflow::Skipped) -> bool {
+/// Whether a landing proof replaces the skip reason of `s`. A card with no counted criterion is in
+/// the set: its proof wins over `no_criteria`, because the proof says what to do with the card
+/// (SPEC-20261124-card-next-skip-reason).
+fn is_landable_skip(s: &workflow::Skipped) -> bool {
     s.state == "ready"
         && matches!(
             s.reason,
-            SkipReason::EmptyScope | SkipReason::ScopeOverlap { .. }
+            SkipReason::EmptyScope | SkipReason::ScopeOverlap { .. } | SkipReason::NoCriteria
         )
 }
 
@@ -539,9 +542,9 @@ pub fn find(project: &Path, conn: &Connection, candidates: &[i64]) -> Result<Rep
     Ok(report)
 }
 
-/// Moves every card of `found` that has a proof out of `ready` and out of the scope skips, and
-/// returns its `skipped` entry (`reason: "already_landed"`, `via` and the proof's own key), in
-/// card order. The answer's other keys stay as they were.
+/// Moves every card of `found` that has a proof out of `ready` and out of the skips a proof
+/// replaces, and returns its `skipped` entry (`reason: "already_landed"`, `via` and the proof's
+/// own key), in card order. The answer's other keys stay as they were.
 pub fn take_landed(found: &mut Next, report: &Report) -> Vec<Value> {
     let mut taken: Vec<(i64, Value)> = Vec::new();
     let mut entry = |card_id: i64, title: &str, priority: &str, proof: &Proof| {
@@ -569,7 +572,7 @@ pub fn take_landed(found: &mut Next, report: &Report) -> Vec<Value> {
     found
         .skipped
         .retain(|s| match report.proofs.get(&s.card_id) {
-            Some(proof) if is_scope_skip(s) => {
+            Some(proof) if is_landable_skip(s) => {
                 entry(s.card_id, &s.title, &s.priority, proof);
                 false
             }
