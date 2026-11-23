@@ -2,7 +2,7 @@
 id: SPEC-20261123-statusline-order-bars
 title: "The status line puts the versions on the flow line and brings the limit bars back"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-23
 parent: SPEC-20261122-statusline-limits-left
 ---
@@ -20,9 +20,13 @@ parent: SPEC-20261122-statusline-limits-left
 
 **이 지시가 바꾸는 이전 결정**: `SPEC-20261121-statusline-detached` 의 REQ-5("숫자만, 막대 없음", 2026-11-21 사용자의 마지막 결정)는 이 SPEC 의 REQ-3 로 **대체**돼요. 그 SPEC 은 고치지 않고 이 SPEC 이 대체 관계를 적어요(REQ-7, 7 은 그 SPEC 의 REQ-7 과 무관). `SPEC-20261122-statusline-limits` 의 줄 3 REQ-1(항목 순서에 두 버전 포함)과 `SPEC-20261122-statusline-limits-left` 의 REQ-4(폭 사다리에서 버전이 가장 먼저 빠짐)도 이 SPEC 의 REQ-1·REQ-2·REQ-5 로 바뀐 부분만 대체돼요. 그 밖의 규칙(숫자는 남은 비율, `n/a`, 숨김 옵션, 한 칸 간격, 카운트다운 모양, 폭 예산)은 그대로예요.
 
+개정 2(사용자 확정 지시, 같은 날 카드 노트의 리더 결정으로 전달): **첫 줄(누가·어디)** 도 같이 바꿔요. 순서와 표기는 `🧠 <모델> <effort>·t | 📡 <owner/repo>, ⬇️ <이슈> 🔀 <PR> | 🅱️ <로컬 통합 브랜치>(🏷️ <그 ref tip 7자리>) | 🌳 <체크아웃된 브랜치>` 예요. 🅱️ 는 설정된 로컬 통합 브랜치의 이름과 로컬 ref `refs/heads/<통합>` 의 tip 이고, 세션의 `HEAD`·원격 ref·태그가 아니에요. 🌳 는 작업 폴더 이름이 아니라 체크아웃된 브랜치 이름이고, detached `HEAD`(리더)에서는 항목을 지어내지 않고 빼요. 이 줄에서 `🧭`, ahead/behind(`↑ ↓`), 미커밋(`+N`) 표시가 빠져요. 이 개정은 `SPEC-20261122-statusline-where` 의 줄 1 항목 중 `🌳 <작업 폴더 이름>`, `🅱️ <브랜치>` 와 그 표시들, `🧭` 거리를, 그리고 방금 착지한 `SPEC-20261123-statusline-integration-distance` 가 화면에 내던 `🧭` 를 **대체**해요(그 SPEC 의 계산 코드는 이 SPEC 이 지우지 않아요, Non-goals).
+
 ## Non-goals
 
-- 첫 줄(누구이고 어디인지)과 카드 단계·흐름의 계산. 흐름 줄의 항목과 아이콘은 그대로예요.
+- 첫 줄의 `🧠` 모델·`📡` 저장소·`🔗` 요청 항목의 모양과 값(순서만 위 지시대로 놓여요), 카드 단계·흐름의 계산.
+- 첫 줄에서 빠진 ahead/behind/미커밋 숫자와 `🧭` 거리를 계산하던 git 호출·캐시·`Where` 거리 코드를 지우는 일. 화면에서만 빼고 코드는 그대로 둬요. 쓰이지 않는 일을 없애는 것은 리더가 "이 카드 착지 뒤 다시 본다"고 한 다음 카드의 몫이에요.
+- 흐름 줄의 항목과 아이콘.
 - 막대의 그라데이션 색. 이전 막대는 채운 칸마다 초록→빨강 색을 칠했는데, 지금 막대는 **남은** 양을 그리므로 가득 찬 막대가 빨강으로 끝나면 뜻이 거꾸로예요(D-3). 색은 이 SPEC 이 새로 정한 두 가지뿐이에요.
 - 제품 문서의 상태줄 설명 전체를 다시 쓰는 일. 이 변경이 거짓으로 만드는 문장만 고쳐요.
 
@@ -35,6 +39,11 @@ parent: SPEC-20261122-statusline-limits-left
 - REQ-5: While the width budget is smaller than the third line, the status line shall drop the reset countdowns first, then the bars, then the five-hour window and the cost, and keep `CW` and `7D` in every form · failure: none — the narrowest form is written when none fits
 - REQ-6: The status line shall paint the filled cells of a bar in the base color of the line and the empty cells in the muted color so that the colored line minus its escapes equals the plain line · failure: none — without color the bar is the same text
 - REQ-7: The status line shall keep the numbers as the share left, the battery icon boundary, the reset countdown forms, the `context`, `usage_5h`, `usage_7d`, `claude_version`, `moai_version` and `cards` options and one space after every icon as they were · failure: none
+- REQ-8: The status line shall write its first line as the model with its effort, the repository with its forge counts, the local integration branch with the tip of its ref, the checked-out branch and the pull request in this order · failure: none — an item without its input is left out with its separator and no item is invented
+- REQ-9: The status line shall write the integration branch item as `🅱️ <name>(🏷️ <seven characters>)` with the configured integration branch name and the first seven characters of the commit that the local ref `refs/heads/<name>` names, read from that ref and never from `HEAD` · failure: `🅱️ <name>(🏷️ n/a)` when the local ref cannot be read, never a guessed commit — a head at another commit, a lane branch or a detached `HEAD` never changes the seven characters
+- REQ-10: The status line shall write the checked-out item as `🌳 <branch name>` with the branch the `HEAD` file names and not the name of the working folder · failure: none — a detached or unreadable `HEAD` leaves the item out and invents no name
+- REQ-11: The status line shall write no distance item, no ahead or behind mark and no uncommitted mark on the first line · failure: none — the repository counts and the pull request item keep their text
+- REQ-12: While the width budget is smaller than the first line, the status line shall drop the forge counts first, then the repository owner and the model version and the thinking mark and the request state, then the effort and the repository, then the commit of the integration item and the pull request, and keep the model and the integration branch name and the checked-out branch in every form · failure: none — the narrowest form is written when none fits
 
 ## Acceptance
 
@@ -45,12 +54,34 @@ parent: SPEC-20261122-statusline-limits-left
 - AC-5 (REQ-4): 알 수 없는 `CW`·`7D` 는 `CW n/a`·`7D n/a`, 아이콘과 막대 글자(`█`·`░`) 가 없고, 퍼센트가 없는 주간 창도 같아요 · verify: `cargo test --offline --locked --lib statusline::render::window_tests::unknown_windows_and_the_hide_list_stay_as_they_were`
 - AC-6 (REQ-5): 한도 줄의 모든 모양이 Layouts 표의 문자열 그대로이고 경계 폭 N 에서 그 모양, N-1 에서 다음 모양이에요 · verify: `cargo test --offline --locked --test statusline_cards line_three_ladder_`
 - AC-7 (REQ-6): 색 있는 줄에서 이스케이프를 뺀 글이 색 없는 줄과 같고, 채운 칸과 빈 칸이 서로 다른 색 구간이에요 · verify: `cargo test --offline --locked --lib statusline::render::window_tests::the_colored_bar_has_the_plain_text`
-- AC-8 (REQ-1, REQ-3, REQ-5): 실제 바이너리의 출력이 골든 사례 전부(`COLUMNS` 넓음·좁음 포함)에서 고정된 문자열이에요 · verify: `cargo test --offline --locked --test statusline_golden`
+- AC-8 (REQ-1, REQ-3, REQ-5, REQ-8, REQ-11): 실제 바이너리의 출력이 골든 사례 전부(`COLUMNS` 넓음·좁음 포함)에서 고정된 문자열이에요 · verify: `cargo test --offline --locked --test statusline_golden`
 - AC-9 (REQ-7): 숫자만 보여 주던 옛 단언(`statusline_numbers_only` 의 "막대 낱말 없음" 세 테스트)은 이 SPEC 의 막대 단언으로 바뀌고, 제품 문서가 새 줄 순서와 막대를 말해요 · verify: `cargo test --offline --locked --test statusline_numbers_only`
+
+- AC-10 (REQ-8, REQ-9, REQ-10): 레인 가지에서 첫 줄이 `🧠 … | 📡 …, ⬇️ … 🔀 … | 🅱️ <통합>(🏷️ <tip 7자리>) | 🌳 <레인 가지>` 이고 `🧭`·`↑ ↓`·`+N` 이 없어요. 실제 git 저장소와 실제 바이너리로 확인하고, 7자리는 `git rev-parse --short=7 refs/heads/<통합>` 의 값이에요 · verify: `cargo test --offline --locked --test statusline_first_line the_lane_branch_shows_the_integration_tip_and_the_checked_out_branch`
+- AC-11 (REQ-8, REQ-10): detached `HEAD`(리더)에서 첫 줄이 `🅱️ <통합>(🏷️ <tip 7자리>)` 로 끝나고 `🌳` 가 없고 `HEAD` 의 짧은 커밋이 나오지 않아요 · verify: `cargo test --offline --locked --test statusline_first_line a_detached_leader_shows_the_integration_item_and_no_checked_out_item`
+- AC-12 (REQ-9): `HEAD` 가 통합 tip 이 아닌 다른 커밋에 있을 때(레인 가지가 앞서 있고 detached 가 뒤처진 두 경우 모두)도 7자리가 로컬 통합 ref 의 커밋이고, 느슨한 ref 파일이 없고 `packed-refs` 에만 있어도 같아요. tip 을 `HEAD` 에서 읽게 바꾼 뮤턴트가 이 테스트를 실패시켜요 · verify: `cargo test --offline --locked --test statusline_first_line the_tip_is_the_commit_of_the_integration_ref_and_never_the_one_of_head`
+- AC-13 (REQ-9): 통합 브랜치 이름은 있는데 로컬 ref 가 없으면 `🅱️ <이름>(🏷️ n/a)` 이고 추측한 커밋이 없어요 · verify: `cargo test --offline --locked --test statusline_first_line an_integration_branch_without_a_local_ref_says_n_a`
+- AC-14 (REQ-11): 앞선 커밋과 미커밋 변경이 있는 작업 트리에서도 첫 줄에 `🧭`·`↑`·`↓`·`+N` 이 없고, 저장소 숫자와 `🔗` 요청은 그대로예요 · verify: `cargo test --offline --locked --test statusline_first_line the_first_line_has_no_distance_and_no_ahead_behind_or_uncommitted_mark`
+- AC-15 (REQ-12): 첫 줄의 모든 모양이 아래 Layouts 표의 문자열 그대로이고 경계 폭 N 에서 그 모양, N-1 에서 다음 모양이에요 · verify: `cargo test --offline --locked --lib statusline::render::line_one_form_tests`
 
 ### Layouts
 
-네 줄 모두 빈 값은 항목이 구분자와 함께 빠져요. 폭은 `unicode-width` 로 세요(테스트가 `display_width` 로 경계를 정해요). 값은 고정 입력이에요.
+첫 줄(레인 가지, 요청 있음; 값은 고정 입력):
+
+| 모양 | 글 |
+|---|---|
+| L0 가장 넓음 | `🧠 Sonnet 5.5 high·t \| 📡 modu-ai/moai-adk, ⬇️ 1 🔀 0 \| 🅱️ v2026.11.0(🏷️ b3ba2b3) \| 🌳 spec/ready-mutant-line-20261123 \| 🔗 #1234 pending` |
+| L1 숫자 없음 | `🧠 Sonnet 5.5 high·t \| 📡 modu-ai/moai-adk \| 🅱️ v2026.11.0(🏷️ b3ba2b3) \| 🌳 spec/ready-mutant-line-20261123 \| 🔗 #1234 pending` |
+| L2 소유자·모델 버전·생각·요청 상태 없음 | `🧠 Sonnet high \| 📡 moai-adk \| 🅱️ v2026.11.0(🏷️ b3ba2b3) \| 🌳 spec/ready-mutant-line-20261123 \| 🔗 #1234` |
+| L3 노력·저장소 없음 | `🧠 Sonnet \| 🅱️ v2026.11.0(🏷️ b3ba2b3) \| 🌳 spec/ready-mutant-line-20261123 \| 🔗 #1234` |
+| L4 가장 좁음 | `🧠 Sonnet \| 🅱️ v2026.11.0 \| 🌳 spec/ready-mutant-line-20261123` |
+| detached 리더 | `🧠 Sonnet 5.5 high·t \| 📡 modu-ai/moai-adk, ⬇️ 1 🔀 0 \| 🅱️ v2026.11.0(🏷️ b3ba2b3)` |
+| 통합 ref 없음 | `🧠 Sonnet 5.5 high·t \| 📡 modu-ai/moai-adk, ⬇️ 1 🔀 0 \| 🅱️ v2026.11.0(🏷️ n/a) \| 🌳 spec/ready-mutant-line-20261123` |
+| 통합 브랜치를 모름(프로필도 원격 기본 브랜치도 없음) | `🧠 Sonnet 5.5 high·t \| 📡 modu-ai/moai-adk, ⬇️ 1 🔀 0 \| 🌳 main` |
+
+L4 의 `🅱️ v2026.11.0` 처럼 좁은 모양은 이름만 남기고 `(🏷️ …)` 가 빠져요.
+
+아래는 둘째·셋째 줄이에요. 세 줄 모두 빈 값은 항목이 구분자와 함께 빠져요. 폭은 `unicode-width` 로 세요(테스트가 `display_width` 로 경계를 정해요). 값은 고정 입력이에요.
 
 흐름 줄(보유 카드 `C-12`, 단계 `🟡`, 사용자의 예):
 
@@ -91,12 +122,17 @@ parent: SPEC-20261122-statusline-limits-left
 3. 골든 파일을 도구로 다시 쓰고(`tools/statusline_golden.py --write`) 바뀐 plain 줄을 하나씩 읽어요. 검증은 Rust 테스트 `statusline_golden` 이 해요.
 4. 제품 문서의 줄 순서와 막대 문장을 고치고 `statusline_numbers_only` 의 문서 테스트를 새 문장에 맞춰요.
 5. 실제 바이너리 출력(넓은 폭·좁은 폭)을 Result 에 붙여요.
+6. (개정 2) 새 파일 `tests/statusline_first_line.rs` 에 AC-10 ~ AC-14 의 테스트를 먼저 써서 red 를 봐요(임시 git 저장소: 통합 브랜치와 레인 가지가 서로 다른 커밋을 가리키게 만들고, `HEAD` 가 통합 tip 이 아닌 경우와 `packed-refs` 만 있는 경우를 포함). `render.rs` 의 `line_one_form_tests` 는 Layouts 표의 L0~L4 로 고쳐요.
+7. (개정 2) `state.rs`: `read_git` 가 `ref_commit` 이 읽은 통합 ref 의 커밋을 `HEAD` 가 읽히든 말든 `GitRead` 에 담아 `Status` 로 나르고, `render.rs` 의 `line_one_form` 은 `where_items` 대신 `Status` 의 브랜치 이름·통합 이름·tip 으로 새 항목을 만들어요. `ICONS` 표에 `🏷️` 를 더해요. 뮤턴트(tip 을 `HEAD` 에서 읽기)를 한 번 넣어 AC-12 의 테스트가 실패하는 것을 보고 되돌려요.
+8. (개정 2) 골든 파일을 다시 쓰고 줄 1 이 바뀐 것을 하나씩 읽어요. 줄 1 변화는 이 개정의 의도(항목 순서, `🅱️` 통합 항목, `🌳` 브랜치, `🧭`·`↑ ↓`·`+N` 없음)뿐이어야 해요.
 
 ## Risks
 
 1. **`█`·`░` 의 폭.** 이 문자들은 동아시아 모호 폭(East Asian Ambiguous)이에요. `unicode-width` 는 1칸으로 세는데, 한국어 로케일의 일부 터미널은 2칸으로 그려요. 그러면 막대 줄이 센 것보다 넓어져 호스트가 줄을 자르거나 감쌀 수 있어요. 지워지기 전에도 같은 글자였고 사용자가 다시 요청했으니 그대로 쓰되, 문제가 보이면 폭이 좁은 모양(막대 없음)으로 내려가는 사다리가 안전판이에요.
 2. **막대의 방향.** 숫자가 남은 비율이라서 막대도 남은 비율을 그려요(가득 = 넉넉). 지워지기 전 막대는 쓴 비율이었어요. 숫자와 막대가 같은 양을 가리키게 한 것이 이 SPEC 의 선택이고 D-1 에서 되돌릴 수 있어요.
 3. **골든 파일 다수가 바뀌어요.** 두 버전의 이동과 막대로 plain 줄이 거의 모든 사례에서 바뀌어요. 바뀐 줄을 하나씩 읽고, 의도하지 않은 변화가 없는지(첫 줄과 카운트다운 숫자) 확인해요.
+4. (개정 2) **tip 이 오래된 것.** `refs/heads/<통합>` 는 이 체크아웃의 공통 git 폴더에서 읽어요. 다른 작업 폴더가 통합 ref 를 올려도 `packed-refs` 와 느슨한 ref 파일을 매 렌더 읽으므로 같아요(캐시 키에도 통합 커밋이 있어요). 이 세션에서 `git fetch` 를 하지 않아 원격이 앞서 있어도 로컬 ref 의 tip 을 보여 줘요(지시가 로컬 ref).
+5. (개정 2) **첫 줄의 `🌳` 뜻이 바뀌어요.** 지금까지 `🌳` 는 호스트의 작업 폴더 이름이었어요. 이 줄을 읽던 테스트·문서·`worktree` 옵션 설명이 같이 바뀌어야 하고, 작업 폴더 이름은 첫 줄에서 사라져요(흐름 줄의 내 카드 판별은 그 이름을 그대로 쓰므로 변하지 않아요).
 
 ## Decisions
 
@@ -109,6 +145,11 @@ parent: SPEC-20261122-statusline-limits-left
 | D-5 | 흐름 줄의 사다리는 호스트 버전 → moai 버전 → 흐름의 왼쪽 항목 순서로 빠져요 | 두 버전은 지금도 사다리에서 가장 먼저 빠지는 항목이에요(`limits` SPEC 의 Z1·Z2) | 버전 조각을 사다리 끝으로 옮기기 |
 | D-6 | 흐름이 없어도 버전은 둘째 줄에 남아요 | 버전은 원장과 무관한 항목이고 지금도 원장 없이 나와요 | 버전을 흐름이 있을 때만 쓰게 하기 |
 | D-7 | `💰` 는 지금 규칙(한도 정보가 없을 때만, 셋째 줄)대로 그 줄에 남아요 | 카드가 한도 줄에서 빼라고 한 것은 두 버전뿐이에요 | `💰` 를 둘째 줄로 옮기기 |
+| D-8 | `🔗` 요청 항목은 첫 줄 끝(`🌳` 뒤)에 남아요 | 지시가 빼라고 한 것은 `🧭`·ahead/behind·미커밋이고 요청은 말이 없어요. 요청은 체크아웃된 브랜치의 것이라 `🌳` 뒤가 자연스러워요 | `🔗` 를 줄에서 빼기 |
+| D-9 | 통합 브랜치 이름은 지금 규칙 그대로(프로필의 `work_flow.integration_branch`, 없으면 원격 기본 브랜치)이고, 둘 다 없으면 `🅱️` 항목이 없고 `🌳` 만 남아요 | 지시의 "설정된 로컬 통합 브랜치". 일반 프로젝트에서는 `🌳 <브랜치>` 한 항목이 지금의 `🅱️ <브랜치>` 자리를 이어요 | 이름이 없을 때 `🅱️ <브랜치>` 로 되돌리기 |
+| D-10 | 통합 ref 를 못 읽으면 `(🏷️ n/a)`, 너무 좁으면 `(🏷️ …)` 가 먼저 빠져요 | 프로젝트 규칙: 읽지 못하는 값은 `n/a` 이고 추측한 값은 없어요. 좁은 폭에서 `🏷️` 는 이름보다 덜 중요해요 | `(🏷️ …)` 를 사다리의 다른 칸으로 옮기기 |
+| D-11 | 체크아웃된 브랜치가 통합 브랜치와 같은 이름이어도 두 항목을 다 써요 | 지시의 순서와 표기를 그대로 따라요. 이름이 같은 경우는 통합 브랜치가 보호돼 드물어요 | 같은 이름이면 `🌳` 를 빼기 |
+| D-12 | 첫 줄에서 빠진 숫자를 계산하던 git 호출·캐시·`Where` 거리 코드는 지우지 않아요 | 리더가 지운 항목들을 다음 카드에서 다시 본다고 했어요 | 지우는 카드 |
 
 ## Result
 
