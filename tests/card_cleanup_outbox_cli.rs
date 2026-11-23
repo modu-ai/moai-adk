@@ -3,7 +3,7 @@
 //! fresh re-check.
 //!
 //! Every test runs on a temporary HOME with a temporary git repository; nothing of the real
-//! `~/.moai`, the real checkout or its worktrees and branches is read or written. The closing
+//! user state folder, the real checkout or its worktrees and branches is read or written. The closing
 //! commands run as the `moai` binary; the executor's own failure paths (a stop in the middle, a
 //! second executor, a branch another worktree takes meanwhile) run through the library function
 //! with an `Options` value, so no test needs an environment variable that a parallel test could
@@ -159,7 +159,7 @@ impl World {
     }
 
     fn write_profile(&self) {
-        let cfg = self.project.join(".moai-cli/project.yaml");
+        let cfg = moai_cli::state_root::path(&self.project, "project.yaml");
         fs::create_dir_all(cfg.parent().unwrap()).unwrap();
         fs::write(&cfg, &*self.profile.borrow()).unwrap();
     }
@@ -574,6 +574,7 @@ fn ac3_a_dirty_worktree_and_its_branch_stay() {
 /// AC-3 (dangerous path): a worktree path that is a link to a folder holding someone's files is
 /// never followed: the folder behind the link and its files stay, and the card's branch stays.
 #[test]
+#[cfg(unix)]
 fn ac3_a_worktree_path_that_is_a_link_is_not_followed() {
     let w = World::new();
     let precious = w.outside("precious");
