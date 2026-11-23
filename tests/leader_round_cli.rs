@@ -677,6 +677,62 @@ fn registration_renew_instance_refusals_leave_the_entry_alone() {
     }
 }
 
+/// AC-6, AC-7 (the dangerous path of the write): a leader entry that is a link and a registry
+/// folder that is a link are errors, never an absent leader; a renewal through either is
+/// refused and writes nothing, neither into the link nor into its target.
+#[cfg(unix)]
+#[test]
+fn registration_refuses_a_linked_entry_and_a_linked_folder() {
+    let f = fixture();
+    let real = f.tmp.path().join("real-leader.json");
+    fs::write(
+        &real,
+        json!({
+            "schema_version": 1, "name": "leader", "instance": LEADER_INSTANCE,
+            "lease_until": NOW_EPOCH - 38 * 3600, "mode": "leader", "session": LEADER_SESSION,
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let dir = f.primary.join(".git/.moai-cli/sessions");
+    fs::create_dir_all(&dir).unwrap();
+    std::os::unix::fs::symlink(&real, dir.join("leader.json")).unwrap();
+    let before = fs::read(&real).unwrap();
+    let r = round_as(
+        &f,
+        Some(LEADER_SESSION),
+        &["--renew-instance", LEADER_INSTANCE],
+    );
+    let reg = &r["round"]["registration"];
+    assert_eq!(reg["status"], "error", "{r}");
+    assert_eq!(reg["renewal"]["status"], "refused", "{r}");
+    assert_eq!(r["writes"], false, "{r}");
+    assert_eq!(fs::read(&real).unwrap(), before);
+    assert!(fs::symlink_metadata(dir.join("leader.json"))
+        .unwrap()
+        .file_type()
+        .is_symlink());
+
+    fs::remove_file(dir.join("leader.json")).unwrap();
+    fs::remove_dir(&dir).unwrap();
+    let elsewhere = f.tmp.path().join("elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    fs::copy(&real, elsewhere.join("leader.json")).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, &dir).unwrap();
+    let r = round_as(
+        &f,
+        Some(LEADER_SESSION),
+        &["--renew-instance", LEADER_INSTANCE],
+    );
+    assert_eq!(r["round"]["registration"]["status"], "error", "{r}");
+    assert_eq!(
+        r["round"]["registration"]["renewal"]["status"], "refused",
+        "{r}"
+    );
+    assert_eq!(r["writes"], false, "{r}");
+    assert_eq!(fs::read(elsewhere.join("leader.json")).unwrap(), before);
+}
+
 /// Every file below `root` as `(path, bytes)` pairs, sorted.
 fn tree_snapshot(root: &Path) -> Vec<(String, Vec<u8>)> {
     fn walk(out: &mut Vec<(String, Vec<u8>)>, dir: &Path, prefix: &str) {

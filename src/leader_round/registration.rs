@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{json, Value};
 
-use crate::lane_registry::{registry_dir, valid_instance, valid_name, DEFAULT_LEASE_SECS};
+use crate::lane_registry::{registry_dir_unlinked, valid_instance, valid_name, DEFAULT_LEASE_SECS};
 
 /// Largest entry file read; the lane registry's own bound.
 const MAX_ENTRY_BYTES: u64 = 4_096;
@@ -81,7 +81,8 @@ fn read_leader(file: &Path, name: &str) -> Result<Option<LeaderEntry>, String> {
 /// Every entry of mode `leader` in the clone's registry, ended leases included, sorted by name.
 /// A missing registry folder has none. Reads only; nothing is created.
 pub fn leader_entries(project: &Path) -> Result<Vec<LeaderEntry>, String> {
-    let dir = registry_dir(project)?;
+    // A link on any folder below the clone's git dir is an error, never "no entry" (C-80 N1).
+    let dir = registry_dir_unlinked(project)?;
     match fs::symlink_metadata(&dir) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
         Err(e) => {
@@ -119,6 +120,21 @@ pub fn leader_entries(project: &Path) -> Result<Vec<LeaderEntry>, String> {
         }
     }
     Ok(out)
+}
+
+/// The live leader entry that registers `session` and has no launcher lock file (SPEC REQ-6):
+/// a window opened without the launcher has no `.live` file, so its lease is the only sign it
+/// is there. A `.live` file that exists is the launcher's word and is never overridden here
+/// (a free lock means the launcher exited). Reads only; `None` for anything that cannot be
+/// read or does not match.
+pub fn leader_alive_by_lease(project: &Path, session: &str, now: i64) -> Option<LeaderEntry> {
+    let trace = crate::lane_registry::launcher_trace_of_session(project, session).ok()?;
+    if trace.live_file {
+        return None;
+    }
+    leader_entries(project).ok()?.into_iter().find(|e| {
+        e.name == trace.name && e.session.as_deref() == Some(session) && e.lease_until > now
+    })
 }
 
 /// The note every `registration` part carries: the renewal is the leader's own act, and the
