@@ -18,7 +18,9 @@
 //! 6. at tier 1 and 2 the PASS cites a receipt of this head with a step and every step at exit 0
 //!    (`receipt_missing`).
 //!
-//! A reader that cannot read git or the ledger answers an error text, never a verdict.
+//! A reader that cannot read git or the ledger answers an error text, never a verdict: enforce
+//! mode refuses with it, observe mode reports it as `would_refuse` with the code
+//! `check_unreadable` and the landing goes on.
 
 use crate::audit_gate::sessions_of;
 use crate::gate;
@@ -120,6 +122,63 @@ pub struct Input<'a> {
 
 fn same_session(a: &str, b: &str) -> bool {
     trailers::same_identity(a, b)
+}
+
+/// What the landing reads before its first write.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Reading {
+    /// The verdict the landing relies on (the `Relied` object of [`Relied::json`], or the object
+    /// the start row of an earlier call names).
+    pub relied: Option<Value>,
+    /// In observe mode, the refusal the landing would have had: `{code, why}`.
+    pub would_refuse: Option<Value>,
+}
+
+/// The code `would_refuse` carries in observe mode when the check could not read git or the
+/// ledger (REQ-14): the landing goes on as it did before the check existed.
+pub const CHECK_UNREADABLE: &str = "check_unreadable";
+
+/// The verdict step of a landing (REQ-6, REQ-14, REQ-15).
+///
+/// A head the integration branch already holds (`on_tip` is false) is closed on the verdict its
+/// start row names, so a FAIL recorded after the move does not stop the close (REQ-17). A head that
+/// still stands on the tip has not moved the branch, whatever an earlier call that was stopped
+/// before the move wrote: its verdicts are judged again now, so a FAIL recorded in between refuses
+/// (REQ-8).
+///
+/// A refusal is an `Err` in enforce mode. In observe mode it is reported in `would_refuse`, and so
+/// is a git or ledger read that failed inside the check, as [`CHECK_UNREADABLE`].
+pub fn read(input: &Input<'_>, mode: Mode) -> Result<Reading> {
+    if !input.on_tip {
+        if let Some(named) = workflow::land_started_verdict(input.conn, input.card_id, input.head)
+            .map_err(|e| e.to_string())?
+        {
+            return Ok(Reading {
+                relied: Some(named),
+                would_refuse: None,
+            });
+        }
+    }
+    let refusal = match judge(input) {
+        Ok(Outcome::Relied(relied)) => {
+            return Ok(Reading {
+                relied: Some(relied.json()),
+                would_refuse: None,
+            })
+        }
+        Ok(Outcome::Refused(refusal)) => refusal,
+        Err(why) => match mode {
+            Mode::Enforce => return Err(why),
+            Mode::Observe => Refusal::new(CHECK_UNREADABLE, why),
+        },
+    };
+    match mode {
+        Mode::Enforce => Err(refusal.text()),
+        Mode::Observe => Ok(Reading {
+            relied: None,
+            would_refuse: Some(refusal.json()),
+        }),
+    }
 }
 
 /// Decides the landing from the verdict events.

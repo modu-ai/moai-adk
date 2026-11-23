@@ -382,11 +382,18 @@ fn validate(p: &Profile) -> Result<()> {
             || w.integration_branch
                 .as_deref()
                 .is_some_and(|b| !branch_name(b))
-            || w.land_verdict
-                .as_deref()
-                .is_some_and(|m| !LAND_VERDICT_MODES.contains(&m))
         {
             return Err("invalid work_flow setting; no values were logged".into());
+        }
+        // The reason names the key and the two words, never the value that was read.
+        if w.land_verdict
+            .as_deref()
+            .is_some_and(|m| !LAND_VERDICT_MODES.contains(&m))
+        {
+            return Err(format!(
+                "invalid work_flow setting: land_verdict must be {}; no values were logged",
+                LAND_VERDICT_MODES.join(" or ")
+            ));
         }
     }
     if let Some(r) = &p.lane_run {
@@ -1804,8 +1811,30 @@ mod tests {
             file["work_flow"] =
                 json!({"flow": "m-flow", "integration_branch": "main", "land_verdict": bad});
             fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
-            assert!(read_profile(tmp.path()).is_err(), "{bad} must be refused");
+            let why = read_profile(tmp.path()).err().map(|e| e.to_string());
+            let why = why.unwrap_or_else(|| panic!("{bad} must be refused"));
+            // A wrong word names the key and both words and never echoes the value; a value of
+            // another type fails in the reader's own type check, whose reason is generic.
+            if bad.is_string() {
+                assert!(
+                    why.contains("work_flow")
+                        && why.contains("land_verdict")
+                        && why.contains("observe or enforce"),
+                    "the reason must name the key and the words: {why}"
+                );
+            }
         }
+        let mut file = serde_json::to_value(v2()).unwrap();
+        file["work_flow"] = json!({
+            "flow": "m-flow", "integration_branch": "main",
+            "land_verdict": "sentinel-word-not-echoed"
+        });
+        fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+        let why = read_profile(tmp.path()).err().map(|e| e.to_string());
+        assert!(
+            why.is_some_and(|w| !w.contains("sentinel-word-not-echoed")),
+            "the refused value must not appear in the reason"
+        );
         let mut file = serde_json::to_value(v2()).unwrap();
         file["work_flow"] = json!({"flow": "m-flow", "integration_branch": "main"});
         fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
