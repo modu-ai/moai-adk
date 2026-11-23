@@ -495,7 +495,9 @@ enum Action {
     /// `scope_overlap` with another card's reservation, `empty_scope`: a card without a write
     /// scope that has no usable SPEC `write:` list or earlier reservation to fill it from, so
     /// `take` refuses it; a card that `take` could fill is listed `ready` with the scope it would
-    /// get and its `scope_source`). `next` names the card to work on now: one this session holds,
+    /// get and its `scope_source`; `no_criteria`: a `ready` card with no criterion that is not
+    /// withdrawn, so `take` refuses it, given only when no other reason applies).
+    /// `next` names the card to work on now: one this session holds,
     /// else the first `ready` one. Each held and ready card carries its SPEC and that SPEC's
     /// status (`spec`); `warnings` names each card that changes the repository without an
     /// approved SPEC. A project without a ledger has no cards (`ledger: "absent"`, exit 0) and

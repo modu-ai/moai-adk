@@ -869,7 +869,7 @@ fn done_is_refused_at_every_edge_until_the_card_can_close() {
     let w = world(true);
     let done = |card: &str, g: &str| w.card(Some(S_A), &["done", card, "--generation", g]);
 
-    // No criterion at all.
+    // One criterion that stays open (the helper adds at least one, so `0` still gives one).
     let (bare, g) = w.taken(S_A, "bare/", 0);
     let (kind, message) = refusal(&done(&bare, &g));
     assert_eq!(kind, "conflict", "still active: {message}");

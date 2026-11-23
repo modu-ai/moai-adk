@@ -114,13 +114,16 @@ fn fence_rejects(conn: &Connection, op: &str, reason: &str) -> i64 {
 #[test]
 fn next_gives_my_cards_then_ready_cards_by_priority_then_number_and_a_reason_for_every_skip() {
     let (_home, mut w) = setup();
-    let low = add_card(&mut w, "ready", "p3", r#"["low/"]"#, 0); // 1
-    let mine = add_card(&mut w, "ready", "p2", r#"["mine/"]"#, 0); // 2
-    let late = add_card(&mut w, "ready", "p1", r#"["late/"]"#, 0); // 3
-    let top = add_card(&mut w, "ready", "p0", r#"["top/"]"#, 0); // 4
-    let early = add_card(&mut w, "ready", "p1", r#"["early/"]"#, 0); // 5
-    let theirs = add_card(&mut w, "ready", "p0", r#"["theirs/"]"#, 0); // 6
-    let clash = add_card(&mut w, "ready", "p0", r#"["theirs/deep/x.rs"]"#, 0); // 7
+    // Each card `next` could offer carries one criterion: a card without one is skipped as
+    // `no_criteria` (SPEC-20261124-card-next-skips-no-criteria). `bare` and `draft` keep none, so
+    // the empty scope and the state still decide their reason.
+    let low = add_card(&mut w, "ready", "p3", r#"["low/"]"#, 1); // 1
+    let mine = add_card(&mut w, "ready", "p2", r#"["mine/"]"#, 1); // 2
+    let late = add_card(&mut w, "ready", "p1", r#"["late/"]"#, 1); // 3
+    let top = add_card(&mut w, "ready", "p0", r#"["top/"]"#, 1); // 4
+    let early = add_card(&mut w, "ready", "p1", r#"["early/"]"#, 1); // 5
+    let theirs = add_card(&mut w, "ready", "p0", r#"["theirs/"]"#, 1); // 6
+    let clash = add_card(&mut w, "ready", "p0", r#"["theirs/deep/x.rs"]"#, 1); // 7
     let bare = add_card(&mut w, "ready", "p0", "[]", 0); // 8
     let draft = add_card(&mut w, "draft", "p0", r#"["draft/"]"#, 0); // 9
     let mine_r = reservation::reserve(
@@ -235,7 +238,7 @@ fn next_gives_my_cards_then_ready_cards_by_priority_then_number_and_a_reason_for
 #[test]
 fn next_stops_offering_a_card_the_moment_another_holder_takes_it() {
     let (_home, mut w) = setup();
-    let card = add_card(&mut w, "ready", "p2", r#"["src/a/"]"#, 0);
+    let card = add_card(&mut w, "ready", "p2", r#"["src/a/"]"#, 1);
     let n = workflow::next(w.conn(), Some(A)).unwrap();
     assert_eq!(n.ready.len(), 1);
     assert_eq!(n.ready[0].card_id, card);
