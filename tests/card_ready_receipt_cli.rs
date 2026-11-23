@@ -473,6 +473,25 @@ fn a_plain_ready_note_needs_the_receipt_and_merge_ready_does_not() {
     assert_eq!(w.note_count(&card), 2);
 }
 
+// AC-6: `card note --help` tells the gate: the markers it judges, the receipt file and the bare
+// command that makes it.
+#[test]
+fn the_note_help_names_the_receipt_gate() {
+    let w = World::new();
+    let (ok, help) = w.moai(&["card", "note", "--help"], None);
+    assert!(ok, "{help}");
+    for word in [
+        "LANE-READY-INTEGRATION",
+        "REPAIRED",
+        "READY",
+        "summary.txt",
+        "moai check affected",
+        "--lane",
+    ] {
+        assert!(help.contains(word), "`{word}` is not in the help: {help}");
+    }
+}
+
 // AC-5: the receipt of a `--lane` run is no receipt; the sentence names the bare command.
 #[test]
 fn a_lane_receipt_is_refused_with_the_bare_command() {
