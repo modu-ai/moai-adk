@@ -86,7 +86,7 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Scope
 
-- write: `CLAUDE.md`, `docs/lane-rules.md`, `docs/leader-rules.md`, `docs/claude-md-rule-provenance.md`, `docs/agents-md-maintenance.md`, `docs/decisions-2026-11-08.md`, `.moai/project.yaml`, `tests/repo_claude_md.rs`, `tests/recurring_problems_rule.rs`, `tests/lane_next_rules.rs`, `tests/claim_verify_cli.rs`, `.moai/specs/SPEC-20261123-claude-md-rewrite/**`
+- write: `CLAUDE.md`, `docs/lane-rules.md`, `docs/leader-rules.md`, `docs/claude-md-rule-provenance.md`, `docs/agents-md-maintenance.md`, `docs/decisions-2026-11-08.md`, `.moai/project.yaml`, `tests/repo_claude_md.rs`, `tests/recurring_problems_rule.rs`, `tests/lane_next_rules.rs`, `tests/claim_verify_cli.rs`, `tests/fixtures/state_folder_literals/allow.tsv`, `.moai/specs/SPEC-20261123-claude-md-rewrite/**`
 - read-only: `skills/moai/**`, `src/**`, `.gitignore`
 - forbidden: the real `CLAUDE.local.md`, the user's Claude config folder, the profile folder of the session, `.claude/` of the primary checkout
 
@@ -120,4 +120,17 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Result
 
-(Filled when the work is done.)
+Status: documents, tests and the profile changed; the SPEC front matter is not changed here (approval is recorded by the user's pick, not by a lane). One step is still open: the single merge of the integration branch `NeXT` after the card that also edited `CLAUDE.md` has landed, then the checks again.
+
+Measured at head `9acf2dc3e7` on base `b3ba2b30d5` (`moai check affected b3ba2b30d5..9acf2dc3e7 --max 4`, exit 0): `diff_check=0 fmt=0 clippy=0 test=0 result=PASS`, 2461 tests passed in 51 targets, 0 skipped. Lines now: `CLAUDE.md` 119 (was 235), `docs/lane-rules.md` 50, `docs/leader-rules.md` 49, `docs/claude-md-rule-provenance.md` 57; `rule-table.md` has 113 rows.
+
+- AC-1: met — `repo_claude_md` passed in that run: at most 200 lines (119), one managed section at the end with `hosts: claude.` equal to the profile, no personal line, no card number, no provenance table, the pinned gate, HOLD, secret and audit sentences, and a pointer to each of the three docs.
+- AC-2: met — `repo_claude_md rule_table_has_a_disposition_for_every_rule_and_every_anchor_is_found` passed: 113 rows, ids R-01 to R-113, every kept or moved anchor found in its destination, every discarded row names its basis.
+- AC-3: met — the `stale_` tests (ledger, launcher `-l|-a`, mode flags, hosts, paths and worktrees, integration branch, Python tests) and `lane_next_rules` passed. The integration branch is `NeXT` by the user decision of 2026-11-23 (decision D-8).
+- AC-4: met — `recurring_problems_rule` passed (5 tests): the recurring-problems rule sits in Standing principles, its row and the Korean wording row sit in `docs/claude-md-rule-provenance.md` with their sources and no card number.
+- AC-5: met — `repo_claude_md local_draft_holds_machine_facts_and_no_team_rule` passed; the draft names this machine's facts (Claude Code 2.1.330, `CLAUDE_CONFIG_DIR`, `sccache`, the lane cargo home) and repeats no kept team rule.
+- AC-6: met — `repo_claude_md decisions_log_records_the_agents_md_removal_and_this_rewrite` passed; the log has the rows of 2026-11-22 (`AGENTS.md` removed), 2026-11-23 (this rewrite) and 2026-11-23 (integration branch `NeXT`), plus one backfill row that copies the flow decisions of 2026-11-20 to 2026-11-22 from their SPECs (the leader confirms it).
+- AC-7: met — `load_measurement_is_recorded_in_the_spec` passed; the measurement is above with its source, version and limits. `moai spec check --all --project .` reported 0 errors (19 warnings in other SPECs, none in this one).
+- AC-8: met — the `moai check affected` run above. One scan needed a change in the same card: `state_folder_literal_scan` listed the two new tests, so `tests/fixtures/state_folder_literals/allow.tsv` got two lines (repo_claude_md 2/9, recurring_problems_rule 0/1).
+
+Not run: no test on Windows or Linux; the two git checks of `repo_claude_md` ran only in the worktree, not in a copy outside git. `.moai/project.yaml` still says `language.commit_messages: "en"` while `CLAUDE.md` and the history say Korean (decision D-4); it is left for the user.
