@@ -978,6 +978,7 @@ mod tests {
             "we!rd is not a valid attribute name: .gitattributes\n",
             "we!rd is not a valid attribute name: .gitattributes:x\n",
             "we!rd is not a valid attribute name: :3\n",
+            "we!rd is not a valid attribute name: .gitattributes:\n",
             "warning: could not open directory 'x/': Permission denied\n",
         ] {
             assert!(
@@ -1090,6 +1091,42 @@ mod tests {
         let link = base.join("link");
         std::os::unix::fs::symlink(base.join("own"), &link).unwrap();
         assert_eq!(worktree_gate(&outer, Some(link.to_str().unwrap())), Ok(()));
+    }
+
+    /// AC-17 (REQ-22): the checkout top git prints is cut only at its line break, so a real
+    /// linked worktree whose folder name ends in a space is judged by itself.
+    #[test]
+    fn a_worktree_whose_name_ends_in_a_space_is_judged_by_itself() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        let (bare, outer) = (base.join("remote.git"), base.join("outer"));
+        for d in [&bare, &outer] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        fixture_git(&bare, &["init", "-q", "--bare", "-b", "main"]);
+        fixture_git(&outer, &["init", "-q", "-b", "main"]);
+        std::fs::write(outer.join("a.txt"), "a\n").unwrap();
+        fixture_git(&outer, &["add", "a.txt"]);
+        fixture_git(&outer, &["commit", "-q", "-m", "first"]);
+        fixture_git(&outer, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        fixture_git(&outer, &["push", "-q", "origin", "main"]);
+
+        let spaced = base.join("lane ");
+        fixture_git(
+            &outer,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                "lane-spaced",
+                spaced.to_str().unwrap(),
+            ],
+        );
+        assert_eq!(
+            worktree_gate(&outer, Some(spaced.to_str().unwrap())),
+            Ok(())
+        );
     }
     use std::collections::HashMap;
 
