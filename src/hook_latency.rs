@@ -3,10 +3,10 @@
 //! number: the targets of the plan belong to the slices that add the handlers.
 //!
 //! Two cases are measured per run: a working folder that is not a MoAI project, and a MoAI
-//! project with a registered project folder under a temporary HOME. The folders are made under
-//! the system temporary folder and only the folder this run made is removed afterwards; the real
-//! HOME is never read. With
-//! `--values` the tool only summarises the given numbers and starts nothing.
+//! project (a git checkout with one reserved card in a registered ledger) under a temporary
+//! HOME. The folders are made under the system temporary folder and only the folder this run
+//! made is removed afterwards; the real HOME is never read. With `--values` the tool only
+//! summarises the given numbers and starts nothing.
 
 use serde_json::{json, Value};
 use std::fs;
@@ -158,14 +158,19 @@ fn measure(bin: &Path, name: &str, samples: usize) -> Result<Vec<Value>, String>
 
 fn measure_in(root: &Path, bin: &Path, name: &str, samples: usize) -> Result<Vec<Value>, String> {
     let (plain, project, home) = (root.join("plain"), root.join("project"), root.join("home"));
-    let made = (|| -> std::io::Result<()> {
-        fs::create_dir_all(&plain)?;
-        fs::create_dir_all(project.join(".moai"))?;
+    let made = (|| -> Result<(), String> {
+        let io = |e: std::io::Error| e.to_string();
+        fs::create_dir_all(&plain).map_err(io)?;
+        fs::create_dir_all(project.join(".moai")).map_err(io)?;
+        fs::create_dir_all(project.join(".git")).map_err(io)?;
+        fs::write(project.join(".git/HEAD"), "ref: refs/heads/latency\n").map_err(io)?;
         fs::write(
             project.join(".moai/project.yaml"),
             "{\"schema_version\": 2, \"project_id\": \"latency\"}\n",
-        )?;
-        fs::create_dir_all(home.join(".moai/projects/latency"))
+        )
+        .map_err(io)?;
+        fs::create_dir_all(&home).map_err(io)?;
+        reserve_card(&home, &project)
     })();
     made.map_err(|e| format!("cannot prepare the measuring folders: {e}"))?;
     let input = fixture(name);
@@ -183,6 +188,32 @@ fn measure_in(root: &Path, bin: &Path, name: &str, samples: usize) -> Result<Vec
         cases.push(entry);
     }
     Ok(cases)
+}
+
+/// Registers a ledger for the measured project in the temporary HOME and reserves one card on its
+/// folder, so the project case measures the card path of `session-context` (a ledger open, a
+/// reservation lookup). The rows are inserted straight into the temporary ledger: nothing of the
+/// real HOME is read.
+fn reserve_card(home: &Path, project: &Path) -> Result<(), String> {
+    let id = "latency";
+    moai_cli::ledger::register(home, id).map_err(|e| e.to_string())?;
+    let mut ledger = moai_cli::ledger::open_write(home, id).map_err(|e| e.to_string())?;
+    ledger
+        .with_write_tx(|tx, now| {
+            tx.execute(
+                "INSERT INTO card (title, state, created_by, created_at, updated_at) \
+                 VALUES ('hook latency card', 'active', 'hook-latency', ?1, ?1)",
+                [now],
+            )?;
+            tx.execute(
+                "INSERT INTO reservation (card_id, generation, holder, status, acquired_at, \
+                 lease_until, updated_at, worktree, branch) \
+                 VALUES (1, 1, 'hook-latency', 'held', ?1, ?1 + 3600, ?1, ?2, 'latency')",
+                rusqlite::params![now, project.to_string_lossy()],
+            )?;
+            Ok(())
+        })
+        .map_err(|e| e.to_string())
 }
 
 /// One run of `<bin> hook <name>`, in milliseconds from before the start to after the exit.

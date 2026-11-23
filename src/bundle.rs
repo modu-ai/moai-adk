@@ -507,6 +507,18 @@ fn tip_of(git: &Git, tip: &str) -> Result<Tip> {
     })
 }
 
+/// The default tip of an integration branch (SPEC-20261124-bundle-local-tip): the local
+/// `refs/heads/<branch>` when it is a commit in `dir`, else `origin/<branch>`. The integration
+/// branch is the local one and `origin` is behind it; the tool never fetches.
+pub fn integration_tip(dir: &Path, branch: &str) -> String {
+    let local = format!("refs/heads/{branch}");
+    if (Git { dir }).commit(&local).is_some() {
+        local
+    } else {
+        format!("origin/{branch}")
+    }
+}
+
 fn tip_json(t: &Tip) -> Value {
     json!({"name": t.name, "sha": t.sha, "committed": t.committed,
            "note": "the tool never fetches; git keeps no fetch time shared by every worktree"})
