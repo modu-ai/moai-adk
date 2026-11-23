@@ -117,7 +117,10 @@ struct Fx {
 impl Drop for Fx {
     fn drop(&mut self) {
         // Let the temporary folder be removed: the test made these unreadable.
-        let _ = fs::set_permissions(self.moai.join("locked-dir"), fs::Permissions::from_mode(0o755));
+        let _ = fs::set_permissions(
+            self.moai.join("locked-dir"),
+            fs::Permissions::from_mode(0o755),
+        );
     }
 }
 
@@ -175,12 +178,19 @@ fn fixture() -> Fx {
     fs::set_permissions(moai.join("secrets"), fs::Permissions::from_mode(0o000)).unwrap();
     symlink(moai.join("reports"), moai.join("link-to-reports")).unwrap();
     symlink(moai.join("nowhere"), moai.join("dangling-link")).unwrap();
-    let mk = Command::new("mkfifo").arg(moai.join("pipe")).status().unwrap();
+    let mk = Command::new("mkfifo")
+        .arg(moai.join("pipe"))
+        .status()
+        .unwrap();
     assert!(mk.success());
     // unreadable and not secret-shaped: listed as unknown with the reason.
     put(&moai.join("locked-dir/f"), 5);
     fs::set_permissions(moai.join("locked-dir"), fs::Permissions::from_mode(0o000)).unwrap();
-    Fx { _tmp: tmp, home, moai }
+    Fx {
+        _tmp: tmp,
+        home,
+        moai,
+    }
 }
 
 fn inventory(fx: &Fx, extra: &[&str]) -> Value {
@@ -334,7 +344,10 @@ fn kinds_rows_carry_count_size_oldest_newest_and_the_passed_thresholds() {
     let r = kind(&inv, "reports").expect("reports row");
     assert_eq!(r["count"], 3);
     assert_eq!(r["bytes"], 4096);
-    assert!(r["oldest"].as_u64().unwrap() < r["newest"].as_u64().unwrap(), "{r}");
+    assert!(
+        r["oldest"].as_u64().unwrap() < r["newest"].as_u64().unwrap(),
+        "{r}"
+    );
     assert_eq!(r["passed"], serde_json::json!(["max_files"]), "{r}");
     assert_eq!(r["thresholds"]["max_files"], 2);
     // The other defaults of the parent D-5 table are shown unchanged.
@@ -342,7 +355,14 @@ fn kinds_rows_carry_count_size_oldest_newest_and_the_passed_thresholds() {
     assert_eq!(r["thresholds"]["archive_after_days"], 90);
     // Defaults pass nothing on this small home.
     let plain = inventory(&fx, &[]);
-    for k in ["reports", "logs", "evidence", "worktrees", "build", "receipts"] {
+    for k in [
+        "reports",
+        "logs",
+        "evidence",
+        "worktrees",
+        "build",
+        "receipts",
+    ] {
         let row = kind(&plain, k).unwrap_or_else(|| panic!("no row {k}"));
         assert_eq!(row["passed"], serde_json::json!([]), "{k}: {row}");
     }
@@ -388,7 +408,10 @@ fn threshold_values_override_the_defaults_for_each_kind_and_may_be_fractions() {
         ],
     );
     // 4096 bytes is over 0.001 MiB (1048.576 bytes).
-    assert_eq!(kind(&inv, "reports").unwrap()["passed"], serde_json::json!(["max_mib"]));
+    assert_eq!(
+        kind(&inv, "reports").unwrap()["passed"],
+        serde_json::json!(["max_mib"])
+    );
     for (k, f) in [
         ("worktrees", "max_count"),
         ("build", "max_gib"),
@@ -397,7 +420,10 @@ fn threshold_values_override_the_defaults_for_each_kind_and_may_be_fractions() {
         ("logs", "file_mib"),
     ] {
         let passed = kind(&inv, k).unwrap()["passed"].clone();
-        assert!(passed.as_array().unwrap().iter().any(|p| p == f), "{k}: {passed}");
+        assert!(
+            passed.as_array().unwrap().iter().any(|p| p == f),
+            "{k}: {passed}"
+        );
     }
 }
 
@@ -416,7 +442,10 @@ fn threshold_a_bad_argument_refuses_before_any_read_and_names_the_argument() {
             assert!(!out.ok, "{op} {bad}: {} {}", out.stdout, out.stderr);
             let all = format!("{}{}", out.stdout, out.stderr);
             assert!(all.contains(bad), "{op} {bad} not named: {all}");
-            assert!(!all.contains("nonexistent-home-for-tidy-test"), "{op} {bad} read the home first: {all}");
+            assert!(
+                !all.contains("nonexistent-home-for-tidy-test"),
+                "{op} {bad} read the home first: {all}"
+            );
         }
     }
 }
@@ -502,7 +531,10 @@ fn plan_over_threshold_offers_the_old_reports_oldest_first() {
     let fresh = item(&p, "reports/projA/new.md");
     assert_eq!(fresh["action"], "keep");
     assert!(text(&fresh["reason"]).contains("not_old_enough"), "{fresh}");
-    assert_eq!(kind(&p, "reports").unwrap()["passed"], serde_json::json!(["max_files"]));
+    assert_eq!(
+        kind(&p, "reports").unwrap()["passed"],
+        serde_json::json!(["max_files"])
+    );
 }
 
 #[test]
@@ -549,7 +581,13 @@ fn plan_worktrees_build_evidence_and_receipts_wait_for_proof() {
         assert!(text(&i["reason"]).contains("proof_pending"), "{path}: {i}");
     }
     for k in ["worktrees", "build", "evidence", "receipts"] {
-        assert!(!kind(&p, k).unwrap()["passed"].as_array().unwrap().is_empty(), "{k}");
+        assert!(
+            !kind(&p, k).unwrap()["passed"]
+                .as_array()
+                .unwrap()
+                .is_empty(),
+            "{k}"
+        );
     }
 }
 
@@ -563,9 +601,15 @@ fn plan_digest_is_stable_for_one_folder_and_changes_with_the_candidates() {
     put(&fx.moai.join("run/another"), 77);
     age_tree(&fx.moai.join("run"), 400);
     let c = plan(&fx, &[]);
-    assert_ne!(a["digest"], c["digest"], "a changed candidate changes the digest");
+    assert_ne!(
+        a["digest"], c["digest"],
+        "a changed candidate changes the digest"
+    );
     let d = plan(&fx, &["--threshold", "reports.max_files=2"]);
-    assert_ne!(c["digest"], d["digest"], "a different offer changes the digest");
+    assert_ne!(
+        c["digest"], d["digest"],
+        "a different offer changes the digest"
+    );
 }
 
 // one memory index of `lines` lines of `width` bytes each (the newline included).
@@ -601,7 +645,10 @@ fn memory_index_size_line_reports_lines_bytes_percent_and_the_over_80_flag() {
     assert_eq!(rows.len(), 3);
     let by = |n: &str| rows.iter().find(|r| text(&r["path"]).ends_with(n)).unwrap();
     let r = by("m150.md");
-    assert_eq!((r["lines"].as_u64(), r["bytes"].as_u64()), (Some(150), Some(1500)));
+    assert_eq!(
+        (r["lines"].as_u64(), r["bytes"].as_u64()),
+        (Some(150), Some(1500))
+    );
     assert_eq!(r["percent"].as_f64(), Some(75.0));
     assert_eq!(r["over_80"], false);
     let r = by("m170.md");
@@ -609,7 +656,11 @@ fn memory_index_size_line_reports_lines_bytes_percent_and_the_over_80_flag() {
     assert_eq!(r["over_80"], true);
     let r = by("m30k.md");
     assert_eq!(r["bytes"], 30 * 1024);
-    assert_eq!(r["percent"].as_f64(), Some(120.0), "30 KiB of the 25 KiB cap");
+    assert_eq!(
+        r["percent"].as_f64(),
+        Some(120.0),
+        "30 KiB of the 25 KiB cap"
+    );
     assert_eq!(r["over_80"], true);
     // The targets of the leader's note: under 100 lines, 12 KB, 120 bytes a line.
     assert_eq!(r["targets"]["lines"], 100);
@@ -628,7 +679,10 @@ fn memory_plan_text_for_an_index_over_80_percent_and_none_under_it() {
     let under = memory_file(&dir, "under.md", 150, 10);
     let over = memory_file(&dir, "over.md", 170, 10);
     let p = plan(&fx, &["--memory-index", under.to_str().unwrap()]);
-    assert!(p.get("memory_tidy").is_none() || p["memory_tidy"].is_null(), "{p}");
+    assert!(
+        p.get("memory_tidy").is_none() || p["memory_tidy"].is_null(),
+        "{p}"
+    );
     let p = plan(&fx, &["--memory-index", over.to_str().unwrap()]);
     let t = &p["memory_tidy"];
     assert_eq!(
@@ -669,7 +723,11 @@ fn memory_an_index_over_the_read_limit_is_reported_with_a_reason() {
 /// Path, kind, length, mode, mtime and link target of every entry under `p`, never opened.
 fn snapshot(p: &Path, out: &mut Vec<String>) {
     let md = fs::symlink_metadata(p).unwrap();
-    let mtime = md.modified().unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+    let mtime = md
+        .modified()
+        .unwrap()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap();
     let link = if md.file_type().is_symlink() {
         fs::read_link(p).unwrap().display().to_string()
     } else {
@@ -685,7 +743,10 @@ fn snapshot(p: &Path, out: &mut Vec<String>) {
         link
     ));
     if md.is_dir() && md.permissions().mode() & 0o500 == 0o500 {
-        let mut kids: Vec<_> = fs::read_dir(p).unwrap().map(|e| e.unwrap().path()).collect();
+        let mut kids: Vec<_> = fs::read_dir(p)
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .collect();
         kids.sort();
         for k in kids {
             snapshot(&k, out);
@@ -714,7 +775,10 @@ fn readonly_both_operations_leave_the_home_the_memory_index_and_the_path_command
         let script = bin.join(name);
         fs::write(
             &script,
-            format!("#!/bin/sh\necho \"{name} $*\" >> \"{}\"\nexit 0\n", log.display()),
+            format!(
+                "#!/bin/sh\necho \"{name} $*\" >> \"{}\"\nexit 0\n",
+                log.display()
+            ),
         )
         .unwrap();
         fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
@@ -724,7 +788,12 @@ fn readonly_both_operations_leave_the_home_the_memory_index_and_the_path_command
     for op in ["tidy-inventory", "tidy-plan"] {
         let out = run_with(
             Some(Path::new(&path)),
-            &[op, fx.home.to_str().unwrap(), "--memory-index", idx.to_str().unwrap()],
+            &[
+                op,
+                fx.home.to_str().unwrap(),
+                "--memory-index",
+                idx.to_str().unwrap(),
+            ],
         );
         assert!(out.ok, "{op}: {} {}", out.stdout, out.stderr);
     }
@@ -748,7 +817,11 @@ fn help_the_operations_say_they_write_nothing_and_their_documents_exist() {
     for op in ["tidy-inventory", "tidy-plan"] {
         let out = run(&[op, "--help"]);
         assert!(out.ok, "{op}: {}", out.stderr);
-        assert!(out.stdout.contains("Writes nothing"), "{op}: {}", out.stdout);
+        assert!(
+            out.stdout.contains("Writes nothing"),
+            "{op}: {}",
+            out.stdout
+        );
         let doc = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("docs/design-review/appendix/operations")
             .join(format!("{}.md", op.replace('-', "_")));
