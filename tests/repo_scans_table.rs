@@ -1055,7 +1055,7 @@ fn include_bytes_is_read_like_include_str() {
 fn the_more_readers_in_the_live_tree_are_found() {
     let reads = file_readers();
     // Tails, not whole paths: this file is a reader itself, and a whole tracked path spelled here
-    // would need an exemption of its own (and `.moai/specs` literals move the state-folder baseline).
+    // would need an exemption of its own (and a state-folder literal moves the literal baseline).
     for (file, tail) in [
         ("tests/statusline_golden.rs", "/statusline_golden.py"),
         ("tests/atlas_three_arm.rs", "tools"),
