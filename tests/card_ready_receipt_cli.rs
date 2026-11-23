@@ -277,6 +277,34 @@ fn the_receipt_is_looked_for_in_the_worktree_that_has_the_head() {
 }
 
 #[test]
+fn a_receipt_whose_base_is_not_an_ancestor_of_the_head_is_refused() {
+    let w = World::new();
+    let card = w.new_card();
+    // A commit with the head's tree and no parent: it is in no history of `head`.
+    let tree = git(&w.project, &["rev-parse", &format!("{}^{{tree}}", w.head)]);
+    let stranger = git(&w.project, &["commit-tree", &tree, "-m", "stranger"]);
+    ready_receipt::write_receipt_based(&w.project, &w.head, &stranger);
+    let (ok, text) = w.note(&card, &w.ready(&card, &w.head));
+    assert!(!ok, "{text}");
+    assert!(text.contains("card note refused"), "{text}");
+    assert!(text.contains(&stranger[..12]), "names the base: {text}");
+    assert!(text.contains("not an ancestor"), "{text}");
+    assert_eq!(w.note_count(&card), 0);
+    // A base that is not a commit of this repository counts the same.
+    ready_receipt::write_receipt_based(
+        &w.project,
+        &w.head,
+        "deadbeefdead00000000000000000000deadbeef",
+    );
+    let (ok, text) = w.note(&card, &w.ready(&card, &w.head));
+    assert!(!ok, "{text}");
+    // The real base is an ancestor.
+    ready_receipt::write_receipt_based(&w.project, &w.head, &w.base);
+    let (ok, text) = w.note(&card, &w.repaired(&card, &w.head));
+    assert!(ok, "{text}");
+}
+
+#[test]
 fn a_marker_line_of_the_wrong_shape_is_refused() {
     let w = World::new();
     let card = w.new_card();
