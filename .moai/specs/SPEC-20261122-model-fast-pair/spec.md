@@ -1,12 +1,17 @@
 ---
 id: SPEC-20261122-model-fast-pair
 title: "the model choice never pairs Opus 4.8 with fast mode, which the API refuses from 2026-11-30"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-22
+approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7619 of the card that implements this SPEC (ref note:353:e7b4d45bd65b595bfd36343d21691b8e, 2026-11-23T15:11:02Z, under the user's delegation of 2026-11-23T13:57Z), approving revision 2 at head cb99dbcb44; not approved by the lane", digest: "sha256:7259042f2812abfaf94da245aa5c48fe2989264276bbddca9e0aaa33728fb525"}
 ---
 
 # the model choice never pairs Opus 4.8 with fast mode, which the API refuses from 2026-11-30
+
+## Interview
+
+- none: 별도 사용자 인터뷰는 없었어요. 요구사항은 전체 문서 보고서(11·14절)의 날짜 제한 항목 A16 과 카드 C-353 의 두 인수 기준이 정했고, 개정 1 은 리더가 계획대로 수락했으며(노트 6721) 개정 2 는 리더 결정 노트 7619 가 승인했어요(사용자 위임 2026-11-23).
 
 ## Intent
 
@@ -46,6 +51,7 @@ The shell clock of the session read `Mon Nov 23 15:07:15 UTC 2026` (`date -u`) a
 - Claude API fast mode page, `https://platform.claude.com/docs/en/build-with-claude/fast-mode.md` (read whole, read time unverified, after 2026-11-23T15:07:15Z): "Removal date: November 30, 2026. After removal, requests to `claude-opus-4-8` with `speed: "fast"` will return an error. To continue using fast mode, migrate to Claude Opus 5.5." Its front matter lists `claude-fable-5-2`, `claude-mythos-5-2`, `claude-opus-5-5`, `claude-opus-5` and `claude-opus-4-8` as the models that take fast mode; Opus 4.8 is "Deprecated".
 - Claude Code changelog 2.1.316, `https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md` (read in part, characters 0 to 300000, read time unverified): "Deprecated fast mode for Opus 4.8 as of October 30, 2026; it will be removed on November 30, 2026. After removal, fast mode requests on Opus 4.8 return an error and do not fall back to standard Opus 4.8." (fragmented relay; the trailing clause is not verified verbatim).
 - Claude Code settings reference, `https://code.claude.com/docs/en/settings-reference.md` (read in part, characters 0 to about 400000 of 460800, read time unverified): the keys are `fastMode` (boolean, "false: fast mode stays off") and `fastModePerSessionOptIn` (boolean, "a saved `fastMode: true` no longer turns fast mode on at session start"); they are the only fast-mode keys of the index table.
+- Read times, measured again for the leader's condition (note 7619): the three pages after the first (API fast mode page, changelog, settings reference) were read again by a research agent between `date -u` 2026-11-23T15:11:24Z (before) and 2026-11-23T15:14:35Z (after); the agent could not run `date -u` itself, so each page's own read time is only known to lie in that interval. The API page came back as one raw block (read whole, same quotes as before). The changelog came back in pieces of at most about 100 characters through an extraction model, so its bullet is not byte-verified (the ending of the bullet is "speedup", the tool answered twice that no period follows it). The settings reference rows and bodies match the first read; the window from character 400000 to the end was read raw and holds neither key.
 - Result of the recheck: adopt. The date and the refusal are as revision 1 states; the supported-model list is wider than revision 1 knew (Fable 5.2, Opus 5.5, Opus 5, Opus 4.8; the API page adds Mythos 5.2), and moai's table names none of the Opus 4.8 family, so the pin stays correct and Opus 5.x ids stay unaffected (D-2). Unverified: the rest of the changelog and the last 60000 characters of the settings page.
 
 ## Decisions
@@ -68,4 +74,10 @@ The shell clock of the session read `Mon Nov 23 15:07:15 UTC 2026` (`date -u`) a
 
 ## Result
 
-Not started (the SPEC is the first slice).
+Code slice at commit 61946c4c7b, run 2026-11-23 on a build of that tree.
+
+- AC-1: met. `cargo nextest run --test model_effort_settings --test model_effort_questions -E 'test(fast_pair)'` ran 3 tests, 3 passed; `fast_pair_no_support_row_or_default_names_an_opus_48_model` walks every row and default of both tools. A pin test, so it passed at once (no RED). Mutant (restored by hand; `git status --short` then showed no tracked change): a `claude-opus-4-8` row added to the Claude table, 3 of 3 failed.
+- AC-2: met. Same run: `fast_pair_an_opus_48_or_fast_mode_entry_is_listed_and_never_resolved` (an Opus 4.8 id, a dotted id in mixed case, a third `fastMode` key) lists `launcher.models.claude.leader`, `saved_choice` answers none, `resolve` is refused with the key path and no model text, and `with_choice` refuses the family. Mutants: the table row above, 3 of 3 failed; the exact-two-keys check in `check_entry` loosened to `fields.len() < 2`, 1 of 3 failed (this test).
+- AC-3: met. RED first: `cargo nextest run --lib -E 'test(fast_pair)'` ran 3 tests, 1 passed (a model alone still merges) and 2 failed (`mergeable`, not `blocked`), exit 100. GREEN after `model_row` learned the pair: `cargo nextest run --lib -E 'test(claude_settings_merge)'` ran 10 tests, 10 passed. Mutants: the pair check made unreachable (`if false && …`), 2 of 3 failed; the letter-case fold removed from `is_opus_48`, 1 of 3 failed (`Claude-OPUS-4-8[1m]`).
+- AC-4: met. Same run as AC-1: `fast_pair_no_model_question_offers_an_opus_48_id` passed for every tool and role; the table-row mutant made it fail.
+- Not run here: the whole `model_effort_settings` and `model_effort_questions` targets and `check affected`; their receipt is in the READY note of the card.
