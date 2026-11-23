@@ -23,6 +23,10 @@ const ROOT: &str = env!("CARGO_MANIFEST_DIR");
 const EXEMPT: &[(&str, &str)] = &[
     ("tests/atlas_query_cli.rs", "walks the TempDir tree it built from named atlas fixtures"),
     (
+        "tests/base_agents_discovery_record.rs",
+        "read_dir copies the named skills/moai and agents folders into a temporary home and lists the profile folder it built; reads no other checked-in tree",
+    ),
+    (
         "tests/base_agents_nested.rs",
         "read_dir of temporary homes (the install tree before and after); reads the named src and package files",
     ),
