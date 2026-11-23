@@ -321,6 +321,34 @@ fn ac5_without_a_project_folder_the_failure_is_one_stderr_line() {
     );
 }
 
+/// AC-5: a receipt path that is a link is not followed, and a `project_id` that could leave the
+/// projects folder is refused, each with one stderr line and nothing written outside.
+#[test]
+fn ac5_a_receipt_link_is_not_followed_and_a_hostile_project_id_is_refused() {
+    let fx = Fx::new(true, true);
+    let outside = fx.project.parent().unwrap().join("outside");
+    fs::write(&outside, "original").unwrap();
+    std::os::unix::fs::symlink(&outside, fx.receipt()).unwrap();
+    let r = fx.hook("session-context", b"not json");
+    assert_eq!((r.code, r.stdout.as_str()), (0, ""), "{}", r.stderr);
+    assert_eq!(r.stderr.lines().count(), 1, "{:?}", r.stderr);
+    assert_eq!(fs::read_to_string(&outside).unwrap(), "original");
+
+    fs::remove_file(fx.receipt()).unwrap();
+    fs::write(
+        fx.project.join(".moai/project.yaml"),
+        r#"{"project_id":"../../outside"}"#,
+    )
+    .unwrap();
+    let root = fx.project.parent().unwrap();
+    let before = snapshot(root);
+    let r = fx.hook("session-context", b"not json");
+    assert_eq!((r.code, r.stdout.as_str()), (0, ""), "{}", r.stderr);
+    assert_eq!(r.stderr.lines().count(), 1, "{:?}", r.stderr);
+    assert!(r.stderr.contains("portable"), "{:?}", r.stderr);
+    assert_eq!(before, snapshot(root), "nothing may be written anywhere");
+}
+
 /// AC-6: a receipt file at 256 KiB takes no more lines and warns once; one byte below it still
 /// takes the line.
 #[test]

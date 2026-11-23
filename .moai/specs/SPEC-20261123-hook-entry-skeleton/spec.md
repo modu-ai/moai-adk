@@ -53,7 +53,7 @@ created: 2026-11-23
 - AC-2 (REQ-2): an unknown name (`pre-tool`, `nonsense`, an empty-looking name) exits 0 with stdout empty, with and without a MoAI project, and `pre-tool` keeps the stderr line `ignored a Go-generation hook call` · verify: `cargo nextest run --test hook_entry_cli -E 'test(/^ac2_/)'`
 - AC-3 (REQ-3): a registered name run where `.moai/project.yaml` is missing, is a folder, or is a link to a missing file prints nothing on either stream, exits 0 and writes no file in HOME or the folder, and `CLAUDE_PROJECT_DIR` wins over the working folder when both are set · verify: `cargo nextest run --test hook_entry_cli -E 'test(/^ac3_/)'`
 - AC-4 (REQ-5, REQ-6): in a MoAI project whose HOME holds the project folder, input that is empty, `not json`, a JSON array, invalid UTF-8 or larger than 4 MiB exits 0 with stdout empty and adds exactly one JSON line to `hook-entry.jsonl` with the name, a reason word and a time and none of the input bytes · verify: `cargo nextest run --test hook_entry_cli -E 'test(/^ac4_/)'`
-- AC-5 (REQ-6): the same bad input where the HOME has no project folder exits 0, creates no folder, and writes one stderr line · verify: `cargo nextest run --test hook_entry_cli -E 'test(/^ac5_/)'`
+- AC-5 (REQ-6): the same bad input where the HOME has no project folder exits 0, creates no folder, and writes one stderr line, and a receipt path that is a link is not followed and a `project_id` such as `../../outside` is refused, each with one stderr line and nothing written · verify: `cargo nextest run --test hook_entry_cli -E 'test(/^ac5_/)'`
 - AC-6 (REQ-7): with `hook-entry.jsonl` at 262144 bytes a bad input appends nothing, writes one stderr warning naming the limit and exits 0, and at 262143 bytes it still appends · verify: `cargo nextest run --test hook_entry_cli -E 'test(/^ac6_/)'`
 - AC-7 (REQ-8): with `ORCA_*` variables set the answers and files equal those without them, `src/hook_entry.rs` names no process-start, network or settings-path word, and no `settings.json` or `settings.local.json` exists afterwards in the project or HOME · verify: `cargo nextest run --test hook_entry_cli -E 'test(/^ac7_/)'`
 - AC-8 (REQ-9, REQ-10): `hook latency` against the built binary with `--samples 3` answers both cases with `samples` 3 and `p50_ms`, `p90_ms`, `max_ms` ordered p50 ≤ p90 ≤ max, and refuses a missing binary, `--samples 0`, `--samples 1001`, `--name pre-tool` and a bad `--values` list with a usage message on stderr and exit 2 · verify: `cargo nextest run --test hook_latency_cli -E 'test(/^ac8_/)'`
@@ -110,4 +110,27 @@ Official hooks documentation, read for the plan §8 open item "exec form". Retri
 
 ## Result
 
-(not written yet; SYNC fills it after the audit-ready head)
+Status: implemented on the code slice. The SPEC stays `draft`: approval is the user's pick, not a lane's. Nothing is installed, no settings file is read or written, and the installed hooks of this clone are unchanged.
+
+- AC-1: met — `hook_entry_cli` test `ac1_a_registered_name_with_good_input_prints_nothing_and_writes_nothing`
+- AC-2: met — `ac2_an_unknown_name_exits_zero_with_nothing_on_stdout` (with and without a project; `pre-tool` keeps its stderr line). This test passed before the code too: it pins the compatibility path that already existed.
+- AC-3: met — `ac3_outside_a_moai_project_a_registered_name_is_silent`, `ac3_claude_project_dir_wins_over_the_working_folder`
+- AC-4: met — `ac4_bad_input_adds_one_receipt_line_without_the_input` (empty, text, array, scalar, non-UTF-8, 4 MiB + 1 byte; the marker word never reaches the file)
+- AC-5: met — `ac5_without_a_project_folder_the_failure_is_one_stderr_line`, `ac5_a_receipt_link_is_not_followed_and_a_hostile_project_id_is_refused` (the second was added after the dangerous-path run showed both guards untested)
+- AC-6: met — `ac6_a_full_receipt_file_warns_and_appends_nothing` (262144 bytes: no append, one warning; 262143: appends)
+- AC-7: met — `ac7_orca_variables_change_nothing_and_no_settings_file_appears` (answers and receipt equal with and without `ORCA_*` and `CLAUDE_CONFIG_DIR`; the source scan finds no process-start, network or settings word, and exactly the variables `CLAUDE_PROJECT_DIR` and `HOME`)
+- AC-8: met — `hook_latency_cli` tests `ac8_both_cases_are_measured_with_ordered_percentiles`, `ac8_bad_arguments_are_refused_with_exit_2_before_any_sample`
+- AC-9: met — `ac9_values_give_the_nearest_rank_and_judge_nothing`
+- AC-10: met — one `cargo nextest run` over `hook_dispatch_cli`, `hook_mode_cli`, `hook_legacy_cli`, `lane_stop_hook_cli`, `diff_go` and `help_layout`: 85 passed. In `diff_go`, the Go-hook case returns early when no Go binary is found, so AC-2 is the evidence for the `pre-tool` line.
+- AC-11: met — `help_layout` is in the same 85-test run; no golden file and neither `src/help.rs` nor `src/lib.rs` is in the diff.
+- AC-12: met — `moai spec check SPEC-20261123-hook-entry-skeleton` answers 0 errors and 0 warnings.
+
+Against the code that existed before, 9 of the 11 new tests failed (commit `1bcc31beb2`); the two that passed were AC-2, the compatibility test, and the first AC-5 test, which passed by accident through the old Go stderr line and was then tightened to name the hook and the reason. After the code: 12 of 12 pass; `cargo fmt --check` and `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0.
+
+Mutants (each edits one guard of the committed code and runs `hook_entry_cli` and `hook_latency_cli`): project check removed, stdin limit, receipt limit off by one, project folder created, `CLAUDE_PROJECT_DIR` ignored, registered name sent to the Go path, unknown name loses its Go line, percentile rounds down, sample range removed, NaN accepted, receipt link followed, project id unchecked — 12 of 12 killed, none by a compile error. Not covered by a mutant: that the receipt never holds input bytes (the `SECRETMARKER` check in AC-4 covers it by test only).
+
+Dangerous path, run with the real debug binary in a throwaway HOME and project: a 5 MiB input and a non-UTF-8 input each left one receipt line and exit 0; a full receipt log gave one stderr warning; a receipt path linked to a file outside left that file as it was; the project id `../../outside` was refused and nothing was written outside; `project.yaml` as a folder and as a link to nothing stayed silent; the names `$(touch PWNED)`, `; touch PWNED2`, `../../x` and an empty name exited 0 and created no file; closed stdin exited 0.
+
+Measurement (`moai hook latency --bin <debug binary> --samples 50`, debug build, machine load 80 to 90, 2026-11-23): `session-context` p50 7.0 ms and p90 11.7 ms outside a project, p50 7.5 ms and p90 13.4 ms in a project; `bash-boundary` p50 9.1 and 7.8 ms, p90 16.7 and 14.9 ms; `write-boundary` p50 8.2 and 7.9 ms, p90 13.3 and 11.5 ms. These are the cost of the skeleton alone (no handler decides anything), under load and in a debug build. The plan's targets (H1 p50 ≤ 50 ms, p90 ≤ 100 ms; H2 and H3 p50 ≤ 20 ms, p90 ≤ 40 ms) are judged by the slices that add the handlers, on a release build.
+
+Not done here: a real Claude Code session loading the entry (nothing is installed), a Windows run, and the exec form version check (see Sources). The `check affected` receipt of the final head is on the card's READY note.
