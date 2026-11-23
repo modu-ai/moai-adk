@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-home-env-readers
 title: "환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 조각 1 은 layout, 조각 2 는 클레임 장부 호출부와 git 자식"
-status: draft
+status: approved
 revision: 4
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7858 (2026-11-23T20:31:59Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 7856 에 답함: 판 4 승인 — REQ-10 한 문장, D-8 고정 폐기와 같은 HOME 판정 한 곳, AC-14·15·16, N2·N3 문구; 앞 판은 노트 7763·7830); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:5c22627fc9788b7bcc3948eef8a7a9fffdf18ea3572122152a355b8cafb3f174"
 ---
 
 # 환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 조각 1 은 layout, 조각 2 는 클레임 장부 호출부와 git 자식
@@ -169,3 +174,14 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - 카드 기준 2: 충족. 기준선 줄이 389 에서 361 로 줄었고 줄어든 테스트가 enforce 에서 통과해요(위 AC-11).
 - 합치기 주의: 이 브랜치는 조각 2a 가 착지하기 전 기준에서 이어졌어요. 조각 2a 가 같은 `claim::journal_root` 본문(`identity_in(.., None)` 과 링크 거절)과 `refuse_symlink` 가시성 한 줄을 바꿔서, 착지 때 `src/claim.rs` 의 `journal_root` 한 곳에서 합치기 충돌이 나요. 합친 결과는 이 브랜치의 `journal_root_in` 이 그 둘을 모두 가진 모양(받은 HOME 으로 `switched_dir_in`·`default_home_root_in` 을 부르고 링크 거절)이고 `journal_root` 는 그것을 부르는 어댑터예요.
 - not_run: `cargo test --locked` 전체(리더 몫), Windows·Linux, 명령줄 git 실험, 실제 HOME 읽기 전후 비교, `forge/outbox.rs`·`apply.rs` 원인 재기.
+
+**판 4 결과** (조각 2 수리; 감사 #410 FAIL 의 막는 것 B1; 승인은 리더 결정 노트 7858 이고 리더 판단이며 사용자 직접 선택은 아니에요; 수리 커밋 `b94c064c22`, 초안 커밋 `585f777a69`; 로그는 `target/c410/` 에 있고 카드가 열려 있는 동안만 둬요)
+
+- RED: 새 테스트 셋을 더하고 수리 전에 `cargo nextest run --offline --locked --lib -E 'test(identity_in_) | test(identity_keeps_the)'` → exit 100, 8개 중 6 통과·2 실패(`identity_in_reads_the_xdg_git_config_of_the_home_it_is_given`: `dubious ownership` 거절, `identity_keeps_the_git_config_of_the_environment`). 세 번째 `identity_in_leaves_the_environment_git_config_out_for_another_home` 는 옛 고정도 지켜서 수리 전에 통과했어요(회귀 방지용이고 RED 가 아니에요). GREEN: 같은 명령에 `test(identity::)` 를 더해 exit 0, 10/10.
+- 수리: `rev_parse`(`src/identity.rs`)가 `GIT_CONFIG_GLOBAL` 을 고정하지 않아요. 받은 HOME 이 `layout::environment_home` 과 다르면 자식 HOME 을 받은 HOME 으로 두고 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 지우고, 같거나 없으면 환경 그대로예요. 자식 프로세스 도우미 `run_in_child_of`(`src/layout.rs`)는 개발자 환경의 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 이 자식에게 새지 않게 먼저 지워요.
+- AC-14: 충족. `identity_in_reads_the_xdg_git_config_of_the_home_it_is_given`(`<home>/.config/git/config` 에만 `safe.directory` 가 있는 받은 HOME 은 성공, 신뢰가 없는 HOME 은 `dubious ownership`).
+- AC-15: 충족. `identity_keeps_the_git_config_of_the_environment`(자식 셋: XDG 파일만, `GIT_CONFIG_GLOBAL` 만, 둘 다 없음 = 통제는 거절; 신뢰가 있는 둘은 `identity()` 와 환경 HOME 을 넘긴 `identity_in` 이 모두 성공).
+- AC-16: 충족. `identity_in_leaves_the_environment_git_config_out_for_another_home`(환경이 `.gitconfig`·XDG·`GIT_CONFIG_GLOBAL` 로 모두 신뢰하고 통제로 `identity()` 가 성공하는데, 다른 받은 HOME 은 거절돼요).
+- 뮤턴트(적용을 `git diff --stat` 으로 확인하고 되돌린 뒤 `git status --short` 가 비어 있음을 확인; 모두 위 `-E` 필터, exit 100): ① `GIT_CONFIG_GLOBAL` 을 `/dev/null` 로 고정하는 판 2 모양으로 되돌림 → 2개 실패(XDG 테스트와 `identity_in_git_config_follows_the_home_it_is_given`) ② 같은 HOME 판정 삭제(항상 대체) → 1개 실패(`identity_keeps_the_git_config_of_the_environment`) ③ `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 지우지 않음 → 1개 실패(`identity_in_leaves_the_environment_git_config_out_for_another_home`).
+- N2·N3: 고쳤어요. `moai spec show` 가 이제 write 10개·read_only 5개·forbidden 1개(`CLAUDE.md`)로 읽고(옛 판은 write 2개, forbidden 에 `src/` 포함) `moai spec check` 가 오류 0·경고 0 이에요. N1(`journal_root_in` 의 git 자식이 환경 HOME 설정을 읽음)은 D-5·D-8 대로 후속 조각이고, N4(Windows)는 not_run 이에요.
+- not_run: 전체 `cargo test --locked`(리더 몫), Windows·Linux, 명령줄 git 실험(훅 거절, Rust 자식 프로세스 테스트로 대신), 실제 HOME 읽기 전후 비교.
