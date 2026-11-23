@@ -2005,9 +2005,15 @@ mod tests {
 
     #[test]
     fn glm_names_map_only_non_claude_slot_models() {
-        let ctx = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.3")], None);
-        assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.3");
+        let ctx = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.4")], None);
+        assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.4");
         assert_eq!(resolve_glm_model_name("Sonnet", &ctx), "Sonnet");
+        // The glm launcher's value carries Claude Code's 1M marker (SPEC-20261123-glm-54-model);
+        // the line shows the model without it, from the slot name and from the id alike.
+        let launcher = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.4[1m]")], None);
+        assert_eq!(resolve_glm_model_name("Opus", &launcher), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("Opus[1m]", &launcher), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("glm-5.4[1m]", &launcher), "glm-5.4");
         assert_eq!(resolve_glm_model_name("gpt-x[1m]", &ctx), "gpt-x");
         let claude =
             Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "claude-opus-5-5")], None);
@@ -2020,6 +2026,12 @@ mod tests {
         assert_eq!(context_window_override(&env), 128_000);
         let glm = Context::for_test(&[("ANTHROPIC_DEFAULT_SONNET_MODEL", "GLM-5.3-Flash")], None);
         assert_eq!(context_window_override(&glm), 1_000_000);
+        // glm-5.4 is a 1M model too, with or without the launcher's `[1m]` marker, when it is
+        // the only slot model (SPEC-20261123-glm-54-model AC-2).
+        for value in ["glm-5.4[1m]", "glm-5.4"] {
+            let glm = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", value)], None);
+            assert_eq!(context_window_override(&glm), 1_000_000, "{value}");
+        }
         assert_eq!(context_window_override(&Context::for_test(&[], None)), 0);
     }
 
