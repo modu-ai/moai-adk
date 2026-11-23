@@ -376,7 +376,9 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         "met": applied.iter().map(|(seq, text)| json!({"seq": seq, "evidence": text})).collect::<Vec<_>>(),
         "by": req.by, "session": req.session,
         "previous": previous_json(&done.previous), "released": done.released,
-        "events": done.events, "writes": done.events > 0 || moved,
+        // A worktree the cleanup removed or trimmed is a write too.
+        "events": done.events,
+        "writes": done.events > 0 || moved || crate::worktree_cleanup::wrote(&cleanup),
         "cleanup": cleanup,
     });
     if let Some(verdict) = &relied {
