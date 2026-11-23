@@ -241,7 +241,7 @@ impl World {
     }
 
     fn card(&self, session: Option<&str>, args: &[&str]) -> Output {
-        let cfg = self.project.join(".moai-cli/project.yaml");
+        let cfg = moai_cli::state_root::path(&self.project, "project.yaml");
         fs::create_dir_all(cfg.parent().unwrap()).unwrap();
         fs::write(&cfg, &*self.profile.borrow()).unwrap();
         let mut all = vec!["card"];
