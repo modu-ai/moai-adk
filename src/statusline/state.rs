@@ -17,9 +17,10 @@
 //! `$HOME/.moai/projects/<project_id>/`, opened read-only through `crate::ledger` with a short
 //! wait, in four statements (see [`read_flow`]).
 //!
-//! The only subprocess is `git`, at most one `git status` per render, and only when a `.git`
-//! entry is found above the directory Go would open and the cache of the session does not
-//! answer; it runs read-only (`--no-optional-locks`) under the render deadline. The branch name
+//! The only subprocess is `git`, at most one `git status` and, on a lane branch, one
+//! `git rev-list --left-right --count` per render, and only when a `.git` entry is found above
+//! the directory Go would open and the cache of the session does not answer; both run read-only
+//! under the render deadline (SPEC-20261123-statusline-integration-distance). The branch name
 //! and the short commit of a detached HEAD come from the `HEAD` file, never from a process. No
 //! network here: the counts refresh child is started by `statusline::run` after the render
 //! (#2588).
@@ -274,8 +275,9 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         ..Default::default()
     };
     // The branch and the commit come from the `HEAD` file and the numbers from the session
-    // cache or the one git process of the render (SPEC-20261122-statusline-where REQ-2, REQ-6,
-    // REQ-7); the profile of the project names the integration branch.
+    // cache or the git processes of the render (SPEC-20261122-statusline-where REQ-2, REQ-6;
+    // SPEC-20261123-statusline-integration-distance REQ-6); the profile of the project names the
+    // integration branch.
     let git_dir = project_root.clone().or_else(|| ctx.cwd.clone());
     let profile_root = anchor.clone().or_else(|| project_root.clone());
     let session_id = input.map_or("", |i| input::text(&i.session_id));
@@ -905,26 +907,77 @@ pub fn integration_from(profile: Option<&str>, origin_head: Option<&str>) -> Opt
     })
 }
 
-/// The arguments of the one git process of a render, after the program name. The lane branch
-/// is measured against the integration branch with two `-c` overrides, only when both names are
-/// safe to hand to git and the branch is not the integration branch itself.
-pub fn status_args(branch: Option<&str>, integration: Option<&str>) -> Vec<String> {
-    let mut args = vec!["--no-optional-locks".to_string()];
-    if let (Some(branch), Some(integration)) = (branch, integration) {
-        if branch != integration
-            && crate::profile::branch_name(branch)
-            && crate::profile::branch_name(integration)
+/// How a render gets the commits ahead of and behind (SPEC-20261123-statusline-integration-distance).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Measure<'a> {
+    /// git's own numbers from the `## branch...upstream` header of `git status --branch`: the
+    /// integration branch itself, no integration branch known, a name git must not be given.
+    Upstream,
+    /// The branch against the local integration branch, by a second git call that reads no
+    /// setting of the branch.
+    Integration(&'a str),
+    /// The integration branch has no local ref: nothing to measure, no second process, zeros.
+    Missing,
+}
+
+/// What [`read_git`] measures: the lane branch against the integration branch, only when both
+/// names are safe to hand to git and the branch is not the integration branch itself.
+/// `have_commit` says that the local ref of the integration branch exists.
+pub fn measure<'a>(
+    branch: Option<&str>,
+    integration: Option<&'a str>,
+    have_commit: bool,
+) -> Measure<'a> {
+    match (branch, integration) {
+        (Some(branch), Some(integration))
+            if branch != integration
+                && crate::profile::branch_name(branch)
+                && crate::profile::branch_name(integration) =>
         {
-            args.extend([
-                "-c".to_string(),
-                format!("branch.{branch}.remote=."),
-                "-c".to_string(),
-                format!("branch.{branch}.merge=refs/heads/{integration}"),
-            ]);
+            if have_commit {
+                Measure::Integration(integration)
+            } else {
+                Measure::Missing
+            }
         }
+        _ => Measure::Upstream,
     }
-    args.extend(["status", "--porcelain", "--branch"].map(String::from));
+}
+
+/// The arguments of the `git status` call of a render, after the program name. There is no `-c`
+/// override of a `branch.<name>.*` key: those keys can hold several values, and an override is
+/// added to the ones the branch has. The `--branch` header is asked for only when its upstream
+/// numbers are the ones shown.
+pub fn status_args(measure: &Measure) -> Vec<String> {
+    let mut args = ["--no-optional-locks", "status", "--porcelain"]
+        .map(String::from)
+        .to_vec();
+    if *measure == Measure::Upstream {
+        args.push("--branch".to_string());
+    }
     args
+}
+
+/// The arguments of the second git call: the commits only the integration branch has (behind)
+/// and only `HEAD` has (ahead), from the full ref of the integration branch.
+pub fn distance_args(integration: &str) -> Vec<String> {
+    vec![
+        "rev-list".to_string(),
+        "--left-right".to_string(),
+        "--count".to_string(),
+        format!("refs/heads/{integration}...HEAD"),
+    ]
+}
+
+/// `<behind>\t<ahead>` of a `rev-list --left-right --count`; `None` for anything else.
+fn parse_distance(text: &str) -> Option<(i64, i64)> {
+    let (behind, ahead) = text.strip_suffix('\n').unwrap_or(text).split_once('\t')?;
+    let number = |s: &str| {
+        (!s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()))
+            .then(|| s.parse::<i64>().ok())
+            .flatten()
+    };
+    Some((number(behind)?, number(ahead)?))
 }
 
 /// What the first line needs to know about where the session stands.
@@ -1038,7 +1091,8 @@ pub fn cache_is_fresh(
 
 // ---- git ----
 
-/// The numbers of one `git status --porcelain --branch`, the facts the cache keeps.
+/// The numbers of one render's git calls (`git status` and, on a lane branch, `git rev-list`),
+/// the facts the cache keeps.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 struct Counts {
     ahead: i64,
@@ -1138,7 +1192,7 @@ fn ref_commit(common: &Path, name: &str) -> String {
 }
 
 /// The git facts of the checkout above `dir`: the branch or the short commit from the `HEAD`
-/// file, the numbers from the session cache or else from the one `git status` of the render.
+/// file, the numbers from the session cache or else from the git calls of the render.
 /// `None` when no repository is found (no process is started then).
 fn read_git(
     dir: &Path,
@@ -1189,7 +1243,7 @@ fn read_git(
         },
         &head_text,
         &commit,
-        &status_args(branch, integration.as_deref()),
+        &measure(branch, integration.as_deref(), !commit.is_empty()),
         SessionCache::open(ctx, session_id),
     );
     git.ahead = counts.ahead;
@@ -1209,16 +1263,17 @@ struct CacheKey<'a> {
 }
 
 /// The numbers for one render: the cache when it is fresh for this git directory, work state,
-/// `HEAD` text and integration commit, else the output of the one git process, which then
-/// rewrites the cache. A git that cannot answer (a spent budget, a failure) gives zeros and
-/// writes nothing.
+/// `HEAD` text and integration commit, else the output of the `git status` call and, for a lane
+/// branch, the `rev-list` call of [`distance_args`], which then rewrite the cache. A git that
+/// cannot answer (a spent budget, a failure) gives zeros for what it could not say and writes
+/// nothing.
 fn git_counts(
     dir: &Path,
     ctx: &Context,
     key: &CacheKey<'_>,
     head_text: &str,
     commit: &str,
-    args: &[String],
+    measure: &Measure<'_>,
     cache: Option<SessionCache>,
 ) -> Counts {
     if let Some(record) = cache.as_ref().and_then(SessionCache::read) {
@@ -1239,18 +1294,43 @@ fn git_counts(
             return record.counts;
         }
     }
-    let args: Vec<&str> = args.iter().map(String::as_str).collect();
-    let Some(out) = run_git(dir, &args, ctx) else {
+    let status = status_args(measure);
+    let status: Vec<&str> = status.iter().map(String::as_str).collect();
+    let Some(out) = run_git(dir, &status, ctx) else {
         return Counts::default();
     };
     let parsed = segments::parse_porcelain(&out);
-    let counts = Counts {
+    let mut counts = Counts {
         ahead: parsed.ahead,
         behind: parsed.behind,
         staged: parsed.staged,
         modified: parsed.modified,
         untracked: parsed.untracked,
     };
+    // The distance of a lane branch is its own call: it reads no setting of the branch, so an
+    // upstream the branch has cannot change it.
+    let mut answered = true;
+    match measure {
+        Measure::Upstream => {}
+        Measure::Missing => (counts.ahead, counts.behind) = (0, 0),
+        Measure::Integration(integration) => {
+            let distance = distance_args(integration);
+            let distance: Vec<&str> = distance.iter().map(String::as_str).collect();
+            match run_git(dir, &distance, ctx)
+                .as_deref()
+                .and_then(parse_distance)
+            {
+                Some((behind, ahead)) => (counts.ahead, counts.behind) = (ahead, behind),
+                None => {
+                    (counts.ahead, counts.behind) = (0, 0);
+                    answered = false;
+                }
+            }
+        }
+    }
+    if !answered {
+        return counts;
+    }
     if let Some(cache) = cache {
         let record = CacheRecord {
             folder: key.folder.to_string(),
@@ -4179,45 +4259,83 @@ mod where_tests {
         }
     }
 
-    fn plain_args() -> Vec<String> {
+    fn upstream_status_args() -> Vec<String> {
         ["--no-optional-locks", "status", "--porcelain", "--branch"]
             .map(String::from)
             .to_vec()
     }
 
-    fn lane_args(branch: &str, integration: &str) -> Vec<String> {
-        vec![
-            "--no-optional-locks".into(),
-            "-c".into(),
-            format!("branch.{branch}.remote=."),
-            "-c".into(),
-            format!("branch.{branch}.merge=refs/heads/{integration}"),
-            "status".into(),
-            "--porcelain".into(),
-            "--branch".into(),
-        ]
+    fn lane_status_args() -> Vec<String> {
+        ["--no-optional-locks", "status", "--porcelain"]
+            .map(String::from)
+            .to_vec()
     }
 
-    /// REQ-4, REQ-7: one process, the lane branch measured against the integration branch.
+    /// REQ-1, REQ-3, REQ-4: a lane branch is measured by the second call, the `status` call has
+    /// no override of a `branch.<name>.*` key, and every other case keeps git's own numbers.
     #[test]
-    fn the_one_git_process_measures_a_lane_branch_against_the_integration_branch() {
-        assert_eq!(
-            status_args(Some("lane"), Some("next")),
-            lane_args("lane", "next")
-        );
-        assert_eq!(
-            status_args(
-                Some("spec-impl/20261122-statusline-where"),
-                Some("v2026.11.0")
-            ),
-            lane_args("spec-impl/20261122-statusline-where", "v2026.11.0")
-        );
+    fn a_lane_branch_is_measured_against_the_integration_branch_by_its_own_call() {
+        for (branch, integration) in [
+            ("lane", "next"),
+            ("spec-impl/20261122-statusline-where", "v2026.11.0"),
+        ] {
+            let m = measure(Some(branch), Some(integration), true);
+            assert_eq!(m, Measure::Integration(integration));
+            let args = status_args(&m);
+            assert_eq!(args, lane_status_args());
+            assert!(
+                !args.iter().any(|a| a == "-c" || a.contains("branch.")),
+                "{args:?}"
+            );
+            assert_eq!(
+                distance_args(integration),
+                vec![
+                    "rev-list".to_string(),
+                    "--left-right".into(),
+                    "--count".into(),
+                    format!("refs/heads/{integration}...HEAD"),
+                ]
+            );
+        }
+        // Without a local ref of the integration branch: nothing to measure, no second call.
+        let missing = measure(Some("lane"), Some("next"), false);
+        assert_eq!(missing, Measure::Missing);
+        assert_eq!(status_args(&missing), lane_status_args());
         // On the integration branch, with no integration branch, detached or unreadable: git's
         // own numbers.
-        assert_eq!(status_args(Some("next"), Some("next")), plain_args());
-        assert_eq!(status_args(Some("lane"), None), plain_args());
-        assert_eq!(status_args(None, Some("next")), plain_args());
-        assert_eq!(status_args(None, None), plain_args());
+        for m in [
+            measure(Some("next"), Some("next"), true),
+            measure(Some("lane"), None, true),
+            measure(None, Some("next"), true),
+            measure(None, None, false),
+        ] {
+            assert_eq!(m, Measure::Upstream);
+            assert_eq!(status_args(&m), upstream_status_args());
+        }
+    }
+
+    /// The answer of the second call is `<behind>\t<ahead>`; anything else is no answer.
+    #[test]
+    fn the_distance_answer_is_two_numbers_or_nothing() {
+        assert_eq!(parse_distance("1\t2\n"), Some((1, 2)));
+        assert_eq!(parse_distance("0\t0\n"), Some((0, 0)));
+        assert_eq!(parse_distance("10\t200"), Some((10, 200)));
+        for bad in [
+            "",
+            "\n",
+            "1\n",
+            "1\t",
+            "\t2",
+            "x\ty",
+            "1\t2\t3",
+            "-1\t2",
+            "+1\t2",
+            "1 2",
+            "1\t2\n\n",
+            "99999999999999999999\t1",
+        ] {
+            assert_eq!(parse_distance(bad), None, "{bad:?}");
+        }
     }
 
     /// A name that git could take as an option, as a revision range or as a config value is
@@ -4238,31 +4356,36 @@ mod where_tests {
             "-c core.pager=x",
         ] {
             assert_eq!(
-                status_args(Some(bad), Some("next")),
-                plain_args(),
+                measure(Some(bad), Some("next"), true),
+                Measure::Upstream,
                 "{bad:?}"
             );
             assert_eq!(
-                status_args(Some("lane"), Some(bad)),
-                plain_args(),
+                measure(Some("lane"), Some(bad), true),
+                Measure::Upstream,
                 "{bad:?}"
             );
         }
         let hundred = "a".repeat(100);
         assert_eq!(
-            status_args(Some(&hundred), Some("next")),
-            lane_args(&hundred, "next"),
+            measure(Some(&hundred), Some("next"), true),
+            Measure::Integration("next"),
+            "100 bytes"
+        );
+        assert_eq!(
+            measure(Some("lane"), Some(&hundred), true),
+            Measure::Integration(&hundred),
             "100 bytes"
         );
         let over = "a".repeat(101);
         assert_eq!(
-            status_args(Some(&over), Some("next")),
-            plain_args(),
+            measure(Some(&over), Some("next"), true),
+            Measure::Upstream,
             "101 bytes"
         );
         assert_eq!(
-            status_args(Some("lane"), Some(&over)),
-            plain_args(),
+            measure(Some("lane"), Some(&over), true),
+            Measure::Upstream,
             "101 bytes"
         );
     }
