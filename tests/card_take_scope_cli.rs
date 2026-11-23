@@ -376,7 +376,7 @@ const SCOPE_CODE_SPAN: &str = "- write: `src/bundle.rs` (the line `pub mod build
 
 /// `SPEC-20261121-remove-codex-project-layer`: a `write:` line that is prose, no backticks (the
 /// words `the`, `and`, `listed` were read as paths).
-const SCOPE_PROSE_LINE: &str = "- write: `.moai/specs/SPEC-20261121-remove-codex-project-layer/**`\n- write: `src/project_hosts.rs`, `src/project_update.rs`\n- write: the tests and fixtures that call an API this slice removes, and the Codex-only test files of the project layer and the hook adapters, listed in the impact report (sections 2.3 and 2.5)\n- read-only: every other file";
+const SCOPE_PROSE_LINE: &str = "- write: `docs/remove-codex-project-layer/**`\n- write: `src/project_hosts.rs`, `src/project_update.rs`\n- write: the tests and fixtures that call an API this slice removes, and the Codex-only test files of the project layer and the hook adapters, listed in the impact report (sections 2.3 and 2.5)\n- read-only: every other file";
 
 /// `SPEC-20261119-card-scope-widen`: an option (`--reason`) in the middle of a path's note.
 const SCOPE_OPTION_SPAN: &str = "- write: `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `src/ops/card.rs` (the new `--reason` option and the help only), `tests/card_scope_widen_cli.rs`\n- read-only: `src/ledger/schema.rs`";
@@ -394,7 +394,7 @@ const SCOPE_CALL_SPAN: &str =
 const SCOPE_REPEATED_PATH: &str = "- The path keystone (the functions the others call): `src/home_workdir.rs` (worktree_dir, worktrees_root), `src/lib.rs` (the WORKTREES_DIR constant).\n- The local exclude helper (one function every creator calls): `src/home_workdir.rs`; it reads `git rev-parse --git-common-dir`.\n- Creators of new worktrees: `src/worktree.rs` (the worktree command), `src/claude.rs` (the launcher).\n- Checkers and guards: `src/hooks.rs` (the hook path check).";
 
 /// `SPEC-20261123-audit-slot`: a clean list that wraps paths and notes the way real SPECs do.
-const SCOPE_CLEAN: &str = "- write:\n  - `.moai/specs/SPEC-20261123-audit-slot/spec.md`\n  - `src/audit_slot.rs` (new)\n  - `src/lib.rs` (one `pub mod` line)\n  - `tests/audit_slot_cli.rs` (new)\n- read-only: everything else";
+const SCOPE_CLEAN: &str = "- write:\n  - `docs/audit_slot.md`\n  - `src/audit_slot.rs` (new)\n  - `src/lib.rs` (one `pub mod` line)\n  - `tests/audit_slot_cli.rs` (new)\n- read-only: everything else";
 
 /// B1 (REQ-10): a SPEC list with an entry that is not a path shape fills nothing: the take is
 /// refused with the SPEC file and both ways out, the card stays empty, `card next` skips it, and
@@ -419,7 +419,7 @@ fn a_spec_list_with_a_word_is_refused_not_stored() {
         w.link(&name, &spec);
         let events = w.count("SELECT count(*) FROM event");
         let message = refusal(&w.card(Some(S_A), &["take", &name]));
-        let spec_file = format!(".moai/specs/{spec}/spec.md");
+        let spec_file = format!("{}/{spec}/spec.md", moai_cli::spec_doc::SPECS_DIR);
         assert!(message.contains(&spec_file), "{slug}: {message}");
         assert!(message.contains(&format!("`{word}`")), "{slug}: {message}");
         assert!(
@@ -460,7 +460,7 @@ fn a_clean_real_spec_list_still_fills() {
     assert_eq!(
         took["reservation"]["write_scope"],
         json!([
-            ".moai/specs/SPEC-20261123-audit-slot/spec.md",
+            "docs/audit_slot.md",
             "src/audit_slot.rs",
             "src/lib.rs",
             "tests/audit_slot_cli.rs"
