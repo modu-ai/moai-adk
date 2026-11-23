@@ -1,10 +1,9 @@
 ---
 id: SPEC-20261124-audit-prep
 title: "감사가 카드 이름으로 자리를 잡고 head 에서 증분 빌드 한 번 하고 깨끗하게 끝나요"
-status: approved
-revision: 1
+status: draft
+revision: 2
 created: 2026-11-24
-approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7966 of card C-364 (2026-11-23T22:50:08Z, delegation of the user 2026-11-23T13:57Z, the leader's judgement and not a selection by the user) answering request note 7965 with option (b) for draft commit 4346f1ab65bfa2befcfeeee56fed4379f70cea1e", digest: "sha256:582e2926c358192d90956bca1a03d6abc62b1637a4c3af3599109488af831ae2"}
 ---
 
 # 감사가 카드 이름으로 자리를 잡고 head 에서 증분 빌드 한 번 하고 깨끗하게 끝나요
@@ -65,10 +64,12 @@ approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7966 of card
 - write:
   - `.moai/specs/SPEC-20261124-audit-prep/spec.md`
   - `src/audit_prep.rs` (new)
-  - `src/ops/audit_prep.rs` (new), one operation `audit.prep` with the two actions
+  - `src/ops/audit_prep.rs` (new), the operation `audit.prep`, subcommand `audit-prep`
+  - `src/ops/audit_done.rs` (new), the operation `audit.done`, subcommand `audit-done`
   - `src/lib.rs` (one `pub mod` line)
   - `tests/audit_prep_cli.rs` (new)
   - `docs/design-review/appendix/operations/audit_prep.md` (new)
+  - `docs/design-review/appendix/operations/audit_done.md` (new)
   - `src/audit_slot.rs`: only the helpers the card-addressed commands share become `pub(crate)` (the holder lookup by name, the prep and done cores); no change of behavior
   - `src/help.rs`: the rows and examples, under a one-command line lease
   - `tests/fixtures/help/all.txt`, `all-60.txt`, `all-80.txt`, `all-dumb.txt`: regenerated with `MOAI_HELP_GOLDEN_WRITE=1`, one row each, under a recorded leader decision as for audit-slot
@@ -101,8 +102,11 @@ approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7966 of card
 | D-3 | 빌드는 `cargo test --no-run --locked --offline --message-format json` 이고 `--test NAME` 은 최대 둘, 없으면 `--lib` 하나예요. `RUSTC_WRAPPER` 를 지우고 무거운 자리 하나 안에서 자리의 `target/` 으로 돌려요. `CARGO_TARGET_DIR` 는 비워 둬요. | 카드 C-364(뮤턴트는 대상 1~2개만), 점검 A2, 2026-11-22 의 sccache·증분 충돌이에요. Cargo 의 JSON `compiler-artifact` 가 `fresh` 를 실어 줘요. | 인자 목록을 한 곳에서 바꿔요. |
 | D-4 | 이름 붙이는 테스트 대상의 상한은 둘이에요. | 점검 A2: 뮤턴트당 대상 1~2개. | 상수를 올려요. |
 | D-5 | `audit-done` 에는 버리기도 강제도 없고, 남은 뮤턴트는 `audit-done` 을 거부해요. | 배차: `--force` 없음. 재설계의 정리 조건(깨끗한 트리, 프로세스·클레임 없음). | 리더의 고침 길은 `audit-slot done --discard` 로 남아요. |
-| D-6 | 컴파일 때 박히는 `env!` 경로는 여기서 고치지 않아요. 다시 빌드한 실행 파일이 감사 자리를 읽는다는 시험(REQ-9)을 둬요. `audit-slot prep` 이 이미 하는 추적 소스 touch 가 자리의 워크스페이스 단위를 다시 컴파일하게 해요. | 배차 범위. 잰 파일 수는 135가 아니라 163이고 리더 노트 7966 이 기록해요. | 나중 카드가 경로를 실행 시점으로 옮기고 그다음 nextest 아카이브를 공유해요. |
+| D-6 | 카드 이름이 holder 의 전부예요. 두 명령은 holder 기록의 세션을 비워 두고, 세션이 달라도 같은 카드는 같은 holder 로 봐요. 이를 위해 `audit_slot::prep` 과 `done` 을 세션을 받는 몸통(`prep_with`, `done_with`)과 지금 세션을 넘기는 기존 함수로 나눠요. 기존 함수의 동작은 그대로예요. | 리더가 준비하고 감사 에이전트가 `audit-done` 을 치는 일이 흔한데, `audit-slot` 은 둘 다 세션이 있고 다르면 다른 holder 로 보고 거부해요. | 세션을 다시 기록하게 하고 호출부가 같은 세션에서 끝내요. |
+| D-7 | 명령 둘은 연산 파일 둘이에요: `src/ops/audit_prep.rs`, `src/ops/audit_done.rs`. 연산마다 문서 조각 `operations/<word>.md` 가 있어야 해요. 두 파일은 `audit_prep` 의 함수만 불러요. | `build.rs` 는 파일 이름을 명령 이름으로 쓰고 별칭이 없어요. `src/main.rs` 의 시험이 연산 파일마다 문서 조각을 요구해요. 판 1 의 범위는 연산 하나와 두 행동으로 적어 이름 `audit-done` 을 만들 수 없었어요. | 한 연산 `audit-prep prep` / `audit-prep done` 으로 줄이면 파일 둘이 줄지만 배차의 이름 `audit-done` 은 없어져요. |
+| D-8 | 컴파일 때 박히는 `env!` 경로는 여기서 고치지 않아요. 다시 빌드한 실행 파일이 감사 자리를 읽는다는 시험(REQ-9)을 둬요. `audit-slot prep` 이 이미 하는 추적 소스 touch 가 자리의 워크스페이스 단위를 다시 컴파일하게 해요. | 배차 범위. 잰 파일 수는 135가 아니라 163이고 리더 노트 7966 이 기록해요. | 나중 카드가 경로를 실행 시점으로 옮기고 그다음 nextest 아카이브를 공유해요. |
 
 ## Result
 
-- 리더가 판 1 을 승인했어요(노트 7966, 요청 노트 7965 의 선택지 (b)). 아직 코드는 없어요. 코드 경로의 범위 요청이 다음이에요.
+- 판 1 은 리더가 승인했어요(노트 7966, 요청 노트 7965 의 선택지 (b), 커밋 `eeba19c082`).
+- 판 2: 구현에 들어가기 전에 `audit-done` 이 연산 파일과 문서 조각을 따로 요구한다는 것을 읽었어요(D-7). Scope 에 `src/ops/audit_done.rs` 와 `operations/audit_done.md` 를 더하고 판을 올려 재승인을 기다려요. 요구사항과 인수 기준은 판 1 과 같아요.
