@@ -348,7 +348,7 @@ fn orca_pass_through_starts_the_script_once_with_the_stdin_bytes() {
     orca_install(&f.home.join(ORCA_SCRIPT), &orca_script(&f, 0));
     let stdin = orca_stdin(&f, true);
     let (out, _) = orca_render(&f, &stdin, &ORCA_VARS);
-    assert!(out.contains("CW 90%"), "{out}");
+    assert!(out.contains("CW █████████░ 90%"), "{out}");
     assert!(wait_for(|| orca_calls(&f) == 1), "the script did not start");
     std::thread::sleep(Duration::from_millis(300));
     assert_eq!(orca_calls(&f), 1, "started more than once");
@@ -438,7 +438,7 @@ fn orca_pass_through_starts_nothing_without_limits_variables_or_an_executable() 
             }
         }
         let (out, _) = orca_render(&f, &orca_stdin(&f, limits), vars);
-        assert!(out.contains("CW 90%"), "{name}: {out}");
+        assert!(out.contains("CW █████████░ 90%"), "{name}: {out}");
         std::thread::sleep(Duration::from_millis(700));
         assert_eq!(orca_calls(&f), 0, "{name}: the script started");
     }
@@ -451,7 +451,7 @@ fn orca_pass_through_does_not_wait_for_a_slow_script() {
     let f = fixture("https://github.com/acme/widgets.git", None);
     orca_install(&f.home.join(ORCA_SCRIPT), &orca_script(&f, 20));
     let (out, took) = orca_render(&f, &orca_stdin(&f, true), &ORCA_VARS);
-    assert!(out.contains("CW 90%"), "{out}");
+    assert!(out.contains("CW █████████░ 90%"), "{out}");
     assert!(took < Duration::from_secs(10), "the render waited {took:?}");
     assert!(wait_for(|| orca_calls(&f) == 1), "the script did not start");
 }
@@ -509,7 +509,7 @@ fn orca_pass_through_starts_no_second_wrapper_while_one_runs() {
     assert!(wait_for(|| orca_calls(&f) == 1), "the script did not start");
     for _ in 0..4 {
         let (out, _) = orca_render_in(&f, tmp.path(), &stdin, &ORCA_VARS);
-        assert!(out.contains("CW 90%"), "{out}");
+        assert!(out.contains("CW █████████░ 90%"), "{out}");
     }
     std::thread::sleep(Duration::from_millis(700));
     let pids = orca_pids(&f);
@@ -580,7 +580,7 @@ fn an_oversized_payload_starts_no_wrapper() {
     let mut v: serde_json::Value = serde_json::from_str(&orca_stdin(&f, true)).unwrap();
     v["padding"] = serde_json::json!("x".repeat(20 * 1024));
     let (out, _) = orca_render(&f, &v.to_string(), &ORCA_VARS);
-    assert!(out.contains("CW 90%"), "{out}");
+    assert!(out.contains("CW █████████░ 90%"), "{out}");
     std::thread::sleep(Duration::from_millis(700));
     assert_eq!(orca_calls(&f), 0, "the script started");
 }

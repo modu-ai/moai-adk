@@ -146,15 +146,23 @@ fn line(out: &str, n: usize) -> String {
     out.lines().nth(n).unwrap_or_default().to_string()
 }
 
-/// The usage windows line: it starts with the context window and, in this fixture, ends with
-/// the MoAI version.
+/// The MoAI version item of this build: the render's input carries no Claude Code version, so
+/// this item alone opens the second line (SPEC-20261123-statusline-order-bars REQ-1).
+fn moai() -> String {
+    format!("🗿 {}", moai_cli::BUILD_VERSION)
+}
+
+/// The usage windows line: it starts with the context window (the version is on the second line
+/// since SPEC-20261123-statusline-order-bars).
 fn is_windows(line: &str) -> bool {
     line.starts_with("CW n/a")
 }
 
-/// The flow line when the one card of the ledger is held by a live lease in the session's
-/// worktree: it is my card, working, and the only card of the flow.
-const FLOW_HELD: &str = "🎯 C-1 🟡 | 🟡 1";
+/// The second line when the one card of the ledger is held by a live lease in the session's
+/// worktree: the version, the one working card of the flow, then my card, working.
+fn flow_held() -> String {
+    format!("{} | 🟡 1 | 🎯 C-1 🟡", moai())
+}
 
 /// The first line of the worktree session: the host's name, then the branch of the worktree
 /// (the names differ here, so both items stand).
@@ -171,7 +179,7 @@ fn a_held_card_does_not_name_the_worktree_item() {
     // line 1, and the usage windows close the output.
     assert_eq!(line(&out, 0), LINE_WORKTREE, "{out}");
     assert!(!out.contains("WT-c"), "{out}");
-    assert_eq!(line(&out, 1), FLOW_HELD, "{out}");
+    assert_eq!(line(&out, 1), flow_held(), "{out}");
     assert!(is_windows(&line(&out, 2)), "{out}");
     assert_eq!(out.lines().count(), 3, "{out}");
 }
@@ -187,13 +195,15 @@ fn only_the_flow_line_moves_when_a_card_is_held() {
     // show) and the usage windows close the output; line 1 is the same bytes in both renders.
     assert_eq!(line(&without, 0), LINE_WORKTREE, "{without}");
     assert_eq!(line(&with, 0), line(&without, 0));
-    assert_eq!(line(&with, 1), FLOW_HELD, "{with}");
-    assert!(
-        is_windows(&line(&without, 1)),
-        "no card: no flow line: {without}"
+    assert_eq!(line(&with, 1), flow_held(), "{with}");
+    assert_eq!(
+        line(&without, 1),
+        moai(),
+        "no card: the version alone on the second line: {without}"
     );
-    assert_eq!(line(&with, 2), line(&without, 1), "{with}");
-    assert_eq!(without.lines().count(), 2, "{without}");
+    assert!(is_windows(&line(&without, 2)), "{without}");
+    assert_eq!(line(&with, 2), line(&without, 2), "{with}");
+    assert_eq!(without.lines().count(), 3, "{without}");
     assert_eq!(with.lines().count(), 3, "{with}");
 }
 
@@ -230,10 +240,12 @@ fn the_main_checkout_has_no_worktree_item() {
     let out = f.plain(None);
     // `+1`: the project's untracked state folder.
     assert_eq!(line(&out, 0), "🧠 Opus | 🅱️ main +1", "{out}");
-    assert!(
-        is_windows(&line(&out, 1)),
-        "an empty ledger shows no flow line: {out}"
+    assert_eq!(
+        line(&out, 1),
+        moai(),
+        "an empty ledger shows no flow: {out}"
     );
+    assert!(is_windows(&line(&out, 2)), "{out}");
     assert!(!out.contains('🌳'), "{out}");
 }
 
@@ -251,7 +263,7 @@ fn the_worktree_option_off_hides_the_item_on_every_line() {
         "🧠 Opus | 🅱️ spec/20260101-demo-work",
         "{out}"
     );
-    assert_eq!(line(&out, 1), FLOW_HELD, "{out}");
+    assert_eq!(line(&out, 1), flow_held(), "{out}");
     assert!(is_windows(&line(&out, 2)), "{out}");
     assert!(!out.contains('🌳'), "{out}");
 }

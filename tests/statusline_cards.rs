@@ -1,8 +1,10 @@
 //! The flow line of the status line (SPEC-20261122-statusline-flow; it grew out of card C-65's
 //! card counts, user instructions 2026-11-16 and 2026-11-17): the cards of the project's local
 //! ledger by the stage of their progress, `🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5`,
-//! on a line of its own between the first line and the usage windows. The first line says who
-//! and where (SPEC-20261122-statusline-where): `🧠 Opus | 📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ …`.
+//! on a line of its own between the first line and the usage windows, behind the two versions
+//! (SPEC-20261123-statusline-order-bars): `🗿 4.2648.20 | 🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5`. The first
+//! line says who and where (SPEC-20261122-statusline-where):
+//! `🧠 Opus | 📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ …`.
 //!
 //! Every case runs the real binary through `TempHome` (a temporary HOME, nothing of the real
 //! environment but a PATH for git) against a ledger built in that HOME. The read is local and
@@ -29,6 +31,13 @@ const MIX: [(&str, usize); 6] = [
 ];
 
 const FORGE_CACHE: &str = ".moai-cli/state/github/counts.json";
+
+/// The MoAI version item of this build. The fixture's input carries no Claude Code version, so
+/// this item alone opens the second line, in front of the flow (SPEC-20261123-statusline-order-bars
+/// REQ-1).
+fn moai() -> String {
+    format!("🗿 {}", moai_cli::BUILD_VERSION)
+}
 
 struct Fixture {
     home: TempHome,
@@ -175,9 +184,21 @@ impl Fixture {
         self.render_from(&self.project, &[("NO_COLOR", "1"), ("COLUMNS", columns)])
     }
 
-    /// The flow line when the ledger has cards: the second line, under the first line.
-    fn flow_line(&self) -> String {
+    /// The second line, under the first line: the MoAI version, then the flow when the ledger
+    /// has cards.
+    fn line2(&self) -> String {
         self.plain().lines().nth(1).unwrap_or_default().to_string()
+    }
+
+    /// The flow of the second line without the MoAI version that opens it: empty when the
+    /// ledger has nothing to show.
+    fn flow_line(&self) -> String {
+        let line = self.line2();
+        let flow = line
+            .strip_prefix(&format!("{} | ", moai()))
+            .or_else(|| line.strip_prefix(&moai()))
+            .unwrap_or(&line);
+        flow.to_string()
     }
 
     /// The first line: who and where.
@@ -194,6 +215,10 @@ const WITHOUT_CARDS: &str = "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ 46 🔀 0
 /// counts of zero (in progress, landing, blocked) are hidden
 /// (SPEC-20261122-statusline-limits-left REQ-6).
 const FLOW_MIX: &str = "🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5";
+/// [`FLOW_MIX`] with the MoAI version in front, as the second line is written.
+fn flow_mix_line() -> String {
+    format!("{} | {FLOW_MIX}", moai())
+}
 /// The flow line of the [`MIX`] cards alone: the 3 `active` cards are stale (not shown), the 2
 /// `review` cards submitted.
 const FLOW_CARDS: &str = "🗂️ 25 → 📨 2 → ✅ 12 | 🙋 5";
@@ -203,7 +228,9 @@ fn the_flow_line_stands_between_the_first_line_and_the_usage_windows() {
     let f = fixture();
     let baseline = f.plain();
     assert_eq!(baseline.lines().next(), Some(WITHOUT_CARDS), "no ledger");
-    assert_eq!(baseline.lines().count(), 2, "{baseline}");
+    // No ledger: the second line holds the version alone, the usage windows close the screen.
+    assert_eq!(baseline.lines().nth(1), Some(moai().as_str()), "{baseline}");
+    assert_eq!(baseline.lines().count(), 3, "{baseline}");
     assert!(
         !baseline.contains("🗂️"),
         "no ledger: no flow line and no card icon"
@@ -215,10 +242,14 @@ fn the_flow_line_stands_between_the_first_line_and_the_usage_windows() {
         Some(WITHOUT_CARDS),
         "line 1 keeps the model, the repository, the forge counts, the branch"
     );
-    assert_eq!(with.lines().nth(1), Some(FLOW_MIX), "{with}");
+    assert_eq!(
+        with.lines().nth(1),
+        Some(flow_mix_line().as_str()),
+        "{with}"
+    );
     assert_eq!(
         with.lines().nth(2),
-        baseline.lines().nth(1),
+        baseline.lines().nth(2),
         "the usage windows follow, unchanged"
     );
     assert!(!f.line1().contains("🗂️"), "line 1 keeps no card counts");
@@ -269,9 +300,18 @@ fn the_branch_shows_the_ahead_count_against_the_upstream() {
     assert!(!line.contains("↑0"), "a zero ahead is never shown: {line}");
 }
 
-/// The forms of the flow line for the [`FLOW_MIX`] ledger, from the widest to the narrowest.
-/// Each narrower form drops the leftmost item of the flow, `🗂️` first; `🙋` stays to the end.
-const MIX_FORMS: [&str; 4] = [FLOW_MIX, "📨 3 → ✅ 12 | 🙋 5", "✅ 12 | 🙋 5", "🙋 5"];
+/// The forms of the second line for the [`FLOW_MIX`] ledger, from the widest to the narrowest.
+/// The MoAI version drops first (the fixture's input has no Claude Code version), then each
+/// narrower form drops the leftmost item of the flow, `🗂️` first; `🙋` stays to the end.
+fn mix_forms() -> [String; 5] {
+    [
+        flow_mix_line(),
+        FLOW_MIX.to_string(),
+        "📨 3 → ✅ 12 | 🙋 5".to_string(),
+        "✅ 12 | 🙋 5".to_string(),
+        "🙋 5".to_string(),
+    ]
+}
 
 /// SPEC-20261122-statusline-flow REQ-9 (it replaces the same-bytes-at-80-and-40 rule of
 /// SPEC-20261120-statusline-line2-order): each line takes the widest of its forms that fits
@@ -284,21 +324,22 @@ fn width_ladder_changes_the_flow_line_exactly_at_each_boundary() {
     let f = fixture();
     f.with_mix();
     let wide = f.plain_at("200");
-    for (i, form) in MIX_FORMS.iter().enumerate() {
+    let forms = mix_forms();
+    for (i, form) in forms.iter().enumerate() {
         let w = display_width(form);
         let at = |columns: usize| f.plain_at(&columns.to_string());
         let kept = at(w + 2);
         assert_eq!(
             kept.lines().nth(1),
-            Some(*form),
+            Some(form.as_str()),
             "COLUMNS {} keeps form {i}",
             w + 2
         );
-        if let Some(next) = MIX_FORMS.get(i + 1) {
+        if let Some(next) = forms.get(i + 1) {
             let dropped = at(w + 1);
             assert_eq!(
                 dropped.lines().nth(1),
-                Some(*next),
+                Some(next.as_str()),
                 "COLUMNS {} drops form {i}",
                 w + 1
             );
@@ -312,14 +353,15 @@ fn width_ladder_changes_the_flow_line_exactly_at_each_boundary() {
             assert_eq!(out.lines().count(), 3);
         }
     }
-    assert_eq!(wide.lines().nth(1), Some(FLOW_MIX));
-    assert_eq!(f.plain_at("120").lines().nth(1), Some(FLOW_MIX));
-    assert_eq!(f.plain_at("80").lines().nth(1), Some(FLOW_MIX));
+    let widest = flow_mix_line();
+    assert_eq!(wide.lines().nth(1), Some(widest.as_str()));
+    assert_eq!(f.plain_at("120").lines().nth(1), Some(widest.as_str()));
+    assert_eq!(f.plain_at("80").lines().nth(1), Some(widest.as_str()));
     // Below the narrowest form the narrowest is still written.
     for columns in ["5", "3", "2", "1"] {
         assert_eq!(
             f.plain_at(columns).lines().nth(1),
-            Some(MIX_FORMS[3]),
+            Some(forms[4].as_str()),
             "COLUMNS {columns}"
         );
     }
@@ -331,11 +373,11 @@ fn width_ladder_changes_the_flow_line_exactly_at_each_boundary() {
 fn width_ladder_writes_the_widest_form_without_a_usable_columns() {
     let f = fixture();
     f.with_mix();
-    assert_eq!(f.flow_line(), FLOW_MIX, "COLUMNS unset");
+    assert_eq!(f.line2(), flow_mix_line(), "COLUMNS unset");
     for columns in ["", "0", "abc", "-5", "8 0", "12x"] {
         assert_eq!(
             f.plain_at(columns).lines().nth(1),
-            Some(FLOW_MIX),
+            Some(flow_mix_line().as_str()),
             "COLUMNS {columns:?}"
         );
     }
@@ -349,17 +391,18 @@ fn width_ladder_subtracts_the_configured_padding() {
     f.with_mix();
     let config = f.project.join(".moai-cli/config/sections/statusline.yaml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
-    let w = display_width(FLOW_MIX);
+    let widest = flow_mix_line();
+    let w = display_width(&widest);
     for padding in [1usize, 3, 10] {
         std::fs::write(&config, format!("statusline:\n  padding: {padding}\n")).unwrap();
         assert_eq!(
             f.plain_at(&(w + 2 + padding).to_string()).lines().nth(1),
-            Some(FLOW_MIX),
+            Some(widest.as_str()),
             "padding {padding} keeps the widest form at its edge"
         );
         assert_eq!(
             f.plain_at(&(w + 1 + padding).to_string()).lines().nth(1),
-            Some(MIX_FORMS[1]),
+            Some(FLOW_MIX),
             "padding {padding}: one column less drops a form"
         );
     }
@@ -368,7 +411,7 @@ fn width_ladder_subtracts_the_configured_padding() {
         std::fs::write(&config, format!("statusline:\n  padding: {text}\n")).unwrap();
         assert_eq!(
             f.plain_at(&(w + 2).to_string()).lines().nth(1),
-            Some(FLOW_MIX),
+            Some(widest.as_str()),
             "padding {text:?}"
         );
     }
@@ -465,6 +508,8 @@ fn the_cards_option_hides_the_segment() {
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(&config, "statusline:\n  segments:\n    cards: false\n").unwrap();
     assert_eq!(f.plain(), baseline);
+    // Only the flow items hide: the version stays on the second line (REQ-1).
+    assert_eq!(f.line2(), moai());
     std::fs::write(&config, "statusline:\n  segments:\n    cards: true\n").unwrap();
     assert_eq!(f.flow_line(), FLOW_MIX);
     std::fs::write(
@@ -476,7 +521,7 @@ fn the_cards_option_hides_the_segment() {
     // the windows.
     let out = f.plain();
     assert_eq!(out.lines().count(), 3, "{out}");
-    assert_eq!(out.lines().nth(1), Some(FLOW_MIX), "{out}");
+    assert_eq!(out.lines().nth(1), Some(flow_mix_line().as_str()), "{out}");
 }
 
 /// The project is the one the input names, not the working directory: from a folder outside
@@ -487,7 +532,7 @@ fn the_flow_follows_the_project_of_the_input_not_the_working_directory() {
     f.with_mix();
     let elsewhere = tempfile::tempdir().unwrap();
     let out = f.render_from(elsewhere.path(), &[("NO_COLOR", "1")]);
-    assert!(out.lines().any(|l| l == FLOW_MIX), "{out}");
+    assert!(out.lines().any(|l| l == flow_mix_line()), "{out}");
 }
 
 /// With color the text is the same once the escapes are removed: each number keeps its icon.
@@ -846,7 +891,8 @@ fn line_one_items_empty_input_has_no_first_line() {
         stdin: serde_json::json!({}),
     };
     let out = s.output(&[("NO_COLOR", "1")]);
-    assert!(out.starts_with("CW n/a"), "{out:?}");
+    // The version has no first line to stand under: it opens the screen, the windows follow.
+    assert_eq!(out.trim_end(), format!("{}\nCW n/a", moai()), "{out:?}");
     assert!(!out.contains("🏷️"), "{out:?}");
     assert!(!out.contains("🧠"), "{out:?}");
 }
@@ -893,14 +939,15 @@ fn line_one_items_follow_columns() {
     }
 }
 
-// ---- SPEC-20261122-statusline-limits AC-1 and AC-9: the items and forms of line 3 ----
+// ---- SPEC-20261122-statusline-limits AC-1 and AC-9, with the bars of
+// SPEC-20261123-statusline-order-bars: the items and forms of line 3 ----
 //
 // Each render is the real binary in a temporary HOME and TMPDIR, at the fixed clock of the
 // `--now-unix` seam, from a folder that is no repository. The strings are the ones of the Layouts
-// section of the SPEC. Two tokens of a line depend on the build: the MoAI version of this build
-// stands where the section writes `4.2647.16`, and the update case uses a template of an earlier
-// week (`4.2600.15`, older than any build of this head) where the section writes `4.2647.15`;
-// [`as_in_the_layouts`] maps them back, and the widths are measured on the line the binary wrote.
+// section of the SPEC. The two versions are on the second line since
+// SPEC-20261123-statusline-order-bars REQ-1, so the limits line holds no build-dependent token:
+// the MoAI version of this build and the update case (a template of an earlier week,
+// `4.2600.15`, older than any build of this head) are tested on the second line.
 //
 // The process-count half of AC-9 (a fake `git` and a fake Orca script, at most one process each,
 // only the cache and the record written) belongs to the Orca pass-through step and has no test
@@ -937,9 +984,9 @@ fn api_key_user() -> serde_json::Value {
     })
 }
 
-/// Line 3 of one render of `stdin` (the last line), with `env` added; with `template`, the
-/// project's `system.yaml` names that template version. The exit code must be 0.
-fn line_three(stdin: &serde_json::Value, env: &[(&str, &str)], template: Option<&str>) -> String {
+/// Every line of one render of `stdin`, with `env` added; with `template`, the project's
+/// `system.yaml` names that template version. The exit code must be 0.
+fn screen(stdin: &serde_json::Value, env: &[(&str, &str)], template: Option<&str>) -> Vec<String> {
     let home = TempHome::new();
     let cwd = home.path().join("work/plain");
     std::fs::create_dir_all(&cwd).unwrap();
@@ -990,9 +1037,20 @@ fn line_three(stdin: &serde_json::Value, env: &[(&str, &str)], template: Option<
     String::from_utf8(out.stdout)
         .unwrap()
         .lines()
-        .last()
-        .unwrap_or_default()
-        .to_string()
+        .map(str::to_string)
+        .collect()
+}
+
+/// Line 3 of one render of `stdin` (the last line), with `env` added.
+fn line_three(stdin: &serde_json::Value, env: &[(&str, &str)], template: Option<&str>) -> String {
+    screen(stdin, env, template).pop().unwrap_or_default()
+}
+
+/// Line 2 of one render of `stdin` (the line before the last): the versions, here, since the
+/// folder has no ledger.
+fn line_two(stdin: &serde_json::Value, env: &[(&str, &str)], template: Option<&str>) -> String {
+    let lines = screen(stdin, env, template);
+    lines[lines.len() - 2].clone()
 }
 
 /// The plain line 3 of `stdin`.
@@ -1005,60 +1063,45 @@ fn plain_three_at(stdin: &serde_json::Value, template: Option<&str>, columns: &s
     line_three(stdin, &[("NO_COLOR", "1"), ("COLUMNS", columns)], template)
 }
 
-/// The build's tokens of a line written as the Layouts section writes them.
-fn as_in_the_layouts(line: &str) -> String {
-    let build = moai_cli::BUILD_VERSION;
-    line.replace(
-        &format!("🗿 {OLD_TEMPLATE} -> {build}"),
-        "🗿 4.2647.15 -> 4.2647.16",
-    )
-    .replace(&format!("🗿 {build}"), "🗿 4.2647.16")
-}
-
-/// A line of the Layouts section with the build's tokens: what the binary writes.
-fn as_the_build_writes(line: &str) -> String {
-    let build = moai_cli::BUILD_VERSION;
-    line.replace(
-        "🗿 4.2647.15 -> 4.2647.16",
-        &format!("🗿 {OLD_TEMPLATE} -> {build}"),
-    )
-    .replace("🗿 4.2647.16", &format!("🗿 {build}"))
-}
-
 /// The case `stdin` gives `want` (a Layouts string) in plain output, and the same text with color
 /// once the escapes are removed.
 fn assert_line_three(stdin: &serde_json::Value, template: Option<&str>, want: &str) {
     let plain = plain_three(stdin, template);
-    assert_eq!(as_in_the_layouts(&plain), want, "plain");
+    assert_eq!(plain, want, "plain");
     let colored = line_three(stdin, &[("COLORTERM", "truecolor")], template);
     assert!(colored.contains('\x1b'), "{colored:?}");
     assert_eq!(without_escapes(&colored), plain, "color changes no text");
 }
 
 /// Z0 of the subscriber whose five-hour window is over 70 percent used. Every number is the share
-/// left (SPEC-20261122-statusline-limits-left): 74, 85 and 21 percent are used.
+/// left (SPEC-20261122-statusline-limits-left) with a bar of the same share before it: 74, 85 and
+/// 21 percent are used, so 2, 1 and 7 of the ten cells are filled.
 const Z0_FIVE_HOUR: &str =
-    "🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.16";
+    "🪫 CW ██░░░░░░░░ 26% | 🪫 5H █░░░░░░░░░ 15% (1h 10m) | 🔋 7D ███████░░░ 79% (6d 21h)";
 /// Z0 of the subscriber whose input carries no five-hour window.
-const Z0_NO_FIVE_HOUR: &str = "🪫 CW 26% | 🔋 7D 79% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.16";
+const Z0_NO_FIVE_HOUR: &str = "🪫 CW ██░░░░░░░░ 26% | 🔋 7D ███████░░░ 79% (6d 21h)";
 /// Z0 of the API key user, 41 percent used. The Layouts section of SPEC-20261122-statusline-limits
 /// wrote `🪫` there; the battery rule of the same SPEC (AC-2: `🔋` up to 70 percent used, `🪫` from
-/// 71) gives `🔋` at 41, so the icon here follows the rule and the widths are the section's.
-const Z0_API_KEY: &str = "🔋 CW 59% | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16";
+/// 71) gives `🔋` at 41, so the icon here follows the rule.
+const Z0_API_KEY: &str = "🔋 CW █████░░░░░ 59% | 💰 3.87";
 
 /// REQ-1, REQ-4: a subscriber whose five-hour window is over 70 percent sees every window with
-/// its countdown, then the two versions, and no cost.
+/// its bar and its countdown, and no cost and no version.
 #[test]
 fn line_three_items_subscriber_with_the_five_hour_window() {
     assert_line_three(&subscriber(85), None, Z0_FIVE_HOUR);
 }
 
 /// SPEC-20261122-statusline-limits-left REQ-3: the five-hour window shows at any level the input
-/// carries — 70 and 23 percent used are `🔋 5H 30%` and `🔋 5H 77%` with the countdown.
+/// carries — 70 and 23 percent used are `🔋 5H ███░░░░░░░ 30%` and `🔋 5H ███████░░░ 77%` with the
+/// countdown.
 #[test]
 fn line_three_items_subscriber_with_a_five_hour_window_at_any_level() {
-    for (used, item) in [(70, "🔋 5H 30% (1h 10m)"), (23, "🔋 5H 77% (1h 10m)")] {
-        let want = format!("🪫 CW 26% | {item} | 🔋 7D 79% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.16");
+    for (used, item) in [
+        (70, "🔋 5H ███░░░░░░░ 30% (1h 10m)"),
+        (23, "🔋 5H ███████░░░ 77% (1h 10m)"),
+    ] {
+        let want = format!("🪫 CW ██░░░░░░░░ 26% | {item} | 🔋 7D ███████░░░ 79% (6d 21h)");
         assert_line_three(&subscriber(used), None, &want);
     }
 }
@@ -1092,15 +1135,15 @@ fn line_three_items_api_key_user() {
     assert_line_three(&api_key_user(), None, Z0_API_KEY);
 }
 
-/// REQ-2: an empty context window says `CW n/a` with no battery icon, never `0%`; the other items
-/// keep their places.
+/// REQ-2: an empty context window says `CW n/a` with no battery icon and no bar, never `0%`; the
+/// other items keep their places.
 #[test]
 fn line_three_items_empty_context_window() {
     let mut stdin = api_key_user();
     stdin["context_window"] = serde_json::json!({});
-    assert_line_three(&stdin, None, "CW n/a | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16");
+    assert_line_three(&stdin, None, "CW n/a | 💰 3.87");
     stdin.as_object_mut().unwrap().remove("context_window");
-    assert_line_three(&stdin, None, "CW n/a | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16");
+    assert_line_three(&stdin, None, "CW n/a | 💰 3.87");
 }
 
 /// REQ-2 and D-1: a null percentage falls back to the input tokens of `current_usage` over the
@@ -1119,21 +1162,21 @@ fn line_three_items_null_percentage() {
             "cache_read_input_tokens": 20000,
         },
     });
-    assert_line_three(
-        &stdin,
-        None,
-        "🔋 CW 70% | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16",
-    );
+    assert_line_three(&stdin, None, "🔋 CW ███████░░░ 70% | 💰 3.87");
     stdin["context_window"] =
         serde_json::json!({"used_percentage": null, "context_window_size": 200000});
-    assert_line_three(&stdin, None, "CW n/a | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16");
+    assert_line_three(&stdin, None, "CW n/a | 💰 3.87");
 }
 
 /// REQ-2: `CW` is what is left of the host's percentage, rescaled by nothing — 25, 85 and 100
 /// used are 75, 15 and 0 left (the 85 percent rescale read 29, 100 and 100 used).
 #[test]
 fn line_three_items_context_window_as_the_host_gives_it() {
-    for (pct, want) in [(25, "🔋 CW 75%"), (85, "🪫 CW 15%"), (100, "🪫 CW 0%")] {
+    for (pct, want) in [
+        (25, "🔋 CW ███████░░░ 75%"),
+        (85, "🪫 CW █░░░░░░░░░ 15%"),
+        (100, "🪫 CW ░░░░░░░░░░ 0%"),
+    ] {
         let mut stdin = api_key_user();
         stdin["context_window"]["used_percentage"] = serde_json::json!(pct);
         let line = plain_three(&stdin, None);
@@ -1146,7 +1189,7 @@ fn line_three_items_context_window_as_the_host_gives_it() {
 fn line_three_items_every_icon_is_followed_by_a_space() {
     let line = plain_three(&subscriber(85), None) + " | " + &plain_three(&api_key_user(), None);
     let mut seen = 0;
-    for icon in ["🪫", "🔋", "💰", "🤖", "🗿"] {
+    for icon in ["🪫", "🔋", "💰"] {
         for (at, _) in line.match_indices(icon) {
             seen += 1;
             let after = &line[at + icon.len()..];
@@ -1157,23 +1200,24 @@ fn line_three_items_every_icon_is_followed_by_a_space() {
             );
         }
     }
-    assert_eq!(seen, 9, "{line}");
+    assert_eq!(seen, 5, "{line}");
+    // The versions are not on this line any more.
+    assert!(!line.contains('🤖') && !line.contains('🗿'), "{line}");
 }
 
-/// The forms of each Layouts case from the widest to the narrowest, with the width the section
-/// gives. The section lists the forms by their number; a form it does not list for a case (Z1 of
-/// the subscriber and of the API key user) follows the drop order under the table: the Claude Code
-/// version goes first.
-const LADDERS: [(&str, &[(&str, usize)]); 4] = [
+/// The forms of each Layouts case from the widest to the narrowest, with the width of each. The
+/// ladder drops the reset countdowns, then the bars, then the five-hour window and the cost;
+/// `CW` and `7D` stay in every form (SPEC-20261123-statusline-order-bars REQ-5). A form that
+/// equals the one before it (no countdown to drop, nothing else to drop) is not listed twice.
+const LADDERS: [(&str, &[(&str, usize)]); 3] = [
     (
         "subscriber, 5H over 70",
         &[
-            (Z0_FIVE_HOUR, 79),
+            (Z0_FIVE_HOUR, 84),
             (
-                "🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h) | 🗿 4.2647.16",
+                "🪫 CW ██░░░░░░░░ 26% | 🪫 5H █░░░░░░░░░ 15% | 🔋 7D ███████░░░ 79%",
                 66,
             ),
-            ("🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h)", 51),
             ("🪫 CW 26% | 🪫 5H 15% | 🔋 7D 79%", 33),
             ("🪫 CW 26% | 🔋 7D 79%", 21),
         ],
@@ -1181,91 +1225,57 @@ const LADDERS: [(&str, &[(&str, usize)]); 4] = [
     (
         "subscriber, no 5H",
         &[
-            (Z0_NO_FIVE_HOUR, 58),
-            ("🪫 CW 26% | 🔋 7D 79% (6d 21h) | 🗿 4.2647.16", 45),
-            ("🪫 CW 26% | 🔋 7D 79% (6d 21h)", 30),
-            ("🪫 CW 26% | 🔋 7D 79%", 21),
-        ],
-    ),
-    (
-        "update pending",
-        &[
-            (
-                "🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.15 -> 4.2647.16",
-                92,
-            ),
-            (
-                "🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h) | 🗿 4.2647.15 -> 4.2647.16",
-                79,
-            ),
-            ("🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h)", 51),
-            ("🪫 CW 26% | 🪫 5H 15% | 🔋 7D 79%", 33),
+            (Z0_NO_FIVE_HOUR, 52),
+            ("🪫 CW ██░░░░░░░░ 26% | 🔋 7D ███████░░░ 79%", 43),
             ("🪫 CW 26% | 🔋 7D 79%", 21),
         ],
     ),
     (
         "API key user",
         &[
-            (Z0_API_KEY, 47),
-            ("🔋 CW 59% | 💰 3.87 | 🗿 4.2647.16", 34),
+            (Z0_API_KEY, 30),
             ("🔋 CW 59% | 💰 3.87", 19),
             ("🔋 CW 59%", 9),
         ],
     ),
 ];
 
-/// The stdin and the template of a Layouts case.
-fn ladder_case(name: &str) -> (serde_json::Value, Option<&'static str>) {
+/// The stdin of a Layouts case.
+fn ladder_case(name: &str) -> serde_json::Value {
     match name {
-        "subscriber, 5H over 70" => (subscriber(85), None),
-        "subscriber, no 5H" => (subscriber_without_five_hour(), None),
-        "update pending" => (subscriber(85), Some(OLD_TEMPLATE)),
-        _ => (api_key_user(), None),
+        "subscriber, 5H over 70" => subscriber(85),
+        "subscriber, no 5H" => subscriber_without_five_hour(),
+        _ => api_key_user(),
     }
 }
 
-/// AC-9 (REQ-1): every form is exactly the string of the Layouts section, with the section's
-/// width, and changes at its boundary: `COLUMNS` of the form's width plus the margin of two keeps
-/// it, one less drops to the next form.
+/// AC-6 (REQ-5): every form is exactly the string of the Layouts section, with its width, and
+/// changes at its boundary: `COLUMNS` of the form's width plus the margin of two keeps it, one
+/// less drops to the next form.
 #[test]
 fn line_three_ladder_every_form_is_the_string_of_the_layouts_section() {
     for (name, forms) in LADDERS {
-        let (stdin, template) = ladder_case(name);
+        let stdin = ladder_case(name);
         for (i, (text, cols)) in forms.iter().enumerate() {
             assert_eq!(display_width(text), *cols, "{name}: the width of `{text}`");
-            let written = display_width(&as_the_build_writes(text));
-            let kept = plain_three_at(&stdin, template, &(written + 2).to_string());
-            assert_eq!(
-                &as_in_the_layouts(&kept),
-                text,
-                "{name}: COLUMNS {}",
-                written + 2
-            );
+            let kept = plain_three_at(&stdin, None, &(cols + 2).to_string());
+            assert_eq!(&kept, text, "{name}: COLUMNS {}", cols + 2);
             if let Some((next, _)) = forms.get(i + 1) {
-                let dropped = plain_three_at(&stdin, template, &(written + 1).to_string());
-                assert_eq!(
-                    &as_in_the_layouts(&dropped),
-                    next,
-                    "{name}: COLUMNS {}",
-                    written + 1
-                );
+                let dropped = plain_three_at(&stdin, None, &(cols + 1).to_string());
+                assert_eq!(&dropped, next, "{name}: COLUMNS {}", cols + 1);
             }
         }
     }
 }
 
-/// REQ-1 and the width rule of the parent SPEC: no usable `COLUMNS` writes the widest form, and a
+/// REQ-5 and the width rule of the parent SPEC: no usable `COLUMNS` writes the widest form, and a
 /// `COLUMNS` below the narrowest form still writes the narrowest.
 #[test]
 fn line_three_ladder_without_a_usable_columns_and_below_the_narrowest() {
-    let (stdin, _) = ladder_case("subscriber, 5H over 70");
+    let stdin = ladder_case("subscriber, 5H over 70");
     for columns in ["", "0", "abc", "8 0"] {
         let line = plain_three_at(&stdin, None, columns);
-        assert_eq!(
-            as_in_the_layouts(&line),
-            Z0_FIVE_HOUR,
-            "COLUMNS {columns:?}"
-        );
+        assert_eq!(line, Z0_FIVE_HOUR, "COLUMNS {columns:?}");
     }
     for columns in ["22", "10", "2", "1"] {
         let line = plain_three_at(&stdin, None, columns);
@@ -1273,6 +1283,56 @@ fn line_three_ladder_without_a_usable_columns_and_below_the_narrowest() {
     }
     let line = plain_three_at(&api_key_user(), None, "3");
     assert_eq!(line, "🔋 CW 59%");
+}
+
+/// An unknown window stays `CW n/a` and `7D n/a` in every form of the ladder, with no battery
+/// icon and no bar (REQ-4).
+#[test]
+fn line_three_ladder_unknown_windows_never_draw_a_bar() {
+    let mut stdin = serde_json::json!({"model": {"display_name": "Opus"}, "version": "2.1.330"});
+    stdin["rate_limits"] = serde_json::json!({"seven_day": {}});
+    for columns in ["200", "40", "10"] {
+        let line = plain_three_at(&stdin, None, columns);
+        assert_eq!(line, "CW n/a | 7D n/a", "COLUMNS {columns}");
+        assert!(!line.contains('█') && !line.contains('░'), "{line}");
+    }
+}
+
+/// REQ-1 and REQ-2: the two versions are on the second line, `🤖 <host version> | 🗿 <moai
+/// version>`; a template older than this build shows the update arrow, the template first; the
+/// host version drops first when the line is too wide, the MoAI version stays as the narrowest
+/// form.
+#[test]
+fn line_two_holds_the_versions_and_drops_the_host_version_first() {
+    let build = moai_cli::BUILD_VERSION;
+    let stdin = subscriber(85);
+    let env = [("NO_COLOR", "1")];
+    let both = format!("🤖 2.1.330 | 🗿 {build}");
+    assert_eq!(line_two(&stdin, &env, None), both);
+    assert_eq!(
+        line_two(&stdin, &env, Some(OLD_TEMPLATE)),
+        format!("🤖 2.1.330 | 🗿 {OLD_TEMPLATE} -> {build}")
+    );
+    // The colored line has the same text.
+    let colored = line_two(&stdin, &[("COLORTERM", "truecolor")], None);
+    assert!(colored.contains('\x1b'), "{colored:?}");
+    assert_eq!(without_escapes(&colored), both);
+    // The boundary: the width keeps both, one less drops the host version.
+    let cols = display_width(&both);
+    let at = |columns: usize| {
+        line_two(
+            &stdin,
+            &[("NO_COLOR", "1"), ("COLUMNS", &columns.to_string())],
+            None,
+        )
+    };
+    assert_eq!(at(cols + 2), both);
+    assert_eq!(at(cols + 1), format!("🗿 {build}"));
+    assert_eq!(at(1), format!("🗿 {build}"));
+    // Without a host version the MoAI version stands alone.
+    let mut no_host = subscriber(85);
+    no_host.as_object_mut().unwrap().remove("version");
+    assert_eq!(line_two(&no_host, &env, None), format!("🗿 {build}"));
 }
 
 /// AC-9 (REQ-12): one render with `rate_limits`, the Orca hook variables and the Orca wrapper

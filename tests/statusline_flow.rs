@@ -148,6 +148,12 @@ fn line(out: &str, n: usize) -> String {
     out.lines().nth(n).unwrap_or_default().to_string()
 }
 
+/// The MoAI version item of this build: the render's input carries no Claude Code version, so
+/// this item alone opens the second line (SPEC-20261123-statusline-order-bars REQ-1).
+fn moai() -> String {
+    format!("🗿 {}", moai_cli::BUILD_VERSION)
+}
+
 /// A card whose held reservation names the session's worktree is my card, whoever holds it; a
 /// live lease means working, and a marker note moves it on.
 #[test]
@@ -219,11 +225,14 @@ fn an_expired_lease_makes_my_card_stale_and_a_session_card_not_mine() {
         lease: -60,
     });
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
-    assert_eq!(line(&out, 1), "🎯 C-1 🟡", "{out}");
+    // The version opens the second line and my card closes it (SPEC-20261123-statusline-order-bars).
+    assert_eq!(line(&out, 1), format!("{} | 🎯 C-1 🟡", moai()), "{out}");
     // From the main checkout the worktree does not match, and the session's own card has no
-    // live lease: nothing is mine, and the ended lease is not on the line.
+    // live lease: nothing is mine, and the ended lease is not on the line. The second line is
+    // left with the version alone.
     let out = f.render(&f.project, "this-session", None);
-    assert_eq!(out.lines().count(), 2, "no flow line: {out}");
+    assert_eq!(out.lines().count(), 3, "no flow items: {out}");
+    assert_eq!(line(&out, 1), moai(), "{out}");
     assert!(!out.contains('🎯') && !out.contains("🟡"), "{out}");
 }
 
@@ -245,18 +254,18 @@ fn three_lines_have_their_roles() {
     assert_eq!(lines.len(), 3, "{out}");
     assert!(lines[0].starts_with("🧠"), "{out}");
     assert!(lines[0].contains("🅱️") && lines[0].contains("🌳"), "{out}");
-    assert!(
-        lines[1].starts_with("🎯") && lines[1].contains("🟡"),
-        "{out}"
-    );
+    // The version opens the flow line and my card closes it.
+    assert!(lines[1].starts_with("🗿 "), "{out}");
+    assert!(lines[1].ends_with("🎯 C-1 🟡"), "{out}");
+    assert!(lines[1].contains("🟡 1"), "{out}");
     assert!(lines[2].contains("CW"), "{out}");
     for (n, role_icons) in [
         (
             0,
-            ["🎯", "🗂️", "🟡", "📨", "🛬", "✅", "🚧", "🙋"].as_slice(),
+            ["🎯", "🗂️", "🟡", "📨", "🛬", "✅", "🚧", "🙋", "🤖", "🗿"].as_slice(),
         ),
         (1, ["🌳", "🅱️", "📡", "🧠"].as_slice()),
-        (2, ["🎯", "🗂️", "🟡", "🌳", "🅱️"].as_slice()),
+        (2, ["🎯", "🗂️", "🟡", "🌳", "🅱️", "🤖", "🗿"].as_slice()),
     ] {
         for icon in role_icons {
             assert!(!lines[n].contains(icon), "line {n} carries {icon}: {out}");
