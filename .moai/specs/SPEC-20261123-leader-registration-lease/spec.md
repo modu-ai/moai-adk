@@ -80,4 +80,9 @@ created: 2026-11-23
 
 ## Result
 
-Status: SPEC draft (revision 1). Nothing is implemented and no acceptance line is met. The SPEC carries no approval; the user approves it.
+Status: SPEC draft (revision 1), implemented in two slices. The SPEC carries no approval; the user approves it.
+
+- Slice 1 (the registration part and the renewal flag of `leader-round`): `src/leader_round/registration.rs`, `src/leader_round.rs`, `src/ops/leader_round.rs`. AC-5 to AC-9 are met by `cargo test --offline --locked --test leader_round_cli` (18 passed).
+- Slice 2 (the registry call sites, on top of the integration tip `53dec8507a` that carries the lane-continuation card): `lane_registry::register_with` refuses a leader registration without a host session id before it touches the folder (REQ-2), refuses a second live leader entry under any other name (REQ-3) and a renewal from another session (REQ-4), and fills a missing `session` on a leader renewal; `lane_registry::show` prints `session` (REQ-5); `session-register --liveness-of` answers `alive` from the lease for a leader entry that has no `.live` file (REQ-6). AC-1 to AC-4 are met by `cargo test --offline --locked --test leader_registration_cli` (7 passed). The existing leader-mode test of `tests/session_registry_cli.rs` now runs as a host session (R-1); that file passes (32), with `launcher_liveness_cli` (7) and `leader_pulse_cli` (2) (AC-10 targets).
+- A registration that has to judge whether a second leader is live fails with the unreadable entry's message when any entry of the registry cannot be read (fail closed; nothing is written).
+- Not done here: the `/moai leader` path text and the completion handshake (non-goals); a `/clear` of the coordination window still continues through `session-register --continue` (R-3).

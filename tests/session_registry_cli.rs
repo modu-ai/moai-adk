@@ -840,10 +840,15 @@ fn register_mode_is_stored_and_renewed() {
     assert_eq!(keys(&show), ["status", "name", "instance", "lease_until"]);
     let instance = first["instance"].as_str().unwrap().to_string();
 
-    // The same instance renews and records the mode.
-    let renewed = ok(&run(
+    // The same instance renews and records the mode. A leader registration names the host
+    // session (SPEC-20261123-leader-registration-lease REQ-1), so this one runs as a session.
+    let repo = repo_arg(&fx);
+    let renewed = ok(&run_as(
         &fx,
+        &fx.repo,
+        Some(&sid(1)),
         &[
+            &repo,
             "--name",
             "leader",
             "--instance",

@@ -137,6 +137,61 @@ pub fn leader_alive_by_lease(project: &Path, session: &str, now: i64) -> Option<
     })
 }
 
+/// SPEC REQ-2: a leader registration names the host session of the window that registers, so
+/// one without a host session id is refused before the registry folder is touched.
+pub(crate) fn require_session(own: Option<&str>) -> Result<(), String> {
+    if own.is_some() {
+        return Ok(());
+    }
+    Err(
+        "leader registration refused: this session has no host session id to record; run it in the window that opens the coordination (CLAUDE_CODE_SESSION_ID or CODEX_THREAD_ID)"
+            .into(),
+    )
+}
+
+/// SPEC REQ-3 and REQ-4, judged under the registry lock after the registration's own conflict
+/// check passed. `previous` is that check's answer (`none`, `expired`, `same_instance` or
+/// `other_session`) and `current` the entry the name holds now.
+///
+/// - A renewal by the instance that holds the entry comes from the session the entry names; an
+///   entry that names none is filled in by the caller.
+/// - Any other registration is refused while an entry of another name is mode `leader` under a
+///   lease that runs past `now`: the refusal names that entry and its lease end, never its
+///   instance.
+///
+/// An entry the scan cannot read fails the call with its message: whether a second window is
+/// live cannot be judged, so nothing is written.
+pub(crate) fn check_leader_rules(
+    project: &Path,
+    name: &str,
+    current: Option<&crate::lane_registry::SessionEntry>,
+    previous: &str,
+    own: Option<&str>,
+    now: i64,
+) -> Result<(), String> {
+    if previous == "same_instance" {
+        let held = current.and_then(|c| c.session.as_deref());
+        if held.is_some() && held != own {
+            return Err(
+                "leader renewal refused: the entry names another host session; renew from the window that registered it"
+                    .into(),
+            );
+        }
+        return Ok(());
+    }
+    match leader_entries(project)?
+        .into_iter()
+        .find(|e| e.name != name && e.lease_until > now)
+    {
+        Some(other) => Err(format!(
+            "conflict in session registry: the leader entry `{}` is live until {}; one coordination window registers as leader at a time, so wait for that lease to end or have it released",
+            other.name,
+            crate::forge::policy::format_utc(other.lease_until)
+        )),
+        None => Ok(()),
+    }
+}
+
 /// The note every `registration` part carries: the renewal is the leader's own act, and the
 /// lease is no proof that the window lives.
 const NOTE: &str = "the leader registration lease is the window's own to renew every round: run `moai leader-round --renew-instance <instance> …` (the round renews, then lists), or `moai session-register --name <name> --mode leader --instance <instance> <project>`; an ended lease means a round was missed, and a lease that still runs is not a proof that the window lives";

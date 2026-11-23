@@ -638,17 +638,26 @@ pub fn show(project: &Path, name: &str, now: i64) -> Result<Value, String> {
     refuse_symlink(&dir)?;
     let file = dir.join(format!("{name}.json"));
     refuse_symlink(&file)?;
-    Ok(match read_entry(&file, name)? {
-        Some((instance, lease, mode)) if lease > now => {
+    Ok(match read_full(&file, name)? {
+        Some(held) if held.lease_until > now => {
             let mut out = json!({
                 "status": "held",
                 "name": name,
-                "instance": instance,
-                "lease_until": crate::forge::policy::format_utc(lease),
+                "instance": held.instance,
+                "lease_until": crate::forge::policy::format_utc(held.lease_until),
             });
             // #2928: only an accepted mode is shown; an entry without one keeps the output.
-            if let Some(m) = accepted_mode(mode.as_deref()) {
+            if let Some(m) = accepted_mode(held.mode.as_deref()) {
                 out["mode"] = json!(m);
+            }
+            // SPEC-20261123-leader-registration-lease REQ-5: the host session id a lane reads to
+            // reach the window; shown only in the shape a host id has, like `mode` above.
+            if let Some(s) = held
+                .session
+                .as_deref()
+                .filter(|s| crate::session_current::well_formed(s))
+            {
+                out["session"] = json!(s);
             }
             out
         }
@@ -802,6 +811,12 @@ pub fn register_with(
         }
     }
     let own = own_session_id();
+    let leader = mode == Some("leader");
+    // SPEC-20261123-leader-registration-lease REQ-2: refused before the folder or the lock file
+    // is created, so a refusal leaves the registry as it was.
+    if leader {
+        crate::leader_round::registration::require_session(own.as_deref())?;
+    }
     let running_worktree = running_worktree();
     let (dir, file, lock) = open_locked(project, name)?;
     let current = read_full(&file, name)?;
@@ -822,6 +837,17 @@ pub fn register_with(
             ))
         }
     };
+    // REQ-3, REQ-4: one live leader entry at a time, renewed from its own host session.
+    if leader {
+        crate::leader_round::registration::check_leader_rules(
+            project,
+            name,
+            current.as_ref(),
+            previous,
+            own.as_deref(),
+            now,
+        )?;
+    }
     // Test seam: widens the read-to-write window (at most 2 s) so the concurrency test can
     // show the lock is what keeps two registrations apart. Unset in normal use.
     if let Some(ms) = std::env::var(TEST_HOLD_VAR)
@@ -847,7 +873,9 @@ pub fn register_with(
     // still reads the entry — and a renewal by the same instance keeps the session id of the
     // first registration (the host id does not change with the renewing process).
     let renewed = previous == "same_instance";
+    // A leader entry written before the id was recorded gets the renewing session's id.
     let session = match (&current, renewed) {
+        (Some(cur), true) if leader => cur.session.clone().or_else(|| own.clone()),
         (Some(cur), true) => cur.session.clone(),
         _ => own.clone(),
     };
