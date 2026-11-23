@@ -989,7 +989,9 @@ mod tests {
 
     /// One git command in `dir` with a fixture identity; the test fails when git does.
     fn fixture_git(dir: &Path, args: &[&str]) {
-        let out = std::process::Command::new("git")
+        let mut cmd = std::process::Command::new("git");
+        crate::identity::scrub_git_env(&mut cmd);
+        let out = cmd
             .args([
                 "-c",
                 "user.name=fixture",
