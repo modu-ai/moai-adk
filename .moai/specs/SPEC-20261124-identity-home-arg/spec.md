@@ -1,0 +1,85 @@
+---
+id: SPEC-20261124-identity-home-arg
+title: "identity takes the HOME as an argument: slice 1 adds identity_in and keeps one process-edge reader"
+status: draft
+revision: 1
+created: 2026-11-24
+---
+
+# identity takes the HOME as an argument: slice 1 adds identity_in and keeps one process-edge reader
+
+## Intent
+
+카드 C-409 의 뿌리 수리예요. C-406 관찰 전체 실행(카드 노트 7598)에서 389개 테스트가 HOME 의 `user-assets.json` 을 읽었어요. 원인 한 줄은 `identity::identity`(`src/identity.rs:199`)가 환경 변수 HOME 을 직접 읽고, 그 HOME 으로 `home_root::path` → `state_root::classify_home` → `home_state::home_go_markers`(`src/home_state.rs:62`)를 불러 `user-assets.json` 을 연다는 거예요. 그런데 `identity` 의 답 가운데 HOME 에서 나오는 칸은 `home_state_root` 하나뿐이고, 그 칸을 읽는 제품 코드는 `src/audit_clone.rs:151` 뿐이에요. 나머지 호출부 15개 파일은 쓰지도 않는 칸을 위해 HOME 을 읽고 있어요.
+
+이 SPEC 은 그 읽기를 인자로 바꿔요. 1조각(이 카드의 범위, `src/identity.rs`)은 HOME 을 인자로 받는 `identity_in` 을 더하고 환경 변수를 읽는 곳을 `identity` 한 곳(프로세스 가장자리)으로 모아요. 호출부는 이번 조각에서 건드리지 않아요. 호출부는 묶음별 다음 조각으로 나누고(Plan 의 조각표), 조각마다 범위 확장은 리더 결정 노트로 받아요.
+
+## Interview
+
+- Q1: `identity` 의 서명을 바로 바꾸나요, 새 함수를 더하나요? → A: 새 함수 `identity_in(path, home)` 를 더하고 `identity(path)` 는 그것을 부르는 가장자리 어댑터로 남겨요(D-1). 서명을 바로 바꾸면 한 번에 16개 파일이 깨져 한 카드·한 감사로 닿기엔 너무 커요.
+- Q2: `src/home_state.rs` 를 고치나요? → A: 안 고쳐요. `home_go_markers(moai: &Path)` 는 이미 경로를 인자로 받고 환경 변수를 읽지 않아요(코드를 읽어 확인, D-2).
+- Q3: HOME 을 환경 변수에서 읽는 곳이 `identity` 뿐인가요? → A: 아니에요. `src/layout.rs:35` `default_home_root` 도 읽고 클레임 장부 경로(`claim::journal_root` → `layout::switched_dir`)가 거쳐요. 이 SPEC 의 범위 밖이고 따로 카드로 열어요(D-3).
+
+## Non-goals
+
+- `layout::default_home_root` 와 `key_vault.rs`·`agents.rs`·`claude.rs` 등 환경 변수 HOME 을 읽는 다른 곳(src 에 40곳 가까이 있어요). 각자 HOME 을 받는지는 별도 판단이에요(D-3).
+- `tests/fixtures/test_home_guard/baseline.tsv` 줄 지우기 — C-406 이 그 파일을 쥐고 있어서 C-406 착지 뒤 조각이에요(조각 4).
+- 호출부 파일 변경(조각 2·3). 이 판은 `src/identity.rs` 만 써요.
+- `identity` 답의 모양이나 `home_state_root` 의 값 규칙 바꾸기.
+
+## Requirements
+
+- REQ-1: The `identity_in` function shall resolve `home_state_root` from the HOME it is given and from no environment variable.
+- REQ-2: WHEN `identity_in` is given no HOME, it shall return `home_state_root` as `null` without opening a file under any HOME. · failure: none — the other fields do not depend on a HOME
+- REQ-3: WHEN `identity_in` is given a HOME, `home_state_root` shall be the home state root of that HOME even when the environment HOME is another folder.
+- REQ-4 (REQ-3): IF the home state root of a given HOME is a symlink, THEN `identity_in` shall return the error `home state root is a symlink; refused` as `identity` returned it before.
+- REQ-5: The `identity` function shall return exactly what `identity_in` returns for the environment HOME read once, an unset or empty HOME counting as no HOME.
+
+## Acceptance
+
+- AC-1 (REQ-1, REQ-3): 환경 변수 HOME 과 다른 임시 폴더를 `identity_in` 에 넘기면 `home_state_root` 가 그 임시 폴더 아래 경로예요. · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_uses_the_home_it_is_given)'`
+- AC-2 (REQ-2): 환경 변수 HOME 이 `.moai-cli` 가 심볼릭 링크인 폴더인 자식 프로세스에서, `identity_in(path, None)` 은 오류 없이 `home_state_root: null` 을 답하고 같은 환경의 `identity(path)` 는 심볼릭 링크 거부 오류를 답해요(None 이 환경 HOME 을 읽지 않는다는 관찰). · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_without_a_home_ignores_the_environment_home)'`
+- AC-3 (REQ-4): 임시 HOME 의 `.moai-cli` 가 심볼릭 링크면 `identity_in(path, Some(home))` 이 거부 오류를 답해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_refuses_a_symlinked_home_state_root)'`
+- AC-4 (REQ-5): 환경 변수 HOME 이 설정·빈 값·없음 세 경우에 `identity(path)` 의 답이 `identity_in(path, 같은 값)` 의 답과 같아요(자식 프로세스에서 환경을 고정). · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_equals_identity_in_with_the_environment_home)'`
+- AC-5 (REQ-1..REQ-5): 이 판은 `src/identity.rs` 와 SPEC 폴더만 바꿨고 호출부 파일 diff 는 0이에요. · verify: `git diff --stat <base>..<head> -- src`
+
+## Scope
+
+- write: `src/identity.rs`, `.moai/specs/SPEC-20261124-identity-home-arg/spec.md`
+- read-only: `src/home_state.rs`(고치지 않아요, D-2), `src/home_root.rs`, `src/state_root.rs`, 호출부 파일들
+- forbidden: 실제 HOME(읽기 전후 비교로도 건드리지 않아요, 임시 HOME 픽스처만), `tests/fixtures/test_home_guard/baseline.tsv`(C-406 이 쥐어요), 네트워크, `CLAUDE.md`
+
+## Plan
+
+조각표(묶음별, 앞 조각이 착지한 뒤 다음 조각이 서요). 조각 2 이후의 범위는 이 SPEC 이 정하지 않고 리더가 노트로 정해요.
+
+| 조각 | 무엇 | 파일 | 동작이 같다는 증거 |
+| --- | --- | --- | --- |
+| 1 (이 판) | `identity_in(path, home)` 추가, `identity` 는 환경 HOME 한 번 읽어 위임 | `src/identity.rs` | AC-1..4: 같은 입력이면 같은 답 |
+| 2 | HOME 칸을 안 쓰는 호출부가 `identity_in(path, None)` 을 불러요 | 2a 클레임 묶음: `src/claim.rs`, `src/claim_link.rs`, `src/lane_registry.rs`, `src/session.rs`, `src/worktree_move.rs`, `src/run.rs`, `src/goal.rs`. 2b 나머지: `src/layout.rs`(identity 호출만), `src/key_vault.rs`, `src/audit.rs`, `src/update_hooks.rs`, `src/apply.rs`, `src/launcher_init.rs`, `src/ops/lane_next.rs` | 이 파일들이 읽는 칸 목록(아래 읽기 증거)에 `home_state_root` 가 없어요; 파일마다 기존 테스트가 그대로 통과 |
+| 3 | HOME 칸을 쓰는 곳이 HOME 을 받아요: `audit_clone` 은 부르는 쪽에서 HOME 을 받고, 명령 가장자리(`src/ops/identity.rs`)는 환경 HOME 을 넘겨요. 마지막 호출부가 떠나면 `identity` 어댑터를 지워요 | `src/audit_clone.rs`, `src/ops/identity.rs`, `src/identity.rs` | `moai identity` 출력이 바이트 같아요(`tests/cli_diagnose.rs` 가 `home_state_root` 를 단언) |
+| 4 | C-406 착지 뒤 `baseline.tsv` 에서 줄어든 테스트 줄을 지워요 | `tests/fixtures/test_home_guard/baseline.tsv` | 가드가 enforce 에서 지워진 줄의 테스트를 통과시켜요 |
+
+읽기 증거(2026-11-24, `grep -rn "home_state_root" src` 와 호출부 읽기): `home_state_root` 키를 이름으로 읽는 제품 코드는 `src/audit_clone.rs:151` 뿐이에요. 호출부 `claim.rs`, `session.rs`, `lane_registry.rs`, `layout.rs`, `ops/lane_next.rs` 는 `identity_status`, `clone_anchor`, `work_tree`, `workspace_id` 같은 칸만 읽어요. 조각 2 는 파일마다 이 읽기를 다시 해서 증거로 남겨요.
+
+순서(이 판): 1) 결정 D-1..D-4 와 SPEC 승인을 리더에게 노트로 받아요. 2) RED: 위 시험 이름들로 실패를 먼저 봐요. 3) GREEN: `identity` 본문을 `identity_in` 으로 옮기고 `identity` 는 한 줄 어댑터로 줄여요. 4) 이웃: `identity` 를 거치는 기존 테스트 대표 몇 개, fmt, clippy.
+
+## Risks
+
+- 이 조각만으로는 `baseline.tsv` 줄이 줄지 않아요(호출부가 아직 `identity` 를 불러요). 카드 기준 2 는 조각 2·3 뒤에 충족돼요 — 조각 1 의 READY 는 기준 2 를 not met 으로 적어요.
+- 두 번째 뿌리 `layout::default_home_root` 때문에 클레임 묶음 테스트(예: `claim_link_cli` 27개)는 조각 2 뒤에도 HOME 읽기가 남을 수 있어요. 몇 개가 줄지는 C-406 가드를 observe 로 다시 돌려 재야 해요(그 전에는 unverified).
+- `identity_in(path, None)` 은 `home_state_root` 를 null 로 만들어요. 그 칸을 쓰는 새 호출부가 생기면 조용히 null 을 받아요 — 조각 3 이 그 칸을 쓰는 곳을 HOME 인자로 못 박아요.
+- 자식 프로세스에서 환경을 고정하는 시험은 프로세스 전체 환경을 바꾸지 않아 병렬 시험을 깨지 않아요(부모는 `std::env::set_var` 를 쓰지 않아요).
+
+## Decisions
+
+| Id | Decision | Basis | Undo |
+| --- | --- | --- | --- |
+| D-1 | `identity` 서명을 바꾸지 않고 `identity_in(path, home: Option<&Path>)` 를 더해요. `identity` 는 환경 HOME 을 한 번 읽어 `identity_in` 에 넘기는 가장자리 어댑터예요 | 호출부 16개 파일·약 21곳을 한 카드로 못 바꿔요(카드 본문 "조각으로 나눠도 돼요"). 더하기만 하는 조각이라 되돌리기 쉬워요 | `identity_in` 을 지우고 본문을 `identity` 로 되돌리기 |
+| D-2 | `src/home_state.rs` 는 이 SPEC 에서 안 고쳐요 | `home_go_markers(moai: &Path)` 는 인자로 경로를 받고 환경 변수를 읽지 않아요(`src/home_state.rs:62`). 카드 범위에는 그대로 두고 쓰지 않아요 | 해당 없음 |
+| D-3 | 두 번째 뿌리 `layout::default_home_root`(`src/layout.rs:34`)와 환경 HOME 을 읽는 다른 곳은 이 SPEC 이 아니라 후속 카드예요 | 같은 종류가 두 번 보이면 소스를 고쳐요(재발 방지). 범위를 넓히지 않고 리더가 카드를 열어요 | 후속 카드를 닫기 |
+| D-4 | 줄어드는 양은 조각마다 C-406 가드(observe)를 다시 돌려 재요. 그 전의 수는 unverified 예요 | 한 조각이 몇 개를 줄일지는 읽기만으로 정할 수 없어요 | 해당 없음 |
+
+## Result
+
+(RUN 뒤에 채워요.)
