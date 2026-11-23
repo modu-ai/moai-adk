@@ -53,12 +53,15 @@ fn detect_with_path(root: &Path, path: Option<&OsStr>) -> Value {
     v["result"].clone()
 }
 
-/// A fake server: an executable file whose body leaves a marker when it is run.
+/// A fake server: an executable file whose body leaves a marker when it is run. The marker is
+/// written with the shell's own `:` and redirection, never an external program: the PATH the
+/// binary sees holds only a temporary folder, so a `touch` there would exit 127 and leave no marker
+/// even when the server did run (`a_fake_server_leaves_its_marker_without_a_path` pins this).
 #[cfg(unix)]
 fn fake_server(dir: &Path, name: &str, marker: &Path) {
     use std::os::unix::fs::PermissionsExt;
     let file = dir.join(name);
-    fs::write(&file, format!("#!/bin/sh\ntouch '{}'\n", marker.display())).unwrap();
+    fs::write(&file, format!("#!/bin/sh\n: > '{}'\n", marker.display())).unwrap();
     fs::set_permissions(&file, fs::Permissions::from_mode(0o755)).unwrap();
 }
 
@@ -211,6 +214,23 @@ fn an_unreadable_or_missing_path_reads_as_not_installed() {
             "{path:?}"
         );
     }
+}
+
+/// The guard of AC-5 can fail: the fake server leaves its marker when run with no PATH at all.
+#[cfg(unix)]
+#[test]
+fn a_fake_server_leaves_its_marker_without_a_path() {
+    let bin = TempDir::new().unwrap();
+    let marker_dir = TempDir::new().unwrap();
+    let marker = marker_dir.path().join("started");
+    fake_server(bin.path(), "rust-analyzer", &marker);
+    let status = std::process::Command::new(bin.path().join("rust-analyzer"))
+        .env_clear()
+        .stdin(Stdio::null())
+        .status()
+        .unwrap();
+    assert!(status.success(), "the fake server exited with {status}");
+    assert!(marker.exists(), "the fake server left no marker");
 }
 
 /// AC-5: the check reads file names only: nothing is written and no server is started.

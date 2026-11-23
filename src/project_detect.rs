@@ -902,6 +902,8 @@ fn ci_files(root: &Path) -> Vec<String> {
 /// Whether `name` is an executable file in one of the folders of `path` (the value of the PATH
 /// variable). It only looks at file metadata: nothing is run, written or fetched, and an empty
 /// entry (which the shell reads as the current folder) is skipped.
+///
+/// A relative `PATH` entry is honoured as a shell does: it is read against the current folder.
 fn executable_on_path(name: &str, path: Option<&std::ffi::OsStr>) -> bool {
     let Some(path) = path else {
         return false;
