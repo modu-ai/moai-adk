@@ -273,7 +273,8 @@ mod tests {
             "opus",
             "--effort",
             "medium",
-            "--dangerously-skip-permissions",
+            "--permission-mode",
+            "auto",
             "--advisor",
             "fable",
             "a-prompt-word"
