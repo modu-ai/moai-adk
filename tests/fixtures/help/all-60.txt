@@ -105,6 +105,12 @@ Update and move
                          ~/.moai
   home-retire-apply      Retire the Go items in ~/.moai
   home-retire-revert     Undo a Go-item retire
+  home-archive-plan      Preview archiving the earlier HOME
+                         state folder
+  home-archive-apply     Archive the earlier HOME state
+                         folder under ~/.moai/archive
+  home-archive-revert    Undo the archiving of the earlier
+                         HOME state folder
   home-install-plan      Preview moving ~/.moai-cli items to
                          ~/.moai
   home-install-apply     Move the ~/.moai-cli items to

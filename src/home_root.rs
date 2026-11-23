@@ -1,63 +1,41 @@
-//! #2696 C4b: which folder under HOME holds this generation's state — the HOME twin of
-//! [`crate::state_root::dir`]. `~/.moai` once [`crate::state_root::classify_with`] with the
-//! HOME's Go markers says `rust` (a valid marker `~/.moai/moai.json`, or the earlier name
-//! `~/.moai/moai-cli.json`, [`crate::state_root::LEGACY_MARKER`]), otherwise the earlier
-//! `~/.moai-cli` ([`crate::HOME_STATE_DIR`]). Read both, one writes: a HOME that has `~/.moai-cli`
-//! and no marker keeps exactly the paths it had, a HOME with neither (or with a `~/.moai` that
-//! holds no files at all) resolves to `~/.moai`, and the Go generation's `~/.moai` is
-//! never written here ([`crate::state_root::resolves_to_moai`],
-//! SPEC-20261121-path-root-moai-default).
-//! A schema-2 marker (#2871 I2 R1, [`crate::state_root::classify_home`]) makes the HOME
-//! `rust-first`: `~/.moai` is this generation's even beside Go markers, laid out by
+//! Which folder under HOME holds this generation's state — the HOME twin of
+//! [`crate::state_root::dir`]. Always `~/.moai`: the earlier `~/.moai-cli` is never looked at,
+//! whatever it holds, and is never written (user decision 6504,
+//! SPEC-20261123-home-state-retire). A HOME that still has one is cleaned up by the confirmed
+//! step `home-state-retire-*` ([`crate::home_state_retire`]), the only code that names it.
+//! The Go generation's files in `~/.moai` and this generation's names share the folder; the HOME
+//! name table ([`crate::home_layout`]) keeps them apart. A schema-2 marker (#2871 I2 R1,
+//! [`crate::state_root::classify_home`]) makes the HOME `rust-first`, laid out by
 //! [`crate::home_layout`]. Reads only.
 
 use std::path::{Path, PathBuf};
 
-/// This generation's HOME state folder name once the marker is there (#2696 C4).
+/// This generation's HOME state folder name (#2696 C4).
 pub const MOAI_DIR: &str = crate::state_root::MOAI_DIR;
 
-/// `.moai` when `home/.moai` is this generation's (verdict `rust`, or `rust-first` for a
-/// schema-2 marker, #2871 I2 R1), else `.moai-cli`.
-pub fn dir(home: &Path) -> &'static str {
-    if crate::state_root::resolves_to_moai(
-        crate::state_root::classify_home(home).generation,
-        home,
-        crate::HOME_STATE_DIR,
-        crate::state_root::Unknown::OnlyRustNames,
-    ) {
-        MOAI_DIR
-    } else {
-        crate::HOME_STATE_DIR
-    }
+/// `.moai`, for every HOME.
+pub fn dir(_home: &Path) -> &'static str {
+    MOAI_DIR
 }
 
-/// `home/<dir(home)>`; a `rust-first` HOME resolves to the layout's root
-/// ([`crate::home_layout::rust_path`], user decision D-M1).
+/// `home/.moai`; a `rust-first` HOME resolves to the layout's root
+/// ([`crate::home_layout::rust_path`], user decision D-M1), which is the same folder.
 pub fn path(home: &Path) -> PathBuf {
-    let generation = crate::state_root::classify_home(home).generation;
-    if generation == "rust-first" {
+    if crate::state_root::classify_home(home).generation == "rust-first" {
         crate::home_layout::rust_path(home, "")
-    } else if crate::state_root::resolves_to_moai(
-        generation,
-        home,
-        crate::HOME_STATE_DIR,
-        crate::state_root::Unknown::OnlyRustNames,
-    ) {
-        home.join(MOAI_DIR)
     } else {
-        home.join(crate::HOME_STATE_DIR)
+        home.join(MOAI_DIR)
     }
 }
 
-/// #2696 C4b2: a HOME with no MoAI state at all — no earlier `~/.moai-cli` and verdict `none`
-/// (no `~/.moai` of any kind, Go's included) — starts on `~/.moai`.
+/// #2696 C4b2: a HOME with no MoAI state at all — verdict `none` (no `~/.moai` of any kind,
+/// Go's included) — starts on `~/.moai`. An earlier `~/.moai-cli` does not count.
 pub fn is_new_home(home: &Path) -> bool {
-    std::fs::symlink_metadata(home.join(crate::HOME_STATE_DIR)).is_err()
-        && crate::state_root::classify_home(home).generation == "none"
+    crate::state_root::classify_home(home).generation == "none"
 }
 
 /// Make a new HOME's `~/.moai/` and its marker, so every later read and write resolves to
-/// `~/.moai`. Does nothing for any other HOME (an earlier `~/.moai-cli`, a Go `~/.moai`) and says
+/// `~/.moai`. Does nothing for any other HOME (a Go `~/.moai`, any `~/.moai`) and says
 /// whether it wrote. The folder is created exclusively and the marker published without
 /// overwriting.
 pub fn adopt_new(home: &Path, created_by: &str) -> Result<bool, String> {
@@ -84,21 +62,18 @@ mod tests {
     use std::fs;
 
     #[test]
-    fn the_marker_alone_moves_home_state_to_moai() {
+    fn every_home_resolves_to_moai_whatever_the_earlier_folder_holds() {
         let home = tempfile::tempdir().unwrap();
         let h = home.path();
         assert_eq!(dir(h), MOAI_DIR, "an empty HOME starts on .moai");
         fs::create_dir(h.join(crate::HOME_STATE_DIR)).unwrap();
-        assert_eq!(
-            dir(h),
-            crate::HOME_STATE_DIR,
-            "a HOME with the earlier folder keeps it"
-        );
+        assert_eq!(dir(h), MOAI_DIR, "the earlier folder is not looked at");
+        assert_eq!(path(h), h.join(".moai"));
         fs::remove_dir(h.join(crate::HOME_STATE_DIR)).unwrap();
-        // The Go generation's `~/.moai` is not this generation's.
+        // The Go generation's `~/.moai` shares the folder; the name table keeps the names apart.
         fs::create_dir_all(h.join(".moai/state")).unwrap();
         fs::write(h.join(".moai/state/active-sessions.json"), "{}").unwrap();
-        assert_eq!(dir(h), crate::HOME_STATE_DIR);
+        assert_eq!(dir(h), MOAI_DIR);
         let fresh = tempfile::tempdir().unwrap();
         fs::create_dir(fresh.path().join(".moai")).unwrap();
         fs::write(
@@ -116,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    fn only_a_home_with_no_state_is_adopted() {
+    fn a_home_with_no_state_is_adopted_the_earlier_folder_does_not_count() {
         // New HOME: `.moai` and a marker that `dir` then reads.
         let home = tempfile::tempdir().unwrap();
         assert!(is_new_home(home.path()));
@@ -127,12 +102,16 @@ mod tests {
         assert!(written.contains(r#""generation": "moai""#), "{written}");
         assert!(!home.path().join(".moai/moai-cli.json").exists());
         assert_eq!(adopt_new(home.path(), "test"), Ok(false), "only once");
-        // An earlier `~/.moai-cli`: kept, nothing written.
+        // An earlier `~/.moai-cli` is ignored: the HOME is new and the folder stays untouched.
         let earlier = tempfile::tempdir().unwrap();
         fs::create_dir(earlier.path().join(crate::HOME_STATE_DIR)).unwrap();
-        assert!(!is_new_home(earlier.path()));
-        assert_eq!(adopt_new(earlier.path(), "test"), Ok(false));
-        assert!(!earlier.path().join(MOAI_DIR).exists());
+        assert!(is_new_home(earlier.path()));
+        assert_eq!(adopt_new(earlier.path(), "test"), Ok(true));
+        assert!(earlier.path().join(MOAI_DIR).join("moai.json").exists());
+        assert!(fs::read_dir(earlier.path().join(crate::HOME_STATE_DIR))
+            .unwrap()
+            .next()
+            .is_none());
         // A Go `~/.moai`: not ours, nothing written into it.
         let go = tempfile::tempdir().unwrap();
         fs::create_dir_all(go.path().join(".moai/state")).unwrap();
@@ -144,7 +123,7 @@ mod tests {
     }
 
     /// #2871 I2 R1 (D-M1): a schema-2 marker resolves HOME paths to the layout's root even
-    /// beside Go markers; a schema-1 marker beside Go markers stays `mixed` → the earlier root.
+    /// beside Go markers; a schema-1 marker beside Go markers answers `.moai` too.
     #[test]
     fn a_schema_2_home_resolves_to_the_layout_root() {
         let v2 = r#"{"schema_version":2,"generation":"moai-cli"}"#;
@@ -164,8 +143,8 @@ mod tests {
         assert!(!is_new_home(h));
         assert_eq!(adopt_new(h, "test"), Ok(false));
         let mixed = home(v1);
-        assert_eq!(dir(mixed.path()), crate::HOME_STATE_DIR);
-        assert_eq!(path(mixed.path()), mixed.path().join(crate::HOME_STATE_DIR));
+        assert_eq!(dir(mixed.path()), MOAI_DIR);
+        assert_eq!(path(mixed.path()), mixed.path().join(".moai"));
     }
 
     /// Production code asks [`dir`]/[`path`]; the earlier name is spelled only where both
@@ -182,6 +161,11 @@ mod tests {
                 "home_install.rs",
                 3,
                 "the install reads the earlier folder whatever generation the HOME is in (one use in `old_root`, which the plan, apply and revert ask, one in the install-journal lookup that tells the readers an earlier install id (R5), one in the unit-test fixture)",
+            ),
+            (
+                "home_state_retire.rs",
+                2,
+                "the one place that names the earlier folder on purpose: the archive step's source path and one unit-test fixture",
             ),
             (
                 "hooks.rs",

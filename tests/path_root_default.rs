@@ -320,7 +320,10 @@ fn home_link_or_unreadable_earlier_folder_is_not_looked_at() {
     earlier(locked.path());
     let dir = locked.path().join(EARLIER);
     fs::set_permissions(&dir, fs::Permissions::from_mode(0o000)).unwrap();
-    let answer = (home_root::dir(locked.path()), home_root::path(locked.path()));
+    let answer = (
+        home_root::dir(locked.path()),
+        home_root::path(locked.path()),
+    );
     fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).unwrap();
     assert_eq!(answer, (NOW, locked.path().join(".moai")));
 }

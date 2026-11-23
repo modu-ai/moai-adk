@@ -2,7 +2,7 @@
 id: SPEC-20261123-home-state-retire
 title: "The earlier HOME state folder <home>/.moai-cli is never read: one confirmed step archives it whole under <home>/.moai, and the HOME resolver answers <home>/.moai only"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-23
 ---
 
@@ -27,7 +27,7 @@ created: 2026-11-23
 ## Non-goals
 
 - 이동기 `home-install-*` 와 별칭 읽기(`committed_aliases`, `earlier_ids_of`)를 지우는 일, 78개 테스트 픽스처를 `<home>/.moai` 로 옮기는 일: 다른 카드가 쥔 파일(`src/update.rs`, `tests/update_moved_receipts.rs`)과 얽혀서 뒤 조각이에요.
-- `moai update` 에 이 단계를 거는 한 줄(`src/update.rs`): 그 파일을 쥔 카드가 착지한 뒤에 해요. 이 조각은 독립 명령 `home-state-retire-*` 로 제공해요.
+- `moai update` 에 이 단계를 거는 한 줄(`src/update.rs`): 그 파일을 쥔 카드가 착지한 뒤에 해요. 이 조각은 독립 명령 `home-archive-plan`·`-apply`·`-revert` 로 제공해요.
 - 보관 폴더를 지우는 일, 셸 파일(`.zshrc` 등) 수정, 설치 스크립트 수정, 볼트 내용 읽기·복사.
 - 프로젝트 쪽 `.moai-cli`(리졸버 `state_root`, `clone_root`)는 그대로예요.
 - 실제 HOME: 모든 테스트와 위험 경로 실행은 임시 HOME 이에요.
@@ -60,15 +60,15 @@ created: 2026-11-23
 - AC-6 (REQ-11): a crash injected after the journal, after marking the move, after the rename and before the commit leaves a journal that a rerun finishes and that the revert undoes · verify: `cargo nextest run --test home_state_retire_cli -E 'test(a_crash_)'`
 - AC-7 (REQ-12, REQ-13): `home_root::dir` and `path` answer `.moai` for an empty HOME, a HOME with only `<home>/.moai-cli`, a HOME with both, a Go `<home>/.moai`, a schema-1 and a schema-2 marker and an unreadable `<home>/.moai-cli`; no command of `install-inspect` or `key-set` creates `<home>/.moai-cli` in an empty temporary HOME · verify: `cargo nextest run --test path_root_default -E 'test(home_)'`
 - AC-8 (REQ-1, REQ-2, REQ-7, REQ-10, REQ-12): the new files pass the repository scans and the help text of the three commands exists in both languages · verify: `cargo nextest run --test help_all_cli --test state_folder_literal_scan`
-- AC-9 (REQ-7, REQ-8): the dangerous path runs once with a binary built from the head in a throwaway HOME (preview, apply, a held-open child, revert), table in the READY note · verify: `moai home-state-retire-plan --home <temp>` with the built binary
+- AC-9 (REQ-7, REQ-8): the dangerous path runs once with a binary built from the head in a throwaway HOME (preview, apply, a held-open child, revert), table in the READY note · verify: `moai home-archive-plan --home <temp>` with the built binary
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261123-home-state-retire/**`
-- write: `src/home_state_retire.rs`, `src/ops/home_state_retire_plan.rs`, `src/ops/home_state_retire_apply.rs`, `src/ops/home_state_retire_revert.rs`, `src/lib.rs` (one `pub mod`), `src/help.rs` (the three commands)
+- write: `src/home_state_retire.rs`, `src/ops/home_archive_plan.rs`, `src/ops/home_archive_apply.rs`, `src/ops/home_archive_revert.rs`, `src/lib.rs` (one `pub mod`), `src/help.rs` (the three commands)
 - write: `src/home_root.rs` (the resolver and its unit tests)
 - write: `tests/home_state_retire_cli.rs`, `tests/path_root_default.rs`
-- write: `docs/design-review/appendix/operations/home_state_retire_plan.md`, `…_apply.md`, `…_revert.md`
+- write: `docs/design-review/appendix/operations/home_archive_plan.md`, `…_apply.md`, `…_revert.md`, `tests/fixtures/help/all*.txt`, `tests/fixtures/state_folder_literals/allow.tsv`, `docs/cli-text-rationale.md`
 - read-only: `src/update.rs`, `src/host_home.rs`, `src/bin_names.rs` (held by another change), `src/home_retire.rs`, `src/move_journal.rs`, `src/home_state.rs`, `src/home_layout.rs`
 - forbidden: the real HOME and anything under `<home>/.moai-cli`, shell profile files, the Go repository, a card number in a file name, SPEC id, branch or commit
 

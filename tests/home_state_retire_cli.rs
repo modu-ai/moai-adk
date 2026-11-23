@@ -1,4 +1,4 @@
-//! SPEC-20261123-home-state-retire: `home-state-retire-plan` / `-apply` / `-revert` archive the
+//! SPEC-20261123-home-state-retire: `home-archive-plan` / `-apply` / `-revert` archive the
 //! earlier HOME state folder `~/.moai-cli` whole under `~/.moai/archive/` by one rename. Every
 //! case runs on temporary HOME folders passed with `--home`; the real HOME is never read or
 //! written, secrets are synthetic names with placeholder content.
@@ -46,7 +46,10 @@ fn earlier_home() -> (tempfile::TempDir, PathBuf) {
         ".moai-cli/versions/4.2647.1/bin/moai-cli",
         "#!/bin/sh\n",
     );
-    chmod(&home.join(".moai-cli/versions/4.2647.1/bin/moai-cli"), 0o755);
+    chmod(
+        &home.join(".moai-cli/versions/4.2647.1/bin/moai-cli"),
+        0o755,
+    );
     fs::create_dir_all(home.join(".moai-cli/path")).unwrap();
     symlink(
         "../versions/4.2647.1/bin/moai-cli",
@@ -59,7 +62,11 @@ fn earlier_home() -> (tempfile::TempDir, PathBuf) {
     symlink("versions", home.join(".moai-cli/latest")).unwrap();
     write(&home, ".moai/state/active-sessions.json", "[]\n");
     write(&home, ".moai/.env.glm", "GLM_API_KEY=PLACEHOLDER\n");
-    write(&home, ".moai/config/sections/statusline.yaml", "preset: a\n");
+    write(
+        &home,
+        ".moai/config/sections/statusline.yaml",
+        "preset: a\n",
+    );
     write(
         &home,
         ".zshrc",
@@ -85,7 +92,7 @@ fn call(args: &[&str], envs: &[(&str, &str)]) -> Value {
 fn plan_with(home: &Path, now: &str, envs: &[(&str, &str)]) -> Value {
     let v = call(
         &[
-            "home-state-retire-plan",
+            "home-archive-plan",
             "--home",
             home.to_str().unwrap(),
             "--now",
@@ -101,10 +108,17 @@ fn plan(home: &Path) -> Value {
     plan_with(home, NOW, &[])
 }
 
-fn apply_with(home: &Path, now: &str, key: &str, digest: &str, perm: &str, envs: &[(&str, &str)]) -> Value {
+fn apply_with(
+    home: &Path,
+    now: &str,
+    key: &str,
+    digest: &str,
+    perm: &str,
+    envs: &[(&str, &str)],
+) -> Value {
     call(
         &[
-            "home-state-retire-apply",
+            "home-archive-apply",
             "--home",
             home.to_str().unwrap(),
             "--now",
@@ -125,7 +139,7 @@ fn apply(home: &Path, digest: &str) -> Value {
 fn revert(home: &Path) -> Value {
     call(
         &[
-            "home-state-retire-revert",
+            "home-archive-revert",
             "--home",
             home.to_str().unwrap(),
             "--permission-reference",
@@ -155,7 +169,12 @@ fn tree(root: &Path) -> Tree {
             let mode = m.permissions().mode();
             if m.file_type().is_symlink() {
                 let t = fs::read_link(&p).unwrap();
-                out.push((r, "link".into(), mode, t.to_string_lossy().as_bytes().to_vec()));
+                out.push((
+                    r,
+                    "link".into(),
+                    mode,
+                    t.to_string_lossy().as_bytes().to_vec(),
+                ));
             } else if m.is_dir() {
                 out.push((r.clone(), "dir".into(), mode, Vec::new()));
                 walk(&p, &r, out);
@@ -211,7 +230,10 @@ fn blocks(p: &Value) -> Vec<String> {
 
 fn refused(v: &Value) -> String {
     assert_eq!(v["ok"], json!(false), "expected a refusal: {v}");
-    v["error"]["message"].as_str().unwrap_or_default().to_string()
+    v["error"]["message"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string()
 }
 
 // ---- the preview -----------------------------------------------------------------------------
@@ -230,7 +252,10 @@ fn the_preview_lists_every_entry_plans_one_move_and_writes_nothing() {
         "{p}"
     );
     let entries = p["entries"].as_array().unwrap();
-    let names: Vec<&str> = entries.iter().map(|e| e["name"].as_str().unwrap()).collect();
+    let names: Vec<&str> = entries
+        .iter()
+        .map(|e| e["name"].as_str().unwrap())
+        .collect();
     assert_eq!(
         names,
         ["latest", "note.txt", "path", "receipts", "state", "vault", "versions"]
@@ -245,7 +270,11 @@ fn the_preview_lists_every_entry_plans_one_move_and_writes_nothing() {
     assert_eq!(kind("note.txt"), "file");
     assert_eq!(kind("vault"), "folder");
     let vault = entries.iter().find(|e| e["name"] == "vault").unwrap();
-    assert_eq!(vault["mode"], json!("700"), "the mode is read by lstat: {vault}");
+    assert_eq!(
+        vault["mode"],
+        json!("700"),
+        "the mode is read by lstat: {vault}"
+    );
     assert_eq!(before, tree(&home), "a preview changes nothing");
     assert!(!exists(&home.join(".moai/archive")));
 }
@@ -315,7 +344,11 @@ fn blocked_while_a_program_uses_the_earlier_folder_and_the_apply_refuses() {
 #[test]
 fn blocked_when_the_process_table_cannot_be_read() {
     let (_d, home) = earlier_home();
-    let p = plan_with(&home, NOW, &[("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")]);
+    let p = plan_with(
+        &home,
+        NOW,
+        &[("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")],
+    );
     assert_eq!(p["action"], json!("blocked"), "{p}");
     assert_eq!(blocks(&p), ["in_use:process_check_unavailable"]);
 }
@@ -331,7 +364,13 @@ fn blocked_when_the_running_binary_lies_inside_the_earlier_folder() {
     chmod(&inside, 0o755);
     let _permit = spawn_cap::acquire();
     let out = Command::new(&inside)
-        .args(["home-state-retire-plan", "--home", home.to_str().unwrap(), "--now", NOW])
+        .args([
+            "home-archive-plan",
+            "--home",
+            home.to_str().unwrap(),
+            "--now",
+            NOW,
+        ])
         .env_remove("MOAI_HOME")
         .envs([crate::common::process_table()])
         .stdin(Stdio::null())
@@ -369,7 +408,11 @@ fn path_guidance_lists_the_entries_that_name_the_earlier_folder_and_touches_no_s
         &[("PATH", &path)],
     );
     assert_eq!(applied["ok"], json!(true), "{applied}");
-    assert_eq!(rc, fs::read(home.join(".zshrc")).unwrap(), "no shell file is edited");
+    assert_eq!(
+        rc,
+        fs::read(home.join(".zshrc")).unwrap(),
+        "no shell file is edited"
+    );
 }
 
 // ---- the apply -------------------------------------------------------------------------------
@@ -384,19 +427,36 @@ fn the_apply_moves_the_folder_whole_and_keeps_bytes_modes_and_go_files() {
     assert_eq!(v["ok"], json!(true), "{v}");
     assert_eq!(v["result"]["state"], json!("applied"));
     assert_eq!(v["result"]["moved"], json!(1));
-    assert!(!exists(&home.join(".moai-cli")), "no earlier folder is left");
-    assert_eq!(old_before, tree(&archive(&home)), "same bytes, kinds and modes");
-    let vault = archive(&home).join("vault");
-    assert_eq!(fs::metadata(&vault).unwrap().permissions().mode() & 0o777, 0o700);
+    assert!(
+        !exists(&home.join(".moai-cli")),
+        "no earlier folder is left"
+    );
     assert_eq!(
-        fs::metadata(vault.join("_shared/glm.key")).unwrap().permissions().mode() & 0o777,
+        old_before,
+        tree(&archive(&home)),
+        "same bytes, kinds and modes"
+    );
+    let vault = archive(&home).join("vault");
+    assert_eq!(
+        fs::metadata(&vault).unwrap().permissions().mode() & 0o777,
+        0o700
+    );
+    assert_eq!(
+        fs::metadata(vault.join("_shared/glm.key"))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777,
         0o600
     );
     let moai_after: Tree = tree(&home.join(".moai"))
         .into_iter()
         .filter(|(r, ..)| !r.starts_with("/archive"))
         .collect();
-    assert_eq!(moai_before, moai_after, "every Go name of ~/.moai is as it was");
+    assert_eq!(
+        moai_before, moai_after,
+        "every Go name of ~/.moai is as it was"
+    );
     assert!(exists(Path::new(v["result"]["manifest"].as_str().unwrap())));
     assert!(exists(Path::new(v["result"]["journal"].as_str().unwrap())));
 }
@@ -417,12 +477,23 @@ fn the_apply_accepts_the_content_digest_at_another_clock() {
 fn the_apply_refuses_a_stale_token_a_missing_reference_and_writes_nothing() {
     let (_d, home) = earlier_home();
     let p = plan(&home);
-    write(&home, ".moai-cli/late-arrival.txt", "added after the preview\n");
+    write(
+        &home,
+        ".moai-cli/late-arrival.txt",
+        "added after the preview\n",
+    );
     let before = tree(&home);
     let stale = refused(&apply(&home, &digest_of(&p)));
     assert!(stale.contains("stale or altered"), "{stale}");
     let fresh = plan(&home);
-    let none = refused(&apply_with(&home, NOW, "--plan-digest", &digest_of(&fresh), "", &[]));
+    let none = refused(&apply_with(
+        &home,
+        NOW,
+        "--plan-digest",
+        &digest_of(&fresh),
+        "",
+        &[],
+    ));
     assert!(none.contains("permission reference"), "{none}");
     assert_eq!(before, tree(&home));
 }
@@ -438,7 +509,11 @@ fn the_revert_restores_the_tree_and_a_second_revert_changes_nothing() {
     let r = revert(&home);
     assert_eq!(r["ok"], json!(true), "{r}");
     assert_eq!(r["result"]["state"], json!("reverted"), "{r}");
-    assert_eq!(before, tree(&home.join(".moai-cli")), "bytes and modes restored");
+    assert_eq!(
+        before,
+        tree(&home.join(".moai-cli")),
+        "bytes and modes restored"
+    );
     assert!(exists(&home.join(".moai/archive")), "nothing is deleted");
     let again = revert(&home);
     assert_eq!(again["result"]["changed"], json!(false), "{again}");
@@ -452,14 +527,24 @@ fn the_revert_refuses_when_the_earlier_folder_came_back_or_the_entry_was_replace
     write(&home, ".moai-cli/new/f.txt", "made after the apply\n");
     let r = revert(&home);
     assert_eq!(r["result"]["state"], json!("revert_partial"), "{r}");
-    assert!(exists(&archive(&home).join("vault")), "the entry stays in the archive");
-    assert_eq!(fs::read(home.join(".moai-cli/new/f.txt")).unwrap(), b"made after the apply\n");
+    assert!(
+        exists(&archive(&home).join("vault")),
+        "the entry stays in the archive"
+    );
+    assert_eq!(
+        fs::read(home.join(".moai-cli/new/f.txt")).unwrap(),
+        b"made after the apply\n"
+    );
 
     let (_d, home) = earlier_home();
     let p = plan(&home);
     assert_eq!(apply(&home, &digest_of(&p))["ok"], json!(true));
     fs::rename(archive(&home), home.join(".moai/archive/moved-away")).unwrap();
-    write(&home, ".moai/archive/moai-cli-20261123T120000Z/other.txt", "another entry\n");
+    write(
+        &home,
+        ".moai/archive/moai-cli-20261123T120000Z/other.txt",
+        "another entry\n",
+    );
     let r = revert(&home);
     assert_eq!(r["result"]["state"], json!("revert_partial"), "{r}");
     assert!(exists(&archive(&home).join("other.txt")));
@@ -470,13 +555,28 @@ fn the_revert_refuses_when_the_earlier_folder_came_back_or_the_entry_was_replace
 
 #[test]
 fn a_crash_at_any_journal_step_is_finished_by_a_rerun_or_undone_by_the_revert() {
-    for point in ["after_journal", "after_mark_moving", "after_rename", "before_commit"] {
+    for point in [
+        "after_journal",
+        "after_mark_moving",
+        "after_rename",
+        "before_commit",
+    ] {
         let (_d, home) = earlier_home();
         let before = tree(&home.join(".moai-cli"));
         let p = plan(&home);
         let digest = digest_of(&p);
-        let crashed = apply_with(&home, NOW, "--plan-digest", &digest, PERM, &[(FAULT, point)]);
-        assert!(refused(&crashed).contains("injected crash"), "{point}: {crashed}");
+        let crashed = apply_with(
+            &home,
+            NOW,
+            "--plan-digest",
+            &digest,
+            PERM,
+            &[(FAULT, point)],
+        );
+        assert!(
+            refused(&crashed).contains("injected crash"),
+            "{point}: {crashed}"
+        );
         if point == "after_journal" {
             // Nothing moved yet: the rerun with the same clock and token finishes the move.
             let again = apply(&home, &digest);
@@ -487,7 +587,10 @@ fn a_crash_at_any_journal_step_is_finished_by_a_rerun_or_undone_by_the_revert() 
             let r = revert(&home);
             assert_eq!(r["ok"], json!(true), "{point}: {r}");
             assert_eq!(before, tree(&home.join(".moai-cli")), "{point}: undone");
-            assert!(!exists(&archive(&home)), "{point}: nothing left in the archive");
+            assert!(
+                !exists(&archive(&home)),
+                "{point}: nothing left in the archive"
+            );
         }
     }
 }
