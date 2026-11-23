@@ -412,7 +412,13 @@ fn a_profile_link_to_another_folder_is_blocked_and_finds_nothing() {
         ],
         &profile,
     );
-    assert_ne!(applied["result"]["state"], "applied", "{applied}");
+    assert_eq!(applied["ok"], Value::Bool(true), "{applied}");
+    assert_eq!(applied["result"]["state"], "unchanged", "{applied}");
+    assert_eq!(
+        applied["result"]["written"],
+        serde_json::json!([]),
+        "{applied}"
+    );
     for dir in [elsewhere.join("moai"), fx.canonical_agents().join("moai")] {
         assert!(!dir.exists(), "a blocked apply created {}", dir.display());
     }
