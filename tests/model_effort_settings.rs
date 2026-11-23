@@ -552,3 +552,74 @@ fn a_saved_codex_value_is_left_out_when_another_tool_is_written() {
         );
     }
 }
+
+// SPEC-20261122-model-fast-pair: the API refuses an Opus 4.8 request with fast mode from
+// 2026-11-30, and moai never turns fast mode on, so no table row, saved entry or written choice
+// may name the Opus 4.8 family or hold a fast-mode key.
+// The family match ends there or goes on with `-`, `[` or `@`; a digit after it is another model
+// (`opus-4-80`), the same shape as `is_opus_48` in `claude_settings_merge`.
+fn names_opus_48(id: &str) -> bool {
+    let lower = id.to_ascii_lowercase();
+    ["opus-4-8", "opus-4.8"].iter().any(|family| {
+        lower.match_indices(family).any(|(at, _)| {
+            matches!(
+                lower[at + family.len()..].chars().next(),
+                None | Some('-' | '[' | '@')
+            )
+        })
+    })
+}
+
+#[test]
+fn fast_pair_no_support_row_or_default_names_an_opus_48_model() {
+    for tool in TOOLS {
+        let rows = supported(tool).expect("a listed tool has a table");
+        assert!(!rows.is_empty(), "{tool}");
+        for row in rows {
+            assert!(!names_opus_48(row.id), "{tool}: {}", row.id);
+        }
+        for role in ROLES {
+            let default = default_choice(tool, role).expect("a default");
+            assert!(!names_opus_48(&default.model), "{tool} {role}");
+        }
+    }
+}
+
+#[test]
+fn fast_pair_an_opus_48_or_fast_mode_entry_is_listed_and_never_resolved() {
+    for (shape, entry) in [
+        (
+            "an Opus 4.8 model id",
+            json!({"model": "claude-opus-4-8", "effort": "high"}),
+        ),
+        (
+            "an Opus 4.8 id with a dot",
+            json!({"model": "Claude-Opus-4.8", "effort": "high"}),
+        ),
+        (
+            "a third fast-mode key",
+            json!({"model": "claude-opus-5-5", "effort": "high", "fastMode": true}),
+        ),
+    ] {
+        let launcher = object(json!({"models": {"claude": {"leader": entry}}}));
+        assert_eq!(
+            unsupported_entries(&launcher).unwrap(),
+            ["launcher.models.claude.leader"],
+            "{shape}"
+        );
+        assert!(
+            saved_choice(&launcher, "claude", "leader").is_none(),
+            "{shape}"
+        );
+        let refused = resolve("claude", "leader", Some(&launcher)).unwrap_err();
+        assert!(
+            refused.contains("launcher.models.claude.leader"),
+            "{shape}: {refused}"
+        );
+        assert!(!names_opus_48(&refused), "{shape}: {refused}");
+    }
+    // A choice naming the family is never written.
+    let base = object(json!({"models": {}}));
+    assert!(with_choice(&base, "claude", "leader", "claude-opus-4-8", "high").is_err());
+    assert!(with_choice(&base, "claude", "leader", "claude-opus-4.8", "high").is_err());
+}
