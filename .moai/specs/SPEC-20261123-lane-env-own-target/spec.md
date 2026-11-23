@@ -73,4 +73,25 @@ created: 2026-11-23
 
 ## Result
 
-(status draft — filled in by the SYNC step on the head the READY names)
+(status draft — the head that carries this Result is the one the READY names; 승인은 사용자 몫이라 상태는 draft 로 둬요)
+
+- AC-1: met — `eval_unsets_cargo_target_dir_and_keeps_the_cargo_home` (옛 값을 쥔 셸이 eval 뒤 `unset`, `export CARGO_TARGET_DIR` 줄 없음, 카고 홈·`CARGO_INCREMENTAL=0` 그대로)
+- AC-2: met — `lane_env_makes_nothing_under_home` (워크트리·주 체크아웃·하위 폴더, HOME 없음, 상대 HOME 에서 같은 출력, HOME 과 체크아웃 아래 새 항목 0), `refusals_print_nothing_on_stdout` (git 밖·나쁜 레인·상대 base 는 stdout 이 빈 채 1)
+- AC-3: met — `a_cargo_run_is_warned_about_a_retired_or_foreign_build_folder` (옛 레인 폴더, 홈 빌드 폴더, 다른 워크트리 안쪽은 한 줄 경고, 값 없음·빈 값·자기 `target/`·상대 `target`·임의 폴더·cargo 아닌 명령은 조용함, HOME 없을 때 USERPROFILE 은 홈이 아님); 단위 테스트 `build_folder_tests`
+- AC-4: met — `heavy_slot_acquire_makes_nothing_under_home` (HOME 이 있어도 없어도 임시 HOME 이 비어 있음)
+- AC-5: met — `a_folder_holding_only_the_owner_record_is_a_marker_only_trim_row` (작업이 사라졌거나 병합됨 → `trim`·`marker_only: true`·trim 경로 `.moai-build.json`; 살아 있음·다른 저장소·다른 파일 → `skip`; 미리보기 전후 폴더 스냅숏이 같고 `writes: false`)
+- AC-6: met — `agent_build_folder_rows_say_nothing_needs_the_folder`
+
+증거 (이 가지의 팁에서 직접 돌린 것):
+
+- 먼저 실패함: 새 테스트 8개(`eval_unsets…`, `lane_env_makes_nothing_under_home`, `lane_name_length_edge`, `the_comment_names_the_worktrees_own_target`, `a_cargo_run_is_warned…`, `heavy_slot_acquire_makes_nothing_under_home`, `a_folder_holding_only…`, `agent_build_folder_rows_say…`)가 고치기 전 코드에서 실패했어요.
+- 뮤턴트 7개가 모두 죽었어요: `unset` 줄 삭제(lane_env_cli 2개 실패), `lane-env` 가 HOME 아래 폴더를 만듦(2개), 경고에서 홈 빌드 폴더 판정 삭제(heavy_slot_cli 2개), 경고에서 다른 워크트리 판정 삭제(1개), `Here::of` 가 홈 아래 폴더를 만듦(1개), `marker_only` 끄기(1개), `restore` 문장을 옛 안내로 되돌림(1개).
+- 위험 경로 실행: 링크가 낀 임시 HOME(`.moai` 가 다른 폴더로의 링크)에서 빌드한 바이너리로 `lane-env`(링크를 따라 쓰지 않고 성공, 바깥 폴더 그대로), `heavy-slot-acquire`(링크 뒤 폴더를 값으로 줘도 경고만, 아무것도 안 만듦), `optimize-plan`(링크 행은 `skip: symlink`, 표식만 있는 폴더는 `trim` 과 `skip: worktree_live`, 실행 뒤 폴더 그대로)를 직접 돌렸어요.
+- 실제 HOME 읽기 전용 미리보기(`optimize-plan`, `writes: false`): 홈 아래 에이전트 빌드 폴더 행 67개 중 표식만 남은 폴더가 12개(`trim` 2, `skip` 10)예요. 삭제는 하지 않았고 사용자 선택을 기다려요.
+
+후속 (이 SPEC 이 만지지 않은 것):
+
+- `src/worktree.rs` 의 `worktree-plan`/`worktree-apply` 가 아직 `<HOME>/.moai/build/<이름>` 을 계획하고 만들어요(`SPEC-20261121-shared-build-root` REQ-1·REQ-2, `tests/worktree_build_root.rs`).
+- `tools/build_folder.py env` 와 `tests/build_folder_test.py` 는 옛 표식을 계속 써요(Rust 전용 테스트 카드가 정리해요).
+- `skills/moai/workflows/update.md` 의 홈 빌드 폴더 문장은 `marker_only` 행을 아직 말하지 않아요.
+- 레인이 새로 설치하기 전에는 옛 `lane-env` 가 계속 만들어요.
