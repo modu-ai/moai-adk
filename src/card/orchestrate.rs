@@ -479,14 +479,7 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
             let Some(newest) = list.last() else {
                 continue;
             };
-            let mut per_reviewer: BTreeMap<&str, &VerdictEvent> = BTreeMap::new();
-            for e in &list {
-                per_reviewer.insert(e.reviewer.as_str(), e);
-            }
-            if !newest.pass
-                || per_reviewer.values().any(|e| !e.pass)
-                || held_by(&authors, &newest.reviewer)
-            {
+            if !newest.pass || held_by(&authors, &newest.reviewer) {
                 continue;
             }
             let name = input::card_name(*card_id);

@@ -442,6 +442,17 @@ fn clear_a_lane_that_holds_a_card_gets_none_even_with_a_done_note() {
     assert!(actions_of(&plan, "clear").is_empty(), "{plan}");
 }
 
+#[test]
+fn clear_a_reclaimed_card_that_is_still_open_gets_none() {
+    let w = world();
+    w.lane("agent-1", S_ONE);
+    w.card(1, "research", "ready", "p1", &["docs/a.md"]);
+    w.reserve(1, 1, S_ONE, "reclaimed");
+    let plan = w.plan();
+    assert!(actions_of(&plan, "clear").is_empty(), "{plan}");
+    assert_eq!(lane(&plan, "agent-1")["state"], json!("free"), "{plan}");
+}
+
 // ---- audit_ (AC-4: REQ-6) ---------------------------------------------------------------------
 
 #[test]
