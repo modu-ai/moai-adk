@@ -151,7 +151,9 @@ pub fn assign(
     }
     if !identity_ok(auditor) {
         return Err(
-            "card assign refused: --auditor is one word of 1 to 100 characters; nothing was \
+            "card assign refused: --auditor is one word of 1 to 100 characters without \
+             whitespace, and it is a session id (hex digits and dashes, 8 to 64 characters), \
+             optionally followed by `:` and the 12 hex digits of a worktree key; nothing was \
              written"
                 .to_string(),
         );
