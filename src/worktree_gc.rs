@@ -89,6 +89,10 @@ pub struct Facts {
     pub claim_unknown: bool,
     /// One of the fixed slots of `<primary>/.claude/worktrees/` (REQ-7): never removed.
     pub fixed_slot: bool,
+    /// Every reservation of the card that worked here has ended (a landing closed it). Time then
+    /// says nothing more about whether a lane is still at work: the recent-change window and the
+    /// empty-worktree guard do not apply. Every other reason still does.
+    pub settled: bool,
 }
 
 /// True when a change `age_secs` old falls inside the window.
@@ -131,6 +135,7 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
         None => reasons.push("process_check_unavailable"),
     }
     match f.change_age_secs {
+        _ if f.settled => {}
         Some(age) if is_recent(age, window_secs) => reasons.push("recent_change"),
         Some(_) => {}
         None => reasons.push("change_age_unknown"),
@@ -143,7 +148,9 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
         // of its own — looks exactly like one a lane has just created and not started; it
         // frees almost nothing, so it is kept.
         (Some(0), Some(0))
-            if !f.has_build_output && f.change_age_secs.is_some_and(|a| a < EMPTY_KEEP_SECS) =>
+            if !f.settled
+                && !f.has_build_output
+                && f.change_age_secs.is_some_and(|a| a < EMPTY_KEEP_SECS) =>
         {
             reasons.push("empty_worktree");
             return ("skip", reasons);
@@ -653,7 +660,7 @@ fn work_roots() -> (Vec<PathBuf>, Vec<PathBuf>) {
     )
 }
 
-fn shown(path: &Path, root: &Path) -> String {
+pub(crate) fn shown(path: &Path, root: &Path) -> String {
     match path.strip_prefix(root) {
         Ok(rel) if rel.as_os_str().is_empty() => ".".into(),
         Ok(rel) => rel.to_string_lossy().into_owned(),
@@ -875,6 +882,33 @@ pub fn plan_paced(
     squash: bool,
     pace: &Pace,
 ) -> Result<Value> {
+    plan_settled(
+        project,
+        integration_ref,
+        recent,
+        budget,
+        now_unix,
+        squash,
+        pace,
+        &[],
+    )
+}
+
+/// [`plan_paced`] where the worktrees in `settled` belong to a card whose reservations have all
+/// ended (a landing closed it): for them the recent-change window and the empty-worktree guard
+/// do not apply ([`Facts::settled`]). A claim, a process, a dirty or unmerged tree and every other
+/// reason still keep a worktree.
+#[allow(clippy::too_many_arguments)]
+pub fn plan_settled(
+    project: &Path,
+    integration_ref: &str,
+    recent: Duration,
+    budget: Duration,
+    now_unix: Option<u64>,
+    squash: bool,
+    pace: &Pace,
+    settled: &[PathBuf],
+) -> Result<Value> {
     if recent.as_secs() < MIN_RECENT_MINUTES * 60 {
         return Err(format!(
             "--recent-minutes must be at least {MIN_RECENT_MINUTES}; got {}",
@@ -944,6 +978,10 @@ pub fn plan_paced(
         .iter()
         .map(|p| fs::canonicalize(p).unwrap_or_else(|_| p.clone()))
         .collect();
+    let settled_paths: Vec<PathBuf> = settled
+        .iter()
+        .map(|p| fs::canonicalize(p).unwrap_or_else(|_| p.clone()))
+        .collect();
     for (want, given) in only.iter().zip(&pace.only) {
         let listed = entries
             .iter()
@@ -1004,6 +1042,7 @@ pub fn plan_paced(
                     .file_name()
                     .and_then(|n| n.to_str())
                     .is_some_and(crate::worktree_slot::is_slot),
+            settled: i != 0 && settled_paths.contains(&path),
             ..Default::default()
         };
         let mut merged_by: Option<&str> = None;
@@ -1298,7 +1337,14 @@ fn act_on(
 /// paths, `remove` runs `git worktree remove` without `--force` (git refuses a dirty tree;
 /// the branch is kept) — after re-checking each worktree right before touching it
 /// ([`busy_now`]). A refused or failed entry is reported and the rest go on; nothing is
-/// retried. Running this on the user's own machine is a user-confirmed step the leader takes.
+/// retried.
+///
+/// Who may run it: the `worktree-gc-apply` command is a user-confirmed step the leader takes on
+/// the user's own machine. `card land` also reaches it, through [`crate::worktree_cleanup`], with
+/// no confirmation step of its own: once a landing closes a card, its merged, clean worktrees
+/// outside `.claude/worktrees/` are removed by this function on the digest of the plan just read
+/// (`git worktree remove` without `--force`; the branch stays). The `cleanup` key of the landing
+/// answer reports what it did.
 #[allow(clippy::too_many_arguments)]
 pub fn apply(
     project: &Path,
@@ -1310,8 +1356,35 @@ pub fn apply(
     plan_digest: &str,
     permission_reference: &str,
 ) -> Result<Value> {
+    apply_settled(
+        project,
+        integration_ref,
+        recent,
+        budget,
+        now_unix,
+        pace,
+        &[],
+        plan_digest,
+        permission_reference,
+    )
+}
+
+/// [`apply`] for a plan made by [`plan_settled`] with the same `settled` paths: the recomputed
+/// plan, and so its digest, is the one that treats those worktrees as settled.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_settled(
+    project: &Path,
+    integration_ref: &str,
+    recent: Duration,
+    budget: Duration,
+    now_unix: Option<u64>,
+    pace: &Pace,
+    settled: &[PathBuf],
+    plan_digest: &str,
+    permission_reference: &str,
+) -> Result<Value> {
     validate_permission(permission_reference)?;
-    let fresh = plan_paced(
+    let fresh = plan_settled(
         project,
         integration_ref,
         recent,
@@ -1319,6 +1392,7 @@ pub fn apply(
         now_unix,
         false,
         pace,
+        settled,
     )?;
     if fresh["plan_digest"].as_str() != Some(plan_digest) {
         return Err("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written".into());
@@ -1525,6 +1599,36 @@ mod tests {
         f.has_build_output = true;
         f.change_age_secs = Some(7_200);
         assert_eq!(decide(&f, 7_200), ("remove", vec![]));
+    }
+
+    /// A settled worktree (its card's reservations ended) is judged without the recent-change
+    /// window and the empty-worktree guard, and by every other reason as before.
+    #[test]
+    fn a_settled_worktree_ignores_time_and_nothing_else() {
+        let mut f = eligible();
+        f.settled = true;
+        f.has_build_output = false;
+        f.change_age_secs = Some(0);
+        assert_eq!(decide(&f, 7_200), ("remove", vec![]));
+        f.change_age_secs = None;
+        assert_eq!(decide(&f, 7_200), ("remove", vec![]));
+        f.change_age_secs = Some(0);
+        f.live_claim = true;
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["live_claim"]));
+        f.live_claim = false;
+        f.in_use = Some(true);
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["process_in_use"]));
+        f.in_use = Some(false);
+        f.tracked_dirty = Some(true);
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["tracked_changes"]));
+        f.tracked_dirty = Some(false);
+        f.merged = Some(false);
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["not_merged"]));
+        // The same facts without `settled` are kept by time.
+        let mut f = eligible();
+        f.has_build_output = false;
+        f.change_age_secs = Some(0);
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["recent_change"]));
     }
 
     #[test]
