@@ -267,6 +267,115 @@ fn one_file_of_the_user_keeps_the_host_blocked_with_nothing_adopted() {
     assert!(reason.contains("SKILL.md"), "{reason}");
 }
 
+/// A sibling version folder that has the same path with other bytes lends nothing for a file the
+/// user edited: only equal bytes are ours (the sha256 of the file picks the generation).
+#[test]
+fn a_user_edit_of_a_path_an_earlier_version_folder_has_is_not_adopted() {
+    let h = home();
+    let exe = install(&h.home, EARLIER, "a", |_| {});
+    install(&h.home, EARLIER, "old", old_skill_md);
+    copy_tree(&package(), &skill_dir(&h.home));
+    let edited = skill_dir(&h.home).join("SKILL.md");
+    fs::write(&edited, "my own skill text, not any generation\n").unwrap();
+    let before = tree(&h.home);
+
+    let p = result(&run(&exe, &h.home, &["update"]));
+
+    assert_eq!(tree(&h.home), before, "a preview writes nothing");
+    let claude = host(&p);
+    assert_eq!(claude["preflight"], json!("blocked"), "{p}");
+    assert!(claude.get("adopt").is_none(), "{claude}");
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+    run(&exe, &h.home, &["update", "--confirm", &digest]);
+    assert_eq!(
+        fs::read(&edited).unwrap(),
+        b"my own skill text, not any generation\n",
+        "the user's bytes stay"
+    );
+}
+
+/// With two earlier folders that disagree on a file, the file is adopted from the folder whose
+/// bytes it equals, and the answer names that folder.
+#[test]
+fn a_file_equal_to_the_second_of_two_earlier_generations_names_that_generation() {
+    let h = home();
+    let exe = install(&h.home, EARLIER, "a", |_| {});
+    install(&h.home, EARLIER, "old1", |pkg| {
+        fs::write(pkg.join("SKILL.md"), "first earlier generation\n").unwrap();
+    });
+    install(&h.home, EARLIER, "old2", |pkg| {
+        fs::write(pkg.join("SKILL.md"), "second earlier generation\n").unwrap();
+    });
+    copy_tree(&package(), &skill_dir(&h.home));
+    fs::write(
+        skill_dir(&h.home).join("SKILL.md"),
+        "second earlier generation\n",
+    )
+    .unwrap();
+
+    let p = result(&run(&exe, &h.home, &["update"]));
+
+    let claude = host(&p);
+    assert_eq!(claude["preflight"], json!("ok"), "{p}");
+    let skill = claude["adopt"]["files"]
+        .as_array()
+        .expect("an adopt list")
+        .iter()
+        .find(|f| f["path"] == json!("SKILL.md"))
+        .expect("SKILL.md is adopted");
+    assert!(
+        skill["matched"].as_str().unwrap().contains("old2"),
+        "{skill}"
+    );
+}
+
+/// A link inside an earlier version folder lends nothing either: `skills` linked to a folder
+/// elsewhere is not followed, so the bytes found there never make a user's file ours.
+#[test]
+fn a_linked_skills_folder_inside_an_earlier_version_folder_lends_nothing() {
+    let h = home();
+    let exe = install(&h.home, EARLIER, "a", |_| {});
+    old_copy_in(&h);
+    let old = h.home.join(EARLIER).join("versions/old");
+    let moved = h.home.join("moved-skills");
+    fs::rename(old.join("skills"), &moved).unwrap();
+    std::os::unix::fs::symlink(&moved, old.join("skills")).unwrap();
+    let user_bytes = fs::read(skill_dir(&h.home).join("SKILL.md")).unwrap();
+    let before = tree(&h.home);
+
+    let p = result(&run(&exe, &h.home, &["update"]));
+
+    assert_eq!(tree(&h.home), before, "a preview writes nothing");
+    let claude = host(&p);
+    assert_eq!(claude["preflight"], json!("blocked"), "{p}");
+    assert!(claude.get("adopt").is_none(), "{claude}");
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+    run(&exe, &h.home, &["update", "--confirm", &digest]);
+    assert_eq!(
+        fs::read(skill_dir(&h.home).join("SKILL.md")).unwrap(),
+        user_bytes,
+        "the user's bytes stay"
+    );
+}
+
+/// The package folder `skills/moai` of an earlier version folder linked elsewhere lends nothing.
+#[test]
+fn a_linked_package_folder_inside_an_earlier_version_folder_lends_nothing() {
+    let h = home();
+    let exe = install(&h.home, EARLIER, "a", |_| {});
+    old_copy_in(&h);
+    let skills = h.home.join(EARLIER).join("versions/old/skills");
+    let moved = h.home.join("moved-moai");
+    fs::rename(skills.join("moai"), &moved).unwrap();
+    std::os::unix::fs::symlink(&moved, skills.join("moai")).unwrap();
+
+    let p = result(&run(&exe, &h.home, &["update"]));
+
+    let claude = host(&p);
+    assert_eq!(claude["preflight"], json!("blocked"), "{p}");
+    assert!(claude.get("adopt").is_none(), "{claude}");
+}
+
 // ---- AC-3: the confirmed run backs up, adopts and applies -------------------------------------
 
 #[test]
