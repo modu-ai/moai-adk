@@ -135,6 +135,10 @@ Update and move
                          files
   cleanup-revert-plan    Preview undoing one HOME cleanup
   cleanup-revert         Undo one HOME cleanup
+  tidy-inventory         List every entry of the home moai
+                         folder with its class
+  tidy-plan              Preview the tidy of the home moai
+                         folder
   recovery-plan          Preview recovering hosts an update
                          left pending
   recovery-apply         Revert one update's changes on
