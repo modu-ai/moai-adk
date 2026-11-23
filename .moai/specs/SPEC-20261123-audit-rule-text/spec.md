@@ -149,4 +149,17 @@ The tier a ready note states (`audit-tier: 0|1|2 <reason>`) never goes below the
 
 ## Result
 
-Status: SPEC draft (revision 1). Slice C of SPEC-20261122-next-flow-skills-agents landed at 6dba35ae6b, the base of this SPEC. The text slice starts once this SPEC is reviewed and the card's scope holds the text paths.
+Status: SPEC revision 1; the text slice is written on the branch of this SPEC, on the tip that held slice C of SPEC-20261122-next-flow-skills-agents.
+
+Text slice, as built:
+- `skills/moai/references/audit.md` holds the four tier lines in "Audit tiers" (6,106 of 6,144 bytes: the intro, the findings bullet and three side rules were shortened, none of the pinned phrases).
+- `agents/audit.md`, `workflows/run.md` (under "Check-run rules") and `workflows/audit.md` ("Base agents", the lander's brief) carry the lines word for word. The scan test `refs_audit_tier_lines_match_in_every_text` pins it, with a planted change, a missing line and a doubled line.
+- `agents/audit.md` sets `isolation: none`; the line stays because the agent definition parser requires the key (`none` or `worktree`), and `tests/agent_defs_package.rs` now expects `none` for `moai-audit` and `worktree` for `moai-impl`. Its first step reads the audit worktree named in `scope` and ends `RESULT audit blocked` when it is missing or its HEAD differs (REQ-6, REQ-12).
+- The RUN Auditor row names the tier lines; the heavy-check paragraph states the slot rule; "fresh-clone reproduction" is in the scrub word list and left every shipped text.
+- The lander's brief carries the receipt rule and the merged-tree rule (REQ-9, REQ-10). The AUDIT tier step separates what the tools judge from what is a rule for the sessions (REQ-13); the old "who audits tier 1" wording is replaced, as D-6 says, and `refs_audit_tiers_match_the_code_floor` follows it.
+- AC-1 to AC-5 and AC-7 are the six `refs_` tests of `tests/next_flow_skill_scan.rs`, red first (8 of 51 failed before the texts changed). AC-6 holds: `agent_defs_package`, `lane_rules_2401` and the `product_cli` skill package and base-agent tests pass.
+
+Not done here:
+- `skills/moai/workflows/update.md` and `src/worktree_include.rs` still say `moai-audit` runs in an isolated worktree; they are outside this SPEC's scope.
+- The brief makes the audit worktree with plain git (D-5); it names a prepare command once one lands.
+- U-1 (one or two independent audits for high-risk) stays open for the user; the text carries one audit, as D-2 says.

@@ -2,8 +2,10 @@
 //!
 //! Claude Code copies the gitignored files a `.worktreeinclude` selects into every worktree it
 //! creates with git — `--worktree`, subagent worktrees (`isolation: worktree`, as the base
-//! agents `moai-impl` and `moai-audit` use) and desktop parallel sessions
-//! (https://code.claude.com/docs/en/worktrees.md, read 2026-11-13). The Go generation's
+//! agent `moai-impl` uses) and desktop parallel sessions
+//! (https://code.claude.com/docs/en/worktrees.md, read 2026-11-13). The audit agent
+//! `moai-audit` sets no isolation: it reads a worktree the lander makes with plain git, which
+//! Claude Code does not create, so this file does not reach it. The Go generation's
 //! template lists `.env` and `.env.*` there, so each worktree gets a copy of the project's
 //! secrets. This module only reads and reports: the same docs show `.env` as an example, so a
 //! line may be deliberate and is never edited here.

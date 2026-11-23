@@ -326,6 +326,22 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         }
     })?;
     let applied: &[(i64, String)] = if done.closed { &met } else { &[] };
+    // A closed card's worktrees are cleaned through the cleanup plan and its apply on the plan's
+    // digest (SPEC-20261123-worktree-slots REQ-12). It runs after the close and never undoes it:
+    // a problem is the `error` key of the `cleanup` answer. A card that stays open keeps them.
+    let cleanup = if done.closed {
+        crate::worktree_cleanup::run(
+            project,
+            home,
+            &crate::worktree_cleanup::Request {
+                card_id,
+                integration_ref: &full,
+                trigger: crate::worktree_cleanup::Trigger::Landing,
+            },
+        )
+    } else {
+        Value::Null
+    };
     Ok(json!({
         "action": "land", "project_id": id, "name": name, "card_id": card_id,
         "branch": branch, "moved": moved, "from_tip": tip, "to_tip": to_tip, "head": req.head,
@@ -336,5 +352,6 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         "by": req.by, "session": req.session,
         "previous": previous_json(&done.previous), "released": done.released,
         "events": done.events, "writes": done.events > 0 || moved,
+        "cleanup": cleanup,
     }))
 }

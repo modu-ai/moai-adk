@@ -212,7 +212,7 @@ fn a_context_window_with_a_null_percentage_says_ctx_n_a() {
         "context_window_size": 200000,
         "used_percentage": 0
     }));
-    assert!(out.contains("🔋 CW 0%"), "a real zero gave: {out}");
+    assert!(out.contains("🔋 CW 100%"), "a real zero gave: {out}");
 }
 
 /// The part of the product document about the status line: from its heading to the next one.

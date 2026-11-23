@@ -418,6 +418,41 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Continue your own card after a /clear or a restart
+    ///
+    /// Writes the ledger. For the same lane after a `/clear`: the lane runs `session-register
+    /// --continue` first, which keeps the old session id in its registry entry, then this command
+    /// moves the card's reservation at `--generation` to this session at the next generation, with
+    /// the same write scope, worktree and branch and a new lease from the ledger clock. The proofs
+    /// are the registry's own record and are read before anything is written: this session's entry
+    /// lists the holder session among its previous sessions (`not_same_lane`), no entry still names
+    /// the holder session (`holder_registered`), and the reservation, the running folder and the
+    /// entry name one git worktree (`other_worktree`); each is a `conflict` that names the code. A
+    /// card that is `done`, a reservation that is not `held` and a generation that is not the
+    /// current one are refused with the answer `card reclaim` gives for the same state, and a
+    /// reservation that changed holder while the proofs were read is `holder_changed`. Nothing is
+    /// written by a refusal. The card keeps its state (also `review`), notes, criteria and links;
+    /// one `card.adopt` event names both sessions, both generations, the lane and the proof, and
+    /// the reclaim count of the card is untouched. The worktree's changes, its processes and the
+    /// launcher's lock are not read: the same lane in the same tree has the work. The old
+    /// generation is stale from then on, so a session that is still running under the old id is
+    /// refused by `card check`. The new holder is this session's own id, never typed.
+    Adopt {
+        /// `C-12`.
+        card: String,
+        /// The generation the card has now (`card show` prints it).
+        #[arg(long)]
+        generation: i64,
+        /// Lease length of the new reservation in seconds, 60 to 86400 (default 14400).
+        #[arg(long)]
+        lease_secs: Option<i64>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Reads the ledger only. Show the card to work on next
     ///
     /// Reads the ledger only. Prints the cards this session holds (`mine`: generation, lease
@@ -1176,6 +1211,28 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 lease_secs,
             },
         ),
+        Action::Adopt {
+            card,
+            generation,
+            lease_secs,
+            project,
+            home,
+        } => {
+            let running_dir = std::env::current_dir().map_err(|e| {
+                format!("card adopt refused: the running folder cannot be read: {e}")
+            })?;
+            moai_cli::card::adopt::adopt(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &moai_cli::card::adopt::AdoptRequest {
+                    to_holder: &d::session_holder("adopt", env)?,
+                    generation,
+                    lease_secs,
+                    running_dir: &running_dir,
+                },
+            )
+        }
         Action::Next { project, home } => w::next(
             &project,
             &resolve_home(home)?,

@@ -8,8 +8,8 @@ use std::path::PathBuf;
 /// `moai check affected <base>..<head>` picks, from the paths the range changes, every test
 /// target of the same area (the file, the folder or the operation) and of the area's first
 /// word, the changed test files, fixtures and shared helpers, every target
-/// `tools/repo_scans.json` names, the Python tests of the area and the tests that name this
-/// host's operating system. It adds the library and binary tests, `git diff --check`,
+/// `tools/repo_scans.json` names and the tests that name this host's operating system. It
+/// picks and runs no Python test. It adds the library and binary tests, `git diff --check`,
 /// `cargo fmt`, `rustfmt --edition 2021` of each changed operation file, `bash -n` of each
 /// changed script and `cargo clippy`; the tests run in one call.
 #[derive(clap::Args)]
@@ -26,11 +26,11 @@ enum Action {
     /// paths are `<base>...<head>`, so a head behind its base's tip counts only its own changes.
     /// The checkout must be at the head with no modified tracked file, otherwise nothing runs.
     /// The cheap steps all run; when one fails, nothing after them runs. The cargo steps (clippy,
-    /// one `test` call by `cargo nextest run`, or `cargo test` when nextest is missing, and the
-    /// CLI build) run under one heavy slot held from the first to the last; a slot that is not
-    /// obtained gives its exit code to each of them and no cargo starts. The answer has one
-    /// `summary` line of `key=value` words in a fixed order: `check-affected`, base, head,
-    /// targets, py, scans, the exit status of each step in the order they ran, then
+    /// one `test` call by `cargo nextest run`, or `cargo test` when nextest is missing) run under
+    /// one heavy slot held from the first to the last; a slot that is not obtained gives its exit
+    /// code to each of them and no cargo starts. The answer has one `summary` line of
+    /// `key=value` words in a fixed order: `check-affected`, base, head, targets, scans, the exit
+    /// status of each step in the order they ran, then
     /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs and
     /// `heavy-slot.log` under `<build folder>/check-affected-<head>` (or `--out`).
     Affected {

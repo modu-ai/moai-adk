@@ -176,6 +176,16 @@ fn changes(slot: &Path) -> Result<Vec<Change>> {
             tracked,
         });
     }
+    // A copy that git ignores (an `info/exclude` or `.gitignore` line such as `.target-*`) is not
+    // in `git status` at all: read the slot folder, so it is named, refused and discarded too.
+    for name in worktree_slot::leftovers(slot)? {
+        if !out.iter().any(|c| c.path == name) {
+            out.push(Change {
+                path: name,
+                tracked: false,
+            });
+        }
+    }
     Ok(out)
 }
 

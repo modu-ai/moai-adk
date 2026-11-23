@@ -885,6 +885,81 @@ fn a_copy_a_killed_prep_left_is_named_once_and_removed_whole() {
     assert!(!slot.join(".target-inherit-4242").exists());
 }
 
+/// A copy a killed run left that git ignores never shows in `git status`, so the slot folder is
+/// read: each leftover is named once, refused without `--discard` and removed whole by it, in
+/// every audit slot. A leftover that is a link is removed as a link; what it pointed at stays.
+#[cfg(unix)]
+#[test]
+fn an_ignored_or_linked_copy_is_named_and_removed_by_discard_in_each_audit_slot() {
+    for name in ["audit-1", "audit-2", "audit-3"] {
+        let r = repo(&[("a.txt", "a\n")]);
+        // The folder git reads for every worktree of the repository.
+        fs::write(r.root.join(".git/info/exclude"), ".target-*\n").unwrap();
+        r.ok(&["prep", name, "--head", &r.first]);
+        let slot = r.slot(name);
+        let outside = r.root.parent().unwrap().join("keep-me");
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("note.txt"), "keep\n").unwrap();
+        fs::create_dir_all(slot.join(".target-inherit-4242/debug")).unwrap();
+        fs::write(slot.join(".target-inherit-4242/debug/x"), "x").unwrap();
+        fs::write(slot.join(".target-warming-77"), "a file").unwrap();
+        std::os::unix::fs::symlink(&outside, slot.join(".target-old-9")).unwrap();
+        assert_eq!(
+            git(&slot, &["status", "--porcelain", "--untracked-files=all"]),
+            "",
+            "{name}: git must not see the copies, or this test proves nothing"
+        );
+        let m = r.refused(
+            &["done", name],
+            &[
+                ".target-inherit-4242",
+                ".target-old-9",
+                ".target-warming-77",
+                "--discard",
+            ],
+        );
+        assert!(!m.contains("debug/x"), "{name}: {m}");
+        assert_eq!(m.matches(".target-inherit-4242").count(), 1, "{name}: {m}");
+        let again = r.refused(
+            &["prep", name, "--head", &r.second],
+            &[".target-inherit-4242", "--discard"],
+        );
+        assert!(again.contains(".target-old-9"), "{name}: {again}");
+        let done = r.ok(&["done", name, "--discard"]);
+        let mut removed: Vec<String> = done["removed"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect();
+        removed.sort();
+        assert_eq!(
+            removed,
+            [
+                ".target-inherit-4242",
+                ".target-old-9",
+                ".target-warming-77"
+            ],
+            "{name}: {done}"
+        );
+        for gone in [
+            ".target-inherit-4242",
+            ".target-old-9",
+            ".target-warming-77",
+        ] {
+            assert!(
+                fs::symlink_metadata(slot.join(gone)).is_err(),
+                "{name}: {gone} is still there"
+            );
+        }
+        assert!(
+            outside.join("note.txt").is_file(),
+            "{name}: the link was followed and its target emptied"
+        );
+        assert!(slot.join("target").is_dir() || !slot.join("target").exists());
+    }
+}
+
 #[test]
 fn a_cap_refusal_is_invalid_input_and_adds_nothing() {
     let r = repo(&[("a.txt", "a\n")]);

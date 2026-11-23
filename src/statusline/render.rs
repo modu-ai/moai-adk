@@ -16,9 +16,13 @@ const DISTANCE_NAME_CHARS: usize = 12;
 const LINE_ONE_STEPS: usize = 5;
 /// The forms of line 3, from the widest (Z0) to the narrowest (Z4).
 const LINE_THREE_STEPS: usize = 5;
-/// Above this percentage a window shows `🪫` instead of `🔋`, and only above it is the
-/// five-hour window shown (SPEC-20261122-statusline-limits D-2).
+/// The used percentage above which a window counts as nearly spent
+/// (SPEC-20261122-statusline-limits D-2).
 const HIGH_USE_PERCENT: i64 = 70;
+/// With less than this share left a window shows `🪫` instead of `🔋`: the same state as a use
+/// above [`HIGH_USE_PERCENT`], read from what is left (SPEC-20261122-statusline-limits-left
+/// REQ-2).
+const LOW_LEFT_PERCENT: i64 = 100 - HIGH_USE_PERCENT;
 /// The cost is shown below this many US dollars (at most `999999.99`, nine characters); a larger
 /// value (`1e308` printed a 337-character line) is left out.
 const MAX_COST_USD: f64 = 1_000_000.0;
@@ -127,7 +131,7 @@ struct Piece {
     url: String,
 }
 
-/// Pieces joined by one space (`🗂️  D43 R150 W14 E22 ✅ 19` is two pieces).
+/// Pieces joined by one space (`🚧 3 🙋 7` is two pieces, `🗂️ 150 → 🟡 14` three).
 type Group = Vec<Piece>;
 
 /// The plain text of a form: its groups, each group's pieces joined by a space, the groups
@@ -411,11 +415,13 @@ impl Renderer {
     /// equal neighbours. Each step drops more than the one before it, in the order under the
     /// Layouts table of the SPEC: the Claude Code version (Z1), the MoAI version with its update
     /// arrow (Z2), the countdowns (Z3), the five-hour window and the cost (Z4, as the table's
-    /// narrowest forms write it). The context window and the seven-day window stay in every form.
+    /// narrowest forms write it). The context window and the seven-day window stay in every form,
+    /// so the five-hour window always goes before them.
     ///
     /// The windows are numbers only — `🔋 CW 61%`, no graph, no colon, no `/clear` hint
-    /// (SPEC-20261121-statusline-detached REQ-5, REQ-7); a window whose percentage is unknown says
-    /// `n/a` with no battery icon, never a guessed zero.
+    /// (SPEC-20261121-statusline-detached REQ-5, REQ-7) — and each number is the share left, not
+    /// the share used (SPEC-20261122-statusline-limits-left REQ-1); a window whose percentage is
+    /// unknown says `n/a` with no battery icon, never a guessed number.
     fn line_three_forms(&self, s: &Status) -> Vec<Vec<Group>> {
         let t = &self.theme;
         let piece = |color, text: String| Piece {
@@ -441,13 +447,14 @@ impl Renderer {
             Some(pct) => vec![piece("", battery("CW", whole_percent(pct)))],
             None => unknown("CW"),
         });
-        // REQ-4 and D-2: the five-hour window only strictly above the high-use percentage.
+        // SPEC-20261122-statusline-limits-left REQ-3: the five-hour window whenever the input
+        // carries its percentage, at any level; the host does not always send it, and a window
+        // without a percentage is left out, never `5H n/a`.
         let five_hour = live(s.five_hour)
             .filter(|_| self.enabled("usage_5h"))
             .and_then(|w| {
-                let pct = whole_percent(w.used_percentage?);
-                (pct > HIGH_USE_PERCENT)
-                    .then(|| (vec![piece("", battery("5H", pct))], countdown(&w)))
+                let used = whole_percent(w.used_percentage?);
+                Some((vec![piece("", battery("5H", used))], countdown(&w)))
             });
         let seven_day = live(s.seven_day)
             .filter(|_| self.enabled("usage_7d"))
@@ -520,11 +527,11 @@ impl Renderer {
     }
 
     /// The flow line (SPEC-20261122-statusline-flow REQ-7 and REQ-9): the cards of the project's
-    /// local ledger by the stage of their progress — my card, what waits for me, what is blocked
-    /// or on hold, the flow and what closed today — under the one `cards` option. It is written
-    /// in the widest of its forms that fits the width budget; empty when there is no ledger to
-    /// read or nothing to show. Each number has its letter and each icon its spacing
-    /// ([`width::icon_text`]), so color is never the only signal.
+    /// local ledger by the stage of their progress — my card, the flow from the cards waiting
+    /// their turn to the ones done today, and what is blocked or needs the user's pick — under
+    /// the one `cards` option. It is written in the widest of its forms that fits the width
+    /// budget; empty when there is no ledger to read or nothing to show. Each number has its
+    /// icon and one space after it ([`width::icon_text`]), so color is never the only signal.
     fn flow_line(&self, s: &Status) -> String {
         let Some(flow) = s.flow.filter(|_| self.enabled("cards")) else {
             return String::new();
@@ -562,11 +569,16 @@ impl Renderer {
             .join(SEPARATOR)
     }
 
-    /// The forms of the flow line from the widest to the narrowest, never an empty one: the
-    /// groups drop from the right — the flow group, then the hold count, then the waits — and a
-    /// group whose counts are all zero is left out with its separator. Equal neighbours are
-    /// kept once. An unsplit [`Flow`] (the notes could not be read) has one form,
-    /// `🗂️  D<n> R<n> W<n>`, never a guess.
+    /// The forms of the flow line from the widest to the narrowest, never an empty one
+    /// (SPEC-20261122-statusline-limits-left REQ-6 and REQ-7). The widest form is my card, the
+    /// flow and what stands beside it:
+    /// `🎯 C-<n> <stage icon> | 🗂️ <ready> → 🟡 <working> → 📨 <submitted> → 🛬 <audited + landed>
+    /// → ✅ <done today> | 🚧 <blocked> 🙋 <hold>`. There is no letter code, an item whose count
+    /// is zero is left out with its arrow or its separator, and the drafts and the cards whose
+    /// lease has ended are not on the line. Each narrower form drops the leftmost item still in
+    /// the flow — `🗂️` first, `✅` last — while my card and `🚧 🙋` stay in every form. An
+    /// unsplit [`Flow`] (the notes could not be read) has one form, `🗂️ <ready> 🟡 <working>`
+    /// without an arrow, never a guess.
     fn flow_forms(&self, f: &Flow) -> Vec<Vec<Group>> {
         let t = &self.theme;
         let piece = |color, icon, text: String| Piece {
@@ -574,48 +586,67 @@ impl Renderer {
             text: width::icon_text(icon, &text),
             url: String::new(),
         };
+        // An item of a count: left out when there is nothing to count.
+        let item =
+            |color, icon, count: i64| (count > 0).then(|| piece(color, icon, count.to_string()));
         if !f.split {
-            let text = format!("D{} R{} W{}", f.draft, f.ready, f.working);
-            return vec![vec![vec![piece(t.cards_waiting, "🗂️", text)]]];
+            let known: Group = [
+                item(t.cards_waiting, "🗂️", f.ready),
+                item(t.cards_active, "🟡", f.working),
+            ]
+            .into_iter()
+            .flatten()
+            .collect();
+            return if known.is_empty() {
+                Vec::new()
+            } else {
+                vec![vec![known]]
+            };
         }
         let mine: Option<Group> = f.mine.map(|m| {
             vec![piece(
                 t.cards_active,
                 "🎯",
-                format!("c{} {}", m.card, m.stage.letter()),
+                format!("C-{} {}", m.card, m.stage.icon()),
             )]
         });
-        let waits: Option<Group> = (f.submitted + f.audited + f.landed > 0).then(|| {
-            vec![piece(
-                t.cards_posted,
-                "👀",
-                format!("S{} A{} L{}", f.submitted, f.audited, f.landed),
-            )]
-        });
-        let blocked = || piece(t.issues, "⛔", format!("B{}", f.blocked));
-        let held = || piece(t.issues, "⏸️", format!("H{}", f.hold));
-        let attention: Option<Group> = (f.blocked + f.hold > 0).then(|| vec![blocked(), held()]);
-        let attention_no_hold: Option<Group> = (f.blocked > 0).then(|| vec![blocked()]);
-        let flow: Option<Group> = (f.draft + f.ready + f.working + f.stale + f.done_today > 0)
-            .then(|| {
-                vec![
-                    piece(
-                        t.cards_waiting,
-                        "🗂️",
-                        format!("D{} R{} W{} E{}", f.draft, f.ready, f.working, f.stale),
-                    ),
-                    piece(t.cards_done, "✅", f.done_today.to_string()),
-                ]
-            });
-        let levels: [[Option<Group>; 4]; 4] = [
-            [mine.clone(), waits.clone(), attention.clone(), flow],
-            [mine.clone(), waits.clone(), attention, None],
-            [mine.clone(), waits, attention_no_hold.clone(), None],
-            [mine, None, attention_no_hold, None],
-        ];
+        let chain: Vec<Piece> = [
+            item(t.cards_waiting, "🗂️", f.ready),
+            item(t.cards_active, "🟡", f.working),
+            item(t.cards_posted, "📨", f.submitted),
+            item(t.branch, "🛬", f.audited.saturating_add(f.landed)),
+            item(t.cards_done, "✅", f.done_today),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        let beside: Group = [
+            item(t.issues, "🚧", f.blocked),
+            item(t.issues, "🙋", f.hold),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        let arrow = || Piece {
+            color: t.muted,
+            text: "→".to_string(),
+            url: String::new(),
+        };
         let mut forms: Vec<Vec<Group>> = Vec::new();
-        for level in levels {
-            let form: Vec<Group> = level.into_iter().flatten().collect();
+        for dropped in 0..=chain.len() {
+            // The items left in the flow, an arrow between each two.
+            let mut flow: Group = Vec::new();
+            for item in &chain[dropped..] {
+                if !flow.is_empty() {
+                    flow.push(arrow());
+                }
+                flow.push(item.clone());
+            }
+            let form: Vec<Group> = [mine.clone(), Some(flow), Some(beside.clone())]
+                .into_iter()
+                .flatten()
+                .filter(|group| !group.is_empty())
+                .collect();
             if form.is_empty() {
                 continue;
             }
@@ -631,21 +662,28 @@ impl Renderer {
     }
 }
 
-/// The whole percentage a window shows: the fraction cut off, from 0 to 100 (REQ-10 of
+/// The whole used percentage of a window: the fraction cut off, from 0 to 100 (REQ-10 of
 /// SPEC-20261121-statusline-detached).
 fn whole_percent(pct: f64) -> i64 {
     (pct as i64).clamp(0, 100)
 }
 
-/// `<battery> <label> <pct>%`: the battery icon turns from `🔋` to `🪫` above the high-use
-/// percentage.
-fn battery(label: &str, pct: i64) -> String {
-    let icon = if pct > HIGH_USE_PERCENT {
+/// The share of a window that is left, from its whole used percentage.
+fn left_percent(used: i64) -> i64 {
+    100 - used
+}
+
+/// `<battery> <label> <left>%` from the whole used percentage: the number is the share left, and
+/// the battery icon turns from `🔋` to `🪫` when less than [`LOW_LEFT_PERCENT`] is left
+/// (SPEC-20261122-statusline-limits-left REQ-1, REQ-2).
+fn battery(label: &str, used: i64) -> String {
+    let left = left_percent(used);
+    let icon = if left < LOW_LEFT_PERCENT {
         "🪫"
     } else {
         "🔋"
     };
-    width::icon_text(icon, &format!("{label} {pct}%"))
+    width::icon_text(icon, &format!("{label} {left}%"))
 }
 
 /// The reset countdown from the seconds left, without the words `resets in`
@@ -750,9 +788,11 @@ mod tests {
         }
     }
 
-    /// The line 3 of [`full_status`] (SPEC-20261122-statusline-limits): the five-hour window at
-    /// 25 percent is hidden, and the update arrow names the template, then the build.
-    const FULL_WINDOWS: &str = "🔋 CW 50% | 🪫 7D 75% | 🤖 2.1.293 | 🗿 2.0 -> 3.0";
+    /// The line 3 of [`full_status`] (SPEC-20261122-statusline-limits-left): each number is the
+    /// share left (50, 25 and 75 percent used), the five-hour window resets one second after the
+    /// render's clock, and the update arrow names the template, then the build.
+    const FULL_WINDOWS: &str =
+        "🔋 CW 50% | 🔋 5H 75% (0m) | 🪫 7D 25% | 🤖 2.1.293 | 🗿 2.0 -> 3.0";
 
     /// SPEC-20261122-statusline-where: line 1 is the model with its effort, the repository with
     /// its forge counts and the branch with its marks; line 3 is the last line and ends with the
@@ -763,9 +803,7 @@ mod tests {
     fn full_layout_has_the_place_line_then_the_windows_with_ahead_before_behind() {
         assert_eq!(
             plain(&full_status(), &[]),
-            format!(
-                "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↑5 ↓2 +3\n{FULL_WINDOWS}"
-            )
+            format!("🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3\n{FULL_WINDOWS}")
         );
     }
 
@@ -780,7 +818,7 @@ mod tests {
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
         assert_eq!(
             line,
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↓2 +3"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↓2 +3"
         );
         assert!(!line.contains('↑'), "{line}");
     }
@@ -795,7 +833,7 @@ mod tests {
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
         assert_eq!(
             line,
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↑4 +2"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑4 +2"
         );
     }
 
@@ -849,15 +887,22 @@ mod tests {
             hold: 7,
             done_today: 19,
             mine: Some(MyCard {
-                card: 12,
+                card: EXAMPLE_CARD,
                 stage: Stage::Working,
             }),
             split: true,
         }
     }
 
-    /// The widest form of the flow line of [`example_flow`].
-    const P0: &str = "🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19";
+    /// The card of mine in [`example_flow`].
+    const EXAMPLE_CARD: i64 = 12;
+
+    /// The widest form of the flow line of [`example_flow`]: my card with the icon of its stage,
+    /// the flow from the cards waiting their turn to the ones done today, then what stands
+    /// beside the flow. The drafts and the ended leases of the example are not on the line.
+    fn p0() -> String {
+        format!("🎯 C-{EXAMPLE_CARD} 🟡 | 🗂️ 150 → 🟡 14 → 📨 11 → 🛬 2 → ✅ 19 | 🚧 3 🙋 7")
+    }
 
     /// The render clock the example is measured at (`--now-unix` seam).
     const EXAMPLE_NOW: i64 = 1_700_000_000;
@@ -870,9 +915,10 @@ mod tests {
         assert_eq!(
             out,
             format!(
-                "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  0 🔀 0 | 🌳 c135 | 🅱️  v2026.11.0 ↑207 +11\n\
-                 {P0}\n\
-                 🪫 CW 97% | 🔋 7D 21% (6d 21h) | 🤖 2.1.325 | 🗿 4.2647.10"
+                "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 0 🔀 0 | 🌳 c135 | 🅱️ v2026.11.0 ↑207 +11\n\
+                 {flow}\n\
+                 🪫 CW 3% | 🔋 7D 79% (6d 21h) | 🤖 2.1.325 | 🗿 4.2647.10",
+                flow = p0()
             )
         );
     }
@@ -889,7 +935,7 @@ mod tests {
         });
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
         assert_eq!(
-            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  a1b2c3d",
+            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ a1b2c3d",
             "{line}"
         );
         assert!(!line.contains("↑"), "a detached head has no ahead: {line}");
@@ -897,7 +943,7 @@ mod tests {
         status.git = Some(segments::GitStatus::default());
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
         assert_eq!(
-            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3",
+            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3",
             "no branch and no SHA leaves the branch item out"
         );
     }
@@ -911,16 +957,16 @@ mod tests {
         status.github.available = false;
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
         assert_eq!(
-            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️  n/a 🔀 n/a | 🅱️  main ↑5 ↓2 +3",
+            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️ n/a 🔀 n/a | 🅱️ main ↑5 ↓2 +3",
             "{line}"
         );
         assert!(
-            !line.contains("⬇️  0"),
+            !line.contains("⬇️ 0"),
             "a failed lookup is never zero: {line}"
         );
         status.repo = None;
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
-        assert_eq!(line, "🧠 Opus high·t | 🅱️  main ↑5 ↓2 +3", "{line}");
+        assert_eq!(line, "🧠 Opus high·t | 🅱️ main ↑5 ↓2 +3", "{line}");
         assert!(!line.contains("n/a") && !line.contains('📡'), "{line}");
     }
 
@@ -957,10 +1003,10 @@ mod tests {
 
     /// #2756 leader decision 6862179411 item 2: no `💾` file-change segment, even with its
     /// `git_status` option left enabled; the branch keeps its `+N` changes. The five-hour window
-    /// at 25 percent stays hidden: since SPEC-20261122-statusline-limits REQ-4 it shows only above
-    /// 70 percent (`window_tests`).
+    /// the input carries is shown at any level (SPEC-20261122-statusline-limits-left REQ-3,
+    /// `window_tests`).
     #[test]
-    fn the_five_hour_window_and_the_file_change_segment_are_never_shown() {
+    fn the_file_change_segment_is_never_shown_and_the_five_hour_window_is() {
         let status = full_status();
         assert!(
             status.five_hour.is_some() && status.git.is_some(),
@@ -976,9 +1022,9 @@ mod tests {
             ..Default::default()
         };
         let out = Renderer::new(&config, None).render(&status);
-        assert!(!out.contains("5H"), "{out}");
+        assert!(out.contains("🔋 5H 75%"), "{out}");
         assert!(!out.contains('💾'), "{out}");
-        assert!(out.contains("🅱️  main ↑5 ↓2 +3"), "{out}");
+        assert!(out.contains("🅱️ main ↑5 ↓2 +3"), "{out}");
     }
 
     #[test]
@@ -989,12 +1035,12 @@ mod tests {
         assert_eq!(plain(&status, &[]), "CW n/a | 7D n/a");
         assert_eq!(plain(&status, &["context"]), "7D n/a");
         assert_eq!(plain(&status, &["usage_7d"]), "CW n/a");
-        // A window that reports a real zero keeps it, with its icon.
+        // A window that reports a real zero used is a known number, with its icon.
         status.seven_day = Some(RateWindow {
             used_percentage: Some(0.0),
             resets_at: None,
         });
-        assert_eq!(plain(&status, &["context"]), "🔋 7D 0%");
+        assert_eq!(plain(&status, &["context"]), "🔋 7D 100%");
     }
 
     /// REQ-9: a window whose percentage is unavailable says `n/a` with no battery icon and never
@@ -1021,7 +1067,8 @@ mod tests {
         );
     }
 
-    /// REQ-10: a window's percentage is shown from 0 to 100 and no further, at the edges too.
+    /// REQ-10: a window's percentage is shown from 0 to 100 and no further, at the edges too. The
+    /// number is the share left of the used percentage given.
     #[test]
     fn window_percentages_stay_between_zero_and_one_hundred() {
         let week = |pct: f64| {
@@ -1034,13 +1081,13 @@ mod tests {
             };
             plain(&status, &["context", "session"])
         };
-        assert_eq!(week(-5.0), "🔋 7D 0%");
-        assert_eq!(week(0.0), "🔋 7D 0%");
-        assert_eq!(week(1.0), "🔋 7D 1%");
-        assert_eq!(week(99.0), "🪫 7D 99%");
-        assert_eq!(week(100.0), "🪫 7D 100%");
-        assert_eq!(week(101.0), "🪫 7D 100%");
-        assert_eq!(week(1_000_000.0), "🪫 7D 100%");
+        assert_eq!(week(-5.0), "🔋 7D 100%");
+        assert_eq!(week(0.0), "🔋 7D 100%");
+        assert_eq!(week(1.0), "🔋 7D 99%");
+        assert_eq!(week(99.0), "🪫 7D 1%");
+        assert_eq!(week(100.0), "🪫 7D 0%");
+        assert_eq!(week(101.0), "🪫 7D 0%");
+        assert_eq!(week(1_000_000.0), "🪫 7D 0%");
         let ctx = |used: i64| {
             let status = Status {
                 context: Some(used as f64),
@@ -1048,10 +1095,10 @@ mod tests {
             };
             plain(&status, &["usage_7d"])
         };
-        assert_eq!(ctx(0), "🔋 CW 0%");
-        assert_eq!(ctx(100), "🪫 CW 100%");
-        assert_eq!(ctx(101), "🪫 CW 100%");
-        assert_eq!(ctx(5_000), "🪫 CW 100%");
+        assert_eq!(ctx(0), "🔋 CW 100%");
+        assert_eq!(ctx(100), "🪫 CW 0%");
+        assert_eq!(ctx(101), "🪫 CW 0%");
+        assert_eq!(ctx(5_000), "🪫 CW 0%");
     }
 
     /// REQ-11: the screen is English only — nothing a render prints holds a Hangul letter, with
@@ -1075,8 +1122,8 @@ mod tests {
         }
     }
 
-    /// #2559 AC-1: the window icon's thresholds pinned at N/N+1 — the battery icon turns at
-    /// 70/71. Plain output, so only the threshold decides.
+    /// #2559 AC-1: the window icon's thresholds pinned at N/N+1 — the battery icon turns between
+    /// 70 and 71 percent used (30 and 29 left). Plain output, so only the threshold decides.
     #[test]
     fn window_icon_thresholds_hold_at_their_boundaries() {
         let at = |pct: f64| {
@@ -1089,10 +1136,10 @@ mod tests {
             };
             plain(&status, &["context", "session"])
         };
-        assert_eq!(at(70.0), "🔋 7D 70%");
-        assert_eq!(at(71.0), "🪫 7D 71%");
-        assert_eq!(at(9.0), "🔋 7D 9%");
-        assert_eq!(at(10.0), "🔋 7D 10%");
+        assert_eq!(at(70.0), "🔋 7D 30%");
+        assert_eq!(at(71.0), "🪫 7D 29%");
+        assert_eq!(at(9.0), "🔋 7D 91%");
+        assert_eq!(at(10.0), "🔋 7D 90%");
     }
 
     /// SPEC-20261122-statusline-where REQ-8: line 1 has no tag. The `session` option is still
@@ -1122,27 +1169,27 @@ mod tests {
             ..Default::default()
         };
         let with_zero = plain(&status, &[]);
-        assert!(with_zero.contains("📡 owner/repo, ⬇️  0 🔀 0 | 🅱️  main ↑5 ↓2 +3"));
+        assert!(with_zero.contains("📡 owner/repo, ⬇️ 0 🔀 0 | 🅱️ main ↑5 ↓2 +3"));
         // #2559: icons, not the old letter labels.
         assert!(!with_zero.contains("I: ") && !with_zero.contains("PR: "));
         // A failed query says `n/a`, never a zero and never a hidden segment (REQ-3).
         status.github.available = false;
         let unknown = plain(&status, &[]);
         assert!(
-            unknown.contains("📡 owner/repo, ⬇️  n/a 🔀 n/a | 🅱️  main ↑5 ↓2 +3"),
+            unknown.contains("📡 owner/repo, ⬇️ n/a 🔀 n/a | 🅱️ main ↑5 ↓2 +3"),
             "{unknown}"
         );
-        assert!(!unknown.contains("⬇️  0"), "{unknown}");
+        assert!(!unknown.contains("⬇️ 0"), "{unknown}");
         // A user switch keeps the counts hidden.
         status.github.available = true;
         status.github.suppressed = true;
         let suppressed = plain(&status, &[]);
         assert!(
-            suppressed.contains("📡 owner/repo | 🅱️  main ↑5 ↓2 +3"),
+            suppressed.contains("📡 owner/repo | 🅱️ main ↑5 ↓2 +3"),
             "{suppressed}"
         );
         status.github.suppressed = false;
-        assert!(plain(&status, &["github"]).contains("📡 owner/repo | 🅱️  main ↑5 ↓2 +3"));
+        assert!(plain(&status, &["github"]).contains("📡 owner/repo | 🅱️ main ↑5 ↓2 +3"));
         assert!(!plain(&status, &["git_branch"]).contains("📡"));
         assert!(!plain(&status, &["git_status"]).contains("💾"));
         // The repository name unknown: the item and its counts are left out (REQ-1).
@@ -1174,21 +1221,25 @@ mod tests {
         let lines: Vec<&str> = with.lines().collect();
         assert_eq!(lines.len(), 3, "{with}");
         assert_eq!(Some(lines[0]), without.lines().next());
-        assert_eq!(lines[1], P0);
+        assert_eq!(lines[1], p0());
         assert_eq!(Some(lines[2]), without.lines().nth(1));
         // The `cards` option hides the flow line and nothing else.
         assert_eq!(plain(&status, &["cards"]), without);
         // The flow comes from the ledger, not from git.
         let flow_line =
             |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
-        assert_eq!(flow_line(&status, &["github"]), P0);
+        assert_eq!(flow_line(&status, &["github"]), p0());
         status.github.suppressed = true;
-        assert_eq!(flow_line(&status, &[]), P0);
+        assert_eq!(flow_line(&status, &[]), p0());
         status.repo = None;
         status.git = None;
         let bare = plain(&status, &["git_branch"]);
         assert_eq!(bare.lines().next(), Some("🧠 Opus high·t"));
-        assert_eq!(bare.lines().nth(1), Some(P0), "line 1 keeps the model");
+        assert_eq!(
+            bare.lines().nth(1),
+            Some(p0().as_str()),
+            "line 1 keeps the model"
+        );
         // A ledger without a card has nothing to show: the line is left out, not zeros.
         status.flow = Some(Flow {
             split: true,
@@ -1217,7 +1268,7 @@ mod tests {
         let full = line(&status, &[]);
         assert_eq!(
             full,
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↑5 ↓2 +3 | 🔗 #42 pending"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending"
         );
         assert!(
             !full.replace("owner/repo", "").contains('/'),
@@ -1228,23 +1279,23 @@ mod tests {
         assert!(at("🔀") < at("🅱️") && at("🅱️") < at("🔗"));
         // The comma sits right after the repository name, inside the item: no separator
         // between the repository and the forge counts.
-        assert!(full.contains("owner/repo, ⬇️  7 🔀 3 | "), "{full}");
+        assert!(full.contains("owner/repo, ⬇️ 7 🔀 3 | "), "{full}");
         // The versions are on the windows line, not on line 1.
         assert!(!full.contains("🤖") && !full.contains("🗿"), "{full}");
         // The flow line is line 2 and the windows alone are line 3.
-        assert_eq!(plain(&status, &[]).lines().nth(1).unwrap(), P0);
+        assert_eq!(plain(&status, &[]).lines().nth(1).unwrap(), p0());
         assert_eq!(plain(&status, &[]).lines().nth(2).unwrap(), windows);
         // Without the forge counts the repository name stands alone, with no comma.
         assert_eq!(
             line(&status, &["github"]),
-            "🧠 Opus high·t | 📡 owner/repo | 🅱️  main ↑5 ↓2 +3 | 🔗 #42 pending"
+            "🧠 Opus high·t | 📡 owner/repo | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending"
         );
         // The `cards` switch hides the flow line and nothing else.
         assert_eq!(plain(&status, &["cards"]).lines().nth(1).unwrap(), windows);
         // The pull request keeps the last place of line 1.
         assert_eq!(
             line(&status, &["pr"]),
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↑5 ↓2 +3"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3"
         );
     }
 
@@ -1262,7 +1313,7 @@ mod tests {
         // without marks.
         let off = plain(&status, &["git_branch"]);
         assert_eq!(off.lines().next().unwrap(), "🧠 Opus high·t | 🌳 wt");
-        assert_eq!(off.lines().nth(1).unwrap(), P0);
+        assert_eq!(off.lines().nth(1).unwrap(), p0());
         assert_eq!(off.lines().nth(2).unwrap(), windows);
         // The full render: an unnamed repository leaves its item out (REQ-1), the worktree and
         // the branch follow the model, the flow line comes next and the windows are last.
@@ -1270,23 +1321,22 @@ mod tests {
         assert_eq!(out.lines().count(), 3, "{out}");
         assert_eq!(
             out.lines().next().unwrap(),
-            "🧠 Opus high·t | 🌳 wt | 🅱️  main ↑5 ↓2 +3"
+            "🧠 Opus high·t | 🌳 wt | 🅱️ main ↑5 ↓2 +3"
         );
-        assert_eq!(out.lines().nth(1).unwrap(), P0);
+        assert_eq!(out.lines().nth(1).unwrap(), p0());
         // No git and no worktree: line 1 keeps the model, the flow line stays second.
         status.git = None;
         status.worktree.clear();
         let out = plain(&status, &[]);
         assert_eq!(out.lines().count(), 3, "{out}");
         assert_eq!(out.lines().next().unwrap(), "🧠 Opus high·t");
-        assert_eq!(out.lines().nth(1).unwrap(), P0);
+        assert_eq!(out.lines().nth(1).unwrap(), p0());
     }
 
-    /// Color is never the only signal. Every number keeps its letter and every icon its text,
-    /// the groups take colors of their own, and the text is the plain text once the escapes are
-    /// removed.
+    /// Color is never the only signal. Every number keeps its icon, neighbours in the flow take
+    /// colors of their own, and the text is the plain text once the escapes are removed.
     #[test]
-    fn the_flow_line_keeps_its_letters_under_every_color_profile() {
+    fn the_flow_line_keeps_its_icons_under_every_color_profile() {
         let mut status = full_status();
         status.flow = Some(example_flow());
         let text = plain(&status, &[]);
@@ -1295,22 +1345,27 @@ mod tests {
             for profile in [Profile::TrueColor, Profile::Ansi256] {
                 let out = colored(name, profile, &status);
                 assert_eq!(strip_sgr(&out), text, "{name} {profile:?}");
+                let mine = format!("🎯 C-{EXAMPLE_CARD} 🟡");
                 for (hex, part) in [
-                    (t.cards_active, "🎯 c12 W"),
-                    (t.cards_posted, "👀 S11 A2 L0"),
-                    (t.issues, "⛔ B3"),
-                    (t.issues, "⏸️  H7"),
-                    (t.cards_waiting, "🗂️  D43 R150 W14 E22"),
+                    (t.cards_active, mine.as_str()),
+                    (t.cards_waiting, "🗂️ 150"),
+                    (t.muted, "→"),
+                    (t.cards_active, "🟡 14"),
+                    (t.cards_posted, "📨 11"),
+                    (t.branch, "🛬 2"),
                     (t.cards_done, "✅ 19"),
+                    (t.issues, "🚧 3"),
+                    (t.issues, "🙋 7"),
                 ] {
                     assert!(out.contains(&profile.paint(hex, part)), "{name} {part}");
                 }
             }
+            // The items of the flow, in their order on the line.
             let colors = [
+                t.cards_waiting,
                 t.cards_active,
                 t.cards_posted,
-                t.issues,
-                t.cards_waiting,
+                t.branch,
                 t.cards_done,
             ];
             for pair in colors.windows(2) {
@@ -1367,7 +1422,7 @@ mod tests {
         status.worktree = "host-name".into();
         assert_eq!(
             line1(&status, &[]),
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🌳 host-name | 🅱️  main ↑5 ↓2 +3"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 host-name | 🅱️ main ↑5 ↓2 +3"
         );
         assert!(!plain(&status, &[]).contains("WT-c"));
         assert_eq!(line1(&status, &["worktree"]), base);
@@ -1375,7 +1430,7 @@ mod tests {
         status.worktree = "main".into();
         assert_eq!(
             line1(&status, &[]),
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🌳 main ↑5 ↓2 +3"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 main ↑5 ↓2 +3"
         );
         // The main checkout (no host name) has no worktree item.
         status.worktree.clear();
@@ -1400,13 +1455,13 @@ mod tests {
         let lines: Vec<_> = out.lines().collect();
         assert_eq!(
             lines[0],
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🌳 wt | 🅱️  main ↑5 ↓2 +3 | 🔗 #42 pending",
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 wt | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending",
             "no cache segment: {}",
             lines[0]
         );
         // The windows follow as numbers and the two versions close the line.
         assert!(lines[1].starts_with("🔋 CW 50%"), "{}", lines[1]);
-        assert!(lines[1].contains("75%"), "{}", lines[1]);
+        assert!(lines[1].contains("7D 25%"), "{}", lines[1]);
         assert!(lines[1].ends_with("🗿 2.0 -> 3.0"), "{}", lines[1]);
         assert_eq!(lines.len(), 2, "{out}");
         assert!(
@@ -1430,7 +1485,7 @@ mod tests {
         status.worktree.clear();
         assert_eq!(
             plain(&status, &[]).lines().next(),
-            Some("🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↑5 ↓2 +3"),
+            Some("🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3"),
             "no empty `| |`"
         );
     }
@@ -1485,7 +1540,7 @@ mod tests {
             Some("🔋 CW 50% | 🤖 2.1.293 | 🗿 2.0 -> 3.0")
         );
         // And they keep that line non-empty without any window.
-        let output = plain(&full_status(), &["usage_7d", "context"]);
+        let output = plain(&full_status(), &["usage_5h", "usage_7d", "context"]);
         assert_eq!(output.lines().nth(1), Some("🤖 2.1.293 | 🗿 2.0 -> 3.0"));
         // With the repository and the branch hidden, line 1 keeps the model.
         let output = plain(&full_status(), &["git_branch", "git_status"]);
@@ -1506,11 +1561,11 @@ mod tests {
         };
         let off = ["session"];
         // REQ-7: the `(⚠️ /clear)` and `(🛑/clear!)` hints are gone at every band — the window
-        // and the percentage stay exactly as they were.
-        assert_eq!(plain(&status, &off), "🪫 CW 90%");
-        assert_eq!(plain(&status, &[]), "🪫 CW 90%");
+        // and the percentage left stand alone.
+        assert_eq!(plain(&status, &off), "🪫 CW 10%");
+        assert_eq!(plain(&status, &[]), "🪫 CW 10%");
         status.context = Some(95.0);
-        assert_eq!(plain(&status, &off), "🪫 CW 95%");
+        assert_eq!(plain(&status, &off), "🪫 CW 5%");
         assert_eq!(plain(&status, &["context", "session"]), "MoAI");
         assert_eq!(plain(&status, &["context"]), "MoAI");
     }
@@ -1566,9 +1621,9 @@ mod tests {
                     (t.version, "🤖 2.1.293"),
                     (t.version, "🗿 2.0 -> 3.0"),
                     (t.repo, "📡 owner/repo,"),
-                    (t.issues, "⬇️  7"),
+                    (t.issues, "⬇️ 7"),
                     (t.prs, "🔀 3"),
-                    (t.branch, "🅱️  main ↑5 ↓2 +3"),
+                    (t.branch, "🅱️ main ↑5 ↓2 +3"),
                 ] {
                     assert!(
                         out.contains(&profile.paint(hex, text)),
@@ -1606,12 +1661,17 @@ mod tests {
     }
 }
 
-/// AC-5, AC-7 (the flow line's share) and AC-8 (icon spacing) of SPEC-20261122-statusline-flow:
-/// the forms of the flow line, from the widest to the narrowest.
+/// The forms of the flow line, from the widest to the narrowest
+/// (SPEC-20261122-statusline-flow AC-5 and AC-7, with the one icon set of
+/// SPEC-20261122-statusline-limits-left REQ-6 and REQ-7): no letter codes, a zero count hidden,
+/// the items dropping from the left of the flow, and one space after every icon.
 #[cfg(test)]
 mod flow_line_tests {
     use super::*;
     use crate::statusline::state::{MyCard, Stage};
+
+    /// The number of my card in the fixtures.
+    const CARD: i64 = 12;
 
     fn full() -> Flow {
         Flow {
@@ -1621,12 +1681,12 @@ mod flow_line_tests {
             stale: 22,
             submitted: 11,
             audited: 2,
-            landed: 0,
+            landed: 1,
             blocked: 3,
             hold: 7,
             done_today: 19,
             mine: Some(MyCard {
-                card: 12,
+                card: CARD,
                 stage: Stage::Working,
             }),
             split: true,
@@ -1637,6 +1697,14 @@ mod flow_line_tests {
         Flow {
             mine: None,
             ..full()
+        }
+    }
+
+    /// A split flow with nothing in it.
+    fn empty() -> Flow {
+        Flow {
+            split: true,
+            ..Default::default()
         }
     }
 
@@ -1663,39 +1731,52 @@ mod flow_line_tests {
         only_flow(flow, budget, None)
     }
 
-    const P: [(&str, usize); 4] = [
-        (
-            "🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19",
-            67,
-        ),
-        ("🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7", 38),
-        ("🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3", 31),
-        ("🎯 c12 W | ⛔ B3", 16),
-    ];
-    const Q: [(&str, usize); 4] = [
-        (
-            "👀 S11 A2 L0 | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19",
-            56,
-        ),
-        ("👀 S11 A2 L0 | ⛔ B3 ⏸️  H7", 27),
-        ("👀 S11 A2 L0 | ⛔ B3", 20),
-        ("⛔ B3", 5),
+    /// The forms of [`no_card`] with their widths: `🛬` counts the audited and the landed cards
+    /// together (2 + 1), the 43 drafts and the 22 ended leases are not on the line, and each
+    /// narrower form drops the leftmost item of the flow — `🗂️` first — while `🚧 🙋` stay.
+    const Q: [(&str, usize); 6] = [
+        ("🗂️ 150 → 🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7", 49),
+        ("🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7", 40),
+        ("📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7", 32),
+        ("🛬 3 → ✅ 19 | 🚧 3 🙋 7", 24),
+        ("✅ 19 | 🚧 3 🙋 7", 17),
+        ("🚧 3 🙋 7", 9),
     ];
 
-    /// Every form is exactly the string of the Layouts section, with the width the section
-    /// gives, and changes at its boundary: a budget equal to the width keeps the form, one less
-    /// drops to the next.
+    /// My card as the line writes it: `🎯 C-<n> <stage icon>`.
+    fn mine(stage: Stage) -> String {
+        format!("🎯 C-{CARD} {}", stage.icon())
+    }
+
+    /// The forms of [`full`]: my card stands first in every form of [`Q`].
+    fn with_my_card() -> Vec<String> {
+        Q.iter()
+            .map(|(form, _)| format!("{} | {form}", mine(Stage::Working)))
+            .collect()
+    }
+
+    /// Every form is exactly its string, with its width, and changes at its boundary: a budget
+    /// equal to the width keeps the form, one less drops to the next.
     #[test]
-    fn every_form_is_exactly_the_string_of_the_layouts_section() {
-        for (flow, forms) in [(full(), P), (no_card(), Q)] {
-            for (i, (text, cols)) in forms.iter().enumerate() {
-                assert_eq!(width::display_width(text), *cols, "{text}");
-                assert_eq!(&plain(flow, Some(*cols)), text, "budget {cols}");
+    fn every_form_is_exactly_its_string_and_changes_at_its_boundary() {
+        for (form, cols) in Q {
+            assert_eq!(width::display_width(form), cols, "{form}");
+        }
+        let without: Vec<String> = Q.iter().map(|(form, _)| (*form).to_string()).collect();
+        assert_eq!(
+            with_my_card()[0],
+            format!("🎯 C-{CARD} 🟡 | 🗂️ 150 → 🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7")
+        );
+        for (flow, forms) in [(full(), with_my_card()), (no_card(), without)] {
+            for (i, text) in forms.iter().enumerate() {
+                let cols = width::display_width(text);
+                assert_eq!(&plain(flow, Some(cols)), text, "budget {cols}");
                 if i == 0 {
-                    assert_eq!(&plain(flow, Some(*cols + 40)), text, "{cols} + 40");
+                    assert_eq!(&plain(flow, Some(cols + 40)), text, "{cols} + 40");
                 }
-                if let Some((next, _)) = forms.get(i + 1) {
-                    assert_eq!(&plain(flow, Some(*cols - 1)), next, "budget {}", cols - 1);
+                if let Some(next) = forms.get(i + 1) {
+                    assert!(width::display_width(next) < cols, "{next} is not narrower");
+                    assert_eq!(&plain(flow, Some(cols - 1)), next, "budget {}", cols - 1);
                 }
             }
         }
@@ -1703,104 +1784,161 @@ mod flow_line_tests {
 
     #[test]
     fn no_budget_writes_the_widest_form_and_a_budget_below_the_narrowest_the_narrowest() {
-        assert_eq!(plain(full(), None), P[0].0);
+        assert_eq!(plain(full(), None), with_my_card()[0]);
         assert_eq!(plain(no_card(), None), Q[0].0);
         for budget in [15, 5, 0] {
-            assert_eq!(plain(full(), Some(budget)), P[3].0, "{budget}");
+            assert_eq!(plain(full(), Some(budget)), with_my_card()[5], "{budget}");
         }
-        assert_eq!(plain(no_card(), Some(0)), Q[3].0);
+        assert_eq!(plain(no_card(), Some(0)), Q[5].0);
     }
 
-    /// A group whose counts are all zero is left out with its separator; a line with nothing
-    /// to show is left out whole.
+    /// A count of zero hides its item — with its arrow or its separator — and never prints `0`;
+    /// a line with nothing to show is left out whole.
     #[test]
-    fn groups_of_zero_counts_are_left_out_with_their_separator() {
-        let flow = Flow {
-            submitted: 0,
-            audited: 0,
-            landed: 0,
-            ..full()
-        };
+    fn a_zero_count_hides_its_item() {
+        let line = |flow: Flow| plain(flow, None);
         assert_eq!(
-            plain(flow, None),
-            "🎯 c12 W | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19"
+            line(Flow {
+                ready: 0,
+                ..no_card()
+            }),
+            "🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7"
         );
-        let flow = Flow {
-            blocked: 0,
-            hold: 0,
-            ..full()
-        };
         assert_eq!(
-            plain(flow, None),
-            "🎯 c12 W | 👀 S11 A2 L0 | 🗂️  D43 R150 W14 E22 ✅ 19"
+            line(Flow {
+                submitted: 0,
+                ..no_card()
+            }),
+            "🗂️ 150 → 🟡 14 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7"
         );
-        // Hold alone shows `B0` beside it, and drops with the hold count when narrow.
-        let hold_only = Flow {
-            blocked: 0,
-            ..full()
-        };
         assert_eq!(
-            plain(hold_only, Some(38)),
-            "🎯 c12 W | 👀 S11 A2 L0 | ⛔ B0 ⏸️  H7"
+            line(Flow {
+                working: 0,
+                done_today: 0,
+                ..no_card()
+            }),
+            "🗂️ 150 → 📨 11 → 🛬 3 | 🚧 3 🙋 7"
         );
-        assert_eq!(plain(hold_only, Some(37)), "🎯 c12 W | 👀 S11 A2 L0");
-        let flow_group = Flow {
-            draft: 0,
-            ready: 0,
-            working: 0,
-            stale: 0,
-            done_today: 0,
-            ..full()
-        };
+        // `🛬` is the audited and the landed cards together: either one shows it.
+        for (audited, landed, want) in [(0, 1, Some("🛬 1")), (2, 0, Some("🛬 2")), (0, 0, None)]
+        {
+            let out = line(Flow {
+                audited,
+                landed,
+                ..no_card()
+            });
+            match want {
+                Some(item) => assert!(out.contains(&format!("→ {item} →")), "{out}"),
+                None => assert_eq!(out, "🗂️ 150 → 🟡 14 → 📨 11 → ✅ 19 | 🚧 3 🙋 7"),
+            }
+        }
+        // Beside the flow: each of the two on its own, and no group without them.
+        let chain = "🗂️ 150 → 🟡 14 → 📨 11 → 🛬 3 → ✅ 19";
         assert_eq!(
-            plain(flow_group, None),
-            "🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7"
+            line(Flow {
+                blocked: 0,
+                ..no_card()
+            }),
+            format!("{chain} | 🙋 7")
         );
-        // Only my card, and only a stale one.
+        assert_eq!(
+            line(Flow {
+                hold: 0,
+                ..no_card()
+            }),
+            format!("{chain} | 🚧 3")
+        );
+        assert_eq!(
+            line(Flow {
+                blocked: 0,
+                hold: 0,
+                ..no_card()
+            }),
+            chain
+        );
+        // Nothing but cards waiting their turn: the one item.
+        assert_eq!(
+            line(Flow {
+                ready: 169,
+                ..empty()
+            }),
+            "🗂️ 169"
+        );
+        // No flow at all: my card and what stands beside the flow.
+        assert_eq!(
+            line(Flow {
+                ready: 0,
+                working: 0,
+                submitted: 0,
+                audited: 0,
+                landed: 0,
+                done_today: 0,
+                ..full()
+            }),
+            format!("{} | 🚧 3 🙋 7", mine(Stage::Working))
+        );
+        // Nothing at all: no flow line, so the renderer's own fallback is the whole output.
+        assert_eq!(line(empty()), "MoAI");
+        for out in [line(full()), line(no_card())] {
+            assert!(!out.contains(" 0"), "a zero is printed: {out}");
+        }
+    }
+
+    /// The drafts and the cards whose lease has ended are not on the line: a ledger that holds
+    /// nothing else has no flow line, and their numbers never reach another item.
+    #[test]
+    fn drafts_and_ended_leases_are_not_on_the_line() {
+        let only_those = Flow {
+            draft: 43,
+            stale: 22,
+            ..empty()
+        };
+        assert_eq!(plain(only_those, None), "MoAI");
+        let out = plain(full(), None);
+        for number in ["43", "22"] {
+            assert!(!out.contains(number), "{number} in {out}");
+        }
+        // Only my card, and its lease has ended: it is still the card in hand.
         let mine_only = Flow {
             mine: Some(MyCard {
-                card: 7,
+                card: CARD,
                 stage: Stage::Stale,
             }),
-            ..Flow {
-                split: true,
-                ..Default::default()
-            }
+            stale: 1,
+            ..empty()
         };
-        assert_eq!(plain(mine_only, None), "🎯 c7 E");
-        // Nothing at all: no flow line, so the renderer's own fallback is the whole output.
-        let nothing = Flow {
-            split: true,
-            ..Default::default()
-        };
-        assert_eq!(plain(nothing, None), "MoAI");
+        assert_eq!(plain(mine_only, None), format!("🎯 C-{CARD} 🟡"));
     }
 
-    /// My card shows the letter of its stage: `🎯 c<n> <letter>` for each of the nine stages
-    /// (audit N2), with no other group when the ledger holds nothing else.
+    /// My card is `🎯 C-<n> <stage icon>` with the icon of its stage from the one icon set, for
+    /// each of the nine stages, with no other group when the ledger holds nothing else.
     #[test]
-    fn my_card_shows_the_letter_of_each_stage() {
-        for (stage, letter) in [
-            (Stage::Draft, 'D'),
-            (Stage::Ready, 'R'),
-            (Stage::Working, 'W'),
-            (Stage::Stale, 'E'),
-            (Stage::Submitted, 'S'),
-            (Stage::Audited, 'A'),
-            (Stage::Landed, 'L'),
-            (Stage::Blocked, 'B'),
-            (Stage::Hold, 'H'),
+    fn my_card_shows_the_icon_of_each_stage() {
+        for (stage, icon) in [
+            (Stage::Draft, "🗂️"),
+            (Stage::Ready, "🗂️"),
+            (Stage::Working, "🟡"),
+            (Stage::Stale, "🟡"),
+            (Stage::Submitted, "📨"),
+            (Stage::Audited, "🛬"),
+            (Stage::Landed, "🛬"),
+            (Stage::Blocked, "🚧"),
+            (Stage::Hold, "🙋"),
         ] {
             let flow = Flow {
-                split: true,
-                mine: Some(MyCard { card: 3, stage }),
-                ..Default::default()
+                mine: Some(MyCard { card: CARD, stage }),
+                ..empty()
             };
-            assert_eq!(plain(flow, None), format!("🎯 c3 {letter}"), "{stage:?}");
+            assert_eq!(
+                plain(flow, None),
+                format!("🎯 C-{CARD} {icon}"),
+                "{stage:?}"
+            );
         }
     }
 
-    /// The unsplit flow (the notes could not be read) is one form of three numbers, never a
+    /// The unsplit flow (the notes could not be read) is one form of the two counts that are
+    /// known — the cards waiting their turn and the ones in progress, without an arrow — never a
     /// guess, at every width.
     #[test]
     fn the_unsplit_flow_has_one_form_and_never_a_guess() {
@@ -1813,16 +1951,26 @@ mod flow_line_tests {
             split: false,
             ..Default::default()
         };
-        for budget in [None, Some(200), Some(18), Some(0)] {
-            assert_eq!(plain(unsplit, budget), "🗂️  D43 R150 W15", "{budget:?}");
+        for budget in [None, Some(200), Some(13), Some(0)] {
+            assert_eq!(plain(unsplit, budget), "🗂️ 150 🟡 15", "{budget:?}");
         }
+        let no_ready = Flow {
+            ready: 0,
+            ..unsplit
+        };
+        assert_eq!(plain(no_ready, None), "🟡 15");
+        let neither = Flow {
+            working: 0,
+            ..no_ready
+        };
+        assert_eq!(plain(neither, None), "MoAI");
     }
 
     /// The colored line carries the same text once the escapes are removed, at every form.
     #[test]
     fn the_colored_line_has_the_plain_text_at_every_form() {
         for flow in [full(), no_card()] {
-            for budget in [None, Some(60), Some(30), Some(10)] {
+            for budget in [None, Some(45), Some(30), Some(10)] {
                 let text = plain(flow, budget);
                 for profile in [Profile::TrueColor, Profile::Ansi256] {
                     let out = only_flow(flow, budget, Some(profile));
@@ -1840,32 +1988,90 @@ mod flow_line_tests {
         }
     }
 
-    /// AC-8: every icon the line writes is followed by the spacing of its width class — two
-    /// spaces for an icon that is narrow by default and written with a variation selector, one
-    /// for the others — and a letter or a number follows the spacing.
+    /// Every form the line can print — each flow below at every budget from 0 to 70 columns and
+    /// without one — has exactly one space after every icon, then a number, the card, an arrow or
+    /// a separator; holds no icon outside the table and none that left the set; and carries no
+    /// letter code. Together the forms print each of the eight icons of the flow line.
     #[test]
-    fn every_icon_is_followed_by_the_spacing_of_its_width_class() {
-        let text = plain(full(), None);
-        let mut seen = 0;
-        for (icon, gap) in width::ICONS {
-            for (at, _) in text.match_indices(icon) {
-                seen += 1;
-                let after = &text[at + icon.len()..];
-                assert!(after.starts_with(gap), "{icon}: `{after}`");
-                assert!(
-                    !after[gap.len()..].starts_with(' '),
-                    "{icon}: more spaces than the class asks for: `{after}`"
-                );
-                assert!(
-                    after[gap.len()..]
-                        .chars()
-                        .next()
-                        .is_some_and(char::is_alphanumeric),
-                    "{icon} is followed by a letter or a number: `{after}`"
-                );
+    fn every_rendered_form_has_one_space_after_every_icon() {
+        let mut flows = vec![
+            full(),
+            no_card(),
+            Flow {
+                split: false,
+                ..no_card()
+            },
+            Flow {
+                ready: 169,
+                ..empty()
+            },
+        ];
+        for stage in [
+            Stage::Draft,
+            Stage::Ready,
+            Stage::Working,
+            Stage::Stale,
+            Stage::Submitted,
+            Stage::Audited,
+            Stage::Landed,
+            Stage::Blocked,
+            Stage::Hold,
+        ] {
+            flows.push(Flow {
+                mine: Some(MyCard { card: CARD, stage }),
+                ..full()
+            });
+        }
+        let mut printed: Vec<&str> = Vec::new();
+        let mut forms: Vec<String> = Vec::new();
+        for flow in flows {
+            for budget in std::iter::once(None).chain((0..=70).map(Some)) {
+                let text = plain(flow, budget);
+                if !forms.contains(&text) {
+                    forms.push(text);
+                }
             }
         }
-        assert_eq!(seen, 6, "🎯 👀 ⛔ ⏸️ 🗂️ ✅ each once in {text}");
+        assert!(forms.len() >= 20, "{} forms", forms.len());
+        for text in &forms {
+            for icon in width::ICONS {
+                for (at, _) in text.match_indices(icon) {
+                    if !printed.contains(&icon) {
+                        printed.push(icon);
+                    }
+                    let after = &text[at + icon.len()..];
+                    if after.is_empty() {
+                        continue;
+                    }
+                    let mut rest = after.chars();
+                    assert_eq!(rest.next(), Some(' '), "{icon} in `{text}`");
+                    let next = rest.next();
+                    assert!(
+                        next.is_some_and(|c| c.is_ascii_digit() || matches!(c, 'C' | '|' | '→')),
+                        "{icon} is followed by {next:?} in `{text}`"
+                    );
+                }
+            }
+            // Nothing but the icons of the table, the arrow and plain text.
+            let mut bare = text.clone();
+            for icon in width::ICONS {
+                bare = bare.replace(icon, "");
+            }
+            assert!(
+                bare.chars().all(|c| c.is_ascii() || c == '→'),
+                "an icon outside the table in `{text}`"
+            );
+            assert!(!text.contains("  "), "two spaces in `{text}`");
+            // No letter code: the only letter is the `C` of my card.
+            assert!(
+                bare.chars().all(|c| !c.is_ascii_alphabetic() || c == 'C'),
+                "a letter code in `{text}`"
+            );
+        }
+        printed.sort_unstable();
+        let mut flow_icons = vec!["🎯", "🗂️", "🟡", "📨", "🛬", "✅", "🚧", "🙋"];
+        flow_icons.sort_unstable();
+        assert_eq!(printed, flow_icons);
     }
 }
 
@@ -1877,11 +2083,12 @@ mod line_one_form_tests {
     use crate::statusline::segments::GitStatus;
     use crate::statusline::state::{GitHubCounts, PrInfo};
 
-    /// W0 to W4 of the Layouts section with the display width the section gives.
+    /// W0 to W4 of the Layouts section, with one space after every icon
+    /// (SPEC-20261122-statusline-limits-left REQ-5), and their display widths.
     const W: [(&str, usize); 5] = [
         (
-            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
-            112,
+            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
+            111,
         ),
         (
             "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
@@ -1898,15 +2105,15 @@ mod line_one_form_tests {
         ("🧠 Opus | 🌳 statusline-flow ↑3 +2", 34),
     ];
     const MAIN: (&str, usize) = (
-        "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🅱️  next ↑2 +1 | 🔗 #12 pending",
-        86,
+        "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🅱️ next ↑2 +1 | 🔗 #12 pending",
+        84,
     );
     /// The next form of the main checkout: the counts go first (the drop order of the section).
     const MAIN_NO_COUNTS: &str =
-        "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🅱️  next ↑2 +1 | 🔗 #12 pending";
+        "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🅱️ next ↑2 +1 | 🔗 #12 pending";
     const GENERIC: (&str, usize) = (
-        "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 #88 approved",
-        77,
+        "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 #88 approved",
+        76,
     );
 
     fn pull_request(number: i64, state: &str, merge_request: bool) -> Option<PrInfo> {
@@ -2119,7 +2326,7 @@ mod line_one_form_tests {
         status.pr = pull_request(31, "pending", true);
         assert_eq!(
             plain(&status, None),
-            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 !31 pending"
+            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 !31 pending"
         );
         status.pr = pull_request(31, "", true);
         assert!(plain(&status, None).ends_with(" | 🔗 !31"), "no state");
@@ -2128,7 +2335,7 @@ mod line_one_form_tests {
         status.pr = None;
         assert_eq!(
             plain(&status, None),
-            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4"
+            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4"
         );
     }
 
@@ -2141,7 +2348,7 @@ mod line_one_form_tests {
         status.model = String::new();
         assert_eq!(
             plain(&status, None),
-            "📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 #88 approved"
+            "📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 #88 approved"
         );
         status.model = "Opus 4.1".into();
         status.effort = Some("high".into());
@@ -2171,7 +2378,7 @@ mod line_one_form_tests {
         });
         assert_eq!(
             plain(&status, None),
-            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🌳 statusline-flow ↑3 ↓1 +2 | 🔗 #12 pending",
+            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🌳 statusline-flow ↑3 ↓1 +2 | 🔗 #12 pending",
             "no integration branch: the branch item keeps its own numbers"
         );
         assert_eq!(plain(&Status::default(), None), "MoAI");
@@ -2192,7 +2399,7 @@ mod line_one_form_tests {
         };
         assert_eq!(
             plain(&status, None),
-            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  0123456 +3 | 🔗 #88 approved"
+            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ 0123456 +3 | 🔗 #88 approved"
         );
     }
 
@@ -2215,21 +2422,21 @@ mod line_one_form_tests {
         assert!(!cut.contains('m'), "{cut}");
     }
 
-    /// REQ-10 and D-6: every icon of the first line is followed by the spacing of its width
-    /// class: two spaces for `⬇️` and `🅱️`, one for the rest.
+    /// REQ-10, and REQ-5 of SPEC-20261122-statusline-limits-left: every icon of the first line
+    /// is followed by exactly one space, `⬇️` and `🅱️` too.
     #[test]
-    fn every_icon_of_the_first_line_has_the_spacing_of_its_width_class() {
+    fn every_icon_of_the_first_line_is_followed_by_one_space() {
         for (status, expected) in [(worktree_session(), 7), (main_checkout(), 6)] {
             let text = plain(&status, None);
             let mut seen = 0;
-            for (icon, gap) in width::ICONS {
+            for icon in width::ICONS {
                 for (at, _) in text.match_indices(icon) {
                     seen += 1;
                     let after = &text[at + icon.len()..];
-                    assert!(after.starts_with(gap), "{icon}: `{after}`");
+                    assert!(after.starts_with(' '), "{icon}: `{after}`");
                     assert!(
-                        !after[gap.len()..].starts_with(' '),
-                        "{icon}: more spaces than the class asks for: `{after}`"
+                        !after[1..].starts_with(' '),
+                        "{icon}: more than one space: `{after}`"
                     );
                 }
             }
@@ -2285,8 +2492,9 @@ mod line_three_support {
 
 /// AC-2 of SPEC-20261122-statusline-limits (REQ-3, REQ-4, D-2, D-4): the battery icon switches at
 /// 70/71, the reset countdown has three forms without `resets in`, a window whose reset has passed
-/// is left out, a week without a percentage says `7D n/a`, and the five-hour window is shown only
-/// strictly above 70 percent.
+/// is left out, and a week without a percentage says `7D n/a`. Since
+/// SPEC-20261122-statusline-limits-left every number is the share left, so the percentages named
+/// here are 100 minus what the line writes, and the five-hour window is shown at any level.
 #[cfg(test)]
 mod window_tests {
     use super::line_three_support::{item, line, without_moai, NOW};
@@ -2313,11 +2521,109 @@ mod window_tests {
     const HOUR: i64 = 3_600;
     const MINUTE: i64 = 60;
 
-    /// A guard: the battery icon of a window turns at 70/71.
+    /// A guard: the battery icon of a window turns between 70 and 71 percent used.
     #[test]
     fn the_battery_icon_switches_at_70_and_71() {
-        assert_eq!(week(json!(70), None).as_deref(), Some("🔋 7D 70%"));
-        assert_eq!(week(json!(71), None).as_deref(), Some("🪫 7D 71%"));
+        assert_eq!(week(json!(70), None).as_deref(), Some("🔋 7D 30%"));
+        assert_eq!(week(json!(71), None).as_deref(), Some("🪫 7D 29%"));
+    }
+
+    /// AC-1 of SPEC-20261122-statusline-limits-left: each window shows the share left — 18 percent
+    /// used is `CW 82%`, 75 percent used of the five-hour window is `5H 25%`, 95 percent used of
+    /// the week is `7D 5%` — and a payload without a five-hour window has no `5H` item.
+    #[test]
+    fn the_row_shows_what_is_left_of_each_window() {
+        let row = |rate_limits: Value| {
+            without_moai(&line(&json!({
+                "context_window": {"used_percentage": 18},
+                "rate_limits": rate_limits,
+            })))
+        };
+        assert_eq!(
+            row(json!({
+                "five_hour": {"used_percentage": 75, "resets_at": NOW + HOUR + 10 * MINUTE},
+                "seven_day": {"used_percentage": 95, "resets_at": NOW + 4 * DAY + 2 * HOUR},
+            })),
+            "🔋 CW 82% | 🪫 5H 25% (1h 10m) | 🪫 7D 5% (4d 2h)"
+        );
+        let no_five = row(json!({
+            "seven_day": {"used_percentage": 95, "resets_at": NOW + 4 * DAY + 2 * HOUR},
+        }));
+        assert_eq!(no_five, "🔋 CW 82% | 🪫 7D 5% (4d 2h)");
+        assert_eq!(item(&no_five, "5H"), None);
+    }
+
+    /// AC-2 of SPEC-20261122-statusline-limits-left: an unknown window says `n/a` with no battery
+    /// icon, and the hide options `context`, `usage_5h` and `usage_7d` each take their item off
+    /// the line.
+    #[test]
+    fn unknown_windows_and_the_hide_list_stay_as_they_were() {
+        use crate::statusline::input::RateWindow;
+        use crate::statusline::render::Renderer;
+        use crate::statusline::state::{DisplayConfig, Status};
+        let render = |status: &Status, off: &[&str]| {
+            let config = DisplayConfig {
+                segments: off.iter().map(|k| ((*k).to_string(), false)).collect(),
+                ..Default::default()
+            };
+            Renderer::new(&config, None).render(status)
+        };
+        let unknown = Status {
+            seven_day: Some(RateWindow::default()),
+            ..Default::default()
+        };
+        assert_eq!(render(&unknown, &[]), "CW n/a | 7D n/a");
+        let window = |used: f64| {
+            Some(RateWindow {
+                used_percentage: Some(used),
+                resets_at: None,
+            })
+        };
+        let known = Status {
+            context: Some(18.0),
+            five_hour: window(75.0),
+            seven_day: window(95.0),
+            ..Default::default()
+        };
+        assert_eq!(render(&known, &[]), "🔋 CW 82% | 🪫 5H 25% | 🪫 7D 5%");
+        assert_eq!(render(&known, &["context"]), "🪫 5H 25% | 🪫 7D 5%");
+        assert_eq!(render(&known, &["usage_5h"]), "🔋 CW 82% | 🪫 7D 5%");
+        assert_eq!(render(&known, &["usage_7d"]), "🔋 CW 82% | 🪫 5H 25%");
+        assert_eq!(render(&known, &["context", "usage_5h", "usage_7d"]), "MoAI");
+    }
+
+    /// AC-3 of SPEC-20261122-statusline-limits-left: the icon turns at the low-left boundary —
+    /// exactly `LOW_LEFT_PERCENT` left (the high-use percentage used) is `🔋`, one percent less
+    /// left is `🪫` — for the context window, the five-hour window and the week alike. The
+    /// expected numbers come from the constants the render reads.
+    #[test]
+    fn the_battery_icon_turns_at_the_low_left_boundary() {
+        use crate::statusline::render::{HIGH_USE_PERCENT, LOW_LEFT_PERCENT};
+        assert_eq!(LOW_LEFT_PERCENT, 100 - HIGH_USE_PERCENT);
+        let n = LOW_LEFT_PERCENT;
+        assert_eq!(
+            week(json!(HIGH_USE_PERCENT), None),
+            Some(format!("🔋 7D {n}%"))
+        );
+        assert_eq!(
+            week(json!(HIGH_USE_PERCENT + 1), None),
+            Some(format!("🪫 7D {}%", n - 1))
+        );
+        let five = |used: i64| {
+            item(
+                &windows(json!({"five_hour": {"used_percentage": used}})),
+                "5H",
+            )
+        };
+        assert_eq!(five(HIGH_USE_PERCENT), Some(format!("🔋 5H {n}%")));
+        assert_eq!(
+            five(HIGH_USE_PERCENT + 1),
+            Some(format!("🪫 5H {}%", n - 1))
+        );
+        let context =
+            |used: i64| without_moai(&line(&json!({"context_window": {"used_percentage": used}})));
+        assert_eq!(context(HIGH_USE_PERCENT), format!("🔋 CW {n}%"));
+        assert_eq!(context(HIGH_USE_PERCENT + 1), format!("🪫 CW {}%", n - 1));
     }
 
     /// D-4: `(6d 21h)`, `(2h 10m)`, `(35m)`, each unit changing at its edge, and never the words
@@ -2325,15 +2631,15 @@ mod window_tests {
     #[test]
     fn the_countdown_has_three_forms_without_resets_in() {
         for (left, want) in [
-            (6 * DAY + 21 * HOUR, "🔋 7D 21% (6d 21h)"),
-            (2 * HOUR + 10 * MINUTE, "🔋 7D 21% (2h 10m)"),
-            (35 * MINUTE, "🔋 7D 21% (35m)"),
-            (DAY, "🔋 7D 21% (1d 0h)"),
-            (DAY - 1, "🔋 7D 21% (23h 59m)"),
-            (HOUR, "🔋 7D 21% (1h 0m)"),
-            (HOUR - 1, "🔋 7D 21% (59m)"),
-            (MINUTE, "🔋 7D 21% (1m)"),
-            (1, "🔋 7D 21% (0m)"),
+            (6 * DAY + 21 * HOUR, "🔋 7D 79% (6d 21h)"),
+            (2 * HOUR + 10 * MINUTE, "🔋 7D 79% (2h 10m)"),
+            (35 * MINUTE, "🔋 7D 79% (35m)"),
+            (DAY, "🔋 7D 79% (1d 0h)"),
+            (DAY - 1, "🔋 7D 79% (23h 59m)"),
+            (HOUR, "🔋 7D 79% (1h 0m)"),
+            (HOUR - 1, "🔋 7D 79% (59m)"),
+            (MINUTE, "🔋 7D 79% (1m)"),
+            (1, "🔋 7D 79% (0m)"),
         ] {
             let got = week(json!(21), Some(NOW + left));
             assert_eq!(got.as_deref(), Some(want), "{left} seconds left");
@@ -2357,28 +2663,28 @@ mod window_tests {
         assert_eq!(week(json!(21), Some(NOW - 1)), None, "reset a second ago");
         assert_eq!(
             week(json!(21), Some(NOW + 1)).as_deref(),
-            Some("🔋 7D 21% (0m)")
+            Some("🔋 7D 79% (0m)")
         );
         assert_eq!(
             windows(json!({"seven_day": {"used_percentage": 21, "resets_at": NOW - DAY}})),
-            "🔋 CW 10%"
+            "🔋 CW 90%"
         );
         // Beyond 31 days the reset is no countdown: the week shows without one.
         let edge = NOW + crate::usage_limit::MAX_RESET_AHEAD_SECS;
         assert_eq!(
             week(json!(21), Some(edge)).as_deref(),
-            Some("🔋 7D 21% (31d 0h)")
+            Some("🔋 7D 79% (31d 0h)")
         );
         for at in [edge + 1, i64::MAX] {
             assert_eq!(
                 week(json!(21), Some(at)).as_deref(),
-                Some("🔋 7D 21%"),
+                Some("🔋 7D 79%"),
                 "{at}"
             );
         }
         assert_eq!(
             windows(json!({"five_hour": {"used_percentage": 90, "resets_at": NOW}})),
-            "🔋 CW 10%"
+            "🔋 CW 90%"
         );
     }
 
@@ -2399,12 +2705,13 @@ mod window_tests {
         assert_eq!(item(&windows(json!({})), "7D"), None, "an absent week");
     }
 
-    /// REQ-4 and D-2: the five-hour window shows strictly above 70 percent, with `🪫` and its
-    /// countdown, between the context window and the week; at 70 or below, without a percentage
-    /// or absent it is left out with its separator. A fraction is read by the whole percentage
-    /// the line writes, so 70.9 is 70 and stays hidden.
+    /// REQ-3 of SPEC-20261122-statusline-limits-left: the five-hour window shows whenever the
+    /// input carries its percentage, at any level, with the share left, the icon of the low-left
+    /// rule and its countdown, between the context window and the week — 25 percent used is
+    /// `🔋 5H 75%`. Without a percentage or absent it is left out with its separator. A fraction
+    /// is read by the whole used percentage, so 70.9 is 70 used.
     #[test]
-    fn the_five_hour_window_shows_only_above_70() {
+    fn the_five_hour_window_shows_whenever_the_input_carries_it() {
         let five = |pct: Value| {
             item(
                 &windows(
@@ -2413,24 +2720,37 @@ mod window_tests {
                 "5H",
             )
         };
-        assert_eq!(five(json!(71)).as_deref(), Some("🪫 5H 71% (2h 10m)"));
-        assert_eq!(five(json!(100)).as_deref(), Some("🪫 5H 100% (2h 10m)"));
-        assert_eq!(five(json!(150)).as_deref(), Some("🪫 5H 100% (2h 10m)"));
-        assert_eq!(five(json!(70)), None);
-        assert_eq!(five(json!(70.9)), None);
-        assert_eq!(five(json!(23)), None);
+        assert_eq!(five(json!(25)).as_deref(), Some("🔋 5H 75% (2h 10m)"));
+        assert_eq!(five(json!(0)).as_deref(), Some("🔋 5H 100% (2h 10m)"));
+        assert_eq!(five(json!(70.9)).as_deref(), Some("🔋 5H 30% (2h 10m)"));
+        assert_eq!(five(json!(71)).as_deref(), Some("🪫 5H 29% (2h 10m)"));
+        assert_eq!(five(json!(100)).as_deref(), Some("🪫 5H 0% (2h 10m)"));
+        assert_eq!(five(json!(150)).as_deref(), Some("🪫 5H 0% (2h 10m)"));
         assert_eq!(five(json!(null)), None);
+        assert_eq!(five(json!("25")), None);
+        // A reset time is not needed: the item stands without a countdown.
         assert_eq!(
-            windows(json!({"five_hour": {"used_percentage": 70}})),
-            "🔋 CW 10%",
-            "a hidden window leaves no separator"
+            windows(json!({"five_hour": {"used_percentage": 25}})),
+            "🔋 CW 90% | 🔋 5H 75%"
         );
+        for absent in [
+            json!({}),
+            json!({"five_hour": {}}),
+            json!({"five_hour": {"resets_at": NOW + HOUR}}),
+            json!({"five_hour": null}),
+        ] {
+            assert_eq!(
+                windows(absent.clone()),
+                "🔋 CW 90%",
+                "{absent}: no item and no separator"
+            );
+        }
         assert_eq!(
             windows(json!({
                 "five_hour": {"used_percentage": 85, "resets_at": NOW + HOUR + 10 * MINUTE},
                 "seven_day": {"used_percentage": 21, "resets_at": NOW + 6 * DAY + 21 * HOUR},
             })),
-            "🔋 CW 10% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h)"
+            "🔋 CW 90% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h)"
         );
     }
 }
@@ -2459,10 +2779,10 @@ mod cost_tests {
 
     #[test]
     fn the_cost_shows_without_a_window() {
-        assert_eq!(with_cost(usd(json!(3.87)), None), "🔋 CW 10% | 💰 3.87");
+        assert_eq!(with_cost(usd(json!(3.87)), None), "🔋 CW 90% | 💰 3.87");
         assert_eq!(
             with_cost(usd(json!(3.87)), Some(json!({}))),
-            "🔋 CW 10% | 💰 3.87",
+            "🔋 CW 90% | 💰 3.87",
             "rate_limits without a window"
         );
     }
@@ -2473,12 +2793,12 @@ mod cost_tests {
         let spend = json!({"spend_limit": {"used_percentage": 62.8, "resets_at": NOW + 3_600, "period": "monthly"}});
         assert_eq!(
             with_cost(usd(json!(3.87)), Some(spend)),
-            "🔋 CW 10% | 💰 3.87"
+            "🔋 CW 90% | 💰 3.87"
         );
     }
 
     /// A payload with either window shows no cost, also when the window itself is not drawn (a
-    /// five-hour window at 70 or below, a window whose reset has passed).
+    /// window whose reset has passed).
     #[test]
     fn the_cost_is_hidden_with_either_window() {
         for limits in [
@@ -2519,7 +2839,7 @@ mod cost_tests {
             usd(json!(null)),
             json!(5),
         ] {
-            assert_eq!(with_cost(cost.clone(), None), "🔋 CW 10%", "{cost}");
+            assert_eq!(with_cost(cost.clone(), None), "🔋 CW 90%", "{cost}");
         }
     }
 
@@ -2529,7 +2849,7 @@ mod cost_tests {
     #[test]
     fn a_negative_or_huge_cost_is_left_out() {
         for total in [json!(-0.001), json!(-3.5), json!(1_000_000.0), json!(1e308)] {
-            assert_eq!(with_cost(usd(total.clone()), None), "🔋 CW 10%", "{total}");
+            assert_eq!(with_cost(usd(total.clone()), None), "🔋 CW 90%", "{total}");
         }
         let out = with_cost(usd(json!(999_999.99)), None);
         assert_eq!(item(&out, "💰").as_deref(), Some("💰 999999.99"), "{out}");
@@ -2574,7 +2894,7 @@ mod version_tests {
     #[test]
     fn both_versions_close_the_line_without_a_v() {
         let out = line(&json!({"context_window": {"used_percentage": 10}, "version": "2.1.330"}));
-        assert_eq!(out, format!("🔋 CW 10% | 🤖 2.1.330 | 🗿 {BUILD}"));
+        assert_eq!(out, format!("🔋 CW 90% | 🤖 2.1.330 | 🗿 {BUILD}"));
     }
 
     /// The version comes from stdin; an escape, a newline, a direction mark or a zero-width
@@ -2584,17 +2904,17 @@ mod version_tests {
         let out = line(
             &json!({"context_window": {"used_percentage": 10}, "version": "2.1\u{1b}[31m.330\n"}),
         );
-        assert_eq!(out, format!("🔋 CW 10% | 🤖 2.1[31m.330 | 🗿 {BUILD}"));
+        assert_eq!(out, format!("🔋 CW 90% | 🤖 2.1[31m.330 | 🗿 {BUILD}"));
         let hidden = "\u{202E}2.1\u{200B}.3\u{2066}30\u{FEFF}\u{00AD}\u{061C}";
         let out = line(&json!({"context_window": {"used_percentage": 10}, "version": hidden}));
-        assert_eq!(out, format!("🔋 CW 10% | 🤖 2.1.330 | 🗿 {BUILD}"));
+        assert_eq!(out, format!("🔋 CW 90% | 🤖 2.1.330 | 🗿 {BUILD}"));
     }
 
     #[test]
     fn a_missing_claude_code_version_is_left_out() {
         for version in [json!(null), json!(""), json!(5)] {
             let out = line(&json!({"context_window": {"used_percentage": 10}, "version": version}));
-            assert_eq!(out, format!("🔋 CW 10% | 🗿 {BUILD}"), "{version}");
+            assert_eq!(out, format!("🔋 CW 90% | 🗿 {BUILD}"), "{version}");
         }
     }
 
@@ -2623,7 +2943,7 @@ mod version_tests {
             let out = line_in(&payload, home.path(), Some(&project));
             assert_eq!(
                 out,
-                format!("🔋 CW 10% | 🤖 2.1.330 | {want}"),
+                format!("🔋 CW 90% | 🤖 2.1.330 | {want}"),
                 "template {template}"
             );
         }

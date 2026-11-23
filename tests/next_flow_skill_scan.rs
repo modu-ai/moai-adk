@@ -231,8 +231,10 @@ const SCRUB_EXCEPTIONS: [&str; 2] = [
 /// REQ-8: words no shipped text names, matched without regard to case: the retired hosts
 /// (Codex in any spelling, OMP's skill command), the resident leader and its mode flags, the
 /// pull-request audit gate (its job, its status and the merge and branch update it guarded), the
-/// merge train and its numbers, and the repository's own harness agents.
-const REQ8_WORDS: [&str; 20] = [
+/// merge train and its numbers, and the repository's own harness agents; and the audit rule the
+/// tier lines replaced (SPEC-20261123-audit-rule-text AC-4), "fresh-clone reproduction".
+const REQ8_WORDS: [&str; 21] = [
+    "fresh-clone reproduction",
     "codex",
     "$moai",
     "/skill:moai",
@@ -1207,9 +1209,9 @@ fn refs_sync_work_ledger_is_the_card_ledger() {
 }
 
 /// Slice C audit N-b, N-c, N-d and N-f: the tier paragraph names the ready note's form, points
-/// to the audit contract's list of the code's tier 2 prefixes, carries the three cases of the
-/// leader's answer with who audits tier 1, and says that a tier stated in a verdict's scope is
-/// read.
+/// to the audit contract's list of the code's tier 2 prefixes, and says that a tier stated in a
+/// verdict's scope is read. Who audits each class is the contract's four tier lines now
+/// (SPEC-20261123-audit-rule-text D-6), which the paragraph points to instead of restating.
 #[test]
 fn refs_audit_tiers_match_the_code_floor() {
     let audit = read("workflows/audit.md");
@@ -1219,10 +1221,7 @@ fn refs_audit_tiers_match_the_code_floor() {
         .expect("an Audit tier step");
     for phrase in [
         "`audit-tier: 0|1|2 <reason>`",
-        "documents only is read by the lander",
-        "tests only or tools only gets a light audit by the lander",
-        "code gets an independent audit",
-        "Tier 1 is audited by",
+        "the four tier lines of the audit contract",
         "the tier 2 prefixes the audit contract lists (its section \"Audit tiers\")",
     ] {
         assert!(tier.contains(phrase), "the tier step lacks {phrase:?}");
@@ -1386,4 +1385,469 @@ fn step_keys_and_sections_read_what_they_say() {
     );
     let text = "# T\n\n## Procedure\n\n1. **take** — a\n\n## Next\n\nz\n";
     assert_eq!(section(text, "Procedure"), "\n1. **take** — a\n");
+}
+
+// SPEC-20261123-audit-rule-text: one audit rule text. The audit contract writes the four tier
+// lines once; the audit agent, the RUN workflow and the lander's brief carry them word for word.
+
+/// How each of the four tier lines starts, in the order the contract writes them.
+const TIER_LINE_STARTS: [&str; 4] = [
+    "- docs-only (tier",
+    "- test-only (tier",
+    "- code (tier",
+    "- high-risk (tier",
+];
+
+/// A shipped file of this checkout by repository path (the agent folder is outside the skill
+/// package that `read` reads).
+fn repo_text(rel: &str) -> String {
+    fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(rel))
+        .unwrap_or_else(|e| panic!("{rel}: {e}"))
+}
+
+/// The lines of `text` that start a tier line, in file order.
+fn tier_lines(text: &str) -> Vec<String> {
+    text.lines()
+        .filter(|l| TIER_LINE_STARTS.iter().any(|s| l.starts_with(s)))
+        .map(str::to_string)
+        .collect()
+}
+
+/// What is wrong with the tier lines of `text` against the contract's: a line missing, written
+/// twice, or different by a single byte. Empty when the four lines match word for word.
+fn tier_line_problems(contract: &[String], text: &str) -> Vec<String> {
+    let found = tier_lines(text);
+    let mut problems = Vec::new();
+    for line in contract {
+        match found.iter().filter(|l| *l == line).count() {
+            1 => {}
+            0 => problems.push(format!("lacks {line:?}")),
+            n => problems.push(format!("holds {line:?} {n} times")),
+        }
+    }
+    if found.len() != contract.len() {
+        problems.push(format!(
+            "holds {} tier lines, not {}",
+            found.len(),
+            contract.len()
+        ));
+    }
+    problems
+}
+
+/// AC-1 (REQ-1 to REQ-4, REQ-11): the four lines of the contract's "Audit tiers" section stand
+/// byte for byte in the audit agent, under RUN's "Check-run rules" and in the lander's brief
+/// (AUDIT, "Base agents"). A planted change to any one line is found.
+#[test]
+fn refs_audit_tier_lines_match_in_every_text() {
+    let contract = read(AUDIT_REF);
+    let source = tier_lines(section(&contract, "Audit tiers"));
+    assert_eq!(
+        source.len(),
+        4,
+        "the contract's Audit tiers section holds four tier lines"
+    );
+    for (line, start) in source.iter().zip(TIER_LINE_STARTS) {
+        assert!(line.starts_with(start), "{line:?} is out of order");
+    }
+    let run = read("workflows/run.md");
+    let audit = read("workflows/audit.md");
+    let agent = repo_text("agents/audit.md");
+    let texts = [
+        ("agents/audit.md", agent.as_str()),
+        (
+            "workflows/run.md, Check-run rules",
+            section(&run, "Check-run rules"),
+        ),
+        (
+            "workflows/audit.md, Base agents",
+            section(&audit, "Base agents"),
+        ),
+    ];
+    for (name, text) in texts {
+        let problems = tier_line_problems(&source, text);
+        assert!(problems.is_empty(), "{name}: {problems:#?}");
+        // The check reads what it says: a changed byte, a missing line and a doubled line fail.
+        let changed = text.replacen(&source[2], &format!("{}.", source[2]), 1);
+        assert!(
+            !tier_line_problems(&source, &changed).is_empty(),
+            "{name}: a changed line passes"
+        );
+        let missing = text.replacen(&format!("{}\n", source[0]), "", 1);
+        assert!(
+            !tier_line_problems(&source, &missing).is_empty(),
+            "{name}: a missing line passes"
+        );
+        let doubled = text.replacen(&source[1], &format!("{}\n{}", source[1], source[1]), 1);
+        assert!(
+            !tier_line_problems(&source, &doubled).is_empty(),
+            "{name}: a doubled line passes"
+        );
+    }
+}
+
+/// AC-2 (REQ-5): the audit agent's front matter no longer sets `isolation: worktree`; the key is
+/// required, so it says `none`. The implementation agent keeps its worktree.
+#[test]
+fn refs_audit_agent_sets_no_isolation() {
+    let front = |text: &str| {
+        text.strip_prefix("---\n")
+            .and_then(|rest| rest.split_once("\n---\n"))
+            .map(|(front, _)| front.to_string())
+            .expect("an agent file starts with front matter")
+    };
+    let audit = front(&repo_text("agents/audit.md"));
+    assert!(
+        !audit.lines().any(|l| l == "isolation: worktree"),
+        "agents/audit.md still sets isolation: worktree"
+    );
+    assert!(
+        audit.lines().any(|l| l == "isolation: none"),
+        "agents/audit.md front matter lacks the required `isolation: none`"
+    );
+    let imp = front(&repo_text("agents/impl.md"));
+    assert!(
+        imp.lines().any(|l| l == "isolation: worktree"),
+        "agents/impl.md lost its worktree isolation"
+    );
+}
+
+/// AC-3 (REQ-6, REQ-12): the audit agent's first step reads the worktree its brief names in
+/// `scope`, stops `blocked` when it is missing or its HEAD differs from `head`, and no longer
+/// says that a separate worktree may start from the default branch.
+#[test]
+fn refs_audit_agent_reads_the_given_worktree() {
+    let agent = repo_text("agents/audit.md");
+    let steps = section(&agent, "Steps");
+    let first = steps
+        .lines()
+        .find(|l| l.starts_with("1. "))
+        .expect("the agent has a first step");
+    for phrase in [
+        "the audit worktree named in `scope`",
+        "`git -C <worktree> rev-parse HEAD`",
+        "equals `head`",
+        "`RESULT audit blocked`",
+        "without reading the parent's checkout",
+    ] {
+        assert!(
+            first.contains(phrase),
+            "the first step lacks {phrase:?}: {first}"
+        );
+    }
+    assert!(
+        !agent.contains("A separate worktree may start from the default branch"),
+        "agents/audit.md still says a separate worktree starts from the default branch"
+    );
+}
+
+/// AC-4 (REQ-7, REQ-8): the Auditor row names the tier lines in place of fresh-clone
+/// reproduction and the full check set; the heavy-check paragraph states the slot rule of
+/// `moai heavy-slot-acquire` in place of one full build per machine. The word list of the
+/// scrub (`REQ8_WORDS`) keeps "fresh-clone reproduction" out of every shipped text.
+#[test]
+fn refs_run_auditor_row_names_the_tiers() {
+    let run = read("workflows/run.md");
+    let row = run
+        .lines()
+        .find(|l| l.starts_with("| Auditor: the audited head changes code"))
+        .expect("an Auditor row");
+    for gone in ["fresh-clone reproduction", "the full check set"] {
+        assert!(
+            !row.contains(gone),
+            "the Auditor row still holds {gone:?}: {row}"
+        );
+    }
+    assert!(
+        row.contains("the tier lines below"),
+        "the Auditor row does not name the tier lines: {row}"
+    );
+    let heavy = run
+        .lines()
+        .find(|l| l.starts_with("Heavy checks are serialised"))
+        .expect("the heavy-check paragraph");
+    assert!(
+        !heavy.contains("at most one full build"),
+        "the heavy-check paragraph keeps one build per machine"
+    );
+    for phrase in [
+        "at most as many heavy runs execute at a time as `moai heavy-slot-acquire` has slots",
+        "`limits.json`",
+    ] {
+        assert!(
+            heavy.contains(phrase),
+            "the heavy-check paragraph lacks {phrase:?}"
+        );
+    }
+    assert!(
+        REQ8_WORDS.contains(&"fresh-clone reproduction"),
+        "the scrub word list lacks \"fresh-clone reproduction\""
+    );
+}
+
+/// AC-5 (REQ-9, REQ-10): the lander's brief names the receipt rule and the merged-tree rule.
+#[test]
+fn refs_audit_brief_names_receipt_and_merged_tree() {
+    let audit = read("workflows/audit.md");
+    let brief = section(&audit, "Base agents");
+    for phrase in [
+        "A ready note whose receipt has a non-zero step is not ready",
+        "Only the lander runs the merged tree, and only when the tip moved and the changed files overlap",
+    ] {
+        assert!(brief.contains(phrase), "the lander's brief lacks {phrase:?}");
+    }
+}
+
+/// AC-7 (REQ-13): the AUDIT tier step separates what the tools judge from what is a rule for the
+/// sessions, and says that `moai card land` reads no verdict.
+#[test]
+fn refs_audit_tier_step_names_tool_and_session_parts() {
+    let audit = read("workflows/audit.md");
+    let tier = audit
+        .lines()
+        .find(|l| l.contains("**Audit tier.**"))
+        .expect("an Audit tier step");
+    for phrase in [
+        "What the tools judge: the floor of the changed paths (`tier_of`) and the tier a PASS note states (`moai bundle check`, `audit_tier_low`)",
+        "Who audits each class is a rule for the sessions, which no tool checks",
+        "`moai card land`, which itself reads no verdict",
+    ] {
+        assert!(tier.contains(phrase), "the tier step lacks {phrase:?}");
+    }
+}
+
+// SPEC-20261123-audit-scope-worktree-text: the audit agent works in the audit worktree named in
+// `scope`, and no text gives it a worktree of its own.
+
+/// The first line of `text` that starts with `start`; the test fails naming the file otherwise.
+fn line_starting<'a>(name: &str, text: &'a str, start: &str) -> &'a str {
+    text.lines()
+        .find(|l| l.starts_with(start))
+        .unwrap_or_else(|| panic!("{name}: no line starts with {start:?}"))
+}
+
+/// The words `phrases` that `line` lacks.
+fn lacking<'a>(line: &str, phrases: &[&'a str]) -> Vec<&'a str> {
+    phrases
+        .iter()
+        .copied()
+        .filter(|p| !line.contains(p))
+        .collect()
+}
+
+/// AC-1 (REQ-1 to REQ-4): the cleanup rule of the audit agent, of the AUDIT workflow and of the
+/// RUN workflow, the agent's verification line and its first step name the audit worktree in
+/// `scope` (RUN: the worktree the agent works in) and never "own worktree".
+#[test]
+fn refs_audit_cleanup_names_the_scope_worktree() {
+    let agent = repo_text("agents/audit.md");
+    let audit = read("workflows/audit.md");
+    let run = read("workflows/run.md");
+    let lines = [
+        (
+            "agents/audit.md, Cleanup",
+            line_starting("agents/audit.md", &agent, "- Cleanup:"),
+            vec![
+                "in the audit worktree named in `scope`",
+                "may start in the parent's folder",
+                "from inside the audit worktree",
+                "with a relative path, `rm -rf target/debug`",
+            ],
+        ),
+        (
+            "agents/audit.md, Verification",
+            line_starting("agents/audit.md", &agent, "- Only build output"),
+            vec!["in the audit worktree named in `scope` was deleted, by relative path"],
+        ),
+        (
+            "agents/audit.md, first step",
+            line_starting("agents/audit.md", &agent, "1. Work only in"),
+            vec![
+                "the audit worktree named in `scope`",
+                "run every command there",
+                "from inside it or with `git -C <worktree>`",
+            ],
+        ),
+        (
+            "workflows/audit.md, Cleanup",
+            line_starting("workflows/audit.md", &audit, "- Cleanup (Issue #3054)"),
+            vec![
+                "in the audit worktree named in `scope`",
+                "from inside that worktree and by relative path (`rm -rf target/debug`)",
+            ],
+        ),
+        (
+            "workflows/run.md, Cleanup",
+            line_starting("workflows/run.md", &run, "- Cleanup:"),
+            vec![
+                "in the worktree it works in",
+                "from inside that worktree and by relative path (`rm -rf target/debug`)",
+            ],
+        ),
+    ];
+    for (name, line, phrases) in lines {
+        assert!(!line.contains("own worktree"), "{name}: {line}");
+        let missing = lacking(line, &phrases);
+        assert!(missing.is_empty(), "{name} lacks {missing:?}: {line}");
+    }
+}
+
+/// AC-2 (REQ-3): the AUDIT `Isolation:` line says the agent sets none, reads the audit worktree in
+/// `scope`, runs every command inside it, ends `blocked` on a missing worktree or another HEAD,
+/// and that the implementation agent keeps its own.
+#[test]
+fn refs_audit_isolation_line_is_pinned() {
+    let audit = read("workflows/audit.md");
+    let line = line_starting("workflows/audit.md", &audit, "- Isolation:");
+    let phrases = [
+        "the audit agent sets none of its own",
+        "It reads the audit worktree in `scope`",
+        "runs every command inside it",
+        "its shell starts in the lander's folder",
+        "ends `blocked` when that worktree is missing or its HEAD is not `head`",
+        "The implementation agent keeps its worktree (RUN workflow)",
+    ];
+    let missing = lacking(line, &phrases);
+    assert!(missing.is_empty(), "the Isolation line lacks {missing:?}");
+}
+
+/// AC-3 (REQ-5): the update step and the `.worktreeinclude` module comment no longer say
+/// `moai-audit` runs in a worktree Claude Code makes; they say the lander makes the audit worktree
+/// with plain git.
+#[test]
+fn refs_no_text_says_the_audit_agent_has_an_isolated_worktree() {
+    let update = read("workflows/update.md");
+    let module = repo_text("src/worktree_include.rs");
+    for (name, text) in [
+        ("workflows/update.md", update.as_str()),
+        ("src/worktree_include.rs", module.as_str()),
+    ] {
+        assert!(
+            !text.contains("`moai-impl` and `moai-audit`"),
+            "{name} still puts moai-audit beside moai-impl"
+        );
+        assert!(
+            text.contains("plain git"),
+            "{name} does not say the audit worktree is made with plain git"
+        );
+    }
+}
+
+/// What is wrong with the four tier lines of `text`: a line missing a key word. The key words are
+/// what each class means; the four texts being equal does not protect them when all four change.
+fn tier_key_word_problems(text: &str) -> Vec<String> {
+    const KEY_WORDS: [(&str, &[&str]); 4] = [
+        (
+            "- docs-only (tier",
+            &[
+                "only documents or SPEC text change",
+                "the lander reads the change and lands it",
+                "nothing is built",
+            ],
+        ),
+        (
+            "- test-only (tier",
+            &[
+                "tier 0, tier 1 when a tool changes",
+                "only tests or test tools change",
+                "the lander gives it a light audit",
+                "runs the changed test targets once",
+            ],
+        ),
+        (
+            "- code (tier",
+            &[
+                "product code or skill text changes",
+                "a session that wrote none of it audits the head",
+                "cites the lane's receipt instead of running the head again",
+                "at most three mutants on changed lines",
+                "each against one or two targets",
+            ],
+        ),
+        (
+            "- high-risk (tier",
+            &[
+                "a changed path starts with a prefix of the floor list",
+                "a session that wrote none of it gives the full audit",
+                "the code steps plus the boundary, security and data-loss checks",
+            ],
+        ),
+    ];
+    let mut problems = Vec::new();
+    for (start, words) in KEY_WORDS {
+        match text.lines().find(|l| l.starts_with(start)) {
+            None => problems.push(format!("no line starts with {start:?}")),
+            Some(line) => {
+                for word in lacking(line, words) {
+                    problems.push(format!("{start:?} lacks {word:?}"));
+                }
+            }
+        }
+    }
+    problems
+}
+
+/// AC-4 (REQ-6): each tier line keeps its key words in the contract and in the three texts; a key
+/// word removed from the high-risk line is found.
+#[test]
+fn refs_audit_tier_lines_keep_their_key_words() {
+    let contract = read(AUDIT_REF);
+    let run = read("workflows/run.md");
+    let audit = read("workflows/audit.md");
+    let agent = repo_text("agents/audit.md");
+    for (name, text) in [
+        ("references/audit.md", section(&contract, "Audit tiers")),
+        ("agents/audit.md", agent.as_str()),
+        ("workflows/run.md", section(&run, "Check-run rules")),
+        ("workflows/audit.md", section(&audit, "Base agents")),
+    ] {
+        let problems = tier_key_word_problems(text);
+        assert!(problems.is_empty(), "{name}: {problems:#?}");
+        // The mutant drops the word from the tier line itself: another line of the text may
+        // hold the same words (the Auditor row of RUN does).
+        for (start, word) in [
+            ("- high-risk (tier", "data-loss"),
+            ("- high-risk (tier", "wrote none of it gives the full audit"),
+            ("- code (tier", "at most three mutants"),
+        ] {
+            let mutant = text
+                .lines()
+                .map(|l| {
+                    if l.starts_with(start) {
+                        l.replacen(word, "", 1)
+                    } else {
+                        l.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            assert!(
+                !tier_key_word_problems(&mutant).is_empty(),
+                "{name}: dropping {word:?} from {start:?} passes"
+            );
+        }
+    }
+}
+
+/// AC-5 (REQ-7): the three texts that carry the tier lines without the list say where the floor
+/// list is.
+#[test]
+fn refs_audit_floor_list_is_pointed_to() {
+    let run = read("workflows/run.md");
+    let audit = read("workflows/audit.md");
+    let agent = repo_text("agents/audit.md");
+    let pointer = "The floor list of paths is in the audit contract, section \"Audit tiers\"";
+    for (name, text) in [
+        ("workflows/run.md", section(&run, "Check-run rules")),
+        ("workflows/audit.md", section(&audit, "Base agents")),
+    ] {
+        assert!(
+            text.contains(pointer),
+            "{name} lacks the floor-list pointer"
+        );
+    }
+    assert!(
+        agent.contains("The floor list of paths is in the contract's section \"Audit tiers\""),
+        "agents/audit.md lacks the floor-list pointer"
+    );
 }
