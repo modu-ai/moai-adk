@@ -439,34 +439,37 @@ fn include_str_exempt(file: &str, _path: &str) -> bool {
 }
 
 /// The repository paths (relative to the root, with `/`) a Rust file at `file` reads with
-/// `include_str!("<literal>")`, for the literals that leave `tests/`. A literal without `..` and a
-/// path that stays inside `tests/` are not repository reads of this kind.
+/// `include_str!("<literal>")` or `include_bytes!("<literal>")` (SPEC-20261123-land-scan-more-readers
+/// D-1), for the literals that leave `tests/`. A literal without `..` and a path that stays inside
+/// `tests/` are not repository reads of this kind.
 fn include_str_paths(file: &str, text: &str) -> Vec<String> {
-    const OPEN: &str = "include_str!(\"";
+    const OPENS: [&str; 2] = ["include_str!(\"", "include_bytes!(\""];
     let folder = file.rsplit_once('/').map_or("", |(dir, _)| dir);
     let mut out = Vec::new();
-    let mut rest = text;
-    while let Some(at) = rest.find(OPEN) {
-        rest = &rest[at + OPEN.len()..];
-        let Some(end) = rest.find('"') else { break };
-        let literal = &rest[..end];
-        rest = &rest[end..];
-        if !literal.contains("..") {
-            continue;
-        }
-        let mut parts: Vec<&str> = folder.split('/').filter(|s| !s.is_empty()).collect();
-        for segment in literal.split('/') {
-            match segment {
-                ".." => {
-                    parts.pop();
-                }
-                "." | "" => {}
-                other => parts.push(other),
+    for open in OPENS {
+        let mut rest = text;
+        while let Some(at) = rest.find(open) {
+            rest = &rest[at + open.len()..];
+            let Some(end) = rest.find('"') else { break };
+            let literal = &rest[..end];
+            rest = &rest[end..];
+            if !literal.contains("..") {
+                continue;
             }
-        }
-        let path = parts.join("/");
-        if !path.starts_with("tests/") {
-            out.push(path);
+            let mut parts: Vec<&str> = folder.split('/').filter(|s| !s.is_empty()).collect();
+            for segment in literal.split('/') {
+                match segment {
+                    ".." => {
+                        parts.pop();
+                    }
+                    "." | "" => {}
+                    other => parts.push(other),
+                }
+            }
+            let path = parts.join("/");
+            if !path.starts_with("tests/") {
+                out.push(path);
+            }
         }
     }
     out.sort();
@@ -655,6 +658,11 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "`put(p, \"README.md\", ..)` into the fixture repository it builds",
     ),
     (
+        "tests/check_pipeline_config.rs",
+        &["tools"],
+        "`p.join(\"tools\")` is the folder of the temporary project it builds (its `Command::new(\"sh\")` setup); the real script it copies, tools/self_check.sh, stays covered by its own path",
+    ),
+    (
         "tests/code_atlas_reference.rs",
         &["src/lib.rs"],
         "`fs::write` into the temporary project it builds",
@@ -691,8 +699,8 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
     ),
     (
         "tests/repo_scans_table.rs",
-        &["src/lib.rs", ".moai/specs"],
-        "names in the exemption list and the fixture tests of this file",
+        &["src/lib.rs", ".moai/specs", "tools"],
+        "names in the exemption list and the fixture tests of this file; `tools` is a fixture literal next to the interpreter literals the fixture tests spell",
     ),
     (
         "tests/review_check_cli.rs",
@@ -737,8 +745,9 @@ fn file_read_exempt(file: &str, path: &str) -> bool {
         .any(|(f, paths, _)| *f == file && (paths.is_empty() || paths.contains(&path)))
 }
 
-/// The calls that open a file or a folder while the test runs.
-const FILE_READ_CALLS: &[&str] = &["read_to_string(", "fs::read(", "read_dir(", "File::open("];
+/// The literals that start an interpreter. A file that names one and `CARGO_MANIFEST_DIR` runs a
+/// checked-in script, so its literal `tools` is the script folder (SPEC-20261123-land-scan-more-readers D-3).
+const INTERPRETER_LITERALS: &[&str] = &["\"python3\"", "\"bash\"", "\"sh\""];
 
 /// The files git tracks and every folder above them, relative to the root with `/`.
 struct Tracked {
@@ -869,16 +878,25 @@ fn string_literals(text: &str) -> Vec<String> {
 }
 
 /// The repository paths a test file spells as string literals and so may read: a file that names
-/// `CARGO_MANIFEST_DIR` and calls one of `FILE_READ_CALLS`, with the tracked paths of its literals.
-/// A path built from pieces is not seen (SPEC-20261123-land-file-read-scans D-2).
+/// `CARGO_MANIFEST_DIR`, with the tracked paths of its literals, whether it opens them itself or
+/// hands them to a binary or a script (SPEC-20261123-land-scan-more-readers D-2). A path built from
+/// pieces is not seen (SPEC-20261123-land-file-read-scans D-2).
 fn file_read_paths(text: &str, tracked: &Tracked) -> Vec<String> {
-    if !text.contains("CARGO_MANIFEST_DIR") || !FILE_READ_CALLS.iter().any(|c| text.contains(c)) {
+    if !text.contains("CARGO_MANIFEST_DIR") {
         return Vec::new();
     }
-    let mut out: Vec<String> = string_literals(text)
+    let literals = string_literals(text);
+    let mut out: Vec<String> = literals
         .iter()
         .filter_map(|literal| tracked.repo_path(literal))
         .collect();
+    // D-3: next to an interpreter the literal `tools` is the folder of the checked-in scripts
+    if INTERPRETER_LITERALS.iter().any(|i| text.contains(i))
+        && literals.iter().any(|l| l == "tools")
+        && tracked.dirs.contains("tools")
+    {
+        out.push("tools".to_string());
+    }
     out.sort();
     out.dedup();
     out
