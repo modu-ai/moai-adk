@@ -3,8 +3,8 @@
 //! `already_landed` with the proof and not as `no_criteria`. A card with no proof keeps
 //! `no_criteria`; a held card keeps `held`.
 //!
-//! Every command runs against a temporary HOME and a temporary git repository; the real `~/.moai`
-//! is not read or written. The caller is the session id in the environment
+//! Every command runs against a temporary HOME and a temporary git repository; the real home
+//! state is not read or written. The caller is the session id in the environment
 //! (`CLAUDE_CODE_SESSION_ID`).
 #![cfg(unix)]
 
@@ -148,7 +148,7 @@ impl World {
     }
 
     fn write_profile(&self) {
-        let cfg = self.project.join(".moai-cli/project.yaml");
+        let cfg = moai_cli::state_root::path(&self.project, "project.yaml");
         fs::create_dir_all(cfg.parent().unwrap()).unwrap();
         fs::write(&cfg, MFLOW_PROFILE).unwrap();
     }
