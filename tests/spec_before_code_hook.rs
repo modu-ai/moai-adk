@@ -535,6 +535,83 @@ fn the_scan_reads_one_level_and_follows_no_link() {
     defects_open_nothing(&defects);
 }
 
+/// Audit of C-429 (B2): a folder whose name is no new-form SPEC id (a plain name, an old-form id)
+/// opens nothing even when its own `id:` repeats the folder name.
+#[test]
+fn a_folder_that_is_no_new_form_spec_id_opens_nothing() {
+    defects_open_nothing(&[
+        |r| put_spec(r, "notes", &linked_text("notes", "draft", Some(LANE))),
+        |r| {
+            put_spec(
+                r,
+                "SPEC-AUTH-001",
+                &linked_text("SPEC-AUTH-001", "draft", Some(LANE)),
+            )
+        },
+    ]);
+}
+
+/// Audit of C-429 (B2): only the lines between the two `---` lines count. A `branch:` line or a
+/// `status:` line in the body, or a text with no opening `---` on its first line, opens nothing.
+#[test]
+fn only_the_frontmatter_between_two_rules_is_read() {
+    defects_open_nothing(&[
+        // The `branch:` line is in the body, after the closing rule.
+        |r| {
+            let text =
+                linked_text("SPEC-20261124-bad", "draft", None) + &format!("branch: {LANE}\n");
+            put_spec(r, "SPEC-20261124-bad", &text)
+        },
+        // The frontmatter says `completed`; a later body line says `draft`.
+        |r| {
+            let text =
+                linked_text("SPEC-20261124-bad", "completed", Some(LANE)) + "status: draft\n";
+            put_spec(r, "SPEC-20261124-bad", &text)
+        },
+        // No opening rule on the first line: the lines up to the first rule are no frontmatter.
+        |r| {
+            let text = format!(
+                "intro\nid: SPEC-20261124-bad\nstatus: draft\nbranch: {LANE}\n---\n\n## Intent\n"
+            );
+            put_spec(r, "SPEC-20261124-bad", &text)
+        },
+    ]);
+}
+
+/// Audit of C-429 (B3, note 7921): the C-426 case. The leader named the branch
+/// `spec/card-number-bare-prefix-20261124` while the lane's SPEC is an earlier one of another
+/// date (and another slug, or the same slug); the SPEC names the branch, so the write opens.
+#[test]
+fn a_spec_of_another_date_that_names_the_branch_opens_code_writes() {
+    let branch = "spec/card-number-bare-prefix-20261124";
+    for id in [
+        "SPEC-20261123-card-number-observe",
+        "SPEC-20261123-card-number-bare-prefix",
+    ] {
+        let (_d, root) = repo(branch);
+        put_spec(&root, id, &linked_text(id, "approved", None));
+        assert_deny(&code_write(&root));
+        put_spec(&root, id, &linked_text(id, "approved", Some(branch)));
+        assert_allow(&code_write(&root));
+    }
+}
+
+/// Audit of C-429 (N1): the SPEC file is read up to 16 KiB. A frontmatter cut inside its
+/// `branch:` line (the whole line is `branch: spec/lane-x-20261124-r9`, the cut leaves
+/// `branch: spec/lane-x-20261124`) opens nothing: the cut text has no closing rule.
+#[test]
+fn a_frontmatter_cut_by_the_read_limit_opens_nothing() {
+    defects_open_nothing(&[|r| {
+        let id = "SPEC-20261124-bad";
+        let head = format!("---\nid: {id}\nstatus: draft\npad: ");
+        let tail = format!("\nbranch: {LANE}");
+        let pad = "x".repeat(16 * 1024 - head.len() - tail.len());
+        let text = format!("{head}{pad}{tail}-r9\n---\n\n## Intent\n");
+        assert_eq!(&text[..16 * 1024], format!("{head}{pad}{tail}"));
+        put_spec(r, id, &text)
+    }]);
+}
+
 /// AC-4 (REQ-4): two live SPECs naming one branch refuse with the two-ids reason and removing one
 /// lets the write through. A branch whose name reads an existing SPEC is never scanned: two links
 /// beside it change nothing.
