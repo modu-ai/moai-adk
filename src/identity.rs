@@ -105,7 +105,12 @@ pub(crate) fn failure_summary(stderr: &[u8]) -> String {
 /// Runs `git -C <dir> rev-parse <args>` with a fixed argv. Variables that would redirect or
 /// reconfigure git are removed and the locale is fixed. stderr is read only to classify a
 /// failure; what reaches the caller is `failure_summary`, never a path.
-fn rev_parse(dir: &Path, args: &[&str]) -> Git {
+///
+/// With a `home` the child reads that HOME's global git configuration (its `.gitconfig`, or none
+/// when it has no such file) and not the environment HOME's: git reads neither `$HOME/.gitconfig`
+/// nor `$XDG_CONFIG_HOME/git/config` once `GIT_CONFIG_GLOBAL` is set (git(1), ENVIRONMENT). With
+/// no `home` the child keeps the process's own lookup (SPEC-20261124-home-env-readers D-8).
+fn rev_parse(dir: &Path, args: &[&str], home: Option<&Path>) -> Git {
     let mut cmd = Command::new("git");
     cmd.arg("--no-optional-locks")
         .arg("-C")
@@ -113,6 +118,17 @@ fn rev_parse(dir: &Path, args: &[&str]) -> Git {
         .arg("rev-parse")
         .args(args);
     scrub_git_env(&mut cmd);
+    if let Some(home) = home.filter(|h| !h.as_os_str().is_empty()) {
+        let config = home.join(".gitconfig");
+        cmd.env(
+            "GIT_CONFIG_GLOBAL",
+            if config.is_file() {
+                config
+            } else {
+                PathBuf::from("/dev/null")
+            },
+        );
+    }
     let out = cmd
         .env("GIT_OPTIONAL_LOCKS", "0")
         .stdin(Stdio::null())
@@ -202,8 +218,9 @@ pub fn identity(path: &Path) -> Result<Value> {
 /// [`identity`] with the HOME given instead of read from the environment. `home_state_root` is
 /// the home state root of `home`, or `null` for `None`, for which no home state root is resolved;
 /// no other field depends on it. `home_state_root` is found from no environment variable. The
-/// `git` child still runs with the process environment, so it reads the environment HOME's
-/// global git configuration (C-410 pins that).
+/// `git` children read the global git configuration of `home` when one is given
+/// and, with `None`, keep the process's own lookup, so the environment HOME's configuration
+/// reaches them only through the caller that passes no HOME (SPEC-20261124-home-env-readers D-8).
 pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
     let meta = fs::symlink_metadata(path).map_err(|_| "path unavailable")?;
     if meta.file_type().is_symlink() {
@@ -212,6 +229,7 @@ pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
     if !meta.is_dir() {
         return Err("path must be a directory".into());
     }
+    let given = home;
     let home = match home {
         Some(h) => {
             let root = crate::home_root::path(h);
@@ -229,6 +247,7 @@ pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
             "--is-bare-repository",
             "--is-inside-work-tree",
         ],
+        given,
     ) {
         Git::Unavailable => return Ok(empty("git_unavailable", "git was not found on PATH", home)),
         Git::Failed(summary) => return failed(&summary, home),
@@ -240,7 +259,7 @@ pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
     let bare = lines[2] == "true";
     let in_work_tree = lines[3] == "true";
     let work_tree = if in_work_tree {
-        match rev_parse(path, &["--path-format=absolute", "--show-toplevel"]) {
+        match rev_parse(path, &["--path-format=absolute", "--show-toplevel"], given) {
             Git::Lines(l) if l.len() == 1 => Some(canonical(&l[0])?),
             Git::Unavailable => {
                 return Ok(empty("git_unavailable", "git was not found on PATH", home))
@@ -635,5 +654,89 @@ mod home_arg_tests {
             identity(&work).unwrap(),
             identity_in(&work, expect.as_deref()).unwrap()
         );
+    }
+}
+
+/// SPEC-20261124-home-env-readers (slice 2, D-8): the `git` children of `identity_in` read the
+/// global git configuration of the HOME they are given, and with no HOME they keep the process's
+/// own lookup. The probe is `safe.directory`: git refuses a repository that another user owns
+/// unless the global configuration trusts it. The refusal is forced with git's own test switch,
+/// which only the child test process carries. The test re-runs itself in a child process, so no
+/// test changes this process's environment and none reads the real HOME.
+#[cfg(all(test, unix))]
+mod git_config_tests {
+    use super::identity_in;
+    use crate::layout::home_arg_tests::{child_var, init_repo, run_in_child_of};
+    use std::{
+        ffi::OsString,
+        fs,
+        path::{Path, PathBuf},
+    };
+
+    /// Set in the child process; the repository the child resolves the identity of.
+    const CHILD_WORK: &str = "MOAI_IDENTITY_GIT_TEST_WORK";
+    /// Set in the child process; a HOME whose `.gitconfig` trusts every repository.
+    const CHILD_TRUSTING: &str = "MOAI_IDENTITY_GIT_TEST_TRUSTING_HOME";
+    /// Set in the child process; a HOME without any git configuration.
+    const CHILD_PLAIN: &str = "MOAI_IDENTITY_GIT_TEST_PLAIN_HOME";
+
+    fn refused(result: crate::Result<serde_json::Value>) -> String {
+        let message = result.expect_err("git must refuse the repository");
+        assert!(message.contains("dubious ownership"), "{message}");
+        message
+    }
+
+    /// AC-9 (REQ-10), child side: the repository counts as owned by another user. The answer of
+    /// `identity_in(.., Some(home))` follows the `.gitconfig` of `home` whatever the environment
+    /// HOME holds; `identity_in(.., None)` follows the environment HOME, as a command's edge
+    /// that gives no HOME always did.
+    #[test]
+    fn identity_in_git_config_follows_the_home_it_is_given() {
+        let test = "identity_in_git_config_follows_the_home_it_is_given";
+        let (Some(work), Some(trusting), Some(plain)) = (
+            child_var(CHILD_WORK),
+            child_var(CHILD_TRUSTING),
+            child_var(CHILD_PLAIN),
+        ) else {
+            let dir = tempfile::tempdir().unwrap();
+            let work = dir.path().join("work");
+            fs::create_dir(&work).unwrap();
+            init_repo(&work);
+            let trusting = dir.path().join("trusting");
+            fs::create_dir(&trusting).unwrap();
+            fs::write(trusting.join(".gitconfig"), "[safe]\n\tdirectory = *\n").unwrap();
+            let plain = dir.path().join("plain");
+            fs::create_dir(&plain).unwrap();
+            let xdg = dir.path().join("xdg");
+            fs::create_dir(&xdg).unwrap();
+            for env_home in [&trusting, &plain] {
+                run_in_child_of(
+                    module_path!(),
+                    test,
+                    Some(&OsString::from(env_home.as_os_str())),
+                    &[
+                        (CHILD_WORK, &work),
+                        (CHILD_TRUSTING, &trusting),
+                        (CHILD_PLAIN, &plain),
+                        ("GIT_TEST_ASSUME_DIFFERENT_OWNER", Path::new("1")),
+                        ("GIT_CONFIG_NOSYSTEM", Path::new("1")),
+                        ("XDG_CONFIG_HOME", &xdg),
+                    ],
+                );
+            }
+            return;
+        };
+        let environment_trusts =
+            std::env::var_os("HOME").map(PathBuf::from).as_deref() == Some(trusting.as_path());
+        assert_eq!(
+            identity_in(&work, Some(&trusting)).unwrap()["identity_status"],
+            "ok"
+        );
+        refused(identity_in(&work, Some(&plain)));
+        if environment_trusts {
+            assert_eq!(identity_in(&work, None).unwrap()["identity_status"], "ok");
+        } else {
+            refused(identity_in(&work, None));
+        }
     }
 }
