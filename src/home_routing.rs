@@ -314,14 +314,21 @@ fn plan_inner(
             }
         }
         for (dir, is_default) in dirs {
-            folders.push(rules::plan_folder(
+            let mut folder = rules::plan_folder(
                 &home,
                 dir,
                 is_default,
                 &routing_text,
                 flow.as_deref(),
                 opts.remove_old_block,
-            ));
+            );
+            // A folder that reaches an earlier folder's file through a link is a reference.
+            for earlier in &folders {
+                if folder.reference(earlier) {
+                    break;
+                }
+            }
+            folders.push(folder);
         }
     }
     let mut plan = Plan {

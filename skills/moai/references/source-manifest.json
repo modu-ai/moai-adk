@@ -105,12 +105,12 @@
       }
     },
     "references/home/flow.md": {
-      "sha256": "86250ab39f05f8f377f87c7b1e55d25db44102c9f25567f432e76e95488c0161",
+      "sha256": "787c9e1466f13b67ac0e238c37dfd2734e982005b2c8200df01c2a4a87facd95",
       "origin": {
         "kind": "design-spec",
         "template_id": "home-flow-rule",
         "adoption": "new",
-        "reason": "Written for SPEC-20261122-claude-md-flow-rule: the NeXT-Flow git rule that moai-cli writes as rules/moai/flow.md into each Claude config folder the user picks (src/home_routing/rules.rs), plain text with no frontmatter, at most 80 lines and 5 KiB; its Compact Instructions section lists what must survive a compaction."
+        "reason": "Written for SPEC-20261122-claude-md-flow-rule revision 4 against the leader's candidate (rules-redesign-2026-11-23): the short, project-generic evidence and handoff rule that moai-cli writes as rules/moai/flow.md into each Claude config folder the user picks (src/home_routing/rules.rs), plain text with no frontmatter, at most 80 lines and 5 KiB. Lane, card and landing detail stays in references/flows/next-flow.md, which this file points to; what hooks enforce (force push, reset, clean) is not repeated here."
       }
     },
     "references/home/output-style.md": {
@@ -123,12 +123,12 @@
       }
     },
     "references/home/routing.md": {
-      "sha256": "bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
+      "sha256": "b92620de66e2dc068ce776d567239d7398c8631d0709cdaa10a42f146f9399a2",
       "origin": {
         "kind": "design-spec",
         "template_id": "home-routing",
         "adoption": "new",
-        "reason": "Written for rc.2 #2638 from the leader's final design (#2634, layer 2) and user decision 6845654776: the routing section moai-cli writes between moai:managed markers into ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md (src/home_routing.rs); {invoke} becomes /moai or $moai. A short pointer to routes.json and chains/index.md, never a copy of the chain table."
+        "reason": "Written for rc.2 #2638 from the leader's final design (#2634, layer 2) and user decision 6845654776, rewritten for SPEC-20261122-claude-md-home-routing revision 3 against the leader's candidate (rules-redesign-2026-11-23): the routing text moai-cli writes as rules/moai.md into the Claude config folder (src/home_routing/rules.rs); {invoke} becomes /moai. It opens with the condition that the rules apply only in a project configured for MoAI or when the user invokes MoAI, and stays a short pointer to routes.json and chains/index.md, never a copy of the chain table."
       }
     },
     "references/internal/boundary-checks.md": {

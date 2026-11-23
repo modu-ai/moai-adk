@@ -321,6 +321,36 @@ impl Folder {
                 || self.flow.iter().any(|p| is_write(&p.action))
                 || self.old.iter().any(|p| p.action == "remove"))
     }
+
+    /// A folder that reaches a file an `earlier` folder already plans (its `rules` folder is a
+    /// link into that folder's, the way an Orca profile shares `agents` and `output-styles`)
+    /// holds no second copy: that file's row says `linked`, names the folder it is planned for,
+    /// and nothing is written or recorded for this folder. A conflict stays a conflict. Returns
+    /// whether any file was turned into a reference.
+    pub fn reference(&mut self, earlier: &Folder) -> bool {
+        let mut referenced = false;
+        for (mine, theirs) in [
+            (&mut self.routing, &earlier.routing),
+            (&mut self.flow, &earlier.flow),
+        ] {
+            let (Some(m), Some(t)) = (mine.as_mut(), theirs.as_ref()) else {
+                continue;
+            };
+            if m.path == t.path && m.action != "conflict" {
+                m.action = "linked".into();
+                m.detail = Some(format!(
+                    "reached through a link: the file is the one planned for {}; no second copy",
+                    earlier.row.config_dir
+                ));
+                referenced = true;
+            }
+        }
+        if referenced {
+            self.row.section = self.routing.clone();
+            self.row.flow = self.flow.clone();
+        }
+        referenced
+    }
 }
 
 pub(super) fn plan_folder(

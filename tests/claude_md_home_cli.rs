@@ -546,84 +546,89 @@ fn flow_conflict_a_new_source_merges_while_the_file_is_what_moai_wrote() {
 
 // ---- flow_text_ ----------------------------------------------------------------------------
 
+/// The one sentence both shipped rules files open with: they bind only a project configured for
+/// MoAI or a session where the user invokes MoAI, so a project that has nothing to do with MoAI
+/// keeps its own workflow although the user-level file is loaded in every session.
+const CONDITION: &str = "only in a project configured for MoAI";
+
 #[test]
-fn flow_text_holds_the_four_contents() {
+fn flow_text_holds_the_evidence_and_handoff_rule() {
     let text = shipped("references/home/flow.md");
-    // The git rule.
     for want in [
-        ".claude/worktrees",
-        "no push, no pull request",
-        "background session never pushes",
-        "head commit and the base",
-        "`moai card land",
-        "exactly once",
-        "protection hook",
-        "fast-forward only",
-        "Remote checks never block a landing",
+        "Missing evidence is never a PASS",
+        "record the tested revision, the exact checks, and any check that was skipped or failed",
+        "Keep implementation and independent review distinct",
+        "a reviewer checks the candidate revision, not a stale one",
+        "When blocked, record the scope, the revision, the remaining checks",
+        "never bypass ownership, permissions or a release gate",
+        "Keep secrets and private data out of shared artifacts",
+        "a local merge does not authorize a push or a release",
+        "never remove an absolute or home path",
     ] {
-        assert!(text.contains(want), "the git rule lacks {want:?}");
+        assert!(text.contains(want), "the rule lacks {want:?}");
     }
-    // The push after a landing is conditional on the remote copy.
-    let push: Vec<&str> = text
-        .lines()
-        .filter(|l| l.contains("fast-forward only"))
-        .collect();
-    assert_eq!(push.len(), 1, "{push:?}");
-    assert!(push[0].contains("remote copy on") && push[0].contains("off by default"));
-    // One behaviour line for background work at the end of a turn.
-    let board: Vec<&str> = text
-        .lines()
-        .filter(|l| l.contains("background work still running"))
-        .collect();
-    assert_eq!(board.len(), 1, "{board:?}");
-    for want in ["TaskCreate", "task list", "progress board"] {
-        assert!(board[0].contains(want), "{want}");
-    }
-    // The lander, not a fixed role, lands; the card records who.
-    assert!(
-        text.contains("by the lander (today the leader session; the card records who lands)"),
-        "the landing line"
-    );
-    // Exactly one pointer to the full flow text, which lives in the skill's flow reference.
-    let pointer: Vec<&str> = text
-        .lines()
-        .filter(|l| l.contains("references/flows/next-flow.md"))
-        .collect();
-    assert_eq!(
-        pointer,
-        ["The full flow is the moai skill's references/flows/next-flow.md."],
-        "{pointer:?}"
-    );
-    // The Compact Instructions section and what it keeps.
-    let (_, compact) = text.split_once("## Compact Instructions").expect("section");
-    for want in [
-        "card id and its generation",
-        "branch and the worktree",
-        "READY head and its base",
-        "open reservation",
-        "audit requests and decision notes",
-    ] {
-        assert!(compact.contains(want), "Compact Instructions lack {want:?}");
-    }
-    // One line that the project's CLAUDE.md wins, one safety line.
+    // The project's own CLAUDE.md wins: said once.
     let wins: Vec<&str> = text
         .lines()
         .filter(|l| l.contains("CLAUDE.md wins"))
         .collect();
     assert_eq!(wins.len(), 1, "{wins:?}");
-    let safety: Vec<&str> = text
+    // Exactly one pointer to the full flow, which lives in the skill's flow reference.
+    let pointer: Vec<&str> = text
         .lines()
-        .filter(|l| l.contains("reset --hard") && l.contains("--no-verify"))
+        .filter(|l| l.contains("references/flows/next-flow.md"))
         .collect();
-    assert_eq!(safety.len(), 1, "{safety:?}");
-    for want in [
-        "force-push",
-        "clean -f",
-        "add -A",
-        "Delete only inside your own worktree or a temporary folder, by cd and a relative path",
-        "never rm an absolute or home path",
-    ] {
-        assert!(safety[0].contains(want), "{want}");
+    assert_eq!(pointer.len(), 1, "{pointer:?}");
+}
+
+#[test]
+fn flow_text_binds_only_a_project_configured_for_moai() {
+    for rel in ["references/home/flow.md", "references/home/routing.md"] {
+        let text = shipped(rel);
+        let first_rule = text
+            .lines()
+            .find(|l| l.contains(CONDITION))
+            .unwrap_or_else(|| panic!("{rel} lacks the condition {CONDITION:?}"));
+        // The condition is the first sentence of prose, ahead of every instruction.
+        let before: Vec<&str> = text
+            .lines()
+            .take_while(|l| !l.contains(CONDITION))
+            .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
+            .collect();
+        assert!(
+            before.is_empty(),
+            "{rel}: rules ahead of the condition: {before:?}"
+        );
+        assert!(!first_rule.trim().is_empty());
+    }
+    assert!(
+        shipped("references/home/routing.md").contains("never changes another project's workflow"),
+        "the routing text says what loading it does not do"
+    );
+}
+
+#[test]
+fn flow_text_carries_no_role_or_command_detail() {
+    // Lane roles, card commands and the landing command are read from the skill when a card or
+    // a landing is involved; hooks enforce what they can (force push, reset, clean). Neither
+    // shipped rules file repeats any of it, because the user-level file loads in every project.
+    for rel in ["references/home/flow.md", "references/home/routing.md"] {
+        let text = shipped(rel);
+        for banned in [
+            "moai card",
+            "LANE-",
+            "--by leader",
+            "lander",
+            ".claude/worktrees",
+            "integration branch",
+            "Compact Instructions",
+            "TaskCreate",
+            "reset --hard",
+            "--no-verify",
+            "add -A",
+        ] {
+            assert!(!text.contains(banned), "{rel} carries {banned:?}");
+        }
     }
 }
 
@@ -1278,6 +1283,84 @@ fn folders_a_conflict_in_one_folder_does_not_stop_the_others() {
     );
     assert!(b.join("rules/moai.md").is_file());
     assert!(w.default_dir().join("rules/moai.md").is_file());
+}
+
+#[test]
+fn folders_a_profile_whose_rules_folder_links_to_the_default_one_is_a_reference_not_a_copy() {
+    // An Orca profile shares the default folder's `rules` through a link, the way it shares
+    // `agents` and `output-styles`; the profile must not get a second owner of the same file.
+    let w = World::new();
+    w.apply(&[]);
+    let profile = w.base.join("profile");
+    fs::create_dir_all(&profile).unwrap();
+    symlink(w.default_dir().join("rules"), profile.join("rules")).unwrap();
+    let extra = ["--config-dir", profile.to_str().unwrap()];
+    let plan = w.plan(&extra);
+    assert_eq!(routing_action(&plan, &profile), "linked", "{plan}");
+    assert_eq!(flow_action(&plan, &profile), "linked", "{plan}");
+    assert!(
+        row(&plan, &profile)["section"]["detail"]
+            .as_str()
+            .unwrap()
+            .contains("no second copy"),
+        "{plan}"
+    );
+    // The default folder's own rows stay as they were.
+    assert_eq!(routing_action(&plan, &w.default_dir()), "unchanged");
+    // Applying the plan writes nothing and records no second state file.
+    let before = w.home.snapshot();
+    let r = ok(&w.apply_out(plan["plan_digest"].as_str().unwrap(), &extra));
+    assert_eq!(r["state"], json!("unchanged"), "{r}");
+    assert_eq!(w.home.snapshot(), before, "a reference writes nothing");
+    assert_eq!(
+        w.rules_state_files().len(),
+        1,
+        "{:?}",
+        w.rules_state_files()
+    );
+}
+
+#[test]
+fn folders_a_reference_to_an_edited_file_stays_a_conflict() {
+    // The linked profile reaches the user's own edit of the default file: it is reported as the
+    // conflict it is, never relabelled as a harmless reference.
+    let w = World::new();
+    w.apply(&[]);
+    let edited = w.default_dir().join("rules/moai.md");
+    write(&edited, "my own routing notes\n");
+    let profile = w.base.join("profile");
+    fs::create_dir_all(&profile).unwrap();
+    symlink(w.default_dir().join("rules"), profile.join("rules")).unwrap();
+    let plan = w.plan(&["--config-dir", profile.to_str().unwrap()]);
+    assert_eq!(
+        routing_action(&plan, &w.default_dir()),
+        "conflict",
+        "{plan}"
+    );
+    assert_eq!(routing_action(&plan, &profile), "conflict", "{plan}");
+    assert_eq!(
+        fs::read_to_string(&edited).unwrap(),
+        "my own routing notes\n"
+    );
+}
+
+#[test]
+fn folders_a_link_that_leaves_the_default_folder_is_not_a_reference() {
+    // A `rules` link to a folder outside the default config folder keeps being refused: moai
+    // follows a link only into the default folder (SPEC decision D-2).
+    let w = World::new();
+    w.apply(&[]);
+    let outside = w.base.join("elsewhere/rules");
+    fs::create_dir_all(&outside).unwrap();
+    let profile = w.base.join("profile");
+    fs::create_dir_all(&profile).unwrap();
+    symlink(&outside, profile.join("rules")).unwrap();
+    let plan = w.plan(&["--config-dir", profile.to_str().unwrap()]);
+    assert_eq!(routing_action(&plan, &profile), "conflict", "{plan}");
+    assert!(
+        outside.read_dir().unwrap().next().is_none(),
+        "nothing was written through the link"
+    );
 }
 
 #[test]

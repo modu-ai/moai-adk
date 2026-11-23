@@ -2,7 +2,7 @@
 id: SPEC-20261122-claude-md-home-routing
 title: "The /moai routing text moves from the user's CLAUDE.md to rules/moai.md in the Claude config folder"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 parent: SPEC-20261122-claude-md-layout
 ---
@@ -14,6 +14,8 @@ parent: SPEC-20261122-claude-md-layout
 사용자 전역 `CLAUDE.md` 안의 `moai-routing` 블록(`src/home_routing.rs`)을 설정 폴더의 `rules/moai.md` 로 옮겨요. 설정 폴더는 `host_home` 이 정해요(`CLAUDE_CONFIG_DIR`, 없으면 `~/.claude`). 새 파일은 moai 혼자 쓰는 파일이라 마커 대신 홈 스타일 파일처럼 "마지막에 쓴 바이트와 같을 때만 덮어쓰기"로 판정해요(`src/home_style.rs:313-324`). 옛 블록은 사용자 `CLAUDE.md` 에 남아 있으므로 지우기는 따로 고르는 선택이고 기본이 아니에요: Orca 프로필은 `~/.claude/CLAUDE.md` 를 가져다 쓰고 `rules/` 폴더가 없어서, 블록을 지우면 그 세션들의 안내가 조용히 사라져요(결정 D-8 of `SPEC-20261122-claude-md-layout`). Claude Code 가 프로필 폴더의 `rules/` 를 읽는지는 아직 확인 전이에요. 이 SPEC 은 Codex 쪽 줄(`home_routing.rs` 의 codex 항목)을 건드리지 않아요.
 
 개정 2(2026-11-22, 코드 대조 뒤, 레이아웃 SPEC 개정 2 의 전역 설치 결정 반영): 이 SPEC 은 라우팅 파일 `rules/moai.md` 를 다루고, 같은 층이 쓰는 흐름 규칙 파일 `rules/moai/flow.md` 의 내용·한도·충돌 규칙은 자식 SPEC `SPEC-20261122-claude-md-flow-rule` 이 맡아요(요구 12개 한도 때문에 나눴어요). 둘 다 설정 폴더에 하나씩만 놓아요. 미리보기에는 기본 설정 폴더가 미리 골라진 채로 두 파일이 나오고, `moai update` 의 확인 토큰(사용자의 선택)이 있어야만 적용돼요. 추가 설정 폴더와 옛 블록 지우기는 따로 고르는 선택이에요. 시험 대상은 한 파일 `tests/claude_md_home_cli.rs` 하나예요(레이아웃 SPEC 의 `flow_` 와 같은 파일). 링크이거나 UTF-8 이 아닌 대상 파일은 충돌로 보고하고(레이아웃 REQ-12), 막힘(`blocked`)은 변수 자체가 거부될 때만이에요(REQ-2). 영수증은 항목마다 종류(`kind`)와 설정 폴더를 적어서 한 호스트에 파일이 둘이어도 되돌리기가 섞이지 않아요. 기존 영수증은 `kind` 가 없으면 옛 블록으로 읽어요. 이 SPEC 은 `src/update.rs` 를 고치지 않아요: `moai update` 는 이미 `home_routing::plan_for` 와 `apply_for` 로 라우팅 층을 계획하고 적용하므로, 호스트의 계획 항목이 한 파일 계획으로 바뀌면 코드 수정 없이 이어져요. 선택(흐름 규칙 설치, 설정 폴더, 옛 블록 지우기)을 `moai update` 의 확인 토큰으로 묶는 일은 `update.rs` 가 비는 뒤의 다른 변경이에요.
+
+개정 3(2026-11-23, 리더 결정 04:39Z·04:46Z, 사용자 확정 P0): (1) 이 SPEC 이 C-307(최소 홈 규칙)의 공통 rules 구현 정본이에요. C-307 의 요구는 두 SPEC 에 나뉘어 들어와요: MoAI 사용 조건을 맨 앞에 두는 짧은 글(흐름 규칙 SPEC REQ-6; 라우팅 글의 한도는 이 SPEC 의 REQ-4), MoAI 가 아닌 프로젝트에 영향 없음(흐름 규칙 SPEC REQ-7). 두 글의 내용은 처음부터 다시 설계했고 그 비교와 근거는 흐름 규칙 SPEC 의 개정 4 와 D-7 에 있어요. (2) Orca 프로필은 사본이 아니라 참조예요. Orca 프로필 폴더는 `agents`, `output-styles` 같은 폴더를 `~/.claude` 로의 링크로 두고 `CLAUDE.md` 는 `@~/.claude/CLAUDE.md` 한 줄이에요(읽기만 해서 확인). 실제 Claude Code 2.1.330 에 던져 둔 임시 설정 폴더로 재 보니 `rules` 폴더 링크와 `CLAUDE.md` 의 `@import` 둘 다 규칙을 불러오고, 참조 없는 프로필은 불러오지 않아요. 그래서 계획은 이미 계획된 설정 폴더의 파일에 링크로 닿는 폴더를 두 번째 사본으로 세지 않고 `linked` 로 보고하고 아무것도 쓰지 않아요(요구 12개 한도 때문에 `SPEC-20261122-claude-md-flow-rule` 의 REQ-8 이 맡아요). 기본 폴더 밖으로 나가는 `rules` 링크는 그대로 충돌이에요(D-2).
 
 ## Requirements
 
