@@ -349,6 +349,18 @@ pub fn read_record(folder: &Path) -> Result<Option<Value>, String> {
     Ok(v.is_object().then_some(v))
 }
 
+/// REQ-4 of SPEC-20261120-test-parallelism-cap: a `.metadata_never_index` marker inside the
+/// build folder, best-effort — macOS Spotlight skips a folder that holds one, and build
+/// output is the last thing a machine needs indexed. A failure to create the marker never
+/// fails the folder. The marker is created exclusively (`O_CREAT | O_EXCL`): a link or a file
+/// already at its path is left as it is, never followed and never truncated.
+fn never_index(folder: &Path) {
+    let _ = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(folder.join(".metadata_never_index"));
+}
+
 /// `tools/build_folder.py env`: makes the build folder of `owner` under `home` and writes its
 /// owner record unless an equal one is there; refuses a record of another worktree.
 pub fn prepare(home: &Path, owner: &Owner) -> Result<PathBuf, String> {
@@ -357,6 +369,7 @@ pub fn prepare(home: &Path, owner: &Owner) -> Result<PathBuf, String> {
         path.push(part);
         real_dir(&path)?;
     }
+    never_index(&path);
     let record = serde_json::json!({
         "schema_version": 1,
         "git_common_dir": owner.common.to_string_lossy(),
@@ -442,6 +455,66 @@ mod tests {
         ] {
             assert!(check_lane(bad).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn prepare_marks_the_build_folder_never_index() {
+        let (_d, home) = base();
+        let owner = Owner {
+            common: home.join("common"),
+            worktree: home.join("worktree"),
+            name: "proj-agent-7".to_string(),
+        };
+        let folder = prepare(&home, &owner).unwrap();
+        assert!(
+            fs::symlink_metadata(folder.join(".metadata_never_index"))
+                .map(|m| m.is_file())
+                .unwrap_or(false),
+            "{} has no marker",
+            folder.display()
+        );
+    }
+
+    /// The marker is created, never written through: a link already at its path (to a file or
+    /// to nothing) keeps its target as it was, and a marker that is already there is left alone.
+    #[cfg(unix)]
+    #[test]
+    fn the_marker_never_follows_a_link_or_truncates() {
+        let owner = |home: &Path| Owner {
+            common: home.join("common"),
+            worktree: home.join("worktree"),
+            name: "proj-agent-7".to_string(),
+        };
+        let folder_of = |home: &Path| home.join(".moai/build/proj-agent-7");
+        let marker = |home: &Path| folder_of(home).join(".metadata_never_index");
+
+        // A link to a file with content: the file keeps its bytes.
+        let (_d, home) = base();
+        fs::create_dir_all(folder_of(&home)).unwrap();
+        let victim = home.join("victim.txt");
+        fs::write(&victim, b"precious bytes").unwrap();
+        std::os::unix::fs::symlink(&victim, marker(&home)).unwrap();
+        prepare(&home, &owner(&home)).unwrap();
+        assert_eq!(fs::read(&victim).unwrap(), b"precious bytes");
+        assert!(fs::symlink_metadata(marker(&home))
+            .unwrap()
+            .file_type()
+            .is_symlink());
+
+        // A dangling link: nothing is created at its target.
+        let (_d, home) = base();
+        fs::create_dir_all(folder_of(&home)).unwrap();
+        let nowhere = home.join("not-there.txt");
+        std::os::unix::fs::symlink(&nowhere, marker(&home)).unwrap();
+        prepare(&home, &owner(&home)).unwrap();
+        assert!(!nowhere.exists(), "the link was written through");
+
+        // A marker that is already a file keeps what it holds.
+        let (_d, home) = base();
+        fs::create_dir_all(folder_of(&home)).unwrap();
+        fs::write(marker(&home), b"kept").unwrap();
+        prepare(&home, &owner(&home)).unwrap();
+        assert_eq!(fs::read(marker(&home)).unwrap(), b"kept");
     }
 
     #[test]
@@ -623,13 +696,15 @@ mod tests {
         assert_eq!(rec["schema_version"], 1);
         assert_eq!(rec["worktree"], b.join("one").to_str().unwrap());
         assert_eq!(rec["git_common_dir"], b.join("repo/.git").to_str().unwrap());
-        // Again: the same record, no temporary file left.
+        // Again: the same record, no temporary file left. The folder carries its owner record
+        // and the Spotlight marker (REQ-4), nothing else.
         assert_eq!(prepare(&home, &one).unwrap(), dir);
-        let names: Vec<_> = fs::read_dir(&dir)
+        let mut names: Vec<String> = fs::read_dir(&dir)
             .unwrap()
-            .map(|e| e.unwrap().file_name())
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
             .collect();
-        assert_eq!(names, [RECORD]);
+        names.sort();
+        assert_eq!(names, [".metadata_never_index", RECORD]);
         // The same folder name from another worktree: refused, the record kept.
         let two = Owner {
             name: "repo-one".into(),
