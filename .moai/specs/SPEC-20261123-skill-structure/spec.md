@@ -30,7 +30,7 @@ created: 2026-11-23
 
 - REQ-1: The skill shall carry a reference `references/internal/loop.md` that names the one case in which a session may arm a repeating timer for the leader round.
 - REQ-2: While a session is not confirmed as the registered leader, the loop reference shall tell it not to arm `/loop`, a cron task or a wakeup for the leader round.
-- REQ-3: The loop reference shall define a confirmed leader as a session whose id, printed by `moai session-current`, equals the `session` of the live leader entry that `moai session-register --show` prints.
+- REQ-3: The loop reference shall define a confirmed leader as a session whose id, printed by `moai session-current`, equals the `session` of the live leader entry that `moai session-register --show --name leader` prints.
 - REQ-4: When a confirmed leader arms a timer for the leader round, the loop reference shall tell it to arm exactly one, after it has listed its timers and removed an earlier one for the same round.
 - REQ-5 (REQ-4): IF the session cannot list its timers, THEN the loop reference shall tell it not to arm one and to say so.
 - REQ-6: The skill entry shall point to the loop reference in one line.
@@ -52,7 +52,7 @@ created: 2026-11-23
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261123-skill-structure/**`, `skills/moai/SKILL.md`, `skills/moai/references/internal/loop.md`, `skills/moai/references/internal/sdd.md`, `skills/moai/workflows/read.md`, `skills/moai/workflows/plan.md`, `skills/moai/workflows/run.md`, `skills/moai/workflows/sync.md`, `skills/moai/workflows/audit.md`, `skills/moai/workflows/project.md`, `tests/skill_structure.rs`, `tests/sdd_guidance.rs` (only if a pinned sentence of the order step moves), `skills/moai/references/source-manifest.json` (a leased line, written last)
+- write: `.moai/specs/SPEC-20261123-skill-structure/**`, `skills/moai/SKILL.md`, `skills/moai/references/internal/loop.md`, `skills/moai/references/internal/sdd.md`, `skills/moai/references/chains/index.md` (one rule line that names the loop reference), `tests/agent_defs_package.rs` (its closed list of internal references gains `loop`), `skills/moai/workflows/read.md`, `skills/moai/workflows/plan.md`, `skills/moai/workflows/run.md`, `skills/moai/workflows/sync.md`, `skills/moai/workflows/audit.md`, `skills/moai/workflows/project.md`, `tests/skill_structure.rs`, `tests/sdd_guidance.rs` (only if a pinned sentence of the order step moves), `skills/moai/references/source-manifest.json` (a leased line, written last)
 - read-only: `tests/next_flow_skill_scan.rs`, `tests/report_rules_core.rs`, `tests/core_rules_2876.rs`, `tests/agent_defs_package.rs`, `src/leader_round/registration.rs`, `src/card/land.rs`
 - forbidden: `skills/moai/workflows/work.md`, `skills/moai/workflows/update.md`, `skills/moai/references/flows/next-flow.md`
 
@@ -63,7 +63,7 @@ created: 2026-11-23
 3. Add the `## Resume` section to the six workflows, each grounded in what that workflow already reads (`moai card show`, `git`, `moai spec check`, the head named by the ready note, `moai project-update-plan`).
 4. Extend the order step of `internal/sdd` with the landing and the next card; keep the one full copy of the order there.
 5. Run the targeted scans of AC-6, then regenerate the manifest rows under a line lease and run its check.
-6. Try the loop reference's two commands once in a temporary clone and a temporary HOME (a leader registered, and a second session refused) and record the output in the Result.
+6. Show that the loop reference's two commands behave as it says by running the existing `leader_registration_cli` tests (they register a leader, read it back with `--show` and refuse a second live one in a temporary clone and HOME), and record the run in the Result. A session isolated in this worktree may not run git against a clone of its own making, so no extra clone is built.
 7. Ask for an independent audit; the implementer does not audit.
 
 ## Risks

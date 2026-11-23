@@ -27,7 +27,7 @@ const RESUME_WORKFLOWS: [(&str, &str); 6] = [
     ("run.md", "`moai card show"),
     ("sync.md", "`## Result`"),
     ("audit.md", "head"),
-    ("project.md", "`moai project-update-plan`"),
+    ("project.md", "`moai project-update-plan"),
 ];
 
 /// A section's text: from its heading line to the next `## ` heading or the end of the file.
@@ -62,7 +62,7 @@ fn loop_reference_refuses_an_unconfirmed_session_and_defines_the_leader() {
         // REQ-2: the refusal, for the three ways to repeat a round.
         "A session that is not the confirmed leader arms no `/loop`, no cron task and no wakeup for the leader round.",
         // REQ-3: the definition and its two commands.
-        "its own id, printed by `moai session-current`, equals the `session` of the live leader entry that `moai session-register --show` prints",
+        "its own id, printed by `moai session-current`, equals the `session` of the live leader entry that `moai session-register --show --name leader` prints",
     ] {
         assert!(text.contains(needle), "the loop reference lacks: {needle}");
     }
