@@ -417,7 +417,8 @@ mod home_arg_tests {
     fn symlinked_home(dir: &Path) -> PathBuf {
         let home = dir.join("home");
         std::fs::create_dir_all(home.join("elsewhere")).unwrap();
-        std::os::unix::fs::symlink(home.join("elsewhere"), home.join(".moai-cli")).unwrap();
+        std::os::unix::fs::symlink(home.join("elsewhere"), home.join(crate::HOME_STATE_DIR))
+            .unwrap();
         home
     }
 
