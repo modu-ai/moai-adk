@@ -3,13 +3,12 @@
 //! "$e"`, so lanes stop prefixing every cargo command by hand. (A bare `eval "$(…)"` would go on
 //! after a refusal: POSIX `eval` of an empty string returns 0.)
 //!
-//! - `CARGO_TARGET_DIR` is the build folder of the worktree the command runs in (card C-82,
-//!   `skills/moai/workflows/run.md`, "Check-run rules"; follow-up asked by the user 2026-11-17
-//!   08:22Z): `<HOME>/.moai/build/<project>-<worktree name>`, one per worktree, never shared,
-//!   named as `tools/build_folder.py env` names it ([`folder_name`]; a test runs both). Like that
-//!   tool it makes `~/.moai`, `~/.moai/build` and the folder (mode 0700) when missing and writes
-//!   the owner record `.moai-build.json`, so `moai optimize-plan` can offer the folder for deletion
-//!   once the worktree is gone. It replaces the per-lane `<base>/moai-rc-target-<lane>` (#2841).
+//! - `CARGO_TARGET_DIR` is unset: a worktree builds in its own `target/` (user decision
+//!   2026-11-22, `skills/moai/workflows/run.md` "Check-run rules"). The lines say `unset
+//!   CARGO_TARGET_DIR`, so a shell that held the retired `~/.moai/build/<name>` value loses it.
+//!   Nothing is made under HOME and no owner record is written: the former per-worktree folder
+//!   `<HOME>/.moai/build/<project>-<worktree name>` and its `.moai-build.json` are retired
+//!   (`moai optimize-plan` lists what they left behind, read only).
 //!   cargo decides what to rebuild from file mtimes, so after `git restore`, `git checkout --` or
 //!   `git archive`, `touch` `build.rs` and the sources before the next build (#2846 audit).
 //! - `CARGO_HOME` is the lane's own `<base>/moai-rc-cargo-<lane>` when it holds a prepared
@@ -25,11 +24,9 @@
 //!
 //! Refused, with nothing printed on stdout: a lane name that is not one safe path component, a
 //! relative base, a cargo-home path that exists as a symbolic link or as anything other than a
-//! folder (cargo would write through it), a HOME that is not absolute, a folder outside a git
-//! worktree, a link or a non-folder on the build folder's path, and a build folder whose owner
-//! record names another worktree. The cargo homes are checked before anything is written.
+//! folder (cargo would write through it) and a folder outside a git worktree. HOME is not read,
+//! and the command writes nothing.
 
-use serde_json::Value;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -71,7 +68,8 @@ pub fn check_lane(lane: &str) -> Result<(), String> {
 /// The lane's build environment.
 #[derive(Debug, PartialEq, Eq)]
 pub struct LaneEnv {
-    pub target_dir: PathBuf,
+    /// The root of the worktree that holds the working folder; cargo builds in its `target/`.
+    pub worktree: PathBuf,
     pub cargo_home: Option<PathBuf>,
     /// Why `cargo_home` is what it is, for the comment line.
     pub cargo_home_why: String,
@@ -114,20 +112,11 @@ fn prepared(home: &Path) -> Result<bool, String> {
 }
 
 /// The environment of `lane` for the worktree that holds `cwd`: the cargo home under `base`
-/// (read only), then the worktree's build folder under the home that `home` and `userprofile`
-/// give ([`home_dir`]; made and recorded).
-pub fn resolve(
-    lane: &str,
-    base: &Path,
-    home: Option<&OsStr>,
-    userprofile: Option<&OsStr>,
-    cwd: &Path,
-) -> Result<LaneEnv, String> {
+/// (read only) and the worktree's root, whose `target/` cargo builds in. Writes nothing.
+pub fn resolve(lane: &str, base: &Path, cwd: &Path) -> Result<LaneEnv, String> {
     let (cargo_home, cargo_home_why) = cargo_home(lane, base)?;
-    let home = home_dir(home, userprofile, cfg!(windows))?;
-    let target_dir = prepare(&home, &owner(cwd)?)?;
     Ok(LaneEnv {
-        target_dir,
+        worktree: worktree_root(cwd)?,
         cargo_home,
         cargo_home_why,
     })
@@ -164,21 +153,6 @@ pub fn cargo_home(lane: &str, base: &Path) -> Result<(Option<PathBuf>, String), 
             ),
         )
     })
-}
-
-/// The owner record in a build folder (C-82; `tools/build_folder.py` `RECORD`).
-pub const RECORD: &str = crate::optimize::AGENT_BUILD_RECORD;
-
-/// The largest owner record read (`tools/build_folder.py` `RECORD_MAX`).
-const RECORD_MAX: u64 = 4096;
-
-/// Who a build folder belongs to: the repository's git common dir, the worktree root (both real
-/// paths) and the folder's name under `~/.moai/build/`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Owner {
-    pub common: PathBuf,
-    pub worktree: PathBuf,
-    pub name: String,
 }
 
 /// `tools/build_folder.py` `safe`: each character outside `[A-Za-z0-9._-]` becomes `_`; an
@@ -251,17 +225,9 @@ fn real(path: &Path) -> Result<PathBuf, String> {
     std::fs::canonicalize(path).map_err(|e| format!("lane-env: {}: {e}", path.display()))
 }
 
-/// The owner of the worktree that holds `cwd`.
-pub fn owner(cwd: &Path) -> Result<Owner, String> {
-    let worktree = real(Path::new(&git(cwd, &["rev-parse", "--show-toplevel"])?))?;
-    let common = PathBuf::from(git(cwd, &["rev-parse", "--git-common-dir"])?);
-    let common = real(&cwd.join(common))?;
-    let name = folder_name(&common, &worktree)?;
-    Ok(Owner {
-        common,
-        worktree,
-        name,
-    })
+/// The root of the worktree that holds `cwd`, as a real path.
+pub fn worktree_root(cwd: &Path) -> Result<PathBuf, String> {
+    real(Path::new(&git(cwd, &["rev-parse", "--show-toplevel"])?))
 }
 
 /// The real paths of every worktree `git worktree list` names from `cwd` (ones that are gone
@@ -302,118 +268,20 @@ pub fn build_folder(home: &Path, name: &str) -> PathBuf {
     home.join(".moai").join("build").join(name)
 }
 
-/// `path` is a real folder, made with mode 0700 when missing; a link or anything else refuses
-/// (C-82 audit B1: a link is never followed).
-fn real_dir(path: &Path) -> Result<(), String> {
-    if std::fs::symlink_metadata(path).is_err() {
-        let mut b = std::fs::DirBuilder::new();
-        #[cfg(unix)]
-        std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
-        match b.create(path) {
-            Ok(()) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
-            Err(e) => {
-                return Err(format!(
-                    "lane-env: {} is not writable: {e}",
-                    path.parent().unwrap_or(path).display()
-                ))
-            }
-        }
-    }
-    match std::fs::symlink_metadata(path) {
-        Ok(m) if m.file_type().is_symlink() => Err(format!(
-            "lane-env: {} is a link; it is not followed",
-            path.display()
-        )),
-        Ok(m) if m.is_dir() => Ok(()),
-        _ => Err(format!("lane-env: {} is not a folder", path.display())),
-    }
-}
-
-/// The owner record of `folder` as JSON, `None` when there is none or it is not an object; a
-/// link, a non-file, an oversized or unreadable record refuses.
-pub fn read_record(folder: &Path) -> Result<Option<Value>, String> {
-    let rec = folder.join(RECORD);
-    let Ok(meta) = std::fs::symlink_metadata(&rec) else {
-        return Ok(None);
-    };
-    if !meta.is_file() || meta.len() > RECORD_MAX {
-        return Err(format!(
-            "lane-env: {} is not a regular file of at most {RECORD_MAX} bytes",
-            rec.display()
-        ));
-    }
-    let bytes = std::fs::read(&rec).map_err(|e| format!("lane-env: {}: {e}", rec.display()))?;
-    let v: Value = serde_json::from_slice(&bytes)
-        .map_err(|e| format!("lane-env: {} is not a record: {e}", rec.display()))?;
-    Ok(v.is_object().then_some(v))
-}
-
-/// REQ-4 of SPEC-20261120-test-parallelism-cap: a `.metadata_never_index` marker inside the
-/// build folder, best-effort — macOS Spotlight skips a folder that holds one, and build
-/// output is the last thing a machine needs indexed. A failure to create the marker never
-/// fails the folder. The marker is created exclusively (`O_CREAT | O_EXCL`): a link or a file
-/// already at its path is left as it is, never followed and never truncated.
-fn never_index(folder: &Path) {
-    let _ = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(folder.join(".metadata_never_index"));
-}
-
-/// `tools/build_folder.py env`: makes the build folder of `owner` under `home` and writes its
-/// owner record unless an equal one is there; refuses a record of another worktree.
-pub fn prepare(home: &Path, owner: &Owner) -> Result<PathBuf, String> {
-    let mut path = home.to_path_buf();
-    for part in [".moai", "build", owner.name.as_str()] {
-        path.push(part);
-        real_dir(&path)?;
-    }
-    never_index(&path);
-    let record = serde_json::json!({
-        "schema_version": 1,
-        "git_common_dir": owner.common.to_string_lossy(),
-        "worktree": owner.worktree.to_string_lossy(),
-    });
-    let old = read_record(&path)?;
-    if let Some(w) = old.as_ref().map(|o| &o["worktree"]) {
-        if !w.is_null() && *w != record["worktree"] {
-            return Err(format!(
-                "lane-env: {} belongs to the worktree {}",
-                path.display(),
-                w.as_str().map_or_else(|| w.to_string(), str::to_string)
-            ));
-        }
-    }
-    if old.as_ref() != Some(&record) {
-        let tmp = path.join(format!("{RECORD}.tmp"));
-        let mut o = std::fs::OpenOptions::new();
-        o.write(true).create_new(true);
-        #[cfg(unix)]
-        std::os::unix::fs::OpenOptionsExt::mode(&mut o, 0o600);
-        let f = o
-            .open(&tmp)
-            .map_err(|e| format!("lane-env: {} is in the way: {e}", tmp.display()))?;
-        serde_json::to_writer(f, &record)
-            .map_err(|e| format!("lane-env: {}: {e}", tmp.display()))?;
-        std::fs::rename(&tmp, path.join(RECORD))
-            .map_err(|e| format!("lane-env: {}: {e}", tmp.display()))?;
-    }
-    Ok(path)
-}
-
 /// A POSIX shell single-quoted word (also the `claim-link` next-command paths, #3030).
 pub(crate) fn quote(path: &Path) -> String {
     format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
 }
 
-/// The lines to evaluate: comments start with `#`, every other line is one `export`.
+/// The lines to evaluate: comments start with `#`, every other line is one `export` or the one
+/// `unset CARGO_TARGET_DIR`.
 pub fn render(lane: &str, env: &LaneEnv) -> String {
     let mut out = format!("# moai lane-env --lane {lane} (#2841)\n");
     out.push_str(&format!(
-        "export CARGO_TARGET_DIR={}\n",
-        quote(&env.target_dir)
+        "# CARGO_TARGET_DIR: unset, cargo builds in this worktree's own target/ ({})\n",
+        env.worktree.join("target").display()
     ));
+    out.push_str("unset CARGO_TARGET_DIR\n");
     // #2930: incremental output only grows the shared build folder and cannot be cached
     // (Cargo: `CARGO_INCREMENTAL` "when set to 0 it will force disabling it",
     // doc.rust-lang.org/cargo/reference/environment-variables.html; sccache README:
@@ -427,8 +295,7 @@ pub fn render(lane: &str, env: &LaneEnv) -> String {
         None => out.push_str(&format!("# {}\n", env.cargo_home_why)),
     }
     out.push_str(
-        "# This worktree's own build folder (workflows/run.md, card C-82): after \
-         git restore/checkout/archive, touch build.rs and the sources before building.\n",
+        "# After git restore/checkout/archive, touch build.rs and the sources before building.\n",
     );
     out
 }
@@ -458,66 +325,6 @@ mod tests {
     }
 
     #[test]
-    fn prepare_marks_the_build_folder_never_index() {
-        let (_d, home) = base();
-        let owner = Owner {
-            common: home.join("common"),
-            worktree: home.join("worktree"),
-            name: "proj-agent-7".to_string(),
-        };
-        let folder = prepare(&home, &owner).unwrap();
-        assert!(
-            fs::symlink_metadata(folder.join(".metadata_never_index"))
-                .map(|m| m.is_file())
-                .unwrap_or(false),
-            "{} has no marker",
-            folder.display()
-        );
-    }
-
-    /// The marker is created, never written through: a link already at its path (to a file or
-    /// to nothing) keeps its target as it was, and a marker that is already there is left alone.
-    #[cfg(unix)]
-    #[test]
-    fn the_marker_never_follows_a_link_or_truncates() {
-        let owner = |home: &Path| Owner {
-            common: home.join("common"),
-            worktree: home.join("worktree"),
-            name: "proj-agent-7".to_string(),
-        };
-        let folder_of = |home: &Path| home.join(".moai/build/proj-agent-7");
-        let marker = |home: &Path| folder_of(home).join(".metadata_never_index");
-
-        // A link to a file with content: the file keeps its bytes.
-        let (_d, home) = base();
-        fs::create_dir_all(folder_of(&home)).unwrap();
-        let victim = home.join("victim.txt");
-        fs::write(&victim, b"precious bytes").unwrap();
-        std::os::unix::fs::symlink(&victim, marker(&home)).unwrap();
-        prepare(&home, &owner(&home)).unwrap();
-        assert_eq!(fs::read(&victim).unwrap(), b"precious bytes");
-        assert!(fs::symlink_metadata(marker(&home))
-            .unwrap()
-            .file_type()
-            .is_symlink());
-
-        // A dangling link: nothing is created at its target.
-        let (_d, home) = base();
-        fs::create_dir_all(folder_of(&home)).unwrap();
-        let nowhere = home.join("not-there.txt");
-        std::os::unix::fs::symlink(&nowhere, marker(&home)).unwrap();
-        prepare(&home, &owner(&home)).unwrap();
-        assert!(!nowhere.exists(), "the link was written through");
-
-        // A marker that is already a file keeps what it holds.
-        let (_d, home) = base();
-        fs::create_dir_all(folder_of(&home)).unwrap();
-        fs::write(marker(&home), b"kept").unwrap();
-        prepare(&home, &owner(&home)).unwrap();
-        assert_eq!(fs::read(marker(&home)).unwrap(), b"kept");
-    }
-
-    #[test]
     fn cargo_home_paths() {
         let (_d, b) = base();
         let (home, why) = cargo_home("agent-7", &b).unwrap();
@@ -539,17 +346,18 @@ mod tests {
         assert_eq!(other, Some(b.join("moai-rc-product-cargo")));
     }
 
-    /// A relative base or HOME, or a folder outside git, refuses before anything is made.
+    /// A relative base, a bad lane name or a folder outside git refuses before anything is made.
     #[test]
     fn refusals_come_before_any_write() {
         let (_d, b) = base();
         let home = b.join("home");
         fs::create_dir(&home).unwrap();
         let h = Some(home.as_os_str());
-        assert!(resolve("agent-7", Path::new("tmp"), h, None, &b).is_err());
-        assert!(resolve("a b", &b, h, None, &b).is_err());
-        let err = resolve("agent-7", &b, h, None, &b).unwrap_err();
+        assert!(resolve("agent-7", Path::new("tmp"), &b).is_err());
+        assert!(resolve("a b", &b, &b).is_err());
+        let err = resolve("agent-7", &b, &b).unwrap_err();
         assert!(err.contains("git rev-parse"), "{err}");
+        // `home_dir` still names the home the retired-folder warning compares with.
         for windows in [false, true] {
             for bad in [None, Some(OsStr::new("")), Some(OsStr::new("rel/home"))] {
                 assert!(home_dir(bad, None, windows).is_err(), "{bad:?}");
@@ -636,7 +444,7 @@ mod tests {
         );
     }
 
-    /// The naming of `tools/build_folder.py` `owner` (the CLI test runs both on one repository).
+    /// The naming of `tools/build_folder.py` `owner`, which `worktree-plan` still uses.
     #[test]
     fn folder_names() {
         let common = Path::new("/r/repo/.git");
@@ -670,103 +478,34 @@ mod tests {
         assert_eq!(safe("..x").unwrap(), "..x");
     }
 
-    fn owner_of(root: &Path, worktree: &str) -> Owner {
-        Owner {
-            common: root.join("repo/.git"),
-            worktree: root.join(worktree),
-            name: format!("repo-{worktree}"),
-        }
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn prepare_makes_the_folder_and_record_once() {
-        use std::os::unix::fs::PermissionsExt;
-        let (_d, b) = base();
-        let home = b.join("home");
-        fs::create_dir(&home).unwrap();
-        let one = owner_of(&b, "one");
-        let dir = prepare(&home, &one).unwrap();
-        assert_eq!(dir, build_folder(&home, "repo-one"));
-        for p in [home.join(".moai"), home.join(".moai/build"), dir.clone()] {
-            let mode = fs::metadata(&p).unwrap().permissions().mode() & 0o777;
-            assert_eq!(mode, 0o700, "{}", p.display());
-        }
-        let rec = read_record(&dir).unwrap().unwrap();
-        assert_eq!(rec["schema_version"], 1);
-        assert_eq!(rec["worktree"], b.join("one").to_str().unwrap());
-        assert_eq!(rec["git_common_dir"], b.join("repo/.git").to_str().unwrap());
-        // Again: the same record, no temporary file left. The folder carries its owner record
-        // and the Spotlight marker (REQ-4), nothing else.
-        assert_eq!(prepare(&home, &one).unwrap(), dir);
-        let mut names: Vec<String> = fs::read_dir(&dir)
-            .unwrap()
-            .map(|e| e.unwrap().file_name().into_string().unwrap())
-            .collect();
-        names.sort();
-        assert_eq!(names, [".metadata_never_index", RECORD]);
-        // The same folder name from another worktree: refused, the record kept.
-        let two = Owner {
-            name: "repo-one".into(),
-            ..owner_of(&b, "two")
-        };
-        let err = prepare(&home, &two).unwrap_err();
-        assert!(err.contains("belongs to the worktree"), "{err}");
-        assert_eq!(read_record(&dir).unwrap().unwrap(), rec);
-        // A record without a worktree is replaced.
-        fs::write(dir.join(RECORD), r#"{"schema_version": 1}"#).unwrap();
-        prepare(&home, &two).unwrap();
-        assert_eq!(
-            read_record(&dir).unwrap().unwrap()["worktree"],
-            b.join("two").to_str().unwrap()
-        );
-        // An oversized record refuses.
-        fs::write(dir.join(RECORD), " ".repeat(RECORD_MAX as usize + 1)).unwrap();
-        assert!(prepare(&home, &two)
-            .unwrap_err()
-            .contains("at most 4096 bytes"));
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn prepare_follows_no_link() {
-        let (_d, b) = base();
-        let elsewhere = b.join("elsewhere");
-        fs::create_dir(&elsewhere).unwrap();
-        for (i, at) in [".moai", ".moai/build", ".moai/build/repo-one"]
-            .iter()
-            .enumerate()
-        {
-            let home = b.join(format!("home{i}"));
-            let link = home.join(at);
-            fs::create_dir_all(link.parent().unwrap()).unwrap();
-            std::os::unix::fs::symlink(&elsewhere, &link).unwrap();
-            let err = prepare(&home, &owner_of(&b, "one")).unwrap_err();
-            assert!(err.contains("is a link; it is not followed"), "{at}: {err}");
-            fs::remove_file(&link).unwrap();
-            fs::write(&link, "x").unwrap();
-            let err = prepare(&home, &owner_of(&b, "one")).unwrap_err();
-            assert!(err.contains("is not a folder"), "{at}: {err}");
-        }
-        assert_eq!(fs::read_dir(&elsewhere).unwrap().count(), 0);
-    }
-
     #[test]
     fn render_quotes_and_comments() {
         let e = LaneEnv {
-            target_dir: PathBuf::from("/h/it's here/.moai/build/repo-a"),
-            cargo_home: None,
-            cargo_home_why: "CARGO_HOME left unset: x".into(),
+            worktree: PathBuf::from("/h/it's here/repo-a"),
+            cargo_home: Some(PathBuf::from("/b/it's/cargo")),
+            cargo_home_why: "the lane's own prepared cargo home".into(),
         };
         let text = render("a", &e);
-        assert!(text.contains("export CARGO_TARGET_DIR='/h/it'\\''s here/.moai/build/repo-a'\n"));
-        assert!(!text.contains("export CARGO_HOME"));
+        assert!(text.contains("unset CARGO_TARGET_DIR\n"));
+        assert!(!text.contains("export CARGO_TARGET_DIR"));
+        assert!(text.contains(
+            "# CARGO_TARGET_DIR: unset, cargo builds in this worktree's own target/ (/h/it's here/repo-a/target)\n"
+        ));
+        assert!(text.contains("export CARGO_HOME='/b/it'\\''s/cargo'\n"));
         assert_eq!(text.matches("export CARGO_INCREMENTAL=0\n").count(), 1);
         for line in text.lines() {
             assert!(
-                line.starts_with('#') || line.starts_with("export "),
+                line.starts_with('#')
+                    || line.starts_with("export ")
+                    || line == "unset CARGO_TARGET_DIR",
                 "{line}"
             );
         }
+        let unset = LaneEnv {
+            cargo_home: None,
+            cargo_home_why: "CARGO_HOME left unset: x".into(),
+            ..e
+        };
+        assert!(!render("a", &unset).contains("export CARGO_HOME"));
     }
 }

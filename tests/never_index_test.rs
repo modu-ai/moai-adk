@@ -1,9 +1,10 @@
-//! REQ-4 of SPEC-20261120-test-parallelism-cap: the folder creators mark the folders they
-//! make with a `.metadata_never_index` file, so macOS Spotlight skips indexing them. This
-//! file checks the temporary HOME of the test helpers; the lane build folder's own check
-//! lives next to `lane_env::prepare` (src/lane_env.rs, `prepare_marks_the_build_folder_
-//! never_index`). Best-effort by contract: the folders exist all the same, and these tests
-//! check the marker only in the writable temporary folders.
+//! REQ-4 of SPEC-20261120-test-parallelism-cap: the test helpers mark the temporary HOME they
+//! make with a `.metadata_never_index` file, so macOS Spotlight skips indexing it. This file
+//! checks that marker. The lane build folder's half of the requirement is retired (decision D5
+//! of that SPEC): `moai lane-env` makes no folder under the home, so there is none to mark, and
+//! `tests/lane_env_cli.rs` `lane_env_makes_nothing_under_home` pins that it writes nothing,
+//! the marker included. Best-effort by contract: the folders exist all the same, and these
+//! tests check the marker only in the writable temporary folders.
 
 mod common;
 
