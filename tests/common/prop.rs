@@ -1,4 +1,4 @@
-//! The seeded in-house generator the property suites share (C-100, SPEC-20261119-property-tests).
+//! The seeded in-house generator the property suites share (SPEC-20261119-property-tests).
 //!
 //! No new crate: one small SplitMix64 generator, every property names its seed, and a failure
 //! prints the seed and the case index so the exact case can be replayed with
@@ -89,16 +89,37 @@ fn seed_from_env() -> (u64, Option<u64>) {
 
 /// The failure message of a replay that names a case the run does not have (REQ-13), or `None`
 /// when `only` is absent or inside the run.
-pub fn replay_error(_name: &str, _cases: u64, _seed: u64, _only: Option<u64>) -> Option<String> {
-    None
+pub fn replay_error(name: &str, cases: u64, seed: u64, only: Option<u64>) -> Option<String> {
+    only.filter(|&i| i >= cases).map(|i| {
+        format!(
+            "property {name} was asked to replay case {i} (PROP_ONLY={i}) but runs {cases} cases \
+             (seed {seed}), so no case would run"
+        )
+    })
 }
 
 /// Runs `property` for `cases` generated inputs and asserts the run stays within its budget
-/// (C-100 AC-3: at least 1000 cases, 30 seconds per property, the seed printed on failure).
+/// (SPEC-20261119-property-tests AC-3: at least 1000 cases, 30 seconds per property, the seed
+/// printed on failure).
 /// A failing case's panic is retold with the property's name, the seed and the case index.
 /// `FnMut` so a property can hold one shared fixture (a ledger, a tree) across its cases.
-pub fn run_property(name: &str, cases: u64, mut property: impl FnMut(&mut Rng)) {
+pub fn run_property(name: &str, cases: u64, property: impl FnMut(&mut Rng)) {
     let (seed, only) = seed_from_env();
+    run_cases(name, cases, seed, only, property);
+}
+
+/// [`run_property`] with the seed and the replay index given, so a test can drive it without
+/// touching the process environment.
+fn run_cases(
+    name: &str,
+    cases: u64,
+    seed: u64,
+    only: Option<u64>,
+    mut property: impl FnMut(&mut Rng),
+) {
+    if let Some(message) = replay_error(name, cases, seed, only) {
+        panic!("{message}");
+    }
     let start = Instant::now();
     for i in 0..cases {
         if let Some(one) = only {
@@ -128,7 +149,7 @@ pub fn run_property(name: &str, cases: u64, mut property: impl FnMut(&mut Rng)) 
     }
 }
 
-/// The budget on an idle machine (C-100 AC-3).
+/// The budget on an idle machine (SPEC-20261119-property-tests AC-3).
 const IDLE_BUDGET_SECS: f64 = 30.0;
 
 /// The most the budget grows: eight times the idle budget.
@@ -184,7 +205,7 @@ fn load_average() -> Option<f64> {
     }
 }
 
-/// The C-100 case floor: every property runs at least this many cases.
+/// The case floor of SPEC-20261119-property-tests: every property runs at least this many cases.
 pub const MIN_CASES: u64 = 1000;
 
 /// SPEC-20261122-test-defects-session-reclaim AC-7 (REQ-7): 30 s at or below one runnable
@@ -242,4 +263,20 @@ fn a_replay_index_beyond_the_cases_is_refused() {
             assert!(msg.contains(part), "{part:?} in {msg}");
         }
     }
+}
+
+/// AC-11 (REQ-14): the run itself refuses the index before it runs a case, and a replay inside
+/// the run executes exactly that one case.
+#[test]
+fn the_run_refuses_a_replay_index_beyond_the_cases() {
+    let mut ran = 0u64;
+    let beyond = catch_unwind(AssertUnwindSafe(|| {
+        run_cases("p", 3, 7, Some(5000), |_| ran += 1)
+    }));
+    assert!(beyond.is_err(), "an index beyond the cases passed");
+    assert_eq!(ran, 0, "a case ran before the refusal");
+
+    let mut ran = 0u64;
+    run_cases("p", 3, 7, Some(1), |_| ran += 1);
+    assert_eq!(ran, 1, "a replay inside the run runs one case");
 }

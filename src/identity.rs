@@ -45,7 +45,8 @@ pub(crate) fn scrub_git_env(cmd: &mut Command) {
     for key in GIT_ENV_REMOVED {
         cmd.env_remove(key);
     }
-    // GIT_CONFIG_KEY_<n>/GIT_CONFIG_VALUE_<n> are numbered, so they are matched by prefix.
+    // GIT_CONFIG_KEY_<n>/GIT_CONFIG_VALUE_<n> are numbered and the trace variables are many, so
+    // they are matched by prefix.
     for (key, _) in std::env::vars_os() {
         if removed_by_prefix(&key.to_string_lossy()) {
             cmd.env_remove(&key);
@@ -54,9 +55,15 @@ pub(crate) fn scrub_git_env(cmd: &mut Command) {
     cmd.env("LC_ALL", "C");
 }
 
-/// True for a variable [`scrub_git_env`] removes by its name prefix, not by the fixed list.
+/// True for a variable [`scrub_git_env`] removes by its name prefix, not by the fixed list: the
+/// numbered config pairs, and every trace variable (`GIT_TRACE`, `GIT_TRACE_*`, `GIT_TRACE2`,
+/// `GIT_TRACE2_*`), because a trace writes to git's standard error, which a caller that reads
+/// that stream as "git had a problem" cannot tell from a warning
+/// (SPEC-20261122-test-defects-session-reclaim REQ-11).
 fn removed_by_prefix(name: &str) -> bool {
-    name.starts_with("GIT_CONFIG_KEY_") || name.starts_with("GIT_CONFIG_VALUE_")
+    name.starts_with("GIT_CONFIG_KEY_")
+        || name.starts_with("GIT_CONFIG_VALUE_")
+        || name.starts_with("GIT_TRACE")
 }
 
 #[cfg(test)]
