@@ -1,10 +1,11 @@
 ---
 id: SPEC-20261122-claude-md-layout
 title: "CLAUDE.md and CLAUDE.local.md replace AGENTS.md and AGENTS.local.md in the files moai owns, and the flow rule is global"
-status: draft
-revision: 4
+status: approved
+revision: 5
 created: 2026-11-22
 parent: null
+approval: {by: leader, at: 2026-11-23, basis: "card note 7813 (leader judgment under the user's delegation of 2026-11-23T13:57Z, not a direct user pick): layout SPEC revision 5", digest: "sha256:11bee5ffe930c3c22720baa61400d5d4b7602e9972b6237877fc2ec4a9a50fd9"}
 ---
 
 # CLAUDE.md layout: the files moai owns in a project
@@ -31,6 +32,8 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 개정 3(2026-11-22, 사용자 결정 'AGENTS.md 제거해라. CLAUDE.md CLAUDE.local.md 만 사용한다', 범위는 제품과 이 저장소): moai 는 `CLAUDE.md` 와 `CLAUDE.local.md` 만 쓰고 `AGENTS.md` 는 어떤 경우에도 쓰지 않아요. `import` 선택(`@AGENTS.md` 한 줄)은 없어져요. 사용자의 기존 `AGENTS.md` 에는 `move`(글을 `CLAUDE.md` 로, `AGENTS.local.md` 는 `CLAUDE.local.md` 로)와 `leave`(moai 는 그 파일을 건드리지도 읽지도 않아요)를 보여 주고, 옮긴 뒤 확인이 끝나면 원본을 지우는 일은 따로 고르는 선택이에요. 그 선택 없이는 사용자 파일을 지우지 않아요. 이 저장소 자신의 `AGENTS.md` 는 `CLAUDE.md` 로, `AGENTS.local.md` 는 `CLAUDE.local.md`(개인, git 무시; 공유 규칙은 `CLAUDE.md` 로)로 옮기고 두 원본을 지워요. 그 파일을 읽는 시험도 함께 옮겨요(Plan 5).
 
 개정 4(2026-11-23, 사용자 결정 `~/.claude` 가 공통 설정의 유일한 정본이고 Orca 프로필은 링크로 읽는 쪽, 독립 감사 FAIL 의 수리): 공통 rules 두 파일의 사본은 `~/.claude` 하나뿐이에요. `CLAUDE_CONFIG_DIR` 가 프로필을 가리켜도 쓰는 곳은 `~/.claude` 이고, 프로필과 `--config-dir` 폴더는 사본 없는 줄로 보고돼요(`rules` 가 `~/.claude/rules` 로 가는 링크면 `linked`, 아니면 `not_linked` 와 링크 안내). 위 개정 2 의 "설정 폴더마다" 는 이 개정이 대신해요.
+
+개정 5(2026-11-24, 코드와 대조한 읽기 전용 조사 뒤): 개정 3 의 선택 집합(`move`, `leave`, 따로 고르는 원본 지우기 `remove-originals`)과 `import` 의 제거는 `SPEC-20261124-claude-md-product-next` 가 코드로 옮겨요. 아래 Plan 1 의 "writer pick `import` or `move`" 는 이제 `move` 하나이고 `import` 는 쓰기기의 선택 목록과 요청 스키마에서도 빠져요(`import` 는 알 수 없는 선택). 옛 `claude-import`(쓰기기의 일반 영수증)는 일반 복구로 되돌려요. 옛 `import-line` 부분(선택 묶음의 엔진 영수증)은 일반 복구가 읽지 못해서 되돌리기 쪽 코드를 남겨요. Plan 5(이 저장소의 이동)와 AC-6 은 이미 끝났어요(저장소에 `CLAUDE.md` 가 있고 두 `AGENTS` 원본은 없어요). 카드의 기준 2(글 시험)는 `SPEC-20261122-claude-md-text-and-ignore` 의 조각이에요.
 
 ### What exists (tip `012e9470cb`)
 
@@ -96,12 +99,16 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 - later slices, write: `src/agents.rs`, `src/agents_local_merge.rs`, `src/ops/agents_*.rs`, `src/update.rs`, `src/project_update.rs`, `src/generation.rs`, `src/launcher_init.rs`, `src/home_routing.rs`, `src/language.rs`, `src/claude.rs`, `skills/moai/**` (with `references/source-manifest.json`), `tests/**` that pin the names, `.gitignore`, `schemas/protocol/v1/agents-*.schema.json`
 - forbidden in every slice before the last: `AGENTS.md`, `AGENTS.local.md`, `docs/agents-md-maintenance.md` of this repository, the real HOME, `~/.moai-cli`, `.claude/` of this checkout (Go-generation installed state)
 
+## Interview
+
+- Q1: Shall revision 5 of this SPEC (the picks `move`, `leave` and `remove-originals`, `import` out of the writer and the schema, the revert side of old import receipts) stand together with `SPEC-20261124-claude-md-product-next`? → A: Approved by the leader on card note 7813 under the user's delegation of 2026-11-23T13:57Z (a leader judgment, not a direct user pick).
+
 ## Plan
 
 Slices in this order. Each is one SPEC-backed change with its own audit tier; the Codex removal work lands first where it touches the same lines (`home_routing.rs` HOSTS, `home_style.rs` block, `update.rs` HOSTS, `generation.rs` HOSTS).
 
 0. Probe (no product code): an `InstructionsLoaded` hook in a `claude --worktree` session logs `file_path`, `memory_type`, `load_reason` and `cwd` to show whether the primary checkout's `CLAUDE.md` and `CLAUDE.local.md` load in a linked worktree. The result decides D-11.
-1. Engine (this SPEC): file names become constants; `CLAUDE.md` is the block target; the block text is rewritten (facts, 15 lines, no Issue wording); `CLAUDE.local.md` is a new target (on the pick only) and the project plan writes nothing under the project's `.claude` folders (REQ-9); the `AGENTS.local.md` merge, `claude_shadow` and `claude-import` leave the writer (the pick `claude-import` is refused as an unknown id; see D-12 for old receipts), and a writer pick `import` or `move` plans no `CLAUDE.md` of its own: only the project picks step carries them out, because a block-only `CLAUDE.md` would hide the user's `AGENTS.md` rules from Claude Code. Re-pin the tests that read these names (measured at the tip with a search over `tests/`: 81 files name `AGENTS.md` or `AGENTS.local.md`, 34 name `CLAUDE.md` or `CLAUDE.local.md`). The block names the profile's flow and integration branch (`src/profile.rs:171`) and no file path (REQ-3). The flow rule text itself is the NeXT-Flow text and is written in slice 3 (REQ-8).
+1. Engine (this SPEC): file names become constants; `CLAUDE.md` is the block target; the block text is rewritten (facts, 15 lines, no Issue wording); `CLAUDE.local.md` is a new target (on the pick only) and the project plan writes nothing under the project's `.claude` folders (REQ-9); the `AGENTS.local.md` merge, `claude_shadow` and `claude-import` leave the writer (the pick `claude-import` is refused as an unknown id; see D-12 for old receipts), and a writer pick `move` (and, before revision 5, `import`) plans no `CLAUDE.md` of its own: only the project picks step carries them out, because a block-only `CLAUDE.md` would hide the user's `AGENTS.md` rules from Claude Code. Re-pin the tests that read these names (measured at the tip with a search over `tests/`: 81 files name `AGENTS.md` or `AGENTS.local.md`, 34 name `CLAUDE.md` or `CLAUDE.local.md`). The block names the profile's flow and integration branch (`src/profile.rs:171`) and no file path (REQ-3). The flow rule text itself is the NeXT-Flow text and is written in slice 3 (REQ-8).
    Every `verify:` filter in these SPECs (`blocks_`, `local_`, `flow_` and the filters of the child SPECs) must match at least one test name; the slice counts the tests that ran, because a filter that matches nothing reports zero tests and counts as not run.
 2. Project layer in `moai update` (`SPEC-20261122-claude-md-project-picks` for the picks and `SPEC-20261122-claude-md-project-layer` for receipt, link and UTF-8 refusal, baseline, token, revert order and key `project_files`). It reuses the `choices` shape of `project-update-plan`.
 3. Routing (`SPEC-20261122-claude-md-home-routing`): `rules/moai.md` and `rules/moai/flow.md` (REQ-8, REQ-10…REQ-12 of this SPEC) through the style-file pattern, the removal pick for the old block, receipt behaviour. That SPEC takes the flow file into its next revision when slice 3 starts; its test target `claude_md_home_cli` then holds the tests named `flow_`.

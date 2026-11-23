@@ -12,9 +12,10 @@ use std::path::PathBuf;
 /// generation, which wrote into `AGENTS.md`, still restores `AGENTS.md`.
 ///
 /// A receipt `agents-pick-…` of `agents-merge-apply --pick` is undone part by part in the reverse
-/// order of the apply: the personal text and its `.gitignore` line, the text of `AGENTS.md` or the
-/// import line, then the managed block. A file that changed after the apply is named under `kept`
-/// and left as it is; the other files still go back.
+/// order of the apply: the personal text and its `.gitignore` line, the text of `AGENTS.md`, then
+/// the managed block; a `remove-originals` receipt writes each deleted original back with its
+/// bytes and mode. A file that changed after the apply, or that exists again at the path of a
+/// deleted original, is named under `kept` and left as it is; the other files still go back.
 #[derive(clap::Args)]
 pub struct Args {
     /// The receipt id the apply printed (`agents-local-merge-…` or `agents-pick-…`).

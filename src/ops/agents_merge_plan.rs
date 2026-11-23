@@ -13,12 +13,12 @@ use std::path::PathBuf;
 /// no longer reading `AGENTS.md` once `CLAUDE.local.md` exists (the apply then needs the
 /// `confirm_token` printed here). A line shaped like a credential blocks the plan. Writes nothing.
 ///
-/// With `--pick move`, `--pick import` or `--pick leave` it previews that pick for a project that
+/// With `--pick move`, `--pick leave` or `--pick remove-originals` it previews that pick for a project that
 /// holds `AGENTS.md` or `AGENTS.local.md` instead: every file the pick writes, the text it copies,
 /// the reasons it is refused (each naming its file) and the `plan_digest` its apply needs.
 #[derive(clap::Args)]
 pub struct Args {
-    /// Preview this pick (`move`, `import` or `leave`) instead of the personal-file merge.
+    /// Preview this pick (`move`, `leave` or `remove-originals`) instead of the personal-file merge.
     #[arg(long)]
     pick: Option<String>,
     /// The project (default: the current folder).

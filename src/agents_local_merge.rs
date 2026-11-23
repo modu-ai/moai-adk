@@ -33,15 +33,16 @@
 //! the team file, between `moai:merged-agents` markers, with the same preview, receipt and revert.
 //! `AGENTS.md` is never written. A `CLAUDE.md` that already imports `AGENTS.md` is `unchanged`.
 //!
-//! The third kind, [`Kind::Import`], writes the one line `@AGENTS.md` into `CLAUDE.md` between
-//! `moai:merged-import` markers, so Claude Code reads `AGENTS.md` through it; the same preview,
-//! receipt, revert and idempotence apply. [`picks`] puts the three kinds and the generation writer
-//! together as the picks `move`, `import` and `leave` of `moai update`.
+//! [`picks`] puts the two kinds and the generation writer together as the picks `move`, `leave`
+//! and `remove-originals` of `moai update`. A receipt that an earlier build wrote for the retired
+//! pick `import` (a `moai:merged-import` block holding one `@AGENTS.md` line, under the receipt
+//! prefix `agents-import-`) is still undone by [`revert_legacy_import`]; nothing writes one.
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{fs, path::Path};
 
+mod originals;
 pub mod picks;
 
 type Result<T> = std::result::Result<T, String>;
@@ -63,13 +64,8 @@ pub const GUIDANCE_BEGIN: &str = "<!-- moai:merged-agents sha256=";
 /// The end marker line of that block.
 pub const GUIDANCE_END: &str = "<!-- /moai:merged-agents -->";
 const GUIDANCE_PREFIX: &str = "agents-md-migrate-";
-/// The start of the block that holds the one import line (`Kind::Import`).
-pub const IMPORT_BEGIN: &str = "<!-- moai:merged-import sha256=";
-/// The end marker line of that block.
-pub const IMPORT_END: &str = "<!-- /moai:merged-import -->";
-/// The line between the two markers: Claude Code reads `AGENTS.md` through it.
-pub const IMPORT_LINE: &str = "@AGENTS.md";
-const IMPORT_PREFIX: &str = "agents-import-";
+/// The receipt prefix of the retired pick `import`: such a receipt is only ever undone.
+const LEGACY_IMPORT_PREFIX: &str = "agents-import-";
 /// The start of this generation's managed-section markers (`agents.rs`); a source that holds it
 /// would be read as a second managed section.
 const MANAGED_MARKER: &str = "<!-- moai:managed";
@@ -84,20 +80,14 @@ pub const COMMIT_NOTICE: &str = "This text goes into CLAUDE.local.md, a personal
 const GUIDANCE_COMMIT_NOTICE: &str =
     "This text goes into CLAUDE.md, a team file that is committed \
      to the repository and read by everyone who works on it; AGENTS.md stays as it is.";
-/// The same line for the import kind.
-const IMPORT_COMMIT_NOTICE: &str = "This line goes into CLAUDE.md, a team file that is committed \
-     to the repository and read by everyone who works on it; Claude Code then reads AGENTS.md \
-     through it, and AGENTS.md stays as it is.";
 
-/// The three writes this engine makes. `Local`: the text of `AGENTS.local.md` goes into the
+/// The two writes this engine makes. `Local`: the text of `AGENTS.local.md` goes into the
 /// personal file `CLAUDE.local.md`. `Guidance`: the text a person wrote in `AGENTS.md` goes into
-/// the team file `CLAUDE.md`. `Import`: the one line `@AGENTS.md` goes into `CLAUDE.md`, so Claude
-/// Code reads `AGENTS.md` through it.
+/// the team file `CLAUDE.md`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Kind {
     Local,
     Guidance,
-    Import,
 }
 
 impl Kind {
@@ -105,7 +95,7 @@ impl Kind {
     fn target(self) -> &'static str {
         match self {
             Kind::Local => TARGET,
-            Kind::Guidance | Kind::Import => GUIDANCE_TARGET,
+            Kind::Guidance => GUIDANCE_TARGET,
         }
     }
 
@@ -113,7 +103,7 @@ impl Kind {
     fn source_name(self) -> &'static str {
         match self {
             Kind::Local => LOCAL,
-            Kind::Guidance | Kind::Import => LEGACY_TARGET,
+            Kind::Guidance => LEGACY_TARGET,
         }
     }
 
@@ -121,7 +111,6 @@ impl Kind {
         match self {
             Kind::Local => BEGIN,
             Kind::Guidance => GUIDANCE_BEGIN,
-            Kind::Import => IMPORT_BEGIN,
         }
     }
 
@@ -129,7 +118,6 @@ impl Kind {
         match self {
             Kind::Local => END,
             Kind::Guidance => GUIDANCE_END,
-            Kind::Import => IMPORT_END,
         }
     }
 
@@ -138,7 +126,6 @@ impl Kind {
         match self {
             Kind::Local => "merged-local",
             Kind::Guidance => "merged-agents",
-            Kind::Import => "merged-import",
         }
     }
 
@@ -146,7 +133,6 @@ impl Kind {
         match self {
             Kind::Local => RECEIPT_PREFIX,
             Kind::Guidance => GUIDANCE_PREFIX,
-            Kind::Import => IMPORT_PREFIX,
         }
     }
 
@@ -154,7 +140,6 @@ impl Kind {
         match self {
             Kind::Local => COMMIT_NOTICE,
             Kind::Guidance => GUIDANCE_COMMIT_NOTICE,
-            Kind::Import => IMPORT_COMMIT_NOTICE,
         }
     }
 }
@@ -505,7 +490,7 @@ fn decide_for(
     let Ok(agents) = std::str::from_utf8(agents.unwrap_or_default()) else {
         return Decision::of("blocked", format!("{target} is not UTF-8 text"));
     };
-    if matches!(kind, Kind::Guidance | Kind::Import) && imports_agents_md(agents) {
+    if kind == Kind::Guidance && imports_agents_md(agents) {
         return Decision::of(
             "unchanged",
             format!("{target} already reads {LEGACY_TARGET} through an @{LEGACY_TARGET} import"),
@@ -566,11 +551,7 @@ fn decide_for(
                     ),
                 );
             }
-            let what = if kind == Kind::Import {
-                format!("the line {IMPORT_LINE}")
-            } else {
-                format!("the text of {}", kind.source_name())
-            };
+            let what = format!("the text of {}", kind.source_name());
             Decision {
                 action: "merge",
                 reason: if creates {
@@ -820,28 +801,10 @@ fn compose_lines(outer: &[usize], inner: &[usize]) -> Vec<usize> {
         .collect()
 }
 
-/// The import kind's source: `AGENTS.md` must be there, and what is written is the one import
-/// line, never the file's text. The file's bytes stay in the plan digest and in the receipt.
-fn find_import(root: &Path) -> Result<Found> {
-    Ok(match read_checked(root, LEGACY_TARGET) {
-        Err(reason) => Found::Blocked(reason),
-        Ok(None) => Found::Nothing(format!("no {LEGACY_TARGET} in this project to import")),
-        Ok(Some(bytes)) => Found::Source(Source {
-            kind: "in_place",
-            rel: LEGACY_TARGET.into(),
-            text: normalized(IMPORT_LINE).into_bytes(),
-            bytes,
-            notes: Vec::new(),
-            line_map: Vec::new(),
-        }),
-    })
-}
-
 fn find_source_for(kind: Kind, root: &Path) -> Result<Found> {
     match kind {
         Kind::Local => find_source(root),
         Kind::Guidance => find_guidance(root),
-        Kind::Import => find_import(root),
     }
 }
 
@@ -939,8 +902,8 @@ pub(crate) fn hidden_files_warning(root: &Path, creating: &str) -> Option<String
 }
 
 /// The same warning for a file that carries some of the hidden files over: the writer's block and
-/// the picks `move` and `import` bring the root `AGENTS.md` into the new `CLAUDE.md` (copied text
-/// or the `@AGENTS.md` line), so that file stays read and is not named. `carried` lists those.
+/// the pick `move` bring the root `AGENTS.md` into the new `CLAUDE.md` (copied text), so that file
+/// stays read and is not named. `carried` lists those.
 pub(crate) fn hidden_files_warning_except(
     root: &Path,
     creating: &str,
@@ -1228,9 +1191,8 @@ fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
         Err(e) => (None, Some(format!("{target}: {e}"))),
     };
     let found = find_source_for(kind, root)?;
-    // Only the text the merge copies is scanned, whatever the kind: the import kind copies none of
-    // `AGENTS.md`, so its one line is all there is, and the guidance kind leaves out MoAI's
-    // managed section and the blocks an earlier merge wrote. Line numbers are the whole file's.
+    // Only the text the merge copies is scanned: the guidance kind leaves out MoAI's managed
+    // section and the blocks an earlier merge wrote. Line numbers are the whole file's.
     let suspects = match &found {
         Found::Source(s) => s.suspects(),
         _ => Vec::new(),
@@ -1717,31 +1679,52 @@ fn revert_gitignore(root: &Path, dir: &Path, r: &Receipt) -> Result<Option<&'sta
     let Some(rel) = r.gitignore_path.as_deref() else {
         return Ok(None);
     };
+    revert_ignore_file(
+        root,
+        dir,
+        rel,
+        r.gitignore_existed,
+        r.gitignore_before.as_deref(),
+        r.gitignore_after.as_deref(),
+    )
+}
+
+/// [`revert_gitignore`] from the facts a receipt keeps: whether the file existed before the apply,
+/// the digest it had then and the digest the apply left. The earlier bytes are the copy under
+/// `before/` in the receipt folder `dir`.
+fn revert_ignore_file(
+    root: &Path,
+    dir: &Path,
+    rel: &str,
+    existed: bool,
+    before: Option<&str>,
+    after: Option<&str>,
+) -> Result<Option<&'static str>> {
     if rel != GITIGNORE {
         return Err("the receipt names a file this command never writes".into());
     }
     let path = crate::apply::target(root, rel)?;
     let now = crate::apply::read_opt(&path)?;
     let now_digest = now.as_deref().map(crate::digest);
-    let as_before = if r.gitignore_existed {
-        now_digest.as_deref() == r.gitignore_before.as_deref()
+    let as_before = if existed {
+        now_digest.as_deref() == before
     } else {
         now.is_none()
     };
     if as_before {
         return Ok(Some("unchanged"));
     }
-    let (Some(now), Some(after)) = (now, r.gitignore_after.as_deref()) else {
+    let (Some(now), Some(after)) = (now, after) else {
         return Ok(Some("kept"));
     };
     if crate::digest(&now) != after {
         return Ok(Some("kept"));
     }
-    if r.gitignore_existed {
+    if existed {
         crate::claude::refuse_symlink_dir(&dir.join("before"))?;
         let earlier = crate::claude::read_existing(&dir.join("before").join(GITIGNORE))?
             .ok_or_else(|| format!("the receipt has no copy of the earlier {GITIGNORE}"))?;
-        if Some(crate::digest(&earlier).as_str()) != r.gitignore_before.as_deref() {
+        if Some(crate::digest(&earlier).as_str()) != before {
             return Err(format!(
                 "the receipt's copy of the earlier {GITIGNORE} was altered; nothing was written"
             ));
@@ -1755,10 +1738,51 @@ fn revert_gitignore(root: &Path, dir: &Path, r: &Receipt) -> Result<Option<&'sta
 
 /// `revert` for a receipt of `kind`; a receipt id of the other kind is unknown to it.
 pub fn revert_for(kind: Kind, project: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
+    // The receipt names the file it wrote; only the files this kind ever wrote are valid. A
+    // personal-file receipt of the earlier generation names `AGENTS.md`.
+    let names: &[&str] = match kind {
+        Kind::Local => &[TARGET, LEGACY_TARGET],
+        Kind::Guidance => &[GUIDANCE_TARGET],
+    };
+    revert_by(
+        kind.receipt_prefix(),
+        names,
+        project,
+        receipt_id,
+        permission,
+    )
+}
+
+/// Undoes a receipt of the retired pick `import`: one `@AGENTS.md` line that an earlier build
+/// wrote into `CLAUDE.md`. The receipt is an engine receipt (`receipts/<id>/receipt.json`), which
+/// the generic recovery of `apply` does not read. Nothing writes such a receipt any more.
+pub(crate) fn revert_legacy_import(
+    project: &Path,
+    receipt_id: &str,
+    permission: &str,
+) -> Result<Value> {
+    revert_by(
+        LEGACY_IMPORT_PREFIX,
+        &[GUIDANCE_TARGET],
+        project,
+        receipt_id,
+        permission,
+    )
+}
+
+/// The revert of an engine receipt whose id starts with `prefix` and whose target is one of
+/// `names`.
+fn revert_by(
+    prefix: &str,
+    names: &[&str],
+    project: &Path,
+    receipt_id: &str,
+    permission: &str,
+) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("a permission reference is required; nothing was written".into());
     }
-    if !(receipt_id.starts_with(kind.receipt_prefix())
+    if !(receipt_id.starts_with(prefix)
         && receipt_id.len() <= 64
         && receipt_id
             .bytes()
@@ -1778,14 +1802,11 @@ pub fn revert_for(kind: Kind, project: &Path, receipt_id: &str, permission: &str
     let bytes =
         crate::claude::read_existing(&dir.join("receipt.json"))?.ok_or("receipt not found")?;
     let mut r: Receipt = serde_json::from_slice(&bytes).map_err(|_| "receipt is unreadable")?;
-    // The receipt names the file it wrote; only the files this kind ever wrote are valid. A
-    // personal-file receipt of the earlier generation names `AGENTS.md`.
-    let name: &str = match (kind, r.target_path.as_str()) {
-        (Kind::Local, TARGET) => TARGET,
-        (Kind::Local, LEGACY_TARGET) => LEGACY_TARGET,
-        (Kind::Guidance | Kind::Import, GUIDANCE_TARGET) => GUIDANCE_TARGET,
-        _ => return Err("the receipt names a file this command never writes".into()),
-    };
+    let name: &str = names
+        .iter()
+        .copied()
+        .find(|n| *n == r.target_path)
+        .ok_or("the receipt names a file this command never writes")?;
     let agents_path = crate::apply::target(&root, name)?;
     match r.status.as_str() {
         "applied" => {}
