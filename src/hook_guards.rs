@@ -112,6 +112,11 @@ const BYPASS_MIN_PREFIX: usize = 9;
 
 /// The reason a Bash command line is refused, or `None`.
 pub fn bash_guard(command: &str) -> Option<&'static str> {
+    // A here-doc body that only a data reader consumes is not a command line (decision 6912
+    // N5(2), repair audit 7149): `git commit -F - <<EOF` with a body that mentions `rm -rf /`
+    // passes, while a body fed to a shell stays code and is read.
+    let command = strip_here_docs(command);
+    let command = command.as_str();
     // A fork bomb defines a function made of punctuation, which the word splitter does not
     // keep, so it is read from text: outside quotes, in the line and in every script the line
     // hands to a shell or `eval`. Quoted data stays data (pre-audit H5-B4); a quoted script
@@ -262,6 +267,9 @@ const CONFIRM_FORCE_PUSH: &str =
 /// rule ([`long_opt`]) as the deny guards.
 /// Only consulted when no deny applies to the line.
 pub fn bash_confirm(command: &str) -> Option<&'static str> {
+    // The same here-doc reading as the deny guard: a data body is not asked about.
+    let command = strip_here_docs(command);
+    let command = command.as_str();
     for (name, args) in crate::claim_verify::shell_commands(command) {
         if name != "git" {
             continue;
@@ -2667,23 +2675,34 @@ fn resolve_target_word(word: &str, against: &Dir, vars: &Vars) -> Result<Vec<Pat
             out.push(PathBuf::from("/__moai_outside__/tilde-user"));
             continue;
         }
-        if expanded.contains('{') && expanded.contains('}') {
-            // A brace-expansion word can expand to anything (N4): outside every root. Only a
-            // literal brace pair is left here — every variable form is gone above.
-            out.push(PathBuf::from("/__moai_outside__/brace"));
-            continue;
-        }
-        let base = match against {
-            Dir::Known(p) => p.as_path(),
-            Dir::Unknown(reason) => {
-                if Path::new(&expanded).is_absolute() {
-                    Path::new("/")
-                } else {
-                    return Err(reason.clone());
-                }
+        // A brace-expansion word is spelled out the way the shell does before anything is
+        // judged (`build/{a,b}` is two inside targets; `{,/etc}` has an outside one). Only a
+        // literal brace pair is left here — every variable form is gone above — and a pair
+        // that does not expand, or that expands past the limit, can name anywhere: outside
+        // every root (N4).
+        let words = if expanded.contains('{') && expanded.contains('}') {
+            let words = expand_braces(&expanded);
+            if words.len() >= 256 || words.iter().any(|w| w.contains('{') && w.contains('}')) {
+                out.push(PathBuf::from("/__moai_outside__/brace"));
+                continue;
             }
+            words
+        } else {
+            vec![expanded]
         };
-        out.push(resolve_target(&expanded, base));
+        for word in words {
+            let base = match against {
+                Dir::Known(p) => p.as_path(),
+                Dir::Unknown(reason) => {
+                    if Path::new(&word).is_absolute() {
+                        Path::new("/")
+                    } else {
+                        return Err(reason.clone());
+                    }
+                }
+            };
+            out.push(resolve_target(&word, base));
+        }
     }
     Ok(out)
 }
@@ -2985,7 +3004,8 @@ fn git_clean_dirs(args: &[String], vars: &Vars, cur: &Dir) -> Result<Vec<PathBuf
         out.extend(resolve_target_word(spelling, &run_in, vars)?);
     }
     match run_in {
-        Dir::Known(p) => out.push(p),
+        // The folder is judged resolved (links followed), like every deletion target.
+        Dir::Known(p) => out.push(lexical_clean(resolve_existing(&p))),
         Dir::Unknown(reason) => return Err(reason),
     }
     Ok(out)
@@ -5220,6 +5240,57 @@ mod tests {
         );
     }
 
+    /// The ordinary deny and confirmation rules read a here-doc the way the deletion check
+    /// does (decision 6912 N5(2) end condition): a body only a data reader consumes is not a
+    /// command line, a body fed to a shell is.
+    #[test]
+    fn repair_7149_the_ordinary_rules_do_not_read_a_data_here_doc_body_as_commands() {
+        for body in [
+            "rm -rf /",
+            "rm -rf ~",
+            "git clean -fdx",
+            "git push --force origin main",
+        ] {
+            let commit = format!("git commit -F - <<EOF\n{body}\nEOF");
+            assert_eq!(bash_guard(&commit), None, "{commit}");
+            assert_eq!(bash_confirm(&commit), None, "{commit}");
+            let subst = format!("git commit -m \"$(cat <<'EOF'\n{body}\nEOF\n)\"");
+            assert_eq!(bash_guard(&subst), None, "{subst}");
+            assert_eq!(bash_confirm(&subst), None, "{subst}");
+        }
+        // The same body fed to a shell is code.
+        assert!(bash_guard("bash <<EOF\nrm -rf /\nEOF").is_some());
+        assert!(bash_guard("cat <<EOF | sh\nrm -rf /\nEOF").is_some());
+        assert!(bash_confirm("bash <<EOF\ngit clean -fdx\nEOF").is_some());
+        // And a command after the terminator is a command.
+        assert!(bash_guard("cat <<EOF\nnotes\nEOF\nrm -rf /").is_some());
+    }
+
+    /// A brace word is spelled out the way the shell does: a group inside the worktree is two
+    /// inside targets (the false refusal the repair audit named), a group with an outside
+    /// alternative is refused, and a pair that cannot be spelled out stays outside.
+    #[test]
+    fn repair_7149_brace_words_are_spelled_out_before_they_are_judged() {
+        let (_d, wt) = a_worktree();
+        assert_all_pass(
+            &wt,
+            &owned(&[
+                "rm -rf build/{a,b}",
+                "rm -rf src/{x,y}/z",
+                "rm -rf {a,b}{c,d}",
+            ]),
+        );
+        assert_all_refused(
+            &wt,
+            &[
+                format!("rm -rf {{build/a,{OUT}}}"),
+                format!("rm -rf {{,{OUT}}}"),
+                "rm -rf build/{a}".to_string(),
+                "rm -rf {}".to_string(),
+            ],
+        );
+    }
+
     /// `find`'s `-ok`/`-okdir` run a command like `-exec` does, and the command may sit behind
     /// a wrapper or a shell with bundled options; only a command that deletes makes the find a
     /// deletion.
@@ -5287,5 +5358,16 @@ mod tests {
                 "git -c core.autocrlf=false clean -fdx".to_string(),
             ],
         );
+        // The session's cwd may reach the guard through a link (`/var` for `/private/var`
+        // on macOS): the folder `git clean` runs in is judged resolved, like every target.
+        let link = wt.parent().unwrap().join(format!(
+            "moai-link-{}",
+            wt.file_name().unwrap().to_string_lossy()
+        ));
+        std::os::unix::fs::symlink(&wt, &link).unwrap();
+        assert_eq!(deletion_outside("git clean -fdx", &link), None);
+        assert_eq!(deletion_outside("git -C . clean -fdx", &link), None);
+        assert!(deletion_outside(&format!("git -C {OUT} clean -fdx"), &link).is_some());
+        std::fs::remove_file(&link).unwrap();
     }
 }
