@@ -42,6 +42,10 @@ fn rs_sources(dir: &Path) -> Vec<PathBuf> {
     out
 }
 
+/// The paths under `tests/` this file has, before and after its area (`spec`, first word `ac`
+/// in `tests/areas.toml`) is moved into a crate.
+const SELF_PATHS: [&str; 2] = ["ac_command_lint.rs", "spec/ac_command_lint.rs"];
+
 /// Files that carry their own git spawns must guard them: a wrapper that spawns git
 /// without the fixture guards is exactly what this card routes into
 /// `tests/common/git.rs`. This file is exempt — it quotes the pattern it scans for.
@@ -52,11 +56,10 @@ fn files_with_unguarded_git(dir: &Path) -> Vec<String> {
             .strip_prefix(dir)
             .unwrap()
             .to_string_lossy()
-            .to_string();
-        // A moved area keeps the file as a module (`tests/<area>/ac_command_lint.rs`), so compare
-        // the file name and not the path under `tests/`.
-        let file_name = path.file_name().map(|n| n.to_string_lossy().to_string());
-        if rel.starts_with("common/") || file_name.as_deref() == Some("ac_command_lint.rs") {
+            .replace('\\', "/");
+        // This file is exempt at its two exact places: today at the top level and, once its area
+        // is moved, as a module of the `spec` crate. A same-named file anywhere else is not.
+        if rel.starts_with("common/") || SELF_PATHS.contains(&rel.as_str()) {
             continue;
         }
         let text =
@@ -81,18 +84,31 @@ fn git_fixture_calls_live_in_the_shared_helper() {
     );
 }
 
-/// After an area move this file lives at `tests/<area>/ac_command_lint.rs` and keeps its
-/// exemption; any other file of the area with an unguarded git spawn is still reported.
+/// After an area move this file lives at `tests/spec/ac_command_lint.rs` and keeps its
+/// exemption; any other file with an unguarded git spawn is still reported, a file of the same
+/// name in another folder included.
 #[test]
 fn area_module_of_this_file_keeps_the_git_scan_exemption() {
     let dir = tempfile::TempDir::new().unwrap();
     let spawn = "fn f() { std::process::Command::new(\"git\"); }\n";
-    fs::create_dir_all(dir.path().join("spec")).unwrap();
-    fs::write(dir.path().join("spec/ac_command_lint.rs"), spawn).unwrap();
-    fs::write(dir.path().join("spec/other_cli.rs"), spawn).unwrap();
+    for rel in [
+        "ac_command_lint.rs",
+        "spec/ac_command_lint.rs",
+        "spec/other_cli.rs",
+        "repo/ac_command_lint.rs",
+        "spec/deep/ac_command_lint.rs",
+    ] {
+        let file = dir.path().join(rel);
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
+        fs::write(file, spawn).unwrap();
+    }
     assert_eq!(
         files_with_unguarded_git(dir.path()),
-        vec!["tests/spec/other_cli.rs".to_string()]
+        vec![
+            "tests/repo/ac_command_lint.rs".to_string(),
+            "tests/spec/deep/ac_command_lint.rs".to_string(),
+            "tests/spec/other_cli.rs".to_string(),
+        ]
     );
 }
 

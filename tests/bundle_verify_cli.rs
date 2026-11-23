@@ -1051,9 +1051,9 @@ fn the_list_is_the_documented_data() {
 }
 
 /// Two heads that move tests into the area crate `tests/repo/` (it holds `main.rs`) and into a
-/// folder that is no crate (`tests/lonely/`, no `main.rs`); the second head's SPEC still names the
-/// old file name `git_a`, the crate `repo`, and two names that are not cargo target names.
-fn area_heads() -> (Head<'static>, Head<'static>) {
+/// folder that is no crate (`tests/lonely/`, no `main.rs`); the second head's SPEC names
+/// `spec_names` as `--test` targets of its `verify:` line.
+fn area_heads(spec_names: Vec<&'static str>) -> (Head<'static>, Head<'static>) {
     (
         Head {
             files: vec![
@@ -1065,7 +1065,7 @@ fn area_heads() -> (Head<'static>, Head<'static>) {
         },
         Head {
             files: vec![("tests/repo/git_b.rs", "// git b\n")],
-            spec: Some((SPEC2, vec!["git_a", "repo", "../evil", "a/b"])),
+            spec: Some((SPEC2, spec_names)),
         },
     )
 }
@@ -1085,9 +1085,11 @@ fn target_commands(v: &Value) -> Vec<String> {
 }
 
 #[test]
-fn a_changed_area_module_puts_its_crate_on_the_list_once() {
+fn a_changed_area_module_alone_puts_its_crate_on_the_list_once() {
     let w = World::new();
-    let (a, b) = area_heads();
+    // The SPEC names no usable target (a path and a slash name are no cargo target names), so the
+    // crate is on the list only because modules of `tests/repo/` changed.
+    let (a, b) = area_heads(vec!["../evil", "a/b"]);
     let built = w.built(&a, &b);
     let out = w.out();
     let (v, code) = w.verify(&[
@@ -1099,9 +1101,33 @@ fn a_changed_area_module_puts_its_crate_on_the_list_once() {
         out.to_str().unwrap(),
     ]);
     assert_eq!(code, 0, "{v}");
-    // Changed modules (`git_a`, `git_b`, `main`) and the SPEC's old name `git_a` and name `repo`
-    // all stand for the one crate; a folder without `main.rs` is no crate, and a name that is not
-    // a cargo target name is no target.
+    // Changed modules (`git_a`, `git_b`, `main`) stand for the one crate; a folder without
+    // `main.rs` is no crate, and a name that is not a cargo target name is no target.
+    assert_eq!(
+        target_commands(&v),
+        vec!["cargo test --locked --offline --test repo".to_string()],
+        "{v}"
+    );
+    assert_eq!(not_run_of(&v), Vec::<(String, String)>::new(), "{v}");
+}
+
+#[test]
+fn a_specs_old_test_name_and_its_crate_name_are_one_target() {
+    let w = World::new();
+    // `git_a` was a top-level test file before it moved into the crate `repo`; the SPEC still says
+    // `--test git_a`, and also names the crate itself.
+    let (a, b) = area_heads(vec!["git_a", "repo"]);
+    let built = w.built(&a, &b);
+    let out = w.out();
+    let (v, code) = w.verify(&[
+        &built.cards[0],
+        &built.cards[1],
+        "--branch",
+        &built.branch,
+        "--out",
+        out.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "{v}");
     assert_eq!(
         target_commands(&v),
         vec!["cargo test --locked --offline --test repo".to_string()],
@@ -1113,7 +1139,7 @@ fn a_changed_area_module_puts_its_crate_on_the_list_once() {
 #[test]
 fn a_failing_area_crate_names_every_head_that_touches_its_folder() {
     let w = World::new();
-    let (a, b) = area_heads();
+    let (a, b) = area_heads(vec![]);
     let built = w.built(&a, &b);
     // The output names no file, so only the crate's folder can attribute the failure.
     w.rules(&["--test repo|101|test repo ... FAILED"]);

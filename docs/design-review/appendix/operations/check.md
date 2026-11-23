@@ -27,7 +27,7 @@ operation `check.affected` · 코드 `src/ops/check.rs`, `src/check_affected.rs`
 - `tests/test_area_layout.rs` 가 지켜요: 모든 시험 파일의 첫 낱말이 표에 있어야 하고(새 첫 낱말은 같은 변경에서 표에 한 줄 더하기), 옮겨진 영역(`tests/<영역>/main.rs` 가 있는 영역)에는 그 영역의 낱말로 시작하는 최상위 `tests/*.rs` 가 남으면 안 돼요. `main.rs` 는 모듈 파일마다 `mod <이름>;` 을 정확히 한 번 적고, 모듈 안에서는 전역 상태를 바꾸는 호출을 하지 않아요.
 - 목록 파일(`tools/repo_scans.json`, `tools/self_check.sh`, `tools/ci_scope.py`)의 `--test <이름>` 과 `tests/….rs` 경로는 실제로 있는 대상이어야 해요. 영역 크레이트는 `--test <영역> <모듈>::<필터>` 꼴로 적어요.
 - 시험 함수 이름은 그대로이고 옛 대상 이름이 모듈 경로가 돼요: `cargo test --test <옛 이름> <f>` → `cargo test --test <영역> <옛 이름>::<f>`.
-- 지금 `check affected` 는 아직 영역을 몰라요(영역 크레이트 한 번 빌드와 모듈 필터는 C-227 조각 2 가 착지한 뒤의 조각이에요). 그래서 한 영역도 옮겨지지 않은 동안은 위의 선택 규칙 그대로예요.
+- 지금 `check affected` 는 아직 영역을 몰라요(영역 크레이트 한 번 빌드와 모듈 필터는 테스트 스레드 상한 작업의 둘째 조각이 착지한 뒤의 조각이에요). 그래서 한 영역도 옮겨지지 않은 동안은 위의 선택 규칙 그대로예요.
 
 ## 쓰는 법과 답
 
