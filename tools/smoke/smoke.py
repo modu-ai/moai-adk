@@ -373,8 +373,8 @@ class Smoke:
         if done.returncode != 0:
             raise StepFailed(f"exit code {done.returncode}")
         first = done.stdout.decode(errors="replace").splitlines()[:1]
-        if not first or not re.match(r"^moai-cli \S+ \(rust\)$", first[0]):
-            raise StepFailed("the first line is not the Rust signature `moai-cli <version> (rust)`")
+        if not first or not re.match(r"^(moai|moai-cli) \S+ \(rust\)$", first[0]):
+            raise StepFailed("the first line is not the Rust signature `moai <version> (rust)` (or the earlier `moai-cli <version> (rust)`)")
 
     def install_inspect(self):
         result = self.envelope(self.exec([self.staged, "install-inspect"]))

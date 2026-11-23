@@ -66,7 +66,7 @@ cargo build --release --locked
 ./target/release/moai --version
 ```
 
-The last command prints `moai-cli 2026.11.0-rc.1 (rust)`; `./target/release/moai-cli --version` prints the same line. These commands were run on 2026-11-14 on macOS 27.0.1 (arm64) with an empty Cargo home, at branch commit `0e9ad36fc4`; the release build took about 1 minute 26 seconds after the crate download, into an empty build folder on a heavily loaded machine. Other platforms were not tried with these exact steps.
+The last command prints `moai 2026.11.0-rc.1 (rust)`; `./target/release/moai-cli --version` prints the same line. These commands were run on 2026-11-14 on macOS 27.0.1 (arm64) with an empty Cargo home, at branch commit `0e9ad36fc4`; the release build took about 1 minute 26 seconds after the crate download, into an empty build folder on a heavily loaded machine. Other platforms were not tried with these exact steps.
 
 ## First run
 
