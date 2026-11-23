@@ -53,6 +53,8 @@ created: 2026-11-23
   verify: `cargo test --locked --offline --test card_take_scope_cli next_lists_what_take_can_fill`
 - AC-9 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9): the existing take, scope and next tests of the ledger still pass.
   verify: `cargo test --locked --offline --test ledger_reservation --test card_scope_widen_cli`
+- AC-11 (REQ-8, REQ-9): `card next` leaves a card with a SPEC list of 65 paths skipped as `empty_scope`, so it never offers what a take would refuse.
+  verify: `cargo test --locked --offline --test card_take_scope_cli next_skips_a_fill_a_take_would_refuse`
 - AC-10 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9): the SPEC passes the checker.
   verify: `moai spec check SPEC-20261123-take-scope-stored`
 

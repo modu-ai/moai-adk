@@ -295,6 +295,24 @@ fn the_spec_list_has_the_same_limit() {
     assert_eq!(w.own_scope(&too_many), json!([]));
 }
 
+/// AC-11 (REQ-8, REQ-9): `card next` offers no fill that a take would refuse; a SPEC list of 65
+/// paths leaves the card skipped as `empty_scope`.
+#[test]
+fn next_skips_a_fill_a_take_would_refuse() {
+    let w = world();
+    let name = w.empty_card("sixty five");
+    let spec = w.spec("fill-next-limit", &paths(65));
+    w.link(&name, &spec);
+    let next = w.next(Some(S_B));
+    assert!(next["ready"].as_array().unwrap().is_empty(), "{next}");
+    let skipped = next["skipped"].as_array().unwrap();
+    let card = skipped
+        .iter()
+        .find(|c| c["name"] == json!(name))
+        .unwrap_or_else(|| panic!("no {name} in {next}"));
+    assert_eq!(card["reason"], json!("empty_scope"), "{card}");
+}
+
 /// AC-8 (REQ-9): `card next` lists the cards a take could fill, with the scope and its source,
 /// and still skips a card with no source as `empty_scope`.
 #[test]
