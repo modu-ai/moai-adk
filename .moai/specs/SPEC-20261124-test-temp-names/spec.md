@@ -79,4 +79,16 @@ Grounded in the code at the integration tip `466b59fc62`:
 
 ## Result
 
-Not yet written; it is filled in the SYNC step with the runs of the READY head.
+Revision 1 on the branch cut from the integration tip `466b59fc62` (the tip had not moved when the branch was finished, so no merge was needed). Approval basis: the leader's decision note 7711 of the card (2026-11-23T17:12:03Z), which approves option (a) of request note 7710. Numbers come from runs made for this result in the worktree of the card.
+
+- AC-1 met (REQ-1): `profile_plan_cli` 9 of 9, `work_flow_plan_cli` 13 of 13 and `commit_identity_guard_2878` 5 of 5 passed. Run with a private `TMPDIR`, `profile_plan_cli` left `c105-plan-2503` and `c105-plan-noremote-2503-9` behind before the repair and left nothing after it (a hand check of the private folder, not a test).
+- AC-2 met (REQ-2): `temp_names_scan_flags_a_pid_name_under_the_temp_folder` passed (one line, several lines, a bare `temp_dir()`, two statements).
+- AC-3 met (REQ-3): `temp_names_scan_ignores_a_pid_that_is_data_and_text_that_is_not_code` passed (key name, two statements, two blocks, comments, string literals, braces in a format string, a quote character).
+- AC-4 met (REQ-2): `temp_names_tree_has_no_pid_names_under_the_temp_folder` passed on the repaired tree; before the repair it named the four sites `commit_identity_guard_2878.rs:166`, `profile_plan_cli.rs:46` and `:346`, `work_flow_plan_cli.rs:65` (red first).
+- AC-5 met (REQ-4): `repo_scans_table` passed 22 of 22 with the entry `no-pid-named-temp-folders`.
+- Guard mutants (each undone by the inverse edit, `git status` clean after): M1 temp folder condition off in the scan (`if false && …`) killed by `temp_names_scan_flags_` (cargo test exit 101); M2 line comments no longer blanked killed by `temp_names_scan_ignores_` (exit 101); M3 one repaired site put back to a pid name killed by `temp_names_tree_` (exit 101); M4 the table entry names a file that is not there killed by `every_named_file_exists` and `every_walking_test_file_is_listed_or_exempt` (exit 101).
+- Follow-up list (text matches in `src/`, not verified as creating a folder): `src/review.rs:538` joins a pid and nanoseconds onto `temp_dir()`; `src/host_wake.rs:392` and `:538` use a fixed `/tmp` folder that is removed first and on drop; `src/key_vault.rs:731`, `src/project_skills.rs:399` and `src/run.rs:623` build a name with the pid and need a read of their folder. A later card widens the scan to `src/` if one of them leaves a folder.
+- Not touched: the folders already in the system temp folder (`c105-plan-*`, `wfplan-*`), which are the operator's to remove.
+- Not run: the whole `cargo test`, the Windows type check, and the scan on `src/`.
+- The `moai check affected` receipt of the head is in the READY note of the card.
+- closure_status: open until the audit.
