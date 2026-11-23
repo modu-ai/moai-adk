@@ -596,6 +596,52 @@ mod real_clock {
         let got = e.clean(&landed_alone);
         assert_eq!(got["worktrees"][0]["status"], "removed", "{got}");
         assert!(!alone.exists(), "{got}");
+
+        // The other way round: the process's own home holds a ledger of the same project in
+        // which a card claims a worktree the given home's ledger says is free. The given home
+        // decides, in the plan, in the apply's own plan and in its re-check, so it goes.
+        moai_cli::ledger::register(other.path(), "demo").unwrap();
+        let p = e.project.to_str().unwrap();
+        let by_other = |args: &[&str]| {
+            let out = other
+                .command(args)
+                .env("CLAUDE_CODE_SESSION_ID", S2)
+                .output()
+                .unwrap();
+            assert!(
+                out.status.success(),
+                "{args:?}: {}",
+                String::from_utf8_lossy(&out.stdout)
+            );
+            serde_json::from_slice::<Value>(&out.stdout).unwrap()
+        };
+        let free = e.worktree("wt-free-here");
+        let landed_free = e.landed_card(&free, None);
+        let added = by_other(&[
+            "card",
+            "add",
+            "--title",
+            "t",
+            "--scope",
+            "apps/other/",
+            "--project",
+            p,
+        ]);
+        let name = added["result"]["name"].as_str().unwrap().to_string();
+        by_other(&["card", "ready", &name, "--project", p]);
+        by_other(&[
+            "card",
+            "take",
+            &name,
+            "--worktree",
+            free.to_str().unwrap(),
+            "--project",
+            p,
+        ]);
+        let got = e.clean(&landed_free);
+        assert_eq!(got["error"], Value::Null, "{got}");
+        assert_eq!(got["worktrees"][0]["status"], "removed", "{got}");
+        assert!(!free.exists(), "{got}");
     }
 
     /// A queue line whose worktree was skipped for a temporary reason stays in the queue; one
