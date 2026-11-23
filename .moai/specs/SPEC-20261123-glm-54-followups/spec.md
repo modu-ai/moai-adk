@@ -70,3 +70,33 @@ N3(앞 SPEC 이 draft 이고 Result 가 없음)은 앞 SPEC 의 몫이라 이 SP
 - N5(미확인): z.ai 가 `glm-5.4[1m]` 라는 모델 이름을 실제로 받는지는 실제 세션 없이 확인할 수 없어요. 이 SPEC 은 앞 SPEC 이 정한 별칭 값과 같은 문자열을 저장 id 로 쓸 뿐이라 새 위험을 더하지 않고, 실제 호출은 하지 않아요.
 - 저장된 `zai/glm-5.3` 을 모델로 고른 사용자는 별칭 환경(`glm-5.4[1m]`)을 건너뛰고 `--model glm-5.3` 으로 떠요. 이전 동작 그대로이고(AC-2), 사용자가 `moai update` 에서 5.4 를 다시 고르면 바뀌어요.
 - `packs.json` 의 해시 줄이 템플릿 파일과 어긋나면 카탈로그와 파일이 달라져요: 해시를 `shasum -a 256` 으로 다시 재서 한 줄만 바꿔요.
+
+## Result
+
+(status draft — 승인은 사용자 몫이라 상태는 draft 로 둬요. 아래 수치는 이 가지에서 직접 돌린 명령의 출력이고, `check affected` 영수증은 이 Result 가 든 헤드를 이름 짓는 READY 노트에 있어요.)
+
+- AC-1: met — `the_glm_table_lists_54_and_keeps_the_53_rows`(표에 `zai/glm-5.4[1m]`·`zai/glm-5.3`·`zai/glm-5.3-flash`, 5.4 노력 low·high·max), `no_saved_value_answers_the_default_for_every_tool_and_role`(GLM leader `zai/glm-5.4[1m]`/`high`, agent `zai/glm-5.3-flash`/`max`), `model_and_effort_questions_offer_only_table_values_with_the_default_first`, `the_glm_model_question_offers_54_first_and_keeps_a_saved_53`(질문 순서 5.4·5.3·flash, 저장된 5.3 은 기본 선택지), `a_glm_53_choice_saved_before_54_is_still_supported`(저장된 `zai/glm-5.3` 은 지원 항목, 저장된 것으로 읽힘)
+- AC-2: met — `a_saved_glm_54_reaches_the_argv_and_a_saved_53_still_does`(저장된 5.4 → `--model glm-5.4[1m]`, 저장된 5.3 → `--model glm-5.3`, 저장값 노트가 키 경로만 말함), `enter_saves_glm_54_for_the_leader_and_flash_for_the_agent`(모델 단계가 leader `zai/glm-5.4[1m]`·agent flash 를 저장하고 보고가 saved 로 읽음), `a_saved_glm_53_leader_stays_through_enter_everywhere`(저장된 5.3 은 미지원 목록에 안 뜨고 Enter 로 저장해도 그대로); 임시 HOME 과 `--dry-run` 만 썼고 z.ai 를 부르지 않았어요
+- AC-3: met — `the_super_advisor_template_names_the_launchers_glm_model`(템플릿이 `GLM_ENV` opus 값에서 `[1m]` 뗀 `glm-5.4` 를 말하고 `glm-5.3` 이 없으며, `packs.json` 의 `super-advisor` 줄 해시가 파일의 SHA-256 `10636b55…30ed` 와 같음)
+- AC-4: met — `statusline::state::tests::glm_fable_slot_names_and_sizes_its_model`(`GLM_ENV` 그대로 만든 환경에서 `Fable`·`Fable[1m]` → `glm-5.4`, Haiku → `glm-5.3-flash`, claude 가 든 fable 칸은 `Fable` 그대로, fable 칸만 있어도 1M 창, claude 만 있으면 0)
+
+증거 (이 가지에서 직접 돌린 것):
+
+- 먼저 실패함: RED 커밋 `e89a05b459` 의 코드(바꾸기 전 `src/`)에서 `cargo nextest run --locked --offline --no-fail-fast --lib --test model_effort_settings --test model_effort_questions --test update_model_pick --test launcher_reads_models -E <그 4개 바이너리 + 새 lib 테스트>` → exit 100, 58 run, 47 passed, 11 failed(`target/glm54/red.log`). 실패 11개는 새 테스트 7개와 기본값을 바꾼 기존 테스트 4개예요. `a_saved_glm_53_leader_stays_through_enter_everywhere` 는 5.3 유지를 지키는 테스트라 처음부터 통과해요.
+- 통과: 바꾼 뒤 같은 명령 → exit 0, 58 run, 58 passed(`target/glm54/green.log`).
+- 뮤턴트 6개가 모두 죽었어요(각각 하나만 바꾸고 해당 테스트를 돌린 뒤 되돌려서 트리가 깨끗한 것을 확인; `target/glm54/M1..M6.log`): M1 leader 기본값을 `zai/glm-5.3` 으로 → 6개 실패(`no_saved_value_answers…`, `enter_saves_glm_54…` 등), M2 표의 5.4 행 id 를 바꿈 → 8개 실패(`a_saved_glm_54_reaches_the_argv…`, `the_glm_table_lists_54…` 등), M3 이름 풀이의 `fable` 분기 제거 → `glm_fable_slot_names_and_sizes_its_model` 실패, M4 `GLM_ENV_SLOTS` 의 fable 칸 제거 → 같은 테스트 실패, M5 템플릿 문구를 `glm-5.3` 으로 되돌림 → 템플릿 테스트 실패, M6 `packs.json` 해시를 옛 값으로 → 같은 테스트 실패.
+- `cargo fmt --check` 가 새 테스트 줄 몇 군데를 고치라고 해서 `cargo fmt` 로 그 파일들만 고쳤어요(다른 파일은 안 바뀜).
+
+결정 (D-1~D-5 는 위 Decisions): 저장 id `zai/glm-5.4[1m]`, 5.3 행 유지, GLM agent 기본값 flash 유지, 5.4 노력 low·high·max(미확인), 상태 줄 fable 칸 추가.
+
+범위: 카드 범위에 `templates/bundle-packs/packs.json` 이 없어서, 템플릿 문구를 바꾸면 그 파일의 해시 줄이 어긋나므로 `moai card scope`(held 카드 넓히기, 이유 기록)로 그 한 줄만 쓰려고 넓혔어요. 카드 범위에 있던 `skills/moai/references/source-manifest.json` 은 `skills/moai/` 아래 파일만 덮고 템플릿 해시를 갖지 않아 바꾸지 않았어요.
+
+못 한 것 (not_run):
+
+- 임시 HOME·더미 키로 손으로 띄운 `moai glm` 실행: 앞 카드에서 워크트리 격리 가드가 HOME 을 바꾸는 명령을 거부했어요. 같은 일을 하는 통합 테스트(임시 HOME, `--dry-run`)가 증거예요. 저장된 5.4 로 대역 host 를 실제로 띄우는 시험은 추가하지 않았고(저장된 5.3 이 띄운 host 로 가는 기존 시험은 그대로 통과), argv 는 `--dry-run` 이 같은 합성 경로로 보여줘요.
+- 실제 `~/.moai`·`~/.claude` 에 쓰기, z.ai 호출(N5: z.ai 가 `glm-5.4[1m]` 를 받는지), Linux·Windows, 독립 감사(작성자가 아닌 세션 몫).
+
+후속 (이 SPEC 이 만지지 않은 것):
+
+- 5.4 가 다른 노력 값(예: medium)을 주는지 공식 문서로 확인하면 표 한 줄을 늘려요(D-4).
+- 5.4 flash 가 확인되면 haiku 별칭·GLM agent 기본값을 따로 바꿔요(D-3).
