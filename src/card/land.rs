@@ -331,7 +331,9 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
     }
 
     // The close. A refusal here comes after the move and says so.
-    let done = workflow::finish(
+    // The landing event names the verdict this call relied on, not the one an earlier call's start
+    // row names: a call that stopped before the move and judged again has a newer one (REQ-13).
+    let done = workflow::finish_naming(
         &mut ledger,
         card_id,
         req.session,
@@ -339,6 +341,7 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         &evidence,
         &met,
         req.generation,
+        workflow::LandedVerdict::Relied(relied.as_ref()),
     )
     .map_err(|e| {
         if moved {

@@ -1852,6 +1852,41 @@ pub fn finish(
     met: &[(i64, String)],
     generation: Option<i64>,
 ) -> Result<Finished, WorkflowError> {
+    finish_naming(
+        w,
+        card_id,
+        session,
+        by,
+        evidence,
+        met,
+        generation,
+        LandedVerdict::StartRow,
+    )
+}
+
+/// Which verdict the `card.landed` event of a close names.
+#[derive(Clone, Copy, Debug)]
+pub enum LandedVerdict<'a> {
+    /// The verdict of the newest start row of the head (what a close that judged nothing says).
+    StartRow,
+    /// The verdict this call relied on (or none): `card land` names what it read, so a rerun that
+    /// judged the verdicts again before the move does not write the PASS an earlier call's start
+    /// row names (SPEC-20261123-landing-reads-verdict, REQ-13).
+    Relied(Option<&'a serde_json::Value>),
+}
+
+/// [`finish`], with the verdict the landing event names given by the caller.
+#[allow(clippy::too_many_arguments)]
+pub fn finish_naming(
+    w: &mut WriteLedger,
+    card_id: i64,
+    session: Option<&str>,
+    by: &str,
+    evidence: &FinishEvidence<'_>,
+    met: &[(i64, String)],
+    generation: Option<i64>,
+    named: LandedVerdict<'_>,
+) -> Result<Finished, WorkflowError> {
     finish_input_checks(by, met, evidence)?;
     w.with_write_tx(|tx, now| {
         let FinishPlan {
@@ -1883,11 +1918,15 @@ pub fn finish(
                 "report": report, "note": note,
                 "via": "finish", "no_code": head.is_none(),
             });
-            // The verdict the landing relied on is the one its start row names.
-            if let Some(head) = head {
-                if let Some(verdict) = land_started_verdict(tx, card_id, head)? {
-                    payload["verdict"] = verdict;
-                }
+            // The verdict the landing relied on: the one the caller names, or the one the newest
+            // start row of the head names.
+            let verdict = match (named, head) {
+                (LandedVerdict::Relied(verdict), _) => verdict.cloned(),
+                (LandedVerdict::StartRow, Some(head)) => land_started_verdict(tx, card_id, head)?,
+                (LandedVerdict::StartRow, None) => None,
+            };
+            if let Some(verdict) = verdict {
+                payload["verdict"] = verdict;
             }
             reservation::add_event(tx, now, actor, card_id, "card.landed", &payload)?;
             events += 1;

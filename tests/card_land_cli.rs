@@ -3128,14 +3128,16 @@ fn ac38_a_cleanup_that_cannot_run_is_reported_and_the_landing_stands() {
 
 /// AC-22 (REQ-8, REQ-24): a call killed after the start row and before the move, then a FAIL by
 /// another reviewer: the call run again refuses with `verdict_fail`, the branch stays at the tip
-/// and no landing is written; the same reviewer's later PASS lands the head once.
+/// and no landing is written; the same reviewer's later PASS lands the head once, and the landing
+/// event and the answer name that newest PASS and its reviewer, not the PASS the start row of the
+/// killed call named (REQ-13, AC-17).
 #[test]
 fn ac57_a_fail_recorded_after_a_kill_before_the_move_refuses_the_rerun() {
     let w = World::enforced();
     let card = w.review_card(&["one"]);
     let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
-    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let first = w.verdict(&card, &cand, true, 0, S_AUD, None);
     // The script keeps running after it kills its parent, so it exits too and the branch stays.
     w.wrap_update_ref("git-kills-the-lander", "kill -9 $PPID; exit 9", "");
     let out = w.land_as(Some(S_LEAD), &card, &cand);
@@ -3158,7 +3160,8 @@ fn ac57_a_fail_recorded_after_a_kill_before_the_move_refuses_the_rerun() {
     assert_eq!(w.events(&card, "card.landed"), 0);
 
     // The reviewer that failed it passes it later: the landing goes through once.
-    w.verdict(&card, &cand, true, 0, S_OTHER, None);
+    let latest = w.verdict(&card, &cand, true, 0, S_OTHER, None);
+    assert_ne!(latest, first);
     let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
     assert_eq!(got["moved"], json!(true), "{got}");
     assert_eq!(got["closed"], json!(true), "{got}");
@@ -3169,6 +3172,17 @@ fn ac57_a_fail_recorded_after_a_kill_before_the_move_refuses_the_rerun() {
         "a second start row"
     );
     assert_eq!(w.events(&card, "card.landed"), 1);
+    // The call relied on the newest PASS (the reviewer that failed the head and then passed it),
+    // and the record of the landing says so: the answer and the landing event name the same
+    // verdict, and it is not the PASS the killed call's start row names.
+    let newest = json!({"event": latest, "reviewer": S_OTHER, "tier": 0, "lander": S_LEAD});
+    assert_eq!(got["verdict"], newest, "{got}");
+    assert_eq!(w.payload(&card, "card.landed")["verdict"], newest);
+    assert_eq!(
+        w.payload(&card, "card.land_started")["verdict"]["event"],
+        json!(first),
+        "the start row of the killed call is not rewritten"
+    );
 }
 
 /// AC-23 (REQ-9): a verdict event whose head differs from the candidate in the last hex digit only
@@ -3202,7 +3216,7 @@ fn ac58_a_verdict_names_the_whole_head_and_not_a_prefix_of_it() {
     assert_eq!(got["moved"], json!(true), "{got}");
 }
 
-/// AC-24 (REQ-14): in observe mode a git that fails inside the verdict check only is reported as
+/// AC-16 (REQ-14): in observe mode a git that fails inside the verdict check only is reported as
 /// `would_refuse` with the code `check_unreadable` and the head lands; in enforce mode the same
 /// call refuses.
 #[test]
