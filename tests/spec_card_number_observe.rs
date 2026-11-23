@@ -174,6 +174,15 @@ fn only_a_card_number_at_a_word_start_counts() {
         "Seen on card c-9.",
     ));
     assert_eq!(notices(&lower).len(), 1);
+    // A one-digit number that ends its line: the scan reaches the last three bytes of the line.
+    let line_end = parse_text(&text(
+        ID,
+        "draft",
+        Some("2026-11-25"),
+        "",
+        &format!("Seen on card {}", card(1)),
+    ));
+    assert_eq!(notices(&line_end).len(), 1, "{:?}", line_end.findings);
 }
 
 fn spec_texts() -> Vec<(String, String)> {
