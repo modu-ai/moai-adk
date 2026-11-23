@@ -136,17 +136,21 @@ fn apply(home: &Path, digest: &str) -> Value {
     apply_with(home, NOW, "--plan-digest", digest, PERM, &[])
 }
 
-fn revert(home: &Path) -> Value {
+fn revert_with(home: &Path, perm: &str) -> Value {
     call(
         &[
             "home-archive-revert",
             "--home",
             home.to_str().unwrap(),
             "--permission-reference",
-            PERM,
+            perm,
         ],
         &[],
     )
+}
+
+fn revert(home: &Path) -> Value {
+    revert_with(home, PERM)
 }
 
 fn digest_of(p: &Value) -> String {
@@ -217,6 +221,48 @@ fn in_use(dir: PathBuf) -> Kill {
             .spawn()
             .unwrap(),
     )
+}
+
+/// A program that holds `file` open (descriptor 3) while its working folder lies elsewhere, so
+/// only the open-file check can see it. The test reads the program's `ready` line before it goes
+/// on, so no clock decides whether the file is open yet.
+fn holding_open(file: &Path) -> Kill {
+    use std::io::{BufRead, BufReader};
+    crate::common::use_real_process_table();
+    let mut child = Command::new("sh")
+        .args(["-c", "exec 3<\"$1\"; echo ready; exec cat", "sh"])
+        .arg(file)
+        .current_dir(std::env::temp_dir())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let mut line = String::new();
+    BufReader::new(child.stdout.take().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    assert_eq!(line.trim(), "ready");
+    Kill(child)
+}
+
+/// The earlier home with `extra` more loose files, so the folder holds exactly `total` entries.
+fn home_with_entries(total: usize) -> (tempfile::TempDir, PathBuf) {
+    let (d, home) = earlier_home();
+    let have = fs::read_dir(home.join(".moai-cli")).unwrap().count();
+    for i in 0..total - have {
+        write(&home, &format!(".moai-cli/bulk-{i:04}.txt"), "x\n");
+    }
+    assert_eq!(fs::read_dir(home.join(".moai-cli")).unwrap().count(), total);
+    (d, home)
+}
+
+fn manifest(home: &Path) -> PathBuf {
+    home.join(format!(".moai/archive/state-retire-manifest-{STAMP}.json"))
+}
+
+fn journal(home: &Path) -> PathBuf {
+    home.join(format!(".moai/archive/move-journal-{STAMP}.json"))
 }
 
 fn blocks(p: &Value) -> Vec<String> {
@@ -339,6 +385,60 @@ fn blocked_while_a_program_uses_the_earlier_folder_and_the_apply_refuses() {
     assert_eq!(blocks(&p), ["in_use:process_cwd"]);
     refused(&apply(&home, &digest_of(&p)));
     assert_eq!(before, tree(&home), "a blocked apply writes nothing");
+}
+
+#[test]
+fn blocked_while_a_program_holds_a_file_of_the_earlier_folder_open() {
+    let (_d, home) = earlier_home();
+    let before = tree(&home);
+    let _open = holding_open(&home.join(".moai-cli/receipts/r.json"));
+    let p = plan(&home);
+    assert_eq!(p["action"], json!("blocked"), "{p}");
+    assert_eq!(blocks(&p), ["in_use:file_open"]);
+    refused(&apply(&home, &digest_of(&p)));
+    assert_eq!(before, tree(&home), "a blocked apply writes nothing");
+}
+
+#[test]
+fn blocked_at_501_entries_and_planned_at_500_entries() {
+    // N and N+1 of the listing limit: 500 entries are all listed and move, 501 are not fully
+    // listed and the preview refuses to plan a move it could not show.
+    let (_d, home) = home_with_entries(500);
+    let p = plan(&home);
+    assert_eq!(p["action"], json!("retire"), "{p}");
+    assert_eq!(p["total"], json!(500));
+    assert_eq!(p["entries"].as_array().unwrap().len(), 500);
+    assert_eq!(blocks(&p), Vec::<String>::new());
+    let applied = apply(&home, &digest_of(&p));
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert!(!exists(&home.join(".moai-cli")));
+
+    let (_d, home) = home_with_entries(501);
+    let before = tree(&home);
+    let p = plan(&home);
+    assert_eq!(p["action"], json!("blocked"), "{p}");
+    assert_eq!(p["total"], json!(501));
+    assert_eq!(p["entries"].as_array().unwrap().len(), 500, "the first 500");
+    assert_eq!(blocks(&p), ["not_fully_listed"]);
+    refused(&apply(&home, &digest_of(&p)));
+    assert_eq!(before, tree(&home), "a blocked apply writes nothing");
+}
+
+#[test]
+fn blocked_when_a_manifest_of_this_clock_is_not_the_one_this_step_wrote() {
+    for foreign in ["not json at all", "{\"kind\":\"another-step\"}"] {
+        let (_d, home) = earlier_home();
+        write(
+            &home,
+            &format!(".moai/archive/state-retire-manifest-{STAMP}.json"),
+            foreign,
+        );
+        let before = tree(&home);
+        let p = plan(&home);
+        assert_eq!(blocks(&p), ["stamp_taken"], "{foreign}: {p}");
+        refused(&apply(&home, &digest_of(&p)));
+        assert_eq!(before, tree(&home), "{foreign}");
+    }
 }
 
 #[test]
@@ -551,7 +651,79 @@ fn the_revert_refuses_when_the_earlier_folder_came_back_or_the_entry_was_replace
     assert!(!exists(&home.join(".moai-cli")));
 }
 
+#[test]
+fn the_revert_refuses_an_empty_or_placeholder_reference_and_leaves_the_archive_as_it_is() {
+    let (_d, home) = earlier_home();
+    let before = tree(&home.join(".moai-cli"));
+    let p = plan(&home);
+    assert_eq!(apply(&home, &digest_of(&p))["ok"], json!(true));
+    let archived = tree(&home);
+    for bad in ["", "   ", "null", "placeholder", " placeholder "] {
+        let v = revert_with(&home, bad);
+        let why = refused(&v);
+        assert!(why.contains("permission reference"), "`{bad}`: {why}");
+        assert_eq!(
+            archived,
+            tree(&home),
+            "`{bad}`: the archive stays where it is"
+        );
+        assert!(!exists(&home.join(".moai-cli")), "`{bad}`");
+    }
+    let r = revert(&home);
+    assert_eq!(r["ok"], json!(true), "{r}");
+    assert_eq!(before, tree(&home.join(".moai-cli")));
+}
+
 // ---- crashes ---------------------------------------------------------------------------------
+
+#[test]
+fn a_crash_between_the_manifest_and_the_journal_is_finished_by_a_rerun_of_the_same_clock() {
+    let (_d, home) = earlier_home();
+    let before = tree(&home.join(".moai-cli"));
+    let p = plan(&home);
+    let digest = digest_of(&p);
+    let crashed = apply_with(
+        &home,
+        NOW,
+        "--plan-digest",
+        &digest,
+        PERM,
+        &[(FAULT, "after_manifest")],
+    );
+    assert!(
+        refused(&crashed).contains("injected crash"),
+        "after_manifest: {crashed}"
+    );
+    assert!(exists(&manifest(&home)), "the manifest was written");
+    assert!(!exists(&journal(&home)), "the journal was not");
+    assert_eq!(before, tree(&home.join(".moai-cli")), "nothing moved");
+
+    // The manifest left behind is this step's own: the same clock is not `stamp_taken`.
+    let again = plan(&home);
+    assert_eq!(again["action"], json!("retire"), "{again}");
+    assert_eq!(
+        digest_of(&again),
+        digest,
+        "the same preview as before the crash"
+    );
+
+    let done = apply(&home, &digest);
+    assert_eq!(done["ok"], json!(true), "{done}");
+    assert_eq!(done["result"]["state"], json!("applied"), "{done}");
+    assert!(!exists(&home.join(".moai-cli")));
+    assert_eq!(before, tree(&archive(&home)));
+    let m: Value = serde_json::from_slice(&fs::read(manifest(&home)).unwrap()).unwrap();
+    assert_eq!(
+        m["plan_digest"],
+        json!(digest),
+        "the manifest names the finished plan"
+    );
+    assert!(exists(&journal(&home)));
+
+    let r = revert(&home);
+    assert_eq!(r["ok"], json!(true), "{r}");
+    assert_eq!(before, tree(&home.join(".moai-cli")));
+}
 
 #[test]
 fn a_crash_at_any_journal_step_is_finished_by_a_rerun_or_undone_by_the_revert() {

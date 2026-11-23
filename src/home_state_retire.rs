@@ -1,9 +1,16 @@
 //! SPEC-20261123-home-state-retire: archive the earlier HOME state folder whole. The earlier
-//! folder is renamed, by one rename on one file system, to `~/.moai/archive/moai-cli-<UTC>/`,
-//! after a manifest and a move journal are written ([`crate::move_journal`]). Nothing is
-//! copied, deleted or opened: the preview reads names, kinds and modes by `lstat` alone, so a
-//! vault inside keeps its owner-only modes and its bytes, and the revert is the same rename
-//! backwards. No command other than this one reads the earlier folder (user decision 6504).
+//! folder is renamed, by one rename on one file system, to `~/.moai/archive/moai-cli-<UTC>/`.
+//! Nothing inside the earlier folder is copied, deleted or opened: the preview reads its names,
+//! kinds and modes by `lstat` alone, so a vault inside keeps its owner-only modes and its bytes,
+//! and the revert is the same rename backwards. No command other than this one reads the
+//! earlier folder (user decision 6504).
+//!
+//! The apply writes two files of its own into `~/.moai/archive/` before the rename, in this
+//! order: the manifest (`state-retire-manifest-<UTC>.json`), then the move journal
+//! ([`crate::move_journal`], which publishes it and moves). A crash between the two leaves a
+//! manifest and no journal; the preview and the apply of the same clock take that manifest as
+//! their own (it names this kind, HOME and stamp) and replace it by one rename, so the rerun
+//! finishes. Another file at that name keeps the clock `stamp_taken`.
 //!
 //! The step stops while a program uses a path under the folder, while the running binary lies
 //! inside it, and where the folder, `~/.moai`, its `archive` folder or the archive name is not
@@ -25,7 +32,8 @@ pub const ARCHIVE_DIR: &str = "archive";
 pub const KIND: &str = "state-retire";
 const MANIFEST_PREFIX: &str = "state-retire-manifest-";
 const ARCHIVE_PREFIX: &str = "moai-cli-";
-/// Test seam of the apply: stop at a journal step like a crash would (debug builds only).
+/// Test seam of the apply: stop at a step like a crash would (debug builds only): `after_manifest`
+/// (this module's, between the manifest and the journal) or a point of [`crate::move_journal`].
 pub const FAULT_VAR: &str = "MOAI_CLI_TEST_STATE_RETIRE_FAULT";
 
 /// What the calling process knows that the library does not read itself.
@@ -105,6 +113,31 @@ fn names(home: &Path, stamp: &str) -> Names {
     }
 }
 
+/// The most a manifest is read for: 500 listed entries stay far below it.
+const MANIFEST_READ_MAX: u64 = 1 << 20;
+
+/// True when the file at the manifest name is the one this step wrote for this HOME and clock:
+/// a regular file that parses and names this kind, HOME and stamp. A crash between the manifest
+/// and the journal leaves exactly this file, so a rerun of the same clock takes it as its own
+/// instead of calling the name taken. Anything else at that name is not ours.
+fn own_manifest(n: &Names, home: &Path, stamp: &str) -> bool {
+    let Ok(m) = fs::symlink_metadata(&n.manifest) else {
+        return false;
+    };
+    if !m.is_file() || m.len() > MANIFEST_READ_MAX {
+        return false;
+    }
+    let Some(v) = fs::read(&n.manifest)
+        .ok()
+        .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+    else {
+        return false;
+    };
+    v["kind"] == KIND
+        && v["stamp"].as_str() == Some(stamp)
+        && v["home"].as_str() == Some(home.display().to_string().as_str())
+}
+
 /// The nearest folder at or above `p` that exists (the file system the archive will be on).
 fn existing_ancestor(p: &Path) -> Option<&Path> {
     p.ancestors().find(|a| fs::symlink_metadata(a).is_ok())
@@ -158,10 +191,12 @@ pub fn plan(home: &Path, now: &str, facts: &Facts) -> Result<Value, String> {
             Ok(_) => match fs::symlink_metadata(&n.root) {
                 Ok(m) if !m.is_dir() => blocks.push("archive_not_a_folder".into()),
                 Ok(_) => {
-                    if [&n.folder, &n.journal, &n.manifest]
+                    let taken = [&n.folder, &n.journal]
                         .iter()
-                        .any(|p| fs::symlink_metadata(p).is_ok())
-                    {
+                        .any(|p| fs::symlink_metadata(p).is_ok());
+                    let manifest_taken = fs::symlink_metadata(&n.manifest).is_ok()
+                        && !own_manifest(&n, home, &stamp);
+                    if taken || manifest_taken {
                         blocks.push("stamp_taken".into());
                     }
                 }
@@ -282,11 +317,18 @@ fn make_dir(p: &Path) -> Result<(), String> {
     b.create(p).map_err(|e| format!("{}: {e}", p.display()))
 }
 
-fn write_new(path: &Path, bytes: &[u8]) -> Result<(), String> {
+/// Write `bytes` to `path` and flush them: `exclusive` refuses a name that exists; otherwise a
+/// leftover file of an earlier crash (the temporary name of the manifest) is overwritten.
+fn write_file(path: &Path, bytes: &[u8], exclusive: bool) -> Result<(), String> {
     use std::io::Write;
-    let mut f = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
+    let mut opts = fs::OpenOptions::new();
+    opts.write(true);
+    if exclusive {
+        opts.create_new(true);
+    } else {
+        opts.create(true).truncate(true);
+    }
+    let mut f = opts
         .open(path)
         .map_err(|e| format!("{}: {e}", path.display()))?;
     f.write_all(bytes)
@@ -296,7 +338,8 @@ fn write_new(path: &Path, bytes: &[u8]) -> Result<(), String> {
 
 /// Archive the earlier folder of an identical fresh preview whose action is `retire`. A journal
 /// of the same clock that an earlier run left (a crash) is finished instead, when its manifest
-/// carries the same digest.
+/// carries the same digest; a manifest without a journal (a crash between the two) is replaced
+/// by the fresh one and the move goes on.
 pub fn apply(
     home: &Path,
     now: &str,
@@ -380,7 +423,19 @@ pub fn apply(
             "to": n.folder.display().to_string(),
             "entries": fresh["entries"],
         });
-        write_new(&n.manifest, format!("{manifest:#}\n").as_bytes())?;
+        let bytes = format!("{manifest:#}\n");
+        if own_manifest(&n, home, &stamp) {
+            // A crash left this step's own manifest without a journal: replace it by one
+            // rename, so the name never holds a half-written file.
+            let tmp = n.manifest.with_extension("json.tmp");
+            write_file(&tmp, bytes.as_bytes(), false)?;
+            fs::rename(&tmp, &n.manifest).map_err(|e| format!("{}: {e}", n.manifest.display()))?;
+        } else {
+            write_file(&n.manifest, bytes.as_bytes(), true)?;
+        }
+        if fault.as_deref() == Some("after_manifest") {
+            return Err("injected crash at after_manifest".into());
+        }
         let items = [PlannedMove {
             from: old.clone(),
             to: n.folder.clone(),

@@ -2,7 +2,7 @@
 id: SPEC-20261123-home-state-retire
 title: "The earlier HOME state folder <home>/.moai-cli is archived whole under <home>/.moai/archive by one confirmed step (the HOME resolver answering <home>/.moai only is the next slice)"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-23
 ---
 
@@ -22,12 +22,12 @@ created: 2026-11-23
 
 - 이미 있는 짝: `src/home_retire.rs`(Go 상태를 `<home>/.moai-go-retired/<UTC>/` 로 치움)와 `src/move_journal.rs`(이름 바꾸기 한 번씩, 쓰기 전 저널, 재개, 같은 항목만 되돌림, 같은 장치만, 링크는 따라가지 않음). 새 단계는 이 둘의 뼈대를 그대로 써요.
 - 이동기 `home-install-plan/apply/revert`(`src/home_install*.rs`)는 옛 폴더를 일부러 읽어요(`home_install.rs:40-41, 712-713, 792`). 이 읽기를 지우는 일은 `update.rs`·`tests/update_moved_receipts.rs`(다른 카드가 쥠)와 얽혀서 이번 조각 밖이에요(Non-goals).
-- HOME 리졸버(`src/home_root.rs`)는 지금 "옛 폴더가 있고 표식이 없으면 옛 폴더" 규칙이에요(slice 1). 이 조각은 그대로 둬요.
+- HOME 리졸버(`src/home_root.rs`)는 지금 "옛 폴더가 있고 표식이 없으면 옛 폴더" 규칙이에요(이 가지의 첫 head 이전 상태). 이 조각은 그대로 둬요.
 
 ## Non-goals
 
 - 이동기 `home-install-*` 와 별칭 읽기(`committed_aliases`, `earlier_ids_of`)를 지우는 일, 78개 테스트 픽스처를 `<home>/.moai` 로 옮기는 일: 다른 카드가 쥔 파일(`src/update.rs`, `tests/update_moved_receipts.rs`)과 얽혀서 뒤 조각이에요.
-- HOME 리졸버를 `.moai` 로 고정하는 일(REQ-12, REQ-13, AC-7)과 `state_root` 의 `Unknown::OnlyRustNames` 도우미 삭제: 옛 폴더를 HOME 상태로 짓는 픽스처 테스트(약 200개)가 같이 움직여야 해서 다음 조각이에요(리더 결정 2026-11-23, 노트 7377).
+- HOME 리졸버를 `.moai` 로 고정하는 일(the two requirements and the check under "Next slice")과 `state_root` 의 `Unknown::OnlyRustNames` 도우미 삭제: 옛 폴더를 HOME 상태로 짓는 픽스처 테스트(약 200개)가 같이 움직여야 해서 다음 조각이에요(리더 결정 2026-11-23, 노트 7377).
 - `moai update` 에 이 단계를 거는 한 줄(`src/update.rs`): 그 파일을 쥔 카드가 착지한 뒤에 해요. 이 조각은 독립 명령 `home-archive-plan`·`-apply`·`-revert` 로 제공해요.
 - 보관 폴더를 지우는 일, 셸 파일(`.zshrc` 등) 수정, 설치 스크립트 수정, 볼트 내용 읽기·복사.
 - 프로젝트 쪽 `.moai-cli`(리졸버 `state_root`, `clone_root`)는 그대로예요.
@@ -42,26 +42,31 @@ created: 2026-11-23
 - REQ-5: IF a process uses a path under `<home>/.moai-cli`, or the running binary lies inside it, or the process table cannot be read, THEN the preview shall report the action `blocked` · failure: refused — the apply writes nothing
 - REQ-6: The preview shall list the `PATH` entries of the calling process that name `<home>/.moai-cli` and print the guidance to run `moai update` and use the folder it names, without reading or writing any shell file · failure: none — guidance text only
 - REQ-7: When the apply is given a permission reference and the `content_digest` or `plan_digest` of a preview recomputed at that moment, it shall write the manifest and the move journal, then rename `<home>/.moai-cli` to the archive name once
-- REQ-8: The apply shall leave no `<home>/.moai-cli` and an archive folder that holds the same entries with the same modes and bytes as before, the vault folder at 0700 and its files at 0600 included · failure: partial — the journal lets the revert or a rerun finish
-- REQ-9: The apply shall change nothing in `<home>/.moai` outside `archive/`, so that every Go-owned name stays as it was · failure: refused — a block names the cause
+- REQ-8: The apply shall leave no `<home>/.moai-cli`, an archive folder that holds the same entries with the same modes and bytes as before (the vault folder at 0700 and its files at 0600 included) and every Go-owned name of `<home>/.moai` as it was · failure: partial — the journal lets the revert or a rerun finish
 - REQ-10: When the revert is given a permission reference, it shall rename the archive folder back only when it is still the recorded entry and `<home>/.moai-cli` is free, and delete nothing
-- REQ-14 (REQ-7): IF the digest differs, the reference is missing or the action is not `retire`, THEN the apply shall write nothing
-- REQ-15 (REQ-10): IF the archive entry was replaced or `<home>/.moai-cli` exists again, THEN the revert shall leave the entry where it is and report `revert_partial`
-- REQ-11: The apply and the revert shall be safe to run again after a crash at any journal step: a rerun with the same clock finishes the move, and a finished journal is left unchanged · failure: `needs_review` — a rename whose result cannot be proven is not repeated
-- REQ-12: The HOME resolver shall answer `<home>/.moai` for every HOME, whatever `<home>/.moai-cli` holds, without looking at `<home>/.moai-cli` · failure: none — a read changes nothing
-- REQ-13: IF `<home>/.moai-cli` is absent or archived, THEN a command that writes HOME state shall create no `<home>/.moai-cli` · failure: none — the earlier name is no longer written
+- REQ-14 (REQ-7): IF the digest differs, the reference is missing, empty or a placeholder, or the action is not `retire`, THEN the apply shall write nothing
+- REQ-15 (REQ-10): IF the reference is empty or a placeholder, the archive entry was replaced or `<home>/.moai-cli` exists again, THEN the revert shall leave the archive entry where it is
+- REQ-11: The apply and the revert shall be safe to run again after a crash at any step, the one between the manifest and the journal included: a rerun with the same clock finishes the move, and a finished journal is left unchanged · failure: `needs_review` — a rename whose result cannot be proven is not repeated
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2, REQ-3): in a temporary HOME with `<home>/.moai-cli` (vault, versions, path, receipts, a file and a link inside) and a Go `<home>/.moai`, the preview lists every top-level entry with kind and mode, plans one move, names the archive folder and writes nothing (a before and after snapshot of the HOME is equal); a HOME without the folder reports `none` · verify: `cargo nextest run --test home_state_retire_cli -E 'test(the_preview_)'`
 - AC-2 (REQ-4, REQ-5): each blocked case — a link, a plain file, a link as `<home>/.moai`, a file as `archive`, a taken name, a held-open file (a child holding a file under the folder), a running binary inside the folder, an unreadable process table — reports `blocked` with its reason and the apply refuses with the HOME unchanged · verify: `cargo nextest run --test home_state_retire_cli -E 'test(blocked_)'`
 - AC-3 (REQ-6): a `PATH` that names `<home>/.moai-cli/path` is listed in the preview with the guidance text, and a `.zshrc` in the temporary HOME is byte-identical afterward · verify: `cargo nextest run --test home_state_retire_cli -E 'test(path_guidance_)'`
-- AC-4 (REQ-7, REQ-8, REQ-9): with a valid reference and token the apply leaves no `<home>/.moai-cli`; the archive folder holds a byte-identical tree with identical modes (vault 0700, its files 0600), a file under the Go `<home>/.moai` names is byte-identical, a stale or altered token and a missing reference write nothing · verify: `cargo nextest run --test home_state_retire_cli -E 'test(the_apply_)'`
-- AC-5 (REQ-10): the revert restores the folder with the same tree hash and modes; it refuses (and `revert_partial`) when `<home>/.moai-cli` was recreated or the archive entry was replaced; a second revert changes nothing · verify: `cargo nextest run --test home_state_retire_cli -E 'test(the_revert_)'`
+- AC-4 (REQ-7, REQ-8, REQ-14): with a valid reference and token the apply leaves no `<home>/.moai-cli`; the archive folder holds a byte-identical tree with identical modes (vault 0700, its files 0600), a file under the Go `<home>/.moai` names is byte-identical, a stale or altered token and a missing reference write nothing · verify: `cargo nextest run --test home_state_retire_cli -E 'test(the_apply_)'`
+- AC-5 (REQ-10, REQ-15): the revert restores the folder with the same tree hash and modes; it refuses (and `revert_partial`) when `<home>/.moai-cli` was recreated or the archive entry was replaced; a second revert changes nothing · verify: `cargo nextest run --test home_state_retire_cli -E 'test(the_revert_)'`
 - AC-6 (REQ-11): a crash injected after the journal, after marking the move, after the rename and before the commit leaves a journal that a rerun finishes and that the revert undoes · verify: `cargo nextest run --test home_state_retire_cli -E 'test(a_crash_)'`
-- AC-7 (REQ-12, REQ-13): in the next slice, `home_root::dir` and `path` answer `.moai` for an empty HOME, a HOME with only `<home>/.moai-cli`, a HOME with both, a Go `<home>/.moai`, a schema-1 and a schema-2 marker and an unreadable `<home>/.moai-cli`; no command of `install-inspect` or `key-set` creates `<home>/.moai-cli` in an empty temporary HOME · verify: `cargo nextest run --test path_root_default -E 'test(home_)'`
-- AC-8 (REQ-1, REQ-2, REQ-7, REQ-10): the new files pass the repository scans and the help text of the three commands exists in both languages · verify: `cargo nextest run --test help_all_cli --test state_folder_literal_scan`
+- AC-8 (REQ-1, REQ-2, REQ-7, REQ-10): the new files pass the repository scans and the help text of the three commands exists in both languages · verify: `cargo nextest run --test help_layout --test state_folder_literal_scan`
 - AC-9 (REQ-7, REQ-8): the dangerous path runs once with a binary built from the head in a throwaway HOME (preview, apply, a held-open child, revert), table in the READY note · verify: `moai home-archive-plan --home <temp>` with the built binary
+- AC-10 (REQ-1, REQ-2, REQ-4, REQ-5, REQ-11, REQ-15): a folder of 500 entries is planned and moved, a folder of 501 is `blocked` with `not_fully_listed` and the first 500 listed; a program that holds a file under the folder open (its working folder elsewhere) blocks with `in_use:file_open`; the revert with an empty or placeholder reference moves nothing; a crash between the manifest and the journal is finished by a rerun of the same clock, and a manifest that is not this step's keeps the clock `stamp_taken` · verify: `cargo nextest run --test home_state_retire_cli -E 'test(blocked_at_501) | test(blocked_while_a_program_holds) | test(blocked_when_a_manifest) | test(the_revert_refuses_an_empty) | test(a_crash_between)'`
+
+### Next slice (not part of this SPEC's requirements)
+
+The HOME resolver and the fixture move go in a later slice with its own requirements, kept here so they are not lost:
+
+- The HOME resolver shall answer `<home>/.moai` for every HOME, whatever `<home>/.moai-cli` holds, without looking at `<home>/.moai-cli`.
+- IF `<home>/.moai-cli` is absent or archived, THEN a command that writes HOME state shall create no `<home>/.moai-cli`.
+- Check (card criterion 2): `home_root::dir` and `path` answer `.moai` for an empty HOME, a HOME with only `<home>/.moai-cli`, a HOME with both, a Go `<home>/.moai`, a schema-1 and a schema-2 marker and an unreadable `<home>/.moai-cli`; no command of `install-inspect` or `key-set` creates `<home>/.moai-cli` in an empty temporary HOME · verify: `cargo nextest run --test path_root_default -E 'test(home_)'`
 
 ## Scope
 
@@ -69,13 +74,13 @@ created: 2026-11-23
 - write: `src/home_state_retire.rs`, `src/ops/home_archive_plan.rs`, `src/ops/home_archive_apply.rs`, `src/ops/home_archive_revert.rs`, `src/lib.rs` (one `pub mod`), `src/help.rs` (the three commands)
 - write: `src/home_root.rs` (one allow-table row for the archive module; the resolver itself is unchanged)
 - write: `tests/home_state_retire_cli.rs`
-- write: `docs/design-review/appendix/operations/home_archive_plan.md`, `…_apply.md`, `…_revert.md`, `tests/fixtures/help/all*.txt`, `tests/fixtures/state_folder_literals/allow.tsv`, `docs/cli-text-rationale.md`
+- write: `docs/design-review/appendix/operations/home_archive_plan.md`, `…_apply.md`, `…_revert.md`, `tests/fixtures/help/all*.txt`, `tests/fixtures/state_folder_literals/allow.tsv`
 - read-only: `src/update.rs`, `src/host_home.rs`, `src/bin_names.rs` (held by another change), `src/home_retire.rs`, `src/move_journal.rs`, `src/home_state.rs`, `src/home_layout.rs`
 - forbidden: the real HOME and anything under `<home>/.moai-cli`, shell profile files, the Go repository, a card number in a file name, SPEC id, branch or commit
 
 ## Plan
 
-1. RED: `tests/home_state_retire_cli.rs` and the changed `path_root_default` home cases, run on the tip so they fail for the missing command and the old resolver rule.
+1. RED: `tests/home_state_retire_cli.rs`, run on the tip so it fails for the missing command; the repair round adds the cases of AC-10 first (the crash window fails before the fix).
 2. GREEN part 1: `src/home_state_retire.rs` (plan, apply, revert on `move_journal` with kind `state-retire`, token, in-use and running-binary checks) and the three op files. `<home>/.moai/archive` gets a row in the HOME name table if the table test asks for it.
 3. Next slice (not this one): `home_root::dir` and `path` answer `.moai` always and `is_new_home` stops asking for `<home>/.moai-cli`, in the same branch as the move of every fixture that builds `<home>/.moai-cli` as the HOME state; ready only when every Rust test is green.
 4. Dangerous path: build the binary in the worktree and run preview, apply with a held-open child, revert in a throwaway HOME.
@@ -95,6 +100,7 @@ created: 2026-11-23
 | D-2 | The step is its own command pair, not a `moai update` layer yet | `src/update.rs` is held by another card; the hook-up is one line after it lands | Add the layer later |
 | D-3 | The old criterion "old paths are still read" is dropped | User decision 6504 | none |
 | D-4 | The move stops while a process uses the folder or the running binary is inside it | A launcher inside the archived folder would break the session that runs the step | none |
+| D-5 | The manifest stays written before the journal; a manifest of this step, HOME and stamp with no journal is taken as the rerun's own and replaced by one rename | `move_journal::apply` publishes the journal and moves in one call, so the manifest cannot be written between the two; the audit found a rerun of the same clock refused after a stop in that window (repair of the audit of slice 1) | Make the window impossible by writing the manifest after the journal once `move_journal` offers a hook |
 
 ## Result
 
@@ -105,8 +111,7 @@ Revision 3 cut the resolver change back out of this slice. Checked on the head t
 - AC-3: met — `path_guidance_*` pass; `.zshrc` stays byte-identical.
 - AC-4: met — `the_apply_*` pass (no earlier folder left, same tree and modes, Go names untouched, stale token and missing reference write nothing).
 - AC-5: met — `the_revert_*` pass (same tree and modes, `revert_partial` on a replaced entry or a recreated folder, second revert changes nothing).
-- AC-6: met — `a_crash_*` pass (four injected fault points).
-- AC-7: not_run — next slice (the resolver is unchanged here).
+- AC-6: met — `a_crash_*` pass (the four injected fault points of the journal and the one between the manifest and the journal).
 - AC-8: met — `help_layout` goldens and `state_folder_literal_scan` pass; the help text exists for the three commands.
 - AC-9: met — one run of the binary built from the head in a throwaway HOME (preview, a held-open child that blocks, refusals, apply, revert, second revert, link and absent cases); the table is in the READY note.
 
