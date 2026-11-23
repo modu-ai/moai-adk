@@ -1,13 +1,18 @@
 ---
 id: SPEC-20261123-cleanup-outbox-followups
 title: "The cleanup executor refuses to finish an attempt whose lease ended, leaves a step line for a dead attempt, records the drained ref queue, and runs from spec close --card"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-23
 parent: SPEC-20261123-cleanup-outbox
+approval: {by: user, at: 2026-11-23, basis: "user's in-session selection 2026-11-23T13:12:18Z, '그대로 승인 (Recommended)', as the leader recorded it in note 7524 of the card that implemented this SPEC (decision note, ref note:401:17743939b692ead2b71de9dc5d76fb6c); revision 1 as audited by AUDIT #401 (note 7545), not re-approved by the lane", digest: "sha256:5fd4a2aa2fba612eef64f1a11c7945ac5e35f5b2079b2b9bc93112adfc59d64b"}
 ---
 
 # The cleanup executor refuses to finish an attempt whose lease ended, leaves a step line for a dead attempt, records the drained ref queue, and runs from spec close --card
+
+## Interview
+
+- none: 리더 결정이 요구사항을 정했어요 — 감사 노트 7393 의 N2·N4·N5·N6 을 후속으로 넘긴 LEADER 결정(2026-11-23)이 범위를 정했고, 별도 사용자 인터뷰는 없었어요. 사용자는 완성된 SPEC 을 '그대로 승인'으로 골랐어요(노트 7524).
 
 ## Intent
 
@@ -74,6 +79,8 @@ parent: SPEC-20261123-cleanup-outbox
 | D-2 | The dead attempt's line is written by the next claim, not by the dying run: a killed run cannot write. Its key is `cleanup.step:<request>:<attempt>:attempt:abandoned`, so a replay adds nothing. | A process killed with `kill -9` runs no code; only the next claimer can know. | Stop writing the line in `claim`. |
 | D-3 | Queue steps carry the full ref name as target and the cleanup answer's own words (`gone`, `still_there`) as status; a queue line that goes back to the queue for a temporary reason is still recorded as `gone`. | The cleanup answer exposes only those two lists; widening it is not this slice. | Stop adding queue steps in the executor. |
 | D-4 | `spec close --card` needs no code change: it calls `card::work::done`, which runs the executor. The slice pins that with a test and names the trigger. | `src/spec_close.rs` calls `crate::card::work::done`. | Remove the test. |
+| D-5 | The `lease_lost` answer of a run that got as far as the worktree and branch steps carries what that run removed and deleted (`worktrees`, `branches`, `queue`, `cleanup`, as a finished run's answer does), so `cleanup::wrote` and `card land`'s `writes` see it. The ledger still gets no line from that run (REQ-1, REQ-2). The text of REQ-3 is unchanged; the answer only says more. | AUDIT #401 (note 7545) N-1: the answer had `worktrees` and `branches` as `[]` after a run that did delete them. | Fill the lists with `[]` again at the end of `run`'s `one`. |
+| D-6 | The `abandoned` line a claim leaves says the ledger saw no end of the attempt and names both causes, a run that died and a run whose lease ended before it finished, because a `lease_lost` run writes nothing either. Status `abandoned` and reason `lease_ended` are unchanged. | AUDIT #401 (note 7545) N-3. | Restore the earlier detail text. |
 
 ## Result
 
@@ -89,3 +96,12 @@ Other runs: `cargo nextest run --locked --offline --test card_cleanup_outbox_cli
 Guard mutants (committed head, each mutated line restored afterwards, all red with nextest exit 100): 리스 검사, 가장 새 시도 검사, holder 검사, release 검사, abandoned 줄, queue step, `lease_lost` 답, `card done` 의 실행기 호출(`src/card/work.rs`) — 여덟 개가 모두 죽었어요.
 
 Gaps: `kill -9` 가 남기는 git 락(`refs/heads/<branch>.lock`, `packed-refs.lock`)은 실행기가 지우지 않아요. 다음 시도는 `failed` 로 요청을 보류하고, 락을 치운 뒤의 실행이 끝내요(테스트가 이 순서를 고정해요). 큐 줄이 임시 사유로 큐에 되돌아가도 step 은 `gone` 으로 남아요(D-3).
+
+### 후속 조각: 감사 #401 의 비차단 N-1·N-2·N-3 (D-5, D-6)
+
+- AC-1 met (N-1, D-5): `fu1_` 4 tests passed(새 3개 포함). 리스가 끝난 실행의 `lease_lost` 답이 이번 실행이 실제로 지운 워크트리(`removed`)와 브랜치(`deleted`)를 싣고 `cleanup::wrote` 가 true 예요. 지운 것이 없는 실행은 `removed` 가 없어서 `wrote` 가 false 예요. 원장에는 여전히 step·result 를 쓰지 않아요(claim 한 줄뿐).
+- AC-2 met (N-3, D-6): `fu2_` 4 tests passed(새 1개 포함). `lease_lost` 로 끝난 시도 다음의 `abandoned` 줄이 "기록된 끝이 없고, 실행이 죽었거나 끝나기 전에 리스가 끝났다"고 말해요. 상태 `abandoned`·이유 `lease_ended` 는 그대로예요.
+- N-2: 이 SPEC 의 front matter 가 `approved` 이고 `approval.basis` 가 사용자 선택(2026-11-23T13:12:18Z, '그대로 승인')을 리더가 옮겨 적은 C-401 노트 7524 를 인용해요. 승인은 새로 만들지 않았고, 요구사항·수용 기준·범위는 바뀌지 않아서 digest 가 같아요(감사 #401 이 본 리비전 1).
+- 위험 경로(실제 바이너리, 임시 HOME·임시 저장소): `fu1_a_real_executor_whose_lease_ends_under_it_answers_what_it_deleted` 가 `moai card finish` 를 브랜치 삭제 도중 훅으로 멈추고, 픽스처 원장에서만 리스를 끝낸 뒤 풀어줘요. 답은 `status: lease_lost`, `worktrees[0].status: removed`, `branches[0].status: deleted`, `attempt: 1`; 원장에는 `cleanup.requested` 1·`cleanup.started` 1·`cleanup.step` 0·`cleanup.result` 0 줄이 남아요.
+- Other runs: `cargo nextest run --locked --offline --test card_cleanup_outbox_cli --test card_finish_cli --test spec_close_cli` 89 of 89 passed; `cargo fmt --check` clean.
+- Guard mutants (committed head `897c1d5ed0`, each restored afterwards, `git status` clean, nextest exit 100): `lease_lost` 답에 목록을 싣는 줄 → 건너뜀(3 tests red), 브랜치 목록 → `[]`(2 red), `abandoned` 줄 문구 → 옛 문구(1 red), `wrote` → 항상 true(2 red).

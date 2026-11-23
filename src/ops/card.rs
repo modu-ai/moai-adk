@@ -318,6 +318,28 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Name the auditor of a card in review
+    ///
+    /// Writes the ledger. One `card.audit_assigned` event for a card in `review` with the
+    /// auditor's identity and `--by leader`; only the leader word assigns. Refused (`conflict`)
+    /// when the identity holds or ever held a reservation of the card, and when the card is not
+    /// in review; nothing is written then.
+    Assign {
+        /// The card, `C-12`.
+        card: String,
+        /// The auditor's identity (a session id), one word.
+        #[arg(long)]
+        auditor: String,
+        /// Who assigns: `leader`.
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to use (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Link a card to the SPEC it works on, or unlink it
     ///
     /// Writes the ledger. Names the SPEC (`SPEC-<yyyymmdd>-<slug>`) the card works on, with one
@@ -1086,7 +1108,12 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             card,
             project,
             home,
-        } => c::show(&project, &resolve_home(home)?, &card),
+        } => {
+            let home = resolve_home(home)?;
+            let mut shown = c::show(&project, &home, &card)?;
+            shown["roles"] = moai_cli::card::roles::roles_of_shown(&project, &home, &shown)?;
+            Ok(shown)
+        }
         Action::Timeline {
             card,
             after,
@@ -1200,6 +1227,13 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 require_approved_spec,
             },
         ),
+        Action::Assign {
+            card,
+            auditor,
+            by,
+            project,
+            home,
+        } => moai_cli::card::roles::assign(&project, &resolve_home(home)?, &card, &auditor, &by),
         Action::Spec {
             card,
             spec,

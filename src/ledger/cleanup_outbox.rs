@@ -233,8 +233,9 @@ pub fn claim(
                     if lease_until > now {
                         return Ok(Claim::Busy);
                     }
-                    // Its lease is over and it wrote no end: a run that died. The dead run could
-                    // not leave a line, so this claim does, once (D-2 of the follow-up SPEC).
+                    // Its lease is over and no end of it was recorded: a run that died, or one
+                    // that finished after its lease ended (it writes nothing then either). Neither
+                    // could leave a line, so this claim does, once (D-2 of the follow-up SPEC).
                     abandoned = Some(attempt);
                 }
                 attempt + 1
@@ -253,7 +254,8 @@ pub fn claim(
                     "target": format!("attempt {dead}"), "status": "abandoned",
                     "reasons": ["lease_ended"],
                     "detail": format!(
-                        "held by {holder_of_dead} until {lease_until} (database clock) and wrote no end"
+                        "held by {holder_of_dead} until {lease_until} (database clock); no end of it \
+                         was recorded: the run died, or its lease ended before it finished"
                     ),
                 }),
             )?;
