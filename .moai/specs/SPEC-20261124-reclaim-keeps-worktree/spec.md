@@ -88,3 +88,33 @@ Readers: lanes that continue a card after the holder's session ended, the leader
 | D-3 | An unreadable commit count refuses, as before | the count feeds the event; an unreadable answer is never read as "none" | none needed |
 | D-4 | The event key is `kept_commits` with `count` and `ids` (up to twenty, newest first); it is present only when the recorded worktree exists and was read | the card asks that the event names the kept commits; twenty keeps the event small | rename the key in a later SPEC |
 | D-5 | The ledger gets one new public function; `reclaim` and `reclaim_early` keep their signatures | other callers and tests use them as they are | fold the argument into them later |
+
+## Result
+
+Status: SPEC approved by the leader (revision 1, note 7826, a leader judgment and not the user's own pick); the slice is built.
+
+As built:
+- `src/card/dispatch.rs`: `worktree_gate` keeps its text and counts for the early proof; both gates share one read (`read_worktree`). The new `takeover_worktree_gate` refuses an uncommitted change only (the message keeps the prefix `holds N uncommitted change(s) and M unpushed commit(s)` and ends `a reclaim would orphan the uncommitted changes`), refuses as unreadable when git cannot count or list the commits, and returns `kept_commits` (`count`, up to twenty `ids`, newest first). `reclaim` passes it to the ledger and into the answer.
+- `src/ledger/reservation.rs`: the public `reclaim_keeping` writes `kept_commits` into the `card.reclaim` payload; `reclaim` and `reclaim_early` keep their signatures.
+- `src/ops/card.rs`: the `card reclaim` help says that unpushed commits do not stop a takeover and that an uncommitted change does.
+- `tests/card_reclaim_cli.rs`: four new tests, and the takeover tests that expected a refusal for unpushed commits now expect a takeover and a kept count. The RED commit (`9d02e57c3b`) failed 7 of 25 tests before the gate was split.
+
+Results (each from a command run on this branch, `cargo nextest run --locked --offline --test card_reclaim_cli --test card_reclaim_early_cli`, 58 tests, 58 passed, exit 0; log `target/c428/green-run.log`):
+- AC-1 met: `reclaim_keeps_a_worktree_that_holds_unpushed_commits` passes.
+- AC-2 met: `reclaim_still_refuses_an_uncommitted_change_with_or_without_commits` passes, and `reclaim_gates_refuse_a_worktree_with_uncommitted_work` stays green.
+- AC-3 met: `the_reclaim_event_names_the_kept_commits` passes (two commits; twenty-five commits list twenty ids and count twenty-five).
+- AC-4 met: `reclaim_refuses_a_worktree_whose_unpushed_commits_cannot_be_counted` and `reclaim_gates_refuse_when_git_cannot_be_read` pass.
+- AC-5 met: `refused_without_the_worktree_proof` and `one_commit_outside_the_integration_branch_still_stops_an_early_reclaim` pass; the whole early file passes.
+- AC-6 met: `commits_inside_the_integration_branch_do_not_stop_a_takeover`, `one_commit_outside_the_integration_branch_is_kept_by_a_takeover` and `without_a_usable_integration_branch_the_takeover_keeps_every_unpushed_commit` pass.
+
+Guard mutants (each applied by an edit, confirmed with a non-empty diff, run on the named test file, then restored with `git checkout -- <file>`; no mutant log holds a compile error; logs in `target/c428/`):
+- the uncommitted refusal replaced by `if false`: exit 100 (4 tests fail).
+- the uncommitted refusal passes when commits stand beside the change (`&& unpushed == 0`): exit 100 (2 tests fail).
+- the id cap 20 changed to 19: exit 100 (2 tests fail).
+- `kept_commits` not written into the event payload: exit 100 (2 tests fail).
+- the strict gate of the early proof ignores unpushed commits: exit 100 on `card_reclaim_early_cli` (6 tests fail).
+- an unreadable commit count read as none: the count guard alone survived (exit 0), because the listing of the ids refuses the same worktree; both guards removed together fail `reclaim_refuses_a_worktree_whose_unpushed_commits_cannot_be_counted` (exit 100). The two guards cover each other on purpose.
+
+Refusals that disappear: a takeover of an ended lease no longer refuses a worktree that holds only unpushed commits. Every other refusal (uncommitted change, unreadable path or git, relative path, early reclaim of a live lease) is as before.
+
+Gaps: the `check affected` receipt is in the READY note, not here.
