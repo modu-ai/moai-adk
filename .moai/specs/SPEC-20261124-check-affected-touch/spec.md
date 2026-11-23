@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-check-affected-touch
 title: "check affected 가 빌드 전에 바뀐 파일의 시각을 갱신해 옛 파일 시각으로 되돌린 복구가 낡은 빌드를 남기지 않아요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7975 (2026-11-23T22:57:43Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7973 에 답함): 선택지 (a) 승인, 커밋 f7b10a4a7e; 조건: 시각 갱신은 check affected 를 돌리는 체크아웃 안 파일만 하고 체크아웃 밖을 가리키는 경로(링크 대상 포함)는 건드리지 않아요, READY 에 링크 하나를 둔 임시 저장소에서 링크 대상의 mtime 이 그대로인 실행을 실어요; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:233d8d5b086b3aa0eb4b0570cd89c6d9033328ede87abed2d1bf6dd9438bcf8f"
 ---
 
 # check affected 가 빌드 전에 바뀐 파일의 시각을 갱신해 옛 파일 시각으로 되돌린 복구가 낡은 빌드를 남기지 않아요
