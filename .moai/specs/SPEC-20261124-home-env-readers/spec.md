@@ -97,8 +97,9 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - AC-2: 충족. `switched_dir_in_follows_the_home_it_is_given_not_the_environment` 통과(자식 프로세스의 환경 HOME 에는 포인터가 없고 넘긴 HOME 에만 있을 때, `switched_dir_in` 은 넘긴 HOME 아래를 답하고 어댑터 `switched_dir` 는 `None`).
 - AC-3: 충족. `default_home_root_equals_the_environment_home_read_once` 통과(자식 프로세스 셋: 설정·빈 값·없음, 부모는 환경을 바꾸지 않아요).
 - AC-4: 충족. `claims_legacy_dir_ignores_the_environment_home` 통과(자식의 환경 HOME 이 심볼릭 링크 상태 폴더이고 `identity` 는 거부되는데 `claims_legacy_dir` 는 클레임 폴더를 답해요).
-- AC-5: 충족. `git diff --stat 3d864da6f4..HEAD` 가 `src/layout.rs` 와 이 SPEC 만 보여요(읽은 값은 READY 노트에 적었어요).
+- AC-5: 충족. `git diff --stat 3d864da6f4..HEAD` 가 `src/layout.rs` 와 이 SPEC 두 파일만 보여요.
 - 뮤턴트(테스트마다 하나, 적용을 `git diff --stat` 으로 확인하고 되돌린 뒤 `git diff --stat` 이 비어 있음을 확인; 모두 `-E 'test(layout::home_arg_tests)'`): ① `default_home_root_in` 의 빈 HOME 거르기 삭제 → exit 100 (2개 실패: `..._without_a_home_is_none`, `..._equals_the_environment_home_read_once`) ② `switched_dir_in` 이 환경 HOME 을 먼저 씀 → exit 100 (1개 실패) ③ `default_home_root` 가 환경 HOME 대신 `None` 을 넘김 → exit 100 (1개 실패) ④ `claims_legacy_dir` 를 `identity(project)` 로 되돌림 → exit 100 (1개 실패).
+- 수리: head `fb4305a260` 에서 돌린 `check affected` 가 테스트 하나, `git_env_scrub::every_git_subprocess_in_src_is_scrubbed`(3702개 중 3701 통과)를 실패시켰어요: 새 테스트의 `git init`(`src/layout.rs:771`)이 `scrub_git_env` 를 거치지 않았어요. 앞 확인은 `--lib` 테스트만 돌려 이 저장소 전체 스캔을 놓쳤어요(내 확인의 틈). 테스트의 `git init` 이 `crate::identity::scrub_git_env` 를 거치게 고쳤고(커밋 `c360414924`), `cargo nextest run --lib --test git_env_scrub -E 'test(layout::) | test(every_git_subprocess)'` → exit 0, 21 통과예요.
 - 카드 기준 1: 부분 충족. 이 모듈의 환경 HOME 읽기는 `environment_home` 한 곳(어댑터 `default_home_root`·`switched_dir` 가 씀)이고 `claims_legacy_dir` 의 읽기는 사라졌어요. 호출부(`claim::journal_root`, `forge/outbox.rs`, `apply.rs`, `worktree::open_locked_journal`)가 아직 어댑터를 불러요(조각 2).
 - 카드 기준 2: 충족하지 않았어요(not met). 호출부 변경이 없고, C-406 가드(`tests/fixtures/test_home_guard/`)가 NeXT 에 없어 기준선 줄을 재지도 못 했어요(unverified).
 - 실제 HOME: 새 테스트는 부모 프로세스에서 환경 HOME 을 읽는 함수를 부르지 않고 임시 폴더만 넘겨요. 환경 HOME 이 필요한 경우는 자식 프로세스에 임시 폴더 HOME 을 줘요. 실제 HOME 의 읽기 전후 비교는 재지 않았어요(not_run).
