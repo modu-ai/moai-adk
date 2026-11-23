@@ -275,6 +275,48 @@ fn assign_identity_shapes_are_checked_with_a_reason() {
     assert_eq!(payload["auditor"], json!(with_key), "{payload}");
 }
 
+/// AC-8 (REQ-9, card C-415): the help of `card assign` names the refusal of another spelling of an
+/// author, the refusal of a lane name, and the shape of a session identity.
+#[test]
+fn assign_help_states_the_refusals_and_the_shape() {
+    let w = World::new();
+    let out = w
+        .home
+        .command(&["card", "assign", "--help"])
+        .stdin(std::process::Stdio::null())
+        .output()
+        .expect("run moai");
+    assert_eq!(out.status.code(), Some(0));
+    let help = String::from_utf8_lossy(&out.stdout).to_string();
+    assert!(help.contains("Writes the ledger."), "{help}");
+    for needle in [
+        "ASCII case",
+        ":<12hex>",
+        "lane name",
+        "agent-4",
+        "hex digits and dashes, 8 to 64 characters",
+    ] {
+        assert!(help.contains(needle), "help lacks `{needle}`: {help}");
+    }
+}
+
+/// AC-9 (REQ-10, card C-415): an empty value, a value with whitespace and a value over 100
+/// characters are refused with the shape a session identity has, and nothing is written.
+#[test]
+fn assign_value_refusals_state_the_needed_shape() {
+    let w = World::new();
+    let name = w.review_card();
+    let before = w.events();
+    let long = "a".repeat(101);
+    for who in ["", " ", "two words", "tab\tinside", long.as_str()] {
+        let message = refusal(&w.assign("leader", &name, who));
+        assert!(message.contains("session id"), "{who:?}: {message}");
+        assert!(message.contains("12 hex digits"), "{who:?}: {message}");
+        assert_eq!(w.events(), before, "{who:?}: an event was written");
+    }
+    assert_eq!(w.count("card.audit_assigned"), 0);
+}
+
 /// AC-5: the leader's assignment of a session that never held the card writes one row with the
 /// auditor and the caller; another caller word and a card that is not in review each refuse
 /// before any write.
