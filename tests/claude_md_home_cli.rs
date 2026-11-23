@@ -1357,8 +1357,9 @@ fn folders_a_link_that_leaves_the_default_folder_is_not_a_reference() {
     symlink(&outside, profile.join("rules")).unwrap();
     let plan = w.plan(&["--config-dir", profile.to_str().unwrap()]);
     assert_eq!(routing_action(&plan, &profile), "conflict", "{plan}");
+    w.apply(&["--config-dir", profile.to_str().unwrap()]);
     assert!(
-        outside.read_dir().unwrap().next().is_none(),
+        !outside.join("moai.md").exists() && !outside.join("moai").exists(),
         "nothing was written through the link"
     );
 }

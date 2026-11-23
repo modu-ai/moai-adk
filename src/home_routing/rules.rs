@@ -323,7 +323,7 @@ impl Folder {
     }
 
     /// A folder that reaches a file an `earlier` folder already plans (its `rules` folder is a
-    /// link into that folder's, the way an Orca profile shares `agents` and `output-styles`)
+    /// link into that folder's, the way a shared profile links `agents` and `output-styles`)
     /// holds no second copy: that file's row says `linked`, names the folder it is planned for,
     /// and nothing is written or recorded for this folder. A conflict stays a conflict. Returns
     /// whether any file was turned into a reference.
