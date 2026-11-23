@@ -1874,12 +1874,15 @@ fn repo_scans_cargo_only_problems(flow: &str) -> Vec<String> {
     let Some(bullet) = flow.lines().find(|l| l.contains("moai repo-scans")) else {
         return vec![format!("{FLOW_REF} names no `moai repo-scans`")];
     };
-    let lower = bullet.to_lowercase();
-    ["run only their `cargo` checks", "leaving out a python line"]
-        .iter()
-        .filter(|part| !lower.contains(**part))
-        .map(|part| format!("the repo-scans bullet lacks {part:?}: {bullet}"))
-        .collect()
+    // One phrase, read whole from the word before it to the word after it, so that `never run
+    // only` and `not leaving out` (every word kept, the meaning reversed) are not the sentence.
+    [
+        "picks; run only their `cargo` checks on the merge tree, leaving out a Python line, and record each",
+    ]
+    .iter()
+    .filter(|part| !bullet.contains(**part))
+    .map(|part| format!("the repo-scans bullet lacks {part:?}: {bullet}"))
+    .collect()
 }
 
 /// SPEC-20261123-doc-sentence-pins AC-2 (REQ-3): the repo-scans bullet tells the session that
@@ -1918,6 +1921,20 @@ fn land_scans_the_flow_cargo_only_mutants_are_caught() {
             flow.replace(&bullet, &without("Python line")),
         ),
         ("bullet removed", flow.replace(&bullet, "")),
+        (
+            "run-only negated with its words kept",
+            flow.replace(
+                &bullet,
+                &bullet.replace("picks; run only", "picks; never run only"),
+            ),
+        ),
+        (
+            "Python line kept with its words kept",
+            flow.replace(
+                &bullet,
+                &bullet.replace("leaving out a Python line", "not leaving out a Python line"),
+            ),
+        ),
         (
             "meaning reversed",
             flow.replace(
@@ -1994,9 +2011,9 @@ fn self_check_tests_item_problems(text: &str) -> Vec<String> {
         .map(|word| format!("item 3 names {word:?}: {item}"))
         .collect();
     for part in [
-        "Tests are Rust only",
+        "can run. Tests are Rust only.",
         "`--test <name>`",
-        "every `cargo` check of `tools/repo_scans.json`",
+        "area, every `cargo` check of `tools/repo_scans.json`",
         "`cfg(target_os)`",
     ] {
         if !item.contains(part) {
@@ -2067,6 +2084,20 @@ fn self_check_pins_reject_reversed_sentences() {
         (
             "cargo word dropped from the table checks",
             item3.replace("every `cargo` check of", "every check of"),
+        ),
+        (
+            "table checks negated with their words kept",
+            item3.replace(
+                "area, every `cargo` check of",
+                "area, not every `cargo` check of",
+            ),
+        ),
+        (
+            "Rust-only sentence disowned with its words kept",
+            item3.replace(
+                "can run. Tests are Rust only.",
+                "can run. Never assume Tests are Rust only.",
+            ),
         ),
     ];
     for (name, mutant) in item3_mutants {

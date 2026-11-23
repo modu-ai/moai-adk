@@ -20,7 +20,7 @@ created: 2026-11-23
 
 - `tools/repo_scans.json` 표의 Python 줄을 지우거나 `moai repo-scans` 의 출력을 바꾸는 일(표는 그대로, 그 줄의 처리는 다른 카드의 일).
 - `self-check.md` 의 6번 항목(Python)과 머리말의 `--full-python`, `py-*` 항목 설명을 고치는 일(D-1, 사용자가 3·5번만으로 승인).
-- `lane-rules.md` 와 `next-flow.md` 의 repo-scans 문장 밖의 줄을 바꾸는 일(바이트를 맞추려고 같은 파일의 두 곳을 줄이는 일만 D-5 로 해요).
+- `lane-rules.md` 와 `next-flow.md` 의 repo-scans 문장 밖의 줄을 바꾸는 일(바이트를 맞추려고 같은 파일의 세 곳을 줄이는 일만 D-5 로 해요).
 - `tools/self_check.sh` 의 동작.
 
 ## Requirements
@@ -54,7 +54,7 @@ created: 2026-11-23
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261123-self-check-rust-only/**`, `skills/moai/references/internal/self-check.md` (items 3 and 5 only), `skills/moai/references/flows/next-flow.md` (the `Audit brief` bullet, and two short trims in the guard-mutant bullet to stay at 7974 bytes), `skills/moai/references/source-manifest.json` (rewritten by the tool), `tests/next_flow_skill_scan.rs` (new test functions at the end of the file; no existing function changes)
+- write: `.moai/specs/SPEC-20261123-self-check-rust-only/**`, `skills/moai/references/internal/self-check.md` (items 3 and 5 only), `skills/moai/references/flows/next-flow.md` (the `Audit brief` bullet, and three short trims in the guard-mutant bullet to stay at 7974 bytes), `skills/moai/references/source-manifest.json` (rewritten by the tool), `tests/next_flow_skill_scan.rs` (new test functions at the end of the file; the audit repair D-7 also changes the checking function `repo_scans_cargo_only_problems`, the item-3 phrase list of `self_check_tests_item_problems` and the mutant lists of two tests)
 - read-only: every other file; `tools/repo_scans.json`, `src/card/land/scans.rs` and `tools/self_check.sh` are read for the facts above and not edited
 - tier: 1 (skill reference texts and text pin tests); the floor list of `references/audit.md` is checked with `moai bundle check`
 - history: found by the audits of `SPEC-20261123-doc-sentence-pins` (N3: the two sentences of `self-check.md`; N5: the two meanings the `next-flow.md` bullet lost)
@@ -64,7 +64,7 @@ created: 2026-11-23
 1. SPEC first (this file); approval comes from the user through the leader. Approved 2026-11-23T13:20:42Z as `3·5번만` with the added `next-flow.md` scope, recorded in the card note 7530 (author `leader`, the user's choice relayed); this file is not changed to approved here.
 2. Base: the three files `next-flow.md`, `source-manifest.json` and `tests/next_flow_skill_scan.rs` are taken from the integration tip `e8315e45da` in their own commit (D-4), so the landed pin can run against the rewritten bullet.
 3. RED: the five new test functions at the end of `tests/next_flow_skill_scan.rs`; they fail on the present text for the stated reason.
-4. Edit items 3 and 5 of `self-check.md`, and the `Audit brief` bullet and two trims of `next-flow.md`.
+4. Edit items 3 and 5 of `self-check.md`, and the `Audit brief` bullet and three trims of `next-flow.md`.
 5. `python3 -I tools/source_manifest.py write`, then `check`; `moai package-inspect skills/moai`.
 6. Guard mutants: reverse each sentence keeping its words; each must turn a pin red.
 7. `moai check affected` once at READY, unwrapped.
@@ -83,17 +83,18 @@ created: 2026-11-23
 | D-2 | the sentence says only the cargo checks of the `repo-scans` list are run, and does not say the table has no Python lines | the table still has 7 `python3` lines (read 2026-11-23) while the landing keeps cargo checks only (`cargo_only`) | name the Python lines in the sentence |
 | D-3 | the pin tests are new functions at the end of the file | the file is edited by other SPECs; separate functions merge without a conflict | add to existing functions |
 | D-4 | the three files of the landed `SPEC-20261123-doc-sentence-pins` are copied from the tip into this branch as their own commit before any change | the bullet this SPEC rewrites exists only on the tip, and its landed pin tests must run against the new text; the lane did not merge the tip, only read its files | start from the old base and let the lander resolve the same line |
-| D-5 | two short trims in the guard-mutant bullet of the flow reference (the date remark and two words) make room for the restored meanings | the budget is 7974 bytes (leader, card note 7530) and the bullet needs about 40 bytes more; the trimmed words are in no test | shorten the new bullet instead |
+| D-5 | three short trims in the guard-mutant bullet of the flow reference (`in its body`, the date remark `(four times on 2026-11-23)` and `it reports`) make room for the restored meanings | the budget is 7974 bytes (leader, card note 7530) and the bullet needs about 40 bytes more; the trimmed words are in no test | shorten the new bullet instead |
 | D-6 | the pin of the restored meanings reads whole phrases anchored at their start (`Audit brief: name the scan tests`, `, and record each as a receipt step`) | a mutant with `never name` or `never record` keeps every word and must still fail | read single words |
+| D-7 | audit repair of #404: each pinned sentence is read whole, from the word before it to the word after it (`picks; run only their `cargo` checks on the merge tree, leaving out a Python line, and record each` in the flow bullet; `area, every `cargo` check of `tools/repo_scans.json`` and `can run. Tests are Rust only.` in item 3), and the four opposite sentences the auditor found (`picks; never run only their`, `not leaving out`, `not every `cargo` check of`, `Never assume Tests are Rust only.`) are mutants of the pin tests | the loose substring pins passed a text that kept every word and reversed the meaning, which REQ-3 and REQ-7 say must fail (audit #404 FAIL B1, B2); the checking function of the landed pin is read in the same whole-phrase form | go back to the single phrases |
 
 ## Result
 
 - AC-1: met — `self_check_tests_item_names_no_python_test` (red before the edit: item 3 named `python` and lacked `Tests are Rust only`; pass after; a mutant that puts `the Python tests of the area` back into item 3 fails it)
 - AC-2: met — `self_check_repo_scans_item_runs_cargo_checks_only` (red before, pass after; a mutant that turns item 5 into `run all their checks and include a Python line` fails it)
-- AC-3: met — `self_check_pins_reject_reversed_sentences` (red before, pass after; four mutants of item 3 and four of item 5 each change the text and each turn the pin red)
+- AC-3: met — `self_check_pins_reject_reversed_sentences` (red before, pass after; six mutants of item 3 and four of item 5 each change the text and each turn the pin red; the repair D-7 added `not every cargo check of` and `Never assume Tests are Rust only.`, which the loose pin had let through)
 - AC-4: met — `python3 -I tools/source_manifest.py write` then `check` exit 0; `moai package-inspect skills/moai` exit 0; `self-check.md` 6948 bytes, `next-flow.md` 7964 bytes
 - AC-5: met — `moai spec check SPEC-20261123-self-check-rust-only` 0 errors 0 warnings
 - AC-6: met — `land_scans_the_flow_names_the_scan_tests_and_the_pass_receipt_step` (red before: the bullet lacked both phrases; pass after, with the file at 7964 of 7974 bytes; a mutant `never name the scan tests` and a mutant `and never record each` each fail it)
-- AC-7: met — `land_scans_the_flow_scan_receipt_mutants_are_caught` (red before: the first mutant did not change the text; pass after, five mutants)
+- AC-7: met — `land_scans_the_flow_scan_receipt_mutants_are_caught` (red before: the first mutant did not change the text; pass after, five mutants; the repair D-7 added `picks; never run only their` and `not leaving out` to `land_scans_the_flow_cargo_only_mutants_are_caught`, which reads the same checking function)
 - AC-8: met — `mode_workflow_steps`, `next_flow_skill_scan`, `source_manifest_facts`, `skill_structure`, `workflow_size_budget`, `lane_next_rules`, `repo_claude_md`: 119 passed, 0 failed (nextest, one heavy slot)
 - Gaps: item 6 and the header of `self-check.md` keep their Python lines (D-1); the Python lines of `tools/repo_scans.json` stay (non-goal). The `check affected` receipt of the head is in the READY note (a number in this file would name an earlier head).
