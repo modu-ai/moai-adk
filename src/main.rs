@@ -122,9 +122,10 @@ struct LaunchOpts {
     /// Pass no `--advisor` even when the user setting `launcher.advisor` turns it on.
     #[arg(long)]
     no_advisor: bool,
-    /// Keep permission prompts: no `--dangerously-skip-permissions` (Claude hosts). Without it a
-    /// -l|-a session has full access;
-    /// a session without a role never gets a permission flag.
+    /// Keep permission prompts: no permission flag at all (Claude hosts), so the host starts in the
+    /// mode its own settings choose. Without it every launch starts in auto mode
+    /// (`--permission-mode auto`) unless the user setting `launcher.role_access` says `full` or
+    /// `prompt`.
     #[arg(long)]
     permissions: bool,
     /// Print the composed command as JSON instead of starting the host.
@@ -1101,12 +1102,7 @@ fn launch(
     // Validate user configuration even for roleless sessions or a CLI override. Resolution
     // precedes host composition and any agent-number allocation. No advisor by default (user
     // decision 2026-11-12, #2476): only `--advisor` or the user setting `launcher.advisor`.
-    let settings = launch_settings(
-        role.is_some(),
-        o.permissions,
-        o.advisor.as_deref(),
-        o.no_advisor,
-    )?;
+    let settings = launch_settings(o.permissions, o.advisor.as_deref(), o.no_advisor)?;
     let advisor_note = (host == "claude"
         && settings.advisor.as_ref().map(|(_, s)| *s) == Some(AdvisorSource::UserSetting))
     .then_some("--advisor comes from the user setting launcher.advisor (~/.moai-cli/config/launcher.yaml); --no-advisor turns it off");
@@ -1117,7 +1113,7 @@ fn launch(
         model: o.model,
         effort: o.effort,
         advisor: settings.advisor.map(|(a, _)| a),
-        skip_permissions: settings.skip_permissions,
+        access: settings.access,
         prompt,
         claude_bin: "claude".into(),
     };
@@ -1389,7 +1385,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
                     model: Some(model),
                     effort: Some(effort),
                     advisor,
-                    skip_permissions: false,
+                    access: moai_cli::session::Access::Prompt,
                     prompt: None,
                     claude_bin,
                 },

@@ -1715,8 +1715,9 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "cc|glm",
         "permissions",
-        "권한 질문 유지: `--dangerously-skip-permissions` 없음(Claude 호스트). 없으면 \
-         -l|-a 세션은 전체 접근, 역할 없는 세션은 권한 플래그를 받지 않음",
+        "권한 플래그를 붙이지 않음(Claude 호스트): 호스트가 자기 설정의 모드로 시작. 없으면 \
+         모든 실행이 auto mode(`--permission-mode auto`)로 시작하고, 사용자 설정 \
+         `launcher.role_access` 가 `full`(우회) 또는 `prompt` 로 바꿀 수 있음",
     ),
     (
         "cc|glm",
