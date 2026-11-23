@@ -245,6 +245,32 @@ mod tests {
         }
     }
 
+    /// SPEC-20261124-ready-receipt-followup REQ-1: the inbox counts a READY first line exactly
+    /// when the one marker judge of the receipt gate calls it `LANE-READY-INTEGRATION`.
+    #[test]
+    fn inbox_family_follows_marker_of_line() {
+        for line in [
+            "LANE-READY-INTEGRATION C-1 head=abc",
+            "LANE-READY-INTEGRATION: C-1 head=abc",
+            "LANE-READY-INTEGRATIONC-1",
+            "  LANE-READY-INTEGRATION C-1",
+            "REPAIRED C-1 head=abc",
+            "READY C-1 head=abc",
+            "MERGE-READY C-1",
+            "see LANE-READY-INTEGRATION in the middle",
+            "lane-ready-integration",
+            "",
+        ] {
+            let ready =
+                crate::card::ready_receipt::marker_of_line(line) == Some("LANE-READY-INTEGRATION");
+            assert_eq!(
+                family_of(line) == Some(Family::ReadyForIntegration),
+                ready,
+                "{line:?}"
+            );
+        }
+    }
+
     #[test]
     fn a_leader_note_answers_only_a_request_with_a_smaller_note_id() {
         let blocked = "LANE-BLOCKED a";

@@ -29,6 +29,12 @@ fn is_head(text: &str) -> bool {
     text.len() == 40 && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
 
+/// RED placeholder: the judge as it is today (the first word equals a marker).
+pub fn marker_of_line(line: &str) -> Option<&'static str> {
+    let first = line.split_whitespace().next()?;
+    MARKERS.iter().copied().find(|m| *m == first)
+}
+
 /// The head a hand-back note names: `Ok(None)` when its first line starts with neither marker,
 /// the head when the line reads `<marker> <card> head=<40 lowercase hex>` followed by the end of
 /// the line or a space, and the refusal when it starts with a marker and reads otherwise.
@@ -228,8 +234,18 @@ mod tests {
         );
         assert_eq!(ok("LANE-BLOCKED kind=decision C-1"), Ok(None));
         assert_eq!(ok(&format!("x\nREPAIRED C-1 head={HEAD}")), Ok(None));
-        assert_eq!(ok(&format!("REPAIRED-X C-1 head={HEAD}")), Ok(None));
+        assert_eq!(
+            ok(&format!("READY C-1 head={HEAD}")),
+            Ok(Some(HEAD.to_string()))
+        );
+        assert_eq!(ok(&format!("READYING C-1 head={HEAD}")), Ok(None));
+        assert_eq!(ok(&format!("MERGE-READY C-1 head={HEAD}")), Ok(None));
         for bad in [
+            format!("REPAIRED-X C-1 head={HEAD}"),
+            format!("LANE-READY-INTEGRATION: C-1 head={HEAD}"),
+            format!(" LANE-READY-INTEGRATION C-1 head={HEAD}"),
+            format!("READY (head {})", &HEAD[..7]),
+            format!("READY C-1 head={}", &HEAD[..12]),
             "REPAIRED".to_string(),
             "REPAIRED C-1".to_string(),
             format!("REPAIRED C-2 head={HEAD}"),
@@ -239,6 +255,63 @@ mod tests {
             format!("REPAIRED  C-1 head={HEAD}"),
         ] {
             assert!(ok(&bad).is_err(), "{bad}");
+        }
+    }
+
+    /// The one judge the gate, `card inbox` and the status line share (SPEC-20261124-ready-
+    /// receipt-followup REQ-1, REQ-2, REQ-4): a first line that starts with a marker is that
+    /// marker, whatever follows; leading blanks do not hide it; `READY` needs its space.
+    #[test]
+    fn marker_of_line_table() {
+        for (line, want) in [
+            (
+                "LANE-READY-INTEGRATION C-1 head=abc",
+                Some("LANE-READY-INTEGRATION"),
+            ),
+            (
+                "LANE-READY-INTEGRATION: C-1",
+                Some("LANE-READY-INTEGRATION"),
+            ),
+            ("LANE-READY-INTEGRATIONC-1", Some("LANE-READY-INTEGRATION")),
+            (
+                "  LANE-READY-INTEGRATION C-1",
+                Some("LANE-READY-INTEGRATION"),
+            ),
+            ("LANE-READY-INTEGRATION", Some("LANE-READY-INTEGRATION")),
+            ("REPAIRED C-1 head=abc", Some("REPAIRED")),
+            ("REPAIRED-X C-1", Some("REPAIRED")),
+            ("READY C-1 head=abc", Some("READY")),
+            ("READY (head abc)", Some("READY")),
+            ("READY", None),
+            ("READYING C-1", None),
+            ("MERGE-READY C-1", None),
+            ("XREADY C-1", None),
+            ("see REPAIRED in the middle", None),
+            ("repaired in lower case", None),
+            ("LANE-BLOCKED kind=decision", None),
+            ("", None),
+        ] {
+            assert_eq!(marker_of_line(line), want, "{line:?}");
+        }
+    }
+
+    #[test]
+    fn a_lane_summary_line_is_no_receipt() {
+        let own = short(HEAD);
+        let line = |result: &str, sel: &str| {
+            format!("check-affected base=aaaaaaaaaaaa head={own} targets=1 scans=none{sel} test-threads=4 test=0 {result}\n")
+        };
+        assert_eq!(
+            judge(&line("result=PASS", ""), HEAD),
+            Receipt::Pass("aaaaaaaaaaaa".to_string())
+        );
+        let lane = judge(&line("result=PASS", " selection=lane"), HEAD);
+        match lane {
+            Receipt::Not(why) => {
+                assert!(why.contains("selection=lane"), "{why}");
+                assert!(why.contains("--lane"), "{why}");
+            }
+            other => panic!("a lane run was taken as a receipt: {other:?}"),
         }
     }
 

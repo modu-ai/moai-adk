@@ -11,6 +11,7 @@ mod ready_receipt;
 
 use common::git::{git, git_ok};
 use common::home::TempHome;
+use moai_cli::card::inbox::{family_of, Family};
 use moai_cli::ledger;
 use serde_json::Value;
 use std::fs;
@@ -316,6 +317,12 @@ fn a_marker_line_of_the_wrong_shape_is_refused() {
         format!("LANE-READY-INTEGRATION {card} {}", w.head),
         format!("REPAIRED {card} head={}x", w.head),
         "REPAIRED".to_string(),
+        // A marker with a character glued to it is still a marker (SPEC-20261124-ready-receipt-followup).
+        format!("LANE-READY-INTEGRATION: {card} head={}", w.head),
+        format!("REPAIRED-X {card} head={}", w.head),
+        format!("READY {card} head={short}"),
+        format!("READY {card}"),
+        format!("READY (head {short})"),
         format!(
             "LANE-READY-INTEGRATION {card} head={}",
             w.head.to_uppercase()
@@ -344,7 +351,8 @@ fn other_notes_are_kept_and_there_is_no_skip_flag() {
             "LANE-NOTE only a word\nLANE-READY-INTEGRATION {card} head={}",
             w.head
         ),
-        format!("REPAIRED-NOT {card} head={}", w.head),
+        format!("READYING {card} head={}", w.head),
+        format!("MERGE-READY {card} head={}", w.head),
     ];
     for t in &texts {
         let (ok, text) = w.note(&card, t);
@@ -415,4 +423,73 @@ fn any_worktree_with_the_head_and_a_pass_receipt_is_enough() {
     let (ok, text) = w.note(&card, &w.ready(&card, &w.head));
     assert!(ok, "{text}");
     assert_eq!(w.note_count(&card), 1);
+}
+
+// SPEC-20261124-ready-receipt-followup AC-1: a marker with a character glued to it is a marker for
+// the gate as it is for `card inbox` (the status line is pinned by its own unit test).
+#[test]
+fn a_glued_marker_is_one_rule_for_gate_inbox_and_status_line() {
+    let w = World::new();
+    let card = w.new_card();
+    // A PASS receipt exists, so a refusal below is the shape of the line and nothing else.
+    ready_receipt::write_receipt(&w.project, &w.head, "PASS");
+    for line in [
+        format!("LANE-READY-INTEGRATION: {card} head={}", w.head),
+        format!("LANE-READY-INTEGRATION{card} head={}", w.head),
+        format!("  LANE-READY-INTEGRATION {card} head={}", w.head),
+    ] {
+        let (ok, text) = w.note(&card, &line);
+        assert!(!ok, "`{line}` was kept: {text}");
+        assert!(text.contains("card note refused"), "{line}: {text}");
+        assert_eq!(
+            family_of(&line),
+            Some(Family::ReadyForIntegration),
+            "{line}"
+        );
+    }
+    let line = format!("REPAIRED-X {card} head={}", w.head);
+    let (ok, text) = w.note(&card, &line);
+    assert!(!ok, "`{line}` was kept: {text}");
+    assert_eq!(w.note_count(&card), 0);
+}
+
+// AC-3: a plain `READY` hand-back needs the receipt, `MERGE-READY` is the leader's and does not.
+#[test]
+fn a_plain_ready_note_needs_the_receipt_and_merge_ready_does_not() {
+    let w = World::new();
+    let card = w.new_card();
+    let ready = format!("READY {card} head={}\nbase={}\n", w.head, w.base);
+    let (ok, text) = w.note(&card, &ready);
+    assert!(!ok, "{text}");
+    assert!(text.contains("card note refused"), "{text}");
+    assert!(text.contains("moai check affected"), "{text}");
+    assert_eq!(w.note_count(&card), 0);
+    let merge = format!("MERGE-READY {card} head={}\n", w.base);
+    let (ok, text) = w.note(&card, &merge);
+    assert!(ok, "a MERGE-READY note needs no receipt: {text}");
+    ready_receipt::write_receipt(&w.project, &w.head, "PASS");
+    let (ok, text) = w.note(&card, &ready);
+    assert!(ok, "{text}");
+    assert_eq!(w.note_count(&card), 2);
+}
+
+// AC-5: the receipt of a `--lane` run is no receipt; the sentence names the bare command.
+#[test]
+fn a_lane_receipt_is_refused_with_the_bare_command() {
+    let w = World::new();
+    let card = w.new_card();
+    let path = ready_receipt::write_receipt_lane(&w.project, &w.head);
+    let (ok, text) = w.note(&card, &w.ready(&card, &w.head));
+    assert!(!ok, "{text}");
+    assert!(text.contains("selection=lane"), "{text}");
+    assert!(text.contains("--lane"), "{text}");
+    assert!(text.contains("moai check affected"), "{text}");
+    assert!(
+        text.contains(path.to_str().unwrap_or("")) || text.contains("summary.txt"),
+        "{text}"
+    );
+    assert_eq!(w.note_count(&card), 0);
+    ready_receipt::write_receipt(&w.project, &w.head, "PASS");
+    let (ok, text) = w.note(&card, &w.ready(&card, &w.head));
+    assert!(ok, "the bare receipt is kept: {text}");
 }
