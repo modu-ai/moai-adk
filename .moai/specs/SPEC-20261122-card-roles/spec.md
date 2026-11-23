@@ -2,7 +2,7 @@
 id: SPEC-20261122-card-roles
 title: "Card roles: each card names its authors, auditor and lander from ledger rows, and a verdict from an author is refused"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-22
 ---
 
@@ -15,6 +15,8 @@ User decision of 2026-11-21 (stage 3 of the flow redesign, option (a)): there is
 This SPEC is slice 1 of the roles: the read side and the two refusals. A card shows its authors, its auditor and its lander, taken from ledger rows; an audit assignment never names an author; a verdict from a session that held the card is refused with the reason, and so is a verdict from a session that is not the assigned auditor. The typed submit and block rows and the inbox that lists unanswered rows are the next slices (the plan of the flow skeleton, steps 4a to 4f), and are not here.
 
 Revision 3 (leader decision, note 7563 of card C-351, 2026-11-23, after the merge of the integration tip): SPEC-20261123-landing-reads-verdict landed the `card verdict` command and the `card.verdict` event (head, base, verdict, tier, evidence, receipt, reviewer) and `card land` reads them. Revision 1 of this SPEC defined a second `card verdict` with other options and other fields, so two writers of one event kind and two clap rows of one name could not stand together. This revision deletes the verdict command and the verdict event of revision 1 (REQ-3 and REQ-7; the record and its repeat rule are REQ-1 and REQ-4 of that SPEC) and keeps REQ-2 and REQ-6 as two refusals of that one command, made in the write transaction so that the ledger never holds a verdict the roles forbid. The landing keeps its own `self_verdict` check, which also reads commit trailers.
+
+Revision 4 (card C-411, from the non-blocking findings N1 to N3 of the audit of C-351): `card assign` compared the named auditor with the recorded holders as exact strings, so a spelling of an author that differs in ASCII case or by a `:<12hex>` worktree suffix passed the check and then every verdict was refused (the verdict writer compares through `trailers::same_identity`). This revision makes the assignment use the same comparison (REQ-4) and refuses an auditor value that is not a session identity, a lane name for one (REQ-8), because no verdict writer can ever match it. The weak `>=` check of the AC-5 test becomes an exact count.
 
 Grounded in the code at the integration tip `fd56877af5` before revision 1, and at `12701c4497` for revision 3:
 
@@ -36,15 +38,17 @@ Grounded in the code at the integration tip `fd56877af5` before revision 1, and 
 
 - REQ-1: When the card show command is asked for a card, the card show command shall list the authors, the auditor and the lander of that card from ledger rows · failure: none — a role with no row is listed as absent, never guessed.
 - REQ-2: When a session writes a verdict for a card, the card verdict command shall refuse the verdict if that session holds or ever held a reservation of the card · failure: none — the answer names the card and the reason, the ledger is unchanged, and the exit status is non-zero.
-- REQ-4: When an audit assignment names an identity that holds or ever held a reservation of the card, the card assign command shall refuse the assignment · failure: none — the answer names the identity and the card, and the ledger is unchanged.
+- REQ-4: When an audit assignment names an identity that `trailers::same_identity` finds equal to the holder of any generation of the card, the card assign command shall refuse the assignment · failure: none — the answer names the identity and the card, and the ledger is unchanged.
 - REQ-5: When the card assign command accepts an assignment, the card assign command shall write one `card.audit_assigned` event that holds the auditor and the assigning caller · failure: none — only the leader word assigns, and a card that is not in review refuses before any write.
 - REQ-6: When an auditor is assigned to a card, the card verdict command shall refuse a verdict from any other session · failure: none — the answer names the assigned auditor, and a card with no assignment accepts a verdict from any session that never held it.
+- REQ-8: When an audit assignment names a value that is not a session identity (a session id with an optional `:<12hex>` worktree key, ASCII case ignored), the card assign command shall refuse the assignment · failure: none — the answer names the value and the shape it needs, and the ledger is unchanged.
 
 ## Acceptance
 
 - AC-1 (REQ-1): a card with two reservation generations held by two sessions, one `card.audit_assigned` row and one `card.landed` row shows both holders as authors, the assigned identity as auditor and the landing's caller and head as lander; a card with none of these rows shows each role as absent · verify: `cargo test --locked --offline --test card_roles_cli roles_`
 - AC-2 (REQ-2): the session that took a card and sent it to review writes a verdict, and the command refuses with a message that names the card and says the writer held it; a session that held an earlier generation is refused the same way; the event rows of the ledger are unchanged, and a session that never held the card still records its verdict · verify: `cargo test --locked --offline --test card_verdict_cli verdict_author_`
-- AC-4 (REQ-4): an assignment that names the holder of any generation refuses and writes nothing · verify: `cargo test --locked --offline --test card_roles_cli assign_author_`
+- AC-4 (REQ-4): an assignment that names the holder of any generation, in the same spelling or in another (upper case, or with a `:<12hex>` worktree suffix), refuses and writes nothing · verify: `cargo test --locked --offline --test card_roles_cli assign_author_`
+- AC-7 (REQ-8): an assignment that names a lane name or another value that is not a session identity refuses with the value and the needed shape and writes nothing, and a session identity with a worktree suffix is accepted · verify: `cargo test --locked --offline --test card_roles_cli assign_identity_`
 - AC-5 (REQ-5): the leader's assignment of a session that never held the card writes one row; another caller word and a card that is not in review each refuse before any write · verify: `cargo test --locked --offline --test card_roles_cli assign_rows_`
 - AC-6 (REQ-6): after an assignment, a verdict from another session that never held the card refuses naming the assigned auditor, and the assigned auditor's verdict is accepted · verify: `cargo test --locked --offline --test card_verdict_cli verdict_assigned_`
 
@@ -81,6 +85,7 @@ Grounded in the code at the integration tip `fd56877af5` before revision 1, and 
 | D-2 | The roles are read from existing rows, and only the assignment is a new event kind, with no schema change | The plan of 2026-11-21 puts typed signals in event rows, and the version gate refuses a schema change | Stop writing the kind; old readers ignore unknown kinds |
 | D-3 | Only the leader word assigns an auditor | The leader is the one who dispatches audits (plan decision D3) | Allow the holder-independent caller list to grow |
 | D-6 | One verdict command: the one of SPEC-20261123-landing-reads-verdict, with the two refusals of this SPEC added in its write transaction; the verdict command, event fields, review-state rule (old D-4) and full-head rule (old D-5) of revision 1 are deleted | Leader decision, note 7563 of card C-351, 2026-11-23: two writers of one event kind cannot stand together, and a refusal made at write time keeps a forbidden verdict out of the ledger | Option (b) of note 7561: drop the write-time refusals and keep only the landing's `self_verdict` |
+| D-7 | `card assign` compares the named auditor with the holders through `trailers::same_identity` and refuses a value whose shape is not a session identity (a lane name is refused, not warned) | Audit of C-351 (AUDIT #351, N1 and N2): an exact-string comparison lets another spelling of an author through, and a value that the verdict writer can never match leaves the card unauditable; a refusal at assignment is the only point where nothing is written yet. Card C-411 asks for a refusal or a warning, and the refusal is the one that cannot leave a card blocked | Warn instead of refuse for the shape check: the row is written and the answer carries the warning |
 
 ## Result
 
