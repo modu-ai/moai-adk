@@ -106,10 +106,12 @@ pub(crate) fn failure_summary(stderr: &[u8]) -> String {
 /// reconfigure git are removed and the locale is fixed. stderr is read only to classify a
 /// failure; what reaches the caller is `failure_summary`, never a path.
 ///
-/// With a `home` the child reads that HOME's global git configuration (its `.gitconfig`, or none
-/// when it has no such file) and not the environment HOME's: git reads neither `$HOME/.gitconfig`
-/// nor `$XDG_CONFIG_HOME/git/config` once `GIT_CONFIG_GLOBAL` is set (git(1), ENVIRONMENT). With
-/// no `home` the child keeps the process's own lookup (SPEC-20261124-home-env-readers D-8).
+/// With a `home` that is not the process's own HOME the child runs with that HOME and without
+/// `XDG_CONFIG_HOME` and `GIT_CONFIG_GLOBAL`, so git reads that HOME's `.gitconfig` and
+/// `.config/git/config` and neither the environment's files nor the file the environment names. A
+/// `home` equal to the process's own HOME, and no `home` at all, leave the child the process's own
+/// environment, so a user's `XDG_CONFIG_HOME` and `GIT_CONFIG_GLOBAL` keep working
+/// (SPEC-20261124-home-env-readers D-8; git(1), FILES and ENVIRONMENT).
 fn rev_parse(dir: &Path, args: &[&str], home: Option<&Path>) -> Git {
     let mut cmd = Command::new("git");
     cmd.arg("--no-optional-locks")
@@ -119,15 +121,11 @@ fn rev_parse(dir: &Path, args: &[&str], home: Option<&Path>) -> Git {
         .args(args);
     scrub_git_env(&mut cmd);
     if let Some(home) = home.filter(|h| !h.as_os_str().is_empty()) {
-        let config = home.join(".gitconfig");
-        cmd.env(
-            "GIT_CONFIG_GLOBAL",
-            if config.is_file() {
-                config
-            } else {
-                PathBuf::from("/dev/null")
-            },
-        );
+        if crate::layout::environment_home().as_deref() != Some(home) {
+            cmd.env("HOME", home)
+                .env_remove("XDG_CONFIG_HOME")
+                .env_remove("GIT_CONFIG_GLOBAL");
+        }
     }
     let out = cmd
         .env("GIT_OPTIONAL_LOCKS", "0")
@@ -546,7 +544,7 @@ mod home_arg_tests {
 /// test changes this process's environment and none reads the real HOME.
 #[cfg(all(test, unix))]
 mod git_config_tests {
-    use super::identity_in;
+    use super::{identity, identity_in};
     use crate::layout::home_arg_tests::{child_var, init_repo, run_in_child_of};
     use std::{
         ffi::OsString,
@@ -619,5 +617,159 @@ mod git_config_tests {
         } else {
             refused(identity_in(&work, None));
         }
+    }
+
+    /// The global git configuration that trusts every repository, in the file `git` reads.
+    fn trusting_config(path: &Path) {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, "[safe]\n\tdirectory = *\n").unwrap();
+    }
+
+    /// The variables every child of the tests below carries: git's own switch that makes the
+    /// repository count as owned by another user, and no system configuration.
+    const OWNER_SWITCHES: [(&str, &str); 2] = [
+        ("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1"),
+        ("GIT_CONFIG_NOSYSTEM", "1"),
+    ];
+
+    /// AC-14 (REQ-10), child side: a given HOME that keeps its trust only in git's second global
+    /// file, `<home>/.config/git/config`, is followed like a `.gitconfig` is; the child's own HOME
+    /// trusts nothing.
+    #[test]
+    fn identity_in_reads_the_xdg_git_config_of_the_home_it_is_given() {
+        let test = "identity_in_reads_the_xdg_git_config_of_the_home_it_is_given";
+        let (Some(work), Some(xdg_only), Some(plain)) = (
+            child_var("MOAI_IDENTITY_XDG_TEST_WORK"),
+            child_var("MOAI_IDENTITY_XDG_TEST_XDG_HOME"),
+            child_var("MOAI_IDENTITY_XDG_TEST_PLAIN_HOME"),
+        ) else {
+            let dir = tempfile::tempdir().unwrap();
+            let work = dir.path().join("work");
+            fs::create_dir(&work).unwrap();
+            init_repo(&work);
+            let xdg_only = dir.path().join("xdg_only");
+            trusting_config(&xdg_only.join(".config/git/config"));
+            let plain = dir.path().join("plain");
+            fs::create_dir(&plain).unwrap();
+            let mut extra: Vec<(&str, &Path)> = vec![
+                ("MOAI_IDENTITY_XDG_TEST_WORK", &work),
+                ("MOAI_IDENTITY_XDG_TEST_XDG_HOME", &xdg_only),
+                ("MOAI_IDENTITY_XDG_TEST_PLAIN_HOME", &plain),
+            ];
+            extra.extend(OWNER_SWITCHES.iter().map(|(k, v)| (*k, Path::new(*v))));
+            run_in_child_of(
+                module_path!(),
+                test,
+                Some(&OsString::from(plain.as_os_str())),
+                &extra,
+            );
+            return;
+        };
+        assert_eq!(
+            identity_in(&work, Some(&xdg_only)).unwrap()["identity_status"],
+            "ok"
+        );
+        refused(identity_in(&work, Some(&plain)));
+    }
+
+    /// AC-15 (REQ-10), child side: `identity` runs git with the environment as it is. Trust that
+    /// the environment keeps in `$XDG_CONFIG_HOME/git/config`, or in the file `GIT_CONFIG_GLOBAL`
+    /// names, counts; with neither the repository is refused (the control).
+    #[test]
+    fn identity_keeps_the_git_config_of_the_environment() {
+        let test = "identity_keeps_the_git_config_of_the_environment";
+        let (Some(work), Some(case)) = (
+            child_var("MOAI_IDENTITY_ENV_TEST_WORK"),
+            child_var("MOAI_IDENTITY_ENV_TEST_CASE"),
+        ) else {
+            let dir = tempfile::tempdir().unwrap();
+            let work = dir.path().join("work");
+            fs::create_dir(&work).unwrap();
+            init_repo(&work);
+            let env_home = dir.path().join("env_home");
+            fs::create_dir(&env_home).unwrap();
+            let xdg = dir.path().join("xdg");
+            trusting_config(&xdg.join("git/config"));
+            let global = dir.path().join("trusting.gitconfig");
+            trusting_config(&global);
+            for (case, extra_var) in [
+                ("xdg", Some(("XDG_CONFIG_HOME", &xdg))),
+                ("global", Some(("GIT_CONFIG_GLOBAL", &global))),
+                ("none", None),
+            ] {
+                let case_name = PathBuf::from(case);
+                let mut extra: Vec<(&str, &Path)> = vec![
+                    ("MOAI_IDENTITY_ENV_TEST_WORK", &work),
+                    ("MOAI_IDENTITY_ENV_TEST_CASE", &case_name),
+                ];
+                extra.extend(OWNER_SWITCHES.iter().map(|(k, v)| (*k, Path::new(*v))));
+                extra.extend(extra_var.map(|(k, v)| (k, v.as_path())));
+                run_in_child_of(
+                    module_path!(),
+                    test,
+                    Some(&OsString::from(env_home.as_os_str())),
+                    &extra,
+                );
+            }
+            return;
+        };
+        if case == Path::new("none") {
+            refused(identity(&work));
+        } else {
+            assert_eq!(
+                identity(&work).unwrap()["identity_status"],
+                "ok",
+                "{case:?}"
+            );
+            // The same HOME given by hand is the environment HOME: nothing is replaced.
+            let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+            assert_eq!(
+                identity_in(&work, Some(&home)).unwrap()["identity_status"],
+                "ok",
+                "{case:?}"
+            );
+        }
+    }
+
+    /// AC-16 (REQ-10), child side: the environment trusts the repository through every route
+    /// (`.gitconfig`, `$XDG_CONFIG_HOME/git/config`, `GIT_CONFIG_GLOBAL`), and a HOME that is
+    /// given and is another folder still decides alone: none of them reaches its git child.
+    #[test]
+    fn identity_in_leaves_the_environment_git_config_out_for_another_home() {
+        let test = "identity_in_leaves_the_environment_git_config_out_for_another_home";
+        let (Some(work), Some(plain)) = (
+            child_var("MOAI_IDENTITY_OTHER_TEST_WORK"),
+            child_var("MOAI_IDENTITY_OTHER_TEST_PLAIN_HOME"),
+        ) else {
+            let dir = tempfile::tempdir().unwrap();
+            let work = dir.path().join("work");
+            fs::create_dir(&work).unwrap();
+            init_repo(&work);
+            let env_home = dir.path().join("env_home");
+            trusting_config(&env_home.join(".gitconfig"));
+            let xdg = dir.path().join("xdg");
+            trusting_config(&xdg.join("git/config"));
+            let global = dir.path().join("trusting.gitconfig");
+            trusting_config(&global);
+            let plain = dir.path().join("plain");
+            fs::create_dir(&plain).unwrap();
+            let mut extra: Vec<(&str, &Path)> = vec![
+                ("MOAI_IDENTITY_OTHER_TEST_WORK", &work),
+                ("MOAI_IDENTITY_OTHER_TEST_PLAIN_HOME", &plain),
+                ("XDG_CONFIG_HOME", &xdg),
+                ("GIT_CONFIG_GLOBAL", &global),
+            ];
+            extra.extend(OWNER_SWITCHES.iter().map(|(k, v)| (*k, Path::new(*v))));
+            run_in_child_of(
+                module_path!(),
+                test,
+                Some(&OsString::from(env_home.as_os_str())),
+                &extra,
+            );
+            return;
+        };
+        // The control: the environment really trusts the repository.
+        assert_eq!(identity(&work).unwrap()["identity_status"], "ok");
+        refused(identity_in(&work, Some(&plain)));
     }
 }
