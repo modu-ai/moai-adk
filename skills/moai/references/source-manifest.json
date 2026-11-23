@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "2b797b2def51ea84393c458e1841a5e96521adc642c2a71a40822083dbbde8f3",
+      "sha256": "a27cd8a93125a8a16458ff0dbda5be216f8fa03623e53637a5d85ba1923f84f7",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -69,7 +69,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "f8567a0a9b0d580eb7c41b128376757f4a5c5f160a547df02fb577ede3632094",
+      "sha256": "a4ee6a61ce05f4277eb6c6a9e9994fe9e3bb85c90affbf725ab7495c90a77d6d",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -87,7 +87,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "70797a987d7d1b70985d6484a2404fb31deeffceeedec239c06dc8f4695ec03c",
+      "sha256": "baf11648ccfc000a60b7defb2025311a879e1cfff5b9812779251bf33bbafb5c",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -408,7 +408,7 @@
       }
     },
     "references/routes.json": {
-      "sha256": "39dc9aaeb8a9b3f25ba60a051ca5fbe3cdc8fccee4ac3d6ab41d2627bcdc469c",
+      "sha256": "9c6c552356f5fea14ae4897397971309a7d416d4d45f70de0c662006cf813b33",
       "origin": {
         "kind": "design-template",
         "template_id": "router-routes",
@@ -424,6 +424,15 @@
         "adoption": "adopted",
         "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499. Web pages section (browser choice and rules) added by #2517. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features). Rebuild-by-modification-time sentence (touch restored or extracted sources; cite a run only with the tree's Compiling line and the expected test count) added by #2401 comment 6824103310."
       }
+    },
+    "workflows/leader.md": {
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-leader",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261124-moai-leader-route (REQ-1 to REQ-12): `/moai leader` makes the window that types it the registered coordination window; it registers with `session-register`, renews once per round, reads the ledger, sends audits to another session, lands with `moai card land --by leader` and releases the registration at the end. The completion-message and transition sentences stay in `flows/next-flow`."
+      },
+      "sha256": "76aedaa9ffca0a69dd2e3c9a4409aecce5893a65243167b2c7a6ad250d118d19"
     },
     "workflows/plan.md": {
       "sha256": "ab27f283d60333933a93aa8a6a5858d88e44018e7edcd0cab9b79e7fe9b27e51",
