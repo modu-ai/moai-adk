@@ -163,7 +163,9 @@ fn deny_emails_add_to_the_list_without_case() {
 #[test]
 fn an_unreadable_identity_lets_the_command_through() {
     quiet_git_env();
-    let missing = std::env::temp_dir().join(format!("moai-2878-none-{}", std::process::id()));
+    // A folder that is not there: a name inside a fresh `TempDir`, which nothing creates.
+    let scratch = tempfile::TempDir::new().unwrap();
+    let missing = scratch.path().join("none");
     assert_eq!(
         commit_identity_guard("git commit -m x", &missing, &rule(&[])),
         None
