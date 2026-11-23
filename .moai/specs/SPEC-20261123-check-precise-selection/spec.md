@@ -86,3 +86,24 @@ they hold whatever the library looks like after that card lands.
 | D-2 | The fixtures drive the command, not the library | the one-slot card is reshaping `src/check_affected.rs`; the command's `--list` answer is the stable surface (leader decision 6896: fixtures first, no src write) | call the library once it settles |
 | D-3 | The field is `selection: lane|full` beside the existing `mode: list|run` | `mode` already names list or run in the answer | rename both together |
 | D-4 | The range note warns and never refuses | a refusal would stop the merge-candidate runs that need the wide range on purpose; the note makes the cost visible (planning default) | refuse unless a flag allows it |
+
+## Result
+
+구현 에이전트가 2026-11-23T05:03Z 에 채웠어요. 감사가 다시 확인해요. 코드 head `6a9e022ab5`(base `6817eb69ad` = NeXT 병합 지점), 이 worktree 의 `target/`, macOS arm64, 무거운 자리 1개, `CARGO_HOME=/tmp/moai-rc-cargo-c280`.
+
+RED(`71f31169fc`): 9개 모두 단언 실패. GREEN: `cargo test --offline --locked --test check_affected_modes_cli` 9 passed(`target/c280/green1.log`).
+
+- AC-1: met — `scan_scope_decides_the_lane_and_the_full_set_keeps_every_scan`, `scan_rule_file_keeps_its_scan_in_the_lane` 통과(영수증의 같은 head 실행에서도 통과)
+- AC-2: met — `common_sub_module_change_selects_only_its_users_in_the_lane`, `common_mod_change_keeps_every_consumer_in_the_lane` 통과
+- AC-3: met — `os_tagged_test_joins_the_lane_by_area_only` 통과
+- AC-4: met — `selection_field_names_lane_or_full` 통과
+- AC-5: met — `text_change_selects_the_tests_that_name_the_file` 통과
+- AC-6: met — `range_from_an_old_fork_point_carries_a_note` 통과
+- AC-7: met — `page_describes_the_two_selections` 통과
+- AC-8: met — `check_affected_cli` 와 `check_affected_one_slot` 전부 통과(수정 없음): `moai check affected 6817eb69ad..6a9e022ab5` 가 `targets=52 scans=listed:37 diff_check=0 fmt=0 ops_rustfmt=0 clippy=0 test=0 result=PASS`, nextest 2459 passed, 0 skipped(`target/c280/receipt/05-test.log`)
+
+뮤턴트 10개(지킴 코드를 하나씩 뺌) 모두 KILLED(`target/c280/mutants.log`): 스캔 scope 지킴(M1)·rules 파일 일치(M2)·`common` 하위 모듈 갈래(M3)·`mod.rs` 전체 유지(M4)·호스트 OS 지킴(M5)·글 고정(M6)·`selection` 낱말(M7)·`range_note` 조상 지킴(M8)·`range_note` 꺼짐(M9)은 `check_affected_modes_cli` 의 9개 중 하나 이상이 잡고, 식별자 전체 일치(M10)는 모듈 단위 시험이 잡아요.
+
+측정(`target/debug/moai-cli check affected <병합>^1..<병합> --list`, NeXT 최근 첫 부모 병합 10개): 대상 수 합계 전체 992 → 레인 447(−55%). 병합별 전체/레인: 90/62, 390/129, 48/5, 54/25, 71/41, 58/27, 66/35, 51/14, 68/42, 96/67.
+
+실행 안 함·한계: Linux·Windows, `summary` 줄에 `selection` 낱말은 넣지 않았어요(답의 필드만; 줄의 낱말 순서를 고정한 시험을 건드리지 않으려고). 레인 선택은 `tools/repo_scans.json` 자체가 바뀌어도 그 파일을 규칙 파일로 보지 않아요; `common::*`(glob)로만 하위 모듈을 쓰는 시험은 하위 모듈 변경에서 빠져요. 둘 다 전체 선택(열차 실행)이 잡아요. 이 SPEC 의 `status` 는 draft 그대로예요(승인은 이 레인이 하지 않아요). 워크플로 가이드(mode-agent/leader)와 MERGE-READY 문구는 다른 카드가 쥔 파일이라 이 카드에서 바꾸지 않았어요.
