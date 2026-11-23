@@ -87,3 +87,16 @@ approval:
 | D-3 | 시각은 읽기 전용 파일 핸들의 `File::set_modified` 로 바꿔요(내용·권한 불변) | Rust 1.94.1 표준 라이브러리; 새 의존성이 없어요 | 다른 방법(`touch`)으로 바꿔도 같은 결과예요 |
 | D-4 | 요약 줄은 바꾸지 않고 답에 `refresh` 필드만 더해요 | 영수증 판정(`src/card/ready_receipt.rs`)이 요약 줄 모양을 읽어요 | 필드를 지워요 |
 | D-5 | 안내는 `self-check.md` Tests 2번에 한 문장을 더해요; `next-flow.md:23` 은 그대로 둬요 | 카드가 말한 "guard-mutant 안내"는 mutant 를 만들고 되돌리는 방법이 있는 자리예요; 영수증 모양의 줄은 복구를 다루지 않아요 | 문장을 지워요 |
+
+## Result
+
+개정 1, NeXT `4872c62870` 에서 자른 브랜치예요(구현 커밋 `743f901265`). 승인 근거는 리더 결정 노트 7975(조건: 체크아웃 밖을 가리키는 경로와 링크 대상은 건드리지 않아요)예요. 숫자는 이 결과를 위해 이 워크트리에서 돌린 실행에서 나왔어요.
+
+- RED: 구현 전에 `check_affected_touch` 의 테스트 5개를 돌렸어요. 실제 cargo 테스트는 선행 조건(cargo 혼자서는 mutant 빌드를 그대로 써서 `cargo test --lib` 가 실패해요)을 넘고 `check affected` 가 `test=101 result=FAIL` 로 끝났어요. 링크·시각·스킬 글 테스트 3개도 실패했고, `--list` 테스트는 구현 전에도 통과했어요(아무것도 건드리지 않던 때라서; 아래 M4 가 지켜요).
+- AC-1 met (REQ-1): `a_restore_with_the_old_file_time_is_rebuilt` 통과. 임시 크레이트를 빌드하고, 실패하는 mutant 를 빌드하고, 원본 바이트를 옛 시각(2001-09-09)으로 되돌린 뒤 `check affected` 가 `result=PASS` 로 끝나요(툴체인의 `cargo`, `clippy`, `rustfmt` 를 직접 써서 실제 빌드를 해요).
+- AC-2 met (REQ-1): `the_run_refreshes_only_the_changed_files_time` 통과. 바뀐 파일 2개는 실행 시작 뒤 시각을 얻고(`refresh.touched=2`), 바이트와 모드(0o640)는 그대로이고, 범위 밖 `docs/keep.md` 는 옛 시각 그대로예요.
+- AC-3 met (REQ-2): `a_changed_link_is_skipped_and_named` 통과. 링크 `link.md`, 링크 폴더 `a` 를 지나는 `a/b` 는 `refresh.skipped` 에 이름이 올랐고, 체크아웃 밖 대상 `target.md` 와 `dir/b` 의 시각은 그대로이고 링크 자신의 시각도 그대로예요. 리더 조건의 위험 경로 실행이에요.
+- AC-4 met (REQ-3): `list_mode_touches_no_file` 통과.
+- AC-5 met (REQ-4, REQ-5): `the_guard_mutant_line_names_the_restore_rule` 통과(`self-check.md` Tests 2번이 `git checkout -- <path>`, 그냥 `cp`, `cp -p` 금지와 이유를 말해요).
+- 가드 뮤턴트(각각 `git checkout -- <path>` 로 복구, 복구 뒤 `git status` 깨끗, nextest exit 100): M1 `refresh_changed` 호출을 지움 → AC-1 과 AC-2 의 테스트가 실패, M2 링크를 따라가게 함(`plain` 과 `within` 검사를 뺌) → AC-3 실패, M3 링크 폴더를 지나는 경로를 건드리게 함(`within` 만 뺌) → AC-3 실패, M4 `--list` 도 갱신하게 함 → AC-4 실패, M5 스킬 글에서 `cp -p` 금지를 뺌 → AC-5 실패.
+- 남은 일: 없어요. 요약 줄 모양은 그대로예요(D-4); 갱신한 개수는 답의 `refresh.touched` 가 보여줘요.
