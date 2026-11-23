@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-identity-home-arg
 title: "identity takes the HOME as an argument: slice 1 adds identity_in and keeps one process-edge reader"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: user
+  at: 2026-11-23
+  basis: "리더 결정 2026-11-23T15:09:12Z (사용자 위임 2026-11-23T13:57Z, 카드 C-409 노트 7614, 노트 7613 의 결정 1 (a)); 리더가 승인으로 보고 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:2de19f1b94db34b3c335aff2ae064380853ad1ffc548da98466b2a4fe8e0b4f1"
 ---
 
 # identity takes the HOME as an argument: slice 1 adds identity_in and keeps one process-edge reader
