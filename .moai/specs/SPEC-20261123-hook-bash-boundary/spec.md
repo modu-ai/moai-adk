@@ -141,6 +141,8 @@ Measurement (D-10), the real binary, 200 samples each, debug build, machine load
 
 Guard mutants: 20 single-guard removals, each run against the whole `hook_bash_boundary_cli` binary; every one failed at least one test (exit 100, no compile error) and the file was restored after each. The lines are in the READY note of the card.
 
+Audit repair (AC-14): 25 more single-guard removals (the glob and brace scan, the command-word rule, the stack-form and `CDPATH` rules, the root-itself rule, the nesting level limit, the git runner step, the protected-ref spellings, `merge-tree`, `lfs`, the include keys, the `xargs`, `arch` and `script` wrappers, the runner options), each run against the whole `hook_bash_boundary_cli` binary; every one failed at least one test (exit 100) and the file was restored after each. A dangerous-path run judged nine texts with the real binary in a throwaway world outside every temporary root: eight destructive ones denied, the delete inside the checkout allowed, no file and no branch changed.
+
 Dangerous-path run: the real debug binary on a throwaway project (a git repository with a link leading out, a folder outside, a temporary HOME) for a delete through the link, a glob through the link, a compound `cd` out, a push to the protected branch, a skipped hook, a reset in the primary checkout, a computed command word, a backgrounded command with a delete, input that is not JSON and 5,000,000 bytes of input. Every run exited 0; the delete cases were denied as `delete-outside`; the folder outside kept its file; no process was left behind.
 
 Choices made while implementing, inside the decisions above:
