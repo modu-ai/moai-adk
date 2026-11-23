@@ -200,8 +200,10 @@ pub fn identity(path: &Path) -> Result<Value> {
 }
 
 /// [`identity`] with the HOME given instead of read from the environment. `home_state_root` is
-/// the home state root of `home`, or `null` for `None`, which opens no file under any HOME; no
-/// other field depends on it. Reads no environment variable.
+/// the home state root of `home`, or `null` for `None`, for which no home state root is resolved;
+/// no other field depends on it. `home_state_root` is found from no environment variable. The
+/// `git` child still runs with the process environment, so it reads the environment HOME's
+/// global git configuration (C-410 pins that).
 pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
     let meta = fs::symlink_metadata(path).map_err(|_| "path unavailable")?;
     if meta.file_type().is_symlink() {
