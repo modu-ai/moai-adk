@@ -389,15 +389,17 @@ pub(crate) mod linked_home_test {
     }
 
     fn git(dir: &Path, args: &[&str]) {
-        let out = Command::new("git")
-            .args([
-                "-c",
-                "user.name=test",
-                "-c",
-                "user.email=test@example.invalid",
-            ])
-            .args(args)
-            .current_dir(dir)
+        let mut cmd = Command::new("git");
+        cmd.args([
+            "-c",
+            "user.name=test",
+            "-c",
+            "user.email=test@example.invalid",
+        ])
+        .args(args)
+        .current_dir(dir);
+        super::scrub_git_env(&mut cmd);
+        let out = cmd
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
             .env("GIT_CONFIG_NOSYSTEM", "1")
             .output()

@@ -125,4 +125,5 @@ approval:
 - AC-8: 충족(`git diff --name-only` 는 READY 노트에 적어요). `home_state_root` 를 읽는 줄이 묶음에 새로 없어요.
 - AC-9: `moai check affected` 결과는 READY 노트에 적어요(이 줄을 쓸 때는 not_run).
 - 뮤턴트(테스트마다 하나 이상, 호출 한 곳을 `identity(..)` 로 되돌려 해당 테스트만 돌림): 11개 모두 exit 100 이고 되돌린 뒤 `git diff --stat` 이 비었어요(`claim.rs:80`, `claim.rs:1488`, `session.rs:367`, `lane_registry.rs:91`, `lane_registry.rs:316`, `claim_link.rs:274`, `claim_link.rs:299`, `claim_link.rs:440`, `goal.rs:76`, `worktree_move.rs:217`, `run.rs:552`). 첫 실행은 로그 파일 경로 오류로 테스트가 돌지 않아 무효였고 다시 돌렸어요.
+- 수리: READY head `5699fe7a16` 의 `check affected` 가 test 단계에서 `every_git_subprocess_in_src_is_scrubbed` 하나를 실패시켰어요(4209개 중 4208 통과, exit 100; diff_check·fmt·clippy 는 0). 테스트 도우미 `linked_home_test::git` 의 `Command::new("git")` 가 `scrub_git_env` 를 거치지 않았어요(`src/identity.rs:392`). 도우미가 `scrub_git_env` 를 부른 뒤 자기 환경 변수를 얹도록 고쳤어요. 앞서 lib 전체와 `cli_diagnose` 만 돌려 저장소 전체를 읽는 스캔 테스트를 놓친 것은 제 확인의 틈이에요(앞 조각에서 본 같은 종류).
 - 줄어드는 양: C-406 가드를 이 판 뒤에 다시 돌려 재지 않았어요(unverified). 클레임 묶음은 `layout::switched_dir` → `layout::default_home_root` 로 환경 HOME 을 또 읽어서 C-410 뒤에야 줄 수 있어요. 카드 기준 1 은 부분, 기준 2 는 not met 이에요(조각 3·4 가 남음).
