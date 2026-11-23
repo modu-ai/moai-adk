@@ -128,11 +128,12 @@ fn ok(out: &Output) -> Value {
 // ---- helpers ------------------------------------------------------------------------------------
 
 /// Every whole word of a string in `v` that starts with `/`, names a folder that exists at the
-/// top of the file system (so `/status` is no path) and does not lie under `root`.
+/// top of the file system (so `/status` is no path) and does not lie under `root`. A path after
+/// a `:` or `=` (`path=/x`, `a:/x`) is a word of its own.
 fn outside_paths(v: &Value, root: &Path, out: &mut Vec<String>) {
     match v {
         Value::String(s) => {
-            for word in s.split(|c: char| c.is_whitespace() || "`\"',;()[]".contains(c)) {
+            for word in s.split(|c: char| c.is_whitespace() || "`\"',;:=()[]".contains(c)) {
                 let Some(rest) = word.strip_prefix('/') else {
                     continue;
                 };
@@ -266,11 +267,22 @@ fn scenario_root_checker_names_a_path_outside_the_root() {
     let mut bad = Vec::new();
     let inside = w.home.join(".claude/rules/moai.md");
     outside_paths(
-        &json!({"a": inside.display().to_string(), "b": ["see /usr/bin/git now", "`/status` lists"]}),
+        &json!({
+            "a": inside.display().to_string(),
+            "b": ["see /usr/bin/git now", "`/status` lists"],
+            "c": [format!("path={}", inside.display()), "path=/usr/bin/env", "dir:/usr/lib"],
+        }),
         &w.root,
         &mut bad,
     );
-    assert_eq!(bad, vec!["/usr/bin/git".to_string()]);
+    assert_eq!(
+        bad,
+        vec![
+            "/usr/bin/git".to_string(),
+            "/usr/bin/env".to_string(),
+            "/usr/lib".to_string()
+        ]
+    );
 }
 
 /// REQ-1, REQ-2: every answer of a first preview and its confirmation lies inside the root.
@@ -352,9 +364,7 @@ fn scenario_new_install_writes_exactly_the_previewed_files() {
         .collect();
     for rel in &home_files {
         assert!(
-            listed_rel.contains(rel)
-                || is_state_folder(rel)
-                || rel.starts_with(".metadata_never_index"),
+            listed_rel.contains(rel) || is_state_folder(rel),
             "a file the preview did not list: {}",
             rel.display()
         );
@@ -450,6 +460,16 @@ fn scenario_two_updates_write_only_what_changed() {
         "{p3}"
     );
     assert_eq!(w.digest(), settled);
+    // Confirming that third plan changes nothing either: the whole home, state folders
+    // included, keeps its digest.
+    let third = ok(&w.run(&["update", "--confirm", &digest_of(&p3)]));
+    eprintln!("THIRD-CONFIRM {third}");
+    w.assert_inside(&third);
+    assert_eq!(
+        w.digest(),
+        settled,
+        "confirming a plan with nothing to apply changed the home"
+    );
 }
 
 /// The files outside MoAI's own state folders with their bytes: what a user can see and edit.
@@ -565,11 +585,20 @@ fn scenario_conflict_and_personal_files_are_kept() {
         action_of(&rows, &flow),
         action_of(&rows, &style)
     );
-    for f in [&audit, &routing, &flow, &style] {
-        let a = action_of(&rows, f);
-        assert!(
-            a != "create" && a != "update",
-            "{} would be written: {a}",
+    // REQ-6: an edited file, one that is not UTF-8 and one a user's link replaced are not
+    // written, and the preview answers `conflict` for the three files (the preview names them
+    // for the user to review). REQ-7: a link is answered `blocked`, the stronger refusal: the
+    // answer never reaches the file the link points at.
+    for (f, want) in [
+        (&audit, "conflict"),
+        (&routing, "conflict"),
+        (&flow, "conflict"),
+        (&style, "blocked"),
+    ] {
+        assert_eq!(
+            action_of(&rows, f),
+            want,
+            "{} is answered with the wrong action",
             f.display()
         );
     }
