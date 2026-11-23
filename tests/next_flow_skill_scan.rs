@@ -1837,6 +1837,36 @@ fn refs_audit_tier_lines_keep_their_key_words() {
     }
 }
 
+/// SPEC-20261123-land-repo-scans AC-10 (REQ-12): the flow reference tells the session that briefs
+/// an audit which scan tests to run, where, and how the receipt names them, in one bullet, and
+/// stays inside its byte budget.
+#[test]
+fn land_scans_the_flow_names_repo_scans_the_merge_tree_and_the_receipt_step() {
+    let flow = read(FLOW_REF);
+    let bullet = flow
+        .lines()
+        .find(|l| l.contains("moai repo-scans"))
+        .unwrap_or_else(|| panic!("{FLOW_REF} names no `moai repo-scans`"));
+    for part in [
+        "audit brief",
+        "--refs <tip> <head>",
+        "merge tree",
+        "`scan:<id>`",
+        "receipt step",
+        "moai card land",
+    ] {
+        assert!(
+            bullet.to_lowercase().contains(&part.to_lowercase()),
+            "the repo-scans bullet lacks {part:?}: {bullet}"
+        );
+    }
+    assert!(
+        flow.len() <= FLOW_REF_LIMIT,
+        "{FLOW_REF} is {} bytes, over {FLOW_REF_LIMIT}",
+        flow.len()
+    );
+}
+
 /// AC-5 (REQ-7): the three texts that carry the tier lines without the list say where the floor
 /// list is.
 #[test]
