@@ -2,7 +2,10 @@
 //!
 //! The handler reads the text of one Bash command and answers a deny with a class, or nothing.
 //! It splits the text into commands with a small shell lexer (quotes, escapes, substitutions,
-//! here-documents, operators, groups), follows only literal `cd`, `pushd` and `popd`, and judges
+//! here-documents, operators, groups), follows only the plain literal forms of `cd`, `pushd` and
+//! `popd` (a stack index, `CDPATH` or a bare `pushd` leaves the folder unreadable), looks through
+//! the commands that run another command (wrappers, `xargs`, `find -exec`, shell strings, the
+//! git subcommands that run a program), and judges
 //! four things: a delete outside the session checkout and the temporary folders, a git state
 //! change of another checkout (or a branch-moving command in the shared primary checkout), a
 //! direct change of a protected branch ref, and a skipped or replaced commit hook. The one
@@ -33,7 +36,9 @@ const MAX_BYTES: usize = 256 * 1024;
 const MAX_DEPTH: usize = 8;
 const MAX_COMMANDS: usize = 2048;
 const MAX_BRACE: usize = 64;
-const PROJECT_FILE_LIMIT: u64 = 64 * 1024;
+/// The most bytes read from `.moai/project.yaml` (the real file is a few KiB). A file over the
+/// limit is read as absent, so the protected list is then `main` and `master` only (D-4).
+const PROJECT_FILE_LIMIT: u64 = 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Class {
@@ -118,10 +123,27 @@ const TRIGGERS: &[&str] = &[
 ];
 const TRIGGERS_MORE: &[&str] = &["stdbuf", "ionice", "caffeinate"];
 
-/// Whether the command holds a word the checks react to (D-11).
+/// Whether the command holds a word the checks react to (D-11). A glob character or a brace can
+/// spell a command word out of nothing a trigger word names, and a word that starts with `=`
+/// is a command word in some shells, so each of them also needs the walk.
 pub fn needs_walk(command: &str) -> bool {
-    if command.contains(['$', '`']) || command.contains("<(") || command.contains(">(") {
+    if command.contains(['$', '`', '*', '?', '[', '{'])
+        || command.contains("<(")
+        || command.contains(">(")
+    {
         return true;
+    }
+    let mut before = ' ';
+    for c in command.chars() {
+        if c == '='
+            && matches!(
+                before,
+                ' ' | '\t' | '\n' | ';' | '&' | '|' | '(' | '"' | '\''
+            )
+        {
+            return true;
+        }
+        before = c;
     }
     let flat: String = command
         .chars()
@@ -212,7 +234,12 @@ fn integration_branch(project_root: &Path) -> Option<String> {
     use std::io::Read;
     let file = fs::File::open(project_root.join(".moai/project.yaml")).ok()?;
     let mut bytes = Vec::new();
-    file.take(PROJECT_FILE_LIMIT).read_to_end(&mut bytes).ok()?;
+    file.take(PROJECT_FILE_LIMIT + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    if bytes.len() as u64 > PROJECT_FILE_LIMIT {
+        return None;
+    }
     let value: Value = serde_json::from_slice(&bytes).ok()?;
     let name = value
         .get("work_flow")?
@@ -811,6 +838,12 @@ impl Lexer {
                     self.i = self.s.len();
                 }
             },
+            Some('"') if !in_double => {
+                // A locale string: the shell may translate the text, so the value is not the
+                // text. The quotes that follow are read as an ordinary double-quoted part.
+                w.dynamic = true;
+                self.i += 1;
+            }
             Some('\'') if !in_double => {
                 // ANSI-C quoting: literal only when it holds no escape.
                 let mut j = self.i + 2;
@@ -857,8 +890,19 @@ impl Lexer {
     }
 }
 
+/// How many substitution-in-quote levels the matchers below follow before the text is treated
+/// as unsplittable (a deeper text is denied, and the recursion stays far from the stack limit).
+const MAX_MATCH_LEVEL: usize = 64;
+
 /// The index of the `)` closing a substitution whose body starts at `start`.
 fn match_paren(s: &[char], start: usize) -> Option<usize> {
+    match_paren_at(s, start, 0)
+}
+
+fn match_paren_at(s: &[char], start: usize, level: usize) -> Option<usize> {
+    if level > MAX_MATCH_LEVEL {
+        return None;
+    }
     let mut depth = 1usize;
     let mut i = start;
     while i < s.len() {
@@ -871,7 +915,7 @@ fn match_paren(s: &[char], start: usize) -> Option<usize> {
                 }
                 s.get(i)?;
             }
-            '"' => i = skip_double(s, i + 1)?,
+            '"' => i = skip_double(s, i + 1, level + 1)?,
             '`' => {
                 i += 1;
                 while i < s.len() && s[i] != '`' {
@@ -897,13 +941,16 @@ fn match_paren(s: &[char], start: usize) -> Option<usize> {
 }
 
 /// After a double quote opened before `start`: the index just past its closing quote.
-fn skip_double(s: &[char], start: usize) -> Option<usize> {
+fn skip_double(s: &[char], start: usize, level: usize) -> Option<usize> {
+    if level > MAX_MATCH_LEVEL {
+        return None;
+    }
     let mut i = start;
     while i < s.len() {
         match s[i] {
             '\\' => i += 1,
             '"' => return Some(i),
-            '$' if s.get(i + 1) == Some(&'(') => i = match_paren(s, i + 2)?,
+            '$' if s.get(i + 1) == Some(&'(') => i = match_paren_at(s, i + 2, level + 1)?,
             '`' => {
                 i += 1;
                 while i < s.len() && s[i] != '`' {
@@ -933,7 +980,7 @@ fn match_brace(s: &[char], start: usize) -> Option<usize> {
                     i += 1;
                 }
             }
-            '"' => i = skip_double(s, i + 1)?,
+            '"' => i = skip_double(s, i + 1, 0)?,
             '{' => depth += 1,
             '}' => {
                 depth -= 1;
@@ -1016,11 +1063,86 @@ struct Stdin<'a> {
     herestr: &'a [Word],
 }
 
+/// The variables whose value the walk keeps from one command to the next: the ones git reads to
+/// find its repository and configuration, and `CDPATH`, which changes where `cd` lands.
 fn is_git_env_name(name: &str) -> bool {
     name == "GIT_DIR"
         || name == "GIT_WORK_TREE"
         || name == "GIT_COMMON_DIR"
+        || name == "CDPATH"
         || name.starts_with("GIT_CONFIG")
+}
+
+/// A command word the text does not fix: an expansion or substitution, a glob character, a
+/// brace list, or a first `=` (a command word in some shells). `[` and `[[` are the test command.
+fn command_word_unreadable(w: &Word) -> bool {
+    if w.dynamic {
+        return true;
+    }
+    let text = w.text();
+    if text == "[" || text == "[[" {
+        return false;
+    }
+    w.chars
+        .iter()
+        .any(|&(c, bare)| bare && matches!(c, '*' | '?' | '[' | '{'))
+        || w.chars.first() == Some(&('=', true))
+}
+
+/// Whether `cd` looks the operand up in `CDPATH`: a relative name that does not start with `.`
+/// or `..` as its first component.
+fn searched_by_cdpath(text: &str) -> bool {
+    !(text.starts_with('/')
+        || text == "."
+        || text == ".."
+        || text.starts_with("./")
+        || text.starts_with("../"))
+}
+
+/// The shell string of a util-linux `script -c COMMAND` (also `--command` and a cluster that
+/// ends in `c`), `None` when the call has none.
+fn script_string(args: &[Word]) -> Result<Option<String>, Class> {
+    let mut i = 0;
+    while i < args.len() {
+        let w = &args[i];
+        if w.dynamic {
+            return Err(Class::Unreadable);
+        }
+        let t = w.text();
+        if t == "--" || !w.is_option() {
+            return Ok(None);
+        }
+        let value = |at: usize| -> Result<Option<String>, Class> {
+            match args.get(at) {
+                Some(v) if v.dynamic => Err(Class::Unreadable),
+                Some(v) => Ok(Some(v.text())),
+                None => Ok(None),
+            }
+        };
+        if t == "--command" {
+            return value(i + 1);
+        }
+        if let Some(v) = t.strip_prefix("--command=") {
+            return Ok(Some(v.to_owned()));
+        }
+        if !t.starts_with("--") {
+            let cluster = &t[1..];
+            if let Some(p) = cluster.find('c') {
+                let rest = &cluster[p + 1..];
+                return if rest.is_empty() {
+                    value(i + 1)
+                } else {
+                    Ok(Some(rest.to_owned()))
+                };
+            }
+            // A valued option (`-t time`, `-F pipe`, `-I file`, …) takes the next word.
+            if cluster.ends_with(['t', 'F', 'I', 'O', 'B', 'T', 'E', 'm', 'o']) {
+                i += 1;
+            }
+        }
+        i += 1;
+    }
+    Ok(None)
 }
 
 /// Splits `NAME=value` off the front of the words.
@@ -1182,7 +1304,7 @@ impl Walker<'_> {
             let Some(first) = words.first() else {
                 return Ok(());
             };
-            if first.dynamic {
+            if command_word_unreadable(first) {
                 return Err(Class::Unreadable);
             }
             let text = first.text();
@@ -1190,8 +1312,15 @@ impl Walker<'_> {
             let args = &words[1..];
             match name {
                 "cd" | "pushd" | "popd" => {
-                    self.change_dir(name, args, state);
+                    self.change_dir(name, args, state, &prefix);
                     return Ok(());
+                }
+                "script" => {
+                    // util-linux `-c COMMAND` runs a shell string; the BSD form runs the words
+                    // after the file name (peeled below).
+                    if let Some(text) = script_string(args)? {
+                        return self.walk(&text, &mut state.clone(), depth + 1);
+                    }
                 }
                 "export" | "declare" | "typeset" | "readonly" | "local" => {
                     for w in args {
@@ -1211,7 +1340,7 @@ impl Walker<'_> {
                 }
                 "rm" | "rmdir" | "unlink" | "shred" => return self.delete(name, args, state),
                 "find" => return self.find(args, &prefix, stdin, state, depth),
-                "git" => return self.git(args, &prefix, state),
+                "git" => return self.git(args, &prefix, state, depth),
                 "eval" => return self.eval(args, state, depth),
                 "xargs" => return xargs(args),
                 "parallel" => {
@@ -1290,7 +1419,30 @@ impl Walker<'_> {
         }
     }
 
-    fn change_dir(&self, name: &str, args: &[Word], state: &mut State) {
+    /// A literal `cd`, `pushd` or `popd`. Only the plain forms are followed: a stack index
+    /// (`+N`, `-N`), `-n`, a bare `pushd` (swap) or a `popd` with an argument changes the stack
+    /// in ways this text walk does not model, and a relative `cd` target under `CDPATH` may
+    /// land anywhere; each of them leaves the folder unreadable.
+    fn change_dir(
+        &self,
+        name: &str,
+        args: &[Word],
+        state: &mut State,
+        prefix: &BTreeMap<String, Option<String>>,
+    ) {
+        if name != "cd" {
+            let stack_form = args
+                .iter()
+                .any(|w| w.dynamic || w.is_option() || w.text().starts_with('+'));
+            if stack_form
+                || (name == "pushd" && args.is_empty())
+                || (name == "popd" && !args.is_empty())
+            {
+                state.stack.clear();
+                state.cwd = None;
+                return;
+            }
+        }
         if name == "popd" {
             state.cwd = state.stack.pop().unwrap_or(None);
             return;
@@ -1298,10 +1450,15 @@ impl Walker<'_> {
         if name == "pushd" {
             state.stack.push(state.cwd.clone());
         }
+        let cdpath_set = prefix
+            .get("CDPATH")
+            .or_else(|| state.git_env.get("CDPATH"))
+            .is_some_and(|v| v.as_deref() != Some(""));
         let operands: Vec<&Word> = args.iter().filter(|w| !w.is_option()).collect();
         let target = match operands.as_slice() {
             [] => self.world.home.clone(),
             [w] if !w.dynamic && w.text() == "-" => None,
+            [w] if cdpath_set && !w.dynamic && searched_by_cdpath(&w.text()) => None,
             [w] => self.path_of(w, state).and_then(|p| p.into_iter().next()),
             _ => None,
         };
@@ -1466,11 +1623,14 @@ impl Walker<'_> {
         if let Some(r) = folders_root(t) {
             roots.push(r);
         }
+        // A root itself is never a target, whichever shorter root it lies under (the scratch
+        // folder under `/tmp` is a root of its own).
+        let root_ok_here = root_ok || e.glob.as_ref().is_some_and(|g| g.literal_prefix);
+        if !root_ok_here && roots.iter().any(|r| t == r) {
+            return Err(Class::DeleteOutside);
+        }
         for r in &roots {
             if t.starts_with(r) {
-                if t == r && !(root_ok || e.glob.as_ref().is_some_and(|g| g.literal_prefix)) {
-                    return Err(Class::DeleteOutside);
-                }
                 return self.no_other_checkout(t, children_only);
             }
         }
@@ -1699,6 +1859,7 @@ impl Walker<'_> {
         args: &[Word],
         prefix: &BTreeMap<String, Option<String>>,
         state: &State,
+        depth: usize,
     ) -> Verdict {
         let mut env_view = state.git_env.clone();
         env_view.extend(prefix.clone());
@@ -1779,6 +1940,8 @@ impl Walker<'_> {
         }
         let name = sub_word.text();
         let rest = &args[i..];
+        // A subcommand that runs another command: judge that command as if it stood alone.
+        self.git_runs_command(&name, rest, prefix, state, depth)?;
         let kind = classify_git(&name, rest)?;
         if kind == GitKind::Read {
             return Ok(());
@@ -1836,6 +1999,94 @@ impl Walker<'_> {
         }
         self.ref_checks(&name, &parsed, target.as_ref())?;
         hook_checks(&name, &parsed, rest)?;
+        Ok(())
+    }
+
+    /// The git subcommands that hand a command to the system: `rebase -x/--exec`, `difftool
+    /// -x/--extcmd`, `submodule foreach`, `bisect run`, the `--*-filter` options of
+    /// `filter-branch` and the `--upload-pack`/`--receive-pack`/`--exec` programs of the
+    /// transport commands. The command they run is judged as if it stood alone (REQ-9), and a
+    /// command text that a substitution decides is unreadable.
+    fn git_runs_command(
+        &mut self,
+        name: &str,
+        rest: &[Word],
+        prefix: &BTreeMap<String, Option<String>>,
+        state: &State,
+        depth: usize,
+    ) -> Verdict {
+        let mut strings: Vec<String> = Vec::new();
+        match name {
+            "rebase" => option_values(rest, &['x'], &["--exec"], &mut strings)?,
+            "difftool" => option_values(rest, &['x'], &["--extcmd"], &mut strings)?,
+            "filter-branch" => option_values(
+                rest,
+                &[],
+                &[
+                    "--env-filter",
+                    "--tree-filter",
+                    "--index-filter",
+                    "--parent-filter",
+                    "--msg-filter",
+                    "--commit-filter",
+                    "--tag-name-filter",
+                    "--setup",
+                ],
+                &mut strings,
+            )?,
+            "fetch" | "pull" | "push" | "ls-remote" | "archive" => option_values(
+                rest,
+                &[],
+                &["--upload-pack", "--receive-pack", "--exec"],
+                &mut strings,
+            )?,
+            "submodule" | "bisect" => {
+                let words: Vec<&Word> = rest.iter().filter(|w| !w.is_option()).collect();
+                let first = words.first().filter(|w| !w.dynamic).map(|w| w.text());
+                if name == "submodule" && first.as_deref() == Some("foreach") {
+                    let at = rest
+                        .iter()
+                        .position(|w| !w.dynamic && w.text() == "foreach")
+                        .unwrap_or(0);
+                    let tail: Vec<&Word> = rest[at + 1..]
+                        .iter()
+                        .skip_while(|w| w.is_option())
+                        .collect();
+                    if tail.iter().any(|w| w.dynamic) {
+                        return Err(Class::Unreadable);
+                    }
+                    if !tail.is_empty() {
+                        strings.push(tail.iter().map(|w| w.text()).collect::<Vec<_>>().join(" "));
+                    }
+                }
+                if name == "bisect" && first.as_deref() == Some("run") {
+                    let at = rest
+                        .iter()
+                        .position(|w| !w.dynamic && w.text() == "run")
+                        .unwrap_or(0);
+                    let command = &rest[at + 1..];
+                    if !command.is_empty() {
+                        let stdin = Stdin {
+                            piped: false,
+                            redirected: false,
+                            heredocs: Vec::new(),
+                            herestr: &[],
+                        };
+                        self.simple(
+                            command,
+                            prefix.clone(),
+                            &stdin,
+                            &mut state.clone(),
+                            depth + 1,
+                        )?;
+                    }
+                }
+            }
+            _ => {}
+        }
+        for text in strings {
+            self.walk(&text, &mut state.clone(), depth + 1)?;
+        }
         Ok(())
     }
 
@@ -1925,7 +2176,9 @@ impl Walker<'_> {
                     return Err(Class::Unreadable);
                 }
                 if let Some(r) = p.pos.first() {
-                    if protected_name(&r.text()) {
+                    let text = r.text();
+                    // `HEAD` is the ref of the branch the checkout is on.
+                    if protected_name(&text) || (text == "HEAD" && head_protected) {
                         return Err(Class::ProtectedRef);
                     }
                 }
@@ -1956,10 +2209,29 @@ impl Walker<'_> {
                 if names.iter().any(|n| protected_name(&n.text())) {
                     return Err(Class::ProtectedRef);
                 }
+                // `git branch -m <new>` renames the branch the checkout is on.
+                if p.has_any(&["-m", "-M", "--move"]) && p.pos.len() < 2 && head_protected {
+                    return Err(Class::ProtectedRef);
+                }
             }
             "checkout" | "switch" | "worktree" => {
                 if p.dynamic {
                     return Err(Class::Unreadable);
+                }
+                // `--track origin/main` creates the local branch `main`.
+                let track = p
+                    .opts
+                    .iter()
+                    .any(|(o, _)| o == "-t" || o == "--track" || o.starts_with("--track="));
+                let named = NAME_SLOTS.iter().any(|f| !p.values_of(f).is_empty());
+                if track && !named && name != "worktree" {
+                    if let Some(start) = p.pos.first() {
+                        let text = start.text();
+                        let local = text.split_once('/').map_or(text.as_str(), |(_, b)| b);
+                        if protected_name(local) {
+                            return Err(Class::ProtectedRef);
+                        }
+                    }
                 }
                 for flag in [
                     "-b",
@@ -1997,7 +2269,9 @@ impl Walker<'_> {
                         }
                         let dst = match spec.split_once(':') {
                             Some((_, d)) => d.to_owned(),
-                            None if spec == "HEAD" => head.clone().unwrap_or_default(),
+                            None if spec == "HEAD" || spec == "@" => {
+                                head.clone().unwrap_or_default()
+                            }
                             None => spec.to_owned(),
                         };
                         if dst.starts_with("refs/") && !dst.starts_with("refs/heads/") {
@@ -2025,6 +2299,38 @@ impl Walker<'_> {
                             return Err(Class::ProtectedRef);
                         }
                     }
+                }
+            }
+            "rebase" => {
+                if p.dynamic {
+                    return Err(Class::Unreadable);
+                }
+                // `git rebase <upstream> <branch>` checks `<branch>` out and moves it.
+                if let Some(branch) = p.pos.get(1) {
+                    if protected_name(&branch.text()) {
+                        return Err(Class::ProtectedRef);
+                    }
+                }
+            }
+            "filter-branch" => {
+                if p.dynamic {
+                    return Err(Class::Unreadable);
+                }
+                // The refs it rewrites are the positionals before and after `--`; none names
+                // the branch `HEAD` is on, and `--all` names every branch.
+                let refs: Vec<&Word> = p.pos.iter().chain(p.tail.iter()).copied().collect();
+                if refs.iter().any(|r| r.dynamic) {
+                    return Err(Class::Unreadable);
+                }
+                let texts: Vec<String> = refs.iter().map(|r| r.text()).collect();
+                let all = p.has_any(&["--all", "--branches"])
+                    || texts
+                        .iter()
+                        .any(|t| matches!(t.as_str(), "--all" | "--branches"));
+                let heads = texts.iter().filter(|t| !t.starts_with('-')).count() == 0
+                    || texts.iter().any(|t| t == "HEAD");
+                if all || texts.iter().any(|t| protected_name(t)) || (heads && head_protected) {
+                    return Err(Class::ProtectedRef);
                 }
             }
             _ => {}
@@ -2222,6 +2528,21 @@ fn wrap_spec(name: &str) -> Option<WrapSpec> {
             &["-n", "-w", "--interval"],
             0,
         ),
+        // macOS `arch [-arch name | -arm64 | -x86_64 | -32 | -64 | -c | -e VAR=x | -d VAR] cmd`.
+        "arch" => (
+            &["-arm64", "-x86_64", "-x86_64h", "-i386", "-c"],
+            &["-arch", "-e", "-d"],
+            0,
+        ),
+        // BSD `script [-adefkqr] [-t time] [-F pipe] file command…` (the util-linux `-c` string
+        // is read by `script_string`).
+        "script" => (
+            &[
+                "-a", "-d", "-e", "-f", "-k", "-p", "-q", "-r", "-W", "--quiet", "--append",
+            ],
+            &["-t", "-F", "-I", "-O", "-B", "-T", "-E", "-m", "-o"],
+            1,
+        ),
         _ => return None,
     };
     Some(WrapSpec {
@@ -2271,6 +2592,57 @@ fn peel(spec: &WrapSpec, args: &[Word]) -> Result<usize, Peel> {
     Ok(i.min(args.len()))
 }
 
+/// The values of the options that carry a command: a short letter (`-x CMD`, `-xCMD`, or a
+/// cluster that ends in it) and a long name (`--exec CMD`, `--exec=CMD`). A value that a
+/// substitution decides is unreadable.
+fn option_values(rest: &[Word], shorts: &[char], longs: &[&str], out: &mut Vec<String>) -> Verdict {
+    let mut i = 0;
+    while i < rest.len() {
+        let w = &rest[i];
+        i += 1;
+        if w.dynamic {
+            continue;
+        }
+        let t = w.text();
+        if t == "--" {
+            break;
+        }
+        if !t.starts_with('-') || t.len() < 2 {
+            continue;
+        }
+        let mut take_next = false;
+        if t.starts_with("--") {
+            for long in longs {
+                if t == *long {
+                    take_next = true;
+                } else if let Some(v) = t.strip_prefix(&format!("{long}=")) {
+                    out.push(v.to_owned());
+                }
+            }
+        } else {
+            for c in shorts {
+                if let Some(p) = t[1..].find(*c) {
+                    let after = &t[1 + p + c.len_utf8()..];
+                    if after.is_empty() {
+                        take_next = true;
+                    } else {
+                        out.push(after.to_owned());
+                    }
+                }
+            }
+        }
+        if take_next {
+            match rest.get(i) {
+                Some(v) if v.dynamic => return Err(Class::Unreadable),
+                Some(v) => out.push(v.text()),
+                None => {}
+            }
+            i += 1;
+        }
+    }
+    Ok(())
+}
+
 fn xargs(args: &[Word]) -> Verdict {
     let mut i = 0;
     while i < args.len() {
@@ -2291,6 +2663,9 @@ fn xargs(args: &[Word]) -> Verdict {
                 | "-d"
                 | "-E"
                 | "-a"
+                | "-J"
+                | "-R"
+                | "-S"
                 | "--max-args"
                 | "--max-procs"
                 | "--delimiter"
@@ -2303,7 +2678,7 @@ fn xargs(args: &[Word]) -> Verdict {
     }
     match args.get(i) {
         None => Ok(()),
-        Some(w) if w.dynamic => Err(Class::Unreadable),
+        Some(w) if command_word_unreadable(w) => Err(Class::Unreadable),
         Some(w) if is_runner(basename(&w.text())) => Err(Class::Unreadable),
         Some(_) => Ok(()),
     }
@@ -2349,6 +2724,8 @@ const GIT_READ: &[&str] = &[
     "whatchanged",
     "name-rev",
     "merge-base",
+    // Reads trees and writes objects only; it moves no ref and touches no working tree.
+    "merge-tree",
     "for-each-ref",
     "show-ref",
     "ls-remote",
@@ -2524,6 +2901,18 @@ fn classify_git(name: &str, rest: &[Word]) -> Result<GitKind, Class> {
             }
         }
         "config" => GitKind::Write,
+        // git-lfs: the listing subcommands read; the ones that fill or change the working
+        // tree, the attributes or the hooks write; any other name is not known.
+        "lfs" => match first_pos().as_deref() {
+            Some("version" | "env" | "ls-files" | "status" | "logs" | "locks" | "pointer") => {
+                GitKind::Read
+            }
+            Some(
+                "pull" | "fetch" | "checkout" | "prune" | "push" | "track" | "untrack" | "migrate"
+                | "install" | "uninstall" | "update" | "lock" | "unlock",
+            ) => GitKind::Write,
+            _ => return Err(Class::Unreadable),
+        },
         n if GIT_READ.contains(&n) => GitKind::Read,
         n if GIT_WRITE.contains(&n) => GitKind::Write,
         _ => return Err(Class::Unreadable),
@@ -2572,6 +2961,8 @@ struct Parsed<'a> {
     /// Literal option words with their value, if the next word is the value.
     opts: Vec<(String, Option<String>)>,
     pos: Vec<&'a Word>,
+    /// The words after a bare `--` (pathspecs or refs, by subcommand).
+    tail: Vec<&'a Word>,
     /// A dynamic word outside a data slot.
     dynamic: bool,
 }
@@ -2606,6 +2997,34 @@ fn data_slots(sub: &str) -> &'static [&'static str] {
             "--strategy-option",
         ],
         "tag" => &["-m", "-F", "--message", "--file"],
+        // The value after each of these is a program text, a strategy or a path, never a ref
+        // (`--onto` is the new base; the branch to rebase is the last positional).
+        "rebase" => &[
+            "-x",
+            "--exec",
+            "-s",
+            "--strategy",
+            "-X",
+            "--strategy-option",
+            "-C",
+            "--onto",
+        ],
+        "filter-branch" => &[
+            "--env-filter",
+            "--tree-filter",
+            "--index-filter",
+            "--parent-filter",
+            "--msg-filter",
+            "--commit-filter",
+            "--tag-name-filter",
+            "--setup",
+            "--subdirectory-filter",
+            "--original",
+            "--state-branch",
+            "-d",
+        ],
+        // The value of these is a type, a default, a file or a comment, not the key.
+        "config" => &["--type", "--default", "-f", "--file", "--blob", "--comment"],
         "update-ref" => &["-m"],
         "push" => &["-o", "--push-option", "--repo", "--receive-pack", "--exec"],
         _ => &[],
@@ -2629,6 +3048,7 @@ impl<'a> Parsed<'a> {
         let mut p = Parsed {
             opts: Vec::new(),
             pos: Vec::new(),
+            tail: Vec::new(),
             dynamic: false,
         };
         let mut i = 0;
@@ -2637,6 +3057,7 @@ impl<'a> Parsed<'a> {
             let w = &rest[i];
             i += 1;
             if after_dd {
+                p.tail.push(w);
                 continue;
             }
             if w.dynamic {
@@ -2718,7 +3139,6 @@ fn config_check(p: &Parsed) -> Verdict {
         "--name-only",
         "--get-color",
         "--get-colorbool",
-        "--type",
     ]);
     let write_flag = p.has_any(&[
         "--add",
@@ -2737,10 +3157,11 @@ fn config_check(p: &Parsed) -> Verdict {
     if p.dynamic {
         return Err(Class::Unreadable);
     }
-    if p.pos
-        .iter()
-        .any(|w| w.text().to_lowercase().contains("hookspath"))
-    {
+    // The hooks path, and the include keys that pull in another file that may set it.
+    if p.pos.iter().any(|w| {
+        let key = w.text().to_lowercase();
+        key.contains("hookspath") || key.starts_with("include.") || key.starts_with("includeif.")
+    }) {
         return Err(Class::HookSkip);
     }
     Ok(())

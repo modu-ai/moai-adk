@@ -63,6 +63,7 @@ created: 2026-11-23
 - AC-11 (REQ-12): the measuring test runs the real binary 200 times for an allowed and a denied command in a temporary project, prints p50 and p90 in milliseconds with the build profile and the machine load, fails only when p90 is over 10 times the targets, and a command with a trigger word is never answered by the pre-scan alone (D-11) · verify: `cargo nextest run --test hook_bash_boundary_cli -E 'test(/^ac11_/)'`
 - AC-12 (REQ-2, REQ-11): the entry skeleton tests still pass, so the other registered names and the non-MoAI answer are unchanged · verify: `cargo nextest run --test hook_entry_cli --test hook_latency_cli --test hook_dispatch_cli --test hook_legacy_cli`
 - AC-13 (REQ-1…REQ-12): the SPEC itself passes the spec check · verify: `moai spec check SPEC-20261123-hook-bash-boundary`
+- AC-14 (REQ-4, REQ-8, REQ-9): every shape of the independent audit (a command word that a glob, a brace list, `=` or `$"` decides, a stack-index `pushd`/`popd` and `CDPATH`, a protected ref reached by `HEAD`, `@`, `branch -m`, `rebase`, `filter-branch` or `--track`, `git config --type path` and `include.path`, a command run by `arch`, `script`, `xargs -J/-R/-S`, `git rebase -x`, `difftool -x`, `submodule foreach`, `bisect run` or a filter option) is answered as the table says, the audit's list of allowed commands stays allowed, a text nested past the level limit is `unreadable` without a stack overflow, a scratch folder under a temporary root is never a delete target itself, the fixture world lies outside every temporary root, and the no-write proof compares kind, size and a content hash of every entry · verify: `cargo nextest run --test hook_bash_boundary_cli -E 'test(/^ac14_/) | test(/^ac10_/)'`
 
 ## Scope
 
@@ -74,7 +75,7 @@ created: 2026-11-23
 
 1. (this slice) SPEC, status draft; the user's approval is not written by a lane. Until it is approved nothing below starts.
 2. Tests first (RED): `tests/hook_bash_boundary_cli.rs` with the case table and the fixtures (temporary repository, linked worktrees made by `git worktree add`, link-out and sibling-checkout shapes) against a stub that answers no decision.
-3. `src/hook_bash_boundary.rs`: bounded word splitter and command walker with a depth, count and size budget, the fast pre-scan (REQ-13), the checkout resolver (REQ-4), the four checks, the reason writer; `src/lib.rs` and `src/hook_entry.rs` get one line each.
+3. `src/hook_bash_boundary.rs`: bounded word splitter and command walker with a depth, count and size budget, the fast pre-scan (D-11), the checkout resolver (REQ-4), the four checks, the reason writer; `src/lib.rs` and `src/hook_entry.rs` get one line each.
 4. Guard mutants: remove each guard in turn and show the test that fails (`guard-mutant:` lines in READY).
 5. Dangerous-path run in a throwaway: the real binary against a throwaway project, a plain folder at a registered path, a link out and a deep nesting.
 6. Measurement run: p50 and p90 of the real binary for an allowed and a denied command, release and debug label, load noted (D-10).
@@ -119,7 +120,7 @@ Official hooks documentation, https://code.claude.com/docs/en/hooks, fetched by 
 
 ## Result
 
-Status: implemented on the code slice (RED `16ea1909cc`, handler `40fdf40ce4`). The SPEC stays `draft`: the approval is the user's pick, written on card C-403 by the leader, never by a lane. Nothing is installed, no settings file is read or written, and the installed hooks of this clone are untouched.
+Status: implemented on the code slice (RED `39d14c00e3`, handler `03d223348a`, audit repair on top of `9b6058aa33`). The SPEC stays `draft`: the approval is the user's pick, written on card C-403 by the leader, never by a lane. Nothing is installed, no settings file is read or written, and the installed hooks of this clone are untouched.
 
 - AC-1: met — `hook_bash_boundary_cli` tests `ac1_delete_table`, `ac1_git_state_table`, `ac1_protected_ref_table`, `ac1_hook_skip_table`, `ac1_unreadable_table` (each table is checked for at least 12 allowed and 12 denied cases and runs the real binary)
 - AC-2: met — `ac2_outside_a_moai_project_nothing_is_printed_for_any_case`, `ac2_a_denial_has_exactly_the_three_fields_and_an_allowed_case_prints_nothing`
@@ -134,6 +135,7 @@ Status: implemented on the code slice (RED `16ea1909cc`, handler `40fdf40ce4`). 
 - AC-11: met — `ac11_the_prescan_never_hides_a_trigger_word`, `ac11_measured_latency_is_printed_and_only_a_tenfold_miss_fails`
 - AC-12: met — one `cargo nextest run` over `hook_bash_boundary_cli`, `hook_entry_cli`, `hook_latency_cli`, `hook_dispatch_cli`, `hook_legacy_cli`: 93 passed, 0 failed
 - AC-13: met — `moai spec check SPEC-20261123-hook-bash-boundary`, run after this Result was written
+- AC-14: met — `ac14_the_audit_repair_table_denied_and_allowed_shapes`, `ac14_deep_nesting_is_unreadable_and_never_overflows_the_stack`, `ac14_a_scratchpad_root_under_a_temporary_root_is_still_never_a_target`; the same shapes also run in `ac11_the_prescan_never_hides_a_trigger_word` and the denied list joins `all_cases` (every case writes nothing, `ac10_no_case_writes_a_file_and_the_mode_never_changes_the_answer`)
 
 Measurement (D-10), the real binary, 200 samples each, debug build, machine load average about 33 (`uptime` printed by the test): allowed command p50 4.9 ms, p90 5.3 ms, max 35.3 ms; denied command p50 4.6 ms, p90 5.1 ms, max 8.9 ms. Targets p50 20 ms and p90 40 ms are met in this run. A release-build run was not made (`not_run`); the numbers are for a debug build under load.
 
