@@ -219,34 +219,35 @@ fn home_empty_resolves_to_moai() {
 }
 
 #[test]
-fn home_with_only_its_earlier_folder_stays_on_it() {
+fn home_with_only_its_earlier_folder_resolves_to_moai() {
+    // SPEC-20261123-home-state-retire D-1/D-3: the earlier folder is never read, so a HOME
+    // that still has one answers `.moai` like any other.
     let h = TempHome::new();
     earlier(h.path());
-    assert_eq!(home_root::dir(h.path()), EARLIER);
-    assert_eq!(home_root::path(h.path()), h.path().join(".moai-cli"));
+    assert_eq!(home_root::dir(h.path()), NOW);
+    assert_eq!(home_root::path(h.path()), h.path().join(".moai"));
 }
 
 #[test]
-fn home_with_both_folders_and_no_marker_stays_on_the_earlier_one() {
+fn home_with_both_folders_and_no_marker_resolves_to_moai() {
     let h = TempHome::new();
     earlier(h.path());
     write(h.path(), ".moai/reports/r.md", "# r\n");
-    assert_eq!(home_root::dir(h.path()), EARLIER);
+    assert_eq!(home_root::dir(h.path()), NOW);
     let go = TempHome::new();
     earlier(go.path());
     go.make_go_generation();
-    assert_eq!(home_root::dir(go.path()), EARLIER);
+    assert_eq!(home_root::dir(go.path()), NOW);
 }
 
 #[test]
-fn home_with_unrecognised_files_in_moai_and_no_earlier_folder_stays_on_the_earlier_name() {
-    // A Go-like HOME whose items the HOME Go markers do not list: not ours to write into.
+fn home_with_unrecognised_files_in_moai_resolves_to_moai() {
     let h = TempHome::new();
     write(h.path(), ".moai/config.yaml", "generation: go\n");
     write(h.path(), ".moai/cache/blob", "go state bytes");
     assert_eq!(state_root::classify_home(h.path()).generation, "unknown");
-    assert_eq!(home_root::dir(h.path()), EARLIER);
-    assert_eq!(home_root::path(h.path()), h.path().join(".moai-cli"));
+    assert_eq!(home_root::dir(h.path()), NOW);
+    assert_eq!(home_root::path(h.path()), h.path().join(".moai"));
 }
 
 #[test]
@@ -261,33 +262,27 @@ fn home_with_only_names_this_generation_writes_in_moai_resolves_to_moai() {
     assert_eq!(state_root::classify_home(h.path()).generation, "unknown");
     assert_eq!(home_root::dir(h.path()), NOW);
     assert_eq!(home_root::path(h.path()), h.path().join(".moai"));
-    // One name that is not this generation's is enough to leave it alone.
+    // A name that is not this generation's changes nothing: the answer is `.moai`.
     write(h.path(), ".moai/kanban/k", "x");
-    assert_eq!(home_root::dir(h.path()), EARLIER);
+    assert_eq!(home_root::dir(h.path()), NOW);
 }
 
 #[test]
-fn home_with_a_go_state_folder_and_no_earlier_folder_stays_on_the_earlier_name() {
+fn home_with_a_go_state_folder_resolves_to_moai() {
+    // The Go generation's `.moai` and this generation's names share the folder; the HOME name
+    // table keeps them apart, the resolver no longer does.
     let h = TempHome::new();
     h.make_go_generation();
-    assert_eq!(
-        home_root::dir(h.path()),
-        EARLIER,
-        "Go's ~/.moai is never written"
-    );
+    assert_eq!(home_root::dir(h.path()), NOW);
     let mixed = TempHome::new();
     mixed.make_mixed_generation();
-    assert_eq!(
-        home_root::dir(mixed.path()),
-        EARLIER,
-        "schema 1 beside Go files is mixed"
-    );
+    assert_eq!(home_root::dir(mixed.path()), NOW);
     let stopped = TempHome::new();
     stopped.make_interrupted_generation();
-    assert_eq!(home_root::dir(stopped.path()), EARLIER);
+    assert_eq!(home_root::dir(stopped.path()), NOW);
     let file = TempHome::new();
     file.make_refused_generation();
-    assert_eq!(home_root::dir(file.path()), EARLIER);
+    assert_eq!(home_root::dir(file.path()), NOW);
 }
 
 #[test]
@@ -316,10 +311,29 @@ fn home_with_a_marker_resolves_to_moai() {
 }
 
 #[test]
-fn home_link_as_the_earlier_folder_counts_as_present() {
+fn home_link_or_unreadable_earlier_folder_is_not_looked_at() {
+    use std::os::unix::fs::PermissionsExt;
     let h = TempHome::new();
     symlink(h.path().join("nowhere"), h.path().join(EARLIER)).unwrap();
-    assert_eq!(home_root::dir(h.path()), EARLIER);
+    assert_eq!(home_root::dir(h.path()), NOW);
+    let locked = TempHome::new();
+    earlier(locked.path());
+    let dir = locked.path().join(EARLIER);
+    fs::set_permissions(&dir, fs::Permissions::from_mode(0o000)).unwrap();
+    let answer = (home_root::dir(locked.path()), home_root::path(locked.path()));
+    fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).unwrap();
+    assert_eq!(answer, (NOW, locked.path().join(".moai")));
+}
+
+#[test]
+fn home_a_new_home_is_adopted_even_when_the_earlier_folder_is_there() {
+    // `adopt_new` writes the marker of a HOME with no `.moai` of any kind; the earlier folder
+    // no longer decides that.
+    let h = TempHome::new();
+    earlier(h.path());
+    assert!(home_root::is_new_home(h.path()));
+    assert_eq!(home_root::adopt_new(h.path(), "test"), Ok(true));
+    assert!(exists(&h.path().join(".moai/moai.json")));
 }
 
 #[test]
