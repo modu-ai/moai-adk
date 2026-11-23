@@ -185,10 +185,26 @@ fn empty(status: &str, reason: &str, home: Value) -> Value {
     })
 }
 
+/// The process-edge reader of the environment HOME (SPEC-20261124-identity-home-arg): the one
+/// place in this module that reads it. A command's edge uses this; code that is not about the
+/// HOME calls [`identity_in`] with `None`, and code that is hands it the HOME it was given.
+///
 /// Resolves the identity of `path`. Never writes. Returns `Err` only for an unusable input
 /// path, a refused symlink or a git failure (`git failed: ...`); "not a repository" and "git
-/// missing" are typed statuses.
+/// missing" are typed statuses. An unset or empty HOME counts as no HOME.
 pub fn identity(path: &Path) -> Result<Value> {
+    let home = std::env::var_os("HOME")
+        .filter(|h| !h.is_empty())
+        .map(PathBuf::from);
+    identity_in(path, home.as_deref())
+}
+
+/// [`identity`] with the HOME given instead of read from the environment. `home_state_root` is
+/// the home state root of `home`, or `null` for `None`, for which no home state root is resolved;
+/// no other field depends on it. `home_state_root` is found from no environment variable. The
+/// `git` child still runs with the process environment, so it reads the environment HOME's
+/// global git configuration (C-410 pins that).
+pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
     let meta = fs::symlink_metadata(path).map_err(|_| "path unavailable")?;
     if meta.file_type().is_symlink() {
         return Err("path is a symlink; refused".into());
@@ -196,13 +212,13 @@ pub fn identity(path: &Path) -> Result<Value> {
     if !meta.is_dir() {
         return Err("path must be a directory".into());
     }
-    let home = match std::env::var_os("HOME") {
-        Some(h) if !h.is_empty() => {
-            let root = crate::home_root::path(&PathBuf::from(h));
+    let home = match home {
+        Some(h) => {
+            let root = crate::home_root::path(h);
             refuse_symlink(&root, "home state root")?;
             json!(text(&root)?)
         }
-        _ => Value::Null,
+        None => Value::Null,
     };
     let lines = match rev_parse(
         path,
@@ -334,5 +350,171 @@ mod scrub_tests {
         ] {
             assert!(!removed_by_prefix(name), "{name} should stay");
         }
+    }
+}
+
+/// SPEC-20261124-identity-home-arg: `identity_in` takes the HOME as an argument and `identity` is
+/// the one process-edge reader of the environment HOME. A test that must see the environment HOME
+/// run as another value re-runs itself in a child process, so no test changes this process's
+/// environment and none reads the real HOME.
+#[cfg(all(test, unix))]
+mod home_arg_tests {
+    use super::{identity, identity_in};
+    use std::{
+        ffi::OsString,
+        path::{Path, PathBuf},
+        process::Command,
+    };
+
+    /// Set in the child process; names the work folder the child resolves identities for.
+    const CHILD_WORK: &str = "MOAI_IDENTITY_TEST_WORK";
+    /// Set in the child process of the equality test; the HOME `identity` must have read, absent
+    /// when the child's HOME is unset or empty.
+    const CHILD_EXPECT: &str = "MOAI_IDENTITY_TEST_EXPECT_HOME";
+
+    /// The libtest name of `test` in this module, as `--exact` wants it (no crate prefix).
+    fn libtest_name(test: &str) -> String {
+        let module = module_path!();
+        let inside = module.split_once("::").map_or(module, |(_, rest)| rest);
+        format!("{inside}::{test}")
+    }
+
+    /// Re-runs `test` of this module alone in a child process with `HOME` set to `home` (removed
+    /// when `None`), the work folder in `CHILD_WORK` and `extra` added. Fails unless the child
+    /// really ran that one test and it passed: a name that matched nothing prints `0 passed`.
+    fn run_in_child(test: &str, home: Option<&OsString>, work: &Path, extra: &[(&str, &Path)]) {
+        let mut cmd = Command::new(std::env::current_exe().unwrap());
+        cmd.args([
+            "--exact",
+            &libtest_name(test),
+            "--nocapture",
+            "--test-threads=1",
+        ])
+        .env(CHILD_WORK, work);
+        match home {
+            Some(h) => cmd.env("HOME", h),
+            None => cmd.env_remove("HOME"),
+        };
+        for (k, v) in extra {
+            cmd.env(k, v);
+        }
+        let out = cmd.output().unwrap();
+        let text = format!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(out.status.success(), "child failed:\n{text}");
+        assert!(
+            text.contains("1 passed; 0 failed"),
+            "child did not run exactly {test}:\n{text}"
+        );
+    }
+
+    fn child_work() -> Option<PathBuf> {
+        std::env::var_os(CHILD_WORK).map(PathBuf::from)
+    }
+
+    /// A home whose state folder is a symlink to a folder beside it: the refusal case. A Go
+    /// generation marker under `.moai` makes the earlier state folder the HOME's state root, and
+    /// that is where the link goes; the state root is read back to prove the link is on it.
+    fn symlinked_home(dir: &Path) -> PathBuf {
+        let home = dir.join("home");
+        let go = home.join(crate::home_root::MOAI_DIR);
+        std::fs::create_dir_all(&go).unwrap();
+        std::fs::write(
+            go.join("user-assets.json"),
+            br#"{"schema_version": 1, "files": {}}"#,
+        )
+        .unwrap();
+        std::fs::create_dir(home.join("elsewhere")).unwrap();
+        let link = crate::home_root::path(&home);
+        std::os::unix::fs::symlink(home.join("elsewhere"), &link).unwrap();
+        assert_eq!(
+            crate::home_root::path(&home),
+            link,
+            "the link is the state root"
+        );
+        assert!(std::fs::symlink_metadata(&link).unwrap().is_symlink());
+        home
+    }
+
+    /// AC-1 (REQ-1, REQ-3): the HOME that is passed decides `home_state_root`, whatever the
+    /// environment HOME is.
+    #[test]
+    fn identity_in_uses_the_home_it_is_given() {
+        let work = tempfile::tempdir().unwrap();
+        let home = tempfile::tempdir().unwrap();
+        let v = identity_in(work.path(), Some(home.path())).unwrap();
+        let root = v["home_state_root"].as_str().expect("a home state root");
+        assert_eq!(
+            Path::new(root),
+            crate::home_root::path(home.path()),
+            "home_state_root is the state root of the given HOME"
+        );
+        assert!(Path::new(root).starts_with(home.path()), "{root}");
+    }
+
+    /// AC-2 (REQ-2), child side: the environment HOME holds a symlinked state folder, so a read of
+    /// it would be refused. `identity` reads it and is refused; `identity_in` with no HOME does
+    /// not read it and answers `home_state_root: null`.
+    #[test]
+    fn identity_in_without_a_home_ignores_the_environment_home() {
+        let Some(work) = child_work() else {
+            let dir = tempfile::tempdir().unwrap();
+            let home = symlinked_home(dir.path());
+            let work = dir.path().join("work");
+            std::fs::create_dir(&work).unwrap();
+            run_in_child(
+                "identity_in_without_a_home_ignores_the_environment_home",
+                Some(&home.clone().into_os_string()),
+                &work,
+                &[],
+            );
+            return;
+        };
+        let refused = identity(&work).expect_err("identity reads the environment HOME");
+        assert_eq!(refused, "home state root is a symlink; refused");
+        let v = identity_in(&work, None).expect("no HOME, no refusal");
+        assert!(v["home_state_root"].is_null(), "{v}");
+    }
+
+    /// AC-3 (REQ-4): a symlinked state folder of the given HOME is refused as before.
+    #[test]
+    fn identity_in_refuses_a_symlinked_home_state_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let home = symlinked_home(dir.path());
+        let work = dir.path().join("work");
+        std::fs::create_dir(&work).unwrap();
+        let refused = identity_in(&work, Some(&home)).expect_err("a symlinked state root");
+        assert_eq!(refused, "home state root is a symlink; refused");
+    }
+
+    /// AC-4 (REQ-5), child side: `identity` answers what `identity_in` answers for the HOME the
+    /// parent put in the environment (`CHILD_EXPECT`), or for no HOME when it did not.
+    #[test]
+    fn identity_equals_identity_in_with_the_environment_home() {
+        let Some(work) = child_work() else {
+            let dir = tempfile::tempdir().unwrap();
+            let work = dir.path().join("work");
+            std::fs::create_dir(&work).unwrap();
+            let home = dir.path().join("home");
+            std::fs::create_dir(&home).unwrap();
+            let test = "identity_equals_identity_in_with_the_environment_home";
+            run_in_child(
+                test,
+                Some(&home.clone().into_os_string()),
+                &work,
+                &[(CHILD_EXPECT, &home)],
+            );
+            run_in_child(test, Some(&OsString::new()), &work, &[]);
+            run_in_child(test, None, &work, &[]);
+            return;
+        };
+        let expect = std::env::var_os(CHILD_EXPECT).map(PathBuf::from);
+        assert_eq!(
+            identity(&work).unwrap(),
+            identity_in(&work, expect.as_deref()).unwrap()
+        );
     }
 }
