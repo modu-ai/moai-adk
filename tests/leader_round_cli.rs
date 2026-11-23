@@ -458,10 +458,15 @@ const LEADER_SESSION: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
 /// Another host session id.
 const OTHER_SESSION: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
 
+/// The clone's session registry folder, found through the resolver like the code under test.
+fn sessions_dir(f: &Fixture) -> PathBuf {
+    moai_cli::clone_root::path(&f.primary.join(".git")).join("sessions")
+}
+
 /// Writes the registry entry `leader` (mode leader) with `lease_until` and, when given, the
 /// host `session`.
 fn leader_entry(f: &Fixture, lease_until: i64, session: Option<&str>) {
-    let dir = f.primary.join(".git/.moai-cli/sessions");
+    let dir = sessions_dir(&f);
     fs::create_dir_all(&dir).unwrap();
     let mut entry = json!({
         "schema_version": 1,
@@ -562,7 +567,7 @@ fn registration_without_a_registry_is_absent_and_not_not_run() {
 #[test]
 fn registration_lists_only_leader_mode_entries() {
     let f = fixture();
-    let dir = f.primary.join(".git/.moai-cli/sessions");
+    let dir = sessions_dir(&f);
     fs::create_dir_all(&dir).unwrap();
     fs::write(
         dir.join("agent-3.json"),
@@ -598,7 +603,7 @@ fn registration_note_names_the_renewal_words() {
 #[test]
 fn registration_an_unreadable_entry_makes_the_part_error() {
     let f = fixture();
-    let dir = f.primary.join(".git/.moai-cli/sessions");
+    let dir = sessions_dir(&f);
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("leader.json"), "not json").unwrap();
     let r = round(&f, &observations(&f), None);
@@ -646,10 +651,9 @@ fn registration_renew_instance_renews_an_ended_lease() {
     assert_eq!(reg["status"], "ok", "{r}");
     assert_eq!(reg["leaders"][0]["session"], LEADER_SESSION, "{r}");
     assert_eq!(reg["leaders"][0]["remaining_secs"], 14_400, "{r}");
-    let stored: Value = serde_json::from_str(
-        &fs::read_to_string(f.primary.join(".git/.moai-cli/sessions/leader.json")).unwrap(),
-    )
-    .unwrap();
+    let stored: Value =
+        serde_json::from_str(&fs::read_to_string(sessions_dir(&f).join("leader.json")).unwrap())
+            .unwrap();
     assert_eq!(stored["instance"], LEADER_INSTANCE, "{stored}");
     assert_eq!(stored["mode"], "leader", "{stored}");
     assert_eq!(stored["session"], LEADER_SESSION, "{stored}");
@@ -661,7 +665,7 @@ fn registration_renew_instance_renews_an_ended_lease() {
 fn registration_renew_instance_refusals_leave_the_entry_alone() {
     let f = fixture();
     leader_entry(&f, NOW_EPOCH - 38 * 3600, Some(LEADER_SESSION));
-    let path = f.primary.join(".git/.moai-cli/sessions/leader.json");
+    let path = sessions_dir(&f).join("leader.json");
     let before = fs::read(&path).unwrap();
     for (session, instance) in [
         (LEADER_SESSION, "ffffffffffffffffffffffffffffffff"),
@@ -694,7 +698,7 @@ fn registration_refuses_a_linked_entry_and_a_linked_folder() {
         .to_string(),
     )
     .unwrap();
-    let dir = f.primary.join(".git/.moai-cli/sessions");
+    let dir = sessions_dir(&f);
     fs::create_dir_all(&dir).unwrap();
     std::os::unix::fs::symlink(&real, dir.join("leader.json")).unwrap();
     let before = fs::read(&real).unwrap();

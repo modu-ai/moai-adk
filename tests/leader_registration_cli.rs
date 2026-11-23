@@ -2,7 +2,7 @@
 //! AC-4): a leader entry carries the host session id, a second live leader is refused, a
 //! renewal comes from the same session, and `--show` and `--liveness-of` let a lane read the
 //! live window's session id. Synthetic git repositories in a temporary folder with a temporary
-//! HOME; the real `~/.moai` is not read or written.
+//! HOME; the real state folder of this machine is not read or written.
 #![cfg(unix)]
 mod common;
 
