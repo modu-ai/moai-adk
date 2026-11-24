@@ -1561,6 +1561,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 worktree: worktree.as_deref(),
                 branch: branch.as_deref(),
                 require_approved_spec,
+                running_dir: std::env::current_dir().ok().as_deref(),
             },
         ),
         Action::Assign {
@@ -1628,6 +1629,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 by: &by,
                 reason: &reason,
                 lease_secs,
+                running_dir: std::env::current_dir().ok().as_deref(),
             },
         ),
         Action::Adopt {

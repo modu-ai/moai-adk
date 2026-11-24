@@ -1573,7 +1573,7 @@ pub fn reclaim(
     lease_secs: i64,
 ) -> Result<Reclaimed, ReclaimError> {
     reclaim_with(
-        w, card_id, to_holder, generation, by, reason, lease_secs, None, None,
+        w, card_id, to_holder, generation, by, reason, lease_secs, None, None, None,
     )
 }
 
@@ -1604,6 +1604,7 @@ pub fn reclaim_keeping(
         lease_secs,
         early,
         Some(kept),
+        None,
     )
 }
 
@@ -1641,6 +1642,39 @@ pub fn reclaim_early(
         lease_secs,
         Some(proof),
         None,
+        None,
+    )
+}
+
+/// [`reclaim`], [`reclaim_early`] and [`reclaim_keeping`] in one call, for a caller that also
+/// knows the git worktree of the folder it runs in: when the reservation it takes over records no
+/// worktree, the new one records `worktree_if_missing` and the `card.reclaim` event says
+/// `worktree_filled`; a recorded worktree is never replaced
+/// (SPEC-20261125-card-take-records-worktree REQ-3, REQ-4, REQ-5).
+#[allow(clippy::too_many_arguments)]
+pub fn reclaim_recording(
+    w: &mut WriteLedger,
+    card_id: i64,
+    to_holder: &str,
+    generation: i64,
+    by: &str,
+    reason: &str,
+    lease_secs: i64,
+    early: Option<&EarlyProof<'_>>,
+    kept: Option<&Value>,
+    worktree_if_missing: Option<&str>,
+) -> Result<Reclaimed, ReclaimError> {
+    reclaim_with(
+        w,
+        card_id,
+        to_holder,
+        generation,
+        by,
+        reason,
+        lease_secs,
+        early,
+        kept,
+        worktree_if_missing,
     )
 }
 
@@ -1655,6 +1689,7 @@ fn reclaim_with(
     lease_secs: i64,
     early: Option<&EarlyProof<'_>>,
     kept: Option<&Value>,
+    worktree_if_missing: Option<&str>,
 ) -> Result<Reclaimed, ReclaimError> {
     check_holder(to_holder)
         .map_err(|why| ReclaimError::InvalidInput(format!("to_holder: {why}")))?;
@@ -1724,6 +1759,14 @@ fn reclaim_with(
             params![now, old.reservation_id],
         )?;
         let next = current + 1;
+        // A recorded worktree goes on as it is; only a missing one is filled.
+        let recorded = old.worktree.clone().filter(|w| !w.is_empty());
+        let filled = recorded.is_none() && worktree_if_missing.is_some_and(|w| !w.is_empty());
+        let worktree = if filled {
+            worktree_if_missing.map(str::to_string)
+        } else {
+            old.worktree.clone()
+        };
         tx.execute(
             "UPDATE card SET generation = ?1 WHERE card_id = ?2",
             params![next, card_id],
@@ -1738,7 +1781,7 @@ fn reclaim_with(
                 to_holder,
                 now,
                 now + lease_secs,
-                old.worktree,
+                worktree,
                 old.branch
             ],
         )?;
@@ -1758,9 +1801,12 @@ fn reclaim_with(
             "by": by,
             "reason": reason,
             "card_state": state,
-            "worktree": old.worktree,
+            "worktree": worktree,
             "branch": old.branch,
         });
+        if filled {
+            payload["worktree_filled"] = json!(true);
+        }
         if let Some(p) = early {
             payload["early_proof"] = p.detail.clone();
         }
