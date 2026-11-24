@@ -114,7 +114,7 @@
       }
     },
     "references/home/output-style.md": {
-      "sha256": "ad03088c5f712edea7fc27e8b28e3ca3d4d9db32d6e928fd7c4633f8d60610ff",
+      "sha256": "cd6919930dc6773efed3b175252fc4fdcf61e4b219caa6b070f9c17e59e28bc1",
       "origin": {
         "kind": "design-spec",
         "template_id": "home-output-style",

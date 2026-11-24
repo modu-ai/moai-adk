@@ -50,17 +50,19 @@ const DESCRIPTION: &str = "Plain words, four steps (understand, plan, do, check)
 /// before its progress board pointed to the flow rule, and the text whose board pointed to the
 /// flow rule and listed seven icons, before the board became the one progress display with
 /// eleven flow icons, and that text before its board took the one icon set of the status line
-/// and the lane reports. A style file equal to one of them
+/// and the lane reports, and that text before its board took the card-flow icons of
+/// `statusline::icons` (SPEC-20261124-card-flow-icons). A style file equal to one of them
 /// is a text MoAI shipped, so it is updated and not left as a conflict. When the template or the
 /// frontmatter changes, the render this module made until then is appended here (the test
 /// `the_earlier_renders_are_pinned_and_never_hold_the_current_one` fails until it is).
-pub const EARLIER_RENDERS: [&str; 6] = [
+pub const EARLIER_RENDERS: [&str; 7] = [
     "93e53607dd194da86abfbe7ea993303fff1d17af1a1a1ae6868788938ed785d2",
     "d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67",
     "690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e",
     "a31d966b0486f501839121832eb6a99d3fc718996b22a901e9e17884a0ab369e",
     "80e189d27dd7be365724bbba2f38f1eddb3c0e96801da4caf82535ce80181a65",
     "5f6b5fd1d93f3b0a4553ba74df113bba99bb018ca819120e1a25926fe242d006",
+    "8468a4c95c48ab62975d13bac3041e60a393b2ba368f36c09544ef96df810847",
 ];
 
 /// One write target of one host.

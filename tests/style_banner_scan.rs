@@ -57,6 +57,37 @@ mod style_banner {
         );
     }
 
+    /// SPEC-20261124-card-flow-icons REQ-10: no shipped text (the templates, the style texts
+    /// among them, and the skill package with its agents and references) holds an icon of the
+    /// earlier card flow; the table `moai_cli::statusline::icons` names them.
+    #[test]
+    fn no_shipped_text_holds_an_icon_of_the_earlier_card_flow() {
+        let root = Path::new(ROOT);
+        let mut shipped = Vec::new();
+        for dir in ["templates", "skills/moai"] {
+            files(&root.join(dir), &mut shipped);
+        }
+        assert!(shipped.len() > 30, "scan found too few files");
+        let mut offenders = Vec::new();
+        for path in shipped {
+            let Ok(text) = fs::read_to_string(&path) else {
+                continue;
+            };
+            let hits: Vec<&str> = moai_cli::statusline::icons::RETIRED_FLOW
+                .into_iter()
+                .filter(|icon| text.contains(icon))
+                .collect();
+            if !hits.is_empty() {
+                offenders.push(format!("{}: {}", path.display(), hits.join(" ")));
+            }
+        }
+        assert!(
+            offenders.is_empty(),
+            "icons of the earlier card flow in shipped text:\n{}",
+            offenders.join("\n")
+        );
+    }
+
     #[test]
     fn the_style_references_pin_the_new_banner_form() {
         for rel in [
@@ -73,47 +104,28 @@ mod style_banner {
         }
     }
 
-    /// The seven steps of the flow of one piece of work, in flow order, then the four icons that
-    /// stand beside it (the one icon set of the progress board, the status line and the lane
-    /// reports: `skills/moai/references/home/output-style.md`).
-    const FLOW_ICONS: [&str; 7] = ["🗂️", "🟡", "📨", "🔍", "🔁", "🛬", "✅"];
-    const BESIDE_ICONS: [&str; 4] = ["🚧", "🙋", "🔴", "❌"];
-    /// Icons that left the set: the old board used them for not started, done, blocked, review
-    /// and the like. `⏸` is the base character, so the text form and the emoji form both match.
-    const RETIRED_ICONS: [&str; 6] = ["⬜", "🟢", "⏸", "🔵", "👀", "⛔"];
-
+    /// The card-flow icon set of the progress board, the status line and the lane reports is the
+    /// table `moai_cli::statusline::icons` (SPEC-20261124-card-flow-icons): the three templates
+    /// spell the flow sentence and the beside sentence the table builds, and carry none of the
+    /// icons that left the set.
     #[test]
     fn the_three_style_templates_use_the_one_icon_set() {
+        let flow = moai_cli::statusline::icons::flow_sentence();
+        let beside = moai_cli::statusline::icons::beside_sentence();
         for rel in [
             "templates/claude/output-styles/moai.md",
             "templates/claude/output-styles/moai-easy.md",
             "templates/claude/output-styles/moai-learn.md",
         ] {
             let text = fs::read_to_string(Path::new(ROOT).join(rel)).unwrap();
-            for old in RETIRED_ICONS {
+            for old in moai_cli::statusline::icons::RETIRED {
                 assert!(
                     !text.contains(old),
                     "{rel} still carries the old icon {old}"
                 );
             }
-            // the flow is one sentence: the line that starts it (🗂️) holds every step in order,
-            // so a banner emoji such as ✅ earlier in the file does not count as the step
-            let line = text
-                .lines()
-                .find(|l| l.contains(FLOW_ICONS[0]))
-                .unwrap_or_else(|| panic!("{rel} does not name the flow icon {}", FLOW_ICONS[0]));
-            // each step is searched after the one before it, so a banner emoji earlier in the
-            // same line does not count as the step
-            let mut rest = line;
-            for icon in FLOW_ICONS {
-                let at = rest.find(icon).unwrap_or_else(|| {
-                    panic!("{rel} flow line does not name {icon} after the step before it")
-                });
-                rest = &rest[at + icon.len()..];
-            }
-            for icon in BESIDE_ICONS {
-                assert!(text.contains(icon), "{rel} does not name the icon {icon}");
-            }
+            assert!(text.contains(&flow), "{rel} does not spell `{flow}`");
+            assert!(text.contains(&beside), "{rel} does not spell `{beside}`");
         }
     }
 }

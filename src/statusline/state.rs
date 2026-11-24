@@ -26,6 +26,7 @@
 //! (#2588).
 
 use super::config::{self, Node};
+use super::icons;
 use super::input::{self, Input};
 use super::segments::{self, ContextReading, GitStatus};
 use serde::{Deserialize, Serialize};
@@ -222,19 +223,19 @@ pub enum Stage {
 
 impl Stage {
     /// The icon of the stage in the one icon set of the progress board, the status line and the
-    /// lane reports: `🗂️` added and waiting its turn (a draft has the icon as the card in hand,
-    /// but the flow line counts only the ready cards, SPEC-20261124-statusline-counts-truth),
-    /// `🟡` in progress (a card whose lease has ended is still the card in hand and is counted
-    /// with the working ones), `📨` handed over and waiting for a check, `🛬` check passed and
-    /// waiting to land or to be closed, `🚧` blocked, `🙋` needs the user's pick.
+    /// lane reports ([`icons`], SPEC-20261124-card-flow-icons REQ-5): to do (a draft has the icon
+    /// as the card in hand, but the flow line counts only the ready cards,
+    /// SPEC-20261124-statusline-counts-truth), work in progress (a card whose lease has ended is
+    /// still the card in hand and is counted with the working ones), in check, check passed and
+    /// waiting to land or to be closed, blocked, and needs the user's pick.
     pub fn icon(self) -> &'static str {
         match self {
-            Stage::Draft | Stage::Ready => "🗂️",
-            Stage::Working | Stage::Stale => "🟡",
-            Stage::Submitted => "📨",
-            Stage::Audited | Stage::Landed => "🛬",
-            Stage::Blocked => "🚧",
-            Stage::Hold => "🙋",
+            Stage::Draft | Stage::Ready => icons::TODO,
+            Stage::Working | Stage::Stale => icons::WORK,
+            Stage::Submitted => icons::CHECK,
+            Stage::Audited | Stage::Landed => icons::READY,
+            Stage::Blocked => icons::BLOCKED,
+            Stage::Hold => icons::QUESTION,
         }
     }
 }
@@ -264,6 +265,9 @@ pub struct Flow {
     pub blocked: i64,
     /// The hold cards that were not withdrawn: the cards that wait for the user's pick.
     pub hold: i64,
+    /// The hold cards with a withdraw or fold event: nobody owes them anything. They are in no
+    /// stage and not in `open` (SPEC-20261124-card-flow-icons REQ-4).
+    pub paused: i64,
     /// The cards closed at or after the start of the day of the render's clock in the zone of
     /// [`Context::day_zone`] (the machine's local day; SPEC-20261124-statusline-counts-truth).
     pub done_today: i64,
@@ -1831,8 +1835,12 @@ fn read_flow_in(
             "ready" => flow.ready += 1,
             "hold" => flow.hold += 1,
             // A withdrawn or folded card is on hold in the ledger and asks nothing of the user
-            // (REQ-8): it is in no stage the line draws.
-            "withdrawn" => continue,
+            // (counts-truth REQ-8): it is in no stage the line draws, and it is counted as
+            // paused (card-flow-icons REQ-4).
+            "withdrawn" => {
+                flow.paused += 1;
+                continue;
+            }
             // `active` and `review` stay whole until the notes are read.
             "active" | "review" => flow.working += 1,
             _ => continue,
@@ -3724,21 +3732,22 @@ mod stage_tests_edges {
 
     const NOW: i64 = 1_800_000_000;
 
-    /// SPEC-20261122-statusline-limits-left REQ-6: every stage has its icon from the one icon
-    /// set — six icons for the nine stages, each one in the table of icons the lines print, and
-    /// none of the icons that left the set.
+    /// SPEC-20261124-card-flow-icons REQ-1: every stage has its icon from the one icon set — the
+    /// table of `statusline::icons` — five icons for the nine stages, each one in the table of
+    /// icons the lines print, and none of the icons that left the set.
     #[test]
     fn every_stage_has_its_icon_from_the_one_icon_set() {
+        use crate::statusline::icons::{BLOCKED, CHECK, QUESTION, READY, RETIRED, TODO, WORK};
         let table = [
-            (Stage::Draft, "🗂️"),
-            (Stage::Ready, "🗂️"),
-            (Stage::Working, "🟡"),
-            (Stage::Stale, "🟡"),
-            (Stage::Submitted, "📨"),
-            (Stage::Audited, "🛬"),
-            (Stage::Landed, "🛬"),
-            (Stage::Blocked, "🚧"),
-            (Stage::Hold, "🙋"),
+            (Stage::Draft, TODO),
+            (Stage::Ready, TODO),
+            (Stage::Working, WORK),
+            (Stage::Stale, WORK),
+            (Stage::Submitted, CHECK),
+            (Stage::Audited, READY),
+            (Stage::Landed, READY),
+            (Stage::Blocked, BLOCKED),
+            (Stage::Hold, QUESTION),
         ];
         for (stage, icon) in table {
             assert_eq!(stage.icon(), icon, "{stage:?}");
@@ -3751,7 +3760,7 @@ mod stage_tests_edges {
         icons.sort_unstable();
         icons.dedup();
         assert_eq!(icons.len(), 6, "{icons:?}");
-        for gone in ["🔵", "🟢", "⬜", "👀", "⛔", "⏸️"] {
+        for gone in RETIRED {
             assert!(!icons.contains(&gone), "{gone} left the set");
         }
     }
@@ -4466,6 +4475,9 @@ mod stage_tests_after_reserve {
         f.card("hold", &[]);
         let flow = flow(&f);
         assert_eq!(flow.hold, 1);
+        // SPEC-20261124-card-flow-icons REQ-4: what was withdrawn or folded is counted as
+        // paused, so the two counts together are every hold card.
+        assert_eq!(flow.paused, 2);
     }
 }
 
