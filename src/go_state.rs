@@ -48,7 +48,7 @@ const MANIFEST_LIMIT: u64 = 16 * 1024 * 1024;
 /// [`read_receipt`] reads up to it. The 256 KiB `apply::RECEIPT_LIMIT` that every other target
 /// keeps does not apply: a project with 1,319 restored SPEC copies has a receipt of 262,362
 /// bytes, and the receipt grows with every copy the apply makes.
-const RECEIPT_MAX: u64 = MANIFEST_LIMIT;
+const RECEIPT_MAX: u64 = crate::state_root::GO_STATE_RECEIPT_MAX;
 const FILE_LIMIT: u64 = 64 * 1024 * 1024;
 /// #2936 S1b: `.agents/` holds the Go skill mirror and the published command skills.
 const ROOTS: [&str; 3] = [".moai", ".claude", ".agents"];
@@ -181,6 +181,9 @@ const STATE_ENTRIES: [&str; 18] = [
 /// Root instruction files that move into the backup's `root-files/` with the Go folder (#2936
 /// O4); the install step writes new ones. `CLAUDE.local.md` is the user's and stays.
 const ROOT_FILES: [&str; 3] = ["CLAUDE.md", "AGENTS.md", "AGENTS.local.md"];
+/// The folder of an apply's backup area that takes the earlier entries the user picked for
+/// `--set-aside`.
+const SET_ASIDE: &str = "set-aside";
 /// The name a revert gives this generation's `.moai/` before the Go folder comes back.
 const RUST_ASIDE: &str = ".moai.rust-";
 /// The folder of an apply's backup area where a revert keeps a `.claude/settings.json` that was
@@ -417,9 +420,14 @@ pub struct WiringLost {
 pub struct StateMove {
     pub from: String,
     pub to: String,
-    /// `move` or `leave`.
+    /// `move`, `leave`, or (a `.moai/` that already holds the team's kept names) `set-aside`:
+    /// the earlier entry moves into the apply's backup area because the user picked it.
     pub action: String,
     pub reason: String,
+    /// How many files git tracks under `from` (preview-only; shown for a `.moai/` that holds
+    /// kept names, never when it is zero or git cannot say).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tracked: Option<u64>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -1974,18 +1982,22 @@ fn count_unrecorded(
 /// The earlier root's entries and what the move does with each, plus the reason the whole
 /// folder must stay when one of them cannot move safely (a link is never followed; the earlier
 /// root itself must be a real folder).
-fn plan_state_moves(project: &Path) -> (Vec<StateMove>, Option<String>) {
+fn plan_state_moves(project: &Path, picks: &[String]) -> Result<(Vec<StateMove>, Option<String>)> {
     let root = project.join(LEGACY_ROOT);
     match fs::symlink_metadata(&root) {
-        Err(_) => return (Vec::new(), None),
+        Err(_) => {
+            unused_picks(picks, &[])?;
+            return Ok((Vec::new(), None));
+        }
         Ok(m) if !m.is_dir() => {
-            return (
+            unused_picks(picks, &[])?;
+            return Ok((
                 Vec::new(),
                 Some(format!(
                     "{LEGACY_ROOT} is a link or not a folder; its state cannot move into the new \
                      .moai/, so the Go folder stays"
                 )),
-            )
+            ));
         }
         Ok(_) => {}
     }
@@ -2002,7 +2014,13 @@ fn plan_state_moves(project: &Path) -> (Vec<StateMove>, Option<String>) {
     // SDD B1/RB1: a `.moai/` that holds only the project's tracked SPECs is the destination,
     // so the earlier root's `specs/` cannot move as one folder. Each SPEC moves into
     // `.moai/specs/` on its own; an id on both sides is a conflict that keeps everything.
-    let into_specs = crate::state_root::specs_only(&project.join(MOAI_DIR));
+    let moai = project.join(MOAI_DIR);
+    let into_kept = crate::state_root::kept_only(&moai);
+    let into_specs = crate::state_root::specs_only(&moai)
+        || (into_kept
+            && fs::symlink_metadata(moai.join(crate::state_root::SPECS_DIR))
+                .is_ok_and(|m| m.is_dir()));
+    let mut used: Vec<&str> = Vec::new();
     for name in names {
         let from = format!("{LEGACY_ROOT}/{name}");
         let linked = fs::symlink_metadata(root.join(&name))
@@ -2012,6 +2030,7 @@ fn plan_state_moves(project: &Path) -> (Vec<StateMove>, Option<String>) {
             plan_spec_merge(project, &mut out, &mut block);
             continue;
         }
+        let mut to = String::new();
         let (action, reason) = if STATE_ENTRIES.contains(&name.as_str()) {
             if linked {
                 block.get_or_insert_with(|| {
@@ -2021,7 +2040,30 @@ fn plan_state_moves(project: &Path) -> (Vec<StateMove>, Option<String>) {
                     )
                 });
                 ("leave", "a link; never followed".to_string())
+            } else if into_kept && fs::symlink_metadata(moai.join(&name)).is_ok() {
+                // The same name stands on both sides: the earlier entry stays unless the user
+                // picked it, and then it goes aside, never over the `.moai/` entry.
+                if let Some(pick) = picks.iter().find(|p| **p == name) {
+                    used.push(pick.as_str());
+                    to = format!("{MOAI_DIR}/backups/<UTC>/set-aside/{name}");
+                    (
+                        "set-aside",
+                        format!(
+                            "picked: moves into the backup area; {MOAI_DIR}/{name} is never \
+                             overwritten"
+                        ),
+                    )
+                } else {
+                    (
+                        "leave",
+                        format!(
+                            "{MOAI_DIR}/{name} already exists; both stay (to move the earlier \
+                             one aside pick it with `--set-aside {name}`)"
+                        ),
+                    )
+                }
             } else {
+                to = format!("{MOAI_DIR}/{name}");
                 ("move", "this generation's product state".to_string())
             }
         } else {
@@ -2029,28 +2071,211 @@ fn plan_state_moves(project: &Path) -> (Vec<StateMove>, Option<String>) {
                 "worktrees" => {
                     "lane worktrees stay until worktree-move-plan moves them (#2723, D6)"
                 }
-                "reports" => "reports keep the earlier root (#2725 D5)",
+                "reports" => "reports stay until `moai reports-move-plan .` moves them (#2725 D5)",
                 "backups" => "earlier go-state backups stay where their receipts expect them",
                 _ => "not product state this build moves; it stays",
             };
             ("leave", why.to_string())
         };
         out.push(StateMove {
-            to: if action == "move" {
-                format!("{MOAI_DIR}/{name}")
-            } else {
-                String::new()
-            },
+            to,
             from,
             action: action.into(),
             reason,
+            tracked: None,
         });
     }
-    (out, block)
+    unused_picks(picks, &used)?;
+    Ok((out, block))
+}
+
+/// A `--set-aside` pick that named no colliding entry is a typo, not a request: the plan is
+/// refused, so a different pick set can never silently plan the same thing.
+fn unused_picks(picks: &[String], used: &[&str]) -> Result<()> {
+    match picks.iter().find(|p| !used.contains(&p.as_str())) {
+        None => Ok(()),
+        Some(p) => Err(format!(
+            "--set-aside {p}: no entry of {LEGACY_ROOT}/ with that name also exists in {MOAI_DIR}/ \
+             beside the team's kept names; nothing planned"
+        )),
+    }
+}
+
+/// Throwaway stamp for the git question about a set-aside target before the apply has one.
+const PICK_STAMP: &str = EXAMPLE_STAMP;
+
+/// The tracked files of `.moai-cli/` per planned row and the `.gitignore` check (SPEC
+/// REQ-5). One read-only `git ls-files` counts the tracked files under each row; then every
+/// target of a row whose source is tracked, and the marker, is asked of `git check-ignore`. A
+/// target ignored while its source is tracked blocks the whole move (the returned reason names
+/// the entry and the rule). Without a git work tree the counts are unknown and nothing blocks;
+/// git failing to answer blocks, because the answer is then unknown too.
+fn kept_git_checks(project: &Path, moves: &mut [StateMove]) -> (Option<String>, Option<String>) {
+    if fs::symlink_metadata(project.join(".git")).is_err() {
+        return (
+            None,
+            Some(
+                "not a git repository: the tracked file counts and the .gitignore check of the \
+                 targets are unknown and skipped"
+                    .into(),
+            ),
+        );
+    }
+    let Ok(out) = git_in(project, &["ls-files", "-z", "--", LEGACY_ROOT], &[]) else {
+        return (
+            Some("git could not be run; nothing moves until it can".into()),
+            None,
+        );
+    };
+    if !out.status.success() {
+        return (
+            Some(format!(
+                "git could not list the tracked files ({}); nothing moves until it can",
+                crate::identity::failure_summary(&out.stderr)
+            )),
+            None,
+        );
+    }
+    let listed = String::from_utf8_lossy(&out.stdout).into_owned();
+    let tracked: Vec<&str> = listed.split('\0').filter(|p| !p.is_empty()).collect();
+    for m in moves.iter_mut() {
+        let under = format!("{}/", m.from);
+        let n = tracked
+            .iter()
+            .filter(|p| **p == m.from || p.starts_with(&under))
+            .count() as u64;
+        m.tracked = (n > 0).then_some(n);
+    }
+    // A set-aside entry goes to the backup area, which `.moai/backups/.gitignore` hides by
+    // design: no rule of the team's `.gitignore` is asked about it (a stamp that does not exist
+    // yet cannot be allowed with a `!` line). The plan only says that git sees them leave.
+    let aside: Vec<String> = moves
+        .iter()
+        .filter(|m| m.action == "set-aside")
+        .filter_map(|m| {
+            m.tracked
+                .map(|n| format!("{} ({n} tracked file(s))", m.from))
+        })
+        .collect();
+    let aside_note = (!aside.is_empty()).then(|| {
+        format!(
+            "set aside into the backup area, which git ignores by design: {}; git shows these \
+             tracked files as deleted until they are committed or restored",
+            aside.join(", ")
+        )
+    });
+    // A folder entry is asked as a folder (a trailing `/`): the target does not exist yet, and
+    // git matches a rule that names only folders (`!/.moai/manifests/`) only for a folder.
+    let sources: Vec<(String, String)> = moves
+        .iter()
+        .filter(|m| m.tracked.is_some() && m.action == "move")
+        .map(|m| {
+            let to = m.to.replace("<UTC>", PICK_STAMP);
+            let folder = fs::symlink_metadata(project.join(&m.from)).is_ok_and(|s| s.is_dir());
+            (m.from.clone(), if folder { format!("{to}/") } else { to })
+        })
+        .collect();
+    if sources.is_empty() {
+        return (None, aside_note);
+    }
+    let marker = format!("{MOAI_DIR}/{}", crate::state_root::RUST_MARKER);
+    let mut paths: Vec<String> = sources.iter().map(|(_, to)| to.clone()).collect();
+    paths.push(marker.clone());
+    let mut rules = Vec::new();
+    for batch in paths.chunks(IGNORE_BATCH) {
+        let out =
+            match git_in(
+                project,
+                &["check-ignore", "--no-index", "-v", "-n", "--"],
+                batch,
+            ) {
+                Ok(o) if matches!(o.status.code(), Some(0 | 1)) => o,
+                _ => return (
+                    Some(
+                        "git could not say whether it ignores the targets; nothing moves until \
+                         it can"
+                            .into(),
+                    ),
+                    None,
+                ),
+            };
+        let text = String::from_utf8_lossy(&out.stdout).into_owned();
+        let lines: Vec<&str> = text.lines().collect();
+        if lines.len() != batch.len() {
+            return (
+                Some("git answered for a different number of targets; nothing moves".into()),
+                None,
+            );
+        }
+        for line in lines {
+            rules.push(ignoring_rule(line));
+        }
+    }
+    for (i, rule) in rules.iter().enumerate() {
+        let Some(rule) = rule else { continue };
+        let (what, from) = match sources.get(i) {
+            Some((from, to)) => (
+                to.trim_end_matches('/').to_string(),
+                format!("the {} tracked file(s) of {from}", {
+                    moves
+                        .iter()
+                        .find(|m| &m.from == from)
+                        .and_then(|m| m.tracked)
+                        .unwrap_or(0)
+                }),
+            ),
+            None => (
+                marker.clone(),
+                "the marker the team keeps in git".to_string(),
+            ),
+        };
+        return (
+            Some(format!(
+                "{what} is ignored by the .gitignore rule `{rule}` while {from} would move \
+                 there; nothing moves until the rule allows it (a `!/{what}` line)"
+            )),
+            None,
+        );
+    }
+    (None, aside_note)
+}
+
+/// The rule text of one `git check-ignore -v -n` line when it ignores the path
+/// (`<source>:<line>:<pattern>`), `None` for a miss or for an un-ignoring `!` pattern.
+fn ignoring_rule(line: &str) -> Option<String> {
+    (check_ignore_line(line) == Some(true)).then(|| {
+        let head = line.split_once('\t').map(|(h, _)| h).unwrap_or(line);
+        head.to_string()
+    })
 }
 
 /// The revert-plan action for `.moai/specs`: set aside with `.moai/`, then moved straight back.
 const KEEP_SPECS: &str = "restored_to_moai_specs";
+
+/// The kept names a `.moai/` holds, sorted: the receipt's `kept_before`. Everything else the
+/// folder may hold (`backups/`, Finder's `.DS_Store`) is no kept name.
+fn kept_names_in(moai: &Path) -> Vec<String> {
+    let mut names: Vec<String> = fs::read_dir(moai)
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .filter_map(|e| e.file_name().into_string().ok())
+                .filter(|n| kept_name(n))
+                .collect()
+        })
+        .unwrap_or_default();
+    names.sort();
+    names
+}
+
+/// A first-level name the team keeps in git under `.moai/` ([`crate::state_root::KEPT`]) that is
+/// not a generation marker.
+fn kept_name(name: &str) -> bool {
+    name != crate::state_root::RUST_MARKER
+        && name != crate::state_root::LEGACY_MARKER
+        && crate::state_root::KEPT
+            .iter()
+            .any(|k| k.trim_end_matches('/') == name)
+}
 
 /// `.moai/specs`, the project's tracked SPECs.
 fn specs_rel() -> String {
@@ -2086,6 +2311,7 @@ fn plan_spec_merge(project: &Path, out: &mut Vec<StateMove>, block: &mut Option<
             to: String::new(),
             action: "leave".into(),
             reason: format!("empty; {MOAI_DIR}/{specs} already holds the project's SPECs"),
+            tracked: None,
         });
     }
     for name in names {
@@ -2120,6 +2346,7 @@ fn plan_spec_merge(project: &Path, out: &mut Vec<StateMove>, block: &mut Option<
             from,
             action: action.into(),
             reason,
+            tracked: None,
         });
     }
 }
@@ -2560,7 +2787,9 @@ fn layout_and_backup(
             .map(|i| i.action.as_str())
     };
     let pending = items.iter().any(|i| i.action == "move")
-        || state_moves.iter().any(|m| m.action == "move")
+        || state_moves
+            .iter()
+            .any(|m| m.action == "move" || m.action == "set-aside")
         || root_files.iter().any(|f| f.action != "leave")
         || restores.iter().any(|r| r.action == "copy");
     let layout = match (action_of(MOAI_DIR), action_of(LEGACY_ROOT)) {
@@ -2580,6 +2809,12 @@ fn layout_and_backup(
 
 /// The read-only preview over one project folder.
 pub fn plan(project: &Path) -> Result<GoStatePlan> {
+    plan_with(project, &[])
+}
+
+/// [`plan`] with the entries the user picked for `--set-aside`. The picks are part of the
+/// plan: a set-aside row is in the digest, so an apply made with other picks is stale.
+pub fn plan_with(project: &Path, picks: &[String]) -> Result<GoStatePlan> {
     let project =
         fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     // A linked `.moai` (or any linked component above the manifest) is refused by the
@@ -2656,7 +2891,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         Some(0)
     };
     let (state_moves, state_block) = if checked {
-        plan_state_moves(&project)
+        plan_state_moves(&project, &[])?
     } else {
         (Vec::new(), None)
     };
@@ -2814,8 +3049,22 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     // `.moai` of any kind) is offered the same move into a new `.moai/`, without a Go folder.
     let mut items = items;
     let legacy_moves = if state.generation == "none" {
-        let (moves, block) = plan_state_moves(&project);
-        let any = moves.iter().any(|m| m.action == "move");
+        let (mut moves, mut block) = plan_state_moves(&project, picks)?;
+        // A `.moai/` that holds the team's kept names (beyond the SPECs alone): the tracked
+        // file counts and the `.gitignore` check of the targets (REQ-5).
+        let moai = project.join(MOAI_DIR);
+        let beside_kept =
+            crate::state_root::kept_only(&moai) && !crate::state_root::specs_only(&moai);
+        if beside_kept {
+            let (ignored, note) = kept_git_checks(&project, &mut moves);
+            warnings.extend(note);
+            if let Some(why) = ignored {
+                block.get_or_insert(why);
+            }
+        }
+        let any = moves
+            .iter()
+            .any(|m| m.action == "move" || m.action == "set-aside");
         // A SPEC conflict (RB1) is shown even when nothing else would move.
         let conflict = moves.iter().any(|m| m.action == "conflict");
         if let (true, Some(block)) = (any || conflict, &block) {
@@ -2829,22 +3078,46 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         } else if any {
             // The plan's words stay the same with or without a SPECs-only `.moai/` (SDD B1:
             // `spec new` changes no plan answer); the apply's receipt message says which.
-            items.push(new_item(
-                LEGACY_ROOT,
-                "move",
-                "the earlier root's product state moves into a new .moai/ (#2696 C4a)".into(),
-                "legacy_state",
-            ));
-            warnings.push(format!(
-                "Stop moai commands and agent sessions in this project before the apply: a \
-                 new .moai/ is made and the {LEGACY_ROOT} product state moves into it."
-            ));
+            if beside_kept {
+                // The `.moai/` stays as it is: the earlier state moves beside the names it holds
+                // and the marker is written last (REQ-6).
+                items.push(new_item(
+                    LEGACY_ROOT,
+                    "move",
+                    "the earlier root's product state moves beside the kept names of the \
+                     existing .moai/, which stay as they are (REQ-6)"
+                        .into(),
+                    "legacy_state",
+                ));
+                warnings.push(format!(
+                    "Stop moai commands and agent sessions in this project before the apply: \
+                     the {LEGACY_ROOT} product state moves beside the names the existing .moai/ \
+                     holds; no new .moai/ is made."
+                ));
+            } else {
+                items.push(new_item(
+                    LEGACY_ROOT,
+                    "move",
+                    "the earlier root's product state moves into a new .moai/ (#2696 C4a)".into(),
+                    "legacy_state",
+                ));
+                warnings.push(format!(
+                    "Stop moai commands and agent sessions in this project before the apply: a \
+                     new .moai/ is made and the {LEGACY_ROOT} product state moves into it."
+                ));
+            }
             moves
         } else {
             Vec::new()
         }
-    } else {
+    } else if picks.is_empty() {
         Vec::new()
+    } else {
+        return Err(format!(
+            "--set-aside is for a move of the earlier {LEGACY_ROOT}/ into a {MOAI_DIR}/ that \
+             holds only the team's kept names; state_root is `{}` here; nothing planned",
+            state.generation
+        ));
     };
     let moves_folder = items
         .iter()
@@ -3057,7 +3330,7 @@ fn settings_move_warning(sm: &SettingsMove, wiring: Option<&WiringLost>) -> Stri
 /// Version of the [`Bound`] layout. The field order below is the hash order: never reorder or
 /// add a field without bumping this, so an older digest is refused as a stale plan instead of
 /// matching by luck.
-const BOUND_VERSION: u32 = 1;
+const BOUND_VERSION: u32 = 2;
 
 /// What `plan_digest` hashes, as JSON.
 #[derive(Serialize)]
@@ -3098,6 +3371,8 @@ struct BoundRestore {
 struct BoundState {
     from: String,
     to: String,
+    /// `move` or `set-aside`: a pick changes the row, so the digest changes with the picks.
+    action: String,
 }
 
 #[derive(Serialize)]
@@ -3201,11 +3476,13 @@ fn bound_of(plan: &GoStatePlan) -> Result<Bound> {
             action,
             // Preview-only.
             reason: _,
+            tracked: _,
         } = row;
-        if action == "move" {
+        if action == "move" || action == "set-aside" {
             bound_state.push(BoundState {
                 from: from.clone(),
                 to: to.clone(),
+                action: action.clone(),
             });
         }
     }
@@ -3404,6 +3681,12 @@ pub struct Receipt {
     /// (no Go folder).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub legacy_move: bool,
+    /// SPEC-20261121-project-state-move D-7: the names a `.moai/` that held only the team's kept
+    /// names had before the apply. The apply kept that folder and moved the state in beside
+    /// them, so the revert leaves these names where they are and sets nothing aside. Empty
+    /// (and absent) for every earlier receipt, which reads as it always did.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub kept_before: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -3881,7 +4164,19 @@ pub fn apply_with_stamp(
     permission_reference: &str,
     stamp: &str,
 ) -> Result<Receipt> {
-    let fresh = plan(project)?;
+    apply_picked_with_stamp(project, plan_digest, permission_reference, stamp, &[])
+}
+
+/// [`apply_with_stamp`] with the `--set-aside` picks the digest was made with: the fresh
+/// preview is made with the same picks, so another set of picks fails the digest check.
+pub fn apply_picked_with_stamp(
+    project: &Path,
+    plan_digest: &str,
+    permission_reference: &str,
+    stamp: &str,
+    picks: &[String],
+) -> Result<Receipt> {
+    let fresh = plan_with(project, picks)?;
     if fresh.plan_digest != plan_digest {
         return Err(STALE_PLAN.into());
     }
@@ -3907,6 +4202,7 @@ pub fn apply_with_stamp(
         marker: String::new(),
         rust_aside: String::new(),
         legacy_move: false,
+        kept_before: Vec::new(),
     };
     if planned.is_empty() {
         return Ok(receipt);
@@ -4184,7 +4480,8 @@ fn move_state_entries(
     mut saved: Vec<u8>,
 ) -> Result<Vec<u8>> {
     for i in 0..receipt.moves.len() {
-        if receipt.moves[i].kind != "state" {
+        let aside = receipt.moves[i].kind == "aside";
+        if receipt.moves[i].kind != "state" && !aside {
             continue;
         }
         let from = receipt.moves[i].path.clone();
@@ -4192,8 +4489,16 @@ fn move_state_entries(
             .strip_prefix(&format!("{LEGACY_ROOT}/"))
             .ok_or("state entry outside the earlier root")?;
         refuse_linked(project, &from)?;
-        move_entry(&project.join(&from), &project.join(MOAI_DIR).join(entry))
-            .map_err(|e| format!("{from}: {e}"))?;
+        // A picked entry goes into the apply's backup area, never over the `.moai/` entry of the
+        // same name; a state entry goes beside the kept names.
+        let to = if aside {
+            let dir = format!("{MOAI_DIR}/backups/{}/{SET_ASIDE}", receipt.backup);
+            make_private_dirs(project, &dir)?;
+            project.join(dir).join(entry)
+        } else {
+            project.join(MOAI_DIR).join(entry)
+        };
+        move_entry(&project.join(&from), &to).map_err(|e| format!("{from}: {e}"))?;
         receipt.moves[i].moved = true;
         saved = save_receipt(project, MOAI_DIR, receipt, Some(&saved))?;
     }
@@ -4231,17 +4536,29 @@ fn apply_legacy_move(
     receipt.legacy_move = true;
     // A C4a receipt carries no Go backup; one that also names a Go backup fails the
     // folder-entry check in `read_receipt` (a Go backup always goes with a folder move).
-    for s in fresh.state_moves.iter().filter(|s| s.action == "move") {
+    for s in fresh
+        .state_moves
+        .iter()
+        .filter(|s| s.action == "move" || s.action == "set-aside")
+    {
         receipt.moves.push(Moved {
             path: s.from.clone(),
-            kind: "state".into(),
+            kind: if s.action == "move" { "state" } else { "aside" }.into(),
             ..Moved::default()
         });
     }
     receipt.state = "pending".into();
     // A `.moai/` that holds only the project's tracked SPECs is kept: the state moves in beside
     // them (SDD B1). On a failure below, `remove_dir` leaves that folder as it was.
-    let reused = crate::state_root::specs_only(&project.join(MOAI_DIR));
+    let moai = project.join(MOAI_DIR);
+    let specs_alone = crate::state_root::specs_only(&moai);
+    let kept = !specs_alone && crate::state_root::kept_only(&moai);
+    let reused = specs_alone || kept;
+    // A `.moai/` that holds more kept names than the SPECs is kept too, and the receipt records
+    // which names it held, so the revert leaves them (D-7).
+    if kept {
+        receipt.kept_before = kept_names_in(&moai);
+    }
     let made = (if reused {
         Ok(())
     } else {
@@ -4278,6 +4595,22 @@ fn apply_legacy_move(
 
 pub fn apply(project: &Path, plan_digest: &str, permission_reference: &str) -> Result<Receipt> {
     apply_with_stamp(project, plan_digest, permission_reference, &stamp_now())
+}
+
+/// [`apply`] with the `--set-aside` picks of the preview whose digest is given.
+pub fn apply_picked(
+    project: &Path,
+    plan_digest: &str,
+    permission_reference: &str,
+    picks: &[String],
+) -> Result<Receipt> {
+    apply_picked_with_stamp(
+        project,
+        plan_digest,
+        permission_reference,
+        &stamp_now(),
+        picks,
+    )
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -4371,6 +4704,7 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, Strin
     }
     if receipt.moves.iter().any(|m| {
         m.kind != "state"
+            && m.kind != "aside"
             && m.kind != "root_file"
             && (!ROOTS.contains(&top_of(&m.path)) || m.path == MANIFEST)
     }) {
@@ -4398,9 +4732,25 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, Strin
                     .strip_prefix(&format!("{LEGACY_ROOT}/"))
                     .is_some_and(|e| STATE_ENTRIES.contains(&e) || is_spec_entry(e))
         }
+        // A picked entry set aside beside kept names: one known earlier-root entry, only in
+        // the earlier-root move.
+        "aside" => {
+            !receipt.legacy_move
+                || go_folder
+                || !m
+                    .path
+                    .strip_prefix(&format!("{LEGACY_ROOT}/"))
+                    .is_some_and(|e| STATE_ENTRIES.contains(&e))
+        }
         _ => true,
     }) {
         return Err("receipt holds an entry of the wrong kind; refused".into());
+    }
+    // The names a kept `.moai/` held go only with the earlier-root move, and only kept names.
+    if !receipt.kept_before.is_empty()
+        && (!receipt.legacy_move || go_folder || receipt.kept_before.iter().any(|n| !kept_name(n)))
+    {
+        return Err("receipt names kept folder entries it cannot have; refused".into());
     }
     // Under `.moai` a folder move goes with a Go backup name and only then; under the earlier
     // root a folder entry is the #2561 stage-3 layout (`.moai-cli/backups/<UTC>/go-state/.moai`).
@@ -4649,12 +4999,18 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
                     }
                 }
             }
-            "state" => {
+            "state" | "aside" => {
                 let entry = m
                     .path
                     .strip_prefix(&format!("{LEGACY_ROOT}/"))
                     .unwrap_or_default();
-                let src = format!("{base}/{entry}");
+                // A state entry stands beside the kept names; a picked one is in the backup
+                // area of the apply.
+                let src = if m.kind == "aside" {
+                    format!("{area}/{SET_ASIDE}/{entry}")
+                } else {
+                    format!("{base}/{entry}")
+                };
                 let back = fs::symlink_metadata(project.join(&m.path)).is_ok()
                     || linked_component(&project, &m.path);
                 let here = !linked_component(&project, &src)
@@ -4733,7 +5089,9 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
         });
     }
     // C4a: without a Go folder to bring back, this generation's `.moai/` is set aside last.
-    if receipt.legacy_move {
+    // Not when the apply kept a `.moai/` that held kept names (D-7): that folder was never made
+    // by the apply, so the revert leaves every name it held and sets nothing aside.
+    if receipt.legacy_move && receipt.kept_before.is_empty() {
         let action = if !at_moai {
             "skip"
         } else if real_dir(&project, MOAI_DIR) {
@@ -4882,13 +5240,17 @@ pub fn revert(
     // Entries and files first, the folder last.
     for (path, entry) in restores.iter().filter(|(_, m)| m.kind != "folder") {
         let kind = &entry.kind;
-        if kind == "state" {
+        if kind == "state" || kind == "aside" {
             let entry = path
                 .strip_prefix(&format!("{LEGACY_ROOT}/"))
                 .ok_or("state entry outside the earlier root")?;
             // A merged SPEC goes back into `.moai-cli/specs/` (RB1).
             make_dirs(&project, &parent_of(path)?)?;
-            let src = format!("{base}/{entry}");
+            let src = if kind == "aside" {
+                format!("{base}/backups/{backup}/{SET_ASIDE}/{entry}")
+            } else {
+                format!("{base}/{entry}")
+            };
             refuse_linked(&project, &src)?;
             move_entry(&project.join(&src), &project.join(path))
                 .map_err(|e| format!("{path}: {e}"))?;
@@ -5011,6 +5373,7 @@ mod tests {
             to: to.into(),
             action: action.into(),
             reason: "state".into(),
+            tracked: None,
         }
     }
 
@@ -5315,7 +5678,7 @@ mod tests {
     /// change here needs a `BOUND_VERSION` bump.
     #[test]
     fn the_bound_layout_is_pinned() {
-        assert_eq!(BOUND_VERSION, 1);
+        assert_eq!(BOUND_VERSION, 2);
         let mut p = sample();
         p.items.truncate(2);
         p.restores.truncate(1);
@@ -5325,20 +5688,20 @@ mod tests {
         assert_eq!(
             text,
             concat!(
-                r#"{"bound_version":1,"project":"/p","go_backup":".moai-backup","#,
+                r#"{"bound_version":2,"project":"/p","go_backup":".moai-backup","#,
                 r#""moves":[{"path":".claude/a.md","action":"move","class":"tool_asset","#,
                 r#""deployed_hash":"sha256:aa","content":"sha256:01"},"#,
                 r#"{"path":".moai","action":"move","class":"go_folder","#,
                 r#""deployed_hash":"","content":""}],"#,
                 r#""restores":[{"from":".moai-backup/specs/a.md","to":".moai/specs/a.md","#,
                 r#""action":"copy","sha256":"sha256:03"}],"#,
-                r#""state_moves":[{"from":"earlier/index","to":".moai/index"}],"#,
+                r#""state_moves":[{"from":"earlier/index","to":".moai/index","action":"move"}],"#,
                 r#""root_files":[{"path":"CLAUDE.md","action":"move","sha256":"sha256:05"}]}"#
             )
         );
         assert_eq!(
             digest_of(&p),
-            "sha256:0e2cdc646d3f17a6ae911e09fc3d7139d4b275c6082833eced3bfecd78b654f7"
+            "sha256:8927c17cb1ed999ad2ab58405a88b8e4b9084671a5001ec90a6224d622b6d4c9"
         );
         // The empty plan, the smallest `Bound`.
         let mut empty = sample();
@@ -5349,7 +5712,7 @@ mod tests {
         empty.go_backup = None;
         assert_eq!(
             serde_json::to_string(&bound_of(&empty).unwrap()).unwrap(),
-            r#"{"bound_version":1,"project":"/p","go_backup":null,"moves":[],"restores":[],"state_moves":[],"root_files":[]}"#
+            r#"{"bound_version":2,"project":"/p","go_backup":null,"moves":[],"restores":[],"state_moves":[],"root_files":[]}"#
         );
     }
 
@@ -5675,6 +6038,7 @@ mod tests {
             marker: String::new(),
             rust_aside: String::new(),
             legacy_move: false,
+            kept_before: Vec::new(),
         };
         let fixed = serde_json::to_vec_pretty(&receipt(0)).unwrap().len();
         let pad = RECEIPT_MAX as usize - fixed;

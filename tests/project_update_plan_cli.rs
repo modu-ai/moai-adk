@@ -785,6 +785,38 @@ fn assert_tied(plan: &Value, state: &str, needle: &str) {
     assert_eq!(plan["all_unchanged"], json!(false), "{plan}");
 }
 
+/// SPEC-20261121-project-state-move REQ-8: a tree whose `.moai/` holds only the names the team
+/// keeps in git, beside an earlier `.moai-cli/`, gets the same go-state step a plain earlier-root
+/// tree gets: waiting for the user's pick with its apply command, never "decide outside this
+/// route".
+#[test]
+fn a_kept_names_moai_beside_the_earlier_root_gets_the_go_state_move_step() {
+    let fx = Fx::new();
+    fx.write(".moai/project.yaml", "{}\n");
+    fx.write(".moai/evals/e/case.json", "{}\n");
+    fx.write(".moai/specs/SPEC-20261121-a/spec.md", "# a\n");
+    fx.write(".moai-cli/manifests/generation.json", "{}\n");
+    fx.write(".moai-cli/state/a.json", "{}\n");
+    let plan = fx.plan();
+    assert_eq!(plan["state_root"]["generation"], json!("none"), "{plan}");
+    let go = step(&plan, "go-state");
+    assert_eq!(go["state"], json!("needs_decision"), "{go}");
+    assert_eq!(go["preview"]["layout"], json!("legacy_into_new"), "{go}");
+    let argv = go["apply"]["argv"]
+        .as_array()
+        .unwrap_or_else(|| panic!("the step prints its apply command: {go}"));
+    assert_eq!(argv[1], json!("go-state-apply"), "{go}");
+    for s in steps(&plan) {
+        assert!(
+            !s["reason"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("decides outside this route"),
+            "{s}"
+        );
+    }
+}
+
 /// #2953 F1: a go-state migration stopped midway (a Go backup and no `.moai`) waits for the
 /// user's revert decision.
 #[test]

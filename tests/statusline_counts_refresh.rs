@@ -179,6 +179,56 @@ fn a_stale_cache_is_refreshed_in_the_background_and_the_go_file_is_left_alone() 
     );
 }
 
+/// SPEC-20261121-project-state-move REQ-10 (card criterion 2): a checkout with the marker and a
+/// git-tracked earlier state folder keeps its counts cache under the folder the resolver names,
+/// and nothing is created beside it under the earlier folder. The folder names come from the
+/// library constants, so the test spells no state folder name of its own.
+#[test]
+fn a_marked_checkout_with_a_tracked_earlier_folder_writes_the_cache_under_the_new_folder() {
+    let f = with_gh("https://github.com/acme/widgets.git", 0);
+    let earlier = f.repo.join(moai_cli::PROJECT_STATE_DIR);
+    let tracked = format!("{}/reports/tracked.md", moai_cli::PROJECT_STATE_DIR);
+    write(&f.repo, &tracked, "tracked report\n");
+    let marker = f
+        .repo
+        .join(moai_cli::state_root::MOAI_DIR)
+        .join(moai_cli::state_root::RUST_MARKER);
+    std::fs::create_dir_all(marker.parent().unwrap()).unwrap();
+    std::fs::write(&marker, moai_cli::state_root::marker_bytes("test", &[])).unwrap();
+    common::git::git_ok(&f.repo, &["add", "--force", "--", &tracked]);
+    assert_eq!(
+        moai_cli::state_root::dir(&f.repo),
+        moai_cli::state_root::MOAI_DIR,
+        "the marker puts the checkout on the new folder"
+    );
+    let new_cache = f
+        .repo
+        .join(moai_cli::state_root::MOAI_DIR)
+        .join("state/github/counts.json");
+    let _ = render(&f);
+    assert!(
+        wait_for(|| std::fs::read(&new_cache)
+            .ok()
+            .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+            .is_some_and(|c| c["open_issues"] == 12)),
+        "no refresh under the new folder"
+    );
+    assert!(
+        wait_for(|| !f
+            .repo
+            .join(moai_cli::state_root::MOAI_DIR)
+            .join("state/github/refresh.lock")
+            .exists()),
+        "lock left behind"
+    );
+    assert!(
+        !earlier.join("state").exists(),
+        "the earlier folder got a state folder: {:?}",
+        std::fs::read_dir(&earlier).map(|d| d.flatten().map(|e| e.file_name()).collect::<Vec<_>>())
+    );
+    assert!(earlier.join("reports/tracked.md").is_file());
+}
+
 #[test]
 fn the_render_does_not_wait_for_a_slow_gh() {
     let f = with_gh("git@github.com:acme/widgets.git", 15);

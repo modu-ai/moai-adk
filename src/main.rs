@@ -924,6 +924,11 @@ enum Command {
     GoStatePlan {
         /// Project root carrying the Go `.moai/manifest.json`.
         project: PathBuf,
+        /// An earlier-root entry whose name also stands in `.moai/` beside the team's kept
+        /// names: move it into the backup area instead of leaving it (repeat for more). The
+        /// picks are part of the plan digest.
+        #[arg(long = "set-aside", value_name = "ENTRY")]
+        set_aside: Vec<String>,
     },
     /// Move a previewed Go-era .moai folder
     ///
@@ -937,6 +942,10 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+        /// The `--set-aside` picks the confirmed preview was made with; other picks make the
+        /// digest stale.
+        #[arg(long = "set-aside", value_name = "ENTRY")]
+        set_aside: Vec<String>,
     },
     /// Preview undoing a Go-era folder move
     ///
@@ -950,7 +959,9 @@ enum Command {
     /// Undo a Go-era folder move
     ///
     /// Undo one go-state apply (#2561, #2696): the new `.moai/` is set aside as
-    /// `.moai.rust-<UTC>` and the Go backup becomes `.moai` again. Nothing is written when
+    /// `.moai.rust-<UTC>` and the Go backup becomes `.moai` again. A move made beside the kept
+    /// names of an existing `.moai/` has no Go backup: its entries go back to the earlier root
+    /// and that `.moai/` stays with every name it held, nothing set aside. Nothing is written when
     /// anything came back at an original path or a backup changed: that refuses the revert
     /// before anything is written. If a write stops part-way, that is recorded; run the
     /// revert again to continue.
@@ -2091,18 +2102,20 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 other => other,
             }
         }
-        Command::GoStatePlan { project } => {
-            serde_json::to_value(moai_cli::go_state::plan(&project)?)
+        Command::GoStatePlan { project, set_aside } => {
+            serde_json::to_value(moai_cli::go_state::plan_with(&project, &set_aside)?)
                 .map_err(|_| "encode failed".into())
         }
         Command::GoStateApply {
             project,
             plan_digest,
             permission_reference,
-        } => serde_json::to_value(moai_cli::go_state::apply(
+            set_aside,
+        } => serde_json::to_value(moai_cli::go_state::apply_picked(
             &project,
             &plan_digest,
             &permission_reference,
+            &set_aside,
         )?)
         .map_err(|_| "encode failed".into()),
         Command::GoStateRevertPlan { project, backup } => {

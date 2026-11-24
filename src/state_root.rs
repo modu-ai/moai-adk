@@ -77,6 +77,11 @@ pub const EARLIER_PROJECT_DIR: &str = crate::PROJECT_STATE_DIR;
 pub const GO_BACKUP: &str = ".moai-backup";
 /// The receipt a `go-state-apply` that moved the Go folder keeps under `.moai/backups/<UTC>/`.
 pub const GO_STATE_RECEIPT: &str = "go-state-receipt.json";
+/// The one size limit of a go-state receipt: the go-state apply refuses to save a receipt above
+/// it and the revert and the state reader here read up to it. A project with 1,319 restored SPEC
+/// copies has a receipt of 262,362 bytes and the receipt grows with every copy, so a limit of
+/// 256 KiB would read a finished revert as a stopped one.
+pub const GO_STATE_RECEIPT_MAX: u64 = 16 * 1024 * 1024;
 /// Markers are small JSON objects; anything larger is not one.
 const MARKER_LIMIT: u64 = 64 * 1024;
 /// `system.yaml` is a few KiB; a larger file is not read for the version key.
@@ -358,9 +363,34 @@ fn holds_go_state_receipt(moai: &Path) -> bool {
             rd.filter_map(|e| e.ok())
                 .filter_map(|e| e.file_name().into_string().ok())
                 .filter(|n| utc_stamp(n))
-                .any(|n| regular_file(moai, &["backups", &n, GO_STATE_RECEIPT]).is_some())
+                .any(|n| {
+                    regular_file(moai, &["backups", &n, GO_STATE_RECEIPT]).is_some_and(|_| {
+                        !receipt_reverted(&moai.join("backups").join(&n).join(GO_STATE_RECEIPT))
+                    })
+                })
         })
         .unwrap_or(false)
+}
+
+/// A receipt whose `state` says `reverted` is a finished undo: it no longer marks a migration
+/// stopped midway. A receipt that cannot be read or is above [`GO_STATE_RECEIPT_MAX`] counts as
+/// still open. The read stops one byte past the limit, so a file that grew after a size check
+/// is never read whole.
+fn receipt_reverted(path: &Path) -> bool {
+    use std::io::Read;
+    let Ok(file) = fs::File::open(path) else {
+        return false;
+    };
+    let mut bytes = Vec::new();
+    if file
+        .take(GO_STATE_RECEIPT_MAX + 1)
+        .read_to_end(&mut bytes)
+        .is_err()
+        || bytes.len() as u64 > GO_STATE_RECEIPT_MAX
+    {
+        return false;
+    }
+    serde_json::from_slice::<Value>(&bytes).is_ok_and(|v| v["state"] == "reverted")
 }
 
 /// Classify `root/.moai` (design 6854765655 §2). Reads only. A project's `.moai/` that holds
@@ -414,6 +444,56 @@ pub fn specs_only(moai: &Path) -> bool {
         && fs::symlink_metadata(moai.join(SPECS_DIR)).is_ok_and(|m| m.is_dir())
 }
 
+/// SPEC-20261121-project-state-move REQ-1: a project's `.moai/` that is a real folder whose
+/// first-level names are all names the team keeps in git ([`KEPT`]), with no generation marker,
+/// no Go marker and no unfinished go-state receipt, holds no machine state of either generation.
+/// It reads like an absent `.moai/` (verdict `none`), and a new project adopts it in place.
+/// Besides the kept names it may hold a real `backups/` folder (git ignores it; an earlier
+/// undo leaves it) and Finder's `.DS_Store`. At least one kept name must be there: an empty
+/// folder keeps its own verdict. A link, a kept name of the wrong type or an unlisted name
+/// anywhere keeps the folder as it is read today. [`specs_only`] is the narrower case.
+pub fn kept_only(moai: &Path) -> bool {
+    if !fs::symlink_metadata(moai).is_ok_and(|m| m.is_dir()) {
+        return false;
+    }
+    let Ok(entries) = fs::read_dir(moai) else {
+        return false;
+    };
+    let mut kept = 0;
+    for e in entries {
+        let Ok(e) = e else {
+            return false;
+        };
+        let Ok(kind) = e.file_type() else {
+            return false;
+        };
+        let name = e.file_name();
+        let Some(name) = name.to_str() else {
+            return false;
+        };
+        if name == ".DS_Store" && kind.is_file() {
+            continue;
+        }
+        if name == "backups" && kind.is_dir() {
+            continue;
+        }
+        let listed = KEPT.iter().find_map(|k| {
+            let folder = k.ends_with('/');
+            (k.trim_end_matches('/') == name).then_some(folder)
+        });
+        let is_marker = name == RUST_MARKER || name == LEGACY_MARKER;
+        match listed {
+            Some(folder)
+                if !is_marker && (kind.is_dir() == folder) && (folder || kind.is_file()) =>
+            {
+                kept += 1
+            }
+            _ => return false,
+        }
+    }
+    kept > 0 && go_markers(moai).is_empty() && !holds_go_state_receipt(moai)
+}
+
 /// The HOME verdict (#2871 I2 R1): the table above with the HOME's Go markers, plus one row —
 /// a schema-2 marker is `rust-first`, Go markers or not; the Go markers found are reported as
 /// `go_retire_pending` and nothing moves. A HOME without a schema-2 marker gets exactly the
@@ -439,7 +519,7 @@ fn classify_inner(
     let moai_dir = match fs::symlink_metadata(&moai) {
         Err(_) => "absent",
         Ok(m) if m.file_type().is_symlink() => "link",
-        Ok(_) if specs_as_absent && specs_only(&moai) => "absent",
+        Ok(_) if specs_as_absent && (specs_only(&moai) || kept_only(&moai)) => "absent",
         Ok(m) if m.is_dir() => "folder",
         Ok(_) => "other",
     };
@@ -712,7 +792,7 @@ pub fn adopt_new(root: &Path, created_by: &str) -> Result<bool, String> {
     if !is_new_project(root) {
         return Ok(false);
     }
-    if !specs_only(&root.join(MOAI_DIR)) {
+    if !specs_only(&root.join(MOAI_DIR)) && !kept_only(&root.join(MOAI_DIR)) {
         fs::create_dir(root.join(MOAI_DIR))
             .map_err(|_| format!("{MOAI_DIR}: folder create failed"))?;
     }
@@ -997,6 +1077,49 @@ mod tests {
         assert_eq!(c.generation, "rust");
     }
 
+    /// A receipt of exactly `size` bytes whose `state` is `state`.
+    fn receipt_of(state: &str, size: u64) -> String {
+        let head = format!(r#"{{"state":"{state}","pad":""#);
+        let tail = "\"}";
+        let fill = size as usize - head.len() - tail.len();
+        format!("{head}{}{tail}", "x".repeat(fill))
+    }
+
+    /// B1 of the audit of the project state move: a finished undo leaves a `reverted` receipt, and
+    /// a receipt grows with every restored SPEC copy (296,561 bytes for 2,000 of them). Its
+    /// `state` is read up to [`GO_STATE_RECEIPT_MAX`], pinned on both sides of the old 256 KiB
+    /// limit and of the real one; above the real one the receipt still counts as open.
+    #[test]
+    fn a_reverted_receipt_is_read_up_to_the_receipt_limit() {
+        const RECEIPT: &str = ".moai/backups/20261113T150000Z/go-state-receipt.json";
+        let old_limit = 256 * 1024;
+        for (size, finished) in [
+            (old_limit, true),
+            (old_limit + 1, true),
+            (296_561, true),
+            (GO_STATE_RECEIPT_MAX, true),
+            (GO_STATE_RECEIPT_MAX + 1, false),
+        ] {
+            let tmp = tempfile::tempdir().unwrap();
+            write(tmp.path(), RECEIPT, &receipt_of("reverted", size));
+            let path = tmp.path().join(RECEIPT);
+            assert_eq!(fs::metadata(&path).unwrap().len(), size);
+            assert_eq!(receipt_reverted(&path), finished, "{size} bytes");
+            // Beside kept names: a finished undo reads as before the move, an open one as stopped.
+            write(tmp.path(), ".moai/project.yaml", "name: p\n");
+            let c = classify(tmp.path());
+            let want = if finished { "none" } else { "interrupted" };
+            assert_eq!(c.generation, want, "{size} bytes beside a kept name");
+            assert_eq!(kept_only(&tmp.path().join(".moai")), finished, "{size}");
+        }
+        // The state decides, not the size: a large receipt that is not `reverted` stays open.
+        let tmp = tempfile::tempdir().unwrap();
+        write(tmp.path(), RECEIPT, &receipt_of("pending", 296_561));
+        assert!(!receipt_reverted(&tmp.path().join(RECEIPT)));
+        write(tmp.path(), ".moai/project.yaml", "name: p\n");
+        assert_eq!(classify(tmp.path()).generation, "interrupted");
+    }
+
     #[test]
     fn utc_stamps_are_exactly_sixteen_characters() {
         assert!(utc_stamp("20261113T150000Z"));
@@ -1069,8 +1192,11 @@ mod tests {
         ] {
             assert_eq!(system_yaml_has_version(text), want, "{text:?}");
         }
+        // `config/` is a name the team keeps in git and this file has no version, so it is no Go
+        // marker: the folder holds only kept names and reads like an absent one
+        // (SPEC-20261121-project-state-move REQ-1), no longer `unknown`.
         let c = verdict(|r| write(r, ".moai/config/sections/system.yaml", "moai:\n  name: x\n"));
-        assert_eq!(c.generation, "unknown");
+        assert_eq!(c.generation, "none");
     }
 
     #[cfg(unix)]
