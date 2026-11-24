@@ -368,7 +368,10 @@ fn inventory_a_link_below_a_top_level_folder_is_never_followed() {
     let inv = inventory(&fx, &[]);
     for (name, bytes) in [("reports", 100), ("releases", 200)] {
         let e = entry(&inv, name);
-        assert_eq!(e["bytes"], bytes, "{name} counted what a link points to: {e}");
+        assert_eq!(
+            e["bytes"], bytes,
+            "{name} counted what a link points to: {e}"
+        );
         assert_eq!(e["files"], 1, "{name} counted a file behind a link: {e}");
     }
     // The kind row counts the one report that is a file, not the links beside it.
@@ -389,7 +392,11 @@ fn inventory_a_moai_folder_that_is_a_link_is_refused_by_both_operations() {
     let home_arg = home.to_str().unwrap();
     for op in ["tidy-inventory", "tidy-plan"] {
         let out = run(&[op, home_arg]);
-        assert!(!out.ok, "{op} followed the link: {} {}", out.stdout, out.stderr);
+        assert!(
+            !out.ok,
+            "{op} followed the link: {} {}",
+            out.stdout, out.stderr
+        );
         let all = format!("{}{}", out.stdout, out.stderr);
         assert!(all.contains("link"), "{op} did not say it is a link: {all}");
         assert!(
@@ -704,18 +711,29 @@ fn plan_a_retired_tool_folder_with_an_unreadable_part_is_kept_not_archived() {
     let fx = retired_tool_home();
     // The whole folder looks old and readable until the walk meets the one part it cannot list.
     let whole = plan(&fx, &[]);
-    assert_eq!(item(&whole, "releases")["action"], "archive", "control: {whole}");
+    assert_eq!(
+        item(&whole, "releases")["action"],
+        "archive",
+        "control: {whole}"
+    );
     put(&fx.moai.join("releases/v1/locked/f"), 5);
     let locked = fx.moai.join("releases/v1/locked");
     fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
     let _unlock = Unlock(locked);
     let p = plan(&fx, &[]);
     let i = item(&p, "releases");
-    assert_eq!(i["action"], "keep", "archived what it could not read in full: {i}");
+    assert_eq!(
+        i["action"], "keep",
+        "archived what it could not read in full: {i}"
+    );
     assert_eq!(i["rule"], "keep_unknown", "{i}");
     assert!(text(&i["reason"]).contains("unknown"), "{i}");
     assert!(
-        p["items"].as_array().unwrap().iter().all(|i| i["action"] == "keep"),
+        p["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|i| i["action"] == "keep"),
         "nothing is offered from a folder read in part: {p}"
     );
 }
@@ -728,11 +746,18 @@ fn plan_a_retired_tool_folder_over_the_entry_limit_is_kept_not_archived() {
     }
     age_tree(&fx.moai.join("releases"), 400);
     let whole = plan(&fx, &[]);
-    assert_eq!(item(&whole, "releases")["action"], "archive", "control: {whole}");
+    assert_eq!(
+        item(&whole, "releases")["action"],
+        "archive",
+        "control: {whole}"
+    );
     // A lowered limit stops the walk partway: the size is only what was seen.
     let p = plan(&fx, &["--entry-limit", "5"]);
     let i = item(&p, "releases");
-    assert_eq!(i["action"], "keep", "archived a folder it only partly counted: {i}");
+    assert_eq!(
+        i["action"], "keep",
+        "archived a folder it only partly counted: {i}"
+    );
     assert_eq!(i["rule"], "keep_unknown", "{i}");
     assert!(text(&i["reason"]).contains("unknown"), "{i}");
 }
