@@ -2290,13 +2290,8 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         }
         assert!(added.len() > 100, "the scan found {} files", added.len());
         let list = std::fs::read_to_string(root.join("tools/repo_scans.json")).unwrap();
-        let out = Command::new("git")
-            .args(["ls-files", "-z"])
-            .current_dir(root)
-            .output()
-            .unwrap();
-        assert!(out.status.success(), "git ls-files failed");
-        let tracked: Vec<String> = String::from_utf8_lossy(&out.stdout)
+        let listed = git(root, &["ls-files", "-z"]).expect("git ls-files");
+        let tracked: Vec<String> = listed
             .split('\0')
             .filter(|p| !p.is_empty())
             .map(String::from)
