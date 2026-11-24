@@ -1,10 +1,9 @@
 ---
 id: SPEC-20261124-home-guard-flake
 title: "HOME 가드가 부하 아래에서 테스트가 읽지 않은 HOME 읽기를 테스트 탓으로 실패시키는 일을, 먼저 증거로 가려내요"
-status: approved
-revision: 1
+status: draft
+revision: 2
 created: 2026-11-24
-approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8329 of card C-451 (answers lane note 8328, 2026-11-24T07:39:54Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 1 at head 0195fdd3b1, option A; recorded by the lane, not approved by it", digest: "sha256:81da21c538b2f34b8612d38a37193441e58802472025fd5234fddf54a15ceca0"}
 ---
 
 # HOME 가드가 부하 아래에서 테스트가 읽지 않은 HOME 읽기를 테스트 탓으로 실패시키는 일을, 먼저 증거로 가려내요
@@ -63,12 +62,15 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8329 of card
 
 <!-- This SPEC adds evidence only and no blocking check: the guard's verdict stays as it is, so there is no observe step to record. -->
 - REQ-1: When the wrapper prints a `HOME-GUARD: touched its HOME` line, it shall append one `HOME-GUARD-DETAIL:` line per hit entry to the file named by `MOAI_HOME_GUARD_LOG`, with the entry's access time and modification time in seconds with a fraction.
-- REQ-2 (REQ-1): The `HOME-GUARD-DETAIL:` lines shall carry the time the wrapper started the test and the time it compared the HOME, in seconds with a fraction, so a read can be placed before the test, during it or after it.
+- REQ-2 (REQ-1): The `HOME-GUARD-DETAIL:` lines shall carry the modification time of the reference file, which the wrapper makes just before it starts the test, and the time it compared the HOME, in seconds with a fraction, so a read can be placed before the test, during it or after it.
 - REQ-3 (REQ-1): The `HOME-GUARD-DETAIL:` lines shall carry, for each other folder named `moai-test-home.*` under `TMPDIR`, the access time of its `.moai/user-assets.json`, read with `stat` only.
 - REQ-4: The wrapper shall never list, open or read any entry inside another guard folder.
 - REQ-5: The wrapper shall keep every exit code and every `HOME-GUARD:` line it printed before this change.
 - REQ-6 (REQ-1): IF a `HOME-GUARD-DETAIL:` line cannot be written, THEN the wrapper shall ignore the failure and keep the test's result.
 - REQ-7: Where `perl` is not on the host, the wrapper shall write the times in whole seconds.
+- REQ-8: The wrapper shall write the paths of a `HOME-GUARD-DETAIL:` line relative to the test's HOME, and name a peer folder by its own file name, so the line holds neither the user's home path nor the `TMPDIR` path nor the test's arguments.
+- REQ-9 (REQ-1): The `HOME-GUARD-DETAIL:` lines shall carry the process id and the file name of the command (neither its arguments nor its folder) of every running process whose command file name starts with `moai`.
+- REQ-10 (REQ-9): IF the process table cannot be read, THEN the wrapper shall write one `procs=unavailable` detail line and keep the test's result.
 
 ## Acceptance
 
@@ -77,6 +79,9 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8329 of card
 - AC-3 (REQ-5): every test of `tests/test_home_guard.rs` that existed before this change passes unchanged: a decoy read, a write and a removal still exit 1 in the default mode, observe keeps the test's exit code, a listed test is tolerated as before. · verify: `cargo nextest run --locked --offline --test test_home_guard`
 - AC-4 (REQ-6): a log path that cannot be written changes neither the exit code nor the printed `HOME-GUARD:` line. · verify: `cargo nextest run --locked --offline --test test_home_guard`
 - AC-5 (REQ-7): with `perl` hidden from `PATH` the detail line holds whole seconds and the verdict is the same. · verify: `cargo nextest run --locked --offline --test test_home_guard`
+- AC-6 (REQ-8): no detail line holds the `TMPDIR` path, the user's home path or an argument of the test, and the hit entries are written as `.`, `.moai` and `.moai/user-assets.json`. · verify: `cargo nextest run --locked --offline --test test_home_guard`
+- AC-7 (REQ-9, REQ-10): with a process named `moai-probe` running beside the test, a detail line carries its id and that name and none of its arguments; with `ps` hidden from `PATH` one `procs=unavailable` line is written and the verdict is the same. · verify: `cargo nextest run --locked --offline --test test_home_guard`
+- AC-8 (REQ-1): through the scratch crate and `cargo nextest run`, with `MOAI_HOME_GUARD_LOG` set outside it, the log file holds the `HOME-GUARD-DETAIL:` lines of the reading plant, so the variable reaches the wrapper through nextest. · verify: `cargo nextest run --locked --offline --test test_home_guard`
 
 ## Scope
 
@@ -86,10 +91,10 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8329 of card
 
 ## Plan
 
-1. RED: the five acceptance tests in `tests/test_home_guard.rs` fail on the current wrapper.
-2. `tools/test_home_guard.sh` records the start time and, after the verdict, writes the detail lines; the verdict code is not touched.
-3. Guard mutants, one line each in the READY note: removing the detail write fails AC-1; reading a planted peer with `ls` or `find` instead of `stat` fails AC-2; changing an exit code fails AC-3.
-4. `moai check affected` once at the head; the receipt goes in the READY note.
+1. RED: the acceptance tests of AC-1, AC-2, AC-5, AC-6, AC-7 and AC-8 in `tests/test_home_guard.rs` fail on the current wrapper; AC-3 and AC-4 pass before and after.
+2. `tools/test_home_guard.sh` reads the start time from the reference file and, only after a `touched` verdict, writes the detail lines; the verdict code is not touched and the path of a test that touched nothing gains no new command.
+3. Guard mutants, one line each in the READY note: removing the detail write fails AC-1; reading a planted peer with `ls` or `find` instead of `stat` fails AC-2; changing an exit code fails AC-3; writing the absolute path fails AC-6; writing the arguments of a process fails AC-7.
+4. `moai check affected` once at the head; the receipt goes in the READY note, with a reading of whether `MOAI_HOME_GUARD_LOG` reaches nextest through `check affected` (`run_step` in `src/check_affected.rs` clears no variable) and through nextest (AC-8).
 5. Later, with no new card: the next real `touched its HOME` that is not a real read leaves the detail lines in the log; the reader is read from them and revision 2 fixes the source.
 
 ## Risks
@@ -103,4 +108,8 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8329 of card
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | Evidence first: this revision changes no verdict. | proposed by the lane, awaiting the leader (LANE-BLOCKED kind=decision); default if the leader does not answer: this option | drop the detail lines |
-| D-2 | A control folder (an unreachable twin of the decoy whose read marks a hit as an outsider's) is not part of this revision. | proposed: it would change what passes when a real read and an outside read coincide, a contract change that needs the cause first | add it in revision 2 after the evidence names the reader |
+| D-2 | A control folder (an unreachable twin of the decoy whose read marks a hit as an outsider's) is not part of this revision. | proposed: it would change what passes when a real read and an outside read coincide, a contract change that needs the cause first; the leader's decision note 8329 agrees (B only after the cause is known) | add it in a later revision after the evidence names the reader |
+| D-3 | Option A is approved: the verdict, exit codes, baseline and `enforce` default stay as they are, and the detail lines are evidence only. | leader decision note 8329 of card C-451 (2026-11-24T07:39:54Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), which approved revision 1 at digest `sha256:81da21c5` | revert to the earlier wrapper |
+| D-4 | The detail lines hold paths relative to the HOME and no user path (REQ-8). | leader note 8329, addition 1 | none needed: it only narrows what is written |
+| D-5 | The detail lines also name the running `moai*` processes by id and command file name (REQ-9, REQ-10). | leader note 8329, addition 2, left to the lane's judgement: the only code that opens `user-assets.json` is `home_state::home_go_markers`, so a `moai` process alive at the hit that is not the test's child tells whether another test's `moai` ran with a wrong HOME; the cost is one `ps` on a `touched` verdict only, and no argument is kept | drop REQ-9 and REQ-10 |
+| D-6 | Revision 2 holds the three additions of note 8329 and is a new text, so its digest is new: the lane records no approval of it; the leader reads the digest in the READY note. | CLAUDE.md rule that a lane never records an approval it did not get | none |
