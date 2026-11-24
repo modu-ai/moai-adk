@@ -41,6 +41,7 @@ The rows keep the wording of the table that stood in `CLAUDE.md` (moved here by 
 | Scope and sessions: Codex and OMP are withdrawn; Claude Code and GLM only | user decision 2026-11-21, `SPEC-20261121-remove-codex-support` |
 | Repository boundaries: `.moai/` is this generation's tracked state and `.moai-cli/` is read only where it exists | user order of 2026-11-21, `SPEC-20261121-path-root-moai-default`, `src/state_root.rs` |
 | `CLAUDE.md` is team-shared facts, near 200 lines (official limit under 200 per file); machine facts go to `CLAUDE.local.md`; detail goes to `docs/` | user decision 2026-11-23 ('CLAUDE.md는 프로젝트 공통을 위한 개인/팀을 위한 내용이고 CLAUDE.local.md는 개인용 개발시 필요한 지침을 적는 곳이다'), investigation report of 2026-11-23 on the instruction-file layout, `SPEC-20261123-claude-md-rewrite` |
+| Scope and sessions: the launcher flags `-l\|-a` are retired; a session starts with `moai cc\|glm`, `--name <name>` names it, and the role is typed inside it. Replaced the sentence "`-l\|-a` only name the session and set its access" | user decision D-1 of 2026-11-09 (`docs/decisions-2026-11-08.md`), restated 2026-11-24; `SPEC-20261124-launcher-retire-role-flags` (revision 1, leader note 8234); replaces `SPEC-20261118-launcher-agent-entry` as the text that names the flags |
 
 ## RC1 ledger, scope and shared-interface owners (history)
 

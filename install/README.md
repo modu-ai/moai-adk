@@ -25,7 +25,7 @@ The addresses do not change; at release time only the files behind them are repl
 
 ## After the install
 
-Both scripts end by printing the next steps. Make a project folder and enter it (`mkdir my-project && cd my-project`; in PowerShell `New-Item -ItemType Directory my-project; Set-Location my-project`). Start a session there with `moai cc` or `moai glm`; `-l` starts it in leader mode and `-a` in agent mode, and both are optional. In the session, run `/moai project` to set the project up.
+Both scripts end by printing the next steps. Make a project folder and enter it (`mkdir my-project && cd my-project`; in PowerShell `New-Item -ItemType Directory my-project; Set-Location my-project`). Start a session there with `moai cc` or `moai glm`; add `--name <name>` to name it. A session starts with no role; type `/moai --mode-leader` or `/moai --mode-agent` inside it to choose one, which setting up a project does not need. In the session, run `/moai project` to set the project up.
 
 ## Conversation language
 

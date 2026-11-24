@@ -193,16 +193,28 @@ fn stale_ledger_is_the_local_card_ledger() {
     );
 }
 
-/// S2: the launcher flags `-l|-a` are kept (`SPEC-20261118-launcher-agent-entry`).
+/// S2: the launcher flags `-l|-a` are retired (`SPEC-20261124-launcher-retire-role-flags`, REQ-9);
+/// a session starts with `moai cc|glm` and an optional `--name`.
 #[test]
-fn stale_launcher_flags_are_kept() {
+fn stale_launcher_flags_are_retired() {
     let text = claude_md();
     assert_has(
         &text,
         "CLAUDE.md",
-        &["`-l|-a` only name the session and set its access"],
+        &[
+            "Start a session with `moai cc|glm`: a plain host session with no role (model `opus`, effort `medium`); `--name <name>` names it.",
+            "The launcher flags `-l|-a` are retired (user decision D-1 2026-11-09, `SPEC-20261124-launcher-retire-role-flags`) and the launcher refuses them.",
+        ],
     );
-    assert_lacks(&text, "CLAUDE.md", &["deprecated since", "#2164"]);
+    assert_lacks(
+        &text,
+        "CLAUDE.md",
+        &[
+            "`-l|-a` only name the session and set its access",
+            "deprecated since",
+            "#2164",
+        ],
+    );
 }
 
 /// S3: a mode flag is request text for the skill, not a route.
