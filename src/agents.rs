@@ -814,11 +814,7 @@ fn read_nested_ignore(root: &Path, rel: &str) -> Option<Vec<u8>> {
 /// guessed at: its folder goes to `unread`, so every file below it is named as now visible whatever
 /// the rules that were read say, because the unread file may take it back with a `!` rule
 /// (REQ-18). The plan says so once.
-fn nested_ignore_files(
-    root: &Path,
-    state: &str,
-    notes: &mut Vec<String>,
-) -> Result<NestedIgnores> {
+fn nested_ignore_files(root: &Path, state: &str, notes: &mut Vec<String>) -> Result<NestedIgnores> {
     let own = format!("{state}/.gitignore");
     let tools = format!("{state}/tools");
     let evals = format!("{state}/evals");
