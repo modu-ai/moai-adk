@@ -2369,6 +2369,40 @@
         }
       ],
       "rejects": "a change to the managed CLAUDE.md block text in src/agents.rs that the two tests pinning the block text (the area rule does not pick them: their names do not start with `agents`) did not re-run on the merge tree (SPEC-20261120-moai-layout, C-456)"
+    },
+    {
+      "id": "test-switch-prefix-read-only-in-debug-builds",
+      "always": true,
+      "tests": [
+        "tests/test_switch_release_scan.rs::every_test_switch_read_in_src_is_debug_or_test_only",
+        "tests/test_switch_release_scan.rs::the_gate_reader_tells_a_gated_read_from_an_ungated_one",
+        "tests/test_switch_release_scan.rs::the_release_and_dist_profiles_keep_debug_assertions_off",
+        "tests/test_switch_release_scan.rs::the_profile_reader_tells_an_on_switch_from_an_off_one"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test test_switch_release_scan"
+      ],
+      "rules": [
+        "tests/test_switch_release_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        },
+        {
+          "prefix": "Cargo.toml"
+        },
+        {
+          "prefix": ".cargo/config.toml"
+        },
+        {
+          "prefix": "tests/test_switch_release_scan.rs"
+        }
+      ],
+      "rejects": "a line of src that spells MOAI_TEST (or uses a constant that holds such a spelling) outside code under #[cfg(debug_assertions)] or #[cfg(test)], so a release build would read a test-only switch, or a release or dist profile in Cargo.toml or .cargo/config.toml that turns debug assertions on or a dist profile that does not inherit release (SPEC-20261125-test-switch-release-scan)"
     }
   ]
 }
