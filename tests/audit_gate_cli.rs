@@ -220,6 +220,8 @@ fn real_python3() -> std::path::PathBuf {
         .expect("a python3 on PATH: the step parses the gate's envelope with it");
     let out = std::process::Command::new(&first)
         .args(["-c", "import sys; print(sys.executable)"])
+        // This question runs in the test's own HOME too: no bytecode cache there either.
+        .env("PYTHONDONTWRITEBYTECODE", "1")
         .output()
         .expect("ask python3 for its executable");
     assert!(
@@ -376,7 +378,9 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
             .env("RUNNER_TEMP", &runner_temp)
             .env("TMPDIR", &tmpdir)
             .env("HOME", &step_home)
-            .env_remove("PYTHONDONTWRITEBYTECODE")
+            // Whichever `python3` the step reaches keeps its bytecode cache out of the step's HOME
+            // (the Xcode one of macOS would write under `$HOME/Library/Caches`).
+            .env("PYTHONDONTWRITEBYTECODE", "1")
             .current_dir(tmp.path())
             .output()
             .expect("run the step block");
