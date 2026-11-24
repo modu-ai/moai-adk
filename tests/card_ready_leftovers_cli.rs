@@ -184,7 +184,7 @@ fn repo_file(rel: &str) -> String {
 fn the_lane_guidance_names_the_throwaway_place() {
     for rel in [
         "docs/lane-rules.md",
-        "skills/moai/references/flows/next-flow.md",
+        "skills/moai/references/internal/self-check.md",
     ] {
         let text = repo_file(rel);
         for needle in ["target/<name>/", "TMPDIR", "relative path", "leftovers:"] {

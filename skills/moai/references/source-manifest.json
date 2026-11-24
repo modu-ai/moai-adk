@@ -279,7 +279,7 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "2d87b2bf5949562c00d4da530fa3d68bc1e44670405577113253f051272613ab",
+      "sha256": "7d91faef6103320b29343cd15c97adb3bf7da1ab734346fc1ba2c51ef03c1d04",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",

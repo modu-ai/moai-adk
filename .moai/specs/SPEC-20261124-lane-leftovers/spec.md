@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261124-lane-leftovers
 title: "lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY"
-status: approved
-revision: 3
+status: draft
+revision: 4
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-24
-  basis: "리더 결정 노트 8227 (2026-11-24T05:22:46Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8226 에 답함): SPEC 판 3 승인 — Scope write 에 tools/repo_scans.json 한 줄(reads-docs 와 reads-skills), Plan 3c, Result 뿐이고 요구와 인수는 그대로; 레인은 그 노트를 인용만 해요"
-  digest: "sha256:4b4815811d43248f691fe661a82c0294cfae205f20eb91b92a348f104e0ce1a7"
 ---
 
 # lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY
@@ -44,7 +39,7 @@ approval:
 
 ## Requirements
 
-- REQ-1: The lane guidance (`docs/lane-rules.md` and the `next-flow` reference of the moai skill) shall say that a throwaway copy of the repository, a temporary HOME and a `mktemp` folder are made only under `<worktree>/target/<name>/` (with `TMPDIR` pointed there for a run that makes its own temporary folders) and are removed by a relative path before READY.
+- REQ-1: The lane guidance (`docs/lane-rules.md` and the `self-check` reference of the moai skill) shall say that a throwaway copy of the repository, a temporary HOME and a `mktemp` folder are made only under `<worktree>/target/<name>/` (with `TMPDIR` pointed there for a run that makes its own temporary folders) and are removed by a relative path before READY.
 - REQ-2: When `moai card note` gets a hand-back note (a first line that starts with `LANE-READY-INTEGRATION`, `REPAIRED` or `READY `) whose first line reads correctly, it shall keep the note only when the body holds exactly one readable `leftovers:` line · failure: see REQ-3.
 - REQ-3 (REQ-2): IF the body holds no `leftovers:` line, more than one, an empty one, a template placeholder left as it is (`<path>`) or `none` together with a path, THEN `moai card note` shall refuse the note with the line to add and write nothing.
 - REQ-4: When `moai card note` keeps a hand-back note, it shall add to its answer `shared_checkout_new`, the paths in the primary checkout that are untracked or ignored, are not on the fixed list of expected state (`target/`, `.claude/`, `CLAUDE.local.md`, `.mcp.json`, `.DS_Store`) and were created or changed after the card's reservation began · failure: see REQ-5.
@@ -62,7 +57,7 @@ approval:
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261124-lane-leftovers/**`, `src/card/ready_leftovers.rs`(새), `src/card/mod.rs`(한 줄 `pub mod`), `src/card/work.rs`(호출 한 줄과 답 필드), `src/ops/card.rs`(`Note` 도움말 글만), `tests/card_ready_leftovers_cli.rs`(새), `docs/lane-rules.md`, `docs/design-review/appendix/operations/card.md`, `skills/moai/references/flows/next-flow.md`, `skills/moai/references/internal/self-check.md`, `tests/fixtures/help/**`(`card note` 항목만), `tests/card_ready_receipt_cli.rs`와 `tests/e2e_temp_home_cli.rs`(판 2: 기존 READY 노트 본문에 `leftovers: none` 줄만 더해요), `tools/repo_scans.json`(판 3: `reads-docs` 와 `reads-skills` 두 항목에 새 테스트를 규칙 파일과 `--test` 로 더해요, 줄 임대)
+- write: `.moai/specs/SPEC-20261124-lane-leftovers/**`, `src/card/ready_leftovers.rs`(새), `src/card/mod.rs`(한 줄 `pub mod`), `src/card/work.rs`(호출 한 줄과 답 필드), `src/ops/card.rs`(`Note` 도움말 글만), `tests/card_ready_leftovers_cli.rs`(새), `docs/lane-rules.md`, `docs/design-review/appendix/operations/card.md`, `skills/moai/references/internal/self-check.md`, `skills/moai/references/source-manifest.json`(판 4: `self-check.md` 의 sha256 값 하나, 줄 임대), `tests/fixtures/help/**`(`card note` 항목만), `tests/card_ready_receipt_cli.rs`와 `tests/e2e_temp_home_cli.rs`(판 2: 기존 READY 노트 본문에 `leftovers: none` 줄만 더해요), `tools/repo_scans.json`(판 3: `reads-docs` 와 `reads-skills` 두 항목에 새 테스트를 규칙 파일과 `--test` 로 더해요, 줄 임대)
 - read-only: `src/card/ready_receipt.rs`, `src/bundle/mutant_line.rs`, `tests/areas.toml`, `docs/claude-md-rule-provenance.md`
 - forbidden: `CLAUDE.md`, `src/lib.rs`, 영수증 검사(`check_note`)를 느슨하게 하는 변경, 새 Python 테스트, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것, 실제 HOME, 다른 레인의 파일
 
@@ -70,7 +65,8 @@ approval:
 
 1. RED: `tests/card_ready_leftovers_cli.rs` 의 테스트 셋과 `card::ready_leftovers::tests` 를 먼저 쓰고 코드 없이 실패하는 것을 봐요. 새 테스트 파일의 첫 낱말 `card` 는 `tests/areas.toml` 에 이미 있어요. 테스트는 상태 폴더 이름(`.moai`)을 글자로 쓰지 않아서 `allow.tsv` 의 새 줄이 필요 없어요.
 2. GREEN: `src/card/ready_leftovers.rs` 에 줄을 읽는 순수 함수(코드 울타리·4칸 들여쓰기·`- ` 접두사 규칙은 `mutant_line.rs` 와 같아요. `mutant_line.rs` 는 이 SPEC 의 읽기 전용이라 같은 열두 줄을 이 모듈에 두고, 하나로 합치는 일은 뒤 SPEC 의 몫으로 `## Result` 에 적어요)와 공용 체크아웃을 읽는 함수를 두고, `work.rs` 에서 영수증 검사 뒤에 한 줄을 불러요(영수증 거절 글이 앞서요). 공용 체크아웃은 `git worktree list --porcelain` 의 첫 항목이고 `git status --porcelain=v1 -z --ignored=matching -uall` 로 읽어요; 이 저장소의 `git_text` 가 `--no-optional-locks` 를 붙여서 index 를 건드리지 않아요. 예약 시작은 원장의 예약 `acquired_at` 이에요.
-3. 글: `docs/lane-rules.md`(Worktree entry and exit 의 한 줄과 Hand-off 1번), `card.md`, 도움말, `next-flow.md`, `self-check.md`.
+3. 글: `docs/lane-rules.md`(Worktree entry and exit 의 한 줄과 Hand-off 1번), `card.md`, 도움말, `self-check.md`.
+3d. 판 4: `skills/moai/references/flows/next-flow.md` 는 팁의 크기(8051바이트)를 넘기지 못하게 `tests/next_flow_skill_scan.rs` 가 못박고 있어서(처음 이 실행의 `check affected` 영수증이 실패해서 읽음, 헤드 `b80512db75`) 그 파일에는 아무것도 더하지 않아요. 스킬 쪽 지침은 `self-check.md` 가 맡고, 이 파일의 sha256 을 적은 `source-manifest.json` 의 값 하나만 다시 계산해요. 검사 한도를 올리지 않아요.
 3c. 판 3: NeXT 팁의 파일 읽기 검사(`every_file_reader_has_an_always_scan_or_an_exemption`)가 문서를 열어 읽는 새 테스트 파일을 `tools/repo_scans.json` 의 `always` 항목에 올리라고 해서(이 실행에서 읽음), `reads-docs` 와 `reads-skills` 에 올려요. 임시 저장소의 무시 규칙은 `.git/info/exclude` 로, 고정 파일 이름은 이 저장소에 없는 이름으로 바꿔서 `FILE_READ_EXEMPT` 를 건드리지 않아요.
 3b. 판 2: 새 거절 때문에 기존 READY 노트 테스트 일곱(`card_ready_receipt_cli` 여섯, `e2e_temp_home_cli` 하나)이 실패해서(이 실행에서 읽음) 그 노트 본문에 `leftovers: none` 줄만 더해요. 영수증 검사 기대는 그대로예요.
 4. 뮤턴트: 새 가드 테스트마다 코드를 지우고 실패를 봐요(줄 검사 제거, 목록 필터 제거, `--no-optional-locks` 제거, 예약 시각 필터 제거). 영향 테스트 한 번, READY.
@@ -96,7 +92,8 @@ approval:
 
 NeXT 팁 efb3a80ae9 를 합친 가지에서 읽은 것이에요(합치기는 리더 결정 노트 8196 의 (a); 같은 시각의 `check affected` 영수증은 READY 노트가 가져요). 모든 실행은 `RUSTC_WRAPPER=sccache`, 힙 슬롯 `--max 3`, `cargo nextest run --locked --offline` 이에요.
 
-- AC-1: met — `the_lane_guidance_names_the_throwaway_place` 가 `docs/lane-rules.md` 와 `next-flow.md` 의 `<worktree>/target/<name>/`·`TMPDIR`·`relative path`·`leftovers:` 를 읽고 통과해요(선택한 119개 테스트 119 통과, 로그 `target/lane-leftovers/merged2.log`).
+- AC-1: met — `the_lane_guidance_names_the_throwaway_place` 가 `docs/lane-rules.md` 와 `self-check.md` 의 `<worktree>/target/<name>/`·`TMPDIR`·`relative path`·`leftovers:` 를 읽고 통과해요(선택한 128개 테스트 128 통과, 로그 `target/lane-leftovers/fix2.log`).
+- 첫 `check affected` 영수증(헤드 `b80512db75`)은 `result=FAIL`(`test=100`)이었어요: `next-flow.md` 가 못박힌 크기 8051바이트를 넘고(`next_flow_skill_scan` 넷) 소스 매니페스트의 sha256 이 낡았어요(`product_cli`·`source_manifest_facts` 둘). 판 4 가 `next-flow.md` 를 팁 그대로 되돌리고 `self-check.md` 의 해시 하나만 다시 계산해서 위 여섯이 통과해요(`fix2.log`: 128 통과).
 - AC-2: met — `a_ready_note_without_a_readable_leftovers_line_is_refused` 통과(세 표지, 여섯 잘못된 모양, 두 읽을 수 있는 모양, 노트 수 확인). 뮤턴트: 줄 검사를 끈 복사본에서 이 테스트와 단위 테스트가 실패했어요(exit 100).
 - AC-3: met — `the_shared_checkout_is_read_without_changing_it` 통과(새 추적 안 된 파일, 새 무시된 파일과 폴더가 `shared_checkout_new` 에 있고, 예약보다 오래된 파일·고정 목록·레인 워크트리 파일은 없고, `.git/index` 바이트와 수정 시각과 `git status` 출력이 같음). `a_card_without_a_reservation_is_not_checked_and_the_note_is_kept` 통과. 읽을 수 없는 저장소는 단위 테스트 `a_checkout_that_cannot_be_read_is_not_checked` 가 가려요(통합 테스트에서 저장소를 읽을 수 없게 만들지는 않았어요).
 - AC-4: met — `card::ready_leftovers::tests` 여섯 개 통과. 뮤턴트: `.skip(1)` 을 지운 복사본이 처음에 살아남아(exit 0) 첫 줄만 있는 본문의 기대를 더했고, 다시 돌리자 실패했어요(exit 100).
