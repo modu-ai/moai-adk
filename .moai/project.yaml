@@ -75,5 +75,16 @@
   "versioning": {
     "scheme": "headver",
     "head": 4
-  }
+  },
+  "shared_files": [
+    "src/lib.rs",
+    "src/help.rs",
+    "src/ops/card.rs",
+    "src/profile.rs",
+    "tests/areas.toml",
+    "tools/repo_scans.json",
+    "skills/moai/references/source-manifest.json",
+    "docs/design-review/appendix/operations/card.md",
+    "tests/fixtures/help/*.txt"
+  ]
 }

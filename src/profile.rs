@@ -64,6 +64,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("test_paths", true),
     ("ci", true),
     ("checks", true),
+    ("shared_files", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -197,6 +198,41 @@ pub struct Profile {
     /// declared; a profile written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub checks: Option<Vec<crate::project_ci::CheckEntry>>,
+    /// Files many cards edit by a line (SPEC-20261124-shared-files-profile): relative paths or
+    /// globs, at most [`SHARED_FILES_MAX`]. `card take` and `card scope` do not reserve them
+    /// whole and point at `card line-lease` instead. Absent means none were declared; a profile
+    /// written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shared_files: Option<Vec<String>>,
+}
+
+/// The most entries `shared_files` may list: the limit of one reservation's scope.
+pub const SHARED_FILES_MAX: usize = 64;
+
+/// The longest `shared_files` entry, in characters: the limit of one scope pattern.
+const SHARED_FILES_ENTRY_MAX: usize = 512;
+
+/// `shared_files` as `card add --scope` reads a scope entry, plus what a stored list needs: no
+/// padding (the reader does not trim), no comma and no line or bidi separator. A failure names
+/// no value.
+fn validate_shared_files(files: &[String]) -> Result<()> {
+    let bad = || -> String { "invalid or nonportable profile; no values were logged".into() };
+    if files.len() > SHARED_FILES_MAX {
+        return Err(bad());
+    }
+    let clean = crate::card::input::validate_scope(files).map_err(|_| bad())?;
+    let is_separator = |c: char| matches!(c, '\u{2028}'..='\u{202e}' | '\u{2066}'..='\u{2069}');
+    let ok = clean.iter().zip(files).all(|(clean, raw)| {
+        clean == raw
+            && raw.chars().count() <= SHARED_FILES_ENTRY_MAX
+            && !raw.contains(',')
+            && !raw.chars().any(is_separator)
+    });
+    if ok {
+        Ok(())
+    } else {
+        Err(bad())
+    }
 }
 
 /// The flows the `work_flow` key names (card C-70), m-flow first.
@@ -428,6 +464,9 @@ fn validate(p: &Profile) -> Result<()> {
     }
     if let Some(checks) = &p.checks {
         crate::project_ci::validate_checks(checks)?;
+    }
+    if let Some(files) = &p.shared_files {
+        validate_shared_files(files)?;
     }
     let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
         && p.decisions.iter().all(|d| {
@@ -1371,6 +1410,7 @@ mod tests {
             test_paths: None,
             ci: None,
             checks: None,
+            shared_files: None,
         }
     }
 
@@ -1468,6 +1508,7 @@ mod tests {
                 id: "test".into(),
                 command: "cargo test".into(),
             }]),
+            shared_files: Some(vec!["src/lib.rs".into()]),
             ..v2()
         };
         let fields: Vec<String> = serde_json::to_value(&full)
@@ -1504,7 +1545,8 @@ mod tests {
                 "remote_copy",
                 "test_paths",
                 "ci",
-                "checks"
+                "checks",
+                "shared_files"
             ]
         );
     }
@@ -1576,6 +1618,81 @@ mod tests {
         fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
         let (profile, _) = read_profile(tmp.path()).unwrap();
         assert_eq!(profile.scopes.unwrap()[0].paths, ["apps/web"]);
+    }
+
+    /// AC-1 (SPEC-20261124-shared-files-profile REQ-1, REQ-2): `shared_files` is additive and
+    /// validated by `read_profile` on a hand-edited file; an absent key plans exactly as before
+    /// and reads as no key.
+    #[test]
+    fn shared_files_key_is_additive_and_validated() {
+        let base = serde_json::json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "p",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+        });
+        let listed = |d: &Delta| {
+            [&d.added, &d.changed, &d.removed, &d.unchanged, &d.conflict]
+                .iter()
+                .any(|l| l.contains(&"shared_files".to_string()))
+        };
+        assert!(!listed(&compute_delta(
+            &KNOWN_HOSTS,
+            Some(&base),
+            Some(&base),
+            &base
+        )));
+        let mut desired = base.clone();
+        desired["shared_files"] = serde_json::json!(["src/lib.rs"]);
+        assert_eq!(
+            compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired).added,
+            vec!["shared_files"]
+        );
+
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let many = |n: usize| -> Vec<String> { (0..n).map(|i| format!("src/f{i}.rs")).collect() };
+        let read_with = |list: Value| {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["shared_files"] = list;
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            read_profile(tmp.path())
+        };
+        for (bad, why) in [
+            (json!("src/lib.rs"), "a string, not a list"),
+            (json!(["/abs"]), "absolute path"),
+            (json!(["../up"]), "leaves the project"),
+            (json!(["a,b"]), "a comma"),
+            (json!(["a\u{2028}b"]), "a line separator"),
+            (json!([" src/lib.rs"]), "a padded entry"),
+            (json!(["a", "a"]), "a repeated entry"),
+            (json!([""]), "an empty entry"),
+            (json!([1]), "not a string"),
+            (json!(many(65)), "65 entries"),
+            (json!(["x".repeat(513)]), "an entry of 513 characters"),
+        ] {
+            assert!(read_with(bad).is_err(), "{why}");
+        }
+        for good in [
+            json!(["src/lib.rs", "tests/fixtures/help/*.txt"]),
+            json!(many(64)),
+            json!([]),
+        ] {
+            let (profile, _) = read_with(good.clone()).unwrap();
+            assert_eq!(
+                serde_json::to_value(&profile).unwrap()["shared_files"],
+                good
+            );
+        }
+        // A profile written before the key reads unchanged.
+        fs::write(&path, serde_json::to_vec(&v2()).unwrap()).unwrap();
+        let (profile, _) = read_profile(tmp.path()).unwrap();
+        assert!(serde_json::to_value(&profile)
+            .unwrap()
+            .get("shared_files")
+            .is_none());
     }
 
     /// C-69: `versioning` is additive and validated by `read_profile` on a hand-edited file; an
