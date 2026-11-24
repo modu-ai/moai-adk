@@ -1134,20 +1134,19 @@ enum Action {
     /// again on the new tip, because no result is reused once the tip has moved. A head that cannot
     /// be joined or fails alone is dropped and the others still land. A refusal of the landing
     /// (verdict, scans, a moved tip) stops the batch at that head and the answer lists the heads
-    /// not run. The check is `--check-cmd <program>`, run with `<tip>..<join>` as its only
-    /// argument in the worktree at the join (exit 0 passes), or by default the wide
-    /// `check affected` of this program. The answer has `landed`, `dropped` (with the reason),
-    /// `not_run`, `runs` (the range, exit and log of each check) and `stopped`.
+    /// not run. The check is the wide `check affected` of this program on the join; a wide run
+    /// that passed with a full-selection summary covers the scans of its heads. Only the session
+    /// of the live `leader` entry of the lane registry may call it. A tip that moves after a
+    /// passing check is joined and checked again, three times at most (`tip_kept_moving`). The
+    /// answer has `landed`, `dropped` (with the reason), `not_run`, `runs` (the range, exit, log
+    /// and scan cover of each check) and `stopped`.
     LandBatch {
         /// Each `C-n=<head>`: a card and its audited head (40 lowercase hex), 2 to 4 in all.
         #[arg(required = true)]
         pairs: Vec<String>,
-        /// Who lands: only `leader` is accepted.
+        /// Who lands: only `leader` is accepted, from the registered leader session.
         #[arg(long)]
         by: String,
-        /// The check program (default: the wide `check affected` of this program).
-        #[arg(long)]
-        check_cmd: Option<PathBuf>,
         /// The project folder (its profile holds the project id and the integration branch).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -1926,11 +1925,16 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         Action::LandBatch {
             pairs,
             by,
-            check_cmd,
             project,
             home,
         } => {
             let session = d::session_holder("land", env).ok();
+            // The tests' seam for the check program; the command line has no flag for it and a
+            // release build does not read the variable at all.
+            #[cfg(debug_assertions)]
+            let check_cmd = env("MOAI_TEST_LAND_BATCH_CHECK").map(PathBuf::from);
+            #[cfg(not(debug_assertions))]
+            let check_cmd: Option<PathBuf> = None;
             let mut answer = moai_cli::card::land::batch::land_batch(
                 &project,
                 &resolve_home(home)?,

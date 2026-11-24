@@ -4,11 +4,11 @@ When to read: before you take, run, audit or land a card, as the session that wo
 
 ## The name
 
-NeXT means New · engineering · eXperience · Together: people and agents build one product side by side, each in a place of their own. Its one line is "Work in parallel. Land once." Many lanes work at the same time; each change reaches the integration branch exactly once, through one lander.
+NeXT means New · engineering · eXperience · Together: people and agents build one product side by side, each in a place of their own. Its one line is "Work in parallel. Land once."
 
 ## How the flow works
 
-Four technical rules make the flow run. They describe how it works; they are not a reading of the name.
+Four technical rules make the flow run.
 
 - **No tip chase.** A lane works from the base it started on. When the integration tip moves, the lane does not merge the new tip, rebase or start its checks again. The lander deals with a moved tip once, at landing.
 - **Evidence before landing.** A head lands only with its evidence: the checks the lane ran on that head, with their exit codes, and a passing verdict from a session that did not write the change (`references/audit.md`). The landing command itself refuses a head whose SPEC check or card criteria do not pass at that head.
@@ -52,6 +52,7 @@ Four technical rules make the flow run. They describe how it works; they are not
 ## Landing
 
 - A card lands exactly once, by the lander: today the leader session, the only caller the command accepts. The command is `moai card land <card> --head <40 hex> --by leader`.
+- READY receipt: `check affected --card`. The wide set runs once per batch in `card land-batch`; the full run every five landings stays.
 - When the tip is not on the first-parent line of the head (the tip moved after the lane's base), the command refuses with `stale_base` and changes nothing. The lander then merges the lane's head onto the tip once, in a worktree of its own, with the tip as the first parent, and lands that merge. The lane does nothing.
 - Audit brief: name the scan tests `moai repo-scans --refs <tip> <head>` picks; run only their `cargo` checks on the merge tree, leaving out a Python line, and record each as a receipt step `scan:<id>` of the PASS for `moai card land`.
 - The protection hook is git's `reference-transaction` hook, which runs `moai card guard`. It refuses every create, move and delete of the integration branch that the landing command did not announce, a rename or copy onto its name included. Land with `moai card land`; never look for a way around the hook.

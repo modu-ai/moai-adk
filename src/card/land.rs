@@ -202,7 +202,20 @@ fn no_pass_reason(would_refuse: Option<&Value>) -> String {
 
 /// `card land C-n`: see the module comment.
 pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>) -> Result<Value> {
-    land_inner(project, home, reference, req, None)
+    land_inner(project, home, reference, req, None, false)
+}
+
+/// [`land`] for a head of a batch. `scans_by_run` says that the batch's own wide run passed on a
+/// join that holds this head and left a full-selection receipt, so the scans the merge tree needs
+/// are covered without a receipt of the verdict (SPEC-20261124-card-select-batch-land D-11).
+pub fn land_in_batch(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    req: &LandRequest<'_>,
+    scans_by_run: bool,
+) -> Result<Value> {
+    land_inner(project, home, reference, req, None, scans_by_run)
 }
 
 /// Every refusal of [`land`] that comes before the first write, and nothing written: the batch asks
@@ -215,8 +228,9 @@ pub fn land_preflight(
     reference: &str,
     req: &LandRequest<'_>,
     parent: &str,
+    scans_by_run: bool,
 ) -> Result<Value> {
-    land_inner(project, home, reference, req, Some(parent))
+    land_inner(project, home, reference, req, Some(parent), scans_by_run)
 }
 
 fn land_inner(
@@ -225,6 +239,7 @@ fn land_inner(
     reference: &str,
     req: &LandRequest<'_>,
     preflight: Option<&str>,
+    scans_by_run: bool,
 ) -> Result<Value> {
     let card_id = card_id(reference)?;
     if req.by != LEADER_BY {
@@ -449,7 +464,7 @@ fn land_inner(
     // The scans the merge tree needs (SPEC-20261123-land-repo-scans): only a landing that moves the
     // branch asks for them; a head the branch already holds was judged when it moved (REQ-9).
     let scans = if standing == Standing::OnTip {
-        scans::read(&input, mode).map_err(unchanged)?
+        scans::read(&input, mode, scans_by_run).map_err(unchanged)?
     } else {
         Value::Null
     };

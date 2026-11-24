@@ -15,6 +15,16 @@
 //! Each head is judged by the landing itself (verdict, scans, stale tip): a refusal stops the
 //! batch at that head and the heads after it are reported as not run. A join candidate is landed
 //! with its audited head named, so the verdict of the audited head covers it.
+//!
+//! Who may call it, what a run covers and when it gives up (SPEC revision 3):
+//!
+//! - the calling session must be the session of the live `leader` entry of the lane registry
+//!   ([`confirm_leader`]); `--by leader` alone is a word anyone can type;
+//! - a wide run that passed on the last join leaves a summary line in its private worktree; a
+//!   full-selection PASS line of that join covers the scans the merge tree needs, so the heads land
+//!   in enforce mode without a scan receipt of their own ([`receipt_covers`]);
+//! - a tip that moves after a check passed sends the heads through the join and the check again,
+//!   at most [`MAX_TIP_MOVES`] times.
 
 use super::LandRequest;
 use crate::card::input::{self, CardRef};
@@ -29,6 +39,11 @@ type Result<T> = std::result::Result<T, String>;
 /// The most heads one batch lands (the card says 2 to 4).
 pub const MAX_HEADS: usize = 4;
 
+/// The most times a passing check is thrown away because the integration branch moved before the
+/// heads landed. Every re-run is a cold build, so a branch that moves after each check ends the
+/// batch (`tip_kept_moving`) instead of looping.
+pub const MAX_TIP_MOVES: usize = 3;
+
 /// What `card land-batch` was given.
 pub struct BatchRequest<'a> {
     pub session: Option<&'a str>,
@@ -37,6 +52,7 @@ pub struct BatchRequest<'a> {
     pub pairs: &'a [String],
     /// The check program: it gets `<tip>..<join>` as its one argument, runs in a private worktree
     /// at the join and passes with exit 0. `None` runs the wide `check affected` in this process.
+    /// The command line has no flag for it: the tests set it through the environment.
     pub check_cmd: Option<&'a Path>,
 }
 
@@ -123,6 +139,74 @@ fn attach_specs(project: &Path, home: &Path, items: Vec<Item>) -> Result<(Vec<It
 
 fn short(sha: &str) -> &str {
     sha.get(..12).unwrap_or(sha)
+}
+
+/// The session confirms itself as the leader (SPEC D-12; the rule of `internal/loop.md`, "The
+/// confirmed leader"): the lane registry holds a live entry named `leader` in mode `leader`, and
+/// its `session` is the session that made this call. The name of a session, its folder or the word
+/// `--by leader` prove nothing; an unreadable registry is a refusal, never an answer of "yes".
+fn confirm_leader(project: &Path, session: Option<&str>, now: i64) -> Result<()> {
+    let Some(me) = session else {
+        return Err(refused(
+            "this call has no session id, and only the registered leader session lands a batch",
+        ));
+    };
+    let entries = crate::lane_registry::session_entries(project)
+        .map_err(|why| refused(format!("the lane registry cannot be read ({why})")))?;
+    let live = entries
+        .iter()
+        .find(|e| e.name == "leader" && e.mode.as_deref() == Some("leader") && e.lease_until > now);
+    match live {
+        None => Err(refused(
+            "no live leader entry is registered: the leader window registers itself with \
+             `moai session-register . --name leader --mode leader` (`/moai leader`)",
+        )),
+        Some(entry) if entry.session.as_deref() == Some(me) => Ok(()),
+        Some(_) => Err(refused(
+            "this session is not the session of the registered leader entry",
+        )),
+    }
+}
+
+/// Whether `line` is the summary of a full wide run of `last`: a `check-affected` line that names
+/// the head `last` (12 hex digits), ends in `result=PASS` and carries no `selection=` word (a
+/// `--card` or `--lane` run checked a part). Such a run ran every listed scan on the tree that
+/// lands, so its receipt covers the scans of the heads it holds (SPEC D-11).
+fn receipt_covers(line: &str, last: &str) -> bool {
+    let line = line.strip_suffix('\n').unwrap_or(line);
+    if line.contains('\n') {
+        return false;
+    }
+    let words: Vec<&str> = line.split(' ').collect();
+    words.first() == Some(&"check-affected")
+        && words
+            .iter()
+            .any(|w| w.strip_prefix("head=") == Some(short(last)))
+        && words.last() == Some(&"result=PASS")
+        && !words.iter().any(|w| w.starts_with("selection="))
+}
+
+/// Writes the summary line of an in-process run where `moai check affected` writes it for its
+/// caller (`<out>/summary.txt`), so that [`read_run_receipt`] finds it. The command line does this
+/// after `check_affected::run` returns; a direct call of `run` does not.
+fn record_summary(answer: &Value) {
+    if let (Some(out), Some(summary)) = (answer["out"].as_str(), answer["summary"].as_str()) {
+        let _ = crate::card::ready_receipt::write_summary(Path::new(out), summary);
+    }
+}
+
+/// The summary line a wide run left in its private worktree `work` for the join `last`, or
+/// `None` when there is none or it is not a small regular file.
+fn read_run_receipt(work: &Path, last: &str) -> Option<String> {
+    let file = work
+        .join("target")
+        .join(format!("check-affected-{}", short(last)))
+        .join("summary.txt");
+    let meta = std::fs::symlink_metadata(&file).ok()?;
+    if !meta.is_file() || meta.len() > 4096 {
+        return None;
+    }
+    std::fs::read_to_string(&file).ok()
 }
 
 /// The trailers of a join commit: its SPEC, the lander's session and no verification kind.
@@ -239,6 +323,8 @@ fn join(
 struct Run {
     exit: i32,
     log: PathBuf,
+    /// The run passed and left a full-selection PASS summary of the join: its scans are covered.
+    scans_covered: bool,
 }
 
 /// Run the check on `last` in a private worktree under `<project>/target/land-batch/`, which the
@@ -297,17 +383,28 @@ fn run_check(
             };
             match crate::check_affected::run(&work, &range, &opts) {
                 Ok(answer) => {
-                    let _ = std::fs::write(&log, format!("{}\n", answer["summary"]));
+                    let summary = answer["summary"].as_str().unwrap_or_default();
+                    let _ = std::fs::write(&log, format!("{summary}\n"));
+                    record_summary(&answer);
                     Ok(i32::from(answer["result"] != "PASS"))
                 }
                 Err(why) => Err(format!("check_not_started: {why}")),
             }
         }
     };
+    // The receipt of the run is read before the worktree goes (SPEC D-11). Only this program's own
+    // wide run covers the scans (REQ-20): a replaced check program may write any line.
+    let scans_covered = check.is_none()
+        && matches!(result, Ok(0))
+        && read_run_receipt(&work, last).is_some_and(|line| receipt_covers(&line, last));
     // The worktree is the run's own: git removes it with its checkout.
     let _ = super::check::git_text(project, &["worktree", "remove", "--force", &work_text]);
     let _ = super::check::git_text(project, &["worktree", "prune"]);
-    result.map(|exit| Run { exit, log })
+    result.map(|exit| Run {
+        exit,
+        log,
+        scans_covered,
+    })
 }
 
 fn entry(item: &Item, why: Option<&str>) -> Value {
@@ -324,6 +421,10 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
             "only the leader lands a card until the typed verdict exists: give --by {LEADER_BY}"
         )));
     }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64);
+    confirm_leader(project, req.session, now)?;
     let parsed = parse_pairs(req.pairs)?;
     let branch = landed::integration_branch(project).map_err(|why| {
         refused(format!(
@@ -336,6 +437,7 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
     let mut runs: Vec<Value> = Vec::new();
     let mut stopped: Value = Value::Null;
     let mut not_run: Vec<Value> = Vec::new();
+    let mut moved_tips = 0usize;
 
     'outer: while !pending.is_empty() {
         let mut take = pending.len();
@@ -353,6 +455,7 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
             let last = cands.last().map(|c| c.commit.clone()).unwrap_or_default();
             // Heads the tip already holds need no check; a set of them lands as it is.
             let moves = cands.iter().any(|c| landed_moves(project, &c.commit, &tip));
+            let mut scans_covered = false;
             let exit = if moves {
                 match run_check(project, req.check_cmd, &tip, &last, runs.len() + 1) {
                     Ok(run) => {
@@ -361,7 +464,9 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
                             "range": format!("{tip}..{last}"),
                             "exit": run.exit,
                             "log": run.log.to_string_lossy(),
+                            "scans_covered": run.scans_covered,
                         }));
+                        scans_covered = run.scans_covered;
                         run.exit
                     }
                     Err(why) => {
@@ -388,6 +493,18 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
             }
             // A tip that moved since the run has no say in this result: join and check again.
             if landed::tip_of(project, &branch).map_err(refused)? != tip {
+                moved_tips += 1;
+                if moved_tips >= MAX_TIP_MOVES {
+                    stopped = json!({
+                        "code": "tip_kept_moving",
+                        "why": format!(
+                            "the integration branch moved {moved_tips} times after a check \
+                             passed, so no result could be used; nothing landed from those runs: \
+                             run the batch again when the branch is quiet"
+                        ),
+                    });
+                    break 'outer;
+                }
                 continue;
             }
             // Every head is judged before the first one lands: a head that the landing would
@@ -407,7 +524,14 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
                     keep_open: false,
                     audited: cand.joined.then_some(cand.item.head.as_str()),
                 };
-                match super::land_preflight(project, home, &cand.item.name, &one, &parent) {
+                match super::land_preflight(
+                    project,
+                    home,
+                    &cand.item.name,
+                    &one,
+                    &parent,
+                    scans_covered,
+                ) {
                     Ok(_) => parent = cand.commit.clone(),
                     Err(why) => {
                         refused_head = Some((cand.item.clone(), why));
@@ -421,7 +545,7 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
                 continue 'outer;
             }
             for cand in &cands {
-                let answer = super::land(
+                let answer = super::land_in_batch(
                     project,
                     home,
                     &cand.item.name,
@@ -434,6 +558,7 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
                         keep_open: false,
                         audited: cand.joined.then_some(cand.item.head.as_str()),
                     },
+                    scans_covered,
                 );
                 match answer {
                     Ok(done) => {
@@ -475,4 +600,186 @@ fn landed_moves(project: &Path, commit: &str, tip: &str) -> bool {
         landed::contained(project, commit, tip),
         Ok(Containment::Inside)
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const LAST: &str = "da585ae4d507bec047ab5a6446bda6e367649282";
+
+    /// SPEC-20261124-card-select-batch-land REQ-24: the `Verify` section of `CLAUDE.md` and the
+    /// flow reference say that the READY receipt is the card set, that the wide set runs once per
+    /// batch in `card land-batch`, and that the full run every five landings stays. The texts are
+    /// compiled in, so the check reads no file at run time.
+    #[test]
+    fn the_verify_section_and_the_flow_reference_name_the_new_order() {
+        let docs = [
+            ("CLAUDE.md", include_str!("../../../CLAUDE.md")),
+            (
+                "next-flow.md",
+                include_str!("../../../skills/moai/references/flows/next-flow.md"),
+            ),
+        ];
+        for (file, text) in docs {
+            for needle in [
+                "check affected --card",
+                "card land-batch",
+                "every five landings",
+            ] {
+                assert!(text.contains(needle), "{file} does not say `{needle}`");
+            }
+        }
+    }
+
+    const OTHER: &str = "0123456789abcdef0123456789abcdef01234567";
+
+    /// The summary line of a finished run of `head`, made by the writer of `check affected` itself
+    /// (`summary_line`), so the format the batch reads cannot drift from the format that is written.
+    fn made(pick: crate::check_affected::Pick, head: &str, pass: bool) -> String {
+        let results: Vec<(String, i32)> = ["diff_check", "fmt", "clippy", "test"]
+            .iter()
+            .map(|label| {
+                (
+                    label.to_string(),
+                    i32::from(!pass && *label == "test") * 100,
+                )
+            })
+            .collect();
+        crate::check_affected::summary_line(&crate::check_affected::SummaryParts {
+            base: "b0bffbbd48cc3aae17ac595f49ce10d6e3bfb011",
+            head,
+            targets: 150,
+            scans: "listed:135",
+            pick,
+            threads: "5",
+            results: &results,
+            stopped_at: None,
+            pass,
+        })
+    }
+
+    #[test]
+    fn a_full_pass_summary_of_the_join_covers_the_scans() {
+        use crate::check_affected::Pick;
+        let full = made(Pick::Full, LAST, true);
+        assert!(!full.contains("selection="), "{full}");
+        assert!(receipt_covers(&full, LAST), "{full}");
+        assert!(receipt_covers(&format!("{full}\n"), LAST));
+    }
+
+    #[test]
+    fn a_part_run_a_failure_another_head_or_a_planted_line_covers_nothing() {
+        use crate::check_affected::Pick;
+        for (why, text) in [
+            ("a --card run", made(Pick::Card, LAST, true)),
+            ("a --lane run", made(Pick::Lane, LAST, true)),
+            ("a failure", made(Pick::Full, LAST, false)),
+            ("another head", made(Pick::Full, OTHER, true)),
+            (
+                "two lines",
+                format!("{}\n{}", made(Pick::Full, LAST, true), "x"),
+            ),
+            ("not a summary", "result=PASS".to_string()),
+        ] {
+            assert!(!receipt_covers(&text, LAST), "{why}");
+        }
+    }
+
+    /// Audit B1 of the follow-up: the in-process run of the batch returns its answer without
+    /// writing `summary.txt` (the command line does), so the batch records the line itself, and
+    /// what it reads back from the private worktree is the line the real writer made.
+    #[test]
+    fn the_summary_of_the_in_process_run_is_recorded_and_read_back_as_the_cover() {
+        use crate::check_affected::Pick;
+        let work = tempfile::tempdir().unwrap();
+        let out = work
+            .path()
+            .join("target")
+            .join(format!("check-affected-{}", short(LAST)));
+        std::fs::create_dir_all(&out).unwrap();
+        assert!(read_run_receipt(work.path(), LAST).is_none());
+        let answer =
+            |pick, pass| json!({"out": out.to_string_lossy(), "summary": made(pick, LAST, pass)});
+        record_summary(&answer(Pick::Full, true));
+        let read = read_run_receipt(work.path(), LAST).expect("the summary was recorded");
+        assert!(receipt_covers(&read, LAST), "{read}");
+        // A later part run or failure overwrites it and covers nothing.
+        for (pick, pass) in [(Pick::Card, true), (Pick::Full, false)] {
+            record_summary(&answer(pick, pass));
+            let read = read_run_receipt(work.path(), LAST).unwrap();
+            assert!(!receipt_covers(&read, LAST), "{read}");
+        }
+        // An answer with no `out` or no summary records nothing and does not fail.
+        record_summary(&json!({"summary": "x"}));
+        record_summary(&json!({"out": out.to_string_lossy()}));
+    }
+
+    /// The default check of the batch runs `check_affected::run` in process and records its
+    /// summary right after (a real run needs a Rust project and the whole test set, which no unit
+    /// test starts), so the call is pinned in the text: the line after the run is the record.
+    #[test]
+    fn the_default_check_records_the_summary_of_its_run() {
+        let source = include_str!("batch.rs");
+        let lines: Vec<&str> = source.lines().collect();
+        let run = lines
+            .iter()
+            .position(|l| l.contains("crate::check_affected::run(&work, &range, &opts)"))
+            .expect("the default check runs check affected in process");
+        let after = lines[run + 1..run + 8].join("\n");
+        assert!(
+            after.contains("record_summary(&answer);"),
+            "the summary of the run is not recorded:\n{after}"
+        );
+    }
+
+    /// Audit B1 of the follow-up: the test seam for the check program is read only by a debug
+    /// build. The line that reads `MOAI_TEST_LAND_BATCH_CHECK` stands under `cfg(debug_assertions)`
+    /// and a release build takes `None` (the text is compiled in, so no file is read at run time).
+    #[test]
+    fn the_check_program_seam_is_read_by_debug_builds_only() {
+        let source = include_str!("../../ops/card.rs");
+        let reads: Vec<usize> = source
+            .lines()
+            .enumerate()
+            .filter(|(_, l)| l.contains("env(\"MOAI_TEST_LAND_BATCH_CHECK\")"))
+            .map(|(i, _)| i)
+            .collect();
+        assert_eq!(reads.len(), 1, "the seam is read at one place: {reads:?}");
+        let lines: Vec<&str> = source.lines().collect();
+        let before = lines[..reads[0]]
+            .iter()
+            .rev()
+            .map(|l| l.trim())
+            .find(|l| !l.is_empty() && !l.starts_with("//"));
+        assert_eq!(before, Some("#[cfg(debug_assertions)]"));
+        let after = lines[reads[0] + 1..]
+            .iter()
+            .map(|l| l.trim())
+            .find(|l| !l.is_empty() && !l.starts_with("//"));
+        assert_eq!(after, Some("#[cfg(not(debug_assertions))]"));
+        assert!(
+            lines[reads[0] + 2].contains("let check_cmd: Option<PathBuf> = None;"),
+            "a release build takes no check program: {}",
+            lines[reads[0] + 2]
+        );
+    }
+
+    #[test]
+    fn no_leader_entry_and_no_session_id_confirm_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path();
+        let git = |args: &[&str]| {
+            let mut cmd = std::process::Command::new("git");
+            cmd.arg("-C").arg(project).args(args);
+            crate::identity::scrub_git_env(&mut cmd);
+            let out = cmd.output().unwrap();
+            assert!(out.status.success(), "git {args:?}");
+        };
+        git(&["init", "-q", "-b", "main"]);
+        let me = "dddddddd-0000-4000-8000-00000000000d";
+        // No entry, no session id: refused.
+        assert!(confirm_leader(project, Some(me), 100).is_err());
+        assert!(confirm_leader(project, None, 100).is_err());
+    }
 }
