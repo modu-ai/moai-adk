@@ -458,6 +458,24 @@ pub fn current(conn: &Connection, card_id: i64) -> Result<Option<Reservation>, L
     )
 }
 
+/// The heartbeat of the reservation of `holder` on a card (SPEC-20261119-live-lease-takeover
+/// REQ-1): the later of the reservation's `updated_at` (a take, a renew, a widening) and the `at`
+/// of the latest event of the card that `holder` wrote (a note, a criterion, a rejected write).
+/// An event written by another session is no sign that the holder works. Read-only.
+pub fn heartbeat_at(
+    conn: &Connection,
+    card_id: i64,
+    holder: &str,
+    updated_at: i64,
+) -> Result<i64, LedgerError> {
+    let latest: Option<i64> = conn.query_row(
+        "SELECT MAX(at) FROM event WHERE card_id = ?1 AND actor = ?2",
+        params![card_id, holder],
+        |r| r.get(0),
+    )?;
+    Ok(latest.map_or(updated_at, |at| at.max(updated_at)))
+}
+
 /// The worktrees that active reservations name (`held`, `expired_candidate` or
 /// `held_for_review`), each with its card, ordered by card. A `held` reservation whose lease has
 /// ended still names its worktree here: a lane's lease can end during a long run, and the

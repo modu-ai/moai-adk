@@ -82,6 +82,7 @@ fn swept_json(s: &Swept) -> Value {
         "name": input::card_name(s.card_id), "card_id": s.card_id, "holder": s.holder,
         "generation": s.generation, "lease_until": s.lease_until,
         "worktree": s.worktree, "branch": s.branch,
+        "via": s.via.code(), "last_seen_at": s.last_seen_at, "silent_secs": s.silent_secs,
     })
 }
 
@@ -107,6 +108,7 @@ fn outcome_json(id: &str, grace: i64, out: &Outcome) -> Value {
     json!({
         "action": "sweep", "project_id": id, "dry_run": out.dry_run,
         "grace_hours": grace / HOUR_SECS,
+        "silent_minutes": sweep::SILENCE_SECS / 60,
         "swept": out.swept.iter().map(swept_json).collect::<Vec<_>>(),
         "skipped": out.skipped.iter().map(|s| skipped_json(s.card_id, &s.reason)).collect::<Vec<_>>(),
         "writes": !out.dry_run && !out.swept.is_empty(),
