@@ -217,7 +217,10 @@ fn round_sweeps_before_it_builds_the_rest_of_the_answer() {
     let r = w.round();
     let keys: Vec<&str> = r.as_object().unwrap().keys().map(String::as_str).collect();
     assert!(keys.contains(&"lease_sweep"), "{keys:?}");
-    assert!(keys.contains(&"lanes") && keys.contains(&"round"), "{keys:?}");
+    assert!(
+        keys.contains(&"lanes") && keys.contains(&"round"),
+        "{keys:?}"
+    );
 }
 
 // ---- AC-2: the profile key ----------------------------------------------------------------------
@@ -334,10 +337,25 @@ fn not_run_without_home() {
     let r = round_result(&w.round_output(true));
     assert_eq!(r["lease_sweep"]["status"], json!("not_run"), "{r}");
     assert!(
-        r["lease_sweep"]["reason"].as_str().unwrap().contains("HOME"),
+        r["lease_sweep"]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("HOME"),
         "{r}"
     );
     assert_eq!(w.state_of(&a), "active", "no HOME, no sweep");
+    assert!(r["lanes"].is_array() && r["round"].is_object(), "{r}");
+}
+
+#[test]
+fn error_when_the_ledger_file_is_not_a_ledger_and_the_round_goes_on() {
+    let w = world("");
+    let path = ledger::location::ledger_path(w.home.path(), "demo").unwrap();
+    std::fs::write(&path, b"not a database").unwrap();
+    let r = w.round();
+    assert_eq!(r["lease_sweep"]["status"], json!("error"), "{r}");
+    assert!(r["lease_sweep"]["reason"].is_string(), "{r}");
+    assert_eq!(r["writes"], json!(false), "{r}");
     assert!(r["lanes"].is_array() && r["round"].is_object(), "{r}");
 }
 

@@ -652,7 +652,9 @@ pub fn lease_sweep(project: &Path, home: Option<&Path>) -> Value {
         Err(LedgerError::Absent) => {
             return sweep_not_run("no ledger is registered for this project");
         }
-        Err(e) => return json!({"status": "error", "reason": e.to_string(), "cards": [], "writes": false}),
+        Err(e) => {
+            return json!({"status": "error", "reason": e.to_string(), "cards": [], "writes": false})
+        }
     }
     let (enabled, source) = sweep_switch(project);
     match crate::card::sweep::sweep(project, home, None, "leader", !enabled) {

@@ -40,8 +40,8 @@ created: 2026-11-24
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-3, REQ-5): in a temporary ledger, a round run once returns a card whose lease ended 25 hours ago to `ready`, names it under `lease_sweep.cards` and answers `writes: true`, and a second round returns nothing · verify: `cargo nextest run --locked --offline --test leader_round_sweep_cli round_sweeps_`
-- AC-2 (REQ-2, REQ-6): with `lease_sweep_in_round` false the same card stays `active` with every ledger row as it was and the answer lists it as `would_sweep`, and without the key the card is swept · verify: `cargo nextest run --locked --offline --test leader_round_sweep_cli profile_`
-- AC-3 (REQ-4): a project with no profile, a project whose ledger is absent and a card named by a sweep that fails each leave `lease_sweep` as `not_run` or `error` with the reason, and the lane actions of the round are still answered · verify: `cargo nextest run --locked --offline --test leader_round_sweep_cli not_run_`
+- AC-2 (REQ-2, REQ-6): with `lease_sweep_in_round` false the same card stays `active` with every ledger row as it was and the answer lists it under `lease_sweep.cards` with the status `listed`, a profile that cannot be read lists only, and without the key or with `true` the card is swept · verify: `cargo nextest run --locked --offline --test leader_round_sweep_cli profile_`
+- AC-3 (REQ-4): a project with no profile, a project whose ledger is absent and a HOME that is not set each leave `lease_sweep` as `not_run`, a ledger file that is not a database leaves it as `error`, each with the reason, and `lanes` and `round` are still answered · verify: `cargo nextest run --locked --offline --test leader_round_sweep_cli not_run_ error_`
 - AC-4 (REQ-1): a card inside the grace period, a card in `review` and a renewed lease stay as they are and appear as skipped, so the round calls the sweep and does not widen it · verify: `cargo nextest run --locked --offline --test leader_round_sweep_cli skipped_`
 - AC-5 (REQ-5): `moai check affected` passes at the head of the card · verify: `moai check affected <base>..<head>`
 
@@ -49,7 +49,8 @@ created: 2026-11-24
 
 - write: `.moai/specs/SPEC-20261124-leader-round-lease-sweep/spec.md`
 - write: `src/leader_round.rs`, `src/ops/leader_round.rs`, `tests/leader_round_sweep_cli.rs`
-- write: `src/profile.rs`, `tests/fixtures/help/*.txt`, `docs/design-review/appendix/operations/leader_round.md` (shared files of the project profile: written with the line-lease command, not held in the card scope)
+- write: `src/profile.rs` (shared file of the project profile: written with the line-lease command, not held in the card scope)
+- write: `docs/design-review/appendix/operations/leader_round.md` (line-lease; not a shared file, the leader approves it with this SPEC)
 - read-only: `src/card/sweep.rs`, `src/ledger/sweep.rs`, `src/lane_next.rs`
 - forbidden: `src/card/sweep.rs`, `src/ledger/sweep.rs` (C-117 adds the heartbeat path there), the real home ledger (tests use a temporary HOME only)
 
@@ -59,7 +60,7 @@ created: 2026-11-24
 2. `src/leader_round.rs`: one function `lease_sweep(project, home, enabled)` that calls `card::sweep::sweep` once and builds the `lease_sweep` part; `round()` is not touched.
 3. `src/ops/leader_round.rs`: read HOME with `ledger::command::resolve_home`, call `lease_sweep` before `round()`, add the part to the answer and set `writes`.
 4. `src/profile.rs`: the key `lease_sweep_in_round`, written by line-lease.
-5. Help text and the operation document name the sweep (the command no longer "reads only"); the help goldens move with it.
+5. The long help text and the operation document name the sweep (the command no longer "reads only"); the help goldens carry only the first line of the command and do not move.
 6. Guard mutants for the dry-run switch, the call itself and the `writes` flag; `moai check affected` bare once at READY.
 
 ## Risks
