@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261124-worktree-entry-no-prompt
 title: "A lane makes its worktree with an absolute path and enters it by path, so the host asks no permission"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8525 of card C-467 (answers note 8524, 2026-11-24T11:52:23Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 1 at head a9cde35598 with choice (A); recorded by the lane, not approved by it", digest: "sha256:d28494e10566be048e921e1dbd1675de625b7e5b251937a1fdf9d8edf582b869"}
 ---
 
 # A lane makes its worktree with an absolute path and enters it by path, so the host asks no permission
