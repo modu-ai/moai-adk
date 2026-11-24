@@ -32,9 +32,12 @@ esac
 /// classifier: it answers with the value of `STUB_MACOS_NEEDED` and fails on request. A `-c`
 /// call is one of the two lines that read that answer. The stand-in tells the calls apart by
 /// their first argument, so this file spells no path under `tools/` and the file-reader scan of
-/// the repository does not take it for a reader of the classifier it replaces.
+/// the repository does not take it for a reader of the classifier it replaces. A `-c` call sits
+/// at the end of a pipe (`printf ... | python3 -c ...`) and the real Python reads all of its
+/// input, so the stand-in does too: a reader that exits first would hand the writer a SIGPIPE,
+/// and under `pipefail` and `-e` the decide step would fail or fall back at random under load.
 const PYTHON3: &str = r#"case "$1" in
-  -c) printf '%s\n' "${STUB_MACOS_NEEDED:-False}" ;;
+  -c) cat > /dev/null; printf '%s\n' "${STUB_MACOS_NEEDED:-False}" ;;
   *)
     if [ "${STUB_SCOPE_FAIL:-0}" = 1 ]; then exit 1; fi
     printf '{"scope": "full", "macos_needed": "%s", "macos_reasons": []}\n' "${STUB_MACOS_NEEDED:-False}"
@@ -239,6 +242,26 @@ fn decide(event: &str, head_ref: &str, stubs: &[(&str, &str)]) -> Decision {
         calls: f.calls(),
         stderr: ran.stderr,
     }
+}
+
+/// The decide step pipes the classifier answer into the JSON-reader stand-in, so the stand-in
+/// reads all of its input as the real Python does: a reader that exits unread hands the writer a
+/// SIGPIPE, which `pipefail` turns into a failed step or a full matrix at random under load.
+#[test]
+fn the_json_reader_stand_in_reads_all_of_its_input() {
+    let f = Folder::with_stand_ins();
+    let (path, log) = (f.path(), f.log.to_string_lossy().into_owned());
+    // 1 MiB is far above the pipe buffer, so the writer cannot finish before the reader exits.
+    let ran = run(
+        "head -c 1048576 /dev/zero | python3 -c x",
+        f.dir.path(),
+        &[("PATH", path.as_str()), ("STUB_LOG", log.as_str())],
+    );
+    assert!(
+        ran.ok,
+        "the writer in front of the stand-in failed: {}",
+        ran.stderr
+    );
 }
 
 /// The matrix every run gets that is not narrowed: both targets of the support decision, each
