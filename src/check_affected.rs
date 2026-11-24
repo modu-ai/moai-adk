@@ -156,8 +156,8 @@ fn scan_entries(text: &str) -> Option<Vec<ScanEntry>> {
     let mut out = Vec::new();
     for scan in scans {
         let mut targets = BTreeSet::new();
-        for check in scan.get("checks")?.as_array()? {
-            let words: Vec<&str> = check.as_str()?.split_whitespace().collect();
+        for check in crate::repo_scans::checks_of(scan).ok()? {
+            let words: Vec<&str> = check.split_whitespace().collect();
             for (i, w) in words.iter().enumerate() {
                 if *w == "--test" {
                     if let Some(n) = words.get(i + 1) {

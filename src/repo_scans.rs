@@ -44,6 +44,62 @@ fn strings(v: &Value, what: &str) -> Result<Vec<String>, String> {
         .collect()
 }
 
+/// The command a scan's `test_targets` stand for, up to the `--test` pairs.
+const CARGO_TEST: &str = "cargo test --offline --locked";
+
+/// A cargo integration-test target name: `[a-z0-9_]+`.
+fn is_target_name(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+}
+
+/// The check commands of one scan entry of the table, the one place that reads them
+/// (SPEC-20261124-repo-scans-targets-per-line): the command built from `test_targets`, in the
+/// array's order, then the entries of `checks`. A scan without `test_targets` gives its `checks`
+/// as listed, and `checks` may be left out when `test_targets` is there. A `test_targets` that is
+/// no list of target names, and a scan with neither field, are errors that name the scan.
+pub fn checks_of(entry: &Value) -> Result<Vec<String>, String> {
+    let id = entry.get("id").and_then(Value::as_str).unwrap_or("?");
+    let mut out = Vec::new();
+    let targets = entry.get("test_targets").filter(|v| !v.is_null());
+    if let Some(targets) = targets {
+        let list = targets
+            .as_array()
+            .ok_or_else(|| format!("table: scan {id}: `test_targets` is not a list"))?;
+        let mut command = CARGO_TEST.to_string();
+        for target in list {
+            let name = target
+                .as_str()
+                .filter(|name| is_target_name(name))
+                .ok_or_else(|| {
+                    format!(
+                        "table: scan {id}: `test_targets` holds {target}, which is no target \
+                         name ([a-z0-9_]+)"
+                    )
+                })?;
+            command.push_str(" --test ");
+            command.push_str(name);
+        }
+        if !list.is_empty() {
+            out.push(command);
+        }
+    }
+    match entry.get("checks").filter(|v| !v.is_null()) {
+        None if targets.is_some() => {}
+        None => {
+            return Err(format!(
+                "table: scan {id} has neither `test_targets` nor `checks`"
+            ))
+        }
+        Some(checks) => {
+            out.extend(strings(checks, "checks").map_err(|e| format!("table: scan {id}: {e}"))?)
+        }
+    }
+    Ok(out)
+}
+
 /// The scans of a table's text (`{"scans": [...]}`); an error for anything malformed.
 pub fn parse_table(text: &str) -> Result<Vec<Scan>, String> {
     if text.len() > INPUT_LIMIT {
@@ -62,7 +118,7 @@ pub fn parse_table(text: &str) -> Result<Vec<Scan>, String> {
             .ok_or("table: a scan has no string `id`")?
             .to_string();
         let rules = strings(raw.get("rules").unwrap_or(&Value::Null), "rules")?;
-        let checks = strings(raw.get("checks").unwrap_or(&Value::Null), "checks")?;
+        let checks = checks_of(raw)?;
         let mut scope = Vec::new();
         for item in raw
             .get("scope")
