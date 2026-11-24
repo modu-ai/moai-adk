@@ -784,14 +784,17 @@ fn key_temp_home(tag: &str) -> std::path::PathBuf {
     dir
 }
 
-fn glm_scope() -> moai_cli::key_vault::Scope {
-    moai_cli::key_vault::scope_here(false).unwrap()
+/// The project scope of the test's own folder, resolved with the temporary `home` (the plain
+/// `scope_here` would read the process HOME).
+fn glm_scope(home: &Path) -> moai_cli::key_vault::Scope {
+    let cwd = std::env::current_dir().unwrap();
+    model_effort_questions::glm_key_scope(&cwd, home).expect("the tests run inside a git work tree")
 }
 
 #[test]
 fn a_glm_pick_asks_for_the_key_once_and_stores_it_in_the_vault() {
     let home = key_temp_home("store");
-    let scope = glm_scope();
+    let scope = glm_scope(&home);
     let input = format!("{SECRET}\n");
     let mut out = Vec::new();
     model_effort_questions::glm_key_step(
@@ -857,7 +860,7 @@ fn files_holding(dir: &Path, needle: &str) -> Vec<String> {
 #[test]
 fn an_empty_answer_skips_the_key_and_keeps_the_pick_flow() {
     let home = key_temp_home("skip");
-    let scope = glm_scope();
+    let scope = glm_scope(&home);
     let mut out = Vec::new();
     model_effort_questions::glm_key_step(
         &mut Cursor::new("\n"),
@@ -880,7 +883,7 @@ fn an_empty_answer_skips_the_key_and_keeps_the_pick_flow() {
 #[test]
 fn an_existing_key_is_kept_by_default_without_retyping() {
     let home = key_temp_home("keep");
-    let scope = glm_scope();
+    let scope = glm_scope(&home);
     moai_cli::key_vault::set(&home, &scope, "glm", "SECRET-existing").unwrap();
     let mut out = Vec::new();
     model_effort_questions::glm_key_step(
@@ -911,7 +914,7 @@ fn an_existing_key_is_kept_by_default_without_retyping() {
 #[test]
 fn a_new_answer_replaces_an_existing_key() {
     let home = key_temp_home("new");
-    let scope = glm_scope();
+    let scope = glm_scope(&home);
     moai_cli::key_vault::set(&home, &scope, "glm", "SECRET-existing").unwrap();
     let mut out = Vec::new();
     model_effort_questions::glm_key_step(
@@ -959,7 +962,7 @@ fn a_claude_pick_asks_nothing_about_a_key() {
 fn a_shared_key_counts_as_an_existing_key_and_is_kept_without_a_project_copy() {
     // The launcher finds the project's entry, then the shared one; a shared key is a key.
     let home = key_temp_home("shared");
-    let scope = glm_scope();
+    let scope = glm_scope(&home);
     moai_cli::key_vault::set(
         &home,
         &moai_cli::key_vault::Scope::Shared,
@@ -992,7 +995,7 @@ fn a_piped_answer_that_is_a_new_line_after_the_key_is_not_read_as_the_key() {
     // One answer line is the key; the line after it stays for the next question (the save
     // question of the stage), so the key step reads exactly one line.
     let home = key_temp_home("one-line");
-    let scope = glm_scope();
+    let scope = glm_scope(&home);
     let mut input = Cursor::new(format!("{SECRET}\ny\n"));
     let mut out = Vec::new();
     model_effort_questions::glm_key_step(

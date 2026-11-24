@@ -233,9 +233,10 @@ const FAKE_KEY: &str = "FAKE-tty-glm-key-for-the-pty-test";
 fn git_project(fx: &Fx) -> PathBuf {
     let project = fx.home.join("project");
     fs::create_dir_all(&project).unwrap();
-    for args in [
-        vec!["init", "-q"],
-        vec![
+    common::git::git_ok(&project, &["init", "-q"]);
+    common::git::git_ok(
+        &project,
+        &[
             "-c",
             "user.name=test",
             "-c",
@@ -246,17 +247,7 @@ fn git_project(fx: &Fx) -> PathBuf {
             "-m",
             "init",
         ],
-    ] {
-        let status = Command::new("git")
-            .clean_env()
-            .env("PATH", "/usr/bin:/bin")
-            .env("HOME", &fx.home)
-            .args(&args)
-            .current_dir(&project)
-            .status()
-            .unwrap();
-        assert!(status.success(), "git {args:?}");
-    }
+    );
     project
 }
 
@@ -302,7 +293,8 @@ fn a_glm_pick_on_a_terminal_reads_the_key_hidden_and_goes_on_by_itself() {
     assert!(!text.contains(FAKE_KEY), "the key is not echoed: {text}");
     let saved: Value = serde_json::from_str(&saved_settings(&fx).expect("saved")).unwrap();
     assert!(saved["launcher"]["models"]["glm"]["leader"].is_object());
-    let scope = moai_cli::key_vault::scope_for(&project, false).unwrap();
+    let scope = moai_cli::model_effort_questions::glm_key_scope(&project, &fx.home)
+        .expect("the project is a git work tree");
     assert_eq!(
         moai_cli::key_vault::read_entry(&fx.home, &scope, "glm")
             .unwrap()

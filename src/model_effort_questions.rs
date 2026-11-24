@@ -611,6 +611,38 @@ pub fn apply(path: &Path, picks: &[Pick], digest: &str) -> Result<Plan, String> 
     Ok(planned)
 }
 
+/// The key vault scope of the project `dir` belongs to, resolved with `home` as the HOME: the
+/// workspace identity then reads the home state of `home` and never the process environment's
+/// HOME, so a run under a temporary home leaves the real one unread. `None` outside a git work
+/// tree or when the identity does not resolve. The folder name is the one
+/// `key_vault::project_scope` makes (same identity fields, same `folder_name`); that function
+/// reads the environment HOME and is not changed here.
+pub fn glm_key_scope(dir: &Path, home: &Path) -> Option<crate::key_vault::Scope> {
+    let id = crate::identity::identity_in(dir, Some(home)).ok()?;
+    if id["identity_status"] != "ok" || id["work_tree"].is_null() {
+        return None;
+    }
+    let clone = id["clone_id"].as_str().unwrap_or("");
+    let clone_hex = clone.strip_prefix("sha256:").unwrap_or(clone);
+    if clone_hex.len() < 8 {
+        return None;
+    }
+    // The primary worktree is the folder that holds the common git directory.
+    let anchor = Path::new(id["clone_anchor"].as_str().unwrap_or(""));
+    let primary = if anchor.file_name().is_some_and(|n| n == ".git") {
+        anchor.parent().unwrap_or(anchor)
+    } else {
+        anchor
+    };
+    let primary_name = primary
+        .file_name()
+        .map(|n| n.to_string_lossy().trim_end_matches(".git").to_string())
+        .unwrap_or_default();
+    Some(crate::key_vault::Scope::Project(
+        crate::key_vault::folder_name(id["project_id"].as_str(), &primary_name, clone_hex),
+    ))
+}
+
 /// The model step's glm key question (SPEC-20261121-glm-key-at-pick): when the picks name glm,
 /// the key is asked right here, before the launcher record. With `hidden` (the caller checked
 /// that stdin and stderr are terminals) the value is read through the hidden prompt and never
@@ -631,7 +663,8 @@ pub fn glm_key_step<R: BufRead, W: Write>(
     if !picks.iter().any(|p| p.tool == "glm") {
         return Ok(());
     }
-    let Ok(scope) = crate::key_vault::scope_here(false) else {
+    let cwd = std::env::current_dir().ok();
+    let Some(scope) = cwd.as_deref().and_then(|dir| glm_key_scope(dir, home)) else {
         writeln!(
             out,
             "The glm key is kept per project and this folder is not inside one; the key entry was skipped (run `moai key-set glm` inside a project, or add --shared)."
