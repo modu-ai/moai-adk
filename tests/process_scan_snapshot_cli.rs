@@ -676,7 +676,15 @@ fn the_install_move_recheck_runs_its_own_scan() {
     let plan = home_json(
         &home,
         stub,
-        &["home-install-plan", "--home", &h, "--now", NOW, "--project", &p],
+        &[
+            "home-install-plan",
+            "--home",
+            &h,
+            "--now",
+            NOW,
+            "--project",
+            &p,
+        ],
     );
     assert_eq!(plan["ok"], json!(true), "{plan}");
     assert_eq!(
