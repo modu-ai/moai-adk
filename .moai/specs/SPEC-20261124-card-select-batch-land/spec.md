@@ -25,8 +25,8 @@ Measured on the receipt of C-464 (2026-11-24): of 25 minutes, 14 were queue for 
 
 ## Requirements
 
-- REQ-1: When `check affected` runs with `--card`, the command shall select the test targets that the range changes or adds, the targets whose name or source names a changed module, the targets of each scan the range touches, and the tests that `skills/` and `docs/` changes name.
-- REQ-2 (REQ-1): IF more than 10 test targets carry the name word of a changed module, THEN the command shall ignore that word and list it in the answer.
+- REQ-1: When `check affected` runs with `--card`, the command shall select the test targets that the range changes or adds, the targets whose name or source names a changed module, the targets of each scan one of whose rule files the range changes, and the tests that `skills/` and `docs/` changes name.
+- REQ-2 (REQ-1): IF more than 10 test targets reach a changed module by its name word or by naming its path in their source, THEN the command shall ignore that module and list its word in the answer.
 - REQ-3 (REQ-1): IF a changed path is `Cargo.toml`, `Cargo.lock`, a toolchain or `.cargo` file, `build.rs`, `.moai/project.yaml`, a permission or hook guard file, or a ledger storage file (`schema`, `migrate`, `open`, `recover`), THEN the command shall select the full set and name the reason and the paths.
 - REQ-4: When `--card` selects the card set, the summary line shall carry `selection=card`, so that the READY gate of `card note` keeps a note with that receipt.
 - REQ-5 (REQ-4): IF a receipt carries `selection=lane`, THEN the READY gate shall refuse it as before.
@@ -41,7 +41,7 @@ Measured on the receipt of C-464 (2026-11-24): of 25 minutes, 14 were queue for 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): for a range that changes `src/ledger/sweep.rs`, `src/card/sweep.rs`, `src/card/work.rs`, `src/ops/card.rs` and adds `tests/card_sweep_cli.rs`, `--card --list` selects at most 20 targets and names the ignored word `card` · verify: `cargo test --locked --offline --test check_affected_card_select card_set_`
-- AC-2 (REQ-1): the card set of a range holds a changed test file, a target whose source names the changed module, and the targets of a touched scan, and holds no target that none of them reaches · verify: `cargo test --locked --offline --test check_affected_card_select card_set_`
+- AC-2 (REQ-1): the card set of a range holds a changed test file, a target whose source names the changed module, and the targets of a scan whose rule file changed, and holds no target that none of them reaches · verify: `cargo test --locked --offline --test check_affected_card_select card_set_`
 - AC-3 (REQ-3): a range that changes `Cargo.lock`, a ledger `schema.rs` or `migrate.rs`, a hook guard file or `.moai/project.yaml` gets the full set with the reason named; a range that changes only `src/ledger/sweep.rs` does not · verify: `cargo test --locked --offline --test check_affected_card_select wide_`
 - AC-4 (REQ-4, REQ-5): a `--card` run writes a summary with `selection=card` and a card-pick PASS passes the READY gate, a `--lane` PASS still does not · verify: `cargo test --locked --offline --test check_affected_card_select receipt_`
 - AC-5 (REQ-6): three heads pass one fake check, which runs once, and the three land in the given order on the integration branch · verify: `cargo test --locked --offline --test card_land_batch_cli batch_`
@@ -81,3 +81,5 @@ Measured on the receipt of C-464 (2026-11-24): of 25 minutes, 14 were queue for 
 | D-2 | The card set is a new flag `--card`; the bare command and `--lane` keep their sets | the receipt gate and the existing tests rely on them; C-471 changes the documented order | stop passing `--card` |
 | D-3 | The batch is a new action `card land-batch`; `card land` is unchanged | one card per `card land` is its rule and its tests | remove the action |
 | D-4 | The batch's check is a program (`--check-cmd`, default this binary's `check affected <tip>..<join>`) that runs in the private worktree and exits 0 to pass | a program can be faked in a throwaway repository; the default is the real wide set | drop the option |
+| D-5 | A verdict on the audited head covers a join candidate that is a clean join of it (`LandRequest.audited`: second parent, tree equal to the merge of the parents); the verdict, author and tier checks read the audited head and the tier floor reads the files from its merge base with the tip | the batch lands joins that no auditor saw; the card says "PASS head" for the heads it joins, and `authors_of(tip, audited)` is the lane's own range | stop passing `audited` from `land-batch` |
+| D-6 | The card set takes a scan only when one of its rule files changed; a scan's scope is what it reads (often the whole tree) and its receipt is the landing's and the batch check's | measured on the real C-464 range: the scopes alone gave 63 scan targets and 89 in all, against the criterion of at most 20 | take `touched_by` again in `select_card` |

@@ -31,6 +31,9 @@ pub enum Pick {
     #[default]
     Full,
     Lane,
+    /// What one card's change reaches (`--card`, SPEC-20261124-card-select-batch-land): see
+    /// [`select_card`]. A path whose effect is not clear makes [`choose`] answer the full set.
+    Card,
 }
 
 impl Pick {
@@ -39,6 +42,7 @@ impl Pick {
         match self {
             Pick::Full => "full",
             Pick::Lane => "lane",
+            Pick::Card => "card",
         }
     }
 }
@@ -273,6 +277,8 @@ pub fn select_pick(
     scan_list: Option<&str>,
     host_os: &str,
 ) -> Selection {
+    // The card set is made by `select_card`; asked here, it is the lane set.
+    let pick = if pick == Pick::Card { Pick::Lane } else { pick };
     let mut rust = BTreeSet::new();
     let mut scans = Scans::None;
     let rust_names: BTreeSet<&str> = tests.iter().map(|t| t.name.as_str()).collect();
@@ -375,6 +381,240 @@ pub fn select_pick(
         }
     }
     Selection { rust, scans }
+}
+
+/// How many test targets may carry the name word of a changed module before the word says nothing
+/// (SPEC-20261124-card-select-batch-land REQ-2).
+const COMMON_WORD_CAP: usize = 10;
+
+/// Why `--card` answered the full set: the reason class of the first wide path and every wide path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Wide {
+    pub reason: &'static str,
+    pub paths: Vec<String>,
+}
+
+/// What the card set decided (SPEC-20261124-card-select-batch-land).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CardPick {
+    /// The card set; when `wide` is set, the caller uses the full set instead.
+    pub selection: Selection,
+    pub wide: Option<Wide>,
+    /// The name words of changed modules that more than [`COMMON_WORD_CAP`] targets carry.
+    pub ignored_words: Vec<String>,
+}
+
+/// The class of a path whose effect on the tests is not clear (REQ-3): the whole dependency graph,
+/// the build and the common settings, the permission and hook guards and the ledger's storage
+/// layer. Everything else under `src/ledger/` is ordinary code and takes the card set (D-1).
+fn wide_class(path: &str) -> Option<&'static str> {
+    let file = path.rsplit('/').next().unwrap_or(path);
+    if matches!(file, "Cargo.toml" | "Cargo.lock") {
+        return Some("dependencies");
+    }
+    if matches!(file, "build.rs" | "rust-toolchain" | "rust-toolchain.toml")
+        || path.starts_with(".cargo/")
+    {
+        return Some("build settings");
+    }
+    if path == ".moai/project.yaml" {
+        return Some("common settings");
+    }
+    if matches!(
+        path,
+        "src/ledger/schema.rs"
+            | "src/ledger/migrate.rs"
+            | "src/ledger/open.rs"
+            | "src/ledger/recover.rs"
+    ) || path.starts_with("migrations/")
+        || path.contains("/migrations/")
+    {
+        return Some("ledger storage");
+    }
+    if (path.starts_with("src/hook_") && path.ends_with(".rs"))
+        || matches!(
+            path,
+            "src/hooks.rs" | "src/scope.rs" | "src/scopes.rs" | "src/claude_settings_merge.rs"
+        )
+    {
+        return Some("permission");
+    }
+    None
+}
+
+/// The module a changed source path names: its leaf word and the path a test names it by
+/// (`moai_cli::<leaf>` for a top-level file, `<dir>::<leaf>` below one). `mod.rs`, `lib.rs`,
+/// `main.rs` and the binary's `src/ops/` name no module a test can call.
+fn module_of(path: &str) -> Option<(String, Option<String>)> {
+    let rest = path.strip_prefix("src/")?.strip_suffix(".rs")?;
+    let parts: Vec<&str> = rest.split('/').collect();
+    let leaf = *parts.last()?;
+    if matches!(leaf, "mod" | "lib" | "main") {
+        return None;
+    }
+    let leaf = leaf.replace('-', "_");
+    // The word a test name carries: `<dir>_<leaf>` below a folder (`card_sweep` for
+    // `src/card/sweep.rs`), the leaf alone for a top-level file.
+    let (word, key) = match parts.as_slice() {
+        ["ops", _] => (leaf, None),
+        [_] => (leaf.clone(), Some(format!("moai_cli::{leaf}"))),
+        [.., dir, _] => {
+            let dir = dir.replace('-', "_");
+            (format!("{dir}_{leaf}"), Some(format!("{dir}::{leaf}")))
+        }
+        [] => return None,
+    };
+    Some((word, key))
+}
+
+/// Whether `text` names `key` as a whole path: no identifier character before it or after it.
+fn names_path(text: &str, key: &str) -> bool {
+    let ident = |c: char| c.is_alphanumeric() || c == '_';
+    let mut from = 0;
+    while let Some(i) = text[from..].find(key) {
+        let at = from + i;
+        let before_ok = !text[..at].chars().next_back().is_some_and(ident);
+        let after_ok = !text[at + key.len()..].chars().next().is_some_and(ident);
+        if before_ok && after_ok {
+            return true;
+        }
+        from = at + key.len();
+    }
+    false
+}
+
+/// Whether `word` is a whole run of `_` separated words of the target name.
+fn name_has_word(name: &str, word: &str) -> bool {
+    format!("_{name}_").contains(&format!("_{word}_"))
+}
+
+/// Pick the test targets one card's change reaches (SPEC-20261124-card-select-batch-land REQ-1 to
+/// REQ-3): the tests the range changes or adds, the tests whose source names a changed module or
+/// whose name carries its word, the targets of each scan a changed path touches, and the tests
+/// that name a changed `skills/` or `docs/` path. A wide path (see [`wide_class`]) or a scan list
+/// that cannot be read sets `wide`: the caller then uses the full set.
+pub fn select_card(
+    changed: &[String],
+    tests: &[TestFile],
+    scan_list: Option<&str>,
+    host_os: &str,
+) -> CardPick {
+    let wide_paths: Vec<(&str, &String)> = changed
+        .iter()
+        .filter_map(|p| wide_class(p).map(|c| (c, p)))
+        .collect();
+    let mut wide = wide_paths.first().map(|(reason, _)| Wide {
+        reason,
+        paths: wide_paths.iter().map(|(_, p)| (*p).clone()).collect(),
+    });
+    // The tests, fixtures and documents the range changes: the lane rules, no OS rule.
+    let own: Vec<String> = changed
+        .iter()
+        .filter(|p| p.starts_with("tests/") || p.starts_with("skills/") || p.starts_with("docs/"))
+        .cloned()
+        .collect();
+    let mut rust = select_pick(Pick::Lane, &own, tests, None, host_os).rust;
+    let mut ignored = BTreeSet::new();
+    for path in changed {
+        let Some((word, key)) = module_of(path) else {
+            continue;
+        };
+        // The targets that carry the module's name word or name its path in their source; a
+        // module that more than the cap of them reach is a common one and says nothing.
+        let reached: BTreeSet<&str> = tests
+            .iter()
+            .filter(|t| {
+                name_has_word(&t.name, &word)
+                    || key.as_ref().is_some_and(|k| names_path(&t.text, k))
+            })
+            .map(|t| t.name.as_str())
+            .collect();
+        if reached.len() > COMMON_WORD_CAP {
+            ignored.insert(word);
+        } else {
+            rust.extend(reached.into_iter().map(String::from));
+        }
+    }
+    let mut scans = Scans::None;
+    if let Some(text) = scan_list {
+        match scan_entries(text) {
+            Some(entries) => {
+                // A scan's scope is what it reads, often the whole tree; the landing asks for
+                // those receipts (SPEC-20261123-land-repo-scans) and the batch's wide check runs
+                // them. The card set takes a scan only when one of its rule files changed (D-6).
+                let picked: BTreeSet<String> = entries
+                    .into_iter()
+                    .filter(|e| changed.iter().any(|p| e.rules.iter().any(|r| r == p)))
+                    .flat_map(|e| e.targets)
+                    .collect();
+                scans = Scans::Listed(picked.len());
+                rust.extend(picked);
+            }
+            None => {
+                scans = Scans::Unreadable;
+                wide.get_or_insert(Wide {
+                    reason: "scan table",
+                    paths: vec!["tools/repo_scans.json".to_string()],
+                });
+            }
+        }
+    }
+    CardPick {
+        selection: Selection { rust, scans },
+        wide,
+        ignored_words: ignored.into_iter().collect(),
+    }
+}
+
+/// What a run uses for `pick`: the effective pick and its selection, and for `--card` the notes the
+/// answer carries. A card pick with a wide path is the full set, as the bare command picks it, and
+/// the summary line of such a run has no `selection=` word.
+pub struct Chosen {
+    pub pick: Pick,
+    pub selection: Selection,
+    /// Only for a `--card` request: the wide reason, if any, and the ignored name words.
+    pub card: Option<(Option<Wide>, Vec<String>)>,
+}
+
+pub fn choose(
+    pick: Pick,
+    changed: &[String],
+    tests: &[TestFile],
+    scan_list: Option<&str>,
+    host_os: &str,
+) -> Chosen {
+    if pick != Pick::Card {
+        return Chosen {
+            pick,
+            selection: select_pick(pick, changed, tests, scan_list, host_os),
+            card: None,
+        };
+    }
+    let card = select_card(changed, tests, scan_list, host_os);
+    if card.wide.is_some() {
+        return Chosen {
+            pick: Pick::Full,
+            selection: select_pick(Pick::Full, changed, tests, scan_list, host_os),
+            card: Some((card.wide, card.ignored_words)),
+        };
+    }
+    Chosen {
+        pick: Pick::Card,
+        selection: card.selection,
+        card: Some((None, card.ignored_words)),
+    }
+}
+
+/// The answer fields a `--card` request adds: `card_wide` (`{reason, paths}` or null) and
+/// `card_ignored_words`.
+fn card_fields(chosen: &Chosen, answer: &mut serde_json::Value) {
+    if let Some((wide, ignored)) = &chosen.card {
+        answer["card_wide"] = match wide {
+            Some(w) => serde_json::json!({"reason": w.reason, "paths": w.paths}),
+            None => serde_json::Value::Null,
+        };
+        answer["card_ignored_words"] = serde_json::json!(ignored);
+    }
 }
 
 /// The helper folders a Rust test file declares: `mod <x>;` lines, also with attributes before
@@ -1446,13 +1686,15 @@ pub fn list(
     integration_ref: Option<&str>,
 ) -> Result<serde_json::Value> {
     let facts = read_facts(dir, range)?;
-    let sel = select_pick(
+    let chosen = choose(
         pick,
         &facts.changed,
         &facts.tests,
         facts.scan_list.as_deref(),
         host_os(),
     );
+    let pick = chosen.pick;
+    let sel = chosen.selection.clone();
     let runner = runner_in(&facts.root);
     // `--list` reads nothing from the slot folder, so it names no cap.
     let planned = plan(
@@ -1465,7 +1707,7 @@ pub fn list(
             None,
         ),
     );
-    Ok(serde_json::json!({
+    let mut answer = serde_json::json!({
         "action": "affected",
         "mode": "list",
         "selection": pick.word(),
@@ -1487,7 +1729,9 @@ pub fn list(
             short(&facts.base), short(&facts.head), sel.rust.len(), sel.scans.word()
         ),
         "writes": false,
-    }))
+    });
+    card_fields(&chosen, &mut answer);
+    Ok(answer)
 }
 
 /// How `run` holds the one heavy slot of its cargo steps.
@@ -1737,13 +1981,15 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     // last build (SPEC-20261124-check-affected-touch).
     let refresh = refresh_changed(dir, &facts.present);
     let threads = DEFAULT_TEST_THREADS;
-    let sel = select_pick(
+    let chosen = choose(
         opts.pick,
         &facts.changed,
         &facts.tests,
         facts.scan_list.as_deref(),
         host_os(),
     );
+    let pick = chosen.pick;
+    let sel = chosen.selection.clone();
     let target = target_dir(&std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf()));
     let range3 = format!("{}...{}", facts.base, facts.head);
     // The cap goes onto the test step unless the caller set the runner's own knob; what the
@@ -1843,10 +2089,10 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     let pass = results.iter().all(|(_, c)| *c == 0);
     // A `--lane` run says so right after `scans=`; the bare line has no such word
     // (SPEC-20261124-ready-receipt-followup REQ-6, REQ-9).
-    let lane_word = if opts.pick == Pick::Lane {
-        " selection=lane"
-    } else {
-        ""
+    let lane_word = match pick {
+        Pick::Lane => " selection=lane",
+        Pick::Card => " selection=card",
+        Pick::Full => "",
     };
     let mut line = format!(
         "check-affected base={} head={} targets={} scans={}{lane_word} test-threads={}",
@@ -1863,10 +2109,10 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         line.push_str(&format!(" stopped_at={label}"));
     }
     line.push_str(if pass { " result=PASS" } else { " result=FAIL" });
-    Ok(serde_json::json!({
+    let mut answer = serde_json::json!({
         "action": "affected",
         "mode": "run",
-        "selection": opts.pick.word(),
+        "selection": pick.word(),
         "range_note": range_note(&facts, opts.integration_ref.as_deref()),
         "summary": line,
         "result": if pass { "PASS" } else { "FAIL" },
@@ -1876,7 +2122,9 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         "steps": records,
         "out": out.to_string_lossy(),
         "writes": true,
-    }))
+    });
+    card_fields(&chosen, &mut answer);
+    Ok(answer)
 }
 
 #[cfg(test)]

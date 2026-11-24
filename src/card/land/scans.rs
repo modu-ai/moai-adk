@@ -84,9 +84,9 @@ pub fn read(input: &Input<'_>, mode: Mode) -> Result<Value> {
     let covered_steps: Vec<String> = match workflow::verdict_events(input.conn, input.card_id) {
         Ok(events) => events
             .iter()
-            .filter(|e| e.pass && e.head == input.head)
+            .filter(|e| e.pass && e.head == input.verdict_head)
             .filter_map(|e| e.receipt.as_ref())
-            .filter(|r| r.head == input.head)
+            .filter(|r| r.head == input.verdict_head)
             .flat_map(|r| r.steps.iter())
             .filter(|s| s.exit == 0)
             .map(|s| s.name.clone())

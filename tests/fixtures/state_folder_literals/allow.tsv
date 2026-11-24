@@ -39,6 +39,7 @@ tests/card_finish_cli.rs	1	8
 tests/card_generated_scope.rs	0	1
 tests/card_guard_cli.rs	1	4
 tests/card_inbox_cli.rs	0	1
+tests/card_land_batch_cli.rs	1	0
 tests/card_land_cli.rs	1	5
 tests/card_line_lease_cli.rs	0	2
 tests/card_list_title_prefix.rs	0	1
@@ -54,6 +55,7 @@ tests/card_timeline_cli.rs	0	1
 tests/card_times_cli.rs	4	0
 tests/card_withdraw_cli.rs	0	1
 tests/card_work_cli.rs	0	1
+tests/check_affected_card_select.rs	0	1
 tests/check_tree_cli.rs	7	61
 tests/ci_scope_test.py	3	3
 tests/claim_cli.rs	0	10

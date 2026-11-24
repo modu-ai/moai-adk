@@ -111,6 +111,9 @@ pub struct Input<'a> {
     pub card_id: i64,
     /// The candidate head, 40 lowercase hex.
     pub head: &'a str,
+    /// The head the verdict events name: the candidate itself, or the audited head a clean join
+    /// candidate was made of (SPEC-20261124-card-select-batch-land D-5).
+    pub verdict_head: &'a str,
     /// The integration tip read for this landing.
     pub tip: &'a str,
     /// Whether the head stands on the tip (the landing moves the branch); false when the head is
@@ -191,7 +194,10 @@ pub fn judge(input: &Input<'_>) -> Result<Outcome> {
              `card verdict`; the text of a note is not read)",
         ));
     };
-    let on_head: Vec<&VerdictEvent> = events.iter().filter(|e| e.head == input.head).collect();
+    let on_head: Vec<&VerdictEvent> = events
+        .iter()
+        .filter(|e| e.head == input.verdict_head)
+        .collect();
     if on_head.is_empty() {
         return Ok(refused(
             "verdict_other_head",
@@ -251,7 +257,7 @@ fn judge_pass(
     } else {
         event.base.as_str()
     };
-    let authors = authors_of(input.project, range_base, input.head)?;
+    let authors = authors_of(input.project, range_base, input.verdict_head)?;
     if !authors.any_trailer {
         return Ok(Err(Refusal::new(
             "authors_unknown",
@@ -278,7 +284,14 @@ fn judge_pass(
             ),
         )));
     }
-    let files = changed_files(input.project, range_base, input.head)?;
+    // From where the verdict head left the base: the tip's own changes are not the head's.
+    let files_base = git_text(
+        input.project,
+        &["merge-base", range_base, input.verdict_head],
+    )
+    .map(|s| s.trim().to_string())
+    .unwrap_or_else(|_| range_base.to_string());
+    let files = changed_files(input.project, &files_base, input.verdict_head)?;
     let tier = gate::tier_of(Some(event.tier), &files);
     if tier >= 1
         && input
@@ -397,7 +410,7 @@ fn authors_of(project: &Path, base: &str, head: &str) -> Result<Authors> {
 /// Whether the merge commit `commit` is a clean join: its tree is the tree `git merge-tree
 /// --write-tree` makes of its two parents. A conflicting merge, an edited one and a git that
 /// cannot compute the tree are not joins.
-fn is_clean_join(project: &Path, commit: &str, first: &str, second: &str) -> bool {
+pub(crate) fn is_clean_join(project: &Path, commit: &str, first: &str, second: &str) -> bool {
     let Ok(merged) = git_text(
         project,
         &["merge-tree", "--write-tree", "--no-messages", first, second],

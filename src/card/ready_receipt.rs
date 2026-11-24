@@ -328,6 +328,32 @@ mod tests {
         }
     }
 
+    /// SPEC-20261124-card-select-batch-land REQ-4, REQ-5: a `--card` run is a receipt, a `--lane`
+    /// run still is not, and a `--card` run that fell back to the full set writes the bare line.
+    #[test]
+    fn a_card_summary_line_is_a_receipt_and_a_lane_one_is_not() {
+        let own = short(HEAD);
+        let line = |sel: &str, result: &str| {
+            format!("check-affected base=aaaaaaaaaaaa head={own} targets=7 scans=listed:1{sel} test-threads=4 test=0 {result}\n")
+        };
+        assert_eq!(
+            judge(&line(" selection=card", "result=PASS"), HEAD),
+            Receipt::Pass("aaaaaaaaaaaa".to_string())
+        );
+        assert_eq!(
+            judge(&line("", "result=PASS"), HEAD),
+            Receipt::Pass("aaaaaaaaaaaa".to_string())
+        );
+        assert_eq!(
+            judge(&line(" selection=card", "result=FAIL"), HEAD),
+            not("result=FAIL")
+        );
+        assert!(matches!(
+            judge(&line(" selection=lane", "result=PASS"), HEAD),
+            Receipt::Not(_)
+        ));
+    }
+
     #[test]
     fn a_summary_line_is_a_receipt_only_for_its_own_head_and_a_pass() {
         let line = |head: &str, result: &str| {
