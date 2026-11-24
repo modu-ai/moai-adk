@@ -1,8 +1,9 @@
 //! `moai hook <name>` (SPEC-20261123-hook-entry-skeleton): the entry point Claude Code's hook
 //! settings call. Three names are registered, one per planned duty: `session-context` (H1),
 //! `bash-boundary` (H2) and `write-boundary` (H3). `session-context` adds context to the start
-//! of a session (SPEC-20261123-hook-session-start); the other two answer no decision, so they
-//! print nothing and exit 0, and their judgments come in later slices.
+//! of a session (SPEC-20261123-hook-session-start); `bash-boundary` judges in
+//! `hook_bash_boundary` (SPEC-20261123-hook-bash-boundary); `write-boundary` answers no
+//! decision, so it prints nothing and exits 0 until its slice.
 //!
 //! What the entry does, in order: it reads standard input once (bounded); it looks for
 //! `.moai/project.yaml` in `CLAUDE_PROJECT_DIR`, else in the working folder, and without it
@@ -120,7 +121,7 @@ fn decide(name: &str, input: &[u8], cwd: &Path, env: &Env, now_ms: u128) -> Answ
         };
     }
     Answer {
-        stdout: handle(name, &object)
+        stdout: handle(name, &object, root, cwd, env)
             .map(|v| v.to_string())
             .unwrap_or_default(),
         stderr: String::new(),
@@ -158,18 +159,28 @@ fn parse(input: &[u8]) -> Result<Map<String, Value>, &'static str> {
     }
 }
 
-/// The handlers that decide nothing yet; H1 (`session-context`) is `session_start::context`.
-fn handle(name: &str, input: &Map<String, Value>) -> Option<Value> {
+/// The handlers of the other hooks: H1 (`session-context`) is `session_start::context`, H2
+/// (`bash-boundary`) judges in `hook_bash_boundary`, and H3 decides nothing yet.
+fn handle(
+    name: &str,
+    input: &Map<String, Value>,
+    root: &Path,
+    cwd: &Path,
+    env: &Env,
+) -> Option<Value> {
     match name {
-        "bash-boundary" => bash_boundary(input),
+        "bash-boundary" => moai_cli::hook_bash_boundary::decide(
+            input,
+            &moai_cli::hook_bash_boundary::Env {
+                project_root: root,
+                project_dir: env.project_dir.as_deref(),
+                home: env.home.as_deref(),
+                process_cwd: cwd,
+            },
+        ),
         "write-boundary" => write_boundary(input),
         _ => None,
     }
-}
-
-/// H2 (a later slice fills it).
-fn bash_boundary(_input: &Map<String, Value>) -> Option<Value> {
-    None
 }
 
 /// H3 (a later slice fills it).
