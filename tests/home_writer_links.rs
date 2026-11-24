@@ -578,3 +578,238 @@ fn layout_apply_keeps_a_first_apply_on_a_plain_tree() {
         },
     );
 }
+
+// ---- the project home folder helpers (SPEC revision 2) ----
+
+const STAMP: &str = "20261124T000000Z";
+
+/// Puts a link at `at` for a folder that sits at `projects/widgets/<leaf>`: the link replaces
+/// `projects/`, `projects/widgets/`, that leaf, or the home state root itself.
+fn link_for(t: &Tree, at: At, leaf: &str) {
+    match at {
+        At::Projects => symlink(&t.behind, t.state.join("projects")).unwrap(),
+        At::Project => {
+            fs::create_dir_all(t.state.join("projects")).unwrap();
+            symlink(&t.behind, t.state.join("projects/widgets")).unwrap();
+        }
+        At::Store => {
+            fs::create_dir_all(t.state.join("projects/widgets")).unwrap();
+            symlink(&t.behind, t.state.join("projects/widgets").join(leaf)).unwrap();
+        }
+        At::Root => t.link_root(),
+        At::Forge => unreachable!("only layout-apply meets a linked forge folder"),
+    }
+    if !matches!(at, At::Root) {
+        t.state_is_stable();
+    }
+}
+
+/// `write_area` refuses with the sentence of the link at `at`, and nothing changed behind it.
+fn write_area_refused(at: At) {
+    let t = tree();
+    link_for(&t, at, "receipts");
+    let before = snapshot(&t.behind);
+    let ph = moai_cli::project_home::resolve(&t.home, &t.project).unwrap();
+    assert_eq!(ph.write_area("receipts"), Err(at.sentence().to_string()));
+    assert_eq!(
+        snapshot(&t.behind),
+        before,
+        "something changed behind the link"
+    );
+}
+
+/// AC-8 (REQ-7): `projects/` is a link.
+#[test]
+fn write_area_refuses_a_linked_projects_folder() {
+    write_area_refused(At::Projects);
+}
+
+/// AC-8 (REQ-7): `projects/widgets/` is a link.
+#[test]
+fn write_area_refuses_a_linked_project_folder() {
+    write_area_refused(At::Project);
+}
+
+/// AC-8 (REQ-7): the area folder itself is a link.
+#[test]
+fn write_area_refuses_a_linked_area_folder() {
+    write_area_refused(At::Store);
+}
+
+/// AC-8 (REQ-7): the home state root itself is a link.
+#[test]
+fn write_area_refuses_a_linked_home_root() {
+    write_area_refused(At::Root);
+}
+
+/// AC-8 (REQ-7), control: a plain tree answers the area folder and creates nothing.
+#[test]
+fn write_area_keeps_a_plain_tree() {
+    let t = tree();
+    let before = snapshot(&t.state);
+    let ph = moai_cli::project_home::resolve(&t.home, &t.project).unwrap();
+    for area in moai_cli::project_home::AREAS {
+        assert_eq!(
+            ph.write_area(area),
+            Ok(Some(t.state.join("projects/widgets").join(area)))
+        );
+    }
+    assert_eq!(snapshot(&t.state), before);
+}
+
+/// AC-8 (REQ-8): a project with no profile has a key made from its path; `write_area` answers
+/// no folder even with a link in the way, and reads no link.
+#[test]
+fn write_area_keeps_a_path_key_without_reading_links() {
+    let t = tree();
+    let plain = t.project.parent().unwrap().join("no-profile");
+    fs::create_dir(&plain).unwrap();
+    symlink(&t.behind, t.state.join("projects")).unwrap();
+    t.state_is_stable();
+    let ph = moai_cli::project_home::resolve(&t.home, &plain).unwrap();
+    assert_eq!(
+        ph.key_source,
+        moai_cli::project_home::KeySource::PathHash,
+        "the fixture project has a profile"
+    );
+    assert_eq!(ph.write_area("receipts"), Ok(None));
+}
+
+/// `backup_area` refuses with the sentence of the link at `at`, and nothing changed behind it.
+fn backup_area_refused(at: At) {
+    let t = tree();
+    link_for(&t, at, "backups");
+    let before = snapshot(&t.behind);
+    let ph = moai_cli::project_home::resolve(&t.home, &t.project).unwrap();
+    assert_eq!(
+        ph.backup_area(STAMP, "go-state"),
+        Err(at.sentence().to_string())
+    );
+    assert_eq!(
+        snapshot(&t.behind),
+        before,
+        "something changed behind the link"
+    );
+}
+
+/// AC-9 (REQ-9): `projects/` is a link.
+#[test]
+fn backup_area_refuses_a_linked_projects_folder() {
+    backup_area_refused(At::Projects);
+}
+
+/// AC-9 (REQ-9): `projects/widgets/` is a link.
+#[test]
+fn backup_area_refuses_a_linked_project_folder() {
+    backup_area_refused(At::Project);
+}
+
+/// AC-9 (REQ-9): the `backups` folder itself is a link.
+#[test]
+fn backup_area_refuses_a_linked_backups_folder() {
+    backup_area_refused(At::Store);
+}
+
+/// AC-9 (REQ-9): the home state root itself is a link.
+#[test]
+fn backup_area_refuses_a_linked_home_root() {
+    backup_area_refused(At::Root);
+}
+
+/// AC-9 (REQ-9), control: a plain tree answers `backups/<stamp>/<kind>`.
+#[test]
+fn backup_area_keeps_a_plain_tree() {
+    let t = tree();
+    let ph = moai_cli::project_home::resolve(&t.home, &t.project).unwrap();
+    assert_eq!(
+        ph.backup_area(STAMP, "go-state"),
+        Ok(t.state
+            .join("projects/widgets/backups")
+            .join(STAMP)
+            .join("go-state"))
+    );
+}
+
+const AUDIT_HEAD: &str = "0123456789abcdef0123456789abcdef01234567";
+
+/// The audit clone plan of the project the child sees, with a repository address given so that
+/// no remote is read.
+fn audit_plan(seen: &Seen) -> Result<serde_json::Value, String> {
+    moai_cli::audit_clone::plan(
+        &seen.project,
+        &moai_cli::audit_clone::Request {
+            pr: 1,
+            head: AUDIT_HEAD,
+            head_branch: "feature",
+            base_branch: "main",
+            repo_url: Some("https://example.com/o/r.git"),
+            tmp_root: &seen.home,
+        },
+    )
+}
+
+/// The plan succeeds, names no evidence folder and says why; nothing changed behind the link.
+fn audit_plan_refused(test: &str, at: At) {
+    with_home(
+        test,
+        |t| link_for(t, at, "audits"),
+        |seen| {
+            let before = snapshot(&seen.behind);
+            let plan = audit_plan(seen).unwrap();
+            assert!(plan["evidence_dir"].is_null(), "{plan}");
+            assert_eq!(plan["evidence_reason"], serde_json::json!(FOLDER_REFUSED));
+            assert_eq!(snapshot(&seen.behind), before);
+        },
+    );
+}
+
+/// AC-10 (REQ-10): `projects/` is a link.
+#[test]
+fn audit_plan_refuses_a_linked_projects_folder() {
+    audit_plan_refused("audit_plan_refuses_a_linked_projects_folder", At::Projects);
+}
+
+/// AC-10 (REQ-10): `projects/widgets/` is a link.
+#[test]
+fn audit_plan_refuses_a_linked_project_folder() {
+    audit_plan_refused("audit_plan_refuses_a_linked_project_folder", At::Project);
+}
+
+/// AC-10 (REQ-10): the `audits` folder itself is a link.
+#[test]
+fn audit_plan_refuses_a_linked_audits_folder() {
+    audit_plan_refused("audit_plan_refuses_a_linked_audits_folder", At::Store);
+}
+
+/// AC-10 (REQ-10), control: a plain tree names the evidence folder and gives no reason.
+#[test]
+fn audit_plan_keeps_a_plain_tree() {
+    with_home(
+        "audit_plan_keeps_a_plain_tree",
+        |_| {},
+        |seen| {
+            let plan = audit_plan(seen).unwrap();
+            assert_eq!(
+                plan["evidence_dir"],
+                serde_json::json!(seen
+                    .state
+                    .join("projects/widgets/audits/1-01234567")
+                    .to_string_lossy())
+            );
+            assert!(plan["evidence_reason"].is_null(), "{plan}");
+        },
+    );
+}
+
+/// AC-10 (REQ-10): a home state root that is itself a link still refuses the whole plan (the
+/// earlier `identity` check, kept).
+#[test]
+fn audit_plan_still_refuses_a_linked_home_root() {
+    with_home(
+        "audit_plan_still_refuses_a_linked_home_root",
+        |t| t.link_root(),
+        |seen| {
+            assert_eq!(audit_plan(seen), Err(ROOT_REFUSED.to_string()));
+        },
+    );
+}
