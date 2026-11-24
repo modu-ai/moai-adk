@@ -227,10 +227,33 @@ fn the_error_table_holds_no_removed_hook_adapter_message() {
 #[test]
 fn the_repository_tracks_no_codex_folder() {
     let out = common::git::git_raw(&root(), &["ls-tree", "--name-only", "HEAD", "--", ".codex"]);
-    assert!(out.success, "git ls-tree failed: {}", out.stderr);
-    assert!(
-        out.stdout.trim().is_empty(),
-        "HEAD tracks .codex: {}",
-        out.stdout
-    );
+    if let Err(why) = codex_entry_verdict(out.success, &out.stdout, &out.stderr) {
+        panic!("{why}");
+    }
+}
+
+/// The verdict of the `.codex` check on one `git ls-tree` answer: only a successful run with no
+/// line passes. A failed run (a broken repository, a missing `git`) is not "no such entry".
+fn codex_entry_verdict(success: bool, stdout: &str, _stderr: &str) -> Result<(), String> {
+    if stdout.trim().is_empty() {
+        Ok(())
+    } else {
+        Err(format!("HEAD tracks .codex: {stdout}"))
+    }
+}
+
+#[test]
+fn a_failed_git_run_fails_the_codex_check() {
+    let verdict = codex_entry_verdict(false, "", "fatal: not a git repository");
+    let why = verdict.expect_err("a failed git run must not pass the check");
+    assert!(why.contains("git ls-tree failed"), "{why}");
+    assert!(why.contains("not a git repository"), "{why}");
+}
+
+#[test]
+fn an_empty_successful_answer_passes_and_a_listed_entry_fails_the_codex_check() {
+    assert_eq!(codex_entry_verdict(true, "", ""), Ok(()));
+    assert_eq!(codex_entry_verdict(true, "\n", ""), Ok(()));
+    let why = codex_entry_verdict(true, ".codex\n", "").expect_err("a listed entry fails");
+    assert!(why.contains("HEAD tracks .codex"), "{why}");
 }
