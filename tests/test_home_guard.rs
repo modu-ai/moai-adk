@@ -177,6 +177,17 @@ fn observe_mode_prints_the_line_and_never_fails_the_test() {
 /// ends in a 16-digit hash, then `--exact <test name> --nocapture`. `body` is the shell text of
 /// the binary; `baseline` is the baseline file the wrapper reads.
 fn run_fake_binary(g: &Guard, baseline: &str, body: &str, test: &str) -> Output {
+    run_fake_binary_logged(g, baseline, body, test, None)
+}
+
+/// [`run_fake_binary`] with `MOAI_HOME_GUARD_LOG` set to `log`.
+fn run_fake_binary_logged(
+    g: &Guard,
+    baseline: &str,
+    body: &str,
+    test: &str,
+    log: Option<&Path>,
+) -> Output {
     use std::os::unix::fs::PermissionsExt;
     let bin_dir = TempDir::new().unwrap();
     let bin = bin_dir.path().join("fake_bin-0123456789abcdef");
@@ -184,16 +195,18 @@ fn run_fake_binary(g: &Guard, baseline: &str, body: &str, test: &str) -> Output 
     fs::set_permissions(&bin, fs::Permissions::from_mode(0o755)).unwrap();
     let list = bin_dir.path().join("baseline.tsv");
     fs::write(&list, baseline).unwrap();
-    Command::new("sh")
-        .arg(script())
+    let mut cmd = Command::new("sh");
+    cmd.arg(script())
         .arg(&bin)
         .args(["--exact", test, "--nocapture"])
         .env("TMPDIR", g.tmp.path())
         .env("MOAI_HOME_GUARD_BASELINE", &list)
         .env_remove("MOAI_HOME_GUARD")
-        .env_remove("MOAI_HOME_GUARD_LOG")
-        .output()
-        .unwrap()
+        .env_remove("MOAI_HOME_GUARD_LOG");
+    if let Some(log) = log {
+        cmd.env("MOAI_HOME_GUARD_LOG", log);
+    }
+    cmd.output().unwrap()
 }
 
 #[test]
@@ -1337,5 +1350,138 @@ fn the_log_variable_reaches_the_wrapper_through_nextest() {
                 && field(l, "path") == Some(decoy_rel().as_str())),
         "the log has no detail line: {}",
         fs::read_to_string(&log).unwrap_or_default()
+    );
+}
+
+// Revision 3 (SPEC-20261124-home-guard-flake): the repairs of the first audit and the scanner lines.
+
+/// The `kind=` lines of one kind.
+fn lines_of_kind(log: &Path, kind: &str) -> Vec<String> {
+    detail_lines(log)
+        .into_iter()
+        .filter(|l| field(l, "kind") == Some(kind))
+        .collect()
+}
+
+/// AC-9: a guard folder whose name holds a line break or a blank cannot forge or break a line; it
+/// is skipped and counted, and a folder with a plain name is still named.
+#[test]
+fn a_guard_folder_with_an_odd_name_is_counted_and_never_written() {
+    let g = Guard::new();
+    let forged = "moai-test-home.EVIL\nHOME-GUARD: tolerated (baseline): forged";
+    for name in [forged, "moai-test-home.BLANK B", "moai-test-home.SAFE01"] {
+        fs::create_dir_all(g.tmp.path().join(name).join(STATE)).unwrap();
+    }
+    let logs = TempDir::new().unwrap();
+    let log = logs.path().join("guard.log");
+    let out = g.run(Some("observe"), Some(&log), DECOY_READ);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let text = fs::read_to_string(&log).unwrap_or_default();
+    assert!(
+        !text.contains("forged"),
+        "a forged text reached the log:\n{text}"
+    );
+    assert!(
+        !text.contains("BLANK"),
+        "a name with a blank reached the log:\n{text}"
+    );
+    assert!(
+        !text.lines().any(|l| l.starts_with("HOME-GUARD: tolerated")),
+        "{text}"
+    );
+    let peers: Vec<String> = lines_of_kind(&log, "peer");
+    let named: Vec<&str> = peers.iter().filter_map(|l| field(l, "folder")).collect();
+    assert_eq!(named, ["moai-test-home.SAFE01"], "{peers:#?}");
+    let skipped = lines_of_kind(&log, "peer_skipped");
+    assert_eq!(skipped.len(), 1, "{skipped:#?}");
+    assert_eq!(field(&skipped[0], "count"), Some("2"), "{}", skipped[0]);
+}
+
+/// AC-10: a run that the baseline tolerates leaves the `tolerated` line and no detail line, and the
+/// same run without the baseline entry leaves detail lines (so the log itself works).
+#[test]
+fn a_tolerated_run_leaves_no_detail_line() {
+    let g = Guard::new();
+    let logs = TempDir::new().unwrap();
+    let log = logs.path().join("tolerated.log");
+    let out = run_fake_binary_logged(
+        &g,
+        "fake_bin\tsome::test\n",
+        KNOWN_READ,
+        "some::test",
+        Some(&log),
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let text = fs::read_to_string(&log).unwrap_or_default();
+    assert!(text.contains("tolerated (baseline)"), "{text}");
+    assert!(detail_lines(&log).is_empty(), "{text}");
+    let log = logs.path().join("listed-not.log");
+    let out = run_fake_binary_logged(&g, "", KNOWN_READ, "some::test", Some(&log));
+    assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
+    assert!(!detail_lines(&log).is_empty(), "no detail for a real touch");
+}
+
+/// A process the test machine runs under `name`: a link to `sleep`, so the name is the only thing
+/// that tells it apart. A copied system binary would be killed by macOS at start.
+fn run_named_process(name: &str, g: &Guard, log: &Path) -> (u32, Output) {
+    let bin = TempDir::new().unwrap();
+    std::os::unix::fs::symlink("/bin/sleep", bin.path().join(name)).unwrap();
+    let mut child = Command::new(bin.path().join(name))
+        .arg("31.4159")
+        .spawn()
+        .unwrap();
+    let out = g.run(Some("observe"), Some(log), DECOY_READ);
+    let _ = child.kill();
+    let _ = child.wait();
+    (child.id(), out)
+}
+
+/// AC-11: `ps -o comm` shows `argv[0]`, so a process that puts words after a blank in it must not
+/// leave those words in the log: the name is cut at the first blank.
+#[test]
+fn a_process_name_is_cut_at_its_first_blank() {
+    let g = Guard::new();
+    let logs = TempDir::new().unwrap();
+    let log = logs.path().join("guard.log");
+    let (pid, out) = run_named_process("moai-probe SECRET-WORDS", &g, &log);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let text = fs::read_to_string(&log).unwrap_or_default();
+    assert!(
+        !text.contains("SECRET-WORDS"),
+        "words after a blank stayed:\n{text}"
+    );
+    let procs = lines_of_kind(&log, "proc");
+    let mine = procs
+        .iter()
+        .find(|l| field(l, "pid") == Some(pid.to_string().as_str()))
+        .unwrap_or_else(|| panic!("pid {pid} is not named: {procs:#?}"));
+    assert_eq!(field(mine, "name"), Some("moai-probe"), "{mine}");
+}
+
+/// AC-14: a scanner-like process alive at the verdict is named by id and file name, without its
+/// arguments, as a `kind=scan` line.
+#[test]
+fn a_scanner_process_is_named_by_id_and_file_name_only() {
+    let g = Guard::new();
+    let logs = TempDir::new().unwrap();
+    let log = logs.path().join("guard.log");
+    let (pid, out) = run_named_process("find", &g, &log);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let scans = lines_of_kind(&log, "scan");
+    let mine = scans
+        .iter()
+        .find(|l| field(l, "pid") == Some(pid.to_string().as_str()))
+        .unwrap_or_else(|| panic!("pid {pid} is not named: {scans:#?}"));
+    assert_eq!(field(mine, "name"), Some("find"), "{mine}");
+    for l in &scans {
+        assert!(!l.contains("31.4159"), "an argument is kept: {l}");
+    }
+    let unnamed = run_named_process("quiet-probe", &g, &log).0;
+    let again = lines_of_kind(&log, "scan");
+    assert!(
+        !again
+            .iter()
+            .any(|l| field(l, "pid") == Some(unnamed.to_string().as_str())),
+        "a process outside the list was named as a scanner: {again:#?}"
     );
 }

@@ -59,9 +59,14 @@ fi
 #               the time of the comparison, in seconds with a fraction (whole seconds without perl).
 #   kind=peer   one per other `moai-test-home.*` folder under TMPDIR: the access time of its
 #               user-assets.json, read with stat only; nothing inside that folder is listed or opened.
+#               A folder whose name holds a character outside [A-Za-z0-9._-] is not named; one
+#               `kind=peer_skipped count=<n>` line says how many were left out.
 #   kind=proc   one per running process whose command file name starts with `moai`: its id and that
-#               file name, never its arguments or its folder (`kind=procs procs=unavailable` when
-#               the process table cannot be read).
+#               file name, cut at its first white space, never its arguments or its folder
+#               (`kind=procs procs=unavailable` when the process table cannot be read).
+#   kind=scan   the same for a process named like a folder scanner (find, du, ls, rg, grep, fd, tree,
+#               lsof, mdworker, mdworker_shared, mds), so a reader of the temporary folder can be named.
+#   A run that the baseline tolerates writes none of these lines.
 st_time() {
   case "$gnu:$frac:$1" in
     0:1:a) stat -f %Fa "$2" ;;
@@ -97,17 +102,34 @@ detail_body() {
     printf 'HOME-GUARD-DETAIL: kind=hit test=%s path=%s atime=%s mtime=%s ref=%s end=%s\n' \
       "$key" "$rel" "${at:-none}" "${mt:-none}" "$refm" "$now"
   done
+  skipped=0
   for p in "$t"/moai-test-home.*; do
     [ -d "$p" ] || continue
     [ "$p" = "$d" ] && continue
+    pn=${p##*/}
+    case "$pn" in
+      *[!A-Za-z0-9._-]*)
+        # A name with a line break or a blank would forge or break a line a machine reads.
+        skipped=$((skipped + 1))
+        continue
+        ;;
+    esac
     pa=$(st_time a "$p/.moai/user-assets.json")
-    printf 'HOME-GUARD-DETAIL: kind=peer test=%s folder=%s atime=%s\n' "$key" "${p##*/}" "${pa:-none}"
+    printf 'HOME-GUARD-DETAIL: kind=peer test=%s folder=%s atime=%s\n' "$key" "$pn" "${pa:-none}"
   done
+  if [ "$skipped" -gt 0 ]; then
+    printf 'HOME-GUARD-DETAIL: kind=peer_skipped test=%s count=%s\n' "$key" "$skipped"
+  fi
   if procs=$(ps -axo pid=,comm= 2> /dev/null) && [ -n "$procs" ]; then
     printf '%s\n' "$procs" | while read -r pid comm; do
-      n=${comm##*/}
+      # On macOS `comm` is argv[0], which a process may fill with text after a blank.
+      n=${comm%%[[:space:]]*}
+      n=${n##*/}
       case "$n" in
         moai*) printf 'HOME-GUARD-DETAIL: kind=proc test=%s pid=%s name=%s\n' "$key" "$pid" "$n" ;;
+        find | du | ls | rg | grep | fd | tree | lsof | mdworker | mdworker_shared | mds)
+          printf 'HOME-GUARD-DETAIL: kind=scan test=%s pid=%s name=%s\n' "$key" "$pid" "$n"
+          ;;
       esac
     done
   else
