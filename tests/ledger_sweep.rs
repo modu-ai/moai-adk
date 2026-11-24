@@ -1,5 +1,5 @@
 //! A lease that ended long ago returns its card to `ready` (SPEC-20261124-ended-lease-sweep).
-//! Every test runs in its own temporary HOME; none touches the real `~/.moai`. A lease ended
+//! Every test runs in its own temporary HOME; none touches the real home ledger. A lease ended
 //! `n` hours ago is set with `lease_until = unixepoch() - n * 3600`; the one-second edge of the
 //! grace period is pinned on the pure rule `past_grace`, so no test depends on the clock standing
 //! still.

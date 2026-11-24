@@ -2,7 +2,7 @@
 //! long ago returns its card to `ready` without a human hand, and the paths of such a card are
 //! free for a take and a line lease.
 //!
-//! Every command runs against a temporary HOME; the real `~/.moai` is not read or written. The
+//! Every command runs against a temporary HOME; the real home ledger is not read or written. The
 //! holder is the session id in the environment (`CLAUDE_CODE_SESSION_ID`).
 #![cfg(unix)]
 
