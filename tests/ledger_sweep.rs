@@ -295,6 +295,23 @@ fn sweep_card_skips_a_reservation_that_is_no_longer_held_after_the_listing() {
 }
 
 #[test]
+fn sweep_card_skips_a_card_inside_the_grace_period_whatever_the_caller_listed() {
+    let (_home, mut w) = setup();
+    let card = taken(&mut w, &["src/a.rs"]);
+    end_lease(&mut w, card, 23);
+    let read = lease_until_of(&w, card);
+    let out = sweep::sweep_card(&mut w, card, Some(read), GRACE, leader(), None).unwrap();
+    assert!(
+        matches!(out, Err(SkipReason::WithinGrace { lease_until, sweepable_at })
+            if lease_until == read && sweepable_at == read + GRACE),
+        "{out:?}"
+    );
+    assert_eq!(state_of(&w, card), "active");
+    assert_eq!(status_of(&w, card), "held");
+    assert!(events(&w, "card.sweep").is_empty());
+}
+
+#[test]
 fn sweep_card_skips_a_card_that_is_not_active_and_one_that_does_not_exist() {
     let (_home, mut w) = setup();
     let card = taken(&mut w, &["src/a.rs"]);

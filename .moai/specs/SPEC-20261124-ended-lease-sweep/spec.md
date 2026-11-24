@@ -49,7 +49,7 @@ created: 2026-11-24
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): in a temporary ledger, an `active` card with a lease ended 25 hours ago is swept to `ready` with its reservation `released`, and one ended 23 hours ago, one in `review`, one `held_for_review` and one renewed between the read and the write are skipped with their reasons and every row as it was · verify: `cargo nextest run --locked --offline --test ledger_sweep sweep_`
-- AC-2 (REQ-3, REQ-4, REQ-5): the note names the five facts, the card's generation, branch, worktree, other notes and criteria are unchanged, and a card with three earlier `card.reclaim` events is still swept and can still be reclaimed once more by the rules of that command · verify: `cargo nextest run --locked --offline --test ledger_sweep kept_`
+- AC-2 (REQ-3, REQ-4, REQ-5): the note names the five facts, the card's generation, branch, worktree, other notes and criteria are unchanged, and a card with two earlier `card.reclaim` events is still swept, the sweep writes no `card.reclaim` event, and the card's next reservation can still be reclaimed once by the rules of that command · verify: `cargo nextest run --locked --offline --test ledger_sweep kept_`
 - AC-3 (REQ-6, REQ-7): a profile with `lease_sweep_hours: 48` sweeps at 49 hours and skips at 47, no key means 24, and 0 is refused · verify: `cargo nextest run --locked --offline --test ledger_sweep grace_`
 - AC-4 (REQ-8, REQ-9): `--dry-run` leaves every ledger row as it was and a call without `--by leader` is refused with nothing written · verify: `cargo nextest run --locked --offline --test card_sweep_cli dry_run_ refuses_`
 - AC-5 (REQ-10): `card renew`, `card check` and `card release` with the swept generation are refused as stale or not held, and a second lane takes the card at the next generation · verify: `cargo nextest run --locked --offline --test card_sweep_cli swept_holder_`
@@ -61,8 +61,8 @@ created: 2026-11-24
 
 - write: `.moai/specs/SPEC-20261124-ended-lease-sweep/spec.md`
 - write: `src/ledger/sweep.rs`, `src/ledger/mod.rs`, `src/ledger/reservation.rs`, `src/card/sweep.rs`, `src/card/mod.rs`, `src/card/stale.rs`, `src/card/work.rs`, `src/card/dispatch.rs`
-- write: `tests/ledger_sweep.rs`, `tests/card_sweep_cli.rs`, `tests/card_stale_cli.rs`
-- write: `src/ops/card.rs`, `src/profile.rs`, `tests/areas.toml`, `docs/design-review/appendix/operations/card.md` (shared files of the project profile: written with the line-lease command, not held in the card scope)
+- write: `tests/ledger_sweep.rs`, `tests/card_sweep_cli.rs`
+- write: `src/ops/card.rs`, `src/profile.rs`, `docs/design-review/appendix/operations/card.md` (shared files of the project profile: written with the line-lease command, not held in the card scope)
 - read-only: `src/ledger/workflow.rs`, `src/ledger/close.rs`, `src/card/take_scope.rs`
 - forbidden: `src/leader_round.rs`, `src/statusline/state.rs` (held by other cards), the real home ledger (tests use a temporary HOME only)
 
@@ -93,4 +93,15 @@ created: 2026-11-24
 
 ## Result
 
-Not started: the leader approved revision 1 with D-4 = option 1 (note 8505); the scope list and the wording of D-4 changed after that approval, so the new digest goes to the card for the leader to record.
+- Plan 1, measured on NeXT `dbc09e87a5` before any code change: a take and a line lease on a path held by a card whose lease ended three days ago succeed for a `held` and for a `review` reservation, and a `held_for_review` reservation still refuses (4 tests, all passed). The reading of the code was right, so the path block that the leader saw for C-216 and C-253 is not reproduced by a `held` or `review` reservation; its cause (a recovered reservation, or a binary older than `SPEC-20261121-card-lease-yield`) is unverified and is not claimed here.
+- AC-1: met — `cargo nextest run --locked --offline --test ledger_sweep sweep_` passed: a card with a lease ended 25 hours ago is swept to `ready` with its reservation `released`; 23 hours, `review`, `held_for_review`, `expired_candidate`, a lease renewed after the listing, a card that went to review or stopped being held after the listing and a card that is not active are skipped with their reasons and no row written; the grace edge is pinned on `past_grace` one second before, at and after.
+- AC-2: met — `... --test ledger_sweep kept_` passed: generation, branch, worktree, other notes and criteria stay, one note names the holder, generation, lease end, worktree and branch, and a card with two earlier `card.reclaim` events keeps its count at two and can still be reclaimed once.
+- AC-3: met — `... --test ledger_sweep grace_` passed: the key `lease_sweep_hours` moves the grace (48 hours sweeps at 49 and skips at 47), no key means 24 hours, and 0 is refused when the profile is read.
+- AC-4: met — `... --test card_sweep_cli dry_run_ refuses_` passed: `--dry-run` writes no event and no note, and `--by somebody` is refused with every row as it was.
+- AC-5: met — `... --test card_sweep_cli swept_holder_` passed: the old holder's `renew`, `release` and `check` are refused with the old generation and a second session takes the card at generation 2.
+- AC-6: met — `... --test card_sweep_cli stale_row_` passed: a past-grace `active` card carries `moai card sweep C-n --by leader`, a card inside the grace and a card in `review` keep the withdraw command.
+- AC-7: met — `... --test card_sweep_cli take_` passed: a take of a past-grace card sweeps and takes it (one `card.sweep`, two `reserve` events, generation 2), a take inside the grace refuses and writes nothing, and a take refused by the scope check after a sweep leaves the card `ready`.
+- AC-8: met — `... --test card_sweep_cli ended_lease_paths_` passed, on the unchanged and on the changed code.
+- Guard mutants (each removed or flipped one guard, tests that must catch it, file restored): 14 of 14 caught; the first run of `no_grace_check_in_the_transaction` survived because `sweep_all` repeats the check when it lists, so `sweep_card_skips_a_card_inside_the_grace_period_whatever_the_caller_listed` was added and catches it.
+- Changed from the approved revision: the AC-2 sentence about reclaims said three earlier reclaims, which the three-reclaim limit makes impossible to reclaim again; it now says two. The scope list dropped `tests/areas.toml` and `tests/card_stale_cli.rs`, which did not change (the `card` area already covers `card_*` and `ledger_*` test files). Added beyond the requirements: `grace_source` in the answer of `card sweep` (`profile`, `default` or `default_unreadable_profile`), and the unreadable profile uses the default grace as `card next` and `card take` do.
+- Not done here: the leader round does not call `card sweep` yet (D-5, `src/leader_round.rs` is held by another card); the whole `cargo test`, `cargo clippy` and the affected-area run are in the READY note.
