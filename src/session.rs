@@ -17,10 +17,11 @@
 //! and a session name comes from `--name` only. The role flags `-l|-a` are retired (user
 //! decision D-1 2026-11-09, SPEC-20261124-launcher-retire-role-flags): [`retired_role_flag`]
 //! finds them and the launcher refuses with [`RETIRED_ROLE_FLAG_MESSAGE`]; the role is entered
-//! inside the session with `/moai work` or `/moai leader`. Every launch starts the host in auto
+//! inside the session with `/moai work` or `/moai leader`. `moai cc` starts the host in auto
 //! mode (`--permission-mode auto`, user decision 2026-11-23, SPEC-20261123-launcher-auto-mode)
-//! unless `--permissions` is given (no permission flag) or the user setting
-//! `launcher.role_access` says `full` (the bypass) or `prompt`. Codex and OMP are not hosts
+//! and `moai glm` in the bypass (`--dangerously-skip-permissions`, user decision 2026-11-24,
+//! SPEC-20261124-launcher-retire-role-flags D-7), unless `--permissions` is given (no
+//! permission flag) or the user setting `launcher.role_access` says `auto`, `full` or `prompt`. Codex and OMP are not hosts
 //! any more (user decision 2026-11-21, SPEC-20261121-codex-launcher-and-models-removed,
 //! SPEC-20261122-remove-omp-launcher).
 use serde::{Deserialize, Serialize};
@@ -195,9 +196,10 @@ fn blocked_line(b: &crate::key_vault::Blocked) -> String {
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Access {
-    /// `--permission-mode auto`: the host's auto mode (the launcher default).
+    /// `--permission-mode auto`: the host's auto mode (the default of `cc`).
     Auto,
-    /// `--dangerously-skip-permissions`: no permission prompt at all; only the user's own choice.
+    /// `--dangerously-skip-permissions`: no permission prompt at all (the default of `glm`; on
+    /// `cc` only the user's own choice).
     Full,
     /// No permission flag: the host starts in the mode its own settings choose.
     // Not ACCESS_DEFAULT: a serialized request without `access` adds no flag (the safe side).
@@ -217,7 +219,7 @@ pub struct SessionRequest {
     /// `None` uses the host default: `opus` on Claude hosts.
     #[serde(default)]
     pub model: Option<String>,
-    /// `None` uses `medium` on Claude hosts.
+    /// `None` uses the host default on Claude hosts: `medium` for `cc`, `high` for `glm`.
     #[serde(default)]
     pub effort: Option<String>,
     #[serde(default)]

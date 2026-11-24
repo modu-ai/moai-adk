@@ -341,6 +341,63 @@ fn a_saved_role_entry_is_listed_as_replaced_and_dropped_by_the_write() {
     );
 }
 
+/// SPEC-20261124-launcher-retire-role-flags AC-9 (REQ-6), the case a pick that saves the value the
+/// flat entry already has leaves open: the flat entry equals the picked pair and a `leader` and an
+/// `agent` entry sit beside it. The role entries are still replaced, so the result is `applied`
+/// (not `unchanged`), both keys are listed, and the file keeps the flat pair alone.
+#[test]
+fn a_flat_entry_equal_to_the_pick_still_replaces_the_role_entries_beside_it() {
+    let h = home();
+    fs::create_dir_all(h.path.join(".claude")).unwrap();
+    // The first run saves the default pair as the flat entry.
+    let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(3)));
+    assert_eq!(result["state"], json!("applied"), "{result}");
+    let path = settings_path(&h.path);
+    let mut saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    let flat = saved["launcher"]["models"]["claude"].clone();
+    assert!(
+        flat["model"].is_string() && flat["effort"].is_string(),
+        "{flat}"
+    );
+    // Old role entries come back beside the same flat pair.
+    saved["launcher"]["models"]["claude"]["leader"] =
+        json!({"model": "OLD-LEADER", "effort": "low"});
+    saved["launcher"]["models"]["claude"]["agent"] = json!({"model": "OLD-AGENT", "effort": "low"});
+    fs::write(&path, saved.to_string()).unwrap();
+    let before = fs::read_to_string(&path).unwrap();
+    let (result, out) = run_stage(&h.path, &format!("{}n\n", enters(3)));
+    assert_eq!(result["state"], json!("declined"), "{result}");
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        before,
+        "nothing is written before the yes"
+    );
+    for key in [
+        "launcher.models.claude.leader",
+        "launcher.models.claude.agent",
+    ] {
+        assert!(out.contains(key), "{key} is listed as replaced: {out}");
+    }
+    let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(3)));
+    assert_eq!(
+        result["state"],
+        json!("applied"),
+        "the role entries make the pick a change even though the flat pair is the same: {result}"
+    );
+    assert_eq!(
+        result["replaced"],
+        json!([
+            "launcher.models.claude.leader",
+            "launcher.models.claude.agent"
+        ])
+    );
+    let after: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    assert_eq!(
+        after["launcher"]["models"]["claude"], flat,
+        "the role entries are gone and the flat pair is as it was"
+    );
+}
+
 /// SPEC-20261121-codex-launcher-and-models-removed REQ-5, REQ-6, REQ-8: a saved
 /// `launcher.models.codex` value, whatever its shape, is no error of the model step, is not
 /// listed as unsupported, and is left out of the file once a Claude choice is written (leader

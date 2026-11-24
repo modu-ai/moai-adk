@@ -302,6 +302,29 @@ fn no_live_text_tells_anyone_to_use_the_role_flags() {
     );
 }
 
+/// AC-17 (REQ-14, REQ-15): each of the three documents that state the launcher defaults has one
+/// line that says the effort default of both hosts: `medium` for `cc` and `high` for `glm`. The
+/// code answers the same two values (`each_host_starts_with_its_own_permission_and_effort_default`).
+#[test]
+fn the_docs_name_the_effort_default_of_each_host() {
+    for file in [
+        "docs/user-entry-draft.md",
+        "docs/rust-product-path.md",
+        "docs/host-support-matrix.md",
+    ] {
+        let said = root_file(file).lines().any(|line| {
+            line.contains("effort")
+                && ["`cc`", "`medium`", "`glm`", "`high`"]
+                    .iter()
+                    .all(|word| line.contains(word))
+        });
+        assert!(
+            said,
+            "{file} has no line that names the effort default of both hosts (`cc` `medium`, `glm` `high`)"
+        );
+    }
+}
+
 /// AC-13 (REQ-11): no live line, and no launcher help screen, names a `mode-` spelling. Two
 /// records are exempt: the withdrawn Codex first prompt (`$moai --mode-agent`) and the old
 /// package listing of the workflow files.
