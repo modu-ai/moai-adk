@@ -199,7 +199,7 @@ fn names(list: &Value) -> Vec<String> {
         .collect()
 }
 
-fn skipped<'a>(next: &'a Value, card_id: i64) -> &'a Value {
+fn skipped(next: &Value, card_id: i64) -> &Value {
     next["skipped"]
         .as_array()
         .unwrap()
@@ -709,16 +709,14 @@ fn hold_candidates_lists_free_text_holds_read_only_until_a_person_moves_one() {
 
 #[test]
 fn guidance_tells_a_lane_to_read_hold_and_prerequisites_before_it_creates_a_worktree() {
-    let work = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/work.md"),
-    )
-    .unwrap();
+    // Compiled in, not read at run time: the repository scan table counts a run-time read.
+    let work = include_str!("../skills/moai/workflows/work.md");
     for phrase in [
         "Read the HOLD and the prerequisites of a card before you create a worktree for it",
         "the reason `hold` or `prerequisite`",
-        "`moai card show` carries a `hold`",
+        "whose shown record carries a `hold`",
         "gets no worktree",
-        "only a person runs `moai card unhold`",
+        "only a person lifts it with the unhold command",
     ] {
         assert!(work.contains(phrase), "{phrase} missing in work.md");
     }
