@@ -24,6 +24,7 @@ On the interval (`leader.pr_check_interval_secs` of the profile, default 300, a 
 3. Stalled lane: a lane idle without a reason, or busy past its reported step with no report, is asked for its actual last command and exit code; a block is recorded and raised to the user.
 4. Refill: keep a next card ready for every lane, in this order: (1) a ready card whose blockers are all closed; (2) a card whose only open blocker is a head already in the leader's landing queue; (3) a recorded follow-up turned into work: an audit's non-blocking finding is added as a criterion of the SPEC's open follow-up card with `moai card criterion-add <card> --ac <text>`, and a card is opened with `moai card add --spec <SPEC-ID> --follow-up` only when the SPEC has none open (a SPEC keeps one open follow-up card); defect candidates with the RED test first and closed as not-a-defect when it does not reproduce and the ledger's follow-up candidates are turned into work the same way; (4) when none exists, tell the waiting lane why (which landing or HOLD it waits on) and which card is reserved for it.
 5. Each round and its outcome go into the dispatch journal.
+6. Keep HOLD cards out of ready: a card with a HOLD or an unmet prerequisite is withdrawn with `moai card withdraw` (the reason names the HOLD or the prerequisite), so no lane takes it and gives it back; `card take` refuses a withdrawn card naming that reason.
 
 ## What the leader never does
 
