@@ -845,7 +845,7 @@ fn an_unsupported_checkout_refuses_and_changes_nothing() {
                 );
                 (card, cand)
             },
-            &["unmerged paths", "a.txt"],
+            &["unmerged paths: a.txt;"],
         ),
         (
             "two worktrees on the branch",
@@ -1011,24 +1011,47 @@ fn a_rerun_leaves_a_worktree_alone_whose_index_matches_neither_commit() {
     w.wrap_update_ref("git-kills-the-lander", "kill -9 $PPID");
     let out = w.land(&card, &cand);
     assert_ne!(out.status.code(), Some(0), "the lander was not killed");
-    // Someone stages a file of their own while the index still lags.
+    // Someone stages a file of their own while the index still lags, and edits a tracked file
+    // without staging it.
     fs::write(w.project.join("mine.txt"), "mine\n").unwrap();
     git(&w.project, &["add", "mine.txt"]);
+    fs::write(w.project.join("d/x"), "edited, never staged\n").unwrap();
     let staged = w.checkout();
 
     w.plain_git();
     let got = result(&w.land(&card, &cand));
     assert_eq!(got["worktree_follow"]["status"], json!("none"), "{got}");
+    let note = got["worktree_follow"]["note"].as_str().unwrap_or_default();
+    let old = got["worktree_follow"]["from"].as_str().unwrap();
     assert!(
-        got["worktree_follow"]["note"]
-            .as_str()
-            .is_some_and(|n| n.contains("neither")
-                && n.contains("git diff --cached")
-                && n.contains("git reset --hard")),
-        "the note names the way out: {got}"
+        note.contains("neither")
+            && note.contains(&format!("git diff {old} > keep.patch"))
+            && !note.contains("--cached")
+            && note.contains("staged or not")
+            && note.contains("git reset --hard")
+            && note.contains("git apply --3way keep.patch"),
+        "the note names a way out that saves the unstaged edits too: {got}"
     );
     assert_eq!(w.checkout(), staged, "the rerun touched the worktree");
     assert_eq!(w.state(&card), "done");
+
+    // The advice, followed to the letter, loses neither the staged file nor the unstaged edit.
+    let patch = git(&w.project, &["diff", old]);
+    assert!(
+        patch.contains("mine.txt") && patch.contains("edited, never staged"),
+        "the saved patch lacks a change: {patch}"
+    );
+    fs::write(w.project.join("keep.patch"), format!("{patch}\n")).unwrap();
+    git(&w.project, &["reset", "--hard"]);
+    git(&w.project, &["apply", "--3way", "keep.patch"]);
+    assert_eq!(
+        fs::read_to_string(w.project.join("mine.txt")).unwrap(),
+        "mine\n"
+    );
+    assert_eq!(
+        fs::read_to_string(w.project.join("d/x")).unwrap(),
+        "edited, never staged\n"
+    );
 }
 
 // ---- the rest of the guards: each rule has a test that only it fails -----------------------------

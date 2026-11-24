@@ -195,6 +195,9 @@ fn check_entry_tags(tree: &Path) -> Result<()> {
             tag => other.push(format!("{}: {path}", tag as char)),
         }
     }
+    // An unmerged path has one entry per stage; name it once.
+    unmerged.sort_unstable();
+    unmerged.dedup();
     if !unmerged.is_empty() {
         return Err(refusal(
             format!("{at} has unmerged paths: {}", listed(&unmerged)),
@@ -583,9 +586,11 @@ pub fn rerun(
         // it is and the answer says how its owner brings it along (REQ-13).
         let note = format!(
             "the index of the worktree is neither the old tip's tree nor the new one's, so it was \
-             left alone and shows the move backwards; `git diff --cached {old}` there lists exactly \
-             the changes staged by hand: save them (for example `git diff --cached {old} > keep.patch`), \
-             run `git reset --hard` there to bring it to {tip}, and apply the patch again"
+             left alone and shows the move backwards; `git diff {old}` there lists every change to \
+             tracked files, staged or not, and `git reset --hard` discards all of them: save them \
+             first (`git diff {old} > keep.patch`; files no commit tracks stay where they are), run \
+             `git reset --hard` there to bring it to {tip}, and apply the patch again \
+             (`git apply --3way keep.patch`)"
         );
         return Ok(Rerun::Nothing(answer(
             Some(&tree),
