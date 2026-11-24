@@ -21,6 +21,10 @@ pub struct TestFile {
     /// The file's source text: the lane rule for `tests/common/<sub>.rs` and the text-pin rule
     /// read it (SPEC-20261123-check-precise-selection REQ-3, REQ-6).
     pub text: String,
+    /// The area crate that holds this module (`tests/<area>/<name>.rs`), `None` for a target of
+    /// its own. A moved module keeps its old target name in `name`, so the selection does not
+    /// change; only the step that runs it names the crate (SPEC-20261123-test-area-crates).
+    pub area: Option<String>,
 }
 
 /// Which set a caller gets: the full set (today's, the bare command) or the precise lane set
@@ -70,6 +74,8 @@ impl Scans {
 pub struct Selection {
     pub rust: BTreeSet<String>,
     pub scans: Scans,
+    /// Old target name to area crate, for the selected names that are modules of an area crate.
+    pub areas: std::collections::BTreeMap<String, String>,
 }
 
 /// The first word of an area name: `update_models` → `update`.
@@ -346,6 +352,19 @@ pub fn select_pick(
                     rust.insert(t.name.clone());
                 }
             }
+            // A module of an area crate (`tests/<area>/<module>.rs`) is the old target `<module>`;
+            // the crate's own `main.rs` is every module of that area.
+            [dir, file]
+                if file.ends_with(".rs")
+                    && tests.iter().any(|t| t.area.as_deref() == Some(*dir)) =>
+            {
+                let name = stem(file);
+                for t in tests.iter().filter(|t| {
+                    t.area.as_deref() == Some(*dir) && (*file == "main.rs" || t.name == name)
+                }) {
+                    rust.insert(t.name.clone());
+                }
+            }
             [dir, ..] => {
                 for t in tests.iter().filter(|t| t.modules.iter().any(|m| m == dir)) {
                     rust.insert(t.name.clone());
@@ -380,7 +399,20 @@ pub fn select_pick(
             }
         }
     }
-    Selection { rust, scans }
+    let areas = areas_of(tests, &rust);
+    Selection { rust, scans, areas }
+}
+
+/// Old target name to area crate for the selected names that are modules of an area crate.
+fn areas_of(
+    tests: &[TestFile],
+    rust: &BTreeSet<String>,
+) -> std::collections::BTreeMap<String, String> {
+    tests
+        .iter()
+        .filter(|t| rust.contains(&t.name))
+        .filter_map(|t| Some((t.name.clone(), t.area.clone()?)))
+        .collect()
 }
 
 /// How many test targets may carry the name word of a changed module before the word says nothing
@@ -583,8 +615,9 @@ pub fn select_card(
             }
         }
     }
+    let areas = areas_of(tests, &rust);
     CardPick {
-        selection: Selection { rust, scans },
+        selection: Selection { rust, scans, areas },
         wide,
         ignored_words: ignored.into_iter().collect(),
     }
@@ -878,8 +911,29 @@ pub fn table_violations(
     if let Some(text) = allow {
         let rows = parse_allow_rows(text);
         let (earlier, new) = (earlier_state_name(), new_state_name());
-        for stem in &stems {
-            let Some(file) = tests.iter().find(|t| t.name == *stem) else {
+        // The added files whose text the allow list counts: `tests/<name>.rs` and a module of a
+        // moved area, `tests/<area>/<name>.rs`, which the list names by that longer path.
+        let mut files: Vec<(String, &str, Option<&str>)> = stems
+            .iter()
+            .map(|s| (format!("tests/{s}.rs"), *s, None))
+            .collect();
+        for p in added {
+            let Some((area, name)) = p
+                .strip_prefix("tests/")
+                .and_then(|r| r.strip_suffix(".rs"))
+                .and_then(|r| r.split_once('/'))
+            else {
+                continue;
+            };
+            if !name.contains('/') && name != "main" && moved.iter().any(|m| m == area) {
+                files.push((p.clone(), name, Some(area)));
+            }
+        }
+        for (path, stem, area) in &files {
+            let Some(file) = tests
+                .iter()
+                .find(|t| t.name == *stem && t.area.as_deref() == *area)
+            else {
                 continue;
             };
             let have = (
@@ -889,9 +943,8 @@ pub fn table_violations(
             if have == (0, 0) {
                 continue;
             }
-            let path = format!("tests/{stem}.rs");
             let row = format!("{path}\t{}\t{}", have.0, have.1);
-            match rows.iter().find(|(p, _, _)| *p == path) {
+            match rows.iter().find(|(p, _, _)| p == path) {
                 None => out.push(format!(
                     "{path}: spells a state folder name ({earlier} x{}, {new} x{}) and is not in tests/fixtures/state_folder_literals/allow.tsv; use the resolvers, or for a fixture that builds an earlier layout on purpose add the row `{row}`",
                     have.0, have.1
@@ -1414,9 +1467,20 @@ pub fn steps(
         "--bin".to_string(),
         "moai-cli".to_string(),
     ];
+    // A selected name that is a module of an area crate runs through that crate, built once
+    // (SPEC-20261123-test-area-crates REQ-5). Nextest narrows the crate to the selected modules
+    // with one filterset; `cargo test` has no per-binary filter and runs the whole crate.
+    let mut built: BTreeSet<&str> = BTreeSet::new();
     for t in &sel.rust {
-        rest.push("--test".to_string());
-        rest.push(t.clone());
+        let target = sel.areas.get(t).unwrap_or(t);
+        if built.insert(target.as_str()) {
+            rest.push("--test".to_string());
+            rest.push(target.clone());
+        }
+    }
+    if runner == Runner::Nextest && !sel.areas.is_empty() {
+        rest.push("-E".to_string());
+        rest.push(area_filterset(sel));
     }
     let refs: Vec<&str> = rest.iter().map(String::as_str).collect();
     let mut test = cargo_step("test", runner.sub(), &refs);
@@ -1433,6 +1497,24 @@ pub fn steps(
     }
     out.push(test);
     out
+}
+
+/// The nextest filterset of a selection that holds modules of area crates: the library and the
+/// binary tests, every target of its own, and in each area crate only the selected modules.
+fn area_filterset(sel: &Selection) -> String {
+    let mut parts = vec!["kind(lib)".to_string(), "kind(bin)".to_string()];
+    let mut modules: std::collections::BTreeMap<&str, Vec<&str>> = Default::default();
+    for t in &sel.rust {
+        match sel.areas.get(t) {
+            Some(area) => modules.entry(area).or_default().push(t),
+            None => parts.push(format!("binary(={t})")),
+        }
+    }
+    for (area, names) in modules {
+        let tests: Vec<String> = names.iter().map(|m| format!("test(/^{m}::/)")).collect();
+        parts.push(format!("(binary(={area}) & ({}))", tests.join(" | ")));
+    }
+    parts.join(" | ")
 }
 
 /// A cargo step: `cargo <sub> --locked --offline <rest>`.
@@ -1564,12 +1646,14 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         .collect();
     let mut tests = Vec::new();
     let mut moved = Vec::new();
+    let mut area_modules = Vec::new();
     if let Ok(entries) = std::fs::read_dir(dir.join("tests")) {
         for e in entries.flatten() {
             let path = e.path();
             if path.join("main.rs").is_file() {
                 if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
                     moved.push(name.to_string());
+                    area_modules.extend(read_area_modules(&path, name));
                 }
             }
             if !path.is_file() {
@@ -1586,15 +1670,19 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
                     modules: declared_mods(&text),
                     os: os_names(&text),
                     text,
+                    area: None,
                 });
             }
         }
     }
+    tests.extend(area_modules);
     tests.sort_by(|a, b| a.name.cmp(&b.name));
     let mut unreadable = Vec::new();
     // The scan list is `None` when it cannot be read, as it always was for the selection; the
-    // table step reads the reason from `unreadable`.
-    let scan_list = read_table(dir, "tools/repo_scans.json", &mut unreadable);
+    // table step reads the reason from `unreadable`. A check that names a module of an area crate
+    // (`--test card card_cli::`) is read as the old target `card_cli`.
+    let scan_list = read_table(dir, "tools/repo_scans.json", &mut unreadable)
+        .map(|text| fold_area_checks(&text, &moved));
     let adds_test_file = added.iter().any(|p| {
         p.strip_prefix("tests/")
             .and_then(|r| r.strip_suffix(".rs"))
@@ -1631,6 +1719,134 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         tracked,
         moved,
     })
+}
+
+/// The modules of the area crate `area` (`<path>/<module>.rs`, `main.rs` and folders left out) as
+/// test files that keep their old target name and name their crate. A module reaches a shared
+/// helper (a module its crate's `main.rs` declares that has no file of its own in the folder, as
+/// `common` and `ready_receipt` are loaded by `#[path]`) by `use crate::<helper>;` or by a path
+/// such as `crate::<helper>::X`; either counts as declaring the helper (the selection of a
+/// `tests/common/` change reads `modules`).
+fn read_area_modules(path: &Path, area: &str) -> Vec<TestFile> {
+    let mut out = Vec::new();
+    let Ok(entries) = std::fs::read_dir(path) else {
+        return out;
+    };
+    let files: Vec<std::path::PathBuf> = entries.flatten().map(|e| e.path()).collect();
+    let stem_of = |f: &std::path::PathBuf| {
+        f.file_name()
+            .and_then(|n| n.to_str())
+            .and_then(|n| n.strip_suffix(".rs"))
+            .map(String::from)
+    };
+    let own: BTreeSet<String> = files
+        .iter()
+        .filter(|f| f.is_file())
+        .filter_map(stem_of)
+        .collect();
+    let helpers: Vec<String> = std::fs::read_to_string(path.join("main.rs"))
+        .map(|main| {
+            declared_mods(&main)
+                .into_iter()
+                .filter(|m| !own.contains(m))
+                .collect()
+        })
+        .unwrap_or_default();
+    for file in files {
+        let Some(name) = file.file_name().and_then(|f| f.to_str()) else {
+            continue;
+        };
+        if !file.is_file() || !name.ends_with(".rs") || name == "main.rs" {
+            continue;
+        }
+        let text = std::fs::read_to_string(&file).unwrap_or_default();
+        let mut modules = declared_mods(&text);
+        for h in &helpers {
+            if uses_crate_item(&text, h) && !modules.contains(h) {
+                modules.push(h.clone());
+            }
+        }
+        out.push(TestFile {
+            name: stem(name).to_string(),
+            modules,
+            os: os_names(&text),
+            text,
+            area: Some(area.to_string()),
+        });
+    }
+    out
+}
+
+/// Whether `text` names `crate::<item>` as a whole word: `use crate::common;`, `crate::common::X`
+/// and `use crate::{common, x}` count; `crate::common_x` does not.
+fn uses_crate_item(text: &str, item: &str) -> bool {
+    let needle = format!("crate::{item}");
+    let mut rest = text;
+    while let Some(i) = rest.find(&needle) {
+        let after = &rest[i + needle.len()..];
+        if !after
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_alphanumeric() || c == '_')
+        {
+            return true;
+        }
+        rest = after;
+    }
+    // A grouped import: `use crate::{a, common};`.
+    text.lines().any(|l| {
+        l.trim().strip_prefix("use crate::{").is_some_and(|g| {
+            g.trim_end_matches(';')
+                .trim_end_matches('}')
+                .split(',')
+                .any(|w| w.trim() == item)
+        })
+    })
+}
+
+/// `text` with every `--test <area> <module>::<rest>` of a moved area read as `--test <module>`:
+/// the scan list names the module through its crate, the selection names it by its old target.
+/// A word after `--test <name>` that is no module path, and a name that is no moved area, stay.
+fn fold_area_checks(text: &str, moved: &[String]) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(i) = rest.find("--test ") {
+        let (head, tail) = rest.split_at(i + "--test ".len());
+        out.push_str(head);
+        let word = |s: &str| -> usize {
+            s.find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+                .unwrap_or(s.len())
+        };
+        let area = &tail[..word(tail)];
+        let mut after = &tail[area.len()..];
+        let mut modules: Vec<&str> = Vec::new();
+        if moved.iter().any(|m| m == area) {
+            // Every `<module>::<rest>` word that follows the crate name is one module filter.
+            while let Some(mut a) = after.strip_prefix(' ') {
+                // Cargo takes one filter before `--`; the others of the command follow it.
+                if let Some(past) = a.strip_prefix("-- ") {
+                    a = past;
+                }
+                let module = &a[..word(a)];
+                if module.is_empty() || !a[module.len()..].starts_with("::") {
+                    break;
+                }
+                modules.push(module);
+                let skip = a
+                    .find(|c: char| c.is_whitespace() || "\"',;)".contains(c))
+                    .unwrap_or(a.len());
+                after = &a[skip..];
+            }
+        }
+        if modules.is_empty() {
+            rest = tail;
+        } else {
+            out.push_str(&modules.join(" --test "));
+            rest = after;
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 /// One table's text. A missing file is an absent table (`None`, no note); any other read error
@@ -2246,7 +2462,62 @@ mod tests {
         assert_eq!(count_state_name(&text, &earlier_state_name()), 0);
     }
 
+    /// Audit N1 of SPEC-20261123-test-area-crates: a module added to a moved area is a test file
+    /// the state-folder allow list counts by its longer path, so the step reads it too.
+    #[test]
+    fn table_violations_read_a_module_added_to_a_moved_area_by_its_longer_path() {
+        let text = format!("\"{}/a\" \"{}/b\"", earlier_state_name(), new_state_name());
+        let mut module = file("lane_x", &text);
+        module.area = Some("lane".to_string());
+        let tests = [module];
+        let added = vec!["tests/lane/lane_x.rs".to_string()];
+        let moved = vec!["lane".to_string()];
+        let none = table_violations(&added, &tests, None, Some("# none\n"), &moved);
+        assert_eq!(none.len(), 1, "{none:?}");
+        assert!(none[0].contains("`tests/lane/lane_x.rs\t1\t1`"), "{none:?}");
+        let row = "tests/lane/lane_x.rs\t1\t1\n";
+        assert!(table_violations(&added, &tests, None, Some(row), &moved).is_empty());
+        // An area that is not moved, and the crate's own main.rs, are no module.
+        let other = vec![
+            "tests/lane/lane_x.rs".to_string(),
+            "tests/lane/main.rs".to_string(),
+        ];
+        assert!(table_violations(&other, &tests, None, Some("# none\n"), &[]).is_empty());
+        assert!(table_violations(&other[1..], &tests, None, Some("# none\n"), &moved).is_empty());
+    }
+
     const MANIFEST: &str = env!("CARGO_MANIFEST_DIR");
+
+    /// Audit B1 on the real files: every module of `tests/card/` that names `crate::common` in
+    /// any form is read as a user of it, and a change of `tests/common/mod.rs` selects exactly
+    /// those modules. The six that name it by a path alone (`close_check_cli`, `startable_shared`,
+    /// `release_suite`, `ledger_forge_only_cli`, `close_step_2903`, `decision_file_cli`) are the
+    /// ones the first version of the read missed.
+    #[test]
+    fn a_change_of_the_common_helper_selects_every_real_card_module_that_names_it() {
+        let dir = Path::new(MANIFEST).join("tests/card");
+        let tests = read_area_modules(&dir, "card");
+        assert!(tests.len() > 100, "{} modules read", tests.len());
+        let naming: BTreeSet<&str> = tests
+            .iter()
+            .filter(|t| t.text.contains("crate::common::") || t.text.contains("use crate::common;"))
+            .map(|t| t.name.as_str())
+            .collect();
+        for six in [
+            "close_check_cli",
+            "startable_shared",
+            "release_suite",
+            "ledger_forge_only_cli",
+            "close_step_2903",
+            "decision_file_cli",
+        ] {
+            assert!(naming.contains(six), "{six} no longer names the helper");
+        }
+        let sel = select(&paths(&["tests/common/mod.rs"]), &tests, None, "linux");
+        let picked: BTreeSet<&str> = sel.rust.iter().map(String::as_str).collect();
+        let missed: Vec<&&str> = naming.difference(&picked).collect();
+        assert!(missed.is_empty(), "not selected: {missed:?}");
+    }
 
     /// SPEC-20261124-new-test-file-precheck REQ-8: the repository's own test files, all taken as
     /// added, pass the step: it cannot be stricter than the two repository tests, which pass on
@@ -2578,6 +2849,7 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
             modules: modules.iter().map(|s| s.to_string()).collect(),
             os: os.iter().map(|s| s.to_string()).collect(),
             text: String::new(),
+            area: None,
         }
     }
 
@@ -3005,6 +3277,248 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
                 assert!(s.label != "python" && s.label != "build_cli", "{s:?}");
             }
         }
+    }
+
+    /// A module of the area crate `card`, the way `read_area_modules` reads one.
+    fn module(name: &str, text: &str) -> TestFile {
+        TestFile {
+            name: name.to_string(),
+            modules: vec!["common".to_string()],
+            text: text.to_string(),
+            area: Some("card".to_string()),
+            ..Default::default()
+        }
+    }
+
+    /// SPEC-20261123-test-area-crates REQ-5: the old names of a moved area run through the one
+    /// crate, and nextest narrows it to the selected modules while the other targets stay whole.
+    #[test]
+    fn area_modules_run_through_their_crate_with_a_module_filter() {
+        let tests = [
+            module("card_cli", ""),
+            module("ledger_open", ""),
+            module("ledger_schema", ""),
+            rust("update_command_cli", &[], &[]),
+        ];
+        let changed = paths(&["src/ledger/open.rs"]);
+        let sel = select(&changed, &tests, None, "linux");
+        let want: BTreeSet<String> = ["ledger_open", "ledger_schema"].map(String::from).into();
+        assert_eq!(sel.rust, want, "the selection stays by old name");
+        let planned = steps(&sel, &changed, "a...b", Runner::Nextest, None);
+        let test = planned.iter().find(|s| s.label == "test").unwrap();
+        let targets: Vec<&str> = test
+            .args
+            .windows(2)
+            .filter(|w| w[0] == "--test")
+            .map(|w| w[1].as_str())
+            .collect();
+        assert_eq!(targets, ["card"], "{:?}", test.args);
+        let at = test.args.iter().position(|a| a == "-E").unwrap();
+        assert_eq!(
+            test.args[at + 1],
+            "kind(lib) | kind(bin) | (binary(=card) & (test(/^ledger_open::/) | test(/^ledger_schema::/)))"
+        );
+    }
+
+    #[test]
+    fn a_target_of_its_own_stays_whole_beside_an_area_crate() {
+        let tests = [module("card_cli", ""), rust("card_solo", &[], &[])];
+        let changed = paths(&["src/card/x.rs"]);
+        let sel = select(&changed, &tests, None, "linux");
+        let planned = steps(&sel, &changed, "a...b", Runner::Nextest, None);
+        let test = planned.iter().find(|s| s.label == "test").unwrap();
+        let at = test.args.iter().position(|a| a == "-E").unwrap();
+        assert_eq!(
+            test.args[at + 1],
+            "kind(lib) | kind(bin) | binary(=card_solo) | (binary(=card) & (test(/^card_cli::/)))"
+        );
+        let runs: Vec<&str> = test
+            .args
+            .windows(2)
+            .filter(|w| w[0] == "--test")
+            .map(|w| w[1].as_str())
+            .collect();
+        assert_eq!(runs, ["card", "card_solo"], "{:?}", test.args);
+    }
+
+    #[test]
+    fn libtest_has_no_per_binary_filter_and_runs_the_whole_crate() {
+        let tests = [module("card_cli", "")];
+        let changed = paths(&["src/card/x.rs"]);
+        let sel = select(&changed, &tests, None, "linux");
+        let planned = steps(&sel, &changed, "a...b", Runner::CargoTest, None);
+        let test = planned.iter().find(|s| s.label == "test").unwrap();
+        assert!(test.args.windows(2).any(|w| w == ["--test", "card"]));
+        assert!(!test.args.iter().any(|a| a == "-E"), "{:?}", test.args);
+    }
+
+    #[test]
+    fn a_selection_without_an_area_module_adds_no_filterset() {
+        let tests = [rust("update_command_cli", &[], &[])];
+        let changed = paths(&["src/update_models.rs"]);
+        let sel = select(&changed, &tests, None, "linux");
+        assert!(sel.areas.is_empty());
+        let planned = steps(&sel, &changed, "a...b", Runner::Nextest, None);
+        let test = planned.iter().find(|s| s.label == "test").unwrap();
+        assert!(!test.args.iter().any(|a| a == "-E"), "{:?}", test.args);
+    }
+
+    #[test]
+    fn a_changed_module_file_and_a_changed_crate_root_select_by_old_name() {
+        let tests = [module("card_cli", ""), module("ledger_open", "")];
+        let one = select(&paths(&["tests/card/card_cli.rs"]), &tests, None, "linux");
+        assert_eq!(one.rust, ["card_cli"].map(String::from).into());
+        assert_eq!(one.areas["card_cli"], "card");
+        let all = select(&paths(&["tests/card/main.rs"]), &tests, None, "linux");
+        assert_eq!(all.rust.len(), 2);
+        let none = select(&paths(&["tests/card/notes.txt"]), &tests, None, "linux");
+        assert!(none.rust.is_empty(), "{:?}", none.rust);
+    }
+
+    /// Audit B2: the card pick of a changed test module (`tests/card/<module>.rs`) names the
+    /// area crate like the full and lane picks do, so the step builds `--test card`, not a
+    /// target `card_cli` that no longer exists.
+    #[test]
+    fn the_card_pick_of_an_area_module_names_its_crate() {
+        let tests = [module("card_cli", "fn a() {}"), rust("solo_cli", &[], &[])];
+        let changed = paths(&["tests/card/card_cli.rs"]);
+        let pick = select_card(&changed, &tests, None, "linux");
+        assert!(pick.wide.is_none(), "{:?}", pick.wide);
+        assert!(pick.selection.rust.contains("card_cli"));
+        assert_eq!(pick.selection.areas["card_cli"], "card");
+        let planned = steps(&pick.selection, &changed, "a..b", Runner::Nextest, None);
+        let test = planned.iter().find(|s| s.label == "test").unwrap();
+        assert!(
+            test.args.windows(2).any(|w| w == ["--test", "card"]),
+            "{:?}",
+            test.args
+        );
+        assert!(
+            !test.args.iter().any(|a| a == "card_cli"),
+            "{:?}",
+            test.args
+        );
+    }
+
+    /// The `main.rs` of an area crate: two helpers loaded by `#[path]` and one module of its own.
+    const AREA_MAIN: &str = "#[path = \"../common/mod.rs\"]\nmod common;\n#[path = \"../common/ready_receipt.rs\"]\nmod ready_receipt;\n\nmod card_cli;\n";
+
+    /// Audit B1 of SPEC-20261123-test-area-crates: six moved modules reach the helper by a path
+    /// (`crate::common::MOAI_BIN`) and carry no `use crate::common;` line. The selection of a
+    /// `tests/common/` change reads the files as the checkout holds them, so each way of naming
+    /// the helper is read here from real files, and the selection is made from what was read.
+    #[test]
+    fn a_helper_named_by_a_path_alone_is_read_from_the_file_and_selected() {
+        let root = tempfile::tempdir().unwrap();
+        let dir = root.path().join("card");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("main.rs"), AREA_MAIN).unwrap();
+        for (name, text) in [
+            ("by_use", "use crate::common;\nfn a() {}\n"),
+            ("by_path", "fn b() { let _ = crate::common::MOAI_BIN; }\n"),
+            ("by_group", "use crate::{common, ready_receipt};\n"),
+            (
+                "by_other_helper",
+                "fn c() { crate::ready_receipt::run(); }\n",
+            ),
+            // A longer name and a sibling module are no helper use.
+            ("by_longer_name", "fn d() { crate::common_x::y(); }\n"),
+            ("by_sibling", "fn e() { crate::card_cli::f(); }\n"),
+            ("by_nothing", "fn g() {}\n"),
+        ] {
+            std::fs::write(dir.join(format!("{name}.rs")), text).unwrap();
+        }
+        let tests = read_area_modules(&dir, "card");
+        let used = |name: &str, helper: &str| {
+            tests
+                .iter()
+                .find(|t| t.name == name)
+                .unwrap_or_else(|| panic!("{name} not read"))
+                .modules
+                .iter()
+                .any(|m| m == helper)
+        };
+        assert!(used("by_use", "common"));
+        assert!(used("by_path", "common"), "a path use is a helper use");
+        assert!(used("by_group", "common") && used("by_group", "ready_receipt"));
+        assert!(used("by_other_helper", "ready_receipt"));
+        assert!(!used("by_other_helper", "common"));
+        for none in ["by_longer_name", "by_sibling", "by_nothing"] {
+            assert!(
+                !used(none, "common") && !used(none, "ready_receipt"),
+                "{none}"
+            );
+        }
+        // The change of the helper reaches exactly the readers of it, in both selections.
+        for pick in [Pick::Full, Pick::Lane] {
+            let sel = select_pick(
+                pick,
+                &paths(&["tests/common/mod.rs"]),
+                &tests,
+                None,
+                "linux",
+            );
+            for name in ["by_use", "by_path", "by_group"] {
+                assert!(sel.rust.contains(name), "{pick:?} {name}: {:?}", sel.rust);
+            }
+            for name in ["by_longer_name", "by_sibling", "by_nothing"] {
+                assert!(!sel.rust.contains(name), "{pick:?} {name}: {:?}", sel.rust);
+            }
+        }
+    }
+
+    #[test]
+    fn a_helper_change_still_reaches_the_modules_that_use_it() {
+        let tests = [module("card_cli", "use crate::common::git;")];
+        let sel = select(&paths(&["tests/common/mod.rs"]), &tests, None, "linux");
+        assert!(sel.rust.contains("card_cli"), "{:?}", sel.rust);
+    }
+
+    /// An old name in the scan list and a module filter through the crate are the same target.
+    #[test]
+    fn a_scan_check_through_an_area_crate_folds_to_the_old_name() {
+        let moved = vec!["card".to_string()];
+        let text = r#"{"checks":["cargo test --offline --locked --test card card_land_scans_cli::a","cargo test --test product_cli skill_package::","cargo test --test card_solo","cargo test --test lane lane_x::"]}"#;
+        let got = fold_area_checks(text, &moved);
+        assert_eq!(
+            got,
+            r#"{"checks":["cargo test --offline --locked --test card_land_scans_cli","cargo test --test product_cli skill_package::","cargo test --test card_solo","cargo test --test lane lane_x::"]}"#
+        );
+        assert_eq!(fold_area_checks(text, &[]), text);
+        // Several module filters of one crate are several old targets.
+        let many =
+            r#"["cargo test --offline --locked --test card a_cli:: b_cli::x c_cli:: --test d"]"#;
+        assert_eq!(
+            fold_area_checks(many, &moved),
+            r#"["cargo test --offline --locked --test a_cli --test b_cli --test c_cli --test d"]"#
+        );
+        // The checked-in form: one filter before `--`, the others after it.
+        let dashed =
+            r#"["cargo test --offline --locked --test card a_cli:: -- b_cli::x c_cli:: --test d"]"#;
+        assert_eq!(
+            fold_area_checks(dashed, &moved),
+            r#"["cargo test --offline --locked --test a_cli --test b_cli --test c_cli --test d"]"#
+        );
+    }
+
+    #[test]
+    fn area_modules_are_read_with_their_helpers_and_old_names() {
+        let root = tempfile::tempdir().unwrap();
+        let dir = root.path().join("card");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("main.rs"), AREA_MAIN).unwrap();
+        std::fs::write(
+            dir.join("card_cli.rs"),
+            "use crate::common;\nuse crate::ready_receipt;\n#[cfg(target_os = \"linux\")]\nfn x() {}\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("notes.txt"), "x").unwrap();
+        let got = read_area_modules(&dir, "card");
+        assert_eq!(got.len(), 1, "{got:?}");
+        assert_eq!(got[0].name, "card_cli");
+        assert_eq!(got[0].area.as_deref(), Some("card"));
+        assert_eq!(got[0].modules, ["common", "ready_receipt"]);
+        assert_eq!(got[0].os, ["linux"]);
     }
 
     #[test]

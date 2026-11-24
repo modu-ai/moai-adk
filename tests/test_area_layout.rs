@@ -144,9 +144,13 @@ fn declared_modules(root: &Path, area: &str) -> Vec<String> {
     let path = root.join("tests").join(area).join("main.rs");
     let text = fs::read_to_string(path).unwrap_or_default();
     let mut out = Vec::new();
+    // A module under `#[path = ...]` lives outside the area folder (the shared helpers): it needs
+    // no file here, like `common`.
+    let mut path_attr = false;
     for line in text.lines() {
         let mut line = line.trim();
         while line.starts_with("#[") {
+            path_attr |= line.starts_with("#[path");
             match line.find("] ") {
                 Some(i) => line = line[i + 2..].trim_start(),
                 None => break,
@@ -157,9 +161,10 @@ fn declared_modules(root: &Path, area: &str) -> Vec<String> {
             .strip_prefix("mod ")
             .and_then(|rest| rest.strip_suffix(';'))
         {
-            if name != "common" {
+            if name != "common" && !path_attr {
                 out.push(name.trim().to_string());
             }
+            path_attr = false;
         }
     }
     out
@@ -471,7 +476,7 @@ fn layout_a_planted_area_must_declare_each_module_once() {
     let ok = planted_table(&[
         (
             "tests/repo/main.rs",
-            "mod common;\nmod git_a;\n#[cfg(unix)]\nmod git_b;\n",
+            "mod common;\n#[path = \"../common/shared.rs\"]\nmod shared;\nmod git_a;\n#[cfg(unix)]\nmod git_b;\n",
         ),
         ("tests/repo/git_a.rs", ""),
         ("tests/repo/git_b.rs", ""),
@@ -610,6 +615,7 @@ fn solo_files_stay_top_level_targets() {
     assert_eq!(
         table.solo,
         [
+            "card_cleanup_outbox_cli",
             "commit_identity_guard_2878",
             "update_switch_layer",
             "worktree_place_cli"

@@ -2,9 +2,10 @@
 id: SPEC-20261123-test-area-crates
 title: "The integration tests run from eight area crates, one area moved per slice, with test names kept as module paths and check affected building only area crates"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-23
 parent: null
+branch: spec/20261123-test-area-crates-card
 ---
 
 # Integration tests in area crates
@@ -71,6 +72,12 @@ This SPEC plans the work only. No file moves before build 19 is made (leader dec
 - REQ-10: Each slice shall record the cold `cargo test --no-run` CPU seconds, wall time, build-folder size and file count before and after, and the test count from `cargo nextest list` equal before and after.
 - REQ-11 (REQ-5): If an area crate fails to build, then check affected shall report every selected module of that area as failed.
 - REQ-12 (REQ-6): If a recorded `--test <name>` names neither a test target nor a mapped module, then the AC command lint shall fail on that line.
+- REQ-13 (REQ-7): A scan command that names several modules of one area crate shall put the first filter before `--` and the others after it, as cargo takes one test name before `--`.
+- REQ-14 (REQ-4): Each scan that reads the test sources shall read the module files of an area crate.
+- REQ-15 (REQ-5): The selection of a moved module by its old target name shall add the area crate once as the `--test` argument and, under nextest, one filter set that keeps the solo targets whole and narrows the area crate to the picked modules.
+- REQ-16 (REQ-14): The exemption and baseline tables of those scans shall name a moved file by its `tests/<area>/<module>.rs` path.
+- REQ-17 (REQ-3): The home guard baseline shall name a moved test by the area crate as its binary and `<module>::<fn>` as its name.
+- REQ-18 (REQ-2): A test that starts its own test binary again shall name the child test by its module path when the file is a module of an area crate.
 
 ## Acceptance
 
@@ -79,7 +86,7 @@ This SPEC plans the work only. No file moves before build 19 is made (leader dec
 - AC-2 (REQ-3, REQ-4): every first word of every test file and area module is in `tests/areas.toml`; a planted `tests/<moved area word>_x.rs` and a planted unmapped word each fail the scan.
   verify: `cargo test --locked --offline --test test_area_layout area_table_`
 - AC-3 (REQ-5, REQ-11): for a one-`src/`-file range, `check affected --list` names at most the eight area crates plus the solo targets, and each test step carries a filter of the selected modules; a planted build failure of one area crate marks all its selected modules failed.
-  verify: `cargo test --locked --offline --test check_affected_cli area_`
+  verify: `cargo test --locked --offline --lib check_affected::tests::`
 - AC-4 (REQ-6, REQ-12): a recorded AC line `cargo test --test <moved target> <filter>` passes the AC command lint, which resolves it to `--test <area> <moved target>::<filter>`; a line naming an unknown target fails it.
   verify: `cargo test --locked --offline --test ac_command_lint area_`
 - AC-5 (REQ-7): no `--test <name>` in `tools/repo_scans.json`, `.config/nextest.toml` or `tools/ci_scope.py` names a target that is no longer a file.
@@ -119,6 +126,8 @@ The run time stays about the same because the same tests run. The saving is in c
 
 - Cargo: `cargo test --test <old> <f>` becomes `cargo test --test <area> <old>::<f>`, and a whole old target becomes `cargo test --test <area> <old>::`.
 - Nextest: `binary(<old>)` becomes `binary(<area>) & test(/^<old>::/)`.
+- Known limit of the cargo runner (found in slice 1): libtest filters are substrings, not prefixes. `cargo test --test card claim_cli::` also runs `card_reclaim_cli::…`, and `dispatch_cli::` also runs `card_dispatch_cli::…`. The cargo runner over-selects there; the nextest runner is exact, because the filter set anchors `^<module>::`. `check affected` runs nextest when it is installed, and the READY receipt names the runner.
+- Selection stays by old target name (slice 1, D-6): `select_pick` is unchanged and the moved modules are read as `TestFile` entries of their area, so the name logic of SPEC-20261124-card-select-batch-land keeps working. Only `steps()` turns the picked old names into the one area `--test` and the filter set.
 - HOME: every child gets its temporary HOME through `tests/common` (`Command::env("HOME", …)`, `env_clear` for git). That is per child process, not process-global, so it holds in one process.
 - Session id: the 29 files that name `CLAUDE_CODE_SESSION_ID` set or remove it on the child `Command`. Any that call `std::env::set_var` instead fall under REQ-8.
 - `cargo test` runs one area's tests as threads of one process; nextest keeps one process per test. The three solo files and the nine files with a process-global static are the only shared-state surface. The statics are read once and stay correct in one process; slice 0 checks each (U-2).
@@ -169,6 +178,9 @@ The run time stays about the same because the same tests run. The saving is in c
 | D-3 | Old SPECs keep `--test <old>`; the lint resolves them through the table. | 2,306 lines in 272 SPECs; closed SPECs are records. | Rewriting closed SPECs. |
 | D-4 | Use auto-discovery of `tests/<area>/main.rs`, with no `autotests = false`. | No `Cargo.toml` edit: that file is hot, and editing it rebuilds every folder. Unmoved files stay targets during the migration. | `[[test]]` entries for every target. |
 | D-5 | Order: fewest open-branch edits first. | Measured per area; it limits each wave of conflicts. | Biggest saving first. |
+| D-6 | Slice 1 moves the card area first, ahead of the order of D-5 (leader dispatch, note 8564): the area that changes most often is where the saving counts. One area per slice still holds; the open branch that holds `tests/card_heartbeat_cli.rs` (C-117) is not moved yet. | The leader's priority; the conflict is one file, left on top. | Waiting for the fewest-edits order. |
+| D-7 | `card_cleanup_outbox_cli` stays a top-level target (REQ-8: it calls `set_var`). | A process-global call must not share one process with other modules. | Moving it and rewriting its test. |
+| D-8 | `tests/card_heartbeat_cli.rs` is a new file of the open card C-117 and is not on the integration tip, so slice 1 does not move it and does not write it. The layout scan (REQ-4) refuses a top-level `tests/card_*.rs` once the card area has moved, so C-117 adds it as `tests/card/card_heartbeat_cli.rs` with one `mod` line in `tests/card/main.rs` when it merges the tip. | C-117 holds the path; the scan points its author to the module. | Waiting for C-117 to land before moving the area. |
 
 ### Unsettled
 
@@ -178,20 +190,64 @@ The run time stays about the same because the same tests run. The saving is in c
 
 ## Result
 
-Status: slices 0 and 0b are written and waiting for the independent audit; no test file has moved into an area crate yet. `check affected` does not read area crates yet, so no area slice starts before the second slice of the test-thread-limit work lands and `src/check_affected.rs` can be widened.
+Slice 1, the card area (2026-11-25, lane agent-3, base `b0bffbbd48`; the tested head is the one named in the READY note of the card). Status: slice 1 is repaired after the first audit (FAIL, blockers B1 and B2, see "Repair after the audit" below) and waits for the second independent audit. Slices 0 and 0b stay as they were (the table, the scan of it, the readers of an area folder).
 
-What the two slices hold (one tracked table, the scan of it, and the readers that must not drop a moved test):
+What slice 1 holds:
 
-- `tests/areas.toml` maps every test file to one of the eight areas, and `tests/test_area_layout.rs` scans it.
-- `tools/check_ac_commands.py`, `tools/ci_scope.py`, `src/bundle/verify.rs`, `tests/cargo_env_developer_dir.rs` and `tests/home_isolation_scan.rs` read an area folder as well as the top level.
-- `moai bundle verify` puts the area crate of a changed module on its list, resolves a SPEC's old `--test <name>` to the crate, attributes a failing crate to the heads that touch its folder, and accepts only `[A-Za-z0-9_-]` target names.
+- 100 test files of the card area are modules of `tests/card/main.rs` (`git mv`, one `mod` line each, sorted), each `mod common;` is `use crate::common;` and the crate declares `common` once (`#[path = "../common/mod.rs"]`). Six `use crate::common;` lines that nothing used were dropped.
+- `card_cleanup_outbox_cli` calls `set_var`, so it stays a top-level target (REQ-8, D-7); `tests/areas.toml` lists it in `solo`. `tests/card_heartbeat_cli.rs` of the open card C-117 is not on the tip and is not moved (D-8).
+- `src/check_affected.rs` (name resolution only; `select_pick` is unchanged): a moved module is read as a `TestFile` of its area and is still selected by its old target name, `steps()` puts the area crate on the command line once and, under nextest, adds one filter set (`kind(lib) | kind(bin) | binary(=<solo>) | (binary(=card) & (test(/^<module>::/) | …))`), and the scan list text is folded back to old names. REQ-5 and REQ-15.
+- `tools/repo_scans.json` names a moved module as `--test card <module>::`, several modules of one crate as `--test card <first>:: -- <others>::` (REQ-13); `fold_area_checks` reads both forms.
+- The scans that read the test sources (`repo_scans_table`, `home_isolation_scan`, the exemption and baseline tables, `state_folder_literals/allow.tsv`) read the module files of an area crate and name a moved file by `tests/card/<module>.rs` (REQ-14).
+
+Measurements, one run each, on a clean `git archive` export, cold `cargo test --locked --offline --no-run` with `CARGO_INCREMENTAL=0`, no wrapper, inside one heavy slot, while other lanes ran (load average 18.7 before, 22.3 after). Scripts `baseline.sh` and `after.sh` in the lane's scratchpad:
+
+| item | before `b0bffbbd48` | after (the card move, before the repairs) | change |
+| --- | --- | --- | --- |
+| wall time | 161.49 s | 145.85 s | −15.64 s (−9.7%) |
+| CPU time (user + sys) | 566.98 + 87.79 = 654.77 s | 507.30 + 66.15 = 573.45 s | −81.32 s (−12.4%) |
+| build folder `target/` | 2,464,028 KB | 2,139,976 KB | −324,052 KB (−13.1%) |
+| files under `target/` | 5,566 | 4,631 | −935 (−16.8%) |
+| test executables | 520 | 421 | −99 (100 modules became one crate) |
+| peak memory | 3,029,336,064 B | 3,018,194,944 B | about equal |
+| `cargo nextest list` lines | 8,171 | 8,179 | +8 |
+
+The after run was taken on the card move before the repairs (a revision that the later squash into one code commit replaced); the repairs that the whole-area run and the receipts found (below) change no build step. The card area is 1,330 of the repository's tests, so the saving is one slice's share; the cargo runner builds the library once in both runs. The load differs between the runs and each is a single run, so the figures are an estimate of the order, not a benchmark.
+
+Equal counts and names (AC-7, criterion 1 of the card):
+
+- `cargo nextest list` before (8,171 lines) and after (8,179): the 1,330 tests of `moai-cli::card <module>::<fn>` fold to the old `moai-cli::<module> <fn>` with an empty difference both ways; the 8 extra lines are the 8 new unit tests of `check_affected::tests` that this slice adds (`scratchpad/compare_lists.py`).
+- Selection under old and new names for the real range `0537ee7933~1..0537ee7933` (`check affected --list`, 95 old targets): the old names pick 3,323 tests (the lines of those targets in the list before the move, plus the library and the binary); the new step's own arguments, listed by `cargo nextest list`, pick 3,331, and the difference is the same 8 new unit tests (`target/agent-3/count_selected.py`).
+
+Known limit of the cargo runner (SPEC "Name filters"): libtest filters are substrings, so `claim_cli::` also picks `card_reclaim_cli::` and `dispatch_cli::` also picks `card_dispatch_cli::`. Nextest is exact.
+
+Checks (every cargo run in `moai heavy-slot-acquire --name agent-3 --max 4`):
+
+- The readers, 12 test binaries (`test_area_layout`, `check_affected_cli`, `check_affected_scans_cli`, `check_affected_tables_cli`, `home_isolation_scan`, `hook_dispatch_cli`, `leader_cli`, `repo_scans_table`, `spec_doc`, `worktree_cleanup_triggers`, `ac_verify_required`, `state_folder_literal_scan`) and the lib tests of `check_affected::`: 254 passed. Before the repair 5 of 205 failed (the solo list, the exemption tables, the home isolation baseline), then 2 of 215 (`every_check_names_a_real_target_and_test` and the state folder baseline); each is repaired above.
+- The whole moved area, `cargo nextest run --test card`, first run (`target/agent-3/card-area-run.log`, 320.8 s): 1,285 passed and 45 failed, in two causes that the moves had introduced and the readers above did not show. (a) 34 tests that the home guard tolerates by `<binary>` and `<test name>` (`tests/fixtures/test_home_guard/baseline.tsv`) failed with `HOME-GUARD: touched its HOME`, because the binary is now `card` and the name `<module>::<fn>`; the 37 rows of the moved modules are `card<TAB><module>::<fn>` now, and `check_baseline` of `tests/test_home_guard.rs` finds a test of an area crate in `tests/<area>/<module>.rs` (new test `a_baseline_line_of_an_area_crate_names_the_test_in_its_module_file`). (b) 11 tests of four modules (`ledger_open`, `ledger_recover`, `ledger_reservation`, `ledger_card_landed_migration_cli`) start their own test binary again with `--exact <name>` and waited for a racer that never ran; the child name now takes its module path from `module_path!()`, and stays `<fn>` when the file is a top-level target.
+- The same run after those repairs, `cargo nextest run --test card --test test_home_guard` (`target/agent-3/card-area-run2.log`, 163.3 s): 1,384 passed, 0 failed.
+- The first receipt of the slice (head `c57b68a792`, `target/check-affected-c57b68a79206/`) was FAIL, `clippy=101 test=100`, and found two more: `clippy::duplicate_mod` because two card modules each loaded `tests/common/ready_receipt.rs` by `#[path]` (it is declared once in `tests/card/main.rs` now and the two modules `use crate::ready_receipt`), and `rule_history_guard::every_test_file_named_in_the_history_exists` because it looked for a moved file only at `tests/<name>.rs` (it also looks in an area crate folder now, `tests/rule_history_guard.rs`, scope widened with a reason). After both, `cargo clippy --locked --offline --all-targets -- -D warnings` exits 0 and `rule_history_guard` plus the two `card_ready_*` modules pass (29 passed).
+- Guard mutants (one slot call, `target/agent-3/mutants3.py`, tree clean afterwards), each killed with exit 100 by the named test: `steps()` adds the area crate once (`area_modules_run_through_their_crate_with_a_module_filter`), the module filter is anchored at `^` (`a_target_of_its_own_stays_whole_beside_an_area_crate` and the same test), and the scans read the module files of an area crate (`exemptions_are_not_stale` and `file_read_exemptions_are_readers_with_a_reason_once`).
+
+- Receipts, bare `moai check affected` (150 targets, 135 scans): the first run failed in clippy (`duplicate_mod` of the shared `ready_receipt` helper, repaired by loading it once in `tests/card/main.rs`) and in `rule_history_guard` (it did not read an area folder); the second failed in one test, `layout_moved_areas_agree_with_their_main_rs`, which wanted a file for the `#[path]` module (repaired: a module under `#[path]` needs no file, like `common`); the third passed with 5,033 of 5,033 tests.
 
 Per acceptance criterion:
 
-- AC-1: open — no area is moved, so no area crate runs.
-- AC-2: met — `area_table_maps_every_real_test_file`, `area_table_rejects_a_planted_unmapped_word` and `area_table_rejects_a_planted_file_of_a_moved_area` in `tests/test_area_layout.rs`.
-- AC-3: open — `check affected` is not area-aware yet (REQ-5, REQ-11); it waits for the second slice of the test-thread-limit work.
-- AC-4: met — `area_old_target_name_resolves_to_its_module`, `area_crate_name_with_a_module_filter_passes`, `area_filter_that_selects_nothing_fails` and `area_unknown_target_fails_even_beside_moved_areas` in `tests/ac_command_lint.rs`.
-- AC-5: partial — `scan_list_names_only_existing_targets_and_paths` holds at this head; each area slice must keep it true for the names it moves.
-- AC-6: met — `solo_files_stay_top_level_targets` and `solo_rejects_a_missing_solo_file_and_a_global_state_call_in_a_module` in `tests/test_area_layout.rs`.
-- AC-7: open — the before-and-after build numbers are taken in the first area slice.
+- AC-1: met for the card area — `cargo test --locked --offline --test test_area_layout` passes at the head (part of the 254), and the list comparison above shows each moved test as `<module>::<fn>` with the total equal plus the 8 new unit tests.
+- AC-2: met — unchanged by this slice, `area_table_*` pass in the 254.
+- AC-3: partial — name resolution, the one `--test` per area crate and the nextest filter set are done and pinned by 8 new unit tests of `check_affected::tests`; the verify line is `cargo test --locked --offline --lib check_affected::tests::`. REQ-11 (report every selected module of a crate that fails to build as failed) is not done and stays open.
+- AC-4: met — unchanged, `ac_command_lint area_` is part of the receipt's full set.
+- AC-5: met for the names this slice moves — `scan_list_names_only_existing_targets_and_paths` and `every_check_names_a_real_target_and_test` pass; `.config/nextest.toml` and `tools/ci_scope.py` name no moved target.
+- AC-6: met — `solo_files_stay_top_level_targets` lists `card_cleanup_outbox_cli` and passes.
+- AC-7: met for slice 1 — the numbers and equal counts above.
+
+Repair after the audit (2026-11-25, same branch, the leader's one-time instruction to merge the NeXT tip `0babbe3566` into it; the receipt of the repaired head is quoted in the REPAIRED note of the card):
+
+- B1, the selection missed modules. `read_area_modules` counted only an exact `use crate::<helper>;` line as a helper use, but six moved modules (`close_check_cli`, `startable_shared`, `release_suite`, `ledger_forge_only_cli`, `close_step_2903`, `decision_file_cli`) name `crate::common::MOAI_BIN` by a path with no `use` line, so a change of `tests/common/` no longer selected their 15 tests. Repair: the helpers of a crate are the modules its `main.rs` declares that have no file of their own in the folder (`common`, `ready_receipt`); a module that names `crate::<helper>` as a whole word (a `use` line, a path, or a `use crate::{a, b}` group) is a user of it. Tests, all in `check_affected::tests`: `a_helper_named_by_a_path_alone_is_read_from_the_file_and_selected` reads temporary files in each form (and a longer name `crate::common_x` and a sibling module `crate::card_cli::f` are no use) and selects under both the full and the lane pick; `a_change_of_the_common_helper_selects_every_real_card_module_that_names_it` reads the repository's own `tests/card/` and requires each module that names the helper, the six among them, to be selected by `tests/common/mod.rs`.
+- B2, the slice could not land on the tip. The merge of the NeXT tip needed three repairs, made on this branch: (a) `Selection` has the `areas` field and the NeXT `select_card` built a `Selection` without it (E0063 in the merged tree); `areas_of` now computes it for the full, lane and card picks, pinned by `the_card_pick_of_an_area_module_names_its_crate`. (b) `tests/fixtures/state_folder_literals/allow.tsv` and `tools/repo_scans.json` conflicted; the moved lines keep their area-crate form and the rows and targets the NeXT tip added are carried over. A script compared the test targets each of the 71 scans runs, folded to old names, with the NeXT table: it found one lost target (`repo_claude_md` in `reads-skills`), put back, then 0 of 71 differ. (c) `tests/card_land_batch_cli.rs`, added by the NeXT tip, is a card test and moved to `tests/card/card_land_batch_cli.rs` (one `mod` line in `main.rs`, `use crate::common`, its allow row under the new path).
+- N1: `table_violations` also reads a module added to a moved area (`tests/<area>/<module>.rs`) against the state folder allow list by its longer path (`table_violations_read_a_module_added_to_a_moved_area_by_its_longer_path`). The scan table precheck (`scan_violations`) still reads only top-level files; the real `repo_scans_table` test catches an area module, so this stays a gap (9).
+- Checks after the repair (all in `moai heavy-slot-acquire --name agent-3 --max 3`): the lib tests of `check_affected::tests::` 43 passed; on the merged tree `cargo nextest run` of the lib, `test_area_layout`, `state_folder_literal_scan`, `repo_scans_table`, `check_affected_card_select` and the `card_land_batch_cli::` modules of the card crate: 2002 passed, 0 failed.
+- Guard mutants (`target/agent-3/mutants4.py` and `mutants5.py`, one slot call each, tree clean afterwards), each killed with exit 100 by the named test: a path use of a helper is no use (`a_helper_named_by_a_path_alone_is_read_from_the_file_and_selected` and the real-file test), `crate::common_x` counts as `crate::common` (the same first test), the card pick leaves `areas` empty (`the_card_pick_of_an_area_module_names_its_crate`), the allow list skips a module of a moved area (`table_violations_read_a_module_added_to_a_moved_area_by_its_longer_path`).
+- Not done: REQ-11 stays open (audit N2, AC-3 stays partial). The merged tree was built by the checks above and the receipt of the repaired head, not by a whole `cargo test` (the leader's).
+
+Gaps: (1) the figures are one run each under changing load. (2) Windows and Linux were not run. (3) REQ-11 is open, so a crate that fails to build is not reported per module. (4) The open card C-117 adds `tests/card_heartbeat_cli.rs`; the layout scan will refuse it at the top level (D-8). (5) `docs/release-rehearsal-2026-11-12.md` names `--test release_suite` as a record and is read through the table, not rewritten. (6) The shared files `src/check_affected.rs`, `tools/repo_scans.json` and `tests/fixtures/state_folder_literals/allow.tsv` were edited under a line lease, and `cargo fmt` later re-wrapped two lines of the new unit tests in `src/check_affected.rs` outside one. (7) The scope of the card grew twice with a reason (the readers, the home guard baseline). (8) The self-starting tests of four modules got a module-path prefix on the child name; that is the one change inside moved bodies, and without it eleven of them wait for a racer that never starts. (9) The scan table precheck does not read a module added to a moved area (audit N1); the allow list precheck does. The audit's N4 and N5 (the spec check size warning, about 55 lines of docs that name the old paths) are not part of this repair; N6 (a non-ASCII arrow in the new `areas` doc comment) is fixed, and the same arrow in the helper's own doc comment is now plain words too.

@@ -53,7 +53,7 @@ const EXEMPT: &[(&str, &str)] = &[
         "tests/codex_home_update_removed.rs",
         "read_dir of temporary homes (before/after trees of the Codex and OMP folders); reads no checked-in tree",
     ),
-    ("tests/decision_append_cli.rs", "read_dir of a TempDir docs folder"),
+    ("tests/card/decision_append_cli.rs", "read_dir of a TempDir docs folder"),
     (
         "tests/e2e_host_fixture.rs",
         "clones into a temp dir, then checks named route and workflow files",
@@ -62,8 +62,8 @@ const EXEMPT: &[(&str, &str)] = &[
         "tests/e2e_temp_home_cli.rs",
         "read_dir copies the named skills/moai and agents folders into a temporary version folder and lists the temporary home it built; reads no other checked-in tree",
     ),
-    ("tests/forge_cli.rs", "recursive walks of TempDir only"),
-    ("tests/github_cli.rs", "hashes temp dirs; templates are named include_str! files"),
+    ("tests/card/forge_cli.rs", "recursive walks of TempDir only"),
+    ("tests/card/github_cli.rs", "hashes temp dirs; templates are named include_str! files"),
     (
         "tests/heavy_slot_cli.rs",
         "read_dir of a TempDir slot folder; reads the named tools/heavy_check_slot.py",
@@ -192,6 +192,17 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
+/// A test source the scans read: a top-level `tests/*.rs` file, or a module file of an area crate
+/// (`tests/<area>/*.rs` where `tests/<area>/main.rs` exists, SPEC-20261123-test-area-crates).
+fn is_test_source(path: &Path) -> bool {
+    let tests = root().join("tests");
+    match path.parent() {
+        Some(parent) if parent == tests => true,
+        Some(parent) => parent.parent() == Some(&tests) && parent.join("main.rs").is_file(),
+        None => false,
+    }
+}
+
 fn relative(path: &Path) -> String {
     path.strip_prefix(root())
         .unwrap()
@@ -205,11 +216,7 @@ fn flagged() -> BTreeSet<String> {
     walk(&root().join("src"), &mut files);
     let mut tests = Vec::new();
     walk(&root().join("tests"), &mut tests);
-    files.extend(
-        tests
-            .into_iter()
-            .filter(|p| p.parent() == Some(&root().join("tests"))),
-    );
+    files.extend(tests.into_iter().filter(|p| is_test_source(p)));
     let mut out = BTreeSet::new();
     for path in files {
         let name = path.file_name().unwrap().to_string_lossy().to_string();
@@ -405,8 +412,21 @@ fn assert_checks_name_real_targets(scan: &Value) {
                     i += 1;
                 } else if words[i] == "--test" {
                     let path = root().join("tests").join(format!("{}.rs", words[i + 1]));
-                    assert!(path.is_file(), "{command}");
-                    sources.push(read_lossy(&path));
+                    if path.is_file() {
+                        sources.push(read_lossy(&path));
+                    } else {
+                        // An area crate: `tests/<area>/main.rs` declares the modules and each
+                        // module file holds its tests.
+                        let dir = root().join("tests").join(words[i + 1]);
+                        assert!(dir.join("main.rs").is_file(), "{command}");
+                        let mut all = Vec::new();
+                        walk(&dir, &mut all);
+                        sources.extend(
+                            all.iter()
+                                .filter(|p| p.extension().is_some_and(|e| e == "rs"))
+                                .map(|p| read_lossy(p)),
+                        );
+                    }
                     i += 2;
                 } else if words[i] == "--lib" {
                     let mut all = Vec::new();
@@ -572,8 +592,7 @@ fn include_str_readers() -> BTreeMap<String, Vec<String>> {
     walk(&root().join("tests"), &mut files);
     let mut out = BTreeMap::new();
     for path in files {
-        let top = path.parent() == Some(&root().join("tests"));
-        if !top || path.extension().is_none_or(|e| e != "rs") {
+        if !is_test_source(&path) || path.extension().is_none_or(|e| e != "rs") {
             continue;
         }
         let rel = relative(&path);
@@ -702,12 +721,12 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "`put(..)` and `fs::write` put `.moai/specs/<id>/spec.md` into the fixture worktree it builds",
     ),
     (
-        "tests/card_finish_cli.rs",
+        "tests/card/card_finish_cli.rs",
         &[".moai/specs"],
         "joins `.moai/specs` onto the temporary project it builds",
     ),
     (
-        "tests/card_line_lease_cli.rs",
+        "tests/card/card_line_lease_cli.rs",
         &["src/lib.rs"],
         "a path leased in its temporary ledger, never opened",
     ),
@@ -953,8 +972,7 @@ fn file_readers() -> BTreeMap<String, Vec<String>> {
     walk(&root().join("tests"), &mut files);
     let mut out = BTreeMap::new();
     for path in files {
-        let top = path.parent() == Some(&root().join("tests"));
-        if !top || path.extension().is_none_or(|e| e != "rs") {
+        if !is_test_source(&path) || path.extension().is_none_or(|e| e != "rs") {
             continue;
         }
         let paths = file_read_paths(&read_lossy(&path), Tracked::of_repo());
