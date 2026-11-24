@@ -165,6 +165,7 @@ pub mod state_root;
 pub mod status_line;
 pub mod statusline;
 pub mod tdd;
+pub mod tidy;
 pub mod trailers;
 pub mod ui;
 pub mod ui_summary;
