@@ -1061,14 +1061,15 @@ fn launched(out: &std::process::Output) -> Value {
 }
 #[test]
 fn launcher_leader_default_claude() {
+    // The leader row of the default table (SPEC-20261121-model-defaults-one-table).
     let expected = json!([
         "claude",
         "--name",
         "leader",
         "--model",
-        "opus",
+        "claude-opus-5-5",
         "--effort",
-        "medium",
+        "high",
         "--permission-mode",
         "auto"
     ]);
@@ -1116,9 +1117,18 @@ fn launcher_flags_can_be_disabled() {
         ],
         None,
     ));
+    // The agent row of the default table (SPEC-20261121-model-defaults-one-table).
     assert_eq!(
         v["argv"],
-        json!(["claude", "--name", "agent-3", "--model", "opus", "--effort", "medium"])
+        json!([
+            "claude",
+            "--name",
+            "agent-3",
+            "--model",
+            "claude-sonnet-5-5",
+            "--effort",
+            "high"
+        ])
     );
     let v = launched(&launcher(
         &[
@@ -1220,6 +1230,8 @@ fn launcher_glm_requires_token_name_only() {
             "Z_AI_API_KEY"
         ])
     );
+    // The glm leader row of the default table, without the `zai/` prefix the host does not take
+    // (SPEC-20261121-model-defaults-one-table).
     assert_eq!(
         v["argv"],
         json!([
@@ -1227,9 +1239,9 @@ fn launcher_glm_requires_token_name_only() {
             "--name",
             "leader",
             "--model",
-            "opus",
+            "glm-5.4[1m]",
             "--effort",
-            "medium",
+            "high",
             "--permission-mode",
             "auto"
         ])
@@ -2781,7 +2793,7 @@ mod skill_package {
             "The same plan carries a `REVIEW.md` section when the interview recorded `review_blocks` or `protected`",
             "an unanswered axis is never written as a rule",
             // #2639 project agents: from the answers, never a base name, host files only.
-            "**Offer project agents (Issue #2639).**",
+            "**Propose a project harness (Issue #2639).**",
             "its `role_id` is `prj-<name>` for the project's own job",
             "a project agent never shadows a user-layer `moai-*` agent",
             "Offer project skills the same way: each is one `project_skills` entry",

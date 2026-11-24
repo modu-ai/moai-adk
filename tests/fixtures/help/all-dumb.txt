@@ -256,8 +256,10 @@ Options:
                            never; put it before the command
       --name <NAME>        Session name (default `leader` for -l, the project's next `agent-N` for
                            -a; none without a role)
-      --model <MODEL>      Main model (Claude hosts default `opus`)
-      --effort <EFFORT>    Effort (Claude default `medium`)
+      --model <MODEL>      Main model (a role session: the saved choice, else the default table; no
+                           role: `opus`)
+      --effort <EFFORT>    Effort (a role session: the saved choice, else the default table; no
+                           role: `medium`)
       --advisor <ADVISOR>  Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id).
                            None by default; the user setting `launcher.advisor` can turn it on. May
                            bill to usage credits

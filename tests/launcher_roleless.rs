@@ -158,6 +158,8 @@ fn roleless_glm_keeps_the_token_check() {
 fn role_paths_are_unchanged() {
     let (_, v, _) = dry(&["cc", "-l"], None);
     assert_eq!(v["role"], "leader");
+    // A role session with nothing saved starts with the default table
+    // (SPEC-20261121-model-defaults-one-table); only the roleless session keeps opus/medium.
     assert_eq!(
         argv(&v),
         [
@@ -165,9 +167,9 @@ fn role_paths_are_unchanged() {
             "--name",
             "leader",
             "--model",
-            "opus",
+            "claude-opus-5-5",
             "--effort",
-            "medium",
+            "high",
             "--permission-mode",
             "auto"
         ]
@@ -180,9 +182,9 @@ fn role_paths_are_unchanged() {
             "--name",
             "agent-1",
             "--model",
-            "opus",
+            "claude-sonnet-5-5",
             "--effort",
-            "medium",
+            "high",
             "--permission-mode",
             "auto"
         ]
@@ -195,14 +197,15 @@ fn role_paths_are_unchanged() {
             "--name",
             "agent-1",
             "--model",
-            "opus",
+            "glm-5.3-flash",
             "--effort",
-            "medium",
+            "max",
             "--permission-mode",
             "auto"
         ]
     );
-    // The legacy `session` subcommand is unchanged too.
+    // The legacy `session` subcommand is unchanged too: it starts no role session of the
+    // launcher, so it keeps opus/medium and does not take the default table.
     let (_, v, _) = dry(&["session", "--name", "s1"], None);
     assert_eq!(v["role"], "agent");
     assert_eq!(
