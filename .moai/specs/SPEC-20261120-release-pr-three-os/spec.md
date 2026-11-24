@@ -128,13 +128,13 @@ approval:
 - read-only: `.github/workflows/candidate.yml`, `.github/workflows/release.yml`, `.github/workflows/audit-gate.yml`, `.github/workflows/check-guard.yml`, `tools/ci_scope.py`, `tools/ci_superseded.py`, `tools/local_check.sh`, `tools/candidate_summary.py`, `tests/release_workflow_test.py`, `src/flow.rs`
 - forbidden: 필수 검사 이름(ci 집계와 audit 게이트), ruleset, 일반 PR 의 매트릭스와 분류기, `release.yml`, 실제 HOME, push·PR·tag, 다른 카드의 가지
 
-쓰기 범위 가운데 네 파일은 조건부예요. `candidate-target.yml` 은 머리 주석 한 줄만 바꿔요. `tools/repo_scans.json` 과 `tests/repo_scans_table.rs` 중에서는 `test_tables` 단계가 가리키는 쪽 하나에 새 테스트 파일의 읽기 등록 한 줄만 써요(공유 파일이라 줄 임대). `candidate-target.yml`·`docs/support-matrix.md`·`tools/repo_scans.json`·`tests/repo_scans_table.rs`·새 테스트 파일은 카드 예약에 아직 없어서 리더의 범위 확대가 필요해요.
+쓰기 범위 가운데 다섯 파일은 조건부예요. `candidate-target.yml` 은 머리 주석만 바꿔요. `tools/repo_scans.json` 에는 `test_tables` 단계가 가리키는 `reads-shipped-files` 항목에 새 테스트 파일을 검사 목록과 규칙 파일로 더해요(두 줄, 공유 파일이라 줄 임대). `tests/repo_scans_table.rs` 는 쓰지 않아요: 새 테스트 파일이 저장소의 `tools/` 아래 경로를 적지 않아서(가짜 `python3` 은 첫 인자로 호출을 구분해요) 면제 줄이 필요 없어요. `candidate-target.yml`·`docs/support-matrix.md`·`tools/repo_scans.json`·`tests/repo_scans_table.rs`·새 테스트 파일은 카드 예약에 없었고, 리더 결정 노트(2026-11-24T07:18:03Z)로 범위를 넓혔어요.
 
 ## Plan
 
 1. 이 SPEC(판 2)을 커밋하고 카드에 연결해요. 승인 노트를 받은 뒤에만 다음 걸음을 해요.
 2. RED: `tests/release_pr_three_os.rs`(임시 폴더, 가짜 `gh`·`python3`, 진짜 단계 스크립트)와 새 파일의 읽기 등록을
-   커밋해요. `tests/github_assets_test.py` 의 고정 세 곳을 새 줄에 맞춰요. 바꾸기 전에 일곱 테스트가 실패하는지 봐요.
+   커밋해요. `tests/github_assets_test.py` 의 고정 세 곳을 새 줄에 맞춰요. 바꾸기 전에 여덟 테스트가 실패하는지 봐요.
 3. GREEN: `ci.yml` — decide 단계의 `env` 한 줄, 릴리스 판별과 `release` 출력, 분류기 가드 한 줄; `targets` 잡의
    `outputs` 한 줄; `candidate-target.yml` 을 부르는 Windows 잡; 집계 잡의 `needs` 와 단계; `windows-build` 의 `if`
    한 줄; 머리 주석. `candidate-target.yml` 머리 주석 한 줄.
@@ -168,6 +168,9 @@ approval:
   없어서 릴리스가 아니에요.
 - `ci.yml` 은 공유 파일이에요. 일반 경로의 줄은 바꾸지 않고 decide 의 가드 한 줄만 늘어나요. 고정 세 곳은 같은 변경에서
   맞춰요.
+- 일반 PR 과 push 실행에도 이 잡의 검사가 하나 생기고 건너뛴 것으로 보여요(호출된 워크플로의 잡 이름까지 붙은
+  `windows-check / check` 로 보일 것으로 예상하지만 관측 전이에요). 관문·집계·대체 판정은 그 이름을 읽지 않아요(D-9).
+  릴리스 PR 에서만 실행해요.
 - `candidate-target.yml` 의 입력·단계가 바뀌면 릴리스 PR 의 Windows 실행도 바뀌어요. AC-4 가 다섯 입력이 `candidate.yml`
   과 같은지 고정해요.
 
@@ -183,6 +186,8 @@ approval:
 | D-6 | 새 테스트는 Rust 고, 워크플로의 진짜 단계 스크립트를 임시 폴더에서 돌려요. 글자만 맞추지 않아요 | 판 1 의 감사가 "문자열만 맞추는 테스트 대신 단계 스크립트를 실제로 도는 테스트" 를 요구했어요. 테스트는 Rust 만이에요 | 없음(프로젝트 규칙) |
 | D-7 | 첫 릴리스 PR 의 관측(AC-10)은 레인 증거에 `not_run` 으로 남아요 | push 와 PR 은 사용자의 선택이에요. 카드는 착지 뒤에도 그 기준이 열린 채로 있을 수 있어요(`card finish` 는 열린 기준을 적어요) | 관측을 이 SPEC 밖의 카드로 옮기기 |
 | D-8 | 새 SPEC 이 아니라 2026-11-20 SPEC 의 판 2 로 써요 | 결과와 카드가 같고, 판 1 의 감사 기록이 그 아이디에 붙어 있어요. 판 1 은 통합 가지에 들어오지 않아서 승인을 다시 받아요 | 새 아이디로 옮기고 카드 연결을 바꿔요 |
+| D-9 | Windows 잡의 이름은 `windows-check` 예요. `ci / …` 꼴은 쓰지 않아요 | 병합 관문(`src/gate.rs` `watched_check`)과 대체 판정(`tools/ci_superseded.py`)이 `ci / …` 로 시작하는 검사를 모두 매트릭스 잡으로 읽고, 관문은 건너뛴 것을 실패로 세요(`windows-build` 만 예외). 이 잡은 일반 실행에서 늘 건너뛰어서 그 이름이면 모든 PR head 의 G5 가 멈춰요. 구현 중에 코드를 읽고 정했어요(승인 뒤에 더한 행) | 두 읽기가 이 잡의 건너뜀을 허용하게 된 뒤에만 이름을 `ci / windows-x86_64` 로 바꿔요 |
+| D-10 | 집계 잡은 `targets` 를 직접 의존 목록에 넣어요 | 공식 문서: `needs` 컨텍스트는 직접 의존의 출력만 담고 암시적 의존은 담지 않아요(Sources 6). 없으면 `release` 가 빈 값이 되어 일반 실행의 `ci` 까지 실패해요. 구현 중에 정했어요(승인 뒤에 더한 행) | 없음(빼면 집계가 릴리스 여부를 읽지 못해요) |
 
 ## Sources
 
@@ -209,7 +214,7 @@ approval:
    `pull_request_target`."
 6. GitHub Docs, Contexts reference — `https://docs.github.com/en/actions/reference/workflows-and-actions/contexts`
    (06:53:53Z, sha256 `64fe9abcfb6ae5eabb2b7f2cc79127215eeec5f403b1668b5bccaa7aefcf8c2d`): `github.head_ref` 와
-   `github.event_name` 의 뜻.
+   `github.event_name` 의 뜻. `needs` 컨텍스트는 "outputs from all jobs that are defined as a direct dependency of the current job" 만 담고 "this doesn't include implicitly dependent jobs" 라고 적어요(07:42:50Z 와 07:50:31Z 에 다시 읽고 같은 sha256 을 확인했어요, D-10).
 7. actions/runner-images, `images/windows/Windows2025-Readme.md`(main, 06:46:06Z, sha256
    `af7621a27ad87d8a61c96f7751a336d23802a2311c877738ef361733d4561e74`): Image Version
    `20261116.335.1`, `Bash 5.3.15(2)-release`, `Python 3.12.10`; ripgrep 항목 없음.
@@ -219,10 +224,42 @@ approval:
 9. BurntSushi/ripgrep 14.1.1 `ripgrep-14.1.1-x86_64-pc-windows-msvc.zip` 을 내려받아 계산(06:45:47Z):
    `d0f534024c42afd6cb4d38907c25cd2b249b79bbe6cc1dbee8e3e37c2b6e25a1` — `candidate-target.yml` 의 값과 같아요.
 
-채택: 1(env 으로만), 3(같은 커밋의 재사용 워크플로), 4·7·8·9(`candidate-target.yml` 의 Windows 입력과 고정값을 그대로).
+채택: 1(env 으로만), 3(같은 커밋의 재사용 워크플로), 4·7·8·9(`candidate-target.yml` 의 Windows 입력과 고정값을 그대로),
+6(`needs` 는 직접 의존만, D-10).
 거절: 없음. 오늘 관측하지 않은 것: Windows 러너의 실제 실행, ruleset 의 필수 검사 목록, SHA 처럼 보이는 가지 이름의
 `pull_request` 실행.
 
 ## Result
 
-구현 에이전트가 채워요. 이 커밋은 SPEC 판 2 까지예요.
+2026-11-24 에 이 세션이 구현했어요. 기준 통합 가지 `24dceb4e2b0`, macOS arm64(개발 Mac, 부하 평균 26~95), 이 워크트리와
+그 빌드 폴더 `target/`. 무거운 실행은 모두 `moai heavy-slot-acquire` 를 거쳤고 테스트 빌드는 `RUSTC_WRAPPER=sccache`,
+`CARGO_INCREMENTAL=0` 이에요. 로그는 커밋하지 않는 `target/release-pr-three-os/` 에 있어요(워크트리 정리 때 사라져요).
+카드의 READY 노트가 같은 숫자를 적어요.
+
+커밋(기준 위, 순서대로): `ecdfa477a4` SPEC 판 2 → `acab32ba3d` Scope 고정 → `61b9d07158` 승인 기록과 Interview →
+`a736c4aa95` RED → `dcf07485f2` GREEN → 이 Result. RED 와 GREEN 은
+`cargo nextest run --offline --locked --no-fail-fast --test release_pr_three_os --test repo_scans_table` 로 재었어요.
+
+- AC-1: met — GREEN(커밋 `dcf07485f2`, nextest run `9e1a0265-d9ce-4d0c-a891-11294b28e0a2`): a_release_pull_request_gets_the_full_matrix_and_the_windows_flag 통과. RED(워크플로 변경 전, 커밋 `a736c4aa95`, run `70c5e3a9-6d97-4b5c-9d5e-fab9f2ad5ca7`): 릴리스 이름이 linux 목록을 받아 실패. 뮤턴트 m1 이 가드 둘(이 테스트와 AC-2 의 테스트)을 빨갛게 해요.
+- AC-2: met — the_decide_step_and_the_release_workflow_accept_the_same_branch_names 통과(이름 열 개: release 둘은 두 진짜 스크립트가 다 받고 여덟은 다 거절). RED: decide 가 release 를 말하지 않아 실패. 뮤턴트 m2(39자도 받기)가 이 테스트와 AC-3 의 첫 테스트를 빨갛게 해요.
+- AC-3: met — an_ordinary_pull_request_keeps_the_classifier_rule 과 push_and_dispatch_keep_the_full_matrix 통과. RED: `release` 출력이 없어 실패. 뮤턴트 m3(분류기를 묻지 않음)는 첫 테스트 하나만, m4(기본 매트릭스가 linux)는 AC-1·AC-3 의 테스트 세 개를 빨갛게 해요.
+- AC-4: met — the_windows_job_calls_the_candidate_target_with_the_candidates_windows_inputs 통과. RED: 잡이 없어 실패. 뮤턴트 m5(timeout 45)가 이 테스트만 빨갛게 해요.
+- AC-5: met — the_aggregate_fails_when_a_release_pull_requests_windows_check_did_not_succeed 통과(결과 열두 경우: 일반 실행의 Windows 건너뜀은 통과, 릴리스 PR 의 Windows 건너뜀·실패·취소·빈 값은 실패, 매트릭스의 실패·취소·건너뜀은 실패). RED: `id: aggregate` 단계가 없어 실패. 뮤턴트 m6(true:skipped 도 통과)와 m7(true:failure 도 통과)가 각각 이 테스트만 빨갛게 해요.
+- AC-6: met — the_build_job_runs_on_a_release_pull_request_and_as_before_after_a_merge 통과. RED: `if` 가 옛 식이라 실패. 첫 GREEN 실행(run `5cc56286-7de7-41e7-84ae-ae3423958543`)에서 이 테스트 하나가 실패했는데 워크플로가 아니라 테스트의 잘못이었어요(단계의 `if:` 까지 모았어요). 같은 커밋에서 고쳤어요. 뮤턴트 m8 이 이 테스트만 빨갛게 해요.
+- AC-7: met — the_head_branch_name_reaches_scripts_through_env_only 통과. RED: `HEAD_REF` env 줄이 없어 실패. 뮤턴트 m9(식을 스크립트 안에 넣기)가 네 테스트를 빨갛게 해요.
+- AC-8: met — `grep -n 'release/' docs/support-matrix.md` 가 71번 줄을 찾아요(exit 0).
+- AC-9: met — 같은 head 의 `moai check affected` 영수증(요약 줄과 단계별 종료 코드는 카드의 READY 노트에 있어요), `actionlint` 1.7.10 이 `.github/workflows/ci.yml` 과 `.github/workflows/candidate-target.yml` 에서 exit 0, `moai spec check` 오류 0(경고 1: `## Sources` 절은 검사기가 읽지 않는 절).
+- AC-10: not_run — 릴리스 PR 은 사용자의 선택을 기다려요(리더 결정 노트 2026-11-24T07:18:03Z 의 3번).
+
+뮤턴트: 커밋 `dcf07485f2` 의 `.github/workflows/ci.yml` 에 아홉 개를 차례로 넣고(가드 테스트마다 하나, 집계 가드는
+건너뜀과 실패 둘) 같은 테스트 대상을 돌렸어요. 아홉 모두 exit 100 이고 가드 테스트가 실패 목록에 있어요. 매번
+`git checkout --` 로 돌려맞춘 뒤 HEAD 와 같음을 확인했어요(`target/release-pr-three-os/mutants.log`, 뮤턴트마다
+`mutant-<id>.log`). 첫 실행은 실행 스크립트가 nextest 결과 줄을 다른 스트림에서 읽어 "0 of 9" 를 인쇄했어요. 저장된
+원본 로그 아홉 개는 아홉 모두 죽었음을 보였고, 스크립트를 고친 둘째 실행이 "9 of 9 killed" 을 인쇄했어요.
+
+실행 안 함(not_run): Windows 러너의 실제 실행(AC-10), ruleset 필수 검사 목록의 다시 읽기. Python unittest 를 손으로 돌린
+것은 증거로 세지 않아요(`check affected` 의 Python 단계 결과만 세요).
+
+승인 뒤에 더하거나 고친 글: D-9·D-10(구현 중에 코드를 읽고 정한 것), Plan 2 의 테스트 수(일곱 → 여덟), Scope 의 조건부
+파일 설명, Risks 한 줄, Sources 6 의 `needs` 문장. 요구와 기준 문장은 그대로라 `moai spec show` 의 digest 는 승인 때와
+같아요.
