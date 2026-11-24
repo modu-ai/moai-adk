@@ -82,6 +82,19 @@ fn partial_lines(result: &Value) -> usize {
         .count()
 }
 
+/// The one partial line of `next_actions`, whose reasons say why the list is partial.
+fn partial_line(result: &Value) -> String {
+    let lines: Vec<&str> = result["next_actions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l.as_str().unwrap())
+        .filter(|l| l.contains(PARTIAL))
+        .collect();
+    assert_eq!(lines.len(), 1, "{result}");
+    lines[0].to_string()
+}
+
 /// Every path below `root` with its bytes, so a test can show nothing was created or changed.
 fn tree(root: &Path) -> BTreeMap<String, Vec<u8>> {
     fn walk(dir: &Path, base: &Path, out: &mut BTreeMap<String, Vec<u8>>) {
@@ -410,14 +423,25 @@ fn the_manifest_walk_fact_reports_completeness_and_the_cap() {
 /// the list, and none when the list is complete.
 #[test]
 fn a_partial_list_adds_one_next_action_and_a_complete_one_adds_none() {
+    // Each line names its own reason and none of the others'.
     let stopped = a_project_with_a_large_early_folder();
-    assert_eq!(partial_lines(&detect(&stopped)), 1);
+    let line = partial_line(&detect(&stopped));
+    assert!(line.contains("entry budget"), "{line}");
+    assert!(
+        !line.contains("capped") && !line.contains("ignore list"),
+        "{line}"
+    );
 
     let many = TempDir::new().unwrap();
     for i in 0..65 {
         write(many.path(), &format!("pkg{i:02}/package.json"), "{}");
     }
-    assert_eq!(partial_lines(&detect(&many)), 1);
+    let line = partial_line(&detect(&many));
+    assert!(line.contains("capped"), "{line}");
+    assert!(
+        !line.contains("entry budget") && !line.contains("ignore list"),
+        "{line}"
+    );
 
     let small = TempDir::new().unwrap();
     write(small.path(), "apps/a/package.json", "{}");
@@ -578,6 +602,8 @@ fn the_ignore_file_limit_holds_at_both_edges() {
             ["apps/a/package.json"],
             "{path} {result}"
         );
+        assert_eq!(result["manifest_walk"]["complete"], json!(true), "{result}");
+        assert_eq!(partial_lines(&result), 0, "{path} {result}");
         write(root.path(), path, &list(262_145));
         let result = detect(&root);
         assert_eq!(
@@ -585,7 +611,126 @@ fn the_ignore_file_limit_holds_at_both_edges() {
             ["apps/a/package.json", "apps/skipme/package.json"],
             "{path} {result}"
         );
+        // The list that was not read is a gap the walk reports, not a silent one.
+        assert_eq!(
+            result["manifest_walk"]["complete"],
+            json!(false),
+            "{path} {result}"
+        );
+        let line = partial_line(&result);
+        assert!(line.contains("ignore list"), "{path} {line}");
     }
+}
+
+/// A skipped ignore list that holds a negation can hide a folder: the root list excludes `old/`
+/// and `z/.gitignore` keeps it with `!old`. When that list is skipped — past the total (q2) or
+/// over the file limit (q4), not text — `z/old/package.json` is not listed, so the walk says it is not
+/// complete and the partial line names the skipped list; the same tree with the list applied
+/// lists it and is complete.
+#[test]
+fn a_skipped_ignore_list_makes_the_walk_incomplete() {
+    let build = |filler: usize, z_list: String| {
+        let root = TempDir::new().unwrap();
+        write(root.path(), ".gitignore", "old/\n");
+        write(root.path(), "a/package.json", "{}");
+        for name in ["f1", "f2", "f3", "f4"][..filler].iter() {
+            write(
+                root.path(),
+                &format!("{name}/.gitignore"),
+                &padded_list(262_144),
+            );
+        }
+        write(root.path(), "z/old/package.json", "{}");
+        write(root.path(), "z/.gitignore", &z_list);
+        root
+    };
+    // Control: the list is read and keeps `z/old`.
+    let control = detect(&build(0, "!old\n".to_string()));
+    assert_eq!(
+        manifests(&control),
+        ["a/package.json", "z/old/package.json"],
+        "{control}"
+    );
+    assert_eq!(
+        control["manifest_walk"]["complete"],
+        json!(true),
+        "{control}"
+    );
+    assert_eq!(partial_lines(&control), 0, "{control}");
+    // q2: four lists of exactly 262144 bytes use the whole 1048576, so the `!old` list is skipped.
+    // q4: one list over 262144 bytes is skipped on its own.
+    let over_the_total = build(4, "!old\n".to_string());
+    let over_the_file_limit = build(0, extension_of_len("!old\n", 262_145));
+    // A list that is not text cannot be read either.
+    let not_text = build(0, "!old\n".to_string());
+    fs::write(not_text.path().join("z/.gitignore"), b"!old\n\xff\xfe").unwrap();
+    for (case, root) in [
+        ("q2", over_the_total),
+        ("q4", over_the_file_limit),
+        ("not text", not_text),
+    ] {
+        let result = detect(&root);
+        assert_eq!(manifests(&result), ["a/package.json"], "{case} {result}");
+        assert_eq!(
+            result["manifest_walk"]["complete"],
+            json!(false),
+            "{case} {result}"
+        );
+        let line = partial_line(&result);
+        assert!(line.contains("ignore list"), "{case} {line}");
+        assert!(!line.contains("entry budget"), "{case} {line}");
+    }
+}
+
+/// An ignore list of `len` bytes that holds no rule: one comment line, no newline.
+fn padded_list(len: usize) -> String {
+    format!("#{}", "x".repeat(len - 1))
+}
+
+/// A walk with four lists of 262144 bytes below the root, then `d/.gitignore` of `last` bytes
+/// whose one rule `s` (the first byte) excludes `d/s`.
+fn a_walk_with_lists_summing_to(last: &str) -> TempDir {
+    let root = TempDir::new().unwrap();
+    for (name, len) in [
+        ("a", 262_144),
+        ("b", 262_144),
+        ("c", 262_144),
+        ("d", 262_143),
+    ] {
+        write(
+            root.path(),
+            &format!("{name}/.gitignore"),
+            &padded_list(len),
+        );
+    }
+    write(root.path(), "e/s/package.json", "{}");
+    write(root.path(), "e/.gitignore", last);
+    root
+}
+
+/// The total of 1048576 bytes read holds at its edge (REQ-2, AC-12): the lists before `e` add up
+/// to 1048575 bytes, so a one-byte list (the sum 1048576) is applied.
+#[test]
+fn the_total_ignore_cap_applies_a_list_that_reaches_it_exactly() {
+    let root = a_walk_with_lists_summing_to("s");
+    let result = detect(&root);
+    assert_eq!(manifests(&result), Vec::<&str>::new(), "{result}");
+    assert_eq!(result["manifest_walk"]["complete"], json!(true), "{result}");
+}
+
+/// The same tree with a two-byte list (the sum 1048577) leaves that list unapplied: its folder
+/// is listed and the walk says it is not complete.
+#[test]
+fn the_total_ignore_cap_leaves_a_list_that_passes_it_by_one_byte() {
+    let root = a_walk_with_lists_summing_to("s\n");
+    let result = detect(&root);
+    assert_eq!(manifests(&result), ["e/s/package.json"], "{result}");
+    assert_eq!(
+        result["manifest_walk"]["complete"],
+        json!(false),
+        "{result}"
+    );
+    assert!(partial_line(&result).contains("ignore list"), "{result}");
 }
 
 /// The ignore lists the walk reads are capped in total (1 MiB), so a project with hundreds of
@@ -646,7 +791,12 @@ fn a_folder_that_cannot_be_read_makes_the_walk_incomplete() {
         json!({"complete": false, "over_cap": 0}),
         "{result}"
     );
-    assert_eq!(partial_lines(&result), 1, "{result}");
+    let line = partial_line(&result);
+    assert!(line.contains("could not be read"), "{line}");
+    assert!(
+        !line.contains("entry budget") && !line.contains("ignore list"),
+        "{line}"
+    );
 
     // The same tree with the folder readable again is complete.
     fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();

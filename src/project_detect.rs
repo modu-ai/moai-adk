@@ -623,29 +623,53 @@ impl IgnoreNode {
 
 /// The ignore lines that apply at the project root: `.git/info/exclude` first (the lower
 /// precedence), then the root `.gitignore`; `.git` is read only when it is a real folder.
-fn root_ignore_lines(root: &Path) -> Vec<IgnoreLine> {
+fn root_ignore_lines(root: &Path, gaps: &mut BTreeSet<WalkGap>) -> Vec<IgnoreLine> {
     let mut lines = Vec::new();
     if fs::symlink_metadata(root.join(".git")).is_ok_and(|m| m.file_type().is_dir()) {
-        lines.extend(
-            read_in(root, &[".git", "info", "exclude"])
-                .map(|t| ignore_lines(&t))
-                .unwrap_or_default(),
-        );
+        lines.extend(ignore_file_lines(
+            root,
+            &[".git", "info", "exclude"],
+            None,
+            gaps,
+        ));
     }
-    lines.extend(
-        read_in(root, &[".gitignore"])
-            .map(|t| ignore_lines(&t))
-            .unwrap_or_default(),
-    );
+    lines.extend(ignore_file_lines(root, &[".gitignore"], None, gaps));
     lines
 }
 
-/// The manifests a walk found and whether it read every folder it meant to.
+/// Why a manifest walk is not complete; `project-detect` names each reason in its partial line.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum WalkGap {
+    /// The walk stopped at [`MAX_ENTRIES`] folder entries.
+    EntryBudget,
+    /// A folder or an entry of one could not be read.
+    Unreadable,
+    /// A non-empty ignore list was not applied (over [`MAX_FILE`], past [`MAX_IGNORE_TOTAL`] in
+    /// all, or not readable as text), so a folder it excludes or keeps may be wrong.
+    SkippedList,
+}
+
+impl WalkGap {
+    /// The words the partial line uses for this reason.
+    pub(crate) fn reason(self) -> &'static str {
+        match self {
+            WalkGap::EntryBudget => "the walk stopped at its entry budget",
+            WalkGap::Unreadable => "a folder or an entry could not be read",
+            WalkGap::SkippedList => {
+                "an ignore list was not applied because it is over the file limit, past the \
+                 total the walk reads or not readable as text"
+            }
+        }
+    }
+}
+
+/// The manifests a walk found and why it did not read everything it meant to.
 pub(crate) struct ManifestWalk {
     pub found: BTreeSet<String>,
-    /// False when the walk stopped at [`MAX_ENTRIES`] folder entries or could not read a folder
-    /// or an entry of one.
-    pub complete: bool,
+    /// Empty when the walk read every folder and applied every non-empty ignore list; otherwise
+    /// the walk is not complete (it stopped at [`MAX_ENTRIES`] folder entries, could not read a
+    /// folder or an entry of one, or did not apply a non-empty ignore list).
+    pub gaps: BTreeSet<WalkGap>,
 }
 
 /// Manifest files below the root (C-61 AC-1): folder depth at most [`MAX_DEPTH`], names only —
@@ -654,19 +678,20 @@ pub(crate) struct ManifestWalk {
 /// any folder one level deeper, so a large early folder cannot use the budget up before a later
 /// package is reached. Folders whose name starts with a dot (tool, cache and backup state), the
 /// catalog's folder names and folders the ignore lists exclude are never entered; a manifest
-/// file at the root is listed whatever the ignore lists say. An ignore list that cannot be read
-/// (a link, over [`MAX_FILE`], not UTF-8, past the [`MAX_IGNORE_TOTAL`] the walk reads in all)
-/// counts as no lines, so that failure can only read more, never less. A folder or an entry
-/// the walk cannot read is left out and the walk is not complete. The `seen` budget mirrors the
-/// code walk's [`MAX_ENTRIES`].
+/// file at the root is listed whatever the ignore lists say. A non-empty ignore list the walk
+/// does not apply (over [`MAX_FILE`], past the [`MAX_IGNORE_TOTAL`] the walk reads in all, not
+/// readable as text) counts as no lines and the walk is not complete, because such a list may
+/// exclude a folder or keep one back with a negation. A folder or an entry the walk cannot read
+/// is left out and the walk is not complete. The `seen` budget mirrors the code walk's
+/// [`MAX_ENTRIES`].
 pub(crate) fn walk_manifests(root: &Path, catalog: &Catalog) -> ManifestWalk {
     let mut found = BTreeSet::new();
     let mut seen = 0usize;
-    let mut unreadable = false;
+    let mut gaps = BTreeSet::new();
     let mut ignore_budget = MAX_IGNORE_TOTAL;
     let top = Rc::new(IgnoreNode {
         base: 0,
-        lines: root_ignore_lines(root),
+        lines: root_ignore_lines(root, &mut gaps),
         parent: None,
     });
     // Each queued folder holds the list chain of its parent; its own list is read when the
@@ -679,18 +704,23 @@ pub(crate) fn walk_manifests(root: &Path, catalog: &Catalog) -> ManifestWalk {
         } else {
             Rc::new(IgnoreNode {
                 base: rel.len(),
-                lines: budgeted_ignore_lines(&dir, &mut ignore_budget),
+                lines: ignore_file_lines(
+                    &dir,
+                    &[".gitignore"],
+                    Some(&mut ignore_budget),
+                    &mut gaps,
+                ),
                 parent: Some(parent),
             })
         };
         let Ok(entries) = fs::read_dir(&dir) else {
-            unreadable = true;
+            gaps.insert(WalkGap::Unreadable);
             continue;
         };
         let mut entries: Vec<_> = entries
             .filter_map(|e| {
                 if e.is_err() {
-                    unreadable = true;
+                    gaps.insert(WalkGap::Unreadable);
                 }
                 e.ok()
             })
@@ -699,13 +729,11 @@ pub(crate) fn walk_manifests(root: &Path, catalog: &Catalog) -> ManifestWalk {
         for entry in entries {
             seen += 1;
             if seen > MAX_ENTRIES {
-                return ManifestWalk {
-                    found,
-                    complete: false,
-                };
+                gaps.insert(WalkGap::EntryBudget);
+                return ManifestWalk { found, gaps };
             }
             let Ok(kind) = entry.file_type() else {
-                unreadable = true;
+                gaps.insert(WalkGap::Unreadable);
                 continue;
             };
             let name = entry.file_name();
@@ -732,27 +760,35 @@ pub(crate) fn walk_manifests(root: &Path, catalog: &Catalog) -> ManifestWalk {
             }
         }
     }
-    ManifestWalk {
-        found,
-        complete: !unreadable,
-    }
+    ManifestWalk { found, gaps }
 }
 
-/// The lines of the `.gitignore` in `dir`, counted against `budget` (the bytes of ignore lists
-/// still allowed, at most [`MAX_IGNORE_TOTAL`] for one walk). A list that cannot be read, is
-/// over [`MAX_FILE`] or would pass the budget counts as no lines, so that can only let more
-/// manifests in, never hide one.
-fn budgeted_ignore_lines(dir: &Path, budget: &mut u64) -> Vec<IgnoreLine> {
-    let Some((path, meta)) = file_in(dir, &[".gitignore"]) else {
+/// The lines of the ignore file at `parts` below `dir`. `budget` is the bytes of ignore lists
+/// still allowed for the folders below the root, at most [`MAX_IGNORE_TOTAL`] for one walk
+/// (`None` for the root's own files, which only [`MAX_FILE`] bounds). A non-empty file that is
+/// over [`MAX_FILE`], would pass the budget or cannot be read as text counts as no lines and
+/// adds [`WalkGap::SkippedList`] to `gaps`, so the walk says it is not complete.
+fn ignore_file_lines(
+    dir: &Path,
+    parts: &[&str],
+    mut budget: Option<&mut u64>,
+    gaps: &mut BTreeSet<WalkGap>,
+) -> Vec<IgnoreLine> {
+    let Some((path, meta)) = file_in(dir, parts) else {
         return Vec::new();
     };
-    if meta.len() > MAX_FILE || meta.len() > *budget {
+    let past_budget = budget.as_deref().is_some_and(|budget| meta.len() > *budget);
+    if meta.len() > MAX_FILE || past_budget {
+        gaps.insert(WalkGap::SkippedList);
         return Vec::new();
     }
     let Ok(text) = fs::read_to_string(path) else {
+        gaps.insert(WalkGap::SkippedList);
         return Vec::new();
     };
-    *budget -= meta.len();
+    if let Some(budget) = budget.as_deref_mut() {
+        *budget -= meta.len();
+    }
     ignore_lines(&text)
 }
 
@@ -934,8 +970,8 @@ pub(crate) struct Detection {
     pub detected: Detected,
     pub catalog: Catalog,
     pub extension: ExtensionReport,
-    /// False when the manifest walk stopped at its entry budget.
-    pub walk_complete: bool,
+    /// Why the manifest walk is not complete; empty when it is.
+    pub walk_gaps: BTreeSet<WalkGap>,
     /// Manifests found that `detected.manifests` leaves out because of [`MAX_ITEMS`].
     pub over_cap: usize,
 }
@@ -998,7 +1034,7 @@ pub(crate) fn detect_full(root: &Path) -> Result<Detection> {
         detected,
         catalog,
         extension,
-        walk_complete: walk.complete,
+        walk_gaps: walk.gaps,
         over_cap: recordable_manifests.saturating_sub(MAX_ITEMS),
     })
 }
@@ -1278,7 +1314,7 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         detected,
         catalog,
         extension,
-        walk_complete,
+        walk_gaps,
         over_cap,
     } = detect_full(root)?;
     // C-61 AC-2: the tools the manifest names imply, beside `detected` for the tools question.
@@ -1331,15 +1367,19 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
     };
     let mut next_actions = vec![first, index];
     next_actions.extend(go_step);
+    let walk_complete = walk_gaps.is_empty();
     if !walk_complete || over_cap > 0 {
         // SPEC-20261124-project-detect-monorepo REQ-8: a partial list must not silently replace
-        // a longer recorded one.
-        next_actions.push(
-            "the manifest list is partial (the walk stopped at its entry budget or the list was \
-             capped): never record it over an earlier detected.manifests list without showing \
-             the user which entries would drop"
-                .to_string(),
-        );
+        // a longer recorded one; the line names each reason the list is partial.
+        let mut reasons: Vec<&str> = walk_gaps.iter().map(|gap| gap.reason()).collect();
+        if over_cap > 0 {
+            reasons.push("the list was capped, so some manifests found are not recorded");
+        }
+        next_actions.push(format!(
+            "the manifest list is partial ({}): never record it over an earlier \
+             detected.manifests list without showing the user which entries would drop",
+            reasons.join("; ")
+        ));
     }
     Ok(json!({
         "detected": detected,
