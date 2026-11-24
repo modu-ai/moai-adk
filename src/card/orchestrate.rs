@@ -5,10 +5,12 @@
 //! landing queue and what waits for the user. It never sends, starts, audits or lands anything,
 //! and it starts no host program.
 //!
-//! Every part is a function of rows the ledger and the registry already hold. Nothing in the
-//! answer depends on the clock, so two plans of an unchanged state are byte for byte equal.
+//! Every part is a function of rows the ledger and the registry already hold, and of one question
+//! to git (is a handed-back head inside the integration tip), asked with read-only commands.
+//! Nothing in the answer depends on the clock, so two plans of an unchanged state are byte for
+//! byte equal.
 
-use super::{inbox, input, spec_link, work};
+use super::{inbox, input, landed, spec_link, work};
 use crate::lane_registry::{self, SessionEntry};
 use crate::ledger::workflow::{self, VerdictEvent};
 use crate::ledger::{self, LedgerError};
@@ -256,6 +258,160 @@ fn all_verdicts(conn: &Connection) -> Result<BTreeMap<i64, Vec<VerdictEvent>>> {
     Ok(out)
 }
 
+/// A verdict a card note carries: its first line reads `AUDIT … head <40 hex> base <40 hex> —
+/// verdict: <word>` (`gate::parse_verdict`).
+struct NoteVerdict {
+    note_id: i64,
+    author: String,
+    head: String,
+    pass: bool,
+}
+
+/// The AUDIT notes of every card that is not done, oldest first. Only the first line of a note
+/// is a verdict: a line quoted further down, a line that is not in the verdict shape and a
+/// note that does not start with `AUDIT ` judge nothing.
+fn audit_notes(conn: &Connection) -> Result<BTreeMap<i64, Vec<NoteVerdict>>> {
+    let db = |e: rusqlite::Error| LedgerError::from(e).to_string();
+    let mut stmt = conn
+        .prepare(
+            "SELECT n.card_id, n.note_id, n.author, substr(n.body, 1, ?1) FROM card_note n \
+               JOIN card c ON c.card_id = n.card_id \
+              WHERE n.origin = 'local' AND c.state <> 'done' AND n.body LIKE 'AUDIT %' \
+              ORDER BY n.note_id",
+        )
+        .map_err(db)?;
+    let rows = stmt
+        .query_map([NOTE_READ_CHARS as i64], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, i64>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, String>(3)?,
+            ))
+        })
+        .map_err(db)?;
+    let mut out: BTreeMap<i64, Vec<NoteVerdict>> = BTreeMap::new();
+    for row in rows {
+        let (card_id, note_id, author, body) = row.map_err(db)?;
+        let line = body.lines().next().unwrap_or("");
+        if !line.starts_with("AUDIT ") {
+            continue;
+        }
+        let Some((head, _base, word)) = crate::gate::parse_verdict(line) else {
+            continue;
+        };
+        out.entry(card_id).or_default().push(NoteVerdict {
+            note_id,
+            author,
+            head,
+            // Conditions make a verdict FAIL: only the word PASS passes.
+            pass: word == "PASS",
+        });
+    }
+    Ok(out)
+}
+
+/// What judges a head (SPEC-20261124-orchestrate-plan, revision 3, "Judgement of a head").
+struct Judgement {
+    pass: bool,
+    reviewer: String,
+    /// `event` or `note`.
+    source: &'static str,
+    event: Option<i64>,
+    note: Option<i64>,
+    tier: Option<u8>,
+}
+
+/// The newest `card.verdict` event of `head` on the card; with none, the newest AUDIT note of the
+/// card that names the head. An event always wins over a note.
+fn judgement(
+    verdicts: &BTreeMap<i64, Vec<VerdictEvent>>,
+    notes: &BTreeMap<i64, Vec<NoteVerdict>>,
+    card_id: i64,
+    head: &str,
+) -> Option<Judgement> {
+    let event = verdicts
+        .get(&card_id)
+        .and_then(|events| events.iter().rev().find(|e| e.head == head));
+    if let Some(e) = event {
+        return Some(Judgement {
+            pass: e.pass,
+            reviewer: e.reviewer.clone(),
+            source: "event",
+            event: Some(e.event_id),
+            note: None,
+            tier: Some(e.tier),
+        });
+    }
+    let note = notes
+        .get(&card_id)
+        .and_then(|list| list.iter().rev().find(|n| n.head == head))?;
+    Some(Judgement {
+        pass: note.pass,
+        reviewer: note.author.clone(),
+        source: "note",
+        event: None,
+        note: Some(note.note_id),
+        tier: None,
+    })
+}
+
+/// Whether a head is landed: inside the tip of the integration branch, read with the functions
+/// `landed::find` is built from. The tip is read once and each head asked once; a branch git
+/// cannot read leaves every head not landed and the reason in `unread`.
+struct Landing<'a> {
+    project: &'a Path,
+    tip: Option<Option<String>>,
+    asked: BTreeMap<String, bool>,
+    unread: Option<String>,
+}
+
+impl<'a> Landing<'a> {
+    fn new(project: &'a Path) -> Self {
+        Landing {
+            project,
+            tip: None,
+            asked: BTreeMap::new(),
+            unread: None,
+        }
+    }
+
+    fn tip(&mut self) -> Option<String> {
+        if self.tip.is_none() {
+            let read = landed::integration_branch(self.project)
+                .and_then(|branch| landed::tip_of(self.project, &branch));
+            self.tip = Some(match read {
+                Ok(tip) => Some(tip),
+                Err(reason) => {
+                    self.unread = Some(reason);
+                    None
+                }
+            });
+        }
+        self.tip.clone().flatten()
+    }
+
+    fn is_landed(&mut self, head: &str) -> bool {
+        if let Some(known) = self.asked.get(head) {
+            return *known;
+        }
+        let inside = match self.tip() {
+            None => false,
+            Some(tip) => match landed::contained(self.project, head, &tip) {
+                Ok(c) => c == landed::Containment::Inside,
+                Err(_) => {
+                    self.unread.get_or_insert(
+                        "git could not tell whether a head is inside the tip".into(),
+                    );
+                    false
+                }
+            },
+        };
+        self.asked.insert(head.to_string(), inside);
+        inside
+    }
+}
+
 /// The window part: who holds the leader entry of the registry, read without writing.
 fn window(entries: &std::result::Result<Vec<SessionEntry>, String>, now: i64) -> Value {
     let Ok(entries) = entries else {
@@ -312,6 +468,8 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
     let reservations = all_reservations(conn)?;
     let heads = ready_heads(conn)?;
     let verdicts = all_verdicts(conn)?;
+    let notes = audit_notes(conn)?;
+    let mut landing = Landing::new(project);
     let entries = lane_registry::session_entries(project);
     let host = read_host(agents_json);
 
@@ -431,17 +589,18 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
             blocked.insert(card_id, reason.to_string());
         }
     }
-    // A card whose newest hand-back head waits for an audit (no verdict) or for its landing
-    // (newest verdict `pass`) is not work for a new lane; a `fail` sends it back to repair. A
-    // lane that hands a card back gives its reservation back, so such a card is `ready` or
-    // `active`, whatever `card next` ranks.
+    // A card whose newest hand-back head is landed, waits for an audit (no judgement) or waits
+    // for its landing (newest judgement `pass`) is not work for a new lane; a `fail` sends it
+    // back to repair. A lane that hands a card back gives its reservation back, so such a card
+    // is `ready` or `active`, whatever `card next` ranks.
     let mut audits: Vec<Value> = Vec::new();
     let mut waiting: BTreeSet<i64> = BTreeSet::new();
     for (card_id, (head, base)) in &heads {
-        let newest = verdicts
-            .get(card_id)
-            .and_then(|events| events.iter().rev().find(|e| &e.head == head));
-        match newest {
+        if landing.is_landed(head) {
+            waiting.insert(*card_id);
+            continue;
+        }
+        match judgement(&verdicts, &notes, *card_id, head) {
             Some(verdict) => {
                 if verdict.pass {
                     waiting.insert(*card_id);
@@ -484,7 +643,8 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
 
     // ---- landing queue ----------------------------------------------------------------------
     let mut queue: Vec<(String, i64, i64, Value)> = Vec::new();
-    for (card_id, events) in &verdicts {
+    let judged_cards: BTreeSet<i64> = verdicts.keys().chain(notes.keys()).copied().collect();
+    for card_id in &judged_cards {
         let Some(card) = cards.get(card_id).filter(|c| c.state != "done") else {
             continue;
         };
@@ -493,17 +653,35 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
             .filter(|r| r.card_id == *card_id)
             .map(|r| r.holder.clone())
             .collect();
-        let mut by_head: BTreeMap<&str, Vec<&VerdictEvent>> = BTreeMap::new();
-        for e in events {
-            by_head.entry(e.head.as_str()).or_default().push(e);
-        }
-        let newest_head = events.last().map(|e| e.head.as_str());
+        let judged_heads: BTreeSet<&str> = verdicts
+            .get(card_id)
+            .into_iter()
+            .flatten()
+            .map(|e| e.head.as_str())
+            .chain(
+                notes
+                    .get(card_id)
+                    .into_iter()
+                    .flatten()
+                    .map(|n| n.head.as_str()),
+            )
+            .collect();
+        let newest_head = verdicts
+            .get(card_id)
+            .and_then(|events| events.last())
+            .map(|e| e.head.as_str())
+            .or_else(|| {
+                notes
+                    .get(card_id)
+                    .and_then(|list| list.last())
+                    .map(|n| n.head.as_str())
+            });
         let ready_head = heads.get(card_id).map(|(h, _)| h.as_str());
-        for (head, list) in by_head {
-            let Some(newest) = list.last() else {
+        for head in judged_heads {
+            let Some(j) = judgement(&verdicts, &notes, *card_id, head) else {
                 continue;
             };
-            if !newest.pass || held_by(&authors, &newest.reviewer) {
+            if !j.pass || held_by(&authors, &j.reviewer) || landing.is_landed(head) {
                 continue;
             }
             let name = input::card_name(*card_id);
@@ -511,10 +689,10 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
             queue.push((
                 card.priority.clone(),
                 *card_id,
-                newest.event_id,
+                j.event.or(j.note).unwrap_or_default(),
                 json!({
-                    "card": name, "head": head, "reviewer": newest.reviewer,
-                    "tier": newest.tier, "event": newest.event_id, "current": current,
+                    "card": name, "head": head, "reviewer": j.reviewer, "source": j.source,
+                    "tier": j.tier, "event": j.event, "note": j.note, "current": current,
                     "command": format!("moai card land {name} --head {head} --by leader"),
                     "key": format!("land:{name}:{head}"),
                 }),
@@ -523,6 +701,13 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
     }
     queue.sort_by(|a, b| (&a.0, a.1, a.2).cmp(&(&b.0, b.1, b.2)));
     let land_queue: Vec<Value> = queue.into_iter().map(|q| q.3).collect();
+    if let Some(reason) = &landing.unread {
+        attention.push(json!({
+            "kind": "integration", "status": "unread", "reason": reason, "answer": null,
+            "answered_at": "the person who owns the repository",
+            "key": "attention:integration:unread",
+        }));
+    }
 
     // ---- what waits for the user ------------------------------------------------------------
     let waiting = inbox::inbox(project, home, None)?;

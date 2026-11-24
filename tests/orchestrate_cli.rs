@@ -212,7 +212,9 @@ impl World {
                 message,
             ],
         );
-        git(&self.project, &["rev-parse", "HEAD"]).trim().to_string()
+        git(&self.project, &["rev-parse", "HEAD"])
+            .trim()
+            .to_string()
     }
 
     /// The m-flow profile whose integration branch is `integ`.
@@ -745,7 +747,10 @@ fn judged_a_pass_note_judges_a_head_that_has_no_event() {
     w.card(2, "research", "ready", "p1", &["docs/b.md"]);
     let before = w.home.snapshot();
     let plan = w.plan();
-    assert!(audited(&plan).is_empty(), "a judged head is not audited: {plan}");
+    assert!(
+        audited(&plan).is_empty(),
+        "a judged head is not audited: {plan}"
+    );
     assert_eq!(
         dispatched(&plan),
         vec![("agent-1".to_string(), "C-2".to_string())],
@@ -811,7 +816,10 @@ fn judged_an_event_wins_over_a_note_in_both_directions() {
         vec![("agent-1".to_string(), "C-1".to_string())],
         "{plan}"
     );
-    assert_eq!(queued(&plan), vec![("C-2".to_string(), "event".to_string())]);
+    assert_eq!(
+        queued(&plan),
+        vec![("C-2".to_string(), "event".to_string())]
+    );
 }
 
 #[test]
@@ -821,9 +829,10 @@ fn judged_lines_of_another_shape_judge_nothing() {
         w.card(id, "research", "ready", "p1", &["docs/x.md"]);
         w.reserve(id, 1, S_TWO, "released");
     }
-    // C-1: the AUDIT line is not the first line. C-2: the AUDIT note of C-3 names C-2's head.
-    // C-3: the note names another head. C-4: a line that does not read as a verdict.
-    // C-5: the AUDIT line is of its own card but the note was quoted inside a hand-back note.
+    // C-1: the AUDIT line is not the first line. C-2: the AUDIT note naming C-2's head sits on
+    // C-3. C-3: its notes name two other heads, which are judged (not current), not the head it
+    // handed back. C-4: a line that does not read as a verdict. C-5: the AUDIT line is quoted
+    // below the first line of a hand-back note.
     w.ready_note(1, HEAD_A);
     w.note(
         1,
@@ -854,7 +863,23 @@ fn judged_lines_of_another_shape_judge_nothing() {
         ],
         "{plan}"
     );
-    assert!(plan["land_queue"].as_array().unwrap().is_empty(), "{plan}");
+    // Only the two other heads of C-3 are judged, and neither is the head C-3 handed back.
+    let queue = plan["land_queue"].as_array().unwrap();
+    let listed: Vec<(&str, &str, bool)> = queue
+        .iter()
+        .map(|q| {
+            (
+                q["card"].as_str().unwrap(),
+                q["head"].as_str().unwrap(),
+                q["current"].as_bool().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        listed,
+        vec![("C-3", HEAD_B, false), ("C-3", HEAD_D, false)],
+        "{plan}"
+    );
 }
 
 #[test]
@@ -906,9 +931,16 @@ fn landed_a_head_inside_the_tip_is_neither_audited_nor_dispatched_nor_queued() {
         vec![("agent-1".to_string(), "C-5".to_string())],
         "a card whose head is inside the tip is landed work, not work for a lane: {plan}"
     );
-    assert_eq!(queued(&plan), vec![("C-4".to_string(), "event".to_string())]);
+    assert_eq!(
+        queued(&plan),
+        vec![("C-4".to_string(), "event".to_string())]
+    );
     assert!(plan["attention"].as_array().unwrap().is_empty(), "{plan}");
-    assert_eq!(refs, git(&w.project, &["for-each-ref"]), "the plan moves no ref");
+    assert_eq!(
+        refs,
+        git(&w.project, &["for-each-ref"]),
+        "the plan moves no ref"
+    );
 }
 
 #[test]
@@ -923,7 +955,10 @@ fn landed_an_unreadable_integration_branch_counts_no_head_as_landed() {
     );
     w.ready_note(1, HEAD_A);
     let plan = w.plan();
-    assert_eq!(audited(&plan), vec![("C-1".to_string(), HEAD_A.to_string())]);
+    assert_eq!(
+        audited(&plan),
+        vec![("C-1".to_string(), HEAD_A.to_string())]
+    );
     let item: Vec<&Value> = plan["attention"]
         .as_array()
         .unwrap()
