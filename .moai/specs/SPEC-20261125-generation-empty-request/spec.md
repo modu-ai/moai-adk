@@ -119,3 +119,17 @@ SPEC-20261125-generation-request-record 재감사(head 10d2c688f7)가 남긴 길
 - 가드 뮤턴트 10개 모두 killed(출력 `target/agent-3/mutants1.out`), help 예시 뮤턴트 1개 killed(`target/agent-3/mutants_help1.out`).
 - 항목 4 판단(D-4): 모양은 온전하지만 소유 파일보다 작은 손편집 기록은 막는 검사를 더하지 않아요.
 - 본 것, 이 SPEC 밖: `agents-apply` 와 `github-apply` 의 help 예시도 `< request.json` 이에요(`src/help.rs` 332-337줄). 두 명령도 계획을 읽는지 확인한 뒤 따로 고칠 후속이에요.
+- 개정 1 에서 고친 뒤 더한 테스트 넷(링크, 평평한 경로, 검토를 잃은 projection, harness-only)은 RED 가 없고 뮤턴트로만 받쳐져요.
+
+### 개정 2 (독립 감사 FAIL 의 수리: B1 경로 밖 삭제, B2 첫 실행의 미리보기 없는 삭제)
+
+- Run 4 (RED, 고치기 전): `cargo nextest run --locked --offline --test generation_request_record --no-fail-fast` — 18 tests run, 16 passed, 2 failed, 맞는 이유로 실패했어요: 항목의 id 에 `../` 를 넣으면 `README.md` 가 `remove` 로 계획되고, 첫 실행이 `CLAUDE.md` 를 만들며 소유 파일을 지워요(`target/agent-3/red5.out`). 첫 실행 테스트는 처음에 앞 단계(`project settings plan is conflict`, 다음 `generation manifest belongs to another schema or project`)에서 멈췄어요. 도달 조건은 harness-only 로 만들어 `CLAUDE.md` 소유가 없고, 설정과 기준선을 잃고, 프로젝트 id 가 폴더 이름에서 만든 id 와 같은 프로젝트예요.
+- Run 5: 같은 파일과 새 단위 테스트 — 25 tests run, 25 passed(`target/agent-3/green4.out`).
+- Run 6: 이웃 21개 테스트 대상(첫 실행 `launcher_auto_init` 포함)과 lib 전체를 한 슬롯으로 — 2092 tests run, 2092 passed(`target/agent-3/neighbours2.out`). clippy `-D warnings` exit 0(`target/agent-3/clippy2.out`).
+- 검증 명령 16개를 이 SPEC 에 적힌 그대로 한 슬롯 호출로 돌렸어요. 모두 exit 0, 출력은 `target/agent-3/verify_ac2.out` 이에요.
+- AC-1…AC-13: met(개정 2 head 에서 각 테스트가 통과).
+- 수리 가드 뮤턴트 8개 모두 killed(exit 100, 끝난 뒤 트리 깨끗, 출력 `target/agent-3/mutants2.out`): N1 id 검사를 뺌, N2 폴더 검사를 뺌, N3 폴더 자신을 안으로 셈, N4 native-role id 검사를 뺌, N5 project-skill id 검사를 뺌, N6 skill-projection id 검사를 뺌, N7 id 와 폴더 검사를 모두 뺌(감사의 세 모양), N8 첫 실행이 삭제 계획을 적용함.
+- `kind_names_path` 가 `stays_below` 를 부르는 줄만 빼는 뮤턴트는 만들지 않았어요: id 검사가 있으면 만든 경로와의 비교가 이미 폴더 안임을 보장해서 그 한 줄을 뺀 코드는 같은 결과를 내요(동치). 폴더 검사는 함수 자체를 단위 테스트와 N2·N3 이 받쳐요.
+- 위험 경로: 삭제 경로 검사를 바꾸는 변경이라 테스트가 빌드된 `moai` 바이너리를 버리는 프로젝트·버리는 HOME 에서 실제로 돌려요. `../` 가 든 id 로 프로젝트 안 `README.md`, 프로젝트 밖의 `.md`, project-skill 의 `SKILL.md` 를 가리키는 항목을 심어 계획이 `conflict` 이고 적용이 멈추며 파일이 그대로임을 읽어요. 첫 실행은 진짜 `moai cc` 를 버리는 프로젝트에서 돌려요.
+- 작은 것: `apply-recover` 의 파일 권한 비트는 되돌리지 않고 Risks 에 적었어요. 한국어 낱말(브랜치·테스트)과 영어 문장을 고쳤어요. REQ 줄은 다른 SPEC 처럼 GEARS 영어 문장과 한국어 실패 설명으로 두었어요.
+- 하지 않은 것: 전체 `cargo test`(리더 몫), 넓은 `check affected`(READY 에서 한 번), Windows·Linux.
