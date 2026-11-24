@@ -234,7 +234,10 @@ fn the_repository_tracks_no_codex_folder() {
 
 /// The verdict of the `.codex` check on one `git ls-tree` answer: only a successful run with no
 /// line passes. A failed run (a broken repository, a missing `git`) is not "no such entry".
-fn codex_entry_verdict(success: bool, stdout: &str, _stderr: &str) -> Result<(), String> {
+fn codex_entry_verdict(success: bool, stdout: &str, stderr: &str) -> Result<(), String> {
+    if !success {
+        return Err(format!("git ls-tree failed: {stderr}"));
+    }
     if stdout.trim().is_empty() {
         Ok(())
     } else {
