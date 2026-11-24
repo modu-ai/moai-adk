@@ -382,7 +382,7 @@ fn outbox_refuses_a_linked_outbox_folder() {
     outbox_refused("outbox_refuses_a_linked_outbox_folder", At::Store);
 }
 
-/// AC-2 (REQ-3): the home state root itself is a link (AUDIT #434 N-2).
+/// AC-2 (REQ-3): the home state root itself is a link (SPEC-20261124-home-writer-links).
 #[test]
 fn outbox_refuses_a_linked_home_root() {
     outbox_refused("outbox_refuses_a_linked_home_root", At::Root);
@@ -453,7 +453,7 @@ fn receipt_refuses_a_linked_receipts_folder() {
     receipt_refused("receipt_refuses_a_linked_receipts_folder", At::Store);
 }
 
-/// AC-3 (REQ-4): the home state root itself is a link (AUDIT #434 N-2).
+/// AC-3 (REQ-4): the home state root itself is a link (SPEC-20261124-home-writer-links).
 #[test]
 fn receipt_refuses_a_linked_home_root() {
     receipt_refused("receipt_refuses_a_linked_home_root", At::Root);
@@ -524,7 +524,7 @@ fn layout_apply_refuses_a_linked_project_folder() {
 
 /// AC-4 (REQ-5): `projects/widgets/forge/` is a link to a folder with no `outbox` in it, one
 /// folder above the outbox's home folder (`forge/outbox`). Before the repair the last-name check
-/// found nothing and the copy followed the link (AUDIT #434 B-1).
+/// found nothing and the copy followed the link (SPEC-20261124-home-writer-links).
 #[test]
 fn layout_apply_refuses_a_linked_forge_folder() {
     with_home(
@@ -575,6 +575,299 @@ fn layout_apply_keeps_a_first_apply_on_a_plain_tree() {
                 SOURCE_BYTES
             );
             assert_eq!(snapshot(&seen.behind).len(), 1);
+        },
+    );
+}
+
+// ---- the project home folder helpers (SPEC revision 2) ----
+
+const STAMP: &str = "20261124T000000Z";
+
+/// Puts a link at `at` for a folder that sits at `projects/widgets/<leaf>`: the link replaces
+/// `projects/`, `projects/widgets/`, that leaf, or the home state root itself.
+fn link_for(t: &Tree, at: At, leaf: &str) {
+    match at {
+        At::Projects => symlink(&t.behind, t.state.join("projects")).unwrap(),
+        At::Project => {
+            fs::create_dir_all(t.state.join("projects")).unwrap();
+            symlink(&t.behind, t.state.join("projects/widgets")).unwrap();
+        }
+        At::Store => {
+            fs::create_dir_all(t.state.join("projects/widgets")).unwrap();
+            symlink(&t.behind, t.state.join("projects/widgets").join(leaf)).unwrap();
+        }
+        At::Root => t.link_root(),
+        At::Forge => unreachable!("only layout-apply meets a linked forge folder"),
+    }
+    if !matches!(at, At::Root) {
+        t.state_is_stable();
+    }
+}
+
+/// The hook receipt writer is a caller of `ProjectHome::write_area`: with a link on the way it
+/// records nothing, neither behind the link nor on the project side (no silent fallback).
+fn hook_receipt_refused(test: &str, at: At) {
+    with_home(
+        test,
+        |t| link_for(t, at, "receipts"),
+        |seen| {
+            let before = snapshot(&seen.behind);
+            let out = moai_cli::hooks::receipt(
+                "claude",
+                br#"{"hook_event_name":"Stop"}"#,
+                &seen.project,
+                1,
+            );
+            assert_eq!(out["recorded"], serde_json::json!(false), "{out}");
+            assert_eq!(snapshot(&seen.behind), before, "something changed behind");
+            let own = moai_cli::state_root::path(&seen.project, "receipts");
+            assert!(
+                !own.join("hooks.jsonl").exists(),
+                "fell back to the project"
+            );
+        },
+    );
+}
+
+/// AC-8 (REQ-7): `projects/` is a link.
+#[test]
+fn hook_receipt_refuses_a_linked_projects_folder() {
+    hook_receipt_refused(
+        "hook_receipt_refuses_a_linked_projects_folder",
+        At::Projects,
+    );
+}
+
+/// AC-8 (REQ-7): `projects/widgets/` is a link.
+#[test]
+fn hook_receipt_refuses_a_linked_project_folder() {
+    hook_receipt_refused("hook_receipt_refuses_a_linked_project_folder", At::Project);
+}
+
+/// AC-8 (REQ-7): the `receipts` folder itself is a link.
+#[test]
+fn hook_receipt_refuses_a_linked_receipts_folder() {
+    hook_receipt_refused("hook_receipt_refuses_a_linked_receipts_folder", At::Store);
+}
+
+/// AC-8 (REQ-7), control: a plain tree records the line in the home side folder.
+#[test]
+fn hook_receipt_keeps_a_plain_tree() {
+    with_home(
+        "hook_receipt_keeps_a_plain_tree",
+        |_| {},
+        |seen| {
+            let out = moai_cli::hooks::receipt(
+                "claude",
+                br#"{"hook_event_name":"Stop"}"#,
+                &seen.project,
+                1,
+            );
+            assert_eq!(out["recorded"], serde_json::json!(true), "{out}");
+            assert!(seen
+                .state
+                .join("projects/widgets/receipts/hooks.jsonl")
+                .is_file());
+        },
+    );
+}
+
+/// The lane Stop hook is the other writer that calls `ProjectHome::write_area` (its `state`
+/// area): with a link on the way the count cannot be saved, so no block is sent, and nothing is
+/// written behind the link.
+fn stop_hook_refused(test: &str, at: At) {
+    with_home(
+        test,
+        |t| link_for(t, at, "state"),
+        |seen| {
+            let before = snapshot(&seen.behind);
+            let out = moai_cli::lane_loop::stop_hook(
+                &seen.project,
+                "a",
+                "o/r",
+                &moai_cli::lane_loop::Reading::Unknown,
+            );
+            assert_eq!(out, "", "a block was sent without a saved count");
+            assert_eq!(snapshot(&seen.behind), before, "something changed behind");
+        },
+    );
+}
+
+/// AC-8 (REQ-7): `projects/` is a link.
+#[test]
+fn stop_hook_refuses_a_linked_projects_folder() {
+    stop_hook_refused("stop_hook_refuses_a_linked_projects_folder", At::Projects);
+}
+
+/// AC-8 (REQ-7): `projects/widgets/` is a link.
+#[test]
+fn stop_hook_refuses_a_linked_project_folder() {
+    stop_hook_refused("stop_hook_refuses_a_linked_project_folder", At::Project);
+}
+
+/// AC-8 (REQ-7): the `state` folder itself is a link.
+#[test]
+fn stop_hook_refuses_a_linked_state_folder() {
+    stop_hook_refused("stop_hook_refuses_a_linked_state_folder", At::Store);
+}
+
+/// AC-8 (REQ-7), control: a plain tree sends the block and saves the count in the home side.
+#[test]
+fn stop_hook_keeps_a_plain_tree() {
+    with_home(
+        "stop_hook_keeps_a_plain_tree",
+        |_| {},
+        |seen| {
+            let out = moai_cli::lane_loop::stop_hook(
+                &seen.project,
+                "a",
+                "o/r",
+                &moai_cli::lane_loop::Reading::Unknown,
+            );
+            assert!(out.contains("block"), "{out}");
+            assert!(seen
+                .state
+                .join("projects/widgets/state/lane-stop-hook/a.json")
+                .is_file());
+        },
+    );
+}
+
+/// `backup_area` refuses with the sentence of the link at `at`, and nothing changed behind it.
+fn backup_area_refused(at: At) {
+    let t = tree();
+    link_for(&t, at, "backups");
+    let before = snapshot(&t.behind);
+    let ph = moai_cli::project_home::resolve(&t.home, &t.project).unwrap();
+    assert_eq!(
+        ph.backup_area(STAMP, "go-state"),
+        Err(at.sentence().to_string())
+    );
+    assert_eq!(
+        snapshot(&t.behind),
+        before,
+        "something changed behind the link"
+    );
+}
+
+/// AC-9 (REQ-9): `projects/` is a link.
+#[test]
+fn backup_area_refuses_a_linked_projects_folder() {
+    backup_area_refused(At::Projects);
+}
+
+/// AC-9 (REQ-9): `projects/widgets/` is a link.
+#[test]
+fn backup_area_refuses_a_linked_project_folder() {
+    backup_area_refused(At::Project);
+}
+
+/// AC-9 (REQ-9): the `backups` folder itself is a link.
+#[test]
+fn backup_area_refuses_a_linked_backups_folder() {
+    backup_area_refused(At::Store);
+}
+
+/// AC-9 (REQ-9): the home state root itself is a link.
+#[test]
+fn backup_area_refuses_a_linked_home_root() {
+    backup_area_refused(At::Root);
+}
+
+/// AC-9 (REQ-9), control: a plain tree answers `backups/<stamp>/<kind>`.
+#[test]
+fn backup_area_keeps_a_plain_tree() {
+    let t = tree();
+    let ph = moai_cli::project_home::resolve(&t.home, &t.project).unwrap();
+    assert_eq!(
+        ph.backup_area(STAMP, "go-state"),
+        Ok(t.state
+            .join("projects/widgets/backups")
+            .join(STAMP)
+            .join("go-state"))
+    );
+}
+
+const AUDIT_HEAD: &str = "0123456789abcdef0123456789abcdef01234567";
+
+/// The audit clone plan of the project the child sees, with a repository address given so that
+/// no remote is read.
+fn audit_plan(seen: &Seen) -> Result<serde_json::Value, String> {
+    moai_cli::audit_clone::plan(
+        &seen.project,
+        &moai_cli::audit_clone::Request {
+            pr: 1,
+            head: AUDIT_HEAD,
+            head_branch: "feature",
+            base_branch: "main",
+            repo_url: Some("https://example.com/o/r.git"),
+            tmp_root: &seen.home,
+        },
+    )
+}
+
+/// The plan succeeds, names no evidence folder and says why; nothing changed behind the link.
+fn audit_plan_refused(test: &str, at: At) {
+    with_home(
+        test,
+        |t| link_for(t, at, "audits"),
+        |seen| {
+            let before = snapshot(&seen.behind);
+            let plan = audit_plan(seen).unwrap();
+            assert!(plan["evidence_dir"].is_null(), "{plan}");
+            assert_eq!(plan["evidence_reason"], serde_json::json!(FOLDER_REFUSED));
+            assert_eq!(snapshot(&seen.behind), before);
+        },
+    );
+}
+
+/// AC-10 (REQ-10): `projects/` is a link.
+#[test]
+fn audit_plan_refuses_a_linked_projects_folder() {
+    audit_plan_refused("audit_plan_refuses_a_linked_projects_folder", At::Projects);
+}
+
+/// AC-10 (REQ-10): `projects/widgets/` is a link.
+#[test]
+fn audit_plan_refuses_a_linked_project_folder() {
+    audit_plan_refused("audit_plan_refuses_a_linked_project_folder", At::Project);
+}
+
+/// AC-10 (REQ-10): the `audits` folder itself is a link.
+#[test]
+fn audit_plan_refuses_a_linked_audits_folder() {
+    audit_plan_refused("audit_plan_refuses_a_linked_audits_folder", At::Store);
+}
+
+/// AC-10 (REQ-10), control: a plain tree names the evidence folder and gives no reason.
+#[test]
+fn audit_plan_keeps_a_plain_tree() {
+    with_home(
+        "audit_plan_keeps_a_plain_tree",
+        |_| {},
+        |seen| {
+            let plan = audit_plan(seen).unwrap();
+            assert_eq!(
+                plan["evidence_dir"],
+                serde_json::json!(seen
+                    .state
+                    .join("projects/widgets/audits/1-01234567")
+                    .to_string_lossy())
+            );
+            assert!(plan["evidence_reason"].is_null(), "{plan}");
+        },
+    );
+}
+
+/// AC-10 (REQ-10): a home state root that is itself a link still refuses the whole plan (the
+/// earlier `identity` check, kept).
+#[test]
+fn audit_plan_still_refuses_a_linked_home_root() {
+    with_home(
+        "audit_plan_still_refuses_a_linked_home_root",
+        |t| t.link_root(),
+        |seen| {
+            assert_eq!(audit_plan(seen), Err(ROOT_REFUSED.to_string()));
         },
     );
 }
