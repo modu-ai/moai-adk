@@ -144,10 +144,13 @@ pub struct Fill {
     pub source: Source,
     /// Paths a SPEC list named more than once; each is in `scope` once.
     pub merged: Vec<String>,
-    /// Entries left out of `scope` because they overlap a shared file: the entry and the shared
-    /// entry it overlaps.
-    pub left_out: Vec<(String, String)>,
+    /// Entries left out of `scope` because they overlap a shared file.
+    pub left_out: LeftOut,
 }
+
+/// The entries a fill left out because they overlap a shared file: each entry with the shared
+/// entry it overlaps.
+pub type LeftOut = Vec<(String, String)>;
 
 /// `scope` without the entries that overlap a shared file, and those entries. A fill that has
 /// nothing left refuses, naming each entry and the way to write the file.
@@ -155,7 +158,7 @@ fn leave_out_shared(
     project: &Path,
     card: &str,
     scope: Vec<String>,
-) -> Result<(Vec<String>, Vec<(String, String)>), String> {
+) -> Result<(Vec<String>, LeftOut), String> {
     let shared = shared_files(project);
     if shared.is_empty() {
         return Ok((scope, Vec::new()));

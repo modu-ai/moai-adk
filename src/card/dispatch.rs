@@ -491,7 +491,7 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         .map_err(|e| ledger::LedgerError::from(e).to_string())?;
     let own_is_empty = own.as_ref().is_some_and(Vec::is_empty);
     let mut merged: Vec<String> = Vec::new();
-    let mut left_out: Vec<(String, String)> = Vec::new();
+    let mut left_out = take_scope::LeftOut::new();
     let (scope, source) = match given {
         Some(scope) => (Some(scope), take_scope::Source::Given),
         None if own_is_empty => {
