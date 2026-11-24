@@ -258,12 +258,7 @@ fn each_kind_of_card_that_wants_closing_is_listed_once_with_its_command() {
     // `assert!` and not `assert_eq!`: a failure must not print the whole ledger file.
     assert!(w.home.snapshot() == before, "next writes nothing");
 
-    let mut want = vec![
-        landed.clone(),
-        expired.clone(),
-        review.clone(),
-        old.clone(),
-    ];
+    let mut want = vec![landed.clone(), expired.clone(), review.clone(), old.clone()];
     want.sort_by_key(|n| n.trim_start_matches("C-").parse::<i64>().unwrap());
     assert_eq!(stale_names(&listing), want, "{listing}");
     for (card, kind) in [

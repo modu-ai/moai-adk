@@ -39,8 +39,7 @@ impl World {
             let added = w.card(
                 None,
                 &[
-                    "add", "--title", "fixture", "--kind", "task", "--scope", &scope, "--ac",
-                    "one",
+                    "add", "--title", "fixture", "--kind", "task", "--scope", &scope, "--ac", "one",
                 ],
             );
             let name = added["name"].as_str().unwrap().to_string();
@@ -76,7 +75,13 @@ impl World {
 
     fn note(&self, card: &str, text: &str) {
         let mut cmd = self.home.command(&[
-            "card", "note", card, "--kind", "comment", "--project", &self.p,
+            "card",
+            "note",
+            card,
+            "--kind",
+            "comment",
+            "--project",
+            &self.p,
         ]);
         cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
         let mut child = cmd.spawn().expect("run moai");
@@ -95,7 +100,14 @@ impl World {
     }
 
     fn fold(&self, card: i64, into: i64, by: &str) -> Result<(), CloseError> {
-        close::fold(&mut self.write(), card, into, "same work as the target", by, None)
+        close::fold(
+            &mut self.write(),
+            card,
+            into,
+            "same work as the target",
+            by,
+            None,
+        )
     }
 
     fn sql(&self, statement: &str) {
@@ -142,10 +154,7 @@ fn a_folded_card_is_hold_with_an_event_and_a_link_and_is_never_offered() {
     w.note("C-1", "kept after the fold");
     w.fold(1, 2, "lane").unwrap();
 
-    assert_eq!(
-        w.rows("SELECT state FROM card WHERE card_id = 1"),
-        ["hold"]
-    );
+    assert_eq!(w.rows("SELECT state FROM card WHERE card_id = 1"), ["hold"]);
     let events = w.rows("SELECT payload FROM event WHERE card_id = 1 AND kind = 'card.fold'");
     assert_eq!(events.len(), 1, "{events:?}");
     let payload: Value = serde_json::from_str(&events[0]).unwrap();
@@ -154,7 +163,7 @@ fn a_folded_card_is_hold_with_an_event_and_a_link_and_is_never_offered() {
     assert_eq!(payload["by"], json!("lane"));
     assert_eq!(
         w.rows(
-            "SELECT count(*) FROM card_link \
+            "SELECT CAST(count(*) AS TEXT) FROM card_link \
              WHERE from_card = 1 AND to_card = 2 AND kind = 'relates' AND state = 'active'"
         ),
         ["1"]
@@ -164,11 +173,9 @@ fn a_folded_card_is_hold_with_an_event_and_a_link_and_is_never_offered() {
     assert_eq!(shown["state"], json!("hold"), "{shown}");
     assert_eq!(shown["criteria"].as_array().unwrap().len(), 1, "{shown}");
     assert!(
-        shown["notes"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|n| n["body"].as_str().is_some_and(|b| b.contains("kept after the fold"))),
+        shown["notes"].as_array().unwrap().iter().any(|n| n["body"]
+            .as_str()
+            .is_some_and(|b| b.contains("kept after the fold"))),
         "{shown}"
     );
 
@@ -186,10 +193,7 @@ fn a_folded_card_is_hold_with_an_event_and_a_link_and_is_never_offered() {
     assert_eq!(named("ready"), ["C-2"], "{listing}");
     assert!(!named("skipped").contains(&"C-1".to_string()), "{listing}");
 
-    let out = w.output(
-        Some(S_A),
-        &["card", "take", "C-1", "--project", &w.p],
-    );
+    let out = w.output(Some(S_A), &["card", "take", "C-1", "--project", &w.p]);
     assert_ne!(out.status.code(), Some(0));
     let text = format!(
         "{}{}",
@@ -243,7 +247,10 @@ fn a_fold_that_cannot_happen_writes_nothing() {
     for reason in ["", "   ", long.as_str(), "two\nlines"] {
         let before = w.dump();
         let err = close::fold(&mut w.write(), 2, 1, reason, "lane", None).unwrap_err();
-        assert!(matches!(err, CloseError::InvalidInput(_)), "{reason:?}: {err:?}");
+        assert!(
+            matches!(err, CloseError::InvalidInput(_)),
+            "{reason:?}: {err:?}"
+        );
         assert!(w.dump() == before, "{reason:?} wrote something");
     }
 }
@@ -265,10 +272,7 @@ fn a_fold_of_a_card_with_an_ended_lease_is_the_leaders_and_ends_the_reservation(
         w.rows("SELECT status FROM reservation WHERE card_id = 1"),
         ["released"]
     );
-    assert_eq!(
-        w.rows("SELECT state FROM card WHERE card_id = 1"),
-        ["hold"]
-    );
+    assert_eq!(w.rows("SELECT state FROM card WHERE card_id = 1"), ["hold"]);
     let events = w.rows("SELECT payload FROM event WHERE card_id = 1 AND kind = 'card.fold'");
     let payload: Value = serde_json::from_str(&events[0]).unwrap();
     assert_eq!(payload["released"]["holder"], json!(S_A), "{payload}");

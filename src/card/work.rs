@@ -20,8 +20,10 @@ use super::dispatch::{checked_scope, reservation_json, DEFAULT_LEASE_SECS};
 use super::input::{self, CardRef};
 use super::landed;
 use super::spec_link;
+use super::stale;
 use super::take_scope;
 use crate::forge::connector::{HostConnector, HostKind, PrPhase, ProjectRef};
+use crate::ledger::close;
 use crate::ledger::reservation;
 use crate::ledger::scope_return;
 use crate::ledger::workflow::{self, CriterionChange, PrTarget, SkipReason, WorkflowError};
@@ -65,7 +67,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
                 "action": "next", "project_id": id, "ledger": "absent", "holder": holder,
                 "next": null, "next_is": null,
                 "mine": [], "ready": [], "skipped": [], "warnings": [], "writes": false,
-                "landing": landed::absent_json(),
+                "landing": landed::absent_json(), "stale": [],
             }));
         }
         Err(e) => return Err(e.to_string()),
@@ -84,11 +86,29 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
     // `skipped` with `reason: "already_landed"` and the proof. `card finish` closes it once a
     // criterion is met; a card with no counted criterion needs `card criterion-add` and `--met`
     // first, because `card finish` refuses a card with no met criterion.
-    let landing = landed::find(project, ledger.conn(), &landed::candidates(&found))?;
+    //
+    // The same lookup also asks for the `active` and `review` cards, whose proof the `stale` list
+    // needs (SPEC-20261124-card-fold-stale); `take_landed` only reads the proofs of `ready` cards,
+    // and a SPEC trailer hint of an open card is not part of the `landing` answer.
+    let stale_facts = close::stale_facts(ledger.conn(), found.now).map_err(|e| e.to_string())?;
+    let mut wanted = landed::candidates(&found);
+    wanted.extend(stale_facts.open.iter().map(|c| c.card_id));
+    let mut landing = landed::find(project, ledger.conn(), &wanted)?;
+    landing
+        .spec_trailer_hints
+        .retain(|card_id, _| !stale_facts.open.iter().any(|c| c.card_id == *card_id));
     let landed_skips = landed::take_landed(&mut found, &landing);
+    let mut warnings: Vec<String> = Vec::new();
+    let draft_days = stale::draft_days(project).unwrap_or_else(|why| {
+        warnings.push(format!(
+            "stale list: the profile could not be read ({why}); {} days are used for a stale draft",
+            stale::DEFAULT_DRAFT_DAYS
+        ));
+        stale::DEFAULT_DRAFT_DAYS
+    });
+    let stale = stale::rows(&stale_facts, &landing.proofs, found.now, draft_days);
     // The SPEC each card names and its status, with a warning for a card that changes the
     // repository without an approved SPEC (SDD-4), in the order the cards are listed.
-    let mut warnings: Vec<String> = Vec::new();
     let mut spec_of = |card_id: i64| -> Result<Value> {
         let (kind, spec) = spec_link::kind_and_spec(ledger.conn(), card_id)
             .map_err(|e| LedgerError::from(e).to_string())?
@@ -166,7 +186,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
         "action": "next", "project_id": id, "ledger": "ready", "holder": holder,
         "now": found.now, "next": next, "next_is": next_is,
         "mine": mine, "ready": ready, "skipped": skipped, "warnings": warnings,
-        "landing": landing.json(), "writes": false,
+        "landing": landing.json(), "stale": stale, "writes": false,
     }))
 }
 

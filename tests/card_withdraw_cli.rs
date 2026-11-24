@@ -306,7 +306,10 @@ fn the_leader_withdraws_a_card_whose_lease_ended_and_a_live_lease_is_refused() {
 
     let before = dump(&home);
     let err = withdraw_as(&home, 1, "leader").unwrap_err();
-    assert!(matches!(err, CloseError::Held { .. }), "a live lease: {err:?}");
+    assert!(
+        matches!(err, CloseError::Held { .. }),
+        "a live lease: {err:?}"
+    );
     assert!(dump(&home) == before, "a refused withdraw wrote something");
 
     sql(
@@ -385,7 +388,15 @@ fn a_review_card_nobody_holds_is_withdrawn_and_a_done_card_is_not() {
     result(&run(&home, &["card", "take", "C-1", "--project", &p]));
     result(&run(
         &home,
-        &["card", "review", "C-1", "--generation", "1", "--project", &p],
+        &[
+            "card",
+            "review",
+            "C-1",
+            "--generation",
+            "1",
+            "--project",
+            &p,
+        ],
     ));
     sql(
         &home,

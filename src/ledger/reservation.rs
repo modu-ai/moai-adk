@@ -766,8 +766,13 @@ fn reserve_in_tx(
             // (or sits in another state) keeps the plain refusal (audit N-2).
             let withdraw_reason: Option<String> = if state == "hold" {
                 tx.query_row(
-                    "SELECT json_extract(payload, '$.reason') FROM event \
-                     WHERE card_id = ?1 AND kind = 'card.withdraw' \
+                    // A fold names the card it went into (SPEC-20261124-card-fold-stale).
+                    "SELECT CASE kind \
+                              WHEN 'card.fold' THEN 'folded into ' || json_extract(payload, '$.into') \
+                                   || ': ' || json_extract(payload, '$.reason') \
+                              ELSE json_extract(payload, '$.reason') END \
+                     FROM event \
+                     WHERE card_id = ?1 AND kind IN ('card.withdraw', 'card.fold') \
                      ORDER BY event_id DESC LIMIT 1",
                     [card_id],
                     |r| r.get(0),

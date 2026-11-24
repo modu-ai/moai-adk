@@ -53,6 +53,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("leader", true),
     ("context_max_bytes", true),
     ("archive_grace_days", true),
+    ("stale_draft_days", true),
     ("language", true),
     ("detected", true),
     ("scopes", true),
@@ -135,6 +136,11 @@ pub struct Profile {
     /// before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub archive_grace_days: Option<u64>,
+    /// How many days a `draft` card may sit before `moai card next` lists it as stale
+    /// (SPEC-20261124-card-fold-stale). Absent means 14; 0 is refused. A profile written before
+    /// this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stale_draft_days: Option<u64>,
     /// Writing language per item (#2293): item id → language code, both checked against the
     /// tables in `crate::language`. Absent means no choice was recorded; a profile written
     /// before this key reads unchanged and the managed section renders as before.
@@ -453,6 +459,7 @@ fn validate(p: &Profile) -> Result<()> {
         || !decisions_ok
         || p.context_max_bytes == Some(0)
         || p.archive_grace_days == Some(0)
+        || p.stale_draft_days == Some(0)
     {
         return Err("invalid or nonportable profile; no values were logged".into());
     }
@@ -1353,6 +1360,7 @@ mod tests {
             leader: None,
             context_max_bytes: None,
             archive_grace_days: None,
+            stale_draft_days: None,
             language: None,
             detected: None,
             scopes: None,
@@ -1417,6 +1425,7 @@ mod tests {
             }),
             context_max_bytes: Some(1),
             archive_grace_days: Some(7),
+            stale_draft_days: Some(14),
             language: Some([("code_comments".to_string(), "en".to_string())].into()),
             detected: Some(crate::project_detect::Detected {
                 project_kind: "new".into(),
@@ -1485,6 +1494,7 @@ mod tests {
                 "leader",
                 "context_max_bytes",
                 "archive_grace_days",
+                "stale_draft_days",
                 "language",
                 "detected",
                 "scopes",
