@@ -331,3 +331,27 @@ fn the_wired_fold_action_folds_once_and_ready_takes_the_card_back() {
         ["ready"]
     );
 }
+
+/// AC-1: the default `card list` hides a folded card as it hides a withdrawn one, and `--all`
+/// shows it.
+#[test]
+fn the_default_list_hides_a_folded_card_until_all_is_asked() {
+    let w = World::new(2);
+    w.fold(1, 2, "lane").unwrap();
+    let names = |extra: &[&str]| -> Vec<String> {
+        let mut args = vec!["card", "list"];
+        args.extend_from_slice(extra);
+        args.push(&w.p);
+        let out = w.output(None, &args);
+        assert_eq!(out.status.code(), Some(0));
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        v["result"]["cards"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["name"].as_str().unwrap().to_string())
+            .collect()
+    };
+    assert_eq!(names(&[]), ["C-2"]);
+    assert_eq!(names(&["--all"]), ["C-1", "C-2"]);
+}
