@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-lane-leftovers
 title: "lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY"
-status: draft
+status: approved
 revision: 4
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8243 (2026-11-24T05:37:14Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8242 에 답함): SPEC 판 4 승인 — REQ-1·AC-1 의 대상 파일 next-flow 를 self-check 로, Scope 에서 next-flow.md 를 빼고 source-manifest.json 해시 한 값을 더함, Plan 3d, Result; 검사 한도를 올리지 않고 되돌림; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:e954cc4fa2708734176332a7ddafbba120f0155ed7f93c1d780072b172ab8e7f"
 ---
 
 # lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY
