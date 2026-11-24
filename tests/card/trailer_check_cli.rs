@@ -314,7 +314,8 @@ fn card_numbers_fail_after_a_recorded_start() {
     commit(dir, "base");
     let base = common::git::git(dir, &["rev-parse", "HEAD"]);
     // The card number sits in the BODY: the body arm of the scan is pinned here, the subject
-    // arm in the message-file test below.
+    // arm in `card_numbers_in_a_subject_fail_after_a_recorded_start` (the message-file mode
+    // is a separate function with its own test).
     commit(dir, "wording\n\nwording after C-150");
     commit(dir, "a clean follow-up");
     let range = format!("{base}..HEAD");
@@ -429,4 +430,113 @@ fn the_commit_msg_hook_calls_the_message_file_check() {
     assert!(hook.contains("trailer-check"), "{hook}");
     assert!(hook.contains("--message-file"), "{hook}");
     assert!(hook.contains("\"$1\""), "{hook}");
+}
+
+/// The `card_number` findings of one `trailer-check` answer.
+fn card_findings(v: &Value) -> Vec<&Value> {
+    v["result"]["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["kind"] == json!("card_number"))
+        .collect()
+}
+
+/// The card shapes the `card_number` findings of one answer name, in order (the detail reads
+/// `... names card <shape> on line <n>; ...`).
+fn card_shapes(v: &Value) -> Vec<String> {
+    card_findings(v)
+        .iter()
+        .map(|f| {
+            let detail = f["detail"].as_str().unwrap();
+            let after = detail.split("names card ").nth(1).unwrap();
+            after.split(' ').next().unwrap().to_string()
+        })
+        .collect()
+}
+
+/// The SUBJECT arm of the commit-log scan (the body arm and the message-file mode have their own
+/// tests): a card number in a subject fails on line 1 wherever it stands (after a space, right
+/// after an opening bracket, at the very start of the line, right after a colon), in both letter
+/// cases and after a closed pair of quotes, only after the recorded start, and the commit the
+/// start names is exempt.
+#[test]
+fn card_numbers_in_a_subject_fail_after_a_recorded_start() {
+    let (tmp, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let dir = tmp.path();
+    common::git::git_ok(dir, &["init", "-q", "-b", "main"]);
+    commit(dir, "base");
+    let base = common::git::git(dir, &["rev-parse", "HEAD"]);
+    commit(dir, "fix: wording after C-150");
+    commit(dir, "fix: lower case c-7 counts too");
+    commit(dir, "fix: \"closed\" quotes before it leave C-33 bare");
+    commit(dir, "fix: the usual tail shape (C-61)");
+    commit(dir, "C-62 leads this subject");
+    commit(dir, "docs:C-63 follows the colon directly");
+    commit(dir, "a clean follow-up");
+    let range = format!("{base}..HEAD");
+
+    // Without the recorded start the rule is off.
+    let (code, v) = moai(dir, home.path(), &["trailer-check", &range], &[]);
+    assert_eq!(code, Some(0), "{v}");
+    assert!(card_findings(&v).is_empty(), "{v}");
+
+    let (code, v) = moai(
+        dir,
+        home.path(),
+        &["trailer-check", &range, "--card-numbers-since", &base],
+        &[],
+    );
+    assert_eq!(code, Some(1), "{v}");
+    let all = ["C-150", "c-7", "C-33", "C-61", "C-62", "C-63"];
+    assert_eq!(card_shapes(&v), all, "{v}");
+    for f in card_findings(&v) {
+        assert_eq!(f["fails"], json!(true), "{v}");
+        assert!(f["detail"].as_str().unwrap().contains("on line 1"), "{v}");
+    }
+
+    // The commit the start names (the oldest one) is exempt: its shape is not reported, the
+    // others still are, and the exit code stays 1.
+    let named = common::git::git(dir, &["rev-parse", "HEAD~6"]);
+    let (code, v) = moai(
+        dir,
+        home.path(),
+        &["trailer-check", &range, "--card-numbers-since", &named],
+        &[],
+    );
+    assert_eq!(code, Some(1), "{v}");
+    assert_eq!(card_shapes(&v), all[1..], "{v}");
+}
+
+/// The shapes that are not card numbers pass in a SUBJECT too: a SPEC id, a version, a
+/// hexadecimal SHA, the `AC-<n>` and `SPEC-C-<n>` neighbours, a trailing letter, a word or hex
+/// run that holds a `c-<digits>` candidate between letters, and a card number inside quoted
+/// ledger output. The SPEC id, version, SHA and `W2-7` lines hold no `C-<digits>` candidate at
+/// all, so they never reach the boundary code; the lines after them do.
+#[test]
+fn allowed_shapes_in_a_subject_pass() {
+    let (tmp, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let dir = tmp.path();
+    common::git::git_ok(dir, &["init", "-q", "-b", "main"]);
+    commit(dir, "base");
+    let base = common::git::git(dir, &["rev-parse", "HEAD"]);
+    for subject in [
+        "docs: reword per SPEC-20261120-commit-message-card-numbers",
+        "build: v4.2647.9 from 3c3446a3dbd7d918a7d6465c0765ae66b2dafe3231b9be11cd3181737b6658ac",
+        "docs: covers AC-150 and W2-7",
+        "docs: the neighbour SPEC-C-9 and the shape C-150b are no card numbers",
+        "docs: the word abc-12 and the hex run deadc-1beef carry a c- candidate inside",
+        "fix: the take refused with \"reserved for card C-20\", recorded verbatim",
+    ] {
+        commit(dir, subject);
+    }
+    let range = format!("{base}..HEAD");
+    let (code, v) = moai(
+        dir,
+        home.path(),
+        &["trailer-check", &range, "--card-numbers-since", &base],
+        &[],
+    );
+    assert_eq!(code, Some(0), "{v}");
+    assert!(card_findings(&v).is_empty(), "{v}");
 }
