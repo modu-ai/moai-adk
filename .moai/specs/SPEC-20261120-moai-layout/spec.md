@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261120-moai-layout
 title: "One .moai/ layout rule for every project: tracked team files, ignored .moai/local/, project tools in .moai/tools/"
-status: draft
+status: approved
 revision: 4
 created: 2026-11-20
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8144 (2026-11-24T03:10:15Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8143 에 답함): 개정 4 승인(커밋 604bd682f6); 레인은 그 노트를 인용만 해요"
+  digest: "sha256:4a6184735b44cdc5f01e2920ca1ad2934a282806f14e6f09fc4ac2c8ed1b10fa"
 ---
 
 # One .moai/ layout rule for every project
@@ -26,6 +31,10 @@ created: 2026-11-20
 이미 있는 프로젝트는 계속 돌아가요: 읽기는 옛 경로까지, 쓰기는 새 경로로.
 
 이 SPEC 은 규칙의 **조각 1** 이에요: 규칙의 정의(코드 한 곳)와 관리되는 `.gitignore` 블록. 규칙의 나머지는 다음 조각의 SPEC 이 맡아요(SPEC 하나는 자기 AC 를 모두 `met` 으로 닫아야 해서 조각마다 SPEC 을 따로 둬요): 쓰는 쪽을 종류별로 `local/` 로 옮기는 SPEC 들. 개정 4(2026-11-24)는 같은 카드의 조각 3 을 이 SPEC 에 더해요: 만들어지는 관리 블록 한 줄과 `agents/impl.md` 한 줄이 `.moai/tools/` 를 말하게 하고(REQ-15, REQ-16), 업데이트 계획의 `now visible` 목록이 상태 폴더 아래 중첩 `.gitignore` 를 따르게 해요(REQ-17).
+
+## Interview
+
+- none: 사용자에게 묻지 않았어요. 설계는 2026-11-20 사용자 결정(카드 본문)을 따르고, 개정 4 의 선택은 카드 노트 8139 의 리더 결정(사용자 위임 2026-11-23)이에요.
 
 ## Non-goals
 
