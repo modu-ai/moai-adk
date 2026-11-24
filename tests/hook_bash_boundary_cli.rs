@@ -2005,7 +2005,6 @@ fn second_audit_allowed_cases() -> Vec<Case> {
         a(Own, "set -- a b"),
         a(Own, "shopt -s nullglob"),
         a(Own, "setopt extendedglob"),
-        a(Own, "unsetopt nomatch"),
         a(Own, "cd src && ls"),
         a(Own, "cd ./src && cd .. && rm -rf build"),
         a(Own, "(cd {OUT}) && rm -rf ./build"),
@@ -2208,10 +2207,7 @@ fn third_audit_allowed_cases() -> Vec<Case> {
     use S::Own;
     vec![
         // S-1: start options that name no `cd` lookup option.
-        a(Own, "bash -O extglob -c 'ls'"),
-        a(Own, "zsh -o extendedglob -c 'ls'"),
         a(Own, "bash -o pipefail -c 'cd src && ls'"),
-        a(Own, "zsh -o nomatch -c 'ls'"),
         a(Own, "sh -c 'cd src && ls'"),
         a(Own, "emulate -L zsh"),
         a(Own, "emulate zsh -c 'ls'"),
@@ -2344,15 +2340,12 @@ fn fourth_audit_allowed_cases() -> Vec<Case> {
         a(Own, "zsh -fx -c 'cd src && ls'"),
         a(Own, "bash -xe -c 'ls'"),
         a(Own, "bash -euo pipefail -c 'ls'"),
-        a(Own, "zsh -fo extendedglob -c 'ls'"),
-        a(Own, "zsh -oc extendedglob 'ls'"),
         a(Own, "set -e"),
         a(Own, "set -eu"),
         a(Own, "set -x"),
         a(Own, "set +e"),
         a(Own, "set -eo pipefail"),
         a(Own, "setopt extendedglob"),
-        a(Own, "unsetopt nomatch"),
         a(Own, "emulate -L zsh -c 'ls'"),
         a(Own, "emulate -LR zsh"),
         // An expansion after the first operand is an argument, and after `--` nothing is an option.
@@ -2483,6 +2476,12 @@ fn fifth_audit_denied_cases() -> Vec<Case> {
         "emulate bash -c 'ls'",
         "emulate -LR -T zsh",
         "unsetopt extendedglob nomatch; ls",
+        // A name outside the table is unreadable even where an older revision read it.
+        "zsh -o extendedglob -c 'ls'",
+        "zsh -o nomatch -c 'ls'",
+        "zsh -fo extendedglob -c 'ls'",
+        "zsh -oc extendedglob 'ls'",
+        "unsetopt nomatch; ls",
     ] {
         cases.push(d(Own, command, ur));
     }

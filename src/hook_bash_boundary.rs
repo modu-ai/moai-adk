@@ -130,7 +130,9 @@ const TRIGGERS_MORE: &[&str] = &[
     // The words that change how a command word or a `cd` operand is looked up (D-12).
     "alias",
     "enable",
-    "setopt",
+    // `set`, `setopt`, `unsetopt` and `shopt` read their option words from the table of D-17: a
+    // line with one of them is walked, because a word outside the table is unreadable.
+    "set",
     "emulate",
     "cdpath",
     "cdable",
@@ -1140,148 +1142,136 @@ fn names_cdpath_variable(w: &Word) -> bool {
     matches!(name.trim_end_matches('+'), "CDPATH" | CDPATH_ARRAY)
 }
 
-/// Whether an option word names an option that changes how `cd` finds its operand (`cdable_vars`,
-/// `cdpath`). zsh ignores case and underscores in option names, so the match does too.
-fn names_cd_lookup_option(text: &str) -> bool {
-    let flat: String = text
-        .chars()
-        .filter(|c| !matches!(c, '_' | '-'))
-        .flat_map(char::to_lowercase)
-        .collect();
-    flat.contains("cdablevars") || flat.contains("cdpath")
-}
+// ------------------------------------------------------------ the allowed-option table (D-17)
+//
+// The option words of a shell start, `emulate`, `set`, `setopt`, `unsetopt` and `shopt` are read
+// from the tables below and from nothing else: a word the tables do not list is unreadable. No
+// word is judged by what it might mean, so a new spelling of an option that changes where `cd`
+// looks needs no new rule. Sources of the letters: zshoptions(1) "SINGLE LETTER OPTIONS" and
+// bash(1), read 2026-11-24T00:48:05Z (SPEC Sources). To read one more word, add it to a table with
+// a row of AC-18.
 
-/// The word after a shell start option `-o`, `+o`, `-O` or `+O` (or after `emulate -o`): an
-/// option of the `cd` lookup, or a name an expansion decides, leaves the folder unreadable.
-fn shell_option_unreadable(value: Option<&Word>) -> bool {
-    value.is_some_and(|v| v.dynamic || names_cd_lookup_option(&v.text()))
-}
-
-/// The single-letter options of zsh, copied from zshoptions(1) "SINGLE LETTER OPTIONS", "Default
-/// set" (zsh 5.9, manual dated May 14, 2022, read 2026-11-23T23:45:41Z, extracted text sha256
-/// 198a32a76b5ae77b99dd69d9cb6702b5a393b9a25cde99901e4c625fc70df82d). A letter is judged by the
-/// option it names, with the same rule as a spelled-out name (D-17). The "sh/ksh emulation set"
-/// gives `-T` another meaning (`TRAPS_ASYNC`); the mode a shell is in is not readable from the
-/// text, so the default set is the one judged.
-const ZSH_SHORT_OPTIONS: &[(char, &str)] = &[
-    ('0', "CORRECT"),
-    ('1', "PRINT_EXIT_VALUE"),
-    ('2', "NO_BAD_PATTERN"),
-    ('3', "NO_NOMATCH"),
-    ('4', "GLOB_DOTS"),
-    ('5', "NOTIFY"),
-    ('6', "BG_NICE"),
-    ('7', "IGNORE_EOF"),
-    ('8', "MARK_DIRS"),
-    ('9', "AUTO_LIST"),
-    ('B', "NO_BEEP"),
-    ('C', "NO_CLOBBER"),
-    ('D', "PUSHD_TO_HOME"),
-    ('E', "PUSHD_SILENT"),
-    ('F', "NO_GLOB"),
-    ('G', "NULL_GLOB"),
-    ('H', "RM_STAR_SILENT"),
-    ('I', "IGNORE_BRACES"),
-    ('J', "AUTO_CD"),
-    ('K', "NO_BANG_HIST"),
-    ('L', "SUN_KEYBOARD_HACK"),
-    ('M', "SINGLE_LINE_ZLE"),
-    ('N', "AUTO_PUSHD"),
-    ('O', "CORRECT_ALL"),
-    ('P', "RC_EXPAND_PARAM"),
-    ('Q', "PATH_DIRS"),
-    ('R', "LONG_LIST_JOBS"),
-    ('S', "REC_EXACT"),
-    ('T', "CDABLE_VARS"),
-    ('U', "MAIL_WARNING"),
-    ('V', "NO_PROMPT_CR"),
-    ('W', "AUTO_RESUME"),
-    ('X', "LIST_TYPES"),
-    ('Y', "MENU_COMPLETE"),
-    ('Z', "ZLE"),
-    ('a', "ALL_EXPORT"),
-    ('e', "ERR_EXIT"),
-    ('f', "NO_RCS"),
-    ('g', "HIST_IGNORE_SPACE"),
-    ('h', "HIST_IGNORE_DUPS"),
-    ('i', "INTERACTIVE"),
-    ('k', "INTERACTIVE_COMMENTS"),
-    ('l', "LOGIN"),
-    ('m', "MONITOR"),
-    ('n', "NO_EXEC"),
-    ('p', "PRIVILEGED"),
-    ('r', "RESTRICTED"),
-    ('s', "SHIN_STDIN"),
-    ('t', "SINGLE_COMMAND"),
-    ('u', "NO_UNSET"),
-    ('v', "VERBOSE"),
-    ('w', "CHASE_LINKS"),
-    ('x', "XTRACE"),
-    ('y', "SH_WORD_SPLIT"),
+/// Letters after `-` in a short option word: `c` and `s` are the command-line letters of a shell
+/// start, `e u x f v C l` are `ERR_EXIT`, `NO_UNSET`, `XTRACE`, `NO_RCS`, `VERBOSE`, `NO_CLOBBER`
+/// and `LOGIN` in zsh and the same letters in bash. `o` is read apart (last letter only).
+const OPTION_LETTERS_MINUS: &str = "csexufvlC";
+/// Letters after `+` (the same options turned off); `c` and `s` have no `+` form.
+const OPTION_LETTERS_PLUS: &str = "exufvC";
+/// The names a separate `-o` or `+o` may take, and the first names of `setopt` and `unsetopt`.
+const OPTION_NAMES: &[&str] = &["errexit", "nounset", "pipefail", "xtrace", "verbose"];
+/// The names `setopt` and `unsetopt` read besides `OPTION_NAMES`.
+const SETOPT_NAMES: &[&str] = &["extendedglob", "nullglob", "globdots"];
+/// The names `shopt` reads.
+const SHOPT_NAMES: &[&str] = &[
+    "extglob",
+    "nullglob",
+    "failglob",
+    "globstar",
+    "dotglob",
+    "nocaseglob",
+    "nocasematch",
+    "lastpipe",
 ];
+/// The long words of a shell start that name no option (`--rcfile` and `--init-file` are read
+/// apart because they take a file).
+const SHELL_LONG_OPTIONS: &[&str] = &[
+    "--login",
+    "--norc",
+    "--noprofile",
+    "--no-rcs",
+    "--version",
+    "--help",
+];
+/// The letters of an `emulate` cluster (`-L`, `-R`, `-l`, `-c STRING`) and the shells it names.
+const EMULATE_LETTERS: &str = "LRlc";
+const EMULATE_SHELLS: &[&str] = &["zsh", "sh", "ksh", "csh"];
 
-/// What one single-dash option word (`-fT`, `+o`, `-xo`) does where a shell reads options.
-#[derive(Default)]
+/// What one short option word (`-fe`, `+x`, `-eo`, `-c`) says where a shell reads options.
 struct ShortOptions {
-    /// A letter of the word names an option of the `cd` lookup (`-T` is `CDABLE_VARS`).
-    cd_lookup: bool,
-    /// A letter (`o`, `O`) takes the next word as an option name.
+    /// The last letter is `o`: the next word is an option name.
     takes_name: bool,
+    /// The word holds the `-c` letter (`-lc`).
+    command_string: bool,
+    /// The word holds the `-s` letter.
+    read_stdin: bool,
 }
 
-/// The one reading of an option cluster for every place that takes shell options: a shell start,
-/// `emulate`, `set`, `setopt` and `unsetopt` (D-17). Every letter is read, because a cluster can
-/// hold the letter of a lookup option behind other letters (`-fT`) or behind `o` and `O` (zsh
-/// reads `-o` and goes on with the letters that follow). A `--` word is a long option, which
-/// `names_cd_lookup_option` judges by name.
-fn scan_short_options(text: &str) -> ShortOptions {
-    let mut scan = ShortOptions::default();
-    if text.starts_with("--") {
-        return scan;
-    }
-    let Some(cluster) = text.strip_prefix(['-', '+']) else {
-        return scan;
+/// The one reading of a short option word for every place that takes shell options. `None` is
+/// unreadable: a letter that the table does not list, an `o` that is not the last letter (zsh reads
+/// the rest of the word as the option name), a bare `-` or `+`, and a long word.
+fn read_short_options(text: &str) -> Option<ShortOptions> {
+    let (letters, cluster) = if let Some(rest) = text.strip_prefix('-') {
+        (OPTION_LETTERS_MINUS, rest)
+    } else {
+        (OPTION_LETTERS_PLUS, text.strip_prefix('+')?)
     };
-    for c in cluster.chars() {
-        scan.takes_name |= matches!(c, 'o' | 'O');
-        scan.cd_lookup |= ZSH_SHORT_OPTIONS
-            .iter()
-            .any(|&(letter, name)| letter == c && names_cd_lookup_option(name));
+    if cluster.is_empty() {
+        return None;
     }
-    scan
+    let mut scan = ShortOptions {
+        takes_name: false,
+        command_string: false,
+        read_stdin: false,
+    };
+    let count = cluster.chars().count();
+    for (at, c) in cluster.chars().enumerate() {
+        if c == 'o' && at + 1 == count {
+            scan.takes_name = true;
+        } else if letters.contains(c) {
+            scan.command_string |= c == 'c';
+            scan.read_stdin |= c == 's';
+        } else {
+            return None;
+        }
+    }
+    Some(scan)
 }
 
-/// `setopt`, `unsetopt`, `shopt` and `set` that turn an option of the `cd` lookup on or off, or
-/// (`set -A`, `+A`) assign an array such as the `cdpath` of zsh. A word of `setopt` that an
-/// expansion decides is unreadable too; the option list of `set` is data.
-fn changes_cd_lookup(name: &str, args: &[Word]) -> bool {
-    let strict = matches!(name, "setopt" | "unsetopt" | "shopt");
-    let mut option_value = false;
-    for w in args {
-        let after_o = std::mem::take(&mut option_value);
+/// Whether the word after `-o` or `+o` is a name of `names`: a missing word (`set -o` lists the
+/// options) is fine, a word an expansion decides or a name outside the table is not.
+fn option_name_listed(value: Option<&Word>, names: &[&str]) -> bool {
+    value.is_none_or(|v| !v.dynamic && names.contains(&v.text().as_str()))
+}
+
+/// Whether the option words of `set`, `setopt`, `unsetopt` or `shopt` are unreadable (D-17). For
+/// `set` the option places end at `--` or at the first static word that is no option (the
+/// positional parameters follow and are data), and a word that an expansion decides before that
+/// may be an option, so it is unreadable. For the other three every word is an option place.
+fn option_command_unreadable(name: &str, args: &[Word]) -> bool {
+    let mut i = 0;
+    while i < args.len() {
+        let w = &args[i];
+        i += 1;
         if w.dynamic {
-            if strict || after_o {
+            return true;
+        }
+        let text = w.text();
+        if name == "shopt" {
+            if matches!(text.as_str(), "-s" | "-u" | "-q" | "-p") {
+                continue;
+            }
+            if !SHOPT_NAMES.contains(&text.as_str()) {
                 return true;
             }
             continue;
         }
-        let text = w.text();
         if name == "set" && text == "--" {
             return false;
         }
-        if names_cd_lookup_option(&text) {
-            return true;
-        }
-        if matches!(name, "set" | "setopt" | "unsetopt") {
-            let cluster = !text.starts_with("--") && (w.is_option() || text.starts_with('+'));
-            if cluster {
-                // The letters of the cluster are judged by the option they name (D-17).
-                let scan = scan_short_options(&text);
-                if scan.cd_lookup || (name == "set" && text[1..].contains('A')) {
+        if text.starts_with(['-', '+']) {
+            let Some(scan) = read_short_options(&text) else {
+                return true;
+            };
+            if scan.takes_name {
+                if !option_name_listed(args.get(i), OPTION_NAMES) {
                     return true;
                 }
-                option_value = scan.takes_name;
+                i += 1;
             }
+        } else if name == "set" {
+            return false;
+        } else if !OPTION_NAMES.contains(&text.as_str()) && !SETOPT_NAMES.contains(&text.as_str()) {
+            return true;
         }
     }
     false
@@ -1619,7 +1609,7 @@ impl Walker<'_> {
                 // line is unreadable whatever follows (D-12). The list of words is closed.
                 "alias" | "unalias" | "hash" | "enable" => return Err(Class::Unreadable),
                 "setopt" | "unsetopt" | "shopt" | "set" => {
-                    return if changes_cd_lookup(name, args) {
+                    return if option_command_unreadable(name, args) {
                         Err(Class::Unreadable)
                     } else {
                         Ok(())
@@ -2106,31 +2096,26 @@ impl Walker<'_> {
             } else if matches!(t.as_str(), "--rcfile" | "--init-file") {
                 // The value of these two is a file.
                 i += 1;
-            } else if w.is_option() || t.starts_with('+') {
-                // `--cdablevars`, `-ocdablevars`, `--no-cdable-vars`: a start option that names a
-                // `cd` lookup option is judged like `setopt` (D-12); a letter such as `-T` is
-                // judged by the option it names, and the value of `-o` and `-O` (also behind
-                // other letters, `-fo`) is a shell option name (D-17).
-                if names_cd_lookup_option(&t) {
+            } else if t.starts_with("--") {
+                // A long option is read only from the table; `--cdablevars` and every other
+                // spelling of an option name is unreadable (D-17).
+                if !SHELL_LONG_OPTIONS.contains(&t.as_str()) {
                     return Err(Class::Unreadable);
                 }
-                let scan = scan_short_options(&t);
-                if scan.cd_lookup {
+            } else if t.starts_with(['-', '+']) {
+                // A short word is read only from the allowed letters; `o` stands last and takes
+                // the next word, which must be a name of the table (D-17).
+                let Some(scan) = read_short_options(&t) else {
                     return Err(Class::Unreadable);
-                }
+                };
                 if scan.takes_name {
-                    if shell_option_unreadable(args.get(i)) {
+                    if !option_name_listed(args.get(i), OPTION_NAMES) {
                         return Err(Class::Unreadable);
                     }
                     i += 1;
                 }
-                let cluster = t.trim_start_matches(['-', '+']);
-                if !t.starts_with("--") && cluster.contains('c') {
-                    command_string = true;
-                }
-                if !t.starts_with("--") && cluster.contains('s') {
-                    read_stdin = true;
-                }
+                command_string |= scan.command_string;
+                read_stdin |= scan.read_stdin;
             } else {
                 operands.push(w);
             }
@@ -2166,40 +2151,32 @@ impl Walker<'_> {
         Ok(())
     }
 
-    /// zsh `emulate [-lLR] [shell] [-o OPTION]… [-c STRING]`: it sets shell options like a shell
-    /// start does, so an option that changes where `cd` lands (or that an expansion decides) is
-    /// unreadable, and the `-c` string is judged as if it stood alone.
+    /// zsh `emulate [-lLR] [shell] [-c STRING]`: it sets shell options like a shell start does, so
+    /// every word is read by the allowed-option table (D-17): a cluster of the letters `L R l c`
+    /// and a shell name of the table are read, and anything else (an option such as `-o` or `-T`,
+    /// a word an expansion decides) is unreadable. The `-c` string is judged as if it stood alone.
     fn emulate(&mut self, args: &[Word], state: &State, depth: usize) -> Verdict {
         let mut i = 0;
         while i < args.len() {
             let w = &args[i];
             i += 1;
             if w.dynamic {
-                // Any word of `emulate` may be an option an expansion decides (D-17).
                 return Err(Class::Unreadable);
             }
             let t = w.text();
-            if t.starts_with(['-', '+']) {
-                if names_cd_lookup_option(&t) {
+            if let Some(cluster) = t.strip_prefix('-') {
+                if cluster.is_empty() || !cluster.chars().all(|c| EMULATE_LETTERS.contains(c)) {
                     return Err(Class::Unreadable);
                 }
-                let scan = scan_short_options(&t);
-                if scan.cd_lookup {
-                    return Err(Class::Unreadable);
-                }
-                if scan.takes_name {
-                    if shell_option_unreadable(args.get(i)) {
-                        return Err(Class::Unreadable);
-                    }
-                    i += 1;
-                }
-                if t.starts_with('-') && !t.starts_with("--") && t[1..].contains('c') {
+                if cluster.contains('c') {
                     return match args.get(i) {
                         Some(s) if s.dynamic => Err(Class::Unreadable),
                         Some(s) => self.walk(&s.text(), &mut state.clone(), depth + 1),
                         None => Ok(()),
                     };
                 }
+            } else if !EMULATE_SHELLS.contains(&t.as_str()) {
+                return Err(Class::Unreadable);
             }
         }
         Ok(())
