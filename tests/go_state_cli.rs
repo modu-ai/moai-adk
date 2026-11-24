@@ -99,11 +99,17 @@ impl Fx {
 }
 
 fn run(args: &[&str]) -> Output {
+    run_env(args, &[])
+}
+
+/// [`run`] with extra environment variables for this one command.
+fn run_env(args: &[&str], envs: &[(&str, &str)]) -> Output {
     Command::new(EXE)
         .args(args)
         .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("LC_ALL", "C")
+        .envs(envs.iter().copied())
         .output()
         .unwrap()
 }
@@ -341,7 +347,11 @@ fn a_linked_moai_folder_or_manifest_is_refused() {
 const REF: &str = "test-permission-ref";
 
 fn call(args: &[&str]) -> Value {
-    let out = run(args);
+    call_env(args, &[])
+}
+
+fn call_env(args: &[&str], envs: &[(&str, &str)]) -> Value {
+    let out = run_env(args, envs);
     serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
         panic!(
             "{args:?}: {}{}",
@@ -401,14 +411,21 @@ fn movable_fixture() -> Fx {
 }
 
 fn apply(fx: &Fx, digest: &str) -> Value {
-    call(&[
-        "go-state-apply",
-        fx.root.to_str().unwrap(),
-        "--plan-digest",
-        digest,
-        "--permission-reference",
-        REF,
-    ])
+    apply_env(fx, digest, &[])
+}
+
+fn apply_env(fx: &Fx, digest: &str, envs: &[(&str, &str)]) -> Value {
+    call_env(
+        &[
+            "go-state-apply",
+            fx.root.to_str().unwrap(),
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            REF,
+        ],
+        envs,
+    )
 }
 
 fn moves(plan: &Value) -> usize {
@@ -648,16 +665,23 @@ fn revert_plan(fx: &Fx, backup: &str) -> Value {
 }
 
 fn revert(fx: &Fx, backup: &str, digest: &str) -> Value {
-    call(&[
-        "go-state-revert",
-        fx.root.to_str().unwrap(),
-        "--backup",
-        backup,
-        "--plan-digest",
-        digest,
-        "--permission-reference",
-        REF,
-    ])
+    revert_env(fx, backup, digest, &[])
+}
+
+fn revert_env(fx: &Fx, backup: &str, digest: &str, envs: &[(&str, &str)]) -> Value {
+    call_env(
+        &[
+            "go-state-revert",
+            fx.root.to_str().unwrap(),
+            "--backup",
+            backup,
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            REF,
+        ],
+        envs,
+    )
 }
 
 #[test]
@@ -2697,13 +2721,20 @@ fn many_specs_fixture(n: usize) -> Fx {
     fx
 }
 
+/// The debug-build switch that leaves out the syncs of a publish (`src/apply.rs`). Each save of
+/// the receipt is a file sync and a directory sync, `F_FULLFSYNC` on macOS, about 9 ms apiece;
+/// a thousand saves in the apply and again in the revert were 33 of the test's 34 seconds. Only
+/// the test below gives it to a command, and `tests/common` does not carry it: another test that
+/// loses its syncs without saying so would hide a broken save.
+const UNSYNCED: &[(&str, &str)] = &[("MOAI_TEST_PUBLISH_SYNC", "skip")];
+
 /// AC-1: the revert of a receipt above the limit goes to the end and brings the tree back.
 #[test]
 fn a_receipt_above_256_kib_reverts_completely() {
     let fx = many_specs_fixture(1000);
     let before = project_tree(&fx);
     let p = plan(&fx);
-    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let v = apply_env(&fx, p["plan_digest"].as_str().unwrap(), UNSYNCED);
     assert_eq!(v["ok"], json!(true), "{v}");
     let backup = v["result"]["backup"].as_str().unwrap().to_string();
     let (path, receipt) = receipt_of(&fx, &backup);
@@ -2716,11 +2747,113 @@ fn a_receipt_above_256_kib_reverts_completely() {
 
     let rp = revert_plan(&fx, &backup);
     assert_eq!(rp["ok"], json!(true), "{rp}");
-    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    let v = revert_env(
+        &fx,
+        &backup,
+        rp["result"]["plan_digest"].as_str().unwrap(),
+        UNSYNCED,
+    );
     assert_eq!(v["ok"], json!(true), "{v}");
     assert_eq!(project_tree(&fx), before, "the Go tree is back");
     let (_, receipt) = receipt_of(&fx, &backup);
     assert_eq!(receipt["state"], json!("reverted"), "{receipt}");
+}
+
+/// The source of the files below, read from this checkout: a scan of text, so each scan names
+/// what it looks for and fails when that is gone.
+fn source_of(rel: &str) -> String {
+    fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(rel)).unwrap()
+}
+
+/// Every `.rs` file under `dir` (relative to the manifest folder), as `(path, text)`.
+fn rust_sources_under(dir: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    let mut stack = vec![PathBuf::from(dir)];
+    while let Some(d) = stack.pop() {
+        for e in fs::read_dir(Path::new(env!("CARGO_MANIFEST_DIR")).join(&d)).unwrap() {
+            let rel = d.join(e.unwrap().file_name());
+            let full = Path::new(env!("CARGO_MANIFEST_DIR")).join(&rel);
+            if full.is_dir() {
+                stack.push(rel);
+            } else if rel.extension().is_some_and(|x| x == "rs") {
+                out.push((rel.display().to_string(), fs::read_to_string(full).unwrap()));
+            }
+        }
+    }
+    out
+}
+
+/// The leader's condition 1 for the switch (card note 8689): no release build compiles a read of
+/// its name. Every line of `src/` that names it outside a comment sits in a function that carries
+/// `#[cfg(debug_assertions)]` directly above it (doc lines and other attributes may stand between).
+/// The scan needs at least one such line, so a deleted switch does not pass by having nothing to
+/// check.
+#[test]
+fn the_publish_sync_switch_is_read_only_by_a_debug_build_function() {
+    let name = ["MOAI_TEST", "PUBLISH", "SYNC"].join("_");
+    let mut reads = 0;
+    for (path, text) in rust_sources_under("src") {
+        let lines: Vec<&str> = text.lines().collect();
+        for (i, line) in lines.iter().enumerate() {
+            if !line.contains(&name) || line.trim_start().starts_with("//") {
+                continue;
+            }
+            reads += 1;
+            let f = (0..=i)
+                .rev()
+                .find(|&j| {
+                    let t = lines[j].trim_start();
+                    t.starts_with("fn ")
+                        || t.starts_with("pub fn ")
+                        || t.starts_with("pub(crate) fn ")
+                })
+                .unwrap_or_else(|| {
+                    panic!("{path}:{}: the switch is read outside a function", i + 1)
+                });
+            let mut debug_only = false;
+            for above in lines[..f].iter().rev() {
+                let t = above.trim_start();
+                if t.starts_with("#[") || t.starts_with("///") {
+                    debug_only |= t == "#[cfg(debug_assertions)]";
+                } else {
+                    break;
+                }
+            }
+            assert!(
+                debug_only,
+                "{path}:{}: a release build compiles this read of the switch; put it in a function with #[cfg(debug_assertions)]",
+                i + 1
+            );
+        }
+    }
+    assert!(reads >= 1, "the switch is not read anywhere in src/");
+}
+
+/// The leader's condition 3 (card note 8689): only the receipt-size test hands the switch to a
+/// command. Its body gives it to both commands that save the receipt, and the shared environment
+/// of `tests/common` does not carry the name.
+#[test]
+fn only_the_receipt_size_test_gives_the_commands_the_switch() {
+    let me = source_of("tests/go_state_cli.rs");
+    let start = me
+        .find("fn a_receipt_above_256_kib_reverts_completely()")
+        .expect("the receipt-size test");
+    let body = &me[start..start + me[start..].find("\n}\n").expect("end of the test")];
+    for call in ["apply_env(", "revert_env("] {
+        let at = body
+            .find(call)
+            .unwrap_or_else(|| panic!("the receipt-size test does not call {call}"));
+        let args_end = body[at..].find(");").expect("end of the call") + at;
+        assert!(
+            body[at..args_end].contains("UNSYNCED"),
+            "{call} in the receipt-size test does not carry UNSYNCED"
+        );
+    }
+    let name = ["MOAI_TEST", "PUBLISH", "SYNC"].join("_");
+    assert!(
+        !source_of("tests/common/mod.rs").contains(&name),
+        "tests/common must not carry the switch"
+    );
 }
 
 /// AC-2: a copy an earlier stopped revert already removed is read as skip, not as a conflict,

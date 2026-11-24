@@ -361,7 +361,7 @@ fn parse_listing(text: &str) -> (Vec<PathBuf>, Vec<PathBuf>) {
 /// folder, also counted as an open file as `lsof` does) and `open <path>`. The outer `Some` says
 /// a table was injected; the inner `None` is a table that cannot be read (unavailable).
 #[cfg(debug_assertions)]
-fn injected_table() -> Option<Option<Snapshot>> {
+fn env_injected_table() -> Option<Option<Snapshot>> {
     let v = std::env::var_os("MOAI_TEST_PROCESS_TABLE")?;
     if v == "real" {
         return None;
@@ -387,8 +387,57 @@ fn injected_table() -> Option<Option<Snapshot>> {
 }
 
 #[cfg(not(debug_assertions))]
-fn injected_table() -> Option<Option<Snapshot>> {
+fn env_injected_table() -> Option<Option<Snapshot>> {
     None
+}
+
+/// The table a read uses in place of the real one: the empty table a unit test holds for its own
+/// thread ([`use_empty_table`]), else the one `MOAI_TEST_PROCESS_TABLE` names. A unit test cannot
+/// set that variable, which every thread of the process would see.
+fn injected_table() -> Option<Option<Snapshot>> {
+    #[cfg(test)]
+    if thread_table_held() {
+        return Some(Some(Snapshot {
+            cwds: Vec::new(),
+            open: Vec::new(),
+        }));
+    }
+    env_injected_table()
+}
+
+#[cfg(test)]
+thread_local! {
+    static THREAD_EMPTY_TABLE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Whether this thread holds an empty process table.
+#[cfg(test)]
+fn thread_table_held() -> bool {
+    THREAD_EMPTY_TABLE.with(|held| held.get())
+}
+
+#[cfg(test)]
+fn set_thread_table(on: bool) {
+    THREAD_EMPTY_TABLE.with(|held| held.set(on));
+}
+
+/// The empty table of one unit test's thread, held until this value is dropped.
+#[cfg(test)]
+struct EmptyTable;
+
+#[cfg(test)]
+impl Drop for EmptyTable {
+    fn drop(&mut self) {
+        set_thread_table(false);
+    }
+}
+
+/// For a unit test that judges files and folders and not processes: every re-check on this thread
+/// reads a table nobody uses anything in, instead of the whole machine through `lsof`.
+#[cfg(test)]
+fn use_empty_table() -> EmptyTable {
+    set_thread_table(true);
+    EmptyTable
 }
 
 /// The time limit of one `lsof`; a debug build lets a test shorten it.
@@ -2213,6 +2262,15 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn the_recheck_before_a_removal_refuses_files_and_an_install_folder() {
+        // This test judges files and install folders, not processes. Each re-check below reads
+        // the working folders and the open files of the whole machine through `lsof` unless this
+        // thread holds an empty table: thirteen re-checks, two scans each.
+        let _table = use_empty_table();
+        assert_eq!(
+            read_cwds(),
+            Some(Vec::new()),
+            "the re-checks read the empty table of this thread"
+        );
         let d = tempfile::tempdir().unwrap();
         let base = fs::canonicalize(d.path()).unwrap();
         let primary = base.join("primary");
@@ -2272,6 +2330,22 @@ mod tests {
         );
         fs::remove_dir_all(wt.join("node_modules")).unwrap();
         assert_eq!(probe(true), None);
+    }
+
+    /// The empty table of [`use_empty_table`] is the holding thread's own: another thread of the
+    /// same process (another unit test under `cargo test`) reads its own table, and the holder
+    /// gives the table back when it is dropped.
+    #[test]
+    fn an_empty_table_belongs_to_the_thread_that_holds_it() {
+        assert!(!thread_table_held(), "no table is held at the start");
+        let table = use_empty_table();
+        assert!(thread_table_held());
+        assert!(
+            !std::thread::spawn(thread_table_held).join().unwrap(),
+            "another thread reads the table it holds itself"
+        );
+        drop(table);
+        assert!(!thread_table_held(), "the table goes back when dropped");
     }
 
     /// Audit B2 on #3083 (condition 1 of the #3058 audit): the entry `apply` acts on carries its own

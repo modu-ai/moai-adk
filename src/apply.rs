@@ -149,7 +149,25 @@ fn cross_device(e: &std::io::Error) -> bool {
     matches!(e.raw_os_error(), Some(18) | Some(17))
 }
 
+/// Test builds only: `MOAI_TEST_PUBLISH_SYNC=skip` leaves out the two syncs of a publish, the
+/// temporary file's `sync_all` in [`stage`] and the directory's in [`sync_parent`]. The write
+/// order, the temporary file and the rename stay as they are. A test that saves a receipt a
+/// thousand times asks for it: `sync_all` is `F_FULLFSYNC` on macOS, about 9 ms a call. The name
+/// is read only here, in a function a release build does not compile with it.
+#[cfg(debug_assertions)]
+fn publish_sync_skipped() -> bool {
+    std::env::var_os("MOAI_TEST_PUBLISH_SYNC").is_some_and(|v| v == "skip")
+}
+
+#[cfg(not(debug_assertions))]
+fn publish_sync_skipped() -> bool {
+    false
+}
+
 fn sync_parent(path: &Path) {
+    if publish_sync_skipped() {
+        return;
+    }
     if let Some(parent) = path.parent() {
         if let Ok(dir) = fs::File::open(parent) {
             let _ = dir.sync_all();
@@ -201,7 +219,13 @@ fn stage(
     let _ = mode;
     let written = file
         .write_all(after)
-        .and_then(|_| file.sync_all())
+        .and_then(|_| {
+            if publish_sync_skipped() {
+                Ok(())
+            } else {
+                file.sync_all()
+            }
+        })
         .map_err(|_| "temporary write failed".to_string());
     // The re-check may itself fail (for example a permission change mid-apply); the
     // temporary file is removed on that path too, never left behind.
