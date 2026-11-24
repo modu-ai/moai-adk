@@ -506,6 +506,80 @@ fn refuse_link_after_plan(root: &Path, kind: &str, path: &str) -> Result<()> {
     }
 }
 
+/// The generated kinds a plan removes when the request no longer names them
+/// (SPEC-20261125-generation-empty-request REQ-1).
+const UNREQUESTED_KINDS: [&str; 3] = [
+    "generation:project-skill:",
+    "generation:native-role:",
+    "generation:skill-projection:",
+];
+
+/// The manifest kinds the request still names: its project skills, project agents and skill
+/// projections, one per host.
+fn requested_kinds(request: &GenerationRequest) -> Vec<String> {
+    let skills = request.project_skills.iter().flat_map(|ps| {
+        project_skill_hosts(ps)
+            .into_iter()
+            .map(move |h| format!("generation:project-skill:{h}:{}", ps.id))
+    });
+    let roles = request
+        .native_roles
+        .iter()
+        .map(|r| format!("generation:native-role:{}:{}", r.host, r.role_id));
+    let projections = request.skill_projections.iter().flat_map(|p| {
+        let hosts: Vec<String> = if p.host_targets.is_empty() {
+            vec!["claude".into()]
+        } else {
+            p.host_targets.clone()
+        };
+        hosts
+            .into_iter()
+            .map(move |h| format!("generation:skill-projection:{h}:{}", p.id))
+    });
+    skills.chain(roles).chain(projections).collect()
+}
+
+/// The paths a manifest `kind` names: a recorded path is trusted only when it is one of these.
+/// A Claude Code role also keeps the flat path an earlier version wrote
+/// (SPEC-20261121-base-agents-user-folder); a projection lives at the skill folder of its id.
+fn named_paths(kind: &str) -> Vec<String> {
+    if let Some(rest) = kind.strip_prefix("generation:project-skill:") {
+        return rest
+            .split_once(':')
+            .and_then(|(host, id)| project_skill_path(host, id))
+            .into_iter()
+            .collect();
+    }
+    if let Some(rest) = kind.strip_prefix("generation:native-role:") {
+        return match rest.split_once(':') {
+            Some(("claude", id)) => vec![
+                format!(".claude/agents/moai/{id}.md"),
+                format!(".claude/agents/{id}.md"),
+            ],
+            _ => Vec::new(),
+        };
+    }
+    if let Some(rest) = kind.strip_prefix("generation:skill-projection:") {
+        return rest
+            .split_once(':')
+            .map(|(_, id)| format!(".claude/skills/{id}/SKILL.md"))
+            .into_iter()
+            .collect();
+    }
+    Vec::new()
+}
+
+/// What a manifest `kind` names, for a conflict's detail.
+fn kind_noun(kind: &str) -> &'static str {
+    if kind.starts_with("generation:native-role:") {
+        "role"
+    } else if kind.starts_with("generation:skill-projection:") {
+        "skill projection"
+    } else {
+        "skill"
+    }
+}
+
 /// Where a project skill of `host` lives; `None` for a host this tool does not write.
 fn project_skill_path(host: &str, id: &str) -> Option<String> {
     match host {
@@ -958,18 +1032,11 @@ fn plan_filtered(
         }
     }
 
-    // Project skills no longer requested (#2706 P2b): a file this tool wrote and nobody edited
-    // is planned `remove` (apply keeps its bytes in the receipt first); an edited one is a
+    // Project skills, project agents (native roles) and skill projections no longer requested
+    // (#2706 P2b; SPEC-20261125-generation-empty-request): a file this tool wrote and nobody
+    // edited is planned `remove` (apply keeps its bytes in the receipt first); an edited one is a
     // conflict and stays. A recorded file that is already gone only leaves the list.
-    let requested: Vec<String> = request
-        .project_skills
-        .iter()
-        .flat_map(|ps| {
-            project_skill_hosts(ps)
-                .into_iter()
-                .map(move |h| format!("generation:project-skill:{h}:{}", ps.id))
-        })
-        .collect();
+    let requested: Vec<String> = requested_kinds(&request);
     let owned: Vec<(String, String, String)> = manifest
         .get("owned_files")
         .and_then(Value::as_array)
@@ -977,7 +1044,7 @@ fn plan_filtered(
             list.iter()
                 .filter_map(|f| {
                     let kind = f.get("section_id")?.as_str()?;
-                    if !kind.starts_with("generation:project-skill:") {
+                    if !UNREQUESTED_KINDS.iter().any(|k| kind.starts_with(k)) {
                         return None;
                     }
                     Some((
@@ -999,13 +1066,12 @@ fn plan_filtered(
         }
         // Pre-audit 6854760758 B1: the recorded path is trusted only when it is the path the
         // kind names, and nothing on the way is a symbolic link; otherwise it is a conflict.
-        let named = kind
-            .strip_prefix("generation:project-skill:")
-            .and_then(|rest| rest.split_once(':'))
-            .and_then(|(host, id)| project_skill_path(host, id));
         let link = link_on_path(&root, &rel);
-        let refused = if named.as_deref() != Some(rel.as_str()) {
-            Some("the recorded path is not the path of its skill; nothing removed".to_string())
+        let refused = if !named_paths(&kind).contains(&rel) {
+            Some(format!(
+                "the recorded path is not the path of its {}; nothing removed",
+                kind_noun(&kind)
+            ))
         } else {
             link.map(|l| format!("{l} is a symbolic link; nothing removed through it"))
         };
@@ -1018,6 +1084,7 @@ fn plan_filtered(
         let detail = refused.or_else(|| {
             edited.then_some("no longer requested, but edited after generation; kept".to_string())
         });
+        let project_skill = kind.starts_with("generation:project-skill:");
         files.push(GenerationFilePlan {
             path: rel,
             action: if detail.is_some() {
@@ -1026,11 +1093,15 @@ fn plan_filtered(
                 "remove"
             }
             .into(),
-            tracked_by_default: true,
+            tracked_by_default: project_skill,
             expected_sha256: current.as_deref().map(digest),
             baseline_sha256: Some(baseline),
             rendered_sha256: None,
-            source_refs: vec![project_profile_rel(&root)],
+            source_refs: if project_skill {
+                vec![project_profile_rel(&root)]
+            } else {
+                Vec::new()
+            },
             kind: Some(kind),
             detail,
         });
