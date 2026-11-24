@@ -42,7 +42,10 @@ fn package(flow: &str) -> tempfile::TempDir {
 fn package_with(routing: &str, flow: &str) -> tempfile::TempDir {
     let pkg = tempfile::tempdir().unwrap();
     fs::write(pkg.path().join("SKILL.md"), "package\n").unwrap();
-    for (rel, text) in [(SOURCE, routing.to_string()), (FLOW_SOURCE, flow.to_string())] {
+    for (rel, text) in [
+        (SOURCE, routing.to_string()),
+        (FLOW_SOURCE, flow.to_string()),
+    ] {
         let path = pkg.path().join(rel);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path, text).unwrap();
@@ -237,7 +240,11 @@ fn a_routing_receipt_revert_restores_its_own_slot_while_the_flow_slot_is_held() 
 
     let newer = package_with("## MoAI\n\nUse the skill ({invoke}), newer text.\n", &flow);
     let second = current_apply(&home, newer.path());
-    assert_ne!(routing_slot(&home), first_routing, "the apply moved the slot");
+    assert_ne!(
+        routing_slot(&home),
+        first_routing,
+        "the apply moved the slot"
+    );
     assert_eq!(flow_slot(&home), held_flow, "the flow text did not change");
 
     let v = revert(&home, &second, PERM).unwrap();
@@ -269,7 +276,10 @@ fn a_linked_new_file_with_the_slots_bytes_does_not_hold_the_slot() {
     assert!(!home.join(OLD_FLOW).exists(), "the earlier file goes: {v}");
     assert_eq!(flow_slot(&home), Value::Null);
     assert!(
-        fs::symlink_metadata(&link).unwrap().file_type().is_symlink(),
+        fs::symlink_metadata(&link)
+            .unwrap()
+            .file_type()
+            .is_symlink(),
         "the link stays"
     );
     assert_eq!(fs::read_to_string(&outside).unwrap(), flow);
