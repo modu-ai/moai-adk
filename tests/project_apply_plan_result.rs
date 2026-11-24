@@ -166,7 +166,7 @@ fn apply_takes_the_plan_result_that_carries_work_flow_remote() {
         "apply refused the plan result as printed: {}",
         said(&out)
     );
-    let profile = fs::read_to_string(world.project.join(".moai/project.yaml"))
+    let profile = fs::read_to_string(moai_cli::state_root::path(&world.project, "project.yaml"))
         .expect("the apply must write the profile");
     assert!(profile.contains("Fixture"), "{profile}");
 }
@@ -190,7 +190,7 @@ fn apply_still_refuses_another_unknown_key() {
         said(&out)
     );
     assert!(
-        !world.project.join(".moai/project.yaml").exists(),
+        !moai_cli::state_root::path(&world.project, "project.yaml").exists(),
         "a refused apply must write nothing"
     );
 }

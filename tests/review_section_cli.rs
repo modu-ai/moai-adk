@@ -12,7 +12,16 @@ use std::process::{Command, Stdio};
 use tempfile::TempDir;
 
 fn cli(args: &[&str], input: &Value) -> std::process::Output {
-    let mut child = Command::new(crate::common::MOAI_BIN)
+    cli_in(args, input, None)
+}
+
+/// `cli` with an own HOME, for a case that must not touch the HOME of the test process.
+fn cli_in(args: &[&str], input: &Value, home: Option<&Path>) -> std::process::Output {
+    let mut command = Command::new(crate::common::MOAI_BIN);
+    if let Some(home) = home {
+        command.env("HOME", home);
+    }
+    let mut child = command
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -61,11 +70,23 @@ fn request(language: &str) -> Value {
 }
 
 fn plan(root: &Path, language: &str) -> std::process::Output {
-    cli(&["agents-plan", root.to_str().unwrap()], &request(language))
+    plan_in(root, language, None)
+}
+
+fn plan_in(root: &Path, language: &str, home: Option<&Path>) -> std::process::Output {
+    cli_in(
+        &["agents-plan", root.to_str().unwrap()],
+        &request(language),
+        home,
+    )
 }
 
 fn apply(root: &Path, plan: &Value) -> std::process::Output {
-    cli(
+    apply_in(root, plan, None)
+}
+
+fn apply_in(root: &Path, plan: &Value, home: Option<&Path>) -> std::process::Output {
+    cli_in(
         &[
             "agents-apply",
             root.to_str().unwrap(),
@@ -75,6 +96,7 @@ fn apply(root: &Path, plan: &Value) -> std::process::Output {
             "fixture-approved",
         ],
         plan,
+        home,
     )
 }
 
@@ -169,6 +191,8 @@ fn an_existing_review_file_gets_the_section_appended_and_keeps_its_text() {
 /// ones, and still leaves out a `HOLD` value.
 #[test]
 fn review_md_writes_default_sourced_decisions_but_not_hold() {
+    let home = TempDir::new().unwrap();
+    let home = home.path();
     let root = project(vec![
         decision(
             "review_blocks",
@@ -182,9 +206,9 @@ fn review_md_writes_default_sourced_decisions_but_not_hold() {
         ),
         decision("done", "the project's own tests pass", "default"),
     ]);
-    let p = result(&plan(root.path(), "en"));
+    let p = result(&plan_in(root.path(), "en", Some(home)));
     assert_eq!(review_action(&p).as_deref(), Some("create"));
-    result(&apply(root.path(), &p));
+    result(&apply_in(root.path(), &p, Some(home)));
     let text = fs::read_to_string(root.path().join("REVIEW.md")).unwrap();
     assert!(
         text.contains("a secret in code or logs; a change without a test"),
@@ -207,8 +231,8 @@ fn review_md_writes_default_sourced_decisions_but_not_hold() {
             "default",
         ),
     ]);
-    let p = result(&plan(held.path(), "en"));
-    result(&apply(held.path(), &p));
+    let p = result(&plan_in(held.path(), "en", Some(home)));
+    result(&apply_in(held.path(), &p, Some(home)));
     let text = fs::read_to_string(held.path().join("REVIEW.md")).unwrap();
     assert!(text.contains("secret and key files"), "{text}");
     assert!(
