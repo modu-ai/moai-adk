@@ -771,7 +771,7 @@ pub(crate) fn walk_manifests(root: &Path, catalog: &Catalog) -> ManifestWalk {
 fn ignore_file_lines(
     dir: &Path,
     parts: &[&str],
-    mut budget: Option<&mut u64>,
+    budget: Option<&mut u64>,
     gaps: &mut BTreeSet<WalkGap>,
 ) -> Vec<IgnoreLine> {
     let Some((path, meta)) = file_in(dir, parts) else {
@@ -786,7 +786,7 @@ fn ignore_file_lines(
         gaps.insert(WalkGap::SkippedList);
         return Vec::new();
     };
-    if let Some(budget) = budget.as_deref_mut() {
+    if let Some(budget) = budget {
         *budget -= meta.len();
     }
     ignore_lines(&text)
