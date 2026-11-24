@@ -116,7 +116,7 @@ approval:
 
 ### 수리: AUDIT #434 B-1 (head `4f2d949919` 의 FAIL 뒤)
 
-수리 커밋은 `50b6c258bc` 예요. 판은 올리지 않았어요(승인 digest 그대로): 본문의 D-3 은 고치지 않고 아래에 정정으로 적어요(리더 결정, 노트 8157).
+수리 커밋은 `50b6c258bc`(코드와 테스트)와 `33bec29c34`(테스트 주석)예요. 첫 `check affected`(head `d7930da508`)는 `state_folder_literal_scan` 한 개가 FAIL 이었어요(내 주석이 상태 폴더 이름을 적어서, 나머지 2923 통과): 주석을 이름 없이 고쳐 새 head 로 다시 돌렸어요. 판은 올리지 않았어요(승인 digest 그대로): 본문의 D-3 은 고치지 않고 아래에 정정으로 적어요(리더 결정, 노트 8157).
 
 - D-3 정정: "`home_project` 까지의 구성요소만 보면 충분해요" 는 틀렸어요. 아웃박스의 집 폴더는 두 단계(`forge/outbox`)라서 `forge` 가 링크이고 그 뒤에 `outbox` 가 없으면 마지막 이름 검사(`symlink_metadata`)가 NotFound 로 통과하고, 복사(`create_dir_all`)가 링크를 따라가요. 맞는 문장은 이거예요: `check_destinations` 는 `KINDS` 의 집 폴더마다 `refuse_linked_home_path(home_root, home_project/<subdir>)` 로 뿌리부터 그 폴더까지 모든 구성요소를 걸러요. 마지막 이름이 이미 링크이면 충돌 문장 대신 같은 링크 거절 문장이 먼저 나와요(둘 다 거절이고 아무것도 쓰지 않아요).
 - 수정: `src/layout.rs` `check_destinations` 의 `KINDS` 루프에 `refuse_linked_home_path` 한 줄.
