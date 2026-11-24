@@ -431,7 +431,7 @@ fn a_window_gives_stage_percentiles_first_verdict_fail_share_and_block_kinds() {
     w.reservation(34, 1, "released", now - 90_000, now - 80_000);
     w.ready(34, 1, now - 90_000 + 100);
     w.verdict(34, true, &head_of(34, 1), now - 90_000 + 5100);
-    w.landed(34, now - 85_000);
+    w.landed(34, now - 84_000);
     w.finish(34, now - 80_000);
 
     // LANE-BLOCKED notes: four in the window, one before it, one that is not a block.
