@@ -237,13 +237,120 @@ fn the_property_budget_grows_with_load_above_the_cpus() {
     assert_eq!(secs(Some(16.0), 0), 30.0, "no CPU count, no scaling");
 }
 
-/// AC-7 (REQ-8): a run within its budget passes; one over it names the property, the seed, the
-/// elapsed time, the budget and the load the budget was scaled by.
+/// The text of a verdict that carries one, `None` for `Within`.
+#[cfg(test)]
+fn verdict_text(verdict: &Verdict) -> Option<&str> {
+    match verdict {
+        Verdict::Within => None,
+        Verdict::Warn(text) | Verdict::Fail(text) => Some(text),
+    }
+}
+
+/// SPEC-20261124-time-budget-tests AC-1 (REQ-1, REQ-3): the run of 2026-11-24 (51.7 s wall at
+/// load 25.4 on 16 CPUs) used 15 s of CPU, so it passes with one warning line; the same wall
+/// time with 31 s of CPU fails.
 #[test]
-fn the_property_budget_message_names_the_seed_and_the_load() {
-    let within = over_budget("p", 1000, 7, Duration::from_secs(59), Some(16.0), 8);
-    assert_eq!(within, None);
-    let over = over_budget("p", 1000, 7, Duration::from_secs(61), Some(16.0), 8).expect("over");
+fn the_property_budget_warns_not_fails_when_only_the_wall_time_passed_the_budget() {
+    let name = "random_interleavings_keep_the_two_invariants";
+    let wall = Duration::from_secs_f64(51.7);
+    let cpu = Some(Duration::from_secs(15));
+    let warned = judge(name, 1000, 13263398375705, wall, cpu, Some(25.4), 16);
+    let Verdict::Warn(line) = &warned else {
+        panic!("expected a warning, got {warned:?}");
+    };
+    for part in [name, "seed 13263398375705", "51.7", "48", "25.4", "15.0"] {
+        assert!(line.contains(part), "{part:?} in {line}");
+    }
+    assert!(!line.contains('\n'), "one line: {line}");
+    let failed = judge(
+        name,
+        1000,
+        13263398375705,
+        wall,
+        Some(Duration::from_secs(31)),
+        Some(25.4),
+        16,
+    );
+    assert!(matches!(failed, Verdict::Fail(_)), "got {failed:?}");
+}
+
+/// AC-2 (REQ-2): 30.0 s of CPU fails and names the property, the cases, the seed, the CPU time
+/// and the wall time; 29.9 s does not.
+#[test]
+fn the_property_budget_fails_at_thirty_seconds_of_cpu_time() {
+    let wall = Duration::from_secs(40);
+    let at = judge(
+        "p",
+        1000,
+        7,
+        wall,
+        Some(Duration::from_secs_f64(30.0)),
+        Some(16.0),
+        8,
+    );
+    let Verdict::Fail(text) = &at else {
+        panic!("expected a failure at 30.0 s, got {at:?}");
+    };
+    for part in ["property p", "1000 cases", "seed 7", "CPU", "30.0", "40.0"] {
+        assert!(text.contains(part), "{part:?} in {text}");
+    }
+    let below = judge(
+        "p",
+        1000,
+        7,
+        Duration::from_secs(5),
+        Some(Duration::from_secs_f64(29.9)),
+        Some(1.0),
+        8,
+    );
+    assert!(matches!(below, Verdict::Within), "got {below:?}");
+}
+
+/// AC-3 (REQ-4): 240 s of wall time fails as a hang whatever the CPU time and names the property,
+/// the seed, the wall time and the CPU time; 239.9 s within a 240 s budget does not.
+#[test]
+fn the_property_budget_fails_a_hang_at_two_hundred_forty_seconds() {
+    let hang = judge(
+        "p",
+        1000,
+        7,
+        Duration::from_secs(240),
+        Some(Duration::from_secs(1)),
+        Some(1000.0),
+        8,
+    );
+    let Verdict::Fail(text) = &hang else {
+        panic!("expected a hang, got {hang:?}");
+    };
+    for part in ["property p", "seed 7", "240.0", "1.0", "hang"] {
+        assert!(text.contains(part), "{part:?} in {text}");
+    }
+    let no_reading = judge("p", 1000, 7, Duration::from_secs(240), None, None, 8);
+    let text = match &no_reading {
+        Verdict::Fail(text) => text,
+        other => panic!("expected a hang with no CPU reading, got {other:?}"),
+    };
+    assert!(text.contains("unknown"), "unknown CPU time in {text}");
+    let near = judge(
+        "p",
+        1000,
+        7,
+        Duration::from_secs_f64(239.9),
+        Some(Duration::from_secs(1)),
+        Some(1000.0),
+        8,
+    );
+    assert_eq!(verdict_text(&near), None, "got {near:?}");
+}
+
+/// AC-4 (REQ-5): with no CPU reading, the wall time is judged against the load-scaled budget as
+/// before: past it fails, within it passes.
+#[test]
+fn the_property_budget_uses_the_wall_time_when_no_cpu_time_is_read() {
+    let over = judge("p", 1000, 7, Duration::from_secs(61), None, Some(16.0), 8);
+    let Verdict::Fail(text) = &over else {
+        panic!("expected a failure, got {over:?}");
+    };
     for part in [
         "property p",
         "1000 cases",
@@ -253,8 +360,71 @@ fn the_property_budget_message_names_the_seed_and_the_load() {
         "load 16.0",
         "8 CPUs",
     ] {
-        assert!(over.contains(part), "{part:?} in {over}");
+        assert!(text.contains(part), "{part:?} in {text}");
     }
+    let within = judge("p", 1000, 7, Duration::from_secs(59), None, Some(16.0), 8);
+    assert!(matches!(within, Verdict::Within), "got {within:?}");
+}
+
+/// AC-5 (REQ-6): a case that panics fails the property with the name, the seed and the case
+/// index, and the message never speaks of a budget.
+#[test]
+fn a_failing_case_fails_with_the_seed_and_case_index_whatever_the_time() {
+    let mut calls = 0u64;
+    let outcome = catch_unwind(AssertUnwindSafe(|| {
+        run_cases("p", 5, 7, None, |_| {
+            calls += 1;
+            if calls == 3 {
+                panic!("the third case broke");
+            }
+        })
+    }));
+    let panic = outcome.expect_err("a panicking case must fail the property");
+    let text = panic
+        .downcast_ref::<String>()
+        .cloned()
+        .or_else(|| panic.downcast_ref::<&str>().map(|s| (*s).to_string()))
+        .expect("a text panic");
+    for part in ["property p", "seed 7", "case 2", "the third case broke"] {
+        assert!(text.contains(part), "{part:?} in {text}");
+    }
+    assert!(!text.contains("budget"), "no budget talk in {text}");
+    assert_eq!(calls, 3, "the run stops at the failing case");
+}
+
+/// AC-6 (REQ-1): the thread CPU reading rises while the thread computes and stays near zero
+/// while it sleeps.
+#[cfg(unix)]
+#[test]
+fn the_thread_cpu_time_rises_when_the_thread_computes_and_not_when_it_sleeps() {
+    let read = || thread_cpu_time().expect("the thread CPU time is readable on unix");
+    let before = read();
+    // The cap only stops a reading that never rises; it is far above the 20 ms asked for.
+    let cap = Instant::now();
+    let mut sink = 0u64;
+    let after = loop {
+        for i in 0..100_000u64 {
+            sink = std::hint::black_box(sink.wrapping_add(i));
+        }
+        let now = read();
+        if now - before >= Duration::from_millis(20) {
+            break now;
+        }
+        assert!(
+            cap.elapsed() < Duration::from_secs(120),
+            "the thread CPU time did not rise by 20 ms while computing (sink {sink})"
+        );
+    };
+    assert!(after - before >= Duration::from_millis(20));
+
+    let slept_from = read();
+    std::thread::sleep(Duration::from_millis(300));
+    let slept_to = read();
+    let rise = slept_to - slept_from;
+    assert!(
+        rise < Duration::from_millis(100),
+        "the CPU reading rose by {rise:?} while the thread slept"
+    );
 }
 
 /// AC-11 (REQ-13, REQ-14): a replay index at or beyond the case count would run no case and
