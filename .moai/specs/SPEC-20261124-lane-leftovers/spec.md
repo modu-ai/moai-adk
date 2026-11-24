@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-lane-leftovers
 title: "lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8180 (2026-11-24T04:13:54Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8179 에 답함): SPEC 판 1 승인 — D-1 (a), D-2 (a), D-3 (a); 레인은 그 노트를 인용만 해요"
+  digest: "sha256:0350440c9bc5d3d4b2b923bac37afae4c0ae92f9aa5e0024deea93cc6b83afc1"
 ---
 
 # lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY
