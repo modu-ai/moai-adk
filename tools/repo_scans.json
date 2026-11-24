@@ -2369,6 +2369,35 @@
         }
       ],
       "rejects": "a change to the managed CLAUDE.md block text in src/agents.rs that the two tests pinning the block text (the area rule does not pick them: their names do not start with `agents`) did not re-run on the merge tree (SPEC-20261120-moai-layout, C-456)"
+    },
+    {
+      "id": "publish-sync-switch-read-only-in-debug-builds",
+      "always": true,
+      "tests": [
+        "src/apply.rs::tests::the_publish_sync_switch_is_read_only_by_a_debug_build_function",
+        "src/apply.rs::tests::only_the_receipt_size_test_gives_the_commands_the_switch"
+      ],
+      "checks": [
+        "cargo test --offline --locked --lib -- the_publish_sync_switch_is_read_only_by_a_debug_build_function only_the_receipt_size_test_gives_the_commands_the_switch"
+      ],
+      "rules": [
+        "src/apply.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        },
+        {
+          "prefix": "tests/go_state_cli.rs"
+        },
+        {
+          "prefix": "tests/common/mod.rs"
+        }
+      ],
+      "rejects": "a read of MOAI_TEST_PUBLISH_SYNC in any src file that is not directly under #[cfg(debug_assertions)], so a release build would skip the publish syncs, or a receipt-size test that does not pass the switch to its apply and revert only, or a tests/common that carries it (SPEC-20261125-slow-test-top2)"
     }
   ]
 }

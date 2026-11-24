@@ -36,6 +36,7 @@ created: 2026-11-25
 - write: `.moai/specs/SPEC-20261125-slow-test-top2/**`
 - write: `tests/go_state_cli.rs`, `src/worktree_gc.rs`
 - write (line lease, leader decision of the scope request on the card): `src/apply.rs`, the switch function, the two sync calls of `stage` and `sync_parent`, and the two source scans in its unit tests (a test file under `tests/` that names the manifest folder joins `tools/repo_scans.json`, which is not in this scope); `tests/common/**` stays unchanged
+- write (line lease, second leader decision of the scope request on the card): `tools/repo_scans.json`, one new entry at the end of the list that registers the two source scans; the other entries and `tests/repo_scans_table.rs` stay unchanged
 - read-only: everything else; a further path waits for a SCOPE-REQUEST note on the card
 
 ## Plan
@@ -123,7 +124,7 @@ created: 2026-11-25
 
 - 이 슬라이스는 순위 1·2위만 다뤄요. 3~5위(`update_hooks_cli`, `update_user_layer_cli`, `update_home`)는 하지 않았어요.
 - 측정은 이 기계 하나, 디버그 빌드예요. `F_FULLFSYNC` 는 macOS 의 `sync_all` 이라 Linux·Windows 의 이득은 재지 않았어요(Linux 의 `sync_all` 은 `fsync`).
-- 스위치는 시간만 줄여요. 스위치를 안 싣는 변경은 느릴 뿐 통과하므로 가드는 소스 텍스트를 읽는 스캔이에요(리더 결정). 스캔이 `src/apply.rs` 의 단위 테스트라서 `tests/go_state_cli.rs` 나 `tests/common/mod.rs` 만 바뀐 범위에서는 `check affected` 가 그 스캔을 고르지 못할 수 있어요(고르는 규칙은 읽지 않았어요, not_run). 건너뛴 동기화가 실제로 일어나지 않는지는 시간으로만 보였어요.
+- 스위치는 시간만 줄여요. 스위치를 안 싣는 변경은 느릴 뿐 통과하므로 가드는 소스 텍스트를 읽는 스캔이에요(리더 결정). 스캔이 `src/apply.rs` 의 단위 테스트라서 `tests/go_state_cli.rs` 나 `tests/common/mod.rs` 만 바뀐 범위를 `check affected` 가 어떻게 고르는지는 읽지 않았어요(not_run). 대신 `tools/repo_scans.json` 의 새 항목이 두 파일을 범위로 가지고 있어서 `moai repo-scans` 가 머지마다 스캔 둘을 골라요(리더 결정 8704). 건너뛴 동기화가 실제로 일어나지 않는지는 시간으로만 보였어요.
 - 2위의 가드 단언 `read_cwds() == Some([])` 는 실제 표를 읽는 기계에서는 실패하는 값이라 뮤턴트가 죽어요. 표를 읽을 수 없는 기계(`lsof` 없음)에서도 `Some([])` 가 아니라서 마찬가지로 죽어요.
 - `cargo test`(한 프로세스의 여러 스레드) 아래에서 이 파일의 단위 테스트 전체를 한 번 돌려 보는 일은 하지 않았어요(수정한 두 테스트와 새 테스트를 직접 돌렸어요). 전체는 `check affected` 의 nextest 가 돌려요.
 
@@ -131,6 +132,7 @@ created: 2026-11-25
 
 - AC-1: met — 위 표들과 방법·원자료.
 - AC-2: met — `worktree_gc` 단위 테스트가 같은 이름으로 통과하고(`the_recheck_...`, `an_empty_table_belongs_...`), 뮤턴트 둘이 죽어요.
+- 등록: 두 번째 `check affected` 도 FAIL 이었어요(헤드 `fda32b3531`, `repo_scans_table every_walking_test_file_is_listed_or_exempt` 한 개, `src/apply.rs` 가 `CARGO_MANIFEST_DIR` 와 `read_dir(` 를 함께 가져 저장소를 걷는 파일로 잡혔어요). 리더 결정 8704 에 따라 `tools/repo_scans.json` 에 항목 `publish-sync-switch-read-only-in-debug-builds` 하나를 끝에 더했어요(`always`, 규칙 파일 `src/apply.rs`, 범위 `src/**/*.rs`·`tests/go_state_cli.rs`·`tests/common/mod.rs`, 71개에서 72개, 기존 항목과 `tests/repo_scans_table.rs` 는 그대로). 더하기만임은 스크립트가 옛 JSON 의 모든 항목이 같음을 비교해 확인했어요. 등록표 테스트 전체(`--test repo_scans_table`)가 33개 통과했고 항목의 확인 명령 2개도 통과했어요.
 - AC-6: met — 두 스캔이 `apply::tests` 에서 통과해요(기준선 실행 4개 통과, 로그 `target/c482/baseline2-lib.log`).
 - AC-3: met — `go_state_cli` 의 1위 테스트가 통과하고(9.09초) 1위 테스트는 38.16초에서 10.03초가 됐어요(파일 전체는 `check affected` 가 돌려요).
 - AC-4: met — 지운 단언 줄 0개(verify 줄 exit 0).
