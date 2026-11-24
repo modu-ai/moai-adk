@@ -72,7 +72,7 @@ fn check_first(first: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// `<prefix> --mode-agent 레인 <lane> — <BODY>[ 먼저: <first>]` for `host`.
+/// `<prefix> work 레인 <lane> — <BODY>[ 먼저: <first>]` for `host`.
 pub fn line(lane: &str, first: Option<&str>, host: &str) -> Result<String, String> {
     if !crate::lane_registry::valid_name(lane) {
         return Err(format!(
@@ -85,7 +85,7 @@ pub fn line(lane: &str, first: Option<&str>, host: &str) -> Result<String, Strin
         .find(|(h, _)| *h == host)
         .map(|(_, p)| *p)
         .ok_or("host is invalid: use claude, codex or omp")?;
-    let mut out = format!("{prefix} --mode-agent 레인 {lane} — {BODY}");
+    let mut out = format!("{prefix} work 레인 {lane} — {BODY}");
     if let Some(task) = first {
         check_first(task)?;
         out.push_str(" 먼저: ");
