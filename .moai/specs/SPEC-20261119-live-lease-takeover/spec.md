@@ -45,27 +45,27 @@ created: 2026-11-19
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-8): in a temporary ledger an `active` card whose lease ended three hours ago and whose holder wrote nothing for three hours is swept to `ready` with its reservation `released`, one `card.sweep` event with `via: heartbeat`, `last_seen_at`, `silent_secs` and a note naming the silence, and a card whose lease ended 25 hours ago keeps `via: grace` · verify: `cargo nextest run --locked --offline --test card_heartbeat_cli silent_`
-- AC-2 (REQ-3): a card whose lease has not ended and whose holder wrote nothing for ten hours is skipped by `card sweep`, by `card sweep --dry-run` and by a take, with every row as it was · verify: `cargo nextest run --locked --offline --test card_heartbeat_cli live_lease_`
-- AC-3 (REQ-1, REQ-4, REQ-5): a lease ended three hours ago is kept when the reservation was updated five minutes ago (a take, a renew, a widening) and when the holder wrote a note five minutes ago, while a note written by another session does not count, and a holder that writes after the listing but before the write transaction keeps the card · verify: `cargo nextest run --locked --offline --test card_heartbeat_cli heartbeat_ listed_then_`
+- AC-1 (REQ-1, REQ-2, REQ-8): in a temporary ledger an `active` card whose lease ended three hours ago and whose holder wrote nothing for three hours is swept to `ready` with its reservation `released`, one `card.sweep` event with `via: heartbeat`, `last_seen_at`, `silent_secs` and a note naming the silence, and a card whose lease ended 25 hours ago keeps `via: grace` · verify: `cargo nextest run --locked --offline --test lane_heartbeat_cli silent_`
+- AC-2 (REQ-3): a card whose lease has not ended and whose holder wrote nothing for ten hours is skipped by `card sweep`, by `card sweep --dry-run` and by a take, with every row as it was · verify: `cargo nextest run --locked --offline --test lane_heartbeat_cli live_lease_`
+- AC-3 (REQ-1, REQ-4, REQ-5): a lease ended three hours ago is kept when the reservation was updated five minutes ago (a take, a renew, a widening) and when the holder wrote a note five minutes ago, while a note written by another session does not count, and a holder that writes after the listing but before the write transaction keeps the card · verify: `cargo nextest run --locked --offline --test lane_heartbeat_cli heartbeat_ listed_then_`
 - AC-4 (REQ-7): the silence window is pinned at one second before, at and one second after two hours, and the lease-end second counts as ended · verify: `cargo nextest run --locked --offline --lib heartbeat_window_`
-- AC-5 (REQ-6): `card take` on a card that meets REQ-2 sweeps and takes it at the next generation with one `card.sweep` and one `reserve` event, and on a card with a live lease or a fresh heartbeat it refuses as before and writes nothing · verify: `cargo nextest run --locked --offline --test card_heartbeat_cli take_`
-- AC-6 (REQ-9): after a heartbeat sweep the old holder's `renew`, `check` and `release` with the old generation are refused · verify: `cargo nextest run --locked --offline --test card_heartbeat_cli swept_holder_`
-- AC-7 (REQ-2): a `review` card, a `held_for_review` reservation and an `expired_candidate` reservation with a silent holder are skipped as the grace sweep skips them · verify: `cargo nextest run --locked --offline --test card_heartbeat_cli not_swept_`
+- AC-5 (REQ-6): `card take` on a card that meets REQ-2 sweeps and takes it at the next generation with one `card.sweep` and one `reserve` event, and on a card with a live lease or a fresh heartbeat it refuses as before and writes nothing · verify: `cargo nextest run --locked --offline --test lane_heartbeat_cli take_`
+- AC-6 (REQ-9): after a heartbeat sweep the old holder's `renew`, `check` and `release` with the old generation are refused · verify: `cargo nextest run --locked --offline --test lane_heartbeat_cli swept_holder_`
+- AC-7 (REQ-2): a `review` card, a `held_for_review` reservation and an `expired_candidate` reservation with a silent holder are skipped as the grace sweep skips them · verify: `cargo nextest run --locked --offline --test lane_heartbeat_cli not_swept_`
 - AC-8 (REQ-1…REQ-9): the neighbours · verify: `cargo nextest run --locked --offline --test ledger_sweep`; `cargo nextest run --locked --offline --test card_sweep_cli`; `cargo nextest run --locked --offline --test card_stale_cli`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261119-live-lease-takeover/**`
 - write: `src/ledger/reservation.rs`, `src/ledger/sweep.rs`, `src/card/sweep.rs`, `src/card/stale.rs`, `src/card/early_reclaim.rs`
-- write: `tests/card_heartbeat_cli.rs`
+- write: `tests/lane_heartbeat_cli.rs`
 - write (shared files, line-lease, only when needed): `src/ops/card.rs`, `src/profile.rs`, `docs/design-review/appendix/operations/card.md`
 - read-only: `src/ledger/workflow.rs`, `src/ledger/close.rs`, `src/ledger/schema.rs`, `src/card/work.rs`, `tests/ledger_sweep.rs`, `tests/card_sweep_cli.rs`
 - forbidden: `src/leader_round.rs` (C-469), the real home ledger (tests use a temporary HOME only), a schema change, a network call
 
 ## Plan
 
-1. Tests first (RED on the unchanged code): `tests/card_heartbeat_cli.rs` for AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, and the window edges as unit tests in `src/ledger/sweep.rs` for AC-4. Every test opens a temporary HOME. A test ages a reservation with SQL (`updated_at`, `lease_until`, an event's `at`) the way `tests/card_sweep_cli.rs` ages a lease.
+1. Tests first (RED on the unchanged code): `tests/lane_heartbeat_cli.rs` for AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, and the window edges as unit tests in `src/ledger/sweep.rs` for AC-4. Every test opens a temporary HOME. A test ages a reservation with SQL (`updated_at`, `lease_until`, an event's `at`) the way `tests/card_sweep_cli.rs` ages a lease.
 2. `src/ledger/reservation.rs`: `heartbeat_at` reads REQ-1 from a connection.
 3. `src/ledger/sweep.rs`: one `sweepable` rule used by the listing and by `sweep_in_tx`: the lease ended and (the grace ran out or the heartbeat is two hours old). `sweep_in_tx` reads the heartbeat inside its transaction (REQ-5), the event and the note carry the new fields (REQ-8). The `reserve_*sweeping` functions keep their signatures.
 4. `src/card/sweep.rs`: the answer carries `via`, `last_seen_at`, `silent_secs`, `silent_minutes`.
@@ -89,16 +89,18 @@ created: 2026-11-19
 | D-3 | No automatic lease renewal by a hook | revision 1 D-2: hosts differ, and a failed renewal would take a working lane's card | a follow-up card |
 | D-4 | The silence window is two hours, fixed | the default lease is four hours, the grace is 24 hours; two hours is long enough for a long test run between ledger writes, and a profile key can follow | a profile key like `lease_sweep_hours` |
 | D-5 | The silence rule is an addition to the grace rule, not a replacement: past the grace a card is swept whatever the heartbeat | `SPEC-20261124-ended-lease-sweep` is landed and its tests stay as they are | drop the silence rule |
+| D-6 | The integration test file is `tests/lane_heartbeat_cli.rs`, not `tests/card_heartbeat_cli.rs` | the leader moved it off `tests/card_*.rs` (held by C-287); `lease` is not a first word of `tests/areas.toml`, which `check_affected::tests::the_repository_tests_pass_the_table_step_as_added_files` enforces, while `lane` is and no reservation holds `tests/lane_*` | rename once C-287 lands |
 
 ## Result
 
-Not yet implemented: the SPEC is revised (revision 2) and waits for the leader's approval. The criteria below are `not_run` until the tests exist.
+Implemented on branch `spec/live-lease-takeover-20261119`; the SPEC stays `draft` until the leader approves it at READY. Run 1 (`cargo nextest run --locked --offline --no-fail-fast --lib --test lane_heartbeat_cli --test ledger_sweep --test card_sweep_cli --test card_stale_cli`, log `target/c117/green3.log`): 1955 tests run, 1955 passed. A live run of the built `moai` against a throwaway HOME ledger (a script outside the repository): a card whose lease ended three hours ago with a silent holder was swept (`via: heartbeat`, `silent_secs` 10801, `card.sweep` event and note), a card with a live lease and ten silent hours was not listed and not touched, a card whose holder noted five minutes ago was kept, a card whose only recent note came from another session was swept, `--dry-run` wrote nothing, and the old holder's `renew` with generation 1 was refused (`not_held`).
 
-- AC-1: not_run
-- AC-2: not_run
-- AC-3: not_run
-- AC-4: not_run
-- AC-5: not_run
-- AC-6: not_run
-- AC-7: not_run
-- AC-8: not_run
+- AC-1: met — `lane_heartbeat_cli` `silent_*` (3 tests: `silent_holder_with_an_ended_lease_is_swept_before_the_grace_runs_out`, `silent_past_the_grace_keeps_the_grace_as_its_reason`, `silent_holder_is_listed_by_a_dry_run_and_nothing_is_written`), passed in run 1, and the live run above.
+- AC-2: met — `live_lease_with_a_silent_holder_is_never_swept_nor_taken`, passed in run 1, and the live run (card with a live lease untouched).
+- AC-3: met — `heartbeat_a_recent_reservation_update_keeps_a_card_with_an_ended_lease`, `heartbeat_a_recent_note_of_the_holder_keeps_the_card`, `heartbeat_a_note_of_another_session_does_not_count`, `listed_then_the_holder_writes_keeps_the_card`, passed in run 1, and the live run.
+- AC-4: met — 6 `heartbeat_window_*` unit tests of `src/ledger/sweep.rs`, passed in run 1.
+- AC-5: met — `take_sweeps_a_silent_card_with_an_ended_lease_and_takes_it`, `take_refuses_an_ended_lease_with_a_fresh_heartbeat_and_writes_nothing`, passed in run 1.
+- AC-6: met — `swept_holder_is_refused_with_the_old_generation_after_a_silence_sweep`, passed in run 1, and the live run (`renew` refused).
+- AC-7: met — `not_swept_a_card_in_review_nor_an_unconfirmed_reservation`, passed in run 1.
+- AC-8: met — `ledger_sweep` 19, `card_sweep_cli` 15, `card_stale_cli` 6 passed in run 1.
+- Not done here (follow-up cards): the `stale[]` rows of `card next` for a silent card (Risks 3) and a heartbeat for the read-only `card check` (Risks 2).
