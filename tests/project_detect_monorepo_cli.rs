@@ -462,6 +462,9 @@ fn the_extension_file_limit_holds_at_both_edges() {
     );
 }
 
+/// Builds the name at one place of a list.
+type NameOf = fn(usize) -> String;
+
 /// The extension file with `rows` rows, each naming one file of its own.
 fn rows_json(rows: usize) -> String {
     let rows: Vec<String> = (0..rows)
@@ -472,7 +475,7 @@ fn rows_json(rows: usize) -> String {
 
 /// One row whose `key` list holds `n` names built by `name`, beside the file name every row
 /// needs.
-fn one_row_with(key: &str, n: usize, name: fn(usize) -> String) -> String {
+fn one_row_with(key: &str, n: usize, name: NameOf) -> String {
     let list: Vec<String> = (0..n).map(|i| format!("\"{}\"", name(i))).collect();
     let list = list.join(",");
     let row = match key {
@@ -519,7 +522,7 @@ fn the_extension_row_and_list_limits_hold_at_both_edges() {
     assert_eq!(extension_state(&skip(64)).0, "read");
     assert_eq!(extension_state(&skip(65)).0, "refused");
 
-    let lists: [(&str, fn(usize) -> String); 3] = [
+    let lists: [(&str, NameOf); 3] = [
         ("files", |i| format!("f{i}.mk")),
         ("suffixes", |i| format!(".s{i}")),
         ("tools", |i| format!("t{i}")),
