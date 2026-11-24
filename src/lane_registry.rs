@@ -10,7 +10,7 @@
 //! A lane registers once at start and renews with the same instance at every wake; the
 //! MODE-AGENT `session-id` step calls it before claiming and stops the round on a refusal.
 //!
-//! The folder is the one `-a` numbering already uses (`session::agent_seq_dir`), so every
+//! The folder is the one the named-session locks use (`session::agent_seq_dir`), so every
 //! worktree of the clone shares it and git never lists it. Writes go through a temporary file
 //! and a rename under an exclusive `File::lock` on `registry.lock`, so two registrations of one
 //! name cannot both succeed. Symlinks, non-regular files and oversized or malformed entries are
@@ -545,9 +545,10 @@ pub fn mode_of(common: &Path, name: &str, now: i64) -> Option<&'static str> {
 }
 
 /// The numbers `n` of the `agent-<n>.json` entries in the registry folder `dir` whose lease
-/// still runs past `now` (`lease_until > now`; an entry that ends exactly at `now` is over),
-/// for the launcher's `agent-N` numbering (#2971). Read only: no lock, no write and no folder
-/// created; a missing folder has no entries. Files that are not `agent-<n>.json` are ignored,
+/// still runs past `now` (`lease_until > now`; an entry that ends exactly at `now` is over).
+/// The launcher's `agent-N` numbering (#2971) that read it retired with `-l|-a`. Read only: no
+/// lock, no write and no folder created; a missing folder has no entries. Files that are not
+/// `agent-<n>.json` are ignored,
 /// but an entry that is one and is a symlink, not a regular file, oversized or malformed is an
 /// error, never "absent" (see [`read_entry`]). The caller has refused a symlinked `dir`.
 pub fn live_agent_numbers(dir: &Path, now: i64) -> Result<Vec<u64>, String> {

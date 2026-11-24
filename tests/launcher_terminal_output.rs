@@ -1,4 +1,4 @@
-//! #3004 P9: after `moai cc|glm -l|-a` the host exits and the launcher used to print one
+//! #3004 P9: after `moai cc|glm` the host exits and the launcher used to print one
 //! JSON line (`executed:true`) even on a terminal. On a terminal without `--json` it now prints
 //! nothing after a normal exit, a line or two on stderr after a failed one, and a readable
 //! summary for `--dry-run`; a pipe, a file and `--json` keep the envelope byte for byte.
@@ -62,7 +62,6 @@ impl Fixture {
             .env("ANTHROPIC_AUTH_TOKEN", SECRET)
             .env("STUB_EXIT", stub_exit.to_string())
             .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
-            .env_remove(moai_cli::session::AGENT_SEQ_TEST_HOLD_VAR)
             .stdin(Stdio::null());
         c
     }
@@ -146,7 +145,7 @@ fn has_json_line(text: &str) -> bool {
 #[test]
 fn a_pipe_gets_the_envelope_after_a_normal_exit() {
     let f = Fixture::new();
-    let out = f.pipe(&["cc", "-a"], 0);
+    let out = f.pipe(&["cc", "--name", "lane-1"], 0);
     assert_eq!(out.status.code(), Some(0));
     let stdout = String::from_utf8_lossy(&out.stdout);
     let lines: Vec<&str> = stdout.lines().collect();
@@ -157,15 +156,15 @@ fn a_pipe_gets_the_envelope_after_a_normal_exit() {
     assert_eq!(v["executed"], serde_json::json!(true));
     assert_eq!(v["exit_code"], serde_json::json!(0));
     assert_eq!(v["host_loaded"], serde_json::json!(false));
-    assert_eq!(v["role"], "agent");
-    assert_eq!(v["name"], "agent-1");
+    assert_eq!(v["role"], serde_json::Value::Null);
+    assert_eq!(v["name"], "lane-1");
     assert!(v["notes"].as_array().unwrap().len() >= 2, "{v}");
 }
 
 #[test]
 fn a_pipe_gets_the_envelope_with_the_host_exit_code_and_the_process_exits_as_before() {
     let f = Fixture::new();
-    let out = f.pipe(&["cc", "-a"], 3);
+    let out = f.pipe(&["cc", "--name", "lane-1"], 3);
     // The launcher has always exited 0 once the host ran; the host's code is in the envelope.
     assert_eq!(out.status.code(), Some(0));
     let v = last_envelope(&String::from_utf8_lossy(&out.stdout));
@@ -176,7 +175,7 @@ fn a_pipe_gets_the_envelope_with_the_host_exit_code_and_the_process_exits_as_bef
 #[test]
 fn a_pipe_dry_run_and_the_glm_key_source_keep_their_shape() {
     let f = Fixture::new();
-    let out = f.pipe(&["glm", "-a", "--dry-run"], 0);
+    let out = f.pipe(&["glm", "--name", "lane-1", "--dry-run"], 0);
     assert_eq!(out.status.code(), Some(0));
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(!stdout.contains(SECRET), "{stdout}");
@@ -189,7 +188,7 @@ fn a_pipe_dry_run_and_the_glm_key_source_keep_their_shape() {
         .as_array()
         .unwrap()
         .contains(&serde_json::json!("ANTHROPIC_AUTH_TOKEN")));
-    let ran = f.pipe(&["glm", "-a"], 0);
+    let ran = f.pipe(&["glm", "--name", "lane-1"], 0);
     let stdout = String::from_utf8_lossy(&ran.stdout);
     assert!(!stdout.contains(SECRET), "{stdout}");
     let v = last_envelope(&stdout);
@@ -200,10 +199,10 @@ fn a_pipe_dry_run_and_the_glm_key_source_keep_their_shape() {
 #[test]
 fn json_is_accepted_on_a_pipe_and_changes_nothing() {
     let f = Fixture::new();
-    let plain = f.pipe(&["cc", "-a"], 0);
-    let json = f.pipe(&["cc", "--json", "-a"], 0);
+    let plain = f.pipe(&["cc", "--name", "lane-1"], 0);
+    let json = f.pipe(&["cc", "--json", "--name", "lane-1"], 0);
     assert_eq!(json.status.code(), Some(0));
-    // A second launch in the same project takes the next number; compare the shape.
+    // Compare the shape of the two envelopes.
     let a = last_envelope(&String::from_utf8_lossy(&plain.stdout));
     let b = last_envelope(&String::from_utf8_lossy(&json.stdout));
     assert_eq!(keys_of(&a), keys_of(&b));
@@ -216,7 +215,7 @@ fn json_is_accepted_on_a_pipe_and_changes_nothing() {
 #[test]
 fn a_terminal_normal_exit_prints_nothing_after_the_host() {
     let f = Fixture::new();
-    let (code, out) = f.tty(&["cc", "-a"], 0);
+    let (code, out) = f.tty(&["cc", "--name", "lane-1"], 0);
     assert_eq!(code, Some(0), "{out}");
     assert!(!has_json_line(&out), "{out}");
     assert!(!out.contains(SECRET), "{out}");
@@ -226,12 +225,6 @@ fn a_terminal_normal_exit_prints_nothing_after_the_host() {
     assert_eq!(out[at + MARK.len()..].trim(), "", "after the host: {out:?}");
     // What the user needs to know is said once, before the host starts.
     let before = &out[..at];
-    assert_eq!(before.matches("agent number 1 taken").count(), 1, "{out}");
-    assert_eq!(
-        before.matches(moai_cli::session::AGENT_ONE_WARNING).count(),
-        1,
-        "{out}"
-    );
     assert_eq!(before.matches("moai: initialized").count(), 1, "{out}");
 }
 
@@ -239,9 +232,13 @@ fn a_terminal_normal_exit_prints_nothing_after_the_host() {
 #[test]
 fn a_terminal_failed_exit_prints_one_or_two_plain_lines_and_keeps_the_exit_code() {
     let f = Fixture::new();
-    let (code, out) = f.tty(&["cc", "-a"], 3);
+    let (code, out) = f.tty(&["cc", "--name", "lane-1"], 3);
     // The process exit code is what it was before (and what a pipe gives): 0 once the host ran.
-    assert_eq!(code, f.pipe(&["cc", "-a"], 3).status.code(), "{out}");
+    assert_eq!(
+        code,
+        f.pipe(&["cc", "--name", "lane-1"], 3).status.code(),
+        "{out}"
+    );
     assert!(!has_json_line(&out), "{out}");
     let at = out
         .find(MARK)
@@ -253,7 +250,7 @@ fn a_terminal_failed_exit_prints_one_or_two_plain_lines_and_keeps_the_exit_code(
     assert!((1..=2).contains(&after.len()), "after the host: {after:?}");
     let after = after.join("\n");
     assert!(after.contains("claude exited with code 3"), "{after}");
-    assert!(after.contains("`moai cc -a --dry-run`"), "{after}");
+    assert!(after.contains("`moai cc --dry-run`"), "{after}");
     assert!(!out.contains(SECRET), "{out}");
 }
 
@@ -261,14 +258,14 @@ fn a_terminal_failed_exit_prints_one_or_two_plain_lines_and_keeps_the_exit_code(
 #[test]
 fn a_terminal_dry_run_is_a_readable_summary() {
     let f = Fixture::new();
-    let (code, out) = f.tty(&["glm", "-a", "--dry-run"], 0);
+    let (code, out) = f.tty(&["glm", "--name", "lane-1", "--dry-run"], 0);
     assert_eq!(code, Some(0), "{out}");
     assert!(!has_json_line(&out) && !out.contains('"'), "{out}");
     for want in [
         "nothing was started",
         "glm",
-        "agent-1",
-        "claude --name agent-1",
+        "lane-1",
+        "claude --name lane-1",
         "ANTHROPIC_AUTH_TOKEN",
         "env:ANTHROPIC_AUTH_TOKEN",
         "model aliases map to z.ai models",
@@ -283,14 +280,14 @@ fn a_terminal_dry_run_is_a_readable_summary() {
 #[test]
 fn json_on_a_terminal_brings_the_envelope_back() {
     let f = Fixture::new();
-    let (code, out) = f.tty(&["cc", "--json", "-a"], 3);
+    let (code, out) = f.tty(&["cc", "--json", "--name", "lane-1"], 3);
     assert_eq!(code, Some(0), "{out}");
     let v = last_envelope(&out);
     assert_eq!(keys_of(&v), envelope_keys(false), "{v}");
     assert_eq!(v["executed"], serde_json::json!(true));
     assert_eq!(v["exit_code"], serde_json::json!(3));
     assert!(!out.contains("exited with code"), "{out}");
-    let (_, dry) = f.tty(&["glm", "--json", "-a", "--dry-run"], 0);
+    let (_, dry) = f.tty(&["glm", "--json", "--name", "lane-1", "--dry-run"], 0);
     assert_eq!(last_envelope(&dry)["executed"], serde_json::json!(false));
 }
 
@@ -299,10 +296,10 @@ fn json_on_a_terminal_brings_the_envelope_back() {
 fn the_key_never_appears_on_a_terminal_in_any_form() {
     let f = Fixture::new();
     for args in [
-        &["glm", "-a"][..],
-        &["glm", "-a", "--dry-run"],
-        &["glm", "--json", "-a"],
-        &["glm", "-a", "--json", "--dry-run"],
+        &["glm", "--name", "lane-1"][..],
+        &["glm", "--name", "lane-1", "--dry-run"],
+        &["glm", "--json", "--name", "lane-1"],
+        &["glm", "--name", "lane-1", "--json", "--dry-run"],
     ] {
         for exit in [0, 3] {
             let (_, out) = f.tty(args, exit);
@@ -315,7 +312,7 @@ fn the_key_never_appears_on_a_terminal_in_any_form() {
 #[test]
 fn an_option_the_launcher_drops_is_said_once_before_the_host_starts() {
     let f = Fixture::new();
-    let (_, out) = f.tty(&["glm", "-a", "--advisor", "fable"], 0);
+    let (_, out) = f.tty(&["glm", "--name", "lane-1", "--advisor", "fable"], 0);
     let at = out
         .find(MARK)
         .unwrap_or_else(|| panic!("no host output in:\n{out}"));

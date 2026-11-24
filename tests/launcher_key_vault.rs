@@ -103,7 +103,7 @@ fn dry(home: &Path, env_key: Option<&str>) -> (i32, Value, String) {
 
 fn dry_command(mut cmd: Command) -> (i32, Value, String) {
     let out = cmd
-        .args(["glm", "-a", "--name", "vault-test", "--dry-run"])
+        .args(["glm", "--name", "vault-test", "--dry-run"])
         .output()
         .unwrap();
     let stdout = String::from_utf8_lossy(&out.stdout).to_string();
@@ -137,7 +137,7 @@ fn host_token(home: &Path) -> String {
             "PATH",
             format!("{}:/usr/bin:/bin", bin_dir.path().display()),
         )
-        .args(["glm", "-a"])
+        .args(["glm"])
         .output()
         .unwrap();
     let text = format!(
@@ -248,7 +248,7 @@ fn other_hosts_report_no_key_source() {
     let h = home(false);
     store(h.path(), true, SHARED_KEY);
     let out = bin(h.path())
-        .args(["cc", "-a", "--dry-run"])
+        .args(["cc", "--dry-run"])
         .output()
         .unwrap();
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();

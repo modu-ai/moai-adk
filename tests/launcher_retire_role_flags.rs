@@ -129,7 +129,7 @@ fn a_refused_role_flag_starts_and_writes_nothing() {
     for form in ROLE_FORMS {
         let project = git_project();
         let before = tree(project.path());
-        let sessions = project.path().join(".git/.moai-cli");
+        let sessions = moai_cli::clone_root::path(&project.path().join(".git"));
         let bin = tempfile::tempdir().unwrap();
         let mark = bin.path().join("host-was-run");
         write_stub(bin.path(), &mark);
@@ -344,7 +344,7 @@ impl Fixture {
             fs::write(home.path().join(dir).join("SKILL.md"), "skill\n").unwrap();
         }
         if let Some(text) = settings {
-            let dir = home.path().join(".moai-cli/config");
+            let dir = moai_cli::home_root::path(home.path()).join("config");
             fs::create_dir_all(&dir).unwrap();
             fs::write(dir.join("launcher.yaml"), text).unwrap();
         }

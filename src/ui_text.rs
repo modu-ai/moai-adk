@@ -381,12 +381,12 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
         }
         (InitRemoved, En) => {
             "moai init was removed. Make a project folder, go into it and run moai cc or moai glm \
-             (add -l or -a for a lead or agent session); the first launch prepares the folder, \
+             (name the session with --name); the first launch prepares the folder, \
              and /moai project in that session sets the project up."
         }
         (InitRemoved, Ko) => {
             "moai init 은 없어졌어요. 프로젝트 폴더를 만들고 그 안에서 moai cc 나 moai glm 을 \
-             실행하세요(리더·에이전트 세션은 -l, -a). 첫 실행이 폴더를 준비하고, 그 세션의 \
+             실행하세요(세션 이름은 --name). 첫 실행이 폴더를 준비하고, 그 세션의 \
              /moai project 가 프로젝트를 설정해요."
         }
         (CodexRemoved, En) => {
@@ -700,7 +700,7 @@ mod tests {
     }
 
     /// #2935 L3-c (audit 6877895608 N2): the `moai init` guidance names the new flow in both
-    /// languages — the launchers, their `-l`/`-a` flags and `/moai project` in the session.
+    /// languages — the launchers, their `--name` flag and `/moai project` in the session.
     /// `tests/cli_unknown_command.rs` reads stderr through a pipe, so only English; this pins
     /// the Korean text too.
     #[test]
@@ -711,8 +711,7 @@ mod tests {
                 "moai init",
                 "moai cc",
                 "moai glm",
-                "-l",
-                "-a",
+                "--name",
                 "/moai project",
             ] {
                 assert!(t.contains(p), "{lang:?} must name `{p}`: {t}");

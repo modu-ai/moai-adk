@@ -370,7 +370,7 @@ impl GoFx {
         fs::write(&stub, "#!/bin/sh\nexit 0\n").unwrap();
         fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
         let out = Command::new(MOAI_BIN)
-            .args(["cc", "-a"])
+            .args(["cc"])
             .clean_env()
             .current_dir(&self.root)
             .env("HOME", &self.home)

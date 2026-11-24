@@ -1,4 +1,4 @@
-use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, FromArgMatches, Parser, Subcommand};
+use clap::{error::ErrorKind, Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 use moai_cli::{contract, session_launch, SessionRequest};
 use std::{
     io::{self, Read},
@@ -53,12 +53,6 @@ impl RecordSource {
     args_conflicts_with_subcommands = true
 )]
 struct Cli {
-    /// Start a leader session on the default host (cc); the role is entered inside it with `/moai --mode-leader`.
-    #[arg(short = 'l', long = "leader", conflicts_with = "agent")]
-    leader: bool,
-    /// Start an agent session on HOST (cc|glm; default cc); the role is entered inside it with `/moai --mode-agent`.
-    #[arg(short = 'a', long = "agent", value_name = "HOST", num_args = 0..=1, default_missing_value = "cc")]
-    agent: Option<String>,
     /// Color on a terminal: auto, always (even with NO_COLOR or TERM=dumb) or never; put it before the command.
     #[arg(
         long,
@@ -105,16 +99,16 @@ fn without_leading_color(mut argv: Vec<String>) -> Vec<String> {
     argv
 }
 
-/// Options shared by `moai-cli -l|-a` and `moai-cli cc|glm -l|-a` (00-F #2028).
+/// Options of `moai cc|glm` (00-F #2028).
 #[derive(Args)]
 struct LaunchOpts {
-    /// Session name (default `leader` for -l, the project's next `agent-N` for -a; none without a role).
+    /// Session name (none by default; the role is entered inside the session).
     #[arg(long)]
     name: Option<String>,
-    /// Main model (a role session: the saved choice, else the default table; no role: `opus`).
+    /// Main model (default `opus`).
     #[arg(long)]
     model: Option<String>,
-    /// Effort (a role session: the saved choice, else the default table; no role: `medium`).
+    /// Effort (default `medium`).
     #[arg(long)]
     effort: Option<String>,
     /// Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id). None by default;
@@ -138,23 +132,9 @@ struct LaunchOpts {
     json: bool,
 }
 
-/// `moai-cli cc|glm [-l|-a] [options] [PROMPT]`. Without `-l|-a` it is a plain host
-/// session: no role is guessed (Issue #2053).
+/// `moai cc|glm [options] [PROMPT]`: a plain host session; no role is guessed (Issue #2053).
 #[derive(Args)]
-#[command(group(ArgGroup::new("role").args(["leader", "agent"])))]
 struct HostLaunch {
-    /// Leader session.
-    ///
-    /// Names the session `leader` and sets its access. The role is entered inside the session
-    /// with `/moai --mode-leader`.
-    #[arg(short = 'l', long = "leader")]
-    leader: bool,
-    /// Agent session.
-    ///
-    /// Names the session `agent-N` (or `--name`) and sets its access. The role is entered
-    /// inside the session with `/moai --mode-agent`.
-    #[arg(short = 'a', long = "agent")]
-    agent: bool,
     #[command(flatten)]
     launch: LaunchOpts,
     /// Extra first-prompt text (no host takes it: a Claude host is told it was not passed).
@@ -1009,19 +989,19 @@ enum Command {
     },
     /// Start a Claude Code session
     ///
-    /// Claude Code session launcher: `cc -l|-a`. `-l|-a` only name the session and set its
-    /// access; the role is entered inside the session with `/moai --mode-leader` or
-    /// `/moai --mode-agent`.
+    /// Claude Code session launcher: `cc`. `--name` names the session; the role is entered
+    /// inside the session with `/moai work` for a lane or `/moai leader` for the coordination
+    /// window.
     Cc(HostLaunch),
     /// Start a Claude Code session on z.ai GLM
     ///
-    /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment or a key file).
-    /// `-l|-a` only name the session and set its access; the role is entered inside the session
-    /// with `/moai --mode-leader` or `/moai --mode-agent`.
+    /// Claude Code on z.ai GLM: `glm` (needs ANTHROPIC_AUTH_TOKEN in the environment or a key file).
+    /// `--name` names the session; the role is entered inside the session with `/moai work` for
+    /// a lane or `/moai leader` for the coordination window.
     Glm(HostLaunch),
     /// Start a Claude Code session (legacy form)
     ///
-    /// Legacy Claude-only launcher kept for compatibility; prefer `-l|-a` or `cc|glm`.
+    /// Legacy Claude-only launcher kept for compatibility; prefer `cc|glm`.
     Session {
         /// leader | agent
         #[arg(long, default_value = "agent")]
@@ -1073,44 +1053,24 @@ fn plan_input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
     }
     moai_cli::contract::typed_json(&bytes)
 }
-/// Maps the launcher's host word to the session host.
-fn host_of(word: &str) -> Result<&'static str, String> {
-    match word {
-        "cc" => Ok("claude"),
-        "glm" => Ok("glm"),
-        other => Err(format!("unknown host {other} (cc|glm)")),
-    }
-}
 
-/// Builds the session request for the launcher syntax (REQ-00F-01..04). `leader` is
-/// `Some(true)` for `-l`, `Some(false)` for `-a` and `None` without a role (#2053).
-fn launch(
-    host: &str,
-    leader: Option<bool>,
-    o: LaunchOpts,
-    prompt: Option<String>,
-) -> Result<serde_json::Value, String> {
-    use moai_cli::session::{launch_settings, peek_agent_number, take_agent_number, AdvisorSource};
-    // User decision 2026-11-10 (#2359, comment 6760976883): `-l|-a` stay. `-l` is `leader`,
-    // `-a` is `agent-N` after the project's live sessions (#2971); access is resolved before
-    // numbering.
-    let role = leader.map(|l| if l { "leader" } else { "agent" });
-    // `-a` without `--name` is numbered; `--name` takes no number.
-    let numbered = leader == Some(false) && o.name.is_none();
-    let name = o
-        .name
-        .or_else(|| (leader == Some(true)).then(|| "leader".into()));
-    // Validate user configuration even for roleless sessions or a CLI override. Resolution
-    // precedes host composition and any agent-number allocation. No advisor by default (user
-    // decision 2026-11-12, #2476): only `--advisor` or the user setting `launcher.advisor`.
+/// Builds the session request for the launcher syntax (REQ-00F-01..04): a plain host session
+/// with no role and no number (#2053). The role flags `-l|-a` are retired
+/// (`session::retired_role_flag`, SPEC-20261124-launcher-retire-role-flags); a name comes from
+/// `--name` only.
+fn launch(host: &str, o: LaunchOpts, prompt: Option<String>) -> Result<serde_json::Value, String> {
+    use moai_cli::session::{launch_settings, AdvisorSource};
+    // Validate user configuration even for a CLI override. Resolution precedes host
+    // composition. No advisor by default (user decision 2026-11-12, #2476): only `--advisor`
+    // or the user setting `launcher.advisor`.
     let settings = launch_settings(o.permissions, o.advisor.as_deref(), o.no_advisor)?;
     let advisor_note = (host == "claude"
         && settings.advisor.as_ref().map(|(_, s)| *s) == Some(AdvisorSource::UserSetting))
     .then_some("--advisor comes from the user setting launcher.advisor (~/.moai-cli/config/launcher.yaml); --no-advisor turns it off");
-    let mut request = SessionRequest {
-        role: role.map(str::to_string),
+    let request = SessionRequest {
+        role: None,
         host: host.into(),
-        name,
+        name: o.name,
         model: o.model,
         effort: o.effort,
         advisor: settings.advisor.map(|(a, _)| a),
@@ -1120,14 +1080,10 @@ fn launch(
     };
     // #2481 (user decisions 6810797000, 6810818827): the first launch in a folder that is not a
     // project initializes it (git init, settings, AGENTS.md). Options are composed first, so a
-    // launch refused anyway writes nothing; numbering follows the initialization.
+    // launch refused anyway writes nothing.
     let init = match std::env::current_dir() {
         Ok(here) => {
-            let mut probe = request.clone();
-            if numbered {
-                probe.name = Some("agent-0".into());
-            }
-            moai_cli::session::compose(&probe)?;
+            moai_cli::session::compose(&request)?;
             moai_cli::launcher_init::prepare(&here, host, o.dry_run)?
         }
         Err(_) => moai_cli::launcher_init::Prepared::default(),
@@ -1135,41 +1091,12 @@ fn launch(
     if let (false, Some(note)) = (o.dry_run, &init.note) {
         eprintln!("{note}");
     }
-    let mut number_notes = Vec::new();
-    // The number's `.live` lock (#2971): held until the host has exited, so a launch started in
-    // the meantime sees this number alive. It is dropped after `session_launch` returns.
-    let mut live_number = None;
     // The named live lock (BOARD 03 (가), SPEC-20261120-launcher-liveness REQ-4): a session
-    // with a name holds `<name>.live` for as long as its host runs — the numbered sessions
-    // already hold theirs through `take_agent_number` — so the read-only liveness lookup can
-    // tell a live launcher from an exited one. Outside a git repository there is no sessions
-    // folder: the launch goes on without a lock and the lookup answers unknown.
+    // with a name holds `<name>.live` for as long as its host runs, so the read-only liveness
+    // lookup can tell a live launcher from an exited one. Outside a git repository there is no
+    // sessions folder: the launch goes on without a lock and the lookup answers unknown.
     let mut live_named = None;
-    if numbered {
-        let here = std::env::current_dir()
-            .map_err(|_| "agent numbering: the current directory is unreadable; pass --name")?;
-        let n = if o.dry_run && init.git_pending {
-            number_notes = moai_cli::session::pending_number_notes();
-            1
-        } else if o.dry_run {
-            let dir = moai_cli::session::agent_seq_dir(&here)?;
-            let (n, live_max) = peek_agent_number(&here)?;
-            number_notes = moai_cli::session::number_notes(n, live_max, &dir, false);
-            n
-        } else {
-            // Compose first, so a launch that is refused anyway (a blocked glm, an invalid
-            // option) takes no number.
-            request.name = Some("agent-0".into());
-            moai_cli::session::compose(&request)?;
-            let dir = moai_cli::session::agent_seq_dir(&here)?;
-            let taken = take_agent_number(&here)?;
-            let n = taken.number;
-            number_notes = moai_cli::session::number_notes(n, taken.live_max, &dir, true);
-            live_number = Some(taken);
-            n
-        };
-        request.name = Some(format!("agent-{n}"));
-    } else if !o.dry_run {
+    if !o.dry_run {
         if let Some(name) = request.name.clone() {
             // A name the registry rules reject takes no lock: the launch runs exactly as it
             // did before the lock existed, and the liveness lookup answers unknown for it —
@@ -1193,23 +1120,18 @@ fn launch(
     // must know is said once here, before it starts.
     if !o.dry_run && moai_cli::launcher_terminal::wants_human(o.json) {
         if let Ok(composed) = moai_cli::session::compose(&request) {
-            for line in moai_cli::launcher_terminal::startup_lines(&composed, &number_notes) {
+            for line in moai_cli::launcher_terminal::startup_lines(&composed) {
                 eprintln!("{line}");
             }
         }
     }
     let launched = session_launch(&request, o.dry_run);
-    // The host has exited (or never started): the number is free again.
-    drop(live_number);
+    // The host has exited (or never started): the name is free again.
     drop(live_named);
     let mut v = launched?;
     if let Some(notes) = v["notes"].as_array_mut() {
-        // SPEC-20261118-launcher-agent-entry: how the role is entered inside the session.
-        let entry = moai_cli::session::role_entry_note(request.role.as_deref(), &request.host);
-        notes.extend(entry.map(Into::into));
         notes.extend(advisor_note.map(Into::into));
         notes.extend(init.note.map(Into::into));
-        notes.extend(number_notes.into_iter().map(serde_json::Value::from));
     }
     Ok(v)
 }
@@ -1322,15 +1244,6 @@ fn push_required(argv: &mut Vec<String>, command: &clap::Command) {
     }
 }
 
-/// `-l` → leader, `-a` → agent, neither → no role (never guessed).
-fn role_of(h: &HostLaunch) -> Option<bool> {
-    match (h.leader, h.agent) {
-        (true, _) => Some(true),
-        (false, true) => Some(false),
-        (false, false) => None,
-    }
-}
-
 /// #3004 P9: whether the launcher prints plain text instead of the JSON envelope (stdout is a
 /// terminal and `--json` was not given). The legacy `session` command keeps the envelope.
 fn launcher_is_human(cli: &Cli) -> bool {
@@ -1342,26 +1255,17 @@ fn launcher_is_human(cli: &Cli) -> bool {
     moai_cli::launcher_terminal::wants_human(json)
 }
 
-/// Launcher paths (`-l`, `-a`, `cc|glm`, `session`): plain JSON or a plain error line.
+/// Launcher paths (`cc|glm`, `session`): plain JSON or a plain error line.
 fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
     let Some(command) = cli.command else {
-        return match (cli.leader, cli.agent) {
-            (true, _) => launch("claude", Some(true), cli.launch, None),
-            (false, Some(word)) => launch(host_of(&word)?, Some(false), cli.launch, None),
-            (false, None) => {
-                // Bare no-argument run: the banner rides stdout for humans only
-                // (Issue #2363); the usage error contract below is unchanged.
-                moai_cli::banner::maybe_print_banner();
-                Err(
-                    "usage: moai -l | -a [cc|glm] | moai cc|glm -l|-a | moai <command>; see --help"
-                        .into(),
-                )
-            }
-        };
+        // Bare no-argument run: the banner rides stdout for humans only
+        // (Issue #2363); the usage error contract below is unchanged.
+        moai_cli::banner::maybe_print_banner();
+        return Err("usage: moai cc|glm | moai <command>; see --help".into());
     };
     match command {
-        Command::Cc(h) => launch("claude", role_of(&h), h.launch, h.prompt),
-        Command::Glm(h) => launch("glm", role_of(&h), h.launch, h.prompt),
+        Command::Cc(h) => launch("claude", h.launch, h.prompt),
+        Command::Glm(h) => launch("glm", h.launch, h.prompt),
         Command::Session {
             role,
             host,
@@ -1375,7 +1279,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
             // Legacy behaviour (REQ-00F-06): Claude only, no permission skip.
             if host != "claude" {
                 return Err(format!(
-                    "host {host} is not available on `session`; use `moai cc|glm -l|-a`"
+                    "host {host} is not available on `session`; use `moai cc|glm`"
                 ));
             }
             session_launch(
@@ -2685,6 +2589,12 @@ pub(crate) fn main() -> ExitCode {
         moai_cli::ui::set_color_choice(choice);
     }
     let words = command_argv();
+    // `-l|-a` are retired (SPEC-20261124-launcher-retire-role-flags): refused before parsing,
+    // so nothing is started, numbered, locked or written.
+    if moai_cli::session::retired_role_flag(words) {
+        eprintln!("{}", moai_cli::session::RETIRED_ROLE_FLAG_MESSAGE);
+        return ExitCode::from(1);
+    }
     let hook_mode = hook_mode_argv(words);
     let bin = moai_cli::help::bin_name(argv.first().map(String::as_str).unwrap_or(""));
     // `help --all` (#2802 S1): every command in its group. clap's `help` takes command names
@@ -3643,8 +3553,8 @@ mod help_rules {
 
     /// SPEC-20261118-launcher-agent-entry AC-6: the Korean texts of the launchers (unused while
     /// the CLI prints English only, #2825 R1, but kept in step with the English) name the entry
-    /// command for `-l` and `-a`, short and long, and the long about names the host's own
-    /// spelling — not only some Hangul.
+    /// commands of the two roles in the long about of each launcher (SPEC-20261124-launcher-
+    /// retire-role-flags: the launchers have no role flag any more) and no retired spelling.
     #[test]
     fn the_korean_launcher_help_names_the_entry_command() {
         let mut korean = moai_cli::help::configure_in(
@@ -3659,28 +3569,22 @@ mod help_rules {
             let text = t.map(|h| h.to_string()).unwrap_or_default();
             text.split_whitespace().collect::<Vec<_>>().join(" ")
         };
-        // The retired mode flags are gone from the launchers' help: `-a` names the entry
-        // command `/moai work`, `-l` only its name and permissions.
         for host in ["cc", "glm"] {
             let cmd = korean.find_subcommand(host).unwrap();
             for id in ["leader", "agent"] {
-                let arg = cmd.get_arguments().find(|a| a.get_id() == id).unwrap();
-                let short = flat(arg.get_help());
-                let long = flat(arg.get_long_help());
-                for text in [&short, &long] {
-                    assert!(text.contains("권한만 정함"), "{host} -{id}: {text}");
-                    assert!(!text.contains("--mode-"), "{host} -{id}: {text}");
-                    assert!(!text.contains("$moai"), "{host} -{id}: {text}");
-                    assert_eq!(
-                        text.contains("`/moai work`"),
-                        id == "agent",
-                        "{host} -{id}: {text}"
-                    );
-                }
+                assert!(
+                    !cmd.get_arguments().any(|a| a.get_id() == id),
+                    "{host} still has a `{id}` argument"
+                );
             }
             let about = flat(cmd.get_long_about());
             assert!(!about.contains("--mode-"), "{host} long about: {about}");
-            assert!(about.contains("`/moai work`"), "{host} long about: {about}");
+            for want in ["`/moai work`", "`/moai leader`", "`--name`"] {
+                assert!(
+                    about.contains(want),
+                    "{host} long about lacks {want}: {about}"
+                );
+            }
         }
     }
 

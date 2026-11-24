@@ -116,12 +116,16 @@ fn tracked_claude_md_keeps_one_managed_section_within_200_lines() {
     }
 }
 
+/// The project profile, which is JSON in a `.yaml` file.
+fn profile() -> serde_json::Value {
+    serde_json::from_str(&read(".moai/project.yaml")).expect("the profile is JSON")
+}
+
 /// REQ-11: the managed section names the hosts of the project profile, and the profile names
 /// Claude Code only (the section is edited by hand, `SPEC-20261123-claude-md-rewrite` D-3).
 #[test]
 fn managed_section_matches_the_profile_hosts() {
-    let profile: serde_json::Value =
-        serde_json::from_str(&read(".moai/project.yaml")).expect("the profile is JSON");
+    let profile = profile();
     let hosts: Vec<&str> = profile["hosts"]
         .as_array()
         .expect("hosts")
@@ -272,9 +276,11 @@ fn commit_messages_follow_the_profile_language() {
         .lines()
         .find(|l| l.contains("커밋 메시지 언어 = 영어"))
         .expect("the decisions log lacks the row of the user's pick of 2026-11-24");
-    assert!(row.contains("05:46Z(11-24)") && row.contains("language.commit_messages: en"), "{row}");
-    let profile: serde_json::Value = serde_json::from_str(&read(".moai/project.yaml")).unwrap();
-    assert_eq!(profile["language"]["commit_messages"], "en");
+    assert!(
+        row.contains("05:46Z(11-24)") && row.contains("language.commit_messages: en"),
+        "{row}"
+    );
+    assert_eq!(profile()["language"]["commit_messages"], "en");
 }
 
 /// S4: Claude Code and GLM only; Codex and OMP are withdrawn.

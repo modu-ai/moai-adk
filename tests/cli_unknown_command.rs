@@ -69,7 +69,7 @@ fn an_unknown_first_word_prints_the_usage_envelope_and_keeps_clap_stderr() {
 fn other_command_line_errors_keep_their_output() {
     for args in [
         vec!["help", "nosuch"],
-        vec!["-l", "nosuch"],
+        vec!["-z", "nosuch"],
         vec!["--bogus"],
         vec!["no-such-command", "--hook"],
     ] {
@@ -113,8 +113,7 @@ fn init_names_the_launcher_flow_instead_of_an_unknown_command() {
         "moai init",
         "moai cc",
         "moai glm",
-        "-l",
-        "-a",
+        "--name",
         "/moai project",
     ] {
         assert!(stderr.contains(p), "stderr must name `{p}`: {stderr}");

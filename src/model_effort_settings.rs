@@ -19,7 +19,9 @@ use serde_json::{json, Map, Value};
 /// The tools that take a choice. `glm` is the `moai glm` launcher; its ids carry the `zai/`
 /// provider prefix.
 pub const TOOLS: [&str; 2] = ["claude", "glm"];
-/// The two roles: the leader entry (`-l`) and the agent entry (`-a`).
+/// The two roles of the default table: the leader row and the agent row. The launcher starts no
+/// role session (SPEC-20261124-launcher-retire-role-flags); the rows are the "(default)" of the
+/// question screen.
 pub const ROLES: [&str; 2] = ["leader", "agent"];
 
 /// One supported model and the efforts it offers.

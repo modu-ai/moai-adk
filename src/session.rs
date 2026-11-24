@@ -13,15 +13,14 @@
 //!   https://docs.z.ai/scenario-example/develop-tools/claude. The token is inherited from the
 //!   caller and only its presence is checked; its value is never kept, printed or written.
 //!
-//! Without a role (`moai-cli cc|glm` with neither `-l` nor `-a`, Issue #2053) the launcher
-//! opens a plain host session: no role is guessed and no session name is added. Every launch,
-//! with or without a role (`-l` named `leader`, `-a` named `agent-N`), starts the host in auto
+//! The `moai-cli cc|glm` launchers open a plain host session (Issue #2053): no role is guessed
+//! and a session name comes from `--name` only. The role flags `-l|-a` are retired (user
+//! decision D-1 2026-11-09, SPEC-20261124-launcher-retire-role-flags): [`retired_role_flag`]
+//! finds them and the launcher refuses with [`RETIRED_ROLE_FLAG_MESSAGE`]; the role is entered
+//! inside the session with `/moai work` or `/moai leader`. Every launch starts the host in auto
 //! mode (`--permission-mode auto`, user decision 2026-11-23, SPEC-20261123-launcher-auto-mode)
 //! unless `--permissions` is given (no permission flag) or the user setting
-//! `launcher.role_access` says `full` (the bypass) or `prompt`. `-l|-a` only name the
-//! session and set its access: the role is entered inside the session with `/moai --mode-agent`
-//! or `/moai --mode-leader`, which the `--dry-run` notes say
-//! (user decision 2026-11-18, SPEC-20261118-launcher-agent-entry). Codex and OMP are not hosts
+//! `launcher.role_access` says `full` (the bypass) or `prompt`. Codex and OMP are not hosts
 //! any more (user decision 2026-11-21, SPEC-20261121-codex-launcher-and-models-removed,
 //! SPEC-20261122-remove-omp-launcher).
 use serde::{Deserialize, Serialize};
@@ -38,16 +37,38 @@ const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
 pub const NOTE_ADVISOR_OMITTED_GLM: &str =
     "--advisor omitted on glm: the advisor is Anthropic API only";
 
-/// How a role session enters its role (SPEC-20261118-launcher-agent-entry): `-l|-a` only name
-/// the session and set its access; the role is entered inside the session with the mode command
-/// of #2286 for that host. `None` for a roleless session. The `cc|glm` launchers add it to
-/// their notes; the legacy `session` command (REQ-00F-06) keeps its recorded answer.
-pub fn role_entry_note(role: Option<&str>, host: &str) -> Option<&'static str> {
-    Some(match (role?, host) {
-        ("leader", _) => "role: -l only names the session and sets its access; enter leader mode inside the session with `/moai --mode-leader`",
-        ("agent", _) => "role: -a only names the session and sets its access; enter agent mode inside the session with `/moai --mode-agent`",
-        _ => return None,
-    })
+/// The one message a retired role flag gets (user decision D-1 2026-11-09, restated 2026-11-24;
+/// SPEC-20261124-launcher-retire-role-flags REQ-1): it names `--name` and the two entry commands
+/// typed inside the session.
+pub const RETIRED_ROLE_FLAG_MESSAGE: &str = "`-l`, `--leader`, `-a` and `--agent` are retired: start a session with `moai cc` or `moai glm` (name it with `--name`), then type `/moai work` for a lane or `/moai leader` for the coordination window";
+
+/// True when the command line (the program name first, a leading `--color` already taken out)
+/// is a launcher line that carries a retired role flag: `moai -l`, `moai -a cc`, or `cc|glm`
+/// followed by `-l`, `--leader`, `-a` or `--agent`. The word after an option that takes a value
+/// and everything after `--` is a value, not a flag. It reads the words only: nothing is
+/// started, numbered, locked or written.
+pub fn retired_role_flag(words: &[String]) -> bool {
+    const FLAGS: [&str; 4] = ["-l", "--leader", "-a", "--agent"];
+    const TAKE_A_VALUE: [&str; 4] = ["--name", "--model", "--effort", "--advisor"];
+    let mut rest = words.iter().skip(1).map(String::as_str);
+    match rest.next() {
+        Some(first) if FLAGS.contains(&first) => true,
+        Some("cc" | "glm") => {
+            while let Some(word) = rest.next() {
+                if word == "--" {
+                    return false;
+                }
+                if FLAGS.contains(&word) {
+                    return true;
+                }
+                if TAKE_A_VALUE.contains(&word) {
+                    rest.next();
+                }
+            }
+            false
+        }
+        _ => false,
+    }
 }
 const DEFAULT_MODEL: &str = "opus";
 const DEFAULT_EFFORT: &str = "medium";
@@ -346,42 +367,33 @@ pub fn launch_access(keep_prompts: bool) -> Result<Access, String> {
     Ok(launch_settings(keep_prompts, None, false)?.access)
 }
 
-// ---- agent-N numbering (#2359 decision 6760976883; resolves #2361; changed by #2971) ----
+// ---- session live locks (the launcher no longer numbers sessions: SPEC-20261124-launcher-
+// retire-role-flags D-4; a name comes from `--name` only) ----
 
-/// Test-only: milliseconds to hold the counter lock between choosing a number and locking it.
-pub const AGENT_SEQ_TEST_HOLD_VAR: &str = "MOAI_TEST_AGENT_SEQ_HOLD_MS";
-/// The one warning line for number 1 (leader decision 6880464413): `claim` and `claim-verify`
-/// judge ownership by the session name alone, so a claim an earlier `agent-1` left inside its
-/// lease still reads as this session's.
-pub const AGENT_ONE_WARNING: &str = "warning: a claim of an earlier agent-1 may still be inside its lease; do not take over work from claim-verify alone";
-/// How long a launch waits for the `.live` lock of its number. Only a dry run that is probing
-/// that file at the same moment can hold it, and only for an instant.
-const LIVE_LOCK_TRIES: u32 = 200;
-
-/// Where `-a` session numbers are kept: `<clone common dir>/.moai-cli/sessions/`, beside the
-/// claim journal (`claim::journal_root`). Every worktree of one clone resolves the same common
-/// dir, so they share the numbers across hosts, and git never lists the files. A session is
-/// alive while its launcher holds the lock on `agent-<n>.live` or while the registry entry
-/// `agent-<n>.json` has a running lease; `.lock` is the counter's `File::lock` target.
+/// Where the session registry and the `.live` locks are kept: `<clone common dir>/.moai-cli/
+/// sessions/`, beside the claim journal (`claim::journal_root`). Every worktree of one clone
+/// resolves the same common dir, so they share it across hosts, and git never lists the files.
+/// A session is alive while its launcher holds the lock on `<name>.live` or while the registry
+/// entry `<name>.json` has a running lease.
 pub fn agent_seq_dir(project: &Path) -> Result<PathBuf, String> {
-    let id = crate::identity::identity_in(project, None)
-        .map_err(|e| format!("agent numbering: {e}; pass --name"))?;
+    let id =
+        crate::identity::identity_in(project, None).map_err(|e| format!("session folder: {e}"))?;
     if id["identity_status"].as_str() != Some("ok") {
         return Err(format!(
-            "agent numbering needs a git repository (identity_status {}); run from the project or pass --name",
+            "the session folder needs a git repository (identity_status {}); run from the project",
             id["identity_status"].as_str().unwrap_or("unknown")
         ));
     }
     let common = id["clone_anchor"]
         .as_str()
-        .ok_or("agent numbering needs a git repository; pass --name")?;
+        .ok_or("the session folder needs a git repository")?;
     Ok(crate::clone_root::path(Path::new(common)).join("sessions"))
 }
 
 fn refuse_symlink(path: &Path) -> Result<(), String> {
     match fs::symlink_metadata(path) {
         Ok(m) if m.file_type().is_symlink() => Err(format!(
-            "agent number store {} is a symlink; refused (pass --name)",
+            "session lock path {} is a symlink; refused",
             path.display()
         )),
         _ => Ok(()),
@@ -394,7 +406,7 @@ fn refuse_unless_regular(path: &Path) -> Result<(), String> {
     refuse_symlink(path)?;
     match fs::symlink_metadata(path) {
         Ok(m) if !m.file_type().is_file() => Err(format!(
-            "agent number file {} is not a regular file; refused (pass --name)",
+            "session lock path {} is not a regular file; refused",
             path.display()
         )),
         _ => Ok(()),
@@ -402,17 +414,11 @@ fn refuse_unless_regular(path: &Path) -> Result<(), String> {
 }
 
 /// `n` of a canonical `agent-<n><suffix>` file name: decimal digits without a leading zero
-/// that fit in 32 bits. Any other name is not one of the launcher's numbers.
+/// that fit in 32 bits. Any other name is not an `agent-<n>` entry of the session registry.
 pub(crate) fn agent_number_of(file_name: &str, suffix: &str) -> Option<u64> {
     let digits = file_name.strip_prefix("agent-")?.strip_suffix(suffix)?;
     let n: u32 = digits.parse().ok()?;
     (n.to_string() == digits).then_some(u64::from(n))
-}
-
-fn clock() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
 }
 
 /// Whether some launcher holds the lock on the `agent-<n>.live` file at `path`. The probe asks
@@ -420,12 +426,7 @@ fn clock() -> i64 {
 /// and two probes never block each other.
 pub(crate) fn live_lock_held(path: &Path) -> Result<bool, String> {
     refuse_unless_regular(path)?;
-    let unusable = || {
-        format!(
-            "agent number file {} cannot be probed; pass --name",
-            path.display()
-        )
-    };
+    let unusable = || format!("session lock path {} cannot be probed", path.display());
     let file = match OpenOptions::new().read(true).open(path) {
         Ok(f) => f,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
@@ -438,141 +439,18 @@ pub(crate) fn live_lock_held(path: &Path) -> Result<bool, String> {
     }
 }
 
-/// The highest number of a live `agent-*` session in `dir`, or `None` when none is alive.
-/// Live: the `.live` lock of `agent-<n>` is held, or the registry entry `agent-<n>.json` has a
-/// running lease at `now`. A `.live` file nobody locks is dead. Reads and probes only; it
-/// creates and writes nothing, and a missing folder has no live session.
-fn highest_live(dir: &Path, now: i64) -> Result<Option<u64>, String> {
-    let mut highest: Option<u64> = None;
-    match fs::read_dir(dir) {
-        Ok(entries) => {
-            for entry in entries {
-                let entry = entry.map_err(|_| {
-                    format!(
-                        "agent number folder {} cannot be read; pass --name",
-                        dir.display()
-                    )
-                })?;
-                let file_name = entry.file_name();
-                let Some(n) = file_name.to_str().and_then(|f| agent_number_of(f, ".live")) else {
-                    continue;
-                };
-                if live_lock_held(&entry.path())? {
-                    highest = highest.max(Some(n));
-                }
-            }
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-        Err(_) => {
-            return Err(format!(
-                "agent number folder {} cannot be read; pass --name",
-                dir.display()
-            ))
-        }
-    }
-    let registered = crate::lane_registry::live_agent_numbers(dir, now)
-        .map_err(|e| format!("{e}; or pass --name"))?;
-    Ok(registered.into_iter().map(Some).fold(highest, Ord::max))
-}
-
-/// The number after the highest live one, or 1 when none is alive.
-fn number_after(highest_live: Option<u64>) -> u64 {
-    highest_live.map_or(1, |n| n + 1)
-}
-
-/// The number the next `-a` launch would take and the live number it follows, calculated
-/// without taking anything (`--dry-run`): no lock is held, no folder or file is created.
-pub fn peek_agent_number(project: &Path) -> Result<(u64, Option<u64>), String> {
-    let dir = agent_seq_dir(project)?;
-    refuse_symlink(&dir)?;
-    let live = highest_live(&dir, clock())?;
-    Ok((number_after(live), live))
-}
-
-/// A number a launch has taken. The exclusive lock on `agent-<n>.live` is held for as long as
-/// this value lives, so the caller keeps it until the host has exited; the OS releases the lock
-/// on any exit of the launcher, a kill included.
-#[derive(Debug)]
-pub struct TakenNumber {
-    pub number: u64,
-    /// The highest live number this one follows; `None` when no session was alive.
-    pub live_max: Option<u64>,
-    _live: fs::File,
-}
-
-/// The `notes` lines for a number: where it comes from, and the claim warning when it is 1.
-/// `taken` is false for a `--dry-run` preview.
-pub fn number_notes(number: u64, live_max: Option<u64>, dir: &Path, taken: bool) -> Vec<String> {
-    let origin = match live_max {
-        None => "no live agent session, starts at agent-1".to_string(),
-        Some(k) => format!("next after live agent-{k}"),
-    };
-    let mut notes = vec![if taken {
-        format!(
-            "agent number {number} taken: {origin} (store {})",
-            dir.display()
-        )
-    } else {
-        format!(
-            "agent-N preview: --dry-run takes no number; {origin} (store {})",
-            dir.display()
-        )
-    }];
-    notes.extend((number == 1).then(|| AGENT_ONE_WARNING.to_string()));
-    notes
-}
-
-/// The preview for a folder that `git init` is about to create: no session can be alive.
-pub fn pending_number_notes() -> Vec<String> {
-    vec![
-        "agent-N preview: --dry-run takes no number; no live agent session, starts at agent-1 (the store is created by git init)".to_string(),
-        AGENT_ONE_WARNING.to_string(),
-    ]
-}
-
-/// Takes the `agent-<n>.live` lock for `n`. A shared probe of a dry run may hold the file for an
-/// instant, so the lock is retried; a holder that stays means this number is not free.
-fn lock_live(dir: &Path, n: u64) -> Result<fs::File, String> {
-    let path = dir.join(format!("agent-{n}.live"));
-    refuse_unless_regular(&path)?;
-    let unavailable = || {
-        format!(
-            "agent number lock {} unavailable; pass --name",
-            path.display()
-        )
-    };
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(&path)
-        .map_err(|_| unavailable())?;
-    for _ in 0..LIVE_LOCK_TRIES {
-        match file.try_lock() {
-            Ok(()) => return Ok(file),
-            Err(fs::TryLockError::WouldBlock) => {
-                std::thread::sleep(std::time::Duration::from_millis(25));
-            }
-            Err(fs::TryLockError::Error(_)) => break,
-        }
-    }
-    Err(unavailable())
-}
-
-/// Takes the `<name>.live` lock for a session with a role (BOARD 03 (가),
+/// Takes the `<name>.live` lock for a named session (BOARD 03 (가),
 /// SPEC-20261120-launcher-liveness REQ-4): the launcher holds this exclusive lock for as long
-/// as the host runs — a numbered session through its `agent-<n>` name, a named session through
-/// the name it was given — so a read-only probe ([`live_lock_held`]) can tell a live launcher
-/// from an exited one. A symlink or a non-regular file at the path is refused; the name must
-/// be a safe registry name.
+/// as the host runs, under the name `--name` gave, so a read-only probe ([`live_lock_held`])
+/// can tell a live launcher from an exited one. A symlink or a non-regular file at the path is
+/// refused; the name must be a safe registry name.
 pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
     if !crate::lane_registry::valid_name(name) {
         return Err(
             "session live lock name is invalid: use 1 to 64 of A-Z a-z 0-9 . _ -".to_string(),
         );
     }
-    // The first named launch in a clone makes the sessions folder, as the numbered path does.
+    // The first named launch in a clone makes the sessions folder.
     fs::create_dir_all(dir)
         .map_err(|e| format!("session live lock {} write failed: {e}", dir.display()))?;
     let path = dir.join(format!("{name}.live"));
@@ -586,8 +464,7 @@ pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
         .open(&path)
         .map_err(|_| unavailable())?;
     // N2 of the audit: a session of this name is already running — say so at once, with no
-    // wait. The numbered path keeps its retries because a shared dry-run probe may hold its
-    // file for an instant; a named lock's only other holder is a full session.
+    // wait; a named lock's only other holder is a full session.
     match file.try_lock() {
         Ok(()) => Ok(file),
         Err(fs::TryLockError::WouldBlock) => Err(format!(
@@ -596,59 +473,6 @@ pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
         )),
         Err(fs::TryLockError::Error(_)) => Err(unavailable()),
     }
-}
-
-// @MX:WARN: [AUTO] cross-process critical section; a second launch blocks on `.lock` until the
-//   first holds the `.live` lock of its number.
-// @MX:REASON: two launches that both chose the same number would open one `agent-<n>`.
-/// Takes the next agent number. Under an exclusive `File::lock` on `.lock` (a concurrent launch
-/// waits, it does not fail) it finds the highest live number, takes the exclusive lock on
-/// `agent-<highest + 1>.live` (or `agent-1.live` when none is alive) and only then lets go of
-/// `.lock`. The number stays live while the returned value is held. Every failure is an error
-/// for the caller to show, never a silent `agent-1`.
-pub fn take_agent_number(project: &Path) -> Result<TakenNumber, String> {
-    let dir = agent_seq_dir(project)?;
-    refuse_symlink(&dir)?;
-    fs::create_dir_all(&dir).map_err(|_| {
-        format!(
-            "agent number store {} cannot be created; pass --name",
-            dir.display()
-        )
-    })?;
-    let lock_path = dir.join(".lock");
-    refuse_unless_regular(&lock_path)?;
-    let lock = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(&lock_path)
-        .and_then(|f| f.lock().map(|()| f))
-        .map_err(|_| {
-            format!(
-                "agent number lock {} unavailable; pass --name",
-                lock_path.display()
-            )
-        })?;
-    let live_max = highest_live(&dir, clock())?;
-    let number = number_after(live_max);
-    // Test seam: widens the window between choosing and locking (at most 2 s) so the
-    // concurrency test can show the counter lock is what keeps numbers apart. Debug builds
-    // only: a release build never reads the variable (SPEC-20261124-test-seams-release).
-    #[cfg(debug_assertions)]
-    if let Some(ms) = std::env::var(AGENT_SEQ_TEST_HOLD_VAR)
-        .ok()
-        .and_then(|v| v.parse::<u64>().ok())
-    {
-        std::thread::sleep(std::time::Duration::from_millis(ms.min(2000)));
-    }
-    let live = lock_live(&dir, number)?;
-    drop(lock);
-    Ok(TakenNumber {
-        number,
-        live_max,
-        _live: live,
-    })
 }
 
 fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
@@ -899,7 +723,7 @@ pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
 }
 
 /// SPEC-20261124-identity-home-arg REQ-7: with a symlinked home state folder in the environment
-/// HOME the agent number folder answers as it does with a sound HOME.
+/// HOME the session folder answers as it does with a sound HOME.
 #[cfg(all(test, unix))]
 mod home_arg_claim_group_tests {
     use super::agent_seq_dir;
