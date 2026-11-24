@@ -342,6 +342,63 @@ fn inventory_walk_over_the_entry_limit_keeps_its_group_with_over_limit() {
     assert_ne!(entry(&full, "reports")["over_limit"], true);
 }
 
+#[test]
+fn inventory_a_link_below_a_top_level_folder_is_never_followed() {
+    // Links below a folder point outside the home: to a big file and to a folder with a file.
+    // A walk that followed them would add their 80000 bytes to the folder it found them in.
+    let tmp = TempDir::new().unwrap();
+    let base = fs::canonicalize(tmp.path()).unwrap();
+    let home = base.join("home");
+    let moai = home.join(MOAI);
+    let outside = base.join("outside");
+    put(&outside.join("big.bin"), 50_000);
+    put(&outside.join("dir/inner.bin"), 30_000);
+    // `reports` is a folder kind with items; `releases` is a folder of a retired tool.
+    put(&moai.join("reports/p/a.md"), 100);
+    symlink(outside.join("big.bin"), moai.join("reports/p/link-file")).unwrap();
+    symlink(outside.join("dir"), moai.join("reports/p/link-dir")).unwrap();
+    put(&moai.join("releases/v1/bin"), 200);
+    symlink(outside.join("dir"), moai.join("releases/v1/link-dir")).unwrap();
+    symlink(outside.join("big.bin"), moai.join("releases/link-file")).unwrap();
+    let fx = Fx {
+        _tmp: tmp,
+        home,
+        moai,
+    };
+    let inv = inventory(&fx, &[]);
+    for (name, bytes) in [("reports", 100), ("releases", 200)] {
+        let e = entry(&inv, name);
+        assert_eq!(e["bytes"], bytes, "{name} counted what a link points to: {e}");
+        assert_eq!(e["files"], 1, "{name} counted a file behind a link: {e}");
+    }
+    // The kind row counts the one report that is a file, not the links beside it.
+    assert_eq!(kind(&inv, "reports").unwrap()["count"], 1, "{inv}");
+    assert_eq!(kind(&inv, "reports").unwrap()["bytes"], 100, "{inv}");
+}
+
+#[test]
+fn inventory_a_moai_folder_that_is_a_link_is_refused_by_both_operations() {
+    // `<home>/.moai` is itself a link to a real folder: neither operation follows it.
+    let tmp = TempDir::new().unwrap();
+    let base = fs::canonicalize(tmp.path()).unwrap();
+    let home = base.join("home");
+    let real = base.join("elsewhere");
+    put(&real.join("reports/p/a.md"), 100);
+    fs::create_dir_all(&home).unwrap();
+    symlink(&real, home.join(MOAI)).unwrap();
+    let home_arg = home.to_str().unwrap();
+    for op in ["tidy-inventory", "tidy-plan"] {
+        let out = run(&[op, home_arg]);
+        assert!(!out.ok, "{op} followed the link: {} {}", out.stdout, out.stderr);
+        let all = format!("{}{}", out.stdout, out.stderr);
+        assert!(all.contains("link"), "{op} did not say it is a link: {all}");
+        assert!(
+            !all.contains("a.md") && !all.contains("\"reports\""),
+            "{op} listed what is behind the link: {all}"
+        );
+    }
+}
+
 // ------------------------------------------------------------------- kinds_
 
 #[test]
@@ -617,6 +674,67 @@ fn plan_digest_is_stable_for_one_folder_and_changes_with_the_candidates() {
         c["digest"], d["digest"],
         "a different offer changes the digest"
     );
+}
+
+/// Makes a folder readable again when dropped, so the temporary home can be removed.
+struct Unlock(PathBuf);
+
+impl Drop for Unlock {
+    fn drop(&mut self) {
+        let _ = fs::set_permissions(&self.0, fs::Permissions::from_mode(0o755));
+    }
+}
+
+/// A home whose only entry is the retired-tool folder `releases` with a readable file.
+fn retired_tool_home() -> Fx {
+    let tmp = TempDir::new().unwrap();
+    let home = fs::canonicalize(tmp.path()).unwrap().join("home");
+    let moai = home.join(MOAI);
+    put(&moai.join("releases/v1/bin"), 800);
+    age_tree(&moai.join("releases"), 400);
+    Fx {
+        _tmp: tmp,
+        home,
+        moai,
+    }
+}
+
+#[test]
+fn plan_a_retired_tool_folder_with_an_unreadable_part_is_kept_not_archived() {
+    let fx = retired_tool_home();
+    // The whole folder looks old and readable until the walk meets the one part it cannot list.
+    let whole = plan(&fx, &[]);
+    assert_eq!(item(&whole, "releases")["action"], "archive", "control: {whole}");
+    put(&fx.moai.join("releases/v1/locked/f"), 5);
+    let locked = fx.moai.join("releases/v1/locked");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+    let _unlock = Unlock(locked);
+    let p = plan(&fx, &[]);
+    let i = item(&p, "releases");
+    assert_eq!(i["action"], "keep", "archived what it could not read in full: {i}");
+    assert_eq!(i["rule"], "keep_unknown", "{i}");
+    assert!(text(&i["reason"]).contains("unknown"), "{i}");
+    assert!(
+        p["items"].as_array().unwrap().iter().all(|i| i["action"] == "keep"),
+        "nothing is offered from a folder read in part: {p}"
+    );
+}
+
+#[test]
+fn plan_a_retired_tool_folder_over_the_entry_limit_is_kept_not_archived() {
+    let fx = retired_tool_home();
+    for n in 0..12 {
+        put(&fx.moai.join(format!("releases/v1/f{n}")), 10);
+    }
+    age_tree(&fx.moai.join("releases"), 400);
+    let whole = plan(&fx, &[]);
+    assert_eq!(item(&whole, "releases")["action"], "archive", "control: {whole}");
+    // A lowered limit stops the walk partway: the size is only what was seen.
+    let p = plan(&fx, &["--entry-limit", "5"]);
+    let i = item(&p, "releases");
+    assert_eq!(i["action"], "keep", "archived a folder it only partly counted: {i}");
+    assert_eq!(i["rule"], "keep_unknown", "{i}");
+    assert!(text(&i["reason"]).contains("unknown"), "{i}");
 }
 
 // one memory index of `lines` lines of `width` bytes each (the newline included).

@@ -47,8 +47,16 @@ impl Options {
 
 fn scan(home: &Path, opts: &Options) -> Result<inventory::Scan, String> {
     let moai = home.join(crate::home_root::MOAI_DIR);
-    if !moai.is_dir() {
-        return Err(format!("no `.moai` folder under `{}`", home.display()));
+    // The folder itself is read by its own directory data first: a link is refused, never followed.
+    match std::fs::symlink_metadata(&moai) {
+        Ok(md) if md.file_type().is_symlink() => {
+            return Err(format!(
+                "`{}` is a link; the tidy operations never follow a link, so nothing was read",
+                moai.display()
+            ));
+        }
+        Ok(md) if md.is_dir() => {}
+        _ => return Err(format!("no `.moai` folder under `{}`", home.display())),
     }
     inventory::scan(&moai, opts.limits, &opts.thresholds)
 }
