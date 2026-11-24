@@ -27,7 +27,6 @@ use std::{
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
-const STATE: &str = ".moai";
 /// A file every package carries, edited per generation below.
 const FILE: &str = "workflows/work.md";
 
@@ -47,14 +46,14 @@ struct Home {
 fn home() -> Home {
     let tmp = TempDir::new().unwrap();
     let home = fs::canonicalize(tmp.path()).unwrap().join("home");
-    fs::create_dir_all(home.join(STATE)).unwrap();
+    fs::create_dir_all(moai_cli::home_root::path(&home)).unwrap();
     Home { _tmp: tmp, home }
 }
 
-/// A version folder `<home>/.moai/versions/<name>` with a copy of this build's binary, the
+/// A version folder `<state folder>/versions/<name>` with a copy of this build's binary, the
 /// package and the agent sources; `edit` changes the package copy. Returns the binary.
 fn install(home: &Path, name: &str, edit: impl FnOnce(&Path)) -> PathBuf {
-    let folder = home.join(STATE).join("versions").join(name);
+    let folder = moai_cli::home_root::path(home).join("versions").join(name);
     fs::create_dir_all(folder.join("bin")).unwrap();
     let exe = folder.join("bin/moai-cli");
     common::copy_executable(Path::new(EXE), &exe);
@@ -128,7 +127,7 @@ fn apply(exe: &Path, home: &Path) -> Value {
 
 /// The owned digest of `FILE` in every host receipt under the state folder, newest last.
 fn owned_digests(home: &Path) -> Vec<String> {
-    let dir = home.join(STATE).join("installations");
+    let dir = moai_cli::home_root::path(home).join("installations");
     let mut receipts: Vec<Value> = Vec::new();
     for id in names_in(&dir) {
         if let Ok(bytes) = fs::read(dir.join(id).join("hosts/moai/claude.json")) {
@@ -381,7 +380,7 @@ fn ac6_the_applied_screen_shows_the_switch_command_and_a_readable_revert_line() 
 
     // A switch that was confirmed in this run shows no next command.
     v["switch_result"] =
-        json!({"state": "applied", "saved": "/home/u/.moai/saved", "revert": "moai switch-revert"});
+        json!({"state": "applied", "saved": "/home/u/saved", "revert": "moai switch-revert"});
     let done = screen(&v, Asked::Yes, &view(Lang::En));
     assert!(!done.contains("moai update --confirm-switch"), "{done}");
 }
