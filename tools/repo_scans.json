@@ -2314,6 +2314,27 @@
         }
       ],
       "rejects": "a change to a tests/*.rs file, to tests/areas.toml, to the state-folder allow list or to the two guidance pages, or to the scan list, that the check-affected table step, which reads them at run time, did not re-run on the merge tree (SPEC-20261124-new-test-file-precheck, SPEC-20261124-repo-scans-precheck)"
+    },
+    {
+      "id": "managed-block-text-pinned",
+      "tests": [
+        "tests/language_setting.rs",
+        "tests/language_three_questions.rs"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test language_setting --test language_three_questions"
+      ],
+      "rules": [
+        "src/agents.rs",
+        "tests/language_setting.rs",
+        "tests/language_three_questions.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/agents.rs"
+        }
+      ],
+      "rejects": "a change to the managed CLAUDE.md block text in src/agents.rs that the two tests pinning the block text (the area rule does not pick them: their names do not start with `agents`) did not re-run on the merge tree (SPEC-20261120-moai-layout, C-456)"
     }
   ]
 }
