@@ -392,7 +392,9 @@ fn an_open_file_keeps_its_entry_in_place() {
     let (_d, home) = go_home();
     let held = fs::File::open(home.join(".moai/cache/a.bin")).unwrap();
     let _open = Kill(crate::common::spawn_group(
-        Command::new("sh")
+        // `/bin/sh` by its full name: the named-file scan (`tests/process_table_default.rs`) knows
+        // this spelling as a holder program and then asks the test to read the real table.
+        Command::new("/bin/sh")
             .args(["-c", "sleep 60; :"])
             .current_dir(&home)
             .stdin(Stdio::from(held)),
