@@ -13,7 +13,7 @@ use crate::model_effort_settings::{
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::io::{self, BufRead, IsTerminal, Read, Write};
+use std::io::{self, BufRead, Read, Write};
 use std::path::Path;
 
 /// The tools a person can pick, in question order (user decision 2026-11-21: Claude Code and GLM
@@ -612,25 +612,40 @@ pub fn apply(path: &Path, picks: &[Pick], digest: &str) -> Result<Plan, String> 
 }
 
 /// The model step's glm key question (SPEC-20261121-glm-key-at-pick): when the picks name glm,
-/// the key is asked right here, before the launcher record. On a terminal the value is read
-/// through the hidden prompt and never echoed; in a driven or piped flow it comes from
-/// `input`. The value goes to the key vault the way the key set command stores it and appears
-/// in no output. An empty answer skips — the pick stays, and the first glm run keeps asking
-/// for the key. A key already in the vault is kept unless the answer names a new one.
+/// the key is asked right here, before the launcher record. With `hidden` (the caller checked
+/// that stdin and stderr are terminals) the value is read through the hidden prompt and never
+/// echoed; otherwise it is one line of `input`, and nothing here touches a terminal. The value
+/// goes to the key vault under `home` the way the key set command stores it and appears in no
+/// output. An empty answer skips — the pick stays, and the first glm run keeps asking for the
+/// key. A key the launcher would already find (this project's, then the shared one) is kept
+/// unless the answer names a new one. The key is stored when it is answered, so a later no at
+/// the launcher save question leaves it in the vault. Outside a git work tree the project has
+/// no key folder: the question is skipped with one line saying how to store the key.
 pub fn glm_key_step<R: BufRead, W: Write>(
     input: &mut R,
     out: &mut W,
     home: &Path,
     picks: &[Pick],
+    hidden: bool,
 ) -> io::Result<()> {
     if !picks.iter().any(|p| p.tool == "glm") {
         return Ok(());
     }
-    let scope = crate::key_vault::scope_here(false).map_err(|e| io::Error::other(e.to_string()))?;
-    let stored = crate::key_vault::read_entry(home, &scope, "glm")
-        .ok()
-        .flatten()
-        .and_then(|v| crate::key_vault::usable_value(&v));
+    let Ok(scope) = crate::key_vault::scope_here(false) else {
+        writeln!(
+            out,
+            "The glm key is kept per project and this folder is not inside one; the key entry was skipped (run `moai key-set glm` inside a project, or add --shared)."
+        )?;
+        return Ok(());
+    };
+    let stored = [scope.clone(), crate::key_vault::Scope::Shared]
+        .iter()
+        .find_map(|s| {
+            crate::key_vault::read_entry(home, s, "glm")
+                .ok()
+                .flatten()
+                .and_then(|v| crate::key_vault::usable_value(&v))
+        });
     if stored.is_some() {
         writeln!(
             out,
@@ -650,20 +665,13 @@ pub fn glm_key_step<R: BufRead, W: Write>(
             "The glm pick needs a GLM API key. The input is hidden on a terminal and is stored only in the key vault; press Enter to skip."
         )?;
     }
-    let value = if std::io::stdin().is_terminal() {
+    let value = if hidden {
+        // The hidden prompt reads the terminal itself; `input` is not read here, because a
+        // read of an empty line buffer would wait for one more line.
         match crate::key_prompt::read_hidden("glm") {
-            Ok(value) => {
-                // The hidden prompt read the terminal directly; anything the flow's reader
-                // buffered before is stale now.
-                let buffered = input.fill_buf()?.len();
-                input.consume(buffered);
-                Some(value)
-            }
-            Err(_) => {
-                writeln!(
-                    out,
-                    "The hidden input is not available here; the key entry was skipped."
-                )?;
+            Ok(value) => Some(value),
+            Err(reason) => {
+                writeln!(out, "The key entry was skipped: {reason}")?;
                 None
             }
         }

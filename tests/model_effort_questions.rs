@@ -799,6 +799,7 @@ fn a_glm_pick_asks_for_the_key_once_and_stores_it_in_the_vault() {
         &mut out,
         &home,
         &[pick("glm", "leader", "glm-4", "high")],
+        false,
     )
     .unwrap();
     let text = String::from_utf8(out).unwrap();
@@ -820,6 +821,37 @@ fn a_glm_pick_asks_for_the_key_once_and_stores_it_in_the_vault() {
         Some(SECRET),
         "the vault holds the typed value"
     );
+    // The value is encrypted at rest: no file under the temporary home holds it as text, so
+    // it is in no log, no receipt and no settings file either.
+    assert_eq!(
+        files_holding(&home, SECRET),
+        Vec::<String>::new(),
+        "the plain value is in no file under the home"
+    );
+}
+
+/// The files under `dir` (relative names) whose bytes contain `needle`.
+fn files_holding(dir: &Path, needle: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut folders = vec![dir.to_path_buf()];
+    while let Some(folder) = folders.pop() {
+        for entry in fs::read_dir(&folder).unwrap().flatten() {
+            let path = entry.path();
+            let kind = entry.file_type().unwrap();
+            if kind.is_dir() {
+                folders.push(path);
+            } else if kind.is_file() {
+                let bytes = fs::read(&path).unwrap();
+                if bytes
+                    .windows(needle.len())
+                    .any(|window| window == needle.as_bytes())
+                {
+                    found.push(path.strip_prefix(dir).unwrap().display().to_string());
+                }
+            }
+        }
+    }
+    found
 }
 
 #[test]
@@ -832,6 +864,7 @@ fn an_empty_answer_skips_the_key_and_keeps_the_pick_flow() {
         &mut out,
         &home,
         &[pick("glm", "leader", "glm-4", "high")],
+        false,
     )
     .unwrap();
     let text = String::from_utf8(out).unwrap();
@@ -855,6 +888,7 @@ fn an_existing_key_is_kept_by_default_without_retyping() {
         &mut out,
         &home,
         &[pick("glm", "leader", "glm-4", "high")],
+        false,
     )
     .unwrap();
     let text = String::from_utf8(out).unwrap();
@@ -885,6 +919,7 @@ fn a_new_answer_replaces_an_existing_key() {
         &mut out,
         &home,
         &[pick("glm", "leader", "glm-4", "high")],
+        false,
     )
     .unwrap();
     assert!(
@@ -910,6 +945,7 @@ fn a_claude_pick_asks_nothing_about_a_key() {
         &mut out,
         &home,
         &[pick("claude", "leader", "claude-sonnet-5-5", "high")],
+        false,
     )
     .unwrap();
     assert!(
@@ -917,6 +953,61 @@ fn a_claude_pick_asks_nothing_about_a_key() {
         "no key question for another provider: {}",
         String::from_utf8_lossy(&out)
     );
+}
+
+#[test]
+fn a_shared_key_counts_as_an_existing_key_and_is_kept_without_a_project_copy() {
+    // The launcher finds the project's entry, then the shared one; a shared key is a key.
+    let home = key_temp_home("shared");
+    let scope = glm_scope();
+    moai_cli::key_vault::set(
+        &home,
+        &moai_cli::key_vault::Scope::Shared,
+        "glm",
+        "SECRET-shared",
+    )
+    .unwrap();
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new("\n"),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    )
+    .unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(text.contains("already in the key vault"), "{text}");
+    assert!(!text.contains("SECRET-shared"), "{text}");
+    assert!(
+        moai_cli::key_vault::read_entry(&home, &scope, "glm")
+            .unwrap()
+            .is_none(),
+        "keeping stores no project copy"
+    );
+}
+
+#[test]
+fn a_piped_answer_that_is_a_new_line_after_the_key_is_not_read_as_the_key() {
+    // One answer line is the key; the line after it stays for the next question (the save
+    // question of the stage), so the key step reads exactly one line.
+    let home = key_temp_home("one-line");
+    let scope = glm_scope();
+    let mut input = Cursor::new(format!("{SECRET}\ny\n"));
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut input,
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    )
+    .unwrap();
+    let mut rest = String::new();
+    std::io::BufRead::read_line(&mut input, &mut rest).unwrap();
+    assert_eq!(rest, "y\n", "the next line is left for the next question");
+    let stored = moai_cli::key_vault::read_entry(&home, &scope, "glm").unwrap();
+    assert_eq!(stored.as_deref(), Some(SECRET));
 }
 
 // SPEC-20261122-model-fast-pair REQ-4: the API refuses an Opus 4.8 request with fast mode from
