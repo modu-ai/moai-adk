@@ -212,60 +212,109 @@ fn operating_rules_are_never_asked_and_have_defaults() {
     );
 }
 
-/// Tokens that tie a question, an option or an example to one language's tooling or to this
-/// repository's own commands (REQ-9).
-const TOOL_TOKENS: [&str; 8] = [
-    "cargo",
-    "rustup",
-    "npm",
-    "pipx",
-    "go install",
-    "moai check",
-    "local_check",
-    "check-guard",
-];
+/// Tokens that tie a question, an option or an example to one language's tooling (REQ-9).
+const LANGUAGE_TOOL_TOKENS: [&str; 5] = ["cargo", "rustup", "npm", "pipx", "go install"];
 
-/// The one named exception (SPEC D-6): the bullet of step 6a that lists the official plugins'
-/// language-server install routes. It is an agent command list, not a question, option or example.
-fn is_exception(line: &str) -> bool {
-    line.starts_with("   - Language servers. Run the read-only `claude plugin list`")
+/// Tokens that name this repository's own commands and scripts (REQ-9). They are file or command
+/// names, so any boundary after them counts (`tools/local_check.sh`, `moai check affected`).
+const INTERNAL_TOKENS: [&str; 3] = ["moai check", "local_check", "check-guard"];
+
+/// The header row of the one named exception (SPEC D-6): the language-server install table of
+/// step 6a. Only the last cell of its rows, the install command, is exempt; the other cells and
+/// every other line are scanned.
+const EXCEPTION_HEADER: &str = "| Language server | Install route |";
+
+/// A line `text` is a table row when its first non-space character is a bar.
+fn is_row(line: &str) -> bool {
+    line.trim_start().starts_with('|')
 }
 
-/// Lines of `text` that hold a token of [`TOOL_TOKENS`] as a whole word, outside the exception.
+/// The part of `line` that the scan reads: the whole line, or for a row of the exception table
+/// every cell but the last one.
+fn scanned_part(line: &str, in_exception_table: bool) -> String {
+    if !(in_exception_table && is_row(line)) {
+        return line.to_string();
+    }
+    let trimmed = line.trim_end().trim_end_matches('|');
+    match trimmed.rfind('|') {
+        Some(at) => trimmed[..at].to_string(),
+        None => String::new(),
+    }
+}
+
+/// True when `token` stands in `lower` at `start..end` as a command or a name, not inside a longer
+/// word and not as the stem of a file name such as `Cargo.toml`.
+fn is_command(lower: &str, start: usize, end: usize, internal: bool) -> bool {
+    let word = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric());
+    let before = lower[..start].chars().next_back();
+    let mut after = lower[end..].chars();
+    let next = after.next();
+    if word(before) {
+        return false;
+    }
+    if internal {
+        // `local_check.sh`, `moai check affected`, `check-guard`: any boundary ends the name.
+        return !word(next) && next != Some('_');
+    }
+    // A language tool ends at a space, a quote, a closing mark, the end of the line, or a full
+    // stop that closes a sentence (`the user runs cargo.`); `Cargo.toml` (a full stop followed by
+    // a letter) is a file name, not a command.
+    match next {
+        None => true,
+        Some(c) if c.is_whitespace() || "`,;:)\"'!?/".contains(c) => true,
+        Some('.') => !word(after.next()),
+        Some(_) => false,
+    }
+}
+
+/// Lines of `text` that hold a token of the two lists as a whole word, outside the exception.
 fn tool_lines(text: &str) -> Vec<(usize, &'static str)> {
     let mut found = Vec::new();
+    let mut in_exception_table = false;
     for (at, line) in text.lines().enumerate() {
-        if is_exception(line) {
-            continue;
+        if line.trim() == EXCEPTION_HEADER {
+            in_exception_table = true;
+        } else if !is_row(line) {
+            in_exception_table = false;
         }
-        let lower = line.to_lowercase();
-        for token in TOOL_TOKENS {
-            let mut from = 0;
-            while let Some(pos) = lower[from..].find(token) {
-                let start = from + pos;
-                let end = start + token.len();
-                let before = lower[..start].chars().next_back();
-                let after = lower[end..].chars().next();
-                let word = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric());
-                // A token is a command when it ends at a space, a quote, a closing mark or the
-                // end of the line; `Cargo.toml` (a file name, the next char is `.`) is not.
-                let ends = after.is_none_or(|c| c.is_whitespace() || "`,;:)\"'".contains(c));
-                if !word(before) && ends {
-                    found.push((at + 1, token));
-                    break;
+        let lower = scanned_part(line, in_exception_table).to_lowercase();
+        let lists: [(&[&'static str], bool); 2] =
+            [(&LANGUAGE_TOOL_TOKENS, false), (&INTERNAL_TOKENS, true)];
+        for (tokens, internal) in lists {
+            for token in tokens {
+                let mut from = 0;
+                while let Some(pos) = lower[from..].find(token) {
+                    let start = from + pos;
+                    let end = start + token.len();
+                    if is_command(&lower, start, end, internal) {
+                        found.push((at + 1, *token));
+                        break;
+                    }
+                    from = end;
                 }
-                from = end;
             }
         }
     }
     found
 }
 
+/// The files the scan reads: the question bank, the two workflows that ask, and the question
+/// rules (N1: the rules carry examples too).
+const SCANNED: [&str; 4] = [BANK, PROJECT, UPDATE, QUESTIONS];
+
+/// AC-7 (REQ-10): the scan list names the question rules as well as the bank and the workflows.
+#[test]
+fn the_scan_reads_the_question_rules_too() {
+    for rel in [BANK, PROJECT, UPDATE, QUESTIONS] {
+        assert!(SCANNED.contains(&rel), "the scan must read {rel}");
+    }
+}
+
 /// AC-7 (REQ-9, REQ-10): the shipped interview texts name no language tool and no MoAI-internal
 /// command outside the one named exception.
 #[test]
 fn no_question_option_or_example_names_a_language_tool() {
-    for rel in [BANK, PROJECT, UPDATE] {
+    for rel in SCANNED {
         let found = tool_lines(&read(rel));
         assert!(
             found.is_empty(),
@@ -274,17 +323,61 @@ fn no_question_option_or_example_names_a_language_tool() {
     }
 }
 
-/// AC-7 (REQ-10, guard): the scan flags a planted tool in an option, flags a planted tool next to
-/// the exception, and does not flag the exception line itself.
+/// AC-7 (REQ-10): the exception is one table of `project.md`, named by its header row, and the
+/// header stands once; a second table would widen the exception unseen.
+#[test]
+fn the_named_exception_is_one_install_table() {
+    let project = read(PROJECT);
+    let headers = project
+        .lines()
+        .filter(|l| l.trim() == EXCEPTION_HEADER)
+        .count();
+    assert_eq!(headers, 1, "the install table header must stand once");
+    for rel in [BANK, UPDATE, QUESTIONS] {
+        assert!(
+            !read(rel).lines().any(|l| l.trim() == EXCEPTION_HEADER),
+            "{rel} must not carry the exception table"
+        );
+    }
+}
+
+/// AC-7 (REQ-10, guard): the scan flags a planted tool in an option, in a sentence end, in a script
+/// path and beside the exception table, and spares only the install cell of that table.
 #[test]
 fn the_tool_scan_flags_a_planted_tool_and_spares_only_the_named_exception() {
     let planted =
         "| `done` | always | Which check? | `cargo test` passes (recommended) | decisions |";
     assert_eq!(tool_lines(planted), vec![(1, "cargo")]);
-    let exception = "   - Language servers. Run the read-only `claude plugin list` and run `rustup component add rust-analyzer`.";
-    assert!(tool_lines(exception).is_empty());
-    let beside = format!("{exception}\n   - Other bullet that runs `npm install -g x`.");
-    assert_eq!(tool_lines(&beside), vec![(2, "npm")]);
+    // The shapes the first scan missed: a token before a full stop, and a script path.
+    assert_eq!(
+        tool_lines("In that case the user runs cargo."),
+        vec![(1, "cargo")]
+    );
+    assert_eq!(
+        tool_lines("| `done` | always | Which check? | `tools/local_check.sh` passes | decisions |"),
+        vec![(1, "local_check")]
+    );
+    assert_eq!(
+        tool_lines("run tools/local_check.sh and read it"),
+        vec![(1, "local_check")]
+    );
+    assert_eq!(
+        tool_lines("then `moai check affected` runs"),
+        vec![(1, "moai check")]
+    );
+    assert_eq!(tool_lines("an npm. install"), vec![(1, "npm")]);
+    // The exception table: the install cell is spared, the other cells and the lines around it
+    // are not.
+    let table = format!(
+        "{EXCEPTION_HEADER}\n| --- | --- |\n| `rust-analyzer` | `rustup component add rust-analyzer` |\n| `cargo` | `npm install -g x` |\nThe user runs cargo."
+    );
+    assert_eq!(tool_lines(&table), vec![(4, "cargo"), (5, "cargo")]);
+    let beside = format!("{table}\n\n| other | `npm install -g y` |");
+    assert_eq!(
+        tool_lines(&beside).last(),
+        Some(&(7, "npm")),
+        "a table row after the exception table is scanned in full"
+    );
     assert!(
         tool_lines("a word like pnpm or cargoes is not the token").is_empty(),
         "a token inside a longer word is not flagged"

@@ -177,6 +177,8 @@ fn apply_takes_the_plan_result_that_carries_work_flow_remote() {
 fn apply_still_refuses_another_unknown_key() {
     let world = World::new();
     let mut plan = world.plan();
+    // Take the one tolerated key out first, so the refusal can only come from the other key.
+    plan.as_object_mut().unwrap().remove("work_flow_remote");
     plan["not_a_plan_key"] = json!(true);
     let out = world.apply(&plan);
     assert!(
