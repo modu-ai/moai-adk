@@ -1159,6 +1159,7 @@
     },
     {
       "id": "test-seams-read-only-in-debug-builds",
+      "always": true,
       "tests": [
         "tests/state_folder_literal_scan.rs::the_four_test_seams_are_read_only_in_debug_builds"
       ],
