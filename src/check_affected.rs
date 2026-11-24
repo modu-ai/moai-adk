@@ -2111,6 +2111,10 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
             ("zz_read", rooted("fn t() { let _ = \"docs/a.md\"; }")),
             // The scan names this file, but its scope covers only `.md` files.
             ("zz_ok_reader", rooted("fn t() { let _ = \"docs/a.txt\"; }")),
+            (
+                "zz_listed_walk",
+                rooted("fn t() { let _ = \"docs/a.md\"; }"),
+            ),
             ("zz_plain", "fn t() {}".to_string()),
         ];
         let got = violations(&files, Some(SCAN_LIST), Some(&tracked()));
@@ -2136,8 +2140,11 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         );
         let suffix = line_for(&got, "zz_ok_reader");
         assert!(suffix.contains("docs/a.txt"), "{suffix}");
+        // A scan without `always` claims no coverage, whatever it names and holds in its scope.
+        let plain_scan = line_for(&got, "zz_listed_walk");
+        assert!(plain_scan.contains("docs/a.md"), "{plain_scan}");
         // One line per miss and none for the plain file.
-        assert_eq!(got.len(), 5, "{got:?}");
+        assert_eq!(got.len(), 6, "{got:?}");
     }
 
     #[test]
