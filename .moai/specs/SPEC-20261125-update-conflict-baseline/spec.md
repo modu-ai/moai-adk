@@ -24,6 +24,7 @@ branch: spec/update-conflict-baseline-20261125
 
 - (h) conflict 를 "패키지 것으로 바꾸고 백업" 하는 선택과 (i) 옛 `rules/moai/flow.md` 를 update 가 지우는 일은 사용자 결정이 필요해서 구현하지 않고 Decisions 에 선택지만 적어요.
 - (j) HOME 상태 폴더 `~/.moai-cli` → `~/.moai` 이름 바꾸기(다른 SPEC 의 일).
+- (g) 머리줄에 도는 바이너리 버전 병기: 하지 않아요. 코드를 읽으니 머리줄의 `package` 는 이미 도는 빌드예요(`target_version` 은 `crate::BUILD_VERSION`, `src/update.rs` 의 계획 만드는 곳). 헷갈리는 쪽은 `installed` 인데, 쓴 파일이 없어 영수증이 새로 안 써진 실행에서 마지막 영수증의 버전에 머물러요. 이 SPEC 의 REQ-1·REQ-2 가 baseline 만 움직일 때도 영수증을 써서 그 머무름을 줄여요. 그래도 남는 혼동이 있으면 사용자가 본 화면을 근거로 따로 다뤄요.
 - 사용자가 고친 파일을 덮어쓰거나 conflict 를 조용히 푸는 일. 이전 세대 어느 패키지와도 같지 않은 바이트는 conflict 로 남아요.
 - Desktop 이 읽는 설정 폴더 조사와 미리보기의 설정 폴더 선택(같은 카드의 기준 1~3). 이 SPEC 은 그 기준을 만들지도 닫지도 않아요.
 
@@ -35,10 +36,9 @@ branch: spec/update-conflict-baseline-20261125
 - REQ-4: When an owned skill file matches neither its baseline, the package file nor any earlier generation's file, the update shall plan it as a conflict and write nothing to it. · failure: none — 사용자의 수정은 지금처럼 보존돼요.
 - REQ-5: When the human Applied screen is drawn for a host with files in conflict, it shall name the number of conflicts and their paths, whether or not other files of the host were written. · failure: none — 값이 없으면 줄이 없어요.
 - REQ-6: When a routing target is a link to the file that moai keeps in the default Claude folder, the human screen shall say the file is linked instead of skipped. · failure: none — 동작 `linked` 의 화면 말이 생겨요.
-- REQ-7: When an earlier build's flow rule is left in place, the human screen shall name that file and say that moai does not delete it. · failure: none — 안내가 detail 이 아니라 화면 줄로 나와요.
+- REQ-7: When a routing host's flow rule plan carries a detail, the human preview shall show that detail as a line of its own. · failure: none — 옛 flow 규칙이 남았다는 안내(파일 이름과 "left in place for you to delete")가 이 detail 에 들어 있고, detail 이 없으면 줄이 없어요.
 - REQ-8: When a planned switch script was not confirmed in this run, the human Applied screen shall show the command that confirms it. · failure: none — 이미 적용된 switch 는 지금처럼 되돌리기 줄만 보여요.
 - REQ-9: When the human Applied screen shows a revert command, it shall show the real home folder in place of the home placeholder and a line that says what the permission reference is. · failure: none — 결과 JSON 의 `revert` 문장은 그대로예요.
-- REQ-10: When the human screen shows the header line, it shall name the build that is running next to the installed and package versions. · failure: none — 영수증의 마지막 버전과 도는 바이너리가 같으면 줄이 늘지 않아요.
 
 ## Acceptance
 
@@ -46,9 +46,9 @@ branch: spec/update-conflict-baseline-20261125
 - AC-2 (REQ-3): 영수증이 소유한 파일의 디스크 바이트가 이전 세대 버전 폴더의 패키지와 같고 이번 패키지와 다르면, 미리보기의 그 파일은 conflict 가 아니라 update 이고 확정하면 패키지 바이트가 돼요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac2_`
 - AC-3 (REQ-4): 기준선과 패키지와 어느 이전 세대와도 다른 바이트의 소유 파일은 conflict 로 남고 확정해도 바이트가 그대로예요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac3_`
 - AC-4 (REQ-5): `applied` 호스트에 conflict 파일 둘이 있으면 Applied 화면이 그 수와 두 경로를 한국어와 영어로 말하고, conflict 가 없으면 그 줄이 없어요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac4_`
-- AC-5 (REQ-6, REQ-7): 링크된 routing 줄은 "linked" 로, 옛 flow 규칙이 남은 미리보기는 그 파일 이름과 "삭제하지 않아요" 를 화면 줄로 말하고 "skipped" 는 없어요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac5_`
-- AC-6 (REQ-8, REQ-9, REQ-10): 확정하지 않은 switch 의 다음 명령이 Applied 화면에 있고, 되돌리기 줄에 실제 HOME 이 있고 `<HOME>` 글자는 없으며 `<reference>` 가 무엇인지 한 줄로 말하고, 머리줄이 도는 빌드를 말해요. 결과 JSON 의 `revert` 문장은 그대로예요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac6_`
-- AC-7 (REQ-1…REQ-10): 이웃 테스트가 그대로 통과해요 · verify: `cargo test --locked --offline --test update_adopt_cli`
+- AC-5 (REQ-6, REQ-7): 링크된 routing 줄은 "linked" 로, 옛 flow 규칙이 남은 미리보기는 그 파일 이름과 "left in place for you to delete" 가 든 detail 을 화면 줄로 보여 주고 링크된 줄에 "skipped" 는 없어요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac5_`
+- AC-6 (REQ-8, REQ-9): 확정하지 않은 switch 의 다음 명령이 Applied 화면에 있고, 되돌리기 줄에 실제 HOME 이 있고 `<HOME>` 글자는 없으며 `<reference>` 가 무엇인지 한 줄로 말해요. 결과 JSON 의 `revert` 문장은 그대로예요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac6_`
+- AC-7 (REQ-1…REQ-9): 이웃 테스트가 그대로 통과해요 · verify: `cargo test --locked --offline --test update_adopt_cli`
   verify: `cargo test --locked --offline --test update_cli`
   verify: `cargo test --locked --offline --test update_moved_receipts`
   verify: `cargo test --locked --offline --test update_tux_git_hooks`
@@ -64,7 +64,7 @@ branch: spec/update-conflict-baseline-20261125
 
 1. RED 먼저: AC-1…AC-6 을 임시 HOME 과 이 빌드 바이너리의 복사본으로(`tests/update_adopt_cli.rs` 의 `install`·`home` 방식) 돌려요. 화면 테스트는 `tests/fixtures/update_tux/*.json` 을 고쳐 `update_tux::screen` 에 넣어요. 기준에서는 맞는 이유로 실패해야 해요.
 2. `src/update.rs`: 계획 단계에서 소유 파일의 baseline 을 이전 세대 복사본과 대조해 올리고(REQ-3), 현재가 패키지와 같은데 baseline 이 다르면 계획에 baseline 과 current 를 그대로 싣고(이미 FilePlan 이 둘을 가져요), 확정 단계가 그런 파일을 `owned` 에 모아 쓸 파일이 없어도 영수증을 한 번 써요(REQ-1, REQ-2).
-3. `src/update_tux.rs`: 남은 conflict 이름, linked 낱말, 옛 flow 안내 줄, switch 다음 명령, 머리줄의 빌드, 되돌리기 줄을 풀어 쓰기(REQ-5…REQ-10). `src/update.rs` 의 JSON `revert` 문장은 안 바꿔요.
+3. `src/update_tux.rs`: 남은 conflict 이름, linked 낱말, 옛 flow 안내 줄, switch 다음 명령(Applied 결과 JSON 에 `switch` 부분이 함께 실려요), 되돌리기 줄을 풀어 쓰기(REQ-5…REQ-9). `src/update.rs` 의 JSON `revert` 문장은 안 바꿔요.
 4. 지킴이마다 뮤턴트, 이웃 테스트, READY 에서 `check affected` 한 번.
 
 ## Risks

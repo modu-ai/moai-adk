@@ -257,3 +257,130 @@ fn ac3_a_users_own_edit_stays_a_conflict_and_is_kept() {
         "the user's bytes are kept"
     );
 }
+
+// ---- the human screens ----------------------------------------------------------------------
+
+use moai_cli::ui::Painter;
+use moai_cli::ui_text::Lang;
+use moai_cli::update_tux::{screen, Asked, View};
+
+fn fixture(name: &str) -> Value {
+    let p = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(format!("tests/fixtures/update_tux/{name}.json"));
+    serde_json::from_str(&fs::read_to_string(p).unwrap()).unwrap()
+}
+
+fn view(lang: Lang) -> View {
+    View {
+        painter: Painter {
+            color: false,
+            unicode: true,
+            lang,
+        },
+        width: 120,
+        home: "/home/u".into(),
+        project: None,
+    }
+}
+
+fn conflict_file(path: &str) -> Value {
+    json!({
+        "path": path, "action": "conflict", "before_sha256": null,
+        "after_sha256": null, "published": false, "error": null
+    })
+}
+
+/// Files of an applied host that stayed in conflict are named, with their number, although other
+/// files of the host were written.
+#[test]
+fn ac4_an_applied_host_names_the_files_that_stayed_in_conflict() {
+    let mut v = fixture("applied");
+    assert_eq!(v["result"]["hosts"][0]["status"], json!("applied"));
+    let files = v["result"]["hosts"][0]["files"].as_array_mut().unwrap();
+    files.push(conflict_file("workflows/work.md"));
+    files.push(conflict_file("references/flows/next-flow.md"));
+
+    for lang in [Lang::En, Lang::Ko] {
+        let out = screen(&v, Asked::Yes, &view(lang));
+        assert!(out.contains("workflows/work.md"), "{lang:?}: {out}");
+        assert!(
+            out.contains("references/flows/next-flow.md"),
+            "{lang:?}: {out}"
+        );
+        let word = if lang == Lang::Ko {
+            "충돌"
+        } else {
+            "conflict"
+        };
+        assert!(out.contains(word), "{lang:?}: {out}");
+    }
+
+    let clean = screen(&fixture("applied"), Asked::Yes, &view(Lang::En));
+    assert!(!clean.contains("workflows/work.md"), "{clean}");
+    assert!(!clean.contains("conflict"), "no conflict, no line: {clean}");
+}
+
+/// A linked routing file reads "linked", and the flow rule's detail (the earlier build's file
+/// left in place) is a line of the preview.
+#[test]
+fn ac5_a_linked_routing_file_reads_linked_and_the_flow_detail_is_shown() {
+    let mut v = fixture("preview-changes");
+    let note = "an earlier build wrote /home/u/.claude/rules/moai/flow.md; it is left in place for you to delete";
+    v["routing"]["hosts"] = json!([
+        {
+            "host": "claude", "config_dir": "/home/u/.claude",
+            "file": "/home/u/.claude/rules/moai.md", "preflight": "ok", "blocked_reason": null,
+            "section": {"path": "/home/u/.claude/rules/moai.md", "action": "unchanged", "detail": null},
+            "flow": {"path": "/home/u/.claude/rules/moai-flow.md", "action": "unchanged", "detail": note}
+        },
+        {
+            "host": "claude", "config_dir": "/home/u/.orca",
+            "file": "/home/u/.orca/rules/moai.md", "preflight": "ok", "blocked_reason": null,
+            "section": {"path": "/home/u/.orca/rules/moai.md", "action": "linked", "detail": "reached through a link"},
+            "flow": null
+        }
+    ]);
+
+    for lang in [Lang::En, Lang::Ko] {
+        let out = screen(&v, Asked::NotAsked, &view(lang));
+        assert!(
+            out.contains("left in place for you to delete"),
+            "{lang:?}: {out}"
+        );
+        assert!(out.contains("moai/flow.md"), "{lang:?}: {out}");
+    }
+    let out = screen(&v, Asked::NotAsked, &view(Lang::En));
+    assert!(out.contains("moai.md linked"), "{out}");
+    assert!(!out.contains("moai.md skipped"), "{out}");
+}
+
+/// The Applied screen shows the next command of a switch that was not confirmed, and the revert
+/// lines name the real home and say what the permission reference is.
+#[test]
+fn ac6_the_applied_screen_shows_the_switch_command_and_a_readable_revert_line() {
+    let mut v = fixture("applied");
+    v["switch"] = json!({"apply_flag": "--confirm-switch switch:0123456789abcdef"});
+    assert!(v["revert"]["agents"].as_str().unwrap().contains("<HOME>"));
+
+    let out = screen(&v, Asked::Yes, &view(Lang::En));
+    assert!(
+        out.contains("moai update --confirm-switch switch:0123456789abcdef"),
+        "{out}"
+    );
+    assert!(
+        out.contains("moai agents-home-revert /home/u --receipt"),
+        "{out}"
+    );
+    assert!(!out.contains("<HOME>"), "{out}");
+    assert!(out.contains("who allowed the revert"), "{out}");
+
+    let ko = screen(&v, Asked::Yes, &view(Lang::Ko));
+    assert!(ko.contains("허락한 근거"), "{ko}");
+    assert!(!ko.contains("<HOME>"), "{ko}");
+
+    // A switch that was confirmed in this run shows no next command.
+    v["switch_result"] =
+        json!({"state": "applied", "saved": "/home/u/.moai/saved", "revert": "moai switch-revert"});
+    let done = screen(&v, Asked::Yes, &view(Lang::En));
+    assert!(!done.contains("moai update --confirm-switch"), "{done}");
+}
