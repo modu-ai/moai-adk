@@ -1,14 +1,16 @@
 ---
 id: SPEC-20261124-statusline-counts-truth
-title: "The status line flow counts match the ledger: hand-backs after release, answered blocks, REPAIRED, withdrawn holds, local day"
+title: "The status line flow counts match the ledger and its limit windows show the share used"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-24
 ---
 
-# 상태줄 흐름 줄의 숫자를 원장과 맞춰요: 풀린 뒤의 넘김, 답한 막힘, REPAIRED, 철회된 보류, 로컬 날
+# 상태줄 흐름 줄의 숫자를 원장과 맞추고, 한도 항목은 쓴 양으로 보여요
 
 ## Intent
+
+**개정 2 (2026-11-24, 사용자 결정).** 사용자가 리더 세션에서 직접 정했어요(리더 노트 8394): 한도 줄 `CW ███████░░░ 75% | 🔋 5H ██████░░░░ 68% (16m) | 🪫 7D ██░░░░░░░░ 22% (2d 15h)` 의 "수치와 그래프를 반대로, 남아 있는 게 아닌 사용한 것으로 변경". 이 SPEC 이 카드 C-452 의 기준 5 로 받아서 같은 파일(`src/statusline/render.rs`)을 쥔 개수 수리와 한 개정에 묶어요. 개정 1 의 내용(결함 아홉과 REQ-1~11, D-1~D-7)은 그대로예요. 세부는 리더 판단(되돌릴 수 있음)으로 정해졌고 D-8~D-11 에 있어요: 숫자는 쓴 %, 막대는 쓴 만큼 채움, 배터리 아이콘은 지금과 같은 상태(쓴 양이 70% 를 넘으면 `🪫`), 막대 색은 같은 경계를 쓴 양으로 읽은 초록 → 노랑 → 주황 → 빨강, 리셋 시간 `(16m)` 은 그대로(남은 시간). 사용자의 예는 쓴 양으로 `🔋 CW ██░░░░░░░░ 25% | 🔋 5H ███░░░░░░░ 32% (16m) | 🪫 7D ███████░░░ 78% (2d 15h)` 로 나와요. 이 개정이 뒤집는 것은 `SPEC-20261122-statusline-limits-left` 의 REQ-1·REQ-2·REQ-3 의 "남은 몫", `SPEC-20261123-statusline-order-bars` 의 REQ-3·REQ-7 의 "숫자와 막대는 남은 비율", `SPEC-20261124-statusline-bar-color` 의 REQ-2·D-1 의 "색 단계는 남은 비율" 이에요(아래 Supersedes).
 
 사용자 보고예요(2026-11-24, 카드 C-452). 상태줄이 `🗂️ 81 → 🟡 3 → 📨 9 → 🛬 6 → ✅ 50 | 🚧 8 🙋 96` 을 그렸고 사용자는 "숫자가 틀렸는지 확인하고 고치라"고 했어요. 리더가 read-only 조사로 같은 숫자를 코드에서 다시 만들고(NeXT `02746488f9`, 원장 2026-11-24T07:32Z) 결함 아홉을 찾았어요. 이 레인은 같은 모양의 원장을 임시 HOME 에 픽스처로 다시 만들어 일곱 숫자를 그대로 재현했어요(`tests/statusline_counts_truth.rs` 의 `the_0732z_ledger_shape_draws_the_seven_numbers_of_the_report`, 아래 표). 원장 자체는 읽지 않았고 부분 구성(각 묶음 안의 개수)은 숫자를 맞추려고 고른 모양이에요.
 
@@ -66,6 +68,9 @@ created: 2026-11-24
 - REQ-9: The status line shall count as done today the cards closed at or after the start of the local day of the machine's time zone.
 - REQ-10 (REQ-9): IF the time zone of the machine cannot be read, THEN the status line shall count the UTC day.
 - REQ-11: The status line shall read the stages read-only in no more than four statements within the render budget.
+- REQ-12: The status line shall write the number of each known limit window as its whole used percentage and fill the first used times ten divided by one hundred (rounded down) of the ten cells of its bar · failure: none — the percentage is clamped to 0 to 100 so the bar never has fewer than zero or more than ten filled cells
+- REQ-13: When the used percentage of a limit window is above 70, the status line shall show `🪫` in place of `🔋` · failure: none — 70 itself is `🔋`, the state the icon already marked when less than 30 was left
+- REQ-14: The status line shall paint the filled cells of a bar green up to 30 percent used, yellow up to 50, peach up to 70 and red above 70 · failure: none — without a color profile the line is the same bytes without an escape sequence
 
 ## Acceptance
 
@@ -76,12 +81,17 @@ created: 2026-11-24
 - AC-5 (REQ-6): a card with one landing and a later take is working, a card with a landing after its last take is landed · verify: `cargo nextest run --locked --offline --lib statusline::state::stage_tests_after_reserve`
 - AC-6 (REQ-10): without a readable zone the day is the UTC day and the count equals the one the earlier rule gave · verify: `cargo nextest run --locked --offline --lib statusline::state::done_today_tests`
 - AC-7 (REQ-7, REQ-11): the unsplit form still never guesses, the four statements are counted by the existing test and the ledger bytes stay the same after a render · verify: `cargo nextest run --locked --offline --lib statusline::state` and `cargo nextest run --locked --offline --test statusline_flow`
+- AC-9 (REQ-12): the user's example, 25%, 32% and 78% used, is `🔋 CW ██░░░░░░░░ 25% | 🔋 5H ███░░░░░░░ 32% (16m) | 🪫 7D ███████░░░ 78% (2d 15h)`; the filled cells are 0, 0, 1, 1, 1, 2, 9 and 10 at 0, 9, 10, 11, 19, 20, 99 and 100 used, 0 to 10 for an input below 0 or above 100, and the number is the used percentage at each of them · verify: `cargo nextest run --locked --offline --lib statusline::render::window_tests::the_row_shows_what_is_used_of_each_window` and `cargo nextest run --locked --offline --lib statusline::render::window_tests::the_bar_has_ten_cells_and_changes_at_each_tenth`
+- AC-10 (REQ-13): at 70 used the icon is `🔋` and at 71 it is `🪫`, for `CW`, `5H` and `7D` alike, with the expected values read from `HIGH_USE_PERCENT` · verify: `cargo nextest run --locked --offline --lib statusline::render::window_tests::the_battery_icon_turns_above_the_high_use_boundary`
+- AC-11 (REQ-14): the level color changes at each step in the two themes and the two profiles — 30 green, 31 yellow, 50 yellow, 51 peach, 70 peach, 71 red used — and never goes back from red toward green as the used share rises, and the empty cells and the head and the number keep their colors · verify: `cargo nextest run --locked --offline --lib statusline::render::window_tests::the_level_color_changes_at_each_step_point` and `cargo nextest run --locked --offline --lib statusline::render::window_tests::the_filled_cells_carry_the_level_color`
+- AC-12 (REQ-12, REQ-13, REQ-14): the real binary writes the used numbers in the line ladder and in every golden case, the colored goldens carry the new bar colors, the plain goldens differ from the earlier ones in the limit numbers and bars only, and the product document says "used" in place of "left" · verify: `cargo nextest run --locked --offline --test statusline_cards --test statusline_golden --test statusline_numbers_only`
 - AC-8: the goldens and the statusline targets pass with the changed lines rewritten and read, and `moai check affected` has a PASS receipt for the head · verify: `moai check affected <base>..<head>`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261124-statusline-counts-truth/**`, `src/statusline/state.rs`, `src/statusline/render.rs`, `tests/statusline_counts_truth.rs`
-- write, as the changed lines need (the leader widens the card's scope; not held by this card today): `tests/statusline_flow.rs`, `tests/statusline_cards.rs`, `tests/fixtures/statusline-claude/golden/**`, `tests/fixtures/statusline-claude/cases.json` (the checksum line the golden tool writes), `docs/rust-product-path.md` (the flow-line item only), the superseded lines of `.moai/specs/SPEC-20261122-statusline-flow/**` and `.moai/specs/SPEC-20261122-statusline-limits-left/**` (see Supersedes)
+- write, as the changed lines need (the leader widened the card's scope, note 8366): `tests/statusline_flow.rs`, `tests/statusline_cards.rs`, `tests/fixtures/statusline-claude/golden/**`, `tests/fixtures/statusline-claude/cases.json` (the checksum line the golden tool writes), the superseded lines of `.moai/specs/SPEC-20261122-statusline-flow/**` and `.moai/specs/SPEC-20261122-statusline-limits-left/**` (see Supersedes)
+- write by line lease (card C-449 holds the file): `docs/rust-product-path.md`, the flow-line item and the limit-row item (3) only; and, for the used numbers, `tests/statusline_numbers_only.rs` if the document test pins the word "left" (to be read when step 7 starts)
 - read-only: `src/ledger/**`, `src/card/ready_receipt.rs`, `tests/statusline_counts_refresh.rs` (card C-175 holds it)
 - forbidden: the real HOME and ledger, the network in tests, any write to a ledger from the status line, a new crate, `TZ` set on the test process (the child only)
 
@@ -92,6 +102,7 @@ created: 2026-11-24
 3. `render.rs`: `🟡` is `working + stale`, `🙋` counts the non-withdrawn hold cards.
 4. Goldens for the changed lines (`b13`, `b14` and any other the targets show), read by hand; the seven numbers of the report as the first golden-like check.
 5. The comment at `state.rs:206` and the `docs/rust-product-path.md` flow-line item say what the code does (drafts are not on the line).
+6. (revision 2) Red first for the limit windows: the tests of `window_tests` that pin the share left change to the share used (`the_row_shows_what_is_used_of_each_window`, `the_battery_icon_turns_above_the_high_use_boundary`, the bar and the level tests) and fail on the current head; then `Window::known` writes the used percentage, the filled cells and the icon from it, and `level_color` reads the used share with the constants `LEVEL_GREEN_UP_TO` (30), `LEVEL_YELLOW_UP_TO` (50) and `HIGH_USE_PERCENT` (70); `LOW_LEFT_PERCENT`, `LEVEL_GREEN_FROM` and `LEVEL_YELLOW_FROM` go. The same step rewrites the limit lines of `tests/statusline_cards.rs`, the goldens (`python3 -I tools/statusline_golden.py --write`, then `--check`, every changed golden read) and the limit-row item of `docs/rust-product-path.md`.
 
 ## Risks
 
@@ -100,6 +111,8 @@ created: 2026-11-24
 3. **The decision note is read by author and kind**, not by words. A leader who answers with a `report` note or another author name leaves the block standing (the card shows 🚧 until a lane note follows). Chosen so that no text of a note can end a block by accident.
 4. **The local day on a day with a zone change.** `mktime` takes the zone's rules at the date; a day of 23 or 25 hours counts from the true local midnight. The status line has no DST fixture on every OS; the tests use fixed-offset zones and the child `TZ`.
 5. **Not a unix machine.** `libc` is a unix-only dependency; elsewhere the day is the UTC day (REQ-10). Windows is not claimed.
+6. **A full bar now means a nearly spent window.** The earlier bar was full when much was left; a user who learned that reading sees it flip, and the bar color goes the other way (green when little is used). The user chose it (note 8394), the icon and the countdown keep their meaning, and the golden churn is every limit line: the plain goldens change in numbers and cells, the colored goldens in the filled cells' color.
+7. **One file, two jobs.** `render.rs` carries the flow line and the limit row. The leader's order is one revision and one approval; the flow part is built and tested on its own and the limit part follows the approval, so a failure of one is not hidden by the other.
 
 ## Decisions
 
@@ -115,6 +128,16 @@ Reversible, category `none`; the leader's delegation of 2026-11-23T13:57Z covers
 | D-6 | `🙋` counts the hold cards that have no `card.withdraw` or `card.fold` event; a withdrawn hold card is in no drawn stage; the item is hidden at 0. Today every hold card is withdrawn, so the item is 0 until a hold with a user's pick exists | card C-452 ("🙋 counts only a typed user-pick signal, 0 until one exists"); the same rule `moai card list` uses to hide withdrawn cards; the existing `icon_spacing_in_the_real_output` fixture (a hold card with no event shows `🙋 1`) stays true | count nothing in `🙋` until a typed signal exists |
 | D-7 | done today = closed at or after the local midnight of the machine's zone (`libc::mktime` on unix, UTC elsewhere) | card C-452 ("today is the local day of the machine's time zone"); the user reads the line in Seoul | UTC again, one function |
 
+Revision 2 (user decision 2026-11-24, leader note 8394; the details are the leader's, reversible, category `none`):
+
+| Id | Decision | Basis | Undo |
+| --- | --- | --- | --- |
+| D-8 | the number of `CW`, `5H` and `7D` is the whole used percentage (the fraction cut off, 0 to 100) | the user: "수치와 그래프를 반대로, 남아 있는 게 아닌 사용한 것으로" | `100 - used` in one function (`left_percent`) |
+| D-9 | the bar fills `used * 10 / 100` (rounded down) of its ten cells and the other cells stay `░` | the same decision: the bar and the number show one quantity, as `SPEC-20261123-statusline-order-bars` D-1 chose | the filled-cells line |
+| D-10 | the icon is `🪫` above `HIGH_USE_PERCENT` (70) used and `🔋` at 70 or less: the same state as before, a boundary `less than 30 left` equals `more than 70 used` | the leader: "아이콘 = 지금과 같은 상태" | a `<` in one place |
+| D-11 | the level color of the filled cells goes by used: green up to 30, yellow up to 50, peach up to 70 and red above 70 (the boundaries of `SPEC-20261124-statusline-bar-color` D-1 read as used); themes keep their four colors | the leader: "쓴 양이 적으면 초록 → 많으면 빨강(같은 경계를 쓴 양으로 바꿔 읽음)" | the three constants |
+| D-12 | the reset countdown `(16m)` is the time left and does not change | the leader: "시간은 남은 시간" | none needed |
+
 ### Supersedes
 
 This SPEC changes what earlier SPECs pinned; they stay as the record of what was true. The leader's check names which of the two ways below the old SPECs take (D-1 of the digest).
@@ -126,3 +149,8 @@ This SPEC changes what earlier SPECs pinned; they stay as the record of what was
 | `SPEC-20261122-statusline-flow` | D-4 and REQ-5 (done today is the UTC day) | the local day of the machine's zone |
 | `SPEC-20261122-statusline-flow` | REQ-2 and REQ-3 (stage by notes of the whole history; a landing at any time wins) | stage by the notes at or after the last reservation; a landing counts at or after it |
 | `SPEC-20261122-statusline-limits-left` | REQ-6 (`🟡 <working>`, `🙋 <hold>`, "the ended leases are not on the line") | `🟡 <working plus stale>`, `🙋 <hold cards without a withdraw event>`; the drafts are still not on the line |
+| `SPEC-20261124-ready-receipt-followup` | REQ-1 (the status line counts `LANE-READY-INTEGRATION` and `READY`, `REPAIRED` is not counted) | `REPAIRED` is a submit marker too (REQ-4 here) |
+| `SPEC-20261122-statusline-limits-left` | REQ-1, REQ-2 and REQ-3 (the number of each window is the share left, `🪫` below 30 left) | the number is the share used (REQ-12), `🪫` above 70 used (REQ-13), the same state as before; `5H` shown at any level and the countdowns stay |
+| `SPEC-20261122-statusline-limits-left` | AC-1, AC-3 and AC-4 (their examples and boundaries are shares left) | the examples and boundaries are shares used (AC-9, AC-10) |
+| `SPEC-20261123-statusline-order-bars` | REQ-3 and REQ-7 (the bar draws the share left, the numbers are the share left), D-1 | the bar draws the share used with the same ten cells and the same rounding (REQ-12, D-9) |
+| `SPEC-20261124-statusline-bar-color` | REQ-2, D-1 (the level colors go by the share left: green from 70, yellow from 50, peach from 30, red below) | the level colors go by the share used: green up to 30, yellow up to 50, peach up to 70, red above (REQ-14, D-11); the four theme colors and the empty-cell color stay |
