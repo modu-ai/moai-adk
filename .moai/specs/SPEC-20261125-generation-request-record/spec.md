@@ -94,4 +94,21 @@ mo.ai.kr 실측(2026-11-19, 2026-11-21): `/moai project` 가 `generation-apply` 
 
 ## Result
 
-(채워요: RED, GREEN, 변이, 이웃, Not run)
+Implemented on branch `spec/generation-request-record-20261125`; the SPEC stays `draft` until the leader approves it at READY. The two earlier unlanded drafts of this fix are replaced by this one: the record write and read come from the first (`generation_request` key, `recorded_request_lists`), the apply with every file unchanged from the second; the `src/agents.rs` field that blocked the first is part of this change (REQ-10).
+
+- Run 0 (RED, before any code change): `cargo nextest run --locked --offline --no-fail-fast --test generation_request_record` — 5 tests run, 0 passed, 5 failed, each for the right reason (no `generation_request` in the manifest; the generation step at `needs_decision` with "request is not recorded").
+- Run 1: `cargo nextest run --locked --offline --no-fail-fast --test generation_request_record --lib -E 'binary(generation_request_record) or test(record_tests)'` — 8 tests run, 8 passed.
+- Run 2: `cargo nextest run --locked --offline --no-fail-fast --test project_update_plan_cli --test generation_apply_result_cli --test agents_apply_linkage --test generation_manifest_single_write` — 58 tests run, 58 passed.
+- Run 3: `cargo nextest run --locked --offline --no-fail-fast --test generation_request_record` — 5 tests run, 5 passed (after the added agents-apply assertion).
+- Run 4: `cargo nextest run --locked --offline --no-fail-fast --test generation_receipt_order --test generation_own_reference --test project_skill_links --test boundary_d3_skill_revert` — 16 tests run, 16 passed.
+- AC-1: met — `the_applied_request_is_recorded_as_the_request_itself`, passed in runs 1 and 3.
+- AC-2: met — `a_generated_agent_and_skill_read_unchanged_on_the_next_plan`, passed in runs 1 and 3.
+- AC-3: met — `a_profile_change_plans_the_rebuild_of_a_recorded_skill`, passed in runs 1 and 3.
+- AC-4: met — `a_later_apply_replaces_the_record_and_an_agents_apply_keeps_it`, passed in runs 1 and 3; it also reads that an agents-only apply of a manifest with no record writes no key, not even a null.
+- AC-5: met — `an_apply_with_every_file_unchanged_still_records_the_request_and_clears_the_decision`: a settled project loses its record (the generation step reads `needs_decision`), the same request is applied again, every owned file keeps its bytes, the record is back and the next plan reads `unchanged`. Passed in runs 1 and 3.
+- AC-6: met — `unrebuildable_not_removed` passed in run 2.
+- AC-7: met — the five tests of `generation_request_record` create the project agent and skill through the real `generation-apply`, which fails as an amended manifest outside the schema without the field; passed in run 3.
+- AC-8: met — run 2 (58) and run 4 (16) passed, and the three `record_tests` unit tests passed in run 1.
+- Guard mutants, one edit each, all seven run with the filter `binary(generation_request_record) or test(record_tests)` in one slot call, 7 of 7 killed (exit 100, the tree clean afterwards): `record_is_not_written`, `empty_request_keeps_the_key`, `record_skipped_when_every_file_is_unchanged`, `update_ignores_the_record`, `agents_apply_drops_the_record`, `empty_record_is_written_as_null`, `unreadable_record_passes`.
+- Not run here: the whole affected check of the range (it runs at READY, and its receipt is quoted in the READY note). The dangerous-path kinds of the repository rules (delete, reset, start a process, build a permission rule) do not apply: the change writes one key of one manifest, and every test runs the built binary in a temporary project with a temporary HOME.
+- Not done (Non-goals): restoring the request of an old manifest from its files; a manifest that lost its record is repaired by applying the same request once more.
