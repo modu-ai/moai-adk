@@ -681,7 +681,7 @@ fn an_untracked_file_at_an_added_path_refuses_and_other_untracked_files_stay() {
     let out = w.land(&card, &cand);
     w.refuses(
         &out,
-        &["notes/x.md"],
+        &["no commit tracks", "notes/x.md"],
         &before,
         "an untracked file at an added path",
     );
@@ -693,7 +693,7 @@ fn an_untracked_file_at_an_added_path_refuses_and_other_untracked_files_stay() {
     let out = w.land(&card, &cand);
     w.refuses(
         &out,
-        &["notes/x.md"],
+        &["no commit tracks", "notes/x.md"],
         &before,
         "an ignored file at an added path",
     );
@@ -707,7 +707,7 @@ fn an_untracked_file_at_an_added_path_refuses_and_other_untracked_files_stay() {
     let out = w.land(&card, &cand);
     w.refuses(
         &out,
-        &["notes", "folder"],
+        &["needs a folder", "notes"],
         &before,
         "a file where a folder is needed",
     );
@@ -1085,6 +1085,33 @@ fn a_rerun_refuses_what_a_first_run_would_refuse() {
         "the refused rerun touched the worktree"
     );
     assert_eq!(w.state(&card), "review");
+
+    // The same file ignored by the exclude list: git's dry run passes it, so only the command's
+    // own check of the added paths refuses it.
+    let exclude = w.project.join(".git/info/exclude");
+    fs::write(&exclude, "notes/x.md\n").unwrap();
+    let before = w.checkout();
+    let out = w.land(&card, &cand);
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let message = envelope(&out)["error"]["message"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        message.contains("no commit tracks") && message.contains("notes/x.md"),
+        "{message}"
+    );
+    assert_eq!(
+        w.checkout(),
+        before,
+        "the refused rerun touched the worktree"
+    );
+    fs::write(&exclude, "").unwrap();
     fs::remove_file(w.project.join("notes/x.md")).unwrap();
     fs::remove_dir(w.project.join("notes")).unwrap();
 
