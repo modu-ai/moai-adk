@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261124-home-writer-links
 title: "홈 상태 아래에 쓰는 나머지 세 곳도 심볼릭 링크 폴더를 거절해요: 아웃박스, 영수증, layout-apply"
-status: approved
-revision: 2
+status: draft
+revision: 3
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-24
-  basis: "리더 결정 노트 8199 (2026-11-24T04:40:04Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 8197 에 답함: 개정 2 승인 선택지 1, src/project_home.rs 와 src/audit_clone.rs 를 범위에 추가, D-6..D-9 그대로; 승인 대상 커밋 e5e10679822e9c437309f277351cb40604adc62e); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
-  digest: "sha256:bfa5e1cc42c92fa153749bc0a885eae426af4d10be2a7b19d7dcd47efc712c01"
 ---
 
 # 홈 상태 아래에 쓰는 나머지 세 곳도 심볼릭 링크 폴더를 거절해요: 아웃박스, 영수증, layout-apply
@@ -28,11 +23,11 @@ approval:
 
 개정 2(2026-11-24)는 같은 카드의 기준 3 을 더해요(개정 1 감사 노트 8157 의 N-3 을 리더가 새 기준으로 접었어요, 노트 8185 의 P-1). 홈 폴더 길을 만들어 주는 세 함수가 링크 낀 폴더를 그대로 돌려줘요. 읽은 결과(NeXT `04f3cea651`):
 
-- `ProjectHome::write_area`(`src/project_home.rs`): `<홈 상태 뿌리>/projects/<키>/<영역>` 을 링크 검사 없이 돌려줘요. 부르는 곳은 `hooks::home_area_dir` 하나이고, 그 아래에서 훅 영수증(`hooks.rs` 의 `receipts`), `optimize` 의 훅 로그 읽기, `lane_loop` 의 `state` 파일이 이 길로 쓰고 읽어요. 호출부는 `.ok().flatten()` 으로 받아서 `Err` 는 "홈 쪽 자리 없음"(`None`)이 되고, 쓰는 쪽은 프로젝트 쪽 옛 자리를 계속 써요. 그래서 이 함수가 거절하면 호출부가 따로 거절할 곳은 없어요.
+- `ProjectHome::write_area`(`src/project_home.rs`): `<홈 상태 뿌리>/projects/<키>/<영역>` 을 링크 검사 없이 돌려줘요. 부르는 곳은 `hooks::home_area_dir` 하나이고, 쓰는 호출부는 둘이에요: 훅 영수증 쓰기(`hooks::append_receipt_line_in`)와 lane Stop 훅의 상태 저장(`lane_loop::save_state_home`). 둘 다 쓰기 전에 `hooks::make_private_dirs`(`src/hooks.rs`)로 홈 상태 뿌리부터 폴더까지 걸어서 폴더가 아닌 구성요소(링크 포함)에서 `Err` 를 내요: 훅은 `recorded: false` 로 답하고 프로젝트 쪽에도 쓰지 않으며, Stop 훅은 세지 못한 block 을 보내지 않아요. 개정 2 는 이 호출부가 링크를 따라간다고 적었는데 틀렸어요(개정 3 정정, 카드 노트 8206·8207: `write_area` 에 거절을 넣자 기존 테스트 `hooks::receipt_home_tests::a_link_or_a_file_in_the_way_on_the_home_side_is_refused` 가 실패해서 확인했어요). 읽는 호출부(`optimize` 의 훅 로그 읽기, `receipt_lines_in`)가 링크를 따라가는지는 읽지 않았어요(unverified, 후속 후보).
 - `ProjectHome::backup_area`: `<dir>/backups/<stamp>/<종류>` 를 검사 없이 돌려줘요. 테스트 밖에서 부르는 곳이 없어요(`grep -rn "backup_area(" src` 가 정의와 `project_home.rs` 의 테스트만 답해요). 백업을 쓰는 Go 상태 코드는 자기 길(`go_state.rs`)을 써요. 부르는 곳이 생기면 이 도우미가 링크 낀 길을 내주지 않아야 해요.
 - `audit_clone::evidence_dir`: 감사 증거 폴더 `<홈 상태 뿌리>/projects/<id>/audits/<pr>-<head8>` 의 이름만 만들고 `plan` 이 그 문자열을 감사자에게 알려 줘요(`evidence_dir` 필드). moai 가 쓰지는 않지만 감사자가 로그를 거기에 복사해요. `identity` 가 홈 상태 뿌리 자신이 링크인 것은 이미 거절해요(`home state root is a symlink; refused`). 그 아래 `projects/`, `projects/<id>/`, `audits/` 가 링크인 것은 검사가 없어요.
 
-세 함수는 같은 `layout::refuse_linked_home_path` 를 같은 문장으로 불러요. 새로 만드는 것은 `ProjectHome` 의 한 걸음 도우미 하나뿐이에요.
+개정 3(2026-11-24): `write_area` 는 바꾸지 않아요. 호출부가 이미 거절하므로 카드 기준 3 의 `write_area` 몫은 "호출부가 거절한다"로 충족하고 자식 프로세스 테스트로 못 박아요. `backup_area` 와 감사 계획은 같은 `layout::refuse_linked_home_path` 를 같은 문장으로 불러요. 새로 만드는 것은 `ProjectHome` 의 한 걸음 도우미 하나뿐이에요.
 
 ## Non-goals
 
@@ -41,7 +36,7 @@ approval:
 - `src/archive.rs` 의 `copy_verified`(이름이 같은 다른 함수)는 홈 상태 뿌리 아래에 쓰는지 읽지 않았어요. 카드 본문이 가리킨 것은 `layout-apply` 의 것이에요(unverified, 후속 후보).
 - Windows junction 은 `symlink_metadata().is_symlink()` 가 아니라서 이 검사가 못 잡아요(C-427 과 같은 한계). Windows 결과는 not_run 이에요.
 - 검사와 쓰기 사이에 링크를 바꿔 끼우는 경쟁은 막지 못해요(C-427 과 같은 잔여 위험).
-- 개정 2: `ProjectHome::area`(읽는 길 도우미)는 바꾸지 않아요. 부르는 곳이 테스트뿐이고 쓰는 길은 `write_area` 가 맡아요. `hooks.rs`, `optimize.rs`, `lane_loop.rs` 는 읽기만 하고 고치지 않아요(`write_area` 가 거절하면 이들의 기존 `None` 갈래가 프로젝트 쪽을 써요, D-7).
+- 개정 2·3: `ProjectHome::area`(읽는 길 도우미)와 `write_area` 는 바꾸지 않아요. `area` 는 부르는 곳이 테스트뿐이고 `write_area` 의 쓰는 호출부는 이미 링크를 거절해요(D-7). `hooks.rs`, `optimize.rs`, `lane_loop.rs` 는 읽기만 하고 고치지 않아요. 홈 상태 뿌리 자신이 링크이면 `hooks::home_area_dir` 가 홈 쪽 자리 없음(`None`)으로 보고 프로젝트 쪽 옛 자리를 써요(기존 동작이고 링크 너머로 쓰지 않아요).
 - 개정 2: 감사자가 증거 폴더에 로그를 복사하는 쉘 명령은 moai 밖이에요. `plan` 이 링크 낀 폴더를 이름으로 알려 주지 않을 뿐이에요(D-8).
 
 ## Requirements
@@ -52,8 +47,8 @@ approval:
 - REQ-4: The apply receipt store shall refuse a switched receipt folder that is, or sits below, a symbolic link, for the receipt, the before bytes and the recovery read.
 - REQ-5: The `layout::apply_at` function shall refuse a home project folder that is, or sits below, a symbolic link before it copies or writes any file.
 - REQ-6: IF the home state root of `layout::apply_at` does not exist yet, THEN the function shall copy the stores as before.
-- REQ-7: The `ProjectHome::write_area` function shall refuse an area folder that is, or sits below, a symbolic link.
-- REQ-8: IF the project key is made from the folder path, THEN `ProjectHome::write_area` shall answer no folder and read no link.
+- REQ-7: The hook receipt writer shall record nothing, behind the link or on the project side, when a symbolic link lies between the home state root and the receipts folder.
+- REQ-8: The lane Stop hook shall send no block when a symbolic link lies between the home state root and the state folder.
 - REQ-9: The `ProjectHome::backup_area` function shall refuse a backup folder that is, or sits below, a symbolic link.
 - REQ-10: IF a symbolic link lies between the home state root and the evidence folder, THEN the audit clone plan shall answer no evidence folder and give the refusal sentence as the reason.
 - REQ-11: The comments and test names that this SPEC adds shall name the SPEC and no audit or card number.
@@ -67,7 +62,7 @@ approval:
 - AC-5 (REQ-5, REQ-6): 링크 없는 트리(홈 뿌리와 `projects/` 가 아직 없는 첫 적용)는 이전처럼 복사하고 표식을 써요. · verify: `cargo nextest run --offline --locked --test home_writer_links -E 'test(layout_apply_keeps)'`
 - AC-6 (REQ-1..REQ-11): 이 SPEC 의 변경 경로가 Scope write 목록 안이에요. · verify: `git diff --stat <base>..<head>`
 - AC-7 (REQ-1..REQ-10): 이웃 테스트가 그대로 통과해요: `layout`·`apply`·`forge::outbox`·`project_home`·`audit_clone`·`hooks`·`lane_loop`·`optimize` 모듈의 기존 테스트와 C-427 의 `home_state_link_refusal`. · verify: `cargo nextest run --offline --locked --lib -E 'test(layout::) | test(apply::) | test(forge::outbox) | test(project_home::) | test(audit_clone::) | test(hooks::) | test(lane_loop::) | test(optimize::)'` 와 `cargo nextest run --offline --locked --test home_state_link_refusal`
-- AC-8 (REQ-7, REQ-8): 프로필 id 가 있는 프로젝트의 `write_area` 가 `projects/` 링크, `projects/<id>/` 링크, 영역 폴더 링크일 때 `home state folder is a symlink; refused` 로, 홈 상태 뿌리 자신이 링크일 때 `home state root is a symlink; refused` 로 거절하고 링크 너머에 아무것도 생기지 않아요. 링크 없는 트리는 `Some(영역 폴더)` 를 돌려주고(대조), 키가 경로 해시인 프로젝트는 링크가 있어도 `Ok(None)` 이에요. 홈은 인자로 주므로 환경 HOME 은 쓰지 않아요. · verify: `cargo nextest run --offline --locked --test home_writer_links -E 'test(write_area_)'`
+- AC-8 (REQ-7, REQ-8): 환경 HOME 만 바꾼 자식에서 `hooks::receipt` 가 `projects/` 링크, `projects/<id>/` 링크, `receipts` 링크일 때 `recorded: false` 로 답하고 링크 너머와 프로젝트 쪽 `hooks.jsonl` 에 아무것도 생기지 않아요. `lane_loop::stop_hook`(읽기 `Unknown`)이 `projects/`, `projects/<id>/`, `state` 링크일 때 빈 문자열을 답하고 링크 너머가 그대로예요. 링크 없는 트리는 영수증을 홈 쪽에 쓰고 block 을 보내 상태를 저장해요(대조). `write_area` 의 코드는 바뀌지 않아요(주석만). · verify: `cargo nextest run --offline --locked --test home_writer_links -E 'test(hook_receipt_) | test(stop_hook_)'`
 - AC-9 (REQ-9): `backup_area` 가 `projects/` 링크, `projects/<id>/` 링크, `backups` 링크, 뿌리 링크에서 같은 문장으로 거절하고, 링크 없는 트리는 `<dir>/backups/<stamp>/<종류>` 를 돌려줘요(대조). · verify: `cargo nextest run --offline --locked --test home_writer_links -E 'test(backup_area_)'`
 - AC-10 (REQ-10): 환경 HOME 만 바꾼 자식에서 `audit_clone::plan` 이 `projects/` 링크, `projects/<id>/` 링크, `audits` 링크일 때 `evidence_dir` 를 `null` 로, `evidence_reason` 을 `home state folder is a symlink; refused` 로 답하고(`plan` 자체는 성공해요) 링크 너머가 그대로예요. 링크 없는 트리는 `evidence_dir` 를 이름으로 답해요(대조). · verify: `cargo nextest run --offline --locked --test home_writer_links -E 'test(audit_plan_)'`
 - AC-11 (REQ-11): 이 SPEC 이 더한 주석과 테스트 이름에 `AUDIT #`, 카드 번호(`C-` 와 숫자)가 없어요. · verify: `git diff <base>..<head> -- src tests | grep -E '^\+.*(AUDIT #|C-[0-9])'` 가 비어 있어요(이 개정이 지운 줄은 `-` 쪽이라 세지 않아요)
@@ -91,8 +86,8 @@ approval:
 7. 위험 경로: 임시 HOME 아래 링크 폴더(자식 프로세스에만 HOME)로 세 곳을 실제로 돌려 링크 너머가 비어 있음을 READY 에 적어요.
 8. `moai check affected <base>..<head>` 를 맨몸으로 한 번 돌려요.
 9. 개정 2 승인을 리더 결정 노트로 받아요(승인은 쓰지 않아요).
-10. RED(개정 2): `tests/home_writer_links.rs` 에 AC-8..AC-10 테스트를 더해요. 세 함수가 이미 있어 컴파일은 되고 거절 테스트가 거절하지 않아서 실패하는 것(exit 100)을 봐요.
-11. GREEN `src/project_home.rs`: `ProjectHome` 에 비공개 도우미 하나를 더해요(`dir` 의 두 단계 위가 홈 상태 뿌리이므로 `refuse_linked_home_path(뿌리, 길)` 를 불러요, D-6). `write_area` 는 키가 프로필 id 일 때만 그 도우미를 거쳐 길을 돌려주고, `backup_area` 는 항상 거쳐요.
+10. RED(개정 2·3): `tests/home_writer_links.rs` 에 AC-9, AC-10 테스트를 더하고 거절하지 않아서 실패하는 것(exit 100)을 봐요. AC-8 은 호출부가 이미 거절하므로 처음부터 통과하는 특성화 테스트예요; 호출부의 거절 줄을 지운 뮤턴트가 실패시키는지로 가드를 확인해요.
+11. GREEN `src/project_home.rs`: `ProjectHome` 에 비공개 도우미 하나를 더하고(`dir` 의 두 단계 위가 홈 상태 뿌리이므로 `refuse_linked_home_path(뿌리, 길)` 를 불러요, D-6) `backup_area` 만 그것을 거쳐요(D-9). `write_area` 는 바꾸지 않아요(D-7).
 12. GREEN `src/audit_clone.rs`: `plan` 이 `evidence_dir` 로 이름을 만든 뒤 `refuse_linked_home_path` 를 불러서 거절이면 `evidence_dir` 를 `null`, `evidence_reason` 을 그 문장으로 답해요(D-8).
 13. N-7: 이 SPEC 이 더한 주석과 테스트 설명의 `AUDIT #434` 를 SPEC 이름으로 바꿔요(AC-11).
 14. guard-mutant 와 위험 경로를 다시 돌려요(`audit-clone-plan` 은 링크 낀 임시 HOME 으로 실제 실행). `moai check affected <base>..<head>` 를 맨몸으로 한 번 돌려요.
@@ -102,7 +97,7 @@ approval:
 - 동작이 바뀌는 곳: `layout.json` 이 아웃박스·영수증 폴더를 홈 상태로 돌려 놓았고 `projects/`·`projects/<id>/`·그 폴더 자신이 링크인 사용자는 아웃박스·영수증이 거절돼요(C-427 이 저널에 한 것과 같아요). 홈 상태 뿌리 자신이 링크인 사용자(예 `~/.moai-cli` 를 dotfiles 링크로 둔 경우)의 `layout-apply` 도 거절돼요; 저널은 이미 그랬어요.
 - 읽기도 거절해요: `outbox::load` 와 영수증 복구 읽기가 링크 낀 전환 폴더를 읽던 사용자는 거절돼요. 쓰기와 읽기가 같은 폴더를 가리키는 한 갈래라서 한 곳에서 거절하는 편이 단순해요(D-2).
 - 한 번 더 부르는 비용: 경로 구성요소마다 `symlink_metadata` 한 번이에요.
-- 개정 2, 동작이 바뀌는 곳: 홈 상태 아래 `projects/`·`projects/<id>/`·`receipts`·`state`·`logs` 가 링크인 사용자의 훅 영수증, `lane_loop` 의 홈 쪽 상태 파일, `optimize` 의 홈 쪽 훅 로그 읽기는 홈 쪽 자리가 없는 것(`None`)으로 보고 프로젝트 쪽 옛 자리를 써요. 링크 너머에 이미 쌓인 홈 쪽 기록은 읽지 않아요. 호출부가 오류를 버려서(`.ok().flatten()`) 사용자는 거절 문장을 보지 못해요(D-7). 감사 계획은 링크 낀 증거 폴더를 알려 주지 않고 이유를 말해요.
+- 개정 3, 동작이 바뀌는 곳: `backup_area`(테스트 밖 호출부 없음)와 감사 clone 계획(링크 낀 증거 폴더를 이름으로 알리지 않고 이유를 말해요)뿐이에요. 훅 영수증과 lane Stop 훅은 지금처럼 링크에서 이미 거절하고 이 SPEC 은 바꾸지 않아요.
 - 환경 HOME 읽기: `switched_dir_checked` 는 `environment_home` 을 한 번 읽고 같은 값을 `switched_dir_in` 과 뿌리 계산에 써요(HOME 을 두 번 읽다 서로 다른 값을 받는 일이 없어요).
 
 ## Decisions
@@ -114,8 +109,8 @@ approval:
 | D-3 | `layout-apply` 의 검사는 `check_destinations` 에서 뿌리부터 `home_project` 까지 한 번, 그리고 `KINDS` 의 집 폴더마다 뿌리부터 그 폴더까지 한 번 걸어요(개정 2 가 개정 1 감사 B-1 의 정정을 본문에 옮겼어요) | `check_destinations` 는 `apply_at` 의 첫 검사이고 `apply_locked` 가 잠금 뒤에 다시 불러서 두 번 보아요. 아웃박스의 집 폴더는 두 단계(`forge/outbox`)라서 `home_project` 까지만 걸으면 `forge` 가 링크일 때 마지막 이름 검사가 NotFound 로 통과하고 복사가 링크를 따라가요. 표식(`layout.json`)은 `home_project` 안이에요 | 호출 줄을 지우기 |
 | D-4 | `store_dir`(`layout.rs:447`)는 부르는 곳이 없어서 고치지 않아요 | `grep -rn "store_dir(" src` 가 정의 한 줄만 답했어요. 부르는 곳이 생기면 그 카드가 같은 검사를 불러요 | 해당 없음 |
 | D-5 | 홈 뿌리가 아직 없는 첫 적용은 거절하지 않아요 | `refuse_linked_home_path` 는 없는 폴더를 링크 없음으로 봐요(C-427 판 1). 첫 적용이 막히면 옵트인이 시작도 못 해요 | 해당 없음 |
-| D-6 | `write_area` 와 `backup_area` 는 `ProjectHome` 의 비공개 도우미 하나를 거쳐요; 홈 상태 뿌리는 새 필드가 아니라 `dir` 의 두 단계 위에서 읽어요 | `dir` 는 `resolve` 만 만들고 늘 `<뿌리>/projects/<키>` 예요(src 안에 직접 만드는 곳 없음; `grep -rn "ProjectHome {" src` 가 정의와 `resolve` 하나). 필드를 더하면 `PartialEq` 와 모든 생성처가 바뀌어요. 호출부마다 검사를 붙이면 세 호출 경로(`hooks`, `optimize`, `lane_loop`)가 각자 같은 세 줄을 되풀이해요 | 도우미와 두 호출을 지우기 |
-| D-7 | `write_area` 는 `Err` 로 거절하고 호출부는 고치지 않아요 | 부르는 곳은 `hooks::home_area_dir` 하나이고 `.ok().flatten()` 으로 `Err` 를 "홈 쪽 자리 없음"(`None`)으로 받아요. 거기서 훅 영수증은 프로젝트 쪽 옛 자리에 쓰고 `lane_loop` 은 프로젝트의 옛 파일을 읽어요(쓰기가 링크 너머로 가지 않아요). 사용자가 거절 문장을 보지 못하는 것은 후속 후보로 남겨요(범위 밖 `hooks.rs`) | 호출 줄을 지우기 |
+| D-6 | `backup_area` 는 `ProjectHome` 의 비공개 도우미 하나를 거쳐요; 홈 상태 뿌리는 새 필드가 아니라 `dir` 의 두 단계 위에서 읽어요 | `dir` 는 `resolve` 만 만들고 늘 `<뿌리>/projects/<키>` 예요(src 안에 직접 만드는 곳 없음; `grep -rn "ProjectHome {" src` 가 정의와 `resolve` 하나). 필드를 더하면 `PartialEq` 와 모든 생성처가 바뀌어요 | 도우미와 호출을 지우기 |
+| D-7 | `write_area` 는 바꾸지 않아요(개정 2 의 거절을 내렸어요) | 쓰는 호출부 둘(훅 영수증, lane Stop 훅)이 `hooks::make_private_dirs` 로 이미 링크를 거절하고 기존 테스트가 그것을 못 박아요. `write_area` 가 `Err` 를 내면 `home_area_dir` 의 `.ok().flatten()` 이 `None` 으로 바꿔서 그 거절이 프로젝트 쪽 옛 자리에 조용히 쓰는 것으로 약해져요(`hooks::receipt_home_tests::a_link_or_a_file_in_the_way_on_the_home_side_is_refused` 가 실패해서 드러났어요). 그래서 호출부 거절을 새 자식 프로세스 테스트로 못 박는 것이 카드 기준 3 의 `write_area` 몫이에요 | 해당 없음 |
 | D-8 | `audit_clone::plan` 은 링크 낀 증거 폴더를 `Err` 로 막지 않고 `evidence_dir: null` 과 이유로 답해요 | 계획의 나머지(clone 명령)는 링크와 상관없이 쓸 수 있어요. 홈 상태 뿌리 자신이 링크이면 `identity` 가 이미 `plan` 전체를 거절해요(기존 동작). 프로필 id 가 없을 때의 `evidence_reason` 갈래와 같은 모양이에요 | `plan` 의 새 `match` 갈래를 지우기 |
 | D-9 | `backup_area` 는 부르는 곳이 없어도 같은 도우미를 거쳐요 | 부르는 곳이 생기면 링크 낀 길을 받으면 안 돼요. 함수를 지우는 것은 이 카드 밖이에요 | 호출을 지우기 |
 
@@ -125,6 +120,7 @@ approval:
 - Q2: 아웃박스 프로젝트 쪽 갈래(`outbox_dir` 의 기존 링크 거절)는 바꾸나요? → A: 아니에요. 홈 쪽 갈래만 새 도우미를 거쳐요.
 - Q3: `claim.rs` 도 새 도우미로 바꾸나요? → A: 아니에요. C-427 이 닫았고 `journal_root_in` 이 `_in` 변형(주어진 HOME)을 써서 도우미의 환경 HOME 읽기와 맞지 않아요. 후속 정리 후보로만 적어요.
 - Q4: 감사 증거 폴더(`evidence_dir`)의 이름 만드는 함수 자체를 `Result` 로 바꾸나요? → A: 아니에요. 이름 함수는 그대로(시그니처와 테스트 유지)이고 `plan` 이 그 이름에 검사를 붙여요(D-8).
+- Q5: `write_area` 가 링크를 거절하게 하지 않나요? → A: 아니에요(개정 3). 쓰는 호출부가 이미 거절하고, `write_area` 가 `Err` 를 내면 그 거절이 조용한 프로젝트 쪽 대체로 약해져요(D-7).
 
 ## Result
 
