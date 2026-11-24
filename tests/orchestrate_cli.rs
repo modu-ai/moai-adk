@@ -453,6 +453,38 @@ fn clear_a_reclaimed_card_that_is_still_open_gets_none() {
     assert_eq!(lane(&plan, "agent-1")["state"], json!("free"), "{plan}");
 }
 
+#[test]
+fn clear_names_only_the_card_of_the_lanes_newest_reservation() {
+    let w = world();
+    w.lane("agent-1", S_ONE);
+    w.lane("agent-2", S_TWO);
+    // agent-1: an older card closed, the newest reservation is on a card that is still open.
+    w.card(1, "research", "done", "p1", &["docs/a.md"]);
+    w.reserve(1, 1, S_ONE, "released");
+    w.card(2, "research", "ready", "p1", &["docs/b.md"]);
+    w.reserve(2, 1, S_ONE, "reclaimed");
+    // agent-2: an older card still open, the newest reservation is on a card that closed.
+    w.card(3, "research", "ready", "p1", &["docs/c.md"]);
+    w.reserve(3, 1, S_TWO, "reclaimed");
+    w.card(4, "research", "done", "p1", &["docs/d.md"]);
+    w.reserve(4, 1, S_TWO, "released");
+    let plan = w.plan();
+    let clears: Vec<(String, String)> = actions_of(&plan, "clear")
+        .iter()
+        .map(|a| {
+            (
+                a["lane"].as_str().unwrap().to_string(),
+                a["card"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        clears,
+        vec![("agent-2".to_string(), "C-4".to_string())],
+        "{plan}"
+    );
+}
+
 // ---- audit_ (AC-4: REQ-6) ---------------------------------------------------------------------
 
 #[test]
@@ -492,6 +524,138 @@ fn audit_a_head_with_a_verdict_gets_none_and_a_new_head_gets_one_again() {
     assert_eq!(audits[0]["head"], json!(HEAD_B));
 }
 
+/// The `(card, head)` pairs of the audit actions.
+fn audited(plan: &Value) -> Vec<(String, String)> {
+    actions_of(plan, "audit")
+        .iter()
+        .map(|a| {
+            (
+                a["card"].as_str().unwrap().to_string(),
+                a["head"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+fn dispatched(plan: &Value) -> Vec<(String, String)> {
+    actions_of(plan, "dispatch")
+        .iter()
+        .map(|a| {
+            (
+                a["lane"].as_str().unwrap().to_string(),
+                a["card"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn audit_a_handed_back_card_is_audited_and_never_dispatched() {
+    let w = world();
+    w.lane("agent-1", S_ONE);
+    // A lane that hands a card back gives its reservation back: the card is `ready` (C-1) or
+    // `active` (C-2), not `review`. C-3 is plain work.
+    w.card(1, "research", "ready", "p0", &["docs/a.md"]);
+    w.reserve(1, 1, S_TWO, "released");
+    w.ready_note(1, HEAD_A);
+    w.card(2, "research", "active", "p0", &["docs/b.md"]);
+    w.reserve(2, 1, S_THREE, "released");
+    w.ready_note(2, HEAD_B);
+    w.card(3, "research", "ready", "p1", &["docs/c.md"]);
+    let plan = w.plan();
+    assert_eq!(
+        audited(&plan),
+        vec![
+            ("C-1".to_string(), HEAD_A.to_string()),
+            ("C-2".to_string(), HEAD_B.to_string()),
+        ],
+        "{plan}"
+    );
+    assert_eq!(
+        dispatched(&plan),
+        vec![("agent-1".to_string(), "C-3".to_string())],
+        "the handed-back card waits for its audit, the free lane takes the next card: {plan}"
+    );
+}
+
+#[test]
+fn audit_a_failed_head_is_dispatched_again_and_the_repaired_head_is_audited() {
+    let w = world();
+    w.lane("agent-1", S_ONE);
+    w.card(1, "research", "ready", "p0", &["docs/a.md"]);
+    w.reserve(1, 1, S_TWO, "released");
+    w.ready_note(1, HEAD_A);
+    w.verdict(1, HEAD_A, false, S_AUDITOR);
+    let plan = w.plan();
+    assert!(audited(&plan).is_empty(), "{plan}");
+    assert_eq!(
+        dispatched(&plan),
+        vec![("agent-1".to_string(), "C-1".to_string())],
+        "a judged head sends the card back to repair: {plan}"
+    );
+    w.note(
+        1,
+        "agent-2",
+        &format!("REPAIRED C-1 head={HEAD_B}\nbase={BASE}\nrepaired"),
+    );
+    let plan = w.plan();
+    assert_eq!(
+        audited(&plan),
+        vec![("C-1".to_string(), HEAD_B.to_string())],
+        "{plan}"
+    );
+    assert!(dispatched(&plan).is_empty(), "{plan}");
+}
+
+#[test]
+fn audit_a_passed_head_that_waits_for_landing_is_not_dispatched() {
+    let w = world();
+    w.lane("agent-1", S_ONE);
+    w.card(1, "research", "ready", "p0", &["docs/a.md"]);
+    w.reserve(1, 1, S_TWO, "released");
+    w.ready_note(1, HEAD_A);
+    w.verdict(1, HEAD_A, true, S_AUDITOR);
+    w.card(2, "research", "ready", "p1", &["docs/b.md"]);
+    let plan = w.plan();
+    assert!(audited(&plan).is_empty(), "{plan}");
+    assert_eq!(
+        dispatched(&plan),
+        vec![("agent-1".to_string(), "C-2".to_string())],
+        "the card with a passed head waits for its landing: {plan}"
+    );
+    assert_eq!(plan["land_queue"].as_array().unwrap().len(), 1, "{plan}");
+}
+
+#[test]
+fn audit_the_hand_back_marker_table_is_the_one_of_the_ready_receipt_gate() {
+    let w = world();
+    for id in 1..=7 {
+        w.card(id, "research", "ready", "p1", &["docs/x.md"]);
+    }
+    let note = |card: i64, body: String| w.note(card, "agent-1", &body);
+    note(1, format!("REPAIRED C-1 head={HEAD_A}\nbase={BASE}"));
+    note(
+        2,
+        format!("READY (slice 1) agent-16 head={HEAD_B} base={BASE}"),
+    );
+    note(3, format!("MERGE-READY C-3 head={HEAD_C}"));
+    note(4, format!("READYING C-4 head={HEAD_D}"));
+    note(5, format!("see REPAIRED C-5 head={HEAD_A}"));
+    note(6, format!("\nREADY C-6 head={HEAD_B}"));
+    note(7, format!("  READY C-7 head={HEAD_D}"));
+    let plan = w.plan();
+    assert_eq!(
+        audited(&plan),
+        vec![
+            ("C-1".to_string(), HEAD_A.to_string()),
+            ("C-2".to_string(), HEAD_B.to_string()),
+            ("C-7".to_string(), HEAD_D.to_string()),
+        ],
+        "a first line that starts with a marker names a head; a longer word, a marker inside \
+         a line and a first blank line do not: {plan}"
+    );
+}
+
 // ---- land_ (AC-5: REQ-7) ----------------------------------------------------------------------
 
 #[test]
@@ -527,6 +691,36 @@ fn land_lists_independent_passes_by_priority_then_number() {
     );
     assert_eq!(queue[0]["reviewer"], json!(S_AUDITOR));
     assert_eq!(before, w.home.snapshot(), "the plan lands nothing");
+}
+
+#[test]
+fn land_every_holder_of_an_earlier_generation_is_an_author_too() {
+    let w = world();
+    // The card changed hands: S_ONE held generation 1, S_TWO generation 2. A pass written by
+    // S_ONE is no independent pass; the same pass by the auditor is.
+    for id in [1, 2, 3] {
+        w.card(id, "research", "review", "p1", &["docs/x.md"]);
+        w.reserve(id, 1, S_ONE, "reclaimed");
+        w.reserve(id, 2, S_TWO, "held_for_review");
+    }
+    w.ready_note(1, HEAD_A);
+    w.ready_note(2, HEAD_B);
+    w.ready_note(3, HEAD_C);
+    w.verdict(1, HEAD_A, true, S_ONE);
+    w.verdict(2, HEAD_B, true, S_AUDITOR);
+    let plan = w.plan();
+    let queue: Vec<&str> = plan["land_queue"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|q| q["card"].as_str().unwrap())
+        .collect();
+    assert_eq!(queue, vec!["C-2"], "{plan}");
+    // The audit request of C-3 names both holders.
+    let audits = actions_of(&plan, "audit");
+    assert_eq!(audits.len(), 1, "{plan}");
+    assert_eq!(audits[0]["card"], json!("C-3"));
+    assert_eq!(audits[0]["author_sessions"], json!([S_ONE, S_TWO]));
 }
 
 #[test]
@@ -613,6 +807,28 @@ fn attention_an_unreadable_agent_file_is_unread_and_no_file_is_not_read() {
     let missing = w.home.path().join("missing.json");
     let plan = result(&w.plan_as(None, &["--agents-json", missing.to_str().unwrap()]));
     assert_eq!(plan["host"]["status"], json!("unread"));
+}
+
+#[test]
+fn attention_a_host_file_of_exactly_the_limit_is_read_and_one_byte_more_is_unread() {
+    let w = world();
+    let limit = 4 * 1024 * 1024;
+    // A JSON array padded with blanks to the exact size.
+    let file = |name: &str, len: usize| {
+        let mut body = b"[]".to_vec();
+        body.resize(len, b' ');
+        let path = w.home.path().join(name);
+        fs::write(&path, body).unwrap();
+        path.to_str().unwrap().to_string()
+    };
+    let at = file("at-limit.json", limit);
+    let plan = result(&w.plan_as(None, &["--agents-json", &at]));
+    assert_eq!(plan["host"]["status"], json!("read"), "{plan}");
+    let over = file("over-limit.json", limit + 1);
+    let plan = result(&w.plan_as(None, &["--agents-json", &over]));
+    assert_eq!(plan["host"]["status"], json!("unread"), "{plan}");
+    let reason = plan["host"]["reason"].as_str().unwrap();
+    assert!(reason.contains("larger"), "{reason}");
 }
 
 // ---- keys_ (AC-7: REQ-9) ----------------------------------------------------------------------
