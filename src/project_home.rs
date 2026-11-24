@@ -78,7 +78,7 @@ impl ProjectHome {
     /// SPEC-20261124-home-writer-links: refuses a symbolic link between the home state root and
     /// `path`, with the sentence of [`crate::layout::refuse_linked_home_path`]. `dir` is always
     /// `<home state root>/projects/<key>` ([`resolve`]), so the root is two folders above it.
-    /// Reads only.
+    /// Reads only. Only [`ProjectHome::backup_area`] calls it.
     fn refuse_linked(&self, path: &Path) -> Result<()> {
         match self.dir.parent().and_then(Path::parent) {
             Some(root) => crate::layout::refuse_linked_home_path(root, path),
@@ -99,15 +99,12 @@ impl ProjectHome {
     /// Like [`ProjectHome::area`], but for a writer: `Some` only when the key is the
     /// profile's fixed id. A key made from the folder path changes when the folder is renamed
     /// (design 6887461482 §3), so data written under it would be left behind; a writer keeps
-    /// its current place until the project has an id. An id key whose folder is, or sits below, a
-    /// symbolic link of the home state is refused (`home state folder is a symlink; refused`).
+    /// its current place until the project has an id. It reads no link: the writers that call it
+    /// (the hook receipt, the lane Stop hook) refuse a link on the way themselves, through
+    /// `hooks::make_private_dirs` (SPEC-20261124-home-writer-links).
     pub fn write_area(&self, area: &str) -> Result<Option<PathBuf>> {
         let dir = self.area(area)?;
-        if self.key_source != KeySource::Profile {
-            return Ok(None);
-        }
-        self.refuse_linked(&dir)?;
-        Ok(Some(dir))
+        Ok((self.key_source == KeySource::Profile).then_some(dir))
     }
 }
 

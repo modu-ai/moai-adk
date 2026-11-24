@@ -604,75 +604,133 @@ fn link_for(t: &Tree, at: At, leaf: &str) {
     }
 }
 
-/// `write_area` refuses with the sentence of the link at `at`, and nothing changed behind it.
-fn write_area_refused(at: At) {
-    let t = tree();
-    link_for(&t, at, "receipts");
-    let before = snapshot(&t.behind);
-    let ph = moai_cli::project_home::resolve(&t.home, &t.project).unwrap();
-    assert_eq!(ph.write_area("receipts"), Err(at.sentence().to_string()));
-    assert_eq!(
-        snapshot(&t.behind),
-        before,
-        "something changed behind the link"
+/// The hook receipt writer is a caller of `ProjectHome::write_area`: with a link on the way it
+/// records nothing, neither behind the link nor on the project side (no silent fallback).
+fn hook_receipt_refused(test: &str, at: At) {
+    with_home(
+        test,
+        |t| link_for(t, at, "receipts"),
+        |seen| {
+            let before = snapshot(&seen.behind);
+            let out = moai_cli::hooks::receipt(
+                "claude",
+                br#"{"hook_event_name":"Stop"}"#,
+                &seen.project,
+                1,
+            );
+            assert_eq!(out["recorded"], serde_json::json!(false), "{out}");
+            assert_eq!(snapshot(&seen.behind), before, "something changed behind");
+            let own = moai_cli::state_root::path(&seen.project, "receipts");
+            assert!(
+                !own.join("hooks.jsonl").exists(),
+                "fell back to the project"
+            );
+        },
     );
 }
 
 /// AC-8 (REQ-7): `projects/` is a link.
 #[test]
-fn write_area_refuses_a_linked_projects_folder() {
-    write_area_refused(At::Projects);
+fn hook_receipt_refuses_a_linked_projects_folder() {
+    hook_receipt_refused(
+        "hook_receipt_refuses_a_linked_projects_folder",
+        At::Projects,
+    );
 }
 
 /// AC-8 (REQ-7): `projects/widgets/` is a link.
 #[test]
-fn write_area_refuses_a_linked_project_folder() {
-    write_area_refused(At::Project);
+fn hook_receipt_refuses_a_linked_project_folder() {
+    hook_receipt_refused("hook_receipt_refuses_a_linked_project_folder", At::Project);
 }
 
-/// AC-8 (REQ-7): the area folder itself is a link.
+/// AC-8 (REQ-7): the `receipts` folder itself is a link.
 #[test]
-fn write_area_refuses_a_linked_area_folder() {
-    write_area_refused(At::Store);
+fn hook_receipt_refuses_a_linked_receipts_folder() {
+    hook_receipt_refused("hook_receipt_refuses_a_linked_receipts_folder", At::Store);
 }
 
-/// AC-8 (REQ-7): the home state root itself is a link.
+/// AC-8 (REQ-7), control: a plain tree records the line in the home side folder.
 #[test]
-fn write_area_refuses_a_linked_home_root() {
-    write_area_refused(At::Root);
-}
-
-/// AC-8 (REQ-7), control: a plain tree answers the area folder and creates nothing.
-#[test]
-fn write_area_keeps_a_plain_tree() {
-    let t = tree();
-    let before = snapshot(&t.state);
-    let ph = moai_cli::project_home::resolve(&t.home, &t.project).unwrap();
-    for area in moai_cli::project_home::AREAS {
-        assert_eq!(
-            ph.write_area(area),
-            Ok(Some(t.state.join("projects/widgets").join(area)))
-        );
-    }
-    assert_eq!(snapshot(&t.state), before);
-}
-
-/// AC-8 (REQ-8): a project with no profile has a key made from its path; `write_area` answers
-/// no folder even with a link in the way, and reads no link.
-#[test]
-fn write_area_keeps_a_path_key_without_reading_links() {
-    let t = tree();
-    let plain = t.project.parent().unwrap().join("no-profile");
-    fs::create_dir(&plain).unwrap();
-    symlink(&t.behind, t.state.join("projects")).unwrap();
-    t.state_is_stable();
-    let ph = moai_cli::project_home::resolve(&t.home, &plain).unwrap();
-    assert_eq!(
-        ph.key_source,
-        moai_cli::project_home::KeySource::PathHash,
-        "the fixture project has a profile"
+fn hook_receipt_keeps_a_plain_tree() {
+    with_home(
+        "hook_receipt_keeps_a_plain_tree",
+        |_| {},
+        |seen| {
+            let out = moai_cli::hooks::receipt(
+                "claude",
+                br#"{"hook_event_name":"Stop"}"#,
+                &seen.project,
+                1,
+            );
+            assert_eq!(out["recorded"], serde_json::json!(true), "{out}");
+            assert!(seen
+                .state
+                .join("projects/widgets/receipts/hooks.jsonl")
+                .is_file());
+        },
     );
-    assert_eq!(ph.write_area("receipts"), Ok(None));
+}
+
+/// The lane Stop hook is the other writer that calls `ProjectHome::write_area` (its `state`
+/// area): with a link on the way the count cannot be saved, so no block is sent, and nothing is
+/// written behind the link.
+fn stop_hook_refused(test: &str, at: At) {
+    with_home(
+        test,
+        |t| link_for(t, at, "state"),
+        |seen| {
+            let before = snapshot(&seen.behind);
+            let out = moai_cli::lane_loop::stop_hook(
+                &seen.project,
+                "a",
+                "o/r",
+                &moai_cli::lane_loop::Reading::Unknown,
+            );
+            assert_eq!(out, "", "a block was sent without a saved count");
+            assert_eq!(snapshot(&seen.behind), before, "something changed behind");
+        },
+    );
+}
+
+/// AC-8 (REQ-7): `projects/` is a link.
+#[test]
+fn stop_hook_refuses_a_linked_projects_folder() {
+    stop_hook_refused("stop_hook_refuses_a_linked_projects_folder", At::Projects);
+}
+
+/// AC-8 (REQ-7): `projects/widgets/` is a link.
+#[test]
+fn stop_hook_refuses_a_linked_project_folder() {
+    stop_hook_refused("stop_hook_refuses_a_linked_project_folder", At::Project);
+}
+
+/// AC-8 (REQ-7): the `state` folder itself is a link.
+#[test]
+fn stop_hook_refuses_a_linked_state_folder() {
+    stop_hook_refused("stop_hook_refuses_a_linked_state_folder", At::Store);
+}
+
+/// AC-8 (REQ-7), control: a plain tree sends the block and saves the count in the home side.
+#[test]
+fn stop_hook_keeps_a_plain_tree() {
+    with_home(
+        "stop_hook_keeps_a_plain_tree",
+        |_| {},
+        |seen| {
+            let out = moai_cli::lane_loop::stop_hook(
+                &seen.project,
+                "a",
+                "o/r",
+                &moai_cli::lane_loop::Reading::Unknown,
+            );
+            assert!(out.contains("block"), "{out}");
+            assert!(seen
+                .state
+                .join("projects/widgets/state/lane-stop-hook/a.json")
+                .is_file());
+        },
+    );
 }
 
 /// `backup_area` refuses with the sentence of the link at `at`, and nothing changed behind it.
