@@ -273,7 +273,7 @@ fn another_tier_2_path_in_the_change_keeps_the_floor_at_tier_2() {
     scans[0]["rules"] = json!(["tests/alpha.rs", "tests/beta.rs", "tests/gamma.rs"]);
     let new = registry(scans);
     let grown = file(REG, &old, &new);
-    assert_eq!(floor(&[grown.clone()]), 1);
+    assert_eq!(floor(std::slice::from_ref(&grown)), 1);
     for other in [
         "src/gate.rs",
         "src/hook_entry.rs",
@@ -302,8 +302,8 @@ fn another_tier_2_path_in_the_change_keeps_the_floor_at_tier_2() {
         1
     );
     // A registration never lowers a change below tier 1 and the body never lowers it.
-    assert_eq!(tier_of_changes(None, &[grown.clone()]), 2);
-    assert_eq!(tier_of_changes(Some(2), &[grown.clone()]), 2);
+    assert_eq!(tier_of_changes(None, std::slice::from_ref(&grown)), 2);
+    assert_eq!(tier_of_changes(Some(2), std::slice::from_ref(&grown)), 2);
     assert_eq!(tier_of_changes(Some(7), &[grown]), 2);
 }
 
