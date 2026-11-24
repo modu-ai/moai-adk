@@ -165,7 +165,7 @@ This SPEC changes what earlier SPECs pinned; they stay as the record of what was
 - 뮤턴트(레인이 직접, 커밋 뒤 하나씩 적용하고 되돌림, 되돌린 뒤 `git status` 변경 없음): (1) 철회된 hold 카드를 세게 하는 SQL 조건(`AND 0`)에서 `--test statusline_counts_truth` 가 exit 100 으로 `a_withdrawn_hold_card_is_not_a_pick_the_user_owes` 와 `the_0732z_ledger_shape_draws_what_the_ledger_holds` 실패, (2) `DayZone::Machine` 이 UTC 자정을 쓰게 한 것에서 `the_done_count_follows_the_local_day` 실패(exit 100), (3) 🪫 경계를 `>` 에서 `>=` 로 바꾼 것에서 `window_tests` 4개(`the_bar_has_ten_cells_and_changes_at_each_tenth`, `the_battery_icon_switches_at_70_and_71`, `the_battery_icon_turns_above_the_high_use_boundary`, `the_five_hour_window_shows_whenever_the_input_carries_it`) 실패(exit 100), (4) 초록 경계를 `<=` 에서 `<` 로 바꾼 것에서 `the_filled_cells_carry_the_level_color`·`the_level_color_changes_at_each_step_point` 실패(exit 100).
 - 해석 (나)(리더 노트 8403 승인): 예약 행이 없는 active/review 카드는 모든 노트를 읽어요(옛 동작). 바이너리 골든 장부 픽스처가 이 모양이라서예요.
 - 시험 파일 정리(승인된 범위 확대, 노트 8420·8425·8427): `statusline_numbers_only.rs`, `input.rs` 시험 모듈, `statusline_counts_refresh.rs` 는 기존 기대값 줄만 바꿨고 순서와 다른 줄은 그대로예요(C-175 가 같은 파일에 새 시험을 더해요).
-- 못 한 것: `docs/rust-product-path.md` 는 카드 C-449 가 파일 전체로 예약 중(11:45:13Z 까지)이라 line-lease 가 거절돼(리더 노트 8454) 쓰지 못했어요.
+- 문서: `docs/rust-product-path.md` 는 카드 C-449 가 파일 전체로 예약 중이라 처음 line-lease 가 거절됐고(리더 노트 8454), 리더가 give-back 을 요청한 뒤(노트 8456) line-lease 로 세 곳(한도 항목, 예시 두 줄, 흐름 줄의 끝난 lease 문장)만 고쳐 커밋 `91e561b298` 로 넣었어요.
 
 - AC-1: met — `the_0732z_ledger_shape_draws_what_the_ledger_holds` 가 UTC 에서 `🗂️ 77 → 🟡 12 → 📨 12 → 🛬 7 → ✅ 50 | 🚧 4`, 그린 항목의 합이 draft 와 hold 가 아닌 열린 카드 수인 것을 고정해요.
 - AC-2: met — `the_done_count_follows_the_local_day` 가 자식 프로세스에만 `TZ` 를 주고 Asia/Seoul·Etc/GMT-9 에서 `✅ 103`, UTC 에서 `✅ 50`, Etc/GMT+8 에서 `✅ 103` 을, `done_today_tests` 가 자정 경계 초 단위를 고정해요.
@@ -178,4 +178,4 @@ This SPEC changes what earlier SPECs pinned; they stay as the record of what was
 - AC-9: met — `the_row_shows_what_is_used_of_each_window` 가 사용자 예 `🔋 CW ██░░░░░░░░ 25% | 🔋 5H ███░░░░░░░ 32% (16m) | 🪫 7D ███████░░░ 78% (2d 15h)` 를, `the_bar_has_ten_cells_and_changes_at_each_tenth` 가 0·9·10·11·19·20·99·100 의 칸 수와 0~100 모든 값에서 숫자가 쓴 양인 것을 고정해요.
 - AC-10: met — `the_battery_icon_turns_above_the_high_use_boundary` 가 70 은 🔋, 71 은 🪫 를 `CW`·`5H`·`7D` 에서 `HIGH_USE_PERCENT` 로 읽은 값으로 고정해요.
 - AC-11: met — `the_level_color_changes_at_each_step_point` 가 30 초록·31 노랑·50 노랑·51 복숭아·70 복숭아·71 빨강과 단조성, `the_filled_cells_carry_the_level_color` 가 두 테마·두 프로필의 실제 바이트를, `only_the_filled_cells_take_the_level_color` 가 채운 칸 밖에 레벨 색이 없는 것을 고정해요.
-- AC-12: not_met — 코드·골든·`statusline_cards`·`statusline_numbers_only` 부분은 통과했지만(위 시험 결과) 제품 문서의 "남은 → 쓴" 문장은 `docs/rust-product-path.md` 가 C-449 예약이라 쓰지 못했어요.
+- AC-12: met — 실제 바이너리가 `statusline_cards` 의 줄 사다리와 골든 114개에서 쓴 양 숫자를 쓰고, 색 골든은 새 막대 색을 담고, plain 골든 24개는 한도 숫자와 막대만 바뀌었어요(위 골든 항목). 제품 문서는 커밋 `91e561b298` 가 "남은 → 쓴"으로 고쳤어요. 문서를 읽는 `statusline_numbers_only` 시험은 READY 노트의 영수증 실행이 보여요.
