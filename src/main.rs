@@ -896,9 +896,9 @@ enum Command {
         #[arg(long, value_name = "TOKEN")]
         confirm_home: Option<String>,
         /// The preview's `switch.confirm_token`: replace the name-switch script
-        /// `<state home>/path/moai` with a link to the Rust launcher `moai-cli` beside it,
-        /// after saving the old script next to it as `moai.before-<UTC>`. Without --confirm
-        /// the rest stays a preview.
+        /// `<state home>/path/moai` with a link to the Rust launcher `path/moai-cli` beside
+        /// it, after saving the old script next to it as `moai.before-<UTC>`. Without
+        /// --confirm the rest stays a preview.
         #[arg(long, value_name = "TOKEN")]
         confirm_switch: Option<String>,
         /// The preview's `git_hooks.confirm_token` (SPEC-20261121-go-path-removal): retire the

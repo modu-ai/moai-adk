@@ -1856,7 +1856,7 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "update",
         "confirm_switch",
         "미리 보기의 `switch.confirm_token`: 이름 전환 스크립트 `<상태 폴더>/path/moai` 를 \
-         옆의 Rust 런처 `moai-cli` 를 가리키는 링크로 바꿈. 옛 파일은 옆에 \
+         옆의 Rust 런처 `path/moai-cli` 를 가리키는 링크로 바꿈. 옛 파일은 옆에 \
          `moai.before-<UTC>` 로 보관됨. --confirm 이 없으면 나머지는 미리 보기로 남음",
     ),
     (
