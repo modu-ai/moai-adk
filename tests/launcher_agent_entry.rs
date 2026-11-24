@@ -180,23 +180,37 @@ fn the_root_example_names_the_entry_command() {
 /// AC-4 (REQ-4): the other launches compose the argv they composed before.
 #[test]
 fn other_launches_keep_their_argv() {
-    let claude = |name: &str| {
+    // A role session with nothing saved starts with the default table
+    // (SPEC-20261121-model-defaults-one-table); a session without a role keeps opus/medium.
+    let claude = |name: &str, model: &str, effort: &str| {
         vec![
             "claude".to_string(),
             "--name".into(),
             name.into(),
             "--model".into(),
-            "opus".into(),
+            model.into(),
             "--effort".into(),
-            "medium".into(),
+            effort.into(),
             "--permission-mode".into(),
             "auto".into(),
         ]
     };
-    assert_eq!(argv(&dry(&["cc", "-l"], None)), claude("leader"));
-    assert_eq!(argv(&dry(&["cc", "-a"], None)), claude("agent-1"));
-    assert_eq!(argv(&dry(&["glm", "-l"], Some("t"))), claude("leader"));
-    assert_eq!(argv(&dry(&["glm", "-a"], Some("t"))), claude("agent-1"));
+    assert_eq!(
+        argv(&dry(&["cc", "-l"], None)),
+        claude("leader", "claude-opus-5-5", "high")
+    );
+    assert_eq!(
+        argv(&dry(&["cc", "-a"], None)),
+        claude("agent-1", "claude-sonnet-5-5", "high")
+    );
+    assert_eq!(
+        argv(&dry(&["glm", "-l"], Some("t"))),
+        claude("leader", "glm-5.4[1m]", "high")
+    );
+    assert_eq!(
+        argv(&dry(&["glm", "-a"], Some("t"))),
+        claude("agent-1", "glm-5.3-flash", "max")
+    );
     assert_eq!(
         argv(&dry(&["cc"], None)),
         [

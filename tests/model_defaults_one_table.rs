@@ -61,7 +61,7 @@ impl Fixture {
 
     /// Writes the user launcher settings file under the synthetic HOME.
     fn config(&self, text: &str) {
-        let dir = self.home.path().join(".moai-cli/config");
+        let dir = moai_cli::home_root::path(self.home.path()).join("config");
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join("launcher.yaml"), text).unwrap();
     }
@@ -94,6 +94,14 @@ impl Fixture {
         let v: Value = serde_json::from_slice(&out.stdout).unwrap();
         serde_json::from_value(v["argv"].clone()).unwrap()
     }
+
+    /// The notes of the launcher's `--dry-run` answer as one text.
+    fn notes(&self, args: &[&str]) -> String {
+        let out = self.run(args);
+        assert!(out.status.success(), "{args:?}");
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        v["notes"].to_string()
+    }
 }
 
 /// The value after `flag`, `None` when the flag is not in the argv.
@@ -124,6 +132,12 @@ fn without_a_settings_file_a_role_session_starts_with_the_table_default() {
     assert_eq!(rows.len(), 4, "the table is claude and glm by two roles");
     for (tool, role, model, effort) in rows {
         let f = Fixture::new();
+        // The table default adds no note: the note says a value came from a saved choice.
+        let notes = f.notes(&launcher_args(tool, role));
+        assert!(
+            !notes.contains("saved by moai update"),
+            "{tool} {role}: {notes}"
+        );
         let a = f.argv(&launcher_args(tool, role));
         assert_eq!(
             value_of(&a, "--model"),

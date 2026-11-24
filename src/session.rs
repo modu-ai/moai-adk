@@ -746,27 +746,37 @@ fn saved_note(host: &str, role: &str) -> &'static str {
 /// saved id carries the `zai/` provider prefix, which the
 /// z.ai endpoint does not take, so the prefix is removed here (research note C-47 note 3452: Claude
 /// Code sends a full unknown id as written; the alias mapping of the environment is unchanged).
-/// The second value is the note to add when a saved value was used.
+/// Nothing saved for the host and role, or no settings file at all, falls back to the default
+/// table of the model settings (`default_choice`), the table the question screen shows as
+/// "(default)" (SPEC-20261121-model-defaults-one-table): a session with a role starts with the
+/// table's model and effort, a flag the person gave stays, and only the other field is filled.
+/// The second value is the note to add when a saved value was used; a table default adds none.
 fn apply_saved_choice(
     r: &SessionRequest,
 ) -> Result<(SessionRequest, Option<&'static str>), String> {
     let (Some(role), "claude" | "glm") = (r.role.as_deref(), r.host.as_str()) else {
         return Ok((r.clone(), None));
     };
-    let Some(launcher) = user_launcher()? else {
+    let saved = match user_launcher()? {
+        Some(launcher) => {
+            let unsupported = crate::model_effort_settings::unsupported_entries(&launcher)?;
+            if !unsupported.is_empty() {
+                return Err(format!(
+                    "saved model settings are not supported ({}): replace them with moai update",
+                    unsupported.join(", ")
+                ));
+            }
+            crate::model_effort_settings::saved_choice(&launcher, &r.host, role)
+        }
+        None => None,
+    };
+    let from_saved = saved.is_some();
+    let Some(choice) =
+        saved.or_else(|| crate::model_effort_settings::default_choice(&r.host, role))
+    else {
         return Ok((r.clone(), None));
     };
-    let unsupported = crate::model_effort_settings::unsupported_entries(&launcher)?;
-    if !unsupported.is_empty() {
-        return Err(format!(
-            "saved model settings are not supported ({}): replace them with moai update",
-            unsupported.join(", ")
-        ));
-    }
-    let Some(choice) = crate::model_effort_settings::saved_choice(&launcher, &r.host, role) else {
-        return Ok((r.clone(), None));
-    };
-    let saved_model = if r.host == "glm" {
+    let model = if r.host == "glm" {
         choice.model.strip_prefix("zai/").unwrap_or(&choice.model)
     } else {
         choice.model.as_str()
@@ -774,14 +784,17 @@ fn apply_saved_choice(
     let mut filled = r.clone();
     let mut used = false;
     if filled.model.is_none() {
-        filled.model = Some(saved_model.to_string());
+        filled.model = Some(model.to_string());
         used = true;
     }
     if filled.effort.is_none() {
         filled.effort = Some(choice.effort);
         used = true;
     }
-    Ok((filled, used.then(|| saved_note(&r.host, role))))
+    Ok((
+        filled,
+        (used && from_saved).then(|| saved_note(&r.host, role)),
+    ))
 }
 
 /// Composes the host command without running it. Returns
