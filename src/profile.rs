@@ -262,6 +262,11 @@ pub struct WorkFlowSettings {
     /// one of [`LAND_VERDICT_MODES`]; no key means `observe`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub land_verdict: Option<String>,
+    /// The cards a live lane may have in work and in review
+    /// (SPEC-20261125-landing-moves-checkout REQ-3): the limit is this number times the live
+    /// registered lanes; no key means 2 and 0 turns the limit off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wip_limit: Option<u32>,
 }
 
 /// The two words of `work_flow.land_verdict`: `observe` reports the refusal a landing would get
@@ -1545,6 +1550,7 @@ mod tests {
                 flow: "m-flow".into(),
                 integration_branch: Some("main".into()),
                 land_verdict: None,
+                wip_limit: None,
             }),
             lane_run: Some(LaneRunSettings {
                 default: Some("nonstop".into()),

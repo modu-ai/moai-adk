@@ -1,5 +1,5 @@
-//! The limit of cards in work and in review (SPEC-20261125-landing-moves-checkout REQ-7 to
-//! REQ-10): `card take` and `card add` refuse once the `active` and `review` cards number at least
+//! The limit of cards in work and in review (SPEC-20261125-landing-moves-checkout REQ-1 to
+//! REQ-4): `card take` and `card add` refuse once the `active` and `review` cards number at least
 //! `wip_limit` (default 2) times the live registered lanes (at least 1), `--by user` adds pass,
 //! `wip_limit` 0 turns the limit off, and `card next` at the limit names the cards that wait for
 //! an audit.
@@ -180,7 +180,7 @@ fn take_stops_at_the_limit_and_a_second_lane_raises_it() {
             "{card} is named: {message}"
         );
     }
-    let states = w.card(None, &["list"]);
+    let states = w.run(None, &["card", "list", w.project.to_str().unwrap()]);
     let listed = result(&states).to_string();
     assert!(
         listed.contains("ready"),

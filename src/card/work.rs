@@ -22,6 +22,7 @@ use super::landed;
 use super::spec_link;
 use super::stale;
 use super::take_scope;
+use super::wip_limit;
 use crate::forge::connector::{HostConnector, HostKind, PrPhase, ProjectRef};
 use crate::ledger::close;
 use crate::ledger::reservation;
@@ -187,20 +188,34 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
         })
         .collect();
     skipped.extend(landed_skips);
-    // The card to work on now: one this session already holds, else the first it could take.
+    // The limit of cards in work and in review (SPEC-20261125-landing-moves-checkout REQ-4): at
+    // it no card is offered to take; the cards that wait for an audit are named instead.
+    let wip = wip_limit::read(project, ledger.conn())?;
+    let audit = wip_limit::audit_needed(ledger.conn(), holder)?;
+    // The card to work on now: one this session already holds, else the first it could take, at
+    // the limit the first card that waits for an audit.
     let (next, next_is) = match (found.mine.first(), found.ready.first()) {
         (Some(m), _) => (
             json!(input::card_name(m.reservation.card_id)),
             json!("mine"),
         ),
+        (None, _) if wip.at_limit() => match audit.first() {
+            Some(c) => (json!(input::card_name(c.card_id)), json!("audit")),
+            None => (Value::Null, json!("limit")),
+        },
         (None, Some(c)) => (json!(input::card_name(c.card_id)), json!("ready")),
         (None, None) => (Value::Null, Value::Null),
     };
+    let audit_needed: Vec<Value> = audit
+        .iter()
+        .map(|c| json!({"name": input::card_name(c.card_id), "card_id": c.card_id, "title": c.title}))
+        .collect();
     Ok(json!({
         "action": "next", "project_id": id, "ledger": "ready", "holder": holder,
         "now": found.now, "next": next, "next_is": next_is,
         "mine": mine, "ready": ready, "skipped": skipped, "warnings": warnings,
         "landing": landing.json(), "stale": stale, "writes": false,
+        "wip": wip.json(), "audit_needed": audit_needed,
     }))
 }
 
