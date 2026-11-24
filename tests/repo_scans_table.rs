@@ -26,6 +26,10 @@ const ROOT: &str = env!("CARGO_MANIFEST_DIR");
 const EXEMPT: &[(&str, &str)] = &[
     ("tests/atlas_query_cli.rs", "walks the TempDir tree it built from named atlas fixtures"),
     (
+        "tests/audit_prep_cli.rs",
+        "read_dir lists the logs audit-prep left in a slot of its temporary repository; CARGO_MANIFEST_DIR is only text of the test crate it writes there",
+    ),
+    (
         "tests/base_agents_discovery_record.rs",
         "read_dir copies the named skills/moai and agents folders into a temporary home and lists the profile folder it built; reads no other checked-in tree",
     ),
@@ -621,6 +625,11 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "tests/audit_admission.rs",
         &["README.md"],
         "`fs::write` into its TempDir repository, then `git add README.md` there",
+    ),
+    (
+        "tests/audit_prep_cli.rs",
+        &[".gitignore", "Cargo.toml", "src/lib.rs"],
+        "writes them into the temporary project and names them in the build it runs",
     ),
     (
         "tests/boundary_repro.rs",
