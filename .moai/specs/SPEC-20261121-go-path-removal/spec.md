@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261121-go-path-removal
 title: "moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement"
-status: approved
+status: draft
 revision: 6
 created: 2026-11-21
-approval:
-  by: leader
-  at: 2026-11-24
-  basis: "리더 결정 노트 8409 (2026-11-24T09:33:25Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8404 에 답함; 앞서 노트 8336 이 D-1~D-9 를, 노트 8341 이 D-10 을, 노트 8346 이 그 고침을 승인): 판 6(D-10·D-11 고침) 승인, head cba7d6b6bc; 레인은 그 노트를 인용만 해요"
-  digest: "sha256:20ff9911bd79aaca9ca2117aa0efd747aac06c86c5427453fe25e60d52910517"
 ---
 
 # moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement
@@ -53,6 +48,7 @@ The questions revision 6 put to the leader on the card (note 8333) and the leade
 - Q9: What closes card criterion 3? -> A: the temporary-HOME run of AC-19; the user's look at a fresh shell on the real machine is a user step, recorded on the card after the landing (D-9)
 - Q10: Does the fresh-shell test run `bundle build` and `bundle verify` with exit 0 on its scrubbed `PATH`? -> A: no; it shows them answering with this build's envelope, and the verify line of AC-19 runs the two bundle test targets that show their working (D-10)
 - Q11: Does AC-22 ask for exactly one start of a `moai` on `PATH` per `install-inspect` run? -> A: no; every start carries `--version` alone and no other argument, and one run asks twice today (D-11)
+- Q12: Does the verify command of AC-14 run as revision 5 wrote it? -> A: no; `cargo test` takes one test name before `--`, so the two filters of AC-14 follow `--`; what the criterion asks does not change (D-12)
 
 ## Non-goals
 
@@ -143,7 +139,7 @@ The questions revision 6 put to the leader on the card (note 8333) and the leade
 - AC-13 (REQ-12): the revert keeps an entry it cannot read and a readable user text at a retired name, loses no byte, and restores the saved modes.
   verify: `cargo test --offline --locked --test git_hooks_cli lifecycle_revert`
 - AC-14 (REQ-6, REQ-7): the header window is ten lines (line 10 is inside, line 11 is outside), a stale hash file for an absent hook is a leftover and not a kept hook, saved copies keep their modes, a name that appears during the apply is kept and named with the revert command, and a stranded commit-msg is named in the preview.
-  verify: `cargo test --offline --locked --test git_hooks_cli recognition lifecycle`
+  verify: `cargo test --offline --locked --test git_hooks_cli -- recognition lifecycle` (the two filters follow `--`, the form `cargo test` takes; revision 5 named them without `--` and cargo refused the second, D-12)
 - AC-15 (REQ-5): no shipped text or source comment still describes the retired commit-msg install or the replaced-hook flow.
   verify: `cargo test --offline --locked --test git_hooks_cli the_spec_and_shipped_texts_carry_no_stale_claims`
 - AC-16 (REQ-13, REQ-14, REQ-15): in a temporary HOME with v1 as `path/moai` and a `path/moai-cli` whose `--version` line is the Rust signature the preview offers `link` with a token and writes nothing; the confirmed run leaves `moai.before-<stamp>` byte-equal to v1 with its mode and `moai` a relative link to `moai-cli`; a wrong token, an absent launcher and a launcher whose line is not the Rust signature write nothing and name the reason
@@ -198,7 +194,7 @@ The product changes of revision 6 need none of these. Each is the user's own ste
 
 ## Decisions
 
-The decisions D-1 to D-9 were the lane's proposals for revision 6 and count from the leader's note of 2026-11-24T07:45:22Z. D-10 is the leader's decision on the amendment of REQ-22 and AC-19 (its note on the card, 2026-11-24T07:58:02Z), approved with that text by its digest. D-11 is the lane's amendment of AC-22, found while its test was written; the leader approved the amended text by its digest, and the frontmatter records that note.
+The decisions D-1 to D-9 were the lane's proposals for revision 6 and count from the leader's note of 2026-11-24T07:45:22Z. D-10 is the leader's decision on the amendment of REQ-22 and AC-19 (its note on the card, 2026-11-24T07:58:02Z), approved with that text by its digest. D-11 is the lane's amendment of AC-22, found while its test was written, approved by the leader with that text by its digest. D-12 is the lane's correction of the verify command of AC-14, found when every verify command was run as written; the SPEC is a draft again until that correction is approved by its digest.
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
@@ -213,6 +209,7 @@ The decisions D-1 to D-9 were the lane's proposals for revision 6 and count from
 | D-9 | Card criterion 3 is met by the temporary-HOME run of AC-19; the look at a fresh shell on the real machine is the user's step and is recorded on the card when the user runs it | the dispatch of 2026-11-24: the real HOME is the user's (HOLD `guarded`); the product side is provable in a temporary HOME | criterion 3 stays open until the user's look |
 | D-10 | Through the links the fresh-shell test runs the verbs that need no project (`bundle add`, `bundle remove`, `bundle list`), one hook call and one statusline call to exit 0; `bundle build` and `bundle verify` are shown answering with this build's envelope, and their working is shown by the two bundle test targets that the verify line of AC-19 runs | `bundle verify` runs the check list through `cargo`, `python3` and `moai-cli` on `PATH` (`tests/bundle_verify_cli.rs:1-6,155-183`), so the test's `PATH` would start a real build; `bundle build` needs the ledger world of `tests/bundle_build_cli.rs`; copying both harnesses into the new test file duplicates about 250 lines | a copy of both harnesses in `tests/go_path_retired_cli.rs` |
 | D-11 | AC-22 asks that every start of a `moai` on `PATH` carries `--version` alone, not that there is exactly one start | one `install-inspect` run starts the first `moai` on `PATH` twice today, each with `--version` only (`src/install.rs:771` for its candidates and `:914` for its PATH resolution); making it one start is a change of `src/install.rs`, which is outside the Scope, and REQ-21 asks only for the argument | a later SPEC makes `install-inspect` ask once |
+| D-12 | The verify command of AC-14 passes its two test filters after `--` | `cargo test` takes one test name before `--` and refused the second (`error: unexpected argument 'lifecycle' found`, exit 1, run on this head); revision 5 wrote both without `--`, so the command never ran as written and the AC-14 line of that revision cited the `check affected` run instead | none needed |
 
 ### Evidence
 
