@@ -2,7 +2,7 @@
 id: SPEC-20261124-registry-line-add-tier
 title: "Registry additions keep the audit floor at tier 1"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-24
 ---
 
@@ -24,7 +24,7 @@ Readers: the lander and the auditors (`moai bundle check` prints the floor), and
 
 ## Requirements
 
-- REQ-1: When a change of `tools/repo_scans.json` only grows the registry (a rule file or a test name added to a scan, a `--test <name>` option added to a cargo line of its checks, a scan added), the audit floor shall not count that path as a tier 2 path.
+- REQ-1: When a change of `tools/repo_scans.json` only grows the registry (a rule file or a test name added to a scan, a `--test <name>` option added to a cargo line of its checks before the `--` that starts libtest's arguments, whose name is a target name `[a-z0-9_]+`, a scan added), the audit floor shall not count that path as a tier 2 path.
 - REQ-2: When a change of `tools/repo_scans.json` edits or removes anything the old text had (a text field, a list member, a check line, a scan), or adds a key, a check line or a check word of any other kind, the audit floor shall stay tier 2 · failure: none — the rule only decides whether the path prefix applies, it reads and writes nothing.
 - REQ-3 (REQ-1): IF the old text, the new text or either side's JSON is missing or unreadable, or a repeated key overrides an old value, THEN the audit floor shall stay tier 2.
 - REQ-4 (REQ-1): While another path of the same change is a tier 2 path, the audit floor shall stay tier 2.
@@ -39,6 +39,7 @@ Readers: the lander and the auditors (`moai bundle check` prints the floor), and
 - AC-4 (REQ-4, REQ-5): a registration next to a tier 2 path gives 2 and next to a tier 0 or tier 1 path gives 1; the same texts under another path that starts with a tier 2 prefix give 2; `tests/areas.toml` and the allow list stay tier 0 · verify: `cargo nextest run --locked --offline --test gate_registry_tier another_tier_2_path_in_the_change_keeps_the_floor_at_tier_2 only_the_registry_path_is_judged_by_its_text the_two_other_registries_are_tier_0_for_any_change`
 - AC-5 (REQ-6): in a temporary repository `moai bundle check` answers `audit_floor` 1 for a registration, 2 for an edit, a removal and a registration next to `src/gate.rs`, 0 for a document, and judges a head behind the tip by its own change · verify: `cargo nextest run --locked --offline --test gate_registry_tier bundle_check_reads_a_registration_as_tier_1_and_an_edit_as_tier_2 bundle_check_judges_a_head_behind_the_tip_by_its_own_registry_change`
 - AC-6 (REQ-1): the 50 most recent audited ranges are recomputed with the new rule and the number of ranges whose floor changes is in the Result · verify: `moai spec check SPEC-20261124-registry-line-add-tier --project .`
+- AC-7 (REQ-2): a `--test` pair whose value is an option, a filter or a shell fragment (`--list`, `--exact`, `--skip`, `--ignored`, `x||true`, `x;true`), a pair whose value is not `[a-z0-9_]+`, and a `--test` pair after the first `--` of the line (with a valid name or not) each give floor 2, while a target-named pair before the `--` gives 1, and the name rule agrees with `repo_scans::checks_of` on ten sample names · verify: `cargo nextest run --locked --offline --test gate_registry_tier a_test_option_whose_value_is_no_target_name_is_tier_2 a_test_option_after_the_libtest_separator_is_tier_2 a_test_option_value_is_read_as_repo_scans_reads_a_target_name`
 
 ## Scope
 
@@ -68,6 +69,7 @@ Readers: the lander and the auditors (`moai bundle check` prints the floor), and
 | D-2 | `tests/areas.toml` and the allow list get no rule | both are under `tests/`: `tier0_safe` already makes any change of them tier 0, and raising an edit of them to tier 2 would add audit load, not remove it | none needed |
 | D-3 | `gate::tier_of` keeps its signature; the pull request gate and the landing check keep judging names | they have no old and new text, and judging them tier 2 is the stricter side | give those two callers the texts in a later change |
 | D-4 | `src/bundle.rs` is in the write scope | leader decision on the card (2026-11-24T14:05:26Z, delegated by the user), requested because the floor calls are there | drop `src/bundle.rs` and the floor of `moai bundle check` stays names-only |
+| D-5 | Revision 2: a `--test <value>` pair is growth only when its value is a target name `[a-z0-9_]+` and it stands before the first `--` of the line. The name rule is spelled in `src/gate.rs` (`is_target_name`) because `repo_scans::is_target_name` is private and `src/repo_scans.rs` is outside this card's write scope; a test pins that the two agree. | Audit of head `a3ac976d6f` (note 8625), blocking finding B1, leader repair order of 2026-11-24: `--test --list`, `--test --exact`, `--test --skip`, `--test --ignored` after a `--` turn a red check green, and `x\|\|true` and `x;true` were counted as growth. | Count every `--test` pair again (floor 1 for the six probes, which is the defect). Sharing the one function is a follow-up in the card that owns `src/repo_scans.rs`. |
 
 ## Result
 
@@ -104,3 +106,10 @@ Measured 2026-11-24 on macOS in the worktree `.claude/worktrees/c475-registry-ti
 - guard mutants, each run on the committed head by `target/c475/mutants.py` in one slot (baseline exit 0, 11 passed; the tree was clean after the last): M1 exemption removed from `tier_by`, exit 100 (1 failed); M2 text rule applied to any path, exit 100 (1 failed); M3 the registry path always counts as growth, exit 100 (4 failed); M4 top-level fields not compared, exit 100 (2 failed); M5 list members may be dropped, exit 100 (1 failed); M6 check line count not compared, exit 100 (1 failed); M7 any added check word accepted, exit 100 (1 failed); M8 old check words may be dropped, exit 100 (1 failed); M9 repeated scan id allowed, exit 100 (1 failed); M10 top-level key set not compared, exit 100 (1 failed); M11 scan key set not compared, exit 100 (1 failed); M12 check lines not read, exit 100 (1 failed); M13 text fields not compared, exit 100 (2 failed); M14 a missing side counts as growth, exit 100 (3 failed); M15 text never judged, exit 100 (4 failed); M16 `bundle check` back to names only, exit 100 (2 failed); M17 registry text never read, exit 100 (2 failed); M18 old side read at the head, exit 100 (1 failed); M19 old side read at the tip, exit 100 (1 failed).
 - Other runs: `cargo nextest run --locked --offline --test gate_registry_tier --test bundle_check_cli --lib` ran 1929 tests, 1929 passed (before the commit of the code); `moai spec check SPEC-20261124-registry-line-add-tier --project .` ends with 0 errors and 0 warnings.
 - Gaps: the pull request gate (`audit-gate`) and the landing check still judge names only (D-3), so for a registration they say tier 2 where `moai bundle check` says 1; `moai bundle body` is not tested for a registry change; the `moai check affected` receipt is in the READY note.
+
+Revision 2 (repair after the audit of head `a3ac976d6f`, finding B1 of note 8625; leader repair order of 2026-11-24). Measured 2026-11-24T15:22Z on macOS in the same worktree. RED first (`db9a6a5949`): of 14 tests 3 failed on the old code (`--test --list` after `--` and between the old words read as floor 1, and `A`, `a-b`, `a.b`, `x;true`, `--list` read as growth) and 11 passed. After the repair (`982cdbf321`, `src/gate.rs` only) 14 of 14 passed, and `--lib gate::` with the integration tests ran 21 tests, 21 passed.
+
+- AC-7 met (REQ-2): `a_test_option_whose_value_is_no_target_name_is_tier_2` (the audit's P1 to P6 values `--list`, `--exact`, `--skip`, `--ignored`, `x||true`, `x;true`, plus `x&&true`, `$(true)`, `X`, `a-b`, `a.b`, `a/b`, `--`, and one between the old words: floor 2; `beta_2` as the control: floor 1), `a_test_option_after_the_libtest_separator_is_tier_2` (the same values and a valid name after an old `--`, and one inserted after it: floor 2; the same pair before the `--`: floor 1) and `a_test_option_value_is_read_as_repo_scans_reads_a_target_name` (ten sample names: the growth rule and `repo_scans::checks_of` accept the same ones).
+- AC-1 to AC-5 unchanged and still met: the 14 tests of `gate_registry_tier` pass, among them the registration, the other-shape and the `bundle check` tests.
+- Guard mutants of revision 2, one per new guard, each applied once to `982cdbf321` by `target/c475-repair/mutants.py` in one slot, run on the one named test and restored (baseline 14 passed; the tree was clean after the last; each kill is a FAIL of that test, no build error): A the value is no longer checked as a target name, exit 100; B the separator is no longer looked at, exit 100; C the name rule also lets a hyphen through, exit 100.
+- Not done and not claimed: N1 of the audit (`--no-renames` for `changed_paths` in `src/bundle.rs`) stays an open follow-up criterion of the card; `repo_scans::is_target_name` is still private and the rule is spelled twice (D-5); the `moai check affected` receipt of this repair is in the REPAIRED note.
