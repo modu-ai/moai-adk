@@ -88,6 +88,20 @@ fn world() -> (TempHome, String) {
     (home, p)
 }
 
+/// SPEC-20261124-card-help-gates AC-6 (REQ-4): the refusal of a withdrawn card still says
+/// `withdrawn: <reason>`; only a folded card's refusal says `folded into` instead.
+#[test]
+fn take_of_a_withdrawn_card_still_says_withdrawn() {
+    let (home, p) = world();
+    let v = refusal(&run(&home, &["card", "take", "C-1", "--project", &p]));
+    let message = v["error"]["message"].as_str().unwrap();
+    assert!(
+        message.contains("withdrawn: superseded by another card"),
+        "{message}"
+    );
+    assert!(!message.contains("folded"), "{message}");
+}
+
 #[test]
 fn take_on_a_withdrawn_card_names_the_reason_and_keeps_the_kind() {
     let (home, p) = world();
@@ -226,13 +240,13 @@ fn the_take_and_withdraw_help_first_lines_stay_apart() {
     let take = String::from_utf8_lossy(&take_out.stdout);
     assert!(take.contains("Take a ready card for a holder"), "{take}");
     assert!(
-        !take.contains("Withdraw a draft or ready card"),
+        !take.contains("Withdraw a draft, ready, active or review card"),
         "take's help carries withdraw's first line: {take}"
     );
     let withdraw_out = run(&home, &["card", "withdraw", "--help"]);
     let withdraw = String::from_utf8_lossy(&withdraw_out.stdout);
     assert!(
-        withdraw.contains("Withdraw a draft or ready card"),
+        withdraw.contains("Withdraw a draft, ready, active or review card"),
         "{withdraw}"
     );
     assert!(

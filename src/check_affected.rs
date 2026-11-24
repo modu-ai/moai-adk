@@ -98,6 +98,9 @@ fn same_first_word(test: &str, word: &str) -> bool {
 /// One scan of `tools/repo_scans.json`: its cargo targets, its rule files and its scope. A scope
 /// that is absent, empty or not a list of `{prefix, suffixes?}` objects is `None`.
 struct ScanEntry {
+    id: String,
+    /// The test files its `tests` entries name (the text before `::` and before ` (`).
+    test_files: Vec<String>,
     targets: BTreeSet<String>,
     /// `"always": true`: the landing requires the scan whenever the diff touches it. The full set
     /// adds its targets only then (SPEC-20261123-land-file-read-scans D-9); a scan that is not
@@ -108,6 +111,20 @@ struct ScanEntry {
 }
 
 impl ScanEntry {
+    /// Whether `path` is in the scope: under a `prefix`, and with one of its `suffixes` when it
+    /// names any (the rule of `scope_covers` in `tests/repo_scans_table.rs`).
+    fn covers(&self, path: &str) -> bool {
+        self.scope.iter().flatten().any(|(prefix, suffixes)| {
+            path.starts_with(prefix.as_str())
+                && (suffixes.is_empty() || suffixes.iter().any(|s| path.ends_with(s.as_str())))
+        })
+    }
+
+    /// An `always` scan that names `file` as a rule file and holds `path` in its scope.
+    fn always_covers(&self, file: &str, path: &str) -> bool {
+        self.always && self.rules.iter().any(|r| r == file) && self.covers(path)
+    }
+
     /// REQ-2: a changed path is in the scope (under a `prefix`, and with one of its `suffixes`
     /// when it names any) or is one of the rule files.
     fn touched_by(&self, changed: &[String]) -> bool {
@@ -162,6 +179,18 @@ fn scan_entries(text: &str) -> Option<Vec<ScanEntry>> {
             })
             .unwrap_or_default();
         out.push(ScanEntry {
+            id: scan
+                .get("id")
+                .and_then(|i| i.as_str())
+                .unwrap_or("?")
+                .to_string(),
+            test_files: strings(scan.get("tests"))
+                .iter()
+                .map(|t| {
+                    let head = t.split("::").next().unwrap_or(t);
+                    head.split(" (").next().unwrap_or(head).to_string()
+                })
+                .collect(),
             targets,
             always: scan.get("always").and_then(|a| a.as_bool()) == Some(true),
             rules: strings(scan.get("rules")),
@@ -618,6 +647,364 @@ pub fn table_violations(
     out
 }
 
+/// The lines that tell what a range's added top-level `tests/*.rs` files break in the repository
+/// scan list that `tests/repo_scans_table.rs` keeps whole (SPEC-20261124-repo-scans-precheck): a
+/// file that walks the tree, one that reads a file outside `tests/` with `include_str!` or
+/// `include_bytes!`, one that opens a checked-in file by its path, and a rule file of an `always`
+/// scan that no check of the scan runs. `scan_list` is the text of `tools/repo_scans.json`
+/// (`None` is an absent list), `tracked` the files git tracks (`None` when they cannot be read).
+/// The exemption lists are read from the text of `tests/repo_scans_table.rs` among `tests`. The
+/// scan list and the exemption lists are only read.
+pub fn scan_violations(
+    added: &[String],
+    tests: &[TestFile],
+    scan_list: Option<&str>,
+    tracked: Option<&[String]>,
+) -> Vec<String> {
+    let Some(scans) = scan_list.and_then(scan_entries) else {
+        return Vec::new();
+    };
+    let stems: Vec<&str> = added
+        .iter()
+        .filter_map(|p| p.strip_prefix("tests/")?.strip_suffix(".rs"))
+        .filter(|s| !s.contains('/'))
+        .collect();
+    let exempt_text = tests
+        .iter()
+        .find(|t| t.name == "repo_scans_table")
+        .map_or("", |t| t.text.as_str());
+    let walk_exempt = exempt_rows(exempt_text, "EXEMPT");
+    let include_exempt = exempt_rows(exempt_text, "INCLUDE_STR_EXEMPT");
+    let read_exempt = exempt_rows(exempt_text, "FILE_READ_EXEMPT");
+    let tracked = tracked.map(Tracked::new);
+    let mut out = Vec::new();
+    for stem in &stems {
+        let Some(test) = tests.iter().find(|t| t.name == *stem) else {
+            continue;
+        };
+        let path = format!("tests/{stem}.rs");
+        let (text, names_root) = (test.text.as_str(), test.text.contains("CARGO_MANIFEST_DIR"));
+        if names_root
+            && RUST_WALK.iter().any(|n| text.contains(n))
+            && !scans
+                .iter()
+                .any(|s| s.rules.contains(&path) || s.test_files.contains(&path))
+            && !walk_exempt.iter().any(|(f, _)| *f == path)
+        {
+            out.push(format!(
+                "{path}: names the repository root and walks the tree; add an entry that names it as a rule file to tools/repo_scans.json, or, when it only walks temporary or named files, a row with the reason to EXEMPT in tests/repo_scans_table.rs"
+            ));
+        }
+        for read in include_str_paths(&path, text) {
+            if scans.iter().any(|s| s.always_covers(&path, &read))
+                || include_exempt.iter().any(|(f, _)| *f == path)
+            {
+                continue;
+            }
+            out.push(format!(
+                "{path}: reads {read} with include_str! or include_bytes! and no `always` scan names it as a rule file with that path in its scope; add an entry with \"always\": true and a check `--test {stem}` to tools/repo_scans.json, or a row with the reason to INCLUDE_STR_EXEMPT in tests/repo_scans_table.rs"
+            ));
+        }
+        if !names_root {
+            continue;
+        }
+        let Some(tracked) = &tracked else {
+            out.push(format!(
+                "{path}: names the repository root but `git ls-files` cannot be read, so the checked-in files it may read are not known; run `check affected` again in a git checkout"
+            ));
+            continue;
+        };
+        for read in file_read_paths(text, tracked) {
+            if scans.iter().any(|s| s.always_covers(&path, &read))
+                || read_exempt
+                    .iter()
+                    .any(|(f, paths)| *f == path && (paths.is_empty() || paths.contains(&read)))
+            {
+                continue;
+            }
+            out.push(format!(
+                "{path}: opens {read} at run time and no `always` scan names it as a rule file with that path in its scope; add it to a `reads-` scan of tools/repo_scans.json with a check `--test {stem}`, or a row with the reason to FILE_READ_EXEMPT in tests/repo_scans_table.rs when the path is one of the temporary project it builds"
+            ));
+        }
+    }
+    for scan in scans.iter().filter(|s| s.always) {
+        for rule in &scan.rules {
+            let stem = rule
+                .strip_prefix("tests/")
+                .and_then(|r| r.strip_suffix(".rs"))
+                .filter(|s| !s.contains('/'));
+            if let Some(stem) = stem.filter(|s| stems.contains(s) && !scan.targets.contains(*s)) {
+                out.push(format!(
+                    "{}: {rule} is a rule file but no check runs --test {stem}; add `cargo test --offline --locked --test {stem}` to its checks in tools/repo_scans.json",
+                    scan.id
+                ));
+            }
+        }
+    }
+    out
+}
+
+/// What marks a Rust test file as walking the tree: it names the repository root and uses one of
+/// these (`RUST_WALK` of `tests/repo_scans_table.rs`).
+const RUST_WALK: &[&str] = &[
+    "read_dir(",
+    "ls-files",
+    "package_digest(",
+    "stage_package(",
+    "package_agents(",
+    "walk_files(",
+    "package_files(",
+];
+
+/// The literals that start an interpreter: a file that names one and the repository root runs a
+/// checked-in script, so its literal `tools` is the script folder.
+const INTERPRETER_LITERALS: &[&str] = &["\"python3\"", "\"bash\"", "\"sh\""];
+
+/// The files git tracks and every folder above them, relative to the root with `/`.
+struct Tracked {
+    files: BTreeSet<String>,
+    dirs: BTreeSet<String>,
+}
+
+impl Tracked {
+    fn new(paths: &[String]) -> Tracked {
+        let (mut files, mut dirs) = (BTreeSet::new(), BTreeSet::new());
+        for path in paths {
+            for (at, _) in path.match_indices('/') {
+                dirs.insert(path[..at].to_string());
+            }
+            files.insert(path.clone());
+        }
+        Tracked { files, dirs }
+    }
+
+    /// The tracked path a string literal names, if it names one (`repo_path` of
+    /// `tests/repo_scans_table.rs`): no space or backslash, a placeholder folder in front and
+    /// anything from a placeholder on cut away, outside `tests/`, `target/` and `.git/`. A file
+    /// counts at any depth, a folder only with two segments or more.
+    fn repo_path(&self, literal: &str) -> Option<String> {
+        if literal.chars().any(|c| c.is_whitespace() || c == '\\') {
+            return None;
+        }
+        let mut literal = literal;
+        while let Some(rest) = literal
+            .strip_prefix('{')
+            .and_then(|r| r.split_once("}/"))
+            .filter(|(name, _)| !name.contains(['{', '}', '/']))
+            .map(|(_, rest)| rest)
+        {
+            literal = rest;
+        }
+        let cut = literal
+            .find(['{', '<', '*', '$'])
+            .map_or(literal, |at| &literal[..at]);
+        let path = cut.trim_start_matches("./").trim_matches('/');
+        let first = path.split('/').next().unwrap_or("");
+        if path.is_empty() || path.contains("..") || ["tests", "target", ".git"].contains(&first) {
+            return None;
+        }
+        let is_file = self.files.contains(path);
+        let is_folder = path.contains('/') && self.dirs.contains(path);
+        (is_file || is_folder).then(|| path.to_string())
+    }
+}
+
+/// The string literals of Rust source, escapes as written. Line and block comments, raw strings
+/// and the character literals `'"'` and `'\"'` are skipped so their quotes pair nothing.
+fn string_literals(text: &str) -> Vec<String> {
+    let b = text.as_bytes();
+    let ident = |c: u8| c.is_ascii_alphanumeric() || c == b'_';
+    let (mut out, mut i) = (Vec::new(), 0);
+    while i < b.len() {
+        match b[i] {
+            b'/' if b.get(i + 1) == Some(&b'/') => {
+                while i < b.len() && b[i] != b'\n' {
+                    i += 1;
+                }
+            }
+            b'/' if b.get(i + 1) == Some(&b'*') => {
+                i += 2;
+                while i + 1 < b.len() && !(b[i] == b'*' && b[i + 1] == b'/') {
+                    i += 1;
+                }
+                i += 2;
+            }
+            b'\'' if b.get(i + 1) == Some(&b'"') && b.get(i + 2) == Some(&b'\'') => i += 3,
+            b'\'' if b.get(i + 1..i + 4) == Some(b"\\\"'") => i += 4,
+            b'r' if i == 0 || !ident(b[i - 1]) => {
+                let hashes = b[i + 1..].iter().take_while(|c| **c == b'#').count();
+                if b.get(i + 1 + hashes) != Some(&b'"') {
+                    i += 1;
+                    continue;
+                }
+                let mut close = vec![b'"'];
+                close.extend(std::iter::repeat_n(b'#', hashes));
+                let body = i + 2 + hashes;
+                match b[body..].windows(close.len()).position(|w| w == &close[..]) {
+                    Some(end) => i = body + end + close.len(),
+                    None => break,
+                }
+            }
+            b'"' => {
+                let start = i + 1;
+                i = start;
+                while i < b.len() && b[i] != b'"' {
+                    i += if b[i] == b'\\' { 2 } else { 1 };
+                }
+                if i >= b.len() {
+                    break;
+                }
+                out.push(text[start..i].to_string());
+                i += 1;
+            }
+            _ => i += 1,
+        }
+    }
+    out
+}
+
+/// The repository paths a test file spells as string literals and so may read: a file that names
+/// `CARGO_MANIFEST_DIR`, with the tracked paths of its literals, and the script folder `tools`
+/// next to an interpreter literal (`file_read_paths` of `tests/repo_scans_table.rs`).
+fn file_read_paths(text: &str, tracked: &Tracked) -> Vec<String> {
+    if !text.contains("CARGO_MANIFEST_DIR") {
+        return Vec::new();
+    }
+    let literals = string_literals(text);
+    let mut out: Vec<String> = literals
+        .iter()
+        .filter_map(|literal| tracked.repo_path(literal))
+        .collect();
+    if INTERPRETER_LITERALS.iter().any(|i| text.contains(i))
+        && literals.iter().any(|l| l == "tools")
+        && tracked.dirs.contains("tools")
+    {
+        out.push("tools".to_string());
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
+/// The repository paths (relative to the root, with `/`) a Rust file at `file` reads with
+/// `include_str!("<literal>")` or `include_bytes!("<literal>")`, for the literals that leave
+/// `tests/` (`include_str_paths` of `tests/repo_scans_table.rs`).
+fn include_str_paths(file: &str, text: &str) -> Vec<String> {
+    const OPENS: [&str; 2] = ["include_str!(\"", "include_bytes!(\""];
+    let folder = file.rsplit_once('/').map_or("", |(dir, _)| dir);
+    let mut out = Vec::new();
+    for open in OPENS {
+        let mut rest = text;
+        while let Some(at) = rest.find(open) {
+            rest = &rest[at + open.len()..];
+            let Some(end) = rest.find('"') else { break };
+            let literal = &rest[..end];
+            rest = &rest[end..];
+            if !literal.contains("..") {
+                continue;
+            }
+            let mut parts: Vec<&str> = folder.split('/').filter(|s| !s.is_empty()).collect();
+            for segment in literal.split('/') {
+                match segment {
+                    ".." => {
+                        parts.pop();
+                    }
+                    "." | "" => {}
+                    other => parts.push(other),
+                }
+            }
+            let path = parts.join("/");
+            if !path.starts_with("tests/") {
+                out.push(path);
+            }
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
+/// The rows of the exemption list `const <name>` in the text of `tests/repo_scans_table.rs`: each
+/// row is `(first string, strings inside a nested list)`. A list of a row that names no path is
+/// empty. Comments and the text of the strings are skipped, so a commented row is no row.
+fn exempt_rows(text: &str, name: &str) -> Vec<(String, Vec<String>)> {
+    let Some(at) = text.find(&format!("const {name}:")) else {
+        return Vec::new();
+    };
+    let Some(open) = text[at..].find("= &[") else {
+        return Vec::new();
+    };
+    let b = text.as_bytes();
+    let mut i = at + open + "= &[".len();
+    let (mut rows, mut paren, mut bracket) = (Vec::new(), 0usize, 0usize);
+    let mut row: Vec<(String, usize)> = Vec::new();
+    while i < b.len() {
+        match b[i] {
+            b'/' if b.get(i + 1) == Some(&b'/') => {
+                while i < b.len() && b[i] != b'\n' {
+                    i += 1;
+                }
+            }
+            b'/' if b.get(i + 1) == Some(&b'*') => {
+                i += 2;
+                while i + 1 < b.len() && !(b[i] == b'*' && b[i + 1] == b'/') {
+                    i += 1;
+                }
+                i += 2;
+            }
+            b'"' => {
+                let start = i + 1;
+                i = start;
+                while i < b.len() && b[i] != b'"' {
+                    i += if b[i] == b'\\' { 2 } else { 1 };
+                }
+                if paren > 0 {
+                    row.push((text[start..i.min(b.len())].to_string(), bracket));
+                }
+                i += 1;
+            }
+            b'(' => {
+                if paren == 0 {
+                    row.clear();
+                    bracket = 0;
+                }
+                paren += 1;
+                i += 1;
+            }
+            b')' => {
+                paren = paren.saturating_sub(1);
+                if paren == 0 {
+                    if let Some((file, _)) = row.iter().find(|(_, d)| *d == 0) {
+                        let paths = row
+                            .iter()
+                            .filter(|(_, d)| *d > 0)
+                            .map(|(s, _)| s.clone())
+                            .collect();
+                        rows.push((file.clone(), paths));
+                    }
+                    row.clear();
+                }
+                i += 1;
+            }
+            b'[' => {
+                if paren > 0 {
+                    bracket += 1;
+                }
+                i += 1;
+            }
+            b']' => {
+                if paren == 0 {
+                    break;
+                }
+                bracket = bracket.saturating_sub(1);
+                i += 1;
+            }
+            _ => i += 1,
+        }
+    }
+    rows
+}
+
 /// One planned step. The `heavy` steps run one after another under one heavy slot hold.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Step {
@@ -657,7 +1044,10 @@ fn table_step(facts: &Facts) -> Option<Step> {
         })
         .count();
     if added == 0
-        || (facts.areas_text.is_none() && facts.allow_text.is_none() && facts.unreadable.is_empty())
+        || (facts.areas_text.is_none()
+            && facts.allow_text.is_none()
+            && facts.scan_list.is_none()
+            && facts.unreadable.is_empty())
     {
         return None;
     }
@@ -668,6 +1058,20 @@ fn table_step(facts: &Facts) -> Option<Step> {
         facts.allow_text.as_deref(),
         &facts.moved,
     );
+    if let Some(list) = facts.scan_list.as_deref() {
+        if scan_entries(list).is_none() {
+            lines.push(
+                "tools/repo_scans.json: the table exists but cannot be read (it is not JSON with a `scans` list whose entries each have a `checks` list); fix or restore it, it is not treated as absent"
+                    .to_string(),
+            );
+        }
+    }
+    lines.extend(scan_violations(
+        &facts.added,
+        &facts.tests,
+        facts.scan_list.as_deref(),
+        facts.tracked.as_deref(),
+    ));
     for (table, error) in &facts.unreadable {
         lines.push(format!(
             "{table}: the table exists but cannot be read ({error}); fix or restore it, it is not treated as absent"
@@ -800,6 +1204,9 @@ pub struct Facts {
     /// A table that exists but cannot be read (no `NotFound`): its path and the read error. Such a
     /// table is not an absent one (SPEC-20261124-new-test-file-precheck REQ-10).
     pub unreadable: Vec<(String, String)>,
+    /// The files git tracks, read only when the range adds a top-level test file; `None` when
+    /// they were not read or cannot be (SPEC-20261124-repo-scans-precheck D-4).
+    pub tracked: Option<Vec<String>>,
     /// The test folders that hold a `main.rs` (the moved areas).
     pub moved: Vec<String>,
 }
@@ -920,8 +1327,25 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         }
     }
     tests.sort_by(|a, b| a.name.cmp(&b.name));
-    let scan_list = std::fs::read_to_string(dir.join("tools/repo_scans.json")).ok();
     let mut unreadable = Vec::new();
+    // The scan list is `None` when it cannot be read, as it always was for the selection; the
+    // table step reads the reason from `unreadable`.
+    let scan_list = read_table(dir, "tools/repo_scans.json", &mut unreadable);
+    let adds_test_file = added.iter().any(|p| {
+        p.strip_prefix("tests/")
+            .and_then(|r| r.strip_suffix(".rs"))
+            .is_some_and(|s| !s.contains('/'))
+    });
+    let tracked = if adds_test_file {
+        git(dir, &["ls-files", "-z"]).ok().map(|out| {
+            out.split('\0')
+                .filter(|p| !p.is_empty())
+                .map(String::from)
+                .collect()
+        })
+    } else {
+        None
+    };
     let areas_text = read_table(dir, "tests/areas.toml", &mut unreadable);
     let allow_text = read_table(
         dir,
@@ -940,6 +1364,7 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         areas_text,
         allow_text,
         unreadable,
+        tracked,
         moved,
     })
 }
@@ -1597,10 +2022,282 @@ mod tests {
             "docs/lane-rules.md",
         ] {
             let text = std::fs::read_to_string(root.join(rel)).unwrap();
-            for word in ["test_tables", "tests/areas.toml", "allow.tsv"] {
+            for word in [
+                "test_tables",
+                "tests/areas.toml",
+                "allow.tsv",
+                "tools/repo_scans.json",
+                "EXEMPT",
+            ] {
                 assert!(text.contains(word), "{rel} does not name `{word}`");
             }
         }
+    }
+
+    const SCAN_LIST: &str = r#"{"scans":[
+      {"id":"walk-listed","tests":["tests/zz_listed_walk.rs::t"],
+       "checks":["cargo test --offline --locked --test zz_listed_walk"],
+       "rules":["tests/zz_listed_walk.rs"],"scope":[{"prefix":"docs/"}]},
+      {"id":"reads-docs","always":true,"tests":["tests/zz_ok_reader.rs::t"],
+       "checks":["cargo test --offline --locked --test zz_ok_reader"],
+       "rules":["tests/zz_ok_reader.rs"],"scope":[{"prefix":"docs/","suffixes":[".md"]}]},
+      {"id":"reads-nocheck","always":true,"tests":["tests/zz_nocheck.rs::t"],
+       "checks":["cargo test --offline --locked --test other"],
+       "rules":["tests/zz_nocheck.rs"],"scope":[{"prefix":"docs/"}]}
+    ]}"#;
+
+    /// The three exemption lists as `tests/repo_scans_table.rs` spells them, with a comment line
+    /// that looks like a row and a reason that holds escaped quotes.
+    const EXEMPT_TEXT: &str = "\
+// (\"tests/zz_comment.rs\", \"not a row\")
+const EXEMPT: &[(&str, &str)] = &[
+    // (\"tests/zz_comment.rs\", \"not a row either\"),
+    (\"tests/zz_walk_exempt.rs\", \"walks a \\\"temporary\\\" folder\"),
+];
+const INCLUDE_STR_EXEMPT: &[(&str, &str)] = &[
+    (\"tests/zz_inc_exempt.rs\", \"reads a fixture\"),
+];
+const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
+    (
+        \"tests/zz_read_exempt.rs\",
+        &[\"docs/a.md\", \"src/lib.rs\"],
+        \"writes them into the temporary project\",
+    ),
+    (\"tests/zz_read_whole.rs\", &[], \"names paths of the project it builds\"),
+];
+";
+
+    fn tracked() -> Vec<String> {
+        paths(&["docs/a.md", "docs/a.txt", "src/lib.rs"])
+    }
+
+    /// A test file that names the repository root and carries `body`.
+    fn rooted(body: &str) -> String {
+        format!("const M: &str = env!(\"CARGO_MANIFEST_DIR\");\n{body}\n")
+    }
+
+    fn violations(
+        files: &[(&str, String)],
+        list: Option<&str>,
+        tracked: Option<&[String]>,
+    ) -> Vec<String> {
+        let mut tests: Vec<TestFile> = files.iter().map(|(n, t)| file(n, t)).collect();
+        tests.push(file("repo_scans_table", EXEMPT_TEXT));
+        let names: Vec<&str> = files.iter().map(|(n, _)| *n).collect();
+        scan_violations(&added(&names), &tests, list, tracked)
+    }
+
+    fn line_for<'a>(got: &'a [String], name: &str) -> &'a str {
+        got.iter()
+            .find(|l| l.starts_with(&format!("tests/{name}.rs")))
+            .unwrap_or_else(|| panic!("no line for {name}: {got:?}"))
+    }
+
+    #[test]
+    fn scan_violations_name_each_kind_of_miss() {
+        let files = [
+            (
+                "zz_walk",
+                rooted("fn t() { let _ = std::fs::read_dir(\".\"); }"),
+            ),
+            (
+                "zz_inc",
+                "const A: &str = include_str!(\"../src/zz_new_table.rs\");".to_string(),
+            ),
+            (
+                "zz_incb",
+                "const A: &[u8] = include_bytes!(\"../docs/a.md\");".to_string(),
+            ),
+            ("zz_read", rooted("fn t() { let _ = \"docs/a.md\"; }")),
+            // The scan names this file, but its scope covers only `.md` files.
+            ("zz_ok_reader", rooted("fn t() { let _ = \"docs/a.txt\"; }")),
+            (
+                "zz_listed_walk",
+                rooted("fn t() { let _ = \"docs/a.md\"; }"),
+            ),
+            ("zz_plain", "fn t() {}".to_string()),
+        ];
+        let got = violations(&files, Some(SCAN_LIST), Some(&tracked()));
+        let walk = line_for(&got, "zz_walk");
+        assert!(
+            walk.contains("tools/repo_scans.json") && walk.contains("EXEMPT"),
+            "{walk}"
+        );
+        let inc = line_for(&got, "zz_inc");
+        assert!(
+            inc.contains("src/zz_new_table.rs") && inc.contains("INCLUDE_STR_EXEMPT"),
+            "{inc}"
+        );
+        let incb = line_for(&got, "zz_incb");
+        assert!(
+            incb.contains("docs/a.md") && incb.contains("include_bytes!"),
+            "{incb}"
+        );
+        let read = line_for(&got, "zz_read");
+        assert!(
+            read.contains("docs/a.md") && read.contains("FILE_READ_EXEMPT"),
+            "{read}"
+        );
+        let suffix = line_for(&got, "zz_ok_reader");
+        assert!(suffix.contains("docs/a.txt"), "{suffix}");
+        // A scan without `always` claims no coverage, whatever it names and holds in its scope.
+        let plain_scan = line_for(&got, "zz_listed_walk");
+        assert!(plain_scan.contains("docs/a.md"), "{plain_scan}");
+        // One line per miss and none for the plain file.
+        assert_eq!(got.len(), 6, "{got:?}");
+    }
+
+    #[test]
+    fn scan_violations_pass_a_registered_or_exempt_file_and_skip_what_is_absent() {
+        let files = [
+            ("zz_listed_walk", rooted("fn t() { let _ = std::fs::read_dir(\".\"); }")),
+            ("zz_ok_reader", rooted("fn t() { let _ = \"docs/a.md\"; }")),
+            ("zz_walk_exempt", rooted("fn t() { let _ = std::fs::read_dir(\".\"); }")),
+            (
+                "zz_inc_exempt",
+                "const A: &str = include_str!(\"../src/zz_new_table.rs\");".to_string(),
+            ),
+            ("zz_read_exempt", rooted("fn t() { let _ = \"docs/a.md\"; let _ = \"src/lib.rs\"; }")),
+            ("zz_read_whole", rooted("fn t() { let _ = \"docs/a.md\"; let _ = \"src/lib.rs\"; }")),
+            // `tests/` is no file outside `tests/`, and a literal that is no tracked path is no read.
+            (
+                "zz_inside",
+                rooted("const A: &str = include_str!(\"fixtures/x.txt\"); fn t() { let _ = \"docs/none.md\"; }"),
+            ),
+        ];
+        let got = violations(&files, Some(SCAN_LIST), Some(&tracked()));
+        assert!(got.is_empty(), "{got:?}");
+        // An absent scan list is skipped as a whole (the repository has no such table).
+        let bare = [(
+            "zz_walk",
+            rooted("fn t() { let _ = std::fs::read_dir(\".\"); }"),
+        )];
+        assert!(violations(&bare, None, Some(&tracked())).is_empty());
+        // Folders, other suffixes and paths outside `tests/` are no top-level test files.
+        let other = paths(&["tests/lane/zz.rs", "tests/zz.py", "src/zz.rs"]);
+        let tests = [file(
+            "zz",
+            &rooted("fn t() { let _ = std::fs::read_dir(\".\"); }"),
+        )];
+        assert!(scan_violations(&other, &tests, Some(SCAN_LIST), Some(&tracked())).is_empty());
+    }
+
+    #[test]
+    fn scan_violations_read_the_three_exemption_lists() {
+        // Each list keeps out only its own rule: a walking file is not kept out by the reader
+        // lists, a reader of a path the row does not name is not kept out, and a comment is no row.
+        let files = [
+            (
+                "zz_comment",
+                rooted("fn t() { let _ = std::fs::read_dir(\".\"); }"),
+            ),
+            (
+                "zz_inc_exempt_wrong",
+                "const A: &str = include_str!(\"../docs/a.md\");".to_string(),
+            ),
+            (
+                "zz_read_exempt_more",
+                rooted("fn t() { let _ = \"docs/a.md\"; }"),
+            ),
+            // Listed in `EXEMPT` only: reading is not walking.
+            (
+                "zz_walk_exempt",
+                rooted("fn t() { let _ = \"docs/a.md\"; }"),
+            ),
+            // Listed in `FILE_READ_EXEMPT` only: walking is not reading.
+            (
+                "zz_read_exempt",
+                rooted("fn t() { let _ = std::fs::read_dir(\".\"); }"),
+            ),
+        ];
+        let got = violations(&files, Some(SCAN_LIST), Some(&tracked()));
+        assert_eq!(got.len(), 5, "{got:?}");
+        assert!(line_for(&got, "zz_comment").contains("EXEMPT"));
+        // A row of `FILE_READ_EXEMPT` names its paths: `tests/zz_read_exempt.rs` is kept out for
+        // `docs/a.md` and `src/lib.rs` only.
+        let more = [(
+            "zz_read_exempt",
+            rooted("fn t() { let _ = \"docs/a.md\"; let _ = \"docs/a.txt\"; }"),
+        )];
+        let got = violations(&more, Some(SCAN_LIST), Some(&tracked()));
+        assert_eq!(got.len(), 1, "{got:?}");
+        assert!(got[0].contains("docs/a.txt"), "{got:?}");
+        // No exemption text at all: every walking file is a violation.
+        let tests = [file(
+            "zz_walk_exempt",
+            &rooted("fn t() { let _ = std::fs::read_dir(\".\"); }"),
+        )];
+        let got = scan_violations(
+            &added(&["zz_walk_exempt"]),
+            &tests,
+            Some(SCAN_LIST),
+            Some(&tracked()),
+        );
+        assert_eq!(got.len(), 1, "{got:?}");
+    }
+
+    #[test]
+    fn scan_violations_name_a_rule_file_without_its_test_check() {
+        let files = [
+            ("zz_nocheck", rooted("fn t() { let _ = \"docs/a.md\"; }")),
+            ("zz_ok_reader", "fn t() {}".to_string()),
+        ];
+        let got = violations(&files, Some(SCAN_LIST), Some(&tracked()));
+        // The line starts with the scan, as the line of `tests/repo_scans_table.rs` does.
+        let line = got
+            .iter()
+            .find(|l| l.starts_with("reads-nocheck: tests/zz_nocheck.rs"))
+            .unwrap_or_else(|| panic!("no line for the scan: {got:?}"));
+        assert!(line.contains("--test zz_nocheck"), "{line}");
+        // The scan that names `zz_ok_reader` runs it: no line. `zz_nocheck` is a reader the scan
+        // names, so it has no coverage line either, only the missing check.
+        assert_eq!(got.len(), 1, "{got:?}");
+    }
+
+    #[test]
+    fn scan_violations_say_when_the_tracked_files_are_unknown() {
+        let files = [("zz_read", rooted("fn t() { let _ = \"docs/a.md\"; }"))];
+        let got = violations(&files, Some(SCAN_LIST), None);
+        assert_eq!(got.len(), 1, "{got:?}");
+        assert!(
+            got[0].contains("tests/zz_read.rs") && got[0].contains("git ls-files"),
+            "{got:?}"
+        );
+        // Nothing that spells the root needs the tracked files.
+        let plain = [("zz_plain", "fn t() {}".to_string())];
+        assert!(violations(&plain, Some(SCAN_LIST), None).is_empty());
+    }
+
+    /// SPEC REQ-8: the repository's own test files, all taken as added, pass the scan step: it
+    /// cannot be stricter than `tests/repo_scans_table.rs`, which passes on the same tree.
+    #[test]
+    fn the_repository_tests_pass_the_scan_step_as_added_files() {
+        let root = Path::new(MANIFEST);
+        let mut added = Vec::new();
+        let mut tests = Vec::new();
+        for entry in std::fs::read_dir(root.join("tests")).unwrap().flatten() {
+            let path = entry.path();
+            if !path.is_file() || path.extension().is_none_or(|e| e != "rs") {
+                continue;
+            }
+            let name = path.file_stem().unwrap().to_string_lossy().to_string();
+            added.push(format!("tests/{name}.rs"));
+            tests.push(TestFile {
+                text: std::fs::read_to_string(&path).unwrap(),
+                name,
+                ..Default::default()
+            });
+        }
+        assert!(added.len() > 100, "the scan found {} files", added.len());
+        let list = std::fs::read_to_string(root.join("tools/repo_scans.json")).unwrap();
+        let listed = git(root, &["ls-files", "-z"]).expect("git ls-files");
+        let tracked: Vec<String> = listed
+            .split('\0')
+            .filter(|p| !p.is_empty())
+            .map(String::from)
+            .collect();
+        let found = scan_violations(&added, &tests, Some(&list), Some(&tracked));
+        assert!(found.is_empty(), "{}", found.join("\n"));
     }
 
     fn rust(name: &str, modules: &[&str], os: &[&str]) -> TestFile {

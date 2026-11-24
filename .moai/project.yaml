@@ -21,13 +21,11 @@
     ],
     "languages": [
       "python",
-      "rust",
-      "typescript"
+      "rust"
     ],
     "lsp": [
       "pyright",
-      "rust-analyzer",
-      "typescript-language-server"
+      "rust-analyzer"
     ],
     "mcp_servers": [],
     "databases": [
@@ -49,7 +47,7 @@
     {
       "id": "done",
       "topic": "done",
-      "value": "local_check.sh in the tools folder passes",
+      "value": "the project's own tests pass",
       "source": "user",
       "scope": "project"
     },
@@ -71,10 +69,22 @@
   "language": {
     "commit_messages": "en",
     "documents": "ko",
+    "instruction_files": "en",
     "user_chat": "ko"
   },
   "versioning": {
     "scheme": "headver",
     "head": 4
-  }
+  },
+  "shared_files": [
+    "src/lib.rs",
+    "src/help.rs",
+    "src/ops/card.rs",
+    "src/profile.rs",
+    "tests/areas.toml",
+    "tools/repo_scans.json",
+    "skills/moai/references/source-manifest.json",
+    "docs/design-review/appendix/operations/card.md",
+    "tests/fixtures/help/*.txt"
+  ]
 }

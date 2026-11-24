@@ -365,7 +365,9 @@ fn receipt_id_ok(s: &str) -> bool {
 /// `layout.json` is switched in the home project directory, receipts resolve there;
 /// otherwise the project-side store stays authoritative (read-compatible fallback).
 fn receipts_dir(root: &Path) -> Result<PathBuf> {
-    Ok(crate::layout::switched_dir(root, "receipts")
+    // SPEC-20261124-home-writer-links: every receipt, backup and recovery path goes through here,
+    // so a symlinked home state folder is refused once for all of them.
+    Ok(crate::layout::switched_dir_checked(root, "receipts")?
         .unwrap_or_else(|| crate::state_root::path(root, "receipts")))
 }
 

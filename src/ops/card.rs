@@ -16,6 +16,28 @@ pub struct Args {
 }
 
 #[derive(clap::Subcommand)]
+enum OrchestrateAction {
+    /// Reads the ledger only. Print the plan of one round; nothing is sent, started or landed
+    ///
+    /// Reads the ledger only. Prints `window`, `lanes`, `actions` (`clear`, `dispatch`, `audit`,
+    /// `blocked`, each with a stable `key`), `land_queue`, `attention` and `host`. Two plans of
+    /// an unchanged ledger and registry are equal. `--agents-json` reads a file in the shape of
+    /// `claude agents --json`; without it the host is `not_read`. A project without a ledger has
+    /// an empty plan (`ledger: "absent"`, exit 0) and nothing is created.
+    Plan {
+        /// The project folder (its profile holds the project id).
+        #[arg(default_value = ".")]
+        project: PathBuf,
+        /// A file in the shape of `claude agents --json` (a JSON array); never run for you.
+        #[arg(long)]
+        agents_json: Option<PathBuf>,
+        /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+}
+
+#[derive(clap::Subcommand)]
 enum Action {
     /// Reads the ledger only. List the project's cards, oldest first
     ///
@@ -215,6 +237,8 @@ enum Action {
     /// read (`card show`): given, the card's live reservation must be at that generation, else
     /// `conflict` naming the generation it has (or that the card is not held) and nothing is
     /// written; left out, nothing is checked. Each entry is checked as `add --scope` checks it.
+    /// An entry that the scope does not hold yet and that overlaps a `shared_files` entry of the
+    /// project profile is refused: write that file in short with `card line-lease`.
     /// Any other state is refused (`conflict`) with its state and holder, and nothing is
     /// written.
     Scope {
@@ -251,6 +275,10 @@ enum Action {
     /// `scope_source` is `given`, `card`, `spec` or `last_reservation`). With no source the take
     /// is refused and names `card take <C-n> --scope <path>` and `card scope <C-n> --scope <path>`.
     /// A `--scope` value is one path: a comma in it is refused.
+    /// A path that overlaps a `shared_files` entry of the project profile is never reserved
+    /// whole: a given or own scope that holds one is refused, a scope filled from a SPEC or a
+    /// last reservation leaves it out and names it in `warnings`; write the file in short with
+    /// `card line-lease`.
     /// Refused when the card is not `ready`, is already held, has no `open` or `met` criterion
     /// (the answer names `card criterion-add`), or its scope overlaps another
     /// card's reservation (`conflict`). The answer's `generation` is what `release` and
@@ -285,7 +313,7 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
-    /// Writes the ledger. Withdraw a draft or ready card
+    /// Writes the ledger. Withdraw a draft, ready, active or review card
     ///
     /// Writes the ledger. Marks the card withdrawn: it moves to `hold`, one `card.withdraw`
     /// event records the reason and the by with the writing session, `card take` refuses it
@@ -472,11 +500,12 @@ enum Action {
     /// holder, generation and lease end, the new holder, `--by` and `--reason`. Nothing checks that
     /// the old holder is really gone: say in `--reason` what was found (process ended, pull request
     /// merged, uncommitted work). The old generation is stale from then on. The new holder is this
-    /// session's own id, never typed. The new holder continues in the recorded worktree, so
-    /// commits that sit on no remote-tracking ref do not stop the takeover: the event and the
-    /// answer name them as `kept_commits` (the count and up to twenty ids, newest first). An
-    /// uncommitted change in that worktree does stop it (`conflict`, nothing written): commit or
-    /// give it up first.
+    /// session's own id, never typed. The new holder continues in the recorded worktree. Once the
+    /// lease has ended, commits that sit on no remote-tracking ref do not stop the takeover: the
+    /// event and the answer name them as `kept_commits` (the count and up to twenty ids, newest
+    /// first). While the lease is still live, such commits stop it (`conflict`, nothing written),
+    /// as does a reservation that is not `held`. An uncommitted change in that worktree stops
+    /// either takeover (`conflict`, nothing written): commit or give it up first.
     Reclaim {
         /// `C-12`.
         card: String,
@@ -578,6 +607,17 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Reads the ledger only. The coordination window's plan of one round
+    ///
+    /// Reads the ledger only. `moai card orchestrate plan` prints what one round of the
+    /// coordination window would do and does none of it: the registry's lanes and whether each is
+    /// free, busy or unknown; the cards to dispatch to the free lanes; the lanes to clear; the
+    /// heads that need an audit; the audited heads that wait to land; and what waits for the user.
+    /// It starts no host program and writes no file.
+    Orchestrate {
+        #[command(subcommand)]
+        action: OrchestrateAction,
+    },
     /// Reads the ledger only. Wait for the next note on the named cards, or for a timeout
     ///
     /// Reads the ledger only. Fixes a start mark (`--since`, else the largest note id in the
@@ -633,6 +673,8 @@ enum Action {
     /// a worktree that is at that head holds `target/check-affected-<head12>/summary.txt` with
     /// the `result=PASS` line of a bare `moai check affected` run of that head (a `--lane` run is
     /// no receipt). Otherwise the note is refused with the way out and nothing is written.
+    /// A first line with a blank before the marker is refused the same way, and the `base` of the
+    /// receipt's summary line must be an ancestor of that head.
     ///
     /// The same notes need exactly one `leftovers:` line in the body: `leftovers: none`, or
     /// `leftovers: <path> | <path>` for what the lane could not remove (a throwaway copy, a
@@ -1095,7 +1137,9 @@ enum Action {
     /// Reads the ledger only. Exit 0 only when this session holds the card at `--generation`
     /// with a live lease and every `--path` lies under the reservation's write scope. Anything
     /// else is refused (`conflict`). Nothing is recorded. The paths are compared as text:
-    /// a symbolic link on disk is not followed.
+    /// a symbolic link on disk is not followed. A path outside the scope that overlaps a
+    /// `shared_files` entry of the project profile ends the refusal with the `card line-lease`
+    /// form for that path.
     Check {
         /// `C-12`.
         card: String,
@@ -1427,6 +1471,18 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             leader,
             home,
         } => moai_cli::card::inbox::inbox(&project, &resolve_home(home)?, leader.as_deref()),
+        Action::Orchestrate {
+            action:
+                OrchestrateAction::Plan {
+                    project,
+                    agents_json,
+                    home,
+                },
+        } => moai_cli::card::orchestrate::plan(
+            &project,
+            &resolve_home(home)?,
+            agents_json.as_deref(),
+        ),
         Action::Wait {
             cards,
             timeout,

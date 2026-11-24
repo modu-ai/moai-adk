@@ -782,3 +782,30 @@ fn help_names_the_rules_of_the_three_commands() {
         );
     }
 }
+
+/// AC-6 (SPEC-20261124-shared-files-profile REQ-7): with the profile listing `src/lib.rs`, two
+/// cards that do not hold it each lease it one after the other, and neither scope ever lists it.
+#[test]
+fn shared_files_two_cards_lease_one_after_the_other() {
+    let w = world();
+    fs::write(
+        Path::new(&w.project)
+            .join(moai_cli::PROJECT_STATE_DIR)
+            .join("project.yaml"),
+        "{\"schema_version\":2,\"project_id\":\"demo\",\"shared_files\":[\"src/lib.rs\"]}\n",
+    )
+    .unwrap();
+    let a = w.held(S_A, "first", &["src/a.rs"]);
+    let b = w.held(S_B, "second", &["src/b.rs"]);
+    let file = Path::new(&w.project).join("lib.rs");
+    for (session, card, text) in [(S_A, &a, "pub mod a;"), (S_B, &b, "pub mod b;")] {
+        let cmd = append_command(&file, text);
+        let done = result(&w.lease(session, card, "src/lib.rs", None, &as_refs(&cmd)));
+        assert_eq!(done["exit_code"], json!(0), "{done}");
+        assert!(!w.scope_of(card).contains(&"src/lib.rs".to_string()));
+    }
+    assert_eq!(
+        fs::read_to_string(&file).unwrap(),
+        "pub mod a;\npub mod b;\n"
+    );
+}

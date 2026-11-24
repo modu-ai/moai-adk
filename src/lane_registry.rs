@@ -852,7 +852,9 @@ pub fn register_with(
     let live_leader =
         crate::leader_round::registration::holds_live_leader(current.as_ref(), previous);
     // Test seam: widens the read-to-write window (at most 2 s) so the concurrency test can
-    // show the lock is what keeps two registrations apart. Unset in normal use.
+    // show the lock is what keeps two registrations apart. Debug builds only: a release build
+    // never reads the variable (SPEC-20261124-test-seams-release).
+    #[cfg(debug_assertions)]
     if let Some(ms) = std::env::var(TEST_HOLD_VAR)
         .ok()
         .and_then(|v| v.parse::<u64>().ok())

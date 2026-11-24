@@ -199,7 +199,10 @@ pub fn op_id(
 fn outbox_dir(project: &Path, create: bool) -> Result<PathBuf, ForgeError> {
     // #2175: the P09 opt-in home layout switches the outbox store to
     // ~/.moai-cli/projects/<id>/forge/outbox once layout.json is in place.
-    if let Some(home) = crate::layout::switched_dir(project, "forge/outbox") {
+    // SPEC-20261124-home-writer-links: a symlinked home state folder is refused, read or write.
+    if let Some(home) =
+        crate::layout::switched_dir_checked(project, "forge/outbox").map_err(ForgeError::invalid)?
+    {
         if create {
             std::fs::create_dir_all(&home)
                 .map_err(|_| ForgeError::io("outbox directory unavailable"))?;
