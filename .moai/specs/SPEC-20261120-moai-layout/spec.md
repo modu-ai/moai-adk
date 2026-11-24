@@ -2,7 +2,7 @@
 id: SPEC-20261120-moai-layout
 title: "One .moai/ layout rule for every project: tracked team files, ignored .moai/local/, project tools in .moai/tools/"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-20
 ---
 
@@ -25,12 +25,12 @@ created: 2026-11-20
 
 이미 있는 프로젝트는 계속 돌아가요: 읽기는 옛 경로까지, 쓰기는 새 경로로.
 
-이 SPEC 은 규칙의 **조각 1** 이에요: 규칙의 정의(코드 한 곳)와 관리되는 `.gitignore` 블록. 규칙의 나머지는 다음 조각의 SPEC 이 맡아요(SPEC 하나는 자기 AC 를 모두 `met` 으로 닫아야 해서 조각마다 SPEC 을 따로 둬요): 쓰는 쪽을 종류별로 `local/` 로 옮기는 SPEC 들, 만들어지는 `AGENTS.md` 와 스킬 지침이 `.moai/tools/` 를 말하게 하는 SPEC.
+이 SPEC 은 규칙의 **조각 1** 이에요: 규칙의 정의(코드 한 곳)와 관리되는 `.gitignore` 블록. 규칙의 나머지는 다음 조각의 SPEC 이 맡아요(SPEC 하나는 자기 AC 를 모두 `met` 으로 닫아야 해서 조각마다 SPEC 을 따로 둬요): 쓰는 쪽을 종류별로 `local/` 로 옮기는 SPEC 들. 개정 4(2026-11-24)는 같은 카드의 조각 3 을 이 SPEC 에 더해요: 만들어지는 관리 블록 한 줄과 `agents/impl.md` 한 줄이 `.moai/tools/` 를 말하게 하고(REQ-15, REQ-16), 업데이트 계획의 `now visible` 목록이 상태 폴더 아래 중첩 `.gitignore` 를 따르게 해요(REQ-17).
 
 ## Non-goals
 
 - 쓰는 쪽을 `local/` 로 옮기지 않아요: 종류마다 다음 SPEC 이 해요(`receipts` → `index` → `state`·`forge/outbox` → `backups` 등). 이 SPEC 은 그 길(함수)만 줘요.
-- 만들어지는 `AGENTS.md` 와 스킬 지침의 `.moai/tools/` 문구는 다음 SPEC 이 해요.
+- 안내 문구는 관리 블록 한 줄(REQ-15)과 `agents/impl.md` 한 줄(REQ-16)만 바꿔요. 스킬 본문(`skills/**`)과 그 밖의 에이전트·워크플로 문구, 사용자 홈 규칙 파일은 바꾸지 않아요: 다음 SPEC 이 해요.
 - `.moai-cli` → `.moai` 이전 마무리(미리보기·토큰·되돌리기, 두 폴더 공존 해소)는 하지 않아요: 따로 다뤄요.
 - 보고서·증거 위치는 정하지 않아요: 프로젝트 밖 `~/.moai/reports/<project>/` 이고 다른 SPEC 이 다뤄요.
 - moai-adk 자체의 루트 `tools/`(제품 개발 코드)는 옮기지 않아요.
@@ -53,6 +53,9 @@ created: 2026-11-20
 - REQ-12: When a project update would lift the ignore from untracked files under the state folder's `tools/` or `evals/`, the project update plan shall name each such file as `now visible: <path>`, up to twenty, and count the rest in one line.
 - REQ-13 (REQ-12): IF git is not available, THEN the project update plan shall name no file and say once that git was not consulted.
 - REQ-14 (REQ-5): IF the new path or the earlier path is a link whose target is missing, THEN the state layout shall still return that path as the one that is there.
+- REQ-15: The managed block of the generated `CLAUDE.md` shall name `<state>/tools/` on one line, within the `BLOCK_MAX_LINES` lines of the block, as the place for the project's development scripts in the instruction languages `en` and `ko`.
+- REQ-16: The `moai-impl` agent definition shall tell the agent to put a development-support script the task creates under `.moai/tools/`.
+- REQ-17 (REQ-12): WHILE a `.gitignore` file under the state folder ignores a file that the project update would lift from the root rules, the project update plan shall not name that file as `now visible`.
 
 ## Acceptance
 
@@ -78,12 +81,18 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test gitignore_block_cli the_plan_counts_the_visible_files_past_twenty`
 - AC-11 (REQ-13): git 이 없으면 계획은 파일 이름을 말하지 않고 git 을 보지 않았다는 한 줄을 한 번만 말해요.
   verify: `cargo test --locked --offline --test gitignore_block_cli no_repository_and_no_git_are_not_failures`
+- AC-12 (REQ-15): `en` 과 `ko` 로 만든 관리 블록은 `.moai/tools/` 를 말하는 줄을 한 줄 갖고 `scripts/` 와 프로젝트 루트를 스크립트 자리로 말하지 않으며, 줄 수가 `BLOCK_MAX_LINES`(15) 이내예요.
+  verify: `cargo test --locked --offline --lib agents::tests::the_block_names_the_tools_folder_for_project_scripts`
+- AC-13 (REQ-16): `agents/impl.md` 는 `.moai/tools/` 를 말하고 `scripts/` 와 프로젝트 루트를 스크립트 자리로 말하지 않아요.
+  verify: `cargo test --locked --offline --lib agents::tests::the_impl_agent_names_the_tools_folder_for_project_scripts`
+- AC-14 (REQ-17): 상태 폴더 아래 중첩 `.gitignore`(예: `.moai/tools/.gitignore` 의 `private/`)가 계속 무시하는 파일은 `now visible` 로 말하지 않고, 그 규칙이 없는 옆 파일은 말해요.
+  verify: `cargo test --locked --offline --test gitignore_block_cli a_nested_gitignore_under_the_state_folder_keeps_a_file_out_of_the_visible_list`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261120-moai-layout/spec.md`, `src/state_root.rs`, `src/agents.rs`(관리 블록: `STATE_KEPT` 와 `render_ignore`), `tests/gitignore_block_cli.rs`, 골든 `tests/fixtures/protocol/v1/current/16-agents-plan-create.json`·`17-agents-apply-ok.json`(블록 줄이 바뀌어서), `docs/design-review/appendix/state-layout.md`
+- write: `.moai/specs/SPEC-20261120-moai-layout/spec.md`, `src/state_root.rs`, `src/agents.rs`(관리 블록: `STATE_KEPT` 와 `render_ignore`), `tests/gitignore_block_cli.rs`, 골든 `tests/fixtures/protocol/v1/current/16-agents-plan-create.json`·`17-agents-apply-ok.json`(블록 줄이 바뀌어서), `docs/design-review/appendix/state-layout.md`; 개정 4 가 더하는 것: `agents/impl.md`(Boundaries 한 줄). 블록 문구를 단언하는 `tests/language_setting.rs`·`tests/language_three_questions.rs`·`tests/product_cli.rs` 는 시험이 깨질 때만 한 줄씩 `moai card line-lease` 로 빌려요
 - read-only: `src/layout.rs`(P09 홈 배치와는 별개예요), `src/go_state.rs`(옛 이름 목록)
-- forbidden: 쓰는 쪽 모듈 바꾸기, 옛 경로 파일 이동·삭제, `.moai-cli` 이전 변경, 보고서 위치 변경, 안내 문구 바꾸기
+- forbidden: 쓰는 쪽 모듈 바꾸기, 옛 경로 파일 이동·삭제, `.moai-cli` 이전 변경, 보고서 위치 변경, 관리 블록 한 줄과 `agents/impl.md` 한 줄 밖의 안내 문구(스킬 본문 `skills/**`, 다른 에이전트·워크플로 문구, 사용자 홈 규칙 파일) 바꾸기
 
 ## Plan
 
@@ -92,6 +101,10 @@ created: 2026-11-20
 3. `src/agents.rs` 의 `STATE_KEPT` 를 `state_root::KEPT` 로 바꾸고 블록에 `<state>/local/` 줄을 더해요(허용 줄 순서는 앞의 아홉 줄 그대로, `tools/`·`evals/` 가 `specs/` 뒤). `gitignore_block_cli` 시험 둘을 더하고, 줄 수를 못 박은 기존 시험 둘(12줄 → 15줄)을 고쳐요.
 4. 골든 두 개를 `MOAI_UPDATE_FIXTURES=1` 로 다시 만들고 `git diff` 가 블록 줄과 해시뿐인지 봐요.
 5. 확인: `moai check affected origin/v2026.11.0..HEAD`(내가 빌드한 moai), 변이(블록 줄 빼기·허용 줄 빼기·`read_path` 순서 바꾸기·`is_kept` 깨기)가 시험에 잡히는지, SPEC `spec check` 와 `--closure`.
+6. (개정 4) `render_agents` 가 `{state}/tools/` 한 줄(`en`·`ko`)을 검사 줄 뒤에 더하고, `agents::tests::the_block_names_the_tools_folder_for_project_scripts` 가 두 언어의 줄 수(`BLOCK_MAX_LINES` 이내)와 `scripts/`·프로젝트 루트 문구 없음을 못 박아요. 블록을 단언하는 시험과 골든 16·17 은 한 줄·해시만 바뀌어요.
+7. (개정 4) `agents/impl.md` Boundaries 에 한 줄을 더하고 `agents::tests::the_impl_agent_names_the_tools_folder_for_project_scripts`(`include_str!`)로 못 박아요.
+8. (개정 4) `newly_visible` 이 상태 폴더 아래 중첩 `.gitignore` 파일을 읽어 임시 저장소의 같은 상대 경로에 두고 묻게 해요(링크는 따르지 않고, 크기 상한을 둬요). `a_nested_gitignore_under_the_state_folder_keeps_a_file_out_of_the_visible_list` 를 더해요.
+9. (개정 4) 각 새 시험에 변이(블록 줄 빼기, `impl.md` 줄 빼기, 중첩 규칙 읽지 않기)를 한 번씩 돌려 실패하는지 보고, `check affected` 를 한 번 돌려요.
 
 ## Risks
 
@@ -102,6 +115,8 @@ created: 2026-11-20
 - 모든 상태가 이미 `<state>/*` 규칙으로 무시되고 있어서(허용 목록 밖은 무시) `local/` 줄은 읽는 사람에게 규칙을 말해 주는 줄이에요. 무시 결과는 달라지지 않아요.
 - 함수만 있고 쓰는 쪽은 아직 옛 경로에 써요: 그 사이에 `local/` 은 비어 있고 `read_path` 는 옛 경로를 돌려줘요. 쓰는 쪽을 옮기는 SPEC 이 종류마다 되돌림·영수증 시험을 둬요.
 - `LOCAL_KINDS` 는 지금 있는 종류의 목록이고 `go_state` 의 옛 이름 목록(`STATE_ENTRIES`)과 따로 있어요: 둘의 관계를 못 박는 시험은 `go_state` 를 쓰는 다음 SPEC 이 더해요(이 SPEC 은 그 파일을 쓰지 않아요).
+- (개정 4) `agents/impl.md` 의 한 줄은 에이전트가 새로 만드는 개발 지원 스크립트에만 해당해요. 이 저장소의 루트 `tools/` 는 제품 개발 코드이고 그대로예요(D-5): 줄은 "이 작업이 새로 만드는 스크립트"로 한정해서 쓰고, 기존 `tools/` 파일을 옮기라는 뜻으로 읽히지 않게 해요.
+- (개정 4) 중첩 `.gitignore` 를 임시 저장소에 옮겨 올 때 링크를 따라가면 프로젝트 밖 파일을 읽을 수 있어요: 링크인 `.gitignore` 와 링크 폴더는 읽지 않고(읽지 않으면 그 파일은 안전한 쪽으로 `now visible` 에 남아요), 한 파일 크기에 상한을 둬요.
 - `.moai-cli` 와 `.moai` 가 함께 있는 프로젝트(이 저장소 포함)에서 `local/` 은 `state_root::dir` 가 정하는 쪽 아래예요. 이전 마무리는 이 SPEC 밖이에요.
 
 ## Decisions
@@ -111,10 +126,11 @@ created: 2026-11-20
 | D-1 | 추적 종류는 열한 개 이름을 코드 한 곳에 두고, 그 밖의 모든 종류는 `local/` 아래로 본다 | 사용자 결정: "추적은 팀 파일, 나머지는 이 기계의 것" — 목록이 닫혀 있어야 새 종류가 실수로 추적되지 않아요 | 목록에 이름 더하기 |
 | D-2 | 새 경로·옛 경로·쓰기 경로·읽기 경로 함수를 한 모듈에서 주고 읽기는 새 경로 우선·없으면 옛 경로·둘 다 없으면 없음 | 사용자 결정: "옛 경로를 읽고 새 경로에 쓴다" | 함수가 옛 경로만 쓰게 하기 |
 | D-3 | 관리 블록의 `tools/`·`evals/` 허용 줄은 `specs/` 뒤에 붙이고 `local/` 줄은 `<state>/*` 줄 바로 뒤에 둔다 | 앞의 아홉 줄 순서가 그대로여야 이미 쓰인 블록과 줄 단위로 비교돼요 | 세 줄 지우기 |
-| D-4 | 쓰는 쪽 이동과 안내 문구는 SPEC 을 따로 둔다 | SPEC 하나는 자기 AC 를 모두 `met` 으로 닫아야 하고, 쓰는 곳이 서른 곳 넘고 각각 되돌림·영수증이 걸려 있어요 | SPEC 합치기 |
+| D-4 | 쓰는 쪽 이동은 SPEC 을 따로 둔다 (개정 4: 안내 문구 중 블록 한 줄과 `agents/impl.md` 한 줄은 이 SPEC 이 맡는다, D-8) | SPEC 하나는 자기 AC 를 모두 `met` 으로 닫아야 하고, 쓰는 곳이 서른 곳 넘고 각각 되돌림·영수증이 걸려 있어요 | SPEC 합치기 |
 | D-5 | 이 저장소(moai-adk)의 루트 `tools/` 는 옮기지 않는다 | 사용자 결정(설계 D2): 제품 개발 코드이고 CI·검사 보호 경로가 가리켜요 | 해당 없음 |
 | D-6 | 자격 증명·`.env` 줄(`credentials.yaml`, `*.credentials`, `.env`, `.env.*`)을 블록에 더하고 허용 줄 뒤에 둔다 | 리더 결정(감사 N2): 이 저장소의 `.gitignore` 와 Go 세대 템플릿이 이미 갖던 줄이고, `tools/`·`evals/` 허용 줄이 그 안의 `.env` 를 git 에 보이게 하지 않아야 해요 | 네 줄 지우기 |
 | D-7 | 새로 보이는 파일은 계획이 `now visible: <경로>` 로 이름을 말한다(스무 개까지) | 리더 결정(감사 N1): 적용 전에 사용자가 어떤 파일이 git 에 나타날지 알아야 해요 | 노트 빼기 |
+| D-8 | 안내 문구는 관리 블록 한 줄과 `agents/impl.md` 한 줄로 최소로 하고, 중첩 `.gitignore` 보강(REQ-17)과 같은 SPEC 에서 닫는다 | 리더 결정(카드 노트 8139, 2026-11-24, 사용자 위임 2026-11-23): 카드 기준 2·3 을 이 카드에서 닫아요. 스킬 본문과 홈 규칙 파일은 건드리는 곳이 많아 따로 둬요. 블록 줄은 사실 한 줄이라 15줄 한도 안이에요 | 두 줄 지우기 |
 
 ## Result
 
