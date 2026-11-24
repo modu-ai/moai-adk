@@ -857,6 +857,101 @@ pub fn landed(project: &Path, home: &Path, reference: &str, head: &str, by: &str
     }))
 }
 
+/// The card number of `reference` (`C-12`, or `#3066` as the source number the card was imported
+/// with). A source number that names no card or several is refused naming the card instead.
+fn card_or_source(ledger: &ledger::WriteLedger, action: &str, reference: &str) -> Result<i64> {
+    match input::parse_ref(reference).map_err(|e| format!("card {action} refused: {e}"))? {
+        CardRef::Id(n) => Ok(n),
+        CardRef::SourceNumber(n) => {
+            let sql_err = |e: rusqlite::Error| LedgerError::from(e).to_string();
+            let mut stmt = ledger
+                .conn()
+                .prepare("SELECT card_id FROM card WHERE source_number = ?1 ORDER BY card_id")
+                .map_err(sql_err)?;
+            let ids: Vec<i64> = stmt
+                .query_map([n], |r| r.get(0))
+                .map_err(sql_err)?
+                .collect::<std::result::Result<Vec<_>, _>>()
+                .map_err(sql_err)?;
+            match ids.as_slice() {
+                [one] => Ok(*one),
+                _ => Err(format!(
+                    "card {action} refused: #{n} names {} cards; name the card instead",
+                    ids.len()
+                )),
+            }
+        }
+    }
+}
+
+/// The session id of the caller, when the host gives one.
+fn caller_session() -> Option<String> {
+    std::env::var("CLAUDE_CODE_SESSION_ID")
+        .or_else(|_| std::env::var("CODEX_THREAD_ID"))
+        .ok()
+}
+
+/// `card withdraw C-n`: the card moves to `hold` and one `card.withdraw` event records the reason
+/// and the by. A `draft` or `ready` card nobody holds, or an `active` or `review` card nobody
+/// holds, is withdrawn by anyone; a card whose `held` lease ended is withdrawn only `--by
+/// leader`, which ends that reservation (SPEC-20261124-card-fold-stale). A live lease is refused.
+pub fn withdraw(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    reason: &str,
+    by: &str,
+) -> Result<Value> {
+    input::parse_ref(reference).map_err(|e| format!("card withdraw refused: {e}"))?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let card_id = card_or_source(&ledger, "withdraw", reference)?;
+    close::withdraw(
+        &mut ledger,
+        card_id,
+        reason,
+        by,
+        caller_session().as_deref(),
+    )
+    .map_err(|e| format!("card withdraw refused: {e}"))?;
+    Ok(json!({
+        "action": "withdraw", "project_id": id,
+        "card": input::card_name(card_id), "state": "hold",
+        "writes": true,
+    }))
+}
+
+/// `card fold C-n --into C-m`: the card moves to `hold` with one `card.fold` event and one
+/// `relates` link to C-m; its notes, criteria and links stay readable, `card next` never offers
+/// it and `card take` refuses it naming C-m. The same cards may be folded as withdrawn, under
+/// the same leader rule for a lapsed lease.
+pub fn fold(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    into: &str,
+    reason: &str,
+    by: &str,
+) -> Result<Value> {
+    input::parse_ref(reference).map_err(|e| format!("card fold refused: {e}"))?;
+    let target = card_id("fold", into)?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let card_id = card_or_source(&ledger, "fold", reference)?;
+    close::fold(
+        &mut ledger,
+        card_id,
+        target,
+        reason,
+        by,
+        caller_session().as_deref(),
+    )
+    .map_err(|e| format!("card fold refused: {e}"))?;
+    Ok(json!({
+        "action": "fold", "project_id": id,
+        "card": input::card_name(card_id), "into": input::card_name(target),
+        "state": "hold", "writes": true,
+    }))
+}
+
 /// `card renew C-n`: the lease ends `lease_secs` from now, never earlier than it already did.
 pub fn renew(
     project: &Path,

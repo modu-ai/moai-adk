@@ -279,3 +279,55 @@ fn a_fold_of_a_card_with_an_ended_lease_is_the_leaders_and_ends_the_reservation(
     assert_eq!(payload["released"]["generation"], json!(1), "{payload}");
     assert!(payload["released"]["lease_until"].is_i64(), "{payload}");
 }
+
+/// AC-1 through the wired action: `card fold` answers the folded card and its target, a second
+/// call is refused, a target that is `hold` is refused, and `card ready` takes a folded card back.
+#[test]
+fn the_wired_fold_action_folds_once_and_ready_takes_the_card_back() {
+    let w = World::new(3);
+    let fold = |card: &str, into: &str| {
+        w.output(
+            None,
+            &[
+                "card",
+                "fold",
+                card,
+                "--into",
+                into,
+                "--reason",
+                "same work",
+                "--by",
+                "lane",
+                &w.p,
+            ],
+        )
+    };
+    let out = fold("C-1", "C-2");
+    assert_eq!(out.status.code(), Some(0));
+    let v: Value = serde_json::from_slice::<Value>(&out.stdout).unwrap()["result"].clone();
+    assert_eq!(v["card"], json!("C-1"), "{v}");
+    assert_eq!(v["into"], json!("C-2"), "{v}");
+    assert_eq!(v["state"], json!("hold"), "{v}");
+
+    let before = w.dump();
+    let out = fold("C-1", "C-2");
+    assert_eq!(out.status.code(), Some(1), "the second fold is refused");
+    assert!(
+        String::from_utf8_lossy(&out.stdout).contains("card fold refused"),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let out = fold("C-3", "C-1");
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "a target that is hold is refused"
+    );
+    assert!(w.dump() == before, "a refused fold wrote something");
+
+    w.card(None, &["ready", "C-1"]);
+    assert_eq!(
+        w.rows("SELECT state FROM card WHERE card_id = 1"),
+        ["ready"]
+    );
+}

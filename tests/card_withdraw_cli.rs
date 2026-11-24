@@ -424,3 +424,86 @@ fn a_review_card_nobody_holds_is_withdrawn_and_a_done_card_is_not() {
         ["hold"]
     );
 }
+
+/// AC-6 and AC-7 through the wired action: a lapsed lease is refused for a caller that is not the
+/// leader and withdrawn for the leader in one call; a live lease is refused.
+#[test]
+fn the_wired_withdraw_ends_a_lapsed_lease_only_for_the_leader() {
+    let (home, p) = two_ready_cards();
+    result(&run(&home, &["card", "take", "C-1", "--project", &p]));
+    let call = |by: &str| {
+        run(
+            &home,
+            &[
+                "card",
+                "withdraw",
+                "C-1",
+                "--reason",
+                "the lane is gone",
+                "--by",
+                by,
+                &p,
+            ],
+        )
+    };
+    let v = refusal(&call("leader"));
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("lease has not ended"),
+        "a live lease: {v}"
+    );
+
+    sql(
+        &home,
+        "UPDATE reservation SET lease_until = unixepoch() - 5 WHERE card_id = 1",
+    );
+    let before = dump(&home);
+    let v = refusal(&call("lane"));
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("--by leader"),
+        "{v}"
+    );
+    assert!(dump(&home) == before, "a refused withdraw wrote something");
+
+    let v = result(&call("leader"));
+    assert_eq!(v["state"], json!("hold"), "{v}");
+    assert_eq!(
+        rows(&home, "SELECT status FROM reservation WHERE card_id = 1"),
+        ["released"]
+    );
+}
+
+/// REQ-10: the wired withdraw still takes a card by the source number it was imported with.
+#[test]
+fn the_wired_withdraw_takes_a_card_by_its_source_number() {
+    let (home, p) = two_ready_cards();
+    sql(
+        &home,
+        "INSERT INTO card (title, created_by, created_at, updated_at, source_host, \
+                           source_project, source_number) \
+         VALUES ('imported', 'x', 1, 1, 'github', 'o/a', 3066)",
+    );
+    let v = result(&run(
+        &home,
+        &[
+            "card",
+            "withdraw",
+            "#3066",
+            "--reason",
+            "not needed",
+            "--by",
+            "lane",
+            &p,
+        ],
+    ));
+    assert_eq!(v["card"], json!("C-3"), "{v}");
+    assert_eq!(
+        rows(&home, "SELECT state FROM card WHERE card_id = 3"),
+        ["hold"]
+    );
+}

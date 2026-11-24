@@ -279,8 +279,10 @@ enum Action {
     /// event records the reason and the by with the writing session, `card take` refuses it
     /// naming the reason, and the default `card list` hides it (`--all` shows it). The ledger
     /// schema is unchanged: the six state values are pinned by its CHECK, so the marker is the
-    /// free event kind, not a new value. The card must be `draft` or `ready` and held by
-    /// nobody.
+    /// free event kind, not a new value. A `draft`, `ready`, `active` or `review` card that
+    /// nobody holds is withdrawn by anyone. A card whose `held` lease has ended is withdrawn only
+    /// with `--by leader`, which ends that reservation as `released` and records who held it; a
+    /// live lease, and a reservation that is not `held`, are refused.
     Withdraw {
         /// The card to withdraw (`C-12` or `#3066`).
         card: String,
@@ -288,6 +290,35 @@ enum Action {
         #[arg(long)]
         reason: String,
         /// Who withdraws it (one line, 1..=200 characters).
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(default_value = ".")]
+        project: PathBuf,
+        /// The HOME to use (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Fold a duplicate card into another
+    ///
+    /// Writes the ledger. The card moves to `hold`, one `card.fold` event records the card it
+    /// folds into, the reason and the by with the writing session, and one `relates` link runs
+    /// from the card to the target. Its notes, criteria and links stay readable, `card next`
+    /// never offers it, `card take` refuses it naming the target, and the default `card list`
+    /// hides it (`--all` shows it). The target must exist and must not be `hold`. The card must
+    /// be one `card withdraw` takes, with the same rule for a lapsed lease: only `--by leader`
+    /// folds a card whose `held` lease has ended, and that ends the reservation as `released`.
+    /// `card ready` takes a folded card back.
+    Fold {
+        /// The card to fold (`C-12` or `#3066`).
+        card: String,
+        /// The card it folds into (`C-14`).
+        #[arg(long)]
+        into: String,
+        /// Why the card is folded (one line, 1..=500 characters).
+        #[arg(long)]
+        reason: String,
+        /// Who folds it (one line, 1..=200 characters).
         #[arg(long)]
         by: String,
         /// The project folder (its profile holds the project id).
@@ -1214,7 +1245,15 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             by,
             project,
             home,
-        } => c::withdraw(&project, &resolve_home(home)?, &card, &reason, &by),
+        } => w::withdraw(&project, &resolve_home(home)?, &card, &reason, &by),
+        Action::Fold {
+            card,
+            into,
+            reason,
+            by,
+            project,
+            home,
+        } => w::fold(&project, &resolve_home(home)?, &card, &into, &reason, &by),
         Action::Landed {
             card,
             head,
