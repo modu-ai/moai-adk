@@ -623,6 +623,43 @@ pub fn writes_anything(f: &FilePlan) -> bool {
     f.action == "create" || f.action == "update" || f.legacy.as_deref() == Some("remove")
 }
 
+/// SPEC-20261124-update-flat-agent-ownership REQ-11: whether the update has something to ask
+/// about for this plan: a write, or a flat-file conflict the person can choose for.
+/// RED stub: it still answers like [`writes_anything`] over the plan.
+pub fn asks_anything(p: &Plan) -> bool {
+    p.hosts
+        .iter()
+        .any(|h| h.preflight == "ok" && h.files.iter().any(writes_anything))
+}
+
+/// [`apply_for`] that also uses MoAI's file for the named flat-file conflicts (`host:file`).
+/// RED stub: it ignores the choices.
+pub fn apply_with_choices(
+    home: &Path,
+    package: &Path,
+    agents: &Path,
+    hosts: &[&str],
+    plan_digest: &str,
+    permission: &str,
+    _use_moais: &[String],
+) -> Result<serde_json::Value> {
+    apply_for(home, package, agents, hosts, plan_digest, permission)
+}
+
+/// Asks once per flat-file conflict of `plan` whether to keep mine, use MoAI's or show the
+/// difference, and answers the `host:file` names the person chose MoAI's file for.
+/// RED stub: it asks nothing and keeps every file.
+pub fn choose_flat_conflicts(
+    _plan: &Plan,
+    _package: &Path,
+    _agents: &Path,
+    _input: &mut dyn std::io::BufRead,
+    _out: &mut dyn std::io::Write,
+    _korean: bool,
+) -> Result<Vec<String>> {
+    Ok(Vec::new())
+}
+
 fn receipt_id_ok(id: &str) -> bool {
     id.starts_with("agents-")
         && id.len() <= 64

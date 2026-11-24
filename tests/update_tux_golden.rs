@@ -757,3 +757,53 @@ fn a_notice_is_its_own_row_never_a_skipped_one() {
         check(name, lang, &text, 40);
     }
 }
+
+/// SPEC-20261124-update-flat-agent-ownership REQ-10: an agents result that is `partial` (a flat
+/// file of the person's was kept) shows an agents row with the number kept and ends on Partly
+/// applied; the same run with nothing kept still ends on Done.
+#[test]
+fn the_applied_screen_shows_a_kept_agent_file_as_partial() {
+    let mut partial = fixture("applied");
+    partial["agents_result"] = serde_json::json!({
+        "state": "partial",
+        "written": ["claude:moai-audit.md"],
+        "kept": ["claude:moai-impl.md", "claude:moai-plan.md"],
+    });
+    let en = screen(&partial, Asked::Yes, &view(Lang::En, Look::Plain, 80, None));
+    assert!(en.contains("Partly applied"), "{en}");
+    assert!(!en.contains("Done"), "{en}");
+    assert!(
+        en.lines().any(|l| l.contains("agents")
+            && l.contains("1 changed")
+            && l.contains("2 kept")),
+        "{en}"
+    );
+    let ko = screen(&partial, Asked::Yes, &view(Lang::Ko, Look::Plain, 80, None));
+    assert!(ko.contains("일부만 바꿨어요"), "{ko}");
+    assert!(
+        ko.lines()
+            .any(|l| l.contains("에이전트") && l.contains("유지") && l.contains('2')),
+        "{ko}"
+    );
+    // Only a kept file: nothing written, still a row and still partial.
+    let mut alone = fixture("applied");
+    alone["agents_result"] = serde_json::json!({
+        "state": "partial",
+        "written": [],
+        "kept": ["claude:moai-impl.md"],
+    });
+    let text = screen(&alone, Asked::Yes, &view(Lang::En, Look::Plain, 80, None));
+    assert!(text.contains("Partly applied"), "{text}");
+    assert!(
+        text.lines()
+            .any(|l| l.contains("agents") && l.contains("1 kept")),
+        "{text}"
+    );
+    // The run that kept nothing is as before.
+    let done = screen(
+        &fixture("applied"),
+        Asked::Yes,
+        &view(Lang::En, Look::Plain, 80, None),
+    );
+    assert!(done.contains("Done") && !done.contains("Partly applied"), "{done}");
+}
