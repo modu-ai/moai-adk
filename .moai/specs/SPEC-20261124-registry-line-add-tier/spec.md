@@ -2,8 +2,9 @@
 id: SPEC-20261124-registry-line-add-tier
 title: "Registry additions keep the audit floor at tier 1"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-24
+branch: spec/registry-line-add-tier-followup-20261125
 ---
 
 # Registry additions keep the audit floor at tier 1
@@ -18,7 +19,7 @@ Readers: the lander and the auditors (`moai bundle check` prints the floor), and
 
 ## Non-goals
 
-- The audit tier of any other path, and the names-only judgment `gate::tier_of` makes for the pull request gate (`audit-gate`) and for the landing check: they still read paths alone and so keep tier 2 for the registry (the stricter side).
+- The audit tier of any other path.
 - `tests/areas.toml` and `tests/fixtures/state_folder_literals/allow.tsv`: both sit under `tests/`, so they are tier 0 for any change today; they get no rule (D-2).
 - Judging whether a new scan entry is a good scan: a scan added is growth and is audited at tier 1 as any code change.
 
@@ -30,6 +31,11 @@ Readers: the lander and the auditors (`moai bundle check` prints the floor), and
 - REQ-4 (REQ-1): While another path of the same change is a tier 2 path, the audit floor shall stay tier 2.
 - REQ-5: When a changed path is not exactly `tools/repo_scans.json`, the audit floor shall apply every tier 2 prefix to that path as before · failure: none — a path rule has no failure path.
 - REQ-6: When `moai bundle check` judges a head and when `moai bundle body` writes its `audit-tier:` line, they shall read the floor with the same rule · failure: none — a head with no merge base is still the existing `no_merge_base` finding.
+- REQ-7: When the landing check judges the tier of a verdict's head, it shall read the registry text at the merge base and at the head and judge the floor with the growth rule of `moai bundle check` · failure: none — the rule only decides whether the path prefix applies.
+- REQ-8: When the `audit-gate` job decides a pull request whose files include `tools/repo_scans.json`, it shall read the registry text at the merge base and at the head and judge the floor with the growth rule of `moai bundle check`.
+- REQ-9 (REQ-8): IF the merge base, the answer for either side or its text cannot be read, THEN `audit-gate` shall judge the registry by its name, tier 2.
+- REQ-10: When `moai bundle check`, `moai bundle body` or the landing check list the paths a head changes, they shall list a renamed file by its old and its new name · failure: none — a path list has no failure path.
+- REQ-11: When `gate::registry_only_grew` reads the value of a `--test` option, it shall use `repo_scans::is_target_name`, the one function that spells the target-name rule · failure: none — a pure function.
 
 ## Acceptance
 
@@ -40,11 +46,19 @@ Readers: the lander and the auditors (`moai bundle check` prints the floor), and
 - AC-5 (REQ-6): in a temporary repository `moai bundle check` answers `audit_floor` 1 for a registration, 2 for an edit, a removal and a registration next to `src/gate.rs`, 0 for a document, and judges a head behind the tip by its own change · verify: `cargo nextest run --locked --offline --test gate_registry_tier bundle_check_reads_a_registration_as_tier_1_and_an_edit_as_tier_2 bundle_check_judges_a_head_behind_the_tip_by_its_own_registry_change`
 - AC-6 (REQ-1): the 50 most recent audited ranges are recomputed with the new rule and the number of ranges whose floor changes is in the Result · verify: `moai spec check SPEC-20261124-registry-line-add-tier --project .`
 - AC-7 (REQ-2): a `--test` pair whose value is an option, a filter or a shell fragment (`--list`, `--exact`, `--skip`, `--ignored`, `x||true`, `x;true`), a pair whose value is not `[a-z0-9_]+`, and a `--test` pair after the first `--` of the line (with a valid name or not) each give floor 2, while a target-named pair before the `--` gives 1, and the name rule agrees with `repo_scans::checks_of` on ten sample names · verify: `cargo nextest run --locked --offline --test gate_registry_tier a_test_option_whose_value_is_no_target_name_is_tier_2 a_test_option_after_the_libtest_separator_is_tier_2 a_test_option_value_is_read_as_repo_scans_reads_a_target_name`
+- AC-8 (REQ-8, REQ-9): `audit_gate::decide` on an input that carries the registry texts gives tier 1 for a registration and 2 for an edit, a removal, a registration next to `src/gate.rs`, and for a text that is missing on either side; an input that carries no texts and a body that declares tier 1 still gives 2 for the registry path · verify: `cargo nextest run --locked --offline --test gate_registry_tier audit_gate_reads_a_registration_as_tier_1_and_an_edit_as_tier_2 audit_gate_without_registry_texts_keeps_tier_2`
+- AC-9 (REQ-8, REQ-9): `audit_gate::collect` reads the merge base from the compare answer and the registry text at both commits (base64 content), only when the files list names the registry, and an unreadable side leaves the texts out · verify: `cargo nextest run --locked --offline --test gate_registry_tier collect_reads_the_registry_at_the_merge_base_and_the_head collect_reads_no_registry_text_for_other_files collect_leaves_the_texts_out_when_a_side_cannot_be_read`
+- AC-10 (REQ-7): in a temporary repository the landing floor is 1 for a registration, 2 for an edit, a removal and a registration next to `src/gate.rs`, 0 for a document, and a head behind the tip is judged by its own change · verify: `cargo nextest run --locked --offline --test gate_registry_tier the_landing_floor_reads_a_registration_as_tier_1_and_an_edit_as_tier_2`
+- AC-11 (REQ-6, REQ-7, REQ-8): for the same heads `moai bundle check`, the landing floor and `audit_gate::decide` (with the texts `git show` gives) answer the same tier · verify: `cargo nextest run --locked --offline --test gate_registry_tier the_three_judgments_give_one_tier_for_the_same_head`
+- AC-12 (REQ-6, REQ-10): `moai bundle body` writes `audit-tier: 1 …` for a bundle whose head only registers a test, `audit-tier: 2 …` for one whose head edits the registry and for one whose head renames it · verify: `cargo nextest run --locked --offline --test bundle_body_cli the_body_reads_a_registration_as_tier_1_and_an_edit_as_tier_2 the_body_reads_a_renamed_registry_as_tier_2`
+- AC-13 (REQ-10): a head that renames the registry file gives floor 2 in `moai bundle check` and in the landing floor · verify: `cargo nextest run --locked --offline --test gate_registry_tier a_renamed_registry_is_tier_2_in_bundle_check_and_the_landing_floor`
+- AC-14 (REQ-11): `repo_scans::is_target_name` is public and the growth rule answers as it does for the ten sample names; `src/gate.rs` has no `fn is_target_name` · verify: `cargo nextest run --locked --offline --test gate_registry_tier a_test_option_value_is_read_as_repo_scans_reads_a_target_name`
+  manual: `grep -c "fn is_target_name" src/gate.rs` prints 0.
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261124-registry-line-add-tier/**`, `src/gate.rs`, `src/bundle.rs` (the two floor calls, added by the leader's decision on the card, D-4), `tests/gate_registry_tier.rs`
-- read-only: `src/audit_gate.rs`, `src/card/land/check.rs` (they keep `gate::tier_of`), `tools/repo_scans.json`, `tests/areas.toml`, `tests/fixtures/state_folder_literals/allow.tsv`, `docs/lane-rules.md`
+- write: `.moai/specs/SPEC-20261124-registry-line-add-tier/**`, `src/gate.rs`, `src/bundle.rs` (the two floor calls, added by the leader's decision on the card, D-4; the path list, revision 3), `src/audit_gate.rs`, `src/card/land/check.rs`, `src/repo_scans.rs` (`is_target_name` public), `tests/gate_registry_tier.rs`, `tests/bundle_body_cli.rs` (the body test, whose world helper lives there)
+- read-only: `tools/repo_scans.json`, `tests/areas.toml`, `tests/fixtures/state_folder_literals/allow.tsv`, `docs/lane-rules.md`
 - forbidden: any other change of `tools/repo_scans.json`; `CLAUDE.md`
 
 ## Plan
@@ -54,12 +68,14 @@ Readers: the lander and the auditors (`moai bundle check` prints the floor), and
 3. `src/bundle.rs`: one helper reads the old and new text of the registry path and gives both call sites (`bundle check`, `bundle body`) the floor.
 4. Guard mutants: one per new guard, on the committed head, restored by git.
 5. Recompute the 50 most recent audited ranges with the old and the new rule.
+6. Revision 3 (follow-up criteria 4 to 6 of the card): `gate::changed_files_with_text` builds the changed files of a head once for the git callers; `moai bundle check`, `moai bundle body` and the landing check (`card::land::check::floor_tier`) call it on a path list made without rename detection; `audit_gate::Input` carries the registry texts and `audit_gate::collect` reads them through the compare and contents API only when the registry is a changed file; `repo_scans::is_target_name` becomes the one name rule. RED first in `tests/gate_registry_tier.rs` and `tests/bundle_body_cli.rs`.
 
 ## Risks
 
 - A registration that is judged tier 1 is audited by one session that did not write it, without the full audit of tier 2. The exemption is narrow (growth only, one path, nothing else tier 2 in the change) and a scan added is the one open end: a new scan's check line is a command the check step runs, so the auditor of a tier 1 change reads it.
 - The texts of the registry on both sides come from `git show`; a head with no merge base or a path that is gone on one side reads as no growth, tier 2.
-- `gate::tier_of` stays names-only, so the pull request gate and the landing check can still say tier 2 for a head `moai bundle check` says tier 1; both only require a non-lander reviewer from tier 1 up, so a landing is not blocked by the difference.
+- `gate::tier_of` stays names-only for a caller that has no texts; after revision 3 the pull request gate, the landing check and `moai bundle check` read one growth rule from one function, and a registry whose text cannot be read still counts tier 2 (the stricter side).
+- `audit-gate` reads the registry through the GitHub compare and contents API: one extra call for the merge base and two for the texts, made only when the registry is a changed file. A file over the contents API size limit, a missing field and a base64 text that does not decode read as an unreadable side, tier 2.
 
 ## Decisions
 
@@ -70,6 +86,8 @@ Readers: the lander and the auditors (`moai bundle check` prints the floor), and
 | D-3 | `gate::tier_of` keeps its signature; the pull request gate and the landing check keep judging names | they have no old and new text, and judging them tier 2 is the stricter side | give those two callers the texts in a later change |
 | D-4 | `src/bundle.rs` is in the write scope | leader decision on the card (2026-11-24T14:05:26Z, delegated by the user), requested because the floor calls are there | drop `src/bundle.rs` and the floor of `moai bundle check` stays names-only |
 | D-5 | Revision 2: a `--test <value>` pair is growth only when its value is a target name `[a-z0-9_]+` and it stands before the first `--` of the line. The name rule is spelled in `src/gate.rs` (`is_target_name`) because `repo_scans::is_target_name` is private and `src/repo_scans.rs` is outside this card's write scope; a test pins that the two agree. | Audit of head `a3ac976d6f` (note 8625), blocking finding B1, leader repair order of 2026-11-24: `--test --list`, `--test --exact`, `--test --skip`, `--test --ignored` after a `--` turn a red check green, and `x\|\|true` and `x;true` were counted as growth. | Count every `--test` pair again (floor 1 for the six probes, which is the defect). Sharing the one function is a follow-up in the card that owns `src/repo_scans.rs`. |
+| D-6 | Revision 3: D-3 is replaced. `audit-gate` and the landing check read the registry texts and call `gate::tier_of_changes`, so the three judgments of one head give one tier; `gate::tier_of` stays for a caller that has no texts. The path lists are made without rename detection, so a renamed registry is a removed and an added path. | Card C-475 criteria 4 to 6 (follow-ups of D-3, audit note 8625 N1 and the minor finding of note 8640); leader dispatch of 2026-11-25. | Give `audit_gate::decide` and `floor_tier` the names-only call again (`gate::tier_of`); `--no-renames` back to the default list. |
+| D-7 | `audit_gate::Input` gets an optional `registry` field (`old`, `new`); old input files without it still parse. The texts come from the GitHub contents API (base64) at the merge base the compare answer names. | `audit-gate` decides from GitHub data alone (no git, no clone), and the schema stays version 1 because an input without the field keeps its meaning (tier 2 for the registry path). | Drop the field and the reads; `decide` falls back to names. |
 
 ## Result
 
