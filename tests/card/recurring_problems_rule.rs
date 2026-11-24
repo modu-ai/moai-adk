@@ -1,8 +1,8 @@
-//! SPEC-20261120-recurring-problems-source: `CLAUDE.md` tells the leader that a problem that
-//! happens twice is fixed by a card that changes moai-adk itself, and
-//! `docs/claude-md-rule-provenance.md` records where the rule came from (moved there by
-//! `SPEC-20261123-claude-md-rewrite`). The tests read files only; no host, no HOME and no command
-//! runs here.
+//! SPEC-20261120-recurring-problems-source, as `SPEC-20261125-completion-flow` changed it:
+//! `CLAUDE.md` tells every session that a problem that happens a second time adds one line to
+//! `docs/later.md` that names the change at the source, and `docs/claude-md-rule-provenance.md`
+//! records where the rule came from (moved there by `SPEC-20261123-claude-md-rewrite`). The tests
+//! read files only; no host, no HOME and no command runs here.
 
 use std::fs;
 
@@ -86,22 +86,58 @@ fn card_numbers(text: &str) -> Vec<String> {
 fn the_principles_section_states_the_rule() {
     let rule = rule();
     for phrase in [
-        "(recursive self-improvement)",
-        "when the same class of problem happens twice",
+        "when the same class of problem happens a second time",
         "a rule broken twice",
         "one CI or integration failure cause twice",
         "a lane block with one cause twice",
         "a manual leader step repeated",
-        "the leader opens a card that round which changes moai-adk itself",
-        "check, test, command, guard or generated guidance",
-        "so the class cannot recur",
-        "adds the cause to Rule provenance",
-        "from ledger notes (LANE-BLOCKED kinds, audit FAIL classes, CI failure causes)",
-        "follows the normal SPEC, audit and integration path",
+        "adds one line to `docs/later.md` that names the cause and the change at the source",
+        "(check, test, command, guard or generated guidance)",
+        "the leader turns such lines into cards when work is free",
         "never relaxes a gate, a HOLD or a user rule",
     ] {
         assert!(rule.contains(phrase), "the rule lacks: {phrase}");
     }
+}
+
+/// The RSI bullet in `## Standing principles` (user instruction of 2026-11-24T22:19:11Z).
+#[test]
+fn the_principles_section_names_recursive_self_improvement() {
+    let principles = section(&text(), "Standing principles");
+    let rsi = principles
+        .lines()
+        .find(|l| l.starts_with("- Recursive self-improvement (RSI)"))
+        .unwrap_or_else(|| panic!("Standing principles has no RSI item"))
+        .to_string();
+    for phrase in [
+        "`CLAUDE.local.md`",
+        "`skills/**`, `agents/**`",
+        "At every round and when every card ends",
+        "the same class a second time is fixed in that round",
+        "the card that already owns the result (a new card only when none does)",
+        "measure before and after with a `moai` command",
+        "revert or fix again",
+        "Removing comes before adding",
+        "a gate, a HOLD or a user rule is never weakened",
+        "team rules to this file through a card",
+        "product defaults to the templates through a SPEC",
+    ] {
+        assert!(rsi.contains(phrase), "the RSI item lacks: {phrase}");
+    }
+    let hits = card_numbers(&rsi);
+    assert!(
+        hits.is_empty(),
+        "the RSI item names a card number: {hits:?}"
+    );
+    // It is the one place that says what the rule asks; the evolution section only points to it.
+    let evolves = section(&text(), "How this file evolves");
+    assert!(
+        evolves.contains("RSI rule of Standing principles"),
+        "{evolves}"
+    );
+    // The rule is recorded with its source, outside the table of the earlier rule.
+    let row = provenance_row_for("Standing principles: Recursive self-improvement (RSI)");
+    assert!(row.contains("2026-11-24T22:19:11Z"), "{row}");
 }
 
 #[test]

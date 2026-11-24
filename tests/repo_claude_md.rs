@@ -160,7 +160,10 @@ fn shortened_claude_md_keeps_its_gate_and_hold_sentences() {
             "Secrets never enter the repo, cards, PRs, reports or messages",
             "Never redo a hook-denied action through another tool or path",
             "A session other than the author audits the exact head",
-            "`AUDIT <card> (<scope>) head <40hex> base <40hex> — verdict: PASS|FAIL`, with no qualifiers; conditions make it FAIL.",
+            "`AUDIT <card> (<scope>) head <40hex> base <40hex> — verdict: PASS|FAIL`, with no qualifiers.",
+            "FAIL is for four things only: behaviour that differs from the criteria, data loss, a security problem, a weakened gate",
+            "A second FAIL of one card goes to the leader, not to a re-audit.",
+            "The auditor records the verdict itself with `moai card verdict`, never the leader for it",
             "The author never audits.",
             "A lane only commits: no push, no pull request, no merge of a moved tip.",
             "`moai card land <card> --head <40hex> --by leader`",
@@ -485,7 +488,17 @@ fn the_decisions_log_holds_no_transcribed_row() {
         "docs/leader-rules.md",
         &["turned the fixed polling loops off"],
     );
-    assert_has(&rules, "docs/leader-rules.md", &["card note 7366"]);
+    // The 30-minute safety net is stated as decided only because the log records the user's pick.
+    assert_has(
+        &rules,
+        "docs/leader-rules.md",
+        &["every 30 minutes (user pick 2026-11-24, recorded in the decisions log"],
+    );
+    assert_has(
+        &log,
+        "the decisions log",
+        &["13:08:41Z(11-24) | 리더 반복 = 상태 변화 + 30분 안전망"],
+    );
 }
 
 /// S6: tests are Rust only; the Python fixtures and the Python adapter left the file.
