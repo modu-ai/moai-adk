@@ -159,6 +159,18 @@ enum Action {
         /// An acceptance criterion, one line (repeat for more; numbered from 1).
         #[arg(long = "ac")]
         criteria: Vec<String>,
+        /// The SPEC the card names (`SPEC-<yyyymmdd>-<slug>`). The card and its link are one
+        /// write, and a SPEC that already has a card that is not `done` refuses the add unless
+        /// `--follow-up` or `--split-of` is given.
+        #[arg(long, value_name = "SPEC_ID")]
+        spec: Option<String>,
+        /// With `--spec`: the SPEC's one open follow-up card (a second one is refused; add a
+        /// criterion to it with `card criterion-add`).
+        #[arg(long = "follow-up", requires = "spec", conflicts_with = "split_of")]
+        follow_up: bool,
+        /// With `--spec`: the card this one is split from; it must name the same SPEC.
+        #[arg(long = "split-of", requires = "spec", value_name = "CARD")]
+        split_of: Option<String>,
         /// Who adds the card (default `user`).
         #[arg(long)]
         by: Option<String>,
@@ -1181,13 +1193,14 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             priority,
             scope,
             criteria,
+            spec,
+            follow_up,
+            split_of,
             by,
             project,
             home,
-        } => c::add(
-            &project,
-            &resolve_home(home)?,
-            &c::AddRequest {
+        } => {
+            let request = c::AddRequest {
                 title: &title,
                 body: &body,
                 kind: kind.as_deref(),
@@ -1195,8 +1208,20 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 scope: &scope,
                 criteria: &criteria,
                 by: by.as_deref(),
-            },
-        ),
+            };
+            match spec.as_deref() {
+                None => c::add(&project, &resolve_home(home)?, &request),
+                Some(spec) => {
+                    use moai_cli::card::spec_link::Relation;
+                    let relation = match (follow_up, split_of.as_deref()) {
+                        (true, _) => Relation::FollowUp,
+                        (false, Some(origin)) => Relation::SplitOf(origin),
+                        (false, None) => Relation::Plain,
+                    };
+                    c::add_with_spec(&project, &resolve_home(home)?, &request, spec, relation)
+                }
+            }
+        }
         Action::Ready {
             card,
             by,
