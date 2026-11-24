@@ -3344,6 +3344,31 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         assert!(none.rust.is_empty(), "{:?}", none.rust);
     }
 
+    /// Audit B2: the card pick of a changed test module (`tests/card/<module>.rs`) names the
+    /// area crate like the full and lane picks do, so the step builds `--test card`, not a
+    /// target `card_cli` that no longer exists.
+    #[test]
+    fn the_card_pick_of_an_area_module_names_its_crate() {
+        let tests = [module("card_cli", "fn a() {}"), rust("solo_cli", &[], &[])];
+        let changed = paths(&["tests/card/card_cli.rs"]);
+        let pick = select_card(&changed, &tests, None, "linux");
+        assert!(pick.wide.is_none(), "{:?}", pick.wide);
+        assert!(pick.selection.rust.contains("card_cli"));
+        assert_eq!(pick.selection.areas["card_cli"], "card");
+        let planned = steps(&pick.selection, &changed, "a..b", Runner::Nextest, None);
+        let test = planned.iter().find(|s| s.label == "test").unwrap();
+        assert!(
+            test.args.windows(2).any(|w| w == ["--test", "card"]),
+            "{:?}",
+            test.args
+        );
+        assert!(
+            !test.args.iter().any(|a| a == "card_cli"),
+            "{:?}",
+            test.args
+        );
+    }
+
     /// The `main.rs` of an area crate: two helpers loaded by `#[path]` and one module of its own.
     const AREA_MAIN: &str = "#[path = \"../common/mod.rs\"]\nmod common;\n#[path = \"../common/ready_receipt.rs\"]\nmod ready_receipt;\n\nmod card_cli;\n";
 
