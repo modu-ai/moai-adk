@@ -26,7 +26,7 @@ fn a_clean_env_child_skips_the_process_table() {
 }
 
 /// The slow test files whose own command helper sets the switch (named, no directory walk).
-const NAMED: [&str; 10] = [
+const NAMED: [&str; 11] = [
     "tests/home_install_apply_cli.rs",
     "tests/home_retire_cli.rs",
     "tests/home_state_apply.rs",
@@ -37,6 +37,7 @@ const NAMED: [&str; 10] = [
     "tests/hygiene_apply_cli.rs",
     "tests/hygiene_cli.rs",
     "tests/optimize_plan_cli.rs",
+    "tests/home_state_selective.rs",
 ];
 
 /// Ways a named file starts a program that holds a folder or a file for an in-use test.
