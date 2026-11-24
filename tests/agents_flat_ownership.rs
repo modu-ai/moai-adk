@@ -494,3 +494,44 @@ fn the_difference_shows_control_characters_as_text() {
         "{out:?}"
     );
 }
+
+/// The dangerous path of the choice: a link at the flat path, before the plan and between the
+/// plan and the apply. The link is never followed, never removed, its target keeps its bytes,
+/// and a choice for it writes nothing.
+#[cfg(unix)]
+#[test]
+fn a_link_at_the_flat_path_is_never_followed_or_removed() {
+    use std::os::unix::fs::symlink;
+    // Before the plan: the host is blocked and no conflict is offered.
+    let fx = fx();
+    fx.earlier_layout();
+    let outside = fx.home.join("outside.md");
+    fs::write(&outside, "not an agent\n").unwrap();
+    fs::remove_file(fx.flat("impl")).unwrap();
+    symlink(&outside, fx.flat("impl")).unwrap();
+    let plan = fx.plan();
+    assert_eq!(plan.hosts[0].preflight, "blocked", "{:?}", plan.hosts[0]);
+    assert!(agent_install::flat_conflicts(&plan).is_empty());
+    assert!(fx.try_apply(&plan, &["claude:moai-impl.md"]).is_err());
+    assert!(fs::symlink_metadata(fx.flat("impl"))
+        .unwrap()
+        .file_type()
+        .is_symlink());
+    assert_eq!(fs::read_to_string(&outside).unwrap(), "not an agent\n");
+    assert!(!fx.nested("impl").exists());
+
+    // Between the plan and the apply: a plain conflict file is swapped for a link.
+    let (fx, plan, _) = edited_impl();
+    let outside = fx.home.join("outside.md");
+    fs::write(&outside, "not an agent\n").unwrap();
+    fs::remove_file(fx.flat("impl")).unwrap();
+    symlink(&outside, fx.flat("impl")).unwrap();
+    let e = fx.try_apply(&plan, &["claude:moai-impl.md"]);
+    assert!(e.is_err(), "the apply followed a link: {e:?}");
+    assert!(fs::symlink_metadata(fx.flat("impl"))
+        .unwrap()
+        .file_type()
+        .is_symlink());
+    assert_eq!(fs::read_to_string(&outside).unwrap(), "not an agent\n");
+    assert!(!fx.nested("impl").exists());
+}
