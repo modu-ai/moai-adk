@@ -72,4 +72,44 @@ mod style_banner {
             assert!(!text.contains('★'), "{rel} still carries a star marker");
         }
     }
+
+    /// The seven steps of the flow of one piece of work, in flow order, then the four icons that
+    /// stand beside it (the one icon set of the progress board, the status line and the lane
+    /// reports: `skills/moai/references/home/output-style.md`).
+    const FLOW_ICONS: [&str; 7] = ["🗂️", "🟡", "📨", "🔍", "🔁", "🛬", "✅"];
+    const BESIDE_ICONS: [&str; 4] = ["🚧", "🙋", "🔴", "❌"];
+    /// Icons that left the set: the old board used them for not started, done, blocked, review
+    /// and the like. `⏸` is the base character, so the text form and the emoji form both match.
+    const RETIRED_ICONS: [&str; 6] = ["⬜", "🟢", "⏸", "🔵", "👀", "⛔"];
+
+    #[test]
+    fn the_three_style_templates_use_the_one_icon_set() {
+        for rel in [
+            "templates/claude/output-styles/moai.md",
+            "templates/claude/output-styles/moai-easy.md",
+            "templates/claude/output-styles/moai-learn.md",
+        ] {
+            let text = fs::read_to_string(Path::new(ROOT).join(rel)).unwrap();
+            for old in RETIRED_ICONS {
+                assert!(!text.contains(old), "{rel} still carries the old icon {old}");
+            }
+            // the flow is one sentence: the line that starts it (🗂️) holds every step in order,
+            // so a banner emoji such as ✅ earlier in the file does not count as the step
+            let line = text
+                .lines()
+                .find(|l| l.contains(FLOW_ICONS[0]))
+                .unwrap_or_else(|| panic!("{rel} does not name the flow icon {}", FLOW_ICONS[0]));
+            let mut last = 0;
+            for icon in FLOW_ICONS {
+                let at = line
+                    .find(icon)
+                    .unwrap_or_else(|| panic!("{rel} flow line does not name {icon}"));
+                assert!(at >= last, "{rel} names the flow icons out of flow order at {icon}");
+                last = at;
+            }
+            for icon in BESIDE_ICONS {
+                assert!(text.contains(icon), "{rel} does not name the icon {icon}");
+            }
+        }
+    }
 }
