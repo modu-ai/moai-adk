@@ -866,3 +866,132 @@ fn the_help_examples_name_the_input_each_command_reads() {
         }
     }
 }
+
+/// A manifest entry of `kind` (its bare kind and its `section_id`) naming `path`, whose recorded
+/// baseline is the digest of `bytes`, so the file there reads as never edited.
+fn plant_entry(fx: &Fx, section: &str, path: &str, bytes: &[u8]) {
+    let bare = section
+        .strip_prefix("generation:")
+        .and_then(|rest| rest.split(':').next())
+        .unwrap();
+    let mut manifest = fx.manifest();
+    manifest["owned_files"].as_array_mut().unwrap().push(json!({
+        "path": path, "kind": bare, "section_id": section,
+        "baseline_sha256": moai_cli::digest(bytes),
+    }));
+    let mut out = serde_json::to_vec_pretty(&manifest).unwrap();
+    out.push(b'\n');
+    fs::write(fx.manifest_path(), out).unwrap();
+}
+
+#[test]
+fn an_owned_entry_whose_id_leaves_its_folder_is_a_conflict_and_the_file_stays() {
+    let (fx, request) = settled_project();
+    let outside_dir = fx.root.parent().unwrap().join("outside");
+    fs::create_dir_all(&outside_dir).unwrap();
+    // The three shapes of the audit: a file of the project, a file outside it, and the file
+    // named SKILL.md that a project-skill entry reaches. Kind and path are planted together.
+    let cases = [
+        (
+            "generation:native-role:claude:../../../README",
+            ".claude/agents/moai/../../../README.md",
+            fx.root.join("README.md"),
+        ),
+        (
+            "generation:native-role:claude:../../../../outside/secret",
+            ".claude/agents/moai/../../../../outside/secret.md",
+            outside_dir.join("secret.md"),
+        ),
+        (
+            "generation:project-skill:claude:../..",
+            ".claude/skills/../../SKILL.md",
+            fx.root.join("SKILL.md"),
+        ),
+        // A separator in the id, with a path that stays inside the folder.
+        (
+            "generation:native-role:claude:sub/dir",
+            ".claude/agents/moai/sub/dir.md",
+            fx.root.join(".claude/agents/moai/sub/dir.md"),
+        ),
+    ];
+    for (section, path, target) in &cases {
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(target, b"keep me\n").unwrap();
+        plant_entry(&fx, section, path, b"keep me\n");
+    }
+    let plan = plan_of(&fx, &emptied(&request));
+    for (section, path, _) in &cases {
+        let planned = row(&plan, path);
+        assert_eq!(planned["action"], "conflict", "{section}: {planned}");
+    }
+    // The apply of that plan stops, and then so does the plan after it: nothing is deleted.
+    let refused = apply_plan(&fx, &plan);
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    for (section, _, target) in &cases {
+        assert_eq!(fs::read(target).unwrap(), b"keep me\n", "{section}");
+    }
+    // The update preview does not offer the removal either.
+    let update = fx.plan();
+    let generation = step(&update, "generation");
+    assert!(
+        !generation.to_string().contains("\"remove\""),
+        "the update preview offers no removal: {generation}"
+    );
+}
+
+/// `moai cc` in `root`, with a host stub on PATH that exits at once; the combined output.
+fn first_launch(fx: &Fx) -> String {
+    use std::os::unix::fs::PermissionsExt;
+    let bin = fx.root.parent().unwrap().join("bin");
+    fs::create_dir_all(&bin).unwrap();
+    let host = bin.join("claude");
+    fs::write(&host, "#!/bin/sh\nexit 0\n").unwrap();
+    fs::set_permissions(&host, fs::Permissions::from_mode(0o755)).unwrap();
+    let out = Command::new(EXE)
+        .args(["cc", "--name", "lane-1"])
+        .current_dir(&fx.root)
+        .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
+        .env("HOME", &fx.home)
+        .env("USERPROFILE", &fx.home)
+        .env("MOAI_TEST_HOST_MARKER", fx.home.join("host-started"))
+        .env("ANTHROPIC_AUTH_TOKEN", "moai-test-dummy-not-real")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    )
+}
+
+#[test]
+fn a_first_launch_never_applies_the_removal_of_an_owned_file() {
+    // A project set up by the launcher (its project id is the one a first launch derives from
+    // the folder name) and generated with the pick `harness-only`, so the manifest owns an agent
+    // and a skill but no instruction file; its settings are then lost. The first launch plans
+    // its empty request over those owned files.
+    let fx = Fx::new();
+    let named = moai_cli::key_vault::folder_name(None, "project", "");
+    fx.with_profile(json!({"project_id": named.strip_suffix('-').unwrap_or(&named)}));
+    let mut request = request_with(&fx, vec![role()], vec![skill()]);
+    request["picks"] = json!(["harness-only"]);
+    fx.generate(&request);
+    for state in ["project.yaml", "manifests/profile-baseline.json"] {
+        fs::remove_file(fx.root.join(moai_cli::state_root::rel(&fx.root, state))).unwrap();
+    }
+    for name in ["CLAUDE.md", "AGENTS.md"] {
+        let _ = fs::remove_file(fx.root.join(name));
+    }
+    let role = fs::read(fx.root.join(ROLE_FILE)).unwrap();
+    let skill = fs::read(fx.root.join(SKILL_FILE)).unwrap();
+    let said = first_launch(&fx);
+    assert!(
+        said.contains("not generated"),
+        "the launch says it left CLAUDE.md out: {said}"
+    );
+    assert_eq!(fs::read(fx.root.join(ROLE_FILE)).unwrap(), role, "{said}");
+    assert_eq!(fs::read(fx.root.join(SKILL_FILE)).unwrap(), skill, "{said}");
+}
