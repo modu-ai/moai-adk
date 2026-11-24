@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261121-model-defaults-one-table
 title: "One table of model and effort defaults: the launcher starts a role session with the table the question screen shows"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-21
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8212 (2026-11-24T04:52:03Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 8211 에 답함: 판 1(조각 A) 승인, 커밋 8513aecdfbb76f4a2b5848f7459df8e4b2cecc44, src/main.rs 도움말 두 줄은 줄 임대로 범위 넓힘 승인); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:adf896386810d3121ddec8e9e4a43701048631bc6b8e17b59c68e7153ad24bd1"
 ---
 
 # One table of model and effort defaults: the launcher starts a role session with the table the question screen shows
@@ -28,6 +33,14 @@ created: 2026-11-21
 - D-3 역할 세션은 저장값 경로와 같은 전체 id 를 호스트에 넘겨요(예: `claude-opus-5-5`, GLM 은 `zai/` 를 뗀 `glm-5.4[1m]`). 별칭(`opus`)이 아니에요. 되돌리기는 커밋 revert 하나예요. 결정자: 리더(2026-11-24).
 - D-4 역할 없는 세션은 `opus`/`medium` 그대로예요(사용자 결정 2026-11-08). 결정자: 사용자.
 - D-5 조각 A 를 먼저 READY·감사·착지해요. 조각 B 는 C-248 착지 뒤 그 위에서 해요. 결정자: 리더(2026-11-24).
+
+## Interview
+
+- Q1: 옛 조각(가지 `spec/model-defaults-one-table-20261121`)을 합치나요, 새로 하나요? → A: 새로 해요(D-1). 옛 가지는 Codex·OMP 전제라 충돌 9곳이고 보존만 해요.
+- Q2: 표를 4줄로 줄여도 되나요? → A: 예. 지금 `default_choice` 4줄이 표예요(D-2). 2026-11-20 결정의 Codex·OMP 줄은 철회됐고 GLM leader 는 5.4 로 바뀌었어요.
+- Q3: 조각 B(질문 화면 재설계)를 언제 하나요? → A: C-248 이 착지한 뒤 그 위에서 해요. 이 카드는 B 기준으로 열린 채 남아요(D-5).
+- Q4: 조각 A 를 먼저 감사·착지하나요? → A: 예(D-5).
+- Q5: 역할 세션이 별칭 대신 전체 id 를 넘겨도 되나요? → A: 예(D-3). 역할 없는 세션은 `opus`/`medium` 그대로예요(D-4).
 
 ## Non-goals
 
