@@ -2269,18 +2269,22 @@
       "id": "table-step-matches-the-two-repository-tests",
       "tests": [
         "src/check_affected.rs::tests::the_repository_tests_pass_the_table_step_as_added_files",
-        "src/check_affected.rs::tests::the_guidance_says_where_a_new_test_file_registers"
+        "src/check_affected.rs::tests::the_guidance_says_where_a_new_test_file_registers",
+        "src/check_affected.rs::tests::the_repository_tests_pass_the_scan_step_as_added_files"
       ],
       "checks": [
         "cargo test --offline --locked --lib the_repository_tests_pass_the_table_step_as_added_files",
-        "cargo test --offline --locked --lib the_guidance_says_where_a_new_test_file_registers"
+        "cargo test --offline --locked --lib the_guidance_says_where_a_new_test_file_registers",
+        "cargo test --offline --locked --lib the_repository_tests_pass_the_scan_step_as_added_files"
       ],
       "rules": [
         "src/check_affected.rs",
         "tests/areas.toml",
         "tests/fixtures/state_folder_literals/allow.tsv",
         "docs/lane-rules.md",
-        "docs/design-review/appendix/operations/check.md"
+        "docs/design-review/appendix/operations/check.md",
+        "tests/repo_scans_table.rs",
+        "tools/repo_scans.json"
       ],
       "scope": [
         {
@@ -2292,13 +2296,16 @@
           ]
         },
         {
+          "prefix": "tools/repo_scans.json"
+        },
+        {
           "prefix": "docs/lane-rules.md"
         },
         {
           "prefix": "docs/design-review/appendix/operations/check.md"
         }
       ],
-      "rejects": "a change to a tests/*.rs file, to tests/areas.toml, to the state-folder allow list or to the two guidance pages that the check-affected table step, which reads them at run time, did not re-run on the merge tree (SPEC-20261124-new-test-file-precheck)"
+      "rejects": "a change to a tests/*.rs file, to tests/areas.toml, to the state-folder allow list or to the two guidance pages, or to the scan list, that the check-affected table step, which reads them at run time, did not re-run on the merge tree (SPEC-20261124-new-test-file-precheck, SPEC-20261124-repo-scans-precheck)"
     }
   ]
 }
