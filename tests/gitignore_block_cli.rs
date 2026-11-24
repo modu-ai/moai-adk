@@ -381,8 +381,10 @@ fn the_block_ignores_credential_and_env_files_even_in_tools_and_evals() {
         ".moai-cli/tools/.env.local",
         ".moai-cli/tools/deep/er/.env",
         ".moai-cli/tools/credentials.yaml",
+        ".moai-cli/tools/credentials.json",
         ".moai-cli/evals/api.credentials",
         ".moai-cli/evals/sub/credentials.yaml",
+        ".moai-cli/evals/sub/credentials.json",
         ".moai-cli/specs/SPEC-x/.env",
     ] {
         assert!(fx.ignored(rel), "{rel} is not ignored:\n{text}");
@@ -390,6 +392,7 @@ fn the_block_ignores_credential_and_env_files_even_in_tools_and_evals() {
     for rel in [
         ".moai-cli/tools/check.sh",
         ".moai-cli/tools/env.sh",
+        ".moai-cli/tools/credentials.sh",
         ".moai-cli/evals/set.json",
         ".moai-cli/specs/SPEC-x/spec.md",
     ] {
@@ -399,6 +402,7 @@ fn the_block_ignores_credential_and_env_files_even_in_tools_and_evals() {
     let last_allow = lines.iter().rposition(|l| l.starts_with('!')).unwrap();
     for line in [
         ".moai-cli/**/credentials.yaml",
+        ".moai-cli/**/credentials.json",
         ".moai-cli/**/*.credentials",
         ".moai-cli/**/.env",
         ".moai-cli/**/.env.*",
@@ -442,7 +446,7 @@ fn with_earlier_block(fx: &Fx) -> (String, String) {
     (old, full)
 }
 
-/// SPEC-20261120-moai-layout REQ-4, REQ-8: a block written before the layout rule gets its seven
+/// SPEC-20261120-moai-layout REQ-4, REQ-8: a block written before the layout rule gets its eight
 /// new lines as a `merge` in the plan, and the file is not written until the plan is applied.
 #[test]
 fn an_earlier_block_is_shown_as_changed_and_left_until_applied() {
@@ -454,11 +458,12 @@ fn an_earlier_block_is_shown_as_changed_and_left_until_applied() {
     assert_eq!(row["action"], "merge", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 7 added, 0 removed",
+        "managed block lines: 8 added, 0 removed",
         "+ .moai-cli/local/",
         "+ !.moai-cli/tools/",
         "+ !.moai-cli/evals/",
         "+ .moai-cli/**/credentials.yaml",
+        "+ .moai-cli/**/credentials.json",
         "+ .moai-cli/**/*.credentials",
         "+ .moai-cli/**/.env",
         "+ .moai-cli/**/.env.*",
@@ -508,6 +513,7 @@ fn the_plan_names_the_files_the_update_makes_visible() {
             ".moai-cli/tools/check.sh",
             ".moai-cli/tools/.env",
             ".moai-cli/tools/credentials.yaml",
+            ".moai-cli/tools/credentials.json",
             ".moai-cli/evals/set.json",
             ".moai-cli/evals/token.credentials",
         ],
@@ -585,6 +591,207 @@ fn a_nested_gitignore_under_the_state_folder_keeps_a_file_out_of_the_visible_lis
     assert!(fx.ignored(".moai-cli/tools/sub/x.tmp"));
     assert!(!fx.ignored(".moai-cli/tools/check.sh"));
     assert!(!fx.ignored(".moai-cli/tools/sub/y.sh"));
+}
+
+/// The plan's note that a `.gitignore` under the state folder was not read.
+const NOT_READ: &str = "a .gitignore under the state folder was not read";
+
+/// The plan's `detail` of the `.gitignore` row for the project as it stands.
+fn plan_detail(fx: &Fx) -> String {
+    let plan = fx.plan("none");
+    Fx::ignore_row(&plan)["detail"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+
+/// `rules` followed by comment lines so the text is exactly `total` bytes long.
+fn padded_rules(rules: &str, total: usize) -> String {
+    let fill = total - rules.len() - 1;
+    let text = format!("{rules}{}\n", "#".repeat(fill));
+    assert_eq!(text.len(), total);
+    text
+}
+
+/// Writes `text` to `rel` under the project, creating its folders.
+fn put(fx: &Fx, rel: &str, text: &str) {
+    let path = fx.root.join(rel);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(path, text).unwrap();
+}
+
+/// SPEC-20261120-moai-layout REQ-17, REQ-18 (AC-15): a nested `.gitignore` of 65536 bytes is read
+/// and its rule keeps `x.tmp` out of the list; one byte more is not read, so `x.tmp` is named and
+/// the plan says once that a `.gitignore` was not read.
+#[test]
+fn a_nested_gitignore_of_64_kib_is_read_and_one_byte_more_is_not() {
+    let run = |size: usize| -> String {
+        let fx = Fx::new(None);
+        with_earlier_block(&fx);
+        put(
+            &fx,
+            ".moai-cli/tools/sub/.gitignore",
+            &padded_rules("*.tmp\n", size),
+        );
+        put(&fx, ".moai-cli/tools/sub/x.tmp", "x");
+        put(&fx, ".moai-cli/tools/check.sh", "x");
+        plan_detail(&fx)
+    };
+    let at = run(65536);
+    assert!(
+        !visible_lines(&at).contains(&"now visible: .moai-cli/tools/sub/x.tmp"),
+        "{at}"
+    );
+    assert!(!at.contains(NOT_READ), "{at}");
+    assert!(
+        visible_lines(&at).contains(&"now visible: .moai-cli/tools/check.sh"),
+        "{at}"
+    );
+
+    let past = run(65537);
+    assert!(
+        visible_lines(&past).contains(&"now visible: .moai-cli/tools/sub/x.tmp"),
+        "{past}"
+    );
+    assert_eq!(past.matches(NOT_READ).count(), 1, "{past}");
+}
+
+/// SPEC-20261120-moai-layout REQ-17, REQ-18 (AC-16): the first hundred nested `.gitignore` files in
+/// path order are read, the hundred and first is not. The user's own rule hides the `.gitignore`
+/// files themselves, so the list holds only what a nested rule does not hide.
+#[test]
+fn the_hundredth_nested_gitignore_is_read_and_the_hundred_first_is_not() {
+    let run = |count: usize| -> String {
+        let fx = Fx::new(None);
+        let (old, _) = with_earlier_block(&fx);
+        fs::write(
+            fx.root.join(".gitignore"),
+            format!(".moai-cli/tools/*/.gitignore\n{old}"),
+        )
+        .unwrap();
+        for i in 0..count {
+            put(
+                &fx,
+                &format!(".moai-cli/tools/d{i:03}/.gitignore"),
+                "*.tmp\n",
+            );
+            put(&fx, &format!(".moai-cli/tools/d{i:03}/x.tmp"), "x");
+        }
+        plan_detail(&fx)
+    };
+    let hundred = run(100);
+    assert!(visible_lines(&hundred).is_empty(), "{hundred}");
+    assert!(!hundred.contains(NOT_READ), "{hundred}");
+
+    let more = run(101);
+    assert_eq!(
+        visible_lines(&more),
+        ["now visible: .moai-cli/tools/d100/x.tmp"],
+        "{more}"
+    );
+    assert_eq!(more.matches(NOT_READ).count(), 1, "{more}");
+}
+
+/// SPEC-20261120-moai-layout REQ-18 (AC-17): a nested `.gitignore` that is a link is not read, even
+/// where it points at a rule that would hide `x.sh`; git does not follow it either.
+#[cfg(unix)]
+#[test]
+fn a_nested_gitignore_that_is_a_link_is_not_read() {
+    let fx = Fx::new(None);
+    with_earlier_block(&fx);
+    let outside = fx.root.parent().unwrap().join("outside-rules");
+    fs::write(&outside, "*.sh\n").unwrap();
+    fs::create_dir_all(fx.root.join(".moai-cli/tools/linked")).unwrap();
+    std::os::unix::fs::symlink(&outside, fx.root.join(".moai-cli/tools/linked/.gitignore"))
+        .unwrap();
+    put(&fx, ".moai-cli/tools/linked/x.sh", "x");
+    let detail = plan_detail(&fx);
+    assert!(
+        visible_lines(&detail).contains(&"now visible: .moai-cli/tools/linked/x.sh"),
+        "{detail}"
+    );
+    assert_eq!(detail.matches(NOT_READ).count(), 1, "{detail}");
+}
+
+/// SPEC-20261120-moai-layout REQ-18 (AC-18): git knows `tools/lp/.gitignore` from its index, and
+/// `lp` is now a link to a folder outside the project. The plan reads nothing through the link.
+#[cfg(unix)]
+#[test]
+fn a_nested_gitignore_behind_a_linked_folder_is_not_read() {
+    let fx = Fx::new(None);
+    with_earlier_block(&fx);
+    put(&fx, ".moai-cli/tools/lp/.gitignore", "*.log\n");
+    git_ok(&fx.root, &["add", "-f", ".moai-cli/tools/lp/.gitignore"]);
+    fs::remove_dir_all(fx.root.join(".moai-cli/tools/lp")).unwrap();
+    let outside = fx.root.parent().unwrap().join("outside-folder");
+    fs::create_dir_all(&outside).unwrap();
+    fs::write(outside.join(".gitignore"), "*.sh\n").unwrap();
+    std::os::unix::fs::symlink(&outside, fx.root.join(".moai-cli/tools/lp")).unwrap();
+    put(&fx, ".moai-cli/tools/check.sh", "x");
+    let detail = plan_detail(&fx);
+    assert_eq!(detail.matches(NOT_READ).count(), 1, "{detail}");
+    assert!(
+        visible_lines(&detail).contains(&"now visible: .moai-cli/tools/check.sh"),
+        "{detail}"
+    );
+}
+
+/// SPEC-20261120-moai-layout REQ-18 (AC-19): a nested `.gitignore` the plan cannot read (mode 000)
+/// is not read, so its folder's `x.sh` is named and the plan says so once.
+#[cfg(unix)]
+#[test]
+fn an_unreadable_nested_gitignore_is_not_read() {
+    use std::os::unix::fs::PermissionsExt;
+    let fx = Fx::new(None);
+    with_earlier_block(&fx);
+    put(&fx, ".moai-cli/tools/priv/.gitignore", "*.sh\n");
+    put(&fx, ".moai-cli/tools/priv/x.sh", "x");
+    let rules = fx.root.join(".moai-cli/tools/priv/.gitignore");
+    fs::set_permissions(&rules, fs::Permissions::from_mode(0o000)).unwrap();
+    // A process that may read it anyway (root) cannot show the case.
+    let readable = fs::read(&rules).is_ok();
+    let detail = plan_detail(&fx);
+    fs::set_permissions(&rules, fs::Permissions::from_mode(0o644)).unwrap();
+    if readable {
+        return;
+    }
+    assert!(
+        visible_lines(&detail).contains(&"now visible: .moai-cli/tools/priv/x.sh"),
+        "{detail}"
+    );
+    assert_eq!(detail.matches(NOT_READ).count(), 1, "{detail}");
+}
+
+/// SPEC-20261120-moai-layout REQ-18 (AC-20): a parent rule (`*.tmp`) hides `keep.tmp`, and the
+/// child `.gitignore` that takes it back (`!keep.tmp`) is too large to read. The plan still names
+/// `keep.tmp`, and git agrees once the block is applied.
+#[test]
+fn a_file_below_an_unread_gitignore_is_named_even_when_a_parent_rule_hides_it() {
+    let fx = Fx::new(None);
+    with_earlier_block(&fx);
+    put(&fx, ".moai-cli/tools/.gitignore", "*.tmp\n");
+    put(
+        &fx,
+        ".moai-cli/tools/sub/.gitignore",
+        &padded_rules("!keep.tmp\n", 65537),
+    );
+    put(&fx, ".moai-cli/tools/sub/keep.tmp", "x");
+    put(&fx, ".moai-cli/tools/top.tmp", "x");
+    let detail = plan_detail(&fx);
+    let lines = visible_lines(&detail);
+    assert!(
+        lines.contains(&"now visible: .moai-cli/tools/sub/keep.tmp"),
+        "{detail}"
+    );
+    // A file outside the unread folder is still judged by the rules that were read.
+    assert!(
+        !lines.contains(&"now visible: .moai-cli/tools/top.tmp"),
+        "{detail}"
+    );
+    assert_eq!(detail.matches(NOT_READ).count(), 1, "{detail}");
+    fx.apply_ok("none");
+    assert!(!fx.ignored(".moai-cli/tools/sub/keep.tmp"));
+    assert!(fx.ignored(".moai-cli/tools/top.tmp"));
 }
 
 /// The plan names at most twenty files and counts the rest: twenty are all named, twenty-one
