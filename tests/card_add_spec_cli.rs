@@ -164,6 +164,8 @@ impl World {
             "UPDATE card_ac SET status = 'met', evidence_ref = 'test' WHERE card_id = {n}; \
              INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
              VALUES ('card.landed:{n}:test', unixepoch(), 'test', {n}, 'card.landed', '{{}}'); \
+             UPDATE card SET state = 'ready' WHERE card_id = {n}; \
+             UPDATE card SET state = 'active' WHERE card_id = {n}; \
              UPDATE card SET state = 'review' WHERE card_id = {n}; \
              UPDATE card SET state = 'done', closed_at = unixepoch() WHERE card_id = {n};"
         ))
@@ -216,9 +218,14 @@ fn a_missing_or_broken_spec_is_refused() {
     let broken = "SPEC-20261124-broken";
     fs::create_dir_all(w.project.join(".moai/specs").join(broken)).unwrap();
     fs::write(w.spec_file(broken), "not a SPEC at all\n").unwrap();
-    for bad in ["SPEC-20261124-absent", "not-a-spec-id", broken] {
+    // A SPEC that is not there is `not_found`; a bad id or a SPEC with an error is `invalid_input`.
+    for (bad, expected) in [
+        ("SPEC-20261124-absent", "not_found"),
+        ("not-a-spec-id", "invalid_input"),
+        (broken, "invalid_input"),
+    ] {
         let (kind, message) = refusal(&w.add(bad, &[]));
-        assert_eq!(kind, "invalid_input", "{bad}: {message}");
+        assert_eq!(kind, expected, "{bad}: {message}");
         assert_eq!(w.cards(), 0, "{bad}: a refused add writes no card");
         assert_eq!(w.count("SELECT count(*) FROM event"), 0, "{bad}");
     }
