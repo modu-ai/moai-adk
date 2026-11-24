@@ -96,8 +96,9 @@ pub enum ReserveError {
     /// The card is not `ready`.
     CardNotReady {
         state: String,
-        /// Why the card was withdrawn, from its latest `card.withdraw` event (`None` on a
-        /// plain hold card, or whenever the card's state is not `hold`).
+        /// Why the card is on hold, as the phrase the refusal ends with, from its latest
+        /// `card.withdraw` or `card.fold` event: `withdrawn: <reason>` or `folded into C-<n>:
+        /// <reason>` (`None` on a plain hold card, or whenever the card's state is not `hold`).
         withdraw_reason: Option<String>,
     },
     /// The card already has an active reservation (another holder, or this one again).
@@ -147,7 +148,7 @@ impl std::fmt::Display for ReserveError {
                 withdraw_reason: Some(reason),
             } => write!(
                 f,
-                "reservation conflict in card: the card is `{state}` and withdrawn: {reason}"
+                "reservation conflict in card: the card is `{state}` and {reason}"
             ),
             ReserveError::CardNotReady { state, .. } => write!(
                 f,
@@ -770,7 +771,7 @@ fn reserve_in_tx(
                     "SELECT CASE kind \
                               WHEN 'card.fold' THEN 'folded into ' || json_extract(payload, '$.into') \
                                    || ': ' || json_extract(payload, '$.reason') \
-                              ELSE json_extract(payload, '$.reason') END \
+                              ELSE 'withdrawn: ' || json_extract(payload, '$.reason') END \
                      FROM event \
                      WHERE card_id = ?1 AND kind IN ('card.withdraw', 'card.fold') \
                      ORDER BY event_id DESC LIMIT 1",

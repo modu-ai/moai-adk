@@ -337,8 +337,9 @@ fn a_hold_card_is_not_an_open_card_of_its_spec() {
     // C-4 is open now: a further plain card is refused again and C-4 is the one named.
     let (kind, message) = refusal(&w.add(&spec, &[]));
     assert_eq!(kind, "conflict", "{message}");
-    assert!(message.contains("C-4"), "{message}");
-    assert!(!message.contains("C-1") && !message.contains("C-2"), "{message}");
+    // The SPEC id holds `C-2` inside `SPEC-2026…`, so the open card is read as the sentence
+    // names it: `has an open card (C-4)`.
+    assert!(message.contains("has an open card (C-4)"), "{message}");
 }
 
 /// REQ-4, REQ-5: one open follow-up card per SPEC, whatever other cards the SPEC has.
