@@ -19,7 +19,10 @@ use std::process::{Command, Output, Stdio};
 const SESSION_VAR: &str = "CLAUDE_CODE_SESSION_ID";
 const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
 const S_B: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
+const S_C: &str = "cccccccc-0000-4000-8000-00000000000c";
+const S_D: &str = "dddddddd-0000-4000-8000-00000000000d";
 const DAY: i64 = 86_400;
+const HOUR: i64 = 3_600;
 
 /// The profile of an m-flow project whose integration branch is `integ`, with an optional
 /// `stale_draft_days` value spliced in.
@@ -187,6 +190,33 @@ impl World {
             "UPDATE reservation SET lease_until = unixepoch() - 5 \
              WHERE card_id = {id} AND status = 'held'"
         ));
+    }
+
+    /// The lease of the held reservation of `card` ended `secs_ago` seconds ago.
+    fn end_lease_ago(&self, card: &str, secs_ago: i64) {
+        let id = card.trim_start_matches("C-");
+        self.sql(&format!(
+            "UPDATE reservation SET lease_until = unixepoch() - {secs_ago} \
+             WHERE card_id = {id} AND status = 'held'"
+        ));
+    }
+
+    /// The holder of `card` last wrote `secs_ago` seconds ago: the reservation and every event of
+    /// the card move back, so nothing newer remains. The event table refuses updates in a real
+    /// ledger, so the guard is lifted in this throwaway one (`tests/lane_heartbeat_cli.rs` does
+    /// the same).
+    fn go_silent(&self, card: &str, secs_ago: i64) {
+        let id = card.trim_start_matches("C-");
+        let file = ledger::ledger_path(self.home.path(), "demo").unwrap();
+        rusqlite::Connection::open(&file)
+            .unwrap()
+            .execute_batch(&format!(
+                "DROP TRIGGER IF EXISTS event_no_update; \
+                 UPDATE reservation SET updated_at = unixepoch() - {secs_ago} \
+                 WHERE card_id = {id}; \
+                 UPDATE event SET at = unixepoch() - {secs_ago} WHERE card_id = {id};"
+            ))
+            .unwrap();
     }
 
     /// Makes the card's last update `days` days old. The `rev` moves with it, so the
@@ -408,4 +438,93 @@ fn an_unreadable_profile_uses_the_default_days_and_adds_no_warning() {
     // The fixture holds no card that wants a SPEC, so the one array both listings carry is empty:
     // a warning of the unreadable profile, in any wording, is not in it.
     assert_eq!(listing["warnings"], json!([]), "{listing}");
+}
+
+fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64
+}
+
+/// SPEC-20261119-live-lease-takeover REQ-10: a `lease_ended` row carries the holder's heartbeat
+/// and the seconds since, the value the sweep reads.
+#[test]
+fn stale_heartbeat_row_shows_last_seen_at_and_silent_secs() {
+    let w = World::new();
+    w.write_profile("");
+    let silent = w.ready("apps/a/");
+    w.card(Some(S_A), &["take", &silent]);
+    w.end_lease(&silent);
+    w.go_silent(&silent, 3 * HOUR);
+    let recent = w.ready("apps/b/");
+    w.card(Some(S_B), &["take", &recent]);
+    w.end_lease(&recent);
+    w.go_silent(&recent, 120);
+
+    let before = w.home.snapshot();
+    let listing = w.next(S_D);
+    assert!(w.home.snapshot() == before, "next writes nothing");
+    let now = unix_now();
+    for (card, ago) in [(&silent, 3 * HOUR), (&recent, 120)] {
+        let rows = rows_of(&listing, card);
+        assert_eq!(rows.len(), 1, "{card}: {listing}");
+        assert_eq!(rows[0]["kind"], json!("lease_ended"), "{listing}");
+        let seen = rows[0]["last_seen_at"]
+            .as_i64()
+            .unwrap_or_else(|| panic!("{card} has no last_seen_at: {listing}"));
+        let secs = rows[0]["silent_secs"]
+            .as_i64()
+            .unwrap_or_else(|| panic!("{card} has no silent_secs: {listing}"));
+        assert!(
+            (ago..ago + 60).contains(&secs),
+            "{card}: silent_secs {secs} for a holder silent {ago}s: {listing}"
+        );
+        assert!(
+            (now - seen - secs).abs() <= 30,
+            "{card}: last_seen_at {seen} and silent_secs {secs} name one moment: {listing}"
+        );
+    }
+}
+
+/// REQ-11: the row names the sweep for a card the sweep would take, and keeps the withdraw for a
+/// card it would not; the command it names does sweep the card.
+#[test]
+fn stale_heartbeat_names_the_sweep_for_a_silent_card_and_keeps_withdraw_for_a_recent_one() {
+    let w = World::new();
+    w.write_profile("");
+    let silent = w.ready("apps/a/");
+    w.card(Some(S_A), &["take", &silent]);
+    w.end_lease_ago(&silent, 60);
+    w.go_silent(&silent, 3 * HOUR);
+    let old = w.ready("apps/b/");
+    w.card(Some(S_B), &["take", &old]);
+    w.end_lease_ago(&old, 25 * HOUR);
+    w.go_silent(&old, 25 * HOUR);
+    let recent = w.ready("apps/c/");
+    w.card(Some(S_C), &["take", &recent]);
+    w.end_lease_ago(&recent, 60);
+    w.go_silent(&recent, 120);
+
+    let listing = w.next(S_D);
+    let row = |card: &String| rows_of(&listing, card)[0].clone();
+    let sweep = |card: &String| format!("moai card sweep {card} --by leader");
+    assert_eq!(row(&silent)["command"], json!(sweep(&silent)), "{listing}");
+    assert_eq!(row(&silent)["via"], json!("heartbeat"), "{listing}");
+    assert_eq!(row(&old)["command"], json!(sweep(&old)), "{listing}");
+    assert_eq!(row(&old)["via"], json!("grace"), "{listing}");
+    let kept = row(&recent);
+    assert!(
+        kept["command"]
+            .as_str()
+            .unwrap()
+            .starts_with("moai card withdraw "),
+        "a card with a recent heartbeat keeps the withdraw: {listing}"
+    );
+    assert!(kept.get("via").is_none(), "{listing}");
+
+    // The command the row names takes the card: the row and the sweep agree.
+    let swept = w.card(None, &["sweep", &silent, "--by", "leader"]);
+    assert_eq!(swept["swept"][0]["name"], json!(silent), "{swept}");
+    assert_eq!(swept["swept"][0]["via"], json!("heartbeat"), "{swept}");
 }

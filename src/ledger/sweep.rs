@@ -503,6 +503,15 @@ mod tests {
     }
 
     #[test]
+    fn heartbeat_window_is_7200_seconds_as_a_number() {
+        // The value itself, not a window read back from the constant: a window of ten minutes
+        // passes every edge test above and sweeps a lane that is thinking.
+        assert_eq!(SILENCE_SECS, 7_200);
+        assert!(!silent(NOW - 7_199, NOW));
+        assert!(silent(NOW - 7_200, NOW));
+    }
+
+    #[test]
     fn heartbeat_window_never_overflows_and_a_future_heartbeat_is_not_silent() {
         assert!(!silent(i64::MAX, NOW));
         assert!(silent(i64::MIN, NOW));

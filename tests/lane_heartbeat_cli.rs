@@ -329,6 +329,35 @@ fn silent_holder_is_listed_by_a_dry_run_and_nothing_is_written() {
     assert_eq!(w.state_of(&a), "active");
 }
 
+// ---- REQ-12: the silence window is two hours ------------------------------------------------------
+
+#[test]
+fn silence_window_one_hour_fifty_nine_keeps_the_card_and_two_hours_sweeps_it() {
+    let w = world();
+    let short = w.held(S_A, "silent 1h59", &["src/a.rs"]);
+    let full = w.held(S_B, "silent 2h", &["src/b.rs"]);
+    for card in [&short, &full] {
+        w.end_lease(card, THREE_HOURS);
+    }
+    w.go_silent(&short, 2 * HOUR - 60);
+    w.go_silent(&full, 2 * HOUR);
+    let done = result(&w.sweep(&["--by", "leader"]));
+    let names: Vec<&Value> = done["swept"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| &r["name"])
+        .collect();
+    assert_eq!(names, vec![&json!(full)], "{done}");
+    assert_eq!(done["swept"][0]["via"], json!("heartbeat"), "{done}");
+    assert_eq!(
+        w.state_of(&short),
+        "active",
+        "1 hour 59 minutes keeps the card"
+    );
+    assert_eq!(w.state_of(&full), "ready", "two hours sweeps it");
+}
+
 // ---- AC-2: a live lease is never swept ------------------------------------------------------------
 
 #[test]

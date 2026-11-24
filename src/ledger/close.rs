@@ -345,6 +345,8 @@ pub struct LeaseEnded {
     pub holder: String,
     pub generation: i64,
     pub lease_until: i64,
+    /// The holder's heartbeat (SPEC-20261119-live-lease-takeover REQ-1): the value the sweep reads.
+    pub last_seen_at: i64,
 }
 
 /// A card with what a row of `stale` needs; `updated_at` is its last update (DB clock).
@@ -388,24 +390,36 @@ fn plain(sql: &str, conn: &Connection) -> Result<Vec<Plain>, LedgerError> {
 /// [`super::ReadLedger::conn`].
 pub fn stale_facts(conn: &Connection, now: i64) -> Result<StaleFacts, LedgerError> {
     let mut stmt = conn.prepare(
-        "SELECT c.card_id, c.title, c.state, c.priority, r.holder, r.generation, r.lease_until \
+        "SELECT c.card_id, c.title, c.state, c.priority, r.holder, r.generation, r.lease_until, \
+                r.updated_at \
          FROM reservation r JOIN card c ON c.card_id = r.card_id \
          WHERE r.status = 'held' AND r.lease_until <= ?1 AND c.state IN ('active', 'review') \
          ORDER BY c.card_id",
     )?;
-    let lease_ended = stmt
+    // The heartbeat is read with the function the sweep uses, so a row and a sweep never read
+    // two different values (SPEC-20261119-live-lease-takeover D-7).
+    let ended = stmt
         .query_map([now], |r| {
-            Ok(LeaseEnded {
-                card_id: r.get(0)?,
-                title: r.get(1)?,
-                state: r.get(2)?,
-                priority: r.get(3)?,
-                holder: r.get(4)?,
-                generation: r.get(5)?,
-                lease_until: r.get(6)?,
-            })
+            Ok((
+                LeaseEnded {
+                    card_id: r.get(0)?,
+                    title: r.get(1)?,
+                    state: r.get(2)?,
+                    priority: r.get(3)?,
+                    holder: r.get(4)?,
+                    generation: r.get(5)?,
+                    lease_until: r.get(6)?,
+                    last_seen_at: 0,
+                },
+                r.get::<_, i64>(7)?,
+            ))
         })?
-        .collect::<Result<_, _>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut lease_ended = Vec::with_capacity(ended.len());
+    for (mut c, updated_at) in ended {
+        c.last_seen_at = reservation::heartbeat_at(conn, c.card_id, &c.holder, updated_at)?;
+        lease_ended.push(c);
+    }
     Ok(StaleFacts {
         lease_ended,
         review_no_holder: plain(
