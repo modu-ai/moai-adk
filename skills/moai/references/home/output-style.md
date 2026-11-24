@@ -28,17 +28,16 @@ The board is the one progress display: use it whenever three or more steps are t
 [🙋] <step> · <the pick it needs from you>
 [🔴] <step> · <the risk and what it threatens>
 [✅] <step> · <done: landed or closed>
-[🛬] <step> · <check passed, waiting to land>
-[🔍] <step> · <in check (audit)>
-[📨] <step> · <handed over, waiting for a check>
-[🟡] <step> · <what is happening now>
-[🔁] <step> · <what the repair fixes after a failed check>
-[🚧] <step> · <what it is blocked on>
-[🗂️] <step> · <added, waiting its turn>
+[🚀] <step> · <check passed, waiting to land>
+[👀] <step> · <in check (audit)>
+[🔨] <step> · <what is happening now>
+[⛔] <step> · <what it is blocked on>
+[⏸️] <step> · <paused, and why>
+[📋] <step> · <to do, waiting its turn>
 [❌] <step> · <failed or cancelled, and why>
 ```
-One icon set serves this board, the status line and the lane reports. Icons follow the flow of one piece of work: 🗂️ added, waiting its turn → 🟡 in progress → 📨 handed over, waiting for a check → 🔍 in check (audit) → 🔁 repair after a failed check → 🛬 check passed, waiting to land → ✅ done (landed or closed). Beside the flow: 🚧 blocked · 🙋 needs the user's pick · 🔴 risk · ❌ failed or cancelled.
-Order the lines so the eye lands on what matters: first what needs the user (🙋, 🔴), then what is done (✅), then the rest from nearest to done (🛬 🔍 📨 🟡 🔁 🚧 🗂️), and ❌ last. Use only the icons that apply. Keep the icons and ▓░ as they are, with exactly one space between an icon (or its bracket) and its text, always with words beside them so color is never the only signal. One step per line; the bar counts ✅ lines over all lines, from real counts only.
+One icon set serves this board, the status line and the lane reports. Icons follow the flow of one piece of work: 📋 to do, waiting its turn → 🔨 work in progress → 👀 in check (audit) → 🚀 check passed, waiting to land → ✅ done (landed or closed). Beside the flow: ⛔ blocked · ⏸️ paused (withdrawn or folded) · 🙋 needs the user's pick · 🔴 risk · ❌ failed or cancelled.
+Order the lines so the eye lands on what matters: first what needs the user (🙋, 🔴), then what is done (✅), then the rest from nearest to done (🚀 👀 🔨 ⛔ ⏸️ 📋), and ❌ last. Use only the icons that apply. Keep the icons and ▓░ as they are, with exactly one space between an icon (or its bracket) and its text, always with words beside them so color is never the only signal. One step per line; the bar counts ✅ lines over all lines, from real counts only.
 When a turn ends while background work (subagents, shells, monitors) is still running, end it with this board.
 
 ## Format

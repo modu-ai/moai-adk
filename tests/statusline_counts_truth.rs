@@ -1,7 +1,7 @@
 //! SPEC-20261124-statusline-counts-truth: the counts on the flow line against the ledger.
 //!
 //! The fixture is the shape of the real ledger when the user reported the line
-//! `🗂️ 81 → 🟡 3 → 📨 9 → 🛬 6 → ✅ 50 | 🚧 8 🙋 96` (2026-11-24T07:32Z): which cards are in which
+//! `📋 81 → 🔨 3 → 👀 9 → 🚀 6 → ✅ 50 | ⛔ 8 🙋 96` (2026-11-24T07:32Z): which cards are in which
 //! state, which notes they carry, how their reservations ended. The composition below is a
 //! reconstruction made to reproduce those seven numbers; the real ledger is never read. Every
 //! case runs the real binary through `TempHome` against a ledger built in that HOME.
@@ -10,6 +10,7 @@ mod common;
 
 use common::home::TempHome;
 use moai_cli::ledger;
+use moai_cli::statusline::icons::{BLOCKED, CHECK, DONE, PAUSED, QUESTION, READY, TODO, WORK};
 use rusqlite::{params, Connection};
 use std::io::Write;
 use std::path::PathBuf;
@@ -113,7 +114,7 @@ fn build_ledger(f: &Fixture) {
         let taken = now - 8 * HOUR;
         let later = now - 6 * HOUR;
 
-        // 🗂️ 81 = every `ready` card. 77 of them are what the user means (waiting for a lane).
+        // 📋 81 = every `ready` card. 77 of them are what the user means (waiting for a lane).
         for _ in 0..76 {
             card(tx, "ready", now, None);
         }
@@ -131,13 +132,13 @@ fn build_ledger(f: &Fixture) {
         );
         reservation(tx, again, 2, "released", now - 10 * HOUR, now - 9 * HOUR);
         // Four cards a lane handed back and released: the release moved them to `ready`.
-        // 2 handed over (📨) …
+        // 2 handed over (👀) …
         for marker in ["LANE-READY-INTEGRATION", "REPAIRED"] {
             let c = card(tx, "ready", now, None);
             reservation(tx, c, 1, "released", taken, later);
             note(tx, c, "report", "lane", &ready_line(marker, c), later + 60);
         }
-        // … and 2 audited (🛬).
+        // … and 2 audited (🚀).
         for _ in 0..2 {
             let c = card(tx, "ready", now, None);
             reservation(tx, c, 1, "released", taken, later);
@@ -148,7 +149,7 @@ fn build_ledger(f: &Fixture) {
             card(tx, "draft", now, None);
         }
 
-        // 🟡 3 = working with a live lease and no newer marker. One of the three is a card whose
+        // 🔨 3 = working with a live lease and no newer marker. One of the three is a card whose
         // lane handed it back with REPAIRED (the line did not read it).
         for _ in 0..2 {
             let c = card(tx, "active", now, None);
@@ -171,7 +172,7 @@ fn build_ledger(f: &Fixture) {
             reservation(tx, c, 1, "held", taken, ended);
         }
 
-        // 📨 9 = 5 `review` cards (3 with an ended lease) and 4 `active` cards with a READY
+        // 👀 9 = 5 `review` cards (3 with an ended lease) and 4 `active` cards with a READY
         // (3 ended).
         for i in 0..5 {
             let c = card(tx, "review", now, None);
@@ -192,7 +193,7 @@ fn build_ledger(f: &Fixture) {
             );
         }
 
-        // 🛬 6 = 3 audited, 2 landed, and one card that landed once and was taken again.
+        // 🚀 6 = 3 audited, 2 landed, and one card that landed once and was taken again.
         for _ in 0..3 {
             let c = card(tx, "active", now, None);
             reservation(tx, c, 1, "held", taken, ended);
@@ -223,7 +224,7 @@ fn build_ledger(f: &Fixture) {
             now - HOUR + 60,
         );
 
-        // 🚧 8 = LANE-BLOCKED as the newest marker; 4 of them were answered by the leader's
+        // ⛔ 8 = LANE-BLOCKED as the newest marker; 4 of them were answered by the leader's
         // decision note and the lane works on (live lease).
         for _ in 0..4 {
             let c = card(tx, "active", now, None);
@@ -341,8 +342,9 @@ fn count(line: &str, icon: &str) -> i64 {
 }
 
 /// AC-1: the ledger of the user's report (2026-11-24T07:32Z). Drawn before this SPEC it was
-/// `🗂️ 81 → 🟡 3 → 📨 9 → 🛬 6 → ✅ 50 | 🚧 8 🙋 96`; every row of the table of the SPEC lands in
-/// the item the table names, and the drawn items add up.
+/// `📋 81 → 🔨 3 → 👀 9 → 🚀 6 → ✅ 50 | ⛔ 8 🙋 96`; every row of the table of the SPEC lands in
+/// the item the table names, and the drawn items add up. The icons are the table's
+/// (SPEC-20261124-card-flow-icons): the 96 withdrawn hold cards are `paused`, no pick is owed.
 #[test]
 fn the_0732z_ledger_shape_draws_what_the_ledger_holds() {
     let f = fixture();
@@ -350,17 +352,23 @@ fn the_0732z_ledger_shape_draws_what_the_ledger_holds() {
     let line = flow_line(&f, Some("UTC"));
     assert_eq!(
         line,
-        format!("{} | 🗂️ 77 → 🟡 12 → 📨 12 → 🛬 7 → ✅ 50 | 🚧 4", moai())
+        format!(
+            "{} | {TODO} 77 → {WORK} 12 → {CHECK} 12 → {READY} 7 → {DONE} 50 | {BLOCKED} 4 {PAUSED} 96",
+            moai()
+        )
     );
     // The cards of `active` and `review` (31) and the four ready cards a lane handed back and
-    // released: all of them are on `🟡 📨 🛬 🚧`, and no card is drawn twice or dropped.
-    let drawn: i64 = ["🟡", "📨", "🛬", "🚧"]
+    // released: all of them are on the work, check, ready and blocked items, and no card is
+    // drawn twice or dropped.
+    let drawn: i64 = [WORK, CHECK, READY, BLOCKED]
         .iter()
         .map(|i| count(&line, i))
         .sum();
     assert_eq!(drawn, 31 + 4, "{line}");
     // The open cards that are neither draft nor hold are every drawn item but the done count.
-    assert_eq!(drawn + count(&line, "🗂️"), 112, "{line}");
+    assert_eq!(drawn + count(&line, TODO), 112, "{line}");
+    // The hold cards are all withdrawn: none waits for the user's pick.
+    assert_eq!(count(&line, QUESTION), 0, "{line}");
 }
 
 /// AC-2: the same ledger for a user in Seoul (`TZ` for the child only): their day began at 15:00Z
@@ -371,15 +379,15 @@ fn the_done_count_follows_the_local_day() {
     build_ledger(&f);
     for (tz, want) in [("Asia/Seoul", 103), ("Etc/GMT-9", 103), ("UTC", 50)] {
         let line = flow_line(&f, Some(tz));
-        assert_eq!(count(&line, "✅"), want, "TZ={tz}: {line}");
+        assert_eq!(count(&line, DONE), want, "TZ={tz}: {line}");
     }
     // The zone west of UTC: 23:32 the evening before, the day began at 08:00Z the day before.
     let line = flow_line(&f, Some("Etc/GMT+8"));
-    assert_eq!(count(&line, "✅"), 103, "{line}");
+    assert_eq!(count(&line, DONE), 103, "{line}");
 }
 
-/// AC-3: a hold card that was withdrawn (or folded) is no card the user owes a pick; one that was
-/// not is, and the item is hidden at 0.
+/// AC-3: a hold card that was withdrawn (or folded) is no card the user owes a pick: it is
+/// counted as paused; one that was not is a question, and the item is hidden at 0.
 #[test]
 fn a_withdrawn_hold_card_is_not_a_pick_the_user_owes() {
     let f = fixture();
@@ -396,7 +404,7 @@ fn a_withdrawn_hold_card_is_not_a_pick_the_user_owes() {
         .unwrap();
     }
     let line = flow_line(&f, Some("UTC"));
-    assert_eq!(line, format!("{} | 🗂️ 1", moai()), "{line}");
+    assert_eq!(line, format!("{} | {TODO} 1 | {PAUSED} 2", moai()), "{line}");
     {
         let mut l = ledger::open_write(f.home.path(), "demo").unwrap();
         l.with_write_tx(|tx, _| {
@@ -406,5 +414,9 @@ fn a_withdrawn_hold_card_is_not_a_pick_the_user_owes() {
         .unwrap();
     }
     let line = flow_line(&f, Some("UTC"));
-    assert_eq!(line, format!("{} | 🗂️ 1 | 🙋 1", moai()), "{line}");
+    assert_eq!(
+        line,
+        format!("{} | {TODO} 1 | {PAUSED} 2 {QUESTION} 1", moai()),
+        "{line}"
+    );
 }

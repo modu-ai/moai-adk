@@ -919,7 +919,8 @@ no value is left out together with its separator.
    groups are joined by ` | `; inside a group the items are one space apart and have no
    slash, and every icon is followed by one space (user instruction 2026-11-19,
    SPEC-20261120-statusline-line2-order; exactly one space also after the icons written with a
-   variation selector, `🅱️`, `⬇️`, `🏷️` and `🗂️`, SPEC-20261122-statusline-limits-left). The first
+   variation selector, `🅱️`, `⬇️`, `🏷️` and `⏸️`, SPEC-20261122-statusline-limits-left and
+   SPEC-20261124-card-flow-icons). The first
    line has no ahead, behind or uncommitted mark and no `🧭` item (SPEC-20261123-statusline-order-bars
    REQ-11, the user instruction of 2026-11-23, which replaces the `↑N ↓N +N` marks and the
    distance of SPEC-20261120-statusline-ahead and SPEC-20261123-statusline-integration-distance
@@ -999,7 +1000,7 @@ no value is left out together with its separator.
    counts, and nothing is created. Example (the last two lines of the golden
    `b14-card-counts-waiting`):
 
-       🤖 2.1.90 | 🗿 4.2648.0 | 🗂️ 25 → 🟡 2 → 📨 3 → ✅ 12 | 🙋 5
+       🤖 2.1.90 | 🗿 4.2648.0 | 📋 25 → 🔨 2 → 👀 3 → ✅ 12 | 🙋 5
        🔋 CW ░░░░░░░░░░ 8% | 🔋 7D ████░░░░░░ 41% (4d 23h)
 
    Tests: `tests/statusline_first_line.rs` (the integration tip, the detached leader, `n/a`, no
@@ -1018,26 +1019,29 @@ no value is left out together with its separator.
    host documentation leaves open whether it is cut or wraps ("may get truncated or wrap
    awkwardly", https://code.claude.com/docs/en/statusline, read 2026-11-13).
 
-The flow line (SPEC-20261122-statusline-flow, with the one icon set of
-SPEC-20261122-statusline-limits-left) is the line between the first line and the limits, and
+The flow line (SPEC-20261122-statusline-flow, with the card-flow icon set of
+SPEC-20261124-card-flow-icons) is the line between the first line and the limits, and
 it replaces the card counts described in items 2 and 3 above. Its widest form is
-`🤖 <Claude Code version> | 🗿 <MoAI version> | 🗂️ <ready> → 🟡 <working> → 📨 <submitted> →
-🛬 <audited + landed, not closed> → ✅ <done today> | 🚧 <blocked> 🙋 <hold> | 🎯 C-<n> <stage icon>`:
+`🤖 <Claude Code version> | 🗿 <MoAI version> | 📋 <ready> → 🔨 <working> → 👀 <submitted> →
+🚀 <audited + landed, not closed> → ✅ <done today> | ⛔ <blocked> ⏸️ <paused> 🙋 <hold> | 🎯 C-<n> <stage icon>`:
 the two versions (the MoAI version carries the update arrow `<template> -> <build>` when the
 project's template is older), the flow, what stands beside the flow, and at the end the card the
 session holds with the icon of its stage (SPEC-20261123-statusline-order-bars; before it the card
 came first and the versions closed the limits line). The icons are the ones of the
-progress board and the lane reports (`🗂️` added and waiting its turn, `🟡` in progress, `📨`
-handed over and waiting for a check, `🛬` check passed and waiting to land, `✅` done, `🚧`
-blocked, `🙋` needs the user's pick). There are no letter codes; an item whose count is zero is
+progress board and the lane reports and are written once, in the table of
+`src/statusline/icons.rs` (`📋` to do, waiting its turn, `🔨` work in progress, `👀` in check,
+`🚀` check passed and waiting to land, `✅` done, `⛔` blocked, `⏸️` paused, `🙋` needs the user's
+pick; the board also keeps `🔴` risk and `❌` failed or cancelled). `⏸️` counts the hold cards that
+were withdrawn or folded and `🙋` the hold cards nobody withdrew, so `🙋` shows only while a user's
+pick is owed. There are no letter codes; an item whose count is zero is
 left out with its arrow; the drafts are not on the line, and a card whose lease has ended is drawn
-in `🟡` with the working ones (SPEC-20261124-statusline-counts-truth REQ-7).
+in `🔨` with the working ones (SPEC-20261124-statusline-counts-truth REQ-7).
 A narrower form drops the Claude Code version first, then the MoAI version with its update
-arrow, then the leftmost item of the flow, `🗂️` first, and keeps the card of the session and
-`🚧 🙋` to the end. With no flow the line holds the two versions alone, and with no version the
+arrow, then the leftmost item of the flow, `📋` first, and keeps the card of the session and
+`⛔ ⏸️ 🙋` to the end. With no flow the line holds the two versions alone, and with no version the
 flow alone; the `claude_version`, `moai_version` and `cards` options each hide their own items.
 When the notes cannot be read within the render budget the line is
-`🗂️ <ready> 🟡 <active + review>` without an arrow, never a guess, behind the versions. Exactly
+`📋 <ready> 🔨 <active + review>` without an arrow, never a guess, behind the versions. Exactly
 one space follows every icon on all three lines. Tests: the `flow_line_tests` of
 `src/statusline/render.rs`, `tests/statusline_flow.rs` and `tests/statusline_cards.rs`.
 

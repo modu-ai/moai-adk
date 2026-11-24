@@ -3,9 +3,10 @@
 //! as MoAI's own while a real user edit stays a conflict. Against a temporary HOME only.
 //!
 //! The earlier renders are kept as fixtures (`tests/fixtures/home-style/render-1.md` to
-//! `render-6.md`), rebuilt from the commits of the text history; their sha256 are the ones of
-//! the SPEC decision D-4, for the fifth of SPEC-20261123-progress-board-flow-icons and for the
-//! sixth of SPEC-20261122-statusline-limits-left (the one icon set).
+//! `render-7.md`), rebuilt from the commits of the text history; their sha256 are the ones of
+//! the SPEC decision D-4, for the fifth of SPEC-20261123-progress-board-flow-icons, for the
+//! sixth of SPEC-20261122-statusline-limits-left (the one icon set) and for the seventh, the
+//! text before SPEC-20261124-card-flow-icons (D-8 there).
 
 mod common;
 use moai_cli::home_style::{apply, plan, render_style_file, revert, Plan, SOURCE};
@@ -21,13 +22,14 @@ fn record_file(home: &Path) -> PathBuf {
         .join("home-style")
         .join("claude.json")
 }
-const RENDERS: [&str; 6] = [
+const RENDERS: [&str; 7] = [
     "render-1.md",
     "render-2.md",
     "render-3.md",
     "render-4.md",
     "render-5.md",
     "render-6.md",
+    "render-7.md",
 ];
 
 fn package() -> PathBuf {
@@ -118,57 +120,57 @@ fn the_shipped_source_names_only_claude_code_and_keeps_the_picked_sections() {
 
 /// The progress board is the one progress display (SPEC-20261123-progress-board-flow-icons)
 /// and uses the one icon set of the status line and the lane reports
-/// (SPEC-20261122-statusline-limits-left REQ-8): the section names the eleven icons, the flow
-/// from a card added to done, what stands beside the flow, the line order with what needs the
-/// user first and the failed last, the bar that counts the done lines, and the turn-end rule;
-/// it withdraws the host's task list and leaves the choice to no other file.
+/// (SPEC-20261124-card-flow-icons): the section names the ten icons of the table
+/// `moai_cli::statusline::icons`, the flow from a card to do to done, what stands beside the
+/// flow, the line order with what needs the user first and the failed last, the bar that counts
+/// the done lines, and the turn-end rule; it withdraws the host's task list and leaves the
+/// choice to no other file.
 #[test]
 fn the_progress_board_is_the_one_progress_display_with_flow_icons() {
+    use moai_cli::statusline::icons;
     let s = src();
     let start = s.find("## Progress board").unwrap();
     let end = start + s[start..].find("## Format").unwrap();
     let section = &s[start..end];
+    let order = icons::BOARD_ORDER;
+    let rest = order[3..9].join(" ");
     for item in [
-        "The board is the one progress display",
-        "never use the host's task-list tool for progress",
-        "One icon set serves this board, the status line and the lane reports",
-        "Icons follow the flow of one piece of work",
-        "Order the lines so the eye lands on what matters",
-        "first what needs the user (🙋, 🔴)",
-        "then what is done (✅)",
-        "then the rest from nearest to done (🛬 🔍 📨 🟡 🔁 🚧 🗂️)",
-        "and ❌ last",
-        "the bar counts ✅ lines over all lines, from real counts only",
-        "When a turn ends while background work (subagents, shells, monitors) is still running, end it with this board.",
+        "The board is the one progress display".to_string(),
+        "never use the host's task-list tool for progress".to_string(),
+        "One icon set serves this board, the status line and the lane reports".to_string(),
+        "Icons follow the flow of one piece of work".to_string(),
+        "Order the lines so the eye lands on what matters".to_string(),
+        format!("first what needs the user ({}, {})", order[0], order[1]),
+        format!("then what is done ({})", order[2]),
+        format!("then the rest from nearest to done ({rest})"),
+        format!("and {} last", order[9]),
+        format!(
+            "the bar counts {} lines over all lines, from real counts only",
+            order[2]
+        ),
+        "When a turn ends while background work (subagents, shells, monitors) is still running, end it with this board.".to_string(),
     ] {
-        assert!(section.contains(item), "{item}");
+        assert!(section.contains(&item), "{item}");
     }
-    // The eleven icons, each with a line of its own in the sample board, in the sample's order.
-    let icons = [
-        "🙋", "🔴", "✅", "🛬", "🔍", "📨", "🟡", "🔁", "🚧", "🗂️", "❌",
-    ];
+    // The ten icons, each with the line of its own the table builds, in the sample's order.
     let mut at = 0;
-    for icon in icons {
-        let line = format!("[{icon}] <step>");
+    for line in icons::board_lines() {
         let found = section[at..]
             .find(&line)
             .unwrap_or_else(|| panic!("the sample board has no `{line}` line after byte {at}"));
         at += found + line.len();
     }
-    // The flow is spelled once, from a card added to done, and what stands beside it once.
-    assert!(section.contains(
-        "🗂️ added, waiting its turn → 🟡 in progress → 📨 handed over, waiting for a check → 🔍 in check (audit) → 🔁 repair after a failed check → 🛬 check passed, waiting to land → ✅ done (landed or closed)"
-    ));
-    assert!(section.contains(
-        "Beside the flow: 🚧 blocked · 🙋 needs the user's pick · 🔴 risk · ❌ failed or cancelled."
-    ));
+    // The flow is spelled once, from a card to do to done, and what stands beside it once.
+    assert_eq!(section.matches(&icons::flow_sentence()).count(), 1);
+    assert_eq!(section.matches(&icons::beside_sentence()).count(), 1);
     // The icons that left the set are nowhere in the style.
-    for gone in ["🔵", "🟢", "⬜", "👀", "⛔", "⏸️"] {
+    for gone in icons::RETIRED {
         assert!(!s.contains(gone), "{gone} left the icon set");
     }
+    let board_icons = icons::BOARD_ORDER;
     // Exactly one space between an icon (or its bracket) and its text: after an icon comes its
     // bracket, a comma, a closing parenthesis, or one space and then no second one.
-    for icon in icons {
+    for icon in board_icons {
         for (i, _) in section.match_indices(icon) {
             let after = &section[i + icon.len()..];
             let after = after.strip_prefix(']').unwrap_or(after);
@@ -252,13 +254,14 @@ fn the_rendered_description_has_no_double_quote_and_names_the_banner() {
 /// The sha256 of the earlier renders, kept in the SPEC (D-4), match the fixtures.
 #[test]
 fn the_fixtures_are_the_earlier_renders_of_the_spec() {
-    let want = [
+    let want: [&str; 7] = [
         "93e53607dd194da86abfbe7ea993303fff1d17af1a1a1ae6868788938ed785d2",
         "d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67",
         "690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e",
         "a31d966b0486f501839121832eb6a99d3fc718996b22a901e9e17884a0ab369e",
         "80e189d27dd7be365724bbba2f38f1eddb3c0e96801da4caf82535ce80181a65",
         "5f6b5fd1d93f3b0a4553ba74df113bba99bb018ca819120e1a25926fe242d006",
+        "8468a4c95c48ab62975d13bac3041e60a393b2ba368f36c09544ef96df810847",
     ];
     assert_eq!(want.len(), RENDERS.len());
     for (name, sha) in RENDERS.iter().zip(want) {
@@ -274,7 +277,7 @@ fn the_fixtures_are_the_earlier_renders_of_the_spec() {
 /// frontmatter makes this test fail until the outgoing render is appended to
 /// `EARLIER_RENDERS` and this constant names the new one (AC-7, REQ-8).
 const CURRENT_RENDER_SHA256: &str =
-    "8468a4c95c48ab62975d13bac3041e60a393b2ba368f36c09544ef96df810847";
+    "0c66f9d0662a8a2d6bb7aa73f6e2c623c33d43d27fe800abc51a230ae35389f3";
 
 /// AC-7 (REQ-8): the list holds 64 hex digits each, all different, equal to the fixtures in
 /// order, and never the current render, which is pinned here.
