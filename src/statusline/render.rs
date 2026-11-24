@@ -672,7 +672,11 @@ impl Renderer {
             // A card a lane works on whose lease ended is still in hand (SPEC-20261124-
             // statusline-counts-truth REQ-7): it is drawn with the working ones, so the items
             // add up to the open cards.
-            item(t.cards_active, icons::WORK, f.working.saturating_add(f.stale)),
+            item(
+                t.cards_active,
+                icons::WORK,
+                f.working.saturating_add(f.stale),
+            ),
             item(t.cards_posted, icons::CHECK, f.submitted),
             item(t.branch, icons::READY, f.audited.saturating_add(f.landed)),
             item(t.cards_done, icons::DONE, f.done_today),
@@ -2415,8 +2419,9 @@ mod flow_line_tests {
             flow: Some(spec_flow()),
             ..Default::default()
         };
-        assert!(line(&arrow, &[])
-            .starts_with(&format!("🤖 2.1.330 | 🗿 4.2600.15 -> 4.2648.20 | {TODO} 176")));
+        assert!(line(&arrow, &[]).starts_with(&format!(
+            "🤖 2.1.330 | 🗿 4.2600.15 -> 4.2648.20 | {TODO} 176"
+        )));
         assert_eq!(
             screen(
                 &arrow,

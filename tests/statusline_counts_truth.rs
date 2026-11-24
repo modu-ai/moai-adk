@@ -404,7 +404,11 @@ fn a_withdrawn_hold_card_is_not_a_pick_the_user_owes() {
         .unwrap();
     }
     let line = flow_line(&f, Some("UTC"));
-    assert_eq!(line, format!("{} | {TODO} 1 | {PAUSED} 2", moai()), "{line}");
+    assert_eq!(
+        line,
+        format!("{} | {TODO} 1 | {PAUSED} 2", moai()),
+        "{line}"
+    );
     {
         let mut l = ledger::open_write(f.home.path(), "demo").unwrap();
         l.with_write_tx(|tx, _| {
