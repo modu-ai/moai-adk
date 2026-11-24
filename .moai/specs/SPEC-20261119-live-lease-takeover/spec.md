@@ -2,8 +2,9 @@
 id: SPEC-20261119-live-lease-takeover
 title: "a card whose lease ended and whose holder went silent returns to ready, a live lane never does"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-19
+branch: spec/live-lease-takeover-followup-20261125
 ---
 
 # a card whose lease ended and whose holder went silent returns to ready, a live lane never does
@@ -14,6 +15,7 @@ created: 2026-11-19
 - Q2: 새로 만들 길이 있어요? -> A: 아니요. C-464 가 착지시킨 `moai card sweep` 과 `card take` 안의 sweep(유예 24시간, `SPEC-20261124-ended-lease-sweep`)이 이미 "끝난 lease 의 카드를 `ready` 로" 돌려요. 이 SPEC 은 그 길에 **두 번째 자격**을 하나 더해요: 유예 24시간이 안 지났어도, lease 가 끝났고 보유자의 하트비트가 두 시간 넘게 없으면 같은 길로 돌려요. 새 명령도 새 스키마도 없어요.
 - Q3: 하트비트가 뭐예요, 어떻게 자동으로 갱신돼요? -> A: 보유자 세션이 원장에 남긴 가장 최근 흔적이에요: 예약의 `updated_at`(take·`card renew`·범위 확대·line-lease 가 갱신해요)와, 그 카드의 사건 가운데 `actor` 가 보유자 세션인 가장 늦은 사건(`card note`, 기준 표시, 거절 기록 …)의 `at` 중 늦은 쪽이에요. 레인이 일하며 원장에 쓰는 모든 쓰기가 곧 하트비트라서 레인은 따로 부를 명령이 없고, 쓰기 길도 하나 늘지 않아요. 읽기만 하는 `card check` 는 흔적을 남기지 않아요(Risks 2).
 - Q4: 살아 있는 레인을 정말 안 건드려요? -> A: lease 가 끝나지 않은 카드는 하트비트가 얼마나 오래됐든 건드리지 않아요(REQ-3). lease 가 끝났어도 하트비트가 두 시간 안에 있으면 건드리지 않아요(REQ-4). 둘 다 어긋난 카드만 돌려요. 일하던 레인이 lease 를 못 늘리고 두 시간 넘게 원장에 아무것도 안 쓰면 회수될 수 있어요: 그때도 가지·워크트리·RESUME 노트는 그대로고, 그 레인의 다음 쓰기는 옛 세대라서 거절돼요(Risks 1).
+- Q5: 개정 3 은 뭘 더해요? -> A: 앞 조각(개정 2, 감사 PASS)이 남긴 두 가지예요. (1) `card next` 의 `stale[]` 행이 보유자의 하트비트(`last_seen_at`, `silent_secs`)를 보여 주고, 침묵한 활성 카드에는 withdraw 대신 sweep 명령을 말해요: 지금은 하트비트가 끊긴 카드도 유예 안이면 행이 withdraw 를 말해서, 리더가 일하던 카드를 버리는 쪽으로 읽어요. (2) 침묵 창 두 시간(`SILENCE_SECS`)이 숫자로 고정돼 있지 않아서 10분으로 바꾼 뮤턴트가 살아남았어요(감사 minor 1): 값 단언과 1시간 59분 시험으로 고정해요. 새 길도 새 쓰기도 없어요. 행이 읽는 값은 sweep 이 읽는 하트비트와 같은 함수예요.
 
 ## Intent
 
@@ -27,7 +29,6 @@ created: 2026-11-19
 - 하트비트를 위한 새 쓰기 명령(`card heartbeat`)과 새 열·표. 하트비트는 원장에 이미 있는 값에서 읽어요(D-2).
 - 도구 호출마다 lease 를 자동으로 늘리는 훅. 호스트마다 훅이 달라요(D-3).
 - 읽기 전용 `card check` 가 하트비트를 남기게 하기: `src/card/work.rs` 는 이 카드의 범위 밖이에요. 후속 카드가 해요(Risks 2).
-- `card next` 의 `stale[]` 행이 침묵한 카드에도 sweep 명령을 말하게 하기: 행의 사실을 읽는 `src/ledger/close.rs`·`src/card/work.rs` 는 범위 밖이라 범위 확대를 리더에게 요청해요(Risks 3).
 - 하트비트 창을 프로젝트 설정으로 바꾸기. 두 시간 고정이에요(D-4). 필요하면 `lease_sweep_hours` 처럼 키를 후속으로 더해요.
 - `review` 상태 카드, `held_for_review`·`expired_candidate` 예약, 가지·워크트리·RESUME 노트의 삭제, `src/leader_round.rs`(C-469 몫)와 라운드 배선.
 
@@ -42,6 +43,9 @@ created: 2026-11-19
 - REQ-7: The sweep shall treat a lease that ended at least the grace period ago as sweepable whatever the heartbeat says, and the silence window is two hours.
 - REQ-8 (REQ-2): When a card is swept, the `card.sweep` event and the answer shall carry `via` (`heartbeat` when the grace period had not run out, else `grace`), `last_seen_at` and `silent_secs` · failure: none — the fields are written in the sweep's own transaction.
 - REQ-9 (REQ-2): IF a swept holder writes with its old generation, THEN the ledger shall refuse the write as it refuses a stale generation today.
+- REQ-10 (REQ-1): When `moai card next` lists a `lease_ended` row of an `active` or `review` card, the row shall carry `last_seen_at` (the heartbeat of REQ-1) and `silent_secs` (the seconds from it to the listing) · failure: none — the listing is read-only and reads the heartbeat the sweep reads.
+- REQ-11 (REQ-2): When the `lease_ended` row of an `active` card meets the sweep rule of REQ-2, the row shall name `moai card sweep <card> --by leader` and carry `via` (`heartbeat` or `grace`), and a row that meets neither keeps the withdraw command · failure: none — the row only names a command and the sweep still re-checks the card in its own transaction.
+- REQ-12: The silence window shall be 7200 seconds, so a holder silent for 7199 seconds keeps its card · failure: none — the window is a constant that the sweep and the row both read.
 
 ## Acceptance
 
@@ -53,14 +57,17 @@ created: 2026-11-19
 - AC-6 (REQ-9): after a heartbeat sweep the old holder's `renew`, `check` and `release` with the old generation are refused · verify: `cargo nextest run --locked --offline --test lane_heartbeat_cli swept_holder_`
 - AC-7 (REQ-2): a `review` card, a `held_for_review` reservation and an `expired_candidate` reservation with a silent holder are skipped as the grace sweep skips them · verify: `cargo nextest run --locked --offline --test lane_heartbeat_cli not_swept_`
 - AC-8 (REQ-1…REQ-9): the neighbours · verify: `cargo nextest run --locked --offline --test ledger_sweep`; `cargo nextest run --locked --offline --test card_sweep_cli`; `cargo nextest run --locked --offline --test card_stale_cli`
+- AC-9 (REQ-10): in a temporary ledger a `lease_ended` row of a card whose lease ended and whose holder wrote a note two minutes ago carries `last_seen_at` equal to that note's time and `silent_secs` of about two minutes, and a card whose holder wrote nothing for three hours carries `silent_secs` of about three hours · verify: `cargo nextest run --locked --offline --test card_stale_cli stale_heartbeat_`
+- AC-10 (REQ-11): a card whose lease ended a minute ago and whose holder is silent for three hours has the sweep command and `via: heartbeat`, a card whose lease ended 25 hours ago has the sweep command and `via: grace`, a card whose lease ended a minute ago with a recent note keeps the withdraw command, and the sweep command of the row sweeps the card · verify: `cargo nextest run --locked --offline --test card_stale_cli stale_heartbeat_`
+- AC-11 (REQ-12): `SILENCE_SECS` is asserted to be 7200, a holder silent for 1 hour 59 minutes keeps its card and a holder silent for two hours does not · verify: `cargo nextest run --locked --offline --lib heartbeat_window_is_`; `cargo nextest run --locked --offline --test lane_heartbeat_cli silence_window_`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261119-live-lease-takeover/**`
-- write: `src/ledger/reservation.rs`, `src/ledger/sweep.rs`, `src/card/sweep.rs`, `src/card/stale.rs`, `src/card/early_reclaim.rs`
-- write: `tests/lane_heartbeat_cli.rs`
+- write: `src/ledger/reservation.rs`, `src/ledger/sweep.rs`, `src/ledger/close.rs`, `src/card/sweep.rs`, `src/card/stale.rs`, `src/card/early_reclaim.rs`
+- write: `tests/lane_heartbeat_cli.rs`, `tests/card_stale_cli.rs`
 - write (shared files, line-lease, only when needed): `src/ops/card.rs`, `src/profile.rs`, `docs/design-review/appendix/operations/card.md`
-- read-only: `src/ledger/workflow.rs`, `src/ledger/close.rs`, `src/ledger/schema.rs`, `src/card/work.rs`, `tests/ledger_sweep.rs`, `tests/card_sweep_cli.rs`
+- read-only: `src/ledger/workflow.rs`, `src/ledger/schema.rs`, `src/card/work.rs`, `tests/ledger_sweep.rs`, `tests/card_sweep_cli.rs`
 - forbidden: `src/leader_round.rs` (C-469), the real home ledger (tests use a temporary HOME only), a schema change, a network call
 
 ## Plan
@@ -71,12 +78,13 @@ created: 2026-11-19
 4. `src/card/sweep.rs`: the answer carries `via`, `last_seen_at`, `silent_secs`, `silent_minutes`.
 5. `src/card/stale.rs` and `src/card/early_reclaim.rs`: read again after steps 1 to 4; they change only if a test shows they must.
 6. Guard mutants for each new guard, `moai check affected` once at READY, then the independent audit.
+7. Revision 3 (the `stale[]` row and the window): tests first in `tests/card_stale_cli.rs` (AC-9, AC-10), `tests/lane_heartbeat_cli.rs` and a unit test in `src/ledger/sweep.rs` (AC-11), RED on the unchanged code. Then `LeaseEnded` in `src/ledger/close.rs` reads the holder's heartbeat with `reservation::heartbeat_at` and carries it, and `src/card/stale.rs` puts it in the row and picks the command with `sweep_via`. `src/card/work.rs` is read again and changes only if a test shows it must (the `rows` signature stays).
 
 ## Risks
 
 - A lane that is alive but silent loses its card: its lease ended and it wrote nothing to the ledger for two hours. The rule has no way to tell it from a stopped session (the `card check` of Risks 2 writes nothing). The loss is small: the branch, the worktree and the RESUME notes stay, the note names them, the lane's next write is refused as a stale generation (REQ-9), and `card renew` before a long run keeps the lease alive as the lane rules already say.
 - `card check` is read-only (`src/card/work.rs`, out of scope), so the most frequent thing a working lane does leaves no heartbeat; only a write does (take, renew, scope, line-lease, note, criterion). A follow-up card can make a successful check refresh `updated_at` at most once a minute; this SPEC does not claim it.
-- The `stale[]` row of `card next` for a silent card whose grace has not run out still says `withdraw` (`src/card/stale.rs` reads facts from `src/ledger/close.rs`). The sweep command works on that card anyway (`card sweep C-n --by leader`, and a take). Whether the row names it is the open scope request.
+- The `stale[]` row of `card next` names the sweep for a silent card (REQ-11), but the row is a listing: a card whose holder writes between the listing and the command is kept by the sweep (REQ-5) and the command then answers `skipped`. Before revision 3 the row said `withdraw` for such a card.
 - A sweep and a heartbeat in the same second: the write transaction reads the heartbeat again (REQ-5), so a write that commits first wins.
 - The next lane may take the card with a new worktree while the old worktree holds commits: the note names the old worktree and branch, as the grace sweep does.
 
@@ -90,6 +98,8 @@ created: 2026-11-19
 | D-4 | The silence window is two hours, fixed | the default lease is four hours, the grace is 24 hours; two hours is long enough for a long test run between ledger writes, and a profile key can follow | a profile key like `lease_sweep_hours` |
 | D-5 | The silence rule is an addition to the grace rule, not a replacement: past the grace a card is swept whatever the heartbeat | `SPEC-20261124-ended-lease-sweep` is landed and its tests stay as they are | drop the silence rule |
 | D-6 | The integration test file is `tests/lane_heartbeat_cli.rs`, not `tests/card_heartbeat_cli.rs` | the leader moved it off `tests/card_*.rs` (held by C-287); `lease` is not a first word of `tests/areas.toml`, which `check_affected::tests::the_repository_tests_pass_the_table_step_as_added_files` enforces, while `lane` is and no reservation holds `tests/lane_*` | rename once C-287 lands |
+| D-7 | The `stale[]` row reads the heartbeat in `stale_facts` with `reservation::heartbeat_at`, one extra read per `lease_ended` row, and picks the command with `sweep_via` | the row and the sweep must agree on which card is sweepable; a second copy of the rule would drift, and `heartbeat_at` is read-only and takes a connection | read the heartbeat in `src/card/work.rs` instead |
+| D-8 | The silence window stays a constant and is pinned by a value assertion plus a 1 hour 59 minute CLI test | audit minor 1 of the first piece: a mutant that set the window to ten minutes survived | a profile key (D-4) |
 
 ## Result
 
