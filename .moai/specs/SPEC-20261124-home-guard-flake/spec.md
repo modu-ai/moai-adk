@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261124-home-guard-flake
 title: "HOME 가드가 부하 아래에서 테스트가 읽지 않은 HOME 읽기를 테스트 탓으로 실패시키는 일을, 먼저 증거로 가려내요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8329 of card C-451 (answers lane note 8328, 2026-11-24T07:39:54Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 1 at head 0195fdd3b1, option A; recorded by the lane, not approved by it", digest: "sha256:81da21c538b2f34b8612d38a37193441e58802472025fd5234fddf54a15ceca0"}
 ---
 
 # HOME 가드가 부하 아래에서 테스트가 읽지 않은 HOME 읽기를 테스트 탓으로 실패시키는 일을, 먼저 증거로 가려내요
