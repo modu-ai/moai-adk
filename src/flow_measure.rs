@@ -67,9 +67,11 @@ pub fn parse_request(cards: &[String], hours: Option<&str>, now: Option<i64>) ->
                     named.push(n);
                 }
             }
-            _ => return Err(format!(
+            _ => {
+                return Err(format!(
                 "flow-measure refused: the card name `{text}` is not valid; write it as C-<number>"
-            )),
+            ))
+            }
         }
     }
     let hours = match hours {
@@ -81,10 +83,12 @@ pub fn parse_request(cards: &[String], hours: Option<&str>, now: Option<i64>) ->
                 .filter(|n| (1..=MAX_HOURS).contains(n));
             match n {
                 Some(n) => Some(n),
-                None => return Err(format!(
+                None => {
+                    return Err(format!(
                     "flow-measure refused: --hours must be a whole number from 1 to {MAX_HOURS}, \
                          not `{text}`"
-                )),
+                ))
+                }
             }
         }
     };
