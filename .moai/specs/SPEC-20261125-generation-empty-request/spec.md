@@ -87,3 +87,28 @@ SPEC-20261125-generation-request-record 재감사(head 10d2c688f7)가 남긴 길
 | D-2 | The scope of the fix is the plan, not the project-update reader | the stuck state exists because the manifest keeps owned entries without a record; after the apply there are none, so `unrebuildable_paths` is empty and `src/project_update.rs` needs no change | add a release path to `project_update` |
 | D-3 | The apply examples of `generation-*` read `< plan.json` | `generation-apply` reads `GenerationPlan` through `plan_input` (`src/ops/generation_apply.rs`), the way `project-apply` does, and `project-plan` already prints `< plan.json` for its apply | restore `< request.json` |
 | D-4 | No new check against a record that is whole in shape but smaller than the owned files (hand edit) | the record is read only when it has exactly the three lists and at least one entry (SPEC-20261125-generation-request-record REQ-11, D-6); a smaller record would plan the removal of the other owned files, and those removals are plan rows the user applies, with the bytes kept in the receipt; a check would need a digest of what the apply wrote, which is a new manifest field and a schema change beyond this card | add a digest of the record to the manifest and read it in `recorded_request_lists` |
+
+## Result
+
+`spec/generation-empty-request-20261125` 가지에서 구현했어요. 기준은 앞선 SPEC(`SPEC-20261125-generation-request-record`)의 감사 통과 head `10d2c688f7` 이고, 이 SPEC 은 승인 전 `draft` 로 두어요.
+
+- Run 0 (RED, 코드를 고치기 전): `cargo nextest run --locked --offline --test generation_request_record --no-fail-fast` — 13 tests run, 8 passed, 5 failed. 다섯 모두 맞는 이유로 실패했어요: 빈 요청의 계획에 agent·projection 파일의 `remove` 줄이 없고, 적용한 뒤에도 agent 파일이 남고, 적용 help 가 `request.json` 이에요. 출력은 `target/agent-3/red1.out`.
+- Run 1: 같은 명령, 코드를 고친 뒤 — 12 passed, 1 failed (`the_help_examples_name_the_input_each_command_reads` 가 `Usage:` 줄까지 예시로 읽었어요). 시험을 ` < ` 가 있는 예시 줄로 좁혔어요.
+- Run 2: 이웃 20개 시험 대상과 lib 전체를 한 슬롯으로 — 2063 tests run, 2063 passed (`target/agent-3/neighbours1.out`).
+- Run 3: 링크·평평한 경로·검토를 잃은 projection 시험 3개를 더한 뒤 같은 파일 — 16 passed (`target/agent-3/green3.out`).
+- 검증 명령 13개를 이 SPEC 에 적힌 그대로(`cargo test --locked --offline …`) 한 슬롯 호출로 돌렸어요. 모두 exit 0 이고 출력은 `target/agent-3/verify_ac1.out` 이에요 (`target/agent-3/verify_ac1.py` 가 SPEC 에서 명령을 읽어요).
+- AC-1: met — `an_empty_request_previews_the_removal_of_the_agent_and_skill_files`: 빈 요청의 계획이 agent 파일과 skill 파일에 `remove` 줄을 내고, 계획 뒤에도 두 파일과 매니페스트의 바이트가 그대로예요.
+- AC-2: met — `an_empty_request_clears_the_decision_and_the_removal_is_recoverable`: 적용 뒤 두 파일이 없고 소유 항목과 기록 키가 없으며, 다음 `project-update-plan` 의 generation 단계가 `unchanged` 예요. `apply-recover` 가 두 파일을 바이트 그대로 되돌려요.
+- AC-3: met — `an_edited_or_misplaced_owned_agent_is_a_conflict_and_is_kept`: 손댄 agent 파일은 `conflict`(detail 에 `edited`)이고 적용은 아무것도 하지 않은 채 멈추며, 경로가 다른 소유 항목은 `conflict` 예요. 요청이 아직 이름 붙인 role 의 항목은 판단하지 않아요.
+- AC-4: met — `an_unrequested_skill_projection_is_removed_like_a_project_skill`.
+- AC-5: met — `a_harness_only_request_plans_no_removal`.
+- AC-6: met — `the_help_examples_name_the_input_each_command_reads`.
+- AC-7: met — `generation_request_record` 16, `project_update_plan_cli` 52, 이웃 대상 10개와 lib `record_tests` 4 모두 통과.
+- AC-8: met — `an_owned_agent_behind_a_link_is_a_conflict_and_nothing_outside_is_removed`: 폴더가 프로젝트 밖으로 걸린 링크여도 계획은 `conflict`(`symbolic link`), 적용은 멈추고 밖의 파일은 남아요.
+- AC-9: met — `an_unrequested_role_at_its_earlier_flat_path_is_removed`.
+- AC-10: met — `a_projection_the_request_names_but_cannot_plan_is_not_removed`.
+- 가드 뮤턴트(한 번에 한 줄씩, 한 슬롯 호출, 출력 `target/agent-3/mutants1.out`, 스크립트 `target/agent-3/mutants1.py`): 10개 중 10개 killed(exit 100, 끝난 뒤 트리 깨끗): M1 agent 종류를 지움, M2 projection 종류를 지움, M3 요청의 projection 을 빼먹음, M4 요청의 role 을 빼먹음, M5 평평한 role 경로를 신뢰 목록에서 뺌, M6 기록된 경로를 그대로 믿음, M7 경로의 링크를 거절하지 않음, M8 손댄 파일을 지움, M9 harness-only 에서도 지움, M10 지운 파일이 `owned_files` 에 남음. help 예시 뮤턴트 1개(`target/agent-3/mutants_help1.py`, 공유 파일이라 줄 임대 아래서, 출력 `target/agent-3/mutants_help1.out`): killed.
+- 위험 경로: 삭제를 늘리는 변경이라 시험이 빌드된 `moai` 바이너리를 버리는 프로젝트·버리는 HOME 에서 실제로 돌려요 — 빈 요청 적용과 `apply-recover`, 손댄 파일, 프로젝트 밖으로 걸린 링크, 평평한 옛 경로. 파일은 `generation-apply` 가 있어야만 지워지고, 지우기 전 바이트는 영수증에 남아요.
+- 항목 4 판단(D-4): 모양은 온전하지만 소유 파일보다 작은 손편집 기록은 막는 검사를 더하지 않아요. 다른 소유 파일의 삭제는 미리보기에 `remove` 줄로 보이고 사용자가 적용해야 하며 영수증으로 되돌려요.
+- 본 것, 이 SPEC 밖: `agents-apply` 와 `github-apply` 의 help 예시도 `< request.json` 이에요(`src/help.rs` 332-337줄). 두 명령도 계획을 읽는지 확인한 뒤 따로 고칠 후속이에요.
+- 하지 않은 것: 전체 `cargo test`(리더 몫), 넓은 `check affected`(READY 에서 한 번 돌려 노트에 인용), Windows·Linux.
