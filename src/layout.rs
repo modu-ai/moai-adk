@@ -95,6 +95,13 @@ pub fn switched_dir_in(project: &Path, subdir: &str, home: Option<&Path>) -> Opt
     active_home(project, &home_root).map(|dir| dir.join(subdir))
 }
 
+/// SPEC-20261124-home-writer-links: [`switched_dir`] for a caller that writes (or reads to
+/// decide) below the home state root. RED skeleton: it refuses nothing yet.
+pub fn switched_dir_checked(project: &Path, subdir: &str) -> Result<Option<PathBuf>> {
+    let home = environment_home();
+    Ok(switched_dir_in(project, subdir, home.as_deref()))
+}
+
 /// One store entry of a layout plan: what would move, how big it is, and where it goes.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LayoutEntry {
