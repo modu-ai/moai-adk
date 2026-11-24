@@ -527,8 +527,9 @@ fn chains_name_real_routes_agents_and_references() {
         .filter(|l| l.starts_with("| ") && !l.starts_with("| Request") && !l.starts_with("| ---"))
         .map(|l| l.trim_matches('|').split('|').map(str::trim).collect())
         .collect();
-    // Nine rows since SPEC-20261124-moai-leader-route REQ-11 added the LEADER row.
-    assert_eq!(rows.len(), 9);
+    // Nine rows since SPEC-20261124-moai-leader-route REQ-11 added the LEADER row; eleven since
+    // SPEC-20261120-plan-output-write-set REQ-7 added the flaky-test and the repair rows.
+    assert_eq!(rows.len(), 11);
     let mut covered: Vec<&str> = Vec::new();
     for row in &rows {
         assert_eq!(row.len(), 4, "{row:?}");
@@ -578,16 +579,13 @@ fn chains_name_real_routes_agents_and_references() {
     );
 }
 
-/// The question bank (#2639): one row per question, every always-asked axis of the PROJECT
-/// workflow is in it, and every answer lands in `decisions` or a real profile field.
+/// The question bank (#2639, SPEC-20261124-moai-project-interview): three tables, what is asked,
+/// what is confirmed and the operating rules that are never asked; every row has five cells and
+/// every answer lands in `decisions` or a real profile field.
 #[test]
 fn interview_question_bank_covers_the_project_axes() {
     let text = std::fs::read_to_string(package().join("references/internal/interview.md")).unwrap();
-    let bank = text
-        .split("## Question bank")
-        .nth(1)
-        .expect("question bank");
-    let rows: Vec<Vec<String>> = bank
+    let rows: Vec<Vec<String>> = text
         .lines()
         .filter(|l| l.starts_with("| `"))
         .map(|l| {
@@ -601,41 +599,45 @@ fn interview_question_bank_covers_the_project_axes() {
     assert_eq!(
         ids,
         [
+            // Asked.
             "purpose",
-            "protected",
-            "done",
-            "review_blocks",
-            "autonomy",
+            // Confirmed.
+            "stack",
             "test_command",
             "build_command",
-            "stack",
             "method",
             "hosts",
             // C-69: the versioning scheme, then the one detail the pick may need.
             "versioning",
             "versioning_format",
             "versioning_head",
-            // C-70: the git work flow, m-flow recommended.
-            "work_flow"
+            // C-70: the git work flow, GitHub flow recommended.
+            "work_flow",
+            // Defaults, never asked.
+            "protected",
+            "review_blocks",
+            "autonomy",
+            "done"
         ]
     );
     for r in &rows {
-        // C-51 D6 (user decision 2026-11-16): a fifth cell, the options with the recommended
-        // one named, between the question and where the answer goes.
         assert_eq!(r.len(), 5, "{r:?}");
-        let always = r[1] == "always";
         let id = r[0].trim_matches('`');
-        assert_eq!(
-            always,
-            ["protected", "done", "review_blocks", "autonomy"].contains(&id),
-            "{id}"
-        );
+        let never = ["protected", "review_blocks", "autonomy", "done"].contains(&id);
+        assert_eq!(r[1] == "never", never, "{id}");
+        if never {
+            assert_eq!(r[2], "not asked", "{id}");
+            assert_eq!(r[4], "decisions", "{id}");
+            continue;
+        }
         assert!(r[2].contains('?'), "{id}: the question cell asks");
-        assert!(
-            r[3].contains("(recommended") && r[3].contains(';'),
-            "{id}: options with a recommended one: {}",
-            r[3]
-        );
+        if id != "purpose" {
+            assert!(
+                r[3].contains("(recommended") && r[3].contains(';'),
+                "{id}: options with a recommended one: {}",
+                r[3]
+            );
+        }
         let to = r[4].as_str();
         assert!(
             to == "decisions"
@@ -651,9 +653,10 @@ fn interview_question_bank_covers_the_project_axes() {
             "{id}: {to}"
         );
     }
-    assert!(bank.contains("skip every row that reading already answered"));
-    assert!(bank.contains("\"source\": \"repo\""));
-    assert!(bank.contains("\"source\": \"user\""));
+    assert!(text.contains("skip every row that reading already answered"));
+    assert!(text.contains("\"source\": \"repo\""));
+    assert!(text.contains("\"source\": \"user\""));
+    assert!(text.contains("\"source\": \"default\""));
 }
 
 /// Card C-70 AC-1/AC-4: the `work_flow` row comes after the versioning rows, offers GitHub flow
@@ -676,7 +679,7 @@ fn work_flow_row_offers_m_flow_first_and_the_bank_states_each_flow() {
         .split(" | ")
         .map(|c| c.trim().to_string())
         .collect();
-    assert_eq!(cells[1], "the profile has no `work_flow`");
+    assert_eq!(cells[1], "always (the profile's value, else the default)");
     assert!(
         cells[3].starts_with("GitHub flow (recommended)"),
         "{cells:?}"
@@ -733,7 +736,10 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
             .collect()
     };
     let versioning = row("versioning");
-    assert_eq!(versioning[1], "the profile has no `versioning`");
+    assert_eq!(
+        versioning[1],
+        "always (the profile's value, else detection, else the default)"
+    );
     let options = &versioning[3];
     // Keep-existing comes first and is the recommended one when a scheme was detected.
     let keep = options.find("keep the existing one").expect("keep option");

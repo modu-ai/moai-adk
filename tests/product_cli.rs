@@ -1061,14 +1061,15 @@ fn launched(out: &std::process::Output) -> Value {
 }
 #[test]
 fn launcher_leader_default_claude() {
+    // The leader row of the default table (SPEC-20261121-model-defaults-one-table).
     let expected = json!([
         "claude",
         "--name",
         "leader",
         "--model",
-        "opus",
+        "claude-opus-5-5",
         "--effort",
-        "medium",
+        "high",
         "--permission-mode",
         "auto"
     ]);
@@ -1116,9 +1117,18 @@ fn launcher_flags_can_be_disabled() {
         ],
         None,
     ));
+    // The agent row of the default table (SPEC-20261121-model-defaults-one-table).
     assert_eq!(
         v["argv"],
-        json!(["claude", "--name", "agent-3", "--model", "opus", "--effort", "medium"])
+        json!([
+            "claude",
+            "--name",
+            "agent-3",
+            "--model",
+            "claude-sonnet-5-5",
+            "--effort",
+            "high"
+        ])
     );
     let v = launched(&launcher(
         &[
@@ -1220,6 +1230,8 @@ fn launcher_glm_requires_token_name_only() {
             "Z_AI_API_KEY"
         ])
     );
+    // The glm leader row of the default table, without the `zai/` prefix the host does not take
+    // (SPEC-20261121-model-defaults-one-table).
     assert_eq!(
         v["argv"],
         json!([
@@ -1227,9 +1239,9 @@ fn launcher_glm_requires_token_name_only() {
             "--name",
             "leader",
             "--model",
-            "opus",
+            "glm-5.4[1m]",
             "--effort",
-            "medium",
+            "high",
             "--permission-mode",
             "auto"
         ])
@@ -2743,9 +2755,7 @@ mod skill_package {
         let body = fs::read_to_string(root().join("workflows/project.md")).unwrap();
         for stage in [
             "**Detect.** Run `moai project-detect <project>`",
-            "**Interview by kind.**",
-            "New project:",
-            "Existing project:",
+            "**Interview.**",
             "\"value\": \"HOLD\"",
             "**Offer the code map.**",
             "run it only after the user agrees",
@@ -2770,14 +2780,13 @@ mod skill_package {
             // 2026-11-16): at most three per call (the Codex CLI limit), four calls.
             "Read before you ask (Issue #2639)",
             // #2706: the writing language is asked once, stored in project.yaml only, and read.
-            "ask it item by item with `moai language-setup <project>`",
+            "ask the four items, every run, with `moai language-setup <project>`",
             "so it is stored in the project profile through `project-plan`/`project-apply` and nowhere else",
-            "A later run reads the stored value and does not ask again",
+            "is the suggested value, not a reason to skip the question",
             "written in the stored `instruction_files` language",
-            "is confirmed with the user, not asked",
-            "at most three questions per call and at most four calls, one axis per question",
-            "what must never be touched, what counts as done (a check the user will run themselves), which mistakes a review should always stop, and what may run without asking against what must be asked",
-            "sorted the way SKILL.md sorts an open question",
+            "is shown, not asked",
+            "in at most two calls of three questions or fewer",
+            "what must never be changed, which mistakes review always stops, what may run without asking against what must be asked, and what counts as done are never asked",
             "each new file with its first lines and each changed file as its difference",
             "a managed part the user edited by hand is planned as `conflict` and never overwritten",
             // #2639 REVIEW.md draft from the interview answers.

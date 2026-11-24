@@ -805,24 +805,33 @@ fn symlink_launcher_config_is_refused_without_following_it() {
 #[test]
 fn name_and_leader_launch_the_decided_full_access_argv_and_take_no_number() {
     let f = fixture();
-    let claude = |name: &'static str| -> Vec<&'static str> {
-        vec![
-            "claude",
-            "--name",
-            name,
-            "--model",
-            "opus",
-            "--effort",
-            "medium",
-            "--permission-mode",
-            "auto",
-        ]
-    };
+    // The model and effort are the default table's for the tool and role
+    // (SPEC-20261121-model-defaults-one-table).
+    let claude =
+        |name: &'static str, model: &'static str, effort: &'static str| -> Vec<&'static str> {
+            vec![
+                "claude",
+                "--name",
+                name,
+                "--model",
+                model,
+                "--effort",
+                effort,
+                "--permission-mode",
+                "auto",
+            ]
+        };
     let cases: [(&[&str], Vec<&str>); 4] = [
-        (&["cc", "-l"], claude("leader")),
-        (&["glm", "-l"], claude("leader")),
-        (&["cc", "-a", "--name", "x"], claude("x")),
-        (&["glm", "-a", "--name", "x"], claude("x")),
+        (&["cc", "-l"], claude("leader", "claude-opus-5-5", "high")),
+        (&["glm", "-l"], claude("leader", "glm-5.4[1m]", "high")),
+        (
+            &["cc", "-a", "--name", "x"],
+            claude("x", "claude-sonnet-5-5", "high"),
+        ),
+        (
+            &["glm", "-a", "--name", "x"],
+            claude("x", "glm-5.3-flash", "max"),
+        ),
     ];
     for (args, want) in cases {
         let out = run(&f, args);

@@ -542,8 +542,9 @@ fn apply_checked(
     write_new(&manifest_path, format!("{manifest:#}\n").as_bytes())?;
 
     // The programs that run now decide again: a name a program started to use after the
-    // preview is skipped by the journal, not moved.
-    let procs = InUse::read();
+    // preview is skipped by the journal, not moved. The table is read now, not from the command
+    // cache that holds the read of the plan recomputed above.
+    let procs = InUse::read_fresh();
     let check = |p: &Path| match procs.uses(p, &canon(p)) {
         Ok(None) => move_journal::InUse::No,
         Ok(Some(why)) => move_journal::InUse::Yes(why.to_string()),

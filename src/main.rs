@@ -111,10 +111,10 @@ struct LaunchOpts {
     /// Session name (default `leader` for -l, the project's next `agent-N` for -a; none without a role).
     #[arg(long)]
     name: Option<String>,
-    /// Main model (Claude hosts default `opus`).
+    /// Main model (a role session: the saved choice, else the default table; no role: `opus`).
     #[arg(long)]
     model: Option<String>,
-    /// Effort (Claude default `medium`).
+    /// Effort (a role session: the saved choice, else the default table; no role: `medium`).
     #[arg(long)]
     effort: Option<String>,
     /// Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id). None by default;
