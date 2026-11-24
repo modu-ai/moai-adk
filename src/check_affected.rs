@@ -441,6 +441,183 @@ pub fn runner_in(dir: &Path) -> Runner {
     }
 }
 
+/// The earlier and the new state folder names, built at run time (`tests/state_folder_literal_scan.rs`
+/// counts them the same way).
+fn earlier_state_name() -> String {
+    format!(".{}-{}", "moai", "cli")
+}
+
+fn new_state_name() -> String {
+    format!(".{}", "moai")
+}
+
+fn is_word_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_'
+}
+
+/// How often `name` stands in `text` as a whole path segment: not right after a word character
+/// and not followed by a word character or `-` (the rule of `tests/state_folder_literal_scan.rs`).
+fn count_state_name(text: &str, name: &str) -> usize {
+    let mut n = 0;
+    let mut from = 0;
+    while let Some(at) = text[from..].find(name) {
+        let start = from + at;
+        let end = start + name.len();
+        let before_ok = text[..start]
+            .chars()
+            .next_back()
+            .is_none_or(|c| !is_word_char(c));
+        let after_ok = text[end..]
+            .chars()
+            .next()
+            .is_none_or(|c| !is_word_char(c) && c != '-');
+        if before_ok && after_ok {
+            n += 1;
+        }
+        from = end;
+    }
+    n
+}
+
+/// The quoted strings of one `key = ["a", "b"]` line's right side.
+fn quoted(rest: &str) -> Vec<String> {
+    rest.split('"')
+        .enumerate()
+        .filter(|(i, _)| i % 2 == 1)
+        .map(|(_, s)| s.to_string())
+        .collect()
+}
+
+/// `tests/areas.toml` read by lines (one array per line, as the table's own header asks): the
+/// `[areas]` arrays in file order and the `[solo]` files.
+fn parse_area_table(text: &str) -> (Vec<(String, Vec<String>)>, Vec<String>) {
+    let mut areas = Vec::new();
+    let mut solo = Vec::new();
+    let mut section = "";
+    for line in text.lines().map(str::trim) {
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if line.starts_with('[') && !line.contains('=') {
+            section = line.trim_matches(|c| c == '[' || c == ']').trim();
+            continue;
+        }
+        let Some((key, rest)) = line.split_once('=') else {
+            continue;
+        };
+        match section {
+            "areas" => areas.push((key.trim().to_string(), quoted(rest))),
+            "solo" if key.trim() == "files" => solo = quoted(rest),
+            _ => {}
+        }
+    }
+    (areas, solo)
+}
+
+/// The rows `path<TAB>earlier<TAB>new` of the state-folder allow list.
+fn parse_allow_rows(text: &str) -> Vec<(String, usize, usize)> {
+    text.lines()
+        .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
+        .filter_map(|l| {
+            let cols: Vec<&str> = l.trim_end().split('\t').collect();
+            match cols.as_slice() {
+                [path, e, n] => Some((path.to_string(), e.parse().ok()?, n.parse().ok()?)),
+                _ => None,
+            }
+        })
+        .collect()
+}
+
+/// The lines that tell what a range's added top-level `tests/*.rs` files break in the two tables
+/// that `tests/test_area_layout.rs` and `tests/state_folder_literal_scan.rs` read
+/// (SPEC-20261124-new-test-file-precheck): the first word of a file name that no area lists, a
+/// file of a moved area, a file named like an area crate, and a state folder name that the allow
+/// list does not cover. `moved` are the areas that hold a `tests/<area>/main.rs`; a table that is
+/// `None` is absent and its rules are skipped. Each line names the file, the table and what to
+/// add. The tables are only read.
+pub fn table_violations(
+    added: &[String],
+    tests: &[TestFile],
+    areas: Option<&str>,
+    allow: Option<&str>,
+    moved: &[String],
+) -> Vec<String> {
+    let mut out = Vec::new();
+    let stems: Vec<&str> = added
+        .iter()
+        .filter_map(|p| p.strip_prefix("tests/")?.strip_suffix(".rs"))
+        .filter(|s| !s.contains('/'))
+        .collect();
+    if let Some(text) = areas {
+        let (table, solo) = parse_area_table(text);
+        let area_of = |word: &str| {
+            table
+                .iter()
+                .find(|(_, words)| words.iter().any(|w| w == word))
+                .map(|(name, _)| name.as_str())
+        };
+        for stem in &stems {
+            let word = first_word(stem);
+            match area_of(word) {
+                None => out.push(format!(
+                    "tests/{stem}.rs: the first word `{word}` is not in tests/areas.toml; add \"{word}\" to one array of [areas] ({})",
+                    table
+                        .iter()
+                        .map(|(n, _)| n.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )),
+                Some(area) => {
+                    if moved.iter().any(|m| m == area) && !solo.iter().any(|s| s == stem) {
+                        out.push(format!(
+                            "tests/{stem}.rs: the area `{area}` is moved (tests/{area}/main.rs exists); put the file at tests/{area}/{stem}.rs and declare `mod {stem};` in tests/{area}/main.rs"
+                        ));
+                    }
+                }
+            }
+            if table.iter().any(|(name, _)| name == stem) {
+                out.push(format!(
+                    "tests/{stem}.rs: the name is that of the area crate `{stem}` in tests/areas.toml; rename the file"
+                ));
+            }
+        }
+    }
+    if let Some(text) = allow {
+        let rows = parse_allow_rows(text);
+        let (earlier, new) = (earlier_state_name(), new_state_name());
+        for stem in &stems {
+            let Some(file) = tests.iter().find(|t| t.name == *stem) else {
+                continue;
+            };
+            let have = (
+                count_state_name(&file.text, &earlier),
+                count_state_name(&file.text, &new),
+            );
+            if have == (0, 0) {
+                continue;
+            }
+            let path = format!("tests/{stem}.rs");
+            let row = format!("{path}\t{}\t{}", have.0, have.1);
+            match rows.iter().find(|(p, _, _)| *p == path) {
+                None => out.push(format!(
+                    "{path}: spells a state folder name ({earlier} x{}, {new} x{}) and is not in tests/fixtures/state_folder_literals/allow.tsv; use the resolvers, or for a fixture that builds an earlier layout on purpose add the row `{row}`",
+                    have.0, have.1
+                )),
+                Some((_, ae, an)) => {
+                    for (name, count, allowed) in [(&earlier, have.0, *ae), (&new, have.1, *an)] {
+                        if count > allowed {
+                            out.push(format!(
+                                "{path}: spells {name} {count} times, the baseline in tests/fixtures/state_folder_literals/allow.tsv allows {allowed}; the row would be `{row}`"
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
 /// One planned step. The `heavy` steps run one after another under one heavy slot hold.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Step {
@@ -449,6 +626,9 @@ pub struct Step {
     pub args: Vec<String>,
     pub heavy: bool,
     pub env: Vec<(String, String)>,
+    /// An in-process step: the verdict lines, decided when the plan is made. The run writes them
+    /// to the step's log and exits 1 when there are any; it starts no program.
+    pub report: Option<Vec<String>>,
 }
 
 fn step(label: &str, program: &str, args: &[&str], heavy: bool) -> Step {
@@ -458,7 +638,59 @@ fn step(label: &str, program: &str, args: &[&str], heavy: bool) -> Step {
         args: args.iter().map(|s| s.to_string()).collect(),
         heavy,
         env: Vec::new(),
+        report: None,
     }
+}
+
+/// The cheap step `test_tables` (SPEC-20261124-new-test-file-precheck): the added top-level
+/// `tests/*.rs` files checked against the area table and the state-folder allow list. `None`
+/// when the range adds no such file or the repository has neither table, so the plan, the log
+/// and the summary of every other run stay as they were.
+fn table_step(facts: &Facts) -> Option<Step> {
+    let added = facts
+        .added
+        .iter()
+        .filter(|p| {
+            p.strip_prefix("tests/")
+                .and_then(|r| r.strip_suffix(".rs"))
+                .is_some_and(|s| !s.contains('/'))
+        })
+        .count();
+    if added == 0
+        || (facts.areas_text.is_none() && facts.allow_text.is_none() && facts.unreadable.is_empty())
+    {
+        return None;
+    }
+    let mut lines = table_violations(
+        &facts.added,
+        &facts.tests,
+        facts.areas_text.as_deref(),
+        facts.allow_text.as_deref(),
+        &facts.moved,
+    );
+    for (table, error) in &facts.unreadable {
+        lines.push(format!(
+            "{table}: the table exists but cannot be read ({error}); fix or restore it, it is not treated as absent"
+        ));
+    }
+    let mut s = step(
+        "test_tables",
+        "(in-process)",
+        &["test_tables", &format!("{added} added test file(s)")],
+        false,
+    );
+    s.report = Some(lines);
+    Some(s)
+}
+
+/// `steps` with the table step, when there is one, placed after the last cheap step and before
+/// the first heavy one.
+fn plan(table: &Option<Step>, mut planned: Vec<Step>) -> Vec<Step> {
+    if let Some(t) = table {
+        let at = planned.iter().take_while(|s| !s.heavy).count();
+        planned.insert(at, t.clone());
+    }
+    planned
 }
 
 /// The steps of a selection, in the order the summary names them (REQ-4, REQ-7). `present` are
@@ -546,6 +778,7 @@ fn cargo_step(label: &str, sub: &[&str], rest: &[&str]) -> Step {
         args,
         heavy: true,
         env: Vec::new(),
+        report: None,
     }
 }
 
@@ -559,6 +792,16 @@ pub struct Facts {
     pub present: Vec<String>,
     pub tests: Vec<TestFile>,
     pub scan_list: Option<String>,
+    /// The paths the range adds (`--diff-filter=A`).
+    pub added: Vec<String>,
+    /// `tests/areas.toml` and the state-folder allow list, as the checkout holds them.
+    pub areas_text: Option<String>,
+    pub allow_text: Option<String>,
+    /// A table that exists but cannot be read (no `NotFound`): its path and the read error. Such a
+    /// table is not an absent one (SPEC-20261124-new-test-file-precheck REQ-10).
+    pub unreadable: Vec<(String, String)>,
+    /// The test folders that hold a `main.rs` (the moved areas).
+    pub moved: Vec<String>,
 }
 
 fn git(dir: &Path, args: &[&str]) -> Result<String> {
@@ -628,15 +871,36 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
     .filter(|l| !l.is_empty())
     .map(String::from)
     .collect();
+    let added: Vec<String> = git(
+        dir,
+        &[
+            "diff",
+            "--name-only",
+            "--no-renames",
+            "--diff-filter=A",
+            "-z",
+            &format!("{base}...{head}"),
+        ],
+    )?
+    .split('\0')
+    .filter(|l| !l.is_empty())
+    .map(String::from)
+    .collect();
     let present = changed
         .iter()
         .filter(|p| dir.join(p).is_file())
         .cloned()
         .collect();
     let mut tests = Vec::new();
+    let mut moved = Vec::new();
     if let Ok(entries) = std::fs::read_dir(dir.join("tests")) {
         for e in entries.flatten() {
             let path = e.path();
+            if path.join("main.rs").is_file() {
+                if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
+                    moved.push(name.to_string());
+                }
+            }
             if !path.is_file() {
                 continue;
             }
@@ -657,6 +921,13 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
     }
     tests.sort_by(|a, b| a.name.cmp(&b.name));
     let scan_list = std::fs::read_to_string(dir.join("tools/repo_scans.json")).ok();
+    let mut unreadable = Vec::new();
+    let areas_text = read_table(dir, "tests/areas.toml", &mut unreadable);
+    let allow_text = read_table(
+        dir,
+        "tests/fixtures/state_folder_literals/allow.tsv",
+        &mut unreadable,
+    );
     Ok(Facts {
         root,
         base,
@@ -665,7 +936,26 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         present,
         tests,
         scan_list,
+        added,
+        areas_text,
+        allow_text,
+        unreadable,
+        moved,
     })
+}
+
+/// One table's text. A missing file is an absent table (`None`, no note); any other read error
+/// (invalid UTF-8, a folder, no permission) is noted in `unreadable` with the table's path, so the
+/// table step stops on it instead of reading it as absent.
+fn read_table(dir: &Path, rel: &str, unreadable: &mut Vec<(String, String)>) -> Option<String> {
+    match std::fs::read_to_string(dir.join(rel)) {
+        Ok(text) => Some(text),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => {
+            unreadable.push((rel.to_string(), e.to_string()));
+            None
+        }
+    }
 }
 
 /// The folder cargo builds into: the caller's `CARGO_TARGET_DIR` (a relative one counts from the
@@ -740,12 +1030,15 @@ pub fn list(
     );
     let runner = runner_in(&facts.root);
     // `--list` reads nothing from the slot folder, so it names no cap.
-    let planned = steps(
-        &sel,
-        &facts.present,
-        &format!("{}...{}", facts.base, facts.head),
-        runner,
-        None,
+    let planned = plan(
+        &table_step(&facts),
+        steps(
+            &sel,
+            &facts.present,
+            &format!("{}...{}", facts.base, facts.head),
+            runner,
+            None,
+        ),
     );
     Ok(serde_json::json!({
         "action": "affected",
@@ -961,6 +1254,17 @@ fn hold_slot(
     Ok((held, max))
 }
 
+/// An in-process step: its verdict lines go to the log and any line makes the exit code 1.
+fn run_report(lines: &[String], log: &Path) -> i32 {
+    let text = if lines.is_empty() {
+        "no violation\n".to_string()
+    } else {
+        format!("{}\n", lines.join("\n"))
+    };
+    let _ = std::fs::write(log, text);
+    i32::from(!lines.is_empty())
+}
+
 /// `key=exit` words in step order: one key per label up to its `:`, the first non-zero exit
 /// of a repeated label (REQ-11).
 fn summary_words(results: &[(String, i32)]) -> Vec<(String, i32)> {
@@ -1024,12 +1328,16 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     let mut shown = threads.to_string();
     // Planned with nextest until the slot is held: the runner is asked only then, so a refused
     // slot starts no cargo at all. The labels do not depend on the runner.
-    let mut planned = steps(
-        &sel,
-        &facts.present,
-        &range3,
-        Runner::Nextest,
-        cap_for(Runner::Nextest),
+    let table = table_step(&facts);
+    let mut planned = plan(
+        &table,
+        steps(
+            &sel,
+            &facts.present,
+            &range3,
+            Runner::Nextest,
+            cap_for(Runner::Nextest),
+        ),
     );
     let out = opts
         .out
@@ -1063,7 +1371,7 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
             match hold_slot(opts, &out) {
                 Ok(h) => {
                     let r = runner_in(dir);
-                    planned = steps(&sel, &facts.present, &range3, r, cap_for(r));
+                    planned = plan(&table, steps(&sel, &facts.present, &range3, r, cap_for(r)));
                     if let Some(theirs) = caller_threads(r, env) {
                         shown = theirs;
                     }
@@ -1081,15 +1389,16 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
             i + 1,
             s.label.replace([':', '/'], "_")
         ));
-        let code = match (s.heavy, &held, refused) {
-            (true, Some((h, slots)), _) => {
+        let code = match (&s.report, s.heavy, &held, refused) {
+            (Some(lines), _, _, _) => run_report(lines, &log),
+            (None, true, Some((h, slots)), _) => {
                 let mut extra = vec![(crate::heavy_slot::SLOT_FD_ENV, h.env_value())];
                 if let Some(jobs) = build_jobs(*slots) {
                     extra.push(("CARGO_BUILD_JOBS", jobs));
                 }
                 run_step(dir, s, &log, &extra)
             }
-            (true, None, Some(code)) => {
+            (None, true, None, Some(code)) => {
                 let _ = std::fs::write(
                     &log,
                     format!("not run: the heavy slot was not obtained (exit {code}); see heavy-slot.log\n"),
@@ -1161,6 +1470,137 @@ mod tests {
             summary_words(&r),
             [("bash_n".to_string(), 2), ("fmt".to_string(), 0)]
         );
+    }
+
+    const AREAS: &str = "# t\n[areas]\ncard = [\"card\"]\nspec = [\"spec\", \"check\"]\nlane = [\"lane\"]\n\n[solo]\nfiles = [\"check_solo\"]\n";
+
+    fn file(name: &str, text: &str) -> TestFile {
+        TestFile {
+            name: name.to_string(),
+            text: text.to_string(),
+            ..Default::default()
+        }
+    }
+
+    fn added(stems: &[&str]) -> Vec<String> {
+        stems.iter().map(|s| format!("tests/{s}.rs")).collect()
+    }
+
+    #[test]
+    fn table_violations_name_each_kind_of_miss() {
+        let moved = vec!["lane".to_string()];
+        let got = table_violations(
+            &added(&["zzfresh_cli", "lane_x", "spec", "check_solo", "card_ok"]),
+            &[],
+            Some(AREAS),
+            None,
+            &moved,
+        );
+        assert_eq!(got.len(), 3, "{got:?}");
+        assert!(got[0].starts_with("tests/zzfresh_cli.rs") && got[0].contains("\"zzfresh\""));
+        assert!(got[0].contains("tests/areas.toml") && got[0].contains("card, spec, lane"));
+        assert!(got[1].contains("moved") && got[1].contains("tests/lane/lane_x.rs"));
+        assert!(got[2].contains("area crate `spec`"));
+    }
+
+    #[test]
+    fn table_violations_pass_a_registered_file_and_skip_an_absent_table() {
+        let text = format!("let p = \"{}/x\";", earlier_state_name());
+        let tests = [file("zzfresh_cli", &text)];
+        let names = added(&["zzfresh_cli"]);
+        assert!(table_violations(&names, &tests, None, None, &[]).is_empty());
+        assert!(table_violations(&added(&["card_ok"]), &[], Some(AREAS), None, &[]).is_empty());
+        // Files in a folder, and paths that are no test file, are not top-level tests.
+        let other = vec![
+            "tests/lane/zz.rs".to_string(),
+            "tests/zz.py".to_string(),
+            "src/zz.rs".to_string(),
+        ];
+        assert!(table_violations(&other, &[], Some(AREAS), Some(""), &[]).is_empty());
+    }
+
+    #[test]
+    fn table_violations_count_each_state_folder_name_against_its_row() {
+        let both = format!(
+            "\"{}/a\" \"{}/b\" \"{}/c\"",
+            earlier_state_name(),
+            new_state_name(),
+            new_state_name()
+        );
+        let tests = [file("check_a", &both)];
+        let names = added(&["check_a"]);
+        let none = table_violations(&names, &tests, None, Some("# only a comment\n"), &[]);
+        assert_eq!(none.len(), 1, "{none:?}");
+        assert!(none[0].contains("`tests/check_a.rs\t1\t2`"), "{none:?}");
+        let exact = "tests/check_a.rs\t1\t2\n";
+        assert!(table_violations(&names, &tests, None, Some(exact), &[]).is_empty());
+        let roomy = "tests/check_a.rs\t5\t5\n";
+        assert!(table_violations(&names, &tests, None, Some(roomy), &[]).is_empty());
+        let low = "tests/check_a.rs\t1\t1\n";
+        let got = table_violations(&names, &tests, None, Some(low), &[]);
+        assert_eq!(got.len(), 1, "{got:?}");
+        assert!(
+            got[0].contains(" 2 times") && got[0].contains("allows 1"),
+            "{got:?}"
+        );
+        // The earlier name never counts as the new one, and program names count nothing.
+        let text = format!("{}-v1 moai-cli x{}", earlier_state_name(), new_state_name());
+        assert_eq!(count_state_name(&text, &new_state_name()), 0);
+        assert_eq!(count_state_name(&text, &earlier_state_name()), 0);
+    }
+
+    const MANIFEST: &str = env!("CARGO_MANIFEST_DIR");
+
+    /// SPEC-20261124-new-test-file-precheck REQ-8: the repository's own test files, all taken as
+    /// added, pass the step: it cannot be stricter than the two repository tests, which pass on
+    /// the same tree. A unit test, not a `tests/` file: a test file that walks the tree needs a
+    /// row in `tools/repo_scans.json`.
+    #[test]
+    fn the_repository_tests_pass_the_table_step_as_added_files() {
+        let root = Path::new(MANIFEST);
+        let mut added = Vec::new();
+        let mut tests = Vec::new();
+        for entry in std::fs::read_dir(root.join("tests")).unwrap().flatten() {
+            let path = entry.path();
+            if !path.is_file() || path.extension().is_none_or(|e| e != "rs") {
+                continue;
+            }
+            let name = path.file_stem().unwrap().to_string_lossy().to_string();
+            added.push(format!("tests/{name}.rs"));
+            tests.push(TestFile {
+                text: std::fs::read_to_string(&path).unwrap(),
+                name,
+                ..Default::default()
+            });
+        }
+        assert!(added.len() > 100, "the scan found {} files", added.len());
+        let areas = std::fs::read_to_string(root.join("tests/areas.toml")).unwrap();
+        let allow =
+            std::fs::read_to_string(root.join("tests/fixtures/state_folder_literals/allow.tsv"))
+                .unwrap();
+        let moved: Vec<String> = std::fs::read_dir(root.join("tests"))
+            .unwrap()
+            .flatten()
+            .filter(|e| e.path().join("main.rs").is_file())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        let found = table_violations(&added, &tests, Some(&areas), Some(&allow), &moved);
+        assert!(found.is_empty(), "{}", found.join("\n"));
+    }
+
+    /// REQ-9: the guidance says where a new test file registers and that the step stops the run.
+    #[test]
+    fn the_guidance_says_where_a_new_test_file_registers() {
+        let root = Path::new(MANIFEST);
+        for rel in [
+            "docs/design-review/appendix/operations/check.md",
+            "docs/lane-rules.md",
+        ] {
+            let text = std::fs::read_to_string(root.join(rel)).unwrap();
+            for word in ["test_tables", "tests/areas.toml", "allow.tsv"] {
+                assert!(text.contains(word), "{rel} does not name `{word}`");
+            }
+        }
     }
 
     fn rust(name: &str, modules: &[&str], os: &[&str]) -> TestFile {

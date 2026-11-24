@@ -52,4 +52,5 @@ An audit of a release pull request reads the exact head in a clone of its own. `
 ## Tests
 
 - Tests are Rust only; nobody runs a Python test module by hand as evidence. `moai check affected` still runs its own remaining Python steps and their result is reported as it comes.
+- A new top-level `tests/*.rs` file registers its first word in `tests/areas.toml` and, when it spells a state folder name on purpose, its row in `tests/fixtures/state_folder_literals/allow.tsv`, in the same change; `moai check affected` stops at `test_tables` before the heavy steps and prints the line to add.
 - Test in temporary projects or fixtures, never against installed user state. Do not claim Windows or Linux results from Mac fixtures.
