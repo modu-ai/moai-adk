@@ -12,7 +12,9 @@ pub mod build;
 pub mod mutant_line;
 pub mod verify;
 
-use crate::card::{command as card_command, input as card_input};
+use crate::card::{
+    command as card_command, inbox as card_inbox, input as card_input, ready_receipt,
+};
 use crate::{gate, self_audit, spec_doc, trailers};
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
@@ -391,12 +393,25 @@ impl Git<'_> {
 
 struct Note {
     id: i64,
+    kind: String,
+    author: String,
     body: String,
 }
 
 impl Note {
     fn first_line(&self) -> &str {
         self.body.lines().next().unwrap_or("")
+    }
+
+    /// The marker word of a hand-back note (SPEC-20261125-bundle-reads-repaired-note): the one
+    /// judge of the `card note` gate, `marker_of_line`, decides which first lines hand a head
+    /// back. A note by the leader or a `decision` note is never one, whatever its first line
+    /// says: the leader quotes the lane's lines and a decision note states a pick.
+    fn hand_back_marker(&self) -> Option<&'static str> {
+        if self.author == card_inbox::DEFAULT_LEADER || self.kind == "decision" {
+            return None;
+        }
+        ready_receipt::marker_of_line(self.first_line())
     }
 }
 
@@ -409,6 +424,8 @@ fn card_notes(project: &Path, home: &Path, name: &str) -> Result<Vec<Note>> {
                 .filter_map(|n| {
                     Some(Note {
                         id: n["note_id"].as_i64()?,
+                        kind: n["kind"].as_str().unwrap_or("").to_string(),
+                        author: n["author"].as_str().unwrap_or("").to_string(),
                         body: n["body"].as_str()?.to_string(),
                     })
                 })
@@ -417,43 +434,50 @@ fn card_notes(project: &Path, home: &Path, name: &str) -> Result<Vec<Note>> {
         .unwrap_or_default())
 }
 
-/// One card's newest marker note and what it says.
+/// One card's newest hand-back note and what it says.
 struct Ready {
     card: String,
     note_id: i64,
+    /// The marker word the note starts with (`LANE-READY-INTEGRATION`, `REPAIRED` or `READY`).
+    marker: &'static str,
     /// `None`: the note does not read under the grammar (`unreadable`).
     head: Option<String>,
     spec: Option<String>,
     lines: usize,
 }
 
-/// The newest note of the card whose first line starts with the marker; the newest wins even
-/// when it is the one that does not read (an older head would be stale).
+/// The newest hand-back note of the card; the newest wins even when it is the one that does not
+/// read (an older head would be stale).
 fn newest_marker(card: &str, notes: &[Note]) -> Option<Ready> {
-    let marked: Vec<&Note> = notes
+    let marked: Vec<(&Note, &'static str)> = notes
         .iter()
-        .filter(|n| n.first_line().starts_with(MARKER))
+        .filter_map(|n| n.hand_back_marker().map(|m| (n, m)))
         .collect();
-    let newest = marked.iter().max_by_key(|n| n.id)?;
+    let (newest, marker) = *marked.iter().max_by_key(|(n, _)| n.id)?;
     let parsed = parse_ready(newest.first_line(), card);
     Some(Ready {
         card: card.to_string(),
         note_id: newest.id,
+        marker,
         head: parsed.as_ref().map(|p| p.0.clone()),
         spec: parsed.and_then(|p| p.1),
         lines: marked.len(),
     })
 }
 
-/// The whole text of the newest note of the card whose marker line names `head` (the note a
-/// `guard-mutant:` line is read from); `None` when no marker note names it.
+/// The whole text of the newest hand-back note of the card whose first line names `head` (the
+/// note a `guard-mutant:` line is read from); `None` when no hand-back note names it.
 fn ready_body_naming<'a>(card: &str, notes: &'a [Note], head: &str) -> Option<&'a str> {
+    note_naming(card, notes, head).map(|n| n.body.as_str())
+}
+
+/// The newest hand-back note of the card whose first line names `head`.
+fn note_naming<'a>(card: &str, notes: &'a [Note], head: &str) -> Option<&'a Note> {
     notes
         .iter()
-        .filter(|n| n.first_line().starts_with(MARKER))
+        .filter(|n| n.hand_back_marker().is_some())
         .filter(|n| parse_ready(n.first_line(), card).is_some_and(|p| p.0 == head))
         .max_by_key(|n| n.id)
-        .map(|n| n.body.as_str())
 }
 
 fn spec_id_shaped(s: &str) -> bool {
@@ -474,9 +498,12 @@ fn spec_id_shaped(s: &str) -> bool {
 
 /// D-6 of SPEC-20261119-bundle-tool: `LANE-READY-INTEGRATION C-<n> head=<40 hex>` then the end
 /// of the line or a space, with an optional ` spec=<SPEC id>` right after the head; the card
-/// must be the card the note is on. Returns the head and the optional `spec=` value.
+/// must be the card the note is on. The marker word is any of the three the `card note` gate
+/// takes (`ready_receipt::marker_of_line`), so `REPAIRED C-<n> head=<40 hex>` reads the same way
+/// (SPEC-20261125-bundle-reads-repaired-note). Returns the head and the optional `spec=` value.
 pub fn parse_ready(line: &str, card: &str) -> Option<(String, Option<String>)> {
-    let rest = line.strip_prefix(MARKER)?.strip_prefix(' ')?;
+    let marker = ready_receipt::marker_of_line(line)?;
+    let rest = line.strip_prefix(marker)?.strip_prefix(' ')?;
     let (named, rest) = rest.split_once(' ')?;
     if named != card {
         return None;
@@ -592,7 +619,8 @@ pub fn ready(project: &Path, home: &Path, dir: &Path, tip: &str) -> Result<Value
                 };
                 let on_origin = present && !git.origin_branches(h, false).is_empty();
                 heads.push(json!({
-                    "card": r.card, "note_id": r.note_id, "head": h, "spec": r.spec,
+                    "card": r.card, "note_id": r.note_id, "marker": r.marker,
+                    "head": h, "spec": r.spec,
                     "specs": specs, "present": present, "on_origin": on_origin,
                     "already_in_tip": present && git.is_ancestor(h, &tip.sha),
                     "ready_lines": r.lines,
@@ -658,6 +686,10 @@ fn finding(code: &str, card: &str, head: &str, detail: Value) -> Value {
 struct Judged {
     card: String,
     head: Option<String>,
+    /// The hand-back note the head and the `guard-mutant:` lines were read from, as
+    /// `{"note_id", "marker"}` (SPEC-20261125-bundle-reads-repaired-note); `None` when no
+    /// hand-back note names the head.
+    read_note: Option<Value>,
     findings: Vec<Value>,
     /// The `guard-mutant:` warnings (SPEC-20261123-ready-mutant-line): listed, never blocking.
     warnings: Vec<Value>,
@@ -684,6 +716,7 @@ fn judge(
     let mut j = Judged {
         card: arg.card.clone(),
         head: None,
+        read_note: None,
         findings: vec![],
         warnings: vec![],
         floor: 0,
@@ -724,6 +757,10 @@ fn judge(
         },
     };
     j.head = Some(head.clone());
+    j.read_note = note_naming(&arg.card, &notes, &head).and_then(|n| {
+        n.hand_back_marker()
+            .map(|marker| json!({"note_id": n.id, "marker": marker}))
+    });
     j.warnings = mutant_line::warnings(ready_body_naming(&arg.card, &notes, &head))
         .into_iter()
         .map(|(code, detail)| finding(code, &arg.card, &head, detail))
@@ -1006,7 +1043,8 @@ pub fn check(
     let heads_json: Vec<Value> = judged
         .iter()
         .map(|j| {
-            json!({"card": j.card, "head": j.head, "audit_floor": j.floor,
+            json!({"card": j.card, "head": j.head, "read_note": j.read_note,
+                   "audit_floor": j.floor,
                    "pass_note": j.pass_note, "pass_tier": j.pass_tier, "specs": j.specs,
                    "findings": j.findings.len(), "warnings": j.warnings.len()})
         })
@@ -1531,6 +1569,26 @@ mod tests {
         assert_eq!(parse_ready(&plain, "C-12"), Some((H.into(), None)));
         let bare = format!("{MARKER} C-12 head={H}");
         assert_eq!(parse_ready(&bare, "C-12"), Some((H.into(), None)));
+    }
+
+    /// SPEC-20261125-bundle-reads-repaired-note REQ-1: the three markers the `card note` gate
+    /// takes read the same way, and a word that only starts like one does not.
+    #[test]
+    fn the_grammar_reads_every_marker_the_gate_takes() {
+        assert_eq!(
+            parse_ready(&format!("REPAIRED C-12 head={H}"), "C-12"),
+            Some((H.into(), None))
+        );
+        assert_eq!(
+            parse_ready(
+                &format!("READY C-12 head={H} spec=SPEC-20261119-x-y"),
+                "C-12"
+            ),
+            Some((H.into(), Some("SPEC-20261119-x-y".into())))
+        );
+        assert!(parse_ready(&format!("REPAIRED C-13 head={H}"), "C-12").is_none());
+        assert!(parse_ready(&format!("REPAIREDC-12 head={H}"), "C-12").is_none());
+        assert!(parse_ready(&format!("MERGE-READY C-12 head={H}"), "C-12").is_none());
     }
 
     #[test]
