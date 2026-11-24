@@ -2,7 +2,7 @@
 id: SPEC-20261124-leader-round-lease-sweep
 title: "the leader round sweeps ended leases once before it builds its answer, and only lists them when the profile turns the sweep off"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-24
 ---
 
@@ -42,7 +42,7 @@ created: 2026-11-24
 - AC-1 (REQ-1, REQ-3, REQ-5): in a temporary ledger, a round run once returns a card whose lease ended 25 hours ago to `ready`, names it under `lease_sweep.cards` and answers `writes: true`, and a second round returns nothing · verify: `cargo nextest run --locked --offline --test leader_round_sweep_cli round_sweeps_`
 - AC-2 (REQ-2, REQ-6): with `lease_sweep_in_round` false the same card stays `active` with every ledger row as it was and the answer lists it under `lease_sweep.cards` with the status `listed`, a profile that cannot be read lists only, and without the key or with `true` the card is swept · verify: `cargo nextest run --locked --offline --test leader_round_sweep_cli profile_`
 - AC-3 (REQ-4): a project with no profile, a project whose ledger is absent and a HOME that is not set each leave `lease_sweep` as `not_run`, a ledger file that is not a database leaves it as `error`, each with the reason, and `lanes` and `round` are still answered · verify: `cargo nextest run --locked --offline --test leader_round_sweep_cli not_run_ error_`
-- AC-4 (REQ-1): a card inside the grace period, a card in `review` and a renewed lease stay as they are and appear as skipped, so the round calls the sweep and does not widen it · verify: `cargo nextest run --locked --offline --test leader_round_sweep_cli skipped_`
+- AC-4 (REQ-1): a card inside the grace period and a card in `review` stay as they are and appear as skipped, and a live lease does not appear in any list and stays as it is, so the round calls the sweep and does not widen it · verify: `cargo nextest run --locked --offline --test leader_round_sweep_cli skipped_`
 - AC-5 (REQ-5): `moai check affected` passes at the head of the card · verify: `moai check affected <base>..<head>`
 
 ## Scope
@@ -82,7 +82,7 @@ created: 2026-11-24
 - AC-1: met — `cargo nextest run --locked --offline --no-fail-fast --test leader_round_sweep_cli` passed 12 of 12 on head `1d4d0e957e`: a card whose lease ended 25 hours ago goes `active` → `ready`, is named under `lease_sweep.cards` with holder, generation and lease end, and the round answers `writes: true`; a second round names no card, answers `writes: false` and adds no event.
 - AC-2: met — the same run: with `lease_sweep_in_round` false the card stays `active`, no event and no note is written and the answer has the status `listed`; a profile that cannot be read (`lease_sweep_hours: 0`) lists only with `switch_source: unreadable_profile`; `true` and an absent key sweep; the key must be a bool.
 - AC-3: met — the same run: no profile, no ledger and no HOME give `not_run` with a reason, a ledger file that is not a database gives `error`, `lanes` and `round` are still answered, and no `~/.moai` folder is created in the no-ledger case.
-- AC-4: met — the same run: a card 23 hours past its lease, a card in `review` and a renewed lease stay as they are; the round calls the sweep and does not widen it.
+- AC-4: met — the repaired `skipped_` test: a card 23 hours past its lease and a card in `review` stay as they are and are named as skipped; a card whose lease still runs is in neither `cards` nor `skipped` and stays `active`; the round calls the sweep and does not widen it.
 - AC-5: see the READY note (the bare `moai check affected` receipt at the final head).
 - Direct run on a throwaway ledger (a temporary HOME under the worktree's `target/`, removed afterwards), with the binary rebuilt at head: a held card whose lease runs → round 1 `swept`, no card, `writes: false`; the lease set to 25 hours ago → round 2 names `C-1` and answers `writes: true`, and `card show` reads `ready`. The first attempt used a binary left over from the last mutant (`reason: "mutant"` in its answer) and is not counted.
 - Guard mutants (each edit exact-once, the new tests run, the file restored with git, tree clean afterwards): 5 of 5 caught, all with exit 100 — `dry_run_switch` (`!enabled` → `false`), `unreadable_profile_lists_only` (`false` → `true`), `writes_flag_of_the_round` (`renewed || swept` → `renewed`), `error_status_for_a_broken_ledger` (the error answer → `not_run`), `no_sweep_call` (the call replaced by a fixed `not_run`).

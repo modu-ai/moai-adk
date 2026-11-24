@@ -368,6 +368,8 @@ fn skipped_cards_stay_as_they_are_and_are_named_with_a_reason() {
     let late = w.held(S_A, "late", &["src/a.rs"]);
     let inside = w.held(S_A, "inside the grace", &["src/b.rs"]);
     let review = w.held(S_A, "in review", &["src/c.rs"]);
+    // A lane that is working: its lease runs, so the sweep must leave its card alone.
+    let live = w.held(S_A, "live lease", &["src/d.rs"]);
     card_result(&w.card(
         Some(S_A),
         &["review", &review, "--generation", "1", "--keep", "src/c.rs"],
@@ -391,6 +393,10 @@ fn skipped_cards_stay_as_they_are_and_are_named_with_a_reason() {
         .collect();
     assert!(skipped.iter().any(|(n, _)| *n == inside), "{skipped:?}");
     assert!(skipped.iter().any(|(n, _)| *n == review), "{skipped:?}");
+    // A live lease is no ended lease: it is in neither list and the card stays held.
+    assert!(!names(part, "cards").contains(&live), "{r}");
+    assert!(!skipped.iter().any(|(n, _)| *n == live), "{skipped:?}");
+    assert_eq!(w.state_of(&live), "active");
     assert_eq!(w.state_of(&inside), "active");
     assert_eq!(w.state_of(&review), "review");
     assert_eq!(w.state_of(&late), "ready");
