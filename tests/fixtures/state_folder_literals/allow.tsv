@@ -181,7 +181,7 @@ tests/path_root_default.rs	11	45
 tests/path_root_direct_sites.rs	9	9
 tests/placeholder_profile_guard.rs	0	1
 tests/process_scan_cost_cli.rs	0	5
-tests/process_scan_snapshot_cli.rs	6	11
+tests/process_scan_snapshot_cli.rs	9	19
 tests/product_cli.rs	52	6
 tests/profile_apply_engine.rs	13	2
 tests/profile_scopes_cli.rs	0	3
