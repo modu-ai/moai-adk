@@ -284,15 +284,7 @@ fn judge_pass(
             ),
         )));
     }
-    // From where the verdict head left the base: the tip's own changes are not the head's.
-    let files_base = git_text(
-        input.project,
-        &["merge-base", range_base, input.verdict_head],
-    )
-    .map(|s| s.trim().to_string())
-    .unwrap_or_else(|_| range_base.to_string());
-    let files = changed_files(input.project, &files_base, input.verdict_head)?;
-    let tier = gate::tier_of(Some(event.tier), &files);
+    let tier = floor_tier(input.project, range_base, input.verdict_head, event.tier)?;
     if tier >= 1
         && input
             .lander
@@ -422,6 +414,16 @@ pub(crate) fn is_clean_join(project: &Path, commit: &str, first: &str, second: &
     };
     let own = format!("{commit}^{{tree}}");
     git_text(project, &["rev-parse", &own]).is_ok_and(|tree| tree.trim() == merged)
+}
+
+/// The tier a landing judges a head by: the tier the verdict states, raised by the floor of what
+/// the head changed since it left `range_base` (the tip's own changes are not the head's).
+pub fn floor_tier(project: &Path, range_base: &str, head: &str, stated: u8) -> Result<u8> {
+    let files_base = git_text(project, &["merge-base", range_base, head])
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|_| range_base.to_string());
+    let files = changed_files(project, &files_base, head)?;
+    Ok(gate::tier_of(Some(stated), &files))
 }
 
 /// The paths `base..head` changes, for the floor of the tier.

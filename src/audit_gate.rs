@@ -47,6 +47,21 @@ pub struct Input {
     #[serde(default)]
     pub commit_messages: Option<Vec<String>>,
     pub comments: Vec<Comment>,
+    /// The scan registry's text at the merge base and at the head, when the PR changes it
+    /// (SPEC-20261124-registry-line-add-tier REQ-8). An input without the field judges the
+    /// registry path by its name, tier 2.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub registry: Option<RegistryTexts>,
+}
+
+/// The two sides of the scan registry's change; a side that could not be read is `None`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct RegistryTexts {
+    #[serde(default)]
+    pub old: Option<String>,
+    #[serde(default)]
+    pub new: Option<String>,
 }
 
 /// One verdict as the gate reads it.
@@ -355,6 +370,7 @@ pub fn collect<T: Transport>(
         files,
         commit_messages,
         comments,
+        registry: None,
     })
 }
 
@@ -389,6 +405,7 @@ mod tests {
                     .collect(),
             ),
             comments,
+            registry: None,
         }
     }
 

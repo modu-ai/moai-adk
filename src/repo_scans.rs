@@ -47,8 +47,10 @@ fn strings(v: &Value, what: &str) -> Result<Vec<String>, String> {
 /// The command a scan's `test_targets` stand for, up to the `--test` pairs.
 const CARGO_TEST: &str = "cargo test --offline --locked";
 
-/// A cargo integration-test target name: `[a-z0-9_]+`.
-fn is_target_name(name: &str) -> bool {
+/// A cargo integration-test target name: `[a-z0-9_]+`. The one place that spells the rule:
+/// `gate::registry_only_grew` reads the value of a `--test` option with it too
+/// (SPEC-20261124-registry-line-add-tier, REQ-11).
+pub fn is_target_name(name: &str) -> bool {
     !name.is_empty()
         && name
             .chars()
