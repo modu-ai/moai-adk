@@ -91,7 +91,10 @@ mod style_banner {
         ] {
             let text = fs::read_to_string(Path::new(ROOT).join(rel)).unwrap();
             for old in RETIRED_ICONS {
-                assert!(!text.contains(old), "{rel} still carries the old icon {old}");
+                assert!(
+                    !text.contains(old),
+                    "{rel} still carries the old icon {old}"
+                );
             }
             // the flow is one sentence: the line that starts it (🗂️) holds every step in order,
             // so a banner emoji such as ✅ earlier in the file does not count as the step
