@@ -658,7 +658,8 @@ fn a_nested_gitignore_of_64_kib_is_read_and_one_byte_more_is_not() {
 
 /// SPEC-20261120-moai-layout REQ-17, REQ-18 (AC-16): the first hundred nested `.gitignore` files in
 /// path order are read, the hundred and first is not. The user's own rule hides the `.gitignore`
-/// files themselves, so the list holds only what a nested rule does not hide.
+/// files themselves, so a read folder lists nothing; the folder of the unread one lists every file
+/// below it, its own `.gitignore` included, because that file may take itself back with a `!` rule.
 #[test]
 fn the_hundredth_nested_gitignore_is_read_and_the_hundred_first_is_not() {
     let run = |count: usize| -> String {
@@ -686,7 +687,10 @@ fn the_hundredth_nested_gitignore_is_read_and_the_hundred_first_is_not() {
     let more = run(101);
     assert_eq!(
         visible_lines(&more),
-        ["now visible: .moai-cli/tools/d100/x.tmp"],
+        [
+            "now visible: .moai-cli/tools/d100/.gitignore",
+            "now visible: .moai-cli/tools/d100/x.tmp"
+        ],
         "{more}"
     );
     assert_eq!(more.matches(NOT_READ).count(), 1, "{more}");
@@ -966,7 +970,7 @@ fn the_plan_shows_the_new_block_line_by_line_and_writes_nothing() {
     assert_eq!(row["action"], "create", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 19 added, 0 removed",
+        "managed block lines: 20 added, 0 removed",
         "+ CLAUDE.local.md",
         "+ .moai-cli/receipts/",
         "+ .moai-cli/*",
@@ -1470,7 +1474,7 @@ fn the_plan_shows_the_lines_added_to_a_gitignore_without_a_block() {
     assert_eq!(row["action"], "append", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 19 added, 0 removed",
+        "managed block lines: 20 added, 0 removed",
         "+ CLAUDE.local.md",
         "+ .moai-cli/*",
         "+ .moai-cli/local/",

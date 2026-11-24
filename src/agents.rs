@@ -491,10 +491,11 @@ const STATE_KEPT: [&str; 11] = crate::state_root::KEPT;
 
 /// File names that never go to git anywhere under the state folder, `tools/` and `evals/`
 /// included (SPEC-20261120-moai-layout REQ-11): the credential files of an earlier generation's
-/// template and the `.env` family. The lines come after the allow-list, so an allow line cannot
-/// lift them.
-const STATE_SECRETS: [&str; 4] = [
+/// template, `credentials.json` and the `.env` family. The lines come after the allow-list, so an
+/// allow line cannot lift them.
+const STATE_SECRETS: [&str; 5] = [
     "**/credentials.yaml",
+    "**/credentials.json",
     "**/*.credentials",
     "**/.env",
     "**/.env.*",
@@ -686,8 +687,10 @@ fn block_lists(text: &str, name: &str) -> bool {
 /// block lets git see. Git lists the ignored files; the same throw-away repository that reads
 /// the user's rules (`user_rule_hits`) is asked again with the new block after them, so a file
 /// the block's credential lines or a user rule still ignore is not named. At most
-/// [`VISIBLE_NOTE_CAP`] paths are named, then one line counts the rest. Empty when the project is
-/// not a git repository, git is not installed (noted), or nothing is ignored there.
+/// [`VISIBLE_NOTE_CAP`] paths are named, then one line counts the rest. A file below the folder of
+/// a `.gitignore` the plan did not read ([`nested_ignore_files`]) is named whatever the rules that
+/// were read say about it: that file may take the file back with a `!` rule (REQ-18). Empty when
+/// the project is not a git repository, git is not installed (noted), or nothing is ignored there.
 fn newly_visible(
     root: &Path,
     state: &str,
@@ -728,10 +731,12 @@ fn newly_visible(
     let with_block = format!("{user}\n{rendered}");
     let nested = nested_ignore_files(root, state, notes)?;
     let mut scratch: Vec<String> = Vec::new();
-    let hits = user_rule_hits(root, &with_block, &candidates, &nested, &mut scratch)?;
+    let hits = user_rule_hits(root, &with_block, &candidates, &nested.read, &mut scratch)?;
     let visible: Vec<&String> = candidates
         .iter()
-        .filter(|c| !hits.iter().any(|h| h.path == **c))
+        .filter(|c| {
+            nested.unread.iter().any(|dir| is_below(c, dir)) || !hits.iter().any(|h| h.path == **c)
+        })
         .collect();
     let mut lines: Vec<String> = visible
         .iter()
@@ -751,17 +756,69 @@ fn newly_visible(
 const NESTED_IGNORE_CAP: usize = 100;
 const NESTED_IGNORE_MAX_BYTES: u64 = 64 * 1024;
 
+/// The nested `.gitignore` files `newly_visible` found: the ones it read, and the folders of the
+/// ones it did not.
+struct NestedIgnores {
+    /// `(path from the project root, bytes)` of each file read.
+    read: Vec<(String, Vec<u8>)>,
+    /// The folder (path from the project root) of each file not read.
+    unread: Vec<String>,
+}
+
+/// `true` when `path` lies below the folder `dir` (both paths from the project root).
+fn is_below(path: &str, dir: &str) -> bool {
+    path.strip_prefix(dir)
+        .is_some_and(|rest| rest.starts_with('/'))
+}
+
+/// The bytes of the `.gitignore` at `rel` (a path from the project root), or `None` when the plan
+/// must not read it: a path piece that is not a plain name, a link anywhere on the path (a linked
+/// parent folder as well as a linked file, so nothing outside the project is read through it), a
+/// file that is not a regular file, one larger than [`NESTED_IGNORE_MAX_BYTES`], or one that cannot
+/// be read.
+fn read_nested_ignore(root: &Path, rel: &str) -> Option<Vec<u8>> {
+    use std::io::Read;
+    let mut at = root.to_path_buf();
+    let mut len = 0;
+    let mut is_file = false;
+    for piece in Path::new(rel).components() {
+        let std::path::Component::Normal(name) = piece else {
+            return None;
+        };
+        at.push(name);
+        let meta = std::fs::symlink_metadata(&at).ok()?;
+        if meta.file_type().is_symlink() {
+            return None;
+        }
+        len = meta.len();
+        is_file = meta.is_file();
+    }
+    if !is_file || len > NESTED_IGNORE_MAX_BYTES {
+        return None;
+    }
+    // The size can change between the check and the read: read one byte past the limit and refuse.
+    let mut bytes = Vec::new();
+    std::fs::File::open(&at)
+        .ok()?
+        .take(NESTED_IGNORE_MAX_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    (bytes.len() as u64 <= NESTED_IGNORE_MAX_BYTES).then_some(bytes)
+}
+
 /// The `.gitignore` files the project keeps under its state folder (the folder itself, `tools/`
-/// and `evals/`, tracked or not), as `(path from the project root, bytes)`, so the question
-/// "would this file still be ignored" is asked with the rules git would read there
-/// (SPEC-20261120-moai-layout REQ-17). A file that is a link, is larger than
-/// [`NESTED_IGNORE_MAX_BYTES`], is unreadable or comes past [`NESTED_IGNORE_CAP`] is not read: its
-/// files then stay in the visible list, the safe side, and the plan says so once.
+/// and `evals/`, tracked or not), so the question "would this file still be ignored" is asked with
+/// the rules git would read there (SPEC-20261120-moai-layout REQ-17). The first
+/// [`NESTED_IGNORE_CAP`] in path order are read unless [`read_nested_ignore`] refuses them (a link
+/// on the path, larger than [`NESTED_IGNORE_MAX_BYTES`], unreadable). A file not read is not
+/// guessed at: its folder goes to `unread`, so every file below it is named as now visible whatever
+/// the rules that were read say, because the unread file may take it back with a `!` rule
+/// (REQ-18). The plan says so once.
 fn nested_ignore_files(
     root: &Path,
     state: &str,
     notes: &mut Vec<String>,
-) -> Result<Vec<(String, Vec<u8>)>> {
+) -> Result<NestedIgnores> {
     let own = format!("{state}/.gitignore");
     let tools = format!("{state}/tools");
     let evals = format!("{state}/evals");
@@ -781,7 +838,10 @@ fn nested_ignore_files(
         notes,
     )?
     else {
-        return Ok(Vec::new());
+        return Ok(NestedIgnores {
+            read: Vec::new(),
+            unread: Vec::new(),
+        });
     };
     let mut names: Vec<&str> = Vec::new();
     for path in stdout.split(|b| *b == 0).filter(|p| !p.is_empty()) {
@@ -794,29 +854,31 @@ fn nested_ignore_files(
     }
     names.sort_unstable();
     names.dedup();
-    let mut files = Vec::new();
-    let mut skipped = names.len() > NESTED_IGNORE_CAP;
-    for path in names.into_iter().take(NESTED_IGNORE_CAP) {
-        let plain = Path::new(path)
-            .components()
-            .all(|c| matches!(c, std::path::Component::Normal(_)));
-        let full = root.join(path);
-        let readable = plain
-            && std::fs::symlink_metadata(&full)
-                .map(|m| m.is_file() && m.len() <= NESTED_IGNORE_MAX_BYTES)
-                .unwrap_or(false);
-        match readable.then(|| std::fs::read(&full)) {
-            Some(Ok(bytes)) => files.push((path.to_string(), bytes)),
-            _ => skipped = true,
+    let mut found = NestedIgnores {
+        read: Vec::new(),
+        unread: Vec::new(),
+    };
+    for (at, path) in names.into_iter().enumerate() {
+        let bytes = if at < NESTED_IGNORE_CAP {
+            read_nested_ignore(root, path)
+        } else {
+            None
+        };
+        match bytes {
+            Some(bytes) => found.read.push((path.to_string(), bytes)),
+            None => {
+                let dir = path.rsplit_once('/').map_or("", |(dir, _)| dir);
+                found.unread.push(dir.to_string());
+            }
         }
     }
-    if skipped {
-        let note = "a .gitignore under the state folder was not read (a link, larger than 64 KiB, unreadable or past the first 100); the files its rules ignore are listed as now visible";
+    if !found.unread.is_empty() {
+        let note = "a .gitignore under the state folder was not read (a link or behind a link, larger than 64 KiB, unreadable or past the first 100); the files below its folder are listed as now visible";
         if !notes.iter().any(|n| n == note) {
             notes.push(note.to_string());
         }
     }
-    Ok(files)
+    Ok(found)
 }
 
 /// The part of a `.gitignore` the user wrote: its text outside this tool's managed block. A
