@@ -106,4 +106,14 @@ Read on 2026-11-24 from the card ledger and the repository at `546cd451a2`:
 
 ## Result
 
-(not started; this SPEC is a draft and waits for approval)
+- AC-1: met — `style_banner_scan the_three_style_templates_use_the_one_icon_set` 통과. RED(`8964e785fa`): `moai.md still carries the old icon ⬜`, exit 101, 단언 실패. GREEN(`2cd06d691b`)이 세 템플릿의 아이콘 문장을 흐름 한 벌로 바꿔요; 시험의 순서 검사는 `moai-easy.md` 가 한 줄에 배너 `✅` 를 앞서 가져서 각 단계를 앞 단계 뒤에서 찾게 고쳤어요(`6a3b61d723` 은 rustfmt). 뮤턴트: 옛 `⬜` 를 `moai-learn.md` 에 되돌림 → exit 101, `moai.md` 의 `🛬` 단계 삭제 → exit 101.
+- AC-2: met — `9706de1802` 를 `c58a746719` 로 cherry-pick(충돌 없음, `moai trailer-check 2cd06d691b..HEAD` failing 0); `docs/support-matrix.md` 의 "두 번째 host" 글이 0 줄이에요; `git diff --check` 0.
+- AC-3: met — 옛 `rev-parse` 판정은 git 이 실패해도 통과했어요(`GIT_DIR` 을 없는 곳으로 둔 실행에서 `assert!(out.success)` 를 뺀 뮤턴트가 exit 0). 일반 환경에서는 git 이 실패하지 않아 그 단언을 지키는 시험이 없어서 exit 0 가드였어요(`GIT_DIR` 실험은 시험이 아니에요). 그래서 판정을 `codex_entry_verdict` 로 빼고 시험 둘을 더했어요. RED(`e0a16d3eb0`): `a_failed_git_run_fails_the_codex_check` 단언 실패 exit 101; GREEN(`6a113dfe20`): 9 통과; 뮤턴트(`if !success` 를 `if false && !success`) → exit 101.
+- AC-4: met — `claude_settings_scale_keys` 13 통과(RED `691442615b` 에서 다섯 시험이 단언으로 실패, GREEN `e7b667ea1d`), `claude::tests::an_unknown_permissions_key_is_shown_without_a_split_token` 통과, 이웃 `claude_settings_cli` 18·`project_scale_plan_lib` 11·`project_scale_detect_lib` 6 통과. 뮤턴트 넷 모두 exit 101: N1 권한 키를 날것으로 찍기(2 시험), N2 날것 글만 판정(6 시험), N3 U+2800 을 목록에서 뺌(1 시험), N5 지웠다는 표시 끔(1 시험).
+- AC-5: met — `moai spec check SPEC-20261122-project-scale-settings` 오류 0 경고 0; D-6 에서 D-8 이 갈래마다 넣음과 뺌을 이유와 함께 적어요.
+- AC-6: met — 병합 `a236de79ec` 의 `process_scan_snapshot_cli` 5 통과(cwd 만 묻기, 주입 표, 멈춘 lsof, 삭제 직전 재확인, 시간 한도 거절). 가드 뮤턴트 MB(시간 한도 kill 분기가 `return None` 대신 `break`) → 세 시험 실패 exit 101.
+- AC-7: met — `hygiene_apply_cli` 11, `process_scan_cost_cli` 2, `hygiene_cli` 3, `process_table_default` 5, `home_state_plan` 10, `worktree_gc` 14, `worktree_gc_apply` 15, `worktree_gc_hygiene` 9, lib `worktree_gc` 22 통과. 가드 뮤턴트 MH(hygiene 재확인이 `process_cwds_fresh` 대신 캐시를 읽음) → `the_hygiene_move_recheck_runs_its_own_scan` 실패 exit 101; MR(`real` 을 파일로 읽음) → 시험 여섯 실패 exit 101.
+- 조각 D 의 병합 판단: 충돌은 `src/worktree_gc.rs` 한 곳이었어요. 통합 브랜치의 `injected_empty_table`(`empty` 만)은 조각 2 의 `injected_table`(`empty` 와 파일)이 대신하고, 시험 도우미가 진짜 표를 쓰라고 넣는 값 `real` 은 주입 없음으로 읽어요(안 읽으면 `home_state_plan` 시험 셋이 `process_check_unavailable` 로 깨져요, 합치기 전에 세 시험이 그렇게 실패했어요). 테스트 환경 변수는 `MOAI_TEST_*` 로 읽고, 새 시험 파일의 상태 폴더 글자 수를 `allow.tsv` 에 올렸어요(`state_folder_literal_scan` 8 통과).
+- 위험 경로(버리는 폴더, 진짜 `lsof`): 쉬는 폴더 → 막힘 없음; 안에서 일하는 진짜 자식 프로세스 → `in_use`·`file_open_in_use`; 안의 파일을 연 자식 → `file_open_in_use`; 몇 줄 출력하고 멈추는 가짜 `lsof` 와 500 ms 한도 → `process_check_unavailable`·`open_file_check_unavailable`; 자식이 끝난 뒤 → 막힘 없음; 남은 프로세스 0(`target/cleanup/probe.log`).
+- 기준 1(C-239 하위 `.gitignore`)은 C-174 착지를 기다려서 `blocked`, 기준 4(C-331)는 RC1 뒤라 `not_run` 이에요(Deferred).
+- 돌리지 않은 것: 조각 D 병합본의 독립 tier 2 감사, Linux 와 Windows 실행, 전체 `cargo test`, 병합 뒤 시간 전후 측정.
