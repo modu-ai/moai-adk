@@ -81,6 +81,9 @@ impl World {
         all.extend_from_slice(args);
         all.extend_from_slice(&["--project", &self.project]);
         let mut cmd = self.home.command(&all);
+        // Not the cargo working folder: a take without `--worktree` records the git worktree of
+        // the folder it runs in (SPEC-20261125-card-take-records-worktree).
+        cmd.current_dir(&self.dir);
         cmd.env("MOAI_FORGE_GH_BIN", &self.gh);
         if let Some(git) = &self.git {
             cmd.env("MOAI_GIT_BIN", git);

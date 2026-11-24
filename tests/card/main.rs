@@ -46,6 +46,7 @@ mod card_summary_cli;
 mod card_summary_render;
 mod card_sweep_cli;
 mod card_take_scope_cli;
+mod card_take_worktree_cli;
 mod card_timeline_cli;
 mod card_times_cli;
 mod card_verdict_cli;

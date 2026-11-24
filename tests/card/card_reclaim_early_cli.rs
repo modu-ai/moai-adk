@@ -90,6 +90,9 @@ impl World {
         let project = self.project.to_str().unwrap();
         all.extend_from_slice(&["--project", project]);
         let mut cmd = self.home.command(&all);
+        // A folder that is no git worktree: a take without `--worktree` records the worktree of
+        // the folder it runs in (SPEC-20261125-card-take-records-worktree).
+        cmd.current_dir(self.host.path());
         cmd.env("PATH", &self.path_env);
         cmd.envs(extra.iter().copied());
         if let Some(id) = session {

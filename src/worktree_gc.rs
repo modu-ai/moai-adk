@@ -2543,6 +2543,7 @@ mod tests {
                 worktree: Some(&wt_text),
                 branch: None,
                 require_approved_spec: false,
+                running_dir: None,
             },
         )
         .unwrap();
