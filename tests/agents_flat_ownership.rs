@@ -454,6 +454,31 @@ fn a_choice_never_overwrites_an_edited_nested_copy() {
     );
 }
 
+/// REQ-6: when the nested copy was already there and the choice wrote none, the revert still
+/// puts the person's file back and leaves it the person's (the record does not name it).
+#[test]
+fn the_revert_of_a_choice_that_wrote_no_nested_copy_keeps_the_file_the_persons() {
+    let fx = fx();
+    fx.apply(&fx.plan(), &[]);
+    fx.write_flat("impl", "my own old copy\n");
+    let v = fx.apply(&fx.plan(), &["claude:moai-impl.md"]);
+    assert_eq!(v["state"], "applied", "{v}");
+    assert!(!fx.flat("impl").exists(), "{v}");
+    let id = v["receipt"].as_str().unwrap().to_string();
+    let r = agent_install::revert(&fx.home, &id, PERM).unwrap();
+    assert_eq!(r["state"], "reverted", "{r}");
+    assert_eq!(
+        fs::read_to_string(fx.flat("impl")).unwrap(),
+        "my own old copy\n"
+    );
+    let l = line(&fx.plan(), "impl");
+    assert_eq!(l.action, "conflict", "{l:?}");
+    assert!(
+        matches!(l.legacy.as_deref(), Some("kept_edited" | "kept_foreign")),
+        "{l:?}"
+    );
+}
+
 /// REQ-4: the difference shows a control character of the person's file as text, so the file
 /// cannot move the cursor or retitle the window.
 #[test]
