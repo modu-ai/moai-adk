@@ -81,7 +81,9 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
     let mut found =
         workflow::next_filled(ledger.conn(), holder, &fill).map_err(|e| e.to_string())?;
     // A `ready` card whose landing is proven is not offered again: it leaves `ready` for
-    // `skipped` with `reason: "already_landed"` and the proof (`card finish` closes it).
+    // `skipped` with `reason: "already_landed"` and the proof. `card finish` closes it once a
+    // criterion is met; a card with no counted criterion needs `card criterion-add` and `--met`
+    // first, because `card finish` refuses a card with no met criterion.
     let landing = landed::find(project, ledger.conn(), &landed::candidates(&found))?;
     let landed_skips = landed::take_landed(&mut found, &landing);
     // The SPEC each card names and its status, with a warning for a card that changes the
