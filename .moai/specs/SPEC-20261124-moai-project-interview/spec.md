@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261124-moai-project-interview
 title: "/moai project 설문을 감지로 알 수 없는 것만 묻는 최소 설문으로 다시 정해요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8167 of card C-150 (answers lane note 8165, 2026-11-24T04:01:08Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 1 at head 89231f75e3 with D-4, D-2, D-6 (a), D-7 and D-8 as in that note; recorded by the lane, not approved by it", digest: "sha256:bdaf70edae357899941d81898c27dcd0bf48165337b362e62861ed10b2a4fe01"}
 ---
 
 # /moai project 설문을 감지로 알 수 없는 것만 묻는 최소 설문으로 다시 정해요
