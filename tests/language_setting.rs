@@ -32,12 +32,10 @@ fn project(language: Option<Value>) -> TempDir {
 
 fn run(args: &[&str], stdin: &[u8]) -> Output {
     // #2935 L1: `language-setup` reads a conversation default from HOME; an empty temporary HOME
-    // keeps these cases off the developer's real one.
+    // keeps these cases off the developer's real one, for every command the cases run.
     let home = TempDir::new().unwrap();
     let mut command = Command::new(EXE);
-    if args.first() == Some(&"language-setup") {
-        command.env("HOME", home.path());
-    }
+    command.env("HOME", home.path());
     let mut child = command
         .args(args)
         .stdin(Stdio::piped())
@@ -243,7 +241,7 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
     apply_profile(&root, &again["profile"]);
     assert_eq!(fs::read(root.path().join(PROFILE)).unwrap(), applied);
 
-    // The question set lists the three items, with the stored values as current and suggested.
+    // The question set lists the four items, with the stored values as current and suggested.
     let q = ok(&run_with_home(
         &["language-setup", path(&root), "--questions"],
         b"",
@@ -251,7 +249,15 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
     ));
     let items = q["questions"]["items"].as_array().unwrap();
     let ids: Vec<&str> = items.iter().map(|i| i["id"].as_str().unwrap()).collect();
-    assert_eq!(ids, ["commit_messages", "instruction_files", "documents"]);
+    assert_eq!(
+        ids,
+        [
+            "user_chat",
+            "commit_messages",
+            "instruction_files",
+            "documents"
+        ]
+    );
     let commits = items.iter().find(|i| i["id"] == "commit_messages").unwrap();
     assert_eq!(commits["current"], json!("ja"));
     assert_eq!(commits["suggested"], json!("ja"));
@@ -267,11 +273,11 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
     );
 }
 
-/// The ask-once rule's migration: with no flag and no HOME record the conversation resolves to
-/// English, so a re-run moves a stored `user_chat` ko → en once (the stored item answers stay
-/// sticky), and every re-run after that keeps every value.
+/// The conversation language is asked like the other items (SPEC-20261124-moai-project-interview):
+/// a stored `user_chat` is its own suggestion, so a re-run with no flag and no HOME record keeps
+/// it, and every value stays.
 #[test]
-fn without_a_home_record_the_rerun_moves_the_conversation_to_english() {
+fn the_rerun_keeps_the_stored_conversation_language() {
     let root = project(None);
     let out = setup_answers(
         &root,
@@ -283,15 +289,12 @@ fn without_a_home_record_the_rerun_moves_the_conversation_to_english() {
     apply_profile(&root, &out["profile"]);
 
     let again = setup_answers(&root, &json!({}), &[]);
-    // The stored `documents` answer is sticky (a stored value is its own suggestion); only the
-    // resolved `user_chat` moves.
-    let en = json!({"commit_messages": "ja", "documents": "ko", "instruction_files": "en", "user_chat": "en"});
-    assert_eq!(again["changed_items"], json!(["user_chat"]));
-    assert_eq!(again["language"], en);
-    apply_profile(&root, &again["profile"]);
-    let stable = setup_answers(&root, &json!({}), &[]);
-    assert_eq!(stable["changed_items"], json!([]));
-    assert_eq!(stable["language"], en);
+    assert_eq!(again["changed_items"], json!([]));
+    assert_eq!(again["language"], ko);
+    // An answer for the conversation item is stored.
+    let ja = setup_answers(&root, &json!({"user_chat": "ja"}), &[]);
+    assert_eq!(ja["changed_items"], json!(["user_chat"]));
+    assert_eq!(ja["language"]["user_chat"], json!("ja"));
 }
 
 /// AC-2: without a question tool the step asks on the terminal: an empty line keeps the
@@ -299,15 +302,19 @@ fn without_a_home_record_the_rerun_moves_the_conversation_to_english() {
 #[test]
 fn interactive_setup_reads_one_answer_per_item() {
     let root = project(Some(json!({"commit_messages": "zh"})));
-    // Three prompts, in order: commit_messages, instruction_files, documents.
-    let out = ok(&run(&["language-setup", path(&root)], b"ja\n\nfr\nko\n"));
+    // Four prompts, in order: user_chat, commit_messages, instruction_files, documents.
+    let out = ok(&run(
+        &["language-setup", path(&root)],
+        b"ja\n\nfr\nko\nzh\n",
+    ));
     let l = &out["language"];
-    assert_eq!(l["commit_messages"], json!("ja"));
-    // An empty line keeps the stored value; instruction_files has none, so it is English.
-    assert_eq!(l["instruction_files"], json!("en"));
+    assert_eq!(l["user_chat"], json!("ja"));
+    // An empty line keeps the stored value.
+    assert_eq!(l["commit_messages"], json!("zh"));
     // A bad code is asked again; the next line answers the third item.
-    assert_eq!(l["documents"], json!("ko"));
-    // Nothing else is asked; the resolved conversation fills the profile's user_chat.
+    assert_eq!(l["instruction_files"], json!("ko"));
+    assert_eq!(l["documents"], json!("zh"));
+    // Nothing else is asked.
     assert_eq!(l.as_object().unwrap().len(), 4, "{l}");
     let stderr = String::from_utf8(run(&["language-setup", path(&root)], b"fr\n").stderr).unwrap();
     assert!(stderr.contains("unsupported language code"), "{stderr}");

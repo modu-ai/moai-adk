@@ -644,11 +644,11 @@ fn absorb_project_carries_the_setup_steps() {
 }
 
 #[test]
-fn absorb_project_asks_no_language_the_user_scope_holds() {
+fn absorb_project_asks_the_four_languages_every_run() {
     let project = read("workflows/project.md");
     for phrase in [
-        "the local tool language question is the instruction-file language",
-        "asks no conversation, document or commit language that the user scope already holds",
+        "the conversation language, the document language, the commit message language and the instruction file language",
+        "is the suggested value, not a reason to skip the question",
     ] {
         assert!(project.contains(phrase), "project.md lacks {phrase:?}");
     }

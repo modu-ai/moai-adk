@@ -1,11 +1,12 @@
 //! Per-project writing language (Issue #2293): the `language` key of `.moai-cli/project.yaml`,
 //! the setup input step, and the sentences the AGENTS.md managed section renders from it.
 //!
-//! The setup asks three questions: the commit-message language, the instruction-file language
-//! (`instruction_files`) and the document language (`documents`: reports and SPEC documents).
-//! The conversation language (`user_chat`; the AGENTS.md and REVIEW.md managed sections are
-//! written in it) is asked once at install and recorded in the HOME state folder: the setup
-//! reads that value and never asks it. Everything else is English without asking: skills and
+//! The setup asks four questions (SPEC-20261124-moai-project-interview): the conversation
+//! language (`user_chat`; the AGENTS.md and REVIEW.md managed sections are written in it), the
+//! commit-message language, the instruction-file language (`instruction_files`) and the document
+//! language (`documents`: reports and SPEC documents). The language the installer saved in the
+//! HOME state folder is the suggested conversation value, never a skipped question, and the
+//! answer is stored in the project profile only. Everything else is English without asking: skills and
 //! rules, messages between agents, code comments, issue and PR records. The older profile items
 //! (`reports`, `issue_pr_records`, `agent_messages`, `skill_instructions`, `code_comments`) are
 //! still accepted and, when a profile sets one, still mean what they meant; the setup neither
@@ -44,7 +45,7 @@ pub struct Item {
     pub label_en: &'static str,
     pub label_ko: &'static str,
     pub default: DefaultSource,
-    /// The three items the setup asks; the others are older profile items, kept readable.
+    /// The four items the setup asks; the others are older profile items, kept readable.
     pub asked: bool,
 }
 
@@ -56,9 +57,9 @@ pub const ITEMS: &[Item] = &[
         label_en: "Conversation with the user",
         label_ko: "사용자 대화",
         default: DefaultSource::Conversation,
-        // The conversation language is asked once at install and lives in the HOME state
-        // folder; the project setup reads that value instead of asking again.
-        asked: false,
+        // Asked like the other three; the value the installer saved in the HOME state folder
+        // is its suggested answer, and the answer goes to the project profile only.
+        asked: true,
     },
     Item {
         id: "reports",
@@ -413,7 +414,7 @@ fn with_go(current: Option<&LanguageSettings>, go: &LanguageSettings) -> Languag
     base
 }
 
-/// The question set a host question tool asks: one question per asked item (three) with the
+/// The question set a host question tool asks: one question per asked item (four) with the
 /// current value, the value an empty answer keeps (`suggested`) and the accepted codes.
 pub fn questions(current: Option<&LanguageSettings>, conversation: &str) -> Value {
     questions_with(current, &LanguageSettings::new(), conversation, "default")
@@ -456,7 +457,7 @@ fn questions_with(
 }
 
 /// Applies host-tool answers (`{item: code}`); an asked item left out keeps its suggested value.
-/// The result names the three asked items explicitly, so a re-run with no answers is byte-stable,
+/// The result names the four asked items explicitly, so a re-run with no answers is byte-stable,
 /// and carries an older item only when `current` has it or an answer names it.
 pub fn merge_answers(
     current: Option<&LanguageSettings>,
@@ -501,8 +502,9 @@ pub enum SetupMode {
 ///
 /// `home` is the user's HOME when the caller has one (#2935 L1): the conversation language
 /// `language-set` recorded there decides after `conversation`, before the Go backup's value and
-/// English. A profile's earlier `user_chat` stays as recorded data but does not decide the
-/// conversation language; the setup writes the resolved value over it.
+/// English. That resolved value is the default of the `user_chat` question and of the items that
+/// follow the conversation; the profile's own `user_chat` is the value an empty answer keeps, and
+/// an answer is stored in the profile only, never in HOME.
 pub fn setup<R: BufRead, W: Write>(
     root: &std::path::Path,
     home: Option<&std::path::Path>,
@@ -524,8 +526,8 @@ pub fn setup<R: BufRead, W: Write>(
         }
     }
     // The conversation language, in order: the explicit flag, the value the installer saved in
-    // the HOME state folder, the Go backup's value, then English. A profile's earlier user_chat
-    // is not a source: it stays as recorded data, and the resolved value is written over it.
+    // the HOME state folder, the Go backup's value, then English. It is the default of the
+    // `user_chat` question; a value the profile already holds is that question's current value.
     let (conversation, source) = match (conversation, &home_chat, &go.conversation) {
         (Some(code), _, _) => (code.to_string(), "flag".to_string()),
         (None, Some(code), _) => (code.clone(), "installer".to_string()),
@@ -567,9 +569,6 @@ pub fn setup<R: BufRead, W: Write>(
     for (k, v) in &own {
         chosen.entry(k.clone()).or_insert_with(|| v.clone());
     }
-    // The profile carries the resolved conversation language in its user_chat: the setup
-    // never asks it, and the home value wins over an earlier profile value.
-    chosen.insert("user_chat".to_string(), conversation.clone());
     let changed: Vec<&str> = ITEMS
         .iter()
         .filter(|i| current.as_ref().and_then(|c| c.get(i.id)) != chosen.get(i.id))
@@ -594,7 +593,7 @@ pub fn setup<R: BufRead, W: Write>(
 /// Upper bound on wrong answers to one question before the interactive step gives up.
 pub const MAX_ATTEMPTS: usize = 3;
 
-/// The interactive input step: one prompt per asked item (three) on `prompt`, one answer line per
+/// The interactive input step: one prompt per asked item (four) on `prompt`, one answer line per
 /// item from `input`. An empty line or end of input keeps the suggested value; a code outside
 /// `CODES` is asked again, up to `MAX_ATTEMPTS` times.
 pub fn interactive<R: BufRead, W: Write>(
@@ -685,19 +684,19 @@ mod tests {
     }
 
     #[test]
-    fn merge_answers_names_the_three_asked_items_and_keeps_older_ones() {
+    fn merge_answers_names_the_four_asked_items_and_keeps_older_ones() {
         let current = settings(&[("code_comments", "ja")]);
         let answers = json!({});
         let out = merge_answers(Some(&current), answers.as_object().unwrap(), "ko").unwrap();
-        // The three asked items are named; an older item is carried only because the profile
-        // already had it; an older item the profile never set gets no key. The profile's
-        // user_chat is filled by the setup from the resolved conversation, not by the merge.
-        assert_eq!(out.len(), 4, "{out:?}");
+        // The four asked items are named; an older item is carried only because the profile
+        // already had it; an older item the profile never set gets no key. The conversation
+        // item follows the conversation language like the other items whose default does.
+        assert_eq!(out.len(), 5, "{out:?}");
+        assert_eq!(out["user_chat"], "ko");
         assert_eq!(out["commit_messages"], "ko");
         assert_eq!(out["instruction_files"], "en");
         assert_eq!(out["documents"], "ko");
         assert_eq!(out["code_comments"], "ja");
-        assert!(!out.contains_key("user_chat"));
         assert!(!out.contains_key("reports"));
         assert!(!out.contains_key("agent_messages"));
         for bad in [
@@ -711,26 +710,29 @@ mod tests {
 
     #[test]
     fn interactive_keeps_on_empty_and_eof_and_retries_bad_codes() {
-        // The three asked items, in table order: commit_messages, instruction_files, documents.
+        // The four asked items, in table order: user_chat, commit_messages, instruction_files,
+        // documents.
         let mut prompt = Vec::new();
-        let mut input = "ko\n\nxx\nja\n".as_bytes();
+        let mut input = "ja\nko\n\nxx\nzh\n".as_bytes();
         let out = interactive(None, "en", &mut input, &mut prompt).unwrap();
-        assert_eq!(out.len(), 3, "{out:?}");
+        assert_eq!(out.len(), 4, "{out:?}");
+        assert_eq!(out["user_chat"], "ja");
         assert_eq!(out["commit_messages"], "ko");
         // An empty line keeps the suggested value (the item default, `en` here).
         assert_eq!(out["instruction_files"], "en");
         // A bad code is asked again; the next line is the answer.
-        assert_eq!(out["documents"], "ja");
+        assert_eq!(out["documents"], "zh");
         assert!(String::from_utf8(prompt)
             .unwrap()
             .contains("unsupported language code"));
         // End of input keeps the suggested value for every remaining item.
         let mut input = "ko\n".as_bytes();
         let out = interactive(None, "en", &mut input, &mut Vec::new()).unwrap();
-        assert_eq!(out["commit_messages"], "ko");
+        assert_eq!(out["user_chat"], "ko");
+        assert_eq!(out["commit_messages"], "en");
         assert_eq!(out["instruction_files"], "en");
         assert_eq!(out["documents"], "en");
-        assert_eq!(out.len(), 3);
+        assert_eq!(out.len(), 4);
     }
 
     #[test]
@@ -739,7 +741,7 @@ mod tests {
         assert!(interactive(None, "en", &mut input, &mut Vec::new()).is_err());
         let mut input = "xx\nyy\nko\n".as_bytes();
         let out = interactive(None, "en", &mut input, &mut Vec::new()).unwrap();
-        assert_eq!(out["commit_messages"], "ko");
+        assert_eq!(out["user_chat"], "ko");
     }
 
     /// #2935 L1: `--conversation`, then `user_chat`, then the HOME value, then `en`.
