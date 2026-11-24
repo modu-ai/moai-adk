@@ -4361,7 +4361,10 @@ mod stage_tests_after_reserve {
         let never = f.card("ready", &[]);
         f.note_at(never, "report", "lane", SUBMIT[0], TAKE + 1);
         let flow = flow(&f);
-        assert_eq!((flow.ready, flow.submitted, flow.audited, flow.blocked), (4, 0, 0, 0));
+        assert_eq!(
+            (flow.ready, flow.submitted, flow.audited, flow.blocked),
+            (4, 0, 0, 0)
+        );
     }
 
     #[test]

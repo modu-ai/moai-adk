@@ -204,23 +204,58 @@ fn build_ledger(f: &Fixture) {
             event(tx, c, "card.landed", later);
         }
         let reopened = card(tx, "active", now, None);
-        reservation(tx, reopened, 1, "released", now - 5 * DAY, now - 5 * DAY + HOUR);
+        reservation(
+            tx,
+            reopened,
+            1,
+            "released",
+            now - 5 * DAY,
+            now - 5 * DAY + HOUR,
+        );
         event(tx, reopened, "card.landed", now - 4 * DAY);
         reservation(tx, reopened, 2, "held", now - HOUR, live);
-        note(tx, reopened, "report", "lane", "ACK C-1 taking it again", now - HOUR + 60);
+        note(
+            tx,
+            reopened,
+            "report",
+            "lane",
+            "ACK C-1 taking it again",
+            now - HOUR + 60,
+        );
 
         // 🚧 8 = LANE-BLOCKED as the newest marker; 4 of them were answered by the leader's
         // decision note and the lane works on (live lease).
         for _ in 0..4 {
             let c = card(tx, "active", now, None);
             reservation(tx, c, 1, "held", taken, ended);
-            note(tx, c, "report", "lane", "LANE-BLOCKED kind=decision C-1 which option", later);
+            note(
+                tx,
+                c,
+                "report",
+                "lane",
+                "LANE-BLOCKED kind=decision C-1 which option",
+                later,
+            );
         }
         for _ in 0..4 {
             let c = card(tx, "active", now, None);
             reservation(tx, c, 1, "held", taken, live);
-            note(tx, c, "report", "lane", "LANE-BLOCKED kind=decision C-1 which option", later);
-            note(tx, c, "decision", "leader", "LEADER 결정: 둘째 안으로 가요", later + 60);
+            note(
+                tx,
+                c,
+                "report",
+                "lane",
+                "LANE-BLOCKED kind=decision C-1 which option",
+                later,
+            );
+            note(
+                tx,
+                c,
+                "decision",
+                "leader",
+                "LEADER 결정: 둘째 안으로 가요",
+                later + 60,
+            );
         }
 
         // 🙋 96 = hold cards, every one of them withdrawn.
@@ -256,15 +291,13 @@ fn flow_line(f: &Fixture, tz: Option<&str>) -> String {
         "workspace": {"current_dir": f.project, "project_dir": f.project},
     });
     let tmp = tempfile::tempdir().unwrap();
-    let mut cmd = f
-        .home
-        .command(&[
-            "statusline",
-            "--render-budget-ms",
-            "3600000",
-            "--now-unix",
-            &T0.to_string(),
-        ]);
+    let mut cmd = f.home.command(&[
+        "statusline",
+        "--render-budget-ms",
+        "3600000",
+        "--now-unix",
+        &T0.to_string(),
+    ]);
     cmd.current_dir(&f.project)
         .env("PATH", std::env::var_os("PATH").unwrap_or_default())
         .env("TMPDIR", tmp.path())
@@ -321,7 +354,10 @@ fn the_0732z_ledger_shape_draws_what_the_ledger_holds() {
     );
     // The cards of `active` and `review` (31) and the four ready cards a lane handed back and
     // released: all of them are on `🟡 📨 🛬 🚧`, and no card is drawn twice or dropped.
-    let drawn: i64 = ["🟡", "📨", "🛬", "🚧"].iter().map(|i| count(&line, i)).sum();
+    let drawn: i64 = ["🟡", "📨", "🛬", "🚧"]
+        .iter()
+        .map(|i| count(&line, i))
+        .sum();
     assert_eq!(drawn, 31 + 4, "{line}");
     // The open cards that are neither draft nor hold are every drawn item but the done count.
     assert_eq!(drawn + count(&line, "🗂️"), 112, "{line}");

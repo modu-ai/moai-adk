@@ -3097,7 +3097,8 @@ mod window_tests {
                 // The empty cells are painted in the muted color, each run on its own; the
                 // filled cells take the level color of their window
                 // (SPEC-20261124-statusline-bar-color, `the_filled_cells_carry_the_level_color`).
-                for empty in ["░░░░░░░░", "░░░░░", "░░░░░░░░░"] {
+                for empty in ["░░░░░░░░", "░░░░░", "░░░░░░░░░"]
+                {
                     assert!(
                         out.contains(&profile.paint(t.muted, empty)),
                         "{name} {profile:?}: no muted run of {empty}: {out:?}"
@@ -3267,7 +3268,10 @@ mod window_tests {
         let mut last = 0;
         for used in 10..=100 {
             let level = level_at(used);
-            assert!(level >= last, "{used} used went back from {last} to {level}");
+            assert!(
+                level >= last,
+                "{used} used went back from {last} to {level}"
+            );
             last = level;
         }
         assert_eq!(last, 3, "red is reached");
@@ -3463,10 +3467,7 @@ mod window_tests {
     fn the_battery_icon_turns_above_the_high_use_boundary() {
         use crate::statusline::render::HIGH_USE_PERCENT;
         let n = HIGH_USE_PERCENT;
-        assert_eq!(
-            week(json!(n), None),
-            Some(format!("🔋 7D {} {n}%", bar(n)))
-        );
+        assert_eq!(week(json!(n), None), Some(format!("🔋 7D {} {n}%", bar(n))));
         assert_eq!(
             week(json!(n + 1), None),
             Some(format!("🪫 7D {} {}%", bar(n + 1), n + 1))
@@ -3484,10 +3485,7 @@ mod window_tests {
         );
         let context = |used: i64| line(&json!({"context_window": {"used_percentage": used}}));
         assert_eq!(context(n), format!("🔋 CW {} {n}%", bar(n)));
-        assert_eq!(
-            context(n + 1),
-            format!("🪫 CW {} {}%", bar(n + 1), n + 1)
-        );
+        assert_eq!(context(n + 1), format!("🪫 CW {} {}%", bar(n + 1), n + 1));
     }
 
     /// D-4: `(6d 21h)`, `(2h 10m)`, `(35m)`, each unit changing at its edge, and never the words
