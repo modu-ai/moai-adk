@@ -38,7 +38,7 @@ branch: spec/20261125-land-checked-out-branch
 - REQ-2 (REQ-1): The command shall move the branch only by `git update-ref` with the tip it read as the old value.
 - REQ-3 (REQ-1): IF the checked-out worktree has a tracked change (a staged change, an unstaged change or a deleted tracked file), THEN the command shall refuse before the first write and name the paths.
 - REQ-4 (REQ-1): IF the HEAD of the checked-out worktree is not the tip the command read, or a merge, a rebase, a cherry-pick, a revert, a bisect or an index lock is in progress there, THEN the command shall refuse before the first write.
-- REQ-5 (REQ-1): IF an untracked file of the checked-out worktree that git does not ignore stands at a path the candidate adds, THEN the command shall refuse before the first write and name the paths.
+- REQ-5 (REQ-1): IF a file of the checked-out worktree that no commit tracks, ignored or not, stands at a path the candidate adds, THEN the command shall refuse before the first write and name the paths.
 - REQ-6 (REQ-1): IF more than one worktree has the branch checked out, or the checked-out worktree uses a sparse checkout or has a skip-worktree or assume-unchanged entry, or the move changes a submodule entry, THEN the command shall refuse before the first write and name the cause.
 - REQ-7 (REQ-1): Every refusal of the checked-out worktree shall carry the reason, the next thing to do and the words `nothing was changed`.
 - REQ-8 (REQ-1): IF a call stopped after the branch moved and before the worktree followed, THEN the same call run again shall finish the worktree step and close the card without moving the branch a second time.
@@ -52,7 +52,7 @@ branch: spec/20261125-land-checked-out-branch
 - AC-1 (REQ-1, REQ-2, REQ-9): a clean checkout with the integration branch checked out is moved by `card land`: the branch, the index and the working tree equal the candidate, an untracked file that does not overlap stays, the card closes, and `worktree_follow` names the path and both commits · verify: `cargo test --locked --offline --test card_land_checked_out_cli a_clean_checkout_follows_the_branch_and_the_card_closes`
 - AC-2 (REQ-3, REQ-7): a staged change, an unstaged change and a deleted tracked file each refuse, change nothing (the branch, the ledger, the index and the working tree) and say the reason and the next step · verify: `cargo test --locked --offline --test card_land_checked_out_cli a_tracked_change_refuses_and_changes_nothing`
 - AC-3 (REQ-4, REQ-7): a worktree whose HEAD is another commit than the tip read, and a worktree in a merge, a rebase, a cherry-pick, a revert, a bisect or with an index lock, each refuse and change nothing · verify: `cargo test --locked --offline --test card_land_checked_out_cli a_moved_head_or_a_pending_operation_refuses_and_changes_nothing`
-- AC-4 (REQ-5, REQ-7): an untracked file at a path the candidate adds refuses and changes nothing, while an ignored file at that path and an untracked file elsewhere do not stop the landing · verify: `cargo test --locked --offline --test card_land_checked_out_cli an_untracked_file_at_an_added_path_refuses_and_other_untracked_files_stay`
+- AC-4 (REQ-5, REQ-7): an untracked file and an ignored file at a path the candidate adds each refuse and change nothing, while an untracked file elsewhere does not stop the landing · verify: `cargo test --locked --offline --test card_land_checked_out_cli an_untracked_file_at_an_added_path_refuses_and_other_untracked_files_stay`
 - AC-5 (REQ-6, REQ-7): two worktrees on the branch, a sparse checkout, a skip-worktree entry and a submodule change each refuse and change nothing · verify: `cargo test --locked --offline --test card_land_checked_out_cli an_unsupported_checkout_refuses_and_changes_nothing`
 - AC-6 (REQ-8): a run that fails at the worktree step after the branch moved leaves the card open and `worktree_follow` unfinished; the same call run again moves the branch no second time, finishes the worktree and closes the card · verify: `cargo test --locked --offline --test card_land_checked_out_cli a_stopped_run_is_finished_by_the_same_call_and_moves_once`
 - AC-7 (REQ-8): a run whose process is killed with SIGKILL between the branch move and the worktree step is finished the same way · verify: `cargo test --locked --offline --test card_land_checked_out_cli a_killed_run_is_finished_by_the_same_call`
@@ -96,7 +96,7 @@ branch: spec/20261125-land-checked-out-branch
 | --- | --- | --- | --- |
 | D-1 | The branch moves by `git update-ref` first and the worktree follows with `git read-tree -m -u <old tree> <new tree>` | the compare-and-swap decides the truth; a stopped run leaves a state a rerun can finish (Appendix A, questions 1 to 4) | remove the follow step; the refusal returns |
 | D-2 | Before the move a dry run (`git read-tree -m -u -n`) of the same two-tree merge must pass in the worktree | refuses an overlap of untracked files before any write (Appendix A, question 3) | none needed |
-| D-3 | An untracked file that does not stand on a path the candidate adds does not stop the landing | the primary checkout always holds some (`.moai/state/`); `updateInstead` ignores untracked files the same way | tighten to refuse any untracked file |
+| D-3 | An untracked file that does not stand on a path the candidate adds does not stop the landing; a file git ignores at such a path does stop it | the primary checkout always holds some (`.moai/state/`); `updateInstead` ignores untracked files the same way; measured case f: `git read-tree -m -u` exits 0 and overwrites an ignored file at an added path without a word, so the command checks those paths itself | tighten to refuse any untracked file |
 | D-4 | `card drift --restore` keeps its refusal | it moves the branch backward; following it would delete work | a later SPEC |
 | D-5 | A stopped run is recognised from the tip the ledger start row of this card and head recorded: the index equals that old commit's tree and the working tree equals the index | a staged change by a person cannot be told from a lagging index without the old tip | none needed |
 | D-6 | The test `ac6_a_checked_out_branch_and_a_head_that_is_no_commit_refuse_before_the_move` of `tests/card_land_cli.rs` is rewritten: its checked-out case becomes a dirty checkout, which still refuses | the old case (a clean checkout) is the behaviour this SPEC changes | revert the commit |
@@ -104,7 +104,39 @@ branch: spec/20261125-land-checked-out-branch
 
 ### Appendix A — git documentation read
 
-Pending: the `moai-research` run of 2026-11-25 is still reading the sources. Nothing in this appendix is claimed until it holds a source, its read time and a quote.
+Research by the `moai-research` agent on 2026-11-24 (UTC) between 17:26:05Z and about 17:31Z, git 2.54.0 (Apple Git-157) on this machine. `RAW` means the page text was read with `curl`, `WF` means `WebFetch`, whose quotes are close but not byte-verified; the per-page time after 17:26:49Z was not clocked. The agent's own throwaway runs were refused by the worktree guard, so the measurements below were made by this lane with `target/c483/probe.sh` (throwaway repositories under the session scratch folder, run 2026-11-24T17:31:19Z, output `target/c483/probe1.out`).
+
+Sources: `git-update-ref` (RAW, 2.53.0), `git-read-tree` (RAW), `receive-pack.c` at tag v2.54.0 (RAW, read 17:26:14Z), `git-merge` (WF, 2.54.0), `githooks` push-to-checkout (WF, 2.54.0), `git-worktree` (WF), `git-checkout` and `git-switch` (WF), `git-status` (WF), `gitrepository-layout` (WF), `git-update-index` (WF), `git-rev-parse` (WF), `git-push` and `git-config` (WF, the `receive.denyCurrentBranch` text was cut short), and `unpack-trees.c`, `read-tree.c`, `wt-status.c` at v2.54.0 (WF). Every URL is under `https://git-scm.com/docs/` or `https://raw.githubusercontent.com/git/git/v2.54.0/`.
+
+| Option of the card | Decision | Reason and source |
+| --- | --- | --- |
+| `git update-ref <ref> <new> <old>` on a checked-out branch | ADOPT as the one move | `git-update-ref` (RAW): it "stores the <new-oid> in the <ref> … after verifying that the current value of the <ref> matches <old-oid>"; it says nothing of the index or working tree, so they stay at the old commit (measured: case `crash`, `git status` shows the reverse diff `M a.txt`, `D ign.txt`, `D new.txt`) and a second `update-ref` with the old value fails (`cannot lock ref 'refs/heads/B': is at … but expected …`, exit 128) |
+| `receive.denyCurrentBranch=updateInstead` | REJECT as the mechanism, ADOPT its preconditions | it works only through a push to the repository; `receive-pack.c` v2.54.0 `update_worktree()` runs `git update-index -q --ignore-submodules --refresh`, `git diff-files --quiet --ignore-submodules --`, `git diff-index --quiet --cached --ignore-submodules HEAD`, then `git read-tree -u -m <new>` (one-tree form), and it moves the worktree first and the reference second, so a lost compare-and-swap leaves the worktree ahead of a reference someone else moved |
+| `push-to-checkout` hook | REJECT | same push path; the hook doc (WF): "when both the working tree and the index match the current commit, they are updated to match the newly pushed tip"; it only names `git read-tree -u -m HEAD "$1"` as the example body |
+| `git merge --ff-only` inside the worktree | REJECT | a second writer of the integration reference besides `landed::move_branch`; whether it compares against the value it read first was not verified (research: "not verified"); it runs the worktree's `post-merge` hook and words its refusals itself |
+| `git reset --hard`, `git read-tree --reset` | REJECT | `git-read-tree` (RAW): with `-u` "updates leading to loss of working tree changes or untracked files or directories will not abort the operation" |
+| `git read-tree -m -u <old> <new>` after the reference moved | ADOPT | the two-tree form is `git switch`'s own carry-forward rule; measured exit codes in the table below; idempotent when the worktree is already at `<new>` (case `rerun`, exit 0 twice) |
+| `git read-tree -m -u -n` before the move | ADOPT as the dry run | `git-read-tree` (RAW): "-n … Check if the command would error out, without updating the index or the files in the working tree for real"; measured: the dry run's exit code and message equalled the real run's in all ten cases |
+
+Measured with `read-tree -m -u <C0> <C1>` where C1 changes `a.txt`, adds `new.txt` and a force-added ignored `ign.txt`, and leaves `b.txt` alone (`probe1.out`):
+
+| Case | Exit | Effect |
+| --- | --- | --- |
+| clean | 0 | index and files follow |
+| unstaged edit of a path C1 changes | 128, `Entry 'a.txt' not uptodate. Cannot merge.` | nothing changed |
+| unstaged edit of a path C1 leaves alone | 0 | the local edit is kept: the command refuses every tracked change itself first (REQ-3) |
+| staged edit of a path C1 leaves alone | 0 | the staged edit is kept: same |
+| staged edit of a path C1 changes | 128, `Entry 'a.txt' would be overwritten by merge. Cannot merge.` | nothing changed |
+| untracked file at an added path | 128, `Untracked working tree file 'new.txt' would be overwritten by merge.` | nothing changed |
+| untracked file elsewhere | 0 | stays |
+| ignored file at an added path | 0 | **overwritten silently** (`ignored-local` became `i1`): the command checks added paths itself (REQ-5, D-3) |
+| deleted tracked file C1 leaves alone / changes | 0 / 0 | stays deleted / is restored: refused earlier by REQ-3 |
+
+Stopped run (case `crash`, `rerun`): after `update-ref` alone `git diff-index --cached --quiet <new>` exits 1 and `--quiet <old>` exits 0, `git diff-files --quiet` exits 0; `git read-tree -m -u <old> <new>` then leaves `git status` empty, and a second call also exits 0. A run is therefore recognised by the index tree equal to the old commit's tree with a clean working tree, and finished by the same read-tree (D-1, D-5).
+
+Detection (from `wt-status.c` and the repository layout, WF; `MERGE_HEAD` resolved per worktree and observed: `.git/MERGE_HEAD` exists during a `merge --no-commit`): `MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`, `REBASE_HEAD`, the folders `rebase-merge`, `rebase-apply`, `sequencer` and the file `BISECT_LOG` under the worktree's git dir (`git rev-parse --absolute-git-dir` run in that worktree), and `index.lock`. Several worktrees on one branch exist only through `git worktree add --force` or `checkout --ignore-other-worktrees` (WF); `git worktree list --porcelain` prints one `branch refs/heads/<name>` line per holder (observed). Sparse checkout (`core.sparseCheckout`), skip-worktree and assume-unchanged entries (`git ls-files -v`) and mode 160000 entries are refused without a measurement.
+
+Not verified: every WF quote beyond the cut-off text; the tag letters of `git ls-files -v`; the sequencer state path; that `git merge --ff-only` compare-and-swaps; Apple Git-157 against upstream 2.54.0 on these paths; behaviour on Linux or Windows.
 
 ## Result
 
