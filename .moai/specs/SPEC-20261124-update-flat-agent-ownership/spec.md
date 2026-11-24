@@ -107,3 +107,25 @@ approval:
 | D-5 | The JSON envelope path has no choice input; it keeps every conflict and answers `partial` | 지금 쓰는 호스트나 레인이 없어요 (규칙 20) | 봉투에 고르기 입력을 더하는 후속 SPEC |
 | D-6 | A kept file is not remembered: the next update asks again and ends Partial | 기억하는 기록은 새 상태 파일과 규칙이 필요해요; 카드 기준 3번이 conflict 가 남으면 Partial 이라고 정했어요 | 유지 선택을 기록하는 후속 SPEC |
 | D-7 | A conflict alone is worth a question (REQ-11) | 질문이 없으면 사용자가 고를 길이 없어서 카드 기준 2번이 참이 될 수 없어요 | `asks_anything` 을 `writes_anything` 으로 되돌려요 |
+
+## Result
+
+Measured 2026-11-24 (UTC) on macOS in the worktree `.claude/worktrees/update-flat-agents`, base `NeXT` `974267e03d` (the checks did not follow the tip). Commits: draft `a34384ed05`, approval `bbdfd28286` (leader note 8453; the lane recorded no approval of its own), RED `df681517cf`, library code `c3296b92ff`, three added guard tests `64b1061643`, `78b39de496`, `5ea79c70df`, screen row `90f810b744`, question wiring `910893c34d`, rustfmt `5cf587e851`, scan table `46ba8dbc58`. `src/update.rs` and `src/update_tux.rs` were edited under a line lease after C-160 gave them back. The receipt is `moai check affected 974267e03d..HEAD` on head `46ba8dbc586b`: `targets=175 scans=listed:151 diff_check=0 fmt=0 clippy=0 test=0 result=PASS`, 3972 tests passed, log folder `target/check-affected-46ba8dbc586b/`. Two earlier runs failed and were repaired: `cargo fmt` on `5ea79c70df`, and three scan-table tests on `5cf587e851`.
+
+- AC-1 met: `a_flat_file_equal_to_the_render_or_the_package_file_is_ours` fails on the RED head and passes on `c3296b92ff`; both kinds are planned `legacy: remove`, the apply moves them and a second apply is `unchanged`.
+- AC-2 met: `a_flat_file_that_matches_nothing_stays_a_conflict` passes, with and without a record; no nested copy is written.
+- AC-3 met in part: `the_choice_asks_once_per_conflicting_file` passes on the library function with scripted input. The wiring in `src/update.rs` (a terminal run asks, any other run keeps every file) has no test that starts the real `moai update` against a package, so the live prompt is `not_run`.
+- AC-4 met: `the_difference_is_shown_and_the_question_comes_again`, and `the_difference_shows_control_characters_as_text` for the escape handling.
+- AC-5 met: `use_moais_keeps_the_bytes_and_moves_the_file`.
+- AC-6 met: `the_revert_restores_the_persons_file` and `the_revert_of_a_choice_that_wrote_no_nested_copy_keeps_the_file_the_persons`; after a revert the file is a conflict again, not ours.
+- AC-7 met: `keep_and_no_answer_leave_both_paths_untouched`.
+- AC-8 met: `a_choice_for_a_file_that_is_no_conflict_is_refused`; `a_choice_never_overwrites_an_edited_nested_copy` and `a_link_at_the_flat_path_is_never_followed_or_removed` pin the two refusals around it.
+- AC-9 met: `a_left_conflict_makes_the_agents_result_partial`.
+- AC-10 met: `the_applied_screen_shows_a_kept_agent_file_as_partial` in English and Korean; the unchanged applied fixture still ends Done.
+- AC-11 met: `a_conflict_alone_is_worth_a_question`.
+- AC-12 met: `base_agents_nested` and `agents_home_cli` pass inside the 76-test run and inside the affected check.
+- AC-13 met: the receipt above; `moai spec check SPEC-20261124-update-flat-agent-ownership` is run once more before READY.
+
+Guard mutants (each by one exact replacement, confirmed to change the file, run in one heavy slot, restored from a byte copy; logs `target/c459/mut-*.log`): render equality removed, package-file equality removed, the unplanned-choice refusal removed, the partial state removed, a kept file written as chosen, the revert skipping the replace action, the revert recording the person's bytes as ours, a conflict alone not asked, an edited nested copy overwritten, the difference printing equal lines, the difference printing raw bytes, and the chosen flat file not removed each fail their named test with exit 100. The revert mutant first survived (exit 0) because the nested revert hid it; the added test kills it.
+
+Not run: Windows and Linux (Mac fixtures only), a live `moai update` against a real package, and the JSON envelope path with a choice (D-5, no input there).
