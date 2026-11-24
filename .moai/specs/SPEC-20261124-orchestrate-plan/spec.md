@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261124-orchestrate-plan
 title: "`moai card orchestrate plan` reads the ledger and the lane registry and prints free lanes, dispatches, clears, audit requests, the landing queue and user items"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-24
 parent: SPEC-20261122-autonomous-orchestration
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8063 (2026-11-24T00:51:54Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8062 에 답함): 판 2 승인과 D-11 포함(PASS 가 난 착지 전 head 의 카드도 dispatch 에서 뺌); D-11 조항을 REQ-4 에 합친 커밋 a828623eef 의 digest 를 레인이 적어요; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:a2154e5f9aa5939ad5a65e6ea2489ea9579fac73993801169627ce6e3c988e4e"
 ---
 
 # `moai card orchestrate plan`: the coordination window's round as one read-only plan
