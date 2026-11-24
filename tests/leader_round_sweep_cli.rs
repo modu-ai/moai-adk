@@ -323,8 +323,9 @@ fn not_run_without_a_ledger() {
     assert_eq!(r["lease_sweep"]["status"], json!("not_run"), "{r}");
     assert!(r["lease_sweep"]["reason"].is_string(), "{r}");
     assert!(r["lanes"].is_array() && r["round"].is_object(), "{r}");
+    let path = ledger::location::ledger_path(w.home.path(), "demo").unwrap();
     assert!(
-        !w.home.path().join(".moai").exists(),
+        !path.exists() && !path.parent().unwrap().exists(),
         "a round with no ledger must not create one"
     );
 }
