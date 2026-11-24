@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261121-go-path-removal
 title: "moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement"
-status: approved
+status: draft
 revision: 6
 created: 2026-11-21
-approval:
-  by: leader
-  at: 2026-11-24
-  basis: "리더 결정 노트 8336 (2026-11-24T07:45:22Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8333 에 답함): 판 6 승인, D-1~D-9 모두 A, head 93c5ac983d; 레인은 그 노트를 인용만 해요"
-  digest: "sha256:bd9485715e0261c54ea53dd659d868a5f9f69a02e99d563dd3f09462210ceee3"
 ---
 
 # moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement
@@ -51,6 +46,7 @@ The questions revision 6 put to the leader on the card (note 8333) and the leade
 - Q7: Are `tests/diff_go.rs` and its fixture kept? -> A: no; both are deleted and the approved-differences list stays readable in history (D-7)
 - Q8: Does the statusline wrapper keep its Go fallback? -> A: no; it loses the fallback only, and the Python wrapper test is adjusted as text and is never run or cited as evidence (D-8)
 - Q9: What closes card criterion 3? -> A: the temporary-HOME run of AC-19; the user's look at a fresh shell on the real machine is a user step, recorded on the card after the landing (D-9)
+- Q10: Does the fresh-shell test run `bundle build` and `bundle verify` with exit 0 on its scrubbed `PATH`? -> A: no; it shows them answering with this build's envelope, and the verify line of AC-19 runs the two bundle test targets that show their working (D-10)
 
 ## Non-goals
 
@@ -110,7 +106,7 @@ The questions revision 6 put to the leader on the card (note 8333) and the leade
 - REQ-19: The binary and the tree shall carry no routing script and no word list of the Go build and no test or wrapper that starts `moai.old`
 - REQ-20: The help of `--confirm-switch` and `--revert-switch` and the update screens shall describe the link and the saved copy and name no v1-to-v2 replacement
 - REQ-21: The probe of `install` shall start a `moai` candidate only with `--version` or with `statusline --help` and a cleared environment
-- REQ-22: A test in a temporary HOME that reaches `moai` only through the links an install lays and has a planted `go` and `moai.old` first on `PATH` shall show the Rust version line and exit 0 for the bundle verbs and for one hook call and one statusline call and no start of the planted programs
+- REQ-22: A test in a temporary HOME that reaches `moai` only through the links an install lays and has a planted `go` and `moai.old` first on `PATH` shall show the Rust version line and answer for the bundle verbs and exit 0 for one hook call and one statusline call and no start of the planted programs
 
 ## Acceptance
 
@@ -150,8 +146,8 @@ The questions revision 6 put to the leader on the card (note 8333) and the leade
   verify: `cargo nextest run --locked --offline --test update_switch_layer --test update_switch_cli`
 - AC-18 (REQ-16, REQ-17): the revert restores the saved copy byte for byte with its mode; a copy that is not a known script, a `moai` that is not the link this step made and an unknown stamp change nothing and say why
   verify: `cargo nextest run --locked --offline --test update_switch_cli`
-- AC-19 (REQ-18, REQ-22): with a `PATH` of the folder holding the planted `go` and `moai.old`, then `path/` holding two links to this build, then `/usr/bin:/bin`, and a `go/bin/moai.old` in the temporary HOME that also records a start, `moai --version` prints the Rust line; `moai bundle build`, `moai bundle verify`, `moai bundle add`, `moai bundle remove`, `moai bundle list`, one `moai hook` call with host input on stdin and one `moai statusline` call with a statusline event on stdin exit 0; after all of them the planted programs recorded no start
-  verify: `cargo nextest run --locked --offline --test go_path_retired_cli`
+- AC-19 (REQ-18, REQ-22): with a `PATH` of the folder holding the planted `go` and `moai.old`, then `path/` holding two links to this build, then `/usr/bin:/bin`, and a `go/bin/moai.old` in the temporary HOME that also records a start, `moai --version` prints the Rust line; `moai bundle add`, `moai bundle remove` and `moai bundle list`, one `moai hook` call with host input on stdin and one `moai statusline` call with a statusline event on stdin exit 0; `moai bundle build` and `moai bundle verify` answer with this build's envelope; after all of them the planted programs recorded no start
+  verify: `cargo nextest run --locked --offline --test go_path_retired_cli --test bundle_build_cli --test bundle_verify_cli`
 - AC-20 (REQ-19): `install/moai-switch.sh`, `tests/diff_go.rs` and `tests/fixtures/diff_go/` are absent, no line of `src/` embeds a routing script and `tools/claude-statusline.sh` has no `moai.old`
   verify: `test ! -e install/moai-switch.sh && test ! -e tests/diff_go.rs && test ! -e tests/fixtures/diff_go && test -z "$(grep -rnE 'include_bytes!\([^)]*moai-switch' src)" && test -z "$(grep -n 'moai\.old' tools/claude-statusline.sh)"`
 - AC-21 (REQ-20): the two help entries and the update screens name the link and the saved copy and say no v2; the help tests pass
@@ -196,7 +192,7 @@ The product changes of revision 6 need none of these. Each is the user's own ste
 
 ## Decisions
 
-The decisions D-1 to D-9 are the lane's proposals for revision 6. Each counts from the leader's note that approves this revision by its digest; until then it is a default, not a decision record.
+The decisions D-1 to D-9 were the lane's proposals for revision 6 and count from the leader's note recorded in the frontmatter. D-10 is the leader's decision on the amendment of REQ-22 and AC-19 (its note on the card, 2026-11-24T07:58:02Z); the SPEC is a draft again until that amended text is approved by its digest.
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
@@ -209,6 +205,7 @@ The decisions D-1 to D-9 are the lane's proposals for revision 6. Each counts fr
 | D-7 | `tests/diff_go.rs` and its fixture are deleted | the Go oracle is gone: the eight tests skip on every machine without `moai.old` and would start it where it exists (`tests/diff_go.rs:1-8,23-53`); the approved-differences list stays readable at `5b85682932` | keep both files |
 | D-8 | The statusline wrapper keeps its lookup and loses the Go fallback only | the wrapper is the source of the script block of `docs/2383-statusline-switch-design.md`; the fallback (`tools/claude-statusline.sh:25-29`) is the last text in the tree that starts `moai.old` | leave the fallback (the binary does not ship the wrapper) |
 | D-9 | Card criterion 3 is met by the temporary-HOME run of AC-19; the look at a fresh shell on the real machine is the user's step and is recorded on the card when the user runs it | the dispatch of 2026-11-24: the real HOME is the user's (HOLD `guarded`); the product side is provable in a temporary HOME | criterion 3 stays open until the user's look |
+| D-10 | Through the links the fresh-shell test runs the verbs that need no project (`bundle add`, `bundle remove`, `bundle list`), one hook call and one statusline call to exit 0; `bundle build` and `bundle verify` are shown answering with this build's envelope, and their working is shown by the two bundle test targets that the verify line of AC-19 runs | `bundle verify` runs the check list through `cargo`, `python3` and `moai-cli` on `PATH` (`tests/bundle_verify_cli.rs:1-6,155-183`), so the test's `PATH` would start a real build; `bundle build` needs the ledger world of `tests/bundle_build_cli.rs`; copying both harnesses into the new test file duplicates about 250 lines | a copy of both harnesses in `tests/go_path_retired_cli.rs` |
 
 ### Evidence
 
