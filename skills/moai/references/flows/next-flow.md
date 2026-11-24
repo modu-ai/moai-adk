@@ -12,7 +12,7 @@ Four technical rules make the flow run. They describe how it works; they are not
 
 - **No tip chase.** A lane works from the base it started on. When the integration tip moves, the lane does not merge the new tip, rebase or start its checks again. The lander deals with a moved tip once, at landing.
 - **Evidence before landing.** A head lands only with its evidence: the checks the lane ran on that head, with their exit codes, and a passing verdict from a session that did not write the change (`references/audit.md`). The landing command itself refuses a head whose SPEC check or card criteria do not pass at that head.
-- **Exactly-once landing.** A card lands once. The landing command moves the integration branch by one compare-and-swap and closes the card in the same call; a rerun of the same call finds the head already inside the tip and never moves the branch twice.
+- **Exactly-once landing.** A card lands once. The landing command moves the integration branch by one compare-and-swap and closes the card in the same call; a rerun of the same call finds the head already inside the tip and never moves the branch twice. A worktree that has the branch checked out follows the move (`worktree_follow`).
 - **A guarded tip.** The integration branch moves only through the landing command. A protection hook refuses every other change of it.
 
 ## A lane
