@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261124-harness-step-label
 title: "generation 단계를 사용자에게는 Project harness 로 보여 주고 식별자는 그대로 두요; 프로젝트 하네스 연구 감사의 뒤따르는 일 네 가지"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
 parent: SPEC-20261120-project-harness-research
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 (2026-11-24T10:06:12Z, 사용자 위임 2026-11-23T13:57Z, ref note:255:50bdb6de88de495b1efbbfc1ad040462, 승인 요청 노트 8437 에 답함): 판 1 승인(리더가 spec show 로 같은 digest 를 읽음), D-2 는 CLAUDE.md, REQ-6 은 두 곳 다, D-4 는 동작 그대로; 쓰기 목록 열한 개 가운데 아홉 개를 카드 범위에 넣고 src/generation.rs 와 tools/repo_scans.json 은 줄 임대로 받음; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:452fd94a8f043f2c5240c9bbaa772fbeb41fb668efe229c6660ab3472dab1a05"
 ---
 
 # generation 단계를 사용자에게는 Project harness 로 보여 주고 식별자는 그대로 두요; 프로젝트 하네스 연구 감사의 뒤따르는 일 네 가지
