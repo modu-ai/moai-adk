@@ -29,10 +29,10 @@
 
 use super::{
     ancestor_symlinks, cross_filesystem, current_install_id, earlier_install_ids, file_result,
-    file_result_with, layout_folder, load_host_receipt, now_rfc3339, owned_map, owned_vec,
-    reload_state, scan_projection, sha256_hex, stage_package, test_fault, validate_permission,
-    writable, FilePlan, HostReceipt, HostReceiptEntry, ProjectionScan, ReceiptSource,
-    StagedPackage,
+    file_result_with, folder_receipt_ids, layout_folder, load_host_receipt, now_rfc3339, owned_map,
+    owned_vec, reload_state, scan_projection, sha256_hex, stage_package, test_fault,
+    validate_permission, writable, FilePlan, HostReceipt, HostReceiptEntry, ProjectionScan,
+    ReceiptSource, StagedPackage,
 };
 use crate::apply::{decide, publish_exclusive, publish_replace, read_opt, Decision};
 use crate::host_home::{Host, Place};
@@ -631,15 +631,11 @@ fn resolve_receipt(canonical_home: &Path, install_id: &str, skill: &str) -> Resu
         }
     }
     folders.sort();
-    for (_, folder_id) in earlier_install_ids(&versions, &folders, &exe_name)? {
+    for (folder, folder_id) in earlier_install_ids(&versions, &folders, &exe_name)? {
         if folder_id == install_id {
             continue;
         }
-        let mut ids = vec![folder_id.clone()];
-        ids.extend(crate::home_install::earlier_ids_of(
-            canonical_home,
-            &folder_id,
-        ));
+        let ids = folder_receipt_ids(canonical_home, &versions, &folder, &folder_id, &exe_name);
         let mut chosen: Option<(String, HostReceipt)> = None;
         for id in ids {
             if id == install_id {
