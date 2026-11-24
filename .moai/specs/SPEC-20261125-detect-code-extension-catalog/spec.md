@@ -42,7 +42,7 @@ parent: SPEC-20261124-project-detect-monorepo
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261125-detect-code-extension-catalog/**`, `src/project_detect.rs`(`EXTENSIONS` 표 삭제, `CatalogFile` 의 새 키, `code_languages`, 확장 병합·검증, 단위 시험), `src/project_detect_catalog.json`(`code_extensions` 행), `tests/project_detect_monorepo_cli.rs`(시험 더하기)
+- write: `.moai/specs/SPEC-20261125-detect-code-extension-catalog/**`, `src/project_detect.rs`(`EXTENSIONS` 표 삭제, `CatalogFile` 의 새 키, `code_languages`, 확장 병합·검증, 단위 시험), `src/project_detect_catalog.json`(`code_extensions` 행), `tests/project_detect_monorepo_cli.rs`(시험 더하기), `tests/green_test_lock.rs`(`every_detected_language_has_test_patterns` 가 지워진 `EXTENSIONS` 를 글로 읽던 줄을 카탈로그 함수로 바꿔요; 첫 영수증이 알려 줬어요)
 - read-only: `src/project_scale_detect.rs`, `src/ops/project_detect.rs`(카탈로그 형식을 설명하는 글이 없어서 바꿀 곳이 없어요), `tests/project_detect_cli.rs`, `skills/moai/workflows/project.md`
 - forbidden: `LSP_PLUGINS`·`DB_DEPENDENCIES`·`commands_fact` 의 표와 본문(다음 조각), `src/profile.rs`, `src/project_update.rs`, `src/language.rs`, `src/agents.rs`, `src/ops/project_apply.rs`, `skills/**`, `CLAUDE.md`, 이 저장소의 `.moai/project.yaml`, 실제 HOME, 한도 상수, 부모 SPEC 의 파일
 
@@ -60,6 +60,7 @@ parent: SPEC-20261124-project-detect-monorepo
 - 프로젝트 확장 파일에 읽을 수 없는 행이 하나라도 있으면 파일 전체를 거절해서 좋은 행도 못 써요. 추측으로 일부만 받는 것보다 안전한 쪽이에요: 거절은 `manifest_catalog.problem` 으로 보여서 사용자가 행을 고쳐요(REQ-3).
 - 같은 확장자를 여러 언어가 쓰는 경우(`.h` 는 C 와 C++ 모두)는 한 확장자에 한 언어예요. 배송 행이 먼저이고, 프로젝트가 다른 언어로 올릴 수는 없어요(AC-3). 알려진 한계로 두어요.
 - `manifest_catalog.rows` 의 뜻이 "manifest 행 수"에서 "행 수 전체"로 넓어져요. `src` 와 `skills` 에서 `manifest_catalog` 를 만드는 곳은 `src/project_detect.rs` 한 줄이고 읽는 곳은 없어요(검색으로 읽음); 이 숫자를 보는 것은 시험뿐이에요.
+- 표를 소스 글로 읽는 이웃 시험이 있었어요: `tests/green_test_lock.rs` 가 `const EXTENSIONS` 를 찾아 줄마다 읽어서 표를 지우자 첫 영수증이 실패했어요. 같은 시험을 `shipped_code_languages()` 호출로 바꿔요(부모의 manifest 조각이 `shipped_manifest_languages()` 로 한 것과 같아요). `tests/skill_references_test.py` 도 `EXTENSIONS` 를 글로 읽지만 부모 조각이 `MANIFESTS` 를 지운 때부터 이미 같은 방식으로 깨져 있고 Python 시험이라 이 저장소의 근거로 쓰지 않아요; 건드리지 않고 Result 에 적어요.
 - 새 키가 든 확장 파일을 이전 판 바이너리가 읽으면 모르는 키라서 거절돼요(`deny_unknown_fields`). 팀이 판을 섞어 쓰면 이전 판 쪽은 확장 파일을 못 읽고 배송 행만 써요. 이 SPEC 의 판으로 올리면 풀려요.
 
 ## Decisions
@@ -86,5 +87,7 @@ parent: SPEC-20261124-project-detect-monorepo
 - AC-5: met — `the_code_extension_row_limits_hold_at_both_edges` 통과: 행 64 개와 한 행의 확장자 64 개는 `read`, 65 개는 `refused`(Run 2).
 - AC-6: READY 노트의 영수증이 정해요(`moai check affected` 가 이웃 시험을 고르고 돌려요; 영수증은 이 Result 를 담은 머리에서 돌려서 이 줄을 나중에 고치지 않아요). 이 Result 를 쓰는 때는 Run 2 의 `project_detect_cli` 와 `--lib project_detect` 만 통과를 읽었고 `project_scale_detect_lib`, `home_isolation_scan` 은 아직 `not_run` 이에요.
 - 가드 뮤턴트 열 개를 한 슬롯 호출에서 하나씩 넣고 같은 필터로 돌려 열 개 모두 컴파일되고 지정한 시험이 실패했어요(종료 100, 편집은 정확히 한 번씩, 소스는 원래 바이트로 복원, 이후 `git status --short` 비어 있음; `target/c256ext/mutants.out`): `project_code_rows_ignored`, `project_extension_replaces_shipped`(병합의 떨구기와 조회 순서를 함께 바꿈 — 떨구기 한 가지만으로는 조회가 배송 행을 먼저 찾아서 관찰되지 않아요), `dot_in_extension_accepted`, `row_without_extensions_accepted`, `code_rows_not_validated`, `row_limit_65_accepted`, `extension_limit_65_accepted`, `rows_count_manifests_only`, `extension_compared_lowercase`, `shipped_extension_missing`.
+- 첫 영수증(`moai check affected 0babbe3566..d574f5ba9a`, 93 targets)은 FAIL 이었어요(`test=100`, 3258 개 중 1 개 실패): `green_test_lock` 의 `every_detected_language_has_test_patterns` 가 지워진 `const EXTENSIONS` 를 글로 찾다가 `None` 에서 멈췄어요. 같은 머리에 대한 재실행이 아니에요 — 시험을 카탈로그 함수 `shipped_code_languages()` 로 바꾼 다른 머리의 새 영수증이에요. Run 3 (`cargo nextest run --locked --offline --no-fail-fast --test green_test_lock --test project_detect_monorepo_cli --lib -E 'binary(green_test_lock) or binary(project_detect_monorepo_cli) or test(project_detect)'`): 46 개 모두 통과.
+- 보고만 하는 것: `tests/skill_references_test.py` 의 `detector_languages()` 는 `MANIFESTS` 와 `EXTENSIONS` 표를 소스 글로 찾는데 둘 다 카탈로그로 옮겨져서 더는 맞지 않아요(앞 표는 부모 조각이 옮겼어요). Python 시험이고 이 SPEC 의 범위 밖이라 돌리지도 고치지도 않았어요; 리더가 고칠 곳을 정해 주세요.
 - 위험 경로: 읽기 전용 감지라서 지우기·reset·프로세스 시작·권한 규칙이 없어요. 시험은 빌드된 바이너리를 임시 폴더와 임시 HOME 에서 돌려요.
 - 돌리지 않은 것: 전체 `cargo test`, Windows·Linux, 부모의 AC-11 실측.
