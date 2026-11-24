@@ -13,21 +13,18 @@ const SEPARATOR: &str = " | ";
 const LINE_ONE_STEPS: usize = 5;
 /// The forms of line 3, from the widest (Z0) to the narrowest (Z3).
 const LINE_THREE_STEPS: usize = 4;
-/// The cells of the bar that shows the share left of a limit window
-/// (SPEC-20261123-statusline-order-bars REQ-3).
+/// The cells of the bar that shows the share used of a limit window
+/// (SPEC-20261123-statusline-order-bars REQ-3, read as the share used by
+/// SPEC-20261124-statusline-counts-truth REQ-12).
 const BAR_WIDTH: i64 = 10;
-/// The used percentage above which a window counts as nearly spent
-/// (SPEC-20261122-statusline-limits D-2).
+/// The used percentage above which a window counts as nearly spent and shows `🪫` instead of `🔋`
+/// (SPEC-20261122-statusline-limits D-2; SPEC-20261124-statusline-counts-truth REQ-12).
 const HIGH_USE_PERCENT: i64 = 70;
-/// With less than this share left a window shows `🪫` instead of `🔋`: the same state as a use
-/// above [`HIGH_USE_PERCENT`], read from what is left (SPEC-20261122-statusline-limits-left
-/// REQ-2).
-const LOW_LEFT_PERCENT: i64 = 100 - HIGH_USE_PERCENT;
-/// The filled cells of a bar are green with this share left or more, yellow from
-/// [`LEVEL_YELLOW_FROM`], peach from [`LOW_LEFT_PERCENT`] and red below it, so the bar turns red
-/// where the battery icon turns to `🪫` (SPEC-20261124-statusline-bar-color REQ-2, D-1).
-const LEVEL_GREEN_FROM: i64 = 70;
-const LEVEL_YELLOW_FROM: i64 = 50;
+/// The filled cells of a bar are green with this share used or less, yellow up to
+/// [`LEVEL_YELLOW_UP_TO`], peach up to [`HIGH_USE_PERCENT`] and red above it, so the bar turns red
+/// where the battery icon turns to `🪫` (SPEC-20261124-statusline-counts-truth REQ-13, D-10).
+const LEVEL_GREEN_UP_TO: i64 = 30;
+const LEVEL_YELLOW_UP_TO: i64 = 50;
 /// The cost is shown below this many US dollars (at most `999999.99`, nine characters); a larger
 /// value (`1e308` printed a 337-character line) is left out.
 const MAX_COST_USD: f64 = 1_000_000.0;
@@ -628,7 +625,9 @@ impl Renderer {
     /// the narrowest (SPEC-20261122-statusline-limits-left REQ-6 and REQ-7, with my card moved to
     /// the end by SPEC-20261123-statusline-order-bars REQ-1): the flow, what stands beside it,
     /// my card. There is no letter code, an item whose count is zero is left out with its arrow
-    /// or its separator, and the drafts and the cards whose lease has ended are not on the line.
+    /// or its separator, and the drafts are not on the line. A card whose lease ended without a
+    /// hand-back is in `🟡` with the working ones, and `🙋` counts the hold cards nobody
+    /// withdrew (SPEC-20261124-statusline-counts-truth).
     /// Each narrower form drops the leftmost item still in the flow — `🗂️` first, `✅` last —
     /// while `🚧 🙋` and my card stay. An unsplit [`Flow`] (the notes could not be read) has one
     /// form, `🗂️ <ready> 🟡 <working>` without an arrow, never a guess. One empty form is returned
@@ -667,7 +666,10 @@ impl Renderer {
         });
         let chain: Vec<Piece> = [
             item(t.cards_waiting, "🗂️", f.ready),
-            item(t.cards_active, "🟡", f.working),
+            // A card a lane works on whose lease ended is still in hand (SPEC-20261124-
+            // statusline-counts-truth REQ-7): it is drawn with the working ones, so the items
+            // add up to the open cards.
+            item(t.cards_active, "🟡", f.working.saturating_add(f.stale)),
             item(t.cards_posted, "📨", f.submitted),
             item(t.branch, "🛬", f.audited.saturating_add(f.landed)),
             item(t.cards_done, "✅", f.done_today),
@@ -733,28 +735,27 @@ struct Window {
 }
 
 impl Window {
-    /// A window with a known percentage: the number is the share left, the battery icon turns
-    /// from `🔋` to `🪫` when less than [`LOW_LEFT_PERCENT`] is left
-    /// (SPEC-20261122-statusline-limits-left REQ-1, REQ-2), and the bar of [`BAR_WIDTH`] cells
-    /// draws the same share: the first `left * BAR_WIDTH / 100` (rounded down) cells are `█` and
-    /// the others `░`. The filled cells take the level color of the share left
-    /// ([`level_color`], SPEC-20261124-statusline-bar-color) and the empty cells the muted
-    /// color, two runs with no space between them; the glyphs tell them apart without color.
-    /// `used` is the whole used percentage from 0 to 100.
+    /// A window with a known percentage: the number is the share used, the battery icon turns
+    /// from `🔋` to `🪫` when more than [`HIGH_USE_PERCENT`] is used
+    /// (SPEC-20261124-statusline-counts-truth REQ-12), and the bar of [`BAR_WIDTH`] cells draws
+    /// the same share: the first `used * BAR_WIDTH / 100` (rounded down) cells are `█` and the
+    /// others `░`. The filled cells take the level color of the share used ([`level_color`],
+    /// REQ-13) and the empty cells the muted color, two runs with no space between them; the
+    /// glyphs tell them apart without color. `used` is the whole used percentage from 0 to 100.
     fn known(t: &Theme, label: &str, used: i64, countdown: Option<Piece>) -> Window {
-        let left = left_percent(used).clamp(0, 100);
-        let icon = if left < LOW_LEFT_PERCENT {
+        let used = used.clamp(0, 100);
+        let icon = if used > HIGH_USE_PERCENT {
             "🪫"
         } else {
             "🔋"
         };
-        let filled = (left * BAR_WIDTH / 100) as usize;
+        let filled = (used * BAR_WIDTH / 100) as usize;
         let empty = (BAR_WIDTH as usize).saturating_sub(filled);
         let cells = |glyph: char, n: usize| glyph.to_string().repeat(n);
         let mut bar = Vec::new();
         if filled > 0 {
             bar.push(Piece {
-                color: level_color(t, left),
+                color: level_color(t, used),
                 text: cells('█', filled),
                 url: String::new(),
                 glue: false,
@@ -779,7 +780,7 @@ impl Window {
             bar,
             number: Piece {
                 color: "",
-                text: format!("{left}%"),
+                text: format!("{used}%"),
                 url: String::new(),
                 glue: false,
             },
@@ -824,25 +825,20 @@ fn whole_percent(pct: f64) -> i64 {
     (pct as i64).clamp(0, 100)
 }
 
-/// The color of the filled cells of a bar with `left` percent left: green from
-/// [`LEVEL_GREEN_FROM`], yellow from [`LEVEL_YELLOW_FROM`], peach from [`LOW_LEFT_PERCENT`] and red
-/// below it (SPEC-20261124-statusline-bar-color REQ-2). It reads the share left that the number
-/// shows, never the share used.
-fn level_color(t: &Theme, left: i64) -> &'static str {
-    if left >= LEVEL_GREEN_FROM {
+/// The color of the filled cells of a bar with `used` percent used: green up to
+/// [`LEVEL_GREEN_UP_TO`], yellow up to [`LEVEL_YELLOW_UP_TO`], peach up to [`HIGH_USE_PERCENT`] and
+/// red above it (SPEC-20261124-statusline-counts-truth REQ-13). It reads the share used that the
+/// number shows.
+fn level_color(t: &Theme, used: i64) -> &'static str {
+    if used <= LEVEL_GREEN_UP_TO {
         t.level[0]
-    } else if left >= LEVEL_YELLOW_FROM {
+    } else if used <= LEVEL_YELLOW_UP_TO {
         t.level[1]
-    } else if left >= LOW_LEFT_PERCENT {
+    } else if used <= HIGH_USE_PERCENT {
         t.level[2]
     } else {
         t.level[3]
     }
-}
-
-/// The share of a window that is left, from its whole used percentage.
-fn left_percent(used: i64) -> i64 {
-    100 - used
 }
 
 /// The reset countdown from the seconds left, without the words `resets in`
@@ -922,12 +918,12 @@ mod tests {
         }
     }
 
-    /// The limits line of [`full_status`] (SPEC-20261122-statusline-limits-left,
-    /// SPEC-20261123-statusline-order-bars): each number is the share left (50, 75 and 25 percent
-    /// left) with a ten-cell bar of the same share before it, and the five-hour window resets one
+    /// The limits line of [`full_status`] (SPEC-20261124-statusline-counts-truth REQ-12,
+    /// SPEC-20261123-statusline-order-bars): each number is the share used (50, 25 and 75 percent
+    /// used) with a ten-cell bar of the same share before it, and the five-hour window resets one
     /// second after the render's clock.
     const FULL_WINDOWS: &str =
-        "🔋 CW █████░░░░░ 50% | 🔋 5H ███████░░░ 75% (0m) | 🪫 7D ██░░░░░░░░ 25%";
+        "🔋 CW █████░░░░░ 50% | 🔋 5H ██░░░░░░░░ 25% (0m) | 🪫 7D ███████░░░ 75%";
 
     /// The versions of [`full_status`], which open the second line: the Claude Code version, then
     /// the MoAI version with the update arrow naming the template, then the build.
@@ -1010,8 +1006,9 @@ mod tests {
         Flow {
             draft: 43,
             ready: 150,
-            working: 14,
-            stale: 22,
+            // `🟡` draws the working and the stale cards together: 8 + 6.
+            working: 8,
+            stale: 6,
             submitted: 11,
             audited: 2,
             landed: 0,
@@ -1056,7 +1053,7 @@ mod tests {
             format!(
                 "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 0 🔀 0 | 🅱️ v2026.11.0(🏷️ b3ba2b3) | 🌳 v2026.11.0\n\
                  {flow}\n\
-                 🪫 CW ░░░░░░░░░░ 3% | 🔋 7D ███████░░░ 79% (6d 21h)",
+                 🪫 CW █████████░ 97% | 🔋 7D ██░░░░░░░░ 21% (6d 21h)",
                 flow = p0_with_versions()
             )
         );
@@ -1165,7 +1162,7 @@ mod tests {
             ..Default::default()
         };
         let out = Renderer::new(&config, None).render(&status);
-        assert!(out.contains("🔋 5H ███████░░░ 75%"), "{out}");
+        assert!(out.contains("🔋 5H ██░░░░░░░░ 25%"), "{out}");
         assert!(!out.contains('💾'), "{out}");
         assert!(out.contains("🌳 main"), "{out}");
         assert!(!out.contains("↑5") && !out.contains("+3"), "{out}");
@@ -1184,7 +1181,7 @@ mod tests {
             used_percentage: Some(0.0),
             resets_at: None,
         });
-        assert_eq!(plain(&status, &["context"]), "🔋 7D ██████████ 100%");
+        assert_eq!(plain(&status, &["context"]), "🔋 7D ░░░░░░░░░░ 0%");
     }
 
     /// REQ-9: a window whose percentage is unavailable says `n/a` with no battery icon and never
@@ -1212,7 +1209,7 @@ mod tests {
     }
 
     /// REQ-10: a window's percentage is shown from 0 to 100 and no further, at the edges too. The
-    /// number is the share left of the used percentage given.
+    /// number is the used percentage given, clamped.
     #[test]
     fn window_percentages_stay_between_zero_and_one_hundred() {
         let week = |pct: f64| {
@@ -1225,13 +1222,13 @@ mod tests {
             };
             plain(&status, &["context", "session"])
         };
-        assert_eq!(week(-5.0), "🔋 7D ██████████ 100%");
-        assert_eq!(week(0.0), "🔋 7D ██████████ 100%");
-        assert_eq!(week(1.0), "🔋 7D █████████░ 99%");
-        assert_eq!(week(99.0), "🪫 7D ░░░░░░░░░░ 1%");
-        assert_eq!(week(100.0), "🪫 7D ░░░░░░░░░░ 0%");
-        assert_eq!(week(101.0), "🪫 7D ░░░░░░░░░░ 0%");
-        assert_eq!(week(1_000_000.0), "🪫 7D ░░░░░░░░░░ 0%");
+        assert_eq!(week(-5.0), "🔋 7D ░░░░░░░░░░ 0%");
+        assert_eq!(week(0.0), "🔋 7D ░░░░░░░░░░ 0%");
+        assert_eq!(week(1.0), "🔋 7D ░░░░░░░░░░ 1%");
+        assert_eq!(week(99.0), "🪫 7D █████████░ 99%");
+        assert_eq!(week(100.0), "🪫 7D ██████████ 100%");
+        assert_eq!(week(101.0), "🪫 7D ██████████ 100%");
+        assert_eq!(week(1_000_000.0), "🪫 7D ██████████ 100%");
         let ctx = |used: i64| {
             let status = Status {
                 context: Some(used as f64),
@@ -1239,10 +1236,10 @@ mod tests {
             };
             plain(&status, &["usage_7d"])
         };
-        assert_eq!(ctx(0), "🔋 CW ██████████ 100%");
-        assert_eq!(ctx(100), "🪫 CW ░░░░░░░░░░ 0%");
-        assert_eq!(ctx(101), "🪫 CW ░░░░░░░░░░ 0%");
-        assert_eq!(ctx(5_000), "🪫 CW ░░░░░░░░░░ 0%");
+        assert_eq!(ctx(0), "🔋 CW ░░░░░░░░░░ 0%");
+        assert_eq!(ctx(100), "🪫 CW ██████████ 100%");
+        assert_eq!(ctx(101), "🪫 CW ██████████ 100%");
+        assert_eq!(ctx(5_000), "🪫 CW ██████████ 100%");
     }
 
     /// REQ-11: the screen is English only — nothing a render prints holds a Hangul letter, with
@@ -1267,7 +1264,7 @@ mod tests {
     }
 
     /// #2559 AC-1: the window icon's thresholds pinned at N/N+1 — the battery icon turns between
-    /// 70 and 71 percent used (30 and 29 left). Plain output, so only the threshold decides.
+    /// 70 and 71 percent used. Plain output, so only the threshold decides.
     #[test]
     fn window_icon_thresholds_hold_at_their_boundaries() {
         let at = |pct: f64| {
@@ -1280,10 +1277,10 @@ mod tests {
             };
             plain(&status, &["context", "session"])
         };
-        assert_eq!(at(70.0), "🔋 7D ███░░░░░░░ 30%");
-        assert_eq!(at(71.0), "🪫 7D ██░░░░░░░░ 29%");
-        assert_eq!(at(9.0), "🔋 7D █████████░ 91%");
-        assert_eq!(at(10.0), "🔋 7D █████████░ 90%");
+        assert_eq!(at(70.0), "🔋 7D ███████░░░ 70%");
+        assert_eq!(at(71.0), "🪫 7D ███████░░░ 71%");
+        assert_eq!(at(9.0), "🔋 7D ░░░░░░░░░░ 9%");
+        assert_eq!(at(10.0), "🔋 7D █░░░░░░░░░ 10%");
     }
 
     /// SPEC-20261122-statusline-where REQ-8: line 1 has no tag. The `session` option is still
@@ -1622,7 +1619,7 @@ mod tests {
         // bar and its number.
         assert_eq!(lines[1], FULL_VERSIONS, "{}", lines[1]);
         assert!(lines[2].starts_with("🔋 CW █████░░░░░ 50%"), "{}", lines[2]);
-        assert!(lines[2].contains("7D ██░░░░░░░░ 25%"), "{}", lines[2]);
+        assert!(lines[2].contains("7D ███████░░░ 75%"), "{}", lines[2]);
         assert_eq!(lines.len(), 3, "{out}");
         assert!(
             !out.contains('\x1b'),
@@ -1722,11 +1719,11 @@ mod tests {
         };
         let off = ["session"];
         // REQ-7: the `(⚠️ /clear)` and `(🛑/clear!)` hints are gone at every band — the window
-        // and the percentage left stand alone.
-        assert_eq!(plain(&status, &off), "🪫 CW █░░░░░░░░░ 10%");
-        assert_eq!(plain(&status, &[]), "🪫 CW █░░░░░░░░░ 10%");
+        // and the percentage used stand alone.
+        assert_eq!(plain(&status, &off), "🪫 CW █████████░ 90%");
+        assert_eq!(plain(&status, &[]), "🪫 CW █████████░ 90%");
         status.context = Some(95.0);
-        assert_eq!(plain(&status, &off), "🪫 CW ░░░░░░░░░░ 5%");
+        assert_eq!(plain(&status, &off), "🪫 CW █████████░ 95%");
         assert_eq!(plain(&status, &["context", "session"]), "MoAI");
         assert_eq!(plain(&status, &["context"]), "MoAI");
     }
@@ -1839,8 +1836,9 @@ mod flow_line_tests {
         Flow {
             draft: 43,
             ready: 150,
-            working: 14,
-            stale: 22,
+            // `🟡` draws the working and the stale cards together: 8 + 6.
+            working: 8,
+            stale: 6,
             submitted: 11,
             audited: 2,
             landed: 1,
@@ -2094,6 +2092,8 @@ mod flow_line_tests {
         assert_eq!(
             line(Flow {
                 working: 0,
+                // `🟡` is the sum of the working and the stale cards: both are 0 to hide it.
+                stale: 0,
                 done_today: 0,
                 ..no_card()
             }),
@@ -2149,6 +2149,7 @@ mod flow_line_tests {
             line(Flow {
                 ready: 0,
                 working: 0,
+                stale: 0,
                 submitted: 0,
                 audited: 0,
                 landed: 0,
@@ -2164,21 +2165,30 @@ mod flow_line_tests {
         }
     }
 
-    /// The drafts and the cards whose lease has ended are not on the line: a ledger that holds
-    /// nothing else has no flow line, and their numbers never reach another item.
+    /// The drafts are not on the line: a ledger that holds nothing else has no flow line, and
+    /// their number never reaches another item. A card whose lease ended without a hand-back is
+    /// drawn with the working ones (SPEC-20261124-statusline-counts-truth REQ-7), so a ledger
+    /// with only such cards has a `🟡` item, and the item is the sum of the two counts.
     #[test]
-    fn drafts_and_ended_leases_are_not_on_the_line() {
-        let only_those = Flow {
+    fn drafts_are_not_on_the_line_and_a_stale_card_is_drawn_with_the_working_ones() {
+        let only_drafts = Flow {
             draft: 43,
+            ..empty()
+        };
+        assert_eq!(plain(only_drafts, None), "MoAI");
+        assert!(!plain(full(), None).contains("43"));
+        let only_stale = Flow {
             stale: 22,
             ..empty()
         };
-        assert_eq!(plain(only_those, None), "MoAI");
-        let out = plain(full(), None);
-        for number in ["43", "22"] {
-            assert!(!out.contains(number), "{number} in {out}");
-        }
-        // Only my card, and its lease has ended: it is still the card in hand.
+        assert_eq!(plain(only_stale, None), "🟡 22");
+        let both = Flow {
+            working: 3,
+            stale: 4,
+            ..empty()
+        };
+        assert_eq!(plain(both, None), "🟡 7");
+        // Only my card, and its lease has ended: it is still the card in hand, and counted.
         let mine_only = Flow {
             mine: Some(MyCard {
                 card: CARD,
@@ -2187,7 +2197,7 @@ mod flow_line_tests {
             stale: 1,
             ..empty()
         };
-        assert_eq!(plain(mine_only, None), format!("🎯 C-{CARD} 🟡"));
+        assert_eq!(plain(mine_only, None), format!("🟡 1 | 🎯 C-{CARD} 🟡"));
     }
 
     /// My card is `🎯 C-<n> <stage icon>` with the icon of its stage from the one icon set, for
@@ -2950,10 +2960,11 @@ mod window_tests {
     use super::line_three_support::{item, line, NOW};
     use serde_json::{json, Value};
 
-    /// The bar of a share left, written out from the formula of the SPEC (REQ-3): ten cells, the
-    /// first `left * 10 / 100` (rounded down) of them `█` and the others `░`.
-    fn bar(left: i64) -> String {
-        let filled = (left * 10 / 100) as usize;
+    /// The bar of a share used, written out from the formula of the SPEC
+    /// (SPEC-20261124-statusline-counts-truth REQ-12): ten cells, the first `used * 10 / 100`
+    /// (rounded down) of them `█` and the others `░`.
+    fn bar(used: i64) -> String {
+        let filled = (used * 10 / 100) as usize;
         format!("{}{}", "█".repeat(filled), "░".repeat(10 - filled))
     }
 
@@ -2982,23 +2993,24 @@ mod window_tests {
     fn the_battery_icon_switches_at_70_and_71() {
         assert_eq!(
             week(json!(70), None).as_deref(),
-            Some("🔋 7D ███░░░░░░░ 30%")
+            Some("🔋 7D ███████░░░ 70%")
         );
         assert_eq!(
             week(json!(71), None).as_deref(),
-            Some("🪫 7D ██░░░░░░░░ 29%")
+            Some("🪫 7D ███████░░░ 71%")
         );
     }
 
-    /// REQ-3 (SPEC-20261123-statusline-order-bars): the bar has ten cells whatever the number, a
-    /// new cell fills at each tenth of the share left — 9 is no cell, 10 is one, 11 is one, 19 is
+    /// REQ-3 (SPEC-20261123-statusline-order-bars) read as the share used by REQ-12 of
+    /// SPEC-20261124-statusline-counts-truth: the bar has ten cells whatever the number, a new
+    /// cell fills at each tenth of the share used — 9 is no cell, 10 is one, 11 is one, 19 is
     /// one, 20 is two, 99 is nine, 100 is ten — and a number below 0 or above 100 never gives
     /// fewer than none or more than ten filled cells. The expected text is written out by hand
     /// at the boundaries, then the whole range is checked against the cell counts.
     #[test]
     fn the_bar_has_ten_cells_and_changes_at_each_tenth() {
         let context = |used: i64| line(&json!({"context_window": {"used_percentage": used}}));
-        for (left, bar_text) in [
+        for (used, bar_text) in [
             (0, "░░░░░░░░░░"),
             (9, "░░░░░░░░░░"),
             (10, "█░░░░░░░░░"),
@@ -3008,28 +3020,28 @@ mod window_tests {
             (99, "█████████░"),
             (100, "██████████"),
         ] {
-            let icon = if left < 30 { "🪫" } else { "🔋" };
+            let icon = if used > 70 { "🪫" } else { "🔋" };
             assert_eq!(
-                context(100 - left),
-                format!("{icon} CW {bar_text} {left}%"),
-                "{left} left"
+                context(used),
+                format!("{icon} CW {bar_text} {used}%"),
+                "{used} used"
             );
         }
         // A share below 0 or above 100 is clamped: the bar stays ten cells, 0 to 10 of them full.
-        assert_eq!(context(150), "🪫 CW ░░░░░░░░░░ 0%");
-        assert_eq!(context(1_000_000), "🪫 CW ░░░░░░░░░░ 0%");
-        assert_eq!(context(-20), "🔋 CW ██████████ 100%");
-        // Every share from 0 to 100 left: ten cells, `left / 10` of them filled, the filled
-        // cells first, and the number and the icon as before.
-        for left in 0..=100_i64 {
-            let text = context(100 - left);
+        assert_eq!(context(150), "🪫 CW ██████████ 100%");
+        assert_eq!(context(1_000_000), "🪫 CW ██████████ 100%");
+        assert_eq!(context(-20), "🔋 CW ░░░░░░░░░░ 0%");
+        // Every share from 0 to 100 used: ten cells, `used / 10` of them filled, the filled
+        // cells first, the number is the used percentage and the icon turns above 70.
+        for used in 0..=100_i64 {
+            let text = context(used);
             let filled = text.matches('█').count();
             let empty = text.matches('░').count();
-            assert_eq!(filled + empty, 10, "{left}: {text}");
-            assert_eq!(filled as i64, left / 10, "{left}: {text}");
-            assert!(text.contains(&format!(" {} {left}%", bar(left))), "{text}");
+            assert_eq!(filled + empty, 10, "{used}: {text}");
+            assert_eq!(filled as i64, used / 10, "{used}: {text}");
+            assert!(text.contains(&format!(" {} {used}%", bar(used))), "{text}");
             assert!(
-                text.starts_with(if left < 30 { "🪫 CW " } else { "🔋 CW " }),
+                text.starts_with(if used > 70 { "🪫 CW " } else { "🔋 CW " }),
                 "{text}"
             );
         }
@@ -3061,7 +3073,7 @@ mod window_tests {
             .render(&status);
         assert_eq!(
             plain,
-            "🔋 CW ███████░░░ 73% | 🔋 5H ████░░░░░░ 49% (43m) | 🔋 7D ████████░░ 87% (3d 22h)"
+            "🔋 CW ██░░░░░░░░ 27% | 🔋 5H █████░░░░░ 51% (43m) | 🔋 7D █░░░░░░░░░ 13% (3d 22h)"
         );
         for name in ["catppuccin-mocha", "catppuccin-latte"] {
             let t = theme(name);
@@ -3085,14 +3097,13 @@ mod window_tests {
                 // The empty cells are painted in the muted color, each run on its own; the
                 // filled cells take the level color of their window
                 // (SPEC-20261124-statusline-bar-color, `the_filled_cells_carry_the_level_color`).
-                for empty in ["░░░", "░░░░░░", "░░"] {
+                for empty in ["░░░░░░░░", "░░░░░", "░░░░░░░░░"] {
                     assert!(
                         out.contains(&profile.paint(t.muted, empty)),
                         "{name} {profile:?}: no muted run of {empty}: {out:?}"
                     );
                 }
-                for filled in ["███████", "████", "████████"]
-                {
+                for filled in ["██", "█████", "█"] {
                     assert!(out.contains(filled), "{out:?}");
                     assert!(
                         !out.contains(&profile.paint(t.muted, filled)),
@@ -3147,7 +3158,7 @@ mod window_tests {
             .render(&status)
     }
 
-    /// The bytes of one bar of `left` percent left as the renderer writes them: the filled cells
+    /// The bytes of one bar of `used` percent used as the renderer writes them: the filled cells
     /// painted in `level`, then the base color of the line again (the line re-applies it after
     /// every reset), then the empty cells painted in the muted color. A run with no cell is
     /// left out.
@@ -3155,10 +3166,10 @@ mod window_tests {
         profile: crate::statusline::color::Profile,
         theme_name: &str,
         level: &str,
-        left: i64,
+        used: i64,
     ) -> String {
         let t = crate::statusline::render::theme(theme_name);
-        let filled = (left * 10 / 100) as usize;
+        let filled = (used * 10 / 100) as usize;
         let empty = 10 - filled;
         let mut out = String::new();
         if filled > 0 {
@@ -3171,19 +3182,21 @@ mod window_tests {
         out
     }
 
-    /// REQ-1, REQ-3 and REQ-4 (SPEC-20261124-statusline-bar-color): with a color profile the
+    /// REQ-1, REQ-3 and REQ-4 (SPEC-20261124-statusline-bar-color) read as the share used by
+    /// REQ-12 and REQ-13 of SPEC-20261124-statusline-counts-truth: with a color profile the
     /// filled cells of the `CW`, `5H` and `7D` bars are one run in the level color of the share
-    /// left, followed by the empty cells in the muted color, in both themes and both profiles.
+    /// used, followed by the empty cells in the muted color, in both themes and both profiles.
     #[test]
     fn the_filled_cells_carry_the_level_color() {
         use crate::statusline::color::Profile;
-        // (used of CW, 5H, 7D) → (left of each, level index of each): 73 green, 49 peach, 87 green;
-        // 55 yellow, 19 red, 38 peach; 100 green with no empty cell.
+        // (used of CW, 5H, 7D) → (used of each, level index of each): 27 green, 51 peach, 13 green;
+        // 45 yellow, 81 red, 62 peach; 0 green with no filled cell, 30 green, 100 red with no
+        // empty cell.
         type Case = ([i64; 3], [(i64, usize); 3]);
         let cases: [Case; 3] = [
-            ([27, 51, 13], [(73, 0), (49, 2), (87, 0)]),
-            ([45, 81, 62], [(55, 1), (19, 3), (38, 2)]),
-            ([0, 30, 100], [(100, 0), (70, 0), (0, 3)]),
+            ([27, 51, 13], [(27, 0), (51, 2), (13, 0)]),
+            ([45, 81, 62], [(45, 1), (81, 3), (62, 2)]),
+            ([0, 30, 100], [(0, 0), (30, 0), (100, 3)]),
         ];
         for name in ["catppuccin-mocha", "catppuccin-latte"] {
             let levels = levels_of(name);
@@ -3194,11 +3207,11 @@ mod window_tests {
                         Some(profile),
                         [Some(used[0]), Some(used[1]), Some(used[2])],
                     );
-                    for (window, (left, level)) in ["CW", "5H", "7D"].iter().zip(lefts) {
-                        let bytes = bar_bytes(profile, name, levels[level], left);
+                    for (window, (share, level)) in ["CW", "5H", "7D"].iter().zip(lefts) {
+                        let bytes = bar_bytes(profile, name, levels[level], share);
                         assert!(
                             out.contains(&bytes),
-                            "{name} {profile:?} {window} {left} left: no {bytes:?} in {out:?}"
+                            "{name} {profile:?} {window} {share} used: no {bytes:?} in {out:?}"
                         );
                     }
                 }
@@ -3206,57 +3219,55 @@ mod window_tests {
         }
     }
 
-    /// REQ-2 (SPEC-20261124-statusline-bar-color): the level color follows the share left in four
-    /// steps, pinned at N and N+1 — 70 is green and 69 yellow, 50 yellow and 49 peach, 30 peach
-    /// and 29 red (30 is `LOW_LEFT_PERCENT`, where the battery icon turns too) — the table is
-    /// written out by hand, and over the whole range the color only moves from green toward red
-    /// as the share left falls.
+    /// REQ-13 of SPEC-20261124-statusline-counts-truth (it replaces REQ-2 of
+    /// SPEC-20261124-statusline-bar-color): the level color follows the share used in four steps,
+    /// pinned at N and N+1 — 30 is green and 31 yellow, 50 yellow and 51 peach, 70 peach and 71
+    /// red (70 is `HIGH_USE_PERCENT`, where the battery icon turns too) — the table is written
+    /// out by hand, and over the whole range the color only moves from green toward red as the
+    /// share used grows. A bar with no filled cell (under 10 used) has no level color to read.
     #[test]
     fn the_level_color_changes_at_each_step_point() {
         use crate::statusline::color::Profile;
         let name = "catppuccin-mocha";
         let levels = levels_of(name);
         let profile = Profile::TrueColor;
-        let level_at = |left: i64| -> usize {
-            let out = limits_colored(name, Some(profile), [Some(100 - left), None, None]);
+        let level_at = |used: i64| -> usize {
+            let out = limits_colored(name, Some(profile), [Some(used), None, None]);
             let seen: Vec<usize> = (0..4)
-                .filter(|i| out.contains(&bar_bytes(profile, name, levels[*i], left)))
+                .filter(|i| out.contains(&bar_bytes(profile, name, levels[*i], used)))
                 .collect();
-            assert_eq!(seen.len(), 1, "{left} left: levels {seen:?} in {out:?}");
+            assert_eq!(seen.len(), 1, "{used} used: levels {seen:?} in {out:?}");
             seen[0]
         };
-        for (left, level) in [
-            (100, 0),
-            (71, 0),
-            (70, 0),
-            (69, 1),
-            (51, 1),
+        for (used, level) in [
+            (10, 0),
+            (29, 0),
+            (30, 0),
+            (31, 1),
+            (49, 1),
             (50, 1),
-            (49, 2),
-            (31, 2),
-            (30, 2),
-            (29, 3),
-            (11, 3),
-            (10, 3),
+            (51, 2),
+            (69, 2),
+            (70, 2),
+            (71, 3),
+            (89, 3),
+            (100, 3),
         ] {
-            assert_eq!(level_at(left), level, "{left} left");
+            assert_eq!(level_at(used), level, "{used} used");
         }
         // The step points of the table above are the constants of the renderer.
         assert_eq!(
             [
-                super::LEVEL_GREEN_FROM,
-                super::LEVEL_YELLOW_FROM,
-                super::LOW_LEFT_PERCENT
+                super::LEVEL_GREEN_UP_TO,
+                super::LEVEL_YELLOW_UP_TO,
+                super::HIGH_USE_PERCENT
             ],
-            [70, 50, 30]
+            [30, 50, 70]
         );
         let mut last = 0;
-        for left in (10..=100).rev() {
-            let level = level_at(left);
-            assert!(
-                level >= last,
-                "{left} left went back from {last} to {level}"
-            );
+        for used in 10..=100 {
+            let level = level_at(used);
+            assert!(level >= last, "{used} used went back from {last} to {level}");
             last = level;
         }
         assert_eq!(last, 3, "red is reached");
@@ -3271,13 +3282,13 @@ mod window_tests {
         let name = "catppuccin-mocha";
         let profile = Profile::TrueColor;
         let level_codes = MOCHA_LEVELS.map(|hex| format!("\x1b[{}m", profile.foreground(hex)));
-        // Windows at 73, 49 and 87 percent left: every level escape of the line is the one run of
+        // Windows at 27, 51 and 13 percent used: every level escape of the line is the one run of
         // a bar of its own, so removing the three filled runs removes every level escape.
         let out = limits_colored(name, Some(profile), [Some(27), Some(51), Some(13)]);
         let mut rest = out.clone();
-        for (left, level) in [(73, 0), (49, 2), (87, 0)] {
-            let run = profile.paint(MOCHA_LEVELS[level], &"█".repeat((left * 10 / 100) as usize));
-            assert!(rest.contains(&run), "{left}: {out:?}");
+        for (used, level) in [(27, 0), (51, 2), (13, 0)] {
+            let run = profile.paint(MOCHA_LEVELS[level], &"█".repeat((used * 10 / 100) as usize));
+            assert!(rest.contains(&run), "{used}: {out:?}");
             rest = rest.replacen(&run, "", 1);
         }
         for code in &level_codes {
@@ -3286,8 +3297,8 @@ mod window_tests {
                 "a level color outside the filled cells: {out:?}"
             );
         }
-        // No filled cell: 9 percent left on every window.
-        let empty = limits_colored(name, Some(profile), [Some(91), Some(91), Some(91)]);
+        // No filled cell: 9 percent used on every window.
+        let empty = limits_colored(name, Some(profile), [Some(9), Some(9), Some(9)]);
         for code in &level_codes {
             assert!(
                 !empty.contains(code),
@@ -3304,22 +3315,22 @@ mod window_tests {
 
     /// REQ-5 (SPEC-20261124-statusline-bar-color): without a color profile the line has no escape
     /// sequence and, with one, the line without its escapes is that same line, for every share
-    /// left from 0 to 100 in both themes and both profiles.
+    /// used from 0 to 100 in both themes and both profiles.
     #[test]
     fn the_level_color_leaves_the_plain_text_alone() {
         use crate::statusline::color::Profile;
-        for left in 0..=100_i64 {
-            let used = [Some(100 - left), Some(100 - left), Some(100 - left)];
+        for share in 0..=100_i64 {
+            let used = [Some(share), Some(share), Some(share)];
             let plain = limits_colored("catppuccin-mocha", None, used);
-            assert!(!plain.contains('\x1b'), "{left}: {plain:?}");
+            assert!(!plain.contains('\x1b'), "{share}: {plain:?}");
             let bar = format!(
                 "{}{}",
-                "█".repeat((left * 10 / 100) as usize),
-                "░".repeat(10 - (left * 10 / 100) as usize)
+                "█".repeat((share * 10 / 100) as usize),
+                "░".repeat(10 - (share * 10 / 100) as usize)
             );
             assert!(
-                plain.contains(&format!("CW {bar} {left}%")),
-                "{left}: {plain:?}"
+                plain.contains(&format!("CW {bar} {share}%")),
+                "{share}: {plain:?}"
             );
             for name in ["catppuccin-mocha", "catppuccin-latte"] {
                 for profile in [Profile::TrueColor, Profile::Ansi256] {
@@ -3332,25 +3343,36 @@ mod window_tests {
                         rest = &tail[tail.find('m').unwrap() + 1..];
                     }
                     stripped.push_str(rest);
-                    assert_eq!(stripped, plain, "{name} {profile:?} {left} left");
+                    assert_eq!(stripped, plain, "{name} {profile:?} {share} used");
                 }
             }
         }
     }
 
-    /// AC-1 of SPEC-20261122-statusline-limits-left and AC-4 of
-    /// SPEC-20261123-statusline-order-bars: each window shows the share left, label, bar, number —
-    /// 27, 51 and 13 percent used (the user's example) are `CW ███████░░░ 73%`,
-    /// `5H ████░░░░░░ 49%` and `7D ████████░░ 87%` — and a payload without a five-hour window has
-    /// no `5H` item.
+    /// AC-9 of SPEC-20261124-statusline-counts-truth (it replaces AC-1 of
+    /// SPEC-20261122-statusline-limits-left and AC-4 of SPEC-20261123-statusline-order-bars):
+    /// each window shows the share used, label, bar, number — 25, 32 and 78 percent used (the
+    /// user's example) are `CW ██░░░░░░░░ 25%`, `5H ███░░░░░░░ 32%` and `7D ███████░░░ 78%` —
+    /// and a payload without a five-hour window has no `5H` item.
     #[test]
-    fn the_row_shows_what_is_left_of_each_window() {
+    fn the_row_shows_what_is_used_of_each_window() {
         let row = |context: i64, rate_limits: Value| {
             line(&json!({
                 "context_window": {"used_percentage": context},
                 "rate_limits": rate_limits,
             }))
         };
+        // The user's example of 2026-11-24.
+        assert_eq!(
+            row(
+                25,
+                json!({
+                    "five_hour": {"used_percentage": 32, "resets_at": NOW + 16 * MINUTE},
+                    "seven_day": {"used_percentage": 78, "resets_at": NOW + 2 * DAY + 15 * HOUR},
+                })
+            ),
+            "🔋 CW ██░░░░░░░░ 25% | 🔋 5H ███░░░░░░░ 32% (16m) | 🪫 7D ███████░░░ 78% (2d 15h)"
+        );
         assert_eq!(
             row(
                 27,
@@ -3359,7 +3381,7 @@ mod window_tests {
                     "seven_day": {"used_percentage": 13, "resets_at": NOW + 3 * DAY + 22 * HOUR},
                 })
             ),
-            "🔋 CW ███████░░░ 73% | 🔋 5H ████░░░░░░ 49% (43m) | 🔋 7D ████████░░ 87% (3d 22h)"
+            "🔋 CW ██░░░░░░░░ 27% | 🔋 5H █████░░░░░ 51% (43m) | 🔋 7D █░░░░░░░░░ 13% (3d 22h)"
         );
         assert_eq!(
             row(
@@ -3369,7 +3391,7 @@ mod window_tests {
                     "seven_day": {"used_percentage": 95, "resets_at": NOW + 4 * DAY + 2 * HOUR},
                 })
             ),
-            "🔋 CW ████████░░ 82% | 🪫 5H ██░░░░░░░░ 25% (1h 10m) | 🪫 7D ░░░░░░░░░░ 5% (4d 2h)"
+            "🔋 CW █░░░░░░░░░ 18% | 🪫 5H ███████░░░ 75% (1h 10m) | 🪫 7D █████████░ 95% (4d 2h)"
         );
         let no_five = row(
             18,
@@ -3379,7 +3401,7 @@ mod window_tests {
         );
         assert_eq!(
             no_five,
-            "🔋 CW ████████░░ 82% | 🪫 7D ░░░░░░░░░░ 5% (4d 2h)"
+            "🔋 CW █░░░░░░░░░ 18% | 🪫 7D █████████░ 95% (4d 2h)"
         );
         assert_eq!(item(&no_five, "5H"), None);
         // The bar stands between the label and the number, with no colon: the countdown, the
@@ -3422,9 +3444,9 @@ mod window_tests {
             seven_day: window(95.0),
             ..Default::default()
         };
-        let cw = "🔋 CW ████████░░ 82%";
-        let five = "🪫 5H ██░░░░░░░░ 25%";
-        let week = "🪫 7D ░░░░░░░░░░ 5%";
+        let cw = "🔋 CW █░░░░░░░░░ 18%";
+        let five = "🪫 5H ███████░░░ 75%";
+        let week = "🪫 7D █████████░ 95%";
         assert_eq!(render(&known, &[]), format!("{cw} | {five} | {week}"));
         assert_eq!(render(&known, &["context"]), format!("{five} | {week}"));
         assert_eq!(render(&known, &["usage_5h"]), format!("{cw} | {week}"));
@@ -3432,22 +3454,22 @@ mod window_tests {
         assert_eq!(render(&known, &["context", "usage_5h", "usage_7d"]), "MoAI");
     }
 
-    /// AC-3 of SPEC-20261122-statusline-limits-left: the icon turns at the low-left boundary —
-    /// exactly `LOW_LEFT_PERCENT` left (the high-use percentage used) is `🔋`, one percent less
-    /// left is `🪫` — for the context window, the five-hour window and the week alike. The
-    /// expected numbers come from the constants the render reads.
+    /// AC-10 of SPEC-20261124-statusline-counts-truth (it replaces AC-3 of
+    /// SPEC-20261122-statusline-limits-left): the icon turns above the high-use boundary —
+    /// exactly `HIGH_USE_PERCENT` used is `🔋`, one percent more used is `🪫` — for the context
+    /// window, the five-hour window and the week alike. The expected numbers come from the
+    /// constant the render reads.
     #[test]
-    fn the_battery_icon_turns_at_the_low_left_boundary() {
-        use crate::statusline::render::{HIGH_USE_PERCENT, LOW_LEFT_PERCENT};
-        assert_eq!(LOW_LEFT_PERCENT, 100 - HIGH_USE_PERCENT);
-        let n = LOW_LEFT_PERCENT;
+    fn the_battery_icon_turns_above_the_high_use_boundary() {
+        use crate::statusline::render::HIGH_USE_PERCENT;
+        let n = HIGH_USE_PERCENT;
         assert_eq!(
-            week(json!(HIGH_USE_PERCENT), None),
+            week(json!(n), None),
             Some(format!("🔋 7D {} {n}%", bar(n)))
         );
         assert_eq!(
-            week(json!(HIGH_USE_PERCENT + 1), None),
-            Some(format!("🪫 7D {} {}%", bar(n - 1), n - 1))
+            week(json!(n + 1), None),
+            Some(format!("🪫 7D {} {}%", bar(n + 1), n + 1))
         );
         let five = |used: i64| {
             item(
@@ -3455,19 +3477,16 @@ mod window_tests {
                 "5H",
             )
         };
+        assert_eq!(five(n), Some(format!("🔋 5H {} {n}%", bar(n))));
         assert_eq!(
-            five(HIGH_USE_PERCENT),
-            Some(format!("🔋 5H {} {n}%", bar(n)))
-        );
-        assert_eq!(
-            five(HIGH_USE_PERCENT + 1),
-            Some(format!("🪫 5H {} {}%", bar(n - 1), n - 1))
+            five(n + 1),
+            Some(format!("🪫 5H {} {}%", bar(n + 1), n + 1))
         );
         let context = |used: i64| line(&json!({"context_window": {"used_percentage": used}}));
-        assert_eq!(context(HIGH_USE_PERCENT), format!("🔋 CW {} {n}%", bar(n)));
+        assert_eq!(context(n), format!("🔋 CW {} {n}%", bar(n)));
         assert_eq!(
-            context(HIGH_USE_PERCENT + 1),
-            format!("🪫 CW {} {}%", bar(n - 1), n - 1)
+            context(n + 1),
+            format!("🪫 CW {} {}%", bar(n + 1), n + 1)
         );
     }
 
@@ -3476,15 +3495,15 @@ mod window_tests {
     #[test]
     fn the_countdown_has_three_forms_without_resets_in() {
         for (left, want) in [
-            (6 * DAY + 21 * HOUR, "🔋 7D ███████░░░ 79% (6d 21h)"),
-            (2 * HOUR + 10 * MINUTE, "🔋 7D ███████░░░ 79% (2h 10m)"),
-            (35 * MINUTE, "🔋 7D ███████░░░ 79% (35m)"),
-            (DAY, "🔋 7D ███████░░░ 79% (1d 0h)"),
-            (DAY - 1, "🔋 7D ███████░░░ 79% (23h 59m)"),
-            (HOUR, "🔋 7D ███████░░░ 79% (1h 0m)"),
-            (HOUR - 1, "🔋 7D ███████░░░ 79% (59m)"),
-            (MINUTE, "🔋 7D ███████░░░ 79% (1m)"),
-            (1, "🔋 7D ███████░░░ 79% (0m)"),
+            (6 * DAY + 21 * HOUR, "🔋 7D ██░░░░░░░░ 21% (6d 21h)"),
+            (2 * HOUR + 10 * MINUTE, "🔋 7D ██░░░░░░░░ 21% (2h 10m)"),
+            (35 * MINUTE, "🔋 7D ██░░░░░░░░ 21% (35m)"),
+            (DAY, "🔋 7D ██░░░░░░░░ 21% (1d 0h)"),
+            (DAY - 1, "🔋 7D ██░░░░░░░░ 21% (23h 59m)"),
+            (HOUR, "🔋 7D ██░░░░░░░░ 21% (1h 0m)"),
+            (HOUR - 1, "🔋 7D ██░░░░░░░░ 21% (59m)"),
+            (MINUTE, "🔋 7D ██░░░░░░░░ 21% (1m)"),
+            (1, "🔋 7D ██░░░░░░░░ 21% (0m)"),
         ] {
             let got = week(json!(21), Some(NOW + left));
             assert_eq!(got.as_deref(), Some(want), "{left} seconds left");
@@ -3508,28 +3527,28 @@ mod window_tests {
         assert_eq!(week(json!(21), Some(NOW - 1)), None, "reset a second ago");
         assert_eq!(
             week(json!(21), Some(NOW + 1)).as_deref(),
-            Some("🔋 7D ███████░░░ 79% (0m)")
+            Some("🔋 7D ██░░░░░░░░ 21% (0m)")
         );
         assert_eq!(
             windows(json!({"seven_day": {"used_percentage": 21, "resets_at": NOW - DAY}})),
-            "🔋 CW █████████░ 90%"
+            "🔋 CW █░░░░░░░░░ 10%"
         );
         // Beyond 31 days the reset is no countdown: the week shows without one.
         let edge = NOW + crate::usage_limit::MAX_RESET_AHEAD_SECS;
         assert_eq!(
             week(json!(21), Some(edge)).as_deref(),
-            Some("🔋 7D ███████░░░ 79% (31d 0h)")
+            Some("🔋 7D ██░░░░░░░░ 21% (31d 0h)")
         );
         for at in [edge + 1, i64::MAX] {
             assert_eq!(
                 week(json!(21), Some(at)).as_deref(),
-                Some("🔋 7D ███████░░░ 79%"),
+                Some("🔋 7D ██░░░░░░░░ 21%"),
                 "{at}"
             );
         }
         assert_eq!(
             windows(json!({"five_hour": {"used_percentage": 90, "resets_at": NOW}})),
-            "🔋 CW █████████░ 90%"
+            "🔋 CW █░░░░░░░░░ 10%"
         );
     }
 
@@ -3567,34 +3586,34 @@ mod window_tests {
         };
         assert_eq!(
             five(json!(25)).as_deref(),
-            Some("🔋 5H ███████░░░ 75% (2h 10m)")
+            Some("🔋 5H ██░░░░░░░░ 25% (2h 10m)")
         );
         assert_eq!(
             five(json!(0)).as_deref(),
-            Some("🔋 5H ██████████ 100% (2h 10m)")
+            Some("🔋 5H ░░░░░░░░░░ 0% (2h 10m)")
         );
         assert_eq!(
             five(json!(70.9)).as_deref(),
-            Some("🔋 5H ███░░░░░░░ 30% (2h 10m)")
+            Some("🔋 5H ███████░░░ 70% (2h 10m)")
         );
         assert_eq!(
             five(json!(71)).as_deref(),
-            Some("🪫 5H ██░░░░░░░░ 29% (2h 10m)")
+            Some("🪫 5H ███████░░░ 71% (2h 10m)")
         );
         assert_eq!(
             five(json!(100)).as_deref(),
-            Some("🪫 5H ░░░░░░░░░░ 0% (2h 10m)")
+            Some("🪫 5H ██████████ 100% (2h 10m)")
         );
         assert_eq!(
             five(json!(150)).as_deref(),
-            Some("🪫 5H ░░░░░░░░░░ 0% (2h 10m)")
+            Some("🪫 5H ██████████ 100% (2h 10m)")
         );
         assert_eq!(five(json!(null)), None);
         assert_eq!(five(json!("25")), None);
         // A reset time is not needed: the item stands without a countdown.
         assert_eq!(
             windows(json!({"five_hour": {"used_percentage": 25}})),
-            "🔋 CW █████████░ 90% | 🔋 5H ███████░░░ 75%"
+            "🔋 CW █░░░░░░░░░ 10% | 🔋 5H ██░░░░░░░░ 25%"
         );
         for absent in [
             json!({}),
@@ -3604,7 +3623,7 @@ mod window_tests {
         ] {
             assert_eq!(
                 windows(absent.clone()),
-                "🔋 CW █████████░ 90%",
+                "🔋 CW █░░░░░░░░░ 10%",
                 "{absent}: no item and no separator"
             );
         }
@@ -3613,7 +3632,7 @@ mod window_tests {
                 "five_hour": {"used_percentage": 85, "resets_at": NOW + HOUR + 10 * MINUTE},
                 "seven_day": {"used_percentage": 21, "resets_at": NOW + 6 * DAY + 21 * HOUR},
             })),
-            "🔋 CW █████████░ 90% | 🪫 5H █░░░░░░░░░ 15% (1h 10m) | 🔋 7D ███████░░░ 79% (6d 21h)"
+            "🔋 CW █░░░░░░░░░ 10% | 🪫 5H ████████░░ 85% (1h 10m) | 🔋 7D ██░░░░░░░░ 21% (6d 21h)"
         );
     }
 }
@@ -3626,8 +3645,8 @@ mod cost_tests {
     use super::line_three_support::{item, line, NOW};
     use serde_json::{json, Value};
 
-    /// The context window at 10 percent used: 90 left, nine cells of the bar.
-    const CW: &str = "🔋 CW █████████░ 90%";
+    /// The context window at 10 percent used: one cell of the bar.
+    const CW: &str = "🔋 CW █░░░░░░░░░ 10%";
 
     /// Line 3 of a payload with the context window at 10 percent, `cost` as given and these
     /// `rate_limits` when given.
@@ -3758,7 +3777,7 @@ mod version_tests {
 
     const BUILD: &str = crate::BUILD_VERSION;
     /// The context window at 10 percent used, as the limits line writes it.
-    const CW: &str = "🔋 CW █████████░ 90%";
+    const CW: &str = "🔋 CW █░░░░░░░░░ 10%";
 
     #[test]
     fn both_versions_open_the_second_line_without_a_v() {

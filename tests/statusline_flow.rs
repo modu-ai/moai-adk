@@ -222,9 +222,10 @@ fn my_card_falls_back_to_the_newest_live_card_of_the_session() {
 }
 
 /// A lease that is over makes the card stale, and it stays my card while its held reservation
-/// names this worktree (D-3): it is still the card in hand (`🟡`), and it is not counted in the
-/// flow. For a card of the session's holder in another folder, an ended lease means it is no
-/// longer mine, and with nothing else to show there is no flow line.
+/// names this worktree (D-3): it is still the card in hand (`🟡`), and it is counted in `🟡` with
+/// the working ones (SPEC-20261124-statusline-counts-truth REQ-7). For a card of the session's
+/// holder in another folder, an ended lease means it is no longer mine, but the card is still
+/// counted in `🟡`.
 #[test]
 fn an_expired_lease_makes_my_card_stale_and_a_session_card_not_mine() {
     let f = fixture();
@@ -238,14 +239,17 @@ fn an_expired_lease_makes_my_card_stale_and_a_session_card_not_mine() {
     });
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
     // The version opens the second line and my card closes it (SPEC-20261123-statusline-order-bars).
-    assert_eq!(line(&out, 1), format!("{} | 🎯 C-1 🟡", moai()), "{out}");
+    assert_eq!(
+        line(&out, 1),
+        format!("{} | 🟡 1 | 🎯 C-1 🟡", moai()),
+        "{out}"
+    );
     // From the main checkout the worktree does not match, and the session's own card has no
-    // live lease: nothing is mine, and the ended lease is not on the line. The second line is
-    // left with the version alone.
+    // live lease: nothing is mine, but the card with the ended lease is still counted in `🟡`.
     let out = f.render(&f.project, "this-session", None);
-    assert_eq!(out.lines().count(), 3, "no flow items: {out}");
-    assert_eq!(line(&out, 1), moai(), "{out}");
-    assert!(!out.contains('🎯') && !out.contains("🟡"), "{out}");
+    assert_eq!(out.lines().count(), 3, "{out}");
+    assert_eq!(line(&out, 1), format!("{} | 🟡 1", moai()), "{out}");
+    assert!(!out.contains('🎯'), "{out}");
 }
 
 /// Each line has one role: line 1 the session and where it stands, line 2 the flow, the last

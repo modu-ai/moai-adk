@@ -35,6 +35,20 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+/// Which midnight the count of cards closed today starts from (SPEC-20261124-statusline-counts-truth
+/// REQ-9, REQ-10).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum DayZone {
+    /// The UTC day.
+    #[default]
+    Utc,
+    /// The local day of the machine's time zone (`TZ`, else the system zone); the UTC day where
+    /// the zone cannot be read.
+    Machine,
+    /// A fixed zone, in seconds east of UTC (tests).
+    Offset(i64),
+}
+
 /// The process environment, captured once so collection is testable.
 #[derive(Debug, Clone, Default)]
 pub struct Context {
@@ -47,6 +61,9 @@ pub struct Context {
     /// The current time in Unix seconds, for the cache timer (#2756 AC-8). The hidden
     /// `--now-unix` seam fixes it so goldens do not depend on the wall clock.
     pub now: i64,
+    /// The zone "done today" is counted in: the machine's outside tests, UTC in them so a
+    /// test never depends on the zone of the machine it runs on.
+    pub day_zone: DayZone,
 }
 
 impl Context {
@@ -60,6 +77,7 @@ impl Context {
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_secs() as i64)
                 .unwrap_or(0),
+            day_zone: DayZone::Machine,
         }
     }
 
@@ -74,6 +92,7 @@ impl Context {
             deadline: None,
             git_program: "git".to_string(),
             now: 0,
+            day_zone: DayZone::Utc,
         }
     }
 
@@ -203,10 +222,11 @@ pub enum Stage {
 
 impl Stage {
     /// The icon of the stage in the one icon set of the progress board, the status line and the
-    /// lane reports: `🗂️` added and waiting its turn (a draft too), `🟡` in progress (a card
-    /// whose lease has ended is still the card in hand), `📨` handed over and waiting for a
-    /// check, `🛬` check passed and waiting to land or to be closed, `🚧` blocked, `🙋` needs
-    /// the user's pick.
+    /// lane reports: `🗂️` added and waiting its turn (a draft has the icon as the card in hand,
+    /// but the flow line counts only the ready cards, SPEC-20261124-statusline-counts-truth),
+    /// `🟡` in progress (a card whose lease has ended is still the card in hand and is counted
+    /// with the working ones), `📨` handed over and waiting for a check, `🛬` check passed and
+    /// waiting to land or to be closed, `🚧` blocked, `🙋` needs the user's pick.
     pub fn icon(self) -> &'static str {
         match self {
             Stage::Draft | Stage::Ready => "🗂️",
@@ -228,10 +248,13 @@ pub struct MyCard {
 
 /// The cards of the project's local ledger by the stage of their progress, for the flow line
 /// (SPEC-20261122-statusline-flow). The nine stage counts add up to the cards that are not
-/// `done`.
+/// `done` and not withdrawn (a hold card with a withdraw or fold event is in no stage,
+/// SPEC-20261124-statusline-counts-truth REQ-8).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Flow {
     pub draft: i64,
+    /// The ready cards that wait for a lane: one a lane handed back and released is `submitted`
+    /// or `audited`.
     pub ready: i64,
     pub working: i64,
     pub stale: i64,
@@ -239,8 +262,10 @@ pub struct Flow {
     pub audited: i64,
     pub landed: i64,
     pub blocked: i64,
+    /// The hold cards that were not withdrawn: the cards that wait for the user's pick.
     pub hold: i64,
-    /// The cards closed at or after the start of the UTC day of the render's clock.
+    /// The cards closed at or after the start of the day of the render's clock in the zone of
+    /// [`Context::day_zone`] (the machine's local day; SPEC-20261124-statusline-counts-truth).
     pub done_today: i64,
     /// The card this session holds, when it holds one.
     pub mine: Option<MyCard>,
@@ -1653,15 +1678,30 @@ const _: () = assert!(CARDS_BUSY_TIMEOUT.as_millis() <= 100);
 /// REQ-11): the open cards with the done-today count, the notes of the cards a lane works on,
 /// the landing events, and the reservations. Four short reads cost about 33 ms on the real
 /// ledger against 115 ms for one statement joining them all; a test counts them here.
+///
+/// SPEC-20261124-statusline-counts-truth: a hold card with a withdraw or fold event is read as
+/// `withdrawn` (REQ-8); the notes are those of the `ready`, `active` and `review` cards written at
+/// or after the card's last reservation, with their kind and author (REQ-1 to REQ-5; a ready card
+/// that was never taken has none, and an active or review card with no reservation row at all, an
+/// older ledger's, keeps every note as it did); a landing counts when it is at or after that
+/// reservation (REQ-6).
 const FLOW_STATEMENTS: [&str; 4] = [
-    "SELECT card_id, state, 0 FROM card WHERE state <> 'done' \
+    "SELECT card_id, \
+            CASE WHEN state = 'hold' AND card_id IN \
+                      (SELECT card_id FROM event WHERE kind IN ('card.withdraw', 'card.fold')) \
+                 THEN 'withdrawn' ELSE state END, 0 FROM card WHERE state <> 'done' \
      UNION ALL SELECT -1, 'done_today', count(*) FROM card \
      WHERE state = 'done' AND closed_at >= ?1",
     // `NOTE_HEAD_CHARS` is 1000: the literal keeps the statement a constant.
-    "SELECT n.card_id, substr(n.body, 1, 1000) FROM card_note n \
-     JOIN card c ON c.card_id = n.card_id WHERE c.state IN ('active', 'review') \
+    "SELECT n.card_id, n.kind, n.author, substr(n.body, 1, 1000) FROM card_note n \
+     JOIN card c ON c.card_id = n.card_id WHERE c.state IN ('ready', 'active', 'review') \
+     AND n.created_at >= coalesce((SELECT max(r.acquired_at) FROM reservation r \
+                                   WHERE r.card_id = n.card_id), \
+                                  CASE c.state WHEN 'ready' THEN 9223372036854775807 ELSE 0 END) \
      ORDER BY n.card_id, n.note_id DESC",
-    "SELECT DISTINCT card_id FROM event WHERE kind = 'card.landed' AND card_id IS NOT NULL",
+    "SELECT DISTINCT e.card_id FROM event e WHERE e.kind = 'card.landed' AND e.card_id IS NOT NULL \
+     AND e.at >= coalesce((SELECT max(r.acquired_at) FROM reservation r \
+                           WHERE r.card_id = e.card_id), 0)",
     "SELECT card_id, holder, status, lease_until, worktree, acquired_at, reservation_id \
      FROM reservation WHERE status IN ('held', 'held_for_review', 'expired_candidate')",
 ];
@@ -1682,14 +1722,82 @@ pub fn read_flow(project: &Path, ctx: &Context, who: &Whose) -> Option<Flow> {
         ctx.deadline
             .is_some_and(|deadline| Instant::now() >= deadline)
     };
-    read_flow_with(&ledger, ctx.now, who, &spent)
+    read_flow_in(&ledger, ctx.now, ctx.day_zone, who, &spent)
 }
 
-/// [`read_flow`] on an open ledger with the render clock `now` and the "is the render budget
-/// spent" question as a parameter, so a test can spend it in the middle of a read.
+/// The first second of the UTC day that holds `now`.
+fn utc_day_start(now: i64) -> i64 {
+    now.div_euclid(86_400) * 86_400
+}
+
+/// The start of the day "done today" counts from (SPEC-20261124-statusline-counts-truth REQ-9
+/// and REQ-10): `local` gives the first second of the local day that holds `now`, and a zone
+/// that cannot be read (`None`) is the UTC day.
+fn day_start_with(now: i64, local: impl FnOnce(i64) -> Option<i64>) -> i64 {
+    local(now).unwrap_or_else(|| utc_day_start(now))
+}
+
+/// The first second of the day that holds `now` in `zone`.
+fn day_start(now: i64, zone: DayZone) -> i64 {
+    match zone {
+        DayZone::Utc => utc_day_start(now),
+        DayZone::Offset(east) => (now + east).div_euclid(86_400) * 86_400 - east,
+        DayZone::Machine => day_start_with(now, machine_day_start),
+    }
+}
+
+/// The local midnight of the machine's time zone before or at `now` (`TZ`, else the system zone):
+/// the time of day of the local broken-down time set to 00:00:00 and read back by `mktime`, so a
+/// day of 23 or 25 hours still starts at its own midnight. `None` when the zone cannot be read.
+#[cfg(unix)]
+fn machine_day_start(now: i64) -> Option<i64> {
+    extern "C" {
+        /// POSIX; the `libc` crate does not declare it for every unix target.
+        fn tzset();
+    }
+    let at = libc::time_t::try_from(now).ok()?;
+    // SAFETY: `tm` is plain data that `localtime_r` fills before it is read; `tzset`, `localtime_r`
+    // and `mktime` touch only their arguments and the C library's zone tables. The status line
+    // reads the zone on the render's own thread and starts no thread that reads it.
+    unsafe {
+        let mut tm: libc::tm = std::mem::zeroed();
+        tzset();
+        if libc::localtime_r(&at, &mut tm).is_null() {
+            return None;
+        }
+        tm.tm_hour = 0;
+        tm.tm_min = 0;
+        tm.tm_sec = 0;
+        tm.tm_isdst = -1;
+        let start = libc::mktime(&mut tm);
+        (start != -1).then_some(i64::from(start))
+    }
+}
+
+/// Where there is no `libc` the zone is not read (REQ-10): the day is the UTC day.
+#[cfg(not(unix))]
+fn machine_day_start(_now: i64) -> Option<i64> {
+    None
+}
+
+/// [`read_flow_in`] with the UTC day, for the tests that spend the render budget.
+#[cfg(test)]
 fn read_flow_with(
     ledger: &crate::ledger::open::ReadLedger,
     now: i64,
+    who: &Whose,
+    spent: &dyn Fn() -> bool,
+) -> Option<Flow> {
+    read_flow_in(ledger, now, DayZone::Utc, who, spent)
+}
+
+/// [`read_flow`] on an open ledger with the render clock `now`, the zone of "done today" and the
+/// "is the render budget spent" question as parameters, so a test can spend the budget in the
+/// middle of a read.
+fn read_flow_in(
+    ledger: &crate::ledger::open::ReadLedger,
+    now: i64,
+    zone: DayZone,
     who: &Whose,
     spent: &dyn Fn() -> bool,
 ) -> Option<Flow> {
@@ -1697,8 +1805,9 @@ fn read_flow_with(
         return None;
     }
     let conn = ledger.conn();
-    // The UTC day of the render's clock (D-4): done today is counted from its first second.
-    let day_start = now.div_euclid(86_400) * 86_400;
+    // The local day of the render's clock (SPEC-20261124-statusline-counts-truth D-7): done
+    // today is counted from its first second.
+    let day_start = day_start(now, zone);
     let mut stmt = conn.prepare(FLOW_STATEMENTS[0]).ok()?;
     let rows = stmt
         .query_map([day_start], |r| {
@@ -1718,6 +1827,9 @@ fn read_flow_with(
             "draft" => flow.draft += 1,
             "ready" => flow.ready += 1,
             "hold" => flow.hold += 1,
+            // A withdrawn or folded card is on hold in the ledger and asks nothing of the user
+            // (REQ-8): it is in no stage the line draws.
+            "withdrawn" => continue,
             // `active` and `review` stay whole until the notes are read.
             "active" | "review" => flow.working += 1,
             _ => continue,
@@ -1743,27 +1855,52 @@ fn split_flow(
     spent: &dyn Fn() -> bool,
     unsplit: Flow,
 ) -> Option<Flow> {
-    // Statement 2: the newest marker note of each card, first row of a card deciding it.
+    // Statement 2: the newest marker note of each card since its last reservation, newest first;
+    // the first marker of a card decides it, and a block the leader's decision note answered
+    // (D-3) is no marker.
     if spent() {
         return None;
     }
     let mut stmt = conn.prepare(FLOW_STATEMENTS[1]).ok()?;
     let rows = stmt
-        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))
+        .query_map([], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, String>(3)?,
+            ))
+        })
         .ok()?;
     let mut markers: HashMap<i64, Marker> = HashMap::new();
     let mut decided: Option<i64> = None;
+    // The card the walk is on and whether a note of the leader's answer was seen above (newer
+    // than) the notes still to read.
+    let mut walking: Option<i64> = None;
+    let mut answered = false;
     for row in rows {
         if spent() {
             return None;
         }
-        let (card, body) = row.ok()?;
+        let (card, kind, author, body) = row.ok()?;
+        if walking != Some(card) {
+            walking = Some(card);
+            answered = false;
+        }
         if decided == Some(card) {
             continue;
         }
-        if let Some(marker) = marker_of(&body) {
-            markers.insert(card, marker);
-            decided = Some(card);
+        if answers_a_block(&kind, &author) {
+            answered = true;
+            continue;
+        }
+        match marker_of(&body) {
+            Some(Marker::Blocked) if answered => {}
+            Some(marker) => {
+                markers.insert(card, marker);
+                decided = Some(card);
+            }
+            None => {}
         }
     }
     drop(stmt);
@@ -1813,7 +1950,10 @@ fn split_flow(
         .filter(|r| r.is_live(now))
         .map(|r| r.card)
         .collect();
+    // `ready` is counted again below: a ready card a lane handed back is no longer waiting for
+    // one (REQ-1, REQ-2).
     let mut flow = Flow {
+        ready: 0,
         working: 0,
         split: true,
         ..unsplit
@@ -1830,7 +1970,8 @@ fn split_flow(
         };
         match stage {
             // Counted by their ledger state already.
-            Stage::Draft | Stage::Ready | Stage::Hold => {}
+            Stage::Draft | Stage::Hold => {}
+            Stage::Ready => flow.ready += 1,
             Stage::Working => flow.working += 1,
             Stage::Stale => flow.stale += 1,
             Stage::Submitted => flow.submitted += 1,
@@ -1872,14 +2013,21 @@ impl Reservation {
 }
 
 /// The stage of one card by its ledger state, its newest marker, a landing event and a live
-/// lease (D-1 and D-2 of the SPEC). `None` for a state that is not open. `draft`, `ready` and
-/// `hold` keep their own stage; of the cards a lane works on, a landing event wins, then the
-/// newest marker (blocked, audited, submitted), then `review` itself is submitted, and the rest
-/// are working with a live lease and stale without one.
+/// lease (D-1 and D-2 of the SPEC-20261122-statusline-flow, D-1 to D-5 of
+/// SPEC-20261124-statusline-counts-truth). `marker` and `landed` are read at or after the card's
+/// last reservation by the statements. `None` for a state that is not open. `draft` and `hold`
+/// keep their own stage; a `ready` card is submitted or audited when a lane handed it back and
+/// released it (the release moved it to `ready`) and ready otherwise; of the cards a lane works
+/// on, a landing wins, then the newest marker (blocked, audited, submitted), then `review` itself
+/// is submitted, and the rest are working with a live lease and stale without one.
 fn stage_of(state: &str, marker: Option<Marker>, landed: bool, live: bool) -> Option<Stage> {
     match state {
         "draft" => Some(Stage::Draft),
-        "ready" => Some(Stage::Ready),
+        "ready" => Some(match marker {
+            Some(Marker::Submitted) => Stage::Submitted,
+            Some(Marker::Audited) => Stage::Audited,
+            _ => Stage::Ready,
+        }),
         "hold" => Some(Stage::Hold),
         "active" | "review" => Some(if landed {
             Stage::Landed
@@ -1976,7 +2124,9 @@ enum Marker {
 /// The marker a note's first line carries, if any. Only the lines the lanes already write by
 /// rule count; any other first line is no marker and changes nothing (`RESUME`, `waiting:`,
 /// `LANE-HOLD` and `PAIR-` among them). This is the one first-line parser of the status line and
-/// a temporary one: typed submit, block and verdict rows will replace it.
+/// a temporary one: typed submit, block and verdict rows will replace it. `REPAIRED` hands a head
+/// back like `LANE-READY-INTEGRATION` does, as the receipt gate reads it
+/// (SPEC-20261124-statusline-counts-truth REQ-4).
 fn marker_of(body: &str) -> Option<Marker> {
     let first = body.lines().next().unwrap_or("");
     let audit = first.starts_with("AUDIT");
@@ -1986,7 +2136,7 @@ fn marker_of(body: &str) -> Option<Marker> {
         Some(Marker::Audited)
     } else if matches!(
         crate::card::ready_receipt::marker_of_line(first),
-        Some("LANE-READY-INTEGRATION" | "READY")
+        Some("LANE-READY-INTEGRATION" | "REPAIRED" | "READY")
     ) || first.starts_with("MERGE-READY")
         || first.starts_with("감사 요청")
         || (first.starts_with("LANE-DONE")
@@ -2001,6 +2151,13 @@ fn marker_of(body: &str) -> Option<Marker> {
     } else {
         None
     }
+}
+
+/// Whether a note is the leader's answer to a block (SPEC-20261124-statusline-counts-truth D-3):
+/// a decision note signed `leader`. The typed columns are read, never the words of the note, so
+/// no text can end a block by accident.
+fn answers_a_block(kind: &str, author: &str) -> bool {
+    kind == "decision" && author == "leader"
 }
 
 /// An explicit `statusline.forge` naming neither github nor gitlab.
@@ -3486,10 +3643,70 @@ mod flow_support {
                 .unwrap();
         }
 
+        /// A reservation of `card` with its generation, for a card taken more than once.
+        pub(super) fn reserve_gen(
+            &self,
+            card: i64,
+            generation: i64,
+            status: &str,
+            acquired_at: i64,
+            lease_until: i64,
+        ) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, _| {
+                    tx.execute(
+                        "INSERT INTO reservation (card_id, generation, holder, status, \
+                         acquired_at, lease_until, updated_at, worktree, branch) \
+                         VALUES (?1, ?2, 'lane', ?3, ?4, ?5, ?4, NULL, NULL)",
+                        rusqlite::params![card, generation, status, acquired_at, lease_until],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
+        /// One note of `card` written at `at` by `author`; the order of calls is the order of the
+        /// note ids.
+        pub(super) fn note_at(&self, card: i64, kind: &str, author: &str, body: &str, at: i64) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, _| {
+                    tx.execute(
+                        "INSERT INTO card_note (card_id, kind, author, body, created_at) \
+                         VALUES (?1, ?2, ?3, ?4, ?5)",
+                        rusqlite::params![card, kind, author, body, at],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
+        /// One event of `kind` of `card` at `at`.
+        pub(super) fn event_at(&self, card: i64, kind: &str, at: i64) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, _| {
+                    tx.execute(
+                        "INSERT INTO event (event_key, at, actor, card_id, kind) \
+                         VALUES (?1, ?2, 'test', ?3, ?4)",
+                        rusqlite::params![format!("{kind}-{card}-{at}"), at, card, kind],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
         /// The flow at the render clock `now` for `who`.
         pub(super) fn flow(&self, now: i64, who: &Whose) -> Flow {
+            self.flow_in(now, who, DayZone::Utc)
+        }
+
+        /// The flow at `now` with "done today" counted in `zone`.
+        pub(super) fn flow_in(&self, now: i64, who: &Whose, zone: DayZone) -> Flow {
             let mut ctx = Context::for_test(&[("HOME", self.home.to_str().unwrap())], None);
             ctx.now = now;
+            ctx.day_zone = zone;
             read_flow(&self.project, &ctx, who).unwrap()
         }
     }
@@ -3546,11 +3763,18 @@ mod stage_tests_edges {
         let w = Stage::Working;
         // (state, newest marker, landing event, live lease) -> stage
         type Row = (&'static str, Option<Marker>, bool, bool, Option<Stage>);
-        let table: [Row; 30] = [
-            // draft, ready and hold keep their own stage whatever else is true of them.
+        let table: [Row; 35] = [
+            // draft and hold keep their own stage whatever else is true of them.
             ("draft", None, false, false, Some(Draft)),
             ("draft", Some(Submitted), true, true, Some(Draft)),
+            // a ready card is ready, unless a lane handed it back (submitted) or an audit passed
+            // for it (audited) after its last take; the other markers and a landing change nothing.
+            ("ready", None, false, false, Some(Ready)),
             ("ready", Some(Blocked), true, false, Some(Ready)),
+            ("ready", Some(Working), false, true, Some(Ready)),
+            ("ready", Some(Submitted), false, false, Some(s)),
+            ("ready", Some(Submitted), true, true, Some(s)),
+            ("ready", Some(Audited), false, false, Some(a)),
             ("hold", Some(Audited), true, true, Some(Hold)),
             // active: working with a live lease, stale without one.
             ("active", None, false, true, Some(w)),
@@ -3678,11 +3902,15 @@ mod stage_tests_edges {
         assert_eq!(FLOW_STATEMENTS.len(), 4);
         for sql in FLOW_STATEMENTS {
             assert!(sql.trim_start().starts_with("SELECT"), "{sql}");
+            // Whole words: a column named `created_at` is no CREATE statement.
             let upper = sql.to_ascii_uppercase();
+            let words: Vec<&str> = upper
+                .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+                .collect();
             for word in [
                 "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "PRAGMA", "ALTER",
             ] {
-                assert!(!upper.contains(word), "{word} in {sql}");
+                assert!(!words.contains(&word), "{word} in {sql}");
             }
         }
     }
@@ -3856,8 +4084,9 @@ mod marker_tests {
     }
 
     /// SPEC-20261124-ready-receipt-followup REQ-1: the status line counts a hand-back first line
-    /// exactly when the one marker judge of the receipt gate says `LANE-READY-INTEGRATION` or
-    /// `READY` (`REPAIRED` is not counted here, and `MERGE-READY` keeps its own prefix rule).
+    /// exactly when the one marker judge of the receipt gate says `LANE-READY-INTEGRATION`,
+    /// `REPAIRED` or `READY` (`MERGE-READY` keeps its own prefix rule). `REPAIRED` was left out
+    /// until SPEC-20261124-statusline-counts-truth REQ-4 counted it, as the gate does.
     #[test]
     fn status_line_marker_follows_marker_of_line() {
         for line in [
@@ -3873,7 +4102,7 @@ mod marker_tests {
         ] {
             let counted = matches!(
                 crate::card::ready_receipt::marker_of_line(line),
-                Some("LANE-READY-INTEGRATION" | "READY")
+                Some("LANE-READY-INTEGRATION" | "REPAIRED" | "READY")
             );
             assert_eq!(
                 marker_of(line) == Some(Marker::Submitted),
@@ -4018,6 +4247,219 @@ mod done_today_tests {
         f.card("hold", &[]);
         f.done_at(MIDNIGHT + 5);
         assert_eq!(f.flow(MIDNIGHT + 10, &Whose::default()).done_today, 1);
+    }
+
+    /// SPEC-20261124-statusline-counts-truth REQ-9: in a zone `o` seconds east of UTC the day
+    /// starts at `MIDNIGHT - o`; the count changes there and not a second before, in zones west
+    /// of UTC, at UTC and east of it, and with a half-hour offset.
+    #[test]
+    fn the_count_changes_at_the_local_midnight_and_not_a_second_before() {
+        for offset in [-8 * 3_600, 0, 9 * 3_600, 19_800] {
+            let zone = DayZone::Offset(offset);
+            let local_midnight = MIDNIGHT - offset;
+            let f = fx();
+            f.done_at(local_midnight - 1);
+            f.done_at(local_midnight);
+            f.done_at(local_midnight + 3_600);
+            let who = Whose::default();
+            let at = |now| f.flow_in(now, &who, zone).done_today;
+            assert_eq!(at(local_midnight - 1), 3, "offset {offset}");
+            assert_eq!(at(local_midnight), 2, "offset {offset}");
+            assert_eq!(at(local_midnight + 86_399), 2, "offset {offset}");
+            assert_eq!(at(local_midnight + 86_400), 0, "offset {offset}");
+        }
+    }
+
+    /// The same ledger at the same instant counts differently in two zones: at 15:00Z Seoul
+    /// starts a new day and UTC does not.
+    #[test]
+    fn two_zones_count_the_same_ledger_differently() {
+        let f = fx();
+        let seoul_midnight = MIDNIGHT - 9 * 3_600;
+        f.done_at(seoul_midnight - 1);
+        f.done_at(seoul_midnight);
+        let who = Whose::default();
+        assert_eq!(f.flow(seoul_midnight, &who).done_today, 2);
+        assert_eq!(
+            f.flow_in(seoul_midnight, &who, DayZone::Offset(9 * 3_600))
+                .done_today,
+            1
+        );
+    }
+
+    /// REQ-10: a zone that cannot be read is the UTC day, and a readable one is its own day.
+    #[test]
+    fn an_unreadable_zone_is_the_utc_day() {
+        assert_eq!(day_start_with(MIDNIGHT + 99, |_| None), MIDNIGHT);
+        assert_eq!(day_start_with(MIDNIGHT - 1, |_| None), MIDNIGHT - 86_400);
+        assert_eq!(day_start_with(MIDNIGHT + 99, |_| Some(7)), 7);
+    }
+}
+
+/// SPEC-20261124-statusline-counts-truth AC-4 and AC-5: the stage of a card is read from the
+/// notes and the landing at or after its last reservation, also for a ready card a lane released.
+#[cfg(test)]
+mod stage_tests_after_reserve {
+    use super::flow_support::{fx, Fx};
+    use super::*;
+
+    /// The render clock, and the second a lane takes the card.
+    const NOW: i64 = 1_800_000_000;
+    const TAKE: i64 = 1_799_990_000;
+    const LIVE: i64 = NOW + 60;
+
+    const SUBMIT: [&str; 3] = [
+        "LANE-READY-INTEGRATION C-1 head=abc",
+        "REPAIRED C-1 head=abc",
+        "READY C-1 head=abc",
+    ];
+    const PASS: &str = "AUDIT C-1 (scope) head abc base def — verdict: PASS";
+
+    fn flow(f: &Fx) -> Flow {
+        f.flow(NOW, &Whose::default())
+    }
+
+    /// A ready card a lane took at `TAKE`, handed back with `body` at `at` and released.
+    fn released(f: &Fx, body: &str, at: i64) -> i64 {
+        let card = f.card("ready", &[]);
+        f.reserve_gen(card, 1, "released", TAKE, TAKE + 60);
+        f.note_at(card, "report", "lane", body, at);
+        card
+    }
+
+    #[test]
+    fn a_ready_card_reads_a_submit_marker_at_or_after_its_last_take() {
+        for body in SUBMIT {
+            let f = fx();
+            released(&f, body, TAKE - 1);
+            released(&f, body, TAKE);
+            released(&f, body, TAKE + 1);
+            let flow = flow(&f);
+            assert_eq!(flow.submitted, 2, "{body}");
+            assert_eq!(flow.ready, 1, "{body}");
+        }
+    }
+
+    #[test]
+    fn a_ready_card_reads_an_audit_pass_at_or_after_its_last_take() {
+        let f = fx();
+        released(&f, PASS, TAKE - 1);
+        released(&f, PASS, TAKE);
+        released(&f, PASS, TAKE + 1);
+        let flow = flow(&f);
+        assert_eq!(flow.audited, 2);
+        assert_eq!(flow.ready, 1);
+    }
+
+    #[test]
+    fn a_ready_card_reads_only_the_hand_back_markers() {
+        let f = fx();
+        released(&f, "LANE-BLOCKED kind=decision C-1 which", TAKE + 1);
+        released(&f, "ACK C-1 taking it", TAKE + 1);
+        released(&f, "RESUME later", TAKE + 1);
+        // A card nobody ever took has no round of work to read notes of.
+        let never = f.card("ready", &[]);
+        f.note_at(never, "report", "lane", SUBMIT[0], TAKE + 1);
+        let flow = flow(&f);
+        assert_eq!((flow.ready, flow.submitted, flow.audited, flow.blocked), (4, 0, 0, 0));
+    }
+
+    #[test]
+    fn the_newest_marker_after_the_take_decides_a_ready_card() {
+        let f = fx();
+        let card = released(&f, SUBMIT[0], TAKE + 1);
+        f.note_at(card, "report", "auditor", PASS, TAKE + 2);
+        let flow = flow(&f);
+        assert_eq!((flow.audited, flow.submitted, flow.ready), (1, 0, 0));
+    }
+
+    #[test]
+    fn a_card_taken_again_does_not_keep_the_hand_back_of_the_round_before() {
+        let f = fx();
+        // Handed back, failed the audit, taken again: working until the lane says otherwise.
+        let card = f.card("active", &[]);
+        f.reserve_gen(card, 1, "released", TAKE - 5_000, TAKE - 4_000);
+        f.note_at(card, "report", "lane", SUBMIT[0], TAKE - 3_000);
+        f.reserve_gen(card, 2, "held", TAKE, LIVE);
+        let flow = flow(&f);
+        assert_eq!((flow.working, flow.submitted), (1, 0));
+        // The same card with an ended lease is stale, not submitted.
+        let g = fx();
+        let card = g.card("active", &[]);
+        g.reserve_gen(card, 1, "released", TAKE - 5_000, TAKE - 4_000);
+        g.note_at(card, "report", "lane", SUBMIT[0], TAKE - 3_000);
+        g.reserve_gen(card, 2, "held", TAKE, NOW - 1);
+        let flow = g.flow(NOW, &Whose::default());
+        assert_eq!((flow.stale, flow.submitted), (1, 0));
+    }
+
+    #[test]
+    fn repaired_is_a_submit_marker_of_a_working_card() {
+        let f = fx();
+        let card = f.card("active", &[]);
+        f.reserve_gen(card, 1, "held", TAKE, LIVE);
+        f.note_at(card, "report", "lane", "REPAIRED C-1 head=abc", TAKE + 1);
+        let flow = flow(&f);
+        assert_eq!((flow.submitted, flow.working), (1, 0));
+    }
+
+    #[test]
+    fn a_block_ends_when_the_leader_answers_it() {
+        let f = fx();
+        let blocked = "LANE-BLOCKED kind=decision C-1 which option";
+        let answer = "LEADER 결정: 둘째 안";
+        let card = |notes: &[(&str, &str, &str)]| {
+            let id = f.card("active", &[]);
+            f.reserve_gen(id, 1, "held", TAKE, LIVE);
+            // One second for every note: the order is the order of the note ids.
+            for (kind, author, body) in notes {
+                f.note_at(id, kind, author, body, TAKE + 10);
+            }
+        };
+        // answered by the leader: the lane works on
+        card(&[("report", "lane", blocked), ("decision", "leader", answer)]);
+        // answered by a lane, or by a leader's report: still blocked
+        card(&[("report", "lane", blocked), ("decision", "lane", answer)]);
+        card(&[("report", "lane", blocked), ("report", "leader", answer)]);
+        // the answer came first: blocked
+        card(&[("decision", "leader", answer), ("report", "lane", blocked)]);
+        // handed back, blocked, answered: the older marker stands
+        card(&[
+            ("report", "lane", SUBMIT[0]),
+            ("report", "lane", blocked),
+            ("decision", "leader", answer),
+        ]);
+        let flow = flow(&f);
+        assert_eq!(
+            (flow.working, flow.blocked, flow.submitted),
+            (1, 3, 1),
+            "{flow:?}"
+        );
+    }
+
+    #[test]
+    fn a_landing_counts_only_at_or_after_the_last_take() {
+        let f = fx();
+        for landed_at in [TAKE - 5, TAKE, TAKE + 5] {
+            let card = f.card("review", &[]);
+            f.reserve_gen(card, 1, "held_for_review", TAKE, LIVE);
+            f.event_at(card, "card.landed", landed_at);
+        }
+        let flow = flow(&f);
+        // The card that landed before its take is a review card like any other: submitted.
+        assert_eq!((flow.landed, flow.submitted), (2, 1));
+    }
+
+    #[test]
+    fn a_withdrawn_hold_card_is_not_counted_as_waiting_for_the_user() {
+        let f = fx();
+        let withdrawn = f.card("hold", &[]);
+        f.event_at(withdrawn, "card.withdraw", TAKE);
+        let folded = f.card("hold", &[]);
+        f.event_at(folded, "card.fold", TAKE);
+        f.card("hold", &[]);
+        let flow = flow(&f);
+        assert_eq!(flow.hold, 1);
     }
 }
 

@@ -533,7 +533,7 @@ mod tolerant_reader_tests {
             "🧠 Opus high·t",
             "📡 owner/repo",
             "🔗 #42 pending",
-            "7D ███████░░░ 79%",
+            "7D ██░░░░░░░░ 21%",
         ] {
             assert!(base.contains(item), "{item}: {base}");
         }
@@ -548,7 +548,7 @@ mod tolerant_reader_tests {
         for item in [
             "📡 owner/repo",
             "🔗 #42 pending",
-            "7D ███████░░░ 79%",
+            "7D ██░░░░░░░░ 21%",
             "🤖 2.1.330",
         ] {
             assert!(no_model.contains(item), "{item}: {no_model}");
@@ -562,7 +562,7 @@ mod tolerant_reader_tests {
         let out = render_value(&pr, h);
         assert!(!out.contains("🔗"), "{out}");
         assert!(
-            out.contains("🧠 Opus high·t") && out.contains("7D ███████░░░ 79%"),
+            out.contains("🧠 Opus high·t") && out.contains("7D ██░░░░░░░░ 21%"),
             "{out}"
         );
         let mut week = full();

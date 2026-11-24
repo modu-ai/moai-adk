@@ -182,7 +182,7 @@ fn the_statusline_tests_pin_the_bar() {
     }
     for name in [
         "fn the_bar_has_ten_cells_and_changes_at_each_tenth",
-        "fn the_row_shows_what_is_left_of_each_window",
+        "fn the_row_shows_what_is_used_of_each_window",
         "fn unknown_windows_and_the_hide_list_stay_as_they_were",
         "fn the_colored_bar_has_the_plain_text",
         "fn the_versions_open_the_flow_line_and_my_card_closes_it",
@@ -255,7 +255,7 @@ fn a_context_window_with_a_null_percentage_says_ctx_n_a() {
         "used_percentage": 0
     }));
     assert!(
-        out.contains("🔋 CW ██████████ 100%"),
+        out.contains("🔋 CW ░░░░░░░░░░ 0%"),
         "a real zero gave: {out}"
     );
 }

@@ -298,25 +298,77 @@ fn moai() -> String {
     format!("🗿 {}", moai_cli::BUILD_VERSION)
 }
 
-/// Characterization of the defect the user reported (2026-11-24T07:32Z): the fixture above draws
-/// exactly the seven numbers of the report. The truth of the same ledger is in the tests that
-/// replace this one with the revision (SPEC-20261124-statusline-counts-truth).
-#[test]
-fn the_0732z_ledger_shape_draws_the_seven_numbers_of_the_report() {
-    let f = fixture();
-    build_ledger(&f);
-    assert_eq!(
-        flow_line(&f, Some("UTC")),
-        format!("{} | 🗂️ 81 → 🟡 3 → 📨 9 → 🛬 6 → ✅ 50 | 🚧 8 🙋 96", moai())
-    );
+/// The number written after `icon` on a flow line, 0 when the item is left out.
+fn count(line: &str, icon: &str) -> i64 {
+    line.split(&format!("{icon} "))
+        .nth(1)
+        .and_then(|rest| rest.split(|c: char| !c.is_ascii_digit()).next())
+        .and_then(|digits| digits.parse().ok())
+        .unwrap_or(0)
 }
 
-/// The same ledger drawn for a user in Seoul (`TZ` for the child only): their day began at 15:00Z
-/// the day before, so 103 cards were closed today, and the line still says 50 (the UTC day).
+/// AC-1: the ledger of the user's report (2026-11-24T07:32Z). Drawn before this SPEC it was
+/// `🗂️ 81 → 🟡 3 → 📨 9 → 🛬 6 → ✅ 50 | 🚧 8 🙋 96`; every row of the table of the SPEC lands in
+/// the item the table names, and the drawn items add up.
 #[test]
-fn the_done_count_ignores_the_time_zone_of_the_machine() {
+fn the_0732z_ledger_shape_draws_what_the_ledger_holds() {
     let f = fixture();
     build_ledger(&f);
-    let seoul = flow_line(&f, Some("Asia/Seoul"));
-    assert!(seoul.contains("→ ✅ 50 |"), "{seoul}");
+    let line = flow_line(&f, Some("UTC"));
+    assert_eq!(
+        line,
+        format!("{} | 🗂️ 77 → 🟡 12 → 📨 12 → 🛬 7 → ✅ 50 | 🚧 4", moai())
+    );
+    // The cards of `active` and `review` (31) and the four ready cards a lane handed back and
+    // released: all of them are on `🟡 📨 🛬 🚧`, and no card is drawn twice or dropped.
+    let drawn: i64 = ["🟡", "📨", "🛬", "🚧"].iter().map(|i| count(&line, i)).sum();
+    assert_eq!(drawn, 31 + 4, "{line}");
+    // The open cards that are neither draft nor hold are every drawn item but the done count.
+    assert_eq!(drawn + count(&line, "🗂️"), 112, "{line}");
+}
+
+/// AC-2: the same ledger for a user in Seoul (`TZ` for the child only): their day began at 15:00Z
+/// the day before, so 103 cards were closed today; in UTC the count is 50.
+#[test]
+fn the_done_count_follows_the_local_day() {
+    let f = fixture();
+    build_ledger(&f);
+    for (tz, want) in [("Asia/Seoul", 103), ("Etc/GMT-9", 103), ("UTC", 50)] {
+        let line = flow_line(&f, Some(tz));
+        assert_eq!(count(&line, "✅"), want, "TZ={tz}: {line}");
+    }
+    // The zone west of UTC: 23:32 the evening before, the day began at 08:00Z the day before.
+    let line = flow_line(&f, Some("Etc/GMT+8"));
+    assert_eq!(count(&line, "✅"), 103, "{line}");
+}
+
+/// AC-3: a hold card that was withdrawn (or folded) is no card the user owes a pick; one that was
+/// not is, and the item is hidden at 0.
+#[test]
+fn a_withdrawn_hold_card_is_not_a_pick_the_user_owes() {
+    let f = fixture();
+    {
+        let mut l = ledger::open_write(f.home.path(), "demo").unwrap();
+        l.with_write_tx(|tx, _| {
+            for kind in ["card.withdraw", "card.fold"] {
+                let c = card(tx, "hold", T0, None);
+                event(tx, c, kind, T0 - HOUR);
+            }
+            card(tx, "ready", T0, None);
+            Ok(())
+        })
+        .unwrap();
+    }
+    let line = flow_line(&f, Some("UTC"));
+    assert_eq!(line, format!("{} | 🗂️ 1", moai()), "{line}");
+    {
+        let mut l = ledger::open_write(f.home.path(), "demo").unwrap();
+        l.with_write_tx(|tx, _| {
+            card(tx, "hold", T0, None);
+            Ok(())
+        })
+        .unwrap();
+    }
+    let line = flow_line(&f, Some("UTC"));
+    assert_eq!(line, format!("{} | 🗂️ 1 | 🙋 1", moai()), "{line}");
 }
