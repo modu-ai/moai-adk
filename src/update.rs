@@ -1708,8 +1708,9 @@ pub struct UserLayerPlan {
     /// #2871 I2 U2b: the Go generation's `~/.moai` items a `--confirm-home <token>` run retires.
     /// Not part of `plan_digest`: only its own token applies it.
     pub home: crate::update_home::Layer,
-    /// C-33 S3: the name-switch script `path/moai` (v1 -> v2) that only `--confirm-switch
-    /// <token>` replaces. Not part of `plan_digest`, like `home`.
+    /// The name-switch script `path/moai` that only `--confirm-switch <token>` replaces by a
+    /// link to the Rust launcher beside it (SPEC-20261121-go-path-removal). Not part of
+    /// `plan_digest`, like `home`.
     pub switch: switch::Layer,
     /// The git-hook retire and install (SPEC-20261121-go-path-removal), confirmed apart like
     /// the switch part.
@@ -2189,8 +2190,8 @@ fn update_command_core(
         || layer.keys.writes();
     let cleanup = cleanup_token(&layer, confirm_cleanup)?;
     let home_token = crate::update_home::check_token(&layer.home, confirm_home)?;
-    // C-33 S3: its own token, like the home part; the file it writes (`path/moai`) is no item of
-    // `~/.moai`, so it combines with the cleanup and the home token.
+    // The switch part: its own token, like the home part; the file it writes (`path/moai`) is no
+    // item of `~/.moai`, so it combines with the cleanup and the home token.
     let switch_token = switch::check_token(&layer.switch, confirm_switch)?;
     let git_hooks_token =
         crate::git_hooks::update::check_token(&layer.git_hooks, confirm_git_hooks)?;
@@ -2237,7 +2238,7 @@ fn update_command_core(
         if let Some(h) = layer.home.to_json() {
             out["home"] = h.clone();
         }
-        // C-33 S3: only a HOME whose `path/moai` is a script shows a `switch` part.
+        // Only a HOME whose `path/moai` is a script this update knows shows a `switch` part.
         if let Some(s) = layer.switch.to_json() {
             out["switch"] = s.clone();
         }
@@ -2495,11 +2496,12 @@ pub fn update_command(
     )
 }
 
-/// [`update_command`] with the switch part of card C-33 S3 (SPEC-20261119-update-switch-layer):
-/// `confirm_switch` (`--confirm-switch`, the preview's `switch.confirm_token`) replaces the
-/// name-switch script `path/moai` after the layer or alone, and `revert_switch`
-/// (`--revert-switch <stamp>`) puts the saved copy back without staging the package; it is
-/// refused beside any confirming flag, before anything is read or written.
+/// [`update_command`] with the switch part (SPEC-20261119-update-switch-layer, ended by
+/// SPEC-20261121-go-path-removal): `confirm_switch` (`--confirm-switch`, the preview's
+/// `switch.confirm_token`) replaces the name-switch script `path/moai` by a link to the Rust
+/// launcher after the layer or alone, and `revert_switch` (`--revert-switch <stamp>`) puts the
+/// saved copy back without staging the package; it is refused beside any confirming flag,
+/// before anything is read or written.
 #[allow(clippy::too_many_arguments)]
 pub fn update_command_switch(
     home: &Path,
