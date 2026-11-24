@@ -11,7 +11,7 @@ use std::path::PathBuf;
 /// run it again. A card that holds no slot is refused.
 #[derive(clap::Args)]
 pub struct Args {
-    /// The card whose audit is over, like `C-364`.
+    /// The card whose audit is over, like `C-1`.
     card: String,
     /// The project folder (any checkout of the repository).
     #[arg(long, default_value = ".")]

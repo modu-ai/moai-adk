@@ -6,7 +6,7 @@ operation `audit.prep` · 코드 `src/ops/audit_prep.rs`, `src/audit_prep.rs` ·
 
 `audit-prep CARD --head COMMIT [--lane DIR] [--test NAME]… [--pid PID] [--lease-secs N] [--project DIR] [--max-worktrees N] [--min-free-percent N] [--slot-dir DIR] [--max N] [--min-free-gb N]`
 
-- `CARD` 는 `C-` 와 숫자(`C-364`)예요. 그 카드가 자리의 holder 예요. 세션은 비교하지 않아요: 리더가 준비하고 감사 에이전트가 `audit-done` 을 쳐도 같은 holder 예요. 그래서 holder 기록의 세션은 비어 있어요.
+- `CARD` 는 `C-` 와 숫자(`C-1`)예요. 그 카드가 자리의 holder 예요. 세션은 비교하지 않아요: 리더가 준비하고 감사 에이전트가 `audit-done` 을 쳐도 같은 holder 예요. 그래서 holder 기록의 세션은 비어 있어요.
 - `--head` 는 40자 소문자 커밋 id 여야 해요(짧은 id, 브랜치, 태그는 거부).
 - 자리: 카드가 이미 자리를 쥐고 있으면 그 자리를 다시 준비해요(앞 자리가 비어 있어도 옮기지 않아요). 없으면 살아 있는 holder 가 없는 첫 자리를 잡고, 셋이 모두 쥐여 있으면 holder 를 모두 대며 거부해요. 거부하면 빌드는 돌리지 않아요.
 - 자리 쪽 동작은 `audit-slot prep` 과 같아요: 자리 확인(링크, 자기 작업트리), 이전 감사가 남긴 변경 거부, `--lane` 의 `target/` 복제(`cp -c -R -p`), 추적 소스 touch(레인의 뮤턴트 빌드가 head 로 통과하는 일을 막음). 자세한 것은 `audit_slot.md`.

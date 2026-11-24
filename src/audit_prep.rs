@@ -1,4 +1,4 @@
-//! Card-addressed audit slots (SPEC-20261124-audit-prep, card C-364). `audit-prep <card> --head H`
+//! Card-addressed audit slots (SPEC-20261124-audit-prep). `audit-prep <card> --head H`
 //! takes a fixed audit slot for the card, switches it detached to the head, inherits the lane's
 //! build and runs one incremental `cargo test --no-run` of the test targets named; `audit-done
 //! <card>` finishes the card's slot and never discards or forces.
@@ -52,7 +52,7 @@ fn check_card(command: &str, card: &str) -> Result<()> {
         Ok(())
     } else {
         Err(format!(
-            "{command} refused card {card:?}: a card name is C- and digits, like C-364; nothing was changed"
+            "{command} refused card {card:?}: a card name is C- and digits, like C-1; nothing was changed"
         ))
     }
 }
@@ -180,7 +180,7 @@ fn build(slot: &Path, rel: &str, o: &Prep) -> Result<Value> {
     };
     let folder = match &o.slot_dir {
         Some(d) => d.clone(),
-        None => crate::heavy_slot::default_dir().map_err(|e| format!("{e}"))?,
+        None => crate::heavy_slot::default_dir().map_err(|e| e.to_string())?,
     };
     let (max, limits, notes) = crate::heavy_slot::resolve(
         &folder,

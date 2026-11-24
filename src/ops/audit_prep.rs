@@ -13,7 +13,7 @@ use std::path::PathBuf;
 /// fresh. A failed build keeps the slot held; `audit-done` finishes it.
 #[derive(clap::Args)]
 pub struct Args {
-    /// The card the audit is for, like `C-364`; it is the holder of the slot.
+    /// The card the audit is for, like `C-1`; it is the holder of the slot.
     card: String,
     /// The audited head, as a full 40-character commit id.
     #[arg(long)]
