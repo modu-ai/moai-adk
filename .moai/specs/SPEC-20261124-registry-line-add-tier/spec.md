@@ -71,4 +71,36 @@ Readers: the lander and the auditors (`moai bundle check` prints the floor), and
 
 ## Result
 
-(written after the checks)
+Measured 2026-11-24 on macOS in the worktree `.claude/worktrees/c475-registry-tier`, code head `ac9fccef9c81b778f5b6f2c12df4f2e04ea1c0f3`.
+- AC-1 met: `a_registration_keeps_the_floor_at_tier_1` passes (rule file plus `--test`; test name, second `--test` and a scan added; an unchanged registry), and `cargo nextest run --locked --offline --test gate_registry_tier` ran 11 tests, 11 passed.
+- AC-2 met: `an_edited_or_removed_line_is_tier_2`, `a_check_line_changed_in_any_other_way_is_tier_2` and `a_registry_of_another_shape_is_tier_2` pass: each edit, removal, replaced `--test`, extra check word (`--release`, `-- --ignored`, `--lib`, `; true`, a bare `true`), dangling `--test`, added or removed check line, added key, repeated scan id and changed `about` gives floor 2.
+- AC-3 met: `the_names_alone_still_give_tier_2` (a missing side, either side) and `a_line_that_only_adds_text_but_overrides_an_old_value_is_tier_2` (one added line that repeats `rules` or `about`, nothing removed) give floor 2; text that is not JSON gives 2 in `a_registry_of_another_shape_is_tier_2`.
+- AC-4 met: `another_tier_2_path_in_the_change_keeps_the_floor_at_tier_2` (next to `src/gate.rs`, a hook, `.claude/`, `CLAUDE.md`, `tools/check_guard.py`: 2; next to a test file or code: 1; body 7 or none: 2), `only_the_registry_path_is_judged_by_its_text` (six other tier 2 paths with the registration's texts: 2) and `the_two_other_registries_are_tier_0_for_any_change` (0 for an added and an edited line).
+- AC-5 met: `bundle_check_reads_a_registration_as_tier_1_and_an_edit_as_tier_2` (a registration 1; an edit 2; a removed rule file 2; a registration next to `src/gate.rs` 2; a document 0) and `bundle_check_judges_a_head_behind_the_tip_by_its_own_registry_change` run `moai bundle check` in a temporary repository. `moai bundle body` takes the floor from the same helper (`Git::audit_floor`); no test writes a body for a registry change (gap).
+- AC-6 met: the 50 most recent distinct audited ranges (`head` and `base` of the `AUDIT` verdict lines of the card ledger, read from `moai card export` of 2026-11-24, index sha256 `5a5baca9fafbdfcf189b3cab8c2fcaf315834317b952254c6fecd04ae67a084a`; 358 distinct verdict ranges, newest note 8578) were recomputed twice, by a script that mirrors the rule and by a probe linked to the head's library calling `gate::tier_of` (names only, the old rule) and `gate::tier_of_changes` (new rule) with `git show` texts of the two sides; both gave the same answer. **Tier 2 ranges: 27 of 50 before, 16 of 50 after; 11 ranges change from 2 to 1, 0 change the other way, 31 ranges do not touch the registry.** A line-only reading (the card's first wording, no edited lines) would change 2.
+
+  | range head | the registry change | other tier 2 path | floor before → after |
+  | --- | --- | --- | --- |
+  | 1489d1645de7 | rule files and `--test` added | none | 2 → 1 |
+  | 9de55e2c2c59 | rule files and `--test` added | none | 2 → 1 |
+  | 3874a3c91604 | a scan added | none | 2 → 1 |
+  | c3ac0f393650 | rule files and `--test` added | none | 2 → 1 |
+  | b8fb5096cbd7 | rule files and `--test` added | none | 2 → 1 |
+  | 1ce2663acc8e | rule files and `--test` added | none | 2 → 1 |
+  | 5fc44126bb96 | rule files and `--test` added | none | 2 → 1 |
+  | 89e264afc258 | rule files and `--test` added | none | 2 → 1 |
+  | 3f4b15bad45c | rule files and `--test` added | none | 2 → 1 |
+  | 548822bf0a19 | rule files and `--test` added | none | 2 → 1 |
+  | fd8876baddf8 | a scan added | none | 2 → 1 |
+  | 8213a5a3f790 | rule files and `--test` added | `src/agent_install.rs`, `src/update.rs` | 2 → 2 |
+  | e80b345fa6d0 | a scan added | `src/go_state.rs`, `src/state_root.rs` | 2 → 2 |
+  | c228b6f3eb3a | a scan added | `src/go_state.rs`, `src/state_root.rs` | 2 → 2 |
+  | 6e876acb7a4b | rule files and `--test` added | `.github/workflows/ci.yml` and another | 2 → 2 |
+  | a4656e1e3ead | a scope entry added next to the registration | none | 2 → 2 |
+  | eab4fccb1e55 | a scope entry, a `--lib` check and `rejects` text edited | none | 2 → 2 |
+  | d6b28a54110c | a scan scope and text edited | none | 2 → 2 |
+  | 9cee440a7e44 | a scan edited | `src/hook_bash_boundary.rs` and another | 2 → 2 |
+
+- guard mutants, each run on the committed head by `target/c475/mutants.py` in one slot (baseline exit 0, 11 passed; the tree was clean after the last): M1 exemption removed from `tier_by`, exit 100 (1 failed); M2 text rule applied to any path, exit 100 (1 failed); M3 the registry path always counts as growth, exit 100 (4 failed); M4 top-level fields not compared, exit 100 (2 failed); M5 list members may be dropped, exit 100 (1 failed); M6 check line count not compared, exit 100 (1 failed); M7 any added check word accepted, exit 100 (1 failed); M8 old check words may be dropped, exit 100 (1 failed); M9 repeated scan id allowed, exit 100 (1 failed); M10 top-level key set not compared, exit 100 (1 failed); M11 scan key set not compared, exit 100 (1 failed); M12 check lines not read, exit 100 (1 failed); M13 text fields not compared, exit 100 (2 failed); M14 a missing side counts as growth, exit 100 (3 failed); M15 text never judged, exit 100 (4 failed); M16 `bundle check` back to names only, exit 100 (2 failed); M17 registry text never read, exit 100 (2 failed); M18 old side read at the head, exit 100 (1 failed); M19 old side read at the tip, exit 100 (1 failed).
+- Other runs: `cargo nextest run --locked --offline --test gate_registry_tier --test bundle_check_cli --lib` ran 1929 tests, 1929 passed (before the commit of the code); `moai spec check SPEC-20261124-registry-line-add-tier --project .` ends with 0 errors and 0 warnings.
+- Gaps: the pull request gate (`audit-gate`) and the landing check still judge names only (D-3), so for a registration they say tier 2 where `moai bundle check` says 1; `moai bundle body` is not tested for a registry change; the `moai check affected` receipt is in the READY note.
