@@ -219,6 +219,20 @@ impl World {
             .unwrap();
     }
 
+    /// The events of `card` (the holder's own: nobody else wrote to it) are `secs_ago` seconds
+    /// old while the reservation keeps the age `go_silent` gave it.
+    fn events_at(&self, card: &str, secs_ago: i64) {
+        let id = card.trim_start_matches("C-");
+        let file = ledger::ledger_path(self.home.path(), "demo").unwrap();
+        rusqlite::Connection::open(&file)
+            .unwrap()
+            .execute_batch(&format!(
+                "DROP TRIGGER IF EXISTS event_no_update; \
+                 UPDATE event SET at = unixepoch() - {secs_ago} WHERE card_id = {id};"
+            ))
+            .unwrap();
+    }
+
     /// Makes the card's last update `days` days old. The `rev` moves with it, so the
     /// `card_touch` trigger does not write the clock over it again.
     fn age(&self, card: &str, days: i64) {
@@ -485,6 +499,36 @@ fn stale_heartbeat_row_shows_last_seen_at_and_silent_secs() {
             "{card}: last_seen_at {seen} and silent_secs {secs} name one moment: {listing}"
         );
     }
+}
+
+/// REQ-10, REQ-1: the heartbeat of a row is the later of the reservation's update and the holder's
+/// latest event, as the sweep reads it: a holder that wrote a minute ago keeps its card whatever
+/// the age of the reservation row.
+#[test]
+fn stale_heartbeat_counts_the_holders_latest_event_and_not_only_the_reservation() {
+    let w = World::new();
+    w.write_profile("");
+    let card = w.ready("apps/a/");
+    w.card(Some(S_A), &["take", &card]);
+    w.end_lease_ago(&card, 60);
+    w.go_silent(&card, 3 * HOUR);
+    w.events_at(&card, 60);
+
+    let listing = w.next(S_D);
+    let row = rows_of(&listing, &card)[0];
+    let secs = row["silent_secs"].as_i64().unwrap();
+    assert!(
+        (60..120).contains(&secs),
+        "the holder's event a minute ago is the heartbeat, not the reservation's three hours: {listing}"
+    );
+    assert!(
+        row["command"]
+            .as_str()
+            .unwrap()
+            .starts_with("moai card withdraw "),
+        "a holder that wrote a minute ago is not silent: {listing}"
+    );
+    assert!(row.get("via").is_none(), "{listing}");
 }
 
 /// REQ-11: the row names the sweep for a card the sweep would take, and keeps the withdraw for a
