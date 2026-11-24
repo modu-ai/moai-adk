@@ -209,6 +209,23 @@ fn a_folded_card_is_hold_with_an_event_and_a_link_and_is_never_offered() {
     );
 }
 
+/// SPEC-20261124-card-help-gates AC-6 (REQ-4): `take` of a folded card says `folded into C-2`
+/// and never calls the card withdrawn (it was folded, not withdrawn; AUDIT #444 N3).
+#[test]
+fn take_of_a_folded_card_does_not_say_withdrawn() {
+    let w = World::new(2);
+    w.fold(1, 2, "lane").unwrap();
+    let out = w.output(Some(S_A), &["card", "take", "C-1", "--project", &w.p]);
+    assert_ne!(out.status.code(), Some(0));
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(text.contains("folded into C-2"), "{text}");
+    assert!(!text.contains("withdrawn"), "{text}");
+}
+
 /// AC-2: every fold that cannot happen is refused and the ledger is the same before and after;
 /// the same card folded twice is refused the second time.
 #[test]

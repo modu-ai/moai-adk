@@ -480,13 +480,19 @@ fn the_note_help_names_the_receipt_gate() {
     let w = World::new();
     let (ok, help) = w.moai(&["card", "note", "--help"], None);
     assert!(ok, "{help}");
+    // The help wraps its lines, so a phrase is looked for in the text with its whitespace folded.
+    // `READY` alone is a piece of `LANE-READY-INTEGRATION`: the marker is the backticked word with
+    // its trailing space (SPEC-20261124-card-help-gates AC-1, mutant M8).
+    let help = help.split_whitespace().collect::<Vec<_>>().join(" ");
     for word in [
-        "LANE-READY-INTEGRATION",
-        "REPAIRED",
-        "READY",
+        "`LANE-READY-INTEGRATION`",
+        "`REPAIRED`",
+        "`READY `",
         "summary.txt",
         "moai check affected",
         "--lane",
+        "a blank before the marker",
+        "ancestor of that head",
     ] {
         assert!(help.contains(word), "`{word}` is not in the help: {help}");
     }

@@ -390,12 +390,22 @@ fn an_unreadable_profile_uses_the_default_days_and_adds_no_warning() {
     let rows = rows_of(&listing, &old);
     assert_eq!(rows.len(), 1, "{listing}");
     assert_eq!(rows[0]["threshold_days"], json!(14), "{listing}");
+    // SPEC-20261124-card-help-gates AC-8 (REQ-7): no warning of any wording is added by the stale
+    // draft: the whole `warnings` array equals that of the same fixture without a stale draft.
+    let fresh = World::new();
+    assert!(moai_cli::profile::read_profile(&fresh.project).is_err());
+    let young = fresh.draft("apps/a/");
+    fresh.age(&young, 1);
+    let fresh_listing = fresh.next(S_B);
     assert!(
-        listing["warnings"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .all(|w| !w.as_str().unwrap_or("").contains("stale")),
-        "{listing}"
+        rows_of(&fresh_listing, &young).is_empty(),
+        "{fresh_listing}"
     );
+    assert_eq!(
+        listing["warnings"], fresh_listing["warnings"],
+        "the stale draft changed the warnings: {listing} against {fresh_listing}"
+    );
+    // The fixture holds no card that wants a SPEC, so the one array both listings carry is empty:
+    // a warning of the unreadable profile, in any wording, is not in it.
+    assert_eq!(listing["warnings"], json!([]), "{listing}");
 }

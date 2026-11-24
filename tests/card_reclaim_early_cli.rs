@@ -235,6 +235,17 @@ impl World {
         v
     }
 
+    /// Runs `statement` against the ledger directly: the only way to end a lease (its length is
+    /// at least 60 seconds) or to leave a reservation in a status no command leaves it in.
+    fn sql(&self, statement: &str) {
+        let mut l = ledger::open_write(self.home.path(), "demo").unwrap();
+        l.with_write_tx(|tx, _| {
+            tx.execute_batch(statement)?;
+            Ok(())
+        })
+        .unwrap();
+    }
+
     fn refused_and_unchanged(&self, out: Output, needle: &str, before: &[String]) -> String {
         let (kind, message) = refusal(&out);
         assert_eq!(kind, "conflict", "{message}");
@@ -397,6 +408,52 @@ fn refused_without_the_worktree_proof() {
     let before = w.dump();
     let m = w.refused_and_unchanged(w.reclaim(&sid(4), &other, "1"), "lease", &before);
     assert!(m.contains("records no worktree"), "{m}");
+}
+
+/// SPEC-20261124-card-help-gates AC-3 (REQ-2): the help says that unpushed commits stop the
+/// takeover of a live lease and do not stop the takeover of an ended one.
+#[test]
+fn the_reclaim_help_says_when_unpushed_commits_stop_the_takeover() {
+    let w = world();
+    let out = w
+        .home
+        .command(&["card", "reclaim", "--help"])
+        .stdin(Stdio::null())
+        .output()
+        .expect("run moai");
+    assert_eq!(out.status.code(), Some(0));
+    let help = String::from_utf8_lossy(&out.stdout)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    for phrase in [
+        "Once the lease has ended, commits that sit on no remote-tracking ref do not stop the takeover",
+        "While the lease is still live, such commits stop it",
+    ] {
+        assert!(help.contains(phrase), "`{phrase}` is not in the help: {help}");
+    }
+}
+
+/// SPEC-20261124-card-help-gates AC-4 (REQ-6): only a `held` reservation whose lease has ended
+/// keeps unpushed commits; an `expired_candidate` or `held_for_review` one with the same ended
+/// lease goes through the strict gate, which refuses them. Without the `held` test of the gate
+/// the takeover gate would let it pass and the ledger would refuse with another sentence.
+#[test]
+fn a_reservation_that_is_not_held_goes_through_the_strict_gate() {
+    for status in ["held_for_review", "expired_candidate"] {
+        let w = world();
+        let card = w.taken(&sid(1), Some(&w.wt), "src/status/");
+        fs::write(w.wt.join("new.txt"), "x\n").unwrap();
+        git_in(&w.wt, &["add", "new.txt"]);
+        git_in(&w.wt, &["commit", "-q", "-m", "second"]);
+        w.sql(&format!(
+            "UPDATE reservation SET status = '{status}', lease_until = unixepoch() - 5 \
+             WHERE status = 'held'"
+        ));
+        let before = w.dump();
+        let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "1 unpushed", &before);
+        assert!(m.contains("worktree dirty"), "{status}: {m}");
+    }
 }
 
 /// AC-4 (REQ-4): a process whose working folder is inside the worktree leaves the live lease

@@ -816,7 +816,27 @@ pub(super) fn revert_entry(
         state.block_sha256 = e.baseline_before.clone();
         write_json(&state_root(home).join(format!("{}.json", e.host)), &state)?;
     } else {
-        update_rules_state(home, &folder_id(&dir)?, kind, e.baseline_before.clone())?;
+        let id = folder_id(&dir)?;
+        // The earlier layout's entry shares the flow slot with the current file: while that file
+        // still holds the recorded digest the slot is its, not this entry's.
+        if !(kind == "flow" && current_flow_holds_slot(home, &dir, &id)?) {
+            update_rules_state(home, &id, kind, e.baseline_before.clone())?;
+        }
     }
     Ok(Ok(target.to_string_lossy().into_owned()))
+}
+
+/// `true` when `rules/moai-flow.md` of the config folder is a plain file holding the bytes whose
+/// digest the state's `flow_sha256` records (SPEC-20261124-flow-receipt-slots); any other case,
+/// a link or an unreadable file included, is `false`.
+fn current_flow_holds_slot(home: &Path, dir: &Path, id: &str) -> Result<bool> {
+    let Some(slot) = read_rules_state(home, id)?.flow_sha256 else {
+        return Ok(false);
+    };
+    let Ok(base) =
+        base_of(home, dir, FLOW_FILE).and_then(|b| chain_plain(&b, FLOW_FILE).map(|()| b))
+    else {
+        return Ok(false);
+    };
+    Ok(matches!(current_file(&base.join(FLOW_FILE)), Ok(Some(b)) if sha(&b) == slot))
 }

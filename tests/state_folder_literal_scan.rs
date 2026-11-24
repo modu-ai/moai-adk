@@ -227,11 +227,15 @@ fn seam_lines(path: &str, text: &str) -> Vec<String> {
         .collect()
 }
 
-/// The hits under `<root>/src` (`.rs`) and `<root>/tests` (`.rs`, `.py`, outside
-/// `tests/fixtures`), sorted by path.
+/// The hits under `<root>/src` (`.rs`), `<root>/tests` (`.rs`, `.py`, outside `tests/fixtures`)
+/// and `<root>/tools` (`.py`; SPEC-20261124-test-seams-release REQ-3), sorted by path.
 fn seam_scan(root: &Path) -> Vec<String> {
     let mut out = Vec::new();
-    for (top, exts) in [("src", &["rs"][..]), ("tests", &["rs", "py"][..])] {
+    for (top, exts) in [
+        ("src", &["rs"][..]),
+        ("tests", &["rs", "py"][..]),
+        ("tools", &["py"][..]),
+    ] {
         let base = root.join(top);
         let mut stack = vec![base.clone()];
         while let Some(dir) = stack.pop() {
@@ -301,6 +305,12 @@ fn the_seam_scan_finds_a_planted_line_and_skips_what_it_should() {
             "const V: &str = \"MOAI_TEST_FAULT\";\n".to_string(),
         ),
         ("tests/notes.md", format!("{p}FAULT\n")),
+        (
+            "tools/x.py",
+            format!("import os\nos.environ[\"{p}MACHINE\"] = \"x\"\n"),
+        ),
+        ("tools/x.rs", format!("{p}FAULT\n")),
+        ("tools/notes.md", format!("{p}FAULT\n")),
     ];
     for (rel, text) in &files {
         let path = root.join(rel);
@@ -309,9 +319,86 @@ fn the_seam_scan_finds_a_planted_line_and_skips_what_it_should() {
     }
     assert_eq!(
         seam_scan(root),
-        ["src/a.rs:2", "src/deep/b.rs:1", "tests/c.py:1"],
-        "fixtures, the new name and other file kinds are not hits"
+        [
+            "src/a.rs:2",
+            "src/deep/b.rs:1",
+            "tests/c.py:1",
+            "tools/x.py:2"
+        ],
+        "fixtures, the new name and other file kinds are not hits; tools/ is read for .py only"
     );
+}
+
+/// SPEC-20261124-test-seams-release: the four test-only seams that a release binary once read.
+/// Each is `(source file, the constant that names the variable)`; the variable is read exactly
+/// once in that file, and the read sits directly under `#[cfg(debug_assertions)]`.
+const GATED_SEAMS: [(&str, &str); 4] = [
+    ("src/lane_registry.rs", "TEST_HOLD_VAR"),
+    ("src/session.rs", "AGENT_SEQ_TEST_HOLD_VAR"),
+    ("src/launcher_init.rs", "INIT_TEST_HOLD_VAR"),
+    ("src/launcher_init.rs", "INIT_TEST_FAIL_VAR"),
+];
+
+/// How `text` reads the variable named by the constant `name`: the 1-based line of every read
+/// (`env::var(NAME)` or `env::var_os(NAME)`), and whether its line directly follows a
+/// `#[cfg(debug_assertions)]` line (comment lines between the two do not count).
+fn seam_reads(text: &str, name: &str) -> Vec<(usize, bool)> {
+    let reads = [format!("env::var({name})"), format!("env::var_os({name})")];
+    let lines: Vec<&str> = text.lines().collect();
+    let mut out = Vec::new();
+    for (i, line) in lines.iter().enumerate() {
+        if !reads.iter().any(|r| line.contains(r.as_str())) {
+            continue;
+        }
+        let above = lines[..i]
+            .iter()
+            .rev()
+            .map(|l| l.trim())
+            .find(|l| !l.starts_with("//"));
+        out.push((i + 1, above == Some("#[cfg(debug_assertions)]")));
+    }
+    out
+}
+
+#[test]
+fn the_four_test_seams_are_read_only_in_debug_builds() {
+    let mut problems = Vec::new();
+    for (file, name) in GATED_SEAMS {
+        let text = fs::read_to_string(Path::new(MANIFEST).join(file)).unwrap();
+        let reads = seam_reads(&text, name);
+        if reads.len() != 1 {
+            problems.push(format!(
+                "{file}: {name} is read {} times, not once",
+                reads.len()
+            ));
+        }
+        for (line, gated) in reads {
+            if !gated {
+                problems.push(format!(
+                    "{file}:{line}: the read of {name} is not directly under #[cfg(debug_assertions)]"
+                ));
+            }
+        }
+    }
+    assert!(
+        problems.is_empty(),
+        "a release build must not read a test-only seam:\n{}",
+        problems.join("\n")
+    );
+}
+
+#[test]
+fn the_gate_scan_tells_a_gated_read_from_a_bare_one() {
+    let text = "fn a() {\n    #[cfg(debug_assertions)]\n    if let Some(ms) = std::env::var(HOLD)\n        .ok()\n    {}\n    if std::env::var_os(FAIL).is_some() {}\n    #[cfg(debug_assertions)]\n    // a comment between\n    let _ = std::env::var(OTHER);\n    #[cfg(not(debug_assertions))]\n    let _ = std::env::var(NEG);\n}\n";
+    assert_eq!(seam_reads(text, "HOLD"), [(3, true)]);
+    assert_eq!(seam_reads(text, "FAIL"), [(6, false)]);
+    assert_eq!(seam_reads(text, "OTHER"), [(9, true)]);
+    assert_eq!(
+        seam_reads(text, "NEG"),
+        [(11, false)],
+        "a cfg(not(debug_assertions)) read is not gated"
+    );
+    assert!(seam_reads(text, "NONE").is_empty());
 }
 
 /// An old-layout fixture text, as a listed file holds it: it builds the earlier folder first.

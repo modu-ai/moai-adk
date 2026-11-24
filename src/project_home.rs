@@ -61,7 +61,8 @@ pub fn resolve(home: &Path, project: &Path) -> Result<ProjectHome> {
 impl ProjectHome {
     /// `<dir>/backups/<stamp>/<kind>`: where one backup of `kind` (for example `go-state`)
     /// taken at `stamp` (`YYYYMMDDTHHMMSSZ`) goes. Both parts are checked, so neither can name
-    /// a parent folder or a second level.
+    /// a parent folder or a second level. A folder that is, or sits below, a symbolic link of the
+    /// home state is refused (`home state folder is a symlink; refused`).
     pub fn backup_area(&self, stamp: &str, kind: &str) -> Result<PathBuf> {
         if !crate::state_root::utc_stamp(stamp) {
             return Err(format!("stamp `{stamp}` is not YYYYMMDDTHHMMSSZ"));
@@ -69,7 +70,20 @@ impl ProjectHome {
         if !portable_id(kind) {
             return Err("backup kind is not a plain name".into());
         }
-        Ok(self.dir.join("backups").join(stamp).join(kind))
+        let path = self.dir.join("backups").join(stamp).join(kind);
+        self.refuse_linked(&path)?;
+        Ok(path)
+    }
+
+    /// SPEC-20261124-home-writer-links: refuses a symbolic link between the home state root and
+    /// `path`, with the sentence of [`crate::layout::refuse_linked_home_path`]. `dir` is always
+    /// `<home state root>/projects/<key>` ([`resolve`]), so the root is two folders above it.
+    /// Reads only. Only [`ProjectHome::backup_area`] calls it.
+    fn refuse_linked(&self, path: &Path) -> Result<()> {
+        match self.dir.parent().and_then(Path::parent) {
+            Some(root) => crate::layout::refuse_linked_home_path(root, path),
+            None => Ok(()),
+        }
     }
 
     /// `<dir>/<area>`: the folder of one machine-written area. Only the names in [`AREAS`]
@@ -85,7 +99,9 @@ impl ProjectHome {
     /// Like [`ProjectHome::area`], but for a writer: `Some` only when the key is the
     /// profile's fixed id. A key made from the folder path changes when the folder is renamed
     /// (design 6887461482 §3), so data written under it would be left behind; a writer keeps
-    /// its current place until the project has an id.
+    /// its current place until the project has an id. It reads no link: the writers that call it
+    /// (the hook receipt, the lane Stop hook) refuse a link on the way themselves, through
+    /// `hooks::make_private_dirs` (SPEC-20261124-home-writer-links).
     pub fn write_area(&self, area: &str) -> Result<Option<PathBuf>> {
         let dir = self.area(area)?;
         Ok((self.key_source == KeySource::Profile).then_some(dir))

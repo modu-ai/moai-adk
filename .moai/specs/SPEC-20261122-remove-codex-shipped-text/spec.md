@@ -86,3 +86,13 @@ The user decided on 2026-11-21 that moai-adk supports Claude Code and GLM only. 
 - D-6: The one migration line is a sentence in `skills/moai/workflows/update.md` that relays the preview's skipped notice (planning default).
 - D-7: The codex rows of `src/audit.rs` `INDEPENDENCE` and `render_omp` in `src/agent_defs.rs` are left to the src card and the skill-mode card (planning default).
 - D-8: Python tools that name Codex are left to the Python tool card, except the `tools/host_live_harness.py` rows that go with the live-session doc (planning default).
+- D-9: Product docs outside the ten the scan reads still name a retired host; each joins the scan's named list in the slice that cleans it, and until then is deferred here: `docs/rust-product-path.md` (48 lines; held by another card), `docs/hooks-generation.md` (26), `docs/host-support-matrix.md` (23), `docs/local-rc1-kit.md` (9), `docs/2383-statusline-switch-design.md` (7), and three more with one or two lines each (audit note after the second landing; counts by `grep -ciE 'codex|\bomp\b|oh-my-pi'` on fa0dfc69e1).
+
+## Result
+
+Written per slice; the closure waits for the last slice.
+
+- AC-4, AC-5, AC-9 met (S1), AC-11 met (S6), AC-8 met (S7): PASS 6812 on 00c5d1d467, landed as aa3d8c01c9.
+- AC-6 met for the ten named docs, AC-7 met for the deleted adapter page (S3 and the first follow-ups): PASS 6935 on 367b4a3586, landed as fa0dfc69e1.
+- Follow-ups after the second landing: the recovery section of `docs/support-matrix.md` names the Claude projection the fixture now uses and its user skill folder; the pointers to the deleted page in `docs/host-support-matrix.md` and `docs/product-naming-inventory.md` say it was deleted (the one in `docs/rust-product-path.md` waits for its holder); AC-8's check reads `git ls-tree`, which answers an absent entry with success and no line, so a git failure fails it. The slice's check affected run is cited in its READY note.
+- Not yet met: AC-1 and AC-10 (S4b/c), AC-2 (S4a), AC-3 (S2), AC-7 for `tests/e2e/host-codex.sh` and `tests/e2e_host_codex_verdict_test.py` (next slice, with `tests/e2e_host_fixture.rs` and `tests/e2e_receipt_not_run_test.py` that name them), AC-12 at the closure.

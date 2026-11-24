@@ -293,15 +293,17 @@ fn injects_markers(p: &Profile, r: &AgentsRequest) -> bool {
         .any(|v| tokens.iter().any(|t| v.contains(t)))
 }
 
-/// The answers REVIEW.md carries: `review_blocks` and `protected` decisions the user or the
-/// repository gave. A default (an axis left unanswered, `HOLD`) is never written as a rule.
+/// The answers REVIEW.md carries: `review_blocks` and `protected` decisions the user, the
+/// repository or the generic defaults of the interview gave (SPEC-20261124-moai-project-interview
+/// REQ-8: the interview asks neither, so its `default` sentences are the rules). An axis left
+/// unanswered is recorded as `HOLD` and is never written as a rule.
 fn review_answers(p: &Profile) -> Vec<(&str, &String)> {
     REVIEW_ANSWERS
         .iter()
         .flat_map(|id| {
             p.decisions
                 .iter()
-                .filter(move |d| d.id == *id && d.source != "default")
+                .filter(move |d| d.id == *id && d.value != "HOLD")
                 .map(|d| (d.id.as_str(), &d.value))
         })
         .collect()
