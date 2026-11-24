@@ -443,18 +443,7 @@ fn check_paths(tree: &Path, from: &str, to: &str) -> Result<()> {
             "the follow step does not support it: update that worktree by hand and land without it, or land the submodule change separately",
         ));
     }
-    let removed: BTreeSet<&str> = all
-        .iter()
-        .filter(|c| c.status == 'D')
-        .map(|c| c.path.as_str())
-        .collect();
-    let tracked = tracked_paths(tree, from)?;
-    let mut stands: Vec<String> = Vec::new();
-    for added in all.iter().filter(|c| c.status == 'A') {
-        if let Some(found) = in_the_way(tree, &added.path, &removed, &tracked)? {
-            stands.push(found);
-        }
-    }
+    let stands = stands_on_added_paths(tree, &all, from)?;
     if stands.is_empty() {
         return Ok(());
     }
@@ -467,6 +456,24 @@ fn check_paths(tree: &Path, from: &str, to: &str) -> Result<()> {
         ),
         "move or delete them (or add them to the commit), then run the call again",
     ))
+}
+
+/// What stands where the move adds a path and is no part of what the move deletes, one entry per
+/// added path that has something in the way.
+fn stands_on_added_paths(tree: &Path, all: &[Change], from: &str) -> Result<Vec<String>> {
+    let removed: BTreeSet<&str> = all
+        .iter()
+        .filter(|c| c.status == 'D')
+        .map(|c| c.path.as_str())
+        .collect();
+    let tracked = tracked_paths(tree, from)?;
+    let mut stands: Vec<String> = Vec::new();
+    for added in all.iter().filter(|c| c.status == 'A') {
+        if let Some(found) = in_the_way(tree, &added.path, &removed, &tracked)? {
+            stands.push(found);
+        }
+    }
+    Ok(stands)
 }
 
 /// The dry run of the two-tree merge the follow step makes: git's own refusal of a local file at
@@ -584,13 +591,30 @@ pub fn rerun(
     if !quiet(&tree, &["diff-index", "--cached", "--quiet", &old])? {
         // The branch moved and the landing is done, so the card closes; the worktree is left as
         // it is and the answer says how its owner brings it along (REQ-13).
+        // `git reset --hard` also overwrites a file no commit tracks (ignored or not) that stands
+        // where the new tip adds one, and the saved patch does not hold such a file: name them.
+        let overwritten = match changes(&tree, &old, &tip)
+            .and_then(|all| stands_on_added_paths(&tree, &all, &old))
+        {
+            Ok(stands) if stands.is_empty() => String::new(),
+            Ok(stands) => format!(
+                " Move these away before the reset, because the new commit adds a file at each of \
+                 them and the reset overwrites what stands there, and the patch does not hold a \
+                 file no commit tracks: {}.",
+                listed(&stands)
+            ),
+            Err(_) => " The paths the new commit adds could not be read: before the reset, look \
+                        for files of your own at them, because the reset overwrites those and the \
+                        patch does not hold a file no commit tracks."
+                .to_string(),
+        };
         let note = format!(
             "the index of the worktree is neither the old tip's tree nor the new one's, so it was \
              left alone and shows the move backwards; `git diff {old}` there lists every change to \
              tracked files, staged or not, and `git reset --hard` discards all of them: save them \
-             first (`git diff {old} > keep.patch`; files no commit tracks stay where they are), run \
-             `git reset --hard` there to bring it to {tip}, and apply the patch again \
-             (`git apply --3way keep.patch`)"
+             first (`git diff --binary {old} > keep.patch`; a file no commit tracks stays where it \
+             is unless the new commit adds one at the same path), run `git reset --hard` there to \
+             bring it to {tip}, and apply the patch again (`git apply --3way keep.patch`).{overwritten}"
         );
         return Ok(Rerun::Nothing(answer(
             Some(&tree),

@@ -1025,7 +1025,7 @@ fn a_rerun_leaves_a_worktree_alone_whose_index_matches_neither_commit() {
     let old = got["worktree_follow"]["from"].as_str().unwrap();
     assert!(
         note.contains("neither")
-            && note.contains(&format!("git diff {old} > keep.patch"))
+            && note.contains(&format!("git diff --binary {old} > keep.patch"))
             && !note.contains("--cached")
             && note.contains("staged or not")
             && note.contains("git reset --hard")
@@ -1036,7 +1036,7 @@ fn a_rerun_leaves_a_worktree_alone_whose_index_matches_neither_commit() {
     assert_eq!(w.state(&card), "done");
 
     // The advice, followed to the letter, loses neither the staged file nor the unstaged edit.
-    let patch = git(&w.project, &["diff", old]);
+    let patch = git(&w.project, &["diff", "--binary", old]);
     assert!(
         patch.contains("mine.txt") && patch.contains("edited, never staged"),
         "the saved patch lacks a change: {patch}"
@@ -1051,6 +1051,76 @@ fn a_rerun_leaves_a_worktree_alone_whose_index_matches_neither_commit() {
     assert_eq!(
         fs::read_to_string(w.project.join("d/x")).unwrap(),
         "edited, never staged\n"
+    );
+}
+
+/// The advice of a lagging foreign index ends in `git reset --hard`, which also overwrites a file
+/// no commit tracks (ignored or not) where the new commit adds one, and which no patch holds: the
+/// note names such files, and the advice followed to the letter (move them, save, reset, apply)
+/// loses neither them nor a staged binary file.
+#[test]
+fn a_rerun_note_names_the_files_the_reset_would_overwrite() {
+    let w = World::new();
+    let (card, cand) = w.ready_editing(&[], &[("notes/x.md", "lane\n"), ("keep.ign", "lane\n")]);
+    w.wrap_update_ref("git-kills-the-lander", "kill -9 $PPID");
+    let out = w.land(&card, &cand);
+    assert_ne!(out.status.code(), Some(0), "the lander was not killed");
+    // The owner keeps a file of their own where the new commit adds a file, an ignored one at
+    // another added path, and stages a binary file: the index matches neither commit.
+    fs::write(w.project.join(".git/info/exclude"), "keep.ign\n").unwrap();
+    fs::create_dir_all(w.project.join("notes")).unwrap();
+    fs::write(w.project.join("notes/x.md"), "mine, untracked\n").unwrap();
+    fs::write(w.project.join("keep.ign"), "mine, ignored\n").unwrap();
+    let binary: &[u8] = &[0, 1, 2, 254, 255, 0];
+    fs::write(w.project.join("bin.dat"), binary).unwrap();
+    git(&w.project, &["add", "bin.dat"]);
+    let before = w.checkout();
+
+    w.plain_git();
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["worktree_follow"]["status"], json!("none"), "{got}");
+    let note = got["worktree_follow"]["note"].as_str().unwrap_or_default();
+    let old = got["worktree_follow"]["from"].as_str().unwrap();
+    assert!(
+        note.contains("Move these away before the reset")
+            && note.contains("notes/x.md")
+            && note.contains("keep.ign")
+            && note.contains(&format!("git diff --binary {old} > keep.patch")),
+        "the note must name the files the reset overwrites: {got}"
+    );
+    assert_eq!(w.checkout(), before, "the rerun touched the worktree");
+    assert_eq!(w.state(&card), "done");
+
+    // The advice, to the letter: move the named files away, save, reset, apply.
+    let saved = w.dir.path().join("saved");
+    fs::create_dir_all(&saved).unwrap();
+    fs::rename(w.project.join("notes/x.md"), saved.join("x.md")).unwrap();
+    fs::rename(w.project.join("keep.ign"), saved.join("keep.ign")).unwrap();
+    // `> keep.patch` keeps the bytes as they are; the `git` helper trims the blank line that ends
+    // a binary hunk.
+    let diff = common::git::command()
+        .arg("-C")
+        .arg(&w.project)
+        .args(["diff", "--binary", old])
+        .output()
+        .unwrap();
+    assert!(diff.status.success());
+    fs::write(w.project.join("keep.patch"), &diff.stdout).unwrap();
+    git(&w.project, &["reset", "--hard"]);
+    git(&w.project, &["apply", "--3way", "keep.patch"]);
+    assert_eq!(fs::read(w.project.join("bin.dat")).unwrap(), binary);
+    assert_eq!(
+        fs::read_to_string(saved.join("x.md")).unwrap(),
+        "mine, untracked\n"
+    );
+    assert_eq!(
+        fs::read_to_string(saved.join("keep.ign")).unwrap(),
+        "mine, ignored\n"
+    );
+    assert_eq!(
+        fs::read_to_string(w.project.join("notes/x.md")).unwrap(),
+        "lane\n",
+        "the reset brings the new commit's file"
     );
 }
 
