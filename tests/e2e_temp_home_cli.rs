@@ -547,7 +547,7 @@ fn scenario_conflict_and_personal_files_are_kept() {
     // style file becomes a link. The next package changes all four sources.
     let audit = claude.join("skills/moai/references/audit.md");
     let routing = claude.join("rules/moai.md");
-    let flow = claude.join("rules/moai/flow.md");
+    let flow = claude.join("rules/moai-flow.md");
     let style = claude.join("output-styles/MoAI-Easy.md");
     let edited_audit = format!("{}\nmy own note\n", fs::read_to_string(&audit).unwrap());
     let edited_routing = format!(

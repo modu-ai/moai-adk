@@ -161,7 +161,7 @@ fn routing_writes_and_reverts_in_the_default_folder_whatever_the_variables_say()
     ));
     assert!(w.base.join(".claude/rules/moai.md").is_file(), "{applied}");
     assert!(
-        w.base.join(".claude/rules/moai/flow.md").is_file(),
+        w.base.join(".claude/rules/moai-flow.md").is_file(),
         "{applied}"
     );
     assert!(!w.base.join(".claude/CLAUDE.md").exists(), "{applied}");
@@ -182,7 +182,7 @@ fn routing_writes_and_reverts_in_the_default_folder_whatever_the_variables_say()
         ],
     ));
     assert!(!w.base.join(".claude/rules/moai.md").exists());
-    assert!(!w.base.join(".claude/rules/moai/flow.md").exists());
+    assert!(!w.base.join(".claude/rules/moai-flow.md").exists());
 }
 
 /// REQ-5: a home that is not the account's own home keeps the folders under it, whatever the

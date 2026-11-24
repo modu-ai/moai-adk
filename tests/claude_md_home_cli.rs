@@ -1,6 +1,6 @@
 //! The generic moai text lives in the Claude config folder, not in a project
 //! (SPEC-20261122-claude-md-home-routing, SPEC-20261122-claude-md-flow-rule): the routing file
-//! `rules/moai.md` and the flow rule file `rules/moai/flow.md` are planned together for each
+//! `rules/moai.md` and the flow rule file `rules/moai-flow.md` are planned together for each
 //! config folder, shown in the preview and written only with the apply of the previewed plan;
 //! extra config folders and the removal of the earlier `moai-routing` block in the user's
 //! `CLAUDE.md` are separate picks. Every command runs through the real binary with a clean
@@ -292,7 +292,7 @@ fn flow_plan_default_folder_gets_both_files_and_a_second_run_is_unchanged() {
     );
     assert_eq!(
         row(&plan, &dir)["flow"]["path"],
-        json!(s(&dir.join("rules/moai/flow.md")))
+        json!(s(&dir.join("rules/moai-flow.md")))
     );
     // The preview writes nothing.
     assert!(!dir.exists());
@@ -302,7 +302,7 @@ fn flow_plan_default_folder_gets_both_files_and_a_second_run_is_unchanged() {
         fs::read_to_string(dir.join("rules/moai.md")).unwrap(),
         shipped_routing_text()
     );
-    let flow = fs::read_to_string(dir.join("rules/moai/flow.md")).unwrap();
+    let flow = fs::read_to_string(dir.join("rules/moai-flow.md")).unwrap();
     assert_eq!(flow, shipped("references/home/flow.md"));
     assert!(!dir.join("CLAUDE.md").exists());
     let again = w.plan(&[]);
@@ -317,7 +317,7 @@ fn flow_plan_text_has_no_paths_key_and_stays_within_its_limits() {
     let w = World::new();
     w.apply(&[]);
     let routing = fs::read_to_string(w.default_dir().join("rules/moai.md")).unwrap();
-    let flow = fs::read(w.default_dir().join("rules/moai/flow.md")).unwrap();
+    let flow = fs::read(w.default_dir().join("rules/moai-flow.md")).unwrap();
     let flow = String::from_utf8(flow).unwrap();
     assert!(routing.lines().count() <= 12, "{routing}");
     assert!(flow.lines().count() <= 80);
@@ -348,7 +348,7 @@ fn flow_plan_only_the_default_folder_gets_the_flow_file_and_the_state() {
     }
     let r = ok(&w.apply_out(plan["plan_digest"].as_str().unwrap(), &extra));
     assert_eq!(r["state"], json!("applied"), "{r}");
-    assert!(w.default_dir().join("rules/moai/flow.md").is_file());
+    assert!(w.default_dir().join("rules/moai-flow.md").is_file());
     assert!(w.default_dir().join("rules/moai.md").is_file());
     for d in [&a, &b] {
         assert!(!d.exists(), "nothing is written in {}", d.display());
@@ -372,7 +372,7 @@ fn flow_plan_applies_only_the_previewed_plan() {
     write(&w.default_dir().join("rules/moai.md"), "someone else's\n");
     let m = refused(&w.apply_out(&digest, &[]));
     assert!(m.contains("stale"), "{m}");
-    assert!(!w.default_dir().join("rules/moai/flow.md").exists());
+    assert!(!w.default_dir().join("rules/moai-flow.md").exists());
     // The picks are part of the preview: a plan made without a folder is not that of a run with it.
     let a = w.base.join("extra/a");
     let m = refused(&w.apply_out(&digest, &["--config-dir", a.to_str().unwrap()]));
@@ -449,7 +449,7 @@ fn flow_plan_a_flow_only_change_still_counts_as_a_write_on_the_routing_row() {
 fn flow_conflict_a_hand_edited_file_keeps_its_bytes() {
     let w = World::new();
     w.apply(&[]);
-    let flow = w.default_dir().join("rules/moai/flow.md");
+    let flow = w.default_dir().join("rules/moai-flow.md");
     write(&flow, "my own rule\n");
     let plan = w.plan(&[]);
     assert_eq!(flow_action(&plan, &w.default_dir()), "conflict", "{plan}");
@@ -458,7 +458,7 @@ fn flow_conflict_a_hand_edited_file_keeps_its_bytes() {
     assert_eq!(fs::read_to_string(&flow).unwrap(), "my own rule\n");
     // A file someone else wrote before moai ever did is a conflict too.
     let w = World::new();
-    write(&w.default_dir().join("rules/moai/flow.md"), "theirs\n");
+    write(&w.default_dir().join("rules/moai-flow.md"), "theirs\n");
     let plan = w.plan(&[]);
     assert_eq!(flow_action(&plan, &w.default_dir()), "conflict", "{plan}");
     assert_eq!(routing_action(&plan, &w.default_dir()), "create", "{plan}");
@@ -466,25 +466,21 @@ fn flow_conflict_a_hand_edited_file_keeps_its_bytes() {
 
 #[test]
 fn flow_conflict_a_linked_file_or_folder_is_kept_and_nothing_is_written_through_it() {
-    // The file, `rules` and `rules/moai` are links; the config folder is a link.
-    for what in ["file", "rules", "moai", "config"] {
+    // The file and `rules` are links; the config folder is a link.
+    for what in ["file", "rules", "config"] {
         let w = World::new();
         let away = w.base.join("away");
         fs::create_dir_all(&away).unwrap();
         let dir = w.default_dir();
         match what {
             "file" => {
-                fs::create_dir_all(dir.join("rules/moai")).unwrap();
+                fs::create_dir_all(dir.join("rules")).unwrap();
                 write(&away.join("flow.md"), "theirs\n");
-                symlink(away.join("flow.md"), dir.join("rules/moai/flow.md")).unwrap();
+                symlink(away.join("flow.md"), dir.join("rules/moai-flow.md")).unwrap();
             }
             "rules" => {
                 fs::create_dir_all(&dir).unwrap();
                 symlink(&away, dir.join("rules")).unwrap();
-            }
-            "moai" => {
-                fs::create_dir_all(dir.join("rules")).unwrap();
-                symlink(&away, dir.join("rules/moai")).unwrap();
             }
             _ => symlink(&away, &dir).unwrap(),
         }
@@ -516,7 +512,7 @@ fn flow_conflict_a_linked_file_or_folder_is_kept_and_nothing_is_written_through_
 #[test]
 fn flow_conflict_a_file_that_is_not_utf8_is_kept() {
     let w = World::new();
-    let flow = w.default_dir().join("rules/moai/flow.md");
+    let flow = w.default_dir().join("rules/moai-flow.md");
     write(&flow, [0xff, 0xfe, 0x00, b'x']);
     let plan = w.plan(&[]);
     let f = &row(&plan, &w.default_dir())["flow"];
@@ -537,11 +533,11 @@ fn flow_conflict_a_new_source_merges_while_the_file_is_what_moai_wrote() {
     assert_eq!(flow_action(&plan, &w.default_dir()), "merge", "{plan}");
     w.apply(&[]);
     assert_eq!(
-        fs::read_to_string(w.default_dir().join("rules/moai/flow.md")).unwrap(),
+        fs::read_to_string(w.default_dir().join("rules/moai-flow.md")).unwrap(),
         "second\n"
     );
     // An edit after that turns the next new source into a conflict.
-    write(&w.default_dir().join("rules/moai/flow.md"), "edited\n");
+    write(&w.default_dir().join("rules/moai-flow.md"), "edited\n");
     let v3 = temp_pkg(ROUTING_V1, Some("third\n"));
     let w = w.package(v3.path());
     assert_eq!(flow_action(&w.plan(&[]), &w.default_dir()), "conflict");
@@ -718,7 +714,7 @@ fn target_claude_config_dir_never_moves_the_one_copy_out_of_the_default_folder()
     let before = w.home.snapshot();
     w.apply(&[]);
     assert!(w.default_dir().join("rules/moai.md").is_file());
-    assert!(w.default_dir().join("rules/moai/flow.md").is_file());
+    assert!(w.default_dir().join("rules/moai-flow.md").is_file());
     assert!(
         !conf.join("rules").exists(),
         "no copy and no link in the profile"
@@ -855,7 +851,7 @@ fn target_a_profile_rules_link_to_the_default_folder_is_linked_and_any_other_is_
     assert_eq!(flow_action(&plan, &conf), "linked", "{plan}");
     w.apply(&[]);
     assert!(real.join("moai.md").is_file());
-    assert!(real.join("moai/flow.md").is_file());
+    assert!(real.join("moai-flow.md").is_file());
     assert!(fs::symlink_metadata(conf.join("rules"))
         .unwrap()
         .is_symlink());
@@ -1212,7 +1208,7 @@ fn revert_restores_the_files_and_the_removed_block_and_offers_the_removal_again(
     let (_first, second) = two_applies(&mut w, v1.path(), v2.path());
     let dir = w.default_dir();
     assert_eq!(
-        fs::read_to_string(dir.join("rules/moai/flow.md")).unwrap(),
+        fs::read_to_string(dir.join("rules/moai-flow.md")).unwrap(),
         "second\n"
     );
     let claude_md = dir.join("CLAUDE.md");
@@ -1228,7 +1224,7 @@ fn revert_restores_the_files_and_the_removed_block_and_offers_the_removal_again(
         ROUTING_V1.replacen("{invoke}", "/moai", 1)
     );
     assert_eq!(
-        fs::read_to_string(dir.join("rules/moai/flow.md")).unwrap(),
+        fs::read_to_string(dir.join("rules/moai-flow.md")).unwrap(),
         "first\n"
     );
     assert!(fs::read_to_string(&claude_md)
@@ -1255,8 +1251,12 @@ fn revert_of_a_fresh_apply_removes_created_folders_only_when_empty() {
     assert_eq!(v["reverted"], json!(["claude"]), "{v}");
     assert!(!dir.join("rules/moai.md").exists());
     assert!(
+        !dir.join("rules/moai-flow.md").exists(),
+        "the flow rule file is removed"
+    );
+    assert!(
         !dir.join("rules/moai").exists(),
-        "the empty folder is removed"
+        "no rules/moai folder is made or left"
     );
     assert!(
         dir.join("rules/other.md").is_file(),
@@ -1277,7 +1277,7 @@ fn revert_of_a_fresh_apply_removes_created_folders_only_when_empty() {
 
 #[test]
 fn revert_skips_each_changed_file_by_name_and_reverts_the_others() {
-    for changed in ["rules/moai.md", "rules/moai/flow.md", "CLAUDE.md"] {
+    for changed in ["rules/moai.md", "rules/moai-flow.md", "CLAUDE.md"] {
         let v1 = temp_pkg(ROUTING_V1, Some("first\n"));
         let v2 = temp_pkg(ROUTING_V2, Some("second\n"));
         let mut w = World::new();
@@ -1304,9 +1304,9 @@ fn revert_skips_each_changed_file_by_name_and_reverts_the_others() {
                 ROUTING_V1.replacen("{invoke}", "/moai", 1)
             );
         }
-        if changed != "rules/moai/flow.md" {
+        if changed != "rules/moai-flow.md" {
             assert_eq!(
-                fs::read_to_string(dir.join("rules/moai/flow.md")).unwrap(),
+                fs::read_to_string(dir.join("rules/moai-flow.md")).unwrap(),
                 "first\n"
             );
         }
@@ -1336,7 +1336,7 @@ fn revert_never_writes_through_a_link_made_after_the_apply() {
         .unwrap()
         .starts_with("host_folder_not_plain")));
     assert!(away.join("rules/moai.md").is_file());
-    assert!(away.join("rules/moai/flow.md").is_file());
+    assert!(away.join("rules/moai-flow.md").is_file());
 }
 
 #[test]
