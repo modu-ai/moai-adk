@@ -139,7 +139,35 @@ Every row is a proposal until a leader note records the approval; this SPEC reco
 
 ## Result
 
-(Filled in as the work lands; the code slices, the receipt and the acceptance lines are not written yet.)
+구현 레인이 2026-11-24에 채웠어요(session `2ce6b3d6-198a-4608-bd6e-6a7321cc55ff`). 감사가 다시 확인해요. 기준 NeXT `4c470ffc5f`, 가지 `spec/launcher-retire-role-flags-20261124`, 조각 커밋 `337f396a0e`(1), `b06b4ac2b1`(2·6), `b32f2b5674`(5), `c0846d911b`(스캔 표), `0a2f9f1647`(살아남은 변이 수리), `384d9bc45c`(AC-9). macOS arm64, 시험은 `RUSTC_WRAPPER=sccache`와 heavy-slot 한 칸으로 돌렸어요. 아래 줄은 각 AC의 확인 명령을 그대로 돌린 결과예요(`cargo nextest run --offline --locked`, 숫자는 그 실행의 Summary).
+
+- AC-1: met — `launcher_retire_role_flags` `every_role_flag_is_refused_with_the_replacement` 1 passed.
+- AC-2: met — `a_refused_role_flag_starts_and_writes_nothing` 1 passed. 이 시험은 처음에 거부 호출을 없애도 통과했어요(clap 이 모르는 옵션을 종료 코드 2 로 거절해서). 종료 코드 1 과 `are retired` 문구를 요구하도록 고쳤어요(`0a2f9f1647`).
+- AC-3: met — 변이 16개를 한 슬롯에서 돌렸고, 소스를 바꿔 시험하고 되돌렸어요(`cp -c` 복사본이 아니라 같은 가지에서, 변이마다 `git status` 가 깨끗한 것을 읽었어요). 16개 모두 종료 코드 100 이에요. 처음 살아남은 1개(`a_refused_role_flag_starts_and_writes_nothing`, exit 0)는 위 수리 뒤 exit 100 이에요. 줄 전체는 카드 노트 8488 에 있어요. 변이 없음(이유 있음): `a_session_is_named_by_name_only`(막는 코드가 없고 옛 번호 코드를 지웠어요), `the_access_notes_name_no_role`(문구만 고정).
+- AC-4: met — `no_help_screen_offers_a_role_flag` 1 passed, `help_layout` 11 passed.
+- AC-5: met — `git diff --stat 4c470ffc5f..HEAD -- tests/fixtures` 9개 파일(골든 8 + 사용법 고정 1, 49 추가·73 삭제), `help_layout` 11 passed, `--lib help::` 19 passed.
+- AC-6: met — `a_session_is_named_by_name_only` 1 passed, `launcher_session_locks` 12 passed. 확인 명령에 적힌 `launcher_liveness` 시험 파일은 저장소에 없어요(not_run, 이름이 틀렸어요); 그 자리를 `launcher_session_locks` 가 대신해요.
+- AC-7: met — `launcher_reads_models` + `launcher_retire_role_flags` 2 passed(`the_flat_saved_entry_fills_model_and_effort`, `no_saved_entry_keeps_the_roleless_defaults`). `launcher_reads_models` 는 평평한 항목으로 다시 썼어요.
+- AC-8: met — `old_role_entries_are_ignored_with_one_note` 1 passed.
+- AC-9: met — `model_effort_settings` + `model_effort_questions` + `update_model_pick` 61 passed. 호스트당 모델 1·effort 1 질문, 적용(yes) 뒤에만 `launcher.models.<host>` 쓰기, 옛 역할 항목은 미리보기·결과의 `replaced` 로 나와요. 같이 걸린 `update_command_cli`, `update_model_step_reachable*`, `models_revert_cli`, `launcher_settings_receipt`, `retired_hosts_layer`, `launcher_reads_models`, `launcher_roleless`, `launcher_retire_role_flags` 를 포함해 175 passed(`384d9bc45c` 직전 실행).
+- AC-10: met — `the_access_notes_name_no_role` 1 passed.
+- AC-11: met — `no_live_text_tells_anyone_to_use_the_role_flags` 1 passed, `output_names_moai` + `codex_launcher_removed` + `omp_launcher_removed` 18 passed.
+- AC-12: met — `repo_claude_md` 27 passed, `wc -l CLAUDE.md` 121줄(200 미만).
+- AC-13: met — `no_live_text_names_a_mode_spelling` 1 passed, `next_flow_skill_scan` 71 passed.
+- AC-14: partly met — 변경 파일은 68개예요(`git diff --name-only 4c470ffc5f..HEAD`). 각 쓰기 전에 `card check` 를 돌렸고 범위 밖은 `card scope` 로 넓혔지만, 68개 전부를 지금 다시 대조하지는 않았어요(not_run, 감사의 몫). `launcher_roleless` + `launcher_session_locks` + `product_cli` 89 passed. 확인 명령에 적힌 `launcher_agent_numbering` 시험 파일은 조각 1 에서 지웠어요(번호 매기기가 없어졌기 때문이에요; 대신 `launcher_session_locks`). `moai check affected <base>..<head>` 영수증은 READY 노트에 있어요(이 줄을 쓰는 시점에는 not_run).
+- AC-15: met — `repo_claude_md` + `core_rules_2876` + `agent_defs_package` + `next_flow_skill_scan` 124 passed, `grep -n commit_messages .moai/project.yaml` 이 `"commit_messages": "en"` 을 찾아요.
+- AC-16: met — `launcher_permissions_setting` + `launcher_roleless` + `product_cli` 85 passed. 확인 명령에 적힌 `launcher_agent_entry` 시험 파일은 조각 1 에서 지웠어요(not_run, 같은 이유).
+- AC-17: met — `repo_claude_md` + `launcher_retire_role_flags` 40 passed, `grep -c bypass docs/troubleshooting.md` 7.
+
+### Observation: glm launch and the refusal path, 2026-11-24 (REQ-13, REQ-15)
+
+던져 버릴 HOME·프로젝트와 스텁 `claude`(진짜 호스트는 시작하지 않았어요), 더미 토큰으로 다시 빌드한 바이너리를 돌렸어요(변이 시험이 남긴 바이너리로 한 번 돌린 결과는 쓰지 않았어요).
+
+- 거부 5건(`cc -a`, `glm -l`, `-l`, `cc --agent`, `glm --leader --name x`): 모두 종료 코드 1, `are retired` 문구, 프로젝트 파일 변화 없음, 호스트 미시작.
+- `glm --name lane-1`: 스텁 argv `--name lane-1 --model opus --effort high --dangerously-skip-permissions`. env 이름 11개만(값 없음): `ANTHROPIC_BASE_URL`, `API_TIMEOUT_MS`, `ANTHROPIC_DEFAULT_OPUS_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`, `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `ANTHROPIC_DEFAULT_FABLE_MODEL`, `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS`, `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS`, `ANTHROPIC_AUTH_TOKEN`, `Z_AI_API_KEY`. 안내문이 opus·sonnet·fable → glm-5.4[1m], haiku → glm-5.3-flash 를 말해요. 그래서 `--model opus` 는 glm-5.4[1m] 로 가요(환경 값은 안 바꿨어요).
+- `cc --name lane-1`: 스텁 argv `--name lane-1 --model opus --effort medium --permission-mode auto`.
+- `glm --permissions`: 스텁 argv `--model opus --effort high`(권한 플래그 없음).
+- `not_run`: 진짜 `claude` 를 우회 모드로 시작하지 않았어요(바이패스 관측은 위 항목의 리더 노트 8274 가 했어요). 전체 `cargo test --locked` 는 리더의 몫이라 돌리지 않았어요.
 
 ### Observation: bypass mode, 2026-11-24 (REQ-13, D-7)
 
