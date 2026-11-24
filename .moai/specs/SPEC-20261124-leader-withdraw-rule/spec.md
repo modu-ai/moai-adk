@@ -68,4 +68,10 @@ Readers: the leader session that refills the ready list, and the auditor of this
 
 ## Result
 
-Draft revision 1: not built yet.
+Status: revision 1 approved by the leader (note 8238, a leader judgment and not the user's own pick) and built.
+
+- `tests/leader_reclaim_guidance.rs`: `hold_cards_leave_ready_through_card_withdraw`. RED commit `28554b15ec` on the unchanged rules file: exit 100, `no item starts with` the item's first words (log `target/c272/red-run.log`).
+- `docs/leader-rules.md`: item 6 of "What a round does" (commit `9f69634b2f`).
+- Green: `cargo nextest run --locked --offline --test leader_reclaim_guidance --test followup_per_spec_rules --test repo_claude_md`, 29 tests, 29 passed, exit 0 (log `target/c272/green-run.log`).
+- AC-1 met: the item holds `` `moai card withdraw` `` and `HOLD or an unmet prerequisite`.
+- AC-2 met: guard mutant (applied by an edit, diff not empty, restored with `git checkout -- docs/leader-rules.md`): removing the command from the item gives exit 100, `the item lacks` the command (log `target/c272/mutant-run.log`); the committed file passes.
