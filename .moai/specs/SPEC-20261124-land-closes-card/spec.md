@@ -38,6 +38,12 @@ approval:
 - `src/card/landed.rs` `find`·`take_landed`: 기록된 landed head 가 가지 끝 안에 있으면 `ready` 카드를 `already_landed` 로 `skipped` 에 옮기는 것.
 - `src/ops/card.rs` 의 `Land` 정의와 호출부, `docs/design-review/appendix/operations/card.md` 의 `card land`·`card next` 표 줄.
 
+## Interview
+
+- Q1: Should `no_pass` follow the observe mode of `work_flow.land_verdict`? -> A: No (D-1). The card's rule is a refusal without a PASS unless `--keep-open`; the mode keeps governing a `--keep-open` landing. Default accepted in leader note 8023.
+- Q2: Is the evidence of a met criterion the AUDIT note or the verdict event? -> A: The `card.verdict` event (D-2), because no note text is read as a verdict (SPEC-20261123-landing-reads-verdict REQ-19). Accepted in note 8023.
+- Q3: Where does the slice mark live? -> A: The `keep_open` key of the `card.landed` payload, no schema change (D-5). Accepted in note 8023.
+
 ## Non-goals
 
 - `card finish` 의 변경: 그쪽의 "landing 만 기록하는 호출"과 `--met` 규칙은 그대로예요. 이 SPEC 은 `card land` 만 바꿔요.
