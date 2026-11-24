@@ -36,16 +36,19 @@ impl World {
         git_ok(&project, &["init", "-q", "-b", "main"]);
         git_ok(&project, &["config", "user.email", "t@example.invalid"]);
         git_ok(&project, &["config", "user.name", "t"]);
+        // The ignore rules live in the repository's own exclude file, so the fixture names no
+        // checked-in file of this repository.
+        fs::create_dir_all(project.join(".git/info")).unwrap();
         fs::write(
-            project.join(".gitignore"),
+            project.join(".git/info/exclude"),
             format!(
                 "target/\n{}/\n*.log\nscratch/\n",
                 moai_cli::PROJECT_STATE_DIR
             ),
         )
         .unwrap();
-        fs::create_dir_all(project.join("src")).unwrap();
-        fs::write(project.join("src/lib.rs"), "pub fn a() {}\n").unwrap();
+        fs::create_dir_all(project.join("app")).unwrap();
+        fs::write(project.join("app/demo.rs"), "pub fn a() {}\n").unwrap();
         git_ok(&project, &["add", "-A"]);
         git_ok(&project, &["commit", "-q", "-m", "head"]);
         let head = git(&project, &["rev-parse", "HEAD"]);
@@ -275,7 +278,7 @@ fn the_shared_checkout_is_read_without_changing_it() {
     fs::write(lane.join("lane_only.txt"), "x").unwrap();
     // A tracked file touched without a change in content: a plain `git status` would refresh the
     // index's stat cache and write the index file.
-    fs::write(w.project.join("src/lib.rs"), "pub fn a() {}\n").unwrap();
+    fs::write(w.project.join("app/demo.rs"), "pub fn a() {}\n").unwrap();
 
     let index = w.project.join(".git/index");
     let bytes_before = fs::read(&index).unwrap();
