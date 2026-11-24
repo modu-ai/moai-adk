@@ -17,7 +17,6 @@ tests/archive_move_fixture_test.rs	11	0
 tests/archive_plan_fixture_test.rs	9	0
 tests/archive_privacy_suite.rs	15	0
 tests/audit_copy_guard.rs	17	0
-tests/audit_eval_test.py	0	3
 tests/baseline_git_env.rs	3	1
 tests/bin_names_cli.rs	3	0
 tests/binary_state_cli.rs	4	0
@@ -125,7 +124,6 @@ tests/go_state_preview_cli.rs	0	15
 tests/green_test_lock.rs	3	2
 tests/heavy_slot_cli.rs	0	1
 tests/help_layout.rs	2	0
-tests/home_entry_count_test.py	0	2
 tests/home_install_apply_cli.rs	38	28
 tests/home_install_go_retire.rs	19	26
 tests/home_install_plan_cli.rs	75	22
@@ -207,7 +205,6 @@ tests/reports_move_cli.rs	62	13
 tests/retired_hosts_layer.rs	5	0
 tests/revert_twice_cli.rs	1	0
 tests/review_section_cli.rs	5	0
-tests/sandbox_write_probe_test.py	1	6
 tests/scope_handed_off_cli.rs	1	0
 tests/scope_symlink_cli.rs	1	0
 tests/self_check_test.py	0	3
