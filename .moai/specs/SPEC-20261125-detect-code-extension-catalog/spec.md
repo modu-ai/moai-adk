@@ -75,4 +75,16 @@ parent: SPEC-20261124-project-detect-monorepo
 
 ## Result
 
-초안이에요. 구현 뒤 이 자리에 RED·GREEN 실행, AC 별 met 와 뮤턴트 결과를 적어요.
+기준 팁 NeXT `0babbe3566`. SPEC 초안 커밋 `3940dc570c`, RED 커밋 `045184f564`, GREEN 커밋 `ff06b823d8`.
+
+- Run 1 (RED, `cargo nextest run --locked --offline --no-fail-fast --test project_detect_monorepo_cli --lib -E 'binary(project_detect_monorepo_cli) or test(the_shipped_catalog_holds_the_earlier_code_extensions)'`): 23 개 중 18 통과, 5 실패. 실패는 옳은 이유예요 — 확장 파일이 모르는 키 `code_extensions` 때문에 `the file is not a valid catalog` 로 거절돼요(셋), 한도 시험의 첫 단정(64 행이 `read` 여야 함)이 `refused` 예요, 배송 파일에 `code_extensions` 키가 없어요. 이전 쌍을 지키는 `every_shipped_code_extension_keeps_its_language` 는 현재 동작을 지켜서 통과해요.
+- Run 2 (GREEN, `cargo nextest run --locked --offline --no-fail-fast --test project_detect_monorepo_cli --test project_detect_cli --lib -E 'binary(project_detect_monorepo_cli) or binary(project_detect_cli) or test(project_detect)'`): 60 개 모두 통과.
+- AC-1: met — `every_shipped_code_extension_keeps_its_language`(열일곱 확장자를 하나씩 따로, 모두 함께 열네 언어와 열두 언어 서버, `A.RS` 는 언어 없음)와 단위 시험 `the_shipped_catalog_holds_the_earlier_code_extensions`(배송 파일의 열일곱 쌍이 정확히 이전 표와 같고 값이 기록 가능하고 확장자에 점이 없음) 통과(Run 2).
+- AC-2: met — `a_code_extension_row_adds_a_language_without_code` 통과: `lib/a.ex`·`lib/b.exs` 가 행 하나로 `elixir`, `rows` 1, 두 종류의 행이 있으면 `rows` 3, 읽기가 트리를 바꾸지 않고, 파일을 지우면 언어가 사라져요(Run 2; RED 에서는 `refused`).
+- AC-3: met — `a_code_extension_row_never_replaces_a_shipped_extension` 통과: `rs` 를 `zig` 로 올리는 행은 `rs` 를 바꾸지 못하고 같은 행의 `zig` 만 쓰이며, `rs` 만 가진 행은 아무것도 더하지 못해요(Run 2).
+- AC-4: met — `a_code_extension_row_that_cannot_be_read_refuses_the_whole_file` 통과: 대조(고친 행)는 `read`·`rows` 2 이고, 열 가지 읽을 수 없는 행(빈 목록, `extensions` 키 없음, 빈 언어, 공백 든 언어, 공백 든 확장자, 앞 점, 가운데 점, 모르는 키, 목록 아닌 값, 숫자 언어)은 모두 `refused`·`rows` 0·`problem` 문자열이고 좋은 `manifests` 행도 쓰이지 않고 배송 언어만 나오고 트리가 그대로예요(Run 2).
+- AC-5: met — `the_code_extension_row_limits_hold_at_both_edges` 통과: 행 64 개와 한 행의 확장자 64 개는 `read`, 65 개는 `refused`(Run 2).
+- AC-6: READY 노트의 영수증이 정해요(`moai check affected` 가 이웃 시험을 고르고 돌려요; 영수증은 이 Result 를 담은 머리에서 돌려서 이 줄을 나중에 고치지 않아요). 이 Result 를 쓰는 때는 Run 2 의 `project_detect_cli` 와 `--lib project_detect` 만 통과를 읽었고 `project_scale_detect_lib`, `home_isolation_scan` 은 아직 `not_run` 이에요.
+- 가드 뮤턴트 열 개를 한 슬롯 호출에서 하나씩 넣고 같은 필터로 돌려 열 개 모두 컴파일되고 지정한 시험이 실패했어요(종료 100, 편집은 정확히 한 번씩, 소스는 원래 바이트로 복원, 이후 `git status --short` 비어 있음; `target/c256ext/mutants.out`): `project_code_rows_ignored`, `project_extension_replaces_shipped`(병합의 떨구기와 조회 순서를 함께 바꿈 — 떨구기 한 가지만으로는 조회가 배송 행을 먼저 찾아서 관찰되지 않아요), `dot_in_extension_accepted`, `row_without_extensions_accepted`, `code_rows_not_validated`, `row_limit_65_accepted`, `extension_limit_65_accepted`, `rows_count_manifests_only`, `extension_compared_lowercase`, `shipped_extension_missing`.
+- 위험 경로: 읽기 전용 감지라서 지우기·reset·프로세스 시작·권한 규칙이 없어요. 시험은 빌드된 바이너리를 임시 폴더와 임시 HOME 에서 돌려요.
+- 돌리지 않은 것: 전체 `cargo test`, Windows·Linux, 부모의 AC-11 실측.
