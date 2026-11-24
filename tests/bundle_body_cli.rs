@@ -1082,7 +1082,8 @@ fn verified_summary_reads_a_missing_line_as_none() {
 
 // ---- the audit floor of a registry change (SPEC-20261124-registry-line-add-tier) ---------------
 
-const REGISTRY: &str = "tools/repo_scans.json";
+/// The product's own name of the registry, so this file spells no checked-in path.
+const REGISTRY: &str = moai_cli::gate::SCAN_REGISTRY;
 
 /// A one-scan scan registry with these rule files and this `rejects` text.
 fn registry_text(rules: &[&str], rejects: &str) -> String {
@@ -1167,23 +1168,23 @@ fn the_body_reads_a_registration_as_tier_1_and_an_edit_as_tier_2() {
 #[test]
 fn the_body_reads_a_renamed_registry_as_tier_2() {
     let line = audit_tier_line(|w| {
+        // One commit that renames the registry, then the commit that carries the SPEC file.
         w.git(&["checkout", "-q", "-B", "spec/h1", TIP]);
         w.git(&["mv", REGISTRY, "tools/other.json"]);
-        w.put(
-            ".moai/specs/SPEC-20261119-demo1/spec.md",
-            &spec_text("SPEC-20261119-demo1", &[1, 2]),
-        );
-        w.git(&["add", "-A"]);
         w.git(&[
             "commit",
             "-q",
             "-m",
-            "feat: h1\n\nMoai-Spec: SPEC-20261119-demo1",
+            "feat: rename the registry\n\nMoai-Spec: SPEC-20261119-demo1",
         ]);
-        let sha = w.git(&["rev-parse", "HEAD"]);
-        w.git(&["push", "-q", "origin", "spec/h1:refs/heads/spec/h1"]);
-        w.git(&["fetch", "-q", "origin"]);
-        sha
+        w.head(
+            "spec/h1",
+            "spec/h1",
+            &[],
+            "SPEC-20261119-demo1",
+            &[1, 2],
+            true,
+        )
     });
     assert!(line.starts_with("audit-tier: 2 "), "{line}");
     assert!(
