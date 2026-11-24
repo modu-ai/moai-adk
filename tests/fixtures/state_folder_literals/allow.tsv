@@ -39,7 +39,7 @@ tests/card_finish_cli.rs	1	8
 tests/card_generated_scope.rs	0	1
 tests/card_guard_cli.rs	1	4
 tests/card_inbox_cli.rs	0	1
-tests/card_land_batch_cli.rs	1	0
+tests/card_land_batch_cli.rs	1	2
 tests/card_land_cli.rs	1	5
 tests/card_line_lease_cli.rs	0	2
 tests/card_list_title_prefix.rs	0	1

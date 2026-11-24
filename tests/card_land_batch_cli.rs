@@ -19,6 +19,8 @@ const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
 const S_AUD: &str = "cccccccc-0000-4000-8000-00000000000c";
 const S_LEAD: &str = "dddddddd-0000-4000-8000-00000000000d";
 const WORKTREE_KEY: &str = "0123456789ab";
+/// The SPEC every fixture card names; the join commits are named for it.
+const SPEC: &str = "SPEC-20261124-fixture";
 const PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\"}}";
 
 /// A script that logs the range it was given and fails (exit 3) where the checkout holds
@@ -106,6 +108,22 @@ fn result(out: &Output) -> Value {
     v["result"].clone()
 }
 
+/// A template's text with every `<...>` placeholder filled with the word `filled`.
+fn filled(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(open) = rest.find('<') {
+        let Some(close) = rest[open..].find('>') else {
+            break;
+        };
+        out.push_str(&rest[..open]);
+        out.push_str("filled");
+        rest = &rest[open + close + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
 struct World {
     home: TempHome,
     project: PathBuf,
@@ -127,7 +145,31 @@ impl World {
             &["config", "user.email", "fixture@example.invalid"],
         );
         fs::write(project.join("a.txt"), "a\n").unwrap();
-        git(&project, &["add", "a.txt"]);
+        // The SPEC every fixture card names: a card is landed only when its SPEC is in the tip.
+        let made = home
+            .command(&[
+                "spec",
+                "new",
+                "fixture",
+                "--title",
+                "t",
+                "--minimal",
+                "--date",
+                "2026-11-24",
+                "--project",
+                project.to_str().unwrap(),
+            ])
+            .stdin(Stdio::null())
+            .output()
+            .expect("run moai spec new");
+        let spec_file = project.join(".moai/specs").join(SPEC).join("spec.md");
+        assert!(
+            spec_file.is_file(),
+            "{}",
+            String::from_utf8_lossy(&made.stdout)
+        );
+        fs::write(&spec_file, filled(&fs::read_to_string(&spec_file).unwrap())).unwrap();
+        git(&project, &["add", "a.txt", ".moai/specs"]);
         git(&project, &["commit", "-q", "-m", "init"]);
         let c0 = git(&project, &["rev-parse", "HEAD"]);
         git(&project, &["update-ref", "refs/heads/integ", &c0]);
@@ -200,10 +242,32 @@ impl World {
             ],
         ));
         let name = added["name"].as_str().unwrap().to_string();
+        self.link_spec(&name, SPEC);
         result(&self.card(None, &["ready", &name]));
         result(&self.card(Some(S_A), &["take", &name]));
         result(&self.card(Some(S_A), &["review", &name, "--generation", "1"]));
         name
+    }
+
+    /// The SPEC link of `card`, written as `card spec` writes it (the event, without the SPEC
+    /// file the command wants on disk).
+    fn link_spec(&self, card: &str, spec: &str) {
+        let conn =
+            Connection::open(ledger::ledger_path(self.home.path(), "demo").unwrap()).unwrap();
+        let rows: i64 = conn
+            .query_row("SELECT count(*) FROM event", [], |r| r.get(0))
+            .unwrap();
+        conn.execute(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES (?1, unixepoch(), ?2, ?3, 'card.spec', ?4)",
+            rusqlite::params![
+                format!("test-spec-{rows}"),
+                S_LEAD,
+                card.trim_start_matches("C-").parse::<i64>().unwrap(),
+                json!({"from": null, "to": spec}).to_string()
+            ],
+        )
+        .unwrap();
     }
 
     /// A lane head on the base commit that adds `path`.
@@ -460,7 +524,7 @@ fn refuse_a_check_that_cannot_start_lands_nothing() {
 }
 
 #[test]
-fn refuse_the_landing_stops_the_batch_at_the_head_it_refuses() {
+fn refuse_a_head_with_no_verdict_is_dropped_before_any_head_lands_and_the_rest_is_rechecked() {
     let w = World::new();
     let c1 = w.review_card("apps/1/");
     let c2 = w.review_card("apps/2/");
@@ -473,13 +537,146 @@ fn refuse_the_landing_stops_the_batch_at_the_head_it_refuses() {
     w.pass(&c3, &h3);
     let check = w.script("check.sh", CHECK);
     let r = result(&w.batch(&[(&c1, &h1), (&c2, &h2), (&c3, &h3)], &check));
-    assert_eq!(names(&r["landed"]), vec![c1.clone()], "{r}");
-    assert_eq!(r["stopped"]["code"], "land_refused", "{r}");
-    assert_eq!(r["stopped"]["card"], json!(c2), "{r}");
-    assert_eq!(names(&r["not_run"]), vec![c2.clone(), c3.clone()], "{r}");
+    // The refusal is found before the first head lands (N2): the branch never stops at a join of
+    // the first heads that no check ran on, and the heads that can land are joined without it and
+    // checked again.
+    assert_eq!(names(&r["dropped"]), vec![c2.clone()], "{r}");
+    assert!(
+        r["dropped"][0]["reason"]
+            .as_str()
+            .unwrap()
+            .starts_with("land_refused: card land refused: no_pass"),
+        "{r}"
+    );
+    assert_eq!(names(&r["landed"]), vec![c1.clone(), c3.clone()], "{r}");
+    assert!(r["stopped"].is_null(), "{r}");
     assert_eq!(w.state(&c1), "done");
-    assert_ne!(w.state(&c3), "done");
-    assert_eq!(w.integ(), h1);
+    assert_eq!(w.state(&c3), "done");
+    assert_ne!(w.state(&c2), "done");
+    // Every check ran on a join that holds exactly the heads that then landed: the second run is
+    // the one of the two that remained, and the branch moved only to joins of that run.
+    let ranges = w.ranges();
+    assert_eq!(ranges.len(), 2, "{ranges:?}");
+    let last = ranges[1].split("..").nth(1).unwrap().to_string();
+    assert!(
+        w.is_ancestor(&h1, &last) && w.is_ancestor(&h3, &last),
+        "{ranges:?}"
+    );
+    assert!(!w.is_ancestor(&h2, &w.integ()));
+    assert_eq!(w.integ(), last);
+}
+
+impl World {
+    /// A `git` that is the real one except that `commit-tree` of a join commit (`-p <cursor> -p
+    /// <head>`) first runs `rewrite`, a shell fragment that may set `FIRST` and `SECOND` (the two
+    /// parents) and `TREE`. It makes the join candidates the batch itself never makes.
+    fn join_rewriter(&mut self, rewrite: &str) {
+        let real = self.git_bin.to_str().unwrap().to_string();
+        let text = format!(
+            "#!/bin/sh\nREAL='{real}'\nif [ \"$4\" = commit-tree ] && [ \"$6\" = -p ] && [ \"$8\" = -p ]; then\n  TREE=\"$5\"; FIRST=\"$7\"; SECOND=\"$9\"; DIR=\"$3\"\n  {rewrite}\n  exec \"$REAL\" \"$1\" \"$2\" \"$3\" commit-tree \"$TREE\" -p \"$FIRST\" -p \"$SECOND\" \"${{10}}\" \"${{11}}\"\nfi\nexec \"$REAL\" \"$@\"\n"
+        );
+        self.git_bin = self.script("git-rewrite.sh", &text);
+    }
+
+    /// Two cards whose heads sit on the base, each with its PASS; the first head stands on the tip
+    /// and lands as it is, the second is joined.
+    fn two(&self) -> Vec<(String, String)> {
+        (0..2)
+            .map(|n| {
+                let card = self.review_card(&format!("apps/{n}/"));
+                let head = self.lane(&format!("notes/{n}.md"), "ok\n");
+                self.pass(&card, &head);
+                (card, head)
+            })
+            .collect()
+    }
+}
+
+/// The reason a dropped head carries, by card name.
+fn reason_of<'a>(r: &'a Value, card: &str) -> &'a str {
+    r["dropped"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["card"] == card)
+        .unwrap_or_else(|| panic!("{card} is not dropped: {r}"))["reason"]
+        .as_str()
+        .unwrap()
+}
+
+/// D-5 pinned through the command (audit N9): a join whose second parent is not the audited head
+/// is refused by the landing, so the verdict of that head covers nothing else.
+#[test]
+fn refuse_a_join_whose_second_parent_is_not_the_audited_head() {
+    let mut w = World::new();
+    let cards = w.two();
+    // The parents swapped: the audited head becomes the first parent of its own join.
+    w.join_rewriter("T=\"$FIRST\"; FIRST=\"$SECOND\"; SECOND=\"$T\"");
+    let check = w.script("check.sh", CHECK);
+    let r = result(&w.batch(&pairs(&cards), &check));
+    let (c1, h1) = (&cards[0].0, &cards[0].1);
+    let c2 = &cards[1].0;
+    assert_eq!(names(&r["landed"]), vec![c1.clone()], "{r}");
+    assert!(
+        reason_of(&r, c2).contains("is not the second parent of a two-parent candidate"),
+        "{r}"
+    );
+    assert_ne!(w.state(c2), "done");
+    assert_eq!(&w.integ(), h1);
+}
+
+/// Audit N1: a join candidate lands only from the tip it was made on. A first parent that is
+/// beyond the tip, with the same tree, carries a commit nobody landed.
+#[test]
+fn refuse_a_join_whose_first_parent_is_not_the_tip() {
+    let mut w = World::new();
+    let cards = w.two();
+    w.join_rewriter(
+        "FIRST=$(\"$REAL\" -C \"$DIR\" commit-tree \"$(\"$REAL\" -C \"$DIR\" rev-parse \"$FIRST^{tree}\")\" -p \"$FIRST\" -m beyond)",
+    );
+    let check = w.script("check.sh", CHECK);
+    let r = result(&w.batch(&pairs(&cards), &check));
+    let (c1, h1) = (&cards[0].0, &cards[0].1);
+    let c2 = &cards[1].0;
+    assert_eq!(names(&r["landed"]), vec![c1.clone()], "{r}");
+    assert!(reason_of(&r, c2).contains("not the integration tip"), "{r}");
+    assert_ne!(w.state(c2), "done");
+    assert_eq!(&w.integ(), h1);
+}
+
+/// Audit N5: a join commit is named for the SPEC, carries `Moai-Spec`, and names no card.
+#[test]
+fn a_join_commit_names_the_spec_and_no_card_number() {
+    let w = World::new();
+    let cards = w.three(None);
+    let check = w.script("check.sh", CHECK);
+    let r = result(&w.batch(&pairs(&cards), &check));
+    assert_eq!(names(&r["landed"]).len(), 3, "{r}");
+    let log = git(
+        &w.project,
+        &["log", "--merges", "--format=%B%x1e", "refs/heads/integ"],
+    );
+    let messages: Vec<&str> = log
+        .split('\x1e')
+        .map(str::trim)
+        .filter(|m| !m.is_empty())
+        .collect();
+    assert_eq!(messages.len(), 2, "{log}");
+    for m in messages {
+        assert!(
+            m.starts_with(&format!("merge(next-flow): {SPEC} into integ, head ")),
+            "{m}"
+        );
+        assert!(m.contains(&format!("\nMoai-Spec: {SPEC}\n")), "{m}");
+        // The SPEC id holds "C-2" inside "SPEC-2026…", so look for a card number outside it.
+        let without_spec = m.replace(SPEC, "");
+        assert!(
+            !without_spec.contains("C-1")
+                && !without_spec.contains("C-2")
+                && !without_spec.contains("C-3"),
+            "{m}"
+        );
+    }
 }
 
 #[test]

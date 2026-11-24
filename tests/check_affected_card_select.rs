@@ -131,19 +131,27 @@ fn names(v: &Value) -> Vec<String> {
         .collect()
 }
 
-/// The paths of C-464's own range, shaped like its real change: ledger and card modules, the
-/// shared operations file, and two added tests.
-const C464: [(&str, &str); 5] = [
+/// A range of modules that are no hub: ledger and card modules and an added test, shaped like
+/// C-464's change without the shared paths it also touched (`C464_HUBS`).
+const NON_HUB_RANGE: [(&str, &str); 4] = [
     ("src/ledger/sweep.rs", "// b\n"),
     ("src/card/sweep.rs", "// b\n"),
     ("src/card/work.rs", "// b\n"),
-    ("src/ops/card.rs", "// b\n"),
     ("tests/card_sweep_cli.rs", "fn main() {}\n"),
 ];
 
+/// The shared paths C-464 changed besides its modules. Many tests rest on them, so a change here
+/// runs the full set and says why (decision note 8636).
+const C464_HUBS: [&str; 4] = [
+    "src/ledger/mod.rs",
+    "src/ledger/reservation.rs",
+    "src/ops/card.rs",
+    "src/profile.rs",
+];
+
 #[test]
-fn card_set_of_a_ledger_change_is_small_and_names_what_it_ignored() {
-    let fx = Fixture::new(&C464);
+fn card_set_of_non_hub_modules_is_small_and_names_no_ignored_word() {
+    let fx = Fixture::new(&NON_HUB_RANGE);
     let (ok, card) = affected(&fx, &["--list", "--card"], None);
     assert!(ok, "{card}");
     assert_eq!(card["selection"], "card", "{card}");
@@ -168,11 +176,8 @@ fn card_set_of_a_ledger_change_is_small_and_names_what_it_ignored() {
     for broad in ["scan_reads_src", "scan_reads_tests"] {
         assert!(!rust.contains(&broad.to_string()), "{broad} in {rust:?}");
     }
-    // `src/ops/card.rs` carries the word `card`, which more than 10 targets share.
-    assert!(
-        names(&card["card_ignored_words"]).contains(&"card".to_string()),
-        "{card}"
-    );
+    // No path of the range names a word that more than 10 targets share.
+    assert!(names(&card["card_ignored_words"]).is_empty(), "{card}");
     assert!(card["card_wide"].is_null(), "{card}");
     // The full set of the same range is the larger one (the bare command is not changed).
     let (ok, full) = affected(&fx, &["--list"], None);
@@ -218,6 +223,18 @@ fn wide_classes_fall_back_to_the_full_set_and_say_why() {
         ("src/hook_guards.rs", "permission"),
         (".moai/project.yaml", "common settings"),
         (".cargo/config.toml", "build settings"),
+        // The audit's table of paths that picked no test and fell back to nothing (B1): the audit
+        // floor, the git hooks and the landing code, a word more than 10 targets share, and a
+        // source file no test can name.
+        ("src/gate.rs", "audit floor"),
+        ("install/git-hooks/pre-push", "audit floor"),
+        ("src/git_hooks/mod.rs", "audit floor"),
+        ("tools/local_check.sh", "audit floor"),
+        ("REVIEW.md", "audit floor"),
+        ("src/card/land/check.rs", "audit floor"),
+        ("src/ops/card.rs", "common name word"),
+        ("src/ledger/mod.rs", "no test reached"),
+        ("src/lonely.rs", "no test reached"),
     ] {
         let fx = Fixture::new(&[(path, "# changed\n"), ("src/card/work.rs", "// b\n")]);
         let (ok, r) = affected(&fx, &["--list", "--card"], None);
@@ -233,6 +250,40 @@ fn wide_classes_fall_back_to_the_full_set_and_say_why() {
         let (ok, full) = affected(&fx, &["--list"], None);
         assert!(ok, "{full}");
         assert_eq!(r["rust_targets"], full["rust_targets"], "{path}");
+    }
+}
+
+#[test]
+fn wide_a_common_word_runs_the_full_set_and_still_names_the_word() {
+    let fx = Fixture::new(&[("src/ops/card.rs", "// b\n")]);
+    let (ok, r) = affected(&fx, &["--list", "--card"], None);
+    assert!(ok, "{r}");
+    assert_eq!(r["selection"], "full", "{r}");
+    assert_eq!(r["card_wide"]["reason"], "common name word", "{r}");
+    assert_eq!(names(&r["card_ignored_words"]), ["card"], "{r}");
+}
+
+#[test]
+fn wide_the_hub_paths_of_c464_run_the_full_set_and_name_each_path() {
+    // The range of C-464 as it was: its modules, its added test and its four hub paths.
+    let mut changed: Vec<(&str, &str)> = NON_HUB_RANGE.to_vec();
+    changed.extend(C464_HUBS.iter().map(|p| (*p, "// b\n")));
+    let fx = Fixture::new(&changed);
+    let (ok, r) = affected(&fx, &["--list", "--card"], None);
+    assert!(ok, "{r}");
+    assert_eq!(r["selection"], "full", "{r}");
+    let paths = names(&r["card_wide"]["paths"]);
+    for hub in C464_HUBS {
+        assert!(paths.contains(&hub.to_string()), "{hub} in {paths:?}: {r}");
+    }
+    // Every hub path carries a reason, and the modules beside them do not add a path of theirs.
+    assert!(r["card_wide"]["reason"].is_string(), "{r}");
+    for module in [
+        "src/card/sweep.rs",
+        "src/card/work.rs",
+        "src/ledger/sweep.rs",
+    ] {
+        assert!(!paths.contains(&module.to_string()), "{module}: {r}");
     }
 }
 

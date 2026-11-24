@@ -439,6 +439,17 @@ fn wide_class(path: &str) -> Option<&'static str> {
     {
         return Some("permission");
     }
+    // The audit floor (`gate::TIER2_PREFIXES`, the paths a full audit covers), the git hooks and the
+    // landing code: a change there can break a test that does not name its module.
+    if crate::gate::TIER2_PREFIXES
+        .iter()
+        .any(|p| path.starts_with(p))
+        || path.starts_with("install/git-hooks/")
+        || path.starts_with("src/git_hooks/")
+        || path.starts_with("src/card/land/")
+    {
+        return Some("audit floor");
+    }
     None
 }
 
@@ -499,14 +510,10 @@ pub fn select_card(
     scan_list: Option<&str>,
     host_os: &str,
 ) -> CardPick {
-    let wide_paths: Vec<(&str, &String)> = changed
+    let mut wide_paths: Vec<(&'static str, String)> = changed
         .iter()
-        .filter_map(|p| wide_class(p).map(|c| (c, p)))
+        .filter_map(|p| wide_class(p).map(|c| (c, p.clone())))
         .collect();
-    let mut wide = wide_paths.first().map(|(reason, _)| Wide {
-        reason,
-        paths: wide_paths.iter().map(|(_, p)| (*p).clone()).collect(),
-    });
     // The tests, fixtures and documents the range changes: the lane rules, no OS rule.
     let own: Vec<String> = changed
         .iter()
@@ -516,7 +523,13 @@ pub fn select_card(
     let mut rust = select_pick(Pick::Lane, &own, tests, None, host_os).rust;
     let mut ignored = BTreeSet::new();
     for path in changed {
+        let is_source = path.starts_with("src/") && path.ends_with(".rs");
         let Some((word, key)) = module_of(path) else {
+            // `mod.rs`, `lib.rs` and `main.rs` name no module a test can call: nothing narrows
+            // them, so the full set runs (a source path that picks no test is not a pass).
+            if is_source {
+                wide_paths.push(("no test reached", path.clone()));
+            }
             continue;
         };
         // The targets that carry the module's name word or name its path in their source; a
@@ -530,11 +543,22 @@ pub fn select_card(
             .map(|t| t.name.as_str())
             .collect();
         if reached.len() > COMMON_WORD_CAP {
+            // A word that says nothing is not a reason to run nothing: the full set runs.
             ignored.insert(word);
+            wide_paths.push(("common name word", path.clone()));
+        } else if reached.is_empty() && is_source {
+            wide_paths.push(("no test reached", path.clone()));
         } else {
             rust.extend(reached.into_iter().map(String::from));
         }
     }
+    // A path is named once, under the first reason it was found for.
+    let mut seen = BTreeSet::new();
+    wide_paths.retain(|(_, p)| seen.insert(p.clone()));
+    let mut wide = wide_paths.first().map(|(reason, _)| Wide {
+        reason,
+        paths: wide_paths.iter().map(|(_, p)| p.clone()).collect(),
+    });
     let mut scans = Scans::None;
     if let Some(text) = scan_list {
         match scan_entries(text) {

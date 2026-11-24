@@ -95,6 +95,24 @@ fn audited_refusal(project: &Path, candidate: &str, audited: &str) -> Option<Str
     None
 }
 
+/// The refusal of a join candidate whose first parent is not `want`: the branch moves only from
+/// the commit the join was made on, so a first parent beyond the tip would carry commits nobody
+/// landed.
+fn first_parent_refusal(project: &Path, candidate: &str, want: &str) -> Option<String> {
+    let line = match check::git_text(project, &["rev-list", "--parents", "-n", "1", candidate]) {
+        Ok(line) => line,
+        Err(why) => return Some(format!("the candidate's parents cannot be read: {why}")),
+    };
+    let first = line.split_whitespace().nth(1);
+    (first != Some(want)).then(|| {
+        format!(
+            "the first parent of the candidate {candidate} is {}, not the integration tip {want}: \
+             join the head onto the tip again",
+            first.unwrap_or("missing")
+        )
+    })
+}
+
 fn refused(why: impl std::fmt::Display) -> String {
     format!("card land refused: {why}")
 }
@@ -184,6 +202,30 @@ fn no_pass_reason(would_refuse: Option<&Value>) -> String {
 
 /// `card land C-n`: see the module comment.
 pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>) -> Result<Value> {
+    land_inner(project, home, reference, req, None)
+}
+
+/// Every refusal of [`land`] that comes before the first write, and nothing written: the batch asks
+/// it for each head before the first of them lands, so a head that would be refused is dropped
+/// while the tip is still the one the check ran on. `parent` is the commit the candidate's first
+/// parent must be: the tip for the first head, the commit of the head before it for the next.
+pub fn land_preflight(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    req: &LandRequest<'_>,
+    parent: &str,
+) -> Result<Value> {
+    land_inner(project, home, reference, req, Some(parent))
+}
+
+fn land_inner(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    req: &LandRequest<'_>,
+    preflight: Option<&str>,
+) -> Result<Value> {
     let card_id = card_id(reference)?;
     if req.by != LEADER_BY {
         return Err(unchanged(format!(
@@ -312,6 +354,13 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
             )))
         }
     }
+    // A join candidate is landed from the commit it was made on: its first parent is the tip read
+    // here (or, in the batch's preflight, the commit of the head before it).
+    if req.audited.is_some() && standing == Standing::OnTip {
+        if let Some(why) = first_parent_refusal(project, req.head, preflight.unwrap_or(&tip)) {
+            return Err(unchanged(why));
+        }
+    }
     if let Some(why) = drift::refusal(ledger.conn(), &branch, &tip).map_err(unchanged)? {
         return Err(conflict(why));
     }
@@ -404,6 +453,14 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
     } else {
         Value::Null
     };
+
+    // The batch's preflight stops here: every check above is read only.
+    if preflight.is_some() {
+        return Ok(json!({
+            "action": "land", "preflight": true, "project_id": id, "name": name,
+            "card_id": card_id, "head": req.head, "writes": false,
+        }));
+    }
 
     // The one value for the whole repository: the record seeds from the profile once, and a
     // profile that disagrees with it is reported. Case variants that already exist are reported.

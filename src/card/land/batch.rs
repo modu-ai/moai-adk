@@ -44,6 +44,8 @@ pub struct BatchRequest<'a> {
 struct Item {
     name: String,
     head: String,
+    /// The SPEC the card names: the join commit of its head is named for it.
+    spec: String,
 }
 
 /// One head of a set after the join: the commit that lands for it.
@@ -86,18 +88,46 @@ fn parse_pairs(pairs: &[String]) -> Result<Vec<Item>> {
         items.push(Item {
             name,
             head: head.to_string(),
+            spec: String::new(),
         });
     }
     Ok(items)
+}
+
+/// Fill each item's SPEC from the ledger. A card that names none is dropped with the reason: the
+/// join commit of its head is named for the SPEC and carries it as `Moai-Spec`, never a card number.
+fn attach_specs(project: &Path, home: &Path, items: Vec<Item>) -> Result<(Vec<Item>, Vec<Value>)> {
+    let (_, ledger) = crate::card::command::open_for_write(project, home).map_err(refused)?;
+    let mut kept = Vec::new();
+    let mut dropped = Vec::new();
+    for mut item in items {
+        let CardRef::Id(id) = input::parse_ref(&item.name).map_err(refused)? else {
+            return Err(refused("name each card by its C-number"));
+        };
+        let spec = crate::card::spec_link::kind_and_spec(ledger.conn(), id)
+            .map_err(|e| refused(e.to_string()))?
+            .and_then(|(_, spec)| spec);
+        match spec {
+            Some(spec) => {
+                item.spec = spec;
+                kept.push(item);
+            }
+            None => dropped.push(entry(
+                &item,
+                Some("no_spec: the card names no SPEC, so its join commit cannot name one"),
+            )),
+        }
+    }
+    Ok((kept, dropped))
 }
 
 fn short(sha: &str) -> &str {
     sha.get(..12).unwrap_or(sha)
 }
 
-/// The trailers of a join commit: the lander's session and no verification kind.
-fn trailers(project: &Path, session: Option<&str>) -> String {
-    let mut text = String::new();
+/// The trailers of a join commit: its SPEC, the lander's session and no verification kind.
+fn trailers(project: &Path, session: Option<&str>, spec: &str) -> String {
+    let mut text = format!("Moai-Spec: {spec}\n");
     if let (Some(id), Some(key)) = (session, crate::trailers::worktree_key(project)) {
         text.push_str(&format!("Moai-Session: {id}:{key}\n"));
     }
@@ -170,9 +200,9 @@ fn join(
         };
         let message = format!(
             "merge(next-flow): {} into {branch}, head {}\n\n{}",
-            item.name,
+            item.spec,
             short(&item.head),
-            trailers(project, session)
+            trailers(project, session, &item.spec)
         );
         let commit = super::check::git_text(
             project,
@@ -294,15 +324,15 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
             "only the leader lands a card until the typed verdict exists: give --by {LEADER_BY}"
         )));
     }
-    let mut pending = parse_pairs(req.pairs)?;
+    let parsed = parse_pairs(req.pairs)?;
     let branch = landed::integration_branch(project).map_err(|why| {
         refused(format!(
             "a landing is made on the integration branch, and the profile gives none ({why})"
         ))
     })?;
+    let (mut pending, mut dropped) = attach_specs(project, home, parsed)?;
 
     let mut landed_cards: Vec<Value> = Vec::new();
-    let mut dropped: Vec<Value> = Vec::new();
     let mut runs: Vec<Value> = Vec::new();
     let mut stopped: Value = Value::Null;
     let mut not_run: Vec<Value> = Vec::new();
@@ -359,6 +389,36 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
             // A tip that moved since the run has no say in this result: join and check again.
             if landed::tip_of(project, &branch).map_err(refused)? != tip {
                 continue;
+            }
+            // Every head is judged before the first one lands: a head that the landing would
+            // refuse is dropped now, while the branch is still where it was, and the rest is
+            // joined and checked again. Otherwise the branch would stop at a join of the first
+            // heads that no check ever ran on. The heads then land in order, each on the way to
+            // the join that was checked.
+            let mut parent = tip.clone();
+            let mut refused_head: Option<(Item, String)> = None;
+            for cand in &cands {
+                let one = LandRequest {
+                    session: req.session,
+                    head: &cand.commit,
+                    met: &[],
+                    generation: None,
+                    by: req.by,
+                    keep_open: false,
+                    audited: cand.joined.then_some(cand.item.head.as_str()),
+                };
+                match super::land_preflight(project, home, &cand.item.name, &one, &parent) {
+                    Ok(_) => parent = cand.commit.clone(),
+                    Err(why) => {
+                        refused_head = Some((cand.item.clone(), why));
+                        break;
+                    }
+                }
+            }
+            if let Some((item, why)) = refused_head {
+                dropped.push(entry(&item, Some(&format!("land_refused: {why}"))));
+                pending.retain(|p| p.name != item.name);
+                continue 'outer;
             }
             for cand in &cands {
                 let answer = super::land(
