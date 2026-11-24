@@ -253,6 +253,7 @@ pub fn scope(
         return Err("card scope refused: give at least one --scope".to_string());
     }
     let by = actor(Some(by), "scope")?;
+    let shared = take_scope::shared_files(project);
     let reason = reason.map(|r| checked_reason("scope", r)).transpose()?;
     let new_json = serde_json::to_string(&new).map_err(|e| e.to_string())?;
     let (id, mut ledger) = open_for_write(project, home)?;
@@ -296,6 +297,33 @@ pub fn scope(
                              so there is no generation {want} to widen at"
                         )));
                     }
+                }
+            }
+            // A shared file of the profile is never added to a scope whole; an entry the card's
+            // current scope already holds passes, so a held card is still widened by other paths
+            // (SPEC-20261124-shared-files-profile).
+            if !shared.is_empty() {
+                let current: Vec<String> =
+                    if holder.is_some() && (state == "active" || state == "review") {
+                        let mut stmt = tx.prepare(&format!(
+                            "SELECT pattern FROM reservation_scope WHERE reservation_id = \
+                         (SELECT reservation_id FROM reservation WHERE card_id = ?1 \
+                          AND {LIVE_RESERVATION} ORDER BY generation DESC LIMIT 1)"
+                        ))?;
+                        let rows = stmt.query_map([card_id], |r| r.get::<_, String>(0))?;
+                        rows.collect::<rusqlite::Result<Vec<String>>>()?
+                    } else {
+                        serde_json::from_str(&old).unwrap_or_default()
+                    };
+                let added: Vec<String> = new
+                    .iter()
+                    .filter(|entry| !current.contains(entry))
+                    .cloned()
+                    .collect();
+                if let Err(refused) =
+                    take_scope::refuse_shared("scope", &input::card_name(card_id), &shared, &added)
+                {
+                    return Ok(Err(refused));
                 }
             }
             if holder.is_some() && (state == "active" || state == "review") {
@@ -414,6 +442,12 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     } else {
         Some(checked_scope("take", req.scope)?)
     };
+    // A shared file of the profile is never reserved whole (SPEC-20261124-shared-files-profile):
+    // a given scope is refused before the ledger is opened for write.
+    let shared = take_scope::shared_files(project);
+    if let Some(given) = &given {
+        take_scope::refuse_shared("take", &input::card_name(card_id), &shared, given)?;
+    }
     let (id, mut ledger) = open_for_write(project, home)?;
     // A card that is not there has no SPEC; `reserve` answers `card not found` for it.
     let linked = spec_link::kind_and_spec(ledger.conn(), card_id)
@@ -457,6 +491,7 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         .map_err(|e| ledger::LedgerError::from(e).to_string())?;
     let own_is_empty = own.as_ref().is_some_and(Vec::is_empty);
     let mut merged: Vec<String> = Vec::new();
+    let mut left_out: Vec<(String, String)> = Vec::new();
     let (scope, source) = match given {
         Some(scope) => (Some(scope), take_scope::Source::Given),
         None if own_is_empty => {
@@ -464,12 +499,19 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
             match take_scope::choose(project, ledger.conn(), card_id, spec_id)? {
                 Some(fill) => {
                     merged = fill.merged;
+                    left_out = fill.left_out;
                     (Some(fill.scope), fill.source)
                 }
                 None => return Err(take_scope::no_source_message(&input::card_name(card_id))),
             }
         }
-        None => (None, take_scope::Source::Card),
+        None => {
+            // The card's own scope: a shared file in it is refused like a given one.
+            if let Some(own) = &own {
+                take_scope::refuse_shared("take", &input::card_name(card_id), &shared, own)?;
+            }
+            (None, take_scope::Source::Card)
+        }
     };
     let r = match scope {
         Some(scope) => reservation::reserve(
@@ -499,6 +541,13 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
              once (merged)",
             input::card_name(card_id),
             names.join(", ")
+        ));
+    }
+    for (entry, hit) in &left_out {
+        warnings.push(take_scope::left_out_warning(
+            &input::card_name(card_id),
+            entry,
+            hit,
         ));
     }
     if own_is_empty && source != take_scope::Source::Card {

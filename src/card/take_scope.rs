@@ -72,6 +72,71 @@ pub fn last_reservation(conn: &Connection, card_id: i64) -> rusqlite::Result<Vec
     rows.collect()
 }
 
+/// The shared files of the project profile (`shared_files`, SPEC-20261124-shared-files-profile):
+/// files many cards edit by a line, which a reservation never holds whole. Read from the bytes of
+/// the profile a reader opens, with no check of the other keys, so a profile that is short or
+/// has a key this build does not know still gives its list. Empty when the key is absent, is not
+/// a list or the profile cannot be read; a list entry that is not a string is skipped.
+pub fn shared_files(project: &Path) -> Vec<String> {
+    let Ok(Some(bytes)) = crate::profile::chosen_profile(project) else {
+        return Vec::new();
+    };
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+        return Vec::new();
+    };
+    value
+        .get("shared_files")
+        .and_then(serde_json::Value::as_array)
+        .map(|list| {
+            list.iter()
+                .filter_map(|v| v.as_str())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// The shared entry that `entry` overlaps (the one rule reservations use, `scope::overlap`), in
+/// either direction: an entry that covers a shared file, a path inside a shared glob, the same
+/// entry.
+pub fn shared_overlap<'a>(shared: &'a [String], entry: &str) -> Option<&'a str> {
+    shared
+        .iter()
+        .map(String::as_str)
+        .find(|s| crate::scope::overlap(entry, s))
+}
+
+/// The command that writes a shared file in short: `card line-lease`.
+pub fn line_lease_form(card: &str, generation: &str, path: &str) -> String {
+    format!("card line-lease {card} --generation {generation} --path {path} -- <command>")
+}
+
+/// The refusal of an entry that overlaps a shared file (`action` is `take` or `scope`): the
+/// entry, the shared entry and the way to write the file.
+pub fn shared_refusal(action: &str, card: &str, entry: &str, shared: &str) -> String {
+    format!(
+        "card {action} refused: `{entry}` overlaps the shared file `{shared}` (`shared_files` of \
+         the project profile); a shared file is never reserved whole, so leave it out of the \
+         scope and write it in short with `{}`",
+        line_lease_form(card, "<g>", entry)
+    )
+}
+
+/// The first of `entries` that overlaps a shared entry, as the refusal of `action` for `card`.
+pub fn refuse_shared(
+    action: &str,
+    card: &str,
+    shared: &[String],
+    entries: &[String],
+) -> Result<(), String> {
+    for entry in entries {
+        if let Some(hit) = shared_overlap(shared, entry) {
+            return Err(shared_refusal(action, card, entry, hit));
+        }
+    }
+    Ok(())
+}
+
 /// What a take fills an empty-scope card with, and where it came from.
 #[derive(Debug)]
 pub struct Fill {
@@ -79,6 +144,49 @@ pub struct Fill {
     pub source: Source,
     /// Paths a SPEC list named more than once; each is in `scope` once.
     pub merged: Vec<String>,
+    /// Entries left out of `scope` because they overlap a shared file: the entry and the shared
+    /// entry it overlaps.
+    pub left_out: Vec<(String, String)>,
+}
+
+/// `scope` without the entries that overlap a shared file, and those entries. A fill that has
+/// nothing left refuses, naming each entry and the way to write the file.
+fn leave_out_shared(
+    project: &Path,
+    card: &str,
+    scope: Vec<String>,
+) -> Result<(Vec<String>, Vec<(String, String)>), String> {
+    let shared = shared_files(project);
+    if shared.is_empty() {
+        return Ok((scope, Vec::new()));
+    }
+    let mut kept = Vec::with_capacity(scope.len());
+    let mut left_out = Vec::new();
+    for entry in scope {
+        match shared_overlap(&shared, &entry) {
+            Some(hit) => left_out.push((entry, hit.to_string())),
+            None => kept.push(entry),
+        }
+    }
+    if kept.is_empty() {
+        if let Some((entry, hit)) = left_out.first() {
+            return Err(format!(
+                "{} (every path of the fill is a shared file, nothing is left to reserve; name \
+                 the other paths with `card take {card} --scope <path>`)",
+                shared_refusal("take", card, entry, hit)
+            ));
+        }
+    }
+    Ok((kept, left_out))
+}
+
+/// The warning that names a shared entry a fill left out.
+pub fn left_out_warning(card: &str, entry: &str, shared: &str) -> String {
+    format!(
+        "{card}: `{entry}` overlaps the shared file `{shared}` and was left out of the scope; \
+         write it in short with `{}`",
+        line_lease_form(card, "<g>", entry)
+    )
 }
 
 /// Whether a `write:` entry of a SPEC has the shape of a path or a glob: no white space, no comma,
@@ -158,10 +266,12 @@ pub fn choose(
             let why = e.strip_prefix("card take refused: ").unwrap_or(&e);
             spec_refusal(&card, &file, why)
         })?;
+        let (scope, left_out) = leave_out_shared(project, &card, scope)?;
         return Ok(Some(Fill {
             scope,
             source: Source::Spec,
             merged,
+            left_out,
         }));
     }
     let last =
@@ -170,10 +280,12 @@ pub fn choose(
         return Ok(None);
     }
     let scope = super::dispatch::checked_scope("take", &last)?;
+    let (scope, left_out) = leave_out_shared(project, &super::input::card_name(card_id), scope)?;
     Ok(Some(Fill {
         scope,
         source: Source::LastReservation,
         merged: Vec::new(),
+        left_out,
     }))
 }
 
@@ -220,4 +332,49 @@ pub fn store(
             Ok(true)
         })
         .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// AC-8 (SPEC-20261124-shared-files-profile REQ-9): the profile of this repository lists the
+    /// files the leader registered, and each entry overlaps itself under the reservation rule.
+    #[test]
+    fn this_repository_lists_its_shared_files() {
+        let list = shared_files(Path::new(env!("CARGO_MANIFEST_DIR")));
+        for want in [
+            "src/lib.rs",
+            "src/help.rs",
+            "src/ops/card.rs",
+            "tests/areas.toml",
+            "tools/repo_scans.json",
+            "skills/moai/references/source-manifest.json",
+            "docs/design-review/appendix/operations/card.md",
+            "tests/fixtures/help/*.txt",
+            // Leader note 8070 added the ninth: every card adds a key to the profile.
+            "src/profile.rs",
+        ] {
+            assert!(
+                list.iter().any(|e| e == want),
+                "`{want}` is not listed: {list:?}"
+            );
+            assert_eq!(shared_overlap(&list, want), Some(want), "{want}");
+        }
+    }
+
+    #[test]
+    fn an_entry_overlaps_a_shared_file_either_way_round() {
+        let list = vec![
+            "src/lib.rs".to_string(),
+            "tests/fixtures/help/*.txt".to_string(),
+        ];
+        assert_eq!(shared_overlap(&list, "src/**"), Some("src/lib.rs"));
+        assert_eq!(
+            shared_overlap(&list, "tests/fixtures/help/a.txt"),
+            Some("tests/fixtures/help/*.txt")
+        );
+        assert_eq!(shared_overlap(&list, "src/other.rs"), None);
+        assert_eq!(shared_overlap(&[], "src/lib.rs"), None);
+    }
 }

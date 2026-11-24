@@ -708,15 +708,29 @@ fn shared_files_are_left_out_of_a_fill() {
     let again = w.empty_card("shared last");
     result(&w.card(
         Some(S_B),
-        &["take", &again, "--scope", "src/a.rs", "--scope", "src/lib.rs"],
+        &[
+            "take",
+            &again,
+            "--scope",
+            "src/a.rs",
+            "--scope",
+            "src/lib.rs",
+        ],
     ));
     result(&w.card(Some(S_B), &["release", &again, "--generation", "1"]));
     w.sql("UPDATE card SET write_scope = '[]' WHERE title = 'shared last'");
     w.shared(Some(json!(["src/lib.rs"])));
     let took = result(&w.card(Some(S_A), &["take", &again]));
     assert_eq!(took["scope_source"], json!("last_reservation"), "{took}");
-    assert_eq!(took["reservation"]["write_scope"], json!(["src/a.rs"]), "{took}");
-    assert!(took["warnings"].to_string().contains("src/lib.rs"), "{took}");
+    assert_eq!(
+        took["reservation"]["write_scope"],
+        json!(["src/a.rs"]),
+        "{took}"
+    );
+    assert!(
+        took["warnings"].to_string().contains("src/lib.rs"),
+        "{took}"
+    );
 
     // A list that names only shared files cannot fill anything.
     let only = w.empty_card("shared only");
@@ -800,7 +814,14 @@ fn shared_files_check_names_line_lease() {
     );
     let message = refusal(&w.card(
         Some(S_A),
-        &["check", &name, "--generation", "1", "--path", "src/other.rs"],
+        &[
+            "check",
+            &name,
+            "--generation",
+            "1",
+            "--path",
+            "src/other.rs",
+        ],
     ));
     assert!(!message.contains("line-lease"), "{message}");
 }
@@ -814,12 +835,26 @@ fn shared_files_absent_changes_nothing() {
         w.shared(list);
         let name = w.empty_card("shared absent");
         let took = result(&w.card(Some(S_A), &["take", &name, "--scope", "src/lib.rs"]));
-        assert_eq!(took["reservation"]["write_scope"], json!(["src/lib.rs"]), "{took}");
+        assert_eq!(
+            took["reservation"]["write_scope"],
+            json!(["src/lib.rs"]),
+            "{took}"
+        );
         let widened = result(&w.card(
             None,
             &[
-                "scope", &name, "--scope", "src/lib.rs", "--scope", "src/help.rs", "--by",
-                "leader", "--reason", "fixture", "--generation", "1",
+                "scope",
+                &name,
+                "--scope",
+                "src/lib.rs",
+                "--scope",
+                "src/help.rs",
+                "--by",
+                "leader",
+                "--reason",
+                "fixture",
+                "--generation",
+                "1",
             ],
         ));
         assert_eq!(
@@ -829,7 +864,14 @@ fn shared_files_absent_changes_nothing() {
         );
         let message = refusal(&w.card(
             Some(S_A),
-            &["check", &name, "--generation", "1", "--path", "src/other.rs"],
+            &[
+                "check",
+                &name,
+                "--generation",
+                "1",
+                "--path",
+                "src/other.rs",
+            ],
         ));
         assert!(!message.contains("line-lease"), "{message}");
     }
