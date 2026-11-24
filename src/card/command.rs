@@ -595,7 +595,7 @@ fn split_origin_refusal(
         Ok(CardRef::Id(n)) => n,
         _ => {
             return Ok(Some(format!(
-                "card add refused: --split-of {origin} is not a card name (`C-12`)"
+                "card add refused: --split-of {origin} is not a card name (`C-1`)"
             )))
         }
     };

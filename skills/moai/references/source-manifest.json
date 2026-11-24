@@ -96,7 +96,7 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "acdd8ddd1dc73f89e5317bebf20f693d33ef4882954aa1d522dd057da296d80b",
+      "sha256": "0216e0a0274b1d5e749df254b81a4c2fd20738735fd7dc5e2705a09c251f502d",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",

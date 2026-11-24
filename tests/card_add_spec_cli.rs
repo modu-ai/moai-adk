@@ -2,7 +2,7 @@
 //! write as the card and refuses a second open card on one SPEC; `--follow-up` allows one open
 //! follow-up card per SPEC and `--split-of <card>` names the card it was split from. The relation
 //! lives in the `card.spec` event payload, never in a new column. Every command runs against a
-//! temporary HOME and a temporary project; the real `~/.moai` is not read or written.
+//! temporary HOME and a temporary project; the real home state folder is not read or written.
 
 mod common;
 
@@ -97,6 +97,32 @@ impl World {
     /// A draft SPEC `SPEC-20261124-<slug>` with every template placeholder filled, so `spec check`
     /// passes it.
     fn spec(&self, slug: &str) -> String {
+        let (id, path) = self.new_spec(slug);
+        fs::write(&path, filled(&fs::read_to_string(&path).unwrap())).unwrap();
+        id
+    }
+
+    /// A SPEC with an error finding: the filled template with every `shall` turned into `will`,
+    /// so its requirements are no requirement lines. Returns the id.
+    fn broken_spec(&self, slug: &str) -> String {
+        let (id, path) = self.new_spec(slug);
+        let text = filled(&fs::read_to_string(&path).unwrap()).replace("shall", "will");
+        fs::write(&path, text).unwrap();
+        let checked = self
+            .home
+            .command(&["spec", "check", &id, "--project", self.p()])
+            .output()
+            .expect("run moai");
+        assert_ne!(
+            checked.status.code(),
+            Some(0),
+            "the fixture SPEC must fail `spec check`"
+        );
+        id
+    }
+
+    /// `moai spec new`: the SPEC's id and the file it wrote (the path is the one the answer gives).
+    fn new_spec(&self, slug: &str) -> (String, PathBuf) {
         let out = self
             .home
             .command(&[
@@ -113,14 +139,15 @@ impl World {
             ])
             .output()
             .expect("run moai");
-        let id = ok(&out)["id"].as_str().unwrap().to_string();
-        let path = self.spec_file(&id);
-        fs::write(&path, filled(&fs::read_to_string(&path).unwrap())).unwrap();
-        id
-    }
-
-    fn spec_file(&self, id: &str) -> PathBuf {
-        self.project.join(".moai/specs").join(id).join("spec.md")
+        let answer = ok(&out);
+        let id = answer["id"].as_str().unwrap().to_string();
+        let written = PathBuf::from(answer["path"].as_str().unwrap());
+        let path = if written.is_absolute() {
+            written
+        } else {
+            self.project.join(written)
+        };
+        (id, path)
     }
 
     /// `card add --spec <spec> <extra…>` with one criterion.
@@ -215,9 +242,8 @@ fn add_with_spec_links_in_one_write() {
 #[test]
 fn a_missing_or_broken_spec_is_refused() {
     let w = World::new();
-    let broken = "SPEC-20261124-broken";
-    fs::create_dir_all(w.project.join(".moai/specs").join(broken)).unwrap();
-    fs::write(w.spec_file(broken), "not a SPEC at all\n").unwrap();
+    let broken = w.broken_spec("broken");
+    let broken = broken.as_str();
     // A SPEC that is not there is `not_found`; a bad id or a SPEC with an error is `invalid_input`.
     for (bad, expected) in [
         ("SPEC-20261124-absent", "not_found"),
