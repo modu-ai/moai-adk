@@ -74,7 +74,6 @@ tests/common/cli.rs	2	1
 tests/common/go_project_real_run.rs	1	6
 tests/common/home.rs	1	11
 tests/context_cli.rs	5	5
-tests/diff_go.rs	0	2
 tests/doc_reference_boundaries.rs	1	0
 tests/e2e_host_fixture.rs	2	4
 tests/edit_diagnostics_cli.rs	8	0
