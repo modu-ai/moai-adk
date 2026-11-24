@@ -880,6 +880,15 @@ enum Action {
     /// (`stale_base`). A branch that moved in between is refused as `tip_moved`. A close refused
     /// after the move leaves the branch moved and says so; the same call run again skips the move
     /// and closes. A card already `done` with the same head answers done and writes nothing.
+    ///
+    /// The close needs an independent PASS of the exact head (SPEC-20261124-land-closes-card): when
+    /// `card verdict` recorded one that the verdict check relies on, every open criterion not
+    /// named by a `--met` becomes met with the line `verdict event <n> PASS head <12 hex>` and the
+    /// card is done. Without such a PASS the call is refused as `no_pass` in every mode of
+    /// `work_flow.land_verdict`. `--keep-open` lands a slice instead: the landing is recorded
+    /// (`card.landed` with `keep_open` true), nothing is closed and the answer names the open
+    /// criteria; the mode of `land_verdict` still judges the verdict, and `--keep-open` is refused
+    /// with a `--met` option or on a card with no open criterion.
     Land {
         /// The card to land (`C-12`).
         card: String,
@@ -896,6 +905,9 @@ enum Action {
         /// Who lands the card: only `leader` is accepted.
         #[arg(long)]
         by: String,
+        /// Land a slice: record the landing and close nothing; the answer names the open criteria.
+        #[arg(long)]
+        keep_open: bool,
         /// The project folder (its profile holds the project id and the integration branch).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -1565,6 +1577,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             met,
             generation,
             by,
+            keep_open,
             project,
             home,
         } => {
@@ -1579,6 +1592,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                     met: &met,
                     generation,
                     by: &by,
+                    keep_open,
                 },
             )?;
             // The remote copy never fails the landing; its state rides in the answer.
