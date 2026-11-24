@@ -212,17 +212,17 @@ impl Fixture {
 const WITHOUT_CARDS: &str = "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ 46 🔀 0 | 🌳 main";
 /// The flow line of the [`MIX`] ledger with the note of [`Fixture::with_mix`]: 3 submitted (2
 /// review, 1 by its note), 2 stale, 5 on hold, 20 draft, 25 ready, 12 done today, no card of
-/// mine (the session holds none). The drafts and the stale cards are not on the line, and the
-/// counts of zero (in progress, landing, blocked) are hidden
-/// (SPEC-20261122-statusline-limits-left REQ-6).
-const FLOW_MIX: &str = "🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5";
+/// mine (the session holds none). The drafts are not on the line, the 2 stale cards are drawn
+/// with the working ones in `🟡` (SPEC-20261124-statusline-counts-truth REQ-7), and the counts
+/// of zero (landing, blocked) are hidden (SPEC-20261122-statusline-limits-left REQ-6).
+const FLOW_MIX: &str = "🗂️ 25 → 🟡 2 → 📨 3 → ✅ 12 | 🙋 5";
 /// [`FLOW_MIX`] with the MoAI version in front, as the second line is written.
 fn flow_mix_line() -> String {
     format!("{} | {FLOW_MIX}", moai())
 }
-/// The flow line of the [`MIX`] cards alone: the 3 `active` cards are stale (not shown), the 2
+/// The flow line of the [`MIX`] cards alone: the 3 `active` cards are stale (drawn in `🟡`), the 2
 /// `review` cards submitted.
-const FLOW_CARDS: &str = "🗂️ 25 → 📨 2 → ✅ 12 | 🙋 5";
+const FLOW_CARDS: &str = "🗂️ 25 → 🟡 3 → 📨 2 → ✅ 12 | 🙋 5";
 
 #[test]
 fn the_flow_line_stands_between_the_first_line_and_the_usage_windows() {
@@ -305,10 +305,11 @@ fn the_branch_shows_no_ahead_count_against_the_upstream() {
 /// The forms of the second line for the [`FLOW_MIX`] ledger, from the widest to the narrowest.
 /// The MoAI version drops first (the fixture's input has no Claude Code version), then each
 /// narrower form drops the leftmost item of the flow, `🗂️` first; `🙋` stays to the end.
-fn mix_forms() -> [String; 5] {
+fn mix_forms() -> [String; 6] {
     [
         flow_mix_line(),
         FLOW_MIX.to_string(),
+        "🟡 2 → 📨 3 → ✅ 12 | 🙋 5".to_string(),
         "📨 3 → ✅ 12 | 🙋 5".to_string(),
         "✅ 12 | 🙋 5".to_string(),
         "🙋 5".to_string(),
@@ -363,7 +364,7 @@ fn width_ladder_changes_the_flow_line_exactly_at_each_boundary() {
     for columns in ["5", "3", "2", "1"] {
         assert_eq!(
             f.plain_at(columns).lines().nth(1),
-            Some(forms[4].as_str()),
+            Some(forms[5].as_str()),
             "COLUMNS {columns}"
         );
     }
@@ -446,8 +447,8 @@ fn done_cards_are_counted_only_in_the_done_segment() {
     f.add("hold", 2);
     assert_eq!(
         f.flow_line(),
-        "✅ 4 | 🙋 2",
-        "the active card has no reservation, so it is stale and not on the line"
+        "🟡 1 → ✅ 4 | 🙋 2",
+        "the active card has no reservation, so it is stale and drawn in 🟡 with the working ones"
     );
 }
 
@@ -1083,16 +1084,16 @@ fn assert_line_three(stdin: &serde_json::Value, template: Option<&str>, want: &s
 }
 
 /// Z0 of the subscriber whose five-hour window is over 70 percent used. Every number is the share
-/// left (SPEC-20261122-statusline-limits-left) with a bar of the same share before it: 74, 85 and
-/// 21 percent are used, so 2, 1 and 7 of the ten cells are filled.
+/// used (SPEC-20261124-statusline-counts-truth REQ-12) with a bar of the same share before it: 74,
+/// 85 and 21 percent are used, so 7, 8 and 2 of the ten cells are filled.
 const Z0_FIVE_HOUR: &str =
-    "🪫 CW ██░░░░░░░░ 26% | 🪫 5H █░░░░░░░░░ 15% (1h 10m) | 🔋 7D ███████░░░ 79% (6d 21h)";
+    "🪫 CW ███████░░░ 74% | 🪫 5H ████████░░ 85% (1h 10m) | 🔋 7D ██░░░░░░░░ 21% (6d 21h)";
 /// Z0 of the subscriber whose input carries no five-hour window.
-const Z0_NO_FIVE_HOUR: &str = "🪫 CW ██░░░░░░░░ 26% | 🔋 7D ███████░░░ 79% (6d 21h)";
+const Z0_NO_FIVE_HOUR: &str = "🪫 CW ███████░░░ 74% | 🔋 7D ██░░░░░░░░ 21% (6d 21h)";
 /// Z0 of the API key user, 41 percent used. The Layouts section of SPEC-20261122-statusline-limits
 /// wrote `🪫` there; the battery rule of the same SPEC (AC-2: `🔋` up to 70 percent used, `🪫` from
 /// 71) gives `🔋` at 41, so the icon here follows the rule.
-const Z0_API_KEY: &str = "🔋 CW █████░░░░░ 59% | 💰 3.87";
+const Z0_API_KEY: &str = "🔋 CW ████░░░░░░ 41% | 💰 3.87";
 
 /// REQ-1, REQ-4: a subscriber whose five-hour window is over 70 percent sees every window with
 /// its bar and its countdown, and no cost and no version.
@@ -1107,10 +1108,10 @@ fn line_three_items_subscriber_with_the_five_hour_window() {
 #[test]
 fn line_three_items_subscriber_with_a_five_hour_window_at_any_level() {
     for (used, item) in [
-        (70, "🔋 5H ███░░░░░░░ 30% (1h 10m)"),
-        (23, "🔋 5H ███████░░░ 77% (1h 10m)"),
+        (70, "🔋 5H ███████░░░ 70% (1h 10m)"),
+        (23, "🔋 5H ██░░░░░░░░ 23% (1h 10m)"),
     ] {
-        let want = format!("🪫 CW ██░░░░░░░░ 26% | {item} | 🔋 7D ███████░░░ 79% (6d 21h)");
+        let want = format!("🪫 CW ███████░░░ 74% | {item} | 🔋 7D ██░░░░░░░░ 21% (6d 21h)");
         assert_line_three(&subscriber(used), None, &want);
     }
 }
@@ -1171,20 +1172,20 @@ fn line_three_items_null_percentage() {
             "cache_read_input_tokens": 20000,
         },
     });
-    assert_line_three(&stdin, None, "🔋 CW ███████░░░ 70% | 💰 3.87");
+    assert_line_three(&stdin, None, "🔋 CW ███░░░░░░░ 30% | 💰 3.87");
     stdin["context_window"] =
         serde_json::json!({"used_percentage": null, "context_window_size": 200000});
     assert_line_three(&stdin, None, "CW n/a | 💰 3.87");
 }
 
-/// REQ-2: `CW` is what is left of the host's percentage, rescaled by nothing — 25, 85 and 100
-/// used are 75, 15 and 0 left (the 85 percent rescale read 29, 100 and 100 used).
+/// REQ-2 (read as the share used by SPEC-20261124-statusline-counts-truth REQ-12): `CW` is the
+/// host's percentage, rescaled by nothing — 25, 85 and 100 used are 25, 85 and 100.
 #[test]
 fn line_three_items_context_window_as_the_host_gives_it() {
     for (pct, want) in [
-        (25, "🔋 CW ███████░░░ 75%"),
-        (85, "🪫 CW █░░░░░░░░░ 15%"),
-        (100, "🪫 CW ░░░░░░░░░░ 0%"),
+        (25, "🔋 CW ██░░░░░░░░ 25%"),
+        (85, "🪫 CW ████████░░ 85%"),
+        (100, "🪫 CW ██████████ 100%"),
     ] {
         let mut stdin = api_key_user();
         stdin["context_window"]["used_percentage"] = serde_json::json!(pct);
@@ -1224,27 +1225,27 @@ const LADDERS: [(&str, &[(&str, usize)]); 3] = [
         &[
             (Z0_FIVE_HOUR, 84),
             (
-                "🪫 CW ██░░░░░░░░ 26% | 🪫 5H █░░░░░░░░░ 15% | 🔋 7D ███████░░░ 79%",
+                "🪫 CW ███████░░░ 74% | 🪫 5H ████████░░ 85% | 🔋 7D ██░░░░░░░░ 21%",
                 66,
             ),
-            ("🪫 CW 26% | 🪫 5H 15% | 🔋 7D 79%", 33),
-            ("🪫 CW 26% | 🔋 7D 79%", 21),
+            ("🪫 CW 74% | 🪫 5H 85% | 🔋 7D 21%", 33),
+            ("🪫 CW 74% | 🔋 7D 21%", 21),
         ],
     ),
     (
         "subscriber, no 5H",
         &[
             (Z0_NO_FIVE_HOUR, 52),
-            ("🪫 CW ██░░░░░░░░ 26% | 🔋 7D ███████░░░ 79%", 43),
-            ("🪫 CW 26% | 🔋 7D 79%", 21),
+            ("🪫 CW ███████░░░ 74% | 🔋 7D ██░░░░░░░░ 21%", 43),
+            ("🪫 CW 74% | 🔋 7D 21%", 21),
         ],
     ),
     (
         "API key user",
         &[
             (Z0_API_KEY, 30),
-            ("🔋 CW 59% | 💰 3.87", 19),
-            ("🔋 CW 59%", 9),
+            ("🔋 CW 41% | 💰 3.87", 19),
+            ("🔋 CW 41%", 9),
         ],
     ),
 ];
@@ -1288,10 +1289,10 @@ fn line_three_ladder_without_a_usable_columns_and_below_the_narrowest() {
     }
     for columns in ["22", "10", "2", "1"] {
         let line = plain_three_at(&stdin, None, columns);
-        assert_eq!(line, "🪫 CW 26% | 🔋 7D 79%", "COLUMNS {columns}");
+        assert_eq!(line, "🪫 CW 74% | 🔋 7D 21%", "COLUMNS {columns}");
     }
     let line = plain_three_at(&api_key_user(), None, "3");
-    assert_eq!(line, "🔋 CW 59%");
+    assert_eq!(line, "🔋 CW 41%");
 }
 
 /// An unknown window stays `CW n/a` and `7D n/a` in every form of the ladder, with no battery

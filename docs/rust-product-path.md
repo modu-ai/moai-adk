@@ -967,15 +967,17 @@ no value is left out together with its separator.
    the ignored test `write_the_golden_ledger_fixture` writes both).
 3. Usage windows: the `CW` (the context window), `5H` and `7D` (the seven-day limit) windows,
    each as `<battery> <label> <bar> <n>%`, a bar and a number:
-   `🔋 CW █████████░ 91% | 🔋 7D █████░░░░░ 59% (4d 23h)`.
-   Each number is the share that is left, not the share used (9% used reads `CW 91%`;
-   SPEC-20261122-statusline-limits-left). The ten-cell bar stands between the label and the
+   `🔋 CW ░░░░░░░░░░ 9% | 🔋 7D ████░░░░░░ 41% (4d 23h)`.
+   Each number is the share that is used, not the share left (9% used reads `CW 9%`; the user
+   decision of 2026-11-24, SPEC-20261124-statusline-counts-truth REQ-12, which replaces the share
+   left of SPEC-20261122-statusline-limits-left). The ten-cell bar stands between the label and the
    number, with no colon, and draws the same share: the first `<n> × 10 / 100` cells (rounded
    down) are `█` and the others `░` (SPEC-20261123-statusline-order-bars, the user instruction of
    2026-11-23, which replaces the earlier numbers-only look). The filled cells take one level
-   color of the share left (green at 70% or more, yellow from 50%, peach from 30%, red below 30%,
-   the same point where the battery icon turns; SPEC-20261124-statusline-bar-color) and the empty
-   cells take the muted color, so the colored line without its escapes is the plain line. The battery icon is `🪫` when less than 30% is left and `🔋`
+   color of the share used (green up to 30%, yellow up to 50%, peach up to 70%, red above 70%,
+   the same point where the battery icon turns; SPEC-20261124-statusline-counts-truth REQ-14,
+   replacing SPEC-20261124-statusline-bar-color) and the empty
+   cells take the muted color, so the colored line without its escapes is the plain line. The battery icon is `🪫` when more than 70% is used and `🔋`
    otherwise; a percentage is shown from 0 to 100; and there is no `/clear` hint on any line (the
    user's final call of 2026-11-21, SPEC-20261121-statusline-detached). A window whose percentage is
    unavailable (the window is absent, its percentage is `null`, or its object is empty) says
@@ -997,15 +999,15 @@ no value is left out together with its separator.
    counts, and nothing is created. Example (the last two lines of the golden
    `b14-card-counts-waiting`):
 
-       🤖 2.1.90 | 🗿 4.2648.0 | 🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5
-       🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59% (4d 23h)
+       🤖 2.1.90 | 🗿 4.2648.0 | 🗂️ 25 → 🟡 2 → 📨 3 → ✅ 12 | 🙋 5
+       🔋 CW ░░░░░░░░░░ 8% | 🔋 7D ████░░░░░░ 41% (4d 23h)
 
    Tests: `tests/statusline_first_line.rs` (the integration tip, the detached leader, `n/a`, no
    marks), `tests/statusline_worktree_label.rs` (the branch and never the host name, a released
    reservation is no holder, the main checkout, the `worktree` option, the line) and the golden
    cases `a02-doc-full` and `b14-card-counts-waiting`. With both windows off and no card counts the line is empty and
-   omitted like any empty line. The five-hour window stands between the two as `<battery> 5H <left>%` with its
-   countdown whenever the input carries its percentage, at any level (25% used reads `🔋 5H 75%`);
+   omitted like any empty line. The five-hour window stands between the two as `<battery> 5H <used>%` with its
+   countdown whenever the input carries its percentage, at any level (25% used reads `🔋 5H 25%`);
    the host does not always send it, and without it or without its percentage there is no `5H`
    item. The `usage_5h` option turns it off. When the line is wider than the width budget it
    drops the reset countdowns first, then the bars, then the five-hour window and the cost; `CW`
@@ -1028,7 +1030,8 @@ came first and the versions closed the limits line). The icons are the ones of t
 progress board and the lane reports (`🗂️` added and waiting its turn, `🟡` in progress, `📨`
 handed over and waiting for a check, `🛬` check passed and waiting to land, `✅` done, `🚧`
 blocked, `🙋` needs the user's pick). There are no letter codes; an item whose count is zero is
-left out with its arrow; the drafts and the cards whose lease has ended are not on the line.
+left out with its arrow; the drafts are not on the line, and a card whose lease has ended is drawn
+in `🟡` with the working ones (SPEC-20261124-statusline-counts-truth REQ-7).
 A narrower form drops the Claude Code version first, then the MoAI version with its update
 arrow, then the leftmost item of the flow, `🗂️` first, and keeps the card of the session and
 `🚧 🙋` to the end. With no flow the line holds the two versions alone, and with no version the
