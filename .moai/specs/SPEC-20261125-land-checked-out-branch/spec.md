@@ -2,7 +2,7 @@
 id: SPEC-20261125-land-checked-out-branch
 title: "card land moves the integration branch even when a worktree has it checked out, and brings that worktree along"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-25
 branch: spec/20261125-land-checked-out-branch
 ---
@@ -38,10 +38,10 @@ branch: spec/20261125-land-checked-out-branch
 - REQ-2 (REQ-1): The command shall move the branch only by `git update-ref` with the tip it read as the old value.
 - REQ-3 (REQ-1): IF the checked-out worktree has a tracked change (a staged change, an unstaged change or a deleted tracked file), THEN the command shall refuse before the first write and name the paths.
 - REQ-4 (REQ-1): IF the HEAD of the checked-out worktree is not the tip the command read, or a merge, a rebase, a cherry-pick, a revert, a bisect or an index lock is in progress there, THEN the command shall refuse before the first write.
-- REQ-5 (REQ-1): IF a file of the checked-out worktree that no commit tracks, ignored or not, stands at a path the candidate adds, THEN the command shall refuse before the first write and name the paths.
+- REQ-5 (REQ-1): IF a file of the checked-out worktree that no commit tracks, ignored or not, stands at a path the candidate adds, or where the candidate needs a folder, THEN the command shall refuse before the first write and name the paths.
 - REQ-6 (REQ-1): IF more than one worktree has the branch checked out, or the checked-out worktree uses a sparse checkout or has a skip-worktree or assume-unchanged entry, or the move changes a submodule entry, THEN the command shall refuse before the first write and name the cause.
 - REQ-7 (REQ-1): Every refusal of the checked-out worktree shall carry the reason, the next thing to do and the words `nothing was changed`.
-- REQ-8 (REQ-1): IF a call stopped after the branch moved and before the worktree followed, THEN the same call run again shall finish the worktree step and close the card without moving the branch a second time.
+- REQ-8 (REQ-1): IF a call stopped after the branch moved and before the worktree followed, THEN the same call run again shall finish the worktree step and close the card without moving the branch a second time, and shall leave a worktree whose index matches neither the old tip's tree nor the new one's alone and say so.
 - REQ-9 (REQ-1): The answer of `card land` shall carry a `worktree_follow` key with the worktree path, the status (`followed`, `finished` or `none`), and the commits it went from and to.
 - REQ-10: The landing shall answer every refusal that comes before the worktree check as it did before this change.
 - REQ-11: The flow reference and the leader rules shall describe a landing with the branch checked out as the command's own step, with the refusals of REQ-3 to REQ-6.
@@ -59,6 +59,7 @@ branch: spec/20261125-land-checked-out-branch
 - AC-8 (REQ-10): every other land, batch and guard test passes unchanged; the one test that held the old refusal of a clean checkout is rewritten to hold a refusal that stays (a dirty checkout) and is named in the Result · verify: `cargo test --locked --offline --test card_land_cli --test card_land_batch_cli --test card_guard_cli --test card_land_scans_cli`
 - AC-9 (REQ-11): `docs/leader-rules.md` and the flow reference name the follow step, its four refusals and the rerun · verify: `manual: grep -c worktree_follow docs/leader-rules.md skills/moai/references/flows/next-flow.md` prints one or more for each file
 - AC-10 (REQ-12): Appendix A holds the sources with read times and an adopt or reject line for each option of the card · verify: `moai spec check SPEC-20261125-land-checked-out-branch --project .`
+- AC-12 (REQ-5, REQ-8): the guards that only one rule fails are held by their own tests: a tracked file the candidate replaces by a folder follows, a dry run that git refuses stops the landing before the move, a `read-tree` that exits 0 and leaves the index behind is refused after the move, a run killed after the follow closes on the rerun without following again, a rerun refuses what a first run would refuse, and a rerun leaves an index that matches neither commit alone · verify: `cargo test --locked --offline --test card_land_checked_out_cli`
 - AC-11: the Result holds the throwaway runs of the dangerous path: a clean checkout, a dirty checkout, an untracked file over a path of the new commit, another worktree on the branch, and a rerun of a run that died in the middle, each with the command and the observed answer · verify: `manual: the Result lines of this SPEC`
 
 ## Scope
@@ -136,7 +137,9 @@ Stopped run (case `crash`, `rerun`): after `update-ref` alone `git diff-index --
 
 Detection (from `wt-status.c` and the repository layout, WF; `MERGE_HEAD` resolved per worktree and observed: `.git/MERGE_HEAD` exists during a `merge --no-commit`): `MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`, `REBASE_HEAD`, the folders `rebase-merge`, `rebase-apply`, `sequencer` and the file `BISECT_LOG` under the worktree's git dir (`git rev-parse --absolute-git-dir` run in that worktree), and `index.lock`. Several worktrees on one branch exist only through `git worktree add --force` or `checkout --ignore-other-worktrees` (WF); `git worktree list --porcelain` prints one `branch refs/heads/<name>` line per holder (observed). Sparse checkout (`core.sparseCheckout`), skip-worktree and assume-unchanged entries (`git ls-files -v`) and mode 160000 entries are refused without a measurement.
 
-Not verified: every WF quote beyond the cut-off text; the tag letters of `git ls-files -v`; the sequencer state path; that `git merge --ff-only` compare-and-swaps; Apple Git-157 against upstream 2.54.0 on these paths; behaviour on Linux or Windows.
+Measured while implementing (git 2.54.0, throwaway repositories): `git ls-files -v` tags `S` for a skip-worktree entry (paths a sparse checkout excludes carry it too), `h` for assume-unchanged and `H` for an ordinary entry, so any tag other than `H` refuses; a local file where the candidate needs a folder passes both the dry run and the real run (exit 0) and leaves the index and the files out of step, so the command checks the ancestors of every added path itself, leaving out a path the same diff deletes; `git diff-files` calls a file rewritten with the same bytes changed (stat data differs) while `git diff` compares content, so the rerun asks `git diff`.
+
+Not verified: every WF quote beyond the cut-off text; the sequencer state path; that `git merge --ff-only` compare-and-swaps; Apple Git-157 against upstream 2.54.0 on these paths; behaviour on Linux or Windows.
 
 ## Result
 
