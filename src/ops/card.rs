@@ -1421,7 +1421,14 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             by,
             project,
             home,
-        } => w::hold(&project, &resolve_home(home)?, &card, &category, &reason, &by),
+        } => w::hold(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &category,
+            &reason,
+            &by,
+        ),
         Action::Unhold {
             card,
             reason,
