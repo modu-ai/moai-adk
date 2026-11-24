@@ -106,4 +106,17 @@ approval:
 
 ## Result
 
-(구현 뒤에 채워요.)
+구현은 브랜치 `spec/followup-per-spec-20261124`(기준 NeXT `34d87870dc`)의 커밋 SPEC `699181646e` → 승인 기록 `7516ff12b9` → 규칙 글과 규칙 테스트 `f5b6d5b2f4` → 코드 안쪽과 RED 테스트 `2d18bf5d38` → 인자 받기와 GREEN `7d50e9268b` 순서예요. RED 는 커밋하지 않고 작업 트리에서 먼저 돌렸어요: `card_add_spec_cli` 10개 중 9개 실패(`target/c443/red1.log`, 실패 이유는 `unexpected argument '--spec'`, 통과한 하나는 바뀌지 않은 `card add` 테스트), 규칙 테스트 2개 모두 실패(`target/c443/red2.log`).
+
+- AC-1: met — `add_with_spec_links_in_one_write`, `a_missing_or_broken_spec_is_refused` passed(`target/c443/green6.log`, 79개 중 79개 통과). 없는 SPEC 은 `not_found`(`spec not found` 문장), 형식이 틀린 id 와 error 있는 SPEC 은 `invalid_input` 이고 카드와 사건이 0 이에요(REQ-2 는 거절만 정하고 kind 는 정하지 않아요).
+- AC-2: met — `a_second_open_card_on_one_spec_is_refused`, `a_done_card_does_not_count` passed.
+- AC-3: met — `one_open_follow_up_per_spec`, `a_closed_follow_up_makes_room` passed.
+- AC-4: met — `split_of_names_its_origin`, `split_of_needs_the_same_spec` passed.
+- AC-5: met — `relation_flags_need_a_spec_and_exclude_each_other` passed.
+- AC-6: met — `card_cli`, `card_dispatch_cli`(이웃으로 `card_spec_cli`, `card_criterion_add_cli` 도) 가 `green6.log` 에서 그대로 통과했어요. `an_add_without_spec_is_unchanged` 도 passed.
+- AC-7: met — `leader_and_lane_rules_name_the_follow_up_card` passed.
+- AC-8: met — `recurrence_and_remote_failure_rules_use_existing_cards` 와 `recurring_problems_rule`, `repo_claude_md`, `next_flow_skill_scan` 이 함께 통과했어요(`target/c443/green4.log`, 154개 중 154개; 이 뒤에 바뀐 규칙 글은 없어요).
+- 뮤턴트(적용을 스크립트가 낱말 한 번 일치로 확인하고 `git restore` 로 되돌린 뒤 `git status` 가 깨끗함을 확인): ① 열린 카드 검사의 `Plain if open.is_empty()` 를 `Plain` 으로 → exit 100(`a_second_open_card_on_one_spec_is_refused`) ② 후속 카드 찾기를 `find(|_| false)` 로 → exit 100(`one_open_follow_up_per_spec`) ③ `--split-of` 의 같은 SPEC 검사를 항상 거짓으로 → exit 100(`split_of_needs_the_same_spec`) ④ `doc.errors() > 0` 를 `> 1_000_000` 으로 → exit 100(`a_missing_or_broken_spec_is_refused`) ⑤ `--follow-up` 의 `requires = "spec"` 삭제 → exit 100(`relation_flags_need_a_spec_and_exclude_each_other`) ⑥ `state <> 'done'` 를 다른 값으로 → exit 100(`a_done_card_does_not_count`) ⑦ `CLAUDE.md` 재발 문장 삭제 → exit 100 ⑧ `leader-rules.md` 의 `only when the SPEC has none open` 삭제 → exit 100. 로그는 `target/c443/m1.log`~`m8.log`.
+- 줄 임대로 받은 공유 파일: `tools/repo_scans.json`(새 규칙 테스트를 `reads-docs`, `reads-root-files`, `reads-skills` 에 올림), `tests/areas.toml`(`followup` 단어), `tests/next_flow_skill_scan.rs`(`FLOW_REF_TIP_BYTES` 7974 → 8051, 원격 실패 문장이 77바이트 늘었어요), `src/ops/card.rs`(`Add` 인자 셋과 갈래). 모두 받은 즉시 돌려줬어요.
+- 위험한 길: 이 변경은 지우거나 되돌리거나 프로세스를 시작하거나 권한 규칙을 만들지 않아요(`none`). 거절 길(두 번째 열린 카드, 두 번째 후속 카드, 틀린 `--split-of`)은 임시 HOME 의 임시 장부에서 실제 `moai` 명령으로 돌렸고 카드와 사건 수가 그대로임을 확인했어요.
+- 범위 밖·미검증: `card spec C-n <SPEC-ID>`(나중 연결)는 한도를 두지 않아요(D-3). 기존 장부의 SPEC 당 여러 카드는 그대로예요. 실제 장부와 실제 HOME 에는 쓰지 않았어요.
