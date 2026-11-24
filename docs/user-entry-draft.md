@@ -33,7 +33,7 @@ SETUP이 끝나면 같은 진입으로 READ → PLAN → RUN → VERIFY → AUDI
 
 ### 호스트 세션과 역할
 
-호스트 세션은 역할 없이 엽니다 — `moai cc|glm [--name <name>]`은 평범한 host 세션이고, 세션 안에서 `/moai --mode-leader`·`/moai --mode-agent`로 MoAI 역할을 정합니다(모드 표기는 이 두 개뿐, 사용자 결정 2026-11-10). 리더·에이전트 론처 플래그 `-l|-a`(`moai -l|-a`, `moai cc|glm -l|-a`)는 폐기했습니다(사용자 결정 D-1 2026-11-09, 2026-11-24 재확인, SPEC-20261124-launcher-retire-role-flags): 런처는 그 낱말을 바로 거절하고 `--name`과 두 모드 명령을 안내합니다. 세션 이름은 `--name`으로만 붙이고, `agent-N` 번호는 런처가 더 매기지 않습니다. 권한 모드는 역할과 상관없이 모든 실행이 auto mode(`--permission-mode auto`)로 시작합니다(사용자 결정 2026-11-23, SPEC-20261123-launcher-auto-mode; 사용자 설정 `launcher.role_access`로 `full`(우회)이나 `prompt`로 바꿀 수 있습니다 — 아래 세션 론처 문단, Issue #2413). 역할은 세션 안에서 `/moai --mode-leader`·`/moai --mode-agent`로 들어가고, 거절 문장이 이를 적습니다.
+호스트 세션은 역할 없이 엽니다 — `moai cc|glm [--name <name>]`은 평범한 host 세션이고, 세션 안에서 레인은 `/moai work`, 조정 창은 `/moai leader`로 MoAI 역할에 들어갑니다(사용자 선택 2026-11-22, SPEC-20261124-moai-leader-route; 옛 `--mode-…` 표기는 폐기). 리더·에이전트 론처 플래그 `-l|-a`(`moai -l|-a`, `moai cc|glm -l|-a`)는 폐기했습니다(사용자 결정 D-1 2026-11-09, 2026-11-24 재확인, SPEC-20261124-launcher-retire-role-flags): 런처는 그 낱말을 바로 거절하고 `--name`, `/moai work`, `/moai leader`를 안내합니다. 세션 이름은 `--name`으로만 붙이고, `agent-N` 번호는 런처가 더 매기지 않습니다. 권한 모드는 역할과 상관없이 모든 실행이 auto mode(`--permission-mode auto`)로 시작합니다(사용자 결정 2026-11-23, SPEC-20261123-launcher-auto-mode; 사용자 설정 `launcher.role_access`로 `full`(우회)이나 `prompt`로 바꿀 수 있습니다 — 아래 세션 론처 문단, Issue #2413). 역할은 세션 안에서 `/moai work`(레인)·`/moai leader`(조정 창)로 들어가고, 거절 문장이 이를 적습니다.
 
 ### 수동 명령 (명시적 fallback)
 
@@ -52,8 +52,8 @@ SETUP이 끝나면 같은 진입으로 READ → PLAN → RUN → VERIFY → AUDI
 | 형태 | 동작 |
 | --- | --- |
 | `moai cc\|glm` (역할 없음) | 평범한 host 세션. 역할을 붙이지 않고, `--name`이 없으면 세션 이름도 붙이지 않는다(#2053). 권한 관련 플래그도 붙이지 않아, Claude Code는 사용자·프로젝트 설정의 모드로 시작한다(#2359). Claude 계열은 `--model opus --effort medium` 기본값을 쓰고, `--advisor`는 붙이지 않는다(아래 `launcher.advisor`). |
-| `moai cc\|glm --name N` | 세션 이름을 `N`으로 붙인다. 그 밖에는 역할 없는 형태와 같고, 역할은 세션 안에서 `/moai --mode-leader`·`/moai --mode-agent`로 들어간다. 권한은 모든 실행이 auto mode(기본값; 아래 `launcher.role_access`). |
-| `-l`, `--leader`, `-a`, `--agent` (`moai cc\|glm` 뒤나 최상위 `moai -l`·`moai -a`) | 폐기. 한 문장으로 거절하고 `--name`과 두 모드 명령을 안내한다. host도 번호도 파일도 만들지 않는다. |
+| `moai cc\|glm --name N` | 세션 이름을 `N`으로 붙인다. 그 밖에는 역할 없는 형태와 같고, 역할은 세션 안에서 `/moai work`(레인)·`/moai leader`(조정 창)로 들어간다. 권한은 모든 실행이 auto mode(기본값; 아래 `launcher.role_access`). |
+| `-l`, `--leader`, `-a`, `--agent` (`moai cc\|glm` 뒤나 최상위 `moai -l`·`moai -a`) | 폐기. 한 문장으로 거절하고 `--name`, `/moai work`, `/moai leader`를 안내한다. host도 번호도 파일도 만들지 않는다. |
 | `--name N` | 세션 이름. |
 | `--model M` | 주 모델. Claude 계열 기본 `opus`. |
 | `--effort E` | Claude effort(`low\|medium\|high\|xhigh\|max\|ultracode`), 기본 `medium`. |
