@@ -667,32 +667,72 @@ fn an_edited_or_misplaced_owned_agent_is_a_conflict_and_is_kept() {
     fs::write(fx.root.join(ROLE_FILE), &original).unwrap();
 
     // An owned entry whose recorded path is not a path its kind names is never removed through.
-    let mut manifest = fx.manifest();
     let other = ".claude/agents/moai/not-the-role-path.md";
-    for entry in manifest["owned_files"].as_array_mut().unwrap() {
-        if entry["section_id"]
-            .as_str()
-            .is_some_and(|s| s.starts_with("generation:native-role:"))
-        {
-            entry["path"] = json!(other);
-        }
-    }
-    let mut bytes = serde_json::to_vec_pretty(&manifest).unwrap();
-    bytes.push(b'\n');
-    fs::write(fx.manifest_path(), bytes).unwrap();
+    set_role_path(&fx, other);
     let plan = plan_of(&fx, &empty);
     assert_eq!(row(&plan, other)["action"], "conflict", "{plan}");
     assert!(fx.root.join(ROLE_FILE).exists(), "the real file is kept");
 }
 
+/// The manifest's native-role entry moved to `path`.
+fn set_role_path(fx: &Fx, path: &str) {
+    let mut manifest = fx.manifest();
+    for entry in manifest["owned_files"].as_array_mut().unwrap() {
+        if entry["section_id"]
+            .as_str()
+            .is_some_and(|s| s.starts_with("generation:native-role:"))
+        {
+            entry["path"] = json!(path);
+        }
+    }
+    let mut bytes = serde_json::to_vec_pretty(&manifest).unwrap();
+    bytes.push(b'\n');
+    fs::write(fx.manifest_path(), bytes).unwrap();
+}
+
 #[test]
-fn an_unrequested_skill_projection_is_removed_like_a_project_skill() {
+fn an_unrequested_role_at_its_earlier_flat_path_is_removed() {
+    let (fx, request) = settled_project();
+    // An earlier version wrote the role flat; its manifest entry names that path.
+    let flat = ".claude/agents/prj-test-runner.md";
+    fs::rename(fx.root.join(ROLE_FILE), fx.root.join(flat)).unwrap();
+    set_role_path(&fx, flat);
+    let plan = plan_of(&fx, &emptied(&request));
+    assert_eq!(row(&plan, flat)["action"], "remove", "{plan}");
+    assert!(fx.root.join(flat).exists(), "a plan removes nothing");
+}
+
+#[test]
+fn an_owned_agent_behind_a_link_is_a_conflict_and_nothing_outside_is_removed() {
+    let (fx, request) = settled_project();
+    let outside = TempDir::new().unwrap();
+    let moved = outside.path().join("moai");
+    fs::rename(fx.root.join(".claude/agents/moai"), &moved).unwrap();
+    std::os::unix::fs::symlink(&moved, fx.root.join(".claude/agents/moai")).unwrap();
+    let plan = plan_of(&fx, &emptied(&request));
+    let role = row(&plan, ROLE_FILE);
+    assert_eq!(role["action"], "conflict", "{plan}");
+    assert!(
+        role["detail"].as_str().unwrap().contains("symbolic link"),
+        "{role}"
+    );
+    let refused = apply_plan(&fx, &plan);
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert!(
+        moved.join("prj-test-runner.md").exists(),
+        "nothing outside the project was removed"
+    );
+}
+
+/// A project whose one skill projection `ref-b` is generated from a license-reviewed source,
+/// and the request that built it.
+fn projection_project() -> (Fx, Value) {
     let fx = Fx::new();
     fx.with_profile(json!({}));
     let sources = json!({"schema_version": 1, "sources": [
         {"source_url": "fixtures/skill-b", "license": {"status": "reviewed", "spdx": "MIT"},
          "resolved_revision": null}]});
-    let at = moai_cli::state_root::path(&fx.root, "manifests/sources.json");
+    let at = sources_path(&fx);
     fs::create_dir_all(at.parent().unwrap()).unwrap();
     fs::write(at, serde_json::to_vec_pretty(&sources).unwrap()).unwrap();
     let mut request = request_with(&fx, Vec::new(), Vec::new());
@@ -705,6 +745,39 @@ fn an_unrequested_skill_projection_is_removed_like_a_project_skill() {
         owned_generated(&fx),
         vec!["generation:skill-projection:claude:ref-b".to_string()]
     );
+    (fx, request)
+}
+
+fn sources_path(fx: &Fx) -> PathBuf {
+    moai_cli::state_root::path(&fx.root, "manifests/sources.json")
+}
+
+#[test]
+fn a_projection_the_request_names_but_cannot_plan_is_not_removed() {
+    let (fx, request) = projection_project();
+    // The source is no longer license-reviewed, so the projection is not planned (a warning);
+    // the request still names it, so its file stays owned and stays.
+    fs::remove_file(sources_path(&fx)).unwrap();
+    let plan = plan_of(&fx, &request);
+    assert!(
+        plan["warnings"]
+            .to_string()
+            .contains("not license-reviewed"),
+        "{plan}"
+    );
+    let removals: Vec<&Value> = plan["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["action"] == "remove" || f["path"] == PROJECTION_FILE)
+        .collect();
+    assert!(removals.is_empty(), "{removals:?}");
+    assert!(fx.root.join(PROJECTION_FILE).exists());
+}
+
+#[test]
+fn an_unrequested_skill_projection_is_removed_like_a_project_skill() {
+    let (fx, request) = projection_project();
 
     let mut without = request.clone();
     without["skill_projections"] = json!([]);

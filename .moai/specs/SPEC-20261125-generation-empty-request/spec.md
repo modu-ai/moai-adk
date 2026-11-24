@@ -39,6 +39,7 @@ SPEC-20261125-generation-request-record 재감사(head 10d2c688f7)가 남긴 길
 - REQ-6: When `generation-apply` applies an empty request to a project that owns a project agent, a project skill and a skill projection, the next `project-update-plan` shall read the generation step `unchanged`. · failure: none — a test plans after the apply.
 - REQ-7: While a request is for the harness alone, `generation-plan` shall plan no removal of an owned file. · failure: none — a test plans a harness-only request over a project with agents.
 - REQ-8: The `--help` examples of `generation-plan` and `generation-apply` shall show the input each command reads: the request for the plan and the plan for the apply. · failure: none — a test reads the help text.
+- REQ-9: While the request still names a skill projection whose source is not license-reviewed, `generation-plan` shall plan no removal of that projection's file. · failure: none — a test plans the same request after the source loses its review.
 
 ## Acceptance
 
@@ -48,10 +49,13 @@ SPEC-20261125-generation-request-record 재감사(head 10d2c688f7)가 남긴 길
 - AC-4 (REQ-1): a skill projection that the request no longer names is planned `remove` and, applied, leaves the manifest with no owned file · verify: `cargo test --locked --offline --test generation_request_record an_unrequested_skill_projection_is_removed_like_a_project_skill`
 - AC-5 (REQ-7): a harness-only request over a project with agents and skills plans no `remove` · verify: `cargo test --locked --offline --test generation_request_record a_harness_only_request_plans_no_removal`
 - AC-6 (REQ-8): `moai generation-plan --help` shows `< request.json` and `moai generation-apply --help` shows `< plan.json`, and no example of the apply shows `< request.json` · verify: `cargo test --locked --offline --test generation_request_record the_help_examples_name_the_input_each_command_reads`
-- AC-7 (REQ-1…REQ-8): the neighbour tests of generation stay green · verify: `cargo test --locked --offline --test generation_request_record`
+- AC-7 (REQ-1…REQ-9): the neighbour tests of generation stay green · verify: `cargo test --locked --offline --test generation_request_record`
   verify: `cargo test --locked --offline --test project_update_plan_cli`
   verify: `cargo test --locked --offline --test generation_manifest_single_write --test generation_apply_result_cli --test agents_apply_linkage --test generation_receipt_order --test generation_own_reference --test project_skill_links --test boundary_d3_skill_revert --test generation_native_role_link --test project_agents_nested --test project_skills_generation`
   verify: `cargo test --locked --offline --lib record_tests`
+- AC-8 (REQ-3): an owned agent whose folder is a symbolic link to a folder outside the project is planned `conflict` with `symbolic link` in its detail, `generation-apply` of that plan stops, and the file outside stays · verify: `cargo test --locked --offline --test generation_request_record an_owned_agent_behind_a_link_is_a_conflict_and_nothing_outside_is_removed`
+- AC-9 (REQ-1): an owned agent recorded at the earlier flat path `.claude/agents/<id>.md` is planned `remove` when the request no longer names it · verify: `cargo test --locked --offline --test generation_request_record an_unrequested_role_at_its_earlier_flat_path_is_removed`
+- AC-10 (REQ-9): a projection that the request still names but whose source lost its license review is not planned and not removed, and the plan warns `not license-reviewed` · verify: `cargo test --locked --offline --test generation_request_record a_projection_the_request_names_but_cannot_plan_is_not_removed`
 
 ## Scope
 
