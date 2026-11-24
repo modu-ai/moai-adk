@@ -1,7 +1,7 @@
-//! SPEC-20261117-installer-skill-agents REQ-10: `moai cc` and `moai codex` warn on stderr when
+//! SPEC-20261117-installer-skill-agents REQ-10: `moai cc` and `moai glm` warn on stderr when
 //! the host's copy of the MoAI skill has no `SKILL.md`, name the folder and offer the
 //! `moai update` preview; the host still starts. Every launch runs in a temporary project with a
-//! temporary HOME and stub `claude` / `codex` executables on PATH; no real host starts.
+//! temporary HOME and a stub `claude` executable on PATH; no real host starts.
 #![cfg(unix)]
 mod common;
 use std::os::unix::fs::PermissionsExt;
@@ -21,15 +21,13 @@ struct Fixture {
 
 fn fixture() -> Fixture {
     let bin = tempfile::tempdir().unwrap();
-    for host in ["claude", "codex"] {
-        let path = bin.path().join(host);
-        fs::write(
-            &path,
-            "#!/bin/sh\nprintf started > \"$MOAI_TEST_HOST_MARKER\"\n",
-        )
-        .unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    let path = bin.path().join("claude");
+    fs::write(
+        &path,
+        "#!/bin/sh\nprintf started > \"$MOAI_TEST_HOST_MARKER\"\n",
+    )
+    .unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
     // A project that already has its settings: the launch initializes nothing, so the only
     // launcher line on stderr is the one under test.
     let project = tempfile::tempdir().unwrap();
@@ -105,29 +103,42 @@ fn a_missing_claude_skill_is_named_with_its_folder_and_the_update_preview() {
     assert!(!f.home.path().join(".claude").exists());
 }
 
+/// SPEC-20261121-codex-launcher-and-models-removed REQ-9: no `codex` host is known, so the check
+/// has no Codex folder to look in. `moai codex` is an unknown command: no skill line, no host
+/// start, and a skill copy under `.agents/skills` is neither read nor counted for any host.
 #[test]
-fn a_missing_codex_skill_is_checked_in_the_codex_folder() {
+fn codex_is_an_unknown_host_for_the_skill_check() {
     let f = fixture();
-    // The Claude copy does not count for Codex.
-    put_skill(f.home.path(), ".claude/skills/moai");
-    let out = launch(&f, "codex");
+    let marker = f.home.path().join("host-started");
+    let out = Command::new(common::MOAI_BIN)
+        .arg("codex")
+        .current_dir(f.project.path())
+        .env("PATH", format!("{}:/usr/bin:/bin", f.bin.path().display()))
+        .env("HOME", f.home.path())
+        .env("USERPROFILE", f.home.path())
+        .env("MOAI_TEST_HOST_MARKER", &marker)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(2), "{}", stderr(&out));
+    assert!(warnings(&out).is_empty(), "{}", stderr(&out));
+    assert!(!marker.exists(), "no host may start");
+    assert!(!String::from_utf8_lossy(&out.stdout).contains("Codex"));
+    // A skill copy only under `.agents/skills` does not satisfy the Claude Code check.
+    put_skill(f.home.path(), ".agents/skills/moai");
+    let out = launch(&f, "cc");
     let lines = warnings(&out);
     assert_eq!(lines.len(), 1, "{}", stderr(&out));
-    assert!(lines[0].contains("Codex"), "{}", lines[0]);
-    let folder = f.home.path().join(".agents/skills/moai");
-    assert!(
-        lines[0].contains(&folder.display().to_string()),
-        "{}",
-        lines[0]
-    );
+    assert!(lines[0].contains("Claude Code"), "{}", lines[0]);
 }
 
 #[test]
 fn an_installed_skill_gives_no_warning() {
     let f = fixture();
     put_skill(f.home.path(), ".claude/skills/moai");
-    put_skill(f.home.path(), ".agents/skills/moai");
-    for host in ["cc", "codex"] {
+    for host in ["cc", "glm"] {
         let out = launch(&f, host);
         assert!(warnings(&out).is_empty(), "{host}: {}", stderr(&out));
     }

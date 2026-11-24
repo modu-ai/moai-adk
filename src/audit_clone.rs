@@ -150,14 +150,18 @@ pub fn plan(project: &Path, req: &Request) -> Result<Value> {
         id["project_id"].as_str(),
         id["home_state_root"].as_str(),
     ) {
-        (Some(pid), Some(home)) => (
-            Value::String(
-                evidence_dir(Path::new(home), pid, req.pr, req.head)
-                    .to_string_lossy()
-                    .into_owned(),
-            ),
-            Value::Null,
-        ),
+        (Some(pid), Some(home)) => {
+            // SPEC-20261124-home-writer-links: the auditor copies logs into this folder, so a
+            // symbolic link between the home state root and it is never named as the place.
+            let dir = evidence_dir(Path::new(home), pid, req.pr, req.head);
+            match crate::layout::refuse_linked_home_path(Path::new(home), &dir) {
+                Ok(()) => (
+                    Value::String(dir.to_string_lossy().into_owned()),
+                    Value::Null,
+                ),
+                Err(refused) => (Value::Null, Value::String(refused)),
+            }
+        }
         (None, _) => (
             Value::Null,
             json!("project profile has no project_id; evidence stays in the verdict comment until it has one"),

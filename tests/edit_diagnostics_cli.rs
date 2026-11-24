@@ -223,15 +223,14 @@ fn an_enabled_setting_generates_one_hook_line_for_claude_code_only() {
                     "timeout": 12})
         ]
     );
-    assert_eq!(f.planned("codex"), Vec::<Value>::new());
-    // Codex and OMP do not run the duty in S1: an engine error, nothing checked.
+    // A removed host is answered with one line on stderr and exit 0: nothing checked.
     for host in ["codex", "omp"] {
         let out = f.dispatch_as(
             host,
             &input("Write", &f.file(), &f.proj),
             &[("MODE", "diag")],
         );
-        assert_eq!(out.status.code(), Some(1), "{host}");
+        assert_eq!(out.status.code(), Some(0), "{host}");
         assert!(out.stdout.is_empty());
     }
     assert!(!f.ran());

@@ -9,7 +9,7 @@
       "stdin": "../statusline/stdin/a01-minimal.json",
       "covers": [
         "model",
-        "CTX n/a without context_window",
+        "CW n/a without context_window",
         "absent usage windows hidden",
         "no directory row"
       ],
@@ -17,18 +17,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -40,9 +40,9 @@
       "stdin": "../statusline/stdin/a02-doc-full.json",
       "covers": [
         "L1 model/effort/thinking/cache/versions/duration/style unchanged",
-        "session prefix then exactly two spaces before CTX",
-        "CTX -> 5H -> Week order",
-        "reset timestamps hidden",
+        "session prefix then exactly two spaces before CW",
+        "CW -> 5H -> 7D order",
+        "weekly reset countdown shown",
         "repo identity hidden without git",
         "main PR state and agent hidden"
       ],
@@ -50,18 +50,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -72,25 +72,25 @@
       "class": "a",
       "stdin": "../statusline/stdin/a03-context-null.json",
       "covers": [
-        "context_window null -> CTX n/a",
+        "context_window null -> CW n/a",
         "absent usage windows hidden"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -101,24 +101,24 @@
       "class": "a",
       "stdin": "../statusline/stdin/a04-context-high.json",
       "covers": [
-        "context above the hard ceiling -> /clear marker"
+        "context above the hard ceiling renders without a /clear marker"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -140,18 +140,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -168,18 +168,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -197,18 +197,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -228,18 +228,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -256,18 +256,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -284,18 +284,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -312,18 +312,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -340,18 +340,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -362,24 +362,24 @@
       "class": "a",
       "stdin": "../statusline/stdin/a13-duplicate-top-level-keys.json",
       "covers": [
-        "duplicate top-level keys: the later model replaces, a later null leaves a plain string (#2350 audit 2)"
+        "duplicate top-level keys: the later model replaces the earlier one whole (SPEC-20261122-statusline-limits REQ-10; session_name is not read)"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -390,24 +390,24 @@
       "class": "a",
       "stdin": "../statusline/stdin/a14-duplicate-nested-keys.json",
       "covers": [
-        "duplicate pointer-struct keys merge field by field; a nested duplicate takes the later value (#2350 audit 2)"
+        "a duplicated key keeps its last value whole, objects are not merged: the later context_window has no percentage, so CW n/a; a nested duplicate takes the later value (SPEC-20261122-statusline-limits REQ-10)"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -418,24 +418,24 @@
       "class": "a",
       "stdin": "../statusline/stdin/a15-case-folded-keys.json",
       "covers": [
-        "keys match case-insensitively with Go foldName (long s), -0 is an integer (#2350 audit 2)"
+        "keys match exactly: MODEL and Display_Name are other keys, so no model line (SPEC-20261122-statusline-limits REQ-10)"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -468,18 +468,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -535,18 +535,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -571,18 +571,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -606,18 +606,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -642,18 +642,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -671,24 +671,24 @@
         }
       ],
       "covers": [
-        "armed goal suppresses the /clear marker (compare a04)"
+        "armed goal, no /clear marker anywhere (compare a04)"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -706,24 +706,24 @@
         }
       ],
       "covers": [
-        "non-armed goal keeps the /clear marker (control for b06)"
+        "non-armed goal, also without a /clear marker (control for b06)"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -735,26 +735,26 @@
       "stdin": "stdin/a16-session-five-hour-only.json",
       "covers": [
         "session prefix followed by exactly two spaces",
-        "present 5H window missing percentage -> 0%",
-        "absent Week hidden",
+        "present 5H window missing percentage -> no 5H item",
+        "absent 7D hidden",
         "reset timestamp hidden"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -767,25 +767,54 @@
       "covers": [
         "absent session has no prefix or padding",
         "absent 5H hidden",
-        "present Week label retains usage_7d semantics",
+        "present 7D label retains usage_7d semantics",
         "reset timestamp hidden"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "a18-context-percentage-null",
+      "class": "a",
+      "stdin": "stdin/a18-context-percentage-null.json",
+      "covers": [
+        "context_window with a size and a null percentage -> CW n/a, no icon, never 0%",
+        "absent usage windows hidden"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -803,18 +832,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -851,18 +880,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -910,18 +939,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -958,18 +987,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -1000,24 +1029,24 @@
       "stdin": "../statusline/stdin/a02-doc-full.json",
       "covers": [
         "session-only second row has no trailing padding or separator",
-        "disabled CTX and usage windows omitted"
+        "disabled CW and usage windows omitted"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -1035,8 +1064,8 @@
       "class": "b",
       "stdin": "../statusline/stdin/a02-doc-full.json",
       "covers": [
-        "card C-65: card counts \ud83d\uddc2\ufe0f remaining / \u25b6\ufe0f being worked on / \ud83d\udd03 waiting for integration / \u2705 done after the forge counts (card 85: one segment)",
-        "counts read from the project's local ledger in the temporary HOME (3 active without notes, 2 review, 20 draft, 25 ready, 5 hold, 12 done): no note marks an active card as waiting, so only the review cards wait"
+        "the flow line: the cards of the local ledger by stage, on a line between the repository line and the usage windows (submitted, audited, landed | blocked, hold | draft, ready, working, stale, done today)",
+        "stages read from the project's local ledger in the temporary HOME (3 active without notes or reservation, 2 review, 20 draft, 25 ready, 5 hold, 12 done): no note marks an active card, so the 3 are stale and the 2 review cards are submitted; the session holds no card, so no card of mine leads the line"
       ],
       "setup": [
         {
@@ -1072,18 +1101,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -1094,8 +1123,8 @@
       "class": "b",
       "stdin": "../statusline/stdin/a02-doc-full.json",
       "covers": [
-        "card counts split into \ud83d\uddc2\ufe0f remaining / \u25b6\ufe0f being worked on / \ud83d\udd03 pushed and waiting for integration / \u2705 done (one segment after the forge counts)",
-        "a card in review waits, and an active card waits when its newest marker note is LANE-READY-INTEGRATION (3 active of which 1 waits, 2 review, 20 draft, 25 ready, 5 hold, 12 done)"
+        "the flow line with a submitted active card: the same ledger as b13 plus one marker note",
+        "a card in review is submitted, and an active card is submitted when its newest marker note is LANE-READY-INTEGRATION (3 active of which 1 submitted and 2 stale, 2 review, 20 draft, 25 ready, 5 hold, 12 done)"
       ],
       "setup": [
         {
@@ -1131,18 +1160,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -1161,18 +1190,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -1190,18 +1219,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -1212,7 +1241,7 @@
       "class": "d",
       "stdin": "stdin/d01-leader-mode.json",
       "covers": [
-        "#2928 S-1: line 3 is the tag, then CTX, then Week",
+        "#2928 S-1: line 3 is the tag, then CW, then 7D",
         "#2928 S-2: a live registry entry for session_name with mode leader shows leader"
       ],
       "setup": [
@@ -1230,18 +1259,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -1269,18 +1298,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -1308,18 +1337,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }
@@ -1342,18 +1371,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "d43cf2bdd4a88d1ce2be46de7b30ccdbaecf9fd58fcbf653621c90c74a98093b",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "4.2647.0",
-            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
+            "version": "4.2648.0",
+            "sha256": "73941fc72afe7fe437f7b40cbf08af7b1728d6c20f6b8a243b782e02375ecf84",
             "stdout": "PTY"
           }
         }

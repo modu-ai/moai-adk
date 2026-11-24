@@ -215,17 +215,9 @@ fn the_project_update_block_ends_finished_and_up_to_date_screens_only() {
     let mut partial = applied.clone();
     partial["routing_result"] =
         serde_json::json!({"state": "error", "message": "routing file changed during apply"});
-    for (lang, block, codex) in [
-        (
-            Lang::Ko,
-            "각 프로젝트의 세션에서 /moai update",
-            "$moai update",
-        ),
-        (
-            Lang::En,
-            "run /moai update in a session there",
-            "$moai update",
-        ),
+    for (lang, block) in [
+        (Lang::Ko, "각 프로젝트의 세션에서 /moai update"),
+        (Lang::En, "run /moai update in a session there"),
     ] {
         for project in [None, go_project(), moai_project()] {
             let v = view(lang, Look::Plain, 80, project.clone());
@@ -236,10 +228,11 @@ fn the_project_update_block_ends_finished_and_up_to_date_screens_only() {
                 // The sentence wraps to the width; read it with its lines joined (a no-break
                 // space holds each command together).
                 let joined = flat(&text);
-                assert!(joined.contains(block) && joined.contains(codex), "{text}");
+                assert!(joined.contains(block), "{text}");
+                assert!(!joined.contains("$moai"), "no Codex command: {text}");
                 // The block is the end of the screen: the last paragraph is the block.
                 let end = flat(text.trim_end().rsplit("\n\n").next().unwrap_or(""));
-                assert!(end.contains(block) && end.contains(codex), "{text}");
+                assert!(end.contains(block), "{text}");
                 match &project {
                     Some(p) if p.go_items.is_some() => assert!(text.contains("site —"), "{text}"),
                     Some(_) => assert!(text.contains("app —"), "{text}"),
@@ -255,7 +248,7 @@ fn the_project_update_block_ends_finished_and_up_to_date_screens_only() {
                 screen(&partial, Asked::Yes, &v),
             ] {
                 let flat = flat(&text);
-                assert!(!flat.contains(block) && !flat.contains(codex), "{text}");
+                assert!(!flat.contains(block) && !flat.contains("$moai"), "{text}");
             }
         }
     }
@@ -420,15 +413,32 @@ fn no_screen_prints_json_or_asks_to_copy_a_digest_when_it_asks() {
 /// the files it published, not every file the result lists.
 #[test]
 fn the_applied_screen_counts_published_files_and_keeps_healthy_hosts_ok() {
-    let mut applied = fixture("applied");
-    let hosts = applied["result"]["hosts"].as_array_mut().unwrap();
-    // claude: nothing to write. codex: one file of 31 published by a backup-then-replace.
+    let v = view(Lang::En, Look::Plain, 80, None);
+    // The skill host: nothing to write.
+    let mut unchanged = fixture("applied");
+    let hosts = unchanged["result"]["hosts"].as_array_mut().unwrap();
     hosts[0]["status"] = "unchanged".into();
     for f in hosts[0]["files"].as_array_mut().unwrap() {
         f["published"] = false.into();
     }
-    hosts[1]["status"] = "replaced".into();
-    for (i, f) in hosts[1]["files"]
+    let text = screen(&unchanged, Asked::Yes, &v);
+    assert!(
+        !text.contains("Partly applied") && !text.contains("blocked"),
+        "{text}"
+    );
+    // 5 agents + 1 routing + 2 style + 1 command name.
+    assert!(text.contains("✓ Done — 9 changed"), "{text}");
+    assert!(
+        !text
+            .lines()
+            .any(|l| l.contains("skills claude") && l.contains("changed")),
+        "{text}"
+    );
+    // The skill host: one file of 31 published by a backup-then-replace.
+    let mut applied = fixture("applied");
+    let hosts = applied["result"]["hosts"].as_array_mut().unwrap();
+    hosts[0]["status"] = "replaced".into();
+    for (i, f) in hosts[0]["files"]
         .as_array_mut()
         .unwrap()
         .iter_mut()
@@ -436,23 +446,16 @@ fn the_applied_screen_counts_published_files_and_keeps_healthy_hosts_ok() {
     {
         f["published"] = (i == 0).into();
     }
-    let v = view(Lang::En, Look::Plain, 80, None);
     let text = screen(&applied, Asked::Yes, &v);
     assert!(
         !text.contains("Partly applied") && !text.contains("blocked"),
         "{text}"
     );
-    // 1 skill file + 15 agents + 2 routing + 3 style + 1 command name.
-    assert!(text.contains("✓ Done — 22 changed"), "{text}");
+    // 1 skill file + 5 agents + 1 routing + 2 style + 1 command name.
+    assert!(text.contains("✓ Done — 10 changed"), "{text}");
     assert!(
         text.lines()
-            .any(|l| l.contains("skills codex") && l.contains(" 1 changed")),
-        "{text}"
-    );
-    assert!(
-        !text
-            .lines()
-            .any(|l| l.contains("skills claude") && l.contains("changed")),
+            .any(|l| l.contains("skills claude") && l.contains(" 1 changed")),
         "{text}"
     );
     // The project step still ends a run whose every change succeeded.
@@ -689,4 +692,68 @@ fn the_preview_shows_routing_appends_and_blocked_style_targets() {
     assert!(text.contains("Nothing can be applied"), "{text}");
     let name = path.rsplit('/').next().unwrap();
     assert!(flat_text.contains(name), "{text}");
+}
+
+/// SPEC-20261122-output-style-install-checks: the `notices` list (a project setting that hides
+/// the style, the `/status` pointer) is a row of its own word on the question and on the result
+/// screen, never a skipped write.
+#[test]
+fn a_notice_is_its_own_row_never_a_skipped_one() {
+    let notice = serde_json::json!([{"part": "style", "host": "claude",
+        "reason": "if the style does not show up, open /status"}]);
+    let mut changes = fixture("preview-changes");
+    changes["notices"] = notice.clone();
+    let mut done = fixture("applied");
+    done["notices"] = notice;
+    for lang in [Lang::En, Lang::Ko] {
+        let v = view(lang, Look::Plain, 100, None);
+        let (word, skipped) = if lang == Lang::Ko {
+            ("알림", "건너뜀")
+        } else {
+            ("notice", "skipped")
+        };
+        for text in [question(&changes, &v), screen(&done, Asked::Yes, &v)] {
+            let lines: Vec<&str> = text
+                .lines()
+                .filter(|l| l.contains("open /status"))
+                .collect();
+            assert_eq!(lines.len(), 1, "{text}");
+            assert!(lines[0].contains("style claude"), "{text}");
+            assert!(
+                lines[0].contains(&format!("{word}: if the style")),
+                "{text}"
+            );
+            assert!(!lines[0].contains(skipped), "{text}");
+        }
+    }
+    // A narrow screen wraps the row and a dumb terminal draws it in ASCII; both keep the
+    // notice word and never the skipped one (goldens: a dumb terminal at 40 columns, and the
+    // Korean result screen at 40 columns).
+    let dumb = view(Lang::En, Look::Ascii, 40, None);
+    let narrow = view(Lang::Ko, Look::Plain, 40, None);
+    for (name, lang, text) in [
+        (
+            "question-notice-ascii-40",
+            Lang::En,
+            question(&changes, &dumb),
+        ),
+        (
+            "applied-notice-40",
+            Lang::Ko,
+            screen(&done, Asked::Yes, &narrow),
+        ),
+    ] {
+        let (word, skipped) = if lang == Lang::Ko {
+            ("알림", "건너뜀")
+        } else {
+            ("notice", "skipped")
+        };
+        let joined = flat(&text);
+        assert!(joined.contains(&format!("{word}: if the style")), "{text}");
+        assert!(
+            !joined.contains(&format!("{skipped}: if the style")),
+            "{text}"
+        );
+        check(name, lang, &text, 40);
+    }
 }

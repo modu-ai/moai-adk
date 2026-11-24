@@ -308,16 +308,8 @@ fn assert_walks_to_the_end(fx: &GoFx, expected: &[&str]) -> Walk {
 }
 
 /// The order every shape runs: the settings clean-up, the move of the Go folder, then the
-/// install steps that have something to write (the MoAI files, the hook set, the host files).
-const ORDER: [&str; 7] = [
-    "go-settings",
-    "go-state",
-    "generation",
-    "hooks",
-    "codex-hooks",
-    "codex-config",
-    "omp-hooks",
-];
+/// install steps that have something to write (the MoAI files and the hook set).
+const ORDER: [&str; 4] = ["go-settings", "go-state", "generation", "hooks"];
 
 #[test]
 fn shape_g_reaches_all_unchanged() {
@@ -500,10 +492,14 @@ fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
         "{:?}",
         open_steps(&rest.last)
     );
-    let agents = fs::read_to_string(fx.root.join("AGENTS.md")).unwrap();
+    // The managed section lives in CLAUDE.md (the instruction file the generation step writes); it
+    // holds project facts only, so it points into `.moai/` and never into the earlier state folder.
+    let managed = fs::read_to_string(fx.root.join("CLAUDE.md")).unwrap();
     assert!(
-        agents.contains(".moai/workflows/project/") && !agents.contains(".moai-cli/workflows"),
-        "{agents}"
+        managed.contains("<!-- moai:managed:begin id=moai-workflow -->")
+            && managed.contains("`.moai/specs/`")
+            && !managed.contains(".moai-cli/"),
+        "{managed}"
     );
     assert!(fx.root.join(".moai/workflows/project").is_dir());
     assert_eq!(rest.last["state_root"]["rust_marker"], json!("valid"));
@@ -522,20 +518,9 @@ fn project_nodes(fx: &GoFx) -> BTreeMap<String, Node> {
 }
 
 /// What the chain adds and an undo does not take away: the receipts, the set-aside folder of the
-/// Rust state, and the files of the three host steps that have no revert command.
+/// Rust state.
 fn may_stay_behind(rel: &str) -> bool {
-    rel == ".codex"
-        || rel.starts_with(".codex/")
-        || rel == ".omp"
-        || rel.starts_with(".omp/")
-        || rel.starts_with(".moai-cli/receipts")
-        || rel.starts_with(".moai.rust-")
-        || matches!(
-            rel,
-            ".moai-cli/manifests/codex-config.json"
-                | ".moai-cli/manifests/codex-hooks.json"
-                | ".moai-cli/manifests/omp-hooks.json"
-        )
+    rel.starts_with(".moai-cli/receipts") || rel.starts_with(".moai.rust-")
 }
 
 fn applied<'a>(w: &'a Walk, step: &str) -> &'a Value {
@@ -553,8 +538,9 @@ fn applied<'a>(w: &'a Walk, step: &str) -> &'a Value {
 #[test]
 fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
     let fx = shape_g();
-    // The user's own instruction file: the move keeps it in the backup, the generation step writes
-    // a managed one in its place, and the go-state revert must find that one still there or gone.
+    // The user's own instruction files: the move keeps the Go CLAUDE.md in the backup, the
+    // generation step writes the managed CLAUDE.md in its place, and the go-state revert must find
+    // that one gone before it puts the user's file back.
     fx.write("AGENTS.md", "# AGENTS\n\nmine\n");
     let start = project_nodes(&fx);
     let w = walk(&fx);
@@ -572,14 +558,6 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
             .map(|c| c.as_str().unwrap().to_string())
             .collect()
     };
-    for step in ["omp-hooks", "codex-config", "codex-hooks"] {
-        let note = steps.iter().find(|s| s["step"] == step).unwrap()["note"].as_str();
-        assert!(
-            note.is_some_and(|n| n.contains("no revert command")),
-            "{step}"
-        );
-        assert_eq!(commands(step), Vec::<String>::new(), "{step}");
-    }
     // What stays is said, not left to be read as "everything is back".
     let stays = w.last["undo_order"]["stays"].as_str().unwrap();
     assert!(
@@ -634,7 +612,7 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
         refused["error"]["message"]
             .as_str()
             .unwrap_or_default()
-            .contains("AGENTS.md is conflict"),
+            .contains("CLAUDE.md is conflict"),
         "{refused}"
     );
     assert_eq!(

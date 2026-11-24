@@ -1,0 +1,5 @@
+# `home-archive-plan`
+
+operation `home_archive.plan` · 코드 `src/ops/home_archive_plan.rs`, `src/home_state_retire.rs` · SPEC-20261123-home-state-retire
+
+`home-archive-plan [--home DIR] [--now UTC]` 는 옛 HOME 상태 폴더(`~/.moai-cli`)를 통째로 `~/.moai/archive/moai-cli-<UTC>/` 로 치우는 이동(rename 한 번)을 미리 본다. 맨 위 항목마다 이름·종류·모드를 `lstat` 만으로 보이고 파일을 열지도 링크를 따라가지도 않으므로, vault 도 이름과 모드만 보인다. 동작은 `none`(옛 폴더 없음), `blocked`, `retire` 중 하나다. 막는 이유: `earlier_folder_is_a_link`, `earlier_folder_not_a_folder`, `moai_folder_not_a_folder`, `archive_not_a_folder`, `stamp_taken`(보관 폴더·저널·매니페스트 이름이 이미 있음), `earlier_folder_unreadable`, `unreadable_names:<n>`, `not_fully_listed`(항목 500개 초과), `different_file_system`, `device_unknown`, `running_binary_inside`(실행 중인 바이너리가 옛 폴더 안), `in_use:<이유>`(돌고 있는 프로그램이 그 안을 씀, 프로세스 표를 못 읽으면 `in_use:process_check_unavailable`). 이 프로세스의 `PATH` 에서 옛 폴더를 가리키는 항목(`path_entries`)과 `moai update` 안내(`path_guidance`)를 보이고, 셸 파일은 읽지도 고치지도 않는다. 새 상태 폴더에 `versions` 가 없으면 경고 한 줄. 아무것도 쓰지 않고 `plan_digest`(시계 포함)와 `content_digest`(시계 없음)를 돌려준다.

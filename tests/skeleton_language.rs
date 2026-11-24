@@ -93,6 +93,15 @@ fn create(root: &Path, language: &str, local_file: &str) {
     apply(root, &planned);
 }
 
+/// [`create`] with the personal file `ignored` and picked: `CLAUDE.local.md` is created only on
+/// the user's pick (SPEC-20261122-claude-md-layout REQ-6).
+fn create_with_personal_file(root: &Path, language: &str) {
+    let mut input = request(language, "ignored");
+    input["picks"] = json!(["personal-file"]);
+    let planned = result(&cli(&["agents-plan", root.to_str().unwrap()], &input));
+    apply(root, &planned);
+}
+
 fn read(root: &Path, rel: &str) -> String {
     fs::read_to_string(root.join(rel)).unwrap()
 }
@@ -177,8 +186,8 @@ fn every_first_creation_text_follows_its_language() {
     ];
     for (language, korean) in [("ko", true), ("en", false)] {
         let root = project(Some(language));
-        create(root.path(), language, "ignored");
-        for file in ["AGENTS.md", "REVIEW.md", "AGENTS.local.md", ".gitignore"] {
+        create_with_personal_file(root.path(), language);
+        for file in ["CLAUDE.md", "REVIEW.md", "CLAUDE.local.md", ".gitignore"] {
             let text = read(root.path(), file);
             let outside = outside_markers(&text);
             let has_hangul = outside
@@ -199,12 +208,12 @@ fn every_first_creation_text_follows_its_language() {
             }
         }
         // The two files that carry words: one first heading each, in the project language.
-        assert!(read(root.path(), "AGENTS.local.md").starts_with(if korean {
+        assert!(read(root.path(), "CLAUDE.local.md").starts_with(if korean {
             "# 개인 작업 보충"
         } else {
             "# Personal supplement"
         }));
-        assert!(read(root.path(), "AGENTS.md").starts_with("# demo\n\n"));
+        assert!(read(root.path(), "CLAUDE.md").starts_with("# demo\n\n"));
         assert_eq!(
             outside_markers(&read(root.path(), ".gitignore")),
             "",

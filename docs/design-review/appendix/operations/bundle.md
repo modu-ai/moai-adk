@@ -6,7 +6,7 @@ operation `bundle` · 코드 `src/ops/bundle.rs`, `src/bundle.rs`, `src/bundle/b
 
 ## `bundle ready [--project .] [--home H] [--dir .] [--tip <tip>]`
 
-`--tip` 을 비우면 통합 대상은 프로필이 정해요: m-flow 이고 `work_flow.integration_branch` 가 기록돼 있으면 `origin/<branch>`, 기록이 없거나 프로필을 읽을 수 없으면 `origin/v2026.11.0`, 명시한 `--tip` 이 항상 이긴다(SPEC-20261120-mflow-integration-branch-choice).
+`--tip` 을 비우면 통합 대상은 프로필이 정해요: m-flow 이고 `work_flow.integration_branch` 가 기록돼 있으면 `--dir` 저장소의 로컬 `refs/heads/<branch>`(커밋일 때, 통합 브랜치는 로컬이고 `origin` 은 뒤에 있다), 그 로컬 브랜치가 없을 때만 `origin/<branch>`, 기록이 없거나 프로필을 읽을 수 없으면 `origin/v2026.11.0`, 명시한 `--tip` 이 항상 이긴다(SPEC-20261120-mflow-integration-branch-choice, SPEC-20261124-bundle-local-tip). 판단한 tip 이 `origin/<name>` 모양이고 그것도 로컬 `refs/heads/<name>` 도 커밋이 아니면 거절문이 두 이름을 모두 댄다(SPEC-20261124-bundle-tip-doc-refusal). 도구는 fetch 하지 않는다.
 
 카드마다 첫 줄이 `LANE-READY-INTEGRATION` 으로 시작하는 노트 중 번호가 가장 큰 것(가장 새 줄)을 읽는다. 읽히는 모양은 `LANE-READY-INTEGRATION C-<n> head=<40자리 소문자 16진수>` 다음에 줄 끝이나 공백이 오는 것이고, head 바로 뒤에 ` spec=<SPEC id>` 가 올 수 있다(없어도 된다). 노트가 놓인 카드와 줄의 카드가 같아야 한다. 가장 새 줄이 읽히지 않으면 그 카드는 `unreadable`(카드, 노트 번호)에 올라가고, 더 오래된 줄의 head 는 쓰지 않는다. 결과: `heads[]`(`card`, `note_id`, `head`, `spec`, `specs`(`<tip>..<head>` 의 `Moai-Spec` trailer), `present`, `on_origin`, `already_in_tip`, `ready_lines`), `unreadable[]`, `tip`(이름, SHA, 커밋 시각). 도구는 fetch 하지 않는다: git 은 worktree 가 함께 쓰는 fetch 시각을 남기지 않으므로 tip 의 SHA 와 커밋 시각을 보여 주고, 부르기 전에 fetch 하는 것은 부르는 쪽이다.
 
@@ -28,6 +28,16 @@ HEADS 는 `C-<n>`(카드의 가장 새 읽히는 READY head) 또는 `C-<n>=<40�
 | `result_missing` | SPEC 의 AC 중 `## Result` 에 줄이 없는 것 |
 | `conflict` | tip 과 또는 앞선 head 와 병합하면 충돌한다. `detail.files`·`detail.with`. GitHub 가 돌리는 글자 병합으로 본다(복제본에 등록된 병합 드라이버를 덮는다) |
 
+**경고(`warnings[]`, SPEC-20261123-ready-mutant-line)**: 같은 모양 `{code, card, head, detail}` 이고 `ok`·`findings`·종료 코드를 바꾸지 않는다(관찰 단계, `warning_note`; `heads[].warnings` 는 개수). head 를 이름으로 가진 가장 새 READY 노트의 본문을 첫 줄 뒤부터 읽고, 줄은 `guard-mutant:` 로 시작할 때만(앞 공백과 `- ` 는 허용) 읽는다. 모양은 `guard-mutant: <시험> | <뺀·뒤집은 코드> | exit <n>`(n 은 그 시험이 뮤턴트에서 낸 종료 코드) 또는 `guard-mutant: none | <이유>`(새 지킴 시험이 없음)다.
+
+| code | 뜻 |
+| --- | --- |
+| `mutant_line_missing` | 노트 본문에 `guard-mutant:` 줄이 없다. 그 head 를 이름으로 가진 READY 노트가 없을 때도 같은 코드이고 `detail` 이 그렇게 말한다 |
+| `mutant_line_unreadable` | 두 모양 어느 쪽도 아니다(칸 수가 틀림, 빈 칸, `exit <숫자>` 가 아님). `detail.line`: 노트 안의 줄 번호(첫 줄이 1) |
+| `mutant_survived` | 줄이 `exit 0` 을 말한다: 그 시험이 뮤턴트에서 통과했다, 곧 빠진 시험이다. `detail`: `test`, `line` |
+
+도구는 줄이 사실인지 알 수 없다(`warning_note`); 사실 확인은 감사의 몫이다. 막는 쪽으로 바꾸는 일은 관찰 뒤 기록하는 결정이다.
+
 읽히지 않는 판정 노트(`AUDIT ` 로 시작하지만 읽히지 않음)는 `unreadable_verdict` 로 알리기만 하고 검사를 실패시키지 않는다. 충돌은 head 와 tip, head 와 앞선 head 를 둘씩 본다; 세 개 이상이 함께 만드는 충돌은 `build`(조각 3)의 몫이다. `PASS` 노트가 있다는 것을 보고 누가 썼는지는 알 수 없다(`audit_note`). **노트가 적은 tier**(SPEC-20261119-bundle-audit-tier, 리더 결정 D-7): 판정 줄의 마지막 ` head ` 앞에 `tier <N>`(N 은 0~2 한 자리, 앞은 줄 처음·공백·`(`·`,`, 뒤는 줄 끝·공백·`,`·`)`·`;`)이 있으면 읽고(`AUDIT C-<n> (<SPEC>, tier <N>) head <sha> base <sha> — verdict: PASS`) `heads[].pass_tier` 에 head 의 `PASS` 노트 중 가장 높은 값을 보인다. 모든 `PASS` 가 tier 를 적었고 가장 높은 것이 하한보다 낮으면 `audit_tier_low`; tier 가 없는 `PASS`·서로 다른 두 tier·2 를 넘는 숫자는 읽지 않고 이전처럼 하한을 채운다. 판정 줄은 `gate::parse_verdict` 가 그대로 읽는다(`src/gate.rs`·`src/audit_gate.rs` 는 바꾸지 않았다). tier 를 쓰는 일은 강제하지 않는다. `ok` 는 발견이 없을 때만 참이다. **결과로 알리는 발견은 exit 0 이다**(입력을 못 쓰면 — 없는 tip, 잘못된 head 인자 — exit 1, 사용법 오류는 2): `ok:false` 로 exit 1 을 내는 규칙은 `src/main.rs` 에 연산 이름으로 있고 그 파일은 다른 카드가 잡고 있어, 이 조각은 읽는 쪽이 `ok` 를 본다고 가정한다.
 
 ## `bundle body HEADS… --branch B --run FILE [--out FILE] [--tip …]`
@@ -40,9 +50,9 @@ HEADS 는 `C-<n>`(카드의 가장 새 읽히는 READY head) 또는 `C-<n>=<40�
 
 ## `bundle build HEADS… [--date YYYYMMDD] [--project .] [--home H] [--dir .] [--tip origin/v2026.11.0]`
 
-새 가지 `m-flow/bundle-<날짜>-<n>` 과 새 worktree `<HOME>/.moai/worktrees/<프로젝트>-bundle-<n>` 을 tip 의 커밋에서 만들고, HEADS(`C-<n>` 또는 `C-<n>=<40자리 16진수>`)를 준 순서대로 head 마다 병합 커밋 하나씩 합친다. `<날짜>` 는 오늘(UTC)이고 `--date` 로 정한다(여덟 자리, 월 01~12, 일 01~31). `<n>` 은 1~999 중 다음이 모두 없는 가장 작은 수다: 같은 이름의 로컬 가지, `origin` 가지, 등록된 worktree(폴더가 사라진 것도), 그 폴더; 999 개가 모두 쓰였으면 아무것도 만들지 않고 거절한다. 병합은 GitHub 가 돌리는 글자 병합이다: git 설정(복제본의 것과 사용자의 것)에 이름이 있는 병합 드라이버는 모두 글자 병합으로 덮는다(`git config --get-regexp '^merge\..*\.driver$'`). `check` 의 충돌 검사도 복제본 설정에 이름이 있는 드라이버를 모두 덮는다(전역 설정을 끈 채 돌리므로 복제본의 설정이 적용되는 전부다). **이미 있는 가지·ref·worktree·폴더는 옮기거나 지우거나 강제하지 않는다**: 다시 만들 때는 늘 새 번호의 새 가지다. 쓰는 것은 새 가지, 그 worktree, 병합 커밋뿐이고 fetch·push·PR·카드 노트·원장 행·설정은 건드리지 않는다. 쓰기 git 은 사용자의 작성자 신원과 훅 설정을 따르려고 `identity::scrub_git_env` 로만 환경을 정리해 부른다(`--no-verify` 를 쓰지 않는다).
+새 가지 `m-flow/bundle-<날짜>-<n>` 과 새 worktree `<프로젝트>/.claude/worktrees/<프로젝트>-bundle-<n>` 을 tip 의 커밋에서 만들고, HEADS(`C-<n>` 또는 `C-<n>=<40자리 16진수>`)를 준 순서대로 head 마다 병합 커밋 하나씩 합친다. `<날짜>` 는 오늘(UTC)이고 `--date` 로 정한다(여덟 자리, 월 01~12, 일 01~31). `<n>` 은 1~999 중 다음이 모두 없는 가장 작은 수다: 같은 이름의 로컬 가지, `origin` 가지, 등록된 worktree(폴더가 사라진 것도), 그 폴더; 999 개가 모두 쓰였으면 아무것도 만들지 않고 거절한다. 병합은 GitHub 가 돌리는 글자 병합이다: git 설정(복제본의 것과 사용자의 것)에 이름이 있는 병합 드라이버는 모두 글자 병합으로 덮는다(`git config --get-regexp '^merge\..*\.driver$'`). `check` 의 충돌 검사도 복제본 설정에 이름이 있는 드라이버를 모두 덮는다(전역 설정을 끈 채 돌리므로 복제본의 설정이 적용되는 전부다). **이미 있는 가지·ref·worktree·폴더는 옮기거나 지우거나 강제하지 않는다**: 다시 만들 때는 늘 새 번호의 새 가지다. 쓰는 것은 새 가지, 그 worktree, 병합 커밋, 그리고 worktree 를 만든 뒤 저장소의 로컬 exclude 파일(`<공통 git 폴더>/info/exclude`)에 더하는 한 줄(`/.claude/worktrees/`, git 이 그 폴더를 이미 무시하면 쓰지 않음)뿐이고 fetch·push·PR·카드 노트·원장 행·설정은 건드리지 않는다. exclude 파일을 쓸 수 없으면 만들기는 끝난 채로 `place_exclude_error` 에 오류를 담는다. 쓰기 git 은 사용자의 작성자 신원과 훅 설정을 따르려고 `identity::scrub_git_env` 로만 환경을 정리해 부른다(`--no-verify` 를 쓰지 않는다).
 
-결과 키: `action`, `number`, `branch`, `worktree`, `tip`, `pinned`(병합을 마친 뒤 `git rev-parse` 로 읽은 가지의 SHA), `merged[]`(`card`, `head`, `merge`), `dropped[]`(`card`, `head`, `files`), `skipped[]`(`card`, `head`, `reason`: `in_tip` 또는 `in_branch`), `rebuild`, `ok`, `writes`. 병합이 충돌한 head 는 `git merge --abort` 로 되돌려 가지에 넣지 않고 `dropped` 에 충돌 파일과 함께 올리며 다음 head 로 간다. `ok` 는 `dropped` 가 비었을 때만 참이고(`skipped` 는 실패가 아니다), `rebuild` 는 떨어뜨린 head 만 뺀 같은 빌드의 명령줄(`moai bundle build C-<n>=<sha> … --tip <tip>`, 셸 문자가 든 낱말은 작은따옴표로 감싼다)이거나, 떨어뜨린 것이 없거나 tip 에 없는 head 가 하나도 남지 않으면 빈 문자열이다. 태그 이름이 head 면 태그가 가리키는 커밋을 합치고 그 SHA 를 보고한다.
+결과 키: `action`, `number`, `branch`, `worktree`, `tip`, `pinned`(병합을 마친 뒤 `git rev-parse` 로 읽은 가지의 SHA), `merged[]`(`card`, `head`, `merge`), `dropped[]`(`card`, `head`, `files`), `skipped[]`(`card`, `head`, `reason`: `in_tip` 또는 `in_branch`), `rebuild`, `ok`, `writes`, 그리고 exclude 파일을 쓸 수 없을 때만 `place_exclude_error`. 병합이 충돌한 head 는 `git merge --abort` 로 되돌려 가지에 넣지 않고 `dropped` 에 충돌 파일과 함께 올리며 다음 head 로 간다. `ok` 는 `dropped` 가 비었을 때만 참이고(`skipped` 는 실패가 아니다), `rebuild` 는 떨어뜨린 head 만 뺀 같은 빌드의 명령줄(`moai bundle build C-<n>=<sha> … --tip <tip>`, 셸 문자가 든 낱말은 작은따옴표로 감싼다)이거나, 떨어뜨린 것이 없거나 tip 에 없는 head 가 하나도 남지 않으면 빈 문자열이다. 태그 이름이 head 면 태그가 가리키는 커밋을 합치고 그 SHA 를 보고한다.
 
 만들기 전에 쓸 수 없는 head 를 한 번에 모두 이름 붙여 거절한다(읽히는 READY 줄이 없는 카드, 이 저장소에 커밋이 없는 head, 같은 카드를 두 번 준 것, 모두 이미 tip 에 있어 합칠 것이 없는 경우): 가지도 폴더도 생기지 않는다. 가지를 만든 뒤 git 이 실패하면(작성자 신원 없음, 병합 커밋을 거절하는 훅, 되돌리기 실패) 멈추고 남겨 둔 가지와 worktree 를 이름 붙이며 아무것도 지우지 않는다. `ok:false` 로 exit 1 을 내는 규칙은 연산 이름으로 `src/main.rs` 에 있어 이 동작도 결과로 알리는 발견은 exit 0 이다.
 

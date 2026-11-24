@@ -76,8 +76,20 @@ pub const ACTIVE_STATES: &[&str] = &[
 // state-root map belongs to P09 / 01-B (#1989); 06-B must migrate records if the location moves.
 /// One clone keeps one journal; the common dir is the clone boundary (01-A), so all worktrees
 /// resolve the same root and git never lists the files.
+///
+/// The process-edge adapter of [`journal_root_in`]: it reads the environment HOME once (through
+/// the one reader of it in `layout`) and hands it on. Code that is given a HOME calls
+/// [`journal_root_in`].
 pub fn journal_root(project: &Path) -> Result<PathBuf> {
-    let id = identity::identity(project)?;
+    journal_root_in(project, crate::layout::environment_home().as_deref())
+}
+
+/// [`journal_root`] with the HOME given instead of read from the environment: the journal of the
+/// home layout under `home` once its pointer is in place, else the clone side one. `None` and an
+/// empty HOME mean no HOME, so the journal stays on the clone side.
+pub fn journal_root_in(project: &Path, home: Option<&Path>) -> Result<PathBuf> {
+    // Only `clone_anchor` and the status are read, fields that do not depend on a HOME.
+    let id = identity::identity_in(project, None)?;
     if id["identity_status"].as_str() != Some("ok") {
         return Err(format!(
             "claim journal requires a git repository; identity_status was {}",
@@ -86,8 +98,15 @@ pub fn journal_root(project: &Path) -> Result<PathBuf> {
     }
     // #2175: the P09 opt-in home layout switches the journal store to
     // ~/.moai-cli/projects/<id>/claims once layout.json is in place.
-    if let Some(home) = crate::layout::switched_dir(project, "claims") {
-        return Ok(home);
+    // The journal is then written under the home state root of `home`, which
+    // `identity_in(.., None)` does not resolve: refuse a symlinked root and every symlinked
+    // folder between it and the journal folder here, before the switched path is handed to a
+    // writer (SPEC-20261124-identity-home-arg REQ-9, SPEC-20261124-home-state-link-refusal REQ-4).
+    if let Some(switched) = crate::layout::switched_dir_in(project, "claims", home) {
+        if let Some(root) = crate::layout::default_home_root_in(home) {
+            crate::layout::refuse_linked_home_path(&root, &switched)?;
+        }
+        return Ok(switched);
     }
     let common = id["clone_anchor"]
         .as_str()
@@ -1485,7 +1504,7 @@ pub fn acquire_cli<T: Transport, C: Clock>(
     clock: &C,
 ) -> std::result::Result<Value, OpError> {
     let root = journal_root(project)?;
-    let id = identity::identity(project)?;
+    let id = identity::identity_in(project, None)?;
     let worktree = worktree_id(&id)?;
     let journal = Journal::open(&root)?;
     if !journal.try_lock()? {
@@ -1525,6 +1544,108 @@ mod tests {
 
     fn task_ref() -> TaskRef {
         TaskRef::new("github", "github.com", "acme", "widgets", 101, 7001, 7)
+    }
+
+    /// SPEC-20261124-identity-home-arg REQ-7: with a symlinked home state folder in the
+    /// environment HOME the journal root answers as it does with a sound HOME, because it reads
+    /// no home state.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_claim_journal_root() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_claim_journal_root",
+            |f| {
+                let root = journal_root(&f.project).unwrap();
+                assert!(root.ends_with("claims"), "{}", root.display());
+            },
+        );
+    }
+
+    /// SPEC-20261124-identity-home-arg REQ-9: where `layout.json` switches the journal to the home
+    /// state, a symlinked home state folder of the environment HOME is refused before anything is
+    /// written, as `identity` refused it before the claim group stopped asking it. The child's
+    /// HOME holds the link and a `layout.json` behind it; the real write entry `release_cli` must
+    /// answer the refusal and nothing may appear in the link's target but the marker.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_claim_journal_root_refuses_a_linked_home_when_switched() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_claim_journal_root_refuses_a_linked_home_when_switched",
+            |f| {
+                std::fs::create_dir_all(f.project.join(crate::PROJECT_STATE_DIR)).unwrap();
+                std::fs::write(
+                    f.project.join(crate::project_state!("project.yaml")),
+                    r#"{"schema_version": 1, "project_id": "widgets", "purpose": "claim fixture", "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]}"#,
+                )
+                .unwrap();
+                let home = std::path::PathBuf::from(std::env::var_os("HOME").unwrap());
+                let project_home = crate::home_root::path(&home)
+                    .join("projects")
+                    .join("widgets");
+                std::fs::create_dir_all(&project_home).unwrap();
+                std::fs::write(project_home.join("layout.json"), b"{}").unwrap();
+                let err = release_cli(
+                    &f.project,
+                    "0123456789abcdef",
+                    1,
+                    "x",
+                    &crate::forge::policy::SystemClock,
+                )
+                .unwrap_err();
+                assert_eq!(err.message, "home state root is a symlink; refused");
+                let mut names: Vec<_> = std::fs::read_dir(&project_home)
+                    .unwrap()
+                    .map(|e| e.unwrap().file_name())
+                    .collect();
+                names.sort();
+                assert_eq!(
+                    names,
+                    vec![std::ffi::OsString::from("layout.json")],
+                    "nothing is created behind the link"
+                );
+            },
+        );
+    }
+
+    /// REQ-7 for `acquire_cli`: the request is invalid on purpose, so the answer must be the
+    /// request's own refusal and not the home state refusal of the identity step before it.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_claim_acquire_cli() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_claim_acquire_cli",
+            |f| {
+                let req = ClaimRequest::new(
+                    0,
+                    task_ref(),
+                    "key",
+                    Owner::new("session", "s"),
+                    "x",
+                    vec![],
+                    SpecRef {
+                        id: "SPEC-20261124-identity-home-arg".into(),
+                        revision: "1".into(),
+                        digest: None,
+                    },
+                );
+                let transport = crate::forge::transport::RecordedTransport::new(vec![]);
+                let err = acquire_cli(
+                    &f.project,
+                    req,
+                    &transport,
+                    &crate::forge::policy::SystemClock,
+                )
+                .unwrap_err();
+                assert!(
+                    err.message.contains("unsupported request schema_version"),
+                    "{}",
+                    err.message
+                );
+            },
+        );
     }
 
     #[test]
@@ -1761,5 +1882,114 @@ mod tests {
         for (message, kind) in cases {
             assert_eq!(contract::classify(message), kind, "{message}");
         }
+    }
+}
+
+/// SPEC-20261124-home-env-readers (slice 2): `journal_root_in` takes the HOME as an argument and
+/// `journal_root` is the adapter that reads the environment HOME once. A test that needs the
+/// environment HOME to be another value re-runs itself in a child process, so no test changes
+/// this process's environment and none reads the real HOME.
+#[cfg(all(test, unix))]
+mod journal_root_in_tests {
+    use super::*;
+    use crate::layout::home_arg_tests::{
+        child_var, init_repo, profile_project, run_in_child_of, symlinked_home, write_pointer,
+    };
+    use std::{ffi::OsString, fs};
+
+    /// Set in the child process; the project the child resolves the journal root for.
+    const CHILD_PROJECT: &str = "MOAI_CLAIM_ROOT_TEST_PROJECT";
+    /// Set in the child process; the HOME the child passes as an argument.
+    const CHILD_GIVEN: &str = "MOAI_CLAIM_ROOT_TEST_GIVEN_HOME";
+    /// Set in the child process; the journal root `journal_root` must answer for the child's HOME.
+    const CHILD_EXPECT: &str = "MOAI_CLAIM_ROOT_TEST_EXPECT";
+
+    /// The clone side journal root of the repository at `project`.
+    fn clone_side(project: &Path) -> PathBuf {
+        let anchor = fs::canonicalize(project.join(".git")).unwrap();
+        crate::clone_root::path(&anchor).join("claims")
+    }
+
+    /// AC-6 (REQ-6, REQ-7), child side: the HOME that is passed decides the journal root, and the
+    /// adapter answers what `journal_root_in` answers for the environment HOME. The environment
+    /// HOME of the first child has no pointer, the one of the second child is the switched home.
+    #[test]
+    fn journal_root_in_follows_the_home_it_is_given_not_the_environment() {
+        let test = "journal_root_in_follows_the_home_it_is_given_not_the_environment";
+        let (Some(project), Some(given), Some(expect)) = (
+            child_var(CHILD_PROJECT),
+            child_var(CHILD_GIVEN),
+            child_var(CHILD_EXPECT),
+        ) else {
+            let dir = tempfile::tempdir().unwrap();
+            let project = profile_project(dir.path());
+            init_repo(&project);
+            let given = dir.path().join("given");
+            write_pointer(&given);
+            let other = dir.path().join("other");
+            fs::create_dir(&other).unwrap();
+            let clone = clone_side(&project);
+            let switched = crate::home_root::path(&given).join("projects/widgets/claims");
+            let module = module_path!();
+            let extra = |expect: &Path| {
+                vec![
+                    (CHILD_PROJECT, project.clone()),
+                    (CHILD_GIVEN, given.clone()),
+                    (CHILD_EXPECT, expect.to_path_buf()),
+                ]
+            };
+            for (env_home, expect) in [(&other, &clone), (&given, &switched)] {
+                let vars = extra(expect);
+                let refs: Vec<(&str, &Path)> =
+                    vars.iter().map(|(k, v)| (*k, v.as_path())).collect();
+                run_in_child_of(
+                    module,
+                    test,
+                    Some(&OsString::from(env_home.as_os_str())),
+                    &refs,
+                );
+            }
+            return;
+        };
+        let switched = crate::home_root::path(&given).join("projects/widgets/claims");
+        assert_eq!(journal_root_in(&project, Some(&given)).unwrap(), switched);
+        assert_eq!(
+            journal_root_in(&project, None).unwrap(),
+            clone_side(&project)
+        );
+        assert_eq!(journal_root(&project).unwrap(), expect);
+    }
+
+    /// AC-6 (REQ-6): where the given HOME's state folder is a symlink and the pointer sits behind
+    /// it, the journal root is refused before the switched path is handed to a writer; without
+    /// the pointer, or without a HOME, the journal stays on the clone side.
+    #[test]
+    fn journal_root_in_refuses_a_linked_given_home_when_switched() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = profile_project(dir.path());
+        init_repo(&project);
+        let home = symlinked_home(dir.path());
+        assert_eq!(
+            journal_root_in(&project, Some(&home)).unwrap(),
+            clone_side(&project),
+            "no pointer: the journal stays on the clone side"
+        );
+        let behind = crate::home_root::path(&home).join("projects/widgets");
+        fs::create_dir_all(&behind).unwrap();
+        fs::write(behind.join("layout.json"), b"{}").unwrap();
+        assert_eq!(
+            journal_root_in(&project, Some(&home)),
+            Err("home state root is a symlink; refused".to_string())
+        );
+        assert_eq!(
+            journal_root_in(&project, None).unwrap(),
+            clone_side(&project)
+        );
+        assert!(
+            !fs::read_dir(home.join("elsewhere/projects/widgets"))
+                .unwrap()
+                .any(|e| e.unwrap().file_name() == "claims"),
+            "nothing was made behind the link"
+        );
     }
 }

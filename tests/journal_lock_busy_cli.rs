@@ -143,7 +143,7 @@ fn envelope(op: &str, out: &std::process::Output) -> Value {
 }
 
 fn journal_dir(repo: &Path) -> PathBuf {
-    repo.join(".git").join(".moai-cli").join("claims")
+    moai_cli::clone_root::path(&repo.join(".git")).join("claims")
 }
 
 /// Holds the journal lock for the duration of the returned guard.

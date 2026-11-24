@@ -13,7 +13,7 @@ use std::path::PathBuf;
 /// `body --out`, `Reads only. Writes one new file.` None of them fetches, pushes or opens a pull
 /// request: fetch first, and the leader chooses the heads, pushes and opens the pull request.
 /// `build` is the one action that writes: `Writes a new branch and worktree.` It creates
-/// `m-flow/bundle-<date>-<n>` and a worktree under `<HOME>/.moai/worktrees/`, merges the heads one
+/// `m-flow/bundle-<date>-<n>` and a worktree under `<project>/.claude/worktrees/`, merges the heads one
 /// merge commit each, drops a head that conflicts and names it; it never moves or deletes an
 /// existing branch or worktree.
 /// `verify` is the one action that runs commands: `Runs commands.` It runs the check list in the
@@ -48,7 +48,8 @@ enum Action {
         #[arg(long, default_value = ".")]
         dir: PathBuf,
         /// The branch bundles are merged into; without it the profile's m-flow
-        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
         tip: Option<String>,
     },
@@ -61,7 +62,11 @@ enum Action {
     /// audit floor of 1 or more and no note of the card is a `PASS` verdict naming exactly the
     /// head; the nearest `PASS` on an ancestor is shown), `trailers`, `spec`, `result_missing`
     /// and `conflict` (each head with the tip and with every earlier head, by the text merge
-    /// GitHub runs). `ok` is false when anything was found. Never fetches.
+    /// GitHub runs). `ok` is false when anything was found. `warnings` lists, without changing
+    /// `ok`, `findings` or the exit status, a READY note that has no `guard-mutant:` line
+    /// (`mutant_line_missing`, also when no note names the head), a line that fits neither form
+    /// (`mutant_line_unreadable`) and a mutant the test passed on (`mutant_survived`). Never
+    /// fetches.
     Check {
         /// `C-<n>` or `C-<n>=<40 hex>`, in the order they would be merged.
         #[arg(required = true)]
@@ -76,7 +81,8 @@ enum Action {
         #[arg(long, default_value = ".")]
         dir: PathBuf,
         /// The branch bundles are merged into; without it the profile's m-flow
-        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
         tip: Option<String>,
     },
@@ -114,14 +120,15 @@ enum Action {
         #[arg(long, default_value = ".")]
         dir: PathBuf,
         /// The branch bundles are merged into; without it the profile's m-flow
-        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
         tip: Option<String>,
     },
     /// Writes a new branch and worktree. Merge heads, one merge commit each
     ///
     /// Writes a new branch and worktree. Creates `m-flow/bundle-<date>-<n>` (the lowest unused
-    /// `n`) and the worktree `<HOME>/.moai/worktrees/<project>-bundle-<n>` at the tip, merges each
+    /// `n`) and the worktree `<project>/.claude/worktrees/<project>-bundle-<n>` at the tip, merges each
     /// head in the order given with one merge commit under the text merge GitHub runs, and prints
     /// the pinned SHA. HEADS are `C-<n>` (the card's newest readable READY head) or
     /// `C-<n>=<40 hex>`. A head whose merge conflicts is aborted, left out and named with its
@@ -145,7 +152,8 @@ enum Action {
         #[arg(long, default_value = ".")]
         dir: PathBuf,
         /// The branch bundles are merged into; without it the profile's m-flow
-        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
         tip: Option<String>,
     },
@@ -205,7 +213,8 @@ enum Action {
         #[arg(long, default_value = ".")]
         dir: PathBuf,
         /// The branch bundles are merged into; without it the profile's m-flow
-        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
         tip: Option<String>,
     },
@@ -232,10 +241,15 @@ pub const OPERATION: &str = "bundle";
 const DEFAULT_TIP: &str = "origin/v2026.11.0";
 
 /// The tip an action judges: an explicit `--tip` wins; without one, the project
-/// profile's m-flow integration branch becomes `origin/<branch>` (the stored
-/// value drives the integration ref), and without a recorded branch today's
-/// default stays, so every other repository keeps its answer.
-fn resolve_tip(project: &std::path::Path, tip: Option<&str>) -> Result<String, String> {
+/// profile's m-flow integration branch becomes the local `refs/heads/<branch>` of the
+/// repository `dir` (`origin/<branch>` only when that branch does not exist; the stored
+/// value drives the integration ref), and without a recorded branch today's default stays,
+/// so every other repository keeps its answer.
+fn resolve_tip(
+    project: &std::path::Path,
+    dir: &std::path::Path,
+    tip: Option<&str>,
+) -> Result<String, String> {
     if let Some(t) = tip {
         return Ok(t.to_string());
     }
@@ -247,7 +261,7 @@ fn resolve_tip(project: &std::path::Path, tip: Option<&str>) -> Result<String, S
             .and_then(|w| w.integration_branch)
             .filter(|b| !b.trim().is_empty())
         {
-            return Ok(format!("origin/{branch}"));
+            return Ok(moai_cli::bundle::integration_tip(dir, &branch));
         }
     }
     Ok(DEFAULT_TIP.to_string())
@@ -257,11 +271,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     use moai_cli::bundle as b;
     use moai_cli::ledger::command::resolve_home;
     let tip = match &args.action {
-        Action::Ready { project, tip, .. }
-        | Action::Check { project, tip, .. }
-        | Action::Body { project, tip, .. }
-        | Action::Build { project, tip, .. }
-        | Action::Verify { project, tip, .. } => resolve_tip(project, tip.as_deref())?,
+        Action::Ready {
+            project, dir, tip, ..
+        }
+        | Action::Check {
+            project, dir, tip, ..
+        }
+        | Action::Body {
+            project, dir, tip, ..
+        }
+        | Action::Build {
+            project, dir, tip, ..
+        }
+        | Action::Verify {
+            project, dir, tip, ..
+        } => resolve_tip(project, dir, tip.as_deref())?,
         // The user-assets actions name no tip: they never judge a ref.
         Action::Add { .. } | Action::Remove { .. } | Action::List => String::new(),
     };

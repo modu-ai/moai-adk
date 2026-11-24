@@ -33,6 +33,9 @@ pub struct Args {
     /// Plan only this worktree (repeatable): a lane cleans its own card worktrees (#2879).
     #[arg(long = "worktree", value_name = "PATH")]
     only: Vec<PathBuf>,
+    /// The worktree cap the `cap` block reports against (default 25).
+    #[arg(long, default_value_t = moai_cli::worktree_slot::MAX_WORKTREES)]
+    max_worktrees: usize,
 }
 
 pub const OPERATION: &str = "worktree.gc.plan";
@@ -49,6 +52,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             max_checked: args.max_checked,
             cursor: args.cursor,
             only: args.only,
+            max_worktrees: Some(args.max_worktrees),
         },
     )
 }

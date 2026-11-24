@@ -181,7 +181,7 @@
 | `docs/design-review/fixes/group3-3d917728.md` | 3 | RECORDS |
 | `docs/design-review/fixes/group2-0d4538a27fb88191a19ba261bd5a3442.md` | 3 | RECORDS |
 | `docs/design-review/assignments-schema.md` | 3 | RECORDS |
-| `docs/codex-adapter-contract.md` | 3 | DOCS_REST |
+| `docs/codex-adapter-contract.md` | 3 | DOCS_REST — 측정 뒤 삭제됨(`2dead459ea`, Codex 지원 철회) |
 | `tests/update_unmanaged_failclosed.rs` | 2 | TESTS |
 | `tests/struct_constructors_test.rs` | 2 | TESTS |
 | `tests/spec_contract.rs` | 2 | TESTS |

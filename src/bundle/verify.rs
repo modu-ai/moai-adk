@@ -68,8 +68,10 @@ fn verify_targets(spec_text: &str) -> Vec<String> {
         while let Some(w) = words.next() {
             if w == "--test" {
                 if let Some(name) = words.next() {
-                    let name = name.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '_');
-                    if !name.is_empty() {
+                    // Only the punctuation that wraps a name in prose is cut off; a name with any
+                    // other character (`../x`, `a/b`, `a.b`) is no cargo target name and is left out.
+                    let name = name.trim_matches(|c: char| "`'\";,.:()[]*|".contains(c));
+                    if is_target_name(name) {
                         out.push(name.to_string());
                     }
                 }
@@ -79,10 +81,59 @@ fn verify_targets(spec_text: &str) -> Vec<String> {
     out
 }
 
+/// A cargo test target name as the check list spells it: letters, digits, `_` and `-`, not starting
+/// with `-`. Anything else (`..`, `a/b`, `a.b`, an option) is no target and never reaches a command.
+fn is_target_name(name: &str) -> bool {
+    !name.is_empty()
+        && !name.starts_with('-')
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
 /// `tests/<name>.rs` (a top-level file) as the cargo target `<name>`.
 fn test_target(path: &str) -> Option<&str> {
     let name = path.strip_prefix("tests/")?.strip_suffix(".rs")?;
-    (!name.is_empty() && !name.contains('/')).then_some(name)
+    is_target_name(name).then_some(name)
+}
+
+/// `tests/<area>/<file>.rs` as the area crate `<area>`: a changed module of an area crate runs the
+/// whole crate (SPEC-20261123-test-area-crates). `common`, `fixtures` and `e2e` are not areas;
+/// whether a folder is a crate (it holds `main.rs`) is checked on disk by the caller.
+fn area_target(path: &str) -> Option<&str> {
+    let rest = path.strip_prefix("tests/")?.strip_suffix(".rs")?;
+    let (dir, file) = rest.split_once('/')?;
+    let plain = is_target_name(dir) && !file.is_empty() && !file.contains('/');
+    (plain && !matches!(dir, "common" | "fixtures" | "e2e")).then_some(dir)
+}
+
+/// The cargo target a name stands for in `tests_dir`: a top-level file or an area crate keeps its
+/// name, and the old name of a file moved into an area crate (a closed SPEC still says
+/// `--test <old>`) becomes that crate. A name that is none of these is returned as it is, so the
+/// caller reports it as a missing target.
+fn resolve_target(tests_dir: &Path, name: &str) -> String {
+    if tests_dir.join(format!("{name}.rs")).is_file()
+        || tests_dir.join(name).join("main.rs").is_file()
+    {
+        return name.to_string();
+    }
+    let mut areas: Vec<PathBuf> = std::fs::read_dir(tests_dir)
+        .map(|rd| rd.flatten().map(|e| e.path()).collect())
+        .unwrap_or_default();
+    areas.sort();
+    for area in areas {
+        if area.join("main.rs").is_file() && area.join(format!("{name}.rs")).is_file() {
+            if let Some(dir) = area.file_name().and_then(|n| n.to_str()) {
+                return dir.to_string();
+            }
+        }
+    }
+    name.to_string()
+}
+
+/// A target exists as `tests/<name>.rs` or as an area crate `tests/<name>/main.rs`.
+fn target_exists(tests_dir: &Path, name: &str) -> bool {
+    tests_dir.join(format!("{name}.rs")).is_file() || tests_dir.join(name).join("main.rs").is_file()
 }
 
 /// The sums `counts` reads from a log: `N passed` over the `test result:` lines, else
@@ -488,14 +539,27 @@ pub fn verify(
     // The list: the changed tests and the SPEC targets, the SPEC ids, the binary.
     let changed: Vec<String> = git.changed_paths(&tip.sha, &pinned)?;
     let changed_set: BTreeSet<String> = changed.iter().cloned().collect();
+    let tests_dir = worktree.join("tests");
+    // A changed module of an area crate runs its crate; a SPEC's old `--test <name>` of a moved
+    // file becomes the crate that holds it (SPEC-20261123-test-area-crates).
     let mut targets: BTreeSet<String> = changed
         .iter()
-        .filter_map(|p| test_target(p).map(String::from))
+        .filter_map(|p| {
+            test_target(p).map(String::from).or_else(|| {
+                area_target(p)
+                    .filter(|dir| tests_dir.join(dir).join("main.rs").is_file())
+                    .map(String::from)
+            })
+        })
         .collect();
     for p in &changed {
         if p.starts_with(".moai/specs/") && p.ends_with("/spec.md") {
             if let Some(text) = read_text(&worktree.join(p)) {
-                targets.extend(verify_targets(&text));
+                targets.extend(
+                    verify_targets(&text)
+                        .iter()
+                        .map(|name| resolve_target(&tests_dir, name)),
+                );
             }
         }
     }
@@ -513,7 +577,7 @@ pub fn verify(
             .into_owned(),
     };
     let (list, mut not_run) = the_list(&bin, opts.python, &tip.name, &spec_ids, &targets, |n| {
-        worktree.join("tests").join(format!("{n}.rs")).is_file()
+        target_exists(&tests_dir, n)
     });
     debug_assert!(CHECKS
         .iter()
@@ -620,6 +684,11 @@ pub fn verify(
                 let file = format!("tests/{name}.rs");
                 if changed_set.contains(&file) {
                     paths.insert(file);
+                }
+                // An area crate: every changed file of its folder belongs to this check.
+                let folder = format!("tests/{name}/");
+                for changed_path in changed_set.iter().filter(|p| p.starts_with(&folder)) {
+                    paths.insert(changed_path.clone());
                 }
             }
             let mut heads = attributed(&paths, &per_head);
@@ -734,6 +803,53 @@ mod tests {
         assert_eq!(test_target("tests/alpha.rs"), Some("alpha"));
         assert_eq!(test_target("tests/common/mod.rs"), None);
         assert_eq!(test_target("src/alpha.rs"), None);
+    }
+
+    #[test]
+    fn a_target_name_is_letters_digits_underscore_and_dash_only() {
+        let text = "  verify: `cargo test --test ../evil`; `cargo test --test a/b`; `cargo test --test ..`; `cargo test --test -x`; `cargo test --test a.b`; `cargo test --test ok_1-b`.\n";
+        assert_eq!(verify_targets(text), vec!["ok_1-b"]);
+        assert_eq!(test_target("tests/a.b.rs"), None);
+        assert_eq!(test_target("tests/-x.rs"), None);
+        assert_eq!(test_target("tests/ok_1-b.rs"), Some("ok_1-b"));
+    }
+
+    #[test]
+    fn an_area_folder_of_dots_or_odd_characters_is_no_area() {
+        assert_eq!(area_target("tests/../x.rs"), None);
+        assert_eq!(area_target("tests/./x.rs"), None);
+        assert_eq!(area_target("tests/a.b/x.rs"), None);
+        assert_eq!(area_target("tests/-a/x.rs"), None);
+        assert_eq!(area_target("tests/a-b_1/x.rs"), Some("a-b_1"));
+    }
+
+    #[test]
+    fn a_changed_area_module_names_its_crate() {
+        assert_eq!(area_target("tests/repo/git_a.rs"), Some("repo"));
+        assert_eq!(area_target("tests/repo/main.rs"), Some("repo"));
+        assert_eq!(area_target("tests/common/mod.rs"), None);
+        assert_eq!(area_target("tests/fixtures/x.rs"), None);
+        assert_eq!(area_target("tests/repo/deep/x.rs"), None);
+        assert_eq!(area_target("tests/alpha.rs"), None);
+        assert_eq!(area_target("src/repo/x.rs"), None);
+    }
+
+    #[test]
+    fn an_old_target_name_resolves_to_the_area_crate_that_holds_it() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let tests = dir.path();
+        std::fs::create_dir_all(tests.join("repo")).unwrap();
+        std::fs::create_dir_all(tests.join("loose")).unwrap();
+        for file in ["repo/main.rs", "repo/git_a.rs", "loose/git_b.rs", "top.rs"] {
+            std::fs::write(tests.join(file), "").unwrap();
+        }
+        assert_eq!(resolve_target(tests, "git_a"), "repo");
+        assert_eq!(resolve_target(tests, "repo"), "repo");
+        assert_eq!(resolve_target(tests, "top"), "top");
+        // a folder without main.rs is not an area crate, so its file is not a target
+        assert_eq!(resolve_target(tests, "git_b"), "git_b");
+        assert!(target_exists(tests, "repo") && target_exists(tests, "top"));
+        assert!(!target_exists(tests, "git_a") && !target_exists(tests, "git_b"));
     }
 
     #[test]

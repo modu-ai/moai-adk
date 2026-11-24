@@ -524,8 +524,14 @@ fn package_inspection_is_stable_and_covers_support_files() {
 
 // ---- AGENTS.md managed-section generation -------------------------------------------------
 
+/// The request of a project that asked for a personal file (`local_file` other than `none`) also
+/// carries the `personal-file` pick: the writer creates `CLAUDE.local.md` only on that pick.
 fn agents_request(language: &str, local_file: &str) -> Value {
-    json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai/workflows/","local_file":local_file})
+    let mut request = json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai/workflows/","local_file":local_file});
+    if local_file != "none" {
+        request["picks"] = json!(["personal-file"]);
+    }
+    request
 }
 fn agents_plan(root: &TempDir, request: &Value) -> std::process::Output {
     cli(&["agents-plan", root.path().to_str().unwrap()], request)
@@ -582,7 +588,7 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     create(&root, &profile(None));
     let user_body = "# My project\r\n\r\nUser rules stay as written.\r\n";
-    fs::write(root.path().join("AGENTS.md"), user_body).unwrap();
+    fs::write(root.path().join("CLAUDE.md"), user_body).unwrap();
     fs::write(root.path().join(".gitignore"), "target/").unwrap(); // no trailing newline
     let request = agents_request("en", "ignored");
     let out = agents_plan(&root, &request);
@@ -591,8 +597,8 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     assert_eq!(
         actions(&plan),
         vec![
-            ("AGENTS.md".into(), "append".into()),
-            ("AGENTS.local.md".into(), "create".into()),
+            ("CLAUDE.md".into(), "append".into()),
+            ("CLAUDE.local.md".into(), "create".into()),
             (".gitignore".into(), "append".into()),
             (
                 ".moai-cli/manifests/generation.json".into(),
@@ -601,27 +607,27 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
         ]
     );
     assert!(agents_apply(&root, &plan).status.success());
-    let agents = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
+    let agents = fs::read_to_string(root.path().join("CLAUDE.md")).unwrap();
     assert!(agents.starts_with(user_body));
     assert!(agents.contains("<!-- moai:managed:begin id=moai-workflow -->"));
-    assert!(agents.contains("skills/moai/workflows/"));
+    assert!(agents.contains("moai card list"));
     let ignore = fs::read_to_string(root.path().join(".gitignore")).unwrap();
     assert!(ignore.starts_with("target/\n"));
-    assert!(ignore.contains("\nAGENTS.local.md\n"));
-    assert!(root.path().join("AGENTS.local.md").is_file());
+    assert!(ignore.contains("\nCLAUDE.local.md\n"));
+    assert!(root.path().join("CLAUDE.local.md").is_file());
     let manifest: Value = serde_json::from_slice(
         &fs::read(root.path().join(".moai-cli/manifests/generation.json")).unwrap(),
     )
     .unwrap();
     assert_eq!(manifest["schema_version"], 1);
     assert_eq!(manifest["owned_files"].as_array().unwrap().len(), 2);
-    assert_eq!(manifest["created_once"], json!(["AGENTS.local.md"]));
+    assert_eq!(manifest["created_once"], json!(["CLAUDE.local.md"]));
     assert!(!manifest.to_string().contains(root.path().to_str().unwrap()));
 
     // Second run: diff 0 on every file.
     let before: Vec<Vec<u8>> = [
-        "AGENTS.md",
-        "AGENTS.local.md",
+        "CLAUDE.md",
+        "CLAUDE.local.md",
         ".gitignore",
         ".moai-cli/manifests/generation.json",
     ]
@@ -645,8 +651,8 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     assert_eq!(value["state"], "unchanged");
     assert_eq!(value["host_loaded"], false);
     let after: Vec<Vec<u8>> = [
-        "AGENTS.md",
-        "AGENTS.local.md",
+        "CLAUDE.md",
+        "CLAUDE.local.md",
         ".gitignore",
         ".moai-cli/manifests/generation.json",
     ]
@@ -659,7 +665,7 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
 #[test]
 fn agents_user_edits_are_preserved_or_reported_as_conflict() {
     let (root, _) = agents_project("en", "none");
-    let file = root.path().join("AGENTS.md");
+    let file = root.path().join("CLAUDE.md");
     let generated = fs::read_to_string(&file).unwrap();
 
     // Edit outside the managed block: still unchanged, bytes preserved.
@@ -671,10 +677,7 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
     assert_eq!(fs::read_to_string(&file).unwrap(), outside);
 
     // Edit inside the managed block while the template is unchanged: preserved, no rewrite.
-    let edited = outside.replace(
-        "Read only the workflow you need",
-        "Read ONLY the workflow you need",
-    );
+    let edited = outside.replace("Checks:", "CHECKS:");
     assert_ne!(edited, outside);
     fs::write(&file, &edited).unwrap();
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "none")));
@@ -696,7 +699,7 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
     assert_eq!(actions(&plan)[0].1, "merge");
     assert!(agents_apply(&root, &plan).status.success());
     let merged = fs::read_to_string(&file).unwrap();
-    assert!(merged.contains("MoAI 작업 흐름"));
+    assert!(merged.contains("MoAI 프로젝트 사실"));
     assert!(merged.ends_with("\n## User appendix\nkeep me\n"));
     assert!(merged.starts_with("# demo\n\n"));
 
@@ -737,30 +740,31 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
 #[test]
 fn agents_local_file_is_opt_in_and_never_rewritten() {
     let (root, plan) = agents_project("en", "none");
-    assert!(!root.path().join("AGENTS.local.md").exists());
+    assert!(!root.path().join("CLAUDE.local.md").exists());
     // #3009 S3b: the managed `.gitignore` block is written for every choice; it lists the
     // personal file only for `ignored`.
     let ignore = fs::read_to_string(root.path().join(".gitignore")).unwrap();
-    assert!(!ignore.lines().any(|l| l == "AGENTS.local.md"), "{ignore}");
-    assert!(actions(&plan).iter().all(|(p, _)| p != "AGENTS.local.md"));
+    assert!(!ignore.lines().any(|l| l == "CLAUDE.local.md"), "{ignore}");
+    assert!(actions(&plan).iter().all(|(p, _)| p != "CLAUDE.local.md"));
 
     let (root, plan) = agents_project("ko", "tracked");
-    assert!(root.path().join("AGENTS.local.md").is_file());
+    assert!(root.path().join("CLAUDE.local.md").is_file());
+    // A personal file is never shared: `tracked` plans like `ignored` (the layout's REQ-7).
     let ignore = fs::read_to_string(root.path().join(".gitignore")).unwrap();
-    assert!(!ignore.lines().any(|l| l == "AGENTS.local.md"), "{ignore}");
+    assert!(ignore.lines().any(|l| l == "CLAUDE.local.md"), "{ignore}");
     assert!(actions(&plan).iter().any(|(p, _)| p == ".gitignore"));
-    fs::write(root.path().join("AGENTS.local.md"), "personal\n").unwrap();
+    fs::write(root.path().join("CLAUDE.local.md"), "personal\n").unwrap();
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "tracked")));
     assert!(agents_apply(&root, &plan).status.success());
     assert_eq!(
-        fs::read(root.path().join("AGENTS.local.md")).unwrap(),
+        fs::read(root.path().join("CLAUDE.local.md")).unwrap(),
         b"personal\n"
     );
     // Deleted by the user: not recreated.
-    fs::remove_file(root.path().join("AGENTS.local.md")).unwrap();
+    fs::remove_file(root.path().join("CLAUDE.local.md")).unwrap();
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "tracked")));
     assert!(agents_apply(&root, &plan).status.success());
-    assert!(!root.path().join("AGENTS.local.md").exists());
+    assert!(!root.path().join("CLAUDE.local.md").exists());
 }
 
 #[test]
@@ -772,34 +776,29 @@ fn agents_plan_rejects_replay_tamper_missing_reference_and_shadowing_is_reported
         .status
         .success());
     fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-    fs::write(root.path().join("CLAUDE.md"), "existing\n").unwrap();
     fs::write(root.path().join("AGENTS.override.md"), "codex override\n").unwrap();
     let out = agents_plan(&root, &agents_request("en", "none"));
     assert!(out.status.success());
     let plan: Value = ok_result(&out);
-    let notes = plan["host_notes"].as_array().unwrap();
-    assert_eq!(notes.len(), 2);
+    // The writer reports no host note: CLAUDE.md is moai's file, nothing shadows it.
+    assert!(plan["host_notes"].as_array().unwrap().is_empty(), "{plan}");
     // Replay in another project is refused.
     let other = TempDir::new().unwrap();
     create(&other, &profile(None));
     fs::create_dir_all(other.path().join("skills/moai/workflows")).unwrap();
     assert!(!agents_apply(&other, &plan).status.success());
-    assert!(!other.path().join("AGENTS.md").exists());
+    assert!(!other.path().join("CLAUDE.md").exists());
     // Tampered plan is refused.
     let mut tampered = plan.clone();
     tampered["request"]["language"] = json!("ko");
     assert!(!agents_apply(&root, &tampered).status.success());
-    assert!(!root.path().join("AGENTS.md").exists());
+    assert!(!root.path().join("CLAUDE.md").exists());
     // Target changed after preview is refused.
-    fs::write(root.path().join("AGENTS.md"), "late user file\n").unwrap();
+    fs::write(root.path().join("CLAUDE.md"), "late user file\n").unwrap();
     assert!(!agents_apply(&root, &plan).status.success());
     assert_eq!(
-        fs::read(root.path().join("AGENTS.md")).unwrap(),
-        b"late user file\n"
-    );
-    assert_eq!(
         fs::read(root.path().join("CLAUDE.md")).unwrap(),
-        b"existing\n"
+        b"late user file\n"
     );
     assert_eq!(
         fs::read(root.path().join("AGENTS.override.md")).unwrap(),
@@ -826,13 +825,16 @@ fn agents_apply_refuses_symlinked_parents_and_recovers_from_partial_apply() {
     let outside = TempDir::new().unwrap();
     fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     create(&root, &profile(None));
-    symlink(outside.path(), root.path().join("AGENTS.md")).unwrap();
-    assert!(!agents_plan(&root, &agents_request("en", "none"))
-        .status
-        .success());
-    fs::remove_file(root.path().join("AGENTS.md")).unwrap();
+    symlink(outside.path(), root.path().join("CLAUDE.md")).unwrap();
+    // A link is not an error of the plan: its row is a conflict, and the apply refuses it.
+    let linked: Value = ok_result(&agents_plan(&root, &agents_request("en", "none")));
+    assert!(actions(&linked)
+        .iter()
+        .any(|(p, a)| p == "CLAUDE.md" && a == "conflict"));
+    assert!(!agents_apply(&root, &linked).status.success());
+    fs::remove_file(root.path().join("CLAUDE.md")).unwrap();
 
-    // Force a failure after AGENTS.md and AGENTS.local.md are written: the manifest
+    // Force a failure after CLAUDE.md and CLAUDE.local.md are written: the manifest
     // directory is read-only, so the final manifest write fails and the apply is partial.
     use std::os::unix::fs::PermissionsExt;
     let manifests = root.path().join(".moai-cli/manifests");
@@ -843,11 +845,11 @@ fn agents_apply_refuses_symlinked_parents_and_recovers_from_partial_apply() {
     assert!(!result.status.success());
     let stderr = String::from_utf8_lossy(&result.stderr);
     assert!(
-        stderr.contains("partial apply") && stderr.contains("AGENTS.md"),
+        stderr.contains("partial apply") && stderr.contains("CLAUDE.md"),
         "{stderr}"
     );
-    assert!(root.path().join("AGENTS.md").is_file());
-    assert!(root.path().join("AGENTS.local.md").is_file());
+    assert!(root.path().join("CLAUDE.md").is_file());
+    assert!(root.path().join("CLAUDE.local.md").is_file());
     assert!(!manifests.join("generation.json").exists());
     // Resume: the already-written block is adopted as baseline and the rest completes.
     fs::set_permissions(&manifests, fs::Permissions::from_mode(0o755)).unwrap();
@@ -864,8 +866,8 @@ fn agents_apply_refuses_symlinked_parents_and_recovers_from_partial_apply() {
         .iter()
         .map(|f| f["path"].as_str().unwrap())
         .collect();
-    assert!(owned.contains(&"AGENTS.md"));
-    assert_eq!(manifest["created_once"], json!(["AGENTS.local.md"]));
+    assert!(owned.contains(&"CLAUDE.md"));
+    assert_eq!(manifest["created_once"], json!(["CLAUDE.local.md"]));
 }
 
 #[test]
@@ -878,7 +880,7 @@ fn interrupted_update_refreshes_baseline_instead_of_false_conflict() {
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "none")));
     assert_eq!(actions(&plan)[0].1, "merge");
     assert!(agents_apply(&root, &plan).status.success());
-    // Simulate the crash between the AGENTS.md write and the manifest write.
+    // Simulate the crash between the CLAUDE.md write and the manifest write.
     fs::write(&manifest, &v1_manifest).unwrap();
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "none")));
     assert_eq!(actions(&plan)[0].1, "unchanged");
@@ -889,7 +891,7 @@ fn interrupted_update_refreshes_baseline_instead_of_false_conflict() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|f| f["path"] == "AGENTS.md")
+        .find(|f| f["path"] == "CLAUDE.md")
         .unwrap()["baseline_sha256"]
         .as_str()
         .unwrap();
@@ -897,11 +899,9 @@ fn interrupted_update_refreshes_baseline_instead_of_false_conflict() {
         baseline,
         plan["files"][0]["rendered_sha256"].as_str().unwrap()
     );
-    // A further template change is a merge, not a conflict.
-    fs::create_dir_all(root.path().join("docs/wf")).unwrap();
-    let mut request = agents_request("ko", "none");
-    request["workflow_reference"] = json!("docs/wf/");
-    let plan: Value = ok_result(&agents_plan(&root, &request));
+    // A further template change (the block names no workflow path, so the language is the lever)
+    // is a merge, not a conflict.
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "none")));
     assert_eq!(actions(&plan)[0].1, "merge");
     assert!(agents_apply(&root, &plan).status.success());
 }
@@ -929,34 +929,34 @@ fn profile_values_cannot_inject_managed_markers() {
         let out = agents_plan(&root, &agents_request("en", "none"));
         assert!(!out.status.success(), "{field}");
         assert!(String::from_utf8_lossy(&out.stderr).contains("marker"));
-        assert!(!root.path().join("AGENTS.md").exists());
+        assert!(!root.path().join("CLAUDE.md").exists());
     }
 }
 
 #[test]
 fn legacy_manifest_with_personal_file_in_owned_files_is_still_read() {
-    // M2 compatibility: manifests written before `created_once` listed AGENTS.local.md in owned_files.
+    // M2 compatibility: manifests written before `created_once` listed CLAUDE.local.md in owned_files.
     let (root, _) = agents_project("en", "tracked");
     let manifest = root.path().join(".moai-cli/manifests/generation.json");
     let mut value: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
-    assert_eq!(value["created_once"], json!(["AGENTS.local.md"]));
-    let local_digest = moai_cli::digest(&fs::read(root.path().join("AGENTS.local.md")).unwrap());
+    assert_eq!(value["created_once"], json!(["CLAUDE.local.md"]));
+    let local_digest = moai_cli::digest(&fs::read(root.path().join("CLAUDE.local.md")).unwrap());
     value["owned_files"]
         .as_array_mut()
         .unwrap()
-        .push(json!({"path":"AGENTS.local.md","section_id":null,"baseline_sha256":local_digest}));
+        .push(json!({"path":"CLAUDE.local.md","section_id":null,"baseline_sha256":local_digest}));
     value.as_object_mut().unwrap().remove("created_once");
     fs::write(&manifest, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
-    fs::remove_file(root.path().join("AGENTS.local.md")).unwrap();
+    fs::remove_file(root.path().join("CLAUDE.local.md")).unwrap();
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "tracked")));
     // Created once before: the user's deletion is respected and the file is not recreated.
     assert!(actions(&plan)
         .iter()
-        .any(|(p, a)| p == "AGENTS.local.md" && a == "unchanged"));
+        .any(|(p, a)| p == "CLAUDE.local.md" && a == "unchanged"));
     assert!(agents_apply(&root, &plan).status.success());
-    assert!(!root.path().join("AGENTS.local.md").exists());
+    assert!(!root.path().join("CLAUDE.local.md").exists());
     let migrated: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
-    assert_eq!(migrated["created_once"], json!(["AGENTS.local.md"]));
+    assert_eq!(migrated["created_once"], json!(["CLAUDE.local.md"]));
     assert!(migrated["owned_files"]
         .as_array()
         .unwrap()
@@ -1069,7 +1069,8 @@ fn launcher_leader_default_claude() {
         "opus",
         "--effort",
         "medium",
-        "--dangerously-skip-permissions"
+        "--permission-mode",
+        "auto"
     ]);
     for args in [
         &["-l", "--dry-run"][..],
@@ -1143,7 +1144,8 @@ fn launcher_flags_can_be_disabled() {
             "sonnet",
             "--effort",
             "high",
-            "--dangerously-skip-permissions"
+            "--permission-mode",
+            "auto"
         ])
     );
     assert!(!launcher(&["-l", "--effort", "turbo", "--dry-run"], None)
@@ -1163,7 +1165,7 @@ fn launcher_role_flags_are_kept_without_a_deprecation_warning() {
         &["-l", "--dry-run"][..],
         &["-a", "--name", "agent-7", "--dry-run"][..],
         &["cc", "-l", "--dry-run"][..],
-        &["codex", "-a", "--dry-run"][..],
+        &["cc", "-a", "--dry-run"][..],
         &["cc", "--dry-run"][..],
     ] {
         let out = launcher(args, None);
@@ -1228,7 +1230,8 @@ fn launcher_glm_requires_token_name_only() {
             "opus",
             "--effort",
             "medium",
-            "--dangerously-skip-permissions"
+            "--permission-mode",
+            "auto"
         ])
     );
     // No advisor by default since #2476; an explicit one is dropped on glm with a note.
@@ -1241,70 +1244,15 @@ fn launcher_glm_requires_token_name_only() {
     assert!(v["notes"].to_string().contains("--advisor omitted on glm"));
 }
 #[test]
-fn launcher_codex_argv() {
-    // Full access since #2359 (user decision 2026-11-10), leader and agent alike.
-    let v = launched(&launcher(&["codex", "-l", "--dry-run"], None));
-    assert_eq!(
-        v["argv"],
-        json!([
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            "MoAI session name: leader"
-        ])
-    );
-    assert_eq!(v["host"], json!("codex"));
-    assert!(v["notes"].to_string().contains("cross-session"));
-    let v = launched(&launcher(
-        &[
-            "-a",
-            "codex",
-            "--name",
-            "agent-2",
-            "--model",
-            "some-model",
-            "--dry-run",
-        ],
-        None,
-    ));
-    assert_eq!(
-        v["argv"],
-        json!([
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            "-m",
-            "some-model",
-            // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
-            "$moai --mode-agent\nMoAI session name: agent-2"
-        ])
-    );
-    let v = launched(&launcher(
-        &[
-            "codex",
-            "-a",
-            "--name",
-            "agent-5",
-            "--dry-run",
-            "first task",
-        ],
-        None,
-    ));
-    assert_eq!(
-        v["argv"].as_array().unwrap().last().unwrap(),
-        &json!("$moai --mode-agent\nMoAI session name: agent-5\nfirst task")
-    );
-    assert!(!v["argv"].to_string().contains("dangerously"));
+fn launcher_prompt_is_not_passed_to_a_claude_host() {
+    // The Codex launcher cases of this test went with the Codex launcher
+    // (SPEC-20261121-codex-launcher-and-models-removed); `moai codex` is an unknown command.
     // A PROMPT on a Claude host is not passed on, and the output says so.
     let v = launched(&launcher(&["cc", "-l", "--dry-run", "first task"], None));
     assert!(!v["argv"].to_string().contains("first task"));
     assert!(v["notes"]
         .to_string()
-        .contains("PROMPT is used by codex only"));
+        .contains("PROMPT was not passed to the Claude host"));
 }
 
 /// Fixture repo: a Go-style baseline commit with `.claude` and template `.claude`, then an
@@ -2186,17 +2134,18 @@ mod skill_package {
     };
     use tempfile::TempDir;
 
-    const INTENTS: [&str; 8] = [
+    /// The route table (SPEC-20261122-next-flow-skills-agents REQ-1, nine routes since
+    /// SPEC-20261124-moai-leader-route REQ-1).
+    const ROUTES: [&str; 9] = [
+        "READ", "PLAN", "RUN", "AUDIT", "SYNC", "PROJECT", "UPDATE", "WORK", "LEADER",
+    ];
+    /// The intents the legacy asset map counts its rows by (`rows_by_intent`). SETUP and VERIFY
+    /// left the route table (SPEC-20261122-next-flow-skills-agents REQ-2) but stay keys there.
+    const LEGACY_INTENTS: [&str; 8] = [
         "READ", "SETUP", "UPDATE", "PLAN", "RUN", "VERIFY", "AUDIT", "SYNC",
     ];
-    /// Mode routes (rc.2 A1 #2160). Kept apart from INTENTS, which also counts the legacy
-    /// asset map's rows by intent.
-    const MODES: [&str; 2] = ["MODE-LEADER", "MODE-AGENT"];
-    /// The `/moai project` route (#2496). Kept apart from INTENTS for the same reason as
-    /// MODES: the legacy asset map has no rows for it.
+    /// The `/moai project` route (#2496).
     const PROJECT: &str = "PROJECT";
-    /// The `/moai optimize` route (#2724, leader decision A). Apart from INTENTS like PROJECT.
-    const OPTIMIZE: &str = "OPTIMIZE";
     const SPEC: &str = "docs/design-review/autonomy-modes-spec.md";
     const MANIFEST: &str = "references/source-manifest.json";
     // Claude Code-only frontmatter (https://code.claude.com/docs/en/skills, read 2026-11-08).
@@ -2368,13 +2317,7 @@ mod skill_package {
         let table = routes["routes"].as_object().unwrap();
         let mut keys: Vec<&str> = table.keys().map(String::as_str).collect();
         keys.sort();
-        let mut want: Vec<&str> = INTENTS
-            .iter()
-            .chain(MODES.iter())
-            .chain(std::iter::once(&PROJECT))
-            .chain(std::iter::once(&OPTIMIZE))
-            .copied()
-            .collect();
+        let mut want: Vec<&str> = ROUTES.to_vec();
         want.sort();
         assert_eq!(keys, want);
         for (intent, route) in table {
@@ -2469,87 +2412,12 @@ mod skill_package {
         }
     }
 
-    /// The mode workflow behind a route, after checking the route itself (AC-1, #2160).
-    fn mode_workflow(route: &str) -> String {
-        let routes: Value =
-            serde_json::from_slice(&fs::read(root().join("references/routes.json")).unwrap())
-                .unwrap();
-        let r = &routes["routes"][route];
-        assert_eq!(r["requires_binary"], json!(false), "{route}");
-        let reference = r["reference"].as_str().unwrap();
-        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
-        assert!(skill.contains(route), "SKILL.md names {route}");
-        fs::read_to_string(root().join("references").join(reference)).unwrap()
-    }
-    /// AC-2: every `SPEC §N` a mode workflow cites is a section of the SPEC, and the
-    /// workflow does not restate the claim procedure the SPEC defines.
-    fn cites_spec_sections_only(body: &str, route: &str) {
-        let spec = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(SPEC)).unwrap();
-        let cited: Vec<&str> = body
-            .match_indices("SPEC §")
-            .map(|(i, m)| {
-                let rest = &body[i + m.len()..];
-                &rest[..rest
-                    .find(|c: char| !c.is_ascii_digit())
-                    .unwrap_or(rest.len())]
-            })
-            .collect();
-        assert!(!cited.is_empty(), "{route} cites the SPEC by section");
-        for n in cited {
-            assert!(
-                spec.lines().any(|l| l.starts_with(&format!("## {n}. "))),
-                "{route} cites SPEC §{n}, which the SPEC does not have"
-            );
-        }
-        for restated in ["moai-claim:", "lease_until", "journal", "comment id"] {
-            assert!(!body.contains(restated), "{route} restates {restated}");
-        }
-    }
+    // Retired with the MODE-LEADER route (SPEC-20261122-next-flow-skills-agents REQ-2): `goal_step_is_bound_to_the_goal_block_generator` pinned the /goal step text of both mode files; its generator half follows as its own test.
 
-    /// AC-1 (#2334): the mode workflows bind the /goal step to the tested
-    /// generator instead of free-form wording — leader feeds the state it read
-    /// to `moai goal-block` (#2708; formerly tools/gen_goal_block.py) and prints its `leader` line, with the
-    /// keep-set exclusion rule stated as the generator's rule; agent binds its
-    /// card-scoped lines to the generator's `agent` kind.
+    /// AC-1 (#2334), the generator half: a keep-set entry without a reason is refused, and
+    /// excluded numbers leave the condition.
     #[test]
-    fn goal_step_is_bound_to_the_goal_block_generator() {
-        let leader = mode_workflow("MODE-LEADER");
-        assert!(
-            leader.contains("`moai goal-block`"),
-            "leader workflow must name the generator: {leader}"
-        );
-        assert!(
-            leader.contains("`leader` goal line"),
-            "leader workflow must print the generator's leader line: {leader}"
-        );
-        assert!(
-            leader.contains("keep-set") && leader.contains("reason"),
-            "leader workflow must state the keep-set exclusion with reasons: {leader}"
-        );
-        assert!(
-            leader.contains("never hand-edit the generated line"),
-            "leader workflow must forbid editing the generated line: {leader}"
-        );
-        let agent = mode_workflow("MODE-AGENT");
-        // #2708: a user project has no tools/ folder, so neither workflow names the script.
-        for body in [&leader, &agent] {
-            assert!(
-                !body.contains("gen_goal_block"),
-                "a mode workflow names the Python script"
-            );
-        }
-        assert!(
-            agent.contains("`moai goal-block`"),
-            "agent workflow must name the generator: {agent}"
-        );
-        assert!(
-            agent.contains("`agent` goal lines"),
-            "agent workflow must print the generator's agent lines: {agent}"
-        );
-        assert!(
-            agent.contains("never hand-edit the generated lines"),
-            "agent workflow must forbid editing the generated lines: {agent}"
-        );
+    fn goal_block_refuses_a_bare_keep_set_entry_and_drops_excluded_numbers() {
         // The generator itself still enforces the rule: a keep-set entry without
         // a reason is refused, and excluded numbers leave the condition.
         let run = |input: &str| {
@@ -2619,37 +2487,8 @@ mod skill_package {
         assert!(text.contains("larger than 1 MiB"), "{text}");
     }
 
-    #[test]
-    fn mode_leader_route_loads_its_workflow() {
-        let body = mode_workflow("MODE-LEADER");
-        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
-        assert!(
-            skill.contains("`--mode-leader`") && skill.contains("`--autonomy full|semi`"),
-            "the canonical leader flag is --mode-leader (#2286): {skill}"
-        );
-        // REQ-A1-01: the loaded mode ignores the other mode's instructions.
-        assert!(body.contains("ignore instructions for any other mode"));
-        assert!(
-            body.contains("`/goal <condition>`") && body.contains("Never run `/goal` yourself")
-        );
-        cites_spec_sections_only(&body, "MODE-LEADER");
-    }
-
-    #[test]
-    fn mode_agent_route_loads_its_workflow() {
-        let body = mode_workflow("MODE-AGENT");
-        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
-        assert!(
-            skill.contains("`--mode-agent`") && skill.contains("`$moai --mode-agent …`"),
-            "the canonical agent flag is --mode-agent (#2286): {skill}"
-        );
-        assert!(body.contains("ignore instructions for any other mode"));
-        assert!(
-            body.contains("`$moai --mode-agent`"),
-            "Codex may enter agent mode"
-        );
-        cites_spec_sections_only(&body, "MODE-AGENT");
-    }
+    // Retired with the MODE-LEADER route (SPEC-20261122-next-flow-skills-agents REQ-2): `mode_leader_route_loads_its_workflow` checked the leader route and its flag spelling.
+    // Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `mode_agent_route_loads_its_workflow` checked the agent route and its flag spelling.
 
     /// #2619: an open question is sorted before anyone is asked — a fact is answered, a
     /// one-way or five-category choice waits for the user, any other choice is the leader's
@@ -2686,39 +2525,31 @@ mod skill_package {
             "pushing a tag or publishing a release is case (2) at every autonomy level, `full` included",
             "Independent audit and the CI gate are never delegated.",
             "its options, the default, whether it is reversible, its category (`none`, `guarded` or one of the five), its deadline and who decided; a decision without a record does not count.",
-            // #2678: a reported figure comes from a named command, and silence is not zero.
-            "Take every number and state in a report from a command run for that report, and name the command next to it (Issue #2678).",
+        ] {
+            assert!(skill.contains(line), "SKILL.md lacks: {line}");
+        }
+        // #2678, moved by SPEC-20261121-report-rules-in-core-rules: a reported figure comes
+        // from a named command, and silence is not zero. The skill entry points to rules 23 and 24.
+        let core = fs::read_to_string(root().join("references/internal/core-rules.md")).unwrap();
+        for line in [
+            "Take every number and state in a report from a command run for that report, and name the command next to it.",
             "An empty output is not zero: say whether the command prints nothing for \"none\" or also on a failure, and count a paged list only after reading every page.",
             "After a write, read the written thing back and report what the read shows, not what was sent.",
             "Write a time only from a clock read in the same step (`date -u`).",
         ] {
-            assert!(skill.contains(line), "SKILL.md lacks: {line}");
+            assert!(core.contains(line), "core-rules.md lacks: {line}");
         }
-        let leader = mode_workflow("MODE-LEADER");
-        let agent = mode_workflow("MODE-AGENT");
-        for body in [&leader, &agent] {
-            assert!(
-                body.contains("sort it in the order SKILL.md gives (Issue #2619)")
-                    || body.contains("sort the question in the order SKILL.md gives (Issue #2619)")
-            );
-        }
-        assert!(leader.contains("never decide a HOLD for the lane"));
-        // #2678: every posted table row names its source command; silence is "no result".
-        assert!(leader.contains("Every row of a status, close or decision table you post carries a source: the command whose output gave its number or state"));
-        assert!(leader.contains(
-            "A row whose command printed nothing says \"no result\" and why, never a bare 0."
-        ));
-        for line in [
-            "within the autonomy level SPEC §6 gives — at `semi` the choices listed below for that level still go to the user",
-            "record it with every field SKILL.md names",
-            "Pushing a tag or publishing a release goes to the user and waits at every autonomy level, `full` included, with no deadline default (`SKILL.md` case (2), card C-81).",
-            "At `semi`, new Issues, lifting a HOLD and merge-policy changes also go to the user.",
-        ] {
-            assert!(leader.contains(line), "mode-leader.md lacks: {line}");
-        }
+        assert!(
+            skill.contains(
+                "rules 23 and 24 of the core rules (the route table's `core_rules` entry)"
+            ),
+            "SKILL.md points to the report rules"
+        );
+        // The MODE-LEADER and MODE-AGENT halves left with their routes
+        // (SPEC-20261122-next-flow-skills-agents REQ-2).
         // Card C-81: no text still puts a release among the case-(4) choices or limits it to
         // `semi`; lifting a HOLD is not moved to case (2) without a user decision.
-        for (name, body) in [("SKILL.md", &skill), ("mode-leader.md", &leader)] {
+        for (name, body) in [("SKILL.md", &skill)] {
             for old in [
                 "merge-policy changes and releases",
                 "releases at `semi`",
@@ -2747,53 +2578,9 @@ mod skill_package {
             semi.ends_with("| full의 목록 + Issue 신규 발행, HOLD 해제, 병합 정책 변경 |"),
             "{semi}"
         );
-        assert!(agent.contains("send a choice to the leader — not to the user"));
-        assert!(agent.contains(
-            "never declare a HOLD outside the five categories, `guarded` and `irreversible`"
-        ));
     }
 
-    /// #2516 (leader decision B, comment 6823474405): the Orca session-control rules live in
-    /// both mode workflows as one section, kept identical, with the rules a lane and a leader
-    /// rely on pinned by sentence.
-    #[test]
-    fn both_modes_carry_the_same_orca_session_control_section() {
-        let section = |route: &str| {
-            let body = mode_workflow(route);
-            let start = body
-                .find("## Session control with Orca")
-                .unwrap_or_else(|| panic!("{route} lacks the Orca section"));
-            let rest = &body[start..];
-            let end = rest[2..].find("\n## ").map_or(rest.len(), |i| i + 2);
-            rest[..end].to_string()
-        };
-        let agent = section("MODE-AGENT");
-        assert_eq!(
-            agent,
-            section("MODE-LEADER"),
-            "the Orca section differs between mode-agent.md and mode-leader.md"
-        );
-        for line in [
-            "installed is not chosen",
-            "report the session-control step `not_run`",
-            "`orca skills get orca-cli`",
-            "`orca agent-context --json`",
-            "the schema wins",
-            "never overwrite another session's unsubmitted input",
-            "`accepted: true` proves only that the input was accepted",
-            "A send you could not confirm is `uncertain`; never resend on silence",
-            "paging while the read is `limited`",
-            "Never answer another session's permission or trust prompt",
-            "without the user's confirmation",
-            "silence, a timeout or an `unverifiable` state never authorises recovery",
-            "Name every terminal by its handle on every command",
-            "never by its title",
-            "never send the same input to an old and a new handle",
-            "Close only a terminal you created",
-        ] {
-            assert!(agent.contains(line), "Orca section lacks: {line}");
-        }
-    }
+    // Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `both_modes_carry_the_same_orca_session_control_section` compared the Orca sections of the two mode files.
 
     /// #2636 (parent #2634): the orca and aside adapters carry when to use each tool, the
     /// commands that print its version-matched guide (never a copied guide), the lines MoAI
@@ -2814,6 +2601,7 @@ mod skill_package {
             adapters,
             [
                 "references/adapters/aside.md",
+                // herdr.md left the package (SPEC-20261122-next-flow-skills-agents REQ-2).
                 "references/adapters/orca.md"
             ]
         );
@@ -2881,35 +2669,7 @@ mod skill_package {
         }
     }
 
-    #[test]
-    fn mode_leader_refuses_only_without_orca_and_timer() {
-        // #2900 (#2899 G4): D-O3 replaced D-3 — any host may lead; the mode follows the
-        // channel, and the first step refuses only with neither Orca nor a timer.
-        let body = mode_workflow("MODE-LEADER");
-        let procedure = &body[body.find("## Procedure").unwrap()..];
-        let first = procedure.lines().find(|l| l.starts_with("1. ")).unwrap();
-        assert!(first.contains("**mode-channel**"), "{first}");
-        assert!(
-            first.contains("D-O3") && first.contains("replaces D-3"),
-            "{first}"
-        );
-        assert!(
-            first.contains("Claude Code, Codex CLI and OMP may all lead"),
-            "{first}"
-        );
-        assert!(
-            first.contains("Refuse to enter only when there is neither Orca nor a timer"),
-            "{first}"
-        );
-        assert!(
-            !first.contains("Claude Code only"),
-            "the old D-3 restriction is gone: {first}"
-        );
-        assert!(
-            first.contains("`$moai --mode-agent`"),
-            "the refusal points to agent mode"
-        );
-    }
+    // Retired with the MODE-LEADER route (SPEC-20261122-next-flow-skills-agents REQ-2): `mode_leader_refuses_only_without_orca_and_timer` pinned the leader mode-channel step.
 
     fn retired_mode_spelling(text: &str) -> Option<&'static str> {
         // Legacy aliases remain aliases when their operands use tabs or repeated spaces.
@@ -2946,104 +2706,23 @@ mod skill_package {
         );
     }
 
-    /// AC-2 (#2286, user decision 2026-11-10): the routing line sends exactly the two
-    /// spellings `--mode-agent` and `--mode-leader` to their routes; the earlier
-    /// spellings (`--agent-mode`, `--leader-mode`, `--mode agent|leader`) appear nowhere in
-    /// the package. The routes file must carry both MODE routes for those picks to resolve.
-    #[test]
-    fn mode_routing_flags_map_to_routes() {
-        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
-        assert!(
-            skill.contains("`--mode-agent` or `--mode-leader`"),
-            "SKILL.md must route the canonical flags: {skill}"
-        );
-        // Every package file is scanned except the source manifest, whose `reason` strings
-        // keep the history of earlier spellings on purpose (#2286 pre-audit B1).
-        for file in package_files()
-            .into_iter()
-            .filter(|p| p != "references/source-manifest.json")
-        {
-            let text = fs::read_to_string(root().join(&file)).unwrap();
-            assert_eq!(
-                retired_mode_spelling(&text),
-                None,
-                "retired mode spelling is still in the package file {file}"
-            );
-        }
-        // Both canonical picks must resolve to their MODE routes.
-        assert!(
-            skill.contains("pick the MODE-AGENT or MODE-LEADER route")
-                || (skill.contains("MODE-AGENT") && skill.contains("MODE-LEADER")),
-            "SKILL.md must name both routes for the flags: {skill}"
-        );
-        let routes: Value =
-            serde_json::from_slice(&fs::read(root().join("references/routes.json")).unwrap())
-                .unwrap();
-        let route = |k: &str| routes["routes"][k]["reference"].as_str().unwrap_or("");
-        assert_eq!(route("MODE-AGENT"), "../workflows/mode-agent.md");
-        assert_eq!(route("MODE-LEADER"), "../workflows/mode-leader.md");
-        assert_eq!(
-            routes["routes"]["MODE-AGENT"]["requires_binary"],
-            json!(false)
-        );
-        assert_eq!(
-            routes["routes"]["MODE-LEADER"]["requires_binary"],
-            json!(false)
-        );
-    }
+    // Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `mode_routing_flags_map_to_routes` mapped the two mode flags to their routes; a dash option is now plain request text (tests/next_flow_skill_scan.rs).
 
     /// #2286 CLOSE-TABLE item 1: the repository's own instruction files carry no retired mode
     /// spelling either, so a lane reading them types only `--mode-agent` / `--mode-leader`.
     #[test]
     fn repository_instruction_files_carry_no_retired_mode_spelling() {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
-        for file in ["AGENTS.md", "AGENTS.local.md"] {
-            let text = fs::read_to_string(repo.join(file)).unwrap();
-            assert_eq!(
-                retired_mode_spelling(&text),
-                None,
-                "retired mode spelling is still in {file}"
-            );
-            assert!(
-                text.contains("--mode-agent") || file == "AGENTS.md",
-                "{file}"
-            );
-        }
+        let text = fs::read_to_string(repo.join("CLAUDE.md")).unwrap();
+        assert_eq!(
+            retired_mode_spelling(&text),
+            None,
+            "retired mode spelling is still in CLAUDE.md"
+        );
+        assert!(text.contains("--mode-agent"), "CLAUDE.md");
     }
 
-    /// #2724 (6): `/moai optimize` is a route whose workflow runs only the read-only preview and
-    /// hands any deletion to the user's yes and the existing apply step.
-    #[test]
-    fn optimize_route_previews_and_applies_nothing() {
-        let routes: Value =
-            serde_json::from_slice(&fs::read(root().join("references/routes.json")).unwrap())
-                .unwrap();
-        let r = &routes["routes"][OPTIMIZE];
-        assert_eq!(r["reference"], json!("../workflows/optimize.md"));
-        assert_eq!(r["requires_binary"], json!(true));
-        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
-        assert!(skill.contains("OPTIMIZE"), "SKILL.md lists the route");
-        assert!(
-            skill.contains("`/moai optimize`"),
-            "SKILL.md names the entry"
-        );
-        let body = fs::read_to_string(root().join("workflows/optimize.md")).unwrap();
-        for needle in [
-            "this route deletes, moves and writes nothing",
-            "moai optimize-plan <project> --integration-ref <ref>",
-            "There is no default root",
-            "an audit `PASS` for its exact HEAD",
-            "time alone never makes a worktree a candidate",
-            "Apply nothing in this route.",
-            "wait for their yes",
-            "`moai worktree-gc-apply` with that plan's digest",
-            "never removed by a shell command instead",
-            "Deleting is a `guarded` choice",
-            "reported as unread, never as an empty list",
-        ] {
-            assert!(body.contains(needle), "optimize.md lacks {needle}");
-        }
-    }
+    // Retired with the OPTIMIZE route (SPEC-20261122-next-flow-skills-agents REQ-2): `optimize_route_previews_and_applies_nothing` pinned the OPTIMIZE route; UPDATE carries its preview (tests/next_flow_skill_scan.rs `absorb_update_`).
 
     /// #2496 AC-1: `/moai project` is a route, and its workflow carries the three stages —
     /// detect and interview, the index-build suggestion, and detection-only LSP·MCP·DB.
@@ -3064,9 +2743,7 @@ mod skill_package {
         let body = fs::read_to_string(root().join("workflows/project.md")).unwrap();
         for stage in [
             "**Detect.** Run `moai project-detect <project>`",
-            "**Interview by kind.**",
-            "New project:",
-            "Existing project:",
+            "**Interview.**",
             "\"value\": \"HOLD\"",
             "**Offer the code map.**",
             "run it only after the user agrees",
@@ -3091,14 +2768,13 @@ mod skill_package {
             // 2026-11-16): at most three per call (the Codex CLI limit), four calls.
             "Read before you ask (Issue #2639)",
             // #2706: the writing language is asked once, stored in project.yaml only, and read.
-            "ask it item by item with `moai language-setup <project>`",
+            "ask the four items, every run, with `moai language-setup <project>`",
             "so it is stored in the project profile through `project-plan`/`project-apply` and nowhere else",
-            "A later run reads the stored value and does not ask again",
+            "is the suggested value, not a reason to skip the question",
             "written in the stored `instruction_files` language",
-            "is confirmed with the user, not asked",
-            "at most three questions per call and at most four calls, one axis per question",
-            "what must never be touched, what counts as done (a check the user will run themselves), which mistakes a review should always stop, and what may run without asking against what must be asked",
-            "sorted the way SKILL.md sorts an open question",
+            "is shown, not asked",
+            "in at most two calls of three questions or fewer",
+            "what must never be changed, which mistakes review always stops, what may run without asking against what must be asked, and what counts as done are never asked",
             "each new file with its first lines and each changed file as its difference",
             "a managed part the user edited by hand is planned as `conflict` and never overwritten",
             // #2639 REVIEW.md draft from the interview answers.
@@ -3109,7 +2785,8 @@ mod skill_package {
             "its `role_id` is `prj-<name>` for the project's own job",
             "a project agent never shadows a user-layer `moai-*` agent",
             "Offer project skills the same way: each is one `project_skills` entry",
-            "it writes the skill folder Claude Code reads and the one Codex CLI reads",
+            // SPEC-20261122-next-flow-skills-agents REQ-8: the Codex CLI folder left the text.
+            "it writes the skill folder Claude Code reads, and an unanswered axis is never written",
             "for any other host, say that none is written",
             "apply with `generation-apply` only after the user agrees",
             "planned `unchanged` while the answers stay the same, and `conflict` once they change too",
@@ -3171,7 +2848,10 @@ mod skill_package {
         let assets = map["assets"].as_array().unwrap();
         assert_eq!(map_ref["rows"], json!(assets.len()));
         assert_eq!(legacy["blob_check"]["rows"], json!(assets.len()));
-        let intents: Vec<String> = INTENTS.iter().map(|i| i.to_ascii_lowercase()).collect();
+        let intents: Vec<String> = LEGACY_INTENTS
+            .iter()
+            .map(|i| i.to_ascii_lowercase())
+            .collect();
         for i in &intents {
             let n = assets
                 .iter()
@@ -3260,6 +2940,38 @@ mod skill_package {
         );
         assert!(!out.status.success());
         assert!(String::from_utf8_lossy(&out.stderr).contains("SKILL.md"));
+    }
+
+    /// SPEC-20261122-html-report-install REQ-4: every skill folder the package installs, and
+    /// every folder `moai update` copies beside the moai skill, is a bundle base name, so
+    /// `moai bundle remove` never deletes an installed skill file.
+    #[test]
+    fn the_bundle_base_names_hold_every_installed_skill_folder() {
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let packs: Value = serde_json::from_slice(
+            &fs::read(repo.join("templates/bundle-packs/packs.json")).unwrap(),
+        )
+        .unwrap();
+        let base: Vec<&str> = packs["base_names"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|b| b.as_str().unwrap())
+            .collect();
+        let mut checked = 0;
+        for entry in fs::read_dir(repo.join("skills")).unwrap() {
+            let path = entry.unwrap().path();
+            if !path.is_dir() {
+                continue;
+            }
+            let name = path.file_name().unwrap().to_str().unwrap();
+            assert!(base.contains(&name), "{name} is not a bundle base name");
+            checked += 1;
+        }
+        assert!(checked > 0, "no skill folder checked");
+        for skill in moai_cli::update::extra_skill::SKILLS {
+            assert!(base.contains(&skill), "{skill} is not a bundle base name");
+        }
     }
 }
 
@@ -3642,7 +3354,7 @@ fn actions_of(plan: &Value) -> Vec<(String, String)> {
 
 #[test]
 fn generation_default_has_no_native_roles() {
-    // 03C-AC-1: the default request generates the AGENTS.md managed section, the
+    // 03C-AC-1: the default request generates the CLAUDE.md managed block, the
     // portable workflow and the .gitignore section; nothing under the native role
     // folders exists or is planned (SETUP-03).
     let root = generation_project();
@@ -3654,7 +3366,7 @@ fn generation_default_has_no_native_roles() {
         .iter()
         .map(|f| f["path"].as_str().unwrap())
         .collect();
-    assert!(paths.iter().any(|p| p.starts_with("AGENTS.md")));
+    assert!(paths.iter().any(|p| p.starts_with("CLAUDE.md")));
     assert!(paths
         .iter()
         .any(|p| p.starts_with(".moai-cli/workflows/review-flow/")));
@@ -3662,12 +3374,13 @@ fn generation_default_has_no_native_roles() {
     assert!(!paths.iter().any(|p| p.starts_with(".claude/agents/")));
     assert!(!paths.iter().any(|p| p.starts_with(".codex/agents/")));
     // The plan wrote nothing.
-    assert!(!root.path().join("AGENTS.md").exists());
+    assert!(!root.path().join("CLAUDE.md").exists());
     assert!(!root.path().join(".moai-cli/workflows").exists());
     let applied = ok_result(&generation_apply_cli(&root, &plan));
     assert_eq!(applied["host_loaded"], json!(false));
     assert_eq!(applied["execution_verified"], json!(false));
-    assert!(root.path().join("AGENTS.md").exists());
+    assert!(root.path().join("CLAUDE.md").exists());
+    assert!(!root.path().join("AGENTS.md").exists());
     assert!(root
         .path()
         .join(".moai-cli/workflows/review-flow/SKILL.md")
@@ -3697,7 +3410,7 @@ fn generation_rerun_is_diff_zero() {
     let plan = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan));
     let sha = |p: &std::path::Path| moai_cli::digest(&fs::read(p).unwrap());
-    let agents_before = sha(&root.path().join("AGENTS.md"));
+    let agents_before = sha(&root.path().join("CLAUDE.md"));
     let workflow_before = sha(&root.path().join(".moai-cli/workflows/review-flow/SKILL.md"));
     let manifest_before = sha(&root.path().join(".moai-cli/manifests/generation.json"));
     let plan2 = ok_result(&generation_plan_cli(&root, &request));
@@ -3711,7 +3424,7 @@ fn generation_rerun_is_diff_zero() {
         assert_eq!(action, "unchanged", "{path}");
     }
     ok_result(&generation_apply_cli(&root, &plan2));
-    assert_eq!(sha(&root.path().join("AGENTS.md")), agents_before);
+    assert_eq!(sha(&root.path().join("CLAUDE.md")), agents_before);
     assert_eq!(
         sha(&root.path().join(".moai-cli/workflows/review-flow/SKILL.md")),
         workflow_before
@@ -3730,7 +3443,7 @@ fn generation_preserves_user_files_and_reports_conflict() {
     // conflict and writes nothing (SETUP-04).
     let root = generation_project();
     fs::write(
-        root.path().join("AGENTS.md"),
+        root.path().join("CLAUDE.md"),
         b"# user header\r\n\n# user footer without final newline",
     )
     .unwrap();
@@ -3745,7 +3458,7 @@ fn generation_preserves_user_files_and_reports_conflict() {
     let plan = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan));
     assert!(
-        String::from_utf8_lossy(&fs::read(root.path().join("AGENTS.md")).unwrap())
+        String::from_utf8_lossy(&fs::read(root.path().join("CLAUDE.md")).unwrap())
             .starts_with("# user header\r\n")
     );
     assert_eq!(
@@ -3758,35 +3471,35 @@ fn generation_preserves_user_files_and_reports_conflict() {
     assert!(gitignore.contains("moai:managed"));
     // The user edits inside the managed section; a template change (language) then
     // reports a conflict and nothing is written.
-    let agents = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
+    let agents = fs::read_to_string(root.path().join("CLAUDE.md")).unwrap();
     let edited = agents.replace(
-        "Confirm the approved SPEC and Issue scope",
-        "The user rewrote this managed line",
+        "Checks: `moai check affected`.",
+        "The user rewrote this line",
     );
     assert_ne!(
         agents, edited,
         "the fixture string must exist in the section"
     );
-    fs::write(root.path().join("AGENTS.md"), edited).unwrap();
-    let before = fs::read(root.path().join("AGENTS.md")).unwrap();
+    fs::write(root.path().join("CLAUDE.md"), edited).unwrap();
+    let before = fs::read(root.path().join("CLAUDE.md")).unwrap();
     let mut changed = generation_request("ignored");
     changed["language"] = json!("ko");
     let plan2 = ok_result(&generation_plan_cli(&root, &changed));
     assert!(actions_of(&plan2)
         .iter()
-        .any(|(p, a)| p == "AGENTS.md" && a == "conflict"));
+        .any(|(p, a)| p == "CLAUDE.md" && a == "conflict"));
     let out = generation_apply_cli(&root, &plan2);
     assert!(!out.status.success());
     let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(failure["error"]["kind"], json!("conflict"));
-    assert_eq!(fs::read(root.path().join("AGENTS.md")).unwrap(), before);
+    assert_eq!(fs::read(root.path().join("CLAUDE.md")).unwrap(), before);
 }
 
 #[test]
 fn generation_native_roles_render_official_shapes() {
-    // 03C-AC-4: Claude roles render name/description/tools frontmatter, Codex roles
-    // only name/description/developer_instructions (never sandbox_mode), and the
-    // read-only intent surfaces as a plan warning.
+    // 03C-AC-4: Claude roles render name/description/tools frontmatter. A role that names the
+    // retired host codex is left out with one plan warning that echoes no value, and nothing is
+    // written under `.codex` (SPEC-20261121-remove-codex-project-layer REQ-8).
     let root = generation_project();
     let mut request = generation_request("none");
     request["native_roles"] = json!([
@@ -3796,30 +3509,27 @@ fn generation_native_roles_render_official_shapes() {
          "read_only_intent": true}
     ]);
     let plan = ok_result(&generation_plan_cli(&root, &request));
-    assert!(plan
-        .to_string()
-        .as_str()
-        .contains("cannot create a sandbox"));
+    let warnings = plan["warnings"].to_string();
+    assert!(
+        warnings.contains("1 native role(s) name a retired host"),
+        "{warnings}"
+    );
+    assert!(!plan.to_string().contains("prj-watcher"), "{plan}");
     ok_result(&generation_apply_cli(&root, &plan));
     let claude_role = String::from_utf8_lossy(
-        &fs::read(root.path().join(".claude/agents/prj-fixer.md")).unwrap(),
+        &fs::read(root.path().join(".claude/agents/moai/prj-fixer.md")).unwrap(),
     )
     .into_owned();
     assert!(claude_role.contains("name: prj-fixer"));
     assert!(claude_role.contains("description: Fix lint and test failures"));
     assert!(claude_role.contains("tools: Bash, Edit"));
-    let codex_role_bytes = fs::read(root.path().join(".codex/agents/prj-watcher.toml")).unwrap();
-    let codex_role = String::from_utf8_lossy(&codex_role_bytes).into_owned();
-    assert!(codex_role.contains("name = \"prj-watcher\""));
-    assert!(codex_role.contains("developer_instructions = \"Review diffs only\""));
-    assert!(!codex_role.contains("sandbox_mode"));
-    assert!(!codex_role.contains("approval_policy"));
-    assert!(!codex_role.contains("mcp_servers"));
+    assert!(!root.path().join(".codex").exists());
 }
 
 /// #2639 (project agents): a project role carrying the confirmed test command is written for
-/// both hosts, a re-run plans it `unchanged`, a hand edit is kept (`unchanged` while the
+/// Claude Code, a re-run plans it `unchanged`, a hand edit is kept (`unchanged` while the
 /// answers stay, `conflict` once they change too) and never overwritten, and a role named with the base agents' `moai-` prefix is refused.
+/// The same role listed for the retired host codex is left out and writes nothing.
 #[test]
 fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     let root = generation_project();
@@ -3831,16 +3541,13 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     ]);
     let plan = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan));
-    let claude = root.path().join(".claude/agents/prj-demo-tester.md");
-    let codex = root.path().join(".codex/agents/prj-demo-tester.toml");
+    let claude = root.path().join(".claude/agents/moai/prj-demo-tester.md");
     assert!(fs::read_to_string(&claude).unwrap().contains(purpose));
-    assert!(fs::read_to_string(&codex)
-        .unwrap()
-        .contains("Run `cargo test --locked`"));
+    assert!(!root.path().join(".codex").exists());
 
     let again = ok_result(&generation_plan_cli(&root, &request));
     for (path, action) in actions_of(&again) {
-        if path.ends_with("prj-demo-tester.md") || path.ends_with("prj-demo-tester.toml") {
+        if path.ends_with("prj-demo-tester.md") {
             assert_eq!(action, "unchanged", "{path}");
         }
     }
@@ -3851,7 +3558,7 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     let kept = ok_result(&generation_plan_cli(&root, &request));
     assert!(actions_of(&kept)
         .iter()
-        .any(|(p, a)| p == ".claude/agents/prj-demo-tester.md" && a == "unchanged"));
+        .any(|(p, a)| p == ".claude/agents/moai/prj-demo-tester.md" && a == "unchanged"));
     ok_result(&generation_apply_cli(&root, &kept));
     assert_eq!(fs::read_to_string(&claude).unwrap(), edited);
     // The answers changed too: both sides moved, so it is a conflict and nothing is written.
@@ -3859,7 +3566,7 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     let after_edit = ok_result(&generation_plan_cli(&root, &request));
     assert!(actions_of(&after_edit)
         .iter()
-        .any(|(p, a)| p == ".claude/agents/prj-demo-tester.md" && a == "conflict"));
+        .any(|(p, a)| p == ".claude/agents/moai/prj-demo-tester.md" && a == "conflict"));
     let out = generation_apply_cli(&root, &after_edit);
     assert!(!out.status.success());
     let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
@@ -3965,7 +3672,7 @@ fn generation_partial_apply_recovers() {
     let plan2 = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan2));
     for rel in [
-        "AGENTS.md",
+        "CLAUDE.md",
         ".moai-cli/workflows/review-flow/SKILL.md",
         ".moai-cli/workflows/review-flow/references/workflow.md",
         ".gitignore",
@@ -4095,7 +3802,7 @@ fn generation_manifest_entries_carry_kind() {
     assert_eq!(by_kind("native-role").len(), 1);
     assert_eq!(
         by_kind("native-role")[0]["path"],
-        json!(".claude/agents/prj-fixer.md")
+        json!(".claude/agents/moai/prj-fixer.md")
     );
     // The agents-owned entries stay kind-less: their section_id already carries the
     // managed section they belong to.

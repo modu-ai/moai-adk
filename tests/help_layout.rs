@@ -167,7 +167,7 @@ fn every_name_prints_moai_and_the_version_line_is_unchanged() {
         let version = String::from_utf8(run(bin, &["--version"], &[]).stdout).unwrap();
         let first = version.lines().next().unwrap_or("");
         assert!(
-            first.starts_with("moai-cli ") && first.ends_with(" (rust)"),
+            first.starts_with("moai ") && first.ends_with(" (rust)"),
             "{version}"
         );
         assert_eq!(version.lines().count(), 2, "{version}");
@@ -338,12 +338,16 @@ fn help_all_lists_every_command_and_the_root_a_subset() {
         assert!(all.contains(&format!("\n{}\n", g.heading)), "{}", g.heading);
         for (word, on_root) in g.commands {
             assert!(listed(&all, word), "help --all lacks {word}");
-            if !["cc", "codex", "glm", "omp"].contains(word) {
+            if !["cc", "glm"].contains(word) {
                 assert_eq!(listed(&root, word), *on_root, "root help and {word}");
             }
         }
     }
-    assert!(root.contains("  cc, codex, glm, omp "), "{root}");
+    assert!(root.contains("  cc, glm "), "{root}");
+    assert!(
+        !root.contains("codex, glm") && !root.contains("cc|codex"),
+        "{root}"
+    );
 }
 
 /// #2824 re-audit B3: a wide `COLUMNS` never takes a help line past 100 columns — the grouped
@@ -494,6 +498,53 @@ fn the_root_help_is_styled_on_a_terminal_and_no_color_turns_it_off() {
         assert!(
             !from_the_title(&plain).contains('\x1b'),
             "{env:?}: style code on a terminal: {plain:?}"
+        );
+    }
+}
+
+/// SPEC-20261121-remove-codex-project-layer REQ-10 (AC-10): the seven commands of the Codex and
+/// OMP project layer are in no help group, in no help text, and the binary treats each as a word
+/// that names no command.
+#[test]
+fn no_codex_command_is_listed() {
+    const REMOVED: [&str; 7] = [
+        "codex-config-plan",
+        "codex-config-apply",
+        "codex-projection-plan",
+        "codex-projection-apply",
+        "codex-doctor",
+        "agents-project-plan",
+        "agents-project-apply",
+    ];
+    for g in moai_cli::help::GROUPS {
+        for (word, _) in g.commands {
+            assert!(
+                !REMOVED.contains(word),
+                "{word} is still in the help groups"
+            );
+        }
+    }
+    for args in [&["--help"][..], &["help", "--all"][..]] {
+        let text = String::from_utf8(run(common::MOAI_BIN, args, &[]).stdout).unwrap();
+        for word in REMOVED {
+            assert!(!text.contains(word), "{args:?} still names {word}");
+        }
+    }
+    for word in REMOVED {
+        let out = run(common::MOAI_BIN, &[word, "."], &[]);
+        let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+        assert_eq!(out.status.code(), Some(2), "{word}: {stderr}");
+        assert!(
+            stderr.contains("unrecognized subcommand"),
+            "{word}: {stderr}"
+        );
+        // The envelope names the generic `cli` operation, not an operation of the command.
+        let envelope: serde_json::Value = serde_json::from_slice(&out.stdout)
+            .unwrap_or_else(|_| panic!("{word}: no envelope: {stderr}"));
+        assert_eq!(envelope["operation"], "cli", "{word}: {envelope}");
+        assert_eq!(
+            envelope["error"]["message"], "unknown command; see --help",
+            "{word}: {envelope}"
         );
     }
 }

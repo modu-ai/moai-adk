@@ -2,9 +2,11 @@
 //! §D5, §D8). Read-only: for every linked worktree it lists whether its cargo build output
 //! may be trimmed or the whole worktree removed, with the reasons, and a digest of the list.
 //! The plan deletes nothing. `worktree.gc.apply` ([`apply`], #2498) acts on a plan only when
-//! the recomputed digest is the same; under the user decision of 2026-11-10 (#2389 comment
-//! 6774899518, item 2) running it on the user's own machine is the leader's step after the
-//! user confirms.
+//! the recomputed digest is the same. Two callers run it: the `worktree-gc-apply` command, which
+//! under the user decision of 2026-11-10 (#2389 comment 6774899518, item 2) is the leader's step
+//! on the user's own machine after the user confirms; and `card land`, through
+//! [`crate::worktree_cleanup`], which removes the closed card's own merged, clean worktrees on
+//! the digest of the plan it just read, with no confirmation step of its own.
 //!
 //! Fail closed: a fact that cannot be established (git failed, no process table, the time
 //! budget spent) makes the worktree `skip` with a named reason, never a candidate.
@@ -80,6 +82,19 @@ pub struct Facts {
     /// A real `node_modules` folder sits at the top (#3010 audit F1 on #3058): the worktree is
     /// never a `remove` candidate, whatever the file census says about what is inside.
     pub install_dir: bool,
+    /// Another linked worktree sits inside this one (SPEC-20261123-worktree-slots REQ-8):
+    /// removing it would take the nested checkout with it.
+    pub nested: bool,
+    /// An active card reservation names this worktree (REQ-8).
+    pub live_claim: bool,
+    /// The ledger exists but could not be read, so a claim cannot be ruled out.
+    pub claim_unknown: bool,
+    /// One of the fixed slots of `<primary>/.claude/worktrees/` (REQ-7): never removed.
+    pub fixed_slot: bool,
+    /// Every reservation of the card that worked here has ended (a landing closed it). Time then
+    /// says nothing more about whether a lane is still at work: the recent-change window and the
+    /// empty-worktree guard do not apply. Every other reason still does.
+    pub settled: bool,
 }
 
 /// True when a change `age_secs` old falls inside the window.
@@ -97,6 +112,10 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
         (f.locked, "locked"),
         (f.prunable, "prunable"),
         (f.budget_spent, "budget_spent"),
+        (f.fixed_slot, "fixed_slot"),
+        (f.nested, "nested_worktree"),
+        (f.live_claim, "live_claim"),
+        (f.claim_unknown, "claim_check_unavailable"),
     ] {
         if hit {
             reasons.push(why);
@@ -118,6 +137,7 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
         None => reasons.push("process_check_unavailable"),
     }
     match f.change_age_secs {
+        _ if f.settled => {}
         Some(age) if is_recent(age, window_secs) => reasons.push("recent_change"),
         Some(_) => {}
         None => reasons.push("change_age_unknown"),
@@ -130,7 +150,9 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
         // of its own — looks exactly like one a lane has just created and not started; it
         // frees almost nothing, so it is kept.
         (Some(0), Some(0))
-            if !f.has_build_output && f.change_age_secs.is_some_and(|a| a < EMPTY_KEEP_SECS) =>
+            if !f.settled
+                && !f.has_build_output
+                && f.change_age_secs.is_some_and(|a| a < EMPTY_KEEP_SECS) =>
         {
             reasons.push("empty_worktree");
             return ("skip", reasons);
@@ -293,68 +315,248 @@ pub fn squash_merged(primary: &Path, head: &str, tip: &str) -> Option<bool> {
     }
 }
 
-/// Working directories of the processes this user can see; `None` without a source.
-pub fn process_cwds() -> Option<Vec<PathBuf>> {
-    if Path::new("/proc/self/cwd").exists() {
-        let mut out = Vec::new();
-        for e in fs::read_dir("/proc").ok()?.flatten() {
-            if let Ok(p) = fs::read_link(e.path().join("cwd")) {
-                out.push(p);
+/// The `lsof` options both process scans share: no warnings, no host or port name lookups and no
+/// kernel calls that may block. The names of open files and working folders are the same; on a
+/// loaded Mac the whole-machine scan drops from about 6 s to under 1 s with them.
+const LSOF_CHEAP: [&str; 4] = ["-w", "-n", "-P", "-b"];
+
+/// The longest an `lsof` may run. It takes 0.7 to 6 s on a loaded Mac; a stuck one is stopped and
+/// the table is reported as unavailable, which every caller treats as "in use" (it refuses).
+const LSOF_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// What the processes this user can see use at one moment: their working folders as written and
+/// the files they hold open, canonicalised (`lsof` lists a working folder among the open files).
+pub(crate) struct Snapshot {
+    cwds: Vec<PathBuf>,
+    open: Vec<PathBuf>,
+}
+
+/// The working folders and the open files of one `lsof -F fn` listing: a `f` line names the
+/// descriptor (`cwd` for a working folder) and the `n` line after it the file. Only names that
+/// are absolute paths count as open files; sockets and pipes carry other names.
+fn parse_listing(text: &str) -> (Vec<PathBuf>, Vec<PathBuf>) {
+    let (mut cwds, mut open) = (Vec::new(), Vec::new());
+    let mut in_cwd = false;
+    for line in text.lines() {
+        if let Some(fd) = line.strip_prefix('f') {
+            in_cwd = fd == "cwd";
+        } else if let Some(name) = line.strip_prefix('n') {
+            if in_cwd {
+                cwds.push(PathBuf::from(name));
             }
+            if name.starts_with('/') {
+                open.push(PathBuf::from(name));
+            }
+            in_cwd = false;
+        } else if line.starts_with('p') {
+            in_cwd = false;
         }
-        return Some(out);
     }
-    let o = Command::new("lsof")
-        .args(["-w", "-a", "-d", "cwd", "-Fn"])
-        .env("LC_ALL", "C")
-        .output()
-        .ok()?;
-    // lsof exits 1 when some processes cannot be read; its listing is still usable.
-    if o.stdout.is_empty() {
+    (cwds, open)
+}
+
+/// Test builds only: `MOAI_TEST_PROCESS_TABLE` replaces the real table. `real` injects nothing
+/// (the test judges a program that uses a folder, so the real scan runs); `empty` is a table
+/// nobody uses anything in; any other value is a file with the lines `cwd <path>` (a working
+/// folder, also counted as an open file as `lsof` does) and `open <path>`. The outer `Some` says
+/// a table was injected; the inner `None` is a table that cannot be read (unavailable).
+#[cfg(debug_assertions)]
+fn injected_table() -> Option<Option<Snapshot>> {
+    let v = std::env::var_os("MOAI_TEST_PROCESS_TABLE")?;
+    if v == "real" {
         return None;
     }
-    Some(
-        String::from_utf8_lossy(&o.stdout)
-            .lines()
-            .filter_map(|l| l.strip_prefix('n'))
-            .map(PathBuf::from)
-            .collect(),
-    )
+    if v == "empty" {
+        return Some(Some(Snapshot {
+            cwds: Vec::new(),
+            open: Vec::new(),
+        }));
+    }
+    Some(fs::read_to_string(&v).ok().map(|text| {
+        let (mut cwds, mut open) = (Vec::new(), Vec::new());
+        for line in text.lines() {
+            if let Some(p) = line.strip_prefix("cwd ") {
+                cwds.push(PathBuf::from(p));
+                open.push(PathBuf::from(p));
+            } else if let Some(p) = line.strip_prefix("open ") {
+                open.push(PathBuf::from(p));
+            }
+        }
+        Snapshot { cwds, open }
+    }))
+}
+
+#[cfg(not(debug_assertions))]
+fn injected_table() -> Option<Option<Snapshot>> {
+    None
+}
+
+/// The time limit of one `lsof`; a debug build lets a test shorten it.
+fn lsof_timeout() -> Duration {
+    #[cfg(debug_assertions)]
+    if let Some(ms) = std::env::var("MOAI_TEST_LSOF_TIMEOUT_MS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+    {
+        return Duration::from_millis(ms);
+    }
+    LSOF_TIMEOUT
+}
+
+/// One `lsof` listing with the given extra arguments. `None` when it cannot start, prints
+/// nothing or does not answer within the time limit (it is stopped then). lsof exits 1 when some
+/// processes cannot be read; its listing is still usable, so the exit code is not looked at.
+fn lsof_listing(args: &[&str]) -> Option<String> {
+    use std::io::Read;
+    let mut child = Command::new("lsof")
+        .args(LSOF_CHEAP)
+        .args(args)
+        .env("LC_ALL", "C")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .ok()?;
+    let mut pipe = child.stdout.take()?;
+    // Read while it runs: a listing is megabytes and a full pipe would stop it.
+    let reader = std::thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let _ = pipe.read_to_end(&mut bytes);
+        bytes
+    });
+    let deadline = Instant::now() + lsof_timeout();
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) if Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        }
+    }
+    let bytes = reader.join().ok()?;
+    if bytes.is_empty() {
+        return None;
+    }
+    Some(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+/// Reads the working folders now: the `/proc` cwd pass on Linux, the cwd descriptors of one
+/// `lsof` elsewhere. The open files are not read and their paths are not canonicalised here —
+/// the working-folder check never pays for them.
+fn read_cwds() -> Option<Vec<PathBuf>> {
+    if let Some(injected) = injected_table() {
+        return injected.map(|s| s.cwds);
+    }
+    if Path::new("/proc/self/fd").exists() {
+        let mut cwds = Vec::new();
+        for e in fs::read_dir("/proc").ok()?.flatten() {
+            if let Ok(p) = fs::read_link(e.path().join("cwd")) {
+                cwds.push(p);
+            }
+        }
+        return Some(cwds);
+    }
+    let (cwds, _) = parse_listing(&lsof_listing(&["-a", "-d", "cwd", "-F", "fn"])?);
+    Some(cwds)
+}
+
+/// Reads the open files now, canonicalised: the `/proc` fd pass on Linux, one machine-wide
+/// `lsof` elsewhere. Its listing also names the working folders, which seed the command cache
+/// of the working-folder check (a command that asks for both never scans twice for them).
+fn read_open() -> Option<(Vec<PathBuf>, Vec<PathBuf>)> {
+    let (open, cwds) = if let Some(injected) = injected_table() {
+        let s = injected?;
+        (s.open, s.cwds)
+    } else if Path::new("/proc/self/fd").exists() {
+        let mut open = Vec::new();
+        for e in fs::read_dir("/proc").ok()?.flatten() {
+            if let Ok(fds) = fs::read_dir(e.path().join("fd")) {
+                open.extend(fds.flatten().filter_map(|fd| fs::read_link(fd.path()).ok()));
+            }
+        }
+        (open, Vec::new())
+    } else {
+        // parse_listing answers `(working folders, open files)`; here the open files lead.
+        let (listing_cwds, open) = parse_listing(&lsof_listing(&["-F", "fn"])?);
+        (open, listing_cwds)
+    };
+    let open = open
+        .into_iter()
+        .map(|p| fs::canonicalize(&p).unwrap_or(p))
+        .collect();
+    Some((open, cwds))
+}
+
+/// One answer per command: the slot holds the last successful read, and a later question of
+/// the same command answers from it without a new scan. A failed read is not kept, so the
+/// next question reads again.
+struct OnceCache<T> {
+    slot: std::sync::Mutex<Option<std::sync::Arc<T>>>,
+}
+
+impl<T> OnceCache<T> {
+    const fn new() -> OnceCache<T> {
+        OnceCache {
+            slot: std::sync::Mutex::new(None),
+        }
+    }
+
+    /// The last read when there is one, else a new one from `scan`.
+    fn get(&self, scan: impl FnOnce() -> Option<T>) -> Option<std::sync::Arc<T>> {
+        let mut slot = self.slot.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(v) = slot.as_ref() {
+            return Some(v.clone());
+        }
+        let v = std::sync::Arc::new(scan()?);
+        *slot = Some(v.clone());
+        Some(v)
+    }
+}
+
+static CWDS_CACHE: OnceCache<Vec<PathBuf>> = OnceCache::new();
+static OPEN_CACHE: OnceCache<(Vec<PathBuf>, Vec<PathBuf>)> = OnceCache::new();
+
+/// Working directories of the processes this user can see; `None` without a source. The scan
+/// reads only the cwd descriptors and runs once per command: the command cache answers the
+/// later questions of the same command.
+pub fn process_cwds() -> Option<Vec<PathBuf>> {
+    CWDS_CACHE.get(read_cwds).map(|v| v.to_vec())
 }
 
 /// Paths of the files the processes this user can see hold open (`/proc/*/fd` on Linux,
-/// `lsof -Fn` elsewhere), canonicalised; `None` without a source. Only `apply` reads this,
-/// right before it deletes (#2498; the plan reads working directories only).
+/// `lsof` elsewhere), canonicalised; `None` without a source. Read only when a caller asks
+/// for open files, once per command (the command cache answers a later question of the same
+/// command). Only `apply` reads this, right before it deletes (#2498; the plan reads working
+/// directories only).
 pub(crate) fn open_file_paths() -> Option<Vec<PathBuf>> {
-    let mut out = Vec::new();
-    if Path::new("/proc/self/fd").exists() {
-        for e in fs::read_dir("/proc").ok()?.flatten() {
-            if let Ok(fds) = fs::read_dir(e.path().join("fd")) {
-                out.extend(fds.flatten().filter_map(|fd| fs::read_link(fd.path()).ok()));
-            }
+    let pair = OPEN_CACHE.get(read_open)?;
+    let (open, cwds) = &*pair;
+    // The machine listing also names the working folders: seed the other cache with them,
+    // so one command that asks for both never runs two scans for the same information.
+    if !cwds.is_empty() {
+        let mut slot = CWDS_CACHE.slot.lock().unwrap_or_else(|e| e.into_inner());
+        if slot.is_none() {
+            *slot = Some(std::sync::Arc::new(cwds.clone()));
         }
-    } else {
-        let o = Command::new("lsof")
-            .args(["-w", "-Fn"])
-            .env("LC_ALL", "C")
-            .output()
-            .ok()?;
-        if o.stdout.is_empty() {
-            return None;
-        }
-        out.extend(
-            String::from_utf8_lossy(&o.stdout)
-                .lines()
-                .filter_map(|l| l.strip_prefix('n'))
-                .filter(|l| l.starts_with('/'))
-                .map(PathBuf::from),
-        );
     }
-    Some(
-        out.into_iter()
-            .map(|p| fs::canonicalize(&p).unwrap_or(p))
-            .collect(),
-    )
+    Some(open.to_vec())
+}
+
+/// Fresh reads for other modules' right-before-it-moves checks: the same scans [`busy_now`]
+/// runs for its own deletions — never the command cache, which holds the table the command
+/// read at its start.
+pub(crate) fn process_cwds_fresh() -> Option<Vec<PathBuf>> {
+    read_cwds()
+}
+
+/// The open files read now, not from the command cache (see [`process_cwds_fresh`]).
+pub(crate) fn open_file_paths_fresh() -> Option<Vec<PathBuf>> {
+    read_open().map(|(open, _)| open)
 }
 
 fn unix_secs(t: SystemTime) -> Option<u64> {
@@ -587,6 +789,9 @@ pub struct Pace {
     /// When not empty, only these worktrees are planned (#2879 D1: a lane cleans its own card
     /// worktrees and never another lane's). Each must be a worktree of this clone.
     pub only: Vec<PathBuf>,
+    /// The worktree cap the `cap` block reports against; `None` is
+    /// [`crate::worktree_slot::MAX_WORKTREES`].
+    pub max_worktrees: Option<usize>,
 }
 
 /// The home worktree folder and the Go generation's folder (#2811), each as written and as
@@ -610,7 +815,7 @@ fn work_roots() -> (Vec<PathBuf>, Vec<PathBuf>) {
     )
 }
 
-fn shown(path: &Path, root: &Path) -> String {
+pub(crate) fn shown(path: &Path, root: &Path) -> String {
     match path.strip_prefix(root) {
         Ok(rel) if rel.as_os_str().is_empty() => ".".into(),
         Ok(rel) => rel.to_string_lossy().into_owned(),
@@ -734,6 +939,56 @@ fn lifecycle(
     })
 }
 
+/// The worktrees active card reservations name, resolved (SPEC-20261123-worktree-slots REQ-8).
+/// A project without a profile or without a ledger has none. A profile or a ledger that exists
+/// but cannot be read is `Err`, and every linked worktree is then kept as
+/// `claim_check_unavailable`. The ledger is the one of `home` (`$HOME` when `None`).
+fn claimed_worktrees(top: &Path, home: Option<&Path>) -> std::result::Result<Vec<PathBuf>, ()> {
+    let real = fs::canonicalize(top).map_err(|_| ())?;
+    let Some(id) = crate::project_id::read(&real).map_err(|_| ())? else {
+        return Ok(Vec::new());
+    };
+    let home = crate::ledger::command::resolve_home(home.map(Path::to_path_buf)).map_err(|_| ())?;
+    let file = crate::ledger::ledger_path(&home, &id).map_err(|_| ())?;
+    if !file.is_file() {
+        return Ok(Vec::new());
+    }
+    let read = crate::ledger::open_read_only(&home, &id).map_err(|_| ())?;
+    let rows = crate::ledger::reservation::active_worktrees(read.conn()).map_err(|_| ())?;
+    Ok(rows
+        .into_iter()
+        .map(|(_, w)| {
+            let p = PathBuf::from(w);
+            fs::canonicalize(&p).unwrap_or(p)
+        })
+        .collect())
+}
+
+/// The `cap` block (REQ-10): the linked worktree count against the cap, the `remove`
+/// candidates oldest change first, and how many of them bring the count back under the cap.
+/// A report only: it is not bound by the digest.
+fn cap_block(linked: usize, limit: usize, candidates: &[Value]) -> Value {
+    let mut removable: Vec<&Value> = candidates
+        .iter()
+        .filter(|c| c["action"] == "remove")
+        .collect();
+    removable.sort_by(|a, b| {
+        let age = |c: &Value| c["change_age_secs"].as_u64().unwrap_or(0);
+        age(b)
+            .cmp(&age(a))
+            .then_with(|| a["path"].as_str().cmp(&b["path"].as_str()))
+    });
+    let over = linked.saturating_sub(limit);
+    json!({
+        "limit": limit,
+        "count": linked,
+        "over": over,
+        "oldest_first": removable.iter().map(|c| c["path"].clone()).collect::<Vec<_>>(),
+        "needed": over.min(removable.len()),
+        "enough": removable.len() >= over,
+    })
+}
+
 /// Builds the plan. `now_unix` overrides the clock (tests); `None` uses the system time.
 /// Only an ancestor of the integration tip counts as merged here: `worktree.gc.apply`
 /// recomputes this plan, and a squash merge alone never makes it remove (#2724).
@@ -782,6 +1037,37 @@ pub fn plan_paced(
     squash: bool,
     pace: &Pace,
 ) -> Result<Value> {
+    plan_settled(
+        project,
+        integration_ref,
+        recent,
+        budget,
+        now_unix,
+        squash,
+        pace,
+        &[],
+        None,
+    )
+}
+
+/// [`plan_paced`] where the worktrees in `settled` belong to a card whose reservations have all
+/// ended (a landing closed it): for them the recent-change window and the empty-worktree guard
+/// do not apply ([`Facts::settled`]). A claim, a process, a dirty or unmerged tree and every other
+/// reason still keep a worktree. The card claims are read from the ledger of `home` (`$HOME` when
+/// `None`): `card land --home DIR` passes DIR, the ledger the landing wrote, so another live
+/// card's worktree is kept whatever `$HOME` of the process is.
+#[allow(clippy::too_many_arguments)]
+pub fn plan_settled(
+    project: &Path,
+    integration_ref: &str,
+    recent: Duration,
+    budget: Duration,
+    now_unix: Option<u64>,
+    squash: bool,
+    pace: &Pace,
+    settled: &[PathBuf],
+    home: Option<&Path>,
+) -> Result<Value> {
     if recent.as_secs() < MIN_RECENT_MINUTES * 60 {
         return Err(format!(
             "--recent-minutes must be at least {MIN_RECENT_MINUTES}; got {}",
@@ -821,6 +1107,12 @@ pub fn plan_paced(
     // #2811: the home work folders, as written and resolved, so a linked `~/.moai` still
     // names its worktrees. The Go generation's `worktrees/projects` is never touched (D8a).
     let (home_roots, go_roots) = work_roots();
+    let claims = claimed_worktrees(&top, home);
+    let slot_dir = primary.join(crate::worktree_slot::SLOT_DIR);
+    let entry_paths: Vec<PathBuf> = entries
+        .iter()
+        .map(|e| fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()))
+        .collect();
 
     let mut candidates = Vec::new();
     // #2879 D2: the primary first, then the linked worktrees starting after the cursor.
@@ -842,6 +1134,10 @@ pub fn plan_paced(
     let (mut checked, mut remaining, mut last_checked) = (0usize, 0usize, None::<String>);
     let only: Vec<PathBuf> = pace
         .only
+        .iter()
+        .map(|p| fs::canonicalize(p).unwrap_or_else(|_| p.clone()))
+        .collect();
+    let settled_paths: Vec<PathBuf> = settled
         .iter()
         .map(|p| fs::canonicalize(p).unwrap_or_else(|_| p.clone()))
         .collect();
@@ -890,6 +1186,22 @@ pub fn plan_paced(
             prunable: e.prunable,
             has_build_output: !cargo.is_empty(),
             install_dir: has_install_dir(&path),
+            nested: i != 0
+                && entry_paths
+                    .iter()
+                    .any(|q| q != &path && q.starts_with(&path)),
+            live_claim: i != 0
+                && claims
+                    .as_ref()
+                    .is_ok_and(|list| list.iter().any(|c| c == &path)),
+            claim_unknown: i != 0 && claims.is_err(),
+            fixed_slot: i != 0
+                && path.parent() == Some(slot_dir.as_path())
+                && path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(crate::worktree_slot::is_slot),
+            settled: i != 0 && settled_paths.contains(&path),
             ..Default::default()
         };
         let mut merged_by: Option<&str> = None;
@@ -987,6 +1299,13 @@ pub fn plan_paced(
         .collect();
     let plan_digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
     let count = |a: &str| candidates.iter().filter(|c| c["action"] == a).count();
+    let linked = entries.iter().skip(1).filter(|e| !e.bare).count();
+    let cap = cap_block(
+        linked,
+        pace.max_worktrees
+            .unwrap_or(crate::worktree_slot::MAX_WORKTREES),
+        &candidates,
+    );
     let trim_total: u64 = candidates
         .iter()
         .filter_map(|c| c["trim_bytes"].as_u64())
@@ -1004,13 +1323,14 @@ pub fn plan_paced(
             "trim_bytes": trim_total,
         },
         "candidates": candidates,
+        "cap": cap,
         "remaining": remaining,
         "next_cursor": if remaining > 0 { json!(last_checked) } else { Value::Null },
         // #3010 P1: free bytes before any apply; a reclaimed figure is the later `df` minus
         // this one, never a sum of sizes (clonefile and hard links make sums wrong).
         "before_free_bytes": crate::worktree_report::disk_bytes(&top).map(|(free, _)| free),
         "plan_digest": plan_digest,
-        "apply": "worktree-gc-apply with this plan_digest and a permission reference; on this machine the leader runs it only after the user confirms",
+        "apply": "worktree-gc-apply with this plan_digest and a permission reference; on this machine the leader runs it only after the user confirms. card land runs the same apply for the landed card's own worktrees, without that confirmation step",
         "network": "disabled",
         "writes": false,
     }))
@@ -1028,7 +1348,8 @@ fn validate_permission(permission: &str) -> Result<()> {
 /// outside the cargo build output. An unknown fact refuses too.
 /// `primary` is the primary checkout, for the copy check of the ignored files when removing.
 pub(crate) fn busy_now(wt: &Path, removing: bool, primary: Option<&Path>) -> Option<&'static str> {
-    let cwds = match process_cwds() {
+    // Fresh reads, never the command cache: this runs right before each deletion or move.
+    let cwds = match read_cwds() {
         Some(v) => v,
         None => return Some("process_check_unavailable"),
     };
@@ -1039,7 +1360,7 @@ pub(crate) fn busy_now(wt: &Path, removing: bool, primary: Option<&Path>) -> Opt
     {
         return Some("process_in_use");
     }
-    match open_file_paths() {
+    match read_open().map(|(open, _)| open) {
         Some(paths) if paths.iter().any(|p| p.starts_with(wt)) => return Some("file_open_in_use"),
         Some(_) => {}
         None => return Some("open_file_check_unavailable"),
@@ -1071,6 +1392,27 @@ pub(crate) fn busy_now(wt: &Path, removing: bool, primary: Option<&Path>) -> Opt
 /// file and install-folder check, a `trim` leaves those files alone (#3010, audit of #3058).
 fn recheck_entry(wt: &Path, action: &str, primary: &Path) -> Option<&'static str> {
     busy_now(wt, action == "remove", Some(primary))
+}
+
+/// The ledger and nesting facts the plan read, read again right before `apply` acts on `wt`
+/// (SPEC-20261123-worktree-slots REQ-8): a card claim made after the plan, a ledger that can no
+/// longer be read, or a worktree added inside `wt` since, each refuse. `worktrees` is the list
+/// `apply` read, canonical paths with the primary first. The claims are read from the ledger of
+/// `home` (`$HOME` when `None`), the same one the plan read.
+fn recheck_claims_and_nesting(
+    wt: &Path,
+    top: &Path,
+    worktrees: &[PathBuf],
+    home: Option<&Path>,
+) -> Option<&'static str> {
+    if worktrees.iter().any(|q| q != wt && q.starts_with(wt)) {
+        return Some("nested_worktree");
+    }
+    match claimed_worktrees(top, home) {
+        Ok(list) if list.iter().any(|c| c == wt) => Some("live_claim"),
+        Ok(_) => None,
+        Err(()) => Some("claim_check_unavailable"),
+    }
 }
 
 /// Deletes the cargo-owned trim paths of `wt` that the plan listed. Each path must still sit
@@ -1112,13 +1454,17 @@ fn act_on(
     action: &str,
     shown_path: &str,
     primary: &Path,
+    top: &Path,
     worktrees: &[PathBuf],
+    home: Option<&Path>,
 ) -> std::result::Result<&'static str, String> {
     let wt =
         fs::canonicalize(primary.join(shown_path)).unwrap_or_else(|_| primary.join(shown_path));
     if wt == primary || !worktrees.contains(&wt) {
         Err("not a linked worktree of this repository".to_string())
-    } else if let Some(why) = recheck_entry(&wt, action, primary) {
+    } else if let Some(why) = recheck_claims_and_nesting(&wt, top, worktrees, home)
+        .or_else(|| recheck_entry(&wt, action, primary))
+    {
         Err(format!("refused: {why}"))
     } else if action == "trim" {
         let paths: Vec<String> = c["trim_paths"]
@@ -1154,7 +1500,14 @@ fn act_on(
 /// paths, `remove` runs `git worktree remove` without `--force` (git refuses a dirty tree;
 /// the branch is kept) — after re-checking each worktree right before touching it
 /// ([`busy_now`]). A refused or failed entry is reported and the rest go on; nothing is
-/// retried. Running this on the user's own machine is a user-confirmed step the leader takes.
+/// retried.
+///
+/// Who may run it: the `worktree-gc-apply` command is a user-confirmed step the leader takes on
+/// the user's own machine. `card land` also reaches it, through [`crate::worktree_cleanup`], with
+/// no confirmation step of its own: once a landing closes a card, its merged, clean worktrees
+/// outside `.claude/worktrees/` are removed by this function on the digest of the plan just read
+/// (`git worktree remove` without `--force`; the branch stays). The `cleanup` key of the landing
+/// answer reports what it did.
 #[allow(clippy::too_many_arguments)]
 pub fn apply(
     project: &Path,
@@ -1166,8 +1519,38 @@ pub fn apply(
     plan_digest: &str,
     permission_reference: &str,
 ) -> Result<Value> {
+    apply_settled(
+        project,
+        integration_ref,
+        recent,
+        budget,
+        now_unix,
+        pace,
+        &[],
+        None,
+        plan_digest,
+        permission_reference,
+    )
+}
+
+/// [`apply`] for a plan made by [`plan_settled`] with the same `settled` paths and `home`: the
+/// recomputed plan, and so its digest, is the one that treats those worktrees as settled, and the
+/// claims it reads again right before each entry come from the same `home`.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_settled(
+    project: &Path,
+    integration_ref: &str,
+    recent: Duration,
+    budget: Duration,
+    now_unix: Option<u64>,
+    pace: &Pace,
+    settled: &[PathBuf],
+    home: Option<&Path>,
+    plan_digest: &str,
+    permission_reference: &str,
+) -> Result<Value> {
     validate_permission(permission_reference)?;
-    let fresh = plan_paced(
+    let fresh = plan_settled(
         project,
         integration_ref,
         recent,
@@ -1175,6 +1558,8 @@ pub fn apply(
         now_unix,
         false,
         pace,
+        settled,
+        home,
     )?;
     if fresh["plan_digest"].as_str() != Some(plan_digest) {
         return Err("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written".into());
@@ -1203,7 +1588,7 @@ pub fn apply(
             continue;
         }
         let shown_path = c["path"].as_str().unwrap_or_default().to_string();
-        let outcome = act_on(c, action, &shown_path, &primary, &worktrees);
+        let outcome = act_on(c, action, &shown_path, &primary, &top, &worktrees, home);
         let (status, detail) = match outcome {
             Ok(s) => (s, Value::Null),
             Err(e) => {
@@ -1237,6 +1622,16 @@ pub fn apply(
 mod tests {
     use super::*;
 
+    /// Serialises the tests that touch the process environment or run the scans: a stub
+    /// `lsof` on the `PATH` and a filled command cache must not leak into each other.
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// Empties the two command caches, so a test starts its own scans.
+    fn test_clear_process_caches() {
+        *CWDS_CACHE.slot.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        *OPEN_CACHE.slot.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    }
+
     fn eligible() -> Facts {
         Facts {
             merged: Some(true),
@@ -1248,6 +1643,298 @@ mod tests {
             has_build_output: true,
             ..Default::default()
         }
+    }
+
+    /// SPEC-20261121-cheap-process-scan REQ-3: the cheap `lsof` options still see a file another
+    /// process holds open and the working folder of another process (a real `lsof` or `/proc`).
+    #[test]
+    fn the_cheap_scans_still_see_a_held_file_and_a_working_folder() {
+        let _env = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        // A fresh scan each round: the command cache is per command, and this loop of one
+        // test process is not one command (the file is only held open after a moment).
+        let dir = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(dir.path()).unwrap();
+        let held = root.join("held.txt");
+        let work = root.join("work");
+        fs::write(&held, "x").unwrap();
+        fs::create_dir(&work).unwrap();
+        let script = format!(
+            "exec 3<'{}'; cd '{}'; exec sleep 30",
+            held.display(),
+            work.display()
+        );
+        let mut child = Command::new("sh")
+            .args(["-c", &script])
+            .stdout(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        let start = Instant::now();
+        let (mut file_seen, mut cwd_seen) = (false, false);
+        while start.elapsed() < Duration::from_secs(20) && !(file_seen && cwd_seen) {
+            test_clear_process_caches();
+            file_seen = open_file_paths().is_some_and(|v| v.iter().any(|p| p == &held));
+            cwd_seen = process_cwds().is_some_and(|v| {
+                v.iter()
+                    .any(|p| fs::canonicalize(p).unwrap_or(p.clone()) == work)
+            });
+            std::thread::sleep(Duration::from_millis(200));
+        }
+        let _ = child.kill();
+        let _ = child.wait();
+        assert!(file_seen, "the held file was not listed");
+        assert!(cwd_seen, "the working folder was not listed");
+    }
+
+    /// A process of a listing: its id and its descriptors as `(descriptor, name)`.
+    type Proc = (u32, Vec<(&'static str, &'static str)>);
+
+    /// The one listing now read (`lsof -F fn`).
+    fn render_now(procs: &[Proc]) -> String {
+        let mut out = String::new();
+        for (pid, files) in procs {
+            out.push_str(&format!("p{pid}\n"));
+            for (fd, name) in files {
+                out.push_str(&format!("f{fd}\nn{name}\n"));
+            }
+        }
+        out
+    }
+
+    /// What the earlier working-folder scan read (`lsof -a -d cwd -Fn`).
+    fn render_old_cwd(procs: &[Proc]) -> String {
+        let mut out = String::new();
+        for (pid, files) in procs {
+            out.push_str(&format!("p{pid}\n"));
+            for (_, name) in files.iter().filter(|(fd, _)| *fd == "cwd") {
+                out.push_str(&format!("n{name}\n"));
+            }
+        }
+        out
+    }
+
+    /// What the earlier open-file scan read (`lsof -Fn`: every descriptor, working folder too).
+    fn render_old_open(procs: &[Proc]) -> String {
+        let mut out = String::new();
+        for (pid, files) in procs {
+            out.push_str(&format!("p{pid}\n"));
+            for (_, name) in files {
+                out.push_str(&format!("n{name}\n"));
+            }
+        }
+        out
+    }
+
+    /// The two earlier parsers, as they were.
+    fn old_cwds(text: &str) -> Vec<PathBuf> {
+        text.lines()
+            .filter_map(|l| l.strip_prefix('n'))
+            .map(PathBuf::from)
+            .collect()
+    }
+
+    fn old_open(text: &str) -> Vec<PathBuf> {
+        text.lines()
+            .filter_map(|l| l.strip_prefix('n'))
+            .filter(|l| l.starts_with('/'))
+            .map(PathBuf::from)
+            .collect()
+    }
+
+    /// SPEC-20261121-process-scan-snapshot REQ-4, REQ-5, REQ-9: twelve situations, each read the
+    /// earlier way (two listings) and the new way (one), and judged against a folder by path
+    /// prefix: the same working folders, the same open files and the same verdicts.
+    #[test]
+    fn one_listing_gives_the_answers_of_the_two_earlier_scans_in_twelve_situations() {
+        // (what a process does, the folder judged, working folder inside, open file inside)
+        let situations: Vec<(&str, Vec<Proc>, &str, bool, bool)> = vec![
+            (
+                "a working folder inside",
+                vec![(1, vec![("cwd", "/w/proj/src"), ("txt", "/bin/sh")])],
+                "/w/proj",
+                true,
+                true,
+            ),
+            (
+                "an open file inside",
+                vec![(1, vec![("cwd", "/"), ("3r", "/w/proj/f.txt")])],
+                "/w/proj",
+                false,
+                true,
+            ),
+            (
+                "both",
+                vec![(1, vec![("cwd", "/w/proj"), ("4w", "/w/proj/log")])],
+                "/w/proj",
+                true,
+                true,
+            ),
+            (
+                "neither",
+                vec![(1, vec![("cwd", "/elsewhere"), ("3r", "/etc/hosts")])],
+                "/w/proj",
+                false,
+                false,
+            ),
+            (
+                "a path with a space",
+                vec![(1, vec![("cwd", "/w/my proj/src")])],
+                "/w/my proj",
+                true,
+                true,
+            ),
+            (
+                "a link path is not the canonical one",
+                vec![(1, vec![("cwd", "/tmp/proj/x")])],
+                "/private/tmp/proj",
+                false,
+                false,
+            ),
+            (
+                "a sibling whose name only starts the same",
+                vec![(
+                    1,
+                    vec![("cwd", "/w/proj-other/x"), ("3r", "/w/proj-other/y")],
+                )],
+                "/w/proj",
+                false,
+                false,
+            ),
+            (
+                "the parent is the working folder",
+                vec![(1, vec![("cwd", "/w")])],
+                "/w/proj",
+                false,
+                false,
+            ),
+            (
+                "the root is the working folder",
+                vec![(1, vec![("cwd", "/")])],
+                "/w/proj",
+                false,
+                false,
+            ),
+            (
+                "sockets and arrows beside a socket file inside",
+                vec![(
+                    1,
+                    vec![
+                        ("cwd", "/"),
+                        ("5u", "*:8080"),
+                        ("6u", "->0xabc"),
+                        ("7u", "/w/proj/s.sock"),
+                    ],
+                )],
+                "/w/proj",
+                false,
+                true,
+            ),
+            (
+                "several processes hold one file",
+                vec![
+                    (1, vec![("3r", "/w/proj/f")]),
+                    (2, vec![("3r", "/w/proj/f")]),
+                    (3, vec![("cwd", "/x")]),
+                ],
+                "/w/proj",
+                false,
+                true,
+            ),
+        ];
+        assert_eq!(situations.len(), 11);
+        for (what, procs, folder, cwd_hit, open_hit) in &situations {
+            let (cwds, open) = parse_listing(&render_now(procs));
+            assert_eq!(
+                cwds,
+                old_cwds(&render_old_cwd(procs)),
+                "{what}: working folders"
+            );
+            assert_eq!(
+                open,
+                old_open(&render_old_open(procs)),
+                "{what}: open files"
+            );
+            let folder = Path::new(folder);
+            assert_eq!(
+                cwds.iter().any(|c| c.starts_with(folder)),
+                *cwd_hit,
+                "{what}"
+            );
+            assert_eq!(
+                open.iter().any(|p| p.starts_with(folder)),
+                *open_hit,
+                "{what}"
+            );
+        }
+        // The twelfth: nothing listed, and a listing cut off in the middle of a line.
+        assert_eq!(parse_listing(""), (vec![], vec![]));
+        let cut = "p1\nfcwd\nn/w/pr";
+        let (cwds, open) = parse_listing(cut);
+        assert_eq!(cwds, old_cwds("p1\nn/w/pr"));
+        assert_eq!(open, old_open("p1\nn/w/pr"));
+        assert!(!open.iter().any(|p| p.starts_with("/w/proj")));
+    }
+
+    /// The command cache answers every question of one command from one read, and a failed
+    /// read is not kept (the next question reads again).
+    #[test]
+    fn once_cache_answers_without_a_second_read_and_drops_a_failed_read() {
+        let cache = OnceCache::<Vec<PathBuf>>::new();
+        let reads = std::cell::Cell::new(0u32);
+        let scan = || {
+            reads.set(reads.get() + 1);
+            Some(Vec::<PathBuf>::new())
+        };
+        assert!(cache.get(scan).is_some());
+        assert!(cache.get(scan).is_some());
+        assert_eq!(reads.get(), 1, "the second question read the table again");
+        // A failed read gives no answer and leaves nothing behind: the next question reads again.
+        let fresh = OnceCache::<Vec<PathBuf>>::new();
+        assert!(fresh.get(|| None).is_none());
+        assert!(fresh.get(scan).is_some());
+        assert_eq!(reads.get(), 2, "a failed read was kept");
+    }
+
+    /// REQ-3: a second question of the same command answers from the command cache. A value
+    /// planted in the cache comes back for the second question — a real scan would return
+    /// something else — and the machine listing of the open-file scan seeds the other cache,
+    /// so a command that asks for both never scans twice for the same information.
+    #[test]
+    fn a_second_question_answers_from_the_command_cache() {
+        let _env = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        test_clear_process_caches();
+
+        // The working-folder cache answers both questions from the planted value.
+        let planted_cwds = vec![PathBuf::from("/nowhere/wt/a")];
+        *CWDS_CACHE.slot.lock().unwrap_or_else(|e| e.into_inner()) =
+            Some(std::sync::Arc::new(planted_cwds.clone()));
+        let a = process_cwds().unwrap();
+        let b = process_cwds().unwrap();
+        assert_eq!(a, planted_cwds, "the first question did not read the cache");
+        assert_eq!(b, a, "the second question ran a new scan");
+
+        // The open-file cache answers both questions, and its listing seeds the working-folder
+        // cache of the same command.
+        let planted_open = vec![PathBuf::from("/nowhere/open")];
+        let listing_cwds = vec![PathBuf::from("/nowhere/wt/b")];
+        *OPEN_CACHE.slot.lock().unwrap_or_else(|e| e.into_inner()) = Some(std::sync::Arc::new((
+            planted_open.clone(),
+            listing_cwds.clone(),
+        )));
+        *CWDS_CACHE.slot.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        let o1 = open_file_paths().unwrap();
+        let o2 = open_file_paths().unwrap();
+        assert_eq!(
+            o1, planted_open,
+            "the first open question did not read the cache"
+        );
+        assert_eq!(o2, o1, "the second open question ran a new scan");
+        let seeded = process_cwds().unwrap();
+        assert_eq!(
+            seeded, listing_cwds,
+            "the open listing did not seed the cwd cache"
+        );
+
+        test_clear_process_caches();
     }
 
     #[test]
@@ -1346,6 +2033,36 @@ mod tests {
         f.has_build_output = true;
         f.change_age_secs = Some(7_200);
         assert_eq!(decide(&f, 7_200), ("remove", vec![]));
+    }
+
+    /// A settled worktree (its card's reservations ended) is judged without the recent-change
+    /// window and the empty-worktree guard, and by every other reason as before.
+    #[test]
+    fn a_settled_worktree_ignores_time_and_nothing_else() {
+        let mut f = eligible();
+        f.settled = true;
+        f.has_build_output = false;
+        f.change_age_secs = Some(0);
+        assert_eq!(decide(&f, 7_200), ("remove", vec![]));
+        f.change_age_secs = None;
+        assert_eq!(decide(&f, 7_200), ("remove", vec![]));
+        f.change_age_secs = Some(0);
+        f.live_claim = true;
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["live_claim"]));
+        f.live_claim = false;
+        f.in_use = Some(true);
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["process_in_use"]));
+        f.in_use = Some(false);
+        f.tracked_dirty = Some(true);
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["tracked_changes"]));
+        f.tracked_dirty = Some(false);
+        f.merged = Some(false);
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["not_merged"]));
+        // The same facts without `settled` are kept by time.
+        let mut f = eligible();
+        f.has_build_output = false;
+        f.change_age_secs = Some(0);
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["recent_change"]));
     }
 
     #[test]
@@ -1586,7 +2303,15 @@ mod tests {
         let entry = |action: &str| json!({"path": path, "action": action, "trim_paths": []});
 
         assert_eq!(
-            act_on(&entry("remove"), "remove", &path, &primary, &worktrees),
+            act_on(
+                &entry("remove"),
+                "remove",
+                &path,
+                &primary,
+                &primary,
+                &worktrees,
+                None
+            ),
             Err("refused: files_outside_build_output".to_string())
         );
         assert!(
@@ -1594,7 +2319,15 @@ mod tests {
             "a refused entry leaves the worktree whole"
         );
         assert_eq!(
-            act_on(&entry("trim"), "trim", &path, &primary, &worktrees),
+            act_on(
+                &entry("trim"),
+                "trim",
+                &path,
+                &primary,
+                &primary,
+                &worktrees,
+                None
+            ),
             Ok("trimmed")
         );
         assert!(
@@ -1607,10 +2340,162 @@ mod tests {
                 "trim",
                 &primary.to_string_lossy(),
                 &primary,
-                &worktrees
+                &primary,
+                &worktrees,
+                None
             ),
             Err("not a linked worktree of this repository".to_string())
         );
+    }
+
+    /// SPEC-20261123-worktree-slots REQ-8: right before it acts, `apply` reads the nesting and
+    /// the claims again. A worktree added inside the entry since the plan, or a project profile
+    /// that can no longer be read (so the claims are unknown), refuses the entry and leaves it
+    /// whole; with both gone the same entry is trimmed.
+    #[cfg(unix)]
+    #[test]
+    fn apply_reads_nesting_and_claims_again_right_before_it_acts() {
+        let d = tempfile::tempdir().unwrap();
+        let base = fs::canonicalize(d.path()).unwrap();
+        let primary = base.join("primary");
+        fs::create_dir_all(&primary).unwrap();
+        gc_git(&primary, &["init", "-q", "-b", "main"]);
+        fs::write(primary.join(".gitignore"), "target/\n/inner/\n").unwrap();
+        fs::write(primary.join("a.txt"), "a\n").unwrap();
+        gc_git(&primary, &["add", ".gitignore", "a.txt"]);
+        gc_git(&primary, &["commit", "-q", "-m", "init"]);
+        let wt = base.join("wt");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "b", wt.to_str().unwrap()],
+        );
+        let inner = wt.join("inner");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "c", inner.to_str().unwrap()],
+        );
+        fs::create_dir_all(wt.join("target")).unwrap();
+        let path = wt.to_string_lossy().to_string();
+        let entry = |action: &str| json!({"path": path, "action": action, "trim_paths": []});
+        let act = |action: &str, worktrees: &[PathBuf]| {
+            act_on(
+                &entry(action),
+                action,
+                &path,
+                &primary,
+                &primary,
+                worktrees,
+                None,
+            )
+        };
+
+        let with_inner = vec![primary.clone(), wt.clone(), inner.clone()];
+        for action in ["trim", "remove"] {
+            assert_eq!(
+                act(action, &with_inner),
+                Err("refused: nested_worktree".to_string())
+            );
+        }
+        assert!(wt.is_dir() && inner.is_dir());
+
+        let state = primary.join(crate::PROJECT_STATE_DIR);
+        fs::create_dir_all(&state).unwrap();
+        fs::write(state.join("project.yaml"), "not a profile").unwrap();
+        let without_inner = vec![primary.clone(), wt.clone()];
+        assert_eq!(
+            act("trim", &without_inner),
+            Err("refused: claim_check_unavailable".to_string())
+        );
+        fs::remove_file(state.join("project.yaml")).unwrap();
+        assert_eq!(act("trim", &without_inner), Ok("trimmed"));
+    }
+
+    /// The claims `apply` reads again right before it acts come from the ledger of the `home` it was
+    /// given, not from `$HOME` (`card land --home DIR`): a held card of that ledger refuses the
+    /// entry, and the same worktree is not refused when the home given holds no ledger.
+    #[cfg(unix)]
+    #[test]
+    fn the_recheck_reads_the_claims_of_the_given_home() {
+        let d = tempfile::tempdir().unwrap();
+        let base = fs::canonicalize(d.path()).unwrap();
+        let primary = base.join("primary");
+        fs::create_dir_all(&primary).unwrap();
+        gc_git(&primary, &["init", "-q", "-b", "main"]);
+        fs::write(primary.join("a.txt"), "a\n").unwrap();
+        gc_git(&primary, &["add", "a.txt"]);
+        gc_git(&primary, &["commit", "-q", "-m", "init"]);
+        let wt = base.join("wt");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "b", wt.to_str().unwrap()],
+        );
+        let state = primary.join(crate::PROJECT_STATE_DIR);
+        fs::create_dir_all(&state).unwrap();
+        fs::write(
+            state.join("project.yaml"),
+            "{\"schema_version\":2,\"project_id\":\"demo\"}\n",
+        )
+        .unwrap();
+        let ledger_home = base.join("ledger-home");
+        let empty_home = base.join("empty-home");
+        fs::create_dir_all(&ledger_home).unwrap();
+        fs::create_dir_all(&empty_home).unwrap();
+        crate::ledger::register(&ledger_home, "demo").unwrap();
+        let scope = vec!["apps/one/".to_string()];
+        crate::card::command::add(
+            &primary,
+            &ledger_home,
+            &crate::card::command::AddRequest {
+                title: "t",
+                body: "",
+                kind: None,
+                priority: None,
+                scope: &scope,
+                criteria: &["fixture".to_string()],
+                by: None,
+            },
+        )
+        .unwrap();
+        crate::card::dispatch::ready(&primary, &ledger_home, "C-1", None).unwrap();
+        let wt_text = wt.to_string_lossy().to_string();
+        crate::card::dispatch::take(
+            &primary,
+            &ledger_home,
+            "C-1",
+            &crate::card::dispatch::TakeRequest {
+                holder: "holder-b",
+                lease_secs: Some(3600),
+                scope: &[],
+                worktree: Some(&wt_text),
+                branch: None,
+                require_approved_spec: false,
+            },
+        )
+        .unwrap();
+
+        let worktrees = vec![primary.clone(), wt.clone()];
+        assert_eq!(
+            recheck_claims_and_nesting(&wt, &primary, &worktrees, Some(&ledger_home)),
+            Some("live_claim")
+        );
+        assert_eq!(
+            recheck_claims_and_nesting(&wt, &primary, &worktrees, Some(&empty_home)),
+            None
+        );
+        let entry = json!({"path": wt_text, "action": "remove", "trim_paths": []});
+        assert_eq!(
+            act_on(
+                &entry,
+                "remove",
+                &wt_text,
+                &primary,
+                &primary,
+                &worktrees,
+                Some(&ledger_home)
+            ),
+            Err("refused: live_claim".to_string())
+        );
+        assert!(wt.is_dir(), "a refused entry leaves the worktree whole");
     }
 
     /// Audit F1 on #3058: `decide` keeps a worktree with an install folder out of `remove` even

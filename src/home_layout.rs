@@ -136,9 +136,10 @@ pub const HOME_TABLE: &[Entry] = &[
     row("projects", Writes, true, UserData, UserDataKeep, NO, "design #3009 §2 (나): `projects/<project_id>/` holds this generation's machine-written data (layout.rs:46,122,254); the same folder is the #2811 new-project parent `projects/<name>` (home_workdir.rs:30); Go carve-out clean_home.go:33 with another meaning (Z3: kept in place, never moved or retired). A child is never a table name"),
     row("receipts", Writes, false, Class::Rust, RustName, NO, "key_vault.rs:1001"),
     row("schedule", Writes, false, Class::Rust, RustName, NO, "gate_schedule.rs:372 schedule_dir (unit files, lock, receipts); spelled through a constant, so the src scan below does not see it"),
-    row("state", Writes, true, ToolAsset, GoRetires, NO, "usage_limit.rs:50, statusline/state.rs:88; Go paths.go:456 state/active-sessions.json (a live registry: skip-in-use)"),
+    row("state", Writes, true, ToolAsset, GoRetires, NO, "statusline/state.rs:88 (the usage record left it for the status line's cache folder, SPEC-20261122-statusline-limits D-5); Go paths.go:456 state/active-sessions.json (a live registry: skip-in-use)"),
     row("vault", Writes, false, Class::Rust, SecretRenameOnly, NO, "key_vault.rs:37,239 (.master.key and entries; 0700/0600)"),
     row("versions", Writes, false, Class::Rust, RustName, NO, "update.rs:901, bin_names.rs:95"),
+    row("star-ask-dismissed", Writes, false, Class::Rust, RustName, NO, "star_ask.rs dismiss_star_ask (SPEC-20261122-star-and-reports)"),
     row("worktrees", Writes, true, UserData, UserDataKeep, NO, "design #3009 §2 (라): `worktrees/<project_id>/<issue>-<key>/` (worktree_move.rs:175, home_workdir.rs); Go worktreeroot.go:70 shares the folder (#2811 D8: never moved or retired)"),
     row("moai-cli.json", Reads, false, Class::Rust, RustName, NO, "state_root.rs LEGACY_MARKER: the marker's earlier name (#2871, decision 6886824285 item 2); readers still accept it, and the only writer is home_install_apply.rs for an install an earlier build began (it ends under the name that goes with the saved marker bytes; its revert moves that file into the journal folder)"),
     row("moai.json", Writes, false, Class::Rust, RustName, NO, "state_root.rs NEW_MARKER / RUST_MARKER: the marker every writer writes (#2871, decision 6886824285 item 2)"),
@@ -146,7 +147,7 @@ pub const HOME_TABLE: &[Entry] = &[
     // Go names (survey §1, PLAN v2 table A).
     row("settings.json", RustUse::None, true, ConfigGuide, GoRetires, MERGE, "Go paths.go:130. No Rust key receives it in rc.2 (leader decision 6903832699 item 1): home-retire moves the file to the Go backup and the manifest names it, so a user restores it by hand; the merge flag only marks it as a candidate in the preview"),
     // The pattern stands before the exact name on purpose: `lookup` must still pick the exact row.
-    row(".env*", RustUse::None, true, Secret, SecretRenameOnly, NO, "Go key files such as .env.typesafe (defs/dirs.go:404)"),
+    row(".env*", RustUse::None, true, Secret, SecretRenameOnly, NO, "Go key files such as .env.legacy (defs/dirs.go:404)"),
     row(".env.glm", Reads, true, Secret, SecretRenameOnly, MERGE, "Go defs/dirs.go:401; key_vault.rs:773 reads it as a legacy source (merge: vault import only, the value never shown)"),
     row("credentials*", RustUse::None, true, Secret, SecretRenameOnly, NO, "Go paths.go:451 credentials.yaml(.bak)"),
     row("secrets", RustUse::None, true, Secret, SecretRenameOnly, NO, "Go secrets (no current writer, home_state.rs:71)"),
@@ -167,6 +168,7 @@ pub const HOME_TABLE: &[Entry] = &[
     row("user-assets.acquire-guard.guard", RustUse::None, true, ToolAsset, GoRetires, NO, "Go lock_guard_unix.go:24 asset lock"),
     row(".migrate-tx-*.json", RustUse::None, true, ToolAsset, GoRetires, NO, "Go migrate_home_state.go:331 migration journals"),
     row("specs", RustUse::None, true, UserData, UserDataKeep, NO, "user SPECs (D-M1 item 3)"),
+    row("report-consent", Writes, false, Class::Rust, RustName, NO, "star_ask.rs ReportConsent::store/load (SPEC-20261122-star-and-reports)"),
     row("reports", Writes, true, UserData, UserDataKeep, NO, "C-126: `reports/<project>/` holds the reports a session saves outside the repository (home_workdir.rs reports_dir); Go paths.go:464 shares the folder name, so it is kept as user data and never retired"),
     row("handoffs", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
     row("kanban", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
@@ -367,8 +369,8 @@ mod tests {
         }
         // The exact name wins over the pattern it sits under.
         assert!(lookup(".ENV.GLM").unwrap().merge);
-        assert!(!lookup(".env.typesafe").unwrap().merge);
-        assert_eq!(lookup(".env.typesafe").unwrap().name, ".env*");
+        assert!(!lookup(".env.legacy").unwrap().merge);
+        assert_eq!(lookup(".env.legacy").unwrap().name, ".env*");
     }
 
     /// #2871 (decision 6887464608): the update step's table (`home_state::SELECTIVE_TABLE`) and
@@ -465,7 +467,7 @@ mod tests {
             ("user-assets.json", ToolAsset, GoRetires, true),
             ("settings.json", ConfigGuide, GoRetires, true),
             (".env.glm", Secret, SecretRenameOnly, true),
-            (".env.typesafe", Secret, SecretRenameOnly, true),
+            (".env.legacy", Secret, SecretRenameOnly, true),
             ("credentials", Secret, SecretRenameOnly, true),
             ("credentials.yaml.bak", Secret, SecretRenameOnly, true),
             ("secrets", Secret, SecretRenameOnly, true),

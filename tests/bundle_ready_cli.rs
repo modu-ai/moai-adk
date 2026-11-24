@@ -4,6 +4,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/ready_receipt.rs"]
+mod ready_receipt;
 
 use common::home::TempHome;
 use moai_cli::ledger;
@@ -250,18 +252,9 @@ impl World {
 
     /// Adds a note and returns its number.
     fn note(&self, card: &str, text: &str) -> i64 {
-        self.card(
-            &["note", card, "--kind", "report", "--by", "lane"],
-            Some(text),
-        );
-        let shown = self.card(&["show", card], None);
-        shown["notes"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|n| n["note_id"].as_i64().unwrap())
-            .max()
-            .unwrap()
+        // Not through `card note`: its READY receipt gate (SPEC-20261124-ready-receipt-gate)
+        // is not what this file judges, and the project folder is not the repository.
+        ready_receipt::add_note_unchecked(self.home.path(), "demo", card, text)
     }
 
     fn ready_note(&self, card: &str, head: &str) -> i64 {
@@ -467,8 +460,27 @@ fn the_tip_comes_from_the_profile_integration_branch() {
     let (v, code) = w.bundle_args(&["ready"], false);
     assert_eq!(code, 0, "{v}");
     assert_eq!(
-        v["result"]["tip"]["name"], "origin/trunk",
-        "the stored branch drives the tip: {v}"
+        v["result"]["tip"]["name"], "refs/heads/trunk",
+        "the stored branch drives the tip, the local branch first: {v}"
+    );
+}
+
+/// SPEC-20261124-bundle-local-tip: when the recorded branch exists only on `origin`, the
+/// default tip falls back to `origin/<branch>`.
+#[test]
+fn the_tip_falls_back_to_origin_when_the_local_branch_is_missing() {
+    let w = World::new();
+    w.git(&["push", "-q", "origin", "origin/trunk:refs/heads/NeXT"]);
+    w.git(&["fetch", "-q", "origin"]);
+    w.write_profile(Some(serde_json::json!({
+        "flow": "m-flow",
+        "integration_branch": "NeXT",
+    })));
+    let (v, code) = w.bundle_args(&["ready"], false);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(
+        v["result"]["tip"]["name"], "origin/NeXT",
+        "no local NeXT, so origin/NeXT: {v}"
     );
 }
 

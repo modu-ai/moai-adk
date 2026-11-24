@@ -134,7 +134,7 @@ const ROOMY: &str = "free_gb=1000,swap_pct=0";
 
 fn acquire(dir: &Path, max: &str, name: &str, cmd: &[&str]) -> Command {
     let mut c = Command::new(EXE);
-    c.env("MOAI_CLI_TEST_MACHINE", ROOMY)
+    c.env("MOAI_TEST_MACHINE", ROOMY)
         .args(["heavy-slot-acquire", "--max", max, "--name", name, "--dir"])
         .arg(dir)
         .arg("--")
@@ -192,7 +192,7 @@ fn the_commands_exit_code_comes_back() {
 }
 
 /// AC-2: a failing command is reported with the load averages and the free disk space of the
-/// working folder; a passing one is not.
+/// working folder (a passing one too since SPEC-20261122-heavy-slot-exit-line).
 #[test]
 fn a_failure_reports_load_and_disk() {
     let d = tempfile::tempdir().unwrap();
@@ -202,8 +202,33 @@ fn a_failure_reports_load_and_disk() {
     assert!(err.contains("lane-x exited 1"), "{err}");
     assert!(err.contains("load "), "{err}");
     assert!(err.contains("disk free "), "{err}");
-    let ok = run(acquire(d.path(), "1", "lane-x", &["true"]));
-    assert!(!String::from_utf8_lossy(&ok.stderr).contains("disk free"));
+}
+
+/// SPEC-20261122-heavy-slot-exit-line AC-1: a started command's end is always announced with one
+/// exit line, 0 included, so a shell waiting for that line ends on success too; the command's
+/// own exit code and stdout come back unchanged.
+#[test]
+fn a_started_command_prints_its_exit_line_on_success_and_on_failure() {
+    let d = tempfile::tempdir().unwrap();
+    for (cmd, code) in [("echo out; exit 0", 0), ("echo out; exit 4", 4)] {
+        let out = run(acquire(d.path(), "1", "lane-x", &["sh", "-c", cmd]));
+        assert_eq!(out.status.code(), Some(code), "{cmd}: {}", text(&out));
+        assert_eq!(String::from_utf8_lossy(&out.stdout), "out\n", "{cmd}");
+        let err = String::from_utf8_lossy(&out.stderr);
+        let want = format!("heavy-slot: lane-x exited {code}; ");
+        let lines: Vec<&str> = err.lines().filter(|l| l.starts_with(&want)).collect();
+        assert_eq!(lines.len(), 1, "{cmd}: {err}");
+        assert!(
+            lines[0].contains("load ") && lines[0].contains("disk free "),
+            "{cmd}: {err}"
+        );
+        assert_eq!(
+            err.lines().filter(|l| l.contains(" exited ")).count(),
+            1,
+            "{cmd}: {err}"
+        );
+    }
+    assert_eq!(status(d.path())["held"], serde_json::json!([]));
 }
 
 /// AC-1: with one slot the second caller waits — printing its place with load and disk — and
@@ -665,7 +690,7 @@ fn a_machine_over_the_limits_starts_nothing() {
             fs::write(slots.join("limits.json"), body).unwrap();
         }
         let mut c = Command::new(EXE);
-        c.env("MOAI_CLI_TEST_MACHINE", machine)
+        c.env("MOAI_TEST_MACHINE", machine)
             .args([
                 "heavy-slot-acquire",
                 "--max",
@@ -688,6 +713,46 @@ fn a_machine_over_the_limits_starts_nothing() {
             assert!(err.contains("lane-l not started"), "{machine}: {err}");
             assert!(!ran.exists(), "{machine}: ran anyway");
             assert!(!slots.exists(), "{machine}: slot folder created");
+        }
+    }
+}
+
+/// SPEC-20261121-moai-name slice 3: the machine seam is `MOAI_TEST_MACHINE`; the earlier name
+/// (the same words with `CLI_` in front of `TEST_`) is read nowhere. A starved machine given
+/// under the new name refuses the run and the refusal shows the number; the same value given
+/// only under the earlier name is not shown, so the real machine decides and 37 GB free is not
+/// what it reports. The earlier name is joined at run time so this file does not spell it.
+#[test]
+fn the_earlier_test_machine_name_is_not_read() {
+    let earlier = concat!("MOAI_CLI_", "TEST_MACHINE");
+    let starved = "free_gb=37,swap_pct=0";
+    for (name, read) in [("MOAI_TEST_MACHINE", true), (earlier, false)] {
+        let d = tempfile::tempdir().unwrap();
+        let slots = d.path().join("slots");
+        let mut c = Command::new(EXE);
+        c.env_remove("MOAI_TEST_MACHINE")
+            .env_remove(earlier)
+            .env(name, starved)
+            .args([
+                "heavy-slot-acquire",
+                "--max",
+                "1",
+                "--name",
+                "lane-n",
+                "--dir",
+            ])
+            .arg(&slots)
+            .args(["--", "true"]);
+        let out = run(c);
+        let err = String::from_utf8_lossy(&out.stderr);
+        if read {
+            assert_eq!(out.status.code(), Some(75), "{name}: {}", text(&out));
+            assert!(err.contains("disk free 37.0 GB"), "{name}: {err}");
+        } else {
+            assert!(
+                !err.contains("disk free 37.0 GB"),
+                "the earlier name {name} was read: {err}"
+            );
         }
     }
 }
@@ -861,7 +926,7 @@ fn macos_is_judged_on_memory_pressure_not_swap() {
             fs::write(slots.join("limits.json"), body).unwrap();
         }
         let mut c = Command::new(EXE);
-        c.env("MOAI_CLI_TEST_MACHINE", machine)
+        c.env("MOAI_TEST_MACHINE", machine)
             .args([
                 "heavy-slot-acquire",
                 "--max",
@@ -912,21 +977,18 @@ fn a_start_under_100_gb_free_warns_once_on_stderr_only() {
         let _ = fs::remove_file(&ran);
         let d = tempfile::tempdir().unwrap();
         let mut c = Command::new(EXE);
-        c.env(
-            "MOAI_CLI_TEST_MACHINE",
-            format!("free_gb={free},swap_pct=0"),
-        )
-        .args([
-            "heavy-slot-acquire",
-            "--max",
-            "1",
-            "--name",
-            "lane-w",
-            "--dir",
-        ])
-        .arg(d.path().join("slots"))
-        .args(flags)
-        .args(["--", "sh", "-c", &touch]);
+        c.env("MOAI_TEST_MACHINE", format!("free_gb={free},swap_pct=0"))
+            .args([
+                "heavy-slot-acquire",
+                "--max",
+                "1",
+                "--name",
+                "lane-w",
+                "--dir",
+            ])
+            .arg(d.path().join("slots"))
+            .args(flags)
+            .args(["--", "sh", "-c", &touch]);
         let out = run(c);
         let (stdout, stderr) = (
             String::from_utf8_lossy(&out.stdout),
@@ -966,7 +1028,7 @@ fn limits_dir(body: &str) -> (tempfile::TempDir, PathBuf) {
 /// One caller on `machine` with `flags`, running `touch <ran>`.
 fn limited(slots: &Path, machine: &str, flags: &[&str], ran: &Path) -> Command {
     let mut c = Command::new(EXE);
-    c.env("MOAI_CLI_TEST_MACHINE", machine)
+    c.env("MOAI_TEST_MACHINE", machine)
         .args([
             "heavy-slot-acquire",
             "--max",
@@ -1064,7 +1126,7 @@ fn a_limits_file_beside_the_slots_wins_when_stricter() {
     let d = tempfile::tempdir().unwrap();
     let _ = fs::remove_file(&ran);
     let mut c = Command::new(EXE);
-    c.env("MOAI_CLI_TEST_MACHINE", ROOMY)
+    c.env("MOAI_TEST_MACHINE", ROOMY)
         .args(["heavy-slot-acquire", "--name", "lane-f", "--dir"])
         .arg(d.path())
         .args(["--", "sh", "-c", &format!("touch '{}'", ran.display())]);
@@ -1195,7 +1257,7 @@ fn the_limits_are_judged_again_after_a_wait() {
         "second",
         &["sh", "-c", &format!("touch '{}'", ran.display())],
     );
-    c.env("MOAI_CLI_TEST_MACHINE", format!("@{}", machine.display()))
+    c.env("MOAI_TEST_MACHINE", format!("@{}", machine.display()))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     let second = spawn(c);
@@ -1233,7 +1295,7 @@ fn a_waiter_whose_parent_ended_leaves_the_queue() {
     // A parent shell starts the waiter in the background and ends once the waiter is queued
     // (ending before the waiter even started would make it a child of pid 1 from the start).
     let script = format!(
-        "MOAI_CLI_TEST_MACHINE='{ROOMY}' '{EXE}' heavy-slot-acquire --max 1 --name orphan --dir '{dir}' -- touch '{}' 2>'{}' & echo $! > '{}'; while [ -z \"$(ls '{dir}/waiting')\" ]; do sleep 0.05; done",
+        "MOAI_TEST_MACHINE='{ROOMY}' '{EXE}' heavy-slot-acquire --max 1 --name orphan --dir '{dir}' -- touch '{}' 2>'{}' & echo $! > '{}'; while [ -z \"$(ls '{dir}/waiting')\" ]; do sleep 0.05; done",
         ran.display(),
         err.display(),
         pidfile.display(),
@@ -1291,7 +1353,7 @@ fn the_python_tool_and_the_command_take_turns_in_one_folder() {
             // The same roomy machine as the Rust side: without it the Python tool measures the
             // runner's real disk, a CI runner under 50 GB refuses to start (exit 75) and the
             // holder never runs (tip red on macos-arm64, #2829 6869898907).
-            c.env("MOAI_CLI_TEST_MACHINE", ROOMY)
+            c.env("MOAI_TEST_MACHINE", ROOMY)
                 .arg("-I")
                 .arg(python_tool())
                 .args(["acquire", "--max", "1", "--name", "py", "--dir"])
@@ -1335,7 +1397,7 @@ fn the_python_tool_and_the_command_take_turns_in_one_folder() {
 }
 
 /// B2 of audit 6855554250: without `--dir` the command and the Python tool resolve the same
-/// default folder `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots` — with the variable set,
+/// default folder `${XDG_CACHE_HOME:-~/.cache}/moai/heavy-slots` — with the variable set,
 /// set but empty (both fall back to `~/.cache`; an empty value must not become a folder
 /// relative to the working directory), and unset — and take turns in it. HOME, the cache
 /// variable and the working directory are all temporary; the real HOME is never read.
@@ -1347,14 +1409,14 @@ fn without_dir_both_tools_use_the_same_default_folder() {
         let work = tempfile::tempdir().unwrap();
         let m = tempfile::tempdir().unwrap();
         let expected = match case {
-            "set" => xdg.path().join("moai-cli/heavy-slots"),
-            _ => home.path().join(".cache/moai-cli/heavy-slots"),
+            "set" => xdg.path().join("moai/heavy-slots"),
+            _ => home.path().join(".cache/moai/heavy-slots"),
         };
         let env = |c: &mut Command| {
             c.clean_env()
                 .env("PATH", std::env::var_os("PATH").unwrap_or_default())
                 .env("HOME", home.path())
-                .env("MOAI_CLI_TEST_MACHINE", ROOMY)
+                .env("MOAI_TEST_MACHINE", ROOMY)
                 .current_dir(work.path());
             match case {
                 "set" => {
@@ -1397,8 +1459,13 @@ fn without_dir_both_tools_use_the_same_default_folder() {
             expected.display()
         );
         assert!(
-            !work.path().join("moai-cli").exists(),
+            !work.path().join("moai").exists() && !work.path().join("moai-cli").exists(),
             "{case}: a folder relative to the working directory was used"
+        );
+        let cache = expected.parent().unwrap().parent().unwrap();
+        assert!(
+            !cache.join("moai-cli").exists(),
+            "{case}: something was made under the earlier folder"
         );
 
         let mut py = Command::new("python3");
@@ -1423,13 +1490,278 @@ fn without_dir_both_tools_use_the_same_default_folder() {
     }
 }
 
-/// Card C-82 follow-up (user 2026-11-17 08:22Z): a wrapped `cargo` is warned about only when its
-/// `CARGO_TARGET_DIR` is shared with another worktree (the former per-lane folder, another
-/// worktree's build folder, a folder whose owner record names another worktree) or lies inside
-/// another worktree. This worktree's own build folder, its own `target/` and an unset value say
-/// nothing. A temporary HOME; a stub named `cargo` stands in for cargo.
+/// Runs `args` of the product with a temporary HOME and `XDG_CACHE_HOME`, so the default slot
+/// folder is `<cache>/moai/heavy-slots` and the real HOME cache is never read.
+fn default_folder_run(home: &Path, cache: &Path, args: &[&str]) -> Output {
+    let mut c = Command::new(EXE);
+    c.clean_env()
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        .env("HOME", home)
+        .env("XDG_CACHE_HOME", cache)
+        .env("MOAI_TEST_MACHINE", ROOMY)
+        .args(args);
+    run(c)
+}
+
+/// The `result` of `heavy-slot-status` of the default folder.
+fn default_status(home: &Path, cache: &Path) -> Value {
+    let out = default_folder_run(home, cache, &["heavy-slot-status"]);
+    assert!(out.status.success(), "{}", text(&out));
+    serde_json::from_slice::<Value>(&out.stdout).unwrap()["result"].clone()
+}
+
+/// Every file under `folder` with its bytes, in name order: what "untouched" means below.
+fn snapshot(folder: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    let mut all = Vec::new();
+    let mut todo = vec![folder.to_path_buf()];
+    while let Some(d) = todo.pop() {
+        for e in fs::read_dir(&d).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                todo.push(p);
+            } else {
+                all.push((p.clone(), fs::read(&p).unwrap()));
+            }
+        }
+    }
+    all.sort();
+    all
+}
+
+/// The default slot folder is the `moai` folder of the cache: an acquire without `--dir` makes
+/// `<cache>/moai/heavy-slots/slot-0` and nothing under `<cache>/moai-cli`.
 #[test]
-fn a_cargo_run_is_warned_about_only_for_a_shared_or_foreign_folder() {
+fn the_default_folder_is_moai_and_nothing_is_made_under_the_earlier_one() {
+    let (home, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let out = default_folder_run(
+        home.path(),
+        cache.path(),
+        &[
+            "heavy-slot-acquire",
+            "--max",
+            "1",
+            "--name",
+            "t",
+            "--",
+            "true",
+        ],
+    );
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(
+        cache.path().join("moai/heavy-slots/slot-0").is_file(),
+        "no slot in the moai folder"
+    );
+    assert!(
+        !cache.path().join("moai-cli").exists(),
+        "something was made under the earlier folder"
+    );
+    assert_eq!(
+        default_status(home.path(), cache.path())["folder"],
+        cache.path().join("moai/heavy-slots").display().to_string()
+    );
+}
+
+/// The earlier folder's `limits.json` is the machine owner's safety limit: it is read (never
+/// written) only while the default folder holds none, by the same rules, and only for the
+/// default folder.
+#[test]
+fn the_earlier_limits_file_is_read_until_the_new_folder_has_one() {
+    let (home, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let earlier = cache.path().join("moai-cli/heavy-slots");
+    let newer = cache.path().join("moai/heavy-slots");
+    fs::create_dir_all(&earlier).unwrap();
+    fs::write(earlier.join("limits.json"), "{\"max\": 1}").unwrap();
+    let before = snapshot(&earlier);
+
+    // Only the earlier folder has a file: its `max` is the slot count.
+    let st = default_status(home.path(), cache.path());
+    assert_eq!(st["build_jobs_cap"]["slots"], 1, "{st}");
+    assert!(!cache.path().join("moai").exists(), "status made a folder");
+
+    // The default folder's own file wins once it exists.
+    fs::create_dir_all(&newer).unwrap();
+    fs::write(newer.join("limits.json"), "{\"max\": 2}").unwrap();
+    let st = default_status(home.path(), cache.path());
+    assert_eq!(st["build_jobs_cap"]["slots"], 2, "{st}");
+    fs::remove_file(newer.join("limits.json")).unwrap();
+
+    // Another folder named by `--dir` never reads the earlier file.
+    let other = tempfile::tempdir().unwrap();
+    assert_eq!(
+        status(other.path())["build_jobs_cap"]["slots"],
+        3,
+        "--dir read the earlier folder's limits"
+    );
+
+    // The earlier folder is exactly as the fixture made it after all the reads above.
+    assert_eq!(
+        snapshot(&earlier),
+        before,
+        "something under the earlier folder changed"
+    );
+
+    // An earlier file that breaks the rules refuses a run in the default folder, as it would
+    // in the new folder: exit 125 and the command did not run.
+    fs::write(earlier.join("limits.json"), "{\"bogus\": 1}").unwrap();
+    let ran = cache.path().join("ran");
+    let out = default_folder_run(
+        home.path(),
+        cache.path(),
+        &[
+            "heavy-slot-acquire",
+            "--name",
+            "t",
+            "--",
+            "touch",
+            &ran.display().to_string(),
+        ],
+    );
+    assert_eq!(out.status.code(), Some(125), "{}", text(&out));
+    assert!(!ran.exists(), "the command ran under a refused limits file");
+    assert!(
+        text(&out).contains("limits.json"),
+        "the refusal names no file: {}",
+        text(&out)
+    );
+}
+
+/// `heavy-slot-status` of the default folder shows the slots an older build still holds in the
+/// earlier folder (`earlier_folder`), so a person can see whether every lane has switched; a
+/// default folder without an earlier one, and a run with `--dir`, carry no such key.
+#[test]
+fn status_lists_the_slots_held_in_the_earlier_folder() {
+    let (home, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let st = default_status(home.path(), cache.path());
+    assert!(
+        st.get("earlier_folder").is_none(),
+        "a key without an earlier folder: {st}"
+    );
+
+    let earlier = cache.path().join("moai-cli/heavy-slots");
+    let m = tempfile::tempdir().unwrap();
+    let (s1, r1) = (m.path().join("s1"), m.path().join("r1"));
+    let mut c = acquire(&earlier, "1", "old-build", &["sh", "-c", &hold(&s1, &r1)]);
+    c.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let holder = spawn(c);
+    wait_for("the old build holds its slot", || s1.exists());
+
+    let st = default_status(home.path(), cache.path());
+    assert_eq!(
+        st["earlier_folder"]["folder"],
+        earlier.display().to_string(),
+        "{st}"
+    );
+    let held = st["earlier_folder"]["held"].as_array().unwrap();
+    assert_eq!(held.len(), 1, "{st}");
+    assert_eq!(held[0]["name"], "old-build", "{st}");
+    assert!(
+        st["held"].as_array().unwrap().is_empty(),
+        "the earlier slot shows as held in the new folder: {st}"
+    );
+    assert!(
+        status(&earlier).get("earlier_folder").is_none(),
+        "--dir carries the key"
+    );
+
+    fs::write(&r1, "").unwrap();
+    assert!(holder.finish().status.success());
+    let st = default_status(home.path(), cache.path());
+    assert_eq!(
+        st["earlier_folder"]["held"].as_array().map(Vec::len),
+        Some(0),
+        "{st}"
+    );
+}
+
+/// The earlier folder's `limits.json` is still read when the default folder already exists but
+/// holds none (a build of the new name made the folder before the owner moved the file): the
+/// fallback is "no `limits.json` in the default folder", not "no default folder".
+#[test]
+fn the_earlier_limits_apply_while_the_new_folder_exists_without_limits() {
+    let (home, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let earlier = cache.path().join("moai-cli/heavy-slots");
+    let newer = cache.path().join("moai/heavy-slots");
+    fs::create_dir_all(&earlier).unwrap();
+    fs::write(earlier.join("limits.json"), "{\"max\": 1}").unwrap();
+    fs::create_dir_all(&newer).unwrap();
+    fs::write(newer.join("slot-0"), "").unwrap();
+    let before = snapshot(&earlier);
+
+    let st = default_status(home.path(), cache.path());
+    assert_eq!(st["build_jobs_cap"]["slots"], 1, "{st}");
+    assert!(
+        !newer.join("limits.json").exists(),
+        "a limits file was made"
+    );
+    assert_eq!(snapshot(&earlier), before, "the earlier folder changed");
+}
+
+/// An acquire in the default folder applies the earlier folder's limit to the run itself, not
+/// only to what status prints: with an earlier `max` of 1 a second caller waits for the first.
+#[test]
+fn acquire_applies_the_earlier_limits_file_to_the_run() {
+    let (home, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let earlier = cache.path().join("moai-cli/heavy-slots");
+    fs::create_dir_all(&earlier).unwrap();
+    fs::write(earlier.join("limits.json"), "{\"max\": 1}").unwrap();
+    let before = snapshot(&earlier);
+    let m = tempfile::tempdir().unwrap();
+    let (s1, r1, s2) = (
+        m.path().join("s1"),
+        m.path().join("r1"),
+        m.path().join("s2"),
+    );
+    let in_default_folder = |name: &str, body: &str| {
+        let mut c = Command::new(EXE);
+        c.clean_env()
+            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("HOME", home.path())
+            .env("XDG_CACHE_HOME", cache.path())
+            .env("MOAI_TEST_MACHINE", ROOMY)
+            .args(["heavy-slot-acquire", "--name", name, "--", "sh", "-c", body])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        spawn(c)
+    };
+    let first = in_default_folder("first", &hold(&s1, &r1));
+    wait_for("first started", || s1.exists());
+    let second = in_default_folder("second", &format!("touch '{}'", s2.display()));
+    wait_for("second waiting", || {
+        fs::read_dir(cache.path().join("moai/heavy-slots/waiting"))
+            .map(|r| r.count() == 1)
+            .unwrap_or(false)
+    });
+    assert!(!s2.exists(), "second ran although the earlier limit is 1");
+    fs::write(&r1, "").unwrap();
+    let (a, b) = (first.finish(), second.finish());
+    assert!(a.status.success(), "{}", text(&a));
+    assert!(b.status.success(), "{}", text(&b));
+    assert!(s2.exists());
+    assert!(
+        text(&b).contains("waiting 1 of 1 for 1 slot(s)"),
+        "{}",
+        text(&b)
+    );
+    assert_eq!(snapshot(&earlier), before, "the earlier folder changed");
+}
+
+/// A repository `<root>/repo` with the worktrees `wt-one`, `wt-two` and `repo/.claude/worktrees/
+/// agent-3`, a temporary HOME, a slot folder and a stub named `cargo` that does nothing.
+struct BuildFx {
+    _d: tempfile::TempDir,
+    root: PathBuf,
+    repo: PathBuf,
+    home: PathBuf,
+    slots: PathBuf,
+    one: PathBuf,
+    two: PathBuf,
+    nested: PathBuf,
+    cargo: PathBuf,
+    /// The retired home build root under the fixture HOME (never made).
+    build: PathBuf,
+}
+
+fn build_fx() -> BuildFx {
     use common::git::git;
     let d = tempfile::tempdir().unwrap();
     let root = fs::canonicalize(d.path()).unwrap();
@@ -1463,22 +1795,37 @@ fn a_cargo_run_is_warned_about_only_for_a_shared_or_foreign_folder() {
     }
     let cargo = root.join("bin/cargo");
     common::write_executable(&cargo, "#!/bin/sh\nexit 0\n");
-    let build = home.join(".moai/build");
-    let own = build.join("repo-wt-one");
-    let recorded = build.join("repo-recorded");
-    fs::create_dir_all(&recorded).unwrap();
-    fs::write(
-        recorded.join(".moai-build.json"),
-        format!(
-            r#"{{"schema_version": 1, "git_common_dir": "{}", "worktree": "{}"}}"#,
-            repo.join(".git").display(),
-            two.display()
-        ),
-    )
-    .unwrap();
-    let run_in = |cwd: &Path, target: Option<&Path>, program: &Path| {
-        let mut c = acquire(&slots, "2", "agent-7", &[program.to_str().unwrap()]);
-        c.current_dir(cwd).env("HOME", &home);
+    BuildFx {
+        _d: d,
+        build: home.join(".moai/build"),
+        root,
+        repo,
+        home,
+        slots,
+        one,
+        two,
+        nested,
+        cargo,
+    }
+}
+
+impl BuildFx {
+    /// `heavy-slot-acquire` of `program` run in `cwd` with HOME `home` (none: unset, and the
+    /// USERPROFILE stand-in is set to the fixture HOME) and `target` as `CARGO_TARGET_DIR`
+    /// (none: unset); its stderr, after checking the command succeeded.
+    fn stderr_of(
+        &self,
+        cwd: &Path,
+        home: Option<&Path>,
+        target: Option<&Path>,
+        program: &Path,
+    ) -> String {
+        let mut c = acquire(&self.slots, "2", "agent-7", &[program.to_str().unwrap()]);
+        c.current_dir(cwd);
+        match home {
+            Some(h) => c.env("HOME", h),
+            None => c.env_remove("HOME").env("USERPROFILE", &self.home),
+        };
         match target {
             Some(t) => c.env("CARGO_TARGET_DIR", t),
             None => c.env_remove("CARGO_TARGET_DIR"),
@@ -1486,74 +1833,180 @@ fn a_cargo_run_is_warned_about_only_for_a_shared_or_foreign_folder() {
         let out = run(c);
         assert!(out.status.success(), "{}", text(&out));
         String::from_utf8_lossy(&out.stderr).into_owned()
-    };
-    for (cwd, target) in [
-        (&one, None),
-        (&one, Some(own.clone())),
-        (&one, Some(one.join("target"))),
-        (&one, Some(PathBuf::from("target"))),
-        (&nested, Some(nested.join("target"))),
-        (&nested, Some(build.join("repo-agent-3"))),
-    ] {
-        let err = run_in(cwd, target.as_deref(), &cargo);
+    }
+}
+
+/// A wrapped `cargo` builds in its worktree's own `target/`: it is warned about when
+/// `CARGO_TARGET_DIR` names the retired per-lane folder, a folder under the retired home build
+/// root under HOME (this worktree's own old folder included) or a folder inside
+/// another worktree. An unset or empty value, this worktree's own `target/`, a relative `target`
+/// and any other folder say nothing, and neither does another command. The warning is one line
+/// that names the folder, the reason and the worktree's own `target/`, and the command still
+/// runs. A stub named `cargo` stands in for cargo.
+#[test]
+fn a_cargo_run_is_warned_about_a_retired_or_foreign_build_folder() {
+    let f = build_fx();
+    let build = f.build.clone();
+    let silent: Vec<(&Path, Option<PathBuf>)> = vec![
+        (&f.one, None),
+        (&f.one, Some(PathBuf::new())),
+        (&f.one, Some(f.one.join("target"))),
+        (&f.one, Some(PathBuf::from("target"))),
+        (&f.nested, Some(f.nested.join("target"))),
+        // Not a folder the plan names: unchanged, it is not warned about.
+        (&f.one, Some(f.root.join("elsewhere-target"))),
+    ];
+    for (cwd, target) in silent {
+        let err = f.stderr_of(cwd, Some(&f.home), target.as_deref(), &f.cargo);
         assert!(!err.contains("CARGO_TARGET_DIR"), "{target:?}: {err}");
     }
     let foreign = |w: &Path| format!("inside the worktree {}", w.display());
+    let retired_home = format!("inside the retired home build root {}", build.display());
     for (cwd, target, says) in [
         (
-            &one,
-            root.join("moai-rc-target-agent-7"),
-            "the per-lane folder".to_string(),
+            &f.one,
+            f.root.join("moai-rc-target-agent-7"),
+            "the retired per-lane folder".to_string(),
         ),
-        (
-            &one,
-            build.join("repo-wt-two"),
-            "another worktree's build folder".to_string(),
-        ),
-        (
-            &one,
-            recorded.clone(),
-            format!("record names the worktree {}", two.display()),
-        ),
-        (&one, repo.join("target"), foreign(&repo)),
-        (&nested, repo.join("target"), foreign(&repo)),
-        (&nested, two.join("target"), foreign(&two)),
+        (&f.one, build.join("repo-wt-one"), retired_home.clone()),
+        (&f.one, build.join("repo-wt-two"), retired_home.clone()),
+        (&f.nested, build.join("repo-agent-3"), retired_home.clone()),
+        (&f.one, f.repo.join("target"), foreign(&f.repo)),
+        (&f.nested, f.repo.join("target"), foreign(&f.repo)),
+        (&f.nested, f.two.join("target"), foreign(&f.two)),
     ] {
-        let err = run_in(cwd, Some(&target), &cargo);
+        let err = f.stderr_of(cwd, Some(&f.home), Some(&target), &f.cargo);
         assert!(
-            err.contains("heavy-slot: CARGO_TARGET_DIR"),
+            err.contains(&format!(
+                "heavy-slot: CARGO_TARGET_DIR {}",
+                target.display()
+            )),
             "{target:?}: {err}"
         );
         assert!(err.contains(&says), "{target:?}: {err}");
         assert!(
-            cwd != &one || err.contains(&own.display().to_string()),
+            err.contains(&format!(
+                "builds in its own target/ ({}/target)",
+                cwd.display()
+            )),
             "{err}"
         );
-        assert!(err.contains("moai lane-env --lane agent-7"), "{err}");
-        assert_eq!(
-            err.matches("CARGO_TARGET_DIR").count(),
-            1,
-            "one line: {err}"
+        assert!(err.contains("unset CARGO_TARGET_DIR"), "{err}");
+        assert!(
+            !err.contains("this worktree's build folder"),
+            "the former advice is gone: {err}"
         );
+        let lines = err
+            .lines()
+            .filter(|l| l.contains("CARGO_TARGET_DIR"))
+            .count();
+        assert_eq!(lines, 1, "one line: {err}");
     }
     // Not cargo: nothing to say, whatever the folder.
-    let other = root.join("bin/not-cargo");
+    let other = f.root.join("bin/not-cargo");
     common::write_executable(&other, "#!/bin/sh\nexit 0\n");
-    let err = run_in(&one, Some(&repo.join("target")), &other);
+    let err = f.stderr_of(&f.one, Some(&f.home), Some(&f.repo.join("target")), &other);
     assert!(!err.contains("CARGO_TARGET_DIR"), "{err}");
-    // C-82 slot audit N-a: off Windows, USERPROFILE is never the home. With HOME unset and only
-    // USERPROFILE set the worktree's build folder is unknown, so even a foreign folder gets no
-    // line: `Here::of` passes `cfg!(windows)`, not `true`.
-    let mut c = acquire(&slots, "2", "agent-7", &[cargo.to_str().unwrap()]);
-    c.current_dir(&one)
-        .env_remove("HOME")
-        .env("USERPROFILE", &home)
-        .env("CARGO_TARGET_DIR", repo.join("target"));
-    let out = run(c);
-    assert!(out.status.success(), "{}", text(&out));
+    // Off Windows USERPROFILE is never the home: with HOME unset, a folder under the build
+    // root of USERPROFILE is no retired home folder, while another worktree's folder is still
+    // found without a HOME.
+    let err = f.stderr_of(&f.one, None, Some(&build.join("repo-wt-one")), &f.cargo);
+    assert!(!err.contains("CARGO_TARGET_DIR"), "{err}");
+    let err = f.stderr_of(&f.one, None, Some(&f.repo.join("target")), &f.cargo);
+    assert!(err.contains(&foreign(&f.repo)), "{err}");
+}
+
+/// The wrapper makes nothing under HOME: with the retired build folder named in
+/// `CARGO_TARGET_DIR` and with no HOME, the temporary HOME stays empty.
+#[test]
+fn heavy_slot_acquire_makes_nothing_under_home() {
+    let f = build_fx();
+    let retired = f.build.join("repo-wt-one");
+    for home in [Some(f.home.as_path()), None] {
+        let err = f.stderr_of(&f.one, home, Some(&retired), &f.cargo);
+        assert_eq!(
+            err.contains("retired home build root"),
+            home.is_some(),
+            "{home:?}: {err}"
+        );
+        let held: Vec<_> = fs::read_dir(&f.home).unwrap().flatten().collect();
+        assert!(held.is_empty(), "{home:?}: HOME holds {held:?}");
+    }
+}
+
+/// N1 and N2 of the audit of SPEC-20261123-lane-env-own-target: with the state folder of the
+/// fixture HOME a link to another folder, the retired home build root is recognised both by the
+/// real path of that link's target (the resolved root) and by the value as written (under `f.build`),
+/// also when a link inside the root leads out of it. Each way is pinned by its own value: the
+/// resolved root alone misses the last one, the written root alone misses the first. The
+/// wrapper makes nothing in the folder the link leads to.
+#[cfg(unix)]
+#[test]
+fn a_home_moai_link_is_followed_and_the_value_as_written_is_kept() {
+    let f = build_fx();
+    let real = f.root.join("moai-real");
+    let outside = f.root.join("outside-build");
+    fs::create_dir_all(real.join("build")).unwrap();
+    fs::create_dir(&outside).unwrap();
+    std::os::unix::fs::symlink(&real, f.build.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&outside, real.join("build/leads-out")).unwrap();
+    let held = |dir: &Path| -> Vec<PathBuf> {
+        let mut v: Vec<_> = fs::read_dir(dir)
+            .unwrap()
+            .flatten()
+            .map(|e| e.path())
+            .collect();
+        v.sort();
+        v
+    };
+    let (home_before, real_before, build_before) =
+        (held(&f.home), held(&real), held(&real.join("build")));
+
+    // Written under the link: the root is the resolved one, the value is shown as the folder.
+    let under_link = f.build.join("repo-wt-one");
+    let err = f.stderr_of(&f.one, Some(&f.home), Some(&under_link), &f.cargo);
+    assert!(err.contains("inside the retired home build root"), "{err}");
+    // Written by the real path of the link's target: only the resolved root knows it.
+    let by_real_path = real.join("build/repo-wt-one");
+    let err = f.stderr_of(&f.one, Some(&f.home), Some(&by_real_path), &f.cargo);
     assert!(
-        !String::from_utf8_lossy(&out.stderr).contains("CARGO_TARGET_DIR"),
-        "{}",
-        text(&out)
+        err.contains(&format!(
+            "inside the retired home build root {}",
+            real.join("build").display()
+        )),
+        "{err}"
+    );
+    // Written under the root, with a link inside it leading out: only the value as written
+    // knows it, and the warning shows the value and the root as written.
+    let leads_out = f.build.join("leads-out");
+    let err = f.stderr_of(&f.one, Some(&f.home), Some(&leads_out), &f.cargo);
+    assert!(
+        err.contains(&format!(
+            "heavy-slot: CARGO_TARGET_DIR {} is ",
+            leads_out.display()
+        )),
+        "{err}"
+    );
+    assert!(
+        err.contains(&format!(
+            "inside the retired home build root {}",
+            f.build.display()
+        )),
+        "{err}"
+    );
+    // The folder the link leads out to is no retired folder when it is named by its own path.
+    let err = f.stderr_of(&f.one, Some(&f.home), Some(&outside), &f.cargo);
+    assert!(!err.contains("CARGO_TARGET_DIR"), "{err}");
+
+    assert_eq!(held(&f.home), home_before, "HOME changed");
+    assert_eq!(held(&real), real_before, "the link's target changed");
+    assert_eq!(
+        held(&real.join("build")),
+        build_before,
+        "the build root changed"
+    );
+    assert!(
+        held(&outside).is_empty(),
+        "the folder the link leads out to changed"
     );
 }

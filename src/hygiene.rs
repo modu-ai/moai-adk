@@ -296,14 +296,20 @@ fn record(manifest: &Path, line: &str) -> std::io::Result<(fs::File, u64)> {
 
 /// Why `dir` must not move right now, checked just before the move: a process working in it
 /// or naming it ([`in_use`]), or one holding a file open inside it. An unknown fact refuses.
+/// Fresh reads, never the command cache: this runs right before each item moves, and the
+/// table the command read at its start may be long gone (the audit's B2').
 fn busy_now(dir: &Path) -> Option<&'static str> {
-    match in_use(dir, &crate::worktree_gc::process_cwds(), &process_text()) {
+    match in_use(
+        dir,
+        &crate::worktree_gc::process_cwds_fresh(),
+        &process_text(),
+    ) {
         None => return Some("in_use_unknown"),
         Some(true) => return Some("in_use"),
         Some(false) => {}
     }
     let canon = fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
-    match crate::worktree_gc::open_file_paths() {
+    match crate::worktree_gc::open_file_paths_fresh() {
         None => Some("open_file_check_unavailable"),
         Some(open) if open.iter().any(|p| p.starts_with(&canon)) => Some("file_open_in_use"),
         Some(_) => None,

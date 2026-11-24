@@ -1,0 +1,132 @@
+---
+id: SPEC-20261124-new-test-file-precheck
+title: "check affected stops before the heavy steps when an added test file is missing from the area table or the state-folder allow list"
+status: approved
+revision: 4
+created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7877 (2026-11-23T20:48:50Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7876 에 답함): (A) 판 4 승인(커밋 7dc2e02a068749b31e5b8cc6d29258eb3133fb2f): REQ-10~12, AC-3 확장, AC-8, D-8, D-9; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:c0917b0660481002c47ac6412c096a31ea7e0a5bb6488ffba43d448947dab4fa"
+---
+
+# check affected stops before the heavy steps when an added test file is missing from the area table or the state-folder allow list
+
+## Intent
+
+재발 방지예요. 레인이 새 `tests/*.rs` 파일을 더하고 `moai check affected` 를 끝까지 돌린 뒤에야 `test_area_layout` 의 `area_table_maps_every_real_test_file` 과 `state_folder_literal_scan` 의 `the_repository_tests_stay_within_the_state_folder_baseline` 이 새 파일 때문에 빨개지는 일이 두 번 있었어요(`SPEC-20261121-moai-name` 의 조각 하나와 기준 조각 하나). 두 테스트는 표 하나를 읽고 파일 이름 몇 줄을 세는 가벼운 검사인데, 무거운 단계(clippy, 빌드, 테스트) 뒤에야 만나서 한 번에 수십 분을 버려요.
+
+`check affected` 는 이미 "가벼운 단계가 실패하면 무거운 단계 앞에서 멈추는" 규칙을 가져요(`SPEC-20261122-check-light-stop`). 이 SPEC 은 범위가 새로 더한 최상위 `tests/*.rs` 파일을 두 표에 맞춰 보는 가벼운 단계 `test_tables` 를 하나 더해요. 어긋나면 그 단계가 실패하고, 줄 하나가 "어느 표에, 어느 줄을 더하라" 를 그대로 말해요. 레인 지침은 새 테스트 파일을 어디에 등록하는지 한 곳에 적어요.
+
+판 4 는 첫 감사(FAIL, 카드 노트 7868)가 짚은 것을 고쳐요: 더한 파일만 보게 하는 두 git 인자(`--diff-filter=A`, `--no-renames`)를 지켜 주는 테스트가 없었고, 표가 있는데 읽을 수 없으면(예: 잘못된 UTF-8) 표가 없는 것처럼 지나갔어요. 둘 다 이 단계의 규칙을 넓히지 않고 이미 정한 규칙을 지키게 하는 일이에요.
+
+읽는 사람: 레인, 리더, 이 변경의 감사자.
+
+## Interview
+
+- Q1: 새 단계는 외부 프로그램을 부르는가? -> A: 아니요 (D-1). 범위의 사실(더한 경로, 테스트 파일 글, 두 표의 글)은 `read_facts` 가 이미 읽고, 판정은 순수 함수예요. 단계는 판정 줄을 로그에 쓰고 종료 코드 1 을 내는 단계예요.
+- Q2: 모든 실행에 이 단계가 들어가는가? -> A: 아니요 (D-2). 범위가 최상위 `tests/*.rs` 를 더했고 판정에 쓸 표 파일이 있을 때만 계획해요. 그 밖의 실행은 요약 줄의 낱말도 순서도 그대로예요.
+- Q3: 표를 풀어 주는가? -> A: 아니요 (D-3). 두 표는 그대로이고, 이 단계는 읽기만 해요.
+- Q4: 막는 검사는 먼저 observe 로 도는가? -> A: 이 단계는 저장소의 두 테스트가 이미 막고 있는 규칙을 앞으로 당길 뿐이에요(D-4). 새 거절 규칙이 없고, 오탐 여부는 저장소의 실제 `tests/` 전체를 "더한 파일" 로 놓고 위반이 0 인지로 재요(AC-6).
+- Q5: 표가 있는데 읽을 수 없으면 어떻게 하는가? -> A: 막아요(D-8). 읽기 오류가 "파일 없음" 이 아니면 표가 있는 거예요. 없는 것처럼 지나가면 이 단계가 막으려던 일을 못 막아요. 더한 테스트 파일이 있는 범위에서만 그래요(REQ-6 은 그대로예요).
+
+## Non-goals
+
+- `tests/areas.toml` 이나 `tests/fixtures/state_folder_literals/allow.tsv` 의 규칙을 바꾸거나 풀지 않아요. 두 테스트는 그대로예요.
+- `tests/<영역>/*.rs` 모듈 파일, 고쳐서 문자열 수가 늘어난 기존 파일, `.py` 테스트 파일은 이 단계가 보지 않아요: 카드가 말한 "더한 `tests/*.rs`" 만이에요(그 밖은 두 테스트가 그대로 잡아요).
+- 표 파일을 자동으로 고치지 않아요: 어느 줄을 더할지만 알려 줘요.
+- `--lane` 선택 규칙과 무거운 단계의 순서는 바꾸지 않아요.
+- `allow.tsv` 의 잘못된 줄을 조용히 건너뛰는 읽기(`parse_allow_rows`)는 그대로예요: 같은 규칙을 가진 `state_folder_literal_scan` 의 읽기와 맞춘 것이고, 잘못된 줄은 뒤의 그 테스트가 잡아요(감사 노트 N4 를 받아들였어요).
+- `check affected` 가 더한 파일이 있는 범위에서 `cargo fmt` 같은 가벼운 단계를 `test_tables` 앞에서 돌리는 순서는 바꾸지 않아요(AC-3 대로 `fmt` 바로 뒤에 계획해요; 감사 노트 N2 를 받아들였어요).
+
+## Requirements
+
+- REQ-1: When a range adds a top-level `tests/<name>.rs` whose first word no array of `tests/areas.toml` lists, `check affected` shall fail the cheap step `test_tables` with a line that names the file, the table and the word to add · failure: none — the line is the only output of the step.
+- REQ-2: When a range adds a top-level `tests/<name>.rs` that `tests/areas.toml` maps to a moved area and does not list as solo, or that is named like an area crate, `check affected` shall fail the cheap step `test_tables` with a line that names the file and the folder it belongs in · failure: none — the line is the only output of the step.
+- REQ-3: When a range adds a top-level `tests/<name>.rs` that spells a state folder name and has no row in `tests/fixtures/state_folder_literals/allow.tsv`, `check affected` shall fail the cheap step `test_tables` with a line that names the file and the exact `path<TAB>earlier<TAB>new` row to add · failure: none — the line is the only output of the step.
+- REQ-4: When the added file has a row but spells a name more often than the row allows, `check affected` shall fail the cheap step `test_tables` with a line that names the file, the counts and the row · failure: none — the line is the only output of the step.
+- REQ-5: When `test_tables` fails, `check affected` shall stop before the heavy steps and name `test_tables` in the summary as `stopped_at=test_tables` · failure: none — the rule of the cheap steps already does this.
+- REQ-6: When a range adds no top-level `tests/*.rs` file, or the repository has neither table file, `check affected` shall plan no `test_tables` step · failure: none — the summary line stays as it was.
+- REQ-7: `check affected --list` shall show `test_tables` as a step with `heavy: false` before the first heavy step when it is planned · failure: none — a step that is not planned has no entry.
+- REQ-8: When the repository's own `tests/*.rs` files are all taken as added, the `test_tables` verdict shall find no violation · failure: none — a difference is a drift between this step and the two tests.
+- REQ-9: The operation page of `check` and the Tests section of `docs/lane-rules.md` shall say where a new test file registers and that `test_tables` stops the run · failure: none — a test reads both texts.
+- REQ-10: When a range adds a top-level `tests/<name>.rs` and a table file exists but cannot be read (any read error other than a missing file, such as invalid UTF-8), `check affected` shall fail the cheap step `test_tables` with a line that names that table and the read error · failure: none — the line is the only output of the step.
+- REQ-11: When a range only modifies or deletes existing `tests/*.rs` files, `check affected` shall plan no `test_tables` step · failure: none — the added paths come from `git diff --diff-filter=A --no-renames`, which lists neither a modified nor a deleted path.
+- REQ-12: When a range renames a `tests/<name>.rs` to another name, `check affected` shall give the new name the verdict of REQ-1 to REQ-4 as an added file · failure: none — with `--no-renames` a rename is one deleted and one added path.
+
+## Acceptance
+
+- AC-1 (REQ-1, REQ-2): 임시 저장소 범위가 첫 낱말이 표에 없는 `tests/zzfresh_cli.rs` 를 더하면 요약 줄이 `test_tables=1 stopped_at=test_tables result=FAIL` 이고 가짜 clippy·테스트 호출 흔적이 없고, 단계 로그가 파일·`tests/areas.toml`·`"zzfresh"` 를 말해요; 옮겨진 영역의 낱말 파일과 영역 크레이트 이름 파일도 각각 한 줄을 받아요 · verify: `cargo nextest run --locked --offline --test check_affected_tables_cli a_new_test_file_missing_from_the_area_table_stops_before_the_heavy_steps`
+- AC-2 (REQ-3, REQ-4): 상태 폴더 이름을 적은 새 테스트 파일이 allow 목록에 없으면 같은 멈춤이 오고 로그에 정확한 `path<TAB>0<TAB>1` 행이 있어요; 행이 있어도 세는 수가 더 크면 그 수들이 있어요; 행이 같거나 더 크면 단계가 0 이에요 · verify: `cargo nextest run --locked --offline --test check_affected_tables_cli a_new_test_file_missing_from_the_state_folder_allow_list_stops_before_the_heavy_steps`
+- AC-3 (REQ-5, REQ-6, REQ-11, REQ-12): 두 표에 맞는 새 테스트 파일은 `test_tables=0` 으로 지나가 무거운 단계가 돌고, 테스트 파일을 더하지 않았거나 표 파일이 없는 저장소의 요약 줄에는 `test_tables` 낱말이 없어요; 목록에 없는 낱말의 기존 테스트 파일을 고치기만 한 범위와 지우기만 한 범위도 `test_tables` 를 계획하지 않고, 그 파일을 목록에 없는 이름으로 바꾼 범위는 새 이름에 대해 `stopped_at=test_tables` 로 멈춰요 · verify: `cargo nextest run --locked --offline --test check_affected_tables_cli a_registered_new_test_file_passes_and_other_ranges_plan_no_table_step`
+- AC-4 (REQ-7): `--list` 의 단계 목록에서 `test_tables` 는 `heavy: false` 이고 첫 `clippy` 앞에 있어요 · verify: `cargo nextest run --locked --offline --test check_affected_tables_cli list_shows_the_table_step_before_the_heavy_steps`
+- AC-5 (REQ-1…REQ-4): 순수 판정 함수 단위 테스트가 위반 종류별 줄(미등록 낱말, 옮겨진 영역, 영역 크레이트 이름, 목록에 없는 행, 초과 행)과 위반 없음을 가려요 · verify: `cargo nextest run --locked --offline --lib check_affected::tests::table_violations`
+- AC-6 (REQ-8): 저장소의 실제 `tests/*.rs` 전체를 더한 파일로 놓고 판정하면 위반이 0 개예요 · verify: `cargo nextest run --locked --offline --lib check_affected::tests::the_repository_tests_pass_the_table_step_as_added_files`
+- AC-7 (REQ-9): `check.md` 와 `docs/lane-rules.md` 가 `test_tables`, `tests/areas.toml`, `allow.tsv` 를 말해요 · verify: `cargo nextest run --locked --offline --lib check_affected::tests::the_guidance_says_where_a_new_test_file_registers`
+- AC-8 (REQ-10): 더한 테스트 파일이 있는 범위에서 `tests/areas.toml` 이 잘못된 UTF-8 이면, 그리고 따로 `allow.tsv` 가 잘못된 UTF-8 이면, 요약 줄이 `stopped_at=test_tables result=FAIL` 이고 가짜 clippy·테스트 호출 흔적이 없고, 단계 로그 한 줄이 그 표 이름과 읽기 오류를 말해요; 표를 읽을 수 있는 같은 범위는 그 줄이 없어요 · verify: `cargo nextest run --locked --offline --test check_affected_tables_cli a_table_that_exists_but_cannot_be_read_stops_before_the_heavy_steps`
+
+## Scope
+
+- write: `.moai/specs/SPEC-20261124-new-test-file-precheck/**`, `src/check_affected.rs`, `tests/check_affected_tables_cli.rs`(새), `docs/design-review/appendix/operations/check.md`, `docs/lane-rules.md`, `tools/repo_scans.json`(항목 하나만)
+- read-only: `tests/areas.toml`, `tests/test_area_layout.rs`, `tests/state_folder_literal_scan.rs`, `tests/fixtures/state_folder_literals/allow.tsv`, `tests/check_affected_cli.rs`, `SPEC-20261122-check-light-stop`
+- forbidden: `tests/areas.toml` 와 `allow.tsv` 의 규칙·내용 변경, `src/lib.rs`, 새 Python 테스트, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것, 실제 HOME, 다른 레인의 파일
+
+## Plan
+
+1. RED: `tests/check_affected_tables_cli.rs` 의 테스트 여섯과 `check_affected::tests::table_violations*` 단위 테스트를 먼저 쓰고, 코드 없이 실패하는 것을 확인해요.
+2. GREEN, `src/check_affected.rs`: `Facts` 에 더한 경로, 두 표의 글, 옮겨진 영역 이름을 더하고, 순수 함수 `table_violations` 와 단계 `test_tables`(로그에 줄을 쓰고 1 을 내는 안쪽 단계)를 더해요. 단계는 첫 무거운 단계 앞에 끼워서 `run` 과 `list` 가 같은 계획을 써요.
+3. 글: `check.md` 의 "테스트 영역 표" 와 "쓰는 법과 답", `docs/lane-rules.md` 의 Tests.
+4. 뮤턴트: 각 새 가드 테스트마다 코드를 지우고 실패를 봐요. 영향 테스트 한 번, READY.
+5. 판 4 수리(감사 FAIL 뒤): RED 로 먼저 `a_registered_new_test_file_passes_and_other_ranges_plan_no_table_step` 에 기존 파일 수정·삭제·바꾸기 범위를, 새 테스트 `a_table_that_exists_but_cannot_be_read_stops_before_the_heavy_steps` 를 더해요(앞의 세 범위는 현재 코드가 이미 맞춰서 통과하고, 읽을 수 없는 표만 빨개요: 앞 셋은 뮤턴트가 지켜 줘요). GREEN: `read_facts` 가 "파일 없음" 과 "읽을 수 없음" 을 가르고 `table_step` 이 읽을 수 없는 표를 줄로 말해요(src 는 `src/check_affected.rs` 와 `check.md` 의 예약이 풀린 뒤에). 뮤턴트 세 줄: `--diff-filter=A` 지우기, `--no-renames` 지우기, 읽을 수 없는 표 거절 지우기. 새 문서 줄과 SPEC 본문의 "시험" 을 "테스트" 로 바꿔요.
+
+## Risks
+
+- 단계가 세는 규칙이 `state_folder_literal_scan` 과 어긋날 수 있어요: `.rs` 파일의 두 이름 세는 규칙을 두 곳이 가져요. AC-6 의 저장소 전체 대조 테스트가 한쪽만 바뀐 드리프트를 잡아요(두 테스트가 이미 통과하는 트리에서 이 단계가 위반을 내면 어긋난 거예요).
+- 요약 줄에 새 낱말 `test_tables` 가 생겨요(단계가 계획될 때만): 낱말 순서를 읽는 외부 도구가 있다면 깨질 수 있어요. 저장소 안에서 줄을 읽는 곳은 연산 페이지와 `check_affected*` 테스트뿐이에요.
+- 표 파일이 없는 저장소(임시 저장소 테스트)에서는 단계가 계획되지 않아요(REQ-6). 진짜 저장소에서 표가 사라지면 두 표 테스트가 먼저 빨개져요. 표가 있는데 읽을 수 없으면 단계가 막아요(REQ-10).
+- `tests/areas.toml` 은 한 줄에 배열 하나인 줄 단위 읽기를 전제해요(Python 도구 때문이에요). 이 단계도 같은 줄 읽기만 써서 `toml_edit` 에 기대지 않아요.
+- 읽을 수 없는 표를 막으면(REQ-10) 권한이 없거나 잘못된 UTF-8 인 표가 있는 저장소에서 더한 테스트 파일마다 이 단계가 빨개져요. 그 표는 두 표 테스트도 어차피 못 읽어서 빨개져요: 이 단계는 그 일을 앞으로 당길 뿐이에요.
+
+## Decisions
+
+| Id | Decision | Basis | Undo |
+| --- | --- | --- | --- |
+| D-1 | 새 단계는 바깥 프로그램이 아니라 계획할 때 판정을 끝내고 줄만 로그에 쓰는 안쪽 단계예요 | 범위의 사실은 이미 읽혀 있고, 가짜 PATH 테스트에서도 같은 길을 타요 | 단계를 외부 명령으로 바꾸기 |
+| D-2 | 더한 최상위 `tests/*.rs` 가 있고 표 파일이 있을 때만 계획해요 | 다른 실행의 요약 줄이 그대로여야 하고, 표 없는 임시 저장소 테스트가 깨지지 않아요 | 항상 계획 |
+| D-3 | 두 표는 읽기만 하고 규칙은 그대로예요 | 사용자 지시 "표를 풀지 않는다" | 없음 |
+| D-4 | observe 단계 없이 처음부터 막아요 | 새 규칙이 아니라 저장소의 두 테스트가 이미 막는 규칙을 앞으로 당긴 것이고, 오탐은 AC-6 으로 재요 | 단계를 계획에서 빼기 |
+| D-5 | 첫 낱말이 미등록일 때 줄은 낱말 하나와 영역 이름들을 말하고, 어느 영역인지는 고르지 않아요 | 영역 선택은 사람(파일의 성격)의 일이에요 | 없음 |
+| D-6 | AC-6 와 AC-7 의 테스트는 `tests/` 가 아니라 `src/check_affected.rs` 의 단위 테스트예요 | 저장소를 걷고 체크인된 문서를 읽는 테스트 파일은 `tests/repo_scans_table.rs` 가 `tools/repo_scans.json` 등록이나 EXEMPT 를 요구하는데(영향 테스트 실행에서 두 테스트가 실패했어요), 두 파일은 이 SPEC 의 쓰기 범위 밖이에요. `check affected` 는 `--lib` 를 늘 돌려요. 판 2 는 그 스캔이 `tests/*.rs` 만 본다고 잘못 적었어요: `src/` 의 파일도 `CARGO_MANIFEST_DIR` 와 디렉터리 걷기가 있으면 걸려요(판 3, D-7) | 테스트를 `tests/` 로 옮기고 스캔에 등록하기 |
+| D-7 | `tools/repo_scans.json` 에 항목 하나 `table-step-matches-the-two-repository-tests` 를 더해요 | 저장소를 읽는 단위 테스트의 등록 자리는 이 파일이고(`home-written-names-in-the-table` 같은 항목), 우회는 가드 회피예요. 예약 범위 확장은 리더 결정 노트로 받았어요 | 그 항목을 지우고 두 테스트를 빼기 |
+| D-8 | 표 파일이 있는데 읽을 수 없으면(읽기 오류가 "파일 없음" 이 아닐 때) 더한 테스트 파일이 있는 범위에서 단계가 막아요 | 리더 결정(카드 노트 7868, 2026-11-23T20:41:49Z, 감사 비차단 N1 을 이 수리에서 함께 고치기로 함): 없는 것처럼 지나가면 이 단계가 막으려던 일을 뒤의 무거운 단계에서야 만나요. 표가 없는 경우(REQ-6)는 그대로 계획하지 않아요 | 읽을 수 없는 표를 없는 표로 보기 |
+| D-9 | 판 4 는 감사 FAIL 의 막는 항목(B1: `--diff-filter=A`, `--no-renames` 를 지키는 테스트 없음)을 기존 파일 수정·삭제·바꾸기 범위 테스트와 뮤턴트 줄 둘(`--diff-filter=A` 지우기, `--no-renames` 지우기)로 고치고, N1 은 읽을 수 없는 표 거절 테스트와 뮤턴트 줄 하나로 고쳐요. N2(cargo fmt 는 AC-3 순서대로 돈다)와 N4(`parse_allow_rows` 가 잘못된 줄을 버린다)는 그대로 받아들여요 | 리더 결정(카드 노트 7868) | 없음 |
+
+## Result
+
+Revision 4 (the repair after the audit FAIL) is measured at the end of this section; the lines before it are those of revision 3 and stay as they were measured.
+
+Measured 2026-11-23 (UTC, `date -u` 20:15:48Z) on macOS in the worktree `.claude/worktrees/new-test-file-precheck`, code head `28ff06535d72bf90d02e9aac4a1691edc21d63d6` (revision 3; the first implementation head was `4cf32980498e94f6cf1788d0b2606c8bd83829c2`, where the first `check affected` run failed on clippy and on two `repo_scans_table` tests, which led to revisions 2 and 3), base `5aa64681a295a168f2f4f6533cb35fed2aab9f22` (the `NeXT` tip when the worktree was made; the checks did not follow the tip). RED was the commit `cc8b44180d` (5 of 6 tests failed against an empty stub, exit 100; the repository-wide test passed on the stub because it asserts no violation).
+- AC-1 met: `a_new_test_file_missing_from_the_area_table_stops_before_the_heavy_steps` passes: the summary ends `stopped_at=test_tables result=FAIL` with `test_tables=1`, the fake `cargo` log has no `clippy`, `--lib`, `--bin moai-cli` or `--test` call, and the step log has exactly three lines (unlisted word `zzfresh` with the table and the word to add, the moved area `lane`, the area crate name `spec`; the solo file `check_solo_cli` gets none).
+- AC-2 met: `a_new_test_file_missing_from_the_state_folder_allow_list_stops_before_the_heavy_steps` passes: the exact row `tests/check_literal_cli.rs<TAB>1<TAB>1`, the over-count line (`2 times`, `allows 1`, with the row to raise), and no line for the file whose row allows enough.
+- AC-3 met: `a_registered_new_test_file_passes_and_other_ranges_plan_no_table_step` passes: `test_tables=0` stands right after `fmt` and before `clippy`, the heavy steps ran, the result is PASS; a source-only range and a repository without tables plan no such step.
+- AC-4 met: `list_shows_the_table_step_before_the_heavy_steps` passes (`heavy: false`, before `clippy`, `writes: false`).
+- AC-5 met: `check_affected::tests::table_violations_name_each_kind_of_miss`, `…_pass_a_registered_file_and_skip_an_absent_table` and `…_count_each_state_folder_name_against_its_row` pass.
+- AC-6 met: the unit test `check_affected::tests::the_repository_tests_pass_the_table_step_as_added_files` (moved from the CLI test file in revision 2) passes: the repository's own `tests/*.rs` files, all taken as added, give no violation (0 false positives against the two repository tests, which pass on the same tree).
+- AC-7 met: the unit test `check_affected::tests::the_guidance_says_where_a_new_test_file_registers` passes: `check.md` and `docs/lane-rules.md` name `test_tables`, `tests/areas.toml` and `allow.tsv`.
+- `cargo nextest run --locked --offline` over the `--lib` filter `check_affected::tests` and the targets `check_affected_tables_cli`, `check_affected_cli`, `check_affected_modes_cli`, `check_affected_one_slot`, `check_pipeline_config`, `test_area_layout` and `state_folder_literal_scan` ran 115 tests (the same targets and `repo_scans_table`), 115 passed (exit 0), in one heavy slot (`--max 4`), `RUSTC_WRAPPER=sccache`. The new test file passes both tables itself: its first word `check` is listed in `tests/areas.toml` (`spec` area) and it spells neither state folder name.
+- guard mutants, each run on the committed head `4cf3298049`, then restored; the mutated code and the tests that catch it did not change in the later revisions except the two moved tests (`git checkout` of the file; `git status --short` empty after the last): (1) `run_report` returns 0 instead of 1 on a violation — 2 tests failed, exit 100; (2) the step is planned after the heavy steps — 4 failed, exit 100; (3) every first word counts as listed — 2 failed, exit 100; (4) the state-folder rule is skipped — 2 failed, exit 100; (5) an over-count passes (`count > allowed + 9`) — 2 failed, exit 100; (6) the step is planned for every range — 1 failed, exit 100; (7) the lane-rules sentence loses `test_tables` — 1 failed, exit 100. Each edit was checked applied with `git diff --stat` before the run.
+- Gap: the summary line gains the word `test_tables` only when a range adds a top-level test file and a table exists; no tool in the repository reads word order beyond the operation page and the `check_affected*` tests, and those pass.
+- Gap: the step reads `tests/areas.toml` with a line reader (one array per line, as the table's header demands); a table that breaks that format is caught by `test_area_layout`, not by this step.
+- Gap: no dangerous path (the step starts no process and deletes nothing), so the READY carries none.
+- Revision 3 added one entry `table-step-matches-the-two-repository-tests` to `tools/repo_scans.json` for the two unit tests that read the tree and two guidance pages; `repo_scans_table` passes with it. `cargo clippy --all-targets -- -D warnings` exited 0 on the revision 2 tree.
+- Gap: a third table, the repository scan list, bit the same way and is not checked by the step; the leader opened a follow-up card for it.
+- Gap: the `moai check affected` receipt for the READY head is in the READY note, not here.
+
+Revision 4 measured 2026-11-24 (UTC, `date -u` 02:40:12Z) on macOS in the same worktree, code head `9725633ce2846d51209a8326bfcef026a207a96e`, base `1e5f8442daf49bec85b80573e4c8cac7fbecb6c4` (the `NeXT` tip the merge `7dff5e50a3` took; the checks did not follow the tip). The RED commit `df62e9b117` ran 5 tests, 4 passed and 1 failed (exit 100, the unreadable-table test, `test_tables=0 result=PASS`); the three ranges of the first test already passed on the old code, so mutants are their evidence.
+- AC-3 extension met: `a_registered_new_test_file_passes_and_other_ranges_plan_no_table_step` passes with a modified and a deleted existing test file (no `test_tables` word) and a rename to an unlisted name (stops at `test_tables` for the new name); `cargo nextest run --locked --offline --test check_affected_tables_cli` ran 5 tests, 5 passed (exit 0) at the GREEN commit `a533438337`.
+- AC-8 met: `a_table_that_exists_but_cannot_be_read_stops_before_the_heavy_steps` passes: with `tests/areas.toml` and then `allow.tsv` replaced by invalid UTF-8 the summary ends `test_tables=1 stopped_at=test_tables result=FAIL`, no fake `clippy` or test call ran, and the log has exactly one line, naming the table, `cannot be read` and the UTF-8 error; the readable table has no line.
+- affected tests on the merged head: `cargo nextest run --locked --offline --lib` plus the targets `check_affected_tables_cli`, `check_affected_cli`, `check_affected_modes_cli`, `check_affected_one_slot`, `check_pipeline_config`, `test_area_layout`, `state_folder_literal_scan`, `repo_scans_table` with a filterset on the same names ran 125 tests, 125 passed (exit 0), in one heavy slot (`--max 3`), `RUSTC_WRAPPER=sccache`.
+- guard mutants of revision 4, each on the committed head `9725633ce2`, restored with `git checkout -- src/check_affected.rs` (`git status --short` empty after the last), each checked applied with `git diff --stat` before the run: (a) the `--diff-filter=A` line of the added-paths call deleted — `a_registered_new_test_file_passes_and_other_ranges_plan_no_table_step` failed, exit 100; (b) `--no-renames` deleted from the added-paths call — the same test failed, exit 100; (c) the unreadable-table note dropped in `read_table` — `a_table_that_exists_but_cannot_be_read_stops_before_the_heavy_steps` failed, exit 100 (the run passed as `test_tables=0 result=PASS`, the old behaviour).
+- Doc line: `docs/design-review/appendix/operations/check.md` says `테스트` instead of `시험` in the new line and states that a table that exists but cannot be read stops `test_tables`; AC-7 passes in the 125 above.
+- Gap: `parse_allow_rows` still drops a malformed row silently and `cargo fmt` still runs before `test_tables` (audit notes N4 and N2, accepted in D-9).

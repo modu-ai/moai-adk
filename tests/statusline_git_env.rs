@@ -91,12 +91,14 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
     fs::write(other.join("u2.txt"), "u\n").unwrap();
 
     let clean = render(&home, &project, &[], WITHIN);
-    assert!(clean.contains("🅱️ main"), "{clean}");
-    // #2756: the repository line is the second of the three lines, not the last. A clean
-    // branch has no `+N` (the other repository's three changes would show as `+3`); there is
-    // no `💾` segment (leader decision 6862179411).
-    let repository_line = clean.lines().find(|l| l.starts_with("🅱️")).unwrap();
-    assert_eq!(repository_line, "🅱️ main", "{clean}");
+    assert!(clean.contains("🌳 main"), "{clean}");
+    // SPEC-20261123-statusline-order-bars: the checked-out branch is on the first line, after the
+    // model, and no number is: neither the project's own change nor the other repository's three
+    // would show as `+N`; there is no `💾` segment (leader decision 6862179411). The input names
+    // no repository, so the repository item is left out with its separator (REQ-8): no
+    // `📡 n/a`; no integration branch is known, so no `🅱️` item.
+    let first_line = clean.lines().next().unwrap();
+    assert_eq!(first_line, "🧠 Opus | 🌳 main", "{clean}");
     assert!(!clean.contains("📁"), "{clean}");
 
     let git_dir = other.join(".git");
@@ -118,11 +120,12 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
 /// A budget no git call can miss under any load.
 const WITHIN: u64 = 3_600_000;
 
-/// The over-budget path, deterministically: with an already expired budget no git is
-/// started, so the repository row is omitted entirely. Without the seam (budget ignored)
-/// git would run and this fails.
+/// The over-budget path, deterministically: with an already expired budget no git is started,
+/// so the numbers git gives (here one untracked file) are missing and nothing else moves; the
+/// branch comes from the `HEAD` file, which costs no process. The first line shows no number
+/// either way (SPEC-20261123-statusline-order-bars REQ-11), so it is the same line.
 #[test]
-fn an_expired_render_budget_drops_the_git_segment() {
+fn an_expired_render_budget_drops_the_git_numbers() {
     let tmp = tempfile::tempdir().unwrap();
     let root = fs::canonicalize(tmp.path()).unwrap();
     let home = root.join("home");
@@ -130,15 +133,977 @@ fn an_expired_render_budget_drops_the_git_segment() {
     let project = root.join("project");
     fs::create_dir(&project).unwrap();
     git(&project, &["init", "-q", "-b", "main"]);
+    fs::write(project.join("new.txt"), "n\n").unwrap();
 
     let within = render(&home, &project, &[], WITHIN);
-    // #2756: the repository line sits between the environment and usage lines.
-    assert_eq!(within.lines().nth(1), Some("🅱️ main"), "{within}");
+    assert_eq!(within.lines().next(), Some("🧠 Opus | 🌳 main"), "{within}");
     for _ in 0..5 {
         let over = render(&home, &project, &[], 0);
-        assert!(!over.contains("🅱️") && !over.contains("📁"), "{over}");
-        let within_without_repo: Vec<_> = within.lines().filter(|l| !l.starts_with("🅱️")).collect();
-        let over_lines: Vec<_> = over.lines().collect();
-        assert_eq!(over_lines, within_without_repo, "{over}");
+        assert_eq!(over.lines().next(), Some("🧠 Opus | 🌳 main"), "{over}");
+        assert!(!over.contains("📁") && !over.contains("📡"), "{over}");
+        assert_eq!(
+            over.lines().skip(1).collect::<Vec<_>>(),
+            within.lines().skip(1).collect::<Vec<_>>(),
+            "{over}"
+        );
     }
+}
+
+// ---- SPEC-20261122-statusline-where: the `HEAD` file, one git process, the session cache ----
+//
+// Every case below runs the real binary against a repository whose `git` on PATH is a script
+// that counts its starts and answers `status` with a canned text, so the number of processes and
+// the origin of each shown fact (the `HEAD` file or git's output) are both visible. The canned
+// text names a branch that is never the one in `HEAD`: a branch name that shows up from it was
+// read from git, not from the file. TMPDIR and HOME are temporary folders of the test.
+
+use std::os::unix::fs::{symlink, PermissionsExt};
+use std::path::PathBuf;
+use std::time::{Duration, Instant, SystemTime};
+
+/// The render's clock of the cases (the hidden `--now-unix` seam). It lies in the past on
+/// purpose: a file the render writes carries the real clock's time, which is then never a day
+/// older than the render's clock, so the cleanup of old cache files never meets it.
+const T: i64 = 1_700_000_000;
+/// A made-up commit.
+const SHA_A: &str = "0123456789abcdef0123456789abcdef01234567";
+const SHA_B: &str = "fedcba9876543210fedcba9876543210fedcba98";
+/// What the scripted `git status` says: a branch nobody checked out, one changed file.
+const CANNED: &str = "## elsewhere\n M a.txt\n";
+/// What the scripted `git rev-list --left-right --count` says: 1 behind, 2 ahead.
+const CANNED_DISTANCE: &str = "1\t2\n";
+const BUDGET_WITHIN: u64 = 3_600_000;
+
+struct Scripted {
+    _guard: tempfile::TempDir,
+    home: PathBuf,
+    project: PathBuf,
+    /// `TMPDIR` of the render.
+    tmp: PathBuf,
+    /// The folder holding the scripted `git`.
+    bin: PathBuf,
+    /// One line per start of the scripted `git`: its arguments.
+    log: PathBuf,
+}
+
+impl Scripted {
+    /// A repository (a real `git init`) whose `HEAD` file is then replaced by `head`.
+    fn new(head: &str) -> Scripted {
+        let guard = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(guard.path()).unwrap();
+        let home = root.join("home");
+        let project = root.join("project");
+        let tmp = root.join("tmp");
+        let bin = root.join("bin");
+        for d in [&home, &project, &tmp, &bin] {
+            fs::create_dir_all(d).unwrap();
+        }
+        fs::create_dir_all(home.join(moai_cli::home_root::MOAI_DIR)).unwrap();
+        common::git::git_ok(&project, &["init", "-q", "-b", "main"]);
+        common::git::git_in(
+            &project,
+            &["commit", "-q", "--allow-empty", "-m", "fixture"],
+        );
+        let log = root.join("git-starts.log");
+        fs::write(&log, "").unwrap();
+        let script = format!(
+            "#!/bin/sh\n\
+             echo \"$*\" >> '{log}'\n\
+             for a in \"$@\"; do\n\
+             \x20 if [ \"$a\" = status ]; then cat '{canned}'; exit 0; fi\n\
+             \x20 if [ \"$a\" = rev-list ]; then cat '{canned_distance}'; exit \"$(cat '{distance_exit}')\"; fi\n\
+             done\n\
+             exit 1\n",
+            log = log.display(),
+            canned = root.join("canned.txt").display(),
+            canned_distance = root.join("canned-distance.txt").display(),
+            distance_exit = root.join("distance-exit.txt").display(),
+        );
+        fs::write(root.join("canned.txt"), CANNED).unwrap();
+        fs::write(root.join("canned-distance.txt"), CANNED_DISTANCE).unwrap();
+        fs::write(root.join("distance-exit.txt"), "0").unwrap();
+        let git = bin.join("git");
+        fs::write(&git, script).unwrap();
+        fs::set_permissions(&git, fs::Permissions::from_mode(0o755)).unwrap();
+        let s = Scripted {
+            _guard: guard,
+            home,
+            project,
+            tmp,
+            bin,
+            log,
+        };
+        s.set_head(head);
+        s
+    }
+
+    fn git_dir(&self) -> PathBuf {
+        self.project.join(".git")
+    }
+
+    fn set_head(&self, content: &str) {
+        let head = self.git_dir().join("HEAD");
+        let _ = fs::remove_file(&head);
+        fs::write(head, content).unwrap();
+    }
+
+    /// The project profile names `name` as the integration branch, and its ref file holds `sha`.
+    fn integration(&self, name: &str, sha: &str) {
+        let state = moai_cli::state_root::path(&self.project, "");
+        fs::create_dir_all(&state).unwrap();
+        fs::write(
+            state.join("project.yaml"),
+            format!(
+                "{{\"schema_version\":2,\"project_id\":\"demo\",\"work_flow\":{{\"flow\":\"m-flow\",\"integration_branch\":\"{name}\"}}}}\n"
+            ),
+        )
+        .unwrap();
+        self.set_integration_commit(name, sha);
+    }
+
+    fn set_integration_commit(&self, name: &str, sha: &str) {
+        fs::write(
+            self.git_dir().join("refs/heads").join(name),
+            format!("{sha}\n"),
+        )
+        .unwrap();
+    }
+
+    /// The arguments of each start of `git`, in order.
+    fn starts(&self) -> Vec<String> {
+        fs::read_to_string(&self.log)
+            .unwrap()
+            .lines()
+            .map(str::to_string)
+            .collect()
+    }
+
+    fn cache_dir(&self) -> PathBuf {
+        self.tmp.join("moai-statusline")
+    }
+
+    fn run(&self, now: i64, session: &str) -> String {
+        self.run_with(now, Some(session), BUDGET_WITHIN)
+    }
+
+    /// One plain render; the exit code must be 0 and the render must end within 30 seconds.
+    fn run_with(&self, now: i64, session: Option<&str>, budget_ms: u64) -> String {
+        let mut stdin = serde_json::json!({
+            "model": {"display_name": "Opus"},
+            "workspace": {"current_dir": self.project, "project_dir": self.project},
+        });
+        if let Some(id) = session {
+            stdin["session_id"] = id.into();
+        }
+        let mut cmd = Command::new(common::MOAI_BIN);
+        cmd.args([
+            "statusline",
+            "--render-budget-ms",
+            &budget_ms.to_string(),
+            "--now-unix",
+            &now.to_string(),
+        ])
+        .current_dir(&self.project)
+        .clean_env()
+        .env("PATH", format!("{}:/usr/bin:/bin", self.bin.display()))
+        .env("HOME", &self.home)
+        .env("MOAI_HOME", self.home.join(moai_cli::home_root::MOAI_DIR))
+        .env("TMPDIR", &self.tmp)
+        .env("NO_COLOR", "1")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+        let mut child = cmd.spawn().unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(stdin.to_string().as_bytes())
+            .unwrap();
+        let started = Instant::now();
+        loop {
+            match child.try_wait().unwrap() {
+                Some(_) => break,
+                None if started.elapsed() > Duration::from_secs(30) => {
+                    let _ = child.kill();
+                    panic!("the render did not end within 30 seconds");
+                }
+                None => std::thread::sleep(Duration::from_millis(5)),
+            }
+        }
+        let out = child.wait_with_output().unwrap();
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8(out.stdout).unwrap()
+    }
+}
+
+/// The line that carries the checked-out item (the first line).
+fn branch_line(out: &str) -> &str {
+    out.lines().find(|l| l.contains("🌳")).unwrap_or("")
+}
+
+/// Every regular file under `dir`, recursively.
+fn files_under(dir: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for e in fs::read_dir(&d).unwrap() {
+            let p = e.unwrap().path();
+            let meta = fs::symlink_metadata(&p).unwrap();
+            if meta.is_dir() {
+                stack.push(p);
+            } else {
+                out.push(p);
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+fn mode_of(path: &Path) -> u32 {
+    fs::symlink_metadata(path).unwrap().permissions().mode() & 0o777
+}
+
+/// AC-2, REQ-2: the branch is read from the `HEAD` file, never from git's output, and the one
+/// `git status` process of the render supplies the numbers.
+#[test]
+fn head_file_and_process_count_branch() {
+    let s = Scripted::new("ref: refs/heads/main\n");
+    let out = s.run(T, "s-branch");
+    let line = branch_line(&out);
+    assert!(
+        !out.contains("elsewhere"),
+        "the branch name came from git's output, not from the HEAD file: {out}"
+    );
+    assert!(line.ends_with("🌳 main"), "the HEAD file's branch: {out}");
+    assert!(
+        !line.contains("+1"),
+        "the dirty count of the one process is no mark on the line: {out}"
+    );
+    assert_eq!(s.starts().len(), 1, "one process: {:?}", s.starts());
+    assert!(s.starts()[0].contains("status"), "{:?}", s.starts());
+}
+
+/// AC-2, REQ-2, REQ-7, D-2 (and REQ-10 of SPEC-20261123-statusline-order-bars): a detached HEAD
+/// shows no checked-out item and no invented name — the commit of the `HEAD` file is not on the
+/// line — and starts no process for it.
+#[test]
+fn head_file_and_process_count_detached_head() {
+    let s = Scripted::new(&format!("{SHA_A}\n"));
+    fs::write(
+        s.project.parent().unwrap().join("canned.txt"),
+        "## HEAD (no branch)\n M a.txt\n",
+    )
+    .unwrap();
+    let out = s.run(T, "s-detached");
+    let starts = s.starts();
+    assert!(starts.len() <= 1, "at most one process: {starts:?}");
+    for start in &starts {
+        assert!(
+            start.contains("status")
+                && !start.contains("rev-parse")
+                && !start.contains("symbolic-ref"),
+            "no process for the branch or the short commit: {starts:?}"
+        );
+    }
+    assert!(!out.contains("🌳"), "no checked-out item: {out}");
+    assert!(
+        !out.contains("0123456"),
+        "the short commit of HEAD is no name: {out}"
+    );
+}
+
+/// AC-2, REQ-2: a missing `HEAD` leaves the branch items out and starts at most one process.
+#[test]
+fn head_file_and_process_count_missing_head() {
+    let s = Scripted::new("ref: refs/heads/main\n");
+    fs::remove_file(s.git_dir().join("HEAD")).unwrap();
+    let out = s.run(T, "s-missing");
+    assert!(s.starts().len() <= 1, "{:?}", s.starts());
+    assert!(!out.contains("🌳"), "no checked-out item: {out}");
+    assert!(!out.contains("🧭"), "no distance item: {out}");
+    assert!(!out.contains("elsewhere"), "{out}");
+}
+
+/// A `HEAD` that is a link, a named pipe, a folder or text that is no branch and no commit is
+/// refused, never followed or waited on: no branch item, and the render ends.
+#[test]
+fn head_file_and_process_count_refuses_links_pipes_and_folders() {
+    let kinds = [
+        "link",
+        "pipe",
+        "folder",
+        "garbage",
+        "control-bytes",
+        "empty",
+    ];
+    for kind in kinds {
+        let s = Scripted::new("ref: refs/heads/main\n");
+        let head = s.git_dir().join("HEAD");
+        fs::remove_file(&head).unwrap();
+        match kind {
+            "link" => {
+                let real = s.project.parent().unwrap().join("real-head");
+                fs::write(&real, "ref: refs/heads/main\n").unwrap();
+                symlink(&real, &head).unwrap();
+            }
+            "pipe" => {
+                let ok = Command::new("mkfifo")
+                    .arg(&head)
+                    .status()
+                    .unwrap()
+                    .success();
+                assert!(ok, "mkfifo");
+            }
+            "folder" => fs::create_dir(&head).unwrap(),
+            "garbage" => fs::write(&head, "not a head\n").unwrap(),
+            "control-bytes" => fs::write(&head, "ref: refs/heads/a\x1b[31mb\n").unwrap(),
+            _ => fs::write(&head, "").unwrap(),
+        }
+        let out = s.run(T, "s-refuse");
+        assert!(!out.contains("🌳"), "{kind}: no checked-out item: {out}");
+        assert!(!out.contains("elsewhere"), "{kind}: {out}");
+        assert!(
+            !out.contains('\x1b'),
+            "{kind}: no escape from a HEAD file: {out:?}"
+        );
+        assert!(s.starts().len() <= 1, "{kind}: {:?}", s.starts());
+    }
+}
+
+/// The lane branch is measured against the integration branch by a second process of its own,
+/// `rev-list`, which reads no setting of the branch; the `status` call carries no `-c` override
+/// and no branch header. SPEC-20261123-statusline-integration-distance REQ-1, REQ-4, REQ-6; the
+/// numbers are not on the line any more (SPEC-20261123-statusline-order-bars REQ-11), which shows
+/// the integration item and the checked-out branch instead.
+#[test]
+fn head_file_and_process_count_lane_branch_is_measured_against_the_integration_branch() {
+    let s = Scripted::new("ref: refs/heads/lane\n");
+    s.integration("next", SHA_A);
+    let out = s.run(T, "s-lane");
+    assert_eq!(
+        s.starts(),
+        vec![
+            "--no-optional-locks status --porcelain".to_string(),
+            "rev-list --left-right --count refs/heads/next...HEAD --".to_string(),
+        ]
+    );
+    assert!(
+        !out.contains("🧭") && !out.contains('↑'),
+        "no distance: {out}"
+    );
+    assert_eq!(
+        out.lines().next(),
+        Some("🧠 Opus | 🅱️ next(🏷️ 0123456) | 🌳 lane"),
+        "the integration tip is the commit of its ref file: {out}"
+    );
+    // On the integration branch itself git's own numbers: one `status` call with the header.
+    let s = Scripted::new("ref: refs/heads/next\n");
+    s.integration("next", SHA_A);
+    s.run(T, "s-next");
+    assert_eq!(
+        s.starts(),
+        vec!["--no-optional-locks status --porcelain --branch".to_string()]
+    );
+}
+
+/// A `rev-list` that fails shows zeros for the distance, keeps the dirty count of the `status`
+/// call and writes no cache record, so the next render asks git again (REQ-2).
+#[test]
+fn a_failed_distance_call_shows_zeros_and_writes_no_cache() {
+    let s = Scripted::new("ref: refs/heads/lane\n");
+    s.integration("next", SHA_A);
+    fs::write(s.project.parent().unwrap().join("distance-exit.txt"), "1").unwrap();
+    fs::write(s.project.parent().unwrap().join("canned-distance.txt"), "").unwrap();
+    let out = s.run(T, "s-failed-distance");
+    assert!(!out.contains("🧭"), "{out}");
+    assert!(
+        !branch_line(&out).contains('+'),
+        "no count is on the line: {out}"
+    );
+    assert!(
+        !s.cache_dir().join("s-failed-distance.json").exists(),
+        "a render whose distance call failed writes no cache"
+    );
+    s.run(T + 1, "s-failed-distance");
+    assert_eq!(s.starts().len(), 4, "asked git again: {:?}", s.starts());
+}
+
+/// Text that is no pair of numbers is a failed call too (REQ-2).
+#[test]
+fn a_distance_answer_that_is_no_pair_of_numbers_shows_zeros() {
+    for text in ["", "x\ty\n", "1\n", "1\t2\t3\n", "-1\t2\n"] {
+        let s = Scripted::new("ref: refs/heads/lane\n");
+        s.integration("next", SHA_A);
+        fs::write(
+            s.project.parent().unwrap().join("canned-distance.txt"),
+            text,
+        )
+        .unwrap();
+        let out = s.run(T, "s-bad-distance");
+        assert!(!out.contains("🧭"), "{text:?}: {out}");
+        assert!(
+            !s.cache_dir().join("s-bad-distance.json").exists(),
+            "{text:?}: no cache"
+        );
+    }
+}
+
+/// With no local ref of the integration branch there is nothing to measure and no second
+/// process (REQ-5).
+#[test]
+fn a_missing_integration_ref_starts_no_distance_process() {
+    let s = Scripted::new("ref: refs/heads/lane\n");
+    s.integration("next", SHA_A);
+    fs::remove_file(s.git_dir().join("refs/heads/next")).unwrap();
+    let out = s.run(T, "s-missing-ref");
+    assert_eq!(
+        s.starts(),
+        vec!["--no-optional-locks status --porcelain".to_string()],
+        "only the status call"
+    );
+    assert!(!out.contains("🧭"), "{out}");
+    assert_eq!(
+        out.lines().next(),
+        Some("🧠 Opus | 🅱️ next(🏷️ n/a) | 🌳 lane"),
+        "no local ref: `n/a`, never a guessed commit: {out}"
+    );
+}
+
+/// A branch name git could take as an option or a revision range never reaches git, whatever
+/// the `HEAD` file says.
+#[test]
+fn head_file_and_process_count_unsafe_branch_names_never_reach_git() {
+    let long = "a".repeat(101);
+    for name in [
+        "--upload-pack=x",
+        "-x",
+        "a..b",
+        "HEAD",
+        "a b",
+        "a=b",
+        long.as_str(),
+    ] {
+        let s = Scripted::new(&format!("ref: refs/heads/{name}\n"));
+        s.integration("next", SHA_A);
+        s.run(T, "s-unsafe");
+        for start in s.starts() {
+            assert!(!start.contains(name), "{name:?} reached git: {start}");
+            assert!(!start.contains("-c "), "an override for {name:?}: {start}");
+        }
+        assert!(s.starts().len() <= 1, "{name:?}: {:?}", s.starts());
+    }
+}
+
+/// The render deadline: a spent budget starts no git process (the render still ends with 0).
+#[test]
+fn head_file_and_process_count_a_spent_budget_starts_no_git() {
+    let s = Scripted::new("ref: refs/heads/main\n");
+    s.run_with(T, Some("s-spent"), 0);
+    assert_eq!(s.starts(), Vec::<String>::new());
+}
+
+/// AC-4, REQ-6: a second render within ten seconds with the same `HEAD` starts no git, and
+/// writes the same line.
+#[test]
+fn session_cache_second_render_within_ten_seconds_starts_no_git() {
+    let s = Scripted::new("ref: refs/heads/main\n");
+    let first = s.run(T, "s-hit");
+    assert_eq!(s.starts().len(), 1);
+    let second = s.run(T + 1, "s-hit");
+    assert_eq!(
+        s.starts().len(),
+        1,
+        "a cache hit starts no git: {:?}",
+        s.starts()
+    );
+    assert_eq!(second, first);
+    let third = s.run(T + 5, "s-hit");
+    assert_eq!(s.starts().len(), 1, "{:?}", s.starts());
+    assert_eq!(third, first);
+}
+
+/// REQ-6: a changed `HEAD` starts one git, and the new key is cached.
+#[test]
+fn session_cache_a_changed_head_starts_one_git() {
+    let s = Scripted::new("ref: refs/heads/main\n");
+    s.run(T, "s-head");
+    s.run(T + 1, "s-head");
+    assert_eq!(s.starts().len(), 1, "{:?}", s.starts());
+    s.set_head("ref: refs/heads/other\n");
+    let out = s.run(T + 2, "s-head");
+    assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
+    assert!(branch_line(&out).contains("other"), "{out}");
+    let again = s.run(T + 3, "s-head");
+    assert_eq!(
+        s.starts().len(),
+        2,
+        "the new key is cached: {:?}",
+        s.starts()
+    );
+    assert_eq!(again, out);
+}
+
+/// REQ-5, REQ-6: the key holds the folder too. Two checkouts whose `HEAD` files read the same,
+/// rendered for one session id within ten seconds, are two keys: the second render starts one
+/// git of its own instead of reading the first folder's cache (the counts are not on the line
+/// any more, so the process count is what shows it).
+#[test]
+fn session_cache_another_folder_with_the_same_head_starts_one_git() {
+    let first = Scripted::new("ref: refs/heads/main\n");
+    let mut second = Scripted::new("ref: refs/heads/main\n");
+    // One TMPDIR for both folders, as one session that moves between them has.
+    second.tmp = first.tmp.clone();
+    // The first folder has one change, the second three.
+    fs::write(
+        second.log.parent().unwrap().join("canned.txt"),
+        "## elsewhere\n M a.txt\n M b.txt\n?? c.txt\n",
+    )
+    .unwrap();
+    let one = first.run(T, "s-moves");
+    assert!(!branch_line(&one).contains('+'), "{one}");
+    assert_eq!(first.starts().len(), 1, "{:?}", first.starts());
+    let other = second.run(T + 1, "s-moves");
+    assert_eq!(
+        second.starts().len(),
+        1,
+        "another folder asks git once: {:?}",
+        second.starts()
+    );
+    assert!(!branch_line(&other).contains('+'), "{other}");
+    // The cache now holds the second folder: the same folder within ten seconds starts no git.
+    let again = second.run(T + 2, "s-moves");
+    assert_eq!(second.starts().len(), 1, "{:?}", second.starts());
+    assert_eq!(again, other);
+}
+
+/// REQ-6: a changed commit of the integration branch starts git again (the `status` call and the
+/// distance call of a lane branch, two processes per miss), from a loose ref and from
+/// `packed-refs` alike.
+#[test]
+fn session_cache_a_changed_integration_commit_starts_git_again() {
+    let s = Scripted::new("ref: refs/heads/lane\n");
+    s.integration("next", SHA_A);
+    s.run(T, "s-int");
+    s.run(T + 1, "s-int");
+    assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
+    s.set_integration_commit("next", SHA_B);
+    s.run(T + 2, "s-int");
+    assert_eq!(s.starts().len(), 4, "{:?}", s.starts());
+    s.run(T + 3, "s-int");
+    assert_eq!(s.starts().len(), 4, "{:?}", s.starts());
+
+    let s = Scripted::new("ref: refs/heads/lane\n");
+    s.integration("next", SHA_A);
+    fs::remove_file(s.git_dir().join("refs/heads/next")).unwrap();
+    let packed = |sha: &str| {
+        format!("# pack-refs with: peeled fully-peeled sorted \n{sha} refs/heads/next\n")
+    };
+    fs::write(s.git_dir().join("packed-refs"), packed(SHA_A)).unwrap();
+    s.run(T, "s-packed");
+    s.run(T + 1, "s-packed");
+    assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
+    fs::write(s.git_dir().join("packed-refs"), packed(SHA_B)).unwrap();
+    s.run(T + 2, "s-packed");
+    assert_eq!(s.starts().len(), 4, "{:?}", s.starts());
+}
+
+/// REQ-6: a commit on the same branch changes the branch's ref but not the `HEAD` text; it is
+/// another key, so the next render starts one git, and the new key is cached.
+#[test]
+fn session_cache_a_commit_on_the_same_branch_starts_one_git() {
+    let s = Scripted::new("ref: refs/heads/main\n");
+    s.run(T, "s-commit");
+    s.run(T + 1, "s-commit");
+    assert_eq!(s.starts().len(), 1, "{:?}", s.starts());
+    fs::write(s.git_dir().join("refs/heads/main"), format!("{SHA_A}\n")).unwrap();
+    s.run(T + 2, "s-commit");
+    assert_eq!(
+        s.starts().len(),
+        2,
+        "a new branch commit asks git: {:?}",
+        s.starts()
+    );
+    s.run(T + 3, "s-commit");
+    assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
+}
+
+/// REQ-6: staging changes the index file, not `HEAD` nor any ref; a new index size or a new
+/// index time is another key, so the next render starts one git.
+#[test]
+fn session_cache_a_stage_on_the_same_branch_starts_one_git() {
+    let s = Scripted::new("ref: refs/heads/main\n");
+    let index = s.git_dir().join("index");
+    fs::write(&index, "first index\n").unwrap();
+    s.run(T, "s-stage");
+    s.run(T + 1, "s-stage");
+    assert_eq!(s.starts().len(), 1, "{:?}", s.starts());
+    // Another size.
+    fs::write(&index, "a longer second index\n").unwrap();
+    s.run(T + 2, "s-stage");
+    assert_eq!(
+        s.starts().len(),
+        2,
+        "a new index size asks git: {:?}",
+        s.starts()
+    );
+    s.run(T + 3, "s-stage");
+    assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
+    // The same size, another modified time.
+    let later = fs::metadata(&index).unwrap().modified().unwrap() + Duration::from_secs(7);
+    fs::OpenOptions::new()
+        .write(true)
+        .open(&index)
+        .unwrap()
+        .set_modified(later)
+        .unwrap();
+    s.run(T + 4, "s-stage");
+    assert_eq!(
+        s.starts().len(),
+        3,
+        "a new index time asks git: {:?}",
+        s.starts()
+    );
+}
+
+/// REQ-5: a relative `TMPDIR` (`.`, `tmp`) would put the cache inside the folder the render
+/// runs in, the repository; such a `TMPDIR` turns the cache off: nothing is written there and
+/// every render asks git, with the same line.
+#[test]
+fn session_cache_a_relative_tmpdir_writes_no_cache() {
+    let reference = {
+        let s = Scripted::new("ref: refs/heads/main\n");
+        s.run(T, "s-rel")
+    };
+    for relative in [".", "tmp", "./tmp"] {
+        let mut s = Scripted::new("ref: refs/heads/main\n");
+        s.tmp = PathBuf::from(relative);
+        let before = files_under(&s.project);
+        let first = s.run(T, "s-rel");
+        let second = s.run(T + 1, "s-rel");
+        assert_eq!(first, reference, "TMPDIR={relative}");
+        assert_eq!(second, reference, "TMPDIR={relative}");
+        assert_eq!(
+            s.starts().len(),
+            2,
+            "TMPDIR={relative}: git each time: {:?}",
+            s.starts()
+        );
+        assert_eq!(
+            files_under(&s.project),
+            before,
+            "TMPDIR={relative}: nothing written in the repository"
+        );
+        assert!(!s.project.join("moai-statusline").exists());
+        assert!(!s.project.join("tmp").exists());
+    }
+}
+
+/// REQ-6 at the edge of the age: 9 seconds is a hit, 10 and 11 start one git, and the git that
+/// an old cache asks for rewrites it.
+#[test]
+fn session_cache_age_edges() {
+    for (age, starts) in [(0, 1), (9, 1), (10, 2), (11, 2), (3_600, 2)] {
+        let s = Scripted::new("ref: refs/heads/main\n");
+        s.run(T, "s-age");
+        s.run(T + age, "s-age");
+        assert_eq!(s.starts().len(), starts, "age {age}: {:?}", s.starts());
+    }
+    let s = Scripted::new("ref: refs/heads/main\n");
+    s.run(T, "s-age");
+    s.run(T + 11, "s-age");
+    assert_eq!(s.starts().len(), 2);
+    s.run(T + 15, "s-age");
+    assert_eq!(s.starts().len(), 2, "rewritten at T + 11: {:?}", s.starts());
+    s.run(T + 21, "s-age");
+    assert_eq!(
+        s.starts().len(),
+        3,
+        "10 seconds after the rewrite: {:?}",
+        s.starts()
+    );
+}
+
+/// REQ-5: a cache folder that cannot be written (a file in its place, no write permission, a
+/// link) still gives the same line, and git is asked each time.
+#[test]
+fn session_cache_an_unwritable_folder_still_renders() {
+    let reference = {
+        let s = Scripted::new("ref: refs/heads/main\n");
+        s.run(T, "s-bad")
+    };
+    for kind in [
+        "tmp-is-a-file",
+        "read-only-folder",
+        "folder-is-a-file",
+        "folder-is-a-link",
+    ] {
+        let s = Scripted::new("ref: refs/heads/main\n");
+        let decoy = s.project.parent().unwrap().join("decoy");
+        fs::create_dir(&decoy).unwrap();
+        match kind {
+            "tmp-is-a-file" => {
+                fs::remove_dir(&s.tmp).unwrap();
+                fs::write(&s.tmp, "x").unwrap();
+            }
+            "read-only-folder" => {
+                fs::create_dir(s.cache_dir()).unwrap();
+                fs::set_permissions(s.cache_dir(), fs::Permissions::from_mode(0o500)).unwrap();
+            }
+            "folder-is-a-file" => fs::write(s.cache_dir(), "x").unwrap(),
+            _ => symlink(&decoy, s.cache_dir()).unwrap(),
+        }
+        let first = s.run(T, "s-bad");
+        let second = s.run(T + 1, "s-bad");
+        assert_eq!(first, reference, "{kind}");
+        assert_eq!(second, reference, "{kind}");
+        assert_eq!(
+            s.starts().len(),
+            2,
+            "{kind}: git each time: {:?}",
+            s.starts()
+        );
+        assert!(
+            fs::read_dir(&decoy).unwrap().next().is_none(),
+            "{kind}: nothing written through the link"
+        );
+        if kind == "read-only-folder" {
+            fs::set_permissions(s.cache_dir(), fs::Permissions::from_mode(0o700)).unwrap();
+        }
+    }
+}
+
+/// REQ-5: the folder is made 0700, the file 0600, and the file is named by the session id and
+/// holds the `HEAD` content; no temporary file stays behind.
+#[test]
+fn session_cache_file_is_private_and_named_by_the_session_id() {
+    let s = Scripted::new("ref: refs/heads/main\n");
+    s.run(T, "sess_A-1");
+    let dir = s.cache_dir();
+    assert!(dir.is_dir(), "the cache folder under TMPDIR");
+    assert_eq!(mode_of(&dir), 0o700, "the folder");
+    let file = dir.join("sess_A-1.json");
+    assert_eq!(mode_of(&file), 0o600, "the file");
+    assert_eq!(
+        common::home::TempHome::names_in(&dir),
+        vec!["sess_A-1.json"]
+    );
+    let text = fs::read_to_string(&file).unwrap();
+    let value: serde_json::Value = serde_json::from_str(&text).expect("the cache is JSON");
+    assert!(value.is_object(), "{text}");
+    assert!(
+        text.contains("ref: refs/heads/main"),
+        "the HEAD content is the key: {text}"
+    );
+    // A second session has a file of its own, and the first is not touched.
+    let before = fs::read(&file).unwrap();
+    s.run(T + 1, "other-session");
+    assert_eq!(
+        common::home::TempHome::names_in(&dir),
+        vec!["other-session.json", "sess_A-1.json"]
+    );
+    assert_eq!(fs::read(&file).unwrap(), before);
+}
+
+/// REQ-5: only a session id of 1 to 64 characters of `A-Z a-z 0-9 _ -` names a file; any other
+/// id or none means no cache and git each time. A path in the id writes nothing outside.
+#[test]
+fn session_cache_a_bad_session_id_writes_no_file() {
+    let long = "a".repeat(65);
+    let ids: Vec<Option<&str>> = vec![
+        None,
+        Some(""),
+        Some("../escape"),
+        Some("a/b"),
+        Some("a.b"),
+        Some("a b"),
+        Some("é"),
+        Some(".."),
+        Some(long.as_str()),
+    ];
+    for id in ids {
+        let s = Scripted::new("ref: refs/heads/main\n");
+        let first = s.run_with(T, id, BUDGET_WITHIN);
+        let second = s.run_with(T + 1, id, BUDGET_WITHIN);
+        assert_eq!(first, second, "{id:?}");
+        assert_eq!(
+            s.starts().len(),
+            2,
+            "{id:?}: git each time: {:?}",
+            s.starts()
+        );
+        let root = s.project.parent().unwrap();
+        let strays: Vec<_> = files_under(root)
+            .into_iter()
+            .filter(|p| p.extension().is_some_and(|e| e == "json") && !p.starts_with(&s.project))
+            .collect();
+        assert!(strays.is_empty(), "{id:?}: {strays:?}");
+        assert!(
+            !s.cache_dir().exists() || files_under(&s.cache_dir()).is_empty(),
+            "{id:?}: a file in the cache folder"
+        );
+    }
+}
+
+/// REQ-5 at the edge of the length: 64 characters name a file, and it serves a second render.
+#[test]
+fn session_cache_a_session_id_of_sixty_four_characters_names_a_file() {
+    let id = "a-_Z9".repeat(13)[..64].to_string();
+    let s = Scripted::new("ref: refs/heads/main\n");
+    s.run(T, &id);
+    assert!(s.cache_dir().join(format!("{id}.json")).is_file());
+    s.run(T + 1, &id);
+    assert_eq!(s.starts().len(), 1, "{:?}", s.starts());
+}
+
+/// REQ-6: a cache that is malformed, empty, of the wrong shape or unreadable asks git once and
+/// is rewritten, so the next render within ten seconds starts none.
+#[test]
+fn session_cache_a_malformed_file_asks_git_once_and_is_rewritten() {
+    for content in [
+        "not json",
+        "",
+        "{}",
+        "[]",
+        "null",
+        "{\"head\":1,\"written\":\"x\"}",
+        "\u{0}\u{1}",
+    ] {
+        let s = Scripted::new("ref: refs/heads/main\n");
+        fs::create_dir(s.cache_dir()).unwrap();
+        fs::set_permissions(s.cache_dir(), fs::Permissions::from_mode(0o700)).unwrap();
+        let file = s.cache_dir().join("s-bad.json");
+        fs::write(&file, content).unwrap();
+        fs::set_permissions(&file, fs::Permissions::from_mode(0o600)).unwrap();
+        let first = s.run(T, "s-bad");
+        assert_eq!(
+            s.starts().len(),
+            1,
+            "{content:?}: one git: {:?}",
+            s.starts()
+        );
+        let second = s.run(T + 1, "s-bad");
+        assert_eq!(
+            s.starts().len(),
+            1,
+            "{content:?}: rewritten: {:?}",
+            s.starts()
+        );
+        assert_eq!(second, first, "{content:?}");
+        let text = fs::read_to_string(&file).unwrap();
+        serde_json::from_str::<serde_json::Value>(&text).unwrap_or_else(|e| {
+            panic!("{content:?}: the rewritten cache is not JSON ({e}): {text}")
+        });
+    }
+    // A cache file this user cannot read is replaced, never followed to another file.
+    let s = Scripted::new("ref: refs/heads/main\n");
+    fs::create_dir(s.cache_dir()).unwrap();
+    fs::set_permissions(s.cache_dir(), fs::Permissions::from_mode(0o700)).unwrap();
+    let file = s.cache_dir().join("s-bad.json");
+    fs::write(&file, "{}").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o000)).unwrap();
+    s.run(T, "s-bad");
+    s.run(T + 1, "s-bad");
+    assert_eq!(s.starts().len(), 1, "{:?}", s.starts());
+}
+
+/// REQ-5: a cache file that is a link is never written through; the link is replaced.
+#[test]
+fn session_cache_a_linked_file_is_never_written_through() {
+    let s = Scripted::new("ref: refs/heads/main\n");
+    fs::create_dir(s.cache_dir()).unwrap();
+    fs::set_permissions(s.cache_dir(), fs::Permissions::from_mode(0o700)).unwrap();
+    let decoy = s.project.parent().unwrap().join("decoy.json");
+    fs::write(&decoy, "decoy").unwrap();
+    symlink(&decoy, s.cache_dir().join("s-link.json")).unwrap();
+    s.run(T, "s-link");
+    assert_eq!(fs::read_to_string(&decoy).unwrap(), "decoy");
+    assert!(
+        !fs::symlink_metadata(s.cache_dir().join("s-link.json"))
+            .unwrap()
+            .file_type()
+            .is_symlink(),
+        "the link was replaced by a file"
+    );
+}
+
+/// Risk 4: the render that writes a cache removes cache files older than a day, at most ten per
+/// render, by the file's age against the render's clock; a render that hits the cache removes
+/// none, and a file that is no cache file stays.
+#[test]
+fn session_cache_removes_old_files_at_most_ten_per_render() {
+    let age_file = |dir: &Path, name: &str, age: i64| {
+        let path = dir.join(name);
+        fs::write(&path, "{}").unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+        let when = SystemTime::UNIX_EPOCH + Duration::from_secs((T - age) as u64);
+        fs::OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_modified(when)
+            .unwrap();
+    };
+    let setup = |old: usize| {
+        let s = Scripted::new("ref: refs/heads/main\n");
+        fs::create_dir(s.cache_dir()).unwrap();
+        fs::set_permissions(s.cache_dir(), fs::Permissions::from_mode(0o700)).unwrap();
+        for i in 0..old {
+            age_file(&s.cache_dir(), &format!("old-{i:02}.json"), 2 * 86_400);
+        }
+        age_file(&s.cache_dir(), "recent.json", 3_600);
+        age_file(&s.cache_dir(), "edge-kept.json", 86_400);
+        age_file(&s.cache_dir(), "edge-removed.json", 86_401);
+        age_file(&s.cache_dir(), "notes.txt", 5 * 86_400);
+        s
+    };
+    let names = |s: &Scripted| common::home::TempHome::names_in(&s.cache_dir());
+    // `edge-removed.json` is one more old file: 9 old files make 10 in all, and 10 make 11.
+    let s = setup(9);
+    s.run(T, "new");
+    assert_eq!(
+        names(&s),
+        ["edge-kept.json", "new.json", "notes.txt", "recent.json"],
+        "10 old files: all removed"
+    );
+    let s = setup(10);
+    s.run(T, "new");
+    let left = names(&s);
+    assert_eq!(
+        left.len(),
+        4 + 1,
+        "11 old files, 10 removed, 1 stays: {left:?}"
+    );
+    assert!(left.contains(&"new.json".to_string()));
+    assert!(left.contains(&"recent.json".to_string()));
+    assert!(left.contains(&"edge-kept.json".to_string()));
+    assert!(left.contains(&"notes.txt".to_string()));
+    // 12 old files and the edge file: ten removed, three stay.
+    let s = setup(12);
+    s.run(T, "new");
+    let left = names(&s);
+    let old_left = left
+        .iter()
+        .filter(|n| n.starts_with("old-") || *n == "edge-removed.json")
+        .count();
+    assert_eq!(old_left, 3, "{left:?}");
+    // A render that hits the cache removes nothing.
+    let s = setup(3);
+    s.run(T, "new");
+    let after_write = names(&s);
+    for i in 0..3 {
+        age_file(&s.cache_dir(), &format!("late-{i}.json"), 3 * 86_400);
+    }
+    s.run(T + 1, "new");
+    assert_eq!(s.starts().len(), 1, "a hit: {:?}", s.starts());
+    let mut want = after_write;
+    want.extend((0..3).map(|i| format!("late-{i}.json")));
+    want.sort();
+    assert_eq!(names(&s), want, "a hit removes no file");
 }

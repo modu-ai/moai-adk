@@ -16,8 +16,10 @@ use std::time::Duration;
 
 pub type Result<T> = std::result::Result<T, String>;
 
-/// Paths a tree digest leaves out: git metadata and build output (#2003 leader decision H1).
-pub const TREE_EXCLUDES: [&str; 2] = [".git", "target"];
+/// Paths a tree digest leaves out: git metadata, build output (#2003 leader decision H1) and the
+/// project's own worktree place, where each worktree is a whole checkout of its own: a worktree
+/// made or removed must not change the digest that RUN records and AUDIT compares.
+pub const TREE_EXCLUDES: [&str; 3] = [".git", "target", ".claude/worktrees"];
 
 /// Required evidence per change strategy; the table, not the request, decides it.
 const STRATEGIES: [(&str, &[&str]); 6] = [
@@ -547,7 +549,7 @@ fn safe_attempt_id(id: &str) -> bool {
 /// `<git common dir>/.moai-cli/receipts/run`, beside the claim journal and outside every
 /// tree digest; None outside a git repository.
 fn baseline_store_dir(project: &Path) -> Option<std::path::PathBuf> {
-    let id = crate::identity::identity(project).ok()?;
+    let id = crate::identity::identity_in(project, None).ok()?;
     let common = id["clone_anchor"].as_str()?;
     Some(
         crate::clone_root::path(Path::new(common))
@@ -830,4 +832,23 @@ fn producer_group(receipts: &[&Receipt], kind: ProducerKind) -> Value {
         },
         "external_backend_calls": external,
     })
+}
+
+/// SPEC-20261124-identity-home-arg REQ-7: with a symlinked home state folder in the environment
+/// HOME the stored baseline folder answers as it does with a sound HOME.
+#[cfg(all(test, unix))]
+mod home_arg_claim_group_tests {
+    use super::baseline_store_dir;
+
+    #[test]
+    fn home_arg_claim_group_run_baseline_store_dir() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_run_baseline_store_dir",
+            |f| {
+                let dir = baseline_store_dir(&f.project).expect("a baseline folder");
+                assert!(dir.ends_with("receipts/run"), "{}", dir.display());
+            },
+        );
+    }
 }

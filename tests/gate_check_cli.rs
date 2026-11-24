@@ -1484,7 +1484,7 @@ fn tier0_with_code_or_skill_text_is_tier1_and_needs_a_pass() {
         p(&["src", "foo.rs"]),
         p(&["skills", "x.md"]),
         p(&["skills", "moai", "workflows", "a.md"]),
-        "CLAUDE.md".to_string(),
+        p(&["sub", "CLAUDE.md"]),
         p(&["sub", "AGENTS.md"]),
         p(&["tools", "x.py"]),
     ] {

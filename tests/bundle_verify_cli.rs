@@ -7,6 +7,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/ready_receipt.rs"]
+mod ready_receipt;
 
 use common::home::TempHome;
 use moai_cli::ledger;
@@ -303,10 +305,10 @@ impl World {
             .as_str()
             .unwrap()
             .to_string();
-        self.card(
-            &["note", &c, "--kind", "report", "--by", "lane"],
-            Some(&format!("LANE-READY-INTEGRATION {c} head={head}")),
-        );
+        // Not through `card note`: its READY receipt gate (SPEC-20261124-ready-receipt-gate)
+        // is not what this file judges, and the project folder is not the repository.
+        let text = format!("LANE-READY-INTEGRATION {c} head={head}");
+        ready_receipt::add_note_unchecked(self.home.path(), "demo", &c, &text);
         c
     }
 
@@ -1048,6 +1050,153 @@ fn the_list_is_the_documented_data() {
     assert_eq!(not_run.len(), 1, "{not_run:?}");
     assert_eq!(not_run[0].0, "test:beta");
     assert!(not_run[0].1.contains("tests/beta.rs"), "{not_run:?}");
+}
+
+/// Two heads that move tests into the area crate `tests/repo/` (it holds `main.rs`) and into a
+/// folder that is no crate (`tests/lonely/`, no `main.rs`); the second head's SPEC names
+/// `spec_names` as `--test` targets of its `verify:` line.
+fn area_heads(spec_names: Vec<&'static str>) -> (Head<'static>, Head<'static>) {
+    (
+        Head {
+            files: vec![
+                ("tests/repo/main.rs", "mod git_a;\n"),
+                ("tests/repo/git_a.rs", "// git a\n"),
+                ("tests/lonely/x.rs", "// no main.rs here\n"),
+            ],
+            spec: Some((SPEC, vec![])),
+        },
+        Head {
+            files: vec![("tests/repo/git_b.rs", "// git b\n")],
+            spec: Some((SPEC2, spec_names)),
+        },
+    )
+}
+
+/// The `cargo test --test <target>` commands of the list that are neither a fixed check nor the
+/// SPEC-less extras (`home_isolation_scan`, `product_cli`).
+fn target_commands(v: &Value) -> Vec<String> {
+    commands_of(v)
+        .into_iter()
+        .map(|c| c.1)
+        .filter(|t| {
+            t.starts_with("cargo test --locked --offline --test ")
+                && !t.ends_with(" home_isolation_scan")
+                && !t.ends_with(" product_cli")
+        })
+        .collect()
+}
+
+#[test]
+fn a_changed_area_module_alone_puts_its_crate_on_the_list_once() {
+    let w = World::new();
+    // The SPEC names no usable target (a path and a slash name are no cargo target names), so the
+    // crate is on the list only because modules of `tests/repo/` changed.
+    let (a, b) = area_heads(vec!["../evil", "a/b"]);
+    let built = w.built(&a, &b);
+    let out = w.out();
+    let (v, code) = w.verify(&[
+        &built.cards[0],
+        &built.cards[1],
+        "--branch",
+        &built.branch,
+        "--out",
+        out.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "{v}");
+    // Changed modules (`git_a`, `git_b`, `main`) stand for the one crate; a folder without
+    // `main.rs` is no crate, and a name that is not a cargo target name is no target.
+    assert_eq!(
+        target_commands(&v),
+        vec!["cargo test --locked --offline --test repo".to_string()],
+        "{v}"
+    );
+    assert_eq!(not_run_of(&v), Vec::<(String, String)>::new(), "{v}");
+}
+
+#[test]
+fn a_specs_old_test_name_and_its_crate_name_are_one_target() {
+    let w = World::new();
+    // `git_a` was a top-level test file before it moved into the crate `repo`; the SPEC still says
+    // `--test git_a`, and also names the crate itself.
+    let (a, b) = area_heads(vec!["git_a", "repo"]);
+    let built = w.built(&a, &b);
+    let out = w.out();
+    let (v, code) = w.verify(&[
+        &built.cards[0],
+        &built.cards[1],
+        "--branch",
+        &built.branch,
+        "--out",
+        out.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(
+        target_commands(&v),
+        vec!["cargo test --locked --offline --test repo".to_string()],
+        "{v}"
+    );
+    assert_eq!(not_run_of(&v), Vec::<(String, String)>::new(), "{v}");
+}
+
+#[test]
+fn a_failing_area_crate_names_every_head_that_touches_its_folder() {
+    let w = World::new();
+    let (a, b) = area_heads(vec![]);
+    let built = w.built(&a, &b);
+    // The output names no file, so only the crate's folder can attribute the failure.
+    w.rules(&["--test repo|101|test repo ... FAILED"]);
+    let out = w.out();
+    let (v, code) = w.verify(&[
+        &built.cards[0],
+        &built.cards[1],
+        "--branch",
+        &built.branch,
+        "--out",
+        out.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "{v}");
+    let failed = v["result"]["failed"].as_array().unwrap();
+    assert_eq!(failed.len(), 1, "{failed:?}");
+    assert_eq!(failed[0]["check"], "test:repo", "{failed:?}");
+    let heads: Vec<String> = failed[0]["heads"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h.as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(heads, vec![built.cards[0].clone(), built.cards[1].clone()]);
+}
+
+#[test]
+fn a_spec_target_that_is_in_no_area_crate_and_no_file_is_not_run() {
+    let w = World::new();
+    // `ghost` is neither tests/ghost.rs nor tests/ghost/main.rs, and the folder `lonely` has no
+    // main.rs: both are named as not run, with the file that was looked for.
+    let b = w.built(
+        &Head {
+            files: vec![("tests/lonely/ghost.rs", "// no main.rs here\n")],
+            spec: Some((SPEC, vec![])),
+        },
+        &Head {
+            files: vec![("notes/b.md", "b\n")],
+            spec: Some((SPEC2, vec!["ghost"])),
+        },
+    );
+    let out = w.out();
+    let (v, code) = w.verify(&[
+        &b.cards[0],
+        &b.cards[1],
+        "--branch",
+        &b.branch,
+        "--out",
+        out.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(target_commands(&v), Vec::<String>::new(), "{v}");
+    let not_run = not_run_of(&v);
+    assert_eq!(not_run.len(), 1, "{not_run:?}");
+    assert_eq!(not_run[0].0, "test:ghost");
+    assert!(not_run[0].1.contains("tests/ghost.rs"), "{not_run:?}");
 }
 
 #[test]

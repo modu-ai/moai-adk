@@ -12,74 +12,38 @@
 //! - `glm`: Claude Code pointed at z.ai through process environment only, per
 //!   https://docs.z.ai/scenario-example/develop-tools/claude. The token is inherited from the
 //!   caller and only its presence is checked; its value is never kept, printed or written.
-//! - `codex`: Codex CLI `-s danger-full-access -a never [-m <model>] [-c model_reasoning_effort="<effort>"] [PROMPT]`
-//!   (`-s workspace-write -a on-request` with `--permissions`), per
-//!   https://learn.chatgpt.com/docs/developer-commands?surface=cli. Codex has no session-name
-//!   flag, so the name travels in the first prompt.
-//! - `omp`: Oh My Pi 18.18.7 `omp [--model <m>] [--thinking <e>] [--approval-mode <mode>]`
-//!   (SPEC-20261118-omp-launcher, read in the installed `omp --help` and its source on
-//!   2026-11-18). OMP has no session-name flag and takes the role line inside the session as
-//!   `/skill:moai --mode-agent`. A role session passes `--approval-mode yolo`, `--permissions`
-//!   passes `always-ask-cached`, a roleless session passes none (OMP's own default is `yolo`).
-//!   For a z.ai model the glm key reaches the process as `ZAI_API_KEY`, never in argv.
 //!
-//! Without a role (`moai-cli cc|glm|codex|omp` with neither `-l` nor `-a`, Issue #2053) the launcher
-//! opens a plain host session: no role is guessed, no session name is added and no permission
-//! flag is passed, so the host starts in the mode its own settings choose. A role session
-//! (`-l` named `leader`, `-a` named `agent-N`) starts with full access unless the user setting
-//! `launcher.role_access` selects prompts or `--permissions` is given. `-l|-a` only name the
+//! Without a role (`moai-cli cc|glm` with neither `-l` nor `-a`, Issue #2053) the launcher
+//! opens a plain host session: no role is guessed and no session name is added. Every launch,
+//! with or without a role (`-l` named `leader`, `-a` named `agent-N`), starts the host in auto
+//! mode (`--permission-mode auto`, user decision 2026-11-23, SPEC-20261123-launcher-auto-mode)
+//! unless `--permissions` is given (no permission flag) or the user setting
+//! `launcher.role_access` says `full` (the bypass) or `prompt`. `-l|-a` only name the
 //! session and set its access: the role is entered inside the session with `/moai --mode-agent`
-//! or `/moai --mode-leader` (Codex: `$moai --mode-agent` or `$moai --mode-leader`), which the
-//! `--dry-run` notes say; `codex -a` puts `$moai --mode-agent` first in its first prompt (user
-//! decision 2026-11-18, SPEC-20261118-launcher-agent-entry).
+//! or `/moai --mode-leader`, which the `--dry-run` notes say
+//! (user decision 2026-11-18, SPEC-20261118-launcher-agent-entry). Codex and OMP are not hosts
+//! any more (user decision 2026-11-21, SPEC-20261121-codex-launcher-and-models-removed,
+//! SPEC-20261122-remove-omp-launcher).
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
 
 const ROLES: [&str; 2] = ["leader", "agent"];
-const HOSTS: [&str; 4] = ["claude", "glm", "codex", "omp"];
+const HOSTS: [&str; 2] = ["claude", "glm"];
 const EFFORTS: [&str; 6] = ["low", "medium", "high", "xhigh", "max", "ultracode"];
-/// The efforts the launcher hands to OMP (`--thinking <value>`); OMP also takes `off`,
-/// `minimal` and `auto`, which are not efforts of the other launchers. `ultracode` is a Claude
-/// Code word and is not passed.
-const OMP_EFFORTS: [&str; 5] = ["low", "medium", "high", "xhigh", "max"];
-/// The efforts the launcher hands to Codex (`-c model_reasoning_effort="<value>"`). Codex
-/// 0.169.0 reads all five from its source (`ReasoningEffort::from_str`, rust-v0.169.0) and its
-/// config reference lists them; which of them a model takes depends on the model. `ultracode`
-/// is a Claude Code word and is not passed.
-const CODEX_EFFORTS: [&str; 5] = ["low", "medium", "high", "xhigh", "max"];
 const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
 /// Notes that tell the user an option they gave was dropped. The terminal launcher prints these
 /// before the host starts (#3004 P9), so the text is shared with `launcher_terminal`.
-pub const NOTE_EFFORT_NOT_PASSED_CODEX: &str =
-    "--effort was not passed to codex: codex takes low|medium|high|xhigh|max here";
-pub const NOTE_ADVISOR_NOT_PASSED_CODEX: &str =
-    "the advisor applies to Claude hosts only; it was not passed to codex";
 pub const NOTE_ADVISOR_OMITTED_GLM: &str =
     "--advisor omitted on glm: the advisor is Anthropic API only";
-pub const NOTE_EFFORT_NOT_PASSED_OMP: &str =
-    "--effort was not passed to omp: omp takes low|medium|high|xhigh|max here";
-pub const NOTE_ADVISOR_NOT_PASSED_OMP: &str =
-    "the advisor applies to Claude hosts only; it was not passed to omp";
-/// The variable through which OMP reads the key of its z.ai (GLM) provider (OMP's
-/// `src/cli/help-extra.ts`, `pi-ai/README.md`, read 2026-11-18).
-pub const OMP_KEY_VAR: &str = "ZAI_API_KEY";
-
-/// The first line of a `codex -a` first prompt: it enters agent mode inside the session (user
-/// decision 2026-11-18, card C-47 note 2092; one of the two spellings of #2286).
-pub const CODEX_AGENT_ENTRY: &str = "$moai --mode-agent";
 
 /// How a role session enters its role (SPEC-20261118-launcher-agent-entry): `-l|-a` only name
 /// the session and set its access; the role is entered inside the session with the mode command
-/// of #2286 for that host. `None` for a roleless session. The `cc|glm|codex` launchers add it to
+/// of #2286 for that host. `None` for a roleless session. The `cc|glm` launchers add it to
 /// their notes; the legacy `session` command (REQ-00F-06) keeps its recorded answer.
 pub fn role_entry_note(role: Option<&str>, host: &str) -> Option<&'static str> {
     Some(match (role?, host) {
-        ("leader", "omp") => "role: -l only names the session and sets its access; enter leader mode inside the session with `/skill:moai --mode-leader` (omp has no session-name flag and takes the skill as /skill:moai)",
-        ("agent", "omp") => "role: -a only names the session and sets its access; enter agent mode inside the session with `/skill:moai --mode-agent` (omp has no session-name flag and takes the skill as /skill:moai)",
-        ("leader", "codex") => "role: -l only names the session and sets its access; enter leader mode inside the session with `$moai --mode-leader`",
-        ("agent", "codex") => "role: -a only names the session and sets its access; agent mode is entered inside the session by the first prompt's first line, `$moai --mode-agent`",
         ("leader", _) => "role: -l only names the session and sets its access; enter leader mode inside the session with `/moai --mode-leader`",
         ("agent", _) => "role: -a only names the session and sets its access; enter agent mode inside the session with `/moai --mode-agent`",
         _ => return None,
@@ -94,24 +58,27 @@ const DEFAULT_EFFORT: &str = "medium";
 /// #2476, replacing the `--advisor fable` part of the 2026-11-08 decision): see
 /// [`launch_settings`].
 pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
-/// User decision 2026-11-10 (#2359, comment 6760976883): a role session (`-l`, `-a`) on every
-/// host starts with full access and no permission prompt (`--dangerously-skip-permissions` on
-/// Claude hosts whatever the project's `permissions` key says, `-s danger-full-access -a never`
-/// on codex); `--permissions` keeps the prompts. A roleless session gets no permission flag at
-/// all. The user-only `~/.moai-cli/config/launcher.yaml` key `launcher.role_access` can choose
-/// `full` or `prompt`; an absent file or key keeps this default. Project settings are ignored.
-pub const FULL_ACCESS_DEFAULT: bool = true;
-/// The environment that points Claude Code at z.ai GLM. The set and its values follow the Go
-/// tool's `setGLMEnv` (user decision 2026-11-10): endpoint, timeout, the model each Claude
-/// alias maps to, the 1M context window of those models (Claude Code assumes 200K for an id
-/// it does not know) and the switch that strips Anthropic beta headers the proxy rejects.
+/// User decision 2026-11-23 (SPEC-20261123-launcher-auto-mode, replacing the 2026-11-10 decision
+/// of #2359): a launch on every host, with or without a role, starts in auto mode
+/// (`--permission-mode auto` on Claude hosts, whatever the project's `permissions` key says).
+/// `--permissions` keeps the host's own mode (no permission flag). The user-only
+/// `~/.moai-cli/config/launcher.yaml` key `launcher.role_access` can choose `auto`, `full` (the
+/// bypass, `--dangerously-skip-permissions`) or `prompt`; an absent file or key keeps this
+/// default. Project settings are ignored.
+pub const ACCESS_DEFAULT: Access = Access::Auto;
+/// The environment that points Claude Code at z.ai GLM. The set follows the Go tool's
+/// `setGLMEnv` (user decision 2026-11-10): endpoint, timeout, the model each Claude alias maps
+/// to, the 1M context window of those models (Claude Code assumes 200K for an id it does not
+/// know) and the switch that strips Anthropic beta headers the proxy rejects. The opus, sonnet
+/// and fable aliases map to `glm-5.4[1m]` by the user decision of 2026-11-23
+/// (SPEC-20261123-glm-54-model); haiku stays `glm-5.3-flash`, as no 5.4 flash model was named.
 pub const GLM_ENV: [(&str, &str); 9] = [
     ("ANTHROPIC_BASE_URL", "https://api.z.ai/api/anthropic"),
     ("API_TIMEOUT_MS", "3000000"),
-    ("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.3"),
-    ("ANTHROPIC_DEFAULT_SONNET_MODEL", "glm-5.3"),
+    ("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.4[1m]"),
+    ("ANTHROPIC_DEFAULT_SONNET_MODEL", "glm-5.4[1m]"),
     ("ANTHROPIC_DEFAULT_HAIKU_MODEL", "glm-5.3-flash"),
-    ("ANTHROPIC_DEFAULT_FABLE_MODEL", "glm-5.3"),
+    ("ANTHROPIC_DEFAULT_FABLE_MODEL", "glm-5.4[1m]"),
     ("CLAUDE_CODE_AUTO_COMPACT_WINDOW", "1000000"),
     ("CLAUDE_CODE_MAX_CONTEXT_TOKENS", "1000000"),
     ("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1"),
@@ -192,7 +159,20 @@ fn glm_token() -> Result<Option<(String, KeySource)>, crate::key_vault::Blocked>
 fn blocked_line(b: &crate::key_vault::Blocked) -> String {
     format!("blocked: {}: {} (next: {})", b.code, b.reason, b.next)
 }
-const MAX_PROMPT: usize = 4096;
+
+/// How a launch asks the host for permissions (SPEC-20261123-launcher-auto-mode).
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Access {
+    /// `--permission-mode auto`: the host's auto mode (the launcher default).
+    Auto,
+    /// `--dangerously-skip-permissions`: no permission prompt at all; only the user's own choice.
+    Full,
+    /// No permission flag: the host starts in the mode its own settings choose.
+    // Not ACCESS_DEFAULT: a serialized request without `access` adds no flag (the safe side).
+    #[default]
+    Prompt,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SessionRequest {
@@ -203,33 +183,27 @@ pub struct SessionRequest {
     /// `None` adds no session name (no `--name`, no name prompt).
     #[serde(default)]
     pub name: Option<String>,
-    /// `None` uses the host default: `opus` on Claude hosts, Codex's own default on codex.
+    /// `None` uses the host default: `opus` on Claude hosts.
     #[serde(default)]
     pub model: Option<String>,
-    /// `None` uses `medium` on Claude hosts; on codex `None` passes nothing and a value that
-    /// Codex takes (`low|medium|high|xhigh|max`) goes out as `-c model_reasoning_effort="…"`.
+    /// `None` uses `medium` on Claude hosts.
     #[serde(default)]
     pub effort: Option<String>,
     #[serde(default)]
     pub advisor: Option<String>,
-    /// Full access: `--dangerously-skip-permissions` on Claude hosts, `-s danger-full-access
-    /// -a never` on codex. The launcher sets it from [`full_access`].
+    /// The permission flag of the Claude host. The launcher sets it from [`launch_settings`]; the
+    /// legacy `session` command leaves it at `Prompt` (no flag).
     #[serde(default)]
-    pub skip_permissions: bool,
-    /// Extra first-prompt text (codex only).
+    pub access: Access,
+    /// Extra first-prompt text (no host takes it: the Claude host is told it was not passed).
     #[serde(default)]
     pub prompt: Option<String>,
     #[serde(default = "default_claude_bin")]
     pub claude_bin: String,
-    #[serde(default = "default_codex_bin")]
-    pub codex_bin: String,
 }
 
 fn default_claude_bin() -> String {
     "claude".into()
-}
-fn default_codex_bin() -> String {
-    "codex".into()
 }
 
 fn rank(model: &str) -> Option<u8> {
@@ -284,14 +258,15 @@ fn user_launcher() -> Result<Option<serde_json::Map<String, Value>>, String> {
     }
 }
 
-fn role_full_access(launcher: Option<&serde_json::Map<String, Value>>) -> Result<bool, String> {
+fn configured_access(launcher: Option<&serde_json::Map<String, Value>>) -> Result<Access, String> {
     match launcher.and_then(|l| l.get("role_access")) {
-        None => Ok(FULL_ACCESS_DEFAULT),
-        Some(Value::String(access)) if access == "full" => Ok(true),
-        Some(Value::String(access)) if access == "prompt" => Ok(false),
-        Some(_) => {
-            Err("user launcher configuration launcher.role_access must be full or prompt".into())
-        }
+        None => Ok(ACCESS_DEFAULT),
+        Some(Value::String(access)) if access == "auto" => Ok(Access::Auto),
+        Some(Value::String(access)) if access == "full" => Ok(Access::Full),
+        Some(Value::String(access)) if access == "prompt" => Ok(Access::Prompt),
+        Some(_) => Err(
+            "user launcher configuration launcher.role_access must be auto, full or prompt".into(),
+        ),
     }
 }
 
@@ -326,28 +301,26 @@ pub enum AdvisorSource {
 /// The launcher's resolution of the user-only settings for one launch.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LaunchSettings {
-    /// See [`full_access`].
-    pub skip_permissions: bool,
+    /// See [`launch_settings`].
+    pub access: Access,
     /// The advisor and its source; `None` passes no `--advisor`.
     pub advisor: Option<(String, AdvisorSource)>,
 }
 
 /// Resolves both user launcher settings from one read of the file (Issues #2413, #2476).
-/// Access: CLI `--permissions` > `launcher.role_access` > [`FULL_ACCESS_DEFAULT`], roleless
-/// sessions never get a permission flag. Advisor (user decision 2026-11-12, #2476, replacing
+/// Access: CLI `--permissions` (no flag) > `launcher.role_access` > [`ACCESS_DEFAULT`] (auto),
+/// the same with or without a role. Advisor (user decision 2026-11-12, #2476, replacing
 /// the 2026-11-08 default `fable`): CLI `--no-advisor` / `--advisor` > `launcher.advisor` >
 /// none; `--advisor` with `--no-advisor` is refused, and the setting applies to Claude hosts
-/// only (codex has no advisor). The file is validated for every launch, also when the CLI
+/// only. The file is validated for every launch, also when the CLI
 /// decides, so a broken file is never silently skipped. Project settings do not matter.
 pub fn launch_settings(
-    host: &str,
-    has_role: bool,
     keep_prompts: bool,
     cli_advisor: Option<&str>,
     no_advisor: bool,
 ) -> Result<LaunchSettings, String> {
     let launcher = user_launcher()?;
-    let configured_access = role_full_access(launcher.as_ref())?;
+    let configured_access = configured_access(launcher.as_ref())?;
     let configured = configured_advisor(launcher.as_ref())?;
     if cli_advisor.is_some() && no_advisor {
         return Err("--advisor and --no-advisor cannot be used together".into());
@@ -355,28 +328,28 @@ pub fn launch_settings(
     let advisor = match (cli_advisor, no_advisor) {
         (Some(a), _) => Some((a.to_string(), AdvisorSource::Cli)),
         (None, true) => None,
-        (None, false) if !matches!(host, "codex" | "omp") => {
-            configured.map(|a| (a, AdvisorSource::UserSetting))
-        }
-        (None, false) => None,
+        (None, false) => configured.map(|a| (a, AdvisorSource::UserSetting)),
     };
     Ok(LaunchSettings {
-        skip_permissions: has_role && !keep_prompts && configured_access,
+        access: if keep_prompts {
+            Access::Prompt
+        } else {
+            configured_access
+        },
         advisor,
     })
 }
 
-/// Resolves CLI `--permissions` > user `launcher.role_access` > [`FULL_ACCESS_DEFAULT`].
-/// The configuration is validated even for `--permissions` and roleless sessions; roleless
-/// sessions always leave permission flags to the host. Project settings do not matter.
-pub fn full_access(has_role: bool, keep_prompts: bool) -> Result<bool, String> {
-    Ok(launch_settings("claude", has_role, keep_prompts, None, false)?.skip_permissions)
+/// Resolves CLI `--permissions` > user `launcher.role_access` > [`ACCESS_DEFAULT`]. The
+/// configuration is validated even for `--permissions`. Project settings do not matter.
+pub fn launch_access(keep_prompts: bool) -> Result<Access, String> {
+    Ok(launch_settings(keep_prompts, None, false)?.access)
 }
 
 // ---- agent-N numbering (#2359 decision 6760976883; resolves #2361; changed by #2971) ----
 
 /// Test-only: milliseconds to hold the counter lock between choosing a number and locking it.
-pub const AGENT_SEQ_TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_AGENT_SEQ_HOLD_MS";
+pub const AGENT_SEQ_TEST_HOLD_VAR: &str = "MOAI_TEST_AGENT_SEQ_HOLD_MS";
 /// The one warning line for number 1 (leader decision 6880464413): `claim` and `claim-verify`
 /// judge ownership by the session name alone, so a claim an earlier `agent-1` left inside its
 /// lease still reads as this session's.
@@ -391,7 +364,7 @@ const LIVE_LOCK_TRIES: u32 = 200;
 /// alive while its launcher holds the lock on `agent-<n>.live` or while the registry entry
 /// `agent-<n>.json` has a running lease; `.lock` is the counter's `File::lock` target.
 pub fn agent_seq_dir(project: &Path) -> Result<PathBuf, String> {
-    let id = crate::identity::identity(project)
+    let id = crate::identity::identity_in(project, None)
         .map_err(|e| format!("agent numbering: {e}; pass --name"))?;
     if id["identity_status"].as_str() != Some("ok") {
         return Err(format!(
@@ -587,6 +560,44 @@ fn lock_live(dir: &Path, n: u64) -> Result<fs::File, String> {
     Err(unavailable())
 }
 
+/// Takes the `<name>.live` lock for a session with a role (BOARD 03 (가),
+/// SPEC-20261120-launcher-liveness REQ-4): the launcher holds this exclusive lock for as long
+/// as the host runs — a numbered session through its `agent-<n>` name, a named session through
+/// the name it was given — so a read-only probe ([`live_lock_held`]) can tell a live launcher
+/// from an exited one. A symlink or a non-regular file at the path is refused; the name must
+/// be a safe registry name.
+pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
+    if !crate::lane_registry::valid_name(name) {
+        return Err(
+            "session live lock name is invalid: use 1 to 64 of A-Z a-z 0-9 . _ -".to_string(),
+        );
+    }
+    // The first named launch in a clone makes the sessions folder, as the numbered path does.
+    fs::create_dir_all(dir)
+        .map_err(|e| format!("session live lock {} write failed: {e}", dir.display()))?;
+    let path = dir.join(format!("{name}.live"));
+    refuse_unless_regular(&path)?;
+    let unavailable = || format!("session live lock {} unavailable", path.display());
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&path)
+        .map_err(|_| unavailable())?;
+    // N2 of the audit: a session of this name is already running — say so at once, with no
+    // wait. The numbered path keeps its retries because a shared dry-run probe may hold its
+    // file for an instant; a named lock's only other holder is a full session.
+    match file.try_lock() {
+        Ok(()) => Ok(file),
+        Err(fs::TryLockError::WouldBlock) => Err(format!(
+            "{name} is already running: the session live lock {} is held; stop that session first",
+            path.display()
+        )),
+        Err(fs::TryLockError::Error(_)) => Err(unavailable()),
+    }
+}
+
 // @MX:WARN: [AUTO] cross-process critical section; a second launch blocks on `.lock` until the
 //   first holds the `.live` lock of its number.
 // @MX:REASON: two launches that both chose the same number would open one `agent-<n>`.
@@ -622,8 +633,9 @@ pub fn take_agent_number(project: &Path) -> Result<TakenNumber, String> {
     let live_max = highest_live(&dir, clock())?;
     let number = number_after(live_max);
     // Test seam: widens the window between choosing and locking (at most 2 s) so the
-    // concurrency test can show the counter lock is what keeps numbers apart. Unset in
-    // normal use.
+    // concurrency test can show the counter lock is what keeps numbers apart. Debug builds
+    // only: a release build never reads the variable (SPEC-20261124-test-seams-release).
+    #[cfg(debug_assertions)]
     if let Some(ms) = std::env::var(AGENT_SEQ_TEST_HOLD_VAR)
         .ok()
         .and_then(|v| v.parse::<u64>().ok())
@@ -690,173 +702,55 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
         argv.push(a.clone());
     }
     if r.prompt.is_some() {
-        notes.push("PROMPT is used by codex only; it was not passed to the Claude host");
+        notes.push("PROMPT was not passed to the Claude host");
     }
-    if r.skip_permissions {
-        notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (role session, user decision 2026-11-10 #2359; keep prompts with --permissions)");
-        argv.push("--dangerously-skip-permissions".into());
-    } else if r.role.is_none() {
-        notes.push("no permission flag: Claude Code starts in the mode the user's and project's settings choose (roleless session, #2359)");
+    match r.access {
+        Access::Auto => {
+            notes.push("--permission-mode auto: Claude Code's auto mode checks each tool call (the launcher default since user decision 2026-11-23; --permissions keeps the host's own mode, launcher.role_access picks auto, full or prompt)");
+            if r.host == "glm" {
+                notes.push("glm runs Claude Code behind the z.ai gateway: the auto mode classifier may show a billing notice, see docs/troubleshooting.md section 5 (no setting is changed)");
+            }
+            argv.push("--permission-mode".into());
+            argv.push("auto".into());
+        }
+        Access::Full => {
+            notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (chosen by the user in launcher.role_access; auto mode is the default, keep prompts with --permissions)");
+            argv.push("--dangerously-skip-permissions".into());
+        }
+        // A role session without a flag (`--permissions`, `prompt`, the legacy `session`
+        // command) added no note before; only the roleless form did, and keeps doing so.
+        Access::Prompt if r.role.is_none() => notes.push("no permission flag: Claude Code starts in the mode the user's and project's settings choose (--permissions or launcher.role_access prompt)"),
+        Access::Prompt => {}
     }
     Ok(argv)
-}
-
-fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
-    clean("codex_bin", &r.codex_bin)?;
-    // User decision 2026-11-10 (#2359): a role session gets full access (no sandbox, never
-    // ask), or the sandboxed ask-first pair when prompts are selected; a roleless session gets no
-    // flag, so `~/.codex/config.toml` decides (Codex ranks CLI flags above it, so any flag here
-    // would override the user's choice).
-    let pair = if r.skip_permissions {
-        notes.push("codex full access: -s danger-full-access -a never, every command runs without a sandbox or an approval prompt (role session, user decision 2026-11-10 #2359; keep prompts with --permissions)");
-        Some(("danger-full-access", "never"))
-    } else if r.role.is_some() {
-        Some(("workspace-write", "on-request"))
-    } else {
-        notes.push("no sandbox or approval flag: codex takes them from ~/.codex/config.toml (roleless session, #2359)");
-        None
-    };
-    let mut argv = vec![r.codex_bin.clone()];
-    if let Some((sandbox, approval)) = pair {
-        argv.extend(["-s".into(), sandbox.into(), "-a".into(), approval.into()]);
-    }
-    if let Some(m) = &r.model {
-        clean("model", m)?;
-        argv.push("-m".into());
-        argv.push(m.clone());
-    }
-    // #3096 S7b (leader decision 6905681774): an effort the operator asked for is passed on as
-    // `-c model_reasoning_effort="<value>"` when Codex takes that value; no request passes
-    // nothing, so the user's own Codex settings decide and the launcher never picks a model
-    // default for them. Only the five fixed words below are ever put into the argument.
-    if let Some(e) = r.effort.as_deref() {
-        if CODEX_EFFORTS.contains(&e) {
-            argv.push("-c".into());
-            argv.push(format!("model_reasoning_effort=\"{e}\""));
-        } else {
-            notes.push(NOTE_EFFORT_NOT_PASSED_CODEX);
-        }
-    }
-    if r.advisor.is_some() {
-        notes.push(NOTE_ADVISOR_NOT_PASSED_CODEX);
-    }
-    // User decision 2026-11-18 (card C-47 note 2092, SPEC-20261118-launcher-agent-entry): an
-    // agent session's first prompt starts with the line that enters agent mode; Codex lanes given
-    // only the name line never entered it. A leader session and a roleless one keep their prompt.
-    let mut parts: Vec<String> = Vec::new();
-    if r.role.as_deref() == Some("agent") {
-        parts.push(CODEX_AGENT_ENTRY.into());
-    }
-    parts.extend(r.name.iter().map(|n| format!("MoAI session name: {n}")));
-    if let Some(extra) = &r.prompt {
-        if extra.len() > MAX_PROMPT
-            || extra
-                .chars()
-                .any(|c| c.is_control() && c != '\n' && c != '\t')
-        {
-            return Err("invalid prompt".into());
-        }
-        parts.push(extra.clone());
-    }
-    if !parts.is_empty() {
-        argv.push(parts.join("\n"));
-    }
-    if r.name.is_some() {
-        notes.push("codex has no session-name flag: the name is carried in the first prompt");
-    }
-    notes.push("codex sessions have no cross-session channel in RC1 (no ListAgents/SendMessage)");
-    Ok(argv)
-}
-
-/// `omp [--model <m>] [--thinking <e>] [--approval-mode <mode>]` (SPEC-20261118-omp-launcher).
-/// OMP has no session-name flag and its first message does not run the role line, so neither
-/// the name nor a role prompt is passed; the notes (`role_entry_note`) say what to type.
-fn omp_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
-    let mut argv = vec!["omp".to_string()];
-    if let Some(m) = &r.model {
-        clean("model", m)?;
-        argv.push("--model".into());
-        argv.push(m.clone());
-    }
-    if let Some(e) = r.effort.as_deref() {
-        if OMP_EFFORTS.contains(&e) {
-            argv.push("--thinking".into());
-            argv.push(e.into());
-        } else {
-            notes.push(NOTE_EFFORT_NOT_PASSED_OMP);
-        }
-    }
-    // User decision 2026-11-10 (#2359) in OMP's words: a role session gets full access
-    // (`yolo`, OMP's `tools.approvalMode` default made explicit), `--permissions` keeps the
-    // prompts (`always-ask-cached`), and a roleless session gets no flag, so OMP's own
-    // settings decide.
-    if r.skip_permissions {
-        argv.extend(["--approval-mode".into(), "yolo".into()]);
-        notes.push("omp full access: --approval-mode yolo, every tool call runs without an approval prompt (role session, user decision 2026-11-10 #2359; keep prompts with --permissions)");
-    } else if r.role.is_some() {
-        argv.extend(["--approval-mode".into(), "always-ask-cached".into()]);
-        notes.push("omp keeps approval prompts: --approval-mode always-ask-cached (--permissions or launcher.role_access)");
-    } else {
-        notes.push("no approval flag: omp takes tools.approvalMode from its own settings (roleless session, #2359)");
-    }
-    if r.advisor.is_some() {
-        notes.push(NOTE_ADVISOR_NOT_PASSED_OMP);
-    }
-    if r.name.is_some() {
-        notes.push("omp has no session-name flag: the name is not passed to the host");
-    }
-    Ok(argv)
-}
-
-/// Whether the model named is one of the z.ai (GLM) provider: a `zai/` prefix (OMP's
-/// `provider/model` form) or `glm` in the name (D-4 of SPEC-20261118-omp-launcher).
-fn is_zai_model(model: Option<&str>) -> bool {
-    model.is_some_and(|m| {
-        let m = m.to_ascii_lowercase();
-        m.starts_with("zai/") || m.contains("glm")
-    })
-}
-
-/// The glm key for an OMP launch: only for a z.ai model, read the way the glm launcher reads it
-/// (variable, then vault; a legacy key file blocks). `Ok(None)` is no key or no need of one.
-fn omp_key(r: &SessionRequest) -> Result<Option<(String, KeySource)>, String> {
-    if r.host != "omp" || !is_zai_model(r.model.as_deref()) {
-        return Ok(None);
-    }
-    glm_token().map_err(|b| blocked_line(&b))
 }
 
 /// The note that says a value came from the choice `moai update` saved for the host and role
 /// (SPEC-20261119-launcher-reads-models REQ-9): the key path and nothing else of the file.
 fn saved_note(host: &str, role: &str) -> &'static str {
     match (host, role) {
-        ("claude", "leader") => "model and effort not given on the command line come from launcher.models.claude.leader (saved by moai update)",
-        ("claude", _) => "model and effort not given on the command line come from launcher.models.claude.agent (saved by moai update)",
-        ("codex", "leader") => "model and effort not given on the command line come from launcher.models.codex.leader (saved by moai update)",
-        ("codex", _) => "model and effort not given on the command line come from launcher.models.codex.agent (saved by moai update)",
         ("glm", "leader") => "model and effort not given on the command line come from launcher.models.glm.leader (saved by moai update)",
         ("glm", _) => "model and effort not given on the command line come from launcher.models.glm.agent (saved by moai update)",
-        (_, "leader") => "model and effort not given on the command line come from launcher.models.omp.leader (saved by moai update)",
-        _ => "model and effort not given on the command line come from launcher.models.omp.agent (saved by moai update)",
+        (_, "leader") => "model and effort not given on the command line come from launcher.models.claude.leader (saved by moai update)",
+        _ => "model and effort not given on the command line come from launcher.models.claude.agent (saved by moai update)",
     }
 }
 
 /// Fills the model and effort a person did not give from the choice `moai update` saved under
 /// `launcher.models.<host>.<role>` of the user launcher settings file (card C-47 criteria 5 and 7,
 /// SPEC-20261119-launcher-reads-models; the glm host in SPEC-20261119-glm-launcher-settings-receipt).
-/// It applies to a session with a role on `claude`, `codex`, `omp` and `glm`; a roleless session
+/// It applies to a session with a role on `claude` and `glm`; a roleless session
 /// keeps its own rules. The file is read at every call, so a rewritten file is used by the next
 /// launch. A saved entry outside the support table, anywhere under `launcher.models`, refuses the
 /// launch with key paths only (`unsupported_entries`). The glm host is Claude Code on z.ai: its
-/// saved id comes from the table shared with OMP and carries the `zai/` provider prefix, which the
+/// saved id carries the `zai/` provider prefix, which the
 /// z.ai endpoint does not take, so the prefix is removed here (research note C-47 note 3452: Claude
 /// Code sends a full unknown id as written; the alias mapping of the environment is unchanged).
 /// The second value is the note to add when a saved value was used.
 fn apply_saved_choice(
     r: &SessionRequest,
 ) -> Result<(SessionRequest, Option<&'static str>), String> {
-    let (Some(role), "claude" | "codex" | "omp" | "glm") = (r.role.as_deref(), r.host.as_str())
-    else {
+    let (Some(role), "claude" | "glm") = (r.role.as_deref(), r.host.as_str()) else {
         return Ok((r.clone(), None));
     };
     let Some(launcher) = user_launcher()? else {
@@ -905,7 +799,7 @@ fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<V
         }
     }
     if !HOSTS.contains(&r.host.as_str()) {
-        return Err(format!("unknown host {} (claude|glm|codex|omp)", r.host));
+        return Err(format!("unknown host {} (claude|glm)", r.host));
     }
     if let Some(n) = &r.name {
         clean("name", n)?;
@@ -914,32 +808,15 @@ fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<V
     notes.extend(saved);
     if r.role.is_none() {
         notes.push("no role: a plain host session; no role or session name is added (#2053)");
-        if !matches!(r.host.as_str(), "codex" | "omp") {
-            notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
-                "launcher defaults without a role: model opus, effort medium (user decision 2026-11-08: A); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
-            } else {
-                "no model or effort flag without a role; the user's Claude settings apply; no advisor unless --advisor or launcher.advisor asks for one (#2476)"
-            });
-        }
+        notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
+            "launcher defaults without a role: model opus, effort medium (user decision 2026-11-08: A); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
+        } else {
+            "no model or effort flag without a role; the user's Claude settings apply; no advisor unless --advisor or launcher.advisor asks for one (#2476)"
+        });
     }
     let mut env_keys: Vec<&str> = Vec::new();
     let mut key_source: Option<&str> = None;
     let argv = match r.host.as_str() {
-        "codex" => codex_argv(r, &mut notes)?,
-        "omp" => {
-            match omp_key(r)? {
-                Some((_, source)) => {
-                    key_source = Some(source.name());
-                    env_keys.push(OMP_KEY_VAR);
-                    notes.push("ZAI_API_KEY is the glm key of the moai-cli key vault or of ANTHROPIC_AUTH_TOKEN; it is passed to the host process only, and only for a z.ai model");
-                }
-                None if is_zai_model(r.model.as_deref()) => notes.push(
-                    "no glm key was found (ANTHROPIC_AUTH_TOKEN is unset and the vault holds none): OMP uses its own login for the z.ai model; store a key with `moai key-set glm` to pass it",
-                ),
-                None => {}
-            }
-            omp_argv(r, &mut notes)?
-        }
         "glm" => {
             match glm_token() {
                 Err(b) => return Err(blocked_line(&b)),
@@ -951,7 +828,7 @@ fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<V
                 Ok(Some((_, source))) => {
                     key_source = Some(source.name());
                     match source {
-                        KeySource::Vault(_) => notes.push("ANTHROPIC_AUTH_TOKEN comes from the moai-cli key vault; it is passed to the host process only"),
+                        KeySource::Vault(_) => notes.push("ANTHROPIC_AUTH_TOKEN comes from the moai key vault; it is passed to the host process only"),
                         KeySource::Env => {}
                     }
                 }
@@ -960,7 +837,7 @@ fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<V
             if plain.advisor.take().is_some() {
                 notes.push(NOTE_ADVISOR_OMITTED_GLM);
             }
-            notes.push("model aliases map to z.ai models for this session: opus, sonnet and fable to glm-5.3, haiku to glm-5.3-flash, with the 1M context window declared");
+            notes.push("model aliases map to z.ai models for this session: opus, sonnet and fable to glm-5.4[1m], haiku to glm-5.3-flash, with the 1M context window declared");
             env_keys.extend(GLM_ENV.iter().map(|(k, _)| *k));
             env_keys.push(GLM_TOKEN_VAR);
             env_keys.push(GLM_MCP_KEY_VAR);
@@ -980,7 +857,7 @@ fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<V
 
 /// Composes and, unless `dry_run`, starts the host and waits for it to exit.
 pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
-    // The same request as `compose` uses, so a saved z.ai model for OMP gets its key below too.
+    // The same request as `compose` uses.
     let (resolved, saved) = apply_saved_choice(r)?;
     let r = &resolved;
     let mut v = compose_resolved(r, saved)?;
@@ -1000,13 +877,29 @@ pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
         command.env(GLM_TOKEN_VAR, &token);
         command.env(GLM_MCP_KEY_VAR, &token);
     }
-    if let Some((token, _)) = omp_key(r)? {
-        command.env(OMP_KEY_VAR, &token);
-    }
     let status = command
         .status()
         .map_err(|e| format!("cannot start {}: {e}", argv[0]))?;
     v["executed"] = json!(true);
     v["exit_code"] = json!(status.code());
     Ok(v)
+}
+
+/// SPEC-20261124-identity-home-arg REQ-7: with a symlinked home state folder in the environment
+/// HOME the agent number folder answers as it does with a sound HOME.
+#[cfg(all(test, unix))]
+mod home_arg_claim_group_tests {
+    use super::agent_seq_dir;
+
+    #[test]
+    fn home_arg_claim_group_session_agent_seq_dir() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_session_agent_seq_dir",
+            |f| {
+                let dir = agent_seq_dir(&f.project).unwrap();
+                assert!(dir.ends_with("sessions"), "{}", dir.display());
+            },
+        );
+    }
 }

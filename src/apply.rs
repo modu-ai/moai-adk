@@ -365,7 +365,9 @@ fn receipt_id_ok(s: &str) -> bool {
 /// `layout.json` is switched in the home project directory, receipts resolve there;
 /// otherwise the project-side store stays authoritative (read-compatible fallback).
 fn receipts_dir(root: &Path) -> Result<PathBuf> {
-    Ok(crate::layout::switched_dir(root, "receipts")
+    // SPEC-20261124-home-writer-links: every receipt, backup and recovery path goes through here,
+    // so a symlinked home state folder is refused once for all of them.
+    Ok(crate::layout::switched_dir_checked(root, "receipts")?
         .unwrap_or_else(|| crate::state_root::path(root, "receipts")))
 }
 
@@ -457,7 +459,14 @@ fn guard_recoverable_path(root: &Path, rel: &str) -> Result<()> {
         (legacy.as_str(), "receipt store path"),
     ];
     if crate::state_root::dir(root) != crate::state_root::MOAI_DIR {
-        blocked.push((crate::state_root::MOAI_DIR, "go generation state path"));
+        // In a mixed layout a write follows the read (SPEC-20261121-mixed-profile-read): the
+        // receipt's own `.moai/project.yaml` is this apply's publish and stays recoverable,
+        // with its before bytes; every other `.moai/` path is still the Go generation's state.
+        let own_profile =
+            rel == "project.yaml" || rel == format!("{}/project.yaml", crate::state_root::MOAI_DIR);
+        if !(own_profile && crate::profile::reads_newer_profile(root)) {
+            blocked.push((crate::state_root::MOAI_DIR, "go generation state path"));
+        }
     }
     for (prefix, why) in blocked {
         if rel == prefix || rel.starts_with(&format!("{prefix}/")) {
@@ -705,8 +714,10 @@ mod tests {
 
     #[test]
     fn recover_guard_blocks_go_and_receipt_paths() {
-        // An earlier-root project (no `.moai/` marker): `.moai` is Go state.
+        // An earlier-root project (an earlier `.moai-cli`, no `.moai/` marker): `.moai` is Go
+        // state.
         let legacy = tempfile::tempdir().unwrap();
+        fs::create_dir(legacy.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let g = |rel: &str| guard_recoverable_path(legacy.path(), rel);
         assert!(g("AGENTS.md").is_ok());
         assert!(g(crate::project_state!("manifests/generation.json")).is_ok());

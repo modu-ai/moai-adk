@@ -5,6 +5,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/ready_receipt.rs"]
+mod ready_receipt;
 
 use common::home::TempHome;
 use moai_cli::ledger;
@@ -232,18 +234,9 @@ impl World {
 
     /// Adds a note and returns its number.
     fn note(&self, card: &str, text: &str) -> i64 {
-        self.card(
-            &["note", card, "--kind", "report", "--by", "lane"],
-            Some(text),
-        );
-        let shown = self.card(&["show", card], None);
-        shown["notes"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|n| n["note_id"].as_i64().unwrap())
-            .max()
-            .unwrap()
+        // Not through `card note`: its READY receipt gate (SPEC-20261124-ready-receipt-gate)
+        // is not what this file judges, and the project folder is not the repository.
+        ready_receipt::add_note_unchecked(self.home.path(), "demo", card, text)
     }
 
     fn ready_note(&self, card: &str, head: &str) -> i64 {
@@ -261,6 +254,27 @@ impl World {
     /// `moai bundle <args> --project … --dir … --tip origin/trunk`: the first stdout line as JSON
     /// and the exit status.
     fn bundle(&self, args: &[&str]) -> (Value, i32) {
+        self.bundle_with(args, Some(TIP))
+    }
+
+    /// The profile an m-flow project records: the integration branch the default tip follows.
+    /// `home.project` writes a file `read_profile` refuses, so a scene that needs the profile
+    /// calls this.
+    fn write_profile(&self, integration_branch: &str) {
+        let profile = serde_json::json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "Fixture",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
+            "decisions": [{"id": "d1", "topic": "tools", "value": "Rust",
+                "source": "user", "scope": "project"}],
+            "work_flow": {"flow": "m-flow", "integration_branch": integration_branch},
+        });
+        let path = moai_cli::state_root::path(Path::new(&self.project), "project.yaml");
+        fs::write(path, profile.to_string()).unwrap();
+    }
+
+    /// `bundle` with the tip the scene wants: `None` leaves `--tip` out, so the tool resolves the
+    /// default tip from the profile itself.
+    fn bundle_with(&self, args: &[&str], tip: Option<&str>) -> (Value, i32) {
         let mut all = vec!["bundle"];
         all.extend_from_slice(args);
         all.extend_from_slice(&[
@@ -268,9 +282,10 @@ impl World {
             &self.project,
             "--dir",
             self.work.to_str().unwrap(),
-            "--tip",
-            TIP,
         ]);
+        if let Some(t) = tip {
+            all.extend_from_slice(&["--tip", t]);
+        }
         let out = self
             .home
             .command(&all)
@@ -828,4 +843,266 @@ fn the_gate_reads_a_verdict_line_with_a_tier_like_one_without() {
     let want = Some((h.to_string(), b.to_string(), "PASS".to_string()));
     assert_eq!(moai_cli::gate::parse_verdict(&plain), want);
     assert_eq!(moai_cli::gate::parse_verdict(&tiered), want);
+}
+
+// ---------------------------------------------------------------------------------------------
+// SPEC-20261123-ready-mutant-line: the `guard-mutant:` lines of a READY note are read, and a
+// missing, unreadable or surviving one is a warning that changes neither `ok`, `findings` nor the
+// exit status.
+
+impl World {
+    /// A READY note for `head` with `body` on the lines after the marker line.
+    fn ready_note_with(&self, card: &str, head: &str, body: &str) -> i64 {
+        self.note(
+            card,
+            &format!("LANE-READY-INTEGRATION {card} head={head} spec={SPEC}\n{body}"),
+        )
+    }
+
+    fn clean_head(&self, branch: &str) -> String {
+        self.head(branch, TIP, &[("notes/m.md", "m\n")], SPEC, &[1, 2], true)
+    }
+}
+
+/// `(card, code)` of every warning of a `check` answer.
+fn warnings(v: &Value) -> Vec<(String, String)> {
+    v["result"]["warnings"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no `warnings` array: {v}"))
+        .iter()
+        .map(|f| {
+            (
+                f["card"].as_str().unwrap().to_string(),
+                f["code"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn mutant_line_a_note_without_the_line_warns_and_changes_nothing_else() {
+    let w = World::new();
+    let h = w.clean_head("spec/m1");
+    let c = w.new_card();
+    w.ready_note_with(&c, &h, "base: origin/trunk\nchecks: all green");
+    let (v, code) = w.bundle(&["check", &c]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(
+        warnings(&v),
+        vec![(c.clone(), "mutant_line_missing".to_string())],
+        "{v}"
+    );
+    let r = &v["result"];
+    assert_eq!(r["ok"], true, "{v}");
+    assert_eq!(r["findings"], serde_json::json!([]), "{v}");
+    assert_eq!(r["heads"][0]["warnings"], 1, "{v}");
+}
+
+#[test]
+fn mutant_line_good_lines_give_no_warning() {
+    let w = World::new();
+    let (a, b) = (w.clean_head("spec/m2a"), w.clean_head("spec/m2b"));
+    let (ca, cb) = (w.new_card(), w.new_card());
+    w.ready_note_with(
+        &ca,
+        &a,
+        "guard-mutant: cap_is_parsed | removed the cap parse | exit 101",
+    );
+    w.ready_note_with(
+        &cb,
+        &b,
+        "guard-mutant: none | the change adds no guard test",
+    );
+    let (v, code) = w.bundle(&["check", &ca, &cb]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(warnings(&v), Vec::<(String, String)>::new(), "{v}");
+    assert_eq!(v["result"]["heads"][0]["warnings"], 0, "{v}");
+}
+
+#[test]
+fn mutant_line_unreadable_and_survived_lines_each_warn() {
+    let w = World::new();
+    let (a, b) = (w.clean_head("spec/m3a"), w.clean_head("spec/m3b"));
+    let (ca, cb) = (w.new_card(), w.new_card());
+    w.ready_note_with(&ca, &a, "base: x\nguard-mutant: only two | fields");
+    w.ready_note_with(
+        &cb,
+        &b,
+        "guard-mutant: cap_is_parsed | removed the cap parse | exit 0",
+    );
+    let (v, code) = w.bundle(&["check", &ca, &cb]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(
+        warnings(&v),
+        vec![
+            (ca.clone(), "mutant_line_unreadable".to_string()),
+            (cb.clone(), "mutant_survived".to_string()),
+        ],
+        "{v}"
+    );
+    let list = v["result"]["warnings"].as_array().unwrap();
+    assert_eq!(list[0]["detail"], serde_json::json!({"line": 3}), "{v}");
+    assert_eq!(list[1]["detail"]["test"], "cap_is_parsed", "{v}");
+    assert_eq!(list[1]["head"], b.as_str(), "{v}");
+    assert_eq!(v["result"]["ok"], true, "{v}");
+}
+
+#[test]
+fn mutant_line_is_read_from_the_newest_note_that_names_the_head() {
+    let w = World::new();
+    let h = w.clean_head("spec/m4");
+    let c = w.new_card();
+    w.ready_note_with(&c, &h, "guard-mutant: a | removed x | exit 1");
+    w.ready_note_with(&c, &h, "checks: all green");
+    let (v, _) = w.bundle(&["check", &c]);
+    assert_eq!(
+        warnings(&v),
+        vec![(c.clone(), "mutant_line_missing".to_string())],
+        "{v}"
+    );
+
+    // A newer note for another head does not hide the line of the note that names this head.
+    let c2 = w.new_card();
+    let other = w.clean_head("spec/m4b");
+    w.ready_note_with(&c2, &h, "guard-mutant: a | removed x | exit 1");
+    w.ready_note_with(&c2, &other, "checks: all green");
+    let arg = format!("{c2}={h}");
+    let (v, _) = w.bundle(&["check", &arg]);
+    assert_eq!(warnings(&v), Vec::<(String, String)>::new(), "{v}");
+}
+
+#[test]
+fn mutant_line_a_head_no_note_names_is_missing() {
+    let w = World::new();
+    let (h, other) = (w.clean_head("spec/m5"), w.clean_head("spec/m5b"));
+    let c = w.new_card();
+    w.ready_note_with(&c, &other, "guard-mutant: a | removed x | exit 1");
+    let arg = format!("{c}={h}");
+    let (v, _) = w.bundle(&["check", &arg]);
+    assert_eq!(
+        warnings(&v),
+        vec![(c.clone(), "mutant_line_missing".to_string())],
+        "{v}"
+    );
+    let detail = v["result"]["warnings"][0]["detail"].to_string();
+    assert!(detail.contains("no READY note names"), "{detail}");
+}
+
+// ---------------------------------------------------------------------------------------------
+// SPEC-20261124-bundle-local-tip: the default tip is the local integration branch
+
+/// One head with a source change on top of the tip, its READY note and the card that holds it.
+fn ready_source_head(w: &World, branch: &str) -> (String, String) {
+    let h = w.head(
+        branch,
+        TIP,
+        &[("src/local_tip.rs", "fn f() {}\n")],
+        SPEC,
+        &[1, 2],
+        true,
+    );
+    let c = w.new_card();
+    w.ready_note(&c, &h);
+    (c, h)
+}
+
+/// AC-1: with the profile naming `NeXT`, a local `NeXT` and no `origin/NeXT`, the default tip is
+/// the local branch and the check answers the tier floor instead of the fetch-first refusal.
+#[test]
+fn a_local_only_integration_branch_answers_the_tier_floor() {
+    let w = World::new();
+    w.git(&["branch", "NeXT", TIP]);
+    w.write_profile("NeXT");
+    let (c, h) = ready_source_head(&w, "spec/local-tip");
+    let arg = format!("{c}={h}");
+    let (v, _) = w.bundle_with(&["check", &arg], None);
+    assert_eq!(v["ok"], true, "no refusal for a local-only branch: {v}");
+    assert_eq!(v["result"]["tip"]["name"], "refs/heads/NeXT", "{v}");
+    assert_eq!(v["result"]["heads"][0]["audit_floor"], 1, "{v}");
+}
+
+/// AC-1: when both exist the local branch wins, because `origin` is behind it.
+#[test]
+fn the_local_branch_wins_over_a_stale_origin_branch() {
+    let w = World::new();
+    w.git(&["push", "-q", "origin", &format!("{TIP}:refs/heads/NeXT")]);
+    w.git(&["fetch", "-q", "origin"]);
+    let (c, h) = ready_source_head(&w, "spec/ahead");
+    // The local NeXT has one commit that origin/NeXT lacks.
+    w.git(&["checkout", "-q", "-B", "NeXT", TIP]);
+    w.put("notes/ahead.md", "a\n");
+    w.git(&["add", "-A"]);
+    w.git(&["commit", "-q", "-m", "chore: local tip moves"]);
+    w.write_profile("NeXT");
+    let arg = format!("{c}={h}");
+    let (v, _) = w.bundle_with(&["check", &arg], None);
+    assert_eq!(v["result"]["tip"]["name"], "refs/heads/NeXT", "{v}");
+    assert_eq!(
+        v["result"]["tip"]["sha"],
+        w.git(&["rev-parse", "refs/heads/NeXT"]).as_str(),
+        "{v}"
+    );
+}
+
+/// AC-1: an explicit `--tip` still judges the given value, even when the profile names a branch.
+#[test]
+fn an_explicit_tip_wins_over_the_profile_branch() {
+    let w = World::new();
+    w.git(&["branch", "NeXT", TIP]);
+    w.write_profile("NeXT");
+    let (c, h) = ready_source_head(&w, "spec/explicit");
+    let arg = format!("{c}={h}");
+    let (v, _) = w.bundle_with(&["check", &arg], Some(TIP));
+    assert_eq!(v["result"]["tip"]["name"], TIP, "{v}");
+}
+
+/// AC-2: without the local branch the default falls back to `origin/<branch>`; with neither the
+/// refusal names the tip it looked for; a given `--tip` that is no commit is refused by value.
+#[test]
+fn the_default_tip_falls_back_to_origin_and_refuses_naming_the_tip() {
+    let w = World::new();
+    w.write_profile("NeXT");
+    let (c, h) = ready_source_head(&w, "spec/fallback");
+    let arg = format!("{c}={h}");
+
+    let (v, code) = w.bundle_with(&["check", &arg], None);
+    assert_eq!(code, 1, "neither branch exists: {v}");
+    let message = v["error"]["message"].as_str().unwrap();
+    assert!(message.contains("origin/NeXT"), "names the tip: {v}");
+
+    w.git(&["push", "-q", "origin", &format!("{TIP}:refs/heads/NeXT")]);
+    w.git(&["fetch", "-q", "origin"]);
+    let (v, _) = w.bundle_with(&["check", &arg], None);
+    assert_eq!(v["result"]["tip"]["name"], "origin/NeXT", "{v}");
+
+    let (v, code) = w.bundle_with(&["check", &arg], Some("no-such-branch"));
+    assert_eq!(code, 1, "{v}");
+    let message = v["error"]["message"].as_str().unwrap();
+    assert!(message.contains("no-such-branch"), "names the value: {v}");
+}
+
+/// AC-3: the `--tip` help of every bundle action names the local branch first.
+#[test]
+fn every_bundle_action_help_names_the_local_branch_tip() {
+    let w = World::new();
+    for action in ["ready", "check", "body", "build", "verify"] {
+        let out = w
+            .home
+            .command(&["bundle", action, "--help"])
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        let text = String::from_utf8_lossy(&out.stdout)
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(
+            text.contains("refs/heads/<branch>") && text.contains("origin/<branch>"),
+            "bundle {action} --help names the local branch and the fallback: {text}"
+        );
+        assert!(
+            text.find("refs/heads/<branch>") < text.find("origin/<branch>"),
+            "bundle {action} --help names the local branch first: {text}"
+        );
+    }
 }

@@ -27,6 +27,10 @@ type Result<T> = std::result::Result<T, String>;
 
 /// The one placeholder a printed command carries.
 pub const PERMISSION_PLACEHOLDER: &str = "<permission-reference>";
+/// The second placeholder, printed only by a step whose plan carries a warning that needs the
+/// user's explicit yes (the personal-file merge over an `AGENTS.md` Claude Code would stop
+/// reading): the confirmation token of that plan.
+pub const CONFIRM_PLACEHOLDER: &str = "<warning-confirmation>";
 /// Why an install step waits when the project has no profile (Q5: never created here).
 pub const NO_PROFILE: &str = "run /moai project";
 /// Why every install step waits while the backup phase has a move to make: its preview
@@ -51,21 +55,27 @@ const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/
      (go-state-plan); .codex files are classified in the preview and nothing under .codex \
      moves yet (#2936 S1c-2)";
 const INSTALL_REASON: &str = "profile, generation (AGENTS.md managed section and generated \
-     files), Claude Code settings, Claude Code hooks, GitHub templates, the Codex and OMP hook \
-     sets; the Codex config and skill copy and the OMP agents are a later slice (#2936 R9 S5b)";
+     files), Claude Code settings, Claude Code hooks, GitHub templates; the retired-hosts step \
+     only lists the files of the retired Codex and OMP hosts and leaves them as they are";
 /// Why the merge step waits while the generation step has files to write: the merge reads and
 /// writes `AGENTS.md`, whose bytes that step's digest binds.
 pub const AFTER_INSTALL: &str = "re-run after the install phase";
-const MERGE_REASON: &str = "the text of AGENTS.local.md merges into AGENTS.md (#2936 R10); the \
-     user's earlier settings.json values merge back into the new one (#2936 R8); other \
-     backed-up instructions are a later slice (#2936 S1f)";
+const MERGE_REASON: &str = "AGENTS.md and AGENTS.local.md move into CLAUDE.md and \
+     CLAUDE.local.md or are left, and once their text is there the user may delete the \
+     originals, as the user picks (agents-picks); the text of \
+     AGENTS.local.md alone merges into CLAUDE.local.md (#2936 R10); the user's earlier \
+     settings.json values merge back into the new one (#2936 R8); other backed-up instructions \
+     are a later slice (#2936 S1f)";
 
-/// Step states from least to most severe; a phase takes its worst step's state.
+/// Step states from least to most severe; a phase takes its worst step's state. `optional` is a
+/// step that offers a choice nobody has to make (deleting the originals once their text is
+/// copied): it prints the choice and the command and counts as nothing to do.
 /// `skip_in_use` (a file a running session reads, #2936 S2b) is reserved: this slice never
 /// emits it.
-const SEVERITY: [&str; 6] = [
+const SEVERITY: [&str; 7] = [
     "unchanged",
     "skip",
+    "optional",
     "ready",
     "needs_decision",
     "conflict",
@@ -559,18 +569,23 @@ fn profile_step(
 /// "the section is there" no longer means "the personal file is listed". What the section
 /// lists is its recorded `kind`; a section recorded before the kind existed listed the file.
 fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
-    const LOCAL: &str = "AGENTS.local.md";
+    // The personal file is recorded under either of its names (`AGENTS.local.md` before Claude
+    // Code became the target, `CLAUDE.local.md` after it).
+    let is_local = |v: &Value| {
+        v.as_str()
+            .is_some_and(|name| crate::agents::LOCAL_NAMES.contains(&name))
+    };
     let created = manifest["created_once"]
         .as_array()
         .into_iter()
         .flatten()
-        .any(|p| p == LOCAL)
+        .any(is_local)
         // Manifests written before `created_once` recorded the file in owned_files.
         || manifest["owned_files"]
             .as_array()
             .into_iter()
             .flatten()
-            .any(|f| f["path"] == LOCAL && f["section_id"].is_null());
+            .any(|f| is_local(&f["path"]) && f["section_id"].is_null());
     // `Some(listed)` when the section is recorded: whether it lists the personal file.
     let section: Option<bool> = manifest["owned_files"]
         .as_array()
@@ -585,7 +600,7 @@ fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
         let user_rule = ignore
             .as_deref()
             .and_then(|b| std::str::from_utf8(b).ok())
-            .is_some_and(crate::agents::ignore_has_rule);
+            .is_some_and(crate::agents::ignore_has_any_local_rule);
         if user_rule {
             Err(unknown.into())
         } else {
@@ -659,21 +674,48 @@ fn owned_entries(manifest: &Value) -> impl Iterator<Item = (&str, &str)> {
         .filter_map(|f| Some((f["section_id"].as_str()?, f["path"].as_str()?)))
 }
 
-fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> {
-    // Read without following a link on the way, like every other manifest read.
+/// The generation manifest, `Null` when there is none. Read without following a link on the way,
+/// like every other manifest read.
+fn read_generation_manifest(root: &Path) -> Result<Value> {
     let rel = format!("{}/manifests/generation.json", state_root::dir(root));
-    let manifest: Value = match crate::apply::read_opt(&crate::apply::target(root, &rel)?)? {
-        None => Value::Null,
-        Some(bytes) => serde_json::from_slice(&bytes)
-            .map_err(|_| "generation manifest unreadable; inspect before regenerating")?,
-    };
-    // Q1 A (#2936): until the manifest records the request fields of project agents and
-    // skills, a plan from the stored state would drop them (a project skill plans `remove`).
-    // The user decides instead; nothing is planned.
-    let unrebuildable: Vec<&str> = owned_entries(&manifest)
+    Ok(
+        match crate::apply::read_opt(&crate::apply::target(root, &rel)?)? {
+            None => Value::Null,
+            Some(bytes) => serde_json::from_slice(&bytes)
+                .map_err(|_| "generation manifest unreadable; inspect before regenerating")?,
+        },
+    )
+}
+
+/// The manifest's owned files whose request the manifest does not record (Q1 A, #2936): until it
+/// records the request fields of project agents and skills, a plan from the stored state would
+/// drop them (a project skill plans `remove`).
+fn unrebuildable_paths(manifest: &Value) -> Vec<&str> {
+    owned_entries(manifest)
         .filter(|(section, _)| UNREBUILDABLE.iter().any(|k| section.starts_with(k)))
         .map(|(_, path)| path)
-        .collect();
+        .collect()
+}
+
+/// The generation request the preview plans with, rebuilt from the profile and the manifest, for
+/// the picks of `agents-merge-*` (`agents_local_merge::picks`). `Err` says why no request exists:
+/// the generation step of the same preview reports the same cause.
+pub(crate) fn rebuilt_request(root: &Path) -> Result<GenerationRequest> {
+    let (profile, _) = crate::read_profile(root)?;
+    if profile.is_placeholder() {
+        return Err("the project profile is still the placeholder; run /moai project".into());
+    }
+    let manifest = read_generation_manifest(root)?;
+    if !unrebuildable_paths(&manifest).is_empty() {
+        return Err("the generation manifest owns project agent or skill files whose request is not recorded; regenerate them through /moai project".into());
+    }
+    generation_request(root, &profile, &manifest)
+}
+
+fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> {
+    let manifest = read_generation_manifest(root)?;
+    // The user decides instead; nothing is planned.
+    let unrebuildable = unrebuildable_paths(&manifest);
     if !unrebuildable.is_empty() {
         return Ok(Step {
             name: "generation",
@@ -746,10 +788,11 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
 /// REQ-6..8, card C-57). Each one is the whole request planned again with that choice in
 /// `picks`, so its digest and its `generation-apply` command belong to that choice alone.
 ///
-/// - `AGENTS.md` is a conflict for a missing managed block: `append-managed` (recommended)
-///   and `skip-conflicts`, and with a shadowing CLAUDE.md also `append-managed+claude-import`
-///   (an import alone would be refused while the conflict stands).
-/// - No file conflicts and a CLAUDE.md shadows AGENTS.md: `claude-import`.
+/// - `CLAUDE.md` is a conflict for a missing managed block: `append-managed` (recommended)
+///   and `skip-conflicts`.
+///
+/// There is no import choice: the writer owns `CLAUDE.md`, and a project that holds an `AGENTS.md`
+/// picks `move` or `leave` in the project questions instead.
 ///
 /// A choice whose own plan still has a conflict row is left out: it could not be applied.
 /// Nothing here writes.
@@ -760,38 +803,23 @@ fn generation_choices(
     plan: &generation::GenerationPlan,
 ) -> Result<Vec<Value>> {
     let missing_block = plan.files.iter().any(|f| {
-        f.path == "AGENTS.md"
+        f.path == "CLAUDE.md"
             && f.action == "conflict"
             && f.detail
                 .as_deref()
                 .is_some_and(|d| d.contains(crate::agents::BLOCK_MISSING))
     });
-    let any_conflict = plan.files.iter().any(|f| f.action == "conflict");
-    let shadow = plan.claude_shadow.is_some();
     let mut sets: Vec<(&str, Vec<&str>, &str)> = Vec::new();
     if missing_block {
         sets.push((
             "append-managed",
             vec!["append-managed"],
-            "add the managed section at the end of AGENTS.md; every other byte stays",
+            "add the managed section at the end of CLAUDE.md; every other byte stays",
         ));
         sets.push((
             "skip-conflicts",
             vec!["skip-conflicts"],
-            "keep AGENTS.md as it is; the other files are still written",
-        ));
-        if shadow {
-            sets.push((
-                "append-managed+claude-import",
-                vec!["append-managed", "claude-import"],
-                "append the managed section and add the one import line of AGENTS.md to CLAUDE.md",
-            ));
-        }
-    } else if shadow && !any_conflict {
-        sets.push((
-            "claude-import",
-            vec!["claude-import"],
-            "add the one import line of AGENTS.md to CLAUDE.md",
+            "keep CLAUDE.md as it is; the other files are still written",
         ));
     }
     let mut out = Vec::new();
@@ -1239,26 +1267,21 @@ fn github_step(root: &Path, shown: &str) -> Result<Step> {
     })
 }
 
-/// The install steps in the order they are printed and applied; `hooks` follows
-/// `claude-settings` (#2936 R-B), the host steps follow `github` (#2936 R9 S5a).
-const INSTALL: [&str; 11] = [
+/// The install steps that wait for the profile or for the backup phase, in the order they are
+/// printed and applied; `hooks` follows `claude-settings` (#2936 R-B). The retired-hosts step
+/// is not one of them: it reads no file content, so nothing makes it stale (see [`host_steps`]).
+const INSTALL: [&str; 5] = [
     "profile",
     "generation",
     "claude-settings",
     "hooks",
     "github",
-    "codex-hooks",
-    "codex-config",
-    "codex-skill",
-    "omp-hooks",
-    "omp-config",
-    "omp-agents",
 ];
 
-/// The host steps (#2936 R9 S5a) as this module's steps; `picked` is the profile's `hosts`, or
-/// `None` when no profile could be read (SPEC-20261118-profile-host-omp).
-fn host_steps(root: &Path, shown: &str, picked: Option<&[String]>) -> Vec<Step> {
-    project_hosts::steps(root, shown, picked)
+/// The host steps as this module's steps: the one information step about the retired hosts,
+/// which every preview carries after the install steps above.
+fn host_steps(root: &Path) -> Vec<Step> {
+    project_hosts::steps(root)
         .into_iter()
         .map(|h| Step {
             name: h.name,
@@ -1290,7 +1313,6 @@ fn install_steps(
             steps.push(or_blocked("claude-settings", settings_step(root, shown)));
             steps.push(or_blocked("hooks", hooks_step(root, shown, false)));
             steps.push(or_blocked("github", github_step(root, shown)));
-            steps.extend(host_steps(root, shown, None));
             hooks_after_settings(&mut steps);
             return steps;
         }
@@ -1309,7 +1331,6 @@ fn install_steps(
         or_blocked("hooks", hooks_step(root, shown, claude)),
         or_blocked("github", github_step(root, shown)),
     ];
-    steps.extend(host_steps(root, shown, Some(&profile.hosts)));
     hooks_after_settings(&mut steps);
     steps
 }
@@ -1350,22 +1371,45 @@ fn backup_pending(backup: &[Step]) -> bool {
 fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> Vec<Step> {
     const NAME: &str = "agents-local-merge";
     const SETTINGS: &str = "claude-settings-merge";
+    // A project without `AGENTS.md` and `AGENTS.local.md` has no pick to wait for.
+    let holds_agents = fs::symlink_metadata(root.join("AGENTS.md")).is_ok()
+        || fs::symlink_metadata(root.join("AGENTS.local.md")).is_ok();
     if backup_pending(backup) {
-        return vec![
-            Step::waiting(NAME, "blocked", AFTER_BACKUP),
-            Step::waiting(SETTINGS, "blocked", AFTER_BACKUP),
-        ];
+        let mut steps = Vec::new();
+        if holds_agents {
+            steps.push(Step::waiting(PICKS, "blocked", AFTER_BACKUP));
+        } else {
+            steps.push(picks_none(root));
+        }
+        steps.push(Step::waiting(NAME, "blocked", AFTER_BACKUP));
+        steps.push(Step::waiting(SETTINGS, "blocked", AFTER_BACKUP));
+        return steps;
     }
     let pending = |step: &str| {
         install
             .iter()
             .any(|s| s.name == step && matches!(s.state, "ready" | "needs_decision"))
     };
+    let state_of = |step: &str| install.iter().find(|s| s.name == step).map(|s| s.state);
+    // The pick plans the generation writer, whose digest binds the profile and every file the
+    // generation step is still to write: with either to run, its digest would be stale.
+    let picks = if !holds_agents {
+        picks_none(root)
+    } else if state_of("generation") == Some("ready") {
+        Step::waiting(PICKS, "blocked", AFTER_INSTALL)
+    } else if state_of("profile") == Some("ready") {
+        Step::waiting(PICKS, "blocked", AFTER_PROFILE)
+    } else {
+        or_blocked(PICKS, agents_picks_step(root, shown))
+    };
     let agents = if install
         .iter()
         .any(|s| s.name == "generation" && s.state == "ready")
     {
         Step::waiting(NAME, "blocked", AFTER_INSTALL)
+    } else if matches!(picks.state, "needs_decision" | "conflict") {
+        // The text of `AGENTS.local.md` goes into `CLAUDE.local.md` through the pick `move`.
+        Step::waiting(NAME, "skip", AFTER_PICKS)
     } else {
         or_blocked(NAME, agents_local_merge_step(root, shown))
     };
@@ -1375,7 +1419,130 @@ fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> V
         SETTINGS,
         claude_settings_merge_step(root, shown, pending("claude-settings")),
     );
-    vec![agents, settings]
+    vec![picks, agents, settings]
+}
+
+/// The step name of the picks for a project that holds `AGENTS.md` or `AGENTS.local.md`.
+const PICKS: &str = "agents-picks";
+/// Why the personal-file merge skips while a pick is pending.
+const AFTER_PICKS: &str =
+    "the text of AGENTS.local.md goes into CLAUDE.local.md through the pick `move` of the agents-picks step";
+
+/// No pick is offered, but a project that holds only `.claude/AGENTS.md` is still warned: the
+/// first CLAUDE file the generation step writes makes Claude Code stop reading it.
+fn picks_none(root: &Path) -> Step {
+    let mut step = Step::waiting(
+        PICKS,
+        "skip",
+        "no AGENTS.md and no AGENTS.local.md in this project",
+    );
+    if let Some(warning) =
+        agents_local_merge::hidden_files_warning_except(root, "CLAUDE.md", &["AGENTS.md"])
+    {
+        step.preview = json!({"offer": "none", "warnings": [warning]});
+    }
+    step
+}
+
+/// The picks `move`, `leave` and `remove-originals` for a project that holds `AGENTS.md` or
+/// `AGENTS.local.md` (SPEC-20261122-claude-md-project-picks,
+/// SPEC-20261124-claude-md-product-next). Each choice prints the one command
+/// that applies it (`agents-merge-apply … --pick <id>`) and its own plan digest; nothing is
+/// written here. A pick that would be refused (a link, a file that is not text, a conflict) is not
+/// printed as a command and is named under `blocked`.
+///
+/// - `needs_decision`: the user picks one of the choices (`move` or `leave`).
+/// - `conflict`: `move` is refused; only `leave` remains.
+/// - `optional`: the text is in the CLAUDE files and `remove-originals` is the only choice; the
+///   preview still reads as up to date.
+/// - `unchanged`: `CLAUDE.md` already imports `AGENTS.md` or holds its text and no original can
+///   be deleted; nothing is offered.
+/// - `skip`: nothing to offer, or no generation request can be built (the generation step says
+///   why).
+fn agents_picks_step(root: &Path, shown: &str) -> Result<Step> {
+    let offer = agents_local_merge::picks::offer(root, || rebuilt_request(root))?;
+    let reason = offer["reason"].as_str().unwrap_or_default().to_string();
+    match offer["offer"].as_str() {
+        Some("picks" | "originals") => {}
+        Some("settled") => {
+            return Ok(Step {
+                name: PICKS,
+                state: "unchanged",
+                reason,
+                preview: json!({"offer": "settled"}),
+                plan_digest: None,
+                apply: None,
+            })
+        }
+        other => {
+            return Ok(Step {
+                name: PICKS,
+                state: "skip",
+                reason: if other == Some("unavailable") {
+                    format!("no pick can be planned: {reason}")
+                } else {
+                    reason
+                },
+                preview: json!({"offer": other}),
+                plan_digest: None,
+                apply: None,
+            })
+        }
+    }
+    let mut choices = Vec::new();
+    let mut blocked = Vec::new();
+    for c in offer["choices"].as_array().into_iter().flatten() {
+        let (Some(id), Some(digest)) = (c["id"].as_str(), c["plan_digest"].as_str()) else {
+            continue;
+        };
+        if c["state"] != "ready" {
+            blocked.push(json!({"id": id, "blocked": c["blocked"]}));
+            continue;
+        }
+        let mut words = argv("agents-merge-apply", shown, digest);
+        let at = words.len() - 2;
+        words.splice(at..at, ["--pick".to_string(), id.to_string()]);
+        choices.push(json!({
+            "id": id,
+            "recommended": c["recommended"],
+            "effect": c["effect"],
+            "plan_digest": digest,
+            "writes": c["writes"],
+            "deletes": c["deletes"],
+            "parts": c["parts"],
+            "warnings": c["warnings"],
+            "apply": {"argv": words, "stdin": Value::Null},
+        }));
+    }
+    // Every pick that writes is refused when only `leave` is still ready.
+    let refused = !blocked.is_empty() && choices.iter().all(|c| c["id"] == "leave");
+    let (state, reason) = if offer["offer"] == "originals" {
+        ("optional", reason.as_str())
+    } else if refused {
+        (
+            "conflict",
+            "every pick that writes is refused for the files named under blocked; only leave remains",
+        )
+    } else {
+        (
+            "needs_decision",
+            "the project holds AGENTS.md or AGENTS.local.md; the user picks move (recommended) or \
+             leave",
+        )
+    };
+    Ok(Step {
+        name: PICKS,
+        state,
+        reason: reason.into(),
+        preview: json!({
+            "offer": offer["offer"],
+            "warnings": offer["warnings"],
+            "blocked": blocked,
+            "choices": choices,
+        }),
+        plan_digest: None,
+        apply: None,
+    })
 }
 
 /// The settings merge (#2936 R8): what the user had set in the Go generation's
@@ -1475,8 +1642,26 @@ fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {
         Some("conflict") => "conflict",
         _ => "blocked",
     };
+    // A plan that warns Claude Code would stop reading `AGENTS.md` prints one more placeholder,
+    // the confirmation token of that plan; the caller fills it in only after the user said yes
+    // to the warning, and the apply refuses without it. It sits before the permission
+    // reference, which stays the last word.
+    let needs_confirmation = plan["needs_confirmation"].as_bool() == Some(true);
     let apply = match (&digest, state) {
-        (Some(d), "needs_decision") => Some((argv("agents-merge-apply", shown, d), Value::Null)),
+        (Some(d), "needs_decision") => {
+            let mut words = argv("agents-merge-apply", shown, d);
+            if needs_confirmation {
+                let at = words.len() - 2;
+                words.splice(
+                    at..at,
+                    [
+                        "--confirm-warnings".to_string(),
+                        CONFIRM_PLACEHOLDER.to_string(),
+                    ],
+                );
+            }
+            Some((words, Value::Null))
+        }
         _ => None,
     };
     Ok(Step {
@@ -1487,8 +1672,13 @@ fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {
             "action": plan["action"],
             "source": plan["source"],
             "target": plan["target"],
+            "gitignore": plan["gitignore"],
             "body": plan["body"],
             "commit_notice": plan["commit_notice"],
+            "warnings": plan["warnings"],
+            "needs_confirmation": plan["needs_confirmation"],
+            "confirm_token": plan["confirm_token"],
+            "line_endings": plan["line_endings"],
             "secret_suspects": plan["secret_suspects"],
         }),
         plan_digest: digest,
@@ -1615,19 +1805,14 @@ fn dead_update_lock(root: &Path) -> Option<String> {
 
 /// #2936 E1 (AUDIT #3117): how to take the update chain back, last applied first. Printed with
 /// every preview, because the order is not a matter of taste: `go-state-revert` refuses while the
-/// generation step's `AGENTS.md` is still in place ("revert refused: AGENTS.md is conflict"), and
-/// the generation step's `AGENTS.md` is a second receipt (`agents_receipt`) that its own undo does
+/// generation step's `CLAUDE.md` is still in place ("revert refused: CLAUDE.md is conflict"), and
+/// the generation step's instruction file is a second receipt (`agents_receipt`) that its own undo does
 /// not cover. Run in this order the project is back to its start bytes (what the steps added —
-/// receipts, `.moai.rust-<UTC>/`, the Codex and OMP files — stays). Each id is printed by the
-/// apply result of its step.
+/// receipts and `.moai.rust-<UTC>/` — stays). Each id is printed by the apply result of its step.
 fn undo_order() -> Value {
-    let none = "no revert command exists for this step; its files stay and do not block the commands below";
     json!({
         "rule": "undo the step applied last first; every command needs its own permission reference",
         "steps": [
-            {"step": "omp-hooks", "commands": [], "note": none},
-            {"step": "codex-config", "commands": [], "note": none},
-            {"step": "codex-hooks", "commands": [], "note": none},
             {"step": "hooks", "commands": [
                 "moai go-hooks-revert --receipt <receipt of the hooks step> --permission-reference <reference> <PROJECT>",
             ], "note": "for a hooks step that ran go-hooks-apply (the Go hook set); a hooks step that ran hooks-apply --host claude over an existing settings file printed its own `revert` (moai hooks-revert <PROJECT> --receipt <id> --permission-reference <reference>), and a first install has nothing to revert"},
@@ -1643,7 +1828,7 @@ fn undo_order() -> Value {
                 "moai go-settings-revert --receipt <receipt of the go-settings step> --permission-reference <reference> <PROJECT>",
             ]},
         ],
-        "stays": "what the commands above do not take away: the receipts under .moai-cli/receipts/, the Rust state's set-aside folder .moai.rust-<UTC>/, and what the three steps without a revert command wrote (.codex/, .omp/, .moai-cli/manifests/codex-config.json, codex-hooks.json, omp-hooks.json); remove those by hand only after reading them, nothing here deletes them",
+        "stays": "what the commands above do not take away: the receipts under .moai-cli/receipts/, and the Rust state's set-aside folder .moai.rust-<UTC>/; remove those by hand only after reading them, nothing here deletes them",
         "other_steps": "a step not listed (profile, claude-settings, github, the merge steps) prints its own revert or receipt in its apply result",
     })
 }
@@ -1676,7 +1861,7 @@ pub fn plan(project: &Path) -> Result<Value> {
     }
     let backup = vec![settings, state, reports];
     // A move still to make: every install preview would be stale after it.
-    let install = if backup_pending(&backup) {
+    let mut install: Vec<Step> = if backup_pending(&backup) {
         INSTALL
             .map(|n| Step::waiting(n, "blocked", AFTER_BACKUP))
             .into_iter()
@@ -1684,12 +1869,14 @@ pub fn plan(project: &Path) -> Result<Value> {
     } else {
         install_steps(&root, &shown, &detected)
     };
+    // The retired hosts are always in the preview, whatever the profile or the backup phase says.
+    install.extend(host_steps(&root));
     let merge = merge_steps(&root, &shown, &backup, &install);
     let all_unchanged = backup
         .iter()
         .chain(&install)
         .chain(&merge)
-        .all(|s| s.state == "unchanged" || s.state == "skip");
+        .all(|s| matches!(s.state, "unchanged" | "skip" | "optional"));
     let phase = |name: &str, reason: &str, steps: &[Step]| {
         json!({
             "phase": name,
@@ -1724,6 +1911,7 @@ mod tests {
     fn a_workflow_reference_in_the_earlier_state_folder_follows_the_state() {
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path();
+        fs::create_dir(root.join(state_root::EARLIER_PROJECT_DIR)).unwrap();
         let earlier = format!("{}/workflows/moai/", state_root::EARLIER_PROJECT_DIR);
         let moved = format!("{}/workflows/moai/", state_root::MOAI_DIR);
         // The state has not moved: as recorded.

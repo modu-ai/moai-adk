@@ -1,0 +1,2611 @@
+//! SPEC-20261123-hook-bash-boundary: `moai hook bash-boundary` (H2). Every case runs the real
+//! binary against a temporary world: a primary checkout on the integration branch, linked
+//! worktrees (the session's own, a sibling, one on `main`, one nested in the primary), a link that
+//! leads out of the session checkout, a scratch folder and a plain folder, all under a temporary
+//! HOME. The world lives under this crate's `target/` folder because the system temporary folder
+//! is itself a boundary root of the handler. No command of a case is ever executed: the hook only
+//! judges the text. The case tables are the only place the bypass shapes are written down.
+#![cfg(unix)]
+mod common;
+
+use serde_json::{json, Value};
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::time::Instant;
+
+/// A folder that exists on no machine and lies outside every boundary root.
+const OUT: &str = "/opt/moai-boundary-outside";
+const CLASSES: [&str; 5] = [
+    "delete-outside",
+    "git-state",
+    "protected-ref",
+    "hook-skip",
+    "unreadable",
+];
+
+// ---------------------------------------------------------------- the world
+
+#[derive(Clone, Copy)]
+enum S {
+    /// The session's own linked worktree, on `lane/own`.
+    Own,
+    /// A session in a subfolder of its own worktree.
+    Sub,
+    /// A session in the primary checkout, on the integration branch `NeXT`.
+    Pri,
+    /// A session in a linked worktree on the protected branch `main`.
+    Main,
+}
+
+struct World {
+    _tmp: tempfile::TempDir,
+    root: PathBuf,
+    home: PathBuf,
+    primary: PathBuf,
+    own: PathBuf,
+    other: PathBuf,
+    inner: PathBuf,
+    main_wt: PathBuf,
+    elsewhere: PathBuf,
+    scratch: PathBuf,
+    plain: PathBuf,
+}
+
+fn git(dir: &Path, args: &[&str]) {
+    let out = Command::new("git")
+        .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
+        .args([
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+        ])
+        .args(args)
+        .current_dir(dir)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env("LC_ALL", "C")
+        .stdin(Stdio::null())
+        .output()
+        .expect("spawn git");
+    assert!(
+        out.status.success(),
+        "git {args:?} failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+/// Whether a path lies under a temporary root of the handler (D-3). The world must lie outside
+/// every one of them, or the folders the cases call "outside" would be inside.
+fn under_a_temporary_root(path: &Path) -> bool {
+    ["/tmp", "/private/tmp", "/var/tmp", "/private/var/tmp"]
+        .iter()
+        .any(|root| path.starts_with(root))
+        || path.starts_with("/var/folders")
+        || path.starts_with("/private/var/folders")
+}
+
+/// The variable that names a folder for the fixture world when the checkout itself lies under a
+/// temporary root (an audit copy in `/tmp`). The caller names it; the test never picks one in the
+/// real HOME.
+const WORLD_BASE_VAR: &str = "MOAI_BOUNDARY_TEST_WORLD";
+
+/// Where the world is built, as a pure function of where the checkout lies: this crate's
+/// `target/` folder; a checkout under a temporary root needs a folder outside every temporary
+/// root that the caller names, and without one the world cannot be built (the cases call a
+/// sibling folder "outside", which a temporary root would make "inside").
+fn fixture_base_in(manifest: &Path, named: Option<&Path>) -> Result<PathBuf, String> {
+    let base = manifest.join("target").join("hook-bash-boundary-tests");
+    if !under_a_temporary_root(&base) {
+        return Ok(base);
+    }
+    match named {
+        Some(dir) if !under_a_temporary_root(dir) => Ok(dir.to_path_buf()),
+        Some(dir) => Err(format!(
+            "{WORLD_BASE_VAR} names {}, which lies under a temporary root",
+            dir.display()
+        )),
+        None => Err(format!(
+            "this checkout lies under a temporary root ({}); set {WORLD_BASE_VAR} to a folder \
+             outside every temporary root, or run the test from a checkout outside them",
+            manifest.display()
+        )),
+    }
+}
+
+fn fixture_base() -> PathBuf {
+    let manifest = fs::canonicalize(env!("CARGO_MANIFEST_DIR")).unwrap();
+    let named = std::env::var_os(WORLD_BASE_VAR).map(PathBuf::from);
+    fixture_base_in(&manifest, named.as_deref()).unwrap_or_else(|why| panic!("{why}"))
+}
+
+impl World {
+    fn new() -> World {
+        let base = fixture_base();
+        fs::create_dir_all(&base).unwrap();
+        let tmp = tempfile::Builder::new()
+            .prefix("hbb-")
+            .tempdir_in(&base)
+            .unwrap();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        let primary = root.join("primary");
+        let home = root.join("home");
+        let elsewhere = root.join("elsewhere");
+        let scratch = root.join("scratch");
+        let plain = root.join("plain");
+        for dir in [&primary, &home, &elsewhere, &scratch, &plain] {
+            fs::create_dir_all(dir).unwrap();
+        }
+        fs::write(elsewhere.join("x"), "x").unwrap();
+        git(&primary, &["init", "-q", "-b", "NeXT"]);
+        fs::create_dir_all(moai_cli::state_root::path(&primary, "")).unwrap();
+        fs::write(
+            moai_cli::state_root::path(&primary, "project.yaml"),
+            "{\"schema_version\":2,\"project_id\":\"demo\",\"work_flow\":{\"flow\":\"m-flow\",\"integration_branch\":\"NeXT\"}}\n",
+        )
+        .unwrap();
+        fs::create_dir_all(primary.join("src")).unwrap();
+        fs::create_dir_all(primary.join("build")).unwrap();
+        fs::write(primary.join("src/a.txt"), "a\n").unwrap();
+        fs::write(primary.join("build/x"), "x\n").unwrap();
+        git(&primary, &["add", "-A"]);
+        git(&primary, &["commit", "-q", "-m", "fixture"]);
+        git(&primary, &["branch", "main"]);
+        let own = root.join("wt-own");
+        let other = root.join("wt-other");
+        let main_wt = root.join("wt-main");
+        let inner = primary.join(".claude/worktrees/inner");
+        git(
+            &primary,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                "lane/own",
+                own.to_str().unwrap(),
+            ],
+        );
+        git(
+            &primary,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                "lane/other",
+                other.to_str().unwrap(),
+            ],
+        );
+        git(
+            &primary,
+            &["worktree", "add", "-q", main_wt.to_str().unwrap(), "main"],
+        );
+        git(
+            &primary,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                "lane/inner",
+                inner.to_str().unwrap(),
+            ],
+        );
+        std::os::unix::fs::symlink(&elsewhere, own.join("escape")).unwrap();
+        World {
+            _tmp: tmp,
+            root,
+            home,
+            primary,
+            own,
+            other,
+            inner,
+            main_wt,
+            elsewhere,
+            scratch,
+            plain,
+        }
+    }
+
+    fn fill(&self, text: &str) -> String {
+        let pairs: [(&str, String); 10] = [
+            ("{OWN}", self.own.display().to_string()),
+            ("{PRI}", self.primary.display().to_string()),
+            ("{OTH}", self.other.display().to_string()),
+            ("{INNER}", self.inner.display().to_string()),
+            ("{MAIN}", self.main_wt.display().to_string()),
+            ("{ESC}", self.own.join("escape").display().to_string()),
+            ("{ELSE}", self.elsewhere.display().to_string()),
+            ("{SCR}", self.scratch.display().to_string()),
+            ("{HOME}", self.home.display().to_string()),
+            ("{OUT}", OUT.to_owned()),
+        ];
+        let mut out = text.to_owned();
+        for (key, value) in pairs {
+            out = out.replace(key, &value);
+        }
+        out
+    }
+
+    /// The folder the hook process starts in and the `cwd` of the hook input for a session.
+    fn session(&self, s: S) -> (PathBuf, PathBuf) {
+        match s {
+            S::Own => (self.own.clone(), self.own.clone()),
+            S::Sub => (self.own.clone(), self.own.join("src")),
+            S::Pri => (self.primary.clone(), self.primary.clone()),
+            S::Main => (self.main_wt.clone(), self.main_wt.clone()),
+        }
+    }
+
+    fn input(&self, command: &Value, cwd: &Path, mode: &str) -> Value {
+        json!({
+            "session_id": "fixture",
+            "cwd": cwd,
+            "scratchpad_dir": self.scratch,
+            "permission_mode": mode,
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": { "command": command },
+        })
+    }
+
+    fn spawn(&self, proc_cwd: &Path, stdin: &[u8], project_dir: Option<&Path>) -> Run {
+        let mut cmd = Command::new(common::MOAI_BIN);
+        cmd.args(["hook", "bash-boundary"])
+            .current_dir(proc_cwd)
+            .env("HOME", &self.home)
+            .env_remove("CLAUDE_PROJECT_DIR")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        if let Some(dir) = project_dir {
+            cmd.env("CLAUDE_PROJECT_DIR", dir);
+        }
+        let mut child = cmd.spawn().unwrap();
+        common::feed_stdin(&mut child, stdin);
+        let out = child.wait_with_output().unwrap();
+        Run {
+            code: out.status.code().unwrap(),
+            stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+        }
+    }
+
+    fn run(&self, s: S, command: &str, mode: &str) -> Run {
+        let (proc_cwd, cwd) = self.session(s);
+        let input = self.input(&Value::String(self.fill(command)), &cwd, mode);
+        self.spawn(&proc_cwd, input.to_string().as_bytes(), None)
+    }
+
+    fn verdict(&self, s: S, command: &str) -> Option<String> {
+        let run = self.run(s, command, "default");
+        parse_verdict(&run, command)
+    }
+}
+
+struct Run {
+    code: i32,
+    stdout: String,
+    stderr: String,
+}
+
+/// `None` is no decision; `Some(class)` is a deny with that class word. Any other output fails.
+fn parse_verdict(run: &Run, what: &str) -> Option<String> {
+    assert_eq!(run.code, 0, "exit code for {what:?}: {}", run.stderr);
+    assert!(run.stderr.is_empty(), "stderr for {what:?}: {}", run.stderr);
+    if run.stdout.trim().is_empty() {
+        return None;
+    }
+    let value: Value = serde_json::from_str(run.stdout.trim())
+        .unwrap_or_else(|e| panic!("stdout for {what:?} is not JSON ({e}): {}", run.stdout));
+    let object = value.as_object().expect("an object");
+    assert_eq!(object.len(), 1, "one top key for {what:?}");
+    let inner = object["hookSpecificOutput"]
+        .as_object()
+        .expect("hookSpecificOutput");
+    let mut keys: Vec<&str> = inner.keys().map(String::as_str).collect();
+    keys.sort_unstable();
+    assert_eq!(
+        keys,
+        [
+            "hookEventName",
+            "permissionDecision",
+            "permissionDecisionReason"
+        ],
+        "keys for {what:?}"
+    );
+    assert_eq!(inner["hookEventName"], "PreToolUse");
+    assert_eq!(
+        inner["permissionDecision"], "deny",
+        "only deny is ever printed"
+    );
+    let reason = inner["permissionDecisionReason"]
+        .as_str()
+        .expect("a reason");
+    let rest = reason
+        .strip_prefix("moai-boundary/")
+        .unwrap_or_else(|| panic!("reason prefix for {what:?}: {reason}"));
+    let class = rest.split(':').next().unwrap().to_owned();
+    assert!(
+        CLASSES.contains(&class.as_str()),
+        "class word {class:?} for {what:?}"
+    );
+    Some(class)
+}
+
+// -------------------------------------------------------------- case tables
+
+struct Case {
+    s: S,
+    cmd: String,
+    want: Option<&'static str>,
+}
+
+fn a(s: S, cmd: &str) -> Case {
+    Case {
+        s,
+        cmd: cmd.to_owned(),
+        want: None,
+    }
+}
+
+fn d(s: S, cmd: &str, class: &'static str) -> Case {
+    Case {
+        s,
+        cmd: cmd.to_owned(),
+        want: Some(class),
+    }
+}
+
+fn run_table(w: &World, name: &str, cases: &[Case]) {
+    let allowed = cases.iter().filter(|c| c.want.is_none()).count();
+    let denied = cases.len() - allowed;
+    assert!(
+        allowed >= 12 && denied >= 12,
+        "{name}: {allowed} allowed and {denied} denied cases"
+    );
+    let mut bad = Vec::new();
+    for case in cases {
+        let got = w.verdict(case.s, &case.cmd);
+        if got.as_deref() != case.want {
+            bad.push(format!(
+                "  {:?}: want {:?}, got {:?}",
+                case.cmd, case.want, got
+            ));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{name}: {} of {} cases differ\n{}",
+        bad.len(),
+        cases.len(),
+        bad.join("\n")
+    );
+}
+
+fn delete_cases() -> Vec<Case> {
+    use S::{Own, Pri, Sub};
+    let de = "delete-outside";
+    vec![
+        a(Own, "rm -rf {OWN}/build"),
+        a(Own, "rm -rf build"),
+        a(Own, "rm -f src/a.txt"),
+        a(Own, "rm -rf /tmp/moai-x/cache"),
+        a(Own, "rm -rf /private/tmp/moai-x"),
+        a(Own, "rm -rf {SCR}/work"),
+        a(Own, "cd {OWN}/src && rm -rf ../build"),
+        a(Own, "rm -rf build/{a,b}"),
+        a(Own, "rm -rf ./build ./dist"),
+        a(Own, "rm -rf /private/var/folders/ab/cdef12/T/moai-xyz"),
+        a(Own, "rmdir build"),
+        a(Own, "find . -name '*.o' -delete"),
+        a(Own, "find build -type f -delete"),
+        a(Own, "find /tmp/moai-x -exec rm -f {} +"),
+        a(Own, "rm -rf \"{OWN}/build dir\""),
+        a(Own, "ls -la && echo done"),
+        a(Own, "rm -rf build/*"),
+        a(Own, "(cd {OWN}/src; rm -f a.txt)"),
+        a(Sub, "rm -rf ../build"),
+        a(Own, "rm -rf /tmp/moai-x*"),
+        a(Pri, "rm -rf {PRI}/build"),
+        a(Own, "rm -f {ESC}"),
+        d(Own, "rm -rf {OUT}/x", de),
+        d(Own, "rm -rf /", de),
+        d(Own, "rm -rf /*", de),
+        d(Own, "rm -rf {OWN}", de),
+        d(Own, "rm -rf .", de),
+        d(Own, "rm -rf {OWN}/.git", de),
+        d(Own, "rm -rf {OWN}/..", de),
+        d(Own, "rm -rf {OTH}/src", de),
+        d(Own, "rm -rf {PRI}/src", de),
+        d(Own, "rm -rf {ESC}/x", de),
+        d(Own, "rm -rf {ESC}/", de),
+        d(Own, "rm -rf ~/x", de),
+        d(Own, "rm -rf /tmp", de),
+        d(Own, "rm -rf /tmp/../etc", de),
+        d(Own, "cd {OUT} && rm -rf x", de),
+        d(Own, "cd /tmp && rm -rf ../etc", de),
+        d(Pri, "rm -rf {PRI}/.claude/worktrees", de),
+        d(Pri, "rm -rf {INNER}", de),
+        d(Pri, "rm -rf {PRI}", de),
+        d(Own, "find / -delete", de),
+        d(Own, "find . -delete", de),
+        d(Own, "find {OUT} -name x -exec rm -rf {} +", de),
+        d(Own, "rm -rf /tmp/*", de),
+        d(Own, "rm -rf {OWN}/src/../../x", de),
+        d(Own, "rm -rf .*", de),
+        d(Own, "shred {OUT}/y", de),
+        d(Own, "unlink {OUT}/y", de),
+        d(Own, "rm -rf {OWN}/.git/hooks", de),
+        d(Own, "rm -rf {OWN}/build /etc/x", de),
+    ]
+}
+
+fn git_state_cases() -> Vec<Case> {
+    use S::{Own, Pri};
+    let gs = "git-state";
+    vec![
+        a(Own, "git status"),
+        a(Own, "git log --oneline -3"),
+        a(Own, "git diff"),
+        a(Own, "git add src/a.txt"),
+        a(Own, "git commit -m x"),
+        a(Own, "git checkout -b feature/x"),
+        a(Own, "git -C {OWN} status"),
+        a(Own, "git -C {OTH} status"),
+        a(Own, "git -C {PRI} log -1"),
+        a(Own, "git -C {OTH} diff"),
+        a(Own, "git stash list"),
+        a(Own, "git branch"),
+        a(Own, "git branch --show-current"),
+        a(Own, "git worktree list"),
+        a(Own, "git -C {PRI} rev-parse HEAD"),
+        a(Own, "git switch -c feat/y"),
+        a(Own, "git reset --hard HEAD"),
+        a(Own, "git stash"),
+        a(Own, "git rebase main"),
+        a(Own, "git clean -fd"),
+        a(Own, "git merge main"),
+        a(Pri, "git status"),
+        a(Pri, "git add src/a.txt"),
+        a(Pri, "git fetch origin"),
+        a(Pri, "git restore src/a.txt"),
+        a(Pri, "git rm --cached src/a.txt"),
+        a(Pri, "git diff --stat"),
+        a(Pri, "git log -1"),
+        d(Own, "git -C {OTH} commit -m x", gs),
+        d(Own, "git -C {PRI} checkout x", gs),
+        d(Own, "git -C {PRI} reset --hard", gs),
+        d(Own, "cd {OTH} && git add src/a.txt", gs),
+        d(
+            Own,
+            "git --git-dir={PRI}/.git --work-tree={PRI} checkout x",
+            gs,
+        ),
+        d(Own, "git --work-tree={OTH} add .", gs),
+        d(Own, "GIT_WORK_TREE={OTH} git add .", gs),
+        d(Own, "git worktree remove {OTH}", gs),
+        d(Own, "git -C {INNER} reset --hard", gs),
+        d(Own, "git -C {PRI} stash", gs),
+        d(Own, "git -C {OTH} clean -fd", gs),
+        d(Own, "git -C {PRI} merge x", gs),
+        d(Pri, "git -C {OWN} add .", gs),
+        d(Pri, "git checkout -b x", gs),
+        d(Pri, "git switch other", gs),
+        d(Pri, "git reset --hard HEAD~1", gs),
+        d(Pri, "git rebase main", gs),
+        d(Pri, "git stash", gs),
+        d(Pri, "git stash push", gs),
+        d(Pri, "git clean -fd", gs),
+        d(Pri, "git merge x", gs),
+        d(Pri, "git pull", gs),
+        d(Pri, "git cherry-pick abc", gs),
+        d(Pri, "git revert abc", gs),
+        d(Pri, "git am p.patch", gs),
+        d(Pri, "git checkout -- src/a.txt", gs),
+    ]
+}
+
+fn protected_ref_cases() -> Vec<Case> {
+    use S::{Main, Own, Pri};
+    let pr = "protected-ref";
+    vec![
+        a(Own, "git branch feature/new"),
+        a(Own, "git branch -D lane/old"),
+        a(Own, "git push origin lane/own"),
+        a(Own, "git push -u origin HEAD"),
+        a(Own, "git push origin lane/own:lane/own"),
+        a(Own, "git branch -m old new"),
+        a(Own, "git update-ref refs/heads/lane/own HEAD"),
+        a(Own, "git fetch origin"),
+        a(Own, "git fetch origin NeXT:refs/remotes/origin/NeXT"),
+        a(Own, "git checkout -B lane/x"),
+        a(Own, "git switch -c feat"),
+        a(Own, "git push origin --tags"),
+        a(Own, "git commit -m \"mention NeXT and update-ref\""),
+        a(Own, "git log NeXT..HEAD"),
+        a(Own, "git branch --list NeXT"),
+        a(Own, "git diff NeXT"),
+        a(Own, "git merge NeXT"),
+        a(Own, "git push origin lane/own --force-with-lease"),
+        a(Main, "git status"),
+        a(Main, "git log -1"),
+        a(Main, "git add src/a.txt"),
+        a(Main, "git reset -- src/a.txt"),
+        a(Pri, "git add src/a.txt"),
+        d(Own, "git update-ref refs/heads/NeXT HEAD", pr),
+        d(Own, "git update-ref -d refs/heads/NeXT", pr),
+        d(Own, "git branch -f NeXT HEAD", pr),
+        d(Own, "git branch -D NeXT", pr),
+        d(Own, "git branch -m NeXT old", pr),
+        d(Own, "git branch -M main", pr),
+        d(Own, "git push origin NeXT", pr),
+        d(Own, "git push origin HEAD:NeXT", pr),
+        d(Own, "git push origin :NeXT", pr),
+        d(Own, "git push --force origin main", pr),
+        d(Own, "git push origin +x:master", pr),
+        d(Own, "git push --delete origin NeXT", pr),
+        d(Own, "git fetch origin x:NeXT", pr),
+        d(Own, "git checkout -B NeXT", pr),
+        d(Own, "git switch -C main", pr),
+        d(Own, "git symbolic-ref refs/heads/NeXT refs/heads/x", pr),
+        d(Own, "git push --mirror", pr),
+        d(Own, "git push --all", pr),
+        d(Own, "git branch --force master", pr),
+        d(Own, "git branch -f nExT HEAD", pr),
+        d(Own, "git push origin refs/heads/NeXT", pr),
+        d(Own, "git worktree add -B NeXT {OWN}/../x", pr),
+        d(Main, "git commit -m x", pr),
+        d(Main, "git reset HEAD~1", pr),
+        d(Main, "git merge x", pr),
+        d(Main, "git pull", pr),
+        d(Main, "git rebase x", pr),
+        d(Main, "git push", pr),
+        d(Main, "git push origin HEAD", pr),
+        d(Main, "git cherry-pick abc", pr),
+        d(Main, "git revert abc", pr),
+        d(Main, "git commit --amend --no-edit", pr),
+        d(Pri, "git commit -m x", pr),
+        d(Pri, "git commit --amend", pr),
+        d(Pri, "git push", pr),
+    ]
+}
+
+fn hook_skip_cases() -> Vec<Case> {
+    use S::Own;
+    let hs = "hook-skip";
+    vec![
+        a(Own, "git commit -m x"),
+        a(Own, "git commit -am x"),
+        a(Own, "git commit -m n"),
+        a(Own, "git commit -mn"),
+        a(Own, "git commit -m \"--no-verify\""),
+        a(Own, "git commit -m \"fix: never use --no-verify\""),
+        a(Own, "git commit --amend --no-edit"),
+        a(Own, "git commit --allow-empty -m x"),
+        a(Own, "git push -n origin lane/own"),
+        a(Own, "git merge -n main"),
+        a(Own, "git config user.name x"),
+        a(Own, "git config --get core.hooksPath"),
+        a(Own, "git config core.hooksPath"),
+        a(Own, "git -c user.name=x commit -m y"),
+        a(Own, "git commit --verify -m x"),
+        a(Own, "git commit -F msg.txt"),
+        a(Own, "git commit -S -m x"),
+        a(Own, "git commit -m \"$(cat <<'EOF'\nsubject\n\nbody with --no-verify words\nEOF\n)\""),
+        d(Own, "git commit --no-verify -m x", hs),
+        d(Own, "git commit -n -m x", hs),
+        d(Own, "git commit -nm x", hs),
+        d(Own, "git commit -an -m x", hs),
+        d(Own, "git commit --no-ver -m x", hs),
+        d(Own, "git commit --no-v -m x", hs),
+        d(Own, "git -c core.hooksPath=/dev/null commit -m x", hs),
+        d(Own, "git -c core.hookspath=x commit -m x", hs),
+        d(Own, "git config core.hooksPath /x", hs),
+        d(Own, "git config --global core.hooksPath /x", hs),
+        d(Own, "git config --unset core.hooksPath", hs),
+        d(Own, "git push --no-verify origin lane/own", hs),
+        d(Own, "git merge --no-verify main", hs),
+        d(Own, "git rebase --no-verify main", hs),
+        d(Own, "git cherry-pick --no-verify abc", hs),
+        d(Own, "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/x git commit -m x", hs),
+        d(Own, "export GIT_CONFIG_PARAMETERS=\"'core.hookspath'='/x'\"; git commit -m x", hs),
+        d(Own, "git --config-env=core.hooksPath=HP commit -m x", hs),
+        d(Own, "git commit -a --no-verify", hs),
+    ]
+}
+
+fn unreadable_cases() -> Vec<Case> {
+    use S::Own;
+    let ur = "unreadable";
+    vec![
+        a(Own, "echo $HOME"),
+        a(Own, "ls $X"),
+        a(Own, "cat $(ls)"),
+        a(Own, "git commit -m \"$(date)\""),
+        a(Own, "git commit -m \"$MSG\""),
+        a(Own, "git log --since=$S"),
+        a(Own, "git status $X"),
+        a(Own, "cargo test --test foo"),
+        a(Own, "grep -r \"$PATTERN\" src"),
+        a(Own, "cat <<'EOF'\nrm -rf $X\nEOF"),
+        a(Own, "echo \"rm -rf $X\""),
+        a(Own, "git add \"$FILE\""),
+        a(Own, "git commit -F \"$F\""),
+        a(Own, "cp $A $B"),
+        a(Own, "moai card next"),
+        a(Own, "echo 'rm -rf /'"),
+        a(Own, "printf '%s\\n' \"rm -rf /\""),
+        a(Own, "git commit -m 'rm -rf /'"),
+        a(Own, ": ${X:=y}"),
+        a(Own, "FOO=$(pwd) cargo build"),
+        a(Own, "bash script.sh"),
+        a(Own, "source env.sh"),
+        a(Own, "./tools/run.sh $ARG"),
+        a(Own, "git -C $D status"),
+        a(Own, "git log $(git rev-parse HEAD~1)"),
+        d(Own, "rm -rf $X", ur),
+        d(Own, "rm -rf \"$HOME/x\"", ur),
+        d(Own, "rm -rf ${X}/y", ur),
+        d(Own, "rm -rf $(echo /x)", ur),
+        d(Own, "rm -rf `pwd`/x", ur),
+        d(Own, "rm -rf build/$(echo x)", ur),
+        d(Own, "cd $X && rm -rf y", ur),
+        d(
+            Own,
+            "cd \"$(git rev-parse --show-toplevel)\" && rm -rf build",
+            ur,
+        ),
+        d(Own, "$X -rf y", ur),
+        d(Own, "git $SUB status", ur),
+        d(Own, "git push origin $B", ur),
+        d(Own, "git -C $D commit -m x", ur),
+        d(Own, "git commit $F", ur),
+        d(Own, "git branch -D $B", ur),
+        d(Own, "git ci -m x", ur),
+        d(Own, "eval \"$X\"", ur),
+        d(Own, "eval rm -rf $X", ur),
+        d(Own, "bash -c \"$X\"", ur),
+        d(Own, "sh -c 'rm -rf $X'", ur),
+        d(Own, "xargs rm -rf", ur),
+        d(Own, "find . -name x | xargs rm", ur),
+        d(Own, "echo x | sh", ur),
+        d(Own, "echo x | bash -s", ur),
+        d(Own, "rm -rf $(pwd)/../x", ur),
+        d(Own, "X=/ ; rm -rf $X", ur),
+        d(Own, "export D=/; rm -rf $D/etc", ur),
+        d(Own, "for d in a b; do rm -rf $d; done", ur),
+        d(Own, "rm -rf {OWN}/build $EXTRA", ur),
+        d(Own, "GIT_DIR=$D git commit -m x", ur),
+        d(Own, "git commit -m x $EXTRA", ur),
+        d(Own, "rm -rf \"build", ur),
+        d(Own, "f() { rm -rf x; }; f", ur),
+        d(Own, "case $x in a) rm -rf y;; esac", ur),
+        d(Own, "rm -rf <(echo x)", ur),
+        d(Own, "GIT_CONFIG_GLOBAL=/tmp/x git commit -m y", ur),
+    ]
+}
+
+/// Every denied command of the tables, for the pre-scan superset check.
+fn all_cases() -> Vec<Case> {
+    let mut all = delete_cases();
+    all.extend(git_state_cases());
+    all.extend(protected_ref_cases());
+    all.extend(hook_skip_cases());
+    all.extend(unreadable_cases());
+    all.extend(audit_denied_cases());
+    all.extend(second_audit_denied_cases());
+    all.extend(third_audit_denied_cases());
+    all.extend(fourth_audit_denied_cases());
+    all.extend(fifth_audit_denied_cases());
+    all
+}
+
+// ------------------------------------------------------------- AC-1 .. AC-3
+
+#[test]
+fn ac1_delete_table() {
+    run_table(&World::new(), "delete", &delete_cases());
+}
+
+#[test]
+fn ac1_git_state_table() {
+    run_table(&World::new(), "git-state", &git_state_cases());
+}
+
+#[test]
+fn ac1_protected_ref_table() {
+    run_table(&World::new(), "protected-ref", &protected_ref_cases());
+}
+
+#[test]
+fn ac1_hook_skip_table() {
+    run_table(&World::new(), "hook-skip", &hook_skip_cases());
+}
+
+#[test]
+fn ac1_unreadable_table() {
+    run_table(&World::new(), "unreadable", &unreadable_cases());
+}
+
+#[test]
+fn ac2_outside_a_moai_project_nothing_is_printed_for_any_case() {
+    let w = World::new();
+    for case in all_cases().iter().filter(|c| c.want.is_some()).step_by(3) {
+        let input = w.input(&Value::String(w.fill(&case.cmd)), &w.plain, "default");
+        let run = w.spawn(&w.plain, input.to_string().as_bytes(), None);
+        assert_eq!(run.code, 0, "{:?}", case.cmd);
+        assert!(
+            run.stdout.is_empty(),
+            "stdout for {:?}: {}",
+            case.cmd,
+            run.stdout
+        );
+        assert!(
+            run.stderr.is_empty(),
+            "stderr for {:?}: {}",
+            case.cmd,
+            run.stderr
+        );
+    }
+}
+
+#[test]
+fn ac2_a_denial_has_exactly_the_three_fields_and_an_allowed_case_prints_nothing() {
+    let w = World::new();
+    let denied = w.run(S::Own, "rm -rf {OUT}/x", "default");
+    assert_eq!(
+        parse_verdict(&denied, "deny").as_deref(),
+        Some("delete-outside")
+    );
+    assert_eq!(denied.stdout.trim().lines().count(), 1, "one line of JSON");
+    assert!(!denied.stdout.contains("\"ask\"") && !denied.stdout.contains("\"allow\""));
+    let allowed = w.run(S::Own, "ls -la", "default");
+    assert!(allowed.stdout.is_empty() && allowed.stderr.is_empty() && allowed.code == 0);
+}
+
+#[test]
+fn ac3_other_tools_and_other_input_shapes_get_no_decision() {
+    let w = World::new();
+    let (proc_cwd, cwd) = w.session(S::Own);
+    let bad = "rm -rf /opt/moai-boundary-outside/x";
+    let mut inputs: Vec<Value> = Vec::new();
+    let mut other_tool = w.input(&json!(bad), &cwd, "default");
+    other_tool["tool_name"] = json!("Edit");
+    inputs.push(other_tool);
+    for command in [
+        json!(null),
+        json!(7),
+        json!([bad]),
+        json!({"c": bad}),
+        json!(""),
+    ] {
+        inputs.push(w.input(&command, &cwd, "default"));
+    }
+    let mut missing = w.input(&json!(bad), &cwd, "default");
+    missing["tool_input"]
+        .as_object_mut()
+        .unwrap()
+        .remove("command");
+    inputs.push(missing);
+    for input in inputs {
+        let run = w.spawn(&proc_cwd, input.to_string().as_bytes(), None);
+        assert_eq!(parse_verdict(&run, &input.to_string()), None, "{input}");
+    }
+}
+
+// ------------------------------------------------------------- AC-4 .. AC-7
+
+#[test]
+fn ac4_boundary_roots_and_a_literal_cd() {
+    let w = World::new();
+    let cases = [
+        a(S::Own, "rm -rf {SCR}/deep/er"),
+        a(S::Own, "rm -rf /var/tmp/moai-x"),
+        a(S::Sub, "cd .. && rm -rf build"),
+        a(S::Own, "cd /tmp && rm -rf moai-x"),
+        a(S::Own, "pushd {OWN}/src && rm -rf ../build; popd"),
+        d(S::Own, "rm -rf {SCR}", "delete-outside"),
+        d(S::Own, "rm -rf /var/tmp", "delete-outside"),
+        d(S::Own, "cd /tmp; rm -rf ../x", "delete-outside"),
+        d(S::Sub, "cd ../.. && rm -rf wt-other", "delete-outside"),
+        d(S::Own, "rm -rf {ELSE}/x", "delete-outside"),
+        d(S::Own, "rm -rf {ESC}/x", "delete-outside"),
+        d(S::Own, "rm -rf {OWN}/.git", "delete-outside"),
+        d(S::Own, "cd {OWN} && rm -rf .git", "delete-outside"),
+        d(
+            S::Own,
+            "cd {OWN}/src && rm -rf ../../wt-other",
+            "delete-outside",
+        ),
+    ];
+    for case in cases {
+        let got = w.verdict(case.s, &case.cmd);
+        assert_eq!(got.as_deref(), case.want, "{:?}", case.cmd);
+    }
+}
+
+#[test]
+fn ac4_the_project_folder_names_the_checkout_when_cwd_left_the_repository() {
+    let w = World::new();
+    // The session started in its own worktree (CLAUDE_PROJECT_DIR) and the shell moved into a
+    // sibling worktree: the sibling is a checkout of the same repository, so it counts as the
+    // session checkout there (the gap R-3 of the SPEC). A folder of another repository does not.
+    let foreign = w.root.join("foreign");
+    fs::create_dir_all(&foreign).unwrap();
+    git(&foreign, &["init", "-q", "-b", "main"]);
+    fs::create_dir_all(foreign.join("data")).unwrap();
+    fs::write(foreign.join("data/f"), "f").unwrap();
+    git(&foreign, &["add", "-A"]);
+    git(&foreign, &["commit", "-q", "-m", "foreign"]);
+    let input = w.input(&json!("rm -rf data"), &foreign, "default");
+    let run = w.spawn(&w.own, input.to_string().as_bytes(), Some(&w.own));
+    assert_eq!(
+        parse_verdict(&run, "foreign cwd").as_deref(),
+        Some("delete-outside")
+    );
+    let input = w.input(&json!("rm -rf build"), &w.other, "default");
+    let run = w.spawn(&w.own, input.to_string().as_bytes(), Some(&w.own));
+    assert_eq!(parse_verdict(&run, "sibling cwd"), None);
+}
+
+#[test]
+fn ac5_git_state_by_session_kind() {
+    let w = World::new();
+    let cases = [
+        a(S::Own, "git -C {OTH} log -1"),
+        a(S::Own, "git -C {OTH} status --short"),
+        a(S::Own, "git -C {OWN} commit -m x"),
+        d(S::Own, "git -C {OTH} add .", "git-state"),
+        d(
+            S::Own,
+            "git --git-dir {PRI}/.git --work-tree {PRI} reset --hard",
+            "git-state",
+        ),
+        d(S::Own, "cd {PRI} && git checkout -b x", "git-state"),
+        d(S::Pri, "git reset --hard", "git-state"),
+        d(S::Pri, "git stash", "git-state"),
+        d(S::Pri, "git switch -c x", "git-state"),
+    ];
+    for case in cases {
+        let want = case.want.map(|_| "git-state");
+        let got = w.verdict(case.s, &case.cmd);
+        assert_eq!(got.as_deref(), want, "{:?}", case.cmd);
+    }
+}
+
+#[test]
+fn ac6_protected_names_and_the_checked_out_branch() {
+    let w = World::new();
+    for name in ["NeXT", "main", "master", "next", "MAIN"] {
+        let cmd = format!("git branch -f {name} HEAD");
+        assert_eq!(
+            w.verdict(S::Own, &cmd).as_deref(),
+            Some("protected-ref"),
+            "{cmd}"
+        );
+    }
+    for name in ["lane/own", "feature/NeXT-notes", "mainline", "release/1"] {
+        let cmd = format!("git branch -f {name} HEAD");
+        assert_eq!(w.verdict(S::Own, &cmd), None, "{cmd}");
+    }
+    assert_eq!(
+        w.verdict(S::Main, "git commit -m x").as_deref(),
+        Some("protected-ref")
+    );
+    assert_eq!(w.verdict(S::Own, "git commit -m x"), None);
+}
+
+#[test]
+fn ac7_every_spelling_and_every_hook_running_subcommand() {
+    let w = World::new();
+    for sub in [
+        "commit",
+        "merge",
+        "push",
+        "rebase",
+        "cherry-pick",
+        "revert",
+        "am",
+        "pull",
+    ] {
+        for flag in ["--no-verify", "--no-verif", "--no-ver", "--no-v"] {
+            let cmd = format!("git {sub} {flag} lane/own");
+            assert_eq!(
+                w.verdict(S::Own, &cmd).as_deref(),
+                Some("hook-skip"),
+                "{cmd}"
+            );
+        }
+    }
+    for cmd in [
+        "git commit -m x -n",
+        "git commit -qn -m x",
+        "git commit -a -n",
+        "git -c core.hooksPath=/x -c user.name=y commit -m z",
+    ] {
+        assert_eq!(
+            w.verdict(S::Own, cmd).as_deref(),
+            Some("hook-skip"),
+            "{cmd}"
+        );
+    }
+    for cmd in [
+        "git commit -mn",
+        "git commit -m \"-n\"",
+        "git commit -m x -- src/a.txt",
+        "git commit --no-edit --amend",
+        "git commit --verify",
+        "git push -n origin lane/own",
+        "git log --no-verify-signatures",
+    ] {
+        assert_eq!(w.verdict(S::Own, cmd), None, "{cmd}");
+    }
+}
+
+// -------------------------------------------------------------------- AC-8
+
+fn nested(inner: &str) -> Vec<String> {
+    let q = inner.replace('\'', "'\\''");
+    vec![
+        format!("sudo {inner}"),
+        format!("sudo -u root {inner}"),
+        format!("env {inner}"),
+        format!("env FOO=1 {inner}"),
+        format!("env -i {inner}"),
+        format!("command {inner}"),
+        format!("nohup {inner}"),
+        format!("timeout 5 {inner}"),
+        format!("timeout -s KILL 5 {inner}"),
+        format!("nice -n 5 {inner}"),
+        format!("time {inner}"),
+        format!("bash -c '{q}'"),
+        format!("sh -c '{q}'"),
+        format!("zsh -lc '{q}'"),
+        format!("eval '{q}'"),
+        format!("eval {inner}"),
+        format!("echo $({inner})"),
+        format!("echo `{inner}`"),
+        format!("({inner})"),
+        format!("{{ {inner}; }}"),
+        format!("if true; then {inner}; fi"),
+        format!("for i in 1 2; do {inner}; done"),
+        format!("while false; do {inner}; done"),
+        format!("true && {inner}"),
+        format!("false || {inner}"),
+        format!("true | {inner}"),
+        format!("{inner} &"),
+        format!("true\n{inner}"),
+        format!("bash <<EOF\n{inner}\nEOF"),
+        format!("cat <(true) <({inner})"),
+        format!("find . -name x -exec sh -c '{q}' \\;"),
+        format!("ls $(true) ; {inner}"),
+        format!("cat <<EOF\n$({inner})\nEOF"),
+    ]
+}
+
+#[test]
+fn ac8_nesting_is_judged_like_the_bare_command() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    for cmd in nested("rm -rf {OUT}/x") {
+        let got = w.verdict(S::Own, &cmd);
+        if got.as_deref() != Some("delete-outside") {
+            bad.push(format!("  {cmd:?} -> {got:?}"));
+        }
+    }
+    for cmd in nested("ls build") {
+        let got = w.verdict(S::Own, &cmd);
+        if got.is_some() {
+            bad.push(format!("  {cmd:?} (benign) -> {got:?}"));
+        }
+    }
+    for cmd in [
+        "cat <<'EOF'\nrm -rf {OUT}/x\nEOF",
+        "cat <<EOF\nrm -rf {OUT}/x\nEOF",
+        "echo 'rm -rf {OUT}/x'",
+        "# rm -rf {OUT}/x",
+        "ls # rm -rf {OUT}/x",
+    ] {
+        let got = w.verdict(S::Own, cmd);
+        if got.is_some() {
+            bad.push(format!("  {cmd:?} (data) -> {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} nesting cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+#[test]
+fn ac8_the_depth_the_count_and_the_size_limits_take_their_boundary() {
+    let w = World::new();
+    let nest = |n: usize| format!("{}true{}", "echo $(".repeat(n), ")".repeat(n));
+    assert_eq!(w.verdict(S::Own, &nest(8)), None, "8 levels");
+    assert_eq!(
+        w.verdict(S::Own, &nest(9)).as_deref(),
+        Some("unreadable"),
+        "9 levels"
+    );
+    let commands = |n: usize| format!("git status{}", ";true".repeat(n - 1));
+    assert_eq!(w.verdict(S::Own, &commands(2048)), None, "2048 commands");
+    assert_eq!(
+        w.verdict(S::Own, &commands(2049)).as_deref(),
+        Some("unreadable"),
+        "2049 commands"
+    );
+    let sized = |bytes: usize| {
+        let head = "git status; echo ";
+        format!("{head}{}", "a".repeat(bytes - head.len()))
+    };
+    assert_eq!(w.verdict(S::Own, &sized(262_144)), None, "256 KiB");
+    assert_eq!(
+        w.verdict(S::Own, &sized(262_145)).as_deref(),
+        Some("unreadable"),
+        "256 KiB + 1"
+    );
+}
+
+// -------------------------------------------------------------------- AC-9
+
+#[test]
+fn ac9_reasons_carry_the_class_and_no_command_byte() {
+    let w = World::new();
+    let marker = "ZZMARKER31337";
+    let probes = [
+        ("rm -rf {OUT}/ZZMARKER31337", "delete-outside"),
+        ("git -C {OTH} commit -m ZZMARKER31337", "git-state"),
+        ("git push origin NeXT ZZMARKER31337", "protected-ref"),
+        ("git commit --no-verify -m ZZMARKER31337", "hook-skip"),
+        ("rm -rf $ZZMARKER31337", "unreadable"),
+    ];
+    for (cmd, class) in probes {
+        let run = w.run(S::Own, cmd, "default");
+        assert_eq!(parse_verdict(&run, cmd).as_deref(), Some(class), "{cmd}");
+        assert!(
+            !run.stdout.contains(marker),
+            "the reason echoes the command: {}",
+            run.stdout
+        );
+        let value: Value = serde_json::from_str(run.stdout.trim()).unwrap();
+        let reason = value["hookSpecificOutput"]["permissionDecisionReason"]
+            .as_str()
+            .unwrap();
+        assert!(reason.len() < 400, "{} bytes: {reason}", reason.len());
+        assert!(
+            reason.starts_with(&format!("moai-boundary/{class}:")),
+            "{reason}"
+        );
+        assert!(
+            !reason.contains(&w.root.display().to_string()),
+            "no fixture path: {reason}"
+        );
+    }
+}
+
+// ------------------------------------------------------------------- AC-10
+
+#[test]
+fn ac10_the_module_makes_no_process_network_environment_or_write_call() {
+    let source =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/hook_bash_boundary.rs"))
+            .unwrap();
+    let code: String = source
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for word in [
+        "std::process",
+        "Command::new",
+        "std::net",
+        "TcpStream",
+        "std::env",
+        "env::var",
+        "fs::write",
+        "File::create",
+        "OpenOptions",
+        "remove_file",
+        "remove_dir",
+        "create_dir",
+        "fs::rename",
+        "fs::copy",
+        "set_permissions",
+    ] {
+        assert!(
+            !code.contains(word),
+            "src/hook_bash_boundary.rs names {word}"
+        );
+    }
+}
+
+/// Every entry of the tree with its kind, size and a hash of its bytes (a link: its target), so a
+/// rewrite that keeps the size, an emptied folder and a changed link all show.
+fn tree_state(root: &Path) -> BTreeMap<String, String> {
+    fn fnv(bytes: &[u8]) -> u64 {
+        bytes.iter().fold(0xcbf2_9ce4_8422_2325, |h, b| {
+            (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3)
+        })
+    }
+    fn walk(base: &Path, dir: &Path, out: &mut BTreeMap<String, String>) {
+        let Ok(entries) = fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let meta = fs::symlink_metadata(&path).unwrap();
+            let rel = path
+                .strip_prefix(base)
+                .unwrap()
+                .to_string_lossy()
+                .into_owned();
+            if meta.file_type().is_symlink() {
+                let target = fs::read_link(&path).unwrap();
+                out.insert(rel, format!("link {}", target.display()));
+            } else if meta.is_dir() {
+                out.insert(rel, "dir".to_owned());
+                walk(base, &path, out);
+            } else {
+                let bytes = fs::read(&path).unwrap_or_default();
+                out.insert(
+                    rel,
+                    format!("file {} bytes, hash {:016x}", meta.len(), fnv(&bytes)),
+                );
+            }
+        }
+    }
+    let mut out = BTreeMap::new();
+    walk(root, root, &mut out);
+    out
+}
+
+#[test]
+fn ac10_no_case_writes_a_file_and_the_mode_never_changes_the_answer() {
+    let w = World::new();
+    let before = tree_state(&w.root);
+    let probes = [
+        (S::Own, "rm -rf {OUT}/x"),
+        (S::Own, "git push origin NeXT"),
+        (S::Own, "git commit --no-verify -m x"),
+        (S::Own, "rm -rf $X"),
+        (S::Own, "rm -rf build"),
+        (S::Pri, "git stash"),
+    ];
+    for (s, cmd) in probes {
+        let mut seen = Vec::new();
+        for mode in [
+            "default",
+            "plan",
+            "acceptEdits",
+            "auto",
+            "dontAsk",
+            "bypassPermissions",
+        ] {
+            let run = w.run(s, cmd, mode);
+            seen.push(parse_verdict(&run, cmd));
+        }
+        assert!(seen.windows(2).all(|p| p[0] == p[1]), "{cmd}: {seen:?}");
+    }
+    assert_eq!(tree_state(&w.root), before, "the fixture changed");
+    for dir in [&w.home, &w.primary, &w.own] {
+        assert!(!dir.join(".claude/settings.json").exists());
+        assert!(!dir.join(".claude/settings.local.json").exists());
+    }
+}
+
+// ------------------------------------------------------------------- AC-11
+
+#[test]
+fn ac11_the_prescan_never_hides_a_trigger_word() {
+    let w = World::new();
+    for case in all_cases().iter().filter(|c| c.want.is_some()) {
+        let filled = w.fill(&case.cmd);
+        assert!(
+            moai_cli::hook_bash_boundary::needs_walk(&filled),
+            "the pre-scan skips a denied command: {filled:?}"
+        );
+    }
+    for harmless in [
+        "ls -la",
+        "cargo test --test foo",
+        "echo hi",
+        "moai card next",
+        "pwd",
+    ] {
+        assert!(
+            !moai_cli::hook_bash_boundary::needs_walk(harmless),
+            "{harmless}"
+        );
+    }
+    for disguised in [
+        "r\"\"m -rf x",
+        "r\\m -rf x",
+        "'g'it status",
+        "ls $X",
+        "/bin/r? -rf x",
+        "/???/?? -rf x",
+        "/bin/r[m] -rf x",
+        "{rm,-rf,x}",
+        "=rm -rf x",
+        "ls; =rm -rf x",
+        "$\"rm\" -rf x",
+    ] {
+        assert!(
+            moai_cli::hook_bash_boundary::needs_walk(disguised),
+            "{disguised}"
+        );
+    }
+}
+
+fn percentile(sorted: &[f64], share: f64) -> f64 {
+    let rank = (share * sorted.len() as f64).ceil() as usize;
+    sorted[rank.clamp(1, sorted.len()) - 1]
+}
+
+#[test]
+fn ac11_measured_latency_is_printed_and_only_a_tenfold_miss_fails() {
+    let w = World::new();
+    let load = Command::new("uptime")
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+        .unwrap_or_default();
+    let profile = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "release"
+    };
+    for (label, s, cmd) in [
+        ("allowed", S::Own, "git status"),
+        ("denied", S::Own, "rm -rf {OUT}/x"),
+    ] {
+        let (proc_cwd, cwd) = w.session(s);
+        let input = w
+            .input(&Value::String(w.fill(cmd)), &cwd, "default")
+            .to_string();
+        let mut ms = Vec::new();
+        for _ in 0..200 {
+            let start = Instant::now();
+            let run = w.spawn(&proc_cwd, input.as_bytes(), None);
+            ms.push(start.elapsed().as_secs_f64() * 1000.0);
+            assert_eq!(run.code, 0);
+        }
+        ms.sort_by(|x, y| x.partial_cmp(y).unwrap());
+        let (p50, p90) = (percentile(&ms, 0.5), percentile(&ms, 0.9));
+        println!(
+            "AC-11 {label}: p50 {p50:.1} ms, p90 {p90:.1} ms, max {:.1} ms, 200 samples, {profile} build, load: {load}",
+            ms[ms.len() - 1]
+        );
+        assert!(
+            p50 <= 200.0 && p90 <= 400.0,
+            "{label}: p50 {p50:.1} ms, p90 {p90:.1} ms"
+        );
+    }
+}
+
+// ------------------------------------------------------------------- AC-14
+//
+// The repair table of the independent audit (AUDIT #403, note 7629). Every shape the audit ran
+// against the real binary is here with the answer this SPEC wants: the rule is that a command
+// word or a folder that the text does not fix statically is `unreadable`, and a command that
+// runs another command is judged as that command. The audit's own probe lists (the wrongly
+// allowed ones and the list that must stay allowed) are copied whole.
+
+fn audit_denied_cases() -> Vec<Case> {
+    use S::{Main, Own, Pri};
+    let (de, gs, pr, hs, ur) = (
+        "delete-outside",
+        "git-state",
+        "protected-ref",
+        "hook-skip",
+        "unreadable",
+    );
+    vec![
+        // The probes the first head already answered (kept as regression).
+        d(Own, "rm -rf {OUT}/x; ls", de),
+        d(Own, "ls && rm -rf {OUT}/x", de),
+        d(Own, "ls | rm -rf {OUT}/x", de),
+        d(Own, "ls || rm -rf {OUT}/x", de),
+        d(Own, "ls & rm -rf {OUT}/x", de),
+        d(Own, "ls |& rm -rf {OUT}/x", de),
+        d(Own, "echo $(rm -rf {OUT}/x)", de),
+        d(Own, "echo \"$(rm -rf {OUT}/x)\"", de),
+        d(Own, "echo `rm -rf {OUT}/x`", de),
+        d(Own, "(rm -rf {OUT}/x)", de),
+        d(Own, "{ rm -rf {OUT}/x; }", de),
+        d(Own, "env rm -rf {OUT}/x", de),
+        d(Own, "env -i PATH=/bin rm -rf {OUT}/x", de),
+        d(Own, "command rm -rf {OUT}/x", de),
+        d(Own, "builtin command rm -rf {OUT}/x", de),
+        d(Own, "exec rm -rf {OUT}/x", de),
+        d(Own, "sudo -n rm -rf {OUT}/x", de),
+        d(Own, "/bin/rm -rf {OUT}/x", de),
+        d(Own, "\\rm -rf {OUT}/x", de),
+        d(Own, "'rm' -rf {OUT}/x", de),
+        d(Own, "r''m -rf {OUT}/x", de),
+        d(Own, "   \n\n  rm -rf {OUT}/x", de),
+        d(Own, "\trm -rf {OUT}/x", de),
+        d(Own, "bash -c 'rm -rf {OUT}/x'", de),
+        d(Own, "/bin/bash -c \"ls; rm -rf {OUT}/x\"", de),
+        d(Own, "zsh -c 'cd {OUT} && rm -rf y'", de),
+        d(Own, "bash <<'EOF'\nrm -rf {OUT}/x\nEOF", de),
+        d(Own, "bash <<< 'rm -rf {OUT}/x'", de),
+        d(Own, "echo 'rm -rf {OUT}/x' | bash", ur),
+        d(Own, "cd {OUT}; rm -rf ./*", de),
+        d(Own, "cd -P {ESC} && rm -rf ./*", de),
+        d(Own, "rm -rf {ESC}/", de),
+        d(Own, "rm -rf escape/*", de),
+        d(Own, "rm -rf ../wt-other", de),
+        d(Own, "find {OUT} -delete", de),
+        d(Own, "find {OUT} -exec rm {} \\;", de),
+        d(Own, "find . -exec sh -c 'rm -rf {OUT}/x' \\;", de),
+        d(Own, "xargs -0 rm < list", ur),
+        d(Own, "nice -n 5 timeout 5 nohup rm -rf {OUT}/x", de),
+        d(Own, "eval 'rm -rf {OUT}/x'", de),
+        d(Own, "f() { rm -rf {OUT}/x; }; f", ur),
+        d(Own, "if true; then rm -rf {OUT}/x; fi", de),
+        d(Own, "while true; do rm -rf {OUT}/x; break; done", de),
+        d(Own, "for i in 1; do rm -rf {OUT}/x; done", de),
+        d(Own, "! rm -rf {OUT}/x", de),
+        d(Own, "time rm -rf {OUT}/x", de),
+        d(Own, "$'rm' -rf {OUT}/x", de),
+        // B1: a command word that an expansion decides is unreadable.
+        d(Own, "/bin/r? -rf {OUT}/x", ur),
+        d(Own, "/bin/r[m] -rf {OUT}/x", ur),
+        d(Own, "/???/?? -rf {OUT}/x", ur),
+        d(Own, "/bin/r* -rf {OUT}/x", ur),
+        d(Own, "~/bin/r? -rf {OUT}/x", ur),
+        d(Own, "bash -c '/bin/r? -rf {OUT}/x'", ur),
+        d(Own, "=rm -rf {OUT}/x", ur),
+        d(Own, "$\"rm\" -rf {OUT}/x", ur),
+        d(Own, "bash -c '{rm,-rf,{OUT}/x}'", ur),
+        d(Own, "{rm,-rf,{OUT}/x}", ur),
+        d(Own, "r{m,} -rf {OUT}/x", ur),
+        d(Own, "sudo /bin/r? -rf {OUT}/x", ur),
+        d(Own, "env /bin/r? -rf {OUT}/x", ur),
+        d(Own, "nohup /bin/r? -rf {OUT}/x", ur),
+        d(Own, "time {rm,-rf,{OUT}/x}", ur),
+        d(Own, "find {OWN} -exec /bin/r? {} +", ur),
+        d(Own, "echo {OUT}/x | xargs /bin/r? -rf", ur),
+        d(Own, "CDPATH=/opt cd moai-boundary-outside && rm -rf ./*", ur),
+        d(
+            Own,
+            "export CDPATH=/opt; cd moai-boundary-outside; rm -rf ./*",
+            ur,
+        ),
+        // B2: the directory stack and CDPATH are not followed; the folder becomes unreadable.
+        d(Own, "pushd {OUT} && popd +1 && rm -rf ./*", ur),
+        d(Own, "pushd {OUT} && popd -n && rm -rf ./*", ur),
+        d(Own, "pushd {OUT} && pushd {OWN} && pushd +1 && rm -rf ./*", ur),
+        d(Own, "pushd -n {OUT}; rm -rf ./*", ur),
+        d(Own, "popd -0; rm -rf build", ur),
+        d(Own, "pushd; rm -rf build", ur),
+        // B3: a protected ref changed by a spelling the first table did not hold.
+        d(Main, "git push origin @", pr),
+        d(Main, "git update-ref HEAD HEAD~1", pr),
+        d(Pri, "git update-ref HEAD HEAD~1", pr),
+        d(Main, "git update-ref -d HEAD", pr),
+        d(Main, "git branch -m renamed", pr),
+        d(Main, "git branch -M renamed", pr),
+        d(Own, "git rebase lane/own NeXT", pr),
+        d(Own, "git rebase --onto HEAD~1 HEAD main", pr),
+        d(Own, "git rebase --onto NeXT lane/own main", pr),
+        d(Own, "git filter-branch -f --msg-filter cat -- main", pr),
+        d(Own, "git filter-branch -f -- --all", pr),
+        d(Main, "git filter-branch -f --msg-filter cat", pr),
+        d(Own, "git checkout --track origin/main", pr),
+        d(Own, "git checkout -t origin/NeXT", pr),
+        d(Own, "git switch --track origin/master", pr),
+        d(Own, "git switch -t origin/main", pr),
+        d(Own, "git push origin HEAD:refs/heads/NeXT", pr),
+        d(Own, "git push . HEAD:NeXT", pr),
+        d(Own, "git fetch . HEAD:main", pr),
+        d(Own, "git push origin x:Main", pr),
+        d(Own, "git push -f origin lane/own:master", pr),
+        d(Own, "git branch --copy lane/own main", pr),
+        d(Own, "git checkout -bmain", pr),
+        d(Own, "git -C {PRI} update-ref refs/heads/NeXT HEAD", gs),
+        d(
+            Own,
+            "GIT_DIR={PRI}/.git git update-ref refs/heads/lane/x HEAD",
+            gs,
+        ),
+        d(Own, "cd {PRI} && git stash", gs),
+        d(Own, "cd {OTH}; git reset --hard", gs),
+        d(Own, "git -C ../wt-other commit -m x", gs),
+        d(Own, "(cd ../wt-other && git commit -m x)", gs),
+        d(Own, "bash -c 'cd ../wt-other && git commit -m x'", gs),
+        d(Own, "env GIT_WORK_TREE={OTH} git add .", gs),
+        d(Own, "export GIT_DIR={PRI}/.git; git checkout x", gs),
+        d(Own, "git worktree remove --force ../wt-other", gs),
+        // B4: a hooks path set through every spelling of `git config`, and the include route.
+        d(Own, "git config --type path core.hooksPath /dev/null", hs),
+        d(Own, "git config --type=path core.hooksPath /dev/null", hs),
+        d(Own, "git config set core.hooksPath /dev/null", hs),
+        d(Own, "git config --local core.hooksPath /dev/null", hs),
+        d(Own, "git config --global core.hooksPath /x", hs),
+        d(Own, "git config --type path --add core.hooksPath /x", hs),
+        d(Own, "git config include.path /opt/x.cfg", hs),
+        d(Own, "git config --add include.path /opt/x.cfg", hs),
+        d(Own, "git config includeIf.gitdir:/x/.path /opt/x.cfg", hs),
+        d(Own, "git -c Core.HooksPath=/x commit -m x", hs),
+        d(Own, "git commit -anm x", hs),
+        d(Own, "git commit -vn -m x", hs),
+        d(Own, "git commit --no-verif -m x", hs),
+        d(
+            Own,
+            "export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/x; git commit -m x",
+            hs,
+        ),
+        d(
+            Own,
+            "env GIT_CONFIG_PARAMETERS=\"'core.hooksPath'='/x'\" git commit -m x",
+            hs,
+        ),
+        d(Own, "GIT_CONFIG_GLOBAL=/opt/x git commit -m x", ur),
+        d(Own, "git push --no-verify", hs),
+        d(Own, "git am --no-verify p.patch", hs),
+        d(Own, "git commit -m \"$(date)\" --no-verify", hs),
+        d(Own, "git ci -m x", ur),
+        d(Own, "git $(echo commit) --no-verify", ur),
+        // B5: a command that runs another command is judged as that command.
+        d(Own, "echo {OUT}/x | xargs -J % rm -rf %", ur),
+        d(Own, "echo {OUT}/x | xargs -R 1 -I % rm -rf %", ur),
+        d(Own, "echo {OUT}/x | xargs -S 255 rm -rf", ur),
+        d(Own, "arch -arm64 rm -rf {OUT}/x", de),
+        d(Own, "arch -arch arm64 rm -rf {OUT}/x", de),
+        d(Own, "arch -x86_64 -e A=b rm -rf {OUT}/x", de),
+        d(Own, "script -q /dev/null rm -rf {OUT}/x", de),
+        d(Own, "script -q -c 'rm -rf {OUT}/x' /dev/null", de),
+        d(Own, "script --command='rm -rf {OUT}/x' /dev/null", de),
+        d(Own, "git rebase -x 'rm -rf {OUT}/x' HEAD~1", de),
+        d(Own, "git rebase --exec 'rm -rf {OUT}/x' main", de),
+        d(Own, "git rebase --exec='rm -rf {OUT}/x' main", de),
+        d(Own, "git rebase -x'rm -rf {OUT}/x' main", de),
+        d(Own, "git rebase -i -x 'ls; rm -rf {OUT}/x' main", de),
+        d(Own, "git rebase -x \"$CMD\" main", ur),
+        d(Own, "git difftool -y -x 'rm -rf {OUT}/x' HEAD~1", de),
+        d(Own, "git difftool --extcmd='rm -rf {OUT}/x' HEAD~1", de),
+        d(Own, "git submodule foreach 'rm -rf {OUT}/x'", de),
+        d(Own, "git submodule foreach --recursive 'rm -rf {OUT}/x'", de),
+        d(Own, "git submodule foreach \"$CMD\"", ur),
+        d(Own, "git bisect run rm -rf {OUT}/x", de),
+        d(Own, "git bisect run sh -c 'rm -rf {OUT}/x'", de),
+        d(Own, "git bisect run $CMD", ur),
+        d(
+            Own,
+            "git filter-branch --tree-filter 'rm -rf {OUT}/x' -- lane/own",
+            de,
+        ),
+        d(Own, "git filter-branch --msg-filter \"$CMD\" -- lane/own", ur),
+        // N3: the scratch folder itself is a root and never a target.
+        d(Own, "rm -rf {SCR}", de),
+        d(Own, "rm -rf {SCR}/", de),
+        d(Own, "rm -rf {SCR}/.", de),
+        // N2: other checkouts stay denied for the commands that are now judged by subcommand.
+        d(Own, "git -C {OTH} lfs pull", gs),
+        d(Own, "git lfs frobnicate", ur),
+    ]
+}
+
+fn audit_allowed_cases() -> Vec<Case> {
+    use S::{Own, Pri};
+    vec![
+        // The audit's list of commands that must stay allowed (no false positive).
+        a(Own, "rm -rf {OWN}/build"),
+        a(Own, "echo \"rm -rf {OUT}\""),
+        a(Own, "grep -r 'rm -rf' src"),
+        a(Own, "git commit -m 'drop rm -rf {OUT} and --no-verify'"),
+        a(Own, "cat {OUT}/rm/git/notes.txt"),
+        a(Own, "ls /opt/firmware/sh"),
+        a(Own, "cargo build --release"),
+        a(
+            Own,
+            "cargo test -p moai-cli --test hook_bash_boundary_cli",
+        ),
+        a(Own, "rg 'git push' docs"),
+        a(Own, "echo $HOME"),
+        a(Own, "git log --format='%H %s' -3"),
+        a(Own, "git status && git diff --stat"),
+        a(Own, "rm -f /tmp/foo.log"),
+        a(
+            Own,
+            "moai card note C-1 \"$(cat <<'EOF'\nrm -rf / and git push origin NeXT\nEOF\n)\"",
+        ),
+        a(
+            Own,
+            "cat > notes.md <<EOF\nuse git push --no-verify never\nEOF",
+        ),
+        a(Own, "date -u +%Y-%m-%dT%H:%M:%SZ"),
+        a(Own, "ps aux | grep cargo"),
+        a(Own, "git push origin @"),
+        a(Own, "git --git-dir={OTH}/../primary/.git status"),
+        a(Own, "git worktree prune"),
+        a(Pri, "git merge-tree --write-tree NeXT lane/own"),
+        a(Own, "git merge-tree --write-tree NeXT HEAD"),
+        a(Own, "git lfs pull"),
+        a(Own, "git lfs ls-files"),
+        a(Own, "rm -rf target/debug"),
+        a(Pri, "git worktree add -b lane/new .claude/worktrees/new NeXT"),
+        a(
+            Own,
+            "env -u CLAUDE_CODE_SESSION_ID RUSTC_WRAPPER=sccache moai heavy-slot-acquire --max 4 --name x -- cargo nextest run --test a",
+        ),
+        a(
+            Own,
+            "git -C {OWN} log --oneline -3 && git -C {PRI} rev-parse NeXT",
+        ),
+        a(Own, "sqlite3 -readonly ~/data/x.db 'select 1'"),
+        a(Own, "git show NeXT:REVIEW.md"),
+        a(Own, "git stash push -u -m tag"),
+        a(
+            Own,
+            "git commit -m x --trailer 'Co-Authored-By: a <b>'",
+        ),
+        // Guards against the new rules over-blocking an ordinary command.
+        a(Own, "[ -d build ] && ls"),
+        a(Own, "[[ -f src/a.txt ]] && echo ok"),
+        a(Own, "test -f src/a.txt"),
+        a(Own, "ls src/*.txt"),
+        a(Own, "ls src/a.t?t"),
+        a(Own, "echo ?"),
+        a(Own, "cd {OWN}/src && ls ../build"),
+        a(Own, "pushd {OWN}/src && popd && rm -rf build"),
+        a(Own, "git rebase NeXT"),
+        a(Own, "git rebase -x 'cargo test' NeXT"),
+        a(Own, "git rebase -i NeXT"),
+        a(Own, "git bisect start"),
+        a(Own, "git bisect run cargo test"),
+        a(Own, "git submodule update --init"),
+        a(Own, "git submodule foreach 'git status'"),
+        a(Own, "git difftool HEAD~1"),
+        a(Own, "git difftool -x 'diff -u' HEAD~1"),
+        a(Own, "git filter-branch --msg-filter cat -- lane/own"),
+        a(Own, "arch -x86_64 cargo build"),
+        a(Own, "script -q /dev/null cargo test"),
+        a(Own, "echo x | xargs -J % echo %"),
+        a(Own, "git branch -m renamed"),
+        a(Own, "git branch -m lane/own lane/renamed"),
+        a(Own, "git update-ref HEAD HEAD~1"),
+        a(Own, "git checkout --track origin/feature/x"),
+        a(Own, "git config --get include.path"),
+        a(Own, "git config user.name x"),
+        a(Own, "git config --type bool core.filemode true"),
+        a(Own, "git config --type path --get core.excludesfile"),
+        a(Own, "rm -rf {SCR}/work"),
+    ]
+}
+
+#[test]
+fn ac14_a_scratchpad_root_under_a_temporary_root_is_still_never_a_target() {
+    let w = World::new();
+    let scratch = "/tmp/moai-bb-scratch-fixture";
+    let ask = |cmd: &str| {
+        let (proc_cwd, cwd) = w.session(S::Own);
+        let mut input = w.input(&Value::String(w.fill(cmd)), &cwd, "default");
+        input["scratchpad_dir"] = Value::String(scratch.to_owned());
+        let run = w.spawn(&proc_cwd, input.to_string().as_bytes(), None);
+        parse_verdict(&run, cmd)
+    };
+    for cmd in [
+        "rm -rf /tmp/moai-bb-scratch-fixture",
+        "rm -rf /tmp/moai-bb-scratch-fixture/",
+        "rm -rf /tmp/moai-bb-scratch-fixture/.",
+        "cd /tmp/moai-bb-scratch-fixture && rm -rf .",
+    ] {
+        assert_eq!(ask(cmd).as_deref(), Some("delete-outside"), "{cmd}");
+    }
+    for cmd in [
+        "rm -rf /tmp/moai-bb-scratch-fixture/work",
+        "rm -rf /tmp/moai-bb-scratch-fixture/work/x",
+        "rm -rf /tmp/moai-bb-other",
+    ] {
+        assert_eq!(ask(cmd), None, "{cmd}");
+    }
+}
+
+#[test]
+fn ac14_the_audit_repair_table_denied_and_allowed_shapes() {
+    let mut cases = audit_denied_cases();
+    cases.extend(audit_allowed_cases());
+    run_table(&World::new(), "audit-repair", &cases);
+}
+
+#[test]
+fn ac14_deep_nesting_is_unreadable_and_never_overflows_the_stack() {
+    let w = World::new();
+    let shapes = [
+        (
+            "quoted substitutions in substitutions",
+            format!("{}x{}", "echo \"$(".repeat(15_000), ")\"".repeat(15_000)),
+        ),
+        (
+            "double quote then substitution",
+            format!(
+                "git status {}x{}",
+                "\"$(".repeat(30_000),
+                ")\"".repeat(30_000)
+            ),
+        ),
+        (
+            "open parentheses",
+            format!("git status {}", "(".repeat(50_000)),
+        ),
+    ];
+    for (label, cmd) in &shapes {
+        assert!(cmd.len() < 262_144, "{label}: {} bytes", cmd.len());
+        let run = w.run(S::Own, cmd, "default");
+        assert_eq!(
+            parse_verdict(&run, label).as_deref(),
+            Some("unreadable"),
+            "{label}"
+        );
+    }
+}
+
+// ------------------------------------------------------------------- AC-15
+//
+// The second audit repair (AUDIT #403 delta, note 7691). The audit's probe lists `probes3`,
+// `probes4` and `probes5` are copied whole with the answer this SPEC wants, and each family the
+// audit found a member of is closed by a rule instead of by that one shape: a word that changes
+// how a command word or a `cd` operand is looked up, a `rebase --root` branch, every transport
+// command that takes a program, the wrapper programs of one closed table, and a switch to a
+// protected branch that creates it. The wrapper table is closed: a wrapper that is not in it
+// reads as the command it is named (R-1).
+
+fn second_audit_denied_cases() -> Vec<Case> {
+    use S::{Main, Own};
+    let (de, gs, pr, ur) = ("delete-outside", "git-state", "protected-ref", "unreadable");
+    vec![
+        // B-1: a word that changes how a command word is looked up makes the line unreadable.
+        d(Own, "hash -p /bin/rm e; e -rf {OUT}/x", ur),
+        d(Own, "hash e=/bin/rm; e -rf {OUT}/x", ur),
+        d(Own, "bash -c 'hash -p /bin/rm e; e -rf {OUT}/x'", ur),
+        d(
+            Own,
+            "shopt -s expand_aliases\nalias e=rm\ne -rf {OUT}/x",
+            ur,
+        ),
+        d(
+            Own,
+            "bash -c \"shopt -s expand_aliases\nalias e=rm\ne -rf {OUT}/x\"",
+            ur,
+        ),
+        d(Own, "alias e=rm; eval e -rf {OUT}/x", ur),
+        d(Own, "alias ll='ls -l'", ur),
+        d(Own, "alias -g G='| rm'", ur),
+        d(Own, "unalias e", ur),
+        d(Own, "hash -r", ur),
+        d(Own, "hash", ur),
+        d(Own, "enable -n rm; rm -rf {OUT}/x", ur),
+        d(Own, "enable -f /opt/x.so evil", ur),
+        d(Own, "builtin alias e=rm", ur),
+        d(Own, "env alias e=rm", ur),
+        d(Own, "(alias e=rm); e -rf {OUT}/x", ur),
+        d(Own, "ls && alias e=rm", ur),
+        d(Own, "functions[e]='rm -rf {OUT}/x'; e", ur),
+        d(Own, "e() { rm -rf {OUT}/x; }; e", ur),
+        d(Own, "function e { rm -rf {OUT}/x; }; e", ur),
+        // B-2: a way to change where `cd` lands (the `cdpath` array, `cdable_vars`, a named
+        // directory) makes the line unreadable, in every shell spelling.
+        d(
+            Own,
+            "set -A cdpath /opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "set +A cdpath /opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "cdpath=(/opt); cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "cdpath+=(/opt); cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "cdpath=/opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "typeset -a cdpath=(/opt); cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "declare -a cdpath=(/opt); cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "export cdpath=/opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        // The array named by a variable, or tied to `CDPATH`, cannot be followed.
+        d(
+            Own,
+            "a=cdpath; set -A $a /opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "typeset -T CDPATH cdpath; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "declare -x CDPATH=/opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "bash -c 'set -A cdpath /opt; cd moai-boundary-outside && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "(cdpath=(/opt); cd moai-boundary-outside && rm -rf ./*)",
+            ur,
+        ),
+        d(
+            Own,
+            "setopt cdable_vars; o=/opt/moai-boundary-outside; cd o && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "setopt CDABLE_VARS; o=/opt/moai-boundary-outside; cd o && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "setopt cdablevars; o=/opt/moai-boundary-outside; cd o && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "setopt no_cdable_vars", ur),
+        d(Own, "unsetopt cdable_vars", ur),
+        d(
+            Own,
+            "set -o cdablevars; o=/opt/moai-boundary-outside; cd o && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "shopt -s cdable_vars; o=/opt/moai-boundary-outside; cd o && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "shopt -s cdspell cdable_vars", ur),
+        d(Own, "setopt $OPT", ur),
+        d(
+            Own,
+            "hash -d o=/opt/moai-boundary-outside; cd ~o && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "cd ~o && rm -rf ./*", ur),
+        d(Own, "rm -rf ~o/x", ur),
+        d(Own, "cd ~root && rm -rf ./*", ur),
+        // The same lookup set by name: `read`, `printf -v`, `mapfile`, `let`, a `for` variable
+        // and a name reference.
+        d(
+            Own,
+            "read CDPATH <<< /opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "printf -v CDPATH %s /opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "mapfile -t cdpath <<< /opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "let CDPATH=1", ur),
+        d(
+            Own,
+            "for CDPATH in /opt; do cd moai-boundary-outside && rm -rf ./*; done",
+            ur,
+        ),
+        d(
+            Own,
+            "declare -n ref=CDPATH; ref=/opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "env cdpath=/opt cd moai-boundary-outside", ur),
+        // An assignment in front of a command that runs a string is part of that string's state.
+        d(
+            Own,
+            "env CDPATH=/opt sh -c 'cd moai-boundary-outside && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "CDPATH=/opt bash -c 'cd moai-boundary-outside && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "CDPATH=/opt eval 'cd moai-boundary-outside && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "CDPATH=/opt script -c 'cd moai-boundary-outside && rm -rf ./*' /dev/null",
+            ur,
+        ),
+        d(
+            Own,
+            "CDPATH=/opt flock /tmp/l -c 'cd moai-boundary-outside && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "GIT_DIR={PRI}/.git bash -c 'git update-ref refs/heads/lane/x HEAD'",
+            gs,
+        ),
+        // A worktree made without `-b` checks the commit-ish out as a branch, or creates a branch
+        // named after the path.
+        d(Own, "git worktree add ../x main", pr),
+        d(Own, "git worktree add ../x NeXT", pr),
+        d(Own, "git worktree add ../main", pr),
+        d(Own, "git worktree add ../master", pr),
+        // A trap action is a shell string that runs later, judged as if it stood alone.
+        d(Own, "trap 'rm -rf {OUT}/x' EXIT; true", de),
+        d(Own, "trap \"rm -rf {OUT}/x\" INT TERM", de),
+        d(Own, "trap 'git push origin NeXT' EXIT", pr),
+        d(Own, "trap $ACTION EXIT", ur),
+        // The pager of `git grep` is a program that runs.
+        d(Own, "git grep -O'rm -rf {OUT}/x' foo", de),
+        d(
+            Own,
+            "git grep --open-files-in-pager='rm -rf {OUT}/x' foo",
+            de,
+        ),
+        // The stack and `cd` forms of the first repair keep their answers.
+        d(Own, "pushd {OUT} && popd +1 && rm -rf ./*", ur),
+        d(Own, "pushd {OUT} && popd -n && rm -rf ./*", ur),
+        d(
+            Own,
+            "pushd {OUT} && pushd {OWN} && pushd +1 && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "bash -c 'pushd {OUT}; popd +1; rm -rf ./*'", ur),
+        d(Own, "cd -- {OUT} && rm -rf x", de),
+        d(Own, "cd ~ && rm -rf x", de),
+        d(Own, "cd {OUT} || true; rm -rf x", de),
+        d(Own, "builtin cd {OUT} && rm -rf ./*", de),
+        d(Own, "[ -d x ] && rm -rf {OUT}/x", de),
+        d(Own, "[[ -d x ]] || rm -rf {OUT}/x", de),
+        // B-3: `rebase --root` names the branch it moves as its last positional.
+        d(Own, "git rebase -f --root NeXT", pr),
+        d(Own, "git rebase --onto lane/own --root main", pr),
+        d(Own, "git rebase --root --onto lane/own main", pr),
+        d(Own, "git rebase --root --autosquash master", pr),
+        d(Own, "git rebase --root NeXT", pr),
+        d(Own, "git -c x.y=z rebase lane/own NeXT", pr),
+        d(Main, "git rebase --root", pr),
+        d(Main, "git push origin +@", pr),
+        d(Main, "git branch --move moved", pr),
+        d(Main, "git branch -m -f moved", pr),
+        d(Own, "git checkout --track=direct origin/main", pr),
+        d(Own, "git fetch origin '+refs/heads/*:refs/heads/*'", pr),
+        d(Own, "git pull origin main:main", pr),
+        // N-b: a plain switch to a protected name creates the branch from the remote one.
+        d(Own, "git switch main", pr),
+        d(Own, "git switch master", pr),
+        d(Own, "git switch NeXT", pr),
+        d(Own, "git checkout main", pr),
+        d(Own, "git checkout NeXT", pr),
+        d(Own, "git checkout master", pr),
+        d(Main, "git switch NeXT", pr),
+        // B-4: every transport command that takes a program, `clone` included.
+        d(Own, "git clone --upload-pack='rm -rf {OUT}/x' . y", de),
+        d(Own, "git clone --upload-pack 'rm -rf {OUT}/x' . y", de),
+        d(Own, "git clone -u 'rm -rf {OUT}/x' . y", de),
+        d(Own, "git clone -qu 'rm -rf {OUT}/x' . y", de),
+        d(Own, "git clone -u'rm -rf {OUT}/x' . y", de),
+        d(Own, "git clone -u \"$CMD\" . y", ur),
+        d(Own, "git fetch --upload-pack='rm -rf {OUT}/x' .", de),
+        d(Own, "git push --receive-pack='rm -rf {OUT}/x' . x:y", de),
+        d(Own, "git ls-remote --upload-pack='rm -rf {OUT}/x' .", de),
+        d(
+            Own,
+            "git archive --remote=. --exec='rm -rf {OUT}/x' HEAD",
+            de,
+        ),
+        // B-5: the wrapper programs of the closed table run the command they are given.
+        d(Own, "taskpolicy -b rm -rf {OUT}/x", de),
+        d(
+            Own,
+            "taskpolicy -d throttle -g default -c utility rm -rf {OUT}/x",
+            de,
+        ),
+        d(
+            Own,
+            "taskpolicy -t 1 -l 1 -m 100 -j 5 -P kill rm -rf {OUT}/x",
+            de,
+        ),
+        d(Own, "taskpolicy -a -s -x rm -rf {OUT}/x", de),
+        d(Own, "taskpolicy -b $CMD", ur),
+        d(Own, "xcrun rm -rf {OUT}/x", de),
+        d(Own, "xcrun --sdk macosx rm -rf {OUT}/x", de),
+        d(Own, "xcrun -sdk macosx rm -rf {OUT}/x", de),
+        d(Own, "xcrun --toolchain default rm -rf {OUT}/x", de),
+        d(Own, "xcrun -l -v rm -rf {OUT}/x", de),
+        d(Own, "xcrun --run rm -rf {OUT}/x", de),
+        d(Own, "sandbox-exec -n no-network rm -rf {OUT}/x", de),
+        d(Own, "sandbox-exec -p '(version 1)' rm -rf {OUT}/x", de),
+        d(Own, "sandbox-exec -f p.sb rm -rf {OUT}/x", de),
+        d(Own, "sandbox-exec -D k=v -n x rm -rf {OUT}/x", de),
+        d(Own, "sandbox-exec -Dk=v -n x rm -rf {OUT}/x", de),
+        d(Own, "flock /tmp/l rm -rf {OUT}/x", de),
+        d(Own, "flock -n /tmp/l rm -rf {OUT}/x", de),
+        d(Own, "flock -w 5 -x /tmp/l rm -rf {OUT}/x", de),
+        d(Own, "flock -E 3 /tmp/l rm -rf {OUT}/x", de),
+        d(Own, "flock /tmp/l -c 'rm -rf {OUT}/x'", de),
+        d(Own, "flock -c 'rm -rf {OUT}/x' /tmp/l", de),
+        d(Own, "flock --command='rm -rf {OUT}/x' /tmp/l", de),
+        d(Own, "flock /tmp/l $CMD", ur),
+        d(Own, "nice taskpolicy -b flock /tmp/l rm -rf {OUT}/x", de),
+        d(Own, "nice -n 5 rm -rf {OUT}/x", de),
+        d(Own, "time rm -rf {OUT}/x", de),
+        d(Own, "nohup rm -rf {OUT}/x", de),
+        d(Own, "stdbuf -o0 rm -rf {OUT}/x", de),
+        d(Own, "caffeinate -i rm -rf {OUT}/x", de),
+    ]
+}
+
+fn second_audit_allowed_cases() -> Vec<Case> {
+    use S::{Main, Own, Pri};
+    vec![
+        // Words that only name the programs, and commands that look near the rules.
+        a(Own, "echo alias hash enable cdpath cdable_vars"),
+        a(Own, "command -v alias"),
+        a(Own, "type hash"),
+        a(Own, "git config --get alias.co"),
+        a(Own, "git log --oneline -3 -- alias.rs"),
+        a(Own, "cat ~/notes/hash.txt"),
+        a(Own, "grep -rn cdpath src"),
+        a(Own, "CDPATH= bash -c 'cd src && ls'"),
+        a(Own, "env X=1 sh -c 'cd src && ls'"),
+        a(Own, "git worktree add -b lane/new ../new main"),
+        a(Own, "git worktree add --detach ../x NeXT"),
+        a(Own, "git worktree add ../x"),
+        a(Own, "git worktree add ../x lane/other"),
+        a(Own, "git worktree list"),
+        a(Own, "read -r line < src/a.txt"),
+        a(Own, "printf '%s\\n' hi"),
+        a(Own, "printf -v x %s y"),
+        a(Own, "mapfile -t lines < src/a.txt"),
+        a(Own, "let n=n+1"),
+        a(Own, "getopts ab opt"),
+        a(Own, "for f in a b; do echo $f; done"),
+        a(Own, "trap 'echo done' EXIT"),
+        a(Own, "trap - INT"),
+        a(Own, "trap '' TERM"),
+        a(Own, "trap -p"),
+        a(Own, "trap 'rm -rf build' EXIT"),
+        a(Own, "git grep -n foo"),
+        a(Own, "git grep -O less foo"),
+        a(Own, "set -e"),
+        a(Own, "set -euo pipefail"),
+        a(Own, "set -- a b"),
+        a(Own, "shopt -s nullglob"),
+        a(Own, "setopt extendedglob"),
+        a(Own, "cd src && ls"),
+        a(Own, "cd ./src && cd .. && rm -rf build"),
+        a(Own, "(cd {OUT}) && rm -rf ./build"),
+        a(Own, "git rebase --root"),
+        a(Own, "git rebase --root lane/own"),
+        a(Own, "git rebase --root --onto NeXT lane/own"),
+        a(Own, "git rebase main lane/own"),
+        a(Own, "git rebase -i HEAD~2"),
+        a(Own, "git rebase --onto main HEAD~2"),
+        a(Own, "git clone . y"),
+        a(Own, "git clone --depth 1 . y"),
+        a(Own, "git clone --upload-pack=git-upload-pack . y"),
+        a(Own, "git clone -u git-upload-pack . y"),
+        a(Own, "git fetch origin"),
+        a(Own, "git push -u origin HEAD"),
+        a(Own, "git switch lane/own"),
+        a(Own, "git switch -"),
+        a(Own, "git switch -c feat main"),
+        a(Own, "git switch --detach main"),
+        a(Own, "git switch -d NeXT"),
+        a(Own, "git checkout lane/own"),
+        a(Own, "git checkout -b feat NeXT"),
+        a(Own, "git checkout --detach NeXT"),
+        a(Own, "git checkout main -- src/a.txt"),
+        a(Own, "git checkout NeXT -- build/x"),
+        a(Own, "git checkout origin/main"),
+        a(Own, "git checkout -- src/a.txt"),
+        a(Own, "git switch --track origin/feature"),
+        a(Own, "git checkout -b feat origin/main"),
+        a(Own, "taskpolicy -b cargo build"),
+        a(Own, "taskpolicy -p 1234 -b"),
+        a(Own, "xcrun --find clang"),
+        a(Own, "xcrun --sdk macosx --show-sdk-path"),
+        a(Own, "xcrun clang -v"),
+        a(Own, "xcrun rm -rf {OWN}/build"),
+        a(Own, "sandbox-exec -n no-network ls"),
+        a(
+            Own,
+            "sandbox-exec -p '(version 1)(allow default)' cargo build",
+        ),
+        a(Own, "flock /tmp/l cargo build"),
+        a(Own, "flock -n /tmp/l -c 'cargo build'"),
+        a(Own, "flock -x /tmp/l rm -rf {OWN}/build"),
+        a(Own, "rm -rf {SCR}/work"),
+        a(Own, "ls *.rs"),
+        a(Own, "echo {a,b}"),
+        a(Own, "ls src/{a,b}.rs"),
+        a(Own, "find . -name '*.rs' | xargs grep foo"),
+        a(Own, "[ -d x ] && echo y"),
+        a(Own, "[[ -n \"$x\" ]] && echo y"),
+        a(Own, "test -f x && cat x"),
+        a(Own, "for f in *.rs; do echo $f; done"),
+        a(Own, "rm -f *.log"),
+        a(Own, "rm -rf build/{a,b}"),
+        a(Own, "jq '.[0]' f.json"),
+        a(Own, "awk '{print $1}' f"),
+        a(Own, "rg 'foo|bar' src"),
+        a(Own, "cargo nextest run -E 'test(x)'"),
+        a(Own, "echo $((1+2))"),
+        a(Own, "git diff HEAD~1 -- '*.rs'"),
+        a(Own, "git log @{u}.."),
+        a(Own, "git rev-parse @{-1}"),
+        a(Own, "git show HEAD^{tree}"),
+        a(Own, "sqlite3 -readonly db.sqlite \"select * from t\""),
+        a(Own, "ls [abc]*"),
+        a(Own, "cat ./src/*.rs"),
+        a(Own, "git branch -m lane/renamed"),
+        a(Own, "git push origin @:refs/heads/lane/x"),
+        a(Own, "git config --default /x core.hooksPath"),
+        a(Own, "git config --global --get include.path"),
+        a(Own, "git merge-tree --write-tree NeXT HEAD"),
+        a(Own, "git lfs ls-files"),
+        a(Own, "git lfs pull"),
+        a(Own, "pushd src && ls; popd"),
+        a(Own, "make -j4"),
+        a(Own, "node -e '1'"),
+        a(Pri, "git merge-tree --write-tree NeXT lane/own"),
+        a(Main, "git switch -c feat NeXT"),
+        a(Main, "git checkout lane/own"),
+    ]
+}
+
+#[test]
+fn ac15_the_second_audit_table_denied_and_allowed_shapes() {
+    let mut cases = second_audit_denied_cases();
+    cases.extend(second_audit_allowed_cases());
+    run_table(&World::new(), "second-audit", &cases);
+}
+
+// ------------------------------------------------------------------- AC-16
+//
+// The third audit repair (AUDIT #403 delta 3, note 7769), three families closed by a rule: a shell
+// start option that changes where `cd` lands (S-1, judged like `setopt`), a long option written as
+// a prefix of its name (S-2, git takes any unambiguous prefix, compared in one place), and a dynamic
+// value written against the option that carries a program (S-3, unreadable like the separate form).
+
+fn third_audit_denied_cases() -> Vec<Case> {
+    use S::{Main, Own};
+    let (de, pr, ur) = ("delete-outside", "protected-ref", "unreadable");
+    vec![
+        // S-1: a shell start option names a `cd` lookup option, in every spelling.
+        d(
+            Own,
+            "zsh -o cdablevars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "zsh --cdablevars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "zsh --cdable-vars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "bash -O cdable_vars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "sh -O cdable_vars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "zsh -ocdablevars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "zsh +o cdablevars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "emulate zsh -o cdablevars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
+            ur,
+        ),
+        // `emulate` sets shell options like a start does, its `-c` string is judged as if it stood
+        // alone, and the word alone (nothing else in the line is a trigger) needs the walk.
+        d(Own, "emulate -o cd_able_vars -c 'cd o && ls'", ur),
+        d(Own, "emulate zsh -c 'rm -rf {OUT}/x'", de),
+        d(Own, "emulate -L zsh -c 'rm -rf {OUT}/x'", de),
+        d(Own, "bash -o $OPT -c 'ls'", ur),
+        d(Own, "bash -O \"$OPT\" -c 'ls'", ur),
+        d(Own, "env CDPATH=/opt zsh -o cdablevars -c 'ls'", ur),
+        // S-2: a long option written as a prefix of its name.
+        d(Own, "git rebase --roo NeXT", pr),
+        d(Own, "git rebase --ro NeXT", pr),
+        d(Own, "git rebase -f --roo NeXT", pr),
+        d(Own, "git rebase --root --onto lane/own NeXT", pr),
+        d(Own, "git push --mir origin", pr),
+        d(Own, "git push --al origin", pr),
+        d(Own, "git checkout --orph NeXT", pr),
+        d(Own, "git switch --crea NeXT", pr),
+        d(Own, "git clone --upload-pa='rm -rf {OUT}/x' . y", de),
+        d(Own, "git clone --upload-pa 'rm -rf {OUT}/x' . y", de),
+        d(Own, "git fetch --upload-pac='rm -rf {OUT}/x' .", de),
+        d(Own, "git fetch --upload-pac 'rm -rf {OUT}/x' .", de),
+        d(Own, "git ls-remote --upload-pa='rm -rf {OUT}/x' .", de),
+        d(Own, "git push --receive-pa='rm -rf {OUT}/x' .", de),
+        d(Own, "git push --exe='rm -rf {OUT}/x' .", de),
+        d(Own, "git rebase --exe='rm -rf {OUT}/x' HEAD~1", de),
+        d(Own, "git rebase --exe 'rm -rf {OUT}/x' HEAD~1", de),
+        d(Own, "git difftool --extc='rm -rf {OUT}/x' HEAD~1", de),
+        d(Own, "git grep --open-files-in-p='rm -rf {OUT}/x' foo", de),
+        d(
+            Own,
+            "git filter-branch --tree-fi='rm -rf {OUT}/x' -- HEAD",
+            de,
+        ),
+        d(Main, "git rebase --roo NeXT", pr),
+        // A read-or-write split by flag reads a prefix like the full name (`classify_git`).
+        d(Own, "git -C {PRI} symbolic-ref --delet HEAD", "git-state"),
+        d(Own, "git -C {PRI} branch --unset-up", "git-state"),
+        // S-3: a dynamic value written against the option that carries a program is unreadable,
+        // like the separate form.
+        d(Own, "git clone --upload-pack=\"$(echo rm)\" . y", ur),
+        d(Own, "git clone --upload-pack=${X} . y", ur),
+        d(Own, "git clone --upload-pack=`echo rm` . y", ur),
+        d(Own, "git clone --upload-pack=$X . y", ur),
+        d(Own, "git clone -u\"$X\" . y", ur),
+        d(Own, "git clone -qu\"$X\" . y", ur),
+        d(Own, "git clone --upload-pa=$X . y", ur),
+        d(Own, "git grep -O\"$X\" foo", ur),
+        d(Own, "git ls-remote --upload-pack=$X .", ur),
+        d(Own, "git difftool --extcmd=$X HEAD~1", ur),
+        d(Own, "git difftool -x\"$X\" HEAD~1", ur),
+        d(Own, "git rebase --exec=$X HEAD~1", ur),
+        d(Own, "git rebase -x\"$X\" HEAD~1", ur),
+        d(Own, "git push --receive-pack=\"$X\" .", ur),
+        d(Own, "git filter-branch --tree-filter=\"$X\" -- HEAD", ur),
+    ]
+}
+
+fn third_audit_allowed_cases() -> Vec<Case> {
+    use S::Own;
+    vec![
+        // S-1: start options that name no `cd` lookup option.
+        a(Own, "bash -o pipefail -c 'cd src && ls'"),
+        a(Own, "sh -c 'cd src && ls'"),
+        a(Own, "emulate -L zsh"),
+        a(Own, "emulate zsh -c 'ls'"),
+        a(Own, "bash --norc -c 'ls'"),
+        a(Own, "bash --rcfile ~/.cdablevars -c 'ls'"),
+        // S-2: prefixes that name nothing dangerous, and values that are harmless programs.
+        a(Own, "git rebase --root lane/own"),
+        a(Own, "git rebase --roo lane/own"),
+        a(Own, "git clone --upload-pa=git-upload-pack . y"),
+        a(Own, "git fetch --upload-pac=git-upload-pack ."),
+        a(
+            Own,
+            "git push --receive-pa=git-receive-pack origin lane/own",
+        ),
+        a(Own, "git rebase --exe='make test' HEAD~1"),
+        a(Own, "git difftool --extc=meld HEAD~1"),
+        a(Own, "git grep --open-files-in-p=less foo"),
+        a(Own, "git -C {PRI} tag --verif v1"),
+        a(Own, "git -C {PRI} branch --show-curr"),
+        a(Own, "git push --tag origin v1"),
+        a(Own, "git checkout --force lane/other"),
+        a(Own, "git switch --crea lane/new"),
+        // S-3: a dynamic value against an option that carries no program.
+        a(Own, "git clone --depth=\"$N\" . y"),
+        a(Own, "git clone --branch=$B . y"),
+        a(Own, "git clone -q\"$X\" . y"),
+        a(Own, "git grep -n\"$X\" foo"),
+        a(Own, "git grep -e \"$PAT\" src"),
+        a(Own, "git log --format=\"$F\" -1"),
+        a(Own, "git ls-remote --heads $URL"),
+    ]
+}
+
+#[test]
+fn ac16_the_third_audit_table_denied_and_allowed_shapes() {
+    let mut cases = third_audit_denied_cases();
+    cases.extend(third_audit_allowed_cases());
+    run_table(&World::new(), "third-audit", &cases);
+}
+
+// ------------------------------------------------------------------- AC-17
+//
+// The fourth audit repair (AUDIT #403 delta 4, note 7818), the S-1 branch only, closed by two rules:
+// a word of a shell start, `emulate`, `set`, `setopt` or `unsetopt` where an option may stand is
+// `unreadable` when an expansion decides any part of it, and a one-letter option is judged by the
+// option the zsh manual names for it (`-T` is `CDABLE_VARS`), in every place that reads options.
+
+fn fourth_audit_denied_cases() -> Vec<Case> {
+    use S::Own;
+    let ur = "unreadable";
+    let cd = "o=/opt/moai-boundary-outside; cd o && rm -rf ./*";
+    let mut cases = Vec::new();
+    // One-letter `-T` (`CDABLE_VARS`) in every place that reads options, alone and in a cluster.
+    for start in [
+        "zsh -T -c",
+        "zsh -fT -c",
+        "zsh -Tf -c",
+        "zsh +T -c",
+        "zsh -f -T -c",
+        "bash -T -c",
+        "sh -xT -c",
+        "emulate zsh -T -c",
+        "emulate -LT zsh -c",
+        "emulate -L -T zsh -c",
+    ] {
+        cases.push(d(Own, &format!("{start} '{cd}'"), ur));
+    }
+    for head in [
+        "set -T",
+        "set -fT",
+        "set -eT",
+        "set +T",
+        "setopt -T",
+        "setopt -fT",
+        "unsetopt -T",
+    ] {
+        cases.push(d(Own, &format!("{head}; {cd}"), ur));
+    }
+    // An option name or a whole option word that an expansion decides, in every spelling.
+    for start in [
+        "zsh -o$O -c",
+        "zsh -o\"$O\" -c",
+        "bash -O$O -c",
+        "zsh -fo$O -c",
+        "zsh -fo \"$O\" -c",
+        "bash -xO \"$O\" -c",
+        "zsh \"$O\" -c",
+        "zsh $O -c",
+        "sh \"$O\" -c",
+        "bash ${O} -c",
+        "zsh -f \"$O\" -c",
+        "zsh -f $(echo -T) -c",
+        "zsh -f `echo -T` -c",
+        "emulate zsh \"$O\" -c",
+        "emulate zsh $O -c",
+        "emulate \"$O\" zsh -c",
+        "emulate zsh -o$O -c",
+        "emulate zsh -fo \"$O\" -c",
+        "emulate -L zsh -$O -c",
+    ] {
+        cases.push(d(Own, &format!("{start} '{cd}'"), ur));
+    }
+    // The value of `-o` and `-O` behind other letters is an option name, named or decided.
+    for start in [
+        "zsh -fo cdablevars -c",
+        "zsh -eo cd_able_vars -c",
+        "bash -xO cdable_vars -c",
+        "zsh -oc cdablevars",
+        "zsh -foc cdablevars",
+        "emulate zsh -fo cdablevars -c",
+        "emulate zsh -L -o CDABLE_VARS -c",
+    ] {
+        cases.push(d(Own, &format!("{start} '{cd}'"), ur));
+    }
+    cases.push(d(Own, &format!("set -eo cdablevars; {cd}"), ur));
+    cases.push(d(Own, &format!("set -fo \"$O\"; {cd}"), ur));
+    cases.push(d(Own, &format!("setopt -o cdablevars; {cd}"), ur));
+    // A shell start whose first word is not readable is an option or the script, and the line does
+    // not say which: it is denied like an option.
+    cases.push(d(Own, "bash \"$SCRIPT\"", ur));
+    cases.push(d(Own, "zsh $HOME/run.sh arg", ur));
+    cases
+}
+
+fn fourth_audit_allowed_cases() -> Vec<Case> {
+    use S::Own;
+    vec![
+        // Letters that name no `cd` lookup option, alone and in a cluster.
+        a(Own, "zsh -f -c 'ls'"),
+        a(Own, "zsh -fx -c 'cd src && ls'"),
+        a(Own, "bash -xe -c 'ls'"),
+        a(Own, "bash -euo pipefail -c 'ls'"),
+        a(Own, "set -e"),
+        a(Own, "set -eu"),
+        a(Own, "set -x"),
+        a(Own, "set +e"),
+        a(Own, "set -eo pipefail"),
+        a(Own, "setopt extendedglob"),
+        a(Own, "emulate -L zsh -c 'ls'"),
+        a(Own, "emulate -LR zsh"),
+        // An expansion after the first operand is an argument, and after `--` nothing is an option.
+        a(Own, "bash -c 'ls' \"$X\""),
+        a(Own, "bash -c 'echo \"$1\"' _ \"$X\""),
+        a(Own, "bash tools/run.sh \"$ARG\""),
+        a(Own, "bash -- \"$SCRIPT\""),
+        a(Own, "sh -c 'ls' -- $X"),
+        // `set` takes a list as data.
+        a(Own, "set -- \"$@\""),
+        a(Own, "set -e -- $X"),
+    ]
+}
+
+#[test]
+fn ac17_the_fourth_audit_table_denied_and_allowed_shapes() {
+    let mut cases = fourth_audit_denied_cases();
+    cases.extend(fourth_audit_allowed_cases());
+    run_table(&World::new(), "fourth-audit", &cases);
+}
+
+// The fifth audit repair (AUDIT #403 delta 5, note 8053; SPEC revision 3, D-17): the option words of
+// a shell start, `emulate`, `set`, `setopt`, `unsetopt` and `shopt` are read by an allowed-option
+// table, never by a list of forbidden ones. The first three groups below are the auditor's probe
+// files (p5, p6 and reg2) with the answers the table gives; the fourth is the list of
+// over-rejections that D-17 accepts, one denied row each; the fifth holds a row for every word of
+// the table, so a word that is removed from it fails a row.
+
+/// A command that deletes outside every boundary root, for a row that is judged by content.
+fn out_rm(prefix: &str) -> String {
+    format!("{prefix} 'rm -rf {OUT}/x'")
+}
+
+fn fifth_audit_denied_cases() -> Vec<Case> {
+    use S::Own;
+    let ur = "unreadable";
+    let cd = "o=/opt/moai-boundary-outside; cd o && rm -rf ./*";
+    let cd_o = "cd o && rm -rf ./*";
+    let mut cases = Vec::new();
+    // p5: every spelling of the `CDABLE_VARS` family is `unreadable`, whatever stands before it.
+    for start in [
+        "zsh -T -c",
+        "zsh -fT -c",
+        "zsh -xfeT -c",
+        "zsh +T -c",
+        "emulate zsh -T -c",
+        "emulate zsh -fT -c",
+        "zsh -o$O -c",
+        "zsh \"$O\" -c",
+        "emulate zsh \"$O\" -c",
+        "emulate zsh -o$O -c",
+        "zsh -fo cdablevars -c",
+        "zsh -fo \"$O\" -c",
+        "bash -eO cdable_vars -c",
+    ] {
+        cases.push(d(Own, &format!("{start} '{cd}'"), ur));
+    }
+    cases.push(d(Own, &format!("zsh -Tf -c '{cd_o}'"), ur));
+    for head in ["set -T", "set -eT", "setopt -T", "unsetopt -T"] {
+        cases.push(d(Own, &format!("{head}; {cd}"), ur));
+    }
+    cases.push(d(Own, &format!("setopt -m 'cd*vars'; {cd}"), ur));
+    cases.push(d(Own, &format!("setopt -m '*'; {cd}"), ur));
+    // p5 and reg2, B-1: an attached `-o<name>`, `-O` and `+O` swallow the next word in zsh, so the
+    // line is `unreadable` before the string behind it is looked at.
+    for start in [
+        "zsh -oerrexit -c",
+        "zsh -opipefail -c",
+        "zsh -O -c",
+        "zsh -fO -c",
+        "emulate zsh -O -c",
+        "emulate zsh -oerrexit -c",
+        "bash -oerrexit -c",
+        "zsh -O cdable_vars -c",
+        "bash -O extglob -c",
+        // `c` has no `+` form, so `+c` is no command-string word and is unreadable.
+        "bash +c",
+    ] {
+        cases.push(d(Own, &out_rm(start), ur));
+    }
+    cases.push(d(Own, &format!("zsh -oerrexit -T -c '{cd_o}'"), ur));
+    // p6: the same family behind `-o<name>` in `set`, `setopt` and `emulate`.
+    cases.push(d(Own, &format!("set -oerrexit -T; {cd}"), ur));
+    cases.push(d(Own, &format!("setopt -oerrexit -T; {cd_o}"), ur));
+    cases.push(d(Own, &format!("emulate zsh -oerrexit -T -c '{cd_o}'"), ur));
+    cases.push(d(Own, &format!("zsh -oerrexit -T -c '{cd}'"), ur));
+    // The over-rejections of D-17, one denied row each, so a later relaxation is a decision.
+    for command in [
+        "bash -O extglob -c 'ls'",
+        "bash -oerrexit -c 'ls'",
+        "zsh -oNOTIFY -c 'ls'",
+        "zsh -o NOTIFY -c 'ls'",
+        "zsh -o ERR_EXIT -c 'ls'",
+        "bash -ic 'ls'",
+        "bash --posix -c 'ls'",
+        "sh -T -c 'ls'",
+        "set \"$@\"; ls",
+        "set -a; ls",
+        "setopt NOTIFY; ls",
+        "setopt no_extendedglob; ls",
+        "setopt -m 'x*'; ls",
+        "shopt -s expand_aliases; ls",
+        "emulate -o errexit -c 'ls'",
+        "bash \"$SCRIPT\"",
+    ] {
+        cases.push(d(Own, command, ur));
+    }
+    // The edges of the reading: `o` is read only as the last letter of a cluster, a word before
+    // the first operand of `set` that an expansion decides is an option, a letter or a name
+    // outside the table is unreadable in every place, and so is every long option outside it.
+    for command in [
+        "zsh -ofe errexit -c 'ls'",
+        "set -oe errexit; ls",
+        "set \"$X\"; ls",
+        "set -e \"$X\"; ls",
+        "set -A arr x y; ls",
+        "set +A arr; ls",
+        "setopt -L; ls",
+        "setopt \"$X\"; ls",
+        "shopt -o cdable_vars; ls",
+        "shopt -s cdable_vars; ls",
+        "shopt \"$X\"; ls",
+        "zsh --cdablevars -c 'ls'",
+        "zsh --no-cdable-vars -c 'ls'",
+        "zsh -n -c 'ls'",
+        "bash +O extglob -c 'ls'",
+        "bash -o posix -c 'ls'",
+        "zsh -o errexit -o cdablevars -c 'ls'",
+        "emulate zsh -L -c \"$X\"",
+        "emulate bash -c 'ls'",
+        "emulate -LR -T zsh",
+        "unsetopt extendedglob nomatch; ls",
+        // A bare `-` or `+` names no option, and a word whose readable text is a listed name but
+        // that an expansion finishes (`errexit$X`, `zsh$X`) is not that name.
+        "bash - -c 'ls'",
+        "set -; ls",
+        "set +; ls",
+        "zsh -o errexit$X -c 'ls'",
+        "set -o errexit$X; ls",
+        "emulate zsh$X -c 'ls'",
+        // A name outside the table is unreadable even where an older revision read it.
+        "zsh -o extendedglob -c 'ls'",
+        "zsh -o nomatch -c 'ls'",
+        "zsh -fo extendedglob -c 'ls'",
+        "zsh -oc extendedglob 'ls'",
+        "unsetopt nomatch; ls",
+    ] {
+        cases.push(d(Own, command, ur));
+    }
+    // A word of the table does not hide what the string behind it deletes.
+    cases.push(d(Own, &out_rm("zsh -o errexit -c"), "delete-outside"));
+    cases.push(d(Own, &out_rm("bash -eC -c"), "delete-outside"));
+    cases.push(d(Own, &out_rm("bash -l -c"), "delete-outside"));
+    cases.push(d(Own, &out_rm("emulate -L zsh -c"), "delete-outside"));
+    cases.push(d(Own, &out_rm("emulate -R sh -c"), "delete-outside"));
+    // `-s` reads the script from standard input even when operands follow (`bash -s x`).
+    cases.push(d(
+        Own,
+        &format!("bash -s x <<'EOF'\nrm -rf {OUT}/x\nEOF"),
+        "delete-outside",
+    ));
+    cases.push(d(Own, &format!("set -e; rm -rf {OUT}/x"), "delete-outside"));
+    cases.push(d(
+        Own,
+        &format!("setopt extendedglob; rm -rf {OUT}/x"),
+        "delete-outside",
+    ));
+    cases.push(d(
+        Own,
+        &format!("shopt -s extglob; rm -rf {OUT}/x"),
+        "delete-outside",
+    ));
+    cases
+}
+
+fn fifth_audit_allowed_cases() -> Vec<Case> {
+    use S::Own;
+    vec![
+        // p5 neighbours that stay allowed.
+        a(Own, "bash -c 'ls' \"$ARG\""),
+        a(Own, "zsh -c 'echo $1' x \"$ARG\""),
+        a(Own, "bash -- \"$X\""),
+        a(Own, "bash script.sh \"$ARG\""),
+        a(Own, "zsh -e -c 'ls'"),
+        a(Own, "zsh -o errexit -c 'ls'"),
+        a(Own, "zsh -fx -c 'ls'"),
+        a(Own, "bash -e -o pipefail -c 'ls'"),
+        a(Own, "set -euo pipefail; ls"),
+        a(Own, "set -e; ls"),
+        a(Own, "setopt extendedglob; ls **/*.rs"),
+        a(Own, "emulate -L zsh; ls"),
+        // Every word of the table.
+        a(Own, "bash -l -c 'ls'"),
+        a(Own, "bash -lc 'ls'"),
+        a(Own, "bash -eC -c 'ls'"),
+        a(Own, "bash -s"),
+        a(Own, "zsh +e -c 'ls'"),
+        a(Own, "zsh +xv -c 'ls'"),
+        a(Own, "bash --login -c 'ls'"),
+        a(Own, "bash --norc --noprofile -c 'ls'"),
+        a(Own, "zsh --no-rcs -c 'ls'"),
+        a(Own, "bash --version"),
+        a(Own, "bash --help"),
+        a(Own, "bash --rcfile x.sh -c 'ls'"),
+        a(Own, "bash --init-file x.sh -c 'ls'"),
+        a(Own, "zsh -o nounset -c 'ls'"),
+        a(Own, "zsh -o xtrace -c 'ls'"),
+        a(Own, "zsh -eo verbose -c 'ls'"),
+        a(Own, "zsh +o errexit -c 'ls'"),
+        a(Own, "set +o errexit; ls"),
+        a(Own, "set -o pipefail; ls"),
+        a(Own, "set -o; ls"),
+        a(Own, "set -xv; ls"),
+        a(Own, "set foo -T bar; ls"),
+        a(Own, "set -e foo \"$X\"; ls"),
+        a(Own, "emulate -R zsh -c 'ls'"),
+        a(Own, "emulate sh -c 'ls'"),
+        a(Own, "emulate -L ksh; ls"),
+        a(Own, "emulate csh; ls"),
+        a(Own, "setopt errexit nounset; ls"),
+        a(Own, "setopt nullglob globdots; ls"),
+        a(Own, "setopt pipefail xtrace verbose; ls"),
+        a(Own, "unsetopt extendedglob; ls"),
+        a(Own, "unsetopt pipefail; ls"),
+        a(Own, "setopt; ls"),
+        a(Own, "shopt -s extglob; ls"),
+        a(Own, "shopt -u nullglob; ls"),
+        a(Own, "shopt -q failglob; ls"),
+        a(Own, "shopt -p; ls"),
+        a(
+            Own,
+            "shopt -s globstar dotglob nocaseglob nocasematch lastpipe; ls",
+        ),
+    ]
+}
+
+#[test]
+fn ac18_the_fifth_audit_table_denied_and_allowed_shapes() {
+    let mut cases = fifth_audit_denied_cases();
+    cases.extend(fifth_audit_allowed_cases());
+    run_table(&World::new(), "fifth-audit", &cases);
+}
+
+#[test]
+fn ac15_a_checkout_under_a_temporary_root_never_borrows_the_real_home() {
+    let lent = Path::new("/private/tmp/moai-bb-lent-world");
+    let inside = Path::new("/private/tmp/moai-bb-checkout");
+    // A checkout under a temporary root has no world of its own: the answer is a failure that
+    // names the variable, never a folder under the real HOME (which the function never reads).
+    let why = fixture_base_in(inside, None).unwrap_err();
+    assert!(why.contains(WORLD_BASE_VAR), "{why}");
+    assert!(fixture_base_in(inside, Some(lent)).is_err());
+    let outside = Path::new("/opt/moai-bb-lent-world");
+    assert_eq!(
+        fixture_base_in(inside, Some(outside)).unwrap(),
+        outside.to_path_buf()
+    );
+    let manifest = Path::new("/opt/moai-bb-checkout");
+    assert_eq!(
+        fixture_base_in(manifest, None).unwrap(),
+        manifest.join("target").join("hook-bash-boundary-tests")
+    );
+}

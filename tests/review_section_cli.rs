@@ -12,7 +12,10 @@ use std::process::{Command, Stdio};
 use tempfile::TempDir;
 
 fn cli(args: &[&str], input: &Value) -> std::process::Output {
+    // An empty temporary HOME of its own, so no run reads or changes the HOME of the test process.
+    let home = TempDir::new().unwrap();
     let mut child = Command::new(crate::common::MOAI_BIN)
+        .env("HOME", home.path())
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -162,6 +165,59 @@ fn an_existing_review_file_gets_the_section_appended_and_keeps_its_text() {
     assert!(text.starts_with(own));
     assert!(text.contains("- 리뷰에서 항상 막는다: a change without a test\n"));
     assert!(text.contains("- 먼저 묻지 않고 바꾸지 않는다: the billing module\n"));
+}
+
+/// SPEC-20261124-moai-project-interview AC-6 (REQ-8): an interview that asked nothing records the
+/// generic defaults with source `default`; REVIEW.md carries the `review_blocks` and `protected`
+/// ones, and still leaves out a `HOLD` value.
+#[test]
+fn review_md_writes_default_sourced_decisions_but_not_hold() {
+    let root = project(vec![
+        decision(
+            "review_blocks",
+            "a secret in code or logs; a change without a test",
+            "default",
+        ),
+        decision(
+            "protected",
+            "secret and key files are never changed or committed",
+            "default",
+        ),
+        decision("done", "the project's own tests pass", "default"),
+    ]);
+    let p = result(&plan(root.path(), "en"));
+    assert_eq!(review_action(&p).as_deref(), Some("create"));
+    result(&apply(root.path(), &p));
+    let text = fs::read_to_string(root.path().join("REVIEW.md")).unwrap();
+    assert!(
+        text.contains("a secret in code or logs; a change without a test"),
+        "{text}"
+    );
+    assert!(
+        text.contains("secret and key files are never changed or committed"),
+        "{text}"
+    );
+    assert!(
+        !text.contains("the project's own tests pass"),
+        "`done` is not a REVIEW.md answer: {text}"
+    );
+
+    let held = project(vec![
+        decision("review_blocks", "HOLD", "default"),
+        decision(
+            "protected",
+            "secret and key files are never changed or committed",
+            "default",
+        ),
+    ]);
+    let p = result(&plan(held.path(), "en"));
+    result(&apply(held.path(), &p));
+    let text = fs::read_to_string(held.path().join("REVIEW.md")).unwrap();
+    assert!(text.contains("secret and key files"), "{text}");
+    assert!(
+        !text.contains("HOLD"),
+        "a HOLD value is never a rule: {text}"
+    );
 }
 
 #[test]

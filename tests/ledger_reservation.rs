@@ -230,6 +230,7 @@ fn reserve_refusals_leave_the_ledger_byte_for_byte_as_it_was() {
             other_card,
             mine,
             theirs,
+            ..
         } => assert_eq!(
             (other_card, mine.as_str(), theirs.as_str()),
             (taken, "src/taken/inner.rs", "src/taken/")
@@ -314,6 +315,7 @@ fn scope_overlap_decides_between_two_cards_exactly_as_the_shared_predicate() {
                     other_card,
                     mine,
                     theirs,
+                    ..
                 }),
             ) => {
                 assert_eq!(
@@ -784,7 +786,7 @@ fn every_other_reason_to_refuse_is_typed_and_recorded() {
 }
 
 #[test]
-fn an_ended_lease_is_refused_by_everything_except_a_release() {
+fn an_ended_lease_is_refused_by_the_fence_and_handoff_and_accepted_by_renew_and_release() {
     let (home, mut w) = setup();
     let card = ready_card(&mut w);
     take(&mut w, card, "a", &zone(card)).unwrap();
@@ -795,9 +797,6 @@ fn an_ended_lease_is_refused_by_everything_except_a_release() {
     );
     for e in [
         reservation::fence(&mut w, card, "a", 1).unwrap_err(),
-        reservation::renew(&mut w, card, "a", 1, 600)
-            .map(|_| ())
-            .unwrap_err(),
         reservation::handoff(&mut w, card, "a", 1, "b")
             .map(|_| ())
             .unwrap_err(),
@@ -811,8 +810,13 @@ fn an_ended_lease_is_refused_by_everything_except_a_release() {
         "nothing took over"
     );
     let log = events(r.conn(), "fence_reject");
-    assert_eq!(log.len(), 3);
+    assert_eq!(log.len(), 2);
     assert!(log.iter().all(|e| e.2["reason"] == "lease_expired"));
+    // `renew` is the one write that takes an ended lease of the holder who was not reclaimed
+    // (SPEC-20261121-card-lease-yield REQ-6): same generation, a new lease, no rejection event.
+    let renewed = reservation::renew(&mut w, card, "a", 1, 600).unwrap();
+    assert_eq!((renewed.generation, renewed.status.as_str()), (1, "held"));
+    assert_eq!(events(r.conn(), "fence_reject").len(), 2);
     // A live lease passes the same check.
     sql(
         &mut w,

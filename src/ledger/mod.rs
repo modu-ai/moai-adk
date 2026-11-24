@@ -13,6 +13,9 @@
 //!
 //! Nothing here calls a model, the network or `git`.
 
+pub mod adopt;
+pub mod cleanup_outbox;
+pub mod close;
 pub mod command;
 pub mod folders;
 pub mod import;
@@ -22,6 +25,7 @@ pub mod open;
 pub mod recover;
 pub mod reservation;
 pub mod schema;
+pub mod scope_return;
 pub mod summary;
 pub mod workflow;
 

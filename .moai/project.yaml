@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "project_id": "moai-adk",
-  "purpose": "MoAI ADK 2026.11.0-rc.1: Rust online-first development kit with one common MoAI skill for Claude Code and Codex",
+  "purpose": "MoAI ADK 2026.11.0-rc.1: Rust online-first development kit with one common MoAI skill for Claude Code",
   "tools": [
     "Rust",
     "Python"
@@ -11,8 +11,7 @@
     "characterization"
   ],
   "hosts": [
-    "claude",
-    "codex"
+    "claude"
   ],
   "detected": {
     "project_kind": "existing",
@@ -22,13 +21,11 @@
     ],
     "languages": [
       "python",
-      "rust",
-      "typescript"
+      "rust"
     ],
     "lsp": [
       "pyright",
-      "rust-analyzer",
-      "typescript-language-server"
+      "rust-analyzer"
     ],
     "mcp_servers": [],
     "databases": [
@@ -37,7 +34,7 @@
   },
   "work_flow": {
     "flow": "m-flow",
-    "integration_branch": "v2026.11.0"
+    "integration_branch": "NeXT"
   },
   "decisions": [
     {
@@ -50,7 +47,7 @@
     {
       "id": "done",
       "topic": "done",
-      "value": "local_check.sh in the tools folder passes",
+      "value": "the project's own tests pass",
       "source": "user",
       "scope": "project"
     },
@@ -72,10 +69,22 @@
   "language": {
     "commit_messages": "en",
     "documents": "ko",
+    "instruction_files": "en",
     "user_chat": "ko"
   },
   "versioning": {
     "scheme": "headver",
     "head": 4
-  }
+  },
+  "shared_files": [
+    "src/lib.rs",
+    "src/help.rs",
+    "src/ops/card.rs",
+    "src/profile.rs",
+    "tests/areas.toml",
+    "tools/repo_scans.json",
+    "skills/moai/references/source-manifest.json",
+    "docs/design-review/appendix/operations/card.md",
+    "tests/fixtures/help/*.txt"
+  ]
 }

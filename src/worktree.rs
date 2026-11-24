@@ -6,11 +6,13 @@
 //! worktree locked for the same task) and only then runs
 //! `git worktree add --lock --reason "moai claim <task_key> e<epoch>" -b <branch> <path> <base>`.
 //! It never forces the add, and the primary worktree's HEAD, branch and index are never
-//! written: the only mutating git call in this file is that `worktree add`.
+//! written: the only mutating git call in this file is that `worktree add`. After a successful
+//! add inside the project's `.claude/worktrees/`, one line goes to the repository's local exclude
+//! file (`crate::home_workdir::ensure_place_ignored`) so the main tree's status does not change.
 //!
-//! Decided inputs: the default path is `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>`
-//! (#2811 W2, `crate::home_workdir`; before it `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`,
-//! decisions 16:5x→17:0x, where existing worktrees stay); any other path is accepted as given
+//! Decided inputs: the default path is `<project>/.claude/worktrees/<project>-<issue>-<logical_key>`
+//! (SPEC-20261122-worktree-place, `crate::home_workdir`; before it `<HOME>/.moai/worktrees/…` and
+//! `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`, where existing worktrees stay); any other path is accepted as given
 //! (REQ-06C-12). `git worktree add` creates the missing parents of the default path (D5). The branch prefix is an open HOLD, so it is a required
 //! input with no default.
 //!
@@ -92,10 +94,22 @@ const CAPACITY_BUDGET: std::time::Duration = std::time::Duration::from_secs(5);
 /// The journal of `project`, opened for writing and locked; a held lock is the one
 /// journal lock-busy answer — the explicit `unavailable` kind, retryable (06-A
 /// busy-never-waits, REQ-06A-05; #2345 sets the kind at this raise site).
+///
+/// The process-edge adapter of [`open_locked_journal_in`]: it reads the environment HOME once
+/// (through the one reader of it in `layout`) and hands it on.
 pub fn open_locked_journal(
     project: &Path,
 ) -> std::result::Result<Journal, crate::contract::OpError> {
-    let journal = Journal::open(&claim::journal_root(project)?)?;
+    open_locked_journal_in(project, crate::layout::environment_home().as_deref())
+}
+
+/// [`open_locked_journal`] with the HOME given instead of read from the environment: the lock is
+/// on the journal that [`claim::journal_root_in`] names for `home`.
+pub fn open_locked_journal_in(
+    project: &Path,
+    home: Option<&Path>,
+) -> std::result::Result<Journal, crate::contract::OpError> {
+    let journal = Journal::open(&claim::journal_root_in(project, home)?)?;
     if !journal.try_lock()? {
         return Err(crate::contract::OpError::new(
             crate::contract::Kind::Unavailable,
@@ -261,7 +275,7 @@ pub fn refuse_in_build_folder(path: &Path, what: &str) -> Result<()> {
     match cargo_build_folder(path) {
         Some(dir) => Err(format!(
             "{what} {} is inside the Cargo build folder {}; put worktrees outside \
-             build output, under the default <HOME>/.moai/worktrees",
+             build output, under the default <project>/.claude/worktrees",
             path.display(),
             dir.display()
         )),
@@ -436,8 +450,8 @@ fn valid_prefix(p: &str) -> bool {
 //   Issue); it still differs from 06-A's `claim_branch_suffix` (`c<issue>-<comment_id>`)
 // @MX:UPGRADE: when the user decides the prefix and its relation to the 06-A suffix
 /// The plan for a claim's worktree (REQ-06C-01): no git change, byte-identical for equal input.
-/// `home` is the user's home (`crate::home_workdir::home`); it is needed only when `path` is
-/// `None` and names the default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>`.
+/// Without an explicit `path` the worktree lands in the project's
+/// `.claude/worktrees/<project>-<issue>-<logical_key>`; `home` only feeds the build folder.
 pub fn plan(
     project: &Path,
     rec: &ClaimRecord,
@@ -464,13 +478,19 @@ pub fn plan(
     let path = match path {
         Some(p) if p.is_absolute() => p.to_path_buf(),
         Some(p) => primary.join(p),
-        None => crate::home_workdir::worktree_dir(
-            home.ok_or("home directory missing; pass --path for the worktree")?,
-            &primary,
-            &format!("{issue}-{}", rec.logical_key),
-        )?,
+        None => {
+            crate::home_workdir::worktree_dir(&primary, &format!("{issue}-{}", rec.logical_key))?
+        }
     };
     refuse_in_build_folder(&path, "worktree path")?;
+    // The worktree's build folder under the shared build root (S8, the C-82 convention):
+    // named exactly as heavy-slot names it at runtime, through the same `folder_name`
+    // (the project prefix is part of that name for a worktree outside the default shape).
+    let build_folder = home.and_then(|h| {
+        crate::lane_env::folder_name(&primary.join(".git"), &path)
+            .ok()
+            .map(|n| crate::lane_env::build_folder(h, &n))
+    });
     let content = json!({
         "task_key": rec.task_key,
         "logical_key": rec.logical_key,
@@ -478,6 +498,9 @@ pub fn plan(
         "epoch": rec.epoch,
         "branch": branch,
         "path": path.to_string_lossy(),
+        "build_folder": build_folder.as_ref().map(|p| p.to_string_lossy().into_owned()),
+        // The name a session opens this worktree with: `claude --worktree <session_name>`.
+        "session_name": path.file_name().map(|n| n.to_string_lossy().into_owned()),
         "base_sha": rec.base_revision,
         "primary": primary.to_string_lossy(),
         "lock_reason": format!("moai claim {} e{}", rec.task_key, rec.epoch),
@@ -539,6 +562,46 @@ fn conflict(rec: &ClaimRecord, reason: &str, plan: &Value, existing: Vec<Value>)
     out
 }
 
+/// Creates `dir` and its missing parents under the HOME root — the build tree the lane's
+/// lane-env expects — with the private mode at every level it makes (S8: the whole tree is
+/// 0700, like lane_env's prepare). A link or a regular file in any occupied slot is an
+/// error naming that path; existing folders are left as they are.
+fn make_private_dir(dir: &Path) -> Result<()> {
+    // <HOME>/.moai/build/<name>: stop at the third ancestor (the HOME root), never touch
+    // anything outside the build tree.
+    let stop = dir.ancestors().nth(3).unwrap_or(dir);
+    let mut chain: Vec<PathBuf> = Vec::new();
+    let mut cur = Some(dir);
+    while let Some(p) = cur {
+        if p == stop {
+            break;
+        }
+        chain.push(p.to_path_buf());
+        cur = p.parent();
+    }
+    for p in chain.iter().rev() {
+        match fs::symlink_metadata(p) {
+            Ok(m) if m.file_type().is_symlink() => {
+                return Err(format!("{} is a link; it is not followed", p.display()));
+            }
+            Ok(m) if m.is_dir() => continue,
+            Ok(_) => {
+                return Err(format!(
+                    "{} is not a folder; it is not followed",
+                    p.display()
+                ))
+            }
+            Err(_) => {
+                let mut b = fs::DirBuilder::new();
+                #[cfg(unix)]
+                std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
+                b.create(p).map_err(|e| format!("{}: {e}", p.display()))?;
+            }
+        }
+    }
+    Ok(())
+}
+
 /// REQ-06C-02/03: create the worktree, or report the existing owner; the add is never forced.
 pub fn apply(
     project: &Path,
@@ -588,6 +651,19 @@ pub fn apply(
             vec![json!({"branch": full_ref, "head": head.trim()})],
         ));
     }
+    // REQ-13: a link in the place is refused before anything is made behind it.
+    // One verdict on the place: a `.` or `..` part, a link in any part and a path that resolves
+    // out of the place are refused before anything is made (REQ-13).
+    if let Some(primary) = entries.first().map(|e| PathBuf::from(&e.path)) {
+        if let Err(r) = crate::home_workdir::place_verdict(&primary, &target) {
+            return Ok(conflict(
+                rec,
+                r.reason,
+                &p,
+                vec![json!({ "detail": r.detail })],
+            ));
+        }
+    }
     if target.exists() {
         let at: Vec<Value> = entries
             .iter()
@@ -619,7 +695,35 @@ pub fn apply(
             "worktree", "add", "--lock", "--reason", &reason, "-b", &branch, &target_s, &base,
         ],
     )?;
+    // REQ-10, REQ-11: a worktree made in the project's own folder must not show in the main
+    // tree's status. The exclude line follows a successful add (a failed add changes nothing),
+    // is written for the repository's first worktree whatever worktree or folder `project` is, and a
+    // failure is named in the answer and never undoes the creation.
+    let place_exclude_error = entries
+        .first()
+        .map(|e| PathBuf::from(&e.path))
+        .filter(|primary| {
+            resolve_existing(&target)
+                .starts_with(resolve_existing(&primary.join(".claude").join("worktrees")))
+        })
+        .and_then(|primary| crate::home_workdir::ensure_place_ignored(&primary).err());
     let id = identity(&target)?;
+    // The created worktree builds under the shared build root (S8, the C-82 convention).
+    // A creation failure is reported in the answer, never silent, and never fails the apply:
+    // the worktree itself already exists, so the lane keeps its claim and re-runs lane-env.
+    let build_folder_error = match p["build_folder"].as_str() {
+        Some(dir) => {
+            let dir = Path::new(dir);
+            match fs::symlink_metadata(dir) {
+                Ok(m) if m.file_type().is_symlink() => {
+                    Some(format!("{} is a link; it is not followed", dir.display()))
+                }
+                Ok(m) if m.is_dir() => None,
+                _ => make_private_dir(dir).err(),
+            }
+        }
+        None => None,
+    };
     // WT-5: warn when the project's worktrees hold more than the warning line. The size
     // walk is bounded; a partial total is a lower bound and says so.
     let measured = crate::worktree_report::project_bytes(project, CAPACITY_BUDGET);
@@ -632,12 +736,13 @@ pub fn apply(
         "warning": measured.is_some_and(|m| over_warning(m.0, capacity.warn_bytes)),
         "override": capacity.is_override(),
     });
-    Ok(json!({
+    let mut out = json!({
         "decision": "created",
         "capacity": capacity_json,
         "plan_digest": plan_digest,
         "branch": branch,
         "path": target_s,
+        "build_folder": p["build_folder"],
         "locked": reason,
         "identity": id,
         "record_update_request": {
@@ -646,7 +751,14 @@ pub fn apply(
             "worktree": id,
         },
         "record_update_owner": RECORD_UPDATE_OWNER,
-    }))
+    });
+    if let Some(err) = build_folder_error {
+        out["build_folder_error"] = json!(err);
+    }
+    if let Some(err) = place_exclude_error {
+        out["place_exclude_error"] = json!(err);
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -682,5 +794,77 @@ mod tests {
             ..Capacity::default()
         };
         assert!(warn.is_override());
+    }
+}
+
+/// SPEC-20261124-home-env-readers (slice 2): `open_locked_journal_in` locks the journal that the
+/// HOME it is given names, and `open_locked_journal` is the adapter that reads the environment
+/// HOME once. A test that needs the environment HOME to be another value re-runs itself in a
+/// child process, so no test changes this process's environment and none reads the real HOME.
+#[cfg(all(test, unix))]
+mod open_locked_journal_in_tests {
+    use super::*;
+    use crate::contract::Kind;
+    use crate::layout::home_arg_tests::{
+        child_var, init_repo, profile_project, run_in_child_of, write_pointer,
+    };
+    use std::ffi::OsString;
+
+    /// Set in the child process; the project the child locks the journal of.
+    const CHILD_PROJECT: &str = "MOAI_LOCK_TEST_PROJECT";
+    /// Set in the child process; the HOME with the layout pointer that the child passes as an argument.
+    const CHILD_GIVEN: &str = "MOAI_LOCK_TEST_GIVEN_HOME";
+
+    fn busy(error: crate::contract::OpError) {
+        assert_eq!(error.kind, Kind::Unavailable);
+        assert_eq!(error.message, crate::claim::JOURNAL_LOCK_BUSY);
+    }
+
+    /// AC-7 (REQ-8): the journal that is locked is the one under the HOME that is given; a
+    /// second lock of it is the busy answer, while the clone side journal stays free.
+    #[test]
+    fn open_locked_journal_in_locks_the_journal_of_the_home_it_is_given() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = profile_project(dir.path());
+        init_repo(&project);
+        let given = dir.path().join("given");
+        write_pointer(&given);
+        let _held = open_locked_journal_in(&project, Some(&given)).unwrap();
+        assert!(
+            crate::home_root::path(&given)
+                .join("projects/widgets/claims")
+                .is_dir(),
+            "the journal under the given HOME was opened"
+        );
+        busy(open_locked_journal_in(&project, Some(&given)).unwrap_err());
+        let clone_side = open_locked_journal_in(&project, None).unwrap();
+        busy(open_locked_journal_in(&project, None).unwrap_err());
+        drop(clone_side);
+    }
+
+    /// AC-7 (REQ-8), child side: the adapter locks the journal of the environment HOME, the one
+    /// `open_locked_journal_in` locks for that same HOME.
+    #[test]
+    fn open_locked_journal_locks_the_journal_of_the_environment_home() {
+        let test = "open_locked_journal_locks_the_journal_of_the_environment_home";
+        let (Some(project), Some(given)) = (child_var(CHILD_PROJECT), child_var(CHILD_GIVEN))
+        else {
+            let dir = tempfile::tempdir().unwrap();
+            let project = profile_project(dir.path());
+            init_repo(&project);
+            let given = dir.path().join("given");
+            write_pointer(&given);
+            run_in_child_of(
+                module_path!(),
+                test,
+                Some(&OsString::from(given.as_os_str())),
+                &[(CHILD_PROJECT, &project), (CHILD_GIVEN, &given)],
+            );
+            return;
+        };
+        let _held = open_locked_journal_in(&project, Some(&given)).unwrap();
+        busy(open_locked_journal(&project).unwrap_err());
+        let clone_side = open_locked_journal_in(&project, None).unwrap();
+        drop(clone_side);
     }
 }

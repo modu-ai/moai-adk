@@ -1,12 +1,18 @@
-//! SPEC-20261120-recurring-problems-source: `AGENTS.local.md` tells the leader that a problem that
-//! happens twice is fixed by a card that changes moai-adk itself, and records where the rule came
-//! from. The tests read the file only; no host, no HOME and no command runs here.
+//! SPEC-20261120-recurring-problems-source: `CLAUDE.md` tells the leader that a problem that
+//! happens twice is fixed by a card that changes moai-adk itself, and
+//! `docs/claude-md-rule-provenance.md` records where the rule came from (moved there by
+//! `SPEC-20261123-claude-md-rewrite`). The tests read files only; no host, no HOME and no command
+//! runs here.
 
 use std::fs;
 
+fn read(path: &str) -> String {
+    fs::read_to_string(format!("{}/{path}", env!("CARGO_MANIFEST_DIR")))
+        .unwrap_or_else(|e| panic!("{path}: {e}"))
+}
+
 fn text() -> String {
-    fs::read_to_string(format!("{}/AGENTS.local.md", env!("CARGO_MANIFEST_DIR")))
-        .unwrap_or_else(|e| panic!("AGENTS.local.md: {e}"))
+    read("CLAUDE.md")
 }
 
 /// The lines of the `## <heading>` section, up to the next `## ` heading.
@@ -25,30 +31,38 @@ fn section(text: &str, heading: &str) -> String {
             out.push('\n');
         }
     }
-    assert!(!out.is_empty(), "AGENTS.local.md has no section {heading}");
+    assert!(!out.is_empty(), "no section {heading}");
     out
 }
 
-/// The rule's bullet in `## Leader supervision`: from its first words to the end of that line.
+/// The rule's bullet in `## Standing principles`: from its first words to the end of that line.
 fn rule() -> String {
-    let supervision = section(&text(), "Leader supervision");
-    supervision
+    let principles = section(&text(), "Standing principles");
+    principles
         .lines()
         .find(|l| l.starts_with("- Recurring problems change the source"))
         .unwrap_or_else(|| {
-            panic!("Leader supervision has no `Recurring problems change the source` item")
+            panic!("Standing principles has no `Recurring problems change the source` item")
         })
+        .to_string()
+}
+
+/// A row of the provenance table, found by its first cell.
+fn provenance_row_for(first_cell: &str) -> String {
+    let table = section(
+        &read("docs/claude-md-rule-provenance.md"),
+        "Rule provenance",
+    );
+    table
+        .lines()
+        .find(|l| l.contains(first_cell))
+        .unwrap_or_else(|| panic!("Rule provenance has no row for `{first_cell}`"))
         .to_string()
 }
 
 /// The provenance row for the rule.
 fn provenance_row() -> String {
-    let table = section(&text(), "Rule provenance");
-    table
-        .lines()
-        .find(|l| l.contains("Leader supervision: recurring problems change the source"))
-        .unwrap_or_else(|| panic!("Rule provenance has no row for the recurring-problems rule"))
-        .to_string()
+    provenance_row_for("Standing principles: recurring problems change the source")
 }
 
 /// Card numbers (`C-` and digits, not inside a longer word) in `text`.
@@ -69,7 +83,7 @@ fn card_numbers(text: &str) -> Vec<String> {
 }
 
 #[test]
-fn the_supervision_section_states_the_rule() {
+fn the_principles_section_states_the_rule() {
     let rule = rule();
     for phrase in [
         "(recursive self-improvement)",
@@ -110,12 +124,12 @@ fn the_provenance_table_names_the_instruction_and_its_causes() {
     }
 }
 
-/// The Response language item of `## Machine notes`.
+/// The Korean wording item of `## Language`.
 fn response_language() -> String {
-    section(&text(), "Machine notes")
+    section(&text(), "Language")
         .lines()
-        .find(|l| l.starts_with("- Response language:"))
-        .unwrap_or_else(|| panic!("Machine notes has no Response language item"))
+        .find(|l| l.starts_with("- Korean text uses the words developers actually say"))
+        .unwrap_or_else(|| panic!("Language has no Korean wording item"))
         .to_string()
 }
 
@@ -149,33 +163,37 @@ fn the_korean_wording_rule_and_its_provenance_row_are_there() {
     );
     let hits = card_numbers(&item);
     assert!(hits.is_empty(), "the item names a card number: {hits:?}");
-    let table = section(&text(), "Rule provenance");
-    let row = table
-        .lines()
-        .find(|l| l.contains("Machine notes: Korean text uses developer terms"))
-        .unwrap_or_else(|| panic!("Rule provenance has no row for the Korean wording rule"));
+    let row = provenance_row_for("Language: Korean text uses developer terms");
     assert!(row.contains("user instruction 2026-11-20"), "{row}");
     assert_eq!(row.matches(" | ").count(), 1, "{row}");
-    let hits = card_numbers(row);
+    let hits = card_numbers(&row);
     assert!(hits.is_empty(), "the row names a card number: {hits:?}");
 }
 
 /// Sentences that an earlier trim for the size budget removed by mistake; they are rules, not
-/// evidence, so they stay.
+/// evidence, so they stay, now in the file that holds their topic.
 #[test]
 fn the_rule_sentences_kept_while_making_room_are_still_there() {
-    let text = text();
-    for phrase in [
-        "An audit clone builds in its own `target/` too.",
-        "Filling the shared folder again from crates.io needs the network and is the leader's act.",
-        "text typed into a session's chat input (including what the leader pastes into a Codex window with `hc send`)",
+    for (path, phrase) in [
+        (
+            "docs/lane-rules.md",
+            "An audit clone builds in its own `target/` too.",
+        ),
+        (
+            ".moai/specs/SPEC-20261123-claude-md-rewrite/claude-local-draft.md",
+            "Filling the shared folder again from crates.io needs the network and is the leader's act.",
+        ),
+        (
+            "CLAUDE.md",
+            "text typed into a session's chat input (including what the leader sends with `orca terminal send`)",
+        ),
     ] {
-        assert!(text.contains(phrase), "AGENTS.local.md lost: {phrase}");
+        assert!(read(path).contains(phrase), "{path} lost: {phrase}");
     }
 }
 
 #[test]
 fn the_file_stays_inside_its_budget() {
-    let len = text().len();
-    assert!(len < 32 * 1024, "AGENTS.local.md is {len} bytes");
+    let lines = text().lines().count();
+    assert!(lines <= 200, "CLAUDE.md has {lines} lines");
 }

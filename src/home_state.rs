@@ -444,11 +444,28 @@ pub(crate) struct InUse {
 }
 
 impl InUse {
+    /// The table the command read first (the command cache answers a later call): for a plan.
     pub(crate) fn read() -> InUse {
+        InUse::gather(
+            crate::worktree_gc::process_cwds,
+            crate::worktree_gc::open_file_paths,
+        )
+    }
+
+    /// A table read now, never from the command cache: for the check right before a move or a
+    /// retire, which must see a program that started after the command's first scan.
+    pub(crate) fn read_fresh() -> InUse {
+        InUse::gather(
+            crate::worktree_gc::process_cwds_fresh,
+            crate::worktree_gc::open_file_paths_fresh,
+        )
+    }
+
+    fn gather(cwds: fn() -> Option<Vec<PathBuf>>, open: fn() -> Option<Vec<PathBuf>>) -> InUse {
         // Test builds only: simulate a machine whose process table cannot be read, so the
         // fail-closed path is pinned by a test (#2823 audit N1).
         #[cfg(debug_assertions)]
-        if std::env::var_os("MOAI_CLI_TEST_PROCESS_CHECK").is_some_and(|v| v == "unavailable") {
+        if std::env::var_os("MOAI_TEST_PROCESS_CHECK").is_some_and(|v| v == "unavailable") {
             return InUse {
                 cwds: None,
                 open: None,
@@ -456,12 +473,12 @@ impl InUse {
             };
         }
         InUse {
-            cwds: crate::worktree_gc::process_cwds().map(|v| {
+            cwds: cwds().map(|v| {
                 v.into_iter()
                     .map(|p| fs::canonicalize(&p).unwrap_or(p))
                     .collect()
             }),
-            open: crate::worktree_gc::open_file_paths(),
+            open: open(),
             lines: process_command_lines(),
         }
     }

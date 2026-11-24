@@ -172,7 +172,7 @@ fn agents_apply(root: &TempDir, plan: &Value) {
     ));
 }
 
-/// Plan and apply AGENTS.md and REVIEW.md for the request language; returns the plan.
+/// Plan and apply CLAUDE.md and REVIEW.md for the request language; returns the plan.
 fn render(root: &TempDir, language: &str) -> Value {
     let plan = agents_plan(root, language);
     agents_apply(root, &plan);
@@ -183,24 +183,28 @@ fn read(root: &TempDir, rel: &str) -> String {
     fs::read_to_string(root.path().join(rel)).unwrap()
 }
 
-const KO_AGENTS: &str = "## MoAI 작업 흐름 (관리 구간)";
-const EN_AGENTS: &str = "## MoAI workflow (managed section)";
+const KO_BLOCK: &str = "## MoAI 프로젝트 사실 (관리 구간)";
+const EN_BLOCK: &str = "## MoAI project facts (managed block)";
 const KO_REVIEW: &str = "# 검토 지침";
 const EN_REVIEW: &str = "# Review instructions";
 
-/// AC-1 (REQ-1): the question set holds exactly the three items, in order, each with the
-/// current value, the suggested value and the default.
+/// AC-3 (REQ-4, SPEC-20261124-moai-project-interview): the question set holds the four items, in
+/// order, each with the current value, the suggested value and the default. The conversation
+/// language is one of them; a value the installer saved is its suggested value, and the item is
+/// still listed.
 #[test]
-fn questions_list_exactly_three_items_with_their_values() {
+fn questions_list_four_items_with_their_values() {
     let root = project(None);
     let h = home(None);
     let q = questions(&root, h.path(), &[]);
-    assert_eq!(
-        ids(&q),
-        ["user_chat", "commit_messages", "documents"],
-        "{q}"
-    );
-    for id in ["user_chat", "commit_messages", "documents"] {
+    let four = [
+        "user_chat",
+        "commit_messages",
+        "instruction_files",
+        "documents",
+    ];
+    assert_eq!(ids(&q), four, "{q}");
+    for id in four {
         let i = item(&q, id);
         for key in ["current", "suggested", "default"] {
             assert!(i.get(key).is_some(), "{id} has no {key}: {i}");
@@ -212,23 +216,36 @@ fn questions_list_exactly_three_items_with_their_values() {
             "{id}: no conversation language yet"
         );
     }
-    // With a conversation language the three items suggest it.
+    assert_eq!(q["items"].as_array().unwrap().len(), 4, "{q}");
+    // With a conversation language the items whose default follows it suggest it; the item whose
+    // default is English keeps that default.
     let q = questions(&root, h.path(), &["--conversation", "ko"]);
     for id in ["user_chat", "commit_messages", "documents"] {
         assert_eq!(item(&q, id)["suggested"], json!("ko"), "{id}");
         assert_eq!(item(&q, id)["default"], json!("ko"), "{id}");
     }
+    assert_eq!(item(&q, "instruction_files")["suggested"], json!("en"));
+    assert_eq!(item(&q, "instruction_files")["default"], json!("en"));
+    // A value the installer saved is the suggested conversation language, and the item is listed.
+    let saved = home(Some("ko"));
+    let q = questions(&root, saved.path(), &[]);
+    assert_eq!(item(&q, "user_chat")["suggested"], json!("ko"), "{q}");
+    assert_eq!(item(&q, "user_chat")["current"], json!(null), "{q}");
     // A stored value is the item's current and suggested value.
     let stored = project(Some(json!({"documents": "ja", "user_chat": "ko"})));
     let q = questions(&stored, h.path(), &[]);
     assert_eq!(item(&q, "documents")["current"], json!("ja"));
     assert_eq!(item(&q, "documents")["suggested"], json!("ja"));
+    assert_eq!(item(&q, "user_chat")["current"], json!("ko"));
+    assert_eq!(item(&q, "user_chat")["suggested"], json!("ko"));
     assert_eq!(item(&q, "commit_messages")["current"], json!(null));
-    assert_eq!(item(&q, "commit_messages")["suggested"], json!("ko"));
+    assert_eq!(item(&q, "commit_messages")["suggested"], json!("en"));
 }
 
-/// AC-2 (REQ-2): the language the installer saved is shown as the confirmed default, with its
-/// source, and is not asked again from scratch.
+/// AC-2 (REQ-2): the language the installer saved is the conversation value with its source,
+/// and is not asked again from scratch. A profile's earlier `user_chat` is not a source any
+/// more: with nothing in HOME the conversation resolves to English, and the profile's value
+/// stays as recorded data.
 #[test]
 fn the_installer_value_is_the_confirmed_conversation_default() {
     let root = project(None);
@@ -236,13 +253,17 @@ fn the_installer_value_is_the_confirmed_conversation_default() {
     let q = questions(&root, h.path(), &[]);
     assert_eq!(q["conversation_language"], json!("ko"), "{q}");
     assert_eq!(q["conversation_source"], json!("installer"), "{q}");
-    assert_eq!(item(&q, "user_chat")["suggested"], json!("ko"));
     assert_eq!(item(&q, "documents")["suggested"], json!("ko"));
-    // The profile's own value is ahead of it.
+    // A profile's earlier user_chat is not a source: English without an install value.
     let stored = project(Some(json!({"user_chat": "ja"})));
+    let none = home(None);
+    let q = questions(&stored, none.path(), &[]);
+    assert_eq!(q["conversation_language"], json!("en"), "{q}");
+    assert_eq!(q["conversation_source"], json!("default"), "{q}");
+    // The value the installer saved in HOME decides over anything the profile holds.
     let q = questions(&stored, h.path(), &[]);
-    assert_eq!(q["conversation_language"], json!("ja"), "{q}");
-    assert_eq!(q["conversation_source"], json!("profile"), "{q}");
+    assert_eq!(q["conversation_language"], json!("ko"), "{q}");
+    assert_eq!(q["conversation_source"], json!("installer"), "{q}");
     // The explicit flag is ahead of both.
     let q = questions(&stored, h.path(), &["--conversation", "zh"]);
     assert_eq!(q["conversation_source"], json!("flag"), "{q}");
@@ -278,25 +299,26 @@ fn a_bad_installer_value_falls_to_the_next_source() {
 /// AC-3 (REQ-4): answers name the three items and keep every other key the profile had; a fresh
 /// profile gets no key for an item that is not asked.
 #[test]
-fn answers_name_the_three_items_and_keep_old_keys() {
+fn answers_name_the_four_items_and_keep_old_keys() {
     let fresh = project(None);
     let out = setup_answers(
         &fresh,
-        &json!({"documents": "en", "user_chat": "ko"}),
+        &json!({"documents": "en"}),
         &["--conversation", "ko"],
     );
     assert_eq!(
         out["language"],
-        json!({"commit_messages": "ko", "documents": "en", "user_chat": "ko"}),
+        json!({"commit_messages": "ko", "documents": "en", "instruction_files": "en",
+               "user_chat": "ko"}),
         "{out}"
     );
     assert_eq!(out["profile_written"], json!(false));
     let old = project(Some(json!({"code_comments": "ja", "reports": "ko"})));
-    let out = setup_answers(&old, &json!({"user_chat": "ko"}), &["--conversation", "ko"]);
+    let out = setup_answers(&old, &json!({}), &["--conversation", "ko"]);
     assert_eq!(
         out["language"],
         json!({"code_comments": "ja", "commit_messages": "ko", "documents": "ko",
-               "reports": "ko", "user_chat": "ko"}),
+               "instruction_files": "en", "reports": "ko", "user_chat": "ko"}),
         "{out}"
     );
     // The old reports value is the suggestion for documents, not a copy of the key's meaning.
@@ -304,8 +326,14 @@ fn answers_name_the_three_items_and_keep_old_keys() {
     let q = questions(&old, home(None).path(), &[]);
     assert_eq!(item(&q, "documents")["current"], json!(null), "{q}");
     assert_eq!(item(&q, "documents")["suggested"], json!("ja"), "{q}");
-    // A re-run with no answers keeps every value and plans nothing new.
-    let first = setup_answers(&fresh, &json!({}), &["--conversation", "ko"]);
+    // The conversation language is asked like the other three: an answer is stored, and a re-run
+    // with no answers keeps every stored value, `user_chat` included.
+    let first = setup_answers(
+        &fresh,
+        &json!({"user_chat": "ja"}),
+        &["--conversation", "ko"],
+    );
+    assert_eq!(first["language"]["user_chat"], json!("ja"), "{first}");
     apply_profile(&fresh, &first["profile"]);
     let again = setup_answers(&fresh, &json!({}), &[]);
     assert_eq!(again["changed_items"], json!([]), "{again}");
@@ -318,83 +346,74 @@ fn answers_name_the_three_items_and_keep_old_keys() {
     assert!(!refused.status.success());
 }
 
-/// AC-4 (REQ-5): the terminal step asks three prompts, one answer line each.
+/// AC-3 (REQ-3): the terminal step asks four prompts, one answer line each, the conversation
+/// language first.
 #[test]
-fn the_terminal_step_asks_three_prompts() {
+fn the_terminal_step_asks_four_prompts() {
     let root = project(None);
-    let out = run(&["language-setup", path(&root)], b"ko\n\nja\nzh\nzh\n");
+    let out = run(&["language-setup", path(&root)], b"ja\nko\n\nzh\nzh\n");
     let l = ok(&out)["language"].clone();
     assert_eq!(
         l,
-        json!({"commit_messages": "en", "documents": "ja", "user_chat": "ko"}),
+        json!({"commit_messages": "ko", "documents": "zh", "instruction_files": "en",
+               "user_chat": "ja"}),
         "{l}"
     );
     let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
     assert_eq!(
         stderr.matches("(en/ko/ja/zh)").count(),
-        3,
-        "three prompts: {stderr}"
+        4,
+        "four prompts: {stderr}"
     );
 }
 
-/// AC-5 (REQ-6): the managed section lists `documents` and says the rest is English.
+/// AC-5 (REQ-6): the managed section lists `documents` and says the rest is English. The
+/// CLAUDE.md block (SPEC-20261122-claude-md-layout REQ-3) states the writing languages on one
+/// line: the item rows joined by `; `, then that everything else is English.
 #[test]
 fn the_managed_section_names_documents_and_the_english_rest() {
     let root = project(Some(
         json!({"user_chat": "en", "commit_messages": "ko", "documents": "ko"}),
     ));
     render(&root, "en");
-    let text = read(&root, "AGENTS.md");
+    let text = read(&root, "CLAUDE.md");
     assert!(
-        text.contains("- Documents (reports and SPEC documents): Korean (`ko`)"),
+        text.contains("Documents (reports and SPEC documents): Korean (`ko`)"),
         "{text}"
     );
-    assert!(text.contains("- Commit messages: Korean (`ko`)"), "{text}");
-    assert!(
-        text.contains("instruction files, skills and rules, messages between agents, code comments, issue and PR records")
-            && text.contains("English unless a line above says otherwise"),
-        "{text}"
-    );
+    assert!(text.contains("Commit messages: Korean (`ko`)"), "{text}");
+    assert!(text.contains("; everything else English.\n"), "{text}");
     // The same in Korean when the conversation language is Korean.
     let ko = project(Some(json!({"user_chat": "ko", "documents": "ko"})));
     render(&ko, "en");
-    let text = read(&ko, "AGENTS.md");
-    assert!(
-        text.contains("- 문서(보고서·SPEC): 한국어 (`ko`)"),
-        "{text}"
-    );
-    assert!(
-        text.contains("지침 파일, 스킬·규칙, 에이전트 간 메시지, 코드 주석, Issue·PR 기록")
-            && text.contains("영어"),
-        "{text}"
-    );
+    let text = read(&ko, "CLAUDE.md");
+    assert!(text.contains("문서(보고서·SPEC): 한국어 (`ko`)"), "{text}");
+    assert!(text.contains("; 그 밖은 영어.\n"), "{text}");
     // A profile without `language` still renders no language lines at all.
     let plain = project(None);
     render(&plain, "en");
-    let text = read(&plain, "AGENTS.md");
-    assert!(
-        !text.contains("English unless a line above says otherwise"),
-        "{text}"
-    );
+    let text = read(&plain, "CLAUDE.md");
+    assert!(!text.contains("everything else English"), "{text}");
+    assert!(!text.contains("Writing language"), "{text}");
 }
 
-/// AC-6 (REQ-7): AGENTS.md and REVIEW.md follow `user_chat` for `en` and `ko`, whatever the
+/// AC-6 (REQ-7): CLAUDE.md and REVIEW.md follow `user_chat` for `en` and `ko`, whatever the
 /// request language is.
 #[test]
 fn agents_and_review_follow_the_conversation_language() {
     let ko = project(Some(json!({"user_chat": "ko"})));
     render(&ko, "en");
-    let (agents, review) = (read(&ko, "AGENTS.md"), read(&ko, "REVIEW.md"));
+    let (agents, review) = (read(&ko, "CLAUDE.md"), read(&ko, "REVIEW.md"));
     assert!(
-        agents.contains(KO_AGENTS) && !agents.contains(EN_AGENTS),
+        agents.contains(KO_BLOCK) && !agents.contains(EN_BLOCK),
         "{agents}"
     );
     assert!(review.starts_with(KO_REVIEW), "{review}");
     let en = project(Some(json!({"user_chat": "en"})));
     render(&en, "ko");
-    let (agents, review) = (read(&en, "AGENTS.md"), read(&en, "REVIEW.md"));
+    let (agents, review) = (read(&en, "CLAUDE.md"), read(&en, "REVIEW.md"));
     assert!(
-        agents.contains(EN_AGENTS) && !agents.contains(KO_AGENTS),
+        agents.contains(EN_BLOCK) && !agents.contains(KO_BLOCK),
         "{agents}"
     );
     assert!(review.starts_with(EN_REVIEW), "{review}");
@@ -415,9 +434,9 @@ fn agents_and_review_follow_the_conversation_language() {
 fn an_explicit_instruction_files_still_wins() {
     let root = project(Some(json!({"user_chat": "ko", "instruction_files": "en"})));
     let plan = render(&root, "ko");
-    let agents = read(&root, "AGENTS.md");
+    let agents = read(&root, "CLAUDE.md");
     assert!(
-        agents.contains(EN_AGENTS) && !agents.contains(KO_AGENTS),
+        agents.contains(EN_BLOCK) && !agents.contains(KO_BLOCK),
         "{agents}"
     );
     assert!(read(&root, "REVIEW.md").starts_with(EN_REVIEW));
@@ -432,7 +451,7 @@ fn an_explicit_instruction_files_still_wins() {
 fn another_conversation_language_falls_back_with_a_warning() {
     let root = project(Some(json!({"user_chat": "ja"})));
     let plan = render(&root, "ko");
-    assert!(read(&root, "AGENTS.md").contains(KO_AGENTS));
+    assert!(read(&root, "CLAUDE.md").contains(KO_BLOCK));
     assert!(read(&root, "REVIEW.md").starts_with(KO_REVIEW));
     assert!(
         plan["warnings"]
@@ -448,7 +467,7 @@ fn another_conversation_language_falls_back_with_a_warning() {
 fn an_unsupported_instruction_files_code_hands_over_to_the_conversation_language() {
     let root = project(Some(json!({"user_chat": "ko", "instruction_files": "ja"})));
     let plan = render(&root, "en");
-    assert!(read(&root, "AGENTS.md").contains(KO_AGENTS));
+    assert!(read(&root, "CLAUDE.md").contains(KO_BLOCK));
     assert!(read(&root, "REVIEW.md").starts_with(KO_REVIEW));
     let warnings = plan["warnings"].to_string();
     assert!(
@@ -459,7 +478,7 @@ fn an_unsupported_instruction_files_code_hands_over_to_the_conversation_language
     // Without a usable conversation language the request language is used.
     let root = project(Some(json!({"user_chat": "zh", "instruction_files": "ja"})));
     render(&root, "en");
-    assert!(read(&root, "AGENTS.md").contains(EN_AGENTS));
+    assert!(read(&root, "CLAUDE.md").contains(EN_BLOCK));
 }
 
 /// AC-8 (REQ-10): a profile with the old eight items plans and applies without a conflict and
@@ -485,22 +504,26 @@ fn a_profile_with_the_old_eight_items_plans_and_applies_without_conflict() {
         "{plan}"
     );
     // The explicit `instruction_files: en` is still honored; every old key shows as its line.
-    let agents = read(&root, "AGENTS.md");
-    assert!(agents.contains(EN_AGENTS), "{agents}");
+    let agents = read(&root, "CLAUDE.md");
+    assert!(agents.contains(EN_BLOCK), "{agents}");
     assert!(
-        agents.contains("- Reports to the user: Korean (`ko`)"),
+        agents.contains("Reports to the user: Korean (`ko`)"),
         "{agents}"
     );
-    assert!(
-        agents.contains("- Code comments: English (`en`)"),
-        "{agents}"
-    );
-    // The setup step over it keeps every old key and adds `documents`.
+    assert!(agents.contains("Code comments: English (`en`)"), "{agents}");
+    // The setup step over it keeps every old key, the stored `user_chat` included (the
+    // conversation item is its own suggestion), and adds `documents` (the old `reports` value
+    // is its suggestion).
     let out = setup_answers(&root, &json!({}), &[]);
     for (k, v) in eight.as_object().unwrap() {
         assert_eq!(out["language"][k], *v, "{k}: {out}");
     }
-    assert!(out["language"]["documents"].is_string(), "{out}");
+    assert_eq!(
+        out["language"]["documents"],
+        json!("ko"),
+        "{out}: the old reports value is its suggestion"
+    );
+    assert_eq!(out["changed_items"], json!(["documents"]), "{out}");
 }
 
 fn github_notes(root: &Path, request: Value) -> String {

@@ -92,6 +92,8 @@ fn ready_card(home: &TempHome, project: &str, scope: &str) -> String {
             "add",
             "--title",
             "t",
+            "--ac",
+            "fixture",
             "--scope",
             scope,
             "--project",
@@ -481,7 +483,16 @@ fn take_uses_the_given_scope_over_the_cards_own_and_needs_one() {
     // A card without any scope, taken without one: refused as input, nothing stored.
     result(&run(
         &home,
-        &["card", "add", "--title", "no scope", "--project", &project],
+        &[
+            "card",
+            "add",
+            "--title",
+            "no scope",
+            "--ac",
+            "fixture",
+            "--project",
+            &project,
+        ],
     ));
     result(&run(
         &home,
@@ -536,7 +547,16 @@ fn ready_refuses_what_is_not_a_draft_or_hold_card() {
     let (home, project) = registered();
     result(&run(
         &home,
-        &["card", "add", "--title", "t", "--project", &project],
+        &[
+            "card",
+            "add",
+            "--title",
+            "t",
+            "--ac",
+            "fixture",
+            "--project",
+            &project,
+        ],
     ));
     result(&run(
         &home,
@@ -564,7 +584,16 @@ fn ready_refuses_what_is_not_a_draft_or_hold_card() {
     }
     result(&run(
         &home,
-        &["card", "add", "--title", "u", "--project", &project],
+        &[
+            "card",
+            "add",
+            "--title",
+            "u",
+            "--ac",
+            "fixture",
+            "--project",
+            &project,
+        ],
     ));
     let (kind, _) = refusal(&run(
         &home,
@@ -597,8 +626,20 @@ fn a_ready_that_fails_leaves_the_card_and_the_events_alone() {
     let (home, project) = registered();
     result(&run(
         &home,
-        &["card", "add", "--title", "t", "--project", &project],
+        &[
+            "card",
+            "add",
+            "--title",
+            "t",
+            "--ac",
+            "fixture",
+            "--project",
+            &project,
+        ],
     ));
+    // The fixture criterion moved the revision; the failed `ready` must leave it where it is.
+    let rev_before =
+        result(&run(&home, &["card", "show", "C-1", "--project", &project]))["rev"].clone();
     let conn =
         rusqlite::Connection::open(ledger::ledger_path(home.path(), "demo").unwrap()).unwrap();
     conn.execute_batch(
@@ -617,7 +658,7 @@ fn a_ready_that_fails_leaves_the_card_and_the_events_alone() {
         json!("draft"),
         "the state change was rolled back"
     );
-    assert_eq!(shown["rev"], json!(1));
+    assert_eq!(shown["rev"], rev_before);
 }
 
 #[test]
@@ -682,6 +723,8 @@ fn the_home_option_is_the_home_that_is_used() {
         "add",
         "--title",
         "far away",
+        "--ac",
+        "fixture",
         "--scope",
         "src/far.rs",
         "--project",
@@ -1078,7 +1121,16 @@ fn write_scope(home: &TempHome, card_id: i64) -> Value {
 fn bare_card(home: &TempHome, project: &str) -> String {
     let added = result(&run(
         home,
-        &["card", "add", "--title", "no scope", "--project", project],
+        &[
+            "card",
+            "add",
+            "--title",
+            "no scope",
+            "--ac",
+            "fixture",
+            "--project",
+            project,
+        ],
     ));
     added["name"].as_str().unwrap().to_string()
 }

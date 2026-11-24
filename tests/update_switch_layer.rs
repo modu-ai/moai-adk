@@ -15,7 +15,7 @@ const V1: &[u8] = include_bytes!("../.moai/specs/SPEC-20261119-switch-script-v2/
 const NOW: &str = "2026-11-19T07:47:22Z";
 const STAMP: &str = "20261119T074722Z";
 
-/// The fault seam (`MOAI_CLI_TEST_FAULT`) is a process-wide variable: every test that applies
+/// The fault seam (`MOAI_TEST_FAULT`) is a process-wide variable: every test that applies
 /// takes this gate, so a fault set by one test is never seen by another.
 static GATE: Mutex<()> = Mutex::new(());
 
@@ -270,7 +270,7 @@ fn apply_saves_v1_and_installs_v2() {
     );
     assert_eq!(
         r["revert"],
-        json!(format!("moai-cli update --revert-switch {STAMP}"))
+        json!(format!("moai update --revert-switch {STAMP}"))
     );
     assert_eq!(
         r["revert_plain"],
@@ -402,9 +402,9 @@ fn a_failed_step_leaves_a_whole_file() {
     for point in ["switch-after-save", "switch-rename"] {
         let h = Home::new();
         let token = h.token();
-        std::env::set_var("MOAI_CLI_TEST_FAULT", point);
+        std::env::set_var("MOAI_TEST_FAULT", point);
         let r = switch::apply(&h.root, &token, NOW);
-        std::env::remove_var("MOAI_CLI_TEST_FAULT");
+        std::env::remove_var("MOAI_TEST_FAULT");
         let e = r.unwrap_err();
         assert!(e.contains(point), "{point}: {e}");
         assert_eq!(h.read(), V1, "{point}: still the whole v1");
@@ -505,20 +505,31 @@ fn revert_switch_runs_alone_and_is_refused_beside_a_confirming_flag() {
         [None, None, None, Some("x")],
     ];
     for [c, cc, ch, cs] in flags {
-        let e = update_command_switch(&h.root, c, cc, ch, cs, Some(STAMP), false, ask).unwrap_err();
+        let e = update_command_switch(&h.root, c, cc, ch, cs, None, Some(STAMP), false, ask)
+            .unwrap_err();
         assert!(e.contains("cannot be combined"), "{e}");
         assert_eq!(h.read(), V2, "nothing changed");
         assert!(h.saved(STAMP).exists());
     }
     // Alone it runs without any installed package: only the saved copy and `moai` are read.
-    let r =
-        update_command_switch(&h.root, None, None, None, None, Some(STAMP), false, ask).unwrap();
+    let r = update_command_switch(
+        &h.root,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(STAMP),
+        false,
+        ask,
+    )
+    .unwrap();
     assert_eq!(r["mode"], json!("revert_switch"), "{r}");
     assert_eq!(r["switch_result"]["state"], json!("reverted"), "{r}");
     assert_eq!(h.read(), V1);
     // An apply result's `revert` line comes first in the revert order.
     let order = moai_cli::update::revert_order(&json!({
-        "switch": "moai-cli update --revert-switch X", "home": "h", "agents": "a"
+        "switch": "moai update --revert-switch X", "home": "h", "agents": "a"
     }));
     assert_eq!(order, vec!["switch", "home", "agents"]);
 }
