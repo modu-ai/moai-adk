@@ -536,6 +536,11 @@ fn a_launch_waits_for_a_first_launch_that_is_still_initializing() {
 /// run in between only reports what it would finish.
 #[test]
 fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
+    if !cfg!(debug_assertions) {
+        // The failure seam is debug-only (SPEC-20261124-test-seams-release); a release build
+        // never stops after the settings, which the test below pins.
+        return;
+    }
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
     let dir = plain.path();
@@ -580,6 +585,31 @@ fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
     assert_eq!(json(&out)["name"], "agent-1");
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
     assert_eq!(fs::read(dir.join("CLAUDE.md")).unwrap(), agents);
+}
+
+/// SPEC-20261124-test-seams-release REQ-1 and REQ-2: `MOAI_TEST_INIT_FAIL_AFTER_PROFILE` stops a
+/// first launch after the settings in a debug build and is not read by a release build, which
+/// finishes the launch as if the variable were unset. The test runs the binary of its own
+/// profile, so `cargo test --release` shows the release side.
+#[test]
+fn the_init_fail_seam_is_honoured_only_by_a_debug_build() {
+    let f = fixture();
+    let plain = tempfile::tempdir().unwrap();
+    let dir = plain.path();
+    let out = command(&f, dir, &with_git(&f), &["cc", "-a"])
+        .env(moai_cli::launcher_init::INIT_TEST_FAIL_VAR, "1")
+        .output()
+        .unwrap();
+    if cfg!(debug_assertions) {
+        assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+        assert!(!marker(&f).exists(), "the host must not start");
+        assert!(!dir.join("CLAUDE.md").exists());
+    } else {
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+        assert_eq!(json(&out)["name"], "agent-1");
+        assert!(marker(&f).exists(), "the host starts");
+        assert!(dir.join("CLAUDE.md").is_file());
+    }
 }
 
 /// #2504: only an interrupted first launch is finished. After a complete one the marker is gone,
