@@ -700,6 +700,7 @@ fn all_cases() -> Vec<Case> {
     all.extend(second_audit_denied_cases());
     all.extend(third_audit_denied_cases());
     all.extend(fourth_audit_denied_cases());
+    all.extend(fifth_audit_denied_cases());
     all
 }
 
@@ -2371,6 +2372,206 @@ fn ac17_the_fourth_audit_table_denied_and_allowed_shapes() {
     let mut cases = fourth_audit_denied_cases();
     cases.extend(fourth_audit_allowed_cases());
     run_table(&World::new(), "fourth-audit", &cases);
+}
+
+// The fifth audit repair (AUDIT #403 delta 5, note 8053; SPEC revision 3, D-17): the option words of
+// a shell start, `emulate`, `set`, `setopt`, `unsetopt` and `shopt` are read by an allowed-option
+// table, never by a list of forbidden ones. The first three groups below are the auditor's probe
+// files (p5, p6 and reg2) with the answers the table gives; the fourth is the list of
+// over-rejections that D-17 accepts, one denied row each; the fifth holds a row for every word of
+// the table, so a word that is removed from it fails a row.
+
+/// A command that deletes outside every boundary root, for a row that is judged by content.
+fn out_rm(prefix: &str) -> String {
+    format!("{prefix} 'rm -rf {OUT}/x'")
+}
+
+fn fifth_audit_denied_cases() -> Vec<Case> {
+    use S::Own;
+    let ur = "unreadable";
+    let cd = "o=/opt/moai-boundary-outside; cd o && rm -rf ./*";
+    let cd_o = "cd o && rm -rf ./*";
+    let mut cases = Vec::new();
+    // p5: every spelling of the `CDABLE_VARS` family is `unreadable`, whatever stands before it.
+    for start in [
+        "zsh -T -c",
+        "zsh -fT -c",
+        "zsh -xfeT -c",
+        "zsh +T -c",
+        "emulate zsh -T -c",
+        "emulate zsh -fT -c",
+        "zsh -o$O -c",
+        "zsh \"$O\" -c",
+        "emulate zsh \"$O\" -c",
+        "emulate zsh -o$O -c",
+        "zsh -fo cdablevars -c",
+        "zsh -fo \"$O\" -c",
+        "bash -eO cdable_vars -c",
+    ] {
+        cases.push(d(Own, &format!("{start} '{cd}'"), ur));
+    }
+    cases.push(d(Own, &format!("zsh -Tf -c '{cd_o}'"), ur));
+    for head in ["set -T", "set -eT", "setopt -T", "unsetopt -T"] {
+        cases.push(d(Own, &format!("{head}; {cd}"), ur));
+    }
+    cases.push(d(Own, &format!("setopt -m 'cd*vars'; {cd}"), ur));
+    cases.push(d(Own, &format!("setopt -m '*'; {cd}"), ur));
+    // p5 and reg2, B-1: an attached `-o<name>`, `-O` and `+O` swallow the next word in zsh, so the
+    // line is `unreadable` before the string behind it is looked at.
+    for start in [
+        "zsh -oerrexit -c",
+        "zsh -opipefail -c",
+        "zsh -O -c",
+        "zsh -fO -c",
+        "emulate zsh -O -c",
+        "emulate zsh -oerrexit -c",
+        "bash -oerrexit -c",
+        "zsh -O cdable_vars -c",
+        "bash -O extglob -c",
+    ] {
+        cases.push(d(Own, &out_rm(start), ur));
+    }
+    cases.push(d(Own, &format!("zsh -oerrexit -T -c '{cd_o}'"), ur));
+    // p6: the same family behind `-o<name>` in `set`, `setopt` and `emulate`.
+    cases.push(d(Own, &format!("set -oerrexit -T; {cd}"), ur));
+    cases.push(d(Own, &format!("setopt -oerrexit -T; {cd_o}"), ur));
+    cases.push(d(Own, &format!("emulate zsh -oerrexit -T -c '{cd_o}'"), ur));
+    cases.push(d(Own, &format!("zsh -oerrexit -T -c '{cd}'"), ur));
+    // The over-rejections of D-17, one denied row each, so a later relaxation is a decision.
+    for command in [
+        "bash -O extglob -c 'ls'",
+        "bash -oerrexit -c 'ls'",
+        "zsh -oNOTIFY -c 'ls'",
+        "zsh -o NOTIFY -c 'ls'",
+        "zsh -o ERR_EXIT -c 'ls'",
+        "bash -ic 'ls'",
+        "bash --posix -c 'ls'",
+        "sh -T -c 'ls'",
+        "set \"$@\"; ls",
+        "set -a; ls",
+        "setopt NOTIFY; ls",
+        "setopt no_extendedglob; ls",
+        "setopt -m 'x*'; ls",
+        "shopt -s expand_aliases; ls",
+        "emulate -o errexit -c 'ls'",
+        "bash \"$SCRIPT\"",
+    ] {
+        cases.push(d(Own, command, ur));
+    }
+    // The edges of the reading: `o` is read only as the last letter of a cluster, a word before
+    // the first operand of `set` that an expansion decides is an option, a letter or a name
+    // outside the table is unreadable in every place, and so is every long option outside it.
+    for command in [
+        "zsh -ofe errexit -c 'ls'",
+        "set -oe errexit; ls",
+        "set \"$X\"; ls",
+        "set -e \"$X\"; ls",
+        "set -A arr x y; ls",
+        "set +A arr; ls",
+        "setopt -L; ls",
+        "setopt \"$X\"; ls",
+        "shopt -o cdable_vars; ls",
+        "shopt -s cdable_vars; ls",
+        "shopt \"$X\"; ls",
+        "zsh --cdablevars -c 'ls'",
+        "zsh --no-cdable-vars -c 'ls'",
+        "zsh -n -c 'ls'",
+        "bash +O extglob -c 'ls'",
+        "bash -o posix -c 'ls'",
+        "zsh -o errexit -o cdablevars -c 'ls'",
+        "emulate zsh -L -c \"$X\"",
+        "emulate bash -c 'ls'",
+        "emulate -LR -T zsh",
+        "unsetopt extendedglob nomatch; ls",
+    ] {
+        cases.push(d(Own, command, ur));
+    }
+    // A word of the table does not hide what the string behind it deletes.
+    cases.push(d(Own, &out_rm("zsh -o errexit -c"), "delete-outside"));
+    cases.push(d(Own, &out_rm("bash -eC -c"), "delete-outside"));
+    cases.push(d(Own, &out_rm("bash -l -c"), "delete-outside"));
+    cases.push(d(Own, &out_rm("emulate -L zsh -c"), "delete-outside"));
+    cases.push(d(Own, &out_rm("emulate -R sh -c"), "delete-outside"));
+    cases.push(d(Own, &format!("set -e; rm -rf {OUT}/x"), "delete-outside"));
+    cases.push(d(
+        Own,
+        &format!("setopt extendedglob; rm -rf {OUT}/x"),
+        "delete-outside",
+    ));
+    cases.push(d(
+        Own,
+        &format!("shopt -s extglob; rm -rf {OUT}/x"),
+        "delete-outside",
+    ));
+    cases
+}
+
+fn fifth_audit_allowed_cases() -> Vec<Case> {
+    use S::Own;
+    vec![
+        // p5 neighbours that stay allowed.
+        a(Own, "bash -c 'ls' \"$ARG\""),
+        a(Own, "zsh -c 'echo $1' x \"$ARG\""),
+        a(Own, "bash -- \"$X\""),
+        a(Own, "bash script.sh \"$ARG\""),
+        a(Own, "zsh -e -c 'ls'"),
+        a(Own, "zsh -o errexit -c 'ls'"),
+        a(Own, "zsh -fx -c 'ls'"),
+        a(Own, "bash -e -o pipefail -c 'ls'"),
+        a(Own, "set -euo pipefail; ls"),
+        a(Own, "set -e; ls"),
+        a(Own, "setopt extendedglob; ls **/*.rs"),
+        a(Own, "emulate -L zsh; ls"),
+        // Every word of the table.
+        a(Own, "bash -l -c 'ls'"),
+        a(Own, "bash -lc 'ls'"),
+        a(Own, "bash -eC -c 'ls'"),
+        a(Own, "bash -s"),
+        a(Own, "zsh +e -c 'ls'"),
+        a(Own, "zsh +xv -c 'ls'"),
+        a(Own, "bash --login -c 'ls'"),
+        a(Own, "bash --norc --noprofile -c 'ls'"),
+        a(Own, "zsh --no-rcs -c 'ls'"),
+        a(Own, "bash --version"),
+        a(Own, "bash --help"),
+        a(Own, "bash --rcfile x.sh -c 'ls'"),
+        a(Own, "bash --init-file x.sh -c 'ls'"),
+        a(Own, "zsh -o nounset -c 'ls'"),
+        a(Own, "zsh -o xtrace -c 'ls'"),
+        a(Own, "zsh -eo verbose -c 'ls'"),
+        a(Own, "zsh +o errexit -c 'ls'"),
+        a(Own, "set +o errexit; ls"),
+        a(Own, "set -o pipefail; ls"),
+        a(Own, "set -o; ls"),
+        a(Own, "set -xv; ls"),
+        a(Own, "set foo -T bar; ls"),
+        a(Own, "set -e foo \"$X\"; ls"),
+        a(Own, "emulate -R zsh -c 'ls'"),
+        a(Own, "emulate sh -c 'ls'"),
+        a(Own, "emulate -L ksh; ls"),
+        a(Own, "emulate csh; ls"),
+        a(Own, "setopt errexit nounset; ls"),
+        a(Own, "setopt nullglob globdots; ls"),
+        a(Own, "setopt pipefail xtrace verbose; ls"),
+        a(Own, "unsetopt extendedglob; ls"),
+        a(Own, "unsetopt pipefail; ls"),
+        a(Own, "setopt; ls"),
+        a(Own, "shopt -s extglob; ls"),
+        a(Own, "shopt -u nullglob; ls"),
+        a(Own, "shopt -q failglob; ls"),
+        a(Own, "shopt -p; ls"),
+        a(
+            Own,
+            "shopt -s globstar dotglob nocaseglob nocasematch lastpipe; ls",
+        ),
+    ]
+}
+
+#[test]
+fn ac18_the_fifth_audit_table_denied_and_allowed_shapes() {
+    let mut cases = fifth_audit_denied_cases();
+    cases.extend(fifth_audit_allowed_cases());
+    run_table(&World::new(), "fifth-audit", &cases);
 }
 
 #[test]
