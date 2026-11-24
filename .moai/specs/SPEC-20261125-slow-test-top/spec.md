@@ -2,7 +2,7 @@
 id: SPEC-20261125-slow-test-top
 title: "Slow test top: rank by run time times runs a day, then fix the top few with assertions kept"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-25
 ---
 
@@ -17,7 +17,7 @@ created: 2026-11-25
 - REQ-1: While the Result holds a rank table, each row shall give the test's median nextest time, its runs in the last day and the product of the two.
 - REQ-2: While a `home_state_selective` test does not judge whether a program uses a folder, its `moai` command shall read the empty process table.
 - REQ-3: While a `home_state_selective` test holds a program it started, the test shall stop that program's own children together with it.
-- REQ-4: While the release workflow's decide step runs in a test, the stand-in programs it calls shall be complete files that no process holds open for writing.
+- REQ-4: While the release workflow's decide step pipes a classifier answer into a stand-in program in a test, the stand-in shall read all of its input before it exits.
 - REQ-5: While a test file in the write scope is changed, the file shall keep every assertion it had.
 - REQ-6: While the named-file scan lists `tests/home_state_selective.rs`, each of its tests that starts a holder program shall opt back into the real process table.
 
@@ -25,8 +25,8 @@ created: 2026-11-25
 
 - AC-1 (REQ-1): the Result gives the rank table and the data it came from · verify: `moai spec check SPEC-20261125-slow-test-top --project .`
 - AC-2 (REQ-2, REQ-3, REQ-5): `home_state_selective` passes with the same test names, and the two named tests run in seconds with no leaked process · verify: `cargo test --locked --offline --test home_state_selective`
-- AC-3 (REQ-4, REQ-5): `release_pr_three_os` passes with the same test names · verify: `cargo test --locked --offline --test release_pr_three_os`
-- AC-4 (REQ-5): the guard of each fix is killed by a mutant that removes the fixed code, and no assertion line was removed · verify: `git diff NeXT...HEAD --stat`
+- AC-3 (REQ-4, REQ-5): `release_pr_three_os` passes with the same test names, and its test `the_json_reader_stand_in_reads_all_of_its_input` writes 1 MiB, far above the pipe buffer, into the stand-in that reads JSON and finds the writer unharmed · verify: `cargo test --locked --offline --test release_pr_three_os`
+- AC-4 (REQ-5): the guard of each fix is killed by a mutant that removes the fixed code (the Result lists each `guard-mutant:` line), and no assertion line was removed from the three test files · verify: `test -z "$(git diff -U0 NeXT...HEAD -- tests/home_state_selective.rs tests/release_pr_three_os.rs tests/process_table_default.rs | grep -E '^-[^-].*assert')"`
 - AC-5 (REQ-6): the named-file scan passes with the file listed, and fails when a holder test of the file loses its opt-in · verify: `cargo test --locked --offline --test process_table_default`
 
 ## Scope
@@ -41,7 +41,7 @@ created: 2026-11-25
 
 ## Plan
 
-1. 순위 표를 만든다(24시간 안의 `check-affected` `05-test.log` 71개).
+1. 순위 표를 만든다(24시간 안의 `check-affected` 의 테스트 단계 로그, 그 71개는 모두 `05-test.log`).
 2. 세 표본의 시간을 세팅, 외부 대기, 고정 sleep 으로 나눠 원인을 확인한다.
 3. 같은 단언을 둔 채 고치고, 가드는 뮤턴트로 확인한다.
 4. 번갈아 5회 잰 중앙값으로 전후를 비교한다.
@@ -52,7 +52,7 @@ created: 2026-11-25
 
 ### 순위 표 (기준 1)
 
-방법: 24시간 안(`find -mtime -1`)에 만들어진 `.claude/worktrees/*/target/check-affected-*/05-test.log` 71개를 읽어, 테스트마다 nextest 결과 줄(`PASS`·`FAIL`·`LEAK`)의 시간 중앙값과 그 테스트가 나온 로그 수(하루 실행 횟수)를 곱했어요(`target/c473/rank.py`). 테스트 7838개, 중앙값×횟수의 합계는 190,497초예요. 리더의 전체 테스트 로그는 읽지 못했어요(not_run: 이 워크트리에서 찾지 못했어요).
+방법: 24시간 안(`find -mtime -1`)에 만들어진 `.claude/worktrees/*/target/check-affected-*/05-test.log` 71개를 읽어(스캔 단계가 있는 실행이라 테스트 단계가 다섯 번째예요. 이 카드 자신의 영수증은 스캔 단계가 없어 `04-test.log` 예요), 테스트마다 nextest 결과 줄(`PASS`·`FAIL`·`LEAK`)의 시간 중앙값과 그 테스트가 나온 로그 수(하루 실행 횟수)를 곱했어요(`target/c473/rank.py`). 테스트 7838개, 중앙값×횟수의 합계는 190,497초예요. 리더의 전체 테스트 로그는 읽지 못했어요(not_run: 이 워크트리에서 찾지 못했어요).
 
 | 순위 | 중앙값(초) | 횟수 | 중앙값×횟수 | 테스트 | 이 슬라이스 |
 |---|---|---|---|---|---|
@@ -131,13 +131,13 @@ created: 2026-11-25
 - 순위는 부하 25~50 에서 병렬로 돈 24시간 로그 71개의 값이에요. 리더 전체 테스트 로그는 못 읽었고, 릴리스 빌드와 Linux·Windows 는 재지 않았어요.
 - 전후 표는 `home_state_selective` 만이에요. `release_pr_three_os` 는 시간이 아니라 실패율로 쟀어요.
 - 재현은 부하를 만든 환경에서만 됐고, 실제 전체 테스트(리더 `cargo test --locked`)에서의 실패율은 재지 않았어요.
-- 스캔은 홀더를 문자열 표기(`HOLDERS` 목록)로만 알아봐서, 목록에 없는 표기(`Command::new("sh")` 등)로 홀더를 띄우면 스캔 밖이에요. 이 슬라이스는 그 목록을 넓히지 않았어요(범위 밖, 제품 스캔의 한계로 남겨요).
+- 테스트 스캔(`tests/process_table_default.rs` 의 `HOLDERS` 목록)은 홀더를 문자열 표기로만 알아봐서, 목록에 없는 표기(`Command::new("sh")` 등)로 홀더를 띄우는 테스트는 스캔 밖이에요. 이 슬라이스는 그 목록을 넓히지 않았어요(범위 밖). `"sh"` 표기를 `HOLDERS` 에 더하는 일은 후속 후보예요.
 - 순위 상위 5개는 고치지 않았어요. 카드 기준 1(상위 20개 합계 절반)은 이 슬라이스에서 닿지 않아요.
 
 ### 기준
 
 - AC-1: met — 위 순위 표와 방법·원자료.
 - AC-2: met — `home_state_selective` 10개 통과(3.56초), 전후 표에서 두 홀더 테스트의 EOF 대기가 60초대에서 1.5~3.0초로 줄었고 고아 `sleep` 이 남지 않았어요.
-- AC-3: met — `release_pr_three_os` 9개 통과, 같은 부하에서 실패 60/120 에서 0/120.
+- AC-3: met — `release_pr_three_os` 9개 통과(그중 `the_json_reader_stand_in_reads_all_of_its_input` 가 1 MiB 를 스텁 앞에 세워도 쓰는 쪽이 멀쩡해요), 같은 부하에서 실패 60/120 에서 0/120.
 - AC-4: met — 뮤턴트가 모두 죽었고, 지운 단언 줄은 0개예요.
 - AC-5: met — 스캔이 통과했고(5개 중 5개), 홀더 테스트 둘의 뮤턴트가 각각 죽었어요.
