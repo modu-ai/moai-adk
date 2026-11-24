@@ -568,11 +568,20 @@ fn every_include_str_reader_of_a_repository_file_has_an_always_scan() {
         "the reader scan finds no include_str! reader at all: {readers:?}"
     );
     let uncovered = uncovered_readers(&readers, &load(), &include_str_exempt);
+    assert!(uncovered.is_empty(), "{INCLUDE_READER_HINT}: {uncovered:?}");
+}
+
+/// What the failure of `every_include_str_reader_of_a_repository_file_has_an_always_scan` tells.
+const INCLUDE_READER_HINT: &str =
+    "a test reads a repository file with include_str! and no `always` scan names it as a rule \
+     file with that file in its scope: add an entry to tools/repo_scans.json, or an \
+     INCLUDE_STR_EXEMPT line with the reason";
+
+#[test]
+fn the_include_str_reader_texts_name_include_bytes() {
     assert!(
-        uncovered.is_empty(),
-        "a test reads a repository file with include_str! and no `always` scan names it as a rule \
-         file with that file in its scope: add an entry to tools/repo_scans.json, or an \
-         INCLUDE_STR_EXEMPT line with the reason: {uncovered:?}"
+        INCLUDE_READER_HINT.contains("include_bytes!"),
+        "{INCLUDE_READER_HINT}"
     );
 }
 
@@ -1333,4 +1342,46 @@ fn file_read_exemptions_are_readers_with_a_reason_once() {
             );
         }
     }
+}
+
+/// SPEC-20261124-repo-scans-precheck REQ-10: a `FILE_READ_EXEMPT` pair that an `always` scan
+/// already covers keeps nothing out. The exemption list may only hold what a scan does not cover.
+#[test]
+fn every_file_read_exemption_is_needed() {
+    let readers = file_readers();
+    let scans = load();
+    let mut idle = Vec::new();
+    for (file, paths, _) in FILE_READ_EXEMPT {
+        let spelled = readers.get(*file).cloned().unwrap_or_default();
+        for path in &spelled {
+            if !paths.is_empty() && !paths.contains(&path.as_str()) {
+                continue;
+            }
+            let one = BTreeMap::from([(file.to_string(), vec![path.clone()])]);
+            if uncovered_readers(&one, &scans, &|_, _| false).is_empty() {
+                idle.push(format!("{file} {path}"));
+            }
+        }
+    }
+    assert!(
+        idle.is_empty(),
+        "FILE_READ_EXEMPT keeps out a path that an `always` scan already covers; drop the pair: \
+         {idle:?}"
+    );
+}
+
+/// SPEC-20261124-repo-scans-precheck REQ-12: `tools` is the script folder only when a test file
+/// spells an interpreter literal, the literal `tools` and a tracked `tools` folder together; each
+/// of the three conditions, taken away alone, gives no folder.
+#[test]
+fn file_read_paths_adds_the_tools_folder_only_with_all_three_conditions() {
+    let tracked = Tracked::from_paths(["tools/zz_script.py", "src/lib.rs"]);
+    let all_three = "fn f() { Command::new(\"python3\").arg(Path::new(env!(\"CARGO_MANIFEST_DIR\")).join(\"tools\")); }\n";
+    assert_eq!(file_read_paths(all_three, &tracked), ["tools"]);
+    let no_interpreter = all_three.replace("\"python3\"", "\"git\"");
+    assert!(file_read_paths(&no_interpreter, &tracked).is_empty());
+    let no_literal = all_three.replace("\"tools\"", "\"toolz\"");
+    assert!(file_read_paths(&no_literal, &tracked).is_empty());
+    let no_folder = Tracked::from_paths(["src/lib.rs"]);
+    assert!(file_read_paths(all_three, &no_folder).is_empty());
 }
