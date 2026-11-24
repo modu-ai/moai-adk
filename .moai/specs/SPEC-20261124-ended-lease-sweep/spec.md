@@ -43,8 +43,8 @@ created: 2026-11-24
 - REQ-9 (REQ-1): IF `moai card sweep` runs without `--by leader`, THEN the command shall refuse and write nothing.
 - REQ-10 (REQ-1): IF a swept holder writes with its old generation, THEN the ledger shall refuse the write as it refuses a stale generation today.
 - REQ-11: When `moai card next` lists the `lease_ended` row of a card past the grace period, the row's command shall be `moai card sweep C-n --by leader`. · failure: none — the row is read-only text, and a card inside the grace period keeps the row it has.
-- REQ-12: When `moai card take` is run on an `active` card whose lease ended at least the grace period ago, the command shall sweep that card and take it in one write transaction. · decision pending: D-4
-- REQ-13 (REQ-12): IF the lease ended less than the grace period ago, THEN `moai card take` shall refuse as before and write nothing. · decision pending: D-4
+- REQ-12: When `moai card take` is run on an `active` card whose lease ended at least the grace period ago, the command shall sweep that card and take it in one write transaction.
+- REQ-13 (REQ-12): IF the lease ended less than the grace period ago, THEN `moai card take` shall refuse as before and write nothing.
 
 ## Acceptance
 
@@ -60,8 +60,10 @@ created: 2026-11-24
 ## Scope
 
 - write: `.moai/specs/SPEC-20261124-ended-lease-sweep/spec.md`
-- write (expected; the exact list is a Plan 1 result and widens by card scope, never silently): `src/ledger/sweep.rs`, `src/card/sweep.rs`, `src/card/stale.rs`, `src/card/dispatch.rs`, `src/ops/card.rs`, `src/profile.rs`, `tests/ledger_sweep.rs`, `tests/card_sweep_cli.rs`, `tests/areas.toml`, `docs/design-review/appendix/operations/card.md`, `docs/leader-rules.md`
-- read-only: `src/ledger/reservation.rs`, `src/ledger/workflow.rs`, `src/ledger/close.rs`
+- write: `src/ledger/sweep.rs`, `src/ledger/mod.rs`, `src/ledger/reservation.rs`, `src/card/sweep.rs`, `src/card/mod.rs`, `src/card/stale.rs`, `src/card/work.rs`, `src/card/dispatch.rs`
+- write: `tests/ledger_sweep.rs`, `tests/card_sweep_cli.rs`, `tests/card_stale_cli.rs`
+- write: `src/ops/card.rs`, `src/profile.rs`, `tests/areas.toml`, `docs/design-review/appendix/operations/card.md` (shared files of the project profile: written with the line-lease command, not held in the card scope)
+- read-only: `src/ledger/workflow.rs`, `src/ledger/close.rs`, `src/card/take_scope.rs`
 - forbidden: `src/leader_round.rs`, `src/statusline/state.rs` (held by other cards), the real home ledger (tests use a temporary HOME only)
 
 ## Plan
@@ -69,7 +71,7 @@ created: 2026-11-24
 1. Reproduce first (RED, temporary ledger): a take and a line lease on a path held by a card whose lease ended three days ago, for a `held`, a `review` and a `held_for_review` reservation. A case that fails is an in-scope defect and gets its own test (AC-8); the reading of the code says `held` and `review` pass.
 2. Tests first for AC-1 to AC-7 and see them fail on the unchanged code.
 3. `src/ledger/sweep.rs`: one function that, inside one write transaction per card, re-reads the reservation and the DB clock, checks the grace, sets the reservation `released`, the card `ready`, writes `card.sweep` and the note.
-4. `moai card sweep [--dry-run] --by leader` in the dispatch, the `lease_sweep_hours` profile key and its check, the `stale[]` command change, and (D-4) the take-time sweep.
+4. `moai card sweep [--dry-run] --by leader` in the dispatch, the `lease_sweep_hours` profile key and its check, the `stale[]` command change, and the take-time sweep: `reservation::reserve` and `reserve_own_scope` keep their signatures and call new variants that carry the grace period and run the sweep inside the take transaction; the hold and criteria gates of `take` read a `ready` card, and a card that was `active` passed them when it was first taken.
 5. Mutants for each guard, whole-area test run through `moai check affected`, then the independent audit.
 
 ## Risks
@@ -86,9 +88,9 @@ created: 2026-11-24
 | D-1 | The grace period is the profile key `lease_sweep_hours`, default 24 | the card says "정한 시간(프로젝트 설정)"; the zombies of 2026-11-24 were 38 to 111 hours past their lease; the pattern follows `stale_draft_days` | change the key or the default in a follow-up SPEC |
 | D-2 | A sweep ends the reservation as `released` without a reclaim: no new holder, no new lease, no reclaim allowance used, no worktree gate | Q3; a reclaim would use one of the three lifetime reclaims per zombie | a follow-up SPEC can switch to reclaim, no data depends on it |
 | D-3 | `--by leader` is required, as for `card withdraw` and `card land` | `SPEC-20261124-card-fold-stale` Q4 | drop the flag check |
-| D-4 | A past-grace card is also taken directly by `card take` (REQ-12); `card next` stays read-only and names the sweep command (REQ-11). Awaiting the leader's pick between: (1) sweep command + take-time sweep + stale row (recommended), (2) sweep command + stale row only, (3) every write transaction sweeps all past-grace cards | a lane that finds a zombie card should not wait for a leader round; option 3 writes inside commands that did not say so | drop REQ-12 |
+| D-4 | A past-grace card is also taken directly by `card take`, in the same transaction that sweeps it (REQ-12, REQ-13); `card next` stays read-only, names the sweep command (REQ-11) and does not list the card as a ready candidate | leader decision, note 8505 (2026-11-24, option 1 of 3: option 2 leaves lanes waiting for a leader round, option 3 hides writes inside commands that did not say so) | drop REQ-12 and REQ-13 |
 | D-5 | The round wiring is a follow-up card after the card that holds `src/leader_round.rs` lands | forbidden list of Scope | none needed |
 
 ## Result
 
-Not started: the SPEC is a draft waiting for the leader's pick (D-4) and approval.
+Not started: the leader approved revision 1 with D-4 = option 1 (note 8505); the scope list and the wording of D-4 changed after that approval, so the new digest goes to the card for the leader to record.
