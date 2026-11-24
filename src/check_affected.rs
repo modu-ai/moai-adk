@@ -2488,6 +2488,37 @@ mod tests {
 
     const MANIFEST: &str = env!("CARGO_MANIFEST_DIR");
 
+    /// Audit B1 on the real files: every module of `tests/card/` that names `crate::common` in
+    /// any form is read as a user of it, and a change of `tests/common/mod.rs` selects exactly
+    /// those modules. The six that name it by a path alone (`close_check_cli`, `startable_shared`,
+    /// `release_suite`, `ledger_forge_only_cli`, `close_step_2903`, `decision_file_cli`) are the
+    /// ones the first version of the read missed.
+    #[test]
+    fn a_change_of_the_common_helper_selects_every_real_card_module_that_names_it() {
+        let dir = Path::new(MANIFEST).join("tests/card");
+        let tests = read_area_modules(&dir, "card");
+        assert!(tests.len() > 100, "{} modules read", tests.len());
+        let naming: BTreeSet<&str> = tests
+            .iter()
+            .filter(|t| t.text.contains("crate::common::") || t.text.contains("use crate::common;"))
+            .map(|t| t.name.as_str())
+            .collect();
+        for six in [
+            "close_check_cli",
+            "startable_shared",
+            "release_suite",
+            "ledger_forge_only_cli",
+            "close_step_2903",
+            "decision_file_cli",
+        ] {
+            assert!(naming.contains(six), "{six} no longer names the helper");
+        }
+        let sel = select(&paths(&["tests/common/mod.rs"]), &tests, None, "linux");
+        let picked: BTreeSet<&str> = sel.rust.iter().map(String::as_str).collect();
+        let missed: Vec<&&str> = naming.difference(&picked).collect();
+        assert!(missed.is_empty(), "not selected: {missed:?}");
+    }
+
     /// SPEC-20261124-new-test-file-precheck REQ-8: the repository's own test files, all taken as
     /// added, pass the step: it cannot be stricter than the two repository tests, which pass on
     /// the same tree. A unit test, not a `tests/` file: a test file that walks the tree needs a
