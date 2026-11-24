@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-lane-leftovers
 title: "lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8227 (2026-11-24T05:22:46Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8226 에 답함): SPEC 판 3 승인 — Scope write 에 tools/repo_scans.json 한 줄(reads-docs 와 reads-skills), Plan 3c, Result 뿐이고 요구와 인수는 그대로; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:4b4815811d43248f691fe661a82c0294cfae205f20eb91b92a348f104e0ce1a7"
 ---
 
 # lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY
