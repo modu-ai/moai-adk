@@ -20,8 +20,10 @@ use super::dispatch::{checked_scope, reservation_json, DEFAULT_LEASE_SECS};
 use super::input::{self, CardRef};
 use super::landed;
 use super::spec_link;
+use super::stale;
 use super::take_scope;
 use crate::forge::connector::{HostConnector, HostKind, PrPhase, ProjectRef};
+use crate::ledger::close;
 use crate::ledger::reservation;
 use crate::ledger::scope_return;
 use crate::ledger::workflow::{self, CriterionChange, PrTarget, SkipReason, WorkflowError};
@@ -65,7 +67,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
                 "action": "next", "project_id": id, "ledger": "absent", "holder": holder,
                 "next": null, "next_is": null,
                 "mine": [], "ready": [], "skipped": [], "warnings": [], "writes": false,
-                "landing": landed::absent_json(),
+                "landing": landed::absent_json(), "stale": [],
             }));
         }
         Err(e) => return Err(e.to_string()),
@@ -84,11 +86,26 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
     // `skipped` with `reason: "already_landed"` and the proof. `card finish` closes it once a
     // criterion is met; a card with no counted criterion needs `card criterion-add` and `--met`
     // first, because `card finish` refuses a card with no met criterion.
-    let landing = landed::find(project, ledger.conn(), &landed::candidates(&found))?;
+    //
+    // The same lookup also asks for the `active` and `review` cards, whose proof the `stale` list
+    // needs (SPEC-20261124-card-fold-stale); `take_landed` only reads the proofs of `ready` cards,
+    // and a SPEC trailer hint of an open card is not part of the `landing` answer.
+    let stale_facts = close::stale_facts(ledger.conn(), found.now).map_err(|e| e.to_string())?;
+    let mut wanted = landed::candidates(&found);
+    wanted.extend(stale_facts.open.iter().map(|c| c.card_id));
+    let mut landing = landed::find(project, ledger.conn(), &wanted)?;
+    landing
+        .spec_trailer_hints
+        .retain(|card_id, _| !stale_facts.open.iter().any(|c| c.card_id == *card_id));
     let landed_skips = landed::take_landed(&mut found, &landing);
+    let mut warnings: Vec<String> = Vec::new();
+    // A profile that cannot be read gives the default and no warning: `warnings` is for the SPEC
+    // of a card, and the project's fixtures hold unreadable profiles; the row names the days it
+    // used (`threshold_days`).
+    let draft_days = stale::draft_days(project).unwrap_or(stale::DEFAULT_DRAFT_DAYS);
+    let stale = stale::rows(&stale_facts, &landing.proofs, found.now, draft_days);
     // The SPEC each card names and its status, with a warning for a card that changes the
     // repository without an approved SPEC (SDD-4), in the order the cards are listed.
-    let mut warnings: Vec<String> = Vec::new();
     let mut spec_of = |card_id: i64| -> Result<Value> {
         let (kind, spec) = spec_link::kind_and_spec(ledger.conn(), card_id)
             .map_err(|e| LedgerError::from(e).to_string())?
@@ -166,7 +183,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
         "action": "next", "project_id": id, "ledger": "ready", "holder": holder,
         "now": found.now, "next": next, "next_is": next_is,
         "mine": mine, "ready": ready, "skipped": skipped, "warnings": warnings,
-        "landing": landing.json(), "writes": false,
+        "landing": landing.json(), "stale": stale, "writes": false,
     }))
 }
 
@@ -834,6 +851,101 @@ pub fn landed(project: &Path, home: &Path, reference: &str, head: &str, by: &str
     Ok(json!({
         "action": "landed", "project_id": id,
         "card": input::card_name(card_id), "writes": true,
+    }))
+}
+
+/// The card number of `reference` (`C-12`, or `#3066` as the source number the card was imported
+/// with). A source number that names no card or several is refused naming the card instead.
+fn card_or_source(ledger: &ledger::WriteLedger, action: &str, reference: &str) -> Result<i64> {
+    match input::parse_ref(reference).map_err(|e| format!("card {action} refused: {e}"))? {
+        CardRef::Id(n) => Ok(n),
+        CardRef::SourceNumber(n) => {
+            let sql_err = |e: rusqlite::Error| LedgerError::from(e).to_string();
+            let mut stmt = ledger
+                .conn()
+                .prepare("SELECT card_id FROM card WHERE source_number = ?1 ORDER BY card_id")
+                .map_err(sql_err)?;
+            let ids: Vec<i64> = stmt
+                .query_map([n], |r| r.get(0))
+                .map_err(sql_err)?
+                .collect::<std::result::Result<Vec<_>, _>>()
+                .map_err(sql_err)?;
+            match ids.as_slice() {
+                [one] => Ok(*one),
+                _ => Err(format!(
+                    "card {action} refused: #{n} names {} cards; name the card instead",
+                    ids.len()
+                )),
+            }
+        }
+    }
+}
+
+/// The session id of the caller, when the host gives one.
+fn caller_session() -> Option<String> {
+    std::env::var("CLAUDE_CODE_SESSION_ID")
+        .or_else(|_| std::env::var("CODEX_THREAD_ID"))
+        .ok()
+}
+
+/// `card withdraw C-n`: the card moves to `hold` and one `card.withdraw` event records the reason
+/// and the by. A `draft` or `ready` card nobody holds, or an `active` or `review` card nobody
+/// holds, is withdrawn by anyone; a card whose `held` lease ended is withdrawn only `--by
+/// leader`, which ends that reservation (SPEC-20261124-card-fold-stale). A live lease is refused.
+pub fn withdraw(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    reason: &str,
+    by: &str,
+) -> Result<Value> {
+    input::parse_ref(reference).map_err(|e| format!("card withdraw refused: {e}"))?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let card_id = card_or_source(&ledger, "withdraw", reference)?;
+    close::withdraw(
+        &mut ledger,
+        card_id,
+        reason,
+        by,
+        caller_session().as_deref(),
+    )
+    .map_err(|e| format!("card withdraw refused: {e}"))?;
+    Ok(json!({
+        "action": "withdraw", "project_id": id,
+        "card": input::card_name(card_id), "state": "hold",
+        "writes": true,
+    }))
+}
+
+/// `card fold C-n --into C-m`: the card moves to `hold` with one `card.fold` event and one
+/// `relates` link to C-m; its notes, criteria and links stay readable, `card next` never offers
+/// it and `card take` refuses it naming C-m. The same cards may be folded as withdrawn, under
+/// the same leader rule for a lapsed lease.
+pub fn fold(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    into: &str,
+    reason: &str,
+    by: &str,
+) -> Result<Value> {
+    input::parse_ref(reference).map_err(|e| format!("card fold refused: {e}"))?;
+    let target = card_id("fold", into)?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let card_id = card_or_source(&ledger, "fold", reference)?;
+    close::fold(
+        &mut ledger,
+        card_id,
+        target,
+        reason,
+        by,
+        caller_session().as_deref(),
+    )
+    .map_err(|e| format!("card fold refused: {e}"))?;
+    Ok(json!({
+        "action": "fold", "project_id": id,
+        "card": input::card_name(card_id), "into": input::card_name(target),
+        "state": "hold", "writes": true,
     }))
 }
 

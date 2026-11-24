@@ -240,3 +240,296 @@ fn the_take_and_withdraw_help_first_lines_stay_apart() {
         "withdraw's help carries take's first line: {withdraw}"
     );
 }
+
+// ---- SPEC-20261124-card-fold-stale: a card whose lease ended ----------------------------------
+
+use moai_cli::ledger::close::{self, CloseError};
+
+fn sql(home: &TempHome, statement: &str) {
+    let mut w: WriteLedger = ledger::open_write(home.path(), "demo").unwrap();
+    w.with_write_tx(|tx, _| {
+        tx.execute_batch(statement)?;
+        Ok(())
+    })
+    .unwrap();
+}
+
+fn rows(home: &TempHome, query: &str) -> Vec<String> {
+    let l = ledger::open_read_only(home.path(), "demo").unwrap();
+    let mut st = l.conn().prepare(query).unwrap();
+    st.query_map([], |r| r.get::<_, String>(0))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap()
+}
+
+/// The parts of the ledger a withdraw writes, as text.
+fn dump(home: &TempHome) -> Vec<String> {
+    let mut all = Vec::new();
+    for query in [
+        "SELECT card_id || ':' || state || ':' || rev FROM card ORDER BY card_id",
+        "SELECT event_id || ':' || kind || ':' || ifnull(card_id, '') FROM event ORDER BY event_id",
+        "SELECT card_id || ':' || generation || ':' || status || ':' || lease_until \
+         FROM reservation ORDER BY reservation_id",
+    ] {
+        all.extend(rows(home, query));
+    }
+    all
+}
+
+fn withdraw_as(home: &TempHome, card: i64, by: &str) -> Result<(), CloseError> {
+    let mut w: WriteLedger = ledger::open_write(home.path(), "demo").unwrap();
+    close::withdraw(&mut w, card, "lease ended, nobody works on it", by, None)
+}
+
+/// AC-6 and AC-7: the leader withdraws an `active` card whose `held` lease ended in one step; a
+/// live lease and a caller that is not the leader are refused and write nothing; the lane's
+/// worktree folder is left as it is.
+#[test]
+fn the_leader_withdraws_a_card_whose_lease_ended_and_a_live_lease_is_refused() {
+    let (home, p) = two_ready_cards();
+    let worktree = home.path().join("lane-worktree");
+    std::fs::create_dir_all(&worktree).unwrap();
+    std::fs::write(worktree.join("keep.txt"), "work in progress\n").unwrap();
+    result(&run(
+        &home,
+        &[
+            "card",
+            "take",
+            "C-1",
+            "--worktree",
+            worktree.to_str().unwrap(),
+            "--project",
+            &p,
+        ],
+    ));
+
+    let before = dump(&home);
+    let err = withdraw_as(&home, 1, "leader").unwrap_err();
+    assert!(
+        matches!(err, CloseError::Held { .. }),
+        "a live lease: {err:?}"
+    );
+    assert!(dump(&home) == before, "a refused withdraw wrote something");
+
+    sql(
+        &home,
+        "UPDATE reservation SET lease_until = unixepoch() - 5 WHERE card_id = 1",
+    );
+    let before = dump(&home);
+    let err = withdraw_as(&home, 1, "lane").unwrap_err();
+    assert!(matches!(err, CloseError::LeaderOnly { .. }), "{err:?}");
+    assert!(dump(&home) == before, "a refused withdraw wrote something");
+
+    withdraw_as(&home, 1, "leader").unwrap();
+    assert_eq!(
+        rows(&home, "SELECT state FROM card WHERE card_id = 1"),
+        ["hold"]
+    );
+    assert_eq!(
+        rows(&home, "SELECT status FROM reservation WHERE card_id = 1"),
+        ["released"]
+    );
+    let events = rows(
+        &home,
+        "SELECT payload FROM event WHERE card_id = 1 AND kind = 'card.withdraw'",
+    );
+    assert_eq!(events.len(), 1, "{events:?}");
+    let payload: Value = serde_json::from_str(&events[0]).unwrap();
+    assert_eq!(payload["released"]["holder"], json!(S_A), "{payload}");
+    assert_eq!(payload["released"]["generation"], json!(1), "{payload}");
+    assert!(payload["released"]["lease_until"].is_i64(), "{payload}");
+    assert!(
+        worktree.join("keep.txt").is_file(),
+        "the withdraw leaves the worktree folder alone"
+    );
+
+    let v = refusal(&run(&home, &["card", "take", "C-1", "--project", &p]));
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("lease ended, nobody works on it"),
+        "take names the reason: {v}"
+    );
+}
+
+/// AC-7: a reservation that is not `held` belongs to `recover`; the withdraw refuses it.
+#[test]
+fn a_reservation_that_is_not_held_is_refused() {
+    for status in ["held_for_review", "expired_candidate"] {
+        let (home, p) = two_ready_cards();
+        result(&run(&home, &["card", "take", "C-1", "--project", &p]));
+        sql(
+            &home,
+            &format!(
+                "UPDATE reservation SET status = '{status}', lease_until = unixepoch() - 5 \
+                 WHERE card_id = 1"
+            ),
+        );
+        let before = dump(&home);
+        let err = withdraw_as(&home, 1, "leader").unwrap_err();
+        assert!(
+            matches!(err, CloseError::ReservationNotHeld { .. }),
+            "{status}: {err:?}"
+        );
+        assert!(
+            dump(&home) == before,
+            "{status}: a refused withdraw wrote something"
+        );
+    }
+}
+
+/// D-6: a `review` card nobody holds can be withdrawn without the leader word; a `done` card
+/// cannot; a `draft` and a `ready` card nobody holds are withdrawn as before.
+#[test]
+fn a_review_card_nobody_holds_is_withdrawn_and_a_done_card_is_not() {
+    let (home, p) = two_ready_cards();
+    result(&run(&home, &["card", "take", "C-1", "--project", &p]));
+    result(&run(
+        &home,
+        &[
+            "card",
+            "review",
+            "C-1",
+            "--generation",
+            "1",
+            "--project",
+            &p,
+        ],
+    ));
+    sql(
+        &home,
+        "UPDATE reservation SET status = 'released' WHERE card_id = 1",
+    );
+    withdraw_as(&home, 1, "lane").unwrap();
+    assert_eq!(
+        rows(&home, "SELECT state FROM card WHERE card_id = 1"),
+        ["hold"]
+    );
+
+    sql(
+        &home,
+        "INSERT INTO card (title, state, created_by, created_at, updated_at, closed_at) \
+         VALUES ('done card', 'done', 'fixture', 1, 1, 1)",
+    );
+    let before = dump(&home);
+    let err = withdraw_as(&home, 3, "leader").unwrap_err();
+    assert!(matches!(err, CloseError::WrongState { .. }), "{err:?}");
+    assert!(dump(&home) == before, "a refused withdraw wrote something");
+
+    withdraw_as(&home, 2, "lane").unwrap();
+    assert_eq!(
+        rows(&home, "SELECT state FROM card WHERE card_id = 2"),
+        ["hold"]
+    );
+}
+
+/// AC-6 and AC-7 through the wired action: a lapsed lease is refused for a caller that is not the
+/// leader and withdrawn for the leader in one call; a live lease is refused.
+#[cfg(unix)]
+#[test]
+fn the_wired_withdraw_ends_a_lapsed_lease_only_for_the_leader() {
+    let (home, p) = two_ready_cards();
+    // The lane's worktree folder holds work in progress and, beside it, a link to a folder
+    // outside it: the withdraw ends a reservation and deletes nothing, link or not.
+    let worktree = home.path().join("lane-worktree");
+    let outside = home.path().join("outside");
+    std::fs::create_dir_all(&worktree).unwrap();
+    std::fs::create_dir_all(&outside).unwrap();
+    std::fs::write(worktree.join("keep.txt"), "work in progress\n").unwrap();
+    std::fs::write(outside.join("other.txt"), "not the lane's\n").unwrap();
+    std::os::unix::fs::symlink(&outside, worktree.join("link")).unwrap();
+    result(&run(
+        &home,
+        &[
+            "card",
+            "take",
+            "C-1",
+            "--worktree",
+            worktree.to_str().unwrap(),
+            "--project",
+            &p,
+        ],
+    ));
+    let call = |by: &str| {
+        run(
+            &home,
+            &[
+                "card",
+                "withdraw",
+                "C-1",
+                "--reason",
+                "the lane is gone",
+                "--by",
+                by,
+                &p,
+            ],
+        )
+    };
+    let v = refusal(&call("leader"));
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("lease has not ended"),
+        "a live lease: {v}"
+    );
+
+    sql(
+        &home,
+        "UPDATE reservation SET lease_until = unixepoch() - 5 WHERE card_id = 1",
+    );
+    let before = dump(&home);
+    let v = refusal(&call("lane"));
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("--by leader"),
+        "{v}"
+    );
+    assert!(dump(&home) == before, "a refused withdraw wrote something");
+
+    let v = result(&call("leader"));
+    assert_eq!(v["state"], json!("hold"), "{v}");
+    assert_eq!(
+        rows(&home, "SELECT status FROM reservation WHERE card_id = 1"),
+        ["released"]
+    );
+    assert!(worktree.join("keep.txt").is_file(), "the worktree is kept");
+    assert!(
+        worktree.join("link").is_symlink() && outside.join("other.txt").is_file(),
+        "the link and what it points at are kept"
+    );
+}
+
+/// REQ-10: the wired withdraw still takes a card by the source number it was imported with.
+#[test]
+fn the_wired_withdraw_takes_a_card_by_its_source_number() {
+    let (home, p) = two_ready_cards();
+    sql(
+        &home,
+        "INSERT INTO card (title, created_by, created_at, updated_at, source_host, \
+                           source_project, source_number) \
+         VALUES ('imported', 'x', 1, 1, 'github', 'o/a', 3066)",
+    );
+    let v = result(&run(
+        &home,
+        &[
+            "card",
+            "withdraw",
+            "#3066",
+            "--reason",
+            "not needed",
+            "--by",
+            "lane",
+            &p,
+        ],
+    ));
+    assert_eq!(v["card"], json!("C-3"), "{v}");
+    assert_eq!(
+        rows(&home, "SELECT state FROM card WHERE card_id = 3"),
+        ["hold"]
+    );
+}

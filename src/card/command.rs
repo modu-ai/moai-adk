@@ -155,7 +155,7 @@ pub fn list_filtered(
                            AND (?3 OR ?1 IS NOT NULL OR card.state <> 'hold' \
                                OR NOT EXISTS (SELECT 1 FROM event \
                              WHERE event.card_id = card.card_id \
-                               AND event.kind = 'card.withdraw')) \
+                               AND event.kind IN ('card.withdraw', 'card.fold'))) \
               ORDER BY card_id",
             super::spec_link::LINKED_COLUMN
         ))
@@ -230,59 +230,6 @@ fn note_sessions(
         }
     }
     Ok(sessions)
-}
-
-/// Writes the ledger. Withdraw a draft or ready card: the card moves to `hold` and one
-/// `card.withdraw` event records the reason and the by, with the session that wrote it. The
-/// ledger schema is unchanged (the six state values are pinned; the marker is the free event
-/// kind). `card take` then refuses the card naming the reason, and the default `card list`
-/// hides it.
-pub fn withdraw(
-    project: &Path,
-    home: &Path,
-    reference: &str,
-    reason: &str,
-    by: &str,
-) -> Result<Value> {
-    let which = input::parse_ref(reference).map_err(|e| format!("card withdraw refused: {e}"))?;
-    let id = project_id(project)?;
-    let mut ledger = ledger::open_write(home, &id).map_err(|e| match e {
-        LedgerError::Absent => ABSENT_HINT.to_string(),
-        other => other.to_string(),
-    })?;
-    let card_id = match which {
-        CardRef::Id(n) => n,
-        CardRef::SourceNumber(n) => {
-            let mut stmt = ledger
-                .conn()
-                .prepare("SELECT card_id FROM card WHERE source_number = ?1 ORDER BY card_id")
-                .map_err(|e| LedgerError::from(e).to_string())?;
-            let ids: Vec<i64> = stmt
-                .query_map([n], |r| r.get(0))
-                .map_err(|e| LedgerError::from(e).to_string())?
-                .collect::<std::result::Result<Vec<_>, _>>()
-                .map_err(|e| LedgerError::from(e).to_string())?;
-            match ids.as_slice() {
-                [one] => *one,
-                _ => {
-                    return Err(format!(
-                        "card withdraw refused: #{n} names {} cards; name the card instead",
-                        ids.len()
-                    ))
-                }
-            }
-        }
-    };
-    let session = std::env::var("CLAUDE_CODE_SESSION_ID")
-        .or_else(|_| std::env::var("CODEX_THREAD_ID"))
-        .ok();
-    ledger::workflow::withdraw(&mut ledger, card_id, reason, by, session.as_deref())
-        .map_err(|e| format!("card withdraw refused: {e}"))?;
-    Ok(json!({
-        "action": "withdraw", "project_id": id,
-        "card": input::card_name(card_id), "state": "hold",
-        "writes": true,
-    }))
 }
 
 /// `card show C-n | #number`: the card with its criteria, notes, links and the reservation that
