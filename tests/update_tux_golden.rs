@@ -773,9 +773,8 @@ fn the_applied_screen_shows_a_kept_agent_file_as_partial() {
     assert!(en.contains("Partly applied"), "{en}");
     assert!(!en.contains("Done"), "{en}");
     assert!(
-        en.lines().any(|l| l.contains("agents")
-            && l.contains("1 changed")
-            && l.contains("2 kept")),
+        en.lines()
+            .any(|l| l.contains("agents") && l.contains("1 changed") && l.contains("2 kept")),
         "{en}"
     );
     let ko = screen(&partial, Asked::Yes, &view(Lang::Ko, Look::Plain, 80, None));
@@ -805,5 +804,8 @@ fn the_applied_screen_shows_a_kept_agent_file_as_partial() {
         Asked::Yes,
         &view(Lang::En, Look::Plain, 80, None),
     );
-    assert!(done.contains("Done") && !done.contains("Partly applied"), "{done}");
+    assert!(
+        done.contains("Done") && !done.contains("Partly applied"),
+        "{done}"
+    );
 }

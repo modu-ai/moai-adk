@@ -210,7 +210,12 @@ fn a_flat_file_that_matches_nothing_stays_a_conflict() {
     foreign.write_flat("plan", "someone else's plan agent\n");
     for (fx, role, legacy, bytes) in [
         (&edited, "impl", "kept_edited", "I edited this one\n"),
-        (&foreign, "plan", "kept_foreign", "someone else's plan agent\n"),
+        (
+            &foreign,
+            "plan",
+            "kept_foreign",
+            "someone else's plan agent\n",
+        ),
     ] {
         let plan = fx.plan();
         let l = line(&plan, role);
@@ -235,8 +240,14 @@ fn the_choice_asks_once_per_conflicting_file() {
     let (chosen, out, rest) = choose(&plan, "k\nm\nEXTRA\n", false);
     assert_eq!(chosen, ["claude:moai-plan.md"], "{out}");
     assert_eq!(rest, "EXTRA\n", "two answers were read: {out}");
-    assert!(out.contains("moai-impl.md") && out.contains("moai-plan.md"), "{out}");
-    assert!(!out.contains("moai-audit.md"), "a file that moves is no question: {out}");
+    assert!(
+        out.contains("moai-impl.md") && out.contains("moai-plan.md"),
+        "{out}"
+    );
+    assert!(
+        !out.contains("moai-audit.md"),
+        "a file that moves is no question: {out}"
+    );
     for word in ["keep mine", "use MoAI's", "show the difference"] {
         assert!(out.contains(word), "{word}: {out}");
     }

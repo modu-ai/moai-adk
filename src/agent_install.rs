@@ -613,8 +613,7 @@ pub fn apply_with_choices(
         }
     }
     if writes.is_empty() {
-        let mut v =
-            serde_json::json!({"state": "unchanged", "plan_digest": fresh.plan_digest, "written": []});
+        let mut v = serde_json::json!({"state": "unchanged", "plan_digest": fresh.plan_digest, "written": []});
         if !kept.is_empty() {
             v["state"] = "partial".into();
             v["kept"] = serde_json::json!(kept);
