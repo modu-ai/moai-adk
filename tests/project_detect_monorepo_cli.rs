@@ -1121,3 +1121,67 @@ fn the_code_extension_row_limits_hold_at_both_edges() {
         ("refused".to_string(), 0)
     );
 }
+
+/// REQ-5: two rows of the extension file that give one extension two languages refuse the
+/// whole file and the problem names the extension, whichever row comes first; the same
+/// language twice (in two rows or twice in one row) is read.
+#[test]
+fn one_extension_for_two_languages_in_the_extension_file_is_refused() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "lib/a.ex", "x\n");
+    write(r, "src/a.rs", "x\n");
+    let conflicts = [
+        (
+            r#"{"language": "elixir", "extensions": ["ex"]},
+               {"language": "erlang", "extensions": ["erl", "ex"]}"#,
+            "the extension ex is claimed by two languages: elixir and erlang",
+        ),
+        (
+            r#"{"language": "erlang", "extensions": ["erl", "ex"]},
+               {"language": "elixir", "extensions": ["ex"]}"#,
+            "the extension ex is claimed by two languages: erlang and elixir",
+        ),
+    ];
+    for (rows, problem) in conflicts {
+        write(
+            r,
+            &extension(),
+            &format!(r#"{{"schema": 1, "code_extensions": [{rows}]}}"#),
+        );
+        let before = tree(r);
+        let result = detect(&root);
+        assert_eq!(
+            result["manifest_catalog"],
+            json!({"extension": "refused", "rows": 0, "problem": problem}),
+            "{result}"
+        );
+        // The shipped rows alone are used: the refused file adds no language.
+        assert_eq!(result["detected"]["languages"], json!(["rust"]), "{result}");
+        assert_eq!(tree(r), before, "a read wrote something");
+    }
+
+    // The same language for one extension is no conflict: twice in one row, or in two rows.
+    for rows in [
+        r#"{"language": "elixir", "extensions": ["ex", "ex"]}"#,
+        r#"{"language": "elixir", "extensions": ["ex"]},
+           {"language": "elixir", "extensions": ["ex", "exs"]}"#,
+    ] {
+        write(
+            r,
+            &extension(),
+            &format!(r#"{{"schema": 1, "code_extensions": [{rows}]}}"#),
+        );
+        let result = detect(&root);
+        assert_eq!(
+            result["manifest_catalog"]["extension"],
+            json!("read"),
+            "{result}"
+        );
+        assert_eq!(
+            result["detected"]["languages"],
+            json!(["elixir", "rust"]),
+            "{result}"
+        );
+    }
+}
