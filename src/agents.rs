@@ -2495,14 +2495,10 @@ mod tests {
             }
             assert!(text.lines().count() - 2 <= BLOCK_MAX_LINES, "{text}");
         }
-        assert!(
-            render_agents(&profile, &request("en"), root.path())
-                .contains(&format!("Project scripts: `{tools}`.\n"))
-        );
-        assert!(
-            render_agents(&profile, &request("ko"), root.path())
-                .contains(&format!("프로젝트 스크립트: `{tools}`.\n"))
-        );
+        assert!(render_agents(&profile, &request("en"), root.path())
+            .contains(&format!("Project scripts: `{tools}`.\n")));
+        assert!(render_agents(&profile, &request("ko"), root.path())
+            .contains(&format!("프로젝트 스크립트: `{tools}`.\n")));
     }
 
     /// SPEC-20261120-moai-layout REQ-16: the `moai-impl` agent definition puts the development
