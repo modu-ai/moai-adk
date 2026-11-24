@@ -148,7 +148,6 @@ tests/language_set_cli.rs	32	7
 tests/language_setting.rs	6	6
 tests/language_three_questions.rs	4	0
 tests/launcher_advisor_setting.rs	5	0
-tests/launcher_agent_numbering.rs	4	0
 tests/launcher_auto_init.rs	6	17
 tests/launcher_glm_key_file.rs	7	10
 tests/launcher_key_vault.rs	4	6
