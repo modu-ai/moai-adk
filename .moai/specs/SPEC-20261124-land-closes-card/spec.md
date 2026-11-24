@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-land-closes-card
 title: "감사 PASS 가 기록된 head 를 착지하면 카드가 닫혀요: land 가 PASS 기록으로 열린 기준을 met 으로 만들고, 슬라이스는 --keep-open 일 때만 열린 채 남아요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8023 (2026-11-24T00:05:26Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8019 에 대한 답): 판 1 승인, D-1~D-6 기본값 그대로예요; 리더가 노트에 적었고 레인은 그 노트를 옮겨 적었어요"
+  digest: "sha256:6489768c92a4e73c2717cb1835ba6bf31037efc41499b823746d53460fc27493"
 ---
 
 # 감사 PASS 가 기록된 head 를 착지하면 카드가 닫혀요: land 가 PASS 기록으로 열린 기준을 met 으로 만들고, 슬라이스는 --keep-open 일 때만 열린 채 남아요
