@@ -1,10 +1,11 @@
 ---
 id: SPEC-20261121-project-state-move
 title: "One state folder: the update flow moves .moai-cli to .moai with a preview, a token, a receipt and a revert"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-20
 parent: null
+approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8307 of card C-175 (answers lane note 8306, 2026-11-24T07:07:04Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 2 at head 65071038b8 with D-2 to D-6 all (a); recorded by the lane, not approved by it", digest: "sha256:50d64383d025f1d2dcb74cbcbb2b8a7d86d7ca5699c994959cc4594c3f733d18"}
 ---
 
 # One state folder: the update flow moves .moai-cli to .moai with a preview, a token, a receipt and a revert
@@ -21,6 +22,10 @@ parent: null
 6. 시험은 옛 이름을 많이 써요: `tests/fixtures/state_folder_literals/allow.tsv` 는 266개 파일에 옛 이름 1546·새 이름 2013(2026-11-24). 이 SPEC 은 그 시험 파일들을 고치지 않아요.
 
 이 SPEC 이 하는 일: (a) 팀이 추적하는 이름만 든 `.moai/` 를 `unknown` 이 아니라 이 세대의 것으로 읽어요(REQ-1). (b) `/moai update` 미리보기에 이동 단계를 얹어요: `.moai-cli` 의 항목마다 옮김/둠/치움을 사유와 함께 보이고, git 이 가리는 도착지는 막아요(REQ-2~5). (c) 적용은 토큰·이름 바꾸기·마커 마지막·영수증이고 되돌릴 수 있어요(REQ-6~8). (d) 미리보기 단계로 이어 붙여요(REQ-9). (e) 이동이 끝난 트리에서 상태줄 캐시가 `.moai/state/github/` 로 가는 것을 시험으로 못 박아요(REQ-10, 카드 기준 2). (f) 제품 코드가 옛 폴더 이름을 새로 쓰지 못하게 기준선 시험을 둬요(REQ-11). 이 저장소 자신에 이동을 적용하는 일은 이 SPEC 이 아니라 착지 뒤 별도 한 걸음이에요(Plan 7).
+
+## Interview
+
+- none: 사용자에게 묻지 않았어요. 설계는 카드 본문의 사용자 결정(2026-11-20)을 따르고, 판 2 의 선택 D-2~D-6 은 카드 노트 8306 에 대한 리더 결정 노트 8307(사용자 위임 2026-11-23, 리더 판단, 사용자 직접 선택 아님)이에요.
 
 ## Non-goals
 
