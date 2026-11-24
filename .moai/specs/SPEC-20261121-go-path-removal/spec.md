@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261121-go-path-removal
 title: "moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement"
-status: draft
+status: approved
 revision: 6
 created: 2026-11-21
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8346 (2026-11-24T08:08:17Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8345 에 답함; 앞서 노트 8336 이 D-1~D-9 를, 노트 8341 이 D-10 을 정함): 판 6(D-10 고침) 승인, head 029989e59f; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:9a69f20398c896948a259ab1b4b3cc214f7f9104177214a83e97e7ae825ed1c6"
 ---
 
 # moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement
@@ -192,7 +197,7 @@ The product changes of revision 6 need none of these. Each is the user's own ste
 
 ## Decisions
 
-The decisions D-1 to D-9 were the lane's proposals for revision 6 and count from the leader's note recorded in the frontmatter. D-10 is the leader's decision on the amendment of REQ-22 and AC-19 (its note on the card, 2026-11-24T07:58:02Z); the SPEC is a draft again until that amended text is approved by its digest.
+The decisions D-1 to D-9 were the lane's proposals for revision 6 and count from the leader's note of 2026-11-24T07:45:22Z. D-10 is the leader's decision on the amendment of REQ-22 and AC-19 (its note on the card, 2026-11-24T07:58:02Z); the leader approved the amended text by its digest, and the frontmatter records that note.
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
