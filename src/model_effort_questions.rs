@@ -667,18 +667,21 @@ pub fn glm_key_step<R: BufRead, W: Write>(
     let Some(scope) = cwd.as_deref().and_then(|dir| glm_key_scope(dir, home)) else {
         writeln!(
             out,
-            "The glm key is kept per project and this folder is not inside one; the key entry was skipped (run `moai key-set glm` inside a project, or add --shared)."
+            "The glm key is kept per project and this folder is not inside one; the key entry was skipped (run `moai key-set glm --prompt` inside a project, or add --shared)."
         )?;
         return Ok(());
     };
-    let stored = [scope.clone(), crate::key_vault::Scope::Shared]
-        .iter()
-        .find_map(|s| {
-            crate::key_vault::read_entry(home, s, "glm")
-                .ok()
-                .flatten()
-                .and_then(|v| crate::key_vault::usable_value(&v))
-        });
+    // The launcher's order (`key_vault::read`): the project's entry, then the shared one. A
+    // project entry that exists but cannot be read (a broken file) ends the search there, as it
+    // does for the launcher, and counts as no usable key: the answer then replaces it.
+    let stored = match crate::key_vault::read_entry(home, &scope, "glm") {
+        Ok(Some(value)) => crate::key_vault::usable_value(&value),
+        Ok(None) => crate::key_vault::read_entry(home, &crate::key_vault::Scope::Shared, "glm")
+            .ok()
+            .flatten()
+            .and_then(|value| crate::key_vault::usable_value(&value)),
+        Err(_) => None,
+    };
     if stored.is_some() {
         writeln!(
             out,
@@ -704,7 +707,12 @@ pub fn glm_key_step<R: BufRead, W: Write>(
         match crate::key_prompt::read_hidden("glm") {
             Ok(value) => Some(value),
             Err(reason) => {
-                writeln!(out, "The key entry was skipped: {reason}")?;
+                // An empty answer is the skip the question offers, not a failure to report.
+                if reason.starts_with("no usable value") {
+                    writeln!(out, "No key was entered; the key entry was skipped.")?;
+                } else {
+                    writeln!(out, "The key entry was skipped: {reason}")?;
+                }
                 None
             }
         }
@@ -714,7 +722,10 @@ pub fn glm_key_step<R: BufRead, W: Write>(
     let Some(value) = value else {
         return Ok(());
     };
-    crate::key_vault::set(home, &scope, "glm", &value)
-        .map_err(|e| io::Error::other(e.to_string()))?;
+    // A refused write is told on the screen and the step goes on, so the model pick and the
+    // save question after it are not lost; the first glm run keeps asking for the key.
+    if let Err(reason) = crate::key_vault::set(home, &scope, "glm", &value) {
+        writeln!(out, "The key could not be stored: {reason}")?;
+    }
     Ok(())
 }

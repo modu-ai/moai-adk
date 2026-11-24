@@ -769,19 +769,26 @@ fn a_saved_value_is_the_default_of_its_questions_and_enter_keeps_it() {
     );
 }
 
-/// A unique temporary folder for the key-vault scenes, never shared between tests: two
-/// starts inside the same clock tick would otherwise collide on one name.
-fn key_temp_home(tag: &str) -> std::path::PathBuf {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static NEXT: AtomicU64 = AtomicU64::new(0);
-    let seq = NEXT.fetch_add(1, Ordering::Relaxed);
-    let stamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    let dir = std::env::temp_dir().join(format!("glm-key-{tag}-{stamp}-{seq}"));
-    fs::create_dir_all(&dir).unwrap();
-    dir
+/// A temporary folder for the key-vault scenes: unique per test and removed when the test
+/// ends, so no folder with a fake key stays in the system temporary folder. It derefs to the
+/// folder's path.
+struct KeyHome(tempfile::TempDir);
+
+impl std::ops::Deref for KeyHome {
+    type Target = Path;
+
+    fn deref(&self) -> &Path {
+        self.0.path()
+    }
+}
+
+fn key_temp_home(tag: &str) -> KeyHome {
+    KeyHome(
+        tempfile::Builder::new()
+            .prefix(&format!("glm-key-{tag}-"))
+            .tempdir()
+            .unwrap(),
+    )
 }
 
 /// The project scope of the test's own folder, resolved with the temporary `home` (the plain
@@ -937,6 +944,88 @@ fn a_new_answer_replaces_an_existing_key() {
         Some("SECRET-replacement"),
         "the new value is stored"
     );
+}
+
+#[test]
+fn the_word_new_also_asks_for_a_new_key() {
+    let home = key_temp_home("new-word");
+    let scope = glm_scope(&home);
+    moai_cli::key_vault::set(&home, &scope, "glm", "SECRET-existing").unwrap();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new("new\nSECRET-replacement\n"),
+        &mut Vec::new(),
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    )
+    .unwrap();
+    let stored = moai_cli::key_vault::read_entry(&home, &scope, "glm").unwrap();
+    assert_eq!(stored.as_deref(), Some("SECRET-replacement"));
+}
+
+#[cfg(unix)]
+#[test]
+fn a_vault_that_cannot_be_written_is_told_on_the_screen_and_the_step_goes_on() {
+    use std::os::unix::fs::PermissionsExt;
+    let home = key_temp_home("read-only");
+    // The scope is resolved before the folder is closed: the identity reads the home state.
+    let scope = glm_scope(&home);
+    fs::set_permissions(&*home, fs::Permissions::from_mode(0o500)).unwrap();
+    let mut out = Vec::new();
+    let result = model_effort_questions::glm_key_step(
+        &mut Cursor::new(format!("{SECRET}\n")),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    );
+    fs::set_permissions(&*home, fs::Permissions::from_mode(0o700)).unwrap();
+    result.expect("a refused write does not end the step");
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        text.contains("The key could not be stored:"),
+        "the screen says the write failed: {text}"
+    );
+    assert!(!text.contains(SECRET), "the value is not echoed: {text}");
+    assert!(
+        moai_cli::key_vault::read_entry(&home, &scope, "glm")
+            .unwrap()
+            .is_none(),
+        "nothing was stored"
+    );
+}
+
+#[test]
+fn a_broken_project_entry_is_not_hidden_by_a_shared_key() {
+    // The launcher stops at a project entry that exists but cannot be read; it does not go on to
+    // the shared one. The question therefore does not claim a key exists.
+    let home = key_temp_home("broken");
+    let scope = glm_scope(&home);
+    moai_cli::key_vault::set(
+        &home,
+        &moai_cli::key_vault::Scope::Shared,
+        "glm",
+        "SECRET-shared",
+    )
+    .unwrap();
+    let entry = moai_cli::key_vault::entry_path(&home, &scope, "glm");
+    fs::create_dir_all(entry.parent().unwrap()).unwrap();
+    fs::write(&entry, b"not a sealed key").unwrap();
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new("\n"),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    )
+    .unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        !text.contains("already in the key vault"),
+        "a broken project entry is no existing key: {text}"
+    );
+    assert!(text.contains("hidden"), "the key is asked for: {text}");
 }
 
 #[test]

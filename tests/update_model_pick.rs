@@ -242,6 +242,40 @@ fn a_typed_glm_key_is_vaulted_and_appears_nowhere_else() {
     }
 }
 
+/// SPEC-20261121-glm-key-at-pick: a key vault that cannot be written is told on the screen, and
+/// the stage goes on to the preview and the save question with the model pick kept.
+#[test]
+fn a_vault_that_cannot_be_written_does_not_lose_the_model_pick() {
+    const FAKE: &str = "FAKE-glm-key-for-the-refused-write";
+    let h = home();
+    let path = write_settings(&h.path, r#"{"launcher":{"advisor":"x"}}"#);
+    // A plain file where the vault folder belongs: every write into the vault is refused.
+    let vault =
+        moai_cli::key_vault::entry_path(&h.path, &moai_cli::key_vault::Scope::Shared, "glm")
+            .parent()
+            .and_then(Path::parent)
+            .unwrap()
+            .to_path_buf();
+    fs::write(&vault, b"in the way").unwrap();
+    let (result, out) = run_stage(&h.path, &format!("2\n{}{FAKE}\ny\n", enters(4)));
+    assert_eq!(result["state"], json!("applied"), "{result}\n{out}");
+    assert!(
+        out.contains("The key could not be stored:"),
+        "the screen tells the write failed: {out}"
+    );
+    assert!(!out.contains(FAKE), "no echo of the key: {out}");
+    assert!(
+        !result.to_string().contains(FAKE),
+        "the result names no key: {result}"
+    );
+    let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    assert_eq!(
+        saved["launcher"]["models"]["glm"]["leader"]["model"],
+        json!("zai/glm-5.4[1m]"),
+        "the model pick was saved: {saved}"
+    );
+}
+
 /// SPEC-20261123-glm-54-followups AC-2 (REQ-2): a `zai/glm-5.3` leader saved before 5.4 is not
 /// reported as unsupported, is the default of the next model step, and stays as it is when the
 /// person presses Enter everywhere and saves.
