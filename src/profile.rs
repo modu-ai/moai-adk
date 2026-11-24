@@ -1568,6 +1568,78 @@ mod tests {
         assert_eq!(profile.scopes.unwrap()[0].paths, ["apps/web"]);
     }
 
+    /// AC-1 (SPEC-20261124-shared-files-profile REQ-1, REQ-2): `shared_files` is additive and
+    /// validated by `read_profile` on a hand-edited file; an absent key plans exactly as before
+    /// and reads as no key.
+    #[test]
+    fn shared_files_key_is_additive_and_validated() {
+        let base = serde_json::json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "p",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+        });
+        let listed = |d: &Delta| {
+            [&d.added, &d.changed, &d.removed, &d.unchanged, &d.conflict]
+                .iter()
+                .any(|l| l.contains(&"shared_files".to_string()))
+        };
+        assert!(!listed(&compute_delta(
+            &KNOWN_HOSTS,
+            Some(&base),
+            Some(&base),
+            &base
+        )));
+        let mut desired = base.clone();
+        desired["shared_files"] = serde_json::json!(["src/lib.rs"]);
+        assert_eq!(
+            compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired).added,
+            vec!["shared_files"]
+        );
+
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let many = |n: usize| -> Vec<String> { (0..n).map(|i| format!("src/f{i}.rs")).collect() };
+        let read_with = |list: Value| {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["shared_files"] = list;
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            read_profile(tmp.path())
+        };
+        for (bad, why) in [
+            (json!("src/lib.rs"), "a string, not a list"),
+            (json!(["/abs"]), "absolute path"),
+            (json!(["../up"]), "leaves the project"),
+            (json!(["a,b"]), "a comma"),
+            (json!(["a\u{2028}b"]), "a line separator"),
+            (json!([" src/lib.rs"]), "a padded entry"),
+            (json!(["a", "a"]), "a repeated entry"),
+            (json!([""]), "an empty entry"),
+            (json!([1]), "not a string"),
+            (json!(many(65)), "65 entries"),
+            (json!(["x".repeat(513)]), "an entry of 513 characters"),
+        ] {
+            assert!(read_with(bad).is_err(), "{why}");
+        }
+        for good in [
+            json!(["src/lib.rs", "tests/fixtures/help/*.txt"]),
+            json!(many(64)),
+            json!([]),
+        ] {
+            let (profile, _) = read_with(good.clone()).unwrap();
+            assert_eq!(serde_json::to_value(&profile).unwrap()["shared_files"], good);
+        }
+        // A profile written before the key reads unchanged.
+        fs::write(&path, serde_json::to_vec(&v2()).unwrap()).unwrap();
+        let (profile, _) = read_profile(tmp.path()).unwrap();
+        assert!(serde_json::to_value(&profile)
+            .unwrap()
+            .get("shared_files")
+            .is_none());
+    }
+
     /// C-69: `versioning` is additive and validated by `read_profile` on a hand-edited file; an
     /// absent key plans exactly as before the key existed and an older profile still loads.
     #[test]
