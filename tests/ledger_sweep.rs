@@ -246,6 +246,69 @@ fn sweep_skips_a_lease_renewed_after_the_command_read_it() {
     assert!(events(&w, "card.sweep").is_empty());
 }
 
+/// The lease end a caller listed, read the way `sweep_all` reads it.
+fn lease_until_of(w: &WriteLedger, card: i64) -> i64 {
+    w.conn()
+        .query_row(
+            "SELECT lease_until FROM reservation WHERE card_id = ?1 ORDER BY generation DESC LIMIT 1",
+            [card],
+            |r| r.get(0),
+        )
+        .unwrap()
+}
+
+#[test]
+fn sweep_card_skips_a_card_that_went_to_review_after_the_listing() {
+    let (_home, mut w) = setup();
+    let card = taken(&mut w, &["src/a.rs"]);
+    end_lease(&mut w, card, 25);
+    let read = lease_until_of(&w, card);
+    sql(
+        &mut w,
+        &format!("UPDATE card SET state = 'review' WHERE card_id = {card}"),
+    );
+    let out = sweep::sweep_card(&mut w, card, Some(read), GRACE, leader(), None).unwrap();
+    assert!(matches!(out, Err(SkipReason::InReview)), "{out:?}");
+    assert_eq!(state_of(&w, card), "review");
+    assert_eq!(status_of(&w, card), "held");
+    assert!(events(&w, "card.sweep").is_empty());
+}
+
+#[test]
+fn sweep_card_skips_a_reservation_that_is_no_longer_held_after_the_listing() {
+    let (_home, mut w) = setup();
+    let card = taken(&mut w, &["src/a.rs"]);
+    end_lease(&mut w, card, 25);
+    let read = lease_until_of(&w, card);
+    sql(
+        &mut w,
+        &format!("UPDATE reservation SET status = 'held_for_review' WHERE card_id = {card}"),
+    );
+    let out = sweep::sweep_card(&mut w, card, Some(read), GRACE, leader(), None).unwrap();
+    assert!(
+        matches!(out, Err(SkipReason::NotHeld { ref status }) if status == "held_for_review"),
+        "{out:?}"
+    );
+    assert_eq!(state_of(&w, card), "active");
+    assert_eq!(status_of(&w, card), "held_for_review");
+    assert!(events(&w, "card.sweep").is_empty());
+}
+
+#[test]
+fn sweep_card_skips_a_card_that_is_not_active_and_one_that_does_not_exist() {
+    let (_home, mut w) = setup();
+    let card = taken(&mut w, &["src/a.rs"]);
+    end_lease(&mut w, card, 25);
+    let read = lease_until_of(&w, card);
+    reservation::release(&mut w, card, A, 1).unwrap();
+    assert_eq!(state_of(&w, card), "ready");
+    let out = sweep::sweep_card(&mut w, card, Some(read), GRACE, leader(), None).unwrap();
+    assert!(matches!(out, Err(SkipReason::Changed)), "{out:?}");
+    let out = sweep::sweep_card(&mut w, 9_999, None, GRACE, leader(), None).unwrap();
+    assert!(matches!(out, Err(SkipReason::Changed)), "{out:?}");
+    assert!(events(&w, "card.sweep").is_empty());
+}
+
 #[test]
 fn sweep_dry_run_lists_the_cards_and_writes_nothing() {
     let (_home, mut w) = setup();

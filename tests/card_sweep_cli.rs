@@ -379,6 +379,30 @@ fn stale_row_names_the_sweep_past_the_grace_and_the_withdraw_inside_it() {
     );
 }
 
+#[test]
+fn stale_row_keeps_the_withdraw_for_a_card_in_review_past_the_grace() {
+    let w = world();
+    let a = w.held(S_A, "zombie in review", &["src/a.rs"]);
+    result(&w.card(
+        Some(S_A),
+        &["review", &a, "--generation", "1", "--keep", "src/a.rs"],
+    ));
+    w.end_lease(&a, TWENTY_FIVE_HOURS);
+    let listing = w.next(S_B);
+    let row = listing["stale"]
+        .as_array()
+        .unwrap_or_else(|| panic!("`next` answers no `stale` list: {listing}"))
+        .iter()
+        .find(|e| e["name"] == json!(a) && e["kind"] == json!("lease_ended"))
+        .unwrap_or_else(|| panic!("no lease_ended row for {a}: {listing}"))
+        .clone();
+    assert_eq!(
+        row["command"],
+        json!(format!("moai card withdraw {a} --reason <why> --by leader")),
+        "a card in review is never swept, so its row keeps the withdraw"
+    );
+}
+
 // ---- AC-7: the take that sweeps ---------------------------------------------------------------------
 
 #[test]
