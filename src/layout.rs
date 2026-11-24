@@ -95,11 +95,19 @@ pub fn switched_dir_in(project: &Path, subdir: &str, home: Option<&Path>) -> Opt
     active_home(project, &home_root).map(|dir| dir.join(subdir))
 }
 
-/// SPEC-20261124-home-writer-links: [`switched_dir`] for a caller that writes (or reads to
-/// decide) below the home state root. RED skeleton: it refuses nothing yet.
+/// SPEC-20261124-home-writer-links: [`switched_dir`] for a caller that reads or writes a store
+/// below the home state root. The environment HOME is read once; a switched folder is handed
+/// back only after [`refuse_linked_home_path`] has found no symbolic link between the home state
+/// root and the folder. `None` (no pointer) refuses nothing.
 pub fn switched_dir_checked(project: &Path, subdir: &str) -> Result<Option<PathBuf>> {
     let home = environment_home();
-    Ok(switched_dir_in(project, subdir, home.as_deref()))
+    let Some(dir) = switched_dir_in(project, subdir, home.as_deref()) else {
+        return Ok(None);
+    };
+    if let Some(root) = default_home_root_in(home.as_deref()) {
+        refuse_linked_home_path(&root, &dir)?;
+    }
+    Ok(Some(dir))
 }
 
 /// One store entry of a layout plan: what would move, how big it is, and where it goes.
@@ -301,6 +309,9 @@ fn identity_of(project: &Path) -> Result<String> {
 fn check_destinations(project: &Path, home_root: &Path) -> Result<()> {
     let project_id = identity_of(project)?;
     let home_project = home_root.join("projects").join(&project_id);
+    // SPEC-20261124-home-writer-links: a link on the way to the home project folder would carry
+    // the copy and the pointer behind it; refuse before any read through the link.
+    refuse_linked_home_path(home_root, &home_project)?;
     if home_project.join("layout.json").is_file() {
         return Err(
             "conflict in home layout: already switched; remove the home layout.json marker to revert first"
