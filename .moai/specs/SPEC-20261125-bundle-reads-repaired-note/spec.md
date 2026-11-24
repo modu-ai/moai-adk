@@ -77,4 +77,9 @@ parent: null
 
 ## Result
 
-초안이에요. 구현 뒤 이 자리에 RED·GREEN 실행, AC 별 met 와 뮤턴트 결과를 적어요.
+- RED(커밋 beb00f9ed4, `target/c486/red1.log`): 새 테스트 4개가 팁에서 옳은 이유로 실패했어요 — REPAIRED 를 건너뛰고 옛 head 를 읽음, 리더가 인용한 READY 줄을 제출 노트로 읽음, 읽히지 않는 새 노트 대신 옛 노트로 되돌아감.
+- GREEN(수리 커밋 65b4f8db13, `target/c486/green1.log`): 새 테스트 4개와 `bundle_check_cli`·`bundle_ready_cli`·`bundle_body_cli`·`bundle_build_cli`·`bundle_verify_cli`·lib `bundle` 115개가 모두 통과했어요(nextest, 슬롯 `--max 3`). 단위 테스트 `the_grammar_reads_every_marker_the_gate_takes` 가 세 표지의 읽기를 고정해요.
+- 가드 뮤턴트 10개 중 10개가 컴파일되고 잡혔어요(한 슬롯 호출, 출력 `target/c486/mutants.out`, 개별 로그 `target/c486/mutant-*.log`, 스크립트 `target/c486/mutants.py`). 편집은 정확히 한 번씩, 파일은 `finally` 에서 되돌렸고 `git status --short` 가 비었어요.
+- 관찰: `card inbox` 는 `REPAIRED` 를 `ready_for_integration` 으로 세지 않아요(`inbox_family_follows_marker_of_line` 테스트가 고정). 이 SPEC 은 바꾸지 않았어요; 바꿀지는 리더가 정해요.
+- AC-1 met · AC-2 met · AC-3 met · AC-4 met · AC-5 met (위 GREEN 실행). `moai check affected` 영수증은 READY 노트에 있어요.
+- Gaps: 전체 `cargo test` 는 not_run(리더 몫). 이미 열린 READY 노트의 head 가 `REPAIRED` 로 대체된 카드의 `bundle ready` 목록은 실제 원장에서 보지 않았어요(임시 원장 테스트만).
