@@ -423,3 +423,235 @@ fn a_partial_list_adds_one_next_action_and_a_complete_one_adds_none() {
     write(small.path(), "apps/a/package.json", "{}");
     assert_eq!(partial_lines(&detect(&small)), 0);
 }
+
+/// The extension file with a valid body padded by trailing blanks to exactly `len` bytes.
+fn extension_of_len(body: &str, len: usize) -> String {
+    assert!(body.len() <= len, "the body is longer than {len} bytes");
+    format!("{body}{}", " ".repeat(len - body.len()))
+}
+
+/// REQ-6 (repair): the file limit holds at both edges — 262144 bytes are read, 262145 are
+/// refused — for the extension file.
+#[test]
+fn the_extension_file_limit_holds_at_both_edges() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "apps/svc/mix.exs", "defmodule X do end\n");
+    let body = r#"{"schema": 1, "manifests": [{"ecosystem": "hex", "language": "elixir", "files": ["mix.exs"]}]}"#;
+
+    write(r, &extension(), &extension_of_len(body, 262_144));
+    let result = detect(&root);
+    assert_eq!(manifests(&result), ["apps/svc/mix.exs"], "{result}");
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 1, "problem": null}),
+        "{result}"
+    );
+
+    write(r, &extension(), &extension_of_len(body, 262_145));
+    let result = detect(&root);
+    assert!(manifests(&result).is_empty(), "{result}");
+    assert_eq!(
+        result["manifest_catalog"]["extension"],
+        json!("refused"),
+        "{result}"
+    );
+    assert!(
+        result["manifest_catalog"]["problem"].is_string(),
+        "{result}"
+    );
+}
+
+/// The extension file with `rows` rows, each naming one file of its own.
+fn rows_json(rows: usize) -> String {
+    let rows: Vec<String> = (0..rows)
+        .map(|i| format!(r#"{{"ecosystem": "e{i}", "language": "l{i}", "files": ["f{i}.mk"]}}"#))
+        .collect();
+    format!(r#"{{"schema": 1, "manifests": [{}]}}"#, rows.join(","))
+}
+
+/// One row whose `key` list holds `n` names built by `name`, beside the file name every row
+/// needs.
+fn one_row_with(key: &str, n: usize, name: fn(usize) -> String) -> String {
+    let list: Vec<String> = (0..n).map(|i| format!("\"{}\"", name(i))).collect();
+    let list = list.join(",");
+    let row = match key {
+        "files" => format!(r#"{{"ecosystem": "e", "language": "l", "files": [{list}]}}"#),
+        "suffixes" => format!(
+            r#"{{"ecosystem": "e", "language": "l", "files": ["a.mk"], "suffixes": [{list}]}}"#
+        ),
+        _ => format!(
+            r#"{{"ecosystem": "e", "language": "l", "files": ["a.mk"], "tools": [{list}]}}"#
+        ),
+    };
+    format!(r#"{{"schema": 1, "manifests": [{row}]}}"#)
+}
+
+/// The state of the extension file in a project that holds `text` and the number of rows read.
+fn extension_state(text: &str) -> (String, i64) {
+    let root = TempDir::new().unwrap();
+    write(root.path(), "package.json", "{}");
+    write(root.path(), &extension(), text);
+    let result = detect(&root);
+    (
+        result["manifest_catalog"]["extension"]
+            .as_str()
+            .unwrap()
+            .to_string(),
+        result["manifest_catalog"]["rows"].as_i64().unwrap(),
+    )
+}
+
+/// The row and list limit of the extension file (64) holds at both edges: 64 rows, 64 folders
+/// to skip and 64 names in one row's list are read, 65 are refused.
+#[test]
+fn the_extension_row_and_list_limits_hold_at_both_edges() {
+    assert_eq!(extension_state(&rows_json(64)), ("read".to_string(), 64));
+    assert_eq!(extension_state(&rows_json(65)).0, "refused");
+
+    let skip = |n: usize| {
+        let dirs: Vec<String> = (0..n).map(|i| format!("\"out{i}\"")).collect();
+        format!(
+            r#"{{"schema": 1, "manifests": [], "skip_dirs": [{}]}}"#,
+            dirs.join(",")
+        )
+    };
+    assert_eq!(extension_state(&skip(64)).0, "read");
+    assert_eq!(extension_state(&skip(65)).0, "refused");
+
+    let lists: [(&str, fn(usize) -> String); 3] = [
+        ("files", |i| format!("f{i}.mk")),
+        ("suffixes", |i| format!(".s{i}")),
+        ("tools", |i| format!("t{i}")),
+    ];
+    for (key, name) in lists {
+        assert_eq!(
+            extension_state(&one_row_with(key, 64, name)),
+            ("read".to_string(), 1),
+            "{key} 64"
+        );
+        assert_eq!(
+            extension_state(&one_row_with(key, 65, name)).0,
+            "refused",
+            "{key} 65"
+        );
+    }
+}
+
+/// A name of dots alone (`.` or `..`) is not a name that can be recorded, in any field of an
+/// extension row; a name that merely holds a dot still is.
+#[test]
+fn a_name_of_only_dots_is_refused_in_the_extension_file() {
+    let rows = [
+        r#"{"ecosystem": "e", "language": "l", "files": [".."]}"#,
+        r#"{"ecosystem": "e", "language": "l", "files": ["a.mk"], "suffixes": [".."]}"#,
+        r#"{"ecosystem": "e", "language": "l", "files": ["a.mk"], "tools": ["."]}"#,
+        r#"{"ecosystem": "..", "language": "l", "files": ["a.mk"]}"#,
+        r#"{"ecosystem": "e", "language": "...", "files": ["a.mk"]}"#,
+    ];
+    for row in rows {
+        let text = format!(r#"{{"schema": 1, "manifests": [{row}]}}"#);
+        assert_eq!(extension_state(&text).0, "refused", "{row}");
+    }
+    let skip = r#"{"schema": 1, "manifests": [], "skip_dirs": [".."]}"#;
+    assert_eq!(extension_state(skip).0, "refused");
+    let fine = r#"{"schema": 1, "manifests": [{"ecosystem": "e", "language": "l", "files": ["a.mk"], "suffixes": [".b.mk"], "tools": ["t.1"]}]}"#;
+    assert_eq!(extension_state(fine), ("read".to_string(), 1));
+}
+
+/// An ignore file of exactly 262144 bytes is read and one of 262145 bytes is not, for the root
+/// list and for a list in a sub-folder; a list that is not read counts as no lines.
+#[test]
+fn the_ignore_file_limit_holds_at_both_edges() {
+    let list = |len: usize| extension_of_len("skipme/\n", len);
+    for path in [".gitignore", "apps/.gitignore"] {
+        let root = TempDir::new().unwrap();
+        write(root.path(), "apps/skipme/package.json", "{}");
+        write(root.path(), "apps/a/package.json", "{}");
+        write(root.path(), path, &list(262_144));
+        let result = detect(&root);
+        assert_eq!(
+            manifests(&result),
+            ["apps/a/package.json"],
+            "{path} {result}"
+        );
+        write(root.path(), path, &list(262_145));
+        let result = detect(&root);
+        assert_eq!(
+            manifests(&result),
+            ["apps/a/package.json", "apps/skipme/package.json"],
+            "{path} {result}"
+        );
+    }
+}
+
+/// The ignore lists the walk reads are capped in total (1 MiB), so a project with hundreds of
+/// large `.gitignore` files cannot hold them all in memory. The lists are read in the walk's
+/// order; a list that would pass the total counts as no lines, so it can only let more
+/// manifests in, never hide one.
+#[test]
+fn the_ignore_files_the_walk_reads_have_a_total_size_cap() {
+    let root = TempDir::new().unwrap();
+    let list = format!("skipme/\n{}", "#\n".repeat(100_000));
+    for i in 1..=7 {
+        write(root.path(), &format!("d{i}/skipme/package.json"), "{}");
+        write(root.path(), &format!("d{i}/.gitignore"), &list);
+    }
+    let result = detect(&root);
+    // Five lists of about 200 KB fit in 1 MiB, the sixth and seventh do not.
+    assert_eq!(
+        manifests(&result),
+        ["d6/skipme/package.json", "d7/skipme/package.json"],
+        "{result}"
+    );
+}
+
+/// Restores a folder's mode when dropped, so a failed assertion leaves a removable tree.
+#[cfg(unix)]
+struct Mode(std::path::PathBuf, u32);
+
+#[cfg(unix)]
+impl Drop for Mode {
+    fn drop(&mut self) {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&self.0, fs::Permissions::from_mode(self.1));
+    }
+}
+
+/// REQ-3, REQ-7, REQ-8 (repair): a folder the walk cannot read is left out and the walk says
+/// so — `complete` is false and one next action says the list is partial — while the readable
+/// folders are still listed.
+#[cfg(unix)]
+#[test]
+fn a_folder_that_cannot_be_read_makes_the_walk_incomplete() {
+    use std::os::unix::fs::PermissionsExt;
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "apps/a/package.json", "{}");
+    write(r, "apps/locked/package.json", "{}");
+    let locked = r.join("apps/locked");
+    let _restore = Mode(locked.clone(), 0o755);
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+    if fs::read_dir(&locked).is_ok() {
+        eprintln!("skipped: this user reads a folder of mode 000");
+        return;
+    }
+    let result = detect(&root);
+    assert_eq!(manifests(&result), ["apps/a/package.json"], "{result}");
+    assert_eq!(
+        result["manifest_walk"],
+        json!({"complete": false, "over_cap": 0}),
+        "{result}"
+    );
+    assert_eq!(partial_lines(&result), 1, "{result}");
+
+    // The same tree with the folder readable again is complete.
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+    let result = detect(&root);
+    assert_eq!(
+        manifests(&result),
+        ["apps/a/package.json", "apps/locked/package.json"],
+        "{result}"
+    );
+    assert_eq!(result["manifest_walk"]["complete"], json!(true), "{result}");
+}
