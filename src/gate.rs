@@ -395,7 +395,8 @@ pub fn tier_of_changes(body_tier: Option<u8>, files: &[ChangedFile]) -> u8 {
 /// the same fields, and the only differences are
 ///
 /// - a rule file or a test name added to the `rules` or `tests` list of a scan,
-/// - a `--test <name>` option added to a cargo line of the `checks` list of a scan,
+/// - a `--test <name>` option added to a cargo line of the `checks` list of a scan, before the
+///   `--` that starts libtest's arguments and with a name that is a target name (`[a-z0-9_]+`),
 /// - a scan added.
 ///
 /// A line edited, a line removed, a text field changed, a check line of any other change, a
@@ -481,16 +482,37 @@ fn checks_only_gain_tests(old: &serde_json::Value, new: &serde_json::Value) -> b
 
 fn line_gains_tests(old: &str, new: &str) -> bool {
     let (old, new) = (words(old), words(new));
+    // The first `--` ends cargo's own options: the words after it are libtest's.
+    let separator = new.iter().position(|w| *w == ("--", None));
     let mut rest = old.iter();
     let mut next = rest.next();
-    for word in &new {
+    for (at, word) in new.iter().enumerate() {
         if Some(word) == next {
             next = rest.next();
-        } else if word.0 != "--test" || word.1.is_none() {
+        } else if !is_added_test(word, separator.is_none_or(|s| at < s)) {
             return false;
         }
     }
     next.is_none()
+}
+
+/// An added word that is a registration: a `--test <name>` pair whose name is a target name, in
+/// cargo's own options (`before_separator`). A value that is an option, a filter or a shell
+/// fragment (`--list`, `--exact`, `x||true`, `x;true`) is another argument or another command,
+/// and after the `--` a `--test` is libtest's, not cargo's (SPEC-20261124-registry-line-add-tier
+/// R1).
+fn is_added_test(word: &(&str, Option<&str>), before_separator: bool) -> bool {
+    before_separator && word.0 == "--test" && word.1.is_some_and(is_target_name)
+}
+
+/// A cargo integration-test target name as `repo_scans` reads a `test_targets` entry:
+/// `[a-z0-9_]+`. That function is private there, so the rule is spelled here and a test
+/// (`a_test_option_value_is_read_as_repo_scans_reads_a_target_name`) pins that the two agree.
+fn is_target_name(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
 }
 
 /// The words of a cargo line, an option `--test` taking the word after it.
