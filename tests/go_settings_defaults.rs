@@ -143,10 +143,10 @@ fn the_go_backup_values_are_offered_as_defaults_and_never_written() {
     assert_eq!(
         suggested(&q),
         vec![
-            // The three asked items: the Go backup's commit-message language, the English
-            // default for instruction files, and `documents` following the conversation
-            // language, which the Go backup's record provides. The conversation itself is
-            // never asked; it arrives as `conversation_language`.
+            // The four asked items: the conversation language and `documents` following
+            // the Go backup's conversation record, the Go backup's commit-message language,
+            // and the English default for instruction files.
+            ("user_chat".into(), "ko".into()),
             ("commit_messages".into(), "ja".into()),
             ("instruction_files".into(), "en".into()),
             ("documents".into(), "ko".into()),
@@ -283,10 +283,11 @@ fn bad_or_hostile_input_offers_nothing_and_never_fails() {
 
 /// #2820 audit B1, under the ask-once rules: a value the profile already stores wins over the
 /// Go backup's for the items, and only the items the profile leaves empty take the Go value.
-/// The profile's earlier `user_chat` is not a source of the conversation language any more:
-/// the Go backup's record decides, and the setup writes the resolved value over the stored one.
+/// The profile's stored `user_chat` is the value an empty answer keeps (the conversation item is
+/// asked like the others, SPEC-20261124-moai-project-interview); the Go backup's record still
+/// decides `conversation_language`.
 #[test]
-fn the_profile_item_values_win_over_the_go_backup_and_user_chat_is_not_a_source() {
+fn the_profile_item_values_win_over_the_go_backup() {
     let (_d, root) = migrated(
         Some("language:\n  conversation_language: ko\n  code_comments: zh\n  git_commit_messages: ja\n"),
         None,
@@ -311,11 +312,15 @@ fn the_profile_item_values_win_over_the_go_backup_and_user_chat_is_not_a_source(
         s["documents"], "ko",
         "conversation default follows the Go conversation language"
     );
-    assert_eq!(s.len(), 3, "only the three asked items are offered");
+    assert_eq!(
+        s["user_chat"], "en",
+        "the stored conversation item is its own suggestion"
+    );
+    assert_eq!(s.len(), 4, "only the four asked items are offered");
 
     let r = result(&setup(&root, &["--answers"], "{}").0);
-    // The resolved conversation is written over the profile's earlier user_chat.
-    assert_eq!(r["language"]["user_chat"], json!("ko"), "{r}");
+    // The stored conversation answer is kept.
+    assert_eq!(r["language"]["user_chat"], json!("en"), "{r}");
     assert_eq!(
         r["language"]["code_comments"],
         json!("en"),

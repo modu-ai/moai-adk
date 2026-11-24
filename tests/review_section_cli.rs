@@ -211,7 +211,10 @@ fn review_md_writes_default_sourced_decisions_but_not_hold() {
     result(&apply(held.path(), &p));
     let text = fs::read_to_string(held.path().join("REVIEW.md")).unwrap();
     assert!(text.contains("secret and key files"), "{text}");
-    assert!(!text.contains("HOLD"), "a HOLD value is never a rule: {text}");
+    assert!(
+        !text.contains("HOLD"),
+        "a HOLD value is never a rule: {text}"
+    );
 }
 
 #[test]

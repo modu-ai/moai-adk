@@ -184,7 +184,11 @@ fn apply_still_refuses_another_unknown_key() {
         "an unknown key must be refused: {}",
         said(&out)
     );
-    assert!(said(&out).contains("invalid typed JSON input"), "{}", said(&out));
+    assert!(
+        said(&out).contains("invalid typed JSON input"),
+        "{}",
+        said(&out)
+    );
     assert!(
         !world.project.join(".moai/project.yaml").exists(),
         "a refused apply must write nothing"

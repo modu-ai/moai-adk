@@ -53,7 +53,12 @@ fn row_line(section: &str, id: &str) -> String {
 }
 
 const OPERATING_RULES: [&str; 4] = ["protected", "review_blocks", "autonomy", "done"];
-const LANGUAGE_ITEMS: [&str; 4] = ["user_chat", "documents", "commit_messages", "instruction_files"];
+const LANGUAGE_ITEMS: [&str; 4] = [
+    "user_chat",
+    "documents",
+    "commit_messages",
+    "instruction_files",
+];
 
 /// AC-1 (REQ-1): the asked set is the purpose, and the four languages are named as the other
 /// asked items; every other row is confirmed or defaulted, and no operating rule is asked.
@@ -83,7 +88,10 @@ fn the_bank_asks_only_the_purpose_and_four_languages() {
         "versioning",
         "work_flow",
     ] {
-        assert!(ids.contains(&id.to_string()), "confirmed rows {ids:?} lack `{id}`");
+        assert!(
+            ids.contains(&id.to_string()),
+            "confirmed rows {ids:?} lack `{id}`"
+        );
     }
     for rule in OPERATING_RULES {
         assert!(
@@ -103,7 +111,10 @@ fn the_bank_asks_only_the_purpose_and_four_languages() {
 fn the_purpose_is_typed_with_no_draft() {
     let bank = read(BANK);
     let line = row_line(&section(&bank, "Asked"), "purpose");
-    assert!(line.contains("no draft"), "the purpose row must say `no draft`: {line}");
+    assert!(
+        line.contains("no draft"),
+        "the purpose row must say `no draft`: {line}"
+    );
     assert!(
         !line.contains("drafts written from"),
         "the purpose row must not offer drafts: {line}"
@@ -176,12 +187,18 @@ fn operating_rules_are_never_asked_and_have_defaults() {
                 "a change outside the task's scope",
             ],
         ),
-        ("autonomy", vec!["hard to undo", "money, secrets or deletion"]),
+        (
+            "autonomy",
+            vec!["hard to undo", "money, secrets or deletion"],
+        ),
         ("done", vec!["the project's own tests pass"]),
     ] {
         let line = row_line(&defaults, id);
         for needle in needles {
-            assert!(line.contains(needle), "the `{id}` default must say `{needle}`: {line}");
+            assert!(
+                line.contains(needle),
+                "the `{id}` default must say `{needle}`: {line}"
+            );
         }
     }
     assert!(
@@ -250,7 +267,10 @@ fn tool_lines(text: &str) -> Vec<(usize, &'static str)> {
 fn no_question_option_or_example_names_a_language_tool() {
     for rel in [BANK, PROJECT, UPDATE] {
         let found = tool_lines(&read(rel));
-        assert!(found.is_empty(), "{rel} names a tool (line, token): {found:?}");
+        assert!(
+            found.is_empty(),
+            "{rel} names a tool (line, token): {found:?}"
+        );
     }
 }
 
@@ -258,7 +278,8 @@ fn no_question_option_or_example_names_a_language_tool() {
 /// the exception, and does not flag the exception line itself.
 #[test]
 fn the_tool_scan_flags_a_planted_tool_and_spares_only_the_named_exception() {
-    let planted = "| `done` | always | Which check? | `cargo test` passes (recommended) | decisions |";
+    let planted =
+        "| `done` | always | Which check? | `cargo test` passes (recommended) | decisions |";
     assert_eq!(tool_lines(planted), vec![(1, "cargo")]);
     let exception = "   - Language servers. Run the read-only `claude plugin list` and run `rustup component add rust-analyzer`.";
     assert!(tool_lines(exception).is_empty());

@@ -197,7 +197,12 @@ fn questions_list_four_items_with_their_values() {
     let root = project(None);
     let h = home(None);
     let q = questions(&root, h.path(), &[]);
-    let four = ["user_chat", "commit_messages", "instruction_files", "documents"];
+    let four = [
+        "user_chat",
+        "commit_messages",
+        "instruction_files",
+        "documents",
+    ];
     assert_eq!(ids(&q), four, "{q}");
     for id in four {
         let i = item(&q, id);
@@ -506,27 +511,19 @@ fn a_profile_with_the_old_eight_items_plans_and_applies_without_conflict() {
         "{agents}"
     );
     assert!(agents.contains("Code comments: English (`en`)"), "{agents}");
-    // The setup step over it keeps every old key and adds `documents` (the old `reports` value
-    // is its suggestion). The stored user_chat is not a source of the conversation any more, so
-    // the resolved English is written over it.
+    // The setup step over it keeps every old key, the stored `user_chat` included (the
+    // conversation item is its own suggestion), and adds `documents` (the old `reports` value
+    // is its suggestion).
     let out = setup_answers(&root, &json!({}), &[]);
     for (k, v) in eight.as_object().unwrap() {
-        if k == "user_chat" {
-            assert_eq!(out["language"][k], json!("en"), "{k}: {out}");
-        } else {
-            assert_eq!(out["language"][k], *v, "{k}: {out}");
-        }
+        assert_eq!(out["language"][k], *v, "{k}: {out}");
     }
     assert_eq!(
         out["language"]["documents"],
         json!("ko"),
         "{out}: the old reports value is its suggestion"
     );
-    assert_eq!(
-        out["changed_items"],
-        json!(["user_chat", "documents"]),
-        "{out}"
-    );
+    assert_eq!(out["changed_items"], json!(["documents"]), "{out}");
 }
 
 fn github_notes(root: &Path, request: Value) -> String {
