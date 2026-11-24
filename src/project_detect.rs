@@ -173,6 +173,24 @@ fn catalog_file_valid(file: &CatalogFile) -> Result<()> {
             );
         }
     }
+    // One extension means one language in a file: a second language for it would win or lose by
+    // the order of the rows, so the file is refused and the extension is named. The same
+    // language again is no conflict. (Every name is recordable by now, so it is safe to quote.)
+    let mut claimed: Vec<(&str, &str)> = Vec::new();
+    for row in &file.code_extensions {
+        for ext in &row.extensions {
+            match claimed.iter().find(|(e, _)| *e == ext.as_str()) {
+                Some((_, language)) if *language != row.language.as_str() => {
+                    return Err(format!(
+                        "the extension {ext} is claimed by two languages: {language} and {}",
+                        row.language
+                    ));
+                }
+                Some(_) => {}
+                None => claimed.push((ext, &row.language)),
+            }
+        }
+    }
     for row in &file.manifests {
         let names = [&row.ecosystem, &row.language]
             .into_iter()
@@ -290,13 +308,10 @@ impl Catalog {
                 self.rows.push(row);
             }
         }
-        for mut row in file.code_extensions {
-            row.extensions
-                .retain(|e| !self.code_rows.iter().any(|r| r.extensions.contains(e)));
-            if !row.extensions.is_empty() {
-                self.code_rows.push(row);
-            }
-        }
+        // Shipped rows come first and a lookup takes the first row that holds the extension, so
+        // a project row never changes the language of a shipped extension (a row that holds only
+        // shipped extensions is kept and never found).
+        self.code_rows.extend(file.code_extensions);
         for dir in file.skip_dirs {
             if !self.skip_dirs.contains(&dir) {
                 self.skip_dirs.push(dir);
