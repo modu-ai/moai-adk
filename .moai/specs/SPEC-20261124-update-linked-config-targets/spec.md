@@ -81,3 +81,16 @@ created: 2026-11-24
 | D-3 | 기본 폴더로 가는 링크 설정 파일에는 스타일 파일도 기본 폴더에 있을 때만 `outputStyle` 을 넣어요 | 기본 폴더의 Claude Code 도 같은 파일을 읽어서, 스타일 파일이 없으면 없는 스타일을 가리켜요 | `setting_plan` 의 가드 한 곳 |
 | D-4 | 막힘 이유와 다음 걸음은 `blocked` 의 detail 에 같이 담고, 같은 글을 `notices` 에도 한 줄로 실어요 | 화면은 이미 blocked 줄과 notices 줄을 그려요. 화면 코드를 건드리지 않아요 | `notices` 의 한 블록 |
 | D-5 | `keys.destination` 과 `switch.file` 이 `~/.moai-cli` 를 가리키는 것은 남은 코드가 아니에요. 둘 다 `home_root::path(home)` 로 정해지고, 이 세대 표지가 없는 HOME 은 이전 상태 폴더를 그대로 써요(`src/home_root.rs` 머리말). HOME 합치기는 열린 카드 C-199(기준 2 가 열려 있어요)의 몫이라 새 카드를 만들지 않아요 | 카드 C-478 기준 3 의 "옛 상태 폴더라면 … 따로 카드를 열어요"는 카드 C-199 가 이미 덮어요(카드를 먼저 찾아봐요). AC-6 이 두 경로가 같은 한 함수에서 나온다는 것을 잠가요 | AC-6 테스트 삭제 |
+
+## Result
+
+- AC-1: met — `cargo nextest run --locked --offline --test update_linked_config_files` passed 6 of 6 (임시 HOME, 이전 세대 상태 폴더 `.moai-cli`): 프로필의 `settings.json` 과 `output-styles` 가 기본 폴더로 가는 링크이면 plan 이 두 대상을 `create`·`set` 으로 세우고, apply 가 기본 폴더의 두 파일을 쓰고, 링크는 그대로이고, 소유 기록은 `claude.json` 하나(프로필 폴더 기록 없음)이고, 같은 plan 을 다시 보면 `unchanged` 이고, revert 가 `{"a": 1}` 바이트를 되돌려요. 같은 환경을 버리는 폴더에서 바이너리로 직접 돌렸을 때도 `set` 이고 기본 폴더 `settings.json` 이 `{"a": 1, "outputStyle": "MoAI-Easy"}` 가 됐어요.
+- AC-2: met — 같은 실행: 기본 폴더 밖, 링크 사슬, 깨진 링크, 폴더, 기본 폴더 안의 링크 자신, `..` 로 빠져나가는 링크는 모두 `blocked` 이고 밖의 파일 바이트가 그대로예요. 버리는 폴더 직접 실행에서도 밖 링크·사슬·깨진 링크 세 경우가 `blocked`, 밖의 파일과 링크가 그대로였어요.
+- AC-3: met — 같은 실행: plan 뒤에 링크를 밖으로 돌리면 apply 가 거절하고 기본 폴더의 두 파일과 밖의 파일에 아무것도 쓰이지 않아요. 이 시험이 잠그는 것은 apply 가 새로 만든 plan 의 digest 가 달라져 거절되는 길이에요. apply 안의 두 번째 링크 확인(`locate` 를 쓰기 직전에 한 번 더)은 두 확인 사이의 경쟁에서만 닿아서 결정적 시험이 없어요(Not done 참고).
+- AC-4: met — 같은 실행: 프로필 `settings.json` 이 기본 폴더 파일로 가는 링크이고 프로필의 `output-styles` 가 진짜 폴더이면 설정 대상이 `skipped`(이유에 `default folder`)이고 기본 폴더 `settings.json` 바이트가 그대로예요.
+- AC-5: met — 같은 실행: `blocked` 대상의 detail 이 `next:` 한 줄을 담고, `moai update` 미리보기의 `notices` 가 그 대상마다 `<파일> was not written: <detail>` 한 줄을 실어요(이유와 다음 걸음이 같은 글이에요).
+- AC-6: met — 같은 실행: `.moai-cli` 만 있는 임시 HOME 에서 `keys.destination` 과 `switch.file` 이 `.moai-cli` 아래이고, 이 세대 표지가 있는 임시 HOME 에서는 `.moai` 아래예요. 카드 기준 3 의 까닭: 둘 다 `home_root::path(home)` 한 함수로 정해져서, 표지 없는 HOME 이 이전 상태 폴더를 쓰는 건 남은 코드가 아니라 설계예요. 합치기는 열린 카드 C-199 의 몫이라 새 카드를 열지 않았어요.
+- AC-7: met — `cargo nextest run --locked --offline --no-fail-fast --test update_linked_config_files --test home_style_cli --test home_style_ownership_cli --test update_user_layer_cli --test update_tux_golden` 81 중 81 통과예요. 맨몸 `moai check affected` 영수증은 READY 노트에 있어요.
+- 가드 뮤턴트(편집은 정확히 한 번, 시험 파일 전체를 돌리고, 파일은 메모리에서 되돌리고, 끝난 뒤 트리가 깨끗해요): 8 중 8 이 잡혔고 모두 exit 100 이에요 — `outside_default_folder_is_followed`, `link_chain_is_followed`(두 줄을 함께 빼요), `link_inside_the_default_folder_is_followed`, `linked_setting_without_style_in_default_folder`, `record_of_the_config_folder_for_a_shared_style_file`, `shared_means_the_default_folder_only`, `no_notice_for_a_blocked_target`, `no_next_step_added_to_a_blocked_detail`.
+- 위험 경로: 버리는 폴더(워크트리 `target/` 아래, 끝난 뒤 지워요)에서 바이너리로 직접: 밖 링크·링크 사슬·깨진 링크는 `blocked` 이고 링크와 밖의 파일 바이트가 그대로, 보통 파일로 가는 올바른 링크는 `set` 이에요.
+- Not done: 쓰기 직전의 두 번째 링크 확인은 경쟁에서만 닿아서 뮤턴트가 살아남아요(시험이 없고, 같은 길의 첫 확인은 AC-3 이 잠가요). 깨진 링크의 막힘 글은 `src/host_home.rs` 의 폴더 링크 규칙이 만들어서 "a link to a folder other than …" 로 읽히고 파일에는 어색해요. 그 파일은 이 카드의 쓰기 범위 밖이라 `next:` 줄만 더했고 글 바꾸기는 후속으로 남겨요. 화면은 막힌 줄과 알림 줄에 같은 이유를 두 번 보여 줘요(Risks).
