@@ -87,6 +87,17 @@ fn harness_step_proposes_from_the_detected_facts_when_web_search_is_unavailable(
 }
 
 #[test]
+fn harness_step_asks_for_the_harness_only_pick() {
+    let step = step_six(&read("skills/moai/workflows/project.md"));
+    for phrase in [
+        "Put the pick `harness-only` into the `picks` of every `generation-plan` request",
+        "never in a question or an option",
+    ] {
+        assert!(step.contains(phrase), "step 6 must say {phrase:?}:\n{step}");
+    }
+}
+
+#[test]
 fn harness_step_keeps_the_generation_plan_contract() {
     let step = step_six(&read("skills/moai/workflows/project.md"));
     for phrase in [
