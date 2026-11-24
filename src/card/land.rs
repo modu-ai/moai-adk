@@ -29,6 +29,7 @@
 //! The answer names `variants` (branches that differ from the integration branch's name only in
 //! letter case) and `profile_disagrees` (the profile's branch when it is not the recorded one).
 
+pub mod batch;
 pub mod check;
 pub mod scans;
 
@@ -62,6 +63,54 @@ pub struct LandRequest<'a> {
     /// `--keep-open`: land a slice, record the landing and close nothing
     /// (SPEC-20261124-land-closes-card).
     pub keep_open: bool,
+    /// The audited head a join candidate was made of (SPEC-20261124-card-select-batch-land D-5):
+    /// the verdict check reads the verdicts of this head instead of the candidate's. Only a
+    /// two-parent candidate whose second parent is this head and whose tree is the clean merge of
+    /// its parents qualifies.
+    pub audited: Option<&'a str>,
+}
+
+/// The refusal of an `audited` head that the candidate is not a clean join of.
+fn audited_refusal(project: &Path, candidate: &str, audited: &str) -> Option<String> {
+    if !crate::gate::is_full_sha(audited) {
+        return Some("the audited head must be 40 lowercase hex".to_string());
+    }
+    let line = match check::git_text(project, &["rev-list", "--parents", "-n", "1", candidate]) {
+        Ok(line) => line,
+        Err(why) => return Some(format!("the candidate's parents cannot be read: {why}")),
+    };
+    let ids: Vec<&str> = line.split_whitespace().collect();
+    if ids.len() != 3 || ids[2] != audited {
+        return Some(format!(
+            "the audited head {audited} is not the second parent of a two-parent candidate"
+        ));
+    }
+    if !check::is_clean_join(project, candidate, ids[1], ids[2]) {
+        return Some(
+            "the candidate is not a clean join of its parents (its tree differs from the merge of \
+             the two parents)"
+                .to_string(),
+        );
+    }
+    None
+}
+
+/// The refusal of a join candidate whose first parent is not `want`: the branch moves only from
+/// the commit the join was made on, so a first parent beyond the tip would carry commits nobody
+/// landed.
+fn first_parent_refusal(project: &Path, candidate: &str, want: &str) -> Option<String> {
+    let line = match check::git_text(project, &["rev-list", "--parents", "-n", "1", candidate]) {
+        Ok(line) => line,
+        Err(why) => return Some(format!("the candidate's parents cannot be read: {why}")),
+    };
+    let first = line.split_whitespace().nth(1);
+    (first != Some(want)).then(|| {
+        format!(
+            "the first parent of the candidate {candidate} is {}, not the integration tip {want}: \
+             join the head onto the tip again",
+            first.unwrap_or("missing")
+        )
+    })
 }
 
 fn refused(why: impl std::fmt::Display) -> String {
@@ -153,6 +202,30 @@ fn no_pass_reason(would_refuse: Option<&Value>) -> String {
 
 /// `card land C-n`: see the module comment.
 pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>) -> Result<Value> {
+    land_inner(project, home, reference, req, None)
+}
+
+/// Every refusal of [`land`] that comes before the first write, and nothing written: the batch asks
+/// it for each head before the first of them lands, so a head that would be refused is dropped
+/// while the tip is still the one the check ran on. `parent` is the commit the candidate's first
+/// parent must be: the tip for the first head, the commit of the head before it for the next.
+pub fn land_preflight(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    req: &LandRequest<'_>,
+    parent: &str,
+) -> Result<Value> {
+    land_inner(project, home, reference, req, Some(parent))
+}
+
+fn land_inner(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    req: &LandRequest<'_>,
+    preflight: Option<&str>,
+) -> Result<Value> {
     let card_id = card_id(reference)?;
     if req.by != LEADER_BY {
         return Err(unchanged(format!(
@@ -169,6 +242,12 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
     if !crate::gate::is_full_sha(req.head) {
         return Err(refused("the head must be 40 lowercase hex"));
     }
+    if let Some(audited) = req.audited {
+        if let Some(why) = audited_refusal(project, req.head, audited) {
+            return Err(unchanged(why));
+        }
+    }
+    let verdict_head = req.audited.unwrap_or(req.head);
     let sql_err = |e: rusqlite::Error| LedgerError::from(e).to_string();
     let (id, mut ledger) = open_for_write(project, home)?;
     let (kind, spec) = spec_link::kind_and_spec(ledger.conn(), card_id)
@@ -275,6 +354,13 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
             )))
         }
     }
+    // A join candidate is landed from the commit it was made on: its first parent is the tip read
+    // here (or, in the batch's preflight, the commit of the head before it).
+    if req.audited.is_some() && standing == Standing::OnTip {
+        if let Some(why) = first_parent_refusal(project, req.head, preflight.unwrap_or(&tip)) {
+            return Err(unchanged(why));
+        }
+    }
     if let Some(why) = drift::refusal(ledger.conn(), &branch, &tip).map_err(unchanged)? {
         return Err(conflict(why));
     }
@@ -313,6 +399,7 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         conn: ledger.conn(),
         card_id,
         head: req.head,
+        verdict_head,
         tip: &tip,
         on_tip: standing == Standing::OnTip,
         lander: req.session,
@@ -338,7 +425,7 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
                  cited as evidence",
             ));
         };
-        let line = format!("verdict event {event} PASS head {}", &req.head[..12]);
+        let line = format!("verdict event {event} PASS head {}", &verdict_head[..12]);
         let mut filled = met;
         for seq in &open {
             if !filled.iter().any(|(named, _)| named == seq) {
@@ -366,6 +453,14 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
     } else {
         Value::Null
     };
+
+    // The batch's preflight stops here: every check above is read only.
+    if preflight.is_some() {
+        return Ok(json!({
+            "action": "land", "preflight": true, "project_id": id, "name": name,
+            "card_id": card_id, "head": req.head, "writes": false,
+        }));
+    }
 
     // The one value for the whole repository: the record seeds from the profile once, and a
     // profile that disagrees with it is reported. Case variants that already exist are reported.
@@ -481,7 +576,7 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         answer["verdict"] = verdict.clone();
         if let Some(after) = verdict["event"].as_i64() {
             if let Some(late) =
-                check::late_fail(ledger.conn(), card_id, req.head, after).map_err(unchanged)?
+                check::late_fail(ledger.conn(), card_id, verdict_head, after).map_err(unchanged)?
             {
                 answer["late_fail"] = late;
             }
@@ -491,4 +586,64 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         answer["would_refuse"] = refusal;
     }
     Ok(answer)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn g(dir: &Path, args: &[&str]) -> String {
+        let mut all = vec!["-c", "user.name=t", "-c", "user.email=t@example.invalid"];
+        all.extend_from_slice(args);
+        check::git_text(dir, &all).unwrap().trim().to_string()
+    }
+
+    /// SPEC-20261124-card-select-batch-land D-5: an `audited` head is taken only for a clean join
+    /// of the tip and that head, with the head as the second parent.
+    #[test]
+    fn audited_must_be_the_second_parent_of_a_clean_join() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        g(p, &["init", "-q", "-b", "main"]);
+        std::fs::write(p.join("a.txt"), "a\n").unwrap();
+        g(p, &["add", "a.txt"]);
+        g(p, &["commit", "-q", "-m", "tip"]);
+        let tip = g(p, &["rev-parse", "HEAD"]);
+        g(p, &["checkout", "-q", "-b", "lane"]);
+        std::fs::write(p.join("b.txt"), "b\n").unwrap();
+        g(p, &["add", "b.txt"]);
+        g(p, &["commit", "-q", "-m", "lane"]);
+        let lane = g(p, &["rev-parse", "HEAD"]);
+        g(p, &["checkout", "-q", "main"]);
+        let merged = g(p, &["merge-tree", "--write-tree", &tip, &lane]);
+        let tree = merged.lines().next().unwrap().to_string();
+        let join = g(
+            p,
+            &["commit-tree", &tree, "-p", &tip, "-p", &lane, "-m", "join"],
+        );
+        assert_eq!(audited_refusal(p, &join, &lane), None);
+        // The tip is the first parent, not the audited head; a short id is no head.
+        assert!(audited_refusal(p, &join, &tip).is_some());
+        assert!(audited_refusal(p, &join, "abc").is_some());
+        // A commit with one parent is no join.
+        assert!(audited_refusal(p, &lane, &tip).is_some());
+        // A join whose tree is not the merge of its parents counts as authored work.
+        std::fs::write(p.join("evil.txt"), "e\n").unwrap();
+        g(p, &["add", "evil.txt"]);
+        let evil = g(p, &["write-tree"]);
+        let edited = g(
+            p,
+            &[
+                "commit-tree",
+                &evil,
+                "-p",
+                &tip,
+                "-p",
+                &lane,
+                "-m",
+                "edited",
+            ],
+        );
+        assert!(audited_refusal(p, &edited, &lane).is_some());
+    }
 }
