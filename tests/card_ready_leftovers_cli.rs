@@ -38,7 +38,10 @@ impl World {
         git_ok(&project, &["config", "user.name", "t"]);
         fs::write(
             project.join(".gitignore"),
-            format!("target/\n{}/\n*.log\nscratch/\n", moai_cli::PROJECT_STATE_DIR),
+            format!(
+                "target/\n{}/\n*.log\nscratch/\n",
+                moai_cli::PROJECT_STATE_DIR
+            ),
         )
         .unwrap();
         fs::create_dir_all(project.join("src")).unwrap();
@@ -137,7 +140,15 @@ impl World {
         let project = self.project_arg();
         self.moai(
             &[
-                "card", "note", card, "--kind", "report", "--by", "lane", "--project", &project,
+                "card",
+                "note",
+                card,
+                "--kind",
+                "report",
+                "--by",
+                "lane",
+                "--project",
+                &project,
             ],
             Some(text),
         )
@@ -212,7 +223,10 @@ fn a_ready_note_without_a_readable_leftovers_line_is_refused() {
     }
     assert_eq!(w.note_count(&card), 0);
     // The readable forms are kept, and a note that is no hand-back needs no line.
-    for tail in ["leftovers: none\n", "- leftovers: target/a/copy | target/b\n"] {
+    for tail in [
+        "leftovers: none\n",
+        "- leftovers: target/a/copy | target/b\n",
+    ] {
         let (ok, text) = w.note(&card, &format!("{base}{tail}"));
         assert!(ok, "{tail:?} was refused: {text}");
     }
@@ -324,10 +338,16 @@ fn a_card_without_a_reservation_is_not_checked_and_the_note_is_kept() {
     let a = answer(&out);
     assert_eq!(a["shared_checkout"], "not_checked", "{out}");
     assert!(
-        a["shared_checkout_reason"].as_str().is_some_and(|r| !r.is_empty()),
+        a["shared_checkout_reason"]
+            .as_str()
+            .is_some_and(|r| !r.is_empty()),
         "{out}"
     );
-    assert_eq!(a["shared_checkout_new"].as_array().unwrap().len(), 0, "{out}");
+    assert_eq!(
+        a["shared_checkout_new"].as_array().unwrap().len(),
+        0,
+        "{out}"
+    );
 }
 
 #[test]

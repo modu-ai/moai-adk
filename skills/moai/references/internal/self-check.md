@@ -14,6 +14,7 @@ In the moai-adk repository, `tools/self_check.sh` runs the machine items in one 
 6. Python: the unittest files of the tests and tools you changed, plus `tests/skill_references_test.py`, which reads every `skills/...` path in a tracked file; CI runs `python3 -m unittest discover -s tests -p '*_test.py'` (`--full-python`).
 7. Git: a new git spawn in `src/` goes through `scrub_git_env` (`--test git_env_scrub`); a test that runs git uses `tests/common/git.rs` (`--test ac_command_lint`).
 8. HOME: every test that runs the binary uses a temporary HOME (`--test home_isolation_scan`).
+9. Leftovers: a mutant copy of the tree, a temporary HOME for a dangerous-path run and any `mktemp` folder go only under `<worktree>/target/<name>/` (`TMPDIR=<worktree>/target/<name>` for a run that makes its own), and are removed by a relative path before READY; what could not be removed is named in the READY note's `leftovers:` line (`flows/next-flow`).
 9. Paths: a new file read or write has tests for a symlink, a FIFO, a missing parent and a folder without permission; it refuses rather than follows.
 10. Platform: a change to pty, process or signal code runs its macOS-only tests locally. An ordinary pull request's CI runs the light Linux matrix; the release pull request runs the full CI on Linux, macOS and Windows before it merges.
 

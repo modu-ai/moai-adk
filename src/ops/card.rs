@@ -633,6 +633,14 @@ enum Action {
     /// a worktree that is at that head holds `target/check-affected-<head12>/summary.txt` with
     /// the `result=PASS` line of a bare `moai check affected` run of that head (a `--lane` run is
     /// no receipt). Otherwise the note is refused with the way out and nothing is written.
+    ///
+    /// The same notes need exactly one `leftovers:` line in the body: `leftovers: none`, or
+    /// `leftovers: <path> | <path>` for what the lane could not remove (a throwaway copy, a
+    /// temporary HOME and a `mktemp` folder belong under `<worktree>/target/<name>/` and are
+    /// removed by a relative path before READY). Without a readable line the note is refused and
+    /// nothing is written. The answer of a kept note adds `shared_checkout_new`: the untracked or
+    /// ignored files that appeared in the primary checkout since the card was reserved (nothing
+    /// is refused for them yet), or `shared_checkout: "not_checked"` with the reason.
     Note {
         /// `C-12`.
         card: String,
