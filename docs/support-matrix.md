@@ -108,9 +108,9 @@ run `42619829090`(PR #2309, `pull_request`, head `15d8178bc2d9a8dd1ba16bfaae5424
 
 ### update 중단 복구 (known-good)
 
-실제 v1→v2 update(파일 3개)를 끝낸 뒤 `tests/release_suite.rs` fixture의 두 번째 host 투영(`.agents/skills/moai`)을 중단 지점 k로 되돌려 `recovery-plan`·`recovery-apply`를 돌린 결과다. 복구에는 실제 v2 apply가 저장한 known-good 사본을 쓴다.
+실제 v1→v2 update(파일 3개)를 끝낸 뒤 `tests/release_suite.rs` fixture의 Claude 투영(`.claude/skills/moai`)을 중단 지점 k로 되돌려 `recovery-plan`·`recovery-apply`를 돌린 결과다. 복구에는 실제 v2 apply가 저장한 known-good 사본을 쓴다.
 
-| 중단 지점 k | 게시된 entry | 분류(SKILL.md · new.md · update.md) | 복구된 파일 | 그 투영 트리 = v1 digest | claude host · 가짜 Go 상태 |
+| 중단 지점 k | 게시된 entry | 분류(SKILL.md · new.md · update.md) | 복구된 파일 | 그 투영 트리 = v1 digest | 사용자 skill 폴더(`.claude/skills/my-skill`) · 가짜 Go 상태 |
 | --- | --- | --- | --- | --- | --- |
 | 0 | 없음 | before · before · before | 없음 | 예 | 그대로 |
 | 1 | SKILL.md | after · before · before | SKILL.md | 예 | 그대로 |

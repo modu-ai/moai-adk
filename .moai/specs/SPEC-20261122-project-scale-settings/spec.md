@@ -65,6 +65,14 @@ parent: SPEC-20261122-project-scale
 - 거절 메시지는 제어 문자뿐 아니라 보이지 않는 서식·구분 문자(폭 없는 공백, 소프트 하이픈, 방향 표시·뒤집기, 줄·문단 구분자, BOM, 태그 문자)도 지운 뒤 자격 증명 검사를 하고, 지운 글만 보여 줘요(REQ-9): `claude_settings_scale_keys a_token_split_by_an_invisible_format_or_separator_character_is_never_echoed`
 - 고른 플러그인 중 이미 같은 값인 것은 그대로 두고 나머지를 더해요. 다른 값으로 이미 있는 플러그인만 충돌이고, 충돌 글은 그 플러그인만 이름 대요(REQ-5): `project_scale_plan_lib a_picked_plugin_already_set_the_same_way_is_kept_and_the_rest_are_added`
 
+### Slice C4 follow-ups (C3 감사의 막지 않는 다섯 항목)
+
+- N1: 모르는 `permissions` 하위 키의 거절 글이 키를 `shown_value` 로 보여 줘요. 보이지 않는 문자로 쪼갠 토큰 모양 키는 통째로 나오지 않아요. 같은 검사 묶음(`check_env`, `check_worktree`, `check_scale_list`, `check_claude_md_excludes`, `check_enabled_plugins`, `check_model`, `refuse_unlisted`)에서 사용자 키나 값을 그대로 찍는 다른 거절 글은 없었어요(REQ-9): `claude_settings_scale_keys an_unknown_permissions_key_shaped_like_a_split_token_is_never_echoed`, `claude::tests::an_unknown_permissions_key_is_shown_without_a_split_token`
+- N2: 값을 받아들이는 검사도 보이지 않는 문자를 지운 글을 함께 봐요(D-6). U+200B 로 쪼갠 토큰은 `claudeMdExcludes` 항목, `model`, `worktree` 목록, `permissions` 규칙과 `additionalDirectories`, `outputStyle`, `statusLine`, `env` 값으로 거절되고 아무것도 계획되지 않아요(REQ-9, REQ-10): `claude_settings_scale_keys a_value_holding_a_token_split_by_an_invisible_character_is_refused_and_nothing_is_planned`
+- N3: 감사가 든 거의 보이지 않는 문자를 갈래마다 정했어요(D-7). 지우는 갈래마다 한 점씩, 기존 19 갈래와 제어 문자, 새 다섯 갈래를 봐요(REQ-9): `claude_settings_scale_keys a_token_split_by_any_invisible_class_is_never_echoed_or_accepted`
+- N4: `credential_like` 가 맞추는 모양마다 쪼갠 토큰 한 점씩, 모두 36 점이에요: 개인 키 머리 1, 토큰 접두어 19(`secret_kind` 의 접두어 표), JWT 1, `Authorization` 의 `Bearer`·`Basic` 2, 비밀번호가 든 URL 1, `credential_like` 자신의 `://`·`@` 규칙 1, 대입 키 11(REQ-9): `claude_settings_scale_keys every_credential_pattern_split_by_an_invisible_character_is_refused_and_hidden`
+- N5: 보이지 않는 문자를 지운 거절 글은 `(invisible characters removed)` 를 붙여서, 지운 이름이 허용된 이름처럼 읽히지 않아요(D-8, 보여 주기만): `claude_settings_scale_keys a_refusal_that_removed_invisible_characters_says_so`
+
 ## Risks
 
 - 거절 규칙은 보안 경계가 아니에요(문서: 하위 프로세스가 직접 여는 파일은 안 막아요). 미리보기가 그 한계를 한 줄로 말해요.
@@ -83,6 +91,9 @@ parent: SPEC-20261122-project-scale
 | D-3 | 플러그인은 `enabledPlugins` 키와 설치 명령 글까지만 다뤄요. 설치는 사용자가 고른 뒤 이 세션이 그 명령을 돌려요. | 문서: 프로젝트 설정의 키는 설치하지 않아요. 설치는 GitHub 접속이 필요해요. | 카드 열림 |
 | D-4 | 계획 파일은 건드리지 않아요. | 문서: 계획은 압축 뒤 디스크에서 다시 들어와요. | 카드 열림 |
 | D-5 | 쓰는 파일의 자리는 문서의 자리 그대로예요: 패키지 `CLAUDE.md` 는 패키지 폴더, 제외·개인 항목은 `settings.local.json`, 팀 항목은 `settings.json`. | `large-codebases` 각 절의 "committed or local" 안내. | 카드 열림 |
+| D-6 | 받아들이는 검사는 보이지 않는 문자가 든 값을 통째로 거절하지 않고, `credential_like` 가 글을 그대로 한 번, 보이지 않는 문자를 지우고 한 번 봐요. 쪼갠 토큰만 거절돼요. 이 함수를 쓰는 모든 곳(`scale_value_ok`, `holds_credential`, `env_entry_refusal`, `shown_value`, `project_scale` 의 경로 검사, 설정 병합)이 같이 바뀌어요. | 진짜 값에 보이지 않는 문자가 쓰여요: 이모지 연결(U+200D), 변형 선택자(U+FE0F), 깃발 태그 문자는 폴더 이름과 명령에 나올 수 있어요. 통째로 거절하면 그런 값이 막혀요. | `credential_like` 의 두 번째 판단을 빼면 예전대로예요. |
+| D-7 | 거의 보이지 않는 문자는 갈래마다 정해요. 넣어요(`invisible_char`): 점자 빈칸 U+2800, 할당 안 된 특수 U+FFF0–FFF8, 음표 빈 머리 U+1D159, 거란 소자 채움 U+16FE4, 이집트 상형 서식 제어 U+13430–1343F — 빈칸이나 아무것도 아닌 것으로 찍히고 설정 값(경로, glob, 플러그인 이름, 모델 이름, 명령)에 쓸 일이 없어요. 넣지 않아요: 머리카락 공백 U+200A 를 포함한 공백 문자(U+00A0, U+2000–200A, U+202F, U+205F, U+3000) — 토큰을 쪼개면 틈이 눈에 보여 읽는 사람이 두 낱말로 보고, 지우면 진짜 규칙(`Bash(git status)`)의 낱말이 붙어서 보여요. 결합 문자(U+0301 같은) — 앞 글자에 붙어 찍혀서 숨기지 않고, 분해형(NFD) 파일 이름에 쓰여요. 닮은 글자(키릴 `а`, 전각 글자) — 숨기는 문자가 아니고 다른 글자예요. 바꿔 맞추려면 혼동 문자 표가 필요해서 남겨요. | C3 감사 N3. 결합 문자나 닮은 글자로 바꾼 토큰은 검사에 걸리지 않아요. 그 값은 진짜 토큰과 바이트가 달라요. 남은 위험으로 적어요. | 새 갈래를 `invisible_char` 에서 빼면 예전대로예요. |
+| D-8 | 보이지 않는 문자를 지운 값은 거절 글에서 `(invisible characters removed)` 를 붙여 보여 줘요. 보여 주기만 바뀌어요. | C3 감사 N5: `model` 뒤에 U+200B 를 붙인 키가 거절 글에서 허용된 `model` 로 읽혔어요. | `shown_value` 의 덧붙임을 빼면 예전대로예요. |
 
 ### Evidence
 

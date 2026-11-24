@@ -445,15 +445,30 @@ pub(crate) fn env_entry_refusal(name: &str, value: &Value) -> Option<&'static st
 
 /// Whether a string looks like it holds a credential: a known token shape or a URL with
 /// `user:password@host`. The same rule for every settings value a file may get (audit 6888156222).
+/// The text is judged as given and with its [`invisible_char`]s removed, so a token split by a
+/// zero-width or direction character is still one: it is refused as a value and hidden in a
+/// message (SPEC-20261122-project-scale-settings D-6).
 pub(crate) fn credential_like(text: &str) -> bool {
-    crate::agents_local_merge::secret_kind(text).is_some()
-        || (text.contains("://") && text.contains('@'))
+    let shaped = |t: &str| {
+        crate::agents_local_merge::secret_kind(t).is_some()
+            || (t.contains("://") && t.contains('@'))
+    };
+    shaped(text) || (text.chars().any(invisible_char) && shaped(&visible_text(text)))
+}
+
+/// `text` without its [`invisible_char`]s.
+fn visible_text(text: &str) -> String {
+    text.chars().filter(|c| !invisible_char(*c)).collect()
 }
 
 /// Whether a character prints as nothing or moves other text: a control character, or a format,
 /// line or paragraph separator character (soft hyphen, zero-width and joiner characters, the
 /// direction marks, embeddings, overrides and isolates, word joiner and invisible operators,
-/// the byte order mark, interlinear annotation marks and tag characters).
+/// the byte order mark, interlinear annotation marks and tag characters), or a character that
+/// prints as a blank in a value no setting needs it in (the braille blank, the unassigned
+/// specials, the musical null notehead, the Khitan filler and the Egyptian hieroglyph format
+/// controls). Spaces, combining marks and look-alike letters stay out: they print
+/// (SPEC-20261122-project-scale-settings D-7).
 pub(crate) fn invisible_char(c: char) -> bool {
     c.is_control()
         || matches!(
@@ -469,12 +484,16 @@ pub(crate) fn invisible_char(c: char) -> bool {
                 | '\u{200B}'..='\u{200F}'
                 | '\u{2028}'..='\u{202E}'
                 | '\u{2060}'..='\u{206F}'
+                | '\u{2800}'
                 | '\u{3164}'
                 | '\u{FE00}'..='\u{FE0F}'
                 | '\u{FEFF}'
                 | '\u{FFA0}'
-                | '\u{FFF9}'..='\u{FFFB}'
+                | '\u{FFF0}'..='\u{FFFB}'
+                | '\u{13430}'..='\u{1343F}'
+                | '\u{16FE4}'
                 | '\u{1BCA0}'..='\u{1BCA3}'
+                | '\u{1D159}'
                 | '\u{1D173}'..='\u{1D17A}'
                 | '\u{E0000}'..='\u{E0FFF}'
         )
@@ -484,13 +503,18 @@ pub(crate) fn invisible_char(c: char) -> bool {
 /// [`invisible_char`]s, or a placeholder when [`credential_like`] flags the value either as given
 /// or with those characters stripped (a control, zero-width or direction character inside a
 /// token would otherwise hide its shape and the stripped token would be printed looking whole),
-/// so no message carries a secret back.
+/// so no message carries a secret back. A value that lost characters says so, so a stripped
+/// name is not read as the allowed name it now looks like.
 pub(crate) fn shown_value(text: &str) -> String {
-    let clean: String = text.chars().filter(|c| !invisible_char(*c)).collect();
-    if credential_like(text) || credential_like(&clean) {
+    if credential_like(text) {
         return "<value hidden: looks like a credential>".into();
     }
-    clean.chars().take(64).collect()
+    let clean: String = visible_text(text).chars().take(64).collect();
+    if text.chars().any(invisible_char) {
+        format!("{clean} (invisible characters removed)")
+    } else {
+        clean
+    }
 }
 
 /// Whether any string inside `value` (a leaf or an object key) looks like a credential.
@@ -886,7 +910,12 @@ pub(crate) fn check_permissions(value: &Value) -> Result<()> {
                     relative_path_refusal(s, true)
                 })?
             }
-            _ => return Err(format!("unknown permissions key {key} refused")),
+            _ => {
+                return Err(format!(
+                    "unknown permissions key {} refused",
+                    shown_value(key)
+                ))
+            }
         }
     }
     Ok(())
@@ -2071,6 +2100,20 @@ mod tests {
         ] {
             assert!(plan_settings(&Map::new(), &Map::new(), &obj(d)).is_ok());
         }
+    }
+
+    #[test]
+    fn an_unknown_permissions_key_is_shown_without_a_split_token() {
+        // an obviously fake token, split by a zero-width space; the permissions check itself
+        // prints the key the way every refusal does, whoever calls it.
+        let token = format!("ghp_{}", "x".repeat(36));
+        let split = format!("ghp_{}\u{200B}{}", "x".repeat(18), "x".repeat(18));
+        let mut map = Map::new();
+        map.insert(split, json!(["Read"]));
+        let err = check_permissions(&Value::Object(map)).unwrap_err();
+        assert!(err.contains("unknown permissions key"), "{err}");
+        assert!(err.contains("looks like a credential"), "{err}");
+        assert!(!err.contains(&token) && !err.contains("ghp_"), "{err:?}");
     }
 
     // SETTINGS-PRESERVE: every case runs in a temporary project; no real settings are touched.

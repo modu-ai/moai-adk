@@ -105,7 +105,7 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 - hooks 페이지의 handler 종류(`command`·`mcp_tool`, `prompt`·`agent`는 무시), exit 0 의미, PreToolUse 오류 때의 동작은 이번 조회에서 원문을 읽지 못했다(긴 페이지의 요약만 확보). 그래서 표에 넣지 않았다.
 - `features.hooks` 기본값도 확인하지 못했다.
 
-상세 인용, adapter 계약, gap은 `docs/codex-adapter-contract.md`에 있다.
+Codex 지원은 2026-11-21에 철회됐고, 상세 인용·adapter 계약·gap을 적었던 문서는 그때 지웠다(`2dead459ea`).
 
 ## 론처 (`moai` 세션 진입, #2164)
 
