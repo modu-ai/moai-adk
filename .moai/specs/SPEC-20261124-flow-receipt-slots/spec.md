@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261124-flow-receipt-slots
 title: "Reverting an earlier flow receipt keeps the new flow file's ownership hash"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8142 of card C-441 (answers note 8141, 2026-11-24T03:09:15Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 1 at head 98b17fdda3 with choice (a); recorded by the lane, not approved by it", digest: "sha256:344041586d53bf222574dc0d21846c06efcd9aca1ddd34f26298bf9091619c22"}
 ---
 
 # Reverting an earlier flow receipt keeps the new flow file's ownership hash
