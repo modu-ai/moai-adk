@@ -660,12 +660,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let project = dir.path();
         let git = |args: &[&str]| {
-            let out = std::process::Command::new("git")
-                .arg("-C")
-                .arg(project)
-                .args(args)
-                .output()
-                .unwrap();
+            let mut cmd = std::process::Command::new("git");
+            cmd.arg("-C").arg(project).args(args);
+            crate::identity::scrub_git_env(&mut cmd);
+            let out = cmd.output().unwrap();
             assert!(out.status.success(), "git {args:?}");
         };
         git(&["init", "-q", "-b", "main"]);
