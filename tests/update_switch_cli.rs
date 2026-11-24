@@ -40,8 +40,8 @@ fn copy_tree(from: &Path, to: &Path) {
 }
 
 /// A temporary HOME with `~/.moai-cli/versions/a/bin/moai-cli` (this build), the real package
-/// beside it, a launcher link `~/.moai-cli/path/moai-cli` into the version folder (the kind an
-/// install lays) and `script` as `~/.moai-cli/path/moai`.
+/// beside it, a launcher link of the kind an install lays beside the script, into the version
+/// folder, and `script` as `~/.moai-cli/path/moai`.
 fn setup_with(script: &[u8]) -> (TempDir, PathBuf, PathBuf) {
     let tmp = TempDir::new().unwrap();
     let root = fs::canonicalize(tmp.path()).unwrap();
@@ -74,7 +74,7 @@ fn moai_file(home: &Path) -> PathBuf {
 }
 
 fn launcher_file(home: &Path) -> PathBuf {
-    home.join(".moai-cli/path").join(LINK)
+    moai_file(home).with_file_name(LINK)
 }
 
 fn run(exe: &Path, home: &Path, args: &[&str]) -> Output {
@@ -166,7 +166,7 @@ fn v2_gets_the_link_too() {
     let stamp = r["switch_result"]["stamp"].as_str().unwrap().to_string();
     assert!(is_the_link(&home));
     assert_eq!(
-        fs::read(home.join(format!(".moai-cli/path/moai.before-{stamp}"))).unwrap(),
+        fs::read(moai_file(&home).with_file_name(format!("moai.before-{stamp}"))).unwrap(),
         V2
     );
 }
