@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261121-model-defaults-one-table
 title: "One table of model and effort defaults: the launcher starts a role session with the table the question screen shows"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-21
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8219 (2026-11-24T05:03:26Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 8218 에 답함: 판 2 승인, 커밋 1ca8fe78afcd0d722cd758282b0e9b525995c647, 판 1(노트 8212) 대비 바뀐 것은 Interview 절과 Scope write 줄의 골든 네 파일뿐); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:c1896820ada7ab16d2514ce60849d7d5c8a2facca01118b9dd216a71dfd050f3"
 ---
 
 # One table of model and effort defaults: the launcher starts a role session with the table the question screen shows
