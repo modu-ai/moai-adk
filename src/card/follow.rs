@@ -37,11 +37,26 @@ pub struct Plan {
 }
 
 /// What a landing did to the worktree, as the answer's `worktree_follow` key.
-pub fn answer(tree: Option<&Path>, status: &str, from: &str, to: &str, note: Option<&str>) -> Value {
+pub fn answer(
+    tree: Option<&Path>,
+    status: &str,
+    from: &str,
+    to: &str,
+    note: Option<&str>,
+) -> Value {
     json!({
         "worktree": tree.map(|t| t.display().to_string()),
         "status": status, "from": from, "to": to, "note": note,
     })
+}
+
+/// What a refusal of the worktree step after the branch moved says: the reason, and that the
+/// branch already moved and the same call run again finishes the step.
+pub fn stopped(why: &str, branch: &str, head: &str) -> String {
+    format!(
+        "{why}; the integration branch {branch} already moved to {head} and the card is still \
+         open: run the same call again after the cause is repaired"
+    )
 }
 
 /// The answer of a landing with no worktree to follow.
@@ -65,7 +80,9 @@ fn run(tree: &Path, args: &[&str]) -> Result<Vec<u8>> {
 }
 
 fn text(tree: &Path, args: &[&str]) -> Result<String> {
-    Ok(String::from_utf8_lossy(&run(tree, args)?).trim().to_string())
+    Ok(String::from_utf8_lossy(&run(tree, args)?)
+        .trim()
+        .to_string())
 }
 
 /// Whether a git command that answers by its exit code (`--quiet`) exits 0.
@@ -119,8 +136,12 @@ const PENDING: [&str; 9] = [
 /// checkout and entries git is told not to look at.
 fn check_state(tree: &Path, tip: &str, branch: &str) -> Result<()> {
     let at = tree.display();
-    let head = text(tree, &["rev-parse", "HEAD"])
-        .map_err(|why| refusal(format!("HEAD of {at} cannot be read ({why})"), "repair that worktree and run the call again"))?;
+    let head = text(tree, &["rev-parse", "HEAD"]).map_err(|why| {
+        refusal(
+            format!("HEAD of {at} cannot be read ({why})"),
+            "repair that worktree and run the call again",
+        )
+    })?;
     if head != tip {
         return Err(refusal(
             format!("HEAD of {at} is {head}, not the tip {tip} of {branch} the landing read"),
@@ -173,7 +194,13 @@ fn check_state(tree: &Path, tip: &str, branch: &str) -> Result<()> {
 fn check_clean(tree: &Path) -> Result<()> {
     let out = run(
         tree,
-        &["status", "--porcelain=v1", "-z", "--untracked-files=no", "--no-renames"],
+        &[
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=no",
+            "--no-renames",
+        ],
     )?;
     let changed: Vec<String> = out
         .split(|b| *b == 0)
@@ -206,7 +233,16 @@ struct Change {
 fn changes(tree: &Path, from: &str, to: &str) -> Result<Vec<Change>> {
     let out = run(
         tree,
-        &["diff-tree", "-r", "--raw", "-z", "--no-renames", "--no-abbrev", from, to],
+        &[
+            "diff-tree",
+            "-r",
+            "--raw",
+            "-z",
+            "--no-renames",
+            "--no-abbrev",
+            from,
+            to,
+        ],
     )?;
     let mut fields = out.split(|b| *b == 0).filter(|f| !f.is_empty());
     let mut found = Vec::new();
@@ -217,7 +253,9 @@ fn changes(tree: &Path, from: &str, to: &str) -> Result<Vec<Change>> {
         let meta = String::from_utf8_lossy(meta).into_owned();
         let parts: Vec<&str> = meta.trim_start_matches(':').split(' ').collect();
         let [old_mode, new_mode, _old, _new, status] = parts.as_slice() else {
-            return Err(format!("git diff-tree gave a record this command cannot read: {meta}"));
+            return Err(format!(
+                "git diff-tree gave a record this command cannot read: {meta}"
+            ));
         };
         let path = String::from_utf8_lossy(path).into_owned();
         if path.contains('\u{fffd}') {
@@ -268,7 +306,11 @@ fn check_paths(tree: &Path, from: &str, to: &str) -> Result<()> {
             continue;
         }
         let mut prefix = String::new();
-        for part in added.path.split('/').take(added.path.split('/').count() - 1) {
+        for part in added
+            .path
+            .split('/')
+            .take(added.path.split('/').count() - 1)
+        {
             if !prefix.is_empty() {
                 prefix.push('/');
             }
@@ -277,7 +319,10 @@ fn check_paths(tree: &Path, from: &str, to: &str) -> Result<()> {
                 .is_ok_and(|m| !m.file_type().is_dir())
                 && !removed.contains(prefix.as_str());
             if blocked {
-                stands.push(format!("{prefix} (a file where the new commit needs a folder, for {})", added.path));
+                stands.push(format!(
+                    "{prefix} (a file where the new commit needs a folder, for {})",
+                    added.path
+                ));
                 break;
             }
         }
@@ -315,7 +360,13 @@ fn dry_run(tree: &Path, from: &str, to: &str) -> Result<()> {
 
 /// Before the first write: the worktree that has the branch checked out (`None` when no worktree
 /// has), every precondition, and the dry run. `Err` is the reason and the next step.
-pub fn plan(project: &Path, full_ref: &str, branch: &str, tip: &str, head: &str) -> Result<Option<Plan>> {
+pub fn plan(
+    project: &Path,
+    full_ref: &str,
+    branch: &str,
+    tip: &str,
+    head: &str,
+) -> Result<Option<Plan>> {
     let Some(tree) = holder(project, full_ref, branch)? else {
         return Ok(None);
     };
@@ -382,15 +433,22 @@ pub fn rerun(
     branch: &str,
     head: &str,
 ) -> Result<Rerun> {
-    let Some(tree) = holder(project, full_ref, branch).map_err(|why| format!("{why} (the worktree step of a landing that already moved the branch)"))? else {
+    // A head the card's start row does not name was not moved by this card: nothing to finish.
+    let Some(old) = started_from(conn, card_id, head)? else {
         return Ok(Rerun::Nothing(none()));
     };
-    let Some(old) = started_from(conn, card_id, head)? else {
-        return Ok(Rerun::Nothing(answer(Some(&tree), "none", "", "", Some("no start row of this card names this head, so the worktree was left alone"))));
+    let Some(tree) = holder(project, full_ref, branch)? else {
+        return Ok(Rerun::Nothing(none()));
     };
     let tip = landed::tip_of(project, branch)?;
     if old == tip || quiet(&tree, &["diff-index", "--cached", "--quiet", &tip])? {
-        return Ok(Rerun::Nothing(answer(Some(&tree), "none", &old, &tip, None)));
+        return Ok(Rerun::Nothing(answer(
+            Some(&tree),
+            "none",
+            &old,
+            &tip,
+            None,
+        )));
     }
     if !quiet(&tree, &["diff-index", "--cached", "--quiet", &old])? {
         return Ok(Rerun::Nothing(answer(

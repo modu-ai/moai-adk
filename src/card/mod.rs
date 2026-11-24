@@ -32,6 +32,7 @@ pub mod export_db;
 pub mod export_dir;
 pub mod export_format;
 pub mod finish;
+pub mod follow;
 pub mod guard;
 pub mod hold_candidates;
 pub mod inbox;
