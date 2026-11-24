@@ -375,6 +375,93 @@ fn agents_apply(fx: &Fx, agents: &Value) {
     );
 }
 
+/// The manifest of `fx` with its `generation_request` replaced by `record`.
+fn set_record(fx: &Fx, record: Value) {
+    let mut manifest = fx.manifest();
+    manifest["generation_request"] = record;
+    let mut bytes = serde_json::to_vec_pretty(&manifest).unwrap();
+    bytes.push(b'\n');
+    fs::write(fx.manifest_path(), bytes).unwrap();
+}
+
+/// The bytes of every file the settled project's agent and skill live in.
+fn owned_bytes(fx: &Fx) -> Vec<(PathBuf, Vec<u8>)> {
+    fx.manifest()["owned_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| {
+            f["section_id"]
+                .as_str()
+                .is_some_and(|s| s.starts_with("generation:"))
+        })
+        .map(|f| {
+            let path = fx.root.join(f["path"].as_str().unwrap());
+            let bytes = fs::read(&path).unwrap();
+            (path, bytes)
+        })
+        .collect()
+}
+
+#[test]
+fn a_record_that_is_only_partly_there_is_a_question_and_plans_no_removal() {
+    let (fx, _) = settled_project();
+    let full = fx.manifest()["generation_request"].clone();
+    let before = owned_bytes(&fx);
+    assert!(!before.is_empty());
+    let mut extra_key = full.clone();
+    extra_key["native_rolez"] = json!([]);
+    let shapes = [
+        ("an empty object", json!({})),
+        (
+            "only the skills",
+            json!({"project_skills": full["project_skills"]}),
+        ),
+        (
+            "one list missing",
+            json!({"native_roles": full["native_roles"],
+                   "project_skills": full["project_skills"]}),
+        ),
+        ("a key nothing writes", extra_key),
+        (
+            "all three lists empty",
+            json!({"native_roles": [], "skill_projections": [], "project_skills": []}),
+        ),
+    ];
+    for (name, record) in shapes {
+        set_record(&fx, record);
+        let plan = fx.plan();
+        let generation = step(&plan, "generation");
+        assert_eq!(
+            generation["state"], "needs_decision",
+            "{name}: {generation}"
+        );
+        assert_eq!(generation["apply"], Value::Null, "{name}: {generation}");
+        assert!(
+            !generation.to_string().contains("\"remove\""),
+            "{name}: no removal is planned: {generation}"
+        );
+        for (path, bytes) in &before {
+            assert_eq!(&fs::read(path).unwrap(), bytes, "{name}: {path:?} changed");
+        }
+    }
+    // The whole record, put back, reads again.
+    set_record(&fx, full);
+    assert_eq!(step(&fx.plan(), "generation")["state"], "unchanged");
+}
+
+#[test]
+fn a_record_of_the_right_shape_with_a_value_the_request_refuses_is_blocked() {
+    let (fx, _) = settled_project();
+    let mut record = fx.manifest()["generation_request"].clone();
+    record["native_roles"][0]["role_id"] = json!("moai-audit");
+    set_record(&fx, record);
+    let plan = fx.plan();
+    let generation = step(&plan, "generation");
+    assert_eq!(generation["state"], "blocked", "{generation}");
+    assert_eq!(generation["apply"], Value::Null, "{generation}");
+}
+
 #[test]
 fn an_apply_with_every_file_unchanged_still_records_the_request_and_clears_the_decision() {
     let (fx, request) = settled_project();
