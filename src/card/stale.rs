@@ -9,7 +9,7 @@
 use super::input;
 use super::landed::Proof;
 use crate::ledger::close::StaleFacts;
-use crate::ledger::sweep::past_grace;
+use crate::ledger::sweep::sweep_via;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -71,8 +71,9 @@ fn sweep_command(name: &str) -> String {
 
 /// The rows of `stale`, ordered by card. `proofs` are the landing proofs of `landed::find` and
 /// `now` is the DB clock of the read; a draft is listed when [`is_old_draft`] says so for `days`.
-/// A card whose lease ended at least `grace_secs` ago is closed by a sweep, not by a withdraw: its
-/// work is not abandoned, only its holder is gone.
+/// A card whose lease ended at least `grace_secs` ago, or whose holder has written nothing for the
+/// silence window, is closed by a sweep, not by a withdraw: its work is not abandoned, only its
+/// holder is gone. The row shows the holder's heartbeat (`last_seen_at`, `silent_secs`).
 pub fn rows(
     facts: &StaleFacts,
     proofs: &BTreeMap<i64, Proof>,
@@ -109,8 +110,15 @@ pub fn rows(
     }
     for c in &facts.lease_ended {
         let name = input::card_name(c.card_id);
-        // Only an `active` card is swept; a card in `review` keeps the withdraw it had.
-        let command = if c.state == "active" && past_grace(c.lease_until, grace_secs, now) {
+        // Only an `active` card is swept; a card in `review` keeps the withdraw it had. The rule is
+        // the sweep's own (`sweep_via`): the grace ran out, or the holder is silent
+        // (SPEC-20261119-live-lease-takeover REQ-11).
+        let via = if c.state == "active" {
+            sweep_via(c.lease_until, c.last_seen_at, grace_secs, now)
+        } else {
+            None
+        };
+        let command = if via.is_some() {
             sweep_command(&name)
         } else {
             withdraw_command(&name)
@@ -125,8 +133,15 @@ pub fn rows(
         );
         merge(
             &mut v,
-            &json!({"holder": c.holder, "generation": c.generation, "lease_until": c.lease_until}),
+            &json!({
+                "holder": c.holder, "generation": c.generation, "lease_until": c.lease_until,
+                "last_seen_at": c.last_seen_at,
+                "silent_secs": now.saturating_sub(c.last_seen_at),
+            }),
         );
+        if let Some(via) = via {
+            merge(&mut v, &json!({"via": via.code()}));
+        }
         out.entry(c.card_id).or_insert(v);
     }
     for c in &facts.review_no_holder {
