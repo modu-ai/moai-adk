@@ -27,20 +27,11 @@ const CHECK_SH: &str =
 /// AC-6 (REQ-11): every language the project detector can report has a row.
 #[test]
 fn every_detected_language_has_test_patterns() {
-    let source = include_str!("../src/project_detect.rs");
     let mut langs = std::collections::BTreeSet::new();
-    // The manifest languages are rows of the shipped catalog (SPEC-20261124-project-detect-monorepo).
+    // The manifest languages and the code extension languages are rows of the shipped catalog
+    // (SPEC-20261124-project-detect-monorepo, SPEC-20261125-detect-code-extension-catalog).
     langs.extend(moai_cli::project_detect::shipped_manifest_languages());
-    for table in ["const EXTENSIONS"] {
-        let start = source.find(table).unwrap();
-        let end = start + source[start..].find("];").unwrap();
-        for line in source[start..end].lines() {
-            let quoted: Vec<&str> = line.split('"').skip(1).step_by(2).collect();
-            if quoted.len() == 2 {
-                langs.insert(quoted[1].to_string());
-            }
-        }
-    }
+    langs.extend(moai_cli::project_detect::shipped_code_languages());
     assert!(langs.contains("rust") && langs.len() >= 13, "{langs:?}");
     for lang in &langs {
         assert!(
