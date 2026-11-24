@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261121-go-path-removal
 title: "moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement"
-status: draft
+status: approved
 revision: 6
 created: 2026-11-21
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8336 (2026-11-24T07:45:22Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8333 에 답함): 판 6 승인, D-1~D-9 모두 A, head 93c5ac983d; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:bd9485715e0261c54ea53dd659d868a5f9f69a02e99d563dd3f09462210ceee3"
 ---
 
 # moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement
@@ -32,6 +37,20 @@ created: 2026-11-21
 판 6 은 세 조각이에요. (L) `moai update` 의 switch 부분이 라우팅 스크립트를 끝내요: `<state home>/path/moai` 의 v1 또는 v2 스크립트를 `moai.before-<UTC>` 로 보관하고 옆의 런처 `moai-cli` 를 가리키는 상대 링크로 바꿔요. 그 부분 자신의 토큰과 되돌리기는 그대로예요. (T) 트리가 Go 경로를 더 싣지 않아요: 바이너리에 라우팅 스크립트가 없고, 래퍼에서 Go 폴백이 빠지고, 차이 시험이 나가요. (E) Rust 시험 하나가 임시 HOME 에서 새 셸이 받는 것을 보여 줘요: Rust 버전 줄, 번들 동사, 훅 호출 한 번과 상태 줄 호출 한 번, 그리고 `go` 나 `moai.old` 는 시작되지 않아요.
 
 실제 기계는 사용자 몫이에요(HOLD `guarded`: 실제 HOME, `PATH` 줄, `<home>/.moai-cli`). 이 판은 제품과 그 임시 HOME 시험을 써요. 사람이 기계에서 실행하는 일은 Plan 의 "User steps on the real machine" 에 적었고 여기의 요구는 아니에요. 카드 기준 2 는 AC-16~AC-22 가, 카드 기준 3 은 AC-19 와 사용자의 확인(D-9)이 채워요.
+
+## Interview
+
+The questions revision 6 put to the leader on the card (note 8333) and the leader's answers (note 8336, 2026-11-24T07:45:22Z, a leader judgment under the user's delegation of 2026-11-23T13:57Z and not the user's own pick):
+
+- Q1: Does the switch part end the routing script by a link, or is the part removed? -> A: by a link, for v1 and v2, with the saved copy, its own token and the revert (D-1)
+- Q2: Does the binary keep embedding the v2 script? -> A: no; the byte copies stay in the preview folder of the v2 SPEC (D-2)
+- Q3: Do AC-1 and AC-5 keep their revision 5 verify commands? -> A: no; AC-1 reads the preserved shim copy and AC-5 names this revision's paths against `NeXT` (D-3)
+- Q4: Is the probe of `install` that starts a `moai` a machine holds left as it is? -> A: yes; it is named as the one place a Go build can be started, with `--version` or `statusline --help` only (D-4)
+- Q5: Are `.mcp.json` entries that run `moai mcp-server` previewed in this revision? -> A: no; the user steps name the search and a read-only preview is a later SPEC (D-5)
+- Q6: Is revision 6 split into SPECs linked by `parent`? -> A: no; one SPEC with 22 requirements, and the checker's size warning is accepted as a decision (D-6)
+- Q7: Are `tests/diff_go.rs` and its fixture kept? -> A: no; both are deleted and the approved-differences list stays readable in history (D-7)
+- Q8: Does the statusline wrapper keep its Go fallback? -> A: no; it loses the fallback only, and the Python wrapper test is adjusted as text and is never run or cited as evidence (D-8)
+- Q9: What closes card criterion 3? -> A: the temporary-HOME run of AC-19; the user's look at a fresh shell on the real machine is a user step, recorded on the card after the landing (D-9)
 
 ## Non-goals
 
