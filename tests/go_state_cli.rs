@@ -3067,6 +3067,32 @@ fn the_revert_leaves_the_names_the_moai_folder_held_before_the_apply() {
     assert_eq!(again["layout"], json!("legacy_into_new"), "{again}");
 }
 
+/// B1 of the audit of the project state move: the receipt grows with every SPEC copy, so one
+/// above 256 KiB is a real receipt. Once reverted it is a finished undo, not a stopped move: the
+/// project reads as before the apply and the revert is not the only way out.
+#[test]
+fn a_reverted_receipt_above_256_kib_still_reads_as_a_finished_undo() {
+    let fx = kept_fixture();
+    let p = plan_picks(&fx, &[]);
+    let v = apply_picks(&fx, p["plan_digest"].as_str().unwrap(), &[]);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let rp = revert_plan(&fx, &backup);
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    // The receipt a project with about two thousand SPEC copies has, made by padding the real
+    // reverted receipt: the reader sees the same bytes without two thousand copies to make.
+    let (path, mut receipt) = receipt_of(&fx, &backup);
+    assert_eq!(receipt["state"], json!("reverted"), "{receipt}");
+    receipt["pad"] = json!("x".repeat(300 * 1024));
+    fs::write(&path, serde_json::to_vec(&receipt).unwrap()).unwrap();
+    let size = fs::metadata(&path).unwrap().len();
+    assert!(size > 256 * 1024, "the receipt is {size} bytes");
+    let again = plan_picks(&fx, &[]);
+    assert_eq!(again["layout"], json!("legacy_into_new"), "{again}");
+    assert_eq!(moves(&again), 1, "{again}");
+}
+
 /// REQ-7: an apply that stopped before the marker leaves a `pending` receipt; the revert of that
 /// receipt keeps the kept names too.
 #[test]
@@ -3160,6 +3186,66 @@ fn a_target_that_git_ignores_blocks_the_plan_until_the_rule_allows_it() {
     assert!(
         state_move(&p, ".moai-cli/state").get("tracked").is_none(),
         "{p}"
+    );
+}
+
+/// Audit of the project state move, non-blocking 1: an entry picked for the backup area goes
+/// where git ignores by design, so the team's `.gitignore` is not asked about a target whose
+/// stamp does not exist yet. The tracked count and a note that git sees the files leave remain.
+#[test]
+fn a_tracked_entry_set_aside_is_not_blocked_by_the_team_gitignore() {
+    let fx = kept_fixture();
+    fx.write(
+        ".gitignore",
+        "/.moai/*\n!/.moai/project.yaml\n!/.moai/specs/\n!/.moai/evals/\n!/.moai/manifests/\n!/.moai/moai.json\n",
+    );
+    git_here(&fx, &["init", "-q", "-b", "main"]);
+    git_here(&fx, &["add", "--", ".gitignore", ".moai-cli/project.yaml"]);
+    let p = plan_picks(&fx, &["project.yaml"]);
+    let aside = state_move(&p, ".moai-cli/project.yaml");
+    assert_eq!(aside["action"], json!("set-aside"), "{p}");
+    assert_eq!(aside["tracked"], json!(1), "{p}");
+    assert_eq!(action(&p, ".moai-cli").0, "move", "{p}");
+    let warnings = p["warnings"].to_string();
+    assert!(
+        warnings.contains("backup area") && warnings.contains(".moai-cli/project.yaml (1 tracked"),
+        "{warnings}"
+    );
+    assert!(!warnings.contains("19700101"), "{warnings}");
+    // Not picked, the same tracked entry stays a collision and is left; nothing is judged.
+    let p = plan_picks(&fx, &[]);
+    assert_eq!(
+        state_move(&p, ".moai-cli/project.yaml")["action"],
+        json!("leave"),
+        "{p}"
+    );
+    // A tracked entry that moves is still judged by the rules: the block stays.
+    git_here(&fx, &["add", "--", ".moai-cli/manifests/generation.json"]);
+    fx.write(
+        ".gitignore",
+        "/.moai/*\n!/.moai/project.yaml\n!/.moai/specs/\n!/.moai/evals/\n",
+    );
+    let p = plan_picks(&fx, &["project.yaml"]);
+    assert_eq!(moves(&p), 0, "{p}");
+    assert!(action(&p, ".moai-cli").1.contains(".moai/manifests"), "{p}");
+}
+
+/// Audit of the project state move, non-blocking 4: beside the kept names no new `.moai/` is
+/// made, and the plan says so. A project with no `.moai/` keeps the earlier words.
+#[test]
+fn the_plan_words_name_the_kept_names_and_not_a_new_moai() {
+    let fx = kept_fixture();
+    let p = plan_picks(&fx, &[]);
+    let (act, reason) = action(&p, ".moai-cli");
+    assert_eq!(act, "move", "{p}");
+    assert!(
+        reason.contains("beside the kept names") && !reason.contains("a new .moai/"),
+        "{reason}"
+    );
+    let warnings = p["warnings"].to_string();
+    assert!(
+        warnings.contains("no new .moai/ is made") && !warnings.contains("a new .moai/ is made"),
+        "{warnings}"
     );
 }
 

@@ -959,7 +959,9 @@ enum Command {
     /// Undo a Go-era folder move
     ///
     /// Undo one go-state apply (#2561, #2696): the new `.moai/` is set aside as
-    /// `.moai.rust-<UTC>` and the Go backup becomes `.moai` again. Nothing is written when
+    /// `.moai.rust-<UTC>` and the Go backup becomes `.moai` again. A move made beside the kept
+    /// names of an existing `.moai/` has no Go backup: its entries go back to the earlier root
+    /// and that `.moai/` stays with every name it held, nothing set aside. Nothing is written when
     /// anything came back at an original path or a backup changed: that refuses the revert
     /// before anything is written. If a write stops part-way, that is recorded; run the
     /// revert again to continue.

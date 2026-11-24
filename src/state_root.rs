@@ -77,6 +77,11 @@ pub const EARLIER_PROJECT_DIR: &str = crate::PROJECT_STATE_DIR;
 pub const GO_BACKUP: &str = ".moai-backup";
 /// The receipt a `go-state-apply` that moved the Go folder keeps under `.moai/backups/<UTC>/`.
 pub const GO_STATE_RECEIPT: &str = "go-state-receipt.json";
+/// The one size limit of a go-state receipt: the go-state apply refuses to save a receipt above
+/// it and the revert and the state reader here read up to it. A project with 1,319 restored SPEC
+/// copies has a receipt of 262,362 bytes and the receipt grows with every copy, so a limit of
+/// 256 KiB would read a finished revert as a stopped one.
+pub const GO_STATE_RECEIPT_MAX: u64 = 16 * 1024 * 1024;
 /// Markers are small JSON objects; anything larger is not one.
 const MARKER_LIMIT: u64 = 64 * 1024;
 /// `system.yaml` is a few KiB; a larger file is not read for the version key.
@@ -368,15 +373,24 @@ fn holds_go_state_receipt(moai: &Path) -> bool {
 }
 
 /// A receipt whose `state` says `reverted` is a finished undo: it no longer marks a migration
-/// stopped midway. A receipt that cannot be read or is too large counts as still open.
+/// stopped midway. A receipt that cannot be read or is above [`GO_STATE_RECEIPT_MAX`] counts as
+/// still open. The read stops one byte past the limit, so a file that grew after a size check
+/// is never read whole.
 fn receipt_reverted(path: &Path) -> bool {
-    const LIMIT: u64 = 256 * 1024;
-    fs::metadata(path)
-        .ok()
-        .filter(|m| m.len() <= LIMIT)
-        .and_then(|_| fs::read(path).ok())
-        .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
-        .is_some_and(|v| v["state"] == "reverted")
+    use std::io::Read;
+    let Ok(file) = fs::File::open(path) else {
+        return false;
+    };
+    let mut bytes = Vec::new();
+    if file
+        .take(GO_STATE_RECEIPT_MAX + 1)
+        .read_to_end(&mut bytes)
+        .is_err()
+        || bytes.len() as u64 > GO_STATE_RECEIPT_MAX
+    {
+        return false;
+    }
+    serde_json::from_slice::<Value>(&bytes).is_ok_and(|v| v["state"] == "reverted")
 }
 
 /// Classify `root/.moai` (design 6854765655 §2). Reads only. A project's `.moai/` that holds
@@ -1061,6 +1075,49 @@ mod tests {
             write(r, ".moai/moai-cli.json", MARKER_V1);
         });
         assert_eq!(c.generation, "rust");
+    }
+
+    /// A receipt of exactly `size` bytes whose `state` is `state`.
+    fn receipt_of(state: &str, size: u64) -> String {
+        let head = format!(r#"{{"state":"{state}","pad":""#);
+        let tail = "\"}";
+        let fill = size as usize - head.len() - tail.len();
+        format!("{head}{}{tail}", "x".repeat(fill))
+    }
+
+    /// B1 of the audit of the project state move: a finished undo leaves a `reverted` receipt, and
+    /// a receipt grows with every restored SPEC copy (296,561 bytes for 2,000 of them). Its
+    /// `state` is read up to [`GO_STATE_RECEIPT_MAX`], pinned on both sides of the old 256 KiB
+    /// limit and of the real one; above the real one the receipt still counts as open.
+    #[test]
+    fn a_reverted_receipt_is_read_up_to_the_receipt_limit() {
+        const RECEIPT: &str = ".moai/backups/20261113T150000Z/go-state-receipt.json";
+        let old_limit = 256 * 1024;
+        for (size, finished) in [
+            (old_limit, true),
+            (old_limit + 1, true),
+            (296_561, true),
+            (GO_STATE_RECEIPT_MAX, true),
+            (GO_STATE_RECEIPT_MAX + 1, false),
+        ] {
+            let tmp = tempfile::tempdir().unwrap();
+            write(tmp.path(), RECEIPT, &receipt_of("reverted", size));
+            let path = tmp.path().join(RECEIPT);
+            assert_eq!(fs::metadata(&path).unwrap().len(), size);
+            assert_eq!(receipt_reverted(&path), finished, "{size} bytes");
+            // Beside kept names: a finished undo reads as before the move, an open one as stopped.
+            write(tmp.path(), ".moai/project.yaml", "name: p\n");
+            let c = classify(tmp.path());
+            let want = if finished { "none" } else { "interrupted" };
+            assert_eq!(c.generation, want, "{size} bytes beside a kept name");
+            assert_eq!(kept_only(&tmp.path().join(".moai")), finished, "{size}");
+        }
+        // The state decides, not the size: a large receipt that is not `reverted` stays open.
+        let tmp = tempfile::tempdir().unwrap();
+        write(tmp.path(), RECEIPT, &receipt_of("pending", 296_561));
+        assert!(!receipt_reverted(&tmp.path().join(RECEIPT)));
+        write(tmp.path(), ".moai/project.yaml", "name: p\n");
+        assert_eq!(classify(tmp.path()).generation, "interrupted");
     }
 
     #[test]
