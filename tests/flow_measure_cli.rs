@@ -259,6 +259,7 @@ fn a_card_line_reads_submit_verdict_and_done_by_the_definitions() {
     w.reservation(7, 1, "released", B, B + 2500);
     w.ready(7, 1, B + 100);
     w.verdict(7, false, &head_of(7, 1), B + 700);
+    w.verdict(7, false, &head_of(7, 1), B + 800);
     w.repaired(7, 2, B + 1000);
     // A leader note and a decision note that start with a marker are not hand-back notes.
     w.note(
@@ -288,7 +289,7 @@ fn a_card_line_reads_submit_verdict_and_done_by_the_definitions() {
     assert_eq!(c["done_at"], json!(B + 2500), "{c}");
     assert_eq!(c["submit_to_verdict_sec"], json!(600), "{c}");
     assert_eq!(c["pass_to_done_sec"], json!(900), "{c}");
-    assert_eq!(c["fail_count"], json!(1), "{c}");
+    assert_eq!(c["fail_count"], json!(2), "two fails and one pass: {c}");
     assert_eq!(c["auditor"], json!(AUDITOR), "{c}");
     assert_eq!(c["head"], json!(head_of(7, 2)), "{c}");
     assert_eq!(c["reservation"]["status"], json!("released"), "{c}");
