@@ -497,17 +497,29 @@ impl World {
         *self.git_bin.borrow_mut() = wrapper;
     }
 
-    /// A git wrapper that fails the real `read-tree` (the follow step; the dry run `-n` passes).
-    fn wrap_read_tree_failing(&self, name: &str) {
+    /// A git wrapper around `read-tree`: `dry` (shell text) runs for the dry run `-n` and may
+    /// exit; for the real run `before` runs first, then git, then `after`, and the real exit code
+    /// is returned. Every other git command runs as it is.
+    fn wrap_read_tree(&self, name: &str, dry: &str, before: &str, after: &str) {
         let wrapper = self.dir.path().join(name);
         common::write_executable(
             &wrapper,
             &format!(
-                "#!/bin/sh\nis_rt=0\ndry=0\nfor a in \"$@\"; do\n  [ \"$a\" = read-tree ] && is_rt=1\n  [ \"$a\" = -n ] && dry=1\ndone\nif [ $is_rt = 1 ] && [ $dry = 0 ]; then\n  echo 'fatal: the fixture made read-tree fail' >&2\n  exit 128\nfi\nexec '{git}' \"$@\"\n",
+                "#!/bin/sh\nis_rt=0\ndry=0\nfor a in \"$@\"; do\n  [ \"$a\" = read-tree ] && is_rt=1\n  [ \"$a\" = -n ] && dry=1\ndone\nif [ $is_rt = 1 ]; then\n  if [ $dry = 1 ]; then\n    {dry}\n  else\n    {before}\n    '{git}' \"$@\"\n    rc=$?\n    {after}\n    exit $rc\n  fi\nfi\nexec '{git}' \"$@\"\n",
                 git = git_executable().display(),
             ),
         );
         *self.git_bin.borrow_mut() = wrapper;
+    }
+
+    /// A git wrapper that fails the real `read-tree` (the follow step; the dry run passes).
+    fn wrap_read_tree_failing(&self, name: &str) {
+        self.wrap_read_tree(
+            name,
+            ":",
+            "echo 'fatal: the fixture made read-tree fail' >&2; exit 128",
+            ":",
+        );
     }
 
     /// A git wrapper that answers `rev-parse HEAD` with another commit.
@@ -897,5 +909,205 @@ fn a_rerun_leaves_a_worktree_alone_whose_index_matches_neither_commit() {
         "{got}"
     );
     assert_eq!(w.checkout(), staged, "the rerun touched the worktree");
+    assert_eq!(w.state(&card), "done");
+}
+
+// ---- the rest of the guards: each rule has a test that only it fails -----------------------------
+
+impl World {
+    /// A lane commit on the card's head that replaces the tracked file `a.txt` by a folder that
+    /// holds `a.txt/x`.
+    fn lane_replacing_a_file_by_a_folder(&self) -> String {
+        let blob_file = self.project.join("put-on-blob.tmp");
+        fs::write(&blob_file, "inside\n").unwrap();
+        let blob = git(&self.project, &["hash-object", "-w", "put-on-blob.tmp"]);
+        fs::remove_file(&blob_file).unwrap();
+        let index = self.project.join(".git/put-on-index");
+        let with_index = |args: &[&str]| -> String {
+            let out = common::git::command()
+                .arg("-C")
+                .arg(&self.project)
+                .args(args)
+                .env("GIT_INDEX_FILE", &index)
+                .output()
+                .unwrap();
+            assert!(
+                out.status.success(),
+                "git {args:?}: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        with_index(&["read-tree", &self.head]);
+        with_index(&["update-index", "--force-remove", "a.txt"]);
+        with_index(&[
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            &format!("100644,{blob},a.txt/x"),
+        ]);
+        let tree = with_index(&["write-tree"]);
+        fs::remove_file(&index).unwrap();
+        git(
+            &self.project,
+            &[
+                "commit-tree",
+                &tree,
+                "-p",
+                &self.head,
+                "-m",
+                &signed("the lane change", S_A),
+            ],
+        )
+    }
+}
+
+/// A tracked file the candidate deletes and replaces by a folder is no obstacle: git removes the
+/// file and the worktree follows.
+#[test]
+fn a_tracked_file_the_candidate_replaces_by_a_folder_follows() {
+    let w = World::new();
+    let card = w.review_card();
+    let lane = w.lane_replacing_a_file_by_a_folder();
+    let cand = w.join(&lane);
+    w.pass_of(&card, &cand);
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["worktree_follow"]["status"], json!("followed"), "{got}");
+    assert_eq!(
+        fs::read_to_string(w.project.join("a.txt/x")).unwrap(),
+        "inside\n"
+    );
+    assert_eq!(w.tracked_changes(), "");
+}
+
+/// A refusal of git's own dry run (a case the command's checks did not name) comes before the
+/// move and changes nothing.
+#[test]
+fn a_dry_run_that_git_refuses_stops_the_landing_before_the_move() {
+    let w = World::new();
+    let (card, cand) = w.ready_to_land();
+    w.wrap_read_tree(
+        "git-dry-run-fails",
+        "echo 'error: Entry not uptodate. Cannot merge.' >&2; exit 128",
+        ":",
+        ":",
+    );
+    let before = w.before();
+    let out = w.land(&card, &cand);
+    w.refuses(
+        &out,
+        &["git would refuse to bring", "Cannot merge"],
+        &before,
+        "a dry run that git refuses",
+    );
+}
+
+/// A `read-tree` that exits 0 and leaves the index where it was is not a follow: the step checks
+/// the index against the candidate and says the branch moved and the call can be run again.
+#[test]
+fn a_follow_that_leaves_the_index_behind_is_refused_after_the_move() {
+    let w = World::new();
+    let (card, cand) = w.ready_to_land();
+    w.wrap_read_tree("git-read-tree-does-nothing", ":", "exit 0", ":");
+    let out = w.land(&card, &cand);
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let message = envelope(&out)["error"]["message"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        message.contains("does not equal") && message.contains("run the same call again"),
+        "{message}"
+    );
+    assert_eq!(w.integ(), cand, "the branch moved");
+    assert_eq!(w.state(&card), "review");
+}
+
+/// A run killed after the follow, before the close: the rerun finds the index already at the new
+/// commit, follows nothing a second time and closes the card.
+#[test]
+fn a_run_killed_after_the_follow_closes_on_the_rerun_without_following_again() {
+    let w = World::new();
+    let (card, cand) = w.ready_to_land();
+    w.wrap_read_tree("git-kills-after-the-follow", ":", ":", "kill -9 $PPID");
+    let out = w.land(&card, &cand);
+    assert_ne!(out.status.code(), Some(0), "the lander was not killed");
+    assert_eq!(w.integ(), cand);
+    assert_eq!(w.tracked_changes(), "", "the follow had finished");
+    assert_eq!(w.events(&card, "card.landed"), 0);
+
+    w.plain_git();
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["worktree_follow"]["status"], json!("none"), "{got}");
+    assert_eq!(got["worktree_follow"]["note"], Value::Null, "{got}");
+    assert_eq!(w.state(&card), "done");
+    assert_eq!(landings_in_reflog(&w), 1);
+}
+
+/// A rerun refuses what a first run would refuse: a file that no commit tracks now stands at a
+/// path the candidate adds, or a tracked file was edited while the index lags.
+#[test]
+fn a_rerun_refuses_what_a_first_run_would_refuse() {
+    let w = World::new();
+    let (card, cand) = w.ready_to_land();
+    w.wrap_update_ref("git-kills-the-lander", "kill -9 $PPID");
+    let out = w.land(&card, &cand);
+    assert_ne!(out.status.code(), Some(0), "the lander was not killed");
+    w.plain_git();
+
+    // An untracked file at an added path.
+    fs::create_dir(w.project.join("notes")).unwrap();
+    fs::write(w.project.join("notes/x.md"), "mine\n").unwrap();
+    let before = w.checkout();
+    let out = w.land(&card, &cand);
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let message = envelope(&out)["error"]["message"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        message.contains("notes/x.md") && message.contains("run the same call again"),
+        "{message}"
+    );
+    assert_eq!(
+        w.checkout(),
+        before,
+        "the refused rerun touched the worktree"
+    );
+    assert_eq!(w.state(&card), "review");
+    fs::remove_file(w.project.join("notes/x.md")).unwrap();
+    fs::remove_dir(w.project.join("notes")).unwrap();
+
+    // A tracked file edited while the index lags.
+    fs::write(w.project.join("a.txt"), "edited\n").unwrap();
+    let before = w.checkout();
+    let out = w.land(&card, &cand);
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let message = envelope(&out)["error"]["message"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(message.contains("edited tracked files"), "{message}");
+    assert_eq!(w.checkout(), before);
+    fs::write(w.project.join("a.txt"), "a\n").unwrap();
+
+    // Nothing in the way any more: the same call finishes it.
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["worktree_follow"]["status"], json!("finished"), "{got}");
     assert_eq!(w.state(&card), "done");
 }

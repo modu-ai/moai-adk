@@ -460,7 +460,9 @@ pub fn rerun(
         )));
     }
     check_state(&tree, &tip, branch)?;
-    if !quiet(&tree, &["diff-files", "--quiet"])? {
+    // `git diff` compares content for an entry whose stat data differs (a file rewritten with the
+    // same bytes); the plumbing `diff-files` would call it changed and never refreshes.
+    if !quiet(&tree, &["diff", "--quiet", "--no-ext-diff"])? {
         return Err(refusal(
             format!(
                 "{} has edited tracked files, and its index still lags at {old}",
