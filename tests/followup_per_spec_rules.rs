@@ -86,5 +86,9 @@ fn recurrence_and_remote_failure_rules_use_existing_cards() {
         &provenance,
         "| Standing principles: recurring problems change the source",
     );
-    assert_has("the provenance row", &row, &["SPEC-20261124-followup-per-spec"]);
+    assert_has(
+        "the provenance row",
+        &row,
+        &["SPEC-20261124-followup-per-spec"],
+    );
 }
