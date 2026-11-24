@@ -131,10 +131,7 @@ fn assert_every_link_is_a_conflict(path: &str, roles: bool, projections: bool, f
         let f = file(&p, path);
         assert_eq!(f["action"], json!("conflict"), "{link}: {f}");
         assert!(
-            f["detail"]
-                .as_str()
-                .unwrap_or("")
-                .contains("symbolic link"),
+            f["detail"].as_str().unwrap_or("").contains("symbolic link"),
             "{link}: {f}"
         );
         let out = apply(r, &p);
@@ -157,13 +154,13 @@ fn assert_every_link_is_a_conflict(path: &str, roles: bool, projections: bool, f
     let f = file(&p, path);
     assert_eq!(f["action"], json!("conflict"), "file link: {f}");
     assert!(
-        f["detail"]
-            .as_str()
-            .unwrap_or("")
-            .contains("symbolic link"),
+        f["detail"].as_str().unwrap_or("").contains("symbolic link"),
         "file link: {f}"
     );
-    assert!(!apply(r, &p).status.success(), "file link: apply must refuse");
+    assert!(
+        !apply(r, &p).status.success(),
+        "file link: apply must refuse"
+    );
     assert_eq!(fs::read(&target).unwrap(), b"outside bytes\n");
 }
 
