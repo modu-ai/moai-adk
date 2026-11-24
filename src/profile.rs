@@ -54,6 +54,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("context_max_bytes", true),
     ("archive_grace_days", true),
     ("stale_draft_days", true),
+    ("lease_sweep_hours", true),
     ("language", true),
     ("detected", true),
     ("scopes", true),
@@ -142,6 +143,11 @@ pub struct Profile {
     /// this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stale_draft_days: Option<u64>,
+    /// How many hours a lease may be over before `moai card sweep` returns its card to
+    /// `ready` (SPEC-20261124-ended-lease-sweep). Absent means 24; 0 is refused. A profile
+    /// written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lease_sweep_hours: Option<u64>,
     /// Writing language per item (#2293): item id → language code, both checked against the
     /// tables in `crate::language`. Absent means no choice was recorded; a profile written
     /// before this key reads unchanged and the managed section renders as before.
@@ -505,6 +511,7 @@ fn validate(p: &Profile) -> Result<()> {
         || p.context_max_bytes == Some(0)
         || p.archive_grace_days == Some(0)
         || p.stale_draft_days == Some(0)
+        || p.lease_sweep_hours == Some(0)
     {
         return Err("invalid or nonportable profile; no values were logged".into());
     }
@@ -1444,6 +1451,7 @@ mod tests {
             context_max_bytes: None,
             archive_grace_days: None,
             stale_draft_days: None,
+            lease_sweep_hours: None,
             language: None,
             detected: None,
             scopes: None,
@@ -1510,6 +1518,7 @@ mod tests {
             context_max_bytes: Some(1),
             archive_grace_days: Some(7),
             stale_draft_days: Some(14),
+            lease_sweep_hours: Some(24),
             language: Some([("code_comments".to_string(), "en".to_string())].into()),
             detected: Some(crate::project_detect::Detected {
                 project_kind: "new".into(),
@@ -1580,6 +1589,7 @@ mod tests {
                 "context_max_bytes",
                 "archive_grace_days",
                 "stale_draft_days",
+                "lease_sweep_hours",
                 "language",
                 "detected",
                 "scopes",

@@ -702,6 +702,40 @@ pub fn reserve(
         lease_secs,
         worktree,
         branch,
+        None,
+    )
+}
+
+/// [`reserve`] that first sweeps the card when it is `active` and its `held` lease ended at least
+/// `grace_secs` ago (SPEC-20261124-ended-lease-sweep REQ-12): the sweep and the take are one
+/// transaction. A card whose lease is inside the grace period, or that is not `active`, is judged
+/// as [`reserve`] judges it. A take that the scope check refuses after a sweep leaves the card
+/// swept: it is `ready`, which is what it is.
+#[allow(clippy::too_many_arguments)]
+pub fn reserve_sweeping(
+    w: &mut WriteLedger,
+    card_id: i64,
+    holder: &str,
+    write_scope: &[String],
+    lease_secs: i64,
+    worktree: Option<&str>,
+    branch: Option<&str>,
+    grace_secs: i64,
+) -> Result<Reservation, ReserveError> {
+    check_holder(holder).map_err(ReserveError::InvalidInput)?;
+    check_lease(lease_secs).map_err(ReserveError::InvalidInput)?;
+    check_optional("worktree", worktree).map_err(ReserveError::InvalidInput)?;
+    check_optional("branch", branch).map_err(ReserveError::InvalidInput)?;
+    let scope = check_scope(write_scope)?;
+    reserve_in_tx(
+        w,
+        card_id,
+        holder,
+        Some(scope),
+        lease_secs,
+        worktree,
+        branch,
+        Some(grace_secs),
     )
 }
 
@@ -722,11 +756,39 @@ pub fn reserve_own_scope(
     check_lease(lease_secs).map_err(ReserveError::InvalidInput)?;
     check_optional("worktree", worktree).map_err(ReserveError::InvalidInput)?;
     check_optional("branch", branch).map_err(ReserveError::InvalidInput)?;
-    reserve_in_tx(w, card_id, holder, None, lease_secs, worktree, branch)
+    reserve_in_tx(w, card_id, holder, None, lease_secs, worktree, branch, None)
+}
+
+/// [`reserve_own_scope`] that sweeps first, as [`reserve_sweeping`] does.
+pub fn reserve_own_scope_sweeping(
+    w: &mut WriteLedger,
+    card_id: i64,
+    holder: &str,
+    lease_secs: i64,
+    worktree: Option<&str>,
+    branch: Option<&str>,
+    grace_secs: i64,
+) -> Result<Reservation, ReserveError> {
+    check_holder(holder).map_err(ReserveError::InvalidInput)?;
+    check_lease(lease_secs).map_err(ReserveError::InvalidInput)?;
+    check_optional("worktree", worktree).map_err(ReserveError::InvalidInput)?;
+    check_optional("branch", branch).map_err(ReserveError::InvalidInput)?;
+    reserve_in_tx(
+        w,
+        card_id,
+        holder,
+        None,
+        lease_secs,
+        worktree,
+        branch,
+        Some(grace_secs),
+    )
 }
 
 /// The transaction of [`reserve`] and [`reserve_own_scope`]: `scope` is the checked scope the
-/// caller gave, or `None` for the card's own, read here.
+/// caller gave, or `None` for the card's own, read here. With `sweep_grace_secs` an `active`
+/// card whose `held` lease ended at least that long ago is swept first, in this transaction.
+#[allow(clippy::too_many_arguments)]
 fn reserve_in_tx(
     w: &mut WriteLedger,
     card_id: i64,
@@ -735,11 +797,24 @@ fn reserve_in_tx(
     lease_secs: i64,
     worktree: Option<&str>,
     branch: Option<&str>,
+    sweep_grace_secs: Option<i64>,
 ) -> Result<Reservation, ReserveError> {
     w.with_write_tx(|tx, now| {
-        let Some((state, generation)) = card_row(tx, card_id)? else {
+        let Some((mut state, generation)) = card_row(tx, card_id)? else {
             return Ok(Err(ReserveError::CardNotFound(card_id)));
         };
+        if let (Some(grace), "active") = (sweep_grace_secs, state.as_str()) {
+            let signed = super::sweep::Signed {
+                by: "take",
+                actor: holder,
+                note_author: holder,
+            };
+            // A card left as it is (inside the grace period, renewed, in another state) falls
+            // through to the refusals below.
+            if super::sweep::sweep_in_tx(tx, now, card_id, None, grace, &signed)?.is_ok() {
+                state = "ready".to_string();
+            }
+        }
         let scope = match scope {
             Some(scope) => scope,
             None => {

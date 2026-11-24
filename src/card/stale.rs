@@ -9,6 +9,7 @@
 use super::input;
 use super::landed::Proof;
 use crate::ledger::close::StaleFacts;
+use crate::ledger::sweep::past_grace;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -62,9 +63,23 @@ fn row(
     })
 }
 
+/// The command that returns a card whose lease ended long ago to `ready`
+/// (SPEC-20261124-ended-lease-sweep).
+fn sweep_command(name: &str) -> String {
+    format!("moai card sweep {name} --by leader")
+}
+
 /// The rows of `stale`, ordered by card. `proofs` are the landing proofs of `landed::find` and
 /// `now` is the DB clock of the read; a draft is listed when [`is_old_draft`] says so for `days`.
-pub fn rows(facts: &StaleFacts, proofs: &BTreeMap<i64, Proof>, now: i64, days: u64) -> Vec<Value> {
+/// A card whose lease ended at least `grace_secs` ago is closed by a sweep, not by a withdraw: its
+/// work is not abandoned, only its holder is gone.
+pub fn rows(
+    facts: &StaleFacts,
+    proofs: &BTreeMap<i64, Proof>,
+    now: i64,
+    days: u64,
+    grace_secs: i64,
+) -> Vec<Value> {
     let mut out: BTreeMap<i64, Value> = BTreeMap::new();
     for c in &facts.open {
         let Some(proof) = proofs.get(&c.card_id) else {
@@ -93,13 +108,20 @@ pub fn rows(facts: &StaleFacts, proofs: &BTreeMap<i64, Proof>, now: i64, days: u
         out.entry(c.card_id).or_insert(v);
     }
     for c in &facts.lease_ended {
+        let name = input::card_name(c.card_id);
+        // Only an `active` card is swept; a card in `review` keeps the withdraw it had.
+        let command = if c.state == "active" && past_grace(c.lease_until, grace_secs, now) {
+            sweep_command(&name)
+        } else {
+            withdraw_command(&name)
+        };
         let mut v = row(
             c.card_id,
             &c.title,
             &c.state,
             &c.priority,
             "lease_ended",
-            withdraw_command(&input::card_name(c.card_id)),
+            command,
         );
         merge(
             &mut v,
