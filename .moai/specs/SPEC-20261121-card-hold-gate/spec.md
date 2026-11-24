@@ -1,8 +1,9 @@
 ---
 id: SPEC-20261121-card-hold-gate
 title: "A structured HOLD and prerequisite on a card are read by card next and card take before any reservation or worktree, and nothing lifts a HOLD by itself"
-status: draft
+status: approved
 revision: 2
+approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8280 of card C-261 (answers lane note 8279, 2026-11-24T06:22:35Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 2 at head f3cdb5537f", digest: "sha256:2ba1296e4d1e48a1f1547676f2bb2e1a99ceae0cc77f6969907ac0b0b31116c4"}
 created: 2026-11-21
 ---
 
