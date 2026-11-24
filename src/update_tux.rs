@@ -143,6 +143,7 @@ enum W {
     GoWaiting,
     SessionChecks,
     Changed,
+    KeptMine,
     Linked,
     Cleanup,
     Archive,
@@ -502,6 +503,13 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "바뀜"
             } else {
                 "changed"
+            }
+        }
+        KeptMine => {
+            if ko {
+                "내 것 유지"
+            } else {
+                "kept"
             }
         }
         Linked => {
@@ -2051,6 +2059,25 @@ fn applied(v: &Value, view: &View) -> String {
                     Mark::Ok,
                     label,
                     format!("{} {}", count(lang, n), w(lang, W::Changed)),
+                ));
+            }
+            // SPEC-20261124-update-flat-agent-ownership REQ-10: a file of the person's was kept
+            // (a flat agent file that is not ours): what was written, what was kept, and the run
+            // ends partly applied.
+            Some("partial") => {
+                bad = true;
+                let n = r["written"].as_array().map_or(0, Vec::len);
+                let kept = r["kept"].as_array().map_or(0, Vec::len);
+                total += n;
+                rows.push(row(
+                    Mark::Warn,
+                    label,
+                    format!(
+                        "{} {} · {}",
+                        count(lang, n),
+                        w(lang, W::Changed),
+                        counted(lang, W::KeptMine, kept)
+                    ),
                 ));
             }
             Some("unchanged") | None => {}

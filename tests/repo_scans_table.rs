@@ -31,6 +31,10 @@ const ROOT: &str = env!("CARGO_MANIFEST_DIR");
 
 /// Files the heuristic flags that only walk temporary directories or named files.
 const EXEMPT: &[(&str, &str)] = &[
+    (
+        "tests/agents_flat_ownership.rs",
+        "read_dir of temporary homes (the install tree before and after); reads the named skills/moai package files and no other checked-in tree",
+    ),
     ("tests/atlas_query_cli.rs", "walks the TempDir tree it built from named atlas fixtures"),
     (
         "tests/audit_prep_cli.rs",
