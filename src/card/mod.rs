@@ -40,6 +40,7 @@ pub mod ready_receipt;
 pub mod remote_copy;
 pub mod roles;
 pub mod spec_link;
+pub mod stale;
 pub mod take_scope;
 pub mod timeline;
 pub mod verdict;

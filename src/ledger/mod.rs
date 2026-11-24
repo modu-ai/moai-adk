@@ -15,6 +15,7 @@
 
 pub mod adopt;
 pub mod cleanup_outbox;
+pub mod close;
 pub mod command;
 pub mod folders;
 pub mod import;
