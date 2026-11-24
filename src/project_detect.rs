@@ -376,6 +376,8 @@ pub const MAX_DEPTH: usize = 3;
 pub const MAX_ENTRIES: usize = 5000;
 /// Largest manifest or configuration file read.
 const MAX_FILE: u64 = 256 * 1024;
+/// Most bytes of `.gitignore` files below the root one manifest walk reads in all.
+const MAX_IGNORE_TOTAL: u64 = 4 * MAX_FILE;
 /// Largest list kept in `detected`.
 const MAX_ITEMS: usize = 64;
 
@@ -414,10 +416,12 @@ pub(crate) fn is_file_in(root: &Path, parts: &[&str]) -> bool {
     file_in(root, parts).is_some()
 }
 
-/// A name that may be recorded: short, printable, no path separators, no spaces.
+/// A name that may be recorded: short, printable, no path separators, no spaces, and not dots
+/// alone (`.` and `..` name a folder step, never a file, language or tool).
 fn recordable(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= 80
+        && !name.bytes().all(|b| b == b'.')
         && name
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'@'))
@@ -639,7 +643,8 @@ fn root_ignore_lines(root: &Path) -> Vec<IgnoreLine> {
 /// The manifests a walk found and whether it read every folder it meant to.
 pub(crate) struct ManifestWalk {
     pub found: BTreeSet<String>,
-    /// False when the walk stopped at [`MAX_ENTRIES`] folder entries.
+    /// False when the walk stopped at [`MAX_ENTRIES`] folder entries or could not read a folder
+    /// or an entry of one.
     pub complete: bool,
 }
 
@@ -650,23 +655,46 @@ pub(crate) struct ManifestWalk {
 /// package is reached. Folders whose name starts with a dot (tool, cache and backup state), the
 /// catalog's folder names and folders the ignore lists exclude are never entered; a manifest
 /// file at the root is listed whatever the ignore lists say. An ignore list that cannot be read
-/// (a link, over [`MAX_FILE`], not UTF-8) counts as no lines, so that failure can only read
-/// more, never less. The `seen` budget mirrors the code walk's [`MAX_ENTRIES`].
+/// (a link, over [`MAX_FILE`], not UTF-8, past the [`MAX_IGNORE_TOTAL`] the walk reads in all)
+/// counts as no lines, so that failure can only read more, never less. A folder or an entry
+/// the walk cannot read is left out and the walk is not complete. The `seen` budget mirrors the
+/// code walk's [`MAX_ENTRIES`].
 pub(crate) fn walk_manifests(root: &Path, catalog: &Catalog) -> ManifestWalk {
     let mut found = BTreeSet::new();
     let mut seen = 0usize;
+    let mut unreadable = false;
+    let mut ignore_budget = MAX_IGNORE_TOTAL;
     let top = Rc::new(IgnoreNode {
         base: 0,
         lines: root_ignore_lines(root),
         parent: None,
     });
+    // Each queued folder holds the list chain of its parent; its own list is read when the
+    // folder is taken from the queue, so only the lists of folders being walked are in memory.
     let mut queue: VecDeque<(PathBuf, Vec<String>, Rc<IgnoreNode>)> =
         VecDeque::from([(root.to_path_buf(), Vec::new(), top)]);
-    while let Some((dir, rel, ignores)) = queue.pop_front() {
+    while let Some((dir, rel, parent)) = queue.pop_front() {
+        let ignores = if rel.is_empty() {
+            parent
+        } else {
+            Rc::new(IgnoreNode {
+                base: rel.len(),
+                lines: budgeted_ignore_lines(&dir, &mut ignore_budget),
+                parent: Some(parent),
+            })
+        };
         let Ok(entries) = fs::read_dir(&dir) else {
+            unreadable = true;
             continue;
         };
-        let mut entries: Vec<_> = entries.flatten().collect();
+        let mut entries: Vec<_> = entries
+            .filter_map(|e| {
+                if e.is_err() {
+                    unreadable = true;
+                }
+                e.ok()
+            })
+            .collect();
         entries.sort_by_key(|e| e.file_name());
         for entry in entries {
             seen += 1;
@@ -677,6 +705,7 @@ pub(crate) fn walk_manifests(root: &Path, catalog: &Catalog) -> ManifestWalk {
                 };
             }
             let Ok(kind) = entry.file_type() else {
+                unreadable = true;
                 continue;
             };
             let name = entry.file_name();
@@ -693,14 +722,7 @@ pub(crate) fn walk_manifests(root: &Path, catalog: &Catalog) -> ManifestWalk {
                     continue;
                 }
                 if rel.len() < MAX_DEPTH {
-                    let own = Rc::new(IgnoreNode {
-                        base: parts.len(),
-                        lines: read_in(&dir, &[&name, ".gitignore"])
-                            .map(|t| ignore_lines(&t))
-                            .unwrap_or_default(),
-                        parent: Some(Rc::clone(&ignores)),
-                    });
-                    queue.push_back((entry.path(), parts, own));
+                    queue.push_back((entry.path(), parts, Rc::clone(&ignores)));
                 }
             } else if kind.is_file()
                 && catalog.row_for(&name).is_some()
@@ -712,8 +734,26 @@ pub(crate) fn walk_manifests(root: &Path, catalog: &Catalog) -> ManifestWalk {
     }
     ManifestWalk {
         found,
-        complete: true,
+        complete: !unreadable,
     }
+}
+
+/// The lines of the `.gitignore` in `dir`, counted against `budget` (the bytes of ignore lists
+/// still allowed, at most [`MAX_IGNORE_TOTAL`] for one walk). A list that cannot be read, is
+/// over [`MAX_FILE`] or would pass the budget counts as no lines, so that can only let more
+/// manifests in, never hide one.
+fn budgeted_ignore_lines(dir: &Path, budget: &mut u64) -> Vec<IgnoreLine> {
+    let Some((path, meta)) = file_in(dir, &[".gitignore"]) else {
+        return Vec::new();
+    };
+    if meta.len() > MAX_FILE || meta.len() > *budget {
+        return Vec::new();
+    }
+    let Ok(text) = fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    *budget -= meta.len();
+    ignore_lines(&text)
 }
 
 /// [`walk_manifests`] over the project's own catalog, for callers that need the paths alone.
