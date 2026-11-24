@@ -489,3 +489,237 @@ fn show_carries_the_hold_and_the_unfinished_prerequisites() {
     f.close(first);
     assert_eq!(f.show(id)["prerequisites"], json!([]));
 }
+
+// ---- the commands ------------------------------------------------------------------------------
+
+impl Fixture {
+    fn cli(&self, args: &[&str]) -> Output {
+        let mut full: Vec<&str> = args.to_vec();
+        full.extend_from_slice(&["--project", &self.project]);
+        as_session(&self.home, &full)
+    }
+
+    fn note(&self, card_id: i64, text: &str) -> Value {
+        result(&run_with_stdin(
+            &self.home,
+            &[
+                "card",
+                "note",
+                &format!("C-{card_id}"),
+                "--kind",
+                "comment",
+                "--project",
+                &self.project,
+            ],
+            text,
+        ))
+    }
+}
+
+#[test]
+fn card_hold_takes_each_category_and_refuses_a_bad_one_writing_nothing() {
+    let f = Fixture::new();
+    for (i, category) in CATEGORIES.iter().enumerate() {
+        let id = f.card(&format!("src/c{i}.rs"));
+        let answer = result(&f.cli(&[
+            "card",
+            "hold",
+            &format!("C-{id}"),
+            "--category",
+            category,
+            "--reason",
+            "why",
+            "--by",
+            "leader",
+        ]));
+        assert_eq!(answer["category"], json!(category), "{answer}");
+        assert_eq!(f.show(id)["hold"]["category"], json!(category));
+    }
+    let id = f.card("src/z.rs");
+    let events = f.count("SELECT count(*) FROM event");
+    let message = refusal(&f.cli(&[
+        "card",
+        "hold",
+        &format!("C-{id}"),
+        "--category",
+        "mood",
+        "--reason",
+        "why",
+        "--by",
+        "leader",
+    ]));
+    assert!(message.starts_with("card hold refused: "), "{message}");
+    assert!(message.contains("external_contract"), "{message}");
+    assert_eq!(f.count("SELECT count(*) FROM event"), events);
+}
+
+#[test]
+fn card_unhold_lifts_only_a_hold_in_force_and_the_card_is_offered_again() {
+    let f = Fixture::new();
+    let id = f.card("src/a.rs");
+    let name = format!("C-{id}");
+    let unhold = [
+        "card",
+        "unhold",
+        name.as_str(),
+        "--reason",
+        "decided",
+        "--by",
+        "leader",
+    ];
+    let message = refusal(&f.cli(&unhold));
+    assert!(message.starts_with("card unhold refused: "), "{message}");
+
+    result(&f.cli(&[
+        "card",
+        "hold",
+        &name,
+        "--category",
+        "money",
+        "--reason",
+        "budget",
+        "--by",
+        "leader",
+    ]));
+    assert_eq!(f.next()["next"], Value::Null);
+    result(&f.cli(&unhold));
+    assert_eq!(f.next()["next"], json!(name));
+    assert_eq!(f.show(id)["hold"], Value::Null);
+}
+
+#[test]
+fn card_prereq_adds_one_link_once_and_refuses_a_self_need_and_a_cycle() {
+    let f = Fixture::new();
+    let a = f.card("src/a.rs");
+    let b = f.card("src/b.rs");
+    let (na, nb) = (format!("C-{a}"), format!("C-{b}"));
+    let prereq = |card: &str, needs: &str| {
+        f.cli(&["card", "prereq", card, "--needs", needs, "--by", "leader"])
+    };
+    let first = result(&prereq(&na, &nb));
+    assert_eq!(first["created"], json!(true), "{first}");
+    let again = result(&prereq(&na, &nb));
+    assert_eq!(again["created"], json!(false), "{again}");
+    assert_eq!(again["writes"], json!(false), "{again}");
+    assert_eq!(
+        f.count("SELECT count(*) FROM card_link WHERE kind = 'blocks'"),
+        1
+    );
+
+    assert!(refusal(&prereq(&na, &na)).contains("cannot need itself"));
+    assert!(refusal(&prereq(&nb, &na)).contains("wait for each other"));
+    assert_eq!(
+        f.count("SELECT count(*) FROM card_link WHERE kind = 'blocks'"),
+        1
+    );
+    assert_eq!(f.show(a)["prerequisites"], json!([nb]));
+}
+
+#[test]
+fn hold_candidates_lists_free_text_holds_read_only_until_a_person_moves_one() {
+    let f = Fixture::new();
+    let in_body = {
+        let added = result(&run(
+            &f.home,
+            &[
+                "card",
+                "add",
+                "--title",
+                "t",
+                "--scope",
+                "src/a.rs",
+                "--ac",
+                "ok",
+                "--body",
+                "line one\nHOLD: waiting for the contract",
+                "--project",
+                &f.project,
+            ],
+        ));
+        let name = added["name"].as_str().unwrap().to_string();
+        result(&run(
+            &f.home,
+            &["card", "ready", &name, "--project", &f.project],
+        ));
+        added["card_id"].as_i64().unwrap()
+    };
+    let in_note = f.card("src/b.rs");
+    let clean = f.card("src/c.rs");
+    let lowercase = f.card("src/d.rs");
+    f.note(in_note, "earlier note\n");
+    let note = f.note(in_note, "status\nHOLD: user said wait\n");
+    let note_id = note["note_id"].as_i64().unwrap();
+    f.note(
+        lowercase,
+        "we may hold this and hold it again; HOLDS and NO_HOLD are not it\n",
+    );
+    let before = f.home.snapshot();
+
+    let listed = result(&f.cli(&["card", "hold-candidates"]));
+    assert_eq!(f.home.snapshot(), before, "the command wrote something");
+    assert_eq!(listed["writes"], json!(false), "{listed}");
+    assert_eq!(listed["count"], json!(2), "{listed}");
+    let rows = listed["candidates"].as_array().unwrap();
+    assert_eq!(rows[0]["card_id"], json!(in_body), "{listed}");
+    assert_eq!(rows[0]["source"], json!("body"), "{listed}");
+    assert_eq!(
+        rows[0]["quote"],
+        json!("HOLD: waiting for the contract"),
+        "{listed}"
+    );
+    assert_eq!(rows[1]["card_id"], json!(in_note), "{listed}");
+    assert_eq!(rows[1]["note_id"], json!(note_id), "{listed}");
+    assert_eq!(rows[1]["quote"], json!("HOLD: user said wait"), "{listed}");
+    assert!(
+        rows.iter().all(|r| r["card_id"] != json!(clean)),
+        "{listed}"
+    );
+
+    // Until a person moves one, next and take treat both as before.
+    let next = f.next();
+    let ready = names(&next["ready"]);
+    assert!(ready.contains(&format!("C-{in_body}")), "{next}");
+    assert!(ready.contains(&format!("C-{in_note}")), "{next}");
+
+    result(&f.cli(&[
+        "card",
+        "hold",
+        &format!("C-{in_body}"),
+        "--category",
+        "external_contract",
+        "--reason",
+        "from the candidate list",
+        "--by",
+        "leader",
+    ]));
+    let listed = result(&f.cli(&["card", "hold-candidates"]));
+    assert_eq!(listed["count"], json!(1), "{listed}");
+    assert_eq!(
+        listed["candidates"][0]["card_id"],
+        json!(in_note),
+        "{listed}"
+    );
+    let next = f.next();
+    assert!(
+        !names(&next["ready"]).contains(&format!("C-{in_body}")),
+        "{next}"
+    );
+    assert_eq!(skipped(&next, in_body)["reason"], json!("hold"), "{next}");
+}
+
+#[test]
+fn guidance_tells_a_lane_to_read_hold_and_prerequisites_before_it_creates_a_worktree() {
+    let work = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/work.md"),
+    )
+    .unwrap();
+    for phrase in [
+        "Read the HOLD and the prerequisites of a card before you create a worktree for it",
+        "the reason `hold` or `prerequisite`",
+        "`moai card show` carries a `hold`",
+        "gets no worktree",
+        "only a person runs `moai card unhold`",
+    ] {
+        assert!(work.contains(phrase), "{phrase} missing in work.md");
+    }
+}
