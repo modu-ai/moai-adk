@@ -1010,6 +1010,15 @@ fn a_baseline_line_that_names_nothing_is_refused() {
 
 const DETAIL: &str = "HOME-GUARD-DETAIL:";
 
+/// The state folder of the wrapper's decoys, taken from the resolver's constant so that this file
+/// spells no state folder name (tests/state_folder_literal_scan.rs).
+const STATE: &str = moai_cli::home_root::MOAI_DIR;
+
+/// The decoy a hit or a peer is named by, relative to a HOME.
+fn decoy_rel() -> String {
+    format!("{STATE}/user-assets.json")
+}
+
 fn detail_lines(log: &Path) -> Vec<String> {
     fs::read_to_string(log)
         .unwrap_or_default()
@@ -1103,7 +1112,7 @@ fn a_touched_verdict_writes_one_detail_line_per_hit_entry() {
     }
     let read = hits
         .iter()
-        .find(|l| field(l, "path") == Some(".moai/user-assets.json"))
+        .find(|l| field(l, "path") == Some(decoy_rel().as_str()))
         .unwrap_or_else(|| panic!("the decoy read is not named: {hits:#?}"));
     // The read came after the reference file was made and before the comparison.
     let (r, a, e) = (
@@ -1124,18 +1133,18 @@ fn a_touched_verdict_writes_one_detail_line_per_hit_entry() {
 fn another_guard_folder_is_named_by_its_access_time_and_never_opened() {
     let g = Guard::new();
     let peer = g.tmp.path().join("moai-test-home.PEER01");
-    fs::create_dir_all(peer.join(".moai")).unwrap();
-    let file = peer.join(".moai/user-assets.json");
+    fs::create_dir_all(peer.join(STATE)).unwrap();
+    let file = peer.join(decoy_rel());
     fs::write(&file, "").unwrap();
     let old = Command::new("touch")
         .args(["-a", "-t", "200001010000"])
-        .args([&file, &peer.join(".moai"), &peer])
+        .args([&file, &peer.join(STATE), &peer])
         .status()
         .unwrap();
     assert!(old.success());
     let before = [
         accessed(&file),
-        accessed(&peer.join(".moai")),
+        accessed(&peer.join(STATE)),
         accessed(&peer),
     ];
     let logs = TempDir::new().unwrap();
@@ -1161,7 +1170,7 @@ fn another_guard_folder_is_named_by_its_access_time_and_never_opened() {
     );
     let after = [
         accessed(&file),
-        accessed(&peer.join(".moai")),
+        accessed(&peer.join(STATE)),
         accessed(&peer),
     ];
     assert_eq!(
@@ -1201,7 +1210,8 @@ fn the_detail_lines_hold_relative_paths_and_no_argument() {
         .filter(|l| field(l, "kind") == Some("hit"))
         .filter_map(|l| field(l, "path"))
         .collect();
-    for want in [".", ".moai", ".moai/user-assets.json"] {
+    let decoy = decoy_rel();
+    for want in [".", STATE, decoy.as_str()] {
         assert!(paths.contains(&want), "{want} is missing in {paths:?}");
     }
     assert!(paths.iter().all(|p| !p.starts_with('/')), "{paths:?}");
@@ -1321,8 +1331,10 @@ fn the_log_variable_reaches_the_wrapper_through_nextest() {
     );
     let lines = detail_lines(&log);
     assert!(
-        lines.iter().any(|l| field(l, "kind") == Some("hit")
-            && field(l, "path") == Some(".moai/user-assets.json")),
+        lines
+            .iter()
+            .any(|l| field(l, "kind") == Some("hit")
+                && field(l, "path") == Some(decoy_rel().as_str())),
         "the log has no detail line: {}",
         fs::read_to_string(&log).unwrap_or_default()
     );
