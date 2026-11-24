@@ -186,6 +186,46 @@ impl World {
         );
     }
 
+    /// A verdict as a card note, the shape the audit leaves: `AUDIT #<card> (x) head <head> base
+    /// <base> — verdict: <word>` as the first line.
+    fn audit_note(&self, card: i64, author: &str, head: &str, word: &str) {
+        self.note(
+            card,
+            author,
+            &format!("AUDIT #{card} (x) head {head} base {BASE} — verdict: {word}\nread and ran"),
+        );
+    }
+
+    /// An empty commit on the current branch; its full id.
+    fn commit(&self, message: &str) -> String {
+        git(
+            &self.project,
+            &[
+                "-c",
+                "user.name=tester",
+                "-c",
+                "user.email=tester@example.invalid",
+                "commit",
+                "--allow-empty",
+                "-q",
+                "-m",
+                message,
+            ],
+        );
+        git(&self.project, &["rev-parse", "HEAD"]).trim().to_string()
+    }
+
+    /// The m-flow profile whose integration branch is `integ`.
+    fn mflow_profile(&self) {
+        let cfg = self.project.join(".moai-cli/project.yaml");
+        fs::create_dir_all(cfg.parent().unwrap()).unwrap();
+        fs::write(
+            &cfg,
+            br#"{"schema_version": 1, "project_id": "demo", "purpose": "fixture", "tools": ["rust"], "development_methods": ["sdd"], "hosts": ["claude"], "work_flow": {"flow": "m-flow", "integration_branch": "integ"}}"#,
+        )
+        .unwrap();
+    }
+
     fn agents_file(&self, body: &Value) -> String {
         let path = self.home.path().join("agents.json");
         fs::write(&path, serde_json::to_vec(body).unwrap()).unwrap();
@@ -656,6 +696,246 @@ fn audit_the_hand_back_marker_table_is_the_one_of_the_ready_receipt_gate() {
     );
 }
 
+#[test]
+fn audit_a_pass_then_a_fail_on_one_head_is_dispatched_again() {
+    // The newest judgement of a head wins: events are read oldest first, newest last.
+    let w = world();
+    w.lane("agent-1", S_ONE);
+    w.card(1, "research", "ready", "p0", &["docs/a.md"]);
+    w.reserve(1, 1, S_TWO, "released");
+    w.ready_note(1, HEAD_A);
+    w.verdict(1, HEAD_A, true, S_AUDITOR);
+    assert!(dispatched(&w.plan()).is_empty());
+    w.verdict(1, HEAD_A, false, S_AUDITOR);
+    let plan = w.plan();
+    assert_eq!(
+        dispatched(&plan),
+        vec![("agent-1".to_string(), "C-1".to_string())],
+        "a later fail on the same head sends the card back to repair: {plan}"
+    );
+    assert!(plan["land_queue"].as_array().unwrap().is_empty(), "{plan}");
+    assert!(audited(&plan).is_empty(), "{plan}");
+}
+
+// ---- judged_ (AC-10: REQ-4, REQ-6, REQ-7) -----------------------------------------------------
+
+/// The `(card, source)` pairs of the landing queue.
+fn queued(plan: &Value) -> Vec<(String, String)> {
+    plan["land_queue"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|q| {
+            (
+                q["card"].as_str().unwrap().to_string(),
+                q["source"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn judged_a_pass_note_judges_a_head_that_has_no_event() {
+    let w = world();
+    w.lane("agent-1", S_ONE);
+    w.card(1, "research", "ready", "p0", &["docs/a.md"]);
+    w.reserve(1, 1, S_TWO, "released");
+    w.ready_note(1, HEAD_A);
+    w.audit_note(1, "leader", HEAD_A, "PASS");
+    w.card(2, "research", "ready", "p1", &["docs/b.md"]);
+    let before = w.home.snapshot();
+    let plan = w.plan();
+    assert!(audited(&plan).is_empty(), "a judged head is not audited: {plan}");
+    assert_eq!(
+        dispatched(&plan),
+        vec![("agent-1".to_string(), "C-2".to_string())],
+        "the passed card waits for its landing: {plan}"
+    );
+    assert_eq!(queued(&plan), vec![("C-1".to_string(), "note".to_string())]);
+    let entry = &plan["land_queue"][0];
+    assert_eq!(entry["reviewer"], json!("leader"));
+    assert_eq!(
+        entry["command"],
+        json!(format!("moai card land C-1 --head {HEAD_A} --by leader"))
+    );
+    assert_eq!(before, w.home.snapshot(), "the plan writes nothing");
+}
+
+#[test]
+fn judged_a_fail_note_or_any_other_word_dispatches_the_card_again() {
+    let w = world();
+    w.lane("agent-1", S_ONE);
+    w.lane("agent-2", S_THREE);
+    w.card(1, "research", "ready", "p0", &["docs/a.md"]);
+    w.reserve(1, 1, S_TWO, "released");
+    w.ready_note(1, HEAD_A);
+    w.audit_note(1, "leader", HEAD_A, "FAIL");
+    // Conditions make a verdict FAIL: a word other than PASS reads fail.
+    w.card(2, "research", "ready", "p0", &["docs/b.md"]);
+    w.reserve(2, 1, S_TWO, "released");
+    w.ready_note(2, HEAD_B);
+    w.audit_note(2, "leader", HEAD_B, "CONDITIONAL");
+    let plan = w.plan();
+    assert!(audited(&plan).is_empty(), "{plan}");
+    assert_eq!(
+        dispatched(&plan),
+        vec![
+            ("agent-1".to_string(), "C-1".to_string()),
+            ("agent-2".to_string(), "C-2".to_string()),
+        ],
+        "{plan}"
+    );
+    assert!(plan["land_queue"].as_array().unwrap().is_empty(), "{plan}");
+}
+
+#[test]
+fn judged_an_event_wins_over_a_note_in_both_directions() {
+    let w = world();
+    w.lane("agent-1", S_ONE);
+    // C-1: the note says PASS, the event says fail: the card is repaired, not queued.
+    w.card(1, "research", "ready", "p0", &["docs/a.md"]);
+    w.reserve(1, 1, S_TWO, "released");
+    w.ready_note(1, HEAD_A);
+    w.audit_note(1, "leader", HEAD_A, "PASS");
+    w.verdict(1, HEAD_A, false, S_AUDITOR);
+    // C-2: the note says FAIL, the event says pass: the card is queued, not repaired.
+    w.card(2, "research", "ready", "p1", &["docs/b.md"]);
+    w.reserve(2, 1, S_TWO, "released");
+    w.ready_note(2, HEAD_B);
+    w.audit_note(2, "leader", HEAD_B, "FAIL");
+    w.verdict(2, HEAD_B, true, S_AUDITOR);
+    let plan = w.plan();
+    assert!(audited(&plan).is_empty(), "{plan}");
+    assert_eq!(
+        dispatched(&plan),
+        vec![("agent-1".to_string(), "C-1".to_string())],
+        "{plan}"
+    );
+    assert_eq!(queued(&plan), vec![("C-2".to_string(), "event".to_string())]);
+}
+
+#[test]
+fn judged_lines_of_another_shape_judge_nothing() {
+    let w = world();
+    for id in 1..=5 {
+        w.card(id, "research", "ready", "p1", &["docs/x.md"]);
+        w.reserve(id, 1, S_TWO, "released");
+    }
+    // C-1: the AUDIT line is not the first line. C-2: the AUDIT note of C-3 names C-2's head.
+    // C-3: the note names another head. C-4: a line that does not read as a verdict.
+    // C-5: the AUDIT line is of its own card but the note was quoted inside a hand-back note.
+    w.ready_note(1, HEAD_A);
+    w.note(
+        1,
+        "leader",
+        &format!("see below\nAUDIT #1 (x) head {HEAD_A} base {BASE} — verdict: PASS"),
+    );
+    w.ready_note(2, HEAD_B);
+    w.audit_note(3, "leader", HEAD_B, "PASS");
+    w.ready_note(3, HEAD_C);
+    w.audit_note(3, "leader", HEAD_D, "PASS");
+    w.ready_note(4, HEAD_D);
+    w.note(4, "leader", "AUDIT #4 (x) head zz — verdict: PASS");
+    w.ready_note(5, HEAD_A);
+    w.note(
+        5,
+        "agent-1",
+        &format!("LANE-READY-INTEGRATION C-5 head={HEAD_A}\nAUDIT #5 (x) head {HEAD_A} base {BASE} — verdict: PASS"),
+    );
+    let plan = w.plan();
+    assert_eq!(
+        audited(&plan),
+        vec![
+            ("C-1".to_string(), HEAD_A.to_string()),
+            ("C-2".to_string(), HEAD_B.to_string()),
+            ("C-3".to_string(), HEAD_C.to_string()),
+            ("C-4".to_string(), HEAD_D.to_string()),
+            ("C-5".to_string(), HEAD_A.to_string()),
+        ],
+        "{plan}"
+    );
+    assert!(plan["land_queue"].as_array().unwrap().is_empty(), "{plan}");
+}
+
+#[test]
+fn judged_a_note_whose_reviewer_is_an_author_session_is_never_listed() {
+    let w = world();
+    w.card(1, "research", "ready", "p1", &["docs/a.md"]);
+    w.reserve(1, 1, S_ONE, "released");
+    w.ready_note(1, HEAD_A);
+    // The author session wrote the PASS note itself: it is a judgement (no audit is asked) but
+    // no independent one, so the head is not queued.
+    w.audit_note(1, S_ONE, HEAD_A, "PASS");
+    let plan = w.plan();
+    assert!(audited(&plan).is_empty(), "{plan}");
+    assert!(plan["land_queue"].as_array().unwrap().is_empty(), "{plan}");
+}
+
+// ---- landed_ (AC-11: REQ-4, REQ-6, REQ-7) -----------------------------------------------------
+
+#[test]
+fn landed_a_head_inside_the_tip_is_neither_audited_nor_dispatched_nor_queued() {
+    let w = world();
+    w.mflow_profile();
+    let inside = w.commit("inside");
+    git(&w.project, &["branch", "integ"]);
+    let outside = w.commit("outside");
+    w.lane("agent-1", S_ONE);
+    // C-1 and C-3 hand back the head inside the tip (C-3 with a pass); C-2 and C-4 hand back
+    // the head outside it (C-4 with a pass); C-5 is plain work.
+    for id in 1..=4 {
+        w.card(id, "research", "ready", "p1", &["docs/x.md"]);
+        w.reserve(id, 1, S_TWO, "released");
+    }
+    w.ready_note(1, &inside);
+    w.ready_note(2, &outside);
+    w.ready_note(3, &inside);
+    w.verdict(3, &inside, true, S_AUDITOR);
+    w.ready_note(4, &outside);
+    w.verdict(4, &outside, true, S_AUDITOR);
+    w.card(5, "research", "ready", "p1", &["docs/e.md"]);
+    let refs = git(&w.project, &["for-each-ref"]);
+    let plan = w.plan();
+    assert_eq!(
+        audited(&plan),
+        vec![("C-2".to_string(), outside.clone())],
+        "{plan}"
+    );
+    assert_eq!(
+        dispatched(&plan),
+        vec![("agent-1".to_string(), "C-5".to_string())],
+        "a card whose head is inside the tip is landed work, not work for a lane: {plan}"
+    );
+    assert_eq!(queued(&plan), vec![("C-4".to_string(), "event".to_string())]);
+    assert!(plan["attention"].as_array().unwrap().is_empty(), "{plan}");
+    assert_eq!(refs, git(&w.project, &["for-each-ref"]), "the plan moves no ref");
+}
+
+#[test]
+fn landed_an_unreadable_integration_branch_counts_no_head_as_landed() {
+    // No profile: git cannot name an integration branch.
+    let w = world();
+    w.card(1, "research", "ready", "p1", &["docs/a.md"]);
+    w.reserve(1, 1, S_TWO, "released");
+    assert!(
+        w.plan()["attention"].as_array().unwrap().is_empty(),
+        "no hand-back head, nothing to check"
+    );
+    w.ready_note(1, HEAD_A);
+    let plan = w.plan();
+    assert_eq!(audited(&plan), vec![("C-1".to_string(), HEAD_A.to_string())]);
+    let item: Vec<&Value> = plan["attention"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|a| a["kind"] == json!("integration"))
+        .collect();
+    assert_eq!(item.len(), 1, "{plan}");
+    assert_eq!(item[0]["status"], json!("unread"));
+    assert_eq!(item[0]["key"], json!("attention:integration:unread"));
+    assert_eq!(item[0]["answer"], json!(null));
+}
+
 // ---- land_ (AC-5: REQ-7) ----------------------------------------------------------------------
 
 #[test]
@@ -690,6 +970,7 @@ fn land_lists_independent_passes_by_priority_then_number() {
         json!(format!("moai card land C-3 --head {HEAD_A} --by leader"))
     );
     assert_eq!(queue[0]["reviewer"], json!(S_AUDITOR));
+    assert_eq!(queue[0]["source"], json!("event"));
     assert_eq!(before, w.home.snapshot(), "the plan lands nothing");
 }
 
