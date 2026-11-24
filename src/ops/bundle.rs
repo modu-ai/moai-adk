@@ -31,12 +31,14 @@ pub struct Args {
 enum Action {
     /// Reads only. List the READY heads: the newest readable line of each card
     ///
-    /// Reads only. For each card whose newest note starts with `LANE-READY-INTEGRATION` and reads
-    /// as `LANE-READY-INTEGRATION C-<n> head=<40 hex>` (then the end of the line or a space, with
-    /// an optional ` spec=<SPEC id>` right after the head), prints the card, the note number, the
-    /// head, the SPEC ids of the `Moai-Spec` trailers of `<tip>..<head>`, whether the head is
-    /// present here and on `origin`, and the tip's SHA and commit time. A card whose newest marker
-    /// note does not read is listed under `unreadable` and gives no head. Never fetches.
+    /// Reads only. For each card whose newest hand-back note (a note not written by the leader and
+    /// not a decision note, whose first line starts with `LANE-READY-INTEGRATION`, `REPAIRED` or
+    /// `READY `) reads as `<marker> C-<n> head=<40 hex>` (then the end of the line or a space,
+    /// with an optional ` spec=<SPEC id>` right after the head), prints the card, the note
+    /// number and its marker, the head, the SPEC ids of the `Moai-Spec` trailers of
+    /// `<tip>..<head>`, whether the head is present here and on `origin`, and the tip's SHA and
+    /// commit time. A card whose newest hand-back note does not read is listed under `unreadable`
+    /// and gives no head. Never fetches.
     Ready {
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
@@ -55,7 +57,10 @@ enum Action {
     },
     /// Reads only. Judge heads: every check, all findings in one answer
     ///
-    /// Reads only. HEADS are `C-<n>` (the card's newest readable READY head) or `C-<n>=<40 hex>`.
+    /// Reads only. HEADS are `C-<n>` (the head of the card's newest hand-back note, a `REPAIRED`
+    /// note included) or `C-<n>=<40 hex>`. Each head's entry in `heads` names the note it was read
+    /// from in `read_note` (`note_id` and `marker`), and the `guard-mutant:` lines are read from
+    /// that note alone, never filled from an older one.
     /// Every head gets every check: `no_ready_line`, `head_missing` (fetch first),
     /// `no_merge_base` (an unrelated history; the other heads are still judged), `not_on_origin`,
     /// `already_merged`, `audit_missing` (the changed paths `<tip>...<head>` set an
