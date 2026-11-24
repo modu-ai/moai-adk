@@ -427,10 +427,31 @@ fn a_review_card_nobody_holds_is_withdrawn_and_a_done_card_is_not() {
 
 /// AC-6 and AC-7 through the wired action: a lapsed lease is refused for a caller that is not the
 /// leader and withdrawn for the leader in one call; a live lease is refused.
+#[cfg(unix)]
 #[test]
 fn the_wired_withdraw_ends_a_lapsed_lease_only_for_the_leader() {
     let (home, p) = two_ready_cards();
-    result(&run(&home, &["card", "take", "C-1", "--project", &p]));
+    // The lane's worktree folder holds work in progress and, beside it, a link to a folder
+    // outside it: the withdraw ends a reservation and deletes nothing, link or not.
+    let worktree = home.path().join("lane-worktree");
+    let outside = home.path().join("outside");
+    std::fs::create_dir_all(&worktree).unwrap();
+    std::fs::create_dir_all(&outside).unwrap();
+    std::fs::write(worktree.join("keep.txt"), "work in progress\n").unwrap();
+    std::fs::write(outside.join("other.txt"), "not the lane's\n").unwrap();
+    std::os::unix::fs::symlink(&outside, worktree.join("link")).unwrap();
+    result(&run(
+        &home,
+        &[
+            "card",
+            "take",
+            "C-1",
+            "--worktree",
+            worktree.to_str().unwrap(),
+            "--project",
+            &p,
+        ],
+    ));
     let call = |by: &str| {
         run(
             &home,
@@ -475,6 +496,11 @@ fn the_wired_withdraw_ends_a_lapsed_lease_only_for_the_leader() {
     assert_eq!(
         rows(&home, "SELECT status FROM reservation WHERE card_id = 1"),
         ["released"]
+    );
+    assert!(worktree.join("keep.txt").is_file(), "the worktree is kept");
+    assert!(
+        worktree.join("link").is_symlink() && outside.join("other.txt").is_file(),
+        "the link and what it points at are kept"
     );
 }
 
