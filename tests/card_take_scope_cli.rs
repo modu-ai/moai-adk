@@ -617,3 +617,220 @@ fn the_comma_refusal_names_the_option_of_the_caller() {
         assert!(!message.contains("`--scope`"), "{args:?}: {message}");
     }
 }
+
+// ---- shared files (SPEC-20261124-shared-files-profile) ------------------------------------------
+
+impl World {
+    /// Writes the profile with a `shared_files` list (`None` leaves the key out; the test project's
+    /// profile is the minimal one of `TempHome::project`).
+    fn shared(&self, list: Option<Value>) {
+        let mut profile = json!({"schema_version": 2, "project_id": "demo"});
+        if let Some(list) = list {
+            profile["shared_files"] = list;
+        }
+        fs::write(
+            self.root
+                .join(moai_cli::PROJECT_STATE_DIR)
+                .join("project.yaml"),
+            format!("{profile}\n"),
+        )
+        .unwrap();
+    }
+
+    /// A `ready` card with the scope given (`card add --scope`, so no take has checked it yet).
+    fn scoped_card(&self, title: &str, scope: &[&str]) -> String {
+        let mut args = vec!["add", "--title", title, "--ac", "fixture"];
+        for entry in scope {
+            args.push("--scope");
+            args.push(entry);
+        }
+        let name = result(&self.card(None, &args))["name"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        result(&self.card(None, &["ready", &name]));
+        name
+    }
+}
+
+/// AC-2 (REQ-3): a given `--scope` and a card's own scope that overlap a shared file are refused
+/// with the entry, the shared entry and the line-lease form; nothing is written.
+#[test]
+fn shared_files_refuse_a_given_scope() {
+    let w = world();
+    w.shared(Some(json!(["src/lib.rs", "tests/fixtures/help/*.txt"])));
+    let name = w.empty_card("shared given");
+    for (entry, shared) in [
+        ("src/lib.rs", "src/lib.rs"),
+        ("src/**", "src/lib.rs"),
+        ("tests/fixtures/help/a.txt", "tests/fixtures/help/*.txt"),
+    ] {
+        let message = refusal(&w.card(Some(S_A), &["take", &name, "--scope", entry]));
+        assert!(message.contains(&format!("`{entry}`")), "{message}");
+        assert!(message.contains(&format!("`{shared}`")), "{message}");
+        assert!(message.contains("card line-lease"), "{message}");
+    }
+    // A card whose own scope holds a shared file is refused without any `--scope`.
+    let own = w.scoped_card("shared own", &["src/lib.rs"]);
+    let message = refusal(&w.card(Some(S_A), &["take", &own]));
+    assert!(message.contains("src/lib.rs"), "{message}");
+    assert!(message.contains("card line-lease"), "{message}");
+    assert_eq!(w.count("SELECT count(*) FROM reservation"), 0);
+    assert_eq!(w.own_scope(&name), json!([]));
+    // A path that overlaps no shared entry is taken.
+    let took = result(&w.card(Some(S_A), &["take", &name, "--scope", "src/other.rs"]));
+    assert_eq!(took["scope_source"], json!("given"), "{took}");
+}
+
+/// AC-3 (REQ-4): a fill from a SPEC list or from the last reservation leaves the shared entries
+/// out and says so in `warnings`; a list that holds only shared entries refuses.
+#[test]
+fn shared_files_are_left_out_of_a_fill() {
+    let w = world();
+    w.shared(Some(json!(["src/lib.rs"])));
+    let from_spec = w.empty_card("shared spec");
+    let spec = w.spec("shared-fill", &["src/other.rs".into(), "src/lib.rs".into()]);
+    w.link(&from_spec, &spec);
+    let took = result(&w.card(Some(S_A), &["take", &from_spec]));
+    assert_eq!(took["scope_source"], json!("spec"), "{took}");
+    assert_eq!(
+        took["reservation"]["write_scope"],
+        json!(["src/other.rs"]),
+        "{took}"
+    );
+    let warnings = took["warnings"].to_string();
+    assert!(warnings.contains("src/lib.rs"), "{warnings}");
+    assert!(warnings.contains("card line-lease"), "{warnings}");
+    assert_eq!(w.own_scope(&from_spec), json!(["src/other.rs"]));
+
+    // The last reservation of a card that has no scope of its own.
+    w.shared(None);
+    let again = w.empty_card("shared last");
+    result(&w.card(
+        Some(S_B),
+        &["take", &again, "--scope", "src/a.rs", "--scope", "src/lib.rs"],
+    ));
+    result(&w.card(Some(S_B), &["release", &again, "--generation", "1"]));
+    w.sql("UPDATE card SET write_scope = '[]' WHERE title = 'shared last'");
+    w.shared(Some(json!(["src/lib.rs"])));
+    let took = result(&w.card(Some(S_A), &["take", &again]));
+    assert_eq!(took["scope_source"], json!("last_reservation"), "{took}");
+    assert_eq!(took["reservation"]["write_scope"], json!(["src/a.rs"]), "{took}");
+    assert!(took["warnings"].to_string().contains("src/lib.rs"), "{took}");
+
+    // A list that names only shared files cannot fill anything.
+    let only = w.empty_card("shared only");
+    let spec = w.spec("shared-only", &["src/lib.rs".into()]);
+    w.link(&only, &spec);
+    let reservations = w.count("SELECT count(*) FROM reservation");
+    let message = refusal(&w.card(Some(S_A), &["take", &only]));
+    assert!(message.contains("card line-lease"), "{message}");
+    assert_eq!(w.count("SELECT count(*) FROM reservation"), reservations);
+    assert_eq!(w.own_scope(&only), json!([]));
+}
+
+/// AC-4 (REQ-5): `card scope` refuses a shared entry it would add, for a card nobody holds and for
+/// a held card; an entry the card's scope already holds passes.
+#[test]
+fn shared_files_refuse_a_scope_change() {
+    let w = world();
+    w.shared(Some(json!(["src/lib.rs", "src/help.rs"])));
+    let free = w.empty_card("shared free");
+    let message = refusal(&w.card(
+        None,
+        &["scope", &free, "--scope", "src/help.rs", "--by", "leader"],
+    ));
+    assert!(message.contains("src/help.rs"), "{message}");
+    assert!(message.contains("card line-lease"), "{message}");
+    assert_eq!(w.own_scope(&free), json!([]));
+
+    // A held card: widening with a shared file is refused, with another path it works.
+    let held = w.empty_card("shared held");
+    result(&w.card(Some(S_A), &["take", &held, "--scope", "src/a.rs"]));
+    let widen = |card: &str, entries: &[&str]| {
+        let mut args = vec!["scope", card];
+        for e in entries {
+            args.push("--scope");
+            args.push(e);
+        }
+        args.extend_from_slice(&["--by", "leader", "--reason", "fixture", "--generation", "1"]);
+        w.card(None, &args)
+    };
+    let message = refusal(&widen(&held, &["src/a.rs", "src/help.rs"]));
+    assert!(message.contains("card line-lease"), "{message}");
+    let widened = result(&widen(&held, &["src/a.rs", "src/other.rs"]));
+    assert_eq!(
+        widened["write_scope"],
+        json!(["src/a.rs", "src/other.rs"]),
+        "{widened}"
+    );
+
+    // A scope that held the shared file before the list named it is still widened by other paths.
+    w.shared(None);
+    let old = w.empty_card("shared old");
+    result(&w.card(Some(S_B), &["take", &old, "--scope", "src/lib.rs"]));
+    w.shared(Some(json!(["src/lib.rs"])));
+    let widened = result(&widen(&old, &["src/lib.rs", "src/more.rs"]));
+    assert_eq!(
+        widened["write_scope"],
+        json!(["src/lib.rs", "src/more.rs"]),
+        "{widened}"
+    );
+}
+
+/// AC-5 (REQ-6): `card check` of a shared file the reservation does not hold ends its refusal with
+/// the line-lease form for that path; a path that is not shared keeps the old refusal.
+#[test]
+fn shared_files_check_names_line_lease() {
+    let w = world();
+    w.shared(Some(json!(["src/lib.rs"])));
+    let name = w.empty_card("shared check");
+    result(&w.card(Some(S_A), &["take", &name, "--scope", "src/a.rs"]));
+    let message = refusal(&w.card(
+        Some(S_A),
+        &["check", &name, "--generation", "1", "--path", "src/lib.rs"],
+    ));
+    assert!(
+        message.starts_with("reservation conflict in write scope"),
+        "{message}"
+    );
+    assert!(
+        message.ends_with("card line-lease C-1 --generation 1 --path src/lib.rs"),
+        "{message}"
+    );
+    let message = refusal(&w.card(
+        Some(S_A),
+        &["check", &name, "--generation", "1", "--path", "src/other.rs"],
+    ));
+    assert!(!message.contains("line-lease"), "{message}");
+}
+
+/// AC-7 (REQ-8): without the key, and with a list of the wrong type, take, scope and check answer
+/// as before this SPEC.
+#[test]
+fn shared_files_absent_changes_nothing() {
+    for list in [None, Some(json!("src/lib.rs"))] {
+        let w = world();
+        w.shared(list);
+        let name = w.empty_card("shared absent");
+        let took = result(&w.card(Some(S_A), &["take", &name, "--scope", "src/lib.rs"]));
+        assert_eq!(took["reservation"]["write_scope"], json!(["src/lib.rs"]), "{took}");
+        let widened = result(&w.card(
+            None,
+            &[
+                "scope", &name, "--scope", "src/lib.rs", "--scope", "src/help.rs", "--by",
+                "leader", "--reason", "fixture", "--generation", "1",
+            ],
+        ));
+        assert_eq!(
+            widened["write_scope"],
+            json!(["src/help.rs", "src/lib.rs"]),
+            "{widened}"
+        );
+        let message = refusal(&w.card(
+            Some(S_A),
+            &["check", &name, "--generation", "1", "--path", "src/other.rs"],
+        ));
+        assert!(!message.contains("line-lease"), "{message}");
+    }
+}
