@@ -12,7 +12,7 @@ branch: spec/live-lease-takeover-followup-20261125
 ## Interview
 
 - Q1: 무엇이 바뀌었어요? -> A: revision 1 (2026-11-19) 은 "사용자 결정 노트를 가리키면 살아 있는 lease 도 회수" 를 골랐어요(선택지 A+D1, 사용자 확인 대기였어요). 2026-11-24 사용자 선택(리더 결정 노트 8562)이 방향을 바꿨어요: **하트비트가 끊기고 예약 기한이 지난 카드는 리더 결정 없이 회수해요. 살아 있는 레인은 절대 회수하지 않아요.** 카드 8571 은 이 카드를 병목 우선순위 1 로 올렸어요.
-- Q2: 새로 만들 길이 있어요? -> A: 아니요. C-464 가 착지시킨 `moai card sweep` 과 `card take` 안의 sweep(유예 24시간, `SPEC-20261124-ended-lease-sweep`)이 이미 "끝난 lease 의 카드를 `ready` 로" 돌려요. 이 SPEC 은 그 길에 **두 번째 자격**을 하나 더해요: 유예 24시간이 안 지났어도, lease 가 끝났고 보유자의 하트비트가 두 시간 넘게 없으면 같은 길로 돌려요. 새 명령도 새 스키마도 없어요.
+- Q2: 새로 만들 길이 있어요? -> A: 아니요. 이미 착지한 `moai card sweep` 과 `card take` 안의 sweep(유예 24시간, `SPEC-20261124-ended-lease-sweep`)이 이미 "끝난 lease 의 카드를 `ready` 로" 돌려요. 이 SPEC 은 그 길에 **두 번째 자격**을 하나 더해요: 유예 24시간이 안 지났어도, lease 가 끝났고 보유자의 하트비트가 두 시간 넘게 없으면 같은 길로 돌려요. 새 명령도 새 스키마도 없어요.
 - Q3: 하트비트가 뭐예요, 어떻게 자동으로 갱신돼요? -> A: 보유자 세션이 원장에 남긴 가장 최근 흔적이에요: 예약의 `updated_at`(take·`card renew`·범위 확대·line-lease 가 갱신해요)와, 그 카드의 사건 가운데 `actor` 가 보유자 세션인 가장 늦은 사건(`card note`, 기준 표시, 거절 기록 …)의 `at` 중 늦은 쪽이에요. 레인이 일하며 원장에 쓰는 모든 쓰기가 곧 하트비트라서 레인은 따로 부를 명령이 없고, 쓰기 길도 하나 늘지 않아요. 읽기만 하는 `card check` 는 흔적을 남기지 않아요(Risks 2).
 - Q4: 살아 있는 레인을 정말 안 건드려요? -> A: lease 가 끝나지 않은 카드는 하트비트가 얼마나 오래됐든 건드리지 않아요(REQ-3). lease 가 끝났어도 하트비트가 두 시간 안에 있으면 건드리지 않아요(REQ-4). 둘 다 어긋난 카드만 돌려요. 일하던 레인이 lease 를 못 늘리고 두 시간 넘게 원장에 아무것도 안 쓰면 회수될 수 있어요: 그때도 가지·워크트리·RESUME 노트는 그대로고, 그 레인의 다음 쓰기는 옛 세대라서 거절돼요(Risks 1).
 - Q5: 개정 3 은 뭘 더해요? -> A: 앞 조각(개정 2, 감사 PASS)이 남긴 두 가지예요. (1) `card next` 의 `stale[]` 행이 보유자의 하트비트(`last_seen_at`, `silent_secs`)를 보여 주고, 침묵한 활성 카드에는 withdraw 대신 sweep 명령을 말해요: 지금은 하트비트가 끊긴 카드도 유예 안이면 행이 withdraw 를 말해서, 리더가 일하던 카드를 버리는 쪽으로 읽어요. (2) 침묵 창 두 시간(`SILENCE_SECS`)이 숫자로 고정돼 있지 않아서 10분으로 바꾼 뮤턴트가 살아남았어요(감사 minor 1): 값 단언과 1시간 59분 시험으로 고정해요. 새 길도 새 쓰기도 없어요. 행이 읽는 값은 sweep 이 읽는 하트비트와 같은 함수예요.
@@ -30,7 +30,7 @@ branch: spec/live-lease-takeover-followup-20261125
 - 도구 호출마다 lease 를 자동으로 늘리는 훅. 호스트마다 훅이 달라요(D-3).
 - 읽기 전용 `card check` 가 하트비트를 남기게 하기: `src/card/work.rs` 는 이 카드의 범위 밖이에요. 후속 카드가 해요(Risks 2).
 - 하트비트 창을 프로젝트 설정으로 바꾸기. 두 시간 고정이에요(D-4). 필요하면 `lease_sweep_hours` 처럼 키를 후속으로 더해요.
-- `review` 상태 카드, `held_for_review`·`expired_candidate` 예약, 가지·워크트리·RESUME 노트의 삭제, `src/leader_round.rs`(C-469 몫)와 라운드 배선.
+- `review` 상태 카드, `held_for_review`·`expired_candidate` 예약, 가지·워크트리·RESUME 노트의 삭제, `src/leader_round.rs`(리더 라운드 카드 몫)와 라운드 배선.
 
 ## Requirements
 
@@ -68,7 +68,7 @@ branch: spec/live-lease-takeover-followup-20261125
 - write: `tests/lane_heartbeat_cli.rs`, `tests/card_stale_cli.rs`
 - write (shared files, line-lease, only when needed): `src/ops/card.rs`, `src/profile.rs`, `docs/design-review/appendix/operations/card.md`
 - read-only: `src/ledger/workflow.rs`, `src/ledger/schema.rs`, `src/card/work.rs`, `tests/ledger_sweep.rs`, `tests/card_sweep_cli.rs`
-- forbidden: `src/leader_round.rs` (C-469), the real home ledger (tests use a temporary HOME only), a schema change, a network call
+- forbidden: `src/leader_round.rs` (the leader round card), the real home ledger (tests use a temporary HOME only), a schema change, a network call
 
 ## Plan
 
@@ -97,7 +97,7 @@ branch: spec/live-lease-takeover-followup-20261125
 | D-3 | No automatic lease renewal by a hook | revision 1 D-2: hosts differ, and a failed renewal would take a working lane's card | a follow-up card |
 | D-4 | The silence window is two hours, fixed | the default lease is four hours, the grace is 24 hours; two hours is long enough for a long test run between ledger writes, and a profile key can follow | a profile key like `lease_sweep_hours` |
 | D-5 | The silence rule is an addition to the grace rule, not a replacement: past the grace a card is swept whatever the heartbeat | `SPEC-20261124-ended-lease-sweep` is landed and its tests stay as they are | drop the silence rule |
-| D-6 | The integration test file is `tests/lane_heartbeat_cli.rs`, not `tests/card_heartbeat_cli.rs` | the leader moved it off `tests/card_*.rs` (held by C-287); `lease` is not a first word of `tests/areas.toml`, which `check_affected::tests::the_repository_tests_pass_the_table_step_as_added_files` enforces, while `lane` is and no reservation holds `tests/lane_*` | rename once C-287 lands |
+| D-6 | The integration test file is `tests/lane_heartbeat_cli.rs`, not `tests/card_heartbeat_cli.rs` | the leader moved it off `tests/card_*.rs` (held by the area-crate card); `lease` is not a first word of `tests/areas.toml`, which `check_affected::tests::the_repository_tests_pass_the_table_step_as_added_files` enforces, while `lane` is and no reservation holds `tests/lane_*` | rename once the area-crate card lands |
 | D-7 | The `stale[]` row reads the heartbeat in `stale_facts` with `reservation::heartbeat_at`, one extra read per `lease_ended` row, and picks the command with `sweep_via` | the row and the sweep must agree on which card is sweepable; a second copy of the rule would drift, and `heartbeat_at` is read-only and takes a connection | read the heartbeat in `src/card/work.rs` instead |
 | D-8 | The silence window stays a constant and is pinned by a value assertion plus a 1 hour 59 minute CLI test | audit minor 1 of the first piece: a mutant that set the window to ten minutes survived | a profile key (D-4) |
 
@@ -112,5 +112,9 @@ Implemented on branch `spec/live-lease-takeover-20261119`; the SPEC stays `draft
 - AC-5: met — `take_sweeps_a_silent_card_with_an_ended_lease_and_takes_it`, `take_refuses_an_ended_lease_with_a_fresh_heartbeat_and_writes_nothing`, passed in run 1.
 - AC-6: met — `swept_holder_is_refused_with_the_old_generation_after_a_silence_sweep`, passed in run 1, and the live run (`renew` refused).
 - AC-7: met — `not_swept_a_card_in_review_nor_an_unconfirmed_reservation`, passed in run 1.
-- AC-8: met — `ledger_sweep` 19, `card_sweep_cli` 15, `card_stale_cli` 6 passed in run 1.
-- Not done here (follow-up cards): the `stale[]` rows of `card next` for a silent card (Risks 3) and a heartbeat for the read-only `card check` (Risks 2).
+- AC-8: met — `ledger_sweep` 19, `card_sweep_cli` 15, `card_stale_cli` 6 passed in run 1; with revision 3 `card_stale_cli` has 9 and all pass (run 3 below).
+- AC-9 (revision 3): met — `stale_heartbeat_row_shows_last_seen_at_and_silent_secs` and `stale_heartbeat_counts_the_holders_latest_event_and_not_only_the_reservation` of `card_stale_cli`, passed in run 3. The real binary on a throwaway ledger: the row of a card silent for three hours had `silent_secs` 10800, the row of a card whose holder wrote two minutes ago had 120, and `card next` wrote nothing (the ledger folder hashed the same before and after).
+- AC-10 (revision 3): met — `stale_heartbeat_names_the_sweep_for_a_silent_card_and_keeps_withdraw_for_a_recent_one`, passed in run 3. The real binary: the silent card's row named `moai card sweep <card> --by leader` with `via: heartbeat`, the recent card's row kept the withdraw, a card with a live lease was not listed, the command of the row swept the card (`via: heartbeat`), a dry run listed nothing afterwards, and the old holder's `renew` was refused as `released`, not `held`.
+- AC-11 (revision 3): met — `heartbeat_window_is_7200_seconds_as_a_number` (`src/ledger/sweep.rs`) and `silence_window_one_hour_fifty_nine_keeps_the_card_and_two_hours_sweeps_it` (`lane_heartbeat_cli`), passed in run 3.
+- Revision 3 evidence: run 3 is `cargo nextest run --locked --offline --no-fail-fast --test card_stale_cli --test lane_heartbeat_cli --test card_sweep_cli --test ledger_sweep --lib -E 'binary(card_stale_cli) or binary(lane_heartbeat_cli) or binary(card_sweep_cli) or binary(ledger_sweep) or test(heartbeat_window_)'`: 63 tests run, 63 passed. Guard mutants, one edit each, the whole filter run, 5 of 5 killed (exit 100, tree clean afterwards): `silence_window_is_ten_minutes`, `row_heartbeat_is_the_reservation_update_only` (it survived the first tests, which aged the reservation and the events together; `stale_heartbeat_counts_the_holders_latest_event_and_not_only_the_reservation` now kills it), `row_names_the_sweep_only_after_the_grace`, `row_carries_no_via`, `row_silent_secs_is_zero`.
+- Not done here (follow-up cards): a heartbeat for the read-only `card check` (Risks 2). A `review` card keeps the withdraw it had (REQ-11 names only `active` cards).
