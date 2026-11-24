@@ -200,7 +200,12 @@ impl World {
         git(&project, &["commit", "-q", "-m", "init"]);
         fs::write(project.join("b.txt"), "b\n").unwrap();
         git(&project, &["add", "b.txt"]);
-        git(&project, &["commit", "-q", "-m", "the card's change"]);
+        // Signed by the lane session: a PASS of a head the branch already holds names the range
+        // the head added, and the verdict check needs the authors of it.
+        git(
+            &project,
+            &["commit", "-q", "-m", &signed("the card's change", S_A)],
+        );
         let head = git(&project, &["rev-parse", "HEAD"]);
         let tip = match tip_adds {
             Some((path, content)) => put_on(&project, &head, path, content, "integration moved on"),
@@ -358,8 +363,15 @@ impl World {
             .iter()
             .map(|(name, exit)| json!({"name": name, "exit": exit}))
             .collect();
+        // The range the head added: from the tip, or from the first parent of a head that the
+        // branch already holds (the card's own change).
+        let base = if head == self.head {
+            git(&self.project, &["rev-parse", &format!("{head}^")])
+        } else {
+            self.tip.clone()
+        };
         let payload = json!({
-            "head": head, "base": self.tip, "verdict": "pass", "tier": tier,
+            "head": head, "base": base, "verdict": "pass", "tier": tier,
             "evidence": "the fixture's evidence",
             "receipt": {"head": receipt_head, "steps": steps},
             "reviewer": S_AUD,
@@ -683,6 +695,7 @@ fn ac6_an_unreadable_table_is_refused_and_no_table_needs_no_scan() {
 fn ac7_a_head_inside_the_tip_skips_the_scans() {
     let w = World::new(Some("this is not json"), None, DEFAULT_PROFILE);
     let card = w.review_card();
+    w.pass(&card, &w.head, &[("fmt", 0)]);
     let got = result(&w.land(&card, &w.head));
     assert_eq!(got["moved"], json!(false), "{got}");
     assert_eq!(got["closed"], json!(true), "{got}");

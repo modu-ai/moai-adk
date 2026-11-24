@@ -13,11 +13,12 @@ use std::path::PathBuf;
 /// undoes a finished apply. A plan that warns Claude Code would stop reading `AGENTS.md` is
 /// refused unless `--confirm-warnings` carries the token printed with that plan.
 ///
-/// With `--pick move`, `--pick import` or `--pick leave` it applies that pick of
+/// With `--pick move`, `--pick leave` or `--pick remove-originals` it applies that pick of
 /// `agents-merge-plan --pick` instead, as one receipt (`agents-pick-…`): `move` writes the managed
 /// block and copies the text of `AGENTS.md` and `AGENTS.local.md` into `CLAUDE.md` and
-/// `CLAUDE.local.md`, `import` writes the block and the one line `@AGENTS.md`, `leave` writes
-/// nothing. `AGENTS.md` and `AGENTS.local.md` are never written.
+/// `CLAUDE.local.md`, `leave` writes nothing, `remove-originals` deletes the two originals once
+/// their text is whole in the CLAUDE files and keeps their bytes in the receipt. No other pick
+/// writes or deletes `AGENTS.md` or `AGENTS.local.md`.
 #[derive(clap::Args)]
 pub struct Args {
     /// The `plan_digest` of the confirmed `agents-merge-plan`.
@@ -30,7 +31,7 @@ pub struct Args {
     /// warning and said yes to it.
     #[arg(long)]
     confirm_warnings: Option<String>,
-    /// Apply this pick (`move`, `import` or `leave`) instead of the personal-file merge.
+    /// Apply this pick (`move`, `leave` or `remove-originals`) instead of the personal-file merge.
     #[arg(long)]
     pick: Option<String>,
     /// The project (default: the current folder).

@@ -94,10 +94,22 @@ const CAPACITY_BUDGET: std::time::Duration = std::time::Duration::from_secs(5);
 /// The journal of `project`, opened for writing and locked; a held lock is the one
 /// journal lock-busy answer — the explicit `unavailable` kind, retryable (06-A
 /// busy-never-waits, REQ-06A-05; #2345 sets the kind at this raise site).
+///
+/// The process-edge adapter of [`open_locked_journal_in`]: it reads the environment HOME once
+/// (through the one reader of it in `layout`) and hands it on.
 pub fn open_locked_journal(
     project: &Path,
 ) -> std::result::Result<Journal, crate::contract::OpError> {
-    let journal = Journal::open(&claim::journal_root(project)?)?;
+    open_locked_journal_in(project, crate::layout::environment_home().as_deref())
+}
+
+/// [`open_locked_journal`] with the HOME given instead of read from the environment: the lock is
+/// on the journal that [`claim::journal_root_in`] names for `home`.
+pub fn open_locked_journal_in(
+    project: &Path,
+    home: Option<&Path>,
+) -> std::result::Result<Journal, crate::contract::OpError> {
+    let journal = Journal::open(&claim::journal_root_in(project, home)?)?;
     if !journal.try_lock()? {
         return Err(crate::contract::OpError::new(
             crate::contract::Kind::Unavailable,
@@ -782,5 +794,77 @@ mod tests {
             ..Capacity::default()
         };
         assert!(warn.is_override());
+    }
+}
+
+/// SPEC-20261124-home-env-readers (slice 2): `open_locked_journal_in` locks the journal that the
+/// HOME it is given names, and `open_locked_journal` is the adapter that reads the environment
+/// HOME once. A test that needs the environment HOME to be another value re-runs itself in a
+/// child process, so no test changes this process's environment and none reads the real HOME.
+#[cfg(all(test, unix))]
+mod open_locked_journal_in_tests {
+    use super::*;
+    use crate::contract::Kind;
+    use crate::layout::home_arg_tests::{
+        child_var, init_repo, profile_project, run_in_child_of, write_pointer,
+    };
+    use std::ffi::OsString;
+
+    /// Set in the child process; the project the child locks the journal of.
+    const CHILD_PROJECT: &str = "MOAI_LOCK_TEST_PROJECT";
+    /// Set in the child process; the HOME with the layout pointer that the child passes as an argument.
+    const CHILD_GIVEN: &str = "MOAI_LOCK_TEST_GIVEN_HOME";
+
+    fn busy(error: crate::contract::OpError) {
+        assert_eq!(error.kind, Kind::Unavailable);
+        assert_eq!(error.message, crate::claim::JOURNAL_LOCK_BUSY);
+    }
+
+    /// AC-7 (REQ-8): the journal that is locked is the one under the HOME that is given; a
+    /// second lock of it is the busy answer, while the clone side journal stays free.
+    #[test]
+    fn open_locked_journal_in_locks_the_journal_of_the_home_it_is_given() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = profile_project(dir.path());
+        init_repo(&project);
+        let given = dir.path().join("given");
+        write_pointer(&given);
+        let _held = open_locked_journal_in(&project, Some(&given)).unwrap();
+        assert!(
+            crate::home_root::path(&given)
+                .join("projects/widgets/claims")
+                .is_dir(),
+            "the journal under the given HOME was opened"
+        );
+        busy(open_locked_journal_in(&project, Some(&given)).unwrap_err());
+        let clone_side = open_locked_journal_in(&project, None).unwrap();
+        busy(open_locked_journal_in(&project, None).unwrap_err());
+        drop(clone_side);
+    }
+
+    /// AC-7 (REQ-8), child side: the adapter locks the journal of the environment HOME, the one
+    /// `open_locked_journal_in` locks for that same HOME.
+    #[test]
+    fn open_locked_journal_locks_the_journal_of_the_environment_home() {
+        let test = "open_locked_journal_locks_the_journal_of_the_environment_home";
+        let (Some(project), Some(given)) = (child_var(CHILD_PROJECT), child_var(CHILD_GIVEN))
+        else {
+            let dir = tempfile::tempdir().unwrap();
+            let project = profile_project(dir.path());
+            init_repo(&project);
+            let given = dir.path().join("given");
+            write_pointer(&given);
+            run_in_child_of(
+                module_path!(),
+                test,
+                Some(&OsString::from(given.as_os_str())),
+                &[(CHILD_PROJECT, &project), (CHILD_GIVEN, &given)],
+            );
+            return;
+        };
+        let _held = open_locked_journal_in(&project, Some(&given)).unwrap();
+        busy(open_locked_journal(&project).unwrap_err());
+        let clone_side = open_locked_journal_in(&project, None).unwrap();
+        drop(clone_side);
     }
 }

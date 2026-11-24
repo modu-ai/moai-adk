@@ -135,6 +135,10 @@ Update and move
                          files
   cleanup-revert-plan    Preview undoing one HOME cleanup
   cleanup-revert         Undo one HOME cleanup
+  tidy-inventory         List every entry of the home moai
+                         folder with its class
+  tidy-plan              Preview the tidy of the home moai
+                         folder
   recovery-plan          Preview recovering hosts an update
                          left pending
   recovery-apply         Revert one update's changes on
@@ -291,6 +295,10 @@ Lane and leader
   audit-clone-plan       Preview an independent audit clone
   audit-slot             Audit slots that inherit the lane's
                          build
+  audit-prep             Prepare the audit slot of a card at
+                         a head and build it once
+  audit-done             Finish the audit slot of a card and
+                         release it
   labels-check           Report Issues whose labels break
                          the rule
   decision-due           Sort the unanswered decisions of a

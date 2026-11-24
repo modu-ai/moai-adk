@@ -1049,6 +1049,43 @@ pub struct RunOptions {
     pub integration_ref: Option<String>,
 }
 
+/// What [`refresh_changed`] did: how many files got a new time and which paths it left alone.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct Refresh {
+    touched: usize,
+    skipped: Vec<String>,
+}
+
+/// SPEC-20261124-check-affected-touch REQ-1, REQ-2: set the modification time of each of `paths`
+/// (relative to `root`) to now, so cargo sees a file that was restored with its old time (`cp -p`)
+/// as newer than the last build. Only a regular file whose real path lies inside `root` is
+/// touched: a link, a folder, a path that runs through a linked folder and a file whose time
+/// cannot be set are named in `skipped`. The bytes, the mode and the git state stay as they are.
+fn refresh_changed(root: &Path, paths: &[String]) -> Refresh {
+    let now = std::time::SystemTime::now();
+    let inside = std::fs::canonicalize(root).ok();
+    let mut out = Refresh::default();
+    for p in paths {
+        let full = root.join(p);
+        let plain = std::fs::symlink_metadata(&full).is_ok_and(|m| m.is_file());
+        let within = match (&inside, std::fs::canonicalize(&full)) {
+            (Some(root), Ok(real)) => real.starts_with(root),
+            _ => false,
+        };
+        let done = plain
+            && within
+            && std::fs::File::open(&full)
+                .and_then(|f| f.set_modified(now))
+                .is_ok();
+        if done {
+            out.touched += 1;
+        } else {
+            out.skipped.push(p.clone());
+        }
+    }
+    out
+}
+
 /// The exit status of a finished process: its code, or 128 + the signal.
 fn exit_of(status: std::process::ExitStatus) -> i32 {
     if let Some(c) = status.code() {
@@ -1242,6 +1279,9 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
                 .to_string(),
         );
     }
+    // The tree is clean here, so only the file times change: a restored file is newer than the
+    // last build (SPEC-20261124-check-affected-touch).
+    let refresh = refresh_changed(dir, &facts.present);
     let threads = DEFAULT_TEST_THREADS;
     let sel = select_pick(
         opts.pick,
@@ -1347,8 +1387,15 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     }
     drop(held);
     let pass = results.iter().all(|(_, c)| *c == 0);
+    // A `--lane` run says so right after `scans=`; the bare line has no such word
+    // (SPEC-20261124-ready-receipt-followup REQ-6, REQ-9).
+    let lane_word = if opts.pick == Pick::Lane {
+        " selection=lane"
+    } else {
+        ""
+    };
     let mut line = format!(
-        "check-affected base={} head={} targets={} scans={} test-threads={}",
+        "check-affected base={} head={} targets={} scans={}{lane_word} test-threads={}",
         short(&facts.base),
         short(&facts.head),
         sel.rust.len(),
@@ -1371,6 +1418,7 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         "result": if pass { "PASS" } else { "FAIL" },
         "stopped_at": stopped_at,
         "runner": runner.map(Runner::word),
+        "refresh": {"touched": refresh.touched, "skipped": refresh.skipped},
         "steps": records,
         "out": out.to_string_lossy(),
         "writes": true,

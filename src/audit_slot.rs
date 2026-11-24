@@ -87,6 +87,19 @@ fn no_links(primary: &Path, slot: &Path, rel: &str) -> Result<()> {
     Ok(())
 }
 
+/// Refuses a slot whose `target/` exists and is not a real folder (a link or a file): `prep`
+/// and the build that follows it write the slot's `target/`, and through a link every write
+/// would land in the folder it points at (a lane's build). The same rule as the seed's
+/// `target/` (`worktree_slot::seed_target`): `symlink_metadata`, never the followed type.
+fn real_target(slot: &Path, rel: &str, changed: &str) -> Result<()> {
+    match fs::symlink_metadata(slot.join("target")) {
+        Ok(m) if !m.file_type().is_dir() => Err(format!(
+            "audit-slot refused {rel}: its target/ is not a real folder (a link or a file); {changed}"
+        )),
+        _ => Ok(()),
+    }
+}
+
 /// Refuses a slot that is not its own worktree of this repository: git in a plain folder walks
 /// up to the primary checkout, and a borrowed `.git` acts on another worktree's index.
 fn own(slot: &Path, common: &Path, rel: &str, changed: &str) -> Result<()> {
@@ -449,6 +462,19 @@ fn changed_by(ensured: &Value) -> String {
     }
 }
 
+/// The audit slot whose holder record names `holder`, whether its lease still runs or not (the
+/// same name is the same holder, as [`prep_with`] reads it). The card-addressed commands find a
+/// card's slot with this.
+pub fn slot_held_by(project: &Path, holder: &str) -> Result<Option<String>> {
+    let common = worktree_slot::common_dir(project)?;
+    Ok(AUDIT_SLOTS
+        .iter()
+        .find(|name| {
+            read_holder(&common, name).is_some_and(|rec| rec["holder"].as_str() == Some(holder))
+        })
+        .map(|name| (*name).to_string()))
+}
+
 /// Takes the audit slot `name` (or, with [`AUTO`], the first one without a live holder) for
 /// `head` as `who`: adds it when missing, refuses it when another live holder has it or it holds
 /// changes, records the holder, switches it detached to the head, places a build and touches the
@@ -460,6 +486,21 @@ pub fn prep(
     lane: Option<&Path>,
     caps: Caps,
     who: &Who,
+) -> Result<Value> {
+    prep_with(project, name, head, lane, caps, who, session().as_deref())
+}
+
+/// [`prep`] with the session the holder record names given by the caller. `None` records none,
+/// and a holder with no session is the same holder in every session: the card-addressed
+/// `audit-prep` (SPEC-20261124-audit-prep D-6) uses that.
+pub fn prep_with(
+    project: &Path,
+    name: &str,
+    head: &str,
+    lane: Option<&Path>,
+    caps: Caps,
+    who: &Who,
+    session: Option<&str>,
 ) -> Result<Value> {
     if name != AUTO {
         check_name(name)?;
@@ -473,7 +514,6 @@ pub fn prep(
         Some(lane) => Some(lane_target(lane, &primary, &sha)?),
         None => None,
     };
-    let session = session();
     let names: Vec<&str> = if name == AUTO {
         AUDIT_SLOTS.to_vec()
     } else {
@@ -490,7 +530,7 @@ pub fn prep(
             lane.zip(from.as_deref()),
             caps,
             who,
-            session.as_deref(),
+            session,
         )?;
         match step {
             Ok(answer) => return Ok(answer),
@@ -529,6 +569,7 @@ fn prep_slot(
         }
         if fs::symlink_metadata(&slot).is_ok() {
             own(&slot, common, &rel, "nothing was changed")?;
+            real_target(&slot, &rel, "nothing was changed")?;
         }
     }
     let ensured = worktree_slot::ensure(project, name, sha, caps).map_err(|e| {
@@ -544,6 +585,7 @@ fn prep_slot(
     let _lock = worktree_slot::lock(common)?;
     no_links(primary, &slot, &rel).map_err(|e| e.replace("nothing was changed", &changed))?;
     own(&slot, common, &rel, &changed)?;
+    real_target(&slot, &rel, &changed)?;
     let before = read_holder(common, name);
     let took_over = match hold_of(common, name, who, session) {
         Hold::Held(rec) => return Ok(Err(rec)),
@@ -615,13 +657,23 @@ fn inside(slot: &Path, rel: &str) -> Result<PathBuf> {
 /// `target/` and keeps `target/`. Another live holder's slot is refused; a dead holder's is taken
 /// over. A slot left clean is released.
 pub fn done(project: &Path, name: &str, discard: bool, who: &Who) -> Result<Value> {
+    done_with(project, name, discard, who, session().as_deref())
+}
+
+/// [`done`] with the calling session given by the caller (see [`prep_with`]).
+pub fn done_with(
+    project: &Path,
+    name: &str,
+    discard: bool,
+    who: &Who,
+    session: Option<&str>,
+) -> Result<Value> {
     check_name(name)?;
     check_who(who)?;
     let common = worktree_slot::common_dir(project)?;
     let primary = worktree_slot::primary_of(&common)?;
     let slot = primary.join(SLOT_DIR).join(name);
     let rel = format!("{SLOT_DIR}/{name}");
-    let session = session();
     let _lock = worktree_slot::lock(&common)?;
     no_links(&primary, &slot, &rel)?;
     let registered = worktree_slot::linked(&primary)?
@@ -633,7 +685,7 @@ pub fn done(project: &Path, name: &str, discard: bool, who: &Who) -> Result<Valu
         ));
     }
     own(&slot, &common, &rel, "nothing was changed")?;
-    let took_over = match hold_of(&common, name, who, session.as_deref()) {
+    let took_over = match hold_of(&common, name, who, session) {
         Hold::Held(rec) => return Err(held_by(&rel, &rec)),
         Hold::Dead(rec) => Some(rec),
         Hold::Free | Hold::Mine => None,

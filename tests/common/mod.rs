@@ -81,7 +81,7 @@ pub trait CleanEnv {
 /// the switch; a test that judges whether a program uses a folder calls
 /// `use_real_process_table()` first, and its later commands read the real table.
 #[allow(dead_code)] // not every test crate spawns a command that reads the process table
-pub const PROCESS_TABLE_SWITCH: &str = "MOAI_CLI_TEST_PROCESS_TABLE";
+pub const PROCESS_TABLE_SWITCH: &str = "MOAI_TEST_PROCESS_TABLE";
 #[allow(dead_code)]
 pub const NO_PROCESS_TABLE: (&str, &str) = (PROCESS_TABLE_SWITCH, "empty");
 #[allow(dead_code)]

@@ -5,6 +5,7 @@ The detail behind the "Lane rules" section of `CLAUDE.md`. A lane is one session
 ## One card at a time
 
 - A lane works one card at a time and runs one receipt check (`moai check affected`) at a time; a follow-up slice does not start while another card of the lane is open.
+- A non-blocking finding goes in the note with its file and line; a lane adds no card for it, and the leader adds it as a criterion of the SPEC's open follow-up card (`docs/leader-rules.md`, Refill).
 - A READY note or a `LANE-DONE` line hands a card back; it is never the start signal for the next card. The next card is taken once, when the ledger shows the previous card done or released, and only when no leader is registered; with a registered leader the lane waits for that leader's dispatch.
 - New lane sessions are opened only by the operator; no session spawns another.
 - A session-end notice means: finish the card in hand, take no new card, then report `SESSION-END-READY`. It never means stop the work in hand. A card in `review` cannot be released (`card release` refuses it; `card reopen` first), so its session stays until the card is landed.

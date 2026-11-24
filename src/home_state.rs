@@ -448,7 +448,7 @@ impl InUse {
         // Test builds only: simulate a machine whose process table cannot be read, so the
         // fail-closed path is pinned by a test (#2823 audit N1).
         #[cfg(debug_assertions)]
-        if std::env::var_os("MOAI_CLI_TEST_PROCESS_CHECK").is_some_and(|v| v == "unavailable") {
+        if std::env::var_os("MOAI_TEST_PROCESS_CHECK").is_some_and(|v| v == "unavailable") {
             return InUse {
                 cwds: None,
                 open: None,

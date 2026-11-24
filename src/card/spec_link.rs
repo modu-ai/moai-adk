@@ -296,9 +296,144 @@ pub fn link(
     }))
 }
 
+/// The `relation` a `card.spec` event payload carries for a follow-up card
+/// (SPEC-20261124-followup-per-spec).
+pub const RELATION_FOLLOW_UP: &str = "follow-up";
+/// The `relation` a `card.spec` event payload carries for a card split from another card; the
+/// payload's `of` names that card.
+pub const RELATION_SPLIT_OF: &str = "split-of";
+
+/// How a card added with `--spec` stands to the other cards of its SPEC.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Relation<'a> {
+    /// Neither flag: the SPEC may have no other open card.
+    Plain,
+    /// `--follow-up`: the SPEC may have no other open follow-up card.
+    FollowUp,
+    /// `--split-of <card>`: that card names the same SPEC.
+    SplitOf(&'a str),
+}
+
+/// A card that names a SPEC and is not `done`, with the relation its newest link carries.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OpenCard {
+    pub card_id: i64,
+    pub relation: Option<String>,
+}
+
+/// The cards that name `spec_id` now and are not `done` (draft, ready, active, review and hold
+/// all count), by number.
+pub fn open_cards_of(conn: &Connection, spec_id: &str) -> rusqlite::Result<Vec<OpenCard>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT card_id, (SELECT json_extract(e.payload, '$.relation') FROM event e \
+         WHERE e.card_id = card.card_id AND e.kind = 'card.spec' \
+         ORDER BY e.event_id DESC LIMIT 1) \
+         FROM card WHERE state <> 'done' AND {LINKED_COLUMN} = ?1 ORDER BY card_id"
+    ))?;
+    let rows = stmt.query_map([spec_id], |r| {
+        Ok(OpenCard {
+            card_id: r.get(0)?,
+            relation: r.get(1)?,
+        })
+    })?;
+    rows.collect()
+}
+
+/// Why `card add --spec` must refuse a card of `relation` on SPEC `spec_id` when `open` are the
+/// SPEC's cards that are not `done`, or `None`. The message names each open card and the way out;
+/// its `conflict in ` prefix gives it the `conflict` kind (`contract::classify`).
+pub fn add_conflict(spec_id: &str, relation: Relation<'_>, open: &[OpenCard]) -> Option<String> {
+    let name = |c: &OpenCard| input::card_name(c.card_id);
+    match relation {
+        Relation::SplitOf(_) => None,
+        Relation::Plain if open.is_empty() => None,
+        Relation::Plain => {
+            let names: Vec<String> = open.iter().map(name).collect();
+            Some(format!(
+                "card add conflict in spec: {spec_id} already has an open card ({}); a SPEC keeps \
+                 one open card. Add `--split-of <card>` for a card split from it, `--follow-up` \
+                 for the SPEC's one follow-up card, or add the work as a criterion of {} with \
+                 `moai card criterion-add {} --ac <text>`",
+                names.join(", "),
+                names[0],
+                names[0],
+            ))
+        }
+        Relation::FollowUp => {
+            let existing = open
+                .iter()
+                .find(|c| c.relation.as_deref() == Some(RELATION_FOLLOW_UP))?;
+            let n = name(existing);
+            Some(format!(
+                "card add conflict in spec: {spec_id} already has an open follow-up card {n}; a \
+                 SPEC keeps one. Add the work as a criterion with `moai card criterion-add {n} \
+                 --ac <text>`"
+            ))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn open(card_id: i64, relation: Option<&str>) -> OpenCard {
+        OpenCard {
+            card_id,
+            relation: relation.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn a_plain_add_needs_a_spec_with_no_open_card() {
+        let id = "SPEC-20261124-x";
+        assert_eq!(add_conflict(id, Relation::Plain, &[]), None);
+        let m = add_conflict(
+            id,
+            Relation::Plain,
+            &[open(3, None), open(5, Some("follow-up"))],
+        )
+        .unwrap();
+        for word in [
+            "C-3, C-5",
+            "--follow-up",
+            "--split-of",
+            "criterion-add C-3 --ac",
+        ] {
+            assert!(m.contains(word), "{word}: {m}");
+        }
+    }
+
+    #[test]
+    fn only_an_open_follow_up_blocks_a_follow_up() {
+        let id = "SPEC-20261124-x";
+        assert_eq!(add_conflict(id, Relation::FollowUp, &[]), None);
+        assert_eq!(
+            add_conflict(
+                id,
+                Relation::FollowUp,
+                &[open(3, None), open(4, Some("split-of"))]
+            ),
+            None
+        );
+        let m = add_conflict(
+            id,
+            Relation::FollowUp,
+            &[open(3, None), open(4, Some("follow-up"))],
+        )
+        .unwrap();
+        assert!(
+            m.contains("C-4") && m.contains("criterion-add C-4 --ac"),
+            "{m}"
+        );
+    }
+
+    #[test]
+    fn a_split_is_never_blocked_by_open_cards() {
+        let id = "SPEC-20261124-x";
+        let all = [open(3, None), open(4, Some("follow-up"))];
+        assert_eq!(add_conflict(id, Relation::SplitOf("C-3"), &all), None);
+    }
 
     #[test]
     fn only_research_and_audit_cards_leave_the_repository_alone() {

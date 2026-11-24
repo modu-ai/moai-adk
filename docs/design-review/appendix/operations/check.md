@@ -22,7 +22,7 @@ operation `check.affected` · 코드 `src/ops/check.rs`, `src/check_affected.rs`
 
 ## 두 가지 선택 (SPEC-20261123-check-precise-selection)
 
-위의 "고르는 규칙" 표는 **전체 선택**(`selection: full`)이고, 맨 명령(`--lane` 없이)이 이것을 골라요. `--lane` 은 같은 범위에서 그 부분집합인 **레인 선택**(`selection: lane`)을 골라요: 레인이 READY 를 쓰기 전에는 `--lane`, 병합 후보 한 개마다 한 번 도는 열차 실행과 MERGE-READY 의 근거는 맨 명령의 `result=PASS` 예요. 레인 선택은 위 표의 세 규칙만 좁혀요.
+위의 "고르는 규칙" 표는 **전체 선택**(`selection: full`)이고, 맨 명령(`--lane` 없이)이 이것을 골라요. `--lane` 은 같은 범위에서 그 부분집합인 **레인 선택**(`selection: lane`)을 골라요: `--lane` 은 개발 중에 쓰는 부분 실행이에요. 그 요약 줄에는 `scans=` 바로 뒤에 `selection=lane` 낱말이 붙고(맨 명령 줄에는 없어요), `card note` 는 그 줄을 `LANE-READY-INTEGRATION`·`REPAIRED`·`READY ` 노트의 영수증(`summary.txt`)으로 받지 않아요(SPEC-20261124-ready-receipt-followup). READY head 에서 맨 명령을 한 번 돌린 `result=PASS` 가 영수증이고, 병합 후보 한 개마다 한 번 도는 열차 실행과 MERGE-READY 의 근거도 같은 맨 명령이에요. 레인 선택은 위 표의 세 규칙만 좁혀요.
 
 | 규칙 | 전체 선택 | 레인 선택 (`--lane`) |
 | --- | --- | --- |
@@ -51,8 +51,8 @@ operation `check.affected` · 코드 `src/ops/check.rs`, `src/check_affected.rs`
 ## 쓰는 법과 답
 
 - `--list`: 선택과 단계만 보여 주고 아무것도 돌리지도 쓰지도 않아요(`writes: false`).
-- 돌리기: 체크아웃이 범위의 head 이고 추적 파일이 고쳐지지 않았을 때만 돌아요. 가벼운 단계(`diff_check`, `fmt`, `ops_rustfmt`, `bash_n:…`, 새 시험 파일이 있을 때 `test_tables`: 첫 무거운 단계보다 앞의 단계)는 하나가 실패해도 서로 멈추지 않고 모두 돌지만, 그중 하나라도 실패하면 무거운 단계는 돌지 않고 거기서 멈춰요(SPEC-20261122-check-light-stop). 무거운 단계끼리는 하나가 실패해도 나머지를 끝까지 돌려요. 단계마다 로그(와 `heavy-slot.log`)를 빌드 폴더(호출한 쪽의 `CARGO_TARGET_DIR`, 없으면 `<저장소>/target`)의 `check-affected-<head 12자>/`(`--out` 으로 바꿈)에 남겨요. `--dir` 은 저장소 안의 어느 폴더든 되고, 바뀐 경로는 `--no-renames -z` 로 읽어서 이름이 바뀐 파일은 옛 경로도 세고 한글 이름도 따옴표 없이 읽어요.
-- 답의 `summary` 한 줄: `check-affected base=<12> head=<12> targets=<n> scans=<none|listed:n|unreadable> test-threads=<n> <단계>=<종료 코드>… [stopped_at=<단계>] result=PASS|FAIL`. 가벼운 단계가 실패해서 멈췄을 때만 `stopped_at` 이 `result=` 바로 앞에 붙고(첫 실패한 가벼운 단계의 이름), 돌지 않은 단계는 줄에 낱말이 없어요. 같은 이름 단계(`bash_n:…`)는 첫 실패 코드 하나로 모아요. 시작하지 못한 프로그램은 127, 자리를 얻지 못하면 모든 cargo 단계에 자리의 코드(125 거절, 75 기계가 바쁨)가 남고 결과는 FAIL 이에요. 시험 단계는 낱말 하나 `test=<코드>` 예요. 답에는 `runner`(`nextest`·`cargo-test`, 자리를 얻지 못했거나 무거운 단계 전에 멈췄으면 null)가 있고, `steps` 의 각 기록에는 `command`(실제 실행한 프로그램과 인자)가 있어요. `result=PASS` 는 모든 종료 코드가 0 일 때만이에요.
+- 돌리기: 체크아웃이 범위의 head 이고 추적 파일이 고쳐지지 않았을 때만 돌아요. 가벼운 단계(`diff_check`, `fmt`, `ops_rustfmt`, `bash_n:…`, 새 테스트 파일이 있을 때 `test_tables`: 첫 무거운 단계보다 앞의 단계)는 하나가 실패해도 서로 멈추지 않고 모두 돌지만, 그중 하나라도 실패하면 무거운 단계는 돌지 않고 거기서 멈춰요(SPEC-20261122-check-light-stop). 무거운 단계끼리는 하나가 실패해도 나머지를 끝까지 돌려요. 단계마다 로그(와 `heavy-slot.log`)를 빌드 폴더(호출한 쪽의 `CARGO_TARGET_DIR`, 없으면 `<저장소>/target`)의 `check-affected-<head 12자>/`(`--out` 으로 바꿈)에 남겨요. `--dir` 은 저장소 안의 어느 폴더든 되고, 바뀐 경로는 `--no-renames -z` 로 읽어서 이름이 바뀐 파일은 옛 경로도 세고 한글 이름도 따옴표 없이 읽어요.
+- 답의 `summary` 한 줄: `check-affected base=<12> head=<12> targets=<n> scans=<none|listed:n|unreadable> [selection=lane] test-threads=<n> <단계>=<종료 코드>… [stopped_at=<단계>] result=PASS|FAIL`. 가벼운 단계가 실패해서 멈췄을 때만 `stopped_at` 이 `result=` 바로 앞에 붙고(첫 실패한 가벼운 단계의 이름), 돌지 않은 단계는 줄에 낱말이 없어요. 같은 이름 단계(`bash_n:…`)는 첫 실패 코드 하나로 모아요. 시작하지 못한 프로그램은 127, 자리를 얻지 못하면 모든 cargo 단계에 자리의 코드(125 거절, 75 기계가 바쁨)가 남고 결과는 FAIL 이에요. 시험 단계는 낱말 하나 `test=<코드>` 예요. 답에는 `runner`(`nextest`·`cargo-test`, 자리를 얻지 못했거나 무거운 단계 전에 멈췄으면 null)가 있고, `steps` 의 각 기록에는 `command`(실제 실행한 프로그램과 인자)가 있어요. `result=PASS` 는 모든 종료 코드가 0 일 때만이에요.
 - 거절(아무것도 돌지 않음): 범위가 `<base>..<head>` 꼴이 아님, base·head 를 읽을 수 없음, 체크아웃이 head 가 아님, 추적 파일이 고쳐짐.
 
 하지 않는 것: PASS 를 선언(독립 감사와 CI 는 그대로), 시험이나 도구를 고치거나 설치, 한 시험 안의 케이스 고르기, 실제 HOME 읽기.

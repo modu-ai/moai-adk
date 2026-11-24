@@ -48,14 +48,14 @@ ROOMY = "free_gb=1000,swap_pct=0"
 def roomy_machine(test):
     """Every slot test runs on an injected roomy machine (#2829): the real disk of a busy
     runner or lane machine must not turn a slot test into a 75 'machine busy' exit."""
-    before = os.environ.get("MOAI_CLI_TEST_MACHINE")
-    os.environ["MOAI_CLI_TEST_MACHINE"] = ROOMY
+    before = os.environ.get("MOAI_TEST_MACHINE")
+    os.environ["MOAI_TEST_MACHINE"] = ROOMY
 
     def restore():
         if before is None:
-            os.environ.pop("MOAI_CLI_TEST_MACHINE", None)
+            os.environ.pop("MOAI_TEST_MACHINE", None)
         else:
-            os.environ["MOAI_CLI_TEST_MACHINE"] = before
+            os.environ["MOAI_TEST_MACHINE"] = before
 
     test.addCleanup(restore)
 
@@ -305,7 +305,7 @@ BAD_LIMITS_FILES = [
 
 
 def rust_bin():
-    """The debug `moai-cli` the cargo steps built (debug builds read MOAI_CLI_TEST_MACHINE)."""
+    """The debug `moai-cli` the cargo steps built (debug builds read MOAI_TEST_MACHINE)."""
     target = os.environ.get("CARGO_TARGET_DIR")
     base = Path(target) if target else ROOT / "target"
     return base / "debug" / "moai-cli"
@@ -323,14 +323,14 @@ class MachineLimitTest(unittest.TestCase):
         self.marker = self.root / "ran"
 
     def run_python(self, machine, *extra, name="lane"):
-        env = dict(os.environ, MOAI_CLI_TEST_MACHINE=machine)
+        env = dict(os.environ, MOAI_TEST_MACHINE=machine)
         args = tool(self.folder, "acquire", "--max", "1", "--name", name, *extra,
                     "--", sys.executable, "-c", f"open({str(self.marker)!r}, 'w')")
         return subprocess.run(args, capture_output=True, text=True, env=env, cwd=self.root,
                               timeout=30)
 
     def run_rust(self, machine, *extra, name="lane"):
-        env = dict(os.environ, MOAI_CLI_TEST_MACHINE=machine)
+        env = dict(os.environ, MOAI_TEST_MACHINE=machine)
         args = [str(rust_bin()), "heavy-slot-acquire", "--max", "1", "--name", name,
                 "--dir", str(self.folder), *extra,
                 "--", sys.executable, "-c", f"open({str(self.marker)!r}, 'w')"]
@@ -487,7 +487,7 @@ class MachineLimitTest(unittest.TestCase):
     def test_d2_the_machine_is_judged_again_after_a_wait(self):
         machine = self.root / "machine"
         machine.write_text(ROOMY)
-        env = dict(os.environ, MOAI_CLI_TEST_MACHINE=f"@{machine}")
+        env = dict(os.environ, MOAI_TEST_MACHINE=f"@{machine}")
         hold = subprocess.Popen(
             tool(self.folder, "acquire", "--max", "1", "--name", "holder", "--",
                  sys.executable, "-c", "import time; time.sleep(30)"),
@@ -590,7 +590,7 @@ class MachineLimitTest(unittest.TestCase):
 
     def test_a_max_in_the_file_beats_a_larger_caller_max(self):
         self.limits('{"max":1}')
-        env = dict(os.environ, MOAI_CLI_TEST_MACHINE=ROOMY)
+        env = dict(os.environ, MOAI_TEST_MACHINE=ROOMY)
         hold = subprocess.Popen(
             tool(self.folder, "acquire", "--max", "2", "--name", "holder", "--",
                  sys.executable, "-c", "import time; time.sleep(30)"),

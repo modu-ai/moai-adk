@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "2b797b2def51ea84393c458e1841a5e96521adc642c2a71a40822083dbbde8f3",
+      "sha256": "a27cd8a93125a8a16458ff0dbda5be216f8fa03623e53637a5d85ba1923f84f7",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -69,7 +69,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "f8567a0a9b0d580eb7c41b128376757f4a5c5f160a547df02fb577ede3632094",
+      "sha256": "a4ee6a61ce05f4277eb6c6a9e9994fe9e3bb85c90affbf725ab7495c90a77d6d",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -87,7 +87,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "70797a987d7d1b70985d6484a2404fb31deeffceeedec239c06dc8f4695ec03c",
+      "sha256": "baf11648ccfc000a60b7defb2025311a879e1cfff5b9812779251bf33bbafb5c",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -96,7 +96,7 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "acdd8ddd1dc73f89e5317bebf20f693d33ef4882954aa1d522dd057da296d80b",
+      "sha256": "0216e0a0274b1d5e749df254b81a4c2fd20738735fd7dc5e2705a09c251f502d",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
@@ -110,7 +110,7 @@
         "kind": "design-spec",
         "template_id": "home-flow-rule",
         "adoption": "new",
-        "reason": "Written for SPEC-20261122-claude-md-flow-rule revision 4 against the leader's candidate (rules-redesign-2026-11-23): the short, project-generic evidence and handoff rule that moai-cli writes as rules/moai/flow.md into each Claude config folder the user picks (src/home_routing/rules.rs), plain text with no frontmatter, at most 80 lines and 5 KiB. Lane, card and landing detail stays in references/flows/next-flow.md, which this file points to; what hooks enforce (force push, reset, clean) is not repeated here."
+        "reason": "Written for SPEC-20261122-claude-md-flow-rule revision 4 against the leader's candidate (rules-redesign-2026-11-23): the short, project-generic evidence and handoff rule that moai-cli writes as rules/moai-flow.md into each Claude config folder the user picks (src/home_routing/rules.rs), plain text with no frontmatter, at most 80 lines and 5 KiB. Lane, card and landing detail stays in references/flows/next-flow.md, which this file points to; what hooks enforce (force push, reset, clean) is not repeated here."
       }
     },
     "references/home/output-style.md": {
@@ -279,7 +279,7 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "dc4e504a5b5d8e3f0b5bb70274da7b45aa0e2cd1f39cea21b88dbbfb9294c386",
+      "sha256": "2d87b2bf5949562c00d4da530fa3d68bc1e44670405577113253f051272613ab",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
@@ -408,7 +408,7 @@
       }
     },
     "references/routes.json": {
-      "sha256": "39dc9aaeb8a9b3f25ba60a051ca5fbe3cdc8fccee4ac3d6ab41d2627bcdc469c",
+      "sha256": "9c6c552356f5fea14ae4897397971309a7d416d4d45f70de0c662006cf813b33",
       "origin": {
         "kind": "design-template",
         "template_id": "router-routes",
@@ -424,6 +424,15 @@
         "adoption": "adopted",
         "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499. Web pages section (browser choice and rules) added by #2517. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features). Rebuild-by-modification-time sentence (touch restored or extracted sources; cite a run only with the tree's Compiling line and the expected test count) added by #2401 comment 6824103310."
       }
+    },
+    "workflows/leader.md": {
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-leader",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261124-moai-leader-route (REQ-1 to REQ-12): `/moai leader` makes the window that types it the registered coordination window; it registers with `session-register`, renews once per round, reads the ledger, sends audits to another session, lands with `moai card land --by leader` and releases the registration at the end. The completion-message and transition sentences stay in `flows/next-flow`."
+      },
+      "sha256": "00cfe5a9652c52ce966c237d6988cababbe592cf8a678ed4a63685390bab79a3"
     },
     "workflows/plan.md": {
       "sha256": "ab27f283d60333933a93aa8a6a5858d88e44018e7edcd0cab9b79e7fe9b27e51",
@@ -471,7 +480,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "32e54e021464539e347f0993f4656813ac51e451be5897dc67fd5210eefb724a",
+      "sha256": "c7b8d2fcc5eb1875a2c33709c5128218611cbce913ba1c75317639dc6397d187",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",

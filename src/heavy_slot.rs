@@ -341,13 +341,13 @@ struct Machine {
 }
 
 /// The machine now. Debug builds take
-/// `MOAI_CLI_TEST_MACHINE=free_gb=<n>,swap_pct=<n>[,pressure=<n>,mem_free_pct=<n>]` instead
+/// `MOAI_TEST_MACHINE=free_gb=<n>,swap_pct=<n>[,pressure=<n>,mem_free_pct=<n>]` instead
 /// (or `@<file>` holding that text, read on every call so a test can change the machine during
 /// a wait); a `pressure` or `mem_free_pct` key makes it a machine with memory readings (macOS).
 /// Release builds never read it.
 fn measured(folder: &Path) -> Machine {
     #[cfg(debug_assertions)]
-    if let Ok(mut s) = std::env::var("MOAI_CLI_TEST_MACHINE") {
+    if let Ok(mut s) = std::env::var("MOAI_TEST_MACHINE") {
         if let Some(file) = s.strip_prefix('@') {
             s = std::fs::read_to_string(file).unwrap_or_default();
         }

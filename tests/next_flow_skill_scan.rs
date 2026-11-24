@@ -1,5 +1,5 @@
 //! SPEC-20261122-next-flow-skills-agents, text slice A (AC-1, AC-2, AC-5): the `/moai` skill
-//! package has eight routes, `/moai work` takes a card through the whole flow, and the retired
+//! package has eight routes (nine since SPEC-20261124-moai-leader-route), `/moai work` takes a card through the whole flow, and the retired
 //! SETUP, VERIFY and OPTIMIZE routes leave their rules in PROJECT, RUN and UPDATE. Text slice B
 //! (AC-3): one flow reference and one audit contract, each within its byte budget. Text slice C
 //! (AC-4): the shipped texts name no retired host, mode, gate or tool, and the points of the
@@ -38,9 +38,10 @@ fn route_keys() -> Vec<String> {
     keys
 }
 
-/// REQ-1: the eight routes, sorted.
-const ROUTES: [&str; 8] = [
-    "AUDIT", "PLAN", "PROJECT", "READ", "RUN", "SYNC", "UPDATE", "WORK",
+/// REQ-1 of SPEC-20261124-moai-leader-route (it changes the parent's eight to nine): the nine
+/// routes, sorted.
+const ROUTES: [&str; 9] = [
+    "AUDIT", "LEADER", "PLAN", "PROJECT", "READ", "RUN", "SYNC", "UPDATE", "WORK",
 ];
 
 /// REQ-2, the files text slices A, B and C and Plan step 6 remove. Slice B adds
@@ -125,6 +126,10 @@ const DASH_SENTENCE: &str =
 
 /// REQ-3: the sentence of SKILL.md that picks WORK by the leading word.
 const WORK_SENTENCE: &str = "A request whose first word after the skill name is `work` picks WORK";
+
+/// SPEC-20261124-moai-leader-route REQ-2: the part of the same SKILL.md sentence that picks
+/// LEADER by the leading word.
+const LEADER_SENTENCE: &str = "one whose first word is `leader` picks LEADER";
 
 /// REQ-3: the WORK procedure's step keys, in order.
 const WORK_STEPS: [&str; 7] = ["take", "plan", "run", "sync", "audit", "land", "repeat"];
@@ -390,7 +395,7 @@ fn chain_rows(text: &str) -> Vec<Vec<String>> {
 }
 
 #[test]
-fn routes_table_names_exactly_the_eight_routes() {
+fn routes_table_names_exactly_the_nine_routes() {
     assert_eq!(route_keys(), ROUTES, "the route table");
 }
 
@@ -462,6 +467,31 @@ fn routes_chain_table_uses_only_table_routes() {
     assert!(
         rows.iter().any(|r| r.iter().any(|route| route == "WORK")),
         "the chain table has a WORK row"
+    );
+    // SPEC-20261124-moai-leader-route REQ-11: one LEADER row.
+    assert_eq!(
+        rows.iter()
+            .filter(|r| r.iter().any(|route| route == "LEADER"))
+            .count(),
+        1,
+        "the chain table has exactly one LEADER row"
+    );
+}
+
+#[test]
+fn routes_leader_is_picked_by_the_leading_word() {
+    let skill = read("SKILL.md");
+    assert!(
+        skill.contains("`/moai leader`"),
+        "SKILL.md names `/moai leader`"
+    );
+    assert!(
+        skill.contains(LEADER_SENTENCE),
+        "SKILL.md lacks {LEADER_SENTENCE:?}"
+    );
+    assert!(
+        skill.contains(WORK_SENTENCE),
+        "the sentence that picks WORK stays in SKILL.md"
     );
 }
 
@@ -634,6 +664,48 @@ fn absorb_update_carries_a_leftover_preview_that_deletes_nothing() {
     ] {
         assert!(update.contains(phrase), "update.md lacks {phrase:?}");
     }
+}
+
+/// The line of the `update.md` procedure that starts step `n` as `n. **`.
+fn update_step(text: &str, n: usize) -> &str {
+    let start = format!("{n}. **");
+    text.lines()
+        .find(|line| line.starts_with(&start))
+        .unwrap_or_else(|| panic!("update.md has no step {n}"))
+}
+
+/// What steps 2 and 5 of `update.md` must say about the picks for the older instruction files:
+/// the binary refuses `import`, offers `move` and `leave`, then `remove-originals` as an
+/// optional step, and an `optional` step does not keep the project from reading as up to date.
+fn update_picks_problems(text: &str) -> Vec<String> {
+    let mut problems = Vec::new();
+    let ask = update_step(text, 2);
+    if ask.contains("`import`") {
+        problems.push("step 2 offers `import`, which the binary refuses".to_string());
+    }
+    for want in ["`move`", "`leave`", "`remove-originals`", "optional"] {
+        if !ask.contains(want) {
+            problems.push(format!("step 2 lacks {want:?}"));
+        }
+    }
+    if !update_step(text, 5).contains("`optional`") {
+        problems.push("step 5 does not count an `optional` step as nothing to do".to_string());
+    }
+    problems
+}
+
+#[test]
+fn absorb_update_picks_are_move_leave_and_an_optional_remove_originals() {
+    let problems = update_picks_problems(&read("workflows/update.md"));
+    assert!(problems.is_empty(), "update.md: {problems:?}");
+}
+
+#[test]
+fn absorb_update_picks_check_reads_what_it_says() {
+    let old = "2. **Ask.** `move` (x), `import` (y) or `leave` (z).\n5. **Re-run and report.** a `skip` counts as nothing to do.";
+    assert_eq!(update_picks_problems(old).len(), 4, "{old}");
+    let good = "2. **Ask.** `move` or `leave`; later the optional step `remove-originals`.\n5. **Re-run and report.** a `skip` or an `optional` step counts as nothing to do.";
+    assert_eq!(update_picks_problems(good), Vec::<String>::new(), "{good}");
 }
 
 #[test]
@@ -2058,7 +2130,7 @@ const SELF_CHECK: &str = "references/internal/self-check.md";
 
 /// The byte size of the flow reference on the integration tip that landed the cargo-only pin
 /// (leader dispatch of 2026-11-23); the restored meanings fit inside it.
-const FLOW_REF_TIP_BYTES: usize = 7974;
+const FLOW_REF_TIP_BYTES: usize = 8051;
 
 /// The first line of `text` that holds `marker`, a list item found by its first words so that a
 /// renumbered list does not break the pin.

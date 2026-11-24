@@ -400,25 +400,28 @@ fn parse_trailers(output: &str) -> (BTreeMap<String, String>, bool) {
 
 // ---- card next ---------------------------------------------------------------------------------
 
-/// The `ready` cards `card next` would offer or has skipped only for a scope reason: the ones a
-/// landing proof can still remove.
+/// The `ready` cards `card next` would offer or has skipped only for a scope reason or for want of
+/// a criterion: the ones a landing proof can still remove.
 pub fn candidates(found: &Next) -> Vec<i64> {
     let mut ids: Vec<i64> = found.ready.iter().map(|c| c.card_id).collect();
     ids.extend(
         found
             .skipped
             .iter()
-            .filter(|s| is_scope_skip(s))
+            .filter(|s| is_landable_skip(s))
             .map(|s| s.card_id),
     );
     ids
 }
 
-fn is_scope_skip(s: &workflow::Skipped) -> bool {
+/// Whether a landing proof replaces the skip reason of `s`. A card with no counted criterion is in
+/// the set: its proof wins over `no_criteria`, because the proof says what to do with the card
+/// (SPEC-20261124-card-next-skip-reason).
+fn is_landable_skip(s: &workflow::Skipped) -> bool {
     s.state == "ready"
         && matches!(
             s.reason,
-            SkipReason::EmptyScope | SkipReason::ScopeOverlap { .. }
+            SkipReason::EmptyScope | SkipReason::ScopeOverlap { .. } | SkipReason::NoCriteria
         )
 }
 
@@ -453,7 +456,12 @@ pub fn find(project: &Path, conn: &Connection, candidates: &[i64]) -> Result<Rep
             );
             continue;
         }
-        let head = fact.head.clone().filter(|h| crate::gate::is_full_sha(h));
+        // A slice landed with `--keep-open` stays open on purpose, so its head proves no finished
+        // card and `next` keeps offering it (SPEC-20261124-land-closes-card REQ-10).
+        let head = fact
+            .head
+            .clone()
+            .filter(|h| crate::gate::is_full_sha(h) && !fact.keep_open);
         let spec = specs.get(&fact.card_id).cloned();
         if head.is_some() || spec.is_some() {
             pending.push((fact.card_id, head, spec));
@@ -539,9 +547,9 @@ pub fn find(project: &Path, conn: &Connection, candidates: &[i64]) -> Result<Rep
     Ok(report)
 }
 
-/// Moves every card of `found` that has a proof out of `ready` and out of the scope skips, and
-/// returns its `skipped` entry (`reason: "already_landed"`, `via` and the proof's own key), in
-/// card order. The answer's other keys stay as they were.
+/// Moves every card of `found` that has a proof out of `ready` and out of the skips a proof
+/// replaces, and returns its `skipped` entry (`reason: "already_landed"`, `via` and the proof's
+/// own key), in card order. The answer's other keys stay as they were.
 pub fn take_landed(found: &mut Next, report: &Report) -> Vec<Value> {
     let mut taken: Vec<(i64, Value)> = Vec::new();
     let mut entry = |card_id: i64, title: &str, priority: &str, proof: &Proof| {
@@ -569,7 +577,7 @@ pub fn take_landed(found: &mut Next, report: &Report) -> Vec<Value> {
     found
         .skipped
         .retain(|s| match report.proofs.get(&s.card_id) {
-            Some(proof) if is_scope_skip(s) => {
+            Some(proof) if is_landable_skip(s) => {
                 entry(s.card_id, &s.title, &s.priority, proof);
                 false
             }
@@ -601,5 +609,60 @@ mod tests {
         assert!(parse_trailers(&full).1);
         assert!(!parse_trailers(&short).1);
         assert!(!parse_trailers("").1);
+    }
+
+    fn skipped(card_id: i64, reason: SkipReason) -> workflow::Skipped {
+        workflow::Skipped {
+            card_id,
+            title: format!("card {card_id}"),
+            state: "ready".to_string(),
+            priority: "p3".to_string(),
+            reason,
+        }
+    }
+
+    /// `take_landed` takes a skip for its proof only when `is_landable_skip` says a proof can
+    /// replace it. `candidates` never looks a held card's proof up, so the gate cannot be reached
+    /// from `card next`; this test hands `take_landed` a proof for a held card and for a card with
+    /// no counted criterion to pin the gate on its own (SPEC-20261124-card-next-skip-reason, REQ-3).
+    #[test]
+    fn a_proof_replaces_a_landable_skip_and_never_a_held_one() {
+        let held = SkipReason::Held {
+            holder: "holder".to_string(),
+            generation: 1,
+            lease_until: 1,
+        };
+        let mut found = Next {
+            now: 0,
+            mine: Vec::new(),
+            ready: Vec::new(),
+            skipped: vec![
+                skipped(1, held),
+                skipped(2, SkipReason::NoCriteria),
+                skipped(3, SkipReason::EmptyScope),
+            ],
+        };
+        let head = "a".repeat(40);
+        let mut report = Report {
+            checked: true,
+            branch: Some("integ".to_string()),
+            truncated: false,
+            note: None,
+            proofs: BTreeMap::new(),
+            spec_trailer_hints: BTreeMap::new(),
+        };
+        for card_id in [1, 2, 3] {
+            report
+                .proofs
+                .insert(card_id, Proof::Head { head: head.clone() });
+        }
+        let taken = take_landed(&mut found, &report);
+        let taken_ids: Vec<i64> = taken
+            .iter()
+            .map(|v| v["card_id"].as_i64().unwrap())
+            .collect();
+        assert_eq!(taken_ids, vec![2, 3], "{taken:?}");
+        let left: Vec<i64> = found.skipped.iter().map(|s| s.card_id).collect();
+        assert_eq!(left, vec![1], "the held card stays held");
     }
 }

@@ -59,6 +59,9 @@ pub struct LandRequest<'a> {
     pub generation: Option<i64>,
     /// `--by`: who lands; only the leader word is accepted.
     pub by: &'a str,
+    /// `--keep-open`: land a slice, record the landing and close nothing
+    /// (SPEC-20261124-land-closes-card).
+    pub keep_open: bool,
 }
 
 fn refused(why: impl std::fmt::Display) -> String {
@@ -131,6 +134,23 @@ fn refusal_after_move(e: WorkflowError, branch: &str, head: &str) -> String {
     )
 }
 
+/// The reason of the `no_pass` refusal: the code `no_pass` when the check found no verdict for
+/// the head, the check's own code and reason for any other finding (a FAIL, an unreadable git).
+fn no_pass_reason(would_refuse: Option<&Value>) -> String {
+    let code = would_refuse.and_then(|w| w["code"].as_str());
+    let why = would_refuse.and_then(|w| w["why"].as_str()).unwrap_or("");
+    match code {
+        None | Some("no_verdict") | Some("verdict_other_head") => {
+            format!(
+            "no_pass: a landing that closes the card needs an independent PASS of this exact head \
+             recorded by `card verdict` ({}); land a slice with --keep-open instead",
+            if why.is_empty() { "none was found" } else { why }
+        )
+        }
+        Some(code) => format!("{code}: {why}"),
+    }
+}
+
 /// `card land C-n`: see the module comment.
 pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>) -> Result<Value> {
     let card_id = card_id(reference)?;
@@ -140,6 +160,12 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         )));
     }
     let met = parse_met(req.met).map_err(refused)?;
+    if req.keep_open && !met.is_empty() {
+        return Err(unchanged(
+            "--keep-open closes nothing, so it takes no --met option: leave --met out, or land \
+             without --keep-open",
+        ));
+    }
     if !crate::gate::is_full_sha(req.head) {
         return Err(refused("the head must be 40 lowercase hex"));
     }
@@ -192,6 +218,23 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
                 req.head
             ))),
         };
+    }
+
+    // The criteria still open: a slice needs one (`--keep-open` of a card with nothing open would
+    // close it), and a closing landing fills each one the caller did not name.
+    let open: Vec<i64> = {
+        let mut stmt = ledger
+            .conn()
+            .prepare("SELECT seq FROM card_ac WHERE card_id = ?1 AND status = 'open' ORDER BY seq")
+            .map_err(sql_err)?;
+        let rows = stmt.query_map([card_id], |r| r.get(0)).map_err(sql_err)?;
+        rows.collect::<std::result::Result<_, _>>()
+            .map_err(sql_err)?
+    };
+    if req.keep_open && open.is_empty() {
+        return Err(unchanged(format!(
+            "{name} has no open criterion, so --keep-open has nothing to keep open: land without it"
+        )));
     }
 
     // Git: the branch, the tip, the candidate and where it stands.
@@ -279,6 +322,43 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         would_refuse,
     } = check::read(&input, mode).map_err(unchanged)?;
 
+    // A landing that closes the card needs the PASS the check relies on, in every mode
+    // (SPEC-20261124-land-closes-card REQ-4): `no_pass` for a head with no usable verdict, the
+    // check's own code and reason for a FAIL or anything else it found. A slice (`--keep-open`)
+    // goes on as the mode says. Nothing has been written yet.
+    let met = if req.keep_open {
+        met
+    } else {
+        let Some(relied) = relied.as_ref() else {
+            return Err(unchanged(no_pass_reason(would_refuse.as_ref())));
+        };
+        let Some(event) = relied["event"].as_i64() else {
+            return Err(unchanged(
+                "no_pass: the verdict the landing relies on names no event, so it cannot be \
+                 cited as evidence",
+            ));
+        };
+        let line = format!("verdict event {event} PASS head {}", &req.head[..12]);
+        let mut filled = met;
+        for seq in &open {
+            if !filled.iter().any(|(named, _)| named == seq) {
+                filled.push((*seq, line.clone()));
+            }
+        }
+        // The same checks again with the criteria filled, still before the first write.
+        workflow::finish_preflight(
+            ledger.conn(),
+            card_id,
+            req.session,
+            req.by,
+            &evidence,
+            &filled,
+            req.generation,
+        )
+        .map_err(finish_refusal)?;
+        filled
+    };
+
     // The scans the merge tree needs (SPEC-20261123-land-repo-scans): only a landing that moves the
     // branch asks for them; a head the branch already holds was judged when it moved (REQ-9).
     let scans = if standing == Standing::OnTip {
@@ -351,6 +431,7 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         &met,
         req.generation,
         workflow::LandedVerdict::Relied(relied.as_ref()),
+        req.keep_open,
     )
     .map_err(|e| {
         if moved {

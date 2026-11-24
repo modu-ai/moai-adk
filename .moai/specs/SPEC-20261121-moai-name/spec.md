@@ -1,18 +1,30 @@
 ---
 id: SPEC-20261121-moai-name
 title: "The temporary name moai-cli leaves the product: every remaining occurrence, by kind and slice"
-status: draft
-revision: 7
+status: approved
+revision: 8
 created: 2026-11-21
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7879 (2026-11-23T20:49:51Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7878 에 답함): 개정 8 을 (A) 로 승인해요, D-21 (a); 노트 7888 (2026-11-23T20:56:42Z): REQ-22·AC-20·범위 두 줄을 더한 글은 7879 승인 범위 안(조건 (1)의 구현)이라 그 글의 digest 로 approval 을 적어요; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:c57555776107ece7fde86b49408c4cc8fc0b6674848106426d5b3ddbd9324ee3"
 ---
 
 # The temporary name moai-cli leaves the product
+
+## Interview
+
+- Q1: Which remaining piece comes next after slice 4b, and what does it hold? -> A: Slice 3: the fifteen `MOAI_CLI_TEST_*` test seam names become `MOAI_TEST_*`, together with the slice 4b audit findings N1 to N3 (leader decision on note 7879, answering the lane's note 7878; leader judgement under the user's delegation of 2026-11-23T13:57Z, not a direct user pick).
+- Q2: Does the binary path variable `MOAI_CLI_BIN` move in this slice? -> A: No. Option (a): it moves in slice 5 with the binary name, because its readers are the Python files and `tools/self_check.sh` and the same line names the old file `debug/moai-cli` (note 7879, D-21).
+- Q3: What pins "no old prefix in `src/` and `tests/`", and where does it live? -> A: One scan test in the already registered `tests/state_folder_literal_scan.rs` plus one entry in `tools/repo_scans.json`, with the old prefix joined at run time, and a guard-mutant line in the READY note; the two files were added to the card's write scope (notes 7879 condition (1) and 7888).
+- Q4: Are the Python twin files run? -> A: No. They get the name line only and are not run, by rule (note 7879 condition (2)).
 
 ## Intent
 
 사용자 지시(2026-11-21, 리더 대화 원문): "moai-cli 전수 조사해서 또 수정에 빠져 있는거 찾아서 완전 제거해라". 사용자 결정(2026-11-22, 카드 노트 6286): 릴리스 태그는 `v4.<yearweek>.<build>`, 내려받는 파일은 `moai-adk-<version>-<platform>` 이고 `moai-cli` 이름은 남기지 않아요. 임시 이름 `moai-cli`(바이너리·패키지·크레이트·폴더·변수·릴리스 이름)는 제품에서 완전히 사라지고 이름은 `moai` 하나예요.
 
-이 SPEC 은 그 전체의 목록과 순서예요. 조각마다 이 SPEC 의 개정과 착지가 따로 있고, 각 조각의 요구는 아래 Requirements 에 그 조각이 시작될 때 더해요. 개정 2 는 조각 1a 예요: 남은 발생 전부를 종류별·조각별로 나열하고, 출력되는 버전 줄이 `moai` 를 이름하기 전에 읽는 쪽이 두 이름을 모두 받게 해요(착지됨). 개정 3 은 조각 1b 예요: 실제로 찍는 이름을 `moai` 로 바꾸고, 1a 감사에서 나온 비차단 지적(N1·N2·N4·N6)을 이 문서에서 바로잡아요. 개정 4 는 조각 1b 의 수리예요: 1b 감사가 막은 것(실제 바이너리의 버전 줄을 옛 이름으로 고정한 `tests/install_candidates.rs`)과, 원격 CI 를 미리 빨강으로 만들 읽는 쪽(`tools/smoke/smoke.py`, README 두 곳, `tests/oss_docs_test.py`)을 같은 조각에서 새 서명에 맞춰요. 개정 5 는 조각 2 예요: 사용자가 읽는 거절 문구·경고·안내 문장과 도움말 골든에서 제품 이름을 `moai` 로 쓰고(파일·폴더 이름은 다른 조각), 1b 감사의 비차단 지적 N-b(낡은 순서 문장과 읽는 쪽 표)·N-c(Result 에 없는 Python 단계)를 이 문서에서 바로잡아요. 개정 6 은 조각 4 예요(heavy-slot 캐시 폴더 이름만): 슬롯 폴더의 기본값을 `moai-cli/heavy-slots` 에서 `moai/heavy-slots` 로 옮기고, 같은 폴더와 같은 잠금을 쓰는 Python 쌍둥이 도구를 한꺼번에 맞추며, 옛 폴더를 읽는 호환과 옮기는 방법을 아래 결정 D-9~D-13 으로 정해요.
+이 SPEC 은 그 전체의 목록과 순서예요. 조각마다 이 SPEC 의 개정과 착지가 따로 있고, 각 조각의 요구는 아래 Requirements 에 그 조각이 시작될 때 더해요. 개정 2 는 조각 1a 예요: 남은 발생 전부를 종류별·조각별로 나열하고, 출력되는 버전 줄이 `moai` 를 이름하기 전에 읽는 쪽이 두 이름을 모두 받게 해요(착지됨). 개정 3 은 조각 1b 예요: 실제로 찍는 이름을 `moai` 로 바꾸고, 1a 감사에서 나온 비차단 지적(N1·N2·N4·N6)을 이 문서에서 바로잡아요. 개정 4 는 조각 1b 의 수리예요: 1b 감사가 막은 것(실제 바이너리의 버전 줄을 옛 이름으로 고정한 `tests/install_candidates.rs`)과, 원격 CI 를 미리 빨강으로 만들 읽는 쪽(`tools/smoke/smoke.py`, README 두 곳, `tests/oss_docs_test.py`)을 같은 조각에서 새 서명에 맞춰요. 개정 5 는 조각 2 예요: 사용자가 읽는 거절 문구·경고·안내 문장과 도움말 골든에서 제품 이름을 `moai` 로 쓰고(파일·폴더 이름은 다른 조각), 1b 감사의 비차단 지적 N-b(낡은 순서 문장과 읽는 쪽 표)·N-c(Result 에 없는 Python 단계)를 이 문서에서 바로잡아요. 개정 6 은 조각 4 예요(heavy-slot 캐시 폴더 이름만): 슬롯 폴더의 기본값을 `moai-cli/heavy-slots` 에서 `moai/heavy-slots` 로 옮기고, 같은 폴더와 같은 잠금을 쓰는 Python 쌍둥이 도구를 한꺼번에 맞추며, 옛 폴더를 읽는 호환과 옮기는 방법을 아래 결정 D-9~D-13 으로 정해요. 개정 7 은 조각 4b 예요(착지됨): 임시 HOME 표식과 `git init` 잠금 이름을 바꾸고 조각 4 감사의 N1 테스트 둘을 더했어요(결정 D-14~D-17). 개정 8 은 조각 3 이에요: 테스트 전용 환경 변수 `MOAI_CLI_TEST_*` 15 개를 `MOAI_TEST_*` 로 바꾸고(결정 D-18~D-20), 조각 4b 감사의 비차단 지적 N1~N3 을 같은 조각에서 바로잡아요(결정 D-22, REQ-21). 환경 변수 `MOAI_CLI_BIN` 은 이 개정이 옮기지 않고 어느 조각에서 옮길지를 결정 D-21 로 물어요.
 
 ### 왜 다시 쓰나 (2026-11-23 확인)
 
@@ -57,6 +69,11 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 - REQ-15: When a migrate command opens a home folder, it shall require the marker file `.moai-synthetic-home` holding exactly `moai synthetic home v1` and a newline · failure: none — REQ-17 handles a home without it.
 - REQ-16: When the launcher runs `git init` in a folder that has no repository, it shall hold its lock in the OS temporary folder under the name `moai-git-init-<16 hex of sha256(path)>.lock` · failure: none — a lock that cannot be opened safely (a symlink, another owner, an unopenable path) still gives no lock and the init runs unlocked as before, and `moai-cli-git-init-*.lock` files an earlier build left behind are never read, moved or deleted.
 - REQ-17 (REQ-15): IF the home folder lacks the marker file `.moai-synthetic-home` with exactly that text, including a home that carries only the earlier marker `.moai-cli-synthetic-home`, THEN the migrate command shall refuse with `migrate refused: .moai-synthetic-home marker missing; only a prepared synthetic home is allowed` and read and write nothing in that home.
+- REQ-18: When the program reads a test seam, it shall read the variable `MOAI_TEST_<NAME>` for each earlier variable `MOAI_CLI_TEST_<NAME>` of the fifteen listed in decision D-18 · failure: none — a child that still sets the earlier name finds the seam off, and the earlier name is read nowhere.
+- REQ-19: When the Python twin `tools/heavy_check_slot.py` reads the machine seam, it shall read `MOAI_TEST_MACHINE` · failure: none — the cross-tool tests of REQ-12 fail first if the two tools read different names.
+- REQ-20: The text that names a test seam inside the write scope of slice 3 shall use the `MOAI_TEST_` form of its name · failure: none — earlier SPECs, `docs/design-review/` and `.moai-cli/` keep the earlier text as history.
+- REQ-21: When `migrate-apply`, `migrate-recovery-plan` or `migrate-recover` opens a home that holds only the earlier marker `.moai-cli-synthetic-home`, it shall refuse with the REQ-17 sentence and read and write nothing in that home · failure: none — the earlier-marker refusal of `migrate-plan` stays pinned by its own test.
+- REQ-22: When the repository scans run, they shall refuse any line of `src/` and of a test file outside `tests/fixtures` that spells the earlier prefix `MOAI_CLI_TEST_` · failure: none — history documents and the Python and shell tools outside `tests/` are outside this scan.
 
 ## Order that keeps installed copies working
 
@@ -68,6 +85,7 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 4. **바이너리와 패키지(조각 5).** 새 이름 `moai` 가 실제 파일이 되고 `moai-cli` 는 호환 링크로 남아, 옛 훅·설정이 부르는 `moai-cli` 가 계속 돼요. 링크는 업데이트 단계가 지워요(카드 본문 5). 임시 HOME 에서 도는 Rust 테스트가 이 호환 읽기를 증명해요.
 5. **슬롯 폴더 이름(조각 4, 개정 6).** 모든 레인이 한꺼번에 새 폴더로 옮겨요: 두 빌드가 서로 다른 슬롯 폴더를 쓰면 서로를 막지 못해요. 새 빌드는 새 폴더(`moai/heavy-slots`)를 쓰고, 기계 주인의 `limits.json` 은 새 폴더에 아직 없을 때만 옛 폴더에서 읽어요(읽기만). 옛 폴더는 코드가 옮기거나 지우지 않고 주인이 한 번 `mv` 해요(결정 D-9~D-13).
 - **5b. 임시 이름(조각 4b, 개정 7).** 잠금 파일과 임시 HOME 표식은 설치된 사본이 읽지 않는 이름이라 호환 읽기가 필요 없어요: 새 이름으로 바꾸고 옛 이름은 읽지도 만들지도 않아요(결정 D-15·D-16). 같은 조각이 조각 4 감사의 N1 테스트 두 개를 더해요.
+- **5c. 테스트 전용 환경 변수(조각 3, 개정 8).** 설치된 사본이 읽는 변수가 아니라서 호환 읽기가 필요 없어요: 새 이름 `MOAI_TEST_*` 로 바꾸고 옛 이름은 읽지도 만들지도 않아요(결정 D-19·D-20). 변수를 읽는 소스, 설정하는 테스트, 같은 변수를 읽는 Python 쌍둥이를 한 커밋에서 바꿔요.
 6. **릴리스 이름(조각 6).** 태그 `v4.<yearweek>.<build>`, 파일 `moai-adk-<version>-<platform>`(결정 6286). 옛 설치 스크립트가 보게 되는 것은 그때 이 SPEC 이 적어요.
 
 ## Occurrence table
@@ -114,8 +132,18 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 - AC-14 (REQ-16): 런처의 `git init` 잠금이 임시 폴더의 `moai-git-init-<16 hex>.lock` 이고, 그 자리에 심은 심볼릭 링크는 따라가지 않고, 다른 계정 소유 잠금은 기다리지 않고, 옛 이름 잠금 파일은 읽지도 지우지도 않아요 · verify: `cargo nextest run --test launcher_auto_init -E 'test(a_symlink_planted_at_the_git_init_lock_is_not_followed) | test(a_git_init_lock_not_owned_by_the_home_owner_is_never_waited_on) | test(the_git_init_lock_is_named_moai_and_an_earlier_one_is_left_alone)'`
 - AC-15 (REQ-13): 새 폴더가 있는데 `limits.json` 이 없을 때도 옛 폴더의 한도를 읽고(`build_jobs_cap.slots`), `heavy-slot-acquire` 가 그 한도를 실제로 적용해 옛 한도가 1 이면 두 번째 실행이 첫째가 놓을 때까지 기다려요 — 조각 4 감사 N1 의 두 경우 · verify: `cargo nextest run --test heavy_slot_cli -E 'test(the_earlier_limits_apply_while_the_new_folder_exists_without_limits) | test(acquire_applies_the_earlier_limits_file_to_the_run)'`
 
+- AC-16 (REQ-18): 열다섯 변수의 새 이름으로 설정한 테스트가 모두 통과하고, 옛 이름 `MOAI_CLI_TEST_MACHINE` 으로 어떤 실제 기계도 보고하지 않는 값을 주면 `heavy-slot-status` 가 그 값을 쓰지 않아요 · verify: `cargo nextest run --test heavy_slot_cli -E 'test(the_earlier_test_machine_name_is_not_read)'`, `moai check affected <base>..<head>` 의 요약 줄과 단계별 exit
+- AC-17 (REQ-19): Rust 명령과 Python 쌍둥이가 새 `MOAI_TEST_MACHINE` 하나를 같은 폴더 위에서 번갈아 읽어요 · verify: `cargo nextest run --test heavy_slot_cli -E 'test(the_python_tool_and_the_command_take_turns_in_one_folder) | test(without_dir_both_tools_use_the_same_default_folder)'`. `tests/heavy_check_slot_test.py` 는 이름 줄만 고치고 돌리지 않아요(`not_run`).
+- AC-18 (REQ-20): 쓰기 범위 안의 소스·테스트·도구·문서에 옛 변수 이름이 남지 않아요 · verify: `rg -n 'MOAI_CLI_TEST_' src tests tools docs/rust-product-path.md` 가 아무것도 찍지 않고 exit 1
+- AC-19 (REQ-21): 옛 표식만 있는 임시 HOME 을 `migrate-apply`·`migrate-recovery-plan`·`migrate-recover` 가 거절하고 HOME 트리가 그대로예요 · verify: `cargo nextest run --test migrate_cli -E 'test(every_migrate_command_refuses_a_home_with_only_the_earlier_marker)'`
+
+- AC-20 (REQ-22): `src/` 와 `tests/`(fixtures 밖)에 옛 접두사가 0줄이고, 임시 트리에 심은 줄(`src/`, 깊은 `src/` 폴더, `tests/*.py`)은 찾고 fixtures·새 이름·다른 확장자는 건너뛰어요 · verify: `cargo nextest run --test state_folder_literal_scan -E 'test(no_source_or_test_spells_the_earlier_test_seam_prefix) | test(the_seam_scan_finds_a_planted_line_and_skips_what_it_should)'`, `cargo nextest run --test repo_scans_table`
+
 ## Scope
 
+- write (조각 3, 개정 8, 리더 노트 7888 이 더함): `tests/state_folder_literal_scan.rs`(스캔 테스트 둘; 옛 접두사는 실행 시간에 조립해서 이 파일은 적지 않아요), `tools/repo_scans.json`(스캔 항목 하나; 다른 카드가 쓰려는 파일이라 이 카드가 READY 뒤 반납하면 리더가 넘겨요).
+- write (조각 3, 개정 8): 이 SPEC 폴더, 변수를 읽는 소스 열세 곳(`src/go_state.rs`, `src/heavy_slot.rs`, `src/home_install_apply.rs`, `src/home_state.rs`, `src/home_state_retire.rs`, `src/install.rs`, `src/lane_registry.rs`, `src/launcher_init.rs`, `src/session.rs`, `src/update.rs`, `src/update/extra_skill.rs`, `src/update_cleanup.rs`, `src/worktree_gc.rs`; 변수 이름 글자와 그 설명 주석만), 변수를 설정하는 테스트 스물일곱 파일(`tests/binary_state_cli.rs`, `tests/check_affected_one_slot.rs`, `tests/common/mod.rs`, `tests/go_settings_cli.rs`, `tests/go_state_blocked_folders_cli.rs`, `tests/go_state_classes_cli.rs`, `tests/go_state_cli.rs`, `tests/go_state_codex_cli.rs`, `tests/go_state_digest_cli.rs`, `tests/go_state_preview_cli.rs`, `tests/heavy_slot_cli.rs`(새 테스트 하나 포함), `tests/heavy_slot_fifo_cli.rs`, `tests/heavy_slot_jobs_cleanup_cli.rs`, `tests/home_install_apply_cli.rs`, `tests/home_retire_cli.rs`, `tests/home_state_retire_cli.rs`, `tests/home_state_selective.rs`, `tests/install_candidates.rs`, `tests/process_scan_cost_cli.rs`, `tests/process_table_default.rs`, `tests/session_registry_cli.rs`, `tests/status_line_cli.rs`, `tests/update_backup_replace.rs`, `tests/update_cleanup_cli.rs`, `tests/update_home_layer_cli.rs`, `tests/update_switch_layer.rs`, `tests/update_user_layer_cli.rs`), `tests/migrate_cli.rs`(N3 테스트 하나), Python 쌍둥이 `tools/heavy_check_slot.py` 와 `tests/heavy_check_slot_test.py`(이름 줄만, 돌리지 않아요), `docs/rust-product-path.md`(변수를 말하는 문장). 새 테스트 파일은 만들지 않아요(테스트 영역 표와 상태 폴더 글자 허용 목록, 조각 4b 의 교훈).
+- 조각 3 이 하지 않는 것: `MOAI_CLI_BIN`(결정 D-21), Rust 상수 `MOAI_CLI_BIN` 과 `CARGO_BIN_EXE_moai-cli`(조각 5, 바이너리 이름), 이력 문서의 변수 이름(`.moai/specs/` 의 다른 SPEC, `docs/design-review/`, `.moai-cli/`), 변수를 릴리스 빌드에서 못 읽게 막는 일(결정 D-20).
 - write (조각 1a): `.moai/specs/SPEC-20261121-moai-name/spec.md`, `src/bin_names.rs`, `skills/moai/SKILL.md`, `skills/moai/references/source-manifest.json`(SKILL.md 의 sha256 한 줄), `.github/workflows/release.yml`(단계 `verify` 만), `tests/bin_names_signature_cli.rs`
 - read-only: `src/install.rs`(이미 두 이름을 받음), 조사 자료(리더 scratchpad `mcli/`)
 - write (조각 1b): 이 SPEC 폴더, `src/main.rs`(clap `name` 한 줄과 그 위 주석, 단위 테스트 `every_binary_name_renders_the_same_moai_help` 의 기대값, 이름을 설명하는 주석), `src/lib.rs`·`src/bin/moai.rs`(주석만), `tests/cli_name_moai.rs`, `tests/help_layout.rs`
@@ -175,12 +203,23 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 5. 실제 바이너리 출력을 읽는 테스트: `synthetic|git-init|migrate-|launcher_auto_init` 로 찾아 nextest 명시 `--test` 로 모두 돌려요.
 6. 이번 조각이 아닌 것: 파이썬 슬롯 폴더(결정 D-17), 임시 폴더 접두사 읽기(결정 D-17), `.moai-cli` 상태 폴더 줄(조각 7), 권한 참조·키 볼트 유도선(결정 D-8).
 
+### Plan 3 (개정 8)
+
+1. 찾기: `rg -n 'MOAI_CLI_TEST_' --glob '!.moai-cli/**' --glob '!.moai/specs/**' --glob '!docs/design-review/**'` 의 줄을 모두 읽고, 읽는 곳(소스 열세 파일 열다섯 변수)과 설정하는 곳(테스트·Python 쌍둥이)과 말하는 곳(주석·문서)으로 나눠요. 상수로 이름을 한 번만 적은 곳(`INIT_TEST_HOLD_VAR`, `AGENT_SEQ_TEST_HOLD_VAR`, `TEST_HOLD_VAR`, `FAULT_VAR`)은 상수의 글자만 바꾸면 쓰는 곳이 따라와요.
+2. RED: `tests/heavy_slot_cli.rs` 에 `the_earlier_test_machine_name_is_not_read` 를 먼저 써요 — 옛 이름 `MOAI_CLI_TEST_MACHINE` 으로 어떤 실제 기계도 보고하지 않는 값을 주면 `heavy-slot-status` 가 그 값을 쓰지 않아야 해요. 옛 코드는 그 값을 읽어서 실패해요(exit 100). `tests/migrate_cli.rs` 에는 `every_migrate_command_refuses_a_home_with_only_the_earlier_marker` 를 써요(이미 있는 동작을 고정하므로 처음부터 통과하고, 거절 분기를 지우는 뮤턴트가 죽는 것으로 보여요).
+3. 테스트가 설정하는 이름을 새 이름으로 먼저 바꿔 빨강(seam 이 꺼져서 실패하는 것, exit 100)인 것을 본 뒤, 소스의 이름 글자와 설명 주석, Python 쌍둥이의 이름 줄, 문서의 문장을 바꿔 초록으로 만들어요. 문장 바깥의 코드는 그대로예요(게이트를 더하거나 빼지 않아요).
+4. 뮤턴트: `src/heavy_slot.rs` 가 새 이름과 함께 옛 이름도 읽게 하면 새 테스트가 실패하는 것(exit 100), `src/migrate.rs` 의 옛 표식 거절 분기를 지우면 N3 테스트가 실패하는 것(exit 100)을 보여요. 읽는 이름을 옛 이름으로 되돌리는 뮤턴트도 하나 넣어요. 스캔(REQ-22, 리더 조건 (1))은 `tests/state_folder_literal_scan.rs` 의 테스트 둘과 `tools/repo_scans.json` 항목 하나이고, 그 guard-mutant 는 `src/` 의 한 줄에 옛 접두사를 다시 적어 스캔이 실패(exit 100)하는 것으로 READY 에 `guard-mutant:` 줄을 적어요.
+5. 실제 바이너리 출력을 읽는 테스트: 바꾼 변수를 설정하는 테스트 파일 전부를 nextest 명시 `--test` 로 `moai heavy-slot-acquire --max 5` 슬롯에서 돌려요(`check affected` 는 감싸지 않아요). 실제 HOME·캐시·`~/.moai-cli` 는 열지 않고 임시 HOME 만 써요.
+6. N1: 아래 `승인 기록` 표를 이 SPEC 에 두고, 개정 8 의 승인은 리더 노트가 오면 그 노트를 인용해 front matter 에 적어요(레인이 스스로 승인하지 않아요). N2: 결정 D-15 의 `시험용` 을 `테스트용` 으로 바꿔요. N3: REQ-21 과 AC-19.
+7. 이번 조각이 아닌 것: 위 Scope 의 `조각 3 이 하지 않는 것`.
+
 ## Risks
 
 - clap 이름을 바꾸는 순간 옛 이름만 받는 읽는 쪽이 깨져요 — 그래서 1a 가 1b 보다 먼저예요(위 Order).
 - 릴리스 워크플로우의 태그 이름 검사(`moai-adk-v${VERSION}`)는 이 조각에서 바꾸지 않아요 — 결정 6286 의 새 태그는 조각 6 이 바꿔요.
 - 스킬 문장은 옛 이름의 설치가 남는 동안에도 참이어야 해요 — fallback 은 계속 `moai-cli` 예요(조각 5 의 호환 링크가 사라질 때 같이 지워요).
 - 슬롯 폴더가 갈라지는 동안(옛 빌드는 옛 폴더, 새 빌드는 새 폴더)에는 두 빌드가 서로를 막지 못해 기계가 한도보다 많이 돌 수 있어요. 코드는 이를 막지 못하고 `earlier_folder` 로 보여 주기만 해요 — 그래서 이 조각은 레인이 멈춘 동안 한꺼번에 바꿔요(리더가 예약, 결정 D-11).
+- 환경 변수 이름이 바뀌면 옛 이름을 설정한 자식은 seam 이 꺼진 채 조용히 돌아요(옛 이름은 읽지 않으므로 오류가 없어요). 그래서 이름 바꾸기는 소스·테스트·Python 쌍둥이를 한 커밋에서 하고, 옛 이름으로 값을 줘도 읽지 않는 것을 새 테스트가 고정해요. 열려 있는 다른 브랜치의 새 테스트가 옛 이름을 설정하면 합칠 때 그 테스트가 seam 없이 돌아요 — 착지 뒤 리더가 `rg 'MOAI_CLI_TEST_'` 한 번으로 확인하고 레인에 알려요(결정 D-20).
 - 잠금 이름이 갈라지는 동안(옛 런처는 `moai-cli-git-init-…`, 새 런처는 `moai-git-init-…`)에는 두 런처가 같은 폴더를 동시에 `git init` 해도 서로를 막지 못해요 — 잠금이 없던 때와 같은 상태이고 안전하지 않은 잠금을 받아들이지 않는 규칙은 그대로예요(결정 D-16).
 
 ## Decisions
@@ -201,9 +240,26 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 | D-12 | 이번 조각에 넣지 않는 것: 파이썬 슬롯 폴더(`moai-cli/python-slots`: `tools/self_check.sh`, `tools/local_check.sh`, 그 Python 테스트 `tests/self_check_test.py`·`tests/local_check_test.py`, `docs/ci-rc-ci-spec.md`, 스킬 문장)와 임시 이름(`moai-cli-home-`, `moai-cli-git-init-*.lock`, 표식 `.moai-cli-synthetic-home`) | 파이썬 슬롯은 셸 스크립트와 손으로 못 돌리는 Python 테스트가 같이 움직여야 하고, 임시 이름은 슬롯과 잠금을 나누지 않아 한꺼번에 바꿀 필요가 없어요 | 같은 방식으로 다음 조각(4b)에서 바꾸기 |
 | D-13 | Python 쌍둥이 도구는 기본 폴더 한 곳과 머리말만 바꾸고 `limits.json` 호환 읽기는 옮기지 않는다 | 이 도구는 Rust 가 같은 잠금을 쓰는지 확인하는 교차 테스트와 옛 호출자를 위해 남아 있고, Python 도구가 없어질 때 같이 사라져요; 호환 읽기를 거기에도 두면 곧 지울 줄을 더하는 일이에요 | 쌍둥이에도 같은 읽기 더하기 |
 | D-14 | 다음 조각은 4b 이고 범위는 N1 테스트 둘, `git init` 잠금 이름, 임시 HOME 표식 이름이에요 (선택지: 4b / 7 추적된 `.moai-cli` 트리 / 5 바이너리·패키지 / 9 영수증·표식 문구와 볼트 유도선 / 11 문서). 기본값: 4b | 4b 는 저장소 안에서만 끝나고 사용자 HOME·링크·설치를 건드리지 않아요. 7 은 읽는 곳이 Python 파일(`tests/github_inventory_*.py`, `tools/legacy_verdicts.py`, `tools/check_ac_commands.py`)과 `reports_move.rs` 에 흩어져 있어 Rust-only 카드와 겹쳐요. 5 는 링크·설치 전환이라 사용자를 기다려요. 9 는 키 볼트 유도선이 guarded 예요(D-4). 11 은 모든 열린 브랜치와 부딪쳐요. 조각 4 감사가 N1 두 테스트를 다음 조각 범위로 정했어요 | 다른 조각을 먼저 하기 |
-| D-15 | 임시 HOME 표식은 `.moai-synthetic-home` 와 `moai synthetic home v1` 줄바꿈으로 바꾸고 옛 표식은 받지 않아요 (선택지: 새 것만 / 둘 다 받기 / 그대로) | 표식은 migrate 를 연습하려는 호출자가 직접 만드는 시험용 문턱이에요(결정 6784520717). 설치된 사본이 만들거나 읽는 파일이 아니라서 호환 읽기가 지킬 것이 없어요; 둘 다 받으면 옛 이름이 허용 목록에 남아요. 거절 문장이 새 이름을 말하므로 옛 표식을 손으로 만든 사람도 무엇을 만들지 알아요 | 상수 둘을 되돌리기 |
+| D-15 | 임시 HOME 표식은 `.moai-synthetic-home` 와 `moai synthetic home v1` 줄바꿈으로 바꾸고 옛 표식은 받지 않아요 (선택지: 새 것만 / 둘 다 받기 / 그대로) | 표식은 migrate 를 연습하려는 호출자가 직접 만드는 테스트용 문턱이에요(결정 6784520717). 설치된 사본이 만들거나 읽는 파일이 아니라서 호환 읽기가 지킬 것이 없어요; 둘 다 받으면 옛 이름이 허용 목록에 남아요. 거절 문장이 새 이름을 말하므로 옛 표식을 손으로 만든 사람도 무엇을 만들지 알아요 | 상수 둘을 되돌리기 |
 | D-16 | `git init` 잠금은 `moai-git-init-<16 hex>.lock` 하나만 쓰고 옛 이름 파일은 읽지도 지우지도 않아요 (선택지: 새 것만 / 옛것과 새것 둘 다 잡기 / 그대로) | 잠금은 임시 폴더의 짧은 수명 파일이고 잠금이 없을 때의 동작(`init_lock` 이 `None`)이 이미 정해져 있어요; 둘 다 잡는 일은 새 코드와 새 교착 경로를 더해요(규칙 20). 옛 파일은 크기 0 이라 두어도 해가 없고 지우기는 사용자 상태를 코드가 바꾸는 일이에요 | 이름 한 줄을 되돌리기 |
 | D-17 | 그대로 두는 것: 임시 폴더 접두사 `moai-cli-home-`·`moai-cli-profiles-`·`moai-cli-gitconfig-`(`worktree_report.rs` 의 `EMPTY_PREFIXES` 와 그 테스트 둘)과 파이썬 슬롯 폴더 `moai-cli/python-slots`(`tools/self_check.sh`·`tools/local_check.sh`, 그 Python 테스트, `docs/ci-rc-ci-spec.md`) | 접두사는 옛 빌드가 11-06~11-08 에 남긴 빈 폴더를 알아보는 읽기 쪽 이름이라 지금 만드는 코드가 없어요(`docs/worktree-strategy-2026-11-10.md` 29 줄); 바꾸면 남은 것을 못 알아봐요. 파이썬 슬롯은 Python 슬롯 코드와 함께 Rust-only 카드가 걷을 예정이고(`SPEC-20261121-rust-only-inventory` 의 `python-slots` 줄) 손으로 못 돌리는 Python 테스트가 같이 움직여야 해요. 둘 다 조각 11 의 허용 목록에 이유와 함께 적어요 | 접두사에 새 이름을 더하고 옛 이름도 받기 |
+| D-18 | 다음 조각은 3 이고 범위는 `MOAI_CLI_TEST_*` 15 개의 이름, 조각 4b 감사의 N1~N3 이에요 (선택지: 3 / 5 바이너리·패키지 / 6 릴리스 이름 / 9 영수증·볼트 / 10 crate 이름 / 11 문서·주석). 기본값: 3. 15 개와 저장소 전체 줄 수(이력 문서 포함, 2026-11-24 NeXT `6054432304` 측정): `FAULT` 26, `MACHINE` 32, `UNRECORDED_LIMIT` 15, `PROCESS_TABLE` 12, `PROCESS_CHECK` 8, `PROBE_TIMEOUT_MS` 8, `MIRROR_FILE_LIMIT` 5, `INSTALL_FAULT` 5, `BACKUP_STAMP` 4, `STATE_RETIRE_FAULT` 3, `SESSION_REGISTRY_HOLD_MS` 2, `CLEANUP_DEVICE` 2, `AGENT_SEQ_HOLD_MS` 2, `INIT_HOLD_MS` 1, `INIT_FAIL_AFTER_PROFILE` 1 (모두 접두사 `MOAI_CLI_TEST_`) | 3 은 저장소 안에서만 끝나요: 사용자 HOME·링크·설치를 건드리지 않고 파일이 소스 열세 곳·테스트 스물일곱 곳·Python 쌍둥이 둘·문서 한 곳이에요. 5 는 링크·설치 전환이라 사용자를 기다리고(D-14), 6 은 설치 스크립트(`install.sh`, 조각 5 의 파일)와 함께 결정할 일이에요. 9 는 키 볼트 유도선이 guarded 예요(D-4). 11 은 열린 브랜치와 부딪쳐요. 10 은 리더가 예약해요. 카드 본문의 순서에서 아직 안 한 가장 앞 조각이 3 이에요(1·2·4·4b 는 착지) | 다른 조각을 먼저 하기 |
+| D-19 | 새 이름은 `MOAI_TEST_<NAME>`, 접두사에서 `CLI_` 만 빼요 (선택지: `MOAI_TEST_<NAME>` / `MOAI_DEBUG_<NAME>` / 변수마다 새로 짓기). 기본값: `MOAI_TEST_<NAME>` | 저장소에 이미 `MOAI_TEST_` 가족이 있어요(`MOAI_TEST_CLI`, `MOAI_TEST_HOLD_UNTIL`, `MOAI_TEST_HOST_MARKER`, `MOAI_TEST_MARK`, `MOAI_TEST_READY`; `rg` 로 확인) — 열다섯 새 이름 중 겹치는 것은 없어요. 이름 규칙이 하나가 되고 `CLI` 만 지워져 옛 이름과 일대일로 대응해요 | 접두사를 되돌리기 |
+| D-20 | 옛 이름은 읽지도 만들지도 않고 호환 읽기를 두지 않아요; 변수를 릴리스 빌드에서 막는 `cfg(debug_assertions)` 도 더하거나 빼지 않아요 (선택지: 새 이름만 / 옛 이름도 받기 / 새 이름만 + 네 변수에 debug 게이트 추가). 기본값: 새 이름만 | 설치된 사본이 이 변수를 설정하는 곳이 없어요: `skills/`·`.github/`·`scripts/`·`install.sh` 어디에도 `MOAI_CLI_TEST_` 가 없고(`rg -l` 이 아무것도 찍지 않았어요) 설정을 만드는 `src/` 코드가 이 변수를 설정하지도 않아요(`src/` 의 줄은 모두 읽는 곳이에요); 남는 곳은 이력 문서뿐이에요. 열다섯 중 열한 개는 이미 `cfg(debug_assertions)` 안이고(`FAULT`, `MACHINE`, `UNRECORDED_LIMIT`, `PROCESS_TABLE`, `PROCESS_CHECK`, `PROBE_TIMEOUT_MS`, `MIRROR_FILE_LIMIT`, `INSTALL_FAULT`, `BACKUP_STAMP`, `STATE_RETIRE_FAULT`, `CLEANUP_DEVICE`), 네 개(`SESSION_REGISTRY_HOLD_MS`, `AGENT_SEQ_HOLD_MS`, `INIT_HOLD_MS`, `INIT_FAIL_AFTER_PROFILE`)는 릴리스 빌드도 읽어요(코드 주석: 정상 사용에서는 설정하지 않아요). 그 네 개를 막는 일은 동작을 바꾸는 별도 일이라 이번 조각에서 하지 않고 관찰로만 남겨요. 둘 다 받으면 옛 이름이 조각 11 허용 목록에 남아요 | 새 이름 한 줄을 되돌리기 |
+| D-21 | 환경 변수 `MOAI_CLI_BIN` 은 이번 조각에서 옮기지 않고 조각 5 에서 `target/debug/moai-cli` 기본 경로와 함께 옮겨요 (선택지: (a) 조각 5 로 미루기 / (b) 이번 조각에서 `MOAI_BIN` 으로 옮기고 읽는 쪽 `tools/self_check.sh`·`tests/build_folder_test.py`·`tests/self_audit_run.py`·`tests/self_check_test.py`·`docs/ci-rc-ci-spec.md`·`skills/moai/references/internal/self-check.md` 를 함께 고치기). 기본값: (a). 카드 본문 3 은 이 변수를 같은 커밋에 넣으라고 하지만, 거기 적힌 "그 변수를 설정하는 check-affected 코드"는 지금 없어요(`rg` 로 `src/` 에서 `MOAI_CLI_BIN` 을 설정하는 곳 없음; `tests/check_affected_cli.rs` 의 한 줄은 가짜 스크립트가 값을 찍기만 해요) | 이 변수의 읽는 쪽은 전부 Python 파일 셋과 `tools/self_check.sh` 이고, 같은 줄이 옛 파일 이름 `debug/moai-cli` 도 말해서 파일 이름이 바뀌는 조각 5 와 한 줄에서 만나요. Python 파일은 Rust-only 카드가 걷을 예정이고 `tools/self_check.sh` 는 D-12·D-17 이 파이썬 슬롯과 함께 움직이게 묶었어요. Rust 상수 `MOAI_CLI_BIN`(= `env!("CARGO_BIN_EXE_moai-cli")`)은 환경 변수가 아니라 cargo 바이너리 이름이라 어느 쪽이든 조각 5 예요(`tests/` 의 열여덟 `.rs` 파일이 이 글자를 적어요: 대부분 상수이고 `tests/home_isolation_scan.rs` 는 낱말 표, `tests/check_affected_cli.rs` 는 가짜 스크립트의 `$MOAI_CLI_BIN`) | (b) 로 바꾸기 |
+| D-22 | 조각 4b 감사 N1 은 이 SPEC 의 `승인 기록` 표로 바로잡아요: 개정 5·6·7 의 승인 노트와 그 개정 본문의 digest 를 적고, 개정 8 의 승인은 리더 노트가 오면 그 노트를 인용해 front matter `approval` 에 적어요 (선택지: 표 + 개정 8 만 front matter / 지난 개정 모두를 front matter 로 소급 / 그대로). 기본값: 표 + 개정 8. 레인은 스스로 승인하지 않고 노트를 인용만 해요 | front matter `approval` 은 승인한 한 개정의 digest 만 담아서(`src/spec_doc.rs` 의 `digest` 는 요구·인수 기준·범위·검증 명령을 덮고, 맞지 않는 승인 digest 는 `moai spec check` 오류예요; Result·Decisions·Plan 은 덮지 않아요) 지난 개정의 승인을 거기에 소급해 적으면 현재 본문과 digest 가 어긋나 오류가 돼요. 지난 digest 는 각 개정의 커밋을 임시 폴더에 풀어 `moai spec show` 로 다시 계산했어요 | 표를 지우기 |
+
+### 승인 기록 (조각 4b 감사 N1)
+
+모든 승인은 리더 판단이고(사용자 위임 2026-11-23T13:57Z) 사용자 직접 선택이 아니에요. digest 는 해당 개정이 처음 커밋된 본문을 임시 폴더에 풀어 `moai spec show SPEC-20261121-moai-name` 으로 읽은 값이에요(2026-11-24).
+
+| 개정 | 조각 | 승인 노트 | 기준 커밋 | digest |
+| --- | --- | --- | --- | --- |
+| 5 | 2 | 7549 (2026-11-23T14:04:29Z) | `50fa778391` | `sha256:de28bdc2df222f40172ec540429a808f1886ed1837bdc2a1e08a7399f812f6a4` — unverified: 승인 노트가 이 커밋보다 앞서 쓰인 초안을 읽었고 그 초안은 커밋된 적이 없어요 |
+| 6 | 4 | 7595 (2026-11-23T14:55:30Z), 커밋 `e9449d27ac` 를 이름으로 승인 | `e9449d27ac` | `sha256:21b89d79abed6c7d64dd63527bdcecfdf5dfab8aecda765a84ccd017a5d906f3` |
+| 7 | 4b | 7787 (2026-11-23T18:42:51Z) | `d35e6a2dd5` | `sha256:8d421652c157ce10fe62ff63c027127f7f6ef76deb48d181f5be12da01fde8e5` |
+
+개정 2·3·4(조각 1a·1b·1b 수리)의 승인은 이 카드의 노트에서 찾지 못했어요(`unverified`; 조각 1b 는 리더 배차가 `src/main.rs` 를 이 SPEC 쪽으로 풀었다고만 있어요).
 
 ## Result
 
@@ -278,4 +334,19 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 - REQ-15~17 의 실제 HOME·임시 폴더: 건드리지 않았어요. 모든 자식은 임시 HOME·임시 `TMPDIR`·임시 `XDG_CACHE_HOME` 만 써요.
 - 그대로 둔 것(결정 D-17): `src/worktree_report.rs` 의 `moai-cli-home-` 등 접두사와 그 테스트 둘, 파이썬 슬롯 폴더. 더해서 `src/lib.rs` 의 상태 폴더 글자 스캔 테스트 입력(`const S: &str = ".moai-cli-synthetic-home";` 와 그 위 설명 한 줄)은 스캐너가 다른 이름을 세지 않는 것을 보이는 입력이라 그대로예요(그 파일은 이 조각의 쓰기 범위 밖이에요); 조각 11 허용 목록에 이유와 함께 적어요.
 - 이번 조각이 하지 않은 것: 조각 5·7·9·11, `moai-cli/python-slots`, 임시 폴더 접두사 읽기.
+- 같은 head 영수증은 카드의 READY 노트에 있어요(이 문서를 담는 head 에서 돈 값이라 해시를 여기에 적지 않아요).
+
+### 조각 3 (테스트 전용 환경 변수 이름, 개정 8)
+
+2026-11-23(UTC), 브랜치 `spec/20261121-moai-name-r5`(SPEC 우선 훅이 `-s5` 를 SPEC 이 없는 이름으로 읽어 바꿨어요; 예약 기록의 브랜치 칸에는 처음 이름 `spec/20261121-moai-name-s5` 가 남아요), base NeXT `6054432304ef81c384cbb179a561be9f03180d21`, 구현 커밋 `92be79ca9af6d4f74caae36c768b192d84398742`. 리더가 개정 8 을 (A) 로 승인하고 D-21 을 (a) 로 정했어요(카드 노트 7879; 쓰기 범위 확장은 7881 요청에 대한 7888; 리더 판단이고 사용자 직접 선택이 아니에요). 조건 (1) 스캔과 guard-mutant, (2) Python 두 파일은 이름 줄만 고치고 돌리지 않음(규칙)을 지켰어요.
+
+- AC-16: met — RED: 테스트 쪽만 새 이름으로 바꾸고 소스는 그대로 두었을 때 `heavy_slot_cli`·`update_backup_replace` 의 대상 9개 중 6개가 실패(exit 100, `target/moai-name-s5/red.log`: 새 `the_earlier_test_machine_name_is_not_read` 와 시임이 꺼져 실패한 기존 테스트). 소스 13곳을 바꾼 뒤 GREEN: 이름을 바꾼 테스트 파일 33개 대상과 `--lib` 2451개 중 2450개 통과, 1개는 아래 N3 테스트의 입력 오류(고친 뒤 통과; `green.log`). 뮤턴트 둘: 읽는 이름에 옛 이름을 더하면(B) 그리고 읽는 이름을 옛 이름으로 되돌리면(C) 새 테스트가 실패(exit 100; C 는 `a_machine_over_the_limits_starts_nothing` 도 실패).
+- AC-17: met — `the_python_tool_and_the_command_take_turns_in_one_folder` 와 `without_dir_both_tools_use_the_same_default_folder` 통과(GREEN 실행 안에서; Rust 명령과 Python 쌍둥이가 `MOAI_TEST_MACHINE` 하나를 읽어요). `tools/heavy_check_slot.py` 와 `tests/heavy_check_slot_test.py` 는 이름 줄만 고쳤고 돌리지 않았어요(규칙: Python 테스트는 돌리지 않아요).
+- AC-18: met — `rg -n 'MOAI_CLI_TEST_' src tests tools docs/rust-product-path.md` 가 아무것도 찍지 않고 exit 1. 남은 줄은 이력 문서(`docs/design-review/appendix/operations/` 셋과 `.moai/specs/` 의 다른 SPEC)뿐이에요.
+- AC-19: met — `every_migrate_command_refuses_a_home_with_only_the_earlier_marker` 통과: 올바른 HOME 에서 얻은 적용 계획과 복구 계획·backup 이름으로 `migrate-apply`·`migrate-recovery-plan`·`migrate-recover` 가 옛 표식만 있는 HOME 을 `.moai-synthetic-home marker missing` 으로 거절하고 HOME 트리 digest 가 그대로이고 백업이 생기지 않아요. 첫 실행은 `migrate-recover` 에 적용 계획을 넣어 입력 형식에서 거절돼 실패했고(내 테스트의 입력 오류), 복구 계획을 쓰도록 고친 뒤 통과했어요. 뮤턴트 D: 공유 문턱의 `if !ok` 를 `if false` 로 바꾸면 이 테스트가 실패(exit 100).
+- AC-20: met — `no_source_or_test_spells_the_earlier_test_seam_prefix`(실제 트리 0줄)와 `the_seam_scan_finds_a_planted_line_and_skips_what_it_should` 통과, `repo_scans_table` 통과(스캔 항목 `earlier-test-seam-prefix-in-src-and-tests` 등록). guard-mutant A: `src/heavy_slot.rs` 에 옛 접두사 한 줄을 더하면 스캔이 실패(exit 100). 위 두 실행의 합계는 `scan.log` 59개 통과(exit 0).
+- 조각 4b 감사 비차단: N1 승인 기록 표와 개정 8 의 approval 을 이 문서에 적었어요(결정 D-22). N2 D-15 의 `시험용` → `테스트용`. N3 REQ-21·AC-19. N4(감사자 세션의 `tests/audit_gate_cli.rs` HOME-GUARD)는 이 조각과 무관해 다루지 않았어요.
+- 수리: 첫 `check affected`(head `7e18a891b3`)가 fmt 단계에서 `fmt=1 result=FAIL` 로 멈췄어요 — 새 이름이 짧아져 `rustfmt` 가 줄을 합치는 네 테스트 파일(`tests/heavy_slot_cli.rs`, `tests/home_retire_cli.rs`, `tests/home_state_retire_cli.rs`, `tests/state_folder_literal_scan.rs`). 그 네 파일만 `rustfmt --edition 2021` 로 고쳤고(`cargo fmt --check` exit 0) 의미 변경은 없어요.
+- 실제 HOME·`~/.moai-cli`·캐시: 열지 않았어요. 모든 자식은 임시 HOME·임시 TMPDIR 만 써요. Python 은 돌리지 않았어요.
+- 이번 조각이 하지 않은 것(결정 D-20·D-21): 환경 변수 `MOAI_CLI_BIN`(조각 5), Rust 상수 `MOAI_CLI_BIN`·`CARGO_BIN_EXE_moai-cli`(조각 5), 릴리스 빌드도 읽는 시임 넷의 `cfg(debug_assertions)` 게이트, 이력 문서의 옛 이름.
 - 같은 head 영수증은 카드의 READY 노트에 있어요(이 문서를 담는 head 에서 돈 값이라 해시를 여기에 적지 않아요).

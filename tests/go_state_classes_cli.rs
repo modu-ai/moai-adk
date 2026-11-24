@@ -736,7 +736,7 @@ fn the_unrecorded_limit_counts_agents_entries_at_its_edge() {
     // .moai/manifest.json, .moai/config, .moai/config/a.yaml, .agents/skills,
     // .agents/skills/note.md: five entries.
     let stopped = |n: &str| {
-        let p = fx.plan_env(&[("MOAI_CLI_TEST_UNRECORDED_LIMIT", n)]);
+        let p = fx.plan_env(&[("MOAI_TEST_UNRECORDED_LIMIT", n)]);
         p["warnings"].to_string().contains("stopped after")
     };
     assert!(!stopped("5"), "five entries fit a limit of five");
@@ -752,7 +752,7 @@ fn a_copy_folder_at_its_file_limit_moves_and_one_more_file_stays() {
     fx.deployed(".claude/skills/moai-a/ref/y.md", "y\n");
     copy_folder(&fx, "moai-a");
     fx.manifest();
-    let env = [("MOAI_CLI_TEST_MIRROR_FILE_LIMIT", "2")];
+    let env = [("MOAI_TEST_MIRROR_FILE_LIMIT", "2")];
     // Two files: at the limit.
     let p = fx.plan_env(&env);
     assert_eq!(
@@ -1507,7 +1507,7 @@ fn the_secret_count_limit_counts_entries_at_its_edge() {
     fx.write(".claude/note.md", "n\n");
     fx.manifest();
     let lower_bound = |n: &str| {
-        let p = fx.plan_env(&[("MOAI_CLI_TEST_UNRECORDED_LIMIT", n)]);
+        let p = fx.plan_env(&[("MOAI_TEST_UNRECORDED_LIMIT", n)]);
         (
             p["warnings"].to_string().contains("secret-name count"),
             p["secrets"].clone(),
@@ -1532,7 +1532,7 @@ fn a_copy_folder_at_its_folder_limit_moves_and_one_more_folder_stays() {
     fx.write(".agents/skills/moai-m/SKILL.md", "# m\n");
     fx.write(".agents/skills/moai-m/a/b/f.md", "f\n");
     fx.manifest();
-    let env = [("MOAI_CLI_TEST_MIRROR_FILE_LIMIT", "2")];
+    let env = [("MOAI_TEST_MIRROR_FILE_LIMIT", "2")];
     // Two files, two folders (`a`, `a/b`): at the limit.
     let p = fx.plan_env(&env);
     assert_eq!(
@@ -1752,7 +1752,7 @@ fn the_backups_gitignore_exists_before_the_settings_copy_is_written() {
             "--permission-reference",
             REF,
         ],
-        &[("MOAI_CLI_TEST_FAULT", "go_state_before_root_files")],
+        &[("MOAI_TEST_FAULT", "go_state_before_root_files")],
     );
     assert_eq!(v["ok"], json!(false), "{v}");
     assert!(
@@ -2059,7 +2059,7 @@ fn a_stop_before_the_settings_leaves_them_in_place() {
                 "--permission-reference",
                 REF,
             ],
-            &[("MOAI_CLI_TEST_FAULT", "go_state_before_settings")],
+            &[("MOAI_TEST_FAULT", "go_state_before_settings")],
         );
         assert_eq!(v["ok"], json!(false), "holder={holder}: {v}");
         assert!(

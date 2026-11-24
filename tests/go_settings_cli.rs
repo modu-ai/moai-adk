@@ -30,7 +30,7 @@ const SHOWN: &str = "$HOME/.moai-cli/path/moai-cli";
 const PLACEHOLDER: &str = "<permission-reference>";
 
 /// The probe limit the hanging launcher is cut at (debug builds only).
-const SHORT_PROBE: [(&str, &str); 1] = [("MOAI_CLI_TEST_PROBE_TIMEOUT_MS", "500")];
+const SHORT_PROBE: [(&str, &str); 1] = [("MOAI_TEST_PROBE_TIMEOUT_MS", "500")];
 
 /// A launcher that answers `statusline --help` the way the Rust build does.
 fn rust_launcher() -> String {

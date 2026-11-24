@@ -69,7 +69,7 @@ fn kill_group(group: i32) {
 }
 
 fn spawn(mut c: Command, stdout: &Path) -> Spawned {
-    c.env("MOAI_CLI_TEST_MACHINE", ROOMY)
+    c.env("MOAI_TEST_MACHINE", ROOMY)
         .env_remove("XDG_CACHE_HOME")
         .stdin(Stdio::null())
         .stdout(fs::File::create(stdout).unwrap())

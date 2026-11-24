@@ -2,7 +2,7 @@
 id: SPEC-20261122-next-flow-skills-agents
 title: "The moai skill has eight routes and /moai work, one flow reference and one audit contract, and the update removes what the package no longer ships"
 status: draft
-revision: 4
+revision: 5
 created: 2026-11-22
 parent: null
 ---
@@ -38,7 +38,7 @@ parent: null
 
 ## Requirements
 
-- REQ-1: The route table shall name exactly the routes READ, PLAN, RUN, AUDIT, SYNC, PROJECT, UPDATE and WORK, each with a reference file that the package ships.
+- REQ-1: The route table shall name exactly the routes READ, PLAN, RUN, AUDIT, SYNC, PROJECT, UPDATE, WORK and LEADER, each with a reference file that the package ships.
 - REQ-2: The skill package shall hold none of the files workflows/mode-agent.md, workflows/mode-leader.md, workflows/setup.md, workflows/verify.md, workflows/optimize.md, references/adapters/herdr.md, references/internal/build-folder.md, references/internal/review.md and references/rule-history.md.
 - REQ-3: When a request after the skill name starts with the word work, the skill shall pick the WORK route, which takes one card, plans it, runs it, syncs it, audits it and lands it with the landing command, and repeats until no card is left. · failure: none — a request without that word picks its route from the route table, and a card that needs a user decision ends in a blocked note on the card, never in a question to the user.
 - REQ-4: The skill shall treat --mode-agent, --mode-leader, -a, -l and --autonomy in a request as plain text that picks no route.
@@ -52,7 +52,7 @@ parent: null
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-4): the route table holds the eight routes and each reference file exists, the nine files are absent from the package, and SKILL.md names no mode flag as a route. Text slice A removes six of them; the review reference leaves in slice B, the build-folder reference in slice C and the rule history in Plan step 6, and the test's list of absent files grows with each.
+- AC-1 (REQ-1, REQ-2, REQ-4): the route table holds the nine routes and each reference file exists, the nine files are absent from the package, and SKILL.md names no mode flag as a route. Text slice A removes six of them; the review reference leaves in slice B, the build-folder reference in slice C and the rule history in Plan step 6, and the test's list of absent files grows with each.
   verify: `cargo test --locked --offline --test next_flow_skill_scan routes_`
 - AC-2 (REQ-3): the WORK reference lists, in order, take a card, plan, run, sync, audit, land and repeat, and says that a decision goes to the card as a blocked note.
   verify: `cargo test --locked --offline --test next_flow_skill_scan work_`
@@ -118,6 +118,7 @@ parent: null
 | D-18 | The product spellings of the retired modes stay for a product slice; they are listed in Result and are not rewritten here. | Leader answer on the slice C part 2 note (2026-11-22). | Rewrite them in this SPEC. |
 | D-19 | The audit contract's section "Audit tiers" lists the tier 2 prefixes of `src/gate.rs` one by one (AUDIT's tier step points to it, because a workflow names no package path), naming the retired second host's folder by where it sits because REQ-8 keeps its name out; the leader's three cases (documents read by the lander, tests or tools a light audit by the lander, code an independent audit) apply below tier 2, and tier 2 is always the full audit by an independent session. The verdict's second line is `Moai-Session: <value>`: the card verdict reader reads the first line only, so the recording session compares that value itself. | Slice C audit N-c, N-d and N-e and the leader's repair brief (2026-11-23). | Apply the three cases to tier 2 too, or teach `auditor: <lane>`. |
 | D-20 | Plan step 6 also wrote two lines outside this Scope by the leader's word: the `docs/rule-history.md` entry of `EXACT_DENY` in `tools/ci_scope.py`, and line 5 of `references/internal/core-rules.md`, which points to the moved history. | Leader decision on the step 6 blocked note (2026-11-22); the cards that held the two files had landed their slices. | Leave the pointer for a later step and keep the docs path out of the deny list. |
+| D-21 | REQ-1 names nine routes: LEADER joins the eight, and AC-1 counts nine. | The user's pick of 2026-11-22T23:49:36Z (`/moai leader` is the registered coordination window) and SPEC-20261124-moai-leader-route REQ-1, approved by the leader's decision note of 2026-11-23T19:53:19Z. | Remove the route. |
 
 ## Result
 

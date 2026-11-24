@@ -27,7 +27,7 @@ fn file(home: &Path, host: &str) -> PathBuf {
 }
 
 fn flow_file(home: &Path) -> PathBuf {
-    home.join(".claude/rules/moai/flow.md")
+    home.join(".claude/rules/moai-flow.md")
 }
 
 fn old_file(home: &Path, host: &str) -> PathBuf {

@@ -2936,3 +2936,46 @@ fn ac27_the_integration_branch_is_a_branch_name_and_never_a_tag() {
     assert_eq!(got["closed"], json!(true), "{got}");
     assert_eq!(got["tip"], json!(w.tip), "{got}");
 }
+
+// ---- SPEC-20261124-land-closes-card: a slice landed with --keep-open stays visible ----------
+
+/// AC-7 (REQ-10): a ready card whose newest landed head carries `keep_open` is offered under
+/// `ready` and not skipped as `already_landed`; the same landing without the mark is skipped.
+#[test]
+fn ac_keep_open_next_lists_a_marked_slice_and_still_skips_an_unmarked_landing() {
+    let w = World::new();
+    let slice = w.card_named("task", "apps/a/", &["one", "two"]);
+    let plain = w.card_named("task", "apps/b/", &["one"]);
+    w.land(&slice, &w.head, true);
+    w.land(&plain, &w.head, true);
+
+    // The landing event `card land --keep-open` writes: the same head with the mark. Events are
+    // append-only, so the marked one is the newest landing of the card.
+    let conn = Connection::open(ledger::ledger_path(w.home.path(), "demo").unwrap()).unwrap();
+    let payload = json!({
+        "head": w.head, "tip": w.tip, "generation": 1, "by": "leader",
+        "via": "finish", "no_code": false, "keep_open": true,
+    });
+    let inserted = conn
+        .execute(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES ('test-keep-open-landing', unixepoch(), 'leader', ?1, 'card.landed', ?2)",
+            rusqlite::params![
+                slice.trim_start_matches("C-").parse::<i64>().unwrap(),
+                payload.to_string()
+            ],
+        )
+        .unwrap();
+    assert_eq!(inserted, 1, "one marked landing event is written");
+
+    let listing = w.next(S_B);
+    assert!(
+        names(&listing["ready"]).contains(&slice),
+        "a slice landed with --keep-open is not offered: {listing}"
+    );
+    assert!(
+        skipped_entry(&listing, &slice).is_none(),
+        "a marked slice is skipped as landed: {listing}"
+    );
+    assert_already_landed(&listing, &plain);
+}

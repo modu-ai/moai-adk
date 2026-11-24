@@ -1,4 +1,4 @@
-//! The whole-file targets of the routing layer: `rules/moai.md` and `rules/moai/flow.md` inside
+//! The whole-file targets of the routing layer: `rules/moai.md` and `rules/moai-flow.md` inside
 //! the default Claude config folder `~/.claude`, and the removal of the earlier `moai-routing`
 //! block from that folder's `CLAUDE.md` (SPEC-20261122-claude-md-home-routing,
 //! SPEC-20261122-claude-md-flow-rule). Any other folder is a consumer row that writes nothing.
@@ -8,7 +8,7 @@
 //! state files may name other folders),
 //! `home-routing/rules-<12 hex of the sha256 of the folder path>.json`, holding both files'
 //! last-written digests. Anything else is a `conflict` and is kept. A link on the way (the
-//! config folder, `rules`, `rules/moai` or the file itself) and a file that is not UTF-8 are
+//! config folder, `rules` or the file itself) and a file that is not UTF-8 are
 //! conflicts too; only a refused `CLAUDE_CONFIG_DIR` (or an unreadable state file) blocks the
 //! layer. The earlier block stays in the user's `CLAUDE.md` until the removal is picked; the
 //! removal needs the routing file in place and moai's own, and the block bytes equal to the
@@ -518,6 +518,21 @@ pub(super) fn plan_folder(
             ));
         }
     }
+    // A flow rule an earlier build wrote below `rules/moai/` stays where it is; the preview
+    // names it (the file's existence only: its bytes are never read here).
+    if let Some(f) = flow.as_mut() {
+        let old = dir.join(LEGACY_FLOW_FILE);
+        if fs::symlink_metadata(&old).is_ok() {
+            let note = format!(
+                "an earlier build wrote {}; it is left in place for you to delete",
+                old.display()
+            );
+            f.detail = Some(match f.detail.take() {
+                Some(d) => format!("{d}; {note}"),
+                None => note,
+            });
+        }
+    }
     let in_place =
         matches!(&rcur, Cur::Bytes(b) if state.routing_sha256.as_deref() == Some(sha(b).as_str()));
     // The earlier block's baseline belongs to the default folder, where moai keeps the one copy.
@@ -716,7 +731,7 @@ pub(super) fn apply_folder(
         written.push(p.path.clone());
     }
     if let (Some(p), Some(text)) = (f.flow.as_ref().filter(|p| is_write(&p.action)), flow_text) {
-        write_rules_file(&mut j, dir, &f.id, "flow", FLOW_FILE, p, text)?;
+        write_rules_file(&mut j, dir, &f.id, "moai_flow", FLOW_FILE, p, text)?;
         written.push(p.path.clone());
     }
     if let Some(p) = f.old.as_ref().filter(|p| p.action == "remove") {
@@ -736,7 +751,9 @@ pub(super) fn revert_entry(
     let kind = e.kind.as_deref().unwrap_or("old_block");
     let rel = match kind {
         "routing" => RULES_FILE,
-        "flow" => FLOW_FILE,
+        // An entry of kind `flow` is the earlier layout's (`rules/moai/flow.md`).
+        "moai_flow" => FLOW_FILE,
+        "flow" => LEGACY_FLOW_FILE,
         "old_block" => "CLAUDE.md",
         _ => return Err("routing receipt names an unknown entry kind".into()),
     };

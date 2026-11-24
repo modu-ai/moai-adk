@@ -110,7 +110,7 @@ fn the_injected_empty_table_skips_lsof_and_blocks_nothing() {
     let stub = home.path().join("stub");
     let log = home.path().join("lsof.log");
     stub_lsof(&stub, &log);
-    let p = plan(&home, &stub, &[("MOAI_CLI_TEST_PROCESS_TABLE", "empty")]);
+    let p = plan(&home, &stub, &[("MOAI_TEST_PROCESS_TABLE", "empty")]);
     assert!(!log.exists(), "lsof ran: {:?}", fs::read_to_string(&log));
     let blocks = p["blocks"].as_array().cloned().unwrap_or_default();
     assert!(

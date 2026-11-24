@@ -159,6 +159,18 @@ enum Action {
         /// An acceptance criterion, one line (repeat for more; numbered from 1).
         #[arg(long = "ac")]
         criteria: Vec<String>,
+        /// The SPEC the card names (`SPEC-<yyyymmdd>-<slug>`). The card and its link are one
+        /// write, and a SPEC that already has a card that is not `done` refuses the add unless
+        /// `--follow-up` or `--split-of` is given.
+        #[arg(long, value_name = "SPEC_ID")]
+        spec: Option<String>,
+        /// With `--spec`: the SPEC's one open follow-up card (a second one is refused; add a
+        /// criterion to it with `card criterion-add`).
+        #[arg(long = "follow-up", requires = "spec", conflicts_with = "split_of")]
+        follow_up: bool,
+        /// With `--spec`: the card this one is split from; it must name the same SPEC.
+        #[arg(long = "split-of", requires = "spec", value_name = "CARD")]
+        split_of: Option<String>,
         /// Who adds the card (default `user`).
         #[arg(long)]
         by: Option<String>,
@@ -429,7 +441,11 @@ enum Action {
     /// holder, generation and lease end, the new holder, `--by` and `--reason`. Nothing checks that
     /// the old holder is really gone: say in `--reason` what was found (process ended, pull request
     /// merged, uncommitted work). The old generation is stale from then on. The new holder is this
-    /// session's own id, never typed.
+    /// session's own id, never typed. The new holder continues in the recorded worktree, so
+    /// commits that sit on no remote-tracking ref do not stop the takeover: the event and the
+    /// answer name them as `kept_commits` (the count and up to twenty ids, newest first). An
+    /// uncommitted change in that worktree does stop it (`conflict`, nothing written): commit or
+    /// give it up first.
     Reclaim {
         /// `C-12`.
         card: String,
@@ -495,7 +511,9 @@ enum Action {
     /// `scope_overlap` with another card's reservation, `empty_scope`: a card without a write
     /// scope that has no usable SPEC `write:` list or earlier reservation to fill it from, so
     /// `take` refuses it; a card that `take` could fill is listed `ready` with the scope it would
-    /// get and its `scope_source`). `next` names the card to work on now: one this session holds,
+    /// get and its `scope_source`; `no_criteria`: a `ready` card with no criterion that is not
+    /// withdrawn, so `take` refuses it, given only when no other reason applies).
+    /// `next` names the card to work on now: one this session holds,
     /// else the first `ready` one. Each held and ready card carries its SPEC and that SPEC's
     /// status (`spec`); `warnings` names each card that changes the repository without an
     /// approved SPEC. A project without a ledger has no cards (`ledger: "absent"`, exit 0) and
@@ -578,6 +596,12 @@ enum Action {
     /// session that wrote the note, whatever `--by` says, and `card show` prints it. The text is
     /// at most 1 MiB, with no control character but tabs and line breaks, and no word with the
     /// shape of a secret: `card export` writes notes out. The answer's `ref` names the note.
+    ///
+    /// A note whose first line starts with `LANE-READY-INTEGRATION`, `REPAIRED` or `READY ` hands
+    /// a head back and must read `<marker> <card> head=<40 lowercase hex>`. It is kept only when
+    /// a worktree that is at that head holds `target/check-affected-<head12>/summary.txt` with
+    /// the `result=PASS` line of a bare `moai check affected` run of that head (a `--lane` run is
+    /// no receipt). Otherwise the note is refused with the way out and nothing is written.
     Note {
         /// `C-12`.
         card: String,
@@ -868,6 +892,15 @@ enum Action {
     /// (`stale_base`). A branch that moved in between is refused as `tip_moved`. A close refused
     /// after the move leaves the branch moved and says so; the same call run again skips the move
     /// and closes. A card already `done` with the same head answers done and writes nothing.
+    ///
+    /// The close needs an independent PASS of the exact head (SPEC-20261124-land-closes-card): when
+    /// `card verdict` recorded one that the verdict check relies on, every open criterion not
+    /// named by a `--met` becomes met with the line `verdict event <n> PASS head <12 hex>` and the
+    /// card is done. Without such a PASS the call is refused as `no_pass` in every mode of
+    /// `work_flow.land_verdict`. `--keep-open` lands a slice instead: the landing is recorded
+    /// (`card.landed` with `keep_open` true), nothing is closed and the answer names the open
+    /// criteria; the mode of `land_verdict` still judges the verdict, and `--keep-open` is refused
+    /// with a `--met` option or on a card with no open criterion.
     Land {
         /// The card to land (`C-12`).
         card: String,
@@ -884,6 +917,9 @@ enum Action {
         /// Who lands the card: only `leader` is accepted.
         #[arg(long)]
         by: String,
+        /// Land a slice: record the landing and close nothing; the answer names the open criteria.
+        #[arg(long)]
+        keep_open: bool,
         /// The project folder (its profile holds the project id and the integration branch).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -1157,13 +1193,14 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             priority,
             scope,
             criteria,
+            spec,
+            follow_up,
+            split_of,
             by,
             project,
             home,
-        } => c::add(
-            &project,
-            &resolve_home(home)?,
-            &c::AddRequest {
+        } => {
+            let request = c::AddRequest {
                 title: &title,
                 body: &body,
                 kind: kind.as_deref(),
@@ -1171,8 +1208,20 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 scope: &scope,
                 criteria: &criteria,
                 by: by.as_deref(),
-            },
-        ),
+            };
+            match spec.as_deref() {
+                None => c::add(&project, &resolve_home(home)?, &request),
+                Some(spec) => {
+                    use moai_cli::card::spec_link::Relation;
+                    let relation = match (follow_up, split_of.as_deref()) {
+                        (true, _) => Relation::FollowUp,
+                        (false, Some(origin)) => Relation::SplitOf(origin),
+                        (false, None) => Relation::Plain,
+                    };
+                    c::add_with_spec(&project, &resolve_home(home)?, &request, spec, relation)
+                }
+            }
+        }
         Action::Ready {
             card,
             by,
@@ -1553,6 +1602,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             met,
             generation,
             by,
+            keep_open,
             project,
             home,
         } => {
@@ -1567,6 +1617,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                     met: &met,
                     generation,
                     by: &by,
+                    keep_open,
                 },
             )?;
             // The remote copy never fails the landing; its state rides in the answer.

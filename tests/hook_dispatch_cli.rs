@@ -734,7 +734,7 @@ fn a_local_claim_record_hands_the_commit_to_the_claim_guard() {
         effects: vec![],
         last_observed_at: "2026-11-10T12:00:00Z".into(),
     };
-    let journal = Journal::open(&moai_cli::claim::journal_root(&root).unwrap()).unwrap();
+    let journal = Journal::open(&moai_cli::claim::journal_root_in(&root, None).unwrap()).unwrap();
     assert!(journal.try_lock().unwrap());
     journal.commit("acquire", &record).unwrap();
     drop(journal);
@@ -1063,7 +1063,7 @@ fn session_check_through_a_symlinked_cwd_still_finds_the_local_record() {
         effects: vec![],
         last_observed_at: "2026-11-10T12:00:00Z".into(),
     };
-    let journal = Journal::open(&moai_cli::claim::journal_root(&root).unwrap()).unwrap();
+    let journal = Journal::open(&moai_cli::claim::journal_root_in(&root, None).unwrap()).unwrap();
     assert!(journal.try_lock().unwrap());
     journal.commit("acquire", &record).unwrap();
     drop(journal);

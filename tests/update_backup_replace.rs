@@ -124,12 +124,12 @@ fn run_cli(
     let mut cmd = Command::new(EXE);
     cmd.args(args)
         .env("HOME", home)
-        .env_remove("MOAI_CLI_TEST_FAULT")
+        .env_remove("MOAI_TEST_FAULT")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     if let Some(f) = fault {
-        cmd.env("MOAI_CLI_TEST_FAULT", f);
+        cmd.env("MOAI_TEST_FAULT", f);
     }
     let mut child = cmd.spawn().unwrap();
     let mut pipe = child.stdin.take().unwrap();
@@ -701,7 +701,7 @@ fn sha256_hex(bytes: &[u8]) -> String {
 
 /// Test seam (#2505): debug builds take the backup folder's time stamp from this variable,
 /// so two runs "in the same second" are reproducible.
-const STAMP_VAR: &str = "MOAI_CLI_TEST_BACKUP_STAMP";
+const STAMP_VAR: &str = "MOAI_TEST_BACKUP_STAMP";
 const STAMP: &str = "20260101T000000Z";
 
 fn run_cli_env(
@@ -713,7 +713,7 @@ fn run_cli_env(
     let mut cmd = Command::new(EXE);
     cmd.args(args)
         .env("HOME", home)
-        .env_remove("MOAI_CLI_TEST_FAULT")
+        .env_remove("MOAI_TEST_FAULT")
         .env_remove(STAMP_VAR)
         .envs(envs.iter().copied())
         .stdin(Stdio::piped())

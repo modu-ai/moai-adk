@@ -61,17 +61,21 @@ const INSTALL_REASON: &str = "profile, generation (AGENTS.md managed section and
 /// writes `AGENTS.md`, whose bytes that step's digest binds.
 pub const AFTER_INSTALL: &str = "re-run after the install phase";
 const MERGE_REASON: &str = "AGENTS.md and AGENTS.local.md move into CLAUDE.md and \
-     CLAUDE.local.md, are imported or are left, as the user picks (agents-picks); the text of \
+     CLAUDE.local.md or are left, and once their text is there the user may delete the \
+     originals, as the user picks (agents-picks); the text of \
      AGENTS.local.md alone merges into CLAUDE.local.md (#2936 R10); the user's earlier \
      settings.json values merge back into the new one (#2936 R8); other backed-up instructions \
      are a later slice (#2936 S1f)";
 
-/// Step states from least to most severe; a phase takes its worst step's state.
+/// Step states from least to most severe; a phase takes its worst step's state. `optional` is a
+/// step that offers a choice nobody has to make (deleting the originals once their text is
+/// copied): it prints the choice and the command and counts as nothing to do.
 /// `skip_in_use` (a file a running session reads, #2936 S2b) is reserved: this slice never
 /// emits it.
-const SEVERITY: [&str; 6] = [
+const SEVERITY: [&str; 7] = [
     "unchanged",
     "skip",
+    "optional",
     "ready",
     "needs_decision",
     "conflict",
@@ -787,9 +791,8 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
 /// - `CLAUDE.md` is a conflict for a missing managed block: `append-managed` (recommended)
 ///   and `skip-conflicts`.
 ///
-/// There is no import choice any more: the writer owns `CLAUDE.md`, so nothing shadows
-/// `AGENTS.md`, and a project that holds an `AGENTS.md` picks `move`, `import` or `leave` in the
-/// project questions instead.
+/// There is no import choice: the writer owns `CLAUDE.md`, and a project that holds an `AGENTS.md`
+/// picks `move` or `leave` in the project questions instead.
 ///
 /// A choice whose own plan still has a conflict row is left out: it could not be applied.
 /// Nothing here writes.
@@ -1441,22 +1444,26 @@ fn picks_none(root: &Path) -> Step {
     step
 }
 
-/// The picks `move`, `import` and `leave` for a project that holds `AGENTS.md` or
-/// `AGENTS.local.md` (SPEC-20261122-claude-md-project-picks). Each choice prints the one command
+/// The picks `move`, `leave` and `remove-originals` for a project that holds `AGENTS.md` or
+/// `AGENTS.local.md` (SPEC-20261122-claude-md-project-picks,
+/// SPEC-20261124-claude-md-product-next). Each choice prints the one command
 /// that applies it (`agents-merge-apply … --pick <id>`) and its own plan digest; nothing is
 /// written here. A pick that would be refused (a link, a file that is not text, a conflict) is not
 /// printed as a command and is named under `blocked`.
 ///
-/// - `needs_decision`: the user picks one of the choices.
-/// - `conflict`: `move` and `import` are both refused; only `leave` remains.
-/// - `unchanged`: `CLAUDE.md` already imports `AGENTS.md` or holds its text; nothing is offered.
+/// - `needs_decision`: the user picks one of the choices (`move` or `leave`).
+/// - `conflict`: `move` is refused; only `leave` remains.
+/// - `optional`: the text is in the CLAUDE files and `remove-originals` is the only choice; the
+///   preview still reads as up to date.
+/// - `unchanged`: `CLAUDE.md` already imports `AGENTS.md` or holds its text and no original can
+///   be deleted; nothing is offered.
 /// - `skip`: nothing to offer, or no generation request can be built (the generation step says
 ///   why).
 fn agents_picks_step(root: &Path, shown: &str) -> Result<Step> {
     let offer = agents_local_merge::picks::offer(root, || rebuilt_request(root))?;
     let reason = offer["reason"].as_str().unwrap_or_default().to_string();
     match offer["offer"].as_str() {
-        Some("picks") => {}
+        Some("picks" | "originals") => {}
         Some("settled") => {
             return Ok(Step {
                 name: PICKS,
@@ -1501,15 +1508,17 @@ fn agents_picks_step(root: &Path, shown: &str) -> Result<Step> {
             "effect": c["effect"],
             "plan_digest": digest,
             "writes": c["writes"],
+            "deletes": c["deletes"],
             "parts": c["parts"],
             "warnings": c["warnings"],
             "apply": {"argv": words, "stdin": Value::Null},
         }));
     }
-    // Every pick that writes is refused when only `leave` is still ready. A project that holds
-    // only AGENTS.local.md is offered `move` and `leave`, so `import` is never in the list.
+    // Every pick that writes is refused when only `leave` is still ready.
     let refused = !blocked.is_empty() && choices.iter().all(|c| c["id"] == "leave");
-    let (state, reason) = if refused {
+    let (state, reason) = if offer["offer"] == "originals" {
+        ("optional", reason.as_str())
+    } else if refused {
         (
             "conflict",
             "every pick that writes is refused for the files named under blocked; only leave remains",
@@ -1517,8 +1526,8 @@ fn agents_picks_step(root: &Path, shown: &str) -> Result<Step> {
     } else {
         (
             "needs_decision",
-            "the project holds AGENTS.md or AGENTS.local.md; the user picks move (recommended), \
-             import or leave",
+            "the project holds AGENTS.md or AGENTS.local.md; the user picks move (recommended) or \
+             leave",
         )
     };
     Ok(Step {
@@ -1526,7 +1535,7 @@ fn agents_picks_step(root: &Path, shown: &str) -> Result<Step> {
         state,
         reason: reason.into(),
         preview: json!({
-            "offer": "picks",
+            "offer": offer["offer"],
             "warnings": offer["warnings"],
             "blocked": blocked,
             "choices": choices,
@@ -1867,7 +1876,7 @@ pub fn plan(project: &Path) -> Result<Value> {
         .iter()
         .chain(&install)
         .chain(&merge)
-        .all(|s| s.state == "unchanged" || s.state == "skip");
+        .all(|s| matches!(s.state, "unchanged" | "skip" | "optional"));
     let phase = |name: &str, reason: &str, steps: &[Step]| {
         json!({
             "phase": name,

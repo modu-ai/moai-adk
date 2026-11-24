@@ -15,7 +15,7 @@ fn seen(cmd: &mut Command) -> String {
 
 fn child() -> Command {
     let mut cmd = Command::new("sh");
-    cmd.args(["-c", "printf %s \"${MOAI_CLI_TEST_PROCESS_TABLE-unset}\""]);
+    cmd.args(["-c", "printf %s \"${MOAI_TEST_PROCESS_TABLE-unset}\""]);
     cmd
 }
 

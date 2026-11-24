@@ -448,6 +448,31 @@ fn a_comparison_that_cannot_run_keeps_the_test_exit_code_and_never_fails_observe
     assert!(stderr(&out).contains("HOME-GUARD:"), "{}", stderr(&out));
 }
 
+/// Every end of the wrapper that a shell can catch leaves neither the HOME folder nor the
+/// reference file in its `TMPDIR`: a normal exit, a failing test and a HUP, INT or TERM sent to
+/// the wrapper while the test runs (the probe signals its parent, the wrapper's shell, which runs
+/// its trap once the probe is over). A SIGKILL cannot be caught and is not covered.
+#[test]
+fn a_wrapper_that_ends_leaves_nothing_in_its_tmpdir() {
+    let cases: [(&str, i32); 5] = [
+        ("exit 0", 0),
+        ("exit 7", 7),
+        ("kill -TERM $PPID", 143),
+        ("kill -INT $PPID", 143),
+        ("kill -HUP $PPID", 143),
+    ];
+    for (probe, code) in cases {
+        let g = Guard::new();
+        let out = g.run(Some("enforce"), None, probe);
+        assert_eq!(out.status.code(), Some(code), "{probe}: {}", stderr(&out));
+        assert_eq!(
+            g.entries(),
+            Vec::<String>::new(),
+            "the wrapper left a name behind after `{probe}`"
+        );
+    }
+}
+
 #[test]
 fn a_cargo_child_of_a_test_still_finds_its_toolchain() {
     let g = Guard::new();
@@ -504,7 +529,16 @@ fn plant_home_is_guarded() {
     let h = home();
     assert!(h.to_string_lossy().contains("/moai-test-home."), "{h:?}");
 }
+#[test]
+fn plant_tmpdir_is_private() {
+    let t = std::env::var("TMPDIR").unwrap_or_default();
+    assert!(t.ends_with("/private-tmp"), "TMPDIR is {t:?}");
+}
 "#;
+
+/// The folder inside a scratch crate that its nextest run gets as `TMPDIR`, so the names the
+/// wrapper makes never reach the system temporary folder.
+const PRIVATE_TMP: &str = "private-tmp";
 
 /// The repository configuration without its per-test overrides: their filters name test binaries
 /// of this repository, which a scratch crate does not have, and nextest refuses such a filter.
@@ -588,6 +622,12 @@ fn nextest(dir: &Path, mode: Option<&str>) -> (Option<i32>, String) {
     }
     cmd.env("CARGO_TARGET_DIR", dir.join("target"));
     cmd.env("CARGO_INCREMENTAL", "0");
+    // The wrapper makes its HOME folder and reference file under `TMPDIR`: a private folder of
+    // the scratch crate keeps them out of the system temporary folder, and the crate's `TempDir`
+    // removes it when the test ends, panic or not.
+    let private_tmp = dir.join(PRIVATE_TMP);
+    fs::create_dir_all(&private_tmp).unwrap();
+    cmd.env("TMPDIR", &private_tmp);
     if let Some(mode) = mode {
         cmd.env("MOAI_HOME_GUARD", mode);
     }
@@ -595,7 +635,26 @@ fn nextest(dir: &Path, mode: Option<&str>) -> (Option<i32>, String) {
         .output()
         .expect("cargo nextest must be installed for this test");
     let text = format!("{}\n{}", stdout(&out), stderr(&out));
+    let left = names_with_prefix(&dir.join(PRIVATE_TMP), "moai-test-home");
+    assert!(
+        left.is_empty(),
+        "the wrapper left {left:?} in the private TMPDIR of the nextest run"
+    );
     (out.status.code(), text)
+}
+
+/// The names directly inside `folder` that start with `prefix` (none when the folder is absent).
+fn names_with_prefix(folder: &Path, prefix: &str) -> Vec<String> {
+    let mut names: Vec<String> = fs::read_dir(folder)
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .filter(|n| n.starts_with(prefix))
+                .collect()
+        })
+        .unwrap_or_default();
+    names.sort();
+    names
 }
 
 /// The first status word nextest printed for the test `name`.
@@ -648,6 +707,11 @@ fn nextest_applies_the_repository_configuration_to_a_scratch_crate() {
     assert_eq!(st("plant_idle").as_deref(), Some("PASS"), "{text}");
     assert_eq!(
         st("plant_home_is_guarded").as_deref(),
+        Some("PASS"),
+        "{text}"
+    );
+    assert_eq!(
+        st("plant_tmpdir_is_private").as_deref(),
         Some("PASS"),
         "{text}"
     );
@@ -841,7 +905,7 @@ const BASELINE: &str = "tests/fixtures/test_home_guard/baseline.tsv";
 /// The most lines the baseline may hold. The observation of SPEC-20261123-test-home-isolation (D-5)
 /// found 389 tests, and the file only shrinks: remove lines, then lower this number to the new
 /// count. A test that reads the decoy and is not listed fails instead of being added.
-const BASELINE_CAP: usize = 389;
+const BASELINE_CAP: usize = 361;
 
 /// Every `binary<TAB>test` line of a baseline: sorted without repeats, within `cap`, and naming a
 /// test that exists. The library tests use the binary name `moai_cli`; the name is a module path

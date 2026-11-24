@@ -768,3 +768,29 @@ fn a_saved_value_is_the_default_of_its_questions_and_enter_keeps_it() {
         ("claude-sonnet-5-5", "high")
     );
 }
+
+// SPEC-20261122-model-fast-pair REQ-4: the API refuses an Opus 4.8 request with fast mode from
+// 2026-11-30, so no model question offers an id of that family.
+#[test]
+fn fast_pair_no_model_question_offers_an_opus_48_id() {
+    for tool in model_effort_settings::TOOLS {
+        for role in model_effort_settings::ROLES {
+            let q = model_question(tool, role).expect("known tool and role");
+            assert!(!q.options.is_empty(), "{tool} {role}");
+            for value in values(&q) {
+                // The match ends there or goes on with `-`, `[` or `@`; a digit after it is
+                // another model, the same shape as `is_opus_48` in `claude_settings_merge`.
+                let lower = value.to_ascii_lowercase();
+                let names_family = ["opus-4-8", "opus-4.8"].iter().any(|family| {
+                    lower.match_indices(family).any(|(at, _)| {
+                        matches!(
+                            lower[at + family.len()..].chars().next(),
+                            None | Some('-' | '[' | '@')
+                        )
+                    })
+                });
+                assert!(!names_family, "{tool} {role}: {value}");
+            }
+        }
+    }
+}

@@ -4,7 +4,7 @@
 //! The routing text is one package file, `references/home/routing.md`, rendered for the host
 //! (`{invoke}` becomes `/moai`) and written as the whole file `rules/moai.md` of the default
 //! Claude config folder `~/.claude`, the one place moai keeps the copy; the flow rule
-//! `references/home/flow.md` is written beside it as `rules/moai/flow.md`. Both are planned
+//! `references/home/flow.md` is written beside it as `rules/moai-flow.md`. Both are planned
 //! together and shown in the preview. Any other folder (the one `CLAUDE_CONFIG_DIR` names, each
 //! `--config-dir` the user picks) holds no copy: its row says `linked` when its `rules` is a
 //! link to `~/.claude/rules` (also while that folder is not made yet) and `not_linked`, with the
@@ -47,7 +47,12 @@ pub const SOURCE: &str = "references/home/routing.md";
 pub const FLOW_SOURCE: &str = "references/home/flow.md";
 /// The routing file and the flow rule file, below a Claude config folder.
 pub const RULES_FILE: &str = "rules/moai.md";
-pub const FLOW_FILE: &str = "rules/moai/flow.md";
+pub const FLOW_FILE: &str = "rules/moai-flow.md";
+/// Where builds up to 22 wrote the flow rule: a folder below `rules/`, which the official pages
+/// document as read recursively for project rules only. The file is left where it is (never
+/// read, written or removed here); the preview names it and a receipt entry of kind `flow`
+/// still reverts it (SPEC-20261124-desktop-install-agents).
+pub const LEGACY_FLOW_FILE: &str = "rules/moai/flow.md";
 /// Hosts written: (host, the file of the earlier block under HOME when the host folder is not
 /// relocated — see [`crate::host_home`] — and how the user invokes the skill there).
 pub const HOSTS: [(&str, &str, &str); 1] = [("claude", ".claude/CLAUDE.md", "/moai")];
@@ -143,7 +148,9 @@ struct HostState {
 #[serde(deny_unknown_fields)]
 pub struct ReceiptEntry {
     pub host: String,
-    /// routing | flow | old_block; an entry without one (an earlier version's) is the block.
+    /// routing | moai_flow | flow | old_block; an entry without one (an earlier version's) is
+    /// the block. `flow` is the flow rule at its earlier path (`rules/moai/flow.md`); the
+    /// current apply writes `moai_flow`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
     /// The config folder the entry is about; an entry without one is the host's resolved folder.

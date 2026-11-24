@@ -230,6 +230,9 @@ pub enum SkipReason {
     EmptyScope,
     /// It is in `review` and nobody holds it, so nobody can close or reopen it.
     ReviewNoHolder,
+    /// It has no criterion that counts ([`counted_criteria`] is 0), so `take` refuses it
+    /// (SPEC-20261124-card-next-skips-no-criteria).
+    NoCriteria,
 }
 
 impl SkipReason {
@@ -239,8 +242,20 @@ impl SkipReason {
             SkipReason::ScopeOverlap { .. } => "scope_overlap",
             SkipReason::EmptyScope => "empty_scope",
             SkipReason::ReviewNoHolder => "review_no_holder",
+            SkipReason::NoCriteria => "no_criteria",
         }
     }
+}
+
+/// How many criterion rows of the card count: the rows whose status is not `withdrawn`. A card
+/// with 0 can never be closed, so `card take` refuses it and `card next` skips it; both ask this
+/// one function, so the two cannot drift apart (SPEC-20261124-card-next-skips-no-criteria).
+pub fn counted_criteria(conn: &Connection, card_id: i64) -> rusqlite::Result<i64> {
+    conn.query_row(
+        "SELECT count(*) FROM card_ac WHERE card_id = ?1 AND status <> 'withdrawn'",
+        [card_id],
+        |r| r.get(0),
+    )
 }
 
 /// A card that is not offered, with the reason.
@@ -350,7 +365,7 @@ pub fn next_filled(
                 scope_source = Some(source);
             }
         }
-        let reason = if scope.is_empty() {
+        let mut reason = if scope.is_empty() {
             Some(SkipReason::EmptyScope)
         } else {
             reservation::find_overlap(conn, now, card_id, &scope)?.map(|o| {
@@ -361,6 +376,11 @@ pub fn next_filled(
                 }
             })
         };
+        // A card `take` would refuse for want of a criterion is not offered. The check comes after
+        // the reasons above, so a card they skip keeps its reason.
+        if reason.is_none() && counted_criteria(conn, card_id)? == 0 {
+            reason = Some(SkipReason::NoCriteria);
+        }
         match reason {
             Some(reason) => out.skipped.push(Skipped {
                 card_id,
@@ -1936,6 +1956,7 @@ pub fn finish(
         met,
         generation,
         LandedVerdict::StartRow,
+        false,
     )
 }
 
@@ -1950,7 +1971,10 @@ pub enum LandedVerdict<'a> {
     Relied(Option<&'a serde_json::Value>),
 }
 
-/// [`finish`], with the verdict the landing event names given by the caller.
+/// [`finish`], with the verdict the landing event names given by the caller. `keep_open` marks
+/// the landing event as a slice that stays open on purpose (`card land --keep-open`,
+/// SPEC-20261124-land-closes-card): the payload gets `keep_open` true, and `card next` does not
+/// skip the card for it.
 #[allow(clippy::too_many_arguments)]
 pub fn finish_naming(
     w: &mut WriteLedger,
@@ -1961,6 +1985,7 @@ pub fn finish_naming(
     met: &[(i64, String)],
     generation: Option<i64>,
     named: LandedVerdict<'_>,
+    keep_open: bool,
 ) -> Result<Finished, WorkflowError> {
     finish_input_checks(by, met, evidence)?;
     w.with_write_tx(|tx, now| {
@@ -2002,6 +2027,9 @@ pub fn finish_naming(
             };
             if let Some(verdict) = verdict {
                 payload["verdict"] = verdict;
+            }
+            if keep_open {
+                payload["keep_open"] = json!(true);
             }
             reservation::add_event(tx, now, actor, card_id, "card.landed", &payload)?;
             events += 1;
@@ -2095,6 +2123,9 @@ pub struct LandingFacts {
     /// The head of the newest `card.landed` event that names one. An event with no head (a
     /// report close) is never a head.
     pub head: Option<String>,
+    /// Whether that event carries `keep_open` true: the card was landed as a slice that stays
+    /// open on purpose (SPEC-20261124-land-closes-card), so the head proves no finished card.
+    pub keep_open: bool,
     /// The newest active merged pull request link: `<host>:<project>#<number>` and its merge ref.
     pub merged_pr: Option<(String, String)>,
 }
@@ -2108,6 +2139,10 @@ pub fn landing_facts(conn: &Connection) -> Result<Vec<LandingFacts>, LedgerError
              WHERE e.card_id = card.card_id AND e.kind = 'card.landed' \
                AND json_type(e.payload, '$.head') = 'text' \
              ORDER BY e.event_id DESC LIMIT 1), \
+           (SELECT COALESCE(json_extract(e.payload, '$.keep_open') = 1, 0) FROM event e \
+             WHERE e.card_id = card.card_id AND e.kind = 'card.landed' \
+               AND json_type(e.payload, '$.head') = 'text' \
+             ORDER BY e.event_id DESC LIMIT 1), \
            (SELECT l.target_host || ':' || l.target_project || '#' || l.target_number \
               FROM card_link l WHERE l.from_card = card.card_id AND l.kind = 'pr' \
                AND l.state = 'active' AND l.pr_state = 'merged' ORDER BY l.link_id DESC LIMIT 1), \
@@ -2117,12 +2152,14 @@ pub fn landing_facts(conn: &Connection) -> Result<Vec<LandingFacts>, LedgerError
          FROM card WHERE state <> 'done' ORDER BY card_id",
     )?;
     let rows = stmt.query_map([], |r| {
-        let target: Option<String> = r.get(3)?;
-        let merge_ref: Option<String> = r.get(4)?;
+        let keep_open: Option<bool> = r.get(3)?;
+        let target: Option<String> = r.get(4)?;
+        let merge_ref: Option<String> = r.get(5)?;
         Ok(LandingFacts {
             card_id: r.get(0)?,
             state: r.get(1)?,
             head: r.get(2)?,
+            keep_open: keep_open.unwrap_or(false),
             merged_pr: target.zip(merge_ref),
         })
     })?;

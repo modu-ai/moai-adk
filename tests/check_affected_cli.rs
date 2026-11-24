@@ -440,6 +440,36 @@ fn a_project_without_a_scan_list_says_scans_none() {
     assert!(!names(&r["rust_targets"]).contains(&"home_isolation_scan".to_string()));
 }
 
+// SPEC-20261124-ready-receipt-followup AC-4: a `--lane` run says so in its summary line, right
+// after `scans=`, and a bare run writes the line as before.
+#[test]
+fn the_summary_line_says_a_lane_run() {
+    let fx = Fixture::new(true, &[("src/update_models.rs", "// b\n")]);
+    let slots = slot_dir();
+    let slot = slots.path().to_string_lossy().to_string();
+    for (extra, lane) in [(vec!["--lane"], true), (vec![], false)] {
+        let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+        let mut args = vec!["--slot-dir", slot.as_str()];
+        args.extend(extra);
+        let (ok, r) = affected(&fx, &args, Some((&tools, "")));
+        assert!(ok, "{r}");
+        let line = r["summary"].as_str().unwrap();
+        assert!(line.ends_with(" result=PASS"), "{line}");
+        let words: Vec<&str> = line.split(' ').collect();
+        let scans = words.iter().position(|w| w.starts_with("scans=")).unwrap();
+        assert_eq!(
+            words.get(scans + 1) == Some(&"selection=lane"),
+            lane,
+            "{line}"
+        );
+        assert_eq!(words.contains(&"selection=lane"), lane, "{line}");
+        assert_eq!(r["selection"], if lane { "lane" } else { "full" });
+        let out = std::path::Path::new(r["out"].as_str().unwrap());
+        let file = std::fs::read_to_string(out.join("summary.txt")).unwrap();
+        assert_eq!(file, format!("{line}\n"));
+    }
+}
+
 #[test]
 fn list_reads_only_and_shows_the_selection() {
     let fx = Fixture::new(true, &[("src/update_models.rs", "// b\n")]);

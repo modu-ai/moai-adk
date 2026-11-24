@@ -320,13 +320,13 @@ pub fn squash_merged(primary: &Path, head: &str, tip: &str) -> Option<bool> {
 /// loaded Mac the whole-machine scan drops from about 6 s to under 1 s with them.
 const LSOF_CHEAP: [&str; 4] = ["-w", "-n", "-P", "-b"];
 
-/// Test builds only: `MOAI_CLI_TEST_PROCESS_TABLE=empty` makes both scans answer "no process
+/// Test builds only: `MOAI_TEST_PROCESS_TABLE=empty` makes both scans answer "no process
 /// uses anything" without running `lsof`, so a test that does not need the process table does
 /// not pay for reading it.
 fn injected_empty_table() -> bool {
     #[cfg(debug_assertions)]
     {
-        std::env::var_os("MOAI_CLI_TEST_PROCESS_TABLE").is_some_and(|v| v == "empty")
+        std::env::var_os("MOAI_TEST_PROCESS_TABLE").is_some_and(|v| v == "empty")
     }
     #[cfg(not(debug_assertions))]
     {

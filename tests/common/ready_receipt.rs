@@ -34,6 +34,23 @@ pub fn summary_line_based(head: &str, base: &str, result: &str) -> String {
     )
 }
 
+/// The summary line of a `moai check affected --lane` run: the bare line with the word
+/// `selection=lane` right after `scans=` (SPEC-20261124-ready-receipt-followup REQ-6).
+#[allow(dead_code)]
+pub fn summary_line_lane(head: &str, result: &str) -> String {
+    summary_line(head, result).replace(" test-threads=", " selection=lane test-threads=")
+}
+
+/// Writes a PASS receipt of the `--lane` kind for `head` under `worktree`.
+#[allow(dead_code)]
+pub fn write_receipt_lane(worktree: &Path, head: &str) -> PathBuf {
+    let dir = receipt_dir(worktree, head);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("summary.txt");
+    std::fs::write(&path, format!("{}\n", summary_line_lane(head, "PASS"))).unwrap();
+    path
+}
+
 /// Writes a PASS receipt of `head` under `worktree` whose range started at `base`.
 #[allow(dead_code)]
 pub fn write_receipt_based(worktree: &Path, head: &str, base: &str) -> PathBuf {

@@ -21,6 +21,7 @@ use super::export_db;
 use super::export_dir::{self, DirError};
 use super::export_format;
 use super::input::{self, AddInput, CardRef};
+use super::spec_link;
 use crate::ledger::{self, LedgerError};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
@@ -434,6 +435,47 @@ pub fn actor(given: Option<&str>, action: &str) -> Result<String> {
 
 /// `card add`: a new `draft` card with its criteria and one `card.add` event, in one transaction.
 pub fn add(project: &Path, home: &Path, req: &AddRequest<'_>) -> Result<Value> {
+    insert_card(project, home, req, None)
+}
+
+/// `card add --spec <SPEC-ID> [--follow-up | --split-of <card>]` (SPEC-20261124-followup-per-spec):
+/// [`add`] plus the card's link to its SPEC, as a `card.spec` event in the same transaction. A
+/// SPEC that cannot be read, has an error finding or is not of this generation refuses the add
+/// before the ledger is opened; a second open card on the SPEC, a second open follow-up card and a
+/// `--split-of` card that does not name the SPEC are refused inside the transaction, so nothing is
+/// written (`spec_link::add_conflict`).
+pub fn add_with_spec(
+    project: &Path,
+    home: &Path,
+    req: &AddRequest<'_>,
+    spec: &str,
+    relation: spec_link::Relation<'_>,
+) -> Result<Value> {
+    if crate::spec_doc::id_form(spec).is_none() {
+        return Err(
+            "card add refused: the SPEC id is not SPEC-<yyyymmdd>-<slug> (or a \
+                    Go-generation SPEC-…-NNN id)"
+                .to_string(),
+        );
+    }
+    let doc = crate::spec_doc::find(project, spec)
+        .map_err(|e| format!("card add refused: SPEC {spec} cannot be read: {e}"))?;
+    if doc.errors() > 0 {
+        return Err(format!(
+            "card add refused: {spec} has {} error(s); `moai spec check {spec}` lists them; \
+             nothing was written",
+            doc.errors()
+        ));
+    }
+    insert_card(project, home, req, Some((spec, relation)))
+}
+
+fn insert_card(
+    project: &Path,
+    home: &Path,
+    req: &AddRequest<'_>,
+    link: Option<(&str, spec_link::Relation<'_>)>,
+) -> Result<Value> {
     let card = input::validate_add(&AddInput {
         title: req.title,
         body: req.body,
@@ -448,8 +490,19 @@ pub fn add(project: &Path, home: &Path, req: &AddRequest<'_>) -> Result<Value> {
     super::dispatch::checked_scope("add", req.scope)?;
     let by = actor(req.by, "add")?;
     let (id, mut ledger) = open_for_write(project, home)?;
-    let (card_id, rev) = ledger
+    let written = ledger
         .with_write_tx(|tx, now| {
+            if let Some((spec, relation)) = link {
+                if let spec_link::Relation::SplitOf(origin) = relation {
+                    if let Some(why) = split_origin_refusal(tx, spec, origin)? {
+                        return Ok(Err(why));
+                    }
+                }
+                let open = spec_link::open_cards_of(tx, spec)?;
+                if let Some(why) = spec_link::add_conflict(spec, relation, &open) {
+                    return Ok(Err(why));
+                }
+            }
             tx.execute(
                 "INSERT INTO card (title, body, kind, priority, write_scope, created_by, \
                                    created_at, updated_at) \
@@ -478,20 +531,84 @@ pub fn add(project: &Path, home: &Path, req: &AddRequest<'_>) -> Result<Value> {
                  VALUES (?1, ?2, ?3, ?4, 'card.add', ?5)",
                 params![key, now, by, card_id, payload.to_string()],
             )?;
+            if let Some((spec, relation)) = link {
+                let mut link_payload = json!({"from": Value::Null, "to": spec});
+                match relation {
+                    spec_link::Relation::Plain => {}
+                    spec_link::Relation::FollowUp => {
+                        link_payload["relation"] = json!(spec_link::RELATION_FOLLOW_UP);
+                    }
+                    spec_link::Relation::SplitOf(origin) => {
+                        link_payload["relation"] = json!(spec_link::RELATION_SPLIT_OF);
+                        link_payload["of"] = json!(origin);
+                    }
+                }
+                let key = ledger::new_event_key(tx, spec_link::EVENT, Some(card_id))?;
+                tx.execute(
+                    "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                    params![
+                        key,
+                        now,
+                        by,
+                        card_id,
+                        spec_link::EVENT,
+                        link_payload.to_string()
+                    ],
+                )?;
+            }
             let rev: i64 =
                 tx.query_row("SELECT rev FROM card WHERE card_id = ?1", [card_id], |r| {
                     r.get(0)
                 })?;
-            Ok((card_id, rev))
+            Ok(Ok((card_id, rev)))
         })
         .map_err(|e| e.to_string())?;
-    Ok(json!({
+    let (card_id, rev) = written?;
+    let mut answer = json!({
         "action": "add", "project_id": id,
         "name": input::card_name(card_id), "card_id": card_id,
         "state": "draft", "kind": card.kind, "priority": card.priority,
         "criteria": card.criteria.len(), "rev": rev, "created_by": by,
         "events": 1, "writes": true,
-    }))
+    });
+    if let Some((spec, relation)) = link {
+        answer["events"] = json!(2);
+        answer["spec"] = json!(spec);
+        answer["relation"] = match relation {
+            spec_link::Relation::Plain => Value::Null,
+            spec_link::Relation::FollowUp => json!(spec_link::RELATION_FOLLOW_UP),
+            spec_link::Relation::SplitOf(_) => json!(spec_link::RELATION_SPLIT_OF),
+        };
+    }
+    Ok(answer)
+}
+
+/// Why `--split-of <origin>` cannot be taken for a card of SPEC `spec`: the origin is not a card
+/// reference, does not exist or names another SPEC or none. `None` when it names `spec`.
+fn split_origin_refusal(
+    tx: &Connection,
+    spec: &str,
+    origin: &str,
+) -> rusqlite::Result<Option<String>> {
+    let n = match input::parse_ref(origin) {
+        Ok(CardRef::Id(n)) => n,
+        _ => {
+            return Ok(Some(format!(
+                "card add refused: --split-of {origin} is not a card name (`C-1`)"
+            )))
+        }
+    };
+    Ok(match spec_link::kind_and_spec(tx, n)? {
+        None => Some(format!(
+            "card not found: --split-of {origin}: there is no {origin}"
+        )),
+        Some((_, named)) if named.as_deref() != Some(spec) => Some(format!(
+            "card add refused: --split-of {origin} names {}, not {spec}",
+            named.as_deref().unwrap_or("no SPEC")
+        )),
+        Some(_) => None,
+    })
 }
 
 /// `card export --out DIR` (#3070 K2a): the five exported tables of the ledger as an export

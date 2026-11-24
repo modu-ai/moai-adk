@@ -18,7 +18,7 @@ const NOW: &str = "2026-11-23T12:00:00Z";
 const STAMP: &str = "20261123T120000Z";
 const LATER: &str = "2026-11-23T13:00:00Z";
 const PERM: &str = "user approved in the fixture";
-const FAULT: &str = "MOAI_CLI_TEST_STATE_RETIRE_FAULT";
+const FAULT: &str = "MOAI_TEST_STATE_RETIRE_FAULT";
 
 type Tree = Vec<(String, String, u32, Vec<u8>)>;
 
@@ -454,11 +454,7 @@ fn blocked_when_a_manifest_of_this_clock_is_not_the_one_this_step_wrote() {
 #[test]
 fn blocked_when_the_process_table_cannot_be_read() {
     let (_d, home) = earlier_home();
-    let p = plan_with(
-        &home,
-        NOW,
-        &[("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")],
-    );
+    let p = plan_with(&home, NOW, &[("MOAI_TEST_PROCESS_CHECK", "unavailable")]);
     assert_eq!(p["action"], json!("blocked"), "{p}");
     assert_eq!(blocks(&p), ["in_use:process_check_unavailable"]);
 }

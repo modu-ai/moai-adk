@@ -389,3 +389,271 @@ fn the_written_file_decides_the_work_tree_in_both_directions() {
     fs::write(spec_wt.join(SPEC), spec_text("SPEC-20261117-demo")).unwrap();
     assert_allow(&preflight("claude", &main, &write(&in_spec_wt, &main)));
 }
+
+// ---- SPEC-20261124-lane-branch-after-spec: a SPEC `branch:` line links a lane branch ----
+
+/// The branch of a lane whose SPEC id differs from its name (the leader named it first).
+const LANE: &str = "spec/lane-x-20261124";
+const OTHER: &str = "SPEC-20261124-other";
+
+/// A SPEC text with a `branch:` frontmatter line (`None` writes no line).
+fn linked_text(id: &str, status: &str, branch: Option<&str>) -> String {
+    let line = branch.map_or(String::new(), |b| format!("branch: {b}\n"));
+    format!("---\nid: {id}\ntitle: \"demo\"\nstatus: {status}\nrevision: 1\ncreated: 2026-11-24\n{line}---\n\n## Intent\n\nx\n")
+}
+
+/// The SPEC folder of the project, found through the state folder resolver.
+fn specs(root: &Path) -> PathBuf {
+    moai_cli::state_root::path(root, "specs")
+}
+
+/// Writes `<SPEC folder>/<folder>/spec.md` with `text` in the work tree.
+fn put_spec(root: &Path, folder: &str, text: &str) {
+    let dir = specs(root).join(folder);
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("spec.md"), text).unwrap();
+}
+
+fn code_write(root: &Path) -> Run {
+    preflight("claude", root, &write("src/main.rs", root))
+}
+
+/// AC-1 (REQ-1), AC-7 (REQ-7): a lane branch whose name reads no SPEC file is refused while only
+/// an unlinked SPEC of another slug exists, and the refusal names the `branch:` line; once that
+/// SPEC says `branch: <the branch>` the code write goes ahead, for `draft` and `approved` alike.
+#[test]
+fn a_spec_that_names_the_branch_opens_code_writes() {
+    let (_d, root) = repo(LANE);
+    put_spec(&root, OTHER, &linked_text(OTHER, "draft", None));
+    let reason = assert_deny(&code_write(&root));
+    assert!(reason.contains("`branch:`"), "{reason}");
+    for status in ["draft", "approved"] {
+        put_spec(&root, OTHER, &linked_text(OTHER, status, Some(LANE)));
+        assert_allow(&code_write(&root));
+    }
+    // The SPEC itself is never held back by this rule.
+    let spec_path = specs(&root)
+        .join(OTHER)
+        .join("spec.md")
+        .display()
+        .to_string();
+    assert_allow(&preflight("claude", &root, &write(&spec_path, &root)));
+}
+
+/// AC-2 (REQ-2): no SPEC at all, or a SPEC that names another branch (also a longer name that
+/// only starts like this one), still refuses a code write.
+#[test]
+fn a_branch_with_no_spec_and_no_link_stays_refused() {
+    let (_d, root) = repo(LANE);
+    assert_deny(&code_write(&root));
+    for other in [
+        "spec/lane-y-20261124",
+        "spec/lane-x-20261124-r2",
+        "lane-x-20261124",
+    ] {
+        put_spec(&root, OTHER, &linked_text(OTHER, "draft", Some(other)));
+        assert_deny(&code_write(&root));
+    }
+}
+
+/// Each defect alone refuses; beside one good link it is not counted (a counted defect would read
+/// as two SPECs and refuse), so the write goes ahead.
+fn defects_open_nothing(defects: &[fn(&Path)]) {
+    let good = "SPEC-20261124-good";
+    for (n, make) in defects.iter().enumerate() {
+        let (_d, root) = repo(LANE);
+        make(&root);
+        assert_deny(&code_write(&root));
+        put_spec(&root, good, &linked_text(good, "draft", Some(LANE)));
+        let run = code_write(&root);
+        assert_eq!(
+            (run.code, run.stdout.as_str()),
+            (0, ""),
+            "defect {n}: {}",
+            run.stdout
+        );
+    }
+}
+
+/// AC-3 (REQ-3): a `branch:` line opens nothing in a SPEC whose folder name differs from its
+/// `id:` or whose status is `completed`.
+#[test]
+fn a_link_that_is_not_a_live_spec_of_its_own_folder_opens_nothing() {
+    defects_open_nothing(&[
+        // The folder name differs from the `id:`.
+        |r| {
+            put_spec(
+                r,
+                "SPEC-20261124-bad",
+                &linked_text("SPEC-20261124-else", "draft", Some(LANE)),
+            )
+        },
+        // A landed SPEC.
+        |r| {
+            put_spec(
+                r,
+                "SPEC-20261124-bad",
+                &linked_text("SPEC-20261124-bad", "completed", Some(LANE)),
+            )
+        },
+    ]);
+}
+
+/// AC-9 (REQ-3): the scan reads the direct children of the SPEC folder only and follows no link: a
+/// folder that is a link, a `spec.md` that is a link and a SPEC one folder deeper open nothing.
+#[test]
+fn the_scan_reads_one_level_and_follows_no_link() {
+    use std::os::unix::fs::symlink;
+    let defects: [fn(&Path); 3] = [
+        // The folder is a link to a real folder elsewhere.
+        |r| {
+            let real = r.join("elsewhere/SPEC-20261124-bad");
+            fs::create_dir_all(&real).unwrap();
+            let text = linked_text("SPEC-20261124-bad", "draft", Some(LANE));
+            fs::write(real.join("spec.md"), text).unwrap();
+            fs::create_dir_all(specs(r)).unwrap();
+            symlink(&real, specs(r).join("SPEC-20261124-bad")).unwrap();
+        },
+        // The `spec.md` is a link to a file elsewhere.
+        |r| {
+            let real = r.join("elsewhere/spec.md");
+            fs::create_dir_all(real.parent().unwrap()).unwrap();
+            fs::write(&real, linked_text("SPEC-20261124-bad", "draft", Some(LANE))).unwrap();
+            let dir = specs(r).join("SPEC-20261124-bad");
+            fs::create_dir_all(&dir).unwrap();
+            symlink(&real, dir.join("spec.md")).unwrap();
+        },
+        // One folder deeper than `<SPEC folder>/<id>/`.
+        |r| {
+            put_spec(
+                r,
+                "group/SPEC-20261124-bad",
+                &linked_text("SPEC-20261124-bad", "draft", Some(LANE)),
+            )
+        },
+    ];
+    defects_open_nothing(&defects);
+}
+
+/// Audit of C-429 (B2): a folder whose name is no new-form SPEC id (a plain name, an old-form id)
+/// opens nothing even when its own `id:` repeats the folder name.
+#[test]
+fn a_folder_that_is_no_new_form_spec_id_opens_nothing() {
+    defects_open_nothing(&[
+        |r| put_spec(r, "notes", &linked_text("notes", "draft", Some(LANE))),
+        |r| {
+            put_spec(
+                r,
+                "SPEC-AUTH-001",
+                &linked_text("SPEC-AUTH-001", "draft", Some(LANE)),
+            )
+        },
+    ]);
+}
+
+/// Audit of C-429 (B2): only the lines between the two `---` lines count. A `branch:` line or a
+/// `status:` line in the body, or a text with no opening `---` on its first line, opens nothing.
+#[test]
+fn only_the_frontmatter_between_two_rules_is_read() {
+    defects_open_nothing(&[
+        // The `branch:` line is in the body, after the closing rule.
+        |r| {
+            let text =
+                linked_text("SPEC-20261124-bad", "draft", None) + &format!("branch: {LANE}\n");
+            put_spec(r, "SPEC-20261124-bad", &text)
+        },
+        // The frontmatter says `completed`; a later body line says `draft`.
+        |r| {
+            let text =
+                linked_text("SPEC-20261124-bad", "completed", Some(LANE)) + "status: draft\n";
+            put_spec(r, "SPEC-20261124-bad", &text)
+        },
+        // No opening rule on the first line: the lines up to the first rule are no frontmatter.
+        |r| {
+            let text = format!(
+                "intro\nid: SPEC-20261124-bad\nstatus: draft\nbranch: {LANE}\n---\n\n## Intent\n"
+            );
+            put_spec(r, "SPEC-20261124-bad", &text)
+        },
+    ]);
+}
+
+/// Audit of C-429 (B3, note 7921): the C-426 case. The leader named the branch
+/// `spec/card-number-bare-prefix-20261124` while the lane's SPEC is an earlier one of another
+/// date (and another slug, or the same slug); the SPEC names the branch, so the write opens.
+#[test]
+fn a_spec_of_another_date_that_names_the_branch_opens_code_writes() {
+    let branch = "spec/card-number-bare-prefix-20261124";
+    for id in [
+        "SPEC-20261123-card-number-observe",
+        "SPEC-20261123-card-number-bare-prefix",
+    ] {
+        let (_d, root) = repo(branch);
+        put_spec(&root, id, &linked_text(id, "approved", None));
+        assert_deny(&code_write(&root));
+        put_spec(&root, id, &linked_text(id, "approved", Some(branch)));
+        assert_allow(&code_write(&root));
+    }
+}
+
+/// Audit of C-429 (N1): the SPEC file is read up to 16 KiB. A frontmatter cut inside its
+/// `branch:` line (the whole line is `branch: spec/lane-x-20261124-r9`, the cut leaves
+/// `branch: spec/lane-x-20261124`) opens nothing: the cut text has no closing rule.
+#[test]
+fn a_frontmatter_cut_by_the_read_limit_opens_nothing() {
+    defects_open_nothing(&[|r| {
+        let id = "SPEC-20261124-bad";
+        let head = format!("---\nid: {id}\nstatus: draft\npad: ");
+        let tail = format!("\nbranch: {LANE}");
+        let pad = "x".repeat(16 * 1024 - head.len() - tail.len());
+        let text = format!("{head}{pad}{tail}-r9\n---\n\n## Intent\n");
+        assert_eq!(&text[..16 * 1024], format!("{head}{pad}{tail}"));
+        put_spec(r, id, &text)
+    }]);
+}
+
+/// AC-4 (REQ-4): two live SPECs naming one branch refuse with the two-ids reason and removing one
+/// lets the write through. A branch whose name reads an existing SPEC is never scanned: two links
+/// beside it change nothing.
+#[test]
+fn two_specs_naming_one_branch_are_refused() {
+    let (_d, root) = repo(LANE);
+    put_spec(
+        &root,
+        "SPEC-20261124-one",
+        &linked_text("SPEC-20261124-one", "draft", Some(LANE)),
+    );
+    put_spec(
+        &root,
+        "SPEC-20261124-two",
+        &linked_text("SPEC-20261124-two", "approved", Some(LANE)),
+    );
+    let reason = assert_deny(&code_write(&root));
+    assert!(reason.contains("reads as two SPEC ids"), "{reason}");
+    // The name reads a SPEC file of its own: no scan, so the two links do not matter.
+    put_spec(
+        &root,
+        "SPEC-20261124-lane-x",
+        &spec_text("SPEC-20261124-lane-x"),
+    );
+    assert_allow(&code_write(&root));
+    fs::remove_dir_all(specs(&root).join("SPEC-20261124-lane-x")).unwrap();
+    fs::remove_dir_all(specs(&root).join("SPEC-20261124-two")).unwrap();
+    assert_allow(&code_write(&root));
+}
+
+/// Audit of C-429 (B1): a name that reads as two ids whose SPEC files both exist stays ambiguous
+/// and is never scanned for links, so a third SPEC that names the branch opens nothing. The
+/// ambiguous name is a repair branch (`spec/20261124-demo-r2` reads as `…-demo-r2` and `…-demo`).
+#[test]
+fn a_name_that_reads_two_spec_files_is_never_scanned_for_links() {
+    let branch = "spec/20261124-demo-r2";
+    let (_d, root) = repo(branch);
+    for id in ["SPEC-20261124-demo-r2", "SPEC-20261124-demo"] {
+        put_spec(&root, id, &spec_text(id));
+    }
+    let third = "SPEC-20261124-third";
+    put_spec(&root, third, &linked_text(third, "draft", Some(branch)));
+    let reason = assert_deny(&code_write(&root));
+    assert!(reason.contains("reads as two SPEC ids"), "{reason}");
+}

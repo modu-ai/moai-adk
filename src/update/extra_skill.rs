@@ -954,7 +954,7 @@ fn apply_part(
             receipt.entries[idx].error = failed.clone();
             break;
         }
-        // Test seam: `MOAI_CLI_TEST_FAULT=extra_skill_last_publish` fails the last publish as if
+        // Test seam: `MOAI_TEST_FAULT=extra_skill_last_publish` fails the last publish as if
         // the OS refused it (debug builds only).
         let result = if idx + 1 == writes.len() {
             test_fault("extra_skill_last_publish")
