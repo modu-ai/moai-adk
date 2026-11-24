@@ -1,12 +1,17 @@
 ---
 id: SPEC-20261124-time-budget-tests
 title: "Time-budget tests cannot fail the suite for machine load alone"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8046 of card C-440 (answers note 8045, 2026-11-24T00:23:54Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 1 at head c38f24c0a1 with choice (a) and no follow-up card now; recorded by the lane, not approved by it", digest: "sha256:83de200e4393f9543661fcf8c396854e55044fab5aa2b061a31bb55850b1b308"}
 ---
 
 # Time-budget tests cannot fail the suite for machine load alone
+
+## Interview
+
+- none: 별도 사용자 인터뷰는 없었어요. 요구사항은 카드 C-440 의 본문과 세 인수 기준, 리더 배차, C-352 노트의 실패 기록이 정했고, 판 1 은 리더 결정 노트 8046 이 승인했어요(사용자 위임 2026-11-23).
 
 ## Intent
 
