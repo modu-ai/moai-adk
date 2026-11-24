@@ -18,6 +18,8 @@ use std::path::{Path, PathBuf};
 use std::process::Output;
 
 const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
+/// The independent reviewer of the PASS a landing relies on.
+const S_AUDITOR: &str = "cccccccc-0000-4000-8000-00000000000c";
 
 /// The profile of an m-flow project whose integration branch is `integ` and whose remote copy
 /// is on (the leader turned it on after a preview and the user's yes).
@@ -186,6 +188,7 @@ impl World {
 
     /// `moai card land <card> --head <candidate> --met 1=… --by leader` as the leader.
     fn land(&self, card: &str, candidate: &str) -> Value {
+        self.pass_of(card, candidate);
         result(&self.card(
             None,
             &[
@@ -222,9 +225,38 @@ impl World {
         name
     }
 
+    /// One independent tier 0 PASS of `head` written as `card verdict` writes it: a landing that
+    /// closes a card relies on it (SPEC-20261124-land-closes-card).
+    fn pass_of(&self, card: &str, head: &str) {
+        let base = git(&self.project, &["rev-parse", &format!("{head}^1")]);
+        let conn =
+            rusqlite::Connection::open(ledger::ledger_path(self.home.path(), "demo").unwrap())
+                .unwrap();
+        let payload = json!({
+            "head": head, "base": base, "verdict": "pass", "tier": 0,
+            "evidence": "the fixture's evidence", "receipt": null, "reviewer": S_AUDITOR,
+        });
+        conn.execute(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES (?1, unixepoch(), ?2, ?3, 'card.verdict', ?4)",
+            rusqlite::params![
+                format!("test-verdict-{card}-{head}"),
+                S_AUDITOR,
+                number(card),
+                payload.to_string()
+            ],
+        )
+        .unwrap();
+    }
+
     /// A candidate: a merge of a lane head onto the tip, the shape the leader lands.
     fn candidate(&self) -> String {
-        let lane = commit_with(&self.project, &self.head, &[&self.head], "the lane head");
+        let lane = commit_with(
+            &self.project,
+            &self.head,
+            &[&self.head],
+            &format!("the lane head\n\nMoai-Session: {S_A}:0123456789ab"),
+        );
         commit_with(
             &self.project,
             &self.tip,
@@ -688,6 +720,7 @@ fn an_unreachable_push_reads_pending() {
     w.write_profile();
     let card = w.review_card();
     let candidate = w.candidate();
+    w.pass_of(&card, &candidate);
     let mut cmd = w.home.command(&[
         "card",
         "land",
@@ -739,6 +772,7 @@ fn the_off_path_runs_no_network_git() {
     w.write_profile();
     let card = w.review_card();
     let candidate = w.candidate();
+    w.pass_of(&card, &candidate);
     for args in [
         vec![
             "card",

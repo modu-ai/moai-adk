@@ -453,7 +453,12 @@ pub fn find(project: &Path, conn: &Connection, candidates: &[i64]) -> Result<Rep
             );
             continue;
         }
-        let head = fact.head.clone().filter(|h| crate::gate::is_full_sha(h));
+        // A slice landed with `--keep-open` stays open on purpose, so its head proves no finished
+        // card and `next` keeps offering it (SPEC-20261124-land-closes-card REQ-10).
+        let head = fact
+            .head
+            .clone()
+            .filter(|h| crate::gate::is_full_sha(h) && !fact.keep_open);
         let spec = specs.get(&fact.card_id).cloned();
         if head.is_some() || spec.is_some() {
             pending.push((fact.card_id, head, spec));

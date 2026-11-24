@@ -24,6 +24,8 @@ use std::sync::Once;
 const SESSION_VAR: &str = "CLAUDE_CODE_SESSION_ID";
 const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
 const S_EXEC: &str = "eeeeeeee-0000-4000-8000-0000000000ee";
+/// The independent reviewer of the PASS a landing relies on.
+const S_AUDITOR: &str = "cccccccc-0000-4000-8000-00000000000c";
 
 /// The profile of an m-flow project whose integration branch is `integ`.
 const MFLOW_PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\"}}";
@@ -279,13 +281,42 @@ impl World {
     /// parent and a lane commit as its second.
     fn candidate_now(&self) -> String {
         let base = self.integ();
-        let lane = commit_with(&self.project, &self.head, &[&self.head], "the lane head");
+        let lane = commit_with(
+            &self.project,
+            &self.head,
+            &[&self.head],
+            &format!("the lane head\n\nMoai-Session: {S_A}:0123456789ab"),
+        );
         commit_with(
             &self.project,
             &base,
             &[&base, &lane],
             "merge the lane head on the tip",
         )
+    }
+
+    /// One independent tier 0 PASS of `head` written as `card verdict` writes it: a landing that
+    /// closes a card relies on it (SPEC-20261124-land-closes-card).
+    fn pass_of(&self, card: &str, head: &str) {
+        let base = git(&self.project, &["rev-parse", &format!("{head}^1")]);
+        let conn =
+            rusqlite::Connection::open(ledger::ledger_path(self.home.path(), "demo").unwrap())
+                .unwrap();
+        let payload = json!({
+            "head": head, "base": base, "verdict": "pass", "tier": 0,
+            "evidence": "the fixture's evidence", "receipt": null, "reviewer": S_AUDITOR,
+        });
+        conn.execute(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES (?1, unixepoch(), ?2, ?3, 'card.verdict', ?4)",
+            rusqlite::params![
+                format!("test-verdict-{card}-{head}"),
+                S_AUDITOR,
+                number(card),
+                payload.to_string()
+            ],
+        )
+        .unwrap();
     }
 
     fn integ(&self) -> String {
@@ -296,6 +327,7 @@ impl World {
     fn land(&self, card: &str, met: &[&str]) -> Value {
         result(&self.card(Some(S_A), &["review", card, "--generation", "1"]));
         let candidate = self.candidate_now();
+        self.pass_of(card, &candidate);
         let mut args = vec!["land", card, "--head", candidate.as_str()];
         for m in met {
             args.extend(["--met", m]);

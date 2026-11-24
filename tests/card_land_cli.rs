@@ -46,6 +46,16 @@ fn commit_with(project: &Path, tree_of: &str, parents: &[&str], message: &str) -
         args.push("-p");
         args.push(parent);
     }
+    // A message with no session trailer is signed by the lane session, so the authors of a head
+    // built from these commits are known (SPEC-20261124-land-closes-card: a closing landing
+    // relies on an independent PASS, and that check needs the authors).
+    let signed_message;
+    let message = if message.contains("Moai-Session:") {
+        message
+    } else {
+        signed_message = format!("{message}\n\nMoai-Session: {S_A}:{WORKTREE_KEY}");
+        signed_message.as_str()
+    };
     args.push("-m");
     args.push(message);
     git(project, &args)
@@ -53,7 +63,13 @@ fn commit_with(project: &Path, tree_of: &str, parents: &[&str], message: &str) -
 
 /// A commit on top of `parent` that adds `path` with `content`; no ref moves.
 fn put_on(project: &Path, parent: &str, path: &str, content: &str) -> String {
-    put_on_msg(project, parent, path, content, "docs: add a file")
+    put_on_msg(
+        project,
+        parent,
+        path,
+        content,
+        &format!("docs: add a file\n\nMoai-Session: {S_A}:{WORKTREE_KEY}"),
+    )
 }
 
 /// [`put_on`] with the commit message given.
@@ -189,7 +205,17 @@ impl World {
         git(&project, &["commit", "-q", "-m", "init"]);
         fs::write(project.join("b.txt"), "b\n").unwrap();
         git(&project, &["add", "b.txt"]);
-        git(&project, &["commit", "-q", "-m", "the card's change"]);
+        // Signed by the lane session, so a PASS of an independent reviewer can be relied on for
+        // a head that is already inside the tip (SPEC-20261124-land-closes-card).
+        git(
+            &project,
+            &[
+                "commit",
+                "-q",
+                "-m",
+                &format!("the card's change\n\nMoai-Session: {S_A}:{WORKTREE_KEY}"),
+            ],
+        );
         let head = git(&project, &["rev-parse", "HEAD"]);
         let tip = commit_with(&project, &head, &[&head], "integration moved on");
         git(&project, &["update-ref", "refs/heads/integ", &tip]);
@@ -276,12 +302,17 @@ impl World {
     /// A candidate: a merge commit with `tip` as its first parent and a lane commit as its second
     /// (no change to the tree), the shape the leader lands.
     fn candidate(&self) -> String {
-        let lane = commit_with(&self.project, &self.head, &[&self.head], "the lane head");
+        let lane = commit_with(
+            &self.project,
+            &self.head,
+            &[&self.head],
+            &format!("the lane head\n\nMoai-Session: {S_A}:{WORKTREE_KEY}"),
+        );
         commit_with(
             &self.project,
             &self.tip,
             &[&self.tip, &lane],
-            "merge the lane head on the tip",
+            &format!("merge the lane head on the tip\n\nMoai-Session: {S_LEAD}:{WORKTREE_KEY}"),
         )
     }
 
@@ -521,7 +552,7 @@ fn ac1_a_candidate_on_the_tip_moves_the_branch_and_closes_the_card() {
     let w = World::new();
     let card = w.review_card(&["one"]);
     let candidate = w.candidate();
-    let out = w.land(
+    let out = w.land_pass(
         &card,
         &[
             "--head",
@@ -592,8 +623,9 @@ fn ac2_a_branch_that_moved_under_the_call_refuses_with_tip_moved() {
         ),
     );
     *w.git_bin.borrow_mut() = wrapper;
+    w.pass_of(&card, &candidate);
     let before = w.dump();
-    let out = w.land(
+    let out = w.land_lead(
         &card,
         &[
             "--head",
@@ -615,7 +647,7 @@ fn ac2_a_branch_that_moved_under_the_call_refuses_with_tip_moved() {
 fn ac3_a_candidate_inside_the_tip_closes_the_card_without_a_move() {
     let w = World::new();
     let card = w.review_card(&["one"]);
-    let out = w.land(
+    let out = w.land_pass(
         &card,
         &["--head", &w.head, "--met", "1=the test", "--by", "leader"],
     );
@@ -626,7 +658,7 @@ fn ac3_a_candidate_inside_the_tip_closes_the_card_without_a_move() {
     assert_eq!(w.integ(), w.tip);
     // The same call again: done, nothing written.
     let before = w.dump();
-    let again = result(&w.land(
+    let again = result(&w.land_lead(
         &card,
         &["--head", &w.head, "--met", "1=the test", "--by", "leader"],
     ));
@@ -634,7 +666,7 @@ fn ac3_a_candidate_inside_the_tip_closes_the_card_without_a_move() {
     assert_eq!(again["moved"], json!(false), "{again}");
     assert_eq!(w.dump(), before, "a call on a done card wrote");
     // Another head on the done card refuses.
-    let out = w.land(
+    let out = w.land_lead(
         &card,
         &["--head", &w.tip, "--met", "1=the test", "--by", "leader"],
     );
@@ -833,13 +865,15 @@ fn ac8_an_open_criterion_with_no_met_option_lands_and_leaves_the_card_open() {
     let w = World::new();
     let card = w.review_card(&["one", "two"]);
     let candidate = w.candidate();
-    let got = result(&w.land(
+    // A slice is a `--keep-open` landing now: a landing that names no `--met` for a criterion
+    // fills it from the PASS it relies on (SPEC-20261124-land-closes-card).
+    let got = result(&w.land_lead(
         &card,
-        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+        &["--head", &candidate, "--keep-open", "--by", "leader"],
     ));
     assert_eq!(got["moved"], json!(true), "{got}");
     assert_eq!(got["closed"], json!(false), "{got}");
-    assert_eq!(got["open_criteria"], json!([2]), "{got}");
+    assert_eq!(got["open_criteria"], json!([1, 2]), "{got}");
     assert_eq!(w.integ(), candidate);
     assert_eq!(w.events(&card, "card.landed"), 1);
     assert_eq!(w.events(&card, "card.finish"), 0);
@@ -850,7 +884,7 @@ fn ac8_an_open_criterion_with_no_met_option_lands_and_leaves_the_card_open() {
         )),
         "review"
     );
-    let done = result(&w.land(
+    let done = result(&w.land_pass(
         &card,
         &[
             "--head", &candidate, "--met", "1=x", "--met", "2=y", "--by", "leader",
@@ -872,7 +906,7 @@ fn ac9_a_rerun_after_a_stop_between_the_move_and_the_close_closes_the_card() {
     let card = w.review_card(&["one"]);
     let candidate = w.candidate();
     git(&w.project, &["update-ref", "refs/heads/integ", &candidate]);
-    let got = result(&w.land(
+    let got = result(&w.land_pass(
         &card,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     ));
@@ -947,7 +981,7 @@ fn ac13_a_close_refused_after_the_move_says_the_branch_moved() {
         ),
     );
     *w.git_bin.borrow_mut() = wrapper;
-    let out = w.land(
+    let out = w.land_pass(
         &card,
         &[
             "--head",
@@ -980,7 +1014,7 @@ fn ac13_a_close_refused_after_the_move_says_the_branch_moved() {
     assert_eq!(w.events(&card, "card.landed"), 0);
     // The same call again, with git running as it should: no move, the card closes.
     *w.git_bin.borrow_mut() = git_executable();
-    let again = result(&w.land(&card, &["--head", &candidate, "--by", "leader"]));
+    let again = result(&w.land_pass(&card, &["--head", &candidate, "--by", "leader"]));
     assert_eq!(again["moved"], json!(false), "{again}");
     assert_eq!(again["closed"], json!(true), "{again}");
 }
@@ -999,8 +1033,9 @@ fn ac14_the_spec_is_read_at_the_candidate_and_not_at_the_old_tip() {
     let good_tip = put_on(&w.project, &w.tip, &spec_path, &good);
     git(&w.project, &["update-ref", "refs/heads/integ", &good_tip]);
     let broken_candidate = put_on(&w.project, &good_tip, &spec_path, "not a spec\n");
+    w.pass_of(&card, &broken_candidate);
     let before = w.dump();
-    let out = w.land(
+    let out = w.land_lead(
         &card,
         &[
             "--head",
@@ -1016,7 +1051,7 @@ fn ac14_the_spec_is_read_at_the_candidate_and_not_at_the_old_tip() {
     let broken_tip = put_on(&w.project, &w.tip, &spec_path, "not a spec\n");
     git(&w.project, &["update-ref", "refs/heads/integ", &broken_tip]);
     let good_candidate = put_on(&w.project, &broken_tip, &spec_path, &good);
-    let got = result(&w.land(
+    let got = result(&w.land_pass(
         &card,
         &["--head", &good_candidate, "--met", "1=x", "--by", "leader"],
     ));
@@ -1031,7 +1066,7 @@ fn ac15_the_landing_event_records_the_head_and_the_new_tip() {
     let w = World::new();
     let moved_card = w.review_card(&["one"]);
     let candidate = w.candidate();
-    result(&w.land(
+    result(&w.land_pass(
         &moved_card,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     ));
@@ -1049,7 +1084,7 @@ fn ac15_the_landing_event_records_the_head_and_the_new_tip() {
     assert_eq!(landed["by"], json!("leader"), "{landed}");
     // A head already inside the tip: the tip is the one that was read, not the head.
     let inside_card = w.review_card(&["one"]);
-    result(&w.land(
+    result(&w.land_pass(
         &inside_card,
         &["--head", &w.head, "--met", "1=x", "--by", "leader"],
     ));
@@ -1114,7 +1149,7 @@ fn ac17_a_hostile_git_environment_is_ignored() {
     w.extra_env
         .borrow_mut()
         .push(("GIT_NAMESPACE".to_string(), "hostile".to_string()));
-    let got = result(&w.land(
+    let got = result(&w.land_pass(
         &card,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     ));
@@ -1130,8 +1165,9 @@ fn ac18_an_update_ref_failure_that_is_no_move_is_not_called_tip_moved() {
     let card = w.review_card(&["one"]);
     let candidate = w.candidate();
     fs::write(w.project.join(".git/refs/heads/integ.lock"), "").unwrap();
+    w.pass_of(&card, &candidate);
     let before = w.dump();
-    let out = w.land(
+    let out = w.land_lead(
         &card,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     );
@@ -1176,7 +1212,7 @@ fn ac19_the_landing_command_moves_the_branch_under_the_guard() {
         "{\"ref\":\"refs/heads/integ\",\"old\":\"1\",\"new\":\"2\"}",
     )
     .unwrap();
-    let got = result(&w.land(
+    let got = result(&w.land_pass(
         &card,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     ));
@@ -1201,7 +1237,7 @@ fn ac19_the_landing_command_moves_the_branch_under_the_guard() {
         &format!("rm -f '{}'", intent.display()),
         "",
     );
-    let out = w.land(
+    let out = w.land_pass(
         &second,
         &["--head", &next, "--met", "1=x", "--by", "leader"],
     );
@@ -1231,7 +1267,7 @@ fn ac20_the_start_row_comes_before_the_move_and_once() {
     // A landing: the row first, the landing event after.
     let card = w.review_card(&["one"]);
     let candidate = w.candidate();
-    result(&w.land(
+    result(&w.land_pass(
         &card,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     ));
@@ -1269,7 +1305,7 @@ fn ac20_the_start_row_comes_before_the_move_and_once() {
     // A card that cannot finish refuses before any row.
     let waiting = w.ready_card(&["one"]);
     let next = commit_with(&w.project, &candidate, &[&candidate], "another lane head");
-    let out = w.land(
+    let out = w.land_pass(
         &waiting,
         &["--head", &next, "--generation", "7", "--by", "leader"],
     );
@@ -1286,12 +1322,12 @@ fn ac20_the_start_row_comes_before_the_move_and_once() {
         &format!("rm -f '{}'", intent.display()),
         "",
     );
-    let out = w.land(&held, &["--head", &next, "--met", "1=x", "--by", "leader"]);
+    let out = w.land_pass(&held, &["--head", &next, "--met", "1=x", "--by", "leader"]);
     assert_eq!(out.status.code(), Some(1));
     assert_eq!(row(&held).len(), 1, "the refused move left no row");
     assert_eq!(w.integ(), candidate);
     *w.git_bin.borrow_mut() = git_executable();
-    result(&w.land(&held, &["--head", &next, "--met", "1=x", "--by", "leader"]));
+    result(&w.land_pass(&held, &["--head", &next, "--met", "1=x", "--by", "leader"]));
     assert_eq!(row(&held).len(), 1, "the rerun wrote a second row");
     assert_eq!(w.integ(), next);
 
@@ -1310,7 +1346,7 @@ fn ac20_the_start_row_comes_before_the_move_and_once() {
             project = w.project.display(),
         ),
     );
-    let out = w.land(
+    let out = w.land_pass(
         &raced,
         &["--head", &after, "--met", "1=x", "--by", "leader"],
     );
@@ -1325,7 +1361,7 @@ fn ac20_the_start_row_comes_before_the_move_and_once() {
 
     // The same call again after the refused close: the branch is already at the head, so there
     // is no move and no second row, and the refusal is the close's again.
-    let again = w.land(
+    let again = w.land_pass(
         &raced,
         &["--head", &after, "--met", "1=x", "--by", "leader"],
     );
@@ -1357,7 +1393,7 @@ fn ac21_a_take_between_the_checks_and_the_close_is_named_after_the_move() {
             project = w.project.display(),
         ),
     );
-    let out = w.land(
+    let out = w.land_pass(
         &card,
         &[
             "--head",
@@ -1422,7 +1458,7 @@ fn ac22_the_answer_reports_a_variant_and_a_disagreeing_profile() {
     );
     let card = w.review_card(&["one"]);
     let candidate = w.candidate();
-    let got = result(&w.land(
+    let got = result(&w.land_pass(
         &card,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     ));
@@ -1461,7 +1497,7 @@ fn ac23_a_branch_moved_outside_the_landing_command_is_a_drift() {
     // No landing recorded yet: there is nothing to compare, so a first landing goes through.
     let first = w.review_card(&["one"]);
     let landed = w.candidate();
-    result(&w.land(
+    result(&w.land_pass(
         &first,
         &["--head", &landed, "--met", "1=x", "--by", "leader"],
     ));
@@ -1475,8 +1511,9 @@ fn ac23_a_branch_moved_outside_the_landing_command_is_a_drift() {
 
     let second = w.review_card(&["one"]);
     let next = commit_with(&w.project, &stray, &[&stray], "a head on the drifted tip");
+    w.pass_of(&second, &next);
     let before = w.dump();
-    let out = w.land(
+    let out = w.land_lead(
         &second,
         &["--head", &next, "--met", "1=x", "--by", "leader"],
     );
@@ -1518,7 +1555,7 @@ fn ac23_a_branch_moved_outside_the_landing_command_is_a_drift() {
         &[&landed],
         "a head on the recorded tip",
     );
-    result(&w.land(
+    result(&w.land_pass(
         &second,
         &["--head", &after, "--met", "1=x", "--by", "leader"],
     ));
@@ -1535,7 +1572,7 @@ fn ac24_a_kill_after_the_move_then_a_rerun_writes_no_second_row() {
     let card = w.review_card(&["one"]);
     let candidate = w.candidate();
     w.wrap_update_ref("git-kills-the-lander", "", "kill -9 $PPID");
-    let out = w.land(
+    let out = w.land_pass(
         &card,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     );
@@ -1545,7 +1582,7 @@ fn ac24_a_kill_after_the_move_then_a_rerun_writes_no_second_row() {
     assert_eq!(w.events(&card, "card.landed"), 0);
 
     *w.git_bin.borrow_mut() = git_executable();
-    let rerun = result(&w.land(
+    let rerun = result(&w.land_pass(
         &card,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     ));
@@ -1567,7 +1604,7 @@ fn ac25_an_unlanded_descendant_of_the_last_landing_is_a_drift() {
     let w = World::new();
     let first = w.review_card(&["one"]);
     let landed = w.candidate();
-    result(&w.land(
+    result(&w.land_pass(
         &first,
         &["--head", &landed, "--met", "1=x", "--by", "leader"],
     ));
@@ -1579,8 +1616,9 @@ fn ac25_an_unlanded_descendant_of_the_last_landing_is_a_drift() {
     );
     let second = w.review_card(&["one"]);
     let next = commit_with(&w.project, &ahead, &[&ahead], "a head on the moved tip");
+    w.pass_of(&second, &next);
     let before = w.dump();
-    let out = w.land(
+    let out = w.land_lead(
         &second,
         &["--head", &next, "--met", "1=x", "--by", "leader"],
     );
@@ -1595,7 +1633,7 @@ fn two_landings() -> (World, String, String) {
     let w = World::new();
     let one = w.review_card(&["one"]);
     let first = w.candidate();
-    result(&w.land(&one, &["--head", &first, "--met", "1=x", "--by", "leader"]));
+    result(&w.land_pass(&one, &["--head", &first, "--met", "1=x", "--by", "leader"]));
     let two = w.review_card(&["one"]);
     let lane = commit_with(&w.project, &w.head, &[&w.head], "the second lane head");
     let second = commit_with(
@@ -1604,7 +1642,7 @@ fn two_landings() -> (World, String, String) {
         &[&first, &lane],
         "merge the second lane",
     );
-    result(&w.land(&two, &["--head", &second, "--met", "1=x", "--by", "leader"]));
+    result(&w.land_pass(&two, &["--head", &second, "--met", "1=x", "--by", "leader"]));
     assert_eq!(w.integ(), second);
     (w, first, second)
 }
@@ -1622,8 +1660,9 @@ fn ac26_a_rewind_to_the_previous_landings_start_is_a_drift() {
 
     let three = w.review_card(&["one"]);
     let next = commit_with(&w.project, &first, &[&first], "a head on the rewound tip");
+    w.pass_of(&three, &next);
     let before = w.dump();
-    let out = w.land(&three, &["--head", &next, "--met", "1=x", "--by", "leader"]);
+    let out = w.land_lead(&three, &["--head", &next, "--met", "1=x", "--by", "leader"]);
     let message = w.refuse(&out, "conflict", &["drift"], &before, &first);
     assert!(
         message.contains(&second),
@@ -1642,7 +1681,7 @@ fn ac27_an_interrupted_landing_is_accepted_on_its_from_tip_and_its_target() {
     let stuck = w.review_card(&["one"]);
     let candidate = w.candidate();
     w.wrap_update_ref("git-refuses", "exit 1", "");
-    let out = w.land(
+    let out = w.land_pass(
         &stuck,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     );
@@ -1652,7 +1691,7 @@ fn ac27_an_interrupted_landing_is_accepted_on_its_from_tip_and_its_target() {
     assert_eq!(w.events(&stuck, "card.landed"), 0);
     *w.git_bin.borrow_mut() = git_executable();
     let other = w.review_card(&["one"]);
-    result(&w.land(
+    result(&w.land_pass(
         &other,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     ));
@@ -1663,7 +1702,7 @@ fn ac27_an_interrupted_landing_is_accepted_on_its_from_tip_and_its_target() {
     let killed = v.review_card(&["one"]);
     let moved = v.candidate();
     v.wrap_update_ref("git-kills-the-lander", "", "kill -9 $PPID");
-    let out = v.land(
+    let out = v.land_pass(
         &killed,
         &["--head", &moved, "--met", "1=x", "--by", "leader"],
     );
@@ -1678,7 +1717,7 @@ fn ac27_an_interrupted_landing_is_accepted_on_its_from_tip_and_its_target() {
         &[&moved, &lane],
         "merge on the moved tip",
     );
-    result(&v.land(
+    result(&v.land_pass(
         &next_card,
         &["--head", &on_top, "--met", "1=x", "--by", "leader"],
     ));
@@ -1734,7 +1773,7 @@ fn ac31_an_interrupted_landing_after_a_landing_is_not_the_recorded_commit() {
         "the head of the stuck landing",
     );
     w.wrap_update_ref("git-refuses", "exit 1", "");
-    let out = w.land(
+    let out = w.land_pass(
         &three,
         &["--head", &wanted, "--met", "1=x", "--by", "leader"],
     );
@@ -2098,7 +2137,7 @@ fn ac30_the_restore_names_what_it_drops_and_refuses_a_stale_digest() {
     w.install_guard();
     let first = w.review_card(&["one"]);
     let landed = w.candidate();
-    result(&w.land(
+    result(&w.land_pass(
         &first,
         &["--head", &landed, "--met", "1=x", "--by", "leader"],
     ));
@@ -2236,7 +2275,7 @@ impl World {
             Connection::open(ledger::ledger_path(self.home.path(), "demo").unwrap()).unwrap();
         let rows = self.count("SELECT count(*) FROM event");
         let payload = json!({
-            "head": head, "base": self.tip, "verdict": if pass { "pass" } else { "fail" },
+            "head": head, "base": self.pass_base(head), "verdict": if pass { "pass" } else { "fail" },
             "tier": tier, "evidence": "the fixture's evidence", "receipt": receipt,
             "reviewer": reviewer,
         });
@@ -2695,9 +2734,14 @@ fn ac52_observe_mode_reports_would_refuse_and_lands() {
     let card = w.review_card(&["one"]);
     let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
-    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    // A landing that would close the card needs the PASS in every mode (SPEC-20261124-land-
+    // closes-card); a slice lands in observe mode and carries the refusal it would have had.
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["no_pass"], &before, &w.tip);
+    let got = result(&w.land_plain(Some(S_LEAD), &card, &cand, &["--keep-open"]));
     assert_eq!(got["moved"], json!(true), "{got}");
-    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(false), "{got}");
     assert_eq!(got["would_refuse"]["code"], json!("no_verdict"), "{got}");
     assert!(got.get("verdict").is_none(), "{got}");
     assert!(w
@@ -2852,11 +2896,15 @@ fn ac56_the_profile_names_the_mode_and_another_word_is_refused() {
     let out = w.land_as(Some(S_LEAD), &card, &cand);
     w.refuse(&out, "invalid_input", &["no_verdict"], &before, &w.tip);
 
-    // No `land_verdict` key at all: observe.
+    // No `land_verdict` key at all: observe. A slice lands and reports the refusal; a landing
+    // that would close the card is refused as `no_pass` in every mode.
     w.set_profile(MFLOW_PROFILE);
-    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["no_pass"], &before, &w.tip);
+    let got = result(&w.land_plain(Some(S_LEAD), &card, &cand, &["--keep-open"]));
     assert_eq!(got["would_refuse"]["code"], json!("no_verdict"), "{got}");
-    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(false), "{got}");
 }
 
 // ---- AC-35 to AC-38: a landing cleans the card's worktrees (SPEC-20261123-worktree-slots AC-6) ---
@@ -2947,7 +2995,7 @@ impl World {
             args.extend(["--met", m]);
         }
         args.extend(["--by", "leader"]);
-        result(&self.land(card, &args))
+        result(&self.land_pass(card, &args))
     }
 
     fn registered(&self, dir: &Path) -> bool {
@@ -3038,7 +3086,12 @@ fn ac36_a_card_that_stays_open_is_not_cleaned() {
     w.clock_three_days_on();
     let kept = w.linked_worktree("wt-open");
     let open = w.card_in("apps/c/", &kept, None, &["a", "b"]);
-    let got = w.lands(&open, &["1=only the first"]);
+    result(&w.card(Some(S_A), &["review", &open, "--generation", "1"]));
+    let candidate = w.candidate();
+    let got = result(&w.land_lead(
+        &open,
+        &["--head", &candidate, "--keep-open", "--by", "leader"],
+    ));
     assert_eq!(got["closed"], json!(false), "{got}");
     assert_eq!(
         got["cleanup"],
@@ -3159,6 +3212,7 @@ fn ac39_a_landing_reads_the_other_cards_claim_from_the_given_home() {
     let _second = w.card_in("apps/b/", &shared, None, &["two"]);
     result(&w.card(Some(S_A), &["review", &card, "--generation", "1"]));
     let candidate = w.candidate();
+    w.pass_of(&card, &candidate);
     let process_home = TempHome::new();
     let ledger_home = w.home.path().to_str().unwrap().to_string();
     let mut cmd = w.home.command(&[
@@ -3178,6 +3232,7 @@ fn ac39_a_landing_reads_the_other_cards_claim_from_the_given_home() {
     ]);
     cmd.env("HOME", process_home.path())
         .env("USERPROFILE", process_home.path())
+        .env(SESSION_VAR, S_LEAD)
         .env("MOAI_GIT_BIN", &*w.git_bin.borrow())
         // The cleanup's process check runs `lsof`, which it finds on the caller's PATH.
         .env("PATH", std::env::var("PATH").unwrap_or_default())
@@ -3372,9 +3427,12 @@ fn ac59_a_check_that_cannot_read_git_is_reported_in_observe_and_refuses_in_enfor
         let before = w.dump();
         let out = w.land_as(Some(S_LEAD), &card, &cand);
         if observe {
-            let got = result(&out);
+            // A landing that would close the card cannot rely on a PASS it could not read; a
+            // slice lands and reports the finding.
+            w.refuse(&out, "io", &["check_unreadable"], &before, &w.tip);
+            let got = result(&w.land_plain(Some(S_LEAD), &card, &cand, &["--keep-open"]));
             assert_eq!(got["moved"], json!(true), "{got}");
-            assert_eq!(got["closed"], json!(true), "{got}");
+            assert_eq!(got["closed"], json!(false), "{got}");
             assert_eq!(
                 got["would_refuse"]["code"],
                 json!("check_unreadable"),
@@ -3390,6 +3448,53 @@ fn ac59_a_check_that_cannot_read_git_is_reported_in_observe_and_refuses_in_enfor
 // ---- SPEC-20261124-land-closes-card: a landing on a recorded PASS closes the card ---------------
 
 impl World {
+    /// The base a reviewer names for `head`: the integration tip while the head stands on it, the
+    /// head's first parent once the branch holds it (the range the head added).
+    fn pass_base(&self, head: &str) -> String {
+        let inside = common::git::command()
+            .arg("-C")
+            .arg(&self.project)
+            .args(["merge-base", "--is-ancestor", head, &self.tip])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        let parent = common::git::command()
+            .arg("-C")
+            .arg(&self.project)
+            .args(["rev-parse", "--verify", "-q", &format!("{head}^")])
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+        match (inside, parent) {
+            (true, Some(parent)) => parent,
+            _ => self.tip.clone(),
+        }
+    }
+
+    /// `card land` for the head named in `extra` after an independent tier 0 PASS of that head is
+    /// recorded: the fixture of every test that lands a card and is not about the verdict.
+    fn land_pass(&self, card: &str, extra: &[&str]) -> Output {
+        if let Some(i) = extra.iter().position(|a| *a == "--head") {
+            self.pass_of(card, extra[i + 1]);
+        }
+        self.land_lead(card, extra)
+    }
+
+    /// `card land` as the lander session `S_LEAD`, with no verdict recorded by the call: the
+    /// test of a refusal records the PASS first and takes its ledger snapshot after.
+    fn land_lead(&self, card: &str, extra: &[&str]) -> Output {
+        let mut all = vec!["land", card];
+        all.extend_from_slice(extra);
+        self.card(Some(S_LEAD), &all)
+    }
+
+    /// An independent PASS of `head` with a green receipt: judged at tier 1 whatever the head
+    /// changes, so it holds for a head that changes code as well as for one that changes notes.
+    fn pass_of(&self, card: &str, head: &str) -> i64 {
+        self.verdict(card, head, true, 1, S_AUD, Some(self.good_receipt(head)))
+    }
+
     /// A review card with one open criterion per text and the tier 0 candidate of a lane that
     /// `S_A` wrote and `S_LEAD` joined; returns the card and the candidate.
     fn signed_card(&self, criteria: &[&str]) -> (String, String) {
