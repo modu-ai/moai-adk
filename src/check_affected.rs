@@ -656,16 +656,23 @@ fn table_step(facts: &Facts) -> Option<Step> {
                 .is_some_and(|s| !s.contains('/'))
         })
         .count();
-    if added == 0 || (facts.areas_text.is_none() && facts.allow_text.is_none()) {
+    if added == 0
+        || (facts.areas_text.is_none() && facts.allow_text.is_none() && facts.unreadable.is_empty())
+    {
         return None;
     }
-    let lines = table_violations(
+    let mut lines = table_violations(
         &facts.added,
         &facts.tests,
         facts.areas_text.as_deref(),
         facts.allow_text.as_deref(),
         &facts.moved,
     );
+    for (table, error) in &facts.unreadable {
+        lines.push(format!(
+            "{table}: the table exists but cannot be read ({error}); fix or restore it, it is not treated as absent"
+        ));
+    }
     let mut s = step(
         "test_tables",
         "(in-process)",
@@ -790,6 +797,9 @@ pub struct Facts {
     /// `tests/areas.toml` and the state-folder allow list, as the checkout holds them.
     pub areas_text: Option<String>,
     pub allow_text: Option<String>,
+    /// A table that exists but cannot be read (no `NotFound`): its path and the read error. Such a
+    /// table is not an absent one (SPEC-20261124-new-test-file-precheck REQ-10).
+    pub unreadable: Vec<(String, String)>,
     /// The test folders that hold a `main.rs` (the moved areas).
     pub moved: Vec<String>,
 }
@@ -911,9 +921,13 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
     }
     tests.sort_by(|a, b| a.name.cmp(&b.name));
     let scan_list = std::fs::read_to_string(dir.join("tools/repo_scans.json")).ok();
-    let areas_text = std::fs::read_to_string(dir.join("tests/areas.toml")).ok();
-    let allow_text =
-        std::fs::read_to_string(dir.join("tests/fixtures/state_folder_literals/allow.tsv")).ok();
+    let mut unreadable = Vec::new();
+    let areas_text = read_table(dir, "tests/areas.toml", &mut unreadable);
+    let allow_text = read_table(
+        dir,
+        "tests/fixtures/state_folder_literals/allow.tsv",
+        &mut unreadable,
+    );
     Ok(Facts {
         root,
         base,
@@ -925,8 +939,23 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         added,
         areas_text,
         allow_text,
+        unreadable,
         moved,
     })
+}
+
+/// One table's text. A missing file is an absent table (`None`, no note); any other read error
+/// (invalid UTF-8, a folder, no permission) is noted in `unreadable` with the table's path, so the
+/// table step stops on it instead of reading it as absent.
+fn read_table(dir: &Path, rel: &str, unreadable: &mut Vec<(String, String)>) -> Option<String> {
+    match std::fs::read_to_string(dir.join(rel)) {
+        Ok(text) => Some(text),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => {
+            unreadable.push((rel.to_string(), e.to_string()));
+            None
+        }
+    }
 }
 
 /// The folder cargo builds into: the caller's `CARGO_TARGET_DIR` (a relative one counts from the
