@@ -188,19 +188,18 @@ const EN_BLOCK: &str = "## MoAI project facts (managed block)";
 const KO_REVIEW: &str = "# 검토 지침";
 const EN_REVIEW: &str = "# Review instructions";
 
-/// AC-1 (REQ-1): the question set holds exactly the three items, in order, each with the
-/// current value, the suggested value and the default.
+/// AC-3 (REQ-4, SPEC-20261124-moai-project-interview): the question set holds the four items, in
+/// order, each with the current value, the suggested value and the default. The conversation
+/// language is one of them; a value the installer saved is its suggested value, and the item is
+/// still listed.
 #[test]
-fn questions_list_exactly_three_items_with_their_values() {
+fn questions_list_four_items_with_their_values() {
     let root = project(None);
     let h = home(None);
     let q = questions(&root, h.path(), &[]);
-    assert_eq!(
-        ids(&q),
-        ["commit_messages", "instruction_files", "documents"],
-        "{q}"
-    );
-    for id in ["commit_messages", "instruction_files", "documents"] {
+    let four = ["user_chat", "commit_messages", "instruction_files", "documents"];
+    assert_eq!(ids(&q), four, "{q}");
+    for id in four {
         let i = item(&q, id);
         for key in ["current", "suggested", "default"] {
             assert!(i.get(key).is_some(), "{id} has no {key}: {i}");
@@ -212,24 +211,28 @@ fn questions_list_exactly_three_items_with_their_values() {
             "{id}: no conversation language yet"
         );
     }
-    // The conversation language is never asked here: it comes from the install step, and the
-    // items above are the whole set.
-    assert_eq!(q["items"].as_array().unwrap().len(), 3, "{q}");
-    // With a conversation language the three items suggest it; the item whose default is
-    // English keeps that default.
+    assert_eq!(q["items"].as_array().unwrap().len(), 4, "{q}");
+    // With a conversation language the items whose default follows it suggest it; the item whose
+    // default is English keeps that default.
     let q = questions(&root, h.path(), &["--conversation", "ko"]);
-    for id in ["commit_messages", "documents"] {
+    for id in ["user_chat", "commit_messages", "documents"] {
         assert_eq!(item(&q, id)["suggested"], json!("ko"), "{id}");
         assert_eq!(item(&q, id)["default"], json!("ko"), "{id}");
     }
     assert_eq!(item(&q, "instruction_files")["suggested"], json!("en"));
     assert_eq!(item(&q, "instruction_files")["default"], json!("en"));
-    // A stored value is the item's current and suggested value; the stored `user_chat` does
-    // not feed the conversation default any more, so the English default stands.
+    // A value the installer saved is the suggested conversation language, and the item is listed.
+    let saved = home(Some("ko"));
+    let q = questions(&root, saved.path(), &[]);
+    assert_eq!(item(&q, "user_chat")["suggested"], json!("ko"), "{q}");
+    assert_eq!(item(&q, "user_chat")["current"], json!(null), "{q}");
+    // A stored value is the item's current and suggested value.
     let stored = project(Some(json!({"documents": "ja", "user_chat": "ko"})));
     let q = questions(&stored, h.path(), &[]);
     assert_eq!(item(&q, "documents")["current"], json!("ja"));
     assert_eq!(item(&q, "documents")["suggested"], json!("ja"));
+    assert_eq!(item(&q, "user_chat")["current"], json!("ko"));
+    assert_eq!(item(&q, "user_chat")["suggested"], json!("ko"));
     assert_eq!(item(&q, "commit_messages")["current"], json!(null));
     assert_eq!(item(&q, "commit_messages")["suggested"], json!("en"));
 }
@@ -291,7 +294,7 @@ fn a_bad_installer_value_falls_to_the_next_source() {
 /// AC-3 (REQ-4): answers name the three items and keep every other key the profile had; a fresh
 /// profile gets no key for an item that is not asked.
 #[test]
-fn answers_name_the_three_items_and_keep_old_keys() {
+fn answers_name_the_four_items_and_keep_old_keys() {
     let fresh = project(None);
     let out = setup_answers(
         &fresh,
@@ -318,20 +321,18 @@ fn answers_name_the_three_items_and_keep_old_keys() {
     let q = questions(&old, home(None).path(), &[]);
     assert_eq!(item(&q, "documents")["current"], json!(null), "{q}");
     assert_eq!(item(&q, "documents")["suggested"], json!("ja"), "{q}");
-    // A re-run with no answers and no HOME record moves the resolved user_chat to English once
-    // (the ask-once rule: the profile's stored value is not a source), and every re-run after
-    // that keeps every value.
-    let first = setup_answers(&fresh, &json!({}), &["--conversation", "ko"]);
+    // The conversation language is asked like the other three: an answer is stored, and a re-run
+    // with no answers keeps every stored value, `user_chat` included.
+    let first = setup_answers(
+        &fresh,
+        &json!({"user_chat": "ja"}),
+        &["--conversation", "ko"],
+    );
+    assert_eq!(first["language"]["user_chat"], json!("ja"), "{first}");
     apply_profile(&fresh, &first["profile"]);
     let again = setup_answers(&fresh, &json!({}), &[]);
-    assert_eq!(again["changed_items"], json!(["user_chat"]), "{again}");
-    let mut moved = first["language"].clone();
-    moved["user_chat"] = json!("en");
-    assert_eq!(again["language"], moved);
-    apply_profile(&fresh, &again["profile"]);
-    let stable = setup_answers(&fresh, &json!({}), &[]);
-    assert_eq!(stable["changed_items"], json!([]), "{stable}");
-    assert_eq!(stable["language"], moved);
+    assert_eq!(again["changed_items"], json!([]), "{again}");
+    assert_eq!(again["language"], first["language"]);
     // An answer for an item that is neither asked nor an old key is still refused.
     let refused = run(
         &["language-setup", path(&fresh), "--answers"],
@@ -340,23 +341,24 @@ fn answers_name_the_three_items_and_keep_old_keys() {
     assert!(!refused.status.success());
 }
 
-/// AC-4 (REQ-5): the terminal step asks three prompts, one answer line each.
+/// AC-3 (REQ-3): the terminal step asks four prompts, one answer line each, the conversation
+/// language first.
 #[test]
-fn the_terminal_step_asks_three_prompts() {
+fn the_terminal_step_asks_four_prompts() {
     let root = project(None);
-    let out = run(&["language-setup", path(&root)], b"ko\n\nja\nzh\nzh\n");
+    let out = run(&["language-setup", path(&root)], b"ja\nko\n\nzh\nzh\n");
     let l = ok(&out)["language"].clone();
     assert_eq!(
         l,
-        json!({"commit_messages": "ko", "documents": "ja", "instruction_files": "en",
-               "user_chat": "en"}),
+        json!({"commit_messages": "ko", "documents": "zh", "instruction_files": "en",
+               "user_chat": "ja"}),
         "{l}"
     );
     let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
     assert_eq!(
         stderr.matches("(en/ko/ja/zh)").count(),
-        3,
-        "three prompts: {stderr}"
+        4,
+        "four prompts: {stderr}"
     );
 }
 

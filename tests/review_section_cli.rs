@@ -164,6 +164,56 @@ fn an_existing_review_file_gets_the_section_appended_and_keeps_its_text() {
     assert!(text.contains("- 먼저 묻지 않고 바꾸지 않는다: the billing module\n"));
 }
 
+/// SPEC-20261124-moai-project-interview AC-6 (REQ-8): an interview that asked nothing records the
+/// generic defaults with source `default`; REVIEW.md carries the `review_blocks` and `protected`
+/// ones, and still leaves out a `HOLD` value.
+#[test]
+fn review_md_writes_default_sourced_decisions_but_not_hold() {
+    let root = project(vec![
+        decision(
+            "review_blocks",
+            "a secret in code or logs; a change without a test",
+            "default",
+        ),
+        decision(
+            "protected",
+            "secret and key files are never changed or committed",
+            "default",
+        ),
+        decision("done", "the project's own tests pass", "default"),
+    ]);
+    let p = result(&plan(root.path(), "en"));
+    assert_eq!(review_action(&p).as_deref(), Some("create"));
+    result(&apply(root.path(), &p));
+    let text = fs::read_to_string(root.path().join("REVIEW.md")).unwrap();
+    assert!(
+        text.contains("a secret in code or logs; a change without a test"),
+        "{text}"
+    );
+    assert!(
+        text.contains("secret and key files are never changed or committed"),
+        "{text}"
+    );
+    assert!(
+        !text.contains("the project's own tests pass"),
+        "`done` is not a REVIEW.md answer: {text}"
+    );
+
+    let held = project(vec![
+        decision("review_blocks", "HOLD", "default"),
+        decision(
+            "protected",
+            "secret and key files are never changed or committed",
+            "default",
+        ),
+    ]);
+    let p = result(&plan(held.path(), "en"));
+    result(&apply(held.path(), &p));
+    let text = fs::read_to_string(held.path().join("REVIEW.md")).unwrap();
+    assert!(text.contains("secret and key files"), "{text}");
+    assert!(!text.contains("HOLD"), "a HOLD value is never a rule: {text}");
+}
+
 #[test]
 fn no_answers_plan_no_review_file_and_marker_syntax_is_refused() {
     let none = project(vec![decision("review_blocks", "HOLD", "default")]);
