@@ -4,7 +4,7 @@ title: "Time-budget tests cannot fail the suite for machine load alone"
 status: approved
 revision: 2
 created: 2026-11-24
-approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8046 of card C-440 (answers note 8045, 2026-11-24T00:23:54Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 1 at head c38f24c0a1 with choice (a) and no follow-up card now; recorded by the lane, not approved by it", digest: "sha256:83de200e4393f9543661fcf8c396854e55044fab5aa2b061a31bb55850b1b308"}
+approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8102 of card C-440 (answers note 8101, 2026-11-24T01:56:08Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 2 at head 8f7e8e2771 with choice (a); revision 1 was approved by note 8046; recorded by the lane, not approved by it", digest: "sha256:7eb6a9945f6ab9a1bffdb6236795e929e2841b02f1ea06953da9008e248c28f4"}
 ---
 
 # Time-budget tests cannot fail the suite for machine load alone
