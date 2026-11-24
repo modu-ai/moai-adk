@@ -766,18 +766,29 @@ fn plan_filtered(
     for role in &request.native_roles {
         let rel = format!(".claude/agents/moai/{}.md", role.role_id);
         let rendered = render_claude_role(role);
-        let current = fs::read(root.join(&rel)).ok();
+        // SPEC-20261124-native-role-link-refusal REQ-1: a link on the path is a conflict and is
+        // never read or written through, as for the project skills below.
+        let link = link_on_path(&root, &rel);
+        let current = if link.is_some() {
+            None
+        } else {
+            fs::read(root.join(&rel)).ok()
+        };
         let baseline = generation_baseline(&manifest, &rel);
         let rendered_digest = digest(rendered.as_bytes());
-        let action = three_way_action(
-            baseline.as_deref(),
-            current.as_deref().map(digest).as_deref(),
-            &rendered_digest,
-        );
-        let action = if action == "merge" && is_create(current.as_ref()) {
-            "create"
+        let action = if link.is_some() {
+            "conflict"
         } else {
-            action
+            let decided = three_way_action(
+                baseline.as_deref(),
+                current.as_deref().map(digest).as_deref(),
+                &rendered_digest,
+            );
+            if decided == "merge" && is_create(current.as_ref()) {
+                "create"
+            } else {
+                decided
+            }
         };
         files.push(GenerationFilePlan {
             path: rel,
@@ -791,7 +802,9 @@ fn plan_filtered(
                 "generation:native-role:{}:{}",
                 role.host, role.role_id
             )),
-            detail: None,
+            detail: link.map(|l| {
+                format!("{l} is a symbolic link; a native role file is never written through it")
+            }),
         });
     }
 
@@ -818,13 +831,20 @@ fn plan_filtered(
                 .parent()
                 .expect("projection parent")
                 .to_path_buf();
-            let current = fs::read(root.join(&rel)).ok();
+            // SPEC-20261124-native-role-link-refusal REQ-4: a link on the path is a conflict and
+            // is never read or written through, as for the project skills below.
+            let link = link_on_path(&root, &rel);
+            let current = if link.is_some() {
+                None
+            } else {
+                fs::read(root.join(&rel)).ok()
+            };
             let baseline = generation_baseline(&manifest, &rel);
             // REQ-03C-09: an existing skill directory without a recorded baseline is
             // a conflict — MoAI never claims a directory it did not project before.
             let unclaimed = baseline.is_none()
                 && (current.is_some() || fs::symlink_metadata(&dest_dir).is_ok());
-            let action = if unclaimed {
+            let action = if link.is_some() || unclaimed {
                 "conflict"
             } else {
                 let decided = three_way_action(
@@ -847,8 +867,15 @@ fn plan_filtered(
                 rendered_sha256: Some(rendered_digest.clone()),
                 source_refs: vec![p.source_url.clone()],
                 kind: Some(format!("generation:skill-projection:{}:{}", host, p.id)),
-                detail: unclaimed
-                    .then_some("existing skill directory without a manifest baseline".to_string()),
+                detail: match (&link, unclaimed) {
+                    (Some(l), _) => Some(format!(
+                        "{l} is a symbolic link; a skill projection is never written through it"
+                    )),
+                    (None, true) => {
+                        Some("existing skill directory without a manifest baseline".to_string())
+                    }
+                    (None, false) => None,
+                },
             });
         }
     }
@@ -1362,7 +1389,12 @@ pub fn generation_apply_in(
             if f.action == "unchanged" {
                 continue;
             }
-            if kind.starts_with("generation:project-skill:") {
+            // A link that appeared after the plan stops the apply for every kind that writes a
+            // file below `.claude/` (SPEC-20261124-native-role-link-refusal REQ-2, REQ-5).
+            if kind.starts_with("generation:project-skill:")
+                || kind.starts_with("generation:native-role:")
+                || kind.starts_with("generation:skill-projection:")
+            {
                 if let Some(l) = link_on_path(root, &f.path) {
                     return Err(format!(
                         "conflict in {}: {l} became a symbolic link after the plan; nothing more applied",
