@@ -55,6 +55,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("archive_grace_days", true),
     ("stale_draft_days", true),
     ("lease_sweep_hours", true),
+    ("lease_sweep_in_round", true),
     ("language", true),
     ("detected", true),
     ("scopes", true),
@@ -148,6 +149,11 @@ pub struct Profile {
     /// written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lease_sweep_hours: Option<u64>,
+    /// Whether `moai leader-round` sweeps ended leases each round (SPEC-20261124-leader-round-lease-sweep).
+    /// Absent means true; `false` makes the round list the cards a sweep would return and write
+    /// nothing. A profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lease_sweep_in_round: Option<bool>,
     /// Writing language per item (#2293): item id → language code, both checked against the
     /// tables in `crate::language`. Absent means no choice was recorded; a profile written
     /// before this key reads unchanged and the managed section renders as before.
@@ -1452,6 +1458,7 @@ mod tests {
             archive_grace_days: None,
             stale_draft_days: None,
             lease_sweep_hours: None,
+            lease_sweep_in_round: None,
             language: None,
             detected: None,
             scopes: None,
@@ -1519,6 +1526,7 @@ mod tests {
             archive_grace_days: Some(7),
             stale_draft_days: Some(14),
             lease_sweep_hours: Some(24),
+            lease_sweep_in_round: Some(false),
             language: Some([("code_comments".to_string(), "en".to_string())].into()),
             detected: Some(crate::project_detect::Detected {
                 project_kind: "new".into(),
@@ -1590,6 +1598,7 @@ mod tests {
                 "archive_grace_days",
                 "stale_draft_days",
                 "lease_sweep_hours",
+                "lease_sweep_in_round",
                 "language",
                 "detected",
                 "scopes",
