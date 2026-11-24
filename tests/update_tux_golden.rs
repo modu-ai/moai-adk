@@ -148,7 +148,7 @@ fn the_keys_rows_are_one_plain_line_each() {
             "keys": "moai keys-revert <HOME> --receipt keys-1-2 --permission-reference <reference>"});
         let text = screen(&done, Asked::Yes, &v);
         assert!(
-            text.contains("moai keys-revert <HOME> --receipt keys-1-2"),
+            text.contains("moai keys-revert /home/u --receipt keys-1-2"),
             "{text}"
         );
     }
@@ -185,7 +185,9 @@ fn the_screen_prints_the_revert_commands_in_the_one_order_of_the_result() {
         let text = screen(&done, Asked::Yes, &v);
         let mut at = Vec::new();
         for key in &order {
-            let command = revert[*key].as_str().unwrap();
+            // The screen shows the real home where the result's sentence has the placeholder.
+            let command = revert[*key].as_str().unwrap().replace("<HOME>", "/home/u");
+            let command = command.as_str();
             assert_eq!(text.matches(command).count(), 1, "{key} once: {text}");
             at.push(text.find(command).unwrap());
         }
@@ -279,7 +281,8 @@ fn check(name: &str, lang: Lang, text: &str, width: usize) {
     // Every line fits the width it was drawn for (escape codes take no cells) — except the
     // confirming and revert commands, which stay whole so they can be copied.
     for line in text.lines().filter(|l| {
-        !l.contains("moai update --confirm sha256:") && !l.contains("-revert <HOME> --receipt")
+        !l.contains("moai update --confirm sha256:")
+            && !(l.contains("-revert ") && l.contains(" --receipt"))
     }) {
         let shown = strip_ansi(line);
         assert!(
