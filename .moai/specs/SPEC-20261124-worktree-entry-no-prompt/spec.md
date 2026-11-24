@@ -1,10 +1,9 @@
 ---
 id: SPEC-20261124-worktree-entry-no-prompt
 title: "A lane makes its worktree with an absolute path and enters it by path, so the host asks no permission"
-status: approved
-revision: 1
+status: draft
+revision: 2
 created: 2026-11-24
-approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8525 of card C-467 (answers note 8524, 2026-11-24T11:52:23Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 1 at head a9cde35598 with choice (A); recorded by the lane, not approved by it", digest: "sha256:d28494e10566be048e921e1dbd1675de625b7e5b251937a1fdf9d8edf582b869"}
 ---
 
 # A lane makes its worktree with an absolute path and enters it by path, so the host asks no permission
@@ -38,7 +37,7 @@ The official documentation says that paths under `.claude/worktrees/` and new-wo
 - REQ-4 (REQ-1): IF the path is not listed or the folder does not exist, THEN `workflows/work.md` shall tell the lane not to call `EnterWorktree` on it, because the host asks the user about a path that does not exist, and to fix the creation first.
 - REQ-5: `workflows/work.md` shall tell the lane not to make a card worktree with `EnterWorktree` and a `name`, because that branches from the remote default branch and not from the integration branch.
 - REQ-6 (REQ-1): `workflows/work.md` shall tell a lane that stands in a worktree it entered with `EnterWorktree` to leave it with `ExitWorktree(keep)` first, because the host refuses a `git worktree add` into the shared checkout from there.
-- REQ-7 (REQ-1): The method shall appear outside `work.md` only as a pointer to it, in the flow reference, the Claude Code row of the git safety reference and the worktree entry section of the lane rules.
+- REQ-7 (REQ-1): The method shall appear outside `work.md` only as a pointer to it, in the Claude Code row of the git safety reference and the worktree entry section of the lane rules; the flow reference keeps the text of the integration tip, whose line 20 already names `.claude/worktrees` (revision 2, D-5).
 - REQ-8: The flow reference shall stay within its 8192-byte budget.
 - REQ-9: The skill manifest shall carry the new sha256 of every changed skill file.
 
@@ -47,7 +46,7 @@ The official documentation says that paths under `.claude/worktrees/` and new-wo
 - AC-1 (REQ-1, REQ-2): `work.md` has the create command with `-b <branch>`, an absolute path and the integration branch, and the rule against a relative path, in one paragraph · verify: `cargo test --locked --offline --test next_flow_skill_scan worktree_entry_work_creates_by_absolute_path`
 - AC-2 (REQ-3, REQ-4): `work.md` names the `git worktree list --porcelain` read-back before `EnterWorktree`, and the ban on entering a path that is not listed, with its reason · verify: `cargo test --locked --offline --test next_flow_skill_scan worktree_entry_work_reads_back_before_entering`
 - AC-3 (REQ-5, REQ-6): `work.md` names the ban on `name`, with its reason, and the `ExitWorktree(keep)`-first step · verify: `cargo test --locked --offline --test next_flow_skill_scan worktree_entry_work_bans_name_and_exits_first`
-- AC-4 (REQ-7): `next-flow.md`, `git-safety.md` and `lane-rules.md` each point to the method, name the absolute path, and none spells the create command again · verify: `cargo test --locked --offline --test next_flow_skill_scan worktree_entry_other_files_point_to_work`
+- AC-4 (REQ-7): `git-safety.md` and `lane-rules.md` each point to the method, name the absolute path, and neither spells the create command again; `next-flow.md` is byte-identical to the integration tip (8051 bytes) · verify: `cargo test --locked --offline --test next_flow_skill_scan worktree_entry_other_files_point_to_work`
 - AC-5 (REQ-8, REQ-9): the flow reference is at most 8192 bytes and the manifest hashes match the files · verify: `cargo test --locked --offline --test next_flow_skill_scan refs_flow_reference_holds_each_stated_item` and `cargo test --locked --offline --test skill_structure`
 - AC-6: the Result holds the throwaway run of the final text: a headless session that follows only the new `work.md` paragraph from a worktree it entered makes and enters a new worktree with no permission denial, and the same session with a relative path is the contrast case · verify: the Result lines of this SPEC (`moai spec check SPEC-20261124-worktree-entry-no-prompt --project .`)
 - AC-7: Appendix A lists the 14 measured cases with their outcome, and the Result names each case not reproduced · verify: `moai spec check SPEC-20261124-worktree-entry-no-prompt --project .`
@@ -55,7 +54,8 @@ The official documentation says that paths under `.claude/worktrees/` and new-wo
 ## Scope
 
 - write: `.moai/specs/SPEC-20261124-worktree-entry-no-prompt/**`
-- write: `skills/moai/workflows/work.md`, `skills/moai/references/flows/next-flow.md`, `skills/moai/references/internal/git-safety.md`, `docs/lane-rules.md`
+- write: `skills/moai/workflows/work.md`, `skills/moai/references/internal/git-safety.md`, `docs/lane-rules.md`
+- unchanged since revision 2: `skills/moai/references/flows/next-flow.md` (D-5)
 - write: `skills/moai/references/source-manifest.json` (the sha256 of the changed skill files only)
 - write: `tests/next_flow_skill_scan.rs` (new `worktree_entry_*` tests appended at the end)
 - read-only: `CLAUDE.md` (names `EnterWorktree`; its wording stays true, see D-3)
@@ -64,7 +64,7 @@ The official documentation says that paths under `.claude/worktrees/` and new-wo
 ## Plan
 
 1. RED: four `worktree_entry_*` scan tests in `tests/next_flow_skill_scan.rs`; they fail on the current text.
-2. GREEN: one paragraph in `work.md` replaces its last sentence; one clause in `next-flow.md`; the Claude Code row of `git-safety.md`; the first bullet of `lane-rules.md`; the manifest hashes by the project's own command.
+2. GREEN: one paragraph in `work.md` replaces its last sentence; the Claude Code row of `git-safety.md`; the first bullet of `lane-rules.md`; the manifest hashes by the project's own command.
 3. Guard mutants: remove the absolute-path rule, the read-back rule and the `name` ban from a copy of `work.md`; each must fail a named test.
 4. Throwaway run (AC-6): the final paragraph given to a headless session in a temporary project, with and without the relative path.
 5. Result: each AC as met, not met or not_run, with the commands and exit codes.
@@ -73,16 +73,17 @@ The official documentation says that paths under `.claude/worktrees/` and new-wo
 
 - The measurement is one Claude Code version (2.1.331) and a headless session; the lanes run 2.1.319 per `CLAUDE.local.md`. The question is a host behavior and may change; the scan tests pin our text, not the host. Mitigation: the Result records the version, and the method asks nothing the host could refuse (create, list, enter an existing path).
 - The cause "a path that does not exist counts as outside" is read from outcomes (cases I and I2 against B), not from the host's source.
-- `next-flow.md` has 141 bytes of headroom; the clause is written to fit, and the budget test fails otherwise.
+- `next-flow.md` has no headroom: `FLOW_REF_TIP_BYTES = 8051` in `tests/next_flow_skill_scan.rs` (SPEC-20261123-self-check-rust-only) caps it at the integration tip's size, which is exactly 8051 bytes, so the 8192 budget of REQ-8 is not the binding limit. Revision 1 said 141 bytes of headroom and was wrong; the red run at head 249389d7e1 showed `8101 bytes, over 8051`. Revision 2 therefore adds nothing to `next-flow.md` and releases no cap.
 
 ## Decisions
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | The method is text in the four files above, with the steps spelled once in `work.md` | recurrence on 2026-11-24 (C-464, C-461); the lanes read `work.md` at every take | revert the commit |
+| D-1 | The method is text in the three files above, with the steps spelled once in `work.md` | recurrence on 2026-11-24 (C-464, C-461); the lanes read `work.md` at every take | revert the commit |
 | D-2 | A card worktree is never made with `EnterWorktree` and a `name` | measured and documented: it branches from the remote default branch (Appendix A F, Appendix B) | none needed |
 | D-3 | `CLAUDE.md` and every settings file stay untouched | the leader's instruction; permissions are the user's decision | a later card may name `CLAUDE.md` in its scope |
-| D-4 | Open: a `moai` command that runs create, read-back and path output in one call is not part of this SPEC | the second recurrence rule asks for a source change that stops the class; text is the first step | a follow-up card, if the leader picks it |
+| D-4 | Open: a `moai` command that runs create, read-back and path output in one call is not part of this SPEC | the second recurrence rule asks for a source change that stops the class; text is the first step | a follow-up card, if the leader picks it (opened as C-468) |
+| D-5 | Revision 2: the flow reference gets no pointer and keeps the integration tip's text; no size cap is raised | leader decision (A) of 2026-11-24T13:08:52Z on card C-467 (answers the LANE-BLOCKED note 8549), under the user's delegation of 2026-11-23T13:57Z; options B (raise `FLOW_REF_TIP_BYTES` to 8101) and C (cut 36 bytes elsewhere in the file) were not taken | restore the clause in `next-flow.md` together with a decision on the cap |
 
 ### Appendix A — measured cases
 

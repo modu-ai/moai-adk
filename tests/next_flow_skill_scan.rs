@@ -2625,16 +2625,11 @@ fn worktree_entry_work_bans_name_and_exits_first() {
     );
 }
 
-/// AC-4 (REQ-7): the flow reference, the Claude Code row of the git safety reference and the
-/// worktree entry section of the lane rules name the absolute path and point to `work.md`; none
-/// of them spells the create command again.
+/// AC-4 (REQ-7): the Claude Code row of the git safety reference and the worktree entry section
+/// of the lane rules name the absolute path and point to `work.md`; neither spells the create
+/// command again.
 #[test]
 fn worktree_entry_other_files_point_to_work() {
-    let flow = read(FLOW_REF);
-    assert!(
-        flow.contains("made with an absolute path (`workflows/work.md`)"),
-        "{FLOW_REF} does not point to the method"
-    );
     let safety = read("references/internal/git-safety.md");
     let row = safety
         .lines()
@@ -2653,11 +2648,7 @@ fn worktree_entry_other_files_point_to_work() {
             "lane-rules.md worktree entry lacks {want:?}"
         );
     }
-    for (name, text) in [
-        (FLOW_REF, flow.as_str()),
-        ("git-safety.md", row),
-        ("lane-rules.md", entry),
-    ] {
+    for (name, text) in [("git-safety.md", row), ("lane-rules.md", entry)] {
         assert!(
             !text.contains("git worktree add -b"),
             "{name} spells the create command again"

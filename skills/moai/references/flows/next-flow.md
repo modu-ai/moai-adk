@@ -17,7 +17,7 @@ Four technical rules make the flow run. They describe how it works; they are not
 
 ## A lane
 
-- Work in a worktree under the project's `.claude/worktrees`, made with an absolute path (`workflows/work.md`), on its own branch; never in the primary checkout.
+- Work in a worktree under the project's `.claude/worktrees`, on its own branch; never in the primary checkout.
 - A lane only commits: no push, no pull request and no merge of a moved integration tip. A background session never pushes and never opens a pull request.
 - A lane submits two things and nothing else: its head commit and the base its checks ran on. It adds one `moai card note` whose first line is `LANE-READY-INTEGRATION <card> head=<40 hex>` and names the base in the lines below it.
 - The READY note carries one line per new guard test: `guard-mutant: <test> | <code removed or flipped> | exit <n>`, where `<n>` is the non-zero exit code the test gave on a copy that lacks the guarded code, or `guard-mutant: none | <reason>` when the change adds no guard test. A guard test that passes with its code removed is not a guard; the lane runs that mutant once per new guard test before READY. `moai bundle check` lists a missing, unreadable or `exit 0` line as a warning; it cannot tell whether a line is true, so the auditor reads it.
