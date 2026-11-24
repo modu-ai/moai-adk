@@ -9,9 +9,16 @@
 //! running `git ls-files`) is listed by hand and kept by the rule-file existence check.
 //!
 //! Moved here from the Python module `repo_scans_test.py` (SPEC-20261123-rust-scans-before-ready).
+//!
+//! The commands of a scan are built by `moai_cli::repo_scans::checks_of` (a `test_targets` array
+//! and the `checks` list, SPEC-20261124-repo-scans-targets-per-line); the one case that starts a
+//! program, `two_branches_adding_different_targets_merge_without_conflict`, runs git in a
+//! temporary repository.
 
 mod common;
 
+use common::git::{git_ok, git_raw};
+use moai_cli::repo_scans::checks_of;
 use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -156,6 +163,13 @@ fn strings(value: &Value) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// The commands of one scan as the readers see them: the command built from `test_targets` first,
+/// then the `checks` list (SPEC-20261124-repo-scans-targets-per-line D-4: one function builds
+/// them for the judge, `check affected` and this file).
+fn built_checks(scan: &Value) -> Vec<String> {
+    checks_of(scan).unwrap_or_else(|e| panic!("{}: {e}", id(scan)))
 }
 
 /// Every file below `dir` (recursive), as paths relative to the repository root with `/`.
@@ -344,11 +358,29 @@ fn declares_mod(text: &str, name: &str) -> bool {
 /// silently (cargo exits 0 on "running 0 tests"). No cargo is spawned here (#2661).
 #[test]
 fn every_check_names_a_real_target_and_test() {
+    for scan in load() {
+        assert_checks_name_real_targets(&scan);
+    }
+    // SPEC-20261124-repo-scans-targets-per-line REQ-6: a name in `test_targets` is a target like
+    // the one in a listed `--test`, so it needs its `tests/<name>.rs`.
+    let named = |names: Value| json!({"id": "zz", "test_targets": names});
+    assert_checks_name_real_targets(&named(json!(["repo_scans_table"])));
+    let missing = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        assert_checks_name_real_targets(&named(json!(["zz_no_such_test_file"])))
+    }));
+    assert!(
+        missing.is_err(),
+        "a `test_targets` name with no tests/<name>.rs must fail the target check"
+    );
+}
+
+/// The judgement of `every_check_names_a_real_target_and_test` for one scan.
+fn assert_checks_name_real_targets(scan: &Value) {
     let cargo = "cargo test --offline --locked ";
     let python = "python3 -m unittest ";
-    for scan in load() {
-        let checks = strings(&scan["checks"]);
-        assert!(!checks.is_empty(), "{}", id(&scan));
+    {
+        let checks = built_checks(scan);
+        assert!(!checks.is_empty(), "{}", id(scan));
         for command in checks {
             if let Some(modules) = command.strip_prefix(python) {
                 for module in modules.split_whitespace() {
@@ -934,7 +966,7 @@ fn file_readers() -> BTreeMap<String, Vec<String>> {
 fn scans_not_running_readers(scans: &[Value]) -> Vec<String> {
     let mut out = Vec::new();
     for scan in scans.iter().filter(|s| s["always"] == Value::Bool(true)) {
-        let checks = strings(&scan["checks"]);
+        let checks = built_checks(scan);
         let run: BTreeSet<&str> = checks
             .iter()
             .flat_map(|c| {
@@ -1278,6 +1310,16 @@ fn every_file_reader_has_an_always_scan_or_an_exemption() {
 #[test]
 fn every_always_scan_runs_the_readers_it_names() {
     assert_eq!(scans_not_running_readers(&load()), Vec::<String>::new());
+    // SPEC-20261124-repo-scans-targets-per-line REQ-6: a reader named in `test_targets` is run.
+    let scan = |targets: Value| {
+        json!({"id": "reads-zz", "always": true, "rules": ["tests/zz_reader.rs"],
+               "test_targets": targets, "scope": [{"prefix": "docs/"}]})
+    };
+    assert!(scans_not_running_readers(&[scan(json!(["other", "zz_reader"]))]).is_empty());
+    assert_eq!(
+        scans_not_running_readers(&[scan(json!(["other"]))]),
+        ["reads-zz: tests/zz_reader.rs is a rule file but no check runs --test zz_reader"]
+    );
 }
 
 #[test]
@@ -1370,4 +1412,213 @@ fn file_read_paths_adds_the_tools_folder_only_with_all_three_conditions() {
     assert!(file_read_paths(&no_literal, &tracked).is_empty());
     let no_folder = Tracked::from_paths(["src/lib.rs"]);
     assert!(file_read_paths(all_three, &no_folder).is_empty());
+}
+
+// ---- `test_targets` (SPEC-20261124-repo-scans-targets-per-line) ----
+
+/// `"name"` or `"name",` with a target name inside: one quoted name and nothing else.
+fn one_quoted_target(line: &str) -> Option<String> {
+    let inner = line
+        .strip_suffix(',')
+        .unwrap_or(line)
+        .strip_prefix('"')?
+        .strip_suffix('"')?;
+    let name = !inner.is_empty()
+        && inner
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
+    name.then(|| inner.to_string())
+}
+
+/// REQ-5: the problems of the `test_targets` arrays in the text of a table. An array opens with
+/// `[` alone after its key, holds one quoted name per line, and its names are strictly ascending
+/// in byte order (so no name is there twice); the text, not the parsed value, is read, because
+/// the lines are what two branches merge.
+fn test_targets_violations(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut scan = "?".to_string();
+    let mut open: Option<Vec<String>> = None;
+    for line in text.lines().map(str::trim) {
+        match open.as_mut() {
+            None => {
+                if let Some(rest) = line.strip_prefix("\"id\": \"") {
+                    scan = rest.trim_end_matches(',').trim_end_matches('"').to_string();
+                } else if line.starts_with("\"test_targets\":") {
+                    if line == "\"test_targets\": [" {
+                        open = Some(Vec::new());
+                    } else {
+                        out.push(format!(
+                            "{scan}: `test_targets` opens with `[` alone on its line and holds \
+                             one name per line"
+                        ));
+                    }
+                }
+            }
+            Some(names) => {
+                if line == "]" || line == "]," {
+                    for pair in names.windows(2) {
+                        if pair[1] <= pair[0] {
+                            out.push(format!(
+                                "{scan}: `{}` does not come after `{}` (sorted, each name once)",
+                                pair[1], pair[0]
+                            ));
+                        }
+                    }
+                    open = None;
+                } else if let Some(name) = one_quoted_target(line) {
+                    names.push(name);
+                } else {
+                    out.push(format!(
+                        "{scan}: `{line}` is not one quoted `[a-z0-9_]+` name on a line of its own"
+                    ));
+                }
+            }
+        }
+    }
+    out
+}
+
+#[test]
+fn test_targets_are_sorted_unique_and_one_per_line() {
+    let table = |array: &str| {
+        format!(
+            "{{\n  \"scans\": [\n    {{\n      \"id\": \"reads-zz\",\n      \"test_targets\": {array}\n    }}\n  ]\n}}\n"
+        )
+    };
+    assert!(
+        test_targets_violations(&table("[\n        \"a_cli\",\n        \"b_cli\"\n      ]"))
+            .is_empty()
+    );
+    for (what, array, name) in [
+        ("unsorted", "[\n \"b_cli\",\n \"a_cli\"\n ]", "a_cli"),
+        ("repeated", "[\n \"a_cli\",\n \"a_cli\"\n ]", "a_cli"),
+        ("two on a line", "[\n \"a_cli\", \"b_cli\"\n ]", "a_cli"),
+        ("one-line array", "[\"a_cli\"]", "test_targets"),
+        ("a bad character", "[\n \"a-cli\"\n ]", "a-cli"),
+    ] {
+        let found = test_targets_violations(&table(array));
+        assert!(!found.is_empty(), "{what}: not found");
+        assert!(
+            found
+                .iter()
+                .all(|f| f.starts_with("reads-zz: ") && f.contains(name)),
+            "{what}: {found:?}"
+        );
+    }
+    assert_eq!(
+        test_targets_violations(&read_lossy(&root().join("tools/repo_scans.json"))),
+        Vec::<String>::new()
+    );
+}
+
+/// REQ-9: the scans of a table that name `test_targets`.
+fn scans_naming_test_targets(scans: &[Value]) -> Vec<String> {
+    scans
+        .iter()
+        .filter(|s| s.get("test_targets").is_some())
+        .map(id)
+        .collect()
+}
+
+#[test]
+fn the_checked_in_table_names_no_test_targets_before_the_conversion() {
+    let scans = [
+        json!({"id": "reads-zz", "test_targets": ["a_cli"]}),
+        json!({"id": "other", "checks": ["cargo test --offline --locked --test a_cli"]}),
+    ];
+    assert_eq!(scans_naming_test_targets(&scans), ["reads-zz"]);
+    assert_eq!(
+        scans_naming_test_targets(&load()),
+        Vec::<String>::new(),
+        "tools/repo_scans.json names `test_targets`: an installed moai that does not read the \
+         field skips those targets without a word; the table is converted by the follow-up card \
+         after a build that reads both forms is installed, and that card removes this test"
+    );
+}
+
+/// The table text with one scan whose `test_targets` hold `names`, one name per line.
+fn table_with_targets(names: &[&str]) -> String {
+    let lines: Vec<String> = names.iter().map(|n| format!("        \"{n}\"")).collect();
+    format!(
+        "{{\n  \"scans\": [\n    {{\n      \"id\": \"reads-zz\",\n      \"test_targets\": [\n{}\n      ]\n    }}\n  ]\n}}\n",
+        lines.join(",\n")
+    )
+}
+
+/// The table text of the earlier form: one scan whose one command lists `names` after `--test`.
+fn table_with_command(names: &[&str]) -> String {
+    let tests: String = names.iter().map(|n| format!(" --test {n}")).collect();
+    format!(
+        "{{\n  \"scans\": [\n    {{\n      \"id\": \"reads-zz\",\n      \"checks\": [\n        \"cargo test --offline --locked{tests}\"\n      ]\n    }}\n  ]\n}}\n"
+    )
+}
+
+/// Commits `base` to `main` of a new temporary repository, `one` and `two` on branches of their
+/// own, and merges `two` into `one`: whether the merge succeeded and the table text afterwards.
+fn merge_two(base: &str, one: &str, two: &str) -> (bool, String) {
+    let dir = tempfile::tempdir().unwrap();
+    let p = dir.path();
+    let who = [
+        "-c",
+        "user.name=fixture",
+        "-c",
+        "user.email=fixture@example.invalid",
+    ];
+    let commit = |text: &str, message: &str| {
+        fs::write(p.join("repo_scans.json"), text).unwrap();
+        git_ok(p, &["add", "repo_scans.json"]);
+        let mut args = who.to_vec();
+        args.extend(["commit", "-q", "-m", message]);
+        git_ok(p, &args);
+    };
+    git_ok(p, &["init", "-q", "-b", "main"]);
+    commit(base, "base");
+    git_ok(p, &["checkout", "-q", "-b", "one"]);
+    commit(one, "one");
+    git_ok(p, &["checkout", "-q", "main"]);
+    git_ok(p, &["checkout", "-q", "-b", "two"]);
+    commit(two, "two");
+    git_ok(p, &["checkout", "-q", "one"]);
+    let mut args = who.to_vec();
+    args.extend(["merge", "--no-edit", "two"]);
+    let merged = git_raw(p, &args).success;
+    (
+        merged,
+        fs::read_to_string(p.join("repo_scans.json")).unwrap(),
+    )
+}
+
+/// REQ-7: two branches that each add a target to the same scan, at places with a name between
+/// them, merge without a conflict and keep both; the same two additions to the one command of
+/// the earlier form conflict.
+#[test]
+fn two_branches_adding_different_targets_merge_without_conflict() {
+    let base = ["a_cli", "c_cli", "e_cli", "g_cli", "i_cli"];
+    let plus = |name: &'static str| {
+        let mut names = base.to_vec();
+        names.push(name);
+        names.sort();
+        names
+    };
+    let (merged, text) = merge_two(
+        &table_with_targets(&base),
+        &table_with_targets(&plus("b_cli")),
+        &table_with_targets(&plus("h_cli")),
+    );
+    assert!(
+        merged,
+        "the merge of two separate additions conflicted:\n{text}"
+    );
+    let all = [
+        "a_cli", "b_cli", "c_cli", "e_cli", "g_cli", "h_cli", "i_cli",
+    ];
+    assert_eq!(text, table_with_targets(&all));
+    assert!(test_targets_violations(&text).is_empty());
+    // the earlier form: both additions edit the one command line
+    let (merged, _) = merge_two(
+        &table_with_command(&base),
+        &table_with_command(&plus("b_cli")),
+        &table_with_command(&plus("h_cli")),
+    );
+    assert!(!merged, "the one-line form is the case that conflicts");
 }
