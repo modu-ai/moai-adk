@@ -397,7 +397,10 @@ fn an_unreadable_profile_uses_the_default_days_and_adds_no_warning() {
     let young = fresh.draft("apps/a/");
     fresh.age(&young, 1);
     let fresh_listing = fresh.next(S_B);
-    assert!(rows_of(&fresh_listing, &young).is_empty(), "{fresh_listing}");
+    assert!(
+        rows_of(&fresh_listing, &young).is_empty(),
+        "{fresh_listing}"
+    );
     assert_eq!(
         listing["warnings"], fresh_listing["warnings"],
         "the stale draft changed the warnings: {listing} against {fresh_listing}"

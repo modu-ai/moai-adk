@@ -300,7 +300,7 @@ fn a_hold_card_is_not_an_open_card_of_its_spec() {
     let spec = w.spec("login-fix");
     let other = w.spec("other-fix");
     ok(&w.add(&spec, &[])); // C-1: withdrawn below
-    // `card withdraw` takes the project folder as its last positional argument.
+                            // `card withdraw` takes the project folder as its last positional argument.
     let withdrawn = w
         .home
         .command(&[
@@ -319,7 +319,11 @@ fn a_hold_card_is_not_an_open_card_of_its_spec() {
     assert_eq!(w.count("SELECT count(*) FROM card WHERE state = 'hold'"), 1);
 
     let second = ok(&w.add(&spec, &[])); // C-2: folded below
-    assert_eq!(second["name"], json!("C-2"), "withdrawn card made room: {second}");
+    assert_eq!(
+        second["name"],
+        json!("C-2"),
+        "withdrawn card made room: {second}"
+    );
     ok(&w.add(&other, &[])); // C-3: the fold target
     ledger::close::fold(
         &mut ledger::open_write(w.home.path(), "demo").unwrap(),
@@ -333,7 +337,11 @@ fn a_hold_card_is_not_an_open_card_of_its_spec() {
     assert_eq!(w.count("SELECT count(*) FROM card WHERE state = 'hold'"), 2);
 
     let third = ok(&w.add(&spec, &[])); // C-4: only hold cards were on the SPEC
-    assert_eq!(third["name"], json!("C-4"), "folded card made room: {third}");
+    assert_eq!(
+        third["name"],
+        json!("C-4"),
+        "folded card made room: {third}"
+    );
     // C-4 is open now: a further plain card is refused again and C-4 is the one named.
     let (kind, message) = refusal(&w.add(&spec, &[]));
     assert_eq!(kind, "conflict", "{message}");
