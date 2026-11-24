@@ -1,4 +1,4 @@
-//! SPEC-20261120-generation-request-record: `generation-apply` records the project agent and
+//! SPEC-20261125-generation-request-record: `generation-apply` records the project agent and
 //! skill request in `generation.json`, so the generation step of `project-update-plan` rebuilds
 //! it instead of stopping at `needs_decision`. Every case runs the built binary in a temporary
 //! project with a temporary HOME; the real checkout and HOME are never read.
