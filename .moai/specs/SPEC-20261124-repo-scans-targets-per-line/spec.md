@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-repo-scans-targets-per-line
 title: "the repo scan readers build the cargo command from a sorted test_targets array and still read the earlier checks form"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8424 (2026-11-24T09:46:34Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8423 에 답함): 개정 2 승인, head 6e91847a368f1e0305efc22aaff48125664f9a29; REQ-9 가드를 받고, 카드 기준 1·2 는 이 카드에서 not_met 으로 남겨 C-458 로 넘겨요; 레인은 그 노트를 앞머리에 옮겨 적기만 해요"
+  digest: "sha256:83d045408983898ac92b2ff47712597f9970287fe495ae754a284900f1f4cf61"
 ---
 
 # the repo scan readers build the cargo command from a sorted test_targets array and still read the earlier checks form
