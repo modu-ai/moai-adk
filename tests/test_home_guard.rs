@@ -1213,7 +1213,8 @@ fn the_detail_lines_hold_relative_paths_and_no_argument() {
 fn a_moai_process_is_named_by_id_and_file_name_only() {
     let g = Guard::new();
     let bin = TempDir::new().unwrap();
-    fs::copy("/bin/sleep", bin.path().join("moai-probe")).unwrap();
+    // A link, not a copy: a copied system binary loses its signature and macOS kills it at start.
+    std::os::unix::fs::symlink("/bin/sleep", bin.path().join("moai-probe")).unwrap();
     let mut child = Command::new(bin.path().join("moai-probe"))
         .arg("31.4159")
         .spawn()
