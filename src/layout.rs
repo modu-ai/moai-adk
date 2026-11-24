@@ -319,6 +319,10 @@ fn check_destinations(project: &Path, home_root: &Path) -> Result<()> {
         );
     }
     for (kind, _, subdir) in KINDS {
+        // AUDIT #434 B-1: a home folder can sit two levels down (`forge/outbox`), and the check
+        // above stops at the home project; walk every folder down to this one, so a link in the
+        // middle is refused before the last-name check below reads through it.
+        refuse_linked_home_path(home_root, &home_project.join(subdir))?;
         match std::fs::symlink_metadata(home_project.join(subdir)) {
             Ok(_) => {
                 return Err(format!(

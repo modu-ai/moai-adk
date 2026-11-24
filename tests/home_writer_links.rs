@@ -102,6 +102,20 @@ enum At {
     Project,
     /// the written store folder itself is a link.
     Store,
+    /// `projects/widgets/forge/` is a link, one folder above the outbox (`forge/outbox`).
+    Forge,
+    /// the home state root itself is a link.
+    Root,
+}
+
+impl At {
+    /// The refusal sentence of a link at this place.
+    fn sentence(self) -> &'static str {
+        match self {
+            At::Root => ROOT_REFUSED,
+            _ => FOLDER_REFUSED,
+        }
+    }
 }
 
 impl Tree {
@@ -139,8 +153,29 @@ impl Tree {
                 fs::create_dir_all(link.parent().unwrap()).unwrap();
                 symlink(&self.behind, link).unwrap();
             }
+            At::Forge => unreachable!("only layout-apply meets a linked forge folder"),
+            At::Root => {
+                self.pointer(&self.behind.join("projects/widgets"));
+                fs::create_dir_all(self.behind.join("projects/widgets").join(store)).unwrap();
+                self.link_root();
+                return;
+            }
         }
         self.state_is_stable();
+    }
+
+    /// The home state root becomes a link to `behind`. A link named `.moai` would lose its
+    /// marker and the root would resolve to `.moai-cli`, so the fixture's empty root is removed
+    /// and the earlier name is the link; the root must resolve to that link.
+    fn link_root(&self) {
+        fs::remove_dir(&self.state).unwrap();
+        let link = self.home.join(moai_cli::HOME_STATE_DIR);
+        symlink(&self.behind, &link).unwrap();
+        assert_eq!(
+            moai_cli::home_root::path(&self.home),
+            link,
+            "the home state root does not resolve to the link"
+        );
     }
 
     /// The pointer switches `store` to the home side on a tree with no link.
@@ -159,7 +194,11 @@ impl Tree {
                 fs::create_dir_all(self.state.join("projects")).unwrap();
                 symlink(&self.behind, self.state.join("projects/widgets")).unwrap();
             }
-            At::Store => unreachable!("layout-apply writes the store folder itself"),
+            At::Forge => {
+                fs::create_dir_all(self.state.join("projects/widgets")).unwrap();
+                symlink(&self.behind, self.state.join("projects/widgets/forge")).unwrap();
+            }
+            At::Store | At::Root => unreachable!("layout-apply is not run with this link"),
         }
         self.state_is_stable();
     }
@@ -309,11 +348,11 @@ fn outbox_refused(test: &str, at: At) {
             let entry = OutboxEntry::new("op-1", "marker");
             assert_eq!(
                 outbox::save(&seen.project, &entry).unwrap_err().message,
-                FOLDER_REFUSED
+                at.sentence()
             );
             assert_eq!(
                 outbox::load(&seen.project, "op-1").unwrap_err().message,
-                FOLDER_REFUSED
+                at.sentence()
             );
             assert_eq!(
                 snapshot(&seen.behind),
@@ -340,6 +379,12 @@ fn outbox_refuses_a_linked_project_folder() {
 #[test]
 fn outbox_refuses_a_linked_outbox_folder() {
     outbox_refused("outbox_refuses_a_linked_outbox_folder", At::Store);
+}
+
+/// AC-2 (REQ-3): the home state root itself is a link (AUDIT #434 N-2).
+#[test]
+fn outbox_refuses_a_linked_home_root() {
+    outbox_refused("outbox_refuses_a_linked_home_root", At::Root);
 }
 
 /// AC-2 (REQ-3), control: a plain tree writes and reads the home side outbox.
@@ -371,14 +416,14 @@ fn receipt_refused(test: &str, at: At) {
         |seen| {
             let before = snapshot(&seen.behind);
             let receipt = Receipt::new("req-1", "apply.test", &seen.project);
-            assert_eq!(receipt.save(&seen.project), Err(FOLDER_REFUSED.to_string()));
+            assert_eq!(receipt.save(&seen.project), Err(at.sentence().to_string()));
             assert_eq!(
                 save_before_bytes(&seen.project, "req-1", "a.txt", b"x"),
-                Err(FOLDER_REFUSED.to_string())
+                Err(at.sentence().to_string())
             );
             assert_eq!(
                 recover(&seen.project, "req-1", "test:perm").unwrap_err(),
-                FOLDER_REFUSED
+                at.sentence()
             );
             assert_eq!(
                 snapshot(&seen.behind),
@@ -405,6 +450,12 @@ fn receipt_refuses_a_linked_project_folder() {
 #[test]
 fn receipt_refuses_a_linked_receipts_folder() {
     receipt_refused("receipt_refuses_a_linked_receipts_folder", At::Store);
+}
+
+/// AC-3 (REQ-4): the home state root itself is a link (AUDIT #434 N-2).
+#[test]
+fn receipt_refuses_a_linked_home_root() {
+    receipt_refused("receipt_refuses_a_linked_home_root", At::Root);
 }
 
 /// AC-3 (REQ-4), control: a plain tree writes the receipt and the before bytes on the home side.
@@ -467,6 +518,24 @@ fn layout_apply_refuses_a_linked_project_folder() {
         "layout_apply_refuses_a_linked_project_folder",
         |t| t.unswitched_behind_link(At::Project),
         |seen| layout_refused(seen, &seen.state, FOLDER_REFUSED),
+    );
+}
+
+/// AC-4 (REQ-5): `projects/widgets/forge/` is a link to a folder with no `outbox` in it, one
+/// folder above the outbox's home folder (`forge/outbox`). Before the repair the last-name check
+/// found nothing and the copy followed the link (AUDIT #434 B-1).
+#[test]
+fn layout_apply_refuses_a_linked_forge_folder() {
+    with_home(
+        "layout_apply_refuses_a_linked_forge_folder",
+        |t| t.unswitched_behind_link(At::Forge),
+        |seen| {
+            layout_refused(seen, &seen.state, FOLDER_REFUSED);
+            assert!(
+                !seen.state.join("projects/widgets/layout.json").exists(),
+                "the pointer was written"
+            );
+        },
     );
 }
 
