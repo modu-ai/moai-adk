@@ -166,8 +166,9 @@ approval:
   Rust 시험(`product_cli` 의 `skill_package`)이 확인해요.
 - 한국어 이름은 모델이 화면에 그리는 것이라 끝까지 시험하지 못해요. 시험은 모델에게 주는 문장을 고정할 뿐이에요.
   실제 화면 관측은 not_run 으로 남아요.
-- 세 파일을 모두 conflict 로 만드는 고정 장치는 세 관리 구간이 함께 그리는 프로필 칸을 바꿔야 해요. 어떤 칸인지는
-  RUN 에서 코드와 실행으로 정하고, 선택 있는 시험의 뜻(선택이 있으면 conflict 없음)이 변하지 않게 해요.
+- 선택 없는 시험의 고정 장치가 세 파일을 모두 conflict 로 만들려면 셋 다 "양쪽이 움직인" 상태여야 해요. 측정해
+  보니 `.gitignore` 관리 구간은 프로필 어느 칸으로도 바뀌지 않아요(D-9). 그래서 그 파일은 매니페스트의 기준선을 옛
+  빌드의 값으로 둬요. 선택 있는 시험의 뜻(선택이 있으면 conflict 없음)이 변하지 않게 했어요.
 - 기준 커밋 `596b525dbc` 뒤로 통합 가지가 움직였어요. 착지 때 병합은 착지자가 해요. `tools/repo_scans.json` 은
   다른 카드도 자주 고쳐서 병합 충돌이 날 수 있어요(풀이는 두 추가를 모두 남기는 것).
 - 설치된 `moai`(4.2648.23)의 SPEC 검사가 팁의 검사보다 느슨할 수 있어요. RUN 에서 나무의 바이너리로
@@ -185,7 +186,32 @@ approval:
 | D-6 | 11-21 초안과 옛 가지는 참고 자료로만 읽어요. 아무것도 합치지 않아요 | 그 가지는 다른 흐름 위에서 만들어졌고 검사 B1 수리 전의 테스트가 있어요. 요구는 오늘 나무에서 다시 읽었어요 | 없음 |
 | D-7 | 일본어·중국어 이름은 적지 않고 문장이 "다른 대화 언어로 옮긴다"고 해요 | 저장소에 그 언어의 표 판이 없어요. 사용자 결정도 "언어 표 판이 있으면 그에 맞게"였어요 | 표 판이 생기면 이름을 더해요 |
 | D-8 | 거절 노트의 `AGENTS.md`(병합 단계가 옮기는 옛 파일)는 그대로 두고 단계 이름만 바꿔요 | 그 파일 이름은 이 SPEC 의 대상이 아니에요. 파일 이름의 참거짓은 다른 카드가 정해요 | 그 글을 따로 고쳐요 |
+| D-9 | 선택 없는 시험의 고정 장치에서 `.gitignore` 는 매니페스트의 기준선을 옛 빌드의 값으로 둬요 | RUN 에서 측정했어요: 프로필 칸 일곱 가지(purpose, tools, development_methods, test_command, protected, review_blocks, build_command)를 하나씩 옮겨도 `.gitignore` 구간은 `unchanged` 예요. CLAUDE.md 는 `tools` 만, REVIEW.md 는 리뷰 규칙만 따라요. 도구가 업데이트되면 무시 목록이 바뀌고 그 전에 생성된 프로젝트의 기준선은 옛 값으로 남아요(감사가 측정한 현장의 `.gitignore` conflict 가 그 모양이에요). 구현 중에 정했어요(승인 뒤에 더한 행) | 기준선을 건드리지 않고 다른 프로필 칸을 찾아요(측정으로는 없어요) |
 
 ## Result
 
-구현 에이전트가 채워요. 이 커밋은 SPEC 판 1 까지예요.
+2026-11-24 에 이 세션이 구현했어요. 기준 통합 가지 `596b525dbc`, macOS arm64(개발 Mac), 이 워크트리와 그 빌드
+폴더 `target/`. 무거운 실행은 모두 `moai heavy-slot-acquire` 를 거쳤고 테스트 빌드는 `RUSTC_WRAPPER=sccache`,
+`CARGO_INCREMENTAL=0` 이에요. 로그는 커밋하지 않는 `target/harness-step-label/` 에 있어요.
+
+커밋(기준 위, 순서대로): `b393e5ff9b` SPEC 판 1 → `46f1bfb181` 승인 기록 → `0998b7f4b9` RED → `0cb0309a10`
+GREEN → `3e24a6b18c` 식별자 고정 보강 → `df796faaa5` 스캔 표 등록 → 이 Result.
+
+- AC-1: met — install_reason_names_the_step_project_harness 가 빌드한 바이너리로 빈 임시 프로젝트의 계획을 돌려 설치 단계의 reason 이 "profile, project harness (CLAUDE.md managed section and generated files), Claude Code settings, Claude Code hooks, GitHub templates; …" 임을 읽어요. RED(커밋 `0998b7f4b9`, nextest run `8aa1598f-97d9-411c-9290-61da44e09a1b`)에서는 "profile, generation (AGENTS.md managed section …" 로 실패했어요. 뮤턴트 m1.
+- AC-2: met — identifiers_stay_as_they_were: 계획이 단계를 `generation` 으로 적고 소스의 `Step` 값 둘과 대기 형태 둘이 id 를 그대로 쓰고 명령과 매니페스트 경로와 도움말이 그대로예요. RED 때부터 통과하는 고정이에요. 뮤턴트 m5.
+- AC-3: met — workflow_text_names_the_step_in_english_and_korean 과 workflow_text_tells_to_translate_and_keeps_the_id_for_tools: 두 워크플로 글이 이름 문장을 정확히 한 번씩 품고 다섯 조각이 있어요. RED 에서는 update.md 에 문장이 0 번이었어요. GREEN(nextest run `ca7afe68-77d5-46be-8aba-b81ba33b8a07`, 8개 대상 44개 중 44 통과). 뮤턴트 m2·m3.
+- AC-4: met — workflow_text_names_the_step_where_it_lists_it 가 통과하고 project_preview_order 3개와 project_applied_table 2개가 같은 실행에서 통과해요(고정한 문장은 그대로). RED 에서는 "the generation `files`" 로 실패했어요. 뮤턴트 m4.
+- AC-5: met — refusal_notes_call_the_step_project_harness 가 빈 프로젝트 계획의 undo_order 를 읽어 통과하고 update_end_to_end_cli 8개가 같은 실행에서 통과해요. RED 에서는 "<agents_receipt of the generation step>" 로 실패했어요. 뮤턴트 m6.
+- AC-6: met — without_the_pick_a_hand_edited_tracked_file_blocks_the_change_of_one_agent: 선택 없이 계획한 conflict 경로가 정확히 `.gitignore` 와 `CLAUDE.md` 와 `REVIEW.md` 셋이에요. RED 에서는 `REVIEW.md` 하나였어요(감사가 본 그대로). 고정 장치는 D-9 대로예요. 같은 파일의 선택 있는 시험 셋이 그대로 통과해요. 뮤턴트 m7(tools 를 되돌림)과 m8(`.gitignore` 기준선을 되돌림).
+- AC-7: not_run — `record_generation` 의 주석은 아직 못 고쳤어요. `src/generation.rs` 를 다른 카드(네이티브 역할 링크 거절 카드)가 쥐고 있어서 줄 임대가 두 번 거절됐어요(2026-11-24T10:44Z 와 11:01Z 에 시계를 읽었어요). 리더 결정(2026-11-24T10:06:12Z 2번)대로 READY 에 not_run 으로 적어요. 고정 시험 a_never_generated_project_keeps_the_current_profile_digest_under_the_pick 은 RED 실행과 GREEN 실행 모두에서 처음부터 통과해요: 생성된 적 없는 프로젝트에서 선택으로 적용하면 매니페스트의 `profile_sha256` 는 적용에 쓴 프로필의 digest 이고 `interview_revision` 과 `workflow_id` 는 비어 있어요.
+- AC-8: met — `research.md` 셋째 행이 URL 둘을 적어요(`grep -n "the same testing pages as above"` 가 출력 없이 끝나요). `grep -c codex tests/generation_request_limits.rs` 가 0 을 찍어요. generation_request_limits 5개가 GREEN 실행에서 통과했어요.
+- AC-9: met — `python3 -I tools/source_manifest.py check` exit 0, `moai spec check` 오류 0. `moai check affected` 영수증은 카드의 READY 노트에 있어요. 새 테스트 파일은 reads-skills 와 reads-src 두 항목의 검사와 규칙 파일에 들어갔고(커밋 `df796faaa5`, 줄 임대), 그 검사 표 대상 112개가 통과해요(nextest run `5e92549a-93f3-4fd5-9012-caab9cfbdbbd`).
+
+뮤턴트: 커밋 `3e24a6b18c` 에서 한 자리에서 여덟 개(가드 테스트마다 하나, 선택 없는 가드는 둘)를 돌렸어요.
+여덟 모두 exit 100 이고 가드 테스트가 실패 목록에 있어요(일곱은 그 테스트 하나만, m3 은 문장 시험과 함께). 매번
+`git checkout --` 로 돌려맞춘 뒤 HEAD 와 같음을 확인했어요. 실행 스크립트의 첫 요약 줄은 "0 of 8 killed" 를 인쇄했어요.
+가드 이름에 대상 이름을 붙인 채 실패 목록과 비교한 스크립트의 잘못이었고, 저장된 원본 로그 여덟 개를 읽어 "8 of 8
+killed" 를 확인했어요. 스크립트는 고쳤지만 다시 돌리지는 않았어요.
+
+실행 안 함(not_run): `record_generation` 의 주석(위), 한국어 이름이 실제 화면에 보이는 관측(모델이 그려요),
+Windows 와 Linux.
