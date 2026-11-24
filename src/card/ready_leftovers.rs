@@ -264,6 +264,8 @@ mod tests {
         // The marker line itself is never read, even when it holds the word.
         let first_only = format!("{FIRST} leftovers: none");
         assert_eq!(read_line(&first_only).unwrap_err(), Why::Missing);
+        // The first line is never read, whatever it says: a body that is only the line has none.
+        assert_eq!(read_line("leftovers: none").unwrap_err(), Why::Missing);
         // A fence that closes lets the next line count again.
         assert_eq!(
             read_line(&body("```\nx\n```\nleftovers: none\n")),
