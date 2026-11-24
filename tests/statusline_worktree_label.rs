@@ -13,6 +13,7 @@ mod common;
 
 use common::home::TempHome;
 use moai_cli::ledger;
+use moai_cli::statusline::icons::WORK;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -162,7 +163,7 @@ fn is_windows(line: &str) -> bool {
 /// The second line when the one card of the ledger is held by a live lease in the session's
 /// worktree: the version, the one working card of the flow, then my card, working.
 fn flow_held() -> String {
-    format!("{} | 🟡 1 | 🎯 C-1 🟡", moai())
+    format!("{} | {WORK} 1 | 🎯 C-1 {WORK}", moai())
 }
 
 /// The first line of the worktree session: the branch of the worktree, not the folder name
