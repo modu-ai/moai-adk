@@ -381,7 +381,8 @@ fn inventory_a_link_below_a_top_level_folder_is_never_followed() {
 
 #[test]
 fn inventory_a_moai_folder_that_is_a_link_is_refused_by_both_operations() {
-    // `<home>/.moai` is itself a link to a real folder: neither operation follows it.
+    // The state folder under the home is itself a link to a real folder: neither operation
+    // follows it.
     let tmp = TempDir::new().unwrap();
     let base = fs::canonicalize(tmp.path()).unwrap();
     let home = base.join("home");
