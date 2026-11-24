@@ -725,8 +725,9 @@ fn move_items(c: &Ctx) -> Res<move_journal::Report> {
             })
             .collect();
     // The programs that run now decide: an entry one of them uses is skipped, not moved, and a
-    // table that cannot be read skips everything.
-    let procs = InUse::read();
+    // table that cannot be read skips everything. The table is read now, never from the command
+    // cache.
+    let procs = InUse::read_fresh();
     let check = |p: &Path| {
         if runs_in_place(p) {
             return move_journal::InUse::No;
