@@ -1038,7 +1038,9 @@ enum Action {
     /// Reads the ledger only. Exit 0 only when this session holds the card at `--generation`
     /// with a live lease and every `--path` lies under the reservation's write scope. Anything
     /// else is refused (`conflict`). Nothing is recorded. The paths are compared as text:
-    /// a symbolic link on disk is not followed.
+    /// a symbolic link on disk is not followed. A path outside the scope that overlaps a
+    /// `shared_files` entry of the project profile ends the refusal with the `card line-lease`
+    /// form for that path.
     Check {
         /// `C-12`.
         card: String,

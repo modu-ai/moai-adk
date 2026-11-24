@@ -113,4 +113,21 @@ approval:
 
 ## Result
 
-(not built yet)
+Draft, written while `src/profile.rs` and `src/card/work.rs` are held by another card (D-9); the lines marked not_run are filled when they are written. Measured 2026-11-24 (UTC) on macOS in the worktree `.claude/worktrees/shared-files-profile`, base `NeXT` `7e0aaba345` (the checks did not follow the tip). Commits so far: draft `33cfcff1df`, approval `178bf69c1d` (leader note 8070; the lane recorded no approval of its own), RED `554891267a`, code `c656c78d7e`, help `985f4085e3`, operations document `b93b3e89e6`.
+
+- AC-1 not_run: the `shared_files` row, field, `validate` and its inline tests belong in `src/profile.rs`, which another card holds.
+- AC-2 met: `shared_files_refuse_a_given_scope` (`card_take_scope_cli`): a given `--scope` (`src/lib.rs`, `src/**`, a path inside a shared glob) and a card's own scope are refused with the entry, the shared entry and `card line-lease`; no reservation is written; `src/other.rs` is taken.
+- AC-3 met: `shared_files_are_left_out_of_a_fill`: a SPEC list and a last reservation are filled without the shared entry, `warnings` names it, and a list of only shared files refuses and writes nothing.
+- AC-4 met: `shared_files_refuse_a_scope_change`: a free card and a held card are refused for a new shared entry; an entry the held scope already held passes.
+- AC-5 not_run: `shared_files_check_names_line_lease` fails on the current code (the hint belongs in `src/card/work.rs`, held by another card).
+- AC-6 met: `shared_files_two_cards_lease_one_after_the_other` (`card_line_lease_cli`) passes; it passes before the change too, as REQ-7 says (it pins existing behavior).
+- AC-7 met in part: `shared_files_absent_changes_nothing` covers a profile with no key and a key of the wrong type. A profile that cannot be read at all is not covered, because every card command reads the project id from that profile first and refuses.
+- AC-8 met: `card::take_scope::tests::this_repository_lists_its_shared_files` reads this repository's `.moai/project.yaml` and finds the nine entries (the eight of REQ-9 and `src/profile.rs`, D-8).
+- Test run of this branch before the operations help and document edits: `card_take_scope_cli` and `card_line_lease_cli`, 38 tests, 37 passed, 1 failed (AC-5); `--lib take_scope`, 2 tests, 2 passed. Logs in `target/shared-files-profile/` (`green1-run.log`, `green2-run.log`, `green3-run.log`).
+- Guard mutants (each applied by one exact replacement, confirmed to change the file, run in a heavy slot, restored from a byte copy; no log holds a compile error; logs in `target/shared-files-profile/mutants/`): the given-scope check removed, the own-scope check removed, the scope check applied to every entry, the scope check switched off, the fill keeping shared entries, the fill with nothing left passing, and the overlap reduced to equal text each fail their named test with exit 100.
+- Guard mutants not yet written: the hint of `card check` removed, and the 65-entry limit of `validate`; both need the two held files.
+- Dangerous path: the tests take, widen and check real cards in a temporary ledger and a temporary home, and the two line leases that edited `src/ops/card.rs` and the operations document ran against the live ledger of this project (`added` and `given_back` named the same path each time, the reservation scope was as before).
+- Refusals seen while this branch was built: none for a card of this lane; the leases of other cards that held `src/ops/card.rs`, `src/card/mod.rs` and the operations document whole are the case this SPEC removes once its list is in the profile and the other cards use line leases.
+- Gap: no `moai check affected` receipt yet (not_run); it runs once at READY, on the final head.
+- Gap: a `card add --scope` with a shared file is not refused; its `take` is (non-goal).
+- Gap: nothing was run on Windows or Linux; the fixtures are macOS only.
