@@ -314,6 +314,37 @@ impl Git<'_> {
         self.lines(&["diff", "--name-only", &format!("{a}...{b}")])
     }
 
+    /// The audit floor of what `b` adds to `a` and the paths it is judged from. A path of the
+    /// scan registry carries its text on both sides, because the floor reads whether the change
+    /// only grew it (`gate::tier_of_changes`); a side that cannot be read stays `None`.
+    fn audit_floor(&self, a: &str, b: &str) -> Result<(u8, Vec<String>)> {
+        let files = self.changed_files(a, b)?;
+        let tier = gate::tier_of_changes(Some(0), &files);
+        Ok((tier, files.into_iter().map(|f| f.path).collect()))
+    }
+
+    fn changed_files(&self, a: &str, b: &str) -> Result<Vec<gate::ChangedFile>> {
+        let paths = self.changed_paths(a, b)?;
+        let base = self
+            .ok(&["merge-base", a, b])
+            .map(|s| s.trim().to_string())
+            .filter(|s| gate::is_full_sha(s));
+        Ok(paths
+            .into_iter()
+            .map(|path| {
+                let text = |rev: Option<&str>| {
+                    let rev = rev.filter(|_| path == gate::SCAN_REGISTRY)?;
+                    self.ok(&["show", &format!("{rev}:{path}")])
+                };
+                gate::ChangedFile {
+                    old: text(base.as_deref()),
+                    new: text(Some(b)),
+                    path,
+                }
+            })
+            .collect())
+    }
+
     /// The merge drivers the clone's configuration names (this wrapper runs with the global
     /// configuration off, so the clone's own file is what applies).
     fn configured_drivers(&self) -> Vec<String> {
@@ -732,15 +763,14 @@ fn judge(
     // audit evidence
     // A head with no merge base with the tip (an unrelated history) is one finding, not an abort:
     // the other heads are still judged (REQ-3).
-    let paths = match git.changed_paths(&tip.sha, &head) {
-        Ok(p) => p,
+    j.floor = match git.audit_floor(&tip.sha, &head) {
+        Ok((floor, _)) => floor,
         Err(e) => {
             j.findings
                 .push(finding("no_merge_base", &arg.card, &head, json!(e)));
             return Ok(j);
         }
     };
-    j.floor = gate::tier_of(Some(0), &paths);
     let mut passes: Vec<(i64, String, String)> = Vec::new(); // (note, head, line)
     for n in &notes {
         let first = n.first_line();
@@ -1179,8 +1209,7 @@ pub fn body(
     // The commits the branch adds beyond the tip, by `Moai-Verified` kind; an unreadable listing
     // refuses the body before anything is written.
     let summary = verified_summary(&trailers::list(dir, &format!("{base}..{pinned}")))?;
-    let paths = git.changed_paths(&tip.sha, &pinned)?;
-    let tier = gate::tier_of(Some(0), &paths);
+    let (tier, paths) = git.audit_floor(&tip.sha, &pinned)?;
     let merges = git
         .ok(&[
             "rev-list",
