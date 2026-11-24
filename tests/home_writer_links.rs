@@ -382,7 +382,7 @@ fn outbox_refuses_a_linked_outbox_folder() {
     outbox_refused("outbox_refuses_a_linked_outbox_folder", At::Store);
 }
 
-/// AC-2 (REQ-3): the home state root itself is a link (AUDIT #434 N-2).
+/// AC-2 (REQ-3): the home state root itself is a link (SPEC-20261124-home-writer-links).
 #[test]
 fn outbox_refuses_a_linked_home_root() {
     outbox_refused("outbox_refuses_a_linked_home_root", At::Root);
@@ -453,7 +453,7 @@ fn receipt_refuses_a_linked_receipts_folder() {
     receipt_refused("receipt_refuses_a_linked_receipts_folder", At::Store);
 }
 
-/// AC-3 (REQ-4): the home state root itself is a link (AUDIT #434 N-2).
+/// AC-3 (REQ-4): the home state root itself is a link (SPEC-20261124-home-writer-links).
 #[test]
 fn receipt_refuses_a_linked_home_root() {
     receipt_refused("receipt_refuses_a_linked_home_root", At::Root);
@@ -524,7 +524,7 @@ fn layout_apply_refuses_a_linked_project_folder() {
 
 /// AC-4 (REQ-5): `projects/widgets/forge/` is a link to a folder with no `outbox` in it, one
 /// folder above the outbox's home folder (`forge/outbox`). Before the repair the last-name check
-/// found nothing and the copy followed the link (AUDIT #434 B-1).
+/// found nothing and the copy followed the link (SPEC-20261124-home-writer-links).
 #[test]
 fn layout_apply_refuses_a_linked_forge_folder() {
     with_home(
