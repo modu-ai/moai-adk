@@ -291,7 +291,7 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
-    /// Writes the ledger. Withdraw a draft or ready card
+    /// Writes the ledger. Withdraw a draft, ready, active or review card
     ///
     /// Writes the ledger. Marks the card withdrawn: it moves to `hold`, one `card.withdraw`
     /// event records the reason and the by with the writing session, `card take` refuses it
@@ -478,11 +478,12 @@ enum Action {
     /// holder, generation and lease end, the new holder, `--by` and `--reason`. Nothing checks that
     /// the old holder is really gone: say in `--reason` what was found (process ended, pull request
     /// merged, uncommitted work). The old generation is stale from then on. The new holder is this
-    /// session's own id, never typed. The new holder continues in the recorded worktree, so
-    /// commits that sit on no remote-tracking ref do not stop the takeover: the event and the
-    /// answer name them as `kept_commits` (the count and up to twenty ids, newest first). An
-    /// uncommitted change in that worktree does stop it (`conflict`, nothing written): commit or
-    /// give it up first.
+    /// session's own id, never typed. The new holder continues in the recorded worktree. Once the
+    /// lease has ended, commits that sit on no remote-tracking ref do not stop the takeover: the
+    /// event and the answer name them as `kept_commits` (the count and up to twenty ids, newest
+    /// first). While the lease is still live, such commits stop it (`conflict`, nothing written),
+    /// as does a reservation that is not `held`. An uncommitted change in that worktree stops
+    /// either takeover (`conflict`, nothing written): commit or give it up first.
     Reclaim {
         /// `C-12`.
         card: String,
@@ -639,6 +640,8 @@ enum Action {
     /// a worktree that is at that head holds `target/check-affected-<head12>/summary.txt` with
     /// the `result=PASS` line of a bare `moai check affected` run of that head (a `--lane` run is
     /// no receipt). Otherwise the note is refused with the way out and nothing is written.
+    /// A first line with a blank before the marker is refused the same way, and the `base` of the
+    /// receipt's summary line must be an ancestor of that head.
     Note {
         /// `C-12`.
         card: String,

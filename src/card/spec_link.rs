@@ -321,14 +321,15 @@ pub struct OpenCard {
     pub relation: Option<String>,
 }
 
-/// The cards that name `spec_id` now and are not `done` (draft, ready, active, review and hold
-/// all count), by number.
+/// The cards that name `spec_id` now and are open: not `done` and not `hold` (a withdrawn or a
+/// folded card is on hold and leaves its SPEC room; draft, ready, active and review count), by
+/// number.
 pub fn open_cards_of(conn: &Connection, spec_id: &str) -> rusqlite::Result<Vec<OpenCard>> {
     let mut stmt = conn.prepare(&format!(
         "SELECT card_id, (SELECT json_extract(e.payload, '$.relation') FROM event e \
          WHERE e.card_id = card.card_id AND e.kind = 'card.spec' \
          ORDER BY e.event_id DESC LIMIT 1) \
-         FROM card WHERE state <> 'done' AND {LINKED_COLUMN} = ?1 ORDER BY card_id"
+         FROM card WHERE state NOT IN ('done', 'hold') AND {LINKED_COLUMN} = ?1 ORDER BY card_id"
     ))?;
     let rows = stmt.query_map([spec_id], |r| {
         Ok(OpenCard {
