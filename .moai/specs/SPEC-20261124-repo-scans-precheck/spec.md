@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-repo-scans-precheck
 title: "check affected stops before the heavy steps when an added test file is missing from the repository scan list"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8150 (2026-11-24T03:27:05Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8148 에 답함): 판 1 승인 선택지 (1) 기본(커밋 8fb9f23ea6d3b72250eb6d5c155e9fa91242bd9d); 판정을 따로 구현하되 AC-6 의 저장소 전체 대조가 두 판정의 어긋남을 잡는지를 뮤턴트로 보이고, tests/repo_scans_table.rs 의 새 테스트는 표를 느슨하게 하지 않는 추가만; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:2be56d7326c7b8fb2dbd00fb4ff107d1de9ae7966c357bea125d349971336b4e"
 ---
 
 # check affected stops before the heavy steps when an added test file is missing from the repository scan list
@@ -17,6 +22,12 @@ created: 2026-11-24
 카드 C-405 감사의 비차단 후속 셋이 이 카드에 함께 넘어왔어요(카드 노트 7885): `FILE_READ_EXEMPT` 의 쓸모없는 두 행, `include_bytes!` 를 빼먹은 문구 둘, `tools` 리터럴 조건의 단위 테스트. 셋 다 표를 조이는 일이고 푸는 일이 아니에요.
 
 읽는 사람: 레인, 리더, 이 변경의 감사자.
+
+## Interview
+
+- Q1: 세 번째 표의 판정을 `tests/repo_scans_table.rs` 와 하나로 합치는가? -> A: 아니요 (D-1). 따로 구현하고 AC-6 의 저장소 전체 대조가 어긋남을 잡아요.
+- Q2: 막는 검사는 먼저 observe 로 도는가? -> A: 아니요 (D-2). 새 규칙이 아니라 이미 막는 규칙을 앞으로 당겨요.
+- Q3: 예외 표는 어디서 읽는가? -> A: `tests/repo_scans_table.rs` 글에서 읽어요 (D-3).
 
 ## Non-goals
 
