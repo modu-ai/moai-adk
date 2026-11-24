@@ -1,10 +1,9 @@
 ---
 id: SPEC-20261124-project-detect-monorepo
 title: "project-detect finds the sub-package manifests of a monorepo in any language, and a profile apply never drops recorded manifests unseen"
-status: approved
-revision: 2
+status: draft
+revision: 3
 created: 2026-11-24
-approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8296 of card C-256 (answers lane note 8295, 2026-11-24T06:46:32Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 2 at head c68d78dfb7 with D-5 and D-6 as written; recorded by the lane, not approved by it", digest: "sha256:254b58336e0c19df493e36ab21afc1eff565761931ee1a8445c5d087e638dc15"}
 ---
 
 # project-detect finds the sub-package manifests of a monorepo in any language, and a profile apply never drops recorded manifests unseen
@@ -39,13 +38,13 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8296 of card
 
 <!-- This SPEC adds no blocking check. -->
 - REQ-1: The manifest walk shall read every folder of one depth before it reads any folder one level deeper.
-- REQ-2: The manifest walk shall not enter a folder whose name starts with a dot or that the catalog lists as a folder to skip. · failure: none — an ignore file past a total of 1048576 bytes read counts as no lines, which lets more manifests in and hides none.
+- REQ-2: The manifest walk shall not enter a folder whose name starts with a dot or that the catalog lists as a folder to skip. · failure: none — an ignore file the walk does not apply (over the file limit, past a total of 1048576 bytes read, or not readable as text) counts as no lines and the walk says it is not complete.
 - REQ-3: When `project-detect` reads a project folder, the command shall list in `detected.manifests` each file whose name equals a catalog file name or ends with a catalog suffix, by its path relative to the project root. · failure: none — an unreadable folder is left out and `manifest_walk` says so.
 - REQ-4: The shipped catalog shall hold the twelve root manifest names and the tool names that the earlier tables held, with the same language and tools for each, so that `detected.languages`, `detected.manifests` and `tools` keep their earlier values for those names.
 - REQ-5: When the project folder holds a catalog extension file, the command shall add its rows to the shipped rows, the shipped row prevailing for a file name or suffix that both hold. · failure: none — the extension file is optional.
 - REQ-6 (REQ-5): IF the extension file is a link, larger than the file limit, not valid, or holds a row or a folder to skip with a value that cannot be recorded (a name made of dots alone is one), THEN the command shall use the shipped rows alone and report the problem in `manifest_catalog.problem` without writing anything.
-- REQ-7: When `project-detect` reports the facts, the command shall report beside `detected` a `manifest_walk` object holding `complete` (false when the walk stopped at `MAX_ENTRIES` or could not read a folder or an entry of one) and `over_cap` (the number of manifests found that `detected.manifests` leaves out because of `MAX_ITEMS`). · failure: none — the object is always reported.
-- REQ-8 (REQ-7): IF `manifest_walk.complete` is false or `manifest_walk.over_cap` is more than zero, THEN `next_actions` shall carry a line saying the manifest list is partial and must not be recorded over an earlier list without showing the user what drops.
+- REQ-7: When `project-detect` reports the facts, the command shall report beside `detected` a `manifest_walk` object holding `complete` (false when the walk stopped at `MAX_ENTRIES`, could not read a folder or an entry of one, or did not apply a non-empty ignore file) and `over_cap` (the number of manifests found that `detected.manifests` leaves out because of `MAX_ITEMS`). · failure: none — the object is always reported.
+- REQ-8 (REQ-7): IF `manifest_walk.complete` is false or `manifest_walk.over_cap` is more than zero, THEN `next_actions` shall carry a line saying the manifest list is partial, naming each reason, and must not be recorded over an earlier list without showing the user what drops.
 - REQ-9: The profile plan that applies the `detected` key over a recorded profile shall carry `dropped_manifests`, the sorted recorded `detected.manifests` entries that the new list leaves out, exactly when that list is not empty. · failure: none — a plan without the field is a plan that drops nothing.
 - REQ-10: The plan digest shall cover `dropped_manifests` when it is not empty and keep its earlier value when it is empty.
 - REQ-11: The profile step of the update plan shall say in its `reason` how many recorded manifests would drop and carry the sorted names in its `preview`.
@@ -63,7 +62,7 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8296 of card
 - AC-8 (REQ-10, REQ-12): 목록이 비면 digest 는 전과 같은 값이고(박아 둔 기존 시험이 그대로 통과), `dropped_manifests` 를 지운 계획은 `project-apply` 가 "stale or altered plan" 으로 거절하고 프로필 파일이 그대로예요 · verify: `cargo test --locked --offline --test project_update_drops_cli a_plan_with_the_dropped_list_removed_is_refused_at_apply`
 - AC-9 (REQ-11): `project-update-plan` 의 `profile` 단계가 `ready` 이고 `reason` 에 "2 recorded manifests would drop" 이 있고 `preview.dropped_manifests` 가 그 둘이에요 · verify: `cargo test --locked --offline --test project_update_drops_cli the_update_plan_profile_step_says_how_many_manifests_would_drop`
 - AC-10: 이웃 시험이 그대로 통과해요 · verify: `cargo test --locked --offline --test project_detect_cli --test project_scale_detect_lib --test profile_apply_engine --test profile_plan_cli --test project_update_plan_cli --test home_isolation_scan` 과 `cargo test --locked --offline --lib project_detect`
-- AC-12 (REQ-2): 크기가 정확히 262144 바이트인 `.gitignore`(루트와 하위 폴더)는 읽혀 제외가 적용되고 262145 바이트는 읽히지 않아요. 약 200 KB 짜리 `.gitignore` 가 일곱 폴더에 있으면 총량(1 MiB) 안의 다섯은 적용되고 여섯째부터는 줄이 없는 것으로 세요 · verify: `cargo test --locked --offline --test project_detect_monorepo_cli the_ignore_file_limit_holds_at_both_edges the_ignore_files_the_walk_reads_have_a_total_size_cap`
+- AC-12 (REQ-2): 크기가 정확히 262144 바이트인 `.gitignore`(루트와 하위 폴더)는 읽혀 제외가 적용되고 262145 바이트는 읽히지 않아요. 약 200 KB 짜리 `.gitignore` 가 일곱 폴더에 있으면 총량(1 MiB) 안의 다섯은 적용되고 여섯째부터는 줄이 없는 것으로 세요. 총량은 정확히 1048576 바이트에서 마지막 목록이 적용되고 1048577 바이트에서는 적용되지 않아요. 이렇게 적용되지 않은 비어 있지 않은 목록(크기 한도 초과, 총량 초과, 글로 읽히지 않음)이 하나라도 있으면 `manifest_walk.complete` 가 false 이고 부분 줄이 그 이유를 말해요 · verify: `cargo test --locked --offline --test project_detect_monorepo_cli the_ignore_file_limit_holds_at_both_edges the_ignore_files_the_walk_reads_have_a_total_size_cap the_total_ignore_cap_applies_a_list_that_reaches_it_exactly the_total_ignore_cap_leaves_a_list_that_passes_it_by_one_byte a_skipped_ignore_list_makes_the_walk_incomplete`
 - AC-11 (REQ-4): 실측 — 보고된 저장소를 읽기만 하는 `project-detect` 로 돌려 `manifests` 가 55 개, `manifest_walk` 가 `{complete: true, over_cap: 0}` 이에요(고치기 전 1 개). 그 저장소를 읽을 수 없는 실행이면 `not_run` 으로 적어요 · verify: `moai project-detect <그 저장소>` 를 리더나 레인이 읽기 전용으로 실행
 
 ## Scope
@@ -104,7 +103,7 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8296 of card
 | D-3 | 탐색 고침과 "줄어드는 목록 보여 주기"를 한 SPEC·한 카드에서 한다(옛 두 가지의 설계를 이어받음). 필요한 `src/profile.rs`·`src/project_update.rs` 는 지금 풀려 있어요(C-105 완료, C-226 보류에 예약 없음, 이 실행에서 읽음). 대안: 탐색만 먼저 착지하고 보여 주기는 두 번째 SPEC | 카드 기준 1 이 둘을 한 문장으로 묶고, 둘 다 같은 사고의 두 부분이에요. 기본: 한 SPEC | 둘째 부분을 새 SPEC 으로 분리해요 |
 | D-4 | 이 SPEC 은 manifest 인식과 걷기만 데이터로 옮긴다. 코드 파일 확장자 표, 언어 서버 표, 데이터베이스 표, 빌드·테스트 명령 템플릿, 작업공간 표지 표는 후속 카드로 적는다 | 한 SPEC 이 감지 전체를 다시 쓰면 `lsp_plugins`·`commands`·`scale` 을 쓰는 다른 카드와 부딪히고 감사가 어려워져요(규칙 20). 기본: 후속 카드 | 후속 카드를 이 SPEC 에 합쳐요 |
 | D-5 | 하위 manifest 의 언어도 `languages` 와 `lsp` 에 반영한다. `SPEC-20261119-nested-manifests` 의 D-3("하위 manifest 는 언어에 반영하지 않는다")을 이 SPEC 이 대체한다. `databases` 는 루트 한정 그대로 | 첫 감사의 리더 결정(2026-11-24T06:15:51Z, 사용자 위임 2026-11-23T13:57Z, 노트 "AUDIT #256"의 N2): AC-4 가 확장 행 언어의 반영을 요구하고 사용자 규칙 "모든 언어 지원"과 맞아요. 결과: 하위 manifest 만 있는 기존 모노레포 프로필은 `/moai update` 에서 `languages`·`lsp` 차이로 `ready` 가 돼요(적용 전에 미리보기에서 보여요). 기본: 반영 | 하위 manifest 를 `languages` 에서 빼요(한 줄) |
-| D-6 | `.gitignore` 읽기는 폴더를 큐에서 꺼낼 때 하고 한 걸음의 총량을 1 MiB(`MAX_IGNORE_TOTAL`, 파일 한도의 4 배)로 막는다. 총량을 넘는 파일은 줄이 없는 것으로 세어 더 읽기만 하고 덜 읽지 않는다. 기존 한도 상수(`MAX_DEPTH`, `MAX_ENTRIES`, `MAX_ITEMS`, `MAX_FILE`)는 그대로 | 첫 감사의 N1: 폴더마다 최대 256 KiB 를 큐에 넣을 때 읽어 한 깊이 전체를 메모리에 두면 300 폴더에서 RSS 430 MB 였어요. 읽기를 꺼낼 때로 옮기는 것만으로는 하위 폴더가 있는 폴더의 목록이 자식이 나올 때까지 남아서 총량 한도를 같이 둬요. 기본: 4 배 | 총량 한도를 빼요(`budgeted_ignore_lines` 의 한 조건) |
+| D-6 | `.gitignore` 읽기는 폴더를 큐에서 꺼낼 때 하고 한 걸음의 총량을 1 MiB(`MAX_IGNORE_TOTAL`, 파일 한도의 4 배)로 막는다. 총량을 넘는 파일은 줄이 없는 것으로 세고 walk 를 완전하지 않다고 표시한다(판 3: 크기 한도를 넘는 파일과 글로 읽히지 않는 파일도 같다). 기존 한도 상수(`MAX_DEPTH`, `MAX_ENTRIES`, `MAX_ITEMS`, `MAX_FILE`)는 그대로 | 첫 감사의 N1: 폴더마다 최대 256 KiB 를 큐에 넣을 때 읽어 한 깊이 전체를 메모리에 두면 300 폴더에서 RSS 430 MB 였어요. 읽기를 꺼낼 때로 옮기는 것만으로는 하위 폴더가 있는 폴더의 목록이 자식이 나올 때까지 남아서 총량 한도를 같이 둬요. 기본: 4 배 | 총량 한도를 빼요(`ignore_file_lines` 의 한 조건) |
 
 ## Result
 
@@ -122,7 +121,7 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8296 of card
 - AC-10: met — 한 번의 `cargo nextest run --locked` 로 `project_detect_cli`, `project_scale_detect_lib`, `profile_apply_engine`, `profile_plan_cli`, `project_update_plan_cli`, `home_isolation_scan`, `path_root_direct_sites`, `state_folder_literal_scan`, `test_area_layout` 과 lib 의 `project_detect`·`profile`·`project_update`·`project_scale` 시험을 돌려 212 개 통과, 실패 0. `cargo fmt --check` 종료 0, `cargo clippy --locked --offline --lib --bins --test project_detect_monorepo_cli --test project_update_drops_cli -- -D warnings` 종료 0(경고 0). 새 lib 단위 시험 셋: `the_shipped_catalog_holds_the_earlier_rows_with_recordable_values`, `extension_rows_are_added_and_never_replace_a_shipped_row`, `a_catalog_file_with_an_unrecordable_value_is_refused`.
 - AC-10 보충: 첫 `moai check affected`(head `041ec0b00b`)가 전체 3102 개 중 `green_test_lock every_detected_language_has_test_patterns` 하나만 실패(`test=100`)했어요. 이 시험이 소스의 `const MANIFESTS` 줄을 읽었는데 그 표가 카탈로그 파일로 옮겨졌기 때문이에요. 시험이 카탈로그의 `language` 값을 받도록 한 곳만 고쳤어요(`tests/green_test_lock.rs`, 카드 범위를 이 파일 하나만큼 넓힘). 처음에는 시험이 카탈로그 파일을 `include_str!` 로 읽게 했다가 두 번째 `check affected`(head `09527b9c64`)에서 `repo_scans_table every_include_str_reader_of_a_repository_file_has_an_always_scan` 이 새 읽기를 잡았어요(`test=100`). 공유 스캔 표를 건드리는 대신 `project_detect::shipped_manifest_languages()` 를 두고 시험이 그걸 쓰게 했고, 두 파일과 감지 시험 86 개가 통과해요. 이 고침으로 "감지기가 말하는 모든 언어에 시험 경로 행이 있다"는 검사는 그대로 유지되고, 확장 파일 행의 언어는 프로젝트마다 달라서 이 검사의 대상이 아니에요.
 - AC-11: not_run — 보고된 저장소는 이 레인이 읽을 권한이 없는 실제 프로젝트라서 돌리지 않았어요. 55 개 실측은 리더나 그 저장소를 읽을 수 있는 세션이 읽기 전용 `moai project-detect` 로 재요. 이 SPEC 은 그 구조(큰 숨김 폴더가 `apps/` 앞에서 예산을 쓰는 것)를 시험 `a_large_early_folder_does_not_hide_a_later_packages_manifest` 로 재현해요.
-- AC-12: met — 판 2 수리의 `the_ignore_file_limit_holds_at_both_edges`(루트와 `apps/` 의 `.gitignore` 가 정확히 262144 바이트면 제외가 적용되고 262145 바이트면 적용되지 않음)와 `the_ignore_files_the_walk_reads_have_a_total_size_cap`(약 200 KB 목록 일곱 중 다섯만 적용) 통과. 아래 "판 2 수리" 의 뮤턴트가 두 시험을 지켜요. 같은 입력의 최대 RSS 는 300 폴더×262144 바이트에서 31.5 MB 였어요(디버그 빌드, 카드 노트 8316).
+- AC-12: met — 판 2 수리의 `the_ignore_file_limit_holds_at_both_edges`(루트와 `apps/` 의 `.gitignore` 가 정확히 262144 바이트면 제외가 적용되고 262145 바이트면 적용되지 않음)와 `the_ignore_files_the_walk_reads_have_a_total_size_cap`(약 200 KB 목록 일곱 중 다섯만 적용) 통과. 아래 "판 2 수리" 의 뮤턴트가 두 시험을 지켜요. 판 3 은 총량 경계 시험 둘(`the_total_ignore_cap_applies_a_list_that_reaches_it_exactly`, `the_total_ignore_cap_leaves_a_list_that_passes_it_by_one_byte`)과 `a_skipped_ignore_list_makes_the_walk_incomplete` 를 더했고 "판 3 수리" 의 뮤턴트가 지켜요. 같은 입력의 최대 RSS 는 300 폴더×262144 바이트에서 31.5 MB 였어요(디버그 빌드, 카드 노트 8316).
 - 가드 뮤턴트 13 개를 하나씩 코드에 넣고 새 두 시험 파일을 돌려 모두 컴파일됐고 지정한 시험이 실패했어요(종료 100): 폭 우선→깊이 우선, 점 이름 건너뛰기 빼기, 카탈로그 폴더 건너뛰기 빼기, 예산 소진 `complete` 를 항상 true, `over_cap` 계산 한 칸 어긋남, 부분 목록 조건 `||` 를 `&&` 로, 확장 파일 크기 한도 빼기, 확장 값 검사 빼기, 배송 행 우선 규칙 빼기, 하위 manifest 언어 반영 빼기, digest 에서 목록 빼기, 줄어드는 목록의 적용 키 조건 빼기, 업데이트 단계 reason 의 목록 빼기. 변이한 파일은 모두 원래 바이트로 되돌렸고 트리는 깨끗해요.
 - 위험 경로: 읽기 전용(삭제·리셋·프로세스 시작·권한 규칙 없음)이라 해당 없음. 확장 파일 읽기는 링크를 따르지 않고 크기를 제한하며 시험이 링크·초과 파일을 지켜요.
 
@@ -148,3 +147,14 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8296 of card
 - N3(상한을 넘거나 기록할 수 없는 경로의 manifest 언어도 셈), N5(오류 문구 둘), N7(HOME-GUARD 한 번 흔들림)은 이 수리에서 건드리지 않았고 카드의 열린 기준 2~7 조각에서 봐요(리더 결정).
 
 가드 뮤턴트 아홉 개를 코드에 하나씩 넣고 시험 파일 하나(`project_detect_monorepo_cli`, 열네 개 중 지정한 시험)로 돌려 모두 컴파일됐고 지정한 시험만 실패했어요(종료 100, 결과 `target/project-detect-monorepo/mutants-repair.json`, 소스는 원래 바이트로 복원): 확장 파일 크기 `<=`→`<`, 행·폴더 수 한도 조건을 `false` 로, 행 안 목록 한도 통째로 빼기, 행 안 파일 한도 `<=`→`<`, 루트 `.gitignore` 크기 한도 `>`→`>=`, 하위 `.gitignore` 크기 한도 `>`→`>=`, 총량 한도 빼기, 읽을 수 없는 폴더에서도 `complete` 를 true 로, 점만 있는 이름 검사 빼기. 읽을 수 없는 항목(`entries` 오류, `file_type` 오류)의 표시는 같은 변수라 위 뮤턴트가 지키고, 그 두 갈래만 따로 시험하지는 않아요(not_run: 만들기 어려운 입력).
+
+### 판 3 수리 (두 번째 감사 FAIL, 머리 `b6759ba4c6`)
+
+감사 노트 8335 의 막는 것 R1·R2·R3 과 비차단 R4 를 같은 가지에서 고쳤어요. 코드와 시험은 커밋 `ab1753e9a9` 한 개예요.
+
+- R2 met: 크기 한도를 넘거나 총량을 넘거나 글로 읽히지 않아 적용하지 못한 비어 있지 않은 `.gitignore` 가 있으면 `manifest_walk.complete` 가 false 이고 부분 줄이 `an ignore list was not applied …` 로 이유를 말해요(루트의 `.gitignore`·`.git/info/exclude` 도 같아요). 시험 `a_skipped_ignore_list_makes_the_walk_incomplete`: 루트가 `old/` 를 제외하고 `z/.gitignore` 의 `!old` 가 되살리는 트리에서 목록이 적용되면 `z/old/package.json` 이 나열되고 complete, 총량 때문에(q2)·한 목록이 262145 바이트라서(q4)·글이 아니라서 건너뛰면 나열되지 않고 complete false 예요. REQ-2 의 failure 문장은 "건너뛴 목록이 있으면 walk 는 완전하지 않다고 말한다"는 뜻으로 좁혔고, REQ-7 과 REQ-8 은 같은 뜻으로 `complete` 의 조건과 "이유를 말한다"를 더했어요.
+- R1 met: `the_total_ignore_cap_applies_a_list_that_reaches_it_exactly`(앞선 목록이 1048575 바이트이고 한 바이트 목록이 합 1048576 이 되면 적용)와 `the_total_ignore_cap_leaves_a_list_that_passes_it_by_one_byte`(두 바이트 목록이 합 1048577 이 되면 적용되지 않고 complete false).
+- R3 met: AC-12 Result 줄은 커밋 `87d38312d7` 에 이미 들어 있어요(이 수리가 스테이징 줄을 새로 커밋한 것은 아니에요).
+- R4 met: 부분 줄이 이유별로 갈려요 — 엔트리 예산, 읽을 수 없는 폴더·항목, 건너뛴 목록, 상한(`MAX_ITEMS`) 초과 — 이유마다 그 말만 들어가요(`a_partial_list_adds_one_next_action_and_a_complete_one_adds_none`, `a_folder_that_cannot_be_read_makes_the_walk_incomplete`).
+
+가드 뮤턴트 일곱 개를 코드에 하나씩 넣고 `project_detect_monorepo_cli` 를 돌려 모두 컴파일됐고 지정한 시험이 실패했어요(종료 100, 결과 `target/project-detect-monorepo/mutants-repair2.txt`, 소스는 원래 바이트로 복원): 총량 한도 `>`→`>=`, 크기 한도에서 건너뜀 표시 빼기, 글로 읽히지 않을 때 표시 빼기, 루트 `.gitignore` 의 표시 빼기, 총량을 쓴 만큼 줄이지 않기, 건너뜀 이유 문구에 엔트리 예산 섞기, 상한 이유 문구 빼기.
