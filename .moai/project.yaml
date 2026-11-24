@@ -21,13 +21,11 @@
     ],
     "languages": [
       "python",
-      "rust",
-      "typescript"
+      "rust"
     ],
     "lsp": [
       "pyright",
-      "rust-analyzer",
-      "typescript-language-server"
+      "rust-analyzer"
     ],
     "mcp_servers": [],
     "databases": [
@@ -49,7 +47,7 @@
     {
       "id": "done",
       "topic": "done",
-      "value": "local_check.sh in the tools folder passes",
+      "value": "the project's own tests pass",
       "source": "user",
       "scope": "project"
     },
@@ -71,6 +69,7 @@
   "language": {
     "commit_messages": "en",
     "documents": "ko",
+    "instruction_files": "en",
     "user_chat": "ko"
   },
   "versioning": {
