@@ -110,7 +110,8 @@ pub fn shrink(plan: &Value) -> Value {
     for item in plan["attention"].as_array().into_iter().flatten() {
         match item["kind"].as_str() {
             Some("note") => {
-                let (Some(note), Some(family)) = (item["note_id"].as_i64(), item["family"].as_str())
+                let (Some(note), Some(family)) =
+                    (item["note_id"].as_i64(), item["family"].as_str())
                 else {
                     continue;
                 };

@@ -278,7 +278,10 @@ fn shape_prints_the_parts_with_numbers_and_writes_nothing() {
     let decisions = items(&brief, "decisions");
     assert_eq!(cards(decisions), ["C-4"]);
     assert_eq!(decisions[0]["note"], json!(decision_note));
-    assert_eq!(brief["omitted"], json!({"queue": 0, "blocked": 0, "decisions": 0}));
+    assert_eq!(
+        brief["omitted"],
+        json!({"queue": 0, "blocked": 0, "decisions": 0})
+    );
     assert_eq!(brief["unread"], json!([]), "{brief}");
     // REQ-5 and REQ-8: nothing written, and the same ledger prints the same bytes.
     assert_eq!(
@@ -395,7 +398,11 @@ fn split_a_decision_is_told_from_a_block_and_answered_or_done_notes_vanish() {
     ] {
         w.card(id, state);
     }
-    w.note(1, "agent-1", "LANE-BLOCKED agent-1 C-1 claim · kind=claim owner=lane");
+    w.note(
+        1,
+        "agent-1",
+        "LANE-BLOCKED agent-1 C-1 claim · kind=claim owner=lane",
+    );
     w.note(
         2,
         "agent-1",
@@ -407,9 +414,17 @@ fn split_a_decision_is_told_from_a_block_and_answered_or_done_notes_vanish() {
         "agent-1",
         "LANE-BLOCKED agent-1 C-4 later · kind=decisions owner=leader",
     );
-    w.note(5, "agent-1", "LANE-BLOCKED agent-1 C-5 old · kind=decision owner=leader");
+    w.note(
+        5,
+        "agent-1",
+        "LANE-BLOCKED agent-1 C-5 old · kind=decision owner=leader",
+    );
     w.note(5, "leader", "answered: take the first name");
-    w.note(6, "agent-1", "LANE-BLOCKED agent-1 C-6 done · kind=decision owner=leader");
+    w.note(
+        6,
+        "agent-1",
+        "LANE-BLOCKED agent-1 C-6 done · kind=decision owner=leader",
+    );
     w.note(7, "agent-1", "LANE-NOTE agent-1 C-7 still working");
     let brief = w.brief();
     let mut decisions = cards(items(&brief, "decisions"));
@@ -435,7 +450,10 @@ fn unread_an_unreadable_integration_branch_is_listed_and_the_rest_still_prints()
     w.note(
         1,
         "agent-1",
-        &format!("LANE-READY-INTEGRATION C-1 head={}\nbase={BASE}", head_of(1)),
+        &format!(
+            "LANE-READY-INTEGRATION C-1 head={}\nbase={BASE}",
+            head_of(1)
+        ),
     );
     w.card(2, "active");
     w.note(

@@ -36,9 +36,8 @@ pub const OPERATION: &str = "leader.brief";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     match args.action {
-        Action::Brief { project, home } => moai_cli::leader_brief::brief(
-            &project,
-            &moai_cli::ledger::command::resolve_home(home)?,
-        ),
+        Action::Brief { project, home } => {
+            moai_cli::leader_brief::brief(&project, &moai_cli::ledger::command::resolve_home(home)?)
+        }
     }
 }
