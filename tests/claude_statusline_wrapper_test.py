@@ -129,35 +129,31 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         self.assertEqual((r.returncode, r.stdout), (0, b"out-rust"))
         self.assert_called_once("rust")
 
-    def test_a_non_executable_rust_falls_back_to_go(self):
+    # SPEC-20261121-go-path-removal: the wrapper has no Go fallback any more. Where nothing of
+    # the Rust build is found it exits 0 silently, and `go/bin/moai.old` is never started.
+    def test_a_non_executable_rust_exits_0_silently_and_go_is_not_run(self):
         self.rust(mode=0o644)
         self.go()
         r = self.run_wrapper()
-        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
-        self.assert_called_once("go")
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
+        self.assertEqual(self.calls(), [])
 
-    def test_without_rust_go_renders_by_absolute_path(self):
+    def test_without_rust_go_is_not_run(self):
         self.go(code=5)
-        r = self.run_wrapper()
-        self.assertEqual((r.returncode, r.stdout), (5, b"out-go"))
-        self.assert_called_once("go")
-
-    def test_a_non_executable_go_is_not_executed(self):
-        self.go(mode=0o644)
         r = self.run_wrapper()
         self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
         self.assertEqual(self.calls(), [])
 
     # #2503 (audit N1 on PR #2482): `-x` is true for a searchable directory, so a directory at
     # either path used to reach `exec` and end with 126 instead of falling through.
-    def test_a_directory_at_the_rust_path_falls_back_to_go(self):
+    def test_a_directory_at_the_rust_path_exits_0_silently(self):
         self.home.joinpath(*RUST_REL).mkdir(parents=True)
         self.go()
         r = self.run_wrapper()
-        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
-        self.assert_called_once("go")
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
+        self.assertEqual(self.calls(), [])
 
-    def test_a_link_to_a_directory_at_the_rust_path_falls_back_to_go(self):
+    def test_a_link_to_a_directory_at_the_rust_path_exits_0_silently(self):
         target = self.home / ".moai-cli" / "versions" / "v1"
         target.mkdir(parents=True)
         link = self.home.joinpath(*RUST_REL)
@@ -165,8 +161,8 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         link.symlink_to(target)
         self.go()
         r = self.run_wrapper()
-        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
-        self.assert_called_once("go")
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
+        self.assertEqual(self.calls(), [])
 
     def test_directories_at_both_paths_exit_0_silently(self):
         self.home.joinpath(*RUST_REL).mkdir(parents=True)
@@ -260,12 +256,12 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-rust", b""))
         self.assert_called_once("rust")
 
-    def test_a_plain_moai_file_alone_falls_through_to_go(self):
+    def test_a_plain_moai_file_alone_exits_0_silently(self):
         self._fake(self.home.joinpath(*MOAI_MOVED_REL), "shim", 0)
         self.go()
         r = self.run_wrapper()
-        self.assertEqual((r.returncode, r.stdout), (0, b"out-go"))
-        self.assert_called_once("go")
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
+        self.assertEqual(self.calls(), [])
 
     def test_a_non_executable_moai_link_falls_through(self):
         self.moai_link(MOAI_MOVED_REL, "moai-moved", mode=0o644)
@@ -321,12 +317,12 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         self.assertEqual((r.returncode, r.stdout), (0, b"out-rust"))
         self.assert_called_once("rust")
 
-    def test_a_non_executable_moai_cli_on_path_falls_back_to_go(self):
+    def test_a_non_executable_moai_cli_on_path_exits_0_silently(self):
         self.path_cli(mode=0o644)
         self.go()
         r = self.run_wrapper()
-        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
-        self.assert_called_once("go")
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
+        self.assertEqual(self.calls(), [])
 
     # #3008 audit B1: with `.` or an empty entry in PATH, `command -v moai-cli` answers the bare
     # name, and the status line runs with the project folder as its cwd. A file named moai-cli
@@ -343,24 +339,24 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         self._path_with(".:")
         self.go()
         r = self.run_wrapper()
-        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
-        self.assert_called_once("go")
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
+        self.assertEqual(self.calls(), [])
 
     def test_an_empty_path_entry_never_runs_a_file_from_the_current_folder(self):
         self._plant_in_cwd()
         self._path_with(":")
         self.go()
         r = self.run_wrapper()
-        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
-        self.assert_called_once("go")
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
+        self.assertEqual(self.calls(), [])
 
     def test_a_trailing_empty_path_entry_never_runs_a_file_from_the_current_folder(self):
         self._plant_in_cwd()
         self.env["PATH"] = self.env["PATH"] + ":"
         self.go()
         r = self.run_wrapper()
-        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
-        self.assert_called_once("go")
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
+        self.assertEqual(self.calls(), [])
 
     def test_a_real_moai_cli_before_a_dot_entry_in_path_still_wins(self):
         self._plant_in_cwd()
@@ -370,12 +366,12 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         self.assertEqual((r.returncode, r.stdout), (0, b"out-pathcli"))
         self.assert_called_once("pathcli")
 
-    def test_a_directory_named_moai_cli_on_path_falls_back_to_go(self):
+    def test_a_directory_named_moai_cli_on_path_exits_0_silently(self):
         (self.pathbin / "moai-cli").mkdir()
         self.go()
         r = self.run_wrapper()
-        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
-        self.assert_called_once("go")
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
+        self.assertEqual(self.calls(), [])
 
     def test_the_go_env_file_is_never_sourced(self):
         # The Go wrapper sourced ~/.moai/.env.glm; design §4.1 drops it (no credentials in a render).
@@ -402,7 +398,7 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         self.assertNotRegex(body, r"(^|\s)(source|\.)\s", "the Go .env.glm source is dropped (design §4.1)")
         self.assertNotIn("mktemp", body)
         self.assertEqual(re.findall(r'exec "\$\w+" statusline', body),
-                         ['exec "$MOAI_CLI" statusline', 'exec "$MOAI_GO" statusline'])
+                         ['exec "$MOAI_CLI" statusline'])
 
     def test_the_design_section_4_1_block_is_the_wrapper_byte_for_byte(self):
         doc = DESIGN.read_text(encoding="utf-8")

@@ -1110,8 +1110,9 @@ fn the_more_readers_in_the_live_tree_are_found() {
     let bytes = include_str_readers();
     for (file, tail) in [
         ("tests/update_switch_layer.rs", "/preview/moai.v1"),
+        ("tests/update_switch_layer.rs", "/preview/moai.v2"),
         ("tests/update_switch_cli.rs", "/preview/moai.v1"),
-        ("tests/update_switch_cli.rs", "/moai-switch.sh"),
+        ("tests/update_switch_cli.rs", "/preview/moai.v2"),
     ] {
         let paths = bytes
             .get(file)

@@ -1,17 +1,19 @@
-//! The name-switch script part of `moai update` (card C-33 S3, SPEC-20261119-update-switch-layer).
+//! The name-switch script part of `moai update` (SPEC-20261121-go-path-removal, revision 6).
 //!
-//! `path/moai` of the HOME state folder is, on a machine that was switched by hand, a short `sh`
+//! `path/moai` of the HOME state folder is, on a machine the Go generation set up, a short `sh`
 //! script that sends `moai` to the Rust build or, for the words only it has, to the Go build
-//! (`moai.old`). The installer leaves a `moai` that is not a link alone, and nothing else writes
-//! it, so nobody updates that script. This part previews the step that replaces the known v1
-//! script with the v2 one built into the program, and applies it only with its own token.
+//! (`moai.old`). The installer lays a link of that name and leaves a plain file alone with a
+//! warning, so nobody ends such a script. This part ends the two scripts it knows, v1 and v2, by
+//! their sha256: the confirmed run keeps the old script as `moai.before-<UTC>` and puts a
+//! relative link `moai` to the Rust launcher `moai-cli` beside it in its place.
 //!
 //! Like the home part (`update_home`) it has its own token (`--confirm-switch`): the preview's
 //! clock-free content digest; it is not part of the layer's `plan_digest`; a yes at the terminal
-//! question never applies it. The apply checks every condition before its first write, keeps
-//! the old file as `moai.before-<UTC>`, and replaces `moai` by one rename, so the file is never
-//! partial. The revert moves back only a saved copy that is byte-equal to v1, and only over a
-//! `moai` that is still v2. `go/bin/moai` is read and reported, never written.
+//! question never applies it. The link is offered only while the launcher beside the script
+//! answers `--version` with the Rust signature. The apply checks every condition before its
+//! first write and replaces the script by one rename, so the name never goes missing. The revert
+//! moves back only a kept copy that is byte-equal to a known script, and only over the link this
+//! step made. `go/bin/moai` is read and reported, never written.
 
 use super::test_fault;
 use serde_json::{json, Value};
@@ -23,28 +25,74 @@ type Result<T> = std::result::Result<T, String>;
 
 /// sha256 (hex) of the known v1 switch script, the 1747 B file a person put in `path/moai`.
 pub const V1_SHA256: &str = "3c3446a3dbd7d918a7d6465c0765ae66b2dafe3231b9be11cd3181737b6658ac";
-/// sha256 (hex) of the v2 script built into the program.
+/// sha256 (hex) of the v2 switch script, which the program once carried and wrote.
 pub const V2_SHA256: &str = "36dd242bf1337efa9b4759ba7166fb6adea04427800334a374027cc246eb26e4";
-/// The v2 script: a byte copy of `preview/moai.v2` of SPEC-20261119-switch-script-v2.
-pub const V2: &[u8] = include_bytes!("../../install/moai-switch.sh");
+/// The launcher the confirmed run links `moai` to, relative to the script's folder.
+pub const LINK_TARGET: &str = "moai-cli";
 
 /// The token prefix, so a token of another part is never taken for this one.
 const PREFIX: &str = "switch:";
 /// Largest script read: 64 KiB is read, one byte more is "larger".
 const MAX_BYTES: usize = 65536;
-/// The name pattern the preview shows for the saved copy.
+/// The name pattern the preview shows for the kept copy.
 const SAVED_PATTERN: &str = "moai.before-<UTC>";
 const NOT_REVIEWED: &str =
     "the switch token differs from the preview's; nothing applied, preview again";
+const HELD: &str = "the launcher `path/moai-cli` beside the script is missing or does not answer `--version` with the Rust signature, so no link is offered; lay the launcher with the installer, then preview again";
+const NO_LINK_HERE: &str =
+    "this step makes a relative symbolic link, which is not made on this platform; nothing written";
+
+/// A script this update knows: its name in previews and results, its sha256 and its bytes.
+#[derive(Debug)]
+struct Known {
+    name: &'static str,
+    sha: &'static str,
+    bytes: Vec<u8>,
+}
 
 /// What `path/moai` is.
+#[derive(Debug)]
 enum Found {
     Absent,
     Link,
-    V1(Vec<u8>),
-    V2,
+    Known(Known),
     /// A file this update does not know, with the reason.
     Other(String),
+}
+
+/// What the launcher beside the script is.
+#[derive(Debug)]
+enum Launcher {
+    Missing,
+    /// It started but printed no first line.
+    Unprobed,
+    /// The first line of its `--version`, which is not the Rust signature.
+    NotRust(String),
+    /// The first line of its `--version`, the Rust signature.
+    Rust(String),
+}
+
+impl Launcher {
+    fn from_line(line: Option<String>) -> Launcher {
+        match line {
+            Some(line) if crate::install::generation_of(Some(&line)) == "rust" => {
+                Launcher::Rust(line)
+            }
+            Some(line) => Launcher::NotRust(line),
+            None => Launcher::Unprobed,
+        }
+    }
+
+    fn line(&self) -> Option<&str> {
+        match self {
+            Launcher::Rust(line) | Launcher::NotRust(line) => Some(line),
+            Launcher::Missing | Launcher::Unprobed => None,
+        }
+    }
+
+    fn is_rust(&self) -> bool {
+        matches!(self, Launcher::Rust(_))
+    }
 }
 
 /// The switch part of one `moai update` preview.
@@ -83,6 +131,15 @@ fn read_bounded(p: &Path) -> Option<Vec<u8>> {
     Some(bytes)
 }
 
+/// The name and the sha256 of the known script these bytes are.
+fn known_of(bytes: &[u8]) -> Option<(&'static str, &'static str)> {
+    match hex_of(bytes).as_str() {
+        h if h == V1_SHA256 => Some(("v1", V1_SHA256)),
+        h if h == V2_SHA256 => Some(("v2", V2_SHA256)),
+        _ => None,
+    }
+}
+
 fn classify(file: &Path) -> Found {
     let Ok(meta) = fs::symlink_metadata(file) else {
         return Found::Absent;
@@ -103,18 +160,54 @@ fn classify(file: &Path) -> Found {
             "the file is larger than 64 KiB, so it is not the script this update knows".into(),
         );
     }
-    match hex_of(&bytes) {
-        h if h == V1_SHA256 => Found::V1(bytes),
-        h if h == V2_SHA256 => Found::V2,
-        h => Found::Other(format!(
-            "the file is not a script this update knows (sha256 {h})"
+    match known_of(&bytes) {
+        Some((name, sha)) => Found::Known(Known { name, sha, bytes }),
+        None => Found::Other(format!(
+            "the file is not a script this update knows (sha256 {})",
+            hex_of(&bytes)
         )),
     }
 }
 
-/// The token of one preview: sixteen hex digits of the digest of what it is about.
-fn token_for(file: &Path) -> String {
-    let d = hex_of(format!("{}|{V1_SHA256}|{V2_SHA256}", file.display()).as_bytes());
+/// Whether `path/moai` is the relative link this step makes.
+fn is_the_link(file: &Path) -> bool {
+    fs::symlink_metadata(file).is_ok_and(|m| m.file_type().is_symlink())
+        && fs::read_link(file).is_ok_and(|t| t == Path::new(LINK_TARGET))
+}
+
+/// What the launcher `path/moai-cli` is: it must be a regular file, or a link that resolves to
+/// one, with an execute bit, and it is then started once with `--version` by the safe probe of
+/// `install` (cleared environment but `HOME`, a fixed `PATH`, a time limit). A dangling link and
+/// a link to a folder read as missing, because `metadata` follows the link.
+fn launcher_state(dir: &Path, home: &Path) -> Launcher {
+    let path = dir.join(LINK_TARGET);
+    let Ok(meta) = fs::metadata(&path) else {
+        return Launcher::Missing;
+    };
+    if !meta.is_file() {
+        return Launcher::Missing;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        if meta.permissions().mode() & 0o111 == 0 {
+            return Launcher::Missing;
+        }
+    }
+    Launcher::from_line(crate::install::probe_version_env(&path, &[("HOME", home)]))
+}
+
+/// The token of one preview: sixteen hex digits of the digest of what it is about (the script,
+/// the launcher beside it and the line the launcher answered).
+fn token_for(file: &Path, script_sha: &str, launcher: &Path, line: &str) -> String {
+    let d = hex_of(
+        format!(
+            "{}|{script_sha}|{}|{line}",
+            file.display(),
+            launcher.display()
+        )
+        .as_bytes(),
+    );
     format!("{PREFIX}{}", &d[..16])
 }
 
@@ -146,8 +239,8 @@ fn go_bin_report(home: &Path) -> Value {
 
 fn notes() -> Value {
     json!([
-        "Projects the Go build set up call `moai hook ...` from their hook files; after the switch `moai hook` still goes to the Go build (moai.old). Nothing in those projects is changed.",
-        "Their `.moai/status_line.sh` runs `moai statusline`; after the switch that is the Rust three-line render, not the Go one. Nothing in those projects is changed."
+        "Projects the Go build set up call `moai hook ...` from their hook files; through the link that call reaches the Rust build, which answers exit 0 and runs no Go hook. Nothing in those projects is changed.",
+        "Their `.moai/status_line.sh` runs `moai statusline`; through the link that is the Rust render. Nothing in those projects is changed."
     ])
 }
 
@@ -162,23 +255,50 @@ pub fn plan(home: &Path) -> Result<Layer> {
         return Ok(none);
     }
     let file = dir.join("moai");
-    let (action, reason, token) = match classify(&file) {
-        Found::Absent | Found::Link | Found::V2 => return Ok(none),
-        Found::V1(_) => ("replace", None, Some(token_for(&file))),
-        Found::Other(why) => ("left", Some(why), None),
+    let launcher_path = dir.join(LINK_TARGET);
+    let found = classify(&file);
+    // A file this update does not know is never replaced, so nothing beside it is started.
+    let (known, launcher) = match &found {
+        Found::Absent | Found::Link => return Ok(none),
+        Found::Known(known) => (Some(known), Some(launcher_state(&dir, home))),
+        Found::Other(why) => {
+            let _ = why;
+            (None, None)
+        }
     };
-    let summary_line = match (&token, &reason) {
-        (Some(t), _) => format!(
-            "v1 -> v2 (statusline to Rust; spec and session by action) · the old file is kept as {SAVED_PATTERN} · confirm with: moai update --confirm-switch {t}"
+    let launcher_line = launcher.as_ref().and_then(|l| l.line().map(str::to_string));
+    let (action, reason, token) = match (known, launcher.as_ref()) {
+        (Some(known), Some(state)) if state.is_rust() => (
+            "link",
+            None,
+            Some(token_for(
+                &file,
+                known.sha,
+                &launcher_path,
+                state.line().unwrap_or_default(),
+            )),
         ),
-        (None, why) => format!("left as it is: {}", why.as_deref().unwrap_or("")),
+        (Some(_), Some(_)) => ("held", Some(HELD.to_string()), None),
+        _ => ("left", why_of(&found), None),
+    };
+    let summary_line = match (&token, &reason, known) {
+        (Some(t), _, Some(known)) => format!(
+            "{} script -> a link to the Rust launcher `{LINK_TARGET}` · the old script is kept as {SAVED_PATTERN} · confirm with: moai update --confirm-switch {t}",
+            known.name
+        ),
+        (None, Some(why), _) if action == "held" => format!("waits: {why}"),
+        (None, Some(why), _) => format!("left as it is: {why}"),
+        _ => String::new(),
     };
     let preview = json!({
         "action": action,
         "file": file.display().to_string(),
+        "script": known.map(|k| k.name),
+        "script_sha256": known.map(|k| k.sha),
+        "launcher": launcher.as_ref().map(|_| launcher_path.display().to_string()),
+        "launcher_version_line": launcher_line,
+        "link_target": LINK_TARGET,
         "saved_as": SAVED_PATTERN,
-        "v1_sha256": V1_SHA256,
-        "v2_sha256": V2_SHA256,
         "reason": reason,
         "summary": summary_line,
         "confirm_token": token,
@@ -195,6 +315,14 @@ pub fn plan(home: &Path) -> Result<Layer> {
     })
 }
 
+/// Why a file this update does not know is left alone.
+fn why_of(found: &Found) -> Option<String> {
+    match found {
+        Found::Other(why) => Some(why.clone()),
+        _ => None,
+    }
+}
+
 impl Layer {
     /// The part's preview, when there is one.
     pub fn to_json(&self) -> Option<&Value> {
@@ -206,7 +334,7 @@ impl Layer {
         self.token.as_deref()
     }
 
-    /// Whether confirming would write a file (the preview offers `replace`).
+    /// Whether confirming would write a file (the preview offers `link`).
     pub fn writes(&self) -> bool {
         self.token.is_some()
     }
@@ -248,7 +376,7 @@ fn compact_utc(now: &str) -> Option<String> {
     shape.then(|| now.chars().filter(|c| c.is_ascii_alphanumeric()).collect())
 }
 
-/// `YYYYMMDDTHHMMSSZ`: the stamp a saved copy carries.
+/// `YYYYMMDDTHHMMSSZ`: the stamp a kept copy carries.
 fn stamp_ok(stamp: &str) -> bool {
     let b = stamp.as_bytes();
     b.len() == 16
@@ -270,6 +398,11 @@ fn mode_of(_meta: &fs::Metadata) -> u32 {
     0o755
 }
 
+/// Whether this platform makes the link this step is about.
+fn links_here() -> bool {
+    cfg!(unix)
+}
+
 /// A new file that must not exist yet, written whole, mode set exactly (the umask is not
 /// trusted), flushed to disk.
 fn create_new(path: &Path, bytes: &[u8], mode: u32) -> std::io::Result<()> {
@@ -288,6 +421,18 @@ fn create_new(path: &Path, bytes: &[u8], mode: u32) -> std::io::Result<()> {
     f.sync_all()
 }
 
+#[cfg(unix)]
+/// The link, made under a name that must not exist yet.
+fn make_link(temp: &Path) -> std::io::Result<()> {
+    std::os::unix::fs::symlink(LINK_TARGET, temp)
+}
+
+#[cfg(not(unix))]
+/// The backstop behind [`links_here`]: never reached, and it writes nothing if it is.
+fn make_link(_temp: &Path) -> std::io::Result<()> {
+    Err(std::io::Error::other(NO_LINK_HERE))
+}
+
 fn absent(p: &Path) -> bool {
     matches!(fs::symlink_metadata(p), Err(e) if e.kind() == std::io::ErrorKind::NotFound)
 }
@@ -298,10 +443,13 @@ fn sync_dir(dir: &Path) {
     }
 }
 
-/// Replace the previewed script (the confirmed `token`); `now` (`YYYY-MM-DDTHH:MM:SSZ`) names
-/// the saved copy. The preview is computed again and must give the same token; every condition
-/// is checked before the first write; a failed step leaves `moai` whole.
+/// End the previewed script (the confirmed `token`); `now` (`YYYY-MM-DDTHH:MM:SSZ`) names the
+/// kept copy. The preview is computed again and must give the same token; every condition is
+/// checked before the first write; a failed step leaves the script whole.
 pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
+    if !links_here() {
+        return Err(NO_LINK_HERE.into());
+    }
     let stamp = compact_utc(now)
         .ok_or("the clock is not a UTC time (YYYY-MM-DDTHH:MM:SSZ); nothing written")?;
     let fresh = plan(home)?;
@@ -319,9 +467,9 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
             dir.display()
         ));
     }
-    let Found::V1(v1) = classify(&file) else {
+    let Found::Known(script) = classify(&file) else {
         return Err(format!(
-            "{} is not the v1 script any more; nothing written, preview again",
+            "{} is not a script this update knows any more; nothing written, preview again",
             file.display()
         ));
     };
@@ -334,28 +482,29 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
         .map(|m| mode_of(&m))
         .map_err(|e| format!("{}: {e}", file.display()))?;
     // The first write: the old script, kept byte for byte.
-    create_new(&saved, &v1, mode)
+    create_new(&saved, &script.bytes, mode)
         .map_err(|e| format!("saving {}: {e}; nothing replaced", saved.display()))?;
-    if read_bounded(&saved).map(|b| hex_of(&b)).as_deref() != Some(V1_SHA256) {
+    if read_bounded(&saved).map(|b| hex_of(&b)).as_deref() != Some(script.sha) {
         let _ = fs::remove_file(&saved);
         return Err(format!(
-            "the saved copy {} did not read back as v1; nothing replaced",
-            saved.display()
+            "the kept copy {} did not read back as the {} script; nothing replaced",
+            saved.display(),
+            script.name
         ));
     }
     let after_first = |e: String| {
         format!(
-            "{e}; `moai` is unchanged, the old script is saved as {}",
+            "{e}; `moai` is unchanged, the old script is kept as {}",
             saved.display()
         )
     };
     test_fault("switch-after-save").map_err(after_first)?;
-    if let Err(e) = create_new(&temp, V2, 0o755) {
+    if let Err(e) = make_link(&temp) {
         let _ = fs::remove_file(&temp);
-        return Err(after_first(format!("writing {}: {e}", temp.display())));
+        return Err(after_first(format!("linking {}: {e}", temp.display())));
     }
     // Still the script the preview was about, right before the replace.
-    if !matches!(classify(&file), Found::V1(_)) {
+    if !matches!(classify(&file), Found::Known(again) if again.sha == script.sha) {
         let _ = fs::remove_file(&temp);
         return Err(after_first(
             "`moai` changed while the apply ran, so it was not replaced".into(),
@@ -368,9 +517,9 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
         return Err(after_first(e));
     }
     sync_dir(&dir);
-    if !matches!(classify(&file), Found::V2) {
+    if !is_the_link(&file) {
         return Err(format!(
-            "{} did not read back as v2 after the replace; the old script is saved as {}",
+            "{} did not read back as the link this step makes; the old script is kept as {}",
             file.display(),
             saved.display()
         ));
@@ -380,14 +529,18 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
         "file": file.display().to_string(),
         "stamp": stamp,
         "saved": saved.display().to_string(),
-        "v2_sha256": V2_SHA256,
+        "script": script.name,
+        "script_sha256": script.sha,
+        "link": LINK_TARGET,
+        "launcher": dir.join(LINK_TARGET).display().to_string(),
         "revert": format!("moai update --revert-switch {stamp}"),
         "revert_plain": format!("mv \"{}\" \"{}\"", saved.display(), file.display()),
     }))
 }
 
-/// Put the saved copy `moai.before-<stamp>` back: only a copy byte-equal to v1, only over a
-/// `moai` that is still v2, by one rename. Every other case changes nothing and says why.
+/// Put the kept copy `moai.before-<stamp>` back: only a regular file byte-equal to a known
+/// script, only over the link this step makes, by one rename. Every other case changes nothing
+/// and says why.
 pub fn revert(home: &Path, stamp: &str) -> Result<Value> {
     if !stamp_ok(stamp) {
         return Err("the stamp must look like 20261119T074722Z; nothing changed".into());
@@ -416,24 +569,30 @@ pub fn revert(home: &Path, stamp: &str) -> Result<Value> {
         }
         Ok(_) => {}
     }
-    if read_bounded(&saved).map(|b| hex_of(&b)).as_deref() != Some(V1_SHA256) {
+    let Some(bytes) = read_bounded(&saved) else {
         return Err(format!(
-            "{} is not the v1 script; left as it is, nothing changed",
+            "{} could not be read; left as it is, nothing changed",
             saved.display()
         ));
-    }
-    if !matches!(classify(&file), Found::V2) {
+    };
+    let Some((name, sha)) = known_of(&bytes) else {
         return Err(format!(
-            "{} is not the v2 script this update installs; left as it is, the saved copy stays",
+            "{} is not a known script; left as it is, nothing changed",
+            saved.display()
+        ));
+    };
+    if !is_the_link(&file) {
+        return Err(format!(
+            "{} is not the link this step makes to `{LINK_TARGET}`; left as it is, the kept copy stays",
             file.display()
         ));
     }
     test_fault("switch-revert-rename")?;
     fs::rename(&saved, &file).map_err(|e| format!("putting {} back: {e}", saved.display()))?;
     sync_dir(&dir);
-    if read_bounded(&file).map(|b| hex_of(&b)).as_deref() != Some(V1_SHA256) {
+    if !matches!(classify(&file), Found::Known(back) if back.sha == sha) {
         return Err(format!(
-            "{} did not read back as v1 after the revert",
+            "{} did not read back as the {name} script after the revert",
             file.display()
         ));
     }
@@ -441,6 +600,7 @@ pub fn revert(home: &Path, stamp: &str) -> Result<Value> {
         "state": "reverted",
         "file": file.display().to_string(),
         "restored_from": saved.display().to_string(),
-        "v1_sha256": V1_SHA256,
+        "script": name,
+        "script_sha256": sha,
     }))
 }

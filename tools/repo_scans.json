@@ -1640,9 +1640,6 @@
         },
         {
           "prefix": ".moai/specs/SPEC-20261123-claude-md-rewrite"
-        },
-        {
-          "prefix": "install/moai-switch.sh"
         }
       ],
       "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"

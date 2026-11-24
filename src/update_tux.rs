@@ -158,6 +158,7 @@ enum W {
     Switch,
     SwitchReplace,
     SwitchLeft,
+    SwitchHeld,
     SwitchNext,
     SwitchDone,
     SwitchReverted,
@@ -596,9 +597,9 @@ fn w(lang: Lang, word: W) -> &'static str {
         }
         SwitchReplace => {
             if ko {
-                "v1 → v2 · 옛 파일은 moai.before-<UTC> 로 남겨요"
+                "Rust 런처 링크로 바꿔요 · 옛 파일은 moai.before-<UTC> 로 남겨요"
             } else {
-                "v1 → v2 · the old file is kept as moai.before-<UTC>"
+                "→ a link to the Rust launcher · the old script is kept as moai.before-<UTC>"
             }
         }
         SwitchLeft => {
@@ -608,25 +609,32 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "left as it is — not a script this update knows"
             }
         }
+        SwitchHeld => {
+            if ko {
+                "기다려요 — 옆의 moai-cli 가 Rust 빌드인지 보이지 않아요"
+            } else {
+                "waits — the launcher moai-cli beside it is not shown to be the Rust build"
+            }
+        }
         SwitchNext => {
             if ko {
                 "전환 스크립트는 따로 확인해요:"
             } else {
-                "the switch script is replaced on its own:"
+                "the switch script is replaced by a link on its own:"
             }
         }
         SwitchDone => {
             if ko {
-                "전환 스크립트를 v2 로 바꿨어요 — 옛 파일:"
+                "전환 스크립트를 Rust 런처 링크로 바꿨어요 — 옛 파일:"
             } else {
-                "Switch script replaced by v2 — the old file:"
+                "Switch script replaced by a link to the Rust launcher — the old file:"
             }
         }
         SwitchReverted => {
             if ko {
-                "전환 스크립트를 저장해 둔 옛 파일(v1)로 되돌렸어요"
+                "전환 스크립트를 저장해 둔 옛 파일로 되돌렸어요"
             } else {
-                "Switch script put back to the saved old file (v1)"
+                "Switch script put back from the saved old file"
             }
         }
         SwitchFailed => {
@@ -1091,12 +1099,15 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
         };
         rows.push(row(Mark::Warn, w(lang, W::Home).into(), text));
     }
-    // C-33 S3: the switch script a `--confirm-switch` run would replace (confirmed apart, never
-    // by the y); an unknown file is shown as left alone.
+    // The switch script a `--confirm-switch` run would replace by a link to the Rust launcher
+    // (confirmed apart, never by the y); an unknown file is shown as left alone, and a known one
+    // without a launcher shown to be Rust as waiting.
     let s = &v["switch"];
     if s.is_object() && v["switch_result"].is_null() {
         let (mark, word) = if s["confirm_token"].is_string() {
             (Mark::Update, W::SwitchReplace)
+        } else if s["action"].as_str() == Some("held") {
+            (Mark::Warn, W::SwitchHeld)
         } else {
             (Mark::Skip, W::SwitchLeft)
         };

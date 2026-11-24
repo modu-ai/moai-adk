@@ -22,11 +22,5 @@ for MOAI_CLI in "$HOME/.moai/path/moai" "$HOME/.moai-cli/path/moai" "$HOME/.moai
 	fi
 done
 
-# Fallback while the Go build is still installed: the same Go render as today.
-MOAI_GO="$HOME/go/bin/moai.old"
-if [ -f "$MOAI_GO" ] && [ -x "$MOAI_GO" ]; then
-	exec "$MOAI_GO" statusline
-fi
-
 # Nothing installed - exit silently (Claude Code handles a missing statusline).
 exit 0
