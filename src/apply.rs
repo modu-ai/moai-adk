@@ -798,11 +798,14 @@ mod tests {
         out
     }
 
-    /// The leader's condition 1 for the switch (card note 8689): no release build compiles a read
-    /// of its name. Every line of `src/` that names it outside a comment sits in a function that
-    /// carries `#[cfg(debug_assertions)]` directly above it (doc lines and other attributes may
-    /// stand between). The scan needs at least one such line, so a deleted switch does not pass by
-    /// having nothing to check.
+    /// Condition 1 of the switch (SPEC-20261125-slow-test-top2 REQ-4 and REQ-5): no release build
+    /// compiles a read of its name. Every line of `src/` that names it outside a comment sits in a
+    /// function that carries `#[cfg(debug_assertions)]` directly above it (doc lines and other
+    /// attributes may stand between). The scan needs at least one such line, so a deleted switch
+    /// does not pass by having nothing to check. Notations it does not follow, and so a reader of
+    /// this scan has to know: a function with another visibility than the three it lists, a read
+    /// inside a `const fn` (it is credited to the function above it), and a name built by
+    /// `concat!` or held in a module constant.
     #[test]
     fn the_publish_sync_switch_is_read_only_by_a_debug_build_function() {
         let name = ["MOAI_TEST", "PUBLISH", "SYNC"].join("_");
@@ -844,11 +847,63 @@ mod tests {
         assert!(reads >= 1, "the switch is not read anywhere in src/");
     }
 
-    /// The leader's condition 3 (card note 8689): only the receipt-size test hands the switch to a
-    /// command. Its body gives it to both commands that save the receipt, and the shared
-    /// environment of `tests/common` does not carry the name.
+    /// REQ-5: a release build keeps both syncs. Its `publish_sync_skipped` is the one under
+    /// `#[cfg(not(debug_assertions))]`, which a test build does not compile, so the scan reads the
+    /// text: its body is `false` and nothing else, and the two `sync_all` calls of `stage` and
+    /// `sync_parent` are still there, once each, above this test module.
+    #[test]
+    fn a_release_build_keeps_both_publish_syncs() {
+        let source = checkout_text("src/apply.rs");
+        let code = &source[..source
+            .find("#[cfg(test)]\nmod tests {")
+            .expect("the unit test module")];
+        let head = "#[cfg(not(debug_assertions))]\nfn publish_sync_skipped() -> bool {\n";
+        let at = code
+            .find(head)
+            .expect("the release build's publish_sync_skipped")
+            + head.len();
+        let body = &code[at..at + code[at..].find("\n}").expect("end of the function")];
+        assert_eq!(
+            body.trim(),
+            "false",
+            "the release build's publish_sync_skipped must be `false`"
+        );
+        assert_eq!(code.matches(head).count(), 1, "one release function");
+        for call in ["file.sync_all()", "dir.sync_all()"] {
+            assert_eq!(code.matches(call).count(), 1, "{call} must stay, once");
+        }
+        assert_eq!(
+            code.matches("if publish_sync_skipped() {").count(),
+            2,
+            "the two syncs are skipped only through publish_sync_skipped"
+        );
+    }
+
+    /// Condition 3 of the switch (REQ-6): only the receipt-size test hands the switch to a
+    /// command. In all of `tests/` the name is spelled once, in the `UNSYNCED` list of
+    /// `tests/go_state_cli.rs`; `UNSYNCED` is used by the two calls of the receipt-size test and
+    /// by nothing else, and its body gives it to both commands that save the receipt.
     #[test]
     fn only_the_receipt_size_test_gives_the_commands_the_switch() {
+        let name = ["MOAI_TEST", "PUBLISH", "SYNC"].join("_");
+        let list = "UNSYNCED";
+        let code_lines = |text: &str, word: &str| {
+            text.lines()
+                .filter(|l| !l.trim_start().starts_with("//") && l.contains(word))
+                .count()
+        };
+        for (path, text) in checkout_rust_files("tests") {
+            let (names, uses) = (code_lines(&text, &name), code_lines(&text, list));
+            if path.replace('\\', "/") == "tests/go_state_cli.rs" {
+                assert_eq!(names, 1, "{path} spells the switch once, in the list");
+                assert_eq!(
+                    uses, 3,
+                    "{path}: the list and its two uses in the receipt-size test, nothing else"
+                );
+            } else {
+                assert_eq!((names, uses), (0, 0), "{path} must not carry the switch");
+            }
+        }
         let me = checkout_text("tests/go_state_cli.rs");
         let start = me
             .find("fn a_receipt_above_256_kib_reverts_completely()")
@@ -860,14 +915,10 @@ mod tests {
                 .unwrap_or_else(|| panic!("the receipt-size test does not call {call}"));
             let args_end = body[at..].find(");").expect("end of the call") + at;
             assert!(
-                body[at..args_end].contains("UNSYNCED"),
-                "{call} in the receipt-size test does not carry UNSYNCED"
+                body[at..args_end].contains(list),
+                "{call} in the receipt-size test does not carry {list}"
             );
         }
-        let name = ["MOAI_TEST", "PUBLISH", "SYNC"].join("_");
-        assert!(
-            !checkout_text("tests/common/mod.rs").contains(&name),
-            "tests/common must not carry the switch"
-        );
+        assert_eq!(code_lines(body, list), 2, "both uses sit in the test body");
     }
 }

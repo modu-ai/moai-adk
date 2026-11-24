@@ -2375,10 +2375,11 @@
       "always": true,
       "tests": [
         "src/apply.rs::tests::the_publish_sync_switch_is_read_only_by_a_debug_build_function",
+        "src/apply.rs::tests::a_release_build_keeps_both_publish_syncs",
         "src/apply.rs::tests::only_the_receipt_size_test_gives_the_commands_the_switch"
       ],
       "checks": [
-        "cargo test --offline --locked --lib -- the_publish_sync_switch_is_read_only_by_a_debug_build_function only_the_receipt_size_test_gives_the_commands_the_switch"
+        "cargo test --offline --locked --lib -- the_publish_sync_switch_is_read_only_by_a_debug_build_function a_release_build_keeps_both_publish_syncs only_the_receipt_size_test_gives_the_commands_the_switch"
       ],
       "rules": [
         "src/apply.rs"
@@ -2391,13 +2392,13 @@
           ]
         },
         {
-          "prefix": "tests/go_state_cli.rs"
-        },
-        {
-          "prefix": "tests/common/mod.rs"
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
         }
       ],
-      "rejects": "a read of MOAI_TEST_PUBLISH_SYNC in any src file that is not directly under #[cfg(debug_assertions)], so a release build would skip the publish syncs, or a receipt-size test that does not pass the switch to its apply and revert only, or a tests/common that carries it (SPEC-20261125-slow-test-top2)"
+      "rejects": "a read of MOAI_TEST_PUBLISH_SYNC in any src file that is not directly under #[cfg(debug_assertions)], a release build whose publish_sync_skipped is not false or that loses a sync_all, or a tests file other than the receipt-size test that carries the switch or UNSYNCED (SPEC-20261125-slow-test-top2)"
     }
   ]
 }
