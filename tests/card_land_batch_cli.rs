@@ -807,6 +807,7 @@ fn leader_no_entry_no_leader_mode_or_an_ended_lease_confirms_nothing() {
     let w = World::bare(None, PROFILE);
     let cards = w.three(None);
     let check = w.script("check.sh", CHECK);
+    let before = w.integ();
     let out = w.batch(&pairs(&cards), &check);
     assert_eq!(out.status.code(), Some(1), "{}", said(&out));
     assert!(
@@ -814,6 +815,7 @@ fn leader_no_entry_no_leader_mode_or_an_ended_lease_confirms_nothing() {
         "{}",
         said(&out)
     );
+    assert_eq!(w.integ(), before, "no entry: the branch must not move");
     // An entry of the same name with no leader mode.
     w.register_leader(S_LEAD, false);
     let out = w.batch(&pairs(&cards), &check);
@@ -824,11 +826,17 @@ fn leader_no_entry_no_leader_mode_or_an_ended_lease_confirms_nothing() {
         said(&out)
     );
     assert!(w.ranges().is_empty());
+    assert_eq!(
+        w.integ(),
+        before,
+        "no leader mode: the branch must not move"
+    );
 
     // A leader entry whose lease ended.
     let w = World::new();
     let cards = w.three(None);
     let check = w.script("check.sh", CHECK);
+    let before = w.integ();
     let file = w.leader_entry();
     let mut entry: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
     entry["lease_until"] = json!(1);
@@ -841,6 +849,11 @@ fn leader_no_entry_no_leader_mode_or_an_ended_lease_confirms_nothing() {
         said(&out)
     );
     assert!(w.ranges().is_empty());
+    assert_eq!(
+        w.integ(),
+        before,
+        "an ended lease: the branch must not move"
+    );
 }
 
 /// A check script that leaves the summary line a wide `check affected` of the join would leave:
@@ -862,20 +875,24 @@ fn enforcing() -> World {
     w
 }
 
-/// SPEC revision 3, REQ-19 (audit N3): the full wide run that passed on the join covers the scans
-/// of its heads, so the batch lands in enforce mode with no scan receipt on any verdict.
+/// SPEC revision 4, REQ-20 (audit B1 of the follow-up): a batch whose check is another program
+/// covers no scan, even when that program writes the line a full wide run would write: a
+/// replaced check may write any line. The cover of a program's own wide run is pinned by the unit
+/// tests of `batch.rs` (the line is made by the real writer there).
 #[test]
-fn scans_a_full_pass_summary_of_the_join_lets_enforce_mode_land_every_head() {
+fn scans_a_replaced_check_program_covers_no_scan_even_with_a_full_pass_summary() {
     let w = enforcing();
     let cards = w.three(None);
+    let before = w.integ();
     let check = w.script("check.sh", &summary_script(" scans=listed:1", "PASS"));
     let r = result(&w.batch(&pairs(&cards), &check));
-    assert_eq!(names(&r["landed"]).len(), 3, "{r}");
-    assert!(r["dropped"].as_array().unwrap().is_empty(), "{r}");
-    assert_eq!(r["runs"][0]["scans_covered"], json!(true), "{r}");
+    assert!(r["landed"].as_array().unwrap().is_empty(), "{r}");
+    assert_eq!(names(&r["dropped"]).len(), 3, "{r}");
     for (card, _) in &cards {
-        assert_eq!(w.state(card), "done", "{card}");
+        assert!(reason_of(&r, card).contains("scans_missing"), "{r}");
     }
+    assert_eq!(r["runs"][0]["scans_covered"], json!(false), "{r}");
+    assert_eq!(w.integ(), before);
 }
 
 /// REQ-20: a check that leaves no summary, a summary of a part run (`selection=card`) and a

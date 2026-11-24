@@ -1929,8 +1929,12 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             home,
         } => {
             let session = d::session_holder("land", env).ok();
-            // The tests' seam for the check program; the command line has no flag for it.
+            // The tests' seam for the check program; the command line has no flag for it and a
+            // release build does not read the variable at all.
+            #[cfg(debug_assertions)]
             let check_cmd = env("MOAI_TEST_LAND_BATCH_CHECK").map(PathBuf::from);
+            #[cfg(not(debug_assertions))]
+            let check_cmd: Option<PathBuf> = None;
             let mut answer = moai_cli::card::land::batch::land_batch(
                 &project,
                 &resolve_home(home)?,

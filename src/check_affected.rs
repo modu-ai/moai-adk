@@ -2111,28 +2111,17 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     }
     drop(held);
     let pass = results.iter().all(|(_, c)| *c == 0);
-    // A `--lane` run says so right after `scans=`; the bare line has no such word
-    // (SPEC-20261124-ready-receipt-followup REQ-6, REQ-9).
-    let lane_word = match pick {
-        Pick::Lane => " selection=lane",
-        Pick::Card => " selection=card",
-        Pick::Full => "",
-    };
-    let mut line = format!(
-        "check-affected base={} head={} targets={} scans={}{lane_word} test-threads={}",
-        short(&facts.base),
-        short(&facts.head),
-        sel.rust.len(),
-        sel.scans.word(),
-        shown
-    );
-    for (k, c) in summary_words(&results) {
-        line.push_str(&format!(" {k}={c}"));
-    }
-    if let Some(label) = &stopped_at {
-        line.push_str(&format!(" stopped_at={label}"));
-    }
-    line.push_str(if pass { " result=PASS" } else { " result=FAIL" });
+    let line = summary_line(&SummaryParts {
+        base: &facts.base,
+        head: &facts.head,
+        targets: sel.rust.len(),
+        scans: &sel.scans.word(),
+        pick,
+        threads: &shown,
+        results: &results,
+        stopped_at: stopped_at.as_deref(),
+        pass,
+    });
     let mut answer = serde_json::json!({
         "action": "affected",
         "mode": "run",
@@ -2149,6 +2138,50 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     });
     card_fields(&chosen, &mut answer);
     Ok(answer)
+}
+
+/// What the summary line of a finished run is made of.
+pub struct SummaryParts<'a> {
+    pub base: &'a str,
+    pub head: &'a str,
+    pub targets: usize,
+    pub scans: &'a str,
+    pub pick: Pick,
+    pub threads: &'a str,
+    pub results: &'a [(String, i32)],
+    pub stopped_at: Option<&'a str>,
+    pub pass: bool,
+}
+
+/// The one summary line of a finished run: the receipt that `card note` and `card land-batch`
+/// read. A `--lane` or `--card` run says so right after `scans=`; the bare line has no such word
+/// (SPEC-20261124-ready-receipt-followup REQ-6, REQ-9).
+pub fn summary_line(p: &SummaryParts<'_>) -> String {
+    let selection_word = match p.pick {
+        Pick::Lane => " selection=lane",
+        Pick::Card => " selection=card",
+        Pick::Full => "",
+    };
+    let mut line = format!(
+        "check-affected base={} head={} targets={} scans={}{selection_word} test-threads={}",
+        short(p.base),
+        short(p.head),
+        p.targets,
+        p.scans,
+        p.threads
+    );
+    for (k, c) in summary_words(p.results) {
+        line.push_str(&format!(" {k}={c}"));
+    }
+    if let Some(label) = p.stopped_at {
+        line.push_str(&format!(" stopped_at={label}"));
+    }
+    line.push_str(if p.pass {
+        " result=PASS"
+    } else {
+        " result=FAIL"
+    });
+    line
 }
 
 #[cfg(test)]

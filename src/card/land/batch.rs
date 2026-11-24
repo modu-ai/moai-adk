@@ -186,6 +186,15 @@ fn receipt_covers(line: &str, last: &str) -> bool {
         && !words.iter().any(|w| w.starts_with("selection="))
 }
 
+/// Writes the summary line of an in-process run where `moai check affected` writes it for its
+/// caller (`<out>/summary.txt`), so that [`read_run_receipt`] finds it. The command line does this
+/// after `check_affected::run` returns; a direct call of `run` does not.
+fn record_summary(answer: &Value) {
+    if let (Some(out), Some(summary)) = (answer["out"].as_str(), answer["summary"].as_str()) {
+        let _ = crate::card::ready_receipt::write_summary(Path::new(out), summary);
+    }
+}
+
 /// The summary line a wide run left in its private worktree `work` for the join `last`, or
 /// `None` when there is none or it is not a small regular file.
 fn read_run_receipt(work: &Path, last: &str) -> Option<String> {
@@ -375,14 +384,17 @@ fn run_check(
             match crate::check_affected::run(&work, &range, &opts) {
                 Ok(answer) => {
                     let _ = std::fs::write(&log, format!("{}\n", answer["summary"]));
+                    record_summary(&answer);
                     Ok(i32::from(answer["result"] != "PASS"))
                 }
                 Err(why) => Err(format!("check_not_started: {why}")),
             }
         }
     };
-    // The receipt of the run is read before the worktree goes (SPEC D-11).
-    let scans_covered = matches!(result, Ok(0))
+    // The receipt of the run is read before the worktree goes (SPEC D-11). Only this program's own
+    // wide run covers the scans (REQ-20): a replaced check program may write any line.
+    let scans_covered = check.is_none()
+        && matches!(result, Ok(0))
         && read_run_receipt(&work, last).is_some_and(|line| receipt_covers(&line, last));
     // The worktree is the run's own: git removes it with its checkout.
     let _ = super::check::git_text(project, &["worktree", "remove", "--force", &work_text]);
@@ -619,40 +631,137 @@ mod tests {
         }
     }
 
-    fn line(extra: &str, head: &str, result: &str) -> String {
-        format!("check-affected base=b0bffbbd48cc head={head} targets=150{extra} result={result}")
+    const OTHER: &str = "0123456789abcdef0123456789abcdef01234567";
+
+    /// The summary line of a finished run of `head`, made by the writer of `check affected` itself
+    /// (`summary_line`), so the format the batch reads cannot drift from the format that is written.
+    fn made(pick: crate::check_affected::Pick, head: &str, pass: bool) -> String {
+        let results: Vec<(String, i32)> = ["diff_check", "fmt", "clippy", "test"]
+            .iter()
+            .map(|label| {
+                (
+                    label.to_string(),
+                    i32::from(!pass && *label == "test") * 100,
+                )
+            })
+            .collect();
+        crate::check_affected::summary_line(&crate::check_affected::SummaryParts {
+            base: "b0bffbbd48cc3aae17ac595f49ce10d6e3bfb011",
+            head,
+            targets: 150,
+            scans: "listed:135",
+            pick,
+            threads: "5",
+            results: &results,
+            stopped_at: None,
+            pass,
+        })
     }
 
     #[test]
     fn a_full_pass_summary_of_the_join_covers_the_scans() {
-        assert!(receipt_covers(&line("", "da585ae4d507", "PASS"), LAST));
-        assert!(receipt_covers(
-            &format!("{}\n", line(" scans=listed:135", "da585ae4d507", "PASS")),
-            LAST
-        ));
+        use crate::check_affected::Pick;
+        let full = made(Pick::Full, LAST, true);
+        assert!(!full.contains("selection="), "{full}");
+        assert!(receipt_covers(&full, LAST), "{full}");
+        assert!(receipt_covers(&format!("{full}\n"), LAST));
     }
 
     #[test]
     fn a_part_run_a_failure_another_head_or_a_planted_line_covers_nothing() {
+        use crate::check_affected::Pick;
         for (why, text) in [
-            (
-                "a --card run",
-                line(" selection=card", "da585ae4d507", "PASS"),
-            ),
-            (
-                "a --lane run",
-                line(" selection=lane", "da585ae4d507", "PASS"),
-            ),
-            ("a failure", line("", "da585ae4d507", "FAIL")),
-            ("another head", line("", "0123456789ab", "PASS")),
+            ("a --card run", made(Pick::Card, LAST, true)),
+            ("a --lane run", made(Pick::Lane, LAST, true)),
+            ("a failure", made(Pick::Full, LAST, false)),
+            ("another head", made(Pick::Full, OTHER, true)),
             (
                 "two lines",
-                format!("{}\n{}", line("", "da585ae4d507", "PASS"), "x"),
+                format!("{}\n{}", made(Pick::Full, LAST, true), "x"),
             ),
             ("not a summary", "result=PASS".to_string()),
         ] {
             assert!(!receipt_covers(&text, LAST), "{why}");
         }
+    }
+
+    /// Audit B1 of the follow-up: the in-process run of the batch returns its answer without
+    /// writing `summary.txt` (the command line does), so the batch records the line itself, and
+    /// what it reads back from the private worktree is the line the real writer made.
+    #[test]
+    fn the_summary_of_the_in_process_run_is_recorded_and_read_back_as_the_cover() {
+        use crate::check_affected::Pick;
+        let work = tempfile::tempdir().unwrap();
+        let out = work
+            .path()
+            .join("target")
+            .join(format!("check-affected-{}", short(LAST)));
+        std::fs::create_dir_all(&out).unwrap();
+        assert!(read_run_receipt(work.path(), LAST).is_none());
+        let answer =
+            |pick, pass| json!({"out": out.to_string_lossy(), "summary": made(pick, LAST, pass)});
+        record_summary(&answer(Pick::Full, true));
+        let read = read_run_receipt(work.path(), LAST).expect("the summary was recorded");
+        assert!(receipt_covers(&read, LAST), "{read}");
+        // A later part run or failure overwrites it and covers nothing.
+        for (pick, pass) in [(Pick::Card, true), (Pick::Full, false)] {
+            record_summary(&answer(pick, pass));
+            let read = read_run_receipt(work.path(), LAST).unwrap();
+            assert!(!receipt_covers(&read, LAST), "{read}");
+        }
+        // An answer with no `out` or no summary records nothing and does not fail.
+        record_summary(&json!({"summary": "x"}));
+        record_summary(&json!({"out": out.to_string_lossy()}));
+    }
+
+    /// The default check of the batch runs `check_affected::run` in process and records its
+    /// summary right after (a real run needs a Rust project and the whole test set, which no unit
+    /// test starts), so the call is pinned in the text: the line after the run is the record.
+    #[test]
+    fn the_default_check_records_the_summary_of_its_run() {
+        let source = include_str!("batch.rs");
+        let lines: Vec<&str> = source.lines().collect();
+        let run = lines
+            .iter()
+            .position(|l| l.contains("crate::check_affected::run(&work, &range, &opts)"))
+            .expect("the default check runs check affected in process");
+        let after = lines[run + 1..run + 8].join("\n");
+        assert!(
+            after.contains("record_summary(&answer);"),
+            "the summary of the run is not recorded:\n{after}"
+        );
+    }
+
+    /// Audit B1 of the follow-up: the test seam for the check program is read only by a debug
+    /// build. The line that reads `MOAI_TEST_LAND_BATCH_CHECK` stands under `cfg(debug_assertions)`
+    /// and a release build takes `None` (the text is compiled in, so no file is read at run time).
+    #[test]
+    fn the_check_program_seam_is_read_by_debug_builds_only() {
+        let source = include_str!("../../ops/card.rs");
+        let reads: Vec<usize> = source
+            .lines()
+            .enumerate()
+            .filter(|(_, l)| l.contains("env(\"MOAI_TEST_LAND_BATCH_CHECK\")"))
+            .map(|(i, _)| i)
+            .collect();
+        assert_eq!(reads.len(), 1, "the seam is read at one place: {reads:?}");
+        let lines: Vec<&str> = source.lines().collect();
+        let before = lines[..reads[0]]
+            .iter()
+            .rev()
+            .map(|l| l.trim())
+            .find(|l| !l.is_empty() && !l.starts_with("//"));
+        assert_eq!(before, Some("#[cfg(debug_assertions)]"));
+        let after = lines[reads[0] + 1..]
+            .iter()
+            .map(|l| l.trim())
+            .find(|l| !l.is_empty() && !l.starts_with("//"));
+        assert_eq!(after, Some("#[cfg(not(debug_assertions))]"));
+        assert!(
+            lines[reads[0] + 2].contains("let check_cmd: Option<PathBuf> = None;"),
+            "a release build takes no check program: {}",
+            lines[reads[0] + 2]
+        );
     }
 
     #[test]
