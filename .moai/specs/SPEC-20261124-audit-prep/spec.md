@@ -111,7 +111,7 @@ approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7978 of card
 
 - 판 1 은 리더가 승인했어요(노트 7966, 요청 노트 7965 의 선택지 (b), 커밋 `eeba19c082`).
 - 판 2: 구현에 들어가기 전에 `audit-done` 이 연산 파일과 문서 조각을 따로 요구한다는 것을 읽었어요(D-7). Scope 에 `src/ops/audit_done.rs` 와 `operations/audit_done.md` 를 더했고 요구사항과 인수 기준은 판 1 과 같아요. 리더가 승인했어요(노트 7978, 선택지 (a), 커밋 `163c2571d1`).
-- 승인 조건(노트 7978): `audit_slot::prep` 과 `done` 의 동작이 그대로임을, `audit_slot_cli` 전체가 READY 영수증과 같은 head 에서 통과하는 것으로 보여요. 구현 커밋 `fd40aaee40` 에서 17개 전체가 통과했어요(nextest 41개 중 17개, exit 0). READY head 에서 다시 도는 것은 READY 노트의 영수증이 적어요.
+- 승인 조건(노트 7978): `audit_slot::prep` 과 `done` 의 동작이 그대로임을, `audit_slot_cli` 전체가 READY 영수증과 같은 head 에서 통과하는 것으로 보여요. 구현 커밋 `fd40aaee40` 에서 19개 전체가 통과했어요(그 실행은 nextest 41개 = `audit_prep_cli` 9 + `audit_slot_cli` 19 + `help_layout` 11 + 운영 문서 검사 2, 모두 통과). 처음 적은 17개는 잘못 센 숫자였어요. READY head 에서 다시 도는 것은 READY 노트의 영수증이 적어요.
 - RED: 구현 전 `audit_prep_cli` 9개가 모두 `unknown command` 로 실패했어요(실행 9, 통과 0, 커밋 `8ddc017965`).
 - AC-1: met — `prep_takes_a_slot_for_the_card_again_the_same_one_and_refuses_when_all_are_held`, `prep_prepares_the_slot_the_card_already_holds_not_the_first_free_one`, `prep_refuses_what_audit_slot_refuses_and_runs_no_build`.
 - AC-2: met on macOS — `one_build_compiles_the_workspace_units_once_and_every_dependency_fresh`.
