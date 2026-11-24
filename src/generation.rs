@@ -491,10 +491,19 @@ fn link_on_path(root: &Path, rel: &str) -> Option<String> {
 
 /// The write step's re-check (SPEC-20261124-native-role-link-refusal REQ-6): a file of a kind that
 /// is written below `.claude/` is refused when a symbolic link appeared on its path after the plan.
-// RED stub: always `Ok`; the unit test below fails on its assertions until the check is written.
-#[allow(dead_code)]
-fn refuse_link_after_plan(_root: &Path, _kind: &str, _path: &str) -> Result<()> {
-    Ok(())
+fn refuse_link_after_plan(root: &Path, kind: &str, path: &str) -> Result<()> {
+    let guarded = kind.starts_with("generation:project-skill:")
+        || kind.starts_with("generation:native-role:")
+        || kind.starts_with("generation:skill-projection:");
+    if !guarded {
+        return Ok(());
+    }
+    match link_on_path(root, path) {
+        Some(l) => Err(format!(
+            "conflict in {path}: {l} became a symbolic link after the plan; nothing more applied"
+        )),
+        None => Ok(()),
+    }
 }
 
 /// Where a project skill of `host` lives; `None` for a host this tool does not write.
@@ -1398,18 +1407,8 @@ pub fn generation_apply_in(
                 continue;
             }
             // A link that appeared after the plan stops the apply for every kind that writes a
-            // file below `.claude/` (SPEC-20261124-native-role-link-refusal REQ-2, REQ-5).
-            if kind.starts_with("generation:project-skill:")
-                || kind.starts_with("generation:native-role:")
-                || kind.starts_with("generation:skill-projection:")
-            {
-                if let Some(l) = link_on_path(root, &f.path) {
-                    return Err(format!(
-                        "conflict in {}: {l} became a symbolic link after the plan; nothing more applied",
-                        f.path
-                    ));
-                }
-            }
+            // file below `.claude/` (SPEC-20261124-native-role-link-refusal REQ-6).
+            refuse_link_after_plan(root, kind, &f.path)?;
             if f.action == "remove" {
                 remove_owned(root, &request_id, f, &mut receipt)?;
                 continue;
