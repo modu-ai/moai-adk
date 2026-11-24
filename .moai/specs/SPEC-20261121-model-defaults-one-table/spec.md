@@ -96,4 +96,25 @@ approval:
 
 ## Result
 
-(구현 뒤에 채워요.)
+(status approved — 이 Result 는 이 가지에서 직접 돌린 명령의 출력이에요. `check affected` 영수증과 가벼운 검사(AC-7)는 이 Result 가 든 헤드를 이름 짓는 READY 노트에 있어요.)
+
+- AC-1: met — `tests/model_effort_settings.rs` 가 `default_choice` 4줄과 지원 표를 이미 pin 하고 있어요(`no_saved_value_answers_the_default_for_every_tool_and_role`, `every_default_is_inside_the_support_table`, `the_glm_table_lists_54_and_keeps_the_53_rows`). 아래 묶음 실행(green2)에서 통과했고, 표 값과 그 시험은 바꾸지 않았어요.
+- AC-2: met — `tests/model_defaults_one_table.rs` 의 `without_a_settings_file_a_role_session_starts_with_the_table_default`(설정 파일 없음, 도구 둘×역할 둘의 argv 가 표의 모델·effort 이고 Claude 는 전체 id, GLM 은 `zai/` 를 뗀 id, 기본값은 저장값 노트를 달지 않음)와 `a_settings_file_without_models_gives_the_table_default`(설정 파일은 있으나 `models` 없음).
+- AC-3: met — `a_flag_given_keeps_that_field_and_the_table_fills_the_other`(준 깃발은 남고 다른 칸만 표), `a_saved_choice_wins_over_the_table_and_the_other_role_keeps_the_table`(저장값 > 표, 저장 안 한 역할은 표); 지원 표 밖 저장값 거절은 기존 `an_unsupported_saved_entry_refuses_a_role_launch` 가 그대로 통과.
+- AC-4: met — `a_session_without_a_role_keeps_opus_and_medium`(새)와 `launcher_roleless` 의 roleless 시험들. 레거시 `session` 하위 명령은 런처 역할 세션이 아니어서 `opus`/`medium` 그대로예요(`role_paths_are_unchanged`).
+- AC-5: met — 낡은 기대 16개를 지우지 않고 표의 값으로 바꿨어요(`launcher_advisor_setting`, `launcher_agent_entry`, `launcher_agent_numbering`, `launcher_permissions_setting`, `launcher_reads_models`, `launcher_roleless`, `product_cli`). 한 가지 바뀐 행동: 에이전트 기본 모델이 sonnet 이라 advisor `sonnet` 이 더는 낮은 등급이 아니어서, 낮은 등급 거절 시험은 `cc -a --model opus` 로 물어요.
+- AC-6: met — `the_model_and_effort_help_names_the_default_table`(낡은 문구가 없고 `default table`·`role` 이 있음)와 `MOAI_HELP_GOLDEN_WRITE=1 cargo test --test help_layout` 로 다시 쓴 골든 네 파일(`all`·`all-60`·`all-80`·`all-dumb`)이 그 두 줄만 바뀐 것을 diff 로 읽었어요.
+
+증거 (이 가지에서 직접 돌린 것):
+
+- 먼저 실패함: RED 커밋 `9ae2a56761` 에서 `cargo nextest run --locked --offline --no-fail-fast --test model_defaults_one_table` → exit 100, 6 run, 1 passed(`a_session_without_a_role_keeps_opus_and_medium`, 처음부터 통과하는 보호 시험), 5 failed(`target/model-defaults/red.log`). 실패 이유는 `opus` 가 나오고 표의 `claude-opus-5-5` 가 아님, 그리고 낡은 도움말 문구예요.
+- 통과: 코드 변경 뒤 런처 시험 묶음(`--lib` 와 새 시험, `model_effort_settings`·`model_effort_questions`, `launcher_*` 열 개, `codex_launcher_removed`, `omp_launcher_removed`, `product_cli`, `update_model_pick`) → 2128 run. 낡은 기대를 고친 뒤 2127 passed, 1 failed(`role_paths_are_unchanged` 의 레거시 `session` 기대를 제가 잘못 바꾼 것이라 되돌림)(`target/model-defaults/green2.log`); 되돌린 뒤 `--test model_defaults_one_table --test launcher_roleless` → 9 run, 9 passed, exit 0(`green3.log`).
+- 뮤턴트 7개가 모두 죽었어요(`target/model-defaults/mutants.sh`, 결과 `mutants.log`, 매번 적용 여부와 복원을 확인): M1 표 폴백 제거, M2 설정 파일이 있을 때만 표, M3 GLM `zai/` 접두사를 떼지 않음, M4 준 모델 깃발을 덮어씀, M5 기본값에도 저장값 노트, M6 표가 저장값을 이김, M7 역할 없는 세션에도 표 → 모두 `--test model_defaults_one_table` exit 100.
+- 버리는 HOME 의 `--dry-run`(`target/model-defaults/dry.sh`, 출력 `dry.out`, 설정 파일 없음, 더미 토큰, 호스트 미시작): `cc -l` → `claude-opus-5-5`/`high`, `cc -a` → `claude-sonnet-5-5`/`high`, `glm -l` → `glm-5.4[1m]`/`high`, `glm -a` → `glm-5.3-flash`/`max`, `cc` → `opus`/`medium`; 모두 exit 0.
+
+결정 (D-1~D-5 는 위 Decisions): 새로 함, 표는 지금 4줄, 전체 id, 조각 A 먼저, 도움말 골든은 판 2 로 범위에 더함.
+
+못 한 것 (not_run):
+
+- 조각 B(질문 화면 재설계)는 C-248 착지 뒤라 이 개정에 없어요. 이 카드는 B 기준으로 열린 채 남아요.
+- 실제 `~/.moai`·`~/.claude` 에 쓰기, 실제 호스트 시작, Linux·Windows, 독립 감사(작성자가 아닌 세션 몫).
