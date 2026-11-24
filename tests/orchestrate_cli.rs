@@ -851,6 +851,12 @@ fn judged_lines_of_another_shape_judge_nothing() {
         "agent-1",
         &format!("LANE-READY-INTEGRATION C-5 head={HEAD_A}\nAUDIT #5 (x) head {HEAD_A} base {BASE} — verdict: PASS"),
     );
+    // A note that starts with AUDIT but reads as a verdict only on its second line.
+    w.note(
+        5,
+        "leader",
+        &format!("AUDIT #5 (x) is below\nAUDIT #5 (x) head {HEAD_A} base {BASE} — verdict: PASS"),
+    );
     let plan = w.plan();
     assert_eq!(
         audited(&plan),
@@ -880,6 +886,32 @@ fn judged_lines_of_another_shape_judge_nothing() {
         vec![("C-3", HEAD_B, false), ("C-3", HEAD_D, false)],
         "{plan}"
     );
+}
+
+#[test]
+fn judged_the_newest_note_of_a_head_wins() {
+    let w = world();
+    w.lane("agent-1", S_ONE);
+    // C-1: FAIL then PASS on one head (the repair was judged again): queued, not dispatched.
+    w.card(1, "research", "ready", "p0", &["docs/a.md"]);
+    w.reserve(1, 1, S_TWO, "released");
+    w.ready_note(1, HEAD_A);
+    w.audit_note(1, "leader", HEAD_A, "FAIL");
+    w.audit_note(1, "leader", HEAD_A, "PASS");
+    // C-2: PASS then FAIL on one head: dispatched again, not queued.
+    w.card(2, "research", "ready", "p1", &["docs/b.md"]);
+    w.reserve(2, 1, S_TWO, "released");
+    w.ready_note(2, HEAD_B);
+    w.audit_note(2, "leader", HEAD_B, "PASS");
+    w.audit_note(2, "leader", HEAD_B, "FAIL");
+    let plan = w.plan();
+    assert_eq!(queued(&plan), vec![("C-1".to_string(), "note".to_string())]);
+    assert_eq!(
+        dispatched(&plan),
+        vec![("agent-1".to_string(), "C-2".to_string())],
+        "{plan}"
+    );
+    assert!(audited(&plan).is_empty(), "{plan}");
 }
 
 #[test]
@@ -919,11 +951,18 @@ fn landed_a_head_inside_the_tip_is_neither_audited_nor_dispatched_nor_queued() {
     w.ready_note(4, &outside);
     w.verdict(4, &outside, true, S_AUDITOR);
     w.card(5, "research", "ready", "p1", &["docs/e.md"]);
+    // C-6 hands back a head that names no commit of the repository: it is not landed.
+    w.card(6, "research", "ready", "p1", &["docs/f.md"]);
+    w.reserve(6, 1, S_TWO, "released");
+    w.ready_note(6, HEAD_A);
     let refs = git(&w.project, &["for-each-ref"]);
     let plan = w.plan();
     assert_eq!(
         audited(&plan),
-        vec![("C-2".to_string(), outside.clone())],
+        vec![
+            ("C-2".to_string(), outside.clone()),
+            ("C-6".to_string(), HEAD_A.to_string()),
+        ],
         "{plan}"
     );
     assert_eq!(
