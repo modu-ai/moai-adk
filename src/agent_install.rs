@@ -263,7 +263,12 @@ fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
     }
 }
 
-fn host_plan(home: &Path, host: &str, rendered: &[RenderedFile]) -> HostPlan {
+fn host_plan(
+    home: &Path,
+    host: &str,
+    rendered: &[RenderedFile],
+    sources: &BTreeMap<String, String>,
+) -> HostPlan {
     // An unnamed host folder (an empty or relative relocation variable) shows the folder
     // under HOME and is blocked below by `host_folders_plain`.
     let dir = host_dir(home, host).unwrap_or_else(|_| {
@@ -325,10 +330,18 @@ fn host_plan(home: &Path, host: &str, rendered: &[RenderedFile]) -> HostPlan {
                 }
             },
         };
-        let legacy = flat.as_deref().map(|f| match owned.as_deref() {
-            Some(o) if o == f => "remove",
-            Some(_) => "kept_edited",
-            None => "kept_foreign",
+        // Ours (SPEC-20261124-update-flat-agent-ownership REQ-1): the bytes this tool recorded,
+        // the bytes it renders now, or the role's file in the package being applied. Anything
+        // else is the person's: edited when we had a record for it, foreign when we had none.
+        let legacy = flat.as_deref().map(|f| {
+            let ours = owned.as_deref() == Some(f)
+                || f == new
+                || sources.get(file).map(String::as_str) == Some(f);
+            match owned.as_deref() {
+                _ if ours => "remove",
+                Some(_) => "kept_edited",
+                None => "kept_foreign",
+            }
         });
         // A record made for the flat file is not the baseline of a nested file that is not
         // there yet: that one is a fresh create.
@@ -401,6 +414,30 @@ fn rendered_all(package: &Path, agents: &Path) -> Result<BTreeMap<String, Vec<Re
     Ok(out)
 }
 
+/// The sha of each role's file in the package being applied (`agents/<role>.md`), keyed by the
+/// rendered file name (`moai-<role>.md`). An earlier install copied these files as they were,
+/// so a flat file with these bytes is ours. A role with no file in the folder has no entry.
+fn package_file_shas(
+    agents: &Path,
+    rendered: &BTreeMap<String, Vec<RenderedFile>>,
+) -> Result<BTreeMap<String, String>> {
+    let mut out = BTreeMap::new();
+    for files in rendered.values() {
+        for (file, _, _) in files {
+            let Some(role) = file
+                .strip_prefix("moai-")
+                .and_then(|r| r.strip_suffix(".md"))
+            else {
+                continue;
+            };
+            if let Some(bytes) = current_file(&agents.join(format!("{role}.md")))? {
+                out.insert(file.clone(), sha(&bytes));
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// Read-only preview of every host; writes nothing. `package` is the skill package the
 /// agents' `reads` name, `agents` the source folder outside it (#2721, `agent_defs`).
 pub fn plan(home: &Path, package: &Path, agents: &Path) -> Result<Plan> {
@@ -418,10 +455,11 @@ pub fn plan_for(home: &Path, package: &Path, agents: &Path, hosts: &[&str]) -> R
     let rendered = rendered_all(package, agents)?;
     // The source folder's own digest (#2721); `None` when there is no folder.
     let agents_digest = crate::agent_defs::source_digest(agents)?;
+    let sources = package_file_shas(agents, &rendered)?;
     let hosts = HOSTS
         .iter()
         .filter(|h| hosts.contains(h))
-        .map(|h| host_plan(&home, h, &rendered[*h]))
+        .map(|h| host_plan(&home, h, &rendered[*h], &sources))
         .collect();
     let mut plan = Plan {
         schema_version: SCHEMA_VERSION,
@@ -483,11 +521,82 @@ pub fn apply_for(
     plan_digest: &str,
     permission: &str,
 ) -> Result<serde_json::Value> {
+    apply_with_choices(home, package, agents, hosts, plan_digest, permission, &[])
+}
+
+/// The `host:file` name a plan line goes by in a choice and in the result lists.
+fn key(host: &str, file: &str) -> String {
+    format!("{host}:{file}")
+}
+
+/// Whether a plan line is a flat-file conflict: a flat copy of the earlier layout that is not
+/// ours (edited, or never written by this tool), which blocks the nested copy.
+fn is_flat_conflict(f: &FilePlan) -> bool {
+    f.action == "conflict" && matches!(f.legacy.as_deref(), Some("kept_edited" | "kept_foreign"))
+}
+
+/// The `host:file` name of every flat-file conflict of the plan, in plan order.
+pub fn flat_conflicts(p: &Plan) -> Vec<String> {
+    p.hosts
+        .iter()
+        .filter(|h| h.preflight == "ok")
+        .flat_map(|h| h.files.iter().map(move |f| (h, f)))
+        .filter(|(_, f)| is_flat_conflict(f))
+        .map(|(h, f)| key(&h.host, &f.file))
+        .collect()
+}
+
+/// What the apply does with the nested file of a flat-file conflict whose flat file the person
+/// gave up: write it when it is absent or still what we wrote, leave it when it already holds
+/// the render, and refuse when it was edited too (never overwritten by a choice about the
+/// flat file).
+fn chosen_action(f: &FilePlan) -> Result<&'static str> {
+    let new = f.new_sha256.as_deref();
+    match f.current_sha256.as_deref() {
+        None => Ok("create"),
+        current if current == new => Ok("unchanged"),
+        current => match decide(f.baseline_sha256.as_deref(), current, new) {
+            Decision::Apply => Ok("update"),
+            _ => Err(format!(
+                "{}: the nested copy was edited too; nothing written, resolve it by hand",
+                f.file
+            )),
+        },
+    }
+}
+
+/// [`apply_for`] that also uses MoAI's file for the named flat-file conflicts (`host:file`):
+/// the person's flat file is kept in the receipt, the nested copy is written and the flat file
+/// removed. A name that is no flat-file conflict of the fresh plan refuses the whole apply with
+/// nothing written. A conflict left over makes the state `partial` with the names in `kept`.
+pub fn apply_with_choices(
+    home: &Path,
+    package: &Path,
+    agents: &Path,
+    hosts: &[&str],
+    plan_digest: &str,
+    permission: &str,
+    use_moais: &[String],
+) -> Result<serde_json::Value> {
     validate_permission(permission)?;
     let fresh = plan_for(home, package, agents, hosts)?;
     if fresh.plan_digest != plan_digest {
         return Err("stale or altered plan; re-preview required".into());
     }
+    let conflicts = flat_conflicts(&fresh);
+    for c in use_moais {
+        if !conflicts.contains(c) {
+            return Err(format!(
+                "{c}: not a flat-file conflict of the plan; nothing written"
+            ));
+        }
+    }
+    let chosen = |host: &str, file: &FilePlan| use_moais.contains(&key(host, &file.file));
+    let kept: Vec<String> = conflicts
+        .iter()
+        .filter(|c| !use_moais.contains(c))
+        .cloned()
+        .collect();
     let home = PathBuf::from(&fresh.home);
     let rendered = rendered_all(package, agents)?;
     let writes: Vec<(&HostPlan, &FilePlan)> = fresh
@@ -495,12 +604,22 @@ pub fn apply_for(
         .iter()
         .filter(|h| h.preflight == "ok")
         .flat_map(|h| h.files.iter().map(move |f| (h, f)))
-        .filter(|(_, f)| writes_anything(f))
+        .filter(|(h, f)| writes_anything(f) || chosen(&h.host, f))
         .collect();
+    // Every choice is checked before the first write.
+    for (h, f) in &writes {
+        if chosen(&h.host, f) {
+            chosen_action(f)?;
+        }
+    }
     if writes.is_empty() {
-        return Ok(
-            serde_json::json!({"state": "unchanged", "plan_digest": fresh.plan_digest, "written": []}),
-        );
+        let mut v =
+            serde_json::json!({"state": "unchanged", "plan_digest": fresh.plan_digest, "written": []});
+        if !kept.is_empty() {
+            v["state"] = "partial".into();
+            v["kept"] = serde_json::json!(kept);
+        }
+        return Ok(v);
     }
     let (id, receipt_dir) = new_receipt_dir(&home)?;
     let mut receipt = Receipt {
@@ -540,9 +659,17 @@ pub fn apply_for(
                 target.display()
             ));
         }
+        // A chosen conflict is written like a move: its effective action is decided from the
+        // nested file (checked above), its flat file goes after the nested copy.
+        let replacing = chosen(&host.host, file);
+        let action = if replacing {
+            chosen_action(file)?
+        } else {
+            file.action.as_str()
+        };
         // The nested copy first: a stop after it leaves a duplicate that the next preview shows
         // as a move again, never a missing agent (SPEC risk 2).
-        if file.action == "create" || file.action == "update" {
+        if action == "create" || action == "update" {
             if let Some(b) = &before {
                 let keep = receipt_dir.join("before").join(&host.host);
                 fs::create_dir_all(&keep).map_err(|_| "agent receipt folder unavailable")?;
@@ -556,7 +683,7 @@ pub fn apply_for(
             receipt.entries.push(ReceiptEntry {
                 host: host.host.clone(),
                 file: file.file.clone(),
-                action: file.action.clone(),
+                action: action.to_string(),
                 before_sha256: before.as_deref().map(sha),
                 after_sha256: after.clone(),
             });
@@ -569,7 +696,7 @@ pub fn apply_for(
             )?;
             written.push(format!("{}:{}", host.host, file.file));
         }
-        if file.legacy.as_deref() == Some("remove") {
+        if replacing || file.legacy.as_deref() == Some("remove") {
             let flat_dir =
                 legacy_dir(&home, &host.host)?.ok_or("no earlier folder for the host")?;
             let flat = flat_dir.join(&file.file);
@@ -588,7 +715,13 @@ pub fn apply_for(
             receipt.entries.push(ReceiptEntry {
                 host: host.host.clone(),
                 file: file.file.clone(),
-                action: "remove_legacy".into(),
+                // A file the person gave up is its own action: the revert puts it back without
+                // making it ours (the record must not name the person's bytes).
+                action: if replacing {
+                    "replace_legacy".into()
+                } else {
+                    "remove_legacy".into()
+                },
                 before_sha256: Some(sha(&bytes)),
                 after_sha256: sha(&bytes),
             });
@@ -609,12 +742,17 @@ pub fn apply_for(
     }
     receipt.status = "committed".into();
     write_json(&receipt_path, &receipt)?;
-    Ok(serde_json::json!({
+    let mut v = serde_json::json!({
         "state": "applied",
         "plan_digest": fresh.plan_digest,
         "receipt": id,
         "written": written,
-    }))
+    });
+    if !kept.is_empty() {
+        v["state"] = "partial".into();
+        v["kept"] = serde_json::json!(kept);
+    }
+    Ok(v)
 }
 
 /// Whether the apply writes anything for this file: a nested create or update, or the removal
@@ -624,40 +762,124 @@ pub fn writes_anything(f: &FilePlan) -> bool {
 }
 
 /// SPEC-20261124-update-flat-agent-ownership REQ-11: whether the update has something to ask
-/// about for this plan: a write, or a flat-file conflict the person can choose for.
-/// RED stub: it still answers like [`writes_anything`] over the plan.
+/// about for this plan: a write, or a flat-file conflict the person can choose for. A conflict
+/// alone writes nothing, but without the question the person could never choose.
 pub fn asks_anything(p: &Plan) -> bool {
-    p.hosts
-        .iter()
-        .any(|h| h.preflight == "ok" && h.files.iter().any(writes_anything))
+    p.hosts.iter().any(|h| {
+        h.preflight == "ok"
+            && h.files
+                .iter()
+                .any(|f| writes_anything(f) || is_flat_conflict(f))
+    })
 }
 
-/// [`apply_for`] that also uses MoAI's file for the named flat-file conflicts (`host:file`).
-/// RED stub: it ignores the choices.
-pub fn apply_with_choices(
-    home: &Path,
+/// The most lines of a difference that are printed; the rest is counted.
+const DIFF_LINES: usize = 80;
+
+/// The lines that differ between `mine` and `moai`, in order: `- ` for a line only in mine and
+/// `+ ` for a line only in MoAI's, from the longest common run of lines. Every line goes through
+/// [`crate::ui::visible`], so a control character of the person's file cannot move the cursor.
+fn difference(mine: &str, moai: &str) -> Vec<String> {
+    let a: Vec<&str> = mine.lines().collect();
+    let b: Vec<&str> = moai.lines().collect();
+    // `common[i][j]`: the length of the longest common run of a[i..] and b[j..].
+    let mut common = vec![vec![0usize; b.len() + 1]; a.len() + 1];
+    for i in (0..a.len()).rev() {
+        for j in (0..b.len()).rev() {
+            common[i][j] = if a[i] == b[j] {
+                common[i + 1][j + 1] + 1
+            } else {
+                common[i + 1][j].max(common[i][j + 1])
+            };
+        }
+    }
+    let (mut i, mut j) = (0, 0);
+    let mut out = Vec::new();
+    while i < a.len() || j < b.len() {
+        if i < a.len() && j < b.len() && a[i] == b[j] {
+            i += 1;
+            j += 1;
+        } else if j == b.len() || (i < a.len() && common[i + 1][j] >= common[i][j + 1]) {
+            out.push(format!("- {}", crate::ui::visible(a[i])));
+            i += 1;
+        } else {
+            out.push(format!("+ {}", crate::ui::visible(b[j])));
+            j += 1;
+        }
+    }
+    out
+}
+
+/// Asks once per flat-file conflict of `plan` whether to keep mine (`k`), use MoAI's (`m`) or
+/// show the difference (`d`, then the same question again), and answers the `host:file` names
+/// the person chose MoAI's file for. Anything else, an empty line and the end of the input keep
+/// the person's file. Reads only; the choice is applied by [`apply_with_choices`].
+pub fn choose_flat_conflicts(
+    plan: &Plan,
     package: &Path,
     agents: &Path,
-    hosts: &[&str],
-    plan_digest: &str,
-    permission: &str,
-    _use_moais: &[String],
-) -> Result<serde_json::Value> {
-    apply_for(home, package, agents, hosts, plan_digest, permission)
-}
-
-/// Asks once per flat-file conflict of `plan` whether to keep mine, use MoAI's or show the
-/// difference, and answers the `host:file` names the person chose MoAI's file for.
-/// RED stub: it asks nothing and keeps every file.
-pub fn choose_flat_conflicts(
-    _plan: &Plan,
-    _package: &Path,
-    _agents: &Path,
-    _input: &mut dyn std::io::BufRead,
-    _out: &mut dyn std::io::Write,
-    _korean: bool,
+    input: &mut dyn std::io::BufRead,
+    out: &mut dyn std::io::Write,
+    korean: bool,
 ) -> Result<Vec<String>> {
-    Ok(Vec::new())
+    let rendered = rendered_all(package, agents)?;
+    let home = Path::new(&plan.home);
+    let mut chosen = Vec::new();
+    let write_err = |_| "could not write the question".to_string();
+    for name in flat_conflicts(plan) {
+        let (host, file) = name.split_once(':').ok_or("unreadable conflict name")?;
+        let moai = rendered
+            .get(host)
+            .and_then(|files| files.iter().find(|(f, _, _)| f == file))
+            .map(|(_, text, _)| text.as_str())
+            .ok_or("rendered file missing")?;
+        let flat = legacy_dir(home, host)?
+            .ok_or("no earlier folder for the host")?
+            .join(file);
+        let mine = current_file(&flat)?.ok_or("earlier file missing")?;
+        let mine = String::from_utf8_lossy(&mine).into_owned();
+        loop {
+            let (head, options) = if korean {
+                (
+                    format!("{file}: 내 파일이 MoAI 것과 달라요"),
+                    "  내 것 유지(k) · MoAI 것 쓰기(m) · 차이 보기(d) [k]: ",
+                )
+            } else {
+                (
+                    format!("{file}: your file differs from MoAI's"),
+                    "  keep mine (k) · use MoAI's (m) · show the difference (d) [k]: ",
+                )
+            };
+            writeln!(out, "{}", crate::ui::visible(&head)).map_err(write_err)?;
+            write!(out, "{options}").map_err(write_err)?;
+            out.flush().map_err(write_err)?;
+            let mut answer = String::new();
+            input
+                .read_line(&mut answer)
+                .map_err(|_| "could not read the answer")?;
+            // The answer ends the prompt line even when nothing echoed the person's Enter (a
+            // scripted input, the end of the input); on a terminal it is a separating blank line.
+            writeln!(out).map_err(write_err)?;
+            match answer.trim().to_ascii_lowercase().as_str() {
+                "m" => {
+                    chosen.push(name.clone());
+                    break;
+                }
+                "d" => {
+                    let lines = difference(&mine, moai);
+                    for l in lines.iter().take(DIFF_LINES) {
+                        writeln!(out, "{l}").map_err(write_err)?;
+                    }
+                    if lines.len() > DIFF_LINES {
+                        let more = lines.len() - DIFF_LINES;
+                        writeln!(out, "… {more}").map_err(write_err)?;
+                    }
+                }
+                _ => break,
+            }
+        }
+    }
+    Ok(chosen)
 }
 
 fn receipt_id_ok(id: &str) -> bool {
@@ -714,7 +936,7 @@ pub fn revert_in(
         }
         let moved =
             |n: &ReceiptEntry| n.action == "remove_legacy" && n.host == e.host && n.file == e.file;
-        if e.action == "remove_legacy" {
+        if e.action == "remove_legacy" || e.action == "replace_legacy" {
             // The flat file goes back only when the nested copy of the same apply is going
             // away too (unchanged since); a changed nested copy stays, with the flat file
             // gone, so no two files of one scope share a name.
@@ -747,9 +969,14 @@ pub fn revert_in(
                 return Err("before bytes do not match the receipt".into());
             }
             publish_exclusive(&flat, &bytes)?;
-            let mut state = read_state(&home, &e.host)?;
-            state.owned.insert(e.file.clone(), sha(&bytes));
-            write_json(&state_root(&home).join(format!("{}.json", e.host)), &state)?;
+            // A restored flat file we moved is ours again, so the record names it. A file the
+            // person gave up is the person's: the record is left alone, so the next update
+            // sees a conflict again and never moves it unasked.
+            if e.action == "remove_legacy" {
+                let mut state = read_state(&home, &e.host)?;
+                state.owned.insert(e.file.clone(), sha(&bytes));
+                write_json(&state_root(&home).join(format!("{}.json", e.host)), &state)?;
+            }
             reverted.push(format!("{}:{} (restored)", e.host, e.file));
             continue;
         }
