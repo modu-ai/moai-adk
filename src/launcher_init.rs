@@ -370,12 +370,15 @@ fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String
         let digest = plan.plan_digest.clone();
         profile::apply(top, plan, &digest, PERMISSION)?;
         done.push(crate::state_root::rel(top, "project.yaml"));
+        // The two test seams are read in debug builds only (SPEC-20261124-test-seams-release).
+        #[cfg(debug_assertions)]
         if let Some(ms) = std::env::var(INIT_TEST_HOLD_VAR)
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
         {
             std::thread::sleep(std::time::Duration::from_millis(ms.min(3000)));
         }
+        #[cfg(debug_assertions)]
         if std::env::var_os(INIT_TEST_FAIL_VAR).is_some() {
             return Err("moai: initialization stopped after the settings (test)".into());
         }
