@@ -2533,3 +2533,125 @@ fn every_word_of_a_pinned_sentence_is_read() {
         }
     }
 }
+
+/// SPEC-20261124-worktree-entry-no-prompt REQ-1 to REQ-6: the one paragraph of `work.md` that
+/// says how a lane makes the worktree of a card. Each sentence is compared whole, so a mutant
+/// that drops one word of one sentence fails the test that holds it.
+const WORKTREE_ENTRY_SENTENCES: [&str; 5] = [
+    "Make a card's worktree from outside every card worktree, with an absolute path, in this order.",
+    "If you entered a worktree with `EnterWorktree`, leave it with `ExitWorktree(keep)` first, because the host refuses a `git worktree add` into the shared checkout from inside it.",
+    "Read the primary checkout's path from the first entry of `git worktree list --porcelain`, then run `git worktree add -b <branch> <primary checkout>/.claude/worktrees/<name> <integration branch>`; never give it a relative path, which git resolves against the folder you stand in and so nests the new worktree inside another one.",
+    "Read `git worktree list --porcelain` again and call `EnterWorktree` with that same absolute `path` only when the path is listed and its folder exists; the host asks the person about a path that does not exist, so an unlisted path is fixed at its creation and never entered.",
+    "Never make a card worktree with `EnterWorktree` and a `name`: it branches from the remote default branch, not from the integration branch.",
+];
+
+/// The paragraph of `work.md` that holds the first sentence of `WORKTREE_ENTRY_SENTENCES`.
+fn worktree_entry_paragraph(work: &str) -> &str {
+    work.split("\n\n")
+        .find(|p| p.contains(WORKTREE_ENTRY_SENTENCES[0]))
+        .expect("work.md has the card worktree paragraph")
+}
+
+/// Positions of `sentences` in `paragraph`, each of which must be present.
+fn positions_in(paragraph: &str, sentences: &[&str]) -> Vec<usize> {
+    sentences
+        .iter()
+        .map(|s| {
+            paragraph
+                .find(s)
+                .unwrap_or_else(|| panic!("the card worktree paragraph lacks {s:?}"))
+        })
+        .collect()
+}
+
+/// AC-1 (REQ-1, REQ-2): the paragraph opens the method, gives the create command with an
+/// absolute path under the primary checkout and bans a relative path; it stands after the exit
+/// paragraph and before the closing paragraph about lane commands.
+#[test]
+fn worktree_entry_work_creates_by_absolute_path() {
+    let work = read("workflows/work.md");
+    let paragraph = worktree_entry_paragraph(&work);
+    let at = positions_in(
+        paragraph,
+        &[WORKTREE_ENTRY_SENTENCES[0], WORKTREE_ENTRY_SENTENCES[2]],
+    );
+    assert!(
+        at[0] < at[1],
+        "the opening sentence follows the create sentence: {at:?}"
+    );
+    let exit = work
+        .find(WORK_EXIT_SENTENCES[4])
+        .expect("work.md has the closing sentence of the exit paragraph");
+    let entry = work.find(WORKTREE_ENTRY_SENTENCES[0]).unwrap();
+    let tail = work
+        .find("\nWhere the project offers lane commands")
+        .expect("work.md has the lane commands paragraph");
+    assert!(
+        exit < entry && entry < tail,
+        "the card worktree paragraph is out of place: {exit} {entry} {tail}"
+    );
+}
+
+/// AC-2 (REQ-3, REQ-4): the read-back of the worktree list comes after the create command and
+/// before the entry, and an unlisted path is never entered, with the reason.
+#[test]
+fn worktree_entry_work_reads_back_before_entering() {
+    let work = read("workflows/work.md");
+    let paragraph = worktree_entry_paragraph(&work);
+    let at = positions_in(
+        paragraph,
+        &[WORKTREE_ENTRY_SENTENCES[2], WORKTREE_ENTRY_SENTENCES[3]],
+    );
+    assert!(
+        at[0] < at[1],
+        "the read-back precedes the create command: {at:?}"
+    );
+}
+
+/// AC-3 (REQ-5, REQ-6): the ban on `EnterWorktree` with a `name`, with its reason, ends the
+/// paragraph, and leaving the entered worktree comes before the create command.
+#[test]
+fn worktree_entry_work_bans_name_and_exits_first() {
+    let work = read("workflows/work.md");
+    let paragraph = worktree_entry_paragraph(&work);
+    let at = positions_in(paragraph, &WORKTREE_ENTRY_SENTENCES);
+    assert!(
+        at.windows(2).all(|w| w[0] < w[1]),
+        "the card worktree sentences are not in order: {at:?}"
+    );
+    assert!(
+        paragraph.ends_with(WORKTREE_ENTRY_SENTENCES[4]),
+        "the ban on a name does not end the paragraph"
+    );
+}
+
+/// AC-4 (REQ-7): the Claude Code row of the git safety reference and the worktree entry section
+/// of the lane rules name the absolute path and point to `work.md`; neither spells the create
+/// command again.
+#[test]
+fn worktree_entry_other_files_point_to_work() {
+    let safety = read("references/internal/git-safety.md");
+    let row = safety
+        .lines()
+        .find(|l| l.starts_with("| Claude Code |"))
+        .expect("git-safety.md has the Claude Code row");
+    for want in ["an absolute path", "`workflows/work.md`", "never by `name`"] {
+        assert!(row.contains(want), "the Claude Code row lacks {want:?}");
+    }
+    let lane_rules =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/lane-rules.md"))
+            .expect("docs/lane-rules.md");
+    let entry = section(&lane_rules, "Worktree entry and exit");
+    for want in ["an absolute path", "`skills/moai/workflows/work.md`"] {
+        assert!(
+            entry.contains(want),
+            "lane-rules.md worktree entry lacks {want:?}"
+        );
+    }
+    for (name, text) in [("git-safety.md", row), ("lane-rules.md", entry)] {
+        assert!(
+            !text.contains("git worktree add -b"),
+            "{name} spells the create command again"
+        );
+    }
+}
