@@ -140,6 +140,7 @@ Lane and leader
   claim-link             Link a claim to the worktree you work in
   queue-free             List the open cards a lane may take
   queue-query            Read the merge train from the leader's comment
+  flow-measure           How long the stages of the card flow took
   leader                 What the coordination window reads
   leader-tick            Run one leader supervision tick
   leader-pulse           Print the periodic round instruction and its orca

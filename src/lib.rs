@@ -46,6 +46,7 @@ pub mod error_next;
 pub mod flake;
 pub mod flake_record;
 pub mod flow;
+pub mod flow_measure;
 pub mod forge;
 pub mod gate;
 pub mod gate_collect;

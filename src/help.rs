@@ -178,6 +178,7 @@ pub const GROUPS: &[Group] = &[
             ("claim-link", false),
             ("queue-free", false),
             ("queue-query", false),
+            ("flow-measure", false),
             ("leader", false),
             ("leader-tick", false),
             ("leader-pulse", false),
@@ -466,6 +467,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("claim-link", &["claim-link --issue 7 --comment 101 --lane agent-1 ."]),
     ("queue-free", &["queue-free . < request.json"]),
     ("queue-query", &["queue-query . < request.json"]),
+    ("flow-measure", &["flow-measure --hours 12"]),
     ("leader", &["leader brief ."]),
     ("leader-tick", &["leader-tick . < request.json"]),
     (
