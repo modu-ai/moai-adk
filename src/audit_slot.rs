@@ -87,6 +87,19 @@ fn no_links(primary: &Path, slot: &Path, rel: &str) -> Result<()> {
     Ok(())
 }
 
+/// Refuses a slot whose `target/` exists and is not a real folder (a link or a file): `prep`
+/// and the build that follows it write the slot's `target/`, and through a link every write
+/// would land in the folder it points at (a lane's build). The same rule as the seed's
+/// `target/` (`worktree_slot::seed_target`): `symlink_metadata`, never the followed type.
+fn real_target(slot: &Path, rel: &str, changed: &str) -> Result<()> {
+    match fs::symlink_metadata(slot.join("target")) {
+        Ok(m) if !m.file_type().is_dir() => Err(format!(
+            "audit-slot refused {rel}: its target/ is not a real folder (a link or a file); {changed}"
+        )),
+        _ => Ok(()),
+    }
+}
+
 /// Refuses a slot that is not its own worktree of this repository: git in a plain folder walks
 /// up to the primary checkout, and a borrowed `.git` acts on another worktree's index.
 fn own(slot: &Path, common: &Path, rel: &str, changed: &str) -> Result<()> {
@@ -556,6 +569,7 @@ fn prep_slot(
         }
         if fs::symlink_metadata(&slot).is_ok() {
             own(&slot, common, &rel, "nothing was changed")?;
+            real_target(&slot, &rel, "nothing was changed")?;
         }
     }
     let ensured = worktree_slot::ensure(project, name, sha, caps).map_err(|e| {
@@ -571,6 +585,7 @@ fn prep_slot(
     let _lock = worktree_slot::lock(common)?;
     no_links(primary, &slot, &rel).map_err(|e| e.replace("nothing was changed", &changed))?;
     own(&slot, common, &rel, &changed)?;
+    real_target(&slot, &rel, &changed)?;
     let before = read_holder(common, name);
     let took_over = match hold_of(common, name, who, session) {
         Hold::Held(rec) => return Ok(Err(rec)),

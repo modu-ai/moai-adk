@@ -72,8 +72,9 @@ fn cargo_ok(dir: &Path, args: &[&str]) -> String {
 }
 
 /// A crate `auditapp` with a path dependency `auditdep` outside the repository (as a registry
-/// crate sits outside it), a test target `where` that prints `CARGO_MANIFEST_DIR`, and a test
-/// target `broken` that does not compile. `Cargo.lock` is committed, so `--locked` works.
+/// crate sits outside it), a test target `where` that prints `CARGO_MANIFEST_DIR`, a test target
+/// `second`, and a test target `broken` that does not compile (a mismatched type, E0308).
+/// `Cargo.lock` is committed, so `--locked` works.
 fn fixture() -> Fixture {
     let dir = tempfile::tempdir().unwrap();
     let base = fs::canonicalize(dir.path()).unwrap();
@@ -98,7 +99,16 @@ fn fixture() -> Fixture {
     .unwrap();
     fs::write(root.join("src/lib.rs"), LIB).unwrap();
     fs::write(root.join("tests/where.rs"), WHERE_TEST).unwrap();
-    fs::write(root.join("tests/broken.rs"), "this is not rust code\n").unwrap();
+    fs::write(
+        root.join("tests/second.rs"),
+        "use auditapp::two;\n#[test]\nfn second() {\n    assert_eq!(two(), 2);\n}\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("tests/broken.rs"),
+        "fn number() -> u32 {\n    \"text\"\n}\n",
+    )
+    .unwrap();
     fs::write(root.join(".gitignore"), "/target/\n/.claude/\n").unwrap();
     git(&root, &["init", "-q", "-b", "main"]);
     cargo_ok(&root, &["generate-lockfile", "--offline"]);
@@ -497,7 +507,13 @@ fn a_build_that_does_not_compile_keeps_the_slot_held_and_names_the_errors() {
     assert_ne!(code, 0, "{v}");
     assert_eq!(v["ok"], json!(false), "{v}");
     let m = v["error"]["message"].as_str().unwrap();
-    assert!(m.contains("broken"), "the compiler's lines are named: {m}");
+    // The compiler's own sentence, not the word `broken` (Cargo's summary line has it too): the
+    // rendered error comes only from the JSON messages the build reads.
+    assert!(m.contains("error[E0308]"), "the compiler's error code: {m}");
+    assert!(
+        m.contains("mismatched types"),
+        "the compiler's message: {m}"
+    );
     assert!(m.contains("audit-1"), "{m}");
     let rec: Value =
         serde_json::from_slice(&fs::read(r.holder_record("audit-1")).unwrap()).unwrap();
@@ -668,4 +684,141 @@ fn the_card_is_the_holder_whatever_session_finishes_it() {
     );
     assert_eq!((code, &v["ok"]), (0, &json!(true)), "{v}");
     assert_eq!(v["result"]["released"], json!(true), "{v}");
+}
+
+// ---- the repair of the first audit (B1-B4, N1)
+
+/// The cap is two: two named targets are built, in one run (a third is refused above).
+#[cfg(unix)]
+#[test]
+fn prep_builds_exactly_the_most_test_targets_the_cap_allows() {
+    let r = fixture();
+    let a = r.prep_ok("C-1", &r.second, &["--test", "where", "--test", "second"]);
+    let c = &a["cargo"];
+    assert_eq!(c["exit"], json!(0), "{a}");
+    let args: Vec<&str> = c["args"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(Value::as_str)
+        .collect();
+    assert_eq!(
+        args.iter().filter(|a| **a == "--test").count(),
+        2,
+        "both targets are named to cargo: {args:?}"
+    );
+    let tests: Vec<&str> = c["units"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|u| u["kind"] == json!("test") && u["workspace"] == json!(true))
+        .filter_map(|u| u["name"].as_str())
+        .collect();
+    assert!(tests.contains(&"where") && tests.contains(&"second"), "{a}");
+}
+
+/// The build gets none of the caller's wrapper or target-folder variables: with them set to
+/// places that cannot work or must stay empty, it still succeeds and writes only the slot.
+#[cfg(unix)]
+#[test]
+fn the_build_drops_the_callers_wrapper_and_target_folder_variables() {
+    let r = fixture();
+    let elsewhere = r.home.path().join("elsewhere-target");
+    let elsewhere_build = r.home.path().join("elsewhere-build-target");
+    let wrapper = r.home.path().join("no-such-wrapper");
+    let (code, v) = r.prep_with(
+        "C-1",
+        &r.second,
+        &[],
+        &[
+            ("RUSTC_WRAPPER", wrapper.to_str().unwrap()),
+            ("CARGO_BUILD_RUSTC_WRAPPER", wrapper.to_str().unwrap()),
+            ("CARGO_TARGET_DIR", elsewhere.to_str().unwrap()),
+            ("CARGO_BUILD_TARGET_DIR", elsewhere_build.to_str().unwrap()),
+        ],
+    );
+    assert_eq!((code, &v["ok"]), (0, &json!(true)), "{v}");
+    assert_eq!(v["result"]["cargo"]["exit"], json!(0), "{v}");
+    assert!(
+        r.slot("audit-1").join("target/debug").is_dir(),
+        "the build wrote the slot's own target/"
+    );
+    assert!(!elsewhere.exists(), "CARGO_TARGET_DIR was not followed");
+    assert!(
+        !elsewhere_build.exists(),
+        "CARGO_BUILD_TARGET_DIR was not followed"
+    );
+}
+
+/// A slot whose `target/` is a link is refused before anything is written: the build and its
+/// logs would land in the folder the link names (a lane's build).
+#[cfg(unix)]
+#[test]
+fn prep_refuses_a_slot_whose_target_is_a_link_and_writes_nothing_through_it() {
+    let r = fixture();
+    r.hold("audit-1", "h1");
+    let (code, v) = r.json("audit-slot", &["done", "audit-1", "--holder", "h1"], &[]);
+    assert_eq!((code, &v["ok"]), (0, &json!(true)), "{v}");
+    let victim = r.home.path().join("victim-target");
+    fs::create_dir_all(&victim).unwrap();
+    let link = r.slot("audit-1").join("target");
+    assert!(!link.exists(), "a slot made with no build has no target/");
+    std::os::unix::fs::symlink(&victim, &link).unwrap();
+    let slots = r.home.path().join("heavy-slots");
+    let m = r.refused(
+        "audit-prep",
+        &[
+            "C-1",
+            "--head",
+            &r.second,
+            "--slot-dir",
+            slots.to_str().unwrap(),
+            "--max",
+            "2",
+            "--min-free-gb",
+            "0",
+        ],
+        &[
+            "audit-prep refused",
+            "target/",
+            "link",
+            "nothing was changed",
+        ],
+    );
+    assert!(m.contains("audit-1"), "{m}");
+    assert_eq!(
+        fs::read_dir(&victim).unwrap().count(),
+        0,
+        "nothing was written through the link"
+    );
+    assert!(!r.holder_record("audit-1").exists(), "no hold was taken");
+}
+
+/// A line of cargo's output that is not UTF-8 does not end the read: the units after it are
+/// still counted and the child is read to its end (an unread pipe would hold the slot).
+#[cfg(unix)]
+#[test]
+fn a_build_line_that_is_not_utf8_does_not_end_the_read_of_the_build_messages() {
+    use std::os::unix::fs::PermissionsExt;
+    let r = fixture();
+    let fake = r.home.path().join("fake-cargo");
+    fs::write(
+        &fake,
+        concat!(
+            "#!/bin/sh\n",
+            "printf '{\"reason\":\"compiler-artifact\",\"manifest_path\":\"/elsewhere/dep/Cargo.toml\",\"target\":{\"name\":\"auditdep\",\"kind\":[\"lib\"]},\"fresh\":true,\"executable\":null}\\n'\n",
+            "printf 'not utf8 \\377\\376 here\\n'\n",
+            "printf '{\"reason\":\"compiler-artifact\",\"manifest_path\":\"%s/Cargo.toml\",\"target\":{\"name\":\"auditapp\",\"kind\":[\"lib\"]},\"fresh\":false,\"executable\":null}\\n' \"$PWD\"\n",
+            "exit 0\n",
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&fake, fs::Permissions::from_mode(0o755)).unwrap();
+    let (code, v) = r.prep_with("C-1", &r.second, &[], &[("CARGO", fake.to_str().unwrap())]);
+    assert_eq!((code, &v["ok"]), (0, &json!(true)), "{v}");
+    let c = &v["result"]["cargo"];
+    assert_eq!(c["units"].as_array().unwrap().len(), 2, "{v}");
+    assert_eq!(c["compiled"], json!(1), "{v}");
+    assert_eq!(c["fresh"], json!(1), "{v}");
+    assert_eq!(c["compiled_workspace"], json!(1), "{v}");
 }

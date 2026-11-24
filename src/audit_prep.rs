@@ -250,11 +250,11 @@ fn build(slot: &Path, rel: &str, o: &Prep) -> Result<Value> {
     let mut units: Vec<Value> = Vec::new();
     let mut errors: Vec<String> = Vec::new();
     if let Some(out) = child.stdout.take() {
-        for line in BufReader::new(out)
-            .lines()
-            .map_while(std::result::Result::ok)
-        {
-            let Ok(v) = serde_json::from_str::<Value>(&line) else {
+        // Bytes, not `lines()`: a line that is not UTF-8 must not end the read, or the pipe is
+        // left full, cargo blocks on it and `wait` holds the heavy slot for good.
+        for line in BufReader::new(out).split(b'\n') {
+            let Ok(line) = line else { break };
+            let Ok(v) = serde_json::from_slice::<Value>(&line) else {
                 continue;
             };
             match v["reason"].as_str() {
