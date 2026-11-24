@@ -508,11 +508,12 @@ fn the_aggregate_fails_when_a_release_pull_requests_windows_check_did_not_succee
 fn the_build_job_runs_on_a_release_pull_request_and_as_before_after_a_merge() {
     let ci = repo_file(".github/workflows/ci.yml");
     let job = job_block(&ci, "windows-build");
+    // The job's own condition sits at the job's indentation; its steps have conditions too.
     let conditions: Vec<&str> = job
         .iter()
         .copied()
+        .filter(|l| l.starts_with("    if: "))
         .map(str::trim)
-        .filter(|l| l.starts_with("if:"))
         .collect();
     assert_eq!(
         conditions,

@@ -609,8 +609,11 @@ class WorkflowTest(unittest.TestCase):
         aggregate = flow["jobs"]["ci"]
         # SPEC-20261120-release-pr-three-os: the aggregate also waits for the Windows job,
         # which only a release pull request has (the decide step's `release` output) and
-        # which calls the target workflow the candidate verification calls.
-        self.assertEqual(aggregate["needs"], ["check", "ci-verdict", "windows-x86_64"])
+        # which calls the target workflow the candidate verification calls. `targets` is a
+        # direct dependency too: its `release` output is read in the aggregate's step, and the
+        # `needs` context holds the outputs of direct dependencies only.
+        self.assertEqual(aggregate["needs"],
+                         ["check", "ci-verdict", "windows-x86_64", "targets"])
         self.assertEqual(flow["jobs"]["windows-x86_64"]["uses"],
                          "./.github/workflows/candidate-target.yml")
         self.assertEqual(flow["jobs"]["windows-x86_64"]["if"],
