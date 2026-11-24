@@ -12,5 +12,21 @@
     {"ecosystem": "bundler", "language": "ruby", "files": ["Gemfile"], "tools": ["ruby"]},
     {"ecosystem": "composer", "language": "php", "files": ["composer.json"], "tools": ["php"]}
   ],
+  "code_extensions": [
+    {"language": "rust", "extensions": ["rs"]},
+    {"language": "python", "extensions": ["py"]},
+    {"language": "javascript", "extensions": ["js", "jsx"]},
+    {"language": "typescript", "extensions": ["ts", "tsx"]},
+    {"language": "go", "extensions": ["go"]},
+    {"language": "java", "extensions": ["java"]},
+    {"language": "kotlin", "extensions": ["kt"]},
+    {"language": "ruby", "extensions": ["rb"]},
+    {"language": "php", "extensions": ["php"]},
+    {"language": "c", "extensions": ["c", "h"]},
+    {"language": "cpp", "extensions": ["cpp"]},
+    {"language": "csharp", "extensions": ["cs"]},
+    {"language": "swift", "extensions": ["swift"]},
+    {"language": "lua", "extensions": ["lua"]}
+  ],
   "skip_dirs": [".venv", "venv", "target", "node_modules", "dist", "build", "vendor"]
 }

@@ -79,6 +79,18 @@ struct CatalogFile {
     manifests: Vec<CatalogRow>,
     #[serde(default)]
     skip_dirs: Vec<String>,
+    /// Code file extensions and the language each one means (SPEC-20261125).
+    #[serde(default)]
+    code_extensions: Vec<CodeRow>,
+}
+
+/// One language and the code file extensions that mean it, without a dot (`rs`, not `.rs`).
+#[derive(Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CodeRow {
+    language: String,
+    #[serde(default)]
+    extensions: Vec<String>,
 }
 
 /// One ecosystem: the manifest names and suffixes it uses, the language and tools they imply.
@@ -100,6 +112,7 @@ struct CatalogRow {
 pub(crate) struct Catalog {
     rows: Vec<CatalogRow>,
     skip_dirs: Vec<String>,
+    code_rows: Vec<CodeRow>,
 }
 
 /// What the project's extension file did, reported beside `detected` (`manifest_catalog`).
@@ -140,8 +153,25 @@ fn catalog_file_valid(file: &CatalogFile) -> Result<()> {
     if file.schema != 1 {
         return Err("schema must be 1".into());
     }
-    if file.manifests.len() > MAX_ITEMS || file.skip_dirs.len() > MAX_ITEMS {
+    if file.manifests.len() > MAX_ITEMS
+        || file.skip_dirs.len() > MAX_ITEMS
+        || file.code_extensions.len() > MAX_ITEMS
+    {
         return Err(format!("more than {MAX_ITEMS} rows or folders"));
+    }
+    for row in &file.code_extensions {
+        let extensions_ok = !row.extensions.is_empty()
+            && row.extensions.len() <= MAX_ITEMS
+            && row
+                .extensions
+                .iter()
+                .all(|e| recordable(e) && !e.contains('.'));
+        if !recordable(&row.language) || !extensions_ok {
+            return Err(
+                "a code extension row holds a value that cannot be recorded, or names no extension"
+                    .into(),
+            );
+        }
     }
     for row in &file.manifests {
         let names = [&row.ecosystem, &row.language]
@@ -186,6 +216,7 @@ fn shipped() -> &'static Catalog {
             .map(|f| Catalog {
                 rows: f.manifests,
                 skip_dirs: f.skip_dirs,
+                code_rows: f.code_extensions,
             })
             .unwrap_or_default()
     })
@@ -212,7 +243,7 @@ impl Catalog {
                     .and_then(|file| catalog_file_valid(&file).map(|_| file))
                 {
                     Ok(file) => {
-                        let rows = file.manifests.len();
+                        let rows = file.manifests.len() + file.code_extensions.len();
                         catalog.add_extension(file);
                         ExtensionReport {
                             extension: "read",
@@ -249,11 +280,26 @@ impl Catalog {
                 self.rows.push(row);
             }
         }
+        for mut row in file.code_extensions {
+            row.extensions
+                .retain(|e| !self.code_rows.iter().any(|r| r.extensions.contains(e)));
+            if !row.extensions.is_empty() {
+                self.code_rows.push(row);
+            }
+        }
         for dir in file.skip_dirs {
             if !self.skip_dirs.contains(&dir) {
                 self.skip_dirs.push(dir);
             }
         }
+    }
+
+    /// The language a code file extension (without its dot, compared as written) means.
+    fn language_for_extension(&self, ext: &str) -> Option<&str> {
+        self.code_rows
+            .iter()
+            .find(|r| r.extensions.iter().any(|e| e == ext))
+            .map(|r| r.language.as_str())
     }
 
     /// The row a file name belongs to: an exact name first, then a suffix.
@@ -280,27 +326,6 @@ impl Catalog {
 pub(crate) fn skip_dir(name: &str) -> bool {
     HOST_AND_STATE_DIRS.contains(&name) || shipped().skips(name)
 }
-
-/// Code file extension → language.
-const EXTENSIONS: &[(&str, &str)] = &[
-    ("rs", "rust"),
-    ("py", "python"),
-    ("js", "javascript"),
-    ("jsx", "javascript"),
-    ("ts", "typescript"),
-    ("tsx", "typescript"),
-    ("go", "go"),
-    ("java", "java"),
-    ("kt", "kotlin"),
-    ("rb", "ruby"),
-    ("php", "php"),
-    ("c", "c"),
-    ("h", "c"),
-    ("cpp", "cpp"),
-    ("cs", "csharp"),
-    ("swift", "swift"),
-    ("lua", "lua"),
-];
 
 /// The marketplace of the official Claude Code LSP plugins.
 const LSP_MARKETPLACE: &str = "claude-plugins-official";
@@ -442,8 +467,9 @@ fn recordable_relpath(path: &str) -> bool {
             .all(|c| c != ".." && c != "." && recordable(c))
 }
 
-/// Languages of the code files below `root`; empty when the walk found no code file.
-fn code_languages(root: &Path) -> BTreeSet<String> {
+/// Languages of the code files below `root` by the catalog's extension rows; empty when the walk
+/// found no code file.
+fn code_languages(root: &Path, catalog: &Catalog) -> BTreeSet<String> {
     let mut found = BTreeSet::new();
     let mut seen = 0usize;
     let mut stack: Vec<(PathBuf, usize)> = vec![(root.to_path_buf(), 0)];
@@ -469,8 +495,8 @@ fn code_languages(root: &Path) -> BTreeSet<String> {
                 }
             } else if kind.is_file() {
                 if let Some(ext) = name.rsplit_once('.').map(|(_, e)| e) {
-                    if let Some((_, lang)) = EXTENSIONS.iter().find(|(e, _)| *e == ext) {
-                        found.insert((*lang).to_string());
+                    if let Some(lang) = catalog.language_for_extension(ext) {
+                        found.insert(lang.to_string());
                     }
                 }
             }
@@ -996,7 +1022,7 @@ pub(crate) fn detect_full(root: &Path) -> Result<Detection> {
         }
     }
     let walk = walk_manifests(root, &catalog);
-    let code = code_languages(root);
+    let code = code_languages(root, &catalog);
     let existing = !manifests.is_empty() || !walk.found.is_empty() || !code.is_empty();
     manifests.extend(walk.found);
     let mut languages: BTreeSet<String> = manifests
@@ -1431,7 +1457,10 @@ mod tests {
             for name in [lang, server, plugin, executable] {
                 assert!(recordable(name), "{name}");
             }
-            assert!(EXTENSIONS.iter().any(|(_, l)| l == lang), "{lang}");
+            assert!(
+                shipped().code_rows.iter().any(|r| r.language == *lang),
+                "{lang}"
+            );
         }
         for (_, k) in DB_DEPENDENCIES {
             assert!(recordable(k));
