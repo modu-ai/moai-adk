@@ -169,6 +169,12 @@ fn catalog_file_valid(file: &CatalogFile) -> Result<()> {
     Ok(())
 }
 
+/// The languages the shipped catalog's manifest rows name, sorted and without repeats.
+pub fn shipped_manifest_languages() -> Vec<String> {
+    let languages: BTreeSet<String> = shipped().rows.iter().map(|r| r.language.clone()).collect();
+    languages.into_iter().collect()
+}
+
 /// The shipped catalog, parsed once. A parse failure leaves it empty; a unit test pins that the
 /// shipped file parses and holds the rows the earlier tables held.
 fn shipped() -> &'static Catalog {
