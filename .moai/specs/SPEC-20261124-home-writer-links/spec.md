@@ -97,4 +97,19 @@ approval:
 
 ## Result
 
-판 1(승인: 리더 결정 노트 8120, 리더 판단이고 사용자 직접 선택은 아니에요). 구현 전이에요.
+판 1(승인: 리더 결정 노트 8120, 리더 판단이고 사용자 직접 선택은 아니에요). 브랜치 `spec/home-writer-links-20261124`, 기준 NeXT `e15220f90f` 를 쫓지 않았어요. 구현 커밋은 `3a5b85a1f6`(RED 표와 뼈대), `cbb477badf`(GREEN)이에요. 로그는 `target/c434/` 에 있고 카드가 열려 있는 동안만 둬요.
+
+- RED: 테스트 파일만 있고 도우미가 없어서 컴파일이 exit 101 로 실패했어요(`E0425 cannot find function switched_dir_checked`, 네 곳). 거절하지 않는 뼈대를 더하고 `cargo nextest run --offline --locked --test home_writer_links --no-fail-fast` → exit 100, 16개 중 5 통과(대조) · 11 실패(거절 테스트 전부). 실패 이유가 모두 "거절하지 않아서"예요: 아웃박스는 `unwrap_err()` 가 `Ok(())` 를 만났고, 영수증은 `Ok(())`(링크 너머에 씀) 또는 옛 문장 `receipt directory is a symlink; refused`, `layout-apply` 는 링크 너머에 복사하고 표식을 쓰고 `switched: true` 로 성공했어요(`marker` 가 링크 너머 경로). 첫 RED 는 내 픽스처 탓에 `stale or altered plan` 으로 실패해서(계획 뒤에 클레임 저널 폴더가 새로 생김) 계획 전에 저널을 열어 두도록 고친 뒤 위 결과를 얻었어요.
+- GREEN: `--test home_writer_links --test home_state_link_refusal` → exit 0, 30/30(새 16 + 이웃 저널 14).
+- AC-1: 충족. `switched_dir_checked_answers_none_without_a_pointer`, `..._answers_the_home_folder_on_a_plain_tree`, `..._refuses_a_linked_projects_folder`, `..._refuses_a_linked_project_folder`(환경 HOME 은 자식 프로세스에만).
+- AC-2: 충족. `outbox_refuses_a_linked_projects_folder`, `..._project_folder`, `..._outbox_folder`(`save` 와 `load` 모두 `home state folder is a symlink; refused`, 링크 너머 파일 바이트까지 그대로), `outbox_refuses_no_plain_tree`(대조).
+- AC-3: 충족. `receipt_refuses_a_linked_projects_folder`, `..._project_folder`, `..._receipts_folder`(`Receipt::save`, `save_before_bytes`, `recover` 모두 같은 문장, 링크 너머가 그대로), `receipt_refuses_no_plain_tree`(대조).
+- AC-4: 충족. `layout_apply_refuses_a_linked_projects_folder`, `..._project_folder`(폴더 문장), `..._home_root`(뿌리 문장); 링크 너머와 프로젝트 쪽 원본이 그대로예요.
+- AC-5: 충족. `layout_apply_keeps_a_first_apply_on_a_plain_tree`(홈 뿌리와 `projects/` 가 없는 첫 적용이 복사하고 표식을 써요).
+- AC-6: 충족. `git diff --stat e15220f90f..HEAD` 가 `src/apply.rs`, `src/forge/outbox.rs`, `src/layout.rs`, `tests/home_writer_links.rs` 와 이 SPEC 다섯 개만 보여요.
+- AC-7: 충족. `cargo nextest run --offline --locked --lib -E 'test(layout::) | test(apply::) | test(forge::outbox)'` → exit 0, 38 통과. C-427 의 `home_state_link_refusal` 14개도 위 30/30 안에서 통과해요.
+- 뮤턴트(적용을 `git diff --stat` 으로 확인하고 `git checkout -- <파일>` 로 되돌린 뒤 `git status --short` 가 비었음을 확인; 모두 `--test home_writer_links`, exit 100): ① `switched_dir_checked` 안의 `refuse_linked_home_path` 호출 삭제 → 8개 실패(`switched_dir_checked_refuses` 2, `outbox_refuses` 3, `receipt_refuses` 3) ② `check_destinations` 의 호출 삭제 → 3개 실패(`layout_apply_refuses` 전부) ③ 아웃박스 호출부를 검사 없는 `switched_dir` 로 되돌림 → 3개 실패(`outbox_refuses`) ④ 영수증 호출부를 `switched_dir` 로 되돌림 → 3개 실패(`receipt_refuses`).
+- 위험 경로: 깨끗한 head `cbb477badf` 에서 만든 `target/debug/moai` 로 임시 폴더(HOME 은 자식 명령에만 줘요)에서 `layout-plan` 과 `layout-apply` 를 돌렸어요(`target/c434/danger.log`, `danger-root.log`). `projects/` 링크와 `projects/<id>/` 링크는 exit 1, `home state folder is a symlink; refused`, 링크 너머가 `keep.txt` 하나 그대로(바이트 `bytes behind the link`), 원본 `old.json` 그대로. 상태 루트 링크(`~/.moai-cli` 가 빈 폴더로의 링크)는 exit 1, `home state root is a symlink; refused`, 링크 너머가 비어 있어요. 링크 없는 대조는 exit 0 으로 복사하고 표식을 써요. 첫 프로브는 내 픽스처 탓에 `stale` 이 나와서(링크 대상에 파일이 있어 상태 루트 이름이 계획과 적용 사이에 바뀜) 링크를 계획 전에 만들도록 고쳐 다시 돌렸어요. `~/.moai` 를 링크로 두면 이름 해석이 `.moai-cli` 로 넘어가는 것은 이 카드 밖의 기존 동작이에요.
+- 동작이 바뀌는 곳: 위 Risks 와 같아요. 영수증과 아웃박스는 읽기 길도 거절하고, 상태 루트가 링크인 사용자의 `layout-apply` 도 거절돼요.
+- 하지 않은 것: `claim.rs`·`worktree_move.rs`(D-1 대로 그대로), 원본(프로젝트 쪽) 트리 안의 링크 처리, `archive.rs` 의 `copy_verified`(unverified, 후속 후보).
+- not_run: Windows·Linux(junction 은 이 검사가 못 잡아요), 실제 HOME 읽기 전후 비교(테스트와 위험 경로는 임시 HOME 만 써요), 전체 `cargo test --locked`(리더 몫).
