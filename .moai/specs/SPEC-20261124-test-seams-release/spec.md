@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261124-test-seams-release
 title: "Four test-only seams stop being read by a release build"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8125 of card C-438 (ref note:438:93249569c03b6a81db69acade2e1161d, 2026-11-24T02:34:19Z, under the user's delegation of 2026-11-23T13:57Z, the leader's judgement and not a selection by the user) answering request note 8123 with option (a), approving revision 1 at head f2f532feed; not approved by the lane", digest: "sha256:5983ebc1c53b7c94248acb95eadb7de6ae2658a3d986ca51bc29dadf558b9582"}
 ---
 
 # Four test-only seams stop being read by a release build
