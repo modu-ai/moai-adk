@@ -1457,7 +1457,7 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test card_criterion_add_cli --test card_finish_cli --test card_guard_cli --test card_line_lease_cli --test card_scope_widen_cli --test card_timeline_cli --test check_affected_modes_cli --test check_pipeline_config --test cli_text_citations --test decision_append_cli --test followup_per_spec_rules --test hot_file_ops_merge --test lane_next_rules --test launcher_settings_receipt --test ops_table_gen_cli --test product_cli --test project_layer_follow_ups --test recurring_problems_rule --test repo_claude_md --test repo_scans_cli --test report_rules_core --test retired_host_words --test rule_history_guard --test sdd_guidance --test troubleshooting_doc --test repo_scans_table"
+        "cargo test --offline --locked --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test card_criterion_add_cli --test card_finish_cli --test card_guard_cli --test card_line_lease_cli --test card_scope_widen_cli --test card_timeline_cli --test check_affected_modes_cli --test check_pipeline_config --test cli_text_citations --test decision_append_cli --test followup_per_spec_rules --test hot_file_ops_merge --test lane_next_rules --test launcher_settings_receipt --test leader_reclaim_guidance --test ops_table_gen_cli --test product_cli --test project_layer_follow_ups --test recurring_problems_rule --test repo_claude_md --test repo_scans_cli --test report_rules_core --test retired_host_words --test rule_history_guard --test sdd_guidance --test troubleshooting_doc --test repo_scans_table"
       ],
       "rules": [
         "tests/bundle_body_cli.rs",
@@ -1477,6 +1477,7 @@
         "tests/hot_file_ops_merge.rs",
         "tests/lane_next_rules.rs",
         "tests/launcher_settings_receipt.rs",
+        "tests/leader_reclaim_guidance.rs",
         "tests/ops_table_gen_cli.rs",
         "tests/product_cli.rs",
         "tests/project_layer_follow_ups.rs",
