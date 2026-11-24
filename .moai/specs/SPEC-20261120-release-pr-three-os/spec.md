@@ -111,15 +111,11 @@ parent: null
 
 ## Scope
 
-- write: `.github/workflows/ci.yml`, `.github/workflows/candidate-target.yml`(머리 주석 한 줄만),
-  `tests/release_pr_three_os.rs`(새 파일), `tests/github_assets_test.py`(바뀐 줄을 적은 고정 세 곳),
-  `docs/support-matrix.md`(Windows 행의 문장), 이 SPEC 파일
-- 범위 확장 요청(새 테스트 파일의 읽기 등록 한 줄, `test_tables` 단계가 가리키는 쪽 하나만, 줄 임대):
-  `tools/repo_scans.json` 또는 `tests/repo_scans_table.rs`
-- read-only: `.github/workflows/candidate.yml`, `.github/workflows/release.yml`, `.github/workflows/audit-gate.yml`,
-  `.github/workflows/check-guard.yml`, `tools/ci_scope.py`, `tools/ci_superseded.py`, `tools/local_check.sh`,
-  `tools/candidate_summary.py`, `tests/release_workflow_test.py`, `src/flow.rs`
-- forbidden: 필수 검사 이름, ruleset, 일반 PR 의 매트릭스와 분류기, `release.yml`, 실제 HOME, push·PR·tag, 다른 카드의 가지
+- write: `.github/workflows/ci.yml`, `.github/workflows/candidate-target.yml`, `tests/release_pr_three_os.rs`, `tests/github_assets_test.py`, `docs/support-matrix.md`, `tools/repo_scans.json`, `tests/repo_scans_table.rs`, `.moai/specs/SPEC-20261120-release-pr-three-os/spec.md`
+- read-only: `.github/workflows/candidate.yml`, `.github/workflows/release.yml`, `.github/workflows/audit-gate.yml`, `.github/workflows/check-guard.yml`, `tools/ci_scope.py`, `tools/ci_superseded.py`, `tools/local_check.sh`, `tools/candidate_summary.py`, `tests/release_workflow_test.py`, `src/flow.rs`
+- forbidden: 필수 검사 이름(ci 집계와 audit 게이트), ruleset, 일반 PR 의 매트릭스와 분류기, `release.yml`, 실제 HOME, push·PR·tag, 다른 카드의 가지
+
+쓰기 범위 가운데 네 파일은 조건부예요. `candidate-target.yml` 은 머리 주석 한 줄만 바꿔요. `tools/repo_scans.json` 과 `tests/repo_scans_table.rs` 중에서는 `test_tables` 단계가 가리키는 쪽 하나에 새 테스트 파일의 읽기 등록 한 줄만 써요(공유 파일이라 줄 임대). `candidate-target.yml`·`docs/support-matrix.md`·`tools/repo_scans.json`·`tests/repo_scans_table.rs`·새 테스트 파일은 카드 예약에 아직 없어서 리더의 범위 확대가 필요해요.
 
 ## Plan
 
