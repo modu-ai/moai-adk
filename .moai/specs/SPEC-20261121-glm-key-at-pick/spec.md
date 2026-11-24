@@ -76,4 +76,20 @@ approval:
 
 ## Result
 
-(status draft — written when the slice lands)
+구현 레인이 2026-11-24에 채웠어요. 감사가 다시 확인해요. 기준 `02746488f9` 위 `5a1c804542`(구현, 첫 READY) → `3317d17a71`(첫 감사 FAIL 수리) → 이 Result. 시험은 임시 HOME·임시 폴더·가짜 키만 쓰고 진짜 키 보관소는 열지 않아요. 같은 head의 `check affected` 영수증은 카드의 READY 노트에 있어요(이 파일이 head를 바꾸므로 여기엔 적지 않아요).
+
+- AC-1: met — `model_effort_questions` 28 passed(nextest), `update_model_pick` 16 passed(nextest). 질문은 glm 픽에서 한 번, hidden·skip 문구와 함께 나오고, claude 픽은 묻지 않고, 어떤 출력에도 키 값이 없어요. 숨김 입력 장면은 `update_model_step_reachable_tty`(pty)가 잡아요
+- AC-2: met — 같은 시험들: 입력한 키가 보관소에서 읽히고, 그대로 두면 새로 쓰지 않고, 빈 답은 보관소를 쓰지 않아요. 임시 HOME 전체를 훑어 평문 키가 어떤 파일에도 없음을 확인해요
+- AC-3: met, 단 SPEC에 적힌 `cargo test --bins`·`--lib` 글자 그대로는 not_run — 같은 대상을 `check affected`의 nextest가 돌려요(READY 노트의 영수증)
+
+감사 FAIL(head `5a1c804542`) 수리 `3317d17a71`:
+- B1: 보관소 쓰기가 거절되면 화면에 `The key could not be stored: <reason>` 를 쓰고 모델 단계는 저장 질문으로 이어가요. 시험 2개(`a_vault_that_cannot_be_written_is_told_on_the_screen_and_the_step_goes_on`, `a_vault_that_cannot_be_written_does_not_lose_the_model_pick`)는 쓰기 못 하는 보관소(읽기 전용 폴더, 보관소 자리의 일반 파일)에서 돌아요.
+- N1: `new` 답은 `n`과 같이 새 키를 물어요 — 시험 `the_word_new_also_asks_for_a_new_key`.
+- N2: 프로젝트 밖 안내는 `moai key-set glm --prompt` 를 말해요.
+- N3: 숨김 입력에서 Enter만 누르면 `No key was entered; the key entry was skipped.` 를 보여요(오류 글귀 `no usable value on stdin` 대신). 이 문구에는 단위 시험이 없어요(터미널이 필요해서): not_run.
+- N4: 기존 키 확인이 런처 순서(`key_vault::read`)를 따라요 — 읽을 수 없는 프로젝트 항목은 공유 키로 넘어가지 않고 기존 키 없음으로 봐요(시험 `a_broken_project_entry_is_not_hidden_by_a_shared_key`).
+- N5: 키 시험의 임시 폴더는 `tempfile::TempDir` 이라 시험이 끝나면 지워져요(확인: 시험 뒤 `glm-key-*` 폴더 수 79에서 늘지 않음; 이전 시험이 남긴 79개는 이 변경이 지우지 않아요).
+
+가드 뮤턴트(수리 head에서 적용 확인 뒤 `model_effort_questions`+`update_model_pick` 44개 실행, 모두 죽음): M1 쓰기 실패를 오류로 되돌림 → 시험 2개 FAIL; M2 깨진 프로젝트 항목에서 공유 키로 넘어감 → 시험 1개 FAIL; M3 `new` 별칭 제거 → 시험 1개 FAIL.
+
+실행 안 함: 전체 `cargo test`(바뀐 곳 시험만), Windows·Linux(pty 시험은 macOS 전용), N6(`glm_key_scope` 복제 제거)·N8·N9는 이 수리 밖(N6은 후속 카드).
