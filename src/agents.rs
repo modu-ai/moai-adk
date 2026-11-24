@@ -64,9 +64,22 @@ pub struct AgentsRequest {
 /// `agents-merge-apply`), which writes the block together with the copied text. The writer alone
 /// never carries it out: a `CLAUDE.md` that held only the block would stop Claude Code reading the
 /// `AGENTS.md` of the project, so a direct request that picks it plans no `CLAUDE.md` and says so.
+/// `harness-only` leaves every file this engine owns as it is, so a request for project agents
+/// and skills alone is not held up by a hand-edited managed file
+/// (SPEC-20261120-project-harness-research, revision 2). Its name belongs to the request file,
+/// never to a question or an option shown to the user.
 /// `personal-file` creates `CLAUDE.local.md` once. The earlier picks `import` and `claude-import`
 /// are gone: they are refused like any unknown id, and no code reads them by name.
-pub const PICKS: [&str; 4] = ["append-managed", "skip-conflicts", "move", "personal-file"];
+pub const PICKS: [&str; 5] = [
+    "append-managed",
+    "skip-conflicts",
+    "move",
+    "personal-file",
+    HARNESS_ONLY,
+];
+
+/// The pick that plans every file of this engine as `skip` (see [`PICKS`]).
+pub(crate) const HARNESS_ONLY: &str = "harness-only";
 
 fn picked(r: &AgentsRequest, id: &str) -> bool {
     r.picks.iter().any(|p| p == id)
@@ -1343,6 +1356,8 @@ pub(crate) const BLOCK_MISSING: &str = "managed block missing or removed; baseli
 const APPEND_PICKED: &str =
     "append-managed picked: the managed section is added at the end; every other byte is kept";
 const SKIP_PICKED: &str = "skip-conflicts picked: the file is kept as it is";
+const HARNESS_ONLY_PICKED: &str =
+    "the request is for project agents and skills alone: the file is kept as it is";
 
 /// Three-way plan of one managed file. Exposed (Issue #1989, 5b) so 03-C's
 /// `generation.rs` can call the engine per `FileKind` instead of reimplementing it.
@@ -1909,6 +1924,15 @@ pub(crate) fn agents_plan_for(
         warnings.extend(crate::agents_local_merge::hidden_files_warning_except(
             &root, creating, carried,
         ));
+    }
+
+    // `harness-only`: the request is for project agents and skills alone, so no file of this
+    // engine is written, whether it would be created, merged or in conflict.
+    if picked(&request, HARNESS_ONLY) {
+        for f in files.iter_mut().filter(|f| f.action != "unchanged") {
+            f.action = "skip".into();
+            f.detail = Some(HARNESS_ONLY_PICKED.into());
+        }
     }
 
     // `skip-conflicts`: a conflicting file is left as it is and the rest of the plan applies.
