@@ -884,7 +884,10 @@ fn collect_reads_no_registry_text_for_other_files() {
 
 #[test]
 fn collect_leaves_the_texts_out_when_a_side_cannot_be_read() {
-    let (old, new) = (base(), base());
+    // The head's text is a real registration: only a text that was read as such may count it.
+    let mut grown = base_scans();
+    grown[0]["rules"] = json!(["tests/alpha.rs", "tests/beta.rs", "tests/gamma.rs"]);
+    let (old, new) = (base(), registry(grown));
     let not_found = json!({"message": "Not Found"});
     // Each case: the reads after the four of the pull request, and what stays unread.
     let cases: Vec<(&str, Vec<Exchange>)> = vec![
@@ -910,6 +913,26 @@ fn collect_leaves_the_texts_out_when_a_side_cannot_be_read() {
                 compare(200, json!({"merge_base_commit": {"sha": M}})),
                 contents(M, 200, content(&old)),
                 contents(H, 200, json!({"encoding": "base64", "content": "!!!!"})),
+            ],
+        ),
+        (
+            "a valid text under an encoding other than base64",
+            vec![
+                compare(200, json!({"merge_base_commit": {"sha": M}})),
+                contents(M, 200, content(&old)),
+                contents(H, 200, json!({"encoding": "utf-8", "content": new.clone()})),
+            ],
+        ),
+        (
+            "base64 with a character outside the alphabet after a valid text",
+            vec![
+                compare(200, json!({"merge_base_commit": {"sha": M}})),
+                contents(M, 200, content(&old)),
+                contents(
+                    H,
+                    200,
+                    json!({"encoding": "base64", "content": format!("{}!", b64(&new))}),
+                ),
             ],
         ),
         (

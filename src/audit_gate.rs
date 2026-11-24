@@ -175,6 +175,30 @@ pub fn sessions_of(message: &str) -> Vec<String> {
         .collect()
 }
 
+/// The PR's changed files for the tier: each path, and for the scan registry the texts of both
+/// sides when the input carries them, so a registry change that only grows it is read as
+/// `moai bundle check` reads it (SPEC-20261124-registry-line-add-tier REQ-8). Without texts the
+/// registry is judged by its name, tier 2.
+fn changed_files(input: &Input) -> Vec<gate::ChangedFile> {
+    input
+        .files
+        .iter()
+        .flatten()
+        .map(|path| {
+            let mut file = gate::ChangedFile::named(path);
+            if let Some(texts) = input
+                .registry
+                .as_ref()
+                .filter(|_| path == gate::SCAN_REGISTRY)
+            {
+                file.old = texts.old.clone();
+                file.new = texts.new.clone();
+            }
+            file
+        })
+        .collect()
+}
+
 /// The decision: `pass`, `fail` (an open FAIL) or `missing` (no qualifying PASS yet), with the
 /// tier it judged by, the rule that decided and why.
 pub fn decide(input: &Input) -> Value {
@@ -191,10 +215,7 @@ pub fn decide(input: &Input) -> Value {
             "schema_version 1 and a 40-hex head are required".into(),
         );
     }
-    let tier = gate::tier_of(
-        gate::parse_body_tier(&input.body),
-        input.files.as_deref().unwrap_or(&[]),
-    );
+    let tier = gate::tier_of_changes(gate::parse_body_tier(&input.body), &changed_files(input));
     let tier = if input.files.is_none() { 2 } else { tier };
     let mut comments = input.comments.clone();
     crate::comment_authority::retain_members(&mut comments);
@@ -329,18 +350,19 @@ pub fn collect<T: Transport>(
         .ok_or("pull request has no head sha")?;
     let head = head.unwrap_or(current).to_string();
     let body = p["body"].as_str().unwrap_or("").to_string();
-    let files = get_all(t, &format!("{base}/pulls/{pr}/files?per_page=100"), 30)
-        .ok()
-        .map(|list| {
-            list.iter()
-                .flat_map(|f| {
-                    ["filename", "previous_filename"]
-                        .iter()
-                        .filter_map(|k| f[*k].as_str().map(String::from))
-                        .collect::<Vec<_>>()
-                })
-                .collect()
-        });
+    let files: Option<Vec<String>> =
+        get_all(t, &format!("{base}/pulls/{pr}/files?per_page=100"), 30)
+            .ok()
+            .map(|list| {
+                list.iter()
+                    .flat_map(|f| {
+                        ["filename", "previous_filename"]
+                            .iter()
+                            .filter_map(|k| f[*k].as_str().map(String::from))
+                            .collect::<Vec<_>>()
+                    })
+                    .collect()
+            });
     let commit_messages = if p["commits"].as_u64().unwrap_or(u64::MAX) > MAX_LISTED_COMMITS {
         None
     } else {
@@ -362,6 +384,11 @@ pub fn collect<T: Transport>(
             })
         })
         .collect::<Result<Vec<_>>>()?;
+    // Read last, so the four reads every pull request needs keep their order.
+    let registry = files
+        .as_ref()
+        .filter(|f| f.iter().any(|p| p == gate::SCAN_REGISTRY))
+        .and_then(|_| read_registry(t, &base, p["base"]["sha"].as_str(), &head));
     Ok(Input {
         schema_version: 1,
         pr,
@@ -370,8 +397,87 @@ pub fn collect<T: Transport>(
         files,
         commit_messages,
         comments,
-        registry: None,
+        registry,
     })
+}
+
+/// The scan registry at the merge base and at `head` (REQ-8), read only when the PR changes it:
+/// the merge base from the compare answer, then the file at both commits from the contents API.
+/// A side that cannot be read (no answer, a file too large for the API, text that is no base64)
+/// is left out, and the decision then judges the registry by its name, tier 2 (REQ-9).
+fn read_registry<T: Transport>(
+    t: &T,
+    base_url: &str,
+    pr_base: Option<&str>,
+    head: &str,
+) -> Option<RegistryTexts> {
+    use crate::gate_collect::get_json;
+    let pr_base = pr_base.filter(|s| gate::is_full_sha(s))?;
+    let merge_base = get_json(
+        t,
+        &format!("{base_url}/compare/{pr_base}...{head}?per_page=1"),
+    )
+    .ok()
+    .and_then(|(v, _)| {
+        v["merge_base_commit"]["sha"]
+            .as_str()
+            .filter(|s| gate::is_full_sha(s))
+            .map(String::from)
+    });
+    let Some(merge_base) = merge_base else {
+        return Some(RegistryTexts::default());
+    };
+    let text = |rev: &str| {
+        let url = format!("{base_url}/contents/{}?ref={rev}", gate::SCAN_REGISTRY);
+        get_json(t, &url).ok().and_then(|(v, _)| contents_text(&v))
+    };
+    Some(RegistryTexts {
+        old: text(&merge_base),
+        new: text(head),
+    })
+}
+
+/// The text of one contents answer: `content` is base64 when `encoding` says so (a file over the
+/// API's size limit answers `encoding: none` and no content).
+fn contents_text(answer: &Value) -> Option<String> {
+    if answer["encoding"] != "base64" {
+        return None;
+    }
+    String::from_utf8(base64_decode(answer["content"].as_str()?)?).ok()
+}
+
+/// Standard base64 with the line breaks GitHub puts in; anything else, a wrong length or data
+/// after the padding is `None`.
+fn base64_decode(text: &str) -> Option<Vec<u8>> {
+    let (mut out, mut acc, mut bits) = (Vec::new(), 0u32, 0u32);
+    let (mut data, mut pad) = (0usize, 0usize);
+    for c in text.bytes() {
+        let v = match c {
+            b'A'..=b'Z' => c - b'A',
+            b'a'..=b'z' => c - b'a' + 26,
+            b'0'..=b'9' => c - b'0' + 52,
+            b'+' => 62,
+            b'/' => 63,
+            b'=' => {
+                pad += 1;
+                continue;
+            }
+            b'\n' | b'\r' => continue,
+            _ => return None,
+        };
+        if pad > 0 {
+            return None;
+        }
+        data += 1;
+        acc = (acc << 6) | u32::from(v);
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((acc >> bits) as u8);
+            acc &= (1 << bits) - 1;
+        }
+    }
+    (pad <= 2 && (data + pad) % 4 == 0).then_some(out)
 }
 
 #[cfg(test)]

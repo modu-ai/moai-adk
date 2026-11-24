@@ -417,18 +417,28 @@ pub(crate) fn is_clean_join(project: &Path, commit: &str, first: &str, second: &
 }
 
 /// The tier a landing judges a head by: the tier the verdict states, raised by the floor of what
-/// the head changed since it left `range_base` (the tip's own changes are not the head's).
+/// the head changed since it left `range_base` (the tip's own changes are not the head's). A
+/// change that only grows the scan registry does not set the tier 2 floor by its path, the same
+/// rule `moai bundle check` and the `audit-gate` job read
+/// (SPEC-20261124-registry-line-add-tier REQ-7).
 pub fn floor_tier(project: &Path, range_base: &str, head: &str, stated: u8) -> Result<u8> {
     let files_base = git_text(project, &["merge-base", range_base, head])
         .map(|s| s.trim().to_string())
         .unwrap_or_else(|_| range_base.to_string());
-    let files = changed_files(project, &files_base, head)?;
-    Ok(gate::tier_of(Some(stated), &files))
+    let paths = changed_paths(project, &files_base, head)?;
+    let files = gate::changed_files_with_text(paths, Some(&files_base), head, |rev, path| {
+        git_text(project, &["show", &format!("{rev}:{path}")]).ok()
+    });
+    Ok(gate::tier_of_changes(Some(stated), &files))
 }
 
-/// The paths `base..head` changes, for the floor of the tier.
-fn changed_files(project: &Path, base: &str, head: &str) -> Result<Vec<String>> {
-    let out = git_text(project, &["diff", "--name-only", "-z", base, head])?;
+/// The paths `base..head` changes, for the floor of the tier: without rename detection, so a
+/// renamed file is listed by its old and its new name (REQ-10).
+fn changed_paths(project: &Path, base: &str, head: &str) -> Result<Vec<String>> {
+    let out = git_text(
+        project,
+        &["diff", "--name-only", "--no-renames", "-z", base, head],
+    )?;
     Ok(out
         .split('\0')
         .filter(|p| !p.is_empty())
