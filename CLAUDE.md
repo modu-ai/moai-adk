@@ -98,7 +98,8 @@ Development builds use HeadVer (`https://github.com/line/headver`) `{head}.{year
 ## Language
 
 - Instruction files (this file, `CLAUDE.local.md`, rules, `skills/**`), subagent prompts and all code comments are written in English.
-- Commit messages, SPEC documents, card and decisions text, text typed into a session's chat input (including what the leader sends with `orca terminal send`), the conversation with the user and reports to the user are written in Korean. Commits already pushed are not rewritten. Every instruction to a lane (dispatch, answer, line after `/clear`, cross-session message) is in the user's conversation language. Identifiers, commands, paths and protocol lines (`AUDIT … verdict:`, `LANE-BLOCKED`, `LANE-READY-INTEGRATION`) stay verbatim. Auditors flag newly added or edited comments or instruction text that is not English; existing ones are rewritten only when a card asks.
+- Commit messages follow the profile's `language.commit_messages` (`en` here; user pick 2026-11-24, `SPEC-20261124-launcher-retire-role-flags`), so a commit message is written in English.
+- SPEC documents, card and decisions text, text typed into a session's chat input (including what the leader sends with `orca terminal send`), the conversation with the user and reports to the user are written in Korean. Commits already pushed are not rewritten. Every instruction to a lane (dispatch, answer, line after `/clear`, cross-session message) is in the user's conversation language. Identifiers, commands, paths and protocol lines (`AUDIT … verdict:`, `LANE-BLOCKED`, `LANE-READY-INTEGRATION`) stay verbatim. Auditors flag newly added or edited comments or instruction text that is not English; existing ones are rewritten only when a card asks.
 - Korean text uses the words developers actually say (테스트, 브랜치, 커밋, 푸시, 머지, 리뷰, 워크트리, 뮤턴트, 픽스처, 골든 파일, 플레이키 테스트), never literal coinages such as 시험, 가지, 변이.
 
 ## How this file evolves

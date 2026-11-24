@@ -204,7 +204,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "f052a104b1a95f3561f051bf1af600e9f490bd2ce18f30c3d9e8482219e68c05",
+      "sha256": "06cbc2c86eeeb05530d4db45636c0bca0556f0c94310c53a4654f5d354493e9e",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",

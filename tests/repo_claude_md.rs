@@ -243,6 +243,40 @@ fn stale_mode_flags_are_the_work_and_leader_routes() {
     );
 }
 
+/// S3b: commit messages follow the profile's `language.commit_messages` (`en` here; user pick
+/// 2026-11-24): `CLAUDE.md`, the lane rules and the skill say so, `CLAUDE.md` no longer lists
+/// commit messages among the Korean texts, the decisions log holds the pick, and the profile
+/// still says `en`.
+#[test]
+fn commit_messages_follow_the_profile_language() {
+    let rule = "`language.commit_messages`";
+    let claude = claude_md();
+    assert_has(
+        &claude,
+        "CLAUDE.md",
+        &[
+            "Commit messages follow the profile's `language.commit_messages` (`en` here; user pick 2026-11-24",
+            "- SPEC documents, card and decisions text, text typed into a session's chat input",
+            "Commits already pushed are not rewritten.",
+        ],
+    );
+    assert_lacks(&claude, "CLAUDE.md", &["- Commit messages, SPEC documents"]);
+    for file in [
+        "docs/lane-rules.md",
+        "skills/moai/references/internal/git-safety.md",
+    ] {
+        assert_has(&read(file), file, &[rule]);
+    }
+    let decisions = read("docs/decisions-2026-11-08.md");
+    let row = decisions
+        .lines()
+        .find(|l| l.contains("커밋 메시지 언어 = 영어"))
+        .expect("the decisions log lacks the row of the user's pick of 2026-11-24");
+    assert!(row.contains("05:46Z(11-24)") && row.contains("language.commit_messages: en"), "{row}");
+    let profile: serde_json::Value = serde_json::from_str(&read(".moai/project.yaml")).unwrap();
+    assert_eq!(profile["language"]["commit_messages"], "en");
+}
+
 /// S4: Claude Code and GLM only; Codex and OMP are withdrawn.
 #[test]
 fn stale_hosts_are_claude_only() {
