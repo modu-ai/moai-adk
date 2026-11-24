@@ -205,11 +205,17 @@ fn generated_then_edited() -> Fx {
 fn without_the_pick_a_hand_edited_tracked_file_blocks_the_change_of_one_agent() {
     let fx = generated_then_edited();
     let plan = fx.plan(&request("Reviews a change twice", &["prj-checks"], &[]));
-    assert!(
-        actions(&plan).iter().any(|(_, a)| a == "conflict"),
-        "the fixture must reproduce the blocking conflict: {:?}",
-        actions(&plan)
-    );
+    // Every tracked file the user edited by hand while what it would render moved is a
+    // conflict, and nothing else is: the paths are named, not only the fact of one conflict.
+    let mut conflicts: Vec<String> = actions(&plan)
+        .into_iter()
+        .filter(|(_, action)| action == "conflict")
+        .map(|(path, _)| path)
+        .collect();
+    conflicts.sort();
+    let mut expected: Vec<String> = TRACKED.iter().map(|rel| rel.to_string()).collect();
+    expected.sort();
+    assert_eq!(conflicts, expected, "the conflicts without the pick");
     assert_ne!(
         fx.apply(&plan)["ok"],
         json!(true),
@@ -301,4 +307,27 @@ fn without_the_pick_a_skill_the_request_leaves_out_is_still_planned_for_removal(
         "{:?}",
         actions(&plan)
     );
+}
+
+/// A project that was never generated has no earlier record to go back to: under the pick its
+/// manifest then holds the digest of the profile the apply ran with, and no workflow id and no
+/// interview revision (the comment of `record_generation` in `src/generation.rs` says the same).
+#[test]
+fn a_never_generated_project_keeps_the_current_profile_digest_under_the_pick() {
+    let fx = fixture();
+    assert!(
+        !state(&fx.root).join("manifests/generation.json").exists(),
+        "the fixture must start without a manifest"
+    );
+    let plan = fx.plan(&request("Reviews a change", &["prj-checks"], &[PICK]));
+    assert_eq!(fx.apply(&plan)["ok"], json!(true));
+    let after = fx.manifest();
+    let profile = fs::read(state(&fx.root).join("project.yaml")).unwrap();
+    assert_eq!(
+        after["profile_sha256"],
+        json!(moai_cli::digest(&profile)),
+        "{after}"
+    );
+    assert!(after["interview_revision"].is_null(), "{after}");
+    assert!(after["workflow_id"].is_null(), "{after}");
 }
