@@ -43,20 +43,24 @@ parent: null
 - REQ-8: When a problem of the same kind is seen a second time, the session that sees it shall add one line to `docs/later.md` that names the cause and the change at the source. · failure: none — a rule text, nothing runs.
 - REQ-9: While the cards in work and the cards waiting for a check number twice the lanes, a resting lane shall help with checks and landings instead of taking a new card, and the leader opens no card above that number.
 - REQ-10: The decisions log shall record the four user decisions with their time, while the rule files say the same thing and `CLAUDE.md` stays within 200 lines.
+- REQ-11: The Standing principles section of `CLAUDE.md` shall name recursive self-improvement (RSI) with its targets, its moments, its owner card, its before-and-after measurement and its direction (remove before adding, never weaken a gate, a HOLD or a user rule).
+- REQ-12: The rule texts shall keep the submission signal, the independent review and the landing apart, name a landing batch and a release bundle differently, end the flow at the submission when no leader is registered, refresh the remote integration branch only for a flow whose integration branch is remote, and report the source file, the home install and a new session's load as three facts.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2): `CLAUDE.md` Flow 5, `skills/moai/references/audit.md`, `skills/moai/workflows/audit.md` and `docs/leader-rules.md` name the four FAIL kinds, say that every other finding is a non-blocking line with PASS, and send a second FAIL to the leader; the sentences "any drift … is a FAIL finding" and "conditions make it FAIL" are gone · verify: `cargo test --locked --offline --test repo_claude_md --test sdd_guidance`
+- AC-1 (REQ-1, REQ-2): `CLAUDE.md` Flow 6, `skills/moai/references/audit.md`, `skills/moai/workflows/audit.md` and `docs/leader-rules.md` name the four FAIL kinds, say that every other finding is a non-blocking line with PASS, and send a second FAIL to the leader; the sentences "any drift … is a FAIL finding" and "conditions make it FAIL" are gone · verify: `cargo test --locked --offline --test repo_claude_md --test sdd_guidance`
 - AC-2 (REQ-3): the audit contract's section "Who records the verdict" and the AUDIT workflow's verdict step say the auditing session runs `moai card verdict` and that the leader does not record it for the auditor · verify: `cargo test --locked --offline --test next_flow_skill_scan`
 - AC-3 (REQ-4): `CLAUDE.md` Flow 3, `docs/lane-rules.md` and `skills/moai/workflows/work.md` ask for a SPEC approval only at tier 2 · verify: `cargo test --locked --offline --test repo_claude_md --test next_flow_skill_scan`
 - AC-4 (REQ-5, REQ-6): the four tier lines are the same in the audit contract, the audit agent, RUN's Check-run rules and the AUDIT workflow's Base agents; the code line says a light audit that runs no mutant and the high-risk line names the guard mutants and at most two named modules; `CLAUDE.md`, `docs/lane-rules.md` and the flow reference ask for guard-mutant lines at tier 2 only · verify: `cargo test --locked --offline --test next_flow_skill_scan`
 - AC-5 (REQ-7, REQ-8): `docs/later.md` exists with its one-line form; `CLAUDE.md`, `docs/leader-rules.md`, `docs/lane-rules.md`, the flow reference and the core rules no longer add criteria or open cards for findings and recurrences · verify: `cargo test --locked --offline --test repo_claude_md --test next_flow_skill_scan`
 - AC-6 (REQ-9): `CLAUDE.md`, `docs/leader-rules.md` and `docs/lane-rules.md` state the work cap · verify: `cargo test --locked --offline --test repo_claude_md`
 - AC-7 (REQ-10): the decisions log holds the four decisions with 2026-11-24T21:52:39Z, `docs/claude-md-rule-provenance.md` lists each rule that left a file, and `CLAUDE.md` stays within 200 lines · verify: `cargo test --locked --offline --test repo_claude_md`
+- AC-8 (REQ-11): `CLAUDE.md` has the item "Recursive self-improvement (RSI)" with the targets, the moments, the owner-card rule, the measurement and the direction, the recurrence item fixes a second occurrence in that round and sends only what cannot be fixed to `docs/later.md`, and the decisions log and the provenance table hold the instruction with 2026-11-24T22:19:11Z · verify: `cargo test --locked --offline --test card -- recurring_problems`
+- AC-9 (REQ-12): `CLAUDE.md` Flow 5 is the submission and Flow 6 the independent review, the batch and release-bundle names differ in `CLAUDE.md` and `docs/leader-rules.md`, `workflows/sync.md` step 1 and `workflows/leader.md` end at the submission without a leader, and `docs/lane-rules.md` names the three facts · verify: `cargo test --locked --offline --test repo_claude_md --test lane_completion_handshake`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261125-completion-flow/**`, `CLAUDE.md`, `docs/leader-rules.md`, `docs/lane-rules.md`, `docs/decisions-2026-11-08.md`, `docs/claude-md-rule-provenance.md`, `docs/later.md`, `skills/moai/references/audit.md`, `skills/moai/workflows/audit.md`, `skills/moai/workflows/work.md`, `skills/moai/workflows/run.md`, `skills/moai/references/flows/next-flow.md`, `skills/moai/references/internal/core-rules.md`, `agents/audit.md`(the tier lines stand word for word in these four texts), and the tests that pin the changed words: `tests/repo_claude_md.rs`, `tests/sdd_guidance.rs`, `tests/next_flow_skill_scan.rs`
+- write: `.moai/specs/SPEC-20261125-completion-flow/**`, `CLAUDE.md`, `docs/leader-rules.md`, `docs/lane-rules.md`, `docs/decisions-2026-11-08.md`, `docs/claude-md-rule-provenance.md`, `docs/later.md`, `skills/moai/references/audit.md`, `skills/moai/workflows/audit.md`, `skills/moai/workflows/work.md`, `skills/moai/workflows/run.md`, `skills/moai/workflows/sync.md`, `skills/moai/workflows/leader.md`, `skills/moai/references/flows/next-flow.md`, `skills/moai/references/internal/core-rules.md`, `agents/audit.md`(the tier lines stand word for word in these four texts), `skills/moai/references/source-manifest.json` (the hashes only, through a line lease), the old rule table `.moai/specs/SPEC-20261123-claude-md-rewrite/rule-table.md` (rows R-23, R-87, R-88 and R-114 as moved-corrected rows), and the tests that pin the changed words: `tests/repo_claude_md.rs`, `tests/sdd_guidance.rs`, `tests/next_flow_skill_scan.rs`, `tests/card/followup_per_spec_rules.rs`, `tests/card/recurring_problems_rule.rs`
 - read-only: `src/**`, the other tests, `skills/moai/references/internal/sdd.md`, `.moai/project.yaml`
 - forbidden: code and tool changes, the tier floor list, `.claude/`, the real HOME
 
@@ -86,7 +90,15 @@ parent: null
 | D-4 | 가벼운 감사는 영수증을 읽고 아무것도 다시 돌리지 않는다; guard-mutant 와 감사자의 모듈 실행은 tier 2 만 | 리더 배차 8785 항목 4; 감사 하나 20만~24만 토큰 | 이전 tier 줄로 되돌려요 |
 | D-5 | 지적과 되풀이는 `docs/later.md` 한 곳에 한 줄씩 적는다 | 리더 배차 8785 항목 5; 한 카드가 SPEC 의 후속 카드에 기준을 덧붙이던 규칙을 대체 | 기준 덧붙이기 문구로 되돌려요 |
 | D-6 | 작업 중 + 검사 대기 카드는 레인 수의 두 배까지다 | 사용자 결정 항목 4 | 상한 문구를 지워요 |
+| D-7 | CLAUDE.md 에 재귀적 자기 개선(RSI)을 적는다; 지금 고칠 수 있는 것은 그 라운드에 고치고 못 고치는 것만 나중 목록 한 줄이다 | 사용자 직접 지시 2026-11-24T22:19:11Z(리더 전달 카드 노트) | RSI 항목을 지우고 되풀이 항목을 이전 문구로 되돌려요 |
+| D-8 | 감사 보고서 4절의 상충 여섯 개를 규칙 글에서 푼다: 제출 신호와 운영 ready 의 구별, 단건·2~4 묶음·출시 묶음 이름, 레인 반환과 카드 종결 분리, 리더 없을 때 제출까지, NeXT 로컬 흐름의 원격 최신화 제외, 원본·설치본·새 세션 로드 세 사실 | 리더 정정(사용자가 전한 감사 보고서 지시, 2026-11-25) | 해당 문장을 이전 문구로 되돌려요 |
 
 ## Result
 
-초안이에요. 구현 뒤 이 자리에 변경한 파일, 테스트 실행, AC 별 met 와 남은 불일치를 적어요.
+규칙 글만 바꿨고 코드는 건드리지 않았어요.
+
+- 바꾼 파일: Scope 의 write 목록 그대로예요(규칙 글, 옛 규칙표 네 행, 고정 테스트, 매니페스트 해시).
+- 테스트: 아래 대상을 한 슬롯에서 돌렸고 187개가 모두 통과했어요(`repo_claude_md`, `sdd_guidance`, `next_flow_skill_scan`, `review_check_cli`, `core_rules_2876`, `lane_rules_2401`, `agent_defs_package`, `lane_completion_handshake`, `lane_next_rules`, `product_cli` 의 `skill_package`, `card` 의 `followup_per_spec`·`recurring_problems`). 카드 영수증(`check affected --card`)은 READY 노트에 있어요.
+- AC-1 ~ AC-9: met. 증거는 위 테스트예요.
+- 남은 불일치(코드): `spec/` 가지 훅은 SPEC 이 없는 코드 쓰기를 여전히 거절해요; `card land` 는 아직 작업 트리를 함께 옮기지 않아요; `moai bundle check` 판정은 그대로예요; 원본과 설치본의 일치를 세 사실로 보여 주는 명령은 아직 없어요. 모두 `docs/later.md` 에 올렸어요.
+- 이 카드가 닫지 않는 것: 카드 기준 3·4·5(효과 측정, 시범 열 장, LANE-BLOCKED 집계)는 철회해요. 부분 완료 카드의 남은 기준을 자동으로 닫는 규칙은 넣지 않았어요.
