@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-leader-withdraw-rule
 title: "Leader guidance: HOLD cards leave ready through card withdraw"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8238 (2026-11-24T05:33:07Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8237 에 답함): 판 1(커밋 3f30135d7c) 승인; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:a784cea65786cc640c41e71d698b5c095b7e031c0a6200d27b78495a44c24bc3"
 ---
 
 # Leader guidance: HOLD cards leave ready through card withdraw
