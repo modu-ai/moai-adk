@@ -187,15 +187,29 @@ fn all_reservations(conn: &Connection) -> Result<Vec<Reservation>> {
     rows.collect::<std::result::Result<Vec<_>, _>>().map_err(db)
 }
 
-/// The newest `LANE-READY-INTEGRATION` note of each card that is not done: its head and base.
+/// What a note that hands a head back starts with. The same table as `MARKERS` of
+/// `ready_receipt::marker_of_line`, which lives on the integration tip and not on the base this
+/// slice was cut from; `READY` needs its space so that a longer word is no marker. The landing
+/// side swaps this for a call of that function (SPEC-20261124-orchestrate-plan, D-10).
+const HAND_BACK_MARKERS: [&str; 3] = ["LANE-READY-INTEGRATION", "REPAIRED", "READY "];
+
+/// A note hands a head back when its first line, blanks before it skipped, starts with a marker.
+fn hands_back(body: &str) -> bool {
+    let first = body.lines().next().unwrap_or("").trim_start();
+    HAND_BACK_MARKERS.iter().any(|m| first.starts_with(m))
+}
+
+/// The newest hand-back note (`LANE-READY-INTEGRATION`, `REPAIRED` or `READY`) of each card that
+/// is not done and names a head: that head and its base.
 fn ready_heads(conn: &Connection) -> Result<BTreeMap<i64, (String, Option<String>)>> {
     let db = |e: rusqlite::Error| LedgerError::from(e).to_string();
+    // The SQL only narrows the rows; `hands_back` decides.
     let mut stmt = conn
         .prepare(
             "SELECT n.card_id, substr(n.body, 1, ?1) FROM card_note n \
                JOIN card c ON c.card_id = n.card_id \
               WHERE n.origin = 'local' AND c.state <> 'done' \
-                AND substr(ltrim(n.body), 1, 22) = 'LANE-READY-INTEGRATION' \
+                AND (n.body LIKE '%READY%' OR n.body LIKE '%REPAIRED%') \
               ORDER BY n.note_id",
         )
         .map_err(db)?;
@@ -207,6 +221,9 @@ fn ready_heads(conn: &Connection) -> Result<BTreeMap<i64, (String, Option<String
     let mut out = BTreeMap::new();
     for row in rows {
         let (card_id, body) = row.map_err(db)?;
+        if !hands_back(&body) {
+            continue;
+        }
         // The newest note wins; a note with no head names nothing and hides no older one.
         if let Some(head) = hex40_after(&body, "head=") {
             out.insert(card_id, (head, hex40_after(&body, "base=")));
@@ -414,6 +431,39 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
             blocked.insert(card_id, reason.to_string());
         }
     }
+    // A card whose newest hand-back head waits for an audit (no verdict) or for its landing
+    // (newest verdict `pass`) is not work for a new lane; a `fail` sends it back to repair. A
+    // lane that hands a card back gives its reservation back, so such a card is `ready` or
+    // `active`, whatever `card next` ranks.
+    let mut audits: Vec<Value> = Vec::new();
+    let mut waiting: BTreeSet<i64> = BTreeSet::new();
+    for (card_id, (head, base)) in &heads {
+        let newest = verdicts
+            .get(card_id)
+            .and_then(|events| events.iter().rev().find(|e| &e.head == head));
+        match newest {
+            Some(verdict) => {
+                if verdict.pass {
+                    waiting.insert(*card_id);
+                }
+            }
+            None => {
+                waiting.insert(*card_id);
+                let authors: BTreeSet<&str> = reservations
+                    .iter()
+                    .filter(|r| r.card_id == *card_id)
+                    .map(|r| r.holder.as_str())
+                    .collect();
+                let name = input::card_name(*card_id);
+                audits.push(json!({
+                    "kind": "audit", "card": name, "head": head, "base": base,
+                    "author_sessions": authors, "runner_rule": RUNNER_RULE,
+                    "key": format!("audit:{name}:{head}"),
+                }));
+            }
+        }
+    }
+    candidates.retain(|card_id| !waiting.contains(card_id));
     for (lane, card_id) in free.iter().zip(candidates.iter()) {
         let card = input::card_name(*card_id);
         actions.push(json!({
@@ -421,33 +471,7 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
             "key": format!("dispatch:{}:{}", lane.name, card), "card": card,
         }));
     }
-
-    // ---- audit requests ---------------------------------------------------------------------
-    for (card_id, card) in &cards {
-        if card.state != "review" {
-            continue;
-        }
-        let Some((head, base)) = heads.get(card_id) else {
-            continue;
-        };
-        let judged = verdicts
-            .get(card_id)
-            .is_some_and(|events| events.iter().any(|e| &e.head == head));
-        if judged {
-            continue;
-        }
-        let authors: BTreeSet<&str> = reservations
-            .iter()
-            .filter(|r| r.card_id == *card_id)
-            .map(|r| r.holder.as_str())
-            .collect();
-        let name = input::card_name(*card_id);
-        actions.push(json!({
-            "kind": "audit", "card": name, "head": head, "base": base,
-            "author_sessions": authors, "runner_rule": RUNNER_RULE,
-            "key": format!("audit:{name}:{head}"),
-        }));
-    }
+    actions.extend(audits);
 
     // ---- blocked cards ----------------------------------------------------------------------
     for (card_id, reason) in &blocked {
