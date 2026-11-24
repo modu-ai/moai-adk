@@ -35,7 +35,7 @@ Step 6 of the project route offers at most three project agents and then project
 
 - AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7): step 6 of `skills/moai/workflows/project.md` carries the study, the web search with a source per proposal, the missing-web fallback, the fields of a proposal, the several-of selection and the portability rule, and no longer says "at most three"; the scan tests and `skill_references` pass · verify: `cargo test --locked --offline --test project_harness_step`; `cargo test --locked --offline --test skill_text_citations --test product_cli`; `python3 -m unittest tests.skill_references_test tests.source_manifest_test`
 - AC-2 (REQ-8, REQ-9): `generation-plan` accepts sixteen agents and sixteen skills, and refuses seventeen of either, and an unsafe name, with the field named and no value shown · verify: `cargo test --locked --offline --test generation_request_limits`
-- AC-4 (REQ-10, REQ-11): in a temporary project whose `CLAUDE.md` managed section, `REVIEW.md` and `.gitignore` block were edited by hand after generation, a request that renames one `prj-` agent's purpose and carries `harness-only` plans only that agent file and the manifest, with no `conflict`; the apply writes that file, leaves the bytes of every other tracked file and the three manifest linkage keys as they were, and the same request without the pick still plans the three conflicts; a second project skill recorded earlier stays when the request names one · verify: `cargo test --locked --offline --test harness_only_pick`
+- AC-4 (REQ-10, REQ-11): in a temporary project whose `CLAUDE.md` managed section, `REVIEW.md` and `.gitignore` block were edited by hand after generation, a request that renames one `prj-` agent's purpose and carries `harness-only` plans only that agent file and the manifest, with no `conflict`; the apply writes that file, leaves the bytes of every other tracked file and the three manifest linkage keys as they were, and the same request without the pick still plans the three conflicts; a second project skill recorded earlier stays when the request names one · verify: `cargo test --locked --offline --test project_harness_pick`
 - AC-5 (REQ-12): step 6 names the pick `harness-only` and the request it goes into · verify: `cargo test --locked --offline --test project_harness_step harness_step_asks_for_the_harness_only_pick`
 - AC-3 (REQ-1…REQ-7): a dry run of the step on two fixture projects, a Rust command-line tool and a TypeScript web application, gives different proposals, each with at least one source line (URL and read time); the run and its sources are kept in `research.md` of this folder · verify: manual: read `research.md` of this SPEC and compare the two proposal lists
 
@@ -44,7 +44,7 @@ Step 6 of the project route offers at most three project agents and then project
 - write: `.moai/specs/SPEC-20261120-project-harness-research/**`
 - write (after the card that rewrites the project texts has returned them): `skills/moai/workflows/project.md`, `skills/moai/references/source-manifest.json`, `tests/project_harness_step.rs`
 - write (widened when the file is free): `src/generation.rs`, `tests/generation_request_limits.rs`
-- write (revision 2, by line lease because other cards edit it): `src/agents.rs` (the one new pick id and its skip rule), `tests/harness_only_pick.rs` (new)
+- write (revision 2, by line lease because other cards edit it): `src/agents.rs` (the one new pick id and its skip rule), `tests/project_harness_pick.rs` (new; named with the area word `project` so `tests/areas.toml` maps it), `tests/product_cli.rs` (one line: the step 6 heading pin) and `tools/repo_scans.json` (the reads scan that names `tests/project_harness_step.rs`), the last two by line lease
 
 ## Decisions
 
@@ -61,7 +61,7 @@ Step 6 of the project route offers at most three project agents and then project
 1. This card, now: this SPEC, `research.md` (the official formats read, the facts a proposal may rely on) and the fixtures' proposals.
 2. Tests first: `tests/generation_request_limits.rs` (red: the refusal names no field today) and `tests/project_harness_step.rs` (red against "at most three"); then `src/generation.rs` (the field named in the refusal), then the text of step 6 after the project-text card has returned `project.md` and the manifest.
 3. Whole-area run, clippy, rustfmt, spec check, audit, merge.
-4. Revision 2: RED first (`tests/harness_only_pick.rs`, and the step-6 phrase test), then the `harness-only` id and its `skip` rule in `src/agents.rs`, then `src/generation.rs` (list only the harness files, skip the workflow files and the no-longer-requested removal, keep the linkage keys), then the step-6 sentence, then the source manifest.
+4. Revision 2: RED first (`tests/project_harness_pick.rs`, and the step-6 phrase test), then the `harness-only` id and its `skip` rule in `src/agents.rs`, then `src/generation.rs` (list only the harness files, skip the workflow files and the no-longer-requested removal, keep the linkage keys), then the step-6 sentence, then the source manifest.
 
 ## Result
 
@@ -73,7 +73,7 @@ Step 6 of the project route offers at most three project agents and then project
 - AC-1: met — `cargo test --locked --offline --test project_harness_step`: 6 passed (문구 시험 5개와 `harness-only` 시험 1개), 합친 트리에서 다시 읽었어요.
 - AC-2: met — `cargo test --locked --offline --test generation_request_limits`: 5 passed, 합친 트리에서.
 - AC-3: met by reading — 변화 없음(`research.md`).
-- AC-4: met — `cargo test --locked --offline --test harness_only_pick`: 4 passed. 시험 먼저 돌렸을 때 3개가 `picks holds an id this tool does not know` 등으로 실패했고(RED), 고정 장치는 손으로 고친 CLAUDE.md·REVIEW.md·.gitignore 와 바뀐 프로필로 선택 없는 요청이 conflict 를 내는 것까지 재현해요. 선택이 있으면 계획은 에이전트 파일, 이름 붙인 스킬, 매니페스트만 나열하고 conflict 가 없어요. 적용은 세 파일과 워크플로 파일의 바이트, 이름 없는 스킬 `prj-other`, 매니페스트의 `workflow_id`·`interview_revision`·`profile_sha256` 을 그대로 두어요.
+- AC-4: met — `cargo test --locked --offline --test project_harness_pick`: 4 passed. 시험 먼저 돌렸을 때 3개가 `picks holds an id this tool does not know` 등으로 실패했고(RED), 고정 장치는 손으로 고친 CLAUDE.md·REVIEW.md·.gitignore 와 바뀐 프로필로 선택 없는 요청이 conflict 를 내는 것까지 재현해요. 선택이 있으면 계획은 에이전트 파일, 이름 붙인 스킬, 매니페스트만 나열하고 conflict 가 없어요. 적용은 세 파일과 워크플로 파일의 바이트, 이름 없는 스킬 `prj-other`, 매니페스트의 `workflow_id`·`interview_revision`·`profile_sha256` 을 그대로 두어요.
 - AC-5: met — `harness_step_asks_for_the_harness_only_pick` 가 6단계의 문장 둘을 읽어요.
 - 가드 뮤턴트(코드를 뺀 사본에서 시험이 실패하는지, 각 `cargo test` exit 101): M1 `is_harness_only` 를 늘 false(2 실패), M2 프로필 digest 를 되돌리는 줄 제거(1), M3 `src/agents.rs` 의 skip 규칙 제거(1), M4 이름 없는 스킬 제거 계획을 되살림(2), M5 6단계 문장 제거(1), M6 엔진 파일을 계획에 나열(1), M7 워크플로 파일을 계획에 나열(1). 일곱 모두 복원했고 `git diff` 가 비었어요.
 - 되돌리는 법: `PICKS` 에서 `harness-only` 와 그 분기를 지워요(D-5).

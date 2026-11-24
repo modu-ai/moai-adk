@@ -32,14 +32,15 @@ fn fixture() -> Fx {
     let (home, root) = (base.join("home"), base.join("project"));
     fs::create_dir_all(&home).unwrap();
     fs::create_dir_all(root.join("skills/moai/workflows")).unwrap();
-    fs::create_dir_all(root.join(".moai-cli")).unwrap();
+    let state = root.join(moai_cli::state_root::dir(&root));
+    fs::create_dir_all(&state).unwrap();
     let profile = json!({
         "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
         "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude", "codex"]
     });
     let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
     bytes.push(b'\n');
-    fs::write(root.join(".moai-cli/project.yaml"), bytes).unwrap();
+    fs::write(state.join("project.yaml"), bytes).unwrap();
     Fx {
         _tmp: tmp,
         home,

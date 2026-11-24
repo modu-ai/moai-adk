@@ -2781,7 +2781,7 @@ mod skill_package {
             "The same plan carries a `REVIEW.md` section when the interview recorded `review_blocks` or `protected`",
             "an unanswered axis is never written as a rule",
             // #2639 project agents: from the answers, never a base name, host files only.
-            "**Offer project agents (Issue #2639).**",
+            "**Propose a project harness (Issue #2639).**",
             "its `role_id` is `prj-<name>` for the project's own job",
             "a project agent never shadows a user-layer `moai-*` agent",
             "Offer project skills the same way: each is one `project_skills` entry",
