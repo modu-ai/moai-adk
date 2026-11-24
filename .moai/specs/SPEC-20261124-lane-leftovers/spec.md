@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261124-lane-leftovers
 title: "lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY"
-status: approved
-revision: 1
+status: draft
+revision: 2
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-24
-  basis: "리더 결정 노트 8180 (2026-11-24T04:13:54Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8179 에 답함): SPEC 판 1 승인 — D-1 (a), D-2 (a), D-3 (a); 레인은 그 노트를 인용만 해요"
-  digest: "sha256:0350440c9bc5d3d4b2b923bac37afae4c0ae92f9aa5e0024deea93cc6b83afc1"
 ---
 
 # lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY
@@ -62,15 +57,16 @@ approval:
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261124-lane-leftovers/**`, `src/card/ready_leftovers.rs`(새), `src/card/mod.rs`(한 줄 `pub mod`), `src/card/work.rs`(호출 한 줄과 답 필드), `src/ops/card.rs`(`Note` 도움말 글만), `tests/card_ready_leftovers_cli.rs`(새), `docs/lane-rules.md`, `docs/design-review/appendix/operations/card.md`, `skills/moai/references/flows/next-flow.md`, `skills/moai/references/internal/self-check.md`, `tests/fixtures/help/**`(`card note` 항목만)
-- read-only: `src/card/ready_receipt.rs`, `src/bundle/mutant_line.rs`, `tests/card_ready_receipt_cli.rs`, `tests/areas.toml`, `docs/claude-md-rule-provenance.md`
+- write: `.moai/specs/SPEC-20261124-lane-leftovers/**`, `src/card/ready_leftovers.rs`(새), `src/card/mod.rs`(한 줄 `pub mod`), `src/card/work.rs`(호출 한 줄과 답 필드), `src/ops/card.rs`(`Note` 도움말 글만), `tests/card_ready_leftovers_cli.rs`(새), `docs/lane-rules.md`, `docs/design-review/appendix/operations/card.md`, `skills/moai/references/flows/next-flow.md`, `skills/moai/references/internal/self-check.md`, `tests/fixtures/help/**`(`card note` 항목만), `tests/card_ready_receipt_cli.rs`와 `tests/e2e_temp_home_cli.rs`(판 2: 기존 READY 노트 본문에 `leftovers: none` 줄만 더해요)
+- read-only: `src/card/ready_receipt.rs`, `src/bundle/mutant_line.rs`, `tests/areas.toml`, `docs/claude-md-rule-provenance.md`
 - forbidden: `CLAUDE.md`, `src/lib.rs`, 영수증 검사(`check_note`)를 느슨하게 하는 변경, 새 Python 테스트, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것, 실제 HOME, 다른 레인의 파일
 
 ## Plan
 
 1. RED: `tests/card_ready_leftovers_cli.rs` 의 테스트 셋과 `card::ready_leftovers::tests` 를 먼저 쓰고 코드 없이 실패하는 것을 봐요. 새 테스트 파일의 첫 낱말 `card` 는 `tests/areas.toml` 에 이미 있어요. 테스트는 상태 폴더 이름(`.moai`)을 글자로 쓰지 않아서 `allow.tsv` 의 새 줄이 필요 없어요.
-2. GREEN: `src/card/ready_leftovers.rs` 에 줄을 읽는 순수 함수(코드 울타리·4칸 들여쓰기·`- ` 접두사 규칙은 `mutant_line.rs` 와 같아요; 같은 규칙을 두 번 쓰지 않도록 공용 함수로 뽑을 수 있는지 먼저 보고, 어렵다면 복제하지 않고 `mutant_line` 의 것을 `pub(crate)` 로 열어요)와 공용 체크아웃을 읽는 함수를 두고, `work.rs` 의 `check_note` 앞에 한 줄을 불러요. 공용 체크아웃은 `git --no-optional-locks status --porcelain=v1 --ignored=matching -uall` 로 읽어요(index 를 건드리지 않아요). 공용 체크아웃은 `git worktree list --porcelain` 의 첫 항목이에요. 예약 시작은 원장의 예약 `acquired_at` 이에요.
+2. GREEN: `src/card/ready_leftovers.rs` 에 줄을 읽는 순수 함수(코드 울타리·4칸 들여쓰기·`- ` 접두사 규칙은 `mutant_line.rs` 와 같아요. `mutant_line.rs` 는 이 SPEC 의 읽기 전용이라 같은 열두 줄을 이 모듈에 두고, 하나로 합치는 일은 뒤 SPEC 의 몫으로 `## Result` 에 적어요)와 공용 체크아웃을 읽는 함수를 두고, `work.rs` 에서 영수증 검사 뒤에 한 줄을 불러요(영수증 거절 글이 앞서요). 공용 체크아웃은 `git worktree list --porcelain` 의 첫 항목이고 `git status --porcelain=v1 -z --ignored=matching -uall` 로 읽어요; 이 저장소의 `git_text` 가 `--no-optional-locks` 를 붙여서 index 를 건드리지 않아요. 예약 시작은 원장의 예약 `acquired_at` 이에요.
 3. 글: `docs/lane-rules.md`(Worktree entry and exit 의 한 줄과 Hand-off 1번), `card.md`, 도움말, `next-flow.md`, `self-check.md`.
+3b. 판 2: 새 거절 때문에 기존 READY 노트 테스트 일곱(`card_ready_receipt_cli` 여섯, `e2e_temp_home_cli` 하나)이 실패해서(이 실행에서 읽음) 그 노트 본문에 `leftovers: none` 줄만 더해요. 영수증 검사 기대는 그대로예요.
 4. 뮤턴트: 새 가드 테스트마다 코드를 지우고 실패를 봐요(줄 검사 제거, 목록 필터 제거, `--no-optional-locks` 제거, 예약 시각 필터 제거). 영향 테스트 한 번, READY.
 5. observe 창: 이 SPEC 이 올라간 뒤 다음 READY 노트 10개까지(또는 리더가 정한 수까지) 공용 체크아웃 목록이 비지 않은 횟수와 오탐을 `## Result` 에 적어요. 거절로 바꾸는 일은 기록된 결정이에요(D-1).
 
@@ -81,6 +77,8 @@ approval:
 - 저장소와 워크트리 밖(`$TMPDIR`, scratchpad)에 만든 것은 git 이 보지 못해서 보고와 위치 규칙에 기대요. 이 검사가 그 일을 없애지는 못해요.
 - 이미 도는 레인 세션은 새 규칙을 모르는 채 READY 를 써서 한 번 거절될 수 있어요. 거절 글이 붙일 줄을 보여 줘서 그 자리에서 고칠 수 있어요(REQ-7).
 - `.claude/worktrees/` 의 다른 워크트리 이름이나 `target/` 을 목록에서 빼는 고정 목록이 실제 상태와 어긋날 수 있어요. 목록은 코드 한 곳에 상수로 두고, observe 창에서 오탐으로 드러난 것만 더해요.
+
+- `docs/lane-rules.md` 는 같은 시각에 다른 카드의 예약이 잡고 있어서(줄 임대도 그 예약이 끝날 때까지 거절돼요) 이 변경의 글은 그 예약이 풀린 뒤에 들어가요.
 
 ## Decisions
 
