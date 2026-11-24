@@ -1338,12 +1338,13 @@ fn record_generation(
 /// The manifest key that holds the recorded project agent and skill request.
 pub const RECORD_KEY: &str = "generation_request";
 
+/// The native roles, skill projections and project skills of a recorded request.
+pub type RecordedLists = (Vec<NativeRole>, Vec<SkillProjection>, Vec<ProjectSkill>);
+
 /// The project agents and skills a generation apply recorded: `Ok(None)` when the manifest has
 /// no record, and an `Err` that is a question for the user when the record cannot be read, so a
 /// plan never rebuilds from a guess.
-pub fn recorded_request_lists(
-    manifest: &Value,
-) -> Result<Option<(Vec<NativeRole>, Vec<SkillProjection>, Vec<ProjectSkill>)>> {
+pub fn recorded_request_lists(manifest: &Value) -> Result<Option<RecordedLists>> {
     let Some(record) = manifest.get(RECORD_KEY) else {
         return Ok(None);
     };
