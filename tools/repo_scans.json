@@ -1716,7 +1716,7 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test agents_choices_step_cli --test audit_gate_cli --test bin_names_signature_cli --test bundle_user_assets_cli --test claude_python_adapter_removed --test git_hooks_cli --test github_cli --test labels_check --test labels_sync --test launcher_reads_models --test next_flow_skill_scan --test omp_launcher_removed --test orca_optional_3005 --test product_cli --test protected_paths_one_list --test repo_claude_md --test retired_host_words --test sdd_guidance --test style_banner_scan --test trailer_check_cli --test worktree_report --test repo_scans_table"
+        "cargo test --offline --locked --test agents_choices_step_cli --test audit_gate_cli --test bin_names_signature_cli --test bundle_user_assets_cli --test claude_python_adapter_removed --test git_hooks_cli --test github_cli --test labels_check --test labels_sync --test launcher_reads_models --test next_flow_skill_scan --test omp_launcher_removed --test orca_optional_3005 --test product_cli --test protected_paths_one_list --test release_pr_three_os --test repo_claude_md --test retired_host_words --test sdd_guidance --test style_banner_scan --test trailer_check_cli --test worktree_report --test repo_scans_table"
       ],
       "rules": [
         "tests/agents_choices_step_cli.rs",
@@ -1734,6 +1734,7 @@
         "tests/orca_optional_3005.rs",
         "tests/product_cli.rs",
         "tests/protected_paths_one_list.rs",
+        "tests/release_pr_three_os.rs",
         "tests/repo_claude_md.rs",
         "tests/retired_host_words.rs",
         "tests/sdd_guidance.rs",
