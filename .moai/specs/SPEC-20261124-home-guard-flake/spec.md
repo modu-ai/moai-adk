@@ -92,7 +92,10 @@ created: 2026-11-24
 ## Plan
 
 1. RED: the acceptance tests of AC-1, AC-2, AC-5, AC-6, AC-7 and AC-8 in `tests/test_home_guard.rs` fail on the current wrapper; AC-3 and AC-4 pass before and after.
-2. `tools/test_home_guard.sh` reads the start time from the reference file and, only after a `touched` verdict, writes the detail lines; the verdict code is not touched and the path of a test that touched nothing gains no new command.
+2. `tools/test_home_guard.sh` reads the start time from the reference file and, only after a `touched` verdict that is not a baseline `tolerated` one, writes the detail lines; the verdict code is not touched and the path of a test that touched nothing gains no new command. The lines are:
+   - `HOME-GUARD-DETAIL: kind=hit test=<binary>:<test> path=<relative path> atime=<t> mtime=<t> ref=<t> end=<t>`, one per hit entry (`.` is the HOME itself);
+   - `HOME-GUARD-DETAIL: kind=peer test=<binary>:<test> folder=<moai-test-home.name> atime=<t>`, one per other guard folder (`atime=none` when it holds no `user-assets.json`);
+   - `HOME-GUARD-DETAIL: kind=proc test=<binary>:<test> pid=<id> name=<file name>`, one per running `moai*` process, or one `kind=procs ... procs=unavailable` line.
 3. Guard mutants, one line each in the READY note: removing the detail write fails AC-1; reading a planted peer with `ls` or `find` instead of `stat` fails AC-2; changing an exit code fails AC-3; writing the absolute path fails AC-6; writing the arguments of a process fails AC-7.
 4. `moai check affected` once at the head; the receipt goes in the READY note, with a reading of whether `MOAI_HOME_GUARD_LOG` reaches nextest through `check affected` (`run_step` in `src/check_affected.rs` clears no variable) and through nextest (AC-8).
 5. Later, with no new card: the next real `touched its HOME` that is not a real read leaves the detail lines in the log; the reader is read from them and revision 2 fixes the source.
@@ -113,3 +116,32 @@ created: 2026-11-24
 | D-4 | The detail lines hold paths relative to the HOME and no user path (REQ-8). | leader note 8329, addition 1 | none needed: it only narrows what is written |
 | D-5 | The detail lines also name the running `moai*` processes by id and command file name (REQ-9, REQ-10). | leader note 8329, addition 2, left to the lane's judgement: the only code that opens `user-assets.json` is `home_state::home_go_markers`, so a `moai` process alive at the hit that is not the test's child tells whether another test's `moai` ran with a wrong HOME; the cost is one `ps` on a `touched` verdict only, and no argument is kept | drop REQ-9 and REQ-10 |
 | D-6 | Revision 2 holds the three additions of note 8329 and is a new text, so its digest is new: the lane records no approval of it; the leader reads the digest in the READY note. | CLAUDE.md rule that a lane never records an approval it did not get | none |
+
+## Result
+
+Measured 2026-11-24 (08:06Z) on macOS arm64 in this branch's worktree, nextest 0.9.152, in-tree `target/`, heavy slots `--max 3`, load about 25 to 40. Linux and Windows were not run. The cause of the false `touched its HOME` failures is still not known (uncertain); this revision records evidence and changes no verdict, so the card's criterion 1 stays `not_met`.
+
+- AC-1 met: a reading test under a log file gives the `HOME-GUARD:` line and one `kind=hit` detail line per hit entry (the count equals the entries of the printed line), each with `atime`, `mtime`, `ref` and `end` that have a fraction, `ref` not later than `end`, and for `.moai/user-assets.json` `ref` < `atime` <= `end`; a test that touches nothing leaves no detail line (`a_touched_verdict_writes_one_detail_line_per_hit_entry`).
+- AC-2 met: a planted `moai-test-home.PEER01` whose files carry an access time of 2000 is named with that time, and its file, its `.moai` folder and the folder itself keep that access time after the run (`another_guard_folder_is_named_by_its_access_time_and_never_opened`).
+- AC-3 met: the 42 tests of `tests/test_home_guard.rs` that existed before this change pass unchanged (a decoy read, a write and a removal fail in the default mode, observe keeps the exit code, a listed test is tolerated); the whole file is 49 tests, 49 passed (`target/c451/green2.log`, 2.9 s, with this wrapper wrapping the test processes themselves).
+- AC-4 met: a log path that cannot be written changes neither the exit code nor the printed line and leaks no shell error (`a_detail_that_cannot_be_written_changes_nothing`, which also passed before the change).
+- AC-5 met: with a `perl` that fails, the times are whole seconds and the verdict is still 1 (`without_perl_the_times_are_whole_seconds_and_the_verdict_is_the_same`).
+- AC-6 met: no detail line holds the `TMPDIR` path, the repository path, the HOME of the test process or a marker planted in the test's arguments; hit paths are `.`, `.moai` and `.moai/user-assets.json` and none starts with `/` (`the_detail_lines_hold_relative_paths_and_no_argument`).
+- AC-7 met: a process named `moai-probe` (a link to `sleep`; a copied system binary is killed by macOS at start) is named by id and file name with its argument and folder absent, and with a `ps` that fails one `procs=unavailable` line is written and the verdict is still 1 (`a_moai_process_is_named_by_id_and_file_name_only`, `an_unreadable_process_table_leaves_one_line_and_the_same_verdict`).
+- AC-8 met: with `MOAI_HOME_GUARD_LOG` set outside the scratch crate, the log holds the detail line of the reading plant after `cargo nextest run`, so the variable reaches the wrapper through nextest (`the_log_variable_reaches_the_wrapper_through_nextest`). That `moai check affected` passes it on to nextest is read from `run_step` in `src/check_affected.rs` (the child gets the caller's environment plus the step's own variables, no `env_clear`); the receipt of the READY note says whether the run used it.
+
+RED (before the wrapper change, head `eead0d6fae`): 49 tests run, 42 passed, 7 failed, each because the log held no detail line (`target/c451/red-kept.log`).
+
+Guard mutants (each applied to the committed head `51459aed6e`, the whole `test_home_guard` binary run under nextest, then restored; the tree was clean after):
+- remove the detail write → killed by 7 tests (`a_touched_verdict_writes_one_detail_line_per_hit_entry` among them).
+- read the other guard folder with `cat` and `ls` instead of `stat` → killed by `another_guard_folder_is_named_by_its_access_time_and_never_opened`.
+- change the enforce exit code from 1 to 0 → killed by 15 tests (`enforce_fails_a_test_that_reads_a_decoy` among them).
+- write the absolute path of a hit → killed by `a_touched_verdict_writes_one_detail_line_per_hit_entry`, `the_detail_lines_hold_relative_paths_and_no_argument`, `the_log_variable_reaches_the_wrapper_through_nextest`.
+- write the whole command path of a process → killed by `a_moai_process_is_named_by_id_and_file_name_only`.
+- keep the fraction switch on without `perl` → killed by `without_perl_the_times_are_whole_seconds_and_the_verdict_is_the_same`.
+- change the `procs=unavailable` line (the first try replaced a comment and survived, an invalid mutant; the second hit the code line) → killed by `an_unreadable_process_table_leaves_one_line_and_the_same_verdict`.
+- stop silencing the stderr of the detail write → killed by `a_detail_that_cannot_be_written_changes_nothing`.
+
+Not measured: the cost per test. The path of a test that touches nothing gains the parsing of three function definitions and no command; a hit costs one `perl`, two `stat` per entry, one `stat` per peer and one `ps`.
+
+Evidence of the false failure that this revision serves (kept here because `target/` logs live only while the card is open): two lines of one `check affected` test step (4083 tests), each naming only the decoy folder, `.moai` and `.moai/user-assets.json`, for tests that give every `moai` child its own HOME. Reproduction attempts under load found 0 of about 1,800 (the failing test alone 40 times; an idle process 60 times; guard-shaped decoys 1,600, with and without `.metadata_never_index`). Ruled out: Spotlight, the test and its children, the temporary-folder scans of `hygiene.rs` and `worktree_report.rs`, the `ps` read of `home_state`. Next: when a `touched` line appears for a test that cannot have read its HOME, the detail lines of the card's log show when the read happened (before, during or after the test), whether other guard folders were read in the same instant, and which `moai` processes were alive; revision 3 or a new SPEC fixes the source then.
