@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261121-go-path-removal
 title: "moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement"
-status: approved
+status: draft
 revision: 6
 created: 2026-11-21
-approval:
-  by: leader
-  at: 2026-11-24
-  basis: "리더 결정 노트 8346 (2026-11-24T08:08:17Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8345 에 답함; 앞서 노트 8336 이 D-1~D-9 를, 노트 8341 이 D-10 을 정함): 판 6(D-10 고침) 승인, head 029989e59f; 레인은 그 노트를 인용만 해요"
-  digest: "sha256:9a69f20398c896948a259ab1b4b3cc214f7f9104177214a83e97e7ae825ed1c6"
 ---
 
 # moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement
@@ -52,6 +47,7 @@ The questions revision 6 put to the leader on the card (note 8333) and the leade
 - Q8: Does the statusline wrapper keep its Go fallback? -> A: no; it loses the fallback only, and the Python wrapper test is adjusted as text and is never run or cited as evidence (D-8)
 - Q9: What closes card criterion 3? -> A: the temporary-HOME run of AC-19; the user's look at a fresh shell on the real machine is a user step, recorded on the card after the landing (D-9)
 - Q10: Does the fresh-shell test run `bundle build` and `bundle verify` with exit 0 on its scrubbed `PATH`? -> A: no; it shows them answering with this build's envelope, and the verify line of AC-19 runs the two bundle test targets that show their working (D-10)
+- Q11: Does AC-22 ask for exactly one start of a `moai` on `PATH` per `install-inspect` run? -> A: no; every start carries `--version` alone and no other argument, and one run asks twice today (D-11)
 
 ## Non-goals
 
@@ -157,7 +153,7 @@ The questions revision 6 put to the leader on the card (note 8333) and the leade
   verify: `test ! -e install/moai-switch.sh && test ! -e tests/diff_go.rs && test ! -e tests/fixtures/diff_go && test -z "$(grep -rnE 'include_bytes!\([^)]*moai-switch' src)" && test -z "$(grep -n 'moai\.old' tools/claude-statusline.sh)"`
 - AC-21 (REQ-20): the two help entries and the update screens name the link and the saved copy and say no v2; the help tests pass
   verify: `cargo nextest run --locked --offline --test help_text_names_moai --test update_switch_cli --test cli_text_citations`
-- AC-22 (REQ-21): a fake `moai` first on `PATH` that records every start with its arguments is started by `install-inspect` once with `--version` alone, and the test that lets only `--version` reach a Go `moai` first on `PATH` stays green
+- AC-22 (REQ-21): a fake `moai` first on `PATH` that records every start with its arguments is started by `install-inspect` with `--version` alone and with no other argument, and the test that lets only `--version` reach a Go `moai` first on `PATH` stays green
   verify: `cargo nextest run --locked --offline --test go_path_retired_cli --test cli_name_moai`
 
 ## Scope
@@ -197,7 +193,7 @@ The product changes of revision 6 need none of these. Each is the user's own ste
 
 ## Decisions
 
-The decisions D-1 to D-9 were the lane's proposals for revision 6 and count from the leader's note of 2026-11-24T07:45:22Z. D-10 is the leader's decision on the amendment of REQ-22 and AC-19 (its note on the card, 2026-11-24T07:58:02Z); the leader approved the amended text by its digest, and the frontmatter records that note.
+The decisions D-1 to D-9 were the lane's proposals for revision 6 and count from the leader's note of 2026-11-24T07:45:22Z. D-10 is the leader's decision on the amendment of REQ-22 and AC-19 (its note on the card, 2026-11-24T07:58:02Z), approved with that text by its digest. D-11 is the lane's amendment of AC-22, found while its test was written; the SPEC is a draft again until the amended text is approved by its digest.
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
@@ -211,6 +207,7 @@ The decisions D-1 to D-9 were the lane's proposals for revision 6 and count from
 | D-8 | The statusline wrapper keeps its lookup and loses the Go fallback only | the wrapper is the source of the script block of `docs/2383-statusline-switch-design.md`; the fallback (`tools/claude-statusline.sh:25-29`) is the last text in the tree that starts `moai.old` | leave the fallback (the binary does not ship the wrapper) |
 | D-9 | Card criterion 3 is met by the temporary-HOME run of AC-19; the look at a fresh shell on the real machine is the user's step and is recorded on the card when the user runs it | the dispatch of 2026-11-24: the real HOME is the user's (HOLD `guarded`); the product side is provable in a temporary HOME | criterion 3 stays open until the user's look |
 | D-10 | Through the links the fresh-shell test runs the verbs that need no project (`bundle add`, `bundle remove`, `bundle list`), one hook call and one statusline call to exit 0; `bundle build` and `bundle verify` are shown answering with this build's envelope, and their working is shown by the two bundle test targets that the verify line of AC-19 runs | `bundle verify` runs the check list through `cargo`, `python3` and `moai-cli` on `PATH` (`tests/bundle_verify_cli.rs:1-6,155-183`), so the test's `PATH` would start a real build; `bundle build` needs the ledger world of `tests/bundle_build_cli.rs`; copying both harnesses into the new test file duplicates about 250 lines | a copy of both harnesses in `tests/go_path_retired_cli.rs` |
+| D-11 | AC-22 asks that every start of a `moai` on `PATH` carries `--version` alone, not that there is exactly one start | one `install-inspect` run starts the first `moai` on `PATH` twice today, each with `--version` only (`src/install.rs:771` for its candidates and `:914` for its PATH resolution); making it one start is a change of `src/install.rs`, which is outside the Scope, and REQ-21 asks only for the argument | a later SPEC makes `install-inspect` ask once |
 
 ### Evidence
 
