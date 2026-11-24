@@ -35,12 +35,14 @@ fn temp_home() -> (tempfile::TempDir, PathBuf) {
 
 /// A package holding only what a plan reads: `SKILL.md`, the routing source and the flow source.
 fn package(flow: &str) -> tempfile::TempDir {
+    package_with(&source_text(SOURCE), flow)
+}
+
+/// The same package with the routing text chosen too.
+fn package_with(routing: &str, flow: &str) -> tempfile::TempDir {
     let pkg = tempfile::tempdir().unwrap();
     fs::write(pkg.path().join("SKILL.md"), "package\n").unwrap();
-    for (rel, text) in [
-        (SOURCE, source_text(SOURCE)),
-        (FLOW_SOURCE, flow.to_string()),
-    ] {
+    for (rel, text) in [(SOURCE, routing.to_string()), (FLOW_SOURCE, flow.to_string())] {
         let path = pkg.path().join(rel);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path, text).unwrap();
@@ -214,6 +216,63 @@ fn reverts_in_order_restore_the_state_file_byte_for_byte() {
     // Then the earlier receipt: the state of a home no apply ever touched.
     revert(&home, EARLIER_ID, PERM).unwrap();
     assert_eq!(state_bytes(&home), empty);
+}
+
+fn routing_slot(home: &Path) -> Value {
+    state_json(home)["routing_sha256"].clone()
+}
+
+#[test]
+fn a_routing_receipt_revert_restores_its_own_slot_while_the_flow_slot_is_held() {
+    // Only the kind `flow` entry defers to the file that holds the flow slot. A receipt that
+    // changed the routing text alone still gives `routing_sha256` back, though the current
+    // `rules/moai-flow.md` holds the flow slot's digest.
+    let (_t, home) = temp_home();
+    let flow = source_text(FLOW_SOURCE);
+    let pkg = package(&flow);
+    current_apply(&home, pkg.path());
+    let first_routing = routing_slot(&home);
+    let held_flow = flow_slot(&home);
+    assert!(first_routing.is_string() && held_flow.is_string());
+
+    let newer = package_with("## MoAI\n\nUse the skill ({invoke}), newer text.\n", &flow);
+    let second = current_apply(&home, newer.path());
+    assert_ne!(routing_slot(&home), first_routing, "the apply moved the slot");
+    assert_eq!(flow_slot(&home), held_flow, "the flow text did not change");
+
+    let v = revert(&home, &second, PERM).unwrap();
+    assert_eq!(v["state"], "reverted", "{v}");
+    assert_eq!(routing_slot(&home), first_routing);
+    assert_eq!(flow_slot(&home), held_flow);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_linked_new_file_with_the_slots_bytes_does_not_hold_the_slot() {
+    // `rules/moai-flow.md` is a link to a file holding the slot's exact bytes: it is not the plain
+    // file the apply wrote, so the earlier receipt's revert gives the slot back (null).
+    let (_t, home) = temp_home();
+    let flow = source_text(FLOW_SOURCE);
+    earlier_layout(&home, &flow);
+    let outside = home.join("elsewhere/flow-copy.md");
+    write(&outside, &flow);
+    let link = home.join(NEW_FLOW);
+    fs::create_dir_all(link.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&outside, &link).unwrap();
+    assert_eq!(
+        flow_slot(&home),
+        Value::String(moai_cli::digest(flow.as_bytes()))
+    );
+
+    let v = revert(&home, EARLIER_ID, PERM).unwrap();
+    assert_eq!(v["state"], "reverted", "{v}");
+    assert!(!home.join(OLD_FLOW).exists(), "the earlier file goes: {v}");
+    assert_eq!(flow_slot(&home), Value::Null);
+    assert!(
+        fs::symlink_metadata(&link).unwrap().file_type().is_symlink(),
+        "the link stays"
+    );
+    assert_eq!(fs::read_to_string(&outside).unwrap(), flow);
 }
 
 #[test]
