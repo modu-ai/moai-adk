@@ -23,6 +23,11 @@ const HIGH_USE_PERCENT: i64 = 70;
 /// above [`HIGH_USE_PERCENT`], read from what is left (SPEC-20261122-statusline-limits-left
 /// REQ-2).
 const LOW_LEFT_PERCENT: i64 = 100 - HIGH_USE_PERCENT;
+/// The filled cells of a bar are green with this share left or more, yellow from
+/// [`LEVEL_YELLOW_FROM`], peach from [`LOW_LEFT_PERCENT`] and red below it, so the bar turns red
+/// where the battery icon turns to `🪫` (SPEC-20261124-statusline-bar-color REQ-2, D-1).
+const LEVEL_GREEN_FROM: i64 = 70;
+const LEVEL_YELLOW_FROM: i64 = 50;
 /// The cost is shown below this many US dollars (at most `999999.99`, nine characters); a larger
 /// value (`1e308` printed a 337-character line) is left out.
 const MAX_COST_USD: f64 = 1_000_000.0;
@@ -36,6 +41,9 @@ const SGR_RESET: &str = "\x1b[0m";
 pub struct Theme {
     pub text: &'static str,
     pub muted: &'static str,
+    /// The filled cells of a limit bar by the share left: green, yellow, peach, red
+    /// ([`level_color`]).
+    pub level: [&'static str; 4],
     /// `🧠` model (mauve).
     pub model: &'static str,
     /// The effort and thinking text after the model name (lavender).
@@ -68,6 +76,7 @@ pub struct Theme {
 pub const MOCHA: Theme = Theme {
     text: "#CDD6F4",
     muted: "#6C7086",
+    level: ["#A6E3A1", "#F9E2AF", "#FAB387", "#F38BA8"],
     model: "#CBA6F7",
     effort: "#B4BEFE",
     cache: "#94E2D5",
@@ -86,6 +95,7 @@ pub const MOCHA: Theme = Theme {
 pub const LATTE: Theme = Theme {
     text: "#4C4F69",
     muted: "#9CA0B0",
+    level: ["#40A02B", "#DF8E1D", "#FE640B", "#D20F39"],
     model: "#8839EF",
     effort: "#7287FD",
     cache: "#179299",
@@ -727,9 +737,10 @@ impl Window {
     /// from `🔋` to `🪫` when less than [`LOW_LEFT_PERCENT`] is left
     /// (SPEC-20261122-statusline-limits-left REQ-1, REQ-2), and the bar of [`BAR_WIDTH`] cells
     /// draws the same share: the first `left * BAR_WIDTH / 100` (rounded down) cells are `█` and
-    /// the others `░`. The filled cells keep the base color of the line and the empty cells take
-    /// the muted color, two runs with no space between them; the glyphs tell them apart without
-    /// color. `used` is the whole used percentage from 0 to 100.
+    /// the others `░`. The filled cells take the level color of the share left
+    /// ([`level_color`], SPEC-20261124-statusline-bar-color) and the empty cells the muted
+    /// color, two runs with no space between them; the glyphs tell them apart without color.
+    /// `used` is the whole used percentage from 0 to 100.
     fn known(t: &Theme, label: &str, used: i64, countdown: Option<Piece>) -> Window {
         let left = left_percent(used).clamp(0, 100);
         let icon = if left < LOW_LEFT_PERCENT {
@@ -743,7 +754,7 @@ impl Window {
         let mut bar = Vec::new();
         if filled > 0 {
             bar.push(Piece {
-                color: "",
+                color: level_color(t, left),
                 text: cells('█', filled),
                 url: String::new(),
                 glue: false,
@@ -811,6 +822,22 @@ impl Window {
 /// SPEC-20261121-statusline-detached).
 fn whole_percent(pct: f64) -> i64 {
     (pct as i64).clamp(0, 100)
+}
+
+/// The color of the filled cells of a bar with `left` percent left: green from
+/// [`LEVEL_GREEN_FROM`], yellow from [`LEVEL_YELLOW_FROM`], peach from [`LOW_LEFT_PERCENT`] and red
+/// below it (SPEC-20261124-statusline-bar-color REQ-2). It reads the share left that the number
+/// shows, never the share used.
+fn level_color(t: &Theme, left: i64) -> &'static str {
+    if left >= LEVEL_GREEN_FROM {
+        t.level[0]
+    } else if left >= LEVEL_YELLOW_FROM {
+        t.level[1]
+    } else if left >= LOW_LEFT_PERCENT {
+        t.level[2]
+    } else {
+        t.level[3]
+    }
 }
 
 /// The share of a window that is left, from its whole used percentage.
@@ -3008,9 +3035,9 @@ mod window_tests {
         }
     }
 
-    /// REQ-6: the filled cells are in the base color of the line and the empty cells in the muted
-    /// color, so the colored line without its escapes is the plain line, and the two kinds of
-    /// cell are separate color runs.
+    /// REQ-6: the filled cells and the empty cells are separate color runs (the filled ones in
+    /// their level color, the empty ones muted), so the colored line without its escapes is the
+    /// plain line.
     #[test]
     fn the_colored_bar_has_the_plain_text() {
         use crate::statusline::color::Profile;
@@ -3056,7 +3083,8 @@ mod window_tests {
                 stripped.push_str(rest);
                 assert_eq!(stripped, plain, "{name} {profile:?}");
                 // The empty cells are painted in the muted color, each run on its own; the
-                // filled cells carry no color of their own and stay in the base color.
+                // filled cells take the level color of their window
+                // (SPEC-20261124-statusline-bar-color, `the_filled_cells_carry_the_level_color`).
                 for empty in ["░░░", "░░░░░░", "░░"] {
                     assert!(
                         out.contains(&profile.paint(t.muted, empty)),
@@ -3071,11 +3099,241 @@ mod window_tests {
                         "the filled cells are not muted: {out:?}"
                     );
                 }
-                // The filled and the empty cells of one bar are two runs, with no gap between.
-                assert!(
-                    out.contains(&format!("███████{}", profile.paint(t.muted, "░░░"))),
-                    "{out:?}"
-                );
+            }
+        }
+    }
+
+    /// The level colors of SPEC-20261124-statusline-bar-color REQ-3 written out by hand, in the
+    /// order green, yellow, peach, red.
+    const MOCHA_LEVELS: [&str; 4] = ["#A6E3A1", "#F9E2AF", "#FAB387", "#F38BA8"];
+    const LATTE_LEVELS: [&str; 4] = ["#40A02B", "#DF8E1D", "#FE640B", "#D20F39"];
+
+    fn levels_of(theme_name: &str) -> [&'static str; 4] {
+        if theme_name == "catppuccin-latte" {
+            LATTE_LEVELS
+        } else {
+            MOCHA_LEVELS
+        }
+    }
+
+    /// The limits line of a status whose windows have these used percentages, rendered with a
+    /// color profile (or none) at [`NOW`]. Every window has a reset 43 minutes away.
+    fn limits_colored(
+        theme_name: &str,
+        profile: Option<crate::statusline::color::Profile>,
+        used: [Option<i64>; 3],
+    ) -> String {
+        use crate::statusline::input::RateWindow;
+        use crate::statusline::render::Renderer;
+        use crate::statusline::state::{DisplayConfig, Status};
+        let window = |u: Option<i64>| {
+            u.map(|u| RateWindow {
+                used_percentage: Some(u as f64),
+                resets_at: Some(NOW + 43 * MINUTE),
+            })
+        };
+        let status = Status {
+            context: used[0].map(|u| u as f64),
+            five_hour: window(used[1]),
+            seven_day: window(used[2]),
+            ..Default::default()
+        };
+        let config = DisplayConfig {
+            theme: theme_name.into(),
+            ..Default::default()
+        };
+        Renderer::new(&config, profile)
+            .with_now(NOW)
+            .render(&status)
+    }
+
+    /// The bytes of one bar of `left` percent left as the renderer writes them: the filled cells
+    /// painted in `level`, then the base color of the line again (the line re-applies it after
+    /// every reset), then the empty cells painted in the muted color. A run with no cell is
+    /// left out.
+    fn bar_bytes(
+        profile: crate::statusline::color::Profile,
+        theme_name: &str,
+        level: &str,
+        left: i64,
+    ) -> String {
+        let t = crate::statusline::render::theme(theme_name);
+        let filled = (left * 10 / 100) as usize;
+        let empty = 10 - filled;
+        let mut out = String::new();
+        if filled > 0 {
+            out += &profile.paint(level, &"█".repeat(filled));
+            out += &format!("\x1b[{}m", profile.foreground(t.text));
+        }
+        if empty > 0 {
+            out += &profile.paint(t.muted, &"░".repeat(empty));
+        }
+        out
+    }
+
+    /// REQ-1, REQ-3 and REQ-4 (SPEC-20261124-statusline-bar-color): with a color profile the
+    /// filled cells of the `CW`, `5H` and `7D` bars are one run in the level color of the share
+    /// left, followed by the empty cells in the muted color, in both themes and both profiles.
+    #[test]
+    fn the_filled_cells_carry_the_level_color() {
+        use crate::statusline::color::Profile;
+        // (used of CW, 5H, 7D) → (left of each, level index of each): 73 green, 49 peach, 87 green;
+        // 55 yellow, 19 red, 38 peach; 100 green with no empty cell.
+        type Case = ([i64; 3], [(i64, usize); 3]);
+        let cases: [Case; 3] = [
+            ([27, 51, 13], [(73, 0), (49, 2), (87, 0)]),
+            ([45, 81, 62], [(55, 1), (19, 3), (38, 2)]),
+            ([0, 30, 100], [(100, 0), (70, 0), (0, 3)]),
+        ];
+        for name in ["catppuccin-mocha", "catppuccin-latte"] {
+            let levels = levels_of(name);
+            for profile in [Profile::TrueColor, Profile::Ansi256] {
+                for (used, lefts) in cases {
+                    let out = limits_colored(
+                        name,
+                        Some(profile),
+                        [Some(used[0]), Some(used[1]), Some(used[2])],
+                    );
+                    for (window, (left, level)) in ["CW", "5H", "7D"].iter().zip(lefts) {
+                        let bytes = bar_bytes(profile, name, levels[level], left);
+                        assert!(
+                            out.contains(&bytes),
+                            "{name} {profile:?} {window} {left} left: no {bytes:?} in {out:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// REQ-2 (SPEC-20261124-statusline-bar-color): the level color follows the share left in four
+    /// steps, pinned at N and N+1 — 70 is green and 69 yellow, 50 yellow and 49 peach, 30 peach
+    /// and 29 red (30 is `LOW_LEFT_PERCENT`, where the battery icon turns too) — the table is
+    /// written out by hand, and over the whole range the color only moves from green toward red
+    /// as the share left falls.
+    #[test]
+    fn the_level_color_changes_at_each_step_point() {
+        use crate::statusline::color::Profile;
+        let name = "catppuccin-mocha";
+        let levels = levels_of(name);
+        let profile = Profile::TrueColor;
+        let level_at = |left: i64| -> usize {
+            let out = limits_colored(name, Some(profile), [Some(100 - left), None, None]);
+            let seen: Vec<usize> = (0..4)
+                .filter(|i| out.contains(&bar_bytes(profile, name, levels[*i], left)))
+                .collect();
+            assert_eq!(seen.len(), 1, "{left} left: levels {seen:?} in {out:?}");
+            seen[0]
+        };
+        for (left, level) in [
+            (100, 0),
+            (71, 0),
+            (70, 0),
+            (69, 1),
+            (51, 1),
+            (50, 1),
+            (49, 2),
+            (31, 2),
+            (30, 2),
+            (29, 3),
+            (11, 3),
+            (10, 3),
+        ] {
+            assert_eq!(level_at(left), level, "{left} left");
+        }
+        // The step points of the table above are the constants of the renderer.
+        assert_eq!(
+            [
+                super::LEVEL_GREEN_FROM,
+                super::LEVEL_YELLOW_FROM,
+                super::LOW_LEFT_PERCENT
+            ],
+            [70, 50, 30]
+        );
+        let mut last = 0;
+        for left in (10..=100).rev() {
+            let level = level_at(left);
+            assert!(
+                level >= last,
+                "{left} left went back from {last} to {level}"
+            );
+            last = level;
+        }
+        assert_eq!(last, 3, "red is reached");
+    }
+
+    /// REQ-4 (SPEC-20261124-statusline-bar-color): only the filled cells take a level color; the
+    /// head, the number and the countdown stay as they were, and a bar with no filled cell (under
+    /// 10 percent left) is one muted run with no level color anywhere on the line.
+    #[test]
+    fn only_the_filled_cells_take_the_level_color() {
+        use crate::statusline::color::Profile;
+        let name = "catppuccin-mocha";
+        let profile = Profile::TrueColor;
+        let level_codes = MOCHA_LEVELS.map(|hex| format!("\x1b[{}m", profile.foreground(hex)));
+        // Windows at 73, 49 and 87 percent left: every level escape of the line is the one run of
+        // a bar of its own, so removing the three filled runs removes every level escape.
+        let out = limits_colored(name, Some(profile), [Some(27), Some(51), Some(13)]);
+        let mut rest = out.clone();
+        for (left, level) in [(73, 0), (49, 2), (87, 0)] {
+            let run = profile.paint(MOCHA_LEVELS[level], &"█".repeat((left * 10 / 100) as usize));
+            assert!(rest.contains(&run), "{left}: {out:?}");
+            rest = rest.replacen(&run, "", 1);
+        }
+        for code in &level_codes {
+            assert!(
+                !rest.contains(code),
+                "a level color outside the filled cells: {out:?}"
+            );
+        }
+        // No filled cell: 9 percent left on every window.
+        let empty = limits_colored(name, Some(profile), [Some(91), Some(91), Some(91)]);
+        for code in &level_codes {
+            assert!(
+                !empty.contains(code),
+                "a level color without a filled cell: {empty:?}"
+            );
+        }
+        let t = crate::statusline::render::theme(name);
+        assert_eq!(
+            empty.matches(&profile.paint(t.muted, "░░░░░░░░░░")).count(),
+            3,
+            "{empty:?}"
+        );
+    }
+
+    /// REQ-5 (SPEC-20261124-statusline-bar-color): without a color profile the line has no escape
+    /// sequence and, with one, the line without its escapes is that same line, for every share
+    /// left from 0 to 100 in both themes and both profiles.
+    #[test]
+    fn the_level_color_leaves_the_plain_text_alone() {
+        use crate::statusline::color::Profile;
+        for left in 0..=100_i64 {
+            let used = [Some(100 - left), Some(100 - left), Some(100 - left)];
+            let plain = limits_colored("catppuccin-mocha", None, used);
+            assert!(!plain.contains('\x1b'), "{left}: {plain:?}");
+            let bar = format!(
+                "{}{}",
+                "█".repeat((left * 10 / 100) as usize),
+                "░".repeat(10 - (left * 10 / 100) as usize)
+            );
+            assert!(
+                plain.contains(&format!("CW {bar} {left}%")),
+                "{left}: {plain:?}"
+            );
+            for name in ["catppuccin-mocha", "catppuccin-latte"] {
+                for profile in [Profile::TrueColor, Profile::Ansi256] {
+                    let colored = limits_colored(name, Some(profile), used);
+                    let mut stripped = String::new();
+                    let mut rest = colored.as_str();
+                    while let Some(at) = rest.find("\x1b[") {
+                        stripped.push_str(&rest[..at]);
+                        let tail = &rest[at..];
+                        rest = &tail[tail.find('m').unwrap() + 1..];
+                    }
+                    stripped.push_str(rest);
+                    assert_eq!(stripped, plain, "{name} {profile:?} {left} left");
+                }
             }
         }
     }
