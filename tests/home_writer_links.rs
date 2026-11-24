@@ -164,9 +164,10 @@ impl Tree {
         self.state_is_stable();
     }
 
-    /// The home state root becomes a link to `behind`. A link named `.moai` would lose its
-    /// marker and the root would resolve to `.moai-cli`, so the fixture's empty root is removed
-    /// and the earlier name is the link; the root must resolve to that link.
+    /// The home state root becomes a link to `behind`. A link under the fixture's own root name
+    /// would lose that root's marker and the root would resolve to the earlier name, so the
+    /// fixture's empty root is removed and the earlier name is the link; the root must resolve
+    /// to that link.
     fn link_root(&self) {
         fs::remove_dir(&self.state).unwrap();
         let link = self.home.join(moai_cli::HOME_STATE_DIR);
