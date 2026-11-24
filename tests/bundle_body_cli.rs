@@ -1079,3 +1079,116 @@ fn verified_summary_reads_a_missing_line_as_none() {
         "{body}"
     );
 }
+
+// ---- the audit floor of a registry change (SPEC-20261124-registry-line-add-tier) ---------------
+
+/// The product's own name of the registry, so this file spells no checked-in path.
+const REGISTRY: &str = moai_cli::gate::SCAN_REGISTRY;
+
+/// A one-scan scan registry with these rule files and this `rejects` text.
+fn registry_text(rules: &[&str], rejects: &str) -> String {
+    serde_json::to_string_pretty(&serde_json::json!({
+        "about": "fixture",
+        "scans": [{
+            "id": "reads-src",
+            "tests": ["tests/alpha.rs::t"],
+            "checks": ["cargo test --offline --locked --test alpha"],
+            "rules": rules,
+            "scope": [{"prefix": "src/", "suffixes": [".rs"]}],
+            "rejects": rejects,
+        }],
+    }))
+    .unwrap()
+}
+
+/// The first line of the body `bundle body` writes for one head that `change` makes on a tip that
+/// holds the registry: the head is passed and merged into `bundle`.
+fn audit_tier_line(change: impl Fn(&World) -> String) -> String {
+    let w = World::new();
+    w.put(REGISTRY, &registry_text(&["tests/alpha.rs"], "a text"));
+    w.git(&["add", "-A"]);
+    w.git(&["commit", "-q", "-m", "chore: the registry"]);
+    w.git(&["push", "-q", "origin", "trunk"]);
+    w.git(&["fetch", "-q", "origin"]);
+    let head = change(&w);
+    let card = w.new_card();
+    w.ready_note(&card, &head);
+    w.pass_note(&card, &head);
+    w.git(&["checkout", "-q", "-B", "bundle", TIP]);
+    w.git(&["merge", "-q", "--no-ff", "-m", "Merge h1", &head]);
+    let record = w.home.path().join("run-record.json");
+    fs::write(&record, record_json(false, false, false).to_string()).unwrap();
+    let (v, code) = w.bundle(&[
+        "body",
+        &card,
+        "--branch",
+        "bundle",
+        "--run",
+        record.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "{v}");
+    v["result"]["body"]
+        .as_str()
+        .unwrap()
+        .lines()
+        .next()
+        .unwrap()
+        .to_string()
+}
+
+/// The registry changed by one head of one commit, with the SPEC file the body needs.
+fn registry_head(w: &World, rules: &[&str], rejects: &str, extra: &[(&str, &str)]) -> String {
+    let text = registry_text(rules, rejects);
+    let mut files = vec![(REGISTRY, text.as_str())];
+    files.extend_from_slice(extra);
+    w.head("spec/h1", TIP, &files, "SPEC-20261119-demo1", &[1, 2], true)
+}
+
+/// AC-12: the `audit-tier:` line of the body follows the same growth rule as `bundle check`.
+#[test]
+fn the_body_reads_a_registration_as_tier_1_and_an_edit_as_tier_2() {
+    let registered = audit_tier_line(|w| {
+        registry_head(
+            w,
+            &["tests/alpha.rs", "tests/beta.rs"],
+            "a text",
+            &[("tests/beta.rs", "// t\n")],
+        )
+    });
+    assert!(registered.starts_with("audit-tier: 1 "), "{registered}");
+    assert!(registered.contains(REGISTRY), "{registered}");
+    let edited = audit_tier_line(|w| registry_head(w, &["tests/alpha.rs"], "another text", &[]));
+    assert!(edited.starts_with("audit-tier: 2 "), "{edited}");
+    let removed = audit_tier_line(|w| registry_head(w, &[], "a text", &[]));
+    assert!(removed.starts_with("audit-tier: 2 "), "{removed}");
+}
+
+/// AC-12 (REQ-10): a head that renames the registry registered nothing, and the path list names
+/// both the old and the new file.
+#[test]
+fn the_body_reads_a_renamed_registry_as_tier_2() {
+    let line = audit_tier_line(|w| {
+        // One commit that renames the registry, then the commit that carries the SPEC file.
+        w.git(&["checkout", "-q", "-B", "spec/h1", TIP]);
+        w.git(&["mv", REGISTRY, "tools/other.json"]);
+        w.git(&[
+            "commit",
+            "-q",
+            "-m",
+            "feat: rename the registry\n\nMoai-Spec: SPEC-20261119-demo1",
+        ]);
+        w.head(
+            "spec/h1",
+            "spec/h1",
+            &[],
+            "SPEC-20261119-demo1",
+            &[1, 2],
+            true,
+        )
+    });
+    assert!(line.starts_with("audit-tier: 2 "), "{line}");
+    assert!(
+        line.contains(REGISTRY) && line.contains("tools/other.json"),
+        "{line}"
+    );
+}

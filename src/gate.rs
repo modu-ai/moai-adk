@@ -379,6 +379,58 @@ impl ChangedFile {
     }
 }
 
+/// The changed files of a head, read once for every caller that has git: each path with the text
+/// of [`SCAN_REGISTRY`] at the merge base (`base`, `None` when there is none) and at `head`.
+/// `read(rev, path)` answers a file's text at a commit, or `None` when it cannot (the file is not
+/// there, git failed); only the registry is read, and an unreadable side stays `None`, which the
+/// rule reads as no growth (SPEC-20261124-registry-line-add-tier REQ-7).
+pub fn changed_files_with_text(
+    paths: Vec<String>,
+    base: Option<&str>,
+    head: &str,
+    read: impl Fn(&str, &str) -> Option<String>,
+) -> Vec<ChangedFile> {
+    paths
+        .into_iter()
+        .map(|path| {
+            let text = |rev: Option<&str>| {
+                let rev = rev.filter(|_| path == SCAN_REGISTRY)?;
+                read(rev, &path)
+            };
+            ChangedFile {
+                old: text(base),
+                new: text(Some(head)),
+                path,
+            }
+        })
+        .collect()
+}
+
+/// The text of `path` at `rev` as git holds it, only when the path is a regular file there: a blob
+/// of mode 100644 or 100755. `run` runs one git command and answers its standard output, or `None`
+/// when it failed. A symbolic link (mode 120000, whose blob is the link's target text and may be
+/// any text), a directory, a submodule, a path under a linked folder or no entry is `None`, so the
+/// registry of a head that replaced the file by a link is judged by its path, tier 2.
+pub fn regular_file_text(
+    run: impl Fn(&[&str]) -> Option<String>,
+    rev: &str,
+    path: &str,
+) -> Option<String> {
+    let listed = run(&["ls-tree", rev, "--", path])?;
+    let mut lines = listed.lines();
+    let (meta, name) = lines.next()?.split_once('\t')?;
+    if lines.next().is_some() || name != path {
+        return None;
+    }
+    let mut fields = meta.split(' ');
+    let (mode, kind, id) = (fields.next()?, fields.next()?, fields.next()?);
+    let regular = kind == "blob" && (mode == "100644" || mode == "100755");
+    if fields.next().is_some() || !regular || !is_full_sha(id) {
+        return None;
+    }
+    run(&["cat-file", "blob", id])
+}
+
 /// [`tier_of`] for a head whose changed files come with their text: a change of the
 /// [`SCAN_REGISTRY`] that only grows it (see [`registry_only_grew`]) does not set the tier 2
 /// floor by its path, so a registration is judged by what else the change touches. Every other
@@ -502,17 +554,7 @@ fn line_gains_tests(old: &str, new: &str) -> bool {
 /// and after the `--` a `--test` is libtest's, not cargo's (SPEC-20261124-registry-line-add-tier
 /// R1).
 fn is_added_test(word: &(&str, Option<&str>), before_separator: bool) -> bool {
-    before_separator && word.0 == "--test" && word.1.is_some_and(is_target_name)
-}
-
-/// A cargo integration-test target name as `repo_scans` reads a `test_targets` entry:
-/// `[a-z0-9_]+`. That function is private there, so the rule is spelled here and a test
-/// (`a_test_option_value_is_read_as_repo_scans_reads_a_target_name`) pins that the two agree.
-fn is_target_name(name: &str) -> bool {
-    !name.is_empty()
-        && name
-            .chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+    before_separator && word.0 == "--test" && word.1.is_some_and(crate::repo_scans::is_target_name)
 }
 
 /// The words of a cargo line, an option `--test` taking the word after it.

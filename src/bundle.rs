@@ -309,9 +309,11 @@ impl Git<'_> {
     }
 
     /// Paths changed since the merge base of `a` and `b` (three dots: a head behind the tip does
-    /// not count the tip's own changes).
+    /// not count the tip's own changes). Without rename detection, so a renamed file is listed by
+    /// its old and its new name and a renamed registry cannot pass for a registration
+    /// (SPEC-20261124-registry-line-add-tier REQ-10).
     fn changed_paths(&self, a: &str, b: &str) -> Result<Vec<String>> {
-        self.lines(&["diff", "--name-only", &format!("{a}...{b}")])
+        self.lines(&["diff", "--name-only", "--no-renames", &format!("{a}...{b}")])
     }
 
     /// The audit floor of what `b` adds to `a` and the paths it is judged from. A path of the
@@ -329,20 +331,12 @@ impl Git<'_> {
             .ok(&["merge-base", a, b])
             .map(|s| s.trim().to_string())
             .filter(|s| gate::is_full_sha(s));
-        Ok(paths
-            .into_iter()
-            .map(|path| {
-                let text = |rev: Option<&str>| {
-                    let rev = rev.filter(|_| path == gate::SCAN_REGISTRY)?;
-                    self.ok(&["show", &format!("{rev}:{path}")])
-                };
-                gate::ChangedFile {
-                    old: text(base.as_deref()),
-                    new: text(Some(b)),
-                    path,
-                }
-            })
-            .collect())
+        Ok(gate::changed_files_with_text(
+            paths,
+            base.as_deref(),
+            b,
+            |rev, path| gate::regular_file_text(|args| self.ok(args), rev, path),
+        ))
     }
 
     /// The merge drivers the clone's configuration names (this wrapper runs with the global

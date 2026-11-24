@@ -47,8 +47,12 @@ fn strings(v: &Value, what: &str) -> Result<Vec<String>, String> {
 /// The command a scan's `test_targets` stand for, up to the `--test` pairs.
 const CARGO_TEST: &str = "cargo test --offline --locked";
 
-/// A cargo integration-test target name: `[a-z0-9_]+`.
-fn is_target_name(name: &str) -> bool {
+/// A cargo integration-test target name as the scan registry spells it: `[a-z0-9_]+`. The one
+/// function for the values of the `--test` options of a registry line: `gate::registry_only_grew`
+/// reads them with it too (SPEC-20261124-registry-line-add-tier, REQ-11). The function of the
+/// same name in `bundle/verify.rs` is another rule for another list (the names of test files a
+/// bundle check lists: it also takes `-`, never a leading one), and is not this one.
+pub fn is_target_name(name: &str) -> bool {
     !name.is_empty()
         && name
             .chars()
