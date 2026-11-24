@@ -2051,10 +2051,10 @@ fn routing_part(
     crate::home_routing::apply_for(home, package, hosts, &p.plan_digest, permission)
 }
 
+/// Whether the agents part has something to confirm: a write, or a flat-file conflict the person
+/// can choose for (SPEC-20261124-update-flat-agent-ownership REQ-11).
 fn agents_write_anything(p: &crate::agent_install::Plan) -> bool {
-    p.hosts
-        .iter()
-        .any(|h| h.preflight == "ok" && h.files.iter().any(crate::agent_install::writes_anything))
+    crate::agent_install::asks_anything(p)
 }
 
 fn routing_writes_anything(p: &crate::home_routing::Plan) -> bool {
@@ -2323,13 +2323,32 @@ fn update_command_core(
                 json!({"state": "refused", "reason": "the agents plan changed after the confirmed preview; nothing written"}),
             );
         }
-        crate::agent_install::apply_for(
+        // REQ-3/7: at a terminal the person chooses for each flat agent file that is not ours;
+        // anywhere else every one of them is kept.
+        let chosen = if crate::update_tux::human() && crate::update_tux::can_ask() {
+            let korean = crate::update_tux::view_for(crate::ui::Stream::Stderr)
+                .painter
+                .lang
+                == crate::ui_text::Lang::Ko;
+            crate::agent_install::choose_flat_conflicts(
+                &p,
+                &package,
+                &agents_dir,
+                &mut std::io::stdin().lock(),
+                &mut std::io::stderr(),
+                korean,
+            )?
+        } else {
+            Vec::new()
+        };
+        crate::agent_install::apply_with_choices(
             home,
             &package,
             &agents_dir,
             &agent_hosts,
             &p.plan_digest,
             PERMISSION,
+            &chosen,
         )
     })());
     let routing = part(routing_part(
@@ -2385,6 +2404,9 @@ fn update_command_core(
     let applied = keys["state"] == json!("applied")
         || matches!(skills["status"].as_str(), Some("applied" | "partial"))
         || agents["state"] == json!("applied")
+        // A `partial` agents result wrote files only when its `written` list is not empty.
+        || (agents["state"] == json!("partial")
+            && agents["written"].as_array().is_some_and(|w| !w.is_empty()))
         || routing["state"] == json!("applied")
         || style["state"] == json!("applied")
         || bin_names["state"] == json!("applied")
