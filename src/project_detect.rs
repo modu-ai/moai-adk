@@ -1438,6 +1438,50 @@ mod tests {
         }
     }
 
+    /// SPEC-20261125-detect-code-extension-catalog REQ-1: the shipped file's `code_extensions`
+    /// rows hold exactly the seventeen extension → language pairs the earlier table held, each
+    /// value can be recorded, no extension has a dot in it and none repeats.
+    #[test]
+    fn the_shipped_catalog_holds_the_earlier_code_extensions() {
+        let earlier: [(&str, &str); 17] = [
+            ("c", "c"),
+            ("cpp", "cpp"),
+            ("cs", "csharp"),
+            ("go", "go"),
+            ("h", "c"),
+            ("java", "java"),
+            ("js", "javascript"),
+            ("jsx", "javascript"),
+            ("kt", "kotlin"),
+            ("lua", "lua"),
+            ("php", "php"),
+            ("py", "python"),
+            ("rb", "ruby"),
+            ("rs", "rust"),
+            ("swift", "swift"),
+            ("ts", "typescript"),
+            ("tsx", "typescript"),
+        ];
+        let file: Value = serde_json::from_str(CATALOG_JSON).unwrap();
+        let rows = file["code_extensions"].as_array().expect("code_extensions");
+        let mut pairs: Vec<(String, String)> = Vec::new();
+        for row in rows {
+            let language = row["language"].as_str().unwrap();
+            assert!(recordable(language), "{language}");
+            for ext in row["extensions"].as_array().unwrap() {
+                let ext = ext.as_str().unwrap();
+                assert!(recordable(ext) && !ext.contains('.'), "{ext}");
+                pairs.push((ext.to_string(), language.to_string()));
+            }
+        }
+        pairs.sort();
+        let want: Vec<(String, String)> = earlier
+            .iter()
+            .map(|(e, l)| (e.to_string(), l.to_string()))
+            .collect();
+        assert_eq!(pairs, want);
+    }
+
     /// SPEC-20261124-project-detect-monorepo REQ-4: the shipped catalog parses, every value in it
     /// can be recorded, and it holds the twelve manifest names the earlier tables held with the
     /// same language and tools.

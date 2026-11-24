@@ -808,3 +808,316 @@ fn a_folder_that_cannot_be_read_makes_the_walk_incomplete() {
     );
     assert_eq!(result["manifest_walk"]["complete"], json!(true), "{result}");
 }
+
+// ---- SPEC-20261125-detect-code-extension-catalog: code file extensions as catalog data ----
+
+/// The extension table the engine held before the catalog took it: extension → language.
+const EARLIER_CODE_EXTENSIONS: [(&str, &str); 17] = [
+    ("rs", "rust"),
+    ("py", "python"),
+    ("js", "javascript"),
+    ("jsx", "javascript"),
+    ("ts", "typescript"),
+    ("tsx", "typescript"),
+    ("go", "go"),
+    ("java", "java"),
+    ("kt", "kotlin"),
+    ("rb", "ruby"),
+    ("php", "php"),
+    ("c", "c"),
+    ("h", "c"),
+    ("cpp", "cpp"),
+    ("cs", "csharp"),
+    ("swift", "swift"),
+    ("lua", "lua"),
+];
+
+/// A good manifest row beside the code rows under test: a file that is refused whole must not
+/// let even this row be used.
+const GOOD_MANIFEST_ROW: &str =
+    r#"{"ecosystem": "hex", "language": "elixir", "files": ["mix.exs"]}"#;
+
+/// REQ-1: each earlier extension still gives its language, alone in a project so a wrong
+/// pair shows by name, and all of them together give the earlier languages and language
+/// servers. The extension is compared as written.
+#[test]
+fn every_shipped_code_extension_keeps_its_language() {
+    for (ext, language) in EARLIER_CODE_EXTENSIONS {
+        let root = TempDir::new().unwrap();
+        write(root.path(), &format!("src/a.{ext}"), "x\n");
+        let result = detect(&root);
+        assert_eq!(
+            result["detected"]["languages"],
+            json!([language]),
+            ".{ext}: {result}"
+        );
+    }
+
+    let root = TempDir::new().unwrap();
+    for (ext, _) in EARLIER_CODE_EXTENSIONS {
+        write(root.path(), &format!("src/a.{ext}"), "x\n");
+    }
+    let result = detect(&root);
+    assert_eq!(
+        result["detected"]["languages"],
+        json!([
+            "c",
+            "cpp",
+            "csharp",
+            "go",
+            "java",
+            "javascript",
+            "kotlin",
+            "lua",
+            "php",
+            "python",
+            "ruby",
+            "rust",
+            "swift",
+            "typescript"
+        ]),
+        "{result}"
+    );
+    assert_eq!(
+        result["detected"]["lsp"],
+        json!([
+            "clangd",
+            "csharp-ls",
+            "gopls",
+            "intelephense",
+            "jdtls",
+            "kotlin-lsp",
+            "lua-language-server",
+            "pyright",
+            "ruby-lsp",
+            "rust-analyzer",
+            "sourcekit-lsp",
+            "typescript-language-server"
+        ]),
+        "{result}"
+    );
+
+    let root = TempDir::new().unwrap();
+    write(root.path(), "src/A.RS", "x\n");
+    let result = detect(&root);
+    assert_eq!(result["detected"]["languages"], json!([]), "{result}");
+}
+
+/// REQ-2, REQ-4: a row of the extension file adds a language the shipped catalog does not
+/// know, for the code files that carry its extensions, and the rows are counted with the
+/// manifest rows. Without the file the language is gone and nothing was written.
+#[test]
+fn a_code_extension_row_adds_a_language_without_code() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "lib/a.ex", "x\n");
+    write(r, "lib/b.exs", "x\n");
+    write(r, "tools/c.zig", "x\n");
+    let result = detect(&root);
+    assert_eq!(result["detected"]["languages"], json!([]), "{result}");
+
+    write(
+        r,
+        &extension(),
+        r#"{"schema": 1, "code_extensions": [
+            {"language": "elixir", "extensions": ["ex", "exs"]}
+        ]}"#,
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["detected"]["languages"],
+        json!(["elixir"]),
+        "{result}"
+    );
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 1, "problem": null}),
+        "{result}"
+    );
+    let before = tree(r);
+    detect(&root);
+    assert_eq!(tree(r), before, "a read wrote something");
+
+    // Rows of both kinds are counted together.
+    write(
+        r,
+        &extension(),
+        &format!(
+            r#"{{"schema": 1, "manifests": [{GOOD_MANIFEST_ROW}], "code_extensions": [
+                {{"language": "elixir", "extensions": ["ex", "exs"]}},
+                {{"language": "zig", "extensions": ["zig"]}}
+            ]}}"#
+        ),
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["detected"]["languages"],
+        json!(["elixir", "zig"]),
+        "{result}"
+    );
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 3, "problem": null}),
+        "{result}"
+    );
+
+    fs::remove_file(r.join(extension())).unwrap();
+    let result = detect(&root);
+    assert_eq!(result["detected"]["languages"], json!([]), "{result}");
+}
+
+/// REQ-2: a row never changes the language of an extension the shipped catalog has; only the
+/// extensions it does not have are used, and a row left with none adds nothing.
+#[test]
+fn a_code_extension_row_never_replaces_a_shipped_extension() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "src/a.rs", "x\n");
+    write(r, "tools/b.zig", "x\n");
+    write(
+        r,
+        &extension(),
+        r#"{"schema": 1, "code_extensions": [
+            {"language": "zig", "extensions": ["rs", "zig"]}
+        ]}"#,
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["detected"]["languages"],
+        json!(["rust", "zig"]),
+        "{result}"
+    );
+
+    let only_shipped = TempDir::new().unwrap();
+    write(only_shipped.path(), "src/a.rs", "x\n");
+    write(
+        only_shipped.path(),
+        &extension(),
+        r#"{"schema": 1, "code_extensions": [
+            {"language": "zig", "extensions": ["rs"]}
+        ]}"#,
+    );
+    let result = detect(&only_shipped);
+    assert_eq!(result["detected"]["languages"], json!(["rust"]), "{result}");
+    assert_eq!(
+        result["manifest_catalog"]["extension"],
+        json!("read"),
+        "{result}"
+    );
+}
+
+/// REQ-3: one row that cannot be read refuses the whole extension file: the problem is
+/// reported, the good rows beside it are not used either (the shipped rows alone are), and
+/// nothing is written. The same file with the bad row mended is read, so each refusal is
+/// the row's doing.
+#[test]
+fn a_code_extension_row_that_cannot_be_read_refuses_the_whole_file() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "apps/svc/mix.exs", "defmodule X do end\n");
+    write(r, "lib/a.ex", "x\n");
+    write(r, "src/a.rs", "x\n");
+
+    let file_with = |code_row: &str| {
+        format!(
+            r#"{{"schema": 1, "manifests": [{GOOD_MANIFEST_ROW}], "code_extensions": [{code_row}]}}"#
+        )
+    };
+
+    // The control: the mended row is read, and both kinds of row take effect.
+    write(
+        r,
+        &extension(),
+        &file_with(r#"{"language": "elixir", "extensions": ["ex"]}"#),
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 2, "problem": null}),
+        "{result}"
+    );
+    assert_eq!(manifests(&result), ["apps/svc/mix.exs"], "{result}");
+    assert_eq!(
+        result["detected"]["languages"],
+        json!(["elixir", "rust"]),
+        "{result}"
+    );
+
+    let bad_rows = [
+        r#"{"language": "elixir", "extensions": []}"#,
+        r#"{"language": "elixir"}"#,
+        r#"{"language": "", "extensions": ["ex"]}"#,
+        r#"{"language": "eli xir", "extensions": ["ex"]}"#,
+        r#"{"language": "elixir", "extensions": ["e x"]}"#,
+        r#"{"language": "elixir", "extensions": [".ex"]}"#,
+        r#"{"language": "elixir", "extensions": ["e.x"]}"#,
+        r#"{"language": "elixir", "extensions": ["ex"], "surprise": 1}"#,
+        r#"{"language": "elixir", "extensions": "ex"}"#,
+        r#"{"language": 7, "extensions": ["ex"]}"#,
+    ];
+    for bad in bad_rows {
+        write(r, &extension(), &file_with(bad));
+        let before = tree(r);
+        let result = detect(&root);
+        assert_eq!(
+            result["manifest_catalog"]["extension"],
+            json!("refused"),
+            "{bad}: {result}"
+        );
+        assert_eq!(result["manifest_catalog"]["rows"], json!(0), "{bad}");
+        assert!(
+            result["manifest_catalog"]["problem"].is_string(),
+            "{bad}: {result}"
+        );
+        // Neither the code row nor the good manifest row beside it is used.
+        assert!(manifests(&result).is_empty(), "{bad}: {result}");
+        assert_eq!(
+            result["detected"]["languages"],
+            json!(["rust"]),
+            "{bad}: {result}"
+        );
+        assert_eq!(tree(r), before, "{bad}: a read wrote something");
+    }
+}
+
+/// The extension file with `n` rows, each a language and one extension of its own.
+fn code_rows_json(n: usize) -> String {
+    let rows: Vec<String> = (0..n)
+        .map(|i| format!(r#"{{"language": "l{i}", "extensions": ["x{i}"]}}"#))
+        .collect();
+    format!(
+        r#"{{"schema": 1, "code_extensions": [{}]}}"#,
+        rows.join(",")
+    )
+}
+
+/// The extension file with one row of `n` extensions.
+fn code_row_with_extensions(n: usize) -> String {
+    let list: Vec<String> = (0..n).map(|i| format!("\"e{i}\"")).collect();
+    format!(
+        r#"{{"schema": 1, "code_extensions": [{{"language": "l", "extensions": [{}]}}]}}"#,
+        list.join(",")
+    )
+}
+
+/// REQ-3: the limits of 64 rows and of 64 extensions in one row hold at both edges: 64 are
+/// read, 65 are refused.
+#[test]
+fn the_code_extension_row_limits_hold_at_both_edges() {
+    assert_eq!(
+        extension_state(&code_rows_json(64)),
+        ("read".to_string(), 64)
+    );
+    assert_eq!(
+        extension_state(&code_rows_json(65)),
+        ("refused".to_string(), 0)
+    );
+    assert_eq!(
+        extension_state(&code_row_with_extensions(64)),
+        ("read".to_string(), 1)
+    );
+    assert_eq!(
+        extension_state(&code_row_with_extensions(65)),
+        ("refused".to_string(), 0)
+    );
+}
