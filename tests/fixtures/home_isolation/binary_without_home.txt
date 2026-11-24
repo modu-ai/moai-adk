@@ -57,7 +57,6 @@ tests/revert_twice_cli.rs
 tests/review_check_cli.rs
 tests/review_links_cli.rs
 tests/review_md_repo.rs
-tests/review_section_cli.rs
 tests/search_atlas.rs
 tests/search_cli.rs
 tests/search_graph.rs
