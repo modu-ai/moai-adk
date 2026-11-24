@@ -1,13 +1,16 @@
 //! Per-project writing language (Issue #2293): the `language` key of `.moai-cli/project.yaml`,
 //! the setup input step, and the sentences the AGENTS.md managed section renders from it.
 //!
-//! The setup asks three questions: the conversation language (`user_chat`; the AGENTS.md and
-//! REVIEW.md managed sections are written in it), the commit-message language and the document
-//! language (`documents`: reports and SPEC documents). Everything else is English without asking:
-//! instruction files, skills and rules, messages between agents, code comments, issue and PR
-//! records. The older profile items (`reports`, `issue_pr_records`, `agent_messages`,
-//! `instruction_files`, `skill_instructions`, `code_comments`) are still accepted and, when a
-//! profile sets one, still mean what they meant; the setup neither asks for them nor adds them.
+//! The setup asks four questions (SPEC-20261124-moai-project-interview): the conversation
+//! language (`user_chat`; the AGENTS.md and REVIEW.md managed sections are written in it), the
+//! commit-message language, the instruction-file language (`instruction_files`) and the document
+//! language (`documents`: reports and SPEC documents). The language the installer saved in the
+//! HOME state folder is the suggested conversation value, never a skipped question, and the
+//! answer is stored in the project profile only. Everything else is English without asking: skills and
+//! rules, messages between agents, code comments, issue and PR records. The older profile items
+//! (`reports`, `issue_pr_records`, `agent_messages`, `skill_instructions`, `code_comments`) are
+//! still accepted and, when a profile sets one, still mean what they meant; the setup neither
+//! asks for them nor adds them.
 //!
 //! The item list, the accepted language codes and each item's default live in the two
 //! tables below and nowhere else. The defaults are stated values chosen for the product,
@@ -30,7 +33,7 @@ pub enum DefaultSource {
     /// English (`en`).
     English,
     /// The conversation language: the managed-section request language when rendering,
-    /// the `--conversation` code (or the profile's `user_chat`) in the input step.
+    /// the resolved conversation code of the input step.
     Conversation,
 }
 
@@ -42,7 +45,7 @@ pub struct Item {
     pub label_en: &'static str,
     pub label_ko: &'static str,
     pub default: DefaultSource,
-    /// The three items the setup asks; the others are older profile items, kept readable.
+    /// The four items the setup asks; the others are older profile items, kept readable.
     pub asked: bool,
 }
 
@@ -54,6 +57,8 @@ pub const ITEMS: &[Item] = &[
         label_en: "Conversation with the user",
         label_ko: "사용자 대화",
         default: DefaultSource::Conversation,
+        // Asked like the other three; the value the installer saved in the HOME state folder
+        // is its suggested answer, and the answer goes to the project profile only.
         asked: true,
     },
     Item {
@@ -89,7 +94,7 @@ pub const ITEMS: &[Item] = &[
         label_en: "Instruction files (AGENTS.md, rules)",
         label_ko: "지침 파일(AGENTS.md, 규칙)",
         default: DefaultSource::English,
-        asked: false,
+        asked: true,
     },
     Item {
         id: "skill_instructions",
@@ -303,16 +308,29 @@ fn home_file_bytes(code: &str) -> Vec<u8> {
 }
 
 /// `language-set --home <code>` (#2935 L1): records `code` in [`HOME_FILE`] below the HOME state
-/// folder, once. Never overwrites (an existing file gives `written: false, reason: "exists"`),
-/// never creates the state folder itself (`reason: "no_home_state"`; the installer only
+/// folder, replacing a value that is already there with a valid code (`written: true, reason:
+/// "replaced"`; the before bytes go with the publish, so a failed replace leaves the old file).
+/// Never creates the state folder itself (`reason: "no_home_state"`; the installer only
 /// reports it) and creates nothing but `config/`. A `config` or target that is a link or the
 /// wrong file type is refused before any write. A state folder that is a link to a folder is
-/// followed like every other HOME path; a dangling link is no folder. `code` is any
-/// [`is_language_tag`] text and is written exactly as given (`pt-BR` stays `pt-BR`).
+/// followed like every other HOME path; a dangling link is no folder. `code` is one of the
+/// accepted conversation codes ([`is_code`]) and is written exactly as given.
 pub fn set_home(home: &std::path::Path, code: &str) -> Result<Value> {
+    set_home_mode(home, code, true)
+}
+
+/// [`set_home`] in the installer's record-once shape: a value that is already recorded is never
+/// overwritten (`written: false, reason: "exists"`), so a reinstall keeps the user's recorded
+/// conversation language; only an explicit `language-set --home` replaces it. Everything else
+/// matches [`set_home`].
+pub fn set_home_if_absent(home: &std::path::Path, code: &str) -> Result<Value> {
+    set_home_mode(home, code, false)
+}
+
+fn set_home_mode(home: &std::path::Path, code: &str, replace: bool) -> Result<Value> {
     use std::fs;
     use std::io::ErrorKind::{AlreadyExists, NotFound};
-    if !is_language_tag(code) {
+    if !is_code(code) {
         return Err(INVALID.into());
     }
     let root = crate::home_root::path(home);
@@ -352,7 +370,17 @@ pub fn set_home(home: &std::path::Path, code: &str) -> Result<Value> {
         Err(_) => Err("language-set refused: language.yaml cannot be read".to_string()),
     };
     if exists()? {
-        return Ok(report(false, Some("exists")));
+        if !replace {
+            return Ok(report(false, Some("exists")));
+        }
+        // A later `language-set --home` with a valid code replaces the value: the before
+        // bytes go with the publish, so a failed replace leaves the old file.
+        let before = fs::read(&file)
+            .map_err(|_| "language-set refused: language.yaml cannot be read".to_string())?;
+        return match crate::apply::publish_replace(&file, Some(&before), &home_file_bytes(code)) {
+            Ok(()) => Ok(report(true, Some("replaced"))),
+            Err(e) => Err(e),
+        };
     }
     match crate::apply::publish_exclusive(&file, &home_file_bytes(code)) {
         Ok(()) => Ok(report(true, None)),
@@ -386,7 +414,7 @@ fn with_go(current: Option<&LanguageSettings>, go: &LanguageSettings) -> Languag
     base
 }
 
-/// The question set a host question tool asks: one question per asked item (three) with the
+/// The question set a host question tool asks: one question per asked item (four) with the
 /// current value, the value an empty answer keeps (`suggested`) and the accepted codes.
 pub fn questions(current: Option<&LanguageSettings>, conversation: &str) -> Value {
     questions_with(current, &LanguageSettings::new(), conversation, "default")
@@ -420,8 +448,8 @@ fn questions_with(
         .collect();
     json!({
         "conversation_language": conversation,
-        // Where the conversation language came from: `flag`, `profile`, `installer` (the value
-        // the installer saved: a confirmation, not a new question), `go_backup` or `default`.
+        // Where the conversation language came from: `flag`, `installer` (the value the
+        // installer saved: a confirmation, not a new question), `go_backup` or `default`.
         "conversation_source": source,
         "items": items,
         "options": options,
@@ -429,7 +457,7 @@ fn questions_with(
 }
 
 /// Applies host-tool answers (`{item: code}`); an asked item left out keeps its suggested value.
-/// The result names the three asked items explicitly, so a re-run with no answers is byte-stable,
+/// The result names the four asked items explicitly, so a re-run with no answers is byte-stable,
 /// and carries an older item only when `current` has it or an answer names it.
 pub fn merge_answers(
     current: Option<&LanguageSettings>,
@@ -473,8 +501,10 @@ pub enum SetupMode {
 /// `project-plan`. Writes nothing; `project-apply` stays the only writer of the profile.
 ///
 /// `home` is the user's HOME when the caller has one (#2935 L1): the conversation language
-/// `language-set` recorded there is the default after `conversation` and the profile's
-/// `user_chat`, before the Go backup's and before English.
+/// `language-set` recorded there decides after `conversation`, before the Go backup's value and
+/// English. That resolved value is the default of the `user_chat` question and of the items that
+/// follow the conversation; the profile's own `user_chat` is the value an empty answer keeps, and
+/// an answer is stored in the profile only, never in HOME.
 pub fn setup<R: BufRead, W: Write>(
     root: &std::path::Path,
     home: Option<&std::path::Path>,
@@ -487,20 +517,22 @@ pub fn setup<R: BufRead, W: Write>(
     let current = profile.language.clone();
     // #2817: the Go backup's values come after the profile's and before the built-in ones.
     let go = crate::go_settings::read(root);
-    let profile_chat = current.as_ref().and_then(|c| c.get("user_chat")).is_some();
     let home_chat = home.and_then(home_conversation_supported);
-    let (conversation, source) = match (conversation, profile_chat, &home_chat, &go.conversation) {
-        (None, false, None, Some(code)) => (code.clone(), "go_backup"),
-        (explicit, _, _, _) => {
-            let code = conversation_language_in(explicit, current.as_ref(), home_chat.as_deref())?;
-            let source = match (explicit, profile_chat, &home_chat) {
-                (Some(_), _, _) => "flag",
-                (None, true, _) => "profile",
-                (None, false, Some(_)) => "installer",
-                (None, false, None) => "default",
-            };
-            (code, source)
+    // The explicit flag is checked like every other entry into the language settings: a code
+    // outside the accepted list is refused and nothing is read further or written.
+    if let Some(code) = conversation {
+        if !is_code(code) {
+            return Err(INVALID.into());
         }
+    }
+    // The conversation language, in order: the explicit flag, the value the installer saved in
+    // the HOME state folder, the Go backup's value, then English. It is the default of the
+    // `user_chat` question; a value the profile already holds is that question's current value.
+    let (conversation, source) = match (conversation, &home_chat, &go.conversation) {
+        (Some(code), _, _) => (code.to_string(), "flag".to_string()),
+        (None, Some(code), _) => (code.clone(), "installer".to_string()),
+        (None, None, Some(code)) if is_code(code) => (code.clone(), "go_backup".to_string()),
+        _ => ("en".to_string(), "default".to_string()),
     };
     let base = with_go(current.as_ref(), &go.items);
     let base_ref = (!base.is_empty()).then_some(&base);
@@ -510,7 +542,7 @@ pub fn setup<R: BufRead, W: Write>(
     let mut answered: Vec<String> = Vec::new();
     let mut chosen = match mode {
         SetupMode::Questions => {
-            let mut out = json!({"questions": questions_with(current.as_ref(), &go.items, &conversation, source)});
+            let mut out = json!({"questions": questions_with(current.as_ref(), &go.items, &conversation, &source)});
             if go.found {
                 out["go_backup"] = go.to_json();
             }
@@ -561,7 +593,7 @@ pub fn setup<R: BufRead, W: Write>(
 /// Upper bound on wrong answers to one question before the interactive step gives up.
 pub const MAX_ATTEMPTS: usize = 3;
 
-/// The interactive input step: one prompt per asked item (three) on `prompt`, one answer line per
+/// The interactive input step: one prompt per asked item (four) on `prompt`, one answer line per
 /// item from `input`. An empty line or end of input keeps the suggested value; a code outside
 /// `CODES` is asked again, up to `MAX_ATTEMPTS` times.
 pub fn interactive<R: BufRead, W: Write>(
@@ -652,15 +684,17 @@ mod tests {
     }
 
     #[test]
-    fn merge_answers_names_the_three_asked_items_and_keeps_older_ones() {
+    fn merge_answers_names_the_four_asked_items_and_keeps_older_ones() {
         let current = settings(&[("code_comments", "ja")]);
-        let answers = json!({"user_chat": "zh"});
+        let answers = json!({});
         let out = merge_answers(Some(&current), answers.as_object().unwrap(), "ko").unwrap();
-        // The three asked items are named; an older item is carried only because the profile
-        // already had it; an older item the profile never set gets no key.
-        assert_eq!(out.len(), 4, "{out:?}");
-        assert_eq!(out["user_chat"], "zh");
+        // The four asked items are named; an older item is carried only because the profile
+        // already had it; an older item the profile never set gets no key. The conversation
+        // item follows the conversation language like the other items whose default does.
+        assert_eq!(out.len(), 5, "{out:?}");
+        assert_eq!(out["user_chat"], "ko");
         assert_eq!(out["commit_messages"], "ko");
+        assert_eq!(out["instruction_files"], "en");
         assert_eq!(out["documents"], "ko");
         assert_eq!(out["code_comments"], "ja");
         assert!(!out.contains_key("reports"));
@@ -676,16 +710,18 @@ mod tests {
 
     #[test]
     fn interactive_keeps_on_empty_and_eof_and_retries_bad_codes() {
-        // The three asked items, in table order: user_chat, commit_messages, documents.
+        // The four asked items, in table order: user_chat, commit_messages, instruction_files,
+        // documents.
         let mut prompt = Vec::new();
-        let mut input = "ko\n\nxx\nja\n".as_bytes();
+        let mut input = "ja\nko\n\nxx\nzh\n".as_bytes();
         let out = interactive(None, "en", &mut input, &mut prompt).unwrap();
-        assert_eq!(out.len(), 3, "{out:?}");
-        assert_eq!(out["user_chat"], "ko");
-        // An empty line keeps the suggested value (the conversation language, `en` here).
-        assert_eq!(out["commit_messages"], "en");
+        assert_eq!(out.len(), 4, "{out:?}");
+        assert_eq!(out["user_chat"], "ja");
+        assert_eq!(out["commit_messages"], "ko");
+        // An empty line keeps the suggested value (the item default, `en` here).
+        assert_eq!(out["instruction_files"], "en");
         // A bad code is asked again; the next line is the answer.
-        assert_eq!(out["documents"], "ja");
+        assert_eq!(out["documents"], "zh");
         assert!(String::from_utf8(prompt)
             .unwrap()
             .contains("unsupported language code"));
@@ -694,8 +730,9 @@ mod tests {
         let out = interactive(None, "en", &mut input, &mut Vec::new()).unwrap();
         assert_eq!(out["user_chat"], "ko");
         assert_eq!(out["commit_messages"], "en");
+        assert_eq!(out["instruction_files"], "en");
         assert_eq!(out["documents"], "en");
-        assert_eq!(out.len(), 3);
+        assert_eq!(out.len(), 4);
     }
 
     #[test]
@@ -881,13 +918,54 @@ mod tests {
             b"language:\n  conversation_language: ja\n"
         );
         assert_eq!(home_conversation(home.path()).as_deref(), Some("ja"));
+        // A later call with a valid code replaces the value (leader decision): the before
+        // bytes are kept until the publish, so the file always holds a whole record.
         let second = set_home(home.path(), "ko").unwrap();
+        assert_eq!(second["written"], true);
+        assert_eq!(second["reason"], "replaced");
+        assert_eq!(
+            std::fs::read(&file).unwrap(),
+            b"language:\n  conversation_language: ko\n"
+        );
+        assert_eq!(home_conversation(home.path()).as_deref(), Some("ko"));
+    }
+
+    /// The installer's record-once shape: an existing value stays, an absent one is written,
+    /// and the replacing shape is the bare command's alone.
+    #[test]
+    fn set_home_if_absent_keeps_a_recorded_value_and_writes_an_absent_one() {
+        let home = home_with(None);
+        let file = state(home.path()).join("config/language.yaml");
+        let first = set_home_if_absent(home.path(), "ja").unwrap();
+        assert_eq!(first["written"], true);
+        assert_eq!(first["reason"], Value::Null);
+        assert_eq!(
+            std::fs::read(&file).unwrap(),
+            b"language:\n  conversation_language: ja\n"
+        );
+        // A reinstall with another code keeps the recorded value.
+        let second = set_home_if_absent(home.path(), "ko").unwrap();
         assert_eq!(second["written"], false);
         assert_eq!(second["reason"], "exists");
         assert_eq!(
             std::fs::read(&file).unwrap(),
             b"language:\n  conversation_language: ja\n"
         );
+        assert_eq!(home_conversation(home.path()).as_deref(), Some("ja"));
+        // The record-once shape checks the code like the bare command.
+        assert!(set_home_if_absent(home.path(), "pt-BR").is_err());
+        assert_eq!(home_conversation(home.path()).as_deref(), Some("ja"));
+        // Only the bare command replaces.
+        let replaced = set_home(home.path(), "ko").unwrap();
+        assert_eq!(replaced["written"], true);
+        assert_eq!(replaced["reason"], "replaced");
+        assert_eq!(home_conversation(home.path()).as_deref(), Some("ko"));
+        // No HOME state folder: the same answer as the replacing shape, and nothing is made.
+        let bare = tempfile::tempdir().unwrap();
+        let none = set_home_if_absent(bare.path(), "ko").unwrap();
+        assert_eq!(none["written"], false);
+        assert_eq!(none["reason"], "no_home_state");
+        assert_eq!(std::fs::read_dir(bare.path()).unwrap().count(), 0);
     }
 
     #[test]
@@ -905,21 +983,27 @@ mod tests {
         assert!(!state(home.path()).join("config/language.yaml").exists());
     }
 
-    /// Another language is stored exactly as given and read back as stored, but
-    /// `language-setup` does not use it.
+    /// A language outside the list is refused without a write; a listed one is stored exactly
+    /// as given, read back, and named by the supported resolver.
     #[test]
     fn set_home_stores_another_language_exactly_as_given() {
         let home = home_with(None);
         let file = state(home.path()).join("config/language.yaml");
-        let r = set_home(home.path(), "pt-BR").unwrap();
+        let r = set_home(home.path(), "pt-BR");
+        assert!(r.is_err(), "pt-BR is outside the list: {r:?}");
+        assert!(!file.exists(), "nothing was written");
+        let r = set_home(home.path(), "zh").unwrap();
         assert_eq!(r["written"], true);
-        assert_eq!(r["code"], "pt-BR");
+        assert_eq!(r["code"], "zh");
         assert_eq!(
             std::fs::read(&file).unwrap(),
-            b"language:\n  conversation_language: pt-BR\n"
+            b"language:\n  conversation_language: zh\n"
         );
-        assert_eq!(home_conversation(home.path()).as_deref(), Some("pt-BR"));
-        assert_eq!(home_conversation_supported(home.path()), None);
+        assert_eq!(home_conversation(home.path()).as_deref(), Some("zh"));
+        assert_eq!(
+            home_conversation_supported(home.path()).as_deref(),
+            Some("zh")
+        );
     }
 
     /// Card C-87 S1: the lines name only the items the profile sets; an item it leaves out gets

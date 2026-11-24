@@ -24,7 +24,9 @@ without NO_COLOR to carry the same palette as the PTY (escape-free output there
 was the #2559 regression) with the same text once the escapes are removed. PTY output processing is disabled to preserve raw LF.
 
 Version token: each recorded case names the actual binary version and SHA-256.
---check normalizes only the `🗿 v<version>` token on each side.
+--check normalizes only the build's version on each side: `🗿 <version>`, and `-> <version>`
+after a project template (SPEC-20261122-statusline-limits REQ-6: the versions carry no `v`),
+and the `🗿 v<version>` of the goldens recorded before that.
 
 Usage:
   python3 -I tools/statusline_golden.py --bin <statusline binary> [--argv "<arguments>"] --write [--variant V] [--case NAME]
@@ -51,7 +53,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 FIXTURES = REPO / "tests" / "fixtures" / "statusline-claude"
 VARIANTS = {"plain": {"NO_COLOR": "1"}, "ansi": {"COLORTERM": "truecolor"}, "ansi256": {}}
-VERSION_PLACEHOLDER = "🗿 v<binary-version>"
+VERSION_PLACEHOLDER = "<binary-version>"
 GIT_ENV = {
     "GIT_AUTHOR_NAME": "fixture",
     "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
@@ -148,7 +150,9 @@ def sandbox_profile(exe):
 
 
 def normalize_version(text, version):
-    return text.replace(f"🗿 v{version}", VERSION_PLACEHOLDER)
+    for mark in ("🗿 v", "🗿 ", "-> "):
+        text = text.replace(f"{mark}{version}", f"{mark}{VERSION_PLACEHOLDER}")
+    return text
 
 
 VERSION_TOKEN = re.compile(r"v?(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)")
@@ -255,7 +259,11 @@ def run_case(binary, argv, case, variant, stdin_bytes=None, stdout_tty=None):
         home = root / "home"
         moai_home = home / ".moai"
         project = root / "work" / "demo-project"
-        for d in (home, moai_home, project):
+        # The render keeps a per-session cache under `$TMPDIR` (SPEC-20261122-statusline-where):
+        # a folder of its own per run, so no case reads another case's cache and nothing
+        # reaches the real temporary folder.
+        tmpdir = root / "tmp"
+        for d in (home, moai_home, project, tmpdir):
             d.mkdir(parents=True, exist_ok=True)
         for step in case.get("setup", []):
             apply_setup(step, root, project, moai_home)
@@ -267,7 +275,7 @@ def run_case(binary, argv, case, variant, stdin_bytes=None, stdout_tty=None):
                      if stdin_bytes is None else stdin_bytes)
         stdin = stdin_raw.replace(b"{PROJECT}", str(project).encode())
         env = {"PATH": "/usr/bin:/bin", "HOME": str(home), "MOAI_HOME": str(moai_home),
-               "TZ": "UTC", "LANG": "C.UTF-8", **developer_env()}
+               "TZ": "UTC", "LANG": "C.UTF-8", "TMPDIR": str(tmpdir), **developer_env()}
         env.update(VARIANTS[variant])
         cmd = [str(exe), *argv]
         if sys.platform == "darwin":

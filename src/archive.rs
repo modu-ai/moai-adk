@@ -129,8 +129,7 @@ pub fn resolve_grace_days(project: &Path, request: Option<u64>) -> Result<(u64, 
     if let Some(d) = request {
         return Ok((d, "request"));
     }
-    let profile_path = crate::state_root::path(project, "project.yaml");
-    if crate::apply::read_opt(&profile_path)?.is_none() {
+    if crate::profile::chosen_profile(project)?.is_none() {
         return Ok((DEFAULT_ARCHIVE_GRACE_DAYS, "default"));
     }
     let (profile, _) = crate::profile::read_profile(project)?;

@@ -1,7 +1,8 @@
 //! The two command names in an installed version folder (#2791 AC-1, design #2725 R2).
 //!
-//! The decided layout installs a build at `<home>/<HOME_STATE_DIR>/versions/<v>/bin/moai-cli`
-//! (`moai-cli.exe` on Windows). `moai` is the public name (#2790 R1 builds both from one
+//! The decided layout installs a build at `<home>/<state folder>/versions/<v>/bin/moai-cli`
+//! (`moai-cli.exe` on Windows), where the state folder is `.moai-cli` or `.moai` (`versions_dir_of`
+//! accepts either name). `moai` is the public name (#2790 R1 builds both from one
 //! `main`); here the folder gets `bin/moai` as a hard link to `bin/moai-cli`, so the two names
 //! are one file and the installation keeps the one identity `install::identity_exe` gives it.
 //!
@@ -86,14 +87,44 @@ fn finish(
     Ok(plan)
 }
 
+/// The `versions` folder a binary's `bin/` folder sits in, when it sits exactly in the layout
+/// `<home>/<state folder>/versions/<v>/bin/`. The state folder is the one the HOME resolves to
+/// ([`crate::home_root::path`]) or either of the two names ([`crate::home_root::MOAI_DIR`],
+/// [`crate::HOME_STATE_DIR`]): a build is installed under `~/.moai/versions` while a HOME that
+/// has no marker still keeps its receipts under `~/.moai-cli`, and the binary is in the layout
+/// all the same (SPEC-20261123-update-adopt-unowned REQ-9). Only the folder the binary really
+/// sits in is accepted; nothing else under either name is read. Both paths are canonical.
+pub(crate) fn versions_dir_of(canonical_home: &Path, bin: &Path) -> Option<PathBuf> {
+    if bin.file_name()? != "bin" {
+        return None;
+    }
+    let versions = bin.parent()?.parent()?;
+    let state = versions.parent()?;
+    let under_a_state_folder = versions.file_name()? == "versions"
+        && state.parent()? == canonical_home
+        && crate::home_root::is_state_dir_name(state.file_name()?);
+    (under_a_state_folder || versions == crate::home_root::path(canonical_home).join("versions"))
+        .then(|| versions.to_path_buf())
+}
+
 /// The version folder's `bin/` this executable runs from, when it sits exactly in the
-/// layout `<home>/<HOME_STATE_DIR>/versions/<v>/bin/` under either name.
+/// layout `<home>/<state folder>/versions/<v>/bin/` under either name ([`versions_dir_of`]).
 fn layout_bin(home: &Path, exe: &Path) -> Option<PathBuf> {
     let canonical_home = fs::canonicalize(home).ok()?;
     let canonical_exe = fs::canonicalize(exe).ok()?;
     let bin = canonical_exe.parent()?;
-    let versions = crate::home_root::path(&canonical_home).join("versions");
-    (bin.file_name()? == "bin" && bin.parent()?.parent()? == versions).then(|| bin.to_path_buf())
+    versions_dir_of(&canonical_home, bin).map(|_| bin.to_path_buf())
+}
+
+/// Whether a `--version` first line names this very build under either binary name: the
+/// signature (`<version> (rust)`) comes after `moai` or after the earlier name `moai-cli`, so
+/// the check holds before and after the printed name changes (SPEC-20261121-moai-name REQ-1).
+fn is_this_build(first_line: Option<&str>) -> bool {
+    first_line
+        .and_then(|l| l.split_once(' '))
+        .is_some_and(|(name, rest)| {
+            matches!(name, "moai" | "moai-cli") && rest == crate::VERSION_SIGNATURE
+        })
 }
 
 /// Preview the two names for the executable `exe` (the running binary in the CLI). Reads
@@ -103,8 +134,9 @@ pub fn plan_for(home: &Path, exe: &Path) -> Result<Plan> {
         return finish(
             "outside_layout",
             Some(format!(
-                "this binary is not in the version folder layout ~/{}/versions/<version>/bin/; nothing is linked",
-                crate::home_root::dir(home)
+                "this binary is not in the version folder layout ~/{}/versions/<version>/bin/ \
+                 or ~/.moai-cli/versions/<version>/bin/; nothing is linked",
+                crate::home_root::MOAI_DIR
             )),
             None,
             None,
@@ -161,8 +193,7 @@ pub fn plan_for(home: &Path, exe: &Path) -> Result<Plan> {
     // A separate `moai` of this same build (the release bundle carries both binaries) is
     // replaced by the link; anything else is not this tool's to touch.
     let line = crate::install::probe_version(&alias);
-    let mine = format!("moai-cli {}", crate::VERSION_SIGNATURE);
-    if line.as_deref() == Some(mine.as_str()) {
+    if is_this_build(line.as_deref()) {
         finish(
             "replace_copy",
             None,

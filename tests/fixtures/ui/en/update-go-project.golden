@@ -3,10 +3,10 @@
   HOME ~ · project ~/work/site
 
 ✓ Everything is up to date
-  skills claude 31 · skills codex 31 · agents 15 · routing 2
+  skills claude 31 · agents 5 · routing 1
 
   – hooks  skipped: no MoAI hook set in this project
 
-→ Next: in each existing project, run /moai update in a session there
-  ($moai update in Codex CLI) to update the project's settings.
+→ Next: in each existing project, run /moai update in a session there to update
+  the project's settings.
   this folder: site — Go generation · waiting to move: 47

@@ -12,10 +12,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
-
-static NEXT: AtomicUsize = AtomicUsize::new(0);
 
 fn git(dir: &Path, args: &[&str]) {
     // Audit B3: every fixture git call goes through the shared guard (gc.auto=0,
@@ -35,6 +32,9 @@ fn git(dir: &Path, args: &[&str]) {
 
 /// A project repository on `main` with a bare remote `origin`, and a HOME for the run.
 struct World {
+    /// The scratch folder of the run: unique, and removed when the world is dropped
+    /// (SPEC-20261124-test-temp-names; a name made from the process id met leftovers).
+    _dir: tempfile::TempDir,
     home: PathBuf,
     project: PathBuf,
     remote: PathBuf,
@@ -42,15 +42,14 @@ struct World {
 
 impl World {
     fn new() -> Self {
-        let n = NEXT.fetch_add(1, Ordering::SeqCst);
-        let base = std::env::temp_dir().join(format!("c105-plan-{}", std::process::id()));
-        let root = base.join(format!("w{n}"));
-        fs::create_dir_all(&root).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().to_path_buf();
         let home = root.join("home");
         let project = root.join("demo");
         let remote = root.join("remote.git");
         fs::create_dir_all(&home).unwrap();
         let w = World {
+            _dir: dir,
             home,
             project,
             remote,
@@ -341,9 +340,8 @@ fn without_work_flow_or_without_a_remote_the_key_is_absent() {
     // A repository with no remote at all: the key stays absent too. The init goes
     // through the shared guarded helper (audit N1: this bare spawn had no fixture
     // guards and no exit-status check; the bundle's command lint caught it).
-    let n = NEXT.fetch_add(1, Ordering::SeqCst);
-    let root =
-        std::env::temp_dir().join(format!("c105-plan-noremote-{}-{}", std::process::id(), n));
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().to_path_buf();
     fs::create_dir_all(root.join("home")).unwrap();
     common::git::git_ok(
         &root,
@@ -356,6 +354,7 @@ fn without_work_flow_or_without_a_remote_the_key_is_absent() {
         ],
     );
     let w2 = World {
+        _dir: dir,
         home: root.join("home"),
         project: root.join("demo"),
         remote: root.join("x"),

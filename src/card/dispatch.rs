@@ -17,8 +17,10 @@
 //! is `invalid_input`.
 
 use super::command::{actor, open_for_write};
+use super::early_reclaim;
 use super::input::{self, CardRef};
 use super::spec_link;
+use super::take_scope;
 use crate::ledger::reservation::{self, Reservation};
 use crate::ledger::{self};
 use crate::session_current;
@@ -118,6 +120,9 @@ pub fn ready(project: &Path, home: &Path, reference: &str, by: Option<&str>) -> 
                     "card ready refused: C-{card_id} has a live reservation; release or hand it over first"
                 )));
             }
+            if let Some(why) = no_criteria_refusal(tx, "ready", card_id)? {
+                return Ok(Err(why));
+            }
             tx.execute(
                 "UPDATE card SET state = 'ready', updated_at = ?2 WHERE card_id = ?1",
                 params![card_id, now],
@@ -142,6 +147,27 @@ pub fn ready(project: &Path, home: &Path, reference: &str, by: Option<&str>) -> 
     }))
 }
 
+/// The refusal for a card that has no counted criterion: no `open` or `met` row (a `withdrawn` row
+/// does not count), or `None` when it has one. A card without one can never be closed, because
+/// `card_done_guard` and `card finish` both need a met criterion. A card that does not exist has
+/// none either, so the callers run this after the checks that own that case. `action` is `ready`
+/// or `take`.
+fn no_criteria_refusal(
+    conn: &rusqlite::Connection,
+    action: &str,
+    card_id: i64,
+) -> rusqlite::Result<Option<String>> {
+    if crate::ledger::workflow::counted_criteria(conn, card_id)? > 0 {
+        return Ok(None);
+    }
+    let name = input::card_name(card_id);
+    Ok(Some(format!(
+        "card {action} refused: {name} has no acceptance criterion that is not withdrawn, so it \
+         could never be closed; add one with `moai card criterion-add {name} --ac <text>`; nothing \
+         was changed"
+    )))
+}
+
 /// The reservation states that hold a card (the ones `card ready` also refuses).
 const LIVE_RESERVATION: &str = "status IN ('held','expired_candidate','held_for_review')";
 
@@ -154,6 +180,22 @@ pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<Stri
     if let Some(i) = entries.iter().position(|e| has_line_separator(e)) {
         return Err(format!(
             "card {action} refused: scope entry {} has a line separator (U+2028 or U+2029)",
+            i + 1
+        ));
+    }
+    // One `--scope` names one path and a glob here has no braces, so a comma is never part of a
+    // path: it is a list typed into one value, which would be stored as a single pattern that
+    // matches nothing (SPEC-20261123-take-scope-stored REQ-12).
+    if let Some(i) = entries.iter().position(|e| e.contains(',')) {
+        // The option the caller typed: give-back and line-lease take `--path`, review `--keep`.
+        let option = match action {
+            "give-back" | "line-lease" => "--path",
+            "review" => "--keep",
+            _ => "--scope",
+        };
+        return Err(format!(
+            "card {action} refused: scope entry {} has a comma; one `{option}` per path (repeat the \
+             option), a comma does not separate paths",
             i + 1
         ));
     }
@@ -192,9 +234,10 @@ pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<Stri
 /// card's live reservation must be at it, else a `conflict` that names the generation the card
 /// has (or that it is not held), checked in the same write transaction (card C-129, SPEC
 /// SPEC-20261119-card-scope-widen-followup REQ-4 and REQ-5). A card added without `--scope` is
-/// skipped by `card next`
-/// (`empty_scope`), and nothing else sets a card's own scope (card C-53). Any other state is a
-/// conflict that names it; nothing is written then.
+/// skipped by `card next` (`empty_scope`) until it has a scope: this command sets it, and so does
+/// `take`, which keeps a given scope or fills an empty one from the card's SPEC or its last
+/// reservation (SPEC-20261123-take-scope-stored). Any other state is a conflict that names it;
+/// nothing is written then.
 pub fn scope(
     project: &Path,
     home: &Path,
@@ -210,6 +253,7 @@ pub fn scope(
         return Err("card scope refused: give at least one --scope".to_string());
     }
     let by = actor(Some(by), "scope")?;
+    let shared = take_scope::shared_files(project);
     let reason = reason.map(|r| checked_reason("scope", r)).transpose()?;
     let new_json = serde_json::to_string(&new).map_err(|e| e.to_string())?;
     let (id, mut ledger) = open_for_write(project, home)?;
@@ -253,6 +297,33 @@ pub fn scope(
                              so there is no generation {want} to widen at"
                         )));
                     }
+                }
+            }
+            // A shared file of the profile is never added to a scope whole; an entry the card's
+            // current scope already holds passes, so a held card is still widened by other paths
+            // (SPEC-20261124-shared-files-profile).
+            if !shared.is_empty() {
+                let current: Vec<String> =
+                    if holder.is_some() && (state == "active" || state == "review") {
+                        let mut stmt = tx.prepare(&format!(
+                            "SELECT pattern FROM reservation_scope WHERE reservation_id = \
+                         (SELECT reservation_id FROM reservation WHERE card_id = ?1 \
+                          AND {LIVE_RESERVATION} ORDER BY generation DESC LIMIT 1)"
+                        ))?;
+                        let rows = stmt.query_map([card_id], |r| r.get::<_, String>(0))?;
+                        rows.collect::<rusqlite::Result<Vec<String>>>()?
+                    } else {
+                        serde_json::from_str(&old).unwrap_or_default()
+                    };
+                let added: Vec<String> = new
+                    .iter()
+                    .filter(|entry| !current.contains(entry))
+                    .cloned()
+                    .collect();
+                if let Err(refused) =
+                    take_scope::refuse_shared("scope", &input::card_name(card_id), &shared, &added)
+                {
+                    return Ok(Err(refused));
                 }
             }
             if holder.is_some() && (state == "active" || state == "review") {
@@ -371,13 +442,19 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     } else {
         Some(checked_scope("take", req.scope)?)
     };
+    // A shared file of the profile is never reserved whole (SPEC-20261124-shared-files-profile):
+    // a given scope is refused before the ledger is opened for write.
+    let shared = take_scope::shared_files(project);
+    if let Some(given) = &given {
+        take_scope::refuse_shared("take", &input::card_name(card_id), &shared, given)?;
+    }
     let (id, mut ledger) = open_for_write(project, home)?;
     // A card that is not there has no SPEC; `reserve` answers `card not found` for it.
-    let (spec, warning) = match spec_link::kind_and_spec(ledger.conn(), card_id)
-        .map_err(|e| ledger::LedgerError::from(e).to_string())?
-    {
+    let linked = spec_link::kind_and_spec(ledger.conn(), card_id)
+        .map_err(|e| ledger::LedgerError::from(e).to_string())?;
+    let (spec, warning) = match &linked {
         Some((kind, spec)) => {
-            spec_link::status(project, &input::card_name(card_id), &kind, spec.as_deref())
+            spec_link::status(project, &input::card_name(card_id), kind, spec.as_deref())
         }
         None => (Value::Null, None),
     };
@@ -386,8 +463,57 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
             "card take refused: --require-approved-spec: {why}; nothing was taken"
         ));
     }
+    // A `ready` card without a counted criterion is refused here; a missing card, a card in
+    // another state and a held card keep the refusal `reserve` gives them.
+    let is_ready: bool = ledger
+        .conn()
+        .query_row(
+            "SELECT state = 'ready' FROM card WHERE card_id = ?1",
+            [card_id],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?
+        .unwrap_or(false);
+    if is_ready {
+        if let Some(why) =
+            no_criteria_refusal(ledger.conn(), "take", card_id).map_err(|e| e.to_string())?
+        {
+            return Err(why);
+        }
+    }
     let lease = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
-    let r = match given {
+    // Where the scope comes from (SPEC-20261123-take-scope-stored): the given one, the card's
+    // own, the linked SPEC's `write:` list, the last reservation's scope. A scope that is not the
+    // card's own is kept on the card once the reservation is made, so a released card is not
+    // empty again; the overlap check of `reserve` runs first and a refusal stores nothing.
+    let own = take_scope::own_scope(ledger.conn(), card_id)
+        .map_err(|e| ledger::LedgerError::from(e).to_string())?;
+    let own_is_empty = own.as_ref().is_some_and(Vec::is_empty);
+    let mut merged: Vec<String> = Vec::new();
+    let mut left_out = take_scope::LeftOut::new();
+    let (scope, source) = match given {
+        Some(scope) => (Some(scope), take_scope::Source::Given),
+        None if own_is_empty => {
+            let spec_id = linked.as_ref().and_then(|(_, spec)| spec.as_deref());
+            match take_scope::choose(project, ledger.conn(), card_id, spec_id)? {
+                Some(fill) => {
+                    merged = fill.merged;
+                    left_out = fill.left_out;
+                    (Some(fill.scope), fill.source)
+                }
+                None => return Err(take_scope::no_source_message(&input::card_name(card_id))),
+            }
+        }
+        None => {
+            // The card's own scope: a shared file in it is refused like a given one.
+            if let Some(own) = &own {
+                take_scope::refuse_shared("take", &input::card_name(card_id), &shared, own)?;
+            }
+            (None, take_scope::Source::Card)
+        }
+    };
+    let r = match scope {
         Some(scope) => reservation::reserve(
             &mut ledger,
             card_id,
@@ -407,9 +533,38 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         ),
     }
     .map_err(|e| e.to_string())?;
+    let mut warnings: Vec<String> = warning.into_iter().collect();
+    if !merged.is_empty() {
+        let names: Vec<String> = merged.iter().map(|p| format!("`{p}`")).collect();
+        warnings.push(format!(
+            "{}: the `write:` list of the SPEC names {} more than once; each path is reserved \
+             once (merged)",
+            input::card_name(card_id),
+            names.join(", ")
+        ));
+    }
+    for (entry, hit) in &left_out {
+        warnings.push(take_scope::left_out_warning(
+            &input::card_name(card_id),
+            entry,
+            hit,
+        ));
+    }
+    if own_is_empty && source != take_scope::Source::Card {
+        // The take already succeeded; a scope that could not be kept is a warning, never a
+        // failure that would leave the card taken and reported refused.
+        if let Err(why) =
+            take_scope::store(&mut ledger, card_id, &r.write_scope, req.holder, source)
+        {
+            warnings.push(format!(
+                "{}: the scope could not be kept on the card ({why}); `card scope` sets it",
+                input::card_name(card_id)
+            ));
+        }
+    }
     Ok(json!({
         "action": "take", "project_id": id, "reservation": reservation_json(&r),
-        "state": "active", "spec": spec, "warnings": warning.into_iter().collect::<Vec<_>>(),
+        "state": "active", "spec": spec, "scope_source": source.word(), "warnings": warnings,
         "writes": true,
     }))
 }
@@ -427,10 +582,32 @@ pub fn release(
     let (id, mut ledger) = open_for_write(project, home)?;
     let out = reservation::release(&mut ledger, card_id, holder, generation)
         .map_err(|e| e.to_string())?;
-    Ok(json!({
+    let mut answer = json!({
         "action": "release", "project_id": id, "reservation": reservation_json(&out.reservation),
         "state": out.card_state, "writes": true,
-    }))
+    });
+    // A card whose landing is recorded is not plain work again: say so and name the way to close
+    // it. The ledger is the only source (no git command), and nothing else of the answer changes.
+    if has_recorded_landing(ledger.conn(), card_id).map_err(|e| e.to_string())? {
+        answer["landed"] = json!(true);
+        answer["next_step"] = json!(format!(
+            "{name} already landed: close it with `card finish {name} --by <you>` instead of working it again",
+            name = input::card_name(card_id)
+        ));
+    }
+    Ok(answer)
+}
+
+/// Whether the ledger records a landing of the card: a `card.landed` event or a merged pull
+/// request link.
+fn has_recorded_landing(conn: &rusqlite::Connection, card_id: i64) -> rusqlite::Result<bool> {
+    conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM event WHERE card_id = ?1 AND kind = 'card.landed') \
+         OR EXISTS(SELECT 1 FROM card_link WHERE from_card = ?1 AND kind = 'pr' \
+                   AND state = 'active' AND pr_state = 'merged')",
+        [card_id],
+        |r| r.get(0),
+    )
 }
 
 /// `card handoff C-n`: the holder's reservation ends and `to` gets the next generation. The
@@ -498,6 +675,23 @@ fn reclaim_reason(reason: &str) -> Result<String> {
     checked_reason("reclaim", reason)
 }
 
+/// The reason of an early reclaim: the caller's reason, then the proof in brackets, as one line
+/// that still fits the reason limit (REQ-11). A reason that would not fit is refused before any
+/// write, naming how much the proof adds.
+fn early_reason(reason: &str, proof: &str) -> Result<String> {
+    let combined = format!("{reason} [{proof}]");
+    let (own, all) = (reason.chars().count(), combined.chars().count());
+    if all > reservation::MAX_REASON_LEN {
+        return Err(format!(
+            "card reclaim refused: --reason is {own} characters and the early-reclaim proof adds {}, \
+             over the limit of {}; shorten the reason",
+            all - own,
+            reservation::MAX_REASON_LEN
+        ));
+    }
+    checked_reason("reclaim", &combined)
+}
+
 /// What `card reclaim` was given.
 pub struct ReclaimRequest<'a> {
     /// The new holder: this session.
@@ -518,6 +712,12 @@ pub struct ReclaimRequest<'a> {
 /// links; one `card.reclaim` event names the old holder, the new one, `--by` and `--reason`. A
 /// live lease, another generation, a `done` card or a card that is not held is refused and
 /// nothing is written.
+///
+/// One exception to "a live lease is refused" (SPEC-20261120-reclaim-dead-holder, user decision
+/// 2026-11-20): when the holder session is proven gone ([`super::early_reclaim`]: its launcher
+/// has exited, its worktree is gone or clean and no process works in it) the reservation is
+/// reclaimed while its lease still runs, and the proof goes into the reason and the event. A
+/// missing or unreadable proof leaves the refusal as it was, with the missing part named.
 pub fn reclaim(
     project: &Path,
     home: &Path,
@@ -527,25 +727,72 @@ pub fn reclaim(
     let card_id = card_id("reclaim", reference)?;
     let by = actor(Some(req.by), "reclaim")?;
     let reason = reclaim_reason(req.reason)?;
-    takeover_gates(project, home, card_id, req.to_holder)?;
+    let kept = takeover_gates(project, home, card_id, req.to_holder)?;
+    let early = early_reclaim::assess(project, home, card_id, req.to_holder);
+    let reason = match &early {
+        early_reclaim::Early::Proven(proof) => early_reason(&reason, &proof.text)?,
+        _ => reason,
+    };
     let (id, mut ledger) = open_for_write(project, home)?;
-    let out = reservation::reclaim(
-        &mut ledger,
-        card_id,
-        req.to_holder,
-        req.generation,
-        &by,
-        &reason,
-        req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS),
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(json!({
+    let lease_secs = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
+    let proof = match &early {
+        early_reclaim::Early::Proven(proof) => Some(reservation::EarlyProof {
+            holder: &proof.holder,
+            detail: &proof.detail,
+        }),
+        _ => None,
+    };
+    let taken = match (&kept, &proof) {
+        // The worktree was read: the event names the commits the takeover keeps.
+        (Some(kept), _) => reservation::reclaim_keeping(
+            &mut ledger,
+            card_id,
+            req.to_holder,
+            req.generation,
+            &by,
+            &reason,
+            lease_secs,
+            proof.as_ref(),
+            kept,
+        ),
+        (None, Some(proof)) => reservation::reclaim_early(
+            &mut ledger,
+            card_id,
+            req.to_holder,
+            req.generation,
+            &by,
+            &reason,
+            lease_secs,
+            proof,
+        ),
+        (None, None) => reservation::reclaim(
+            &mut ledger,
+            card_id,
+            req.to_holder,
+            req.generation,
+            &by,
+            &reason,
+            lease_secs,
+        ),
+    };
+    let out = taken.map_err(|e| match (&e, &early) {
+        // The lease is live and the proof is missing: say which part.
+        (reservation::ReclaimError::LeaseLive { .. }, early_reclaim::Early::Unproven(why)) => {
+            format!("{e}; an early reclaim needs proof that the holder is gone, and {why}")
+        }
+        _ => e.to_string(),
+    })?;
+    let mut answer = json!({
         "action": "reclaim", "project_id": id,
         "reservation": reservation_json(&out.reservation),
         "previous": reservation_json(&out.previous),
         "by": by, "reason": reason, "state": out.card_state,
         "events": 1, "writes": true,
-    }))
+    });
+    if let Some(kept) = kept {
+        answer["kept_commits"] = kept;
+    }
+    Ok(answer)
 }
 
 /// The card's state now, `None` when there is no such card.
@@ -568,33 +815,122 @@ fn card_state(ledger: &ledger::WriteLedger, card_id: i64) -> Result<Option<Strin
 /// reclaim would orphan. The holder-liveness gate has no mechanical join yet — the session
 /// registry records no host session id — so it stays a follow-up (card C-43 note 2836).
 /// Refusals keep the `conflict in` wording so `contract::classify` maps them to `conflict`.
-fn takeover_gates(project: &Path, home: &Path, card_id: i64, to_holder: &str) -> Result<()> {
+///
+/// The answer is the commits the takeover keeps (`kept_commits`, SPEC-20261124-reclaim-keeps-
+/// worktree): in the takeover of an ended lease only an uncommitted change stops it, unpushed
+/// commits stay in the same worktree for the new holder. While the lease is live the strict
+/// [`worktree_gate`] judges, as it always did. `None` when no worktree was read or kept.
+fn takeover_gates(
+    project: &Path,
+    home: &Path,
+    card_id: i64,
+    to_holder: &str,
+) -> Result<Option<Value>> {
     let id = crate::ledger::command::project_id_of(project)
         .map_err(|e| format!("card reclaim refused: {e}"))?;
     // Read-only peek: an absent ledger reaches its own refusal at `open_for_write`, and the
     // peek never creates anything (`open_read_only`).
     let Ok(ro) = ledger::open_read_only(home, &id) else {
-        return Ok(());
+        return Ok(None);
     };
     let current = reservation::current(ro.conn(), card_id).map_err(|e| e.to_string())?;
     let Some(cur) = current else {
-        return Ok(()); // the ledger refuses with its own `no reservation`
+        return Ok(None); // the ledger refuses with its own `no reservation`
     };
     if cur.holder == to_holder {
-        return Ok(()); // a self-reclaim renews its own reservation
+        return Ok(None); // a self-reclaim renews its own reservation
     }
-    worktree_gate(cur.worktree.as_deref())
+    // Only the takeover of an ended lease keeps unpushed commits (SPEC-20261124-reclaim-keeps-
+    // worktree REQ-6, D-6). A live lease, a reservation that is not `held` and a clock that
+    // cannot be read all go through the strict gate, whose refusal text is the one the command
+    // always had; the ledger then refuses a live lease with its own reason after it.
+    let lease_ended = cur.status == "held"
+        && ro
+            .conn()
+            .query_row("SELECT unixepoch()", [], |r| r.get::<_, i64>(0))
+            .is_ok_and(|now| reservation::lease_ended(cur.lease_until, now));
+    if lease_ended {
+        takeover_worktree_gate(project, cur.worktree.as_deref())
+    } else {
+        worktree_gate(project, cur.worktree.as_deref()).map(|()| None)
+    }
 }
 
 /// REQ-1..3: refuse a worktree that exists and holds uncommitted or unpushed work, go on
 /// only when the path is known to be gone (nothing there can be orphaned), refuse as
 /// unverifiable when the path cannot be told apart from "gone" or git cannot be read.
-fn worktree_gate(worktree: Option<&str>) -> Result<()> {
-    let Some(wt) = worktree.filter(|w| !w.is_empty()) else {
+pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()> {
+    let Some(read) = read_worktree(project, worktree)? else {
         return Ok(());
     };
-    let unreadable =
-        || format!("card conflict in worktree unknown: the worktree {wt} could not be read");
+    if read.uncommitted > 0 || read.unpushed > 0 {
+        return Err(format!(
+            "card conflict in worktree dirty: {} holds {} uncommitted change(s) \
+             and {} unpushed commit(s); a reclaim would orphan them",
+            read.wt, read.uncommitted, read.unpushed
+        ));
+    }
+    Ok(())
+}
+
+/// What the takeover gate keeps: the unpushed commits of the recorded worktree. The new holder
+/// continues in the same worktree on the same branch, so these commits are not lost, and a lane
+/// never pushes, so "unpushed" is the normal state of an open card
+/// (SPEC-20261124-reclaim-keeps-worktree REQ-1, REQ-3).
+const KEPT_COMMIT_IDS: usize = 20;
+
+/// REQ-1, REQ-2, REQ-4 of SPEC-20261124-reclaim-keeps-worktree: the gate of a takeover of an
+/// ended lease. It refuses what a takeover really loses, an uncommitted change, whether or not
+/// commits stand beside it, and refuses as unreadable when git cannot count the unpushed commits.
+/// Unpushed commits pass and are returned as `kept_commits` (the count and up to twenty ids,
+/// newest first). `None` when no worktree is recorded or its path is known to be gone.
+fn takeover_worktree_gate(project: &Path, worktree: Option<&str>) -> Result<Option<Value>> {
+    let Some(read) = read_worktree(project, worktree)? else {
+        return Ok(None);
+    };
+    if read.uncommitted > 0 {
+        return Err(format!(
+            "card conflict in worktree dirty: {} holds {} uncommitted change(s) \
+             and {} unpushed commit(s); a reclaim would orphan the uncommitted changes",
+            read.wt, read.uncommitted, read.unpushed
+        ));
+    }
+    let ids = unpushed_ids(
+        Path::new(&read.wt),
+        "HEAD",
+        read.integration.as_deref(),
+        KEPT_COMMIT_IDS,
+    )
+    .ok_or_else(|| {
+        format!(
+            "card conflict in worktree unknown: the worktree {} could not be read: git could not \
+             list its unpushed commits",
+            read.wt
+        )
+    })?;
+    Ok(Some(json!({ "count": read.unpushed, "ids": ids })))
+}
+
+/// What one read of a recorded worktree found.
+struct WorktreeRead {
+    wt: String,
+    uncommitted: u64,
+    unpushed: u64,
+    integration: Option<String>,
+}
+
+/// The one read both gates share: `Ok(None)` when no worktree is recorded or its path is known
+/// to be gone (nothing there can be orphaned), a refusal when the path cannot be told apart from
+/// "gone" or git cannot be read, else the counts of uncommitted changes and unpushed commits.
+fn read_worktree(project: &Path, worktree: Option<&str>) -> Result<Option<WorktreeRead>> {
+    let Some(wt) = worktree.filter(|w| !w.is_empty()) else {
+        return Ok(None);
+    };
+    // The reason git or the file system gave comes with the refusal (SPEC-20261122-test-defects-
+    // session-reclaim REQ-18).
+    let unreadable = |why: &str| {
+        format!("card conflict in worktree unknown: the worktree {wt} could not be read: {why}")
+    };
     let path = Path::new(wt);
     // A relative path means a different folder under another working directory, so "it does
     // not exist here" proves nothing (audit-c43 B1).
@@ -606,57 +942,408 @@ fn worktree_gate(worktree: Option<&str>) -> Result<()> {
     }
     // `Path::exists` turns a permission error into "gone"; only a clean "not found" is gone.
     match path.try_exists() {
-        Ok(false) => return Ok(()),
+        Ok(false) => return Ok(None),
         Ok(true) => {}
-        Err(_) => return Err(unreadable()),
+        Err(e) => return Err(unreadable(&e.to_string())),
     }
-    // One changed or untracked path per line.
-    let uncommitted = git_output(
+    // A folder that lost its own `.git` and lies inside another checkout would be judged by that
+    // checkout, which may ignore it: only a folder git calls the top of a checkout is judged
+    // (REQ-22, REQ-23).
+    checkout_top_is(path).map_err(|why| unreadable(&why))?;
+    // One changed or untracked path per entry, every untracked file on its own (a folder git
+    // would show as one entry could hide real work beside a tool cache), names unquoted (`-z`).
+    // An untracked file under the runtime state folder is tool state, not work
+    // (SPEC-20261120-reclaim-dead-holder REQ-12, widened from one file to the folder by
+    // SPEC-20261122-test-defects-session-reclaim REQ-3). A folder git cannot open is only a
+    // warning to git, so any warning makes the worktree unreadable (REQ-9, REQ-10).
+    let state = super::early_reclaim::state_prefix(path);
+    let uncommitted = git_entries(
         path,
-        &["status", "--porcelain=v1", "--untracked-files=normal"],
+        &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
     )
-    .ok_or_else(unreadable)?
-    .lines()
-    .filter(|l| !l.trim().is_empty())
+    .map_err(|why| unreadable(&why))?
+    .iter()
+    .filter(|e| !super::early_reclaim::is_tool_cache_entry(&state, e))
     .count() as u64;
-    let unpushed = git_output(path, &["rev-list", "--count", "HEAD", "--not", "--remotes"])
-        .and_then(|n| n.trim().parse::<u64>().ok())
-        .ok_or_else(unreadable)?;
-    if uncommitted > 0 || unpushed > 0 {
-        return Err(format!(
-            "card conflict in worktree dirty: {wt} holds {uncommitted} uncommitted change(s) \
-             and {unpushed} unpushed commit(s); a reclaim would orphan them"
-        ));
-    }
-    Ok(())
+    let integration = integration_ref(project, path);
+    let unpushed = unpushed_commits(path, "HEAD", integration.as_deref())
+        .ok_or_else(|| unreadable("git could not count its unpushed commits"))?;
+    Ok(Some(WorktreeRead {
+        wt: wt.to_string(),
+        uncommitted,
+        unpushed,
+        integration,
+    }))
+}
+
+/// The integration branch the `m-flow` work flow of the profile in `dir` names, if any.
+fn mflow_integration_branch(dir: &Path) -> Option<String> {
+    let (profile, _) = crate::profile::read_profile(dir).ok()?;
+    profile
+        .work_flow
+        .filter(|w| w.flow == "m-flow")?
+        .integration_branch
+}
+
+/// The local integration branch of an m-flow project, as a full ref: the profile of the
+/// project folder names the `m-flow` work flow with an integration branch, else the profile of
+/// the recorded worktree does (a lane worktree has no state-root marker, so its own profile is
+/// the earlier one without a work flow), and that branch exists locally. The ref is looked up
+/// in the worktree, whose refs are the clone's. `None` for every other case (no profile, one
+/// that cannot be read, another flow, no branch named, a branch this clone lacks), which leaves
+/// the count of unpushed commits to the remote-tracking refs alone
+/// (SPEC-20261120-reclaim-dead-holder REQ-13).
+pub(super) fn integration_ref(project: &Path, worktree: &Path) -> Option<String> {
+    let branch =
+        mflow_integration_branch(project).or_else(|| mflow_integration_branch(worktree))?;
+    let full = format!("refs/heads/{branch}");
+    git_output(worktree, &["rev-parse", "--verify", "--quiet", &full])?;
+    Some(full)
+}
+
+/// How many commits of `tip` are on no remote-tracking ref and, when `integration` names a
+/// ref, are not in it either. `None` when git cannot answer.
+pub(super) fn unpushed_commits(dir: &Path, tip: &str, integration: Option<&str>) -> Option<u64> {
+    let mut args = vec!["rev-list", "--count", tip, "--not", "--remotes"];
+    args.extend(integration);
+    git_output(dir, &args)?.trim().parse().ok()
+}
+
+/// The ids of the first `max` commits of `tip` that are on no remote-tracking ref and, when
+/// `integration` names a ref, not in it either, newest first. `None` when git cannot answer.
+fn unpushed_ids(
+    dir: &Path,
+    tip: &str,
+    integration: Option<&str>,
+    max: usize,
+) -> Option<Vec<String>> {
+    let limit = format!("--max-count={max}");
+    let mut args = vec!["rev-list", limit.as_str(), tip, "--not", "--remotes"];
+    args.extend(integration);
+    let out = git_output(dir, &args)?;
+    Some(out.lines().map(str::to_string).collect())
 }
 
 /// The standard output of one read-only git command in `dir`: the environment is scrubbed like
 /// every spawn (`identity::scrub_git_env`) and the meaning matches `lane_reset`'s probes — no
 /// fetch, untracked files counted, `None` on any failure.
-fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
+pub(super) fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
+    git_run(dir, args)
+        .ok()
+        .map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// The entries of one git file list read with `-z` (`status` or `ls-files`), names as written.
+/// `Err` with the reason on a failure and also when git wrote a line on its standard error that
+/// is no noise line: `git status` exits 0 with only a warning for a folder it cannot open and
+/// lists nothing for it, so a warning means the list is incomplete
+/// (SPEC-20261122-test-defects-session-reclaim REQ-9, REQ-18).
+pub(super) fn git_entries(dir: &Path, args: &[&str]) -> std::result::Result<Vec<String>, String> {
+    let out = git_run(dir, args)?;
+    if let Some(line) = first_unexpected_line(&out.stderr) {
+        return Err(format!("git said: {}", capped(&line)));
+    }
+    let status = args.first() == Some(&"status");
+    Ok(split_entries(&String::from_utf8_lossy(&out.stdout), status))
+}
+
+/// One line of git's words, short enough to carry in a refusal.
+fn capped(line: &str) -> String {
+    line.chars().take(200).collect()
+}
+
+/// The first line git wrote on its standard error, which is no noise line (REQ-18).
+fn first_unexpected_line(stderr: &[u8]) -> Option<String> {
+    String::from_utf8_lossy(stderr)
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .find(|l| !is_noise_line(l))
+        .map(str::to_string)
+}
+
+/// A line git writes when it carried on and the list is complete (REQ-19, D-10): a name in an
+/// attributes file that is not a valid attribute name, with the file and the line it stands on.
+/// Every other line, one that only looks like it included, is a warning. The line is trimmed
+/// before it gets here, so the space that opens the separator already means a name stands before it.
+fn is_noise_line(line: &str) -> bool {
+    line.split_once(" is not a valid attribute name: ")
+        .is_some_and(|(_, at)| {
+            at.rsplit_once(':').is_some_and(|(file, n)| {
+                !file.is_empty() && !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit())
+            })
+        })
+}
+
+/// `Ok` when git places the top of a checkout exactly at `dir`; the reason otherwise.
+fn checkout_top_is(dir: &Path) -> std::result::Result<(), String> {
+    let out = git_run(dir, &["rev-parse", "--show-toplevel"])?;
+    // Only git's closing line break goes: a folder name may itself end in a space.
+    let top = String::from_utf8_lossy(&out.stdout)
+        .trim_end_matches('\n')
+        .to_string();
+    match (std::fs::canonicalize(&top), std::fs::canonicalize(dir)) {
+        (Ok(a), Ok(b)) if a == b => Ok(()),
+        _ => Err(format!(
+            "it is not the top of a git checkout of its own (git places it in the checkout at \
+             {top})"
+        )),
+    }
+}
+
+/// Splits `-z` output into entries. In `git status` output a renamed or copied entry (`R` or
+/// `C` in either status column) is followed by its origin path as a field of its own, which is
+/// part of that entry and not one more.
+fn split_entries(raw: &str, status: bool) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut fields = raw.split('\0').filter(|f| !f.is_empty());
+    while let Some(entry) = fields.next() {
+        let code = entry.get(..2).unwrap_or("");
+        if status && code.contains(['R', 'C']) {
+            fields.next();
+        }
+        out.push(entry.to_string());
+    }
+    out
+}
+
+/// One read-only git command in `dir`, its output when it exits 0, else the reason: how git
+/// ended and the first line it wrote (REQ-18). The file monitor is switched off for every read:
+/// a read gains nothing from a watcher, and a hook that does not exist would make git write two
+/// `fatal:` lines on every read (REQ-20, D-11).
+fn git_run(dir: &Path, args: &[&str]) -> std::result::Result<std::process::Output, String> {
     // `MOAI_GIT_BIN` names the git program for a runner whose child carries no `PATH`
     // (the same seam as `MOAI_FORGE_GH_BIN`); everyone else spawns `git`.
     let program = std::env::var("MOAI_GIT_BIN").unwrap_or_else(|_| "git".to_string());
     let mut cmd = std::process::Command::new(program);
     crate::identity::scrub_git_env(&mut cmd);
     let out = cmd
+        .args(["-c", "core.fsmonitor=false"])
         .arg("--no-optional-locks")
         .arg("-C")
         .arg(dir)
         .args(args)
         .stdin(std::process::Stdio::null())
         .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
+        .map_err(|e| format!("git could not start: {e}"))?;
+    if out.status.success() {
+        return Ok(out);
     }
-    Some(String::from_utf8_lossy(&out.stdout).into_owned())
+    let how = out
+        .status
+        .code()
+        .map_or("was stopped by a signal".to_string(), |c| {
+            format!("exited with {c}")
+        });
+    Err(match first_unexpected_line(&out.stderr) {
+        Some(line) => format!("git {how} and said: {}", capped(&line)),
+        None => format!("git {how}"),
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// SPEC-20261122-test-defects-session-reclaim AC-9: `-z` entries keep a space as written; in
+    /// `git status` output a rename or copy carries its origin as one more field, which is part
+    /// of that entry, while an `ls-files` list has no status columns to read.
+    #[test]
+    fn a_z_list_keeps_names_and_folds_a_rename_origin() {
+        let status = "?? my notes.md\0R  new name.rs\0old name.rs\0 C a.rs\0b.rs\0 M c.rs\0";
+        assert_eq!(
+            split_entries(status, true),
+            ["?? my notes.md", "R  new name.rs", " C a.rs", " M c.rs"]
+        );
+        assert_eq!(
+            split_entries("R  x.rs\0C  y.rs\0", false),
+            ["R  x.rs", "C  y.rs"]
+        );
+        assert!(split_entries("", true).is_empty());
+    }
+
+    /// SPEC-20261122-test-defects-session-reclaim AC-14 (REQ-18): the line a refusal carries is
+    /// the first one git wrote that is no noise line, whatever stands before it.
+    #[test]
+    fn the_refusal_names_the_first_line_git_wrote() {
+        let warn = "warning: could not open directory 'a/': Permission denied";
+        assert_eq!(first_unexpected_line(b""), None);
+        assert_eq!(first_unexpected_line(b"\n  \n"), None);
+        let two = format!("{warn}\nwarning: another\n");
+        assert_eq!(first_unexpected_line(two.as_bytes()).as_deref(), Some(warn));
+        let noise_first =
+            format!("we!rd is not a valid attribute name: .gitattributes:1\n{warn}\n");
+        assert_eq!(
+            first_unexpected_line(noise_first.as_bytes()).as_deref(),
+            Some(warn)
+        );
+    }
+
+    /// AC-15 (REQ-19): the one noise shape is a name that is not a valid attribute name, with the
+    /// file and the line it stands on; a line that only looks like it is still a warning.
+    #[test]
+    fn a_noise_line_is_not_a_warning() {
+        for noise in [
+            "we!rd is not a valid attribute name: .gitattributes:1\n",
+            "x is not a valid attribute name: sub dir/.gitattributes:12\n",
+        ] {
+            assert_eq!(first_unexpected_line(noise.as_bytes()), None, "{noise}");
+        }
+        for look_alike in [
+            "is not a valid attribute name\n",
+            "we!rd is not a valid attribute name: .gitattributes\n",
+            "we!rd is not a valid attribute name: .gitattributes:x\n",
+            "we!rd is not a valid attribute name: :3\n",
+            "we!rd is not a valid attribute name: .gitattributes:\n",
+            "warning: could not open directory 'x/': Permission denied\n",
+        ] {
+            assert!(
+                first_unexpected_line(look_alike.as_bytes()).is_some(),
+                "{look_alike}"
+            );
+        }
+    }
+
+    /// One git command in `dir` with a fixture identity; the test fails when git does.
+    fn fixture_git(dir: &Path, args: &[&str]) {
+        let mut cmd = std::process::Command::new("git");
+        crate::identity::scrub_git_env(&mut cmd);
+        let out = cmd
+            .args([
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+            ])
+            .args([
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "core.excludesFile=/dev/null",
+            ])
+            .arg("-C")
+            .arg(dir)
+            .args(args)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    /// AC-17 (REQ-22, REQ-23): a recorded folder that lost its `.git` inside a checkout that
+    /// ignores it is not clean because that checkout is: the gate refuses it as unreadable and
+    /// names the checkout git finds. A checkout of its own is still judged by itself.
+    #[test]
+    fn a_folder_that_lost_its_git_is_not_judged_by_the_checkout_around_it() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        let (bare, outer) = (base.join("remote.git"), base.join("outer"));
+        for d in [&bare, &outer] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        fixture_git(&bare, &["init", "-q", "--bare", "-b", "main"]);
+        fixture_git(&outer, &["init", "-q", "-b", "main"]);
+        std::fs::write(outer.join(".gitignore"), "lost/\n").unwrap();
+        fixture_git(&outer, &["add", ".gitignore"]);
+        fixture_git(&outer, &["commit", "-q", "-m", "ignore the folder"]);
+        fixture_git(&outer, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        fixture_git(&outer, &["push", "-q", "origin", "main"]);
+        let lost = outer.join("lost");
+        std::fs::create_dir_all(&lost).unwrap();
+        std::fs::write(lost.join("work.txt"), "x\n").unwrap();
+
+        let err = worktree_gate(&outer, Some(lost.to_str().unwrap())).unwrap_err();
+        assert!(err.contains("worktree unknown"), "{err}");
+        assert!(err.contains("not the top of a git checkout"), "{err}");
+        assert!(err.contains(outer.to_str().unwrap()), "{err}");
+
+        fixture_git(&base, &["clone", "-q", bare.to_str().unwrap(), "own"]);
+        let own = base.join("own");
+        assert_eq!(worktree_gate(&outer, Some(own.to_str().unwrap())), Ok(()));
+    }
+
+    /// AC-17 (REQ-22): what a lane really records is judged by itself and not refused: a linked
+    /// worktree made by `git worktree add` beside the checkout and one inside it (the layout of
+    /// `.claude/worktrees`), and a link to a checkout, whose path git spells through the real one.
+    #[test]
+    fn a_linked_worktree_and_a_link_to_a_checkout_are_judged_by_themselves() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        let (bare, outer) = (base.join("remote.git"), base.join("outer"));
+        for d in [&bare, &outer] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        fixture_git(&bare, &["init", "-q", "--bare", "-b", "main"]);
+        fixture_git(&outer, &["init", "-q", "-b", "main"]);
+        std::fs::write(outer.join("a.txt"), "a\n").unwrap();
+        fixture_git(&outer, &["add", "a.txt"]);
+        fixture_git(&outer, &["commit", "-q", "-m", "first"]);
+        fixture_git(&outer, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        fixture_git(&outer, &["push", "-q", "origin", "main"]);
+
+        let beside = base.join("beside");
+        let inside = outer.join("inside");
+        for (path, branch) in [(&beside, "lane-beside"), (&inside, "lane-inside")] {
+            fixture_git(
+                &outer,
+                &[
+                    "worktree",
+                    "add",
+                    "-q",
+                    "-b",
+                    branch,
+                    path.to_str().unwrap(),
+                ],
+            );
+            assert_eq!(worktree_gate(&outer, Some(path.to_str().unwrap())), Ok(()));
+        }
+
+        fixture_git(&base, &["clone", "-q", bare.to_str().unwrap(), "own"]);
+        let link = base.join("link");
+        std::os::unix::fs::symlink(base.join("own"), &link).unwrap();
+        assert_eq!(worktree_gate(&outer, Some(link.to_str().unwrap())), Ok(()));
+    }
+
+    /// AC-17 (REQ-22): the checkout top git prints is cut only at its line break, so a real
+    /// linked worktree whose folder name ends in a space is judged by itself.
+    #[test]
+    fn a_worktree_whose_name_ends_in_a_space_is_judged_by_itself() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        let (bare, outer) = (base.join("remote.git"), base.join("outer"));
+        for d in [&bare, &outer] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        fixture_git(&bare, &["init", "-q", "--bare", "-b", "main"]);
+        fixture_git(&outer, &["init", "-q", "-b", "main"]);
+        std::fs::write(outer.join("a.txt"), "a\n").unwrap();
+        fixture_git(&outer, &["add", "a.txt"]);
+        fixture_git(&outer, &["commit", "-q", "-m", "first"]);
+        fixture_git(&outer, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        fixture_git(&outer, &["push", "-q", "origin", "main"]);
+
+        let spaced = base.join("lane ");
+        fixture_git(
+            &outer,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                "lane-spaced",
+                spaced.to_str().unwrap(),
+            ],
+        );
+        assert_eq!(
+            worktree_gate(&outer, Some(spaced.to_str().unwrap())),
+            Ok(())
+        );
+    }
     use std::collections::HashMap;
 
     const A: &str = "428e289a-1c67-492e-a23b-a5aca15b4d1f";

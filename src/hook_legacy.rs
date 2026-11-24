@@ -9,11 +9,10 @@
 //! as it is and never printed (the preview names its event, matcher and a reason only).
 //!
 //! Nothing here writes. A rewrite happens only through the writers that already own the files:
-//! the Claude `hooks` key (three-way against its ownership receipt, `claude::plan_settings`)
-//! and the Codex and OMP files (whole-file sha256 against theirs). A pristine old install is
-//! therefore an `update`; an edited one stays a conflict or "requires preservation review"
-//! with its bytes untouched. The preview is derived from the same `before` bytes the plan
-//! digest binds and sits outside the digest, like `hooks` and `engine_capabilities`.
+//! the Claude `hooks` key (three-way against its ownership receipt, `claude::plan_settings`).
+//! A pristine old install is therefore an `update`; an edited one stays a conflict with its
+//! bytes untouched. The preview is derived from the same `before` bytes the plan digest binds
+//! and sits outside the digest, like `hooks` and `engine_capabilities`.
 
 use crate::hooks::{self, HOOK_BINARY, LEGACY_BINARY};
 use serde_json::{json, Map, Value};
@@ -31,10 +30,6 @@ pub struct Subject<'a> {
     pub before: Option<&'a [u8]>,
     /// The plan's `action`: `create`, `update`, `unchanged` or `conflict`.
     pub action: &'a str,
-    /// The Codex lane the ownership receipt records (the lane Stop group of the old file).
-    pub lane: Option<(&'a str, &'a str)>,
-    /// sha256 of the bytes the plan would write (OMP module entry).
-    pub after_sha256: Option<String>,
 }
 
 /// One hook group of a `hooks` object: where it is and what it holds.
@@ -107,41 +102,17 @@ pub fn migration(sub: &Subject) -> Value {
     let Some(before) = sub.before.filter(|_| rewrites) else {
         return out;
     };
-    if sub.host == "omp" {
-        omp(sub, before, &mut out);
-    } else {
-        hooks_file(sub, before, &mut out);
-    }
+    hooks_file(sub, before, &mut out);
     out
-}
-
-fn omp(sub: &Subject, before: &[u8], out: &mut Value) {
-    if sub.action != "update" {
-        return;
-    }
-    if before == hooks::omp_module(LEGACY_BINARY).as_bytes() {
-        out["entries"] = json!([{
-            "kind": "module",
-            "file": sub.file,
-            "before_sha256": crate::digest(before),
-            "after_sha256": sub.after_sha256,
-            "decision": "rewrite",
-        }]);
-    } else {
-        out["replaced"] = json!([{"kind": "module", "file": sub.file,
-            "reason": "earlier_moai_module"}]);
-    }
-    out["state"] = json!("rewrite");
 }
 
 fn hooks_file(sub: &Subject, before: &[u8], out: &mut Value) {
     let Ok(doc) = serde_json::from_slice::<Value>(before) else {
         return;
     };
-    let lane = sub.lane;
     let (Ok(old), Ok(new)) = (
-        hooks::legacy_hooks(sub.host, lane),
-        hooks::current_hooks(sub.host, lane),
+        hooks::legacy_hooks(sub.host),
+        hooks::current_hooks(sub.host),
     ) else {
         return;
     };
@@ -196,7 +167,7 @@ fn hooks_file(sub: &Subject, before: &[u8], out: &mut Value) {
     out["entries"] = json!(entries);
 }
 
-/// How many entries a plan's `binary_migration` rewrites (modules count one).
+/// How many entries a plan's `binary_migration` rewrites.
 pub fn rewrite_count(plan: &Value) -> usize {
     let m = &plan["binary_migration"];
     if m["state"] != json!("rewrite") {
@@ -278,14 +249,8 @@ pub fn fresh_install(
 /// for the `moai` on `path_env`. `hooks-apply` and the `moai update` hook layer both call it, at
 /// plan time and again at apply time, because the plan digest binds the files and not the PATH.
 /// The `moai` is probed only when the plan writes something.
-pub fn gate(
-    project: &Path,
-    host: &str,
-    home: Option<&Path>,
-    lane: hooks::LaneLoop,
-    path_env: &str,
-) -> crate::Result<()> {
-    let plan = hooks::plan_with(project, host, home, lane)?;
+pub fn gate(project: &Path, host: &str, home: Option<&Path>, path_env: &str) -> crate::Result<()> {
+    let plan = hooks::plan(project, host, home)?;
     gate_plan(&plan, project, home, path_env)
 }
 

@@ -4,7 +4,7 @@
 //!
 //! The case behind it: a project whose `.moai/reports` held 74 GB left the preview with "the
 //! folder stays" and nothing else. The entry limit is lowered with the debug-build variable
-//! `MOAI_CLI_TEST_UNRECORDED_LIMIT`, so a few files reach it. Every case builds a temporary
+//! `MOAI_TEST_UNRECORDED_LIMIT`, so a few files reach it. Every case builds a temporary
 //! project; the real checkout is never read.
 
 #![cfg(unix)]
@@ -82,7 +82,7 @@ fn plan(fx: &Fx, limit: Option<usize>) -> Value {
     let mut cmd = home.command(&["go-state-plan", fx.root.to_str().unwrap()]);
     cmd.env("PATH", "/usr/bin:/bin").env("LC_ALL", "C");
     if let Some(n) = limit {
-        cmd.env("MOAI_CLI_TEST_UNRECORDED_LIMIT", n.to_string());
+        cmd.env("MOAI_TEST_UNRECORDED_LIMIT", n.to_string());
     }
     let out = cmd.output().unwrap();
     let v: Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {

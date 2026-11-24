@@ -6,15 +6,12 @@
 검사
   ↑ 스킬 claude
     최신 30개 · 새로 1개 · 갱신 1개
-  ↑ 스킬 codex
-    최신 30개 · 새로 1개 · 갱신 1개
   ✓ 에이전트
-    claude 5 · codex 5 · omp 5 — 최신
-    15개
+    claude 5 — 최신 5개
   ✓ 라우팅
-    CLAUDE.md 최신 · AGENTS.md 최신
+    CLAUDE.md 최신
   ✓ 출력 스타일
-    최신 3개
+    최신 2개
   ✓ 실행 파일 이름
     최신
   – hooks
@@ -24,5 +21,3 @@
   스킬 claude
     ↑ references/routes.md
     ↑ workflows/update.md
-  스킬 codex
-    같은 파일 2개

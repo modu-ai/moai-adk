@@ -4,6 +4,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/spawn_cap.rs"]
+mod spawn_cap;
 use serde_json::{json, Value};
 use std::fs;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -34,7 +36,7 @@ fn go_home() -> (tempfile::TempDir, PathBuf) {
     write(&home, ".moai/state/active-sessions.json", "[]");
     write(&home, ".moai/credentials.yaml", "token: PLACEHOLDER\n");
     write(&home, ".moai/.env.glm", "GLM_API_KEY=PLACEHOLDER\n");
-    write(&home, ".moai/.env.typesafe", "KEY=PLACEHOLDER\n");
+    write(&home, ".moai/.env.legacy", "KEY=PLACEHOLDER\n");
     write(&home, ".moai/cache/a.bin", "x");
     write(&home, ".moai/Logs/go.log", "x\n");
     write(&home, ".moai/run/x.pid", "1\n");
@@ -51,9 +53,12 @@ fn go_home() -> (tempfile::TempDir, PathBuf) {
 }
 
 fn call(args: &[&str], envs: &[(&str, &str)]) -> Value {
+    // REQ-3: one spawn permit per running child, so the binary's child count stays bounded.
+    let _permit = spawn_cap::acquire();
     let out = Command::new(BIN)
         .args(args)
         .env_remove("MOAI_HOME")
+        .envs([crate::common::process_table()])
         .envs(envs.iter().copied())
         .stdin(Stdio::null())
         .output()
@@ -178,8 +183,10 @@ impl Drop for Kill {
 /// waiting on a pipe nobody writes to. It lives until the test drops it (`Kill` stops it) or the
 /// test process ends (the pipe closes and `cat` reads end of file), so no clock decides how long
 /// it lasts — a stand-in that sleeps for a fixed time ended first when a loaded machine ran the
-/// test past it (SPEC-20261120-card-screen-work-count).
+/// test past it (SPEC-20261120-card-screen-work-count). The test's later commands read the real
+/// process table (SPEC-20261122-test-process-table-default).
 fn in_use(dir: PathBuf) -> Kill {
+    crate::common::use_real_process_table();
     Kill(
         Command::new("cat")
             .stdin(Stdio::piped())
@@ -213,7 +220,7 @@ fn retire_preview_classifies_every_entry_by_the_table_and_writes_nothing() {
         "run",
         "config",
         "credentials.yaml",
-        ".env.typesafe",
+        ".env.legacy",
     ] {
         assert_eq!(act(&p, name).0, "retire", "{name}: {p}");
     }
@@ -269,7 +276,7 @@ fn retire_apply_moves_only_the_retire_entries_and_changes_no_byte() {
     assert_eq!(
         moved,
         [
-            ".env.typesafe",
+            ".env.legacy",
             "Logs",
             "cache",
             "config",
@@ -380,11 +387,7 @@ fn retire_in_use_entries_stay_and_an_unreadable_process_table_moves_nothing() {
     assert!(!retired(&home).join(STAMP).join("Logs").exists());
     // A machine whose process table cannot be read moves nothing (fail-closed).
     let (_d2, home2) = go_home();
-    let p2 = plan_with(
-        &home2,
-        NOW,
-        &[("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")],
-    );
+    let p2 = plan_with(&home2, NOW, &[("MOAI_TEST_PROCESS_CHECK", "unavailable")]);
     assert_eq!(p2["counts"]["retire"], json!(0), "{p2}");
     assert_eq!(act(&p2, "cache").0, "skip-in-use");
 }

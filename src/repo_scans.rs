@@ -25,6 +25,9 @@ pub struct Scan {
     pub rules: Vec<String>,
     pub scope: Vec<(String, Vec<String>)>,
     pub checks: Vec<String>,
+    /// `"always": true`: a path of the head's change set in the scope is a hit by itself, without
+    /// a change of a rule file (SPEC-20261123-land-repo-scans).
+    pub always: bool,
     /// The entry as written, so two tables are merged by whole-entry equality.
     pub raw: Value,
 }
@@ -77,11 +80,21 @@ pub fn parse_table(text: &str) -> Result<Vec<Scan>, String> {
             };
             scope.push((prefix, suffixes));
         }
+        let always = match raw.get("always") {
+            None | Some(Value::Null) => false,
+            Some(Value::Bool(b)) => *b,
+            Some(_) => {
+                return Err(format!(
+                    "table: scan {id} has an `always` that is not a boolean"
+                ))
+            }
+        };
         out.push(Scan {
             id,
             rules,
             scope,
             checks,
+            always,
             raw: raw.clone(),
         });
     }
@@ -145,6 +158,33 @@ pub fn judge(pr: &[String], tip: &[String], scans: &[Scan]) -> Vec<Value> {
         }
     }
     hits
+}
+
+/// The own hits: an `always` scan with a path of the head's change set in its scope, whatever
+/// changed on the other side. A scan already in `hits` is not listed again, and a change of the
+/// tip side alone is never an own hit.
+pub fn own_hits(pr: &[String], hits: &[Value], scans: &[Scan]) -> Vec<Value> {
+    let pr: Vec<&String> = pr.iter().filter(|p| !p.is_empty()).collect();
+    let mut out = Vec::new();
+    for scan in scans.iter().filter(|s| s.always) {
+        if hits
+            .iter()
+            .any(|h| h["id"].as_str() == Some(scan.id.as_str()))
+        {
+            continue;
+        }
+        let mut touched: Vec<&String> = pr
+            .iter()
+            .copied()
+            .filter(|p| in_scope(p, &scan.scope))
+            .collect();
+        if touched.is_empty() {
+            continue;
+        }
+        touched.sort();
+        out.push(json!({"id": scan.id, "scope_side": "pr", "scope": touched}));
+    }
+    out
 }
 
 /// The check commands of every hit scan id, in table order, without duplicates.
@@ -260,7 +300,9 @@ fn stdin_sets(text: &str) -> Result<(Vec<String>, Vec<String>), String> {
 /// stdin input and when neither ref has a table. Never fails: errors become the fail-safe report.
 pub fn report(input: &Input, repo: &Path, fallback: &Path) -> Value {
     let mut scans: Vec<Scan> = Vec::new();
-    let run = |scans: &mut Vec<Scan>| -> Result<(Vec<Value>, Vec<String>), String> {
+    /// What one judge run answers: the hits across the two sides, the own hits and the checks.
+    type Judged = Result<(Vec<Value>, Vec<Value>, Vec<String>), String>;
+    let run = |scans: &mut Vec<Scan>| -> Judged {
         let (pr, tip) = match input {
             Input::Bad(msg) => return Err(msg.clone()),
             Input::Refs(tip_rev, head_rev) => {
@@ -287,12 +329,17 @@ pub fn report(input: &Input, repo: &Path, fallback: &Path) -> Value {
             }
         };
         let hits = judge(&pr, &tip, scans);
-        let ids: Vec<&str> = hits.iter().filter_map(|h| h["id"].as_str()).collect();
-        Ok((hits.clone(), checks_for(&ids, scans)))
+        let own = own_hits(&pr, &hits, scans);
+        let ids: Vec<&str> = hits
+            .iter()
+            .chain(own.iter())
+            .filter_map(|h| h["id"].as_str())
+            .collect();
+        Ok((hits.clone(), own.clone(), checks_for(&ids, scans)))
     };
     match run(&mut scans) {
-        Ok((hits, checks)) => {
-            let reasons: Vec<String> = hits
+        Ok((hits, own, checks)) => {
+            let mut reasons: Vec<String> = hits
                 .iter()
                 .map(|h| {
                     format!(
@@ -303,7 +350,21 @@ pub fn report(input: &Input, repo: &Path, fallback: &Path) -> Value {
                     )
                 })
                 .collect();
-            json!({"remerge": !hits.is_empty(), "hits": hits, "checks": checks, "reasons": reasons})
+            reasons.extend(own.iter().map(|h| {
+                format!(
+                    "{}: scope changed on pr, the scan runs on every such change",
+                    h["id"].as_str().unwrap_or("")
+                )
+            }));
+            // `remerge` is set by the hits across the two sides alone; `own_hits` appears only
+            // when there is one, so a report without it keeps its earlier shape.
+            let mut report = json!({
+                "remerge": !hits.is_empty(), "hits": hits, "checks": checks, "reasons": reasons,
+            });
+            if !own.is_empty() {
+                report["own_hits"] = Value::Array(own);
+            }
+            report
         }
         Err(e) => {
             let mut reasons = vec![format!("judge internal error: {e}")];
@@ -318,6 +379,77 @@ pub fn report(input: &Input, repo: &Path, fallback: &Path) -> Value {
             json!({"remerge": true, "hits": [], "checks": checks, "reasons": reasons})
         }
     }
+}
+
+/// One scan a landing needs: its id and its check commands.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Needed {
+    pub id: String,
+    pub checks: Vec<String>,
+}
+
+/// The scans one pair of refs needs: the hits across the two sides and the own hits of `head_rev`.
+/// `Ok(None)` when neither ref holds a table; a table that is there and cannot be read is an error.
+fn needed_between(
+    repo: &Path,
+    tip_rev: &str,
+    head_rev: &str,
+) -> Result<Option<Vec<Needed>>, String> {
+    let tip_c = commit_of(repo, tip_rev)?;
+    let head_c = commit_of(repo, head_rev)?;
+    let tables = [load_ref(repo, &head_c)?, load_ref(repo, &tip_c)?];
+    if tables.iter().all(Option::is_none) {
+        return Ok(None);
+    }
+    let scans = union(&tables);
+    let base = String::from_utf8_lossy(&git(repo, &["merge-base", &tip_c, &head_c])?)
+        .trim()
+        .to_string();
+    let pr = changed(repo, &base, &head_c)?;
+    let tip = changed(repo, &base, &tip_c)?;
+    let hits = judge(&pr, &tip, &scans);
+    let own = own_hits(&pr, &hits, &scans);
+    let ids: Vec<&str> = hits
+        .iter()
+        .chain(own.iter())
+        .filter_map(|h| h["id"].as_str())
+        .collect();
+    Ok(Some(
+        scans
+            .iter()
+            .filter(|s| ids.contains(&s.id.as_str()))
+            .map(|s| Needed {
+                id: s.id.clone(),
+                checks: s.checks.clone(),
+            })
+            .collect(),
+    ))
+}
+
+/// The scans the merge tree of a landing needs: `head` is the commit the branch would move to and
+/// `tip` the branch's tip, on the first-parent line of `head`. Judged for the range `tip..head` as
+/// one change, and for each merge commit of that line against its two parents (the lane's own
+/// delta against what the tip gained since the lane's base). A scan is listed once, in the order
+/// it first appears; a repository with no table at any of the refs needs none.
+pub fn needed(repo: &Path, tip: &str, head: &str) -> Result<Vec<Needed>, String> {
+    let mut pairs: Vec<(String, String)> = vec![(tip.to_string(), head.to_string())];
+    let range = format!("{tip}..{head}");
+    let line = git(repo, &["rev-list", "--first-parent", "--parents", &range])?;
+    for record in String::from_utf8_lossy(&line).lines() {
+        let parents: Vec<&str> = record.split_whitespace().skip(1).collect();
+        if let [first, second] = parents[..] {
+            pairs.push((first.to_string(), second.to_string()));
+        }
+    }
+    let mut out: Vec<Needed> = Vec::new();
+    for (a, b) in pairs {
+        for need in needed_between(repo, &a, &b)?.unwrap_or_default() {
+            if !out.iter().any(|n| n.id == need.id) {
+                out.push(need);
+            }
+        }
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -382,5 +514,28 @@ mod tests {
         ] {
             assert!(parse_table(bad).is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn always_is_a_boolean_and_an_own_hit_needs_the_head_side_only() {
+        let table = json!({"scans": [
+            {"id": "a", "always": true, "rules": ["r"], "checks": ["c"],
+             "scope": [{"prefix": "s/"}]},
+            {"id": "b", "rules": ["r"], "checks": ["d"], "scope": [{"prefix": "s/"}]}]})
+        .to_string();
+        let scans = parse_table(&table).unwrap();
+        assert!(scans[0].always && !scans[1].always);
+        let own = own_hits(&s(&["s/2", "s/1", ""]), &[], &scans);
+        assert_eq!(own.len(), 1);
+        assert_eq!(own[0]["id"], "a");
+        assert_eq!(own[0]["scope"], json!(["s/1", "s/2"]));
+        assert!(own_hits(&s(&["x"]), &[], &scans).is_empty());
+        // a scan already in the hits across the two sides is not listed again
+        let hits = judge(&s(&["r", "s/2"]), &s(&["s/1"]), &scans);
+        assert!(own_hits(&s(&["r", "s/2"]), &hits, &scans).is_empty());
+        let bad = json!({"scans": [{"id": "a", "always": "yes", "rules": [], "checks": [],
+                                    "scope": []}]})
+        .to_string();
+        assert!(parse_table(&bad).is_err());
     }
 }

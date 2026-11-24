@@ -8,6 +8,8 @@ created: 2026-11-19
 
 # Read a lane's rendered screen into a state, with a usage limit's reset time in UTC
 
+> 2026-11-23 덧붙임: 아래의 `usage-limits.json`(HOME 의 상태 폴더)은 SPEC-20261122-statusline-limits(REQ-7, D-5)로 상태줄 캐시 폴더의 `usage-<HOME 해시 12자리>.record` 로 옮겨졌어요. 읽는 쪽(`usage_limit::evaluate`)은 같고 자리만 바뀌었어요.
+
 ## Intent
 
 카드 C-120(리더 배차 2026-11-19, 조각 1 = 계획과 SPEC 만): 2026-11-19 에 두 사고가 있었어요. (1) 리더가 레인에 지침 글을 Enter 와 함께 보냈는데 그 레인 화면에는 `git reset --hard` 의 Yes/No 확인 창이 떠 있었고, Enter 가 강조된 Yes 를 골라 reset 이 실행됐어요(C-108 노트 2813, reflog 2026-11-19 15:31:03 +0900). (2) 레인 여덟 개가 사용 한도(HTTP 429)로 멈췄는데 사용자가 말해서야 알았고, 화면에 적힌 해제 시각을 한국 시각으로 읽었지만 실제로는 UTC+8 이라서 해제 요청이 한 시간 일찍 나가 사라졌어요.

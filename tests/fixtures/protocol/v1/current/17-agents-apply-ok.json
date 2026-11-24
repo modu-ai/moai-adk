@@ -21,13 +21,13 @@
     "target_binding": "<masked>",
     "files": [
       {
-        "path": "AGENTS.md",
+        "path": "CLAUDE.md",
         "action": "create",
         "tracked_by_default": true,
         "expected_sha256": null,
         "section_id": "moai-workflow",
         "baseline_sha256": null,
-        "rendered_sha256": "sha256:b4d025dccf10ef233d8fc860e93949dc06df6dd243203732d257480a50906e10",
+        "rendered_sha256": "sha256:0159a4e29c28601d5136bfe40115f4846875f63a35151425cb23a8713800e83d",
         "detail": null
       },
       {
@@ -37,8 +37,8 @@
         "expected_sha256": null,
         "section_id": "moai-local",
         "baseline_sha256": null,
-        "rendered_sha256": "sha256:81d0c891f8c41a84e897d13a733842f15031d1dff9e2c85e55fc9f262f9b076f",
-        "detail": "managed block lines: 11 added, 0 removed\n+ .moai/receipts/\n+ .moai/*\n+ !.moai/project.yaml\n+ !.moai/moai-cli.json\n+ !.moai/moai.json\n+ !.moai/manifests/\n+ !.moai/workflows/\n+ !.moai/config/\n+ !.moai/decisions/\n+ !.moai/docs/\n+ !.moai/specs/"
+        "rendered_sha256": "sha256:70db2e41f85d2106a7f8404f5b7cb8ab034bfa03695c74464ad1bdfa28471b74",
+        "detail": "managed block lines: 18 added, 0 removed\n+ .moai/receipts/\n+ .moai/*\n+ .moai/local/\n+ !.moai/project.yaml\n+ !.moai/moai-cli.json\n+ !.moai/moai.json\n+ !.moai/manifests/\n+ !.moai/workflows/\n+ !.moai/config/\n+ !.moai/decisions/\n+ !.moai/docs/\n+ !.moai/specs/\n+ !.moai/tools/\n+ !.moai/evals/\n+ .moai/**/credentials.yaml\n+ .moai/**/*.credentials\n+ .moai/**/.env\n+ .moai/**/.env.*"
       },
       {
         "path": ".moai/manifests/generation.json",
@@ -64,12 +64,12 @@
       "state": "applied",
       "receipt": "<masked>",
       "applied": [
-        "AGENTS.md",
+        "CLAUDE.md",
         ".gitignore",
         ".moai/manifests/generation.json"
       ],
       "files_created": true,
-      "manifest_sha256": "sha256:2b5058e6db8961684afc6ac9ef760173f5087d33363fd569b3d8fbf2e0ce68ef",
+      "manifest_sha256": "sha256:d47ff1185770a476a2d73607f2b86eafac1ae4f43d15ac8515706f6b64f86d91",
       "host_loaded": false,
       "execution_verified": false,
       "host_notes": []

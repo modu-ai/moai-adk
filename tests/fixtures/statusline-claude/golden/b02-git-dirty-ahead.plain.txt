@@ -1,3 +1,3 @@
-🏷️ agent | 🧠 Opus | 🗿 v4.2647.0
-📡 modu-ai/moai-adk | 🅱️ main ↑1 +2
-🔋 CTX: ███░░░░░░░ 35%
+🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ n/a 🔀 n/a | 🌳 main
+🗿 4.2648.0
+🔋 CW ███████░░░ 70%

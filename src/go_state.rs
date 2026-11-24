@@ -67,8 +67,8 @@ const GO_WIRING_JOURNAL: &str = ".moai/state/codex-wiring-journal.json";
 const WIRING_TEMP: &str = ".codexwiring-";
 /// The reason of an item that S1c-2 will move; S1c-1 only classifies it.
 const MOVES_LATER: &str = "classified; moves in S1c-2";
-/// The size bound of a Codex config file, shared with `codex-config-plan`.
-const CODEX_READ_LIMIT: u64 = crate::hosts::codex_config::CONFIG_LIMIT;
+/// The size bound of a Codex config file.
+const CODEX_READ_LIMIT: u64 = crate::hosts::config_backup::CONFIG_LIMIT;
 /// The handler commands the Go wiring owns (`moaiHandlerPrefix`, `isMoaiNamespaceCommand`).
 const GO_HANDLER_PREFIX: &str = "moai hook ";
 const GO_HANDLER_NAMESPACE: &str = "/.codex/hooks/moai/";
@@ -112,10 +112,10 @@ const GO_MARKERS: [&str; 3] = [
     "<!-- moai:learned-local-start",
 ];
 /// Files a Go skill-mirror copy folder may hold before the preview stops checking it. Debug
-/// builds take `MOAI_CLI_TEST_MIRROR_FILE_LIMIT` so a test can reach it with a few files.
+/// builds take `MOAI_TEST_MIRROR_FILE_LIMIT` so a test can reach it with a few files.
 fn mirror_file_limit() -> u64 {
     #[cfg(debug_assertions)]
-    if let Some(n) = std::env::var("MOAI_CLI_TEST_MIRROR_FILE_LIMIT")
+    if let Some(n) = std::env::var("MOAI_TEST_MIRROR_FILE_LIMIT")
         .ok()
         .and_then(|v| v.parse().ok())
     {
@@ -140,10 +140,10 @@ const MOAI_DIR: &str = ".moai";
 /// Entries the `unrecorded` count reads before it stops (#2561 F1: a project's `.moai/` held
 /// unpacked review trees with `node_modules`, and the preview read for over 14 minutes). The
 /// count only informs; nothing moves on its account. Debug builds take
-/// `MOAI_CLI_TEST_UNRECORDED_LIMIT` so a test can reach the limit with a few files.
+/// `MOAI_TEST_UNRECORDED_LIMIT` so a test can reach the limit with a few files.
 pub(crate) fn unrecorded_limit() -> u64 {
     #[cfg(debug_assertions)]
-    if let Some(n) = std::env::var("MOAI_CLI_TEST_UNRECORDED_LIMIT")
+    if let Some(n) = std::env::var("MOAI_TEST_UNRECORDED_LIMIT")
         .ok()
         .and_then(|v| v.parse().ok())
     {
@@ -2704,7 +2704,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     };
     if folder_moves {
         warnings.push(format!(
-            "Stop moai-cli commands and agent sessions in this project before the apply: the \
+            "Stop moai commands and agent sessions in this project before the apply: the \
              Go .moai/ becomes {go_backup}, a new .moai/ is made and the {LEGACY_ROOT} product \
              state moves into it."
         ));
@@ -2836,7 +2836,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
                 "legacy_state",
             ));
             warnings.push(format!(
-                "Stop moai-cli commands and agent sessions in this project before the apply: a \
+                "Stop moai commands and agent sessions in this project before the apply: a \
                  new .moai/ is made and the {LEGACY_ROOT} product state moves into it."
             ));
             moves
@@ -3778,12 +3778,12 @@ fn still_as_previewed(from: &Path, rel: &str, sha256: &str) -> Result<()> {
     Err(format!("{rel} changed after the preview; move stopped"))
 }
 
-/// Test seam (S-DIGEST): `MOAI_CLI_TEST_FAULT=go_state_edit_after_plan` appends one byte to the
+/// Test seam (S-DIGEST): `MOAI_TEST_FAULT=go_state_edit_after_plan` appends one byte to the
 /// first file the apply is about to move, standing in for a writer that edits it after the
 /// fresh preview and before the move. Debug builds only.
 fn test_edit_first_moving_file(project: &Path, moves: &[Moved]) {
     #[cfg(debug_assertions)]
-    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok("go_state_edit_after_plan") {
+    if std::env::var("MOAI_TEST_FAULT").as_deref() == Ok("go_state_edit_after_plan") {
         if let Some(first) = moves
             .iter()
             .find(|m| matches!(m.kind.as_str(), "" | "edited"))
@@ -5603,13 +5603,11 @@ mod tests {
     fn the_rust_generated_hooks_are_not_the_go_wiring() {
         let go = br#"{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"moai hook session-start"}]}]}}"#;
         assert!(hooks_proof(go).is_ok());
-        for lane in [None, Some(("agent-1", "o/r"))] {
-            let set = crate::hooks::current_hooks("codex", lane).unwrap();
-            let doc = serde_json::json!({ "hooks": set });
-            assert!(doc.to_string().contains("\"moai "), "{doc}");
-            let proof = hooks_proof(doc.to_string().as_bytes());
-            assert!(proof.is_err(), "{lane:?}: {proof:?}");
-        }
+        let set = crate::hooks::current_hooks("claude").unwrap();
+        let doc = serde_json::json!({ "hooks": set });
+        assert!(doc.to_string().contains("\"moai "), "{doc}");
+        let proof = hooks_proof(doc.to_string().as_bytes());
+        assert!(proof.is_err(), "{proof:?}");
         for command in [
             "moai hook-dispatch --host codex --event stop",
             "moai hook-receipt --host codex",

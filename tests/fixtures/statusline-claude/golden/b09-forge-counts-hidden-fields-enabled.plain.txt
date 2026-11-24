@@ -1,3 +1,3 @@
-🏷️ agent | 🧠 Opus | 🤔 high·t | 🤖 v2.1.90 | 🗿 v4.2647.0
-📡 anthropics/claude-code, ⬇️ 7 🔀 3 | 🅱️ main +1 | 🔗 #1234 pending
-🔋 CTX: ░░░░░░░░░░ 9% | 🔋 Week: ████░░░░░░ 41% | 🌳 feature-xyz
+🧠 Opus high·t | 📡 anthropics/claude-code, ⬇️ 7 🔀 3 | 🌳 main | 🔗 #1234 pending
+🤖 2.1.90 | 🗿 4.2648.0
+🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59% (4d 23h)

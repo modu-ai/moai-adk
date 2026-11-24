@@ -1,8 +1,8 @@
-//! First-launch project initialization for `cc|glm|codex|omp` (Issue #2481; user decisions
+//! First-launch project initialization for `cc|glm` (Issue #2481; user decisions
 //! 6810797000 and 6810818827, 2026-11-12).
 //!
 //! A launch in a folder that is not a git repository runs `git init` there without asking,
-//! then creates the MoAI project settings and `AGENTS.md` through the existing code paths —
+//! then creates the MoAI project settings and `CLAUDE.md` through the existing code paths —
 //! `profile::plan`/`apply` (`project-plan`/`project-apply`) and
 //! `generation::generation_plan`/`generation_apply` (`generation-plan`/`generation-apply`,
 //! the ordinary-project order of #2274). Nothing new is generated here: this module only
@@ -24,17 +24,17 @@ pub const INIT_LINE: &str = "moai: initialized";
 /// Recorded in the apply receipts as the reason for the writes: the user chose that a first
 /// launch sets the project up itself.
 const PERMISSION: &str = "launcher-auto-init: the user chose first-launch setup";
-/// The generated workflow id; AGENTS.md points at `.moai-cli/workflows/moai/`.
+/// The generated workflow id; CLAUDE.md points at `.moai-cli/workflows/moai/`.
 const WORKFLOW_ID: &str = "moai";
 /// Test-only: milliseconds a first launch holds `.init-lock` between writing the settings and
-/// generating `AGENTS.md` (at most 3000), so a test can show a concurrent launch waits.
-pub const INIT_TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_INIT_HOLD_MS";
+/// generating `CLAUDE.md` (at most 3000), so a test can show a concurrent launch waits.
+pub const INIT_TEST_HOLD_VAR: &str = "MOAI_TEST_INIT_HOLD_MS";
 /// Test-only: when set, a first launch stops with an error right after writing the settings,
 /// the interrupted state that the next launch must finish (Issue #2504).
-pub const INIT_TEST_FAIL_VAR: &str = "MOAI_CLI_TEST_INIT_FAIL_AFTER_PROFILE";
+pub const INIT_TEST_FAIL_VAR: &str = "MOAI_TEST_INIT_FAIL_AFTER_PROFILE";
 /// Marker of a first-launch initialization that has started and not finished, in the clone's
 /// common dir beside `.init-lock` (never listed by git). Written before the settings, removed
-/// after the AGENTS.md step (Issue #2504).
+/// after the CLAUDE.md step (Issue #2504).
 const PENDING: &str = ".init-pending";
 
 /// What [`prepare`] did or, under `--dry-run`, would do.
@@ -47,7 +47,7 @@ pub struct Prepared {
     pub git_pending: bool,
 }
 
-/// Initializes `cwd` for a launch on `host` (`claude`, `glm` or `codex`). Refuses — before any
+/// Initializes `cwd` for a launch on `host` (`claude` or `glm`). Refuses — before any
 /// write — when git is missing from PATH, or when `cwd` is not a repository and is HOME itself
 /// or the file-system root. Under `dry_run` it writes nothing and reports the plan. A missing
 /// skill copy for the host ([`missing_skill`]) adds its warning as a second line of the note.
@@ -69,7 +69,6 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
 pub fn missing_skill(host: &str) -> Option<String> {
     let (skill_host, name) = match host {
         "claude" | "glm" => ("claude", "Claude Code"),
-        "codex" => ("codex", "Codex"),
         _ => return None,
     };
     let home = crate::key_vault::home().ok()?;
@@ -121,7 +120,7 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
             if dry_run {
                 return Ok(Prepared {
                     note: Some(format!(
-                        "would initialize {}: git init, {}/project.yaml, AGENTS.md (--dry-run writes nothing)",
+                        "would initialize {}: git init, {}/project.yaml, CLAUDE.md (--dry-run writes nothing)",
                         dir.display(),
                         // The path a first launch creates (#2696 C2b), not the one read now.
                         crate::state_root::create_dir(&dir)
@@ -149,14 +148,14 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
                 let Some(common) = id["clone_anchor"].as_str().map(PathBuf::from) else {
                     return Ok(Prepared::default());
                 };
-                // A first launch that stopped between the settings and AGENTS.md left its
+                // A first launch that stopped between the settings and CLAUDE.md left its
                 // `.init-pending` marker (Issue #2504): finish it. Settings without the marker
                 // are the user's own (or a finished launch's) and stay exactly as they are.
                 if exists(&init_lock_dir(&common).join(PENDING)) {
                     if dry_run {
                         return Ok(Prepared {
                             note: Some(format!(
-                                "would finish the interrupted initialization of {}: AGENTS.md (--dry-run writes nothing)",
+                                "would finish the interrupted initialization of {}: CLAUDE.md (--dry-run writes nothing)",
                                 top.display()
                             )),
                             git_pending: false,
@@ -169,7 +168,7 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
                         git_pending: false,
                     });
                 }
-                // A first launch that is still generating AGENTS.md holds `.init-lock` (created
+                // A first launch that is still generating CLAUDE.md holds `.init-lock` (created
                 // before the settings file): wait for it, so this host does not start before the
                 // initialization it found has finished. No lock file, no wait and no write.
                 wait_for_initializer(&init_lock_dir(&common).join(".init-lock"));
@@ -185,10 +184,10 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
                 });
             }
             if dry_run {
-                let agents = if exists(&top.join("AGENTS.md")) {
+                let agents = if instruction_file(&top).is_some() {
                     ""
                 } else {
-                    ", AGENTS.md"
+                    ", CLAUDE.md"
                 };
                 return Ok(Prepared {
                     note: Some(format!(
@@ -279,7 +278,7 @@ fn git_init(dir: &Path) -> Result<(), String> {
     }
 }
 
-/// The `git init` lock of `dir` (canonical): `moai-cli-git-init-<16 hex of sha256(path)>.lock`
+/// The `git init` lock of `dir` (canonical): `moai-git-init-<16 hex of sha256(path)>.lock`
 /// in the OS temporary directory, held exclusively while the guard lives. On Linux that folder
 /// can be the shared `/tmp`, where any account can predict the name (PR #2494 audit B1), so the
 /// file is opened without following a symlink (`O_NOFOLLOW`, mode 0600) and locked only when
@@ -290,7 +289,7 @@ fn git_init(dir: &Path) -> Result<(), String> {
 fn init_lock(dir: &Path) -> Option<fs::File> {
     let id = crate::digest(dir.as_os_str().as_encoded_bytes());
     let hex = id.strip_prefix("sha256:").unwrap_or(&id);
-    let path = std::env::temp_dir().join(format!("moai-cli-git-init-{}.lock", &hex[..16]));
+    let path = std::env::temp_dir().join(format!("moai-git-init-{}.lock", &hex[..16]));
     if fs::symlink_metadata(&path).is_ok_and(|m| !m.file_type().is_file()) {
         return None;
     }
@@ -331,8 +330,8 @@ fn owned_regular_file(is_file: bool, owner: u32, home_owner: Option<u32>) -> boo
     is_file && home_owner == Some(owner)
 }
 
-/// Creates the project settings and, when `AGENTS.md` is absent, the generated workflow and
-/// `AGENTS.md` in work tree `top`, under a lock in the clone's common dir so concurrent first
+/// Creates the project settings and, when no instruction file exists, the generated workflow and
+/// `CLAUDE.md` in work tree `top`, under a lock in the clone's common dir so concurrent first
 /// launches initialize once. Returns what it created.
 fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String> {
     let lock_dir = crate::session::agent_seq_dir(top)?;
@@ -371,25 +370,30 @@ fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String
         let digest = plan.plan_digest.clone();
         profile::apply(top, plan, &digest, PERMISSION)?;
         done.push(crate::state_root::rel(top, "project.yaml"));
+        // The two test seams are read in debug builds only (SPEC-20261124-test-seams-release).
+        #[cfg(debug_assertions)]
         if let Some(ms) = std::env::var(INIT_TEST_HOLD_VAR)
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
         {
             std::thread::sleep(std::time::Duration::from_millis(ms.min(3000)));
         }
+        #[cfg(debug_assertions)]
         if std::env::var_os(INIT_TEST_FAIL_VAR).is_some() {
             return Err("moai: initialization stopped after the settings (test)".into());
         }
-        if exists(&top.join("AGENTS.md")) {
-            done.push("AGENTS.md present, unchanged".into());
+        if let Some(name) = instruction_file(top) {
+            done.push(format!("{name} present, unchanged"));
         } else {
             done.extend(agents(top)?);
         }
         let _ = fs::remove_file(&pending);
     } else if exists(&pending) {
-        // Resume an interrupted first launch (Issue #2504): only the AGENTS.md step is left.
-        if exists(&top.join("AGENTS.md")) {
-            done.push("AGENTS.md present, unchanged (interrupted initialization finished)".into());
+        // Resume an interrupted first launch (Issue #2504): only the CLAUDE.md step is left.
+        if let Some(name) = instruction_file(top) {
+            done.push(format!(
+                "{name} present, unchanged (interrupted initialization finished)"
+            ));
         } else {
             done.extend(
                 agents(top)?
@@ -401,6 +405,14 @@ fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String
     }
     drop(lock);
     Ok(done)
+}
+
+/// The instruction file a project already holds: a first launch leaves it as it is (the user's
+/// `CLAUDE.md` gets no managed block, and an `AGENTS.md` needs the pick of `moai update`).
+fn instruction_file(top: &Path) -> Option<&'static str> {
+    ["CLAUDE.md", "AGENTS.md"]
+        .into_iter()
+        .find(|name| exists(&top.join(name)))
 }
 
 /// `generation-plan`/`generation-apply` with the workflow under `.moai-cli/workflows/moai/`.
@@ -421,12 +433,12 @@ fn agents(top: &Path) -> Result<Vec<String>, String> {
     let plan = generation_plan(top, request)?;
     if plan.files.iter().any(|f| f.action == "conflict") {
         return Ok(vec![
-            "AGENTS.md not generated (a generated path is already in use)".into(),
+            "CLAUDE.md not generated (a generated path is already in use)".into(),
         ]);
     }
     let digest = plan.plan_digest.clone();
     generation_apply(top, plan, &digest, PERMISSION)?;
-    Ok(vec!["AGENTS.md".into()])
+    Ok(vec!["CLAUDE.md".into()])
 }
 
 /// The primary folder name exactly as `key_vault::project_scope` derives it from the clone
@@ -445,21 +457,18 @@ fn primary_name(anchor: &Path) -> String {
 }
 
 /// The profile a first launch writes: `project_id` from the primary folder name with the key
-/// vault's folder-name mapping (so the vault folder name does not change), `hosts` from the
-/// launching host, and placeholder values marked `source: default` that the project interview
+/// vault's folder-name mapping (so the vault folder name does not change), `hosts` of
+/// `claude` (both launchers start Claude Code, and a host word this version does not know falls
+/// back to it), and placeholder values marked `source: default` that the project interview
 /// replaces.
-fn default_profile(folder: &str, host: &str) -> Result<profile::Profile, String> {
+fn default_profile(folder: &str, _host: &str) -> Result<profile::Profile, String> {
     let named = crate::key_vault::folder_name(None, folder, "");
     let project_id = named.strip_suffix('-').unwrap_or(&named).to_string();
-    let host = match host {
-        "codex" => "codex",
-        "omp" => "omp",
-        _ => "claude",
-    };
+    let host = "claude";
     let value: Value = json!({
         "schema_version": 2,
         "project_id": project_id,
-        "purpose": "Created by moai-cli on first launch; refine it in the project interview",
+        "purpose": "Created by moai on first launch; refine it in the project interview",
         "tools": ["unspecified"],
         "development_methods": ["unspecified"],
         "hosts": [host],
@@ -498,13 +507,16 @@ mod tests {
         let w = skill_warning("Claude Code", Err(why.clone())).expect("a warning");
         assert!(w.contains("Claude Code") && w.contains(&why), "{w}");
         let dir = tempfile::tempdir().unwrap();
-        let w = skill_warning("Codex", Ok(dir.path().to_path_buf())).expect("a warning");
+        let w = skill_warning("Claude Code", Ok(dir.path().to_path_buf())).expect("a warning");
         assert!(
             w.contains("has no SKILL.md") && w.contains("moai update"),
             "{w}"
         );
         std::fs::write(dir.path().join("SKILL.md"), "x").unwrap();
-        assert_eq!(skill_warning("Codex", Ok(dir.path().to_path_buf())), None);
+        assert_eq!(
+            skill_warning("Claude Code", Ok(dir.path().to_path_buf())),
+            None
+        );
     }
 
     #[test]
@@ -530,9 +542,12 @@ mod tests {
         let p = default_profile("My Project", "glm").unwrap();
         assert_eq!(p.project_id, "my-project");
         assert_eq!(p.hosts, ["claude"]);
-        let p = default_profile("___", "codex").unwrap();
+        let p = default_profile("___", "omp").unwrap();
         assert_eq!(p.project_id, "project");
-        assert_eq!(p.hosts, ["codex"]);
+        assert_eq!(p.hosts, ["claude"]);
+        // A host word this version does not know falls back to Claude Code, never to Codex.
+        let p = default_profile("___", "codex").unwrap();
+        assert_eq!(p.hosts, ["claude"]);
     }
 
     #[test]

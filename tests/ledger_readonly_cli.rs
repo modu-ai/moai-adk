@@ -132,6 +132,8 @@ fn world() -> (TempHome, String, String) {
             "add",
             "--title",
             "t",
+            "--ac",
+            "fixture",
             "--scope",
             "apps/demo/",
             "--project",

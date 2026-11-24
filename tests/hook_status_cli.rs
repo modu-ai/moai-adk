@@ -1,7 +1,7 @@
 //! #2391 stage 4: the hook state vocabulary (`installed`, `configured`, `trusted`, `fired`,
 //! `action_blocked`, `verified`) from local evidence only, and the engine's `deny` line that
 //! `action_blocked` reads. Every case uses a temporary project and HOME; no host runs and no
-//! real `~/.claude` or `~/.codex` is read or written.
+//! real `~/.claude` is read or written.
 #![cfg(unix)]
 mod common;
 
@@ -53,7 +53,7 @@ fn append(root: &Path, file: &str, line: Value) {
 #[test]
 fn an_empty_project_has_no_state_and_trust_is_never_claimed() {
     let (_d, root) = project();
-    for host in ["claude", "codex"] {
+    for host in moai_cli::hooks::HOSTS.iter().copied() {
         let s = status(&root, host, "");
         assert_eq!(s["installed"], json!(false));
         assert_eq!(s["configured"], json!("no"));
@@ -78,13 +78,13 @@ fn binary_follows_the_first_moai_on_the_given_path() {
         &outside.join("moai"),
         "#!/bin/sh\necho 'moai-cli 1.2.3 (rust)'\n",
     );
-    let s = status(&root, "codex", outside.to_str().unwrap());
+    let s = status(&root, "claude", outside.to_str().unwrap());
     assert_eq!(s["binary"], json!("resolved"), "{s}");
     assert_eq!(s["binary_generation"], json!("rust"), "{s}");
     assert_eq!(s["installed"], json!(true), "{s}");
 
     common::write_executable(&outside.join("moai"), "#!/bin/sh\necho 'moai-adk v3.2.1'\n");
-    let s = status(&root, "codex", outside.to_str().unwrap());
+    let s = status(&root, "claude", outside.to_str().unwrap());
     assert_eq!(s["binary"], json!("wrong_generation"), "{s}");
     assert_eq!(s["binary_generation"], json!("go"), "{s}");
     assert_eq!(s["installed"], json!(true), "{s}");
@@ -97,7 +97,7 @@ fn binary_follows_the_first_moai_on_the_given_path() {
         &inside.join("moai"),
         &format!("#!/bin/sh\ntouch '{}'\n", marker.display()),
     );
-    let s = status(&root, "codex", inside.to_str().unwrap());
+    let s = status(&root, "claude", inside.to_str().unwrap());
     assert_eq!(s["binary"], json!("not_probed"), "{s}");
     assert_eq!(s["binary_generation"], json!("not_probed"), "{s}");
     assert!(!marker.exists());
@@ -111,16 +111,16 @@ fn installed_follows_the_given_path_only() {
     // Only the hook binary (`moai`) counts; a `moai-cli` beside it does not.
     common::write_executable(&bin.join("moai-cli"), "#!/bin/sh\nexit 0\n");
     assert_eq!(
-        status(&root, "codex", bin.to_str().unwrap())["installed"],
+        status(&root, "claude", bin.to_str().unwrap())["installed"],
         json!(false)
     );
     common::write_executable(&bin.join("moai"), "#!/bin/sh\nexit 0\n");
     assert_eq!(
-        status(&root, "codex", bin.to_str().unwrap())["installed"],
+        status(&root, "claude", bin.to_str().unwrap())["installed"],
         json!(true)
     );
     assert_eq!(
-        status(&root, "codex", "/nonexistent-dir")["installed"],
+        status(&root, "claude", "/nonexistent-dir")["installed"],
         json!(false)
     );
 }
@@ -128,55 +128,50 @@ fn installed_follows_the_given_path_only() {
 #[test]
 fn configured_is_yes_after_apply_and_drifted_after_an_edit() {
     let (_d, root) = project();
-    for (host, file) in [
-        ("codex", ".codex/hooks.json"),
-        ("claude", ".claude/settings.json"),
-    ] {
-        configure(&root, host);
-        assert_eq!(
-            status(&root, host, "")["configured"],
-            json!("yes"),
-            "{host}"
-        );
-        let mut v: Value =
-            serde_json::from_str(&fs::read_to_string(root.join(file)).unwrap()).unwrap();
-        v["hooks"]["PostToolUse"] = json!([]);
-        fs::write(root.join(file), v.to_string()).unwrap();
-        assert_eq!(
-            status(&root, host, "")["configured"],
-            json!("drifted"),
-            "{host}"
-        );
-    }
+    let (host, file) = ("claude", ".claude/settings.json");
+    configure(&root, host);
+    assert_eq!(
+        status(&root, host, "")["configured"],
+        json!("yes"),
+        "{host}"
+    );
+    let mut v: Value = serde_json::from_str(&fs::read_to_string(root.join(file)).unwrap()).unwrap();
+    v["hooks"]["PostToolUse"] = json!([]);
+    fs::write(root.join(file), v.to_string()).unwrap();
+    assert_eq!(
+        status(&root, host, "")["configured"],
+        json!("drifted"),
+        "{host}"
+    );
 }
 
 #[test]
 fn fired_counts_only_this_hosts_lines_from_the_config_time_on() {
     let (_d, root) = project();
-    configure(&root, "codex");
-    let t = config_ms(&root, ".codex/hooks.json");
+    configure(&root, "claude");
+    let t = config_ms(&root, ".claude/settings.json");
     append(
         &root,
         "hooks.jsonl",
-        json!({"schema_version": 1, "host": "codex", "unix_ms": t - 1}),
+        json!({"schema_version": 1, "host": "claude", "unix_ms": t - 1}),
     );
     append(
         &root,
         "hooks.jsonl",
-        json!({"schema_version": 1, "host": "claude", "unix_ms": t + 5}),
+        json!({"schema_version": 1, "host": "other", "unix_ms": t + 5}),
     );
     assert_eq!(
-        status(&root, "codex", "")["fired"],
+        status(&root, "claude", "")["fired"],
         json!(false),
         "one ms early, other host"
     );
     append(
         &root,
         "hooks.jsonl",
-        json!({"schema_version": 1, "host": "codex", "unix_ms": t}),
+        json!({"schema_version": 1, "host": "claude", "unix_ms": t}),
     );
     assert_eq!(
-        status(&root, "codex", "")["fired"],
+        status(&root, "claude", "")["fired"],
         json!(true),
         "exactly at the config time"
     );
@@ -185,9 +180,9 @@ fn fired_counts_only_this_hosts_lines_from_the_config_time_on() {
 #[test]
 fn action_blocked_needs_a_deny_without_a_later_observation_of_the_same_call() {
     let (_d, root) = project();
-    configure(&root, "codex");
-    let t = config_ms(&root, ".codex/hooks.json");
-    let deny = |session: &str, call: Value, ms: u64| json!({"kind": "deny", "host": "codex", "session": session, "call": call, "unix_ms": ms});
+    configure(&root, "claude");
+    let t = config_ms(&root, ".claude/settings.json");
+    let deny = |session: &str, call: Value, ms: u64| json!({"kind": "deny", "host": "claude", "session": session, "call": call, "unix_ms": ms});
     append(&root, "hook-engine.jsonl", deny("s", json!("aaaa"), t - 1));
     append(&root, "hook-engine.jsonl", deny("s", Value::Null, t + 1));
     append(
@@ -196,12 +191,12 @@ fn action_blocked_needs_a_deny_without_a_later_observation_of_the_same_call() {
         deny("unknown", json!("cccc"), t + 1),
     );
     assert_eq!(
-        status(&root, "codex", "")["action_blocked"],
+        status(&root, "claude", "")["action_blocked"],
         json!(false),
         "early, keyless, or without a session key"
     );
     append(&root, "hook-engine.jsonl", deny("s", json!("bbbb"), t));
-    let s = status(&root, "codex", "");
+    let s = status(&root, "claude", "");
     assert_eq!(s["action_blocked"], json!(true));
     assert_eq!(
         s["fired"],
@@ -211,10 +206,10 @@ fn action_blocked_needs_a_deny_without_a_later_observation_of_the_same_call() {
     append(
         &root,
         "hook-engine.jsonl",
-        json!({"kind": "observe", "host": "codex", "session": "s", "call": "bbbb", "unix_ms": t}),
+        json!({"kind": "observe", "host": "claude", "session": "s", "call": "bbbb", "unix_ms": t}),
     );
     assert_eq!(
-        status(&root, "codex", "")["action_blocked"],
+        status(&root, "claude", "")["action_blocked"],
         json!(false),
         "the denied call ran after all (same host, session, call, same ms)"
     );
@@ -225,18 +220,18 @@ fn action_blocked_needs_a_deny_without_a_later_observation_of_the_same_call() {
 #[test]
 fn unrelated_or_earlier_observations_never_cancel_a_deny() {
     for (label, host, session, offset, cancels) in [
-        ("other host", "claude", "s", 2i64, false),
-        ("earlier", "codex", "s", -1, false),
-        ("other session", "codex", "other", 2, false),
-        ("same call later", "codex", "s", 2, true),
+        ("other host", "other", "s", 2i64, false),
+        ("earlier", "claude", "s", -1, false),
+        ("other session", "claude", "other", 2, false),
+        ("same call later", "claude", "s", 2, true),
     ] {
         let (_d, root) = project();
-        configure(&root, "codex");
-        let t = config_ms(&root, ".codex/hooks.json") + 10;
+        configure(&root, "claude");
+        let t = config_ms(&root, ".claude/settings.json") + 10;
         append(
             &root,
             "hook-engine.jsonl",
-            json!({"kind": "deny", "host": "codex", "session": "s", "call": "same-call", "unix_ms": t}),
+            json!({"kind": "deny", "host": "claude", "session": "s", "call": "same-call", "unix_ms": t}),
         );
         append(
             &root,
@@ -245,7 +240,7 @@ fn unrelated_or_earlier_observations_never_cancel_a_deny() {
                    "unix_ms": (t as i64 + offset) as u64}),
         );
         assert_eq!(
-            status(&root, "codex", "")["action_blocked"],
+            status(&root, "claude", "")["action_blocked"],
             json!(!cancels),
             "{label}"
         );
@@ -257,7 +252,7 @@ fn unrelated_or_earlier_observations_never_cancel_a_deny() {
 #[test]
 fn a_direct_engine_call_never_makes_the_hooks_verified() {
     let (_d, root) = project();
-    configure(&root, "codex");
+    configure(&root, "claude");
     let input = json!({"hook_event_name": "PreToolUse", "session_id": "direct-cli-no-host",
                        "tool_use_id": "fixture-direct-call", "tool_name": "Bash",
                        "tool_input": {"command": "git commit -m no-token"}, "cwd": root});
@@ -273,7 +268,7 @@ fn a_direct_engine_call_never_makes_the_hooks_verified() {
         .args([
             "hook-dispatch",
             "--host",
-            "codex",
+            "claude",
             "--event",
             "tool-preflight",
         ])
@@ -292,7 +287,7 @@ fn a_direct_engine_call_never_makes_the_hooks_verified() {
         .unwrap();
     let out = child.wait_with_output().unwrap();
     assert!(String::from_utf8_lossy(&out.stdout).contains("\"deny\""));
-    let s = status(&root, "codex", "");
+    let s = status(&root, "claude", "");
     assert_eq!(s["fired"], json!(true), "local line exists");
     assert_eq!(
         s["action_blocked"],
@@ -341,7 +336,7 @@ fn engine_deny_leaves_a_keyed_line_without_the_raw_call_id() {
         .args([
             "hook-dispatch",
             "--host",
-            "codex",
+            "claude",
             "--event",
             "tool-preflight",
         ])
@@ -360,7 +355,7 @@ fn engine_deny_leaves_a_keyed_line_without_the_raw_call_id() {
     let text = fs::read_to_string(root.join(".moai-cli/receipts/hook-engine.jsonl")).unwrap();
     let line: Value = serde_json::from_str(text.lines().next().unwrap()).unwrap();
     assert_eq!(line["kind"], json!("deny"));
-    assert_eq!(line["host"], json!("codex"));
+    assert_eq!(line["host"], json!("claude"));
     assert_eq!(line["call"].as_str().unwrap().len(), 16);
     assert!(!text.contains("RAWCALLID"), "{text}");
 }
@@ -369,7 +364,7 @@ fn engine_deny_leaves_a_keyed_line_without_the_raw_call_id() {
 fn hooks_plan_reports_hook_status_and_writes_nothing() {
     let (_d, root) = project();
     let out = Command::new(BIN)
-        .args(["hooks-plan", root.to_str().unwrap(), "--host", "codex"])
+        .args(["hooks-plan", root.to_str().unwrap(), "--host", "claude"])
         .current_dir(&root)
         .env("HOME", root.join("home"))
         .stdin(Stdio::null())
@@ -379,5 +374,5 @@ fn hooks_plan_reports_hook_status_and_writes_nothing() {
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(v["result"]["hook_status"]["configured"], json!("no"));
     assert_eq!(v["result"]["hook_status"]["trusted"], json!("unknown"));
-    assert!(!root.join(".codex").exists());
+    assert!(!root.join(".claude").exists());
 }

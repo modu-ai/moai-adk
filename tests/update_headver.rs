@@ -20,7 +20,7 @@ use std::{
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
-const HOSTS: [&str; 2] = ["claude", "codex"];
+const HOSTS: [&str; 1] = ["claude"];
 const EARLIER: &str = "2026.11.0-rc.2+local.4";
 
 struct Fixture {

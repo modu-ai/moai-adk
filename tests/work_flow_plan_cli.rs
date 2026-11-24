@@ -14,9 +14,6 @@ use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-static NEXT: AtomicUsize = AtomicUsize::new(0);
 
 fn git(dir: &Path, args: &[&str]) {
     let ok = common::git::command()
@@ -54,6 +51,9 @@ fn commit(dir: &Path, message: &str) {
 }
 
 struct World {
+    /// The scratch folder of the run: unique, and removed when the world is dropped
+    /// (SPEC-20261124-test-temp-names).
+    _dir: tempfile::TempDir,
     home: PathBuf,
     project: PathBuf,
 }
@@ -61,14 +61,14 @@ struct World {
 impl World {
     /// A project repository on `main` with a bare `origin` and a HOME for the run.
     fn new() -> Self {
-        let n = NEXT.fetch_add(1, Ordering::SeqCst);
-        let root = std::env::temp_dir().join(format!("wfplan-{}-{n}", std::process::id()));
-        fs::create_dir_all(&root).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().to_path_buf();
         let home = root.join("home");
         let project = root.join("demo");
         let remote = root.join("remote.git");
         fs::create_dir_all(&home).unwrap();
         let w = World {
+            _dir: dir,
             home,
             project: project.clone(),
         };

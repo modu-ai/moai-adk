@@ -1,9 +1,10 @@
 //! SPEC-20261118-launcher-agent-entry (card C-47 slice; user decision 2026-11-18, card note
 //! 2092): `-l|-a` only name a session and set its access, and the role is entered inside the
-//! session with `/moai --mode-agent` / `/moai --mode-leader` (Codex: `$moai --mode-agent` /
-//! `$moai --mode-leader`). The help and the `--dry-run` notes say so, and `moai codex -a` starts
-//! its first prompt with `$moai --mode-agent`. Every case uses `--dry-run` in a temporary git
-//! project with a HOME that does not exist; no host is started.
+//! session with `/moai --mode-agent` / `/moai --mode-leader`. The help and
+//! the `--dry-run` notes say so. SPEC-20261121-codex-launcher-and-models-removed: Codex is not a
+//! launcher host any more, so no `$moai` spelling remains; SPEC-20261122-remove-omp-launcher: nor
+//! is OMP, so no `/skill:moai` spelling remains. Every case uses `--dry-run` in a
+//! temporary git project with a HOME that does not exist; no host is started.
 mod common;
 use common::CleanEnv;
 use serde_json::Value;
@@ -63,52 +64,6 @@ fn help(args: &[&str]) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// AC-1 (REQ-1): `codex -a` starts its first prompt with the mode line, then the name line, then
-/// the extra prompt; `--name` and the top-level form keep it.
-#[test]
-fn codex_agent_prompt_starts_with_the_mode_line() {
-    let v = dry(&["codex", "-a"], None);
-    assert_eq!(
-        argv(&v),
-        [
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            "$moai --mode-agent\nMoAI session name: agent-1"
-        ]
-    );
-    let v = dry(&["codex", "-a", "fix the login"], None);
-    assert_eq!(
-        argv(&v).last().unwrap(),
-        "$moai --mode-agent\nMoAI session name: agent-1\nfix the login"
-    );
-    let v = dry(&["codex", "-a", "--name", "x"], None);
-    assert_eq!(
-        argv(&v).last().unwrap(),
-        "$moai --mode-agent\nMoAI session name: x"
-    );
-    let v = dry(&["-a", "codex"], None);
-    assert_eq!(
-        argv(&v).last().unwrap(),
-        "$moai --mode-agent\nMoAI session name: agent-1"
-    );
-    // The prompts selection keeps the line too.
-    let v = dry(&["codex", "-a", "--permissions"], None);
-    assert_eq!(
-        argv(&v),
-        [
-            "codex",
-            "-s",
-            "workspace-write",
-            "-a",
-            "on-request",
-            "$moai --mode-agent\nMoAI session name: agent-1"
-        ]
-    );
-}
-
 /// AC-2 (REQ-2): each role session's notes name the mode command for its host and say that the
 /// flag only names the session and sets its access; a roleless session's notes name none.
 #[test]
@@ -118,10 +73,8 @@ fn role_notes_say_how_the_role_is_entered() {
         (&["cc", "-a"][..], None, "`/moai --mode-agent`"),
         (&["glm", "-l"][..], Some("t"), "`/moai --mode-leader`"),
         (&["glm", "-a"][..], Some("t"), "`/moai --mode-agent`"),
-        (&["codex", "-l"][..], None, "`$moai --mode-leader`"),
-        (&["codex", "-a"][..], None, "`$moai --mode-agent`"),
         (&["-l"][..], None, "`/moai --mode-leader`"),
-        (&["-a", "codex"][..], None, "`$moai --mode-agent`"),
+        (&["-a", "cc"][..], None, "`/moai --mode-agent`"),
     ] {
         let notes = notes(&dry(args, token));
         let entry: Vec<&String> = notes.iter().filter(|n| n.contains("mode-")).collect();
@@ -130,11 +83,7 @@ fn role_notes_say_how_the_role_is_entered() {
         assert!(entry[0].contains(NAME_ONLY), "{args:?}: {}", entry[0]);
         assert!(entry[0].contains("inside the session"), "{}", entry[0]);
     }
-    for (args, token) in [
-        (&["cc"][..], None),
-        (&["glm"][..], Some("t")),
-        (&["codex"][..], None),
-    ] {
+    for (args, token) in [(&["cc"][..], None), (&["glm"][..], Some("t"))] {
         let v = dry(args, token);
         assert!(!v["notes"].to_string().contains("mode-"), "{args:?}: {v}");
     }
@@ -144,7 +93,7 @@ fn role_notes_say_how_the_role_is_entered() {
 /// the role is entered, for each host with its own spelling.
 #[test]
 fn the_help_says_how_the_role_is_entered() {
-    for (host, prefix) in [("cc", "/moai"), ("glm", "/moai"), ("codex", "$moai")] {
+    for (host, prefix) in [("cc", "/moai"), ("glm", "/moai")] {
         let text = help(&[host]);
         for mode in ["leader", "agent"] {
             let command = format!("`{prefix} --mode-{mode}`");
@@ -163,8 +112,11 @@ fn the_help_says_how_the_role_is_entered() {
         );
         assert!(text.contains("inside the session"), "{host}:\n{text}");
     }
-    // Codex says where the agent line goes.
-    assert!(help(&["codex"]).contains("first prompt"));
+    // No help names the Codex spelling any more.
+    for host in ["cc", "glm"] {
+        assert!(!help(&[host]).contains("$moai"), "{host} --help");
+    }
+    assert!(!help(&[]).contains("$moai"), "root --help");
 }
 
 /// AC-7 (REQ-7): the top-level `-l` and `-a` one-line help of `moai help --all` names the entry
@@ -192,7 +144,7 @@ fn the_top_level_flags_name_the_entry_command() {
     assert!(leader.contains("`/moai --mode-leader`"), "{leader}");
     let agent = block("-a, --agent");
     assert!(agent.contains("`/moai --mode-agent`"), "{agent}");
-    assert!(agent.contains("`$moai --mode-agent`"), "{agent}");
+    assert!(!agent.contains("$moai"), "{agent}");
 }
 
 /// AC-8 (REQ-8): the root screen's `cc -l` example names the command that enters the role, on
@@ -216,8 +168,10 @@ fn the_root_example_names_the_entry_command() {
             .lines()
             .find(|l| l.trim_start().starts_with("moai cc -l "))
             .unwrap_or_else(|| panic!("COLUMNS={columns}: no cc -l example:\n{text}"));
+        // SPEC-20261122-next-flow-skills-agents REQ-8: the example names the leader session,
+        // not the retired `/moai --mode-leader` entry.
         assert!(
-            line.ends_with("leader, then /moai --mode-leader"),
+            line.ends_with("start the leader session"),
             "COLUMNS={columns}: {line:?}"
         );
     }
@@ -235,7 +189,8 @@ fn other_launches_keep_their_argv() {
             "opus".into(),
             "--effort".into(),
             "medium".into(),
-            "--dangerously-skip-permissions".into(),
+            "--permission-mode".into(),
+            "auto".into(),
         ]
     };
     assert_eq!(argv(&dry(&["cc", "-l"], None)), claude("leader"));
@@ -243,61 +198,35 @@ fn other_launches_keep_their_argv() {
     assert_eq!(argv(&dry(&["glm", "-l"], Some("t"))), claude("leader"));
     assert_eq!(argv(&dry(&["glm", "-a"], Some("t"))), claude("agent-1"));
     assert_eq!(
-        argv(&dry(&["codex", "-l"], None)),
-        [
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            "MoAI session name: leader"
-        ]
-    );
-    assert_eq!(
-        argv(&dry(&["codex", "-l", "plan the week"], None))
-            .last()
-            .unwrap(),
-        "MoAI session name: leader\nplan the week"
-    );
-    assert_eq!(argv(&dry(&["codex"], None)), ["codex"]);
-    assert_eq!(argv(&dry(&["codex", "hi"], None)), ["codex", "hi"]);
-    assert_eq!(
         argv(&dry(&["cc"], None)),
-        ["claude", "--model", "opus", "--effort", "medium"]
+        [
+            "claude",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto"
+        ]
     );
 }
 
-/// AC-5 (REQ-5): every mode command the launcher help and notes name is one of the six
-/// spellings of #2286 (the four of Claude Code and Codex, and OMP's `/skill:moai` form from
-/// SPEC-20261118-omp-launcher).
+/// AC-5 (REQ-5): every mode command the launcher help and notes name is one of the two
+/// spellings left (Claude Code's); the Codex `$moai` and the OMP `/skill:moai` spellings are gone.
 #[test]
 fn only_the_two_spellings_appear() {
-    let mut texts: Vec<String> = ["cc", "glm", "codex", "omp"]
-        .iter()
-        .map(|h| help(&[h]))
-        .collect();
+    let mut texts: Vec<String> = ["cc", "glm"].iter().map(|h| help(&[h])).collect();
     texts.push(help(&[]));
     for (args, token) in [
         (&["cc", "-l"][..], None),
         (&["cc", "-a"][..], None),
         (&["glm", "-a"][..], Some("t")),
-        (&["codex", "-l"][..], None),
-        (&["codex", "-a"][..], None),
-        (&["omp", "-l"][..], None),
-        (&["omp", "-a"][..], None),
     ] {
         let v = dry(args, token);
         texts.push(v["notes"].to_string());
         texts.push(v["argv"].to_string());
     }
-    let allowed = [
-        "/moai --mode-agent",
-        "/moai --mode-leader",
-        "$moai --mode-agent",
-        "$moai --mode-leader",
-        "/skill:moai --mode-agent",
-        "/skill:moai --mode-leader",
-    ];
+    let allowed = ["/moai --mode-agent", "/moai --mode-leader"];
     let mut seen = 0;
     for text in &texts {
         for (at, _) in text.match_indices("mode-") {

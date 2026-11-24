@@ -73,7 +73,7 @@ pub struct Goal {
 
 /// The store path for `project`, a folder inside a git repository.
 pub fn store(project: &Path) -> Result<PathBuf> {
-    let id = identity::identity(project)?;
+    let id = identity::identity_in(project, None)?;
     if id["identity_status"].as_str() != Some("ok") {
         return Err("the goal file requires a git repository".into());
     }
@@ -318,6 +318,21 @@ mod tests {
             exclusions: vec![],
             source: "user 2026-11-13T08:40Z".into(),
         }
+    }
+
+    /// SPEC-20261124-identity-home-arg REQ-7: with a symlinked home state folder in the
+    /// environment HOME the goal store path answers as it does with a sound HOME.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_goal_store() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_goal_store",
+            |f| {
+                let path = store(&f.project).unwrap();
+                assert!(path.ends_with("goal/goal.json"), "{}", path.display());
+            },
+        );
     }
 
     #[test]

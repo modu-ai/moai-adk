@@ -1,6 +1,6 @@
 # Language: C and C++
 
-When to read: `internal/quality` sent you here because the project's detected languages include `c` or `cpp`. The detector finds them by file extension only, so read the build files before running anything. The project's own declarations (CI steps, `AGENTS.md`) win over every default below.
+When to read: `internal/quality` sent you here because the project's detected languages include `c` or `cpp`. The detector finds them by file extension only, so read the build files before running anything. The project's own declarations (CI steps, `CLAUDE.md`) win over every default below.
 
 ## Which build system
 

@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "lanes": [
+    {
+      "lane": "agent-29",
+      "host": "claude",
+      "read_at": "2026-11-14T09:20:00Z",
+      "source": "synthetic: shaped like leader agent-0: orca terminal read --screen --json",
+      "terminal": {
+        "handle": "term-29",
+        "status": "running",
+        "source": "screen",
+        "tail": "⏺ Bash(cargo test --locked --offline) running…\n  ⎿  Compiling moai-cli",
+        "limited": false,
+        "truncated": false,
+        "draft": null
+      },
+      "pane": "working",
+      "turn": "running",
+      "input_box": "empty",
+      "context_used_pct": 40,
+      "wake_armed": false,
+      "background_jobs": 0,
+      "reset": {
+        "claims": {
+          "source": "gh api repos/modu-ai/moai-adk/issues/2902/comments",
+          "items": [
+            {
+              "issue": 2902,
+              "claim_comment": 6874287412,
+              "resume_note": null
+            }
+          ]
+        },
+        "session_cwd": {
+          "source": "orca worktree ps",
+          "path": "/work/moai-adk-wt-2902"
+        }
+      },
+      "foreground": {
+        "same_tail_since": "2026-11-14T09:10:01Z",
+        "shell_running": true
+      }
+    }
+  ]
+}

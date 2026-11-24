@@ -713,7 +713,7 @@ mod tests {
             "CACHE",
             "user-assets.json",
             "credentials.yaml",
-            ".env.typesafe",
+            ".env.legacy",
             "config",
         ] {
             assert_eq!(d(n, "folder", "go"), ("retire", "go_item"), "{n}");

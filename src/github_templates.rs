@@ -131,8 +131,7 @@ fn opted_in(root: &Path, request: &GithubRequest) -> Result<(bool, String)> {
     if let Some(flag) = request.github_issues {
         return Ok((flag, format!("opt-in from request.github_issues = {flag}")));
     }
-    let profile_path = crate::state_root::path(root, "project.yaml");
-    if read_opt(&profile_path)?.is_none() {
+    if crate::profile::chosen_profile(root)?.is_none() {
         return Ok((
             false,
             "opt-in: request.github_issues absent and no project profile".into(),
@@ -156,8 +155,7 @@ fn form_language(root: &Path, request: &GithubRequest) -> Result<(&'static str, 
     let (code, source) = if let Some(code) = &request.language {
         (code.clone(), "request.language")
     } else {
-        let profile_path = crate::state_root::path(root, "project.yaml");
-        let settings = if read_opt(&profile_path)?.is_some() {
+        let settings = if crate::profile::chosen_profile(root)?.is_some() {
             crate::profile::read_profile(root)?.0.language
         } else {
             None

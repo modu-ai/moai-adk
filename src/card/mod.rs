@@ -12,16 +12,40 @@
 //! SDD-4). `inbox` is the leader's read-only list of the lane notes that wait for an answer
 //! (`card inbox`, card C-116). `precheck` is the leader's read-only look before readying or
 //! dispatching a card (card C-96): already-done on the tip, or colliding with a recorded
-//! decision.
+//! decision. `finish` is the leader's one-step close of a landed or reported card
+//! (`card finish`), and `landed` is what `card next` and `finish` read of git to know a card
+//! already landed (SPEC-20261121-card-finish). `wait` is a lane's read-only wait for the next
+//! note on its cards or an announcement to all lanes, with a timeout (`card wait`,
+//! SPEC-20261122-card-wait). `ready_receipt` is the check `card note` makes before it keeps a
+//! `LANE-READY-INTEGRATION` or `REPAIRED` note: the head needs a PASS `check affected` receipt
+//! (SPEC-20261124-ready-receipt-gate). `orchestrate` is the coordination window's read-only plan
+//! of one round: the lanes, the dispatches, the clears, the audit requests, the landing queue
+//! and what waits for the user (`card orchestrate plan`, SPEC-20261124-orchestrate-plan).
 
+pub mod adopt;
+pub mod cleanup;
 pub mod command;
 pub mod dispatch;
+pub mod drift;
+pub mod early_reclaim;
 pub mod export_db;
 pub mod export_dir;
 pub mod export_format;
+pub mod finish;
+pub mod guard;
 pub mod inbox;
 pub mod input;
+pub mod land;
+pub mod landed;
+pub mod orchestrate;
 pub mod precheck;
+pub mod ready_receipt;
+pub mod remote_copy;
+pub mod roles;
 pub mod spec_link;
+pub mod stale;
+pub mod take_scope;
 pub mod timeline;
+pub mod verdict;
+pub mod wait;
 pub mod work;

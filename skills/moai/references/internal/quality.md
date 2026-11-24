@@ -6,7 +6,7 @@ When to read: at VERIFY, and at RUN before the first check run, in a project MoA
 
 1. Read the project's facts first: `moai project-detect <project>` (it writes nothing) or the `project.yaml` it describes. `detected.languages` and `detected.manifests` name the languages and manifest files; the profile's `tools` holds what the interview confirmed.
 2. For each language, take each check from the first source that has it, and record that source as `file:line`:
-   - the project's own declaration: a CI workflow step, a manifest script (`package.json` `scripts`, `composer.json` `scripts`), a `Makefile` or `justfile` target, a task runner file, or the project's `AGENTS.md`;
+   - the project's own declaration: a CI workflow step, a manifest script (`package.json` `scripts`, `composer.json` `scripts`), a `Makefile` or `justfile` target, a task runner file, or the project's `CLAUDE.md`;
    - else the default of the language guide below, and only when the evidence that guide names is present (a config file, a lockfile, a dependency entry);
    - else nothing: record the check as `not_run: no <kind> configured in this project`.
 3. Never install a tool, never change a tool's configuration to make a check pass, and never put a tool on PATH for the run. A configured tool that is missing on the machine is `blocked: <tool> not installed`, not a pass.
@@ -33,7 +33,7 @@ The guides live under `references/languages/` of this skill. A language the dete
 ## Tracing: requirement, criterion, check, test
 
 - Each acceptance criterion (`AC-<n>`) of the SPEC names the requirements it covers (`(REQ-…)`) and one `verify:` command, or a `manual:` or `unknown:` reason. `moai spec check` refuses an AC without one.
-- A test written for a criterion names it where `grep` finds it: in the test's name, or in a comment on the line above the test, as `<SPEC-ID> AC-<n>`. The ACC `@cc:proves` marker replaces that comment once its own SPEC lands.
+- A test written for a criterion names it where `grep` finds it: in the test's name, or in a comment on the line above the test, as `<SPEC-ID> AC-<n>`. The ACC `@cc:proves` marker, which agents and tools add and link automatically, replaces that comment once its own SPEC lands.
 - At VERIFY, run every `verify:` command of the SPEC and record its exit code next to the AC. A criterion whose command did not run is `not_run`, never `met`.
 - A changed test that drops an assertion, gains a skip (`#[ignore]`, `@pytest.mark.skip`, `t.Skip`, `.skip(`), or is deleted is a finding: name it and the AC it proved.
 

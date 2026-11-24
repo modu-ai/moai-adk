@@ -41,11 +41,11 @@ const LOCK_FILE: &str = "apply.lock";
 const REVERTED_MARKER_PREFIX: &str = "reverted-marker-";
 /// Who the marker names as its writer.
 const CREATED_BY: &str = "home-install-apply";
-/// Debug builds only: `MOAI_CLI_TEST_INSTALL_FAULT=<point>` stops the apply with an error at that
+/// Debug builds only: `MOAI_TEST_INSTALL_FAULT=<point>` stops the apply with an error at that
 /// point, leaving everything as a crash would. The points are `after_manifest`, `after_mkdir`,
 /// the journal's own (`after_journal`, `after_mark_moving`, `after_rename`, `after_move:<n>`,
 /// `before_commit`), `after_commit`, `after_stub:<n>`, `before_marker` and `after_marker`.
-pub const FAULT_VAR: &str = "MOAI_CLI_TEST_INSTALL_FAULT";
+pub const FAULT_VAR: &str = "MOAI_TEST_INSTALL_FAULT";
 /// A manifest holds at most 500 entries, 500 aliases and 50 links; a larger file is not one.
 const MANIFEST_LIMIT: u64 = 4 * 1024 * 1024;
 /// A marker is a few lines; a larger file is not the one the apply wrote.

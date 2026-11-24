@@ -32,10 +32,10 @@ pub fn settings_path(home: &Path) -> PathBuf {
     crate::home_root::path(home).join("config/launcher.yaml")
 }
 
-/// The tools whose folder exists under the home: `claude` for `~/.claude`, `codex` for `~/.codex`.
-/// A link or a file of that name is not a folder.
+/// The tools whose folder exists under the home: `claude` for `~/.claude`. A link or a file of
+/// that name is not a folder.
 pub fn installed_tools(home: &Path) -> Vec<&'static str> {
-    [("claude", ".claude"), ("codex", ".codex")]
+    [("claude", ".claude")]
         .into_iter()
         .filter(|(_, folder)| {
             fs::symlink_metadata(home.join(folder)).is_ok_and(|m| m.file_type().is_dir())

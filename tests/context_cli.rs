@@ -472,11 +472,15 @@ fn decision_record_never_carries_authority() {
     assert_eq!(v["result"]["authority"], json!("none"));
     assert_eq!(
         v["result"]["files_created"],
-        json!([".moai-cli/decisions/run-1.jsonl"])
+        json!([moai_cli::state_root::rel(d.path(), "decisions/run-1.jsonl")])
     );
     let (_, v2) = run(&args, d.path(), Some(&record("none", "codex", Value::Null)));
     assert_eq!(v2["result"]["files_created"], json!([]));
-    let log = fs::read_to_string(d.path().join(".moai-cli/decisions/run-1.jsonl")).unwrap();
+    let log = fs::read_to_string(moai_cli::state_root::path(
+        d.path(),
+        "decisions/run-1.jsonl",
+    ))
+    .unwrap();
     let lines: Vec<Value> = log
         .lines()
         .map(|l| serde_json::from_str(l).unwrap())
@@ -507,7 +511,11 @@ fn decision_record_never_carries_authority() {
         assert_eq!(v["error"]["kind"], json!("invalid_input"), "{bad}");
     }
     assert_eq!(
-        fs::read_to_string(d.path().join(".moai-cli/decisions/run-1.jsonl")).unwrap(),
+        fs::read_to_string(moai_cli::state_root::path(
+            d.path(),
+            "decisions/run-1.jsonl"
+        ))
+        .unwrap(),
         log
     );
     // A placeholder permission reference and a path-like run id are refused.
@@ -543,12 +551,16 @@ fn decision_record_never_carries_authority() {
 fn context_commands_write_nothing_else() {
     let d = repo();
     write(d.path(), "AGENTS.md", "# rules\n");
+    // The Go generation's state: a Go marker makes `.moai` Go's, so this generation keeps
+    // its own folder beside it (SPEC-20261121-path-root-moai-default).
     write(d.path(), ".moai/project.yaml", "go: state\n");
+    write(d.path(), ".moai/config/config.yaml", "go: config\n");
     let state = |p: &Path| {
         let mut out = Vec::new();
         for rel in [
             "AGENTS.md",
             ".moai/project.yaml",
+            ".moai/config/config.yaml",
             "README.md",
             "src/a.rs",
             ".env",

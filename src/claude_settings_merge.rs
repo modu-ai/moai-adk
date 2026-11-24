@@ -31,6 +31,11 @@ const GO_STATE_DIR: &str = ".moai/";
 const CREDENTIAL_BLOCK: &str =
     "a value in it looks like a credential; the key stays in the backup and its value is not shown";
 
+/// Why an Opus 4.8 model value beside a fast-mode key is not carried (SPEC-20261122-model-fast-pair
+/// REQ-3, D-3, D-6): the API refuses that pair from 2026-11-30, so the value stays in the backup.
+/// A fixed text: it names no saved value, and the date is words in it, never compared with a clock.
+const FAST_PAIR_BLOCK: &str = "the model is Opus 4.8 and a fast-mode key sits beside it; the API refuses that pair from 2026-11-30, so the model stays in the backup; switch to Opus 5.5 or turn fast mode off";
+
 /// The keys a merge may carry, in the order they are shown.
 pub const MERGEABLE: [&str; 5] = ["permissions", "env", "model", "statusLine", "outputStyle"];
 
@@ -196,9 +201,31 @@ fn shown(name: &str) -> String {
     name.chars().filter(|c| !c.is_control()).take(64).collect()
 }
 
-fn model_row(v: &Value) -> Row {
+/// An Opus 4.8 model id in any letter case (`opus-4-8`, `opus-4.8`, an alias suffix included). The
+/// match ends there or goes on with `-`, `[` or `@` (a date, a context alias, a version tag); any
+/// other next character, a digit above all, is another model (`opus-4-80`, `opus-4.85`), which
+/// SPEC D-2 leaves alone. A space around the value is cut first (`one_line` accepts it, and
+/// whether the host trims is unverified), so `opus-4-8 ` still ends the match; the carried value
+/// is not touched (SPEC-20261124-model-value-trim).
+fn is_opus_48(model: &str) -> bool {
+    let lower = model.trim().to_ascii_lowercase();
+    ["opus-4-8", "opus-4.8"].iter().any(|family| {
+        lower.match_indices(family).any(|(at, _)| {
+            matches!(
+                lower[at + family.len()..].chars().next(),
+                None | Some('-' | '[' | '@')
+            )
+        })
+    })
+}
+
+fn model_row(v: &Value, old: &Map<String, Value>) -> Row {
     if claude::holds_credential(v) {
         return Row::other("model", "blocked", CREDENTIAL_BLOCK, json!({}));
+    }
+    let fast_key = old.contains_key("fastMode") || old.contains_key("fastModePerSessionOptIn");
+    if fast_key && v.as_str().is_some_and(is_opus_48) {
+        return Row::other("model", "blocked", FAST_PAIR_BLOCK, json!({}));
     }
     match v.as_str() {
         Some(s) if one_line(s, claude::MODEL_CHARS_MAX) => Row::mergeable(
@@ -324,7 +351,7 @@ fn rows_of(old: &Map<String, Value>) -> Vec<Row> {
             match k.as_str() {
                 "permissions" => permissions_row(v),
                 "env" => env_row(v),
-                "model" => model_row(v),
+                "model" => model_row(v, old),
                 "statusLine" => status_line_row(v),
                 "outputStyle" => output_style_row(v),
                 "hooks" => hooks_row(v),
@@ -497,5 +524,116 @@ mod tests {
         assert_eq!(p.carry.as_ref().unwrap(), &json!({"allow": ["Bash(ls)"]}));
         let left = p.summary["left_in_backup"].to_string();
         assert!(left.contains("additionalDirectories") && left.contains("defaultMode"));
+    }
+
+    // SPEC-20261122-model-fast-pair REQ-3: the API refuses an Opus 4.8 request with fast mode from
+    // 2026-11-30, so a backup that holds both is never offered for a merge.
+    fn model_row_of(v: Value) -> Row {
+        let mut r = rows(v);
+        let at = r.iter().position(|r| r.key == "model").unwrap();
+        r.swap_remove(at)
+    }
+
+    #[test]
+    fn fast_pair_an_opus_48_model_beside_a_fast_mode_key_is_blocked_with_the_fixed_reason() {
+        // An id ends, or goes on with `-`, `[` or `@`, right after the `4-8` / `4.8`.
+        for model in [
+            "claude-opus-4-8",
+            "opus-4.8",
+            "Claude-OPUS-4-8[1m]",
+            "claude-opus-4-8-20261001",
+            "claude-opus-4-8@latest",
+            "opus-4.8-preview",
+        ] {
+            for key in ["fastMode", "fastModePerSessionOptIn"] {
+                let mut old = Map::new();
+                old.insert("model".into(), json!(model));
+                old.insert(key.into(), json!(true));
+                let row = model_row_of(Value::Object(old));
+                assert_eq!(row.state, "blocked", "{model} + {key}");
+                assert!(row.carry.is_none(), "{model} + {key}");
+                assert_eq!(row.reason, FAST_PAIR_BLOCK, "{model} + {key}");
+                // Card criterion 2: one plain notice that names the date and the fix.
+                assert!(row.reason.contains("2026-11-30"), "{}", row.reason);
+                assert!(row.reason.contains("Opus 5.5"), "{}", row.reason);
+                assert!(row.reason.contains("fast mode"), "{}", row.reason);
+                let shown = format!("{} {}", row.reason, row.summary);
+                assert!(!shown.contains(model), "{model} + {key}: {shown}");
+            }
+        }
+    }
+
+    #[test]
+    fn fast_pair_a_model_alone_or_another_family_still_merges() {
+        let alone = model_row_of(json!({"model": "claude-opus-4-8"}));
+        assert_eq!(alone.state, "mergeable");
+        assert_eq!(alone.carry, Some(json!("claude-opus-4-8")));
+        let other = model_row_of(json!({"model": "claude-opus-5-5", "fastMode": true}));
+        assert_eq!(other.state, "mergeable");
+        assert_eq!(other.carry, Some(json!("claude-opus-5-5")));
+        // A near id is not the family (SPEC D-2): a digit right after `4-8` / `4.8` makes another
+        // model, so the pair refusal, whose reason says "Opus 4.8", must not fire.
+        for near in ["claude-opus-4-80", "claude-opus-4-7", "claude-opus-4.85"] {
+            for key in ["fastMode", "fastModePerSessionOptIn"] {
+                let mut old = Map::new();
+                old.insert("model".into(), json!(near));
+                old.insert(key.into(), json!(true));
+                let row = model_row_of(Value::Object(old));
+                assert_eq!(row.state, "mergeable", "{near} + {key}");
+                assert_eq!(row.carry, Some(json!(near)), "{near} + {key}");
+            }
+        }
+    }
+
+    // SPEC-20261124-model-value-trim: `one_line` accepts a space around the model value, so the
+    // pair check must see the family through it.
+    fn pair_row(model: &str, key: &str) -> Row {
+        let mut old = Map::new();
+        old.insert("model".into(), json!(model));
+        old.insert(key.into(), json!(true));
+        model_row_of(Value::Object(old))
+    }
+
+    #[test]
+    fn fast_pair_a_space_around_an_opus_48_value_does_not_hide_it() {
+        for model in [
+            " claude-opus-4-8",
+            "claude-opus-4-8 ",
+            " opus-4.8 ",
+            "Claude-OPUS-4-8[1m] ",
+        ] {
+            for key in ["fastMode", "fastModePerSessionOptIn"] {
+                let row = pair_row(model, key);
+                assert_eq!(row.state, "blocked", "{model:?} + {key}");
+                assert!(row.carry.is_none(), "{model:?} + {key}");
+                assert_eq!(row.reason, FAST_PAIR_BLOCK, "{model:?} + {key}");
+            }
+        }
+    }
+
+    #[test]
+    fn fast_pair_a_space_keeps_a_near_id_mergeable_and_the_carried_text_as_read() {
+        for near in [
+            "claude-opus-4-80 ",
+            "claude-opus-4.85 ",
+            " claude-opus-4-7 ",
+        ] {
+            for key in ["fastMode", "fastModePerSessionOptIn"] {
+                let row = pair_row(near, key);
+                assert_eq!(row.state, "mergeable", "{near:?} + {key}");
+                assert_eq!(row.carry, Some(json!(near)), "{near:?} + {key}");
+            }
+        }
+        // No fast-mode key: the value merges, and the spaces stay in the carried text.
+        let alone = model_row_of(json!({"model": " claude-opus-4-8 "}));
+        assert_eq!(alone.state, "mergeable");
+        assert_eq!(alone.carry, Some(json!(" claude-opus-4-8 ")));
+    }
+
+    #[test]
+    fn fast_pair_never_carries_a_fast_mode_key_itself() {
+        let r = rows(json!({"model": "claude-opus-4-8", "fastMode": true}));
+        assert!(r.iter().all(|r| r.carry.is_none()));
+        assert_eq!(state(&r, "fastMode"), "kept_in_backup");
     }
 }

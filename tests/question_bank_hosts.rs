@@ -8,13 +8,11 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 use tempfile::TempDir;
 
-/// The tool names the row offers and the profile value each one records.
-const OFFERED: [(&str, &str); 3] = [
-    ("Claude Code", "claude"),
-    ("Codex CLI", "codex"),
-    ("OMP", "omp"),
-];
-const NOT_YET: [(&str, &str); 2] = [("Kiro", "kiro"), ("Cursor CLI", "cursor")];
+/// The hosts the profile still accepts; the interview row names none of them (SPEC-20261124-
+/// moai-project-interview D-7: it confirms the host this session runs in, and Codex and OMP are
+/// withdrawn), so no retired host is offered as an option.
+const ACCEPTED: [&str; 3] = ["claude", "codex", "omp"];
+const NOT_OFFERED: [&str; 4] = ["Codex", "OMP", "Kiro", "Cursor"];
 
 fn hosts_row() -> String {
     let text = std::fs::read_to_string(concat!(
@@ -50,27 +48,23 @@ fn plan(hosts: &[&str]) -> Value {
 }
 
 #[test]
-fn hosts_question_offers_exactly_the_hosts_the_profile_accepts() {
+fn hosts_question_confirms_the_session_host_and_offers_no_retired_host() {
     let row = hosts_row();
-    let question = row.split(" | ").nth(2).unwrap();
-    let offered = question.split('?').next().unwrap();
-    for (name, value) in OFFERED {
-        assert!(offered.contains(name), "{name} not offered: {offered}");
-        assert!(row.contains(&format!("`{value}`")), "{value}");
-        assert_eq!(plan(&[value])["ok"], json!(true), "{value}");
-    }
-    assert_eq!(plan(&["claude", "codex"])["ok"], json!(true));
-    // All three can be picked together (SPEC-20261118-profile-host-omp AC-2), and the row says
-    // so: a multi-select with the host this session runs in recommended.
-    assert_eq!(plan(&["claude", "codex", "omp"])["ok"], json!(true));
-    assert!(row.contains("multi-select"), "{row}");
+    assert!(row.contains("this session runs in"), "{row}");
     assert!(row.contains("(recommended)"), "{row}");
-    for (name, value) in NOT_YET {
+    for name in NOT_OFFERED {
         assert!(
-            !offered.contains(name),
-            "{name} offered but refused by the profile"
+            !row.contains(name),
+            "{name} is named in the hosts row: {row}"
         );
-        assert!(row.contains(name), "{name} is named as not recorded yet");
-        assert_eq!(plan(&[value])["ok"], json!(false), "{value}");
+    }
+    // The profile still accepts what the row confirms, and the accepted hosts together.
+    assert_eq!(plan(&["claude"])["ok"], json!(true));
+    for host in ACCEPTED {
+        assert_eq!(plan(&[host])["ok"], json!(true), "{host}");
+    }
+    assert_eq!(plan(&["claude", "codex", "omp"])["ok"], json!(true));
+    for host in ["kiro", "cursor"] {
+        assert_eq!(plan(&[host])["ok"], json!(false), "{host}");
     }
 }

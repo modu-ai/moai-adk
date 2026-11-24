@@ -7,7 +7,7 @@
 //! host. Every event must exit 0 with an empty stdout and one stderr line.
 //!
 //! R1: the binaries `moai` and `moai-cli` run one `main` and print the same output, and
-//! `--version` reads `moai-cli <ver> (rust)` from both.
+//! `--version` reads `moai <ver> (rust)` from both.
 //!
 //! Every process runs with a throwaway HOME; the real HOME and PATH are never touched.
 
@@ -167,7 +167,7 @@ fn only_the_first_word_hook_is_taken_and_its_input_never_blocks() {
     }
 }
 
-/// AC-2: both names print the same `--version` line, `moai-cli <ver> (rust)`, and the same help
+/// AC-2: both names print the same `--version` line, `moai <ver> (rust)`, and the same help
 /// and usage error byte for byte: since #3004 P1 usage and help name `moai` whichever name ran
 /// (#2802 S1 had them name the binary that ran).
 #[test]
@@ -176,23 +176,19 @@ fn both_names_print_the_same_output() {
     assert_eq!(version.status.code(), Some(0));
     let line = text(&version.stdout);
     let first = line.lines().next().unwrap();
-    assert!(first.starts_with("moai-cli "), "{first}");
+    assert!(first.starts_with("moai "), "{first}");
     assert!(first.ends_with(" (rust)"), "{first}");
     // Card C-67 S1: the first line names the HeadVer build version, the second line which
     // kind of build it is; `-V` prints the first line alone.
     assert_eq!(
         first,
-        format!("moai-cli {} (rust)", moai_cli::BUILD_VERSION),
+        format!("moai {} (rust)", moai_cli::BUILD_VERSION),
         "{first} names the build version"
     );
-    assert_eq!(
-        line,
-        format!("moai-cli {}\n", moai_cli::LONG_VERSION),
-        "{line}"
-    );
+    assert_eq!(line, format!("moai {}\n", moai_cli::LONG_VERSION), "{line}");
     assert_eq!(
         text(&run(MOAI, &["-V"], b"").stdout),
-        format!("moai-cli {}\n", moai_cli::VERSION_SIGNATURE)
+        format!("moai {}\n", moai_cli::VERSION_SIGNATURE)
     );
     // `--version` is printed by both names as it is (D3 decision 2).
     assert_eq!(
@@ -313,7 +309,7 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
         assert_eq!(code, Some(0), "{v}");
         v["result"].clone()
     };
-    for host in ["claude", "codex", "omp"] {
+    for host in moai_cli::hooks::HOSTS.iter().copied() {
         let plan = plan_with(&go_first, host);
         assert_eq!(plan["hook_binary"]["name"], "moai", "{host}: {plan}");
         assert_eq!(
@@ -348,10 +344,8 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
             "{refused}"
         );
     }
-    // Nothing was written for any host, and the Go `moai` heard `--version` only.
-    for path in [".claude", ".codex", ".omp"] {
-        assert!(!p.join(path).exists(), "{path} was written");
-    }
+    // Nothing was written, and the Go `moai` heard `--version` only.
+    assert!(!p.join(".claude").exists(), ".claude was written");
     let calls = fs::read_to_string(&go_log).unwrap();
     assert!(
         calls.lines().count() >= 1 && calls.lines().all(|l| l == "--version"),
@@ -359,7 +353,7 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
     );
 
     // The Rust `moai` first: the same plan is `resolved`, and the apply writes.
-    let plan = plan_with(&rust_first, "codex");
+    let plan = plan_with(&rust_first, "claude");
     assert_eq!(plan["hook_binary"]["state"], "resolved", "{plan}");
     assert_eq!(plan["gate"]["allowed"], true, "{plan}");
     let (code, applied) = run(
@@ -368,7 +362,7 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
             "hooks-apply",
             ".",
             "--host",
-            "codex",
+            "claude",
             "--plan-digest",
             plan["plan_digest"].as_str().unwrap(),
             "--permission-reference",
@@ -376,7 +370,7 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
         ],
     );
     assert_eq!(code, Some(0), "{applied}");
-    assert!(p.join(".codex/hooks.json").is_file());
+    assert!(p.join(".claude/settings.json").is_file());
 
     // Run the generated claim guard the way a host does with the Rust `moai` first: its
     // command string through a shell with that PATH, the PreToolUse input on stdin. The Go

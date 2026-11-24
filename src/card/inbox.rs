@@ -55,7 +55,7 @@ pub fn family_of(first_line: &str) -> Option<Family> {
         Some(Family::AuditRequest)
     } else if line.starts_with("LANE-BLOCKED") {
         Some(Family::Blocked)
-    } else if line.starts_with("LANE-READY-INTEGRATION") {
+    } else if super::ready_receipt::marker_of_line(line) == Some("LANE-READY-INTEGRATION") {
         Some(Family::ReadyForIntegration)
     } else if line.starts_with("DECISION-QUESTION") {
         Some(Family::DecisionQuestion)
@@ -242,6 +242,33 @@ mod tests {
             ("", None),
         ] {
             assert_eq!(family_of(line), want, "{line:?}");
+        }
+    }
+
+    /// SPEC-20261124-ready-receipt-followup REQ-1: the inbox counts a READY first line exactly
+    /// when the one marker judge of the receipt gate calls it `LANE-READY-INTEGRATION`.
+    #[test]
+    fn inbox_family_follows_marker_of_line() {
+        for line in [
+            "LANE-READY-INTEGRATION C-1 head=abc",
+            "LANE-READY-INTEGRATION: C-1 head=abc",
+            "LANE-READY-INTEGRATIONC-1",
+            "  LANE-READY-INTEGRATION C-1",
+            "REPAIRED C-1 head=abc",
+            "READY C-1 head=abc",
+            "MERGE-READY C-1",
+            "see LANE-READY-INTEGRATION in the middle",
+            "lane-ready-integration",
+            "",
+        ] {
+            // `family_of` skips blanks before the line, as the gate does.
+            let ready = crate::card::ready_receipt::marker_of_line(line.trim_start())
+                == Some("LANE-READY-INTEGRATION");
+            assert_eq!(
+                family_of(line) == Some(Family::ReadyForIntegration),
+                ready,
+                "{line:?}"
+            );
         }
     }
 

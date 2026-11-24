@@ -414,11 +414,11 @@ fn the_empty_folder_walk_stops_at_its_limit() {
     }
     fx.manifest();
     fx.write(".claude/settings.json", "{}\n");
-    let at = fx.plan_env(&[("MOAI_CLI_TEST_UNRECORDED_LIMIT", "5")]);
+    let at = fx.plan_env(&[("MOAI_TEST_UNRECORDED_LIMIT", "5")]);
     assert_eq!(at["after_move"]["unknown"], json!(false), "N: {at}");
     assert_eq!(empty_folders(&at), [".claude/workflows"], "N: {at}");
 
-    let over = fx.plan_env(&[("MOAI_CLI_TEST_UNRECORDED_LIMIT", "4")]);
+    let over = fx.plan_env(&[("MOAI_TEST_UNRECORDED_LIMIT", "4")]);
     assert_eq!(over["after_move"]["unknown"], json!(true), "N+1: {over}");
     // What was settled before the walk stopped is still true; nothing else is listed.
     assert!(

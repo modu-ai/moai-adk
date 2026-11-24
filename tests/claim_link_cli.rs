@@ -117,7 +117,9 @@ impl Fx {
 
     /// The record `claim-acquire` would have written from the project folder.
     fn record(&self, key: &str, issue: i64, comment: i64, lane: &str) -> ClaimRecord {
-        let id = moai_cli::identity::identity(&self.root).unwrap();
+        // Only `clone_anchor`, `workspace_git_dir` and `work_tree` are read, fields that do not
+        // depend on a HOME, so no HOME is given.
+        let id = moai_cli::identity::identity_in(&self.root, None).unwrap();
         let text = |k: &str| id[k].as_str().unwrap().to_string();
         ClaimRecord {
             schema_version: 1,
@@ -169,13 +171,16 @@ impl Fx {
     }
 
     fn commit(&self, event: &str, r: &ClaimRecord) {
-        let j = Journal::open(&moai_cli::claim::journal_root(&self.root).unwrap()).unwrap();
+        let j =
+            Journal::open(&moai_cli::claim::journal_root_in(&self.root, None).unwrap()).unwrap();
         assert!(j.try_lock().unwrap());
         j.commit(event, r).unwrap();
     }
 
+    /// The journal folder, resolved with no HOME: this fixture never switches the home layout,
+    /// so the journal is the clone side one whatever the environment HOME is.
     fn journal_dir(&self) -> PathBuf {
-        moai_cli::claim::journal_root(&self.root).unwrap()
+        moai_cli::claim::journal_root_in(&self.root, None).unwrap()
     }
 
     fn log(&self) -> String {

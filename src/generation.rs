@@ -9,9 +9,9 @@
 //! generation state joins the one manifest publish (#2114). `src/agents.rs` is 01-B
 //! #1989's; its public API and behavior are unchanged; the
 //! generation-specific files — portable project workflows under
-//! `.moai-cli/workflows/<id>/`, native role files `.claude/agents/<role>.md` and
-//! `.codex/agents/<role>.toml`, and skill projections `.claude/skills/<id>/SKILL.md`
-//! (`.agents/skills/…`) — are planned and published in this module through the public
+//! `.moai-cli/workflows/<id>/`, native role files `.claude/agents/<role>.md`, and skill
+//! projections and project skills `.claude/skills/<id>/SKILL.md` — are planned and published in
+//! this module through the public
 //! 01-B apply engine (`decide`, `publish_exclusive`/`publish_replace`,
 //! `save_before_bytes`, `Receipt`). Baselines of generation files live in the same
 //! `generation.json` `owned_files` list, recorded with an additive `kind` field
@@ -25,10 +25,11 @@
 //! hands `agents_apply` its own freshly computed digest — a plan that passed the
 //! outer check passes the inner one unchanged.
 //!
-//! Boundaries: `.claude/settings.json` and `.codex/config.toml` merges stay out
-//! (HOLD-2 A, owner 02-B #1992) — Codex role files carry only `name`, `description`
-//! and `developer_instructions`, never the keys that widen parent permissions.
-//! Markdown merging stays at managed-section granularity (HOLD-1 A; the diff3 study
+//! Boundaries: `.claude/settings.json` merges stay out (HOLD-2 A, owner 02-B #1992).
+//! Only Claude Code is generated for (SPEC-20261121-remove-codex-project-layer): a request that
+//! names the retired hosts `codex` or `omp` has them filtered out before it is validated, so no
+//! file is planned under `.codex`, `.agents` or `.omp`, and no recorded entry of those hosts is
+//! kept in the manifest. Markdown merging stays at managed-section granularity (HOLD-1 A; the diff3 study
 //! shows line-level merging has no general non-conflict guarantee). The subcommand
 //! names are `generation-plan`/`generation-apply` (HOLD-3 A). External skill content
 //! is never copied: a projection references a `reviewed` source with an attribution
@@ -42,6 +43,7 @@ use crate::apply::{
     decide, new_request_id, publish_exclusive, publish_replace, read_opt, root_of,
     save_before_bytes, Decision, Receipt,
 };
+use crate::retired_hosts::owned_entry_retired;
 use crate::{digest, read_profile};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -55,8 +57,7 @@ fn manifest_rel(root: &Path) -> String {
 }
 const MAX_ROLES: usize = 16;
 const MAX_PROJECTIONS: usize = 16;
-/// Generated text stays short: Codex reads the whole AGENTS.md chain within 32 KiB
-/// by default, and the managed section must leave room for user content.
+/// Generated text stays short: the managed section must leave room for user content.
 const PURPOSE_LIMIT: usize = 500;
 
 /// Skill names follow the Agent Skills specification (same rule as 03-B).
@@ -98,12 +99,12 @@ fn bounded_purpose(s: &str) -> bool {
 #[serde(deny_unknown_fields)]
 pub struct NativeRole {
     pub role_id: String,
-    /// claude | codex
+    /// claude. A role of a retired host (codex, omp) is left out of the plan.
     pub host: String,
     pub purpose: String,
     #[serde(default)]
     pub read_only_intent: bool,
-    /// Claude-only allowed-tools list (Codex files never carry tool keys).
+    /// The allowed-tools list written into the role file.
     #[serde(default)]
     pub tools: Vec<String>,
 }
@@ -117,7 +118,8 @@ pub struct SkillProjection {
     pub source_url: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resolved_revision: Option<String>,
-    /// claude | codex (default: claude)
+    /// claude (default: claude). A retired host (codex, omp) is filtered out; a list that held
+    /// only retired hosts reads as claude.
     #[serde(default)]
     pub host_targets: Vec<String>,
 }
@@ -129,7 +131,8 @@ pub struct SkillProjection {
 pub struct ProjectSkill {
     /// `prj-<name>`; also the skill directory name.
     pub id: String,
-    /// claude | codex (default: both).
+    /// claude (default: claude). A retired host (codex, omp) is filtered out; a list that held
+    /// only retired hosts reads as claude.
     #[serde(default)]
     pub hosts: Vec<String>,
     /// One line; the skill's `description`.
@@ -164,11 +167,35 @@ pub struct GenerationRequest {
 
 fn project_skill_hosts(s: &ProjectSkill) -> Vec<String> {
     if s.hosts.is_empty() {
-        vec!["claude".into(), "codex".into()]
+        vec!["claude".into()]
     } else {
         s.hosts.clone()
     }
 }
+
+/// Leaves the retired hosts out of a request (SPEC-20261121-remove-codex-project-layer REQ-8): a
+/// native role of a retired host is dropped with one warning that echoes no value of the request,
+/// and a host list is filtered the way a profile's is (a list that held only retired hosts reads
+/// as claude, an empty one stays empty).
+fn retire_request_hosts(active: &[&str], request: &mut GenerationRequest) -> Option<String> {
+    let before = request.native_roles.len();
+    request
+        .native_roles
+        .retain(|role| !crate::retired_hosts::retired(&role.host, active));
+    for p in &mut request.skill_projections {
+        crate::retired_hosts::retire_hosts(&mut p.host_targets, active);
+    }
+    for ps in &mut request.project_skills {
+        crate::retired_hosts::retire_hosts(&mut ps.hosts, active);
+    }
+    let left_out = before - request.native_roles.len();
+    (left_out > 0).then(|| {
+        format!("{left_out} native role(s) {RETIRED_ROLES_NOTE} (codex or omp); no file is planned for them")
+    })
+}
+
+/// The words of the plan warning that says native roles of a retired host were left out.
+const RETIRED_ROLES_NOTE: &str = "name a retired host";
 
 /// One planned file. The agents portion carries the `agents.rs` fields it produced;
 /// generation files add their `source_refs` and kind tag.
@@ -232,7 +259,7 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         // bare `prj-` fails `valid_skill_name` (no trailing `-`).
         if !valid_skill_name(&role.role_id)
             || !role.role_id.starts_with("prj-")
-            || !(role.host == "claude" || role.host == "codex")
+            || role.host != "claude"
             || !bounded_purpose(&role.purpose)
             || role.tools.len() > 32
             || !role
@@ -250,7 +277,7 @@ fn validate(r: &GenerationRequest) -> Result<()> {
             || p.resolved_revision
                 .as_ref()
                 .is_some_and(|rev| !valid_revision(rev))
-            || p.host_targets.iter().any(|h| h != "claude" && h != "codex")
+            || p.host_targets.iter().any(|h| h != "claude")
         {
             return Err("invalid generation request; no values were logged".into());
         }
@@ -270,7 +297,7 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         if !valid_skill_name(&ps.id)
             || !ps.id.starts_with("prj-")
             || !bounded_purpose(&ps.purpose)
-            || ps.hosts.iter().any(|h| h != "claude" && h != "codex")
+            || ps.hosts.iter().any(|h| h != "claude")
         {
             return Err("invalid generation request; no values were logged".into());
         }
@@ -364,24 +391,8 @@ fn source_reviewed(root: &Path, source_url: &str) -> Result<Option<(String, Stri
     Ok(None)
 }
 
-pub(crate) fn toml_string(s: &str) -> String {
-    let mut out = String::from("\"");
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\u{8}' => out.push_str("\\b"),
-            '\t' => out.push_str("\\t"),
-            '\n' => out.push_str("\\n"),
-            '\u{c}' => out.push_str("\\f"),
-            '\r' => out.push_str("\\r"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04X}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
-}
+/// The hosts a generation writes for. A request or a manifest entry of a retired host is left out.
+pub const HOSTS: [&str; 1] = ["claude"];
 
 fn render_workflow_skill(workflow_id: &str, language: &str) -> String {
     if language == "ko" {
@@ -417,15 +428,6 @@ fn render_claude_role(role: &NativeRole) -> String {
     )
 }
 
-fn render_codex_role(role: &NativeRole) -> String {
-    format!(
-        "name = {name}\ndescription = {desc}\ndeveloper_instructions = {instr}\n",
-        name = toml_string(&role.role_id),
-        desc = toml_string(&role.purpose),
-        instr = toml_string(&role.purpose),
-    )
-}
-
 /// A YAML double-quoted scalar: a purpose such as `Run tests: cargo test` keeps the
 /// frontmatter valid (pre-audit 6854178087 N2). `render_safe` already refused line breaks.
 fn yaml_quoted(s: &str) -> String {
@@ -456,7 +458,6 @@ fn link_on_path(root: &Path, rel: &str) -> Option<String> {
 /// Where a project skill of `host` lives; `None` for a host this tool does not write.
 fn project_skill_path(host: &str, id: &str) -> Option<String> {
     match host {
-        "codex" => Some(format!(".agents/skills/{id}/SKILL.md")),
         "claude" => Some(format!(".claude/skills/{id}/SKILL.md")),
         _ => None,
     }
@@ -464,9 +465,10 @@ fn project_skill_path(host: &str, id: &str) -> Option<String> {
 
 /// The project skill body (#2706 P2): the profile's interview answers, one line each; an answer
 /// recorded with `source: default` (an axis left unanswered) is never written.
-/// The profile a project skill is built from, in the project's state folder (#2725 S2b).
+/// The profile a project skill is built from, in the folder that is actually read (the delta
+/// audit's N2) (#2725 S2b).
 fn project_profile_rel(root: &Path) -> String {
-    crate::state_root::rel(root, "project.yaml")
+    crate::profile::read_rel(root)
 }
 
 fn render_project_skill(
@@ -614,8 +616,31 @@ fn reference_is_own_output(root: &Path, request: &GenerationRequest) -> bool {
 }
 
 pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<GenerationPlan> {
+    generation_plan_in(&HOSTS, root, request)
+}
+
+/// [`generation_plan`] for a place whose active hosts are `active`: a recorded file of a retired
+/// host plans no conflict and no removal.
+pub fn generation_plan_in(
+    active: &[&str],
+    root: &Path,
+    request: GenerationRequest,
+) -> Result<GenerationPlan> {
     let mut request = request;
     request.workflow_reference = normalize_workflow_reference(&request.workflow_reference);
+    let retired_note = retire_request_hosts(active, &mut request);
+    plan_filtered(active, root, request, retired_note)
+}
+
+/// The plan of a request the retired hosts are already left out of. `retired_note` is the one
+/// warning that says so; apply passes the one its plan carries, so the plan it re-derives is the
+/// plan it was handed.
+fn plan_filtered(
+    active: &[&str],
+    root: &Path,
+    request: GenerationRequest,
+    retired_note: Option<String>,
+) -> Result<GenerationPlan> {
     validate(&request)?;
     let root = root
         .canonicalize()
@@ -635,6 +660,7 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
     let manifest = manifest_value(&root)?;
     let mut files: Vec<GenerationFilePlan> = agents.files.iter().map(file_from_agents).collect();
     let mut warnings: Vec<String> = agents.warnings.clone();
+    warnings.extend(retired_note);
     let host_notes: Vec<String> = agents.host_notes.clone();
 
     // Portable workflow (REQ-03C-01: one workflow per request).
@@ -678,24 +704,11 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         });
     }
 
-    // Native roles (REQ-03C-05/06): nothing under .claude/agents/ or .codex/agents/
-    // is planned when the request lists no roles.
+    // Native roles (REQ-03C-05/06): nothing under .claude/agents/ is planned when the request
+    // lists no roles.
     for role in &request.native_roles {
-        let (rel, rendered) = match role.host.as_str() {
-            "claude" => (
-                format!(".claude/agents/{}.md", role.role_id),
-                render_claude_role(role),
-            ),
-            _ => (
-                format!(".codex/agents/{}.toml", role.role_id),
-                render_codex_role(role),
-            ),
-        };
-        if role.host == "codex" && role.read_only_intent {
-            warnings.push(
-                "read_only_intent is guidance; a Codex agent file cannot create a sandbox".into(),
-            );
-        }
+        let rel = format!(".claude/agents/moai/{}.md", role.role_id);
+        let rendered = render_claude_role(role);
         let current = fs::read(root.join(&rel)).ok();
         let baseline = generation_baseline(&manifest, &rel);
         let rendered_digest = digest(rendered.as_bytes());
@@ -742,10 +755,7 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         let rendered = render_projection_skill(p, &request.language, &source)?;
         let rendered_digest = digest(rendered.as_bytes());
         for host in &hosts {
-            let rel = match host.as_str() {
-                "codex" => format!(".agents/skills/{}/SKILL.md", p.id),
-                _ => format!(".claude/skills/{}/SKILL.md", p.id),
-            };
+            let rel = format!(".claude/skills/{}/SKILL.md", p.id);
             let dest_dir = root
                 .join(&rel)
                 .parent()
@@ -879,6 +889,10 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         })
         .unwrap_or_default();
     for (kind, rel, baseline) in owned {
+        // A file of a retired host: no conflict, no removal; the entry only leaves the manifest.
+        if owned_entry_retired(&kind, active) {
+            continue;
+        }
         if requested.contains(&kind) || files.iter().any(|f| f.path == rel) {
             continue;
         }
@@ -921,6 +935,58 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         });
     }
 
+    // Claude Code roles an earlier version wrote flat at `.claude/agents/<id>.md`: the nested
+    // copy replaces them (SPEC-20261121-base-agents-user-folder). A flat file nobody edited is
+    // planned `remove` after the nested copy; an edited one is a conflict that stops the apply,
+    // so its nested copy is not written either. Same checks as the project skills above.
+    for role in request.native_roles.iter().filter(|r| r.host == "claude") {
+        let flat = format!(".claude/agents/{}.md", role.role_id);
+        let kind = format!("generation:native-role:claude:{}", role.role_id);
+        let baseline = manifest
+            .get("owned_files")
+            .and_then(Value::as_array)
+            .and_then(|list| {
+                list.iter().find(|f| {
+                    f.get("path").and_then(Value::as_str) == Some(flat.as_str())
+                        && f.get("section_id").and_then(Value::as_str) == Some(kind.as_str())
+                })
+            })
+            .and_then(|f| f.get("baseline_sha256")?.as_str().map(str::to_string));
+        let Some(baseline) = baseline else {
+            continue;
+        };
+        let refused = link_on_path(&root, &flat)
+            .map(|l| format!("{l} is a symbolic link; nothing removed through it"));
+        let current = if refused.is_some() {
+            None
+        } else {
+            fs::read(root.join(&flat)).ok()
+        };
+        let edited = current.as_deref().is_some_and(|c| digest(c) != baseline);
+        let detail = refused.or_else(|| {
+            edited.then_some(
+                "earlier flat role file was edited after generation; kept, and its nested copy is not written"
+                    .to_string(),
+            )
+        });
+        files.push(GenerationFilePlan {
+            path: flat,
+            action: if detail.is_some() {
+                "conflict"
+            } else {
+                "remove"
+            }
+            .into(),
+            tracked_by_default: false,
+            expected_sha256: current.as_deref().map(digest),
+            baseline_sha256: Some(baseline),
+            rendered_sha256: None,
+            source_refs: Vec::new(),
+            kind: Some(kind),
+            detail,
+        });
+    }
+
     let binding = digest(root.to_str().ok_or("non UTF-8 project path")?.as_bytes());
     let mut plan = GenerationPlan {
         protocol_version: 1,
@@ -946,8 +1012,12 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
             .iter()
             .all(|f| f.path == manifest_rel || f.action == "unchanged");
         let same = others_unchanged && {
-            let mut value =
-                crate::agents::predicted_manifest_value(&root, &agents_request, &agents.files)?;
+            let mut value = crate::agents::predicted_manifest_value(
+                active,
+                &root,
+                &agents_request,
+                &agents.files,
+            )?;
             let (profile, profile_bytes) = read_profile(&root)?;
             record_generation(&mut value, &plan, &profile, &profile_bytes);
             let disk = read_opt(&root.join(&manifest_rel))?;
@@ -986,7 +1056,7 @@ fn rendered_text_for(root: &Path, p: &GenerationPlan, f: &GenerationFilePlan) ->
             .ok_or("unknown planned path")?;
         return match host {
             "claude" => Ok(render_claude_role(role)),
-            _ => Ok(render_codex_role(role)),
+            _ => Err("unknown planned path".into()),
         };
     }
     if let Some(rest) = kind.strip_prefix("generation:project-skill:") {
@@ -1151,6 +1221,18 @@ pub fn generation_apply(
     confirmed: &str,
     permission: &str,
 ) -> Result<Value> {
+    generation_apply_in(&HOSTS, root, p, confirmed, permission)
+}
+
+/// [`generation_apply`] for a place whose active hosts are `active`: the manifest it publishes
+/// drops the recorded entries of a retired host and leaves their files alone.
+pub fn generation_apply_in(
+    active: &[&str],
+    root: &Path,
+    p: GenerationPlan,
+    confirmed: &str,
+    permission: &str,
+) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
@@ -1158,7 +1240,12 @@ pub fn generation_apply(
     // the raw spelling then fails the digest re-check and must re-preview.
     let mut p = p;
     p.request.workflow_reference = normalize_workflow_reference(&p.request.workflow_reference);
-    let current = generation_plan(root, p.request.clone())?;
+    let retired_note = p
+        .warnings
+        .iter()
+        .find(|w| w.contains(RETIRED_ROLES_NOTE))
+        .cloned();
+    let current = plan_filtered(active, root, p.request.clone(), retired_note)?;
     if p.protocol_version != 1
         || confirmed != p.plan_digest
         || plan_digest(&p) != p.plan_digest
@@ -1320,6 +1407,7 @@ pub fn generation_apply(
             .map_err(|e| format!("published files but the receipt was not recorded: {e}"))
     };
     let agents_result = agents_apply_amended_for(
+        active,
         &root,
         agents_plan.clone(),
         &agents_plan.plan_digest,

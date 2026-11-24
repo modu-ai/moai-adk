@@ -501,7 +501,7 @@ fn classify_inner(
                     "refuse",
                     found.conflict.clone().unwrap_or_else(|| {
                         format!(
-                            "{MOAI_DIR}/{decided_by} is from a newer moai-cli; this build leaves it alone"
+                            "{MOAI_DIR}/{decided_by} is from a newer moai; this build leaves it alone"
                         )
                     }),
                 ),
@@ -559,12 +559,93 @@ fn classify_inner(
     }
 }
 
+/// What an `unknown` verdict (a `.moai/` that holds files and no marker, none of them Go
+/// markers) means for the folder being resolved.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Unknown {
+    /// Ours: a project's tracked part of a worktree (SPECs, evals, `project.yaml`) or a git
+    /// common folder, where no other tool writes.
+    Ours,
+    /// Ours only when every first-level name is one this generation writes (a HOME that a
+    /// writer started before any marker); any other name may belong to another tool, such as a
+    /// Go HOME whose items [`crate::home_state::home_go_markers`] does not list.
+    OnlyRustNames,
+}
+
+/// First-level names under a HOME's `.moai` that this generation writes and
+/// [`crate::home_layout::HOME_TABLE`] does not list. The slice that owns the HOME move adds them
+/// to the table; until then they must not make the HOME look foreign.
+const RUST_NAMES_NOT_IN_THE_TABLE: &[&str] = &["build", "edit-diagnostics"];
+
+/// Every entry directly inside `moai` is a name this generation writes (a marker name, a
+/// `Writes` row of the HOME table, or one of [`RUST_NAMES_NOT_IN_THE_TABLE`]); Finder's
+/// `.DS_Store` is ignored. An unreadable folder answers no.
+fn only_rust_names(moai: &Path) -> bool {
+    let Ok(entries) = fs::read_dir(moai) else {
+        return false;
+    };
+    entries.into_iter().all(|e| {
+        let Ok(e) = e else {
+            return false;
+        };
+        let name = e.file_name();
+        let Some(name) = name.to_str() else {
+            return false;
+        };
+        name == ".DS_Store"
+            || is_marker_name(name)
+            || RUST_NAMES_NOT_IN_THE_TABLE.contains(&name)
+            || crate::home_layout::lookup(name)
+                .is_some_and(|row| row.rust == crate::home_layout::RustUse::Writes)
+    })
+}
+
+/// The one rule of the three resolvers ([`dir`], [`crate::home_root::dir`],
+/// [`crate::clone_root::dir`]; SPEC-20261121-path-root-moai-default): does `root` resolve to
+/// `.moai`? `generation` is the verdict of the classification of `root/.moai`.
+///
+/// | verdict | earlier folder present | answer |
+/// | --- | --- | --- |
+/// | `rust`, `rust-first` | either | `.moai` |
+/// | `none`, `empty` | no | `.moai` |
+/// | `unknown` | no | `.moai` when [`Unknown`] says so, else the earlier folder |
+/// | `none`, `empty`, `unknown` | yes | `.moai-cli` (a legacy tree keeps every path it had) |
+/// | `go`, `mixed`, `interrupted`, `refuse` | either | `.moai-cli` (Go's folder is never written) |
+///
+/// The earlier folder is present when `root/<earlier>` exists in any form; a link counts and
+/// is never followed. A tree that a writer started on `.moai` before any marker (its entries make
+/// the verdict `unknown`) must keep resolving to `.moai`, or the state it just wrote would be
+/// stranded; that is why only a foreign-looking HOME falls back. Reads only.
+pub(crate) fn resolves_to_moai(
+    generation: &str,
+    root: &Path,
+    earlier: &str,
+    unknown: Unknown,
+) -> bool {
+    let earlier_absent = || fs::symlink_metadata(root.join(earlier)).is_err();
+    match generation {
+        "rust" | "rust-first" => true,
+        "none" | "empty" => earlier_absent(),
+        "unknown" => {
+            earlier_absent() && (unknown == Unknown::Ours || only_rust_names(&root.join(MOAI_DIR)))
+        }
+        _ => false,
+    }
+}
+
 /// The project-relative folder that holds `root`'s state now (#2725 S2b): `.moai` once
-/// [`classify`] says `rust`, otherwise the earlier `.moai-cli` (decision D7: both are read,
-/// one writes). A project gets `.moai/` only through a migration that writes the marker last,
-/// so every project without a valid marker keeps exactly the paths it had before.
+/// [`classify`] says `rust`, or when the project has no earlier `.moai-cli` and no Go state
+/// ([`resolves_to_moai`]); otherwise the earlier `.moai-cli` (decision D7: both are read, one
+/// writes). A project that has `.moai-cli` and no valid marker keeps exactly the paths it had
+/// before, and a new project, a worktree without a marker included, never gets `.moai-cli`
+/// from this function.
 pub fn dir(root: &Path) -> &'static str {
-    if classify(root).generation == "rust" {
+    if resolves_to_moai(
+        classify(root).generation,
+        root,
+        crate::PROJECT_STATE_DIR,
+        Unknown::Ours,
+    ) {
         MOAI_DIR
     } else {
         crate::PROJECT_STATE_DIR
@@ -659,6 +740,85 @@ pub fn rel(root: &Path, sub: &str) -> String {
     } else {
         format!("{}/{sub}", dir(root))
     }
+}
+
+/// What the team keeps in git under the state folder (SPEC-20261120-moai-layout, REQ-1): the
+/// profile, the two generation markers (a fresh checkout classifies the folder by them), the
+/// generation manifests and workflows, the team's own `config/`, `decisions/` and `docs/`, the
+/// SPECs, the project's development scripts in `tools/` and its evaluation sets in `evals/`.
+/// A name ending in `/` is a folder. The order is the order of the managed `.gitignore` block's
+/// `!` lines: the first nine keep the places they had before the layout rule, the last two
+/// follow them.
+pub const KEPT: [&str; 11] = [
+    "project.yaml",
+    "moai-cli.json",
+    "moai.json",
+    "manifests/",
+    "workflows/",
+    "config/",
+    "decisions/",
+    "docs/",
+    "specs/",
+    "tools/",
+    "evals/",
+];
+
+/// The kinds of machine output the folder holds today. Each lives under `local/`, which git
+/// ignores, so a new worktree does not carry a copy of it. The list names what exists; a kind
+/// that is not in [`KEPT`] is local to the machine whether or not it is listed here.
+pub const LOCAL_KINDS: [&str; 15] = [
+    "receipts",
+    "backups",
+    "index",
+    "logs",
+    "state",
+    "cache",
+    "forge",
+    "messages",
+    "archive",
+    "evidence",
+    "imports",
+    "settings-backups",
+    "lane-stop-hook",
+    "project-skill-rollback",
+    "statusline.local.yaml",
+];
+
+/// The places a host reads its own files, which the layout never moves: the instruction file, the
+/// two hosts' folders and the issue templates this tool writes.
+pub const HOST_OWNED: [&str; 4] = ["AGENTS.md", ".claude", ".codex", ".github/ISSUE_TEMPLATE"];
+
+/// The folder of the machine's own output under the state folder.
+pub const LOCAL_DIR: &str = "local";
+
+/// Whether `name` (with or without its trailing `/`) is one of the kinds the team keeps in git.
+pub fn is_kept(name: &str) -> bool {
+    let name = name.trim_end_matches('/');
+    KEPT.iter().any(|k| k.trim_end_matches('/') == name)
+}
+
+/// `<state>/local/<kind>`: where a local kind lives (REQ-2).
+pub fn local_path(root: &Path, kind: &str) -> std::path::PathBuf {
+    path(root, LOCAL_DIR).join(kind)
+}
+
+/// `<state>/<kind>`: where an earlier project kept the kind (REQ-2).
+pub fn earlier_path(root: &Path, kind: &str) -> std::path::PathBuf {
+    path(root, kind)
+}
+
+/// Where a writer creates the kind (REQ-6): always the new place.
+pub fn write_path(root: &Path, kind: &str) -> std::path::PathBuf {
+    local_path(root, kind)
+}
+
+/// Where a reader finds the kind (REQ-5, REQ-10): `local/<kind>` when it exists, else the earlier
+/// `<state>/<kind>`, else `None` (the kind is absent). A link counts as existing, a dangling
+/// one too, so the reader never silently skips to the other place past a broken link.
+pub fn read_path(root: &Path, kind: &str) -> Option<std::path::PathBuf> {
+    [local_path(root, kind), earlier_path(root, kind)]
+        .into_iter()
+        .find(|p| fs::symlink_metadata(p).is_ok())
 }
 
 #[cfg(test)]
@@ -1605,5 +1765,113 @@ mod tests {
         assert!(c.legacy_root);
         assert_eq!(c.to_json()["legacy_root"], json!(crate::PROJECT_STATE_DIR));
         assert_eq!(verdict(|_| {}).to_json()["legacy_root"], Value::Null);
+    }
+
+    /// The layout rule: eleven kinds the team keeps in git, everything else under `local/`.
+    #[test]
+    fn the_layout_names_kept_kinds_and_local_paths() {
+        let kept: Vec<&str> = KEPT.iter().map(|k| k.trim_end_matches('/')).collect();
+        assert_eq!(
+            kept,
+            [
+                "project.yaml",
+                "moai-cli.json",
+                "moai.json",
+                "manifests",
+                "workflows",
+                "config",
+                "decisions",
+                "docs",
+                "specs",
+                "tools",
+                "evals"
+            ]
+        );
+        assert!(is_kept("tools") && is_kept("evals") && is_kept("specs"));
+        assert!(!is_kept("receipts") && !is_kept("local"));
+        for kind in LOCAL_KINDS {
+            assert!(!is_kept(kind), "{kind} is both kept and local");
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        assert_eq!(
+            local_path(root, "receipts"),
+            root.join(dir(root)).join("local/receipts")
+        );
+        assert_eq!(
+            earlier_path(root, "receipts"),
+            root.join(dir(root)).join("receipts")
+        );
+        assert_eq!(write_path(root, "receipts"), local_path(root, "receipts"));
+    }
+
+    /// A reader takes `local/<kind>` first and the earlier `<state>/<kind>` when the new one is
+    /// absent; a writer creates only the new one and leaves the earlier one as it was.
+    #[test]
+    fn a_reader_falls_back_to_the_earlier_path_and_a_writer_uses_the_new_one() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        assert_eq!(read_path(root, "receipts"), None, "neither path exists");
+
+        write(root, &format!("{}/receipts/old.json", dir(root)), "old");
+        assert_eq!(
+            read_path(root, "receipts"),
+            Some(earlier_path(root, "receipts"))
+        );
+
+        let new = write_path(root, "receipts");
+        fs::create_dir_all(&new).unwrap();
+        fs::write(new.join("new.json"), "new").unwrap();
+        assert_eq!(
+            read_path(root, "receipts"),
+            Some(local_path(root, "receipts"))
+        );
+        assert_eq!(
+            fs::read_to_string(earlier_path(root, "receipts").join("old.json")).unwrap(),
+            "old",
+            "the earlier folder is untouched"
+        );
+        assert!(!earlier_path(root, "receipts").join("new.json").exists());
+    }
+
+    /// A link counts as there, a broken one too: a reader never skips past a dangling
+    /// `local/<kind>` link to the earlier folder, and a dangling earlier link is still found
+    /// (`read_path` asks `symlink_metadata`, which does not follow the link).
+    #[cfg(unix)]
+    #[test]
+    fn a_broken_link_counts_as_the_path_being_there() {
+        use std::os::unix::fs::symlink;
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        write(root, &format!("{}/receipts/old.json", dir(root)), "old");
+        fs::create_dir_all(path(root, LOCAL_DIR)).unwrap();
+        symlink(root.join("nowhere"), local_path(root, "receipts")).unwrap();
+        assert!(!local_path(root, "receipts").exists(), "the link dangles");
+        assert_eq!(
+            read_path(root, "receipts"),
+            Some(local_path(root, "receipts")),
+            "the broken new link is not skipped for the earlier folder"
+        );
+
+        symlink(root.join("nowhere"), earlier_path(root, "state")).unwrap();
+        assert!(!earlier_path(root, "state").exists(), "the link dangles");
+        assert_eq!(
+            read_path(root, "state"),
+            Some(earlier_path(root, "state")),
+            "a broken earlier link is found, not reported as absent"
+        );
+    }
+
+    /// The files a host reads in a fixed place are not part of the layout.
+    #[test]
+    fn host_owned_files_are_not_in_the_layout() {
+        for name in HOST_OWNED {
+            assert!(!is_kept(name), "{name} is listed as kept");
+            assert!(!LOCAL_KINDS.contains(&name), "{name} is listed as local");
+        }
+        assert_eq!(
+            HOST_OWNED,
+            ["AGENTS.md", ".claude", ".codex", ".github/ISSUE_TEMPLATE"]
+        );
     }
 }

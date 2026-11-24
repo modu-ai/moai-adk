@@ -334,20 +334,26 @@ fn forge_read_cli_writes_only_its_poll_state_and_never_the_token() {
         "comment bodies and logins are not kept"
     );
 
-    let state = project.join(".moai-cli/forge/poll-state.json");
+    let state = moai_cli::state_root::path(&project, "forge/poll-state.json");
     let state_text = fs::read_to_string(&state).unwrap();
+    // A new project's state folder is `.moai` now (SPEC-20261121-path-root-moai-default), so
+    // "nothing Go-generation" is checked by the Go markers; the exact entry list below shows
+    // nothing else is written.
     assert!(
-        !project.join(".moai").exists(),
+        moai_cli::state_root::classify(&project)
+            .go_markers
+            .is_empty(),
         "nothing under the Go .moai/"
     );
+    let dir = moai_cli::state_root::dir(&project);
     let mut entries: Vec<String> = walk(&project);
     entries.sort();
     assert_eq!(
         entries,
         [
-            ".moai-cli",
-            ".moai-cli/forge",
-            ".moai-cli/forge/poll-state.json"
+            dir.to_string(),
+            format!("{dir}/forge"),
+            format!("{dir}/forge/poll-state.json")
         ]
     );
     for text in [&*stdout, &*stderr, &state_text] {
@@ -433,7 +439,7 @@ fn forge_read_rejects_bad_input_without_requests() {
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(v["error"]["kind"], json!("input_too_large"));
     assert!(
-        !tmp.path().join(".moai-cli").exists(),
+        !moai_cli::state_root::path(tmp.path(), "").exists(),
         "no state for rejected input"
     );
 }

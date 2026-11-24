@@ -14,8 +14,10 @@ use std::path::{Path, PathBuf};
 /// `clear_redispatch` at a card boundary that `lane-safe-to-reset` finds safe, `answer` for a
 /// `LANE-BLOCKED` line, `restart` with the loop line, or `leave` with the reason — and, from
 /// GitHub, the open Issues with a close table, the claims whose lease ended, the merge-gate
-/// command and the end condition. Reads only: git with `--no-optional-locks`, the session
-/// registry without writing, GitHub with GraphQL queries (at most 30 requests).
+/// command and the end condition, and the `registration` part: every leader entry of the
+/// session registry with its lease, ended ones included. Reads only: git with
+/// `--no-optional-locks`, the session registry without writing, GitHub with GraphQL queries
+/// (at most 30 requests) — except that `--renew-instance` renews the leader registration.
 #[derive(clap::Args)]
 pub struct Args {
     /// Any checkout of the repository (the primary one or a worktree).
@@ -36,6 +38,12 @@ pub struct Args {
     /// when absent.
     #[arg(long)]
     now: Option<String>,
+    /// The `instance` of the leader registration (`session-register --mode leader` returned
+    /// it): the round renews that entry for the default lease from this session before it
+    /// lists the registration, so a round never lets the lease lapse. Without it the round
+    /// writes nothing.
+    #[arg(long)]
+    renew_instance: Option<String>,
 }
 
 pub const OPERATION: &str = "leader.round";
@@ -115,7 +123,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         }
         (None, None) => None,
     };
-    let round = leader_round::round(snap.as_ref(), args.repo.as_deref(), &args.project, now);
+    // SPEC-20261123-leader-registration-lease REQ-10, REQ-14: the one write of this command,
+    // only when `--renew-instance` is given; a refusal is reported and the round goes on.
+    let renewal = args
+        .renew_instance
+        .as_deref()
+        .map(|instance| leader_round::registration::renew(&args.project, instance, now));
+    let mut round = leader_round::round(snap.as_ref(), args.repo.as_deref(), &args.project, now);
+    let renewed = matches!(renewal, Some(Ok(_)));
+    match renewal {
+        Some(Ok(done)) => round["registration"]["renewal"] = done,
+        Some(Err(message)) => {
+            round["registration"]["renewal"] = json!({"status": "refused", "message": message})
+        }
+        None => {}
+    }
     let end_met = round["end_condition"]["met"].as_bool();
     let mut lanes = Vec::new();
     for lane in &file.lanes {
@@ -154,7 +176,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         "round": round,
         "partial": snap.as_ref().map(|s| s.partial.clone()).unwrap_or_default(),
         "api_calls": snap.as_ref().map_or(0, |s| s.api_calls),
-        "writes": false,
+        "writes": renewed,
     });
     // Issue #3052: say which comments the fleet read left out because no member wrote them.
     if let Some(s) = snap.as_ref().filter(|s| !s.ignored.is_empty()) {

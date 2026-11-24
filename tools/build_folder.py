@@ -4,7 +4,7 @@
 User decision 2026-11-17 ("빌드 폴더를 한 곳으로 모으기"): agent and audit builds put
 CARGO_TARGET_DIR in `<HOME>/.moai/build/<project>-<worktree name>/` (one folder per worktree,
 never shared between worktrees), always with CARGO_INCREMENTAL=0, and delete the folder's
-cargo output when the task ends; skills/moai/references/internal/build-folder.md is the rule.
+cargo output when the task ends; skills/moai/workflows/run.md ("Check-run rules") is the rule.
 
   python3 -I tools/build_folder.py env     print two `export` lines for this worktree and write
                                            the folder's owner record (.moai-build.json)

@@ -4,8 +4,8 @@
 //! Every rule below is a deny with no override, so each one is limited to damage that cannot be
 //! undone and is pinned by allowed look-alikes in its tests. Stage 6 adds a separate
 //! confirmation class ([`bash_confirm`], decision B2 = A): `git reset --hard`, a forced
-//! `git clean` and a force push to another branch are asked about on Claude Code and refused
-//! on Codex (which cannot ask); a deny anywhere on the line always wins over a confirmation. The reasons are fixed strings; the command
+//! `git clean` and a force push to another branch are asked about on Claude Code; a deny
+//! anywhere on the line always wins over a confirmation. The reasons are fixed strings; the command
 //! text, paths and file contents are never echoed.
 //!
 //! - A1 `rm` aimed at `/`, the home directory, a top-level directory, a bare `*`/`.`/`..`, or a
@@ -51,11 +51,8 @@
 //! Known gaps (allowed, not refused): shell redirections (`>`, `tee`) into protected paths; a
 //! force push with no refspec while `main` is checked out (the branch is not read here); a
 //! `--mirror` or `--all` push; deleting `main`/`master` on a remote (`--delete`, `:main`);
-//! `core.hooksPath` set through `GIT_CONFIG_*` environment variables or a config file; Codex
-//! `apply_patch` paths are read from `*** Add/Update/Delete File:` and `*** Move to:` lines, a
-//! format the official pages do not define — a patch without such lines is allowed without a
-//! path check (its added lines are still checked for secrets); input past the 4 MiB stdin
-//! bound is an engine error and not checked at all (decision D1).
+//! `core.hooksPath` set through `GIT_CONFIG_*` environment variables or a config file; input
+//! past the 4 MiB stdin bound is an engine error and not checked at all (decision D1).
 
 use crate::spec_take::spec_branch::{self, Resolved};
 use serde_json::Value;
@@ -726,27 +723,6 @@ fn write_targets(tool: &str, tool_input: &Value) -> Option<(Vec<String>, Vec<Str
                 }
             }
         }
-        "apply_patch" => {
-            let patch = tool_input["command"].as_str().unwrap_or("");
-            for line in patch.lines() {
-                for head in [
-                    "*** Add File: ",
-                    "*** Update File: ",
-                    "*** Delete File: ",
-                    "*** Move to: ",
-                ] {
-                    if let Some(p) = line.strip_prefix(head) {
-                        paths.push(p.trim().to_string());
-                    }
-                }
-                if let Some(added) = line.strip_prefix('+') {
-                    contents.push(added.to_string());
-                }
-            }
-            if !contents.is_empty() {
-                contents = vec![contents.join("\n")];
-            }
-        }
         _ => return None,
     }
     Some((paths, contents))
@@ -1109,7 +1085,7 @@ pub fn bash_lock_guard(command: &str, cwd: &Path) -> Option<&'static str> {
     crate::tdd::lock_refusal(&paths, cwd)
 }
 
-const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<slug>-<yyyymmdd>; the older spec/<yyyymmdd>-<slug> is still read), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`).";
+const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<slug>-<yyyymmdd>; the older spec/<yyyymmdd>-<slug> is still read), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`); a SPEC whose id differs from the branch name is linked by a `branch:` line in its frontmatter that names this branch (status draft or approved).";
 
 /// Refusal for a branch name that reads as two SPEC ids with no SPEC folder of exactly one of
 /// them (SPEC-20261119-spec-branch-name-first REQ-5). A fixed string: the branch name is input
@@ -1194,7 +1170,7 @@ const GIT_SMALL_FILE_LIMIT: u64 = 4096;
 const PACKED_REFS_LIMIT: u64 = 8 * 1024 * 1024;
 
 /// Opens `path` for reading without waiting: on unix a FIFO opens at once (`O_NONBLOCK`).
-fn open_for_reading(path: &Path) -> std::io::Result<std::fs::File> {
+pub(crate) fn open_for_reading(path: &Path) -> std::io::Result<std::fs::File> {
     let mut options = std::fs::OpenOptions::new();
     options.read(true);
     #[cfg(unix)]
@@ -2591,7 +2567,7 @@ mod tests {
                 "{path}"
             );
         }
-        // Every file-writing tool, the patch format included; other tools are not judged.
+        // Every file-writing tool; other tools (a patch tool included) are not judged.
         let edit = json!({"file_path": out, "new_string": "x"});
         assert_eq!(
             outside_project_guard("Edit", &edit, &repo, &rule),
@@ -2601,7 +2577,7 @@ mod tests {
             json!({"command": format!("*** Begin Patch\n*** Add File: {out}\n+x\n*** End Patch")});
         assert_eq!(
             outside_project_guard("apply_patch", &patch, &repo, &rule),
-            Some(OUTSIDE_PROJECT)
+            None
         );
         assert_eq!(
             outside_project_guard("Read", &write(&out), &repo, &rule),
@@ -3075,49 +3051,26 @@ mod tests {
     }
 
     #[test]
-    fn codex_patches_are_read_from_their_file_lines() {
+    fn a_patch_tool_call_is_not_judged_as_a_file_write() {
         let dir = tempfile::TempDir::new().unwrap();
         let cwd = dir.path();
-        let patch =
-            |body: &str| json!({"command": format!("*** Begin Patch\n{body}\n*** End Patch")});
+        // The patch format belonged to the retired Codex adapter: no path of it is read.
         for body in [
             "*** Update File: .git/config\n@@\n-a\n+b",
             "*** Add File: /home/u/.ssh/config\n+Host x",
-            "*** Delete File: .git/HEAD",
-            "*** Update File: a.txt\n*** Move to: .git/x",
+            "garbage",
         ] {
-            assert_eq!(
-                write_guard("apply_patch", &patch(body), cwd),
-                Some(PROTECTED_PATH),
-                "{body}"
-            );
+            let patch = json!({"command": format!("*** Begin Patch\n{body}\n*** End Patch")});
+            assert_eq!(write_guard("apply_patch", &patch, cwd), None, "{body}");
         }
-        let key = format!(
-            "+{}{} EC {}",
-            "-----",
-            "BEGIN",
-            concat!("PRIVATE", " KEY-----")
-        );
+        // The Claude file-writing tools are judged as before.
         assert_eq!(
             write_guard(
-                "apply_patch",
-                &patch(&format!("*** Add File: k.txt\n{key}")),
+                "Write",
+                &json!({"file_path": ".git/config", "content": "x"}),
                 cwd
             ),
-            Some(SECRET_CONTENT)
-        );
-        assert_eq!(
-            write_guard(
-                "apply_patch",
-                &patch("*** Update File: src/a.rs\n@@\n-a\n+b"),
-                cwd
-            ),
-            None
-        );
-        // An unreadable patch is not path-checked (documented gap), but never an error.
-        assert_eq!(
-            write_guard("apply_patch", &json!({"command": "garbage"}), cwd),
-            None
+            Some(PROTECTED_PATH)
         );
     }
 

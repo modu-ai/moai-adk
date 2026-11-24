@@ -15,7 +15,7 @@
     "host_notes": {"type": "array", "items": {"type": "string"}},
     "warnings": {"type": "array", "items": {"type": "string"}},
     "claude_shadow": {
-      "description": "A CLAUDE.md that shadows AGENTS.md and does not import it. Absent when there is none; not part of plan_digest.",
+      "description": "Kept for older readers: the writer no longer reports a shadow, so it is absent. Not part of plan_digest.",
       "type": "object",
       "additionalProperties": false,
       "required": ["path", "import_line"],
