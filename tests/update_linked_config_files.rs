@@ -214,7 +214,10 @@ fn a_config_file_linked_into_the_default_folder_is_planned_and_written_there() {
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
         .filter(|n| n.starts_with("claude-"))
         .collect();
-    assert!(names.is_empty(), "no record of the config folder: {names:?}");
+    assert!(
+        names.is_empty(),
+        "no record of the config folder: {names:?}"
+    );
     // The same preview again has nothing to write.
     let again = plan(&f, Some(&profile));
     assert_eq!(action(&again, "style_file"), "unchanged", "{again}");
@@ -270,11 +273,14 @@ fn only_a_link_straight_to_a_regular_file_inside_the_default_folder_is_followed(
             fs::create_dir_all(f.default_dir().join("sub")).unwrap();
             f.default_dir().join("sub")
         }),
-        ("an absolute link that leaves the default folder by ..", |f| {
-            write(&f.outside().join("settings.json"), "{\"keep\": 1}\n");
-            fs::create_dir_all(f.default_dir()).unwrap();
-            f.default_dir().join("../outside/settings.json")
-        }),
+        (
+            "an absolute link that leaves the default folder by ..",
+            |f| {
+                write(&f.outside().join("settings.json"), "{\"keep\": 1}\n");
+                fs::create_dir_all(f.default_dir()).unwrap();
+                f.default_dir().join("../outside/settings.json")
+            },
+        ),
     ];
     for (name, make) in cases {
         let f = current_home();
@@ -285,7 +291,7 @@ fn only_a_link_straight_to_a_regular_file_inside_the_default_folder_is_followed(
         let p = plan(&f, Some(&f.profile()));
         assert_eq!(action(&p, "setting"), "blocked", "{name}: {p}");
         let d = detail(&p, "setting");
-        assert!(d.contains("symlink"), "{name}: {d}");
+        assert!(d.contains("settings.json"), "{name}: names the link: {d}");
         assert!(d.contains("next:"), "{name}: names a next step: {d}");
         let (ok, a) = apply(&f, Some(&f.profile()), &p);
         assert!(ok, "{name}: {a}");
@@ -352,10 +358,7 @@ fn a_link_changed_after_the_plan_is_refused_at_write_time() {
         fs::read_to_string(f.outside().join("settings.json")).unwrap(),
         "{\"keep\": 1}\n"
     );
-    assert!(!f
-        .default_dir()
-        .join("output-styles/MoAI-Easy.md")
-        .exists());
+    assert!(!f.default_dir().join("output-styles/MoAI-Easy.md").exists());
 }
 
 /// The default folder's `settings.json` is read by the default folder's Claude Code too: it is
@@ -376,10 +379,7 @@ fn a_linked_setting_waits_for_a_style_file_in_the_default_folder() {
     assert!(ok, "{a}");
     assert_eq!(fs::read_to_string(&settings).unwrap(), "{\"a\": 1}\n");
     assert!(f.profile().join("output-styles/MoAI-Easy.md").is_file());
-    assert!(!f
-        .default_dir()
-        .join("output-styles/MoAI-Easy.md")
-        .exists());
+    assert!(!f.default_dir().join("output-styles/MoAI-Easy.md").exists());
 }
 
 /// A version folder with this build, the package and the agent sources; `state` is the HOME
@@ -441,7 +441,10 @@ fn a_blocked_style_target_gives_a_reason_and_a_next_step_in_detail_and_notices()
     .unwrap();
     let p = update_preview(&f, &exe, Some(&f.profile()));
     let targets = p["style"]["targets"].as_array().unwrap();
-    let blocked: Vec<&Value> = targets.iter().filter(|t| t["action"] == "blocked").collect();
+    let blocked: Vec<&Value> = targets
+        .iter()
+        .filter(|t| t["action"] == "blocked")
+        .collect();
     assert_eq!(blocked.len(), 2, "both targets are blocked: {p}");
     let notices = p["notices"].as_array().unwrap();
     for t in blocked {

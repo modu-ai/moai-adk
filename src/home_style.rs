@@ -210,10 +210,6 @@ fn place(home: &Path, host: &str, kind: &str) -> Result<(PathBuf, &'static str)>
 
 /// Where one target really is.
 struct Spot {
-    /// The folder the link checks start at: the config folder, or the default folder when a
-    /// link of the config folder to the default folder's own folder was followed.
-    root: PathBuf,
-    rel: &'static str,
     /// The file that is read and written.
     path: PathBuf,
     /// The link in the config folder the file is reached through, when it is behind one.
@@ -242,15 +238,11 @@ fn locate(home: &Path, host: &str, kind: &str) -> Result<Spot> {
     let shared = link.is_some() || same_folder(&root, &default);
     Ok(match link {
         Some(real) => Spot {
-            root,
-            rel,
             path: real,
             link: Some(own),
             shared,
         },
         None => Spot {
-            root,
-            rel,
             path: own,
             link: None,
             shared,
@@ -282,7 +274,9 @@ fn linked_file(root: &Path, own: &Path, default: &Path) -> Result<Option<PathBuf
         )
     };
     if same_folder(root, default) {
-        return Err(refuse("a link inside the default folder itself is not followed"));
+        return Err(refuse(
+            "a link inside the default folder itself is not followed",
+        ));
     }
     plain_dir_or_absent(default).map_err(|e| refuse(&e))?;
     let target = fs::read_link(own).map_err(|_| refuse("the link cannot be read"))?;
@@ -294,23 +288,20 @@ fn linked_file(root: &Path, own: &Path, default: &Path) -> Result<Option<PathBuf
     };
     match fs::symlink_metadata(&at) {
         Err(_) => return Err(refuse("it points at nothing")),
-        Ok(m) if m.file_type().is_symlink() => {
-            return Err(refuse("it points at another link"))
-        }
+        Ok(m) if m.file_type().is_symlink() => return Err(refuse("it points at another link")),
         Ok(m) if !m.is_file() => return Err(refuse("it does not point at a regular file")),
         Ok(_) => {}
     }
-    let name = at.file_name().ok_or_else(|| refuse("it has no file name"))?;
+    let name = at
+        .file_name()
+        .ok_or_else(|| refuse("it has no file name"))?;
     let parent = at.parent().ok_or_else(|| refuse("it has no folder"))?;
     let (parent, default) = match (fs::canonicalize(parent), fs::canonicalize(default)) {
         (Ok(p), Ok(d)) => (p, d),
         _ => return Err(refuse("the default folder is not there")),
     };
     if !parent.starts_with(&default) {
-        return Err(refuse(&format!(
-            "it points outside {}",
-            default.display()
-        )));
+        return Err(refuse(&format!("it points outside {}", default.display())));
     }
     Ok(Some(parent.join(name)))
 }
@@ -488,13 +479,19 @@ pub fn render_style_file(source: &str) -> String {
 }
 
 fn target(home: &Path, host: &str, kind: &str) -> TargetPlan {
-    // An unnamed host folder shows the path under HOME; reading it blocks the target.
-    let path = match place(home, host, kind) {
-        Ok((root, rel)) => root.join(rel),
-        Err(_) => {
-            let default = crate::host_home::Host::from_name(host).map_or(".", |h| h.default_dir());
-            home.join(default).join(rel_path(host, kind))
-        }
+    // The file that is written, and the link it is reached through. A target whose place cannot
+    // be found shows the file in the config folder (the link itself for a refused link); an
+    // unnamed host folder shows the path under HOME. Reading it blocks the target.
+    let (path, link) = match locate(home, host, kind) {
+        Ok(spot) => (spot.path, spot.link),
+        Err(_) => match place(home, host, kind) {
+            Ok((root, rel)) => (root.join(rel), None),
+            Err(_) => {
+                let default =
+                    crate::host_home::Host::from_name(host).map_or(".", |h| h.default_dir());
+                (home.join(default).join(rel_path(host, kind)), None)
+            }
+        },
     };
     TargetPlan {
         host: host.into(),
@@ -504,12 +501,17 @@ fn target(home: &Path, host: &str, kind: &str) -> TargetPlan {
         expected_sha256: None,
         baseline_sha256: None,
         detail: None,
+        link: link.map(|l| l.to_string_lossy().into_owned()),
     }
 }
 
 fn blocked(mut t: TargetPlan, reason: String) -> TargetPlan {
     t.action = "blocked".into();
-    t.detail = Some(reason);
+    t.detail = Some(if reason.contains("next:") {
+        reason
+    } else {
+        format!("{reason}; next: fix what this names, then run moai update again")
+    });
     t
 }
 
@@ -575,8 +577,8 @@ fn settings_object(bytes: &[u8]) -> std::result::Result<Map<String, Value>, Stri
 
 fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
     let mut t = target(home, "claude", "setting");
-    let cur = match read_target(home, "claude", "setting") {
-        Ok((_, c)) => c,
+    let (spot, cur) = match read_target(home, "claude", "setting") {
+        Ok(v) => v,
         Err(e) => return blocked(t, e),
     };
     // A folder whose record cannot be made blocks both of its targets (REQ-7); a folder that is
@@ -591,6 +593,16 @@ fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
             "the style file is {}; the default is not set to a file MoAI does not own",
             style.action
         ));
+        return t;
+    }
+    // The default folder's `settings.json` is read by the default folder's Claude Code too: it is
+    // pointed at the style only when the style file is written in the default folder as well.
+    if spot.shared && !locate(home, "claude", "style_file").is_ok_and(|s| s.shared) {
+        t.action = "skipped".into();
+        t.detail = Some(
+            "this settings file is the default folder's own; the style file is written in another folder, so the default folder would name a style it does not have; link output-styles to the default folder first"
+                .into(),
+        );
         return t;
     }
     let Some(bytes) = cur else {
@@ -655,6 +667,13 @@ pub fn notices(plan: &Plan, project: &Path) -> Vec<Value> {
                 "reason": format!("{rel} sets outputStyle \"{value}\": this project uses it, not {STYLE_NAME}; moai does not change project settings"),
             }));
         }
+    }
+    for t in plan.targets.iter().filter(|t| t.action == "blocked") {
+        out.push(json!({
+            "part": "style",
+            "host": "claude",
+            "reason": format!("{} was not written: {}", t.path, t.detail.as_deref().unwrap_or("blocked")),
+        }));
     }
     let writes_style = plan
         .targets
@@ -859,13 +878,18 @@ pub fn apply_for(
     write_json(&receipt_path, &receipt)?;
     let mut written = Vec::new();
     for t in writes {
-        let (root, rel) = place(&home, &t.host, &t.kind)?;
-        let path = root.join(rel);
+        // The real file, found again now (a link may have changed since the plan): checked before
+        // creating (create_dir_all would follow a linked parent) and after.
+        let spot = locate(&home, &t.host, &t.kind)?;
+        let path = spot.path.clone();
         let folder = path.parent().expect("target folder");
-        // Checked before creating (create_dir_all would follow a linked parent) and after.
-        folders_plain(&root, rel)?;
         fs::create_dir_all(folder).map_err(|_| format!("{} unavailable", folder.display()))?;
-        folders_plain(&root, rel)?;
+        if locate(&home, &t.host, &t.kind)?.path != path {
+            return Err(format!(
+                "{} changed while it was written; re-preview required",
+                spot.link.as_deref().unwrap_or(&path).display()
+            ));
+        }
         let before = current_file(&path)?;
         if before.as_deref().map(sha) != t.expected_sha256 {
             return Err(format!(
@@ -1009,12 +1033,15 @@ pub fn revert_in(
             return Err("style receipt names an unknown target".into());
         }
         let name = format!("{}:{}", e.host, e.kind);
-        let (root, rel) = place(&home, &e.host, &e.kind)?;
-        if let Err(reason) = folders_plain(&root, rel) {
-            skipped.push(json!({"target": name, "reason": format!("folder_not_plain: {reason}")}));
-            continue;
-        }
-        let target = root.join(rel);
+        let spot = match locate(&home, &e.host, &e.kind) {
+            Ok(spot) => spot,
+            Err(reason) => {
+                skipped
+                    .push(json!({"target": name, "reason": format!("folder_not_plain: {reason}")}));
+                continue;
+            }
+        };
+        let target = spot.path;
         if e.kind == "setting" {
             match revert_setting(&target, &dir, e) {
                 Ok(()) => reverted.push(name),
@@ -1094,6 +1121,7 @@ mod tests {
                     expected_sha256: None,
                     baseline_sha256: None,
                     detail: None,
+                    link: None,
                 })
                 .collect(),
             not_supported: Vec::new(),
