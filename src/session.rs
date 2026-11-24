@@ -633,8 +633,9 @@ pub fn take_agent_number(project: &Path) -> Result<TakenNumber, String> {
     let live_max = highest_live(&dir, clock())?;
     let number = number_after(live_max);
     // Test seam: widens the window between choosing and locking (at most 2 s) so the
-    // concurrency test can show the counter lock is what keeps numbers apart. Unset in
-    // normal use.
+    // concurrency test can show the counter lock is what keeps numbers apart. Debug builds
+    // only: a release build never reads the variable (SPEC-20261124-test-seams-release).
+    #[cfg(debug_assertions)]
     if let Some(ms) = std::env::var(AGENT_SEQ_TEST_HOLD_VAR)
         .ok()
         .and_then(|v| v.parse::<u64>().ok())

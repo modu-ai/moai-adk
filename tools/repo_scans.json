@@ -1147,9 +1147,40 @@
             ".rs",
             ".py"
           ]
+        },
+        {
+          "prefix": "tools/",
+          "suffixes": [
+            ".py"
+          ]
         }
       ],
-      "rejects": "a line in src/ or in a test file outside tests/fixtures that spells the earlier test seam prefix instead of MOAI_TEST_<NAME> (SPEC-20261121-moai-name slice 3)"
+      "rejects": "a line in src/, in a test file outside tests/fixtures or in a tools/*.py file that spells the earlier test seam prefix instead of MOAI_TEST_<NAME> (SPEC-20261121-moai-name slice 3, SPEC-20261124-test-seams-release)"
+    },
+    {
+      "id": "test-seams-read-only-in-debug-builds",
+      "always": true,
+      "tests": [
+        "tests/state_folder_literal_scan.rs::the_four_test_seams_are_read_only_in_debug_builds"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test state_folder_literal_scan the_four_test_seams_are_read_only_in_debug_builds"
+      ],
+      "rules": [
+        "tests/state_folder_literal_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/lane_registry.rs"
+        },
+        {
+          "prefix": "src/session.rs"
+        },
+        {
+          "prefix": "src/launcher_init.rs"
+        }
+      ],
+      "rejects": "a read of MOAI_TEST_SESSION_REGISTRY_HOLD_MS, MOAI_TEST_AGENT_SEQ_HOLD_MS, MOAI_TEST_INIT_HOLD_MS or MOAI_TEST_INIT_FAIL_AFTER_PROFILE that is not directly under #[cfg(debug_assertions)], so a release build would read a test-only seam (SPEC-20261124-test-seams-release)"
     },
     {
       "id": "include-str-card-generated-scope",
