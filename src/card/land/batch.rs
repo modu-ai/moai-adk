@@ -595,6 +595,30 @@ mod tests {
 
     const LAST: &str = "da585ae4d507bec047ab5a6446bda6e367649282";
 
+    /// SPEC-20261124-card-select-batch-land REQ-24: the `Verify` section of `CLAUDE.md` and the
+    /// flow reference say that the READY receipt is the card set, that the wide set runs once per
+    /// batch in `card land-batch`, and that the full run every five landings stays. The texts are
+    /// compiled in, so the check reads no file at run time.
+    #[test]
+    fn the_verify_section_and_the_flow_reference_name_the_new_order() {
+        let docs = [
+            ("CLAUDE.md", include_str!("../../../CLAUDE.md")),
+            (
+                "next-flow.md",
+                include_str!("../../../skills/moai/references/flows/next-flow.md"),
+            ),
+        ];
+        for (file, text) in docs {
+            for needle in [
+                "check affected --card",
+                "card land-batch",
+                "every five landings",
+            ] {
+                assert!(text.contains(needle), "{file} does not say `{needle}`");
+            }
+        }
+    }
+
     fn line(extra: &str, head: &str, result: &str) -> String {
         format!("check-affected base=b0bffbbd48cc head={head} targets=150{extra} result={result}")
     }

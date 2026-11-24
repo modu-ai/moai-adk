@@ -952,19 +952,3 @@ fn tip_a_branch_that_keeps_moving_ends_the_batch_at_the_cap() {
     }
     assert_ne!(w.integ(), before);
 }
-
-/// REQ-24: the `Verify` section of `CLAUDE.md` and `next-flow.md` say the new order.
-#[test]
-fn docs_the_verify_section_and_next_flow_name_the_new_order() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    for file in ["CLAUDE.md", "skills/moai/references/flows/next-flow.md"] {
-        let text = fs::read_to_string(root.join(file)).unwrap();
-        for needle in [
-            "check affected --card",
-            "card land-batch",
-            "every five landings",
-        ] {
-            assert!(text.contains(needle), "{file} does not say `{needle}`");
-        }
-    }
-}
