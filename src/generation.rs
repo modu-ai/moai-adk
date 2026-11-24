@@ -1317,6 +1317,67 @@ fn record_generation(
         json!(profile.interview_revision),
     );
     map.insert("profile_sha256".into(), json!(digest(profile_bytes)));
+    // SPEC-20261125-generation-request-record: the project agents and skills this apply built
+    // are recorded as the request's own lists, so a later plan from the stored state can rebuild
+    // them. A request with none leaves no key, so such a manifest reads as it did before.
+    let r = &p.request;
+    if r.native_roles.is_empty() && r.skill_projections.is_empty() && r.project_skills.is_empty() {
+        map.remove(RECORD_KEY);
+    } else {
+        map.insert(
+            RECORD_KEY.into(),
+            json!({
+                "native_roles": r.native_roles,
+                "skill_projections": r.skill_projections,
+                "project_skills": r.project_skills,
+            }),
+        );
+    }
+}
+
+/// The manifest key that holds the recorded project agent and skill request.
+pub const RECORD_KEY: &str = "generation_request";
+
+/// The native roles, skill projections and project skills of a recorded request.
+pub type RecordedLists = (Vec<NativeRole>, Vec<SkillProjection>, Vec<ProjectSkill>);
+
+/// The three lists a record holds, always all three, in the order `record_generation` writes them.
+const RECORD_LISTS: [&str; 3] = ["native_roles", "skill_projections", "project_skills"];
+
+/// The project agents and skills a generation apply recorded: `Ok(None)` when the manifest has
+/// no record, and an `Err` that is a question for the user when the record cannot be read, so a
+/// plan never rebuilds from a guess. A record is read only when it is exactly what
+/// `record_generation` writes: an object of the three lists, each an array, with no other key and
+/// at least one entry. A smaller shape (an empty object, a list missing, a key nothing writes, or
+/// three empty lists) would read as a smaller request, and the plan would remove the files the
+/// missing part made; an empty request is written as no key at all.
+pub fn recorded_request_lists(manifest: &Value) -> Result<Option<RecordedLists>> {
+    let Some(record) = manifest.get(RECORD_KEY) else {
+        return Ok(None);
+    };
+    let unreadable = || {
+        "the recorded project agent and skill request is unreadable; regenerate them through /moai project".to_string()
+    };
+    let whole = record.as_object().is_some_and(|map| {
+        map.len() == RECORD_LISTS.len()
+            && RECORD_LISTS
+                .iter()
+                .all(|key| map.get(*key).is_some_and(Value::is_array))
+    });
+    if !whole {
+        return Err(unreadable());
+    }
+    let list = |key: &str| record[key].clone();
+    let roles: Vec<NativeRole> =
+        serde_json::from_value(list(RECORD_LISTS[0])).map_err(|_| unreadable())?;
+    let projections: Vec<SkillProjection> =
+        serde_json::from_value(list(RECORD_LISTS[1])).map_err(|_| unreadable())?;
+    let skills: Vec<ProjectSkill> =
+        serde_json::from_value(list(RECORD_LISTS[2])).map_err(|_| unreadable())?;
+    if roles.is_empty() && projections.is_empty() && skills.is_empty() {
+        return Err(unreadable());
+    }
+    Ok(Some((roles, projections, skills)))
 }
 
 /// `generation-apply` (REQ-03C-03/04/11): re-plans the whole request and refuses any
@@ -1632,6 +1693,76 @@ mod tests {
                 err.contains(path) && err.contains("symbolic link"),
                 "{kind}: {err}"
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod record_tests {
+    use super::*;
+
+    fn record() -> Value {
+        json!({RECORD_KEY: {
+            "native_roles": [{"role_id": "prj-test-runner", "host": "claude", "purpose": "Runs the tests"}],
+            "skill_projections": [],
+            "project_skills": [{"id": "prj-checks", "purpose": "Checks before done"}],
+        }})
+    }
+
+    #[test]
+    fn a_manifest_without_the_key_has_no_record() {
+        assert!(matches!(recorded_request_lists(&json!({})), Ok(None)));
+    }
+
+    #[test]
+    fn the_recorded_lists_read_back_as_the_request_types() {
+        let (roles, projections, skills) = recorded_request_lists(&record()).unwrap().unwrap();
+        assert_eq!(roles.len(), 1);
+        assert_eq!(roles[0].role_id, "prj-test-runner");
+        assert!(projections.is_empty());
+        assert_eq!(skills[0].id, "prj-checks");
+    }
+
+    #[test]
+    fn a_record_that_is_smaller_than_what_the_apply_writes_is_a_question() {
+        let whole = record();
+        let skills = whole[RECORD_KEY]["project_skills"].clone();
+        let roles = whole[RECORD_KEY]["native_roles"].clone();
+        let mut extra = whole.clone();
+        extra[RECORD_KEY]["native_rolez"] = json!([]);
+        for (name, bad) in [
+            ("an empty object", json!({RECORD_KEY: {}})),
+            (
+                "a list missing",
+                json!({RECORD_KEY: {"native_roles": roles, "project_skills": skills}}),
+            ),
+            (
+                "only one list",
+                json!({RECORD_KEY: {"project_skills": skills}}),
+            ),
+            ("a key nothing writes", extra),
+            (
+                "three empty lists",
+                json!({RECORD_KEY: {
+                    "native_roles": [], "skill_projections": [], "project_skills": []
+                }}),
+            ),
+        ] {
+            let err = recorded_request_lists(&bad).unwrap_err();
+            assert!(err.contains("/moai project"), "{name}: {err}");
+        }
+    }
+
+    #[test]
+    fn a_record_that_cannot_be_read_is_a_question_not_a_guess() {
+        for bad in [
+            json!({RECORD_KEY: "x"}),
+            json!({RECORD_KEY: {"native_roles": "x"}}),
+            json!({RECORD_KEY: {"native_roles": [{"role_id": 1}]}}),
+            json!({RECORD_KEY: {"project_skills": [{"id": "prj-a", "purpose": "p", "extra": 1}]}}),
+        ] {
+            let err = recorded_request_lists(&bad).unwrap_err();
+            assert!(err.contains("/moai project"), "{bad}: {err}");
         }
     }
 }

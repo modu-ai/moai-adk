@@ -667,15 +667,19 @@ fn generation_request(
         .as_str()
         .map(String::from)
         .unwrap_or_else(|| "project".into());
+    // The project agents and skills the last generation apply recorded; a manifest without a
+    // record plans none (its owned files are caught before this by `generation_step`).
+    let (native_roles, skill_projections, project_skills) =
+        generation::recorded_request_lists(manifest)?.unwrap_or_default();
     Ok(GenerationRequest {
         protocol_version: 1,
         language,
         workflow_reference,
         local_file: local_file(root, manifest)?.into(),
         workflow_id,
-        native_roles: Vec::new(),
-        skill_projections: Vec::new(),
-        project_skills: Vec::new(),
+        native_roles,
+        skill_projections,
+        project_skills,
         picks: Vec::new(),
     })
 }
@@ -702,10 +706,14 @@ fn read_generation_manifest(root: &Path) -> Result<Value> {
     )
 }
 
-/// The manifest's owned files whose request the manifest does not record (Q1 A, #2936): until it
-/// records the request fields of project agents and skills, a plan from the stored state would
-/// drop them (a project skill plans `remove`).
+/// The manifest's owned files whose request the manifest does not record (Q1 A, #2936): a plan
+/// from the stored state would drop them (a project skill plans `remove`), so the user decides
+/// instead. A manifest that holds a `generation_request` (written by `generation-apply`) records
+/// the request, so nothing is unrebuildable and the request is rebuilt from the record.
 fn unrebuildable_paths(manifest: &Value) -> Vec<&str> {
+    if manifest.get(generation::RECORD_KEY).is_some() {
+        return Vec::new();
+    }
     owned_entries(manifest)
         .filter(|(section, _)| UNREBUILDABLE.iter().any(|k| section.starts_with(k)))
         .map(|(_, path)| path)
