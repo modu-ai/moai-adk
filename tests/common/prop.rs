@@ -113,7 +113,10 @@ pub fn replay_error(name: &str, cases: u64, seed: u64, only: Option<u64>) -> Opt
 
 /// Runs `property` for `cases` generated inputs and asserts the run stays within its budget
 /// (SPEC-20261119-property-tests AC-3: at least 1000 cases, 30 seconds per property, the seed
-/// printed on failure).
+/// printed on failure). The hard budget is the CPU time the test thread used (30 s): machine
+/// load stretches wall time but not CPU time (SPEC-20261124-time-budget-tests). Wall time only
+/// prints a warning past the load-scaled budget, and fails as a hang at 240 s. Where the thread
+/// CPU time cannot be read, the load-scaled wall budget is the hard budget again.
 /// A failing case's panic is retold with the property's name, the seed and the case index.
 /// `FnMut` so a property can hold one shared fixture (a ledger, a tree) across its cases.
 pub fn run_property(name: &str, cases: u64, property: impl FnMut(&mut Rng)) {
@@ -133,6 +136,7 @@ fn run_cases(
     if let Some(message) = replay_error(name, cases, seed, only) {
         panic!("{message}");
     }
+    let cpu_start = thread_cpu_time();
     let start = Instant::now();
     for i in 0..cases {
         if let Some(one) = only {
@@ -154,24 +158,36 @@ fn run_cases(
             );
         }
     }
-    let elapsed = start.elapsed();
-    // Read when the run ends, the moment the budget is checked.
+    let wall = start.elapsed();
+    let cpu = match (cpu_start, thread_cpu_time()) {
+        (Some(before), Some(after)) => after.checked_sub(before),
+        _ => None,
+    };
+    // Read when the run ends, the moment the budget is judged.
     let cpus = std::thread::available_parallelism().map_or(0, |n| n.get());
-    if let Some(message) = over_budget(name, cases, seed, elapsed, load_average(), cpus) {
-        panic!("{message}");
+    match judge(name, cases, seed, wall, cpu, load_average(), cpus) {
+        Verdict::Within => {}
+        Verdict::Warn(line) => eprintln!("warning: {line}"),
+        Verdict::Fail(message) => panic!("{message}"),
     }
 }
 
-/// The budget on an idle machine (SPEC-20261119-property-tests AC-3).
+/// The CPU budget on an idle machine (SPEC-20261119-property-tests AC-3): the hard budget of
+/// the CPU time a run used, and the base of the load-scaled wall budget that only warns.
 const IDLE_BUDGET_SECS: f64 = 30.0;
 
-/// The most the budget grows: eight times the idle budget.
+/// The most the load-scaled wall budget grows: eight times the idle budget.
 const MAX_BUDGET_FACTOR: f64 = 8.0;
 
-/// The time budget of one property run (SPEC-20261122-test-defects-session-reclaim REQ-7):
-/// 30 s while the one-minute load is at or below the number of logical CPUs, or when either
-/// cannot be read, and 30 s times load / CPUs above it, at most eight times. On a busy
-/// machine the same cases take longer without any invariant being at stake.
+/// The wall time at which a run fails as a hang whatever its CPU time (SPEC-20261124-time-budget-
+/// tests REQ-4): the load-scaled wall budget at its cap.
+const HANG_CEILING_SECS: f64 = IDLE_BUDGET_SECS * MAX_BUDGET_FACTOR;
+
+/// The load-scaled wall-time budget of one property run (SPEC-20261122-test-defects-session-
+/// reclaim REQ-7): 30 s while the one-minute load is at or below the number of logical CPUs, or
+/// when either cannot be read, and 30 s times load / CPUs above it, at most eight times. On a
+/// busy machine the same cases take longer without any invariant being at stake, so a run past
+/// it only warns while the CPU time is within 30 s; it fails when no CPU time was read.
 pub fn budget(load: Option<f64>, cpus: usize) -> Duration {
     let factor = match load {
         Some(l) if l.is_finite() && cpus > 0 => (l / cpus as f64).clamp(1.0, MAX_BUDGET_FACTOR),
@@ -180,27 +196,88 @@ pub fn budget(load: Option<f64>, cpus: usize) -> Duration {
     Duration::from_secs_f64(IDLE_BUDGET_SECS * factor)
 }
 
-/// The failure message of a run that took `elapsed`, or `None` while it is within the budget
-/// (REQ-8): the property, the cases, the seed, the elapsed time, the budget and the load the
-/// budget was scaled by.
-pub fn over_budget(
+/// What the time budget says about one finished run.
+#[derive(Debug, PartialEq)]
+pub enum Verdict {
+    /// Within every budget.
+    Within,
+    /// Past the load-scaled wall budget with the CPU time within 30 s: one line to print.
+    Warn(String),
+    /// A hang, the CPU budget, or (with no CPU reading) the wall budget: the failure message.
+    Fail(String),
+}
+
+/// Judges one finished run (SPEC-20261124-time-budget-tests REQ-1 to REQ-5). Every bound is
+/// inclusive on the failing side. In order:
+/// - wall time at the 240 s hang ceiling fails, whatever the CPU time;
+/// - with a CPU reading, 30 s of CPU time fails, and wall time at the load-scaled budget only
+///   warns;
+/// - with no CPU reading, wall time at the load-scaled budget fails.
+pub fn judge(
     name: &str,
     cases: u64,
     seed: u64,
-    elapsed: Duration,
+    wall: Duration,
+    cpu: Option<Duration>,
     load: Option<f64>,
     cpus: usize,
-) -> Option<String> {
+) -> Verdict {
+    let wall_secs = wall.as_secs_f64();
+    let cpu_text = cpu.map_or("unknown".to_string(), |c| {
+        format!("{:.1} s", c.as_secs_f64())
+    });
+    if wall >= Duration::from_secs_f64(HANG_CEILING_SECS) {
+        return Verdict::Fail(format!(
+            "property {name} looks like a hang: {cases} cases took {wall_secs:.1} s of wall time, \
+             at or over the ceiling of {HANG_CEILING_SECS:.0} s (seed {seed}, CPU time {cpu_text})"
+        ));
+    }
     let budget = budget(load, cpus);
-    (elapsed >= budget).then(|| {
-        let load = load.map_or("unknown".to_string(), |l| format!("{l:.1}"));
-        format!(
-            "property {name} ran {cases} cases in {:.1} s, over its budget of {:.0} s (seed \
-             {seed}, load {load} on {cpus} CPUs)",
-            elapsed.as_secs_f64(),
+    let load_text = load.map_or("unknown".to_string(), |l| format!("{l:.1}"));
+    match cpu {
+        Some(cpu) if cpu >= Duration::from_secs_f64(IDLE_BUDGET_SECS) => Verdict::Fail(format!(
+            "property {name} used {:.1} s of CPU time over {cases} cases, at or over its CPU \
+             budget of {IDLE_BUDGET_SECS:.0} s (seed {seed}, wall time {wall_secs:.1} s)",
+            cpu.as_secs_f64()
+        )),
+        Some(_) if wall >= budget => Verdict::Warn(format!(
+            "property {name} took {wall_secs:.1} s of wall time, over its load-scaled budget of \
+             {:.0} s, with {cpu_text} of CPU time within its budget (seed {seed}, load \
+             {load_text} on {cpus} CPUs)",
             budget.as_secs_f64()
-        )
-    })
+        )),
+        Some(_) => Verdict::Within,
+        None if wall >= budget => Verdict::Fail(format!(
+            "property {name} ran {cases} cases in {wall_secs:.1} s, over its budget of {:.0} s \
+             (seed {seed}, load {load_text} on {cpus} CPUs)",
+            budget.as_secs_f64()
+        )),
+        None => Verdict::Within,
+    }
+}
+
+/// The CPU time the calling thread has used so far, `None` where it cannot be read. Unlike wall
+/// time it does not grow while other processes compete for the CPUs.
+fn thread_cpu_time() -> Option<Duration> {
+    #[cfg(unix)]
+    {
+        let mut ts = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
+        // SAFETY: `clock_gettime` writes one `timespec` through the valid pointer to `ts`.
+        let got = unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut ts) };
+        if got != 0 {
+            return None;
+        }
+        let secs = u64::try_from(ts.tv_sec).ok()?;
+        let nanos = u32::try_from(ts.tv_nsec).ok()?;
+        Some(Duration::new(secs, nanos))
+    }
+    #[cfg(not(unix))]
+    {
+        None
+    }
 }
 
 /// The one-minute load average, `None` where it cannot be read.
