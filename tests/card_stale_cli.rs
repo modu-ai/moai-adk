@@ -402,4 +402,7 @@ fn an_unreadable_profile_uses_the_default_days_and_adds_no_warning() {
         listing["warnings"], fresh_listing["warnings"],
         "the stale draft changed the warnings: {listing} against {fresh_listing}"
     );
+    // The fixture holds no card that wants a SPEC, so the one array both listings carry is empty:
+    // a warning of the unreadable profile, in any wording, is not in it.
+    assert_eq!(listing["warnings"], json!([]), "{listing}");
 }
