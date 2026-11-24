@@ -196,6 +196,12 @@ struct Manifest {
     /// no digest is recorded; never recreated after the user deletes them.
     #[serde(default)]
     created_once: Vec<String>,
+    /// The project agents and skills the last generation apply built, recorded as the request's
+    /// own lists (SPEC-20261125-generation-request-record). Written by `generation-apply` and
+    /// carried over by every other apply; absent when no project agent or skill was requested,
+    /// so such a manifest keeps its bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    generation_request: Option<Value>,
     activation_status: String,
 }
 
@@ -1491,10 +1497,16 @@ fn ignore_negates_local(text: &str) -> bool {
 /// What an apply carries over from the previous manifest: the generation linkage (#2127:
 /// it belongs to the last generation apply), the owned sections, and the personal files seen
 /// once (a legacy entry without a section becomes created-once).
-type Carried = (Option<String>, Option<String>, Vec<OwnedFile>, Vec<String>);
+type Carried = (
+    Option<String>,
+    Option<String>,
+    Vec<OwnedFile>,
+    Vec<String>,
+    Option<Value>,
+);
 fn carried(active: &[&str], previous: Option<Manifest>) -> Carried {
     let Some(m) = previous else {
-        return (None, None, Vec::new(), Vec::new());
+        return (None, None, Vec::new(), Vec::new(), None);
     };
     let mut created = m.created_once;
     for legacy in m.owned_files.iter().filter(|f| f.section_id.is_none()) {
@@ -1511,7 +1523,13 @@ fn carried(active: &[&str], previous: Option<Manifest>) -> Carried {
                 .is_some_and(|id| !owned_entry_retired(id, active))
         })
         .collect();
-    (m.workflow_id, m.interview_revision, owned, created)
+    (
+        m.workflow_id,
+        m.interview_revision,
+        owned,
+        created,
+        m.generation_request,
+    )
 }
 
 /// Recovery after an interrupted apply, for an `unchanged` row whose file exists: a managed
@@ -1564,7 +1582,7 @@ fn compose_manifest(
     request: &AgentsRequest,
     carried: Carried,
 ) -> Manifest {
-    let (workflow_id, interview_revision, owned, created) = carried;
+    let (workflow_id, interview_revision, owned, created, generation_request) = carried;
     // The manifest names no projection for a retired host (SPEC-20261121-remove-codex-project-layer).
     let mut projections = profile.hosts.clone();
     crate::retired_hosts::retire_hosts(&mut projections, &crate::generation::HOSTS);
@@ -1583,6 +1601,7 @@ fn compose_manifest(
         projections,
         owned_files: owned,
         created_once: created,
+        generation_request,
         activation_status: "pending-validation".into(),
     }
 }
@@ -2140,7 +2159,8 @@ pub(crate) fn agents_apply_amended_for(
     let previous = read_manifest(&root, &profile.project_id)?;
     // #2127: the generation linkage belongs to the last generation apply; an
     // agents-only apply carries it forward instead of resetting it.
-    let (workflow_id, interview_revision, mut owned, mut created) = carried(active, previous);
+    let (workflow_id, interview_revision, mut owned, mut created, generation_request) =
+        carried(active, previous);
     let mut applied = Vec::new();
     let step = |applied: &[String], path: &str, e: String| {
         format!(
@@ -2346,7 +2366,13 @@ pub(crate) fn agents_apply_amended_for(
         &profile,
         &profile_bytes,
         &p.request,
-        (workflow_id, interview_revision, owned, created),
+        (
+            workflow_id,
+            interview_revision,
+            owned,
+            created,
+            generation_request,
+        ),
     );
     let manifest_path = target(&root, &manifest_rel)?;
     let before = read_opt(&manifest_path)?;
@@ -2998,6 +3024,7 @@ mod tests {
             sources: Vec::new(),
             canonical_sha256: None,
             projections: Vec::new(),
+            generation_request: None,
             owned_files: owned
                 .iter()
                 .map(|(path, section)| OwnedFile {

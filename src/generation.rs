@@ -1317,6 +1317,54 @@ fn record_generation(
         json!(profile.interview_revision),
     );
     map.insert("profile_sha256".into(), json!(digest(profile_bytes)));
+    // SPEC-20261120-generation-request-record: the project agents and skills this apply built
+    // are recorded as the request's own lists, so a later plan from the stored state can rebuild
+    // them. A request with none leaves no key, so such a manifest reads as it did before.
+    let r = &p.request;
+    if r.native_roles.is_empty() && r.skill_projections.is_empty() && r.project_skills.is_empty() {
+        map.remove(RECORD_KEY);
+    } else {
+        map.insert(
+            RECORD_KEY.into(),
+            json!({
+                "native_roles": r.native_roles,
+                "skill_projections": r.skill_projections,
+                "project_skills": r.project_skills,
+            }),
+        );
+    }
+}
+
+/// The manifest key that holds the recorded project agent and skill request.
+pub const RECORD_KEY: &str = "generation_request";
+
+/// The project agents and skills a generation apply recorded: `Ok(None)` when the manifest has
+/// no record, and an `Err` that is a question for the user when the record cannot be read, so a
+/// plan never rebuilds from a guess.
+pub fn recorded_request_lists(
+    manifest: &Value,
+) -> Result<Option<(Vec<NativeRole>, Vec<SkillProjection>, Vec<ProjectSkill>)>> {
+    let Some(record) = manifest.get(RECORD_KEY) else {
+        return Ok(None);
+    };
+    let unreadable = || {
+        "the recorded project agent and skill request is unreadable; regenerate them through /moai project".to_string()
+    };
+    if !record.is_object() {
+        return Err(unreadable());
+    }
+    let list = |key: &str| -> Result<Value> {
+        match record.get(key) {
+            None => Ok(json!([])),
+            Some(v) if v.is_array() => Ok(v.clone()),
+            Some(_) => Err(unreadable()),
+        }
+    };
+    let roles = serde_json::from_value(list("native_roles")?).map_err(|_| unreadable())?;
+    let projections =
+        serde_json::from_value(list("skill_projections")?).map_err(|_| unreadable())?;
+    let skills = serde_json::from_value(list("project_skills")?).map_err(|_| unreadable())?;
+    Ok(Some((roles, projections, skills)))
 }
 
 /// `generation-apply` (REQ-03C-03/04/11): re-plans the whole request and refuses any
@@ -1632,6 +1680,52 @@ mod tests {
                 err.contains(path) && err.contains("symbolic link"),
                 "{kind}: {err}"
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod record_tests {
+    use super::*;
+
+    fn record() -> Value {
+        json!({RECORD_KEY: {
+            "native_roles": [{"role_id": "prj-test-runner", "host": "claude", "purpose": "Runs the tests"}],
+            "skill_projections": [],
+            "project_skills": [{"id": "prj-checks", "purpose": "Checks before done"}],
+        }})
+    }
+
+    #[test]
+    fn a_manifest_without_the_key_has_no_record() {
+        assert!(matches!(recorded_request_lists(&json!({})), Ok(None)));
+    }
+
+    #[test]
+    fn the_recorded_lists_read_back_as_the_request_types() {
+        let (roles, projections, skills) = recorded_request_lists(&record()).unwrap().unwrap();
+        assert_eq!(roles.len(), 1);
+        assert_eq!(roles[0].role_id, "prj-test-runner");
+        assert!(projections.is_empty());
+        assert_eq!(skills[0].id, "prj-checks");
+        // A list that is absent from the record reads as empty.
+        let only_skills =
+            json!({RECORD_KEY: {"project_skills": record()[RECORD_KEY]["project_skills"]}});
+        let (roles, _, skills) = recorded_request_lists(&only_skills).unwrap().unwrap();
+        assert!(roles.is_empty());
+        assert_eq!(skills.len(), 1);
+    }
+
+    #[test]
+    fn a_record_that_cannot_be_read_is_a_question_not_a_guess() {
+        for bad in [
+            json!({RECORD_KEY: "x"}),
+            json!({RECORD_KEY: {"native_roles": "x"}}),
+            json!({RECORD_KEY: {"native_roles": [{"role_id": 1}]}}),
+            json!({RECORD_KEY: {"project_skills": [{"id": "prj-a", "purpose": "p", "extra": 1}]}}),
+        ] {
+            let err = recorded_request_lists(&bad).unwrap_err();
+            assert!(err.contains("/moai project"), "{bad}: {err}");
         }
     }
 }
