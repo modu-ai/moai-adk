@@ -1,3 +1,7 @@
+//! SPEC-20261124-launcher-retire-role-flags (REQ-6, AC-9): the stage asks one model and one effort
+//! per host, saves the flat `launcher.models.<host>` entry and lists a saved role entry as
+//! replaced.
+//!
 //! SPEC-20261118-update-model-pick (card C-47 slice 3): the model stage of `moai update`. The
 //! stage tests feed a captured input and read a captured output; the command test runs copies of
 //! the built binary inside a temporary HOME. The real HOME is never read or written.
@@ -75,8 +79,8 @@ fn only_supported_values_are_offered_and_an_unknown_saved_value_is_kept() {
     fs::create_dir_all(h.path.join(".claude")).unwrap();
     let body = r#"{"launcher":{"role_access":"prompt","models":{"glm":{"leader":{"model":"SECRET-MODEL","effort":"ultra"}}}}}"#;
     let path = write_settings(&h.path, body);
-    // Tool pick Enter (claude is installed), four Enters for the two roles, then no save answer.
-    let (result, out) = run_stage(&h.path, &enters(5));
+    // Tool pick Enter (claude is installed), Enter for the model and the effort, then no save answer.
+    let (result, out) = run_stage(&h.path, &enters(3));
     assert_eq!(result["state"], json!("declined"), "{result}");
     assert!(out.contains("claude-opus-5-5") && out.contains("claude-sonnet-5-5"));
     assert!(
@@ -94,7 +98,7 @@ fn only_supported_values_are_offered_and_an_unknown_saved_value_is_kept() {
     assert_eq!(fs::read_to_string(&path).unwrap(), body, "nothing written");
 
     // Saved after a yes, the unsupported entry and the other keys are still there.
-    let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(5)));
+    let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(3)));
     assert_eq!(result["state"], json!("applied"), "{result}");
     let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(saved["launcher"]["role_access"], json!("prompt"));
@@ -103,7 +107,7 @@ fn only_supported_values_are_offered_and_an_unknown_saved_value_is_kept() {
         json!({"model": "SECRET-MODEL", "effort": "ultra"})
     );
     assert_eq!(
-        saved["launcher"]["models"]["claude"]["leader"],
+        saved["launcher"]["models"]["claude"],
         json!({"model": "claude-opus-5-5", "effort": "high"})
     );
 }
@@ -114,17 +118,18 @@ fn enter_selects_the_defaults_and_the_preview_shows_them() {
     fs::create_dir_all(h.path.join(".claude")).unwrap();
     // A `.codex` folder is no installed tool any more: the pick offers `claude` only.
     fs::create_dir_all(h.path.join(".codex")).unwrap();
-    // Tool pick, then four questions for the one tool, then no save answer.
-    let (result, out) = run_stage(&h.path, &enters(5));
+    // Tool pick, then the model and the effort question of the one tool, then no save answer.
+    let (result, out) = run_stage(&h.path, &enters(3));
     assert_eq!(result["state"], json!("declined"), "{result}");
-    for expected in ["claude-opus-5-5", "claude-sonnet-5-5"] {
-        assert!(out.contains(expected), "{expected} in the preview: {out}");
-    }
+    assert!(
+        out.contains("claude: nothing saved -> claude-opus-5-5 high"),
+        "the preview shows the one pick of the host: {out}"
+    );
     assert!(
         !out.contains("gpt-6"),
         "no Codex model in the preview: {out}"
     );
-    assert_eq!(result["changes"].as_array().unwrap().len(), 2, "{result}");
+    assert_eq!(result["changes"].as_array().unwrap().len(), 1, "{result}");
     assert!(
         !settings_path(&h.path).exists(),
         "the preview was shown and nothing is written yet"
@@ -136,36 +141,36 @@ fn the_choice_is_written_through_the_digest_bound_apply_and_read_back() {
     let h = home();
     fs::create_dir_all(h.path.join(".claude")).unwrap();
     let path = write_settings(&h.path, r#"{"keep":1,"launcher":{"advisor":"x"}}"#);
-    let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(5)));
+    let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(3)));
     assert_eq!(result["state"], json!("applied"), "{result}");
     let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(saved["keep"], json!(1));
     assert_eq!(saved["launcher"]["advisor"], json!("x"));
     assert_eq!(
-        saved["launcher"]["models"]["claude"]["agent"],
-        json!({"model": "claude-sonnet-5-5", "effort": "high"})
+        saved["launcher"]["models"]["claude"],
+        json!({"model": "claude-opus-5-5", "effort": "high"})
     );
     // The report reads the same file back.
     let reported = report(&h.path);
-    let claude_agent = reported["values"]
+    let claude = reported["values"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|v| v["tool"] == json!("claude") && v["role"] == json!("agent"))
+        .find(|v| v["tool"] == json!("claude"))
         .unwrap();
-    assert_eq!(claude_agent["source"], json!("saved"), "{reported}");
+    assert_eq!(claude["source"], json!("saved"), "{reported}");
 }
 
-/// SPEC-20261123-glm-54-followups AC-1 and AC-2 (REQ-3, REQ-4): with the glm tool picked, Enter
-/// everywhere saves the 5.4 id for the leader and the flash id for the agent, and the report
-/// reads the same values back as saved.
+/// SPEC-20261123-glm-54-followups AC-1 and AC-2 (REQ-3, REQ-4), as changed by the one-pick-per-host
+/// screen: with the glm tool picked, Enter everywhere saves the 5.4 id at effort high as the one
+/// glm entry, and the report reads the same value back as saved.
 #[test]
-fn enter_saves_glm_54_for_the_leader_and_flash_for_the_agent() {
+fn enter_saves_glm_54_as_the_one_glm_entry() {
     let h = home();
     let path = write_settings(&h.path, r#"{"launcher":{"advisor":"x"}}"#);
-    // Tool pick "2" is glm; then model and effort for the leader and the agent; then Enter at
-    // the glm key question (skip); then the yes.
-    let (result, out) = run_stage(&h.path, &format!("2\n{}\ny\n", enters(4)));
+    // Tool pick "2" is glm; then its model and effort; then Enter at the glm key question
+    // (skip); then the yes.
+    let (result, out) = run_stage(&h.path, &format!("2\n{}\ny\n", enters(2)));
     assert_eq!(result["state"], json!("applied"), "{result}");
     assert!(
         out.contains("zai/glm-5.4[1m]"),
@@ -174,21 +179,17 @@ fn enter_saves_glm_54_for_the_leader_and_flash_for_the_agent() {
     let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(saved["launcher"]["advisor"], json!("x"));
     assert_eq!(
-        saved["launcher"]["models"]["glm"]["leader"],
+        saved["launcher"]["models"]["glm"],
         json!({"model": "zai/glm-5.4[1m]", "effort": "high"})
     );
-    assert_eq!(
-        saved["launcher"]["models"]["glm"]["agent"],
-        json!({"model": "zai/glm-5.3-flash", "effort": "max"})
-    );
     let reported = report(&h.path);
-    let leader = reported["values"]
+    let glm = reported["values"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|v| v["tool"] == json!("glm") && v["role"] == json!("leader"))
+        .find(|v| v["tool"] == json!("glm"))
         .unwrap();
-    assert_eq!(leader["source"], json!("saved"), "{reported}");
+    assert_eq!(glm["source"], json!("saved"), "{reported}");
 }
 
 /// SPEC-20261121-glm-key-at-pick AC-1, AC-2: a glm pick asks for the key between the model
@@ -199,7 +200,7 @@ fn a_typed_glm_key_is_vaulted_and_appears_nowhere_else() {
     const FAKE: &str = "FAKE-glm-key-for-the-stage-test";
     let h = home();
     let path = write_settings(&h.path, r#"{"launcher":{"advisor":"x"}}"#);
-    let (result, out) = run_stage(&h.path, &format!("2\n{}{FAKE}\ny\n", enters(4)));
+    let (result, out) = run_stage(&h.path, &format!("2\n{}{FAKE}\ny\n", enters(2)));
     assert_eq!(result["state"], json!("applied"), "{result}");
     assert!(
         out.contains("GLM API key"),
@@ -257,7 +258,7 @@ fn a_vault_that_cannot_be_written_does_not_lose_the_model_pick() {
             .unwrap()
             .to_path_buf();
     fs::write(&vault, b"in the way").unwrap();
-    let (result, out) = run_stage(&h.path, &format!("2\n{}{FAKE}\ny\n", enters(4)));
+    let (result, out) = run_stage(&h.path, &format!("2\n{}{FAKE}\ny\n", enters(2)));
     assert_eq!(result["state"], json!("applied"), "{result}\n{out}");
     assert!(
         out.contains("The key could not be stored:"),
@@ -270,34 +271,73 @@ fn a_vault_that_cannot_be_written_does_not_lose_the_model_pick() {
     );
     let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(
-        saved["launcher"]["models"]["glm"]["leader"]["model"],
+        saved["launcher"]["models"]["glm"]["model"],
         json!("zai/glm-5.4[1m]"),
         "the model pick was saved: {saved}"
     );
 }
 
-/// SPEC-20261123-glm-54-followups AC-2 (REQ-2): a `zai/glm-5.3` leader saved before 5.4 is not
+/// SPEC-20261123-glm-54-followups AC-2 (REQ-2): a `zai/glm-5.3` entry saved before 5.4 is not
 /// reported as unsupported, is the default of the next model step, and stays as it is when the
-/// person presses Enter everywhere and saves.
+/// person presses Enter everywhere: nothing is asked to save and the bytes stay.
 #[test]
-fn a_saved_glm_53_leader_stays_through_enter_everywhere() {
+fn a_saved_glm_53_entry_stays_through_enter_everywhere() {
     let h = home();
-    let body =
-        r#"{"launcher":{"models":{"glm":{"leader":{"model":"zai/glm-5.3","effort":"low"}}}}}"#;
+    let body = r#"{"launcher":{"models":{"glm":{"model":"zai/glm-5.3","effort":"low"}}}}"#;
     let path = write_settings(&h.path, body);
-    let (result, out) = run_stage(&h.path, &format!("2\n{}", enters(4)));
-    assert_eq!(result["state"], json!("declined"), "{result}");
+    let (result, out) = run_stage(&h.path, &format!("2\n{}", enters(2)));
+    assert_eq!(result["state"], json!("unchanged"), "{result}");
     assert!(
-        !out.contains("launcher.models.glm.leader"),
+        !out.contains("launcher.models.glm"),
         "a supported saved value is not listed as unsupported: {out}"
     );
     assert_eq!(fs::read_to_string(&path).unwrap(), body, "nothing written");
-    let (result, _) = run_stage(&h.path, &format!("2\n{}\ny\n", enters(4)));
+    let (result, _) = run_stage(&h.path, &format!("2\n{}\ny\n", enters(2)));
+    assert_eq!(result["state"], json!("unchanged"), "{result}");
+    assert_eq!(fs::read_to_string(&path).unwrap(), body, "the bytes stay");
+}
+
+/// SPEC-20261124-launcher-retire-role-flags AC-9 (REQ-6): a saved `leader` or `agent` entry is
+/// listed among the keys the write replaces, in the preview and in the result, and the written
+/// entry of that host is the flat pair alone. Nothing is written before the yes.
+#[test]
+fn a_saved_role_entry_is_listed_as_replaced_and_dropped_by_the_write() {
+    let h = home();
+    fs::create_dir_all(h.path.join(".claude")).unwrap();
+    let body = r#"{"launcher":{"models":{"claude":{"leader":{"model":"claude-opus-5-5","effort":"high"},"agent":{"model":"SECRET-MODEL","effort":"ultra"}}}}}"#;
+    let path = write_settings(&h.path, body);
+    let (result, out) = run_stage(&h.path, &enters(3));
+    assert_eq!(result["state"], json!("declined"), "{result}");
+    for key in [
+        "launcher.models.claude.leader",
+        "launcher.models.claude.agent",
+    ] {
+        assert!(out.contains(key), "{key} in the preview: {out}");
+        assert!(result["replaced"].to_string().contains(key), "{result}");
+    }
+    assert!(
+        !out.contains("SECRET-MODEL") && !result.to_string().contains("SECRET-MODEL"),
+        "saved text is never quoted"
+    );
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        body,
+        "nothing written before the yes"
+    );
+    let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(3)));
     assert_eq!(result["state"], json!("applied"), "{result}");
+    assert_eq!(
+        result["replaced"],
+        json!([
+            "launcher.models.claude.leader",
+            "launcher.models.claude.agent"
+        ])
+    );
     let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(
-        saved["launcher"]["models"]["glm"]["leader"],
-        json!({"model": "zai/glm-5.3", "effort": "low"})
+        saved["launcher"]["models"]["claude"],
+        json!({"model": "claude-opus-5-5", "effort": "high"}),
+        "no role entry is left beside the flat pair"
     );
 }
 
@@ -317,14 +357,14 @@ fn a_saved_codex_value_is_ignored_and_dropped_on_the_next_save() {
         fs::create_dir_all(h.path.join(".codex")).unwrap();
         let body = format!(r#"{{"launcher":{{"models":{{"codex":{codex}}}}}}}"#);
         let path = write_settings(&h.path, &body);
-        let (result, out) = run_stage(&h.path, &enters(5));
+        let (result, out) = run_stage(&h.path, &enters(3));
         assert_eq!(result["state"], json!("declined"), "{codex}: {result}");
         assert!(
             !out.contains("launcher.models.codex") && !out.contains("SECRET-CODEX-MODEL"),
             "{codex}: the saved Codex value is not listed or quoted: {out}"
         );
         assert_eq!(fs::read_to_string(&path).unwrap(), body, "nothing written");
-        let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(5)));
+        let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(3)));
         assert_eq!(result["state"], json!("applied"), "{codex}: {result}");
         let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
         assert!(
@@ -349,7 +389,7 @@ fn a_saved_omp_value_is_not_reported_and_leaves_the_file_on_the_next_save() {
         fs::create_dir_all(h.path.join(".omp")).unwrap();
         let body = format!(r#"{{"launcher":{{"models":{{"omp":{omp}}}}}}}"#);
         let path = write_settings(&h.path, &body);
-        let (result, out) = run_stage(&h.path, &enters(5));
+        let (result, out) = run_stage(&h.path, &enters(3));
         assert_eq!(result["state"], json!("declined"), "{omp}: {result}");
         assert!(
             !out.contains("launcher.models.omp") && !out.contains("SECRET-OMP-MODEL"),
@@ -360,7 +400,7 @@ fn a_saved_omp_value_is_not_reported_and_leaves_the_file_on_the_next_save() {
             "{omp}: the models step offers OMP: {out}"
         );
         assert_eq!(fs::read_to_string(&path).unwrap(), body, "nothing written");
-        let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(5)));
+        let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(3)));
         assert_eq!(result["state"], json!("applied"), "{omp}: {result}");
         let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
         assert!(
@@ -375,16 +415,16 @@ fn a_saved_omp_value_is_not_reported_and_leaves_the_file_on_the_next_save() {
 fn a_no_and_an_unchanged_pick_write_nothing() {
     let h = home();
     fs::create_dir_all(h.path.join(".claude")).unwrap();
-    let (result, _) = run_stage(&h.path, &format!("{}n\n", enters(5)));
+    let (result, _) = run_stage(&h.path, &format!("{}n\n", enters(3)));
     assert_eq!(result["state"], json!("declined"), "{result}");
     assert!(!settings_path(&h.path).exists());
 
-    let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(5)));
+    let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(3)));
     assert_eq!(result["state"], json!("applied"), "{result}");
     let path = settings_path(&h.path);
     let before = fs::read(&path).unwrap();
     // The same picks again: nothing changes, nothing is asked to save, the bytes stay.
-    let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(5)));
+    let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(3)));
     assert_eq!(result["state"], json!("unchanged"), "{result}");
     assert_eq!(fs::read(&path).unwrap(), before);
 }
@@ -420,7 +460,7 @@ fn a_broken_or_changed_settings_file_is_an_error_and_stays_as_it_was() {
     let h = home();
     fs::create_dir_all(h.path.join(".claude")).unwrap();
     let path = write_settings(&h.path, "SECRET-MARKER: [not json");
-    let (result, out) = run_stage(&h.path, &format!("{}y\n", enters(5)));
+    let (result, out) = run_stage(&h.path, &format!("{}y\n", enters(3)));
     assert_eq!(result["state"], json!("error"), "{result}");
     assert!(!result.to_string().contains("SECRET-MARKER"));
     assert!(!out.contains("SECRET-MARKER"));
@@ -435,12 +475,12 @@ fn a_broken_or_changed_settings_file_is_an_error_and_stays_as_it_was() {
     let path = write_settings(&h.path, r#"{"launcher":{}}"#);
     let changed = r#"{"launcher":{"role_access":"prompt"}}"#;
     let target = path.clone();
-    let mut lines: Vec<String> = (0..5).map(|_| "\n".to_string()).collect();
+    let mut lines: Vec<String> = (0..3).map(|_| "\n".to_string()).collect();
     lines.push("y\n".to_string());
     let hooked = Hooked {
         lines,
         next: 0,
-        hook_at: 5,
+        hook_at: 3,
         hook: Some(Box::new(move || fs::write(&target, changed).unwrap())),
     };
     let mut out = Vec::new();
@@ -532,7 +572,7 @@ fn result_of(out: &Output) -> Value {
 fn a_non_terminal_run_asks_nothing_and_reports_the_values() {
     let h = home();
     let exe = install_version(&h.path);
-    let body = r#"{"launcher":{"models":{"claude":{"agent":{"model":"claude-sonnet-5-5","effort":"max"}},"glm":{"leader":{"model":"SECRET-MODEL","effort":"ultra"}}}}}"#;
+    let body = r#"{"launcher":{"models":{"claude":{"model":"claude-sonnet-5-5","effort":"max"},"glm":{"leader":{"model":"SECRET-MODEL","effort":"ultra"}}}}}"#;
     let path = write_settings(&h.path, body);
     // A preview keeps exactly the keys it had: no `models`.
     let preview = result_of(&run(&exe, &h.path, &["update"]));
@@ -547,29 +587,35 @@ fn a_non_terminal_run_asks_nothing_and_reports_the_values() {
     let models = &r["models"];
     assert_eq!(models["state"], json!("ok"), "{r}");
     let values = models["values"].as_array().unwrap();
-    assert_eq!(values.len(), 4, "{models}");
+    assert_eq!(values.len(), 2, "one value per host: {models}");
     assert!(
         values
             .iter()
             .all(|v| v["tool"] != json!("codex") && v["tool"] != json!("omp")),
         "no Codex or OMP row in the report: {models}"
     );
-    let find = |tool: &str, role: &str| -> Value {
+    let find = |tool: &str| -> Value {
         values
             .iter()
-            .find(|v| v["tool"] == json!(tool) && v["role"] == json!(role))
+            .find(|v| v["tool"] == json!(tool))
             .unwrap()
             .clone()
     };
     assert_eq!(
-        find("claude", "agent"),
-        json!({"tool": "claude", "role": "agent", "model": "claude-sonnet-5-5", "effort": "max", "source": "saved"})
+        find("claude"),
+        json!({"tool": "claude", "model": "claude-sonnet-5-5", "effort": "max", "source": "saved"})
     );
+    // Nothing saved for glm: the report shows what a launch starts with (the alias and the
+    // host effort), not a role row.
     assert_eq!(
-        find("claude", "leader"),
-        json!({"tool": "claude", "role": "leader", "model": "claude-opus-5-5", "effort": "high", "source": "default"})
+        find("glm"),
+        json!({"tool": "glm", "model": "opus", "effort": "high", "source": "default"})
     );
     assert_eq!(models["unsupported"], json!(["launcher.models.glm.leader"]));
+    assert_eq!(
+        models["role_entries"],
+        json!(["launcher.models.glm.leader"])
+    );
     assert!(!models.to_string().contains("SECRET-MODEL"));
     assert_eq!(
         fs::read_to_string(&path).unwrap(),
@@ -587,25 +633,32 @@ fn a_non_terminal_run_asks_nothing_and_reports_the_values() {
 fn enter_keeps_a_saved_value_instead_of_the_table_default() {
     let h = home();
     fs::create_dir_all(h.path.join(".claude")).unwrap();
-    let path = write_settings(
-        &h.path,
-        r#"{"launcher":{"models":{"claude":{"leader":{"model":"claude-sonnet-5-5","effort":"max"}}}}}"#,
+    let body = r#"{"launcher":{"models":{"claude":{"model":"claude-sonnet-5-5","effort":"max"}}}}"#;
+    let path = write_settings(&h.path, body);
+    // Enter at every question: the saved entry stays, so there is nothing to save and the bytes
+    // stay.
+    let (result, out) = run_stage(&h.path, &format!("{}y\n", enters(3)));
+    assert_eq!(result["state"], json!("unchanged"), "{result}");
+    assert!(
+        out.contains("claude-sonnet-5-5"),
+        "the saved model is offered first: {out}"
     );
-    // Enter at every question, then a yes: the saved leader stays, only the unsaved agent is new.
-    let (result, out) = run_stage(&h.path, &format!("{}y\n", enters(5)));
+    assert_eq!(fs::read_to_string(&path).unwrap(), body, "nothing written");
+    // A different effort is a change: the preview shows saved -> new.
+    let (result, out) = run_stage(&h.path, "\n\n2\ny\n");
     assert_eq!(result["state"], json!("applied"), "{result}");
     assert!(
-        out.contains("claude leader: claude-sonnet-5-5 max -> claude-sonnet-5-5 max"),
-        "the preview shows the saved leader kept: {out}"
+        out.contains("claude: claude-sonnet-5-5 max -> claude-sonnet-5-5"),
+        "the preview shows the saved entry replaced: {out}"
     );
     let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(
-        saved["launcher"]["models"]["claude"]["leader"],
-        json!({"model": "claude-sonnet-5-5", "effort": "max"})
+        saved["launcher"]["models"]["claude"]["model"],
+        json!("claude-sonnet-5-5")
     );
-    assert_eq!(
-        saved["launcher"]["models"]["claude"]["agent"],
-        json!({"model": "claude-sonnet-5-5", "effort": "high"})
+    assert_ne!(
+        saved["launcher"]["models"]["claude"]["effort"],
+        json!("max")
     );
 }
 
@@ -646,7 +699,7 @@ fn the_settings_path_is_the_file_the_launcher_reads() {
     // The launcher reads `launcher.advisor` from the user file; a value written at the path of
     // this module reaches the launcher command line, so both name the same file.
     write_settings(&h.path, r#"{"launcher":{"advisor":"fable"}}"#);
-    let plan = launcher_dry_run(&h.path, &["cc", "-l"]);
+    let plan = launcher_dry_run(&h.path, &["cc"]);
     let argv: Vec<&str> = plan["argv"]
         .as_array()
         .unwrap()

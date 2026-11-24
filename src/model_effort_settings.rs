@@ -361,6 +361,62 @@ pub fn saved_choice(launcher: &Map<String, Value>, tool: &str, role: &str) -> Op
     })
 }
 
+/// The saved flat choice of a tool (`launcher.models.<tool>` with `model` and `effort`) when it
+/// is there and the table supports it, else `None` (SPEC-20261124-launcher-retire-role-flags
+/// REQ-5, REQ-6). A saved `leader` or `agent` entry beside it is not looked at.
+pub fn flat_choice(launcher: &Map<String, Value>, tool: &str) -> Option<Choice> {
+    let fields = launcher.get("models")?.get(tool)?.as_object()?;
+    check_flat(tool, fields).ok()?;
+    Some(Choice {
+        model: fields.get("model")?.as_str()?.to_string(),
+        effort: fields.get("effort")?.as_str()?.to_string(),
+    })
+}
+
+/// The key paths (`launcher.models.<tool>.leader`, `.agent`) of the saved role entries of a tool,
+/// whatever their value: the entries a flat write replaces.
+pub fn role_entry_paths(launcher: &Map<String, Value>, tool: &str) -> Vec<String> {
+    let Some(fields) = launcher
+        .get("models")
+        .and_then(|models| models.get(tool))
+        .and_then(Value::as_object)
+    else {
+        return Vec::new();
+    };
+    ROLES
+        .iter()
+        .filter(|role| fields.contains_key(**role))
+        .map(|role| format!("launcher.models.{tool}.{role}"))
+        .collect()
+}
+
+/// A copy of the launcher object with the flat choice of a tool set: the whole
+/// `launcher.models.<tool>` object becomes `{model, effort}`, so a saved `leader` or `agent`
+/// entry of that tool is replaced; every other key and tool is kept and the input is not
+/// changed. Refused when the tool, model or effort is not supported or when `launcher.models` is
+/// not an object.
+pub fn with_flat_choice(
+    launcher: &Map<String, Value>,
+    tool: &str,
+    model: &str,
+    effort: &str,
+) -> Result<Map<String, Value>, String> {
+    if retired(tool, &TOOLS) || !TOOLS.contains(&tool) {
+        return Err("model settings: unknown tool".into());
+    }
+    if !offers(tool, model, effort) {
+        return Err(format!(
+            "model settings: that model and effort are not supported for {tool}"
+        ));
+    }
+    let mut models = models_of(launcher)?.cloned().unwrap_or_default();
+    models.retain(|saved_tool, _| !retired(saved_tool, &TOOLS));
+    models.insert(tool.to_string(), json!({"model": model, "effort": effort}));
+    let mut out = launcher.clone();
+    out.insert("models".to_string(), Value::Object(models));
+    Ok(out)
+}
+
 /// The model and effort of a tool and role: the saved choice when the launcher object holds one
 /// the table supports, else the default. A saved entry that is not supported, anywhere under
 /// `launcher.models`, is refused.

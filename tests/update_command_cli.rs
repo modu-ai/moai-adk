@@ -378,7 +378,7 @@ fn in_a_terminal_update_asks_and_applies_only_on_yes() {
     assert_eq!(state(&f.home), before);
     // Card C-47: an update that wrote files goes on to the model stage; the tool pick, the four
     // model questions of the one installed tool and the save question are answered by Enter and a no.
-    let text = run_in_terminal(&a, &f.home, "y\n\n\n\n\n\nn\n");
+    let text = run_in_terminal(&a, &f.home, "y\n\n\n\nn\n");
     assert!(text.contains("Applied") && text.contains("Done"), "{text}");
     assert!(text.contains("Save these model settings? [y/N]"), "{text}");
     assert!(
@@ -394,7 +394,7 @@ fn in_a_terminal_update_asks_and_applies_only_on_yes() {
 fn in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
-    let text = run_in_terminal(&a, &f.home, "y\n\n\n\n\n\ny\n");
+    let text = run_in_terminal(&a, &f.home, "y\n\n\n\ny\n");
     assert!(text.contains("Save these model settings? [y/N]"), "{text}");
     // Exactly one settings file was written, and it is the one the command reads.
     let files = launcher_files(&f.home);
@@ -404,7 +404,7 @@ fn in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes() 
     // The answers were Enter, so the saved choice is the default of the source, not a copied literal.
     let want = default_choice("claude", "leader").expect("claude has a leader default");
     assert_eq!(
-        saved["launcher"]["models"]["claude"]["leader"],
+        saved["launcher"]["models"]["claude"],
         json!({"model": want.model, "effort": want.effort}),
         "{text}"
     );
