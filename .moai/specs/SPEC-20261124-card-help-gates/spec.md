@@ -72,3 +72,18 @@ created: 2026-11-24
 | --- | --- | --- | --- |
 | D-1 | 시계 분기(`SELECT unixepoch()` 실패 → 엄격한 문)는 이 카드에서 테스트하지 않아요. 카드 기준 2 의 그 반쪽은 `src/card/dispatch.rs` 에 넣을 수 있는 자리가 생긴 뒤(C-445 착지 후)의 후속 기준으로 남겨요 | SQLite 의 `unixepoch()` 는 실패하지 않아서 CLI 로 만들 수 없고, 단위 테스트는 `dispatch.rs` 안에 있어야 하는데 C-445 가 쥐어요 | 후속 기준을 닫기 |
 | D-2 | 도움말의 마커·조상 문장은 `src/card/ready_receipt.rs` 의 실제 동작에서 가져와요(고치는 것은 문장이지 동작이 아니에요) | core rule 21: 지침과 코드가 다르면 코드가 이겨요 | 문장을 되돌리기 |
+
+## Result
+
+브랜치 `spec/card-help-gates-20261124`(기준 NeXT `b18c7639a9`)의 커밋 SPEC `52c144a738` → RED `235e44b87d` → GREEN `358f699e43` → stale 단언 보강 `ef16be102b` 순서예요. 승인은 리더 노트 8131(digest `sha256:11662e1c…`, `spec show` 로 같은 값을 읽음)이고 D-1 은 (a)예요. RED(`target/card-help-gates/red.log`)는 새 테스트 8개 중 5개 실패, 3개 통과(통과한 셋은 현재 코드가 이미 맞는 쪽의 가드라 뮤턴트로 확인해요). GREEN 은 관련 테스트 바이너리 10개 216개 중 215개 통과(`green.log`), 남은 하나는 제 테스트 문장 오류(`SPEC-2026…` 안의 `C-2`)였고 고친 뒤 `card_add_spec_cli` 11/11 통과예요.
+
+- AC-1: 충족. `the_note_help_names_the_receipt_gate` 가 공백을 접은 도움말에서 `` `READY ` ``, 앞 공백 거절, 조상 규칙을 읽어요.
+- AC-2: 충족. `src/ops/card.rs` 의 `` `READY ` `` 를 `` `RDY ` `` 로 바꾼 버려지는 복사본에서 그 테스트가 실패해요(`mutA.log`, exit 100).
+- AC-3: 충족. `the_reclaim_help_says_when_unpushed_commits_stop_the_takeover`; 문장에서 `Once the lease has ended,` 를 지운 복사본에서 실패(exit 100).
+- AC-4: 충족. `a_reservation_that_is_not_held_goes_through_the_strict_gate`(`held_for_review` 와 `expired_candidate` 두 상태); `cur.status == "held"` 를 지운 복사본에서 실패(exit 100).
+- AC-5: 충족. `the_take_and_withdraw_help_first_lines_stay_apart`; 첫 줄을 되돌린 복사본에서 실패(exit 100).
+- AC-6: 충족. `take_of_a_folded_card_does_not_say_withdrawn`(표시 문장을 `withdrawn: {reason}` 로 되돌린 복사본에서 실패)와 `take_of_a_withdrawn_card_still_says_withdrawn`(`withdrawn: ` 접두를 지운 복사본에서 실패, `mutB.log`), 둘 다 exit 100.
+- AC-7: 충족. `a_hold_card_is_not_an_open_card_of_its_spec`; `NOT IN ('done', 'hold')` 를 `<> 'done'` 으로 되돌린 복사본에서 실패(exit 100).
+- AC-8: 충족. `an_unreadable_profile_uses_the_default_days_and_adds_no_warning` 가 stale 초안 없는 판과 경고 배열 전체를 비교하고 빈 배열도 요구해요. 나이와 상관없이 붙는 경고는 두 판이 똑같이 달기 때문에 비교만으로는 잡히지 않아서 빈 배열 단언을 더했어요(SPEC 문장보다 강한 쪽). `src/card/work.rs` 에 다른 낱말의 경고를 더한 복사본에서 실패(exit 100).
+- AC-9: 충족. `git diff --stat b18c7639a9..HEAD -- src` → `src/card/spec_link.rs`, `src/ledger/reservation.rs`, `src/ops/card.rs` 세 파일, `src/card/dispatch.rs` 는 0줄이에요. `src/ops/card.rs` 는 `card line-lease` 로 패치를 적용했어요.
+- 남은 것: 카드의 기준 2 는 시계 분기 반쪽이 남아 `met` 로 적지 않아요(D-1 (a), C-445 착지 뒤 `src/card/dispatch.rs` 안 단위 테스트).
