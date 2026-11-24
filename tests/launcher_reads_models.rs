@@ -208,17 +208,18 @@ fn explicit_flags_win_per_field() {
     assert!(!notes(&v).contains("launcher.models"), "{}", notes(&v));
 }
 
-/// AC-3 (REQ-4): with no saved choice for that host and role the launch is what it was.
+/// AC-3 (REQ-4): with no saved choice for that host and role the launch is the default table's
+/// and does not change when a file saves only something else (SPEC-20261121-model-defaults-one-table).
 #[test]
 fn without_a_saved_choice_nothing_changes() {
     let f = Fixture::new();
-    // No file at all.
+    // No file at all: the claude leader row of the default table.
     let a = argv(&f.dry(&["cc", "-l"]));
-    assert!(has_pair(&a, "--model", "opus"), "{a:?}");
-    assert!(has_pair(&a, "--effort", "medium"), "{a:?}");
-    // A file that saves only an old codex value: it is ignored, so the claude and glm
-    // launches stay as they are (a glm role
-    // session without a saved glm entry keeps the alias default of `claude_argv`, D-4).
+    assert!(has_pair(&a, "--model", "claude-opus-5-5"), "{a:?}");
+    assert!(has_pair(&a, "--effort", "high"), "{a:?}");
+    // A file that saves only an old codex value: it is ignored, so the claude and glm role
+    // launches stay what the default table gives them (a role session without a saved entry
+    // takes the table row of its host and role, `default_choice`).
     let bare = (argv(&f.dry(&["cc", "-a"])), argv(&f.dry(&["glm", "-l"])));
     f.config(
         r#"{"launcher":{"models":{"codex":{"leader":{"model":"gpt-6.1-sol","effort":"high"}}}}}"#,
@@ -290,11 +291,12 @@ fn a_rewritten_file_is_used_by_the_next_launch() {
         "{second:?}"
     );
     assert!(has_pair(&second, "--effort", "medium"), "{second:?}");
-    // Removing the file puts the launch back to its defaults without another step.
+    // Removing the file puts the launch back to the default table (SPEC-20261121-model-defaults-
+    // one-table: the claude leader row) without another step.
     fs::remove_file(f.home.path().join(".moai-cli/config/launcher.yaml")).unwrap();
     let third = argv(&f.dry(&["cc", "-l"]));
-    assert!(has_pair(&third, "--model", "opus"), "{third:?}");
-    assert!(has_pair(&third, "--effort", "medium"), "{third:?}");
+    assert!(has_pair(&third, "--model", "claude-opus-5-5"), "{third:?}");
+    assert!(has_pair(&third, "--effort", "high"), "{third:?}");
 }
 
 /// AC-5: a saved entry outside the support table refuses a role launch on claude and glm
