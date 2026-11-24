@@ -1,0 +1,67 @@
+---
+id: SPEC-20261124-flow-receipt-slots
+title: "Reverting an earlier flow receipt keeps the new flow file's ownership hash"
+status: draft
+revision: 1
+created: 2026-11-24
+---
+
+# Reverting an earlier flow receipt keeps the new flow file's ownership hash
+
+## Interview
+
+- none: 별도 사용자 인터뷰는 없었어요. 요구사항은 카드 C-441 의 본문과 두 인수 기준(C-435 감사 N1), 리더 배차가 정했어요.
+
+## Intent
+
+`src/home_routing/rules.rs` records which flow rule file MoAI last wrote in one slot, `flow_sha256` of `~/.moai/home-routing/rules-<id>.json`. Two receipt kinds write that slot: the current `moai_flow` (`rules/moai-flow.md`) and the earlier layout's `flow` (`rules/moai/flow.md`, no longer written, still revertible). After a new apply wrote `rules/moai-flow.md`, reverting the earlier `flow` receipt removes `rules/moai/flow.md` and then sets the shared slot to that entry's `baseline_before` (null for a first apply), so the slot no longer holds the new file's hash. A later package with newer flow text then plans `rules/moai-flow.md` as `conflict` instead of `merge`. No file bytes are lost, and reverts in order (newest first) are correct. This SPEC makes the earlier receipt's revert leave a slot that the current flow file still owns, and pins the out-of-order revert in a temporary HOME.
+
+## Non-goals
+
+- No new key in the state file and no schema change: the one `flow_sha256` slot stays, so existing state files and older builds keep reading it (the state file denies unknown keys).
+- No change to the apply, the plan or the revert of any other kind (`routing`, `old_block`, `moai_flow`).
+- A `moai_flow` revert after the earlier receipt was already reverted out of order sets the slot to that receipt's `baseline_before`, which can name the removed earlier file's hash. It owns no file, a plan treats an absent file as `create`, and it is left as it is (follow-up if it ever matters).
+- The real HOME is never touched; every test runs against a temporary HOME.
+
+## Requirements
+
+- REQ-1: When a revert undoes a receipt entry of the earlier kind `flow`, and the file `rules/moai-flow.md` of the same config folder holds the bytes whose digest `flow_sha256` records, the revert shall keep `flow_sha256` as it is.
+- REQ-2 (REQ-1): IF `rules/moai-flow.md` is absent, not readable as a plain file, or does not hold the recorded digest, THEN the revert shall set `flow_sha256` to the entry's `baseline_before` as it does today.
+- REQ-3: When every receipt of one config folder is reverted newest first, the revert shall restore the state file byte for byte.
+- REQ-4 (REQ-1): IF a package with newer flow text is planned after that out-of-order revert, THEN the flow row shall be `merge`.
+- REQ-5 (REQ-3): IF a revert skips an entry because its file changed since the apply, THEN the revert shall leave `flow_sha256` as the skipped entry found it.
+
+## Acceptance
+
+- AC-1 (REQ-1, REQ-4): a temporary HOME holds an earlier `flow` receipt entry whose file `rules/moai/flow.md` is untouched, then a current apply writes `rules/moai-flow.md`; reverting the earlier receipt first keeps `flow_sha256` equal to the digest of `rules/moai-flow.md`, and a plan of a package with newer flow text shows the flow row as `merge` · verify: `cargo test --locked --offline --test flow_receipt_slots_cli an_earlier_receipt_revert_keeps_the_new_files_hash`
+- AC-2 (REQ-2): with `rules/moai-flow.md` absent, or edited so its digest differs from the slot, the earlier receipt's revert sets `flow_sha256` to the entry's `baseline_before` · verify: `cargo test --locked --offline --test flow_receipt_slots_cli an_earlier_receipt_revert_without_the_new_file_clears_the_slot`
+- AC-3 (REQ-3): the earlier receipt applied, then the current apply, then the current receipt reverted, then the earlier receipt reverted: the state file equals its bytes before the first apply (absent or the same JSON bytes) · verify: `cargo test --locked --offline --test flow_receipt_slots_cli reverts_in_order_restore_the_state_file_byte_for_byte`
+
+- AC-4 (REQ-5): an earlier receipt entry whose `rules/moai/flow.md` was edited after the apply is skipped as `user_changed_since_apply` and `flow_sha256` keeps its value · verify: `cargo test --locked --offline --test flow_receipt_slots_cli a_skipped_earlier_entry_leaves_the_slot`
+
+## Scope
+
+- write: `.moai/specs/SPEC-20261124-flow-receipt-slots/**`
+- write: `src/home_routing/rules.rs`
+- write: `tests/flow_receipt_slots_cli.rs`
+- read-only: `src/home_routing.rs`, `tests/desktop_folder_rules_cli.rs`, `tests/home_routing_cli.rs`
+- forbidden: the real Claude config folder, the real MoAI home and the real HOME (a test passes a temporary HOME only), and every other file under `src/` and `tests/`
+
+## Plan
+
+1. RED: `tests/flow_receipt_slots_cli.rs` pins AC-1 to AC-3 in a temporary HOME with a hand-written earlier `flow` receipt (the fixture of `desktop_folder_rules_cli.rs`) and a package with newer flow text; AC-1 fails before the code.
+2. GREEN: in `revert_entry` (`rules.rs`), for kind `flow` only, read the state's `flow_sha256` and the digest of `rules/moai-flow.md` (same base and plain-file checks as the entry's own target); equal digests skip the slot write, every other case writes `baseline_before` as before.
+3. Guard mutant: remove the new skip and run the AC-1 test; it must exit non-zero.
+4. Result: the commands, their exit codes and the guard-mutant line.
+
+## Risks
+
+- Equal digests of the earlier and the current file (same text in both) are the case the digest comparison alone cannot tell apart: the slot is kept, which is right because `rules/moai-flow.md` exists and holds it. AC-1 uses the equal-text case and the newer-text case.
+- The state file is read twice in one revert; the second read happens after the file removal and before the slot write, so a failing read must stop the revert as it does today (`?`), not skip the write silently.
+- Not measured: Windows and Linux (the revert uses only the paths the entry already resolves).
+
+## Decisions
+
+| Id | Decision | Basis | Undo |
+| --- | --- | --- | --- |
+| D-1 | Keep the one `flow_sha256` slot and skip the slot write of an earlier-kind revert while the current flow file holds that digest (card option "clear the slot only when the reverted kind owns it"); the alternative, a second slot per kind, is rejected because it adds a key to a state file that denies unknown keys and cannot tell an existing slot's owner | card C-441 options; `rules.rs` state struct reading | restore `update_rules_state` call of the `flow` kind unconditionally |
