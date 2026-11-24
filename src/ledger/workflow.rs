@@ -233,6 +233,11 @@ pub enum SkipReason {
     /// It has no criterion that counts ([`counted_criteria`] is 0), so `take` refuses it
     /// (SPEC-20261124-card-next-skips-no-criteria).
     NoCriteria,
+    /// A `card.hold` event is in force on it (SPEC-20261121-card-hold-gate): only a person's
+    /// `card.unhold` lifts it.
+    Hold { category: String, reason: String },
+    /// It needs cards that are not done: an active `blocks` link comes in from each of them.
+    Prerequisite { cards: Vec<i64> },
 }
 
 impl SkipReason {
@@ -243,6 +248,8 @@ impl SkipReason {
             SkipReason::EmptyScope => "empty_scope",
             SkipReason::ReviewNoHolder => "review_no_holder",
             SkipReason::NoCriteria => "no_criteria",
+            SkipReason::Hold { .. } => "hold",
+            SkipReason::Prerequisite { .. } => "prerequisite",
         }
     }
 }
@@ -354,6 +361,29 @@ pub fn next_filled(
             continue;
         }
         if state != "ready" {
+            continue;
+        }
+        // A HOLD or an unfinished prerequisite comes before every scope reason: `take` refuses
+        // the card for them too, and both ask the same two functions
+        // (SPEC-20261121-card-hold-gate).
+        let not_offered = match current_hold(conn, card_id)? {
+            Some(hold) => Some(SkipReason::Hold {
+                category: hold.category,
+                reason: hold.reason,
+            }),
+            None => {
+                let cards = unfinished_prerequisites(conn, card_id)?;
+                (!cards.is_empty()).then_some(SkipReason::Prerequisite { cards })
+            }
+        };
+        if let Some(reason) = not_offered {
+            out.skipped.push(Skipped {
+                card_id,
+                title,
+                state,
+                priority,
+                reason,
+            });
             continue;
         }
         // A scope that is not a list of strings is no scope: `take` could not use it either.
@@ -852,6 +882,338 @@ pub fn withdraw(
         Ok(Ok(()))
     })
     .map_err(WithdrawError::from)?
+}
+
+// ---- hold and prerequisite ---------------------------------------------------------------------
+
+/// The kinds of HOLD (SPEC-20261121-card-hold-gate D2).
+pub const HOLD_CATEGORIES: [&str; 6] = [
+    "money",
+    "legal",
+    "external_contract",
+    "secret",
+    "real_data",
+    "other",
+];
+
+/// The HOLD in force on a card: the newest hold event is a `card.hold`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HoldInfo {
+    pub category: String,
+    pub reason: String,
+    pub by: String,
+    pub at: i64,
+}
+
+/// The HOLD in force on a card, or `None` when its newest hold event is a `card.unhold` or it has
+/// none. Only the two event kinds are read: free text in a note or a body never counts, and no
+/// code but [`unhold`] writes a `card.unhold`.
+pub fn current_hold(conn: &Connection, card_id: i64) -> rusqlite::Result<Option<HoldInfo>> {
+    let newest: Option<(String, String, i64)> = conn
+        .query_row(
+            "SELECT kind, payload, at FROM event \
+             WHERE card_id = ?1 AND kind IN ('card.hold', 'card.unhold') \
+             ORDER BY event_id DESC LIMIT 1",
+            [card_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .optional()?;
+    Ok(newest.and_then(|(kind, payload, at)| {
+        if kind != "card.hold" {
+            return None;
+        }
+        let p: serde_json::Value = serde_json::from_str(&payload).ok()?;
+        let text = |key: &str| p[key].as_str().unwrap_or_default().to_string();
+        Some(HoldInfo {
+            category: text("category"),
+            reason: text("reason"),
+            by: text("by"),
+            at,
+        })
+    }))
+}
+
+/// The cards `card_id` waits for: those with an active `blocks` link to it that are not `done`,
+/// in card order.
+pub fn unfinished_prerequisites(conn: &Connection, card_id: i64) -> rusqlite::Result<Vec<i64>> {
+    let mut stmt = conn.prepare(
+        "SELECT l.from_card FROM card_link l JOIN card c ON c.card_id = l.from_card \
+         WHERE l.kind = 'blocks' AND l.state = 'active' AND l.to_card = ?1 AND c.state <> 'done' \
+         ORDER BY l.from_card",
+    )?;
+    let rows = stmt.query_map([card_id], |r| r.get(0))?;
+    rows.collect()
+}
+
+/// Why a HOLD was not set or lifted.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HoldError {
+    CardNotFound(i64),
+    /// Only a `draft` or `ready` card takes a HOLD.
+    WrongState {
+        card_id: i64,
+        state: String,
+    },
+    /// A live reservation holds the card.
+    Held {
+        card_id: i64,
+        holder: String,
+        generation: i64,
+    },
+    /// A `card.hold` is already in force.
+    AlreadyOnHold {
+        card_id: i64,
+    },
+    /// There is no `card.hold` in force to lift.
+    NotOnHold {
+        card_id: i64,
+    },
+    InvalidInput(String),
+    Ledger(LedgerError),
+}
+
+impl std::fmt::Display for HoldError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HoldError::CardNotFound(id) => write!(f, "card not found: C-{id}"),
+            HoldError::WrongState { card_id, state } => write!(
+                f,
+                "the card C-{card_id} is `{state}`, only a `draft` or `ready` card takes a HOLD"
+            ),
+            HoldError::Held {
+                card_id,
+                holder,
+                generation,
+            } => write!(
+                f,
+                "the card C-{card_id} is held by {holder:?} at generation {generation}"
+            ),
+            HoldError::AlreadyOnHold { card_id } => {
+                write!(f, "the card C-{card_id} is already on HOLD")
+            }
+            HoldError::NotOnHold { card_id } => {
+                write!(f, "the card C-{card_id} has no HOLD to lift")
+            }
+            HoldError::InvalidInput(why) => write!(f, "{why}"),
+            HoldError::Ledger(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl std::error::Error for HoldError {}
+
+impl From<LedgerError> for HoldError {
+    fn from(e: LedgerError) -> Self {
+        HoldError::Ledger(e)
+    }
+}
+
+fn check_hold_text(reason: &str, by: &str, session: Option<&str>) -> Result<(), HoldError> {
+    one_line("the reason", reason, MAX_LINE_CHARS).map_err(HoldError::InvalidInput)?;
+    one_line("the by", by, MAX_AUTHOR_CHARS).map_err(HoldError::InvalidInput)?;
+    if let Some(session) = session {
+        one_line("the session id", session, MAX_AUTHOR_CHARS).map_err(HoldError::InvalidInput)?;
+    }
+    Ok(())
+}
+
+/// Puts a HOLD on a `draft` or `ready` card nobody holds: one `card.hold` event with the
+/// category, the reason and the by. The card keeps its state (the schema pins the six values);
+/// `card next` skips it and `card take` refuses it until a person calls [`unhold`].
+pub fn hold(
+    w: &mut WriteLedger,
+    card_id: i64,
+    category: &str,
+    reason: &str,
+    by: &str,
+    session: Option<&str>,
+) -> Result<(), HoldError> {
+    if !HOLD_CATEGORIES.contains(&category) {
+        return Err(HoldError::InvalidInput(format!(
+            "the category `{category}` is not one of {}",
+            HOLD_CATEGORIES.join(", ")
+        )));
+    }
+    check_hold_text(reason, by, session)?;
+    w.with_write_tx(|tx, now| {
+        let state: String = match tx
+            .query_row(
+                "SELECT state FROM card WHERE card_id = ?1",
+                [card_id],
+                |r| r.get(0),
+            )
+            .optional()?
+        {
+            Some(state) => state,
+            None => return Ok(Err(HoldError::CardNotFound(card_id))),
+        };
+        if let Some(active) = reservation::current(tx, card_id)? {
+            return Ok(Err(HoldError::Held {
+                card_id,
+                holder: active.holder,
+                generation: active.generation,
+            }));
+        }
+        if state != "draft" && state != "ready" {
+            return Ok(Err(HoldError::WrongState { card_id, state }));
+        }
+        if current_hold(tx, card_id)?.is_some() {
+            return Ok(Err(HoldError::AlreadyOnHold { card_id }));
+        }
+        reservation::add_event(
+            tx,
+            now,
+            session.unwrap_or("user"),
+            card_id,
+            "card.hold",
+            &json!({"category": category, "reason": reason, "by": by}),
+        )?;
+        Ok(Ok(()))
+    })
+    .map_err(HoldError::from)?
+}
+
+/// Lifts the HOLD in force on a card: one `card.unhold` event. Nothing else writes that event;
+/// a person calls this, and no note, no state change and no landing lifts a HOLD.
+pub fn unhold(
+    w: &mut WriteLedger,
+    card_id: i64,
+    reason: &str,
+    by: &str,
+    session: Option<&str>,
+) -> Result<(), HoldError> {
+    check_hold_text(reason, by, session)?;
+    w.with_write_tx(|tx, now| {
+        let exists: bool = tx.query_row(
+            "SELECT count(*) > 0 FROM card WHERE card_id = ?1",
+            [card_id],
+            |r| r.get(0),
+        )?;
+        if !exists {
+            return Ok(Err(HoldError::CardNotFound(card_id)));
+        }
+        if current_hold(tx, card_id)?.is_none() {
+            return Ok(Err(HoldError::NotOnHold { card_id }));
+        }
+        reservation::add_event(
+            tx,
+            now,
+            session.unwrap_or("user"),
+            card_id,
+            "card.unhold",
+            &json!({"reason": reason, "by": by}),
+        )?;
+        Ok(Ok(()))
+    })
+    .map_err(HoldError::from)?
+}
+
+/// Why a prerequisite was not added.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PrereqError {
+    CardNotFound(i64),
+    /// A card cannot need itself.
+    SelfNeed(i64),
+    /// `needs` already needs `card_id`, so the two would wait for each other.
+    Cycle {
+        card_id: i64,
+        needs: i64,
+    },
+    InvalidInput(String),
+    Ledger(LedgerError),
+}
+
+impl std::fmt::Display for PrereqError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PrereqError::CardNotFound(id) => write!(f, "card not found: C-{id}"),
+            PrereqError::SelfNeed(id) => write!(f, "the card C-{id} cannot need itself"),
+            PrereqError::Cycle { card_id, needs } => write!(
+                f,
+                "C-{needs} already needs C-{card_id}, so they would wait for each other"
+            ),
+            PrereqError::InvalidInput(why) => write!(f, "{why}"),
+            PrereqError::Ledger(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl std::error::Error for PrereqError {}
+
+impl From<LedgerError> for PrereqError {
+    fn from(e: LedgerError) -> Self {
+        PrereqError::Ledger(e)
+    }
+}
+
+/// Records that `card_id` needs `needs` done first: one active `blocks` link from `needs` to
+/// `card_id` and one `card.prereq` event. `Ok(false)` when the link is already there (nothing
+/// is written). A card that needs itself, or one that `needs` already needs, is refused.
+pub fn add_prerequisite(
+    w: &mut WriteLedger,
+    card_id: i64,
+    needs: i64,
+    by: &str,
+    session: Option<&str>,
+) -> Result<bool, PrereqError> {
+    one_line("the by", by, MAX_AUTHOR_CHARS).map_err(PrereqError::InvalidInput)?;
+    if let Some(session) = session {
+        one_line("the session id", session, MAX_AUTHOR_CHARS).map_err(PrereqError::InvalidInput)?;
+    }
+    if card_id == needs {
+        return Err(PrereqError::SelfNeed(card_id));
+    }
+    w.with_write_tx(|tx, now| {
+        for id in [card_id, needs] {
+            let exists: bool = tx.query_row(
+                "SELECT count(*) > 0 FROM card WHERE card_id = ?1",
+                [id],
+                |r| r.get(0),
+            )?;
+            if !exists {
+                return Ok(Err(PrereqError::CardNotFound(id)));
+            }
+        }
+        let link = |from: i64, to: i64| -> rusqlite::Result<Option<String>> {
+            tx.query_row(
+                "SELECT state FROM card_link WHERE kind = 'blocks' AND from_card = ?1 \
+                 AND to_card = ?2",
+                [from, to],
+                |r| r.get(0),
+            )
+            .optional()
+        };
+        let existing = link(needs, card_id)?;
+        if existing.as_deref() == Some("active") {
+            return Ok(Ok(false));
+        }
+        if link(card_id, needs)?.as_deref() == Some("active") {
+            return Ok(Err(PrereqError::Cycle { card_id, needs }));
+        }
+        if existing.is_some() {
+            tx.execute(
+                "UPDATE card_link SET state = 'active', updated_at = ?3 \
+                 WHERE kind = 'blocks' AND from_card = ?1 AND to_card = ?2",
+                params![needs, card_id, now],
+            )?;
+        } else {
+            tx.execute(
+                "INSERT INTO card_link (from_card, kind, to_card, created_at, updated_at) \
+                 VALUES (?1, 'blocks', ?2, ?3, ?3)",
+                params![needs, card_id, now],
+            )?;
+        }
+        reservation::add_event(
+            tx,
+            now,
+            session.unwrap_or("user"),
+            card_id,
+            "card.prereq",
+            &json!({"needs": needs, "by": by}),
+        )?;
+        Ok(Ok(true))
+    })
+    .map_err(PrereqError::from)?
 }
 
 // ---- pull request link -------------------------------------------------------------------------

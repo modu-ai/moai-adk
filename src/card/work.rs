@@ -164,6 +164,16 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
                     v["mine"] = json!(mine);
                     v["theirs"] = json!(theirs);
                 }
+                SkipReason::Hold { category, reason } => {
+                    v["category"] = json!(category);
+                    v["hold_reason"] = json!(reason);
+                }
+                SkipReason::Prerequisite { cards } => {
+                    v["needs"] = json!(cards
+                        .iter()
+                        .map(|c| input::card_name(*c))
+                        .collect::<Vec<_>>());
+                }
                 SkipReason::EmptyScope | SkipReason::ReviewNoHolder | SkipReason::NoCriteria => {}
             }
             v
