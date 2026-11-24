@@ -245,6 +245,7 @@ tests/update_git_hooks_cli.rs	4	0
 tests/update_headver.rs	5	0
 tests/update_home_layer_cli.rs	3	23
 tests/update_hooks_cli.rs	1	0
+tests/update_installed_by_name.rs	1	0
 tests/update_keys_cli.rs	7	6
 tests/update_known_good.rs	3	2
 tests/update_known_good_replace.rs	4	1

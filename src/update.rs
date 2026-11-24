@@ -1056,6 +1056,45 @@ fn earlier_install_ids(
         .collect())
 }
 
+/// The ids a receipt of the earlier version folder `folder` may sit under (SPEC-20261124-
+/// installed-version-by-name): the folder's own `folder_id` (the running build's executable name),
+/// the id under the other name of the build (`moai` and `moai-cli` are one build under two names,
+/// and a receipt written before the link was made sits under the name that ran then), and the ids
+/// the committed install journal says each of them had before the folder moved. The folder's own
+/// id comes first.
+fn folder_receipt_ids(
+    canonical_home: &Path,
+    versions: &Path,
+    folder: &Path,
+    folder_id: &str,
+    exe_name: &std::ffi::OsStr,
+) -> Vec<String> {
+    let other_name = Path::new(exe_name).file_stem().and_then(|stem| {
+        let ext = Path::new(exe_name).extension();
+        let other = match stem.to_str()? {
+            "moai-cli" => "moai",
+            "moai" => "moai-cli",
+            _ => return None,
+        };
+        let mut name = std::ffi::OsString::from(other);
+        if let Some(ext) = ext {
+            name.push(".");
+            name.push(ext);
+        }
+        Some(name)
+    });
+    let mut own = vec![folder_id.to_string()];
+    if let Some(name) = other_name {
+        let path = versions.join(folder).join("bin").join(name);
+        own.extend(crate::install::install_id(&path).ok());
+    }
+    let mut ids = own.clone();
+    for id in &own {
+        ids.extend(crate::home_install::earlier_ids_of(canonical_home, id));
+    }
+    ids
+}
+
 /// Picks the host receipt that supplies the baseline (#2521).
 ///
 /// Only a build inside the layout looks beyond its own receipt: it also reads the host
@@ -1139,19 +1178,16 @@ pub(crate) fn resolve_host_receipt(
         }
     }
     folders.sort();
-    for (_, folder_id) in earlier_install_ids(&versions, &folders, &exe_name)? {
+    for (folder, folder_id) in earlier_install_ids(&versions, &folders, &exe_name)? {
         if folder_id == install_id {
             continue;
         }
         // R5 (#2871 U3b): a folder that moved with `~/.moai-cli` may hold its receipts under the
-        // id it had before (the committed install journal says which). The folder's own id comes
-        // first; of the finished receipts it holds, the newest stands for the folder, so one
-        // folder never ties with itself. With no journal this is the folder's own id alone.
-        let mut ids = vec![folder_id.clone()];
-        ids.extend(crate::home_install::earlier_ids_of(
-            canonical_home,
-            &folder_id,
-        ));
+        // id it had before (the committed install journal says which), and a receipt may sit
+        // under either executable name of the build. The folder's own id comes first; of the
+        // finished receipts it holds, the newest stands for the folder, so one folder never ties
+        // with itself. With no journal and one name this is the folder's own id alone.
+        let ids = folder_receipt_ids(canonical_home, &versions, &folder, &folder_id, &exe_name);
         let mut chosen: Option<(String, HostReceipt)> = None;
         for id in ids {
             if id == install_id {
