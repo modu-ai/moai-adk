@@ -17,7 +17,10 @@ use std::path::{Path, PathBuf};
 /// command and the end condition, and the `registration` part: every leader entry of the
 /// session registry with its lease, ended ones included. Reads only: git with
 /// `--no-optional-locks`, the session registry without writing, GitHub with GraphQL queries
-/// (at most 30 requests) — except that `--renew-instance` renews the leader registration.
+/// (at most 30 requests) — except that `--renew-instance` renews the leader registration and
+/// that the round calls `moai card sweep` once before it builds its answer: a card whose lease
+/// ended long ago goes back to `ready` and the answer names it under `lease_sweep`. The profile
+/// key `lease_sweep_in_round` set to false makes the round list those cards and write nothing.
 #[derive(clap::Args)]
 pub struct Args {
     /// Any checkout of the repository (the primary one or a worktree).
@@ -129,6 +132,11 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         .renew_instance
         .as_deref()
         .map(|instance| leader_round::registration::renew(&args.project, instance, now));
+    // SPEC-20261124-leader-round-lease-sweep: one `card sweep` before the round builds its answer;
+    // a project with no ledger or no HOME is `not_run` and never fails the round.
+    let home = moai_cli::ledger::command::resolve_home(None).ok();
+    let lease_sweep = leader_round::lease_sweep(&args.project, home.as_deref());
+    let swept = lease_sweep["writes"] == true;
     let mut round = leader_round::round(snap.as_ref(), args.repo.as_deref(), &args.project, now);
     let renewed = matches!(renewal, Some(Ok(_)));
     match renewal {
@@ -173,10 +181,11 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         "now": moai_cli::forge::policy::format_utc(now),
         "lanes": lanes,
         "idle_lanes": idle_lanes,
+        "lease_sweep": lease_sweep,
         "round": round,
         "partial": snap.as_ref().map(|s| s.partial.clone()).unwrap_or_default(),
         "api_calls": snap.as_ref().map_or(0, |s| s.api_calls),
-        "writes": renewed,
+        "writes": renewed || swept,
     });
     // Issue #3052: say which comments the fleet read left out because no member wrote them.
     if let Some(s) = snap.as_ref().filter(|s| !s.ignored.is_empty()) {
