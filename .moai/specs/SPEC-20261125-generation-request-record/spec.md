@@ -2,7 +2,7 @@
 id: SPEC-20261125-generation-request-record
 title: "generation-apply records the project agent and skill request, so an apply with every file unchanged clears needs_decision"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-25
 branch: spec/generation-request-record-20261125
 ---
@@ -11,7 +11,7 @@ branch: spec/generation-request-record-20261125
 
 ## Intent
 
-mo.ai.kr 실측(2026-11-19, 2026-11-21): `/moai project` 가 `generation-apply` 로 프로젝트 agent 와 skill 을 만든 뒤 `project-update-plan` 의 generation 단계가 `needs_decision` ("request is not recorded") 에 영구히 머물러요. 처음 보고된 "`generation-apply` 가 `generation-plan` 이 받은 stdin 을 `invalid typed JSON input` 으로 거절한다"는 사용 실수였어요(help 대로 plan 의 `result` 를 stdin 으로 주면 apply 는 `ok`, 상태 `applied`). 진짜 결함은 둘이에요.
+다른 프로젝트의 실측(2026-11-19, 2026-11-21): `/moai project` 가 `generation-apply` 로 프로젝트 agent 와 skill 을 만든 뒤 `project-update-plan` 의 generation 단계가 `needs_decision` ("request is not recorded") 에 영구히 머물러요. 처음 보고된 "`generation-apply` 가 `generation-plan` 이 받은 stdin 을 `invalid typed JSON input` 으로 거절한다"는 사용 실수였어요(help 대로 plan 의 `result` 를 stdin 으로 주면 apply 는 `ok`, 상태 `applied`). 진짜 결함은 둘이에요.
 
 1. `record_generation`(`src/generation.rs`)은 `owned_files` 베이스라인과 `workflow_id`·`interview_revision`·`profile_sha256` 만 쓰고, 파일을 만든 요청(`native_roles`, `skill_projections`, `project_skills`)은 어디에도 적지 않아요. 그래서 `project-update` 의 generation 단계는 `owned_files` 에 다시 만들 수 없는 섹션(`generation:native-role`·`project-skill`·`skill-projection`)이 있으면 요청을 알 수 없다고 보고 `needs_decision` 을 내요.
 2. 모든 파일이 이미 같은 내용(unchanged)인 plan 을 apply 하면 만들거나 합친 파일이 없어서, 매니페스트가 바뀌지 않는 한 아무것도 기록되지 않아요. 기록이 없으니 `needs_decision` 이 풀리지 않아요.
@@ -38,6 +38,7 @@ mo.ai.kr 실측(2026-11-19, 2026-11-21): `/moai project` 가 `generation-apply` 
 - REQ-8: A later `generation-apply` shall replace the record whole with its own request. · failure: none — a test applies a second request with one role fewer and reads the record.
 - REQ-9: An apply of the agents portion alone shall carry the recorded `generation_request` over unchanged. · failure: none — a test applies the profile or agents step after a generation apply and reads the record.
 - REQ-10: The typed manifest of `agents-apply` shall accept an optional `generation_request` and keep it when it republishes the manifest. · failure: none — a test applies a project agent, which fails as an amended manifest outside the schema without the field.
+- REQ-11: When the recorded `generation_request` is not an object of exactly the three lists, each an array, with at least one entry, the generation step shall read `needs_decision` and plan no file. · failure: none — a test records each smaller shape and reads the step and the files.
 
 ## Acceptance
 
@@ -59,6 +60,11 @@ mo.ai.kr 실측(2026-11-19, 2026-11-21): `/moai project` 가 `generation-apply` 
   verify: `cargo test --locked --offline --test project_update_plan_cli`
   verify: `cargo test --locked --offline --test generation_manifest_single_write --test generation_apply_result_cli --test agents_apply_linkage --test generation_receipt_order --test generation_own_reference --test project_skill_links --test boundary_d3_skill_revert`
   verify: `cargo test --locked --offline --lib record_tests`
+- AC-9 (REQ-11): 빈 객체, 목록 하나만 있음, 목록 하나 빠짐, 제품이 쓰지 않는 키가 있음, 세 목록이 모두 빔 — 이 다섯 모양의 기록은 generation 단계가 `needs_decision` 이고 출력할 명령이 없고 `remove` 계획이 없으며 파일이 그대로예요.
+  verify: `cargo test --locked --offline --test generation_request_record a_record_that_is_only_partly_there_is_a_question_and_plans_no_removal`
+  verify: `cargo test --locked --offline --lib record_tests`
+- AC-10 (REQ-11): 모양은 맞고 값이 요청 검증에 걸리는 기록은 읽히지만 계획이 거절되어 generation 단계가 `blocked` 예요(`ready` 가 아니에요).
+  verify: `cargo test --locked --offline --test generation_request_record a_record_of_the_right_shape_with_a_value_the_request_refuses_is_blocked`
 
 ## Scope
 
@@ -80,7 +86,8 @@ mo.ai.kr 실측(2026-11-19, 2026-11-21): `/moai project` 가 `generation-apply` 
 - 매니페스트 바이트가 바뀌면 `generation` 계획의 "매니페스트 줄이 움직이는가" 판단이 어긋날 수 있어요 → 같은 함수(`record_generation`)가 쓰기와 예측에 쓰여서 어긋나지 않고, 적용 직후 계획이 `unchanged` 인 것을 AC-2 와 AC-5 가 봐요.
 - 기록과 디스크가 어긋나는 경우(사용자가 agent 파일을 지움) → 기록으로 다시 계획하면 그 파일이 `create` 로 계획돼요. 사용자가 일부러 지운 파일을 되살리는 것이라 계획에서 보여 주고 적용은 사용자의 선택을 거쳐요(기존 `ready` 단계의 규칙).
 - 기록에 요청 문자열이 남아요(역할 목적 한 줄들) → 이미 만든 파일에 같은 글이 들어 있고 비밀이 아니에요. 요청 검증이 쓰는 한 줄 한도를 적용 전에 거쳐요.
-- 기록을 읽을 수 없으면(손으로 고친 매니페스트) → 추측하지 않고 사용자에게 묻는 `needs_decision` 으로 읽어요(fail-closed).
+- 기록이 부분적이면(손으로 고친 매니페스트, 추적 파일의 머지 충돌 해결) → 제품은 세 목록을 늘 같이 쓰고 빈 요청은 키를 쓰지 않아요. 그래서 세 목록이 모두 배열로 있고 다른 키가 없고 항목이 하나 이상일 때만 기록으로 읽고, 그 밖(빈 객체, 목록 하나 빠짐, 모르는 키, 빈 목록 셋)은 읽을 수 없는 기록으로 `needs_decision` 이에요(REQ-11). 빠진 목록을 빈 목록으로 읽으면 그 목록이 만든 skill 파일이 `remove` 로 계획되어 사용자 파일이 지워져요.
+- 판이 섞이면 → 새 키가 든 매니페스트를 이전 판 바이너리의 `agents-plan` 이 "generation manifest unreadable" 로 거절해요(`src/agents.rs` 의 `deny_unknown_fields`; 독립 감사가 설치된 이전 판으로 실측했어요). 팀이 판을 섞어 쓰면 이전 판 쪽이 막혀요. 이 SPEC 의 판으로 올리면 풀리고, 이전 판에서 쓰려면 매니페스트의 `generation_request` 키를 지워요(그러면 옛 동작이에요).
 
 ## Decisions
 
@@ -91,6 +98,7 @@ mo.ai.kr 실측(2026-11-19, 2026-11-21): `/moai project` 가 `generation-apply` 
 | D-3 | 비어 있는 요청은 키를 쓰지 않아요 | 기록이 없는 프로젝트의 매니페스트 바이트와 계획 digest 가 그대로예요 | 빈 목록을 쓰도록 바꿔요 |
 | D-4 | 기록이 없는 옛 매니페스트의 `needs_decision` 은 그대로 둬요 | 파일에서 요청을 거꾸로 만들면 사용자가 손본 파일이나 목적 한 줄을 추측해야 해요; 같은 요청으로 한 번 더 apply 하면 기록돼요(REQ-4) | 거꾸로 복원하는 별도 조각 |
 | D-5 | 기록 키 이름은 `generation_request` | 앞서 만든 구현이 쓴 이름이고 `owned_files` 와 나란히 읽혀요; 처음 시험 초안이 가정한 `request` 는 `deny_unknown_fields` 스키마의 다른 키와 헷갈려요 | 키 이름 바꾸기는 읽기 함수 한 곳이에요 |
+| D-6 | 기록은 제품이 쓰는 모양과 정확히 같을 때만 읽어요: 세 목록이 모두 배열, 다른 키 없음, 항목 하나 이상 | 부분 기록이 작은 요청으로 읽히면 계획이 나머지 파일을 지워요; 제품은 세 키를 늘 같이 쓰고 빈 요청은 키를 쓰지 않아서 정상 기록은 모두 통과해요 | 읽기 규칙은 `recorded_request_lists` 한 곳이에요 |
 
 ## Result
 
@@ -112,3 +120,10 @@ Implemented on branch `spec/generation-request-record-20261125`; the SPEC stays 
 - Guard mutants, one edit each, all seven run with the filter `binary(generation_request_record) or test(record_tests)` in one slot call, 7 of 7 killed (exit 100, the tree clean afterwards): `record_is_not_written`, `empty_request_keeps_the_key`, `record_skipped_when_every_file_is_unchanged`, `update_ignores_the_record`, `agents_apply_drops_the_record`, `empty_record_is_written_as_null`, `unreadable_record_passes`.
 - Not run here: the whole affected check of the range (it runs at READY, and its receipt is quoted in the READY note). The dangerous-path kinds of the repository rules (delete, reset, start a process, build a permission rule) do not apply: the change writes one key of one manifest, and every test runs the built binary in a temporary project with a temporary HOME.
 - Not done (Non-goals): restoring the request of an old manifest from its files; a manifest that lost its record is repaired by applying the same request once more.
+- Revision 2 (repair after the independent audit, which reproduced that a record of `{}` planned `ready` and a `remove` of the skill file): the reader now accepts only the shape the apply writes (REQ-11, D-6), the Risks name the partial record and the version mix, two comments name this SPEC, and the unit test that fixed a missing list as empty now fixes it as a question.
+- Run 5 (RED, before the repair): `cargo nextest run --locked --offline --no-fail-fast --test generation_request_record` — 7 tests run, 6 passed, 1 failed: `a_record_that_is_only_partly_there_is_a_question_and_plans_no_removal` read `{}` as `ready`.
+- Run 6: `cargo nextest run --locked --offline --no-fail-fast --test generation_request_record --lib -E 'binary(generation_request_record) or test(record_tests)'` — 11 tests run, 11 passed.
+- AC-9: met — the five partial shapes read `needs_decision` with no printed command, no `remove` and every owned file byte-identical, and the whole record put back reads `unchanged`; the unit test `a_record_that_is_smaller_than_what_the_apply_writes_is_a_question` checks the same five shapes. Passed in run 6.
+- AC-10: met — `a_record_of_the_right_shape_with_a_value_the_request_refuses_is_blocked`, passed in run 6.
+- Repair guard mutants, one edit set each, the same filter in one slot call, 4 of 4 killed (exit 100, the tree clean afterwards): `missing_list_reads_as_empty` (the original defect), `unknown_key_ignored`, `all_empty_record_is_read`, `plan_error_is_a_question_not_blocked`.
+- Seen and left out of this SPEC: the examples of `generation-plan` and `generation-apply` in `src/help.rs` both read `< request.json`, the wording that invites the usage mistake the first report was; a follow-up for the help text.
