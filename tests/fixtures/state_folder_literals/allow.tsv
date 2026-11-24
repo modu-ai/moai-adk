@@ -100,7 +100,7 @@ tests/go_settings_cli.rs	10	43
 tests/go_settings_defaults.rs	0	5
 tests/go_state_blocked_folders_cli.rs	0	15
 tests/go_state_classes_cli.rs	19	101
-tests/go_state_cli.rs	76	221
+tests/go_state_cli.rs	106	277
 tests/go_state_codex_cli.rs	2	17
 tests/go_state_digest_cli.rs	7	32
 tests/go_state_preview_cli.rs	0	15
@@ -177,8 +177,8 @@ tests/no_moai_on_path.rs	3	1
 tests/ops_table_gen_cli.rs	0	1
 tests/optimize_plan_cli.rs	16	19
 tests/output_names_moai.rs	9	0
-tests/path_root_default.rs	11	45
-tests/path_root_direct_sites.rs	9	9
+tests/path_root_default.rs	11	59
+tests/path_root_direct_sites.rs	15	9
 tests/placeholder_profile_guard.rs	0	1
 tests/process_scan_cost_cli.rs	0	5
 tests/process_scan_snapshot_cli.rs	9	19
@@ -194,7 +194,7 @@ tests/project_layer_follow_ups.rs	0	1
 tests/project_scale_detect_lib.rs	2	3
 tests/project_skill_links.rs	4	0
 tests/project_update_hooks_cli.rs	3	4
-tests/project_update_plan_cli.rs	9	66
+tests/project_update_plan_cli.rs	12	70
 tests/project_worktree_move_choice.rs	0	3
 tests/queue_query_cli.rs	2	0
 tests/recovery_cli.rs	1	3
