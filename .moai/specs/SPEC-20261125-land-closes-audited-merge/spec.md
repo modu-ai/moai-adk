@@ -38,17 +38,17 @@ created: 2026-11-25
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-7): 첫째 부모가 tip 이고 둘째 부모가 PASS 받은 H 인, 충돌 없는 머지 M 을 `card land --by leader` 하면 한 번의 호출로 브랜치가 M 으로 움직이고 카드가 done 이며 열린 기준이 없고, 답의 `audited_head` 가 H 이고 기준 근거가 `verdict event <n> PASS head <H 의 12자리>` 예요 · verify: `cargo test --locked --offline --test card_land_audited_merge_cli a_clean_merge_of_the_audited_head_closes_the_card_in_one_call`
-- AC-2 (REQ-2): H 의 PASS 가 막히는 모든 경우 — 감사자가 H 의 작성자임, 감사자가 착지하는 세션임, tier 1 인데 영수증 없음, 새 FAIL 이 섰음, 필요한 스캔을 덮는 영수증이 없음 — 에서 M 의 착지가 같은 코드로 거절되고 브랜치와 원장이 그대로예요 · verify: `cargo test --locked --offline --test card_land_audited_merge_cli every_check_of_the_audited_verdict_still_refuses_the_merge`
-- AC-3 (REQ-3): 첫째 부모가 tip 이 아닌 M(tip 이 M 을 만든 뒤 또 움직였음)은 착지가 거절되고 브랜치와 원장이 그대로예요 · verify: `cargo test --locked --offline --test card_land_audited_merge_cli a_merge_whose_first_parent_is_not_the_tip_is_refused`
-- AC-4 (REQ-4): 충돌을 풀어 만든 M 과 머지 뒤 손으로 한 줄을 고친 M 이 각각 `no_pass:` 로 시작하는 문구로 거절되고, 문구가 M 이 깨끗한 머지와 달라지는 경로(충돌이면 충돌했다는 말)와 "M 자체에 `card verdict` 를 남겨요" 안내를 담고, 브랜치와 원장이 그대로예요 · verify: `cargo test --locked --offline --test card_land_audited_merge_cli a_resolved_or_edited_merge_is_refused_with_the_paths_the_auditor_must_read`
-- AC-5 (REQ-5): 부모가 셋인 머지와, 둘째 부모에 판정이 없는 머지가 지금처럼 `no_pass` 로 거절되고 아무것도 쓰이지 않아요 · verify: `cargo test --locked --offline --test card_land_audited_merge_cli a_merge_without_two_parents_or_without_a_verdict_on_the_second_is_refused_as_before`
-- AC-6 (REQ-6): M 자신에게 FAIL 판정이 있으면 H 의 PASS 가 있어도 거절되고, M 자신에게 PASS 가 있으면 H 를 읽지 않고 그 PASS 로 착지해요 · verify: `cargo test --locked --offline --test card_land_audited_merge_cli a_verdict_on_the_merge_itself_decides_and_the_second_parent_is_not_read`
-- AC-7: 이웃 테스트가 그대로 통과해요(단독 착지, 묶음 착지, 체크아웃된 브랜치 이동) · verify: `cargo test --locked --offline --test card_land_cli` and `cargo test --locked --offline --test card_land_batch_cli` and `cargo test --locked --offline --test card_land_checked_out_cli`
+- AC-1 (REQ-1, REQ-7): 첫째 부모가 tip 이고 둘째 부모가 PASS 받은 H 인, 충돌 없는 머지 M 을 `card land --by leader` 하면 한 번의 호출로 브랜치가 M 으로 움직이고 카드가 done 이며 열린 기준이 없고, 답의 `audited_head` 가 H 이고 기준 근거가 `verdict event <n> PASS head <H 의 12자리>` 예요 · verify: `cargo test --locked --offline --test card card_land_audited_merge_cli::a_clean_merge_of_the_audited_head_closes_the_card_in_one_call`
+- AC-2 (REQ-2): H 의 PASS 가 막히는 모든 경우 — 감사자가 H 의 작성자임, 감사자가 착지하는 세션임, tier 1 인데 영수증 없음, 새 FAIL 이 섰음, 필요한 스캔을 덮는 영수증이 없음 — 에서 M 의 착지가 같은 코드로 거절되고 브랜치와 원장이 그대로예요 · verify: `cargo test --locked --offline --test card card_land_audited_merge_cli::every_check_of_the_audited_verdict_still_refuses_the_merge`
+- AC-3 (REQ-3): 첫째 부모가 tip 이 아닌 M(tip 이 M 을 만든 뒤 또 움직였음)은 착지가 거절되고 브랜치와 원장이 그대로예요 · verify: `cargo test --locked --offline --test card card_land_audited_merge_cli::a_merge_whose_first_parent_is_not_the_tip_is_refused`
+- AC-4 (REQ-4): 충돌을 풀어 만든 M 과 머지 뒤 손으로 한 줄을 고친 M 이 각각 `no_pass:` 로 시작하는 문구로 거절되고, 문구가 M 이 깨끗한 머지와 달라지는 경로(충돌이면 충돌했다는 말)와 "M 자체에 `card verdict` 를 남겨요" 안내를 담고, 브랜치와 원장이 그대로예요 · verify: `cargo test --locked --offline --test card card_land_audited_merge_cli::a_resolved_or_edited_merge_is_refused_with_the_paths_the_auditor_must_read`
+- AC-5 (REQ-5): 부모가 셋인 머지와, 둘째 부모에 판정이 없는 머지가 지금처럼 `no_pass` 로 거절되고 아무것도 쓰이지 않아요 · verify: `cargo test --locked --offline --test card card_land_audited_merge_cli::a_merge_without_two_parents_or_without_a_verdict_on_the_second_is_refused_as_before`
+- AC-6 (REQ-6): M 자신에게 FAIL 판정이 있으면 H 의 PASS 가 있어도 거절되고, M 자신에게 PASS 가 있으면 H 를 읽지 않고 그 PASS 로 착지해요 · verify: `cargo test --locked --offline --test card card_land_audited_merge_cli::a_verdict_on_the_merge_itself_decides_and_the_second_parent_is_not_read`
+- AC-7: 이웃 테스트가 그대로 통과해요(단독 착지, 묶음 착지, 체크아웃된 브랜치 이동) · verify: `cargo test --locked --offline --test card card_land_cli` and `cargo test --locked --offline --test card card_land_batch_cli` and `cargo test --locked --offline --test card card_land_checked_out_cli`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261125-land-closes-audited-merge/**`, `src/card/land.rs`, `src/card/land/check.rs`, `tests/card/card_land_audited_merge_cli.rs`
+- write: `.moai/specs/SPEC-20261125-land-closes-audited-merge/**`, `src/card/land.rs`, `src/card/land/check.rs`, `tests/card/card_land_audited_merge_cli.rs`, `tests/card/main.rs`(`mod` 한 줄)
 - shared (line lease, 도움말 문장만): `src/ops/card.rs`(`Land` 의 문서 주석), 그 도움말을 담은 골든 파일이 있으면 그 파일
 - read-only: `src/card/land/batch.rs`(묶음 착지가 `audited` 를 넘기는 방식의 본보기), `src/card/land/scans.rs`, `src/ledger/workflow.rs`
 - forbidden: 판정 규칙의 약화(독립성·tier·영수증·FAIL), `card land-batch` 의 동작, `CLAUDE.md`, `skills/**`, 이 저장소의 `.moai/project.yaml`, 실제 HOME
