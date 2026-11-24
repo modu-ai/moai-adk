@@ -538,7 +538,7 @@ fn glm_launch_unblocked_after_keys_layer() {
     common::git::git_ok(&project, &["init", "-q"]);
     let dry = |f: &Fixture| {
         let _permit = spawn_cap::acquire();
-        command(f, &project, &["glm", "-a", "--dry-run"])
+        command(f, &project, &["glm", "--dry-run"])
             .stdin(Stdio::null())
             .output()
             .unwrap()

@@ -39,6 +39,7 @@ tests/card/card_finish_cli.rs	1	8
 tests/card/card_generated_scope.rs	0	1
 tests/card/card_guard_cli.rs	1	4
 tests/card/card_inbox_cli.rs	0	1
+tests/card/card_land_batch_cli.rs	1	2
 tests/card/card_land_cli.rs	1	5
 tests/card/card_line_lease_cli.rs	0	2
 tests/card/card_list_title_prefix.rs	0	1
@@ -77,6 +78,7 @@ tests/card/ledger_workflow.rs	0	1
 tests/card/queue_query_cli.rs	2	0
 tests/card/recurring_problems_rule.rs	0	1
 tests/card/release_suite.rs	1	4
+tests/check_affected_card_select.rs	0	1
 tests/check_tree_cli.rs	7	61
 tests/ci_scope_test.py	3	3
 tests/claude_md_engine_cli.rs	1	5
@@ -161,7 +163,6 @@ tests/language_set_cli.rs	32	7
 tests/language_setting.rs	6	6
 tests/language_three_questions.rs	4	0
 tests/launcher_advisor_setting.rs	5	0
-tests/launcher_agent_numbering.rs	4	0
 tests/launcher_auto_init.rs	6	17
 tests/launcher_glm_key_file.rs	7	10
 tests/launcher_key_vault.rs	4	6

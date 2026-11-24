@@ -12,6 +12,7 @@
 pub mod color;
 pub mod config;
 pub mod counts;
+pub mod icons;
 pub mod input;
 pub mod orca;
 pub mod render;

@@ -1025,8 +1025,7 @@ fn session_rejects_lower_ranked_advisor_and_unknown_host() {
 
 /// Runs the launcher syntax (00-F #2028). Tests use `--dry-run` only and never start a host.
 fn launcher(args: &[&str], token: Option<&str>) -> std::process::Output {
-    // A fresh git project per call: `-a` previews its `agent-N` from that project's counter
-    // (#2359), never from this repository's.
+    // A fresh git project per call, so no session folder of this repository is touched.
     let project = tempfile::tempdir().unwrap();
     assert!(Command::new("git")
         .args(["init", "-q"])
@@ -1060,47 +1059,54 @@ fn launched(out: &std::process::Output) -> Value {
     v
 }
 #[test]
-fn launcher_leader_default_claude() {
-    // The leader row of the default table (SPEC-20261121-model-defaults-one-table).
+fn launcher_default_claude() {
+    // A launch without a name and one with `--name` start the same Claude Code session; the
+    // role flags are retired (SPEC-20261124-launcher-retire-role-flags).
     let expected = json!([
         "claude",
-        "--name",
-        "leader",
         "--model",
-        "claude-opus-5-5",
+        "opus",
         "--effort",
-        "high",
+        "medium",
         "--permission-mode",
         "auto"
     ]);
+    let v = launched(&launcher(&["cc", "--dry-run"], None));
+    assert_eq!(v["argv"], expected);
+    assert_eq!(
+        (v["host"].clone(), v["role"].clone()),
+        (json!("claude"), Value::Null)
+    );
+    assert_eq!(v["env_keys"], json!([]));
+    let v = launched(&launcher(&["cc", "--name", "lane-1", "--dry-run"], None));
+    assert_eq!(
+        v["argv"],
+        json!([
+            "claude",
+            "--name",
+            "lane-1",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto"
+        ])
+    );
+    assert_eq!(v["role"], Value::Null);
+    assert!(!v["notes"].to_string().contains("HOLD"));
+    // The retired role flags, alone or with a host word, fail instead of guessing.
     for args in [
         &["-l", "--dry-run"][..],
-        &["cc", "-l", "--dry-run"][..],
         &["--leader", "--dry-run"][..],
+        &["-a", "--dry-run"][..],
+        &["-l", "-a", "--dry-run"][..],
+        &["-l", "cc", "--dry-run"][..],
+        &["cc", "-l", "--dry-run"][..],
+        &["-a", "zcode", "--dry-run"][..],
     ] {
-        let v = launched(&launcher(args, None));
-        assert_eq!(v["argv"], expected, "{args:?}");
-        assert_eq!(
-            (v["host"].clone(), v["role"].clone()),
-            (json!("claude"), json!("leader"))
-        );
-        assert_eq!(v["env_keys"], json!([]));
+        assert!(!launcher(args, None).status.success(), "{args:?}");
     }
-    // `-a` without a host is the Claude Code agent named from the project counter (#2359); a
-    // fresh project previews `agent-1` and the dry run takes no number.
-    let v = launched(&launcher(&["-a", "--dry-run"], None));
-    assert_eq!(v["role"], json!("agent"));
-    assert_eq!(v["argv"][2], json!("agent-1"));
-    assert!(v["notes"].to_string().contains("--dry-run takes no number"));
-    assert!(!v["notes"].to_string().contains("HOLD"));
-    // Ambiguous or empty invocations fail instead of guessing.
-    assert!(!launcher(&["-l", "-a", "--dry-run"], None).status.success());
-    assert!(!launcher(&["-l", "cc", "--dry-run"], None).status.success());
-    // A host word without -l|-a is a plain host session since #2053 (tests/launcher_roleless.rs).
-    assert!(launcher(&["cc", "--dry-run"], None).status.success());
-    assert!(!launcher(&["-a", "zcode", "--dry-run"], None)
-        .status
-        .success());
     assert!(!launcher(&[], None).status.success());
 }
 #[test]
@@ -1108,33 +1114,23 @@ fn launcher_flags_can_be_disabled() {
     let v = launched(&launcher(
         &[
             "cc",
-            "-a",
             "--name",
-            "agent-3",
+            "lane-3",
             "--no-advisor",
             "--permissions",
             "--dry-run",
         ],
         None,
     ));
-    // The agent row of the default table (SPEC-20261121-model-defaults-one-table).
     assert_eq!(
         v["argv"],
-        json!([
-            "claude",
-            "--name",
-            "agent-3",
-            "--model",
-            "claude-sonnet-5-5",
-            "--effort",
-            "high"
-        ])
+        json!(["claude", "--name", "lane-3", "--model", "opus", "--effort", "medium"])
     );
     let v = launched(&launcher(
         &[
-            "-a",
+            "cc",
             "--name",
-            "agent-4",
+            "lane-4",
             "--model",
             "sonnet",
             "--effort",
@@ -1149,7 +1145,7 @@ fn launcher_flags_can_be_disabled() {
         json!([
             "claude",
             "--name",
-            "agent-4",
+            "lane-4",
             "--model",
             "sonnet",
             "--effort",
@@ -1158,25 +1154,22 @@ fn launcher_flags_can_be_disabled() {
             "auto"
         ])
     );
-    assert!(!launcher(&["-l", "--effort", "turbo", "--dry-run"], None)
+    assert!(!launcher(&["cc", "--effort", "turbo", "--dry-run"], None)
         .status
         .success());
-    assert!(!launcher(&["-l", "--name", "two words", "--dry-run"], None)
+    assert!(!launcher(&["cc", "--name", "two words", "--dry-run"], None)
         .status
         .success());
 }
 
-/// #2164 (A5) warned that `-l|-a` were deprecated; the user decision of 2026-11-10 (#2359,
-/// comment 6760976883) keeps them as the way to name a session `leader` / `agent-N`, so no
-/// shape warns any more and each still composes.
+/// #2164 (A5) warned that `-l|-a` were deprecated; they are retired now and refused
+/// (SPEC-20261124-launcher-retire-role-flags), so the launch shapes that remain warn about
+/// nothing and each still composes.
 #[test]
-fn launcher_role_flags_are_kept_without_a_deprecation_warning() {
+fn launcher_shapes_carry_no_deprecation_warning() {
     for args in [
-        &["-l", "--dry-run"][..],
-        &["-a", "--name", "agent-7", "--dry-run"][..],
-        &["cc", "-l", "--dry-run"][..],
-        &["cc", "-a", "--dry-run"][..],
         &["cc", "--dry-run"][..],
+        &["cc", "--name", "lane-7", "--dry-run"][..],
     ] {
         let out = launcher(args, None);
         let v = launched(&out);
@@ -1194,7 +1187,7 @@ fn launcher_role_flags_are_kept_without_a_deprecation_warning() {
 #[test]
 fn launcher_glm_requires_token_name_only() {
     let sentinel = "moai-test-sentinel-not-a-real-token";
-    let out = launcher(&["glm", "-a", "--dry-run"], None);
+    let out = launcher(&["glm", "--dry-run"], None);
     assert!(!out.status.success());
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(
@@ -1202,7 +1195,7 @@ fn launcher_glm_requires_token_name_only() {
         "{err}"
     );
     assert!(out.stdout.is_empty());
-    let out = launcher(&["glm", "-l", "--dry-run"], Some(sentinel));
+    let out = launcher(&["glm", "--dry-run"], Some(sentinel));
     let text = format!(
         "{}{}",
         String::from_utf8_lossy(&out.stdout),
@@ -1230,26 +1223,23 @@ fn launcher_glm_requires_token_name_only() {
             "Z_AI_API_KEY"
         ])
     );
-    // The glm leader row of the default table, without the `zai/` prefix the host does not take
-    // (SPEC-20261121-model-defaults-one-table).
+    // The glm host starts in the bypass at effort high; the alias `opus` maps to glm-5.4[1m]
+    // through the environment (SPEC-20261124-launcher-retire-role-flags REQ-13, REQ-15).
     assert_eq!(
         v["argv"],
         json!([
             "claude",
-            "--name",
-            "leader",
             "--model",
-            "glm-5.4[1m]",
+            "opus",
             "--effort",
             "high",
-            "--permission-mode",
-            "auto"
+            "--dangerously-skip-permissions"
         ])
     );
     // No advisor by default since #2476; an explicit one is dropped on glm with a note.
     assert!(!v["notes"].to_string().contains("--advisor omitted"));
     let v = launched(&launcher(
-        &["glm", "-l", "--advisor", "fable", "--dry-run"],
+        &["glm", "--advisor", "fable", "--dry-run"],
         Some(sentinel),
     ));
     assert!(!v["argv"].to_string().contains("advisor"));
@@ -1260,7 +1250,7 @@ fn launcher_prompt_is_not_passed_to_a_claude_host() {
     // The Codex launcher cases of this test went with the Codex launcher
     // (SPEC-20261121-codex-launcher-and-models-removed); `moai codex` is an unknown command.
     // A PROMPT on a Claude host is not passed on, and the output says so.
-    let v = launched(&launcher(&["cc", "-l", "--dry-run", "first task"], None));
+    let v = launched(&launcher(&["cc", "--dry-run", "first task"], None));
     assert!(!v["argv"].to_string().contains("first task"));
     assert!(v["notes"]
         .to_string()
@@ -2721,7 +2711,8 @@ mod skill_package {
     // Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `mode_routing_flags_map_to_routes` mapped the two mode flags to their routes; a dash option is now plain request text (tests/next_flow_skill_scan.rs).
 
     /// #2286 CLOSE-TABLE item 1: the repository's own instruction files carry no retired mode
-    /// spelling either, so a lane reading them types only `--mode-agent` / `--mode-leader`.
+    /// spelling either. The role is typed inside the session as `/moai work` or `/moai leader`
+    /// (SPEC-20261124-launcher-retire-role-flags), no `--mode-*` spelling is left.
     #[test]
     fn repository_instruction_files_carry_no_retired_mode_spelling() {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -2731,7 +2722,8 @@ mod skill_package {
             None,
             "retired mode spelling is still in CLAUDE.md"
         );
-        assert!(text.contains("--mode-agent"), "CLAUDE.md");
+        assert!(text.contains("/moai work"), "CLAUDE.md");
+        assert!(text.contains("/moai leader"), "CLAUDE.md");
     }
 
     // Retired with the OPTIMIZE route (SPEC-20261122-next-flow-skills-agents REQ-2): `optimize_route_previews_and_applies_nothing` pinned the OPTIMIZE route; UPDATE carries its preview (tests/next_flow_skill_scan.rs `absorb_update_`).

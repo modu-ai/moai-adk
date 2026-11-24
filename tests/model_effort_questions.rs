@@ -2,6 +2,10 @@
 //! selections, the plan of the `launcher.models` key and its digest-bound apply to the launcher
 //! settings file given by path. Every file lives in a temporary folder.
 //!
+//! SPEC-20261124-launcher-retire-role-flags (REQ-6, AC-9): one model and one effort question per
+//! host, saved as the flat `launcher.models.<tool>` entry; a saved `leader` or `agent` entry is
+//! listed as replaced by that write.
+//!
 //! SPEC-20261121-codex-launcher-and-models-removed: the tool question offers Claude and GLM only;
 //! a `codex` value saved by an earlier version is ignored by the plan and left out of the file
 //! the next save writes (leader decision D2).
@@ -16,7 +20,7 @@ use moai_cli::model_effort_questions::{
     self, apply, effort_question, model_question, plan, plan_file, read_answer, run, tool_question,
     Answer, Kind, Outcome, Pick,
 };
-use moai_cli::model_effort_settings::{self, resolve, Choice, Source};
+use moai_cli::model_effort_settings::{self, Choice};
 
 const SECRET: &str = "SECRET-answer-or-saved-text";
 
@@ -27,10 +31,9 @@ fn object(value: Value) -> Map<String, Value> {
     }
 }
 
-fn pick(tool: &str, role: &str, model: &str, effort: &str) -> Pick {
+fn pick(tool: &str, model: &str, effort: &str) -> Pick {
     Pick {
         tool: tool.into(),
-        role: role.into(),
         model: model.into(),
         effort: effort.into(),
     }
@@ -58,52 +61,52 @@ fn the_tool_question_lists_two_tools_and_defaults_to_the_installed_ones() {
 
 #[test]
 fn model_and_effort_questions_offer_only_table_values_with_the_default_first() {
-    for (tool, role, default_model, default_effort) in [
-        ("claude", "leader", "claude-opus-5-5", "high"),
-        // SPEC-20261123-glm-54-followups D-3: the glm leader's default is 5.4, the agent's flash.
-        ("glm", "leader", "zai/glm-5.4[1m]", "high"),
-        ("glm", "agent", "zai/glm-5.3-flash", "max"),
+    for (tool, default_model, default_effort) in [
+        ("claude", "claude-opus-5-5", "high"),
+        // SPEC-20261123-glm-54-followups D-3: the glm default is 5.4.
+        ("glm", "zai/glm-5.4[1m]", "high"),
     ] {
-        let q = model_question(tool, role).expect("known tool and role");
+        let q = model_question(tool).expect("known tool");
         assert_eq!(q.kind, Kind::One);
         assert_eq!(
-            q.options[0].value, default_model,
-            "{tool} {role}: default first"
+            q.id,
+            format!("{tool}.model"),
+            "one question per host, no role"
         );
+        assert_eq!(q.options[0].value, default_model, "{tool}: default first");
         assert_eq!(q.defaults, [0]);
         let table = model_effort_settings::supported(tool).unwrap();
         assert_eq!(q.options.len(), table.len());
         for option in &q.options {
             assert!(table.iter().any(|row| row.id == option.value));
         }
-        let e = effort_question(tool, role, default_model).unwrap();
+        let e = effort_question(tool, default_model).unwrap();
+        assert_eq!(e.id, format!("{tool}.effort"));
         assert_eq!(e.options[e.defaults[0]].value, default_effort);
         let row = table.iter().find(|r| r.id == default_model).unwrap();
         assert_eq!(values(&e), row.efforts);
     }
     // A model that is not the default still gets an effort default the model offers.
-    let e = effort_question("glm", "agent", "zai/glm-5.3").unwrap();
-    assert_eq!(e.options[e.defaults[0]].value, "max");
-    let e = effort_question("claude", "leader", "claude-haiku-5-5").unwrap();
+    let e = effort_question("glm", "zai/glm-5.3").unwrap();
     assert_eq!(e.options[e.defaults[0]].value, "high");
-    // The GLM default effort for the leader is high, which flash also offers.
-    let e = effort_question("glm", "leader", "zai/glm-5.3-flash").unwrap();
+    let e = effort_question("claude", "claude-haiku-5-5").unwrap();
+    assert_eq!(e.options[e.defaults[0]].value, "high");
+    // The GLM default effort is high, which flash also offers.
+    let e = effort_question("glm", "zai/glm-5.3-flash").unwrap();
     assert_eq!(e.options[e.defaults[0]].value, "high");
     // No question for a name the table does not know, or a model the tool does not list.
-    assert!(model_question("nope", "leader").is_none());
-    assert!(model_question("claude", "nope").is_none());
-    assert!(effort_question("glm", "leader", "claude-opus-5-5").is_none());
-    assert!(effort_question("nope", "leader", "gpt-6.1-sol").is_none());
+    assert!(model_question("nope").is_none());
+    assert!(effort_question("glm", "claude-opus-5-5").is_none());
+    assert!(effort_question("nope", "gpt-6.1-sol").is_none());
     // Codex has no question any more.
-    assert!(model_question("codex", "leader").is_none());
-    assert!(model_question("codex", "agent").is_none());
-    assert!(effort_question("codex", "leader", "gpt-6.2-sol").is_none());
+    assert!(model_question("codex").is_none());
+    assert!(effort_question("codex", "gpt-6.2-sol").is_none());
 }
 
 #[test]
 fn an_answer_line_is_read_and_a_bad_one_is_never_echoed() {
     let many = tool_question(&["claude"]);
-    let one = model_question("claude", "leader").unwrap();
+    let one = model_question("claude").unwrap();
     let v = |a: Answer| match a {
         Answer::Values(v) => v,
         other => panic!("expected values, got {other:?}"),
@@ -149,7 +152,7 @@ fn the_loop_asks_the_tool_pick_first_and_stops_on_an_empty_or_cancelled_pick() {
         "no model question after an empty pick: {text}"
     );
 
-    // The tool question comes first, then the first picked tool, leader, model.
+    // The tool question comes first, then the model of the first picked tool.
     let mut out = Vec::new();
     let outcome = run(&mut Cursor::new("1\n"), &mut out, &[]).unwrap();
     assert_eq!(
@@ -173,60 +176,74 @@ fn the_loop_asks_the_tool_pick_first_and_stops_on_an_empty_or_cancelled_pick() {
     // Three bad answers to one question end the loop; the line is never echoed.
     let mut out = Vec::new();
     // A fourth try would read the `1` and then complete with the empty lines after it.
-    let bad = format!("{SECRET}\n{SECRET}\n{SECRET}\n1\n{}", "\n".repeat(4));
+    let bad = format!("{SECRET}\n{SECRET}\n{SECRET}\n1\n{}", "\n".repeat(2));
     let outcome = run(&mut Cursor::new(bad), &mut out, &["claude"]).unwrap();
     assert_eq!(outcome, Outcome::Cancelled);
     assert!(!String::from_utf8(out).unwrap().contains(SECRET));
 
     // Two bad answers and then a good one still work.
     let mut out = Vec::new();
-    let input = "9\nx\n\n".to_string() + &"\n".repeat(4);
+    let input = "9\nx\n\n".to_string() + &"\n".repeat(2);
     let outcome = run(&mut Cursor::new(input), &mut out, &["claude"]).unwrap();
     assert!(
-        matches!(outcome, Outcome::Picks(ref p) if p.len() == 2),
+        matches!(outcome, Outcome::Picks(ref p) if p.len() == 1),
         "{outcome:?}"
     );
 }
 
 #[test]
 fn enter_everywhere_picks_the_defaults_of_the_installed_tools() {
-    // One line for the tool pick, then model and effort for leader and agent of each tool.
-    let input = "\n".repeat(1 + 4 + 4);
+    // One line for the tool pick, then one model and one effort per tool.
+    let input = "\n".repeat(1 + 2 + 2);
     let outcome = run(&mut Cursor::new(input), &mut Vec::new(), &["claude", "glm"]).unwrap();
     assert_eq!(
         outcome,
         Outcome::Picks(vec![
-            pick("claude", "leader", "claude-opus-5-5", "high"),
-            pick("claude", "agent", "claude-sonnet-5-5", "high"),
-            pick("glm", "leader", "zai/glm-5.4[1m]", "high"),
-            pick("glm", "agent", "zai/glm-5.3-flash", "max"),
+            pick("claude", "claude-opus-5-5", "high"),
+            pick("glm", "zai/glm-5.4[1m]", "high"),
         ])
     );
-    // A chosen model changes the effort question: the glm leader picks its default model
+    // A chosen model changes the effort question: the glm pick takes its default model
     // explicitly, then Enter takes the default effort.
     let input = "2\n1\n\n".to_string() + &"\n".repeat(2);
     let outcome = run(&mut Cursor::new(input), &mut Vec::new(), &[]).unwrap();
     match outcome {
         Outcome::Picks(p) => {
-            assert_eq!(p[0], pick("glm", "leader", "zai/glm-5.4[1m]", "high"));
+            assert_eq!(p[0], pick("glm", "zai/glm-5.4[1m]", "high"));
         }
         other => panic!("{other:?}"),
     }
+    // AC-9: the screen asks exactly one model question and one effort question per host, and
+    // none of them names a role.
+    let mut out = Vec::new();
+    run(
+        &mut Cursor::new("1,2\n".to_string() + &"\n".repeat(4)),
+        &mut out,
+        &[],
+    )
+    .unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert_eq!(text.matches("which model?").count(), 2, "{text}");
+    assert_eq!(text.matches("which effort").count(), 2, "{text}");
+    assert!(
+        !text.contains("leader") && !text.contains("agent"),
+        "{text}"
+    );
 }
 
-/// SPEC-20261123-glm-54-followups REQ-1..REQ-3 / AC-1: the glm leader's model question offers the
+/// SPEC-20261123-glm-54-followups REQ-1..REQ-3 / AC-1: the glm model question offers the
 /// 5.4 id first as the default and keeps both 5.3 rows after it; a 5.3 choice saved earlier is a
 /// supported value, so Enter keeps it as the default and its effort question still answers.
 #[test]
 fn the_glm_model_question_offers_54_first_and_keeps_a_saved_53() {
-    let q = model_question("glm", "leader").unwrap();
+    let q = model_question("glm").unwrap();
     assert_eq!(
         values(&q),
         ["zai/glm-5.4[1m]", "zai/glm-5.3", "zai/glm-5.3-flash"]
     );
     assert_eq!(q.defaults, [0]);
-    // The 5.4 row offers the efforts the table lists, with high as the leader default.
-    let e = effort_question("glm", "leader", "zai/glm-5.4[1m]").unwrap();
+    // The 5.4 row offers the efforts the table lists, with high as the default.
+    let e = effort_question("glm", "zai/glm-5.4[1m]").unwrap();
     assert_eq!(values(&e), ["low", "high", "max"]);
     assert_eq!(e.options[e.defaults[0]].value, "high");
     // A saved 5.3 choice: it is the default option, and the other two follow.
@@ -234,19 +251,18 @@ fn the_glm_model_question_offers_54_first_and_keeps_a_saved_53() {
         model: "zai/glm-5.3".into(),
         effort: "low".into(),
     };
-    let q = model_effort_questions::model_question_with("glm", "leader", Some(&saved)).unwrap();
+    let q = model_effort_questions::model_question_with("glm", Some(&saved)).unwrap();
     assert_eq!(
         values(&q),
         ["zai/glm-5.3", "zai/glm-5.4[1m]", "zai/glm-5.3-flash"]
     );
     let e =
-        model_effort_questions::effort_question_with("glm", "leader", "zai/glm-5.3", Some(&saved))
-            .unwrap();
+        model_effort_questions::effort_question_with("glm", "zai/glm-5.3", Some(&saved)).unwrap();
     assert_eq!(e.options[e.defaults[0]].value, "low");
 }
 
 #[test]
-fn the_plan_changes_only_the_picked_entries_and_lists_unsupported_ones() {
+fn the_plan_changes_only_the_picked_tools_and_lists_unsupported_ones() {
     let launcher = object(json!({
         "role_access": "prompt",
         "models": {
@@ -255,61 +271,61 @@ fn the_plan_changes_only_the_picked_entries_and_lists_unsupported_ones() {
                 "leader": {"model": SECRET, "effort": "high"},
                 "agent": {"model": "claude-sonnet-5-5", "effort": "high"}
             },
-            "glm": {"agent": {"model": "zai/glm-5.3-flash"}},
+            "glm": {"model": "zai/glm-5.3-flash"},
             "omp": {"agent": {"model": "zai/glm-5.3-flash", "effort": "high"}}
         }
     }));
     let before = launcher.clone();
-    let picks = [
-        pick("glm", "leader", "zai/glm-5.3", "high"),
-        pick("claude", "leader", "claude-opus-5-5", "low"),
-        pick("claude", "agent", "claude-haiku-5-5", "max"),
-    ];
+    let picks = [pick("claude", "claude-opus-5-5", "low")];
     let p = plan(&launcher, &picks).unwrap();
     assert_eq!(launcher, before, "the input is not changed");
-    assert_eq!(p.changes.len(), 3);
-    let change = |tool: &str, role: &str| {
-        p.changes
-            .iter()
-            .find(|c| c.tool == tool && c.role == role)
-            .unwrap_or_else(|| panic!("{tool} {role}"))
-    };
-    assert_eq!(change("glm", "leader").from, None);
+    assert_eq!(p.changes.len(), 1);
+    assert_eq!(p.changes[0].tool, "claude");
     assert_eq!(
-        change("claude", "agent").from,
-        Some(Choice {
-            model: "claude-sonnet-5-5".into(),
-            effort: "high".into()
-        })
+        p.changes[0].from, None,
+        "a saved role entry is not a flat choice, so there is no from"
+    );
+    assert_eq!(p.changes[0].to.model, "claude-opus-5-5");
+    // AC-9: the write replaces the whole claude object, so both saved role entries are listed as
+    // replaced (their values are never quoted), and the claude entry is the flat pair alone.
+    assert_eq!(
+        p.replaced,
+        [
+            "launcher.models.claude.leader",
+            "launcher.models.claude.agent"
+        ]
     );
     assert_eq!(
-        change("claude", "leader").from,
-        None,
-        "an unsupported value is not a from"
+        p.after["models"]["claude"],
+        json!({"model": "claude-opus-5-5", "effort": "low"})
     );
-    assert_eq!(change("claude", "leader").to.model, "claude-opus-5-5");
-    // The unsupported glm.agent stays and is listed; the replaced claude.leader is not listed.
-    assert_eq!(p.kept_unsupported, ["launcher.models.glm.agent"]);
+    assert!(!format!("{:?}", p.replaced).contains(SECRET));
+    // The unsupported flat glm entry is not picked: it stays and is listed; the replaced claude
+    // role entries are not listed as unsupported.
+    assert_eq!(p.kept_unsupported, ["launcher.models.glm"]);
     assert_eq!(p.after["role_access"], json!("prompt"));
-    assert_eq!(
-        p.after["models"]["glm"]["agent"],
-        before["models"]["glm"]["agent"]
-    );
+    assert_eq!(p.after["models"]["glm"], before["models"]["glm"]);
     // The saved Codex and OMP values are not a choice of any tool: they are not listed, and the
     // written file leaves them out (leader decision D2).
     assert!(p.after["models"].get("codex").is_none(), "{:?}", p.after);
     assert!(p.after["models"].get("omp").is_none(), "{:?}", p.after);
-    assert_eq!(
-        p.after["models"]["claude"]["leader"],
-        json!({"model": "claude-opus-5-5", "effort": "low"})
-    );
     // Nothing in the plan quotes the saved text.
     assert!(!format!("{:?}", p.kept_unsupported).contains(SECRET));
+
+    // A glm pick replaces the unsupported glm entry: it is no longer listed. The unsupported
+    // claude role entry is not picked, so it stays listed.
+    let glm = plan(&launcher, &[pick("glm", "zai/glm-5.3", "high")]).unwrap();
+    assert_eq!(glm.kept_unsupported, ["launcher.models.claude.leader"]);
+    assert!(glm.replaced.is_empty(), "glm held no role entry");
+    assert_eq!(
+        glm.changes[0].from, None,
+        "an unsupported value is not a from"
+    );
 
     // The digest follows the content, not the key order of the input.
     let reordered = object(json!({
         "models": {
-            "glm": {"agent": {"model": "zai/glm-5.3-flash"}},
+            "glm": {"model": "zai/glm-5.3-flash"},
             "claude": {
                 "agent": {"effort": "high", "model": "claude-sonnet-5-5"},
                 "leader": {"effort": "high", "model": SECRET}
@@ -320,48 +336,42 @@ fn the_plan_changes_only_the_picked_entries_and_lists_unsupported_ones() {
         "role_access": "prompt"
     }));
     assert_eq!(plan(&reordered, &picks).unwrap().digest, p.digest);
-    let other = [pick("glm", "leader", "zai/glm-5.3", "low")];
+    let other = [pick("claude", "claude-opus-5-5", "high")];
     assert_ne!(plan(&launcher, &other).unwrap().digest, p.digest);
     assert_eq!(p.digest.len(), 64);
 
     // An unsupported pick is refused.
-    assert!(plan(&launcher, &[pick("glm", "leader", "zai/glm-5.3", "ultra")]).is_err());
+    assert!(plan(&launcher, &[pick("glm", "zai/glm-5.3", "ultra")]).is_err());
     // A pick for OMP is refused, whatever it holds.
-    assert!(plan(&launcher, &[pick("omp", "leader", "zai/glm-5.3", "high")]).is_err());
-    assert!(plan(&launcher, &[pick("nope", "leader", "gpt-6.1-sol", "high")]).is_err());
+    assert!(plan(&launcher, &[pick("omp", "zai/glm-5.3", "high")]).is_err());
+    assert!(plan(&launcher, &[pick("nope", "gpt-6.1-sol", "high")]).is_err());
     // A pick for Codex is refused, whatever it holds.
-    assert!(plan(&launcher, &[pick("codex", "leader", "gpt-6.2-sol", "high")]).is_err());
+    assert!(plan(&launcher, &[pick("codex", "gpt-6.2-sol", "high")]).is_err());
 }
 
 #[test]
 fn a_pick_writes_only_its_own_tool() {
     // A glm pick is its own pick now (the earlier OMP pick also set glm; OMP is not a tool any
     // more, so this plan API refuses an omp pick).
-    let p = plan(&Map::new(), &[pick("glm", "leader", "zai/glm-5.3", "low")]).unwrap();
+    let p = plan(&Map::new(), &[pick("glm", "zai/glm-5.3", "low")]).unwrap();
     let tools: Vec<&str> = p.changes.iter().map(|c| c.tool.as_str()).collect();
     assert_eq!(tools, ["glm"]);
     assert_eq!(
-        resolve("glm", "leader", Some(&p.after)).unwrap(),
-        (
-            Choice {
-                model: "zai/glm-5.3".into(),
-                effort: "low".into()
-            },
-            Source::Saved
-        )
+        model_effort_settings::flat_choice(&p.after, "glm"),
+        Some(Choice {
+            model: "zai/glm-5.3".into(),
+            effort: "low".into()
+        })
     );
-    // The agent role was not picked and keeps its default, and omp stays untouched.
-    assert_eq!(
-        resolve("glm", "agent", Some(&p.after)).unwrap().1,
-        Source::Default
-    );
+    // Claude was not picked and keeps nothing saved, and omp stays untouched.
+    assert_eq!(model_effort_settings::flat_choice(&p.after, "claude"), None);
     assert_eq!(p.after.get("models").and_then(|m| m.get("omp")), None);
-    assert!(plan(&Map::new(), &[pick("omp", "leader", "zai/glm-5.3", "low")]).is_err());
+    assert!(plan(&Map::new(), &[pick("omp", "zai/glm-5.3", "low")]).is_err());
 }
 
 #[test]
 fn a_structurally_broken_models_key_is_refused_without_quoting_it() {
-    let pick = [pick("claude", "leader", "claude-opus-5-5", "high")];
+    let pick = [pick("claude", "claude-opus-5-5", "high")];
     for launcher in [
         json!({"models": SECRET}),
         json!({"models": {SECRET: {"leader": {}}}}),
@@ -377,7 +387,7 @@ fn a_structurally_broken_models_key_is_refused_without_quoting_it() {
 
 #[test]
 fn a_saved_codex_value_of_any_shape_does_not_block_a_plan_and_is_dropped() {
-    let pick = [pick("claude", "leader", "claude-opus-5-5", "high")];
+    let pick = [pick("claude", "claude-opus-5-5", "high")];
     for codex in [
         json!({"agent": {"model": "gpt-6.2-sol", "effort": "max"}}),
         json!(SECRET),
@@ -426,8 +436,8 @@ fn apply_writes_through_the_digest_and_reads_back() {
         0o644,
     );
     let picks = [
-        pick("claude", "leader", "claude-opus-5-5", "high"),
-        pick("glm", "agent", "zai/glm-5.3-flash", "max"),
+        pick("claude", "claude-opus-5-5", "high"),
+        pick("glm", "zai/glm-5.3-flash", "max"),
     ];
     let previewed = plan_file(&path, &picks).unwrap();
     let before = fs::read(&path).unwrap();
@@ -445,7 +455,7 @@ fn apply_writes_through_the_digest_and_reads_back() {
     assert_eq!(after["launcher"]["advisor"], json!("fable"));
     assert_eq!(after["launcher"]["models"], json!(applied.after["models"]));
     assert_eq!(
-        after["launcher"]["models"]["glm"]["agent"],
+        after["launcher"]["models"]["glm"],
         json!({"model": "zai/glm-5.3-flash", "effort": "max"})
     );
     assert_eq!(
@@ -479,7 +489,7 @@ fn apply_writes_through_the_digest_and_reads_back() {
         ["launcher"]
     );
     assert_eq!(
-        created["launcher"]["models"]["claude"]["leader"]["model"],
+        created["launcher"]["models"]["claude"]["model"],
         json!("claude-opus-5-5")
     );
     assert_eq!(
@@ -490,7 +500,7 @@ fn apply_writes_through_the_digest_and_reads_back() {
 
 #[test]
 fn apply_refuses_a_stale_digest_and_an_unsafe_target_and_writes_nothing() {
-    let picks = [pick("claude", "agent", "claude-sonnet-5-5", "max")];
+    let picks = [pick("claude", "claude-sonnet-5-5", "max")];
 
     // A wrong digest and a file that changed after the preview.
     let home = tempfile::tempdir().unwrap();
@@ -553,7 +563,7 @@ fn apply_refuses_a_stale_digest_and_an_unsafe_target_and_writes_nothing() {
 
 #[test]
 fn the_apply_guards_hold_at_their_edges() {
-    let picks = [pick("claude", "agent", "claude-sonnet-5-5", "max")];
+    let picks = [pick("claude", "claude-sonnet-5-5", "max")];
     let digest = plan(&Map::new(), &picks).unwrap().digest;
 
     // The folder of the file is a link: refused, and nothing appears behind the link.
@@ -579,7 +589,7 @@ fn the_apply_guards_hold_at_their_edges() {
     let dir = path.parent().unwrap();
     let foreign = dir.join(format!(".launcher.tmp-{}", std::process::id()));
     fs::write(&foreign, "foreign").unwrap();
-    let other = [pick("claude", "leader", "claude-haiku-5-5", "low")];
+    let other = [pick("claude", "claude-haiku-5-5", "low")];
     let preview = plan_file(&path, &other).unwrap();
     apply(&path, &other, &preview.digest).unwrap();
     assert_eq!(fs::read_to_string(&foreign).unwrap(), "foreign");
@@ -620,7 +630,7 @@ fn the_apply_guards_hold_at_their_edges() {
     // Nothing to change writes nothing: the same pick again leaves odd formatting as it is, and
     // an empty pick list leaves an absent file (and its folder) absent.
     let home = tempfile::tempdir().unwrap();
-    let odd = r#"{ "z" : 1 ,"launcher":{"models":{"claude":{"agent":{"model":"claude-sonnet-5-5","effort":"max"}}}} }"#;
+    let odd = r#"{ "z" : 1 ,"launcher":{"models":{"claude":{"model":"claude-sonnet-5-5","effort":"max"}}} }"#;
     let path = launcher_file(home.path(), odd, 0o600);
     let preview = plan_file(&path, &picks).unwrap();
     apply(&path, &picks, &preview.digest).unwrap();
@@ -636,11 +646,11 @@ fn the_apply_guards_hold_at_their_edges() {
 fn an_overlong_answer_line_is_one_invalid_answer() {
     // The long line counts as one bad answer, its rest is dropped, and the next line is read.
     let long = "a".repeat(10_000);
-    let input = format!("{long}\n\n{}", "\n".repeat(4));
+    let input = format!("{long}\n\n{}", "\n".repeat(2));
     let mut out = Vec::new();
     let outcome = run(&mut Cursor::new(input), &mut out, &["claude"]).unwrap();
     assert!(
-        matches!(outcome, Outcome::Picks(ref p) if p.len() == 2),
+        matches!(outcome, Outcome::Picks(ref p) if p.len() == 1),
         "{outcome:?}"
     );
     assert!(!String::from_utf8(out).unwrap().contains("aaaa"));
@@ -661,41 +671,41 @@ fn the_answer_line_cap_is_exact_and_a_long_tail_never_leaks() {
             .matches("not one of the numbers")
             .count()
     };
-    let four_questions = "\n".repeat(4);
-    let two_picks = |outcome: &Outcome| matches!(outcome, Outcome::Picks(p) if p.len() == 2);
+    let two_questions = "\n".repeat(2);
+    let one_pick = |outcome: &Outcome| matches!(outcome, Outcome::Picks(p) if p.len() == 1);
 
     // 4096 content bytes are an ordinary line: the answer `1` is read.
     let line = format!("1{}\n", " ".repeat(4095));
     let mut out = Vec::new();
     let outcome = run(
-        &mut Cursor::new(format!("{line}{four_questions}")),
+        &mut Cursor::new(format!("{line}{two_questions}")),
         &mut out,
         &[],
     )
     .unwrap();
-    assert!(two_picks(&outcome), "{outcome:?}");
+    assert!(one_pick(&outcome), "{outcome:?}");
     assert_eq!(bad(&out), 0);
 
     // 4097 content bytes are one invalid answer; the next line answers.
     let line = format!("1{}\n", " ".repeat(4096));
     let mut out = Vec::new();
-    let input = format!("{line}1\n{four_questions}");
+    let input = format!("{line}1\n{two_questions}");
     let outcome = run(&mut Cursor::new(input), &mut out, &[]).unwrap();
-    assert!(two_picks(&outcome), "{outcome:?}");
+    assert!(one_pick(&outcome), "{outcome:?}");
     assert_eq!(bad(&out), 1);
 
     // A long line whose tail looks like a valid answer does not leak into the next question.
     let line = format!("{}1\n", "a".repeat(8192));
     let mut out = Vec::new();
-    let input = format!("{line}1\n{four_questions}");
+    let input = format!("{line}1\n{two_questions}");
     let outcome = run(&mut Cursor::new(input), &mut out, &[]).unwrap();
-    assert!(two_picks(&outcome), "{outcome:?}");
+    assert!(one_pick(&outcome), "{outcome:?}");
     assert_eq!(bad(&out), 1, "the dropped tail is not a second answer");
 }
 
 #[test]
 fn a_failed_rename_removes_its_temporary_file_and_a_growing_file_is_refused() {
-    let picks = [pick("claude", "agent", "claude-sonnet-5-5", "max")];
+    let picks = [pick("claude", "claude-sonnet-5-5", "max")];
 
     // Renaming onto `..` fails after the temporary file was created: it must be removed.
     let home = tempfile::tempdir().unwrap();
@@ -734,21 +744,23 @@ fn a_saved_value_is_the_default_of_its_questions_and_enter_keeps_it() {
     };
     // The saved model comes first and is the default; the saved effort is the default effort of
     // that model, and another model keeps the table default.
-    let models = model_question_with("claude", "leader", Some(&saved)).unwrap();
+    let models = model_question_with("claude", Some(&saved)).unwrap();
     assert_eq!(models.options[0].value, "claude-sonnet-5-5");
     assert_eq!(models.defaults, vec![0]);
     assert_eq!(models.options.len(), 4, "every model once: {models:?}");
-    let efforts =
-        effort_question_with("claude", "leader", "claude-sonnet-5-5", Some(&saved)).unwrap();
+    let efforts = effort_question_with("claude", "claude-sonnet-5-5", Some(&saved)).unwrap();
     assert_eq!(efforts.options[efforts.defaults[0]].value, "max");
-    let other = effort_question_with("claude", "leader", "claude-opus-5-5", Some(&saved)).unwrap();
+    let other = effort_question_with("claude", "claude-opus-5-5", Some(&saved)).unwrap();
     assert_eq!(other.options[other.defaults[0]].value, "high");
 
-    // Enter at every question keeps the saved leader and gives the table default to the rest.
-    let launcher = object(json!({"models": {"claude": {"leader": {
-        "model": "claude-sonnet-5-5", "effort": "max"}}}}));
+    // Enter at every question keeps the saved flat entry of claude and gives the table default to
+    // glm, which nobody saved; a saved role entry beside it is not a default of any question.
+    let launcher = object(json!({"models": {
+        "claude": {"model": "claude-sonnet-5-5", "effort": "max"},
+        "glm": {"leader": {"model": "zai/glm-5.3", "effort": "low"}}
+    }}));
     let outcome = run_with(
-        &mut Cursor::new("1\n\n\n\n\n"),
+        &mut Cursor::new("1,2\n\n\n\n\n"),
         &mut Vec::new(),
         &[],
         &launcher,
@@ -757,15 +769,15 @@ fn a_saved_value_is_the_default_of_its_questions_and_enter_keeps_it() {
     let Outcome::Picks(picks) = outcome else {
         panic!("picks expected");
     };
-    let leader = picks.iter().find(|p| p.role == "leader").unwrap();
+    let claude = picks.iter().find(|p| p.tool == "claude").unwrap();
     assert_eq!(
-        (leader.model.as_str(), leader.effort.as_str()),
+        (claude.model.as_str(), claude.effort.as_str()),
         ("claude-sonnet-5-5", "max")
     );
-    let agent = picks.iter().find(|p| p.role == "agent").unwrap();
+    let glm = picks.iter().find(|p| p.tool == "glm").unwrap();
     assert_eq!(
-        (agent.model.as_str(), agent.effort.as_str()),
-        ("claude-sonnet-5-5", "high")
+        (glm.model.as_str(), glm.effort.as_str()),
+        ("zai/glm-5.4[1m]", "high")
     );
 }
 
@@ -808,7 +820,7 @@ fn a_glm_pick_asks_for_the_key_once_and_stores_it_in_the_vault() {
         &mut Cursor::new(input),
         &mut out,
         &home,
-        &[pick("glm", "leader", "glm-4", "high")],
+        &[pick("glm", "glm-4", "high")],
         false,
     )
     .unwrap();
@@ -873,7 +885,7 @@ fn an_empty_answer_skips_the_key_and_keeps_the_pick_flow() {
         &mut Cursor::new("\n"),
         &mut out,
         &home,
-        &[pick("glm", "leader", "glm-4", "high")],
+        &[pick("glm", "glm-4", "high")],
         false,
     )
     .unwrap();
@@ -897,7 +909,7 @@ fn an_existing_key_is_kept_by_default_without_retyping() {
         &mut Cursor::new("\n"),
         &mut out,
         &home,
-        &[pick("glm", "leader", "glm-4", "high")],
+        &[pick("glm", "glm-4", "high")],
         false,
     )
     .unwrap();
@@ -928,7 +940,7 @@ fn a_new_answer_replaces_an_existing_key() {
         &mut Cursor::new("n\nSECRET-replacement\n"),
         &mut out,
         &home,
-        &[pick("glm", "leader", "glm-4", "high")],
+        &[pick("glm", "glm-4", "high")],
         false,
     )
     .unwrap();
@@ -955,7 +967,7 @@ fn the_word_new_also_asks_for_a_new_key() {
         &mut Cursor::new("new\nSECRET-replacement\n"),
         &mut Vec::new(),
         &home,
-        &[pick("glm", "leader", "glm-4", "high")],
+        &[pick("glm", "glm-4", "high")],
         false,
     )
     .unwrap();
@@ -976,7 +988,7 @@ fn a_vault_that_cannot_be_written_is_told_on_the_screen_and_the_step_goes_on() {
         &mut Cursor::new(format!("{SECRET}\n")),
         &mut out,
         &home,
-        &[pick("glm", "leader", "glm-4", "high")],
+        &[pick("glm", "glm-4", "high")],
         false,
     );
     fs::set_permissions(&*home, fs::Permissions::from_mode(0o700)).unwrap();
@@ -1016,7 +1028,7 @@ fn a_broken_project_entry_is_not_hidden_by_a_shared_key() {
         &mut Cursor::new("\n"),
         &mut out,
         &home,
-        &[pick("glm", "leader", "glm-4", "high")],
+        &[pick("glm", "glm-4", "high")],
         false,
     )
     .unwrap();
@@ -1036,7 +1048,7 @@ fn a_claude_pick_asks_nothing_about_a_key() {
         &mut Cursor::new(""),
         &mut out,
         &home,
-        &[pick("claude", "leader", "claude-sonnet-5-5", "high")],
+        &[pick("claude", "claude-sonnet-5-5", "high")],
         false,
     )
     .unwrap();
@@ -1064,7 +1076,7 @@ fn a_shared_key_counts_as_an_existing_key_and_is_kept_without_a_project_copy() {
         &mut Cursor::new("\n"),
         &mut out,
         &home,
-        &[pick("glm", "leader", "glm-4", "high")],
+        &[pick("glm", "glm-4", "high")],
         false,
     )
     .unwrap();
@@ -1091,7 +1103,7 @@ fn a_piped_answer_that_is_a_new_line_after_the_key_is_not_read_as_the_key() {
         &mut input,
         &mut out,
         &home,
-        &[pick("glm", "leader", "glm-4", "high")],
+        &[pick("glm", "glm-4", "high")],
         false,
     )
     .unwrap();
@@ -1107,23 +1119,21 @@ fn a_piped_answer_that_is_a_new_line_after_the_key_is_not_read_as_the_key() {
 #[test]
 fn fast_pair_no_model_question_offers_an_opus_48_id() {
     for tool in model_effort_settings::TOOLS {
-        for role in model_effort_settings::ROLES {
-            let q = model_question(tool, role).expect("known tool and role");
-            assert!(!q.options.is_empty(), "{tool} {role}");
-            for value in values(&q) {
-                // The match ends there or goes on with `-`, `[` or `@`; a digit after it is
-                // another model, the same shape as `is_opus_48` in `claude_settings_merge`.
-                let lower = value.to_ascii_lowercase();
-                let names_family = ["opus-4-8", "opus-4.8"].iter().any(|family| {
-                    lower.match_indices(family).any(|(at, _)| {
-                        matches!(
-                            lower[at + family.len()..].chars().next(),
-                            None | Some('-' | '[' | '@')
-                        )
-                    })
-                });
-                assert!(!names_family, "{tool} {role}: {value}");
-            }
+        let q = model_question(tool).expect("known tool");
+        assert!(!q.options.is_empty(), "{tool}");
+        for value in values(&q) {
+            // The match ends there or goes on with `-`, `[` or `@`; a digit after it is
+            // another model, the same shape as `is_opus_48` in `claude_settings_merge`.
+            let lower = value.to_ascii_lowercase();
+            let names_family = ["opus-4-8", "opus-4.8"].iter().any(|family| {
+                lower.match_indices(family).any(|(at, _)| {
+                    matches!(
+                        lower[at + family.len()..].chars().next(),
+                        None | Some('-' | '[' | '@')
+                    )
+                })
+            });
+            assert!(!names_family, "{tool}: {value}");
         }
     }
 }

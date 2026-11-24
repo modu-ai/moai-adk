@@ -37,7 +37,7 @@ pub fn pick(widths: &[usize], budget: Option<usize>) -> usize {
 }
 
 /// `<icon> <text>`: exactly one space after every icon, also after one that is narrow by default
-/// and written with the variation selector U+FE0F (`🗂️`, `🅱️`, `⬇️`), which used to take two
+/// and written with the variation selector U+FE0F (`⏸️`, `🅱️`, `⬇️`), which used to take two
 /// (SPEC-20261122-statusline-limits-left REQ-5). The width of the result is counted from the
 /// text itself ([`display_width`]), so the form picker measures what is written.
 pub fn icon_text(icon: &str, text: &str) -> String {
@@ -46,12 +46,13 @@ pub fn icon_text(icon: &str, text: &str) -> String {
 
 /// Every icon the three line layouts can print. The code builds its text from [`icon_text`], and
 /// the tests scan every rendered form for the one space after each of them.
-pub const ICONS: [&str; 22] = [
+pub const ICONS: [&str; 23] = [
     // Line 1: who and where. The tag icon belongs to the integration item `(🏷️ <commit>)`; the
     // distance icon is gone with the item (SPEC-20261123-statusline-order-bars REQ-11).
     "🧠", "🤔", "📡", "⬇️", "🔀", "🌳", "🅱️", "🏷️", "🔗",
-    // The flow line: the one icon set of the progress board and the lane reports.
-    "🎯", "🗂️", "🟡", "📨", "🛬", "✅", "🚧", "🙋",
+    // The flow line: the card in hand, then the icons of `icons` (the card-flow set of the
+    // progress board and the lane reports).
+    "🎯", "📋", "🔨", "👀", "🚀", "✅", "⛔", "⏸️", "🙋",
     // Line 3: the limits and the versions.
     "🔋", "🪫", "💰", "🤖", "🗿",
 ];
@@ -59,6 +60,7 @@ pub const ICONS: [&str; 22] = [
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::statusline::icons;
 
     #[test]
     fn the_budget_subtracts_the_margin_and_the_padding() {
@@ -142,13 +144,16 @@ mod tests {
     }
 
     /// SPEC-20261122-statusline-limits-left REQ-5: exactly one space follows every icon, the
-    /// ones written with a variation selector (`🗂️`, `🅱️`, `⬇️`) too.
+    /// ones written with a variation selector (`⏸️`, `🅱️`, `⬇️`) too.
     #[test]
     fn one_space_follows_every_icon() {
         for icon in ICONS {
             assert_eq!(icon_text(icon, "x"), format!("{icon} x"), "{icon}");
         }
-        assert_eq!(icon_text("🗂️", "150"), "🗂️ 150");
+        assert_eq!(
+            icon_text(icons::PAUSED, "150"),
+            format!("{} 150", icons::PAUSED)
+        );
         assert_eq!(icon_text("🅱️", "main"), "🅱️ main");
         assert_eq!(icon_text("⬇️", "7"), "⬇️ 7");
         assert_eq!(icon_text("✅", "19"), "✅ 19");
@@ -156,8 +161,14 @@ mod tests {
 
     #[test]
     fn widths_are_counted_by_the_crate() {
-        assert_eq!(display_width("🚧 3 🙋 7"), 9);
-        assert_eq!(display_width("🗂️ 150 → 🟡 14"), 14);
+        let (blocked, paused, question) = (icons::BLOCKED, icons::PAUSED, icons::QUESTION);
+        assert_eq!(display_width(&format!("{blocked} 3 {question} 7")), 9);
+        // The selector of `⏸️` makes it two cells wide, like the other icons of the flow.
+        assert_eq!(display_width(&format!("{paused} 3")), 4);
+        assert_eq!(
+            display_width(&format!("{} 150 → {} 14", icons::TODO, icons::WORK)),
+            14
+        );
         assert_eq!(display_width("🅱️ main"), 7);
         assert_eq!(display_width(""), 0);
     }

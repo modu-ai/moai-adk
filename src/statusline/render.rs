@@ -3,6 +3,7 @@
 //! and carries no escape sequence.
 
 use super::color::Profile;
+use super::icons;
 use super::input::RateWindow;
 use super::state::{DisplayConfig, Flow, Status};
 use super::width;
@@ -64,7 +65,7 @@ pub struct Theme {
     pub cards_active: &'static str,
     /// `🔃` cards pushed and waiting for integration or an audit (rosewater).
     pub cards_posted: &'static str,
-    /// `🗂️` cards created and remaining (sapphire).
+    /// `📋` cards created and remaining (sapphire).
     pub cards_waiting: &'static str,
     /// `✅` cards done (teal).
     pub cards_done: &'static str,
@@ -142,7 +143,7 @@ struct Piece {
     glue: bool,
 }
 
-/// Pieces joined by one space (`🚧 3 🙋 7` is two pieces, `🗂️ 150 → 🟡 14` three), except a piece
+/// Pieces joined by one space (`⛔ 3 🙋 7` is two pieces, `📋 150 → 🔨 14` three), except a piece
 /// that is glued to the one before it.
 type Group = Vec<Piece>;
 
@@ -539,15 +540,16 @@ impl Renderer {
 
     /// The forms of the second line from the widest to the narrowest, never an empty one. The
     /// widest form is the two versions, the flow and what stands beside it, then my card:
-    /// `🤖 <Claude Code version> | 🗿 <MoAI version> | 🗂️ <ready> → 🟡 <working> → 📨 <submitted>
-    /// → 🛬 <audited + landed> → ✅ <done today> | 🚧 <blocked> 🙋 <hold> | 🎯 C-<n> <stage icon>`.
+    /// `🤖 <Claude Code version> | 🗿 <MoAI version> | 📋 <ready> → 🔨 <working> → 👀 <submitted>
+    /// → 🚀 <audited + landed> → ✅ <done today> | ⛔ <blocked> ⏸️ <paused> 🙋 <hold> | 🎯 C-<n>
+    /// <stage icon>` (the icons of [`icons`](super::icons), SPEC-20261124-card-flow-icons).
     /// An item without its input is left out with its separator: a line with no flow holds the
     /// versions alone, one with no version the flow alone, and the options `claude_version`,
     /// `moai_version` and `cards` each hide their own items.
     ///
     /// While the width budget is smaller than the form, the Claude Code version drops first, then
-    /// the MoAI version with its update arrow, then the leftmost item of the flow (`🗂️` first,
-    /// `✅` last); my card and `🚧 🙋` stay in every form
+    /// the MoAI version with its update arrow, then the leftmost item of the flow (`📋` first,
+    /// `✅` last); my card and `⛔ ⏸️ 🙋` stay in every form
     /// (SPEC-20261123-statusline-order-bars REQ-2, D-5).
     fn flow_forms(&self, s: &Status) -> Vec<Vec<Group>> {
         let t = &self.theme;
@@ -626,11 +628,12 @@ impl Renderer {
     /// the end by SPEC-20261123-statusline-order-bars REQ-1): the flow, what stands beside it,
     /// my card. There is no letter code, an item whose count is zero is left out with its arrow
     /// or its separator, and the drafts are not on the line. A card whose lease ended without a
-    /// hand-back is in `🟡` with the working ones, and `🙋` counts the hold cards nobody
-    /// withdrew (SPEC-20261124-statusline-counts-truth).
-    /// Each narrower form drops the leftmost item still in the flow — `🗂️` first, `✅` last —
-    /// while `🚧 🙋` and my card stay. An unsplit [`Flow`] (the notes could not be read) has one
-    /// form, `🗂️ <ready> 🟡 <working>` without an arrow, never a guess. One empty form is returned
+    /// hand-back is in `🔨` with the working ones, `⏸️` counts the hold cards that were withdrawn
+    /// or folded and `🙋` the hold cards nobody withdrew (SPEC-20261124-statusline-counts-truth,
+    /// SPEC-20261124-card-flow-icons).
+    /// Each narrower form drops the leftmost item still in the flow — `📋` first, `✅` last —
+    /// while `⛔ ⏸️ 🙋` and my card stay. An unsplit [`Flow`] (the notes could not be read) has one
+    /// form, `📋 <ready> 🔨 <working>` without an arrow, never a guess. One empty form is returned
     /// when there is nothing to show.
     fn flow_tails(&self, f: &Flow) -> Vec<Vec<Group>> {
         let t = &self.theme;
@@ -645,8 +648,8 @@ impl Renderer {
             |color, icon, count: i64| (count > 0).then(|| piece(color, icon, count.to_string()));
         if !f.split {
             let known: Group = [
-                item(t.cards_waiting, "🗂️", f.ready),
-                item(t.cards_active, "🟡", f.working),
+                item(t.cards_waiting, icons::TODO, f.ready),
+                item(t.cards_active, icons::WORK, f.working),
             ]
             .into_iter()
             .flatten()
@@ -665,21 +668,26 @@ impl Renderer {
             )]
         });
         let chain: Vec<Piece> = [
-            item(t.cards_waiting, "🗂️", f.ready),
+            item(t.cards_waiting, icons::TODO, f.ready),
             // A card a lane works on whose lease ended is still in hand (SPEC-20261124-
             // statusline-counts-truth REQ-7): it is drawn with the working ones, so the items
             // add up to the open cards.
-            item(t.cards_active, "🟡", f.working.saturating_add(f.stale)),
-            item(t.cards_posted, "📨", f.submitted),
-            item(t.branch, "🛬", f.audited.saturating_add(f.landed)),
-            item(t.cards_done, "✅", f.done_today),
+            item(
+                t.cards_active,
+                icons::WORK,
+                f.working.saturating_add(f.stale),
+            ),
+            item(t.cards_posted, icons::CHECK, f.submitted),
+            item(t.branch, icons::READY, f.audited.saturating_add(f.landed)),
+            item(t.cards_done, icons::DONE, f.done_today),
         ]
         .into_iter()
         .flatten()
         .collect();
         let beside: Group = [
-            item(t.issues, "🚧", f.blocked),
-            item(t.issues, "🙋", f.hold),
+            item(t.issues, icons::BLOCKED, f.blocked),
+            item(t.issues, icons::PAUSED, f.paused),
+            item(t.issues, icons::QUESTION, f.hold),
         ]
         .into_iter()
         .flatten()
@@ -873,6 +881,7 @@ fn apply_base_color(text: &str, base: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::statusline::icons::{BLOCKED, CHECK, DONE, QUESTION, READY, TODO, WORK};
     use crate::statusline::input;
     use crate::statusline::segments;
     use crate::statusline::state::{self, Context, Flow, GitHubCounts, MyCard, Stage, Version};
@@ -1006,7 +1015,7 @@ mod tests {
         Flow {
             draft: 43,
             ready: 150,
-            // `🟡` draws the working and the stale cards together: 8 + 6.
+            // The work item draws the working and the stale cards together: 8 + 6.
             working: 8,
             stale: 6,
             submitted: 11,
@@ -1014,6 +1023,7 @@ mod tests {
             landed: 0,
             blocked: 3,
             hold: 7,
+            paused: 0,
             done_today: 19,
             mine: Some(MyCard {
                 card: EXAMPLE_CARD,
@@ -1032,7 +1042,9 @@ mod tests {
     /// versions are not in this string (the example status of [`example_status`] has them in
     /// front of it, see [`p0_with_versions`]).
     fn p0() -> String {
-        format!("🗂️ 150 → 🟡 14 → 📨 11 → 🛬 2 → ✅ 19 | 🚧 3 🙋 7 | 🎯 C-{EXAMPLE_CARD} 🟡")
+        format!(
+            "{TODO} 150 → {WORK} 14 → {CHECK} 11 → {READY} 2 → {DONE} 19 | {BLOCKED} 3 {QUESTION} 7 | 🎯 C-{EXAMPLE_CARD} {WORK}"
+        )
     }
 
     /// [`p0`] with the two versions of [`example_status`] in front.
@@ -1500,21 +1512,21 @@ mod tests {
             for profile in [Profile::TrueColor, Profile::Ansi256] {
                 let out = colored(name, profile, &status);
                 assert_eq!(strip_sgr(&out), text, "{name} {profile:?}");
-                let mine = format!("🎯 C-{EXAMPLE_CARD} 🟡");
+                let mine = format!("🎯 C-{EXAMPLE_CARD} {WORK}");
                 for (hex, part) in [
-                    (t.version, "🤖 2.1.293"),
-                    (t.version, "🗿 2.0 -> 3.0"),
-                    (t.cards_active, mine.as_str()),
-                    (t.cards_waiting, "🗂️ 150"),
-                    (t.muted, "→"),
-                    (t.cards_active, "🟡 14"),
-                    (t.cards_posted, "📨 11"),
-                    (t.branch, "🛬 2"),
-                    (t.cards_done, "✅ 19"),
-                    (t.issues, "🚧 3"),
-                    (t.issues, "🙋 7"),
+                    (t.version, "🤖 2.1.293".to_string()),
+                    (t.version, "🗿 2.0 -> 3.0".to_string()),
+                    (t.cards_active, mine),
+                    (t.cards_waiting, format!("{TODO} 150")),
+                    (t.muted, "→".to_string()),
+                    (t.cards_active, format!("{WORK} 14")),
+                    (t.cards_posted, format!("{CHECK} 11")),
+                    (t.branch, format!("{READY} 2")),
+                    (t.cards_done, format!("{DONE} 19")),
+                    (t.issues, format!("{BLOCKED} 3")),
+                    (t.issues, format!("{QUESTION} 7")),
                 ] {
-                    assert!(out.contains(&profile.paint(hex, part)), "{name} {part}");
+                    assert!(out.contains(&profile.paint(hex, &part)), "{name} {part}");
                 }
             }
             // The items of the flow, in their order on the line.
@@ -1827,6 +1839,7 @@ mod tests {
 #[cfg(test)]
 mod flow_line_tests {
     use super::*;
+    use crate::statusline::icons::{BLOCKED, CHECK, DONE, PAUSED, QUESTION, READY, TODO, WORK};
     use crate::statusline::state::{MyCard, Stage, Version};
 
     /// The number of my card in the fixtures.
@@ -1836,7 +1849,7 @@ mod flow_line_tests {
         Flow {
             draft: 43,
             ready: 150,
-            // `🟡` draws the working and the stale cards together: 8 + 6.
+            // The work item draws the working and the stale cards together: 8 + 6.
             working: 8,
             stale: 6,
             submitted: 11,
@@ -1844,6 +1857,7 @@ mod flow_line_tests {
             landed: 1,
             blocked: 3,
             hold: 7,
+            paused: 0,
             done_today: 19,
             mine: Some(MyCard {
                 card: CARD,
@@ -1947,48 +1961,65 @@ mod flow_line_tests {
     /// The forms F0 to F7 of the Layouts table of the SPEC: the two versions, the flow with its
     /// leftmost item dropping, what stands beside it, and my card at the end.
     fn spec_forms() -> Vec<String> {
-        let mine = format!("🎯 C-{CARD} 🟡");
+        let mine = format!("🎯 C-{CARD} {WORK}");
         [
-            "🤖 2.1.330 | 🗿 4.2648.20 | 🗂️ 176 → 🟡 6 → 📨 13 → 🛬 8 → ✅ 6",
-            "🗿 4.2648.20 | 🗂️ 176 → 🟡 6 → 📨 13 → 🛬 8 → ✅ 6",
-            "🗂️ 176 → 🟡 6 → 📨 13 → 🛬 8 → ✅ 6",
-            "🟡 6 → 📨 13 → 🛬 8 → ✅ 6",
-            "📨 13 → 🛬 8 → ✅ 6",
-            "🛬 8 → ✅ 6",
-            "✅ 6",
-            "",
+            format!("🤖 2.1.330 | 🗿 4.2648.20 | {TODO} 176 → {WORK} 6 → {CHECK} 13 → {READY} 8 → {DONE} 6"),
+            format!("🗿 4.2648.20 | {TODO} 176 → {WORK} 6 → {CHECK} 13 → {READY} 8 → {DONE} 6"),
+            format!("{TODO} 176 → {WORK} 6 → {CHECK} 13 → {READY} 8 → {DONE} 6"),
+            format!("{WORK} 6 → {CHECK} 13 → {READY} 8 → {DONE} 6"),
+            format!("{CHECK} 13 → {READY} 8 → {DONE} 6"),
+            format!("{READY} 8 → {DONE} 6"),
+            format!("{DONE} 6"),
+            String::new(),
         ]
         .iter()
         .map(|head| {
             if head.is_empty() {
-                format!("🚧 7 🙋 9 | {mine}")
+                format!("{BLOCKED} 7 {QUESTION} 9 | {mine}")
             } else {
-                format!("{head} | 🚧 7 🙋 9 | {mine}")
+                format!("{head} | {BLOCKED} 7 {QUESTION} 9 | {mine}")
             }
         })
         .collect()
     }
 
-    /// The forms of [`no_card`] with their widths: `🛬` counts the audited and the landed cards
-    /// together (2 + 1), the 43 drafts and the 22 ended leases are not on the line, and each
-    /// narrower form drops the leftmost item of the flow — `🗂️` first — while `🚧 🙋` stay.
-    const Q: [(&str, usize); 6] = [
-        ("🗂️ 150 → 🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7", 49),
-        ("🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7", 40),
-        ("📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7", 32),
-        ("🛬 3 → ✅ 19 | 🚧 3 🙋 7", 24),
-        ("✅ 19 | 🚧 3 🙋 7", 17),
-        ("🚧 3 🙋 7", 9),
-    ];
+    /// The forms of [`no_card`] with their widths: the ready item counts the audited and the
+    /// landed cards together (2 + 1), the 43 drafts and the 22 ended leases are not on the line,
+    /// and each narrower form drops the leftmost item of the flow — the to-do item first — while
+    /// the blocked and the question items stay. The icons are the table's.
+    fn q() -> [(String, usize); 6] {
+        [
+            (
+                format!(
+                    "{TODO} 150 → {WORK} 14 → {CHECK} 11 → {READY} 3 → {DONE} 19 | {BLOCKED} 3 {QUESTION} 7"
+                ),
+                49,
+            ),
+            (
+                format!("{WORK} 14 → {CHECK} 11 → {READY} 3 → {DONE} 19 | {BLOCKED} 3 {QUESTION} 7"),
+                40,
+            ),
+            (
+                format!("{CHECK} 11 → {READY} 3 → {DONE} 19 | {BLOCKED} 3 {QUESTION} 7"),
+                32,
+            ),
+            (
+                format!("{READY} 3 → {DONE} 19 | {BLOCKED} 3 {QUESTION} 7"),
+                24,
+            ),
+            (format!("{DONE} 19 | {BLOCKED} 3 {QUESTION} 7"), 17),
+            (format!("{BLOCKED} 3 {QUESTION} 7"), 9),
+        ]
+    }
 
     /// My card as the line writes it: `🎯 C-<n> <stage icon>`.
     fn mine(stage: Stage) -> String {
         format!("🎯 C-{CARD} {}", stage.icon())
     }
 
-    /// The forms of [`full`]: my card closes every form of [`Q`].
+    /// The forms of [`full`]: my card closes every form of [`q`].
     fn with_my_card() -> Vec<String> {
-        Q.iter()
+        q().iter()
             .map(|(form, _)| format!("{form} | {}", mine(Stage::Working)))
             .collect()
     }
@@ -1996,17 +2027,19 @@ mod flow_line_tests {
     /// Every form is exactly its string, with its width, and changes at its boundary: a budget
     /// equal to the width keeps the form, one less drops to the next. The forms of the SPEC's
     /// Layouts table start with the two versions, which drop first (the Claude Code version,
-    /// then the MoAI version), then the leftmost item of the flow; my card and `🚧 🙋` stay in
-    /// every form.
+    /// then the MoAI version), then the leftmost item of the flow; my card and the blocked,
+    /// paused and question items stay in every form.
     #[test]
     fn every_form_is_exactly_its_string_and_changes_at_its_boundary() {
-        for (form, cols) in Q {
-            assert_eq!(width::display_width(form), cols, "{form}");
+        for (form, cols) in q() {
+            assert_eq!(width::display_width(&form), cols, "{form}");
         }
-        let without: Vec<String> = Q.iter().map(|(form, _)| (*form).to_string()).collect();
+        let without: Vec<String> = q().iter().map(|(form, _)| form.clone()).collect();
         assert_eq!(
             with_my_card()[0],
-            format!("🗂️ 150 → 🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7 | 🎯 C-{CARD} 🟡")
+            format!(
+                "{TODO} 150 → {WORK} 14 → {CHECK} 11 → {READY} 3 → {DONE} 19 | {BLOCKED} 3 {QUESTION} 7 | 🎯 C-{CARD} {WORK}"
+            )
         );
         // The Layouts table of the SPEC, F0 to F7, with the versions in front.
         let spec = spec_forms();
@@ -2014,10 +2047,13 @@ mod flow_line_tests {
         assert_eq!(
             spec[0],
             format!(
-                "🤖 2.1.330 | 🗿 4.2648.20 | 🗂️ 176 → 🟡 6 → 📨 13 → 🛬 8 → ✅ 6 | 🚧 7 🙋 9 | 🎯 C-{CARD} 🟡"
+                "🤖 2.1.330 | 🗿 4.2648.20 | {TODO} 176 → {WORK} 6 → {CHECK} 13 → {READY} 8 → {DONE} 6 | {BLOCKED} 7 {QUESTION} 9 | 🎯 C-{CARD} {WORK}"
             )
         );
-        assert_eq!(spec[7], format!("🚧 7 🙋 9 | 🎯 C-{CARD} 🟡"));
+        assert_eq!(
+            spec[7],
+            format!("{BLOCKED} 7 {QUESTION} 9 | 🎯 C-{CARD} {WORK}")
+        );
         let status = with_versions(Some(spec_flow()));
         for (i, text) in spec.iter().enumerate() {
             let cols = width::display_width(text);
@@ -2063,11 +2099,11 @@ mod flow_line_tests {
     #[test]
     fn no_budget_writes_the_widest_form_and_a_budget_below_the_narrowest_the_narrowest() {
         assert_eq!(plain(full(), None), with_my_card()[0]);
-        assert_eq!(plain(no_card(), None), Q[0].0);
+        assert_eq!(plain(no_card(), None), q()[0].0);
         for budget in [15, 5, 0] {
             assert_eq!(plain(full(), Some(budget)), with_my_card()[5], "{budget}");
         }
-        assert_eq!(plain(no_card(), Some(0)), Q[5].0);
+        assert_eq!(plain(no_card(), Some(0)), q()[5].0);
     }
 
     /// A count of zero hides its item — with its arrow or its separator — and never prints `0`;
@@ -2080,28 +2116,32 @@ mod flow_line_tests {
                 ready: 0,
                 ..no_card()
             }),
-            "🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7"
+            format!("{WORK} 14 → {CHECK} 11 → {READY} 3 → {DONE} 19 | {BLOCKED} 3 {QUESTION} 7")
         );
         assert_eq!(
             line(Flow {
                 submitted: 0,
                 ..no_card()
             }),
-            "🗂️ 150 → 🟡 14 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7"
+            format!("{TODO} 150 → {WORK} 14 → {READY} 3 → {DONE} 19 | {BLOCKED} 3 {QUESTION} 7")
         );
         assert_eq!(
             line(Flow {
                 working: 0,
-                // `🟡` is the sum of the working and the stale cards: both are 0 to hide it.
+                // The work item is the sum of the working and the stale cards: both are 0 to
+                // hide it.
                 stale: 0,
                 done_today: 0,
                 ..no_card()
             }),
-            "🗂️ 150 → 📨 11 → 🛬 3 | 🚧 3 🙋 7"
+            format!("{TODO} 150 → {CHECK} 11 → {READY} 3 | {BLOCKED} 3 {QUESTION} 7")
         );
-        // `🛬` is the audited and the landed cards together: either one shows it.
-        for (audited, landed, want) in [(0, 1, Some("🛬 1")), (2, 0, Some("🛬 2")), (0, 0, None)]
-        {
+        // The ready item is the audited and the landed cards together: either one shows it.
+        for (audited, landed, want) in [
+            (0, 1, Some(format!("{READY} 1"))),
+            (2, 0, Some(format!("{READY} 2"))),
+            (0, 0, None),
+        ] {
             let out = line(Flow {
                 audited,
                 landed,
@@ -2109,40 +2149,48 @@ mod flow_line_tests {
             });
             match want {
                 Some(item) => assert!(out.contains(&format!("→ {item} →")), "{out}"),
-                None => assert_eq!(out, "🗂️ 150 → 🟡 14 → 📨 11 → ✅ 19 | 🚧 3 🙋 7"),
+                None => assert_eq!(
+                    out,
+                    format!("{TODO} 150 → {WORK} 14 → {CHECK} 11 → {DONE} 19 | {BLOCKED} 3 {QUESTION} 7")
+                ),
             }
         }
-        // Beside the flow: each of the two on its own, and no group without them.
-        let chain = "🗂️ 150 → 🟡 14 → 📨 11 → 🛬 3 → ✅ 19";
+        // Beside the flow: each of the three on its own, and no group without them.
+        let chain = format!("{TODO} 150 → {WORK} 14 → {CHECK} 11 → {READY} 3 → {DONE} 19");
+        let with = |blocked, paused, hold| Flow {
+            blocked,
+            paused,
+            hold,
+            ..no_card()
+        };
         assert_eq!(
-            line(Flow {
-                blocked: 0,
-                ..no_card()
-            }),
-            format!("{chain} | 🙋 7")
+            line(with(0, 0, 7)),
+            format!("{chain} | {QUESTION} 7"),
+            "blocked hidden"
         );
         assert_eq!(
-            line(Flow {
-                hold: 0,
-                ..no_card()
-            }),
-            format!("{chain} | 🚧 3")
+            line(with(3, 0, 0)),
+            format!("{chain} | {BLOCKED} 3"),
+            "question hidden"
         );
         assert_eq!(
-            line(Flow {
-                blocked: 0,
-                hold: 0,
-                ..no_card()
-            }),
-            chain
+            line(with(0, 5, 0)),
+            format!("{chain} | {PAUSED} 5"),
+            "paused on its own"
         );
+        assert_eq!(
+            line(with(3, 5, 7)),
+            format!("{chain} | {BLOCKED} 3 {PAUSED} 5 {QUESTION} 7"),
+            "all three, in the order of the table"
+        );
+        assert_eq!(line(with(0, 0, 0)), chain);
         // Nothing but cards waiting their turn: the one item.
         assert_eq!(
             line(Flow {
                 ready: 169,
                 ..empty()
             }),
-            "🗂️ 169"
+            format!("{TODO} 169")
         );
         // No flow at all: my card and what stands beside the flow.
         assert_eq!(
@@ -2156,7 +2204,7 @@ mod flow_line_tests {
                 done_today: 0,
                 ..full()
             }),
-            format!("🚧 3 🙋 7 | {}", mine(Stage::Working))
+            format!("{BLOCKED} 3 {QUESTION} 7 | {}", mine(Stage::Working))
         );
         // Nothing at all: no flow line, so the renderer's own fallback is the whole output.
         assert_eq!(line(empty()), "MoAI");
@@ -2168,7 +2216,7 @@ mod flow_line_tests {
     /// The drafts are not on the line: a ledger that holds nothing else has no flow line, and
     /// their number never reaches another item. A card whose lease ended without a hand-back is
     /// drawn with the working ones (SPEC-20261124-statusline-counts-truth REQ-7), so a ledger
-    /// with only such cards has a `🟡` item, and the item is the sum of the two counts.
+    /// with only such cards has a work item, and the item is the sum of the two counts.
     #[test]
     fn drafts_are_not_on_the_line_and_a_stale_card_is_drawn_with_the_working_ones() {
         let only_drafts = Flow {
@@ -2181,13 +2229,13 @@ mod flow_line_tests {
             stale: 22,
             ..empty()
         };
-        assert_eq!(plain(only_stale, None), "🟡 22");
+        assert_eq!(plain(only_stale, None), format!("{WORK} 22"));
         let both = Flow {
             working: 3,
             stale: 4,
             ..empty()
         };
-        assert_eq!(plain(both, None), "🟡 7");
+        assert_eq!(plain(both, None), format!("{WORK} 7"));
         // Only my card, and its lease has ended: it is still the card in hand, and counted.
         let mine_only = Flow {
             mine: Some(MyCard {
@@ -2197,7 +2245,10 @@ mod flow_line_tests {
             stale: 1,
             ..empty()
         };
-        assert_eq!(plain(mine_only, None), format!("🟡 1 | 🎯 C-{CARD} 🟡"));
+        assert_eq!(
+            plain(mine_only, None),
+            format!("{WORK} 1 | 🎯 C-{CARD} {WORK}")
+        );
     }
 
     /// My card is `🎯 C-<n> <stage icon>` with the icon of its stage from the one icon set, for
@@ -2205,15 +2256,15 @@ mod flow_line_tests {
     #[test]
     fn my_card_shows_the_icon_of_each_stage() {
         for (stage, icon) in [
-            (Stage::Draft, "🗂️"),
-            (Stage::Ready, "🗂️"),
-            (Stage::Working, "🟡"),
-            (Stage::Stale, "🟡"),
-            (Stage::Submitted, "📨"),
-            (Stage::Audited, "🛬"),
-            (Stage::Landed, "🛬"),
-            (Stage::Blocked, "🚧"),
-            (Stage::Hold, "🙋"),
+            (Stage::Draft, TODO),
+            (Stage::Ready, TODO),
+            (Stage::Working, WORK),
+            (Stage::Stale, WORK),
+            (Stage::Submitted, CHECK),
+            (Stage::Audited, READY),
+            (Stage::Landed, READY),
+            (Stage::Blocked, BLOCKED),
+            (Stage::Hold, QUESTION),
         ] {
             let flow = Flow {
                 mine: Some(MyCard { card: CARD, stage }),
@@ -2242,13 +2293,17 @@ mod flow_line_tests {
             ..Default::default()
         };
         for budget in [None, Some(200), Some(13), Some(0)] {
-            assert_eq!(plain(unsplit, budget), "🗂️ 150 🟡 15", "{budget:?}");
+            assert_eq!(
+                plain(unsplit, budget),
+                format!("{TODO} 150 {WORK} 15"),
+                "{budget:?}"
+            );
         }
         let no_ready = Flow {
             ready: 0,
             ..unsplit
         };
-        assert_eq!(plain(no_ready, None), "🟡 15");
+        assert_eq!(plain(no_ready, None), format!("{WORK} 15"));
         let neither = Flow {
             working: 0,
             ..no_ready
@@ -2257,13 +2312,13 @@ mod flow_line_tests {
     }
 
     /// SPEC-20261123-statusline-order-bars REQ-1: the line is the Claude Code version, the
-    /// MoAI version, the flow, `🚧 🙋` and my card, in that order. Without a flow it holds the two
+    /// MoAI version, the flow, the blocked, paused and question items and my card, in that order. Without a flow it holds the two
     /// versions alone, without a version the flow alone, and the `claude_version`,
     /// `moai_version` and `cards` options each hide their own items and nothing else.
     #[test]
     fn the_versions_open_the_flow_line_and_my_card_closes_it() {
         let widest = format!(
-            "🤖 2.1.330 | 🗿 4.2648.20 | 🗂️ 176 → 🟡 6 → 📨 13 → 🛬 8 → ✅ 6 | 🚧 7 🙋 9 | 🎯 C-{CARD} 🟡"
+            "🤖 2.1.330 | 🗿 4.2648.20 | {TODO} 176 → {WORK} 6 → {CHECK} 13 → {READY} 8 → {DONE} 6 | {BLOCKED} 7 {QUESTION} 9 | 🎯 C-{CARD} {WORK}"
         );
         let line = |status: &Status, off: &[&str]| screen(status, off, None, None);
         let both = with_versions(Some(spec_flow()));
@@ -2318,7 +2373,7 @@ mod flow_line_tests {
         // Neither versions nor flow: nothing on the line, the fallback is the whole output.
         assert_eq!(line(&Status::default(), &[]), "MoAI");
         // The unsplit flow (the notes could not be read) keeps its one form and gets the version
-        // steps: the versions in front, `🗂️ <ready> 🟡 <working>` without an arrow.
+        // steps: the versions in front, the to-do and work items without an arrow.
         let unsplit = Flow {
             ready: 150,
             working: 15,
@@ -2328,27 +2383,32 @@ mod flow_line_tests {
         let status = with_versions(Some(unsplit));
         assert_eq!(
             line(&status, &[]),
-            "🤖 2.1.330 | 🗿 4.2648.20 | 🗂️ 150 🟡 15"
+            format!("🤖 2.1.330 | 🗿 4.2648.20 | {TODO} 150 {WORK} 15")
         );
         assert_eq!(
             screen(
                 &status,
                 &[],
-                Some(width::display_width("🗿 4.2648.20 | 🗂️ 150 🟡 15")),
+                Some(width::display_width(&format!(
+                    "🗿 4.2648.20 | {TODO} 150 {WORK} 15"
+                ))),
                 None
             ),
-            "🗿 4.2648.20 | 🗂️ 150 🟡 15"
+            format!("🗿 4.2648.20 | {TODO} 150 {WORK} 15")
         );
         assert_eq!(
             screen(
                 &status,
                 &[],
-                Some(width::display_width("🗂️ 150 🟡 15")),
+                Some(width::display_width(&format!("{TODO} 150 {WORK} 15"))),
                 None
             ),
-            "🗂️ 150 🟡 15"
+            format!("{TODO} 150 {WORK} 15")
         );
-        assert_eq!(screen(&status, &[], Some(0), None), "🗂️ 150 🟡 15");
+        assert_eq!(
+            screen(&status, &[], Some(0), None),
+            format!("{TODO} 150 {WORK} 15")
+        );
         // The update arrow names the template, then the build, and drops with the MoAI version.
         let arrow = Status {
             claude_version: "2.1.330".into(),
@@ -2359,7 +2419,9 @@ mod flow_line_tests {
             flow: Some(spec_flow()),
             ..Default::default()
         };
-        assert!(line(&arrow, &[]).starts_with("🤖 2.1.330 | 🗿 4.2600.15 -> 4.2648.20 | 🗂️ 176"));
+        assert!(line(&arrow, &[]).starts_with(&format!(
+            "🤖 2.1.330 | 🗿 4.2600.15 -> 4.2648.20 | {TODO} 176"
+        )));
         assert_eq!(
             screen(
                 &arrow,
@@ -2496,7 +2558,9 @@ mod flow_line_tests {
             );
         }
         printed.sort_unstable();
-        let mut flow_icons = vec!["🎯", "🗂️", "🟡", "📨", "🛬", "✅", "🚧", "🙋", "🤖", "🗿"];
+        let mut flow_icons = vec![
+            "🎯", TODO, WORK, CHECK, READY, DONE, BLOCKED, QUESTION, "🤖", "🗿",
+        ];
         flow_icons.sort_unstable();
         assert_eq!(printed, flow_icons);
     }

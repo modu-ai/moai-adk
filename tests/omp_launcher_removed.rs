@@ -161,27 +161,11 @@ fn help_omp_and_help_codex_print_the_removal_notice() {
     assert!(!started(&f));
 }
 
-/// AC-3: the host word `omp` after `-a` and after `session --host` is refused exactly like an
-/// unknown word, and the message lists `cc|glm` only.
+/// AC-3: the host word `omp` after `session --host` is refused exactly like an unknown word,
+/// and the message lists `cc|glm` only.
 #[test]
 fn the_omp_host_word_is_refused_like_any_unknown_host() {
     let f = fixture();
-    let nope = run(&f, &["-a", "nope", "--dry-run"]);
-    let omp = run(&f, &["-a", "omp", "--dry-run"]);
-    assert_ne!(nope.status.code(), Some(0), "-a nope: {nope:?}");
-    assert_eq!(
-        omp.status.code(),
-        nope.status.code(),
-        "-a omp: {}",
-        out_text(&omp)
-    );
-    let text = out_text(&omp);
-    assert!(text.contains("(cc|glm)"), "{text}");
-    assert_eq!(
-        text.replace("omp", "WORD"),
-        out_text(&nope).replace("nope", "WORD"),
-        "the refusal differs from the unknown-host refusal"
-    );
     let session_nope = run(
         &f,
         &["session", "--host", "nope", "--name", "x", "--dry-run"],
@@ -203,10 +187,10 @@ fn the_omp_host_word_is_refused_like_any_unknown_host() {
 }
 
 const LAUNCHES: [&[&str]; 4] = [
-    &["cc", "-l", "--dry-run"],
-    &["cc", "-a", "--name", "agent-9", "--dry-run"],
-    &["glm", "-l", "--dry-run"],
-    &["glm", "-a", "--name", "agent-9", "--dry-run"],
+    &["cc", "--dry-run"],
+    &["cc", "--name", "lane-9", "--dry-run"],
+    &["glm", "--dry-run"],
+    &["glm", "--name", "lane-9", "--dry-run"],
 ];
 
 /// The dry-run JSON of a launch, with the temporary HOME and project paths replaced.

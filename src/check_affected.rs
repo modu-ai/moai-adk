@@ -35,6 +35,9 @@ pub enum Pick {
     #[default]
     Full,
     Lane,
+    /// What one card's change reaches (`--card`, SPEC-20261124-card-select-batch-land): see
+    /// [`select_card`]. A path whose effect is not clear makes [`choose`] answer the full set.
+    Card,
 }
 
 impl Pick {
@@ -43,6 +46,7 @@ impl Pick {
         match self {
             Pick::Full => "full",
             Pick::Lane => "lane",
+            Pick::Card => "card",
         }
     }
 }
@@ -279,6 +283,8 @@ pub fn select_pick(
     scan_list: Option<&str>,
     host_os: &str,
 ) -> Selection {
+    // The card set is made by `select_card`; asked here, it is the lane set.
+    let pick = if pick == Pick::Card { Pick::Lane } else { pick };
     let mut rust = BTreeSet::new();
     let mut scans = Scans::None;
     let rust_names: BTreeSet<&str> = tests.iter().map(|t| t.name.as_str()).collect();
@@ -393,12 +399,279 @@ pub fn select_pick(
             }
         }
     }
-    let areas = tests
+    let areas = areas_of(tests, &rust);
+    Selection { rust, scans, areas }
+}
+
+/// Old target name → area crate for the selected names that are modules of an area crate.
+fn areas_of(
+    tests: &[TestFile],
+    rust: &BTreeSet<String>,
+) -> std::collections::BTreeMap<String, String> {
+    tests
         .iter()
         .filter(|t| rust.contains(&t.name))
         .filter_map(|t| Some((t.name.clone(), t.area.clone()?)))
+        .collect()
+}
+
+/// How many test targets may carry the name word of a changed module before the word says nothing
+/// (SPEC-20261124-card-select-batch-land REQ-2).
+const COMMON_WORD_CAP: usize = 10;
+
+/// Why `--card` answered the full set: the reason class of the first wide path and every wide path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Wide {
+    pub reason: &'static str,
+    pub paths: Vec<String>,
+}
+
+/// What the card set decided (SPEC-20261124-card-select-batch-land).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CardPick {
+    /// The card set; when `wide` is set, the caller uses the full set instead.
+    pub selection: Selection,
+    pub wide: Option<Wide>,
+    /// The name words of changed modules that more than [`COMMON_WORD_CAP`] targets carry.
+    pub ignored_words: Vec<String>,
+}
+
+/// The class of a path whose effect on the tests is not clear (REQ-3): the whole dependency graph,
+/// the build and the common settings, the permission and hook guards and the ledger's storage
+/// layer. Everything else under `src/ledger/` is ordinary code and takes the card set (D-1).
+fn wide_class(path: &str) -> Option<&'static str> {
+    let file = path.rsplit('/').next().unwrap_or(path);
+    if matches!(file, "Cargo.toml" | "Cargo.lock") {
+        return Some("dependencies");
+    }
+    if matches!(file, "build.rs" | "rust-toolchain" | "rust-toolchain.toml")
+        || path.starts_with(".cargo/")
+    {
+        return Some("build settings");
+    }
+    if path == ".moai/project.yaml" {
+        return Some("common settings");
+    }
+    if matches!(
+        path,
+        "src/ledger/schema.rs"
+            | "src/ledger/migrate.rs"
+            | "src/ledger/open.rs"
+            | "src/ledger/recover.rs"
+    ) || path.starts_with("migrations/")
+        || path.contains("/migrations/")
+    {
+        return Some("ledger storage");
+    }
+    if (path.starts_with("src/hook_") && path.ends_with(".rs"))
+        || matches!(
+            path,
+            "src/hooks.rs" | "src/scope.rs" | "src/scopes.rs" | "src/claude_settings_merge.rs"
+        )
+    {
+        return Some("permission");
+    }
+    // The audit floor (`gate::TIER2_PREFIXES`, the paths a full audit covers), the git hooks and the
+    // landing code: a change there can break a test that does not name its module.
+    if crate::gate::TIER2_PREFIXES
+        .iter()
+        .any(|p| path.starts_with(p))
+        || path.starts_with("install/git-hooks/")
+        || path.starts_with("src/git_hooks/")
+        || path.starts_with("src/card/land/")
+    {
+        return Some("audit floor");
+    }
+    None
+}
+
+/// The module a changed source path names: its leaf word and the path a test names it by
+/// (`moai_cli::<leaf>` for a top-level file, `<dir>::<leaf>` below one). `mod.rs`, `lib.rs`,
+/// `main.rs` and the binary's `src/ops/` name no module a test can call.
+fn module_of(path: &str) -> Option<(String, Option<String>)> {
+    let rest = path.strip_prefix("src/")?.strip_suffix(".rs")?;
+    let parts: Vec<&str> = rest.split('/').collect();
+    let leaf = *parts.last()?;
+    if matches!(leaf, "mod" | "lib" | "main") {
+        return None;
+    }
+    let leaf = leaf.replace('-', "_");
+    // The word a test name carries: `<dir>_<leaf>` below a folder (`card_sweep` for
+    // `src/card/sweep.rs`), the leaf alone for a top-level file.
+    let (word, key) = match parts.as_slice() {
+        ["ops", _] => (leaf, None),
+        [_] => (leaf.clone(), Some(format!("moai_cli::{leaf}"))),
+        [.., dir, _] => {
+            let dir = dir.replace('-', "_");
+            (format!("{dir}_{leaf}"), Some(format!("{dir}::{leaf}")))
+        }
+        [] => return None,
+    };
+    Some((word, key))
+}
+
+/// Whether `text` names `key` as a whole path: no identifier character before it or after it.
+fn names_path(text: &str, key: &str) -> bool {
+    let ident = |c: char| c.is_alphanumeric() || c == '_';
+    let mut from = 0;
+    while let Some(i) = text[from..].find(key) {
+        let at = from + i;
+        let before_ok = !text[..at].chars().next_back().is_some_and(ident);
+        let after_ok = !text[at + key.len()..].chars().next().is_some_and(ident);
+        if before_ok && after_ok {
+            return true;
+        }
+        from = at + key.len();
+    }
+    false
+}
+
+/// Whether `word` is a whole run of `_` separated words of the target name.
+fn name_has_word(name: &str, word: &str) -> bool {
+    format!("_{name}_").contains(&format!("_{word}_"))
+}
+
+/// Pick the test targets one card's change reaches (SPEC-20261124-card-select-batch-land REQ-1 to
+/// REQ-3): the tests the range changes or adds, the tests whose source names a changed module or
+/// whose name carries its word, the targets of each scan a changed path touches, and the tests
+/// that name a changed `skills/` or `docs/` path. A wide path (see [`wide_class`]) or a scan list
+/// that cannot be read sets `wide`: the caller then uses the full set.
+pub fn select_card(
+    changed: &[String],
+    tests: &[TestFile],
+    scan_list: Option<&str>,
+    host_os: &str,
+) -> CardPick {
+    let mut wide_paths: Vec<(&'static str, String)> = changed
+        .iter()
+        .filter_map(|p| wide_class(p).map(|c| (c, p.clone())))
         .collect();
-    Selection { rust, scans, areas }
+    // The tests, fixtures and documents the range changes: the lane rules, no OS rule.
+    let own: Vec<String> = changed
+        .iter()
+        .filter(|p| p.starts_with("tests/") || p.starts_with("skills/") || p.starts_with("docs/"))
+        .cloned()
+        .collect();
+    let mut rust = select_pick(Pick::Lane, &own, tests, None, host_os).rust;
+    let mut ignored = BTreeSet::new();
+    for path in changed {
+        let is_source = path.starts_with("src/") && path.ends_with(".rs");
+        let Some((word, key)) = module_of(path) else {
+            // `mod.rs`, `lib.rs` and `main.rs` name no module a test can call: nothing narrows
+            // them, so the full set runs (a source path that picks no test is not a pass).
+            if is_source {
+                wide_paths.push(("no test reached", path.clone()));
+            }
+            continue;
+        };
+        // The targets that carry the module's name word or name its path in their source; a
+        // module that more than the cap of them reach is a common one and says nothing.
+        let reached: BTreeSet<&str> = tests
+            .iter()
+            .filter(|t| {
+                name_has_word(&t.name, &word)
+                    || key.as_ref().is_some_and(|k| names_path(&t.text, k))
+            })
+            .map(|t| t.name.as_str())
+            .collect();
+        if reached.len() > COMMON_WORD_CAP {
+            // A word that says nothing is not a reason to run nothing: the full set runs.
+            ignored.insert(word);
+            wide_paths.push(("common name word", path.clone()));
+        } else if reached.is_empty() && is_source {
+            wide_paths.push(("no test reached", path.clone()));
+        } else {
+            rust.extend(reached.into_iter().map(String::from));
+        }
+    }
+    // A path is named once, under the first reason it was found for.
+    let mut seen = BTreeSet::new();
+    wide_paths.retain(|(_, p)| seen.insert(p.clone()));
+    let mut wide = wide_paths.first().map(|(reason, _)| Wide {
+        reason,
+        paths: wide_paths.iter().map(|(_, p)| p.clone()).collect(),
+    });
+    let mut scans = Scans::None;
+    if let Some(text) = scan_list {
+        match scan_entries(text) {
+            Some(entries) => {
+                // A scan's scope is what it reads, often the whole tree; the landing asks for
+                // those receipts (SPEC-20261123-land-repo-scans) and the batch's wide check runs
+                // them. The card set takes a scan only when one of its rule files changed (D-6).
+                let picked: BTreeSet<String> = entries
+                    .into_iter()
+                    .filter(|e| changed.iter().any(|p| e.rules.iter().any(|r| r == p)))
+                    .flat_map(|e| e.targets)
+                    .collect();
+                scans = Scans::Listed(picked.len());
+                rust.extend(picked);
+            }
+            None => {
+                scans = Scans::Unreadable;
+                wide.get_or_insert(Wide {
+                    reason: "scan table",
+                    paths: vec!["tools/repo_scans.json".to_string()],
+                });
+            }
+        }
+    }
+    let areas = areas_of(tests, &rust);
+    CardPick {
+        selection: Selection { rust, scans, areas },
+        wide,
+        ignored_words: ignored.into_iter().collect(),
+    }
+}
+
+/// What a run uses for `pick`: the effective pick and its selection, and for `--card` the notes the
+/// answer carries. A card pick with a wide path is the full set, as the bare command picks it, and
+/// the summary line of such a run has no `selection=` word.
+pub struct Chosen {
+    pub pick: Pick,
+    pub selection: Selection,
+    /// Only for a `--card` request: the wide reason, if any, and the ignored name words.
+    pub card: Option<(Option<Wide>, Vec<String>)>,
+}
+
+pub fn choose(
+    pick: Pick,
+    changed: &[String],
+    tests: &[TestFile],
+    scan_list: Option<&str>,
+    host_os: &str,
+) -> Chosen {
+    if pick != Pick::Card {
+        return Chosen {
+            pick,
+            selection: select_pick(pick, changed, tests, scan_list, host_os),
+            card: None,
+        };
+    }
+    let card = select_card(changed, tests, scan_list, host_os);
+    if card.wide.is_some() {
+        return Chosen {
+            pick: Pick::Full,
+            selection: select_pick(Pick::Full, changed, tests, scan_list, host_os),
+            card: Some((card.wide, card.ignored_words)),
+        };
+    }
+    Chosen {
+        pick: Pick::Card,
+        selection: card.selection,
+        card: Some((None, card.ignored_words)),
+    }
+}
+
+/// The answer fields a `--card` request adds: `card_wide` (`{reason, paths}` or null) and
+/// `card_ignored_words`.
+fn card_fields(chosen: &Chosen, answer: &mut serde_json::Value) {
+    if let Some((wide, ignored)) = &chosen.card {
+        answer["card_wide"] = match wide {
+            Some(w) => serde_json::json!({"reason": w.reason, "paths": w.paths}),
+            None => serde_json::Value::Null,
+        };
+        answer["card_ignored_words"] = serde_json::json!(ignored);
+    }
 }
 
 /// The helper folders a Rust test file declares: `mod <x>;` lines, also with attributes before
@@ -638,8 +911,29 @@ pub fn table_violations(
     if let Some(text) = allow {
         let rows = parse_allow_rows(text);
         let (earlier, new) = (earlier_state_name(), new_state_name());
-        for stem in &stems {
-            let Some(file) = tests.iter().find(|t| t.name == *stem) else {
+        // The added files whose text the allow list counts: `tests/<name>.rs` and a module of a
+        // moved area, `tests/<area>/<name>.rs`, which the list names by that longer path.
+        let mut files: Vec<(String, &str, Option<&str>)> = stems
+            .iter()
+            .map(|s| (format!("tests/{s}.rs"), *s, None))
+            .collect();
+        for p in added {
+            let Some((area, name)) = p
+                .strip_prefix("tests/")
+                .and_then(|r| r.strip_suffix(".rs"))
+                .and_then(|r| r.split_once('/'))
+            else {
+                continue;
+            };
+            if !name.contains('/') && name != "main" && moved.iter().any(|m| m == area) {
+                files.push((p.clone(), name, Some(area)));
+            }
+        }
+        for (path, stem, area) in &files {
+            let Some(file) = tests
+                .iter()
+                .find(|t| t.name == *stem && t.area.as_deref() == *area)
+            else {
                 continue;
             };
             let have = (
@@ -649,9 +943,8 @@ pub fn table_violations(
             if have == (0, 0) {
                 continue;
             }
-            let path = format!("tests/{stem}.rs");
             let row = format!("{path}\t{}\t{}", have.0, have.1);
-            match rows.iter().find(|(p, _, _)| *p == path) {
+            match rows.iter().find(|(p, _, _)| p == path) {
                 None => out.push(format!(
                     "{path}: spells a state folder name ({earlier} x{}, {new} x{}) and is not in tests/fixtures/state_folder_literals/allow.tsv; use the resolvers, or for a fixture that builds an earlier layout on purpose add the row `{row}`",
                     have.0, have.1
@@ -1429,16 +1722,37 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
 }
 
 /// The modules of the area crate `area` (`<path>/<module>.rs`, `main.rs` and folders left out) as
-/// test files that keep their old target name and name their crate. A module reaches the shared
-/// helpers by `use crate::<helper>;`, which counts as declaring the helper (the selection of a
+/// test files that keep their old target name and name their crate. A module reaches a shared
+/// helper (a module its crate's `main.rs` declares that has no file of its own in the folder, as
+/// `common` and `ready_receipt` are loaded by `#[path]`) by `use crate::<helper>;` or by a path
+/// such as `crate::<helper>::X`; either counts as declaring the helper (the selection of a
 /// `tests/common/` change reads `modules`).
 fn read_area_modules(path: &Path, area: &str) -> Vec<TestFile> {
     let mut out = Vec::new();
     let Ok(entries) = std::fs::read_dir(path) else {
         return out;
     };
-    for e in entries.flatten() {
-        let file = e.path();
+    let files: Vec<std::path::PathBuf> = entries.flatten().map(|e| e.path()).collect();
+    let stem_of = |f: &std::path::PathBuf| {
+        f.file_name()
+            .and_then(|n| n.to_str())
+            .and_then(|n| n.strip_suffix(".rs"))
+            .map(String::from)
+    };
+    let own: BTreeSet<String> = files
+        .iter()
+        .filter(|f| f.is_file())
+        .filter_map(stem_of)
+        .collect();
+    let helpers: Vec<String> = std::fs::read_to_string(path.join("main.rs"))
+        .map(|main| {
+            declared_mods(&main)
+                .into_iter()
+                .filter(|m| !own.contains(m))
+                .collect()
+        })
+        .unwrap_or_default();
+    for file in files {
         let Some(name) = file.file_name().and_then(|f| f.to_str()) else {
             continue;
         };
@@ -1447,13 +1761,9 @@ fn read_area_modules(path: &Path, area: &str) -> Vec<TestFile> {
         }
         let text = std::fs::read_to_string(&file).unwrap_or_default();
         let mut modules = declared_mods(&text);
-        for line in text.lines() {
-            let helper = line
-                .trim()
-                .strip_prefix("use crate::")
-                .and_then(|r| r.strip_suffix(';'));
-            if let Some(h) = helper.filter(|h| h.chars().all(|c| c.is_alphanumeric() || c == '_')) {
-                modules.push(h.to_string());
+        for h in &helpers {
+            if uses_crate_item(&text, h) && !modules.contains(h) {
+                modules.push(h.clone());
             }
         }
         out.push(TestFile {
@@ -1465,6 +1775,33 @@ fn read_area_modules(path: &Path, area: &str) -> Vec<TestFile> {
         });
     }
     out
+}
+
+/// Whether `text` names `crate::<item>` as a whole word: `use crate::common;`, `crate::common::X`
+/// and `use crate::{common, x}` count; `crate::common_x` does not.
+fn uses_crate_item(text: &str, item: &str) -> bool {
+    let needle = format!("crate::{item}");
+    let mut rest = text;
+    while let Some(i) = rest.find(&needle) {
+        let after = &rest[i + needle.len()..];
+        if !after
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_alphanumeric() || c == '_')
+        {
+            return true;
+        }
+        rest = after;
+    }
+    // A grouped import: `use crate::{a, common};`.
+    text.lines().any(|l| {
+        l.trim().strip_prefix("use crate::{").is_some_and(|g| {
+            g.trim_end_matches(';')
+                .trim_end_matches('}')
+                .split(',')
+                .any(|w| w.trim() == item)
+        })
+    })
 }
 
 /// `text` with every `--test <area> <module>::<rest>` of a moved area read as `--test <module>`:
@@ -1589,13 +1926,15 @@ pub fn list(
     integration_ref: Option<&str>,
 ) -> Result<serde_json::Value> {
     let facts = read_facts(dir, range)?;
-    let sel = select_pick(
+    let chosen = choose(
         pick,
         &facts.changed,
         &facts.tests,
         facts.scan_list.as_deref(),
         host_os(),
     );
+    let pick = chosen.pick;
+    let sel = chosen.selection.clone();
     let runner = runner_in(&facts.root);
     // `--list` reads nothing from the slot folder, so it names no cap.
     let planned = plan(
@@ -1608,7 +1947,7 @@ pub fn list(
             None,
         ),
     );
-    Ok(serde_json::json!({
+    let mut answer = serde_json::json!({
         "action": "affected",
         "mode": "list",
         "selection": pick.word(),
@@ -1630,7 +1969,9 @@ pub fn list(
             short(&facts.base), short(&facts.head), sel.rust.len(), sel.scans.word()
         ),
         "writes": false,
-    }))
+    });
+    card_fields(&chosen, &mut answer);
+    Ok(answer)
 }
 
 /// How `run` holds the one heavy slot of its cargo steps.
@@ -1880,13 +2221,15 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     // last build (SPEC-20261124-check-affected-touch).
     let refresh = refresh_changed(dir, &facts.present);
     let threads = DEFAULT_TEST_THREADS;
-    let sel = select_pick(
+    let chosen = choose(
         opts.pick,
         &facts.changed,
         &facts.tests,
         facts.scan_list.as_deref(),
         host_os(),
     );
+    let pick = chosen.pick;
+    let sel = chosen.selection.clone();
     let target = target_dir(&std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf()));
     let range3 = format!("{}...{}", facts.base, facts.head);
     // The cap goes onto the test step unless the caller set the runner's own knob; what the
@@ -1986,10 +2329,10 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     let pass = results.iter().all(|(_, c)| *c == 0);
     // A `--lane` run says so right after `scans=`; the bare line has no such word
     // (SPEC-20261124-ready-receipt-followup REQ-6, REQ-9).
-    let lane_word = if opts.pick == Pick::Lane {
-        " selection=lane"
-    } else {
-        ""
+    let lane_word = match pick {
+        Pick::Lane => " selection=lane",
+        Pick::Card => " selection=card",
+        Pick::Full => "",
     };
     let mut line = format!(
         "check-affected base={} head={} targets={} scans={}{lane_word} test-threads={}",
@@ -2006,10 +2349,10 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         line.push_str(&format!(" stopped_at={label}"));
     }
     line.push_str(if pass { " result=PASS" } else { " result=FAIL" });
-    Ok(serde_json::json!({
+    let mut answer = serde_json::json!({
         "action": "affected",
         "mode": "run",
-        "selection": opts.pick.word(),
+        "selection": pick.word(),
         "range_note": range_note(&facts, opts.integration_ref.as_deref()),
         "summary": line,
         "result": if pass { "PASS" } else { "FAIL" },
@@ -2019,7 +2362,9 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         "steps": records,
         "out": out.to_string_lossy(),
         "writes": true,
-    }))
+    });
+    card_fields(&chosen, &mut answer);
+    Ok(answer)
 }
 
 #[cfg(test)]
@@ -2115,6 +2460,30 @@ mod tests {
         let text = format!("{}-v1 moai-cli x{}", earlier_state_name(), new_state_name());
         assert_eq!(count_state_name(&text, &new_state_name()), 0);
         assert_eq!(count_state_name(&text, &earlier_state_name()), 0);
+    }
+
+    /// Audit N1 of SPEC-20261123-test-area-crates: a module added to a moved area is a test file
+    /// the state-folder allow list counts by its longer path, so the step reads it too.
+    #[test]
+    fn table_violations_read_a_module_added_to_a_moved_area_by_its_longer_path() {
+        let text = format!("\"{}/a\" \"{}/b\"", earlier_state_name(), new_state_name());
+        let mut module = file("lane_x", &text);
+        module.area = Some("lane".to_string());
+        let tests = [module];
+        let added = vec!["tests/lane/lane_x.rs".to_string()];
+        let moved = vec!["lane".to_string()];
+        let none = table_violations(&added, &tests, None, Some("# none\n"), &moved);
+        assert_eq!(none.len(), 1, "{none:?}");
+        assert!(none[0].contains("`tests/lane/lane_x.rs\t1\t1`"), "{none:?}");
+        let row = "tests/lane/lane_x.rs\t1\t1\n";
+        assert!(table_violations(&added, &tests, None, Some(row), &moved).is_empty());
+        // An area that is not moved, and the crate's own main.rs, are no module.
+        let other = vec![
+            "tests/lane/lane_x.rs".to_string(),
+            "tests/lane/main.rs".to_string(),
+        ];
+        assert!(table_violations(&other, &tests, None, Some("# none\n"), &[]).is_empty());
+        assert!(table_violations(&other[1..], &tests, None, Some("# none\n"), &moved).is_empty());
     }
 
     const MANIFEST: &str = env!("CARGO_MANIFEST_DIR");
@@ -2975,6 +3344,73 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         assert!(none.rust.is_empty(), "{:?}", none.rust);
     }
 
+    /// The `main.rs` of an area crate: two helpers loaded by `#[path]` and one module of its own.
+    const AREA_MAIN: &str = "#[path = \"../common/mod.rs\"]\nmod common;\n#[path = \"../common/ready_receipt.rs\"]\nmod ready_receipt;\n\nmod card_cli;\n";
+
+    /// Audit B1 of SPEC-20261123-test-area-crates: six moved modules reach the helper by a path
+    /// (`crate::common::MOAI_BIN`) and carry no `use crate::common;` line. The selection of a
+    /// `tests/common/` change reads the files as the checkout holds them, so each way of naming
+    /// the helper is read here from real files, and the selection is made from what was read.
+    #[test]
+    fn a_helper_named_by_a_path_alone_is_read_from_the_file_and_selected() {
+        let root = tempfile::tempdir().unwrap();
+        let dir = root.path().join("card");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("main.rs"), AREA_MAIN).unwrap();
+        for (name, text) in [
+            ("by_use", "use crate::common;\nfn a() {}\n"),
+            ("by_path", "fn b() { let _ = crate::common::MOAI_BIN; }\n"),
+            ("by_group", "use crate::{common, ready_receipt};\n"),
+            (
+                "by_other_helper",
+                "fn c() { crate::ready_receipt::run(); }\n",
+            ),
+            // A longer name and a sibling module are no helper use.
+            ("by_longer_name", "fn d() { crate::common_x::y(); }\n"),
+            ("by_sibling", "fn e() { crate::card_cli::f(); }\n"),
+            ("by_nothing", "fn g() {}\n"),
+        ] {
+            std::fs::write(dir.join(format!("{name}.rs")), text).unwrap();
+        }
+        let tests = read_area_modules(&dir, "card");
+        let used = |name: &str, helper: &str| {
+            tests
+                .iter()
+                .find(|t| t.name == name)
+                .unwrap_or_else(|| panic!("{name} not read"))
+                .modules
+                .iter()
+                .any(|m| m == helper)
+        };
+        assert!(used("by_use", "common"));
+        assert!(used("by_path", "common"), "a path use is a helper use");
+        assert!(used("by_group", "common") && used("by_group", "ready_receipt"));
+        assert!(used("by_other_helper", "ready_receipt"));
+        assert!(!used("by_other_helper", "common"));
+        for none in ["by_longer_name", "by_sibling", "by_nothing"] {
+            assert!(
+                !used(none, "common") && !used(none, "ready_receipt"),
+                "{none}"
+            );
+        }
+        // The change of the helper reaches exactly the readers of it, in both selections.
+        for pick in [Pick::Full, Pick::Lane] {
+            let sel = select_pick(
+                pick,
+                &paths(&["tests/common/mod.rs"]),
+                &tests,
+                None,
+                "linux",
+            );
+            for name in ["by_use", "by_path", "by_group"] {
+                assert!(sel.rust.contains(name), "{pick:?} {name}: {:?}", sel.rust);
+            }
+            for name in ["by_longer_name", "by_sibling", "by_nothing"] {
+                assert!(!sel.rust.contains(name), "{pick:?} {name}: {:?}", sel.rust);
+            }
+        }
+    }
+
     #[test]
     fn a_helper_change_still_reaches_the_modules_that_use_it() {
         let tests = [module("card_cli", "use crate::common::git;")];
@@ -3014,7 +3450,7 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         let root = tempfile::tempdir().unwrap();
         let dir = root.path().join("card");
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("main.rs"), "mod card_cli;\n").unwrap();
+        std::fs::write(dir.join("main.rs"), AREA_MAIN).unwrap();
         std::fs::write(
             dir.join("card_cli.rs"),
             "use crate::common;\nuse crate::ready_receipt;\n#[cfg(target_os = \"linux\")]\nfn x() {}\n",

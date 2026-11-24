@@ -5,6 +5,7 @@ status: draft
 revision: 2
 created: 2026-11-23
 parent: null
+branch: spec/20261123-test-area-crates-card
 ---
 
 # Integration tests in area crates

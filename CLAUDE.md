@@ -25,9 +25,9 @@ Documents describe requirements; they never grant permission to publish, spend, 
 
 ## Scope and sessions
 
-- Scope is RC1 (`2026.11.0-rc.1`): ship the first version fast on the existing plan. The communication hub (the real-time channel of `moai -l`/`-a`) is deferred; its decisions are kept in `docs/session-hub-research-2026-11-08.md` and must not leak into RC1 requirements.
+- Scope is RC1 (`2026.11.0-rc.1`): ship the first version fast on the existing plan. The communication hub (the real-time channel between running sessions) is deferred; its decisions are kept in `docs/session-hub-research-2026-11-08.md` and must not leak into RC1 requirements.
 - Hosts: Claude Code, with GLM through the Claude Code launcher. Codex and OMP are withdrawn (user decision 2026-11-21, `SPEC-20261121-remove-codex-support`); ZCode headless, ACP and remote options come later.
-- Start a session with `moai cc|glm`: a plain host session with no role (model `opus`, effort `medium`). `-l|-a` only name the session and set its access (`SPEC-20261118-launcher-agent-entry`). The role is typed inside the open session: `/moai --mode-leader` or `/moai --mode-agent`, which the skill reads as request text; the card loop is `/moai work`.
+- Start a session with `moai cc|glm`: a plain host session with no role (model `opus`; effort `medium` for `cc`, `high` for `glm`); `--name <name>` names it. The launcher flags `-l|-a` are retired (user decision D-1 2026-11-09, `SPEC-20261124-launcher-retire-role-flags`) and the launcher refuses them. The role is typed inside the open session: `/moai work` for a lane (the card loop) and `/moai leader` for the coordination window; the skill picks the route from that first word.
 - The leader supervises, relays and lands; a lane (`agent-N`) works one card in its own worktree. The author, the auditor and the lander of one change are three different sessions. `CLAUDE.md` changes only through a card whose write scope names it.
 
 ## Flow: one card, one session
@@ -98,7 +98,8 @@ Development builds use HeadVer (`https://github.com/line/headver`) `{head}.{year
 ## Language
 
 - Instruction files (this file, `CLAUDE.local.md`, rules, `skills/**`), subagent prompts and all code comments are written in English.
-- Commit messages, SPEC documents, card and decisions text, text typed into a session's chat input (including what the leader sends with `orca terminal send`), the conversation with the user and reports to the user are written in Korean. Commits already pushed are not rewritten. Every instruction to a lane (dispatch, answer, line after `/clear`, cross-session message) is in the user's conversation language. Identifiers, commands, paths and protocol lines (`AUDIT … verdict:`, `LANE-BLOCKED`, `LANE-READY-INTEGRATION`) stay verbatim. Auditors flag newly added or edited comments or instruction text that is not English; existing ones are rewritten only when a card asks.
+- Commit messages follow the profile's `language.commit_messages` (`en` here; user pick 2026-11-24, `SPEC-20261124-launcher-retire-role-flags`), so a commit message is written in English.
+- SPEC documents, card and decisions text, text typed into a session's chat input (including what the leader sends with `orca terminal send`), the conversation with the user and reports to the user are written in Korean. Commits already pushed are not rewritten. Every instruction to a lane (dispatch, answer, line after `/clear`, cross-session message) is in the user's conversation language. Identifiers, commands, paths and protocol lines (`AUDIT … verdict:`, `LANE-BLOCKED`, `LANE-READY-INTEGRATION`) stay verbatim. Auditors flag newly added or edited comments or instruction text that is not English; existing ones are rewritten only when a card asks.
 - Korean text uses the words developers actually say (테스트, 브랜치, 커밋, 푸시, 머지, 리뷰, 워크트리, 뮤턴트, 픽스처, 골든 파일, 플레이키 테스트), never literal coinages such as 시험, 가지, 변이.
 
 ## How this file evolves

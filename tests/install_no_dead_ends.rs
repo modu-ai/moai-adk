@@ -232,7 +232,7 @@ fn dry_run_reports_pending_role_access_pick() {
             .unwrap()
     };
 
-    let out = launch(&["cc", "-l", "--dry-run"]);
+    let out = launch(&["cc", "--dry-run"]);
     assert!(
         out.status.success(),
         "{}",
@@ -249,7 +249,7 @@ fn dry_run_reports_pending_role_access_pick() {
     fs::create_dir_all(config.parent().unwrap()).unwrap();
     fs::write(&config, "launcher:\n  role_access: prompt\n").unwrap();
 
-    let out = launch(&["cc", "-l", "--dry-run"]);
+    let out = launch(&["cc", "--dry-run"]);
     assert!(
         out.status.success(),
         "{}",

@@ -4,6 +4,7 @@
 //! decides. Every rule names itself in the result so a stop says which rule stopped it.
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 
 /// One pull request comment: its id (ascending ids are posting order) and body.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -324,9 +325,15 @@ pub fn effective_tier(s: &Snapshot) -> u8 {
 /// [`effective_tier`] from its two inputs: the tier the body declares and the PR's files (the
 /// `audit-gate` job reads them without a snapshot, SPEC-20261117-audit-gate).
 pub fn tier_of(body_tier: Option<u8>, pr_files: &[String]) -> u8 {
+    tier_by(body_tier, pr_files.iter().map(|f| (f.as_str(), false)))
+}
+
+/// The one rule behind [`tier_of`] and [`tier_of_changes`]: each file is its path and whether
+/// its change only grew the scan registry (so the tier 2 prefix of that path does not apply).
+fn tier_by<'a>(body_tier: Option<u8>, files: impl Iterator<Item = (&'a str, bool)>) -> u8 {
     let mut tier = body_tier.filter(|t| *t <= 2).unwrap_or(2);
-    for f in pr_files {
-        if TIER2_PREFIXES.iter().any(|p| f.starts_with(p)) {
+    for (f, grew_only) in files {
+        if !grew_only && TIER2_PREFIXES.iter().any(|p| f.starts_with(p)) {
             return 2;
         }
         if !tier0_safe(f) {
@@ -334,6 +341,192 @@ pub fn tier_of(body_tier: Option<u8>, pr_files: &[String]) -> u8 {
         }
     }
     tier
+}
+
+/// The one scan registry whose path is a tier 2 prefix and whose change can be a registration:
+/// the table that says which tests a changed file re-runs (SPEC-20261124-registry-line-add-tier).
+/// The other two registries a new test file touches, `tests/areas.toml` and
+/// `tests/fixtures/state_folder_literals/allow.tsv`, are under `tests/` and so are tier 0
+/// whatever the change is; they need no rule.
+pub const SCAN_REGISTRY: &str = "tools/repo_scans.json";
+
+/// One changed path of a head, with the text of the file on both sides for the paths
+/// [`SCAN_REGISTRY`] names (`None` for any other path, for a file that does not exist on that
+/// side, and for text a caller could not read; absence is never read as growth).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ChangedFile {
+    pub path: String,
+    /// The text at the merge base.
+    pub old: Option<String>,
+    /// The text at the head.
+    pub new: Option<String>,
+}
+
+impl ChangedFile {
+    /// A path with no file text: judged by its name alone, as [`tier_of`] judges every path.
+    pub fn named(path: &str) -> Self {
+        Self {
+            path: path.to_string(),
+            ..Self::default()
+        }
+    }
+
+    fn grew_only(&self) -> bool {
+        match (&self.old, &self.new) {
+            (Some(old), Some(new)) => registry_only_grew(&self.path, old, new),
+            _ => false,
+        }
+    }
+}
+
+/// [`tier_of`] for a head whose changed files come with their text: a change of the
+/// [`SCAN_REGISTRY`] that only grows it (see [`registry_only_grew`]) does not set the tier 2
+/// floor by its path, so a registration is judged by what else the change touches. Every other
+/// path, and a registry change of any other kind, is judged exactly as [`tier_of`] judges it.
+pub fn tier_of_changes(body_tier: Option<u8>, files: &[ChangedFile]) -> u8 {
+    tier_by(
+        body_tier,
+        files.iter().map(|f| (f.path.as_str(), f.grew_only())),
+    )
+}
+
+/// Whether the change of `path` from `old` to `new` only grows the scan registry: `path` is
+/// [`SCAN_REGISTRY`], both texts are JSON of the same shape, every scan of `old` is in `new` with
+/// the same fields, and the only differences are
+///
+/// - a rule file or a test name added to the `rules` or `tests` list of a scan,
+/// - a `--test <name>` option added to a cargo line of the `checks` list of a scan, before the
+///   `--` that starts libtest's arguments and with a name that is a target name (`[a-z0-9_]+`),
+/// - a scan added.
+///
+/// A line edited, a line removed, a text field changed, a check line of any other change, a
+/// repeated key that overrides an old value, or a text that is not JSON is not growth.
+pub fn registry_only_grew(path: &str, old: &str, new: &str) -> bool {
+    path == SCAN_REGISTRY && scans_only_grew(old, new).is_some()
+}
+
+fn scans_only_grew(old: &str, new: &str) -> Option<()> {
+    let old: serde_json::Value = serde_json::from_str(old).ok()?;
+    let new: serde_json::Value = serde_json::from_str(new).ok()?;
+    let (old, new) = (old.as_object()?, new.as_object()?);
+    if old.len() != new.len() || old.keys().any(|k| !new.contains_key(k)) {
+        return None;
+    }
+    for (key, value) in old {
+        if key != "scans" && new[key] != *value {
+            return None;
+        }
+    }
+    let (old_scans, new_scans) = (old.get("scans")?.as_array()?, new.get("scans")?.as_array()?);
+    let mut ids = BTreeSet::new();
+    for scan in new_scans {
+        if !ids.insert(scan.get("id")?.as_str()?) {
+            return None;
+        }
+    }
+    for scan in old_scans {
+        let id = scan.get("id")?.as_str()?;
+        let grown = new_scans.iter().find(|n| n["id"] == id)?;
+        scan_only_grew(scan.as_object()?, grown.as_object()?)?;
+    }
+    Some(())
+}
+
+fn scan_only_grew(
+    old: &serde_json::Map<String, serde_json::Value>,
+    new: &serde_json::Map<String, serde_json::Value>,
+) -> Option<()> {
+    if old.len() != new.len() || old.keys().any(|k| !new.contains_key(k)) {
+        return None;
+    }
+    for (key, value) in old {
+        let grown = &new[key];
+        let ok = match key.as_str() {
+            "rules" | "tests" => strings_only_grew(value, grown),
+            "checks" => checks_only_gain_tests(value, grown),
+            _ => grown == value,
+        };
+        ok.then_some(())?;
+    }
+    Some(())
+}
+
+/// Whether `new` is `old` with strings inserted (both are arrays of strings).
+fn strings_only_grew(old: &serde_json::Value, new: &serde_json::Value) -> bool {
+    let (Some(old), Some(new)) = (strings(old), strings(new)) else {
+        return false;
+    };
+    let mut rest = new.iter();
+    old.iter().all(|o| rest.any(|n| n == o))
+}
+
+fn strings(v: &serde_json::Value) -> Option<Vec<&str>> {
+    v.as_array()?
+        .iter()
+        .map(serde_json::Value::as_str)
+        .collect()
+}
+
+/// `checks`: the same lines in the same order, each one equal to the old line or to the old line
+/// with `--test <name>` options added.
+fn checks_only_gain_tests(old: &serde_json::Value, new: &serde_json::Value) -> bool {
+    let (Some(old), Some(new)) = (strings(old), strings(new)) else {
+        return false;
+    };
+    old.len() == new.len()
+        && old
+            .iter()
+            .zip(&new)
+            .all(|(o, n)| o == n || line_gains_tests(o, n))
+}
+
+fn line_gains_tests(old: &str, new: &str) -> bool {
+    let (old, new) = (words(old), words(new));
+    // The first `--` ends cargo's own options: the words after it are libtest's.
+    let separator = new.iter().position(|w| *w == ("--", None));
+    let mut rest = old.iter();
+    let mut next = rest.next();
+    for (at, word) in new.iter().enumerate() {
+        if Some(word) == next {
+            next = rest.next();
+        } else if !is_added_test(word, separator.is_none_or(|s| at < s)) {
+            return false;
+        }
+    }
+    next.is_none()
+}
+
+/// An added word that is a registration: a `--test <name>` pair whose name is a target name, in
+/// cargo's own options (`before_separator`). A value that is an option, a filter or a shell
+/// fragment (`--list`, `--exact`, `x||true`, `x;true`) is another argument or another command,
+/// and after the `--` a `--test` is libtest's, not cargo's (SPEC-20261124-registry-line-add-tier
+/// R1).
+fn is_added_test(word: &(&str, Option<&str>), before_separator: bool) -> bool {
+    before_separator && word.0 == "--test" && word.1.is_some_and(is_target_name)
+}
+
+/// A cargo integration-test target name as `repo_scans` reads a `test_targets` entry:
+/// `[a-z0-9_]+`. That function is private there, so the rule is spelled here and a test
+/// (`a_test_option_value_is_read_as_repo_scans_reads_a_target_name`) pins that the two agree.
+fn is_target_name(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+}
+
+/// The words of a cargo line, an option `--test` taking the word after it.
+fn words(line: &str) -> Vec<(&str, Option<&str>)> {
+    let mut all = line.split_whitespace();
+    let mut out = Vec::new();
+    while let Some(w) = all.next() {
+        out.push(if w == "--test" {
+            (w, all.next())
+        } else {
+            (w, None)
+        });
+    }
+    out
 }
 
 /// A stop: the rule id (G1…G8 of Issue #2674 comment 6849084101, G8 is #2777; G9 of the

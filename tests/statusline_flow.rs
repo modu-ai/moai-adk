@@ -10,6 +10,7 @@ mod common;
 
 use common::home::TempHome;
 use moai_cli::ledger;
+use moai_cli::statusline::icons::{BLOCKED, CHECK, DONE, PAUSED, QUESTION, READY, TODO, WORK};
 use moai_cli::statusline::width::ICONS;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -170,7 +171,7 @@ fn my_card_is_the_card_held_in_this_worktree() {
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
     assert_eq!(
         line(&out, 1),
-        format!("{} | 🟡 1 | 🎯 C-{card} 🟡", moai()),
+        format!("{} | {WORK} 1 | 🎯 C-{card} {WORK}", moai()),
         "{out}"
     );
     f.note(card, "LANE-READY-INTEGRATION C-1 head=abc");
@@ -178,15 +179,15 @@ fn my_card_is_the_card_held_in_this_worktree() {
     // The card moved on: it is counted as handed over and no longer as in progress.
     assert_eq!(
         line(&out, 1),
-        format!("{} | 📨 1 | 🎯 C-{card} 📨", moai()),
+        format!("{} | {CHECK} 1 | 🎯 C-{card} {CHECK}", moai()),
         "{out}"
     );
     f.note(card, "LANE-BLOCKED kind=decision which option");
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
-    // Blocked stands beside the flow; the zero of `🙋` is hidden.
+    // Blocked stands beside the flow; the zeros of paused and question are hidden.
     assert_eq!(
         line(&out, 1),
-        format!("{} | 🚧 1 | 🎯 C-{card} 🚧", moai()),
+        format!("{} | {BLOCKED} 1 | 🎯 C-{card} {BLOCKED}", moai()),
         "{out}"
     );
 }
@@ -214,7 +215,7 @@ fn my_card_falls_back_to_the_newest_live_card_of_the_session() {
     });
     let out = f.render(&f.project, "this-session", None);
     assert!(
-        line(&out, 1).ends_with(&format!(" | 🎯 C-{mine} 🟡")),
+        line(&out, 1).ends_with(&format!(" | 🎯 C-{mine} {WORK}")),
         "{out}"
     );
     let out = f.render(&f.project, "a-stranger", None);
@@ -222,10 +223,10 @@ fn my_card_falls_back_to_the_newest_live_card_of_the_session() {
 }
 
 /// A lease that is over makes the card stale, and it stays my card while its held reservation
-/// names this worktree (D-3): it is still the card in hand (`🟡`), and it is counted in `🟡` with
+/// names this worktree (D-3): it is still the card in hand (`🔨`), and it is counted in `🔨` with
 /// the working ones (SPEC-20261124-statusline-counts-truth REQ-7). For a card of the session's
 /// holder in another folder, an ended lease means it is no longer mine, but the card is still
-/// counted in `🟡`.
+/// counted in `🔨`.
 #[test]
 fn an_expired_lease_makes_my_card_stale_and_a_session_card_not_mine() {
     let f = fixture();
@@ -241,14 +242,14 @@ fn an_expired_lease_makes_my_card_stale_and_a_session_card_not_mine() {
     // The version opens the second line and my card closes it (SPEC-20261123-statusline-order-bars).
     assert_eq!(
         line(&out, 1),
-        format!("{} | 🟡 1 | 🎯 C-1 🟡", moai()),
+        format!("{} | {WORK} 1 | 🎯 C-1 {WORK}", moai()),
         "{out}"
     );
     // From the main checkout the worktree does not match, and the session's own card has no
-    // live lease: nothing is mine, but the card with the ended lease is still counted in `🟡`.
+    // live lease: nothing is mine, but the card with the ended lease is still counted in `🔨`.
     let out = f.render(&f.project, "this-session", None);
     assert_eq!(out.lines().count(), 3, "{out}");
-    assert_eq!(line(&out, 1), format!("{} | 🟡 1", moai()), "{out}");
+    assert_eq!(line(&out, 1), format!("{} | {WORK} 1", moai()), "{out}");
     assert!(!out.contains('🎯'), "{out}");
 }
 
@@ -273,16 +274,19 @@ fn three_lines_have_their_roles() {
     assert!(!lines[0].contains("demo-1-work"), "{out}");
     // The version opens the flow line and my card closes it.
     assert!(lines[1].starts_with("🗿 "), "{out}");
-    assert!(lines[1].ends_with("🎯 C-1 🟡"), "{out}");
-    assert!(lines[1].contains("🟡 1"), "{out}");
+    assert!(lines[1].ends_with(&format!("🎯 C-1 {WORK}")), "{out}");
+    assert!(lines[1].contains(&format!("{WORK} 1")), "{out}");
     assert!(lines[2].contains("CW"), "{out}");
     for (n, role_icons) in [
         (
             0,
-            ["🎯", "🗂️", "🟡", "📨", "🛬", "✅", "🚧", "🙋", "🤖", "🗿"].as_slice(),
+            [
+                "🎯", TODO, WORK, CHECK, READY, DONE, BLOCKED, PAUSED, QUESTION, "🤖", "🗿",
+            ]
+            .as_slice(),
         ),
         (1, ["🌳", "🅱️", "📡", "🧠"].as_slice()),
-        (2, ["🎯", "🗂️", "🟡", "🌳", "🅱️", "🤖", "🗿"].as_slice()),
+        (2, ["🎯", TODO, WORK, "🌳", "🅱️", "🤖", "🗿"].as_slice()),
     ] {
         for icon in role_icons {
             assert!(!lines[n].contains(icon), "line {n} carries {icon}: {out}");
@@ -290,7 +294,7 @@ fn three_lines_have_their_roles() {
     }
 }
 
-/// Every icon the flow line writes is followed by exactly one space in the real output, `🗂️`
+/// Every icon the flow line writes is followed by exactly one space in the real output, `⏸️`
 /// (written with a variation selector) too, and the line holds none of the icons that left the
 /// set.
 #[test]
@@ -320,6 +324,18 @@ fn icon_spacing_in_the_real_output() {
                  VALUES ('t', 'done', 'test', ?1, ?1, ?1)",
                 rusqlite::params![now],
             )?;
+            // A withdrawn hold card: it is paused, and no pick is owed for it.
+            tx.execute(
+                "INSERT INTO card (title, state, created_by, created_at, updated_at) \
+                 VALUES ('t', 'hold', 'test', ?1, ?1)",
+                rusqlite::params![now],
+            )?;
+            let withdrawn = tx.last_insert_rowid();
+            tx.execute(
+                "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+                 VALUES ('withdraw-fixture', ?1, 'test', ?2, 'card.withdraw', '{}')",
+                rusqlite::params![now, withdrawn],
+            )?;
             Ok(())
         })
         .unwrap();
@@ -328,10 +344,13 @@ fn icon_spacing_in_the_real_output() {
     let flow = line(&out, 1);
     assert_eq!(
         flow,
-        format!("{} | 🗂️ 1 → ✅ 1 | 🚧 1 🙋 1 | 🎯 C-{card} 🚧", moai()),
+        format!(
+            "{} | {TODO} 1 → {DONE} 1 | {BLOCKED} 1 {PAUSED} 1 {QUESTION} 1 | 🎯 C-{card} {BLOCKED}",
+            moai()
+        ),
         "{out}"
     );
-    for icon in ["🎯", "🚧", "🙋", "🗂️", "✅"] {
+    for icon in ["🎯", BLOCKED, PAUSED, QUESTION, TODO, DONE] {
         assert!(flow.contains(icon), "{icon} missing in {flow}");
     }
     for icon in ICONS {
@@ -348,7 +367,7 @@ fn icon_spacing_in_the_real_output() {
             );
         }
     }
-    for gone in ["👀", "⛔", "⏸️", "🔵", "🟢", "⬜"] {
+    for gone in moai_cli::statusline::icons::RETIRED {
         assert!(!out.contains(gone), "{gone} left the set: {out}");
     }
 }

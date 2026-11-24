@@ -14,7 +14,8 @@ use std::{
 };
 
 const HOSTS: [&str; 2] = ["cc", "glm"];
-const ROLES: [&[&str]; 3] = [&["-l"], &["-a"], &[]];
+/// An unnamed launch and a launch named with `--name`.
+const NAMES: [&[&str]; 2] = [&[], &["--name", "lane-1"]];
 /// Rejected `launcher.advisor` values and broken files. `SECRET` must never reach stderr.
 const INVALID: [&str; 14] = [
     r#"{"launcher":{"advisor":"SECRET-unknown-advisor"}}"#,
@@ -79,8 +80,7 @@ fn command(f: &Fixture, args: &[&str]) -> Command {
         .env("USERPROFILE", f.home.path())
         .env("MOAI_TEST_HOST_MARKER", f.home.path().join("host-started"))
         .env("ANTHROPIC_AUTH_TOKEN", "moai-test-dummy-not-real")
-        .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
-        .env_remove(moai_cli::session::AGENT_SEQ_TEST_HOLD_VAR);
+        .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL");
     c
 }
 
@@ -119,115 +119,57 @@ fn rejected(out: &Output) -> String {
 fn host_started(f: &Fixture) -> bool {
     f.home.path().join("host-started").exists()
 }
-fn number_store(f: &Fixture) -> std::path::PathBuf {
-    moai_cli::clone_root::path(&f.project.path().join(".git")).join("sessions/agent-1.live")
+fn live_file(f: &Fixture) -> std::path::PathBuf {
+    moai_cli::clone_root::path(&f.project.path().join(".git")).join("sessions/lane-1.live")
 }
 
-/// Literal complete argv with no advisor: the decided default for every host and role
-/// (role index 0 = `-l`, 1 = `-a`, 2 = none).
-fn plain(host: &str, role: usize) -> Vec<&'static str> {
-    match (host, role) {
-        // A role session with nothing saved starts with the default table
-        // (SPEC-20261121-model-defaults-one-table): the glm host takes the id without `zai/`.
-        ("cc", 0) => vec![
-            "claude",
-            "--name",
-            "leader",
+/// Literal complete argv with no advisor: the decided default of a host (index 0 = no name,
+/// 1 = `--name lane-1`).
+fn plain(host: &str, named: usize) -> Vec<&'static str> {
+    let mut argv = vec!["claude"];
+    if named == 1 {
+        argv.extend(["--name", "lane-1"]);
+    }
+    // The host defaults (SPEC-20261124-launcher-retire-role-flags REQ-13, REQ-15): `cc` starts
+    // in auto mode at effort medium, `glm` in the bypass at effort high.
+    if host == "glm" {
+        argv.extend([
             "--model",
-            "claude-opus-5-5",
+            "opus",
             "--effort",
             "high",
-            "--permission-mode",
-            "auto",
-        ],
-        ("glm", 0) => vec![
-            "claude",
-            "--name",
-            "leader",
-            "--model",
-            "glm-5.4[1m]",
-            "--effort",
-            "high",
-            "--permission-mode",
-            "auto",
-        ],
-        ("cc", 1) => vec![
-            "claude",
-            "--name",
-            "agent-1",
-            "--model",
-            "claude-sonnet-5-5",
-            "--effort",
-            "high",
-            "--permission-mode",
-            "auto",
-        ],
-        ("glm", 1) => vec![
-            "claude",
-            "--name",
-            "agent-1",
-            "--model",
-            "glm-5.3-flash",
-            "--effort",
-            "max",
-            "--permission-mode",
-            "auto",
-        ],
-        ("cc" | "glm", 2) => vec![
-            "claude",
+            "--dangerously-skip-permissions",
+        ]);
+    } else {
+        argv.extend([
             "--model",
             "opus",
             "--effort",
             "medium",
             "--permission-mode",
             "auto",
-        ],
-        _ => unreachable!(),
+        ]);
     }
+    argv
 }
 
 /// Literal complete `cc` argv with `--advisor <a>` in its documented place.
-fn with_advisor(role: usize, advisor: &'static str) -> Vec<&'static str> {
-    match role {
-        0 => vec![
-            "claude",
-            "--name",
-            "leader",
-            "--model",
-            "claude-opus-5-5",
-            "--effort",
-            "high",
-            "--advisor",
-            advisor,
-            "--permission-mode",
-            "auto",
-        ],
-        1 => vec![
-            "claude",
-            "--name",
-            "agent-1",
-            "--model",
-            "claude-sonnet-5-5",
-            "--effort",
-            "high",
-            "--advisor",
-            advisor,
-            "--permission-mode",
-            "auto",
-        ],
-        2 => vec![
-            "claude",
-            "--model",
-            "opus",
-            "--effort",
-            "medium",
-            "--advisor",
-            advisor,
-            "--permission-mode",
-            "auto",
-        ],
-        _ => unreachable!(),
+fn with_advisor(named: usize, advisor: &'static str) -> Vec<&'static str> {
+    let mut argv = vec!["claude"];
+    if named == 1 {
+        argv.extend(["--name", "lane-1"]);
     }
+    argv.extend([
+        "--model",
+        "opus",
+        "--effort",
+        "medium",
+        "--advisor",
+        advisor,
+        "--permission-mode",
+        "auto",
+    ]);
+    argv
 }
 
 fn args_for<'a>(host: &'a str, flags: &[&'a str], extra: &[&'a str]) -> Vec<&'a str> {
@@ -237,14 +179,14 @@ fn args_for<'a>(host: &'a str, flags: &[&'a str], extra: &[&'a str]) -> Vec<&'a 
     args
 }
 
-/// AC-1: no setting file → no `--advisor` on cc/glm for `-l`, `-a` and no role.
+/// AC-1: no setting file → no `--advisor` on cc/glm, named or not.
 /// A file without the key, or `none`, gives byte-identical output.
 #[test]
 fn no_setting_means_no_advisor_on_every_host_and_role() {
     let f = fixture();
     let mut baseline = Vec::new();
     for host in HOSTS {
-        for (role, flags) in ROLES.iter().enumerate() {
+        for (role, flags) in NAMES.iter().enumerate() {
             let args = args_for(host, flags, &[]);
             let v = dry(&f, &args);
             assert_eq!(v["argv"], serde_json::json!(plain(host, role)), "{args:?}");
@@ -264,7 +206,7 @@ fn no_setting_means_no_advisor_on_every_host_and_role() {
         config(f.home.path(), text);
         let mut i = 0;
         for host in HOSTS {
-            for flags in ROLES {
+            for flags in NAMES {
                 let out = command(&f, &args_for(host, flags, &[]))
                     .arg("--dry-run")
                     .output()
@@ -282,7 +224,7 @@ fn no_setting_means_no_advisor_on_every_host_and_role() {
 #[test]
 fn cli_and_setting_enable_the_advisor_with_cli_precedence() {
     let f = fixture();
-    for (role, flags) in ROLES.iter().enumerate() {
+    for (role, flags) in NAMES.iter().enumerate() {
         let v = dry(&f, &args_for("cc", flags, &["--advisor", "fable"]));
         assert_eq!(v["argv"], serde_json::json!(with_advisor(role, "fable")));
         assert!(
@@ -292,7 +234,7 @@ fn cli_and_setting_enable_the_advisor_with_cli_precedence() {
         );
     }
     config(f.home.path(), r#"{"launcher":{"advisor":"fable"}}"#);
-    for (role, flags) in ROLES.iter().enumerate() {
+    for (role, flags) in NAMES.iter().enumerate() {
         let v = dry(&f, &args_for("cc", flags, &[]));
         assert_eq!(v["argv"], serde_json::json!(with_advisor(role, "fable")));
         let notes = v["notes"].to_string();
@@ -310,18 +252,14 @@ fn cli_and_setting_enable_the_advisor_with_cli_precedence() {
         assert_eq!(v["argv"], serde_json::json!(plain("glm", role)));
         assert!(v["notes"].to_string().contains("--advisor omitted on glm"));
     }
-    // A full id from the setting, and the legacy top-level `-l` / `-a cc` forms.
+    // A full id from the setting.
     config(
         f.home.path(),
         r#"{"launcher":{"advisor":"claude-fable-5-2"}}"#,
     );
     assert_eq!(
-        dry(&f, &["-l"])["argv"],
+        dry(&f, &["cc"])["argv"],
         serde_json::json!(with_advisor(0, "claude-fable-5-2"))
-    );
-    assert_eq!(
-        dry(&f, &["-a", "cc"])["argv"],
-        serde_json::json!(with_advisor(1, "claude-fable-5-2"))
     );
     // Both access and advisor from the one user file.
     config(
@@ -329,22 +267,22 @@ fn cli_and_setting_enable_the_advisor_with_cli_precedence() {
         r#"{"launcher":{"role_access":"prompt","advisor":"fable"}}"#,
     );
     assert_eq!(
-        argv(&dry(&f, &["cc", "-l"])),
+        argv(&dry(&f, &["cc", "--name", "lane-1"])),
         [
             "claude",
             "--name",
-            "leader",
+            "lane-1",
             "--model",
-            "claude-opus-5-5",
+            "opus",
             "--effort",
-            "high",
+            "medium",
             "--advisor",
             "fable"
         ]
     );
 }
 
-/// AC-2: `--advisor` with `--no-advisor` is refused before a host starts or a number is taken.
+/// AC-2: `--advisor` with `--no-advisor` is refused before a host starts or a lock is taken.
 #[test]
 fn advisor_and_no_advisor_together_are_refused() {
     let f = fixture();
@@ -353,7 +291,7 @@ fn advisor_and_no_advisor_together_are_refused() {
             config(f.home.path(), text);
         }
         for host in HOSTS {
-            for flags in ROLES {
+            for flags in NAMES {
                 for dry_run in [true, false] {
                     let mut c = command(
                         &f,
@@ -365,28 +303,28 @@ fn advisor_and_no_advisor_together_are_refused() {
                     let stderr = rejected(&c.output().unwrap());
                     assert!(stderr.contains("--no-advisor"), "{stderr}");
                     assert!(!host_started(&f), "{host} {flags:?}");
-                    assert!(!number_store(&f).exists(), "{host} {flags:?}");
+                    assert!(!live_file(&f).exists(), "{host} {flags:?}");
                 }
             }
         }
     }
 }
 
-/// AC-3: an invalid setting is refused for every host and role, also when the CLI decides
-/// (`--advisor`, `--no-advisor`); no host starts, no number is taken, nothing is echoed.
+/// AC-3: an invalid setting is refused for every host, named or not, also when the CLI decides
+/// (`--advisor`, `--no-advisor`); no host starts, no lock is taken, nothing is echoed.
 #[test]
 fn invalid_setting_is_refused_without_host_or_number() {
     for bad in INVALID {
         let f = fixture();
         config(f.home.path(), bad);
         for host in HOSTS {
-            for flags in ROLES {
+            for flags in NAMES {
                 for cli in [&[][..], &["--advisor", "fable"][..], &["--no-advisor"][..]] {
                     let args = args_for(host, flags, cli);
                     rejected(&command(&f, &args).arg("--dry-run").output().unwrap());
                     rejected(&command(&f, &args).output().unwrap());
                     assert!(!host_started(&f), "{bad} {args:?}");
-                    assert!(!number_store(&f).exists(), "{bad} {args:?}");
+                    assert!(!live_file(&f).exists(), "{bad} {args:?}");
                 }
             }
         }
@@ -394,33 +332,32 @@ fn invalid_setting_is_refused_without_host_or_number() {
 }
 
 /// AC-3: a setting that names a lower-ranked advisor than the main model is refused at
-/// compose time, still before a number is taken.
+/// compose time, still before a lock is taken.
 #[test]
 fn lower_ranked_setting_is_refused_before_numbering() {
     let f = fixture();
     config(f.home.path(), r#"{"launcher":{"advisor":"sonnet"}}"#);
-    // The agent default model is sonnet (the default table), which the sonnet advisor does not
-    // rank below, so the refusal is asked for with an opus main model.
+    // An opus main model ranks above the sonnet advisor, so the launch is refused.
     let stderr = rejected(
-        &command(&f, &["cc", "-a", "--model", "opus"])
+        &command(&f, &["cc", "--name", "lane-1", "--model", "opus"])
             .output()
             .unwrap(),
     );
     assert!(stderr.contains("rank"), "{stderr}");
     assert!(!host_started(&f));
-    assert!(!number_store(&f).exists());
-    // A lower main model makes the same setting valid; the effort is the table's for a leader.
-    let v = dry(&f, &["cc", "-l", "--model", "sonnet"]);
+    assert!(!live_file(&f).exists());
+    // A lower main model makes the same setting valid.
+    let v = dry(&f, &["cc", "--name", "lane-1", "--model", "sonnet"]);
     assert_eq!(
         argv(&v),
         [
             "claude",
             "--name",
-            "leader",
+            "lane-1",
             "--model",
             "sonnet",
             "--effort",
-            "high",
+            "medium",
             "--advisor",
             "sonnet",
             "--permission-mode",
@@ -440,7 +377,7 @@ fn project_setting_cannot_enable_the_advisor() {
     )
     .unwrap();
     for host in HOSTS {
-        for (role, flags) in ROLES.iter().enumerate() {
+        for (role, flags) in NAMES.iter().enumerate() {
             assert_eq!(
                 dry(&f, &args_for(host, flags, &[]))["argv"],
                 serde_json::json!(plain(host, role))
@@ -449,12 +386,13 @@ fn project_setting_cannot_enable_the_advisor() {
     }
 }
 
-/// A real launch with the setting starts the stub host with the advisor argv and takes a number.
+/// A real launch with the setting starts the stub host with the advisor argv and holds the lock
+/// of its name.
 #[test]
 fn real_launch_uses_the_setting() {
     let f = fixture();
     config(f.home.path(), r#"{"launcher":{"advisor":"fable"}}"#);
-    let out = command(&f, &["cc", "-a"]).output().unwrap();
+    let out = command(&f, &["cc", "--name", "lane-1"]).output().unwrap();
     assert!(
         out.status.success(),
         "{}",
@@ -464,5 +402,5 @@ fn real_launch_uses_the_setting() {
     assert_eq!(v["argv"], serde_json::json!(with_advisor(1, "fable")));
     assert_eq!(v["executed"], serde_json::json!(true));
     assert!(host_started(&f));
-    assert!(number_store(&f).is_file());
+    assert!(live_file(&f).is_file());
 }

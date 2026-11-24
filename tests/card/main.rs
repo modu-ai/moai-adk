@@ -21,6 +21,7 @@ mod card_guard_cli;
 mod card_hold_gate_cli;
 mod card_import_cli;
 mod card_inbox_cli;
+mod card_land_batch_cli;
 mod card_land_cli;
 mod card_land_scans_cli;
 mod card_line_lease_cli;

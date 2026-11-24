@@ -2,13 +2,15 @@
 id: SPEC-20261124-statusline-counts-truth
 title: "The status line flow counts match the ledger and its limit windows show the share used"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-24
 ---
 
 # 상태줄 흐름 줄의 숫자를 원장과 맞추고, 한도 항목은 쓴 양으로 보여요
 
 ## Intent
+
+**개정 3 (2026-11-24, 카드 C-466).** C-452 감사(노트 8519)의 N1 을 닫아요. 요구사항, 기준, 범위는 그대로고 Supersedes 표만 고쳐요: 빠졌던 줄(flow REQ-1·AC-1·AC-3, order-bars AC-4, limits-left AC-7, bar-color REQ-1)을 더하고, ready-receipt-followup 줄이 `REPAIRED` 를 "세지 않는다"고 잘못 쓴 것을 바로잡아요(그 SPEC 의 REQ-4 는 `REPAIRED` 를 넘김 표식으로 이미 정해요).
 
 **개정 2 (2026-11-24, 사용자 결정).** 사용자가 리더 세션에서 직접 정했어요(리더 노트 8394): 한도 줄 `CW ███████░░░ 75% | 🔋 5H ██████░░░░ 68% (16m) | 🪫 7D ██░░░░░░░░ 22% (2d 15h)` 의 "수치와 그래프를 반대로, 남아 있는 게 아닌 사용한 것으로 변경". 이 SPEC 이 카드 C-452 의 기준 5 로 받아서 같은 파일(`src/statusline/render.rs`)을 쥔 개수 수리와 한 개정에 묶어요. 개정 1 의 내용(결함 아홉과 REQ-1~11, D-1~D-7)은 그대로예요. 세부는 리더 판단(되돌릴 수 있음)으로 정해졌고 D-8~D-11 에 있어요: 숫자는 쓴 %, 막대는 쓴 만큼 채움, 배터리 아이콘은 지금과 같은 상태(쓴 양이 70% 를 넘으면 `🪫`), 막대 색은 같은 경계를 쓴 양으로 읽은 초록 → 노랑 → 주황 → 빨강, 리셋 시간 `(16m)` 은 그대로(남은 시간). 사용자의 예는 쓴 양으로 `🔋 CW ██░░░░░░░░ 25% | 🔋 5H ███░░░░░░░ 32% (16m) | 🪫 7D ███████░░░ 78% (2d 15h)` 로 나와요. 이 개정이 뒤집는 것은 `SPEC-20261122-statusline-limits-left` 의 REQ-1·REQ-2·REQ-3 의 "남은 몫", `SPEC-20261123-statusline-order-bars` 의 REQ-3·REQ-7 의 "숫자와 막대는 남은 비율", `SPEC-20261124-statusline-bar-color` 의 REQ-2·D-1 의 "색 단계는 남은 비율" 이에요(아래 Supersedes).
 
@@ -150,10 +152,15 @@ This SPEC changes what earlier SPECs pinned; they stay as the record of what was
 | `SPEC-20261122-statusline-flow` | D-4 and REQ-5 (done today is the UTC day) | the local day of the machine's zone |
 | `SPEC-20261122-statusline-flow` | REQ-2 and REQ-3 (stage by notes of the whole history; a landing at any time wins) | stage by the notes at or after the last reservation; a landing counts at or after it |
 | `SPEC-20261122-statusline-limits-left` | REQ-6 (`🟡 <working>`, `🙋 <hold>`, "the ended leases are not on the line") | `🟡 <working plus stale>`, `🙋 <hold cards without a withdraw event>`; the drafts are still not on the line |
-| `SPEC-20261124-ready-receipt-followup` | REQ-1 (the status line counts `LANE-READY-INTEGRATION` and `READY`, `REPAIRED` is not counted) | `REPAIRED` is a submit marker too (REQ-4 here) |
+| `SPEC-20261122-statusline-flow` | REQ-1 and AC-1 (the nine counts add up to the cards that are not done) | the drawn items add up to the open cards that are neither draft nor hold (REQ-7 here), and a hold card with a withdraw or fold event is in no drawn stage (REQ-8, D-6); the drafts are still not on the line |
+| `SPEC-20261122-statusline-flow` | AC-3 (the done-today count changes at the UTC midnight) | it changes at the local midnight of the machine's zone (REQ-9, REQ-10 here, D-7) |
+| `SPEC-20261124-ready-receipt-followup` | REQ-1 and REQ-4 (the status line judges a hand-back with the one function `marker_of_line`, whose markers are `LANE-READY-INTEGRATION`, `REPAIRED` and `READY `) | nothing in that SPEC changes: the stage rule of the status line had a marker list of its own that left `REPAIRED` out, and REQ-4 here makes it a submit marker so the stage rule agrees with that function |
+| `SPEC-20261122-statusline-limits-left` | AC-7 (the flow line example and the rule that the cards with an ended lease are not on the line) | the example keeps its shape; the work item counts the working and the stale cards, and the question item counts the hold cards without a withdraw or fold event |
 | `SPEC-20261122-statusline-limits-left` | REQ-1, REQ-2 and REQ-3 (the number of each window is the share left, `🪫` below 30 left) | the number is the share used (REQ-12), `🪫` above 70 used (REQ-13), the same state as before; `5H` shown at any level and the countdowns stay |
 | `SPEC-20261122-statusline-limits-left` | AC-1, AC-3 and AC-4 (their examples and boundaries are shares left) | the examples and boundaries are shares used (AC-9, AC-10) |
 | `SPEC-20261123-statusline-order-bars` | REQ-3 and REQ-7 (the bar draws the share left, the numbers are the share left), D-1 | the bar draws the share used with the same ten cells and the same rounding (REQ-12, D-9) |
+| `SPEC-20261123-statusline-order-bars` | AC-4 (the example 27%, 51% and 13% used reads `73%`, `49%` and `87%`) | the same input reads `27%`, `51%` and `13%` (AC-9, AC-10 here) |
+| `SPEC-20261124-statusline-bar-color` | REQ-1 (the filled cells are painted in one level color chosen from the share left) | the one level color is chosen from the share used (REQ-14, D-11 here) |
 | `SPEC-20261124-statusline-bar-color` | REQ-2, D-1 (the level colors go by the share left: green from 70, yellow from 50, peach from 30, red below) | the level colors go by the share used: green up to 30, yellow up to 50, peach up to 70, red above (REQ-14, D-11); the four theme colors and the empty-cell color stay |
 
 ## Result

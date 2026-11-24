@@ -34,7 +34,9 @@ enum Action {
     /// not carry the cap yet. The answer has one `summary` line of `key=value` words in a fixed
     /// order: `check-affected`, base, head, targets, scans, `selection=lane` (only a `--lane` run
     /// writes it: its `summary.txt` is no receipt for a READY or REPAIRED note, a bare run is),
-    /// `test-threads=<n>` (the cap the
+    /// `selection=card` (only a `--card` run that narrowed writes it; its `summary.txt` is a
+    /// receipt for a READY or REPAIRED note, and a `--card` run that fell back to the full set
+    /// writes the bare line), `test-threads=<n>` (the cap the
     /// `test` step ran with), the exit status of each step in the order they ran, then
     /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs,
     /// `heavy-slot.log` and `summary.txt` (the summary line, whatever its result: the receipt
@@ -71,6 +73,11 @@ enum Action {
         /// Select the precise lane set instead of the full set (the default).
         #[arg(long)]
         lane: bool,
+        /// Select what this card's change reaches: the tests the range changes or adds, the
+        /// tests that name a changed module, the scans it touches; a wide path (dependencies,
+        /// build or common settings, permission guards, ledger storage) gives the full set.
+        #[arg(long, conflicts_with = "lane")]
+        card: bool,
         /// The integration branch: a range whose base lies behind its merge base with the head
         /// gets a `range_note` in the answer.
         #[arg(long)]
@@ -91,9 +98,12 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             min_free_gb,
             out,
             lane,
+            card,
             integration_ref,
         } => {
-            let pick = if lane {
+            let pick = if card {
+                moai_cli::check_affected::Pick::Card
+            } else if lane {
                 moai_cli::check_affected::Pick::Lane
             } else {
                 moai_cli::check_affected::Pick::Full

@@ -1,7 +1,10 @@
-//! SPEC-20261121-model-defaults-one-table: a launcher session with a role and nothing saved for its
-//! tool and role starts with the model and effort of the default table, the table the question
-//! screen shows as "(default)". Every case uses `--dry-run` with a synthetic HOME and a temporary
-//! git project; no host is started and no real settings file is read.
+//! SPEC-20261121-model-defaults-one-table, as narrowed by
+//! SPEC-20261124-launcher-retire-role-flags: the launcher no longer starts role sessions, so the
+//! role rows of the default table are no longer reachable through `moai cc|glm`; they stay the
+//! "(default)" of the question screen. A launcher session starts with the defaults of its host
+//! (`tests/launcher_retire_role_flags.rs` pins them per host). Every case uses `--dry-run` with
+//! a synthetic HOME and a temporary git project; no host is started and no real settings file
+//! is read.
 
 #![cfg(unix)]
 
@@ -11,30 +14,6 @@ use moai_cli::model_effort_settings::{default_choice, ROLES, TOOLS};
 use serde_json::Value;
 use std::fs;
 use std::process::{Command, Output};
-
-/// The launcher word and the role flag of a tool and role.
-fn launcher_args(tool: &str, role: &str) -> [&'static str; 2] {
-    let word = match tool {
-        "claude" => "cc",
-        "glm" => "glm",
-        other => panic!("unexpected tool {other}"),
-    };
-    let flag = match role {
-        "leader" => "-l",
-        "agent" => "-a",
-        other => panic!("unexpected role {other}"),
-    };
-    [word, flag]
-}
-
-/// The model the host gets: the glm host takes the id without the `zai/` provider prefix.
-fn host_model(tool: &str, model: &str) -> String {
-    if tool == "glm" {
-        model.strip_prefix("zai/").unwrap_or(model).to_string()
-    } else {
-        model.to_string()
-    }
-}
 
 struct Fixture {
     project: tempfile::TempDir,
@@ -94,14 +73,6 @@ impl Fixture {
         let v: Value = serde_json::from_slice(&out.stdout).unwrap();
         serde_json::from_value(v["argv"].clone()).unwrap()
     }
-
-    /// The notes of the launcher's `--dry-run` answer as one text.
-    fn notes(&self, args: &[&str]) -> String {
-        let out = self.run(args);
-        assert!(out.status.success(), "{args:?}");
-        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
-        v["notes"].to_string()
-    }
 }
 
 /// The value after `flag`, `None` when the flag is not in the argv.
@@ -111,154 +82,46 @@ fn value_of<'a>(argv: &'a [String], flag: &str) -> Option<&'a str> {
         .map(|w| w[1].as_str())
 }
 
-/// Every tool and role of the table, with the table's model (as the host takes it) and effort.
-fn table() -> Vec<(&'static str, &'static str, String, String)> {
-    let mut rows = Vec::new();
+/// The default table keeps its four rows (claude and glm by two roles): the question screen of
+/// `moai update` shows them as "(default)".
+#[test]
+fn the_default_table_keeps_its_rows_for_the_question_screen() {
+    let mut rows = 0;
     for tool in TOOLS {
         for role in ROLES {
-            let choice = default_choice(tool, role)
-                .unwrap_or_else(|| panic!("{tool} {role}: the table has no default"));
-            rows.push((tool, role, host_model(tool, &choice.model), choice.effort));
+            assert!(
+                default_choice(tool, role).is_some(),
+                "{tool} {role}: the table has no default"
+            );
+            rows += 1;
         }
     }
-    rows
+    assert_eq!(rows, 4);
 }
 
-/// AC-2 (REQ-2, REQ-3, REQ-4): with no settings file at all, every role session of both hosts starts
-/// with the table's model and effort: the launcher's unsaved default equals the table.
+/// A launch takes no row of the table: with or without a name, and with a settings file that
+/// still holds an old role entry, a Claude launch starts with `opus` and `medium`.
 #[test]
-fn without_a_settings_file_a_role_session_starts_with_the_table_default() {
-    let rows = table();
-    assert_eq!(rows.len(), 4, "the table is claude and glm by two roles");
-    for (tool, role, model, effort) in rows {
-        let f = Fixture::new();
-        // The table default adds no note: the note says a value came from a saved choice.
-        let notes = f.notes(&launcher_args(tool, role));
-        assert!(
-            !notes.contains("saved by moai update"),
-            "{tool} {role}: {notes}"
-        );
-        let a = f.argv(&launcher_args(tool, role));
-        assert_eq!(
-            value_of(&a, "--model"),
-            Some(model.as_str()),
-            "{tool} {role}: {a:?}"
-        );
-        assert_eq!(
-            value_of(&a, "--effort"),
-            Some(effort.as_str()),
-            "{tool} {role}: {a:?}"
-        );
-    }
-}
-
-/// AC-2 (REQ-2, REQ-4): a settings file that saves nothing for the tool and role gives the same
-/// launch, so the table is the fallback of the saved value and not of the file.
-#[test]
-fn a_settings_file_without_models_gives_the_table_default() {
-    for (tool, role, model, effort) in table() {
-        let f = Fixture::new();
-        f.config(r#"{"launcher":{"future_key":"SENTINEL-SAVED-TEXT"}}"#);
-        let a = f.argv(&launcher_args(tool, role));
-        assert_eq!(
-            value_of(&a, "--model"),
-            Some(model.as_str()),
-            "{tool} {role}: {a:?}"
-        );
-        assert_eq!(
-            value_of(&a, "--effort"),
-            Some(effort.as_str()),
-            "{tool} {role}: {a:?}"
-        );
-    }
-}
-
-/// AC-3 (REQ-6): a model given on the command line stays and only the effort comes from the table;
-/// an effort given on the command line stays and only the model comes from the table.
-#[test]
-fn a_flag_given_keeps_that_field_and_the_table_fills_the_other() {
-    for (tool, role, model, effort) in table() {
-        let f = Fixture::new();
-        let [word, flag] = launcher_args(tool, role);
-        let a = f.argv(&[word, flag, "--model", "claude-haiku-5-5"]);
-        assert_eq!(
-            value_of(&a, "--model"),
-            Some("claude-haiku-5-5"),
-            "{tool} {role}: {a:?}"
-        );
-        assert_eq!(
-            value_of(&a, "--effort"),
-            Some(effort.as_str()),
-            "{tool} {role}: {a:?}"
-        );
-        let a = f.argv(&[word, flag, "--effort", "low"]);
-        assert_eq!(
-            value_of(&a, "--model"),
-            Some(model.as_str()),
-            "{tool} {role}: {a:?}"
-        );
-        assert_eq!(
-            value_of(&a, "--effort"),
-            Some("low"),
-            "{tool} {role}: {a:?}"
-        );
-    }
-}
-
-/// AC-3 (REQ-5): a saved choice for the tool and role wins over the table, and a role the file does
-/// not save still gets the table.
-#[test]
-fn a_saved_choice_wins_over_the_table_and_the_other_role_keeps_the_table() {
+fn a_launch_takes_no_role_row_of_the_table() {
     let f = Fixture::new();
-    f.config(
-        r#"{"launcher":{"models":{
-            "claude":{"leader":{"model":"claude-sonnet-5-5","effort":"medium"}},
-            "glm":{"agent":{"model":"zai/glm-5.3","effort":"low"}}}}}"#,
-    );
-    let a = f.argv(&["cc", "-l"]);
-    assert_eq!(value_of(&a, "--model"), Some("claude-sonnet-5-5"), "{a:?}");
-    assert_eq!(value_of(&a, "--effort"), Some("medium"), "{a:?}");
-    let a = f.argv(&["glm", "-a"]);
-    assert_eq!(value_of(&a, "--model"), Some("glm-5.3"), "{a:?}");
-    assert_eq!(value_of(&a, "--effort"), Some("low"), "{a:?}");
-    // Not saved: the claude agent and the glm leader fall back to the table.
-    for (tool, role, model, effort) in table() {
-        if (tool, role) == ("claude", "agent") || (tool, role) == ("glm", "leader") {
-            let a = f.argv(&launcher_args(tool, role));
-            assert_eq!(
-                value_of(&a, "--model"),
-                Some(model.as_str()),
-                "{tool} {role}: {a:?}"
-            );
-            assert_eq!(
-                value_of(&a, "--effort"),
-                Some(effort.as_str()),
-                "{tool} {role}: {a:?}"
-            );
-        }
+    for args in [&["cc"][..], &["cc", "--name", "lane-1"][..]] {
+        let a = f.argv(args);
+        assert_eq!(value_of(&a, "--model"), Some("opus"), "{a:?}");
+        assert_eq!(value_of(&a, "--effort"), Some("medium"), "{a:?}");
     }
-}
-
-/// AC-4 (REQ-7): a session without a role keeps the model `opus` and the effort `medium`, with
-/// or without a settings file (user decision 2026-11-08).
-#[test]
-fn a_session_without_a_role_keeps_opus_and_medium() {
-    let f = Fixture::new();
-    let a = f.argv(&["cc"]);
-    assert_eq!(value_of(&a, "--model"), Some("opus"), "{a:?}");
-    assert_eq!(value_of(&a, "--effort"), Some("medium"), "{a:?}");
     f.config(
         r#"{"launcher":{"models":{"claude":{"leader":{"model":"claude-sonnet-5-5","effort":"low"}}}}}"#,
     );
-    let a = f.argv(&["cc"]);
-    assert_eq!(value_of(&a, "--model"), Some("opus"), "{a:?}");
-    assert_eq!(value_of(&a, "--effort"), Some("medium"), "{a:?}");
+    for args in [&["cc"][..], &["cc", "--name", "lane-1"][..]] {
+        let a = f.argv(args);
+        assert_eq!(value_of(&a, "--model"), Some("opus"), "{a:?}");
+        assert_eq!(value_of(&a, "--effort"), Some("medium"), "{a:?}");
+    }
 }
 
-/// AC-6 (REQ-9): the help of `--model` and `--effort` no longer says that a Claude host defaults to
-/// `opus` and `medium`, which holds only for a session without a role.
+/// The help of `--model` and `--effort` does not say that a role picks the default.
 #[test]
-fn the_model_and_effort_help_names_the_default_table() {
+fn the_model_and_effort_help_names_no_role() {
     let f = Fixture::new();
     let out = Command::new(crate::common::MOAI_BIN)
         .args(["cc", "--help"])
@@ -267,9 +130,6 @@ fn the_model_and_effort_help_names_the_default_table() {
         .unwrap();
     assert!(out.status.success());
     let help = String::from_utf8_lossy(&out.stdout).to_string();
-    for stale in ["Claude hosts default `opus`", "Claude default `medium`"] {
-        assert!(!help.contains(stale), "stale help text {stale:?}:\n{help}");
-    }
     let section = |flag: &str| -> String {
         let start = help
             .find(flag)
@@ -278,7 +138,7 @@ fn the_model_and_effort_help_names_the_default_table() {
     };
     for flag in ["--model <MODEL>", "--effort <EFFORT>"] {
         let text = section(flag);
-        assert!(text.contains("default table"), "{flag}: {text}");
-        assert!(text.contains("role"), "{flag}: {text}");
+        assert!(text.contains("default"), "{flag}: {text}");
+        assert!(!text.contains("role"), "{flag}: {text}");
     }
 }

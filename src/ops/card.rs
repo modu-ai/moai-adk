@@ -785,8 +785,8 @@ enum Action {
     /// A note whose first line starts with `LANE-READY-INTEGRATION`, `REPAIRED` or `READY ` hands
     /// a head back and must read `<marker> <card> head=<40 lowercase hex>`. It is kept only when
     /// a worktree that is at that head holds `target/check-affected-<head12>/summary.txt` with
-    /// the `result=PASS` line of a bare `moai check affected` run of that head (a `--lane` run is
-    /// no receipt). Otherwise the note is refused with the way out and nothing is written.
+    /// the `result=PASS` line of a bare or `--card` `moai check affected` run of that head (a
+    /// `--lane` run is no receipt). Otherwise the note is refused with the way out and nothing is written.
     /// A first line with a blank before the marker is refused the same way, and the `base` of the
     /// receipt's summary line must be an ancestor of that head.
     ///
@@ -1115,6 +1115,39 @@ enum Action {
         /// Land a slice: record the landing and close nothing; the answer names the open criteria.
         #[arg(long)]
         keep_open: bool,
+        /// The project folder (its profile holds the project id and the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the integration branch and the ledger. Land 2 to 4 audited heads on one wide check
+    ///
+    /// `card land-batch C-1=<head> C-2=<head> ... --by leader` joins the heads one after another
+    /// onto the integration tip (a head the tip already holds or stands on needs no join), runs
+    /// the check once on the last join in a private worktree and, when it passes, lands each head
+    /// through the same landing as `card land`, in the order given, each by its own compare-and-
+    /// swap. A join candidate is landed with its audited head named, so the verdict of the audited
+    /// head covers it. When the check fails on more than one head the first half runs on its own
+    /// and the failing head is found by halving; a passing part lands and the rest is checked
+    /// again on the new tip, because no result is reused once the tip has moved. A head that cannot
+    /// be joined or fails alone is dropped and the others still land. A refusal of the landing
+    /// (verdict, scans, a moved tip) stops the batch at that head and the answer lists the heads
+    /// not run. The check is `--check-cmd <program>`, run with `<tip>..<join>` as its only
+    /// argument in the worktree at the join (exit 0 passes), or by default the wide
+    /// `check affected` of this program. The answer has `landed`, `dropped` (with the reason),
+    /// `not_run`, `runs` (the range, exit and log of each check) and `stopped`.
+    LandBatch {
+        /// Each `C-n=<head>`: a card and its audited head (40 lowercase hex), 2 to 4 in all.
+        #[arg(required = true)]
+        pairs: Vec<String>,
+        /// Who lands: only `leader` is accepted.
+        #[arg(long)]
+        by: String,
+        /// The check program (default: the wide `check affected` of this program).
+        #[arg(long)]
+        check_cmd: Option<PathBuf>,
         /// The project folder (its profile holds the project id and the integration branch).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -1880,6 +1913,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                     generation,
                     by: &by,
                     keep_open,
+                    audited: None,
                 },
             )?;
             // The remote copy never fails the landing; its state rides in the answer.
@@ -1888,6 +1922,31 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 map.insert("remote_copy".to_string(), copy.json());
             }
             Ok(landed)
+        }
+        Action::LandBatch {
+            pairs,
+            by,
+            check_cmd,
+            project,
+            home,
+        } => {
+            let session = d::session_holder("land", env).ok();
+            let mut answer = moai_cli::card::land::batch::land_batch(
+                &project,
+                &resolve_home(home)?,
+                &moai_cli::card::land::batch::BatchRequest {
+                    session: session.as_deref(),
+                    by: &by,
+                    pairs: &pairs,
+                    check_cmd: check_cmd.as_deref(),
+                },
+            )?;
+            // One copy for the whole batch, after the last landing.
+            if answer["landed"].as_array().is_some_and(|l| !l.is_empty()) {
+                let copy = moai_cli::card::remote_copy::copy(&project, "land");
+                answer["remote_copy"] = copy.json();
+            }
+            Ok(answer)
         }
         Action::Verdict {
             card,

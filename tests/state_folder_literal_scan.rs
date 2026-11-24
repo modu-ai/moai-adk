@@ -329,12 +329,12 @@ fn the_seam_scan_finds_a_planted_line_and_skips_what_it_should() {
     );
 }
 
-/// SPEC-20261124-test-seams-release: the four test-only seams that a release binary once read.
+/// SPEC-20261124-test-seams-release: the test-only seams that a release binary once read (the
+/// `agent-N` numbering seam went with the numbering, SPEC-20261124-launcher-retire-role-flags).
 /// Each is `(source file, the constant that names the variable)`; the variable is read exactly
 /// once in that file, and the read sits directly under `#[cfg(debug_assertions)]`.
-const GATED_SEAMS: [(&str, &str); 4] = [
+const GATED_SEAMS: [(&str, &str); 3] = [
     ("src/lane_registry.rs", "TEST_HOLD_VAR"),
-    ("src/session.rs", "AGENT_SEQ_TEST_HOLD_VAR"),
     ("src/launcher_init.rs", "INIT_TEST_HOLD_VAR"),
     ("src/launcher_init.rs", "INIT_TEST_FAIL_VAR"),
 ];
@@ -361,7 +361,7 @@ fn seam_reads(text: &str, name: &str) -> Vec<(usize, bool)> {
 }
 
 #[test]
-fn the_four_test_seams_are_read_only_in_debug_builds() {
+fn the_test_seams_are_read_only_in_debug_builds() {
     let mut problems = Vec::new();
     for (file, name) in GATED_SEAMS {
         let text = fs::read_to_string(Path::new(MANIFEST).join(file)).unwrap();

@@ -1,8 +1,8 @@
 //! The flow line of the status line (SPEC-20261122-statusline-flow; it grew out of card C-65's
 //! card counts, user instructions 2026-11-16 and 2026-11-17): the cards of the project's local
-//! ledger by the stage of their progress, `🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5`,
+//! ledger by the stage of their progress, `📋 25 → 👀 3 → ✅ 12 | 🙋 5`,
 //! on a line of its own between the first line and the usage windows, behind the two versions
-//! (SPEC-20261123-statusline-order-bars): `🗿 4.2648.20 | 🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5`. The first
+//! (SPEC-20261123-statusline-order-bars): `🗿 4.2648.20 | 📋 25 → 👀 3 → ✅ 12 | 🙋 5`. The first
 //! line says who and where (SPEC-20261123-statusline-order-bars):
 //! `🧠 Opus | 📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ <integration>(🏷️ <tip>) | 🌳 <branch>`.
 //!
@@ -15,6 +15,7 @@ mod common;
 
 use common::home::TempHome;
 use moai_cli::ledger;
+use moai_cli::statusline::icons::{CHECK, DONE, QUESTION, TODO, WORK};
 use moai_cli::statusline::width::display_width;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -213,16 +214,21 @@ const WITHOUT_CARDS: &str = "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ 46 🔀 0
 /// The flow line of the [`MIX`] ledger with the note of [`Fixture::with_mix`]: 3 submitted (2
 /// review, 1 by its note), 2 stale, 5 on hold, 20 draft, 25 ready, 12 done today, no card of
 /// mine (the session holds none). The drafts are not on the line, the 2 stale cards are drawn
-/// with the working ones in `🟡` (SPEC-20261124-statusline-counts-truth REQ-7), and the counts
-/// of zero (landing, blocked) are hidden (SPEC-20261122-statusline-limits-left REQ-6).
-const FLOW_MIX: &str = "🗂️ 25 → 🟡 2 → 📨 3 → ✅ 12 | 🙋 5";
-/// [`FLOW_MIX`] with the MoAI version in front, as the second line is written.
-fn flow_mix_line() -> String {
-    format!("{} | {FLOW_MIX}", moai())
+/// with the working ones in `🔨` (SPEC-20261124-statusline-counts-truth REQ-7), and the counts
+/// of zero (landing, blocked) are hidden (SPEC-20261122-statusline-limits-left REQ-6). The icons
+/// are the table's (SPEC-20261124-card-flow-icons).
+fn flow_mix() -> String {
+    format!("{TODO} 25 → {WORK} 2 → {CHECK} 3 → {DONE} 12 | {QUESTION} 5")
 }
-/// The flow line of the [`MIX`] cards alone: the 3 `active` cards are stale (drawn in `🟡`), the 2
+/// [`flow_mix`] with the MoAI version in front, as the second line is written.
+fn flow_mix_line() -> String {
+    format!("{} | {}", moai(), flow_mix())
+}
+/// The flow line of the [`MIX`] cards alone: the 3 `active` cards are stale (drawn in `🔨`), the 2
 /// `review` cards submitted.
-const FLOW_CARDS: &str = "🗂️ 25 → 🟡 3 → 📨 2 → ✅ 12 | 🙋 5";
+fn flow_cards() -> String {
+    format!("{TODO} 25 → {WORK} 3 → {CHECK} 2 → {DONE} 12 | {QUESTION} 5")
+}
 
 #[test]
 fn the_flow_line_stands_between_the_first_line_and_the_usage_windows() {
@@ -233,7 +239,7 @@ fn the_flow_line_stands_between_the_first_line_and_the_usage_windows() {
     assert_eq!(baseline.lines().nth(1), Some(moai().as_str()), "{baseline}");
     assert_eq!(baseline.lines().count(), 3, "{baseline}");
     assert!(
-        !baseline.contains("🗂️"),
+        !baseline.contains(TODO),
         "no ledger: no flow line and no card icon"
     );
     f.with_mix();
@@ -253,7 +259,7 @@ fn the_flow_line_stands_between_the_first_line_and_the_usage_windows() {
         baseline.lines().nth(2),
         "the usage windows follow, unchanged"
     );
-    assert!(!f.line1().contains("🗂️"), "line 1 keeps no card counts");
+    assert!(!f.line1().contains(TODO), "line 1 keeps no card counts");
     // Line 1 does not change from the render without a ledger.
     assert_eq!(with.lines().next(), baseline.lines().next());
     assert_eq!(with.lines().count(), 3);
@@ -265,7 +271,7 @@ fn the_flow_line_stands_between_the_first_line_and_the_usage_windows() {
 fn active_cards_nobody_holds_are_stale_and_review_cards_are_submitted() {
     let f = fixture();
     f.with_cards();
-    assert_eq!(f.flow_line(), FLOW_CARDS);
+    assert_eq!(f.flow_line(), flow_cards());
 }
 
 #[test]
@@ -280,7 +286,7 @@ fn the_flow_line_keeps_its_place_without_fresh_forge_counts() {
         "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ n/a 🔀 n/a | 🌳 main",
         "without fresh forge counts the slots say unknown, with the comma kept"
     );
-    assert_eq!(f.flow_line(), FLOW_MIX);
+    assert_eq!(f.flow_line(), flow_mix());
 }
 
 /// SPEC-20261123-statusline-order-bars REQ-11 (it replaces the ahead count of
@@ -302,17 +308,17 @@ fn the_branch_shows_no_ahead_count_against_the_upstream() {
     }
 }
 
-/// The forms of the second line for the [`FLOW_MIX`] ledger, from the widest to the narrowest.
+/// The forms of the second line for the [`flow_mix`] ledger, from the widest to the narrowest.
 /// The MoAI version drops first (the fixture's input has no Claude Code version), then each
-/// narrower form drops the leftmost item of the flow, `🗂️` first; `🙋` stays to the end.
+/// narrower form drops the leftmost item of the flow, `📋` first; `🙋` stays to the end.
 fn mix_forms() -> [String; 6] {
     [
         flow_mix_line(),
-        FLOW_MIX.to_string(),
-        "🟡 2 → 📨 3 → ✅ 12 | 🙋 5".to_string(),
-        "📨 3 → ✅ 12 | 🙋 5".to_string(),
-        "✅ 12 | 🙋 5".to_string(),
-        "🙋 5".to_string(),
+        flow_mix(),
+        format!("{WORK} 2 → {CHECK} 3 → {DONE} 12 | {QUESTION} 5"),
+        format!("{CHECK} 3 → {DONE} 12 | {QUESTION} 5"),
+        format!("{DONE} 12 | {QUESTION} 5"),
+        format!("{QUESTION} 5"),
     ]
 }
 
@@ -405,7 +411,7 @@ fn width_ladder_subtracts_the_configured_padding() {
         );
         assert_eq!(
             f.plain_at(&(w + 1 + padding).to_string()).lines().nth(1),
-            Some(FLOW_MIX),
+            Some(flow_mix().as_str()),
             "padding {padding}: one column less drops a form"
         );
     }
@@ -442,13 +448,13 @@ fn done_cards_are_counted_only_in_the_done_segment() {
     let f = fixture();
     f.register();
     f.add("done", 4);
-    assert_eq!(f.flow_line(), "✅ 4");
+    assert_eq!(f.flow_line(), format!("{DONE} 4"));
     f.add("active", 1);
     f.add("hold", 2);
     assert_eq!(
         f.flow_line(),
-        "🟡 1 → ✅ 4 | 🙋 2",
-        "the active card has no reservation, so it is stale and drawn in 🟡 with the working ones"
+        format!("{WORK} 1 → {DONE} 4 | {QUESTION} 2"),
+        "the active card has no reservation, so it is stale and drawn with the working ones"
     );
 }
 
@@ -514,7 +520,7 @@ fn the_cards_option_hides_the_segment() {
     // Only the flow items hide: the version stays on the second line (REQ-1).
     assert_eq!(f.line2(), moai());
     std::fs::write(&config, "statusline:\n  segments:\n    cards: true\n").unwrap();
-    assert_eq!(f.flow_line(), FLOW_MIX);
+    assert_eq!(f.flow_line(), flow_mix());
     std::fs::write(
         &config,
         "statusline:\n  segments:\n    github: false\n    git_branch: false\n",

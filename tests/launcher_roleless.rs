@@ -1,4 +1,4 @@
-//! Issue #2053: `moai-cli cc|glm` without `-l|-a` composes a plain host session: no role,
+//! Issue #2053: `moai-cli cc|glm` composes a plain host session: no role,
 //! no session name and, since #2359 (user decision 2026-11-10, comment 6760976883), no
 //! permission flag at all — the host starts in the mode its own settings choose. Every case
 //! uses `--dry-run` in a temporary git project; no host is started (AC-4 stays not_run).
@@ -6,8 +6,8 @@ mod common;
 use serde_json::{json, Value};
 use std::process::Command;
 
-/// Runs the launcher with a clean advisor/GLM environment in a fresh git project (so the `-a`
-/// name preview reads that project's counter, never this repository's); `token` sets a dummy
+/// Runs the launcher with a clean advisor/GLM environment in a fresh git project (so no
+/// session folder of this repository is touched); `token` sets a dummy
 /// GLM token.
 fn dry(args: &[&str], token: Option<&str>) -> (i32, Value, String) {
     let project = tempfile::tempdir().unwrap();
@@ -103,9 +103,9 @@ fn roleless_cc_is_a_plain_claude_session() {
         argv(&v),
         ["claude", "--model", "opus", "--effort", "medium"]
     );
-    // -l and -a together stay an error.
+    // The retired role flags are refused (tests/launcher_retire_role_flags.rs).
     let (code, _, _) = dry(&["cc", "-l", "-a"], None);
-    assert_ne!(code, 0);
+    assert_eq!(code, 1);
 }
 
 #[test]
@@ -144,64 +144,44 @@ fn roleless_glm_keeps_the_token_check() {
             "--model",
             "opus",
             "--effort",
+            "high",
+            "--dangerously-skip-permissions"
+        ]
+    );
+}
+
+/// A launch named with `--name` composes the same argv as an unnamed one plus the name
+/// (SPEC-20261124-launcher-retire-role-flags REQ-1): no role and no table row of a role.
+#[test]
+fn a_named_launch_is_the_unnamed_argv_plus_the_name() {
+    let (_, v, _) = dry(&["cc", "--name", "lane-1"], None);
+    assert_eq!(v["role"], Value::Null);
+    assert_eq!(
+        argv(&v),
+        [
+            "claude",
+            "--name",
+            "lane-1",
+            "--model",
+            "opus",
+            "--effort",
             "medium",
             "--permission-mode",
             "auto"
         ]
     );
-}
-
-/// REQ-4 / AC-3: the role paths keep their argv byte for byte, with the #2359 changes: full
-/// access, and `-a` named `agent-N` from the project's counter (a fresh project previews
-/// `agent-1`).
-#[test]
-fn role_paths_are_unchanged() {
-    let (_, v, _) = dry(&["cc", "-l"], None);
-    assert_eq!(v["role"], "leader");
-    // A role session with nothing saved starts with the default table
-    // (SPEC-20261121-model-defaults-one-table); only the roleless session keeps opus/medium.
+    let (_, v, _) = dry(&["glm", "--name", "lane-1"], Some("moai-dummy-token-value"));
     assert_eq!(
         argv(&v),
         [
             "claude",
             "--name",
-            "leader",
+            "lane-1",
             "--model",
-            "claude-opus-5-5",
+            "opus",
             "--effort",
             "high",
-            "--permission-mode",
-            "auto"
-        ]
-    );
-    let (_, v, _) = dry(&["-a"], None);
-    assert_eq!(
-        argv(&v),
-        [
-            "claude",
-            "--name",
-            "agent-1",
-            "--model",
-            "claude-sonnet-5-5",
-            "--effort",
-            "high",
-            "--permission-mode",
-            "auto"
-        ]
-    );
-    let (_, v, _) = dry(&["glm", "-a"], Some("moai-dummy-token-value"));
-    assert_eq!(
-        argv(&v),
-        [
-            "claude",
-            "--name",
-            "agent-1",
-            "--model",
-            "glm-5.3-flash",
-            "--effort",
-            "max",
-            "--permission-mode",
-            "auto"
+            "--dangerously-skip-permissions"
         ]
     );
     // The legacy `session` subcommand is unchanged too: it starts no role session of the
