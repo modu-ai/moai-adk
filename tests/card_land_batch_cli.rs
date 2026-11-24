@@ -2,6 +2,7 @@
 //! runs one wide check on the last join and lands each head in order; a failing check is split in
 //! halves until the failing head is found. A throwaway repository, a throwaway HOME and a shell
 //! script as the check program: the real checks, HOME and slots are never used.
+#![cfg(unix)]
 mod common;
 
 use common::home::TempHome;

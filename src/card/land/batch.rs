@@ -105,6 +105,9 @@ fn trailers(project: &Path, session: Option<&str>) -> String {
     text
 }
 
+/// The heads that joined and the heads that did not, each with its reason.
+type Joined = (Vec<Candidate>, Vec<(Item, String)>);
+
 /// Join `items` in order onto `tip`. A head the cursor already holds or stands on lands as it is;
 /// any other is merged with `git merge-tree --write-tree` and a merge commit that has the cursor
 /// as its first parent. The heads that cannot be joined come back with the reason.
@@ -114,7 +117,7 @@ fn join(
     branch: &str,
     tip: &str,
     items: &[Item],
-) -> Result<(Vec<Candidate>, Vec<(Item, String)>)> {
+) -> Result<Joined> {
     let mut cursor = tip.to_string();
     let mut out = Vec::new();
     let mut bad = Vec::new();
