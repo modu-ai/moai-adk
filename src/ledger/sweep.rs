@@ -12,6 +12,10 @@
 //! confirmed whose it is; a card in `review` has nobody who could close it. Both are listed as
 //! skipped, never changed. Each card is its own write transaction that reads the reservation
 //! again, so a lease that was renewed after the listing is left alone.
+//!
+//! A second qualification (SPEC-20261119-live-lease-takeover): a card whose lease ended and whose
+//! holder wrote nothing to the ledger for [`SILENCE_SECS`] is swept before the grace runs out. A
+//! lease that has not ended is never swept, whatever its holder did or did not write.
 
 use super::reservation::{self, add_event};
 use super::workflow::LEADER_BY;
@@ -25,6 +29,47 @@ pub fn past_grace(lease_until: i64, grace_secs: i64, now: i64) -> bool {
     lease_until.saturating_add(grace_secs) <= now
 }
 
+/// How long a holder with an ended lease may write nothing to the ledger before its card is swept,
+/// whatever the grace period says (SPEC-20261119-live-lease-takeover REQ-7).
+pub const SILENCE_SECS: i64 = 2 * 3600;
+
+/// Whether a holder whose heartbeat was at `last_seen_at` has been silent for [`SILENCE_SECS`] at
+/// `now`: the second the window runs out counts as silent.
+pub fn silent(last_seen_at: i64, now: i64) -> bool {
+    now.saturating_sub(last_seen_at) >= SILENCE_SECS
+}
+
+/// What made a card sweepable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Via {
+    /// The lease ended at least the grace period ago.
+    Grace,
+    /// The lease ended and the holder's heartbeat is [`SILENCE_SECS`] old.
+    Heartbeat,
+}
+
+impl Via {
+    /// The word an event and an answer carry.
+    pub fn code(self) -> &'static str {
+        match self {
+            Via::Grace => "grace",
+            Via::Heartbeat => "heartbeat",
+        }
+    }
+}
+
+/// Why a reservation may be swept at `now`, or `None`: only a lease that has ended is ever
+/// swept, and then either the grace ran out (whatever the heartbeat) or the holder is silent.
+pub fn sweep_via(lease_until: i64, last_seen_at: i64, grace_secs: i64, now: i64) -> Option<Via> {
+    if !reservation::lease_ended(lease_until, now) {
+        return None;
+    }
+    if past_grace(lease_until, grace_secs, now) {
+        return Some(Via::Grace);
+    }
+    silent(last_seen_at, now).then_some(Via::Heartbeat)
+}
+
 /// A card that was (or, for a dry run, would be) swept.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Swept {
@@ -34,6 +79,10 @@ pub struct Swept {
     pub lease_until: i64,
     pub worktree: Option<String>,
     pub branch: Option<String>,
+    pub via: Via,
+    /// The holder's heartbeat (SPEC-20261119-live-lease-takeover REQ-1) and the seconds since.
+    pub last_seen_at: i64,
+    pub silent_secs: i64,
 }
 
 /// Why a card with an ended lease was left as it is.
@@ -146,20 +195,30 @@ fn check_by(by: &str) -> Result<(), SweepError> {
 }
 
 /// The note a sweep leaves on the card.
-fn note_body(card_id: i64, held: &reservation::Reservation, grace_secs: i64, by: &str) -> String {
+fn note_body(card_id: i64, held: &reservation::Reservation, why: &str, by: &str) -> String {
     let ended = crate::baseline::utc_from_epoch(held.lease_until);
     let worktree = held.worktree.as_deref().unwrap_or("none");
     let branch = held.branch.as_deref().unwrap_or("none");
     format!(
         "SWEPT C-{card_id} generation {generation}: the lease of {holder} ended {ended} \
-         (lease until {lease_until}), {hours} hour(s) of grace had run out, and {by} returned the \
-         card to ready. Branch {branch} and worktree {worktree} were not touched. Read the notes \
-         (a RESUME note first) before you take this card.",
+         (lease until {lease_until}), {why}, and {by} returned the card to ready. Branch \
+         {branch} and worktree {worktree} were not touched. Read the notes (a RESUME note \
+         first) before you take this card.",
         generation = held.generation,
         holder = held.holder,
         lease_until = held.lease_until,
-        hours = grace_secs / 3600,
     )
+}
+
+/// The clause of the note that says why the card was swept.
+fn why_text(via: Via, grace_secs: i64, silent_secs: i64) -> String {
+    match via {
+        Via::Grace => format!("{} hour(s) of grace had run out", grace_secs / 3600),
+        Via::Heartbeat => format!(
+            "the holder wrote nothing to the ledger for {} minute(s)",
+            silent_secs / 60
+        ),
+    }
 }
 
 /// The sweep of one card inside the caller's write transaction: `Ok(Ok)` when the reservation
@@ -201,12 +260,14 @@ pub(super) fn sweep_in_tx(
     if expect_lease_until.is_some_and(|read| read != held.lease_until) {
         return Ok(Err(SkipReason::Changed));
     }
-    if !past_grace(held.lease_until, grace_secs, now) {
+    let last_seen_at = reservation::heartbeat_at(tx, card_id, &held.holder, held.updated_at)?;
+    let Some(via) = sweep_via(held.lease_until, last_seen_at, grace_secs, now) else {
         return Ok(Err(SkipReason::WithinGrace {
             lease_until: held.lease_until,
             sweepable_at: held.lease_until.saturating_add(grace_secs),
         }));
-    }
+    };
+    let silent_secs = now.saturating_sub(last_seen_at);
     tx.execute(
         "UPDATE reservation SET status = 'released', updated_at = ?1 WHERE reservation_id = ?2",
         params![now, held.reservation_id],
@@ -226,12 +287,20 @@ pub(super) fn sweep_in_tx(
             "generation": held.generation,
             "lease_until": held.lease_until,
             "grace_secs": grace_secs,
+            "via": via.code(),
+            "last_seen_at": last_seen_at,
+            "silent_secs": silent_secs,
             "by": signed.by,
             "worktree": held.worktree,
             "branch": held.branch,
         }),
     )?;
-    let body = note_body(card_id, &held, grace_secs, signed.by);
+    let body = note_body(
+        card_id,
+        &held,
+        &why_text(via, grace_secs, silent_secs),
+        signed.by,
+    );
     let reference: String = tx.query_row(
         "SELECT 'note:' || ?1 || ':' || lower(hex(randomblob(16)))",
         [card_id],
@@ -261,6 +330,9 @@ pub(super) fn sweep_in_tx(
         lease_until: held.lease_until,
         worktree: held.worktree,
         branch: held.branch,
+        via,
+        last_seen_at,
+        silent_secs,
     }))
 }
 
@@ -272,6 +344,7 @@ struct Listed {
     holder: String,
     generation: i64,
     lease_until: i64,
+    updated_at: i64,
     worktree: Option<String>,
     branch: Option<String>,
 }
@@ -281,7 +354,7 @@ struct Listed {
 fn list_ended(conn: &Connection, now: i64) -> Result<Vec<Listed>, LedgerError> {
     let mut stmt = conn.prepare(
         "SELECT c.card_id, c.state, r.status, r.holder, r.generation, r.lease_until, \
-                r.worktree, r.branch \
+                r.updated_at, r.worktree, r.branch \
          FROM card c JOIN reservation r ON r.card_id = c.card_id AND r.generation = c.generation \
          WHERE c.state IN ('active', 'review') \
            AND r.status IN ('held', 'expired_candidate', 'held_for_review') \
@@ -297,8 +370,9 @@ fn list_ended(conn: &Connection, now: i64) -> Result<Vec<Listed>, LedgerError> {
                 holder: r.get(3)?,
                 generation: r.get(4)?,
                 lease_until: r.get(5)?,
-                worktree: r.get(6)?,
-                branch: r.get(7)?,
+                updated_at: r.get(6)?,
+                worktree: r.get(7)?,
+                branch: r.get(8)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -347,13 +421,15 @@ pub fn sweep_all(
             }));
             continue;
         }
-        if !past_grace(row.lease_until, grace_secs, now) {
+        let last_seen_at =
+            reservation::heartbeat_at(w.conn(), row.card_id, &row.holder, row.updated_at)?;
+        let Some(via) = sweep_via(row.lease_until, last_seen_at, grace_secs, now) else {
             out.skipped.push(skip(SkipReason::WithinGrace {
                 lease_until: row.lease_until,
                 sweepable_at: row.lease_until.saturating_add(grace_secs),
             }));
             continue;
-        }
+        };
         if dry_run {
             out.swept.push(Swept {
                 card_id: row.card_id,
@@ -362,6 +438,9 @@ pub fn sweep_all(
                 lease_until: row.lease_until,
                 worktree: row.worktree,
                 branch: row.branch,
+                via,
+                last_seen_at,
+                silent_secs: now.saturating_sub(last_seen_at),
             });
             continue;
         }
@@ -407,4 +486,58 @@ pub fn sweep_card(
         sweep_in_tx(tx, now, card_id, expect_lease_until, grace_secs, &signed)
     })
     .map_err(SweepError::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const NOW: i64 = 1_000_000;
+    const GRACE: i64 = 24 * 3600;
+
+    #[test]
+    fn heartbeat_window_is_silent_at_two_hours_and_not_one_second_before() {
+        assert!(!silent(NOW - SILENCE_SECS + 1, NOW), "one second short");
+        assert!(silent(NOW - SILENCE_SECS, NOW), "exactly the window");
+        assert!(silent(NOW - SILENCE_SECS - 1, NOW), "one second over");
+    }
+
+    #[test]
+    fn heartbeat_window_never_overflows_and_a_future_heartbeat_is_not_silent() {
+        assert!(!silent(i64::MAX, NOW));
+        assert!(silent(i64::MIN, NOW));
+    }
+
+    #[test]
+    fn heartbeat_window_a_live_lease_is_never_sweepable_whatever_the_heartbeat() {
+        let ancient = NOW - 100 * 3600;
+        assert_eq!(sweep_via(NOW + 1, ancient, GRACE, NOW), None);
+        assert_eq!(sweep_via(NOW + 3600, i64::MIN, GRACE, NOW), None);
+    }
+
+    #[test]
+    fn heartbeat_window_the_lease_end_second_counts_as_ended() {
+        let ancient = NOW - 100 * 3600;
+        assert_eq!(sweep_via(NOW, ancient, GRACE, NOW), Some(Via::Heartbeat));
+        assert_eq!(sweep_via(NOW + 1, ancient, GRACE, NOW), None);
+    }
+
+    #[test]
+    fn heartbeat_window_a_fresh_heartbeat_keeps_an_ended_lease_inside_the_grace() {
+        let ended = NOW - 3 * 3600;
+        assert_eq!(sweep_via(ended, NOW - 60, GRACE, NOW), None);
+        assert_eq!(
+            sweep_via(ended, NOW - SILENCE_SECS, GRACE, NOW),
+            Some(Via::Heartbeat)
+        );
+        assert_eq!(sweep_via(ended, NOW - SILENCE_SECS + 1, GRACE, NOW), None);
+    }
+
+    #[test]
+    fn heartbeat_window_the_grace_still_sweeps_whatever_the_heartbeat_says() {
+        let ended = NOW - GRACE;
+        assert_eq!(sweep_via(ended, NOW, GRACE, NOW), Some(Via::Grace));
+        assert_eq!(sweep_via(ended, NOW - 1, GRACE, NOW), Some(Via::Grace));
+        assert_eq!(sweep_via(ended + 1, NOW, GRACE, NOW), None);
+    }
 }
