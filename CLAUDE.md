@@ -25,9 +25,9 @@ Documents describe requirements; they never grant permission to publish, spend, 
 
 ## Scope and sessions
 
-- Scope is RC1 (`2026.11.0-rc.1`): ship the first version fast on the existing plan. The communication hub (the real-time channel of `moai -l`/`-a`) is deferred; its decisions are kept in `docs/session-hub-research-2026-11-08.md` and must not leak into RC1 requirements.
+- Scope is RC1 (`2026.11.0-rc.1`): ship the first version fast on the existing plan. The communication hub (the real-time channel between running sessions) is deferred; its decisions are kept in `docs/session-hub-research-2026-11-08.md` and must not leak into RC1 requirements.
 - Hosts: Claude Code, with GLM through the Claude Code launcher. Codex and OMP are withdrawn (user decision 2026-11-21, `SPEC-20261121-remove-codex-support`); ZCode headless, ACP and remote options come later.
-- Start a session with `moai cc|glm`: a plain host session with no role (model `opus`, effort `medium`); `--name <name>` names it. The launcher flags `-l|-a` are retired (user decision D-1 2026-11-09, `SPEC-20261124-launcher-retire-role-flags`) and the launcher refuses them. The role is typed inside the open session: `/moai --mode-leader` or `/moai --mode-agent`, which the skill reads as request text; the card loop is `/moai work`.
+- Start a session with `moai cc|glm`: a plain host session with no role (model `opus`, effort `medium`); `--name <name>` names it. The launcher flags `-l|-a` are retired (user decision D-1 2026-11-09, `SPEC-20261124-launcher-retire-role-flags`) and the launcher refuses them. The role is typed inside the open session: `/moai work` for a lane (the card loop) and `/moai leader` for the coordination window; the skill picks the route from that first word.
 - The leader supervises, relays and lands; a lane (`agent-N`) works one card in its own worktree. The author, the auditor and the lander of one change are three different sessions. `CLAUDE.md` changes only through a card whose write scope names it.
 
 ## Flow: one card, one session

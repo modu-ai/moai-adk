@@ -211,25 +211,35 @@ fn stale_launcher_flags_are_retired() {
         "CLAUDE.md",
         &[
             "`-l|-a` only name the session and set its access",
+            "`moai -l`/`-a`",
             "deprecated since",
             "#2164",
         ],
     );
 }
 
-/// S3: a mode flag is request text for the skill, not a route.
+/// S3: the role is typed inside the session as `/moai work` (lane) or `/moai leader`
+/// (coordination window), the two routes of the skill (`SPEC-20261124-moai-leader-route`,
+/// user pick 2026-11-22); the `mode-` spellings are retired.
 #[test]
-fn stale_mode_flags_are_request_text() {
+fn stale_mode_flags_are_the_work_and_leader_routes() {
     let text = claude_md();
     assert_has(
         &text,
         "CLAUDE.md",
-        &["`/moai --mode-leader` or `/moai --mode-agent`, which the skill reads as request text"],
+        &["The role is typed inside the open session: `/moai work` for a lane (the card loop) and `/moai leader` for the coordination window; the skill picks the route from that first word."],
     );
     assert_lacks(
         &text,
         "CLAUDE.md",
-        &["only mode spellings", "two mode workflows", "--autonomy"],
+        &[
+            "only mode spellings",
+            "two mode workflows",
+            "--autonomy",
+            "mode-leader",
+            "mode-agent",
+            "which the skill reads as request text",
+        ],
     );
 }
 
