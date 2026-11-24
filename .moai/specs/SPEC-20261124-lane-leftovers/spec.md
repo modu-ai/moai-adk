@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261124-lane-leftovers
 title: "lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY"
-status: approved
-revision: 2
+status: draft
+revision: 3
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-24
-  basis: "리더 결정 노트 8196 (2026-11-24T04:39:25Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8195 에 답함): SPEC 판 2 승인 — Scope 에 tests/card_ready_receipt_cli.rs 와 tests/e2e_temp_home_cli.rs 를 write 로 더함(READY 노트 본문에 leftovers: none 줄만); docs/lane-rules.md 는 C-431 착지 뒤 리더가 알려요; 레인은 그 노트를 인용만 해요"
-  digest: "sha256:4be3096cc20720a11a1032b56427c4977026bfd7850aa7631feadd3271e1487b"
 ---
 
 # lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY
@@ -62,7 +57,7 @@ approval:
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261124-lane-leftovers/**`, `src/card/ready_leftovers.rs`(새), `src/card/mod.rs`(한 줄 `pub mod`), `src/card/work.rs`(호출 한 줄과 답 필드), `src/ops/card.rs`(`Note` 도움말 글만), `tests/card_ready_leftovers_cli.rs`(새), `docs/lane-rules.md`, `docs/design-review/appendix/operations/card.md`, `skills/moai/references/flows/next-flow.md`, `skills/moai/references/internal/self-check.md`, `tests/fixtures/help/**`(`card note` 항목만), `tests/card_ready_receipt_cli.rs`와 `tests/e2e_temp_home_cli.rs`(판 2: 기존 READY 노트 본문에 `leftovers: none` 줄만 더해요)
+- write: `.moai/specs/SPEC-20261124-lane-leftovers/**`, `src/card/ready_leftovers.rs`(새), `src/card/mod.rs`(한 줄 `pub mod`), `src/card/work.rs`(호출 한 줄과 답 필드), `src/ops/card.rs`(`Note` 도움말 글만), `tests/card_ready_leftovers_cli.rs`(새), `docs/lane-rules.md`, `docs/design-review/appendix/operations/card.md`, `skills/moai/references/flows/next-flow.md`, `skills/moai/references/internal/self-check.md`, `tests/fixtures/help/**`(`card note` 항목만), `tests/card_ready_receipt_cli.rs`와 `tests/e2e_temp_home_cli.rs`(판 2: 기존 READY 노트 본문에 `leftovers: none` 줄만 더해요), `tools/repo_scans.json`(판 3: `reads-docs` 와 `reads-skills` 두 항목에 새 테스트를 규칙 파일과 `--test` 로 더해요, 줄 임대)
 - read-only: `src/card/ready_receipt.rs`, `src/bundle/mutant_line.rs`, `tests/areas.toml`, `docs/claude-md-rule-provenance.md`
 - forbidden: `CLAUDE.md`, `src/lib.rs`, 영수증 검사(`check_note`)를 느슨하게 하는 변경, 새 Python 테스트, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것, 실제 HOME, 다른 레인의 파일
 
@@ -71,6 +66,7 @@ approval:
 1. RED: `tests/card_ready_leftovers_cli.rs` 의 테스트 셋과 `card::ready_leftovers::tests` 를 먼저 쓰고 코드 없이 실패하는 것을 봐요. 새 테스트 파일의 첫 낱말 `card` 는 `tests/areas.toml` 에 이미 있어요. 테스트는 상태 폴더 이름(`.moai`)을 글자로 쓰지 않아서 `allow.tsv` 의 새 줄이 필요 없어요.
 2. GREEN: `src/card/ready_leftovers.rs` 에 줄을 읽는 순수 함수(코드 울타리·4칸 들여쓰기·`- ` 접두사 규칙은 `mutant_line.rs` 와 같아요. `mutant_line.rs` 는 이 SPEC 의 읽기 전용이라 같은 열두 줄을 이 모듈에 두고, 하나로 합치는 일은 뒤 SPEC 의 몫으로 `## Result` 에 적어요)와 공용 체크아웃을 읽는 함수를 두고, `work.rs` 에서 영수증 검사 뒤에 한 줄을 불러요(영수증 거절 글이 앞서요). 공용 체크아웃은 `git worktree list --porcelain` 의 첫 항목이고 `git status --porcelain=v1 -z --ignored=matching -uall` 로 읽어요; 이 저장소의 `git_text` 가 `--no-optional-locks` 를 붙여서 index 를 건드리지 않아요. 예약 시작은 원장의 예약 `acquired_at` 이에요.
 3. 글: `docs/lane-rules.md`(Worktree entry and exit 의 한 줄과 Hand-off 1번), `card.md`, 도움말, `next-flow.md`, `self-check.md`.
+3c. 판 3: NeXT 팁의 파일 읽기 검사(`every_file_reader_has_an_always_scan_or_an_exemption`)가 문서를 열어 읽는 새 테스트 파일을 `tools/repo_scans.json` 의 `always` 항목에 올리라고 해서(이 실행에서 읽음), `reads-docs` 와 `reads-skills` 에 올려요. 임시 저장소의 무시 규칙은 `.git/info/exclude` 로, 고정 파일 이름은 이 저장소에 없는 이름으로 바꿔서 `FILE_READ_EXEMPT` 를 건드리지 않아요.
 3b. 판 2: 새 거절 때문에 기존 READY 노트 테스트 일곱(`card_ready_receipt_cli` 여섯, `e2e_temp_home_cli` 하나)이 실패해서(이 실행에서 읽음) 그 노트 본문에 `leftovers: none` 줄만 더해요. 영수증 검사 기대는 그대로예요.
 4. 뮤턴트: 새 가드 테스트마다 코드를 지우고 실패를 봐요(줄 검사 제거, 목록 필터 제거, `--no-optional-locks` 제거, 예약 시각 필터 제거). 영향 테스트 한 번, READY.
 5. observe 창: 이 SPEC 이 올라간 뒤 다음 READY 노트 10개까지(또는 리더가 정한 수까지) 공용 체크아웃 목록이 비지 않은 횟수와 오탐을 `## Result` 에 적어요. 거절로 바꾸는 일은 기록된 결정이에요(D-1).
@@ -90,3 +86,17 @@ approval:
 - D-1: 거절의 범위. 선택지 (a) `leftovers:` 줄 검사는 지금 거절, 공용 체크아웃 목록은 observe(답에 드러내기만) — 기본값; (b) 둘 다 지금 거절; (c) 둘 다 observe 로 시작. 근거: 줄 검사는 있고 없음만 읽어 오탐이 없어요. 목록은 다른 레인의 파일에 오탐할 수 있어서 SDD 규칙 11 을 따라 observe 창이 필요해요(Q5). 되돌릴 수 있어요(다음 변경 하나). 분류: none. 기한: 없음(레인은 리더의 배차를 기다려요). 결정자: 리더(또는 사용자).
 - D-2: 공용 체크아웃 파일을 가르는 기준. 선택지 (a) 예약 시작 이후 만들거나 바뀐 것(생성 시각과 수정 시각 중 큰 값) — 기본값; (b) 예약 때 목록을 원장에 저장해 비교(더 정확하나 원장 쓰기와 `card take` 변경이 필요해요, 다른 카드의 몫). 기본값은 원장도 `card take` 도 바꾸지 않아요. 되돌릴 수 있어요. 분류: none.
 - D-3: 위치 규칙의 범위. 선택지 (a) 버리는 복사본·임시 HOME·`mktemp` 폴더만 `target/<name>/` — 기본값; (b) 레인의 모든 임시 파일(노트, 로그 포함)을 같은 곳으로 합치기. (b)는 scratchpad 를 쓰라는 호스트 지침과 부딪혀서 이 SPEC 에서는 하지 않아요. 되돌릴 수 있어요. 분류: none.
+
+## Result
+
+NeXT 팁 efb3a80ae9 를 합친 가지에서 읽은 것이에요(합치기는 리더 결정 노트 8196 의 (a); 같은 시각의 `check affected` 영수증은 READY 노트가 가져요). 모든 실행은 `RUSTC_WRAPPER=sccache`, 힙 슬롯 `--max 3`, `cargo nextest run --locked --offline` 이에요.
+
+- AC-1: met — `the_lane_guidance_names_the_throwaway_place` 가 `docs/lane-rules.md` 와 `next-flow.md` 의 `<worktree>/target/<name>/`·`TMPDIR`·`relative path`·`leftovers:` 를 읽고 통과해요(선택한 119개 테스트 119 통과, 로그 `target/lane-leftovers/merged2.log`).
+- AC-2: met — `a_ready_note_without_a_readable_leftovers_line_is_refused` 통과(세 표지, 여섯 잘못된 모양, 두 읽을 수 있는 모양, 노트 수 확인). 뮤턴트: 줄 검사를 끈 복사본에서 이 테스트와 단위 테스트가 실패했어요(exit 100).
+- AC-3: met — `the_shared_checkout_is_read_without_changing_it` 통과(새 추적 안 된 파일, 새 무시된 파일과 폴더가 `shared_checkout_new` 에 있고, 예약보다 오래된 파일·고정 목록·레인 워크트리 파일은 없고, `.git/index` 바이트와 수정 시각과 `git status` 출력이 같음). `a_card_without_a_reservation_is_not_checked_and_the_note_is_kept` 통과. 읽을 수 없는 저장소는 단위 테스트 `a_checkout_that_cannot_be_read_is_not_checked` 가 가려요(통합 테스트에서 저장소를 읽을 수 없게 만들지는 않았어요).
+- AC-4: met — `card::ready_leftovers::tests` 여섯 개 통과. 뮤턴트: `.skip(1)` 을 지운 복사본이 처음에 살아남아(exit 0) 첫 줄만 있는 본문의 기대를 더했고, 다시 돌리자 실패했어요(exit 100).
+- AC-5: met — `the_leftovers_line_is_shown_where_a_lane_looks` 통과(Hand-off 절, `card.md`, `card note --help`).
+- 판 2 테스트 수리: `card_ready_receipt_cli`·`e2e_temp_home_cli` 24개 통과(고치기 전에 일곱 실패, `target/lane-leftovers/existing.log`).
+- 뮤턴트 요약(모두 커밋된 트리의 복사본이 아니라 제자리 변경 뒤 `git checkout -- <path>` 로 복원, 일곱 개): 줄 검사 끔·고정 목록 필터 끔·예약 시각 필터 끔·`--ignored=matching` 뺌·`--no-optional-locks` 없는 `git status`·자리표시자 거절 뺌 — 모두 실패(exit 100); `.skip(1)` 뺌 — 처음 생존, 테스트를 더한 뒤 실패.
+- 알려진 것: `mutant_line.rs` 가 읽기 전용이라 같은 열두 줄(코드 울타리·들여쓰기·`- ` 규칙)을 `ready_leftovers.rs` 에 두었어요. 하나로 합치는 일은 뒤 SPEC 의 몫이에요.
+- observe 창: 아직 시작하지 않았어요(이 SPEC 이 NeXT 에 오른 뒤 다음 READY 10개). 오탐 횟수는 비어 있어요.
