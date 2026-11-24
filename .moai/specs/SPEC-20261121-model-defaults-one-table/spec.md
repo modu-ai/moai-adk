@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261121-model-defaults-one-table
 title: "One table of model and effort defaults: the launcher starts a role session with the table the question screen shows"
-status: approved
-revision: 1
+status: draft
+revision: 2
 created: 2026-11-21
-approval:
-  by: leader
-  at: 2026-11-24
-  basis: "리더 결정 노트 8212 (2026-11-24T04:52:03Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 8211 에 답함: 판 1(조각 A) 승인, 커밋 8513aecdfbb76f4a2b5848f7459df8e4b2cecc44, src/main.rs 도움말 두 줄은 줄 임대로 범위 넓힘 승인); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
-  digest: "sha256:adf896386810d3121ddec8e9e4a43701048631bc6b8e17b59c68e7153ad24bd1"
 ---
 
 # One table of model and effort defaults: the launcher starts a role session with the table the question screen shows
@@ -41,6 +36,7 @@ approval:
 - Q3: 조각 B(질문 화면 재설계)를 언제 하나요? → A: C-248 이 착지한 뒤 그 위에서 해요. 이 카드는 B 기준으로 열린 채 남아요(D-5).
 - Q4: 조각 A 를 먼저 감사·착지하나요? → A: 예(D-5).
 - Q5: 역할 세션이 별칭 대신 전체 id 를 넘겨도 되나요? → A: 예(D-3). 역할 없는 세션은 `opus`/`medium` 그대로예요(D-4).
+- Q6: 도움말 두 줄을 고치면 `tests/help_layout.rs` 가 읽는 골든 파일 네 개가 낡아지는데(레인 노트 8216), 어떻게 하나요? → A: 판 2 로 가요. 골든 네 파일만 Scope 의 write 에 더하고 요구·인수는 그대로예요(리더 답, 2026-11-24).
 
 ## Non-goals
 
@@ -72,7 +68,7 @@ approval:
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261121-model-defaults-one-table/**`, `src/model_effort_settings.rs`, `src/session.rs`, `tests/model_effort_settings.rs`, `tests/model_defaults_one_table.rs`, `tests/launcher_reads_models.rs`, `tests/launcher_roleless.rs`, `tests/launcher_agent_entry.rs`, `tests/launcher_agent_numbering.rs`, `tests/launcher_advisor_setting.rs`, `tests/launcher_permissions_setting.rs`, `tests/product_cli.rs`, 그리고 `src/main.rs` 의 `--model`·`--effort` 도움말 두 줄(공유 파일이라 줄 임대 `moai card line-lease` 로만)
+- write: `.moai/specs/SPEC-20261121-model-defaults-one-table/**`, `src/model_effort_settings.rs`, `src/session.rs`, `tests/model_effort_settings.rs`, `tests/model_defaults_one_table.rs`, `tests/launcher_reads_models.rs`, `tests/launcher_roleless.rs`, `tests/launcher_agent_entry.rs`, `tests/launcher_agent_numbering.rs`, `tests/launcher_advisor_setting.rs`, `tests/launcher_permissions_setting.rs`, `tests/product_cli.rs`, 그리고 `src/main.rs` 의 `--model`·`--effort` 도움말 두 줄(공유 파일이라 줄 임대 `moai card line-lease` 로만), 그 두 줄이 바뀌어 낡아지는 도움말 골든 파일 `tests/fixtures/help/all.txt`, `tests/fixtures/help/all-60.txt`, `tests/fixtures/help/all-80.txt`, `tests/fixtures/help/all-dumb.txt`(그 두 줄의 문구만 바꿔요)
 - read-only: `src/model_effort_questions.rs`, `tests/model_effort_questions.rs`, `src/update_models.rs`
 - forbidden: 그 밖의 경로, 실제 HOME·키 보관소, 카드 번호를 SPEC id·브랜치·커밋에 쓰기, 다른 카드의 가지에 쓰기
 
