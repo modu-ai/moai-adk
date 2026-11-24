@@ -2,7 +2,7 @@
 id: SPEC-20261120-project-harness-research
 title: "project asks for a researched harness: agents and skills proposed from the detected stack and current sources, with no fixed count"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-20
 ---
 
@@ -11,6 +11,10 @@ created: 2026-11-20
 ## Intent
 
 Step 6 of the project route offers at most three project agents and then project skills "the same way", built only from the interview answers. A project's useful harness is not three: it depends on the stack. This change makes step 6 study the detected project (languages, frameworks, test and build tools, CI, folders), search the web for current practice and well-regarded sources for that stack, and propose the agents and skills worth creating, each with its reason and the sources it rests on (URL and read time). The user picks what to create from one selection with the recommended ones first, and nothing is created without the pick. The proposals stay generic and portable and reuse the existing `generation-plan` and `generation-apply` contract. The files that carry the text (`project.md`, the manifest) are held by the card that rewrites the project and update texts, so the text change follows that card; the SPEC, the research notes of this folder and the request limit of `generation-plan` do not wait.
+
+### 개정 2 (2026-11-24): 에이전트 하나만 다시 만들 수 있게 해요
+
+카드 기준 4 가 2026-11-24 에 더해졌어요. `generation-plan` 은 프로젝트 에이전트 하나의 목적만 바꾸는 요청에도 `CLAUDE.md`(conflict), `REVIEW.md`(merge), `.gitignore`(conflict)와 워크플로 파일을 함께 계획해요(카드 측정 2026-11-24). `generation-apply` 는 conflict 가 하나라도 있으면 아무것도 적용하지 않아서, 사용자가 에이전트 하나만 고칠 수 없어요. 이 개정은 그 길을 열어요: 요청이 고르는 `harness-only` 선택(이미 있는 `picks` 목록의 새 항목)이 있으면 계획과 적용은 요청에 적힌 프로젝트 에이전트·스킬과 매니페스트만 건드려요. 6단계 글도 같은 선택을 쓰라고 말해요. 개정 1 에서 Codex CLI 를 이 SPEC 의 대상으로 적었던 곳은 Codex 지원이 2026-11-21 에 빠졌으므로(SPEC-20261121-remove-codex-support) Claude Code 만 말하도록 고쳐요.
 
 ## Requirements
 
@@ -23,11 +27,16 @@ Step 6 of the project route offers at most three project agents and then project
 - REQ-7 (REQ-2): IF web search is unavailable, THEN the project route shall tell the agent to propose from the detected facts alone and to say that no source was read.
 - REQ-8: The `generation-plan` operation shall accept up to sixteen agents and sixteen skills in one request.
 - REQ-9 (REQ-8): IF a request has more agents or skills than the limit or a name that is not safe, THEN `generation-plan` shall refuse it with the name of the field and the limit, and never with a value of the request.
+- REQ-10: WHEN a request carries the pick `harness-only`, `generation-plan` shall list no file but the requested project agents and project skills, the earlier flat agent files they replace and the generation manifest. · failure: none
+- REQ-11 (REQ-10): WHEN a request carries the pick `harness-only`, `generation-apply` shall leave the bytes of `CLAUDE.md`, `REVIEW.md`, `.gitignore`, the personal file, every workflow file and every project skill the request does not name, and the manifest's `workflow_id`, `interview_revision` and `profile_sha256`, as they were. · failure: none
+- REQ-12 (REQ-10): Step 6 of the project route shall tell the agent to put the pick `harness-only` into every `generation-plan` request it makes for the picked agents and skills. · failure: none
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7): step 6 of `skills/moai/workflows/project.md` carries the study, the web search with a source per proposal, the missing-web fallback, the fields of a proposal, the several-of selection and the portability rule, and no longer says "at most three"; the scan tests and `skill_references` pass · verify: `cargo test --locked --offline --test project_harness_step`; `cargo test --locked --offline --test skill_text_citations --test product_cli`; `python3 -m unittest tests.skill_references_test tests.source_manifest_test`
 - AC-2 (REQ-8, REQ-9): `generation-plan` accepts sixteen agents and sixteen skills, and refuses seventeen of either, and an unsafe name, with the field named and no value shown · verify: `cargo test --locked --offline --test generation_request_limits`
+- AC-4 (REQ-10, REQ-11): in a temporary project whose `CLAUDE.md` managed section, `REVIEW.md` and `.gitignore` block were edited by hand after generation, a request that renames one `prj-` agent's purpose and carries `harness-only` plans only that agent file and the manifest, with no `conflict`; the apply writes that file, leaves the bytes of every other tracked file and the three manifest linkage keys as they were, and the same request without the pick still plans the three conflicts; a second project skill recorded earlier stays when the request names one · verify: `cargo test --locked --offline --test harness_only_pick`
+- AC-5 (REQ-12): step 6 names the pick `harness-only` and the request it goes into · verify: `cargo test --locked --offline --test project_harness_step harness_step_asks_for_the_harness_only_pick`
 - AC-3 (REQ-1…REQ-7): a dry run of the step on two fixture projects, a Rust command-line tool and a TypeScript web application, gives different proposals, each with at least one source line (URL and read time); the run and its sources are kept in `research.md` of this folder · verify: manual: read `research.md` of this SPEC and compare the two proposal lists
 
 ## Scope
@@ -35,19 +44,24 @@ Step 6 of the project route offers at most three project agents and then project
 - write: `.moai/specs/SPEC-20261120-project-harness-research/**`
 - write (after the card that rewrites the project texts has returned them): `skills/moai/workflows/project.md`, `skills/moai/references/source-manifest.json`, `tests/project_harness_step.rs`
 - write (widened when the file is free): `src/generation.rs`, `tests/generation_request_limits.rs`
+- write (revision 2, by line lease because other cards edit it): `src/agents.rs` (the one new pick id and its skip rule), `tests/harness_only_pick.rs` (new)
 
 ## Decisions
 
 - D-1: The limit of sixteen agents and sixteen skills stays as a safety bound, not a design count: it exists so one request cannot write an unbounded number of files, it is five times the old advice, and the refusal names it. "No fixed count" is read as no count in the advice the user sees; the leader may lift the bound by one constant.
 - D-2: The rebuild record that lets `/moai update` recreate project agents and skills is another card's work (the generation record); this SPEC reuses the existing `generation-plan` and `generation-apply` contract and adds no record.
 - D-3: The dry run of AC-3 is a manual criterion: the proposals are the agent's own output from a web search, which a test cannot repeat; the text and the request limit are what the tests pin. The run is recorded in `research.md` with its sources so a reviewer can read it.
-- D-4: The official documents of the two hosts that have an agent file (Claude Code subagents and skills, Codex CLI) are the sources the proposal format must stay inside; this SPEC read the Claude Code ones (`research.md`) and did not read the Codex CLI ones, so the Codex file shape stays as `generation-plan` writes it today.
+- D-4 (revision 2): The official document of the one host that has an agent file, Claude Code subagents and skills, is the source the proposal format stays inside (`research.md`). Codex CLI left the product on 2026-11-21, so step 6 names no other host's file.
+- D-5 (revision 2): The way to change one agent alone is a new pick id `harness-only` in the existing `picks` list of the request, not a new request field. Options: (a) a pick id (chosen: the list already travels through the plan, the digest and the apply, an empty list digests as before, and `skip` is an action the agents engine and its receipt already know), (b) a new boolean request field (the request schema and every fixture of it change), (c) infer the mode from a request that has no `picks` (a silent change for every caller today). Undo: remove the id from `PICKS` and the branch that reads it.
+- D-6 (revision 2): With the pick, the plan lists no skipped file at all, so the user is shown only what will change; the agents engine still receives the pick and plans every file it owns as `skip`, which is how the apply leaves them alone. A project skill the request does not name is not planned `remove` under the pick, because a request for one agent says nothing about the others.
+- D-7 (revision 2): This revision is drafted by the lane. Its approval is a record the leader writes (the user's delegation of 2026-11-23 covers a reversible in-repo pick like this one); the lane does not record it.
 
 ## Plan
 
 1. This card, now: this SPEC, `research.md` (the official formats read, the facts a proposal may rely on) and the fixtures' proposals.
 2. Tests first: `tests/generation_request_limits.rs` (red: the refusal names no field today) and `tests/project_harness_step.rs` (red against "at most three"); then `src/generation.rs` (the field named in the refusal), then the text of step 6 after the project-text card has returned `project.md` and the manifest.
 3. Whole-area run, clippy, rustfmt, spec check, audit, merge.
+4. Revision 2: RED first (`tests/harness_only_pick.rs`, and the step-6 phrase test), then the `harness-only` id and its `skip` rule in `src/agents.rs`, then `src/generation.rs` (list only the harness files, skip the workflow files and the no-longer-requested removal, keep the linkage keys), then the step-6 sentence, then the source manifest.
 
 ## Result
 
