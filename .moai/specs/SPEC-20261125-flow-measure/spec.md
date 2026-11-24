@@ -65,7 +65,7 @@ parent: null
 
 ## Risks
 
-- 이벤트 시각의 한계: `card.verdict` 이벤트가 없는 옛 카드(노트 `AUDIT … verdict:` 로만 판정한 카드)는 판정이 `null` 이에요. 정의가 이벤트를 요구하므로 노트 판정은 세지 않고, 세지 않은 카드 수를 `unmeasured` 에 말해요.
+- 이벤트 시각의 한계: `card.verdict` 이벤트가 없는 옛 카드(노트 `AUDIT … verdict:` 로만 판정한 카드)는 판정이 `null` 이에요. 정의가 이벤트를 요구하므로 노트 판정은 세지 않아요(알려진 한계). 읽지 못한 판정 이벤트(`verdict` 가 `pass`·`fail` 이 아니거나 payload 가 JSON 이 아닌 것)는 답의 `unreadable_verdicts` 가 세요.
 - 재개된 카드: 한 카드가 `done → ready` 로 되돌아가 finish 가 둘이면 PASS 뒤 첫 finish 를 쓰고, 그 앞의 PASS 는 세지 않아요(가장 새 pass 판정이 기준).
 - 원장이 클수록 `event` 테이블 읽기(`card_id` 인덱스가 없음)가 한 번 전체를 훑어요: 종류로 좁혀 한 번만 읽고 읽기 트랜잭션을 계산 전에 닫아요.
 - 시계: 창의 끝은 `--now`(없으면 SQLite 의 `unixepoch()`)예요. 같은 원장과 같은 `--now` 는 같은 바이트를 내요.
@@ -85,4 +85,19 @@ parent: null
 
 ## Result
 
-(구현 뒤에 적어요.)
+`status: draft`; the approval is the user's and is not recorded here. Implemented in `src/flow_measure.rs` (read, compute, table), `src/ops/flow_measure.rs` (arguments, help), one line each in `src/lib.rs` and `src/help.rs` (line lease, given back at once) and the four `all*` help goldens (one line each, written with `MOAI_HELP_GOLDEN_WRITE` under a line lease), the document fragment `docs/design-review/appendix/operations/flow_measure.md`. No Python was written or run; the Python scripts of the reports folder were read for their definitions only.
+
+- RED (`target/fm/red1.log`): the 8 new tests failed with `error: unrecognized subcommand 'flow-measure'` before the command existed.
+- GREEN: `cargo nextest run --locked --offline --test flow_measure_cli --lib -E "binary(flow_measure_cli) | test(/^flow_measure::/)"` → `11 tests run: 11 passed` (8 integration, 3 unit; `target/fm/green4.log`). Neighbors `help_layout`, `help_english_terminal_cli`, `help_text_names_moai`, `ops_table_gen_cli`, `hot_file_ops_merge` and the 8 new tests → `33 tests run: 33 passed` (`target/fm/neighbors2.log`); the first neighbor run failed only on the four goldens that now hold the new line.
+- AC-1 met: `a_project_without_a_ledger_answers_absent_and_a_ledger_is_not_written` passes in the GREEN run.
+- AC-2 met: `a_card_line_reads_submit_verdict_and_done_by_the_definitions` passes in the GREEN run.
+- AC-3 met: `a_span_with_a_missing_end_is_null_and_never_zero` passes in the GREEN run.
+- AC-4 met: `the_percentiles_are_nearest_rank_and_carry_the_raw_values` passes in the GREEN run.
+- AC-5 met: `a_window_counts_issued_landed_and_finished_apart` passes in the GREEN run.
+- AC-6 met: `a_window_gives_stage_percentiles_first_verdict_fail_share_and_block_kinds` passes in the GREEN run.
+- AC-7 met: `the_table_lines_carry_the_numbers_of_the_json` passes in the GREEN run.
+- AC-8 met: `a_bad_argument_is_refused_by_name_and_writes_nothing` passes in the GREEN run.
+- AC-9 met: `help_layout` and the other neighbors pass in the 33-test run, and the 3 unit tests of `--lib flow_measure` pass in the GREEN run.
+- Guard mutants: 21 of 21 killed, one exact-once fixed-string edit each, restored with `git checkout --`, `git status --short` empty after the batch (shell and awk, `target/fm/mutants.sh`, output `target/fm/mut.out`). M21 survived the first batch because the fixture landed the old card before its pass; the fixture was fixed and M21 was killed on the next run (`target/fm/mut21.out`). The read-only open (`open_read_only_within`) has no mutant: a write open is another type and does not compile.
+- Dangerous path: the command only reads. One run against the real ledger, read-only (`flow-measure <two cards> --hours 12 --project .`, `writes: false`), gave a card line for the landed card (submit to verdict 3.2 min, pass to done 15.8 min, 3 failed verdicts, auditor session, head `dfed56351e40`, reservation released) and a window of issued 24, landed 32, finished 23, 12 blocks (11 decision, 1 environment); the ledger files were not opened for writing.
+- Not run: the whole `cargo test`, Linux and Windows, a ledger with `card.verdict` events of an older payload shape, the receipt folders (Decision D-6).
