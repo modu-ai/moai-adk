@@ -17,6 +17,7 @@ use serde_json::{json, Value};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
@@ -38,6 +39,31 @@ fn git(dir: &Path, args: &[&str]) -> String {
     ];
     all.extend_from_slice(args);
     common::git::git(dir, &all)
+}
+
+/// `git <args>` in `dir` with `input` on its stdin; the call must succeed.
+fn git_with_input(dir: &Path, args: &[&str], input: &str) {
+    let mut child = common::git::command()
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
 }
 
 fn git_executable() -> PathBuf {
@@ -171,7 +197,9 @@ impl World {
         ledger::register(home.path(), "demo").unwrap();
         git(&project, &["init", "-q", "-b", "main"]);
         fs::write(project.join("a.txt"), "a\n").unwrap();
-        git(&project, &["add", "a.txt"]);
+        fs::create_dir(project.join("d")).unwrap();
+        fs::write(project.join("d/x"), "x\n").unwrap();
+        git(&project, &["add", "a.txt", "d/x"]);
         git(&project, &["commit", "-q", "-m", "init"]);
         fs::write(project.join("b.txt"), "b\n").unwrap();
         git(&project, &["add", "b.txt"]);
@@ -304,6 +332,65 @@ impl World {
                 &signed("the lane change", session),
             ],
         )
+    }
+
+    /// A lane commit on the card's head that removes each of `removes` and adds each of `adds`
+    /// (path, content) as a regular file, no ref moves.
+    fn lane_editing(&self, removes: &[&str], adds: &[(&str, &str)]) -> String {
+        let index = self.project.join(".git/put-on-index");
+        let with_index = |args: &[&str]| -> String {
+            let out = common::git::command()
+                .arg("-C")
+                .arg(&self.project)
+                .args(args)
+                .env("GIT_INDEX_FILE", &index)
+                .output()
+                .unwrap();
+            assert!(
+                out.status.success(),
+                "git {args:?}: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        with_index(&["read-tree", &self.head]);
+        for path in removes {
+            with_index(&["update-index", "--force-remove", path]);
+        }
+        for (path, content) in adds {
+            let blob_file = self.project.join("put-on-blob.tmp");
+            fs::write(&blob_file, content).unwrap();
+            let blob = git(&self.project, &["hash-object", "-w", "put-on-blob.tmp"]);
+            fs::remove_file(&blob_file).unwrap();
+            with_index(&[
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                &format!("100644,{blob},{path}"),
+            ]);
+        }
+        let tree = with_index(&["write-tree"]);
+        fs::remove_file(&index).unwrap();
+        git(
+            &self.project,
+            &[
+                "commit-tree",
+                &tree,
+                "-p",
+                &self.head,
+                "-m",
+                &signed("the lane change", S_A),
+            ],
+        )
+    }
+
+    /// A card, the lane commit of `lane_editing`, its join on the tip and the PASS of it.
+    fn ready_editing(&self, removes: &[&str], adds: &[(&str, &str)]) -> (String, String) {
+        let card = self.review_card();
+        let lane = self.lane_editing(removes, adds);
+        let cand = self.join(&lane);
+        self.pass_of(&card, &cand);
+        (card, cand)
     }
 
     fn lane_adding(&self, path: &str) -> String {
@@ -742,7 +829,24 @@ fn an_untracked_file_at_an_added_path_refuses_and_other_untracked_files_stay() {
 #[test]
 fn an_unsupported_checkout_refuses_and_changes_nothing() {
     type Prepare = fn(&World) -> (String, String);
-    let cases: [(&str, Prepare, &[&str]); 5] = [
+    let cases: [(&str, Prepare, &[&str]); 6] = [
+        (
+            "an unmerged entry",
+            |w| {
+                let (card, cand) = w.ready_to_land();
+                let blob = git(&w.project, &["rev-parse", "HEAD:a.txt"]);
+                let zero = "0".repeat(40);
+                git_with_input(
+                    &w.project,
+                    &["update-index", "--index-info"],
+                    &format!(
+                        "0 {zero}\ta.txt\n100644 {blob} 1\ta.txt\n100644 {blob} 2\ta.txt\n100644 {blob} 3\ta.txt\n"
+                    ),
+                );
+                (card, cand)
+            },
+            &["unmerged paths", "a.txt"],
+        ),
         (
             "two worktrees on the branch",
             |w| {
@@ -918,8 +1022,10 @@ fn a_rerun_leaves_a_worktree_alone_whose_index_matches_neither_commit() {
     assert!(
         got["worktree_follow"]["note"]
             .as_str()
-            .is_some_and(|n| n.contains("neither")),
-        "{got}"
+            .is_some_and(|n| n.contains("neither")
+                && n.contains("git diff --cached")
+                && n.contains("git reset --hard")),
+        "the note names the way out: {got}"
     );
     assert_eq!(w.checkout(), staged, "the rerun touched the worktree");
     assert_eq!(w.state(&card), "done");
@@ -1142,12 +1248,134 @@ fn a_rerun_refuses_what_a_first_run_would_refuse() {
         .as_str()
         .unwrap()
         .to_string();
-    assert!(message.contains("edited tracked files"), "{message}");
+    assert!(
+        message.contains("edited tracked files") && message.contains("git restore ."),
+        "{message}"
+    );
     assert_eq!(w.checkout(), before);
     fs::write(w.project.join("a.txt"), "a\n").unwrap();
 
     // Nothing in the way any more: the same call finishes it.
     let got = result(&w.land(&card, &cand));
     assert_eq!(got["worktree_follow"]["status"], json!("finished"), "{got}");
+    assert_eq!(w.state(&card), "done");
+}
+
+// ---- the repair of the first audit (B1, B2) --------------------------------------------------
+
+/// B1: an ignored file that appears after the plan (the ledger rows, the scans and the branch move
+/// come in between) at a path the head adds is never overwritten. The branch already moved, so the
+/// refusal says so and keeps the card open; the same call run again after the cause is gone
+/// finishes it.
+#[test]
+fn an_ignored_file_that_appears_after_the_plan_is_never_overwritten() {
+    let w = World::new();
+    let (card, cand) = w.ready_to_land();
+    fs::write(w.project.join(".git/info/exclude"), "notes/x.md\n").unwrap();
+    let p = w.p.clone();
+    w.wrap_update_ref(
+        "git-an-ignored-file-appears",
+        &format!("mkdir -p '{p}/notes'; echo precious > '{p}/notes/x.md'"),
+    );
+    let out = w.land(&card, &cand);
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let message = envelope(&out)["error"]["message"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    for part in [
+        "no commit tracks",
+        "notes/x.md",
+        "already moved",
+        "run the same call again",
+    ] {
+        assert!(message.contains(part), "lacks {part:?}: {message}");
+    }
+    assert_eq!(w.integ(), cand, "the branch moved");
+    assert_eq!(w.state(&card), "review", "the card stays open");
+    assert_eq!(
+        fs::read_to_string(w.project.join("notes/x.md")).unwrap(),
+        "precious\n",
+        "the ignored file was overwritten"
+    );
+    assert!(
+        !w.tracked_changes().is_empty(),
+        "the worktree still lags behind the branch"
+    );
+
+    // The same call again with the file still there refuses the same way and touches nothing.
+    w.plain_git();
+    let before = w.checkout();
+    let out = w.land(&card, &cand);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(
+        w.checkout(),
+        before,
+        "the refused rerun touched the worktree"
+    );
+
+    // Once the file is moved away the same call finishes the worktree and closes the card.
+    fs::remove_file(w.project.join("notes/x.md")).unwrap();
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["worktree_follow"]["status"], json!("finished"), "{got}");
+    assert_eq!(
+        fs::read_to_string(w.project.join("notes/x.md")).unwrap(),
+        "lane\n"
+    );
+    assert_eq!(w.state(&card), "done");
+    assert_eq!(landings_in_reflog(&w), 1);
+}
+
+/// B2: a tracked folder the head turns into a file is no obstacle: the same move deletes what
+/// stands there.
+#[test]
+fn a_tracked_folder_the_candidate_turns_into_a_file_follows() {
+    let w = World::new();
+    let (card, cand) = w.ready_editing(&["d/x"], &[("d", "now a file\n")]);
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["worktree_follow"]["status"], json!("followed"), "{got}");
+    assert_eq!(
+        fs::read_to_string(w.project.join("d")).unwrap(),
+        "now a file\n"
+    );
+    assert_eq!(w.tracked_changes(), "");
+    assert_eq!(w.state(&card), "done");
+}
+
+/// A folder the head turns into a file refuses when it also holds a file no commit tracks.
+#[test]
+fn a_folder_with_a_stranger_in_it_is_not_turned_into_a_file() {
+    let w = World::new();
+    let (card, cand) = w.ready_editing(&["d/x"], &[("d", "now a file\n")]);
+    fs::write(w.project.join("d/mine.txt"), "mine\n").unwrap();
+    let before = w.before();
+    let out = w.land(&card, &cand);
+    w.refuses(
+        &out,
+        &["no commit tracks", "d/mine.txt"],
+        &before,
+        "a folder with an untracked file in it",
+    );
+}
+
+/// B2: a case-only rename (`b.txt` to `B.txt`) is the same file under another spelling on a file
+/// system that ignores case (this Mac); on one that does not, it is a plain delete and add.
+#[test]
+fn a_case_only_rename_follows() {
+    let w = World::new();
+    let (card, cand) = w.ready_editing(&["b.txt"], &[("B.txt", "b\n")]);
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["worktree_follow"]["status"], json!("followed"), "{got}");
+    assert_eq!(w.tracked_changes(), "");
+    let names = git(&w.project, &["ls-files"]);
+    assert!(
+        names.lines().any(|n| n == "B.txt") && !names.lines().any(|n| n == "b.txt"),
+        "{names}"
+    );
     assert_eq!(w.state(&card), "done");
 }

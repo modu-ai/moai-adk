@@ -13,9 +13,14 @@
 //!   carry-forward of `git switch`, then a check that the index equals the new commit.
 //!
 //! A call that stopped between the move and the follow is finished by the same call run again:
-//! [`finish`] reads the tip this card's start row recorded and, when the worktree's index is still
+//! [`rerun`] reads the tip this card's start row recorded and, when the worktree's index is still
 //! that old commit's tree, runs the same follow from it. Nothing is deleted or overwritten by
 //! hand, and `git reset --hard` is never used (its `-u` form loses work).
+//!
+//! One window stays: git has no switch that makes `read-tree` refuse an ignored file at an added
+//! path (it overwrites it), so [`apply`] reads the added paths again right before it runs
+//! `read-tree`; a file that appears in the few milliseconds between that read and git's own scan
+//! is not caught (SPEC-20261125-land-checked-out-branch, Risks).
 
 use super::landed;
 use rusqlite::{Connection, OptionalExtension};
@@ -171,19 +176,50 @@ fn check_state(tree: &Path, tip: &str, branch: &str) -> Result<()> {
             "the follow step does not support it: run `git sparse-checkout disable` there and run the call again",
         ));
     }
+    check_entry_tags(tree)
+}
+
+/// The refusals about index entries `git ls-files -v` tags other than `H`: an unmerged entry (`M`),
+/// a skip-worktree entry (`S`), an assume-unchanged entry (a lower-case tag) and any other state.
+fn check_entry_tags(tree: &Path) -> Result<()> {
+    let at = tree.display();
     let tagged = run(tree, &["ls-files", "-v", "-z"])?;
-    let odd: Vec<String> = tagged
-        .split(|b| *b == 0)
-        .filter(|entry| entry.len() > 2 && entry[0] != b'H')
-        .map(|entry| String::from_utf8_lossy(entry).replacen(' ', ": ", 1))
-        .collect();
-    if !odd.is_empty() {
+    let (mut unmerged, mut skipped, mut assumed, mut other) = (vec![], vec![], vec![], vec![]);
+    for entry in tagged.split(|b| *b == 0).filter(|e| e.len() > 2) {
+        let path = String::from_utf8_lossy(&entry[2..]).into_owned();
+        match entry[0] {
+            b'H' => {}
+            b'M' | b'm' => unmerged.push(path),
+            b'S' | b's' => skipped.push(path),
+            tag if tag.is_ascii_lowercase() => assumed.push(path),
+            tag => other.push(format!("{}: {path}", tag as char)),
+        }
+    }
+    if !unmerged.is_empty() {
+        return Err(refusal(
+            format!("{at} has unmerged paths: {}", listed(&unmerged)),
+            "finish or abort that merge there (resolve and `git add` them, or `git merge --abort`), then run the call again",
+        ));
+    }
+    if !skipped.is_empty() {
+        return Err(refusal(
+            format!("{at} has skip-worktree entries: {}", listed(&skipped)),
+            "clear them with `git update-index --no-skip-worktree <path>` and run the call again",
+        ));
+    }
+    if !assumed.is_empty() {
+        return Err(refusal(
+            format!("{at} has assume-unchanged entries: {}", listed(&assumed)),
+            "clear them with `git update-index --no-assume-unchanged <path>` and run the call again",
+        ));
+    }
+    if !other.is_empty() {
         return Err(refusal(
             format!(
-                "{at} has entries git was told not to look at (skip-worktree or assume-unchanged): {}",
-                listed(&odd)
+                "{at} has index entries in a state this step does not know: {}",
+                listed(&other)
             ),
-            "clear them with `git update-index --no-skip-worktree --no-assume-unchanged <path>` and run the call again",
+            "bring the index to a plain state (see `git status` there) and run the call again",
         ));
     }
     Ok(())
@@ -274,8 +310,119 @@ fn changes(tree: &Path, from: &str, to: &str) -> Result<Vec<Change>> {
     Ok(found)
 }
 
+/// Every path the commit `from` tracks.
+fn tracked_paths(tree: &Path, from: &str) -> Result<Vec<String>> {
+    let out = run(tree, &["ls-tree", "-r", "--name-only", "-z", from])?;
+    Ok(out
+        .split(|b| *b == 0)
+        .filter(|p| !p.is_empty())
+        .map(|p| String::from_utf8_lossy(p).into_owned())
+        .collect())
+}
+
+/// Whether `a` and `b` are one file under two spellings (a case-only rename on a file system that
+/// ignores case): names equal but for ASCII case, and on Unix the same device and inode.
+fn same_file(a: &Path, b: &Path) -> bool {
+    if !a
+        .to_string_lossy()
+        .eq_ignore_ascii_case(&b.to_string_lossy())
+    {
+        return false;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        match (std::fs::symlink_metadata(a), std::fs::symlink_metadata(b)) {
+            (Ok(x), Ok(y)) => x.dev() == y.dev() && x.ino() == y.ino(),
+            _ => false,
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        a.exists() && b.exists()
+    }
+}
+
+/// Whether what stands at `path` is a tracked file this same move deletes: the path itself, or a
+/// file the move deletes under another spelling of the same name.
+fn deleted_by_the_move(tree: &Path, path: &str, removed: &BTreeSet<&str>) -> bool {
+    removed.contains(path)
+        || removed
+            .iter()
+            .any(|r| same_file(&tree.join(path), &tree.join(r)))
+}
+
+/// What stands where the move adds `path`: `None` when nothing does or only what the move itself
+/// deletes (a tracked folder the move turns into a file, a tracked file renamed by case); else a
+/// description. The file system is asked, so an ignored file counts too.
+fn in_the_way(
+    tree: &Path,
+    path: &str,
+    removed: &BTreeSet<&str>,
+    tracked: &[String],
+) -> Result<Option<String>> {
+    if let Ok(meta) = std::fs::symlink_metadata(tree.join(path)) {
+        if deleted_by_the_move(tree, path, removed) {
+            return Ok(None);
+        }
+        if !meta.is_dir() {
+            return Ok(Some(path.to_string()));
+        }
+        // A folder where the move adds a file: fine when it holds only tracked files the move
+        // deletes (and nothing else), or nothing at all.
+        let inside = format!("{path}/");
+        let mine: Vec<&String> = tracked.iter().filter(|t| t.starts_with(&inside)).collect();
+        let empty = std::fs::read_dir(tree.join(path)).is_ok_and(|mut d| d.next().is_none());
+        if (mine.is_empty() && !empty) || mine.iter().any(|t| !removed.contains(t.as_str())) {
+            return Ok(Some(format!(
+                "{path}/ (a folder that holds files the move keeps)"
+            )));
+        }
+        let mut strangers: Vec<String> = Vec::new();
+        for flags in [&["--others"][..], &["--others", "--ignored"][..]] {
+            let mut args = vec![
+                "--literal-pathspecs",
+                "ls-files",
+                "-z",
+                "--exclude-standard",
+            ];
+            args.extend_from_slice(flags);
+            args.extend_from_slice(&["--", path]);
+            let out = run(tree, &args)?;
+            strangers.extend(
+                out.split(|b| *b == 0)
+                    .filter(|p| !p.is_empty())
+                    .map(|p| String::from_utf8_lossy(p).into_owned()),
+            );
+        }
+        if !strangers.is_empty() {
+            return Ok(Some(format!(
+                "{path}/ (a folder that holds files no commit tracks: {})",
+                listed(&strangers)
+            )));
+        }
+        return Ok(None);
+    }
+    let mut prefix = String::new();
+    for part in path.split('/').take(path.split('/').count() - 1) {
+        if !prefix.is_empty() {
+            prefix.push('/');
+        }
+        prefix.push_str(part);
+        let blocked = std::fs::symlink_metadata(tree.join(&prefix))
+            .is_ok_and(|m| !m.file_type().is_dir())
+            && !deleted_by_the_move(tree, &prefix, removed);
+        if blocked {
+            return Ok(Some(format!(
+                "{prefix} (a file where the new commit needs a folder, for {path})"
+            )));
+        }
+    }
+    Ok(None)
+}
+
 /// The refusals about what the move would write: a submodule entry, and a path the new commit adds
-/// that something stands on or under. A path another commit deletes is not an obstacle, and the
+/// that something stands on or under. What the same move deletes is not an obstacle, and the
 /// obstacle is looked for by the file system, so an ignored file counts too.
 fn check_paths(tree: &Path, from: &str, to: &str) -> Result<()> {
     let all = changes(tree, from, to)?;
@@ -298,33 +445,11 @@ fn check_paths(tree: &Path, from: &str, to: &str) -> Result<()> {
         .filter(|c| c.status == 'D')
         .map(|c| c.path.as_str())
         .collect();
+    let tracked = tracked_paths(tree, from)?;
     let mut stands: Vec<String> = Vec::new();
     for added in all.iter().filter(|c| c.status == 'A') {
-        let at = tree.join(&added.path);
-        if std::fs::symlink_metadata(&at).is_ok() {
-            stands.push(added.path.clone());
-            continue;
-        }
-        let mut prefix = String::new();
-        for part in added
-            .path
-            .split('/')
-            .take(added.path.split('/').count() - 1)
-        {
-            if !prefix.is_empty() {
-                prefix.push('/');
-            }
-            prefix.push_str(part);
-            let blocked = std::fs::symlink_metadata(tree.join(&prefix))
-                .is_ok_and(|m| !m.file_type().is_dir())
-                && !removed.contains(prefix.as_str());
-            if blocked {
-                stands.push(format!(
-                    "{prefix} (a file where the new commit needs a folder, for {})",
-                    added.path
-                ));
-                break;
-            }
+        if let Some(found) = in_the_way(tree, &added.path, &removed, &tracked)? {
+            stands.push(found);
         }
     }
     if stands.is_empty() {
@@ -384,6 +509,9 @@ pub fn plan(
 /// After the move: `git read-tree -m -u <from> <to>`, then the index must equal `to`.
 pub fn apply(plan: &Plan) -> Result<()> {
     let at = plan.tree.display();
+    // `read-tree` overwrites an ignored file at an added path without a word, and the ledger
+    // rows, the scans and the branch move came after the plan: read the added paths again now.
+    check_paths(&plan.tree, &plan.from, &plan.to)?;
     run(&plan.tree, &["read-tree", "-m", "-u", &plan.from, &plan.to]).map_err(|why| {
         format!(
             "the worktree {at} could not follow the move from {} to {} ({why})",
@@ -451,12 +579,20 @@ pub fn rerun(
         )));
     }
     if !quiet(&tree, &["diff-index", "--cached", "--quiet", &old])? {
+        // The branch moved and the landing is done, so the card closes; the worktree is left as
+        // it is and the answer says how its owner brings it along (REQ-13).
+        let note = format!(
+            "the index of the worktree is neither the old tip's tree nor the new one's, so it was \
+             left alone and shows the move backwards; `git diff --cached {old}` there lists exactly \
+             the changes staged by hand: save them (for example `git diff --cached {old} > keep.patch`), \
+             run `git reset --hard` there to bring it to {tip}, and apply the patch again"
+        );
         return Ok(Rerun::Nothing(answer(
             Some(&tree),
             "none",
             &old,
             &tip,
-            Some("the index of the worktree is neither the old tip's tree nor the new one's, so it was left alone"),
+            Some(&note),
         )));
     }
     check_state(&tree, &tip, branch)?;
@@ -468,7 +604,7 @@ pub fn rerun(
                 "{} has edited tracked files, and its index still lags at {old}",
                 tree.display()
             ),
-            "commit, stash or discard the edits there and run the call again",
+            "save a copy of the edited files elsewhere, discard the edits there (`git restore .`; a commit is refused on the integration branch and a stash would carry the lagging index too) and run the call again",
         ));
     }
     check_paths(&tree, &old, &tip)?;
