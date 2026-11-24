@@ -325,18 +325,20 @@ fn interactive_setup_reads_one_answer_per_item() {
 
 /// The managed block of a profile without `language`, pinned: no writing-language line. The
 /// block lives in CLAUDE.md and states facts only (SPEC-20261122-claude-md-layout REQ-3): the
-/// project id and tools, the check command, and where the SPECs and cards are.
+/// project id and tools, the check command, where the SPECs and cards are, and the folder of the
+/// project's own scripts (SPEC-20261120-moai-layout REQ-15).
 fn plain_en(root: &Path) -> String {
+    let state = moai_cli::state_root::dir(root);
     format!(
         "<!-- moai:managed:begin id=moai-workflow -->
 ## MoAI project facts (managed block)
 
 Project `demo` · tools: Rust.
 Checks: `moai check affected`.
-SPECs: `{}/specs/` · cards: `moai card list`.
+SPECs: `{state}/specs/` · cards: `moai card list`.
+Project scripts: `{state}/tools/`.
 <!-- moai:managed:end id=moai-workflow -->
-",
-        moai_cli::state_root::dir(root)
+"
     )
 }
 

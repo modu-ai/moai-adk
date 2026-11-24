@@ -2605,6 +2605,43 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         assert_eq!(select(&changed, &tests, Some(list), host_os()), full);
     }
 
+    /// C-456: the managed-block text of `src/agents.rs` is pinned by two tests whose names do not
+    /// start with `agents`, so the area rule alone misses them (the red tip of 2026-11-24). The
+    /// repository's own scan list picks them for that file, in the lane set and in the full set,
+    /// and the lane set stays narrow for a change that cannot move the text.
+    #[test]
+    fn a_change_to_the_managed_block_source_selects_the_two_tests_that_pin_its_text() {
+        let list = std::fs::read_to_string(Path::new(MANIFEST).join("tools/repo_scans.json"))
+            .expect("the repository's scan list");
+        let tests = [
+            rust("agents_home_cli", &[], &[]),
+            rust("language_setting", &[], &[]),
+            rust("language_three_questions", &[], &[]),
+            rust("card_cli", &[], &[]),
+        ];
+        for pick in [Pick::Lane, Pick::Full] {
+            let sel = select_pick(
+                pick,
+                &paths(&["src/agents.rs"]),
+                &tests,
+                Some(&list),
+                "linux",
+            );
+            for name in ["language_setting", "language_three_questions"] {
+                assert!(sel.rust.contains(name), "{pick:?} missed {name}: {sel:?}");
+            }
+            assert!(sel.rust.contains("agents_home_cli"), "{pick:?}: {sel:?}");
+        }
+        let other = select_pick(
+            Pick::Lane,
+            &paths(&["src/card.rs"]),
+            &tests,
+            Some(&list),
+            "linux",
+        );
+        assert!(!other.rust.contains("language_setting"), "{other:?}");
+    }
+
     /// REQ-1: the cap is 4 until the slots' `limits.json` can carry a value of its own.
     #[test]
     fn the_default_cap_is_four() {

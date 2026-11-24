@@ -368,6 +368,93 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Put a structured HOLD on a draft or ready card
+    ///
+    /// Writes the ledger. One `card.hold` event records the category (`money`, `legal`,
+    /// `external_contract`, `secret`, `real_data` or `other`), the reason and the by with the
+    /// writing session; the card keeps its state. `card next` then lists the card as skipped
+    /// with the reason `hold`, `card take` refuses it before any reservation or worktree, and
+    /// `card show` carries the HOLD. Only a person's `card unhold` lifts it: a note that says
+    /// HOLD or lifts it in free text changes nothing. A card that is held, done, withdrawn or
+    /// already on HOLD is refused and nothing is written.
+    Hold {
+        /// The card (`C-12` or `#3066`).
+        card: String,
+        /// `money`, `legal`, `external_contract`, `secret`, `real_data` or `other`.
+        #[arg(long)]
+        category: String,
+        /// Why the card is on HOLD (one line, 1..=500 characters).
+        #[arg(long)]
+        reason: String,
+        /// Who sets it (one line, 1..=200 characters).
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to use (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Lift the structured HOLD of a card
+    ///
+    /// Writes the ledger. One `card.unhold` event ends the `card.hold` in force; this command is
+    /// the only writer of that event, so run it only when the decision behind the HOLD is made.
+    /// A card with no HOLD in force is refused and nothing is written.
+    Unhold {
+        /// The card (`C-12` or `#3066`).
+        card: String,
+        /// Why the HOLD is lifted (one line, 1..=500 characters).
+        #[arg(long)]
+        reason: String,
+        /// Who lifts it (one line, 1..=200 characters).
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to use (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Record that a card needs another card done first
+    ///
+    /// Writes the ledger. One active `blocks` link runs from the needed card to this one and one
+    /// `card.prereq` event records the by. `card next` lists this card as skipped with the
+    /// reason `prerequisite` naming the cards that are not done, and `card take` refuses it
+    /// before any reservation. A second call for the same pair changes nothing (`created:
+    /// false`). A card that needs itself, or one the needed card already needs, is refused.
+    Prereq {
+        /// The card that waits (`C-12` or `#3066`).
+        card: String,
+        /// The card that has to be done first (`C-14`).
+        #[arg(long)]
+        needs: String,
+        /// Who records it (one line, 1..=200 characters).
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to use (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Reads the ledger only. List open cards whose text says HOLD but that have no structured HOLD
+    ///
+    /// Reads the ledger only. Each open card (draft, ready, active or review) with no `card.hold`
+    /// in force whose body or a note has the capital word HOLD is listed with the note id (or
+    /// the body) and a short quote of the line. The list is a hint: nothing is written and
+    /// `card next` and `card take` ignore it. When a candidate is a real HOLD, a person runs
+    /// `card hold` for it.
+    HoldCandidates {
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Record that this card's head landed on the local integration branch
     ///
     /// Writes the ledger. A `review` card gains one `card.landed` event naming the head and the
@@ -1327,6 +1414,38 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
         } => w::withdraw(&project, &resolve_home(home)?, &card, &reason, &by),
+        Action::Hold {
+            card,
+            category,
+            reason,
+            by,
+            project,
+            home,
+        } => w::hold(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &category,
+            &reason,
+            &by,
+        ),
+        Action::Unhold {
+            card,
+            reason,
+            by,
+            project,
+            home,
+        } => w::unhold(&project, &resolve_home(home)?, &card, &reason, &by),
+        Action::Prereq {
+            card,
+            needs,
+            by,
+            project,
+            home,
+        } => w::prereq(&project, &resolve_home(home)?, &card, &needs, &by),
+        Action::HoldCandidates { project, home } => {
+            moai_cli::card::hold_candidates::candidates(&project, &resolve_home(home)?)
+        }
         Action::Fold {
             card,
             into,

@@ -14,7 +14,7 @@
 //! says the count may be short.
 
 use crate::project_detect::{
-    is_file_in, nested_manifests, read_in, MAX_DEPTH, MAX_ENTRIES, SKIP_DIRS,
+    is_file_in, nested_manifests, read_in, skip_dir, MAX_DEPTH, MAX_ENTRIES,
 };
 use serde::Serialize;
 use std::{
@@ -32,7 +32,7 @@ pub const MONOREPO_MANIFEST_FOLDERS: usize = 3;
 const MAX_PACKAGES: usize = 64;
 /// Largest `.git` pointer file read.
 const POINTER_LIMIT: u64 = 4096;
-/// moai's own state folders besides [`SKIP_DIRS`]: a SPEC that `spec new` writes is not a
+/// moai's own state folders besides [`skip_dir`]: a SPEC that `spec new` writes is not a
 /// project file, so the walk count does not move when moai writes its state.
 const MOAI_STATE_DIRS: &[&str] = &[".moai", crate::state_root::GO_BACKUP];
 
@@ -180,10 +180,7 @@ fn walked_files(dir: &Path, depth: usize, seen: &mut usize) -> u64 {
         }
         if kind.is_dir() {
             let name = name.to_string_lossy();
-            if depth < MAX_DEPTH
-                && !SKIP_DIRS.contains(&name.as_ref())
-                && !MOAI_STATE_DIRS.contains(&name.as_ref())
-            {
+            if depth < MAX_DEPTH && !skip_dir(&name) && !MOAI_STATE_DIRS.contains(&name.as_ref()) {
                 files += walked_files(&entry.path(), depth + 1, seen);
             }
         } else if kind.is_file() {

@@ -165,6 +165,11 @@ pub struct GenerationRequest {
     pub picks: Vec<String>,
 }
 
+/// The request asks for project agents and skills alone (the pick `harness-only`).
+fn is_harness_only(r: &GenerationRequest) -> bool {
+    r.picks.iter().any(|p| p == crate::agents::HARNESS_ONLY)
+}
+
 fn project_skill_hosts(s: &ProjectSkill) -> Vec<String> {
     if s.hosts.is_empty() {
         vec!["claude".into()]
@@ -247,27 +252,49 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         || !valid_skill_name(&r.workflow_id)
         || r.workflow_reference.trim().is_empty()
         || r.workflow_reference.len() > 256
-        || r.native_roles.len() > MAX_ROLES
-        || r.skill_projections.len() > MAX_PROJECTIONS
-        || r.project_skills.len() > MAX_PROJECTIONS
     {
         return Err("invalid generation request; no values were logged".into());
     }
-    for role in &r.native_roles {
+    // A refusal names the field and the limit and never a value of the request.
+    for (field, len, limit) in [
+        ("native_roles", r.native_roles.len(), MAX_ROLES),
+        (
+            "skill_projections",
+            r.skill_projections.len(),
+            MAX_PROJECTIONS,
+        ),
+        ("project_skills", r.project_skills.len(), MAX_PROJECTIONS),
+    ] {
+        if len > limit {
+            return Err(format!(
+                "invalid generation request: {field} has more than {limit} entries; no values were logged"
+            ));
+        }
+    }
+    for (i, role) in r.native_roles.iter().enumerate() {
         // A project role is named `prj-<name>` (leader design 6842177115, #2706): it never
         // shadows a user-layer `moai-*` agent, and a name without the prefix is refused. The
         // bare `prj-` fails `valid_skill_name` (no trailing `-`).
-        if !valid_skill_name(&role.role_id)
-            || !role.role_id.starts_with("prj-")
-            || role.host != "claude"
-            || !bounded_purpose(&role.purpose)
-            || role.tools.len() > 32
+        let bad = if !valid_skill_name(&role.role_id) || !role.role_id.starts_with("prj-") {
+            Some("role_id")
+        } else if role.host != "claude" {
+            Some("host")
+        } else if !bounded_purpose(&role.purpose) {
+            Some("purpose")
+        } else if role.tools.len() > 32
             || !role
                 .tools
                 .iter()
                 .all(|t| !t.is_empty() && t.len() <= 128 && !t.contains(char::is_whitespace))
         {
-            return Err("invalid generation request; no values were logged".into());
+            Some("tools")
+        } else {
+            None
+        };
+        if let Some(field) = bad {
+            return Err(format!(
+                "invalid generation request: native_roles[{i}].{field} is not accepted; no values were logged"
+            ));
         }
     }
     for p in &r.skill_projections {
@@ -283,7 +310,7 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         }
     }
     let mut seen_ids = std::collections::BTreeSet::new();
-    for ps in &r.project_skills {
+    for (i, ps) in r.project_skills.iter().enumerate() {
         if !seen_ids.insert(ps.id.as_str())
             || ps
                 .hosts
@@ -294,12 +321,19 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         {
             return Err("invalid generation request: a project skill id or host repeats".into());
         }
-        if !valid_skill_name(&ps.id)
-            || !ps.id.starts_with("prj-")
-            || !bounded_purpose(&ps.purpose)
-            || ps.hosts.iter().any(|h| h != "claude")
-        {
-            return Err("invalid generation request; no values were logged".into());
+        let bad = if !valid_skill_name(&ps.id) || !ps.id.starts_with("prj-") {
+            Some("id")
+        } else if !bounded_purpose(&ps.purpose) {
+            Some("purpose")
+        } else if ps.hosts.iter().any(|h| h != "claude") {
+            Some("hosts")
+        } else {
+            None
+        };
+        if let Some(field) = bad {
+            return Err(format!(
+                "invalid generation request: project_skills[{i}].{field} is not accepted; no values were logged"
+            ));
         }
         render_safe(&ps.purpose)?;
     }
@@ -658,10 +692,30 @@ fn plan_filtered(
         reference_is_own_output(&root, &request),
     )?;
     let manifest = manifest_value(&root)?;
-    let mut files: Vec<GenerationFilePlan> = agents.files.iter().map(file_from_agents).collect();
-    let mut warnings: Vec<String> = agents.warnings.clone();
+    // The pick `harness-only` (SPEC-20261120-project-harness-research revision 2) asks for the
+    // requested project agents and skills alone: the files of the agents engine, the workflow
+    // files and the removal of skills the request does not name are all left out of the plan.
+    // The engine still gets the pick and plans each of its files as `skip`, so the apply leaves
+    // their bytes alone; only its manifest line is kept here.
+    let harness_only = is_harness_only(&request);
+    let manifest_path = manifest_rel(&root);
+    let mut files: Vec<GenerationFilePlan> = agents
+        .files
+        .iter()
+        .filter(|f| !harness_only || f.path == manifest_path)
+        .map(file_from_agents)
+        .collect();
+    let mut warnings: Vec<String> = if harness_only {
+        Vec::new()
+    } else {
+        agents.warnings.clone()
+    };
     warnings.extend(retired_note);
-    let host_notes: Vec<String> = agents.host_notes.clone();
+    let host_notes: Vec<String> = if harness_only {
+        Vec::new()
+    } else {
+        agents.host_notes.clone()
+    };
 
     // Portable workflow (REQ-03C-01: one workflow per request).
     let workflow_rel = crate::state_root::rel(
@@ -677,7 +731,10 @@ fn plan_filtered(
     for (rel, rendered) in [
         (&workflow_rel, rendered_skill),
         (&workflow_ref_rel, rendered_ref),
-    ] {
+    ]
+    .into_iter()
+    .filter(|_| !harness_only)
+    {
         let current = fs::read(root.join(rel)).ok();
         let baseline = generation_baseline(&manifest, rel);
         let rendered_digest = digest(rendered.as_bytes());
@@ -888,7 +945,7 @@ fn plan_filtered(
                 .collect()
         })
         .unwrap_or_default();
-    for (kind, rel, baseline) in owned {
+    for (kind, rel, baseline) in owned.into_iter().filter(|_| !harness_only) {
         // A file of a retired host: no conflict, no removal; the entry only leaves the manifest.
         if owned_entry_retired(&kind, active) {
             continue;
@@ -1019,7 +1076,7 @@ fn plan_filtered(
                 &agents.files,
             )?;
             let (profile, profile_bytes) = read_profile(&root)?;
-            record_generation(&mut value, &plan, &profile, &profile_bytes);
+            record_generation(&mut value, &plan, &profile, &profile_bytes, &manifest);
             let disk = read_opt(&root.join(&manifest_rel))?;
             disk.is_some() && crate::agents::amended_manifest_bytes(value) == disk
         };
@@ -1159,6 +1216,7 @@ fn record_generation(
     p: &GenerationPlan,
     profile: &crate::Profile,
     profile_bytes: &[u8],
+    previous: &Value,
 ) {
     let Some(map) = manifest.as_object_mut() else {
         return;
@@ -1199,6 +1257,15 @@ fn record_generation(
             "section_id": kind,
             "baseline_sha256": rendered,
         }));
+    }
+    // A request for the harness alone says nothing about the files the linkage vouches for: the
+    // workflow id and the interview revision are carried by the engine, and the profile digest
+    // goes back to the one the last full generation recorded.
+    if is_harness_only(&p.request) {
+        if let Some(old) = previous.get("profile_sha256") {
+            map.insert("profile_sha256".into(), old.clone());
+        }
+        return;
     }
     map.insert("workflow_id".into(), json!(p.request.workflow_id));
     map.insert(
@@ -1278,6 +1345,7 @@ pub fn generation_apply_in(
     //    manifest publish (#2114): a failure here leaves the previous manifest intact.
     let request_id = new_request_id("generation.apply", &p.plan_digest);
     let (profile, profile_bytes) = read_profile(&root)?;
+    let previous_manifest = manifest_value(&root)?;
     let mut files_created: Vec<String> = Vec::new();
     let mut files_merged: Vec<String> = Vec::new();
     // Lives past the hook: it reads `complete` only after the manifest publish (#2119).
@@ -1398,7 +1466,7 @@ pub fn generation_apply_in(
         // 3. The manifest: record generation baselines and the profile linkage on the
         //    value agents_apply is about to publish. Only keys the agents.rs schema
         //    already knows are touched (agents_apply re-decodes the typed schema).
-        record_generation(manifest, &p, &profile, &profile_bytes);
+        record_generation(manifest, &p, &profile, &profile_bytes, &previous_manifest);
         // The manifest entry itself is recorded in the agents.apply receipt, which keeps
         // the pre-apply manifest bytes for recovery. Saved as `partial` here: the
         // manifest publish is still ahead.
