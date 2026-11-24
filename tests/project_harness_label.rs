@@ -115,27 +115,27 @@ fn identifiers_stay_as_they_were() {
             .any(|s| s["step"] == "generation"),
         "{install}"
     );
-    // The source still prints the apply command and reads the manifest path; the help still
-    // lists both commands.
-    for (rel, needles) in [
-        (
-            "src/project_update.rs",
-            [
-                "name: \"generation\"",
-                "argv(\"generation-apply\"",
-                "manifests/generation.json",
-            ]
-            .as_slice(),
-        ),
-        (
-            "src/help.rs",
-            ["(\"generation-plan\"", "(\"generation-apply\""].as_slice(),
-        ),
+    // The source still names the step by its id everywhere it builds the step: the two `Step`
+    // values and the two waiting forms. A third form would be a new place to read, so the count
+    // is exact.
+    let source = repo_file("src/project_update.rs");
+    assert_eq!(
+        source.matches("name: \"generation\"").count(),
+        2,
+        "the `Step` values built for the generation step"
+    );
+    for form in [
+        "Step::waiting(\"generation\"",
+        "or_blocked(\"generation\"",
+        "argv(\"generation-apply\"",
+        "manifests/generation.json",
     ] {
-        let text = repo_file(rel);
-        for needle in needles {
-            assert!(text.contains(needle), "{rel} lacks {needle}");
-        }
+        assert!(source.contains(form), "src/project_update.rs lacks {form}");
+    }
+    // The help still lists both commands.
+    let help = repo_file("src/help.rs");
+    for command in ["(\"generation-plan\"", "(\"generation-apply\""] {
+        assert!(help.contains(command), "src/help.rs lacks {command}");
     }
 }
 
