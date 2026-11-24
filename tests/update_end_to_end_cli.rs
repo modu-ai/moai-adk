@@ -568,11 +568,11 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
     let fills = [
         ("<receipt of the hooks step>", id("hooks", "receipt")),
         (
-            "<agents_receipt of the generation step>",
+            "<agents_receipt of the project harness step>",
             id("generation", "agents_receipt"),
         ),
         (
-            "<receipt of the generation step>",
+            "<receipt of the project harness step>",
             id("generation", "receipt"),
         ),
         ("<backup of the go-state step>", id("go-state", "backup")),

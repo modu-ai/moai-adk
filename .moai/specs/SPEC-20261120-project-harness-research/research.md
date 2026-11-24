@@ -25,7 +25,7 @@ Search for the stack: "Command Line Applications in Rust testing exit codes clap
 | --- | --- | --- | --- |
 | `prj-cli-test-runner` | agent, tools: Read, Bash, scope: `src/`, `tests/` | the project has a CLI whose contract is arguments, output and exit codes; a runner that exercises the binary through its arguments and checks output and exit status keeps tests off the internals | <https://rust-cli.github.io/book/tutorial/testing.html> (named by the search; the excerpt about `assert_cmd` came from a secondary page, so this one is a pointer, not read); <https://rust.code-maven.com/testing/test-command-line-application.html> (excerpt) |
 | `prj-exit-code-reviewer` | agent, tools: Read, Grep, scope: `src/` | an error should be printed once, to stderr, and map to a stable exit code; a reviewer that looks for that in each change catches the drift | <https://iankohdes.github.io/posts/0007-truth-or-consequences> (excerpt on `std::process::exit` and exit codes) |
-| `prj-add-subcommand` | skill, trigger: adding or changing a `clap` subcommand | a subcommand needs the derive struct, a handler that returns `Result`, and an integration test of its output and exit code | the same testing pages as above |
+| `prj-add-subcommand` | skill, trigger: adding or changing a `clap` subcommand | a subcommand needs the derive struct, a handler that returns `Result`, and an integration test of its output and exit code | <https://rust-cli.github.io/book/tutorial/testing.html>; <https://rust.code-maven.com/testing/test-command-line-application.html> (the two testing pages of the first row: the integration test of output and exit status) |
 
 ### Fixture B: a TypeScript web application
 
