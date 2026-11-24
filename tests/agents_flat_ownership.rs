@@ -336,6 +336,14 @@ fn the_revert_restores_the_persons_file() {
     assert_eq!(r["state"], "reverted", "{r}");
     assert_eq!(fs::read_to_string(fx.flat("impl")).unwrap(), mine);
     assert!(!fx.nested("impl").exists());
+    // The restored file is still the person's: the record does not name it, so the next update
+    // asks again instead of moving it unasked.
+    let l = line(&fx.plan(), "impl");
+    assert_eq!(l.action, "conflict", "{l:?}");
+    assert!(
+        matches!(l.legacy.as_deref(), Some("kept_edited" | "kept_foreign")),
+        "{l:?}"
+    );
 }
 
 /// REQ-7: no choice, keep mine, an empty answer, end of input and a word that is no answer each
@@ -424,4 +432,40 @@ fn a_conflict_alone_is_worth_a_question() {
         "a conflict alone writes nothing"
     );
     assert!(agent_install::asks_anything(&conflict));
+}
+
+/// A choice about the flat file never overwrites a nested copy the person edited too: the apply
+/// is refused before any write and both files stay as they were.
+#[test]
+fn a_choice_never_overwrites_an_edited_nested_copy() {
+    let (fx, _, mine) = edited_impl();
+    fs::create_dir_all(fx.claude_agents().join("moai")).unwrap();
+    fs::write(fx.nested("impl"), "edited nested copy\n").unwrap();
+    let plan = fx.plan();
+    assert_eq!(line(&plan, "impl").action, "conflict");
+    let before = tree(&fx.home);
+    let e = fx.try_apply(&plan, &["claude:moai-impl.md"]);
+    assert!(e.is_err(), "the choice overwrote the nested copy: {e:?}");
+    assert_eq!(tree(&fx.home), before, "something was written");
+    assert_eq!(fs::read_to_string(fx.flat("impl")).unwrap(), mine);
+    assert_eq!(
+        fs::read_to_string(fx.nested("impl")).unwrap(),
+        "edited nested copy\n"
+    );
+}
+
+/// REQ-4: the difference shows a control character of the person's file as text, so the file
+/// cannot move the cursor or retitle the window.
+#[test]
+fn the_difference_shows_control_characters_as_text() {
+    let fx = fx();
+    fx.earlier_layout();
+    fx.write_flat("impl", "description: a\u{1b}[2Jb\n");
+    let plan = fx.plan();
+    let (_, out, _) = choose(&plan, "d\nk\n", false);
+    assert!(!out.contains('\u{1b}'), "an escape was sent: {out:?}");
+    assert!(
+        out.lines().any(|l| l.starts_with("- description: a")),
+        "{out:?}"
+    );
 }
