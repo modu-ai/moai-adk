@@ -272,14 +272,24 @@ Mutants on the committed files, each applied, run against its whole target and r
 - A merge with the tip as it is now: not made (the leader merges once at landing); the `check affected` PASS is cited for it.
 - The known limits listed under Risks (Go variants not recognised, no scan of new refs) have no test beyond the pass-through cases above.
 
-### Revision 6 (draft, nothing built)
+### Revision 6
 
-Revision 6 changes the verify commands of AC-1 and AC-5 (D-3); both are run again at this revision's head. The path list AC-5 had when the git-hook slice was checked named, beside this SPEC folder: `src/git_hooks/`, `tests/git_hooks_cli.rs`, `install/git-hooks/`, `install/commit-msg`, `src/ops/git_hooks_*`, `docs/design-review/appendix/operations/git_hooks_*`, `tests/update_git_hooks_cli.rs`, `tests/update_switch_layer.rs`, `tests/update_tux_git_hooks.rs`, `tools/repo_scans.json`, `tests/fixtures/help/`, `src/help.rs`, `src/main.rs`, `src/lib.rs`, `src/update.rs` and `src/update_tux.rs`, against the base `v2026.11.0`. Its own criteria are open:
+Status: revision 6, with the amendments of D-10, D-11 and D-12, is approved by the leader (its notes on the card of 2026-11-24T07:45:22Z, 08:08:17Z, 09:33:25Z and 10:22:48Z; leader judgments under the user's delegation of 2026-11-23T13:57Z and not the user's own pick) and built. Branch `spec/go-path-removal-20261121-r2`. It started from `NeXT` at `bd7ee6a41f` and merged the tip `974267e03d` before its last commits, as the leader asked, without a conflict. Every run below was made once in this worktree with `RUSTC_WRAPPER=sccache` in a heavy slot; the logs are files of the worktree's ignored `target/go-path-removal/` and are named here.
 
-- AC-16: not met — revision 6 is a draft; nothing is built.
-- AC-17: not met — revision 6 is a draft; nothing is built.
-- AC-18: not met — revision 6 is a draft; nothing is built.
-- AC-19: not met — revision 6 is a draft; nothing is built.
-- AC-20: not met — revision 6 is a draft; nothing is built.
-- AC-21: not met — revision 6 is a draft; nothing is built.
-- AC-22: not met — revision 6 is a draft; nothing is built.
+RED, commit `e412760925` (the tests against the unchanged code): `cargo nextest run --offline --locked --no-fail-fast --test update_switch_layer --test update_switch_cli` ran 27 tests, 9 passed and 18 failed, exit 100 (`red-run.log`); the 9 that passed pin what the change keeps. GREEN, commit `dfc49a0b55`: the same two targets with `repo_scans_table`, `help_text_names_moai` and `cli_text_citations` ran 64 tests, 64 passed, exit 0 (`green-l2.log`). The first green run (`green-l.log`, 26 of 27) showed one expectation of a test wrong — the product asks the launcher for its version in the preview and once more in the apply — and the test was corrected; the product did not change for it. The fresh-shell test of commit `68ac20a67d` ran 2 tests, 2 passed (`green-e2.log`); its first run (`green-e.log`, 1 of 2) showed the count of AC-22 wrong (D-11). clippy with warnings denied on the changed targets and tests: exit 0 (`clippy-l.log`, `clippy-e.log`, `recheck.log`). `cargo fmt --all -- --check`: exit 0. `tools/smoke/run.sh update` on the debug binary built from this worktree: `smoke: update pass steps=4 time=3.9s` (`smoke-update.log`).
+
+The verify commands as this revision writes them were run as they are (`ac.sh`, `ac-verify.log`, `recheck.log`). AC-1 found a row for each of the 60 words of the Go line, AC-2 printed `rows=77 with-disposition=77`, AC-3 counted 7 lines, AC-4 and AC-20 exited 0, and AC-5 printed 0 paths outside its list. AC-6 passed 11, AC-7 14, AC-8 6, AC-9 2, AC-10 4, AC-11 2, AC-12 6, AC-13 7 and AC-15 1, each exit 0. AC-14 as revision 5 wrote it exited 1 because `cargo test` refused its second filter (D-12); in the corrected form it passed 25. The same pass found the state-folder literal count of the two switch test files one over the baseline for the second preserved copy they read: the two rows of the baseline were raised (commit `356f4b82db`) and the CLI test was brought back to its old count (commit `021f683430`); the table scans then ran with it, 70 tests, 70 passed (`re-tables2.out`).
+
+The dangerous path ran for real with the debug binary built from this worktree, each case in its own throwaway HOME under `target/go-path-removal/` with a bare environment and git configuration pinned to nothing (`dangerous-path.log`, 2026-11-24T09:28:31Z). v1 and v2 beside a Rust launcher are offered `link`, applied with exit 0 into `link -> moai-cli` with one kept copy, and reverted with exit 0 to the script. An edited script, no launcher and a launcher answering with a Go line are offered `left` or `held` with no token, and a token forced on them is refused with exit 1 while the script and the folder stay as they were. A stop after the kept copy and a stop before the rename both end with exit 1, the script whole and one kept copy; the next confirmed run finishes with two kept copies and reverts. A plain file put in place of the link by hand makes the revert refuse with exit 1 and leaves that file and the kept copy.
+
+Revision 6 changes the verify commands of AC-1, AC-5 and AC-14 (D-3, D-12). The path list AC-5 had when the git-hook slice was checked named, beside this SPEC folder: `src/git_hooks/`, `tests/git_hooks_cli.rs`, `install/git-hooks/`, `install/commit-msg`, `src/ops/git_hooks_*`, `docs/design-review/appendix/operations/git_hooks_*`, `tests/update_git_hooks_cli.rs`, `tests/update_switch_layer.rs`, `tests/update_tux_git_hooks.rs`, `tools/repo_scans.json`, `tests/fixtures/help/`, `src/help.rs`, `src/main.rs`, `src/lib.rs`, `src/update.rs` and `src/update_tux.rs`, against the base `v2026.11.0`.
+
+- AC-16: met — 27 run, 27 passed (`update_switch_layer` and `update_switch_cli`).
+- AC-17: met — the same run, 27 passed.
+- AC-18: met — 11 run, 11 passed (`update_switch_cli`).
+- AC-19: met — 36 run, 36 passed (`go_path_retired_cli`, `bundle_build_cli`, `bundle_verify_cli`).
+- AC-20: met — the verify command exits 0.
+- AC-21: met — 18 run, 18 passed.
+- AC-22: met — 7 run, 7 passed (`go_path_retired_cli`, `cli_name_moai`).
+
+Not run for revision 6: the real HOME, its `PATH` lines and the whole earlier folder (the user steps under Plan); a fresh shell on the real machine (the user's look, D-9); Windows and Linux (the step makes a unix symbolic link, and on another platform the apply refuses before its first write, which was not executed there); a HOME whose state folder is the new name (the tests build the earlier layout only, and the step takes its folder from the HOME resolver, a line this change did not touch); the Python wrapper test (edited as text and not run, D-8).
