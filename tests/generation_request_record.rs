@@ -317,21 +317,7 @@ fn a_later_apply_replaces_the_record_and_an_agents_apply_keeps_it() {
         "workflow_reference": request["workflow_reference"],
         "local_file": request["local_file"],
     });
-    let plan = fx.call(
-        &["agents-plan", fx.p()],
-        &serde_json::to_vec(&agents).unwrap(),
-    );
-    fx.call(
-        &[
-            "agents-apply",
-            fx.p(),
-            "--plan-digest",
-            plan["plan_digest"].as_str().unwrap(),
-            "--permission-reference",
-            REF,
-        ],
-        &serde_json::to_vec(&plan).unwrap(),
-    );
+    agents_apply(&fx, &agents);
     assert_eq!(fx.manifest()["generation_request"], first);
 
     // A later generation apply with one role fewer replaces the record whole.
@@ -359,6 +345,33 @@ fn a_later_apply_replaces_the_record_and_an_agents_apply_keeps_it() {
         fx.manifest().get("generation_request").is_none(),
         "{}",
         fx.manifest()
+    );
+
+    // An agents-only apply of a manifest with no record writes no key for it, not even a null.
+    agents_apply(&fx, &agents);
+    assert!(
+        fx.manifest().get("generation_request").is_none(),
+        "{}",
+        fx.manifest()
+    );
+}
+
+/// `agents-plan` with `agents`, then `agents-apply` of that plan.
+fn agents_apply(fx: &Fx, agents: &Value) {
+    let plan = fx.call(
+        &["agents-plan", fx.p()],
+        &serde_json::to_vec(agents).unwrap(),
+    );
+    fx.call(
+        &[
+            "agents-apply",
+            fx.p(),
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            REF,
+        ],
+        &serde_json::to_vec(&plan).unwrap(),
     );
 }
 
