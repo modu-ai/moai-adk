@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261124-glm-key-scope
 title: "The glm key pick resolves its scope through key_vault and answers a Shared key outside a project"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
 parent: SPEC-20261121-glm-key-at-pick
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8521 (2026-11-24T11:44:07Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 8520 에 답함: 개정 1 승인, D-1·D-2 그대로, 기준 1 해석 확인); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:db52bb981f895d4acf0874d4b6bdbb09fe59c2d114d67520bcd89ee981895c3b"
 ---
 
 # The glm key pick resolves its scope through key_vault and answers a Shared key outside a project
@@ -15,6 +20,13 @@ parent: SPEC-20261121-glm-key-at-pick
 
 1. `src/model_effort_questions.rs:620` 의 `glm_key_scope` 는 `src/key_vault.rs:203` 의 `project_scope` 와 같은 계산(identity 의 `clone_id`·`clone_anchor`·`project_id` 를 읽어 `folder_name` 으로 만드는 14줄)을 복제해요. 이유는 `project_scope` 가 `identity(dir)` 를 불러서 프로세스 HOME 을 읽기 때문이에요(SPEC-20261124-identity-home-arg 가 `identity_in(path, home)` 를 더했어요). 두 곳이 어긋나면 모델 단계가 런처가 읽지 않는 폴더에 키를 저장해요. `key_vault` 에 HOME 을 받는 `project_scope_in` 을 두고 복제를 없애요.
 2. 프로젝트 밖(git 작업 트리가 아닌 곳)에서는 모델 단계가 키 질문을 건너뛰고 `moai key-set glm --prompt` 안내 한 줄만 보여요. 설치 흐름은 보통 프로젝트 밖에서 돌아서 설치 보고서 G8(glm 을 고르면 그 자리에서 키를 받아요)의 일부가 비어요. 프로젝트 밖에서는 Shared 범위(런처가 프로젝트 항목 다음에 읽는 폴더, `moai key-set --shared` 가 쓰는 곳)에 저장해요.
+
+## Interview
+
+- Q1: 프로젝트 밖에서는 키를 어디에 저장하나요? → A: 질문을 하고 Shared 범위에 저장해요. 질문에 '모든 프로젝트가 같이 쓰는 키'라는 말을 넣고 `moai key-remove glm --shared` 로 되돌려요(리더 결정 노트 8521, D-1).
+- Q2: identity 를 풀지 못하면요? → A: 지금처럼 건너뛰어요. 런처가 그 경우 Shared 키를 읽지 못해요(노트 8521, D-2).
+- Q3: 기준 1 의 "C-248 키 시험은 그대로"는 무슨 뜻인가요? → A: 단언은 그대로 두고, `glm_key_scope` 호출 세 곳만 기대 범위를 `project_scope_in` 으로 계산하게 바꿔요(노트 8521).
+- Q4: 모델 단계와 시험 세 개가 C-449 예약에 있는데요? → A: 리더가 C-449 에 give-back 을 요청했고, 돌려받으면 `card scope` 로 넓혀요. 그동안 key_vault 쪽부터 해요(노트 8521, 8522).
 
 ## Non-goals
 
