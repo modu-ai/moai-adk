@@ -578,8 +578,7 @@ fn debug_assertions_on(line: &str) -> bool {
     let lower = line.to_ascii_lowercase();
     ["debug-assertions", "debug_assertions"].iter().any(|key| {
         lower.match_indices(key).any(|(at, _)| {
-            let rest = lower[at + key.len()..]
-                .trim_start_matches(|c: char| c == '=' || c == ' ' || c == '"');
+            let rest = lower[at + key.len()..].trim_start_matches(['=', ' ', '"']);
             let value: String = rest
                 .chars()
                 .take_while(|c| c.is_ascii_alphanumeric())
