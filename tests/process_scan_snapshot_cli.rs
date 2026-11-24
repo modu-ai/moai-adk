@@ -486,3 +486,152 @@ fn an_lsof_cut_off_by_the_time_limit_refuses_the_removal() {
     );
     assert!(fx.wts[0].exists(), "the worktree stayed in place");
 }
+
+// ---- REQ-15 (SPEC-20261124-cleanup-leftovers, slice E1): the re-check right before a home move ----
+
+/// A `lsof` whose first two calls (one command's working-folder scan and open-file scan) see an
+/// empty table and whose later calls see a process working inside `busy`. The counter is per
+/// calling process (`$PPID` is the moai binary), so every command starts with its quiet pair:
+/// the plan command's scan and the apply command's recomputation of the plan are quiet, a scan
+/// after those — the re-check right before the move — sees the process.
+#[cfg(unix)]
+fn busy_after_the_first_read(stub: &Path, busy: &Path) {
+    let cnt = stub.join("cnt");
+    fs::create_dir_all(&cnt).unwrap();
+    stub_lsof(
+        stub,
+        &stub.join("lsof.log"),
+        &format!(
+            "n=$(cat '{cnt}/'$PPID'.count' 2>/dev/null || echo 0); echo $((n+1)) > '{cnt}/'$PPID'.count'; if [ \"$n\" -lt 2 ]; then echo 'n/nowhere/at/all'; else printf 'fcwd\\nn%s\\n' '{busy}'; fi",
+            cnt = cnt.display(),
+            busy = busy.display(),
+        ),
+    );
+}
+
+/// One `moai` command in the temporary HOME with the stub `lsof` first on PATH and the real scan.
+#[cfg(unix)]
+fn home_json(home: &TempHome, stub: &Path, args: &[&str]) -> Value {
+    let mut c = home.command(args);
+    c.env("PATH", format!("{}:/usr/bin:/bin", stub.display()));
+    c.env(common::PROCESS_TABLE_SWITCH, "real");
+    let out = c.output().unwrap();
+    serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&out.stderr)))
+}
+
+/// REQ-15: `home-retire-apply` reads the processes again right before it moves. A program that
+/// started working in `cache` after the command's first scan keeps `cache` in place; a read of
+/// the command cache would move it.
+#[cfg(unix)]
+#[test]
+fn the_retire_move_recheck_runs_its_own_scan() {
+    if reads_proc() {
+        return;
+    }
+    let home = go_home();
+    let h = home.path().to_str().unwrap().to_string();
+    fs::create_dir_all(home.path().join(".moai/cache")).unwrap();
+    fs::write(home.path().join(".moai/cache/a.bin"), "x").unwrap();
+    let busy = fs::canonicalize(home.path().join(".moai/cache")).unwrap();
+    let stub_dir = tempfile::TempDir::new().unwrap();
+    let stub = stub_dir.path();
+    busy_after_the_first_read(stub, &busy);
+
+    let p = home_json(
+        &home,
+        stub,
+        &["home-retire-plan", "--home", &h, "--now", NOW],
+    );
+    assert_eq!(p["ok"], json!(true), "{p}");
+    assert!(
+        p["result"]["counts"]["retire"].as_u64().unwrap_or(0) > 0,
+        "the plan's own scan saw nothing, so `cache` is planned to move: {p}"
+    );
+    let digest = p["result"]["plan_digest"].as_str().unwrap().to_string();
+
+    let a = home_json(
+        &home,
+        stub,
+        &[
+            "home-retire-apply",
+            "--home",
+            &h,
+            "--now",
+            NOW,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+    );
+    assert_eq!(a["ok"], json!(true), "{a}");
+    assert!(
+        a.to_string().contains("process_cwd"),
+        "the move was skipped for the working process: {a}"
+    );
+    assert!(
+        home.path().join(".moai/cache/a.bin").is_file(),
+        "the busy entry stayed in place: {a}"
+    );
+}
+
+/// REQ-15: `home-archive-apply` reads the processes again right before it moves the earlier
+/// folder, after the plan was recomputed and the manifest written.
+#[cfg(unix)]
+#[test]
+fn the_archive_move_recheck_runs_its_own_scan() {
+    if reads_proc() {
+        return;
+    }
+    let home = TempHome::new();
+    let h = home.path().to_str().unwrap().to_string();
+    for (rel, body) in [
+        (".moai-cli/state/usage-limits.json", "{}\n"),
+        (".moai-cli/receipts/r.json", "{}\n"),
+        (".moai/state/active-sessions.json", "[]\n"),
+    ] {
+        let p = home.path().join(rel);
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(p, body).unwrap();
+    }
+    let busy = fs::canonicalize(home.path().join(".moai-cli/state")).unwrap();
+    let stub_dir = tempfile::TempDir::new().unwrap();
+    let stub = stub_dir.path();
+    busy_after_the_first_read(stub, &busy);
+
+    let p = home_json(
+        &home,
+        stub,
+        &["home-archive-plan", "--home", &h, "--now", NOW],
+    );
+    assert_eq!(p["ok"], json!(true), "{p}");
+    assert_eq!(p["result"]["action"], json!("retire"), "{p}");
+    let digest = p["result"]["plan_digest"].as_str().unwrap().to_string();
+
+    let a = home_json(
+        &home,
+        stub,
+        &[
+            "home-archive-apply",
+            "--home",
+            &h,
+            "--now",
+            NOW,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+    );
+    assert!(
+        a.to_string().contains("process_cwd"),
+        "the move was skipped for the working process: {a}"
+    );
+    assert!(
+        home.path()
+            .join(".moai-cli/state/usage-limits.json")
+            .is_file(),
+        "the earlier folder stayed in place: {a}"
+    );
+}
