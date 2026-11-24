@@ -1082,11 +1082,17 @@ enum Action {
     /// `--head` only while it still points at the tip that was read, then the same close as `card
     /// finish` with `--head` as the landed head. Only `--by leader` lands until the typed verdict
     /// exists. Everything `card finish` would refuse is refused before the branch moves; so is a
-    /// candidate that is no commit, a branch checked out in a worktree, a SPEC that fails at the
-    /// candidate and a candidate that does not have the tip on its first-parent line
-    /// (`stale_base`). A branch that moved in between is refused as `tip_moved`. A close refused
-    /// after the move leaves the branch moved and says so; the same call run again skips the move
-    /// and closes. A card already `done` with the same head answers done and writes nothing.
+    /// candidate that is no commit, a SPEC that fails at the candidate, a candidate that does not
+    /// have the tip on its first-parent line (`stale_base`) and a worktree that has the branch
+    /// checked out and cannot be brought along: a tracked change, an operation in progress, a
+    /// HEAD that is not the tip, a file no commit tracks where the head adds one, a sparse
+    /// checkout, a skip-worktree or assume-unchanged entry, a submodule change or a second
+    /// worktree on the branch. A worktree that has the branch checked out is brought to the head
+    /// right after the move (`git read-tree -m -u`), and the answer's `worktree_follow` says
+    /// `followed`, `finished` or `none`. A branch that moved in between is refused as
+    /// `tip_moved`. A close or a follow refused after the move leaves the branch moved and says
+    /// so; the same call run again skips the move, finishes the worktree and closes. A card
+    /// already `done` with the same head answers done and writes nothing.
     ///
     /// The close needs an independent PASS of the exact head (SPEC-20261124-land-closes-card): when
     /// `card verdict` recorded one that the verdict check relies on, every open criterion not

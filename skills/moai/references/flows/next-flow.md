@@ -12,7 +12,7 @@ Four technical rules make the flow run.
 
 - **No tip chase.** A lane works from the base it started on. When the integration tip moves, the lane does not merge the new tip, rebase or start its checks again. The lander deals with a moved tip once, at landing.
 - **Evidence before landing.** A head lands only with its evidence: the checks the lane ran on that head, with their exit codes, and a passing verdict from a session that did not write the change (`references/audit.md`). The landing command itself refuses a head whose SPEC check or card criteria do not pass at that head.
-- **Exactly-once landing.** A card lands once. The landing command moves the integration branch by one compare-and-swap and closes the card in the same call; a rerun of the same call finds the head already inside the tip and never moves the branch twice.
+- **Exactly-once landing.** A card lands once. The landing command moves the integration branch by one compare-and-swap and closes the card in the same call; a rerun of the same call finds the head already inside the tip and never moves the branch twice. A worktree on the branch follows the move (`worktree_follow`).
 - **A guarded tip.** The integration branch moves only through the landing command. A protection hook refuses every other change of it.
 
 ## A lane
@@ -40,7 +40,7 @@ Four technical rules make the flow run.
 - A message the ledger does not back starts nothing: the leader sends no `/clear` and no dispatch, and waits for the ledger.
 - The lane's message and the leader's dispatch, answer and line after `/clear` are written in the user's conversation language; only a prompt to a subagent is English, and commands, paths, card ids and protocol lines stay verbatim.
 - The leader sends `/clear` to the exact existing window only after the ledger shows the lane's card done or released, and only when nothing is open: no card in review, no live reservation, no run of the lane's own, no unsaved change, no input or selection prompt on the screen and nothing unknown.
-- A fixed delay after `/clear` proves nothing. The leader confirms that the new session is ready, sends the next line once, and confirms that session's reservation of the new card (the ACK). When the ACK is not seen it inspects the window and does not send again.
+- A fixed delay after `/clear` proves nothing; the leader confirms that the new session is ready, sends the next line once, and confirms that session's reservation of the new card (the ACK). When the ACK is not seen it inspects the window and does not send again.
 - A new window is opened only when the existing one cannot be recovered.
 
 ### Final flow
@@ -51,9 +51,9 @@ Four technical rules make the flow run.
 
 ## Landing
 
-- A card lands exactly once, by the lander: today the leader session, the only caller the command accepts. The command is `moai card land <card> --head <40 hex> --by leader`.
+- A card lands exactly once, by the lander: the leader session, the only caller the command accepts. The command is `moai card land <card> --head <40 hex> --by leader`.
 - READY receipt: `check affected --card`. The wide set runs once per batch in `card land-batch`; the full run every five landings stays.
-- When the tip is not on the first-parent line of the head (the tip moved after the lane's base), the command refuses with `stale_base` and changes nothing. The lander then merges the lane's head onto the tip once, in a worktree of its own, with the tip as the first parent, and lands that merge. The lane does nothing.
+- When the tip is not on the first-parent line of the head (the tip moved after the lane's base), the command refuses with `stale_base` and changes nothing. The lander then merges the lane's head onto the tip in a worktree of its own, with the tip as the first parent, and lands that merge.
 - Audit brief: name the scan tests `moai repo-scans --refs <tip> <head>` picks; run only their `cargo` checks on the merge tree, leaving out a Python line, and record each as a receipt step `scan:<id>` of the PASS for `moai card land`.
 - The protection hook is git's `reference-transaction` hook, which runs `moai card guard`. It refuses every create, move and delete of the integration branch that the landing command did not announce, a rename or copy onto its name included. Land with `moai card land`; never look for a way around the hook.
 - After a landing the landing command pushes the integration branch to the remote, fast-forward only, and only when the user has turned the remote copy on: the `remote_copy` setting, off by default, a key of the project profile. While it is off nothing is pushed and the remote is not read. A copy that could not finish waits for the next landing, and a remote whose branch went another way is held as it is; neither undoes the landing.
