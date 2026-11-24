@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-update-flat-agent-ownership
 title: "moai update 가 평평한 에이전트 파일을 우리 것으로 알아보고, 진짜 사용자 수정은 고르게 하고, conflict 가 남으면 Partial 로 보여요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8453 (2026-11-24T10:19:43Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8452 에 대한 답): revision 1 승인, head a34384ed05a565fb7a7e32dc81ac251913bf877a, D-6(유지를 기억하지 않음)과 D-7(conflict 만 있어도 질문)을 받아요; 리더가 노트에 적었고 레인은 그 노트를 옮겨 적었어요"
+  digest: "sha256:8e6bbf894a92e1f88ee900a0d11c67f5c92c2b1fbccb0242aad51474e3ae9649"
 ---
 
 # moai update 가 평평한 에이전트 파일을 우리 것으로 알아보고, 진짜 사용자 수정은 고르게 하고, conflict 가 남으면 Partial 로 보여요
@@ -18,6 +23,14 @@ created: 2026-11-24
 이 SPEC 은 `SPEC-20261121-base-agents-user-folder` 의 REQ-4 와 AC-2 의 conflict 부분을 대체해요 (리더 결정 2026-11-24, 노트 8447 선택 A: 옛 SPEC 은 승인 완료본이라 고치지 않고 새 SPEC 이 대체해요). 옛 SPEC 에 대체 포인터 한 줄을 넣는 일은 이 카드의 쓰기 범위 밖이라 후속 카드로 남겨요. 바이트가 같은 파일은 우리 것으로 알아보고, 진짜로 수정된 파일은 막다른 conflict 대신 사용자가 고르게 하고, conflict 가 남은 적용은 Partial 로 보여요.
 
 읽는 쪽은 `moai update` 를 돌리는 사용자, 이 변경을 구현하는 레인, 이를 감사하는 세션이에요.
+
+## Interview
+
+- Q1: Does a new SPEC replace REQ-4 of the base-agents SPEC, or does that SPEC get a revision 2? -> A: a new SPEC (D-1); the old one is an approved, audited document with a Result, and the leader chose A on note 8447.
+- Q2: Which bytes make a flat file ours? -> A: the record, the current render, or the package file of the same role in the package being applied (D-2); older version folders are left out.
+- Q3: Where is the person asked, and what happens off a terminal? -> A: after the confirming yes and before the write, at a terminal only; the JSON envelope path keeps every conflict and answers `partial` (D-3, D-5).
+- Q4: Where do the person's bytes go when MoAI's file is chosen? -> A: the receipt folder `before/<host>/legacy/`, so `agent_install::revert` restores them without a new backup folder (D-4).
+- Q5: Is a kept file remembered, and is a conflict alone worth a question? -> A: not remembered, so the next update asks again and ends Partial (D-6); a conflict alone is asked about, or the person could never choose (D-7). Both accepted by the leader on note 8453.
 
 ## Non-goals
 
