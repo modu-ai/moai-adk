@@ -189,7 +189,7 @@ The run time stays about the same because the same tests run. The saving is in c
 
 ## Result
 
-Slice 1, the card area (2026-11-25, lane agent-3, base `b0bffbbd48`, code head `4f3387837e`). Status: slice 1 is written and waits for the independent audit. Slices 0 and 0b stay as they were (the table, the scan of it, the readers of an area folder).
+Slice 1, the card area (2026-11-25, lane agent-3, base `b0bffbbd48`; the tested head is the one named in the READY note of the card). Status: slice 1 is written and waits for the independent audit. Slices 0 and 0b stay as they were (the table, the scan of it, the readers of an area folder).
 
 What slice 1 holds:
 
@@ -201,7 +201,7 @@ What slice 1 holds:
 
 Measurements, one run each, on a clean `git archive` export, cold `cargo test --locked --offline --no-run` with `CARGO_INCREMENTAL=0`, no wrapper, inside one heavy slot, while other lanes ran (load average 18.7 before, 22.3 after). Scripts `baseline.sh` and `after.sh` in the lane's scratchpad:
 
-| item | before `b0bffbbd48` | after `ce41e73afb` | change |
+| item | before `b0bffbbd48` | after (the card move, before the repairs) | change |
 | --- | --- | --- | --- |
 | wall time | 161.49 s | 145.85 s | −15.64 s (−9.7%) |
 | CPU time (user + sys) | 566.98 + 87.79 = 654.77 s | 507.30 + 66.15 = 573.45 s | −81.32 s (−12.4%) |
@@ -211,7 +211,7 @@ Measurements, one run each, on a clean `git archive` export, cold `cargo test --
 | peak memory | 3,029,336,064 B | 3,018,194,944 B | about equal |
 | `cargo nextest list` lines | 8,171 | 8,179 | +8 |
 
-The after run was taken on `ce41e73afb`; the code head `4f3387837e` adds the repairs that the whole-area run found (below), which change no build step. The card area is 1,330 of the repository's tests, so the saving is one slice's share; the cargo runner builds the library once in both runs. The load differs between the runs and each is a single run, so the figures are an estimate of the order, not a benchmark.
+The after run was taken on the card move before the repairs (a revision that the later squash into one code commit replaced); the repairs that the whole-area run and the receipts found (below) change no build step. The card area is 1,330 of the repository's tests, so the saving is one slice's share; the cargo runner builds the library once in both runs. The load differs between the runs and each is a single run, so the figures are an estimate of the order, not a benchmark.
 
 Equal counts and names (AC-7, criterion 1 of the card):
 
@@ -227,6 +227,8 @@ Checks (every cargo run in `moai heavy-slot-acquire --name agent-3 --max 4`):
 - The same run after those repairs, `cargo nextest run --test card --test test_home_guard` (`target/agent-3/card-area-run2.log`, 163.3 s): 1,384 passed, 0 failed.
 - The first receipt of the slice (head `c57b68a792`, `target/check-affected-c57b68a79206/`) was FAIL, `clippy=101 test=100`, and found two more: `clippy::duplicate_mod` because two card modules each loaded `tests/common/ready_receipt.rs` by `#[path]` (it is declared once in `tests/card/main.rs` now and the two modules `use crate::ready_receipt`), and `rule_history_guard::every_test_file_named_in_the_history_exists` because it looked for a moved file only at `tests/<name>.rs` (it also looks in an area crate folder now, `tests/rule_history_guard.rs`, scope widened with a reason). After both, `cargo clippy --locked --offline --all-targets -- -D warnings` exits 0 and `rule_history_guard` plus the two `card_ready_*` modules pass (29 passed).
 - Guard mutants (one slot call, `target/agent-3/mutants3.py`, tree clean afterwards), each killed with exit 100 by the named test: `steps()` adds the area crate once (`area_modules_run_through_their_crate_with_a_module_filter`), the module filter is anchored at `^` (`a_target_of_its_own_stays_whole_beside_an_area_crate` and the same test), and the scans read the module files of an area crate (`exemptions_are_not_stale` and `file_read_exemptions_are_readers_with_a_reason_once`).
+
+- Receipts, bare `moai check affected` (150 targets, 135 scans): the first run failed in clippy (`duplicate_mod` of the shared `ready_receipt` helper, repaired by loading it once in `tests/card/main.rs`) and in `rule_history_guard` (it did not read an area folder); the second failed in one test, `layout_moved_areas_agree_with_their_main_rs`, which wanted a file for the `#[path]` module (repaired: a module under `#[path]` needs no file, like `common`); the third passed with 5,033 of 5,033 tests.
 
 Per acceptance criterion:
 
