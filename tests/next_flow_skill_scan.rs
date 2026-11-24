@@ -2130,7 +2130,7 @@ const SELF_CHECK: &str = "references/internal/self-check.md";
 
 /// The byte size of the flow reference on the integration tip that landed the cargo-only pin
 /// (leader dispatch of 2026-11-23); the restored meanings fit inside it.
-const FLOW_REF_TIP_BYTES: usize = 7974;
+const FLOW_REF_TIP_BYTES: usize = 8051;
 
 /// The first line of `text` that holds `marker`, a list item found by its first words so that a
 /// renumbered list does not break the pin.
