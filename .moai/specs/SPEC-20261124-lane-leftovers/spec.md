@@ -107,3 +107,16 @@ NeXT 팁 efb3a80ae9 를 합친 가지에서 읽은 것이에요(합치기는 리
 - 뮤턴트 요약(모두 커밋된 트리의 복사본이 아니라 제자리 변경 뒤 `git checkout -- <path>` 로 복원, 일곱 개): 줄 검사 끔·고정 목록 필터 끔·예약 시각 필터 끔·`--ignored=matching` 뺌·`--no-optional-locks` 없는 `git status`·자리표시자 거절 뺌 — 모두 실패(exit 100); `.skip(1)` 뺌 — 처음 생존, 테스트를 더한 뒤 실패.
 - 알려진 것: `mutant_line.rs` 가 읽기 전용이라 같은 열두 줄(코드 울타리·들여쓰기·`- ` 규칙)을 `ready_leftovers.rs` 에 두었어요. 하나로 합치는 일은 뒤 SPEC 의 몫이에요.
 - observe 창: 아직 시작하지 않았어요(이 SPEC 이 NeXT 에 오른 뒤 다음 READY 10개). 오탐 횟수는 비어 있어요.
+
+### 감사 FAIL(AUDIT #448, 헤드 5fc44126bb) 수리
+
+같은 가지의 새 커밋에서 고쳤어요. SPEC 의 요구와 범위는 바뀌지 않아서 판은 4 그대로예요.
+
+- B1 met — 거절 문장의 "temporary HOME" 이 `src/contract.rs` 의 RULES 에서 `("temporary", Io)` 에 먼저 맞아 거절이 `io`·`retryable true` 로 나왔어요. 문장을 "scratch HOME" 으로 바꿨고, `every_refusal_is_an_input_refusal_that_a_resend_does_not_change`(다섯 모양 모두 `invalid_input`, 재시도 불가)와 통합 시험 `the_refusal_is_an_input_refusal_that_is_not_worth_resending`(찍힌 오류의 `kind` 와 `retryable`)이 못박아요.
+- B2 met — 살아남은 뮤턴트 셋마다 시험을 더했어요: `.claude/` 아래 파일(`expected_state_is_never_a_leftover`, 통합 시험의 `.claude/settings.local.json`·`.claude/worktrees/other/file.txt`), 오래된 폴더 안의 새 중첩 파일(`a_walk_goes_below_the_folder_it_is_given`, 통합 시험의 `keep/sub/new.bin` → `keep/`), 같은 초 경계(`a_touch_in_the_second_the_card_was_reserved_is_new`, `is_new_since` 로 뺐어요).
+- N1 met — git 이 exit 0 으로 stderr 에 경고를 내면(읽을 수 없는 폴더) `shared_checkout: not_checked` 로 답해요(`status_outcome`; 단위 시험과 통합 시험 `a_folder_git_cannot_read_makes_the_answer_not_checked`). 이 시험은 모든 폴더를 읽을 수 있는 사용자로 돌면 할 일이 없어서 그냥 끝나요.
+- N3 met — 걷기는 `limit` 개를 넘게 보지 않아요(`newest_secs_within`; 전에는 한도에 닿은 뒤에도 쌓아 둔 항목을 다 봤어요). N-1·N·N+1·0 시험 `the_walk_looks_at_no_more_than_its_limit`.
+- N4 met — 답 목록은 `LIST_LIMIT` 200 개까지고, 넘으면 마지막 항목이 나머지 수를 세요(`limited`; 200·201·6만 개 시험). `src/card/work.rs` 가 다른 카드의 예약이라 답 필드를 더하지 않고 목록 안의 마지막 항목으로 했어요.
+- N5 met — `self-check.md` 의 번호 9 가 둘이던 것을 고쳐 9~20 으로 다시 매기고, 낡은 `(flows/next-flow)` 가리킴을 `moai card note --help` 로 바꿨어요. 소스 매니페스트의 sha256 한 값을 다시 계산했어요(`tools/source_manifest.py write`, `check` ok).
+- 뮤턴트 여덟 개(제자리 변경 뒤 `git checkout -- <path>` 로 복원, 스크립트 `target/lane-leftovers-fix/mut.py`): 문장에 "temporary" 되돌림, `.claude` 를 기대 목록에서 뺌, 폴더 걷기 끔, `t >= since` → `t > since`, stderr 신뢰, 걷기 한도 `<` → `<=`, 목록 자르기 끔, `--no-optional-locks` 뺌 — 여덟 모두 exit 100.
+- 안 한 것: N6(울타리 해석 중복)은 뒤 SPEC 의 몫이에요. N2 는 이제 통합 시험이 읽을 수 없는 폴더를 가려요(저장소 전체가 읽을 수 없는 경우는 단위 시험 `a_checkout_that_cannot_be_read_is_not_checked` 그대로). N7 은 이번 READY 노트에서 맞춰요.
