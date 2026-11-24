@@ -230,11 +230,22 @@ fn default_folder(home: &Path, host: &str) -> PathBuf {
 /// plain or absent, and the file itself either a plain file, absent, or (in a config folder other
 /// than the default folder) a link straight to a regular file inside the default folder.
 fn locate(home: &Path, host: &str, kind: &str) -> Result<Spot> {
-    let (root, rel) = place(home, host, kind)?;
-    folders_plain(&root, rel)?;
+    locate_labeled(home, host, kind).map_err(|(_, why)| why)
+}
+
+/// [`locate`], with the word that says what was refused: `folder_not_plain` for a folder on the
+/// way, `file_not_plain` for the file itself (a link that is not followed).
+fn locate_labeled(
+    home: &Path,
+    host: &str,
+    kind: &str,
+) -> std::result::Result<Spot, (&'static str, String)> {
+    let folder = |why: String| ("folder_not_plain", why);
+    let (root, rel) = place(home, host, kind).map_err(folder)?;
+    folders_plain(&root, rel).map_err(folder)?;
     let own = root.join(rel);
     let default = default_folder(home, host);
-    let link = linked_file(&root, &own, &default)?;
+    let link = linked_file(&root, &own, &default).map_err(|why| ("file_not_plain", why))?;
     let shared = link.is_some() || same_folder(&root, &default);
     Ok(match link {
         Some(real) => Spot {
@@ -1033,11 +1044,10 @@ pub fn revert_in(
             return Err("style receipt names an unknown target".into());
         }
         let name = format!("{}:{}", e.host, e.kind);
-        let spot = match locate(&home, &e.host, &e.kind) {
+        let spot = match locate_labeled(&home, &e.host, &e.kind) {
             Ok(spot) => spot,
-            Err(reason) => {
-                skipped
-                    .push(json!({"target": name, "reason": format!("folder_not_plain: {reason}")}));
+            Err((label, reason)) => {
+                skipped.push(json!({"target": name, "reason": format!("{label}: {reason}")}));
                 continue;
             }
         };

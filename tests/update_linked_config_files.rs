@@ -241,16 +241,26 @@ fn a_config_file_linked_into_the_default_folder_is_planned_and_written_there() {
 fn only_a_link_straight_to_a_regular_file_inside_the_default_folder_is_followed() {
     // (name, how the profile's settings.json link is made: the link target as a path)
     type Make = fn(&Fixture) -> PathBuf;
-    let cases: [(&str, Make); 5] = [
+    // Every case that has an outside file keeps it at `outside/settings.json`: the loop below
+    // reads it before and after, so a write through the link shows as a changed byte.
+    let cases: [(&str, Make); 6] = [
         ("outside the default folder", |f| {
             write(&f.outside().join("settings.json"), "{\"keep\": 1}\n");
+            // The default folder is there, so the refusal is the place of the target.
+            fs::create_dir_all(f.default_dir()).unwrap();
             f.outside().join("settings.json")
         }),
+        ("a relative link that leaves the default folder", |f| {
+            write(&f.outside().join("settings.json"), "{\"keep\": 1}\n");
+            fs::create_dir_all(f.default_dir()).unwrap();
+            // From `home/profiles/p`: two folders up is the HOME, then `outside`.
+            PathBuf::from("../../outside/settings.json")
+        }),
         ("a link to a link", |f| {
-            write(&f.outside().join("real.json"), "{\"keep\": 1}\n");
+            write(&f.outside().join("settings.json"), "{\"keep\": 1}\n");
             fs::create_dir_all(f.default_dir()).unwrap();
             symlink(
-                f.outside().join("real.json"),
+                f.outside().join("settings.json"),
                 f.default_dir().join("other.json"),
             )
             .unwrap();
@@ -325,6 +335,134 @@ fn only_a_link_straight_to_a_regular_file_inside_the_default_folder_is_followed(
     .unwrap();
     let p = plan(&f, Some(&f.profile()));
     assert_eq!(action(&p, "setting"), "set", "{p}");
+}
+
+/// A relative link is read from the folder the link lies in: one that lands on a regular file
+/// inside the default folder is followed (and stays relative), one that leaves it is refused (the
+/// table above holds that case).
+#[test]
+fn a_relative_link_into_the_default_folder_is_followed_and_stays_relative() {
+    let f = current_home();
+    let settings = f.default_dir().join("settings.json");
+    write(&settings, "{\"a\": 1}\n");
+    fs::create_dir_all(f.default_dir().join("output-styles")).unwrap();
+    fs::create_dir_all(f.profile()).unwrap();
+    // From `home/profiles/p`: two folders up is the HOME, then `.claude`.
+    let relative = PathBuf::from("../../.claude/settings.json");
+    symlink(&relative, f.profile().join("settings.json")).unwrap();
+    symlink(
+        f.default_dir().join("output-styles"),
+        f.profile().join("output-styles"),
+    )
+    .unwrap();
+    let p = plan(&f, Some(&f.profile()));
+    assert_eq!(action(&p, "setting"), "set", "{p}");
+    assert_eq!(
+        target(&p, "setting")["path"],
+        json!(settings.to_str().unwrap()),
+        "{p}"
+    );
+    let (ok, applied) = apply(&f, Some(&f.profile()), &p);
+    assert!(ok, "{applied}");
+    let now: Value = serde_json::from_slice(&fs::read(&settings).unwrap()).unwrap();
+    assert_eq!(now, json!({"a": 1, "outputStyle": "MoAI-Easy"}));
+    assert_eq!(
+        fs::read_link(f.profile().join("settings.json")).unwrap(),
+        relative,
+        "the link itself is not changed"
+    );
+}
+
+/// The default folder is itself a link: a file link of a config folder is not followed through
+/// it, and nothing is written.
+#[test]
+fn a_default_folder_that_is_a_link_blocks_a_linked_file() {
+    let f = current_home();
+    write(&f.outside().join("settings.json"), "{\"keep\": 1}\n");
+    symlink(f.outside(), f.default_dir()).unwrap();
+    fs::create_dir_all(f.profile()).unwrap();
+    symlink(
+        f.default_dir().join("settings.json"),
+        f.profile().join("settings.json"),
+    )
+    .unwrap();
+    let p = plan(&f, Some(&f.profile()));
+    assert_eq!(action(&p, "setting"), "blocked", "{p}");
+    let d = detail(&p, "setting");
+    assert!(
+        d.contains(f.default_dir().to_str().unwrap()) && d.contains("is a symlink"),
+        "the detail names the default folder that is a link: {d}"
+    );
+    assert!(d.contains("next:"), "{d}");
+    let (ok, a) = apply(&f, Some(&f.profile()), &p);
+    assert!(ok, "{a}");
+    assert_eq!(
+        fs::read_to_string(f.outside().join("settings.json")).unwrap(),
+        "{\"keep\": 1}\n",
+        "nothing is written through the link of the default folder"
+    );
+}
+
+/// A revert whose link was changed since the apply skips that file, names it as a file that is
+/// not plain, and leaves the bytes behind the new link alone; the other target is reverted.
+#[test]
+fn a_revert_skips_a_linked_file_whose_link_changed_and_names_a_file() {
+    let f = earlier_home();
+    orca_layout(&f);
+    let profile = f.profile();
+    let settings = f.default_dir().join("settings.json");
+    let p = plan(&f, Some(&profile));
+    let (ok, applied) = apply(&f, Some(&profile), &p);
+    assert!(ok, "{applied}");
+    write(&f.outside().join("settings.json"), "{\"keep\": 1}\n");
+    fs::remove_file(profile.join("settings.json")).unwrap();
+    symlink(
+        f.outside().join("settings.json"),
+        profile.join("settings.json"),
+    )
+    .unwrap();
+    let id = applied["result"]["receipt"].as_str().unwrap();
+    let (ok, reverted) = op(
+        &f,
+        Some(&profile),
+        &[
+            "home-style-revert",
+            f.home.to_str().unwrap(),
+            "--receipt",
+            id,
+            "--permission-reference",
+            PERM,
+        ],
+    );
+    assert!(ok, "{reverted}");
+    let skipped = reverted["result"]["skipped"].as_array().unwrap();
+    let setting = skipped
+        .iter()
+        .find(|s| s["target"] == "claude:setting")
+        .unwrap_or_else(|| panic!("the setting is not skipped: {reverted}"));
+    assert!(
+        setting["reason"]
+            .as_str()
+            .unwrap()
+            .starts_with("file_not_plain: "),
+        "a file link is a file that is not plain: {reverted}"
+    );
+    assert_eq!(
+        fs::read_to_string(f.outside().join("settings.json")).unwrap(),
+        "{\"keep\": 1}\n"
+    );
+    let still: Value = serde_json::from_slice(&fs::read(&settings).unwrap()).unwrap();
+    assert_eq!(
+        still["outputStyle"], "MoAI-Easy",
+        "the setting was not reverted"
+    );
+    assert!(
+        reverted["result"]["reverted"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("claude:style_file")),
+        "{reverted}"
+    );
 }
 
 /// A link that is changed after the plan makes the apply refuse and write nothing.
@@ -415,7 +553,7 @@ fn a_blocked_style_target_gives_a_reason_and_a_next_step_in_detail_and_notices()
 }
 
 /// The keys destination comes from the one HOME state folder function: below the earlier state
-/// folder while the HOME has no marker of this generation (the move is card C-199's), below the
+/// folder while the HOME has no marker of this generation (the move belongs to the open card that merges the two state folders), below the
 /// current one once it has. The switch link folder comes from the same function
 /// (`src/update/switch.rs`, pinned by `update_switch_cli`).
 #[test]
