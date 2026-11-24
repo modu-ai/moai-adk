@@ -14,13 +14,17 @@ const NEW_FLOW: &str = ".claude/rules/moai-flow.md";
 const OLD_FLOW: &str = ".claude/rules/moai/flow.md";
 const EARLIER_ID: &str = "routing-1000-0";
 
-fn skill_file(rel: &str) -> String {
-    fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("skills/moai")
-            .join(rel),
-    )
-    .unwrap()
+const ROUTING_TEXT: &str = "## MoAI\n\nUse the skill ({invoke}).\n";
+const FLOW_TEXT: &str =
+    "# MoAI evidence and handoff\n\n- Make the smallest change that meets the criteria.\n";
+
+/// The text of one package source, written here so no test reads a checked-in file.
+fn source_text(rel: &str) -> String {
+    match rel {
+        r if r == SOURCE => ROUTING_TEXT.to_string(),
+        r if r == FLOW_SOURCE => FLOW_TEXT.to_string(),
+        other => panic!("no text for {other}"),
+    }
 }
 
 fn temp_home() -> (tempfile::TempDir, PathBuf) {
@@ -34,7 +38,7 @@ fn package(flow: &str) -> tempfile::TempDir {
     let pkg = tempfile::tempdir().unwrap();
     fs::write(pkg.path().join("SKILL.md"), "package\n").unwrap();
     for (rel, text) in [
-        (SOURCE, skill_file(SOURCE)),
+        (SOURCE, source_text(SOURCE)),
         (FLOW_SOURCE, flow.to_string()),
     ] {
         let path = pkg.path().join(rel);
@@ -128,7 +132,7 @@ fn an_earlier_receipt_revert_keeps_the_new_files_hash() {
     // Equal text in both files (one digest) and a newer text in the new file (two digests).
     for same_text in [true, false] {
         let (_t, home) = temp_home();
-        let flow = skill_file(FLOW_SOURCE);
+        let flow = source_text(FLOW_SOURCE);
         let earlier = if same_text {
             flow.clone()
         } else {
@@ -173,7 +177,7 @@ fn an_earlier_receipt_revert_without_the_new_file_clears_the_slot() {
     // to the baseline as before.
     let (_t2, home) = temp_home();
     earlier_layout(&home, "the flow rule an earlier build wrote\n");
-    let pkg = package(&skill_file(FLOW_SOURCE));
+    let pkg = package(&source_text(FLOW_SOURCE));
     current_apply(&home, pkg.path());
     write(&home.join(NEW_FLOW), "the user wrote this\n");
     let v = revert(&home, EARLIER_ID, PERM).unwrap();
@@ -190,7 +194,7 @@ fn an_earlier_receipt_revert_without_the_new_file_clears_the_slot() {
 fn reverts_in_order_restore_the_state_file_byte_for_byte() {
     // The state a first apply and its revert leave, from the product itself.
     let (_r, reference) = temp_home();
-    let pkg = package(&skill_file(FLOW_SOURCE));
+    let pkg = package(&source_text(FLOW_SOURCE));
     let id = current_apply(&reference, pkg.path());
     revert(&reference, &id, PERM).unwrap();
     let empty = state_bytes(&reference);
@@ -200,7 +204,7 @@ fn reverts_in_order_restore_the_state_file_byte_for_byte() {
     );
 
     let (_t, home) = temp_home();
-    let flow = skill_file(FLOW_SOURCE);
+    let flow = source_text(FLOW_SOURCE);
     earlier_layout(&home, &flow);
     let before_current = state_bytes(&home);
     let id = current_apply(&home, pkg.path());
@@ -215,7 +219,7 @@ fn reverts_in_order_restore_the_state_file_byte_for_byte() {
 #[test]
 fn a_skipped_earlier_entry_leaves_the_slot() {
     let (_t, home) = temp_home();
-    let flow = skill_file(FLOW_SOURCE);
+    let flow = source_text(FLOW_SOURCE);
     earlier_layout(&home, &flow);
     let pkg = package(&flow);
     current_apply(&home, pkg.path());
