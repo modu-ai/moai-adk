@@ -427,7 +427,7 @@ pub fn floor_tier(project: &Path, range_base: &str, head: &str, stated: u8) -> R
         .unwrap_or_else(|_| range_base.to_string());
     let paths = changed_paths(project, &files_base, head)?;
     let files = gate::changed_files_with_text(paths, Some(&files_base), head, |rev, path| {
-        git_text(project, &["show", &format!("{rev}:{path}")]).ok()
+        gate::regular_file_text(|args| git_text(project, args).ok(), rev, path)
     });
     Ok(gate::tier_of_changes(Some(stated), &files))
 }

@@ -335,7 +335,7 @@ impl Git<'_> {
             paths,
             base.as_deref(),
             b,
-            |rev, path| self.ok(&["show", &format!("{rev}:{path}")]),
+            |rev, path| gate::regular_file_text(|args| self.ok(args), rev, path),
         ))
     }
 

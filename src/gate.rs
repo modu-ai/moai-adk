@@ -406,6 +406,31 @@ pub fn changed_files_with_text(
         .collect()
 }
 
+/// The text of `path` at `rev` as git holds it, only when the path is a regular file there: a blob
+/// of mode 100644 or 100755. `run` runs one git command and answers its standard output, or `None`
+/// when it failed. A symbolic link (mode 120000, whose blob is the link's target text and may be
+/// any text), a directory, a submodule, a path under a linked folder or no entry is `None`, so the
+/// registry of a head that replaced the file by a link is judged by its path, tier 2.
+pub fn regular_file_text(
+    run: impl Fn(&[&str]) -> Option<String>,
+    rev: &str,
+    path: &str,
+) -> Option<String> {
+    let listed = run(&["ls-tree", rev, "--", path])?;
+    let mut lines = listed.lines();
+    let (meta, name) = lines.next()?.split_once('\t')?;
+    if lines.next().is_some() || name != path {
+        return None;
+    }
+    let mut fields = meta.split(' ');
+    let (mode, kind, id) = (fields.next()?, fields.next()?, fields.next()?);
+    let regular = kind == "blob" && (mode == "100644" || mode == "100755");
+    if fields.next().is_some() || !regular || !is_full_sha(id) {
+        return None;
+    }
+    run(&["cat-file", "blob", id])
+}
+
 /// [`tier_of`] for a head whose changed files come with their text: a change of the
 /// [`SCAN_REGISTRY`] that only grows it (see [`registry_only_grew`]) does not set the tier 2
 /// floor by its path, so a registration is judged by what else the change touches. Every other

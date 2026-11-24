@@ -402,9 +402,10 @@ pub fn collect<T: Transport>(
 }
 
 /// The scan registry at the merge base and at `head` (REQ-8), read only when the PR changes it:
-/// the merge base from the compare answer, then the file at both commits from the contents API.
-/// A side that cannot be read (no answer, a file too large for the API, text that is no base64)
-/// is left out, and the decision then judges the registry by its name, tier 2 (REQ-9).
+/// the merge base from the compare answer, then the file at both commits through the Git Trees
+/// and Blobs APIs ([`registry_text`]). A side that cannot be read (no answer, a registry that is
+/// no regular file, text that is no base64) is left out, and the decision then judges the
+/// registry by its name, tier 2 (REQ-9).
 fn read_registry<T: Transport>(
     t: &T,
     base_url: &str,
@@ -427,20 +428,56 @@ fn read_registry<T: Transport>(
     let Some(merge_base) = merge_base else {
         return Some(RegistryTexts::default());
     };
-    let text = |rev: &str| {
-        let url = format!("{base_url}/contents/{}?ref={rev}", gate::SCAN_REGISTRY);
-        get_json(t, &url).ok().and_then(|(v, _)| contents_text(&v))
-    };
     Some(RegistryTexts {
-        old: text(&merge_base),
-        new: text(head),
+        old: registry_text(t, base_url, &merge_base),
+        new: registry_text(t, base_url, head),
     })
 }
 
-/// The text of one contents answer: `content` is base64 when `encoding` says so (a file over the
-/// API's size limit answers `encoding: none` and no content).
-fn contents_text(answer: &Value) -> Option<String> {
-    if answer["encoding"] != "base64" {
+/// The registry text at `rev`, read only when the registry is a regular file there. The contents
+/// API answers a symbolic link that points at a normal file of the repository with that file's
+/// content, and no documented field tells the two answers apart (SPEC-20261124-registry-line-add-
+/// tier, Appendix C), so the path is not read by name. The Git Trees API names each entry's mode,
+/// and 120000 is a link: the path is walked one folder at a time from the root tree of `rev`, every
+/// step must be a tree (mode 040000) and the last a blob of mode 100644 or 100755, and the text is
+/// that blob read by its id. A tree that GitHub says is truncated, a link, a directory, a submodule
+/// or any answer that does not match leaves the text out (`None`), so the registry is judged by
+/// its name, tier 2.
+fn registry_text<T: Transport>(t: &T, base_url: &str, rev: &str) -> Option<String> {
+    use crate::gate_collect::get_json;
+    let parts: Vec<&str> = gate::SCAN_REGISTRY.split('/').collect();
+    let mut at = rev.to_string();
+    for (i, part) in parts.iter().enumerate() {
+        let (tree, _) = get_json(t, &format!("{base_url}/git/trees/{at}")).ok()?;
+        if tree["truncated"] != false {
+            return None;
+        }
+        let entry = tree["tree"]
+            .as_array()?
+            .iter()
+            .find(|e| e["path"] == *part)?;
+        let (mode, kind) = (entry["mode"].as_str()?, entry["type"].as_str()?);
+        let id = entry["sha"].as_str().filter(|s| gate::is_full_sha(s))?;
+        if i + 1 < parts.len() {
+            if kind != "tree" || mode != "040000" {
+                return None;
+            }
+            at = id.to_string();
+            continue;
+        }
+        if kind != "blob" || !(mode == "100644" || mode == "100755") {
+            return None;
+        }
+        let (blob, _) = get_json(t, &format!("{base_url}/git/blobs/{id}")).ok()?;
+        return blob_text(&blob, id);
+    }
+    None
+}
+
+/// The text of the blob answer for `id`: `content` is base64 when `encoding` says so, and the
+/// answer must name the blob that was asked for.
+fn blob_text(answer: &Value, id: &str) -> Option<String> {
+    if answer["sha"] != id || answer["encoding"] != "base64" {
         return None;
     }
     String::from_utf8(base64_decode(answer["content"].as_str()?)?).ok()

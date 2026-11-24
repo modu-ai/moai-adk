@@ -621,6 +621,23 @@ impl World {
         self.git(&["rev-parse", "HEAD"])
     }
 
+    /// A branch of one commit on the tip in which the registry path is a symbolic link (mode
+    /// 120000) whose blob holds `target`, made with git's plumbing so the text may be any length;
+    /// returns the commit. The working tree is left as it was.
+    fn linked_head(&self, branch: &str, target: &str) -> String {
+        self.git(&["checkout", "-q", "-B", branch, "trunk"]);
+        self.put("link-payload.tmp", target);
+        let blob = self.git(&["hash-object", "-w", "link-payload.tmp"]);
+        fs::remove_file(self.work.join("link-payload.tmp")).unwrap();
+        self.git(&[
+            "update-index",
+            "--cacheinfo",
+            &format!("120000,{blob},{REG}"),
+        ]);
+        self.git(&["commit", "-q", "-m", &format!("feat: {branch}")]);
+        self.git(&["rev-parse", "HEAD"])
+    }
+
     /// Moves the tip on with its own edit of the registry, after the heads were made.
     fn move_the_tip(&self) {
         let mut moved = base_scans();
@@ -710,6 +727,26 @@ fn a_renamed_registry_is_tier_2_in_bundle_check_and_the_landing_floor() {
     assert_eq!(w.audit_floor(1, &head), 2, "bundle check");
     assert_eq!(w.landing_floor(&head), 2, "landing");
     assert_eq!(w.audit_gate_tier(&head), 2, "audit-gate");
+}
+
+/// The registry replaced by a symbolic link is tier 2 for the two judgments that read git, whatever
+/// the link's blob holds: a path, or the very text of a registration (the blob of a link has no
+/// length limit, and `git show` prints it as a file's text).
+#[test]
+fn a_registry_that_is_a_symbolic_link_is_tier_2_in_bundle_check_and_the_landing_floor() {
+    let mut grown = base_scans();
+    grown[0]["rules"] = json!(["tests/alpha.rs", "tests/beta.rs", "tests/gamma.rs"]);
+    grown[0]["checks"][0] =
+        json!("cargo test --offline --locked --test alpha --test beta --test gamma");
+    for (what, target) in [
+        ("a link to another file", "tools/other.json".to_string()),
+        ("a link whose blob is a registration", registry(grown)),
+    ] {
+        let w = World::new();
+        let head = w.linked_head("spec/linked", &target);
+        assert_eq!(w.audit_floor(1, &head), 2, "bundle check: {what}");
+        assert_eq!(w.landing_floor(&head), 2, "landing: {what}");
+    }
 }
 
 // ---- `audit-gate`: the input and the reads of GitHub --------------------------------------
@@ -817,8 +854,48 @@ fn b64(text: &str) -> String {
     lines.join("\n") + "\n"
 }
 
-fn content(text: &str) -> Value {
-    json!({"encoding": "base64", "content": b64(text)})
+/// A 40-character object id made of one letter.
+fn sha(c: char) -> String {
+    c.to_string().repeat(40)
+}
+
+/// One entry of a Git Trees answer.
+fn entry(path: &str, mode: &str, kind: &str, id: &str) -> Value {
+    json!({"path": path, "mode": mode, "type": kind, "sha": id})
+}
+
+/// The Git Trees answer for `id` (a commit or a tree), not truncated.
+fn tree(id: &str, entries: Vec<Value>) -> Exchange {
+    ex(
+        format!("{API}/git/trees/{id}"),
+        200,
+        json!({"sha": id, "truncated": false, "tree": entries}),
+    )
+}
+
+/// A Git Blobs answer for `id` with this body.
+fn blob(id: &str, body: Value) -> Exchange {
+    ex(format!("{API}/git/blobs/{id}"), 200, body)
+}
+
+fn blob_text(id: &str, text: &str) -> Exchange {
+    blob(
+        id,
+        json!({"sha": id, "encoding": "base64", "content": b64(text)}),
+    )
+}
+
+/// The three reads of one commit when `tools/repo_scans.json` is a regular file: the root tree
+/// of `rev`, the `tools` tree and the blob named by its entry.
+fn side(rev: &str, tools: &str, file: &str, text: &str) -> Vec<Exchange> {
+    vec![
+        tree(rev, vec![entry("tools", "040000", "tree", tools)]),
+        tree(
+            tools,
+            vec![entry("repo_scans.json", "100644", "blob", file)],
+        ),
+        blob_text(file, text),
+    ]
 }
 
 /// The four reads `collect` always makes for PR 9, with `files` as the changed files.
@@ -847,10 +924,6 @@ fn compare(status: u16, body: Value) -> Exchange {
     ex(format!("{API}/compare/{B}...{H}?per_page=1"), status, body)
 }
 
-fn contents(rev: &str, status: u16, body: Value) -> Exchange {
-    ex(format!("{API}/contents/{REG}?ref={rev}"), status, body)
-}
-
 #[test]
 fn collect_reads_the_registry_at_the_merge_base_and_the_head() {
     let mut grown = base_scans();
@@ -858,8 +931,8 @@ fn collect_reads_the_registry_at_the_merge_base_and_the_head() {
     let (old, new) = (base(), registry(grown));
     let mut all = pr_exchanges(json!([{"filename": REG}]));
     all.push(compare(200, json!({"merge_base_commit": {"sha": M}})));
-    all.push(contents(M, 200, content(&old)));
-    all.push(contents(H, 200, content(&new)));
+    all.extend(side(M, &sha('a'), &sha('c'), &old));
+    all.extend(side(H, &sha('b'), &sha('d'), &new));
     let t = RecordedTransport::new(all);
     let input = audit_gate::collect("o", "r", 9, None, &t).unwrap();
     assert_eq!(t.remaining(), 0);
@@ -889,69 +962,223 @@ fn collect_leaves_the_texts_out_when_a_side_cannot_be_read() {
     grown[0]["rules"] = json!(["tests/alpha.rs", "tests/beta.rs", "tests/gamma.rs"]);
     let (old, new) = (base(), registry(grown));
     let not_found = json!({"message": "Not Found"});
-    // Each case: the reads after the four of the pull request, and what stays unread.
-    let cases: Vec<(&str, Vec<Exchange>)> = vec![
+    let (a, b, c, d) = (sha('a'), sha('b'), sha('c'), sha('d'));
+    let merge = compare(200, json!({"merge_base_commit": {"sha": M}}));
+    // The reads of a head side that holds the real registration, and of a base side that holds
+    // the real old text: a case breaks one side and keeps the other good, so only a text read
+    // as a regular file may count.
+    let good_new = || side(H, &b, &d, &new);
+    let good_old = || side(M, &a, &c, &old);
+    // A tools tree that holds `repo_scans.json` as `mode`/`kind`, for the head side: the reads
+    // stop before any blob.
+    let head_entry = |mode: &str, kind: &str| {
+        vec![
+            tree(H, vec![entry("tools", "040000", "tree", &b)]),
+            tree(&b, vec![entry("repo_scans.json", mode, kind, &d)]),
+        ]
+    };
+    let mut truncated_root = tree(H, vec![entry("tools", "040000", "tree", &b)]);
+    truncated_root.response = HttpResponse::new(200).with_body(
+        json!({"sha": H, "truncated": true, "tree": [entry("tools", "040000", "tree", &b)]}),
+    );
+    let mut no_truncated_key = tree(H, vec![entry("tools", "040000", "tree", &b)]);
+    no_truncated_key.response = HttpResponse::new(200)
+        .with_body(json!({"sha": H, "tree": [entry("tools", "040000", "tree", &b)]}));
+    let mut bad_blob_id = side(H, &b, &d, &new);
+    bad_blob_id[1] = tree(&b, vec![entry("repo_scans.json", "100644", "blob", "main")]);
+    // Each case: what the base side reads, then what the head side reads. After the four reads
+    // of the pull request and the merge base, every read it lists is made and no other.
+    let cases: Vec<(&str, Vec<Exchange>, Vec<Exchange>)> = vec![
         (
-            "no merge base answer",
-            vec![compare(404, not_found.clone())],
+            "a registry that is a symbolic link at the head",
+            good_old(),
+            head_entry("120000", "blob"),
         ),
         (
-            "a merge base that is no commit id",
-            vec![compare(200, json!({"merge_base_commit": {"sha": "main"}}))],
-        ),
-        (
-            "no text at the base",
+            "a registry that is a symbolic link at the base",
             vec![
-                compare(200, json!({"merge_base_commit": {"sha": M}})),
-                contents(M, 404, not_found.clone()),
-                contents(H, 200, content(&new)),
+                tree(M, vec![entry("tools", "040000", "tree", &a)]),
+                tree(&a, vec![entry("repo_scans.json", "120000", "blob", &c)]),
+            ],
+            good_new(),
+        ),
+        (
+            "a registry that is a directory",
+            good_old(),
+            head_entry("040000", "tree"),
+        ),
+        (
+            "a registry that is a submodule",
+            good_old(),
+            head_entry("160000", "commit"),
+        ),
+        (
+            "a regular file entry whose type is not a blob",
+            good_old(),
+            head_entry("100644", "tree"),
+        ),
+        (
+            "a mode that is no regular file",
+            good_old(),
+            head_entry("100664", "blob"),
+        ),
+        (
+            "a tools folder that is a symbolic link",
+            good_old(),
+            vec![tree(H, vec![entry("tools", "120000", "blob", &b)])],
+        ),
+        (
+            "a tools folder that is a submodule",
+            good_old(),
+            vec![tree(H, vec![entry("tools", "160000", "commit", &b)])],
+        ),
+        (
+            "no tools folder",
+            good_old(),
+            vec![tree(H, vec![entry("src", "040000", "tree", &b)])],
+        ),
+        (
+            "no registry in the tools folder",
+            good_old(),
+            vec![
+                tree(H, vec![entry("tools", "040000", "tree", &b)]),
+                tree(&b, vec![]),
             ],
         ),
         (
-            "base64 that does not decode",
-            vec![
-                compare(200, json!({"merge_base_commit": {"sha": M}})),
-                contents(M, 200, content(&old)),
-                contents(H, 200, json!({"encoding": "base64", "content": "!!!!"})),
-            ],
+            "a root tree that is truncated",
+            good_old(),
+            vec![truncated_root],
         ),
         (
-            "a valid text whose encoding is not base64",
-            vec![
-                compare(200, json!({"merge_base_commit": {"sha": M}})),
-                contents(M, 200, content(&old)),
-                contents(H, 200, json!({"encoding": "none", "content": b64(&new)})),
-            ],
+            "a root tree that does not say whether it is truncated",
+            good_old(),
+            vec![no_truncated_key],
         ),
         (
-            "base64 with a character outside the alphabet after a valid text",
+            "an entry whose id is no object id",
+            good_old(),
+            bad_blob_id[..2].to_vec(),
+        ),
+        (
+            "no tree at the base",
+            vec![ex(format!("{API}/git/trees/{M}"), 404, not_found.clone())],
+            good_new(),
+        ),
+        (
+            "a blob answer for another object",
+            good_old(),
             vec![
-                compare(200, json!({"merge_base_commit": {"sha": M}})),
-                contents(M, 200, content(&old)),
-                contents(
-                    H,
-                    200,
-                    json!({"encoding": "base64", "content": format!("{}!", b64(&new))}),
+                good_new()[0].clone(),
+                good_new()[1].clone(),
+                blob(
+                    &d,
+                    json!({"sha": sha('e'), "encoding": "base64", "content": b64(&new)}),
                 ),
             ],
         ),
         (
-            "a file the contents answer leaves out (too large)",
+            "a blob answer that is a list",
+            good_old(),
             vec![
-                compare(200, json!({"merge_base_commit": {"sha": M}})),
-                contents(M, 200, content(&old)),
-                contents(H, 200, json!({"encoding": "none", "content": ""})),
+                good_new()[0].clone(),
+                good_new()[1].clone(),
+                blob(&d, json!([{"type": "file"}])),
+            ],
+        ),
+        (
+            "base64 that does not decode",
+            good_old(),
+            vec![
+                good_new()[0].clone(),
+                good_new()[1].clone(),
+                blob(
+                    &d,
+                    json!({"sha": d, "encoding": "base64", "content": "!!!!"}),
+                ),
+            ],
+        ),
+        (
+            "a valid text whose encoding is not base64",
+            good_old(),
+            vec![
+                good_new()[0].clone(),
+                good_new()[1].clone(),
+                blob(
+                    &d,
+                    json!({"sha": d, "encoding": "none", "content": b64(&new)}),
+                ),
+            ],
+        ),
+        (
+            "base64 with a character outside the alphabet after a valid text",
+            good_old(),
+            vec![
+                good_new()[0].clone(),
+                good_new()[1].clone(),
+                blob(
+                    &d,
+                    json!({"sha": d, "encoding": "base64", "content": format!("{}!", b64(&new))}),
+                ),
             ],
         ),
     ];
-    for (what, reads) in cases {
+    // The two sides before the merge base answer: no merge base, or one that is no commit id.
+    let no_merge_base: Vec<(&str, Vec<Exchange>)> = vec![
+        ("no merge base answer", vec![compare(404, not_found)]),
+        (
+            "a merge base that is no commit id",
+            vec![compare(200, json!({"merge_base_commit": {"sha": "main"}}))],
+        ),
+    ];
+    for (what, reads) in no_merge_base {
         let mut all = pr_exchanges(json!([{"filename": REG}]));
         all.extend(reads);
+        let n = all.len();
         let t = RecordedTransport::new(all);
         let input = audit_gate::collect("o", "r", 9, None, &t).unwrap();
         assert_eq!(t.remaining(), 0, "{what}: the reads it makes");
+        assert_eq!(t.sent.borrow().len(), n, "{what}: no other read");
         assert_eq!(gate_tier(&input), 2, "{what}: the registry stays tier 2");
     }
+    for (what, old_reads, new_reads) in cases {
+        let mut all = pr_exchanges(json!([{"filename": REG}]));
+        all.push(merge.clone());
+        all.extend(old_reads);
+        all.extend(new_reads);
+        let n = all.len();
+        let t = RecordedTransport::new(all);
+        let input = audit_gate::collect("o", "r", 9, None, &t).unwrap();
+        assert_eq!(t.remaining(), 0, "{what}: the reads it makes");
+        assert_eq!(t.sent.borrow().len(), n, "{what}: no other read");
+        assert_eq!(gate_tier(&input), 2, "{what}: the registry stays tier 2");
+    }
+}
+
+#[test]
+fn collect_reads_an_executable_registry_as_a_regular_file() {
+    let mut grown = base_scans();
+    grown[0]["rules"] = json!(["tests/alpha.rs", "tests/beta.rs", "tests/gamma.rs"]);
+    let (old, new) = (base(), registry(grown));
+    let mut all = pr_exchanges(json!([{"filename": REG}]));
+    all.push(compare(200, json!({"merge_base_commit": {"sha": M}})));
+    all.extend(side(M, &sha('a'), &sha('c'), &old));
+    all.extend([
+        tree(H, vec![entry("tools", "040000", "tree", &sha('b'))]),
+        tree(
+            &sha('b'),
+            vec![entry("repo_scans.json", "100755", "blob", &sha('d'))],
+        ),
+        blob_text(&sha('d'), &new),
+    ]);
+    let t = RecordedTransport::new(all);
+    let input = audit_gate::collect("o", "r", 9, None, &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert_eq!(
+        gate_tier(&input),
+        1,
+        "a regular file with the executable bit"
+    );
 }
 
 #[test]
