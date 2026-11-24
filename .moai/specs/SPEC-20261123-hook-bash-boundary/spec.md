@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261123-hook-bash-boundary
 title: "moai hook bash-boundary: PreToolUse Bash boundary check"
-status: draft
-revision: 1
+status: approved
+revision: 2
 created: 2026-11-23
+approval: {by: leader, at: 2026-11-24, basis: "leader delegation on card C-403, decision note 7818 (2026-11-23T19:25:37Z, user delegation 2026-11-23T13:57Z, leader judgment, not a direct user pick): the whole SPEC body of the fifth repair (REQ-8, AC-14 to AC-17, D-12 to D-17, R-1); the user's first approval, note 7517, covers the first draft only", digest: "sha256:614ef88fdb7ff7cdb38b7a6f0fa9349c911bc65a627d00e4a04345f4c11c3492"}
 ---
 
 # moai hook bash-boundary: PreToolUse Bash boundary check
@@ -75,6 +76,11 @@ created: 2026-11-23
 - read-only: `src/hook_entry.rs` (rest), `src/hook_latency.rs`, `src/card/guard.rs`, `src/ledger/location.rs`, `.moai/project.yaml`, the card notes of C-327 and C-240 as incident evidence.
 - forbidden: any settings file (`.claude/**` of the home and of the project), the installed hooks of this clone, `src/hook_guards.rs`, `src/hook_engine.rs`, `src/claim_verify.rs`, `src/main.rs`, `src/help.rs`, the real HOME and its `.moai/projects` folder, and any network call. Tests use temporary HOMEs, folders and repositories only, and a temporary HOME is set on the child process only.
 
+## Interview
+
+- Q1: Should the first draft of this SPEC (D-1 to D-10, no variable allow list) be approved? → A: Yes, as it stands (user selection 2026-11-23T13:00:15Z in the leader's session, card C-403 note 7517; the option "그대로 승인 (Recommended)").
+- Q2: Who approves the later body (REQ-8, AC-14 to AC-17, D-11 to D-17, R-1), which four independent audits changed? → A: The leader, by the user's overnight delegation of 2026-11-23T13:57Z (reversible in-repo picks), in decision note 7818 of card C-403; it is the leader's judgment, not a direct user selection, and the front matter says so.
+
 ## Plan
 
 1. (this slice) SPEC, status draft; the user's approval is not written by a lane. Until it is approved nothing below starts.
@@ -132,7 +138,7 @@ Official hooks documentation, https://code.claude.com/docs/en/hooks, fetched by 
 
 ## Result
 
-Status: implemented on the code slice (RED `39d14c00e3`, handler `03d223348a`, audit repair on top of `9b6058aa33`, second audit repair: RED table `ea7d38780a`, handler `6c17557134`, survivors `6db97ed5e2`, on NeXT `466b59fc62`). The SPEC stays `draft`: the approval is the user's pick, written on card C-403 by the leader, never by a lane. Nothing is installed, no settings file is read or written, and the installed hooks of this clone are untouched.
+Status: implemented on the code slice (RED `39d14c00e3`, handler `03d223348a`, audit repair on top of `9b6058aa33`, second audit repair: RED table `ea7d38780a`, handler `6c17557134`, survivors `6db97ed5e2`, on NeXT `466b59fc62`). Fourth audit repair (S-1 branch only, AC-17, D-17): code, tests and SPEC text in `a01314bb5c` on `2b3400b6b9`. The SPEC is `approved` by the leader's delegation on card C-403 (decision note 7818; the user's first approval, note 7517, covers the first draft only), written into the front matter by the lane as that note instructs; it is not a pick of the user's. Nothing is installed, no settings file is read or written, and the installed hooks of this clone are untouched.
 
 - AC-1: met — `hook_bash_boundary_cli` tests `ac1_delete_table`, `ac1_git_state_table`, `ac1_protected_ref_table`, `ac1_hook_skip_table`, `ac1_unreadable_table` (each table is checked for at least 12 allowed and 12 denied cases and runs the real binary)
 - AC-2: met — `ac2_outside_a_moai_project_nothing_is_printed_for_any_case`, `ac2_a_denial_has_exactly_the_three_fields_and_an_allowed_case_prints_nothing`
@@ -153,6 +159,8 @@ Status: implemented on the code slice (RED `39d14c00e3`, handler `03d223348a`, a
 
 - AC-16: met — `ac16_the_third_audit_table_denied_and_allowed_shapes`, the unit tests `long_option_rule_tests::*` of `src/hook_bash_boundary.rs`, and the prescan check `ac11_the_prescan_never_hides_a_trigger_word` (the new table was RED on the handler before the repair: 39 of 74 cases differed, all on the denied side and none on the allowed side; after it the 32 tests of the two test binaries pass)
 
+- AC-17: met — `ac17_the_fourth_audit_table_denied_and_allowed_shapes` (the denied rows run the real binary in the throwaway world and join `all_cases`, so `ac11_the_prescan_never_hides_a_trigger_word` and `ac10_no_case_writes_a_file_and_the_mode_never_changes_the_answer` read them too); one `cargo nextest run` of the whole `hook_bash_boundary_cli` binary and `long_option_rule` on `a01314bb5c`: 33 passed, 0 failed. The table was not run against the handler before the repair as a separate RED run (`not_run`); the mutants below show that each guard of the rules is needed by a row.
+
 Measurement (D-10), the real binary, 200 samples each, debug build, machine load average about 33 (`uptime` printed by the test): allowed command p50 4.9 ms, p90 5.3 ms, max 35.3 ms; denied command p50 4.6 ms, p90 5.1 ms, max 8.9 ms. Targets p50 20 ms and p90 40 ms are met in this run. A release-build run was not made (`not_run`); the numbers are for a debug build under load.
 
 Guard mutants: 20 single-guard removals, each run against the whole `hook_bash_boundary_cli` binary; every one failed at least one test (exit 100, no compile error) and the file was restored after each. The lines are in the READY note of the card.
@@ -162,6 +170,8 @@ Audit repair (AC-14): 25 more single-guard removals (the glob and brace scan, th
 Second audit repair (AC-15): 30 single-guard removals (the lookup-changing words, the `cdable_vars` and `cdpath` option names, the `set -A` form, the `cdpath` assignment spellings, `CDPATH` named to `read`, `printf -v`, a `for` head, the `trap` action, an assignment in front of a shell string, `rebase --root`, the `clone -u` and `grep -O` runners, the protected-name `checkout`, `switch` and `worktree add` rules, the four new wrappers and the `flock -c` forms, the prescan words), each run against the whole `hook_bash_boundary_cli` binary. 27 failed at least one test (exit 100) on the first pass; three survived and were answered: two by new table cases (`set -A $a`, `typeset -T CDPATH cdpath`; both now exit 100), one (the prescan word `hash`) is dead code because the substring `sh` already triggers the walk, so the word was removed. The file was restored after each run and compared byte for byte. A dangerous-path run judged 42 texts (the audit's probe shapes and the allowed neighbours) with the real binary in a throwaway world outside every temporary root: 32 denied with the expected class, 10 allowed (`ls`, `git status`, `cargo build`, `rm -rf ./build`, `flock … -c 'cargo build'`, `xcrun clang -v`, `git switch -c feature/x`, `git rebase --root feature/x`, `git log`, and a `reset` in a linked worktree, which D-5 allows); the digest of refs, tree, worktree list and every file was the same before and after.
 
 Third audit repair (AC-16): 14 single-guard removals (the shell option value check, the shell option word check, the `emulate` arm, the `emulate` `-c` walk, the `emulate` prescan word, the prefix rule itself, the exact-name list, and each reader of a long option: `same_flag`, the value slots, the attached value, the program-carrying options, the hook-skip prefix, the read-or-write split and `--track`), each run against the whole `hook_bash_boundary_cli` binary and the `long_option_rule_tests`. 11 failed at least one test (exit 100) on the first pass; three survived (the read-or-write split by prefix, the `emulate` `-c` walk and the `emulate` prescan word) and were answered by seven new table rows (`git -C {PRI} symbolic-ref --delet HEAD`, `git -C {PRI} branch --unset-up`, `emulate -o cd_able_vars -c …`, `emulate zsh -c 'rm -rf …'`, `emulate -L zsh -c 'rm -rf …'` and two allowed neighbours); a second run of those three gave exit 100 each. The file was restored after each run and compared byte for byte. The dangerous path of this change is the table itself: every case of `ac16_` and the denied list in `all_cases` runs the real binary in the throwaway world under `target/`, and `ac10_no_case_writes_a_file_and_the_mode_never_changes_the_answer` compares kind, size and hash of every entry before and after; a separate throwaway script run was not made (`not_run`).
+
+Fourth audit repair (AC-17): 14 single-guard removals (the `-T` row of the letter table, the dynamic first word of a shell start and its always-on variant, the letter check and the `-o` value check of the shell start, the dynamic word of `emulate`, its letter check and its `-o` value check, the letter check of `set`/`setopt`/`unsetopt`, the `-o` value of a `set` cluster, the capital `O` value, the scan of every letter of a cluster, and the `unsetopt` and `setopt` names of the letter rule), each run against the whole `hook_bash_boundary_cli` binary: all 14 failed at least one test (exit 100, a test failure and no compile error), the file was restored after each run and compared byte for byte. Shapes outside the S-1 branch are follow-ups by the leader's decision: a git option word or letter that an expansion decides (N-1), `git fetch --depth=$N` (N-2), and the rest of the list of note 7769. A separate throwaway script run was not made: the dangerous path is the table itself, whose denied rows run the real binary in the throwaway world and are read by the no-write proof (`not_run` as its own run).
 
 Dangerous-path run: the real debug binary on a throwaway project (a git repository with a link leading out, a folder outside, a temporary HOME) for a delete through the link, a glob through the link, a compound `cd` out, a push to the protected branch, a skipped hook, a reset in the primary checkout, a computed command word, a backgrounded command with a delete, input that is not JSON and 5,000,000 bytes of input. Every run exited 0; the delete cases were denied as `delete-outside`; the folder outside kept its file; no process was left behind.
 
