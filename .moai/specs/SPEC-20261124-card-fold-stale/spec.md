@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-card-fold-stale
 title: "card fold, 오래된 카드 stale 목록, 만료된 held 카드 withdraw"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 (note:444:5bbbcbcc233f308ff7df35a1630cfc12, 2026-11-24T00:24:57Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8047 에 대한 답): 판 1 승인, D-1~D-7 기본값, D-4 의 14일 승인; 리더가 노트에 적었고 레인은 그 노트를 옮겨 적었어요"
+  digest: "sha256:dc9a686a21f53e5d5302a8bfcc9aaaa035e98ca0236b025dbf4e861933d75e1d"
 ---
 
 # card fold, 오래된 카드 stale 목록, 만료된 held 카드 withdraw
