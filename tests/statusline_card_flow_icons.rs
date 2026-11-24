@@ -202,7 +202,7 @@ fn every_stage_draws_its_item_of_the_table() {
     assert_eq!(
         flow_line(&f, None),
         format!(
-            "{TODO} 3 → {WORK} 3 → {CHECK} 1 → {READY} 1 → {DONE} 2 | {BLOCKED} 1 {PAUSED} 2 {QUESTION} 2"
+            "{TODO} 3 → {WORK} 2 → {CHECK} 1 → {READY} 1 → {DONE} 2 | {BLOCKED} 1 {PAUSED} 2 {QUESTION} 2"
         )
     );
 }
