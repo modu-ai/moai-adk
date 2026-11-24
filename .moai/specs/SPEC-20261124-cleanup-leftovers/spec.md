@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-cleanup-leftovers
 title: "Six small leftovers of the 2026-11-24 card cleanup land as separate slices of one SPEC"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8093 (2026-11-24T01:39:02Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8092 에 답함): 판 1 승인 선택지 A, 커밋 95cd8e1d91; 조각 순서 A, B, C, D; 조각 C 의 D-6, D-7, D-8 은 패치가 정한 대로 승인; 조각 D 는 위험 경로 실행과 tier 2 감사 필수; 기준 1 과 4 는 Deferred 그대로; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:6cb40812e2a5652fa202c07d2fb38a313872184a89f7fff0469532c3bc841aef"
 ---
 
 # Six small leftovers of the 2026-11-24 card cleanup land as separate slices of one SPEC
@@ -13,6 +18,10 @@ created: 2026-11-24
 사용자가 2026-11-24 에 열린 카드를 정리하며 개수를 줄이라고 정했어요. 닫힌 카드 여섯 장에 작은 조각이 하나씩 남았고, 새 카드 여섯 대신 한 카드의 기준 여섯으로 묶였어요. 이 SPEC 은 그 여섯 조각 가운데 지금 할 수 있는 네 조각(기준 6, 3, 5, 2)을 정하고, 지금 할 수 없는 두 조각(기준 1, 4)이 왜 기다리는지 적어요. 조각마다 따로 커밋하고 따로 감사받을 수 있어요.
 
 원본 카드의 마지막 노트를 기준마다 읽고 현재 통합 브랜치(`NeXT`, `546cd451a2`)와 맞춰 봤어요(Evidence).
+
+## Interview
+
+- none: 사용자와 리더의 결정이 이미 기준 여섯과 순서로 적혀 있어 새로 물을 것이 없어요(배차 글 2026-11-24, 카드 C-446 본문; 사용자 결정은 카드 정리 2026-11-24).
 
 ## Non-goals
 
