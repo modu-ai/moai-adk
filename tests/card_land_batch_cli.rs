@@ -132,6 +132,8 @@ struct World {
     scripts: tempfile::TempDir,
     c0: String,
     profile: std::cell::RefCell<Vec<u8>>,
+    /// Environment every `moai` child of the world gets besides its clean one.
+    extra_env: std::cell::RefCell<Vec<(&'static str, std::ffi::OsString)>>,
 }
 
 impl World {
@@ -197,7 +199,39 @@ impl World {
             scripts,
             c0,
             profile: std::cell::RefCell::new(profile.to_vec()),
+            extra_env: std::cell::RefCell::new(Vec::new()),
         }
+    }
+
+    /// Puts a fake `cargo` first on the PATH of every `moai` child, so that this program's own
+    /// `check affected` runs end to end on the join: its git, table and summary steps are real and
+    /// only the cargo steps (`fmt`, `clippy`, `nextest`) are replaced by a script that logs its
+    /// arguments and exits 0. The machine numbers are the debug-only roomy seam, so the real disk
+    /// and memory never decide the outcome. Returns the file that logs the cargo calls.
+    fn fake_cargo(&self) -> PathBuf {
+        let bin = self.scripts.path().join("fakes");
+        fs::create_dir_all(&bin).unwrap();
+        let calls = self.scripts.path().join("cargo-calls.log");
+        let script = bin.join("cargo");
+        fs::write(
+            &script,
+            "#!/bin/sh\necho \"cargo $*\" >> \"$FAKE_CARGO_CALLS\"\nexit 0\n",
+        )
+        .unwrap();
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+        let git_dir = self.git_bin.parent().unwrap().to_path_buf();
+        let path = std::env::join_paths([
+            bin,
+            git_dir,
+            PathBuf::from("/usr/bin"),
+            PathBuf::from("/bin"),
+        ])
+        .unwrap();
+        let mut env = self.extra_env.borrow_mut();
+        env.push(("PATH", path));
+        env.push(("FAKE_CARGO_CALLS", calls.clone().into_os_string()));
+        env.push(("MOAI_TEST_MACHINE", "free_gb=1000,swap_pct=0".into()));
+        calls
     }
 
     /// `session-register --name leader` as the host session `session`, in mode `leader` or with no
@@ -254,6 +288,9 @@ impl World {
         let mut cmd: Command = self.home.command(args);
         cmd.env("MOAI_GIT_BIN", &self.git_bin);
         cmd.env("BATCH_LOG", self.log());
+        for (key, value) in self.extra_env.borrow().iter() {
+            cmd.env(key, value);
+        }
         if let Some(program) = check {
             cmd.env("MOAI_TEST_LAND_BATCH_CHECK", program);
         }
@@ -877,8 +914,8 @@ fn enforcing() -> World {
 
 /// SPEC revision 4, REQ-20 (audit B1 of the follow-up): a batch whose check is another program
 /// covers no scan, even when that program writes the line a full wide run would write: a
-/// replaced check may write any line. The cover of a program's own wide run is pinned by the unit
-/// tests of `batch.rs` (the line is made by the real writer there).
+/// replaced check may write any line. The cover of this program's own wide run, to a landing in
+/// enforce mode, is the next test; the unit tests of `batch.rs` pin its parts.
 #[test]
 fn scans_a_replaced_check_program_covers_no_scan_even_with_a_full_pass_summary() {
     let w = enforcing();
@@ -893,6 +930,54 @@ fn scans_a_replaced_check_program_covers_no_scan_even_with_a_full_pass_summary()
     }
     assert_eq!(r["runs"][0]["scans_covered"], json!(false), "{r}");
     assert_eq!(w.integ(), before);
+}
+
+/// SPEC revision 5, REQ-19, REQ-25 (audit R3 of the follow-up): the road of criterion 7 end to end,
+/// with no check program: this program's own wide `check affected` runs in process on the last
+/// join, its summary line is written by the real writer and recorded by the batch, read back as
+/// the cover, and the three heads land in enforce mode with no scan receipt of their own. Only
+/// the cargo steps are replaced (a fake `cargo` first on the PATH); the check is still
+/// `check.is_none()`, so this is no "other program" of REQ-20.
+#[test]
+fn scans_the_wide_run_of_this_program_covers_the_scans_and_lands_every_head() {
+    let w = enforcing();
+    let cards = w.three(None);
+    let calls = w.fake_cargo();
+    let joined: Vec<String> = cards.iter().map(|(c, h)| format!("{c}={h}")).collect();
+    let mut args = vec!["land-batch"];
+    args.extend(joined.iter().map(String::as_str));
+    args.extend(["--by", "leader"]);
+    let r = result(&w.card(Some(S_LEAD), &args));
+    assert_eq!(names(&r["landed"]).len(), 3, "{r}");
+    assert!(r["dropped"].as_array().unwrap().is_empty(), "{r}");
+    assert!(r["stopped"].is_null(), "{r}");
+    assert_eq!(r["checks_run"], 1, "{r}");
+    assert_eq!(r["runs"][0]["scans_covered"], json!(true), "{r}");
+    for (card, head) in &cards {
+        assert_eq!(w.state(card), "done", "{card}");
+        assert!(w.is_ancestor(head, &w.integ()), "{head}");
+    }
+    // The cargo steps ran once each, through the fake: one wide run, not one per head.
+    let cargo = fs::read_to_string(&calls).unwrap_or_default();
+    let count = |word: &str| cargo.lines().filter(|l| l.starts_with(word)).count();
+    assert_eq!(count("cargo clippy"), 1, "{cargo}");
+    assert_eq!(count("cargo fmt"), 1, "{cargo}");
+    assert!(
+        count("cargo nextest run") + count("cargo test") >= 1,
+        "{cargo}"
+    );
+    // The line the run left is the one the real writer makes: a full run of the last join.
+    let join = w.integ();
+    let log = w
+        .project
+        .join("target/land-batch")
+        .join(format!("{}-1.log", &join[..12]));
+    let text = fs::read_to_string(&log).unwrap_or_else(|e| panic!("{}: {e}", log.display()));
+    let line = text.trim();
+    assert!(line.starts_with("check-affected base="), "{line}");
+    assert!(line.contains(&format!("head={}", &join[..12])), "{line}");
+    assert!(line.ends_with("result=PASS"), "{line}");
+    assert!(!line.contains("selection="), "{line}");
 }
 
 /// REQ-20: a check that leaves no summary, a summary of a part run (`selection=card`) and a

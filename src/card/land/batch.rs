@@ -383,7 +383,8 @@ fn run_check(
             };
             match crate::check_affected::run(&work, &range, &opts) {
                 Ok(answer) => {
-                    let _ = std::fs::write(&log, format!("{}\n", answer["summary"]));
+                    let summary = answer["summary"].as_str().unwrap_or_default();
+                    let _ = std::fs::write(&log, format!("{summary}\n"));
                     record_summary(&answer);
                     Ok(i32::from(answer["result"] != "PASS"))
                 }

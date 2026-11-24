@@ -5,6 +5,7 @@ When to read: before you take, run, audit or land a card, as the session that wo
 ## The name
 
 NeXT means New · engineering · eXperience · Together: people and agents build one product side by side, each in a place of their own. Its one line is "Work in parallel. Land once."
+
 ## How the flow works
 
 Four technical rules make the flow run.
