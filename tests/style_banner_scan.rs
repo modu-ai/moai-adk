@@ -99,13 +99,14 @@ mod style_banner {
                 .lines()
                 .find(|l| l.contains(FLOW_ICONS[0]))
                 .unwrap_or_else(|| panic!("{rel} does not name the flow icon {}", FLOW_ICONS[0]));
-            let mut last = 0;
+            // each step is searched after the one before it, so a banner emoji earlier in the
+            // same line does not count as the step
+            let mut rest = line;
             for icon in FLOW_ICONS {
-                let at = line
-                    .find(icon)
-                    .unwrap_or_else(|| panic!("{rel} flow line does not name {icon}"));
-                assert!(at >= last, "{rel} names the flow icons out of flow order at {icon}");
-                last = at;
+                let at = rest.find(icon).unwrap_or_else(|| {
+                    panic!("{rel} flow line does not name {icon} after the step before it")
+                });
+                rest = &rest[at + icon.len()..];
             }
             for icon in BESIDE_ICONS {
                 assert!(text.contains(icon), "{rel} does not name the icon {icon}");
