@@ -770,4 +770,104 @@ mod tests {
         assert!(g(crate::project_state!("receipts/x.json")).is_err());
         assert_eq!(receipts_rel(p.path()), ".moai/receipts");
     }
+
+    /// A file of this checkout, read at run time. The two scans below read text, so each names what
+    /// it looks for and fails when that is gone. They live here and not in
+    /// `tests/go_state_cli.rs`: a test file that names the manifest folder joins the repository
+    /// scan list (`tools/repo_scans.json`), and the lines of that list are not this change's.
+    fn checkout_text(rel: &str) -> String {
+        fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel)).unwrap()
+    }
+
+    /// Every `.rs` file under `dir` (relative to the manifest folder), as `(path, text)`.
+    fn checkout_rust_files(dir: &str) -> Vec<(String, String)> {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut out = Vec::new();
+        let mut stack = vec![std::path::PathBuf::from(dir)];
+        while let Some(d) = stack.pop() {
+            for e in fs::read_dir(root.join(&d)).unwrap() {
+                let rel = d.join(e.unwrap().file_name());
+                if root.join(&rel).is_dir() {
+                    stack.push(rel);
+                } else if rel.extension().is_some_and(|x| x == "rs") {
+                    let text = fs::read_to_string(root.join(&rel)).unwrap();
+                    out.push((rel.display().to_string(), text));
+                }
+            }
+        }
+        out
+    }
+
+    /// The leader's condition 1 for the switch (card note 8689): no release build compiles a read
+    /// of its name. Every line of `src/` that names it outside a comment sits in a function that
+    /// carries `#[cfg(debug_assertions)]` directly above it (doc lines and other attributes may
+    /// stand between). The scan needs at least one such line, so a deleted switch does not pass by
+    /// having nothing to check.
+    #[test]
+    fn the_publish_sync_switch_is_read_only_by_a_debug_build_function() {
+        let name = ["MOAI_TEST", "PUBLISH", "SYNC"].join("_");
+        let mut reads = 0;
+        for (path, text) in checkout_rust_files("src") {
+            let lines: Vec<&str> = text.lines().collect();
+            for (i, line) in lines.iter().enumerate() {
+                if !line.contains(&name) || line.trim_start().starts_with("//") {
+                    continue;
+                }
+                reads += 1;
+                let f = (0..=i)
+                    .rev()
+                    .find(|&j| {
+                        let t = lines[j].trim_start();
+                        t.starts_with("fn ")
+                            || t.starts_with("pub fn ")
+                            || t.starts_with("pub(crate) fn ")
+                    })
+                    .unwrap_or_else(|| {
+                        panic!("{path}:{}: the switch is read outside a function", i + 1)
+                    });
+                let mut debug_only = false;
+                for above in lines[..f].iter().rev() {
+                    let t = above.trim_start();
+                    if t.starts_with("#[") || t.starts_with("///") {
+                        debug_only |= t == "#[cfg(debug_assertions)]";
+                    } else {
+                        break;
+                    }
+                }
+                assert!(
+                    debug_only,
+                    "{path}:{}: a release build compiles this read of the switch; put it in a function with #[cfg(debug_assertions)]",
+                    i + 1
+                );
+            }
+        }
+        assert!(reads >= 1, "the switch is not read anywhere in src/");
+    }
+
+    /// The leader's condition 3 (card note 8689): only the receipt-size test hands the switch to a
+    /// command. Its body gives it to both commands that save the receipt, and the shared
+    /// environment of `tests/common` does not carry the name.
+    #[test]
+    fn only_the_receipt_size_test_gives_the_commands_the_switch() {
+        let me = checkout_text("tests/go_state_cli.rs");
+        let start = me
+            .find("fn a_receipt_above_256_kib_reverts_completely()")
+            .expect("the receipt-size test");
+        let body = &me[start..start + me[start..].find("\n}\n").expect("end of the test")];
+        for call in ["apply_env(", "revert_env("] {
+            let at = body
+                .find(call)
+                .unwrap_or_else(|| panic!("the receipt-size test does not call {call}"));
+            let args_end = body[at..].find(");").expect("end of the call") + at;
+            assert!(
+                body[at..args_end].contains("UNSYNCED"),
+                "{call} in the receipt-size test does not carry UNSYNCED"
+            );
+        }
+        let name = ["MOAI_TEST", "PUBLISH", "SYNC"].join("_");
+        assert!(
+            !checkout_text("tests/common/mod.rs").contains(&name),
+            "tests/common must not carry the switch"
+        );
+    }
 }
