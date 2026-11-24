@@ -354,7 +354,9 @@ fn the_tool_scan_flags_a_planted_tool_and_spares_only_the_named_exception() {
         vec![(1, "cargo")]
     );
     assert_eq!(
-        tool_lines("| `done` | always | Which check? | `tools/local_check.sh` passes | decisions |"),
+        tool_lines(
+            "| `done` | always | Which check? | `tools/local_check.sh` passes | decisions |"
+        ),
         vec![(1, "local_check")]
     );
     assert_eq!(
