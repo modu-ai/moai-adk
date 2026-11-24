@@ -44,8 +44,8 @@
           "expected_sha256": null,
           "section_id": "moai-local",
           "baseline_sha256": null,
-          "rendered_sha256": "sha256:81d0c891f8c41a84e897d13a733842f15031d1dff9e2c85e55fc9f262f9b076f",
-          "detail": "managed block lines: 11 added, 0 removed\n+ .moai/receipts/\n+ .moai/*\n+ !.moai/project.yaml\n+ !.moai/moai-cli.json\n+ !.moai/moai.json\n+ !.moai/manifests/\n+ !.moai/workflows/\n+ !.moai/config/\n+ !.moai/decisions/\n+ !.moai/docs/\n+ !.moai/specs/"
+          "rendered_sha256": "sha256:70db2e41f85d2106a7f8404f5b7cb8ab034bfa03695c74464ad1bdfa28471b74",
+          "detail": "managed block lines: 18 added, 0 removed\n+ .moai/receipts/\n+ .moai/*\n+ .moai/local/\n+ !.moai/project.yaml\n+ !.moai/moai-cli.json\n+ !.moai/moai.json\n+ !.moai/manifests/\n+ !.moai/workflows/\n+ !.moai/config/\n+ !.moai/decisions/\n+ !.moai/docs/\n+ !.moai/specs/\n+ !.moai/tools/\n+ !.moai/evals/\n+ .moai/**/credentials.yaml\n+ .moai/**/*.credentials\n+ .moai/**/.env\n+ .moai/**/.env.*"
         },
         {
           "path": ".moai/manifests/generation.json",
