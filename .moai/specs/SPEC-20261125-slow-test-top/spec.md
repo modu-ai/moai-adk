@@ -19,6 +19,7 @@ created: 2026-11-25
 - REQ-3: While a `home_state_selective` test holds a program it started, the test shall stop that program's own children together with it.
 - REQ-4: While the release workflow's decide step runs in a test, the stand-in programs it calls shall be complete files that no process holds open for writing.
 - REQ-5: While a test file in the write scope is changed, the file shall keep every assertion it had.
+- REQ-6: While the named-file scan lists `tests/home_state_selective.rs`, each of its tests that starts a holder program shall opt back into the real process table.
 
 ## Acceptance
 
@@ -26,12 +27,15 @@ created: 2026-11-25
 - AC-2 (REQ-2, REQ-3, REQ-5): `home_state_selective` passes with the same test names, and the two named tests run in seconds with no leaked process · verify: `cargo test --locked --offline --test home_state_selective`
 - AC-3 (REQ-4, REQ-5): `release_pr_three_os` passes with the same test names · verify: `cargo test --locked --offline --test release_pr_three_os`
 - AC-4 (REQ-5): the guard of each fix is killed by a mutant that removes the fixed code, and no assertion line was removed · verify: `git diff NeXT...HEAD --stat`
+- AC-5 (REQ-6): the named-file scan passes with the file listed, and fails when a holder test of the file loses its opt-in · verify: `cargo test --locked --offline --test process_table_default`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261125-slow-test-top/**`
 - write: `tests/home_state_selective.rs`, `tests/release_pr_three_os.rs`
 - write (line lease): `tests/common/**`
+- write (line lease, one line, approved by the leader after a scope request): `tests/process_table_default.rs`, the `NAMED` list
+- carried by one merge on the leader's decision: `.moai/specs/SPEC-20261124-test-cost-profile-git-path/**`
 - read-only: everything else, `src/` included; a change in `src/` waits for a SCOPE-REQUEST note on the card
 - not in this slice: the ranked tests outside these files (`tests/go_state_cli.rs`, `tests/update_hooks_cli.rs` and others); their rank and cause stay in the Result for the leader to scope
 
@@ -44,7 +48,7 @@ created: 2026-11-25
 
 ## Result
 
-머리: 이 가지의 코드 커밋은 테스트 파일 두 개만 바꿔요(`tests/release_pr_three_os.rs` 의 `894a88c709`, `tests/home_state_selective.rs` 의 `684157345c`). `src/` 와 `tests/common/` 은 바꾸지 않았어요. 측정은 2026-11-24 에 macOS arm64 디버그 빌드에서 했고, 부하(load1)는 9~25(전후 표)와 25~50(순위 표의 원자료)이었어요. 도구와 원자료는 레인 워크트리의 `target/c473/` 에 있고 카드가 닫히면 사라져요(`rank.py`, `ab.py`, `summ.py`, `stress.sh`, `mutants.py`, `ab-hss.jsonl`, `rank-24h-all.tsv`). 카드 노트 8658, 8666 에 같은 내용이 있어요.
+머리: 이 가지의 코드 커밋은 테스트 파일 세 개만 바꿔요(`tests/release_pr_three_os.rs` 의 `894a88c709`, `tests/home_state_selective.rs` 의 `684157345c`, 둘 다 건드리는 `2c572ce434`, 거기에 `tests/process_table_default.rs` 한 줄). `src/` 와 `tests/common/` 은 바꾸지 않았어요. 이 SPEC 과 `SPEC-20261124-test-cost-profile-git-path`(머지 커밋 `609160e645` 로 실었어요)가 문서 변경이에요. 측정은 2026-11-24 에 macOS arm64 디버그 빌드에서 했고, 부하(load1)는 9~25(전후 표)와 25~50(순위 표의 원자료)이었어요. 도구와 원자료는 레인 워크트리의 `target/c473/` 에 있고 카드가 닫히면 사라져요(`rank.py`, `ab.py`, `summ.py`, `stress.sh`, `mutants.py`, `ab-hss.jsonl`, `rank-24h-all.tsv`). 카드 노트 8658, 8666 에 같은 내용이 있어요.
 
 ### 순위 표 (기준 1)
 
@@ -64,7 +68,7 @@ created: 2026-11-25
 
 - 시간은 부하 25~50 에서 병렬로 돈 값이라 부풀려져 있어요. 순서가 의미 있고 절대값은 아니에요.
 - 리더가 넘긴 세 표본은 이 표에서 한참 아래예요. `home_state_selective` 는 그 파일이 영향받을 때만 돌아서 횟수가 5 예요. 상위 5개는 승인된 범위 밖 파일이라 이 슬라이스에서 고치지 않았고, 후보 원인만 노트 8666 에 남겼어요(미확인): 1위는 `many_specs_fixture(1000)` 의 픽스처 크기, 2·5위는 src 단위 테스트가 기계 전체 프로세스 표를 읽는 것(`SPEC-20261122-test-process-table-default` 의 F3 (b)), 3·4위는 확인 안 했어요.
-- 기준 3 의 "상위 3~5개"는 표의 상위 5개가 아니라 리더가 넘긴 세 표본을 고쳤어요(리더 노트 8623, 8651 과 이 카드의 지시). 상위 5개는 not_run 이에요.
+- 기준 3 의 "상위 3~5개"는 표의 상위 5개가 아니라 리더가 넘긴 세 표본을 고쳤어요(이 카드의 지시와 리더의 표본 기록). 상위 5개는 not_run 이에요. 리더 결정: 상위 5개는 이 카드에서 하지 않고 이 카드의 READY 뒤에 파일 묶음마다 새 카드로 열고 측정을 먼저 해요(1위 `go_state_cli`, 2위 `src/worktree_gc.rs` 부터).
 
 ### 원인 (세팅, 외부 대기, 고정 sleep 으로 가른 결과)
 
@@ -76,7 +80,8 @@ created: 2026-11-25
 
 - `tests/release_pr_three_os.rs`: 스텁이 `-c` 호출에서 `cat > /dev/null` 로 입력을 읽어요. 새 테스트 `the_json_reader_stand_in_reads_all_of_its_input` 이 1 MiB 를 쓰는 쪽을 앞에 세워 이를 고정해요. 테스트 8개가 9개가 됐어요.
 - `tests/home_state_selective.rs`: `plan_env` 가 빈 프로세스 표를 실어요. 프로세스가 폴더를 쓰는지 판단하는 두 테스트(`worktrees_and_entries_in_use_stay_in_place`, `an_open_file_keeps_its_entry_in_place`)는 `use_real_process_table()` 로 실제 표를 읽어요. 홀더는 `spawn_group` 으로 띄우고 `Kill` 이 `kill_group` 으로 그룹째 멈춰요(`tests/common/mod.rs` 의 기존 도우미).
-- 지운 단언은 0개예요: 두 파일의 지운 줄 24개 중 `assert` 가 든 줄은 없어요(`git diff -U0 NeXT...HEAD -- <두 파일>`).
+- `tests/process_table_default.rs`: `NAMED` 목록에 `tests/home_state_selective.rs` 를 더했어요(10→11, 리더가 승인하고 `card line-lease` 로 한 줄만 썼어요). 이 목록에 있으면 홀더 프로그램을 띄우는 테스트가 `use_real_process_table()` 를 안 부를 때 스캔이 실패해요. 스캔은 홀더를 `Command::new("/bin/sh")`·`"sleep"` 같은 표기로만 알아보는데 열린 파일 테스트는 `Command::new("sh")` 를 써서 첫 뮤턴트가 살아남았어요. 같은 프로그램이라 `"/bin/sh"` 로 적어서 스캔이 알아보게 했어요(주석으로 이유를 남겼어요).
+- 지운 단언은 0개예요: 세 테스트 파일의 지운 줄 26개 중 `assert` 가 든 줄은 없어요(`git diff -U0 NeXT...HEAD -- tests/home_state_selective.rs tests/release_pr_three_os.rs tests/process_table_default.rs` 를 파일로 저장해 `^-` 줄을 센 값이에요).
 
 ### 전후 표: `home_state_selective` (기준 1·3)
 
@@ -118,6 +123,7 @@ created: 2026-11-25
 - `guard-mutant: the_json_reader_stand_in_reads_all_of_its_input | removed the stand-in's `cat > /dev/null; ` | exit 101` (죽었어요).
 - `guard-mutant: an_open_file_keeps_its_entry_in_place | removed `use_real_process_table()` from the test | exit 101` (죽었어요: 빈 표에서는 `file_open` 을 못 봐요).
 - `guard-mutant: worktrees_and_entries_in_use_stay_in_place | removed `use_real_process_table()` from the test | exit 101` (죽었어요).
+- `guard-mutant: the_named_files_choose_their_table | removed `use_real_process_table()` from an_open_file_keeps_its_entry_in_place | exit 101` 와 같은 줄을 `worktrees_and_entries_in_use_stay_in_place` 에서도(`target/c473/mutants2.py`, 슬롯 한 번): 둘 다 죽었어요. 같은 뮤턴트가 `Command::new("sh")` 일 때는 `exit 0` 으로 살아남았고(스캔이 그 표기를 홀더로 안 봐요), 표기를 `/bin/sh` 로 고친 뒤 죽었어요.
 - `src/` 의 제품 코드를 바꾼 뮤턴트는 돌리지 않았어요(범위 밖, not_run). 500개 한계의 단언은 이 슬라이스가 건드린 것이 프로세스 표뿐이고 단언 줄은 그대로예요.
 
 ### 한계 (not_run 포함)
@@ -125,7 +131,7 @@ created: 2026-11-25
 - 순위는 부하 25~50 에서 병렬로 돈 24시간 로그 71개의 값이에요. 리더 전체 테스트 로그는 못 읽었고, 릴리스 빌드와 Linux·Windows 는 재지 않았어요.
 - 전후 표는 `home_state_selective` 만이에요. `release_pr_three_os` 는 시간이 아니라 실패율로 쟀어요.
 - 재현은 부하를 만든 환경에서만 됐고, 실제 전체 테스트(리더 `cargo test --locked`)에서의 실패율은 재지 않았어요.
-- 수정이 `NAMED` 스캔(`tests/process_table_default.rs`)으로 지켜지는지는 범위 밖이라 하지 않았어요(노트 8666 의 요청, 답 없음).
+- 스캔은 홀더를 문자열 표기(`HOLDERS` 목록)로만 알아봐서, 목록에 없는 표기(`Command::new("sh")` 등)로 홀더를 띄우면 스캔 밖이에요. 이 슬라이스는 그 목록을 넓히지 않았어요(범위 밖, 제품 스캔의 한계로 남겨요).
 - 순위 상위 5개는 고치지 않았어요. 카드 기준 1(상위 20개 합계 절반)은 이 슬라이스에서 닿지 않아요.
 
 ### 기준
@@ -133,4 +139,5 @@ created: 2026-11-25
 - AC-1: met — 위 순위 표와 방법·원자료.
 - AC-2: met — `home_state_selective` 10개 통과(3.56초), 전후 표에서 두 홀더 테스트의 EOF 대기가 60초대에서 1.5~3.0초로 줄었고 고아 `sleep` 이 남지 않았어요.
 - AC-3: met — `release_pr_three_os` 9개 통과, 같은 부하에서 실패 60/120 에서 0/120.
-- AC-4: met — 세 뮤턴트가 죽었고, 지운 단언 줄은 0개예요.
+- AC-4: met — 뮤턴트가 모두 죽었고, 지운 단언 줄은 0개예요.
+- AC-5: met — 스캔이 통과했고(5개 중 5개), 홀더 테스트 둘의 뮤턴트가 각각 죽었어요.
