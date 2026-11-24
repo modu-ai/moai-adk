@@ -3079,7 +3079,8 @@ fn ac36_a_worktree_under_the_preserved_place_is_kept() {
     );
 }
 
-/// AC-36 (second half): a card that stays open because a criterion is not met is not cleaned.
+/// AC-36 (second half): a card that stays open because it was landed with `--keep-open` is not
+/// cleaned.
 #[test]
 fn ac36_a_card_that_stays_open_is_not_cleaned() {
     let w = World::new();
