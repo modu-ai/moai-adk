@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-cleanup-leftovers
 title: "Six small leftovers of the 2026-11-24 card cleanup land as separate slices of one SPEC"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8183 (2026-11-24T04:14:39Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8181 에 답함): 판 2(조각 E) 승인, 커밋 51e4890c9a; 순서 E1, E2, E3, E4; 결정 1 (A) size_requirements 경고는 그대로; 결정 2 D-5 (A) C-174 조각 3 착지 증거로 기준 1 met, 그때까지 열림; 결정 3 D-6 (A) audit-prep 은 새 판 없이 글만 고치고 커밋 글에 적음; 기준 9 는 apply 쪽 세 곳만; worktree_move.rs:269 와 optimize.rs:876 은 READY 에 읽은 결과만; E4 는 CLAUDE.md 가 들어가 tier 2 전체 감사; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:a6986de53a0a355474069be70acbfad9e7b818625a66b0fc9cb931cf2484d5af"
 ---
 
 # Six small leftovers of the 2026-11-24 card cleanup land as separate slices of one SPEC
