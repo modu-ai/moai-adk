@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-home-writer-links
 title: "홈 상태 아래에 쓰는 나머지 세 곳도 심볼릭 링크 폴더를 거절해요: 아웃박스, 영수증, layout-apply"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8214 (2026-11-24T04:53:42Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 8213 에 답함: 개정 3 승인, 노트 8207 선택 1 그대로, write_area 는 바꾸지 않고 호출부 거절을 자식 프로세스 시험으로 못 박아요; 승인 대상 커밋 98464bf278245d793d1c3ae695c54e59a3c51805); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:6dd18987f64d8f4ffae8f64cd0087a6c0a52f3d928c6d86b7daa669091e7c320"
 ---
 
 # 홈 상태 아래에 쓰는 나머지 세 곳도 심볼릭 링크 폴더를 거절해요: 아웃박스, 영수증, layout-apply
