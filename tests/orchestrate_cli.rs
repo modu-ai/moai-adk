@@ -204,7 +204,7 @@ impl World {
                 "-c",
                 "user.name=tester",
                 "-c",
-                "user.email=tester@example.invalid",
+                "user.email=t@example.invalid",
                 "commit",
                 "--allow-empty",
                 "-q",
@@ -219,7 +219,7 @@ impl World {
 
     /// The m-flow profile whose integration branch is `integ`.
     fn mflow_profile(&self) {
-        let cfg = self.project.join(".moai-cli/project.yaml");
+        let cfg = moai_cli::state_root::path(&self.project, "project.yaml");
         fs::create_dir_all(cfg.parent().unwrap()).unwrap();
         fs::write(
             &cfg,
