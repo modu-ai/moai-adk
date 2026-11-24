@@ -280,10 +280,11 @@ fn check(name: &str, lang: Lang, text: &str, width: usize) {
     );
     // Every line fits the width it was drawn for (escape codes take no cells) — except the
     // confirming and revert commands, which stay whole so they can be copied.
-    for line in text.lines().filter(|l| {
-        !l.contains("moai update --confirm sha256:")
-            && !(l.contains("-revert ") && l.contains(" --receipt"))
-    }) {
+    let whole = |l: &str| {
+        l.contains("moai update --confirm sha256:")
+            || (l.contains("-revert ") && l.contains(" --receipt"))
+    };
+    for line in text.lines().filter(|l| !whole(l)) {
         let shown = strip_ansi(line);
         assert!(
             UnicodeWidthStr::width(shown.as_str()) <= width,

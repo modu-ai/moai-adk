@@ -12,7 +12,7 @@ use common::CleanEnv;
 
 #[path = "update_adopt_cli/trees.rs"]
 mod trees;
-use trees::{copy_tree, names_in};
+use trees::{copy_tree, names_in, tree};
 
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -168,10 +168,16 @@ fn ac1_a_package_equal_file_moves_its_baseline_and_the_next_package_is_an_update
     // Receipts finish in whole seconds: the next one must finish in a later second.
     sleep(Duration::from_millis(1100));
     let current = install(&h.home, "a", |_| {});
+    let skills_before = tree(&skill_dir(&h.home));
 
     let applied = apply(&current, &h.home);
 
     assert_ne!(applied["mode"], json!("refused"), "{applied}");
+    assert_eq!(
+        tree(&skill_dir(&h.home)),
+        skills_before,
+        "no skill byte was rewritten"
+    );
     let owned = owned_digests(&h.home);
     assert_ne!(
         owned.last().unwrap(),
@@ -182,11 +188,6 @@ fn ac1_a_package_equal_file_moves_its_baseline_and_the_next_package_is_an_update
         owned.last().unwrap(),
         &sha_of(&package().join(FILE)),
         "the receipt owns the package's bytes"
-    );
-    assert_eq!(
-        sha_of(&skill_dir(&h.home).join(FILE)),
-        sha_of(&package().join(FILE)),
-        "no skill byte was rewritten"
     );
 
     // A later generation changes the file again: that is an update, not a conflict.

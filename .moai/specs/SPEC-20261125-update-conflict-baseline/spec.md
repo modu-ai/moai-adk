@@ -85,4 +85,11 @@ branch: spec/update-conflict-baseline-20261125
 
 ## Result
 
-(구현 뒤에 적어요.)
+구현은 REQ-1…REQ-9 까지예요. (h), (i), (j) 는 구현하지 않았고(사용자 선택 대기), (g) 는 근거가 코드와 어긋나 하지 않았어요.
+
+- AC-1…AC-6 met: 각 verify 줄을 적힌 그대로 돌려 모두 exit 0. 고치기 전 RED 는 ac1(baseline 이 안 움직임), ac2(conflict), ac4·ac5·ac6(화면에 줄이 없음)이 맞는 이유로 실패했고 ac3 은 지킴이라 RED 가 없어요(뮤턴트 M2 가 보증해요).
+- AC-7 met: `update_adopt_cli` 15, `update_cli` 11, `update_moved_receipts` 8, `update_tux_git_hooks` 6, `update_linked_config_files` 9 통과. 이웃 실행(`update_*`, `home_update*`, `project_update*` 통합 테스트와 lib 의 update·tux 테스트 388개)에서 `update_tux_golden` 4개가 실패했는데, 화면이 되돌리기 줄의 `<HOME>` 을 실제 HOME 으로 바꿔 보여 주기 때문에 그 자리표시자를 고정해 둔 단언과 골든 다섯 개(ko/en `update-applied*.golden`)가 옛 동작을 가리킨 것이었어요. 단언은 뷰의 HOME 으로 바꾸고 골든은 `MOAI_UPDATE_GOLDEN_WRITE=1` 로 다시 만든 뒤 diff 가 그 줄들뿐임을 읽었어요. 그 뒤 22개(새 테스트 6 + 골든 16) 통과, clippy `-D warnings` 통과.
+- 지킴이 뮤턴트(각각 `git checkout` 으로 복원, 트리 깨끗함 확인): baseline 이동 조건에 `&& false` → ac1 실패, 이전 세대 확인을 `ours || true` 로 → ac3 실패, 남은 conflict 줄에 `false &&` → ac4 실패, 되돌리기 줄의 `<HOME>` 풀기 제거 → ac6 실패. 모두 exit 100.
+- 결과 JSON 의 `revert` 문장은 안 바꿨어요(기계가 읽고 테스트가 채워 실행해요). 바뀐 JSON 은 확정한 실행의 결과에 `switch` 부분이 확정하지 않은 때만 더 실리는 것 하나예요.
+- 영수증만 움직이는 쓰기(REQ-1, REQ-2)가 새로 생겼어요. 그 호스트는 `entries` 가 비고 상태가 `unchanged`(또는 `conflict`)로 보고되고 영수증은 `committed` 예요. 플랜이 이를 `baseline N` 으로 세고 미리보기가 확정을 물어요. 계획 뒤 그 파일이 바뀌면 영수증을 쓰기 전에 `a file changed during apply; run recovery-plan` 으로 멈춰요.
+- 임시 HOME 에서만 돌렸어요. 진짜 `~/.claude` 와 `~/.moai-cli` 는 읽지도 쓰지도 않았어요.
