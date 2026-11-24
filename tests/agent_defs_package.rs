@@ -527,8 +527,9 @@ fn chains_name_real_routes_agents_and_references() {
         .filter(|l| l.starts_with("| ") && !l.starts_with("| Request") && !l.starts_with("| ---"))
         .map(|l| l.trim_matches('|').split('|').map(str::trim).collect())
         .collect();
-    // Nine rows since SPEC-20261124-moai-leader-route REQ-11 added the LEADER row.
-    assert_eq!(rows.len(), 9);
+    // Nine rows since SPEC-20261124-moai-leader-route REQ-11 added the LEADER row; eleven since
+    // SPEC-20261120-plan-output-write-set REQ-7 added the flaky-test and the repair rows.
+    assert_eq!(rows.len(), 11);
     let mut covered: Vec<&str> = Vec::new();
     for row in &rows {
         assert_eq!(row.len(), 4, "{row:?}");

@@ -87,7 +87,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "baf11648ccfc000a60b7defb2025311a879e1cfff5b9812779251bf33bbafb5c",
+      "sha256": "29613634119197df6090b4e5f3f37a85b212c65e4b8b7ebb33f5895daf55b112",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -144,7 +144,7 @@
       }
     },
     "references/internal/check-completeness.md": {
-      "sha256": "2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
+      "sha256": "7b32a82dc07e67b439a3f97602d8a2db198af18c196de24c8150e321fc10d955",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-check-completeness",
