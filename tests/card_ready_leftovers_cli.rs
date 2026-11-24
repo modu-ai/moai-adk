@@ -42,7 +42,7 @@ impl World {
         fs::write(
             project.join(".git/info/exclude"),
             format!(
-                "target/\n{}/\n*.log\nscratch/\n",
+                "target/\n{}/\n*.log\nscratch/\nkeep/\n",
                 moai_cli::PROJECT_STATE_DIR
             ),
         )
@@ -239,6 +239,53 @@ fn a_ready_note_without_a_readable_leftovers_line_is_refused() {
 }
 
 #[test]
+fn the_refusal_is_an_input_refusal_that_is_not_worth_resending() {
+    let w = World::new();
+    let card = w.new_card();
+    let (ok, text) = w.note(&card, &w.marker_line("LANE-READY-INTEGRATION", &card));
+    assert!(!ok, "{text}");
+    let line = text.lines().next().unwrap_or("");
+    let v: Value = serde_json::from_str(line).unwrap_or_else(|e| panic!("{e}: {text}"));
+    assert_eq!(v["ok"], false, "{text}");
+    assert_eq!(v["error"]["kind"], "invalid_input", "{text}");
+    assert_eq!(v["error"]["retryable"], false, "{text}");
+}
+
+#[test]
+fn a_folder_git_cannot_read_makes_the_answer_not_checked() {
+    use std::os::unix::fs::PermissionsExt;
+    let w = World::new();
+    let card = w.new_card();
+    w.take(&card);
+    let locked = w.project.join("locked");
+    fs::create_dir_all(&locked).unwrap();
+    fs::write(locked.join("inside.txt"), "x").unwrap();
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+    let unreadable = fs::read_dir(&locked).is_err();
+    let text = format!(
+        "{}leftovers: none\n",
+        w.marker_line("LANE-READY-INTEGRATION", &card)
+    );
+    let (ok, out) = w.note(&card, &text);
+    // Restore the mode first so the temporary folder can be removed whatever the asserts say.
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+    if !unreadable {
+        // The session may read anything (a privileged user): there is nothing to check.
+        return;
+    }
+    assert!(ok, "the note is kept: {out}");
+    let a = answer(&out);
+    assert_eq!(a["shared_checkout"], "not_checked", "{out}");
+    let why = a["shared_checkout_reason"].as_str().unwrap_or("");
+    assert!(why.contains("could not read everything"), "{out}");
+    assert_eq!(
+        a["shared_checkout_new"].as_array().unwrap().len(),
+        0,
+        "{out}"
+    );
+}
+
+#[test]
 fn the_receipt_is_still_judged_when_the_line_is_there() {
     let w = World::new();
     let card = w.new_card();
@@ -258,6 +305,9 @@ fn the_shared_checkout_is_read_without_changing_it() {
     // Older than the reservation: not listed.
     fs::write(w.project.join("old_untracked.txt"), "x").unwrap();
     fs::write(w.project.join("old.log"), "x").unwrap();
+    // An old ignored folder: what is listed for it is decided by what lies below it.
+    fs::create_dir_all(w.project.join("keep/sub")).unwrap();
+    fs::write(w.project.join("keep/sub/old.bin"), "x").unwrap();
     std::thread::sleep(Duration::from_millis(2100));
     let lane = w.take(&card);
     std::thread::sleep(Duration::from_millis(2100));
@@ -268,11 +318,15 @@ fn the_shared_checkout_is_read_without_changing_it() {
     fs::write(w.project.join("newdir/inner.txt"), "x").unwrap();
     fs::create_dir_all(w.project.join("scratch/deep")).unwrap();
     fs::write(w.project.join("scratch/deep/copy.bin"), "x").unwrap();
+    // A new file deep inside the old folder: the folder itself is old, the file is not.
+    fs::write(w.project.join("keep/sub/new.bin"), "x").unwrap();
     // Expected state: not listed.
     for name in [".DS_Store", "CLAUDE.local.md", ".mcp.json"] {
         fs::write(w.project.join(name), "x").unwrap();
     }
     fs::create_dir_all(w.project.join(".claude/worktrees/other")).unwrap();
+    fs::write(w.project.join(".claude/worktrees/other/file.txt"), "x").unwrap();
+    fs::write(w.project.join(".claude/settings.local.json"), "x").unwrap();
     fs::write(w.project.join("target/built.o"), "x").unwrap();
     // A file in the lane's own worktree is no business of the primary checkout.
     fs::write(lane.join("lane_only.txt"), "x").unwrap();
@@ -311,6 +365,7 @@ fn the_shared_checkout_is_read_without_changing_it() {
         listed,
         [
             "cache.log",
+            "keep/",
             "new_untracked.txt",
             "newdir/inner.txt",
             "scratch/"

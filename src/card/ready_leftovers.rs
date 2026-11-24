@@ -110,13 +110,16 @@ pub fn check_note(card: &str, text: &str) -> Result<(), String> {
         Err(why) => Err(format!(
             "card note refused: a hand-back note needs one `leftovers:` line, and {}.\n\
              Add `leftovers: none` when you left nothing, or `leftovers: <path> | <path>` for each \
-             thing you could not remove. Make a throwaway copy, a temporary HOME and a `mktemp` \
+             thing you could not remove. Make a throwaway copy, a scratch HOME and a `mktemp` \
              folder only under `<worktree>/target/<name>/` and remove them by a relative path \
              before READY.",
             reason(&why)
         )),
     }
 }
+
+/// The most paths one answer lists; the rest are counted in a last entry.
+pub const LIST_LIMIT: usize = 200;
 
 /// Expected state of a primary checkout: ignored folders and files that a project keeps there on
 /// purpose, so they are never a leftover.
@@ -153,12 +156,16 @@ fn untracked_and_ignored(text: &str) -> Vec<String> {
 const WALK_LIMIT: usize = 2000;
 
 /// The newest creation or modification time of `path` (seconds since the epoch) and, for a
-/// folder, of what lies below it, looking at no more than [`WALK_LIMIT`] entries.
-fn newest_secs(path: &Path) -> Option<i64> {
+/// folder, of what lies below it, looking at no more than `limit` entries (the folder itself
+/// counts as one). The second value is how many entries it looked at.
+fn newest_secs_within(path: &Path, limit: usize) -> (Option<i64>, usize) {
     let mut newest: Option<i64> = None;
     let mut visited = 0usize;
     let mut stack = vec![path.to_path_buf()];
-    while let Some(p) = stack.pop() {
+    while visited < limit {
+        let Some(p) = stack.pop() else {
+            break;
+        };
         visited += 1;
         let Ok(meta) = std::fs::symlink_metadata(&p) else {
             continue;
@@ -171,18 +178,75 @@ fn newest_secs(path: &Path) -> Option<i64> {
                 newest = newest.max(Some(d.as_secs() as i64));
             }
         }
-        if meta.is_dir() && visited < WALK_LIMIT {
+        if meta.is_dir() {
             if let Ok(entries) = std::fs::read_dir(&p) {
                 stack.extend(entries.flatten().map(|e| e.path()));
             }
         }
     }
-    newest
+    (newest, visited)
+}
+
+fn newest_secs(path: &Path) -> Option<i64> {
+    newest_secs_within(path, WALK_LIMIT).0
+}
+
+/// Whether something last touched at `newest` is new since the reservation began at `since`
+/// (a file made in the same second counts).
+fn is_new_since(newest: Option<i64>, since: i64) -> bool {
+    newest.is_some_and(|t| t >= since)
+}
+
+/// `git status` of the primary checkout. Success with anything on stderr (an unreadable folder
+/// is a warning, not a failure) is an incomplete read, so it is an `Err`.
+fn status_text(primary: &Path) -> Result<String, String> {
+    let program = std::env::var("MOAI_GIT_BIN").unwrap_or_else(|_| "git".to_string());
+    let mut cmd = std::process::Command::new(program);
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
+        .args(["--no-optional-locks", "-C"])
+        .arg(primary)
+        .args([
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--ignored=matching",
+            "-uall",
+        ])
+        .stdin(std::process::Stdio::null())
+        .output()
+        .map_err(|e| format!("git could not run: {e}"))?;
+    status_outcome(out.status.success(), &out.stdout, &out.stderr)
+}
+
+/// The text of a finished `git status`, or why it cannot be trusted.
+fn status_outcome(success: bool, stdout: &[u8], stderr: &[u8]) -> Result<String, String> {
+    let err = String::from_utf8_lossy(stderr);
+    let err = err.trim();
+    if !success {
+        return Err(format!("git status failed: {err}"));
+    }
+    if !err.is_empty() {
+        let first = err.lines().next().unwrap_or("");
+        return Err(format!("git status could not read everything: {first}"));
+    }
+    Ok(String::from_utf8_lossy(stdout).into_owned())
+}
+
+/// At most [`LIST_LIMIT`] of the sorted `paths`; a longer list ends in one entry that counts the
+/// rest, so the answer stays small whatever a lane left behind.
+fn limited(mut paths: Vec<String>) -> Vec<String> {
+    if paths.len() > LIST_LIMIT {
+        let more = paths.len() - LIST_LIMIT;
+        paths.truncate(LIST_LIMIT);
+        paths.push(format!("... and {more} more (the list shows {LIST_LIMIT})"));
+    }
+    paths
 }
 
 /// The files of the primary checkout of `project` that are untracked or ignored, are not expected
 /// state and were created or changed at or after `since` (seconds since the epoch). Reads only:
-/// git runs with `--no-optional-locks` (`git_text` adds it), so the index is not refreshed.
+/// git runs with `--no-optional-locks`, so the index is not refreshed.
 pub fn shared_checkout_new(project: &Path, since: i64) -> Shared {
     let listing = match git_text(project, &["worktree", "list", "--porcelain"]) {
         Ok(t) => t,
@@ -192,26 +256,17 @@ pub fn shared_checkout_new(project: &Path, since: i64) -> Shared {
         return Shared::NotChecked("git lists no worktree".to_string());
     };
     let primary = Path::new(primary);
-    let status = match git_text(
-        primary,
-        &[
-            "status",
-            "--porcelain=v1",
-            "-z",
-            "--ignored=matching",
-            "-uall",
-        ],
-    ) {
+    let status = match status_text(primary) {
         Ok(t) => t,
         Err(e) => return Shared::NotChecked(e),
     };
     let mut new: Vec<String> = untracked_and_ignored(&status)
         .into_iter()
         .filter(|p| !is_expected(p))
-        .filter(|p| newest_secs(&primary.join(p.trim_end_matches('/'))).is_some_and(|t| t >= since))
+        .filter(|p| is_new_since(newest_secs(&primary.join(p.trim_end_matches('/'))), since))
         .collect();
     new.sort();
-    Shared::Checked(new)
+    Shared::Checked(limited(new))
 }
 
 #[cfg(test)]
@@ -298,6 +353,142 @@ mod tests {
         assert!(refused.contains("placeholder"), "{refused}");
         assert!(refused.contains("leftovers: none"), "{refused}");
         assert!(refused.contains("target/"), "{refused}");
+    }
+
+    #[test]
+    fn every_refusal_is_an_input_refusal_that_a_resend_does_not_change() {
+        use crate::contract::{classify, Kind};
+        let bodies = [
+            ("", Why::Missing),
+            ("leftovers:\n", Why::Empty),
+            ("leftovers: <path>\n", Why::Placeholder),
+            ("leftovers: none | x\n", Why::NoneWithPath),
+            ("leftovers: a\nleftovers: b\n", Why::Repeated),
+        ];
+        for (rest, why) in bodies {
+            let refused = check_note("C-1", &body(rest)).unwrap_err();
+            assert!(refused.contains(reason(&why)), "{refused}");
+            let kind = classify(&refused);
+            assert_eq!(kind, Kind::InvalidInput, "{rest:?}: {refused}");
+            assert!(!kind.retryable(), "{rest:?}");
+        }
+    }
+
+    #[test]
+    fn expected_state_is_never_a_leftover() {
+        for path in [
+            "target/",
+            "target/debug/x.o",
+            ".claude/worktrees/other/file.txt",
+            ".claude/settings.local.json",
+            "CLAUDE.local.md",
+            ".mcp.json",
+            ".DS_Store",
+            "sub/.DS_Store",
+            "sub/.DS_Store/",
+        ] {
+            assert!(is_expected(path), "{path}");
+        }
+        for path in [
+            "new.txt",
+            "dir/new.txt",
+            "targets/x",
+            "claude/x",
+            "sub/CLAUDE.local.md",
+            "sub/.mcp.json",
+            ".DS_Store.bak",
+        ] {
+            assert!(!is_expected(path), "{path}");
+        }
+    }
+
+    #[test]
+    fn a_touch_in_the_second_the_card_was_reserved_is_new() {
+        assert!(!is_new_since(None, 100));
+        assert!(!is_new_since(Some(99), 100));
+        assert!(is_new_since(Some(100), 100));
+        assert!(is_new_since(Some(101), 100));
+    }
+
+    #[test]
+    fn the_walk_looks_at_no_more_than_its_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("keep");
+        std::fs::create_dir_all(root.join("sub")).unwrap();
+        for f in ["a", "b", "sub/c"] {
+            std::fs::write(root.join(f), "x").unwrap();
+        }
+        // The folder, `sub`, and three files: five entries.
+        let total = 5;
+        assert_eq!(newest_secs_within(&root, total).1, total, "N");
+        assert_eq!(newest_secs_within(&root, total + 1).1, total, "N+1 limit");
+        assert_eq!(
+            newest_secs_within(&root, total - 1).1,
+            total - 1,
+            "N-1 limit"
+        );
+        assert_eq!(newest_secs_within(&root, 1).1, 1);
+        assert_eq!(newest_secs_within(&root, 0), (None, 0), "empty limit");
+        // Looking at the whole folder finds a time; a file alone is one entry.
+        assert!(newest_secs_within(&root, total).0.is_some());
+        assert_eq!(newest_secs_within(&root.join("a"), total).1, 1);
+        // A path that is not there has an entry that cannot be read and no time.
+        assert_eq!(newest_secs_within(&root.join("gone"), total), (None, 1));
+    }
+
+    #[test]
+    fn a_walk_goes_below_the_folder_it_is_given() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("keep");
+        std::fs::create_dir_all(root.join("sub")).unwrap();
+        let file = std::fs::File::create(root.join("sub/new.bin")).unwrap();
+        // A file stamped in the future is the newest thing under the folder.
+        let future = std::time::SystemTime::now() + std::time::Duration::from_secs(10_000);
+        file.set_modified(future).unwrap();
+        let want = future
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        assert_eq!(newest_secs(&root), Some(want));
+    }
+
+    #[test]
+    fn a_long_list_is_cut_and_the_rest_counted() {
+        let paths = |n: usize| (0..n).map(|i| format!("p{i:05}")).collect::<Vec<_>>();
+        assert_eq!(limited(paths(0)), Vec::<String>::new());
+        assert_eq!(limited(paths(LIST_LIMIT)), paths(LIST_LIMIT), "N");
+        let cut = limited(paths(LIST_LIMIT + 1));
+        assert_eq!(cut.len(), LIST_LIMIT + 1, "N+1");
+        assert_eq!(cut[..LIST_LIMIT], paths(LIST_LIMIT)[..]);
+        assert!(cut[LIST_LIMIT].contains("1 more"), "{}", cut[LIST_LIMIT]);
+        let big = limited(paths(60_000));
+        assert_eq!(big.len(), LIST_LIMIT + 1);
+        assert!(
+            big[LIST_LIMIT].contains("59800 more"),
+            "{}",
+            big[LIST_LIMIT]
+        );
+    }
+
+    #[test]
+    fn a_status_that_wrote_a_warning_is_not_trusted() {
+        assert_eq!(
+            status_outcome(true, b"?? a\0", b""),
+            Ok("?? a\0".to_string())
+        );
+        assert_eq!(
+            status_outcome(true, b"?? a\0", b" \n"),
+            Ok("?? a\0".to_string())
+        );
+        let warned = status_outcome(
+            true,
+            b"?? a\0",
+            b"warning: could not open directory 'x/': Permission denied\n",
+        )
+        .unwrap_err();
+        assert!(warned.contains("Permission denied"), "{warned}");
+        let failed = status_outcome(false, b"", b"fatal: bad\n").unwrap_err();
+        assert!(failed.contains("fatal: bad"), "{failed}");
     }
 
     #[test]
