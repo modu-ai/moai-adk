@@ -13,15 +13,15 @@
 //!   https://docs.z.ai/scenario-example/develop-tools/claude. The token is inherited from the
 //!   caller and only its presence is checked; its value is never kept, printed or written.
 //!
-//! Without a role (`moai-cli cc|glm` with neither `-l` nor `-a`, Issue #2053) the launcher
-//! opens a plain host session: no role is guessed and no session name is added. Every launch,
-//! with or without a role (`-l` named `leader`, `-a` named `agent-N`), starts the host in auto
+//! The `moai-cli cc|glm` launchers open a plain host session (Issue #2053): no role is guessed
+//! and a session name comes from `--name` only. The role flags `-l|-a` are retired (user
+//! decision D-1 2026-11-09, SPEC-20261124-launcher-retire-role-flags): [`retired_role_flag`]
+//! finds them and the launcher refuses with [`RETIRED_ROLE_FLAG_MESSAGE`]; the role is entered
+//! inside the session with `/moai work` or `/moai leader`. `moai cc` starts the host in auto
 //! mode (`--permission-mode auto`, user decision 2026-11-23, SPEC-20261123-launcher-auto-mode)
-//! unless `--permissions` is given (no permission flag) or the user setting
-//! `launcher.role_access` says `full` (the bypass) or `prompt`. `-l|-a` only name the
-//! session and set its access: the role is entered inside the session with `/moai --mode-agent`
-//! or `/moai --mode-leader`, which the `--dry-run` notes say
-//! (user decision 2026-11-18, SPEC-20261118-launcher-agent-entry). Codex and OMP are not hosts
+//! and `moai glm` in the bypass (`--dangerously-skip-permissions`, user decision 2026-11-24,
+//! SPEC-20261124-launcher-retire-role-flags D-7), unless `--permissions` is given (no
+//! permission flag) or the user setting `launcher.role_access` says `auto`, `full` or `prompt`. Codex and OMP are not hosts
 //! any more (user decision 2026-11-21, SPEC-20261121-codex-launcher-and-models-removed,
 //! SPEC-20261122-remove-omp-launcher).
 use serde::{Deserialize, Serialize};
@@ -38,34 +38,66 @@ const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
 pub const NOTE_ADVISOR_OMITTED_GLM: &str =
     "--advisor omitted on glm: the advisor is Anthropic API only";
 
-/// How a role session enters its role (SPEC-20261118-launcher-agent-entry): `-l|-a` only name
-/// the session and set its access; the role is entered inside the session with the mode command
-/// of #2286 for that host. `None` for a roleless session. The `cc|glm` launchers add it to
-/// their notes; the legacy `session` command (REQ-00F-06) keeps its recorded answer.
-pub fn role_entry_note(role: Option<&str>, host: &str) -> Option<&'static str> {
-    Some(match (role?, host) {
-        ("leader", _) => "role: -l only names the session and sets its access; enter leader mode inside the session with `/moai --mode-leader`",
-        ("agent", _) => "role: -a only names the session and sets its access; enter agent mode inside the session with `/moai --mode-agent`",
-        _ => return None,
-    })
+/// The one message a retired role flag gets (user decision D-1 2026-11-09, restated 2026-11-24;
+/// SPEC-20261124-launcher-retire-role-flags REQ-1): it names `--name` and the two entry commands
+/// typed inside the session.
+pub const RETIRED_ROLE_FLAG_MESSAGE: &str = "`-l`, `--leader`, `-a` and `--agent` are retired: start a session with `moai cc` or `moai glm` (name it with `--name`), then type `/moai work` for a lane or `/moai leader` for the coordination window";
+
+/// True when the command line (the program name first, a leading `--color` already taken out)
+/// is a launcher line that carries a retired role flag: `moai -l`, `moai -a cc`, or `cc|glm`
+/// followed by `-l`, `--leader`, `-a` or `--agent`. The word after an option that takes a value
+/// and everything after `--` is a value, not a flag. It reads the words only: nothing is
+/// started, numbered, locked or written.
+pub fn retired_role_flag(words: &[String]) -> bool {
+    const FLAGS: [&str; 4] = ["-l", "--leader", "-a", "--agent"];
+    const TAKE_A_VALUE: [&str; 4] = ["--name", "--model", "--effort", "--advisor"];
+    let mut rest = words.iter().skip(1).map(String::as_str);
+    match rest.next() {
+        Some(first) if FLAGS.contains(&first) => true,
+        Some("cc" | "glm") => {
+            while let Some(word) = rest.next() {
+                if word == "--" {
+                    return false;
+                }
+                if FLAGS.contains(&word) {
+                    return true;
+                }
+                if TAKE_A_VALUE.contains(&word) {
+                    rest.next();
+                }
+            }
+            false
+        }
+        _ => false,
+    }
 }
-const DEFAULT_MODEL: &str = "opus";
-const DEFAULT_EFFORT: &str = "medium";
 /// User decision 2026-11-08 (#2053 HOLD-L1 = A, #2062): a session without a role still gets the
-/// launcher's Claude defaults `--model opus --effort medium`. False would pass no model or
-/// effort flag so the user's own Claude settings apply (option B, not chosen). This constant is
-/// the only place to change. The advisor is no longer a default (user decision 2026-11-12,
-/// #2476, replacing the `--advisor fable` part of the 2026-11-08 decision): see
-/// [`launch_settings`].
+/// launcher's defaults of model and effort. False would pass no model or effort flag so the
+/// user's own Claude settings apply (option B, not chosen). The values are the host's own
+/// (`model_effort_settings::launcher_default`: `opus`, effort `medium` on `claude` and `high`
+/// on `glm`, SPEC-20261124-launcher-retire-role-flags D-8). The advisor is no longer a default
+/// (user decision 2026-11-12, #2476, replacing the `--advisor fable` part of the 2026-11-08
+/// decision): see [`launch_settings`].
 pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
 /// User decision 2026-11-23 (SPEC-20261123-launcher-auto-mode, replacing the 2026-11-10 decision
-/// of #2359): a launch on every host, with or without a role, starts in auto mode
-/// (`--permission-mode auto` on Claude hosts, whatever the project's `permissions` key says).
-/// `--permissions` keeps the host's own mode (no permission flag). The user-only
-/// `~/.moai-cli/config/launcher.yaml` key `launcher.role_access` can choose `auto`, `full` (the
-/// bypass, `--dangerously-skip-permissions`) or `prompt`; an absent file or key keeps this
-/// default. Project settings are ignored.
+/// of #2359): a launch on a Claude host starts in auto mode (`--permission-mode auto`, whatever
+/// the project's `permissions` key says). The glm host starts in the bypass
+/// (`--dangerously-skip-permissions`, user decision 2026-11-24, SPEC-20261124-launcher-retire-
+/// role-flags REQ-13); see [`access_default`]. `--permissions` keeps the host's own mode (no
+/// permission flag). The user-only `~/.moai-cli/config/launcher.yaml` key
+/// `launcher.role_access` can choose `auto`, `full` (the bypass) or `prompt` for every launch
+/// of both hosts; an absent file or key keeps the host default. Project settings are ignored.
 pub const ACCESS_DEFAULT: Access = Access::Auto;
+
+/// The access of a launch on `host` (`claude` or `glm`) when neither `--permissions` nor
+/// `launcher.role_access` decides: auto mode on `claude`, the bypass on `glm`.
+pub fn access_default(host: &str) -> Access {
+    if host == "glm" {
+        Access::Full
+    } else {
+        ACCESS_DEFAULT
+    }
+}
 /// The environment that points Claude Code at z.ai GLM. The set follows the Go tool's
 /// `setGLMEnv` (user decision 2026-11-10): endpoint, timeout, the model each Claude alias maps
 /// to, the 1M context window of those models (Claude Code assumes 200K for an id it does not
@@ -164,9 +196,10 @@ fn blocked_line(b: &crate::key_vault::Blocked) -> String {
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Access {
-    /// `--permission-mode auto`: the host's auto mode (the launcher default).
+    /// `--permission-mode auto`: the host's auto mode (the default of `cc`).
     Auto,
-    /// `--dangerously-skip-permissions`: no permission prompt at all; only the user's own choice.
+    /// `--dangerously-skip-permissions`: no permission prompt at all (the default of `glm`; on
+    /// `cc` only the user's own choice).
     Full,
     /// No permission flag: the host starts in the mode its own settings choose.
     // Not ACCESS_DEFAULT: a serialized request without `access` adds no flag (the safe side).
@@ -186,7 +219,7 @@ pub struct SessionRequest {
     /// `None` uses the host default: `opus` on Claude hosts.
     #[serde(default)]
     pub model: Option<String>,
-    /// `None` uses `medium` on Claude hosts.
+    /// `None` uses the host default on Claude hosts: `medium` for `cc`, `high` for `glm`.
     #[serde(default)]
     pub effort: Option<String>,
     #[serde(default)]
@@ -258,9 +291,12 @@ fn user_launcher() -> Result<Option<serde_json::Map<String, Value>>, String> {
     }
 }
 
-fn configured_access(launcher: Option<&serde_json::Map<String, Value>>) -> Result<Access, String> {
+fn configured_access(
+    host: &str,
+    launcher: Option<&serde_json::Map<String, Value>>,
+) -> Result<Access, String> {
     match launcher.and_then(|l| l.get("role_access")) {
-        None => Ok(ACCESS_DEFAULT),
+        None => Ok(access_default(host)),
         Some(Value::String(access)) if access == "auto" => Ok(Access::Auto),
         Some(Value::String(access)) if access == "full" => Ok(Access::Full),
         Some(Value::String(access)) if access == "prompt" => Ok(Access::Prompt),
@@ -308,19 +344,21 @@ pub struct LaunchSettings {
 }
 
 /// Resolves both user launcher settings from one read of the file (Issues #2413, #2476).
-/// Access: CLI `--permissions` (no flag) > `launcher.role_access` > [`ACCESS_DEFAULT`] (auto),
-/// the same with or without a role. Advisor (user decision 2026-11-12, #2476, replacing
+/// Access: CLI `--permissions` (no flag) > `launcher.role_access` > the host default
+/// ([`access_default`]: auto on `claude`, the bypass on `glm`). Advisor (user decision 2026-11-12,
+/// #2476, replacing
 /// the 2026-11-08 default `fable`): CLI `--no-advisor` / `--advisor` > `launcher.advisor` >
 /// none; `--advisor` with `--no-advisor` is refused, and the setting applies to Claude hosts
 /// only. The file is validated for every launch, also when the CLI
 /// decides, so a broken file is never silently skipped. Project settings do not matter.
 pub fn launch_settings(
+    host: &str,
     keep_prompts: bool,
     cli_advisor: Option<&str>,
     no_advisor: bool,
 ) -> Result<LaunchSettings, String> {
     let launcher = user_launcher()?;
-    let configured_access = configured_access(launcher.as_ref())?;
+    let configured_access = configured_access(host, launcher.as_ref())?;
     let configured = configured_advisor(launcher.as_ref())?;
     if cli_advisor.is_some() && no_advisor {
         return Err("--advisor and --no-advisor cannot be used together".into());
@@ -340,48 +378,40 @@ pub fn launch_settings(
     })
 }
 
-/// Resolves CLI `--permissions` > user `launcher.role_access` > [`ACCESS_DEFAULT`]. The
-/// configuration is validated even for `--permissions`. Project settings do not matter.
-pub fn launch_access(keep_prompts: bool) -> Result<Access, String> {
-    Ok(launch_settings(keep_prompts, None, false)?.access)
+/// Resolves CLI `--permissions` > user `launcher.role_access` > the host default
+/// ([`access_default`]). The configuration is validated even for `--permissions`. Project
+/// settings do not matter.
+pub fn launch_access(host: &str, keep_prompts: bool) -> Result<Access, String> {
+    Ok(launch_settings(host, keep_prompts, None, false)?.access)
 }
 
-// ---- agent-N numbering (#2359 decision 6760976883; resolves #2361; changed by #2971) ----
+// ---- session live locks (the launcher no longer numbers sessions: SPEC-20261124-launcher-
+// retire-role-flags D-4; a name comes from `--name` only) ----
 
-/// Test-only: milliseconds to hold the counter lock between choosing a number and locking it.
-pub const AGENT_SEQ_TEST_HOLD_VAR: &str = "MOAI_TEST_AGENT_SEQ_HOLD_MS";
-/// The one warning line for number 1 (leader decision 6880464413): `claim` and `claim-verify`
-/// judge ownership by the session name alone, so a claim an earlier `agent-1` left inside its
-/// lease still reads as this session's.
-pub const AGENT_ONE_WARNING: &str = "warning: a claim of an earlier agent-1 may still be inside its lease; do not take over work from claim-verify alone";
-/// How long a launch waits for the `.live` lock of its number. Only a dry run that is probing
-/// that file at the same moment can hold it, and only for an instant.
-const LIVE_LOCK_TRIES: u32 = 200;
-
-/// Where `-a` session numbers are kept: `<clone common dir>/.moai-cli/sessions/`, beside the
-/// claim journal (`claim::journal_root`). Every worktree of one clone resolves the same common
-/// dir, so they share the numbers across hosts, and git never lists the files. A session is
-/// alive while its launcher holds the lock on `agent-<n>.live` or while the registry entry
-/// `agent-<n>.json` has a running lease; `.lock` is the counter's `File::lock` target.
+/// Where the session registry and the `.live` locks are kept: `<clone common dir>/.moai-cli/
+/// sessions/`, beside the claim journal (`claim::journal_root`). Every worktree of one clone
+/// resolves the same common dir, so they share it across hosts, and git never lists the files.
+/// A session is alive while its launcher holds the lock on `<name>.live` or while the registry
+/// entry `<name>.json` has a running lease.
 pub fn agent_seq_dir(project: &Path) -> Result<PathBuf, String> {
-    let id = crate::identity::identity_in(project, None)
-        .map_err(|e| format!("agent numbering: {e}; pass --name"))?;
+    let id =
+        crate::identity::identity_in(project, None).map_err(|e| format!("session folder: {e}"))?;
     if id["identity_status"].as_str() != Some("ok") {
         return Err(format!(
-            "agent numbering needs a git repository (identity_status {}); run from the project or pass --name",
+            "the session folder needs a git repository (identity_status {}); run from the project",
             id["identity_status"].as_str().unwrap_or("unknown")
         ));
     }
     let common = id["clone_anchor"]
         .as_str()
-        .ok_or("agent numbering needs a git repository; pass --name")?;
+        .ok_or("the session folder needs a git repository")?;
     Ok(crate::clone_root::path(Path::new(common)).join("sessions"))
 }
 
 fn refuse_symlink(path: &Path) -> Result<(), String> {
     match fs::symlink_metadata(path) {
         Ok(m) if m.file_type().is_symlink() => Err(format!(
-            "agent number store {} is a symlink; refused (pass --name)",
+            "session lock path {} is a symlink; refused",
             path.display()
         )),
         _ => Ok(()),
@@ -394,7 +424,7 @@ fn refuse_unless_regular(path: &Path) -> Result<(), String> {
     refuse_symlink(path)?;
     match fs::symlink_metadata(path) {
         Ok(m) if !m.file_type().is_file() => Err(format!(
-            "agent number file {} is not a regular file; refused (pass --name)",
+            "session lock path {} is not a regular file; refused",
             path.display()
         )),
         _ => Ok(()),
@@ -402,17 +432,11 @@ fn refuse_unless_regular(path: &Path) -> Result<(), String> {
 }
 
 /// `n` of a canonical `agent-<n><suffix>` file name: decimal digits without a leading zero
-/// that fit in 32 bits. Any other name is not one of the launcher's numbers.
+/// that fit in 32 bits. Any other name is not an `agent-<n>` entry of the session registry.
 pub(crate) fn agent_number_of(file_name: &str, suffix: &str) -> Option<u64> {
     let digits = file_name.strip_prefix("agent-")?.strip_suffix(suffix)?;
     let n: u32 = digits.parse().ok()?;
     (n.to_string() == digits).then_some(u64::from(n))
-}
-
-fn clock() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
 }
 
 /// Whether some launcher holds the lock on the `agent-<n>.live` file at `path`. The probe asks
@@ -420,12 +444,7 @@ fn clock() -> i64 {
 /// and two probes never block each other.
 pub(crate) fn live_lock_held(path: &Path) -> Result<bool, String> {
     refuse_unless_regular(path)?;
-    let unusable = || {
-        format!(
-            "agent number file {} cannot be probed; pass --name",
-            path.display()
-        )
-    };
+    let unusable = || format!("session lock path {} cannot be probed", path.display());
     let file = match OpenOptions::new().read(true).open(path) {
         Ok(f) => f,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
@@ -438,141 +457,18 @@ pub(crate) fn live_lock_held(path: &Path) -> Result<bool, String> {
     }
 }
 
-/// The highest number of a live `agent-*` session in `dir`, or `None` when none is alive.
-/// Live: the `.live` lock of `agent-<n>` is held, or the registry entry `agent-<n>.json` has a
-/// running lease at `now`. A `.live` file nobody locks is dead. Reads and probes only; it
-/// creates and writes nothing, and a missing folder has no live session.
-fn highest_live(dir: &Path, now: i64) -> Result<Option<u64>, String> {
-    let mut highest: Option<u64> = None;
-    match fs::read_dir(dir) {
-        Ok(entries) => {
-            for entry in entries {
-                let entry = entry.map_err(|_| {
-                    format!(
-                        "agent number folder {} cannot be read; pass --name",
-                        dir.display()
-                    )
-                })?;
-                let file_name = entry.file_name();
-                let Some(n) = file_name.to_str().and_then(|f| agent_number_of(f, ".live")) else {
-                    continue;
-                };
-                if live_lock_held(&entry.path())? {
-                    highest = highest.max(Some(n));
-                }
-            }
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-        Err(_) => {
-            return Err(format!(
-                "agent number folder {} cannot be read; pass --name",
-                dir.display()
-            ))
-        }
-    }
-    let registered = crate::lane_registry::live_agent_numbers(dir, now)
-        .map_err(|e| format!("{e}; or pass --name"))?;
-    Ok(registered.into_iter().map(Some).fold(highest, Ord::max))
-}
-
-/// The number after the highest live one, or 1 when none is alive.
-fn number_after(highest_live: Option<u64>) -> u64 {
-    highest_live.map_or(1, |n| n + 1)
-}
-
-/// The number the next `-a` launch would take and the live number it follows, calculated
-/// without taking anything (`--dry-run`): no lock is held, no folder or file is created.
-pub fn peek_agent_number(project: &Path) -> Result<(u64, Option<u64>), String> {
-    let dir = agent_seq_dir(project)?;
-    refuse_symlink(&dir)?;
-    let live = highest_live(&dir, clock())?;
-    Ok((number_after(live), live))
-}
-
-/// A number a launch has taken. The exclusive lock on `agent-<n>.live` is held for as long as
-/// this value lives, so the caller keeps it until the host has exited; the OS releases the lock
-/// on any exit of the launcher, a kill included.
-#[derive(Debug)]
-pub struct TakenNumber {
-    pub number: u64,
-    /// The highest live number this one follows; `None` when no session was alive.
-    pub live_max: Option<u64>,
-    _live: fs::File,
-}
-
-/// The `notes` lines for a number: where it comes from, and the claim warning when it is 1.
-/// `taken` is false for a `--dry-run` preview.
-pub fn number_notes(number: u64, live_max: Option<u64>, dir: &Path, taken: bool) -> Vec<String> {
-    let origin = match live_max {
-        None => "no live agent session, starts at agent-1".to_string(),
-        Some(k) => format!("next after live agent-{k}"),
-    };
-    let mut notes = vec![if taken {
-        format!(
-            "agent number {number} taken: {origin} (store {})",
-            dir.display()
-        )
-    } else {
-        format!(
-            "agent-N preview: --dry-run takes no number; {origin} (store {})",
-            dir.display()
-        )
-    }];
-    notes.extend((number == 1).then(|| AGENT_ONE_WARNING.to_string()));
-    notes
-}
-
-/// The preview for a folder that `git init` is about to create: no session can be alive.
-pub fn pending_number_notes() -> Vec<String> {
-    vec![
-        "agent-N preview: --dry-run takes no number; no live agent session, starts at agent-1 (the store is created by git init)".to_string(),
-        AGENT_ONE_WARNING.to_string(),
-    ]
-}
-
-/// Takes the `agent-<n>.live` lock for `n`. A shared probe of a dry run may hold the file for an
-/// instant, so the lock is retried; a holder that stays means this number is not free.
-fn lock_live(dir: &Path, n: u64) -> Result<fs::File, String> {
-    let path = dir.join(format!("agent-{n}.live"));
-    refuse_unless_regular(&path)?;
-    let unavailable = || {
-        format!(
-            "agent number lock {} unavailable; pass --name",
-            path.display()
-        )
-    };
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(&path)
-        .map_err(|_| unavailable())?;
-    for _ in 0..LIVE_LOCK_TRIES {
-        match file.try_lock() {
-            Ok(()) => return Ok(file),
-            Err(fs::TryLockError::WouldBlock) => {
-                std::thread::sleep(std::time::Duration::from_millis(25));
-            }
-            Err(fs::TryLockError::Error(_)) => break,
-        }
-    }
-    Err(unavailable())
-}
-
-/// Takes the `<name>.live` lock for a session with a role (BOARD 03 (가),
+/// Takes the `<name>.live` lock for a named session (BOARD 03 (가),
 /// SPEC-20261120-launcher-liveness REQ-4): the launcher holds this exclusive lock for as long
-/// as the host runs — a numbered session through its `agent-<n>` name, a named session through
-/// the name it was given — so a read-only probe ([`live_lock_held`]) can tell a live launcher
-/// from an exited one. A symlink or a non-regular file at the path is refused; the name must
-/// be a safe registry name.
+/// as the host runs, under the name `--name` gave, so a read-only probe ([`live_lock_held`])
+/// can tell a live launcher from an exited one. A symlink or a non-regular file at the path is
+/// refused; the name must be a safe registry name.
 pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
     if !crate::lane_registry::valid_name(name) {
         return Err(
             "session live lock name is invalid: use 1 to 64 of A-Z a-z 0-9 . _ -".to_string(),
         );
     }
-    // The first named launch in a clone makes the sessions folder, as the numbered path does.
+    // The first named launch in a clone makes the sessions folder.
     fs::create_dir_all(dir)
         .map_err(|e| format!("session live lock {} write failed: {e}", dir.display()))?;
     let path = dir.join(format!("{name}.live"));
@@ -586,8 +482,7 @@ pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
         .open(&path)
         .map_err(|_| unavailable())?;
     // N2 of the audit: a session of this name is already running — say so at once, with no
-    // wait. The numbered path keeps its retries because a shared dry-run probe may hold its
-    // file for an instant; a named lock's only other holder is a full session.
+    // wait; a named lock's only other holder is a full session.
     match file.try_lock() {
         Ok(()) => Ok(file),
         Err(fs::TryLockError::WouldBlock) => Err(format!(
@@ -598,63 +493,17 @@ pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
     }
 }
 
-// @MX:WARN: [AUTO] cross-process critical section; a second launch blocks on `.lock` until the
-//   first holds the `.live` lock of its number.
-// @MX:REASON: two launches that both chose the same number would open one `agent-<n>`.
-/// Takes the next agent number. Under an exclusive `File::lock` on `.lock` (a concurrent launch
-/// waits, it does not fail) it finds the highest live number, takes the exclusive lock on
-/// `agent-<highest + 1>.live` (or `agent-1.live` when none is alive) and only then lets go of
-/// `.lock`. The number stays live while the returned value is held. Every failure is an error
-/// for the caller to show, never a silent `agent-1`.
-pub fn take_agent_number(project: &Path) -> Result<TakenNumber, String> {
-    let dir = agent_seq_dir(project)?;
-    refuse_symlink(&dir)?;
-    fs::create_dir_all(&dir).map_err(|_| {
-        format!(
-            "agent number store {} cannot be created; pass --name",
-            dir.display()
-        )
-    })?;
-    let lock_path = dir.join(".lock");
-    refuse_unless_regular(&lock_path)?;
-    let lock = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(&lock_path)
-        .and_then(|f| f.lock().map(|()| f))
-        .map_err(|_| {
-            format!(
-                "agent number lock {} unavailable; pass --name",
-                lock_path.display()
-            )
-        })?;
-    let live_max = highest_live(&dir, clock())?;
-    let number = number_after(live_max);
-    // Test seam: widens the window between choosing and locking (at most 2 s) so the
-    // concurrency test can show the counter lock is what keeps numbers apart. Debug builds
-    // only: a release build never reads the variable (SPEC-20261124-test-seams-release).
-    #[cfg(debug_assertions)]
-    if let Some(ms) = std::env::var(AGENT_SEQ_TEST_HOLD_VAR)
-        .ok()
-        .and_then(|v| v.parse::<u64>().ok())
-    {
-        std::thread::sleep(std::time::Duration::from_millis(ms.min(2000)));
-    }
-    let live = lock_live(&dir, number)?;
-    drop(lock);
-    Ok(TakenNumber {
-        number,
-        live_max,
-        _live: live,
-    })
-}
-
 fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
     let defaults = launcher_defaults(r.role.as_deref());
-    let model = r.model.as_deref().or(defaults.then_some(DEFAULT_MODEL));
-    let effort = r.effort.as_deref().or(defaults.then_some(DEFAULT_EFFORT));
+    let default = crate::model_effort_settings::launcher_default(&r.host);
+    let model = r
+        .model
+        .as_deref()
+        .or(defaults.then_some(default.model.as_str()));
+    let effort = r
+        .effort
+        .as_deref()
+        .or(defaults.then_some(default.effort.as_str()));
     if let Some(e) = effort {
         if !EFFORTS.contains(&e) {
             return Err("effort must be one of low|medium|high|xhigh|max|ultracode".into());
@@ -706,7 +555,7 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
     }
     match r.access {
         Access::Auto => {
-            notes.push("--permission-mode auto: Claude Code's auto mode checks each tool call (the launcher default since user decision 2026-11-23; --permissions keeps the host's own mode, launcher.role_access picks auto, full or prompt)");
+            notes.push("--permission-mode auto: Claude Code's auto mode checks each tool call (the default of `moai cc` since user decision 2026-11-23; --permissions keeps the host's own mode, launcher.role_access sets the mode of every launch: auto, full or prompt)");
             if r.host == "glm" {
                 notes.push("glm runs Claude Code behind the z.ai gateway: the auto mode classifier may show a billing notice, see docs/troubleshooting.md section 5 (no setting is changed)");
             }
@@ -714,12 +563,12 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
             argv.push("auto".into());
         }
         Access::Full => {
-            notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (chosen by the user in launcher.role_access; auto mode is the default, keep prompts with --permissions)");
+            notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (the default of `moai glm` since user decision 2026-11-24, or launcher.role_access full for every launch; keep prompts with --permissions, pick auto with launcher.role_access auto)");
             argv.push("--dangerously-skip-permissions".into());
         }
         // A role session without a flag (`--permissions`, `prompt`, the legacy `session`
         // command) added no note before; only the roleless form did, and keeps doing so.
-        Access::Prompt if r.role.is_none() => notes.push("no permission flag: Claude Code starts in the mode the user's and project's settings choose (--permissions or launcher.role_access prompt)"),
+        Access::Prompt if r.role.is_none() => notes.push("no permission flag: Claude Code starts in the mode the user's and project's settings choose (--permissions, or launcher.role_access prompt for every launch)"),
         Access::Prompt => {}
     }
     Ok(argv)
@@ -736,26 +585,43 @@ fn saved_note(host: &str, role: &str) -> &'static str {
     }
 }
 
-/// Fills the model and effort a person did not give from the choice `moai update` saved under
-/// `launcher.models.<host>.<role>` of the user launcher settings file (card C-47 criteria 5 and 7,
-/// SPEC-20261119-launcher-reads-models; the glm host in SPEC-20261119-glm-launcher-settings-receipt).
-/// It applies to a session with a role on `claude` and `glm`; a roleless session
-/// keeps its own rules. The file is read at every call, so a rewritten file is used by the next
-/// launch. A saved entry outside the support table, anywhere under `launcher.models`, refuses the
-/// launch with key paths only (`unsupported_entries`). The glm host is Claude Code on z.ai: its
-/// saved id carries the `zai/` provider prefix, which the
-/// z.ai endpoint does not take, so the prefix is removed here (research note C-47 note 3452: Claude
-/// Code sends a full unknown id as written; the alias mapping of the environment is unchanged).
-/// Nothing saved for the host and role, or no settings file at all, falls back to the default
-/// table of the model settings (`default_choice`), the table the question screen shows as
-/// "(default)" (SPEC-20261121-model-defaults-one-table): a session with a role starts with the
-/// table's model and effort, a flag the person gave stays, and only the other field is filled.
-/// The second value is the note to add when a saved value was used; a table default adds none.
-fn apply_saved_choice(
-    r: &SessionRequest,
-) -> Result<(SessionRequest, Option<&'static str>), String> {
-    let (Some(role), "claude" | "glm") = (r.role.as_deref(), r.host.as_str()) else {
-        return Ok((r.clone(), None));
+/// The notes of a launch that read `launcher.models` for `host`: a flat entry says so when it
+/// filled a value, and an old `leader` or `agent` entry says it is not read (one note each, key
+/// paths only; SPEC-20261124-launcher-retire-role-flags REQ-4 and REQ-5).
+fn flat_note(host: &str) -> &'static str {
+    if host == "glm" {
+        "model and effort not given on the command line come from launcher.models.glm (saved by moai update)"
+    } else {
+        "model and effort not given on the command line come from launcher.models.claude (saved by moai update)"
+    }
+}
+
+fn old_role_note(host: &str) -> &'static str {
+    if host == "glm" {
+        "launcher.models.glm.leader and launcher.models.glm.agent are not read: a launch takes the flat launcher.models.glm entry; save one with moai update"
+    } else {
+        "launcher.models.claude.leader and launcher.models.claude.agent are not read: a launch takes the flat launcher.models.claude entry; save one with moai update"
+    }
+}
+
+/// Fills the model and effort a person did not give. A launch (no role) takes them from the
+/// flat entry `moai update` saved under `launcher.models.<host>` of the user launcher settings
+/// file (`model` and `effort`), else from the defaults of its host
+/// (`model_effort_settings::launcher_default`, applied in [`claude_argv`]); an old `leader` or
+/// `agent` entry beside it is not read and adds one note (SPEC-20261124-launcher-retire-role-
+/// flags REQ-4, REQ-5, REQ-15). The legacy `session --role` request still takes the role row of
+/// the saved entry or of the default table (SPEC-20261119-launcher-reads-models, SPEC-20261121-
+/// model-defaults-one-table). The file is read at every call, so a rewritten file is used by the
+/// next launch; a saved entry outside the support table refuses the launch with key paths only.
+/// The glm host is Claude Code on z.ai: a saved id carries the `zai/` provider prefix, which the
+/// z.ai endpoint does not take, so the prefix is removed here (the alias mapping of the
+/// environment is unchanged). A flag the person gave stays, and only the other field is filled.
+fn apply_saved_choice(r: &SessionRequest) -> Result<(SessionRequest, Vec<&'static str>), String> {
+    if !matches!(r.host.as_str(), "claude" | "glm") {
+        return Ok((r.clone(), Vec::new()));
+    }
+    let Some(role) = r.role.as_deref() else {
+        return apply_flat_choice(r);
     };
     let saved = match user_launcher()? {
         Some(launcher) => {
@@ -774,8 +640,22 @@ fn apply_saved_choice(
     let Some(choice) =
         saved.or_else(|| crate::model_effort_settings::default_choice(&r.host, role))
     else {
-        return Ok((r.clone(), None));
+        return Ok((r.clone(), Vec::new()));
     };
+    let (filled, used) = fill_from(r, &choice);
+    let notes = if used && from_saved {
+        vec![saved_note(&r.host, role)]
+    } else {
+        Vec::new()
+    };
+    Ok((filled, notes))
+}
+
+/// `r` with the model and effort it lacks taken from `choice`; whether a value was taken.
+fn fill_from(
+    r: &SessionRequest,
+    choice: &crate::model_effort_settings::Choice,
+) -> (SessionRequest, bool) {
     let model = if r.host == "glm" {
         choice.model.strip_prefix("zai/").unwrap_or(&choice.model)
     } else {
@@ -788,13 +668,30 @@ fn apply_saved_choice(
         used = true;
     }
     if filled.effort.is_none() {
-        filled.effort = Some(choice.effort);
+        filled.effort = Some(choice.effort.clone());
         used = true;
     }
-    Ok((
-        filled,
-        (used && from_saved).then(|| saved_note(&r.host, role)),
-    ))
+    (filled, used)
+}
+
+/// The launch path of [`apply_saved_choice`]: the flat `launcher.models.<host>` entry.
+fn apply_flat_choice(r: &SessionRequest) -> Result<(SessionRequest, Vec<&'static str>), String> {
+    let Some(launcher) = user_launcher()? else {
+        return Ok((r.clone(), Vec::new()));
+    };
+    let read = crate::model_effort_settings::flat_for_launch(&launcher, &r.host)?;
+    let mut notes = Vec::new();
+    if read.old_role_entries {
+        notes.push(old_role_note(&r.host));
+    }
+    let Some(choice) = read.choice else {
+        return Ok((r.clone(), notes));
+    };
+    let (filled, used) = fill_from(r, &choice);
+    if used {
+        notes.push(flat_note(&r.host));
+    }
+    Ok((filled, notes))
 }
 
 /// Composes the host command without running it. Returns
@@ -805,7 +702,7 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
     compose_resolved(&resolved, saved)
 }
 
-fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<Value, String> {
+fn compose_resolved(r: &SessionRequest, saved: Vec<&'static str>) -> Result<Value, String> {
     if let Some(role) = &r.role {
         if !ROLES.contains(&role.as_str()) {
             return Err("role must be leader or agent".into());
@@ -822,7 +719,11 @@ fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<V
     if r.role.is_none() {
         notes.push("no role: a plain host session; no role or session name is added (#2053)");
         notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
-            "launcher defaults without a role: model opus, effort medium (user decision 2026-11-08: A); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
+            if r.host == "glm" {
+                "launcher defaults of glm: model opus, effort high, unless --model, --effort or a choice saved by moai update say otherwise (user decisions 2026-11-08 and 2026-11-24); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
+            } else {
+                "launcher defaults of claude: model opus, effort medium, unless --model, --effort or a choice saved by moai update say otherwise (user decision 2026-11-08: A); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
+            }
         } else {
             "no model or effort flag without a role; the user's Claude settings apply; no advisor unless --advisor or launcher.advisor asks for one (#2476)"
         });
@@ -899,7 +800,7 @@ pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
 }
 
 /// SPEC-20261124-identity-home-arg REQ-7: with a symlinked home state folder in the environment
-/// HOME the agent number folder answers as it does with a sound HOME.
+/// HOME the session folder answers as it does with a sound HOME.
 #[cfg(all(test, unix))]
 mod home_arg_claim_group_tests {
     use super::agent_seq_dir;

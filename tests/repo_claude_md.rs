@@ -116,12 +116,16 @@ fn tracked_claude_md_keeps_one_managed_section_within_200_lines() {
     }
 }
 
+/// The project profile, which is JSON in a `.yaml` file.
+fn profile() -> serde_json::Value {
+    serde_json::from_str(&read(".moai/project.yaml")).expect("the profile is JSON")
+}
+
 /// REQ-11: the managed section names the hosts of the project profile, and the profile names
 /// Claude Code only (the section is edited by hand, `SPEC-20261123-claude-md-rewrite` D-3).
 #[test]
 fn managed_section_matches_the_profile_hosts() {
-    let profile: serde_json::Value =
-        serde_json::from_str(&read(".moai/project.yaml")).expect("the profile is JSON");
+    let profile = profile();
     let hosts: Vec<&str> = profile["hosts"]
         .as_array()
         .expect("hosts")
@@ -193,32 +197,90 @@ fn stale_ledger_is_the_local_card_ledger() {
     );
 }
 
-/// S2: the launcher flags `-l|-a` are kept (`SPEC-20261118-launcher-agent-entry`).
+/// S2: the launcher flags `-l|-a` are retired (`SPEC-20261124-launcher-retire-role-flags`, REQ-9);
+/// a session starts with `moai cc|glm` and an optional `--name`.
 #[test]
-fn stale_launcher_flags_are_kept() {
+fn stale_launcher_flags_are_retired() {
     let text = claude_md();
     assert_has(
         &text,
         "CLAUDE.md",
-        &["`-l|-a` only name the session and set its access"],
-    );
-    assert_lacks(&text, "CLAUDE.md", &["deprecated since", "#2164"]);
-}
-
-/// S3: a mode flag is request text for the skill, not a route.
-#[test]
-fn stale_mode_flags_are_request_text() {
-    let text = claude_md();
-    assert_has(
-        &text,
-        "CLAUDE.md",
-        &["`/moai --mode-leader` or `/moai --mode-agent`, which the skill reads as request text"],
+        &[
+            "Start a session with `moai cc|glm`: a plain host session with no role (model `opus`; effort `medium` for `cc`, `high` for `glm`); `--name <name>` names it.",
+            "The launcher flags `-l|-a` are retired (user decision D-1 2026-11-09, `SPEC-20261124-launcher-retire-role-flags`) and the launcher refuses them.",
+        ],
     );
     assert_lacks(
         &text,
         "CLAUDE.md",
-        &["only mode spellings", "two mode workflows", "--autonomy"],
+        &[
+            "`-l|-a` only name the session and set its access",
+            "`moai -l`/`-a`",
+            "deprecated since",
+            "#2164",
+        ],
     );
+}
+
+/// S3: the role is typed inside the session as `/moai work` (lane) or `/moai leader`
+/// (coordination window), the two routes of the skill (`SPEC-20261124-moai-leader-route`,
+/// user pick 2026-11-22); the `mode-` spellings are retired.
+#[test]
+fn stale_mode_flags_are_the_work_and_leader_routes() {
+    let text = claude_md();
+    assert_has(
+        &text,
+        "CLAUDE.md",
+        &["The role is typed inside the open session: `/moai work` for a lane (the card loop) and `/moai leader` for the coordination window; the skill picks the route from that first word."],
+    );
+    assert_lacks(
+        &text,
+        "CLAUDE.md",
+        &[
+            "only mode spellings",
+            "two mode workflows",
+            "--autonomy",
+            "mode-leader",
+            "mode-agent",
+            "which the skill reads as request text",
+        ],
+    );
+}
+
+/// S3b: commit messages follow the profile's `language.commit_messages` (`en` here; user pick
+/// 2026-11-24): `CLAUDE.md`, the lane rules and the skill say so, `CLAUDE.md` no longer lists
+/// commit messages among the Korean texts, the decisions log holds the pick, and the profile
+/// still says `en`.
+#[test]
+fn commit_messages_follow_the_profile_language() {
+    let rule = "`language.commit_messages`";
+    let claude = claude_md();
+    assert_has(
+        &claude,
+        "CLAUDE.md",
+        &[
+            "Commit messages follow the profile's `language.commit_messages` (`en` here; user pick 2026-11-24",
+            "- SPEC documents, card and decisions text, text typed into a session's chat input",
+            "Commits already pushed are not rewritten.",
+        ],
+    );
+    assert_lacks(&claude, "CLAUDE.md", &["- Commit messages, SPEC documents"]);
+    for file in [
+        "docs/lane-rules.md",
+        "skills/moai/references/internal/git-safety.md",
+    ] {
+        assert_has(&read(file), file, &[rule]);
+    }
+    let decisions = read("docs/decisions-2026-11-08.md");
+    let row = decisions
+        .lines()
+        .find(|l| l.contains("커밋 메시지 언어 = 영어"))
+        .expect("the decisions log lacks the row of the user's pick of 2026-11-24");
+    assert!(
+        row.contains("05:46Z(11-24)") && row.contains("language.commit_messages: en"),
+        "{row}"
+    );
+    assert_eq!(profile()["language"]["commit_messages"], "en");
 }
 
 /// S4: Claude Code and GLM only; Codex and OMP are withdrawn.

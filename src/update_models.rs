@@ -1,14 +1,15 @@
 //! The model stage of `moai update` (SPEC-20261118-update-model-pick, card C-47 slice 3).
 //!
-//! On a person's terminal the stage asks the tool pick and the leader and agent model and effort
-//! of each picked tool (`model_effort_questions`), shows what would change and writes the choice
-//! to the user launcher settings file through the digest-bound apply. In every other run
-//! [`report`] lists the model and effort each tool and role would use. Neither function quotes
+//! On a person's terminal the stage asks the tool pick and one model and effort
+//! for each picked tool (`model_effort_questions`), shows what would change and writes the choice
+//! as the flat `launcher.models.<tool>` entry to the user launcher settings file through the
+//! digest-bound apply. In every other run
+//! [`report`] lists the model and effort each tool would use. Neither function quotes
 //! saved text: a message names a key path or a fixed reason.
 
 use crate::key_vault;
 use crate::model_effort_questions::{self as questions, Change, Outcome, Plan};
-use crate::model_effort_settings::{self as settings, Choice, ROLES, TOOLS};
+use crate::model_effort_settings::{self as settings, Choice, TOOLS};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -61,24 +62,32 @@ pub fn report(home: &Path) -> Value {
         Err(message) => return error(&message),
     };
     let mut values = Vec::new();
+    let mut role_entries = Vec::new();
     for tool in TOOLS {
-        for role in ROLES {
-            // `saved_choice` answers only a supported entry.
-            let saved = settings::saved_choice(&launcher, tool, role);
-            let source = if saved.is_some() { "saved" } else { "default" };
-            let Some(choice) = saved.or_else(|| settings::default_choice(tool, role)) else {
-                continue;
-            };
-            values.push(json!({
-                "tool": tool,
-                "role": role,
-                "model": choice.model,
-                "effort": choice.effort,
-                "source": source,
-            }));
-        }
+        // `flat_choice` answers only a supported entry; a launch with none saved starts with the
+        // launcher default of its host.
+        let saved = settings::flat_choice(&launcher, tool);
+        let source = if saved.is_some() { "saved" } else { "default" };
+        let choice = saved.unwrap_or_else(|| settings::launcher_default(host_of(tool)));
+        values.push(json!({
+            "tool": tool,
+            "model": choice.model,
+            "effort": choice.effort,
+            "source": source,
+        }));
+        role_entries.extend(settings::role_entry_paths(&launcher, tool));
     }
-    json!({"state": "ok", "values": values, "unsupported": unsupported})
+    json!({
+        "state": "ok",
+        "values": values,
+        "unsupported": unsupported,
+        "role_entries": role_entries,
+    })
+}
+
+/// The launcher host of a settings tool: `claude` is the host `claude`, `glm` is `glm`.
+fn host_of(tool: &str) -> &str {
+    tool
 }
 
 fn choice_json(choice: &Choice) -> Value {
@@ -91,7 +100,6 @@ fn changes_json(changes: &[Change]) -> Vec<Value> {
         .map(|c| {
             json!({
                 "tool": c.tool,
-                "role": c.role,
                 "from": c.from.as_ref().map(choice_json),
                 "to": choice_json(&c.to),
             })
@@ -99,8 +107,9 @@ fn changes_json(changes: &[Change]) -> Vec<Value> {
         .collect()
 }
 
+/// A pick that saves what is saved and replaces no old role entry writes nothing.
 fn unchanged(plan: &Plan) -> bool {
-    plan.changes.iter().all(|c| c.from.as_ref() == Some(&c.to))
+    plan.replaced.is_empty() && plan.changes.iter().all(|c| c.from.as_ref() == Some(&c.to))
 }
 
 fn preview<W: Write>(out: &mut W, plan: &Plan) -> std::io::Result<()> {
@@ -111,8 +120,14 @@ fn preview<W: Write>(out: &mut W, plan: &Plan) -> std::io::Result<()> {
         });
         writeln!(
             out,
-            "  {} {}: {from} -> {} {}",
-            c.tool, c.role, c.to.model, c.to.effort
+            "  {}: {from} -> {} {}",
+            c.tool, c.to.model, c.to.effort
+        )?;
+    }
+    for path in &plan.replaced {
+        writeln!(
+            out,
+            "  an older role entry the launcher no longer reads, replaced: {path}"
         )?;
     }
     for path in &plan.kept_unsupported {
@@ -175,7 +190,7 @@ pub fn stage_with<R: BufRead, W: Write>(
     };
     let _ = writeln!(out);
     if !matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes") {
-        return json!({"state": "declined", "changes": changes_json(&plan.changes), "unsupported": plan.kept_unsupported});
+        return json!({"state": "declined", "changes": changes_json(&plan.changes), "replaced": plan.replaced, "unsupported": plan.kept_unsupported});
     }
     save(home, &path, &picks, &plan)
 }
@@ -227,6 +242,7 @@ fn save(home: &Path, path: &Path, picks: &[questions::Pick], plan: &Plan) -> Val
             "state": "applied",
             "receipt": id,
             "changes": changes_json(&done.changes),
+            "replaced": done.replaced,
             "unsupported": done.kept_unsupported,
         })
     } else {

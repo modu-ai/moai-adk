@@ -266,7 +266,7 @@ fn the_getting_started_and_example_commands_are_real() {
         let lines = section(name);
         assert!(!lines.is_empty(), "no {name} section:\n{root}");
         for l in lines {
-            // `  1. moai cc   about`, `  moai cc -l   about`, `  3. /moai project   about`.
+            // `  1. moai cc   about`, `  moai cc --name x   about`, `  3. /moai project   about`.
             let body = l.trim_start();
             let body = body
                 .split_once(". ")

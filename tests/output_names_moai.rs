@@ -113,14 +113,14 @@ fn assert_no_command_moai_cli(what: &str, args: &[&str]) -> Vec<String> {
 fn the_session_launcher_error_says_moai() {
     let args = ["session", "--host", "glm", "--name", "guard", "--dry-run"];
     for text in assert_no_command_moai_cli("session --host glm", &args) {
-        assert!(text.contains("use `moai cc|glm -l|-a`"), "{text}");
+        assert!(text.contains("use `moai cc|glm`"), "{text}");
     }
 }
 
 /// With no `glm` key anywhere, the launcher block names the vault command.
 #[test]
 fn the_glm_key_block_says_moai_key_set() {
-    let args = ["glm", "-a", "--name", "guard", "--dry-run"];
+    let args = ["glm", "--name", "guard", "--dry-run"];
     for text in assert_no_command_moai_cli("glm key_absent", &args) {
         assert!(text.contains("blocked: key_absent"), "{text}");
         assert!(text.contains("`moai key-set glm`"), "{text}");

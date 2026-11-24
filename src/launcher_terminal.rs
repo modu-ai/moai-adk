@@ -1,4 +1,4 @@
-//! What the launcher (`moai cc|glm -l|-a`) prints around a session (#3004 P9).
+//! What the launcher (`moai cc|glm`) prints around a session (#3004 P9).
 //!
 //! After the host exits the launcher used to print one JSON line (`executed:true`), which a
 //! person at a terminal should never see. The JSON envelope stays for a pipe, a file and
@@ -22,22 +22,19 @@ pub fn wants_human(json_flag: bool) -> bool {
     !wants_envelope(json_flag, std::io::stdout().is_terminal())
 }
 
-/// Lines printed on stderr before the host starts: the warnings among the composed notes and
-/// the agent-number notes (`number_notes`). Informational notes stay out.
-pub fn startup_lines(composed: &Value, number_notes: &[String]) -> Vec<String> {
+/// Lines printed on stderr before the host starts: the warnings among the composed notes.
+/// Informational notes stay out.
+pub fn startup_lines(composed: &Value) -> Vec<String> {
     // Decided in #3004 P9: the notes that say an option was dropped are limits the user must
     // see; the other notes (role defaults, model mapping, permission mode, key source) only
     // describe what the launcher chose and stay in the envelope.
     const WARNINGS: [&str; 1] = [NOTE_ADVISOR_OMITTED_GLM];
-    let mut lines: Vec<String> = number_notes.iter().map(|n| format!("moai: {n}")).collect();
     let notes = composed["notes"].as_array().into_iter().flatten();
-    lines.extend(
-        notes
-            .filter_map(Value::as_str)
-            .filter(|n| WARNINGS.contains(n))
-            .map(|n| format!("moai: {n}")),
-    );
-    lines
+    notes
+        .filter_map(Value::as_str)
+        .filter(|n| WARNINGS.contains(n))
+        .map(|n| format!("moai: {n}"))
+        .collect()
 }
 
 /// The launcher word for a host, for the line that tells the user what to run next.
@@ -56,13 +53,8 @@ pub fn after_text(v: &Value) -> Option<String> {
         Some(code) => format!("moai: {host} exited with code {code}."),
         None => format!("moai: {host} was stopped by a signal (no exit code)."),
     };
-    let role = match v["role"].as_str() {
-        Some("leader") => " -l",
-        Some("agent") => " -a",
-        _ => "",
-    };
     Some(format!(
-        "{what}\nRun `moai {}{role} --dry-run` to see the command it was started with.",
+        "{what}\nRun `moai {} --dry-run` to see the command it was started with.",
         host_word(v["host"].as_str().unwrap_or("cc"))
     ))
 }
@@ -181,14 +173,14 @@ pub fn report(v: &Value, human: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::session::{AGENT_ONE_WARNING, NOTE_ADVISOR_OMITTED_GLM};
+    use crate::session::NOTE_ADVISOR_OMITTED_GLM;
     use serde_json::json;
 
     /// The envelope of a session that ran, as `launch` returns it.
-    fn ran(host: &str, role: Value, exit_code: Value) -> Value {
-        json!({"host": host, "role": role, "name": "agent-21",
-            "argv": ["claude", "--name", "agent-21", "--model", "opus"],
-            "env_keys": [], "notes": ["agent number 21 taken: next after live agent-20"],
+    fn ran(host: &str, exit_code: Value) -> Value {
+        json!({"host": host, "role": Value::Null, "name": "lane-21",
+            "argv": ["claude", "--name", "lane-21", "--model", "opus"],
+            "env_keys": [], "notes": [],
             "host_loaded": false, "executed": true, "exit_code": exit_code})
     }
 
@@ -204,25 +196,18 @@ mod tests {
 
     #[test]
     fn a_normal_exit_prints_nothing() {
-        assert_eq!(after_text(&ran("claude", json!("agent"), json!(0))), None);
+        assert_eq!(after_text(&ran("claude", json!(0))), None);
     }
 
     #[test]
     fn a_failed_exit_says_what_failed_and_what_to_run_next() {
-        for (host, role, word, flag) in [
-            ("claude", json!("agent"), "cc", " -a"),
-            ("claude", json!("leader"), "cc", " -l"),
-            ("glm", json!("agent"), "glm", " -a"),
-        ] {
-            let text = after_text(&ran(host, role, json!(3))).expect("a failure prints");
+        for (host, word) in [("claude", "cc"), ("glm", "glm")] {
+            let text = after_text(&ran(host, json!(3))).expect("a failure prints");
             assert!(
                 text.contains(&format!("{host} exited with code 3")),
                 "{text}"
             );
-            assert!(
-                text.contains(&format!("`moai {word}{flag} --dry-run`")),
-                "{text}"
-            );
+            assert!(text.contains(&format!("`moai {word} --dry-run`")), "{text}");
             assert!(text.lines().count() <= 2, "{text}");
             assert!(!text.contains('{'), "{text}");
         }
@@ -230,16 +215,16 @@ mod tests {
 
     #[test]
     fn a_host_stopped_by_a_signal_has_no_code_but_still_prints() {
-        let text = after_text(&ran("claude", json!("agent"), Value::Null)).unwrap();
+        let text = after_text(&ran("claude", Value::Null)).unwrap();
         assert!(text.contains("claude was stopped by a signal"), "{text}");
-        assert!(text.contains("moai cc -a --dry-run"), "{text}");
+        assert!(text.contains("moai cc --dry-run"), "{text}");
     }
 
     fn dry_run() -> Value {
-        json!({"host": "glm", "role": "agent", "name": "agent-1",
-            "argv": ["claude", "--name", "agent-1", "--model", "opus", "do it; rm 'x'"],
+        json!({"host": "glm", "role": Value::Null, "name": "lane-1",
+            "argv": ["claude", "--name", "lane-1", "--model", "opus", "do it; rm 'x'"],
             "env_keys": ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"],
-            "notes": ["first note", "warning: a claim of an earlier agent-1"],
+            "notes": ["first note", "second note"],
             "host_loaded": false, "executed": false, "key_source": "vault:shared:glm"})
     }
 
@@ -250,12 +235,12 @@ mod tests {
         for want in [
             "nothing was started",
             "glm",
-            "agent-1",
-            "claude --name agent-1 --model opus 'do it; rm '\\''x'\\'''",
+            "lane-1",
+            "claude --name lane-1 --model opus 'do it; rm '\\''x'\\'''",
             "ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN",
             "vault:shared:glm",
             "first note",
-            "warning: a claim of an earlier agent-1",
+            "second note",
         ] {
             assert!(text.contains(want), "{want}\n{text}");
         }
@@ -285,26 +270,17 @@ mod tests {
     }
 
     #[test]
-    fn only_warnings_and_the_number_are_printed_before_the_host_starts() {
+    fn only_warnings_are_printed_before_the_host_starts() {
         let composed = json!({"notes": [
             "no role: a plain host session; no role or session name is added (#2053)",
             "model aliases map to z.ai models for this session: opus to glm-5.4[1m]",
             NOTE_ADVISOR_OMITTED_GLM,
             "ANTHROPIC_AUTH_TOKEN comes from the moai key vault; it is passed to the host process only",
         ]});
-        let number = vec![
-            "agent number 21 taken: next after live agent-20 (store /x)".to_string(),
-            AGENT_ONE_WARNING.to_string(),
-        ];
-        let lines = startup_lines(&composed, &number);
         assert_eq!(
-            lines,
-            [
-                "moai: agent number 21 taken: next after live agent-20 (store /x)".to_string(),
-                format!("moai: {AGENT_ONE_WARNING}"),
-                format!("moai: {NOTE_ADVISOR_OMITTED_GLM}"),
-            ]
+            startup_lines(&composed),
+            [format!("moai: {NOTE_ADVISOR_OMITTED_GLM}")]
         );
-        assert!(startup_lines(&json!({"notes": []}), &[]).is_empty());
+        assert!(startup_lines(&json!({"notes": []})).is_empty());
     }
 }

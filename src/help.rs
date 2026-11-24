@@ -310,8 +310,8 @@ pub const GROUPS: &[Group] = &[
 /// An example carries ` < file` exactly when its command reads standard input (pinned by
 /// `stdin_examples_match_the_commands_that_read_stdin`).
 pub const EXAMPLES: &[(&str, &[&str])] = &[
-    ("cc", &["cc -l", "cc -a"]),
-    ("glm", &["glm -a"]),
+    ("cc", &["cc", "cc --name lane-1"]),
+    ("glm", &["glm"]),
     ("project-detect", &["project-detect ."]),
     ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < plan.json"]),
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < plan.json"]),
@@ -878,7 +878,7 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
     (
         "session",
         "host",
-        "Only `claude`; other hosts start with `cc|glm -l|-a`",
+        "Only `claude`; other hosts start with `cc|glm`",
     ),
     ("session", "model", "Claude model"),
     ("session", "effort", "Claude effort"),
@@ -946,9 +946,9 @@ const EXAMPLES_KO: &str = "예시:";
 /// The help flag's line in a subcommand's short (`-h`) and long (`--help`) help (S6e-1).
 const HELP_FLAG_SHORT_KO: &str = "도움말 보기 (자세히는 '--help')";
 const HELP_FLAG_LONG_KO: &str = "도움말 보기 (요약은 '-h')";
-/// The usage's second line ends with what `-l`/`-a` start.
-const LEAD_OR_AGENT: &str = "lead or agent session";
-const LEAD_OR_AGENT_KO: &str = "리더·에이전트 세션";
+/// The usage's second line ends with what `cc|glm` start.
+const START_A_SESSION: &str = "start a session";
+const START_A_SESSION_KO: &str = "세션 시작";
 
 /// A group's heading in `lang`.
 pub fn heading_in(g: &Group, lang: Lang) -> &'static str {
@@ -1067,9 +1067,9 @@ pub const GETTING_STARTED: &[(&str, &str)] = &[
 /// A few commands to copy, each with what it does (#3004 P1); parsed against the real command
 /// tree by the same test.
 pub const ROOT_EXAMPLES: &[(&str, &str)] = &[
-    // SPEC-20261118-launcher-agent-entry: the role is entered inside the session; at 60
-    // columns this ends on column 59, so it never wraps.
-    ("cc -l", "start the leader session"),
+    // SPEC-20261124-launcher-retire-role-flags: a session is named by `--name` and the role
+    // is entered inside it; at 60 columns this ends before column 59, so it never wraps.
+    ("cc --name lane-1", "start a named session"),
     ("update", "preview and apply an update"),
     ("project-detect .", "show the facts of this project"),
 ];
@@ -1302,13 +1302,13 @@ pub fn configure_styled(
     // spells its usage lines out in the template instead. The second line starts under the
     // first one's command (`Usage:` is six cells, a Korean heading two per letter).
     let usage = format!(
-        "{bin} <command> [options]\n{}{bin} cc|glm -l|-a    {LEAD_OR_AGENT}",
+        "{bin} <command> [options]\n{}{bin} cc|glm    {START_A_SESSION}",
         " ".repeat("Usage:".width() + 1)
     );
     let usage_lines = match lang {
         Lang::En => "{usage-heading} {usage}".to_string(),
         Lang::Ko => format!(
-            "{USAGE_KO} {bin} <command> [options]\n{}{bin} cc|glm -l|-a    {LEAD_OR_AGENT_KO}",
+            "{USAGE_KO} {bin} <command> [options]\n{}{bin} cc|glm    {START_A_SESSION_KO}",
             " ".repeat(USAGE_KO.width() + 1)
         ),
     };
@@ -1635,14 +1635,14 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "cc",
-        "Claude Code 세션 실행기: `cc -l|-a`. `-l|-a` 는 세션 이름과 권한만 정해요. `-l` 은 리더 \
-         세션이고, `-a` 세션의 일은 세션 안의 `/moai work` 로 시작.",
+        "Claude Code 세션 실행기: `cc`. `--name` 은 세션 이름만 정해요. 역할은 세션 안에서 \
+         들어가요: 레인은 `/moai work`, 조정 창은 `/moai leader`.",
     ),
     (
         "glm",
-        "z.ai GLM 위의 Claude Code: `glm -l|-a`(환경의 ANTHROPIC_AUTH_TOKEN 이나 키 파일이 \
-         필요해요). `-l|-a` 는 세션 이름과 권한만 정해요. `-l` 은 리더 세션이고, `-a` 세션의 \
-         일은 세션 안의 `/moai work` 로 시작.",
+        "z.ai GLM 위의 Claude Code: `glm`(환경의 ANTHROPIC_AUTH_TOKEN 이나 키 파일이 \
+         필요해요). `--name` 은 세션 이름만 정해요. 역할은 세션 안에서 들어가요: 레인은 \
+         `/moai work`, 조정 창은 `/moai leader`.",
     ),
     (
         "claude-doctor",
@@ -1727,18 +1727,8 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ),
     (
         "cc|glm",
-        "leader",
-        "리더 세션(이름 `leader` 와 권한만 정함)",
-    ),
-    (
-        "cc|glm",
-        "agent",
-        "에이전트 세션(이름과 권한만 정함, 일은 세션 안의 `/moai work` 로 시작)",
-    ),
-    (
-        "cc|glm",
         "name",
-        "세션 이름(기본: -l 은 `leader`, -a 는 프로젝트의 다음 `agent-N`, 역할 없으면 없음)",
+        "세션 이름(기본 없음, 역할은 세션 안에서 들어가요)",
     ),
     (
         "cc|glm",
@@ -1748,7 +1738,7 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "cc|glm",
         "effort",
-        "effort(Claude 기본 `medium`)",
+        "effort(기본: cc `medium`, glm `high`)",
     ),
     (
         "cc|glm",
@@ -1765,8 +1755,9 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "cc|glm",
         "permissions",
         "권한 플래그를 붙이지 않음(Claude 호스트): 호스트가 자기 설정의 모드로 시작. 없으면 \
-         모든 실행이 auto mode(`--permission-mode auto`)로 시작하고, 사용자 설정 \
-         `launcher.role_access` 가 `full`(우회) 또는 `prompt` 로 바꿀 수 있음",
+         cc 는 auto mode(`--permission-mode auto`), glm 은 우회(`--dangerously-skip-permissions`)로 \
+         시작하고, 사용자 설정 `launcher.role_access` 가 모든 실행의 모드를 `auto`·`full`·`prompt` 로 \
+         바꿀 수 있음",
     ),
     (
         "cc|glm",
@@ -2433,7 +2424,7 @@ mod tests {
     fn korean_help_text_is_plain() {
         let mut all: Vec<&str> = ABOUT_KO.iter().map(|(_, t)| *t).collect();
         all.extend(GROUPS.iter().map(|g| g.heading_ko));
-        all.extend([LAUNCHER_LINE_KO, USAGE_KO, OPTIONS_KO, LEAD_OR_AGENT_KO]);
+        all.extend([LAUNCHER_LINE_KO, USAGE_KO, OPTIONS_KO, START_A_SESSION_KO]);
         all.extend(
             [
                 footer(Lang::Ko, "moai", true),
@@ -2503,7 +2494,10 @@ mod tests {
                 text.contains("\n\nCommands\n  Start\n    cc, glm  "),
                 "{text}"
             );
-            assert!(text.contains("\n\nExamples\n  moai cc -l  "), "{text}");
+            assert!(
+                text.contains("\n\nExamples\n  moai cc --name lane-1  "),
+                "{text}"
+            );
             assert!(text.ends_with("command\n"), "{text}");
             assert!(!text.contains("\n\n\n"), "{text}");
             for line in text.lines() {
@@ -2517,7 +2511,7 @@ mod tests {
                 .filter_map(|l| {
                     [
                         "  1. moai install-inspect",
-                        "  moai cc -l",
+                        "  moai cc --name lane-1",
                         "  moai help --all",
                         "    cc, glm",
                     ]
@@ -2729,7 +2723,7 @@ mod tests {
                     .to_string()
             };
             let en = error(Lang::En);
-            assert!(en.contains("lead or agent session"), "{en}");
+            assert!(en.contains("moai cc|glm    start a session"), "{en}");
             assert_eq!(error(Lang::Ko), en, "{args:?}");
         }
         let render = |all: bool, lang: Lang| -> String {
@@ -2758,14 +2752,14 @@ mod tests {
         );
         let usage = format!("\n{USAGE_KO} moai <command> [options]\n");
         assert!(ko.contains(&usage), "{ko}");
-        let second = ko.lines().find(|l| l.contains("cc|glm -l|-a")).unwrap();
+        let second = ko.lines().find(|l| l.contains("moai cc|glm")).unwrap();
         let first = ko.lines().find(|l| l.starts_with(USAGE_KO)).unwrap();
         assert_eq!(
             second.find("moai").map(|i| second[..i].width()),
             first.find("moai").map(|i| first[..i].width()),
             "{ko}"
         );
-        assert!(second.ends_with(LEAD_OR_AGENT_KO), "{second}");
+        assert!(second.ends_with(START_A_SESSION_KO), "{second}");
         assert!(
             ko.ends_with(&format!("{}\n", footer(Lang::Ko, "moai", false))),
             "{ko}"

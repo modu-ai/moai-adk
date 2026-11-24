@@ -5,7 +5,7 @@
 //! failure `{protocol_version, operation, ok: false, error{kind, message, retryable, next_actions?}}`.
 //! stderr carries one human line. Exit codes stay 0 (ok), 1 (failure) and 2 (usage); the
 //! failure is told apart by `kind`, from the 00-D vocabulary. The developer launchers
-//! (`-l`, `-a`, `cc`, `glm`, `codex`, `session`) are outside this contract.
+//! (`cc`, `glm`, `codex`, `session`) are outside this contract.
 
 use serde_json::{json, Value};
 

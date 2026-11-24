@@ -19,7 +19,9 @@ use serde_json::{json, Map, Value};
 /// The tools that take a choice. `glm` is the `moai glm` launcher; its ids carry the `zai/`
 /// provider prefix.
 pub const TOOLS: [&str; 2] = ["claude", "glm"];
-/// The two roles: the leader entry (`-l`) and the agent entry (`-a`).
+/// The two roles of the default table: the leader row and the agent row. The launcher starts no
+/// role session (SPEC-20261124-launcher-retire-role-flags); the rows are the "(default)" of the
+/// question screen.
 pub const ROLES: [&str; 2] = ["leader", "agent"];
 
 /// One supported model and the efforts it offers.
@@ -109,6 +111,105 @@ pub fn default_choice(tool: &str, role: &str) -> Option<Choice> {
     })
 }
 
+/// The model and effort of a launch with no `--model`, no `--effort` and no saved
+/// `launcher.models.<host>` entry (SPEC-20261124-launcher-retire-role-flags D-8, REQ-15): the
+/// alias `opus` on both hosts, effort `medium` on `claude` and `high` on `glm`. The glm
+/// environment maps the alias `opus` to `glm-5.4[1m]`, so glm needs no model id of its own here.
+/// The role rows of [`default_choice`] are not read by a launch; they are the "(default)" of the
+/// question screen.
+pub fn launcher_default(host: &str) -> Choice {
+    Choice {
+        model: "opus".to_string(),
+        effort: if host == "glm" { "high" } else { "medium" }.to_string(),
+    }
+}
+
+/// What a launch reads of `launcher.models` for one host.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct FlatRead {
+    /// The saved flat `launcher.models.<host>` entry (`model` and `effort`), when it is there.
+    pub choice: Option<Choice>,
+    /// Whether the host holds an old `leader` or `agent` entry, which a launch does not read.
+    pub old_role_entries: bool,
+}
+
+/// A flat entry of a tool: `model` and `effort` as text, a model of the tool's table, an effort
+/// that model offers. Both keys must be there.
+fn check_flat(tool: &str, fields: &Map<String, Value>) -> Result<(), String> {
+    let (Some(Value::String(model)), Some(Value::String(effort))) =
+        (fields.get("model"), fields.get("effort"))
+    else {
+        return Err(format!(
+            "launcher.models.{tool} must hold model and effort as text"
+        ));
+    };
+    if !supported(tool)
+        .unwrap_or(&[])
+        .iter()
+        .any(|row| row.id == model)
+    {
+        return Err(format!(
+            "launcher.models.{tool}.model is not a supported model of {tool}"
+        ));
+    }
+    if !offers(tool, model, effort) {
+        return Err(format!(
+            "launcher.models.{tool}.effort is not an effort that model offers"
+        ));
+    }
+    Ok(())
+}
+
+/// What a launch of `tool` reads of the launcher object: the flat `launcher.models.<tool>` entry
+/// and whether an old role entry sits beside it (SPEC-20261124-launcher-retire-role-flags REQ-4,
+/// REQ-5). The old `leader` and `agent` entries are not read and not checked; the flat entry of
+/// every known tool is checked, so a broken one is never skipped silently. A tool this version
+/// does not know, a level that is not an object and a key that is none of `model`, `effort`,
+/// `leader` and `agent` refuse the launch with key paths only.
+pub fn flat_for_launch(launcher: &Map<String, Value>, tool: &str) -> Result<FlatRead, String> {
+    let Some(models) = models_of(launcher)? else {
+        return Ok(FlatRead::default());
+    };
+    let mut read = FlatRead::default();
+    for (name, per_tool) in models {
+        if retired(name, &TOOLS) {
+            continue;
+        }
+        if !TOOLS.contains(&name.as_str()) {
+            return Err("launcher.models names a tool this version does not know".into());
+        }
+        let Value::Object(fields) = per_tool else {
+            return Err(format!("launcher.models.{name} must be an object"));
+        };
+        if fields
+            .keys()
+            .any(|k| !["model", "effort", "leader", "agent"].contains(&k.as_str()))
+        {
+            return Err(format!(
+                "launcher.models.{name} names a key this version does not know"
+            ));
+        }
+        let flat = fields.contains_key("model") || fields.contains_key("effort");
+        if flat {
+            check_flat(name, fields).map_err(|_| {
+                format!(
+                    "saved model settings are not supported (launcher.models.{name}): replace them with moai update"
+                )
+            })?;
+        }
+        if name == tool {
+            if flat {
+                read.choice = Some(Choice {
+                    model: fields["model"].as_str().unwrap_or_default().to_string(),
+                    effort: fields["effort"].as_str().unwrap_or_default().to_string(),
+                });
+            }
+            read.old_role_entries = fields.contains_key("leader") || fields.contains_key("agent");
+        }
+    }
+    Ok(read)
+}
+
 fn offers(tool: &str, model: &str, effort: &str) -> bool {
     supported(tool).is_some_and(|rows| {
         rows.iter()
@@ -139,6 +240,10 @@ fn check_structure(active: &[&str], models: &Map<String, Value>) -> Result<(), S
             return Err(format!("launcher.models.{tool} must be an object"));
         };
         for (role, entry) in roles {
+            // The flat entry's own keys (checked by `check_flat`).
+            if role == "model" || role == "effort" {
+                continue;
+            }
             if !ROLES.contains(&role.as_str()) {
                 return Err(format!(
                     "launcher.models.{tool} names a role this version does not know"
@@ -193,8 +298,13 @@ fn validate(active: &[&str], models: &Map<String, Value>) -> Result<(), String> 
             continue;
         }
         if let Value::Object(roles) = per_tool {
+            if roles.contains_key("model") || roles.contains_key("effort") {
+                check_flat(tool, roles)?;
+            }
             for (role, entry) in roles {
-                check_entry(tool, role, entry)?;
+                if role != "model" && role != "effort" {
+                    check_entry(tool, role, entry)?;
+                }
             }
         }
     }
@@ -225,8 +335,13 @@ pub fn unsupported_entries_in(
             continue;
         }
         if let Value::Object(roles) = per_tool {
+            if (roles.contains_key("model") || roles.contains_key("effort"))
+                && check_flat(tool, roles).is_err()
+            {
+                listed.push(format!("launcher.models.{tool}"));
+            }
             for (role, entry) in roles {
-                if check_entry(tool, role, entry).is_err() {
+                if role != "model" && role != "effort" && check_entry(tool, role, entry).is_err() {
                     listed.push(format!("launcher.models.{tool}.{role}"));
                 }
             }
@@ -244,6 +359,62 @@ pub fn saved_choice(launcher: &Map<String, Value>, tool: &str, role: &str) -> Op
         model: entry.get("model")?.as_str()?.to_string(),
         effort: entry.get("effort")?.as_str()?.to_string(),
     })
+}
+
+/// The saved flat choice of a tool (`launcher.models.<tool>` with `model` and `effort`) when it
+/// is there and the table supports it, else `None` (SPEC-20261124-launcher-retire-role-flags
+/// REQ-5, REQ-6). A saved `leader` or `agent` entry beside it is not looked at.
+pub fn flat_choice(launcher: &Map<String, Value>, tool: &str) -> Option<Choice> {
+    let fields = launcher.get("models")?.get(tool)?.as_object()?;
+    check_flat(tool, fields).ok()?;
+    Some(Choice {
+        model: fields.get("model")?.as_str()?.to_string(),
+        effort: fields.get("effort")?.as_str()?.to_string(),
+    })
+}
+
+/// The key paths (`launcher.models.<tool>.leader`, `.agent`) of the saved role entries of a tool,
+/// whatever their value: the entries a flat write replaces.
+pub fn role_entry_paths(launcher: &Map<String, Value>, tool: &str) -> Vec<String> {
+    let Some(fields) = launcher
+        .get("models")
+        .and_then(|models| models.get(tool))
+        .and_then(Value::as_object)
+    else {
+        return Vec::new();
+    };
+    ROLES
+        .iter()
+        .filter(|role| fields.contains_key(**role))
+        .map(|role| format!("launcher.models.{tool}.{role}"))
+        .collect()
+}
+
+/// A copy of the launcher object with the flat choice of a tool set: the whole
+/// `launcher.models.<tool>` object becomes `{model, effort}`, so a saved `leader` or `agent`
+/// entry of that tool is replaced; every other key and tool is kept and the input is not
+/// changed. Refused when the tool, model or effort is not supported or when `launcher.models` is
+/// not an object.
+pub fn with_flat_choice(
+    launcher: &Map<String, Value>,
+    tool: &str,
+    model: &str,
+    effort: &str,
+) -> Result<Map<String, Value>, String> {
+    if retired(tool, &TOOLS) || !TOOLS.contains(&tool) {
+        return Err("model settings: unknown tool".into());
+    }
+    if !offers(tool, model, effort) {
+        return Err(format!(
+            "model settings: that model and effort are not supported for {tool}"
+        ));
+    }
+    let mut models = models_of(launcher)?.cloned().unwrap_or_default();
+    models.retain(|saved_tool, _| !retired(saved_tool, &TOOLS));
+    models.insert(tool.to_string(), json!({"model": model, "effort": effort}));
+    let mut out = launcher.clone();
+    out.insert("models".to_string(), Value::Object(models));
+    Ok(out)
 }
 
 /// The model and effort of a tool and role: the saved choice when the launcher object holds one

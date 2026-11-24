@@ -237,7 +237,7 @@ a contract (S2 among them, flagged). 3 + 12 + 15 = 30.
 - L128 #3005 — 4. A finished dispatch: after its `LANE-DONE` line is posted (`report` · pins: mode_workflow_steps.rs
 - L129 #3040 — 5. A refused or uncertain report (audit of #3040, B2): when `gate-crea · pins: mode_workflow_steps.rs
 - L131 - — Not measured: no `ask`, `gate-create` or `worker_done` from a lane was · pins: mode_workflow_steps.rs
-- L135 - — Not run yet (`not_run`): in a clean clone with a registered ledger and · pins: launcher_agent_entry.rs, product_cli.rs
+- L135 - — Not run yet (`not_run`): in a clean clone with a registered ledger and · pins: product_cli.rs
 - L139 - — A hand-off completes a card, not the round (`keep-going` step). It is · pins: ledger_workflow.rs
 
 ## Mechanical inventory — workflows/mode-leader.md @ e84d7c46ce
@@ -249,7 +249,7 @@ a contract (S2 among them, flagged). 3 + 12 + 15 = 30.
 - L10 - — - **Stranded cards**: `card next` shows a `review` card that nobody ho · text only
 - L14 #2899 — The `--autonomy` level (`full` or `semi`; `semi` when omitted), the pr · text only
 - L18 - — A mode banner, a read-only state summary, one `/goal` line for the use · text only
-- L24 #2899,2905 — 1. **mode-channel** — The mode follows the channel, not the host (SPEC · pins: mode_workflow_steps.rs, launcher_agent_entry.rs, orca_optional_3005.rs, product_cli.rs
+- L24 #2899,2905 — 1. **mode-channel** — The mode follows the channel, not the host (SPEC · pins: mode_workflow_steps.rs, orca_optional_3005.rs, product_cli.rs
 - L25 - — 2. **mode-only** — From here on, follow this workflow only and ignore · pins: product_cli.rs
 - L26 #2928 — 3. **banner** — Print the banner: mode `leader`, the autonomy level, t · pins: mode_workflow_steps.rs
 - L27 #2679 — 4. **state** — Summarise the current state read-only: every card with · pins: mode_workflow_steps.rs
@@ -282,6 +282,6 @@ a contract (S2 among them, flagged). 3 + 12 + 15 = 30.
 - L81 #3005 — Only the leader creates Runs (Issue #3005 P3a); without Orca, or with · pins: mode_workflow_steps.rs
 - L83 #3005 — 1. With Orca (item 2 decides; without Orca this item is skipped), carr · pins: mode_workflow_steps.rs, orca_optional_3005.rs, product_cli.rs
 - L84 #3005,3029 — 2. Detect the channel before the first send, and say it in the round s · pins: mode_workflow_steps.rs, orca_optional_3005.rs
-- L88 - — Not run yet (`not_run`): in a clean clone with a registered ledger, op · pins: launcher_agent_entry.rs
+- L88 - — Not run yet (`not_run`): in a clean clone with a registered ledger, op · text only
 - L92 - — Judge completion only from evidence on the remote and in the ledger (m · text only
 - L94 #2678 — Every row of a status, close or decision table you post carries a sour · pins: product_cli.rs

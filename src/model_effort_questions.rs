@@ -8,7 +8,8 @@
 //! line or saved text. The update command, the commands that expose the plan and the apply, and
 //! the skill step are slice 2b.
 use crate::model_effort_settings::{
-    default_choice, saved_choice, supported, unsupported_entries, with_choice, Choice, ROLES,
+    default_choice, flat_choice, role_entry_paths, supported, unsupported_entries,
+    with_flat_choice, Choice,
 };
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
@@ -85,17 +86,24 @@ pub fn tool_question(installed: &[&str]) -> Question {
     }
 }
 
-/// The model of a tool and role: the default first, then the rest of the table in order.
-pub fn model_question(tool: &str, role: &str) -> Option<Question> {
-    model_question_with(tool, role, None)
+/// The table row the questions offer first when nothing is saved: the `leader` row of
+/// [`default_choice`], the model and effort a launch is closest to (SPEC-20261124-launcher-retire-
+/// role-flags: a launch has no role, so the row is a starting point of the screen, not a role).
+fn table_default(tool: &str) -> Option<Choice> {
+    default_choice(tool, "leader")
+}
+
+/// The model of a tool: the default first, then the rest of the table in order.
+pub fn model_question(tool: &str) -> Option<Question> {
+    model_question_with(tool, None)
 }
 
 /// [`model_question`] where a saved supported choice is the default instead of the table default,
 /// so that Enter keeps what the person saved earlier.
-pub fn model_question_with(tool: &str, role: &str, saved: Option<&Choice>) -> Option<Question> {
+pub fn model_question_with(tool: &str, saved: Option<&Choice>) -> Option<Question> {
     let default = match saved {
         Some(choice) => choice.clone(),
-        None => default_choice(tool, role)?,
+        None => table_default(tool)?,
     };
     let rows = supported(tool)?;
     let mut options = vec![option(&default.model, &default.model)];
@@ -105,31 +113,26 @@ pub fn model_question_with(tool: &str, role: &str, saved: Option<&Choice>) -> Op
             .map(|row| option(row.id, row.id)),
     );
     Some(Question {
-        id: format!("{tool}.{role}.model"),
-        prompt: format!("{} {role}: which model?", tool_label(tool)),
+        id: format!("{tool}.model"),
+        prompt: format!("{}: which model?", tool_label(tool)),
         kind: Kind::One,
         options,
         defaults: vec![0],
     })
 }
 
-/// The effort of a model for a tool and role: the efforts that model offers in table order. The
-/// default is the tool and role default when the model offers it, else `high`, else the first.
-pub fn effort_question(tool: &str, role: &str, model: &str) -> Option<Question> {
-    effort_question_with(tool, role, model, None)
+/// The effort of a model for a tool: the efforts that model offers in table order. The default is
+/// the table default when the model offers it, else `high`, else the first.
+pub fn effort_question(tool: &str, model: &str) -> Option<Question> {
+    effort_question_with(tool, model, None)
 }
 
 /// [`effort_question`] where the saved effort is the default when the saved model is the model
 /// asked about and still offers it.
-pub fn effort_question_with(
-    tool: &str,
-    role: &str,
-    model: &str,
-    saved: Option<&Choice>,
-) -> Option<Question> {
+pub fn effort_question_with(tool: &str, model: &str, saved: Option<&Choice>) -> Option<Question> {
     let preferred = match saved {
         Some(choice) if choice.model == model => choice.effort.clone(),
-        _ => default_choice(tool, role)?.effort,
+        _ => table_default(tool)?.effort,
     };
     let row = supported(tool)?.iter().find(|row| row.id == model)?;
     let position = |name: &str| row.efforts.iter().position(|e| *e == name);
@@ -137,8 +140,8 @@ pub fn effort_question_with(
         .or_else(|| position("high"))
         .unwrap_or(0);
     Some(Question {
-        id: format!("{tool}.{role}.effort"),
-        prompt: format!("{} {role}: which effort for that model?", tool_label(tool)),
+        id: format!("{tool}.effort"),
+        prompt: format!("{}: which effort for that model?", tool_label(tool)),
         kind: Kind::One,
         options: row.efforts.iter().map(|e| option(e, e)).collect(),
         defaults: vec![default],
@@ -195,11 +198,10 @@ pub fn read_answer(question: &Question, line: Option<&str>) -> Answer {
     )
 }
 
-/// One pick: the model and effort of a tool and role.
+/// One pick: the model and effort of a tool (one pick per host, no role).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pick {
     pub tool: String,
-    pub role: String,
     pub model: String,
     pub effort: String,
 }
@@ -273,8 +275,8 @@ fn ask<R: BufRead, W: Write>(
     Ok(None)
 }
 
-/// Runs the questions: the tool pick first, then for each picked tool (in option order) the model
-/// and the effort of the leader and of the agent. An empty tool pick asks nothing more.
+/// Runs the questions: the tool pick first, then for each picked tool (in option order) one model
+/// and one effort. An empty tool pick asks nothing more.
 pub fn run<R: BufRead, W: Write>(
     input: &mut R,
     out: &mut W,
@@ -300,37 +302,33 @@ pub fn run_with<R: BufRead, W: Write>(
         .iter()
         .filter(|t| tools.iter().any(|p| p.as_str() == **t))
     {
-        for role in ROLES {
-            let saved = saved_choice(launcher, tool, role);
-            let Some(models) = model_question_with(tool, role, saved.as_ref()) else {
-                continue;
-            };
-            let Some(model) = ask(input, out, &models)? else {
-                return Ok(Outcome::Cancelled);
-            };
-            let model = model[0].clone();
-            let Some(efforts) = effort_question_with(tool, role, &model, saved.as_ref()) else {
-                continue;
-            };
-            let Some(effort) = ask(input, out, &efforts)? else {
-                return Ok(Outcome::Cancelled);
-            };
-            picks.push(Pick {
-                tool: (*tool).to_string(),
-                role: role.to_string(),
-                model,
-                effort: effort[0].clone(),
-            });
-        }
+        let saved = flat_choice(launcher, tool);
+        let Some(models) = model_question_with(tool, saved.as_ref()) else {
+            continue;
+        };
+        let Some(model) = ask(input, out, &models)? else {
+            return Ok(Outcome::Cancelled);
+        };
+        let model = model[0].clone();
+        let Some(efforts) = effort_question_with(tool, &model, saved.as_ref()) else {
+            continue;
+        };
+        let Some(effort) = ask(input, out, &efforts)? else {
+            return Ok(Outcome::Cancelled);
+        };
+        picks.push(Pick {
+            tool: (*tool).to_string(),
+            model,
+            effort: effort[0].clone(),
+        });
     }
     Ok(Outcome::Picks(picks))
 }
 
-/// A saved or new value of one tool and role in a plan.
+/// A saved or new value of one tool in a plan.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Change {
     pub tool: String,
-    pub role: String,
     /// The supported value saved before; `None` when nothing or an unsupported value was saved.
     pub from: Option<Choice>,
     pub to: Choice,
@@ -340,6 +338,9 @@ pub struct Change {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Plan {
     pub changes: Vec<Change>,
+    /// Key paths of the saved `leader` and `agent` entries the write replaces (the launcher no
+    /// longer reads them; SPEC-20261124-launcher-retire-role-flags REQ-6).
+    pub replaced: Vec<String>,
     /// Key paths of saved entries outside the support table that the picks leave unchanged.
     pub kept_unsupported: Vec<String>,
     pub after: Map<String, Value>,
@@ -380,28 +381,37 @@ pub fn plan(launcher: &Map<String, Value>, picks: &[Pick]) -> Result<Plan, Strin
     let mut after = launcher.clone();
     let mut changes = Vec::new();
     let mut replaced = Vec::new();
+    let mut role_entries = Vec::new();
     for pick in picks {
         for tool in targets(&pick.tool) {
-            after = with_choice(&after, tool, &pick.role, &pick.model, &pick.effort)?;
+            after = with_flat_choice(&after, tool, &pick.model, &pick.effort)?;
             changes.push(Change {
                 tool: tool.to_string(),
-                role: pick.role.clone(),
-                from: saved_choice(launcher, tool, &pick.role),
+                from: flat_choice(launcher, tool),
                 to: Choice {
                     model: pick.model.clone(),
                     effort: pick.effort.clone(),
                 },
             });
-            replaced.push(format!("launcher.models.{tool}.{}", pick.role));
+            // The write replaces the whole `launcher.models.<tool>` object: its own path and
+            // every path under it, whatever the support table said about them.
+            replaced.push(format!("launcher.models.{tool}"));
+            role_entries.extend(role_entry_paths(launcher, tool));
         }
     }
+    let under = |path: &str, tool_path: &String| {
+        path == tool_path
+            || path
+                .strip_prefix(tool_path.as_str())
+                .is_some_and(|r| r.starts_with('.'))
+    };
     let kept_unsupported = unsupported
         .into_iter()
-        .filter(|path| !replaced.contains(path))
+        .filter(|path| !replaced.iter().any(|tool_path| under(path, tool_path)))
         .collect();
-    let mut sorted: Vec<[&str; 4]> = picks
+    let mut sorted: Vec<[&str; 3]> = picks
         .iter()
-        .map(|p| [&*p.tool, &*p.role, &*p.model, &*p.effort])
+        .map(|p| [&*p.tool, &*p.model, &*p.effort])
         .collect();
     sorted.sort_unstable();
     let text = format!(
@@ -412,6 +422,7 @@ pub fn plan(launcher: &Map<String, Value>, picks: &[Pick]) -> Result<Plan, Strin
     );
     Ok(Plan {
         changes,
+        replaced: role_entries,
         kept_unsupported,
         after,
         digest: format!("{:x}", Sha256::digest(text.as_bytes())),

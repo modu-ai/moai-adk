@@ -31,6 +31,8 @@ Implement, run the checks, commit, then:
 
 A lane never waits for the audit or the landing, and its hand-off is not completion.
 
+Write each commit message in the profile's `language.commit_messages` (`en` in this repository, user pick 2026-11-24), with the trailers last. Commits already made are not rewritten.
+
 ## Blocks and limits
 
 - Report a real block (permission or hook denial, missing decision, failing gate) with the exact command and stop; a card that needs a decision ends in `LANE-BLOCKED kind=decision …` as a note on the card. Never route around an unapproved permission, spend, HOLD or security gate. Stop after three failures of the same step.

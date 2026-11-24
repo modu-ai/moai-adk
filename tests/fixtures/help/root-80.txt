@@ -1,7 +1,7 @@
 MoAI-ADK <version> — agentic development kit
 
 Usage: moai <command> [options]
-       moai cc|glm -l|-a    lead or agent session
+       moai cc|glm    start a session
 
 Getting started
   1. moai install-inspect  Check the installed MoAI
@@ -46,7 +46,7 @@ Commands
     baseline-inventory     List a checkout's baseline facts
 
 Examples
-  moai cc -l               start the leader session
+  moai cc --name lane-1    start a named session
   moai update              preview and apply an update
   moai project-detect .    show the facts of this project
 

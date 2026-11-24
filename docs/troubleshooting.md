@@ -49,6 +49,8 @@ A debug file records hook output, command lines and file paths from your session
 
 ## 5. The auto mode classifier notice behind a gateway
 
+`moai glm` starts in the bypass mode by default (`--dangerously-skip-permissions`; see section 8), and `moai cc` starts in auto mode. The notice below therefore shows in a `glm` session only when you choose auto mode for it, with the user key `launcher.role_access: auto`.
+
 When you use auto mode through an LLM gateway or proxy, Claude Code may show a notice titled "Auto mode classifier request charges", saying the session "isn't eligible". It means the server-side checks do not reach the session, so Claude Code makes its own classifier requests and they count toward your token usage. Auto mode keeps working.
 
 - On a Pro, Max, Ultra or Team plan you never see this notice. `/status` shows an **Auto mode server** row: `Enabled`, or `Disabled` once the session has fallen back.
@@ -81,3 +83,19 @@ Some places do not run MoAI ADK's hooks or read its settings. MoAI ADK's checks 
 - **Cloud threads.** Claude Code's cloud threads do not pick up anything from the Claude Code setup on your own machine. They read the repository's `CLAUDE.md` and rules, but they do not run hooks from `.claude/settings.json` and do not apply its permission rules or `env`. MoAI ADK's hooks and settings have no effect there.
 - **Self-hosted runners.** MoAI ADK does not support self-hosted runners. A runner can point `core.hooksPath` at its own hooks directory, which skips the repository's git hooks, and its git proxy option replaces the global git configuration with no backup.
 - **Linux desktop.** MoAI ADK does not support the Claude desktop app on Linux, which is a beta. Use the Claude Code CLI on Linux instead.
+
+## 8. What the bypass mode of a `glm` session keeps and drops
+
+`moai glm` starts Claude Code with `--dangerously-skip-permissions`, which is `--permission-mode bypassPermissions`. `moai cc` starts in auto mode. You choose another mode per launch with `--permissions` (no permission flag, so the host's own settings choose), or for every launch with the user key `launcher.role_access` (`auto`, `full` or `prompt`); the flag wins over the key, and the key wins over the host default.
+
+What the official Claude Code pages say about the bypass mode (read 2026-11-24 on `https://code.claude.com/docs/en`; the quotes of the permissions and CLI pages are the page text, the others came through a summary and are worth re-reading before you rely on the exact words):
+
+- **Kept.** "Deny rules block in every mode, including `bypassPermissions`." A deny rule from any settings level beats an allow rule. A rule that you ask to be asked about (an `ask` rule) still asks. A `PreToolUse` hook that exits with code 2 blocks the call before permission rules are evaluated; the pages say this for a hook next to an allow rule, and list `bypassPermissions` among the modes a hook is told about, but they do not state in one sentence that hooks run in this mode (the observation below saw one block in it). The sandbox settings still apply; `deniedDomains` is refused in every mode. A removal of a critical path that Claude Code recognizes is not approved automatically in any mode, though one page says the prompt for a dangerous `rm` can be turned off in the bypass mode.
+- **Dropped.** Allow rules have no effect. The prompts for writes to protected paths are skipped, and `.git` and `.claude` are among them, so only your deny rules and hooks stand between a `glm` session and those two folders. Hosts outside the allowed domains are allowed, and a command that the sandbox refuses can be retried outside it without a prompt unless `allowUnsandboxedCommands` is `false`.
+- **A deny rule is not a wall.** A Bash deny rule matches the command text only. The same program started by a path, or inside `sh -c`, does not match it, so keep your own hooks for the commands you must stop.
+- **Where it is switched off.** An administrator can block the mode with `permissions.disableBypassPermissionsMode: "disable"` in managed settings, and the host refuses it for a root or `sudo` start. The `glm` launch then fails; start it with `--permissions` or set `launcher.role_access`. A `defaultMode` of `bypassPermissions` in project or local settings has no effect.
+- **A timed-out hook does not block.** A `PreToolUse` hook that times out lets the call continue through the normal permission flow unless it is set to block on failure.
+
+Observed once (2026-11-24, Claude Code 2.1.331, over the Anthropic path with a Haiku model, in a throwaway project): under `claude -p --dangerously-skip-permissions` one `PreToolUse` hook that exits with code 2 and one deny rule each blocked their call, and the hook input showed `"permission_mode":"bypassPermissions"`. The hook ran first, also for the call that the deny rule stopped.
+
+Not checked: that run did not go through the z.ai gateway of `glm`, and it used a probe hook and a probe rule, not the `PreToolUse` hooks that MoAI installs or your own deny rules. To check yours, make a throwaway project with one hook that exits with code 2 and one deny rule, start `claude --dangerously-skip-permissions` there and ask for each blocked action.

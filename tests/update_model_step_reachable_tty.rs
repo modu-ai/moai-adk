@@ -191,7 +191,7 @@ fn nothing_to_apply_and_nothing_saved_opens_the_model_step() {
     let fx = installed_like_the_installer();
     assert_eq!(saved_settings(&fx), None, "the installer saves no models");
     // Claude only (the update installed Claude and Codex), Enter at its four model questions, a no.
-    let text = on_a_terminal(&fx, Some(TOOL_QUESTION), "1\n\n\n\n\nn\n");
+    let text = on_a_terminal(&fx, Some(TOOL_QUESTION), "1\n\n\nn\n");
     assert!(text.contains(SAVE_QUESTION), "{text}");
     assert!(
         !text.contains("\"protocol_version\""),
@@ -204,11 +204,11 @@ fn nothing_to_apply_and_nothing_saved_opens_the_model_step() {
 #[test]
 fn a_saved_model_setting_keeps_the_model_step_closed() {
     let fx = installed_like_the_installer();
-    let text = on_a_terminal(&fx, Some(TOOL_QUESTION), "1\n\n\n\n\ny\n");
+    let text = on_a_terminal(&fx, Some(TOOL_QUESTION), "1\n\n\ny\n");
     assert!(text.contains(SAVE_QUESTION), "{text}");
     let saved: Value = serde_json::from_str(&saved_settings(&fx).expect("saved")).unwrap();
     assert!(
-        saved["launcher"]["models"]["claude"]["leader"].is_object(),
+        saved["launcher"]["models"]["claude"]["model"].is_string(),
         "{saved}"
     );
     let again = on_a_terminal(&fx, None, "");
@@ -284,7 +284,7 @@ fn a_glm_pick_on_a_terminal_reads_the_key_hidden_and_goes_on_by_itself() {
         &fx,
         &project,
         &[
-            (TOOL_QUESTION, "2\n\n\n\n\n"),
+            (TOOL_QUESTION, "2\n\n\n"),
             (KEY_QUESTION, &format!("{FAKE_KEY}\n")),
             (SAVE_QUESTION, "y\n"),
         ],
@@ -292,7 +292,7 @@ fn a_glm_pick_on_a_terminal_reads_the_key_hidden_and_goes_on_by_itself() {
     assert!(text.contains("GLM API key"), "{text}");
     assert!(!text.contains(FAKE_KEY), "the key is not echoed: {text}");
     let saved: Value = serde_json::from_str(&saved_settings(&fx).expect("saved")).unwrap();
-    assert!(saved["launcher"]["models"]["glm"]["leader"].is_object());
+    assert!(saved["launcher"]["models"]["glm"]["model"].is_string());
     let scope = moai_cli::model_effort_questions::glm_key_scope(&project, &fx.home)
         .expect("the project is a git work tree");
     assert_eq!(
@@ -317,10 +317,10 @@ fn a_glm_pick_outside_a_project_skips_the_key_and_saves_the_pick() {
     let text = on_a_terminal_in(
         &fx,
         &fx.home,
-        &[(TOOL_QUESTION, "2\n\n\n\n\n"), (SAVE_QUESTION, "y\n")],
+        &[(TOOL_QUESTION, "2\n\n\n"), (SAVE_QUESTION, "y\n")],
     );
     assert!(text.contains("not inside one"), "{text}");
     assert!(!text.contains(KEY_QUESTION), "no key prompt: {text}");
     let saved: Value = serde_json::from_str(&saved_settings(&fx).expect("saved")).unwrap();
-    assert!(saved["launcher"]["models"]["glm"]["leader"].is_object());
+    assert!(saved["launcher"]["models"]["glm"]["model"].is_string());
 }
