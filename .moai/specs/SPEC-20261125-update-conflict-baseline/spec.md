@@ -18,7 +18,7 @@ branch: spec/update-conflict-baseline-20261125
 - 이전 세대 패키지와의 대조(`earlier_generations`)는 영수증이 소유하지 않은 파일에만 쓰여요(`src/update.rs:1380-1393`). 소유한 파일이 이전 세대의 패키지 바이트와 같아도 conflict 로 남아요.
 - 사용자의 파일은 넷 다 사용자 수정이 아니었어요(둘은 `.24` 패키지와 바이트 동일, 둘은 저장소 커밋과 동일).
 - 화면은 conflict 를 호스트 상태가 `conflict` 일 때만 세요(`src/update_tux.rs:2015-2030`). 다른 파일이 써져서 호스트가 `applied` 이면 남은 conflict 는 화면에 없어요.
-- 이 밖에 화면의 사실과 맞지 않는 곳이 네 군데 있어요: 링크 폴더의 routing 줄이 "skipped" 로 보이고(`src/update_tux.rs:991-997`, 동작은 `linked`, `src/home_routing/rules.rs:440`), 옛 `rules/moai/flow.md` 의 "직접 지우세요" 안내는 detail 에만 있고 화면에 없고(`src/home_routing/rules.rs:521-534`), 켜지 않은 switch 의 다음 명령이 Applied 에 없고(`src/update_tux.rs:2157` 은 `switch_done` 만), 되돌리기 안내가 `<HOME>` 과 `<reference>` 를 글자 그대로 찍어요(`src/update.rs:2467-2471`).
+- 이 밖에 화면의 사실과 맞지 않는 곳이 네 군데 있어요: 링크 폴더의 routing 줄이 "skipped" 로 보이고(`src/update_tux.rs:991-997`, 동작은 `linked`, `src/home_routing/rules.rs:440`), 옛 `rules/moai/flow.md` 의 "직접 지우세요" 안내는 detail 에만 있고 화면에 없고(`src/home_routing/rules.rs:521-534`), 켜지 않은 switch 의 다음 명령이 Applied 에 없고(`src/update_tux.rs:2157` 은 `switch_done` 만), 되돌리기 안내가 `<HOME>` 과 `<reference>` 를 글자 그대로 찍어요(결과 JSON 의 `revert` 문장은 `src/update.rs:2467-2471` 이 만들고, 화면이 그대로 보여 줘요. 그 JSON 문장은 기계가 읽고 테스트가 두 자리표시자를 채워 실행하므로 바꾸지 않고 화면만 풀어 써요).
 
 ## Non-goals
 
@@ -37,7 +37,7 @@ branch: spec/update-conflict-baseline-20261125
 - REQ-6: When a routing target is a link to the file that moai keeps in the default Claude folder, the human screen shall say the file is linked instead of skipped. · failure: none — 동작 `linked` 의 화면 말이 생겨요.
 - REQ-7: When an earlier build's flow rule is left in place, the human screen shall name that file and say that moai does not delete it. · failure: none — 안내가 detail 이 아니라 화면 줄로 나와요.
 - REQ-8: When a planned switch script was not confirmed in this run, the human Applied screen shall show the command that confirms it. · failure: none — 이미 적용된 switch 는 지금처럼 되돌리기 줄만 보여요.
-- REQ-9: When the revert hint of an applied update is built, it shall name the real home folder and the meaning of the permission reference. · failure: none — `<HOME>` 과 `<reference>` 를 글자 그대로 찍지 않아요.
+- REQ-9: When the human Applied screen shows a revert command, it shall show the real home folder in place of the home placeholder and a line that says what the permission reference is. · failure: none — 결과 JSON 의 `revert` 문장은 그대로예요.
 - REQ-10: When the human screen shows the header line, it shall name the build that is running next to the installed and package versions. · failure: none — 영수증의 마지막 버전과 도는 바이너리가 같으면 줄이 늘지 않아요.
 
 ## Acceptance
@@ -47,7 +47,7 @@ branch: spec/update-conflict-baseline-20261125
 - AC-3 (REQ-4): 기준선과 패키지와 어느 이전 세대와도 다른 바이트의 소유 파일은 conflict 로 남고 확정해도 바이트가 그대로예요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac3_`
 - AC-4 (REQ-5): `applied` 호스트에 conflict 파일 둘이 있으면 Applied 화면이 그 수와 두 경로를 한국어와 영어로 말하고, conflict 가 없으면 그 줄이 없어요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac4_`
 - AC-5 (REQ-6, REQ-7): 링크된 routing 줄은 "linked" 로, 옛 flow 규칙이 남은 미리보기는 그 파일 이름과 "삭제하지 않아요" 를 화면 줄로 말하고 "skipped" 는 없어요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac5_`
-- AC-6 (REQ-8, REQ-9, REQ-10): 확정하지 않은 switch 의 다음 명령이 Applied 화면에 있고, 되돌리기 줄에 실제 HOME 이 있고 `<HOME>` 과 `<reference>` 글자는 없으며, 머리줄이 도는 빌드를 말해요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac6_`
+- AC-6 (REQ-8, REQ-9, REQ-10): 확정하지 않은 switch 의 다음 명령이 Applied 화면에 있고, 되돌리기 줄에 실제 HOME 이 있고 `<HOME>` 글자는 없으며 `<reference>` 가 무엇인지 한 줄로 말하고, 머리줄이 도는 빌드를 말해요. 결과 JSON 의 `revert` 문장은 그대로예요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac6_`
 - AC-7 (REQ-1…REQ-10): 이웃 테스트가 그대로 통과해요 · verify: `cargo test --locked --offline --test update_adopt_cli`
   verify: `cargo test --locked --offline --test update_cli`
   verify: `cargo test --locked --offline --test update_moved_receipts`
@@ -64,7 +64,7 @@ branch: spec/update-conflict-baseline-20261125
 
 1. RED 먼저: AC-1…AC-6 을 임시 HOME 과 이 빌드 바이너리의 복사본으로(`tests/update_adopt_cli.rs` 의 `install`·`home` 방식) 돌려요. 화면 테스트는 `tests/fixtures/update_tux/*.json` 을 고쳐 `update_tux::screen` 에 넣어요. 기준에서는 맞는 이유로 실패해야 해요.
 2. `src/update.rs`: 계획 단계에서 소유 파일의 baseline 을 이전 세대 복사본과 대조해 올리고(REQ-3), 현재가 패키지와 같은데 baseline 이 다르면 계획에 baseline 과 current 를 그대로 싣고(이미 FilePlan 이 둘을 가져요), 확정 단계가 그런 파일을 `owned` 에 모아 쓸 파일이 없어도 영수증을 한 번 써요(REQ-1, REQ-2).
-3. `src/update_tux.rs`: 남은 conflict 이름, linked 낱말, 옛 flow 안내 줄, switch 다음 명령, 머리줄의 빌드(REQ-5…REQ-8, REQ-10). `src/update.rs` 의 되돌리기 안내(REQ-9).
+3. `src/update_tux.rs`: 남은 conflict 이름, linked 낱말, 옛 flow 안내 줄, switch 다음 명령, 머리줄의 빌드, 되돌리기 줄을 풀어 쓰기(REQ-5…REQ-10). `src/update.rs` 의 JSON `revert` 문장은 안 바꿔요.
 4. 지킴이마다 뮤턴트, 이웃 테스트, READY 에서 `check affected` 한 번.
 
 ## Risks
