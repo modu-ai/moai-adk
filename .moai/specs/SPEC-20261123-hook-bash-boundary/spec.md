@@ -1,10 +1,10 @@
 ---
 id: SPEC-20261123-hook-bash-boundary
 title: "moai hook bash-boundary: PreToolUse Bash boundary check"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-23
-approval: null
+approval: {by: leader, at: 2026-11-24, basis: "leader delegation on card C-403, decision note 8061 (2026-11-24T00:50:35Z, answering lane note 8060; user delegation 2026-11-23T13:57Z, leader judgment, not a direct user pick): revision 3 as committed in 90b0801b42 (allowed-option table, D-17 replaced, AC-17 reworded, AC-18, REQ-8 reworded), shopt read by the same function included, the fifteen over-rejections of AC-18 accepted; the user's first approval, note 7517, covers the first draft only", digest: "sha256:c37b25816b8802d0884e947442b7a528113c1945183704d6c64255e2c91b69eb"}
 ---
 
 # moai hook bash-boundary: PreToolUse Bash boundary check
@@ -82,7 +82,7 @@ approval: null
 - Q1: Should the first draft of this SPEC (D-1 to D-10, no variable allow list) be approved? → A: Yes, as it stands (user selection 2026-11-23T13:00:15Z in the leader's session, card C-403 note 7517; the option "그대로 승인 (Recommended)").
 - Q2: Who approves the later body (REQ-8, AC-14 to AC-17, D-11 to D-17, R-1), which four independent audits changed? → A: The leader, by the user's overnight delegation of 2026-11-23T13:57Z (reversible in-repo picks), in decision note 7818 of card C-403; it is the leader's judgment, not a direct user selection, and the front matter says so.
 
-- Q3: Who approves revision 3 (the allowed-option table, D-17 replaced, AC-17 reworded, AC-18, REQ-8 reworded), written after the fifth audit FAIL? → A: open. The leader's decision note 8053 (2026-11-24T00:37:56Z) orders the allowlist, but the lane records no approval itself: it asks with `LANE-BLOCKED kind=decision` on card C-403 and the front matter stays `status: draft`, `approval: null` until an approval is written into it by the approver's instruction.
+- Q3: Who approves revision 3 (the allowed-option table, D-17 replaced, AC-17 reworded, AC-18, REQ-8 reworded), written after the fifth audit FAIL? → A: The leader, by the user's overnight delegation of 2026-11-23T13:57Z, in decision note 8061 of card C-403 (2026-11-24T00:50:35Z), which answers the lane's request, note 8060, with option 1 (revision 3 as committed, `shopt` included). It is the leader's judgment, not a direct user selection, and the front matter says so; the lane wrote the front matter as that note instructs and recorded no approval before it.
 
 ## Plan
 
@@ -142,7 +142,7 @@ Official hooks documentation, https://code.claude.com/docs/en/hooks, fetched by 
 
 ## Result
 
-Status: implemented on the code slice (RED `39d14c00e3`, handler `03d223348a`, audit repair on top of `9b6058aa33`, second audit repair: RED table `ea7d38780a`, handler `6c17557134`, survivors `6db97ed5e2`, on NeXT `466b59fc62`). Fourth audit repair (S-1 branch only, AC-17, D-17): code, tests and SPEC text in `a01314bb5c` on `2b3400b6b9`. Revision 3 (written 2026-11-24 after the fifth audit FAIL, note 8053) is a `draft`: the text of REQ-8, AC-16, AC-17, AC-18, D-17 and Sources changed, and no code or test has changed yet; it waits for an approval that the lane does not write itself (Interview Q3). The earlier revision 2 was approved by the leader's delegation (decision note 7818; the user's first approval, note 7517, covers the first draft only). Nothing is installed, no settings file is read or written, and the installed hooks of this clone are untouched.
+Status: implemented on the code slice (RED `39d14c00e3`, handler `03d223348a`, audit repair on top of `9b6058aa33`, second audit repair: RED table `ea7d38780a`, handler `6c17557134`, survivors `6db97ed5e2`, on NeXT `466b59fc62`). Fourth audit repair (S-1 branch only, AC-17, D-17): code, tests and SPEC text in `a01314bb5c` on `2b3400b6b9`. Revision 3 (written 2026-11-24 after the fifth audit FAIL, note 8053) is `approved` by the leader's delegation (decision note 8061, answering the lane's request note 8060; not a pick of the user's): the text of REQ-8, AC-16, AC-17, AC-18, D-17 and Sources changed in `90b0801b42`, and the code and the tests follow on the same branch (Interview Q3). The earlier revision 2 was approved by the leader's delegation (decision note 7818; the user's first approval, note 7517, covers the first draft only). Nothing is installed, no settings file is read or written, and the installed hooks of this clone are untouched.
 
 - AC-1: met — `hook_bash_boundary_cli` tests `ac1_delete_table`, `ac1_git_state_table`, `ac1_protected_ref_table`, `ac1_hook_skip_table`, `ac1_unreadable_table` (each table is checked for at least 12 allowed and 12 denied cases and runs the real binary)
 - AC-2: met — `ac2_outside_a_moai_project_nothing_is_printed_for_any_case`, `ac2_a_denial_has_exactly_the_three_fields_and_an_allowed_case_prints_nothing`
