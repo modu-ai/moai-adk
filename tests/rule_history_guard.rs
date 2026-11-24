@@ -243,6 +243,18 @@ fn every_inventory_row_names_its_enforcers_or_text_only() {
     );
 }
 
+/// A moved test file is a module of an area crate (`tests/<area>/main.rs`,
+/// SPEC-20261123-test-area-crates): it is `tests/<area>/<name>`.
+fn in_an_area_crate(name: &str) -> bool {
+    let Ok(entries) = std::fs::read_dir(root().join("tests")) else {
+        return false;
+    };
+    entries.flatten().any(|e| {
+        let dir = e.path();
+        dir.join("main.rs").is_file() && dir.join(name).is_file()
+    })
+}
+
 #[test]
 fn every_test_file_named_in_the_history_exists() {
     let text = read(HISTORY_FILE);
@@ -252,7 +264,9 @@ fn every_test_file_named_in_the_history_exists() {
     );
     // a pin names a file under `tests/`; the live table may also name a path from the root
     let missing = missing_files(&text, |name| {
-        root().join("tests").join(name).exists() || root().join(name).exists()
+        root().join("tests").join(name).exists()
+            || root().join(name).exists()
+            || in_an_area_crate(name)
     });
     assert!(
         missing.is_empty(),

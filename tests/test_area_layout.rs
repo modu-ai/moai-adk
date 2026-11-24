@@ -610,6 +610,7 @@ fn solo_files_stay_top_level_targets() {
     assert_eq!(
         table.solo,
         [
+            "card_cleanup_outbox_cli",
             "commit_identity_guard_2878",
             "update_switch_layer",
             "worktree_place_cli"

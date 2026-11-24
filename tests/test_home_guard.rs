@@ -962,8 +962,17 @@ fn check_baseline(text: &str, root: &Path, cap: usize) -> Result<usize, String> 
             function_exists(root, name)
         } else {
             let short = name.rsplit("::").next().unwrap_or(name);
-            let src = sources.entry(bin.to_string()).or_insert_with(|| {
-                fs::read_to_string(root.join("tests").join(format!("{bin}.rs"))).unwrap_or_default()
+            // A binary that is an area crate (`tests/<bin>/main.rs`, SPEC-20261123-test-area-crates)
+            // holds the test in the module file its name starts with: `<module>::<fn>`.
+            let file = if root.join("tests").join(bin).join("main.rs").is_file() {
+                let module = name.split("::").next().unwrap_or(name);
+                format!("{bin}/{module}")
+            } else {
+                bin.to_string()
+            };
+            let src = sources.entry(file.clone()).or_insert_with(|| {
+                fs::read_to_string(root.join("tests").join(format!("{file}.rs")))
+                    .unwrap_or_default()
             });
             src.contains(&format!("fn {short}("))
         };
@@ -999,6 +1008,23 @@ fn an_unsorted_or_repeating_baseline_is_refused() {
     assert!(err.contains("not sorted"), "{err}");
     let err = check_baseline(&format!("{a}\n{a}\n"), Path::new(ROOT), 10).unwrap_err();
     assert!(err.contains("not sorted"), "{err}");
+}
+
+#[test]
+fn a_baseline_line_of_an_area_crate_names_the_test_in_its_module_file() {
+    let root = Path::new(ROOT);
+    // `card` is an area crate: the test is found in `tests/card/<module>.rs`.
+    let text = "card\tclaim_verify_cli::hook_binary_exits_2_on_refusal\n";
+    assert_eq!(check_baseline(text, root, 10), Ok(1));
+    for bad in [
+        "card\tno_such_module::hook_binary_exits_2_on_refusal\n",
+        "card\tclaim_verify_cli::no_such_test\n",
+        // A test of another module of the crate is not found in this module's file.
+        "card\tgithub_cli::hook_binary_exits_2_on_refusal\n",
+    ] {
+        let err = check_baseline(bad, root, 10).unwrap_err();
+        assert!(err.contains("names no existing test"), "{bad}: {err}");
+    }
 }
 
 #[test]
