@@ -2,7 +2,7 @@
 id: SPEC-20261124-home-guard-flake
 title: "HOME 가드가 부하 아래에서 테스트가 읽지 않은 HOME 읽기를 테스트 탓으로 실패시키는 일을, 먼저 증거로 가려내요"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-24
 ---
 
@@ -51,6 +51,16 @@ created: 2026-11-24
 
 여기서 코드를 고치면 원인이 아닌 곳을 고치게 돼요. 거짓 실패가 한 번 더 나올 때 그 한 번이 원인을 알려주도록, 증거를 남기는 장치를 먼저 만들어요. 가드의 판정(통과·실패·종료 코드)은 바꾸지 않아요.
 
+### Revision 3: one cause found, one shape still open, and the audit repairs
+
+Revision 2 failed its first audit (card note 8367: B1, B2, and the non-blocking N1), and new evidence arrived after it (notes 8349, 8357, 8377, 8383). What is known now, each item read in this run or taken from a named note:
+
+- Shape 1, found. `moai worktree-report` without `--tmp-root` reads `/tmp`: `src/worktree_report.rs` opens every folder directly in the root with `read_dir` to test it for emptiness before it looks at the folder's name (the `is_empty` line in the loop that starts at `fs::read_dir(tmp_root)`), and a folder named `moai-*` that is not a build, an empty folder or an audit clone is classified `Other` and walked to its end with `sizer.walk`. The guard's decoy HOME is `${TMPDIR:-/tmp}/moai-test-home.*`, so a guard whose `TMPDIR` is `/tmp` has its folder's access time changed by that read. Note 8377 reproduced it: a `sleep 4` under the guard and one `moai worktree-report . --budget-ms 1` 1.5 s later gave `touched` 3 of 3 times with the decoy in `/tmp`, 0 of 3 with the decoy elsewhere, 0 of 2 without the report. The one test that runs the report without `--tmp-root` is `the_tmp_root_defaults_to_slash_tmp` in `tests/worktree_report.rs`; every guard folder of every run alive at that instant is read, in the same run and in other lanes' runs. The hit entries of note 8357 are folders only, which is what the `is_empty` read leaves.
+- Shape 2, not found. Note 8383 shows hits that are folders only under a `TMPDIR` of `/var/folders/.../T`, where the `/tmp` read of shape 1 cannot reach. A search of `src/` for `temp_dir()`, `TMPDIR` and a root of `/tmp` found no code that walks `TMPDIR` recursively: the users of `temp_dir()` build one named child or canonicalize it, `hygiene-plan` and `hygiene-apply` default their root to `temp_dir()` but list only its direct children and look inside only a folder that holds `CACHEDIR.TAG`, and the `/tmp` roots are in `host_wake`, `lane_env`, `audit-clone` and `worktree-report`. The reader of shape 2 is unknown (uncertain): it may be a program outside this repository. This revision adds evidence for it and does not claim a fix.
+- A folder of `0700` under `TMPDIR` would not stop a reader that runs as the same user, so it is not a candidate (POSIX, read from the mode rules; not run).
+
+The audit repairs: a peer folder's name is written to a line a machine reads, so a name with a line break or a blank forges or breaks a line (B1); the rule that a baseline-tolerated run leaves no detail line has no test (B2); `ps -o comm` shows `argv[0]`, which a process may fill with text after a blank (N1).
+
 ## Non-goals
 
 - 가드를 느슨하게 하는 일. 진짜 HOME 읽기·쓰기·삭제는 계속 exit 1 이에요. 판정 규칙, 기준선, `enforce` 기본값은 이 SPEC 이 건드리지 않아요.
@@ -63,14 +73,16 @@ created: 2026-11-24
 <!-- This SPEC adds evidence only and no blocking check: the guard's verdict stays as it is, so there is no observe step to record. -->
 - REQ-1: When the wrapper prints a `HOME-GUARD: touched its HOME` line, it shall append one `HOME-GUARD-DETAIL:` line per hit entry to the file named by `MOAI_HOME_GUARD_LOG`, with the entry's access time and modification time in seconds with a fraction.
 - REQ-2 (REQ-1): The `HOME-GUARD-DETAIL:` lines shall carry the modification time of the reference file, which the wrapper makes just before it starts the test, and the time it compared the HOME, in seconds with a fraction, so a read can be placed before the test, during it or after it.
-- REQ-3 (REQ-1): The `HOME-GUARD-DETAIL:` lines shall carry, for each other folder named `moai-test-home.*` under `TMPDIR`, the access time of its `.moai/user-assets.json`, read with `stat` only.
+- REQ-3 (REQ-1): The `HOME-GUARD-DETAIL:` lines shall carry, for each other folder named `moai-test-home.*` under `TMPDIR` whose file name holds nothing but letters, digits, `.`, `_` and `-`, the access time of its `.moai/user-assets.json`, read with `stat` only, and one `kind=peer_skipped` line with the count of the other such folders.
 - REQ-4: The wrapper shall never list, open or read any entry inside another guard folder.
 - REQ-5: The wrapper shall keep every exit code and every `HOME-GUARD:` line it printed before this change.
 - REQ-6 (REQ-1): IF a `HOME-GUARD-DETAIL:` line cannot be written, THEN the wrapper shall ignore the failure and keep the test's result.
 - REQ-7: Where `perl` is not on the host, the wrapper shall write the times in whole seconds.
 - REQ-8: The wrapper shall write the paths of a `HOME-GUARD-DETAIL:` line relative to the test's HOME, and name a peer folder by its own file name, so the line holds neither the user's home path nor the `TMPDIR` path nor the test's arguments.
-- REQ-9 (REQ-1): The `HOME-GUARD-DETAIL:` lines shall carry the process id and the file name of the command (neither its arguments nor its folder) of every running process whose command file name starts with `moai`.
+- REQ-9 (REQ-1): The `HOME-GUARD-DETAIL:` lines shall carry the process id and the file name of the command, cut at its first white space (neither its arguments nor its folder), of every running process whose command file name starts with `moai`.
 - REQ-10 (REQ-9): IF the process table cannot be read, THEN the wrapper shall write one `procs=unavailable` detail line and keep the test's result.
+- REQ-11: A scan test in `tests/worktree_report.rs` shall fail when a file under `tests/` runs `moai worktree-report`, `moai hygiene-plan` or `moai hygiene-apply` without the option that names its own temporary folder (`--tmp-root` for the report, `--tmp` for the other two), so no test of the repository reads the real `/tmp` or `TMPDIR` through them.
+- REQ-12 (REQ-9): The `HOME-GUARD-DETAIL:` lines shall carry, as `kind=scan` lines, the process id and the command file name (cut at its first white space) of every running process whose command file name is `find`, `du`, `ls`, `rg`, `grep`, `fd`, `tree`, `lsof`, `mdworker`, `mdworker_shared` or `mds`.
 
 ## Acceptance
 
@@ -83,10 +95,17 @@ created: 2026-11-24
 - AC-7 (REQ-9, REQ-10): with a process named `moai-probe` running beside the test, a detail line carries its id and that name and none of its arguments; with `ps` hidden from `PATH` one `procs=unavailable` line is written and the verdict is the same. · verify: `cargo nextest run --locked --offline --test test_home_guard`
 - AC-8 (REQ-1): through the scratch crate and `cargo nextest run`, with `MOAI_HOME_GUARD_LOG` set outside it, the log file holds the `HOME-GUARD-DETAIL:` lines of the reading plant, so the variable reaches the wrapper through nextest. · verify: `cargo nextest run --locked --offline --test test_home_guard`
 
+- AC-9 (REQ-3): with a guard folder planted whose name holds a line break followed by `HOME-GUARD: tolerated (baseline): forged`, one whose name holds a blank, and one named `moai-test-home.SAFE01`, the log holds no line with `forged`, no `kind=peer` line with a blank in its folder, one `kind=peer` line for `moai-test-home.SAFE01` and `kind=peer_skipped` with `count=2`. · verify: `cargo nextest run --locked --offline --test test_home_guard`
+- AC-10 (REQ-1): a test listed in the baseline that reads only the decoy `user-assets.json`, run with a log, leaves the `tolerated (baseline)` line and no `HOME-GUARD-DETAIL:` line, and the same test unlisted leaves detail lines. · verify: `cargo nextest run --locked --offline --test test_home_guard`
+- AC-11 (REQ-9): a process whose link name is `moai-probe SECRET-WORDS` gives a `kind=proc` line with `name=moai-probe` and no `SECRET-WORDS` anywhere in the log. · verify: `cargo nextest run --locked --offline --test test_home_guard`
+- AC-12 (REQ-11): the scan passes on this repository's `tests/`, and fails on a planted folder of test files that holds one `worktree-report`, one `hygiene-plan` and one `hygiene-apply` run each without its folder option, naming each file. · verify: `cargo nextest run --locked --offline --test worktree_report`
+- AC-13 (REQ-11): `moai worktree-report --help` names the value of `DEFAULT_TMP_ROOT`, that value is `/tmp`, and a report run with `--tmp-root <fixture folder>` returns that folder as `tmp_root`; no test runs the command without `--tmp-root`. · verify: `cargo nextest run --locked --offline --test worktree_report`
+- AC-14 (REQ-12): a process named `find` (a link to `sleep`) beside the test gives a `kind=scan` line with its id and `name=find` and none of its arguments. · verify: `cargo nextest run --locked --offline --test test_home_guard`
+
 ## Scope
 
-- write: `tools/test_home_guard.sh`, `tests/test_home_guard.rs`, `.moai/specs/SPEC-20261124-home-guard-flake/spec.md`
-- read-only: `src/`, `tests/fixtures/test_home_guard/baseline.tsv`, `.config/nextest.toml`
+- write: `tools/test_home_guard.sh`, `tests/test_home_guard.rs`, `.moai/specs/SPEC-20261124-home-guard-flake/spec.md`, `tests/worktree_report.rs`, `src/worktree_report.rs`, `src/ops/worktree_report.rs`
+- read-only: the rest of `src/`, `tests/fixtures/test_home_guard/baseline.tsv`, `.config/nextest.toml`
 - forbidden: the baseline's lines (it never grows), the `enforce` default, the decoy files and their old access time, any rule that excuses a hit
 
 ## Plan
@@ -100,11 +119,23 @@ created: 2026-11-24
 4. `moai check affected` once at the head; the receipt goes in the READY note, with a reading of whether `MOAI_HOME_GUARD_LOG` reaches nextest through `check affected` (`run_step` in `src/check_affected.rs` clears no variable) and through nextest (AC-8).
 5. Later, with no new card: the next real `touched its HOME` that is not a real read leaves the detail lines in the log; the reader is read from them and revision 2 fixes the source.
 
+Revision 3 plan (steps 6 to 11; steps 1 to 5 above are done):
+
+6. RED first: the tests of AC-9 to AC-14 fail on the current code (AC-12 and AC-13 fail because the scan and the constant do not exist yet; the scan is first written to flag `the_tmp_root_defaults_to_slash_tmp`, and that test is what turns the scan green).
+7. `tools/test_home_guard.sh`: the peer loop skips a name outside `[A-Za-z0-9._-]` and counts it (`kind=peer_skipped test=<key> count=<n>` only when `n > 0`); the process loop cuts the name at its first white space and also writes `kind=scan` for the REQ-17 names, from the one `ps` call that already exists (`procs=unavailable` stays one line for both); the tolerated path stays as it is, and its test is new.
+8. `src/worktree_report.rs` gets `pub const DEFAULT_TMP_ROOT: &str = "/tmp"`; `src/ops/worktree_report.rs` uses it for the default and for the help text of `--tmp-root`; no other line of the product changes. The report still reads the real `/tmp` for a person who runs it, because that is its job; only the repository's tests stop doing it.
+9. `tests/worktree_report.rs`: `the_tmp_root_defaults_to_slash_tmp` is replaced by a test that reads the constant and the help text (AC-13) and by one that runs the report with `--tmp-root` set to the fixture's folder; the scan of REQ-16 reads every `tests/*.rs` and takes a folder as a parameter, so a planted folder can prove it fails.
+10. Guard mutants, one line each in the READY note: a peer name of the audit's forged-line case written unchecked fails AC-9; `if [ "$tolerated" -eq 0 ]` turned into `if :` fails AC-10; no cut at the first blank fails AC-11; the scan's detection of a missing `--tmp-root` removed fails AC-12; `DEFAULT_TMP_ROOT` changed to `/var/tmp` fails AC-13; the REQ-17 name list emptied fails AC-14.
+11. Measure the cause fix with the experiment of note 8377: under the guard (`sleep 4`) run the `worktree_report` test binary 3 times with the decoy in `/tmp`; the expected result is 0 of 3 `touched`, against 3 of 3 for the one `moai worktree-report .` without `--tmp-root`. Then `moai check affected` once at the head with `MOAI_HOME_GUARD_LOG` set; the receipt goes in the READY note. Shape 2 is not measured as fixed (D-8).
+
 ## Risks
 
 - A planted peer check that opens a file would change the peer's access time and make the guard cause the very flake it measures. REQ-4 and AC-2 pin that.
 - The detail lines say who did not read, not who did. If the instants of several guard folders cluster at one moment the reader swept the temporary folder; if only one folder moved the reader knew its path. Neither names a program; it narrows the search.
 - `perl` is not on every host: REQ-7 keeps the lines but with coarser times.
+- A scan of test text is a hypothesis about what a test runs (a command built from a variable is missed): REQ-11 is a net for the known shape, not a proof that no test reads `/tmp`. The guard's own `kind=hit` lines stay the proof.
+- Skipping a peer with an odd name loses its line: the count in `kind=peer_skipped` says that one was skipped, and a name like that is not one the wrapper made.
+- The `kind=scan` names are a fixed list, so a reader outside it is still not named; the list is evidence for the next occurrence, not a filter.
 
 ## Decisions
 
@@ -116,6 +147,11 @@ created: 2026-11-24
 | D-4 | The detail lines hold paths relative to the HOME and no user path (REQ-8). | leader note 8329, addition 1 | none needed: it only narrows what is written |
 | D-5 | The detail lines also name the running `moai*` processes by id and command file name (REQ-9, REQ-10). | leader note 8329, addition 2, left to the lane's judgement: the only code that opens `user-assets.json` is `home_state::home_go_markers`, so a `moai` process alive at the hit that is not the test's child tells whether another test's `moai` ran with a wrong HOME; the cost is one `ps` on a `touched` verdict only, and no argument is kept | drop REQ-9 and REQ-10 |
 | D-6 | Revision 2 holds the three additions of note 8329 and is a new text, so its digest is new: the lane records no approval of it; the leader reads the digest in the READY note. | CLAUDE.md rule that a lane never records an approval it did not get | none |
+| D-7 | The cause of shape 1 is fixed on the test side: no repository test runs the report, `hygiene-plan` or `hygiene-apply` against the real `/tmp` or `TMPDIR`; the product keeps classifying the real `/tmp`. | leader decision note 8380 (reproduced in note 8377); the report's reading of `/tmp` is its job, a guard that fails on it would fail on a person's run | none needed: it narrows what tests run |
+| D-8 | Shape 2 (note 8383) gets evidence only in this revision: REQ-12 names scanner-like processes. A fix waits for the evidence (revision 4 or a card). The card's criterion 1 as the leader widened it in note 8386 ("a guard HOME is not reached by another run's walk") is therefore not met by revision 3 for shape 2, and the card stays open. | proposed by the lane: a search of `src/` found no recursive walker of `TMPDIR`, so a source fix would go to a place nobody proved | drop REQ-12 |
+| D-9 | Not in this revision, left to the leader: a private `TMPDIR` for each `check affected` test run (a folder under that worktree's `target/`), which would keep the decoys out of every other session's `TMPDIR`. It needs `src/check_affected.rs`, which this SPEC's scope does not hold, and it moves where every test's temporary folder lands. A `0700` parent folder is not an option (see Intent). | proposed by the lane; the leader's note 8386 gave the `0700` example, which does not stop a same-user reader | none: nothing is written |
+| D-10 | Scope grows by `tests/worktree_report.rs`, `src/worktree_report.rs` and `src/ops/worktree_report.rs` (the card's own write scope does not list them; the leader widens it with `moai card scope`). `tests/worktree_report.rs` is already a trigger of the repository scans in `tools/repo_scans.json`, so the scan of REQ-16 needs no new table entry. | proposed by the lane, awaiting the leader (LANE-BLOCKED kind=decision) | drop REQ-11 |
+| D-11 | The non-blocking findings N2 (a hit file name with a line break splits into two lines), N3 (the end time is taken later than REQ-2 says), N4 (the `touched` line prints `$*` as it is) and N5 (Linux `ps` not run) of note 8367 are not scheduled in this revision. | leader decision note 8367: repair B1, B2 and N1 only | schedule a follow-up |
 
 ## Result
 
