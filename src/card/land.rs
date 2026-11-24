@@ -36,6 +36,7 @@ pub mod scans;
 use super::command::open_for_write;
 use super::drift;
 use super::finish::{parse_met, previous_json};
+use super::follow;
 use super::guard;
 use super::input::{self, CardRef};
 use super::landed::{self, Containment, RefMove, Standing};
@@ -334,17 +335,14 @@ fn land_inner(
         Containment::Inside | Containment::Outside => {}
     }
     let standing = landed::standing(project, req.head, &tip).map_err(unchanged)?;
+    let mut follow_plan: Option<follow::Plan> = None;
     match standing {
         Standing::Inside => {}
         Standing::OnTip => {
-            let trees = landed::checked_out_at(project, &full).map_err(unchanged)?;
-            if !trees.is_empty() {
-                return Err(conflict(format!(
-                    "the integration branch {branch} is checked out in {}: a move under it would \
-                     leave that worktree behind the reference",
-                    trees.join(", ")
-                )));
-            }
+            // A worktree that has the branch checked out follows the move
+            // (SPEC-20261125-land-checked-out-branch): every refusal comes before the first write.
+            follow_plan =
+                follow::plan(project, &full, &branch, &tip, req.head).map_err(conflict)?;
         }
         Standing::Stale => {
             return Err(conflict(format!(
@@ -471,6 +469,7 @@ fn land_inner(
     // The move: the ledger row first, then the intent record and git's compare-and-swap on the
     // tip that was read.
     let mut moved = false;
+    let mut worktree_follow = follow::none();
     if standing == Standing::OnTip {
         let common = guard::common_dir_of(project).map_err(unchanged)?;
         workflow::record_land_started(
@@ -491,7 +490,15 @@ fn land_inner(
         let attempt = landed::move_branch(project, &full, req.head, &tip, &message);
         guard::remove_intent(&common);
         match attempt.map_err(after_start_row)? {
-            RefMove::Moved => moved = true,
+            RefMove::Moved => {
+                moved = true;
+                if let Some(plan) = &follow_plan {
+                    follow::apply(plan)
+                        .map_err(|why| refused(follow::stopped(&why, &branch, req.head)))?;
+                    worktree_follow =
+                        follow::answer(Some(&plan.tree), "followed", &plan.from, &plan.to, None);
+                }
+            }
             RefMove::Lost(why) => {
                 // Read where the branch is now: another call may have landed this very head a
                 // moment ago (nothing to move), the branch may have moved to something else
@@ -511,6 +518,17 @@ fn land_inner(
                     )));
                 }
             }
+        }
+    } else {
+        let rerun = follow::rerun(project, ledger.conn(), card_id, &full, &branch, req.head);
+        match rerun.map_err(|why| refused(follow::stopped(&why, &branch, req.head)))? {
+            follow::Rerun::Needed(plan) => {
+                follow::apply(&plan)
+                    .map_err(|why| refused(follow::stopped(&why, &branch, req.head)))?;
+                worktree_follow =
+                    follow::answer(Some(&plan.tree), "finished", &plan.from, &plan.to, None);
+            }
+            follow::Rerun::Nothing(seen) => worktree_follow = seen,
         }
     }
 
@@ -567,9 +585,13 @@ fn land_inner(
         "previous": previous_json(&done.previous), "released": done.released,
         // A worktree the cleanup removed or trimmed is a write too.
         "events": done.events,
-        "writes": done.events > 0 || moved || super::cleanup::wrote(&outbox),
+        "writes": done.events > 0
+            || moved
+            || worktree_follow["status"] == "finished"
+            || super::cleanup::wrote(&outbox),
         "cleanup": cleanup,
         "scans": scans,
+        "worktree_follow": worktree_follow,
         "cleanup_outbox": outbox,
     });
     if let Some(verdict) = &relied {
