@@ -324,6 +324,234 @@ fn a_token_split_by_an_invisible_format_or_separator_character_is_never_echoed()
     assert!(!err.contains('\u{202E}'), "{err:?}");
 }
 
+/// An obviously fake token, shaped like one, and the same token split by `mark`.
+fn split_token(mark: char) -> (String, String) {
+    let half = "x".repeat(18);
+    (
+        format!("ghp_{half}{half}"),
+        format!("ghp_{half}{mark}{half}"),
+    )
+}
+
+/// The refusal of an unmanaged key named `key`.
+fn unmanaged_key_refusal(key: &str) -> String {
+    let mut desired = Map::new();
+    desired.insert(key.into(), json!(true));
+    plan_settings(&Map::new(), &Map::new(), &desired).unwrap_err()
+}
+
+#[test]
+fn an_unknown_permissions_key_shaped_like_a_split_token_is_never_echoed() {
+    let (token, split) = split_token('\u{200B}');
+    let mut permissions = Map::new();
+    permissions.insert(split, json!(["Read"]));
+    let err = plan(json!({ "permissions": permissions })).unwrap_err();
+    assert!(err.contains("permissions"), "{err}");
+    assert!(err.contains("looks like a credential"), "{err}");
+    assert!(!err.contains(&token) && !err.contains("ghp_"), "{err:?}");
+    // a plain unknown sub-key is still named, without the invisible character.
+    let err = plan(json!({"permissions": {"dis\u{200B}ableAll": true}})).unwrap_err();
+    assert!(err.contains("disableAll"), "{err}");
+    assert!(!err.contains('\u{200B}'), "{err:?}");
+}
+
+#[test]
+fn a_value_holding_a_token_split_by_an_invisible_character_is_refused_and_nothing_is_planned() {
+    let (token, split) = split_token('\u{200B}');
+    for (desired, key) in [
+        (
+            json!({"claudeMdExcludes": [format!("**/{split}/CLAUDE.md")]}),
+            "claudeMdExcludes",
+        ),
+        (json!({ "model": split }), "model"),
+        (json!({"worktree": {"sparsePaths": [split]}}), "worktree"),
+        (
+            json!({"worktree": {"symlinkDirectories": [split]}}),
+            "worktree",
+        ),
+        (
+            json!({"permissions": {"additionalDirectories": [split]}}),
+            "permissions",
+        ),
+        (
+            json!({"permissions": {"allow": [format!("Bash(curl {split})")]}}),
+            "permissions",
+        ),
+        (json!({ "outputStyle": split }), "outputStyle"),
+        (
+            json!({"statusLine": {"type": "command", "command": format!("s {split}")}}),
+            "statusLine",
+        ),
+        (json!({"env": {"PLAIN": split}}), "env"),
+    ] {
+        let err = plan(desired.clone()).expect_err(&desired.to_string());
+        assert!(err.contains(key), "{desired}: {err}");
+        assert!(!err.contains(&token), "{desired}: {err}");
+    }
+    // the settings plan of a project refuses too, and nothing is planned or written.
+    for (desired, scope) in [
+        (
+            json!({"claudeMdExcludes": [format!("**/{split}/CLAUDE.md")]}),
+            SettingsScope::Local,
+        ),
+        (json!({ "model": split }), SettingsScope::Project),
+    ] {
+        let dir = TempDir::new().unwrap();
+        assert!(settings_plan_in(dir.path(), &obj(desired.clone()), scope).is_err());
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0, "{desired}");
+    }
+    // an invisible character alone refuses nothing: emoji sequences use joiners and variation
+    // selectors, and a name in decomposed form carries a combining mark.
+    for entry in [
+        "**/\u{1F468}\u{200D}\u{1F469}/CLAUDE.md",
+        "**/\u{2764}\u{FE0F}/CLAUDE.md",
+        "**/cafe\u{301}/CLAUDE.md",
+    ] {
+        assert!(
+            plan(json!({ "claudeMdExcludes": [entry] })).is_ok(),
+            "{entry}"
+        );
+    }
+    assert!(plan(json!({"model": "claude\u{200B}-opus"})).is_ok());
+}
+
+#[test]
+fn a_token_split_by_any_invisible_class_is_never_echoed_or_accepted() {
+    // one character for each class `invisible_char` strips: control characters, then the
+    // format and separator ranges, then the near-invisible characters added after the audit
+    // (braille blank, unassigned specials, null notehead, Khitan filler, Egyptian format
+    // controls).
+    for mark in [
+        '\u{7}',
+        '\u{00AD}',
+        '\u{034F}',
+        '\u{061C}',
+        '\u{115F}',
+        '\u{1160}',
+        '\u{17B4}',
+        '\u{17B5}',
+        '\u{180F}',
+        '\u{200F}',
+        '\u{202E}',
+        '\u{206F}',
+        '\u{3164}',
+        '\u{FE0F}',
+        '\u{FEFF}',
+        '\u{FFA0}',
+        '\u{FFFB}',
+        '\u{1BCA3}',
+        '\u{1D17A}',
+        '\u{E0FFF}',
+        '\u{2800}',
+        '\u{FFF0}',
+        '\u{FFF8}',
+        '\u{1D159}',
+        '\u{16FE4}',
+        '\u{13430}',
+        '\u{1343F}',
+    ] {
+        let (token, split) = split_token(mark);
+        let err = unmanaged_key_refusal(&split);
+        assert!(err.contains("looks like a credential"), "{mark:?}: {err}");
+        assert!(
+            !err.contains(&token) && !err.contains("ghp_"),
+            "{mark:?}: {err}"
+        );
+        let err = plan(json!({ "claudeMdExcludes": [split] })).unwrap_err();
+        assert!(err.contains("claudeMdExcludes"), "{mark:?}: {err}");
+    }
+}
+
+#[test]
+fn every_credential_pattern_split_by_an_invisible_character_is_refused_and_hidden() {
+    // obviously fake values, one for each pattern `credential_like` matches: the private key
+    // header, the 19 token prefixes, a JSON web token, the two Authorization schemes, a URL with
+    // a password, a URL with a user, and the 11 assignment keys.
+    let x = |n: usize| "x".repeat(n);
+    let mut points: Vec<(String, String)> =
+        vec![("-----BEG".into(), "IN RSA PRIVATE KEY-----".into())];
+    for (prefix, body) in [
+        ("sk-", x(24)),
+        ("ghp_", x(24)),
+        ("gho_", x(24)),
+        ("github_pat_", x(24)),
+        ("xoxb-", x(12)),
+        ("xoxp-", x(12)),
+        ("ghs_", x(24)),
+        ("ghu_", x(24)),
+        ("glpat-", x(24)),
+        ("sk_live_", x(20)),
+        ("rk_live_", x(20)),
+        ("xoxa-", x(12)),
+        ("xoxr-", x(12)),
+        ("xoxs-", x(12)),
+        ("xapp-", x(12)),
+        ("AIza", x(36)),
+        ("hf_", x(32)),
+        ("AKIA", "X".repeat(16)),
+        ("ASIA", "X".repeat(16)),
+    ] {
+        points.push((prefix.into(), body));
+    }
+    for (before, after) in [
+        ("eyJhbGciOiJIUzI1NiJ9.e", "yJzdWIiOiIxMjM0NTY3ODkwIn0.c2ln"),
+        ("Authorization: Bearer abcdefgh", "ijklmnopqrstuvwx"),
+        ("Authorization: Basic dXNlcjpw", "YXNzd29yZDEyMzQ1"),
+        ("https:/", "/user:hunter22@example.com/x"),
+        ("ssh:/", "/git@example.com/repo"),
+    ] {
+        points.push((before.into(), after.into()));
+    }
+    for key in [
+        "password",
+        "passwd",
+        "secret",
+        "token",
+        "api_key",
+        "apikey",
+        "api-key",
+        "secret_key",
+        "secret_access_key",
+        "access_key",
+        "private_key",
+    ] {
+        points.push((format!("{key}=Abc"), "def12345".into()));
+    }
+    assert_eq!(points.len(), 36);
+    for (before, after) in points {
+        let whole = format!("{before}{after}");
+        let split = format!("{before}\u{200B}{after}");
+        // the value as a whole is a credential to the screen.
+        let err = unmanaged_key_refusal(&whole);
+        assert!(err.contains("looks like a credential"), "{whole}: {err}");
+        // split, it is never printed back and never accepted as a value.
+        let err = unmanaged_key_refusal(&split);
+        assert!(err.contains("looks like a credential"), "{whole}: {err}");
+        assert!(
+            !err.contains(&whole) && !err.contains(&after),
+            "{whole}: {err}"
+        );
+        let err = plan(json!({ "claudeMdExcludes": [split] })).unwrap_err();
+        assert!(err.contains("claudeMdExcludes"), "{whole}: {err}");
+        let err = plan(json!({ "model": split })).unwrap_err();
+        assert!(err.contains("model"), "{whole}: {err}");
+    }
+}
+
+#[test]
+fn a_refusal_that_removed_invisible_characters_says_so() {
+    // a key that reads as an allowed one once its invisible character is gone is refused, and
+    // the message says that characters were removed from what it shows.
+    let err = unmanaged_key_refusal("model\u{200B}");
+    assert!(err.contains("invisible characters removed"), "{err}");
+    assert!(!err.contains('\u{200B}'), "{err:?}");
+    let err = plan(json!({"permissions": {"de\u{200B}ny": ["Read"]}})).unwrap_err();
+    assert!(err.contains("invisible characters removed"), "{err}");
+    // a plain name gets no such note.
+    let err = unmanaged_key_refusal("theme");
+    assert!(err.contains("theme") && !err.contains("invisible"), "{err}");
+}
+
 #[test]
 fn the_writer_refuses_an_additional_directory_outside_the_repository() {
     let repo = TempDir::new().unwrap();
