@@ -14,7 +14,7 @@ rc.1의 지원 대상은 **Darwin/arm64(`aarch64-apple-darwin`) × Claude Code**
 | --- | --- | --- |
 | Darwin/arm64 × Claude Code | 지원 대상 | T2 not_run(AC-08C-3·6·8 절반), 정적 검증 AC-08C-5만 passed |
 | Linux x86_64(ubuntu-24.04) | 지원 플랫폼(2026-11-17), host 측정 전 | host 측정 없음. CI check set만 측정(아래 "CI OS matrix") |
-| Windows x86_64(windows-2025) | 지원 플랫폼(2026-11-17), host 측정 전. CI는 빌드만(결정 01:1x(11-09), E3 #2195) | **not_run** — CI `windows-build` job은 `--all-targets`로 라이브러리·`moai-cli` binary·portable 시험 target을 컴파일한다. 시험 실행·실행 중 교체·host 로딩은 측정하지 않음(Windows 시험 실행은 후속 조각) |
+| Windows x86_64(windows-2025) | 지원 플랫폼(2026-11-17), host 측정 전. CI는 빌드만(결정 01:1x(11-09), E3 #2195); 릴리스 PR 에서는 검사 세트도 돈다(`SPEC-20261120-release-pr-three-os`, 첫 실행은 아직 not_run) | **not_run** — CI `windows-build` job은 `--all-targets`로 라이브러리·`moai-cli` binary·portable 시험 target을 컴파일한다. 시험 실행·실행 중 교체·host 로딩은 측정하지 않음(Windows 시험 실행은 후속 조각) |
 | Darwin/x86_64(`x86_64-apple-darwin`, Intel Mac) | 미지원(2026-11-17 결정) | CI target에서 빠짐. 설치 스크립트가 거절 |
 | Linux arm64(`aarch64-unknown-linux-gnu`) | 미지원(2026-11-17 결정) | CI target에서 빠짐. 설치 스크립트가 거절 |
 | ZCode·그 밖의 host | 미지원(후속) | 측정하지 않음 |
@@ -68,7 +68,7 @@ run `42619829090`(PR #2309, `pull_request`, head `15d8178bc2d9a8dd1ba16bfaae5424
 - macOS에서 skip된 Python 1개는 `claude` 바이너리가 필요한 시험이다(hosted runner에 없음). Claude Code 실세션은 어느 target에서도 돌리지 않았다.
 - AC-08C-7(사용자 HOME 쓰기 차단)은 macOS 두 target의 `e2e_never_writes_outside_temp_home`이 hosted runner에서도 ok였다. Linux에는 대체 차단 수단이 없어 위 not_run 행이 그대로 유효하다.
 - 첫 run `42618040618`(head `f557b035a`)은 macOS 두 target만 success였다. Linux 두 target은 check set은 초록이었는데, workflow의 macOS 전용 요약 블록 결함(grep 일치 없음 + `pipefail`)으로 job이 failure가 됐다. 그 결함을 고친 뒤 위 run에서 측정했다.
-- windows-2025는 위 matrix에 없다. 별도 job `windows-build`(E3 #2195)가 `--all-targets`로 라이브러리·binary·portable 시험 target을 컴파일하되 시험은 실행하지 않는다. Unix 권한 시험과 Unix symlink 구간만 조건부 컴파일한다. `ci` 집계(`needs: [check]`)에 들어가지 않으므로 `ci` 결론에 영향이 없다. 결과는 위 not_run 절의 windows-2025 행에 적는다.
+- windows-2025는 위 matrix에 없다. 별도 job `windows-build`(E3 #2195)가 `--all-targets`로 라이브러리·binary·portable 시험 target을 컴파일하되 시험은 실행하지 않는다. Unix 권한 시험과 Unix symlink 구간만 조건부 컴파일한다. `ci` 집계(`needs: [check]`)에 들어가지 않으므로 `ci` 결론에 영향이 없다. 결과는 위 not_run 절의 windows-2025 행에 적는다. 릴리스 PR(head 가지가 `release/<40자 hex>` 또는 `release/rc/<40자 hex>`)에서는 `ci` 워크플로의 `windows-check` 잡이 후보 검증과 같은 검사 세트를 Windows 에서 돌리고, 그 잡이 성공해야 `ci` 집계가 통과한다(`SPEC-20261120-release-pr-three-os`). 그 첫 실행 결과는 아직 없다(not_run).
 
 ## RELEASE 시험군 (rc.2 E6 #2198) — fixture 결과, host 지원 판정 아님
 

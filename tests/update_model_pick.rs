@@ -8,7 +8,7 @@ mod common;
 use common::CleanEnv;
 
 use moai_cli::model_effort_questions::tool_question;
-use moai_cli::update_models::{installed_tools, report, settings_path, stage};
+use moai_cli::update_models::{installed_tools, report, settings_path, stage_with};
 use serde_json::{json, Value};
 use std::fs;
 use std::io::{BufReader, Cursor, Read};
@@ -39,7 +39,9 @@ fn write_settings(home: &Path, body: &str) -> PathBuf {
 
 fn run_stage(home: &Path, input: &str) -> (Value, String) {
     let mut out = Vec::new();
-    let result = stage(home, &mut Cursor::new(input.to_string()), &mut out);
+    // `false`: the glm key is one line of the input, so a run on a developer's terminal never
+    // opens the hidden prompt of that terminal.
+    let result = stage_with(home, &mut Cursor::new(input.to_string()), &mut out, false);
     (result, String::from_utf8(out).unwrap())
 }
 
@@ -161,8 +163,9 @@ fn the_choice_is_written_through_the_digest_bound_apply_and_read_back() {
 fn enter_saves_glm_54_for_the_leader_and_flash_for_the_agent() {
     let h = home();
     let path = write_settings(&h.path, r#"{"launcher":{"advisor":"x"}}"#);
-    // Tool pick "2" is glm; then model and effort for the leader and the agent; then the yes.
-    let (result, out) = run_stage(&h.path, &format!("2\n{}y\n", enters(4)));
+    // Tool pick "2" is glm; then model and effort for the leader and the agent; then Enter at
+    // the glm key question (skip); then the yes.
+    let (result, out) = run_stage(&h.path, &format!("2\n{}\ny\n", enters(4)));
     assert_eq!(result["state"], json!("applied"), "{result}");
     assert!(
         out.contains("zai/glm-5.4[1m]"),
@@ -188,6 +191,91 @@ fn enter_saves_glm_54_for_the_leader_and_flash_for_the_agent() {
     assert_eq!(leader["source"], json!("saved"), "{reported}");
 }
 
+/// SPEC-20261121-glm-key-at-pick AC-1, AC-2: a glm pick asks for the key between the model
+/// questions and the save question, the typed key lands in the vault of the temporary home, and
+/// the plain value is in no output, no launcher settings and no receipt under that home.
+#[test]
+fn a_typed_glm_key_is_vaulted_and_appears_nowhere_else() {
+    const FAKE: &str = "FAKE-glm-key-for-the-stage-test";
+    let h = home();
+    let path = write_settings(&h.path, r#"{"launcher":{"advisor":"x"}}"#);
+    let (result, out) = run_stage(&h.path, &format!("2\n{}{FAKE}\ny\n", enters(4)));
+    assert_eq!(result["state"], json!("applied"), "{result}");
+    assert!(
+        out.contains("GLM API key"),
+        "the key question is asked: {out}"
+    );
+    assert!(!out.contains(FAKE), "no echo of the key: {out}");
+    assert!(
+        !result.to_string().contains(FAKE),
+        "the result names no key: {result}"
+    );
+    let scope =
+        moai_cli::model_effort_questions::glm_key_scope(&std::env::current_dir().unwrap(), &h.path)
+            .expect("the tests run inside a git work tree");
+    assert_eq!(
+        moai_cli::key_vault::read_entry(&h.path, &scope, "glm")
+            .unwrap()
+            .as_deref(),
+        Some(FAKE),
+        "the vault of the temporary home holds the key"
+    );
+    assert!(
+        !fs::read_to_string(&path).unwrap().contains(FAKE),
+        "the launcher settings hold no key"
+    );
+    let mut folders = vec![h.path.clone()];
+    while let Some(folder) = folders.pop() {
+        for entry in fs::read_dir(&folder).unwrap().flatten() {
+            let kind = entry.file_type().unwrap();
+            if kind.is_dir() {
+                folders.push(entry.path());
+            } else if kind.is_file() {
+                let bytes = fs::read(entry.path()).unwrap();
+                assert!(
+                    !bytes.windows(FAKE.len()).any(|w| w == FAKE.as_bytes()),
+                    "{} holds the plain key",
+                    entry.path().display()
+                );
+            }
+        }
+    }
+}
+
+/// SPEC-20261121-glm-key-at-pick: a key vault that cannot be written is told on the screen, and
+/// the stage goes on to the preview and the save question with the model pick kept.
+#[test]
+fn a_vault_that_cannot_be_written_does_not_lose_the_model_pick() {
+    const FAKE: &str = "FAKE-glm-key-for-the-refused-write";
+    let h = home();
+    let path = write_settings(&h.path, r#"{"launcher":{"advisor":"x"}}"#);
+    // A plain file where the vault folder belongs: every write into the vault is refused.
+    let vault =
+        moai_cli::key_vault::entry_path(&h.path, &moai_cli::key_vault::Scope::Shared, "glm")
+            .parent()
+            .and_then(Path::parent)
+            .unwrap()
+            .to_path_buf();
+    fs::write(&vault, b"in the way").unwrap();
+    let (result, out) = run_stage(&h.path, &format!("2\n{}{FAKE}\ny\n", enters(4)));
+    assert_eq!(result["state"], json!("applied"), "{result}\n{out}");
+    assert!(
+        out.contains("The key could not be stored:"),
+        "the screen tells the write failed: {out}"
+    );
+    assert!(!out.contains(FAKE), "no echo of the key: {out}");
+    assert!(
+        !result.to_string().contains(FAKE),
+        "the result names no key: {result}"
+    );
+    let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    assert_eq!(
+        saved["launcher"]["models"]["glm"]["leader"]["model"],
+        json!("zai/glm-5.4[1m]"),
+        "the model pick was saved: {saved}"
+    );
+}
+
 /// SPEC-20261123-glm-54-followups AC-2 (REQ-2): a `zai/glm-5.3` leader saved before 5.4 is not
 /// reported as unsupported, is the default of the next model step, and stays as it is when the
 /// person presses Enter everywhere and saves.
@@ -204,7 +292,7 @@ fn a_saved_glm_53_leader_stays_through_enter_everywhere() {
         "a supported saved value is not listed as unsupported: {out}"
     );
     assert_eq!(fs::read_to_string(&path).unwrap(), body, "nothing written");
-    let (result, _) = run_stage(&h.path, &format!("2\n{}y\n", enters(4)));
+    let (result, _) = run_stage(&h.path, &format!("2\n{}\ny\n", enters(4)));
     assert_eq!(result["state"], json!("applied"), "{result}");
     let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(
@@ -356,10 +444,11 @@ fn a_broken_or_changed_settings_file_is_an_error_and_stays_as_it_was() {
         hook: Some(Box::new(move || fs::write(&target, changed).unwrap())),
     };
     let mut out = Vec::new();
-    let result = stage(
+    let result = stage_with(
         &h.path,
         &mut BufReader::with_capacity(4096, hooked),
         &mut out,
+        false,
     );
     assert_eq!(result["state"], json!("error"), "{result}");
     assert_eq!(

@@ -444,20 +444,127 @@ fn output_keys_equal_the_schema_both_ways() {
     }
 }
 
+/// The commands whose default root is the real temporary folder, each with the option that names a
+/// folder of the test's own (SPEC-20261124-home-guard-flake REQ-11). A test that runs one without
+/// its option reads every folder of `/tmp` or `TMPDIR` and changes their access times, which a
+/// HOME guard of another run in the same instant reports as a read of its HOME.
+const TMP_READERS: [(&str, &str); 3] = [
+    ("worktree-report", "--tmp-root"),
+    ("hygiene-plan", "--tmp"),
+    ("hygiene-apply", "--tmp"),
+];
+
+/// The files of `dir` (and its folders, but not `fixtures`) that run a command of
+/// [`TMP_READERS`] without its option, as `<file>: <command>`. A text scan: a run is a quoted
+/// command name inside a statement that builds a `Command` (`Command::new`, `.args(`, `.arg(`), and
+/// the option must be a quoted word of the same statement; a command name handed to a helper that
+/// adds the option itself is not a run.
+fn tmp_readers_without_their_folder(dir: &Path) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut entries: Vec<PathBuf> = fs::read_dir(dir)
+        .unwrap()
+        .flatten()
+        .map(|e| e.path())
+        .collect();
+    entries.sort();
+    for path in entries {
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        if path.is_dir() {
+            if name != "fixtures" {
+                found.extend(tmp_readers_without_their_folder(&path));
+            }
+            continue;
+        }
+        if path.extension().is_none_or(|e| e != "rs") {
+            continue;
+        }
+        let text = fs::read_to_string(&path).unwrap();
+        for (command, option) in TMP_READERS {
+            let quoted = format!("\"{command}\"");
+            for (at, _) in text.match_indices(&quoted) {
+                let start = text[..at].rfind([';', '{', '}']).map_or(0, |p| p + 1);
+                let head = &text[start..at];
+                if !["Command::new", ".args(", ".arg("]
+                    .iter()
+                    .any(|w| head.contains(w))
+                {
+                    continue;
+                }
+                let end = text[at..].find(';').map_or(text.len(), |p| at + p);
+                // `--help` reads no folder at all.
+                let run = &text[start..end];
+                if !run.contains(&format!("\"{option}\"")) && !run.contains("\"--help\"") {
+                    found.push(format!("{name}: {command}"));
+                }
+            }
+        }
+    }
+    found
+}
+
+/// REQ-11: no test of this repository reads the real `/tmp` or `TMPDIR` through the three commands.
+#[test]
+fn no_test_runs_a_tmp_reading_command_without_its_own_folder() {
+    let tests = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let found = tmp_readers_without_their_folder(&tests);
+    assert!(
+        found.is_empty(),
+        "these tests read the real temporary folder: {found:#?}"
+    );
+}
+
+/// REQ-11: the scan names a planted file for each command that runs without its option, and leaves
+/// alone a run that has it, a `--help` run and a command name handed to a helper.
+#[test]
+fn the_scan_names_a_planted_run_without_its_folder_option() {
+    let dir = tempfile::TempDir::new().unwrap();
+    // The command and option names are put in at run time so this file holds no quoted command name
+    // inside a statement of its own that builds a `Command`.
+    let bad = "fn t() { Command::new(B).args([\"@CMD@\", \"x\"]).output().unwrap(); }";
+    let good = "fn t() { Command::new(B).args([\"@CMD@\"]).arg(\"@OPT@\").output().unwrap(); }";
+    let helper = "fn t() { let v = run(fx, \"@CMD@\", 1, &[]); }";
+    let help = "fn t() { Command::new(B).args([\"@CMD@\", \"--help\"]).output().unwrap(); }";
+    for (i, (command, option)) in TMP_READERS.iter().enumerate() {
+        let put = |t: &str| t.replace("@CMD@", command).replace("@OPT@", option);
+        fs::write(dir.path().join(format!("bad_{i}.rs")), put(bad)).unwrap();
+        fs::write(dir.path().join(format!("good_{i}.rs")), put(good)).unwrap();
+        fs::write(dir.path().join(format!("helper_{i}.rs")), put(helper)).unwrap();
+        fs::write(dir.path().join(format!("help_{i}.rs")), put(help)).unwrap();
+    }
+    let found = tmp_readers_without_their_folder(dir.path());
+    let expected: Vec<String> = TMP_READERS
+        .iter()
+        .enumerate()
+        .map(|(i, (command, _))| format!("bad_{i}.rs: {command}"))
+        .collect();
+    assert_eq!(found, expected);
+}
+
 /// Without `--tmp-root` the report classifies `/tmp` (the default the command kept when it
-/// moved to `src/ops/`, #2834 R3). A 1 ms budget keeps the walk short; nothing is written.
+/// moved to `src/ops/`, #2834 R3). The test never runs the command on that default: the report
+/// reads every folder of its root, which would change the access time of the HOME folder of every
+/// other test run alive at that instant (SPEC-20261124-home-guard-flake REQ-11). The default is
+/// read from the one constant the command uses and from the command's own help.
 #[test]
 fn the_tmp_root_defaults_to_slash_tmp() {
-    let fx = fixture();
+    assert_eq!(moai_cli::worktree_report::DEFAULT_TMP_ROOT, "/tmp");
     let out = Command::new(BIN)
-        .args(["worktree-report"])
-        .arg(&fx.root)
-        .args(["--budget-ms", "1"])
-        .env("HOME", &fx.home)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .args(["worktree-report", "--help"])
         .output()
         .unwrap();
-    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(v["result"]["tmp_root"], "/tmp", "{v}");
+    assert!(out.status.success());
+    let help = String::from_utf8_lossy(&out.stdout).into_owned();
+    let said = format!("default `{}`", moai_cli::worktree_report::DEFAULT_TMP_ROOT);
+    assert!(
+        help.contains(&said),
+        "the help does not say {said:?}:\n{help}"
+    );
+}
+
+/// With `--tmp-root` the report classifies that folder and names it in its answer.
+#[test]
+fn the_report_names_the_tmp_root_it_was_given() {
+    let fx = fixture();
+    let r = report(&fx, "1000");
+    assert_eq!(r["tmp_root"], fx.tmp.to_string_lossy().as_ref(), "{r}");
 }

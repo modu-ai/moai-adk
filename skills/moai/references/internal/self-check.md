@@ -14,20 +14,21 @@ In the moai-adk repository, `tools/self_check.sh` runs the machine items in one 
 6. Python: the unittest files of the tests and tools you changed, plus `tests/skill_references_test.py`, which reads every `skills/...` path in a tracked file; CI runs `python3 -m unittest discover -s tests -p '*_test.py'` (`--full-python`).
 7. Git: a new git spawn in `src/` goes through `scrub_git_env` (`--test git_env_scrub`); a test that runs git uses `tests/common/git.rs` (`--test ac_command_lint`).
 8. HOME: every test that runs the binary uses a temporary HOME (`--test home_isolation_scan`).
-9. Paths: a new file read or write has tests for a symlink, a FIFO, a missing parent and a folder without permission; it refuses rather than follows.
-10. Platform: a change to pty, process or signal code runs its macOS-only tests locally. An ordinary pull request's CI runs the light Linux matrix; the release pull request runs the full CI on Linux, macOS and Windows before it merges.
+9. Leftovers: a mutant copy of the tree, a temporary HOME for a dangerous-path run and any `mktemp` folder go only under `<worktree>/target/<name>/` (`TMPDIR=<worktree>/target/<name>` for a run that makes its own), and are removed by a relative path before READY; what could not be removed is named in the READY note's `leftovers:` line (`moai card note --help` shows it).
+10. Paths: a new file read or write has tests for a symlink, a FIFO, a missing parent and a folder without permission; it refuses rather than follows.
+11. Platform: a change to pty, process or signal code runs its macOS-only tests locally. An ordinary pull request's CI runs the light Linux matrix; the release pull request runs the full CI on Linux, macOS and Windows before it merges.
 
 ## Package and documents
 
-11. Size: `moai package-inspect skills/moai` exits 0 and no package file is over 65,536 bytes (`profile::LIMIT`). Check `wc -c` of each file you grew and leave a margin.
-12. Manifest: after a change under `skills/moai/`, in the moai-adk repository run `tools/source_manifest.py write`, then `tools/source_manifest.py check` (both with `python3 -I`); a new file needs its `origin` by hand.
-13. Help: every example in a help text you changed runs as typed.
-14. Docs: every statement you changed about a platform, version, default, limit, count or command matches the code or a command's output you can name; fix the text or the code before the audit.
+12. Size: `moai package-inspect skills/moai` exits 0 and no package file is over 65,536 bytes (`profile::LIMIT`). Check `wc -c` of each file you grew and leave a margin.
+13. Manifest: after a change under `skills/moai/`, in the moai-adk repository run `tools/source_manifest.py write`, then `tools/source_manifest.py check` (both with `python3 -I`); a new file needs its `origin` by hand.
+14. Help: every example in a help text you changed runs as typed.
+15. Docs: every statement you changed about a platform, version, default, limit, count or command matches the code or a command's output you can name; fix the text or the code before the audit.
 
 ## Pull request
 
-15. Scope: `git diff --name-only <base>...HEAD` lists only paths inside the write scope, and nothing touches a held item.
-16. Whitespace: `git diff --check <base>...HEAD` prints nothing, as in CI.
-17. Commits: `git interpret-trailers --parse` on each new commit shows the `Moai-Spec` and `Moai-Session` trailers with the attribution last; no commit message, branch name or pull request title carries a card number.
-18. Tier and body: the lane's ready note names the tier in a line `audit-tier: 0|1|2 <reason>`, with the changed paths as the reason (`workflows/audit.md`, step 9). A release pull request's body has `## Self-Audit`, which lists every command with its exit code and every item not run with its reason; check it with `moai pr-self-audit-check --file BODY.md`.
-19. Acceptance criteria: each row is ticked with its evidence (command and exit code, or a comment link).
+16. Scope: `git diff --name-only <base>...HEAD` lists only paths inside the write scope, and nothing touches a held item.
+17. Whitespace: `git diff --check <base>...HEAD` prints nothing, as in CI.
+18. Commits: `git interpret-trailers --parse` on each new commit shows the `Moai-Spec` and `Moai-Session` trailers with the attribution last; no commit message, branch name or pull request title carries a card number.
+19. Tier and body: the lane's ready note names the tier in a line `audit-tier: 0|1|2 <reason>`, with the changed paths as the reason (`workflows/audit.md`, step 9). A release pull request's body has `## Self-Audit`, which lists every command with its exit code and every item not run with its reason; check it with `moai pr-self-audit-check --file BODY.md`.
+20. Acceptance criteria: each row is ticked with its evidence (command and exit code, or a comment link).

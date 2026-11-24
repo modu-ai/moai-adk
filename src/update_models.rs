@@ -12,7 +12,7 @@ use crate::model_effort_settings::{self as settings, Choice, ROLES, TOOLS};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::io::{BufRead, Write};
+use std::io::{BufRead, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
 /// The permission reference of the receipt: the person answered yes to the save question.
@@ -122,11 +122,27 @@ fn preview<W: Write>(out: &mut W, plan: &Plan) -> std::io::Result<()> {
     out.flush()
 }
 
-/// Asks the tool pick and the model questions on `input` and `out`, previews the change and
-/// asks once whether to save it. The state is `nothing_picked`, `cancelled`, `unchanged`,
-/// `declined`, `applied` (with `changes`) or `error` (with `message`). Nothing is written before
-/// a yes, and a refusal of the apply leaves the file as it was.
+/// Asks the tool pick and the model questions on `input` and `out`, asks the glm key for a glm
+/// pick right there (hidden on a terminal, stored in the key vault, skippable), previews the
+/// change and asks once whether to save it. The state is `nothing_picked`, `cancelled`,
+/// `unchanged`, `declined`, `applied` (with `changes`) or `error` (with `message`). The launcher
+/// settings are not written before a yes, and a refusal of the apply leaves the file as it was;
+/// the glm key is stored when it is answered, so a no at the save question keeps it.
 pub fn stage<R: BufRead, W: Write>(home: &Path, input: &mut R, out: &mut W) -> Value {
+    // The hidden prompt needs the person's terminal on stdin and on stderr, where it asks.
+    let hidden = std::io::stdin().is_terminal() && std::io::stderr().is_terminal();
+    stage_with(home, input, out, hidden)
+}
+
+/// [`stage`] with the hidden key prompt chosen by the caller: `false` reads the glm key as one
+/// line of `input` and never touches a terminal, which is what a test that drives the stage
+/// needs.
+pub fn stage_with<R: BufRead, W: Write>(
+    home: &Path,
+    input: &mut R,
+    out: &mut W,
+    hidden: bool,
+) -> Value {
     let path = settings_path(home);
     // The saved choices are the defaults of the questions; an unusable file ends the stage here.
     let launcher = match questions::read_launcher(&path) {
@@ -139,6 +155,9 @@ pub fn stage<R: BufRead, W: Write>(home: &Path, input: &mut R, out: &mut W) -> V
         Ok(Outcome::Cancelled) => return json!({"state": "cancelled"}),
         Err(_) => return error("the answers could not be read"),
     };
+    if let Err(message) = questions::glm_key_step(input, out, home, &picks, hidden) {
+        return error(&message.to_string());
+    }
     let plan = match questions::plan_file(&path, &picks) {
         Ok(plan) => plan,
         Err(message) => return error(&message),

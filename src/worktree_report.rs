@@ -31,6 +31,11 @@ type Result<T> = std::result::Result<T, String>;
 /// Default time budget for the size walk and per-worktree status calls.
 pub const DEFAULT_BUDGET_MS: u64 = 30_000;
 
+/// The root the report classifies when `--tmp-root` is not given. A test names it through this
+/// constant and never runs the command without `--tmp-root`: the report reads every folder of its
+/// root, so a run on the real `/tmp` changes the access time of the folders of every other run.
+pub const DEFAULT_TMP_ROOT: &str = "/tmp";
+
 /// Prefixes of the per-session cargo build folders under the temporary root, checked before
 /// any audit pattern (`moai-target-agent-2-t61-audit-2326` is a build folder). Lanes name new
 /// folders `moai-target-<label>` (#2563); sessions that already build in the former
