@@ -29,7 +29,13 @@ const CHECK_SH: &str =
 fn every_detected_language_has_test_patterns() {
     let source = include_str!("../src/project_detect.rs");
     let mut langs = std::collections::BTreeSet::new();
-    for table in ["const MANIFESTS", "const EXTENSIONS"] {
+    // The manifest languages are rows of the shipped catalog (SPEC-20261124-project-detect-monorepo).
+    let catalog: Value =
+        serde_json::from_str(include_str!("../src/project_detect_catalog.json")).unwrap();
+    for row in catalog["manifests"].as_array().unwrap() {
+        langs.insert(row["language"].as_str().unwrap().to_string());
+    }
+    for table in ["const EXTENSIONS"] {
         let start = source.find(table).unwrap();
         let end = start + source[start..].find("];").unwrap();
         for line in source[start..end].lines() {
