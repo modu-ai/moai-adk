@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-home-writer-links
 title: "홈 상태 아래에 쓰는 나머지 세 곳도 심볼릭 링크 폴더를 거절해요: 아웃박스, 영수증, layout-apply"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8199 (2026-11-24T04:40:04Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 8197 에 답함: 개정 2 승인 선택지 1, src/project_home.rs 와 src/audit_clone.rs 를 범위에 추가, D-6..D-9 그대로; 승인 대상 커밋 e5e10679822e9c437309f277351cb40604adc62e); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:bfa5e1cc42c92fa153749bc0a885eae426af4d10be2a7b19d7dcd47efc712c01"
 ---
 
 # 홈 상태 아래에 쓰는 나머지 세 곳도 심볼릭 링크 폴더를 거절해요: 아웃박스, 영수증, layout-apply
