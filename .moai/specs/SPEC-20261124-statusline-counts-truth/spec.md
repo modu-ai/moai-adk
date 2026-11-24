@@ -91,8 +91,9 @@ created: 2026-11-24
 
 - write: `.moai/specs/SPEC-20261124-statusline-counts-truth/**`, `src/statusline/state.rs`, `src/statusline/render.rs`, `tests/statusline_counts_truth.rs`
 - write, as the changed lines need (the leader widened the card's scope, note 8366): `tests/statusline_flow.rs`, `tests/statusline_cards.rs`, `tests/fixtures/statusline-claude/golden/**`, `tests/fixtures/statusline-claude/cases.json` (the checksum line the golden tool writes), the superseded lines of `.moai/specs/SPEC-20261122-statusline-flow/**` and `.moai/specs/SPEC-20261122-statusline-limits-left/**` (see Supersedes)
-- write by line lease (card C-449 holds the file): `docs/rust-product-path.md`, the flow-line item and the limit-row item (3) only; and, for the used numbers, `tests/statusline_numbers_only.rs` if the document test pins the word "left" (to be read when step 7 starts)
-- read-only: `src/ledger/**`, `src/card/ready_receipt.rs`, `tests/statusline_counts_refresh.rs` (card C-175 holds it)
+- write, widened by the leader for the used numbers (notes 8420, 8425, 8427): `tests/statusline_numbers_only.rs`, `src/statusline/input.rs` (its test module only) and `tests/statusline_counts_refresh.rs` (existing expectations only, no reorder: card C-175 adds a test there and the leader merges the two at landing)
+- write by line lease (card C-449 holds the file): `docs/rust-product-path.md`, the flow-line item and the limit-row item (3) only
+- read-only: `src/ledger/**`, `src/card/ready_receipt.rs`
 - forbidden: the real HOME and ledger, the network in tests, any write to a ledger from the status line, a new crate, `TZ` set on the test process (the child only)
 
 ## Plan
@@ -154,3 +155,27 @@ This SPEC changes what earlier SPECs pinned; they stay as the record of what was
 | `SPEC-20261122-statusline-limits-left` | AC-1, AC-3 and AC-4 (their examples and boundaries are shares left) | the examples and boundaries are shares used (AC-9, AC-10) |
 | `SPEC-20261123-statusline-order-bars` | REQ-3 and REQ-7 (the bar draws the share left, the numbers are the share left), D-1 | the bar draws the share used with the same ten cells and the same rounding (REQ-12, D-9) |
 | `SPEC-20261124-statusline-bar-color` | REQ-2, D-1 (the level colors go by the share left: green from 70, yellow from 50, peach from 30, red below) | the level colors go by the share used: green up to 30, yellow up to 50, peach up to 70, red above (REQ-14, D-11); the four theme colors and the empty-cell color stay |
+
+## Result
+
+구현했어요(2026-11-24, 브랜치 `spec/statusline-counts-truth-20261124`, 코드·시험·골든 커밋 `3136e9e6c3`). 개정 1(개수)은 SPEC 개정 1 승인(리더 노트 8366) 뒤, 개정 2(한도 쓴 양)는 승인(리더 노트 8403) 뒤에 구현했어요. 개정 2 의 red 시험은 코드를 바꾸기 전에 먼저 돌렸어요(`window_tests` 14개 중 13개 실패, 옛 코드, 남은 양 문자열). 개정 1 의 시험은 재현 커밋 `ef55e2b537` 이 옛 줄을 고정한 뒤 최종 기대값으로 고쳐 옛 코드에서 실패하는 것을 확인했어요. 독립 감사는 이 레인이 하지 않아요(리더가 다른 세션에 맡겨요).
+
+- 시험 결과(헤드 `3136e9e6c3` 의 작업 트리, 마지막 실행 전체는 READY 노트의 `moai check affected` 영수증에 있어요): `statusline::` lib 와 `statusline_cards`, `statusline_counts_truth`, `statusline_counts_refresh`, `statusline_flow`, `statusline_numbers_only`, `statusline_tag_order`, `statusline_golden` 을 한 번에 돌려 299개 중 298 통과·1 실패(`statusline::input::...a_mistyped_field_changes_only_itself`, 내가 `input.rs` 기대값을 남은 양 79 의 짝(21)이 아니라 41 로 잘못 고친 시험 쪽 실수), 고친 뒤 `statusline::input::` 13개 모두 통과했어요.
+- 골든: `tools/statusline_golden.py --write` 로 114개를 다시 쓰고 바뀐 plain 24개의 모든 줄을 읽었어요. 한도 줄은 모두 `100 − 옛 숫자` 쌍이에요(92→8, 59→41, 46→54, 77→23, 20→80, 7→93, 70→30, 88→12, 33→67, 75→25, 68→32), 막대 칸 수는 쓴 양의 `× 10 / 100` 내림이고 🔋/🪫 는 70 초과에서만 🪫 이에요. 장부가 있는 골든(`b13`, `b14`)만 `🟡 3`, `🟡 2` 가 늘었어요. `cases.json` 은 바이너리 SHA-256 줄만 바뀌었어요.
+- 뮤턴트(레인이 직접, 커밋 뒤 하나씩 적용하고 되돌림, 되돌린 뒤 `git status` 변경 없음): (1) 철회된 hold 카드를 세게 하는 SQL 조건(`AND 0`)에서 `--test statusline_counts_truth` 가 exit 100 으로 `a_withdrawn_hold_card_is_not_a_pick_the_user_owes` 와 `the_0732z_ledger_shape_draws_what_the_ledger_holds` 실패, (2) `DayZone::Machine` 이 UTC 자정을 쓰게 한 것에서 `the_done_count_follows_the_local_day` 실패(exit 100), (3) 🪫 경계를 `>` 에서 `>=` 로 바꾼 것에서 `window_tests` 4개(`the_bar_has_ten_cells_and_changes_at_each_tenth`, `the_battery_icon_switches_at_70_and_71`, `the_battery_icon_turns_above_the_high_use_boundary`, `the_five_hour_window_shows_whenever_the_input_carries_it`) 실패(exit 100), (4) 초록 경계를 `<=` 에서 `<` 로 바꾼 것에서 `the_filled_cells_carry_the_level_color`·`the_level_color_changes_at_each_step_point` 실패(exit 100).
+- 해석 (나)(리더 노트 8403 승인): 예약 행이 없는 active/review 카드는 모든 노트를 읽어요(옛 동작). 바이너리 골든 장부 픽스처가 이 모양이라서예요.
+- 시험 파일 정리(승인된 범위 확대, 노트 8420·8425·8427): `statusline_numbers_only.rs`, `input.rs` 시험 모듈, `statusline_counts_refresh.rs` 는 기존 기대값 줄만 바꿨고 순서와 다른 줄은 그대로예요(C-175 가 같은 파일에 새 시험을 더해요).
+- 못 한 것: `docs/rust-product-path.md` 는 카드 C-449 가 파일 전체로 예약 중(11:45:13Z 까지)이라 line-lease 가 거절돼(리더 노트 8454) 쓰지 못했어요.
+
+- AC-1: met — `the_0732z_ledger_shape_draws_what_the_ledger_holds` 가 UTC 에서 `🗂️ 77 → 🟡 12 → 📨 12 → 🛬 7 → ✅ 50 | 🚧 4`, 그린 항목의 합이 draft 와 hold 가 아닌 열린 카드 수인 것을 고정해요.
+- AC-2: met — `the_done_count_follows_the_local_day` 가 자식 프로세스에만 `TZ` 를 주고 Asia/Seoul·Etc/GMT-9 에서 `✅ 103`, UTC 에서 `✅ 50`, Etc/GMT+8 에서 `✅ 103` 을, `done_today_tests` 가 자정 경계 초 단위를 고정해요.
+- AC-3: met — `a_withdrawn_hold_card_is_not_a_pick_the_user_owes` 가 `🗂️ 1`(철회된 hold 만)과 plain hold 를 더한 `🗂️ 1 | 🙋 1`, 0 일 때 숨김을 고정하고, 모든 hold 를 세는 뮤턴트에서 실패해요(뮤턴트 항목 1).
+- AC-4: met — `stage_tests_after_reserve` 가 표식 단어의 경계(예약 한 초 전은 ready, 예약 시각부터 제출됨), `REPAIRED`, 리더 결정 노트의 앞·뒤·같은 순서, lane 이 쓴 decision 은 답이 아닌 것을 고정해요.
+- AC-5: met — 같은 모듈이 착지 뒤 다시 take 한 카드는 working, 마지막 take 뒤 착지는 landed 인 것을 고정해요.
+- AC-6: met — `done_today_tests` 가 읽을 수 없는 시간대에서 UTC 날로 세는 것을 고정해요.
+- AC-7: met — `the_four_statements_read_and_never_write` 가 네 문장이 SELECT 뿐인 것을(낱말 단위 검사), `--test statusline_flow` 와 `statusline_counts_truth` 가 렌더 뒤 HOME 스냅숏이 같은 것을 고정해요.
+- AC-8: not_run — `moai check affected` 영수증은 READY 노트가 헤드와 함께 담아요.
+- AC-9: met — `the_row_shows_what_is_used_of_each_window` 가 사용자 예 `🔋 CW ██░░░░░░░░ 25% | 🔋 5H ███░░░░░░░ 32% (16m) | 🪫 7D ███████░░░ 78% (2d 15h)` 를, `the_bar_has_ten_cells_and_changes_at_each_tenth` 가 0·9·10·11·19·20·99·100 의 칸 수와 0~100 모든 값에서 숫자가 쓴 양인 것을 고정해요.
+- AC-10: met — `the_battery_icon_turns_above_the_high_use_boundary` 가 70 은 🔋, 71 은 🪫 를 `CW`·`5H`·`7D` 에서 `HIGH_USE_PERCENT` 로 읽은 값으로 고정해요.
+- AC-11: met — `the_level_color_changes_at_each_step_point` 가 30 초록·31 노랑·50 노랑·51 복숭아·70 복숭아·71 빨강과 단조성, `the_filled_cells_carry_the_level_color` 가 두 테마·두 프로필의 실제 바이트를, `only_the_filled_cells_take_the_level_color` 가 채운 칸 밖에 레벨 색이 없는 것을 고정해요.
+- AC-12: not_met — 코드·골든·`statusline_cards`·`statusline_numbers_only` 부분은 통과했지만(위 시험 결과) 제품 문서의 "남은 → 쓴" 문장은 `docs/rust-product-path.md` 가 C-449 예약이라 쓰지 못했어요.

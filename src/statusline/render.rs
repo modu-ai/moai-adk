@@ -18,11 +18,11 @@ const LINE_THREE_STEPS: usize = 4;
 /// SPEC-20261124-statusline-counts-truth REQ-12).
 const BAR_WIDTH: i64 = 10;
 /// The used percentage above which a window counts as nearly spent and shows `🪫` instead of `🔋`
-/// (SPEC-20261122-statusline-limits D-2; SPEC-20261124-statusline-counts-truth REQ-12).
+/// (SPEC-20261122-statusline-limits D-2; SPEC-20261124-statusline-counts-truth REQ-13).
 const HIGH_USE_PERCENT: i64 = 70;
 /// The filled cells of a bar are green with this share used or less, yellow up to
 /// [`LEVEL_YELLOW_UP_TO`], peach up to [`HIGH_USE_PERCENT`] and red above it, so the bar turns red
-/// where the battery icon turns to `🪫` (SPEC-20261124-statusline-counts-truth REQ-13, D-10).
+/// where the battery icon turns to `🪫` (SPEC-20261124-statusline-counts-truth REQ-14, D-10).
 const LEVEL_GREEN_UP_TO: i64 = 30;
 const LEVEL_YELLOW_UP_TO: i64 = 50;
 /// The cost is shown below this many US dollars (at most `999999.99`, nine characters); a larger
@@ -737,10 +737,10 @@ struct Window {
 impl Window {
     /// A window with a known percentage: the number is the share used, the battery icon turns
     /// from `🔋` to `🪫` when more than [`HIGH_USE_PERCENT`] is used
-    /// (SPEC-20261124-statusline-counts-truth REQ-12), and the bar of [`BAR_WIDTH`] cells draws
-    /// the same share: the first `used * BAR_WIDTH / 100` (rounded down) cells are `█` and the
-    /// others `░`. The filled cells take the level color of the share used ([`level_color`],
-    /// REQ-13) and the empty cells the muted color, two runs with no space between them; the
+    /// (SPEC-20261124-statusline-counts-truth REQ-13), and the bar of [`BAR_WIDTH`] cells draws
+    /// the same share (REQ-12): the first `used * BAR_WIDTH / 100` (rounded down) cells are `█`
+    /// and the others `░`. The filled cells take the level color of the share used
+    /// ([`level_color`], REQ-14) and the empty cells the muted color, two runs with no space between them; the
     /// glyphs tell them apart without color. `used` is the whole used percentage from 0 to 100.
     fn known(t: &Theme, label: &str, used: i64, countdown: Option<Piece>) -> Window {
         let used = used.clamp(0, 100);
@@ -827,7 +827,7 @@ fn whole_percent(pct: f64) -> i64 {
 
 /// The color of the filled cells of a bar with `used` percent used: green up to
 /// [`LEVEL_GREEN_UP_TO`], yellow up to [`LEVEL_YELLOW_UP_TO`], peach up to [`HIGH_USE_PERCENT`] and
-/// red above it (SPEC-20261124-statusline-counts-truth REQ-13). It reads the share used that the
+/// red above it (SPEC-20261124-statusline-counts-truth REQ-14). It reads the share used that the
 /// number shows.
 fn level_color(t: &Theme, used: i64) -> &'static str {
     if used <= LEVEL_GREEN_UP_TO {
@@ -3183,7 +3183,7 @@ mod window_tests {
     }
 
     /// REQ-1, REQ-3 and REQ-4 (SPEC-20261124-statusline-bar-color) read as the share used by
-    /// REQ-12 and REQ-13 of SPEC-20261124-statusline-counts-truth: with a color profile the
+    /// REQ-12 and REQ-14 of SPEC-20261124-statusline-counts-truth: with a color profile the
     /// filled cells of the `CW`, `5H` and `7D` bars are one run in the level color of the share
     /// used, followed by the empty cells in the muted color, in both themes and both profiles.
     #[test]
@@ -3219,7 +3219,7 @@ mod window_tests {
         }
     }
 
-    /// REQ-13 of SPEC-20261124-statusline-counts-truth (it replaces REQ-2 of
+    /// REQ-14 of SPEC-20261124-statusline-counts-truth (it replaces REQ-2 of
     /// SPEC-20261124-statusline-bar-color): the level color follows the share used in four steps,
     /// pinned at N and N+1 — 30 is green and 31 yellow, 50 yellow and 51 peach, 70 peach and 71
     /// red (70 is `HIGH_USE_PERCENT`, where the battery icon turns too) — the table is written
