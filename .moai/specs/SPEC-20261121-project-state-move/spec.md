@@ -1,10 +1,11 @@
 ---
 id: SPEC-20261121-project-state-move
 title: "One state folder: the go-state move takes .moai-cli into a .moai that holds the team's kept names, with a preview, a digest, a receipt and a revert"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-20
 parent: null
+approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8314 of card C-175 (answers lane note 8313, 2026-11-24T07:13:20Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 3 at head fb6aa561d7 with D-1 confirmed as note 8310 option (b); recorded by the lane, not approved by it", digest: "sha256:c8fda77f5f04abb434d44b6b452e809ea2cb533600c3742d566253edf14b4902"}
 ---
 
 # One state folder: the go-state move takes .moai-cli into a .moai that holds the team's kept names, with a preview, a digest, a receipt and a revert
