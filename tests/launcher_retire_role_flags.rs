@@ -75,7 +75,10 @@ fn every_role_flag_is_refused_with_the_replacement() {
             for want in ["--name", "/moai work", "/moai leader"] {
                 assert!(said.contains(want), "{args:?} lacks {want}: {said}");
             }
-            assert!(!said.contains("mode-"), "{args:?} names a mode spelling: {said}");
+            assert!(
+                !said.contains("mode-"),
+                "{args:?} names a mode spelling: {said}"
+            );
             assert!(!mark.exists(), "{args:?} started the host");
         }
     }
@@ -134,9 +137,17 @@ fn a_refused_role_flag_starts_and_writes_nothing() {
             .env("PATH", stub_path(bin.path()))
             .output()
             .unwrap();
-        assert!(!out.status.success(), "{form:?} was accepted: {}", text(&out));
+        assert!(
+            !out.status.success(),
+            "{form:?} was accepted: {}",
+            text(&out)
+        );
         assert!(!mark.exists(), "{form:?} started the host");
-        assert_eq!(tree(project.path()), before, "{form:?} wrote a project file");
+        assert_eq!(
+            tree(project.path()),
+            before,
+            "{form:?} wrote a project file"
+        );
         assert!(!sessions.exists(), "{form:?} created the session folder");
     }
 }
@@ -186,7 +197,10 @@ fn no_help_screen_offers_a_role_flag() {
     ];
     for (name, text) in help_screens() {
         for offer in OFFERS {
-            assert!(!text.contains(offer), "`moai {name}` still offers `{offer}`");
+            assert!(
+                !text.contains(offer),
+                "`moai {name}` still offers `{offer}`"
+            );
         }
     }
 }
@@ -233,7 +247,15 @@ const LIVE_FILES: [&str; 5] = [
 
 /// A line that names a retired form is a record when it also says so.
 const RETIRED_MARKERS: [&str; 10] = [
-    "retired", "refuse", "earlier", "record", "withdrawn", "폐기", "거절", "옛", "이전",
+    "retired",
+    "refuse",
+    "earlier",
+    "record",
+    "withdrawn",
+    "폐기",
+    "거절",
+    "옛",
+    "이전",
     "없어졌",
 ];
 
@@ -271,7 +293,10 @@ fn no_live_text_tells_anyone_to_use_the_role_flags() {
             }
         }
     }
-    assert!(bad.is_empty(), "live text still names the role flags: {bad:?}");
+    assert!(
+        bad.is_empty(),
+        "live text still names the role flags: {bad:?}"
+    );
 }
 
 /// AC-13 (REQ-11): no live line, and no launcher help screen, names a `mode-` spelling. Two
@@ -284,7 +309,8 @@ fn no_live_text_names_a_mode_spelling() {
     let mut bad = Vec::new();
     for file in LIVE_FILES {
         for (n, line) in root_file(file).lines().enumerate() {
-            if SPELLINGS.iter().any(|s| line.contains(s)) && !EXEMPT.iter().any(|e| line.contains(e))
+            if SPELLINGS.iter().any(|s| line.contains(s))
+                && !EXEMPT.iter().any(|e| line.contains(e))
             {
                 bad.push(format!("{file}:{}", n + 1));
             }
@@ -297,5 +323,224 @@ fn no_live_text_names_a_mode_spelling() {
             }
         }
     }
-    assert!(bad.is_empty(), "live text still names a mode spelling: {bad:?}");
+    assert!(
+        bad.is_empty(),
+        "live text still names a mode spelling: {bad:?}"
+    );
+}
+
+/// A temporary project and HOME that print no missing-skill warning, with an optional user
+/// launcher settings file; the host is never started (every case passes `--dry-run`).
+struct Fixture {
+    project: tempfile::TempDir,
+    home: tempfile::TempDir,
+}
+
+impl Fixture {
+    fn new(settings: Option<&str>) -> Self {
+        let home = tempfile::tempdir().unwrap();
+        for dir in [".claude/skills/moai", ".agents/skills/moai"] {
+            fs::create_dir_all(home.path().join(dir)).unwrap();
+            fs::write(home.path().join(dir).join("SKILL.md"), "skill\n").unwrap();
+        }
+        if let Some(text) = settings {
+            let dir = home.path().join(".moai-cli/config");
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join("launcher.yaml"), text).unwrap();
+        }
+        Fixture {
+            project: git_project(),
+            home,
+        }
+    }
+
+    /// The dry-run JSON of `args`, which must have exited 0.
+    fn dry(&self, args: &[&str]) -> serde_json::Value {
+        let out = launcher(self.project.path(), self.home.path(), args)
+            .arg("--dry-run")
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{args:?}: {}", text(&out));
+        serde_json::from_slice(&out.stdout).unwrap()
+    }
+}
+
+fn argv_of(v: &serde_json::Value) -> Vec<String> {
+    serde_json::from_value(v["argv"].clone()).unwrap()
+}
+
+fn has_pair(argv: &[String], flag: &str, value: &str) -> bool {
+    argv.windows(2).any(|w| w[0] == flag && w[1] == value)
+}
+
+fn has_flag(argv: &[String], flag: &str) -> bool {
+    argv.iter().any(|a| a == flag)
+}
+
+const BYPASS: &str = "--dangerously-skip-permissions";
+
+/// AC-16 (REQ-13, REQ-15): with no setting, `cc` starts in auto mode at effort medium and `glm`
+/// in the bypass at effort high, both with the model alias `opus`; the glm environment maps that
+/// alias to `glm-5.4[1m]` and lists the variable names only.
+#[test]
+fn each_host_starts_with_its_own_permission_and_effort_default() {
+    let fx = Fixture::new(None);
+    let cc = fx.dry(&["cc"]);
+    let argv = argv_of(&cc);
+    assert!(has_pair(&argv, "--permission-mode", "auto"), "{argv:?}");
+    assert!(!has_flag(&argv, BYPASS), "{argv:?}");
+    assert!(has_pair(&argv, "--effort", "medium"), "{argv:?}");
+    assert!(has_pair(&argv, "--model", "opus"), "{argv:?}");
+
+    let glm = fx.dry(&["glm"]);
+    let argv = argv_of(&glm);
+    assert!(has_flag(&argv, BYPASS), "{argv:?}");
+    assert!(!has_flag(&argv, "--permission-mode"), "{argv:?}");
+    assert!(has_pair(&argv, "--effort", "high"), "{argv:?}");
+    assert!(has_pair(&argv, "--model", "opus"), "{argv:?}");
+    let keys = glm["env_keys"].to_string();
+    assert!(keys.contains("ANTHROPIC_DEFAULT_OPUS_MODEL"), "{keys}");
+    assert!(
+        !glm.to_string().contains("dummy-token-for-tests"),
+        "a token value is printed"
+    );
+    let notes = glm["notes"].to_string();
+    assert!(
+        notes.contains("opus, sonnet and fable to glm-5.4[1m]"),
+        "{notes}"
+    );
+}
+
+/// AC-16 (REQ-13, REQ-15): a given `--effort` wins on both hosts, and `--permissions` adds no
+/// permission flag on either host.
+#[test]
+fn a_given_effort_and_permissions_win_over_the_host_defaults() {
+    let fx = Fixture::new(None);
+    for (host, effort) in [("cc", "low"), ("glm", "max")] {
+        let argv = argv_of(&fx.dry(&[host, "--effort", effort]));
+        assert!(has_pair(&argv, "--effort", effort), "{host}: {argv:?}");
+        let argv = argv_of(&fx.dry(&[host, "--permissions"]));
+        assert!(!has_flag(&argv, BYPASS), "{host}: {argv:?}");
+        assert!(!has_flag(&argv, "--permission-mode"), "{host}: {argv:?}");
+    }
+}
+
+/// AC-16 (REQ-13): `launcher.role_access` decides both hosts over the host default.
+#[test]
+fn launcher_role_access_decides_both_hosts() {
+    for (setting, bypass, mode) in [
+        ("auto", false, Some("auto")),
+        ("full", true, None),
+        ("prompt", false, None),
+    ] {
+        let fx = Fixture::new(Some(&format!(
+            r#"{{"launcher":{{"role_access":"{setting}"}}}}"#
+        )));
+        for host in ["cc", "glm"] {
+            let argv = argv_of(&fx.dry(&[host]));
+            assert_eq!(
+                has_flag(&argv, BYPASS),
+                bypass,
+                "{host} {setting}: {argv:?}"
+            );
+            match mode {
+                Some(m) => assert!(has_pair(&argv, "--permission-mode", m), "{host}: {argv:?}"),
+                None => assert!(!has_flag(&argv, "--permission-mode"), "{host}: {argv:?}"),
+            }
+        }
+    }
+}
+
+/// AC-7 and AC-16 (REQ-4, REQ-15): a saved flat `launcher.models.<host>` entry gives the model
+/// and effort over the host default; the `zai/` prefix is dropped for glm.
+#[test]
+fn the_flat_saved_entry_fills_model_and_effort() {
+    let fx = Fixture::new(Some(
+        r#"{"launcher":{"models":{
+            "claude":{"model":"claude-opus-5-5","effort":"xhigh"},
+            "glm":{"model":"zai/glm-5.4[1m]","effort":"max"}}}}"#,
+    ));
+    let cc = fx.dry(&["cc"]);
+    let argv = argv_of(&cc);
+    assert!(has_pair(&argv, "--model", "claude-opus-5-5"), "{argv:?}");
+    assert!(has_pair(&argv, "--effort", "xhigh"), "{argv:?}");
+    assert!(
+        cc["notes"].to_string().contains("launcher.models.claude"),
+        "{cc}"
+    );
+    let argv = argv_of(&fx.dry(&["glm"]));
+    assert!(has_pair(&argv, "--model", "glm-5.4[1m]"), "{argv:?}");
+    assert!(has_pair(&argv, "--effort", "max"), "{argv:?}");
+    // A given flag still wins per field.
+    let argv = argv_of(&fx.dry(&["glm", "--effort", "low"]));
+    assert!(has_pair(&argv, "--effort", "low"), "{argv:?}");
+    assert!(has_pair(&argv, "--model", "glm-5.4[1m]"), "{argv:?}");
+}
+
+/// AC-7 (REQ-4): with no entry for its host a launch keeps the host defaults, and an entry of the
+/// other host is not read.
+#[test]
+fn no_saved_entry_keeps_the_roleless_defaults() {
+    let fx = Fixture::new(Some(
+        r#"{"launcher":{"models":{"glm":{"model":"zai/glm-5.4[1m]","effort":"max"}}}}"#,
+    ));
+    let argv = argv_of(&fx.dry(&["cc"]));
+    assert!(has_pair(&argv, "--model", "opus"), "{argv:?}");
+    assert!(has_pair(&argv, "--effort", "medium"), "{argv:?}");
+}
+
+/// AC-8 (REQ-5): saved `leader` and `agent` entries are not read and add one note that names both
+/// key paths and `moai update`.
+#[test]
+fn old_role_entries_are_ignored_with_one_note() {
+    let fx = Fixture::new(Some(
+        r#"{"launcher":{"models":{"claude":{
+            "leader":{"model":"claude-opus-5-5","effort":"high"},
+            "agent":{"model":"claude-sonnet-5-5","effort":"high"}}}}}"#,
+    ));
+    let cc = fx.dry(&["cc"]);
+    let argv = argv_of(&cc);
+    assert!(has_pair(&argv, "--model", "opus"), "{argv:?}");
+    assert!(has_pair(&argv, "--effort", "medium"), "{argv:?}");
+    let notes: Vec<String> = serde_json::from_value(cc["notes"].clone()).unwrap();
+    let ours: Vec<&String> = notes
+        .iter()
+        .filter(|n| n.contains("launcher.models.claude.leader"))
+        .collect();
+    assert_eq!(ours.len(), 1, "{notes:?}");
+    for want in ["launcher.models.claude.agent", "moai update"] {
+        assert!(ours[0].contains(want), "{}", ours[0]);
+    }
+}
+
+/// AC-10 (REQ-7): the permission notes and the long help say that `launcher.role_access` sets the
+/// mode of every launch and name no role as the one that chooses access.
+#[test]
+fn the_access_notes_name_no_role() {
+    let fx = Fixture::new(None);
+    const ROLE_ACCESS: [&str; 3] = ["sets its access", "role chooses", "role sets"];
+    for host in ["cc", "glm"] {
+        let v = fx.dry(&[host]);
+        let notes = v["notes"].to_string();
+        for bad in ROLE_ACCESS {
+            assert!(!notes.contains(bad), "`{host}` notes say `{bad}`: {notes}");
+        }
+        let note: Vec<String> = serde_json::from_value(v["notes"].clone()).unwrap();
+        let access = note
+            .iter()
+            .find(|n| n.contains("launcher.role_access"))
+            .unwrap_or_else(|| panic!("`{host}` has no access note: {note:?}"));
+        assert!(access.contains("every launch"), "`{host}`: {access}");
+    }
+    for (name, text) in help_screens() {
+        for bad in ROLE_ACCESS {
+            assert!(!text.contains(bad), "`moai {name}` says `{bad}`");
+        }
+        if name == "cc --help" || name == "glm --help" {
+            assert!(
+                text.contains("every launch"),
+                "`moai {name}` lacks `every launch`"
+            );
+        }
+    }
 }
