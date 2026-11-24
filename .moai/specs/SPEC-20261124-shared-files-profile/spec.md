@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-shared-files-profile
 title: "프로젝트 프로필이 공유 파일을 적어 두면 card take 와 card scope 는 그 파일을 통째로 예약하지 않고 card line-lease 를 알려 줘요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8070 (2026-11-24T01:03:59Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8069 에 답함): 판 1(커밋 33cfcff1df374a5bb9e0b269e2684108f8dfca68) 승인, D-3·D-4·D-9 는 기본값 그대로예요; 덧붙임: src/profile.rs 도 공유 파일 목록에 넣어요(D-8); 레인은 그 노트를 옮겨 적었어요"
+  digest: "sha256:b95230ddbf5ebba85086f7995d584ddd95922f91b0930eb4b4e5a5d8e4eb832b"
 ---
 
 # 프로젝트 프로필이 공유 파일을 적어 두면 card take 와 card scope 는 그 파일을 통째로 예약하지 않고 card line-lease 를 알려 줘요
@@ -103,7 +108,7 @@ created: 2026-11-24
 | D-5 | `card check` keeps its error shape (`reservation conflict in write scope`) and only gets the hint; no `allowed: false` answer is added | the code never answers `allowed: false`, it refuses; a second answer shape would change every caller of `card check` | add the shape in a later SPEC |
 | D-6 | `card scope` refuses only entries that the card's current scope does not already hold | a held card's scope only grows and must keep every pattern; a card already holding `src/lib.rs` must still be widened by other paths | refuse every entry |
 | D-7 | No exception flag; a card that must rewrite a whole shared file lists the file's removal from `shared_files` as its own reviewed change | an exception flag is the hole the card closes; the list is in the repository and reviewed | add a flag in a later SPEC |
-| D-8 | The first list is the eight entries the leader registered by hand on 2026-11-24 | the dispatch of this card | edit the profile list |
+| D-8 | The first list is the eight entries the leader registered by hand on 2026-11-24, and `src/profile.rs` as a ninth | the dispatch of this card, and leader note 8070: every card adds a key or two to `src/profile.rs`. REQ-9 and AC-8 name the eight and stay as approved (their digest); a list that holds the eight and the ninth meets them | edit the profile list |
 | D-9 | `src/profile.rs` and `src/card/work.rs` are written after C-444 gives them back (`card give-back`), or by the way the leader names; this SPEC does not widen into them and a line lease does not open them, because a lease is refused while another card holds the whole file | both files are needed (the profile key; the `check` hint) and neither can move; this is the situation the SPEC exists to prevent, and it arose before the SPEC could land. Default: wait for C-444 to give the two paths back, work the other parts first | the leader asks C-444 for the give-back |
 
 ## Result
