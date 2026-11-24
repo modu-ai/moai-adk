@@ -281,6 +281,12 @@ pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>)
     // SPEC-20261124-ready-receipt-gate: a READY or REPAIRED note needs the PASS receipt of its
     // head, and nothing is written without it.
     super::ready_receipt::check_note(project, &input::card_name(card_id), text)?;
+    // SPEC-20261124-lane-leftovers: the same notes carry one `leftovers:` line.
+    super::ready_leftovers::check_note(&input::card_name(card_id), text)?;
+    let hand_back = matches!(
+        super::ready_receipt::marker_head(text, &input::card_name(card_id)),
+        Ok(Some(_))
+    );
     let author = match (req.by, req.session) {
         (Some(by), _) => actor(Some(by), "note")?,
         (None, Some(session)) => session.to_string(),
@@ -297,14 +303,39 @@ pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>)
         req.reference,
     )
     .map_err(|e| refusal("note", e))?;
-    Ok(json!({
+    let mut answer = json!({
         "action": "note", "project_id": id,
         "name": input::card_name(card_id), "card_id": card_id,
         "note_id": note.note_id, "kind": note.kind, "author": note.author,
         "session": req.session,
         "ref": note.reference, "bytes": note.bytes, "created_at": note.created_at,
         "events": 1, "writes": true,
-    }))
+    });
+    if hand_back {
+        // SPEC-20261124-lane-leftovers (observe): what appeared in the primary checkout since the
+        // card was reserved goes in the answer; the note is kept whatever it finds.
+        use super::ready_leftovers::{shared_checkout_new, Shared};
+        let since = reservation::current(ledger.conn(), card_id);
+        // The scan reads the file system; the ledger is not held while it runs.
+        drop(ledger);
+        let shared = match since {
+            Ok(Some(held)) => shared_checkout_new(project, held.acquired_at),
+            Ok(None) => Shared::NotChecked("the card holds no reservation".to_string()),
+            Err(e) => Shared::NotChecked(e.to_string()),
+        };
+        match shared {
+            Shared::Checked(paths) => {
+                answer["shared_checkout"] = json!("checked");
+                answer["shared_checkout_new"] = json!(paths);
+            }
+            Shared::NotChecked(why) => {
+                answer["shared_checkout"] = json!("not_checked");
+                answer["shared_checkout_reason"] = json!(why);
+                answer["shared_checkout_new"] = json!([]);
+            }
+        }
+    }
+    Ok(answer)
 }
 
 /// `card criterion C-n N --met --evidence REF | --withdraw --reason TEXT`.

@@ -762,6 +762,14 @@ enum Action {
     /// no receipt). Otherwise the note is refused with the way out and nothing is written.
     /// A first line with a blank before the marker is refused the same way, and the `base` of the
     /// receipt's summary line must be an ancestor of that head.
+    ///
+    /// The same notes need exactly one `leftovers:` line in the body: `leftovers: none`, or
+    /// `leftovers: <path> | <path>` for what the lane could not remove (a throwaway copy, a
+    /// temporary HOME and a `mktemp` folder belong under `<worktree>/target/<name>/` and are
+    /// removed by a relative path before READY). Without a readable line the note is refused and
+    /// nothing is written. The answer of a kept note adds `shared_checkout_new`: the untracked or
+    /// ignored files that appeared in the primary checkout since the card was reserved (nothing
+    /// is refused for them yet), or `shared_checkout: "not_checked"` with the reason.
     Note {
         /// `C-12`.
         card: String,

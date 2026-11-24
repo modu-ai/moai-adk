@@ -169,13 +169,16 @@ impl World {
 
     fn ready(&self, card: &str, head: &str) -> String {
         format!(
-            "LANE-READY-INTEGRATION {card} head={head}\nbase={}\n",
+            "LANE-READY-INTEGRATION {card} head={head}\nbase={}\nleftovers: none\n",
             self.base
         )
     }
 
     fn repaired(&self, card: &str, head: &str) -> String {
-        format!("REPAIRED {card} head={head}\nbase={}\n", self.base)
+        format!(
+            "REPAIRED {card} head={head}\nbase={}\nleftovers: none\n",
+            self.base
+        )
     }
 }
 
@@ -458,7 +461,10 @@ fn a_glued_marker_is_one_rule_for_gate_inbox_and_status_line() {
 fn a_plain_ready_note_needs_the_receipt_and_merge_ready_does_not() {
     let w = World::new();
     let card = w.new_card();
-    let ready = format!("READY {card} head={}\nbase={}\n", w.head, w.base);
+    let ready = format!(
+        "READY {card} head={}\nbase={}\nleftovers: none\n",
+        w.head, w.base
+    );
     let (ok, text) = w.note(&card, &ready);
     assert!(!ok, "{text}");
     assert!(text.contains("card note refused"), "{text}");

@@ -1034,7 +1034,7 @@ fn scenario_card_cycle_takes_checks_audits_lands_and_names_the_next_card() {
     ready_receipt::write_receipt(&wt, &head, "PASS");
 
     // The ready note, the review state, an independent verdict, then the landing.
-    let note = format!("LANE-READY-INTEGRATION {first} head={head}\nbase {tip}\n");
+    let note = format!("LANE-READY-INTEGRATION {first} head={head}\nbase {tip}\nleftovers: none\n");
     ok(&card(
         Some(S_LANE),
         &["note", &first, "--kind", "report"],
