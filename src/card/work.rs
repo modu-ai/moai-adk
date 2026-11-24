@@ -919,11 +919,21 @@ pub fn check(
         match workflow::covering_pattern(&held, path) {
             Some(pattern) => covered.push(json!({"path": path, "pattern": pattern})),
             None => {
-                return Err(format!(
+                let mut refusal = format!(
                     "reservation conflict in write scope: `{}` is not under what C-{card_id} reserved ({})",
                     input::echo(path),
                     held.write_scope.join(", ")
-                ))
+                );
+                // A shared file of the profile is written in short, never reserved whole
+                // (SPEC-20261124-shared-files-profile): the refusal ends with the way to write it.
+                let shared = take_scope::shared_files(project);
+                if take_scope::shared_overlap(&shared, path).is_some() {
+                    refusal.push_str(&format!(
+                        "; a shared file is written in short with: card line-lease C-{card_id} \
+                         --generation {generation} --path {path}"
+                    ));
+                }
+                return Err(refusal);
             }
         }
     }
