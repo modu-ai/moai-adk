@@ -672,6 +672,17 @@ fn an_edited_or_misplaced_owned_agent_is_a_conflict_and_is_kept() {
     let plan = plan_of(&fx, &empty);
     assert_eq!(row(&plan, other)["action"], "conflict", "{plan}");
     assert!(fx.root.join(ROLE_FILE).exists(), "the real file is kept");
+
+    // Under a request that still names the role, that entry is not judged at all.
+    let named = plan_of(&fx, &request);
+    assert!(
+        named["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|f| f["path"] != other),
+        "{named}"
+    );
 }
 
 /// The manifest's native-role entry moved to `path`.
