@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261120-release-pr-three-os
 title: "릴리스 PR 은 머지 전에 Linux·macOS·Windows 에서 검사 세트 전부를 돌려요"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-20
 parent: null
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 (2026-11-24T07:18:03Z, 사용자 위임 2026-11-23T13:57Z, ref note:194:68be37fac6a6b5bee983b1b62c645c40, 승인 요청 노트 8315 에 답함): 판 2 승인(리더가 spec show 로 같은 digest 를 읽음), 설계 B(D-2), 범위 확대 다섯, 카드 기준 문구는 그대로 두고 AC-1·AC-4 로 읽기, 기준 3 은 not_run 으로 열어 둔 채 착지, 커밋 메시지 영어; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:f2e84d9008b114a1d5ad78da036b63bb06719c398e713b7998811a4be92280a9"
 ---
 
 # 릴리스 PR 은 머지 전에 Linux·macOS·Windows 에서 검사 세트 전부를 돌려요
@@ -39,6 +44,14 @@ parent: null
 - `release.yml` 의 plan 단계는 `^release/rc/([0-9a-f]{40})$` 와 `^release/([0-9a-f]{40})$` 두 모양만 받아요.
 - `tests/github_assets_test.py` 가 이 변경이 바꾸는 세 곳을 글자 그대로 고정해요: decide 스크립트의
   `pull_request` 가드 한 줄, `windows-build` 의 `if`, 집계 잡의 `needs` 목록.
+
+## Interview
+
+- Q1: Windows 에서 검사 세트를 어떻게 돌리나요? → A: `ci` 워크플로의 잡 하나가 저장소에 이미 있는 `candidate-target.yml` 을 불러요(D-2). `check` 매트릭스에 Windows 다리를 더하지 않아요.
+- Q2: Windows 잡은 어느 커밋을 검사하나요? → A: PR head 커밋이에요(D-3). 릴리스 워크플로가 빌드하는 커밋이에요.
+- Q3: 일반 PR 과 push 실행은 무엇이 달라지나요? → A: decide 단계의 가드 한 줄과 집계 잡의 `needs`·단계만 달라져요(REQ-2, REQ-8). 매트릭스 목록과 분류기 규칙은 그대로예요.
+- Q4: 릴리스 PR 인지 무엇으로 알나요? → A: head 가지 이름이에요. `release.yml` plan 단계가 번호를 매기는 두 모양과 같아요(REQ-10). 이름은 `env` 로만 스크립트에 들어가요(D-1).
+- Q5: 첫 릴리스 PR 실행은 누가 관측하나요? → A: 릴리스는 사용자의 선택이라 레인은 `not_run` 으로 적고, 실행 뒤 리더가 run id 를 카드에 적어요(AC-10, D-7).
 
 ## Non-goals
 
