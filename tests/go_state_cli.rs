@@ -99,11 +99,17 @@ impl Fx {
 }
 
 fn run(args: &[&str]) -> Output {
+    run_env(args, &[])
+}
+
+/// [`run`] with extra environment variables for this one command.
+fn run_env(args: &[&str], envs: &[(&str, &str)]) -> Output {
     Command::new(EXE)
         .args(args)
         .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("LC_ALL", "C")
+        .envs(envs.iter().copied())
         .output()
         .unwrap()
 }
@@ -341,7 +347,11 @@ fn a_linked_moai_folder_or_manifest_is_refused() {
 const REF: &str = "test-permission-ref";
 
 fn call(args: &[&str]) -> Value {
-    let out = run(args);
+    call_env(args, &[])
+}
+
+fn call_env(args: &[&str], envs: &[(&str, &str)]) -> Value {
+    let out = run_env(args, envs);
     serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
         panic!(
             "{args:?}: {}{}",
@@ -401,14 +411,21 @@ fn movable_fixture() -> Fx {
 }
 
 fn apply(fx: &Fx, digest: &str) -> Value {
-    call(&[
-        "go-state-apply",
-        fx.root.to_str().unwrap(),
-        "--plan-digest",
-        digest,
-        "--permission-reference",
-        REF,
-    ])
+    apply_env(fx, digest, &[])
+}
+
+fn apply_env(fx: &Fx, digest: &str, envs: &[(&str, &str)]) -> Value {
+    call_env(
+        &[
+            "go-state-apply",
+            fx.root.to_str().unwrap(),
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            REF,
+        ],
+        envs,
+    )
 }
 
 fn moves(plan: &Value) -> usize {
@@ -648,16 +665,23 @@ fn revert_plan(fx: &Fx, backup: &str) -> Value {
 }
 
 fn revert(fx: &Fx, backup: &str, digest: &str) -> Value {
-    call(&[
-        "go-state-revert",
-        fx.root.to_str().unwrap(),
-        "--backup",
-        backup,
-        "--plan-digest",
-        digest,
-        "--permission-reference",
-        REF,
-    ])
+    revert_env(fx, backup, digest, &[])
+}
+
+fn revert_env(fx: &Fx, backup: &str, digest: &str, envs: &[(&str, &str)]) -> Value {
+    call_env(
+        &[
+            "go-state-revert",
+            fx.root.to_str().unwrap(),
+            "--backup",
+            backup,
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            REF,
+        ],
+        envs,
+    )
 }
 
 #[test]
@@ -2697,13 +2721,20 @@ fn many_specs_fixture(n: usize) -> Fx {
     fx
 }
 
+/// The debug-build switch that leaves out the syncs of a publish (`src/apply.rs`). Each save of
+/// the receipt is a file sync and a directory sync, `F_FULLFSYNC` on macOS, about 9 ms apiece;
+/// a thousand saves in the apply and again in the revert were 33 of the test's 34 seconds. Only
+/// the test below gives it to a command, and `tests/common` does not carry it: another test that
+/// loses its syncs without saying so would hide a broken save.
+const UNSYNCED: &[(&str, &str)] = &[("MOAI_TEST_PUBLISH_SYNC", "skip")];
+
 /// AC-1: the revert of a receipt above the limit goes to the end and brings the tree back.
 #[test]
 fn a_receipt_above_256_kib_reverts_completely() {
     let fx = many_specs_fixture(1000);
     let before = project_tree(&fx);
     let p = plan(&fx);
-    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let v = apply_env(&fx, p["plan_digest"].as_str().unwrap(), UNSYNCED);
     assert_eq!(v["ok"], json!(true), "{v}");
     let backup = v["result"]["backup"].as_str().unwrap().to_string();
     let (path, receipt) = receipt_of(&fx, &backup);
@@ -2716,7 +2747,12 @@ fn a_receipt_above_256_kib_reverts_completely() {
 
     let rp = revert_plan(&fx, &backup);
     assert_eq!(rp["ok"], json!(true), "{rp}");
-    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    let v = revert_env(
+        &fx,
+        &backup,
+        rp["result"]["plan_digest"].as_str().unwrap(),
+        UNSYNCED,
+    );
     assert_eq!(v["ok"], json!(true), "{v}");
     assert_eq!(project_tree(&fx), before, "the Go tree is back");
     let (_, receipt) = receipt_of(&fx, &backup);

@@ -149,7 +149,25 @@ fn cross_device(e: &std::io::Error) -> bool {
     matches!(e.raw_os_error(), Some(18) | Some(17))
 }
 
+/// Test builds only: `MOAI_TEST_PUBLISH_SYNC=skip` leaves out the two syncs of a publish, the
+/// temporary file's `sync_all` in [`stage`] and the directory's in [`sync_parent`]. The write
+/// order, the temporary file and the rename stay as they are. A test that saves a receipt a
+/// thousand times asks for it: `sync_all` is `F_FULLFSYNC` on macOS, about 9 ms a call. The name
+/// is read only here, in a function a release build does not compile with it.
+#[cfg(debug_assertions)]
+fn publish_sync_skipped() -> bool {
+    std::env::var_os("MOAI_TEST_PUBLISH_SYNC").is_some_and(|v| v == "skip")
+}
+
+#[cfg(not(debug_assertions))]
+fn publish_sync_skipped() -> bool {
+    false
+}
+
 fn sync_parent(path: &Path) {
+    if publish_sync_skipped() {
+        return;
+    }
     if let Some(parent) = path.parent() {
         if let Ok(dir) = fs::File::open(parent) {
             let _ = dir.sync_all();
@@ -201,7 +219,13 @@ fn stage(
     let _ = mode;
     let written = file
         .write_all(after)
-        .and_then(|_| file.sync_all())
+        .and_then(|_| {
+            if publish_sync_skipped() {
+                Ok(())
+            } else {
+                file.sync_all()
+            }
+        })
         .map_err(|_| "temporary write failed".to_string());
     // The re-check may itself fail (for example a permission change mid-apply); the
     // temporary file is removed on that path too, never left behind.
@@ -745,5 +769,156 @@ mod tests {
         assert!(g(".moai/receipts").is_err());
         assert!(g(crate::project_state!("receipts/x.json")).is_err());
         assert_eq!(receipts_rel(p.path()), ".moai/receipts");
+    }
+
+    /// A file of this checkout, read at run time. The two scans below read text, so each names what
+    /// it looks for and fails when that is gone. They live here and not in
+    /// `tests/go_state_cli.rs`: a test file that names the manifest folder joins the repository
+    /// scan list (`tools/repo_scans.json`), and the lines of that list are not this change's.
+    fn checkout_text(rel: &str) -> String {
+        fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel)).unwrap()
+    }
+
+    /// Every `.rs` file under `dir` (relative to the manifest folder), as `(path, text)`.
+    fn checkout_rust_files(dir: &str) -> Vec<(String, String)> {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut out = Vec::new();
+        let mut stack = vec![std::path::PathBuf::from(dir)];
+        while let Some(d) = stack.pop() {
+            for e in fs::read_dir(root.join(&d)).unwrap() {
+                let rel = d.join(e.unwrap().file_name());
+                if root.join(&rel).is_dir() {
+                    stack.push(rel);
+                } else if rel.extension().is_some_and(|x| x == "rs") {
+                    let text = fs::read_to_string(root.join(&rel)).unwrap();
+                    out.push((rel.display().to_string(), text));
+                }
+            }
+        }
+        out
+    }
+
+    /// Condition 1 of the switch (SPEC-20261125-slow-test-top2 REQ-4 and REQ-5): no release build
+    /// compiles a read of its name. Every line of `src/` that names it outside a comment sits in a
+    /// function that carries `#[cfg(debug_assertions)]` directly above it (doc lines and other
+    /// attributes may stand between). The scan needs at least one such line, so a deleted switch
+    /// does not pass by having nothing to check. Notations it does not follow, and so a reader of
+    /// this scan has to know: a function with another visibility than the three it lists, a read
+    /// inside a `const fn` (it is credited to the function above it), and a name built by
+    /// `concat!` or held in a module constant.
+    #[test]
+    fn the_publish_sync_switch_is_read_only_by_a_debug_build_function() {
+        let name = ["MOAI_TEST", "PUBLISH", "SYNC"].join("_");
+        let mut reads = 0;
+        for (path, text) in checkout_rust_files("src") {
+            let lines: Vec<&str> = text.lines().collect();
+            for (i, line) in lines.iter().enumerate() {
+                if !line.contains(&name) || line.trim_start().starts_with("//") {
+                    continue;
+                }
+                reads += 1;
+                let f = (0..=i)
+                    .rev()
+                    .find(|&j| {
+                        let t = lines[j].trim_start();
+                        t.starts_with("fn ")
+                            || t.starts_with("pub fn ")
+                            || t.starts_with("pub(crate) fn ")
+                    })
+                    .unwrap_or_else(|| {
+                        panic!("{path}:{}: the switch is read outside a function", i + 1)
+                    });
+                let mut debug_only = false;
+                for above in lines[..f].iter().rev() {
+                    let t = above.trim_start();
+                    if t.starts_with("#[") || t.starts_with("///") {
+                        debug_only |= t == "#[cfg(debug_assertions)]";
+                    } else {
+                        break;
+                    }
+                }
+                assert!(
+                    debug_only,
+                    "{path}:{}: a release build compiles this read of the switch; put it in a function with #[cfg(debug_assertions)]",
+                    i + 1
+                );
+            }
+        }
+        assert!(reads >= 1, "the switch is not read anywhere in src/");
+    }
+
+    /// REQ-5: a release build keeps both syncs. Its `publish_sync_skipped` is the one under
+    /// `#[cfg(not(debug_assertions))]`, which a test build does not compile, so the scan reads the
+    /// text: its body is `false` and nothing else, and the two `sync_all` calls of `stage` and
+    /// `sync_parent` are still there, once each, above this test module.
+    #[test]
+    fn a_release_build_keeps_both_publish_syncs() {
+        let source = checkout_text("src/apply.rs");
+        let code = &source[..source
+            .find("#[cfg(test)]\nmod tests {")
+            .expect("the unit test module")];
+        let head = "#[cfg(not(debug_assertions))]\nfn publish_sync_skipped() -> bool {\n";
+        let at = code
+            .find(head)
+            .expect("the release build's publish_sync_skipped")
+            + head.len();
+        let body = &code[at..at + code[at..].find("\n}").expect("end of the function")];
+        assert_eq!(
+            body.trim(),
+            "false",
+            "the release build's publish_sync_skipped must be `false`"
+        );
+        assert_eq!(code.matches(head).count(), 1, "one release function");
+        for call in ["file.sync_all()", "dir.sync_all()"] {
+            assert_eq!(code.matches(call).count(), 1, "{call} must stay, once");
+        }
+        assert_eq!(
+            code.matches("if publish_sync_skipped() {").count(),
+            2,
+            "the two syncs are skipped only through publish_sync_skipped"
+        );
+    }
+
+    /// Condition 3 of the switch (REQ-6): only the receipt-size test hands the switch to a
+    /// command. In all of `tests/` the name is spelled once, in the `UNSYNCED` list of
+    /// `tests/go_state_cli.rs`; `UNSYNCED` is used by the two calls of the receipt-size test and
+    /// by nothing else, and its body gives it to both commands that save the receipt.
+    #[test]
+    fn only_the_receipt_size_test_gives_the_commands_the_switch() {
+        let name = ["MOAI_TEST", "PUBLISH", "SYNC"].join("_");
+        let list = "UNSYNCED";
+        let code_lines = |text: &str, word: &str| {
+            text.lines()
+                .filter(|l| !l.trim_start().starts_with("//") && l.contains(word))
+                .count()
+        };
+        for (path, text) in checkout_rust_files("tests") {
+            let (names, uses) = (code_lines(&text, &name), code_lines(&text, list));
+            if path.replace('\\', "/") == "tests/go_state_cli.rs" {
+                assert_eq!(names, 1, "{path} spells the switch once, in the list");
+                assert_eq!(
+                    uses, 3,
+                    "{path}: the list and its two uses in the receipt-size test, nothing else"
+                );
+            } else {
+                assert_eq!((names, uses), (0, 0), "{path} must not carry the switch");
+            }
+        }
+        let me = checkout_text("tests/go_state_cli.rs");
+        let start = me
+            .find("fn a_receipt_above_256_kib_reverts_completely()")
+            .expect("the receipt-size test");
+        let body = &me[start..start + me[start..].find("\n}\n").expect("end of the test")];
+        for call in ["apply_env(", "revert_env("] {
+            let at = body
+                .find(call)
+                .unwrap_or_else(|| panic!("the receipt-size test does not call {call}"));
+            let args_end = body[at..].find(");").expect("end of the call") + at;
+            assert!(
+                body[at..args_end].contains(list),
+                "{call} in the receipt-size test does not carry {list}"
+            );
+        }
+        assert_eq!(code_lines(body, list), 2, "both uses sit in the test body");
     }
 }
