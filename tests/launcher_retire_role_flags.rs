@@ -137,9 +137,12 @@ fn a_refused_role_flag_starts_and_writes_nothing() {
             .env("PATH", stub_path(bin.path()))
             .output()
             .unwrap();
+        // Exit 1 and the replacement text come from the one refusal; the parser alone would
+        // reject an unknown option with exit 2 and its own usage text.
+        assert_eq!(out.status.code(), Some(1), "{form:?}: {}", text(&out));
         assert!(
-            !out.status.success(),
-            "{form:?} was accepted: {}",
+            text(&out).contains("are retired"),
+            "{form:?} was not refused by the retired-flag message: {}",
             text(&out)
         );
         assert!(!mark.exists(), "{form:?} started the host");
