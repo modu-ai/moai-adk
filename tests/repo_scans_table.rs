@@ -438,8 +438,8 @@ fn every_exemption_has_a_reason_and_appears_once() {
 
 // ---- the `always` flag and the `include_str!` readers (SPEC-20261123-land-repo-scans) ----
 
-/// Integration test files that read a repository file outside `tests/` with `include_str!` and
-/// need no scan, each with its reason. None today.
+/// Integration test files that read a repository file outside `tests/` with `include_str!` or
+/// `include_bytes!` and need no scan, each with its reason. None today.
 const INCLUDE_STR_EXEMPT: &[(&str, &str)] = &[];
 
 fn include_str_exempt(file: &str, _path: &str) -> bool {
@@ -529,7 +529,8 @@ fn uncovered_readers(
     out
 }
 
-/// Every top-level `tests/*.rs` file with the repository paths it reads by `include_str!`.
+/// Every top-level `tests/*.rs` file with the repository paths it reads by `include_str!` or
+/// `include_bytes!`.
 fn include_str_readers() -> BTreeMap<String, Vec<String>> {
     let mut files = Vec::new();
     walk(&root().join("tests"), &mut files);
@@ -573,7 +574,7 @@ fn every_include_str_reader_of_a_repository_file_has_an_always_scan() {
 
 /// What the failure of `every_include_str_reader_of_a_repository_file_has_an_always_scan` tells.
 const INCLUDE_READER_HINT: &str =
-    "a test reads a repository file with include_str! and no `always` scan names it as a rule \
+    "a test reads a repository file with include_str! or include_bytes! and no `always` scan names it as a rule \
      file with that file in its scope: add an entry to tools/repo_scans.json, or an \
      INCLUDE_STR_EXEMPT line with the reason";
 
@@ -646,23 +647,23 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
     ),
     (
         "tests/boundary_repro.rs",
-        &["README.md", "src/main.rs"],
-        "README.md is written into its TempDir repository; src/main.rs is an argument of `overlap(..)`, a path text compared with another, never opened",
+        &["src/main.rs"],
+        "src/main.rs is an argument of `overlap(..)`, a path text compared with another, never opened",
     ),
     (
         "tests/bundle_body_cli.rs",
-        &["README.md", ".moai/specs"],
-        "`put(..)` writes README.md and `.moai/specs/<id>/spec.md` into the fixture repository it builds",
+        &[".moai/specs"],
+        "`put(..)` writes `.moai/specs/<id>/spec.md` into the fixture repository it builds",
     ),
     (
         "tests/bundle_build_cli.rs",
-        &["README.md", ".moai/specs"],
-        "`put(..)` writes README.md and `.moai/specs/<id>/spec.md` into the fixture repository it builds",
+        &[".moai/specs"],
+        "`put(..)` writes `.moai/specs/<id>/spec.md` into the fixture repository it builds",
     ),
     (
         "tests/bundle_verify_cli.rs",
-        &["README.md", ".moai/specs"],
-        "`put(..)` and `fs::write` put README.md and `.moai/specs/<id>/spec.md` into the fixture worktree it builds",
+        &[".moai/specs"],
+        "`put(..)` and `fs::write` put `.moai/specs/<id>/spec.md` into the fixture worktree it builds",
     ),
     (
         "tests/card_finish_cli.rs",
@@ -678,11 +679,6 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "tests/check_affected_modes_cli.rs",
         &["README.md"],
         "`put(p, \"README.md\", ..)` into the fixture repository it builds",
-    ),
-    (
-        "tests/check_pipeline_config.rs",
-        &["tools"],
-        "`p.join(\"tools\")` is the folder of the temporary project it builds (its `Command::new(\"sh\")` setup); the real script it copies, tools/self_check.sh, stays covered by its own path",
     ),
     (
         "tests/code_atlas_reference.rs",
@@ -710,19 +706,14 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "`repo.join(\".moai/specs\").join(arg).is_dir()` (product_cli.rs:2897) checks that a SPEC id named in its adoption records still has a folder and reads no content; only removing or renaming a SPEC folder breaks it, which a card does not do, while every card edits this folder",
     ),
     (
-        "tests/project_flow_closing.rs",
-        &["README.md"],
-        "`fs::write` into its TempDir project",
-    ),
-    (
         "tests/repo_scans_cli.rs",
         &["README.md", "src/lib.rs"],
         "changed-path arguments of the judge and fixture writes (`fx.write(..)`)",
     ),
     (
         "tests/repo_scans_table.rs",
-        &["src/lib.rs", ".moai/specs", "tools"],
-        "names in the exemption list and the fixture tests of this file; `tools` is a fixture literal next to the interpreter literals the fixture tests spell",
+        &[".moai/specs"],
+        "a name in the fixture tests of this file",
     ),
     (
         "tests/review_check_cli.rs",
@@ -730,14 +721,9 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "`write(&repo, ..)` into the fixture repository it builds",
     ),
     (
-        "tests/review_checklist_cli.rs",
-        &["README.md"],
-        "`write(&repo, ..)` into the fixture repository it builds",
-    ),
-    (
         "tests/run_verify.rs",
-        &["README.md", "src/lib.rs"],
-        "written or copied into its TempDir project (`fs::copy(.., dir.path().join(..))`)",
+        &["src/lib.rs"],
+        "copied into its TempDir project (`fs::copy(.., dir.path().join(..))`)",
     ),
     (
         "tests/spec_branch_name_first.rs",
@@ -756,8 +742,8 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
     ),
     (
         "tests/worktree_cli.rs",
-        &["README.md", "src/lib.rs"],
-        "`fs::write` into its temporary repository and path names in the overlap lists",
+        &["src/lib.rs"],
+        "path names in the overlap lists",
     ),
 ];
 
