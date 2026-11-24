@@ -390,8 +390,10 @@ pub fn apply(
     let resuming = fs::symlink_metadata(&n.manifest).is_ok_and(|m| m.is_file())
         && fs::symlink_metadata(&n.journal).is_ok_and(|m| m.is_file());
     let fault = test_fault();
-    let procs = InUse::read();
-    let check = |p: &Path| match procs.uses(p, &canon(p)) {
+    // The table is read at the first check, now and not from the command cache: after the plan
+    // is recomputed and the manifest is written, right before the first move.
+    let procs = std::cell::OnceCell::new();
+    let check = |p: &Path| match procs.get_or_init(InUse::read_fresh).uses(p, &canon(p)) {
         Ok(None) => move_journal::InUse::No,
         Ok(Some(why)) => move_journal::InUse::Yes(why.to_string()),
         Err(_) => move_journal::InUse::Unknown,
