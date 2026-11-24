@@ -99,13 +99,10 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
         .retain(|card_id, _| !stale_facts.open.iter().any(|c| c.card_id == *card_id));
     let landed_skips = landed::take_landed(&mut found, &landing);
     let mut warnings: Vec<String> = Vec::new();
-    let draft_days = stale::draft_days(project).unwrap_or_else(|why| {
-        warnings.push(format!(
-            "stale list: the profile could not be read ({why}); {} days are used for a stale draft",
-            stale::DEFAULT_DRAFT_DAYS
-        ));
-        stale::DEFAULT_DRAFT_DAYS
-    });
+    // A profile that cannot be read gives the default and no warning: `warnings` is for the SPEC
+    // of a card, and the project's fixtures hold unreadable profiles; the row names the days it
+    // used (`threshold_days`).
+    let draft_days = stale::draft_days(project).unwrap_or(stale::DEFAULT_DRAFT_DAYS);
     let stale = stale::rows(&stale_facts, &landing.proofs, found.now, draft_days);
     // The SPEC each card names and its status, with a warning for a card that changes the
     // repository without an approved SPEC (SDD-4), in the order the cards are listed.

@@ -19,6 +19,9 @@ use std::process::{Output, Stdio};
 const SESSION_VAR: &str = "CLAUDE_CODE_SESSION_ID";
 const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
 
+/// A fold that must be refused: the card, its target and what the refusal must look like.
+type FoldCase = (i64, i64, fn(&CloseError) -> bool);
+
 struct World {
     home: TempHome,
     p: String,
@@ -221,7 +224,7 @@ fn a_fold_that_cannot_happen_writes_nothing() {
     // C-4 is held by a live lease.
     w.card(Some(S_A), &["take", "C-4"]);
 
-    let cases: [(i64, i64, fn(&CloseError) -> bool); 7] = [
+    let cases: [FoldCase; 7] = [
         (1, 1, |e| matches!(e, CloseError::BadTarget { .. })),
         (1, 99, |e| matches!(e, CloseError::BadTarget { .. })),
         (99, 2, |e| matches!(e, CloseError::CardNotFound(99))),

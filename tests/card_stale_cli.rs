@@ -375,3 +375,27 @@ fn a_profile_with_zero_stale_draft_days_is_refused() {
         "stale_draft_days: 1 reads"
     );
 }
+
+/// A profile that cannot be read gives the 14-day default and adds no warning: `card_spec_cli`
+/// and other fixtures count `warnings` exactly, and their profiles are often not valid.
+#[test]
+fn an_unreadable_profile_uses_the_default_days_and_adds_no_warning() {
+    let w = World::new();
+    // The profile `TempHome::project` leaves names the project and is not a complete profile.
+    assert!(moai_cli::profile::read_profile(&w.project).is_err());
+    let old = w.draft("apps/a/");
+    w.age(&old, 15);
+
+    let listing = w.next(S_B);
+    let rows = rows_of(&listing, &old);
+    assert_eq!(rows.len(), 1, "{listing}");
+    assert_eq!(rows[0]["threshold_days"], json!(14), "{listing}");
+    assert!(
+        listing["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|w| !w.as_str().unwrap_or("").contains("stale")),
+        "{listing}"
+    );
+}
