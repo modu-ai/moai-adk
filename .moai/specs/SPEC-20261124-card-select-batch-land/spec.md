@@ -2,8 +2,9 @@
 id: SPEC-20261124-card-select-batch-land
 title: "READY checks only what the card touched; a batch of audited heads lands on one wide run"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-24
+branch: spec/card-select-batch-land-followup-20261125
 ---
 
 # READY checks only what the card touched; a batch of audited heads lands on one wide run
@@ -20,7 +21,8 @@ Measured on the receipt of C-464 (2026-11-24): of 25 minutes, 14 were queue for 
 
 - No change to the full set (the bare command) or to the `--lane` set, and no change to the release-level full run.
 - No change to the audit verdict rules, the scan receipt rule or the tier floor of `card land`; the batch calls the same landing for each head.
-- The sentences of `CLAUDE.md`, `next-flow.md` and `leader-rules.md` that name the new order belong to C-471.
+- The sentences of `leader-rules.md`, `lane-rules.md` and `audit.md` that name the new order belong to C-471; the `Verify` section of `CLAUDE.md` and `next-flow.md` are written here (revision 3, leader dispatch 2026-11-25).
+- `card land` (one card) keeps its `--by leader` word: the session check of revision 3 is the batch's only.
 - The wide check does not become a hidden default: a lane asks for the card set with `--card`.
 
 ## Requirements
@@ -43,6 +45,12 @@ Measured on the receipt of C-464 (2026-11-24): of 25 minutes, 14 were queue for 
 - REQ-15 (REQ-6): IF the first parent of a join candidate is not the integration tip that the landing read (for a later head of a batch, the commit of the head before it), THEN the landing shall refuse it.
 - REQ-16 (REQ-6): The command shall name each join commit for the SPEC of its card (`merge(next-flow): <SPEC-id> into <branch>, head <short>`) with a `Moai-Spec: <SPEC-id>` trailer and no card number.
 - REQ-18 (REQ-16): IF a card names no SPEC, THEN the command shall drop that head with that reason.
+- REQ-19 (REQ-6): When the wide `check affected` of a batch passes on a join and leaves a summary line of that join with `result=PASS` and no `selection=` word, the command shall count the scans that the merge tree needs as covered for each head of that run.
+- REQ-20 (REQ-19): IF the check of a batch is another program or leaves no such summary line, THEN the command shall count no scan as covered, so that a landing in enforce mode asks the verdict receipt for it.
+- REQ-21 (REQ-6): IF the session that calls `card land-batch` is not the session of the live registry entry named `leader` in mode `leader`, THEN the command shall refuse and change nothing.
+- REQ-22 (REQ-6): The command shall take the check program only from the environment variable `MOAI_TEST_LAND_BATCH_CHECK` and from no command-line flag.
+- REQ-23 (REQ-9): IF the integration branch moves 3 times after a check passed and before its heads landed, THEN the command shall stop with the code `tip_kept_moving` and list the heads that did not run.
+- REQ-24: The `Verify` section of `CLAUDE.md` and `next-flow.md` shall say that a lane's READY receipt is `check affected --card`, that the wide set runs once per batch in `card land-batch`, and that the full run every five landings stays.
 
 ## Acceptance
 
@@ -56,6 +64,10 @@ Measured on the receipt of C-464 (2026-11-24): of 25 minutes, 14 were queue for 
 - AC-8 (REQ-10, REQ-11, REQ-14, REQ-17): a conflicting head is dropped, a check that cannot start lands nothing, and a head with no verdict is dropped before any head lands while the rest is checked again and lands on that join · verify: `cargo test --locked --offline --test card_land_batch_cli refuse_`
 - AC-9 (REQ-6, REQ-15): a join whose second parent is not the audited head, and a join whose first parent is beyond the tip, are each refused and only the head before it lands · verify: `cargo test --locked --offline --test card_land_batch_cli refuse_a_join`
 - AC-10 (REQ-16, REQ-18): the join commits of a batch carry the SPEC in the subject and in `Moai-Spec`, and no card number · verify: `cargo test --locked --offline --test card_land_batch_cli a_join_commit`
+- AC-11 (REQ-19, REQ-20): with `work_flow.land_verdict` set to `enforce` and a scan table that the heads need, a batch whose check left a full-selection PASS summary of the join lands every head, and a batch whose check left none drops the first head with `scans_missing` · verify: `cargo test --locked --offline --test card_land_batch_cli scans_`
+- AC-12 (REQ-21): a batch called from a session that is not the registered leader session, with no leader entry, or with an ended lease, is refused and changes nothing; the registered leader session lands · verify: `cargo test --locked --offline --test card_land_batch_cli leader_`
+- AC-13 (REQ-22, REQ-23): the help of `card land-batch` has no `--check-cmd`, and a tip that moves after each passing check stops the batch at the cap with `tip_kept_moving` · verify: `cargo test --locked --offline --test card_land_batch_cli seam_` and `cargo test --locked --offline --test card_land_batch_cli tip_`
+- AC-14 (REQ-24): `CLAUDE.md` and `skills/moai/references/flows/next-flow.md` name `--card`, `card land-batch` and the full run every five landings · verify: `cargo test --locked --offline --test card_land_batch_cli docs_`
 
 ## Scope
 
@@ -64,8 +76,9 @@ Measured on the receipt of C-464 (2026-11-24): of 25 minutes, 14 were queue for 
 - write: `src/card/land.rs`, `src/card/land/**`
 - write: `src/card/ready_receipt.rs`
 - write: `tests/check_affected_card_select.rs`, `tests/card_land_batch_cli.rs`
-- shared (line lease): `src/ops/card.rs` (the `land-batch` action and its dispatch), `src/ops/check.rs` (the `--card` flag), `docs/design-review/appendix/operations/card.md`
-- forbidden: `CLAUDE.md`, `skills/**/next-flow.md`, `docs/leader-rules.md` (C-471)
+- write (revision 3): `CLAUDE.md` (the `Verify` section), `skills/moai/references/flows/next-flow.md`; `CLAUDE.md` is a tier-2 path, so the change gets the full audit
+- shared (line lease): `src/ops/card.rs` (the `land-batch` action and its dispatch), `src/ops/check.rs` (the `--card` flag), `docs/design-review/appendix/operations/card.md`, `tests/fixtures/state_folder_literals/allow.tsv`
+- forbidden: `docs/leader-rules.md`, `docs/lane-rules.md`, `skills/moai/references/audit.md` (C-471)
 
 ## Plan
 
@@ -94,6 +107,10 @@ Measured on the receipt of C-464 (2026-11-24): of 25 minutes, 14 were queue for 
 | D-8 | The batch's refusals come from `land_preflight`, the same function as `land` stopped before its first write, with the expected first parent as an argument; no field is added to `LandRequest` | one source for the refusals, and `src/ops/card.rs` stays untouched | write the refusals twice, or add a field |
 | D-9 | A full-set fallback names its reason: a wide class, a common word, or a `src` path that no test reaches (audit B1, 2026-11-24) | the first build chose zero tests on the hazard paths | go back to the card set for those paths |
 | D-10 | The shared hub paths of C-464 (`src/ledger/mod.rs`, `src/ledger/reservation.rs`, `src/ops/card.rs`, `src/profile.rs`) run the full set with `--card` and say why; the card set is for a range of modules that are no hub, and AC-1 and criterion 1 of C-470 read that way (leader decision, note 8636) | many tests rest on a hub, so a wide run is the safe side, and it agrees with the review feedback "ledger and common settings wide"; the real C-464 range measured 147 targets, one non-hub module 1 | go back to the 13-target reading of revision 1 |
+| D-11 | The batch's scan cover is the receipt of its own wide run: the summary line `target/check-affected-<head12>/summary.txt` of the private worktree at the last join, read before the worktree goes, counts when it names that join, ends in `result=PASS` and has no `selection=` word (the full set runs every listed scan); the covered flag is an argument of `land_preflight` and of a new `land_in_batch` that reaches `scans::read` (D-8 stands: `LandRequest` gets no field), and the verdict receipt still covers a head the way it did | audit N3: a batch's wide run left no scan receipt, so enforce mode refused every head; the full run is a stronger receipt than the lane's, on the tree that lands | stop passing the flag |
+| D-12 | The batch is confirmed by session: the entry `leader` of the lane registry must be live, in mode `leader`, and its `session` must equal the calling session (the rule of `skills/moai/references/internal/loop.md`, "The confirmed leader"); `--by leader` stays as the word of the call, `card land` is unchanged | audit N4: the word is a declaration any session can type; the registry already binds the leader to one host session id | drop the check, or move it to `card land` too |
+| D-13 | The check program is set by `MOAI_TEST_LAND_BATCH_CHECK`, not by a flag; the flag `--check-cmd` is removed | audit N6: a product flag that swaps the wide check for any program lets a landing skip it; the seam stays for the tests, as `MOAI_FORGE_GH_BIN` does, and it counts no scan as covered unless it leaves the summary line | put the flag back |
+| D-14 | A batch stops at 3 moved tips (`tip_kept_moving`) | audit N7: each re-run is a cold build, and a branch that moves after every check would loop; 3 is a chosen cap, not a measured one | raise the constant `MAX_TIP_MOVES` |
 | D-7 | The name word of a changed module is `<folder>_<module>` below a folder and the module name for a top-level file; the cap of 10 counts the targets that reach a module by that word or by naming its path in their source, together | measured on the real C-464 range: the bare module word `sweep` or `work` reached the whole `card_*` family, and the path rule alone reached 14 targets for `src/ledger/reservation.rs`; the union cap gives 13 targets | go back to the bare word, or raise the cap |
 
 ## Result

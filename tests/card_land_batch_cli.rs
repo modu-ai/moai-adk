@@ -131,10 +131,20 @@ struct World {
     git_bin: PathBuf,
     scripts: tempfile::TempDir,
     c0: String,
+    profile: std::cell::RefCell<Vec<u8>>,
 }
 
 impl World {
+    /// A world whose leader session `S_LEAD` is registered, as `/moai leader` registers it.
     fn new() -> Self {
+        let w = World::bare(None, PROFILE);
+        w.register_leader(S_LEAD, true);
+        w
+    }
+
+    /// A world with no leader registered. `table` is the content of `tools/repo_scans.json` in the
+    /// first commit (none: no table), `profile` the project profile.
+    fn bare(table: Option<&str>, profile: &[u8]) -> Self {
         let home = TempHome::new();
         let project = home.project("demo");
         ledger::register(home.path(), "demo").unwrap();
@@ -170,6 +180,11 @@ impl World {
         );
         fs::write(&spec_file, filled(&fs::read_to_string(&spec_file).unwrap())).unwrap();
         git(&project, &["add", "a.txt", ".moai/specs"]);
+        if let Some(text) = table {
+            fs::create_dir_all(project.join("tools")).unwrap();
+            fs::write(project.join("tools/repo_scans.json"), text).unwrap();
+            git(&project, &["add", "tools/repo_scans.json"]);
+        }
         git(&project, &["commit", "-q", "-m", "init"]);
         let c0 = git(&project, &["rev-parse", "HEAD"]);
         git(&project, &["update-ref", "refs/heads/integ", &c0]);
@@ -181,7 +196,33 @@ impl World {
             git_bin: git_executable(),
             scripts,
             c0,
+            profile: std::cell::RefCell::new(profile.to_vec()),
         }
+    }
+
+    /// `session-register --name leader` as the host session `session`, in mode `leader` or with no
+    /// mode (a plain lane entry).
+    fn register_leader(&self, session: &str, mode_leader: bool) -> Output {
+        let mut args = vec!["session-register", self.p.as_str(), "--name", "leader"];
+        if mode_leader {
+            args.extend(["--mode", "leader"]);
+        }
+        let out = self.run(Some(session), &args);
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "{} {}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        out
+    }
+
+    /// The registry entry of the leader.
+    fn leader_entry(&self) -> PathBuf {
+        moai_cli::clone_root::path(&self.project.join(".git"))
+            .join("sessions")
+            .join("leader.json")
     }
 
     fn script(&self, name: &str, text: &str) -> PathBuf {
@@ -205,9 +246,17 @@ impl World {
     }
 
     fn run(&self, session: Option<&str>, args: &[&str]) -> Output {
+        self.run_with(session, args, None)
+    }
+
+    /// `run`, with the check program that the test seam `MOAI_TEST_LAND_BATCH_CHECK` names.
+    fn run_with(&self, session: Option<&str>, args: &[&str], check: Option<&Path>) -> Output {
         let mut cmd: Command = self.home.command(args);
         cmd.env("MOAI_GIT_BIN", &self.git_bin);
         cmd.env("BATCH_LOG", self.log());
+        if let Some(program) = check {
+            cmd.env("MOAI_TEST_LAND_BATCH_CHECK", program);
+        }
         if let Some(id) = session {
             cmd.env(SESSION_VAR, id);
         }
@@ -216,13 +265,17 @@ impl World {
     }
 
     fn card(&self, session: Option<&str>, args: &[&str]) -> Output {
+        self.card_with(session, args, None)
+    }
+
+    fn card_with(&self, session: Option<&str>, args: &[&str], check: Option<&Path>) -> Output {
         let cfg = self.project.join(".moai-cli/project.yaml");
         fs::create_dir_all(cfg.parent().unwrap()).unwrap();
-        fs::write(&cfg, PROFILE).unwrap();
+        fs::write(&cfg, &*self.profile.borrow()).unwrap();
         let mut all = vec!["card"];
         all.extend_from_slice(args);
         all.extend_from_slice(&["--project", &self.p]);
-        self.run(session, &all)
+        self.run_with(session, &all, check)
     }
 
     /// A card with its own scope, taken by the lane and sent to review; returns its name.
@@ -305,13 +358,18 @@ impl World {
         .unwrap();
     }
 
-    /// `card land-batch` as the leader with the check script at `check`.
+    /// `card land-batch` as the leader session with the check script at `check`.
     fn batch(&self, pairs: &[(&str, &str)], check: &Path) -> Output {
+        self.batch_from(Some(S_LEAD), pairs, check)
+    }
+
+    /// `card land-batch --by leader` from `session` (none: a call with no session id).
+    fn batch_from(&self, session: Option<&str>, pairs: &[(&str, &str)], check: &Path) -> Output {
         let joined: Vec<String> = pairs.iter().map(|(c, h)| format!("{c}={h}")).collect();
         let mut args = vec!["land-batch"];
         args.extend(joined.iter().map(String::as_str));
-        args.extend(["--by", "leader", "--check-cmd", check.to_str().unwrap()]);
-        self.card(Some(S_LEAD), &args)
+        args.extend(["--by", "leader"]);
+        self.card_with(session, &args, Some(check))
     }
 
     fn integ(&self) -> String {
@@ -700,11 +758,213 @@ fn refuse_a_call_that_is_not_two_to_four_pairs_by_the_leader() {
         &format!("{}={}", cards[1].0, cards[1].1),
         "--by",
         "agent-1",
-        "--check-cmd",
-        check.to_str().unwrap(),
     ];
-    let not_leader = w.card(Some(S_LEAD), &args);
+    let not_leader = w.card_with(Some(S_LEAD), &args, Some(&check));
     assert_eq!(not_leader.status.code(), Some(1));
     assert_eq!(w.integ(), before);
     assert!(w.ranges().is_empty());
+}
+
+fn said(out: &Output) -> String {
+    format!(
+        "{} {}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    )
+}
+
+/// SPEC revision 3, REQ-21 (audit N4): the call must come from the session of the live `leader`
+/// entry of the lane registry; `--by leader` is a word any session can type.
+#[test]
+fn leader_only_the_registered_leader_session_lands() {
+    let w = World::new();
+    let cards = w.three(None);
+    let check = w.script("check.sh", CHECK);
+    let before = w.integ();
+    // A lane session and a call with no session id: refused, nothing run, nothing moved.
+    let lane = w.batch_from(Some(S_A), &pairs(&cards), &check);
+    assert_eq!(lane.status.code(), Some(1), "{}", said(&lane));
+    assert!(
+        said(&lane).contains("not the session of the registered leader entry"),
+        "{}",
+        said(&lane)
+    );
+    let none = w.batch_from(None, &pairs(&cards), &check);
+    assert_eq!(none.status.code(), Some(1), "{}", said(&none));
+    assert!(said(&none).contains("no session id"), "{}", said(&none));
+    assert_eq!(w.integ(), before);
+    assert!(w.ranges().is_empty());
+    // The registered leader session lands.
+    let r = result(&w.batch(&pairs(&cards), &check));
+    assert_eq!(names(&r["landed"]).len(), 3, "{r}");
+}
+
+/// REQ-21: no entry, an entry that is no leader entry, and a leader entry whose lease has ended
+/// confirm nobody, whatever session calls.
+#[test]
+fn leader_no_entry_no_leader_mode_or_an_ended_lease_confirms_nothing() {
+    // No entry at all.
+    let w = World::bare(None, PROFILE);
+    let cards = w.three(None);
+    let check = w.script("check.sh", CHECK);
+    let out = w.batch(&pairs(&cards), &check);
+    assert_eq!(out.status.code(), Some(1), "{}", said(&out));
+    assert!(
+        said(&out).contains("no live leader entry"),
+        "{}",
+        said(&out)
+    );
+    // An entry of the same name with no leader mode.
+    w.register_leader(S_LEAD, false);
+    let out = w.batch(&pairs(&cards), &check);
+    assert_eq!(out.status.code(), Some(1), "{}", said(&out));
+    assert!(
+        said(&out).contains("no live leader entry"),
+        "{}",
+        said(&out)
+    );
+    assert!(w.ranges().is_empty());
+
+    // A leader entry whose lease ended.
+    let w = World::new();
+    let cards = w.three(None);
+    let check = w.script("check.sh", CHECK);
+    let file = w.leader_entry();
+    let mut entry: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
+    entry["lease_until"] = json!(1);
+    fs::write(&file, entry.to_string()).unwrap();
+    let out = w.batch(&pairs(&cards), &check);
+    assert_eq!(out.status.code(), Some(1), "{}", said(&out));
+    assert!(
+        said(&out).contains("no live leader entry"),
+        "{}",
+        said(&out)
+    );
+    assert!(w.ranges().is_empty());
+}
+
+/// A check script that leaves the summary line a wide `check affected` of the join would leave:
+/// `extra` goes between the counts and the result, `result` ends the line.
+fn summary_script(extra: &str, result: &str) -> String {
+    format!(
+        "#!/bin/sh\necho \"$1\" >> \"$BATCH_LOG\"\nH=$(\"$MOAI_GIT_BIN\" rev-parse HEAD | cut -c1-12)\nmkdir -p \"target/check-affected-$H\"\necho \"check-affected base=000000000000 head=$H targets=1{extra} result={result}\" > \"target/check-affected-$H/summary.txt\"\nexit 0\n"
+    )
+}
+
+/// One scan every head of the fixture needs: each adds a note under `notes/`.
+const SCAN_TABLE: &str = "{\"scans\": [{\"id\": \"notes-rule\", \"always\": true, \"tests\": [\"tests/notes.rs::notes_rule\"], \"checks\": [\"cargo test --offline --locked --test notes notes_rule\"], \"rules\": [\"tests/notes.rs\"], \"scope\": [{\"prefix\": \"notes/\", \"suffixes\": [\".md\"]}], \"rejects\": \"a note the rule refuses\"}]}";
+const ENFORCE_PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\", \"land_verdict\": \"enforce\"}}";
+
+/// A world in enforce mode whose scan table every head needs, with its leader registered.
+fn enforcing() -> World {
+    let w = World::bare(Some(SCAN_TABLE), ENFORCE_PROFILE);
+    w.register_leader(S_LEAD, true);
+    w
+}
+
+/// SPEC revision 3, REQ-19 (audit N3): the full wide run that passed on the join covers the scans
+/// of its heads, so the batch lands in enforce mode with no scan receipt on any verdict.
+#[test]
+fn scans_a_full_pass_summary_of_the_join_lets_enforce_mode_land_every_head() {
+    let w = enforcing();
+    let cards = w.three(None);
+    let check = w.script("check.sh", &summary_script(" scans=listed:1", "PASS"));
+    let r = result(&w.batch(&pairs(&cards), &check));
+    assert_eq!(names(&r["landed"]).len(), 3, "{r}");
+    assert!(r["dropped"].as_array().unwrap().is_empty(), "{r}");
+    assert_eq!(r["runs"][0]["scans_covered"], json!(true), "{r}");
+    for (card, _) in &cards {
+        assert_eq!(w.state(card), "done", "{card}");
+    }
+}
+
+/// REQ-20: a check that leaves no summary, a summary of a part run (`selection=card`) and a
+/// failed summary cover no scan, so enforce mode refuses each head for the missing scan receipt.
+#[test]
+fn scans_a_check_without_a_full_pass_summary_covers_nothing() {
+    for (why, script) in [
+        ("no summary", CHECK.to_string()),
+        (
+            "a card run",
+            summary_script(" selection=card scans=listed:1", "PASS"),
+        ),
+        ("a failed run", summary_script(" scans=listed:1", "FAIL")),
+    ] {
+        let w = enforcing();
+        let cards = w.three(None);
+        let before = w.integ();
+        let check = w.script("check.sh", &script);
+        let r = result(&w.batch(&pairs(&cards), &check));
+        assert!(r["landed"].as_array().unwrap().is_empty(), "{why}: {r}");
+        assert_eq!(names(&r["dropped"]).len(), 3, "{why}: {r}");
+        for (card, _) in &cards {
+            assert!(reason_of(&r, card).contains("scans_missing"), "{why}: {r}");
+        }
+        assert_eq!(w.integ(), before, "{why}");
+    }
+}
+
+/// REQ-22 (audit N6): the check program has no flag; the command line refuses `--check-cmd`.
+#[test]
+fn seam_the_check_program_has_no_flag() {
+    let w = World::new();
+    let help = w.run(None, &["card", "land-batch", "--help"]);
+    assert!(
+        !said(&help).contains("--check-cmd"),
+        "the help still names the flag: {}",
+        said(&help)
+    );
+    let cards = w.three(None);
+    let check = w.script("check.sh", CHECK);
+    let before = w.integ();
+    let joined: Vec<String> = cards.iter().map(|(c, h)| format!("{c}={h}")).collect();
+    let mut args = vec!["land-batch"];
+    args.extend(joined.iter().map(String::as_str));
+    args.extend(["--by", "leader", "--check-cmd", check.to_str().unwrap()]);
+    let out = w.card(Some(S_LEAD), &args);
+    assert!(!out.status.success(), "{}", said(&out));
+    assert!(said(&out).contains("--check-cmd"), "{}", said(&out));
+    assert_eq!(w.integ(), before);
+    assert!(w.ranges().is_empty());
+}
+
+/// REQ-23 (audit N7): a branch that moves after every passing check ends the batch at the cap
+/// instead of looping, and lands nothing from those runs.
+#[test]
+fn tip_a_branch_that_keeps_moving_ends_the_batch_at_the_cap() {
+    let w = World::new();
+    let cards = w.three(None);
+    let before = w.integ();
+    let script = format!(
+        "#!/bin/sh\necho \"$1\" >> \"$BATCH_LOG\"\nG=\"$MOAI_GIT_BIN\"\nP='{}'\nCUR=$(\"$G\" -C \"$P\" rev-parse refs/heads/integ)\nTREE=$(\"$G\" -C \"$P\" rev-parse \"$CUR^{{tree}}\")\nNEW=$(\"$G\" -C \"$P\" -c user.name=fixture -c user.email=fixture@example.invalid commit-tree \"$TREE\" -p \"$CUR\" -m moved)\n\"$G\" -C \"$P\" update-ref refs/heads/integ \"$NEW\"\nexit 0\n",
+        w.p
+    );
+    let check = w.script("moving.sh", &script);
+    let r = result(&w.batch(&pairs(&cards), &check));
+    assert_eq!(r["stopped"]["code"], "tip_kept_moving", "{r}");
+    assert!(r["landed"].as_array().unwrap().is_empty(), "{r}");
+    assert_eq!(r["not_run"].as_array().unwrap().len(), 3, "{r}");
+    assert_eq!(r["checks_run"], 3, "{r}");
+    assert_eq!(w.ranges().len(), 3, "{:?}", w.ranges());
+    for (card, head) in &cards {
+        assert_ne!(w.state(card), "done");
+        assert!(!w.is_ancestor(head, &w.integ()));
+    }
+    assert_ne!(w.integ(), before);
+}
+
+/// REQ-24: the `Verify` section of `CLAUDE.md` and `next-flow.md` say the new order.
+#[test]
+fn docs_the_verify_section_and_next_flow_name_the_new_order() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    for file in ["CLAUDE.md", "skills/moai/references/flows/next-flow.md"] {
+        let text = fs::read_to_string(root.join(file)).unwrap();
+        for needle in [
+            "check affected --card",
+            "card land-batch",
+            "every five landings",
+        ] {
+            assert!(text.contains(needle), "{file} does not say `{needle}`");
+        }
+    }
 }

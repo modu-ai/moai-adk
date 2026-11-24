@@ -68,7 +68,7 @@ fn missing_line(missing: &[&Needed]) -> String {
 /// The object is `{required: [{id, checks, step, covered}], missing: [id], would_refuse}`;
 /// `would_refuse` is `{code, why}` or null. Enforce mode answers `Err("<code>: <why>")` instead of
 /// a would-refuse.
-pub fn read(input: &Input<'_>, mode: Mode) -> Result<Value> {
+pub fn read(input: &Input<'_>, mode: Mode, by_run: bool) -> Result<Value> {
     let needed = match repo_scans::needed(input.project, input.tip, input.head) {
         Ok(needed) => cargo_only(needed),
         Err(why) => {
@@ -81,6 +81,20 @@ pub fn read(input: &Input<'_>, mode: Mode) -> Result<Value> {
             )
         }
     };
+    // A batch's wide run that passed on a join holding this head ran every listed scan on the tree
+    // that lands: its receipt covers them (SPEC-20261124-card-select-batch-land D-11).
+    if by_run {
+        let required: Vec<Value> = needed
+            .iter()
+            .map(|need| {
+                json!({
+                    "id": need.id, "checks": need.checks, "step": step_name(&need.id),
+                    "covered": true, "covered_by": "batch_run",
+                })
+            })
+            .collect();
+        return Ok(json!({"required": required, "missing": [], "would_refuse": null}));
+    }
     let covered_steps: Vec<String> = match workflow::verdict_events(input.conn, input.card_id) {
         Ok(events) => events
             .iter()

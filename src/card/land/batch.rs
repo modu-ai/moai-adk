@@ -15,6 +15,16 @@
 //! Each head is judged by the landing itself (verdict, scans, stale tip): a refusal stops the
 //! batch at that head and the heads after it are reported as not run. A join candidate is landed
 //! with its audited head named, so the verdict of the audited head covers it.
+//!
+//! Who may call it, what a run covers and when it gives up (SPEC revision 3):
+//!
+//! - the calling session must be the session of the live `leader` entry of the lane registry
+//!   ([`confirm_leader`]); `--by leader` alone is a word anyone can type;
+//! - a wide run that passed on the last join leaves a summary line in its private worktree; a
+//!   full-selection PASS line of that join covers the scans the merge tree needs, so the heads land
+//!   in enforce mode without a scan receipt of their own ([`receipt_covers`]);
+//! - a tip that moves after a check passed sends the heads through the join and the check again,
+//!   at most [`MAX_TIP_MOVES`] times.
 
 use super::LandRequest;
 use crate::card::input::{self, CardRef};
@@ -29,6 +39,11 @@ type Result<T> = std::result::Result<T, String>;
 /// The most heads one batch lands (the card says 2 to 4).
 pub const MAX_HEADS: usize = 4;
 
+/// The most times a passing check is thrown away because the integration branch moved before the
+/// heads landed. Every re-run is a cold build, so a branch that moves after each check ends the
+/// batch (`tip_kept_moving`) instead of looping.
+pub const MAX_TIP_MOVES: usize = 3;
+
 /// What `card land-batch` was given.
 pub struct BatchRequest<'a> {
     pub session: Option<&'a str>,
@@ -37,6 +52,7 @@ pub struct BatchRequest<'a> {
     pub pairs: &'a [String],
     /// The check program: it gets `<tip>..<join>` as its one argument, runs in a private worktree
     /// at the join and passes with exit 0. `None` runs the wide `check affected` in this process.
+    /// The command line has no flag for it: the tests set it through the environment.
     pub check_cmd: Option<&'a Path>,
 }
 
@@ -123,6 +139,65 @@ fn attach_specs(project: &Path, home: &Path, items: Vec<Item>) -> Result<(Vec<It
 
 fn short(sha: &str) -> &str {
     sha.get(..12).unwrap_or(sha)
+}
+
+/// The session confirms itself as the leader (SPEC D-12; the rule of `internal/loop.md`, "The
+/// confirmed leader"): the lane registry holds a live entry named `leader` in mode `leader`, and
+/// its `session` is the session that made this call. The name of a session, its folder or the word
+/// `--by leader` prove nothing; an unreadable registry is a refusal, never an answer of "yes".
+fn confirm_leader(project: &Path, session: Option<&str>, now: i64) -> Result<()> {
+    let Some(me) = session else {
+        return Err(refused(
+            "this call has no session id, and only the registered leader session lands a batch",
+        ));
+    };
+    let entries = crate::lane_registry::session_entries(project)
+        .map_err(|why| refused(format!("the lane registry cannot be read ({why})")))?;
+    let live = entries
+        .iter()
+        .find(|e| e.name == "leader" && e.mode.as_deref() == Some("leader") && e.lease_until > now);
+    match live {
+        None => Err(refused(
+            "no live leader entry is registered: the leader window registers itself with \
+             `moai session-register . --name leader --mode leader` (`/moai leader`)",
+        )),
+        Some(entry) if entry.session.as_deref() == Some(me) => Ok(()),
+        Some(_) => Err(refused(
+            "this session is not the session of the registered leader entry",
+        )),
+    }
+}
+
+/// Whether `line` is the summary of a full wide run of `last`: a `check-affected` line that names
+/// the head `last` (12 hex digits), ends in `result=PASS` and carries no `selection=` word (a
+/// `--card` or `--lane` run checked a part). Such a run ran every listed scan on the tree that
+/// lands, so its receipt covers the scans of the heads it holds (SPEC D-11).
+fn receipt_covers(line: &str, last: &str) -> bool {
+    let line = line.strip_suffix('\n').unwrap_or(line);
+    if line.contains('\n') {
+        return false;
+    }
+    let words: Vec<&str> = line.split(' ').collect();
+    words.first() == Some(&"check-affected")
+        && words
+            .iter()
+            .any(|w| w.strip_prefix("head=") == Some(short(last)))
+        && words.last() == Some(&"result=PASS")
+        && !words.iter().any(|w| w.starts_with("selection="))
+}
+
+/// The summary line a wide run left in its private worktree `work` for the join `last`, or
+/// `None` when there is none or it is not a small regular file.
+fn read_run_receipt(work: &Path, last: &str) -> Option<String> {
+    let file = work
+        .join("target")
+        .join(format!("check-affected-{}", short(last)))
+        .join("summary.txt");
+    let meta = std::fs::symlink_metadata(&file).ok()?;
+    if !meta.is_file() || meta.len() > 4096 {
+        return None;
+    }
+    std::fs::read_to_string(&file).ok()
 }
 
 /// The trailers of a join commit: its SPEC, the lander's session and no verification kind.
@@ -239,6 +314,8 @@ fn join(
 struct Run {
     exit: i32,
     log: PathBuf,
+    /// The run passed and left a full-selection PASS summary of the join: its scans are covered.
+    scans_covered: bool,
 }
 
 /// Run the check on `last` in a private worktree under `<project>/target/land-batch/`, which the
@@ -304,10 +381,17 @@ fn run_check(
             }
         }
     };
+    // The receipt of the run is read before the worktree goes (SPEC D-11).
+    let scans_covered = matches!(result, Ok(0))
+        && read_run_receipt(&work, last).is_some_and(|line| receipt_covers(&line, last));
     // The worktree is the run's own: git removes it with its checkout.
     let _ = super::check::git_text(project, &["worktree", "remove", "--force", &work_text]);
     let _ = super::check::git_text(project, &["worktree", "prune"]);
-    result.map(|exit| Run { exit, log })
+    result.map(|exit| Run {
+        exit,
+        log,
+        scans_covered,
+    })
 }
 
 fn entry(item: &Item, why: Option<&str>) -> Value {
@@ -324,6 +408,10 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
             "only the leader lands a card until the typed verdict exists: give --by {LEADER_BY}"
         )));
     }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64);
+    confirm_leader(project, req.session, now)?;
     let parsed = parse_pairs(req.pairs)?;
     let branch = landed::integration_branch(project).map_err(|why| {
         refused(format!(
@@ -336,6 +424,7 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
     let mut runs: Vec<Value> = Vec::new();
     let mut stopped: Value = Value::Null;
     let mut not_run: Vec<Value> = Vec::new();
+    let mut moved_tips = 0usize;
 
     'outer: while !pending.is_empty() {
         let mut take = pending.len();
@@ -353,6 +442,7 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
             let last = cands.last().map(|c| c.commit.clone()).unwrap_or_default();
             // Heads the tip already holds need no check; a set of them lands as it is.
             let moves = cands.iter().any(|c| landed_moves(project, &c.commit, &tip));
+            let mut scans_covered = false;
             let exit = if moves {
                 match run_check(project, req.check_cmd, &tip, &last, runs.len() + 1) {
                     Ok(run) => {
@@ -361,7 +451,9 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
                             "range": format!("{tip}..{last}"),
                             "exit": run.exit,
                             "log": run.log.to_string_lossy(),
+                            "scans_covered": run.scans_covered,
                         }));
+                        scans_covered = run.scans_covered;
                         run.exit
                     }
                     Err(why) => {
@@ -388,6 +480,18 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
             }
             // A tip that moved since the run has no say in this result: join and check again.
             if landed::tip_of(project, &branch).map_err(refused)? != tip {
+                moved_tips += 1;
+                if moved_tips >= MAX_TIP_MOVES {
+                    stopped = json!({
+                        "code": "tip_kept_moving",
+                        "why": format!(
+                            "the integration branch moved {moved_tips} times after a check \
+                             passed, so no result could be used; nothing landed from those runs: \
+                             run the batch again when the branch is quiet"
+                        ),
+                    });
+                    break 'outer;
+                }
                 continue;
             }
             // Every head is judged before the first one lands: a head that the landing would
@@ -407,7 +511,14 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
                     keep_open: false,
                     audited: cand.joined.then_some(cand.item.head.as_str()),
                 };
-                match super::land_preflight(project, home, &cand.item.name, &one, &parent) {
+                match super::land_preflight(
+                    project,
+                    home,
+                    &cand.item.name,
+                    &one,
+                    &parent,
+                    scans_covered,
+                ) {
                     Ok(_) => parent = cand.commit.clone(),
                     Err(why) => {
                         refused_head = Some((cand.item.clone(), why));
@@ -421,7 +532,7 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
                 continue 'outer;
             }
             for cand in &cands {
-                let answer = super::land(
+                let answer = super::land_in_batch(
                     project,
                     home,
                     &cand.item.name,
@@ -434,6 +545,7 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
                         keep_open: false,
                         audited: cand.joined.then_some(cand.item.head.as_str()),
                     },
+                    scans_covered,
                 );
                 match answer {
                     Ok(done) => {
@@ -475,4 +587,67 @@ fn landed_moves(project: &Path, commit: &str, tip: &str) -> bool {
         landed::contained(project, commit, tip),
         Ok(Containment::Inside)
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const LAST: &str = "da585ae4d507bec047ab5a6446bda6e367649282";
+
+    fn line(extra: &str, head: &str, result: &str) -> String {
+        format!("check-affected base=b0bffbbd48cc head={head} targets=150{extra} result={result}")
+    }
+
+    #[test]
+    fn a_full_pass_summary_of_the_join_covers_the_scans() {
+        assert!(receipt_covers(&line("", "da585ae4d507", "PASS"), LAST));
+        assert!(receipt_covers(
+            &format!("{}\n", line(" scans=listed:135", "da585ae4d507", "PASS")),
+            LAST
+        ));
+    }
+
+    #[test]
+    fn a_part_run_a_failure_another_head_or_a_planted_line_covers_nothing() {
+        for (why, text) in [
+            (
+                "a --card run",
+                line(" selection=card", "da585ae4d507", "PASS"),
+            ),
+            (
+                "a --lane run",
+                line(" selection=lane", "da585ae4d507", "PASS"),
+            ),
+            ("a failure", line("", "da585ae4d507", "FAIL")),
+            ("another head", line("", "0123456789ab", "PASS")),
+            (
+                "two lines",
+                format!("{}\n{}", line("", "da585ae4d507", "PASS"), "x"),
+            ),
+            ("not a summary", "result=PASS".to_string()),
+        ] {
+            assert!(!receipt_covers(&text, LAST), "{why}");
+        }
+    }
+
+    #[test]
+    fn no_leader_entry_and_no_session_id_confirm_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path();
+        let git = |args: &[&str]| {
+            let out = std::process::Command::new("git")
+                .arg("-C")
+                .arg(project)
+                .args(args)
+                .output()
+                .unwrap();
+            assert!(out.status.success(), "git {args:?}");
+        };
+        git(&["init", "-q", "-b", "main"]);
+        let me = "dddddddd-0000-4000-8000-00000000000d";
+        // No entry, no session id: refused.
+        assert!(confirm_leader(project, Some(me), 100).is_err());
+        assert!(confirm_leader(project, None, 100).is_err());
+    }
 }
