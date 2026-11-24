@@ -3386,3 +3386,254 @@ fn ac59_a_check_that_cannot_read_git_is_reported_in_observe_and_refuses_in_enfor
         }
     }
 }
+
+// ---- SPEC-20261124-land-closes-card: a landing on a recorded PASS closes the card ---------------
+
+impl World {
+    /// A review card with one open criterion per text and the tier 0 candidate of a lane that
+    /// `S_A` wrote and `S_LEAD` joined; returns the card and the candidate.
+    fn signed_card(&self, criteria: &[&str]) -> (String, String) {
+        let card = self.review_card(criteria);
+        let lane = self.lane_adding("notes/x.md", S_A);
+        let cand = self.join(&lane, S_LEAD);
+        (card, cand)
+    }
+
+    /// `card land` as `session` with no `--met` of its own unless `extra` names one.
+    fn land_plain(&self, session: Option<&str>, card: &str, head: &str, extra: &[&str]) -> Output {
+        let mut all = vec!["land", card, "--head", head];
+        all.extend_from_slice(extra);
+        all.extend_from_slice(&["--by", "leader"]);
+        self.card(session, &all)
+    }
+
+    /// The status and the evidence of one criterion, as `status|evidence`.
+    fn criterion_row(&self, card: &str, seq: i64) -> String {
+        self.text(&format!(
+            "SELECT status || '|' || COALESCE(evidence_ref, '') FROM card_ac \
+             WHERE card_id = {} AND seq = {seq}",
+            number(card)
+        ))
+    }
+
+    fn state_of(&self, card: &str) -> String {
+        self.text(&format!(
+            "SELECT state FROM card WHERE card_id = {}",
+            number(card)
+        ))
+    }
+}
+
+/// The evidence line the landing writes for a criterion it marks met.
+fn pass_line(event: i64, head: &str) -> String {
+    format!("verdict event {event} PASS head {}", &head[..12])
+}
+
+/// AC-1 (REQ-1, REQ-3, REQ-11): a head with an independent PASS lands with no `--met` of its own,
+/// every open criterion becomes met with the verdict line and the card is done.
+#[test]
+fn ac_closes_a_head_with_a_pass_marks_every_open_criterion_met() {
+    let w = World::new();
+    let (card, cand) = w.signed_card(&["one", "two", "three"]);
+    let event = w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let got = result(&w.land_plain(Some(S_LEAD), &card, &cand, &[]));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["state"], json!("done"), "{got}");
+    assert_eq!(got["open_criteria"], json!([]), "{got}");
+    let line = pass_line(event, &cand);
+    for seq in 1..=3 {
+        assert_eq!(w.criterion_row(&card, seq), format!("met|{line}"));
+    }
+    let met = got["met"].as_array().unwrap();
+    assert_eq!(met.len(), 3, "{got}");
+    assert!(met.iter().all(|m| m["evidence"] == json!(line)), "{got}");
+    assert_eq!(w.state_of(&card), "done");
+    assert_eq!(w.events(&card, "card.finish"), 1);
+}
+
+/// AC-2 (REQ-2): an explicit `--met` keeps its own reference and the verdict line fills the rest.
+#[test]
+fn ac_keeps_met_a_given_reference_and_fills_the_others_from_the_verdict() {
+    let w = World::new();
+    let (card, cand) = w.signed_card(&["one", "two", "three"]);
+    let event = w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let got = result(&w.land_plain(Some(S_LEAD), &card, &cand, &["--met", "2=my own reference"]));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    let line = pass_line(event, &cand);
+    assert_eq!(w.criterion_row(&card, 1), format!("met|{line}"));
+    assert_eq!(w.criterion_row(&card, 2), "met|my own reference");
+    assert_eq!(w.criterion_row(&card, 3), format!("met|{line}"));
+}
+
+/// AC-3 (REQ-4): without a relied PASS and without `--keep-open` the landing refuses in observe
+/// mode too: `no_pass` for no verdict and for a PASS of another head, the check's own code for a
+/// FAIL; an explicit `--met` for every criterion does not bypass it.
+#[test]
+fn ac_no_pass_refuses_a_closing_landing_in_observe_mode() {
+    let w = World::new();
+    let (card, cand) = w.signed_card(&["one"]);
+
+    let before = w.dump();
+    let out = w.land_plain(Some(S_LEAD), &card, &cand, &[]);
+    w.refuse(&out, "invalid_input", &["no_pass"], &before, &w.tip);
+    let out = w.land_plain(Some(S_LEAD), &card, &cand, &["--met", "1=my reference"]);
+    w.refuse(&out, "invalid_input", &["no_pass"], &before, &w.tip);
+
+    // A PASS recorded for another head only.
+    w.verdict(&card, &w.head, true, 0, S_AUD, None);
+    let before = w.dump();
+    let out = w.land_plain(Some(S_LEAD), &card, &cand, &[]);
+    w.refuse(&out, "invalid_input", &["no_pass"], &before, &w.tip);
+
+    // A FAIL on the head.
+    w.verdict(&card, &cand, false, 0, S_AUD, None);
+    let before = w.dump();
+    let out = w.land_plain(Some(S_LEAD), &card, &cand, &[]);
+    w.refuse(&out, "invalid_input", &["verdict_fail"], &before, &w.tip);
+    assert_eq!(w.state_of(&card), "review");
+}
+
+/// AC-12 (REQ-4): the refusal comes before the start row and before the intent record.
+#[test]
+fn ac_no_pass_writes_nothing_before_the_start_row_or_the_intent_record() {
+    let w = World::new();
+    let (card, cand) = w.signed_card(&["one"]);
+    let before = w.dump();
+    let out = w.land_plain(Some(S_LEAD), &card, &cand, &[]);
+    w.refuse(&out, "invalid_input", &["no_pass"], &before, &w.tip);
+    assert_eq!(w.events(&card, "card.land_started"), 0);
+    assert_eq!(w.events(&card, "card.landed"), 0);
+    assert!(
+        !w.common().join("moai/land-intent").exists(),
+        "the refused call wrote the intent record"
+    );
+}
+
+/// AC-4 (REQ-5, REQ-8): `--keep-open` lands a head with no verdict in observe mode, closes
+/// nothing, names every open criterion and marks the landing event.
+#[test]
+fn ac_keep_open_lands_a_slice_and_leaves_every_criterion_open() {
+    let w = World::new();
+    let (card, cand) = w.signed_card(&["one", "two"]);
+    let got = result(&w.land_plain(Some(S_LEAD), &card, &cand, &["--keep-open"]));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(false), "{got}");
+    assert_eq!(got["open_criteria"], json!([1, 2]), "{got}");
+    assert_eq!(got["would_refuse"]["code"], json!("no_verdict"), "{got}");
+    assert_eq!(w.integ(), cand);
+    assert_eq!(w.events(&card, "card.landed"), 1);
+    assert_eq!(w.events(&card, "card.finish"), 0);
+    assert_eq!(w.payload(&card, "card.landed")["keep_open"], json!(true));
+    assert_eq!(w.state_of(&card), "review");
+    assert_eq!(w.criterion_row(&card, 1), "open|");
+    assert_eq!(w.criterion_row(&card, 2), "open|");
+}
+
+/// AC-5 (REQ-6): in enforce mode `--keep-open` is no way round the verdict check; with an
+/// independent PASS the same call lands.
+#[test]
+fn ac_keep_enforce_applies_the_verdict_check_to_a_slice() {
+    let w = World::enforced();
+    let (card, cand) = w.signed_card(&["one", "two"]);
+    let before = w.dump();
+    let out = w.land_plain(Some(S_LEAD), &card, &cand, &["--keep-open"]);
+    w.refuse(&out, "invalid_input", &["no_verdict"], &before, &w.tip);
+
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let got = result(&w.land_plain(Some(S_LEAD), &card, &cand, &["--keep-open"]));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(false), "{got}");
+    assert_eq!(got["open_criteria"], json!([1, 2]), "{got}");
+    assert_eq!(w.payload(&card, "card.landed")["keep_open"], json!(true));
+}
+
+/// AC-6 (REQ-7): `--keep-open` with a `--met` option and `--keep-open` on a card with no open
+/// criterion each refuse and write nothing.
+#[test]
+fn ac_keep_invalid_refuses_a_met_option_and_a_card_with_nothing_open() {
+    let w = World::new();
+    let (card, cand) = w.signed_card(&["one", "two"]);
+    let before = w.dump();
+    let out = w.land_plain(Some(S_LEAD), &card, &cand, &["--keep-open", "--met", "1=x"]);
+    w.refuse(&out, "invalid_input", &["--keep-open"], &before, &w.tip);
+
+    let w = World::new();
+    let (card, cand) = w.signed_card(&["one"]);
+    result(&w.card(
+        Some(S_A),
+        &[
+            "criterion",
+            &card,
+            "1",
+            "--generation",
+            "1",
+            "--met",
+            "--evidence",
+            "the test",
+        ],
+    ));
+    let before = w.dump();
+    let out = w.land_plain(Some(S_LEAD), &card, &cand, &["--keep-open"]);
+    w.refuse(&out, "invalid_input", &["--keep-open"], &before, &w.tip);
+}
+
+/// AC-8 (REQ-8): a slice landed with `--keep-open` closes when the same head is landed again
+/// with an independent PASS; the landing is recorded once.
+#[test]
+fn ac_slice_then_close_lands_once_and_closes_on_the_later_pass() {
+    let w = World::new();
+    let (card, cand) = w.signed_card(&["one", "two"]);
+    result(&w.land_plain(Some(S_LEAD), &card, &cand, &["--keep-open"]));
+    assert_eq!(w.state_of(&card), "review");
+
+    let event = w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let got = result(&w.land_plain(Some(S_LEAD), &card, &cand, &[]));
+    assert_eq!(got["moved"], json!(false), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(w.events(&card, "card.landed"), 1);
+    assert_eq!(w.events(&card, "card.finish"), 1);
+    let line = pass_line(event, &cand);
+    assert_eq!(w.criterion_row(&card, 1), format!("met|{line}"));
+    assert_eq!(w.criterion_row(&card, 2), format!("met|{line}"));
+    assert_eq!(w.state_of(&card), "done");
+}
+
+/// AC-9 (REQ-9): a landing killed after the move is closed by the same call run again with no
+/// `--keep-open`, on the verdict the start row names, also after a later FAIL.
+#[test]
+fn ac_rerun_closes_on_the_verdict_the_start_row_names() {
+    let w = World::enforced();
+    let (card, cand) = w.signed_card(&["one", "two"]);
+    let event = w.verdict(&card, &cand, true, 0, S_AUD, None);
+    w.wrap_update_ref("git-kills-the-lander", "", "kill -9 $PPID");
+    let out = w.land_plain(Some(S_LEAD), &card, &cand, &[]);
+    assert_ne!(out.status.code(), Some(0), "the lander was not killed");
+    assert_eq!(w.integ(), cand);
+    assert_eq!(w.events(&card, "card.landed"), 0);
+
+    w.verdict(&card, &cand, false, 0, S_OTHER, None);
+    *w.git_bin.borrow_mut() = git_executable();
+    let rerun = result(&w.land_plain(Some(S_LEAD), &card, &cand, &[]));
+    assert_eq!(rerun["moved"], json!(false), "{rerun}");
+    assert_eq!(rerun["closed"], json!(true), "{rerun}");
+    assert_eq!(rerun["verdict"]["event"], json!(event), "{rerun}");
+    let line = pass_line(event, &cand);
+    assert_eq!(w.criterion_row(&card, 1), format!("met|{line}"));
+    assert_eq!(w.criterion_row(&card, 2), format!("met|{line}"));
+}
+
+/// AC-10 (REQ-1): a card that another session holds in `active` with a live lease keeps today's
+/// refusal of the finish check, with a PASS recorded.
+#[test]
+fn ac_held_keeps_the_refusal_for_a_live_lease_of_another_session() {
+    let w = World::new();
+    let card = w.ready_card(&["one"]);
+    result(&w.card(Some(S_A), &["take", &card]));
+    let lane = w.lane_adding("notes/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let before = w.dump();
+    let out = w.land_plain(Some(S_LEAD), &card, &cand, &[]);
+    w.refuse(&out, "conflict", &["held by"], &before, &w.tip);
+}
