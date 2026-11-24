@@ -106,3 +106,68 @@ approval:
 | D-7 | 이름 규칙은 `[a-z0-9_]+`, 정렬은 바이트 순서, 배열은 늘 여러 줄(원소가 하나여도) | 현재 40 개 명령의 모든 이름이 이 규칙을 지켜요(측정). 한 줄에 한 이름이어야 줄이 안 겹쳐요 | 규칙 풀기 |
 | D-8 | 읽기 코드만 이 카드로 착지하고, 표 변환과 `no_check_is_a_plain_target_list` 강제는 두 형태를 읽는 빌드가 설치된 뒤 후속 카드(리더가 열어요)가 해요 | 리더 결정 노트 8422(2026-11-24T09:44:06Z, 사용자 위임 2026-11-23T13:57Z, 되돌릴 수 있음): 설치된 `moai` 를 다시 빌드해 `~/.moai` 에 넣는 것은 HOME 변경이라 사용자 선택을 기다려요. 변환을 먼저 착지하면 모든 레인의 `check affected` 와 `card land` 가 구형 바이너리에서 막혀요 | 변환을 같은 머리에 넣기(설치 뒤) |
 | D-9 | 체크인된 표에 `test_targets` 가 생기면 실패하는 가드 테스트(REQ-9)를 둬요; 후속 카드가 변환할 때 지워요 | 구형 바이너리가 `test_targets` 가 든 표를 조용히 지나치는 일(Risks)을 막아요 | 테스트 지우기 |
+
+## Result
+
+Measured 2026-11-24 (UTC, `date -u` 10:18:32Z) on macOS in the worktree `.claude/worktrees/repo-scans-targets`, base `596b525dbcdc506d3ea89e3ec1eb43fe9fbac5e0` (the `NeXT` tip the branch was cut from after the C-456 landing; `NeXT` has moved to `221a9d07d7` since and the checks did not follow it). Approval: leader note 8424, digest `sha256:83d045408983898ac92b2ff47712597f9970287fe495ae754a284900f1f4cf61` (the front matter only copies that note). Commits: SPEC revision 2 `6e91847a36`, approval record `e10f9ed5c2`, RED `da66318458`, GREEN `5a7677a7d4`, table tests `64fbc603eb`, operation page `7516b97b9f`. RED (`da66318458`, before the reader change): 5 of the 6 new tests in `src/repo_scans.rs`, `tests/repo_scans_cli.rs` and `tests/check_affected_scans_cli.rs` failed because `test_targets` was ignored; `a_scan_without_test_targets_keeps_its_checks_as_listed` passed, as it guards the earlier form (REQ-2). The table tests of `tests/repo_scans_table.rs` were applied under `moai card line-lease` after C-160 gave the file back (leader note 8431); their RED was a compile error until `checks_of` existed.
+- AC-1 met: `repo_scans::tests::test_targets_build_one_cargo_command_before_the_listed_checks` and `a_scan_without_test_targets_keeps_its_checks_as_listed` pass: the built command comes first in the array's order, `checks` as listed follow, a scan without `test_targets` gives its `checks` unchanged.
+- AC-2 met: `a_malformed_test_targets_is_refused` (11 bad values: a string, an object, a number, null, an empty string, upper case, a space, `-`, `--lib`, a `::` path) and `a_scan_with_test_targets_may_omit_checks_and_one_with_neither_is_refused` pass; each message names the scan `zz-scan` and the field.
+- AC-3 met, with the gap below: `repo_scans_cli::a_table_with_test_targets_gives_the_same_checks_as_the_listed_command` (the same report as the listed form: hits and checks) and `check_affected_scans_cli::a_table_with_test_targets_selects_the_same_targets_as_the_listed_command` (same `rust_targets` and `scans`) pass; nextest run of the six tests: 6 passed, 1890 skipped, exit 0.
+- AC-4 met: `test_targets_are_sorted_unique_and_one_per_line` passes (unsorted, repeated, two names on a line, a one-line array and a bad character each give a line that starts with the scan id; the checked-in table gives none).
+- AC-5 met: `every_check_names_a_real_target_and_test` (a `test_targets` name needs `tests/<name>.rs`: `repo_scans_table` passes, `zz_no_such_test_file` panics) and `every_always_scan_runs_the_readers_it_names` (a reader in `test_targets` counts as run, one that is not names the old line) pass.
+- AC-6 met: `two_branches_adding_different_targets_merge_without_conflict` passes: in a temporary repository `b_cli` and `h_cli` added at two places with names between them merge with exit 0 and the merged text equals the table with all seven names; the same two additions to the one `--test` command of the earlier form conflict.
+- AC-7 met, measured once (not a permanent test): `git show 596b525dbc:tools/repo_scans.json` (sha256 `95c3b98c2ac9dda2e8aeb9401a2d6b22246ad70eb517f66aa7362900f1925237`) was converted outside the repository by the script below into a copy (sha256 `3aa3e70bee376a050d53b41a2914113bbaeb8c014a5d744f07f572a6b2f0893a`: 40 scans got `test_targets`). Per scan, 70 of 70: the sorted set of `--test` names and the other commands equal the earlier ones, the other keys equal (0 mismatches). `moai-cli repo-scans` on empty input (the fail-safe path lists every check as the reader builds it) gives 75 and 75 commands, equal as a multiset once each `--test` list is sorted, 161 and 161 `--test` names, equal; the command lists are not byte-identical because the built `--test` lists are sorted. `moai-cli check affected <base>..<head> --list --dir <throwaway repo>` with the earlier table and the converted one gives byte-identical answers (`diff` empty; `scans` `listed:129`, 130 `rust_targets`).
+- AC-8 met: `the_checked_in_table_names_no_test_targets_before_the_conversion` passes on the checked-in table and names a scan of a fixture table that has `test_targets`.
+- AC-9: the `check affected` receipt of the READY head is in the READY note.
+- guard mutants, each applied by exact text on the committed head `7516b97b9f` and shown applied with `git diff --stat` (1 file, 1 insertion, 1 deletion), restored with `git checkout --`, `git status --short` empty after each; the named tests then fail with exit 100: (S1) `.filter(|name| is_target_name(name))` of `checks_of` → `.filter(|_| true)`: `a_malformed_test_targets_is_refused`; (S2) `for target in list` → `list.iter().rev()`: `test_targets_build_one_cargo_command_before_the_listed_checks` and `a_table_with_test_targets_gives_the_same_checks_as_the_listed_command`; (S3) `None if targets.is_some() => {}` → `None if false`: `a_scan_with_test_targets_may_omit_checks_…`, `a_table_with_test_targets_selects_…` and the repo-scans test; (S4) the read of `checks_of` in `check_affected::scan_entries` → the `checks` key only: `a_table_with_test_targets_selects_the_same_targets_as_the_listed_command`; (S5) `parse_table` reads `checks` only: the unit test and `a_table_with_test_targets_gives_the_same_checks_…`; (T1) uniqueness `<=` → `<` in `test_targets_violations`: `test_targets_are_sorted_unique_and_one_per_line`; (T2) order check `<=` → `==`: the same test; (T3) the one-quoted-name rule dropped: the same test; (T4) `scans_naming_test_targets` sees nothing: `the_checked_in_table_names_no_test_targets_before_the_conversion`; (T5) `built_checks` reads `checks` only: `every_check_names_a_real_target_and_test` and `every_always_scan_runs_the_readers_it_names`; (T6) the fixture joins the names on one line: `two_branches_adding_different_targets_merge_without_conflict`. 11 mutants, 11 caught.
+- Measured, not predicted (Risks): the installed `moai 4.2648.23 (rust)` reads the converted table worse than the SPEC predicted. `check affected --list` with the converted table answers `ok: true`, `scans: unreadable` and 2 `rust_targets` (130 with the earlier table), exit 0, no refusal; with a one-scan table that names `test_targets` and keeps a `checks` command it answers `scans: listed:0` and the `test_targets` name is missing, with no marker. Only `repo-scans` refuses: `checks is not a list`, `hold the merge`. An older build therefore runs fewer tests without a stop, which is why REQ-9 holds until the follow-up and an installed build reads both forms.
+- Gap: the `moai card land` arm of AC-3 has no run of its own: `needed` copies `Scan.checks` of `parse_table` (`src/repo_scans.rs`, `needed_between`), which the CLI test covers, but no landing was run on a table in the new form.
+- Gap: AC-7 ran the real table through the readers and `check affected --list` in a throwaway repository with changed paths in `src/`, `tests/`, `docs/`, `skills/`, `tools/` and `.moai/specs/`, not `--list 596b525dbc..HEAD` of this repository, because this card does not write `tools/repo_scans.json`; the real range with the converted table is the follow-up's check.
+- Gap: two adjacent additions (no name between them in the array) still conflict, as in Risks; AC-6 measures separate places only.
+- Gap: criteria 1 and 2 of the card are `not_met` here and move to the follow-up conversion card (leader note 8424): no scan of `tools/repo_scans.json` names `test_targets` yet and the checked-in sort check has nothing to sort.
+- Gap: the whole `cargo test --locked` and the `check affected` of the READY head are not in this Result; the receipt is in the READY note. No dangerous path: nothing is deleted and no process is started beyond `git` in temporary repositories and the cargo test runs.
+- Hand-off to the conversion card (follow-up of D-8): run this script on the table of the then-current tip (it is idempotent, and it refuses a table that is not in the two-space `json.dumps` form), remove `the_checked_in_table_names_no_test_targets_before_the_conversion`, add `no_check_is_a_plain_target_list`, point the `check affected` stop lines and `docs/lane-rules.md` at `test_targets`, and rebuild the installed `moai` first (the leader's step). The converter, `python3 -I convert.py IN.json OUT.json` (the module docstring of the measured file and its one-line assert message are shortened here; the measured file's sha256 is `3b439585919e9d5f085f6cc0cfcfa720c6e5873a8651c0b533c8887f6980651c`):
+
+```python
+import json
+import re
+import sys
+
+PLAIN = re.compile(r"^cargo test --offline --locked((?: --test [a-z0-9_]+)+)$")
+
+
+def convert(text):
+    doc = json.loads(text)
+    for scan in doc["scans"]:
+        if "checks" not in scan:
+            continue
+        keep, names = [], []
+        for command in scan["checks"]:
+            if PLAIN.match(command):
+                names += re.findall(r"--test ([a-z0-9_]+)", command)
+            else:
+                keep.append(command)
+        if not names:
+            continue
+        names = sorted(set(names) | set(scan.get("test_targets", [])))
+        moved = {}
+        for key, value in scan.items():
+            if key == "checks":
+                moved["test_targets"] = names
+                if keep:
+                    moved["checks"] = keep
+            elif key != "test_targets":
+                moved[key] = value
+        scan.clear()
+        scan.update(moved)
+    return json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
+
+
+if __name__ == "__main__":
+    source = open(sys.argv[1], encoding="utf-8").read()
+    plain = json.dumps(json.loads(source), indent=2, ensure_ascii=False) + "\n"
+    assert plain == source, "the table is not in the 2-space json.dumps form"
+    out = convert(source)
+    assert convert(out) == out, "the conversion is not idempotent"
+    open(sys.argv[2], "w", encoding="utf-8").write(out)
+```
