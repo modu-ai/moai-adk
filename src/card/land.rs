@@ -349,18 +349,15 @@ fn land_inner(
         Containment::Inside | Containment::Outside => {}
     }
     let standing = landed::standing(project, req.head, &tip).map_err(unchanged)?;
+    // The one worktree that has the integration branch checked out, when it can move with it.
+    let mut movable_tree: Option<String> = None;
     match standing {
         Standing::Inside => {}
-        Standing::OnTip => {
-            let trees = landed::checked_out_at(project, &full).map_err(unchanged)?;
-            if !trees.is_empty() {
-                return Err(conflict(format!(
-                    "the integration branch {branch} is checked out in {}: a move under it would \
-                     leave that worktree behind the reference",
-                    trees.join(", ")
-                )));
-            }
-        }
+        Standing::OnTip => match landed::checkout_state(project, &full, &tip).map_err(unchanged)? {
+            landed::Checkout::Free => {}
+            landed::Checkout::Movable(tree) => movable_tree = Some(tree),
+            landed::Checkout::Refused(why) => return Err(conflict(why)),
+        },
         Standing::Stale => {
             return Err(conflict(format!(
                 "stale_base: the integration tip {tip} is not on the first-parent line of {}: \
@@ -503,7 +500,10 @@ fn land_inner(
         .map_err(finish_refusal)?;
         guard::write_intent(&common, &full, &tip, req.head).map_err(after_start_row)?;
         let message = format!("moai card land {}", &req.head[..12]);
-        let attempt = landed::move_branch(project, &full, req.head, &tip, &message);
+        let attempt = match &movable_tree {
+            Some(tree) => landed::move_checked_out(Path::new(tree), req.head),
+            None => landed::move_branch(project, &full, req.head, &tip, &message),
+        };
         guard::remove_intent(&common);
         match attempt.map_err(after_start_row)? {
             RefMove::Moved => moved = true,

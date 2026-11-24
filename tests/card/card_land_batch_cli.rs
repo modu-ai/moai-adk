@@ -1054,3 +1054,29 @@ fn tip_a_branch_that_keeps_moving_ends_the_batch_at_the_cap() {
     }
     assert_ne!(w.integ(), before);
 }
+
+/// AC-4 (REQ-5, REQ-6, SPEC-20261125-landing-moves-checkout): with the integration branch checked
+/// out in the project folder, a batch moves the branch and that worktree together, head by head,
+/// and every landed card is done.
+#[test]
+fn checkout_a_batch_moves_the_checked_out_tree() {
+    let w = World::new();
+    let cards = w.three(None);
+    git(&w.project, &["checkout", "-q", "integ"]);
+    let check = w.script("check.sh", CHECK);
+    let r = result(&w.batch(&pairs(&cards), &check));
+    assert_eq!(names(&r["landed"]).len(), 3, "{r}");
+    assert_eq!(git(&w.project, &["rev-parse", "HEAD"]), w.integ(), "{r}");
+    assert_eq!(
+        git(
+            &w.project,
+            &["status", "--porcelain", "--untracked-files=no"]
+        ),
+        "",
+        "the tree is clean at the new tip"
+    );
+    for (card, head) in &cards {
+        assert!(w.is_ancestor(head, &w.integ()), "{head}");
+        assert_eq!(w.state(card), "done", "{card}");
+    }
+}

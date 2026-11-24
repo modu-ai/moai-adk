@@ -3795,7 +3795,7 @@ fn checkout_a_landing_closes_the_card() {
     assert_eq!(w.state_of(&card), "done");
     assert_eq!(
         w.text(&format!(
-            "SELECT count(*) FROM card_ac WHERE card_id = {} AND status = 'open'",
+            "SELECT CAST(count(*) AS TEXT) FROM card_ac WHERE card_id = {} AND status = 'open'",
             number(&card)
         )),
         "0"

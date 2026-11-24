@@ -288,6 +288,79 @@ pub fn checked_out_at(project: &Path, full_ref: &str) -> Result<Vec<String>, Str
     Ok(found)
 }
 
+/// Where the integration branch is checked out and whether a landing may move it there
+/// (SPEC-20261125-landing-moves-checkout).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Checkout {
+    /// No worktree has the branch checked out: the reference alone moves.
+    Free,
+    /// One worktree has it checked out, its tracked files are unchanged and its HEAD is the tip:
+    /// the branch and that worktree move together.
+    Movable(String),
+    /// A move would leave a worktree behind or lose a change in it; the text says which.
+    Refused(String),
+}
+
+/// Reads the worktrees that have `full_ref` checked out (REQ-1 to REQ-4): two of them, a change to
+/// a tracked file (an untracked or ignored file is no change) or a HEAD other than `tip` refuse.
+/// Read-only.
+pub fn checkout_state(project: &Path, full_ref: &str, tip: &str) -> Result<Checkout, String> {
+    let trees = checked_out_at(project, full_ref)?;
+    let tree = match trees.as_slice() {
+        [] => return Ok(Checkout::Free),
+        [one] => one.clone(),
+        many => {
+            return Ok(Checkout::Refused(format!(
+                "the integration branch is checked out in {}: a move under two worktrees would \
+                 leave one of them behind the reference",
+                many.join(", ")
+            )))
+        }
+    };
+    let dir = Path::new(&tree);
+    let status = git(dir, &["status", "--porcelain", "--untracked-files=no"])?;
+    if !status.status.success() {
+        return Err(format!(
+            "git could not read the worktree {tree}: {}",
+            String::from_utf8_lossy(&status.stderr).trim()
+        ));
+    }
+    let changed = String::from_utf8_lossy(&status.stdout);
+    if !changed.trim().is_empty() {
+        return Ok(Checkout::Refused(format!(
+            "the integration branch is checked out in {tree} and that worktree has {} changed \
+             tracked file(s): a move would lose or hide them; commit or restore them first",
+            changed.lines().count()
+        )));
+    }
+    let head = git(dir, &["rev-parse", "--verify", "-q", "HEAD"])?;
+    let head = String::from_utf8_lossy(&head.stdout).trim().to_string();
+    if head != tip {
+        return Ok(Checkout::Refused(format!(
+            "the integration branch is checked out in {tree} at {head}, not at the tip {tip}: a \
+             move would leave that worktree behind the reference"
+        )));
+    }
+    Ok(Checkout::Movable(tree))
+}
+
+/// Moves the branch checked out in `tree` to `new` together with that worktree, as a
+/// fast-forward (`git merge --ff-only`): git refuses when `new` does not contain what the branch
+/// holds now, and the worktree and the reference never part.
+pub fn move_checked_out(tree: &Path, new: &str) -> Result<RefMove, String> {
+    let out = git(
+        tree,
+        &["merge", "--ff-only", "--quiet", "--end-of-options", new],
+    )?;
+    if out.status.success() {
+        Ok(RefMove::Moved)
+    } else {
+        Ok(RefMove::Lost(
+            String::from_utf8_lossy(&out.stderr).trim().to_string(),
+        ))
+    }
+}
+
 /// What a compare-and-swap of a branch reference came to.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RefMove {
