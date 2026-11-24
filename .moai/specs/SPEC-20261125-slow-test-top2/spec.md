@@ -27,6 +27,7 @@ created: 2026-11-25
 - AC-1 (REQ-1): the Result gives the cost split of both tests as tables with the data they came from · verify: `moai spec check SPEC-20261125-slow-test-top2 --project .`
 - AC-2 (REQ-2, REQ-3, REQ-7): the `worktree_gc` unit tests pass with the same names, and the guard tests of the thread table pass · verify: `cargo test --locked --offline --lib worktree_gc::tests`
 - AC-3 (REQ-4, REQ-5, REQ-6, REQ-7): `go_state_cli` passes with the same test names and the 256 KiB test runs in seconds · verify: `cargo test --locked --offline --test go_state_cli`
+- AC-6 (REQ-4, REQ-5, REQ-6): the two source scans of the switch pass in the unit tests of `src/apply.rs` · verify: `cargo test --locked --offline --lib -- apply::tests::the_publish_sync_switch_is_read_only_by_a_debug_build_function apply::tests::only_the_receipt_size_test_gives_the_commands_the_switch`
 - AC-4 (REQ-7): no assertion line was removed from the changed test files and the unit-test module · verify: `test -z "$(git diff -U0 NeXT...HEAD -- tests/go_state_cli.rs src/worktree_gc.rs | grep -E '^-[^-].*assert')"`
 - AC-5 (REQ-2, REQ-3, REQ-5, REQ-6): each new guard is killed by a mutant that removes the guarded line (the Result lists each `guard-mutant:` line) · verify: `test "$(grep -c '^- guard-mutant:' .moai/specs/SPEC-20261125-slow-test-top2/spec.md)" -ge 2`
 
@@ -34,7 +35,7 @@ created: 2026-11-25
 
 - write: `.moai/specs/SPEC-20261125-slow-test-top2/**`
 - write: `tests/go_state_cli.rs`, `src/worktree_gc.rs`
-- write (line lease, leader decision of the scope request on the card): `src/apply.rs`, the switch function and the two sync calls of `stage` and `sync_parent`; `tests/common/**` stays unchanged
+- write (line lease, leader decision of the scope request on the card): `src/apply.rs`, the switch function, the two sync calls of `stage` and `sync_parent`, and the two source scans in its unit tests (a test file under `tests/` that names the manifest folder joins `tools/repo_scans.json`, which is not in this scope); `tests/common/**` stays unchanged
 - read-only: everything else; a further path waits for a SCOPE-REQUEST note on the card
 
 ## Plan
@@ -86,7 +87,7 @@ created: 2026-11-25
 ### 고친 것
 
 - 2위: `src/worktree_gc.rs` 에 스레드별 빈 프로세스 표를 두었어요(`use_empty_table`, 테스트 빌드에서만, 값은 그 스레드 안에서만 보여요). 환경변수 `MOAI_TEST_PROCESS_TABLE` 을 단위 테스트에서 바꾸면 `cargo test` 의 다른 스레드가 같이 영향을 받아서 쓰지 않았어요. 테스트는 맨 앞에서 빈 표를 잡고 `read_cwds() == Some([])` 를 단언해요(추가한 단언이에요). 새 테스트 `an_empty_table_belongs_to_the_thread_that_holds_it` 가 다른 스레드는 자기 표를 읽는다는 것과 표가 drop 에서 돌아간다는 것을 고정해요.
-- 1위: `src/apply.rs` 에 디버그 빌드 전용 스위치 `MOAI_TEST_PUBLISH_SYNC=skip` 를 더했어요(리더 결정 노트 8689, 조건 5개). 켜면 `stage` 의 `file.sync_all` 과 `sync_parent` 의 `dir.sync_all` 두 호출만 건너뛰고 쓰기 순서·임시 파일·`rename` 은 그대로예요. 읽는 함수는 `#[cfg(debug_assertions)]` 이고 릴리스 빌드의 짝 함수는 `false` 를 돌려줘요. 이 테스트의 `go-state-apply`·`go-state-revert` 호출만 `UNSYNCED` 로 스위치를 실어요(`tests/common` 에는 안 넣었어요). 소스를 읽는 테스트 둘이 고정해요: `the_publish_sync_switch_is_read_only_by_a_debug_build_function`(`src/` 어디서든 스위치 이름을 읽는 줄은 `#[cfg(debug_assertions)]` 함수 안에 있어야 해요), `only_the_receipt_size_test_gives_the_commands_the_switch`(그 테스트의 apply·revert 호출이 `UNSYNCED` 를 싣고 `tests/common/mod.rs` 에는 이름이 없어요).
+- 1위: `src/apply.rs` 에 디버그 빌드 전용 스위치 `MOAI_TEST_PUBLISH_SYNC=skip` 를 더했어요(리더 결정 노트 8689, 조건 5개). 켜면 `stage` 의 `file.sync_all` 과 `sync_parent` 의 `dir.sync_all` 두 호출만 건너뛰고 쓰기 순서·임시 파일·`rename` 은 그대로예요. 읽는 함수는 `#[cfg(debug_assertions)]` 이고 릴리스 빌드의 짝 함수는 `false` 를 돌려줘요. 이 테스트의 `go-state-apply`·`go-state-revert` 호출만 `UNSYNCED` 로 스위치를 실어요(`tests/common` 에는 안 넣었어요). 소스를 읽는 테스트 둘이 고정해요(`src/apply.rs` 의 단위 테스트예요. 처음에는 `tests/go_state_cli.rs` 에 두었다가 `check affected` 가 FAIL 이라 옮겼어요: `CARGO_MANIFEST_DIR` 로 저장소를 걷는 `tests/*.rs` 파일은 `tools/repo_scans.json` 에 올라야 하고 그 목록은 이 카드의 범위 밖이에요): `the_publish_sync_switch_is_read_only_by_a_debug_build_function`(`src/` 어디서든 스위치 이름을 읽는 줄은 `#[cfg(debug_assertions)]` 함수 안에 있어야 해요), `only_the_receipt_size_test_gives_the_commands_the_switch`(그 테스트의 apply·revert 호출이 `UNSYNCED` 를 싣고 `tests/common/mod.rs` 에는 이름이 없어요).
 - 지운 단언은 0개예요: 두 파일의 지운 줄 23개 중 `assert` 가 든 줄은 없어요(AC-4 의 verify 줄을 그대로 실행해 exit 0, 스크립트 `target/c482/ac4.sh`).
 
 ### 전후 표 (기준 2)
@@ -105,7 +106,7 @@ created: 2026-11-25
 
 ### 뮤턴트 (`target/c482/mutants.py`, 슬롯 한 번, 파일은 복사본으로 원복해 바이트 단위로 같음을 확인)
 
-텍스트 뮤턴트는 이미 빌드한 바이너리로 돌렸어요(스캔이 실행 때 소스 텍스트를 읽어요). 코드 뮤턴트는 라이브러리 테스트를 다시 빌드했고, 여섯 개 모두 컴파일됐어요(로그에서 의도한 단언 메시지를 읽었어요).
+여섯 개 모두 `cargo test --lib` 로 돌렸어요(스캔 둘이 `src/apply.rs` 의 단위 테스트이고 실행 때 소스 텍스트를 읽어서, `tests/` 파일을 바꾸는 G1~G3 은 다시 빌드하지 않아요). 이름은 `apply::tests::` 와 `worktree_gc::tests::` 아래이고, 여섯 개 모두 컴파일됐어요(로그에서 의도한 단언 메시지를 읽었어요).
 
 - guard-mutant: only_the_receipt_size_test_gives_the_commands_the_switch | the apply call of the receipt-size test loses UNSYNCED | exit 101
 - guard-mutant: only_the_receipt_size_test_gives_the_commands_the_switch | the revert call of the receipt-size test loses UNSYNCED | exit 101
@@ -122,7 +123,7 @@ created: 2026-11-25
 
 - 이 슬라이스는 순위 1·2위만 다뤄요. 3~5위(`update_hooks_cli`, `update_user_layer_cli`, `update_home`)는 하지 않았어요.
 - 측정은 이 기계 하나, 디버그 빌드예요. `F_FULLFSYNC` 는 macOS 의 `sync_all` 이라 Linux·Windows 의 이득은 재지 않았어요(Linux 의 `sync_all` 은 `fsync`).
-- 스위치는 시간만 줄여요. 스위치를 안 싣는 변경은 느릴 뿐 통과하므로 가드는 소스 텍스트를 읽는 스캔이에요(리더 결정). 건너뛴 동기화가 실제로 일어나지 않는지는 시간으로만 보였어요.
+- 스위치는 시간만 줄여요. 스위치를 안 싣는 변경은 느릴 뿐 통과하므로 가드는 소스 텍스트를 읽는 스캔이에요(리더 결정). 스캔이 `src/apply.rs` 의 단위 테스트라서 `tests/go_state_cli.rs` 나 `tests/common/mod.rs` 만 바뀐 범위에서는 `check affected` 가 그 스캔을 고르지 못할 수 있어요(고르는 규칙은 읽지 않았어요, not_run). 건너뛴 동기화가 실제로 일어나지 않는지는 시간으로만 보였어요.
 - 2위의 가드 단언 `read_cwds() == Some([])` 는 실제 표를 읽는 기계에서는 실패하는 값이라 뮤턴트가 죽어요. 표를 읽을 수 없는 기계(`lsof` 없음)에서도 `Some([])` 가 아니라서 마찬가지로 죽어요.
 - `cargo test`(한 프로세스의 여러 스레드) 아래에서 이 파일의 단위 테스트 전체를 한 번 돌려 보는 일은 하지 않았어요(수정한 두 테스트와 새 테스트를 직접 돌렸어요). 전체는 `check affected` 의 nextest 가 돌려요.
 
@@ -130,6 +131,7 @@ created: 2026-11-25
 
 - AC-1: met — 위 표들과 방법·원자료.
 - AC-2: met — `worktree_gc` 단위 테스트가 같은 이름으로 통과하고(`the_recheck_...`, `an_empty_table_belongs_...`), 뮤턴트 둘이 죽어요.
-- AC-3: met — `go_state_cli` 의 1위 테스트와 스캔 둘이 통과하고 1위 테스트는 38.16초에서 10.03초가 됐어요(파일 전체는 `check affected` 가 돌려요).
+- AC-6: met — 두 스캔이 `apply::tests` 에서 통과해요(기준선 실행 4개 통과, 로그 `target/c482/baseline2-lib.log`).
+- AC-3: met — `go_state_cli` 의 1위 테스트가 통과하고(9.09초) 1위 테스트는 38.16초에서 10.03초가 됐어요(파일 전체는 `check affected` 가 돌려요).
 - AC-4: met — 지운 단언 줄 0개(verify 줄 exit 0).
 - AC-5: met — 위 `guard-mutant:` 줄 여섯 개가 모두 exit 101 이에요.
