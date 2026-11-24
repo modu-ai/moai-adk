@@ -2797,3 +2797,378 @@ fn the_revert_help_says_what_a_stop_part_way_leaves() {
     );
     assert!(text.contains("run the revert again to continue"), "{text}");
 }
+
+// ---- SPEC-20261121-project-state-move: the earlier root moves beside the team's kept names ----
+
+/// A repository-shaped project: the names the team keeps in git already stand under `.moai/`
+/// (no marker), and the earlier root holds its own, different `project.yaml`, manifests,
+/// machine state and reports.
+fn kept_fixture() -> Fx {
+    let fx = Fx::new();
+    fx.write(".moai/project.yaml", "new profile\n");
+    fx.write(".moai/evals/e1/case.json", "{\"case\":1}\n");
+    fx.write(".moai/specs/SPEC-20261121-a/spec.md", "# a\n");
+    fx.write(".moai-cli/project.yaml", "old profile\n");
+    fx.write(".moai-cli/manifests/generation.json", "{\"g\":1}\n");
+    fx.write(".moai-cli/state/github/counts.json", "{}\n");
+    fx.write(".moai-cli/reports/r.md", "# r\n");
+    fx
+}
+
+fn picks_args<'a>(base: &[&'a str], picks: &[&'a str]) -> Vec<&'a str> {
+    let mut args = base.to_vec();
+    for p in picks {
+        args.push("--set-aside");
+        args.push(p);
+    }
+    args
+}
+
+/// The raw `go-state-plan` answer with the picks; a preview still writes nothing.
+fn plan_picks_raw(fx: &Fx, picks: &[&str]) -> Value {
+    let before = fx.tree();
+    let root = fx.root.to_str().unwrap();
+    let v = call(&picks_args(&["go-state-plan", root], picks));
+    assert_eq!(fx.tree(), before, "a preview writes nothing");
+    v
+}
+
+fn plan_picks(fx: &Fx, picks: &[&str]) -> Value {
+    let v = plan_picks_raw(fx, picks);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    v["result"].clone()
+}
+
+fn apply_picks(fx: &Fx, digest: &str, picks: &[&str]) -> Value {
+    let root = fx.root.to_str().unwrap();
+    call(&picks_args(
+        &[
+            "go-state-apply",
+            root,
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            REF,
+        ],
+        picks,
+    ))
+}
+
+fn read(fx: &Fx, rel: &str) -> String {
+    fs::read_to_string(fx.root.join(rel)).unwrap_or_else(|e| panic!("{rel}: {e}"))
+}
+
+/// A folder under the project, listed by name.
+fn names_in(fx: &Fx, rel: &str) -> Vec<String> {
+    let mut v: Vec<String> = fs::read_dir(fx.root.join(rel))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .collect();
+    v.sort();
+    v
+}
+
+/// REQ-2, REQ-3, REQ-4, REQ-6: the plan lists every earlier entry with its action and reason, a
+/// name that exists on both sides stays with the collision named, the apply moves the rest beside
+/// the kept names and writes the marker last, and nothing the `.moai/` held is touched.
+#[test]
+fn the_earlier_state_moves_beside_the_kept_names_and_a_collision_stays() {
+    let fx = kept_fixture();
+    let p = plan_picks(&fx, &[]);
+    assert_eq!(p["layout"], json!("legacy_into_new"), "{p}");
+    assert_eq!(action(&p, ".moai-cli").0, "move", "{p}");
+    for (from, to) in [
+        (".moai-cli/manifests", ".moai/manifests"),
+        (".moai-cli/state", ".moai/state"),
+    ] {
+        assert_eq!(state_move(&p, from)["action"], json!("move"), "{p}");
+        assert_eq!(state_move(&p, from)["to"], json!(to), "{p}");
+    }
+    let collision = state_move(&p, ".moai-cli/project.yaml");
+    assert_eq!(collision["action"], json!("leave"), "{p}");
+    assert!(
+        collision["reason"]
+            .as_str()
+            .unwrap()
+            .contains(".moai/project.yaml already exists"),
+        "{collision}"
+    );
+    let reports = state_move(&p, ".moai-cli/reports");
+    assert_eq!(reports["action"], json!("leave"), "{p}");
+    assert!(
+        reports["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reports-move-plan"),
+        "the owner of the entry is named: {reports}"
+    );
+
+    let v = apply_picks(&fx, p["plan_digest"].as_str().unwrap(), &[]);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let r = &v["result"];
+    assert_eq!(r["state"], json!("committed"), "{r}");
+    assert_eq!(
+        r["kept_before"],
+        json!(["evals", "project.yaml", "specs"]),
+        "the receipt records the names the folder held before: {r}"
+    );
+    let marker: Value =
+        serde_json::from_slice(&fs::read(fx.root.join(".moai/moai.json")).unwrap()).unwrap();
+    assert_eq!(marker["generation"], json!("moai"), "{marker}");
+    assert_eq!(read(&fx, ".moai/project.yaml"), "new profile\n");
+    assert_eq!(read(&fx, ".moai/evals/e1/case.json"), "{\"case\":1}\n");
+    assert_eq!(read(&fx, ".moai/manifests/generation.json"), "{\"g\":1}\n");
+    assert_eq!(read(&fx, ".moai/state/github/counts.json"), "{}\n");
+    assert_eq!(read(&fx, ".moai-cli/project.yaml"), "old profile\n");
+    assert_eq!(read(&fx, ".moai-cli/reports/r.md"), "# r\n");
+    assert!(!fx.root.join(".moai-cli/manifests").exists());
+    // Re-run: the project is on `.moai` now and nothing more moves.
+    let again = plan_picks(&fx, &[]);
+    assert_eq!(moves(&again), 0, "{again}");
+}
+
+/// REQ-3, REQ-6: the picks are part of the plan digest. A digest made with a pick is stale for an
+/// apply without it and the other way round, and a picked collision moves the earlier entry into
+/// the backup area and never over the `.moai/` entry.
+#[test]
+fn the_set_aside_picks_are_in_the_digest_and_a_picked_entry_goes_to_the_backup_area() {
+    let fx = kept_fixture();
+    let without = plan_picks(&fx, &[]);
+    let with = plan_picks(&fx, &["project.yaml"]);
+    let (d0, d1) = (
+        without["plan_digest"].as_str().unwrap(),
+        with["plan_digest"].as_str().unwrap(),
+    );
+    assert_ne!(d0, d1, "the pick changes the digest");
+    let aside = state_move(&with, ".moai-cli/project.yaml");
+    assert_eq!(aside["action"], json!("set-aside"), "{with}");
+    assert_eq!(
+        aside["to"],
+        json!(".moai/backups/<UTC>/set-aside/project.yaml"),
+        "{aside}"
+    );
+
+    let before = fx.tree();
+    for (digest, picks) in [(d1, &[][..]), (d0, &["project.yaml"][..])] {
+        let v = apply_picks(&fx, digest, picks);
+        assert_eq!(v["ok"], json!(false), "{v}");
+        assert!(
+            v["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("stale or altered plan"),
+            "{v}"
+        );
+        assert_eq!(fx.tree(), before, "a stale apply writes nothing");
+    }
+
+    let v = apply_picks(&fx, d1, &["project.yaml"]);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    assert_eq!(
+        read(
+            &fx,
+            &format!(".moai/backups/{backup}/set-aside/project.yaml")
+        ),
+        "old profile\n"
+    );
+    assert_eq!(read(&fx, ".moai/project.yaml"), "new profile\n");
+    assert!(!fx.root.join(".moai-cli/project.yaml").exists());
+}
+
+/// A pick that names no colliding entry is a typo, not a request: the plan is refused.
+#[test]
+fn a_pick_that_names_no_collision_is_refused() {
+    let fx = kept_fixture();
+    for pick in ["manifests", "nothing-here", "../x", "reports"] {
+        let v = plan_picks_raw(&fx, &[pick]);
+        assert_eq!(v["ok"], json!(false), "{pick}: {v}");
+        assert!(
+            v["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("--set-aside"),
+            "{pick}: {v}"
+        );
+    }
+}
+
+/// REQ-7 (decision D-7): the revert of a move beside kept names takes the entries back, removes
+/// the marker first and leaves every name the `.moai/` held before the apply. It never sets the
+/// whole `.moai/` aside the way the revert of a move into a new folder does.
+#[test]
+fn the_revert_leaves_the_names_the_moai_folder_held_before_the_apply() {
+    let fx = kept_fixture();
+    let p = plan_picks(&fx, &["project.yaml"]);
+    let v = apply_picks(&fx, p["plan_digest"].as_str().unwrap(), &["project.yaml"]);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(item_action(&rp, ".moai/moai.json"), json!("remove"), "{rp}");
+    assert_eq!(
+        item_action(&rp, ".moai-cli/manifests"),
+        json!("restore"),
+        "{rp}"
+    );
+    assert_eq!(
+        item_action(&rp, ".moai-cli/project.yaml"),
+        json!("restore"),
+        "{rp}"
+    );
+    let items = rp["result"]["items"].to_string();
+    assert!(
+        !items.contains("\"set_aside\"") && !items.contains("restored_to_moai_specs"),
+        "the folder is not set aside as a whole: {rp}"
+    );
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(read(&fx, ".moai/project.yaml"), "new profile\n");
+    assert_eq!(read(&fx, ".moai/evals/e1/case.json"), "{\"case\":1}\n");
+    assert_eq!(read(&fx, ".moai/specs/SPEC-20261121-a/spec.md"), "# a\n");
+    assert!(!fx.root.join(".moai/moai.json").exists());
+    assert_eq!(read(&fx, ".moai-cli/project.yaml"), "old profile\n");
+    assert_eq!(
+        read(&fx, ".moai-cli/manifests/generation.json"),
+        "{\"g\":1}\n"
+    );
+    assert_eq!(read(&fx, ".moai-cli/state/github/counts.json"), "{}\n");
+    assert!(
+        !names_in(&fx, ".")
+            .iter()
+            .any(|n| n.starts_with(".moai.rust-")),
+        "no set-aside folder: {:?}",
+        names_in(&fx, ".")
+    );
+    assert_eq!(
+        names_in(&fx, ".moai"),
+        ["backups", "evals", "project.yaml", "specs"]
+    );
+    let (_, receipt) = receipt_of(&fx, &backup);
+    assert_eq!(receipt["state"], json!("reverted"), "{receipt}");
+    // A second revert is refused.
+    let again = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(again["ok"], json!(false), "{again}");
+    // The reverted receipt left in `.moai/backups/` is no stopped migration: the project reads
+    // as before the apply and offers the same move again.
+    let again = plan_picks(&fx, &["project.yaml"]);
+    assert_eq!(moves(&again), 1, "{again}");
+    assert_eq!(again["layout"], json!("legacy_into_new"), "{again}");
+}
+
+/// REQ-7: an apply that stopped before the marker leaves a `pending` receipt; the revert of that
+/// receipt keeps the kept names too.
+#[test]
+fn a_stopped_move_beside_kept_names_reverts_without_touching_them() {
+    use std::os::unix::fs::PermissionsExt;
+    let fx = kept_fixture();
+    let p = plan_picks(&fx, &[]);
+    let locked = fx.root.join(".moai-cli");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o555)).unwrap();
+    let v = apply_picks(&fx, p["plan_digest"].as_str().unwrap(), &[]);
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(!fx.root.join(".moai/moai.json").exists());
+    let backup: String = names_in(&fx, ".moai/backups")
+        .into_iter()
+        .find(|n| n != ".gitignore")
+        .expect("the stopped apply left its backup area");
+    let (_, receipt) = receipt_of(&fx, &backup);
+    assert_eq!(receipt["state"], json!("pending"), "{receipt}");
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(item_action(&rp, ".moai/moai.json"), json!("skip"), "{rp}");
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(read(&fx, ".moai/project.yaml"), "new profile\n");
+    assert_eq!(read(&fx, ".moai/evals/e1/case.json"), "{\"case\":1}\n");
+    assert_eq!(
+        read(&fx, ".moai-cli/manifests/generation.json"),
+        "{\"g\":1}\n"
+    );
+    assert!(
+        !names_in(&fx, ".")
+            .iter()
+            .any(|n| n.starts_with(".moai.rust-")),
+        "{:?}",
+        names_in(&fx, ".")
+    );
+}
+
+fn git_here(fx: &Fx, args: &[&str]) {
+    common::git::git_ok(&fx.root, args);
+}
+
+/// REQ-5: a `.gitignore` rule that hides the target of a tracked entry makes the plan move
+/// nothing and name the entry and the rule; the tracked count is shown once the rules allow it.
+#[test]
+fn a_target_that_git_ignores_blocks_the_plan_until_the_rule_allows_it() {
+    let fx = kept_fixture();
+    fx.write(
+        ".gitignore",
+        "/.moai/*\n!/.moai/project.yaml\n!/.moai/specs/\n!/.moai/evals/\n",
+    );
+    git_here(&fx, &["init", "-q", "-b", "main"]);
+    git_here(
+        &fx,
+        &[
+            "add",
+            "--",
+            ".gitignore",
+            ".moai-cli/manifests/generation.json",
+        ],
+    );
+    let p = plan_picks(&fx, &[]);
+    assert_eq!(moves(&p), 0, "{p}");
+    assert_eq!(p["state_moves"], json!([]), "{p}");
+    let (act, reason) = action(&p, ".moai-cli");
+    assert_eq!(act, "leave", "{p}");
+    assert!(
+        reason.contains(".moai/manifests") && reason.contains("/.moai/*"),
+        "the entry and the rule are named: {reason}"
+    );
+    // The marker is a target too: with manifests allowed it is still hidden.
+    fx.write(
+        ".gitignore",
+        "/.moai/*\n!/.moai/project.yaml\n!/.moai/specs/\n!/.moai/evals/\n!/.moai/manifests/\n",
+    );
+    let p = plan_picks(&fx, &[]);
+    assert_eq!(moves(&p), 0, "{p}");
+    assert!(action(&p, ".moai-cli").1.contains(".moai/moai.json"), "{p}");
+    fx.write(
+        ".gitignore",
+        "/.moai/*\n!/.moai/project.yaml\n!/.moai/specs/\n!/.moai/evals/\n!/.moai/manifests/\n!/.moai/moai.json\n",
+    );
+    let p = plan_picks(&fx, &[]);
+    assert_eq!(moves(&p), 1, "{p}");
+    assert_eq!(
+        state_move(&p, ".moai-cli/manifests")["tracked"],
+        json!(1),
+        "{p}"
+    );
+    // Entries git does not track carry no count and are not judged by the rules.
+    assert!(
+        state_move(&p, ".moai-cli/state").get("tracked").is_none(),
+        "{p}"
+    );
+}
+
+/// Without a git repository the plan moves and skips the ignore check: the check needs git, the
+/// move does not.
+#[test]
+fn without_git_the_plan_still_moves_beside_kept_names() {
+    let fx = kept_fixture();
+    let p = plan_picks(&fx, &[]);
+    assert_eq!(moves(&p), 1, "{p}");
+}
+
+/// A link among the earlier entries is never followed and keeps the whole earlier root.
+#[test]
+fn a_linked_entry_keeps_the_earlier_root_beside_kept_names() {
+    let fx = kept_fixture();
+    let elsewhere = fx.root.parent().unwrap().join("elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    fs::remove_dir_all(fx.root.join(".moai-cli/state")).unwrap();
+    symlink(&elsewhere, fx.root.join(".moai-cli/state")).unwrap();
+    let p = plan_picks(&fx, &[]);
+    assert_eq!(moves(&p), 0, "{p}");
+    assert!(action(&p, ".moai-cli").1.contains("link"), "{p}");
+}

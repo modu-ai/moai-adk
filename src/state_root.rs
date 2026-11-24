@@ -358,9 +358,25 @@ fn holds_go_state_receipt(moai: &Path) -> bool {
             rd.filter_map(|e| e.ok())
                 .filter_map(|e| e.file_name().into_string().ok())
                 .filter(|n| utc_stamp(n))
-                .any(|n| regular_file(moai, &["backups", &n, GO_STATE_RECEIPT]).is_some())
+                .any(|n| {
+                    regular_file(moai, &["backups", &n, GO_STATE_RECEIPT]).is_some_and(|_| {
+                        !receipt_reverted(&moai.join("backups").join(&n).join(GO_STATE_RECEIPT))
+                    })
+                })
         })
         .unwrap_or(false)
+}
+
+/// A receipt whose `state` says `reverted` is a finished undo: it no longer marks a migration
+/// stopped midway. A receipt that cannot be read or is too large counts as still open.
+fn receipt_reverted(path: &Path) -> bool {
+    const LIMIT: u64 = 256 * 1024;
+    fs::metadata(path)
+        .ok()
+        .filter(|m| m.len() <= LIMIT)
+        .and_then(|_| fs::read(path).ok())
+        .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+        .is_some_and(|v| v["state"] == "reverted")
 }
 
 /// Classify `root/.moai` (design 6854765655 §2). Reads only. A project's `.moai/` that holds
@@ -414,6 +430,56 @@ pub fn specs_only(moai: &Path) -> bool {
         && fs::symlink_metadata(moai.join(SPECS_DIR)).is_ok_and(|m| m.is_dir())
 }
 
+/// SPEC-20261121-project-state-move REQ-1: a project's `.moai/` that is a real folder whose
+/// first-level names are all names the team keeps in git ([`KEPT`]), with no generation marker,
+/// no Go marker and no unfinished go-state receipt, holds no machine state of either generation.
+/// It reads like an absent `.moai/` (verdict `none`), and a new project adopts it in place.
+/// Besides the kept names it may hold a real `backups/` folder (git ignores it; an earlier
+/// undo leaves it) and Finder's `.DS_Store`. At least one kept name must be there: an empty
+/// folder keeps its own verdict. A link, a kept name of the wrong type or an unlisted name
+/// anywhere keeps the folder as it is read today. [`specs_only`] is the narrower case.
+pub fn kept_only(moai: &Path) -> bool {
+    if !fs::symlink_metadata(moai).is_ok_and(|m| m.is_dir()) {
+        return false;
+    }
+    let Ok(entries) = fs::read_dir(moai) else {
+        return false;
+    };
+    let mut kept = 0;
+    for e in entries {
+        let Ok(e) = e else {
+            return false;
+        };
+        let Ok(kind) = e.file_type() else {
+            return false;
+        };
+        let name = e.file_name();
+        let Some(name) = name.to_str() else {
+            return false;
+        };
+        if name == ".DS_Store" && kind.is_file() {
+            continue;
+        }
+        if name == "backups" && kind.is_dir() {
+            continue;
+        }
+        let listed = KEPT.iter().find_map(|k| {
+            let folder = k.ends_with('/');
+            (k.trim_end_matches('/') == name).then_some(folder)
+        });
+        let is_marker = name == RUST_MARKER || name == LEGACY_MARKER;
+        match listed {
+            Some(folder)
+                if !is_marker && (kind.is_dir() == folder) && (folder || kind.is_file()) =>
+            {
+                kept += 1
+            }
+            _ => return false,
+        }
+    }
+    kept > 0 && go_markers(moai).is_empty() && !holds_go_state_receipt(moai)
+}
+
 /// The HOME verdict (#2871 I2 R1): the table above with the HOME's Go markers, plus one row —
 /// a schema-2 marker is `rust-first`, Go markers or not; the Go markers found are reported as
 /// `go_retire_pending` and nothing moves. A HOME without a schema-2 marker gets exactly the
@@ -439,7 +505,7 @@ fn classify_inner(
     let moai_dir = match fs::symlink_metadata(&moai) {
         Err(_) => "absent",
         Ok(m) if m.file_type().is_symlink() => "link",
-        Ok(_) if specs_as_absent && specs_only(&moai) => "absent",
+        Ok(_) if specs_as_absent && (specs_only(&moai) || kept_only(&moai)) => "absent",
         Ok(m) if m.is_dir() => "folder",
         Ok(_) => "other",
     };
@@ -712,7 +778,7 @@ pub fn adopt_new(root: &Path, created_by: &str) -> Result<bool, String> {
     if !is_new_project(root) {
         return Ok(false);
     }
-    if !specs_only(&root.join(MOAI_DIR)) {
+    if !specs_only(&root.join(MOAI_DIR)) && !kept_only(&root.join(MOAI_DIR)) {
         fs::create_dir(root.join(MOAI_DIR))
             .map_err(|_| format!("{MOAI_DIR}: folder create failed"))?;
     }

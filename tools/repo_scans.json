@@ -87,6 +87,28 @@
       "rejects": "a \".moai-cli\" path spelled as a string literal outside src/lib.rs instead of project_state!/fixed_state! (#2725 S1)"
     },
     {
+      "id": "project-state-dir-direct-sites",
+      "tests": [
+        "tests/path_root_direct_sites.rs::the_repository_spells_the_earlier_folder_only_where_the_baseline_lists",
+        "tests/path_root_direct_sites.rs::a_new_spelling_outside_the_baseline_fails_the_scan_and_a_lower_count_passes"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test path_root_direct_sites"
+      ],
+      "rules": [
+        "tests/path_root_direct_sites.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a product source file outside the baseline list in tests/path_root_direct_sites.rs that spells the earlier state folder name or PROJECT_STATE_DIR, or a listed file that spells it more often (SPEC-20261121-project-state-move REQ-10)"
+    },
+    {
       "id": "cli-text-citations",
       "tests": [
         "tests/cli_text_citations.rs::scan_source_files_outside_the_pending_list_are_clean"

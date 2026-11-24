@@ -71,7 +71,9 @@ fn project_with_both_folders_and_no_marker_stays_on_the_earlier_one() {
     earlier(t.path());
     write(t.path(), ".moai/project.yaml", "tracked\n");
     write(t.path(), ".moai/specs/S/spec.md", "# s\n");
-    assert_eq!(verdict(t.path()), "unknown");
+    // SPEC-20261121-project-state-move REQ-1: kept names alone are this generation's tree, no
+    // longer `unknown`; every path still stays on the earlier folder until the move.
+    assert_eq!(verdict(t.path()), "none");
     assert_eq!(
         state_root::dir(t.path()),
         EARLIER,
@@ -115,7 +117,8 @@ fn project_worktree_without_a_marker_resolves_to_moai() {
     write(t.path(), ".moai/project.yaml", "tracked\n");
     write(t.path(), ".moai/evals/e/case.md", "# e\n");
     write(t.path(), ".moai/specs/S/spec.md", "# s\n");
-    assert_eq!(verdict(t.path()), "unknown");
+    // REQ-1 of SPEC-20261121-project-state-move: only kept names, so `none` and not `unknown`.
+    assert_eq!(verdict(t.path()), "none");
     assert_eq!(state_root::dir(t.path()), NOW);
     assert!(!exists(&t.path().join(EARLIER)));
 }
@@ -196,7 +199,10 @@ fn project_new_project_still_gets_its_marker_once() {
         "specs kept"
     );
     let worktree = TempHome::new();
+    // An unlisted name makes the folder `unknown`, so it is no new project (kept names alone
+    // are, see `a_new_project_with_only_kept_names_is_adopted_beside_them`).
     write(worktree.path(), ".moai/project.yaml", "tracked\n");
+    write(worktree.path(), ".moai/notes.txt", "mine\n");
     assert!(!state_root::is_new_project(worktree.path()));
     assert_eq!(state_root::adopt_new(worktree.path(), "test"), Ok(false));
     assert!(
@@ -445,4 +451,95 @@ fn reads_only_and_never_creates_the_earlier_folder() {
             t.path()
         );
     }
+}
+
+// ---- a `.moai/` that holds only the names the team keeps in git ------------------------------
+// SPEC-20261121-project-state-move REQ-1: such a folder is this generation's, not `unknown`.
+
+fn kept_names(root: &Path) {
+    write(root, ".moai/project.yaml", "{}\n");
+    write(root, ".moai/evals/e/case.json", "{}\n");
+    write(root, ".moai/specs/SPEC-20261121-a/spec.md", "# a\n");
+}
+
+#[test]
+fn only_kept_names_read_like_an_absent_folder_and_a_finder_file_changes_nothing() {
+    let t = TempHome::new();
+    kept_names(t.path());
+    assert_eq!(verdict(t.path()), "none");
+    assert_eq!(state_root::dir(t.path()), NOW, "no earlier folder");
+    write(t.path(), ".moai/.DS_Store", "x");
+    assert_eq!(verdict(t.path()), "none", "Finder's file is no state");
+}
+
+#[test]
+fn only_kept_names_beside_the_earlier_folder_keep_every_path_until_the_move() {
+    let t = TempHome::new();
+    kept_names(t.path());
+    earlier(t.path());
+    assert_eq!(verdict(t.path()), "none");
+    assert_eq!(state_root::dir(t.path()), EARLIER);
+    assert!(
+        !state_root::is_new_project(t.path()),
+        "the earlier folder exists"
+    );
+}
+
+#[test]
+fn a_name_outside_the_kept_list_or_a_link_keeps_the_folder_unknown() {
+    let t = TempHome::new();
+    kept_names(t.path());
+    write(t.path(), ".moai/notes.txt", "mine");
+    assert_eq!(verdict(t.path()), "unknown", "an unlisted name");
+
+    let t = TempHome::new();
+    kept_names(t.path());
+    fs::remove_dir_all(t.path().join(".moai/evals")).unwrap();
+    fs::create_dir_all(t.path().join("elsewhere")).unwrap();
+    symlink(t.path().join("elsewhere"), t.path().join(".moai/evals")).unwrap();
+    assert_eq!(verdict(t.path()), "unknown", "a kept name that is a link");
+}
+
+#[test]
+fn a_go_marker_among_the_kept_names_keeps_the_go_verdict() {
+    let t = TempHome::new();
+    kept_names(t.path());
+    write(t.path(), ".moai/config/config.yaml", "x: 1\n");
+    assert_eq!(
+        verdict(t.path()),
+        "go",
+        "`config` is a kept name and a Go marker"
+    );
+
+    let t = TempHome::new();
+    kept_names(t.path());
+    write(t.path(), ".moai/manifest.json", "{}");
+    assert_eq!(verdict(t.path()), "go");
+}
+
+#[test]
+fn a_marker_among_the_kept_names_is_the_rust_verdict_and_an_empty_folder_stays_empty() {
+    let t = TempHome::new();
+    kept_names(t.path());
+    marker(t.path());
+    assert_eq!(verdict(t.path()), "rust");
+
+    let t = TempHome::new();
+    fs::create_dir(t.path().join(".moai")).unwrap();
+    assert_eq!(verdict(t.path()), "empty");
+}
+
+#[test]
+fn a_new_project_with_only_kept_names_is_adopted_beside_them() {
+    let t = TempHome::new();
+    kept_names(t.path());
+    assert!(state_root::adopt_new(t.path(), "test").unwrap());
+    assert_eq!(verdict(t.path()), "rust");
+    assert_eq!(
+        fs::read_to_string(t.path().join(".moai/project.yaml")).unwrap(),
+        "{}\n",
+        "the kept names stay as they were"
+    );
+    assert!(t.path().join(".moai/evals/e/case.json").is_file());
+    assert!(!state_root::adopt_new(t.path(), "test").unwrap(), "once");
 }

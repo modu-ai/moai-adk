@@ -924,6 +924,11 @@ enum Command {
     GoStatePlan {
         /// Project root carrying the Go `.moai/manifest.json`.
         project: PathBuf,
+        /// An earlier-root entry whose name also stands in `.moai/` beside the team's kept
+        /// names: move it into the backup area instead of leaving it (repeat for more). The
+        /// picks are part of the plan digest.
+        #[arg(long = "set-aside", value_name = "ENTRY")]
+        set_aside: Vec<String>,
     },
     /// Move a previewed Go-era .moai folder
     ///
@@ -937,6 +942,10 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+        /// The `--set-aside` picks the confirmed preview was made with; other picks make the
+        /// digest stale.
+        #[arg(long = "set-aside", value_name = "ENTRY")]
+        set_aside: Vec<String>,
     },
     /// Preview undoing a Go-era folder move
     ///
@@ -2091,18 +2100,20 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 other => other,
             }
         }
-        Command::GoStatePlan { project } => {
-            serde_json::to_value(moai_cli::go_state::plan(&project)?)
+        Command::GoStatePlan { project, set_aside } => {
+            serde_json::to_value(moai_cli::go_state::plan_with(&project, &set_aside)?)
                 .map_err(|_| "encode failed".into())
         }
         Command::GoStateApply {
             project,
             plan_digest,
             permission_reference,
-        } => serde_json::to_value(moai_cli::go_state::apply(
+            set_aside,
+        } => serde_json::to_value(moai_cli::go_state::apply_picked(
             &project,
             &plan_digest,
             &permission_reference,
+            &set_aside,
         )?)
         .map_err(|_| "encode failed".into()),
         Command::GoStateRevertPlan { project, backup } => {
