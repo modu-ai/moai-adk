@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261124-project-detect-monorepo
 title: "project-detect finds the sub-package manifests of a monorepo in any language, and a profile apply never drops recorded manifests unseen"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8296 of card C-256 (answers lane note 8295, 2026-11-24T06:46:32Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 2 at head c68d78dfb7 with D-5 and D-6 as written; recorded by the lane, not approved by it", digest: "sha256:254b58336e0c19df493e36ab21afc1eff565761931ee1a8445c5d087e638dc15"}
 ---
 
 # project-detect finds the sub-package manifests of a monorepo in any language, and a profile apply never drops recorded manifests unseen
