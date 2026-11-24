@@ -104,6 +104,7 @@ approval:
 - AC-4: met — `a_session_without_a_role_keeps_opus_and_medium`(새)와 `launcher_roleless` 의 roleless 시험들. 레거시 `session` 하위 명령은 런처 역할 세션이 아니어서 `opus`/`medium` 그대로예요(`role_paths_are_unchanged`).
 - AC-5: met — 낡은 기대 16개를 지우지 않고 표의 값으로 바꿨어요(`launcher_advisor_setting`, `launcher_agent_entry`, `launcher_agent_numbering`, `launcher_permissions_setting`, `launcher_reads_models`, `launcher_roleless`, `product_cli`). 한 가지 바뀐 행동: 에이전트 기본 모델이 sonnet 이라 advisor `sonnet` 이 더는 낮은 등급이 아니어서, 낮은 등급 거절 시험은 `cc -a --model opus` 로 물어요.
 - AC-6: met — `the_model_and_effort_help_names_the_default_table`(낡은 문구가 없고 `default table`·`role` 이 있음)와 `MOAI_HELP_GOLDEN_WRITE=1 cargo test --test help_layout` 로 다시 쓴 골든 네 파일(`all`·`all-60`·`all-80`·`all-dumb`)이 그 두 줄만 바뀐 것을 diff 로 읽었어요.
+- AC-7: met — 가벼운 검사 다섯 개를 이 Result 가 든 헤드에서 돌렸어요. `git diff --check`, `cargo fmt --check`, `cargo clippy --locked --offline --all-targets -- -D warnings` 는 `moai check affected` 의 `diff_check`·`fmt`·`clippy` 단계 exit 0 이고, `moai spec check` 는 errors 0·warnings 0, `moai trailer-check` 는 실패 0 이에요. 이 줄을 담은 커밋의 해시는 그 커밋 뒤에야 알 수 있어서 헤드 해시와 단계별 exit·로그 폴더는 READY 노트에 있어요. 첫 독립 감사(FAIL, 노트 8304)가 이 줄이 없다는 것(B1)과 `tests/launcher_reads_models.rs` 의 낡은 주석(N1)을 지적했고, 둘 다 이 수리에서 고쳤어요.
 
 증거 (이 가지에서 직접 돌린 것):
 

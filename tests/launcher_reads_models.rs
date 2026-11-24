@@ -217,9 +217,9 @@ fn without_a_saved_choice_nothing_changes() {
     let a = argv(&f.dry(&["cc", "-l"]));
     assert!(has_pair(&a, "--model", "claude-opus-5-5"), "{a:?}");
     assert!(has_pair(&a, "--effort", "high"), "{a:?}");
-    // A file that saves only an old codex value: it is ignored, so the claude and glm
-    // launches stay as they are (a glm role
-    // session without a saved glm entry keeps the alias default of `claude_argv`, D-4).
+    // A file that saves only an old codex value: it is ignored, so the claude and glm role
+    // launches stay what the default table gives them (a role session without a saved entry
+    // takes the table row of its host and role, `default_choice`).
     let bare = (argv(&f.dry(&["cc", "-a"])), argv(&f.dry(&["glm", "-l"])));
     f.config(
         r#"{"launcher":{"models":{"codex":{"leader":{"model":"gpt-6.1-sol","effort":"high"}}}}}"#,
