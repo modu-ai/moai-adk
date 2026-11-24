@@ -247,10 +247,7 @@ fn no_key_anywhere_names_the_vault_command() {
 fn other_hosts_report_no_key_source() {
     let h = home(false);
     store(h.path(), true, SHARED_KEY);
-    let out = bin(h.path())
-        .args(["cc", "--dry-run"])
-        .output()
-        .unwrap();
+    let out = bin(h.path()).args(["cc", "--dry-run"]).output().unwrap();
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     // The field is absent (not null): the recorded protocol shape of other hosts is unchanged.
     assert!(v.get("key_source").is_none(), "{v}");
