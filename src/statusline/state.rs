@@ -1770,7 +1770,10 @@ fn machine_day_start(now: i64) -> Option<i64> {
         tm.tm_sec = 0;
         tm.tm_isdst = -1;
         let start = libc::mktime(&mut tm);
-        (start != -1).then_some(i64::from(start))
+        // `time_t` is `i64` on 64-bit unix and `i32` on 32-bit unix: the widening is needed there.
+        #[allow(clippy::useless_conversion)]
+        let start = i64::from(start);
+        (start != -1).then_some(start)
     }
 }
 
