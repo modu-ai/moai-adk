@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261121-go-path-removal
 title: "moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement"
-status: draft
+status: approved
 revision: 6
 created: 2026-11-21
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8409 (2026-11-24T09:33:25Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8404 에 답함; 앞서 노트 8336 이 D-1~D-9 를, 노트 8341 이 D-10 을, 노트 8346 이 그 고침을 승인): 판 6(D-10·D-11 고침) 승인, head cba7d6b6bc; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:20ff9911bd79aaca9ca2117aa0efd747aac06c86c5427453fe25e60d52910517"
 ---
 
 # moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement
@@ -193,7 +198,7 @@ The product changes of revision 6 need none of these. Each is the user's own ste
 
 ## Decisions
 
-The decisions D-1 to D-9 were the lane's proposals for revision 6 and count from the leader's note of 2026-11-24T07:45:22Z. D-10 is the leader's decision on the amendment of REQ-22 and AC-19 (its note on the card, 2026-11-24T07:58:02Z), approved with that text by its digest. D-11 is the lane's amendment of AC-22, found while its test was written; the SPEC is a draft again until the amended text is approved by its digest.
+The decisions D-1 to D-9 were the lane's proposals for revision 6 and count from the leader's note of 2026-11-24T07:45:22Z. D-10 is the leader's decision on the amendment of REQ-22 and AC-19 (its note on the card, 2026-11-24T07:58:02Z), approved with that text by its digest. D-11 is the lane's amendment of AC-22, found while its test was written; the leader approved the amended text by its digest, and the frontmatter records that note.
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
