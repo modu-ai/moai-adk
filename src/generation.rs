@@ -489,6 +489,23 @@ fn link_on_path(root: &Path, rel: &str) -> Option<String> {
     None
 }
 
+/// The write step's re-check (SPEC-20261124-native-role-link-refusal REQ-6): a file of a kind that
+/// is written below `.claude/` is refused when a symbolic link appeared on its path after the plan.
+fn refuse_link_after_plan(root: &Path, kind: &str, path: &str) -> Result<()> {
+    let guarded = kind.starts_with("generation:project-skill:")
+        || kind.starts_with("generation:native-role:")
+        || kind.starts_with("generation:skill-projection:");
+    if !guarded {
+        return Ok(());
+    }
+    match link_on_path(root, path) {
+        Some(l) => Err(format!(
+            "conflict in {path}: {l} became a symbolic link after the plan; nothing more applied"
+        )),
+        None => Ok(()),
+    }
+}
+
 /// Where a project skill of `host` lives; `None` for a host this tool does not write.
 fn project_skill_path(host: &str, id: &str) -> Option<String> {
     match host {
@@ -766,18 +783,29 @@ fn plan_filtered(
     for role in &request.native_roles {
         let rel = format!(".claude/agents/moai/{}.md", role.role_id);
         let rendered = render_claude_role(role);
-        let current = fs::read(root.join(&rel)).ok();
+        // SPEC-20261124-native-role-link-refusal REQ-1: a link on the path is a conflict and is
+        // never read or written through, as for the project skills below.
+        let link = link_on_path(&root, &rel);
+        let current = if link.is_some() {
+            None
+        } else {
+            fs::read(root.join(&rel)).ok()
+        };
         let baseline = generation_baseline(&manifest, &rel);
         let rendered_digest = digest(rendered.as_bytes());
-        let action = three_way_action(
-            baseline.as_deref(),
-            current.as_deref().map(digest).as_deref(),
-            &rendered_digest,
-        );
-        let action = if action == "merge" && is_create(current.as_ref()) {
-            "create"
+        let action = if link.is_some() {
+            "conflict"
         } else {
-            action
+            let decided = three_way_action(
+                baseline.as_deref(),
+                current.as_deref().map(digest).as_deref(),
+                &rendered_digest,
+            );
+            if decided == "merge" && is_create(current.as_ref()) {
+                "create"
+            } else {
+                decided
+            }
         };
         files.push(GenerationFilePlan {
             path: rel,
@@ -791,7 +819,9 @@ fn plan_filtered(
                 "generation:native-role:{}:{}",
                 role.host, role.role_id
             )),
-            detail: None,
+            detail: link.map(|l| {
+                format!("{l} is a symbolic link; a native role file is never written through it")
+            }),
         });
     }
 
@@ -818,13 +848,20 @@ fn plan_filtered(
                 .parent()
                 .expect("projection parent")
                 .to_path_buf();
-            let current = fs::read(root.join(&rel)).ok();
+            // SPEC-20261124-native-role-link-refusal REQ-4: a link on the path is a conflict and
+            // is never read or written through, as for the project skills below.
+            let link = link_on_path(&root, &rel);
+            let current = if link.is_some() {
+                None
+            } else {
+                fs::read(root.join(&rel)).ok()
+            };
             let baseline = generation_baseline(&manifest, &rel);
             // REQ-03C-09: an existing skill directory without a recorded baseline is
             // a conflict — MoAI never claims a directory it did not project before.
             let unclaimed = baseline.is_none()
                 && (current.is_some() || fs::symlink_metadata(&dest_dir).is_ok());
-            let action = if unclaimed {
+            let action = if link.is_some() || unclaimed {
                 "conflict"
             } else {
                 let decided = three_way_action(
@@ -847,8 +884,15 @@ fn plan_filtered(
                 rendered_sha256: Some(rendered_digest.clone()),
                 source_refs: vec![p.source_url.clone()],
                 kind: Some(format!("generation:skill-projection:{}:{}", host, p.id)),
-                detail: unclaimed
-                    .then_some("existing skill directory without a manifest baseline".to_string()),
+                detail: match (&link, unclaimed) {
+                    (Some(l), _) => Some(format!(
+                        "{l} is a symbolic link; a skill projection is never written through it"
+                    )),
+                    (None, true) => {
+                        Some("existing skill directory without a manifest baseline".to_string())
+                    }
+                    (None, false) => None,
+                },
             });
         }
     }
@@ -1362,14 +1406,9 @@ pub fn generation_apply_in(
             if f.action == "unchanged" {
                 continue;
             }
-            if kind.starts_with("generation:project-skill:") {
-                if let Some(l) = link_on_path(root, &f.path) {
-                    return Err(format!(
-                        "conflict in {}: {l} became a symbolic link after the plan; nothing more applied",
-                        f.path
-                    ));
-                }
-            }
+            // A link that appeared after the plan stops the apply for every kind that writes a
+            // file below `.claude/` (SPEC-20261124-native-role-link-refusal REQ-6).
+            refuse_link_after_plan(root, kind, &f.path)?;
             if f.action == "remove" {
                 remove_owned(root, &request_id, f, &mut receipt)?;
                 continue;
@@ -1530,4 +1569,69 @@ pub fn generation_apply_in(
         "receipt": request_id,
         "agents_receipt": agents_result.get("receipt").cloned().unwrap_or(Value::Null),
     }))
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::refuse_link_after_plan;
+    use std::fs;
+    use tempfile::TempDir;
+
+    const KINDS: [(&str, &str); 3] = [
+        (
+            "generation:native-role:claude:prj-fixer",
+            ".claude/agents/moai/prj-fixer.md",
+        ),
+        (
+            "generation:skill-projection:claude:ref-b",
+            ".claude/skills/ref-b/SKILL.md",
+        ),
+        (
+            "generation:project-skill:claude:prj-checks",
+            ".claude/skills/prj-checks/SKILL.md",
+        ),
+    ];
+
+    /// SPEC-20261124-native-role-link-refusal AC-6 (REQ-6): the write step's re-check names the
+    /// file, the link and the words `symbolic link` for every kind it guards, for a link on a
+    /// folder above the file and for the file itself, and it lets a path without a link and a
+    /// kind it does not guard through.
+    #[test]
+    fn a_link_after_the_plan_stops_the_write_step() {
+        for (kind, path) in KINDS {
+            let root = TempDir::new().unwrap();
+            assert_eq!(
+                refuse_link_after_plan(root.path(), kind, path),
+                Ok(()),
+                "{kind}: a path without a link is let through"
+            );
+
+            let outside = TempDir::new().unwrap();
+            std::os::unix::fs::symlink(outside.path(), root.path().join(".claude")).unwrap();
+            let err = refuse_link_after_plan(root.path(), kind, path)
+                .expect_err(&format!("{kind}: a linked folder is refused"));
+            assert!(
+                err.contains(path) && err.contains(".claude") && err.contains("symbolic link"),
+                "{kind}: {err}"
+            );
+            assert_eq!(
+                refuse_link_after_plan(root.path(), "generation:workflow:review-flow", path),
+                Ok(()),
+                "{kind}: a kind the step does not guard is let through"
+            );
+
+            let root = TempDir::new().unwrap();
+            let file = root.path().join(path);
+            fs::create_dir_all(file.parent().unwrap()).unwrap();
+            let target = outside.path().join("target.md");
+            fs::write(&target, "outside\n").unwrap();
+            std::os::unix::fs::symlink(&target, &file).unwrap();
+            let err = refuse_link_after_plan(root.path(), kind, path)
+                .expect_err(&format!("{kind}: a linked file is refused"));
+            assert!(
+                err.contains(path) && err.contains("symbolic link"),
+                "{kind}: {err}"
+            );
+        }
+    }
 }
