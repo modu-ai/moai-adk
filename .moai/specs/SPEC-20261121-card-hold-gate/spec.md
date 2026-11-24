@@ -94,4 +94,27 @@ HOLD 와 선행 조건이 자유 글에만 있으면 레인은 카드를 잡고 
 
 ## Result
 
-(구현 뒤에 적어요.)
+판 2(승인 노트 8280)를 구현했어요. 가지 `spec/card-hold-gate-20261121`, 이 가지를 자른 NeXT 팁 `c99df246a1`(그 뒤로 팁이 움직였지만 쫓지 않았어요). 2026-11-24, 다른 레인의 부하가 큰 Mac(load 60~100)에서 `moai heavy-slot-acquire --name card-hold-gate --max 3` 안에서 돌렸어요. 같은 head 의 `moai check affected` 영수증은 이 글이 아니라 READY 노트에 있어요.
+
+- 구현: `src/ledger/workflow.rs`(`current_hold`·`unfinished_prerequisites`·`hold`·`unhold`·`add_prerequisite`, `SkipReason::Hold`·`Prerequisite`, `next_filled` 가 둘을 `empty_scope` 보다 먼저 봐요), `src/card/dispatch.rs`(`hold_gate_refusal`: `take` 가 예약 앞에서 거절), `src/card/work.rs`(`hold`·`unhold`·`prereq` 와 `next` 의 `category`·`hold_reason`·`needs`), `src/card/command.rs`(`card show` 의 `hold`·`prerequisites`), `src/card/hold_candidates.rs`(`card hold-candidates`), `src/ops/card.rs`(네 명령), 운영 문서 `card.md`(네 행과 `next` 행), `skills/moai/workflows/work.md` 와 매니페스트.
+- 판 1 과 다른 점(숨기지 않아요): (1) 레인 시작 안내는 `mode-agent.md` 가 없어져 `skills/moai/workflows/work.md` 의 take 단계에 넣었어요. (2) 카드 하위 명령은 도움말 표(`src/help.rs`)에 없어요(`fold`·`withdraw` 도 없어요) — `help_table_names_every_command_once` 는 최상위 명령만 보므로 도움말 행·골든은 바꿀 것이 없었고 `src/help.rs`·`tests/fixtures/help` 는 건드리지 않았어요(C-242 와 겹치지 않아요). (3) `take` 의 거절은 `reservation.rs` 가 아니라 `dispatch.rs` 에 있어요: `ReserveError` 에 변형을 더하면 `tests/ledger_reservation.rs` 의 빠짐없는 `match` 가 깨지는데 그 파일은 범위 밖이에요. 그래서 검사와 예약 사이(두 트랜잭션)에 누가 HOLD 를 쓰면 그 한 번은 지나가요 — `no_criteria` 검사와 같은 틈이에요. (4) 선행 조건의 순환은 두 카드 짝만 막아요(SPEC REQ-5 그대로; 세 카드 이상의 고리는 잡지 않아요).
+- 새 시험 `tests/card_hold_gate_cli.rs` 14개와 `src/card/hold_candidates.rs` 단위 시험 2개가 통과했어요(`cargo nextest run --locked --offline --test card_hold_gate_cli --bin moai-cli ...` 슬롯 안, exit 0, 75 passed 에 이웃 `source_manifest_facts`·`card_cli`·`card_next_skip_reason_cli` 포함). 이웃 148개(`card_next_skip_reason_cli`·`card_needs_criteria_cli`·`card_show_notes_cli`·`card_cli`·`card_dispatch_cli`·`card_fold_cli`·`card_withdraw_cli`·`ledger_workflow` + 단위) 통과, `help_layout` 11개 통과.
+- AC-6 가드 뮤턴트(S1 코드 head `6ca0858053` 에서, 하나씩 적용 확인 → 시험 → `git checkout --` 로 복원, 복원 뒤 `git diff --quiet`): 모두 `cargo nextest run --test card_hold_gate_cli` exit 100.
+
+  | 뮤턴트 | 지운 것 | 빨개진 시험 |
+  |---|---|---|
+  | A | `next` 가 HOLD 를 안 봄(`current_hold` 자리에 `None`) | `next_skips_a_held_card_with_its_category_and_reason` 외 둘(6개 실패) |
+  | B | `next` 가 선행 조건을 안 봄 | `next_skips_a_card_whose_prerequisite_is_not_done_and_offers_it_when_it_is`(2개) |
+  | C | 끝난(`done`) 선행 카드도 계속 막음(`c.state <> 'nothing'`) | 같은 시험, `show_carries_the_hold_and_the_unfinished_prerequisites`, `take_refuses_a_held_card_and_a_card_with_an_open_prerequisite_and_writes_nothing`(6개) |
+  | D | `hold_gate_refusal` 이 항상 `None` | `take_refuses_…_and_writes_nothing`, `nothing_but_unhold_lifts_a_hold_and_free_text_changes_nothing`(4개) |
+  | E | 두 카드 순환 거절을 끔 | `a_prerequisite_is_added_once_and_refuses_a_self_need_and_a_two_card_cycle`(2개) |
+  | F | `card.unhold` 를 무시함(`kind != "card.hold"` 를 끔) | `take_refuses_…`, `unhold_appends_its_event_and_the_card_is_offered_again`(4개) |
+
+- AC-1: met — `a_ready_card_takes_a_hold_of_each_category_and_the_event_keeps_the_fields`, `a_hold_is_refused_for_a_bad_category_a_taken_card_and_a_card_already_on_hold`, `unhold_appends_its_event_and_the_card_is_offered_again`, `nothing_but_unhold_lifts_a_hold_and_free_text_changes_nothing`, `card_hold_takes_each_category_and_refuses_a_bad_one_writing_nothing`, `card_unhold_lifts_only_a_hold_in_force_and_the_card_is_offered_again` 통과. 한 가지 더 정했어요: 이미 HOLD 인 카드에 `card hold` 를 또 부르면 거절해요(사건을 늘리지 않아요).
+- AC-2: met — `a_prerequisite_is_added_once_and_refuses_a_self_need_and_a_two_card_cycle`, `card_prereq_adds_one_link_once_and_refuses_a_self_need_and_a_cycle`, `next_skips_a_card_whose_prerequisite_is_not_done_and_offers_it_when_it_is` 통과.
+- AC-3: met — `next_skips_a_held_card_with_its_category_and_reason`, `take_refuses_a_held_card_and_a_card_with_an_open_prerequisite_and_writes_nothing`(HOME 폴더 스냅샷이 같고 예약 행 0) 통과.
+- AC-4: met — `show_carries_the_hold_and_the_unfinished_prerequisites` 통과.
+- AC-5: met — `guidance_tells_a_lane_to_read_hold_and_prerequisites_before_it_creates_a_worktree` 통과, 매니페스트는 `tools/source_manifest.py write` 로 다시 만들었어요(`check` 는 `moai check affected` 의 단계로 돌아요), `help_layout` 11개와 `help_table_names_every_command_once`(bin 시험 안) 통과. 도움말 행·골든은 위 (2) 때문에 바꿀 것이 없었어요.
+- AC-5b: met — `hold_candidates_lists_free_text_holds_read_only_until_a_person_moves_one` 통과(HOME 스냅샷이 같고, 사람이 `card hold` 를 부른 뒤에만 목록과 `ready` 에서 빠져요).
+- AC-6: met — 위 표(뮤턴트 여섯, 모두 복원).
+- 틈(후속으로 남겨요): 뮤턴트는 S1 코드(원장·`next`·`take`)에만 돌렸고 `hold_candidates.rs` 의 낱말 일치와 명령 포장 함수(`hold`·`unhold`·`prereq`)는 뮤턴트를 돌리지 않았어요(AC-6 은 여섯 이하). 세 카드 이상의 선행 고리, 틈 (3). `card scope` 사건의 `--by` 에 `leader` 를 적었어요(리더 노트 8280 의 위임이고, 사건은 이 세션 id 도 남겨요).
