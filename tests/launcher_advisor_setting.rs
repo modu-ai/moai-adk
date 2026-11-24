@@ -127,25 +127,49 @@ fn number_store(f: &Fixture) -> std::path::PathBuf {
 /// (role index 0 = `-l`, 1 = `-a`, 2 = none).
 fn plain(host: &str, role: usize) -> Vec<&'static str> {
     match (host, role) {
-        ("cc" | "glm", 0) => vec![
+        // A role session with nothing saved starts with the default table
+        // (SPEC-20261121-model-defaults-one-table): the glm host takes the id without `zai/`.
+        ("cc", 0) => vec![
             "claude",
             "--name",
             "leader",
             "--model",
-            "opus",
+            "claude-opus-5-5",
             "--effort",
-            "medium",
+            "high",
             "--permission-mode",
             "auto",
         ],
-        ("cc" | "glm", 1) => vec![
+        ("glm", 0) => vec![
+            "claude",
+            "--name",
+            "leader",
+            "--model",
+            "glm-5.4[1m]",
+            "--effort",
+            "high",
+            "--permission-mode",
+            "auto",
+        ],
+        ("cc", 1) => vec![
             "claude",
             "--name",
             "agent-1",
             "--model",
-            "opus",
+            "claude-sonnet-5-5",
             "--effort",
-            "medium",
+            "high",
+            "--permission-mode",
+            "auto",
+        ],
+        ("glm", 1) => vec![
+            "claude",
+            "--name",
+            "agent-1",
+            "--model",
+            "glm-5.3-flash",
+            "--effort",
+            "max",
             "--permission-mode",
             "auto",
         ],
@@ -170,9 +194,9 @@ fn with_advisor(role: usize, advisor: &'static str) -> Vec<&'static str> {
             "--name",
             "leader",
             "--model",
-            "opus",
+            "claude-opus-5-5",
             "--effort",
-            "medium",
+            "high",
             "--advisor",
             advisor,
             "--permission-mode",
@@ -183,9 +207,9 @@ fn with_advisor(role: usize, advisor: &'static str) -> Vec<&'static str> {
             "--name",
             "agent-1",
             "--model",
-            "opus",
+            "claude-sonnet-5-5",
             "--effort",
-            "medium",
+            "high",
             "--advisor",
             advisor,
             "--permission-mode",
@@ -311,9 +335,9 @@ fn cli_and_setting_enable_the_advisor_with_cli_precedence() {
             "--name",
             "leader",
             "--model",
-            "opus",
+            "claude-opus-5-5",
             "--effort",
-            "medium",
+            "high",
             "--advisor",
             "fable"
         ]
@@ -375,11 +399,17 @@ fn invalid_setting_is_refused_without_host_or_number() {
 fn lower_ranked_setting_is_refused_before_numbering() {
     let f = fixture();
     config(f.home.path(), r#"{"launcher":{"advisor":"sonnet"}}"#);
-    let stderr = rejected(&command(&f, &["cc", "-a"]).output().unwrap());
+    // The agent default model is sonnet (the default table), which the sonnet advisor does not
+    // rank below, so the refusal is asked for with an opus main model.
+    let stderr = rejected(
+        &command(&f, &["cc", "-a", "--model", "opus"])
+            .output()
+            .unwrap(),
+    );
     assert!(stderr.contains("rank"), "{stderr}");
     assert!(!host_started(&f));
     assert!(!number_store(&f).exists());
-    // A lower main model makes the same setting valid.
+    // A lower main model makes the same setting valid; the effort is the table's for a leader.
     let v = dry(&f, &["cc", "-l", "--model", "sonnet"]);
     assert_eq!(
         argv(&v),
@@ -390,7 +420,7 @@ fn lower_ranked_setting_is_refused_before_numbering() {
             "--model",
             "sonnet",
             "--effort",
-            "medium",
+            "high",
             "--advisor",
             "sonnet",
             "--permission-mode",

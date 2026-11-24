@@ -105,15 +105,25 @@ fn dry(project: &Path, home: &Path, args: &[&str]) -> Value {
 }
 
 // Literal complete host argv snapshots: order and defaults are part of the contract. Both hosts
-// start the same Claude Code argv (glm differs only by its environment).
-fn expected(role: usize, mode: Mode) -> Vec<&'static str> {
+// start the same Claude Code argv shape (glm differs by its environment and by the model of the
+// default table). A role session with nothing saved starts with the default table
+// (SPEC-20261121-model-defaults-one-table); a session without a role keeps opus/medium.
+fn expected(host: &str, role: usize, mode: Mode) -> Vec<&'static str> {
     let mut argv = match role {
         0 => vec!["claude", "--name", "leader"],
         1 => vec!["claude", "--name", "agent-1"],
         2 => vec!["claude"],
         _ => unreachable!(),
     };
-    argv.extend(["--model", "opus", "--effort", "medium"]);
+    let (model, effort) = match (host, role) {
+        ("cc", 0) => ("claude-opus-5-5", "high"),
+        ("cc", 1) => ("claude-sonnet-5-5", "high"),
+        ("glm", 0) => ("glm-5.4[1m]", "high"),
+        ("glm", 1) => ("glm-5.3-flash", "max"),
+        (_, 2) => ("opus", "medium"),
+        _ => unreachable!(),
+    };
+    argv.extend(["--model", model, "--effort", effort]);
     match mode {
         Mode::Auto => argv.extend(["--permission-mode", "auto"]),
         Mode::Full => argv.push("--dangerously-skip-permissions"),
@@ -144,7 +154,7 @@ fn access_matrix_and_cli_precedence_preserve_complete_host_argv() {
                     let v = dry(p.path(), home.path(), &args);
                     assert_eq!(
                         v["argv"],
-                        serde_json::json!(expected(role, mode_of(setting, cli))),
+                        serde_json::json!(expected(host, role, mode_of(setting, cli))),
                         "{args:?} {setting:?}"
                     );
                 }
@@ -269,7 +279,7 @@ fn project_setting_cannot_override_either_user_setting() {
                     args.extend_from_slice(flags);
                     assert_eq!(
                         dry(p.path(), home.path(), &args)["argv"],
-                        serde_json::json!(expected(role, mode_of(Some(user), false)))
+                        serde_json::json!(expected(host, role, mode_of(Some(user), false)))
                     );
                 }
             }
@@ -354,12 +364,12 @@ fn legacy_top_level_roles_use_the_same_access_resolution() {
         );
         assert_eq!(
             dry(p.path(), home.path(), &["-l"])["argv"],
-            serde_json::json!(expected(0, mode_of(Some(setting), false)))
+            serde_json::json!(expected("cc", 0, mode_of(Some(setting), false)))
         );
         for host in HOSTS {
             assert_eq!(
                 dry(p.path(), home.path(), &["-a", host])["argv"],
-                serde_json::json!(expected(1, mode_of(Some(setting), false)))
+                serde_json::json!(expected(host, 1, mode_of(Some(setting), false)))
             );
         }
     }

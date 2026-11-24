@@ -34,6 +34,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 - Write scope: only the paths in `scope`, inside the worktree you were given. Never touch the real HOME, keys, global settings or another worktree; your builds stay in your own worktree's build folder (`workflows/run.md`, "Check-run rules").
 - Tools: read, search, edit, and run the project's own build and test commands. Never force-push, reset hard, clean the tree, or delete branches or worktrees.
 - Do not commit, push, or open a pull request unless the task says so.
+- Development-support scripts: a script this task newly creates for the project (a check runner, a fixture generator) goes under `.moai/tools/`; a file that already exists stays where it is.
 - Cleanup: when the checks are done and your result is written, delete the build output you made in your own worktree (for example `target/debug`, `target/tmp`) and nothing else. Run the delete from inside your own worktree with a relative path, `rm -rf target/debug`. Never pass an absolute path: the project's deny rules refuse every recursive delete by absolute path, and the refusal message does not say why. Keep logs and evidence folders until the parent has read your result. If a delete fails, do not retry in another form; report the path and its size under `Cleanup`. Your builds go to your worktree's own build folder (for cargo, `target/`), with `CARGO_INCREMENTAL=0`; the delete above empties it and never deletes evidence.
 
 ## Steps
@@ -42,6 +43,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 2. Make the smallest change that does the task. Follow the style of the file you edit. Where the change leaves something a later reader must know, add a `@cc:` comment of the fitting kind (`@cc:later`, `@cc:careful` or `@cc:proves`); tools link it automatically.
 3. Run the checks the task or the refs name for this change. Record each command and its exit code.
 4. Do not commit, push, or open a pull request unless the task says so.
+5. When the task says to commit, end each commit message with the trailers that `moai trailers --spec <SPEC id> --verified <kinds>` prints, and name in `Moai-Verified` only the kinds of check you ran (`tests`, `mutants`, `e2e`, `smoke`), and `none` when no check ran.
 
 ## Verification
 

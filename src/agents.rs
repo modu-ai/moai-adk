@@ -64,9 +64,22 @@ pub struct AgentsRequest {
 /// `agents-merge-apply`), which writes the block together with the copied text. The writer alone
 /// never carries it out: a `CLAUDE.md` that held only the block would stop Claude Code reading the
 /// `AGENTS.md` of the project, so a direct request that picks it plans no `CLAUDE.md` and says so.
+/// `harness-only` leaves every file this engine owns as it is, so a request for project agents
+/// and skills alone is not held up by a hand-edited managed file
+/// (SPEC-20261120-project-harness-research, revision 2). Its name belongs to the request file,
+/// never to a question or an option shown to the user.
 /// `personal-file` creates `CLAUDE.local.md` once. The earlier picks `import` and `claude-import`
 /// are gone: they are refused like any unknown id, and no code reads them by name.
-pub const PICKS: [&str; 4] = ["append-managed", "skip-conflicts", "move", "personal-file"];
+pub const PICKS: [&str; 5] = [
+    "append-managed",
+    "skip-conflicts",
+    "move",
+    "personal-file",
+    HARNESS_ONLY,
+];
+
+/// The pick that plans every file of this engine as `skip` (see [`PICKS`]).
+pub(crate) const HARNESS_ONLY: &str = "harness-only";
 
 fn picked(r: &AgentsRequest, id: &str) -> bool {
     r.picks.iter().any(|p| p == id)
@@ -388,7 +401,7 @@ fn writing_line(p: &Profile, ui: &str, root: &Path) -> Option<String> {
 
 /// The managed block of `CLAUDE.md`: facts only, within [`BLOCK_MAX_LINES`] lines (REQ-3): the
 /// project id, the tools, the check command, the language, the versioning line, the flow with its
-/// integration branch, and the places of SPECs and cards. What to do and how to decide is the
+/// integration branch, and the places of SPECs, cards and project scripts. What to do and how to decide is the
 /// flow rule's and the skills' to say, and those live in the config folder, not in the block.
 fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path) -> String {
     let (begin, end) = markers(AGENTS_SECTION, "html");
@@ -403,6 +416,8 @@ fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path) -> String {
         .map(|v| crate::versioning::render_line(v, lang))
         .unwrap_or_default();
     let specs = format!("{}/specs/", state_root::dir(root));
+    // The place for the project's own development scripts (SPEC-20261120-moai-layout REQ-15).
+    let scripts = format!("{}/tools/", state_root::dir(root));
     let flow = p
         .work_flow
         .as_ref()
@@ -421,7 +436,8 @@ fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path) -> String {
 프로젝트 `{id}` · 도구: {tools}.\n\
 검사: `moai check affected`.\n\
 {writing}{versioning}{flow}\
-SPEC: `{specs}` · 카드: `moai card list`.\n",
+SPEC: `{specs}` · 카드: `moai card list`.\n\
+프로젝트 스크립트: `{scripts}`.\n",
             id = p.project_id,
         )
     } else {
@@ -430,7 +446,8 @@ SPEC: `{specs}` · 카드: `moai card list`.\n",
 Project `{id}` · tools: {tools}.\n\
 Checks: `moai check affected`.\n\
 {writing}{versioning}{flow}\
-SPECs: `{specs}` · cards: `moai card list`.\n",
+SPECs: `{specs}` · cards: `moai card list`.\n\
+Project scripts: `{scripts}`.\n",
             id = p.project_id,
         )
     };
@@ -487,10 +504,11 @@ const STATE_KEPT: [&str; 11] = crate::state_root::KEPT;
 
 /// File names that never go to git anywhere under the state folder, `tools/` and `evals/`
 /// included (SPEC-20261120-moai-layout REQ-11): the credential files of an earlier generation's
-/// template and the `.env` family. The lines come after the allow-list, so an allow line cannot
-/// lift them.
-const STATE_SECRETS: [&str; 4] = [
+/// template, `credentials.json` and the `.env` family. The lines come after the allow-list, so an
+/// allow line cannot lift them.
+const STATE_SECRETS: [&str; 5] = [
     "**/credentials.yaml",
+    "**/credentials.json",
     "**/*.credentials",
     "**/.env",
     "**/.env.*",
@@ -615,7 +633,7 @@ fn ignore_block(root: &Path, list_local: bool, ignore_text: Option<&str>) -> Res
             asked.push(path.clone());
         }
     }
-    let hits = user_rule_hits(root, &user, &asked, &mut notes)?;
+    let hits = user_rule_hits(root, &user, &asked, &[], &mut notes)?;
     let mut shown: Vec<String> = Vec::new();
     for h in &hits {
         let line = match moved.iter().find(|(_, path)| *path == h.path) {
@@ -682,8 +700,10 @@ fn block_lists(text: &str, name: &str) -> bool {
 /// block lets git see. Git lists the ignored files; the same throw-away repository that reads
 /// the user's rules (`user_rule_hits`) is asked again with the new block after them, so a file
 /// the block's credential lines or a user rule still ignore is not named. At most
-/// [`VISIBLE_NOTE_CAP`] paths are named, then one line counts the rest. Empty when the project is
-/// not a git repository, git is not installed (noted), or nothing is ignored there.
+/// [`VISIBLE_NOTE_CAP`] paths are named, then one line counts the rest. A file below the folder of
+/// a `.gitignore` the plan did not read ([`nested_ignore_files`]) is named whatever the rules that
+/// were read say about it: that file may take the file back with a `!` rule (REQ-18). Empty when
+/// the project is not a git repository, git is not installed (noted), or nothing is ignored there.
 fn newly_visible(
     root: &Path,
     state: &str,
@@ -722,11 +742,14 @@ fn newly_visible(
         return Ok(Vec::new());
     }
     let with_block = format!("{user}\n{rendered}");
+    let nested = nested_ignore_files(root, state, notes)?;
     let mut scratch: Vec<String> = Vec::new();
-    let hits = user_rule_hits(root, &with_block, &candidates, &mut scratch)?;
+    let hits = user_rule_hits(root, &with_block, &candidates, &nested.read, &mut scratch)?;
     let visible: Vec<&String> = candidates
         .iter()
-        .filter(|c| !hits.iter().any(|h| h.path == **c))
+        .filter(|c| {
+            nested.unread.iter().any(|dir| is_below(c, dir)) || !hits.iter().any(|h| h.path == **c)
+        })
         .collect();
     let mut lines: Vec<String> = visible
         .iter()
@@ -740,6 +763,131 @@ fn newly_visible(
         ));
     }
     Ok(lines)
+}
+
+/// How many nested `.gitignore` files `newly_visible` reads, and the size past which one is not.
+const NESTED_IGNORE_CAP: usize = 100;
+const NESTED_IGNORE_MAX_BYTES: u64 = 64 * 1024;
+
+/// The nested `.gitignore` files `newly_visible` found: the ones it read, and the folders of the
+/// ones it did not.
+struct NestedIgnores {
+    /// `(path from the project root, bytes)` of each file read.
+    read: Vec<(String, Vec<u8>)>,
+    /// The folder (path from the project root) of each file not read.
+    unread: Vec<String>,
+}
+
+/// `true` when `path` lies below the folder `dir` (both paths from the project root).
+fn is_below(path: &str, dir: &str) -> bool {
+    path.strip_prefix(dir)
+        .is_some_and(|rest| rest.starts_with('/'))
+}
+
+/// The bytes of the `.gitignore` at `rel` (a path from the project root), or `None` when the plan
+/// must not read it: a path piece that is not a plain name, a link anywhere on the path (a linked
+/// parent folder as well as a linked file, so nothing outside the project is read through it), a
+/// file that is not a regular file, one larger than [`NESTED_IGNORE_MAX_BYTES`], or one that cannot
+/// be read.
+fn read_nested_ignore(root: &Path, rel: &str) -> Option<Vec<u8>> {
+    use std::io::Read;
+    let mut at = root.to_path_buf();
+    let mut len = 0;
+    let mut is_file = false;
+    for piece in Path::new(rel).components() {
+        let std::path::Component::Normal(name) = piece else {
+            return None;
+        };
+        at.push(name);
+        let meta = std::fs::symlink_metadata(&at).ok()?;
+        if meta.file_type().is_symlink() {
+            return None;
+        }
+        len = meta.len();
+        is_file = meta.is_file();
+    }
+    if !is_file || len > NESTED_IGNORE_MAX_BYTES {
+        return None;
+    }
+    // The size can change between the check and the read: read one byte past the limit and refuse.
+    let mut bytes = Vec::new();
+    std::fs::File::open(&at)
+        .ok()?
+        .take(NESTED_IGNORE_MAX_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    (bytes.len() as u64 <= NESTED_IGNORE_MAX_BYTES).then_some(bytes)
+}
+
+/// The `.gitignore` files the project keeps under its state folder (the folder itself, `tools/`
+/// and `evals/`, tracked or not), so the question "would this file still be ignored" is asked with
+/// the rules git would read there (SPEC-20261120-moai-layout REQ-17). The first
+/// [`NESTED_IGNORE_CAP`] in path order are read unless [`read_nested_ignore`] refuses them (a link
+/// on the path, larger than [`NESTED_IGNORE_MAX_BYTES`], unreadable). A file not read is not
+/// guessed at: its folder goes to `unread`, so every file below it is named as now visible whatever
+/// the rules that were read say, because the unread file may take it back with a `!` rule
+/// (REQ-18). The plan says so once.
+fn nested_ignore_files(root: &Path, state: &str, notes: &mut Vec<String>) -> Result<NestedIgnores> {
+    let own = format!("{state}/.gitignore");
+    let tools = format!("{state}/tools");
+    let evals = format!("{state}/evals");
+    let Some(stdout) = ask_project(
+        root,
+        &[
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--",
+            own.as_str(),
+            tools.as_str(),
+            evals.as_str(),
+        ],
+        "which .gitignore files sit under the state folder",
+        notes,
+    )?
+    else {
+        return Ok(NestedIgnores {
+            read: Vec::new(),
+            unread: Vec::new(),
+        });
+    };
+    let mut names: Vec<&str> = Vec::new();
+    for path in stdout.split(|b| *b == 0).filter(|p| !p.is_empty()) {
+        let path = std::str::from_utf8(path).map_err(|_| {
+            format!("git lists a name under {tools}/ or {evals}/ that is not UTF-8 text; rename it before the update")
+        })?;
+        if path == own || path.ends_with("/.gitignore") {
+            names.push(path);
+        }
+    }
+    names.sort_unstable();
+    names.dedup();
+    let mut found = NestedIgnores {
+        read: Vec::new(),
+        unread: Vec::new(),
+    };
+    for (at, path) in names.into_iter().enumerate() {
+        let bytes = if at < NESTED_IGNORE_CAP {
+            read_nested_ignore(root, path)
+        } else {
+            None
+        };
+        match bytes {
+            Some(bytes) => found.read.push((path.to_string(), bytes)),
+            None => {
+                let dir = path.rsplit_once('/').map_or("", |(dir, _)| dir);
+                found.unread.push(dir.to_string());
+            }
+        }
+    }
+    if !found.unread.is_empty() {
+        let note = "a .gitignore under the state folder was not read (a link or behind a link, larger than 64 KiB, unreadable or past the first 100); the files below its folder are listed as now visible";
+        if !notes.iter().any(|n| n == note) {
+            notes.push(note.to_string());
+        }
+    }
+    Ok(found)
 }
 
 /// The part of a `.gitignore` the user wrote: its text outside this tool's managed block. A
@@ -955,6 +1103,7 @@ fn user_rule_hits(
     root: &Path,
     user_rules: &str,
     paths: &[String],
+    nested: &[(String, Vec<u8>)],
     notes: &mut Vec<String>,
 ) -> Result<Vec<RuleHit>> {
     let (global_path, global_text) = global_excludes(root, notes)?;
@@ -972,6 +1121,16 @@ fn user_rule_hits(
         .map_err(|_| "temporary folder unavailable".to_string())?;
     std::fs::write(dir.join(".gitignore"), user_rules)
         .map_err(|_| "temporary folder unavailable".to_string())?;
+    // The project's own nested `.gitignore` files stand at the same relative paths, so git reads
+    // them for the paths below them as it would in the project.
+    for (rel, bytes) in nested {
+        let target = dir.join(rel);
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|_| "temporary folder unavailable".to_string())?;
+        }
+        std::fs::write(&target, bytes).map_err(|_| "temporary folder unavailable".to_string())?;
+    }
     if !git_output(dir, &["init", "-q"], b"")?.status.success() {
         return Err(unavailable.into());
     }
@@ -1021,6 +1180,8 @@ fn user_rule_hits(
             ".gitignore".to_string()
         } else if source.replace('\\', "/").ends_with("info/exclude") {
             ".git/info/exclude".to_string()
+        } else if nested.iter().any(|(rel, _)| rel == source) {
+            source.to_string()
         } else {
             global_path
                 .as_deref()
@@ -1195,6 +1356,8 @@ pub(crate) const BLOCK_MISSING: &str = "managed block missing or removed; baseli
 const APPEND_PICKED: &str =
     "append-managed picked: the managed section is added at the end; every other byte is kept";
 const SKIP_PICKED: &str = "skip-conflicts picked: the file is kept as it is";
+const HARNESS_ONLY_PICKED: &str =
+    "the request is for project agents and skills alone: the file is kept as it is";
 
 /// Three-way plan of one managed file. Exposed (Issue #1989, 5b) so 03-C's
 /// `generation.rs` can call the engine per `FileKind` instead of reimplementing it.
@@ -1761,6 +1924,15 @@ pub(crate) fn agents_plan_for(
         warnings.extend(crate::agents_local_merge::hidden_files_warning_except(
             &root, creating, carried,
         ));
+    }
+
+    // `harness-only`: the request is for project agents and skills alone, so no file of this
+    // engine is written, whether it would be created, merged or in conflict.
+    if picked(&request, HARNESS_ONLY) {
+        for f in files.iter_mut().filter(|f| f.action != "unchanged") {
+            f.action = "skip".into();
+            f.detail = Some(HARNESS_ONLY_PICKED.into());
+        }
     }
 
     // `skip-conflicts`: a conflicting file is left as it is and the rest of the plan applies.
@@ -2374,6 +2546,55 @@ mod tests {
         assert!(!injects_markers(&calver, &request("en")));
         let breaking = with(json!({"scheme": "custom", "format": "x --> y"}));
         assert!(injects_markers(&breaking, &request("en")));
+    }
+
+    /// SPEC-20261120-moai-layout REQ-15: the managed block names the state folder's `tools/` on one
+    /// line as the place for the project's development scripts, in both instruction languages, and
+    /// never names `scripts/` or the project root for them. Even a block with every optional line
+    /// (versioning, work flow) stays within `BLOCK_MAX_LINES`.
+    #[test]
+    fn the_block_names_the_tools_folder_for_project_scripts() {
+        let root = tempfile::TempDir::new().unwrap();
+        let profile: Profile = serde_json::from_value(json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
+            "versioning": {"scheme": "calver", "format": "YYYY.0M.MICRO"},
+            "work_flow": {"flow": "next-flow", "integration_branch": "NeXT"}
+        }))
+        .expect("the profile takes the optional lines");
+        let request = |language: &str| AgentsRequest {
+            protocol_version: 1,
+            language: language.into(),
+            workflow_reference: "skills/moai/workflows/".into(),
+            local_file: "none".into(),
+            picks: Vec::new(),
+        };
+        let tools = format!("{}/tools/", state_root::dir(root.path()));
+        for language in ["en", "ko"] {
+            let text = render_agents(&profile, &request(language), root.path());
+            let named: Vec<&str> = text.lines().filter(|l| l.contains(&tools)).collect();
+            assert_eq!(named.len(), 1, "{language}: {text}");
+            for banned in ["scripts/", "project root", "프로젝트 루트"] {
+                assert!(!text.contains(banned), "{language} names {banned}: {text}");
+            }
+            assert!(text.lines().count() - 2 <= BLOCK_MAX_LINES, "{text}");
+        }
+        assert!(render_agents(&profile, &request("en"), root.path())
+            .contains(&format!("Project scripts: `{tools}`.\n")));
+        assert!(render_agents(&profile, &request("ko"), root.path())
+            .contains(&format!("프로젝트 스크립트: `{tools}`.\n")));
+    }
+
+    /// SPEC-20261120-moai-layout REQ-16: the `moai-impl` agent definition puts the development
+    /// scripts a task creates under `.moai/tools/` and names neither `scripts/` nor the project
+    /// root for them.
+    #[test]
+    fn the_impl_agent_names_the_tools_folder_for_project_scripts() {
+        let text = include_str!("../agents/impl.md");
+        assert_eq!(text.matches(".moai/tools/").count(), 1, "{text}");
+        for banned in ["scripts/", "project root", "프로젝트 루트"] {
+            assert!(!text.contains(banned), "impl.md names {banned}");
+        }
     }
 
     /// #2123: the manifest's before-bytes backup fails (its backup directory is
