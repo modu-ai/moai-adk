@@ -16,6 +16,28 @@ pub struct Args {
 }
 
 #[derive(clap::Subcommand)]
+enum OrchestrateAction {
+    /// Reads the ledger only. Print the plan of one round; nothing is sent, started or landed
+    ///
+    /// Reads the ledger only. Prints `window`, `lanes`, `actions` (`clear`, `dispatch`, `audit`,
+    /// `blocked`, each with a stable `key`), `land_queue`, `attention` and `host`. Two plans of
+    /// an unchanged ledger and registry are equal. `--agents-json` reads a file in the shape of
+    /// `claude agents --json`; without it the host is `not_read`. A project without a ledger has
+    /// an empty plan (`ledger: "absent"`, exit 0) and nothing is created.
+    Plan {
+        /// The project folder (its profile holds the project id).
+        #[arg(default_value = ".")]
+        project: PathBuf,
+        /// A file in the shape of `claude agents --json` (a JSON array); never run for you.
+        #[arg(long)]
+        agents_json: Option<PathBuf>,
+        /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+}
+
+#[derive(clap::Subcommand)]
 enum Action {
     /// Reads the ledger only. List the project's cards, oldest first
     ///
@@ -584,6 +606,17 @@ enum Action {
         /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
         #[arg(long)]
         home: Option<PathBuf>,
+    },
+    /// Reads the ledger only. The coordination window's plan of one round
+    ///
+    /// Reads the ledger only. `moai card orchestrate plan` prints what one round of the
+    /// coordination window would do and does none of it: the registry's lanes and whether each is
+    /// free, busy or unknown; the cards to dispatch to the free lanes; the lanes to clear; the
+    /// heads that need an audit; the audited heads that wait to land; and what waits for the user.
+    /// It starts no host program and writes no file.
+    Orchestrate {
+        #[command(subcommand)]
+        action: OrchestrateAction,
     },
     /// Reads the ledger only. Wait for the next note on the named cards, or for a timeout
     ///
@@ -1430,6 +1463,18 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             leader,
             home,
         } => moai_cli::card::inbox::inbox(&project, &resolve_home(home)?, leader.as_deref()),
+        Action::Orchestrate {
+            action:
+                OrchestrateAction::Plan {
+                    project,
+                    agents_json,
+                    home,
+                },
+        } => moai_cli::card::orchestrate::plan(
+            &project,
+            &resolve_home(home)?,
+            agents_json.as_deref(),
+        ),
         Action::Wait {
             cards,
             timeout,
