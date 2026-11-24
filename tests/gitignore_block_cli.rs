@@ -549,6 +549,44 @@ fn a_file_the_users_own_rule_ignores_is_not_named_as_visible() {
     );
 }
 
+/// SPEC-20261120-moai-layout REQ-17: a `.gitignore` file under the state folder keeps ignoring
+/// what its own rule names, at any depth, so the plan does not name those files. The plan agrees
+/// with git after the apply.
+#[test]
+fn a_nested_gitignore_under_the_state_folder_keeps_a_file_out_of_the_visible_list() {
+    let fx = Fx::new(None);
+    with_earlier_block(&fx);
+    let tools = fx.root.join(".moai-cli/tools");
+    fs::create_dir_all(tools.join("sub")).unwrap();
+    fs::write(tools.join(".gitignore"), "private/\n").unwrap();
+    fs::write(tools.join("sub/.gitignore"), "*.tmp\n").unwrap();
+    let detail = detail_with_files(
+        &fx,
+        &[
+            ".moai-cli/tools/check.sh",
+            ".moai-cli/tools/private/a.sh",
+            ".moai-cli/tools/sub/x.tmp",
+            ".moai-cli/tools/sub/y.sh",
+        ],
+    );
+    assert_eq!(
+        visible_lines(&detail),
+        [
+            "now visible: .moai-cli/tools/.gitignore",
+            "now visible: .moai-cli/tools/check.sh",
+            "now visible: .moai-cli/tools/sub/.gitignore",
+            "now visible: .moai-cli/tools/sub/y.sh"
+        ],
+        "{detail}"
+    );
+    // The plan said what git says once the block is applied.
+    fx.apply_ok("none");
+    assert!(fx.ignored(".moai-cli/tools/private/a.sh"));
+    assert!(fx.ignored(".moai-cli/tools/sub/x.tmp"));
+    assert!(!fx.ignored(".moai-cli/tools/check.sh"));
+    assert!(!fx.ignored(".moai-cli/tools/sub/y.sh"));
+}
+
 /// The plan names at most twenty files and counts the rest: twenty are all named, twenty-one
 /// name twenty and count one.
 #[test]
