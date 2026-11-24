@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261120-moai-layout
 title: "One .moai/ layout rule for every project: tracked team files, ignored .moai/local/, project tools in .moai/tools/"
-status: draft
+status: approved
 revision: 5
 created: 2026-11-20
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8189 (2026-11-24T04:25:04Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8188 에 답함): 개정 5 승인(커밋 883e1c0482); 레인은 그 노트를 인용만 해요"
+  digest: "sha256:22e358890ec07618784ede4465b76cfae5e823de37bc681bd295f130ef906844"
 ---
 
 # One .moai/ layout rule for every project
