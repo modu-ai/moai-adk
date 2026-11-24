@@ -2922,6 +2922,8 @@ fn the_earlier_state_moves_beside_the_kept_names_and_a_collision_stays() {
     assert_eq!(read(&fx, ".moai-cli/project.yaml"), "old profile\n");
     assert_eq!(read(&fx, ".moai-cli/reports/r.md"), "# r\n");
     assert!(!fx.root.join(".moai-cli/manifests").exists());
+    // The marker decides: `.moai` answers even while a left entry keeps `.moai-cli/` in place.
+    assert_eq!(moai_cli::state_root::dir(&fx.root), ".moai");
     // Re-run: the project is on `.moai` now and nothing more moves.
     let again = plan_picks(&fx, &[]);
     assert_eq!(moves(&again), 0, "{again}");
@@ -2999,6 +3001,10 @@ fn a_pick_that_names_no_collision_is_refused() {
 #[test]
 fn the_revert_leaves_the_names_the_moai_folder_held_before_the_apply() {
     let fx = kept_fixture();
+    let before: Vec<_> = project_tree(&fx)
+        .into_iter()
+        .filter(|(p, _)| !p.starts_with(fx.root.join(".moai/backups")))
+        .collect();
     let p = plan_picks(&fx, &["project.yaml"]);
     let v = apply_picks(&fx, p["plan_digest"].as_str().unwrap(), &["project.yaml"]);
     assert_eq!(v["ok"], json!(true), "{v}");
@@ -3045,6 +3051,12 @@ fn the_revert_leaves_the_names_the_moai_folder_held_before_the_apply() {
     );
     let (_, receipt) = receipt_of(&fx, &backup);
     assert_eq!(receipt["state"], json!("reverted"), "{receipt}");
+    // Every byte and path is back, apart from the backup area the apply made.
+    let after: Vec<_> = project_tree(&fx)
+        .into_iter()
+        .filter(|(p, _)| !p.starts_with(fx.root.join(".moai/backups")))
+        .collect();
+    assert_eq!(after, before, "the revert restored every file");
     // A second revert is refused.
     let again = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
     assert_eq!(again["ok"], json!(false), "{again}");
