@@ -916,11 +916,11 @@ fn collect_leaves_the_texts_out_when_a_side_cannot_be_read() {
             ],
         ),
         (
-            "a valid text under an encoding other than base64",
+            "a valid text whose encoding is not base64",
             vec![
                 compare(200, json!({"merge_base_commit": {"sha": M}})),
                 contents(M, 200, content(&old)),
-                contents(H, 200, json!({"encoding": "utf-8", "content": new.clone()})),
+                contents(H, 200, json!({"encoding": "none", "content": b64(&new)})),
             ],
         ),
         (
