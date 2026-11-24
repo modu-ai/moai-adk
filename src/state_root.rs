@@ -1135,8 +1135,11 @@ mod tests {
         ] {
             assert_eq!(system_yaml_has_version(text), want, "{text:?}");
         }
+        // `config/` is a name the team keeps in git and this file has no version, so it is no Go
+        // marker: the folder holds only kept names and reads like an absent one
+        // (SPEC-20261121-project-state-move REQ-1), no longer `unknown`.
         let c = verdict(|r| write(r, ".moai/config/sections/system.yaml", "moai:\n  name: x\n"));
-        assert_eq!(c.generation, "unknown");
+        assert_eq!(c.generation, "none");
     }
 
     #[cfg(unix)]

@@ -3292,7 +3292,7 @@ fn settings_move_warning(sm: &SettingsMove, wiring: Option<&WiringLost>) -> Stri
 /// Version of the [`Bound`] layout. The field order below is the hash order: never reorder or
 /// add a field without bumping this, so an older digest is refused as a stale plan instead of
 /// matching by luck.
-const BOUND_VERSION: u32 = 1;
+const BOUND_VERSION: u32 = 2;
 
 /// What `plan_digest` hashes, as JSON.
 #[derive(Serialize)]
@@ -5640,7 +5640,7 @@ mod tests {
     /// change here needs a `BOUND_VERSION` bump.
     #[test]
     fn the_bound_layout_is_pinned() {
-        assert_eq!(BOUND_VERSION, 1);
+        assert_eq!(BOUND_VERSION, 2);
         let mut p = sample();
         p.items.truncate(2);
         p.restores.truncate(1);
@@ -5650,20 +5650,20 @@ mod tests {
         assert_eq!(
             text,
             concat!(
-                r#"{"bound_version":1,"project":"/p","go_backup":".moai-backup","#,
+                r#"{"bound_version":2,"project":"/p","go_backup":".moai-backup","#,
                 r#""moves":[{"path":".claude/a.md","action":"move","class":"tool_asset","#,
                 r#""deployed_hash":"sha256:aa","content":"sha256:01"},"#,
                 r#"{"path":".moai","action":"move","class":"go_folder","#,
                 r#""deployed_hash":"","content":""}],"#,
                 r#""restores":[{"from":".moai-backup/specs/a.md","to":".moai/specs/a.md","#,
                 r#""action":"copy","sha256":"sha256:03"}],"#,
-                r#""state_moves":[{"from":"earlier/index","to":".moai/index"}],"#,
+                r#""state_moves":[{"from":"earlier/index","to":".moai/index","action":"move"}],"#,
                 r#""root_files":[{"path":"CLAUDE.md","action":"move","sha256":"sha256:05"}]}"#
             )
         );
         assert_eq!(
             digest_of(&p),
-            "sha256:0e2cdc646d3f17a6ae911e09fc3d7139d4b275c6082833eced3bfecd78b654f7"
+            "sha256:8927c17cb1ed999ad2ab58405a88b8e4b9084671a5001ec90a6224d622b6d4c9"
         );
         // The empty plan, the smallest `Bound`.
         let mut empty = sample();
@@ -5674,7 +5674,7 @@ mod tests {
         empty.go_backup = None;
         assert_eq!(
             serde_json::to_string(&bound_of(&empty).unwrap()).unwrap(),
-            r#"{"bound_version":1,"project":"/p","go_backup":null,"moves":[],"restores":[],"state_moves":[],"root_files":[]}"#
+            r#"{"bound_version":2,"project":"/p","go_backup":null,"moves":[],"restores":[],"state_moves":[],"root_files":[]}"#
         );
     }
 
