@@ -489,6 +489,14 @@ fn link_on_path(root: &Path, rel: &str) -> Option<String> {
     None
 }
 
+/// The write step's re-check (SPEC-20261124-native-role-link-refusal REQ-6): a file of a kind that
+/// is written below `.claude/` is refused when a symbolic link appeared on its path after the plan.
+// RED stub: always `Ok`; the unit test below fails on its assertions until the check is written.
+#[allow(dead_code)]
+fn refuse_link_after_plan(_root: &Path, _kind: &str, _path: &str) -> Result<()> {
+    Ok(())
+}
+
 /// Where a project skill of `host` lives; `None` for a host this tool does not write.
 fn project_skill_path(host: &str, id: &str) -> Option<String> {
     match host {
@@ -1562,4 +1570,69 @@ pub fn generation_apply_in(
         "receipt": request_id,
         "agents_receipt": agents_result.get("receipt").cloned().unwrap_or(Value::Null),
     }))
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::refuse_link_after_plan;
+    use std::fs;
+    use tempfile::TempDir;
+
+    const KINDS: [(&str, &str); 3] = [
+        (
+            "generation:native-role:claude:prj-fixer",
+            ".claude/agents/moai/prj-fixer.md",
+        ),
+        (
+            "generation:skill-projection:claude:ref-b",
+            ".claude/skills/ref-b/SKILL.md",
+        ),
+        (
+            "generation:project-skill:claude:prj-checks",
+            ".claude/skills/prj-checks/SKILL.md",
+        ),
+    ];
+
+    /// SPEC-20261124-native-role-link-refusal AC-6 (REQ-6): the write step's re-check names the
+    /// file, the link and the words `symbolic link` for every kind it guards, for a link on a
+    /// folder above the file and for the file itself, and it lets a path without a link and a
+    /// kind it does not guard through.
+    #[test]
+    fn a_link_after_the_plan_stops_the_write_step() {
+        for (kind, path) in KINDS {
+            let root = TempDir::new().unwrap();
+            assert_eq!(
+                refuse_link_after_plan(root.path(), kind, path),
+                Ok(()),
+                "{kind}: a path without a link is let through"
+            );
+
+            let outside = TempDir::new().unwrap();
+            std::os::unix::fs::symlink(outside.path(), root.path().join(".claude")).unwrap();
+            let err = refuse_link_after_plan(root.path(), kind, path)
+                .expect_err(&format!("{kind}: a linked folder is refused"));
+            assert!(
+                err.contains(path) && err.contains(".claude") && err.contains("symbolic link"),
+                "{kind}: {err}"
+            );
+            assert_eq!(
+                refuse_link_after_plan(root.path(), "generation:workflow:review-flow", path),
+                Ok(()),
+                "{kind}: a kind the step does not guard is let through"
+            );
+
+            let root = TempDir::new().unwrap();
+            let file = root.path().join(path);
+            fs::create_dir_all(file.parent().unwrap()).unwrap();
+            let target = outside.path().join("target.md");
+            fs::write(&target, "outside\n").unwrap();
+            std::os::unix::fs::symlink(&target, &file).unwrap();
+            let err = refuse_link_after_plan(root.path(), kind, path)
+                .expect_err(&format!("{kind}: a linked file is refused"));
+            assert!(
+                err.contains(path) && err.contains("symbolic link"),
+                "{kind}: {err}"
+            );
+        }
+    }
 }

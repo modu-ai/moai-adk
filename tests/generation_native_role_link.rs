@@ -102,6 +102,17 @@ fn said(out: &std::process::Output) -> String {
     )
 }
 
+/// SPEC revision 3 REQ-2, REQ-5: `generation-apply` plans again before it writes, so a link made
+/// after the plan is refused as a stale plan (or, when it appears later, as a link conflict);
+/// either way nothing is written through it.
+fn assert_refused_for_the_link(out: &std::process::Output) {
+    let text = said(out);
+    assert!(
+        text.contains("symbolic link") || text.contains("stale or altered plan"),
+        "{text}"
+    );
+}
+
 /// Every way a link can sit on `path`: each folder above the file linked to an empty folder
 /// outside the project, and the file itself linked to an outside file with bytes of its own.
 #[cfg(unix)]
@@ -178,7 +189,7 @@ fn a_link_made_after_the_plan_stops_the_apply() {
     std::os::unix::fs::symlink(outside.path(), r.join(".claude/agents/moai")).unwrap();
     let out = apply(r, &p);
     assert!(!out.status.success(), "{}", said(&out));
-    assert!(said(&out).contains("symbolic link"), "{}", said(&out));
+    assert_refused_for_the_link(&out);
     assert_eq!(fs::read_dir(outside.path()).unwrap().count(), 0);
 }
 
@@ -228,6 +239,6 @@ fn a_link_made_after_the_plan_stops_the_projection_apply() {
     std::os::unix::fs::symlink(outside.path(), r.join(".claude/skills")).unwrap();
     let out = apply(r, &p);
     assert!(!out.status.success(), "{}", said(&out));
-    assert!(said(&out).contains("symbolic link"), "{}", said(&out));
+    assert_refused_for_the_link(&out);
     assert_eq!(fs::read_dir(outside.path()).unwrap().count(), 0);
 }
