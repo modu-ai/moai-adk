@@ -85,4 +85,31 @@ created: 2026-11-24
 
 ## Result
 
-Not done yet.
+Status: draft (approval is the leader's, at READY); slice 1 done: `moai leader brief`, read only. Card criterion 2 is not done and not claimed (D-6, Plan 3).
+
+Measured 2026-11-24 (UTC) on macOS in the worktree `.claude/worktrees/leader-brief`, branch `spec/leader-brief-20261124`, base `2e6873482e`. Code: `src/leader_brief.rs`, `src/ops/leader.rs`, the module line in `src/lib.rs`, the `leader` rows in `src/help.rs` and the four golden help files, and the operation document `docs/design-review/appendix/operations/leader.md`. RED first (`277d07bff9`): of 7 tests of `tests/leader_brief_cli.rs` 6 failed on `unrecognized subcommand 'leader'` (the seventh, `measure_`, passed on the error text and was made to check the exit status first). After the code (`e8bc758ea9`) 7 of 7 and the 3 unit tests of `src/leader_brief.rs` passed; the golden help files followed in `e399138173` (`MOAI_HELP_GOLDEN_WRITE=1`, `help_layout` 11 of 11 passed), and `test_area_layout`, `help_text_names_moai` and `leader_brief_cli` together ran 28 tests, 28 passed.
+
+- AC-1 met (REQ-1, REQ-3, REQ-5, REQ-6, REQ-8): `shape_prints_the_parts_with_numbers_and_writes_nothing` (two audited heads, one by event and one by note, `ref` `event:<id>` and `note:<id>`; one block and one decision with their note numbers; the home folder equal before and after; two runs equal byte for byte) and `shape_a_project_without_a_ledger_is_empty_and_exits_zero`.
+- AC-2 met (REQ-2): `size_the_whole_answer_stays_within_the_cap_and_keeps_the_newest` (60 blocked notes of long Korean text and 40 audited heads: the whole stdout is at most 4096 bytes, `counts` keeps 60 and 40, shown plus `omitted` equals `counts` for each list, the blocked list starts at the newest card `C-160` and its note numbers fall).
+- AC-3 met (REQ-4): `split_a_decision_is_told_from_a_block_and_answered_or_done_notes_vanish` (`kind=decision` and `DECISION-QUESTION` are decisions; `kind=claim` and the look-alike `kind=decisions` are blocks; an answered note, a note of a `done` card and a `LANE-NOTE` line are listed nowhere).
+- AC-4 met (REQ-7): `unread_an_unreadable_integration_branch_is_listed_and_the_rest_still_prints` and `unread_an_unreadable_lane_registry_is_listed` (a registry folder that is a file).
+- AC-5 met (REQ-1, card criterion 3): `measure_the_brief_is_smaller_than_the_two_reads_it_replaces` (on the crowded ledger the brief is below a quarter of `card inbox` plus `card orchestrate plan`), and the real-ledger numbers below.
+- AC-6 not_run here: the neighbour checks are the `check affected` receipt of the READY note.
+
+Card criterion 3, read-only on the real ledger of this project, 2026-11-24T15:32Z, one wake, the same built binary for every line (`target/debug/moai`, project `.`):
+
+| What a leader reads in one wake | Before | After |
+| --- | --- | --- |
+| `moai card inbox` | 7658 bytes | not read |
+| `moai card orchestrate plan` | 17326 bytes | not read |
+| the 11 notes those two list (5 blocks and decisions, 6 verdicts), read whole with `moai card show` | 14561 bytes | only those the leader opens |
+| `moai leader brief` | not there | 1515 bytes (queue 6, blocked 4, decisions 1, nothing cut, `unread` empty) |
+| total | 39545 bytes | 1515 bytes plus the bodies the leader chooses to open |
+
+The brief is 26 times smaller than the three reads together and 16.5 times smaller than the two listings alone (24984 bytes). It does not remove the reading of a body the leader needs; it makes that reading a choice made from a one-line item with its note number. Not measured: the lane screens a leader reads today (they need live Orca sessions), so the real total before is larger than the 39545 bytes shown. The five blocked and decision items of the brief are as many as the five `blocked` items of `card inbox` of the same minute (counted by family, not compared one by one); the ten `ready_for_integration` items of the inbox are not part of the brief, and the brief lists the six audited heads of the landing queue instead, three of them marked `old` (a newer head of the same card was handed back).
+
+- Run: `moai heavy-slot-acquire --name leader-brief --max 3 -- cargo nextest run --offline --locked --no-fail-fast --test leader_brief_cli` (with `RUSTC_WRAPPER=sccache`): 7 tests, 7 passed; the unit tests `leader_brief::` 3 of 3.
+- Guard mutants (each applied once to `e399138173`, checked as applied, run on the one named test by `target/leader-brief/mutants.py` in one slot, restored; each kill is a FAIL of that test and no build error; the tree was clean after the last): A the cut loop never runs (`while false`), exit 100, `size_the_whole_answer_stays_within_the_cap_and_keeps_the_newest`; B `kind=decision` no longer makes a decision, exit 100, `split_a_decision_is_told_from_a_block_and_answered_or_done_notes_vanish`; C the blocked list reads oldest first, exit 100, `size_the_whole_answer_stays_within_the_cap_and_keeps_the_newest`.
+- Deviation kept small: the answer holds `audit` in `counts` (a count of heads that wait for an audit), which the card did not ask for; it is one number and not a list.
+- Known limit: a note's first line reaches the brief cut at 200 characters by `card inbox`'s own limit, so a `kind=decision` that stands after the 200th character reads as a block.
+- Not done and not claimed: card criterion 2 and everything of Plan 3; the skill text that calls the brief; a measurement of the lane screens.
