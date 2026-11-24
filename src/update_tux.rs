@@ -145,6 +145,8 @@ enum W {
     Changed,
     KeptMine,
     Linked,
+    LinkedFile,
+    ReferenceNote,
     Cleanup,
     Archive,
     Keep,
@@ -517,6 +519,20 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "연결"
             } else {
                 "link"
+            }
+        }
+        LinkedFile => {
+            if ko {
+                "링크로 이어짐(같은 파일)"
+            } else {
+                "linked"
+            }
+        }
+        ReferenceNote => {
+            if ko {
+                "<reference> 자리에는 되돌리기를 허락한 근거를 적어요"
+            } else {
+                "<reference> is the note that records who allowed the revert"
             }
         }
         Cleanup => {
@@ -974,6 +990,7 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
     }
     // Routing: the files and their state.
     let mut parts = Vec::new();
+    let mut flow_notes: Vec<String> = Vec::new();
     let mut worst = Mark::Ok;
     for h in v["routing"]["hosts"].as_array().into_iter().flatten() {
         let file = short(h["file"].as_str().unwrap_or(""));
@@ -993,13 +1010,23 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             "create" | "append" => (Mark::Update, w(lang, W::New)),
             "merge" | "update" => (Mark::Update, w(lang, W::ToUpdate)),
             "conflict" => (Mark::Warn, w(lang, W::Conflict)),
+            // A link to the file moai keeps in the default folder: no second copy is written.
+            "linked" => (Mark::Ok, w(lang, W::LinkedFile)),
             _ => (Mark::Warn, w(lang, W::Skipped)),
         };
         worst = worst.max(m);
         parts.push(format!("{file} {word}"));
+        // The flow rule's own detail, such as an earlier build's file left in place for the user
+        // to delete, is a line of its own.
+        if let Some(detail) = h["flow"]["detail"].as_str() {
+            flow_notes.push(detail.to_string());
+        }
     }
     if !parts.is_empty() {
         rows.push(row(worst, w(lang, W::Routing).into(), parts.join(" · ")));
+    }
+    for note in flow_notes {
+        rows.push(row(Mark::Skip, w(lang, W::Routing).into(), note));
     }
     // Output style.
     // A blocked target (`home_style`: a symlink, an unreadable file) is an error row with its
@@ -2016,9 +2043,31 @@ fn applied(v: &Value, view: &View) -> String {
                 total += n;
                 rows.push(row(
                     Mark::Ok,
-                    label,
+                    label.clone(),
                     format!("{} {}", count(lang, n), w(lang, W::Changed)),
                 ));
+                // Files of the host that stayed in conflict while others were written are named,
+                // so the run does not end as if everything were done.
+                let left: Vec<&str> = files
+                    .iter()
+                    .filter(|f| f["action"].as_str() == Some("conflict"))
+                    .filter_map(|f| f["path"].as_str())
+                    .collect();
+                if !left.is_empty() {
+                    bad = true;
+                    let shown = left.iter().take(4).copied().collect::<Vec<_>>().join(", ");
+                    let more = left.len().saturating_sub(4);
+                    let tail = if more > 0 {
+                        format!(" +{more}")
+                    } else {
+                        String::new()
+                    };
+                    rows.push(row(
+                        Mark::Warn,
+                        label,
+                        format!("{}: {shown}{tail}", counted(lang, W::Conflict, left.len())),
+                    ));
+                }
             }
             "unchanged" => {}
             "conflict" => {
@@ -2126,7 +2175,8 @@ fn applied(v: &Value, view: &View) -> String {
     let reverts: Vec<String> = crate::update::revert_order(&v["revert"])
         .into_iter()
         .filter_map(|k| v["revert"][k].as_str())
-        .map(|c| o.home(c))
+        // The result's own sentence keeps `<HOME>` for machines; the person sees the real folder.
+        .map(|c| o.home(&c.replace("<HOME>", &o.v.home)))
         .collect();
     // Revert commands stay whole (never cut) so they can be copied.
     for c in &reverts {
@@ -2137,6 +2187,9 @@ fn applied(v: &Value, view: &View) -> String {
             o.p().paint(Token::Code, &visible(c))
         );
         o.buf.push_str(&line);
+    }
+    if reverts.iter().any(|c| c.contains("<reference>")) {
+        o.muted(w(lang, W::ReferenceNote));
     }
     let reload = v["result"]["hosts"]
         .as_array()
@@ -2155,6 +2208,8 @@ fn applied(v: &Value, view: &View) -> String {
     o.cleanup_done(v, false);
     o.home_done(v, false);
     o.switch_done(v, false);
+    // A switch the update did not confirm still waits for its own token.
+    o.switch_next(v);
     o.git_hooks_done(v, false);
     // A partly applied run ends with what failed, not the next step (#2894 7b).
     if !bad {

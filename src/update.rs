@@ -2536,6 +2536,17 @@ fn update_command_core(
         out["revert"]["home"] = h["revert"].clone();
         out["home_result"] = h;
     }
+    // SPEC-20261125-update-conflict-baseline REQ-8: a switch this run did not confirm keeps its
+    // part in the result, so the screen can show the command that confirms it.
+    if switch_part.is_none() {
+        if let Some(s) = layer
+            .switch
+            .to_json()
+            .filter(|s| s["apply_flag"].is_string())
+        {
+            out["switch"] = s.clone();
+        }
+    }
     if let Some(s) = switch_part {
         out["revert"]["switch"] = s["revert"].clone();
         out["switch_result"] = s;
