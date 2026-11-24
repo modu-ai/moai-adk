@@ -113,3 +113,16 @@ approval:
 - 동작이 바뀌는 곳: 위 Risks 와 같아요. 영수증과 아웃박스는 읽기 길도 거절하고, 상태 루트가 링크인 사용자의 `layout-apply` 도 거절돼요.
 - 하지 않은 것: `claim.rs`·`worktree_move.rs`(D-1 대로 그대로), 원본(프로젝트 쪽) 트리 안의 링크 처리, `archive.rs` 의 `copy_verified`(unverified, 후속 후보).
 - not_run: Windows·Linux(junction 은 이 검사가 못 잡아요), 실제 HOME 읽기 전후 비교(테스트와 위험 경로는 임시 HOME 만 써요), 전체 `cargo test --locked`(리더 몫).
+
+### 수리: AUDIT #434 B-1 (head `4f2d949919` 의 FAIL 뒤)
+
+수리 커밋은 `50b6c258bc` 예요. 판은 올리지 않았어요(승인 digest 그대로): 본문의 D-3 은 고치지 않고 아래에 정정으로 적어요(리더 결정, 노트 8157).
+
+- D-3 정정: "`home_project` 까지의 구성요소만 보면 충분해요" 는 틀렸어요. 아웃박스의 집 폴더는 두 단계(`forge/outbox`)라서 `forge` 가 링크이고 그 뒤에 `outbox` 가 없으면 마지막 이름 검사(`symlink_metadata`)가 NotFound 로 통과하고, 복사(`create_dir_all`)가 링크를 따라가요. 맞는 문장은 이거예요: `check_destinations` 는 `KINDS` 의 집 폴더마다 `refuse_linked_home_path(home_root, home_project/<subdir>)` 로 뿌리부터 그 폴더까지 모든 구성요소를 걸러요. 마지막 이름이 이미 링크이면 충돌 문장 대신 같은 링크 거절 문장이 먼저 나와요(둘 다 거절이고 아무것도 쓰지 않아요).
+- 수정: `src/layout.rs` `check_destinations` 의 `KINDS` 루프에 `refuse_linked_home_path` 한 줄.
+- RED(수리 전 코드): `layout_apply_refuses_a_linked_forge_folder` 가 `unwrap_err()` 가 `Ok` 를 만나 실패했어요. 값이 `switched: true`, `marker` 가 링크 너머 경로예요(B-1 재현). 홈 상태 뿌리가 링크인 아웃박스·영수증 테스트(N-2)는 수리 전에도 통과했어요(`switched_dir_checked` 가 이미 뿌리를 걸러요): 테스트가 모자랐을 뿐 코드 결함이 아니었어요.
+- 새 테스트 3개: `layout_apply_refuses_a_linked_forge_folder`(링크 너머 바이트와 목록 그대로, 프로젝트 쪽 원본 그대로, `layout.json` 안 써요), `outbox_refuses_a_linked_home_root`, `receipt_refuses_a_linked_home_root`(둘 다 `home state root is a symlink; refused`, `save`·`load`·`before bytes`·`recover` 전부, 링크 너머 그대로). 뿌리 링크는 `.moai` 이름으로 두면 표식을 잃어 `.moai-cli` 로 판정이 바뀌므로 `.moai-cli` 이름의 링크로 두고 `home_root::path` 가 그 링크로 풀리는지 픽스처가 확인해요.
+- GREEN: `cargo nextest run --offline --locked --test home_writer_links --test home_state_link_refusal --no-fail-fast` → 33/33. `--lib -E 'test(layout::) | test(apply::) | test(forge::outbox)'` → 38/38.
+- 뮤턴트(적용을 `git diff --stat` 으로 확인, `git checkout -- src/layout.rs` 로 되돌린 뒤 `git status --short` 비었음; 모두 `--test home_writer_links`, exit 100): ⑤ `check_destinations` 루프의 새 호출 삭제 → `layout_apply_refuses_a_linked_forge_folder` 한 개만 실패 ⑥ `refuse_linked_home_path` 안의 뿌리 검사(`home state root`) 삭제 → `layout_apply_refuses_a_linked_home_root`, `outbox_refuses_a_linked_home_root`, `receipt_refuses_a_linked_home_root` 셋 실패.
+- 위험 경로(수리 head `50b6c258bc` 의 `target/debug/moai`, 임시 폴더, HOME 은 자식 명령에만; `target/c434/danger-repair.log`): `projects/<id>/forge` 가 `outbox` 없는 폴더로의 링크 → exit 1, `home state folder is a symlink; refused`, 링크 너머가 `keep.txt` 하나 그대로, `layout.json` 안 써요, 원본 그대로. `~/.moai-cli` 가 링크 → exit 1, `home state root is a symlink; refused`, 링크 너머 그대로. 링크 없는 대조 → exit 0, 복사하고 표식을 써요. 첫 계획은 클레임 저널 폴더가 아직 없어 stale 일 수 있어서 한 번 다시 계획한 뒤 적용했어요(대조만 두 번째 시도에서 성공, 나머지 둘은 첫 시도에서 거절).
+- 카드 기준 3(N-3: `project_home::write_area`·`backup_area`, `audit_clone::evidence_dir`)은 이 수리에 넣지 않았어요(리더 결정: 새 기준으로 접음, 열린 채).
