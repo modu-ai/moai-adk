@@ -1288,6 +1288,7 @@ fn an_ignored_file_that_appears_after_the_plan_is_never_overwritten() {
         .as_str()
         .unwrap()
         .to_string();
+    show("an ignored file after the plan", &message);
     for part in [
         "no commit tracks",
         "notes/x.md",
