@@ -8,14 +8,23 @@
 //!   line that uses a constant holding such a spelling. The whole prefix is read, not a list of
 //!   names, so a new switch is covered the day it is written; the scan has no exemption list.
 //! - the profile scan: `Cargo.toml` and `.cargo/config.toml` never turn debug assertions on for
-//!   the `release` or `dist` profile, and `dist` inherits `release`.
+//!   the `release` profile, the `dist` profile or any profile that inherits one of them (directly
+//!   or through other profiles), and `dist` inherits `release`. It reads quoted and blank-padded
+//!   table names, dotted keys, inline tables, the profile environment variables, and `rustflags`
+//!   on one line or in an array over several lines.
 //!
 //! What the source scan does not follow (a change that needs one of these fails closed or has to
 //! extend the scan): a name built from parts that never spells the prefix whole (`concat!`); a
-//! file that a `#[cfg(test)] mod x;` line of another file gates as a whole; an alias of a
-//! constant made with `use ... as`; code that rustfmt would not leave as it is, because the scan
-//! reads the indentation of the statement, the block and the items around a line; a spelling in a
-//! trailing comment counts as code.
+//! name assembled in lower case and raised afterwards (`"moai_test_one".to_uppercase()`); a read
+//! that lists the environment (`std::env::vars()` filtered by a `MOAI_` prefix); a file that a
+//! `#[cfg(test)] mod x;` line of another file gates as a whole; an alias of a constant made with
+//! `use ... as`; code that rustfmt would not leave as it is, because the scan reads the
+//! indentation of the statement, the block and the items around a line; a spelling in a trailing
+//! comment counts as code.
+//!
+//! What neither scan reads: the workflows under `.github/workflows` and the release scripts under
+//! `tools`, which can pass `RUSTFLAGS`, `CARGO_PROFILE_*` variables or `--config` arguments to
+//! cargo, and the environment of the person who builds.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -522,52 +531,140 @@ fn a() -> bool {
     );
 }
 
-/// What the profile scan found in `(file, text)` pairs of manifest and config files.
-fn profile_findings(files: &[(&str, &str)]) -> Vec<String> {
+/// A header or a key path without quotes and blanks: `[ profile . "release" ]` reads as
+/// `profile.release`.
+fn plain(text: &str) -> String {
+    text.chars()
+        .filter(|c| !c.is_whitespace() && *c != '"' && *c != '\'')
+        .collect()
+}
+
+/// One meaningful line of a manifest or config file: the table it sits in (as `plain` text), the
+/// line without its comment, and whether it belongs to a `rustflags` setting (that line, or a line
+/// inside the array that the setting opens over several lines).
+struct TomlLine {
+    number: usize,
+    section: String,
+    text: String,
+    flags: bool,
+}
+
+fn toml_lines(text: &str) -> Vec<TomlLine> {
     let mut out = Vec::new();
-    let mut inherits = Vec::new();
-    for (file, text) in files {
-        let mut section = String::new();
-        for (n, raw) in text.lines().enumerate() {
-            let line = raw.split('#').next().unwrap_or("").trim();
-            if line.is_empty() {
-                continue;
-            }
-            if line.starts_with('[') && line.ends_with(']') {
-                section = line.trim_matches(['[', ']']).trim().to_string();
-                continue;
-            }
-            let upper = line.to_ascii_uppercase();
-            let in_release = section.starts_with("profile.release")
-                || section.starts_with("profile.dist")
-                || line.contains("release")
-                || line.contains("dist");
-            let flags = upper.contains("RUSTFLAGS");
-            if upper.contains("CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS")
-                || upper.contains("CARGO_PROFILE_DIST_DEBUG_ASSERTIONS")
+    let mut section = String::new();
+    // the `[` that a `rustflags = [` has opened and not closed yet
+    let mut depth: i32 = 0;
+    for (n, raw) in text.lines().enumerate() {
+        let line = raw.split('#').next().unwrap_or("").trim();
+        if line.is_empty() {
+            continue;
+        }
+        if depth == 0 && line.starts_with('[') && line.ends_with(']') {
+            section = plain(line.trim_matches(['[', ']']));
+            continue;
+        }
+        let flags = depth > 0 || line.to_ascii_lowercase().contains("rustflags");
+        if flags {
+            let opens = line.matches('[').count() as i32 - line.matches(']').count() as i32;
+            depth = (depth + opens).max(0);
+        }
+        out.push(TomlLine {
+            number: n + 1,
+            section: section.clone(),
+            text: line.to_string(),
+            flags,
+        });
+    }
+    out
+}
+
+/// The profile that a line belongs to: its table `[profile.NAME...]`, a dotted key `NAME.key` or an
+/// inline table `NAME = {..}` under `[profile]`, or a dotted key `profile.NAME.key` at the root.
+fn profile_of(section: &str, text: &str) -> Option<String> {
+    let key = plain(text.split('=').next().unwrap_or(""));
+    let path = if section.is_empty() {
+        key
+    } else if section == "profile" {
+        format!("profile.{key}")
+    } else {
+        section.to_string()
+    };
+    let mut parts = path.split('.');
+    if parts.next() != Some("profile") {
+        return None;
+    }
+    parts.next().map(str::to_string)
+}
+
+/// The profile named by an `inherits = "NAME"` anywhere in the line (an inline table too).
+fn inherited(text: &str) -> Option<String> {
+    let flat = plain(text);
+    let at = flat.find("inherits=")?;
+    let name: String = flat[at + "inherits=".len()..]
+        .chars()
+        .take_while(|c| *c != ',' && *c != '}')
+        .collect();
+    (!name.is_empty()).then_some(name)
+}
+
+/// What the profile scan found in `(file, text)` pairs of manifest and config files. A release
+/// profile is `release`, `dist` and every profile that inherits one of them, directly or through
+/// other profiles, whatever the order of the tables and whichever file names the `inherits`.
+fn profile_findings(files: &[(&str, &str)]) -> Vec<String> {
+    let parsed: Vec<(&str, Vec<TomlLine>)> =
+        files.iter().map(|(f, t)| (*f, toml_lines(t))).collect();
+    let mut edges = Vec::new();
+    let mut dist_inherits = Vec::new();
+    for (_, lines) in &parsed {
+        for l in lines {
+            if let (Some(profile), Some(parent)) =
+                (profile_of(&l.section, &l.text), inherited(&l.text))
             {
-                out.push(format!(
-                    "{file}:{}: sets the debug assertions of a release profile through the environment",
-                    n + 1
-                ));
-            } else if (in_release || flags) && debug_assertions_on(line) {
-                out.push(format!(
-                    "{file}:{}: turns debug assertions on for a release build: {line}",
-                    n + 1
-                ));
-            }
-            if section == "profile.dist" {
-                if let Some((key, value)) = line.split_once('=') {
-                    if key.trim() == "inherits" {
-                        inherits.push(value.trim().trim_matches('"').to_string());
-                    }
+                if profile == "dist" {
+                    dist_inherits.push(parent.clone());
                 }
+                edges.push((profile, parent));
             }
         }
     }
-    if inherits.is_empty() || inherits.iter().any(|v| v != "release") {
+    let mut family = BTreeSet::from(["release".to_string(), "dist".to_string()]);
+    loop {
+        let known = family.len();
+        for (profile, parent) in &edges {
+            if family.contains(parent) {
+                family.insert(profile.clone());
+            }
+        }
+        if family.len() == known {
+            break;
+        }
+    }
+    let mut out = Vec::new();
+    for (file, lines) in &parsed {
+        for l in lines {
+            let upper = l.text.to_ascii_uppercase();
+            let in_family = profile_of(&l.section, &l.text).is_some_and(|p| family.contains(&p));
+            let in_release = in_family || l.text.contains("release") || l.text.contains("dist");
+            let env_name = family.iter().any(|p| {
+                let name = p.to_ascii_uppercase().replace('-', "_");
+                upper.contains(&format!("CARGO_PROFILE_{name}_DEBUG_ASSERTIONS"))
+            });
+            if env_name {
+                out.push(format!(
+                    "{file}:{}: sets the debug assertions of a release profile through the environment",
+                    l.number
+                ));
+            } else if (in_release || l.flags) && debug_assertions_on(&l.text) {
+                out.push(format!(
+                    "{file}:{}: turns debug assertions on for a release build: {}",
+                    l.number, l.text
+                ));
+            }
+        }
+    }
+    if dist_inherits.is_empty() || dist_inherits.iter().any(|v| v != "release") {
         out.push(format!(
-            "the dist profile has to inherit release, it inherits {inherits:?}"
+            "the dist profile has to inherit release, it inherits {dist_inherits:?}"
         ));
     }
     out
@@ -605,7 +702,7 @@ fn the_release_and_dist_profiles_keep_debug_assertions_off() {
 fn the_profile_reader_tells_an_on_switch_from_an_off_one() {
     let dist = "\n[profile.dist]\ninherits = \"release\"\n";
     // (what the fixture shows, its manifest text, the findings it must give)
-    let cases: [(&str, String, usize); 15] = [
+    let cases: [(&str, String, usize); 32] = [
         (
             "dev may keep them on",
             format!("[profile.dev]\ndebug-assertions = true\n\n[profile.dev.package.\"*\"]\ndebug-assertions = true\n\n[profile.release]\nopt-level = 3\n{dist}"),
@@ -680,6 +777,91 @@ fn the_profile_reader_tells_an_on_switch_from_an_off_one() {
             "the profile variable of the environment",
             format!("[env]\nCARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS = \"true\"\n{dist}"),
             1,
+        ),
+        (
+            "a rustflags array over several lines that turns them on",
+            format!("[build]\nrustflags = [\n    \"-C\",\n    \"debug-assertions=on\",\n]\n{dist}"),
+            1,
+        ),
+        (
+            "a rustflags array over several lines that turns them off",
+            format!("[build]\nrustflags = [\n    \"-C\",\n    \"debug-assertions=off\",\n]\n{dist}"),
+            0,
+        ),
+        (
+            "a bare rustc flag in a rustflags array of a target table",
+            format!("[target.x86_64-unknown-linux-gnu]\nrustflags = [\n    \"-Cdebug-assertions\",\n]\n{dist}"),
+            1,
+        ),
+        (
+            "a table after a rustflags array is read again",
+            format!("[build]\nrustflags = [\n    \"-C\",\n    \"debug-assertions=off\",\n]\n\n[profile.release]\ndebug-assertions = true\n{dist}"),
+            1,
+        ),
+        (
+            "a quoted release table on",
+            format!("[profile.\"release\"]\ndebug-assertions = true\n{dist}"),
+            1,
+        ),
+        (
+            "a quoted dist table on",
+            "[profile.release]\nopt-level = 3\n\n[profile.\"dist\"]\ninherits = \"release\"\ndebug-assertions = true\n".to_string(),
+            1,
+        ),
+        (
+            "a table name with blanks",
+            format!("[ profile . release ]\ndebug-assertions = true\n{dist}"),
+            1,
+        ),
+        (
+            "another profile that inherits release, on",
+            format!("[profile.production]\ninherits = \"release\"\ndebug-assertions = true\n{dist}"),
+            1,
+        ),
+        (
+            "another profile that inherits release, off",
+            format!("[profile.production]\ninherits = \"release\"\ndebug-assertions = false\n{dist}"),
+            0,
+        ),
+        (
+            "inherits written after the setting",
+            format!("[profile.production]\ndebug-assertions = true\ninherits = \"release\"\n{dist}"),
+            1,
+        ),
+        (
+            "a profile that inherits release through another profile",
+            format!("[profile.fast]\ninherits = \"release\"\n\n[profile.production]\ninherits = \"fast\"\ndebug-assertions = true\n{dist}"),
+            1,
+        ),
+        (
+            "a profile that inherits dev may keep them on",
+            format!("[profile.debuggable]\ninherits = \"dev\"\ndebug-assertions = true\n{dist}"),
+            0,
+        ),
+        (
+            "dotted keys of another profile under the profile table",
+            format!("[profile]\nproduction.inherits = \"release\"\nproduction.debug-assertions = true\n{dist}"),
+            1,
+        ),
+        (
+            "an inline table of another profile",
+            format!("[profile]\nproduction = {{ inherits = \"release\", debug-assertions = true }}\n{dist}"),
+            1,
+        ),
+        (
+            "dotted keys of another profile at the root",
+            format!("profile.production.inherits = \"release\"\nprofile.production.debug-assertions = true\n{dist}"),
+            1,
+        ),
+        (
+            "the profile variable of another release profile",
+            format!("[profile.production]\ninherits = \"release\"\n\n[env]\nCARGO_PROFILE_PRODUCTION_DEBUG_ASSERTIONS = \"true\"\n{dist}"),
+            1,
+        ),
+        (
+            "the profile variable of a profile that is no release profile",
+            format!("[profile.debuggable]\ninherits = \"dev\"\n\n[env]\nCARGO_PROFILE_DEBUGGABLE_DEBUG_ASSERTIONS = \"true\"\n{dist}"),
+            0,
         ),
     ];
     for (what, text, expected) in cases {
