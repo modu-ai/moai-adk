@@ -381,11 +381,13 @@ class WorkflowTest(unittest.TestCase):
         steps = flow["jobs"]["targets"]["steps"]
         run = next(s for s in steps if s.get("id") == "decide")["run"]
         # The event branch is load-bearing (audit B-2): only a pull_request run
-        # enters the classifier; `if true` or a negated comparison would let a
+        # enters the classifier — and since SPEC-20261120-release-pr-three-os only a
+        # pull request that is not a release pull request does (the release branch
+        # answers first); `if true` or a negated comparison would let a
         # push path-classify (or a PR skip it) with the same matrix literals, so
         # the exact guard is pinned here, where the lists are read. Explicit
         # raises, not bare asserts — `python -O` strips those (re-audit N-9).
-        if 'if [ "${{ github.event_name }}" = "pull_request" ]; then' not in run:
+        if 'elif [ "${{ github.event_name }}" = "pull_request" ]; then' not in run:
             raise AssertionError(f"the decide script lost its pull_request guard: {run!r}")
         # The base commit moved to the job's checkout step: the scope tool runs from
         # the base copy, so the SHA the runner hands the checkout is the judge.
@@ -401,7 +403,9 @@ class WorkflowTest(unittest.TestCase):
         """#2554 (user decision U10): PRs run linux-x86_64; the merging push and
         workflow_dispatch run linux-x86_64, macos-arm64 and windows-build
         (SPEC-20261117-supported-platforms). Only PR runs cancel an
-        older run of the same PR; a post-merge run is never cancelled."""
+        older run of the same PR; a post-merge run is never cancelled.
+        SPEC-20261120-release-pr-three-os: a pull request whose head branch
+        begins with `release/` (a release pull request) runs windows-build too."""
         flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         triggers = flow.get("on", flow.get(True))
         self.assertEqual(triggers["push"]["branches"], ["v2026.11.0"])
@@ -410,7 +414,7 @@ class WorkflowTest(unittest.TestCase):
                          "${{ github.event_name == 'pull_request' }}")
         self.assertIn("github.sha", flow["concurrency"]["group"])
         self.assertEqual(flow["jobs"]["windows-build"]["if"],
-                         "${{ github.event_name != 'pull_request' }}")
+                         "${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'release/') }}")
         self.assertNotIn("if", flow["jobs"]["check"])
 
     def test_rc_ci_post_merge_macos_waits_are_replaced_by_a_newer_merge(self):
@@ -603,7 +607,19 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(caps, {"linux-x86_64": 30, "macos-arm64": 45})
         self.assertEqual(check["timeout-minutes"], "${{ matrix.timeout }}")
         aggregate = flow["jobs"]["ci"]
-        self.assertEqual(aggregate["needs"], ["check", "ci-verdict"])
+        # SPEC-20261120-release-pr-three-os: the aggregate also waits for the Windows job,
+        # which only a release pull request has (the decide step's `release` output) and
+        # which calls the target workflow the candidate verification calls. `targets` is a
+        # direct dependency too: its `release` output is read in the aggregate's step, and the
+        # `needs` context holds the outputs of direct dependencies only.
+        self.assertEqual(aggregate["needs"],
+                         ["check", "ci-verdict", "windows-x86_64", "targets"])
+        self.assertEqual(flow["jobs"]["windows-x86_64"]["uses"],
+                         "./.github/workflows/candidate-target.yml")
+        self.assertEqual(flow["jobs"]["windows-x86_64"]["if"],
+                         "${{ needs.targets.outputs.release == 'true' }}")
+        self.assertEqual(flow["jobs"]["targets"]["outputs"]["release"],
+                         "${{ steps.decide.outputs.release }}")
         # #2312: runs after a failed target (so the check fails, not skips) but not after a
         # cancellation (always() reported a cancel-in-progress run as a failure). C-83: it is
         # skipped only when ci-verdict wrote `superseded`.
