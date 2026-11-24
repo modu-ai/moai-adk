@@ -60,7 +60,7 @@ mo.ai.kr 리더 세션이 보낸 개선 요청(카드 본문, 그 저장소에�
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261125-card-take-records-worktree/spec.md`, `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `tests/card/card_take_worktree_cli.rs`, `tests/card/main.rs`
+- write: `.moai/specs/SPEC-20261125-card-take-records-worktree/spec.md`, `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `src/worktree_gc.rs` (테스트 생성자에 `running_dir: None` 한 줄), `tests/card/card_take_worktree_cli.rs`, `tests/card/card_reclaim_cli.rs`, `tests/card/card_reclaim_early_cli.rs` (두 이웃 테스트의 명령이 cargo 작업 폴더가 아닌 임시 폴더에서 돌게 한 줄씩), `tests/card/main.rs`
 - shared (줄 임대): `src/ops/card.rs` (take 와 reclaim 의 두 팔에서 실행 폴더를 넘기는 줄)
 - read-only: `src/card/adopt.rs`, `src/card/early_reclaim.rs`, `src/lane_registry.rs`
 - forbidden: 진짜 HOME, 설치된 moai 바이너리, 다른 프로젝트, 원장 스키마, 파일 안의 카드 번호
@@ -92,4 +92,11 @@ mo.ai.kr 리더 세션이 보낸 개선 요청(카드 본문, 그 저장소에�
 
 ## Result
 
-(구현 뒤에 적어요.)
+구현 head `bb44bec790ef8468b13104d7a402733512b8090d` (기준 NeXT `580d47c6ec`), 첫 조각 (b) 만 했어요. (a), (c), (d) 는 후속 카드의 몫이에요.
+
+- AC-1…AC-5 met: 각 verify 줄을 적힌 그대로 돌려 모두 exit 0 (ac1·ac2·ac3·ac4·ac5 각 1개 통과). 고치기 전 RED 는 ac1·ac3·ac4 가 맞는 이유(워크트리 null, adopt 의 `the reservation records no worktree`)로 실패했어요.
+- AC-6 met: `card_adopt_cli` 11, `card_reclaim_cli` 27, `card_reclaim_early_cli` 35, `ledger_reservation` 28 통과. 이웃 전체(`--test card`, `--test prop_reservation`, `--lib`) 3310개 모두 통과, clippy `-D warnings` 통과.
+- 이웃 실패 3개의 원인(처음 이웃 실행에서 3307/3310): `card_reclaim_cli` 와 `card_reclaim_early_cli` 의 헬퍼가 `card take` 를 cargo 작업 폴더(이 워크트리) 에서 돌렸고, take 가 이제 그 폴더의 워크트리를 기록해서 reclaim 의 `worktree_dirty` 게이트가 이 워크트리의 커밋 안 한 변경 4개를 읽고 거절했어요. 코드의 틀림이 아니라 테스트 환경의 의존이라, 두 헬퍼의 명령이 임시 폴더에서 돌게 한 줄씩 고쳤어요(소유 검사는 그대로).
+- 지킴이 뮤턴트 (각각 뒤에 `git checkout` 으로 복원, 트리 깨끗함 확인): take 가 실행 폴더 워크트리를 기록하지 않음 → ac1·ac4 실패 exit 100, reclaim 이 빈 워크트리를 채우지 않음 → ac3 실패 exit 100, reclaim 이 기록된 워크트리를 덮어씀 → ac3 실패 exit 100.
+- 위험 경로: 임시 HOME 의 임시 git 리포지터리에서 링크된 워크트리 take(AC-1), git 워크트리가 아닌 일반 폴더 take(AC-1 의 둘째 절, 경고), 살아 있는 리스의 reclaim 거절(AC-5)을 직접 돌렸어요. 하나라도 진짜 HOME 이나 설치된 바이너리를 쓰지 않았어요.
+- 안 한 것: `moai check affected --card` 영수증은 READY 노트에 있어요.
