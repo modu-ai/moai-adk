@@ -2158,6 +2158,17 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "호출자가 준 권한 참조(기록만, 권한 검증기 아님)",
     ),
     (
+        "go-state-plan",
+        "set_aside",
+        "팀이 git 에 두는 이름만 든 `.moai/` 옆으로 옮길 때, 양쪽에 같은 이름이 있는 \
+         옛 항목을 두지 않고 백업 영역으로 치우기(여러 번 쓸 수 있고 미리 보기 digest 에 들어가요)",
+    ),
+    (
+        "go-state-apply",
+        "set_aside",
+        "확인한 미리 보기를 만들 때 쓴 `--set-aside` 와 같게 넘기기(다르면 digest 가 달라 거절해요)",
+    ),
+    (
         "language-setup",
         "questions",
         "호스트 질문 도구용 질문 묶음 찍기",
