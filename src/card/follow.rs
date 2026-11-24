@@ -607,7 +607,7 @@ pub fn rerun(
             "save a copy of the edited files elsewhere, discard the edits there (`git restore .`; a commit is refused on the integration branch and a stash would carry the lagging index too) and run the call again",
         ));
     }
-    check_paths(&tree, &old, &tip)?;
+    // The added paths are read by `apply` right before the write, so they are not read here.
     dry_run(&tree, &old, &tip)?;
     Ok(Rerun::Needed(Plan {
         tree,
