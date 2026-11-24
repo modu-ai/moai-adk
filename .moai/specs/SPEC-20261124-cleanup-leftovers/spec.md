@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-cleanup-leftovers
 title: "Six small leftovers of the 2026-11-24 card cleanup land as separate slices of one SPEC"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8263 (2026-11-24T06:01:28Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8262 에 답함): 판 3 승인 선택지 A, head db1f0d7299; 승인 앞머리는 이 노트로 적고 최종 head 의 맨 check affected 영수증으로 READY; 재감사는 첫 감사자 몫; 범위를 열 개로 줄여 take 한 판단 좋아요; allow.tsv 재발은 새 카드 없이 이 카드의 열린 기준으로 더해요; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:f3aab8f9322af81ebc78c0583a7d87913e0a102228d808192a54d3ee338412fa"
 ---
 
 # Six small leftovers of the 2026-11-24 card cleanup land as separate slices of one SPEC
