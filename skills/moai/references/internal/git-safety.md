@@ -13,7 +13,7 @@ When to read: before you commit, push, merge or switch branches in a worktree.
 
 | Host | Enter and leave a worktree | Git inside it |
 | --- | --- | --- |
-| Claude Code | `EnterWorktree` (`path` for an existing one) and `ExitWorktree`; subagents with `isolation: worktree`. `EnterWorktree` with a `name` branches from the default branch, so for another base create the worktree with `git worktree add` first and enter it by `path`. | Plain `git <verb>`, or `git -C <own worktree> <verb>`. Its built-in guard refuses a line that runs git next to a shell expansion (`$VAR`, `$?`, `$(…)`) or `-C` to the shared checkout; put such work in a script file under `target/`. |
+| Claude Code | `EnterWorktree` (`path` for an existing one) and `ExitWorktree`; subagents with `isolation: worktree`. `EnterWorktree` with a `name` branches from the remote default branch, so for another base create the worktree with `git worktree add` first and enter it by `path`; give `git worktree add` an absolute path and follow `workflows/work.md` (never by `name`). | Plain `git <verb>`, or `git -C <own worktree> <verb>`. Its built-in guard refuses a line that runs git next to a shell expansion (`$VAR`, `$?`, `$(…)`) or `-C` to the shared checkout; put such work in a script file under `target/`. |
 | Cursor CLI | `-w` / `--worktree` at start only. | Inside a session started there, plain `git <verb>`; otherwise `git -C <worktree> <verb>`. |
 | Kiro CLI | None documented. | `git -C <worktree> <verb>`. |
 
