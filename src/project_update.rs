@@ -533,14 +533,29 @@ fn profile_step(
     desired.detected = Some(detected.clone()?);
     let plan = profile::plan(root, desired)?;
     let (state, reason) = match plan.action.as_str() {
-        "create" | "update" => ("ready", "the detected facts changed"),
-        "unchanged" => ("unchanged", "the profile already has the detected facts"),
+        "create" | "update" => ("ready", "the detected facts changed".to_string()),
+        "unchanged" => (
+            "unchanged",
+            "the profile already has the detected facts".to_string(),
+        ),
         _ => (
             "conflict",
-            "a key changed by hand since the last apply; it is kept",
+            "a key changed by hand since the last apply; it is kept".to_string(),
         ),
     };
-    let preview = json!({"action": plan.action, "delta": plan.delta, "drift": plan.drift});
+    let mut preview = json!({"action": plan.action, "delta": plan.delta, "drift": plan.drift});
+    // SPEC-20261124-project-detect-monorepo REQ-11: the recorded manifests the apply would
+    // drop are named, so the user sees the loss before the plan digest is confirmed.
+    let reason = if plan.dropped_manifests.is_empty() {
+        reason
+    } else {
+        let n = plan.dropped_manifests.len();
+        preview["dropped_manifests"] = json!(plan.dropped_manifests);
+        format!(
+            "{reason}; {n} recorded manifest{} would drop",
+            if n == 1 { "" } else { "s" }
+        )
+    };
     let apply = (state == "ready")
         .then(|| {
             Ok::<_, String>((
@@ -552,7 +567,7 @@ fn profile_step(
     Ok(Step {
         name: "profile",
         state,
-        reason: reason.into(),
+        reason,
         preview,
         plan_digest: Some(plan.plan_digest),
         apply,
