@@ -353,6 +353,19 @@ pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
     card["reservation"] = ledger::reservation::current(conn, card_id)
         .map_err(|e| e.to_string())?
         .map_or(Value::Null, |r| super::dispatch::reservation_json(&r));
+    // The structured HOLD in force and the cards this one waits for (SPEC-20261121-card-hold-gate);
+    // free text in a note or the body is never read here.
+    card["hold"] = ledger::workflow::current_hold(conn, card_id)
+        .map_err(sql_err)?
+        .map_or(
+            Value::Null,
+            |h| json!({"category": h.category, "reason": h.reason, "by": h.by, "at": h.at}),
+        );
+    card["prerequisites"] = json!(ledger::workflow::unfinished_prerequisites(conn, card_id)
+        .map_err(sql_err)?
+        .into_iter()
+        .map(input::card_name)
+        .collect::<Vec<_>>());
     card["writes"] = json!(false);
     Ok(card)
 }

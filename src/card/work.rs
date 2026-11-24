@@ -164,6 +164,16 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
                     v["mine"] = json!(mine);
                     v["theirs"] = json!(theirs);
                 }
+                SkipReason::Hold { category, reason } => {
+                    v["category"] = json!(category);
+                    v["hold_reason"] = json!(reason);
+                }
+                SkipReason::Prerequisite { cards } => {
+                    v["needs"] = json!(cards
+                        .iter()
+                        .map(|c| input::card_name(*c))
+                        .collect::<Vec<_>>());
+                }
                 SkipReason::EmptyScope | SkipReason::ReviewNoHolder | SkipReason::NoCriteria => {}
             }
             v
@@ -914,6 +924,89 @@ pub fn withdraw(
         "action": "withdraw", "project_id": id,
         "card": input::card_name(card_id), "state": "hold",
         "writes": true,
+    }))
+}
+
+/// `card hold C-n --category <c> --reason <t> --by <name>`: one `card.hold` event on a `draft`
+/// or `ready` card nobody holds (SPEC-20261121-card-hold-gate). `card next` then skips the card
+/// and `card take` refuses it until a person runs `card unhold`.
+pub fn hold(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    category: &str,
+    reason: &str,
+    by: &str,
+) -> Result<Value> {
+    input::parse_ref(reference).map_err(|e| format!("card hold refused: {e}"))?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let card_id = card_or_source(&ledger, "hold", reference)?;
+    workflow::hold(
+        &mut ledger,
+        card_id,
+        category,
+        reason,
+        by,
+        caller_session().as_deref(),
+    )
+    .map_err(|e| format!("card hold refused: {e}"))?;
+    Ok(json!({
+        "action": "hold", "project_id": id, "card": input::card_name(card_id),
+        "category": category, "events": 1, "writes": true,
+    }))
+}
+
+/// `card unhold C-n --reason <t> --by <name>`: one `card.unhold` event that lifts the HOLD in
+/// force. This command is the only writer of that event.
+pub fn unhold(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    reason: &str,
+    by: &str,
+) -> Result<Value> {
+    input::parse_ref(reference).map_err(|e| format!("card unhold refused: {e}"))?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let card_id = card_or_source(&ledger, "unhold", reference)?;
+    workflow::unhold(
+        &mut ledger,
+        card_id,
+        reason,
+        by,
+        caller_session().as_deref(),
+    )
+    .map_err(|e| format!("card unhold refused: {e}"))?;
+    Ok(json!({
+        "action": "unhold", "project_id": id, "card": input::card_name(card_id),
+        "events": 1, "writes": true,
+    }))
+}
+
+/// `card prereq C-n --needs C-m --by <name>`: C-n waits for C-m, one active `blocks` link from
+/// C-m to C-n. A second call changes nothing (`created: false`).
+pub fn prereq(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    needs: &str,
+    by: &str,
+) -> Result<Value> {
+    input::parse_ref(reference).map_err(|e| format!("card prereq refused: {e}"))?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let card_id = card_or_source(&ledger, "prereq", reference)?;
+    let needs_id = card_or_source(&ledger, "prereq", needs)?;
+    let created = workflow::add_prerequisite(
+        &mut ledger,
+        card_id,
+        needs_id,
+        by,
+        caller_session().as_deref(),
+    )
+    .map_err(|e| format!("card prereq refused: {e}"))?;
+    Ok(json!({
+        "action": "prereq", "project_id": id, "card": input::card_name(card_id),
+        "needs": input::card_name(needs_id), "created": created,
+        "events": u8::from(created), "writes": created,
     }))
 }
 
