@@ -23,9 +23,10 @@ use crate::PROJECT_STATE_DIR;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, VecDeque},
     fs,
     path::{Path, PathBuf},
+    rc::Rc,
 };
 
 type Result<T> = std::result::Result<T, String>;
@@ -49,38 +50,230 @@ pub struct Detected {
     pub databases: Vec<String>,
 }
 
-/// Root manifest file → language.
-const MANIFESTS: &[(&str, &str)] = &[
-    ("Cargo.toml", "rust"),
-    ("package.json", "javascript"),
-    ("tsconfig.json", "typescript"),
-    ("pyproject.toml", "python"),
-    ("setup.py", "python"),
-    ("requirements.txt", "python"),
-    ("go.mod", "go"),
-    ("pom.xml", "java"),
-    ("build.gradle", "java"),
-    ("build.gradle.kts", "kotlin"),
-    ("Gemfile", "ruby"),
-    ("composer.json", "php"),
+/// The manifest catalog (SPEC-20261124-project-detect-monorepo): which file names and name
+/// suffixes are manifests, the language and tools each implies, and the folder names the walks
+/// skip. It is data, not code: the engine below knows no manifest name. A project adds rows in
+/// its own file ([`EXTENSION_FILE`]); a row never replaces a shipped one.
+const CATALOG_JSON: &str = include_str!("project_detect_catalog.json");
+
+/// The project's own catalog rows, under the `config/` folder of its state folder.
+const EXTENSION_FILE: &str = "config/detect-catalog.json";
+
+/// Folders that hold MoAI's own state or a host's files, never the project's manifests or code.
+/// They are not tied to a language; every other name to skip comes from the catalog.
+const HOST_AND_STATE_DIRS: &[&str] = &[
+    ".git",
+    PROJECT_STATE_DIR,
+    crate::state_root::MOAI_DIR,
+    ".claude",
+    ".codex",
+    ".omp",
 ];
 
-/// Manifest file name → the tools its presence implies (C-61 AC-2): names only, so a nested
-/// manifest's bytes are never read for this; the interview confirms the pick.
-const MANIFEST_TOOLS: &[(&str, &[&str])] = &[
-    ("Cargo.toml", &["cargo"]),
-    ("package.json", &["node", "npm"]),
-    ("tsconfig.json", &["typescript"]),
-    ("pyproject.toml", &["python"]),
-    ("setup.py", &["python"]),
-    ("requirements.txt", &["python"]),
-    ("go.mod", &["go"]),
-    ("pom.xml", &["maven"]),
-    ("build.gradle", &["gradle"]),
-    ("build.gradle.kts", &["gradle"]),
-    ("Gemfile", &["ruby"]),
-    ("composer.json", &["php"]),
-];
+/// One catalog file: the shipped one and a project's extension share this shape.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CatalogFile {
+    schema: u32,
+    #[serde(default)]
+    manifests: Vec<CatalogRow>,
+    #[serde(default)]
+    skip_dirs: Vec<String>,
+}
+
+/// One ecosystem: the manifest names and suffixes it uses, the language and tools they imply.
+#[derive(Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CatalogRow {
+    ecosystem: String,
+    language: String,
+    #[serde(default)]
+    files: Vec<String>,
+    #[serde(default)]
+    suffixes: Vec<String>,
+    #[serde(default)]
+    tools: Vec<String>,
+}
+
+/// The catalog a detection reads: the shipped rows first, then the rows a project added.
+#[derive(Clone, Default)]
+pub(crate) struct Catalog {
+    rows: Vec<CatalogRow>,
+    skip_dirs: Vec<String>,
+}
+
+/// What the project's extension file did, reported beside `detected` (`manifest_catalog`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct ExtensionReport {
+    /// `absent`, `read` or `refused`.
+    pub extension: &'static str,
+    /// Rows the extension file holds (0 unless it was read).
+    pub rows: usize,
+    /// Why the file was refused; only its rows were left out.
+    pub problem: Option<String>,
+}
+
+impl ExtensionReport {
+    fn absent() -> Self {
+        Self {
+            extension: "absent",
+            rows: 0,
+            problem: None,
+        }
+    }
+
+    fn refused(problem: impl Into<String>) -> Self {
+        Self {
+            extension: "refused",
+            rows: 0,
+            problem: Some(problem.into()),
+        }
+    }
+
+    pub(crate) fn to_json(&self) -> Value {
+        json!({"extension": self.extension, "rows": self.rows, "problem": self.problem})
+    }
+}
+
+/// The rows every value of which can be recorded and that name at least one file or suffix.
+fn catalog_file_valid(file: &CatalogFile) -> Result<()> {
+    if file.schema != 1 {
+        return Err("schema must be 1".into());
+    }
+    if file.manifests.len() > MAX_ITEMS || file.skip_dirs.len() > MAX_ITEMS {
+        return Err(format!("more than {MAX_ITEMS} rows or folders"));
+    }
+    for row in &file.manifests {
+        let names = [&row.ecosystem, &row.language]
+            .into_iter()
+            .chain(&row.files)
+            .chain(&row.tools);
+        let suffixes_ok = row
+            .suffixes
+            .iter()
+            .all(|s| s.len() > 1 && s.starts_with('.') && recordable(s));
+        let lists_ok = row.files.len() <= MAX_ITEMS
+            && row.suffixes.len() <= MAX_ITEMS
+            && row.tools.len() <= MAX_ITEMS;
+        if !names.into_iter().all(|n| recordable(n))
+            || !suffixes_ok
+            || !lists_ok
+            || (row.files.is_empty() && row.suffixes.is_empty())
+        {
+            return Err("a row holds a value that cannot be recorded, or names no file".into());
+        }
+    }
+    if !file.skip_dirs.iter().all(|d| recordable(d)) {
+        return Err("a folder name cannot be recorded".into());
+    }
+    Ok(())
+}
+
+/// The shipped catalog, parsed once. A parse failure leaves it empty; a unit test pins that the
+/// shipped file parses and holds the rows the earlier tables held.
+fn shipped() -> &'static Catalog {
+    static SHIPPED: std::sync::OnceLock<Catalog> = std::sync::OnceLock::new();
+    SHIPPED.get_or_init(|| {
+        serde_json::from_str::<CatalogFile>(CATALOG_JSON)
+            .ok()
+            .filter(|f| catalog_file_valid(f).is_ok())
+            .map(|f| Catalog {
+                rows: f.manifests,
+                skip_dirs: f.skip_dirs,
+            })
+            .unwrap_or_default()
+    })
+}
+
+impl Catalog {
+    /// The shipped catalog and, when the project has one, its extension rows. The extension is
+    /// read as a regular file only (a link is never followed) of at most [`MAX_FILE`] bytes; a
+    /// file that cannot be used is reported and none of its rows is taken.
+    pub(crate) fn for_project(root: &Path) -> (Catalog, ExtensionReport) {
+        let mut catalog = shipped().clone();
+        let state = crate::state_root::dir(root);
+        let parts: Vec<&str> = std::iter::once(state)
+            .chain(EXTENSION_FILE.split('/'))
+            .collect();
+        let report = match file_in(root, &parts) {
+            Some((path, meta)) if meta.len() <= MAX_FILE => {
+                match fs::read_to_string(path)
+                    .map_err(|_| "the file is not valid UTF-8".to_string())
+                    .and_then(|text| {
+                        serde_json::from_str::<CatalogFile>(&text)
+                            .map_err(|_| "the file is not a valid catalog".to_string())
+                    })
+                    .and_then(|file| catalog_file_valid(&file).map(|_| file))
+                {
+                    Ok(file) => {
+                        let rows = file.manifests.len();
+                        catalog.add_extension(file);
+                        ExtensionReport {
+                            extension: "read",
+                            rows,
+                            problem: None,
+                        }
+                    }
+                    Err(problem) => ExtensionReport::refused(problem),
+                }
+            }
+            Some(_) => ExtensionReport::refused("the file is larger than the file limit"),
+            None => {
+                if fs::symlink_metadata(root.join(state).join(EXTENSION_FILE)).is_ok() {
+                    ExtensionReport::refused(
+                        "the file is not a regular file (a link is not followed)",
+                    )
+                } else {
+                    ExtensionReport::absent()
+                }
+            }
+        };
+        (catalog, report)
+    }
+
+    /// Adds a project's rows: a file name or suffix a shipped row already has stays with the
+    /// shipped row, and a row left with no name is dropped.
+    fn add_extension(&mut self, file: CatalogFile) {
+        for mut row in file.manifests {
+            row.files
+                .retain(|f| !self.rows.iter().any(|r| r.files.contains(f)));
+            row.suffixes
+                .retain(|s| !self.rows.iter().any(|r| r.suffixes.contains(s)));
+            if !(row.files.is_empty() && row.suffixes.is_empty()) {
+                self.rows.push(row);
+            }
+        }
+        for dir in file.skip_dirs {
+            if !self.skip_dirs.contains(&dir) {
+                self.skip_dirs.push(dir);
+            }
+        }
+    }
+
+    /// The row a file name belongs to: an exact name first, then a suffix.
+    fn row_for(&self, name: &str) -> Option<&CatalogRow> {
+        self.rows
+            .iter()
+            .find(|r| r.files.iter().any(|f| f == name))
+            .or_else(|| {
+                self.rows.iter().find(|r| {
+                    r.suffixes
+                        .iter()
+                        .any(|s| name.len() > s.len() && name.ends_with(s.as_str()))
+                })
+            })
+    }
+
+    fn skips(&self, name: &str) -> bool {
+        self.skip_dirs.iter().any(|d| d == name)
+    }
+}
+
+/// Whether the code walks skip a folder of this name: the host and state folders and the shipped
+/// catalog's names.
+pub(crate) fn skip_dir(name: &str) -> bool {
+    HOST_AND_STATE_DIRS.contains(&name) || shipped().skips(name)
+}
 
 /// Code file extension → language.
 const EXTENSIONS: &[(&str, &str)] = &[
@@ -172,24 +365,6 @@ const DB_DEPENDENCIES: &[(&str, &str)] = &[
     ("ioredis", "redis"),
 ];
 
-/// Folders the code walk never enters: VCS and MoAI state, the host folders MoAI writes hook
-/// and agent files into (`.omp/extensions/moai-hooks.ts` is TypeScript, #2936 R9), build
-/// output, vendored deps.
-pub(crate) const SKIP_DIRS: &[&str] = &[
-    ".git",
-    PROJECT_STATE_DIR,
-    crate::state_root::MOAI_DIR,
-    ".claude",
-    ".codex",
-    ".omp",
-    "target",
-    "node_modules",
-    ".venv",
-    "venv",
-    "dist",
-    "build",
-    "vendor",
-];
 /// Walk bounds: folder depth below the root and directory entries looked at.
 pub const MAX_DEPTH: usize = 3;
 pub const MAX_ENTRIES: usize = 5000;
@@ -279,7 +454,7 @@ fn code_languages(root: &Path) -> BTreeSet<String> {
             let name = entry.file_name();
             let name = name.to_string_lossy();
             if kind.is_dir() {
-                if depth < MAX_DEPTH && !SKIP_DIRS.contains(&name.as_ref()) {
+                if depth < MAX_DEPTH && !skip_dir(&name) {
                     stack.push((entry.path(), depth + 1));
                 }
             } else if kind.is_file() {
@@ -408,22 +583,29 @@ fn last_matching<'a>(lines: &'a [IgnoreLine], path: &str, is_file: bool) -> Opti
         .find(|l| ignore_matches_at(l, path, is_file))
 }
 
-/// The ignore lists the manifest walk has collected: one entry per folder entered, judging
-/// paths from its own folder down (`base` is that folder's depth in components). The deepest
-/// list with a matching line wins, as git reads nested `.gitignore` files.
-struct IgnoreStack(Vec<(usize, Vec<IgnoreLine>)>);
+/// The ignore lists that apply to one folder of the manifest walk: its own list and, through
+/// `parent`, the list of every folder above it, each judging paths from its own folder down
+/// (`base` is that folder's depth in components). The deepest list with a matching line wins,
+/// as git reads nested `.gitignore` files. A chain is shared by the folders below it, because
+/// the walk reads a whole depth before the next one.
+struct IgnoreNode {
+    base: usize,
+    lines: Vec<IgnoreLine>,
+    parent: Option<Rc<IgnoreNode>>,
+}
 
-impl IgnoreStack {
+impl IgnoreNode {
     /// Whether the folder or file at `parts` (components from the project root) is excluded.
     fn excludes(&self, parts: &[&str], is_file: bool) -> bool {
-        for (base, lines) in self.0.iter().rev() {
-            if *base >= parts.len() {
-                continue;
+        let mut node = Some(self);
+        while let Some(n) = node {
+            if n.base < parts.len() {
+                let rel = parts[n.base..].join("/");
+                if let Some(l) = last_matching(&n.lines, &rel, is_file) {
+                    return !l.negate;
+                }
             }
-            let rel = parts[*base..].join("/");
-            if let Some(l) = last_matching(lines, &rel, is_file) {
-                return !l.negate;
-            }
+            node = n.parent.as_deref();
         }
         false
     }
@@ -448,80 +630,101 @@ fn root_ignore_lines(root: &Path) -> Vec<IgnoreLine> {
     lines
 }
 
-/// Manifest files below the root (C-61 AC-1): folder depth at most [`MAX_DEPTH`], names only —
-/// a nested manifest's bytes are never read — no symbolic link followed (the walk looks at
-/// `DirEntry::file_type`, which does not follow one), folders [`SKIP_DIRS`] names and folders
-/// the ignore lists exclude never entered. An ignore list that cannot be read (a link, over
-/// [`MAX_FILE`], not UTF-8) counts as no lines, so that failure can only read more, never
-/// less. The `seen` budget mirrors the code walk's [`MAX_ENTRIES`].
-pub(crate) fn nested_manifests(root: &Path) -> BTreeSet<String> {
-    let mut found = BTreeSet::new();
-    let mut seen = 0usize;
-    let mut stack = IgnoreStack(vec![(0, root_ignore_lines(root))]);
-    walk_manifests(root, &[], &mut stack, &mut found, &mut seen);
-    found
+/// The manifests a walk found and whether it read every folder it meant to.
+pub(crate) struct ManifestWalk {
+    pub found: BTreeSet<String>,
+    /// False when the walk stopped at [`MAX_ENTRIES`] folder entries.
+    pub complete: bool,
 }
 
-fn walk_manifests(
-    dir: &Path,
-    rel: &[String],
-    stack: &mut IgnoreStack,
-    found: &mut BTreeSet<String>,
-    seen: &mut usize,
-) {
-    let Ok(entries) = fs::read_dir(dir) else {
-        return;
-    };
-    let mut entries: Vec<_> = entries.flatten().collect();
-    entries.sort_by_key(|e| e.file_name());
-    for entry in entries {
-        *seen += 1;
-        if *seen > MAX_ENTRIES {
-            return;
-        }
-        let Ok(kind) = entry.file_type() else {
+/// Manifest files below the root (C-61 AC-1): folder depth at most [`MAX_DEPTH`], names only —
+/// a nested manifest's bytes are never read — no symbolic link followed (the walk looks at
+/// `DirEntry::file_type`, which does not follow one). Every folder of one depth is read before
+/// any folder one level deeper, so a large early folder cannot use the budget up before a later
+/// package is reached. Folders whose name starts with a dot (tool, cache and backup state), the
+/// catalog's folder names and folders the ignore lists exclude are never entered; a manifest
+/// file at the root is listed whatever the ignore lists say. An ignore list that cannot be read
+/// (a link, over [`MAX_FILE`], not UTF-8) counts as no lines, so that failure can only read
+/// more, never less. The `seen` budget mirrors the code walk's [`MAX_ENTRIES`].
+pub(crate) fn walk_manifests(root: &Path, catalog: &Catalog) -> ManifestWalk {
+    let mut found = BTreeSet::new();
+    let mut seen = 0usize;
+    let top = Rc::new(IgnoreNode {
+        base: 0,
+        lines: root_ignore_lines(root),
+        parent: None,
+    });
+    let mut queue: VecDeque<(PathBuf, Vec<String>, Rc<IgnoreNode>)> =
+        VecDeque::from([(root.to_path_buf(), Vec::new(), top)]);
+    while let Some((dir, rel, ignores)) = queue.pop_front() {
+        let Ok(entries) = fs::read_dir(&dir) else {
             continue;
         };
-        let name = entry.file_name();
-        let name = name.to_string_lossy();
-        let mut parts = rel.to_vec();
-        parts.push(name.to_string());
-        let parts_ref: Vec<&str> = parts.iter().map(String::as_str).collect();
-        if kind.is_dir() {
-            if SKIP_DIRS.contains(&name.as_ref()) || stack.excludes(&parts_ref, false) {
+        let mut entries: Vec<_> = entries.flatten().collect();
+        entries.sort_by_key(|e| e.file_name());
+        for entry in entries {
+            seen += 1;
+            if seen > MAX_ENTRIES {
+                return ManifestWalk {
+                    found,
+                    complete: false,
+                };
+            }
+            let Ok(kind) = entry.file_type() else {
                 continue;
+            };
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            let mut parts = rel.clone();
+            parts.push(name.to_string());
+            let parts_ref: Vec<&str> = parts.iter().map(String::as_str).collect();
+            if kind.is_dir() {
+                if name.starts_with('.')
+                    || catalog.skips(&name)
+                    || HOST_AND_STATE_DIRS.contains(&name.as_ref())
+                    || ignores.excludes(&parts_ref, false)
+                {
+                    continue;
+                }
+                if rel.len() < MAX_DEPTH {
+                    let own = Rc::new(IgnoreNode {
+                        base: parts.len(),
+                        lines: read_in(&dir, &[&name, ".gitignore"])
+                            .map(|t| ignore_lines(&t))
+                            .unwrap_or_default(),
+                        parent: Some(Rc::clone(&ignores)),
+                    });
+                    queue.push_back((entry.path(), parts, own));
+                }
+            } else if kind.is_file()
+                && catalog.row_for(&name).is_some()
+                && (rel.is_empty() || !ignores.excludes(&parts_ref, true))
+            {
+                found.insert(parts.join("/"));
             }
-            if rel.len() < MAX_DEPTH {
-                stack.0.push((
-                    parts.len(),
-                    read_in(dir, &[&name, ".gitignore"])
-                        .map(|t| ignore_lines(&t))
-                        .unwrap_or_default(),
-                ));
-                walk_manifests(&entry.path(), &parts, stack, found, seen);
-                stack.0.pop();
-            }
-        } else if kind.is_file()
-            && MANIFESTS.iter().any(|(file, _)| *file == name)
-            && !stack.excludes(&parts_ref, true)
-        {
-            found.insert(parts.join("/"));
         }
     }
+    ManifestWalk {
+        found,
+        complete: true,
+    }
+}
+
+/// [`walk_manifests`] over the project's own catalog, for callers that need the paths alone.
+pub(crate) fn nested_manifests(root: &Path) -> BTreeSet<String> {
+    walk_manifests(root, &Catalog::for_project(root).0).found
 }
 
 /// The tools the detected manifest names imply (C-61 AC-2), beside `detected` and never inside
 /// it: tool name → the sorted manifest paths that imply it, at most [`MAX_ITEMS`] tools. The
 /// paths come from `detected.manifests`, so they are already capped and validated.
-fn tools_fact(manifests: &[String]) -> BTreeMap<String, Vec<String>> {
+fn tools_fact(manifests: &[String], catalog: &Catalog) -> BTreeMap<String, Vec<String>> {
     let mut map: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for path in manifests {
         let name = path.rsplit('/').next().unwrap_or(path);
-        if let Some((_, tools)) = MANIFEST_TOOLS.iter().find(|(file, _)| *file == name) {
-            for tool in *tools {
-                map.entry((*tool).to_string())
-                    .or_default()
-                    .insert(path.clone());
+        if let Some(row) = catalog.row_for(name) {
+            for tool in &row.tools {
+                map.entry(tool.clone()).or_default().insert(path.clone());
             }
         }
     }
@@ -665,32 +868,62 @@ fn capped_paths(set: BTreeSet<String>) -> Vec<String> {
 /// (no walk of the code files), for readers that must stay fast, such as the tool-preflight
 /// hook (`crate::tdd::TestPaths`).
 pub fn manifest_languages(root: &Path) -> Vec<String> {
-    let languages: BTreeSet<String> = MANIFESTS
+    let (catalog, _) = Catalog::for_project(root);
+    let languages: BTreeSet<String> = catalog
+        .rows
         .iter()
-        .filter(|(file, _)| is_file_in(root, &[file]))
-        .map(|(_, lang)| (*lang).to_string())
+        .filter(|row| {
+            row.files
+                .iter()
+                .any(|file| is_file_in(root, &[file.as_str()]))
+        })
+        .map(|row| row.language.clone())
         .collect();
     languages.into_iter().collect()
 }
 
+/// What one reading of the project showed: the facts that are recorded and the facts about the
+/// reading itself, which are reported beside them and never recorded.
+pub(crate) struct Detection {
+    pub detected: Detected,
+    pub catalog: Catalog,
+    pub extension: ExtensionReport,
+    /// False when the manifest walk stopped at its entry budget.
+    pub walk_complete: bool,
+    /// Manifests found that `detected.manifests` leaves out because of [`MAX_ITEMS`].
+    pub over_cap: usize,
+}
+
 pub fn detect(root: &Path) -> Result<Detected> {
+    detect_full(root).map(|d| d.detected)
+}
+
+pub(crate) fn detect_full(root: &Path) -> Result<Detection> {
     let meta = fs::symlink_metadata(root).map_err(|_| "project directory unavailable")?;
     if !meta.is_dir() {
         return Err("project must be a directory (not a symbolic link)".into());
     }
+    let (catalog, extension) = Catalog::for_project(root);
     let mut manifests = BTreeSet::new();
-    let mut languages = BTreeSet::new();
-    for (file, lang) in MANIFESTS {
-        if is_file_in(root, &[file]) {
-            manifests.insert((*file).to_string());
-            languages.insert((*lang).to_string());
+    // A manifest at the root is found by its name whatever the walk's budget or ignore lists say.
+    for row in &catalog.rows {
+        for file in &row.files {
+            if is_file_in(root, &[file.as_str()]) {
+                manifests.insert(file.clone());
+            }
         }
     }
-    let nested = nested_manifests(root);
+    let walk = walk_manifests(root, &catalog);
     let code = code_languages(root);
-    let existing = !manifests.is_empty() || !nested.is_empty() || !code.is_empty();
-    manifests.extend(nested);
+    let existing = !manifests.is_empty() || !walk.found.is_empty() || !code.is_empty();
+    manifests.extend(walk.found);
+    let mut languages: BTreeSet<String> = manifests
+        .iter()
+        .filter_map(|path| catalog.row_for(path.rsplit('/').next().unwrap_or(path)))
+        .map(|row| row.language.clone())
+        .collect();
     languages.extend(code);
+    let recordable_manifests = manifests.iter().filter(|p| recordable_relpath(p)).count();
     let lsp: BTreeSet<String> = languages
         .iter()
         .filter_map(|l| {
@@ -707,13 +940,20 @@ pub fn detect(root: &Path) -> Result<Detected> {
         .map(|(_, kind)| (*kind).to_string())
         .collect();
     databases.extend(prisma_database(root));
-    Ok(Detected {
+    let detected = Detected {
         project_kind: if existing { "existing" } else { "new" }.into(),
         manifests: capped_paths(manifests),
         languages: capped(languages),
         lsp: capped(lsp),
         mcp_servers: capped(mcp_servers(root)),
         databases: capped(databases),
+    };
+    Ok(Detection {
+        detected,
+        catalog,
+        extension,
+        walk_complete: walk.complete,
+        over_cap: recordable_manifests.saturating_sub(MAX_ITEMS),
     })
 }
 
@@ -988,9 +1228,15 @@ fn go_state_fact(root: &Path) -> Value {
 /// `project-detect`: the facts, and — when the project has a profile — that profile with
 /// `detected` set, ready for `project-plan`. Writes nothing.
 pub fn detect_cli(root: &Path) -> Result<Value> {
-    let detected = detect(root)?;
+    let Detection {
+        detected,
+        catalog,
+        extension,
+        walk_complete,
+        over_cap,
+    } = detect_full(root)?;
     // C-61 AC-2: the tools the manifest names imply, beside `detected` for the tools question.
-    let tools = tools_fact(&detected.manifests);
+    let tools = tools_fact(&detected.manifests, &catalog);
     let shown = root.display();
     let index = format!(
         "suggest only, run after the user agrees: moai index-build {shown} with stdin {{\"protocol_version\":1}}"
@@ -1039,8 +1285,20 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
     };
     let mut next_actions = vec![first, index];
     next_actions.extend(go_step);
+    if !walk_complete || over_cap > 0 {
+        // SPEC-20261124-project-detect-monorepo REQ-8: a partial list must not silently replace
+        // a longer recorded one.
+        next_actions.push(
+            "the manifest list is partial (the walk stopped at its entry budget or the list was \
+             capped): never record it over an earlier detected.manifests list without showing \
+             the user which entries would drop"
+                .to_string(),
+        );
+    }
     Ok(json!({
         "detected": detected,
+        "manifest_walk": {"complete": walk_complete, "over_cap": over_cap},
+        "manifest_catalog": extension.to_json(),
         "tools": tools,
         "profile": profile,
         "profile_written": false,
@@ -1068,11 +1326,21 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
 mod tests {
     use super::*;
 
+    /// The ignore chain of a folder from its lists, shallowest first.
+    fn chain(levels: Vec<(usize, Vec<IgnoreLine>)>) -> Rc<IgnoreNode> {
+        let mut parent = None;
+        for (base, lines) in levels {
+            parent = Some(Rc::new(IgnoreNode {
+                base,
+                lines,
+                parent,
+            }));
+        }
+        parent.unwrap()
+    }
+
     #[test]
     fn tables_name_only_recordable_values() {
-        for (f, l) in MANIFESTS {
-            assert!(recordable(f) && recordable(l));
-        }
         for (lang, server, plugin, executable) in LSP_PLUGINS {
             for name in [lang, server, plugin, executable] {
                 assert!(recordable(name), "{name}");
@@ -1084,16 +1352,93 @@ mod tests {
         }
     }
 
-    /// C-61: every tools row names a real manifest file, and its values are recordable names.
+    /// SPEC-20261124-project-detect-monorepo REQ-4: the shipped catalog parses, every value in it
+    /// can be recorded, and it holds the twelve manifest names the earlier tables held with the
+    /// same language and tools.
     #[test]
-    fn manifest_tools_rows_name_real_manifests_and_recordable_tools() {
-        for (file, tools) in MANIFEST_TOOLS {
-            assert!(MANIFESTS.iter().any(|(f, _)| f == file), "{file}");
-            assert!(!tools.is_empty(), "{file}");
-            for tool in *tools {
-                assert!(recordable(tool), "{tool}");
-            }
+    fn the_shipped_catalog_holds_the_earlier_rows_with_recordable_values() {
+        let file: CatalogFile = serde_json::from_str(CATALOG_JSON).unwrap();
+        catalog_file_valid(&file).unwrap();
+        let catalog = shipped();
+        assert_eq!(catalog.rows.len(), file.manifests.len());
+        let earlier: &[(&str, &str, &[&str])] = &[
+            ("Cargo.toml", "rust", &["cargo"]),
+            ("package.json", "javascript", &["node", "npm"]),
+            ("tsconfig.json", "typescript", &["typescript"]),
+            ("pyproject.toml", "python", &["python"]),
+            ("setup.py", "python", &["python"]),
+            ("requirements.txt", "python", &["python"]),
+            ("go.mod", "go", &["go"]),
+            ("pom.xml", "java", &["maven"]),
+            ("build.gradle", "java", &["gradle"]),
+            ("build.gradle.kts", "kotlin", &["gradle"]),
+            ("Gemfile", "ruby", &["ruby"]),
+            ("composer.json", "php", &["php"]),
+        ];
+        for (name, language, tools) in earlier {
+            let row = catalog.row_for(name).unwrap_or_else(|| panic!("{name}"));
+            assert_eq!(&row.language, language, "{name}");
+            assert_eq!(&row.tools, tools, "{name}");
         }
+        for dir in [
+            ".venv",
+            "venv",
+            "target",
+            "node_modules",
+            "dist",
+            "build",
+            "vendor",
+        ] {
+            assert!(catalog.skips(dir), "{dir}");
+        }
+    }
+
+    /// REQ-5: an extension row never replaces a shipped one, a suffix row matches a name that
+    /// is longer than the suffix, and an exact name wins over a suffix.
+    #[test]
+    fn extension_rows_are_added_and_never_replace_a_shipped_row() {
+        let mut catalog = shipped().clone();
+        let extension: CatalogFile = serde_json::from_str(
+            r#"{"schema": 1, "manifests": [
+                {"ecosystem": "mine", "language": "elixir", "files": ["package.json", "mix.exs"], "tools": ["mix"]},
+                {"ecosystem": "nuget", "language": "csharp", "suffixes": [".csproj"]},
+                {"ecosystem": "again", "language": "csharp", "files": ["go.mod"]}
+            ], "skip_dirs": ["generated-out", "target"]}"#,
+        )
+        .unwrap();
+        catalog_file_valid(&extension).unwrap();
+        catalog.add_extension(extension);
+        assert_eq!(
+            catalog.row_for("package.json").unwrap().language,
+            "javascript"
+        );
+        assert_eq!(catalog.row_for("go.mod").unwrap().language, "go");
+        assert_eq!(catalog.row_for("mix.exs").unwrap().language, "elixir");
+        assert_eq!(catalog.row_for("App.csproj").unwrap().language, "csharp");
+        assert!(catalog.row_for(".csproj").is_none());
+        assert!(catalog.skips("generated-out"));
+        assert_eq!(
+            catalog.skip_dirs.iter().filter(|d| *d == "target").count(),
+            1
+        );
+    }
+
+    /// REQ-6: a catalog file with a value that cannot be recorded, an unknown key, a wrong
+    /// schema or a row without a name is refused whole.
+    #[test]
+    fn a_catalog_file_with_an_unrecordable_value_is_refused() {
+        for bad in [
+            r#"{"schema": 2}"#,
+            r#"{"schema": 1, "manifests": [{"ecosystem": "a b", "language": "x", "files": ["f"]}]}"#,
+            r#"{"schema": 1, "manifests": [{"ecosystem": "a", "language": "x", "files": ["../f"]}]}"#,
+            r#"{"schema": 1, "manifests": [{"ecosystem": "a", "language": "x"}]}"#,
+            r#"{"schema": 1, "manifests": [{"ecosystem": "a", "language": "x", "suffixes": ["csproj"]}]}"#,
+            r#"{"schema": 1, "skip_dirs": ["a/b"]}"#,
+        ] {
+            let parsed = serde_json::from_str::<CatalogFile>(bad).unwrap();
+            assert!(catalog_file_valid(&parsed).is_err(), "{bad}");
+        }
+        assert!(serde_json::from_str::<CatalogFile>(r#"{"schema": 1, "extra": 1}"#).is_err());
     }
 
     /// C-61: a manifest path is a relative path of recordable components; nothing else passes.
@@ -1129,7 +1474,7 @@ mod tests {
             "plugins/x/package.json".to_string(),
             "plugins/x/server/package.json".to_string(),
         ];
-        let fact = tools_fact(&manifests);
+        let fact = tools_fact(&manifests, shipped());
         let keys: Vec<&String> = fact.keys().collect();
         assert_eq!(keys, ["cargo", "node", "npm"]);
         assert_eq!(
@@ -1137,7 +1482,7 @@ mod tests {
             vec!["plugins/x/package.json", "plugins/x/server/package.json"]
         );
         // A name with no tools row is simply absent.
-        let gemfile = tools_fact(&["Gemfile".to_string()]);
+        let gemfile = tools_fact(&["Gemfile".to_string()], shipped());
         assert_eq!(gemfile.keys().collect::<Vec<_>>(), ["ruby"]);
     }
 
@@ -1165,7 +1510,7 @@ mod tests {
         assert!(!ignore_matches_at(&lines[1], "a/docs", false));
         // The stack: the deepest list with a matching line decides — a deeper "!old" overrides
         // a shallower "old/" for the folder, and the walk reads the file under it.
-        let stack = IgnoreStack(vec![
+        let stack = chain(vec![
             (0, ignore_lines("old/\n")),
             (1, ignore_lines("!old\n")),
         ]);
@@ -1173,7 +1518,7 @@ mod tests {
         assert!(!stack.excludes(&["pkg", "old", "package.json"], true));
         // A folder the root list excludes is never entered, whatever a deeper list says about
         // the files inside it.
-        let stack = IgnoreStack(vec![
+        let stack = chain(vec![
             (0, ignore_lines("old/\n")),
             (1, ignore_lines("!old/**\n")),
         ]);

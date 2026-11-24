@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "manifests": [
+    {"ecosystem": "cargo", "language": "rust", "files": ["Cargo.toml"], "tools": ["cargo"]},
+    {"ecosystem": "npm", "language": "javascript", "files": ["package.json"], "tools": ["node", "npm"]},
+    {"ecosystem": "typescript", "language": "typescript", "files": ["tsconfig.json"], "tools": ["typescript"]},
+    {"ecosystem": "pip", "language": "python", "files": ["pyproject.toml", "setup.py", "requirements.txt"], "tools": ["python"]},
+    {"ecosystem": "go-modules", "language": "go", "files": ["go.mod"], "tools": ["go"]},
+    {"ecosystem": "maven", "language": "java", "files": ["pom.xml"], "tools": ["maven"]},
+    {"ecosystem": "gradle", "language": "java", "files": ["build.gradle"], "tools": ["gradle"]},
+    {"ecosystem": "gradle-kotlin", "language": "kotlin", "files": ["build.gradle.kts"], "tools": ["gradle"]},
+    {"ecosystem": "bundler", "language": "ruby", "files": ["Gemfile"], "tools": ["ruby"]},
+    {"ecosystem": "composer", "language": "php", "files": ["composer.json"], "tools": ["php"]}
+  ],
+  "skip_dirs": [".venv", "venv", "target", "node_modules", "dist", "build", "vendor"]
+}

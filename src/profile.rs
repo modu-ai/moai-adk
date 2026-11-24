@@ -321,6 +321,12 @@ pub struct Plan {
     /// file, or when the file still matches the baseline.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub drift: Vec<String>,
+    /// The recorded `detected.manifests` entries that applying this plan's `detected` key
+    /// would leave out, sorted (SPEC-20261124-project-detect-monorepo REQ-9). Empty — and left
+    /// out of the JSON and of the digest — when nothing recorded drops, so a plan that drops
+    /// nothing keeps the bytes and the digest it had before this field.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dropped_manifests: Vec<String>,
     pub plan_digest: String,
 }
 
@@ -761,18 +767,54 @@ fn compute_drift(baseline: Option<&Value>, current: Option<&Value>) -> Vec<Strin
 }
 
 fn plan_digest(p: &Plan) -> String {
-    digest(
-        &serde_json::to_vec(&(
-            p.protocol_version,
-            &p.profile,
-            &p.expected_sha256,
-            &p.target_binding,
-            &p.action,
-            &p.delta,
-            &p.drift,
-        ))
-        .expect("typed plan"),
-    )
+    let base = (
+        p.protocol_version,
+        &p.profile,
+        &p.expected_sha256,
+        &p.target_binding,
+        &p.action,
+        &p.delta,
+        &p.drift,
+    );
+    // The dropped list joins the digest only when it is not empty (REQ-10): a plan that drops
+    // nothing keeps its earlier digest, and one that drops something cannot lose the list.
+    let bytes = if p.dropped_manifests.is_empty() {
+        serde_json::to_vec(&base)
+    } else {
+        serde_json::to_vec(&(base, &p.dropped_manifests))
+    };
+    digest(&bytes.expect("typed plan"))
+}
+
+/// The recorded `detected.manifests` entries that applying the plan's `detected` key leaves
+/// out, sorted (REQ-9). Only a key the plan applies (`changed` or `removed`) can drop anything:
+/// a hand-edited key is a conflict that is kept, and an unchanged key keeps its list.
+fn dropped_manifests(delta: &Delta, current: Option<&Value>, desired: &Value) -> Vec<String> {
+    if !delta
+        .changed
+        .iter()
+        .chain(&delta.removed)
+        .any(|key| key == "detected")
+    {
+        return Vec::new();
+    }
+    let listed = |v: Option<&Value>| -> Vec<String> {
+        v.and_then(|v| v.get("detected"))
+            .and_then(|d| d.get("manifests"))
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|m| m.as_str().map(String::from))
+            .collect()
+    };
+    let kept = listed(Some(desired));
+    let mut dropped: Vec<String> = listed(current)
+        .into_iter()
+        .filter(|m| !kept.contains(m))
+        .collect();
+    dropped.sort();
+    dropped.dedup();
+    dropped
 }
 pub fn plan(root: &Path, profile: Profile) -> Result<Plan> {
     plan_in(&KNOWN_HOSTS, root, profile)
@@ -809,6 +851,7 @@ pub fn plan_in(active: &[&str], root: &Path, mut profile: Profile) -> Result<Pla
     let desired = serde_json::to_value(&profile).expect("typed profile");
     let delta = compute_delta(active, baseline.as_ref(), current.as_ref(), &desired);
     let drift = compute_drift(baseline.as_ref(), current.as_ref());
+    let dropped_manifests = dropped_manifests(&delta, current.as_ref(), &desired);
     let action = if !delta.conflict.is_empty() {
         "conflict"
     } else if old.is_none() {
@@ -832,6 +875,7 @@ pub fn plan_in(active: &[&str], root: &Path, mut profile: Profile) -> Result<Pla
         action: action.into(),
         delta,
         drift,
+        dropped_manifests,
         plan_digest: String::new(),
     };
     p.plan_digest = plan_digest(&p);
