@@ -58,6 +58,14 @@ fn envelope(out: &Output) -> Value {
     })
 }
 
+/// Prints what a run answered when `C483_SHOW` is set (run with `--no-capture`), so the observed
+/// answers of the dangerous path can be copied into the SPEC Result; it checks nothing.
+fn show(what: &str, text: &str) {
+    if std::env::var_os("C483_SHOW").is_some() {
+        eprintln!("SHOW {what}: {text}");
+    }
+}
+
 /// Asserts exit 0 and a success envelope, and unwraps the result.
 fn result(out: &Output) -> Value {
     assert_eq!(
@@ -69,6 +77,7 @@ fn result(out: &Output) -> Value {
     );
     let v = envelope(out);
     assert_eq!(v["ok"], json!(true), "{v}");
+    show("answer", &v["result"]["worktree_follow"].to_string());
     v["result"].clone()
 }
 
@@ -452,6 +461,7 @@ impl World {
         assert_eq!(v["ok"], json!(false), "{what}: {v}");
         assert_eq!(v["error"]["kind"], json!("conflict"), "{what}: {v}");
         let message = v["error"]["message"].as_str().unwrap().to_string();
+        show(what, &message);
         for reason in reasons {
             assert!(
                 message.contains(reason),
