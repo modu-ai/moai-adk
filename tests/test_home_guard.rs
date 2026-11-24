@@ -598,6 +598,12 @@ fn scratch_crate(wrapper: Wrapper) -> TempDir {
 
 /// `(exit code, stdout and stderr)` of a nextest run of the scratch crate.
 fn nextest(dir: &Path, mode: Option<&str>) -> (Option<i32>, String) {
+    nextest_with_log(dir, mode, None)
+}
+
+/// [`nextest`] with `MOAI_HOME_GUARD_LOG` set to `log` outside the scratch crate, so the test can
+/// read whether the variable reaches the wrapper through nextest.
+fn nextest_with_log(dir: &Path, mode: Option<&str>, log: Option<&Path>) -> (Option<i32>, String) {
     let mut cmd = Command::new("cargo");
     cmd.args([
         "nextest",
@@ -630,6 +636,9 @@ fn nextest(dir: &Path, mode: Option<&str>) -> (Option<i32>, String) {
     cmd.env("TMPDIR", &private_tmp);
     if let Some(mode) = mode {
         cmd.env("MOAI_HOME_GUARD", mode);
+    }
+    if let Some(log) = log {
+        cmd.env("MOAI_HOME_GUARD_LOG", log);
     }
     let out = cmd
         .output()
@@ -992,4 +1001,328 @@ fn a_baseline_line_that_names_nothing_is_refused() {
     }
     let err = check_baseline("no tab on this line\n", root, 10).unwrap_err();
     assert!(err.contains("malformed"), "{err}");
+}
+
+// ---- the detail lines (SPEC-20261124-home-guard-flake) ---------------------------------------------
+//
+// A `touched` verdict leaves evidence in the log file and changes nothing else: the verdict, the exit
+// code and the `HOME-GUARD:` line stay what the tests above pin.
+
+const DETAIL: &str = "HOME-GUARD-DETAIL:";
+
+fn detail_lines(log: &Path) -> Vec<String> {
+    fs::read_to_string(log)
+        .unwrap_or_default()
+        .lines()
+        .filter(|l| l.starts_with(DETAIL))
+        .map(str::to_string)
+        .collect()
+}
+
+/// The value of `key=` in one detail line, up to the next space.
+fn field<'a>(line: &'a str, key: &str) -> Option<&'a str> {
+    let k = format!("{key}=");
+    line.split_whitespace()
+        .find_map(|w| w.strip_prefix(k.as_str()))
+}
+
+fn digits(s: &str) -> bool {
+    !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit())
+}
+
+/// Seconds with a fraction: `1795505797.048996`.
+fn has_fraction(t: &str) -> bool {
+    t.split_once('.')
+        .is_some_and(|(a, b)| digits(a) && digits(b))
+}
+
+fn seconds(t: &str) -> f64 {
+    t.parse().unwrap_or_else(|_| panic!("not a time: {t:?}"))
+}
+
+fn accessed(p: &Path) -> std::time::SystemTime {
+    fs::metadata(p).unwrap().accessed().unwrap()
+}
+
+/// The wrapper run with a folder of stand-in commands in front of `PATH`.
+fn run_with_fake_path(g: &Guard, fake: &Path, mode: &str, log: &Path, probe: &str) -> Output {
+    let path = format!(
+        "{}:{}",
+        fake.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    Command::new("sh")
+        .arg(script())
+        .args(["sh", "-c", probe])
+        .env("TMPDIR", g.tmp.path())
+        .env("PATH", path)
+        .env("MOAI_HOME_GUARD", mode)
+        .env("MOAI_HOME_GUARD_LOG", log)
+        .output()
+        .unwrap()
+}
+
+/// A stand-in command that always fails, the way a host without it would.
+fn failing_command(dir: &Path, name: &str) {
+    use std::os::unix::fs::PermissionsExt;
+    fs::write(dir.join(name), "#!/bin/sh\nexit 1\n").unwrap();
+    fs::set_permissions(dir.join(name), fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+/// AC-1: one detail line per hit entry, with times in seconds with a fraction, and none when the
+/// test touched nothing.
+#[test]
+fn a_touched_verdict_writes_one_detail_line_per_hit_entry() {
+    let g = Guard::new();
+    let logs = TempDir::new().unwrap();
+    let log = logs.path().join("guard.log");
+    let out = g.run(Some("observe"), Some(&log), DECOY_READ);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let printed = stderr(&out);
+    let listed = printed
+        .lines()
+        .find(|l| l.starts_with("HOME-GUARD: touched its HOME"))
+        .and_then(|l| l.split_once(" -> "))
+        .map(|(_, hits)| hits.split_whitespace().count())
+        .unwrap_or_else(|| panic!("no touched line: {printed}"));
+    let hits: Vec<String> = detail_lines(&log)
+        .into_iter()
+        .filter(|l| field(l, "kind") == Some("hit"))
+        .collect();
+    assert_eq!(hits.len(), listed, "{hits:#?}\n{printed}");
+    for l in &hits {
+        assert!(l.starts_with(&format!("{DETAIL} kind=hit ")), "{l}");
+        for key in ["atime", "mtime", "ref", "end"] {
+            let t = field(l, key).unwrap_or_else(|| panic!("no {key} in {l}"));
+            assert!(has_fraction(t), "{key} has no fraction in {l}");
+        }
+        assert!(
+            seconds(field(l, "ref").unwrap()) <= seconds(field(l, "end").unwrap()),
+            "{l}"
+        );
+    }
+    let read = hits
+        .iter()
+        .find(|l| field(l, "path") == Some(".moai/user-assets.json"))
+        .unwrap_or_else(|| panic!("the decoy read is not named: {hits:#?}"));
+    // The read came after the reference file was made and before the comparison.
+    let (r, a, e) = (
+        seconds(field(read, "ref").unwrap()),
+        seconds(field(read, "atime").unwrap()),
+        seconds(field(read, "end").unwrap()),
+    );
+    assert!(r < a && a <= e, "ref {r} < atime {a} <= end {e}");
+
+    let quiet = logs.path().join("quiet.log");
+    let out = g.run(Some("enforce"), Some(&quiet), r#"printf '%s\n' "$HOME""#);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert!(detail_lines(&quiet).is_empty());
+}
+
+/// AC-2: a guard folder of another test is read with `stat` only, so its access times stay put.
+#[test]
+fn another_guard_folder_is_named_by_its_access_time_and_never_opened() {
+    let g = Guard::new();
+    let peer = g.tmp.path().join("moai-test-home.PEER01");
+    fs::create_dir_all(peer.join(".moai")).unwrap();
+    let file = peer.join(".moai/user-assets.json");
+    fs::write(&file, "").unwrap();
+    let old = Command::new("touch")
+        .args(["-a", "-t", "200001010000"])
+        .args([&file, &peer.join(".moai"), &peer])
+        .status()
+        .unwrap();
+    assert!(old.success());
+    let before = [
+        accessed(&file),
+        accessed(&peer.join(".moai")),
+        accessed(&peer),
+    ];
+    let logs = TempDir::new().unwrap();
+    let log = logs.path().join("guard.log");
+    let out = g.run(Some("observe"), Some(&log), DECOY_READ);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let peers: Vec<String> = detail_lines(&log)
+        .into_iter()
+        .filter(|l| field(l, "kind") == Some("peer"))
+        .collect();
+    assert_eq!(peers.len(), 1, "{peers:#?}");
+    assert_eq!(field(&peers[0], "folder"), Some("moai-test-home.PEER01"));
+    let secs = before[0]
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        .to_string();
+    let t = field(&peers[0], "atime").unwrap();
+    assert!(
+        has_fraction(t) && t.starts_with(&format!("{secs}.")),
+        "{} vs {secs}",
+        peers[0]
+    );
+    let after = [
+        accessed(&file),
+        accessed(&peer.join(".moai")),
+        accessed(&peer),
+    ];
+    assert_eq!(
+        before, after,
+        "the wrapper opened or listed the other guard folder"
+    );
+}
+
+/// AC-6: nothing in a detail line says where the user's folders are or what the test was asked.
+#[test]
+fn the_detail_lines_hold_relative_paths_and_no_argument() {
+    let g = Guard::new();
+    let logs = TempDir::new().unwrap();
+    let log = logs.path().join("guard.log");
+    let probe = format!("{DECOY_READ}; : ARGUMENT-MARKER-9f3");
+    let out = g.run(Some("observe"), Some(&log), &probe);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let lines = detail_lines(&log);
+    assert!(!lines.is_empty());
+    let mut banned = vec![
+        g.tmp.path().to_string_lossy().into_owned(),
+        "ARGUMENT-MARKER".to_string(),
+        ROOT.to_string(),
+    ];
+    if let Ok(h) = std::env::var("HOME") {
+        if h.len() > 1 {
+            banned.push(h);
+        }
+    }
+    for l in &lines {
+        for b in &banned {
+            assert!(!l.contains(b.as_str()), "{b:?} is in {l}");
+        }
+    }
+    let paths: Vec<&str> = lines
+        .iter()
+        .filter(|l| field(l, "kind") == Some("hit"))
+        .filter_map(|l| field(l, "path"))
+        .collect();
+    for want in [".", ".moai", ".moai/user-assets.json"] {
+        assert!(paths.contains(&want), "{want} is missing in {paths:?}");
+    }
+    assert!(paths.iter().all(|p| !p.starts_with('/')), "{paths:?}");
+}
+
+/// AC-7: a running `moai*` process is named by id and file name; its arguments and folder are not
+/// kept; a process table that cannot be read leaves one line and the same verdict.
+#[test]
+fn a_moai_process_is_named_by_id_and_file_name_only() {
+    let g = Guard::new();
+    let bin = TempDir::new().unwrap();
+    fs::copy("/bin/sleep", bin.path().join("moai-probe")).unwrap();
+    let mut child = Command::new(bin.path().join("moai-probe"))
+        .arg("31.4159")
+        .spawn()
+        .unwrap();
+    let logs = TempDir::new().unwrap();
+    let log = logs.path().join("guard.log");
+    let out = g.run(Some("observe"), Some(&log), DECOY_READ);
+    let _ = child.kill();
+    let _ = child.wait();
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let procs: Vec<String> = detail_lines(&log)
+        .into_iter()
+        .filter(|l| field(l, "kind") == Some("proc"))
+        .collect();
+    let mine = procs
+        .iter()
+        .find(|l| field(l, "pid") == Some(child.id().to_string().as_str()))
+        .unwrap_or_else(|| panic!("pid {} is not named: {procs:#?}", child.id()));
+    assert_eq!(field(mine, "name"), Some("moai-probe"), "{mine}");
+    for l in &procs {
+        assert!(!l.contains("31.4159"), "an argument is kept: {l}");
+        assert!(
+            !l.contains(bin.path().to_str().unwrap()),
+            "a folder is kept: {l}"
+        );
+    }
+}
+
+#[test]
+fn an_unreadable_process_table_leaves_one_line_and_the_same_verdict() {
+    let g = Guard::new();
+    let fake = TempDir::new().unwrap();
+    failing_command(fake.path(), "ps");
+    let logs = TempDir::new().unwrap();
+    let log = logs.path().join("guard.log");
+    let out = run_with_fake_path(&g, fake.path(), "enforce", &log, DECOY_READ);
+    assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
+    let lines = detail_lines(&log);
+    let unavailable = lines
+        .iter()
+        .filter(|l| l.contains("procs=unavailable"))
+        .count();
+    assert_eq!(unavailable, 1, "{lines:#?}");
+    assert!(
+        lines.iter().all(|l| field(l, "kind") != Some("proc")),
+        "{lines:#?}"
+    );
+}
+
+/// AC-5: without `perl` the times are whole seconds and the verdict is the same.
+#[test]
+fn without_perl_the_times_are_whole_seconds_and_the_verdict_is_the_same() {
+    let g = Guard::new();
+    let fake = TempDir::new().unwrap();
+    failing_command(fake.path(), "perl");
+    let logs = TempDir::new().unwrap();
+    let log = logs.path().join("guard.log");
+    let out = run_with_fake_path(&g, fake.path(), "enforce", &log, DECOY_READ);
+    assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
+    let hits: Vec<String> = detail_lines(&log)
+        .into_iter()
+        .filter(|l| field(l, "kind") == Some("hit"))
+        .collect();
+    assert!(!hits.is_empty());
+    for l in &hits {
+        for key in ["atime", "mtime", "ref", "end"] {
+            let t = field(l, key).unwrap_or_else(|| panic!("no {key} in {l}"));
+            assert!(digits(t), "{key} is not whole seconds in {l}");
+        }
+    }
+}
+
+/// AC-4: a detail line that cannot be written leaves the exit code and the printed line as they
+/// were, and no shell error of its own.
+#[test]
+fn a_detail_that_cannot_be_written_changes_nothing() {
+    let g = Guard::new();
+    let logs = TempDir::new().unwrap();
+    let bad = logs.path().join("no-such-folder").join("guard.log");
+    let out = g.run(Some("observe"), Some(&bad), DECOY_READ);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let printed = stderr(&out);
+    assert!(
+        printed.contains("HOME-GUARD: touched its HOME"),
+        "{printed}"
+    );
+    assert!(!printed.contains("No such file"), "{printed}");
+    let out = g.run(Some("enforce"), Some(&bad), DECOY_READ);
+    assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
+}
+
+/// AC-8: `MOAI_HOME_GUARD_LOG` set outside the scratch crate reaches the wrapper through nextest.
+#[test]
+fn the_log_variable_reaches_the_wrapper_through_nextest() {
+    require_nextest();
+    let dir = scratch_crate(Wrapper::Repository);
+    let logs = TempDir::new().unwrap();
+    let log = logs.path().join("guard.log");
+    let (_, text) = nextest_with_log(dir.path(), Some("observe"), Some(&log));
+    assert_eq!(
+        status(&text, "plant_reads_decoy").as_deref(),
+        Some("PASS"),
+        "{text}"
+    );
+    let lines = detail_lines(&log);
+    assert!(
+        lines.iter().any(|l| field(l, "kind") == Some("hit")
+            && field(l, "path") == Some(".moai/user-assets.json")),
+        "the log has no detail line: {}",
+        fs::read_to_string(&log).unwrap_or_default()
+    );
 }
