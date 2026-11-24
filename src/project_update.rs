@@ -54,7 +54,7 @@ const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/
      Go tool files under .claude/ and .agents/, settings and instruction files \
      (go-state-plan); .codex files are classified in the preview and nothing under .codex \
      moves yet (#2936 S1c-2)";
-const INSTALL_REASON: &str = "profile, generation (AGENTS.md managed section and generated \
+const INSTALL_REASON: &str = "profile, project harness (CLAUDE.md managed section and generated \
      files), Claude Code settings, Claude Code hooks, GitHub templates; the retired-hosts step \
      only lists the files of the retired Codex and OMP hosts and leaves them as they are";
 /// Why the merge step waits while the generation step has files to write: the merge reads and
@@ -1817,13 +1817,13 @@ fn undo_order() -> Value {
                 "moai go-hooks-revert --receipt <receipt of the hooks step> --permission-reference <reference> <PROJECT>",
             ], "note": "for a hooks step that ran go-hooks-apply (the Go hook set); a hooks step that ran hooks-apply --host claude over an existing settings file printed its own `revert` (moai hooks-revert <PROJECT> --receipt <id> --permission-reference <reference>), and a first install has nothing to revert"},
             {"step": "generation", "commands": [
-                "moai apply-recover --receipt <agents_receipt of the generation step> --permission-reference <reference> <PROJECT>",
-                "moai apply-recover --receipt <receipt of the generation step> --permission-reference <reference> <PROJECT>",
+                "moai apply-recover --receipt <agents_receipt of the project harness step> --permission-reference <reference> <PROJECT>",
+                "moai apply-recover --receipt <receipt of the project harness step> --permission-reference <reference> <PROJECT>",
             ], "note": "the instruction file has a receipt of its own; undo it before the workflow files"},
             {"step": "go-state", "commands": [
                 "moai go-state-revert-plan <PROJECT> --backup <backup of the go-state step>",
                 "moai go-state-revert --backup <backup of the go-state step> --plan-digest <digest of that plan> --permission-reference <reference> <PROJECT>",
-            ], "note": "refused while the generation step's AGENTS.md is in place"},
+            ], "note": "refused while the project harness step's AGENTS.md is in place"},
             {"step": "go-settings", "commands": [
                 "moai go-settings-revert --receipt <receipt of the go-settings step> --permission-reference <reference> <PROJECT>",
             ]},

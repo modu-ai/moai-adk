@@ -36,9 +36,9 @@ fn decision(id: &str, value: &str) -> Value {
     json!({"id": id, "topic": id, "value": value, "source": "user", "scope": "project"})
 }
 
-fn write_profile(root: &Path, revision: &str, purpose: &str, review_blocks: &str) {
+fn write_profile(root: &Path, revision: &str, purpose: &str, tools: &[&str], review_blocks: &str) {
     let profile = json!({"schema_version": 2, "project_id": "demo", "purpose": purpose,
-    "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
+    "tools": tools, "development_methods": ["TDD"], "hosts": ["claude"],
     "interview_revision": revision, "decisions": [
         decision("test_command", "the project test command"),
         decision("review_blocks", review_blocks),
@@ -60,6 +60,7 @@ fn fixture() -> Fx {
         &root,
         "r1",
         "Build a small editor",
+        &["Rust"],
         "a change without a test",
     );
     Fx {
@@ -167,7 +168,12 @@ fn hand_edit(fx: &Fx, rel: &str, marker: &str) {
 const TRACKED: [&str; 3] = ["CLAUDE.md", "REVIEW.md", ".gitignore"];
 
 /// A project whose whole harness was generated once, whose three tracked files the user then
-/// edited inside their managed blocks, and whose profile has since moved on.
+/// edited inside their managed blocks, and whose profile has since moved on. A block conflicts
+/// only when both sides moved after the baseline, so the profile moves what two of the blocks
+/// render: CLAUDE.md renders the tools, and REVIEW.md the review rules. The `.gitignore` block
+/// renders from no profile field (each one was moved on its own and left it `unchanged`), so it
+/// stands for a block an earlier build of the tool generated, whose recorded baseline is not
+/// what this build renders — the state of a project generated before a tool update.
 fn generated_then_edited() -> Fx {
     let fx = fixture();
     let first = fx.plan(&request(
@@ -180,6 +186,7 @@ fn generated_then_edited() -> Fx {
     for rel in TRACKED {
         assert!(fx.root.join(rel).exists(), "{rel} was not generated");
     }
+    earlier_gitignore_baseline(&fx);
     hand_edit(
         &fx,
         "CLAUDE.md",
@@ -196,9 +203,27 @@ fn generated_then_edited() -> Fx {
         &fx.root,
         "r2",
         "Build a large editor",
+        &["Rust", "Python"],
         "a change without a test or a review",
     );
     fx
+}
+
+/// Makes the recorded baseline of the `.gitignore` block one this build no longer renders, the
+/// way a manifest written by an earlier build of the tool holds it.
+fn earlier_gitignore_baseline(fx: &Fx) {
+    let path = state(&fx.root).join("manifests/generation.json");
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    let entry = manifest["owned_files"]
+        .as_array_mut()
+        .expect("owned_files")
+        .iter_mut()
+        .find(|f| f["path"] == ".gitignore")
+        .expect("the manifest records .gitignore");
+    entry["baseline_sha256"] = json!(moai_cli::digest(
+        b"# moai:managed:begin id=moai-local\nwhat an earlier build rendered here\n# moai:managed:end id=moai-local\n"
+    ));
+    fs::write(&path, serde_json::to_vec_pretty(&manifest).unwrap()).unwrap();
 }
 
 #[test]

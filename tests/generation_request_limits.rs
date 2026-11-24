@@ -36,7 +36,7 @@ fn fixture() -> Fx {
     fs::create_dir_all(&state).unwrap();
     let profile = json!({
         "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
-        "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude", "codex"]
+        "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
     });
     let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
     bytes.push(b'\n');
