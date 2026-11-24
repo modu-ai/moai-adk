@@ -951,6 +951,46 @@ fn a_second_version_folder_adopts_the_html_report_receipt_instead_of_blocking_it
     );
 }
 
+/// SPEC-20261124-installed-version-by-name: the earlier folder installed under `bin/moai-cli`; the
+/// running build is a `bin/moai` alone (its own identity). The html-report baseline is still read
+/// from the receipt the earlier folder wrote under the other executable name.
+#[test]
+fn a_build_named_moai_reads_the_html_report_receipt_written_under_moai_cli() {
+    let (_t, home, exe, pkg) = setup();
+    with_html_report(&pkg);
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap();
+    result(&run(&exe, &home, &["update", "--confirm", top]));
+    let versions = exe
+        .parent()
+        .and_then(Path::parent)
+        .and_then(Path::parent)
+        .unwrap();
+    let next = versions.join("b");
+    fs::create_dir_all(next.join("bin")).unwrap();
+    let exe_b = next.join("bin/moai");
+    common::copy_executable(Path::new(EXE), &exe_b);
+    let pkg_b = next.join("skills/moai");
+    copy_tree(&package(), &pkg_b);
+    with_html_report(&pkg_b);
+    copy_tree(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("agents"),
+        &next.join("agents"),
+    );
+    let p = result(&run(&exe_b, &home, &["update"]));
+    let part = &p["extra_skills"]["parts"][0];
+    assert_eq!(part["preflight"], json!("ok"), "{p}");
+    assert!(part["receipt_from"].is_string(), "{p}");
+    assert!(
+        part["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|f| f["action"] == json!("unchanged")),
+        "{p}"
+    );
+}
+
 /// [`run`] with one more variable set, such as the debug builds' fault seam.
 fn run_with(exe: &Path, home: &Path, args: &[&str], var: (&str, &str)) -> Output {
     Command::new(exe)

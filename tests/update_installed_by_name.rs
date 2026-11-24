@@ -151,7 +151,7 @@ fn install(exe: &Path, f: &Fixture) {
     sleep(Duration::from_millis(1100));
 }
 
-fn host<'a>(v: &'a Value) -> &'a Value {
+fn host(v: &Value) -> &Value {
     v["hosts"]
         .as_array()
         .unwrap()
@@ -292,77 +292,4 @@ fn an_unreadable_receipt_under_the_moai_name_blocks_the_host() {
         "{p}"
     );
     assert!(h.get("adopt").is_none(), "{p}");
-}
-
-// --- AC-5 (REQ-5): the extra skill (html-report) reads its baseline the same way ---------------
-
-fn copy_tree(from: &Path, to: &Path) {
-    fs::create_dir_all(to).unwrap();
-    for entry in fs::read_dir(from).unwrap() {
-        let p = entry.unwrap().path();
-        let dest = to.join(p.file_name().unwrap());
-        if p.is_dir() {
-            copy_tree(&p, &dest);
-        } else {
-            fs::copy(&p, &dest).unwrap();
-        }
-    }
-}
-
-/// Lays the real package, the agent sources and the html-report skill beside a version folder.
-fn lay_package(home: &Path, version: &str) {
-    let folder = state(home).join("versions").join(version);
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    copy_tree(&manifest.join("skills/moai"), &folder.join("skills/moai"));
-    copy_tree(&manifest.join("agents"), &folder.join("agents"));
-    let skill = moai_cli::update::extra_skill::SKILLS[0];
-    copy_tree(
-        &manifest.join("skills").join(skill),
-        &folder.join("skills").join(skill),
-    );
-}
-
-/// `moai update <args>` as the installed layout runs it: the package sits beside the binary.
-fn update(exe: &Path, home: &Path, args: &[&str]) -> Value {
-    let out = Command::new(exe)
-        .arg("update")
-        .args(args)
-        .clean_env()
-        .env("PATH", "/usr/bin:/bin")
-        .env("HOME", home)
-        .env("LC_ALL", "C")
-        .current_dir(home)
-        .stdin(Stdio::null())
-        .output()
-        .unwrap();
-    ok(&out)
-}
-
-#[test]
-fn the_extra_skill_baseline_is_read_under_the_moai_name_of_an_earlier_folder() {
-    let f = fixture();
-    // Folder `a` runs as `bin/moai` alone and installs; a `bin/moai-cli` of other bytes follows.
-    let a_moai = put(&f.home, "a", "moai");
-    lay_package(&f.home, "a");
-    let p = update(&a_moai, &f.home, &[]);
-    let digest = p["plan_digest"].as_str().unwrap().to_string();
-    update(&a_moai, &f.home, &["--confirm", &digest]);
-    let mut bytes = fs::read(&a_moai).unwrap();
-    bytes.push(0);
-    fs::write(bin_dir(&f.home, "a").join("moai-cli"), bytes).unwrap();
-
-    let b_moai = running_build(&f);
-    lay_package(&f.home, "b");
-    let p = update(&b_moai, &f.home, &[]);
-    let part = &p["extra_skills"]["parts"][0];
-    assert_eq!(part["preflight"], json!("ok"), "{p}");
-    assert!(part["receipt_from"].is_string(), "{p}");
-    assert!(
-        part["files"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .all(|f| f["action"] == json!("unchanged")),
-        "{p}"
-    );
 }

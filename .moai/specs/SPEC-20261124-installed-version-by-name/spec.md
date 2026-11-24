@@ -2,7 +2,7 @@
 id: SPEC-20261124-installed-version-by-name
 title: "moai update reads the installed version when the executable name is moai or moai-cli"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-24
 ---
 
@@ -27,7 +27,7 @@ An installation id is the hash of the binary path, and a build can run under two
 - AC-2 (REQ-4): the update screen of that plan starts with `installed <A version> → package <B version>` and never `none` · verify: `cargo test --locked --test update_installed_by_name`
 - AC-3 (REQ-3): when both names of folder A hold a finished receipt the newer one is the baseline and the plan is not blocked as ambiguous · verify: `cargo test --locked --test update_installed_by_name`
 - AC-4 (REQ-2): an unreadable receipt under the `moai` name of folder A blocks the host and adopts nothing · verify: `cargo test --locked --test update_installed_by_name`
-- AC-5 (REQ-5): the extra-skill baseline of the same layout reads A's receipt under the `moai` name · verify: `cargo test --locked --test update_installed_by_name`
+- AC-5 (REQ-5): a build that runs as `bin/moai` alone reads the html-report receipt its earlier folder wrote under the `moai-cli` name, carries `receipt_from` and leaves every file unchanged · verify: `cargo test --locked --test update_user_layer_cli`
 
 ## Scope
 
@@ -35,6 +35,8 @@ An installation id is the hash of the binary path, and a build can run under two
 - write: `src/update.rs` (the earlier-folder id list and one new helper beside `earlier_install_ids`)
 - write: `src/update/extra_skill.rs` (the same id list)
 - write: `tests/update_installed_by_name.rs`
+- write: `tests/update_user_layer_cli.rs` (one test beside the existing html-report receipt test)
+- write: `tests/fixtures/state_folder_literals/allow.tsv` (one row for the new test file)
 
 ## Plan
 
