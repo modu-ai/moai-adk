@@ -291,6 +291,56 @@ fn a_done_card_does_not_count() {
     assert_eq!(second["name"], json!("C-2"), "{second}");
 }
 
+/// SPEC-20261124-card-help-gates AC-7 (REQ-5): a withdrawn card and a folded card are `hold`, not
+/// open, so they leave room on their SPEC; a card that is still open still blocks it (AUDIT #444
+/// O6).
+#[test]
+fn a_hold_card_is_not_an_open_card_of_its_spec() {
+    let w = World::new();
+    let spec = w.spec("login-fix");
+    let other = w.spec("other-fix");
+    ok(&w.add(&spec, &[])); // C-1: withdrawn below
+    // `card withdraw` takes the project folder as its last positional argument.
+    let withdrawn = w
+        .home
+        .command(&[
+            "card",
+            "withdraw",
+            "C-1",
+            "--reason",
+            "no longer needed",
+            "--by",
+            "leader",
+            w.p(),
+        ])
+        .output()
+        .expect("run moai");
+    ok(&withdrawn);
+    assert_eq!(w.count("SELECT count(*) FROM card WHERE state = 'hold'"), 1);
+
+    let second = ok(&w.add(&spec, &[])); // C-2: folded below
+    assert_eq!(second["name"], json!("C-2"), "withdrawn card made room: {second}");
+    ok(&w.add(&other, &[])); // C-3: the fold target
+    ledger::close::fold(
+        &mut ledger::open_write(w.home.path(), "demo").unwrap(),
+        2,
+        3,
+        "same work as the target",
+        "lane",
+        None,
+    )
+    .unwrap();
+    assert_eq!(w.count("SELECT count(*) FROM card WHERE state = 'hold'"), 2);
+
+    let third = ok(&w.add(&spec, &[])); // C-4: only hold cards were on the SPEC
+    assert_eq!(third["name"], json!("C-4"), "folded card made room: {third}");
+    // C-4 is open now: a further plain card is refused again and C-4 is the one named.
+    let (kind, message) = refusal(&w.add(&spec, &[]));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("C-4"), "{message}");
+    assert!(!message.contains("C-1") && !message.contains("C-2"), "{message}");
+}
+
 /// REQ-4, REQ-5: one open follow-up card per SPEC, whatever other cards the SPEC has.
 #[test]
 fn one_open_follow_up_per_spec() {
