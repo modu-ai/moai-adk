@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-followup-per-spec
 title: "A SPEC has one open follow-up card; later non-blocking findings and recurrences add to an existing card"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-24
+  basis: "리더 결정 노트 8040 (2026-11-24T00:18:40Z, 사용자 위임 2026-11-23T13:57Z, 노트 8036 에 답해요: 커밋 699181646e 의 판 1 승인, D-1~D-8 기본값 그대로, CLAUDE.md 는 재발 줄과 Flow 7 마지막 문장 두 곳만 tier-2 감사); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:04db71600eb592938ebb639ba48644f4f90fee817fa5401d2407b6373cec3db2"
 ---
 
 # A SPEC has one open follow-up card; later non-blocking findings and recurrences add to an existing card
@@ -19,6 +24,13 @@ created: 2026-11-24
 - `card criterion-add` 는 카드 상태를 따지지 않고 기준을 덧붙여요(`done` 만 거절, `src/ledger/workflow.rs`). 그래서 한 SPEC 의 후속 일을 한 카드의 기준으로 모을 수 있어요.
 
 그래서 두 가지를 바꿔요. (1) `card add --spec` 이 연결을 한 번에 쓰고, 같은 SPEC 에 열린 카드가 이미 있으면 거절해요. 후속 카드는 SPEC 마다 열린 것 하나만 허용하고(`--follow-up`), 갈라 내는 카드는 `--split-of` 로 이유를 남겨요. (2) 세 규칙 글을 "기준 하나를 후속 카드에 더해요" 와 "같은 원인의 열린 카드에 노트를 더해요" 로 고쳐요.
+
+## Interview
+
+- Q1: 무엇을 막나요? → A: 같은 SPEC 에 열린 카드가 둘 이상 생기는 일을 `card add --spec` 에서 막아요. 사용자가 2026-11-24 카드 조사 뒤 고른 개선이에요(카드 본문, 리더 노트 8040).
+- Q2: 후속 일은 어디로 가나요? → A: SPEC 의 열린 후속 카드에 기준 하나(`card criterion-add`)로 모이고, 후속 카드가 없을 때만 `--follow-up` 으로 새로 열어요(D-6).
+- Q3: 나중 연결(`card spec`)은요? → A: 건드리지 않아요(D-3, 리더 노트 8040 의 D-1~D-8 기본값 승인).
+- Q4: 기존 장부의 카드는요? → A: 합치거나 지우지 않아요(Non-goals).
 
 ## Non-goals
 
