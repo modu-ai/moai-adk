@@ -71,7 +71,7 @@ approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7978 of card
   - `tests/audit_prep_cli.rs` (new)
   - `docs/design-review/appendix/operations/audit_prep.md` (new)
   - `docs/design-review/appendix/operations/audit_done.md` (new)
-  - `src/audit_slot.rs`: only the helpers the card-addressed commands share become `pub(crate)` (the holder lookup by name, the prep and done cores); no change of behavior, except the one the repair of the audit (note 8068, B4) added: `audit-slot prep` refuses a slot whose own `target/` is a link or a file before its first write, with or without `--lane` (`real_target`)
+  - `src/audit_slot.rs`: only the helpers the card-addressed commands share become `pub(crate)` (the holder lookup by name, the prep and done cores); no change of behavior, except the one the repair of the audit (note 8068, B4) added: `audit-slot prep` refuses a slot whose own `target/` is a link or a file before it writes the holder record or anything through the link, with or without `--lane` (`real_target`, checked twice: before `ensure`, where nothing was changed, and after it, where the message names what `ensure` did)
   - `src/help.rs`: the rows and examples, under a one-command line lease
   - `tests/fixtures/help/all.txt`, `all-60.txt`, `all-80.txt`, `all-dumb.txt`: regenerated with `MOAI_HELP_GOLDEN_WRITE=1`, one row each, under a recorded leader decision as for audit-slot
 - read-only: everything else
@@ -119,6 +119,6 @@ approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7978 of card
 - AC-4: met on unix (run on macOS) — `a_rebuilt_test_executable_reads_the_slot_and_holds_no_byte_of_the_lane_folder`.
 - AC-5: met — `audit_done_refuses_a_left_mutant_then_releases_and_takes_no_discard_or_force`, `the_card_is_the_holder_whatever_session_finishes_it`(D-6).
 - AC-6: met on macOS — `a_one_line_mutant_on_a_prepared_slot_recompiles_only_the_workspace_units`.
-- 수리로 바뀐 동작 하나(감사 노트 8068 의 B4, 노트 8103 의 R1): `audit-slot prep` 은 자리 자신의 `target/` 이 링크나 파일이면 첫 쓰기 전에 거부해요(`--lane` 유무와 관계없이, 코드 `real_target`, 시험 `prep_refuses_a_slot_whose_target_is_a_link_and_writes_nothing_through_it`). 위 Scope 의 "동작 변화 없음"은 이 한 가지를 빼고 맞아요. 운영 문서 `audit_slot.md` 에 같은 문장을 적었어요(글만 고침, 요구사항과 인수 기준은 그대로).
+- 수리로 바뀐 동작 하나(감사 노트 8068 의 B4, 노트 8103 의 R1): `audit-slot prep` 은 자리 자신의 `target/` 이 링크나 파일이면 점유자 기록을 쓰거나 링크 안으로 쓰기 전에 거부해요(`--lane` 유무와 관계없이, 확인은 두 번: `ensure` 앞에서는 아무것도 바꾸지 않고, `ensure` 뒤에서는 `ensure` 가 한 일을 메시지에 대요. 코드 `real_target`, 시험 `prep_refuses_a_slot_whose_target_is_a_link_and_writes_nothing_through_it`). 위 Scope 의 "동작 변화 없음"은 이 한 가지를 빼고 맞아요. 운영 문서 `audit_slot.md` 에 같은 문장을 적었어요(글만 고침, 요구사항과 인수 기준은 그대로).
 - 가드 뮤턴트: 새 가드 테스트마다 코드 한 줄을 떼어 `exit 100` 으로 죽였어요(10개). 처음엔 셋이 살아남았어요(`exit 0`): 테스트에 단언이 없던 둘(준비한 빌드의 `compiled_dependencies`, holder 기록의 세션)과 제가 맞지 않는 테스트로 돌린 하나(`MAX_TESTS`)예요. 단언을 더하고(`8ce2d5d537`) 맞는 테스트로 다시 돌려 모두 `exit 100` 이에요.
 - 모르는 것(not_run): 멈춰 버린 cargo 자식에 대한 시간 제한은 이 조각에 없어요. `audit-prep` 은 cargo 가 끝날 때까지 무거운 자리를 쥐고 기다려요. Linux·Windows 결과는 맥 픽스처로 주장하지 않아요(AC-2 와 AC-6 은 macOS 에서만 돌고, 나머지는 unix 에서 돌지만 이 조각은 macOS 에서만 돌렸어요).
