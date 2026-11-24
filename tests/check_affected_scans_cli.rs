@@ -485,3 +485,33 @@ fn a_scan_list_that_cannot_be_read_stops_before_the_heavy_steps() {
     assert!(line.contains(" test_tables=0 "), "{line}");
     assert!(line.ends_with(" result=PASS"), "{line}");
 }
+
+/// SPEC-20261124-repo-scans-targets-per-line REQ-4: a scan list that names its cargo targets in
+/// `test_targets` selects the same targets, and counts the same scans, as the list that spells
+/// them as one `--test` command; a scan with no `checks` key at all is read too.
+#[test]
+fn a_table_with_test_targets_selects_the_same_targets_as_the_listed_command() {
+    let listed: &[u8] = br#"{"about":"x","scans":[
+      {"id":"a","checks":["cargo test --offline --locked --test card_cli --test zz_beta_cli",
+                          "cargo test --offline --locked --lib state_dir"]},
+      {"id":"b","checks":["cargo test --offline --locked --test zz_gamma_cli"]}]}"#;
+    let named: &[u8] = br#"{"about":"x","scans":[
+      {"id":"a","test_targets":["card_cli","zz_beta_cli"],
+       "checks":["cargo test --offline --locked --lib state_dir"]},
+      {"id":"b","test_targets":["zz_gamma_cli"]}]}"#;
+    let changed = [("src/zz_stub.rs".to_string(), "// b\n".to_string())];
+    let answer = |scan_list: &[u8]| {
+        let fx = Fixture::with_bytes(ALL, &changed_bytes(&changed), Some(scan_list));
+        let (ok, r) = affected(&fx, None);
+        assert!(ok, "{r}");
+        r
+    };
+    let from_listed = answer(listed);
+    let from_named = answer(named);
+    let targets = from_listed["rust_targets"].as_array().unwrap();
+    for want in ["card_cli", "zz_beta_cli", "zz_gamma_cli"] {
+        assert!(targets.iter().any(|t| t == want), "{want} in {targets:?}");
+    }
+    assert_eq!(from_named["rust_targets"], from_listed["rust_targets"]);
+    assert_eq!(from_named["scans"], from_listed["scans"]);
+}

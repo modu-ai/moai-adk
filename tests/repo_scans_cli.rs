@@ -714,3 +714,48 @@ fn always_the_checked_in_table_flags_the_two_whole_tree_scans() {
         json!({"remerge": false, "hits": [], "checks": [], "reasons": []})
     );
 }
+
+/// SPEC-20261124-repo-scans-targets-per-line REQ-4: a scan that names its cargo targets in
+/// `test_targets` gives the same report as the same scan with the one command listed in `checks`:
+/// the same hits, and the same checks (the built command stands where the listed one stood).
+#[test]
+fn a_table_with_test_targets_gives_the_same_checks_as_the_listed_command() {
+    let home = Home::new();
+    let dir = TempDir::new().unwrap();
+    let scope = json!([{"prefix": "s/"}]);
+    let lib = "cargo test --offline --locked --lib state_dir";
+    let listed = dir.path().join("listed.json");
+    let named = dir.path().join("named.json");
+    fs::write(
+        &listed,
+        json!({"scans": [
+            {"id": "a", "rules": ["r"], "scope": scope, "checks": [
+                "cargo test --offline --locked --test alpha_cli --test beta_cli", lib]},
+            {"id": "b", "rules": ["r"], "scope": scope, "checks": [
+                "cargo test --offline --locked --test gamma_cli"]}]})
+        .to_string(),
+    )
+    .unwrap();
+    fs::write(
+        &named,
+        json!({"scans": [
+            {"id": "a", "rules": ["r"], "scope": scope,
+             "test_targets": ["alpha_cli", "beta_cli"], "checks": [lib]},
+            {"id": "b", "rules": ["r"], "scope": scope, "test_targets": ["gamma_cli"]}]})
+        .to_string(),
+    )
+    .unwrap();
+    let stdin = json!({"pr": ["s/1"], "tip": ["r"]}).to_string();
+    let from_listed = judge_run(&home, &[], &stdin, dir.path(), &listed);
+    let from_named = judge_run(&home, &[], &stdin, dir.path(), &named);
+    assert_eq!(
+        from_listed["checks"],
+        json!([
+            "cargo test --offline --locked --test alpha_cli --test beta_cli",
+            lib,
+            "cargo test --offline --locked --test gamma_cli"
+        ]),
+        "the listed form is the golden"
+    );
+    assert_eq!(from_named, from_listed);
+}

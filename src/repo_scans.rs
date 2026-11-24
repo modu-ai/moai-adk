@@ -538,4 +538,90 @@ mod tests {
         .to_string();
         assert!(parse_table(&bad).is_err());
     }
+
+    /// One scan `zz-scan` with the fields of `extra` added to a rule file and a scope.
+    fn one(extra: Value) -> Result<Vec<Scan>, String> {
+        let mut entry = json!({"id": "zz-scan", "rules": ["r"], "scope": [{"prefix": "s/"}]});
+        for (key, value) in extra.as_object().unwrap() {
+            entry[key] = value.clone();
+        }
+        parse_table(&json!({"scans": [entry]}).to_string())
+    }
+
+    const CARGO: &str = "cargo test --offline --locked";
+
+    /// SPEC-20261124-repo-scans-targets-per-line REQ-1.
+    #[test]
+    fn test_targets_build_one_cargo_command_before_the_listed_checks() {
+        let lib = format!("{CARGO} --lib state_dir");
+        let scans =
+            one(json!({"test_targets": ["alpha_cli", "beta_cli"], "checks": [lib]})).unwrap();
+        assert_eq!(
+            scans[0].checks,
+            s(&[
+                &format!("{CARGO} --test alpha_cli --test beta_cli"),
+                &format!("{CARGO} --lib state_dir")
+            ])
+        );
+        // the array's own order is kept: the sort is the table test's rule, not the reader's
+        let unsorted = one(json!({"test_targets": ["beta_cli", "alpha_cli"]})).unwrap();
+        assert_eq!(
+            unsorted[0].checks,
+            s(&[&format!("{CARGO} --test beta_cli --test alpha_cli")])
+        );
+        // the built command is what the judge hands to the gate
+        assert_eq!(
+            checks_for(&["zz-scan"], &scans),
+            scans[0].checks,
+            "checks_for reads the built commands"
+        );
+    }
+
+    /// SPEC-20261124-repo-scans-targets-per-line REQ-2.
+    #[test]
+    fn a_scan_without_test_targets_keeps_its_checks_as_listed() {
+        let plain = format!("{CARGO} --test b_cli --test a_cli");
+        let listed = [plain.as_str(), "python3 -m unittest tests.x_test"];
+        let scans = one(json!({"checks": listed})).unwrap();
+        assert_eq!(scans[0].checks, s(&listed));
+    }
+
+    /// SPEC-20261124-repo-scans-targets-per-line REQ-3: the message names the scan and the field.
+    #[test]
+    fn a_malformed_test_targets_is_refused() {
+        for bad in [
+            json!("alpha_cli"),
+            json!({"alpha_cli": 1}),
+            json!([1]),
+            json!([null]),
+            json!([""]),
+            json!(["Alpha_cli"]),
+            json!(["alpha cli"]),
+            json!(["alpha-cli"]),
+            json!(["--lib"]),
+            json!(["alpha_cli", "--lib"]),
+            json!(["alpha_cli::t"]),
+        ] {
+            let err = one(json!({"test_targets": bad.clone(), "checks": []}))
+                .expect_err(&format!("{bad} must be refused"));
+            assert!(
+                err.contains("zz-scan") && err.contains("test_targets"),
+                "{bad}: {err}"
+            );
+        }
+    }
+
+    /// SPEC-20261124-repo-scans-targets-per-line REQ-3: `checks` may be left out when
+    /// `test_targets` is there, and a scan with neither is refused.
+    #[test]
+    fn a_scan_with_test_targets_may_omit_checks_and_one_with_neither_is_refused() {
+        let only = one(json!({"test_targets": ["alpha_cli"]})).unwrap();
+        assert_eq!(only[0].checks, s(&[&format!("{CARGO} --test alpha_cli")]));
+        let err = one(json!({})).expect_err("a scan with neither field is refused");
+        assert!(err.contains("zz-scan"), "{err}");
+        assert!(
+            err.contains("test_targets") && err.contains("checks"),
+            "{err}"
+        );
+    }
 }
