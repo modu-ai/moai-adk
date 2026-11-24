@@ -9,15 +9,18 @@ mod common;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use tempfile::TempDir;
 
 const ROLE: &str = ".claude/agents/moai/prj-fixer.md";
 const PROJECTION: &str = ".claude/skills/ref-b/SKILL.md";
 
+/// Runs `moai` with a clean environment and a HOME of its own, so the run never reads the HOME of
+/// the test harness (the decoy files of `tools/test_home_guard.sh`).
 fn cli(args: &[&str], input: &Value) -> std::process::Output {
-    let mut child = Command::new(crate::common::MOAI_BIN)
-        .args(args)
+    let home = common::home::TempHome::new();
+    let mut child = home
+        .command(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
