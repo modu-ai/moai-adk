@@ -1155,6 +1155,55 @@ fn collect_leaves_the_texts_out_when_a_side_cannot_be_read() {
     }
 }
 
+/// The audit's B1 with the answer in reach: the head's registry entry is a symbolic link (mode
+/// 120000) whose blob, were it read, answers a real registration. The text must not be read at
+/// all (the blob is never requested), so the head stays tier 2 and the recorded answer stays
+/// unused.
+#[test]
+fn a_linked_registry_whose_blob_would_read_as_a_registration_is_tier_2() {
+    let mut grown = base_scans();
+    grown[0]["rules"] = json!(["tests/alpha.rs", "tests/beta.rs", "tests/gamma.rs"]);
+    let (old, new) = (base(), registry(grown));
+    let (a, b, c, d) = (sha('a'), sha('b'), sha('c'), sha('d'));
+    let mut all = pr_exchanges(json!([{"filename": REG}]));
+    all.push(compare(200, json!({"merge_base_commit": {"sha": M}})));
+    all.extend(side(M, &a, &c, &old));
+    all.extend([
+        tree(H, vec![entry("tools", "040000", "tree", &b)]),
+        tree(&b, vec![entry("repo_scans.json", "120000", "blob", &d)]),
+        // Never requested: the blob of the link, which holds the text of a registration.
+        blob_text(&d, &new),
+    ]);
+    let before_blob = all.len() - 1;
+    let t = RecordedTransport::new(all);
+    let input = audit_gate::collect("o", "r", 9, None, &t).unwrap();
+    assert_eq!(
+        t.remaining(),
+        1,
+        "the answer for the link's blob stays unused"
+    );
+    assert_eq!(
+        t.sent.borrow().len(),
+        before_blob,
+        "no read of the link's blob"
+    );
+    assert!(
+        t.sent
+            .borrow()
+            .iter()
+            .all(|r| !r.url.contains(&format!("/git/blobs/{d}"))),
+        "the link's blob was requested"
+    );
+    assert_eq!(
+        input.registry,
+        Some(RegistryTexts {
+            old: Some(old),
+            new: None
+        })
+    );
+    assert_eq!(gate_tier(&input), 2, "a link whose blob is a registration");
+}
+
 #[test]
 fn collect_reads_an_executable_registry_as_a_regular_file() {
     let mut grown = base_scans();
