@@ -20,7 +20,7 @@ use moai_cli::model_effort_questions::{
     self, apply, effort_question, model_question, plan, plan_file, read_answer, run, tool_question,
     Answer, Kind, Outcome, Pick,
 };
-use moai_cli::model_effort_settings::{self, resolve, Choice, Source};
+use moai_cli::model_effort_settings::{self, Choice};
 
 const SECRET: &str = "SECRET-answer-or-saved-text";
 

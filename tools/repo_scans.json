@@ -1161,10 +1161,10 @@
       "id": "test-seams-read-only-in-debug-builds",
       "always": true,
       "tests": [
-        "tests/state_folder_literal_scan.rs::the_four_test_seams_are_read_only_in_debug_builds"
+        "tests/state_folder_literal_scan.rs::the_test_seams_are_read_only_in_debug_builds"
       ],
       "checks": [
-        "cargo test --offline --locked --test state_folder_literal_scan the_four_test_seams_are_read_only_in_debug_builds"
+        "cargo test --offline --locked --test state_folder_literal_scan the_test_seams_are_read_only_in_debug_builds"
       ],
       "rules": [
         "tests/state_folder_literal_scan.rs"
