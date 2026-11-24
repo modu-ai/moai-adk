@@ -74,7 +74,7 @@ impl Scans {
 pub struct Selection {
     pub rust: BTreeSet<String>,
     pub scans: Scans,
-    /// Old target name → area crate, for the selected names that are modules of an area crate.
+    /// Old target name to area crate, for the selected names that are modules of an area crate.
     pub areas: std::collections::BTreeMap<String, String>,
 }
 
@@ -403,7 +403,7 @@ pub fn select_pick(
     Selection { rust, scans, areas }
 }
 
-/// Old target name → area crate for the selected names that are modules of an area crate.
+/// Old target name to area crate for the selected names that are modules of an area crate.
 fn areas_of(
     tests: &[TestFile],
     rust: &BTreeSet<String>,
