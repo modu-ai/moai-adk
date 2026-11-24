@@ -2421,6 +2421,8 @@ fn fifth_audit_denied_cases() -> Vec<Case> {
         "bash -oerrexit -c",
         "zsh -O cdable_vars -c",
         "bash -O extglob -c",
+        // `c` has no `+` form, so `+c` is no command-string word and is unreadable.
+        "bash +c",
     ] {
         cases.push(d(Own, &out_rm(start), ur));
     }
@@ -2476,6 +2478,14 @@ fn fifth_audit_denied_cases() -> Vec<Case> {
         "emulate bash -c 'ls'",
         "emulate -LR -T zsh",
         "unsetopt extendedglob nomatch; ls",
+        // A bare `-` or `+` names no option, and a word whose readable text is a listed name but
+        // that an expansion finishes (`errexit$X`, `zsh$X`) is not that name.
+        "bash - -c 'ls'",
+        "set -; ls",
+        "set +; ls",
+        "zsh -o errexit$X -c 'ls'",
+        "set -o errexit$X; ls",
+        "emulate zsh$X -c 'ls'",
         // A name outside the table is unreadable even where an older revision read it.
         "zsh -o extendedglob -c 'ls'",
         "zsh -o nomatch -c 'ls'",
@@ -2491,6 +2501,12 @@ fn fifth_audit_denied_cases() -> Vec<Case> {
     cases.push(d(Own, &out_rm("bash -l -c"), "delete-outside"));
     cases.push(d(Own, &out_rm("emulate -L zsh -c"), "delete-outside"));
     cases.push(d(Own, &out_rm("emulate -R sh -c"), "delete-outside"));
+    // `-s` reads the script from standard input even when operands follow (`bash -s x`).
+    cases.push(d(
+        Own,
+        &format!("bash -s x <<'EOF'\nrm -rf {OUT}/x\nEOF"),
+        "delete-outside",
+    ));
     cases.push(d(Own, &format!("set -e; rm -rf {OUT}/x"), "delete-outside"));
     cases.push(d(
         Own,
