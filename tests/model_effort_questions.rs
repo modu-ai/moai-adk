@@ -769,6 +769,339 @@ fn a_saved_value_is_the_default_of_its_questions_and_enter_keeps_it() {
     );
 }
 
+/// A temporary folder for the key-vault scenes: unique per test and removed when the test
+/// ends, so no folder with a fake key stays in the system temporary folder. It derefs to the
+/// folder's path.
+struct KeyHome(tempfile::TempDir);
+
+impl std::ops::Deref for KeyHome {
+    type Target = Path;
+
+    fn deref(&self) -> &Path {
+        self.0.path()
+    }
+}
+
+fn key_temp_home(tag: &str) -> KeyHome {
+    KeyHome(
+        tempfile::Builder::new()
+            .prefix(&format!("glm-key-{tag}-"))
+            .tempdir()
+            .unwrap(),
+    )
+}
+
+/// The project scope of the test's own folder, resolved with the temporary `home` (the plain
+/// `scope_here` would read the process HOME).
+fn glm_scope(home: &Path) -> moai_cli::key_vault::Scope {
+    let cwd = std::env::current_dir().unwrap();
+    model_effort_questions::glm_key_scope(&cwd, home).expect("the tests run inside a git work tree")
+}
+
+#[test]
+fn a_glm_pick_asks_for_the_key_once_and_stores_it_in_the_vault() {
+    let home = key_temp_home("store");
+    let scope = glm_scope(&home);
+    let input = format!("{SECRET}\n");
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new(input),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    )
+    .unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        text.contains("hidden"),
+        "the question says the input is hidden: {text}"
+    );
+    assert!(
+        text.contains("skip"),
+        "the question says it is skippable: {text}"
+    );
+    assert!(
+        !text.contains(SECRET),
+        "the value appears in no output: {text}"
+    );
+    let stored = moai_cli::key_vault::read_entry(&home, &scope, "glm").unwrap();
+    assert_eq!(
+        stored.as_deref(),
+        Some(SECRET),
+        "the vault holds the typed value"
+    );
+    // The value is encrypted at rest: no file under the temporary home holds it as text, so
+    // it is in no log, no receipt and no settings file either.
+    assert_eq!(
+        files_holding(&home, SECRET),
+        Vec::<String>::new(),
+        "the plain value is in no file under the home"
+    );
+}
+
+/// The files under `dir` (relative names) whose bytes contain `needle`.
+fn files_holding(dir: &Path, needle: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut folders = vec![dir.to_path_buf()];
+    while let Some(folder) = folders.pop() {
+        for entry in fs::read_dir(&folder).unwrap().flatten() {
+            let path = entry.path();
+            let kind = entry.file_type().unwrap();
+            if kind.is_dir() {
+                folders.push(path);
+            } else if kind.is_file() {
+                let bytes = fs::read(&path).unwrap();
+                if bytes
+                    .windows(needle.len())
+                    .any(|window| window == needle.as_bytes())
+                {
+                    found.push(path.strip_prefix(dir).unwrap().display().to_string());
+                }
+            }
+        }
+    }
+    found
+}
+
+#[test]
+fn an_empty_answer_skips_the_key_and_keeps_the_pick_flow() {
+    let home = key_temp_home("skip");
+    let scope = glm_scope(&home);
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new("\n"),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    )
+    .unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(text.contains("hidden"), "the question still asks: {text}");
+    assert!(
+        moai_cli::key_vault::read_entry(&home, &scope, "glm")
+            .unwrap()
+            .is_none(),
+        "nothing was stored"
+    );
+}
+
+#[test]
+fn an_existing_key_is_kept_by_default_without_retyping() {
+    let home = key_temp_home("keep");
+    let scope = glm_scope(&home);
+    moai_cli::key_vault::set(&home, &scope, "glm", "SECRET-existing").unwrap();
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new("\n"),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    )
+    .unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        text.contains("already in the key vault"),
+        "the existing key is named: {text}"
+    );
+    assert!(
+        !text.contains("SECRET-existing"),
+        "the stored value is not shown: {text}"
+    );
+    let stored = moai_cli::key_vault::read_entry(&home, &scope, "glm").unwrap();
+    assert_eq!(
+        stored.as_deref(),
+        Some("SECRET-existing"),
+        "the stored key is kept"
+    );
+}
+
+#[test]
+fn a_new_answer_replaces_an_existing_key() {
+    let home = key_temp_home("new");
+    let scope = glm_scope(&home);
+    moai_cli::key_vault::set(&home, &scope, "glm", "SECRET-existing").unwrap();
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new("n\nSECRET-replacement\n"),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    )
+    .unwrap();
+    assert!(
+        !String::from_utf8(out)
+            .unwrap()
+            .contains("SECRET-replacement"),
+        "no echo of the new value"
+    );
+    let stored = moai_cli::key_vault::read_entry(&home, &scope, "glm").unwrap();
+    assert_eq!(
+        stored.as_deref(),
+        Some("SECRET-replacement"),
+        "the new value is stored"
+    );
+}
+
+#[test]
+fn the_word_new_also_asks_for_a_new_key() {
+    let home = key_temp_home("new-word");
+    let scope = glm_scope(&home);
+    moai_cli::key_vault::set(&home, &scope, "glm", "SECRET-existing").unwrap();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new("new\nSECRET-replacement\n"),
+        &mut Vec::new(),
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    )
+    .unwrap();
+    let stored = moai_cli::key_vault::read_entry(&home, &scope, "glm").unwrap();
+    assert_eq!(stored.as_deref(), Some("SECRET-replacement"));
+}
+
+#[cfg(unix)]
+#[test]
+fn a_vault_that_cannot_be_written_is_told_on_the_screen_and_the_step_goes_on() {
+    use std::os::unix::fs::PermissionsExt;
+    let home = key_temp_home("read-only");
+    // The scope is resolved before the folder is closed: the identity reads the home state.
+    let scope = glm_scope(&home);
+    fs::set_permissions(&*home, fs::Permissions::from_mode(0o500)).unwrap();
+    let mut out = Vec::new();
+    let result = model_effort_questions::glm_key_step(
+        &mut Cursor::new(format!("{SECRET}\n")),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    );
+    fs::set_permissions(&*home, fs::Permissions::from_mode(0o700)).unwrap();
+    result.expect("a refused write does not end the step");
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        text.contains("The key could not be stored:"),
+        "the screen says the write failed: {text}"
+    );
+    assert!(!text.contains(SECRET), "the value is not echoed: {text}");
+    assert!(
+        moai_cli::key_vault::read_entry(&home, &scope, "glm")
+            .unwrap()
+            .is_none(),
+        "nothing was stored"
+    );
+}
+
+#[test]
+fn a_broken_project_entry_is_not_hidden_by_a_shared_key() {
+    // The launcher stops at a project entry that exists but cannot be read; it does not go on to
+    // the shared one. The question therefore does not claim a key exists.
+    let home = key_temp_home("broken");
+    let scope = glm_scope(&home);
+    moai_cli::key_vault::set(
+        &home,
+        &moai_cli::key_vault::Scope::Shared,
+        "glm",
+        "SECRET-shared",
+    )
+    .unwrap();
+    let entry = moai_cli::key_vault::entry_path(&home, &scope, "glm");
+    fs::create_dir_all(entry.parent().unwrap()).unwrap();
+    fs::write(&entry, b"not a sealed key").unwrap();
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new("\n"),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    )
+    .unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        !text.contains("already in the key vault"),
+        "a broken project entry is no existing key: {text}"
+    );
+    assert!(text.contains("hidden"), "the key is asked for: {text}");
+}
+
+#[test]
+fn a_claude_pick_asks_nothing_about_a_key() {
+    let home = key_temp_home("claude");
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new(""),
+        &mut out,
+        &home,
+        &[pick("claude", "leader", "claude-sonnet-5-5", "high")],
+        false,
+    )
+    .unwrap();
+    assert!(
+        out.is_empty(),
+        "no key question for another provider: {}",
+        String::from_utf8_lossy(&out)
+    );
+}
+
+#[test]
+fn a_shared_key_counts_as_an_existing_key_and_is_kept_without_a_project_copy() {
+    // The launcher finds the project's entry, then the shared one; a shared key is a key.
+    let home = key_temp_home("shared");
+    let scope = glm_scope(&home);
+    moai_cli::key_vault::set(
+        &home,
+        &moai_cli::key_vault::Scope::Shared,
+        "glm",
+        "SECRET-shared",
+    )
+    .unwrap();
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new("\n"),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    )
+    .unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(text.contains("already in the key vault"), "{text}");
+    assert!(!text.contains("SECRET-shared"), "{text}");
+    assert!(
+        moai_cli::key_vault::read_entry(&home, &scope, "glm")
+            .unwrap()
+            .is_none(),
+        "keeping stores no project copy"
+    );
+}
+
+#[test]
+fn a_piped_answer_that_is_a_new_line_after_the_key_is_not_read_as_the_key() {
+    // One answer line is the key; the line after it stays for the next question (the save
+    // question of the stage), so the key step reads exactly one line.
+    let home = key_temp_home("one-line");
+    let scope = glm_scope(&home);
+    let mut input = Cursor::new(format!("{SECRET}\ny\n"));
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut input,
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+        false,
+    )
+    .unwrap();
+    let mut rest = String::new();
+    std::io::BufRead::read_line(&mut input, &mut rest).unwrap();
+    assert_eq!(rest, "y\n", "the next line is left for the next question");
+    let stored = moai_cli::key_vault::read_entry(&home, &scope, "glm").unwrap();
+    assert_eq!(stored.as_deref(), Some(SECRET));
+}
+
 // SPEC-20261122-model-fast-pair REQ-4: the API refuses an Opus 4.8 request with fast mode from
 // 2026-11-30, so no model question offers an id of that family.
 #[test]

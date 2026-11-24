@@ -610,3 +610,122 @@ pub fn apply(path: &Path, picks: &[Pick], digest: &str) -> Result<Plan, String> 
     }
     Ok(planned)
 }
+
+/// The key vault scope of the project `dir` belongs to, resolved with `home` as the HOME: the
+/// workspace identity then reads the home state of `home` and never the process environment's
+/// HOME, so a run under a temporary home leaves the real one unread. `None` outside a git work
+/// tree or when the identity does not resolve. The folder name is the one
+/// `key_vault::project_scope` makes (same identity fields, same `folder_name`); that function
+/// reads the environment HOME and is not changed here.
+pub fn glm_key_scope(dir: &Path, home: &Path) -> Option<crate::key_vault::Scope> {
+    let id = crate::identity::identity_in(dir, Some(home)).ok()?;
+    if id["identity_status"] != "ok" || id["work_tree"].is_null() {
+        return None;
+    }
+    let clone = id["clone_id"].as_str().unwrap_or("");
+    let clone_hex = clone.strip_prefix("sha256:").unwrap_or(clone);
+    if clone_hex.len() < 8 {
+        return None;
+    }
+    // The primary worktree is the folder that holds the common git directory.
+    let anchor = Path::new(id["clone_anchor"].as_str().unwrap_or(""));
+    let primary = if anchor.file_name().is_some_and(|n| n == ".git") {
+        anchor.parent().unwrap_or(anchor)
+    } else {
+        anchor
+    };
+    let primary_name = primary
+        .file_name()
+        .map(|n| n.to_string_lossy().trim_end_matches(".git").to_string())
+        .unwrap_or_default();
+    Some(crate::key_vault::Scope::Project(
+        crate::key_vault::folder_name(id["project_id"].as_str(), &primary_name, clone_hex),
+    ))
+}
+
+/// The model step's glm key question (SPEC-20261121-glm-key-at-pick): when the picks name glm,
+/// the key is asked right here, before the launcher record. With `hidden` (the caller checked
+/// that stdin and stderr are terminals) the value is read through the hidden prompt and never
+/// echoed; otherwise it is one line of `input`, and nothing here touches a terminal. The value
+/// goes to the key vault under `home` the way the key set command stores it and appears in no
+/// output. An empty answer skips — the pick stays, and the first glm run keeps asking for the
+/// key. A key the launcher would already find (this project's, then the shared one) is kept
+/// unless the answer names a new one. The key is stored when it is answered, so a later no at
+/// the launcher save question leaves it in the vault. Outside a git work tree the project has
+/// no key folder: the question is skipped with one line saying how to store the key.
+pub fn glm_key_step<R: BufRead, W: Write>(
+    input: &mut R,
+    out: &mut W,
+    home: &Path,
+    picks: &[Pick],
+    hidden: bool,
+) -> io::Result<()> {
+    if !picks.iter().any(|p| p.tool == "glm") {
+        return Ok(());
+    }
+    let cwd = std::env::current_dir().ok();
+    let Some(scope) = cwd.as_deref().and_then(|dir| glm_key_scope(dir, home)) else {
+        writeln!(
+            out,
+            "The glm key is kept per project and this folder is not inside one; the key entry was skipped (run `moai key-set glm --prompt` inside a project, or add --shared)."
+        )?;
+        return Ok(());
+    };
+    // The launcher's order (`key_vault::read`): the project's entry, then the shared one. A
+    // project entry that exists but cannot be read (a broken file) ends the search there, as it
+    // does for the launcher, and counts as no usable key: the answer then replaces it.
+    let stored = match crate::key_vault::read_entry(home, &scope, "glm") {
+        Ok(Some(value)) => crate::key_vault::usable_value(&value),
+        Ok(None) => crate::key_vault::read_entry(home, &crate::key_vault::Scope::Shared, "glm")
+            .ok()
+            .flatten()
+            .and_then(|value| crate::key_vault::usable_value(&value)),
+        Err(_) => None,
+    };
+    if stored.is_some() {
+        writeln!(
+            out,
+            "A GLM key is already in the key vault. Press Enter to keep it, or type n to enter a new one."
+        )?;
+        let answer = read_line_bounded(input)?;
+        let wants_new = answer.as_deref().is_some_and(|a| {
+            let word = a.trim();
+            word.eq_ignore_ascii_case("n") || word.eq_ignore_ascii_case("new")
+        });
+        if !wants_new {
+            return Ok(());
+        }
+    } else {
+        writeln!(
+            out,
+            "The glm pick needs a GLM API key. The input is hidden on a terminal and is stored only in the key vault; press Enter to skip."
+        )?;
+    }
+    let value = if hidden {
+        // The hidden prompt reads the terminal itself; `input` is not read here, because a
+        // read of an empty line buffer would wait for one more line.
+        match crate::key_prompt::read_hidden("glm") {
+            Ok(value) => Some(value),
+            Err(reason) => {
+                // An empty answer is the skip the question offers, not a failure to report.
+                if reason.starts_with("no usable value") {
+                    writeln!(out, "No key was entered; the key entry was skipped.")?;
+                } else {
+                    writeln!(out, "The key entry was skipped: {reason}")?;
+                }
+                None
+            }
+        }
+    } else {
+        read_line_bounded(input)?.and_then(|line| crate::key_vault::usable_value(line.trim()))
+    };
+    let Some(value) = value else {
+        return Ok(());
+    };
+    // A refused write is told on the screen and the step goes on, so the model pick and the
+    // save question after it are not lost; the first glm run keeps asking for the key.
+    if let Err(reason) = crate::key_vault::set(home, &scope, "glm", &value) {
+        writeln!(out, "The key could not be stored: {reason}")?;
+    }
+    Ok(())
+}
