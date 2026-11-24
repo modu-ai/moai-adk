@@ -116,4 +116,15 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8314 of card
 
 ## Result
 
-(status draft — written when the slice lands)
+구현 끝(2026-11-24, 가지 `spec/project-state-move-20261121-r2`, 판 3). 이 저장소 자신에는 적용하지 않았어요(Plan 8). 가드 뮤턴트 여덟은 모두 시험이 잡았고(종료 코드 100) 각 뮤턴트 뒤 원문으로 되돌렸어요. 버리는 임시 프로젝트(저장소 모양, git, HOME 도 그 안)에서 `target/debug/moai` 로 옮기기·되돌리기를 실제로 돌렸고, 되돌린 뒤 파일 해시가 적용 전과 같았어요(`.moai/backups` 와 `.git` 제외, `.moai.rust-*` 없음).
+
+- AC-1: met — `state_root::kept_only`(마커·Go 마커·목록 밖 이름·링크가 없고 kept 이름이 하나 이상, `backups/` 와 `.DS_Store` 허용, 끝나지 않은 영수증이 없을 때) 를 `classify`·`adopt_new`·go-state 계획·적용이 함께 써요. `cargo nextest run --locked --offline --test path_root_default` 통과(새 시험 여섯, 옛 단정 셋은 `unknown` → `none` 으로 갱신). 뮤턴트 "목록 밖 이름 허용"에 실패했어요.
+- AC-2: met — `go_state_cli` 의 새 시험: 항목마다 `move`/`set-aside`/`leave` 와 사유, 같은 이름은 `leave` 와 충돌 표시, `reports` 는 `reports-move-plan` 을 소유 단계로 표시, `.gitignore` 가 도착지나 마커를 가리면 이동 0 과 항목·규칙 이름, 추적 파일 수, 링크는 전체 보류. 뮤턴트 "무시 검사 제거", "충돌을 move 로"에 실패했어요.
+- AC-3: met — 적용이 `.moai/` 를 그대로 두고 옆에 옮기고 마커를 마지막에 쓰고 영수증은 `committed`·`kept_before`, `state_root::dir` 은 `.moai`, 다른 picks 나 digest 는 `stale or altered plan` 으로 거절하고 아무것도 쓰지 않아요. 뮤턴트 "picks 를 digest 에서 뺌", "마커를 먼저 씀"에 실패했어요.
+- AC-4: met — 되돌리기가 마커를 먼저 지우고 항목을 돌려놓고 `.moai/` 의 이름을 그대로 두며(전체 치우기 없음) 영수증이 `reverted`, 파일 트리가 적용 전과 같고, `pending` 영수증도 같은 장면이며, 되돌린 뒤 같은 이동을 다시 제안해요. 뮤턴트(D-7) "전체 치우기 보호 제거", "reverted 영수증을 열린 것으로 읽음"에 실패했어요.
+- AC-5: met — `project_update_plan_cli` 새 시험: kept 이름만 든 `.moai/` 옆의 `.moai-cli/` 는 플레인 트리와 같은 `go-state` 단계(`needs_decision` + 적용 명령)를 얻고 "decides outside this route" 단계가 없어요. REQ-8 의 "ready" 는 이 상태로 풀었어요. `src/project_update.rs` 는 바꾸지 않았어요.
+- AC-6: met — `statusline_counts_refresh` 새 시험이 마커가 있고 `.moai-cli/` 가 추적되는 트리에서 `.moai/state/github/counts.json` 만 생기고 `.moai-cli/state` 는 안 생김을 못 박아요. 기존 동작이라 코드 변경은 없고 뮤턴트는 없어요.
+- AC-7: met — `path_root_direct_sites` 의 기준선 스캔이 저장소를 통과하고 가짜 입력(목록 밖 파일, 상수 철자, 목록 안 파일의 초과)을 막아요. `tools/repo_scans.json` 에 항목 하나를 더했어요. 뮤턴트 "초과 비교 완화"에 실패했어요.
+- AC-8: met — `cargo nextest run --locked --offline --lib` 와 위 AC 대상, `repo_scans_table`, `state_folder_literal_scan` 을 한 번에 돌려 2080개 중 2080개 통과(느린 시험 하나, 기존). 단위 시험 둘(`the_bound_layout_is_pinned` 은 `BOUND_VERSION` 2 와 새 digest, `system_yaml_counts_only_with_a_version_under_moai` 는 `none`)과 `allow.tsv` 네 줄을 갱신했어요.
+
+남은 일: `src/project_detect.rs`·`src/project_update.rs` 는 C-256 이 착지한 뒤(project_detect 는 kept 이름만 든 `.moai/` 를 아직 폴더로 읽어요, 효과 안 쟀어요). `docs/rust-product-path.md` 의 go_state 행에 `--set-aside` 가 없어요(범위 밖). `specs/` 병합은 기존 규칙대로 같은 SPEC id 충돌이면 전체 보류예요. 안 돌린 것: Windows·Linux 이름 바꾸기, 실제 HOME, 이 저장소 자신에 적용.
