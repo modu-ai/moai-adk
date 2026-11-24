@@ -1,8 +1,8 @@
 //! SPEC-20261124-update-linked-config-targets: `moai update` plans a Claude config file that is a
 //! link into the default folder, and a blocked style target says why and what to do next. Every
 //! test runs the binary in a temporary HOME: the HOME, the account home and the config folder are
-//! given to the child only; the real `~/.claude`, the Orca profile and the real HOME are never
-//! read or written.
+//! given to the child only; the real user Claude folder, the Orca profile and the real HOME are
+//! never read or written.
 
 #![cfg(unix)]
 
@@ -12,38 +12,20 @@ use common::CleanEnv;
 use serde_json::{json, Value};
 use std::{
     fs,
-    os::unix::fs::{symlink, PermissionsExt},
+    os::unix::fs::symlink,
     path::{Path, PathBuf},
-    process::{Command, Output, Stdio},
+    process::{Command, Stdio},
 };
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
 const PERM: &str = "test-permission";
-/// The switch script the update step knows (a preserved copy of the v2 SPEC).
-const SCRIPT: &[u8] =
-    include_bytes!("../.moai/specs/SPEC-20261119-switch-script-v2/preview/moai.v1");
-
-fn package() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
-}
-
-fn copy_tree(from: &Path, to: &Path) {
-    fs::create_dir_all(to).unwrap();
-    for entry in fs::read_dir(from).unwrap() {
-        let p = entry.unwrap().path();
-        let dest = to.join(p.file_name().unwrap());
-        if p.is_dir() {
-            copy_tree(&p, &dest);
-        } else {
-            fs::copy(&p, &dest).unwrap();
-        }
-    }
-}
 
 struct Fixture {
     _tmp: TempDir,
     home: PathBuf,
+    /// A package holding only what a style plan reads: `SKILL.md` and the style source.
+    package: PathBuf,
 }
 
 impl Fixture {
@@ -58,23 +40,33 @@ impl Fixture {
     }
 }
 
-/// A temporary HOME on the earlier generation's state folder (`~/.moai-cli`, no marker).
-fn earlier_home() -> Fixture {
-    let tmp = TempDir::new().unwrap();
-    let root = fs::canonicalize(tmp.path()).unwrap();
-    let home = root.join("home");
-    fs::create_dir_all(home.join(".moai-cli")).unwrap();
-    Fixture { _tmp: tmp, home }
-}
-
-/// A temporary HOME whose `~/.moai` is this generation's (the marker is there).
-fn current_home() -> Fixture {
+fn fixture(prepare: impl FnOnce(&Path)) -> Fixture {
     let tmp = TempDir::new().unwrap();
     let root = fs::canonicalize(tmp.path()).unwrap();
     let home = root.join("home");
     fs::create_dir_all(&home).unwrap();
-    assert!(moai_cli::home_root::adopt_new(&home, "test").unwrap());
-    Fixture { _tmp: tmp, home }
+    prepare(&home);
+    let package = root.join("package");
+    fs::create_dir_all(&package).unwrap();
+    fs::write(package.join("SKILL.md"), "package\n").unwrap();
+    let source = package.join(moai_cli::home_style::SOURCE);
+    fs::create_dir_all(source.parent().unwrap()).unwrap();
+    fs::write(&source, "## Style\n\nOne.\n").unwrap();
+    Fixture {
+        _tmp: tmp,
+        home,
+        package,
+    }
+}
+
+/// A temporary HOME on the earlier generation's state folder (no marker of this generation).
+fn earlier_home() -> Fixture {
+    fixture(|home| fs::create_dir_all(home.join(moai_cli::HOME_STATE_DIR)).unwrap())
+}
+
+/// A temporary HOME whose state folder is this generation's (the marker is there).
+fn current_home() -> Fixture {
+    fixture(|home| assert!(moai_cli::home_root::adopt_new(home, "test").unwrap()))
 }
 
 fn write(path: &Path, text: &str) {
@@ -124,14 +116,14 @@ fn op(f: &Fixture, folder: Option<&Path>, args: &[&str]) -> (bool, Value) {
 }
 
 fn plan(f: &Fixture, folder: Option<&Path>) -> Value {
-    let (h, p) = (f.home.to_str().unwrap(), package());
-    let (ok, v) = op(f, folder, &["home-style-plan", h, p.to_str().unwrap()]);
+    let (h, p) = (f.home.to_str().unwrap(), f.package.to_str().unwrap());
+    let (ok, v) = op(f, folder, &["home-style-plan", h, p]);
     assert!(ok, "{v}");
     v["result"].clone()
 }
 
 fn apply(f: &Fixture, folder: Option<&Path>, plan: &Value) -> (bool, Value) {
-    let (h, p) = (f.home.to_str().unwrap(), package());
+    let (h, p) = (f.home.to_str().unwrap(), f.package.to_str().unwrap());
     let digest = plan["plan_digest"].as_str().unwrap();
     op(
         f,
@@ -139,7 +131,7 @@ fn apply(f: &Fixture, folder: Option<&Path>, plan: &Value) -> (bool, Value) {
         &[
             "home-style-apply",
             h,
-            p.to_str().unwrap(),
+            p,
             "--plan-digest",
             digest,
             "--permission-reference",
@@ -207,7 +199,7 @@ fn a_config_file_linked_into_the_default_folder_is_planned_and_written_there() {
         &profile.join("output-styles"),
         &f.default_dir().join("output-styles")
     ));
-    let records = f.home.join(".moai-cli/home-style");
+    let records = f.home.join(moai_cli::HOME_STATE_DIR).join("home-style");
     assert!(records.join("claude.json").is_file(), "the default record");
     let names: Vec<String> = fs::read_dir(&records)
         .unwrap()
@@ -256,8 +248,7 @@ fn only_a_link_straight_to_a_regular_file_inside_the_default_folder_is_followed(
         }),
         ("a link to a link", |f| {
             write(&f.outside().join("real.json"), "{\"keep\": 1}\n");
-            write(&f.default_dir().join("other.json"), "{}\n");
-            fs::remove_file(f.default_dir().join("other.json")).unwrap();
+            fs::create_dir_all(f.default_dir()).unwrap();
             symlink(
                 f.outside().join("real.json"),
                 f.default_dir().join("other.json"),
@@ -382,54 +373,11 @@ fn a_linked_setting_waits_for_a_style_file_in_the_default_folder() {
     assert!(!f.default_dir().join("output-styles/MoAI-Easy.md").exists());
 }
 
-/// A version folder with this build, the package and the agent sources; `state` is the HOME
-/// state folder name the folder sits in.
-fn install(f: &Fixture, state: &str) -> PathBuf {
-    let folder = f.home.join(state).join("versions/a");
-    fs::create_dir_all(folder.join("bin")).unwrap();
-    let exe = folder.join("bin/moai-cli");
-    common::copy_executable(Path::new(EXE), &exe);
-    let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
-    copy_tree(&repo.join("skills/moai"), &folder.join("skills/moai"));
-    copy_tree(&repo.join("agents"), &folder.join("agents"));
-    exe
-}
-
-fn update_preview(f: &Fixture, exe: &Path, folder: Option<&Path>) -> Value {
-    let work = f.home.parent().unwrap().join("work");
-    fs::create_dir_all(&work).unwrap();
-    let out: Output = Command::new(exe)
-        .arg("update")
-        .clean_env()
-        .env("PATH", "/usr/bin:/bin")
-        .env("HOME", &f.home)
-        .env("MOAI_ACCOUNT_HOME", &f.home)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .env("GIT_CEILING_DIRECTORIES", work.parent().unwrap())
-        .env("LC_ALL", "C")
-        .envs(folder.map(|p| ("CLAUDE_CONFIG_DIR", p.to_path_buf())))
-        .current_dir(&work)
-        .stdin(Stdio::null())
-        .output()
-        .unwrap();
-    let v: Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
-        panic!(
-            "{}{}",
-            String::from_utf8_lossy(&out.stdout),
-            String::from_utf8_lossy(&out.stderr)
-        )
-    });
-    assert_eq!(v["ok"], json!(true), "{v}");
-    v["result"].clone()
-}
-
 /// A blocked style target names the file, the reason and one next step, in its detail and in a
-/// notice of the update preview.
+/// notice (the `notices` of `moai update` come from `home_style::notices` over this plan).
 #[test]
 fn a_blocked_style_target_gives_a_reason_and_a_next_step_in_detail_and_notices() {
     let f = earlier_home();
-    let exe = install(&f, ".moai-cli");
     // `settings.json` links outside the default folder; `output-styles` is the profile's own
     // folder on a HOME whose state folder is the earlier generation's.
     write(&f.outside().join("settings.json"), "{\"keep\": 1}\n");
@@ -439,14 +387,17 @@ fn a_blocked_style_target_gives_a_reason_and_a_next_step_in_detail_and_notices()
         f.profile().join("settings.json"),
     )
     .unwrap();
-    let p = update_preview(&f, &exe, Some(&f.profile()));
-    let targets = p["style"]["targets"].as_array().unwrap();
+    let p = plan(&f, Some(&f.profile()));
+    let targets = p["targets"].as_array().unwrap();
     let blocked: Vec<&Value> = targets
         .iter()
         .filter(|t| t["action"] == "blocked")
         .collect();
     assert_eq!(blocked.len(), 2, "both targets are blocked: {p}");
-    let notices = p["notices"].as_array().unwrap();
+    let parsed: moai_cli::home_style::Plan = serde_json::from_value(p.clone()).unwrap();
+    let project = f.home.join("project");
+    fs::create_dir_all(&project).unwrap();
+    let notices = moai_cli::home_style::notices(&parsed, &project);
     for t in blocked {
         let (path, why) = (t["path"].as_str().unwrap(), t["detail"].as_str().unwrap());
         assert!(why.contains("next:"), "the detail names a next step: {why}");
@@ -463,39 +414,23 @@ fn a_blocked_style_target_gives_a_reason_and_a_next_step_in_detail_and_notices()
     );
 }
 
-/// `keys.destination` and `switch.file` come from the one HOME state folder function: below
-/// `~/.moai-cli` while the HOME has no marker of this generation (the move is card C-199's), below
-/// `~/.moai` once it has.
+/// The keys destination comes from the one HOME state folder function: below the earlier state
+/// folder while the HOME has no marker of this generation (the move is card C-199's), below the
+/// current one once it has. The switch link folder comes from the same function
+/// (`src/update/switch.rs`, pinned by `update_switch_cli`).
 #[test]
-fn keys_and_switch_follow_the_home_state_folder() {
-    for (state, f) in [(".moai-cli", earlier_home()), (".moai", current_home())] {
-        let exe = install(&f, state);
-        let script = f.home.join(state).join("path/moai");
-        write(&script, "");
-        fs::write(&script, SCRIPT).unwrap();
-        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
-        symlink(
-            "../versions/a/bin/moai-cli",
-            script.with_file_name("moai-cli"),
-        )
-        .unwrap();
-        // A legacy key file makes the keys layer say where its vault entry would go.
-        let key = f.home.join(".moai-cli/.env.glm");
-        write(&key, "GLM_API_KEY=DUMMY-GLM-KEY-123\n");
-        fs::set_permissions(&key, fs::Permissions::from_mode(0o600)).unwrap();
-        let p = update_preview(&f, &exe, None);
-        let root = f.home.join(state);
-        let dest = PathBuf::from(
-            p["keys"]["destination"]
-                .as_str()
-                .unwrap_or_else(|| panic!("{state}: no keys destination in {p}")),
-        );
-        assert!(dest.starts_with(&root), "{state}: keys {dest:?}");
-        let file = PathBuf::from(
-            p["switch"]["file"]
-                .as_str()
-                .unwrap_or_else(|| panic!("{state}: no switch file in {p}")),
-        );
-        assert!(file.starts_with(&root), "{state}: switch {file:?}");
-    }
+fn keys_follow_the_home_state_folder() {
+    let scope = moai_cli::key_vault::Scope::Shared;
+    let f = earlier_home();
+    let dest = moai_cli::key_vault::entry_path(&f.home, &scope, "glm");
+    assert!(
+        dest.starts_with(f.home.join(moai_cli::HOME_STATE_DIR)),
+        "{dest:?}"
+    );
+    let f = current_home();
+    let dest = moai_cli::key_vault::entry_path(&f.home, &scope, "glm");
+    assert!(
+        dest.starts_with(f.home.join(moai_cli::home_root::MOAI_DIR)),
+        "{dest:?}"
+    );
 }
