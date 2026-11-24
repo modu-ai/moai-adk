@@ -203,6 +203,8 @@ enum Action {
     /// read (`card show`): given, the card's live reservation must be at that generation, else
     /// `conflict` naming the generation it has (or that the card is not held) and nothing is
     /// written; left out, nothing is checked. Each entry is checked as `add --scope` checks it.
+    /// An entry that the scope does not hold yet and that overlaps a `shared_files` entry of the
+    /// project profile is refused: write that file in short with `card line-lease`.
     /// Any other state is refused (`conflict`) with its state and holder, and nothing is
     /// written.
     Scope {
@@ -239,6 +241,10 @@ enum Action {
     /// `scope_source` is `given`, `card`, `spec` or `last_reservation`). With no source the take
     /// is refused and names `card take <C-n> --scope <path>` and `card scope <C-n> --scope <path>`.
     /// A `--scope` value is one path: a comma in it is refused.
+    /// A path that overlaps a `shared_files` entry of the project profile is never reserved
+    /// whole: a given or own scope that holds one is refused, a scope filled from a SPEC or a
+    /// last reservation leaves it out and names it in `warnings`; write the file in short with
+    /// `card line-lease`.
     /// Refused when the card is not `ready`, is already held, has no `open` or `met` criterion
     /// (the answer names `card criterion-add`), or its scope overlaps another
     /// card's reservation (`conflict`). The answer's `generation` is what `release` and
