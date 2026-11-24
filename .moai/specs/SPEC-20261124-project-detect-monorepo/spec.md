@@ -105,4 +105,28 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8178 of card
 
 ## Result
 
-(구현 뒤에 채워요.)
+기준 팁 NeXT `e9c6b93400`. RED 커밋 `412167526c`(새 시험 13 개 중 11 개가 옳은 이유로 실패하고 줄어들지 않는 경우를 지키는 가드 2 개만 통과), GREEN 커밋 `46d34c30be`.
+
+- AC-1: met — `cargo nextest run --locked --test project_detect_monorepo_cli` 의 `a_large_early_folder_does_not_hide_a_later_packages_manifest` 와 `hidden_folders_are_not_walked_for_manifests` 통과(RED 에서는 manifests 가 `[]`, 숨김 폴더 세 개의 manifest 가 유입).
+- AC-2: met — `a_temporary_monorepo_lists_every_sub_manifest` 통과: 루트 `package.json` 과 `apps/a/package.json`, `apps/b/tsconfig.json`, `apps/id/go.mod` 가 나열되고 `tools`(go, node, npm, typescript)와 `languages`(go, javascript, typescript)가 예상대로, 내용은 읽지 않고(깨진 JSON 도 통과) 트리는 그대로.
+- AC-3: met — `folders_the_catalog_lists_are_not_walked` 통과(`node_modules`, `target`, `vendor` 는 배송 카탈로그의 이름, `generated-out` 은 확장 파일의 이름, `kept` 는 걷고 나열).
+- AC-4: met — `a_row_in_the_extension_file_adds_a_language_without_code` 통과: `mix.exs`(파일 이름 행)와 `App.csproj`(접미사 행)가 확장 행만으로 나열되고 `languages`·`tools` 에 반영, 확장 파일을 지우면 사라져요. 엔진은 새 이름을 알지 못해요.
+- AC-5: met — `an_extension_file_adds_rows_and_a_bad_one_is_reported_and_ignored` 통과: 배송 행의 이름을 가진 확장 행은 배송 행을 바꾸지 못하고, 잘못된 JSON·알 수 없는 키·기록할 수 없는 값 둘·한도(256 KiB)를 넘는 파일·링크 다섯은 `manifest_catalog.extension` 이 `refused` 이고 `problem` 이 문자열이며 배송 행만 쓰이고 트리는 그대로.
+- AC-6: met — `the_manifest_walk_fact_reports_completeness_and_the_cap`(작은 프로젝트 `{complete: true, over_cap: 0}`, 70 개는 64 개 나열에 `over_cap` 6)와 `a_partial_list_adds_one_next_action_and_a_complete_one_adds_none`(예산 소진 1 줄, 상한 초과 1 줄, 완전한 목록 0 줄) 통과.
+- AC-7: met — `cargo nextest run --locked --test project_update_drops_cli` 의 `the_project_plan_names_the_recorded_manifests_a_smaller_detected_list_drops`, `a_list_that_only_grows_or_stays_drops_nothing`, `a_hand_edited_detected_key_drops_nothing` 통과.
+- AC-8: met — `a_plan_with_the_dropped_list_removed_is_refused_at_apply` 통과("stale or altered plan", 프로필 파일 그대로). 목록이 비면 digest 가 전과 같다는 것은 빈 목록을 옛 튜플 그대로 직렬화하는 코드(`plan_digest`)와 이웃 시험 통과로 보여요. 옛 digest 값을 박은 새 시험은 만들지 않았어요.
+- AC-9: met — `the_update_plan_profile_step_says_how_many_manifests_would_drop` 통과(`reason` 에 "2 recorded manifests would drop", `preview.dropped_manifests` 가 그 둘).
+- AC-10: met — 한 번의 `cargo nextest run --locked` 로 `project_detect_cli`, `project_scale_detect_lib`, `profile_apply_engine`, `profile_plan_cli`, `project_update_plan_cli`, `home_isolation_scan`, `path_root_direct_sites`, `state_folder_literal_scan`, `test_area_layout` 과 lib 의 `project_detect`·`profile`·`project_update`·`project_scale` 시험을 돌려 212 개 통과, 실패 0. `cargo fmt --check` 종료 0, `cargo clippy --locked --offline --lib --bins --test project_detect_monorepo_cli --test project_update_drops_cli -- -D warnings` 종료 0(경고 0). 새 lib 단위 시험 셋: `the_shipped_catalog_holds_the_earlier_rows_with_recordable_values`, `extension_rows_are_added_and_never_replace_a_shipped_row`, `a_catalog_file_with_an_unrecordable_value_is_refused`.
+- AC-11: not_run — 보고된 저장소는 이 레인이 읽을 권한이 없는 실제 프로젝트라서 돌리지 않았어요. 55 개 실측은 리더나 그 저장소를 읽을 수 있는 세션이 읽기 전용 `moai project-detect` 로 재요. 이 SPEC 은 그 구조(큰 숨김 폴더가 `apps/` 앞에서 예산을 쓰는 것)를 시험 `a_large_early_folder_does_not_hide_a_later_packages_manifest` 로 재현해요.
+- 가드 뮤턴트 13 개를 하나씩 코드에 넣고 새 두 시험 파일을 돌려 모두 컴파일됐고 지정한 시험이 실패했어요(종료 100): 폭 우선→깊이 우선, 점 이름 건너뛰기 빼기, 카탈로그 폴더 건너뛰기 빼기, 예산 소진 `complete` 를 항상 true, `over_cap` 계산 한 칸 어긋남, 부분 목록 조건 `||` 를 `&&` 로, 확장 파일 크기 한도 빼기, 확장 값 검사 빼기, 배송 행 우선 규칙 빼기, 하위 manifest 언어 반영 빼기, digest 에서 목록 빼기, 줄어드는 목록의 적용 키 조건 빼기, 업데이트 단계 reason 의 목록 빼기. 변이한 파일은 모두 원래 바이트로 되돌렸고 트리는 깨끗해요.
+- 위험 경로: 읽기 전용(삭제·리셋·프로세스 시작·권한 규칙 없음)이라 해당 없음. 확장 파일 읽기는 링크를 따르지 않고 크기를 제한하며 시험이 링크·초과 파일을 지켜요.
+
+리더 결정(노트 8178)과 SPEC 본문의 차이, 그리고 확정한 세부:
+
+- D-4 는 노트 8178 로 고쳐졌어요: 나머지 하드코딩 표(코드 확장자, 언어 서버, DB 의존성, 빌드·테스트 명령 템플릿, 작업공간 표지)는 새 카드가 아니라 카드 C-256 의 기준 3 ~ 7 이고 READY 는 `keep_open` 이에요. 위 Non-goals 와 Plan 7 의 "후속 카드" 는 이 뜻으로 읽어요(본문은 승인된 digest 를 지키려고 바꾸지 않았어요).
+- 확장 파일의 자리: 상태 폴더의 `config/detect-catalog.json`(`config/` 는 팀이 git 에 두는 폴더), `schema` 는 1 이에요.
+- 하위 manifest 도 `languages`(와 그에 따른 `lsp`)에 반영해요. 카드 C-61 의 D-3 은 하위 manifest 를 반영하지 않기로 했는데, 이 SPEC 의 AC-4 가 확장 행의 언어가 `languages` 에 나타나야 한다고 해서 따랐어요. `databases` 는 루트 한정 그대로예요.
+- `manifest_catalog` 는 `extension`(absent, read, refused), `rows`, `problem` 을 내요. `SKIP_DIRS` 상수는 사라지고 `project_detect::skip_dir` 가 호스트·상태 폴더 이름과 배송 카탈로그의 이름을 판정해요(`project_scale_detect` 의 사용 줄만 바뀜).
+- 루트의 manifest 는 이름으로 직접 확인해서 예산이나 무시 목록과 무관하게 나열하고, 걷기는 루트의 접미사 행도 찾아요.
+
+돌리지 않은 것: 전체 `cargo test`, 전체 크레이트 `clippy --all-targets`, Windows·Linux, AC-11 의 실제 저장소 실측, `moai check affected`(READY 에서 한 번).
