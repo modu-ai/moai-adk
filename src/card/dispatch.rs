@@ -544,8 +544,12 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
             (None, take_scope::Source::Card)
         }
     };
+    // A card whose lease ended at least the grace period ago is swept and taken in this one
+    // transaction (SPEC-20261124-ended-lease-sweep REQ-12); a profile that cannot be read gives
+    // the default grace period and never stops a take.
+    let grace = super::sweep::grace_secs_or_default(project);
     let r = match scope {
-        Some(scope) => reservation::reserve(
+        Some(scope) => reservation::reserve_sweeping(
             &mut ledger,
             card_id,
             req.holder,
@@ -553,14 +557,16 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
             lease,
             req.worktree,
             req.branch,
+            grace,
         ),
-        None => reservation::reserve_own_scope(
+        None => reservation::reserve_own_scope_sweeping(
             &mut ledger,
             card_id,
             req.holder,
             lease,
             req.worktree,
             req.branch,
+            grace,
         ),
     }
     .map_err(|e| e.to_string())?;

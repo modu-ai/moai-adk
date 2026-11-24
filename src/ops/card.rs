@@ -368,6 +368,33 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Return the cards whose lease ended long ago to ready
+    ///
+    /// Writes the ledger. Every `active` card whose `held` lease ended at least the grace period
+    /// ago (the profile key `lease_sweep_hours`, 24 hours without it) goes back to `ready`: its
+    /// reservation ends as `released`, one `card.sweep` event and one note on the card name the
+    /// old holder, generation, lease end, worktree and branch. It is not a reclaim: the card
+    /// keeps its generation, uses none of its three reclaims, and its branch, worktree and notes
+    /// are not touched. A card inside the grace period, a card in `review`, a reservation that
+    /// is not `held` and a lease renewed after the listing are left as they are and listed as
+    /// skipped. Only `--by leader` sweeps. Name one card to sweep only it; `--dry-run` lists
+    /// and writes nothing.
+    Sweep {
+        /// One card to sweep (`C-12`); without it, every card with an ended lease past the grace.
+        card: Option<String>,
+        /// List the cards that would be swept and the ones left alone, and write nothing.
+        #[arg(long)]
+        dry_run: bool,
+        /// Who sweeps; only `leader` is accepted.
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Put a structured HOLD on a draft or ready card
     ///
     /// Writes the ledger. One `card.hold` event records the category (`money`, `legal`,
@@ -1462,6 +1489,19 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
         } => w::fold(&project, &resolve_home(home)?, &card, &into, &reason, &by),
+        Action::Sweep {
+            card,
+            dry_run,
+            by,
+            project,
+            home,
+        } => moai_cli::card::sweep::sweep(
+            &project,
+            &resolve_home(home)?,
+            card.as_deref(),
+            &by,
+            dry_run,
+        ),
         Action::Landed {
             card,
             head,

@@ -103,7 +103,14 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
     // of a card, and the project's fixtures hold unreadable profiles; the row names the days it
     // used (`threshold_days`).
     let draft_days = stale::draft_days(project).unwrap_or(stale::DEFAULT_DRAFT_DAYS);
-    let stale = stale::rows(&stale_facts, &landing.proofs, found.now, draft_days);
+    let grace_secs = super::sweep::grace_secs_or_default(project);
+    let stale = stale::rows(
+        &stale_facts,
+        &landing.proofs,
+        found.now,
+        draft_days,
+        grace_secs,
+    );
     // The SPEC each card names and its status, with a warning for a card that changes the
     // repository without an approved SPEC (SDD-4), in the order the cards are listed.
     let mut spec_of = |card_id: i64| -> Result<Value> {

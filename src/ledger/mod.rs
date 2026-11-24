@@ -27,6 +27,7 @@ pub mod reservation;
 pub mod schema;
 pub mod scope_return;
 pub mod summary;
+pub mod sweep;
 pub mod workflow;
 
 pub use location::ledger_path;
