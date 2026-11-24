@@ -70,23 +70,33 @@ pub fn retired_role_flag(words: &[String]) -> bool {
         _ => false,
     }
 }
-const DEFAULT_MODEL: &str = "opus";
-const DEFAULT_EFFORT: &str = "medium";
 /// User decision 2026-11-08 (#2053 HOLD-L1 = A, #2062): a session without a role still gets the
-/// launcher's Claude defaults `--model opus --effort medium`. False would pass no model or
-/// effort flag so the user's own Claude settings apply (option B, not chosen). This constant is
-/// the only place to change. The advisor is no longer a default (user decision 2026-11-12,
-/// #2476, replacing the `--advisor fable` part of the 2026-11-08 decision): see
-/// [`launch_settings`].
+/// launcher's defaults of model and effort. False would pass no model or effort flag so the
+/// user's own Claude settings apply (option B, not chosen). The values are the host's own
+/// (`model_effort_settings::launcher_default`: `opus`, effort `medium` on `claude` and `high`
+/// on `glm`, SPEC-20261124-launcher-retire-role-flags D-8). The advisor is no longer a default
+/// (user decision 2026-11-12, #2476, replacing the `--advisor fable` part of the 2026-11-08
+/// decision): see [`launch_settings`].
 pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
 /// User decision 2026-11-23 (SPEC-20261123-launcher-auto-mode, replacing the 2026-11-10 decision
-/// of #2359): a launch on every host, with or without a role, starts in auto mode
-/// (`--permission-mode auto` on Claude hosts, whatever the project's `permissions` key says).
-/// `--permissions` keeps the host's own mode (no permission flag). The user-only
-/// `~/.moai-cli/config/launcher.yaml` key `launcher.role_access` can choose `auto`, `full` (the
-/// bypass, `--dangerously-skip-permissions`) or `prompt`; an absent file or key keeps this
-/// default. Project settings are ignored.
+/// of #2359): a launch on a Claude host starts in auto mode (`--permission-mode auto`, whatever
+/// the project's `permissions` key says). The glm host starts in the bypass
+/// (`--dangerously-skip-permissions`, user decision 2026-11-24, SPEC-20261124-launcher-retire-
+/// role-flags REQ-13); see [`access_default`]. `--permissions` keeps the host's own mode (no
+/// permission flag). The user-only `~/.moai-cli/config/launcher.yaml` key
+/// `launcher.role_access` can choose `auto`, `full` (the bypass) or `prompt` for every launch
+/// of both hosts; an absent file or key keeps the host default. Project settings are ignored.
 pub const ACCESS_DEFAULT: Access = Access::Auto;
+
+/// The access of a launch on `host` (`claude` or `glm`) when neither `--permissions` nor
+/// `launcher.role_access` decides: auto mode on `claude`, the bypass on `glm`.
+pub fn access_default(host: &str) -> Access {
+    if host == "glm" {
+        Access::Full
+    } else {
+        ACCESS_DEFAULT
+    }
+}
 /// The environment that points Claude Code at z.ai GLM. The set follows the Go tool's
 /// `setGLMEnv` (user decision 2026-11-10): endpoint, timeout, the model each Claude alias maps
 /// to, the 1M context window of those models (Claude Code assumes 200K for an id it does not
@@ -279,9 +289,12 @@ fn user_launcher() -> Result<Option<serde_json::Map<String, Value>>, String> {
     }
 }
 
-fn configured_access(launcher: Option<&serde_json::Map<String, Value>>) -> Result<Access, String> {
+fn configured_access(
+    host: &str,
+    launcher: Option<&serde_json::Map<String, Value>>,
+) -> Result<Access, String> {
     match launcher.and_then(|l| l.get("role_access")) {
-        None => Ok(ACCESS_DEFAULT),
+        None => Ok(access_default(host)),
         Some(Value::String(access)) if access == "auto" => Ok(Access::Auto),
         Some(Value::String(access)) if access == "full" => Ok(Access::Full),
         Some(Value::String(access)) if access == "prompt" => Ok(Access::Prompt),
@@ -329,19 +342,21 @@ pub struct LaunchSettings {
 }
 
 /// Resolves both user launcher settings from one read of the file (Issues #2413, #2476).
-/// Access: CLI `--permissions` (no flag) > `launcher.role_access` > [`ACCESS_DEFAULT`] (auto),
-/// the same with or without a role. Advisor (user decision 2026-11-12, #2476, replacing
+/// Access: CLI `--permissions` (no flag) > `launcher.role_access` > the host default
+/// ([`access_default`]: auto on `claude`, the bypass on `glm`). Advisor (user decision 2026-11-12,
+/// #2476, replacing
 /// the 2026-11-08 default `fable`): CLI `--no-advisor` / `--advisor` > `launcher.advisor` >
 /// none; `--advisor` with `--no-advisor` is refused, and the setting applies to Claude hosts
 /// only. The file is validated for every launch, also when the CLI
 /// decides, so a broken file is never silently skipped. Project settings do not matter.
 pub fn launch_settings(
+    host: &str,
     keep_prompts: bool,
     cli_advisor: Option<&str>,
     no_advisor: bool,
 ) -> Result<LaunchSettings, String> {
     let launcher = user_launcher()?;
-    let configured_access = configured_access(launcher.as_ref())?;
+    let configured_access = configured_access(host, launcher.as_ref())?;
     let configured = configured_advisor(launcher.as_ref())?;
     if cli_advisor.is_some() && no_advisor {
         return Err("--advisor and --no-advisor cannot be used together".into());
@@ -361,10 +376,11 @@ pub fn launch_settings(
     })
 }
 
-/// Resolves CLI `--permissions` > user `launcher.role_access` > [`ACCESS_DEFAULT`]. The
-/// configuration is validated even for `--permissions`. Project settings do not matter.
-pub fn launch_access(keep_prompts: bool) -> Result<Access, String> {
-    Ok(launch_settings(keep_prompts, None, false)?.access)
+/// Resolves CLI `--permissions` > user `launcher.role_access` > the host default
+/// ([`access_default`]). The configuration is validated even for `--permissions`. Project
+/// settings do not matter.
+pub fn launch_access(host: &str, keep_prompts: bool) -> Result<Access, String> {
+    Ok(launch_settings(host, keep_prompts, None, false)?.access)
 }
 
 // ---- session live locks (the launcher no longer numbers sessions: SPEC-20261124-launcher-
@@ -477,8 +493,15 @@ pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
 
 fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
     let defaults = launcher_defaults(r.role.as_deref());
-    let model = r.model.as_deref().or(defaults.then_some(DEFAULT_MODEL));
-    let effort = r.effort.as_deref().or(defaults.then_some(DEFAULT_EFFORT));
+    let default = crate::model_effort_settings::launcher_default(&r.host);
+    let model = r
+        .model
+        .as_deref()
+        .or(defaults.then_some(default.model.as_str()));
+    let effort = r
+        .effort
+        .as_deref()
+        .or(defaults.then_some(default.effort.as_str()));
     if let Some(e) = effort {
         if !EFFORTS.contains(&e) {
             return Err("effort must be one of low|medium|high|xhigh|max|ultracode".into());
@@ -530,7 +553,7 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
     }
     match r.access {
         Access::Auto => {
-            notes.push("--permission-mode auto: Claude Code's auto mode checks each tool call (the launcher default since user decision 2026-11-23; --permissions keeps the host's own mode, launcher.role_access picks auto, full or prompt)");
+            notes.push("--permission-mode auto: Claude Code's auto mode checks each tool call (the default of `moai cc` since user decision 2026-11-23; --permissions keeps the host's own mode, launcher.role_access sets the mode of every launch: auto, full or prompt)");
             if r.host == "glm" {
                 notes.push("glm runs Claude Code behind the z.ai gateway: the auto mode classifier may show a billing notice, see docs/troubleshooting.md section 5 (no setting is changed)");
             }
@@ -538,12 +561,12 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
             argv.push("auto".into());
         }
         Access::Full => {
-            notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (chosen by the user in launcher.role_access; auto mode is the default, keep prompts with --permissions)");
+            notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (the default of `moai glm` since user decision 2026-11-24, or launcher.role_access full for every launch; keep prompts with --permissions, pick auto with launcher.role_access auto)");
             argv.push("--dangerously-skip-permissions".into());
         }
         // A role session without a flag (`--permissions`, `prompt`, the legacy `session`
         // command) added no note before; only the roleless form did, and keeps doing so.
-        Access::Prompt if r.role.is_none() => notes.push("no permission flag: Claude Code starts in the mode the user's and project's settings choose (--permissions or launcher.role_access prompt)"),
+        Access::Prompt if r.role.is_none() => notes.push("no permission flag: Claude Code starts in the mode the user's and project's settings choose (--permissions, or launcher.role_access prompt for every launch)"),
         Access::Prompt => {}
     }
     Ok(argv)
@@ -560,26 +583,43 @@ fn saved_note(host: &str, role: &str) -> &'static str {
     }
 }
 
-/// Fills the model and effort a person did not give from the choice `moai update` saved under
-/// `launcher.models.<host>.<role>` of the user launcher settings file (card C-47 criteria 5 and 7,
-/// SPEC-20261119-launcher-reads-models; the glm host in SPEC-20261119-glm-launcher-settings-receipt).
-/// It applies to a session with a role on `claude` and `glm`; a roleless session
-/// keeps its own rules. The file is read at every call, so a rewritten file is used by the next
-/// launch. A saved entry outside the support table, anywhere under `launcher.models`, refuses the
-/// launch with key paths only (`unsupported_entries`). The glm host is Claude Code on z.ai: its
-/// saved id carries the `zai/` provider prefix, which the
-/// z.ai endpoint does not take, so the prefix is removed here (research note C-47 note 3452: Claude
-/// Code sends a full unknown id as written; the alias mapping of the environment is unchanged).
-/// Nothing saved for the host and role, or no settings file at all, falls back to the default
-/// table of the model settings (`default_choice`), the table the question screen shows as
-/// "(default)" (SPEC-20261121-model-defaults-one-table): a session with a role starts with the
-/// table's model and effort, a flag the person gave stays, and only the other field is filled.
-/// The second value is the note to add when a saved value was used; a table default adds none.
-fn apply_saved_choice(
-    r: &SessionRequest,
-) -> Result<(SessionRequest, Option<&'static str>), String> {
-    let (Some(role), "claude" | "glm") = (r.role.as_deref(), r.host.as_str()) else {
-        return Ok((r.clone(), None));
+/// The notes of a launch that read `launcher.models` for `host`: a flat entry says so when it
+/// filled a value, and an old `leader` or `agent` entry says it is not read (one note each, key
+/// paths only; SPEC-20261124-launcher-retire-role-flags REQ-4 and REQ-5).
+fn flat_note(host: &str) -> &'static str {
+    if host == "glm" {
+        "model and effort not given on the command line come from launcher.models.glm (saved by moai update)"
+    } else {
+        "model and effort not given on the command line come from launcher.models.claude (saved by moai update)"
+    }
+}
+
+fn old_role_note(host: &str) -> &'static str {
+    if host == "glm" {
+        "launcher.models.glm.leader and launcher.models.glm.agent are not read: a launch takes the flat launcher.models.glm entry; save one with moai update"
+    } else {
+        "launcher.models.claude.leader and launcher.models.claude.agent are not read: a launch takes the flat launcher.models.claude entry; save one with moai update"
+    }
+}
+
+/// Fills the model and effort a person did not give. A launch (no role) takes them from the
+/// flat entry `moai update` saved under `launcher.models.<host>` of the user launcher settings
+/// file (`model` and `effort`), else from the defaults of its host
+/// (`model_effort_settings::launcher_default`, applied in [`claude_argv`]); an old `leader` or
+/// `agent` entry beside it is not read and adds one note (SPEC-20261124-launcher-retire-role-
+/// flags REQ-4, REQ-5, REQ-15). The legacy `session --role` request still takes the role row of
+/// the saved entry or of the default table (SPEC-20261119-launcher-reads-models, SPEC-20261121-
+/// model-defaults-one-table). The file is read at every call, so a rewritten file is used by the
+/// next launch; a saved entry outside the support table refuses the launch with key paths only.
+/// The glm host is Claude Code on z.ai: a saved id carries the `zai/` provider prefix, which the
+/// z.ai endpoint does not take, so the prefix is removed here (the alias mapping of the
+/// environment is unchanged). A flag the person gave stays, and only the other field is filled.
+fn apply_saved_choice(r: &SessionRequest) -> Result<(SessionRequest, Vec<&'static str>), String> {
+    if !matches!(r.host.as_str(), "claude" | "glm") {
+        return Ok((r.clone(), Vec::new()));
+    }
+    let Some(role) = r.role.as_deref() else {
+        return apply_flat_choice(r);
     };
     let saved = match user_launcher()? {
         Some(launcher) => {
@@ -598,8 +638,22 @@ fn apply_saved_choice(
     let Some(choice) =
         saved.or_else(|| crate::model_effort_settings::default_choice(&r.host, role))
     else {
-        return Ok((r.clone(), None));
+        return Ok((r.clone(), Vec::new()));
     };
+    let (filled, used) = fill_from(r, &choice);
+    let notes = if used && from_saved {
+        vec![saved_note(&r.host, role)]
+    } else {
+        Vec::new()
+    };
+    Ok((filled, notes))
+}
+
+/// `r` with the model and effort it lacks taken from `choice`; whether a value was taken.
+fn fill_from(
+    r: &SessionRequest,
+    choice: &crate::model_effort_settings::Choice,
+) -> (SessionRequest, bool) {
     let model = if r.host == "glm" {
         choice.model.strip_prefix("zai/").unwrap_or(&choice.model)
     } else {
@@ -612,13 +666,30 @@ fn apply_saved_choice(
         used = true;
     }
     if filled.effort.is_none() {
-        filled.effort = Some(choice.effort);
+        filled.effort = Some(choice.effort.clone());
         used = true;
     }
-    Ok((
-        filled,
-        (used && from_saved).then(|| saved_note(&r.host, role)),
-    ))
+    (filled, used)
+}
+
+/// The launch path of [`apply_saved_choice`]: the flat `launcher.models.<host>` entry.
+fn apply_flat_choice(r: &SessionRequest) -> Result<(SessionRequest, Vec<&'static str>), String> {
+    let Some(launcher) = user_launcher()? else {
+        return Ok((r.clone(), Vec::new()));
+    };
+    let read = crate::model_effort_settings::flat_for_launch(&launcher, &r.host)?;
+    let mut notes = Vec::new();
+    if read.old_role_entries {
+        notes.push(old_role_note(&r.host));
+    }
+    let Some(choice) = read.choice else {
+        return Ok((r.clone(), notes));
+    };
+    let (filled, used) = fill_from(r, &choice);
+    if used {
+        notes.push(flat_note(&r.host));
+    }
+    Ok((filled, notes))
 }
 
 /// Composes the host command without running it. Returns
@@ -629,7 +700,7 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
     compose_resolved(&resolved, saved)
 }
 
-fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<Value, String> {
+fn compose_resolved(r: &SessionRequest, saved: Vec<&'static str>) -> Result<Value, String> {
     if let Some(role) = &r.role {
         if !ROLES.contains(&role.as_str()) {
             return Err("role must be leader or agent".into());
@@ -646,7 +717,11 @@ fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<V
     if r.role.is_none() {
         notes.push("no role: a plain host session; no role or session name is added (#2053)");
         notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
-            "launcher defaults without a role: model opus, effort medium (user decision 2026-11-08: A); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
+            if r.host == "glm" {
+                "launcher defaults of glm: model opus, effort high, unless --model, --effort or a choice saved by moai update say otherwise (user decisions 2026-11-08 and 2026-11-24); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
+            } else {
+                "launcher defaults of claude: model opus, effort medium, unless --model, --effort or a choice saved by moai update say otherwise (user decision 2026-11-08: A); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
+            }
         } else {
             "no model or effort flag without a role; the user's Claude settings apply; no advisor unless --advisor or launcher.advisor asks for one (#2476)"
         });

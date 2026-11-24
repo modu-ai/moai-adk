@@ -125,19 +125,31 @@ fn live_file(f: &Fixture) -> std::path::PathBuf {
 
 /// Literal complete argv with no advisor: the decided default of a host (index 0 = no name,
 /// 1 = `--name lane-1`).
-fn plain(_host: &str, named: usize) -> Vec<&'static str> {
+fn plain(host: &str, named: usize) -> Vec<&'static str> {
     let mut argv = vec!["claude"];
     if named == 1 {
         argv.extend(["--name", "lane-1"]);
     }
-    argv.extend([
-        "--model",
-        "opus",
-        "--effort",
-        "medium",
-        "--permission-mode",
-        "auto",
-    ]);
+    // The host defaults (SPEC-20261124-launcher-retire-role-flags REQ-13, REQ-15): `cc` starts
+    // in auto mode at effort medium, `glm` in the bypass at effort high.
+    if host == "glm" {
+        argv.extend([
+            "--model",
+            "opus",
+            "--effort",
+            "high",
+            "--dangerously-skip-permissions",
+        ]);
+    } else {
+        argv.extend([
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto",
+        ]);
+    }
     argv
 }
 

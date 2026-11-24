@@ -144,9 +144,8 @@ fn roleless_glm_keeps_the_token_check() {
             "--model",
             "opus",
             "--effort",
-            "medium",
-            "--permission-mode",
-            "auto"
+            "high",
+            "--dangerously-skip-permissions"
         ]
     );
 }
@@ -181,9 +180,8 @@ fn a_named_launch_is_the_unnamed_argv_plus_the_name() {
             "--model",
             "opus",
             "--effort",
-            "medium",
-            "--permission-mode",
-            "auto"
+            "high",
+            "--dangerously-skip-permissions"
         ]
     );
     // The legacy `session` subcommand is unchanged too: it starts no role session of the

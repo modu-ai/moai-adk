@@ -111,6 +111,105 @@ pub fn default_choice(tool: &str, role: &str) -> Option<Choice> {
     })
 }
 
+/// The model and effort of a launch with no `--model`, no `--effort` and no saved
+/// `launcher.models.<host>` entry (SPEC-20261124-launcher-retire-role-flags D-8, REQ-15): the
+/// alias `opus` on both hosts, effort `medium` on `claude` and `high` on `glm`. The glm
+/// environment maps the alias `opus` to `glm-5.4[1m]`, so glm needs no model id of its own here.
+/// The role rows of [`default_choice`] are not read by a launch; they are the "(default)" of the
+/// question screen.
+pub fn launcher_default(host: &str) -> Choice {
+    Choice {
+        model: "opus".to_string(),
+        effort: if host == "glm" { "high" } else { "medium" }.to_string(),
+    }
+}
+
+/// What a launch reads of `launcher.models` for one host.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct FlatRead {
+    /// The saved flat `launcher.models.<host>` entry (`model` and `effort`), when it is there.
+    pub choice: Option<Choice>,
+    /// Whether the host holds an old `leader` or `agent` entry, which a launch does not read.
+    pub old_role_entries: bool,
+}
+
+/// A flat entry of a tool: `model` and `effort` as text, a model of the tool's table, an effort
+/// that model offers. Both keys must be there.
+fn check_flat(tool: &str, fields: &Map<String, Value>) -> Result<(), String> {
+    let (Some(Value::String(model)), Some(Value::String(effort))) =
+        (fields.get("model"), fields.get("effort"))
+    else {
+        return Err(format!(
+            "launcher.models.{tool} must hold model and effort as text"
+        ));
+    };
+    if !supported(tool)
+        .unwrap_or(&[])
+        .iter()
+        .any(|row| row.id == model)
+    {
+        return Err(format!(
+            "launcher.models.{tool}.model is not a supported model of {tool}"
+        ));
+    }
+    if !offers(tool, model, effort) {
+        return Err(format!(
+            "launcher.models.{tool}.effort is not an effort that model offers"
+        ));
+    }
+    Ok(())
+}
+
+/// What a launch of `tool` reads of the launcher object: the flat `launcher.models.<tool>` entry
+/// and whether an old role entry sits beside it (SPEC-20261124-launcher-retire-role-flags REQ-4,
+/// REQ-5). The old `leader` and `agent` entries are not read and not checked; the flat entry of
+/// every known tool is checked, so a broken one is never skipped silently. A tool this version
+/// does not know, a level that is not an object and a key that is none of `model`, `effort`,
+/// `leader` and `agent` refuse the launch with key paths only.
+pub fn flat_for_launch(launcher: &Map<String, Value>, tool: &str) -> Result<FlatRead, String> {
+    let Some(models) = models_of(launcher)? else {
+        return Ok(FlatRead::default());
+    };
+    let mut read = FlatRead::default();
+    for (name, per_tool) in models {
+        if retired(name, &TOOLS) {
+            continue;
+        }
+        if !TOOLS.contains(&name.as_str()) {
+            return Err("launcher.models names a tool this version does not know".into());
+        }
+        let Value::Object(fields) = per_tool else {
+            return Err(format!("launcher.models.{name} must be an object"));
+        };
+        if fields
+            .keys()
+            .any(|k| !["model", "effort", "leader", "agent"].contains(&k.as_str()))
+        {
+            return Err(format!(
+                "launcher.models.{name} names a key this version does not know"
+            ));
+        }
+        let flat = fields.contains_key("model") || fields.contains_key("effort");
+        if flat {
+            check_flat(name, fields).map_err(|_| {
+                format!(
+                    "saved model settings are not supported (launcher.models.{name}): replace them with moai update"
+                )
+            })?;
+        }
+        if name == tool {
+            if flat {
+                read.choice = Some(Choice {
+                    model: fields["model"].as_str().unwrap_or_default().to_string(),
+                    effort: fields["effort"].as_str().unwrap_or_default().to_string(),
+                });
+            }
+            read.old_role_entries = fields.contains_key("leader") || fields.contains_key("agent");
+        }
+    }
+    Ok(read)
+}
+
 fn offers(tool: &str, model: &str, effort: &str) -> bool {
     supported(tool).is_some_and(|rows| {
         rows.iter()
@@ -141,6 +240,10 @@ fn check_structure(active: &[&str], models: &Map<String, Value>) -> Result<(), S
             return Err(format!("launcher.models.{tool} must be an object"));
         };
         for (role, entry) in roles {
+            // The flat entry's own keys (checked by `check_flat`).
+            if role == "model" || role == "effort" {
+                continue;
+            }
             if !ROLES.contains(&role.as_str()) {
                 return Err(format!(
                     "launcher.models.{tool} names a role this version does not know"
@@ -195,8 +298,13 @@ fn validate(active: &[&str], models: &Map<String, Value>) -> Result<(), String> 
             continue;
         }
         if let Value::Object(roles) = per_tool {
+            if roles.contains_key("model") || roles.contains_key("effort") {
+                check_flat(tool, roles)?;
+            }
             for (role, entry) in roles {
-                check_entry(tool, role, entry)?;
+                if role != "model" && role != "effort" {
+                    check_entry(tool, role, entry)?;
+                }
             }
         }
     }
@@ -227,8 +335,13 @@ pub fn unsupported_entries_in(
             continue;
         }
         if let Value::Object(roles) = per_tool {
+            if (roles.contains_key("model") || roles.contains_key("effort"))
+                && check_flat(tool, roles).is_err()
+            {
+                listed.push(format!("launcher.models.{tool}"));
+            }
             for (role, entry) in roles {
-                if check_entry(tool, role, entry).is_err() {
+                if role != "model" && role != "effort" && check_entry(tool, role, entry).is_err() {
                     listed.push(format!("launcher.models.{tool}.{role}"));
                 }
             }

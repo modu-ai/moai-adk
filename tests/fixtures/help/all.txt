@@ -252,16 +252,18 @@ Options:
                            never; put it before the command
       --name <NAME>        Session name (none by default; the role is entered inside the session)
       --model <MODEL>      Main model (default `opus`)
-      --effort <EFFORT>    Effort (default `medium`)
+      --effort <EFFORT>    Effort (default `medium` on `cc`, `high` on `glm`)
       --advisor <ADVISOR>  Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id).
                            None by default; the user setting `launcher.advisor` can turn it on. May
                            bill to usage credits
       --no-advisor         Pass no `--advisor` even when the user setting `launcher.advisor` turns
                            it on
       --permissions        Keep permission prompts: no permission flag at all (Claude hosts), so the
-                           host starts in the mode its own settings choose. Without it every launch
-                           starts in auto mode (`--permission-mode auto`) unless the user setting
-                           `launcher.role_access` says `full` or `prompt`
+                           host starts in the mode its own settings choose. Without it a launch
+                           starts in the mode of its host: `cc` in auto mode (`--permission-mode
+                           auto`), `glm` in the bypass (`--dangerously-skip-permissions`); the user
+                           setting `launcher.role_access` sets `auto`, `full` or `prompt` for every
+                           launch
       --dry-run            Print the composed command as JSON instead of starting the host [aliases:
                            --print-command]
   -h, --help               Print help

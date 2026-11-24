@@ -108,7 +108,7 @@ struct LaunchOpts {
     /// Main model (default `opus`).
     #[arg(long)]
     model: Option<String>,
-    /// Effort (default `medium`).
+    /// Effort (default `medium` on `cc`, `high` on `glm`).
     #[arg(long)]
     effort: Option<String>,
     /// Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id). None by default;
@@ -119,9 +119,10 @@ struct LaunchOpts {
     #[arg(long)]
     no_advisor: bool,
     /// Keep permission prompts: no permission flag at all (Claude hosts), so the host starts in the
-    /// mode its own settings choose. Without it every launch starts in auto mode
-    /// (`--permission-mode auto`) unless the user setting `launcher.role_access` says `full` or
-    /// `prompt`.
+    /// mode its own settings choose. Without it a launch starts in the mode of its host: `cc` in
+    /// auto mode (`--permission-mode auto`), `glm` in the bypass
+    /// (`--dangerously-skip-permissions`); the user setting `launcher.role_access` sets `auto`,
+    /// `full` or `prompt` for every launch.
     #[arg(long)]
     permissions: bool,
     /// Print the composed command as JSON instead of starting the host.
@@ -1063,7 +1064,7 @@ fn launch(host: &str, o: LaunchOpts, prompt: Option<String>) -> Result<serde_jso
     // Validate user configuration even for a CLI override. Resolution precedes host
     // composition. No advisor by default (user decision 2026-11-12, #2476): only `--advisor`
     // or the user setting `launcher.advisor`.
-    let settings = launch_settings(o.permissions, o.advisor.as_deref(), o.no_advisor)?;
+    let settings = launch_settings(host, o.permissions, o.advisor.as_deref(), o.no_advisor)?;
     let advisor_note = (host == "claude"
         && settings.advisor.as_ref().map(|(_, s)| *s) == Some(AdvisorSource::UserSetting))
     .then_some("--advisor comes from the user setting launcher.advisor (~/.moai-cli/config/launcher.yaml); --no-advisor turns it off");

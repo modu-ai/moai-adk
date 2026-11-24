@@ -1733,7 +1733,7 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "cc|glm",
         "effort",
-        "effort(Claude 기본 `medium`)",
+        "effort(기본: cc `medium`, glm `high`)",
     ),
     (
         "cc|glm",
@@ -1750,8 +1750,9 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "cc|glm",
         "permissions",
         "권한 플래그를 붙이지 않음(Claude 호스트): 호스트가 자기 설정의 모드로 시작. 없으면 \
-         모든 실행이 auto mode(`--permission-mode auto`)로 시작하고, 사용자 설정 \
-         `launcher.role_access` 가 `full`(우회) 또는 `prompt` 로 바꿀 수 있음",
+         cc 는 auto mode(`--permission-mode auto`), glm 은 우회(`--dangerously-skip-permissions`)로 \
+         시작하고, 사용자 설정 `launcher.role_access` 가 모든 실행의 모드를 `auto`·`full`·`prompt` 로 \
+         바꿀 수 있음",
     ),
     (
         "cc|glm",

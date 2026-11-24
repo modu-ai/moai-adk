@@ -1223,8 +1223,8 @@ fn launcher_glm_requires_token_name_only() {
             "Z_AI_API_KEY"
         ])
     );
-    // The glm host starts the Claude Code argv of the roleless defaults: the alias `opus` maps
-    // to glm-5.4[1m] through the environment (SPEC-20261124-launcher-retire-role-flags).
+    // The glm host starts in the bypass at effort high; the alias `opus` maps to glm-5.4[1m]
+    // through the environment (SPEC-20261124-launcher-retire-role-flags REQ-13, REQ-15).
     assert_eq!(
         v["argv"],
         json!([
@@ -1232,9 +1232,8 @@ fn launcher_glm_requires_token_name_only() {
             "--model",
             "opus",
             "--effort",
-            "medium",
-            "--permission-mode",
-            "auto"
+            "high",
+            "--dangerously-skip-permissions"
         ])
     );
     // No advisor by default since #2476; an explicit one is dropped on glm with a note.
@@ -2712,7 +2711,8 @@ mod skill_package {
     // Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `mode_routing_flags_map_to_routes` mapped the two mode flags to their routes; a dash option is now plain request text (tests/next_flow_skill_scan.rs).
 
     /// #2286 CLOSE-TABLE item 1: the repository's own instruction files carry no retired mode
-    /// spelling either, so a lane reading them types only `--mode-agent` / `--mode-leader`.
+    /// spelling either. The role is typed inside the session as `/moai work` or `/moai leader`
+    /// (SPEC-20261124-launcher-retire-role-flags), no `--mode-*` spelling is left.
     #[test]
     fn repository_instruction_files_carry_no_retired_mode_spelling() {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -2722,7 +2722,8 @@ mod skill_package {
             None,
             "retired mode spelling is still in CLAUDE.md"
         );
-        assert!(text.contains("--mode-agent"), "CLAUDE.md");
+        assert!(text.contains("/moai work"), "CLAUDE.md");
+        assert!(text.contains("/moai leader"), "CLAUDE.md");
     }
 
     // Retired with the OPTIMIZE route (SPEC-20261122-next-flow-skills-agents REQ-2): `optimize_route_previews_and_applies_nothing` pinned the OPTIMIZE route; UPDATE carries its preview (tests/next_flow_skill_scan.rs `absorb_update_`).
