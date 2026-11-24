@@ -200,6 +200,102 @@ fn a_check_line_changed_in_any_other_way_is_tier_2() {
     assert_eq!(floor_after(|s| s[0]["checks"] = json!([CHECK])), 2);
 }
 
+/// The floor of the one registry change that turns the first check line of the first scan from
+/// `old` into `new`.
+fn floor_of_line(old: &str, new: &str) -> u8 {
+    let mut before = base_scans();
+    before[0]["checks"][0] = json!(old);
+    let mut after = base_scans();
+    after[0]["checks"][0] = json!(new);
+    floor(&[file(REG, &registry(before), &registry(after))])
+}
+
+/// Audit B1 (P1 to P6): a `--test` pair counts as growth only when its value is a target name
+/// (`repo_scans` reads `[a-z0-9_]+`), so an option, a filter or a shell fragment in the value
+/// slot turns a red check green without being a registration.
+#[test]
+fn a_test_option_whose_value_is_no_target_name_is_tier_2() {
+    for value in [
+        "--list",
+        "--exact",
+        "--skip",
+        "--ignored",
+        "x||true",
+        "x;true",
+        "x&&true",
+        "$(true)",
+        "X",
+        "a-b",
+        "a.b",
+        "a/b",
+        "--",
+    ] {
+        let line = format!("{CHECK} --test {value}");
+        assert_eq!(floor_of_line(CHECK, &line), 2, "{line}");
+    }
+    // The same names between the old words are no registration either.
+    assert_eq!(
+        floor_of_line(
+            CHECK,
+            "cargo test --offline --locked --test --list --test alpha --test gamma"
+        ),
+        2
+    );
+    // The control: a plain target name is.
+    assert_eq!(floor_of_line(CHECK, &format!("{CHECK} --test beta_2")), 1);
+}
+
+/// Audit B1: after the first `--` the words are libtest's, so a `--test` there is no cargo
+/// option, whatever its value is.
+#[test]
+fn a_test_option_after_the_libtest_separator_is_tier_2() {
+    const OLD: &str = "cargo test --offline --locked --test alpha -- --nocapture";
+    for tail in [
+        "--test beta",
+        "--test --list",
+        "--test --exact",
+        "--test --skip",
+        "--test --ignored",
+        "--test x||true",
+        "--test x;true",
+    ] {
+        let line = format!("{OLD} {tail}");
+        assert_eq!(floor_of_line(OLD, &line), 2, "{line}");
+    }
+    // Inserted between the old words after the separator.
+    assert_eq!(
+        floor_of_line(
+            OLD,
+            "cargo test --offline --locked --test alpha -- --test beta --nocapture"
+        ),
+        2
+    );
+    // The control: the same pair before the separator is a registration.
+    assert_eq!(
+        floor_of_line(
+            OLD,
+            "cargo test --offline --locked --test alpha --test beta -- --nocapture"
+        ),
+        1
+    );
+}
+
+/// The growth rule reads a name as `repo_scans` reads a `test_targets` entry: a name that one
+/// accepts and the other refuses would make a registration the table cannot run, or the other
+/// way round.
+#[test]
+fn a_test_option_value_is_read_as_repo_scans_reads_a_target_name() {
+    // One word each: a name with a blank is two words and never one name.
+    for name in [
+        "alpha", "a_1", "0", "_", "A", "a-b", "a.b", "x;true", "--list", "ünï",
+    ] {
+        let entry = json!({"id": "x", "test_targets": [name]});
+        let accepted = moai_cli::repo_scans::checks_of(&entry).is_ok();
+        let grew = floor_of_line(CHECK, &format!("{CHECK} --test {name}")) == 1;
+        assert_eq!(grew, accepted, "{name:?}");
+    }
+}
+
 #[test]
 fn a_line_that_only_adds_text_but_overrides_an_old_value_is_tier_2() {
     // One added line, nothing removed: a repeated key after the old one wins when the text is read.
