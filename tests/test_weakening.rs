@@ -184,7 +184,7 @@ fn a_skip_added_fires_in_the_five_notations_and_stays_quiet_on_its_pairs() {
     );
     assert!(detect(&prose).is_empty(), "{:?}", detect(&prose));
     let iter = change(
-        "src/lib.rs",
+        "src/plain_source.rs",
         3,
         &[],
         &v(&["    let rest = items.iter().skip(1);"]),
@@ -276,7 +276,7 @@ fn a_golden_file_changed_alone_fires_and_one_that_follows_code_stays_quiet() {
     // Source code changes with the golden file: the expectation follows the code.
     let with_code = format!(
         "{golden}{}",
-        change("src/main.rs", 4, &v(&["a"]), &v(&["b"]))
+        change("src/other_source.rs", 4, &v(&["a"]), &v(&["b"]))
     );
     assert!(detect(&with_code).is_empty());
     // A golden file the diff creates is a new expectation, not a rewritten one.
@@ -290,7 +290,7 @@ fn a_golden_file_changed_alone_fires_and_one_that_follows_code_stays_quiet() {
     ] {
         assert!(is_golden_path(p), "{p}");
     }
-    assert!(!is_golden_path("src/lib.rs"));
+    assert!(!is_golden_path("src/plain_source.rs"));
     for p in [
         "tests/a.rs",
         "crates/c/tests/b.rs",
@@ -301,7 +301,7 @@ fn a_golden_file_changed_alone_fires_and_one_that_follows_code_stays_quiet() {
     ] {
         assert!(is_test_path(p), "{p}");
     }
-    assert!(!is_test_path("src/lib.rs") && !is_test_path("src/attests.rs"));
+    assert!(!is_test_path("src/plain_source.rs") && !is_test_path("src/attests.rs"));
 
     // Rendered form: `kind path:line detail`.
     let r = detect(&golden)[0].render();
@@ -453,7 +453,7 @@ fn package_of(head_text: &str) -> Value {
     let repo = tmp.path().join("repo");
     fs::create_dir_all(repo.join("tests")).unwrap();
     git_ok(&repo, &["init", "-q", "-b", "main"]);
-    fs::write(repo.join("README.md"), "readme\n").unwrap();
+    fs::write(repo.join("NOTES.txt"), "notes\n").unwrap();
     fs::write(repo.join(THING), TEST_ONE).unwrap();
     let base = commit_all(&repo, "base");
     fs::write(repo.join(THING), head_text).unwrap();
