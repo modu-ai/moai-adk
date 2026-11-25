@@ -5,6 +5,7 @@
 //! no file of the checked-in tree is read, so the registry needs no line for this file.
 mod common;
 use common::git::{git, git_ok};
+use moai_cli::check_fast::{self, Entry};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;
@@ -68,6 +69,31 @@ fn registered() -> Value {
     v
 }
 
+/// The rest of the ledger of `check affected`: a stub for every other name of the ledger list (the
+/// limited entries with the functions they name) and the library file with the library tests, so
+/// the checkout holds a complete ledger and its step is the heavy test run, not a missing-name
+/// report. `skip` is the name the caller wrote itself.
+fn ledger_stubs(root: &Path, skip: &str) {
+    let mut lib = String::new();
+    for e in check_fast::LEDGER {
+        match e {
+            Entry::Target(name) if *name != skip => {
+                put(root, &format!("tests/{name}.rs"), "fn main() {}\n")
+            }
+            Entry::Tests(name, fns) if *name != skip => {
+                let text: String = fns.iter().map(|f| format!("fn {f}() {{}}\n")).collect();
+                put(root, &format!("tests/{name}.rs"), &text);
+            }
+            Entry::Lib(path) => lib.push_str(&format!(
+                "fn {}() {{}}\n",
+                path.rsplit("::").next().unwrap()
+            )),
+            _ => {}
+        }
+    }
+    put(root, "src/check_affected.rs", &lib);
+}
+
 /// A repository whose `tests/` holds twelve `card_other_*` targets (a common word), the scan
 /// targets and a table test, a base commit with `base` as the registry (none: no registry file)
 /// and one commit on top of it that writes `head` and the `other` files.
@@ -106,6 +132,7 @@ impl Fixture {
             "tests/repo_scans_table.rs",
             "// reads tools/repo_scans.json\nfn main() {}\n",
         );
+        ledger_stubs(p, "repo_scans_table");
         if let Some(text) = base {
             put(p, "tools/repo_scans.json", text);
         }

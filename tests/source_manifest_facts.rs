@@ -12,8 +12,7 @@
 
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::Deserialize;
-use serde_json::{Map, Value};
-use sha2::{Digest, Sha256};
+use serde_json::Value;
 use std::{fmt, fs, path::Path};
 
 const ROOT: &str = env!("CARGO_MANIFEST_DIR");
@@ -60,13 +59,6 @@ struct Doc {
 fn keys_of_files(text: &str) -> Vec<String> {
     let doc: Doc = serde_json::from_str(text).expect("the manifest is JSON with a `files` object");
     doc.files.0.into_iter().map(|(k, _)| k).collect()
-}
-
-fn sha256_hex(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
 }
 
 /// Every file under the package except the manifest, as `/`-separated paths, sorted. A link or a
@@ -197,32 +189,7 @@ fn every_package_file_has_one_entry_and_every_entry_a_file() {
 /// The manifest text the tool writes: every sha256 recomputed from the file on disk, `files` in
 /// sorted key order, every other key in place, two-space indent, non-ASCII kept, one newline.
 fn rendered() -> String {
-    let text = manifest_text();
-    let data: Value = serde_json::from_str(&text).expect("the manifest is JSON");
-    let package = Path::new(ROOT).join(PACKAGE);
-    let mut out = Map::new();
-    for (key, value) in data.as_object().expect("the manifest is an object") {
-        if key != "files" {
-            out.insert(key.clone(), value.clone());
-            continue;
-        }
-        let mut files: Vec<(&String, &Value)> = value
-            .as_object()
-            .expect("`files` is an object")
-            .iter()
-            .collect();
-        files.sort_by(|a, b| a.0.cmp(b.0));
-        let mut sorted = Map::new();
-        for (rel, entry) in files {
-            let mut entry = entry.as_object().expect("an entry is an object").clone();
-            let sha =
-                sha256_hex(&fs::read(package.join(rel)).unwrap_or_else(|e| panic!("{rel}: {e}")));
-            entry.insert("sha256".into(), Value::String(sha));
-            sorted.insert(rel.clone(), Value::Object(entry));
-        }
-        out.insert(key.clone(), Value::Object(sorted));
-    }
-    serde_json::to_string_pretty(&Value::Object(out)).unwrap() + "\n"
+    moai_cli::check_fix::render_manifest(Path::new(ROOT)).unwrap_or_else(|e| panic!("{e}"))
 }
 
 #[test]
