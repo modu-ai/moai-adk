@@ -54,11 +54,11 @@ This change measures the whole flow in a temporary Orca-style profile (preview, 
 
 ## Result
 
-Head `587827cf6d`. `cargo test --locked --offline --no-fail-fast --test orca_claude_config_dir --test orca_optional_3005` ended with exit 0: 8 passed in `orca_claude_config_dir`, 5 passed in `orca_optional_3005`, in the build folder of this worktree after the two test sources were touched (a first run read the adapter of another worktree through a stale test binary and failed; the rerun's binary names this worktree). Not run here: clippy, the unfiltered affected set, the Python tests and the audit; no live Orca profile session was run.
+Head `022e9b6008` on the NeXT tip `e946ae8102`; the earlier seven commits of this change (measured on the NeXT of 2026-11-21) were carried over and fitted to the tip, where SETUP and Codex are gone. `cargo test --offline --locked --test orca_claude_config_dir --test orca_optional_3005` ended with exit 0: 8 passed in `orca_claude_config_dir`, 4 passed in `orca_optional_3005`, in the build folder of this worktree (log `target/orca-cfg/tests2.log`; the first run at the tip failed one test, `profile_plan_targets_the_moved_folder`, which still expected a Codex host). `moai spec check` reported 0 errors and 0 warnings. The audit floor of the head is tier 1 (`moai bundle check`). Not run here: a live Orca profile session (no such session was available, so that Orca sets `CLAUDE_CONFIG_DIR` stays unverified), the wide affected set and the audit.
 
 - AC-1: met — `profile_plan_targets_the_moved_folder`, `profile_apply_puts_the_skill_where_the_session_reads_it` and `profile_second_plan_has_nothing_to_apply`
 - AC-2: met — `without_the_variable_the_skill_goes_to_home_claude`
-- AC-3: met — `adapter_rows_setup_and_update_work_with_orca_through_the_moved_folder` and `adapter_rows_unsupported_list_drops_the_profile_settings_folder`
+- AC-3: met — `adapter_rows_update_works_with_orca_through_the_moved_folder` and `adapter_rows_unsupported_list_drops_the_profile_settings_folder`
 - AC-4: met — `adapter_unverified_names_the_live_profile_session_and_its_page`
 - AC-5: met — `adapter_automations_reuse_is_not_a_single_leader_guarantee`
-- AC-6: met — `the_adapter_table_has_a_row_for_every_route_with_a_status_word` in `orca_optional_3005`, whose block now expects `works` and `CLAUDE_CONFIG_DIR`
+- AC-6: met — `the_adapter_table_has_a_row_for_every_route_with_a_status_word` in `orca_optional_3005`, whose block now expects `works`, `CLAUDE_CONFIG_DIR` and no number in the UPDATE row, and the paragraph `Nothing is unsupported with Orca today`
