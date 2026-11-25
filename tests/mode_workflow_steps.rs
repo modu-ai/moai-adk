@@ -158,14 +158,17 @@ fn inspection_p2_rules_are_written_where_they_are_used() {
 /// never a question to the user and never a non-blocking question tool; the name stays.
 #[test]
 fn the_modes_never_ask_through_a_non_blocking_question_tool() {
-    let skill =
-        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/SKILL.md"))
-            .unwrap();
+    // The sentence moved from the skill entry to the decision table (SPEC-20261125-skill-entry-order
+    // D-2); the entry points to `internal/decide`.
+    let decide = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/references/internal/decide.md"),
+    )
+    .unwrap();
     for p in [
         "In WORK a card that needs a decision ends in `LANE-BLOCKED kind=decision …` as a note on the card",
         "never a question to the user and never a question through a non-blocking question tool",
     ] {
-        assert!(skill.contains(p), "SKILL.md must say `{p}`");
+        assert!(decide.contains(p), "decide.md must say `{p}`");
     }
     let work = workflow("work.md");
     for p in [

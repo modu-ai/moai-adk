@@ -156,7 +156,9 @@ fn autonomy_sorting_rule_for_the_model_stands_outside_the_table() {
         .collect::<Vec<_>>()
         .join("\n");
     assert!(
-        outside.contains("Sort the `autonomy` answer the way SKILL.md sorts an open question"),
+        outside.contains(
+            "Sort the `autonomy` answer the way `internal/decide` sorts an open question"
+        ),
         "the model's sorting rule must be a sentence outside the table"
     );
 }

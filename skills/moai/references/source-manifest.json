@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "d65f7881da67283262fee44af109a0db04b62e8c073d1ee82b0883905605a59f",
+      "sha256": "8997868cfee1562a636d0cf93a768b679e029ce99242447d5a80184296f85d53",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -183,7 +183,7 @@
       }
     },
     "references/internal/core-rules.md": {
-      "sha256": "240ae3df12816e58182dcdfb76e82dac76e31dede2bc5992d067ae983244326c",
+      "sha256": "d5238f0602cbed4199c385d8ec59cee29c7d034b491bddb71b97918eb749e83b",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-core-rules",
@@ -192,7 +192,7 @@
       }
     },
     "references/internal/decide.md": {
-      "sha256": "94e4017f61de1b65044d653d9bed98454f0b94a309f5c18cc4406712ef74b214",
+      "sha256": "28b5fb778e27114b388cf6973c78b38f405a00efa2fe54759e766d3737fbbb50",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-decide",
@@ -222,7 +222,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "de02867ae04b107f7e1d09fba6900f5c682a9dac197c931b927064c25d98da98",
+      "sha256": "325c7a531690a5aec1bed8e836caca86a952eb6f13e41b52ad839588c83aa6d4",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -258,7 +258,7 @@
       }
     },
     "references/internal/questions.md": {
-      "sha256": "c034e1754b55634b527754ebb139f36bca551f5b4f31dbb7f218e92a5eb6303a",
+      "sha256": "fb66712547ed0124b7c535f7f1b832b1ac6c9090af3e0eb29bbaf63bce678df3",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-questions",
@@ -318,7 +318,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "ca891531c669842a3bdc242c950532c83ab091fa5cd110d1499808f298dfd65f",
+      "sha256": "bcec9110d3a7e3d71c0bad94418d752685c4a7011e18ebe1cfe7039b48195fda",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",

@@ -175,7 +175,7 @@ fn the_update_route_runs_the_commands_itself_after_the_pick() {
 fn every_question_is_a_selection_through_the_hosts_question_tool() {
     let q = skill("references/internal/questions.md");
     for text in [
-        "(user decision 2026-11-16, cards C-51 and C-52)",
+        "How a question reaches the user. It holds for every question of those routes",
         "Never tell the user to run a command in a terminal when this session can run it",
         "Every question is a selection",
         "put the recommended one first and mark it",
@@ -246,10 +246,10 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
             "{file} does not name `internal/questions`"
         );
     }
-    // The case-(2) sentence of SKILL.md keeps the wait and says it is still a selection.
-    let skill_md = skill("SKILL.md");
-    assert!(skill_md.contains(
-        "goes to the user and waits — no deadline applies it by default; it is still asked as a selection with the recommended option first, and once the user has picked, the session runs it (user decision 2026-11-16, card C-51)"
+    // The case-(2) row of `internal/decide` keeps the wait and says it is still a selection.
+    let decide = skill("references/internal/decide.md");
+    assert!(decide.contains(
+        "goes to the user and waits — no deadline applies it by default; it is still asked as a selection with the recommended option first, and once the user has picked, the session runs it."
     ));
     // No route asks three or four at a time any more (the Codex CLI limit is three).
     for file in ["workflows/project.md", "references/internal/interview.md"] {
