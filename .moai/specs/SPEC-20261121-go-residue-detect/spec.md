@@ -16,7 +16,7 @@ The Go-generation update survey (2026-11-21, mo.ai.kr measured) found the root g
 
 - Applying, moving or reverting anything: the step writes nothing; the apply and revert commands are S2.
 - The three Go markers and `state_root` classification: unchanged; a `mixed` verdict still blocks go-state as today (S3 owns the resurrected-marker case).
-- The `claude-md` step, the leftovers bookkeeping, `all_unchanged` semantics and the managed ignore block: untouched (S4, S5 own them).
+- The `claude-md` step, the leftovers bookkeeping, `all_unchanged` semantics and the managed ignore block: untouched (S4, S5 own them); the go-residue step reads `optional` while it only reports, so those semantics stay as they are.
 - Codex: withdrawn by decision, so no Codex step or text.
 - The `settings_referenced`, `tracked_reports` and `unmanaged_host` classes: the slices that own them (the claude-md step, the leftovers and reports bookkeeping, the unmanaged-host step) extend this survey; this slice adds none of them.
 
@@ -30,6 +30,7 @@ The Go-generation update survey (2026-11-21, mo.ai.kr measured) found the root g
 - REQ-6: When no manifest proves any file, the go-residue step shall report no proof with zero candidates and the plan still succeeds. · failure: none — the no-manifest case is this requirement's own subject and leaves nothing to retry
 - REQ-7: A second run of the plan shall read the go-residue step unchanged with the same items and the same digests.
 - REQ-8: When every surveyed file is user data that no manifest names, the go-residue step shall read unchanged and still list every surveyed file. · failure: none — the user-data-only case is this requirement's own subject and leaves nothing to retry
+- REQ-9: When a surveyed file is one the survey would act on, the go-residue step shall read `optional` with no apply command, which leaves the plan's `all_unchanged` to the other steps. · failure: none — the report-only case is this requirement's own subject and leaves nothing to retry
 
 ## Acceptance
 
@@ -38,10 +39,11 @@ The Go-generation update survey (2026-11-21, mo.ai.kr measured) found the root g
 - AC-3 (REQ-6): with no manifest anywhere the step reports no proof and zero candidates while the plan exits 0 · verify: `cargo test --test project_update_go_residue_cli`
 - AC-4 (REQ-3, REQ-4, REQ-5): every item carries path, sha256, tracked, resurrected and a suggested action, a symlink is never followed, and the snapshots around the plan are identical · verify: `cargo test --test project_update_go_residue_cli`
 - AC-5 (REQ-8): a project whose only surveyed file is an unmanifested committed file reads the step as unchanged, lists the file as user_data with tracked true and action keep, and does not turn the update's all_unchanged false · verify: `cargo test --test project_update_go_residue_cli`
+- AC-6 (REQ-9): on the survey's temp frame a surveyed file whose suggested action is not keep makes the step read `optional` with no apply command, and the plan's all_unchanged follows the other steps alone · verify: `cargo test --test project_update_go_residue_cli`
 
 ## Scope
 
-- write: `src/go_residue.rs` (new), `src/project_update.rs` (the step), `tests/project_update_go_residue_cli.rs` (new), the step-list pins `tests/go_settings_cli.rs`, `tests/project_update_plan_cli.rs` and `tests/reports_move_cli.rs` (each gains the read-only step name), one module line in `src/lib.rs` (a shared file, written by line lease), one row of `tests/fixtures/state_folder_literals/allow.tsv` for the new test file, `.moai/specs/SPEC-20261121-go-residue-detect/**`
+- write: `src/go_residue.rs` (new), `src/project_update.rs` (the step), `tests/project_update_go_residue_cli.rs` (new), the step-list pins `tests/go_settings_cli.rs`, `tests/project_update_plan_cli.rs` and `tests/reports_move_cli.rs` (each gains the read-only step name), `tests/update_end_to_end_cli.rs` (its `open_steps` helper counts `optional` as not open), one module line in `src/lib.rs` (a shared file, written by line lease), one row of `tests/fixtures/state_folder_literals/allow.tsv` for the new test file, `.moai/specs/SPEC-20261121-go-residue-detect/**`
 - read-only: `src/go_state.rs`, `src/state_root.rs`, the survey report sections 4-8
 - forbidden: any card number in shipped text, real HOME or real project writes, apply or revert behaviour
 
@@ -75,3 +77,11 @@ Acceptance:
 - AC-5 met: 새 테스트 `user_data_alone_leaves_the_go_residue_step_unchanged`가 통과했어요(126 passed 실행).
 
 Not run: clippy는 `not_run`이에요. guard-mutant 줄도 `not_run`이에요(tier 1이라 요구되지 않아요). 문서 단계는 `moai-docs`가 했고, `@cc:` 주석은 추가하지 않았고 필요하지도 않았어요.
+
+repair 3: step 상태를 `optional`로 바꾼 수리예요. `revision`과 승인은 그대로예요(`status: draft`, `approval` 키 없음).
+
+- 리더의 넓은 검사가 head `609d27b26c`에서 `update_end_to_end_cli`의 4개 테스트(shape_e, shape_g, shape_h, `go_references_in_the_local_settings_are_named_and_left_to_the_user`)를 세 번 실패했다고 리더 노트에 적혔어요. 이 세션에서 잰 값이 아니라 리더 노트의 내용이에요.
+- 변경: `go_residue_step`(`src/project_update.rs`)은 조사한 파일 중 제안 행동이 `keep`이 아닌 것이 있으면 `needs_decision` 대신 `optional`을 돌려줘요. 항목이 없거나 `keep`뿐이면 `unchanged` 그대로예요. step은 보고만 하고 apply는 다음 slice라서, `needs_decision`에는 답이 올 수 없었고 조사가 증명하는 모든 Go 프로젝트에서 plan의 `all_unchanged`를 false로 붙잡았어요. `optional`은 plan이 할 일 없음으로 세는 기존 상태예요. `tests/update_end_to_end_cli.rs`의 `open_steps` helper도 `optional`을 열린 step으로 세지 않아요(`all_unchanged`와 같아요).
+- RED(이 세션에서 관찰): 새 테스트 `residue_to_act_on_is_reported_and_does_not_hold_the_update`가 변경 전에 `tests/project_update_go_residue_cli.rs:403`에서 `left: "needs_decision"`, `right: "optional"`로 실패했어요.
+- 변경 뒤 여섯 대상 실행(`project_update_go_residue_cli`, `update_end_to_end_cli`, `project_update_plan_cli`, `go_settings_cli`, `reports_move_cli`, `update_closing_commit`): 139 tests run, 139 passed, 0 skipped, exit 0 (로그 `target/abel/fix-296.log`). 앞서 실패하던 `update_end_to_end_cli`의 네 시험이 이 실행에서 통과했어요.
+- AC-6 met: 새 테스트의 RED를 먼저 관찰했고(`left: "needs_decision"`, `right: "optional"`), 변경 뒤 여섯 대상 실행 139개가 모두 통과했어요. 이 시험은 `all_unchanged`가 다른 step들의 AND와 같다는 것까지만 단언해요.
