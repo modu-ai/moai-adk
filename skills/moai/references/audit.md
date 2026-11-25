@@ -21,7 +21,7 @@ The auditor never writes the verdict, never fixes what it finds and never commit
 
 ## Who records the verdict
 
-The auditing session records the verdict itself: `moai card verdict <card> --head <40 hex> --base <40 hex> --verdict pass|fail --tier <0-2> --evidence "<one line>"`, and for a PASS above tier 0 the lane's receipt (`--receipt-head <head>`, one `--receipt-step NAME=EXIT` per step). The reviewer is the session id the host sets. `moai card land` refuses a head that has no independent PASS of it (`no_pass`) in every mode, tier 0 included. A PASS is independent when its session wrote no commit of the head and held no reservation of the card (`self_verdict`); above tier 0 it also comes from a session other than the lander (`lander_review`) and cites a receipt of the head whose every step exited 0 (`receipt_missing`).
+The auditing session records the verdict itself with `moai card verdict <card> --head <40 hex> --base <40 hex> --verdict pass|fail --tier <0-2> --evidence "<one line>"`, and for a PASS above tier 0 the lane's receipt (`--receipt-head <head>`, one `--receipt-step NAME=EXIT` per step). The reviewer is the session id the host sets. `moai card land` refuses a head that has no independent PASS of it (`no_pass`) in every mode, tier 0 included. A PASS is independent when its session wrote no commit of the head and held no reservation of the card (`self_verdict`); above tier 0 it also comes from a session other than the lander (`lander_review`) and cites a receipt of the head whose every step exited 0 (`receipt_missing`).
 
 The leader never records a verdict for an auditor, and the `moai-audit` agent only returns evidence.
 

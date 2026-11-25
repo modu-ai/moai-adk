@@ -80,7 +80,7 @@ fn ac1_the_procedure_is_one_numbered_list_in_work_order() {
     let keys = [
         "AUDIT-CLAIM",
         "ready note",
-        "Pick the tier",
+        "Audit tier",
         "moai review-package",
         "moai review-check",
         "moai card verdict",
