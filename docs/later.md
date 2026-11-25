@@ -33,3 +33,6 @@ The lines after the dated ones came from the leader's carry-over of closed cards
 - `moai audit-delta` 가 부모 순서를 [pass_head, tip] 로 요구해서 tip 이 첫째 부모인 착지 머지를 `parent_mismatch` 로 거절해요(2026-11-25 C-508·C-520 묶음 판정): 두 순서를 모두 받아요
 - `card submit` 이 예약에 상대 경로로 적힌 워크트리(`--worktree .claude/worktrees/<이름>`)를 풀지 못해 거절해요(2026-11-25 C-509·C-518·C-524 세 레인, 워크트리 안에서는 "not a folder", 주 체크아웃에서는 trailers 관문의 `git -C` 이중 해석): `card take` 가 `--worktree` 를 프로젝트 기준 절대 경로로 저장하거나 submit 이 예약 경로를 프로젝트 기준으로 풀어요. 그때까지 레인은 READY 노트 → `card review` 손 순서를 써요
 - SPEC 브랜치 쓰기 훅이 SPEC id 와 브랜치 이름이 다른 워크트리(예 spec/home-guard-flake-tmpdir-20261124 와 SPEC-20261124-home-guard-flake)에서 `target/<이름>/` 의 감사 노트 초안까지 막아요(2026-11-25 C-516 감사, agent-7): 훅이 `target/` 아래 스크래치는 SPEC 연결과 상관없이 허락해요
+- 감사·읽기 명령의 `cd` 가 호스트 세션의 작업 폴더를 다른 레인 워크트리 안으로 옮겨요(2026-11-26 C-538 감사 nora 두 번, 앞서 ivan 한 번): 다른 워크트리로 가는 `cd` 를 거절하거나 경고하는 가드
+- src 안의 테스트가 옛 상태 폴더 철자(`.moai-cli`)를 직접 써서 `project_state_dir_is_spelled_once` 스캔에 걸려요(2026-11-26 C-175 조각 1b 첫 영수증, 앞 조각에도 한 번): 테스트 도우미가 상태 폴더 이름을 주고 테스트 작성 지침에 한 줄
+- 부하에 따라 시간이 흔들리는 테스트가 착지 검사를 막아요(2026-11-25 lane_screen C-538, 2026-11-26 outbox ac5 C-539): 고정 임대·고정 대기 대신 장부 시각을 옮기는 도우미를 쓰고, 새 테스트의 고정 대기를 찾는 스캔
