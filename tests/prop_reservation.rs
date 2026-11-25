@@ -1,6 +1,9 @@
 //! Reservation state-machine property tests (SPEC-20261119-property-tests): under
 //! random interleavings of the state machine in a temporary ledger, no card left in `review`
-//! is without a held reservation, and no two live reservations cover one path.
+//! is without a held reservation, a card has at most one live reservation, and a path that two
+//! cards' live reservations can both write is reported as an overlap, never refused
+//! (SPEC-20261125-card-no-file-locks REQ-1: "the card ledger shall make the reservation and
+//! answer each overlap as `overlaps`").
 //! The cases share one temporary HOME — each case works only on its own three cards and, at
 //! its end, walks them back through the system's own transitions (`reopen` then `release`,
 //! an ended lease through `reclaim`), so earlier cases never block a later take — and nothing
@@ -20,7 +23,7 @@ use rusqlite::params;
 
 const PROJECT: &str = "prop";
 
-/// Scope patterns drawn from a small alphabet, so collisions (and their refusals) happen:
+/// Scope patterns drawn from a small alphabet, so collisions (and their overlap reports) happen:
 /// `zone-a/**` overlaps `zone-a/sub/**`, and two cards may draw the same zone.
 const SCOPES: &[&str] = &[
     "zone-a/**",
@@ -73,15 +76,40 @@ fn fresh_cards(w: &mut WriteLedger) -> Vec<i64> {
     .unwrap()
 }
 
-/// REQ-7, REQ-8: the two invariants for one case's cards, read-only. Returns how many review
-/// cards the first invariant judged and how many live pairs the second compared — the audit
-/// of the first version (B1) showed a checker that never runs is green and worthless.
-fn assert_invariants(world: &mut World, cards: &[i64]) -> (u32, u32) {
+/// What one case's invariant check judged: review cards, live pairs of cards, and live pairs
+/// whose patterns overlap (each of those must be reported by `reservation::overlaps`).
+#[derive(Default, Clone, Copy)]
+struct Judged {
+    review_checks: u32,
+    live_pairs: u32,
+    overlap_pairs: u32,
+}
+
+/// REQ-7, REQ-8: the invariants for one case's cards, read-only: a review card keeps a held
+/// reservation; a card has at most one live reservation (SPEC-20261125-card-no-file-locks REQ-6
+/// keeps "a card is held by one reservation" while REQ-1 and REQ-2 allow overlapping scopes);
+/// and for every pair of live reservations of two cards whose patterns can both write a path,
+/// `reservation::overlaps` names the other card, both patterns and its holder (the `overlaps`
+/// warning of a take). Returns what it judged — the audit of the first version (B1) showed a
+/// checker that never runs is green and worthless.
+fn assert_invariants(world: &mut World, cards: &[i64]) -> Judged {
     let conn = world.reader.conn();
     let now = db_now(&mut world.w);
     let mut live: Vec<reservation::Reservation> = Vec::new();
-    let mut review_checks = 0;
+    let mut judged = Judged::default();
     for card in cards {
+        let active: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM reservation WHERE card_id = ?1 \
+                 AND status IN ('held', 'expired_candidate', 'held_for_review')",
+                [card],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(
+            active <= 1,
+            "card {card} holds {active} active reservations"
+        );
         let (state, _): (String, i64) = conn
             .query_row(
                 "SELECT state, generation FROM card WHERE card_id = ?1",
@@ -91,7 +119,7 @@ fn assert_invariants(world: &mut World, cards: &[i64]) -> (u32, u32) {
             .unwrap();
         let current = reservation::current(conn, *card).unwrap();
         if state == "review" {
-            review_checks += 1;
+            judged.review_checks += 1;
             let _held = current
                 .as_ref()
                 .filter(|r| r.status == "held" || r.status == "held_for_review")
@@ -103,18 +131,27 @@ fn assert_invariants(world: &mut World, cards: &[i64]) -> (u32, u32) {
             live.push(r);
         }
     }
-    let mut live_pairs = 0;
     for (i, a) in live.iter().enumerate() {
         for b in live.iter().skip(i + 1) {
             if a.card_id == b.card_id {
                 continue;
             }
-            live_pairs += 1;
+            judged.live_pairs += 1;
+            // What a take of `a`'s card would be told about `b`'s card, asked now.
+            let told = reservation::overlaps(conn, now, a.card_id, &a.write_scope).unwrap();
             for m in &a.write_scope {
                 for t in &b.write_scope {
+                    if !scope::card_overlap(m, t) {
+                        continue;
+                    }
+                    judged.overlap_pairs += 1;
                     assert!(
-                        !scope::overlap(m, t),
-                        "live reservations of cards {} and {} both cover a path ({m} vs {t})",
+                        told.iter().any(|o| o.other_card == b.card_id
+                            && &o.mine == m
+                            && &o.theirs == t
+                            && o.holder == b.holder),
+                        "live reservations of cards {} and {} both cover a path ({m} vs {t}) \
+                         and the overlap is not reported: {told:?}",
                         a.card_id,
                         b.card_id
                     );
@@ -122,7 +159,7 @@ fn assert_invariants(world: &mut World, cards: &[i64]) -> (u32, u32) {
             }
         }
     }
-    (review_checks, live_pairs)
+    judged
 }
 
 /// How many of each transition the run actually achieved — the audit of the first version
@@ -140,6 +177,7 @@ struct Coverage {
     aged: u32,
     review_checks: u32,
     live_pairs: u32,
+    overlap_pairs: u32,
 }
 
 /// REQ-7: random interleavings; errors are legal refusals and are simply dropped. The world
@@ -235,9 +273,10 @@ fn random_interleavings_keep_the_two_invariants() {
                 }
             }
         }
-        let (review_checks, live_pairs) = assert_invariants(&mut world, &cards);
-        coverage.review_checks += review_checks;
-        coverage.live_pairs += live_pairs;
+        let judged = assert_invariants(&mut world, &cards);
+        coverage.review_checks += judged.review_checks;
+        coverage.live_pairs += judged.live_pairs;
+        coverage.overlap_pairs += judged.overlap_pairs;
         // This case's cards go back to `ready` through the system's own transitions, so the
         // next case's takes are not blocked by rows this case left behind. The holder and the
         // generation come from the reservation itself; a review card whose lease has ended is
@@ -282,5 +321,6 @@ fn random_interleavings_keep_the_two_invariants() {
         assert!(coverage.aged >= 500, "{coverage:?}");
         assert!(coverage.review_checks >= 50, "{coverage:?}");
         assert!(coverage.live_pairs >= 100, "{coverage:?}");
+        assert!(coverage.overlap_pairs >= 20, "{coverage:?}");
     }
 }
