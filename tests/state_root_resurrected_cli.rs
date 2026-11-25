@@ -1,9 +1,10 @@
-//! SPEC-20261121-resurrected-marker: a project whose `.moai/moai.json` is valid stays Rust-owned
-//! when git brings the Go markers back (`manifest.json`, `config/sections/system.yaml`), so the
-//! card commands read `.moai/project.yaml` and `project-update-plan` offers to keep the markers
-//! instead of stopping. The project has the shape of the field case: a git repository with
-//! every file committed and no earlier `.moai-cli` folder. Everything runs in a temporary HOME;
-//! nothing moves or is deleted.
+//! SPEC-20261121-resurrected-marker: a project whose `moai.json` in the state folder is valid
+//! stays Rust-owned when git brings the Go markers back (`manifest.json`,
+//! `config/sections/system.yaml`), so the card commands read the project profile from the state
+//! folder and `project-update-plan` offers to keep the markers instead of stopping. The project
+//! has the shape of the field case: a git repository with every file committed and no earlier
+//! state folder. Everything runs in a temporary HOME; nothing moves or is deleted. The folder
+//! name comes from `moai_cli::state_root::MOAI_DIR`, never from a literal.
 
 mod common;
 
@@ -32,6 +33,11 @@ fn git(dir: &Path, args: &[&str]) -> String {
     common::git::git(dir, &all)
 }
 
+/// `rel` inside this generation's state folder, as a project-relative path.
+fn state(rel: &str) -> String {
+    format!("{}/{rel}", moai_cli::state_root::MOAI_DIR)
+}
+
 fn put(root: &Path, rel: &str, text: &str) {
     let p = root.join(rel);
     fs::create_dir_all(p.parent().unwrap()).unwrap();
@@ -44,17 +50,17 @@ struct Fx {
 }
 
 impl Fx {
-    /// The field shape: the profile only in `.moai/`, the Go markers committed, and the Rust
-    /// marker too when `marker` is true. Nothing is left in the earlier `.moai-cli` folder.
+    /// The field shape: the profile only in the state folder, the Go markers committed, and the
+    /// Rust marker too when `marker` is true. Nothing is left in the earlier state folder.
     fn new(marker: bool) -> Fx {
         let home = TempHome::new();
         let project = home.project("demo");
         fs::remove_dir_all(project.join(moai_cli::PROJECT_STATE_DIR)).unwrap();
-        put(&project, ".moai/project.yaml", PROFILE);
-        put(&project, ".moai/manifest.json", "{}");
-        put(&project, ".moai/config/sections/system.yaml", SYSTEM_YAML);
+        put(&project, &state("project.yaml"), PROFILE);
+        put(&project, &state("manifest.json"), "{}");
+        put(&project, &state("config/sections/system.yaml"), SYSTEM_YAML);
         if marker {
-            put(&project, ".moai/moai.json", MARKER);
+            put(&project, &state("moai.json"), MARKER);
         }
         git(&project, &["init", "-q", "-b", "main"]);
         git(&project, &["add", "-A"]);
@@ -155,19 +161,17 @@ fn the_plan_offers_to_keep_the_resurrected_markers_instead_of_stopping() {
         .iter()
         .map(|m| (m["path"].as_str().unwrap(), m["tracked"].as_bool().unwrap()))
         .collect();
+    let (system_yaml, manifest) = (state("config/sections/system.yaml"), state("manifest.json"));
     assert_eq!(
         listed,
-        vec![
-            (".moai/config/sections/system.yaml", true),
-            (".moai/manifest.json", true)
-        ],
+        vec![(system_yaml.as_str(), true), (manifest.as_str(), true)],
         "{residue}"
     );
     assert!(
         residue["preview"]["keep_in"]
             .as_str()
             .unwrap()
-            .starts_with(".moai/backups/go-markers-"),
+            .starts_with(&state("backups/go-markers-")),
         "{residue}"
     );
     let go_state = step(&plan, "go-state").unwrap();
