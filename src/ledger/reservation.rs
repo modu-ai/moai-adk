@@ -1501,6 +1501,11 @@ pub enum ReclaimError {
         proven: String,
         current: String,
     },
+    /// The card is in `review` and its newest verdict is `pass`: the audited head is landed, so
+    /// the leader's release refuses it (SPEC-20261125-card-take-records-worktree REQ-13).
+    VerdictPass {
+        card_id: i64,
+    },
     /// The ledger itself failed (busy, unavailable, constraint ...).
     Ledger(LedgerError),
 }
@@ -1518,6 +1523,7 @@ impl ReclaimError {
             ReclaimError::LeaseLive { .. } | ReclaimError::LeaseHeldForAudit { .. } => "lease_live",
             ReclaimError::ReclaimLimit { .. } => "reclaim_limit",
             ReclaimError::HolderChanged { .. } => "holder_changed",
+            ReclaimError::VerdictPass { .. } => "verdict_pass",
             ReclaimError::Ledger(e) => e.code(),
         }
     }
@@ -1568,6 +1574,12 @@ impl std::fmt::Display for ReclaimError {
                 f,
                 "reservation conflict in holder: the proof that the holder is gone was made for \
                  session {proven}, but the reservation is now held by session {current}"
+            ),
+            ReclaimError::VerdictPass { card_id } => write!(
+                f,
+                "card conflict in verdict: verdict_pass: C-{card_id} is in `review` and its newest \
+                 verdict is `pass`; the audited head is landed with `card land`, its reservation \
+                 is not released"
             ),
             ReclaimError::Ledger(e) => e.fmt(f),
         }
@@ -1935,6 +1947,157 @@ fn reclaim_with(
             counted,
             reclaims_counted: reclaims + i64::from(counted),
             scope_fill,
+        }))
+    })?
+}
+
+/// What [`release_by_leader`] did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LeaderReleased {
+    /// The reservation that ended, as it is now (`status: released`).
+    pub previous: Reservation,
+    /// The card's state before the release.
+    pub card_state_before: String,
+    /// The card's state after it: `ready` for an `active` or `review` card, otherwise unchanged.
+    pub card_state_after: String,
+}
+
+/// Ends the current reservation of another session at the confirmed leader's word
+/// (SPEC-20261125-card-take-records-worktree REQ-8 to REQ-14). The caller has already shown that
+/// it is the registered leader session; this function judges the ledger side.
+///
+/// The reservation at `generation` must be the current one and `held`. A card in `review` whose
+/// newest verdict is `pass` is refused ([`ReclaimError::VerdictPass`]): its audited head is landed,
+/// not released. Without `early` the lease must have ended; with `early` (the proof that the
+/// holder is gone, [`EarlyProof`]) a live lease is released too, as long as the reservation is
+/// still held by the holder the proof names. The reservation becomes `released` and keeps its
+/// holder, generation, lease end, worktree and branch as the record; the card returns to `ready`
+/// (`review` goes through `active`, both transitions are in the table). One `card.release` event
+/// names the old holder, generation and lease end, `by`, `reason` and the card's states.
+///
+/// This is no reclaim: no `card.reclaim` event is written and the allowance of three reclaims is
+/// not read or used. Every refusal writes nothing, not even a `fence_reject` event: the caller is
+/// not the holder the fence checks, so this does not go through [`fenced`].
+pub fn release_by_leader(
+    w: &mut WriteLedger,
+    card_id: i64,
+    generation: i64,
+    by: &str,
+    reason: &str,
+    early: Option<&EarlyProof<'_>>,
+) -> Result<LeaderReleased, ReclaimError> {
+    check_label("by", by, MAX_BY_LEN)?;
+    check_label("reason", reason, MAX_REASON_LEN)?;
+    w.with_write_tx(|tx, now| {
+        let Some((state, current)) = card_row(tx, card_id)? else {
+            return Ok(Err(ReclaimError::CardNotFound(card_id)));
+        };
+        if state == "done" {
+            return Ok(Err(ReclaimError::CardDone(card_id)));
+        }
+        if current == 0 {
+            return Ok(Err(ReclaimError::NoReservation));
+        }
+        if generation < current {
+            return Ok(Err(ReclaimError::StaleGeneration {
+                offered: generation,
+                current,
+            }));
+        }
+        if generation > current {
+            return Ok(Err(ReclaimError::UnknownGeneration {
+                offered: generation,
+                current,
+            }));
+        }
+        let Some(old) = load_reservation(tx, card_id, current)? else {
+            return Ok(Err(ReclaimError::NoReservation));
+        };
+        if old.status != "held" {
+            return Ok(Err(ReclaimError::NotHeld { status: old.status }));
+        }
+        if state == "review" {
+            // The newest verdict of the card decides: a `fail` after a `pass` frees the release.
+            let newest: Option<String> = tx
+                .query_row(
+                    "SELECT json_extract(payload, '$.verdict') FROM event \
+                     WHERE card_id = ?1 AND kind = ?2 ORDER BY event_id DESC LIMIT 1",
+                    params![card_id, super::workflow::VERDICT_KIND],
+                    |r| r.get(0),
+                )
+                .optional()
+                .map_err(LedgerError::from)?
+                .flatten();
+            if newest.as_deref() == Some("pass") {
+                return Ok(Err(ReclaimError::VerdictPass { card_id }));
+            }
+        }
+        match early {
+            None if !lease_ended(old.lease_until, now) && state == "review" => {
+                return Ok(Err(ReclaimError::LeaseHeldForAudit {
+                    lease_until: old.lease_until,
+                    now,
+                }));
+            }
+            None if !lease_ended(old.lease_until, now) => {
+                return Ok(Err(ReclaimError::LeaseLive {
+                    lease_until: old.lease_until,
+                    now,
+                }));
+            }
+            Some(p) if old.holder != p.holder => {
+                return Ok(Err(ReclaimError::HolderChanged {
+                    proven: p.holder.to_string(),
+                    current: old.holder,
+                }));
+            }
+            _ => {}
+        }
+        tx.execute(
+            "UPDATE reservation SET status = 'released', updated_at = ?1 WHERE reservation_id = ?2",
+            params![now, old.reservation_id],
+        )?;
+        let state_after = match state.as_str() {
+            "active" => {
+                tx.execute(
+                    "UPDATE card SET state = 'ready' WHERE card_id = ?1",
+                    [card_id],
+                )?;
+                "ready".to_string()
+            }
+            // `review -> ready` is no transition: the card goes back to `active` first.
+            "review" => {
+                tx.execute(
+                    "UPDATE card SET state = 'active' WHERE card_id = ?1",
+                    [card_id],
+                )?;
+                tx.execute(
+                    "UPDATE card SET state = 'ready' WHERE card_id = ?1",
+                    [card_id],
+                )?;
+                "ready".to_string()
+            }
+            _ => state.clone(),
+        };
+        let mut payload = json!({
+            "from_holder": old.holder,
+            "from_generation": current,
+            "from_lease_until": old.lease_until,
+            "by": by,
+            "reason": reason,
+            "card_state": state,
+            "card_state_after": state_after,
+        });
+        if let Some(p) = early {
+            payload["early_proof"] = p.detail.clone();
+        }
+        add_event(tx, now, by, card_id, "card.release", &payload)?;
+        let previous = load_reservation(tx, card_id, current)?
+            .ok_or_else(|| LedgerError::Sql("the released reservation cannot be read".into()))?;
+        Ok(Ok(LeaderReleased {
+            previous,
+            card_state_before: state,
+            card_state_after: state_after,
         }))
     })?
 }

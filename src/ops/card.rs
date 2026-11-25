@@ -562,12 +562,28 @@ enum Action {
     /// Writes the ledger. Ends this session's reservation at the given generation; an `active`
     /// card becomes `ready`. A `review` card is refused: `card reopen` it first. A stale generation or a card held by another session is refused
     /// (`conflict`).
+    ///
+    /// With `--by leader --reason <why>` this is the leader's release of another session's
+    /// reservation: only the confirmed leader session (the live registered `leader` entry in
+    /// leader mode) may use it. It ends another session's `held` reservation as `released` when
+    /// its lease ended or every early proof holds (the launcher exited, the worktree is clean or
+    /// gone, no process works in it); a `review` card goes back through `active`, and the card
+    /// returns to ready. Refusals: `not_leader`, `lease_live` (the first missing proof is named),
+    /// `verdict_pass` (a card in `review` with a `pass` verdict is landed with `card land`
+    /// instead) and `holder_changed`. No reclaim is counted: a card at the reclaim limit is taken
+    /// again with `card take` after the release.
     Release {
         /// `C-12`.
         card: String,
         /// The generation `take` or `handoff` answered with.
         #[arg(long)]
         generation: i64,
+        /// Who releases for the holder: `leader`, together with `--reason`.
+        #[arg(long, requires = "reason")]
+        by: Option<String>,
+        /// Why the reservation of the other session is released (with `--by leader`).
+        #[arg(long, requires = "by")]
+        reason: Option<String>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -1626,15 +1642,28 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         Action::Release {
             card,
             generation,
+            by,
+            reason,
             project,
             home,
-        } => d::release(
-            &project,
-            &resolve_home(home)?,
-            &card,
-            &d::session_holder("release", env)?,
-            generation,
-        ),
+        } => match (by, reason) {
+            (Some(by), Some(reason)) => d::release_by_leader(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                generation,
+                d::session_holder("release", env).ok().as_deref(),
+                &by,
+                &reason,
+            ),
+            _ => d::release(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &d::session_holder("release", env)?,
+                generation,
+            ),
+        },
         Action::Handoff {
             card,
             generation,
