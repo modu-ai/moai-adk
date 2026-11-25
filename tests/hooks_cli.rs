@@ -1040,7 +1040,7 @@ fn push_repo() -> (tempfile::TempDir, std::path::PathBuf, String) {
 #[test]
 fn safe_force_push_is_not_asked_and_the_rest_is_as_before() {
     let (_tmp, repo, bare) = push_repo();
-    let answer = |command: &str| merge_preflight("claude", &repo, command).1;
+    let answer = |command: &str| force_push_preflight(&repo, command, None).0;
     for command in [
         "git push --force-with-lease=work: up work".to_string(),
         "git push --force-w=work: up work".to_string(),
@@ -1080,24 +1080,51 @@ fn safe_force_push_is_not_asked_and_the_rest_is_as_before() {
 /// The tool-preflight decision and reason for a Bash `command` whose hook input holds `cwd` and,
 /// when given, `permission_mode`.
 fn force_push_preflight(cwd: &Path, command: &str, mode: Option<&str>) -> (String, String) {
+    force_push_preflight_env(cwd, command, mode, &[])
+}
+
+/// [`force_push_preflight`] with `env` set on the hook process. The hook refuses to judge a push
+/// when its own environment changes the settings git reads (`GIT_CONFIG_*`, `GIT_DIR`, …), so
+/// this process starts without any such variable (a temporary `HOME` and `XDG_CONFIG_HOME`
+/// keep the user's settings out) and only `env` adds them.
+fn force_push_preflight_env(
+    cwd: &Path,
+    command: &str,
+    mode: Option<&str>,
+    env: &[(&str, &str)],
+) -> (String, String) {
     let mut input = json!({"session_id": "s", "hook_event_name": "PreToolUse",
         "tool_name": "Bash", "tool_use_id": "t1",
         "tool_input": {"command": command}, "cwd": cwd});
     if let Some(mode) = mode {
         input["permission_mode"] = json!(mode);
     }
-    let mut child = Command::new(common::MOAI_BIN)
-        .args([
-            "hook-dispatch",
-            "--host",
-            "claude",
-            "--event",
-            "tool-preflight",
-        ])
-        .current_dir(cwd)
-        .env("HOME", cwd.join("home"))
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+    let mut hook = Command::new(common::MOAI_BIN);
+    hook.args([
+        "hook-dispatch",
+        "--host",
+        "claude",
+        "--event",
+        "tool-preflight",
+    ])
+    .current_dir(cwd)
+    .env("HOME", cwd.join("home"))
+    .env("XDG_CONFIG_HOME", cwd.join("home/.config"));
+    for (name, _) in std::env::vars_os() {
+        let name = name.to_string_lossy().into_owned();
+        if name == "GIT_CONFIG"
+            || name == "GIT_DIR"
+            || name == "GIT_COMMON_DIR"
+            || name == "GIT_WORK_TREE"
+            || name.starts_with("GIT_CONFIG_")
+        {
+            hook.env_remove(&name);
+        }
+    }
+    for (name, value) in env {
+        hook.env(name, value);
+    }
+    let mut child = hook
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -1146,6 +1173,37 @@ fn safe_force_push_remote_name_is_judged_by_its_push_url() {
         "FOO=1 git push -f loc work".to_string(),
     ] {
         assert_eq!(decision(&command), "ask", "not asked: {command}");
+    }
+}
+
+/// REQ-3: when the hook's own environment changes the settings git reads, the lookups (which run
+/// with those variables removed) would read other settings than the push, so a forced push to a
+/// local remote name or a written local path is asked about.
+#[test]
+fn safe_force_push_env_that_changes_config_is_asked() {
+    let (_tmp, repo, bare) = push_repo();
+    let changed = [
+        ("GIT_CONFIG_COUNT", "1"),
+        ("GIT_CONFIG_KEY_0", "url.https://other.invalid/.insteadOf"),
+        ("GIT_CONFIG_VALUE_0", "/nonexistent/"),
+    ];
+    for command in [
+        "git push -f loc work".to_string(),
+        format!("git push -f {bare} work"),
+    ] {
+        let plain = force_push_preflight_env(&repo, &command, None, &[]).0;
+        assert_eq!(plain, "", "asked without extra env: {command}");
+        let with_env = force_push_preflight_env(&repo, &command, None, &changed).0;
+        assert_eq!(with_env, "ask", "not asked with the env: {command}");
+    }
+    // One variable is enough, and a repository variable counts too.
+    for var in [
+        ("GIT_DIR", "/nonexistent/.git"),
+        ("GIT_CONFIG_PARAMETERS", "'a.b=c'"),
+        ("GIT_CONFIG_GLOBAL", "/dev/null"),
+    ] {
+        let decision = force_push_preflight_env(&repo, "git push -f loc work", None, &[var]).0;
+        assert_eq!(decision, "ask", "not asked with {var:?}");
     }
 }
 

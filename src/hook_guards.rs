@@ -426,6 +426,29 @@ fn url_is_rewritten(dir: &Path, written: &str) -> bool {
     }
 }
 
+/// Whether any environment variable name changes which settings or repository git reads:
+/// `GIT_CONFIG_COUNT`, `GIT_CONFIG_PARAMETERS`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`,
+/// `GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG`, `GIT_DIR`, `GIT_COMMON_DIR`, `GIT_WORK_TREE` and the
+/// numbered `GIT_CONFIG_KEY_<n>` and `GIT_CONFIG_VALUE_<n>`.
+fn git_env_alters_config(names: impl Iterator<Item = String>) -> bool {
+    const FIXED: [&str; 9] = [
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_PARAMETERS",
+        "GIT_CONFIG_GLOBAL",
+        "GIT_CONFIG_SYSTEM",
+        "GIT_CONFIG_NOSYSTEM",
+        "GIT_CONFIG",
+        "GIT_DIR",
+        "GIT_COMMON_DIR",
+        "GIT_WORK_TREE",
+    ];
+    names.into_iter().any(|name| {
+        FIXED.contains(&name.as_str())
+            || name.starts_with("GIT_CONFIG_KEY_")
+            || name.starts_with("GIT_CONFIG_VALUE_")
+    })
+}
+
 /// SPEC-20261125-preflight-safe-force-push REQ-2 and REQ-3: the remote of a `git push` is on
 /// this computer. Both kinds of word are judged in `dir` (the folder of a line that is one plain
 /// `git` command, with no git option before `push`; no folder answers no). A word that is
@@ -442,6 +465,13 @@ fn remote_is_on_this_computer(rest: &[String], global: &[String], dir: Option<&P
     let (Some(dir), true) = (dir, global.is_empty()) else {
         return false;
     };
+    // Both lookups run through `scrub_git_env`, which removes `GIT_DIR`, `GIT_COMMON_DIR`,
+    // `GIT_CONFIG_PARAMETERS`, `GIT_CONFIG_COUNT` and the numbered key/value pairs; the push
+    // itself would keep them, so with any of them set the lookup could read other settings
+    // than the push does. Such a push is asked about (SPEC non-goal: `GIT_CONFIG_*` is not read).
+    if git_env_alters_config(std::env::vars_os().map(|(k, _)| k.to_string_lossy().into_owned())) {
+        return false;
+    }
     if is_local_url(remote) {
         return !url_is_rewritten(dir, remote);
     }
@@ -2849,6 +2879,41 @@ mod tests {
             bash_guard(&format!("git push -f {bare} main")),
             Some(FORCE_PUSH)
         );
+    }
+
+    /// REQ-3: the environment variables that change which settings git reads are named; ordinary
+    /// ones are not.
+    #[test]
+    fn push_confirm_env_names_that_change_git_settings_are_found() {
+        let names = |list: &[&str]| list.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        for name in [
+            "GIT_CONFIG_COUNT",
+            "GIT_CONFIG_PARAMETERS",
+            "GIT_CONFIG_GLOBAL",
+            "GIT_CONFIG_SYSTEM",
+            "GIT_CONFIG_NOSYSTEM",
+            "GIT_CONFIG",
+            "GIT_DIR",
+            "GIT_COMMON_DIR",
+            "GIT_WORK_TREE",
+            "GIT_CONFIG_KEY_0",
+            "GIT_CONFIG_KEY_12",
+            "GIT_CONFIG_VALUE_0",
+            "GIT_CONFIG_VALUE_12",
+        ] {
+            assert!(
+                git_env_alters_config(names(&["HOME", name, "PATH"]).into_iter()),
+                "{name}"
+            );
+        }
+        for list in [
+            &["HOME", "PATH", "GIT_AUTHOR_NAME"][..],
+            &["GIT_CONFIG_KEY", "GIT_CONFIG_VALUE", "GIT_DIRECTORY"][..],
+            &["git_dir"][..],
+            &[][..],
+        ] {
+            assert!(!git_env_alters_config(names(list).into_iter()), "{list:?}");
+        }
     }
 
     /// REQ-2 and REQ-3 (revision 2): git applies `url.<base>.insteadOf` and `pushInsteadOf` to a
