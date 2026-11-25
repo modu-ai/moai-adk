@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-install-build-number
 title: "설치용 빌드 번호는 moai 가 내주고, 검사용 빌드는 번호 없이"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9106): \"승인, O-1~O-5 기본값 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:e2234feca0f8bf56108772be0bd4d6917c988df126c175e2d4ce171499291e03"
 ---
 
 # 설치용 빌드 번호는 moai 가 내주고, 검사용 빌드는 번호 없이

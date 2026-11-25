@@ -26,3 +26,4 @@ The lines after the dated ones came from the leader's carry-over of closed cards
 - check affected 의 TMPDIR 이름이 길거나 세션 id·`agent-` 글자를 담으면 테스트가 깨져요(2026-11-25 세 번, sccache SUN_LEN): TMPDIR 을 받을 때 길이와 글자를 검사해 거절하고, `nextest_with_log` 가 RUSTC_WRAPPER·SCCACHE_* 를 지워요
 - 착지 머지에서 tools/repo_scans.json 의 긴 `--test` 한 줄과 source-manifest.json 해시가 카드마다 충돌해요(2026-11-25 네 번): 테스트 이름을 한 줄에 하나씩 쓰는 배열로 바꾸고 해시는 `moai` 명령이 다시 계산해요
 - agents/audit.md 와 workflows/run.md 에 옛 docs-only 줄("the lander reads the change and lands it") 사본이 남았어요(C-522 감사): 세 곳 복사를 한 곳 가리키기로 줄여요
+- `agents-local-merge` 가 사용자가 거절한 옛 백업 `AGENTS.local.md` 를 update 때마다 다시 제안하고, 같은 때 `agents-picks` 는 원본이 없다며 skip 이라 둘이 어긋나요(2026-11-25 `/moai update`): 거절을 기억하는 C-518 이 받아요
