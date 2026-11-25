@@ -54,7 +54,7 @@ parent: SPEC-20261124-project-detect-monorepo
 2. RED: `tests/project_detect_monorepo_cli.rs` 에 AC-1 ~ AC-6 의 테스트를 먼저 써서 현재 팁에서 AC-2 ~ AC-6 이 옳은 이유(확장 파일의 모르는 키 `database_dependencies` 가 거절됨)로 실패하는 것을 봐요. AC-1 의 CLI 테스트는 이미 맞는 동작을 지켜서 통과해요.
 3. GREEN: `CatalogFile` 에 `database_dependencies` 를, `Catalog` 에 의존성 행을 더하고, `catalog_file_valid` 에 행 검사와 한 파일 안의 한 의존성 두 종류 거절을 더하고, 의존성 이름 규칙(`dependency_name`)을 따로 둬요(이름에 `/` 와 `.` 가 있어서 `recordable` 을 쓸 수 없어요). `detect` 의 `databases` 계산이 카탈로그를 읽게 하고 `DB_DEPENDENCIES` 를 지워요. 배송 파일에 다섯 행을 적어요. 확장 병합은 프로젝트 행을 배송 행 뒤에 덧붙이기만 해요: 한 의존성의 종류는 먼저 찾은 행이 정해요. `ExtensionReport.rows` 가 세 종류를 함께 세요. 단위 테스트 `tables_name_only_recordable_values` 는 카탈로그 행을 읽게 바꿔요.
 4. 확인: 새 테스트, AC-7 의 이웃 테스트, `cargo fmt --check`, `cargo clippy --locked --offline --all-targets -- -D warnings`(대상 한정), 새 가드 테스트마다 가드 뮤턴트 한 줄(`guard-mutant: <test> | <지운 코드> | exit <n>`), 위험 경로는 읽기 전용이라 해당 없음을 READY 에 적어요, `moai check affected --card` 를 READY 에서 한 번.
-5. SYNC: Result 에 AC 별 met·not_run 을 적고, 카드의 기준 5 를 `moai card criterion` 으로 표시해요. 감사는 이 변경을 쓰지 않은 세션이 맡아요(tier 1).
+5. SYNC: Result 에 AC 별 met·not_run 을 적고, 카드의 기준 5 와 3 을 `moai card criterion` 으로 표시해요(커밋 뒤에 레인이 해요). 감사는 이 변경을 쓰지 않은 세션이 맡아요(tier 1).
 
 ## Risks
 
@@ -62,7 +62,7 @@ parent: SPEC-20261124-project-detect-monorepo
 - 프로젝트 확장 파일에 읽을 수 없는 행이 하나라도 있으면 파일 전체를 거절해서 좋은 행도 못 써요. 추측으로 일부만 받는 것보다 안전한 쪽이에요: 거절은 `manifest_catalog.problem` 으로 보여서 사용자가 행을 고쳐요(REQ-3).
 - `prisma_database` 는 의존성 이름 표 밖에서 provider 이름을 종류로 바꾸는 하드코딩이 남아 있어요(`postgresql`·`cockroachdb` → `postgres`, `sqlserver` 등). 기준 5 의 글에는 없어서 이 SPEC 이 옮기지 않아요. 후속으로 정할 때 같은 `database_dependencies` 행으로 표현할 수 있는지 먼저 봐요.
 - 배송 표에 `sqlserver` 의존성 행이 없는 것은 이전 표와 같아요. 이 SPEC 은 표의 내용을 늘리지 않고 옮기기만 해요(REQ-1).
-- `manifest_catalog.rows` 의 뜻이 세 종류의 행 수 합으로 넓어져요. 한 파일은 목록마다 64 개까지라 `rows` 가 192 까지 나와요. 이 숫자를 보는 것은 테스트뿐이에요(형제 SPEC 에서 검색으로 읽음; 이 변경에서 다시 검색해 확인해요).
+- `manifest_catalog.rows` 의 뜻이 세 종류의 행 수 합으로 넓어져요. 한 파일은 목록마다 64 개까지라 `rows` 가 192 까지 나와요. 이 숫자를 보는 것은 테스트뿐이에요(형제 SPEC 에서 검색으로 읽었고 이 변경에서 다시 검색해 확인했어요: Result).
 - 표를 소스 글로 읽는 이웃 테스트가 있는지 찾아야 해요: 형제 조각에서는 `tests/green_test_lock.rs` 가 `const EXTENSIONS` 를 글로 읽어서 첫 영수증이 실패했어요. `DB_DEPENDENCIES` 와 의존성 이름을 `tests/`, `skills/`, `docs/` 에서 찾아 읽은 결과를 Result 에 적어요. `tests/skill_references_test.py` 는 Python 테스트라 근거로 쓰지 않아요.
 - 새 키가 든 확장 파일을 이전 판 바이너리가 읽으면 모르는 키라서 거절돼요(`deny_unknown_fields`). 팀이 판을 섞어 쓰면 이전 판 쪽은 확장 파일을 못 읽고 배송 행만 써요. 이 SPEC 의 판으로 올리면 풀려요.
 
@@ -83,4 +83,40 @@ parent: SPEC-20261124-project-detect-monorepo
 
 ## Result
 
-(구현 뒤에 써요.)
+기준 팁 NeXT `fd8340b166`. SPEC 초안 커밋 `aa1e33619a`, 계획 점검 뒤 다듬은 커밋 `d95db026d7`, RED 커밋 `6e9e85d63d`, GREEN 커밋 `ed6f0071b9`(아래 실행과 가드 뮤턴트는 이 머리 위에서 돌렸어요). 개정은 1 그대로예요: 아직 승인 전 초안이라 계획 점검의 열두 가지 빈틈을 본문에 바로 접었어요.
+
+- 계획 점검(`moai-plan`)이 찾은 것: 검증이 의존성 이름에 `recordable` 을 쓰면 배송 파일이 거절되고 `shipped()` 가 카탈로그를 통째로 비워요(그래서 `dependency_name` 을 따로 뒀어요). `tests/path_root_direct_sites.rs` 는 `src/project_detect.rs` 를 글로 읽어요(이 변경이 더한 줄에는 옛 상태 폴더 철자가 없어요: 더한 `src` 줄 중 `moai-cli` 가 든 줄 0 개, `git diff fd8340b166..ed6f0071b9 -- src`). `tests/green_test_lock.rs` 와 `tests/project_detect_cli.rs` 는 고칠 곳이 없어요. `tests/skill_references_test.py` 는 Python 테스트라 오래돼서 근거로 쓰지 않아요. 공유 파일은 쓰지 않았어요.
+- Run 1 (RED, `cargo nextest run --locked --offline --no-fail-fast --test project_detect_monorepo_cli --lib -E 'binary(project_detect_monorepo_cli) or test(the_shipped_catalog_holds_the_earlier_database_dependencies)'`; `target/kenan/red.log`): `30 tests run: 24 passed, 6 failed`. 새 테스트 여섯이 옳은 이유로 실패했어요 — 확장 파일의 모르는 키 `database_dependencies` 때문에 `manifest_catalog.extension` 이 `refused`(`the file is not a valid catalog`)예요, 단위 테스트는 배송 파일에 `database_dependencies` 키가 없어서 멈췄어요. 이전 쌍을 지키는 `every_shipped_database_dependency_keeps_its_kind` 는 현재 동작을 지켜서 통과해요. `a_database_dependency_row_that_cannot_be_read_refuses_the_whole_file` 는 대조(고친 행)가 먼저 실패해서 나쁜 행 반복에 닿지 못했어요: 나쁜 행마다의 거절은 GREEN 실행과 가드 뮤턴트가 증명해요.
+- Run 2 (GREEN, `cargo nextest run --locked --offline --no-fail-fast --test project_detect_monorepo_cli --test project_detect_cli --test green_test_lock --test project_scale_detect_lib --lib -E 'binary(project_detect_monorepo_cli) or binary(project_detect_cli) or binary(green_test_lock) or binary(project_scale_detect_lib) or test(project_detect)'`; `target/kenan/green.log`): `88 tests run: 88 passed, 1996 skipped`.
+- `cargo clippy --locked --offline --lib --test project_detect_monorepo_cli -- -D warnings`: 종료 0(`target/kenan/clippy.log`). `cargo fmt --all --check`: 레인이 종료 0 으로 보고했지만 `target/kenan/` 에 그 로그가 없어요; `moai check affected --card` 가 `cargo fmt` 를 함께 돌리니 READY 영수증이 정해요.
+- AC-1: met — `every_shipped_database_dependency_keeps_its_kind`(이전 표의 스물두 의존성을 하나씩 따로, 모두 함께는 다섯 종류 `mongodb mysql postgres redis sqlite`)와 단위 테스트 `the_shipped_catalog_holds_the_earlier_database_dependencies`(배송 파일의 의존성 행이 정확히 이전 스물두 쌍이고 이름이 `dependency_name` 규칙을 지키고 종류가 기록 가능하며, 배송 파일이 자기 검증을 통과하고 manifest 행과 코드 확장자 행이 비어 있지 않음) 통과(Run 2).
+- AC-2: met — `a_database_dependency_row_adds_a_kind_without_code` 통과: `sqlx` 는 파일 없이 `databases` 가 비고, 행 하나로 `postgres`, `rows` 1, 읽어도 트리가 그대로, 세 종류의 행이 있으면 `rows` 3, 파일을 지우면 다시 비어요(Run 2; RED 에서는 `refused`).
+- AC-3: met — `a_database_dependency_row_never_replaces_a_shipped_dependency` 통과: `pg`·`sqlx` 를 `mysql` 로 올리는 행은 `pg` 를 바꾸지 못하고 `sqlx` 만 `mysql` 로 쓰여요(`databases` 는 `mysql postgres`), `pg` 만 선언한 프로젝트는 `postgres` 만 내요, `pg` 만 가진 행은 아무것도 더하지 못하고 `read`·`rows` 1 이에요(Run 2).
+- AC-4: met — `a_database_dependency_row_that_cannot_be_read_refuses_the_whole_file` 통과: 대조(고친 행)는 `read`·`rows` 3 이고 manifest·코드·의존성 행이 모두 쓰이며, 읽을 수 없는 행 열다섯 가지(빈 목록, `dependencies` 키 없음, `kind` 키 없음, 빈 종류, 공백 든 종류, `/` 든 종류, 숫자 종류, 빈 이름, `.` 만 있는 이름, 공백 든 이름, `+` 든 이름, 대문자 든 이름, 121 바이트 이름, 모르는 키, 목록 아닌 값)은 모두 `refused`·`rows` 0·`problem` 문자열이고 같은 파일의 좋은 manifest·코드 행도 쓰이지 않고 배송 행만 나오며 트리가 그대로예요(Run 2).
+- AC-5: met — `the_database_dependency_row_limits_hold_at_both_edges` 통과: 행 64 개와 한 행의 의존성 64 개와 120 바이트 이름은 `read`, 65 개와 121 바이트 이름은 `refused`·`rows` 0 이에요(Run 2).
+- AC-6: met — `one_dependency_for_two_kinds_in_the_extension_file_is_refused` 통과: `sqlx` 를 `postgres`·`mysql` 로 올리는 두 행은 어느 쪽이 앞이든 `refused`·`rows` 0·`problem` 이 `the dependency sqlx is claimed by two kinds: <앞 종류> and <뒤 종류>` 이고 배송 종류만 나오며 트리가 그대로예요; 같은 종류를 한 행 안에서 두 번, 두 행에서 두 번 쓰면 `read` 예요(Run 2).
+- AC-7: 판정은 READY 영수증이 해요. 이웃 대상 `project_detect_cli`, `project_scale_detect_lib`, `green_test_lock` 과 `--lib project_detect` 는 Run 2 에서 통과했어요. `home_isolation_scan` 은 여기서 `not_run` 이고 READY 영수증(`moai check affected --card`, 최종 머리 위)이 정해요; 통과로 적지 않아요.
+- 가드 뮤턴트(열여덟 개, 모두 죽었어요): 한 번에 한 곳만 고치고 `nextest` 를 같은 필터로 돌려 모두 컴파일되고 지정한 테스트가 FAIL 줄에 들어 있으며 종료 100 이에요. 한 번 돌릴 때마다 `git` 으로 파일을 복원했고 두 실행 뒤 `git status --short` 가 비어 있어요. 실행기는 bash 스크립트 `target/kenan/mutants.sh` 예요(출력 `target/kenan/mutants-run1.out`, `target/kenan/mutants-run2.out`). 첫 실행에서 둘(대문자 허용, 문자 집합 검사 삭제)은 패턴이 단위 테스트에도 있어 스크립트가 건너뛰었어요; 패턴을 좁혀 그 둘만 다시 돌렸고 둘 다 죽었어요(Run 2 출력).
+  - guard-mutant: a_database_dependency_row_that_cannot_be_read_refuses_the_whole_file | deleted deny_unknown_fields from DbRow (unknown key in a row accepted) | exit 100
+  - guard-mutant: the_database_dependency_row_limits_hold_at_both_edges | name length limit 120 becomes 121 | exit 100
+  - guard-mutant: the_database_dependency_row_limits_hold_at_both_edges | name length limit 120 becomes 119 | exit 100
+  - guard-mutant: a_database_dependency_row_that_cannot_be_read_refuses_the_whole_file | a row with no dependency accepted | exit 100
+  - guard-mutant: a_database_dependency_row_that_cannot_be_read_refuses_the_whole_file | the kind is no longer checked | exit 100
+  - guard-mutant: a_database_dependency_row_that_cannot_be_read_refuses_the_whole_file | dependency_name drops the letter-or-digit clause | exit 100
+  - guard-mutant: the_database_dependency_row_limits_hold_at_both_edges | row count limit dropped | exit 100
+  - guard-mutant: the_database_dependency_row_limits_hold_at_both_edges | dependencies per row limit plus one | exit 100
+  - guard-mutant: one_dependency_for_two_kinds_in_the_extension_file_is_refused | conflict compare flipped (same kind refused, two kinds read) | exit 100
+  - guard-mutant: one_dependency_for_two_kinds_in_the_extension_file_is_refused | conflict problem omits the dependency name | exit 100
+  - guard-mutant: a_database_dependency_row_never_replaces_a_shipped_dependency | lookup takes the last row instead of the first | exit 100
+  - guard-mutant: a_database_dependency_row_never_replaces_a_shipped_dependency | detection unions the kind of every row that holds a declared dependency | exit 100
+  - guard-mutant: a_database_dependency_row_adds_a_kind_without_code | the project rows are not appended to the catalog | exit 100
+  - guard-mutant: a_database_dependency_row_adds_a_kind_without_code | rows no longer counts database dependency rows | exit 100
+  - guard-mutant: the_shipped_catalog_holds_the_earlier_database_dependencies | validation uses recordable for dependency names (shipped file refused) | exit 100
+  - guard-mutant: every_shipped_database_dependency_keeps_its_kind | shipped ioredis dependency removed from the catalog | exit 100
+  - guard-mutant: a_database_dependency_row_that_cannot_be_read_refuses_the_whole_file | dependency_name accepts upper-case letters | exit 100
+  - guard-mutant: a_database_dependency_row_that_cannot_be_read_refuses_the_whole_file | dependency_name drops the character set check | exit 100
+- 표를 글로 읽는 이웃: `DB_DEPENDENCIES` 를 `src`, `tests`, `skills`, `docs` 에서 다시 찾아 한 곳도 없었어요(`grep -rn`; 표는 `src/project_detect.rs` 에서 지워졌어요). `manifest_catalog` 의 `rows` 를 읽는 곳은 `tests/project_detect_monorepo_cli.rs` 뿐이에요(`src`, `tests`, `skills`, `docs` 를 찾아 확인했고 `rows` 가 세 종류의 합으로 넓어져도 읽는 코드가 없어요).
+- 위험 경로: 읽기 전용 감지라서 지우기·reset·프로세스 시작·권한 규칙이 없어요. 테스트는 빌드된 바이너리를 임시 폴더와 임시 HOME 에서 돌려요.
+- 카드 기준 표시(`moai card criterion`, 카드 기준 5 와 3)는 이 커밋 뒤에 레인이 해요. SPEC 의 일이 아니에요.
+- 남은 것(Gaps): `skills` 와 `docs` 에 확장 파일의 `database_dependencies` 키를 설명하는 글이 없어요; 확장 파일 이름(`detect-catalog`), `code_extensions`, `manifest_catalog` 를 `skills`, `docs`, `README*` 에서 찾아도 한 곳도 없어서 `manifests` 키를 설명하는 글도 찾지 못했어요. 확장 파일의 키를 설명하는 글은 형제 SPEC 과 같은 후속이에요. 버려진 행 수 알림(D-7)과 `prisma_database` 의 provider → 종류 대응은 후속으로 남아요. `tests/skill_references_test.py`(Python)는 범위 밖이에요.
+- 돌리지 않은 것: 전체 `cargo test`, 합친 트리 위 스캔, Windows·Linux, 이전 판 바이너리가 새 키가 든 확장 파일을 거절하는지, `home_isolation_scan` 단독.
