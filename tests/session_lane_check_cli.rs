@@ -155,15 +155,31 @@ fn ac3_every_other_name_is_not_a_lane() {
         "{said}"
     );
     // A sessions folder that is a link never answers `lane`, even with a lock held inside it.
+    // The entry is a good one with a running lease: only the link makes the answer `not_lane`.
     let g = Fixture::new("linked");
+    g.answer(&[
+        "--name",
+        "linked-agent-ben",
+        "--mode",
+        "agent",
+        g.repo.to_str().unwrap(),
+    ]);
+    assert_eq!(
+        g.answer(&["--lane-check", "linked-agent-ben"])["status"],
+        "lane"
+    );
     let target = g._root.path().join("elsewhere");
-    fs::create_dir_all(&target).unwrap();
     let sessions = g.sessions();
-    fs::create_dir_all(sessions.parent().unwrap()).unwrap();
+    fs::rename(&sessions, &target).unwrap();
     std::os::unix::fs::symlink(&target, &sessions).unwrap();
-    let _held = moai_cli::session::lock_named_live(&target, "linked-agent-ben").unwrap();
     let said = g.answer(&["--lane-check", "linked-agent-ben"]);
     assert_eq!(said["status"], "not_lane", "{said}");
+    assert!(
+        said["reason"]
+            .as_str()
+            .is_some_and(|r| r.contains("symlink")),
+        "{said}"
+    );
 }
 
 /// AC-3 (REQ-8): the check writes nothing: it makes no sessions folder and changes no file.
