@@ -84,3 +84,17 @@ created: 2026-11-25
 | D-2 | FAIL 판정 뒤 첫 reclaim 은 세지 않아요(REQ-7). | FAIL 뒤 고치는 일이 한도에 막히면 안 돼요. 두 번째 FAIL 은 리더에게 가므로 FAIL 하나에 하나만 면제하면 한도는 한정돼요. | 모든 reclaim 을 다시 세요(이벤트 예외를 지워요). |
 | D-3 | reclaim 과 reopen 이 빈 범위를 카드 자신의 범위로 채우고 겹치거나 공유 파일인 경로는 빼요(REQ-5, REQ-6). | `card take` 가 이미 빈 범위를 이렇게 채우고, `card review` 는 `--keep` 이 없으면 경로를 모두 돌려줘서 일부러 비워요. | 채움을 지워요. 레인이 예전처럼 손으로 넓혀요. |
 | D-4 | 86400초 상한은 기존 최대 임대(`MAX_LEASE_SECS`)와 같아요. | 새 숫자가 없어요: 임대는 이미 하루까지 가능해요. | 상수 하나를 바꿔요. |
+
+## Result
+
+구현 head 는 카드의 READY 노트에 있어요(영수증도 거기에 있어요).
+
+- AC-1 met: `ac1_review_holds_the_lease_for_a_day_and_a_verdict_for_four_hours` 통과(짧은 임대 60초 → review 뒤 86400초 이상, 판정 뒤 14400초 안팎, 답의 `lease_until` 이 장부와 같아요). `ac1_a_lease_that_already_ends_later_is_left_as_it_is` 통과(리뷰와 판정 모두 더 긴 임대를 줄이지 않아요).
+- AC-2 met: `ac2_a_review_card_with_a_live_lease_is_refused_and_reclaimed_after_the_day` 통과(`lease_live` 코드, 메시지에 "audit" 와 끝나는 시각, 임대를 끝낸 뒤 reclaim 은 세요).
+- AC-3 met: `ac3_a_reclaim_after_a_review_without_keep_brings_back_the_cards_own_scope`, `ac3_a_path_another_card_holds_is_left_out_and_named`, `ac3_a_shared_file_is_left_out_of_the_fill`, `ac3_reopen_fills_an_empty_reservation_and_leaves_a_full_one` 통과. 채운 경로는 `scope_filled`, 뺀 경로와 이유는 `scope_left_out` 으로 답과 `card.reclaim`·`card.reopen` 이벤트에 있어요.
+- AC-4 met: `ac4_a_reclaim_after_a_fail_verdict_is_free_once` 통과(세 번 센 카드는 판정 없이 네 번째가 `reclaim_limit`, FAIL 뒤 첫 reclaim 은 `counted` false 이고 `reclaims_counted` 3 / `reclaim_allowance` 3, 같은 판정으로 두 번째는 거절). `ac4_a_pass_verdict_frees_nothing_and_an_ordinary_reclaim_counts` 통과.
+- AC-5 met: `card_reclaim_cli`, `card_adopt_cli`, `ledger_lease_yield`, `ledger_sweep`(그리고 `card_reclaim_early_cli`, `ledger_reservation`, `ledger_workflow`, `ledger_scope_return`, `card_verdict_cli`) 가 바꾸기 전과 같은 결과로 통과했어요. 활성 카드의 임대와 sweep 은 코드가 달라지지 않았어요(`hold_in_tx` 는 `review` 상태에서만 움직여요).
+- 설계 메모: `card review` 의 트랜잭션은 이 SPEC 의 쓰기 범위 밖인 `src/ledger/scope_return.rs` 에 있어서, 임대 연장은 같은 트랜잭션이 아니라 review 직후 명령 계층(`src/card/work.rs`)의 두 번째 단계로 해요. 실패하면 review 는 그대로 서고 답의 `warnings` 에 적혀요(`ac1_a_failed_hold_after_review_is_a_warning_and_the_review_stands` 가 고정해요). 리더 승인.
+- 범위에 더한 파일: `tests/card/card_line_lease_cli.rs` 하나. `review_without_keep_gives_back_the_whole_scope` 가 reopen 뒤 범위가 비어 있음을 박아 두었는데 REQ-5(D-3)가 그것을 바꿔서, 새 규칙(채워진 범위, 한 줄 더 넓히기)에 맞게 고쳤어요. 첫 `check affected --card` 가 이 한 곳에서만 실패했어요(1545/1546).
+- 긴장: `card take` 는 겹침 방침을 바꾼 앞선 변경 뒤로 겹치는 경로를 더 거절하지 않지만 REQ-6/AC-3 은 다른 카드의 살아 있는 예약과 겹치는 경로를 채움에서 빼라고 해서, 적힌 대로 구현했어요. 필요하면 REQ-6 을 줄이는 일은 리더 몫이에요.
+- not_run: 가드 뮤턴트(tier 1 이라 요구되지 않아요: `bundle check` audit_floor 1). 실제 HOME 의 설치본 장부로는 돌리지 않았어요(임시 HOME 만 썼어요). 구현 전 RED 는 새 시험 10개 중 9개가 설계한 이유로 실패하는 것을 확인했어요(1개는 이미 맞는 회귀 방지).
