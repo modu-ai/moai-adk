@@ -422,8 +422,10 @@ impl Demo {
         moai_cli::session::lock_named_live(&self.sessions, name).unwrap()
     }
 
+    /// The pick with seed 0: the first free name of the list, so each test names the exact name.
+    /// The unseeded pick is random among the free names (SPEC-20261125-agent-names-bible).
     fn pick(&self) -> Result<String, String> {
-        moai_cli::session::pick_agent_name(&self.repo, NOW)
+        moai_cli::session::pick_agent_name_seeded(&self.repo, NOW, 0)
     }
 }
 

@@ -1527,7 +1527,7 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test check_affected_modes_cli --test check_pipeline_config --test cli_text_citations --test hot_file_ops_merge --test integration_guard_install --test lane_next_rules --test launcher_retire_role_flags --test launcher_settings_receipt --test leader_reclaim_guidance --test next_flow_skill_scan --test ops_table_gen_cli --test product_cli --test project_layer_follow_ups --test repo_claude_md --test repo_scans_cli --test report_rules_core --test retired_host_words --test rule_history_guard --test sdd_guidance --test troubleshooting_doc --test repo_scans_table",
+        "cargo test --offline --locked --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test check_affected_modes_cli --test check_pipeline_config --test cli_text_citations --test hot_file_ops_merge --test integration_guard_install --test lane_next_rules --test launcher_retire_role_flags --test launcher_role_flags --test launcher_settings_receipt --test leader_reclaim_guidance --test next_flow_skill_scan --test ops_table_gen_cli --test product_cli --test project_layer_follow_ups --test repo_claude_md --test repo_scans_cli --test report_rules_core --test retired_host_words --test rule_history_guard --test sdd_guidance --test troubleshooting_doc --test repo_scans_table",
         "cargo test --offline --locked --test card card_criterion_add_cli:: -- card_finish_cli:: card_guard_cli:: card_line_lease_cli:: card_ready_leftovers_cli:: card_scope_widen_cli:: card_timeline_cli:: decision_append_cli:: followup_per_spec_rules:: recurring_problems_rule::"
       ],
       "rules": [
@@ -1550,6 +1550,7 @@
         "tests/integration_guard_install.rs",
         "tests/lane_next_rules.rs",
         "tests/launcher_retire_role_flags.rs",
+        "tests/launcher_role_flags.rs",
         "tests/launcher_settings_receipt.rs",
         "tests/leader_reclaim_guidance.rs",
         "tests/next_flow_skill_scan.rs",
