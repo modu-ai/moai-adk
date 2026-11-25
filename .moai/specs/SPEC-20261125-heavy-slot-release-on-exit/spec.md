@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-heavy-slot-release-on-exit
 title: "heavy-slot-acquire gives the slot back when its command ends, and heavy-slot-status warns about a slot a leftover process holds"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9068): \"승인, 끝날 때 잠금 풀기 (a) (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:462bb04bb382d1deb06aa5972c17b09d609a99db9b3b1d70adfbf537f06bc69e"
 branch: spec/heavy-slot-release-on-exit-20261125
 ---
 
@@ -26,8 +31,8 @@ branch: spec/heavy-slot-release-on-exit-20261125
 
 ## Interview
 
-- Q1: 슬롯을 쥔 쪽이 끝날 때 잠금을 풀어서, 그 뒤에도 사는 후손이 슬롯을 더는 쥐지 못하게 할까요(D-1 선택지 a)? → A: (사용자 답 대기)
-- Q2: 이 SPEC 의 판 1을 승인할까요? → A: (사용자 답 대기)
+- Q1: 슬롯을 쥔 쪽이 끝날 때 잠금을 풀어서, 그 뒤에도 사는 후손이 슬롯을 더는 쥐지 못하게 할까요(D-1 선택지 a)? → A: 예, (a)(사용자의 선택 "승인, 끝날 때 잠금 풀기 (a) (Recommended)", 리더 노트 9068 이 옮겼어요)
+- Q2: 이 SPEC 의 판 1을 승인할까요? → A: 승인(같은 선택, 리더 노트 9068)
 
 ## Non-goals
 
