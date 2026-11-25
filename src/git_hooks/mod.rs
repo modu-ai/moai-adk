@@ -1,7 +1,9 @@
 //! The MoAI git-hook feature (SPEC-20261121-go-path-removal): recognise the git hooks `moai`
 //! manages in a repository, preview the change, retire the Go-generation hooks and install the
-//! Rust hook texts in their place, with a revert record. The managed names are `pre-commit`
-//! and `pre-push`; the texts live in `install/git-hooks/` and travel inside the binary through
+//! Rust hook texts in their place, with a revert record. The managed names are `pre-commit`,
+//! `pre-push` and `reference-transaction` (the last has no Go generation and is installed only
+//! where the integration branch guard can act, [`plan_with_guard`]); the texts live in
+//! `install/git-hooks/` and travel inside the binary through
 //! `include_str!`, so an install writes only the repository's own hooks folder. A commit
 //! message hook is not managed: the card-number scan it would run belongs to the repositories
 //! that own that rule, not to the product.
@@ -36,17 +38,24 @@ pub mod update;
 type Result<T> = std::result::Result<T, String>;
 
 /// The hooks this feature manages, in the order the preview lists them.
-pub const MANAGED: [&str; 2] = ["pre-commit", "pre-push"];
+pub const MANAGED: [&str; 3] = ["pre-commit", "pre-push", GUARD_HOOK];
+
+/// The hook that keeps the integration branch moving only through the landing command
+/// (SPEC-20261125-integration-guard-install). Unlike the other two it has no Go generation, and
+/// it is installed only where the guard can act: see [`plan_with_guard`].
+pub const GUARD_HOOK: &str = "reference-transaction";
 
 /// The shipped hook texts — the exact bytes an install writes and a revert compares.
 pub const PRE_COMMIT_TEXT: &str = include_str!("../../install/git-hooks/pre-commit");
 pub const PRE_PUSH_TEXT: &str = include_str!("../../install/git-hooks/pre-push");
+pub const REFERENCE_TRANSACTION_TEXT: &str =
+    include_str!("../../install/git-hooks/reference-transaction");
 
 fn text_of(name: &str) -> &'static str {
-    if name == "pre-commit" {
-        PRE_COMMIT_TEXT
-    } else {
-        PRE_PUSH_TEXT
+    match name {
+        "pre-commit" => PRE_COMMIT_TEXT,
+        GUARD_HOOK => REFERENCE_TRANSACTION_TEXT,
+        _ => PRE_PUSH_TEXT,
     }
 }
 
@@ -286,7 +295,21 @@ fn stamp_ok(stamp: &str) -> bool {
 ///
 /// The facts the token covers are the per-hook kind, evidence, byte digest and hash-file
 /// presence, so any change to any hook invalidates the preview.
+///
+/// This is [`plan_with_guard`] for a repository where the guard cannot act: the guard hook is
+/// recognised and reported but never installed.
 pub fn plan(repo_root: &Path) -> Result<Value> {
+    plan_with_guard(repo_root, false)
+}
+
+/// [`plan`] with the answer of the caller to one question this module cannot read for itself
+/// (it is compiled by path from a test, so it has no profile): can the guard act in this
+/// repository, that is, does the profile name an integration branch or does the guard record
+/// already exist. Only then is a free `reference-transaction` installed, and then with or without
+/// a Go-generation hook to retire; for any other repository the retire of a Go hook installs the
+/// two other free names and nothing else, as before. The plan and the apply must be given the
+/// same answer, or their confirm tokens differ.
+pub fn plan_with_guard(repo_root: &Path, guard: bool) -> Result<Value> {
     let folder = hooks_folder(repo_root)?;
     let mut go_hooks = Vec::new();
     let mut kept = Vec::new();
@@ -353,7 +376,7 @@ pub fn plan(repo_root: &Path) -> Result<Value> {
     let changes = !go_hooks.is_empty();
     if changes {
         for name in MANAGED {
-            if install.contains(&name) {
+            if install.contains(&name) || (name == GUARD_HOOK && !guard) {
                 continue;
             }
             if recognize(&folder, name).kind == Kind::Absent {
@@ -370,11 +393,26 @@ pub fn plan(repo_root: &Path) -> Result<Value> {
             }
         }
     }
+    // The guard hook needs no Go hook to retire: where the guard can act, a free name is installed
+    // on its own.
+    if guard
+        && !install.contains(&GUARD_HOOK)
+        && recognize(&folder, GUARD_HOOK).kind == Kind::Absent
+    {
+        install.push(GUARD_HOOK);
+    }
     let writes = !install.is_empty();
     let token = if writes {
+        // The answer about the guard is part of what was reviewed, but only when it is yes: a
+        // repository the guard cannot act in keeps the token it always had.
+        let reviewed = if guard {
+            json!({ "facts": facts, "guard": true })
+        } else {
+            json!({ "facts": facts })
+        };
         Some(format!(
             "{PREFIX}{}",
-            &hex_of(json!({ "facts": facts }).to_string().as_bytes())[..16]
+            &hex_of(reviewed.to_string().as_bytes())[..16]
         ))
     } else {
         None
@@ -402,6 +440,12 @@ pub fn apply(repo_root: &Path, token: &str, now: &str) -> Result<Value> {
     apply_with_pause(repo_root, token, now, &mut || {})
 }
 
+/// [`apply`] given the same answer about the guard that the preview was given
+/// ([`plan_with_guard`]).
+pub fn apply_with_guard(repo_root: &Path, token: &str, now: &str, guard: bool) -> Result<Value> {
+    apply_inner(repo_root, token, now, guard, &mut || {})
+}
+
 /// [`apply`] with a seam: `pause` runs after the retire moves and before the first install, the
 /// one moment a name can fill between the preview and the write. Production passes a no-op; a
 /// test fills the name there to prove the apply refuses and tells how to undo.
@@ -411,9 +455,19 @@ pub fn apply_with_pause(
     now: &str,
     pause: &mut dyn FnMut(),
 ) -> Result<Value> {
+    apply_inner(repo_root, token, now, false, pause)
+}
+
+fn apply_inner(
+    repo_root: &Path,
+    token: &str,
+    now: &str,
+    guard: bool,
+    pause: &mut dyn FnMut(),
+) -> Result<Value> {
     let stamp = compact_utc(now)
         .ok_or("the clock is not a UTC time (YYYY-MM-DDTHH:MM:SSZ); nothing written")?;
-    let fresh = plan(repo_root)?;
+    let fresh = plan_with_guard(repo_root, guard)?;
     if fresh["confirm_token"].as_str() != Some(token) {
         return Err(NOT_REVIEWED.into());
     }

@@ -4,7 +4,7 @@
 //! runs in. The wiring lines in `src/update.rs` land through the pair with the card that holds
 //! that file; until then the standalone `git-hooks-*` verbs reach the feature directly.
 
-use super::{apply as feature_apply, plan as feature_plan, revert as feature_revert};
+use super::{apply_with_guard, plan_with_guard as feature_plan, revert as feature_revert};
 use serde_json::{json, Value};
 use std::path::Path;
 
@@ -25,7 +25,14 @@ pub struct Layer {
 /// A folder without `.git` carries no part — `moai update` runs outside repositories too — and
 /// writes nothing; a repository with nothing to change carries no part either, like the switch
 /// layer.
-pub fn plan(_home: &Path, cwd: &Path) -> Result<Layer> {
+pub fn plan(home: &Path, cwd: &Path) -> Result<Layer> {
+    plan_with_guard(home, cwd, false)
+}
+
+/// [`plan`] given the answer about the integration branch guard (`super::plan_with_guard`): this
+/// module is compiled by path from a test and cannot read the profile, so the library caller
+/// (`card::guard::plan_hooks_layer`) says whether the guard can act in the repository.
+pub fn plan_with_guard(_home: &Path, cwd: &Path, guard: bool) -> Result<Layer> {
     let none = Layer {
         preview: None,
         token: None,
@@ -33,7 +40,7 @@ pub fn plan(_home: &Path, cwd: &Path) -> Result<Layer> {
     if std::fs::symlink_metadata(cwd.join(".git")).is_err() {
         return Ok(none);
     }
-    let preview = feature_plan(cwd)?;
+    let preview = feature_plan(cwd, guard)?;
     let writes = preview["writes"].as_bool().unwrap_or(false);
     Ok(if writes {
         Layer {
@@ -120,7 +127,12 @@ pub fn check_token<'a>(layer: &Layer, given: Option<&'a str>) -> Result<Option<&
 /// Apply the previewed change to the project at `cwd`; `now` (`YYYY-MM-DDTHH:MM:SSZ`) names the
 /// retire folder.
 pub fn apply(cwd: &Path, token: &str, now: &str) -> Result<Value> {
-    feature_apply(cwd, token, now)
+    apply_with_guard(cwd, token, now, false)
+}
+
+/// [`apply`] given the same answer about the guard that the preview was given.
+pub fn apply_guarded(cwd: &Path, token: &str, now: &str, guard: bool) -> Result<Value> {
+    apply_with_guard(cwd, token, now, guard)
 }
 
 /// Put the retired hooks of the project at `cwd` back.
