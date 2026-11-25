@@ -13,11 +13,14 @@
 //!   https://docs.z.ai/scenario-example/develop-tools/claude. The token is inherited from the
 //!   caller and only its presence is checked; its value is never kept, printed or written.
 //!
-//! The `moai-cli cc|glm` launchers open a plain host session (Issue #2053): no role is guessed
-//! and a session name comes from `--name` only. The role flags `-l|-a` are retired (user
-//! decision D-1 2026-11-09, SPEC-20261124-launcher-retire-role-flags): [`retired_role_flag`]
-//! finds them and the launcher refuses with [`RETIRED_ROLE_FLAG_MESSAGE`]; the role is entered
-//! inside the session with `/moai work` or `/moai leader`. `moai cc` starts the host in auto
+//! The `moai-cli cc|glm` launchers open a plain host session (Issue #2053) unless a role flag is
+//! given: no role is guessed and a session name comes from `--name` only. The role flags
+//! `-l|--leader` and `-a|--agent` are back (user decision 2026-11-25, SPEC-20261125-agent-team-
+//! session-names, reversing D-1 of SPEC-20261124-launcher-retire-role-flags): a role flag names
+//! the session ([`leader_session_name`], [`pick_agent_name`]), starts it in the bypass unless
+//! `--permissions` is given and hands the host the first input `/moai leader` or `/moai agent`
+//! ([`SessionRequest::first_input`]). Without a role flag the session is the plain one and the
+//! role is entered inside it with `/moai agent` or `/moai leader`. `moai cc` starts the host in auto
 //! mode (`--permission-mode auto`, user decision 2026-11-23, SPEC-20261123-launcher-auto-mode)
 //! and `moai glm` in the bypass (`--dangerously-skip-permissions`, user decision 2026-11-24,
 //! SPEC-20261124-launcher-retire-role-flags D-7), unless `--permissions` is given (no
@@ -38,39 +41,87 @@ const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
 pub const NOTE_ADVISOR_OMITTED_GLM: &str =
     "--advisor omitted on glm: the advisor is Anthropic API only";
 
-/// The one message a retired role flag gets (user decision D-1 2026-11-09, restated 2026-11-24;
-/// SPEC-20261124-launcher-retire-role-flags REQ-1): it names `--name` and the two entry commands
-/// typed inside the session.
-pub const RETIRED_ROLE_FLAG_MESSAGE: &str = "`-l`, `--leader`, `-a` and `--agent` are retired: start a session with `moai cc` or `moai glm` (name it with `--name`), then type `/moai work` for a lane or `/moai leader` for the coordination window";
+/// The role words a launcher flag hands the host as its first input (SPEC-20261125-agent-team-
+/// session-names REQ-7 and REQ-8). The text is typed into the session as the user would type it.
+pub const FIRST_INPUT_LEADER: &str = "/moai leader";
+pub const FIRST_INPUT_AGENT: &str = "/moai agent";
 
-/// True when the command line (the program name first, a leading `--color` already taken out)
-/// is a launcher line that carries a retired role flag: `moai -l`, `moai -a cc`, or `cc|glm`
-/// followed by `-l`, `--leader`, `-a` or `--agent`. The word after an option that takes a value
-/// and everything after `--` is a value, not a flag. It reads the words only: nothing is
-/// started, numbered, locked or written.
-pub fn retired_role_flag(words: &[String]) -> bool {
-    const FLAGS: [&str; 4] = ["-l", "--leader", "-a", "--agent"];
-    const TAKE_A_VALUE: [&str; 4] = ["--name", "--model", "--effort", "--advisor"];
-    let mut rest = words.iter().skip(1).map(String::as_str);
-    match rest.next() {
-        Some(first) if FLAGS.contains(&first) => true,
-        Some("cc" | "glm") => {
-            while let Some(word) = rest.next() {
-                if word == "--" {
-                    return false;
-                }
-                if FLAGS.contains(&word) {
-                    return true;
-                }
-                if TAKE_A_VALUE.contains(&word) {
-                    rest.next();
-                }
+/// The English names `-a` picks from, in this order, when `--name` is not given: the session is
+/// called `agent-<name>` (SPEC-20261125-agent-team-session-names D-8, decided 2026-11-25). Adding
+/// to the list is a card of its own.
+pub const AGENT_NAMES: [&str; 24] = [
+    "ben", "cara", "dana", "eli", "fay", "gus", "hana", "ivan", "jade", "kai", "lena", "milo",
+    "nora", "owen", "pia", "quin", "ruth", "sam", "tess", "uma", "vic", "wren", "xena", "zoe",
+];
+
+/// The project name of the session `-l` starts (D-9): the `project_id` of the project profile
+/// when it has one, else the name of the checkout folder, in both cases reduced to the registry's
+/// characters (`A-Z a-z 0-9 . _ -`, a letter or digit first) and short enough that `leader-` and
+/// the name fit the registry's 64 characters. A folder outside a git repository uses its own name.
+pub fn project_name(dir: &Path) -> String {
+    let identity = crate::identity::identity_in(dir, None).ok();
+    let root = identity
+        .as_ref()
+        .and_then(|id| id["work_tree"].as_str())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| dir.to_path_buf());
+    let id = crate::project_id::read(&root).ok().flatten();
+    let raw = id.unwrap_or_else(|| {
+        root.file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default()
+    });
+    let mut name: String = raw
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') {
+                c
+            } else {
+                '-'
             }
-            false
-        }
-        _ => false,
+        })
+        .collect();
+    name = name
+        .trim_start_matches(|c: char| !c.is_ascii_alphanumeric())
+        .to_string();
+    name.truncate(crate::lane_registry::MAX_NAME_LEN - "leader-".len());
+    if name.is_empty() {
+        "project".into()
+    } else {
+        name
     }
 }
+
+/// `leader-<project name>`, the session name `-l` gives the coordination window.
+pub fn leader_session_name(dir: &Path) -> String {
+    format!("leader-{}", project_name(dir))
+}
+
+/// `agent-<english name>`: the first name of [`AGENT_NAMES`] whose session live lock is not held
+/// and whose registry entry has no running lease (REQ-3). A folder outside a git repository has no
+/// sessions folder to read, so every name is free and the first one is taken. When every name is
+/// taken the answer is one message that names `--name` (REQ-4).
+pub fn pick_agent_name(dir: &Path, now: i64) -> Result<String, String> {
+    let sessions = agent_seq_dir(dir).ok();
+    for n in AGENT_NAMES {
+        let name = format!("agent-{n}");
+        if let Some(sessions) = &sessions {
+            if live_lock_held(&sessions.join(format!("{name}.live")))?
+                || crate::lane_registry::is_live(sessions, &name, now)?
+            {
+                continue;
+            }
+        }
+        return Ok(name);
+    }
+    Err(format!(
+        "every name of the launcher's list ({} names, agent-{} to agent-{}) is taken: name this session with `--name <name>`",
+        AGENT_NAMES.len(),
+        AGENT_NAMES[0],
+        AGENT_NAMES[AGENT_NAMES.len() - 1]
+    ))
+}
+
 /// User decision 2026-11-08 (#2053 HOLD-L1 = A, #2062): a session without a role still gets the
 /// launcher's defaults of model and effort. False would pass no model or effort flag so the
 /// user's own Claude settings apply (option B, not chosen). The values are the host's own
@@ -231,6 +282,16 @@ pub struct SessionRequest {
     /// Extra first-prompt text (no host takes it: the Claude host is told it was not passed).
     #[serde(default)]
     pub prompt: Option<String>,
+    /// The first input a role flag hands the host: [`FIRST_INPUT_LEADER`] or [`FIRST_INPUT_AGENT`],
+    /// the last argument of the host command (SPEC-20261125-agent-team-session-names REQ-7 and
+    /// REQ-8). `None` hands the host nothing.
+    #[serde(default)]
+    pub first_input: Option<String>,
+    /// The advisor `-a` passes on the `cc` host when neither `--advisor`, `--no-advisor` nor the
+    /// user setting decided one (REQ-9, D-6). It is passed only when it ranks at or above the main
+    /// model; otherwise it is left out with a one-line note (D-14).
+    #[serde(default)]
+    pub default_advisor: Option<String>,
     #[serde(default = "default_claude_bin")]
     pub claude_bin: String,
 }
@@ -245,6 +306,15 @@ fn rank(model: &str) -> Option<u8> {
         .iter()
         .position(|k| m.contains(k))
         .map(|p| p as u8)
+}
+/// The first input is one of the two role entries and nothing else: a request that carries any
+/// other text (a serialized request of the legacy `session` command) is refused.
+fn clean_input(input: &str) -> Result<(), String> {
+    if input == FIRST_INPUT_LEADER || input == FIRST_INPUT_AGENT {
+        Ok(())
+    } else {
+        Err("invalid first_input".into())
+    }
 }
 fn clean(field: &str, value: &str) -> Result<(), String> {
     if value.is_empty() || value.len() > 128 || value.chars().any(|c| c.is_control() || c == ' ') {
@@ -526,7 +596,20 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
         argv.push("--effort".into());
         argv.push(e.into());
     }
-    if let Some(a) = &r.advisor {
+    // D-14: the default advisor of `-a` is left out, with a note, when it ranks below the main
+    // model; an advisor given with `--advisor` or the setting is checked below and refused.
+    let advisor: Option<String> = match (&r.advisor, &r.default_advisor) {
+        (Some(a), _) => Some(a.clone()),
+        (None, Some(d)) => match (model.and_then(rank), rank(d)) {
+            (Some(m), Some(x)) if x < m => {
+                notes.push("the default advisor opus of -a is not passed: it ranks below the main model (give --advisor to choose one)");
+                None
+            }
+            _ => Some(d.clone()),
+        },
+        (None, None) => None,
+    };
+    if let Some(a) = &advisor {
         clean("advisor", a)?;
         if !ADVISOR_ALIASES.contains(&a.as_str()) && !a.starts_with("claude-") {
             return Err("advisor must be fable|opus|sonnet or a full claude-* model id".into());
@@ -570,6 +653,11 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
         // command) added no note before; only the roleless form did, and keeps doing so.
         Access::Prompt if r.role.is_none() => notes.push("no permission flag: Claude Code starts in the mode the user's and project's settings choose (--permissions, or launcher.role_access prompt for every launch)"),
         Access::Prompt => {}
+    }
+    // The first input is the last argument, after every option (REQ-7, REQ-8).
+    if let Some(input) = &r.first_input {
+        clean_input(input)?;
+        argv.push(input.clone());
     }
     Ok(argv)
 }
@@ -620,7 +708,10 @@ fn apply_saved_choice(r: &SessionRequest) -> Result<(SessionRequest, Vec<&'stati
     if !matches!(r.host.as_str(), "claude" | "glm") {
         return Ok((r.clone(), Vec::new()));
     }
-    let Some(role) = r.role.as_deref() else {
+    // REQ-28: `-a` reads the agent row, like a role session; `-l` and a launch without a role
+    // flag read the flat entry as before.
+    let agent_flag = r.role.is_none() && r.first_input.as_deref() == Some(FIRST_INPUT_AGENT);
+    let Some(role) = r.role.as_deref().or(agent_flag.then_some("agent")) else {
         return apply_flat_choice(r);
     };
     let saved = match user_launcher()? {
@@ -717,8 +808,15 @@ fn compose_resolved(r: &SessionRequest, saved: Vec<&'static str>) -> Result<Valu
     let mut notes = Vec::new();
     notes.extend(saved);
     if r.role.is_none() {
-        notes.push("no role: a plain host session; no role or session name is added (#2053)");
-        notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
+        notes.push(if r.first_input.is_some() {
+            "a role flag (-l or -a) names the session, starts it in the bypass unless --permissions is given and hands the host the first input /moai leader or /moai agent (user decision 2026-11-25, SPEC-20261125-agent-team-session-names)"
+        } else {
+            "no role: a plain host session; no role or session name is added (#2053)"
+        });
+        if r.first_input.as_deref() == Some(FIRST_INPUT_AGENT) {
+            notes.push("-a model and effort: --model and --effort, else the choice saved for the agent role, else the agent row of the default table (user decision 2026-11-25); the advisor is opus on claude unless --advisor, --no-advisor or launcher.advisor says otherwise, and none on glm");
+        } else {
+            notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
             if r.host == "glm" {
                 "launcher defaults of glm: model opus, effort high, unless --model, --effort or a choice saved by moai update say otherwise (user decisions 2026-11-08 and 2026-11-24); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
             } else {
@@ -727,6 +825,7 @@ fn compose_resolved(r: &SessionRequest, saved: Vec<&'static str>) -> Result<Valu
         } else {
             "no model or effort flag without a role; the user's Claude settings apply; no advisor unless --advisor or launcher.advisor asks for one (#2476)"
         });
+        }
     }
     let mut env_keys: Vec<&str> = Vec::new();
     let mut key_source: Option<&str> = None;
@@ -748,6 +847,8 @@ fn compose_resolved(r: &SessionRequest, saved: Vec<&'static str>) -> Result<Valu
                 }
             }
             let mut plain = r.clone();
+            // The default advisor of `-a` is a `cc` default (REQ-9, REQ-10): glm drops it silently.
+            plain.default_advisor = None;
             if plain.advisor.take().is_some() {
                 notes.push(NOTE_ADVISOR_OMITTED_GLM);
             }

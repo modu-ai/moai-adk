@@ -19,6 +19,10 @@ Run these before relying on any flag, and prefer `--json` for agent calls:
 
 Never invent a flag from memory. Resolve the executable the way Orca's skill stub does: `ORCA_CLI_COMMAND` when set, then `orca-dev`, then `orca-ide` on Linux, otherwise `orca`.
 
+## Messaging between sessions
+
+When the host has no cross-session message (or it is refused or held), send with `orca orchestration send` to the session's terminal handle, and let the leader read replies with `orca orchestration check`. This is the second step of the channel order in `flows/team-messages`; the ledger note alone is the third. A message is a notice and the ledger is the record.
+
 ## Lines MoAI keeps
 
 - Read a terminal before sending to it, and never overwrite another session's unsubmitted input.

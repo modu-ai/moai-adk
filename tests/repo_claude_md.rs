@@ -200,17 +200,19 @@ fn stale_ledger_is_the_local_card_ledger() {
     );
 }
 
-/// S2: the launcher flags `-l|-a` are retired (`SPEC-20261124-launcher-retire-role-flags`, REQ-9);
-/// a session starts with `moai cc|glm` and an optional `--name`.
+/// S2: the launcher flags `-l|--leader` and `-a|--agent` are launcher options again
+/// (`SPEC-20261125-agent-team-session-names`, REQ-14, reversing D-1 of
+/// `SPEC-20261124-launcher-retire-role-flags`); a plain session starts with `moai cc|glm` and an
+/// optional `--name`.
 #[test]
-fn stale_launcher_flags_are_retired() {
+fn launcher_role_flags_are_back() {
     let text = claude_md();
     assert_has(
         &text,
         "CLAUDE.md",
         &[
             "Start a session with `moai cc|glm`: a plain host session with no role (model `opus`; effort `medium` for `cc`, `high` for `glm`); `--name <name>` names it.",
-            "The launcher flags `-l|-a` are retired (user decision D-1 2026-11-09, `SPEC-20261124-launcher-retire-role-flags`) and the launcher refuses them.",
+            "`-l|--leader` and `-a|--agent` are launcher options again (user decision 2026-11-25, `SPEC-20261125-agent-team-session-names`, reversing D-1 of `SPEC-20261124-launcher-retire-role-flags`)",
         ],
     );
     assert_lacks(
@@ -221,20 +223,23 @@ fn stale_launcher_flags_are_retired() {
             "`moai -l`/`-a`",
             "deprecated since",
             "#2164",
+            "are retired",
+            "launcher refuses them",
         ],
     );
 }
 
-/// S3: the role is typed inside the session as `/moai work` (lane) or `/moai leader`
-/// (coordination window), the two routes of the skill (`SPEC-20261124-moai-leader-route`,
-/// user pick 2026-11-22); the `mode-` spellings are retired.
+/// S3: a plain session enters a role by typing `/moai agent` (lane) or `/moai leader`
+/// (coordination window), the two routes of the skill (`SPEC-20261124-moai-leader-route`, user
+/// pick 2026-11-22; the word is `agent` since `SPEC-20261125-agent-team-session-names`); they set
+/// a mode and take no instruction text; the `mode-` spellings and `/moai work` are gone.
 #[test]
-fn stale_mode_flags_are_the_work_and_leader_routes() {
+fn role_words_are_the_agent_and_leader_modes() {
     let text = claude_md();
     assert_has(
         &text,
         "CLAUDE.md",
-        &["The role is typed inside the open session: `/moai work` for a lane (the card loop) and `/moai leader` for the coordination window; the skill picks the route from that first word."],
+        &["A plain session enters a role by typing `/moai agent` or `/moai leader`: these set the mode and take no instruction text; instructions arrive as a cross-session message"],
     );
     assert_lacks(
         &text,
@@ -246,6 +251,7 @@ fn stale_mode_flags_are_the_work_and_leader_routes() {
             "mode-leader",
             "mode-agent",
             "which the skill reads as request text",
+            "/moai work",
         ],
     );
 }
