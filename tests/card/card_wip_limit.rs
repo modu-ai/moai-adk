@@ -53,7 +53,7 @@ fn world(wip_limit: Option<u32>) -> World {
 
 impl World {
     fn set_limit(&self, wip_limit: Option<u32>) {
-        let cfg = self.project.join(".moai-cli/project.yaml");
+        let cfg = moai_cli::state_root::path(&self.project, "project.yaml");
         fs::create_dir_all(cfg.parent().unwrap()).unwrap();
         fs::write(&cfg, profile(wip_limit)).unwrap();
     }
@@ -301,16 +301,18 @@ fn next_at_the_limit_names_the_cards_that_wait_for_an_audit() {
     assert_eq!(mine["audit_needed"], json!([]), "{mine}");
 }
 
-/// REQ-7 (AC-6): with no lane registered the limit is still one lane's, two: the first two takes
-/// pass and the third refuses.
+/// REQ-1 (D-3): with no live registered lane there is no limit: a session that never registered
+/// takes three cards, and a lane with an ended lease and a leader entry alone leave it off too.
 #[test]
-fn with_no_lane_registered_the_limit_is_two() {
+fn with_no_live_lane_registered_there_is_no_limit() {
     let w = world(None);
-    w.working(&sid(1), 2);
-    let third = w.ready_card("src/third/");
-    let (kind, message) = refusal(&w.take(&sid(1), &third));
-    assert_eq!(kind, "conflict", "{message}");
-    assert!(message.contains("1 lane(s)"), "{message}");
+    w.working(&sid(1), 3);
+
+    let w = world(None);
+    w.lane("agent-2", &sid(2));
+    w.expire("agent-2");
+    w.leader("leader-1", &sid(9));
+    w.working(&sid(1), 3);
 }
 
 /// REQ-7 (AC-6): a lane whose lease ended and a leader entry are no lanes; only the one live lane

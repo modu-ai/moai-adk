@@ -26,7 +26,7 @@ revision 1 은 체크아웃된 통합 브랜치를 `card land` 가 함께 옮기
 
 ## Requirements
 
-- REQ-1: IF the cards in state `active` or `review` number at least the limit, THEN `card take` shall refuse and name the cards that wait for a check or a landing. · failure: none — 원장이 그대로예요. 한도는 살아 있는 등록된 레인 수(최소 1)에 `work_flow.wip_limit`(기본 2)를 곱한 수예요.
+- REQ-1: IF the cards in state `active` or `review` number at least the limit, THEN `card take` shall refuse and name the cards that wait for a check or a landing. · failure: none — 원장이 그대로예요. 한도는 살아 있는 등록된 레인 수에 `work_flow.wip_limit`(기본 2)를 곱한 수이고, 살아 있는 레인이 하나도 없으면 한도를 적용하지 않아요.
 - REQ-2: IF the cards in state `active` or `review` number at least the limit, THEN `card add` shall refuse unless it is given `--by user`. · failure: none — 사용자의 add 는 막지 않아요.
 - REQ-3: When `work_flow.wip_limit` is `0`, the limit shall be off. · failure: none — 같은 키의 다른 숫자는 곱이에요.
 - REQ-4: When `card next` finds the limit reached, it shall name the cards in `review` that carry no audit verdict and that this session did not write, in place of a card to take. · failure: none — 감사할 카드가 없으면 그 사실을 말해요(`next_is` 가 `limit`).
@@ -62,8 +62,9 @@ revision 1 은 체크아웃된 통합 브랜치를 `card land` 가 함께 옮기
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | 한도 = `wip_limit`(기본 2) × 살아 있는 레인 수(최소 1), `wip_limit` 0 은 끔 | 사용자 결정 4번(작업 중과 검사 대기를 합쳐 레인 수의 두 배)이에요 | 키를 0 으로 해요 |
+| D-1 | 한도 = `wip_limit`(기본 2) × 살아 있는 레인 수, 레인이 0 이면 한도 없음, `wip_limit` 0 은 끔 | 사용자 결정 4번(작업 중과 검사 대기를 합쳐 레인 수의 두 배)이에요 | 키를 0 으로 해요 |
 | D-2 | 한도에 닿으면 막아요(카드 수 >= 한도) | 상한의 뜻이에요: 한도를 넘는 카드를 만들지 않아요 | 비교를 `>` 로 바꿔요 |
+| D-3 | 레인이 하나도 등록되지 않았으면 한도를 적용하지 않아요(최소 1 레인으로 세지 않아요) | 레인을 등록하지 않고 카드를 3장 이상 잡는 기존 테스트 28개가 기본 한도에 걸렸어요(영수증 실행 4402개 중 29개 실패 중 28개). 실제 운영의 레인은 `/moai work` 가 먼저 등록하므로 한도는 그대로 걸려요 | `live_lanes` 에 최소 1 을 되돌려요 |
 
 ## Result
 

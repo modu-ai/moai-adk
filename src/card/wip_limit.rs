@@ -1,9 +1,10 @@
 //! The limit of cards in work and in review (SPEC-20261125-landing-moves-checkout REQ-1 to
 //! REQ-4, user decision 2026-11-24T21:52:39Z): the `active` and `review` cards may number at
 //! most `wip_limit` (profile key `work_flow.wip_limit`, default [`DEFAULT_PER_LANE`]) times the
-//! live registered lanes, at least one lane. At the limit a session helps with a check or a
-//! landing instead of taking a card, so `card take` and `card add` refuse and `card next` names
-//! the cards that wait for an audit. `wip_limit` 0 turns the limit off.
+//! live registered lanes. At the limit a session helps with a check or a landing instead of
+//! taking a card, so `card take` and `card add` refuse and `card next` names the cards that wait
+//! for an audit. `wip_limit` 0 turns the limit off, and so does a project with no live
+//! registered lane (SPEC D-3).
 
 use crate::lane_registry;
 use rusqlite::Connection;
@@ -31,8 +32,8 @@ pub fn per_lane(project: &Path) -> u32 {
         .unwrap_or(DEFAULT_PER_LANE)
 }
 
-/// The live registered lanes: entries whose lease has not ended and that are no leader entry; at
-/// least 1, also when the registry is empty or unreadable.
+/// The live registered lanes: entries whose lease has not ended and that are no leader entry; 0
+/// when the registry is empty or unreadable, which turns the limit off.
 pub fn live_lanes(project: &Path) -> usize {
     let now = now_secs();
     lane_registry::session_entries(project)
@@ -43,7 +44,6 @@ pub fn live_lanes(project: &Path) -> usize {
                 .count()
         })
         .unwrap_or(0)
-        .max(1)
 }
 
 /// A card in work or in review.
@@ -87,7 +87,7 @@ pub struct Reading {
 
 impl Reading {
     pub fn at_limit(&self) -> bool {
-        self.per_lane != 0 && self.count >= self.limit
+        self.per_lane != 0 && self.lanes != 0 && self.count >= self.limit
     }
 
     pub fn json(&self) -> Value {
