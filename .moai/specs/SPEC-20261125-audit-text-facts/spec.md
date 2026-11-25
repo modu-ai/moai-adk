@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-audit-text-facts
 title: "Make the two audit texts match the real commands and read as one ordered procedure"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9079): \"승인, D-1~D-5 기본값 A (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:3d2fe7e3a433430e8654e69530de4766a8010193603f6f7553f474c53957408d"
 ---
 
 # Make the two audit texts match the real commands and read as one ordered procedure

@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261122-codex-home-update-removed
 title: "The home update stops writing Codex and OMP files, says nothing about them, and an old receipt of those hosts reverts as skipped"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-22
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9154): \"승인, 개정 2 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:134f13708ac0754176e4c3f40efa13bfed225d3dd041270ba6dd52eb72181ed6"
 ---
 
 # The home update stops writing Codex and OMP files, says nothing about them, and an old receipt of those hosts reverts as skipped
