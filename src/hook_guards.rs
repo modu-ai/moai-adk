@@ -337,7 +337,8 @@ fn is_create_only_lease(arg: &str) -> bool {
 /// SPEC-20261125-preflight-safe-force-push REQ-1: every force marker of the push is a
 /// create-only lease, and nothing on the line widens what the push touches (`--mirror`,
 /// `--all`, `--branches`, `--prune`, `--delete`, `-d`) or forces by itself (`-f`, `--force`,
-/// `--force-if-includes`, a `+` refspec). At least one such lease must be there.
+/// `--force-if-includes`, a `+` refspec). At least one such lease must be there, and the line
+/// must name the remote and at least one refspec (see the comment on the check).
 fn create_only_lease_push(rest: &[String]) -> bool {
     let letters = short_letters(rest, &['o']);
     if letters.contains(&'f') || letters.contains(&'d') {
@@ -350,11 +351,15 @@ fn create_only_lease_push(rest: &[String]) -> bool {
     {
         return false;
     }
-    if push_positionals(rest)
-        .iter()
-        .skip(1)
-        .any(|s| s.starts_with('+'))
-    {
+    // A push with no refspec on the line is pushed by git's settings (`remote.<name>.push`,
+    // `remote.<name>.mirror`, `push.default`), and a `+` there forces refs the lease does not
+    // cover; with a refspec on the line git ignores those settings. So the remote and at least
+    // one refspec must both be written.
+    let positionals = push_positionals(rest);
+    if positionals.len() < 2 {
+        return false;
+    }
+    if positionals.iter().skip(1).any(|s| s.starts_with('+')) {
         return false;
     }
     let mut lease = false;
@@ -2720,13 +2725,18 @@ mod tests {
         for cmd in [
             "git push --force-with-lease=work: up work",
             "git push --force-w=work: up work",
-            "git push --force-with-lease=work:",
             "git push --force-with-lease=a: --force-with-lease=b: up a b",
             "git push -u --force-with-lease=work: up work",
         ] {
             assert_eq!(bash_confirm(cmd), None, "asked: {cmd}");
         }
         for cmd in [
+            // No refspec on the line: git pushes by `remote.<name>.push`, `remote.<name>.mirror`
+            // or `push.default`, and a `+` there forces refs the lease does not cover.
+            "git push --force-with-lease=work:",
+            "git push --force-with-lease=work: up",
+            "git push --force-with-lease=work: -u up",
+            "git push --force-with-lease=a: --force-with-lease=b: up",
             "git push --force-with-lease=work:abc up work",
             "git push --force-with-lease=work up work",
             "git push --force-with-lease up work",

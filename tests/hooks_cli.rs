@@ -1049,6 +1049,8 @@ fn safe_force_push_is_not_asked_and_the_rest_is_as_before() {
         "git push --force-with-lease=work: --force up work".to_string(),
         "git push --force-with-lease=work: up +work".to_string(),
         "git push --force-with-lease=work: --mirror up".to_string(),
+        "git push --force-with-lease=work: up".to_string(),
+        "git push --force-with-lease=work:".to_string(),
         "git push -f net feature".to_string(),
         "git push -f https://example.invalid/x.git feature".to_string(),
         "git push -f git@example.invalid:x.git feature".to_string(),
@@ -1065,6 +1067,36 @@ fn safe_force_push_is_not_asked_and_the_rest_is_as_before() {
         format!("git push {bare} +master"),
     ] {
         assert_eq!(answer(&command), "deny", "not refused: {command}");
+    }
+}
+
+/// Audit repair of SPEC-20261125-preflight-safe-force-push: a create-only lease with no refspec
+/// on the line is pushed by the remote's settings, and a `+` push refspec or `mirror` setting
+/// there overwrites refs the lease does not cover, so the hook asks; with a refspec on the line
+/// git ignores those settings and the push is not asked about.
+#[test]
+fn safe_force_push_lease_without_refspec_is_asked_when_settings_force() {
+    let (_tmp, repo, _bare) = push_repo();
+    let git = common::git::git_ok;
+    let answer = |command: &str| force_push_preflight(&repo, command, None).0;
+    for (key, value) in [
+        ("remote.net.push", "+refs/heads/*:refs/heads/*"),
+        ("remote.net.mirror", "true"),
+    ] {
+        git(&repo, &["config", key, value]);
+        for command in [
+            "git push --force-with-lease=work: net",
+            "git push --force-with-lease=work: -u net",
+            "git push --force-with-lease=work:",
+        ] {
+            assert_eq!(answer(command), "ask", "{key}: not asked: {command}");
+        }
+        assert_eq!(
+            answer("git push --force-with-lease=work: net work"),
+            "",
+            "{key}: asked with a refspec on the line"
+        );
+        git(&repo, &["config", "--unset", key]);
     }
 }
 
