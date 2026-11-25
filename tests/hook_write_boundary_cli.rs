@@ -636,6 +636,93 @@ fn ac5_every_protected_place_in_each_spelling() {
     }
 }
 
+/// AC-5 (case and unreadable shapes): a Mac ignores letter case in names, so the protected
+/// places match without regard to ASCII case; a path whose links cannot be followed is refused
+/// and a broken `.git` file never hides the checkout around it.
+#[test]
+fn ac5_case_spellings_and_unreadable_shapes_fail_closed() {
+    let w = World::new();
+    for place in [
+        ".GIT/config",
+        ".Git/hooks/x",
+        ".Ssh/x",
+        ".AWS/x",
+        ".KUBE/x",
+        ".config/GCloud/x",
+        ".CONFIG/gcloud/x",
+        "ID_RSA",
+        "Id_Ed25519",
+    ] {
+        for tool in TOOLS {
+            let path = format!("{{PLAIN}}/{place}");
+            assert_eq!(
+                w.verdict(S::Own, tool, &path, "hello\n").as_deref(),
+                Some("protected-path"),
+                "{tool} {path}"
+            );
+        }
+    }
+
+    // On a file system that ignores case another spelling of a checkout folder is the same
+    // checkout; on one that does not, that spelling names nothing and is allowed.
+    let respelled = w.root.join("WT-OTHER");
+    let ignores_case = respelled.exists();
+    let want = if ignores_case {
+        Some("other-checkout")
+    } else {
+        None
+    };
+    for tool in TOOLS {
+        let path = format!("{}/src/a.txt", respelled.display());
+        assert_eq!(
+            w.verdict(S::Own, tool, &path, "hello\n").as_deref(),
+            want,
+            "{tool} {path}"
+        );
+    }
+
+    // More links than the resolver follows: refused, never skipped.
+    let mut previous = w.plain.clone();
+    for n in 0..40 {
+        let link = w.plain.join(format!("chain-{n}"));
+        std::os::unix::fs::symlink(&previous, &link).unwrap();
+        previous = link;
+    }
+    std::os::unix::fs::symlink(w.plain.join("loop-b"), w.plain.join("loop-a")).unwrap();
+    std::os::unix::fs::symlink(w.plain.join("loop-a"), w.plain.join("loop-b")).unwrap();
+    for path in ["{PLAIN}/chain-39/x.txt", "{PLAIN}/loop-a/x.txt"] {
+        for tool in TOOLS {
+            assert_eq!(
+                w.verdict(S::Own, tool, path, "hello\n").as_deref(),
+                Some("protected-path"),
+                "{tool} {path}"
+            );
+        }
+    }
+
+    // A `.git` file that names nothing readable: the search goes on with the parent folder.
+    let broken_in_primary = w.primary.join("sub");
+    let broken_alone = w.plain.join("broken");
+    for dir in [&broken_in_primary, &broken_alone] {
+        fs::create_dir_all(dir).unwrap();
+        fs::write(dir.join(".git"), "garbage without a gitdir line\n").unwrap();
+    }
+    for tool in TOOLS {
+        let inside = format!("{}/x.txt", broken_in_primary.display());
+        assert_eq!(
+            w.verdict(S::Own, tool, &inside, "hello\n").as_deref(),
+            Some("other-checkout"),
+            "{tool} {inside}"
+        );
+        let alone = format!("{}/x.txt", broken_alone.display());
+        assert_eq!(
+            w.verdict(S::Own, tool, &alone, "hello\n"),
+            None,
+            "{tool} {alone}"
+        );
+    }
+}
+
 // ---------------------------------------------------------------------- AC-6
 
 /// AC-6: each shape at its minimum length is denied in the three content keys, one character
@@ -802,7 +889,15 @@ fn ac9_the_handler_is_read_only_and_mode_independent() {
         .collect();
     calls.sort_unstable();
     calls.dedup();
-    assert_eq!(calls, ["read_link", "read_to_string", "symlink_metadata"]);
+    assert_eq!(
+        calls,
+        [
+            "canonicalize",
+            "read_link",
+            "read_to_string",
+            "symlink_metadata"
+        ]
+    );
 
     let w = World::new();
     let before = snapshot(&w.root);

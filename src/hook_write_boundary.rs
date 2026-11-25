@@ -61,14 +61,15 @@ fn classify(target: &str, content: Option<&str>, cwd: &Path, env: &Env) -> Optio
     } else {
         cwd.join(target)
     };
-    let resolved = resolve(&written);
-    if is_protected(&written) || resolved.as_deref().is_some_and(is_protected) {
+    // A path whose links cannot be followed (more than 32, or one that cannot be read) is judged
+    // by nothing else, so it is refused: the tool could not write through it either.
+    let Some(resolved) = resolve(&written).map(|p| on_disk(&p)) else {
+        return Some(PROTECTED);
+    };
+    if is_protected(&written) || is_protected(&resolved) {
         return Some(PROTECTED);
     }
-    if let (Some(own), Some(there)) = (
-        session_checkout(cwd, env),
-        resolved.as_deref().and_then(checkout_of),
-    ) {
+    if let (Some(own), Some(there)) = (session_checkout(cwd, env), checkout_of(&resolved)) {
         if own.common == there.common && own.root != there.root {
             return Some(OTHER);
         }
@@ -113,10 +114,14 @@ struct Checkout {
 /// The checkout of the session: the one `cwd` lies in, unless `CLAUDE_PROJECT_DIR` names a folder
 /// of another repository, which then is the session's own.
 fn session_checkout(cwd: &Path, env: &Env) -> Option<Checkout> {
-    let here = resolve(cwd).as_deref().and_then(checkout_of);
+    let here = resolve(cwd)
+        .map(|p| on_disk(&p))
+        .as_deref()
+        .and_then(checkout_of);
     let project = env
         .project_dir
         .and_then(resolve)
+        .map(|p| on_disk(&p))
         .as_deref()
         .and_then(checkout_of);
     match (here, project) {
@@ -125,12 +130,15 @@ fn session_checkout(cwd: &Path, env: &Env) -> Option<Checkout> {
     }
 }
 
-/// True when a component of the path, written or resolved, is a protected place.
+/// True when a component of the path, written or resolved, is a protected place. Names are
+/// compared without regard to ASCII case, because the file system of a Mac ignores it: `.GIT`
+/// is the `.git` folder there. (The names are ASCII, so a normalization difference cannot spell
+/// one.)
 fn is_protected(path: &Path) -> bool {
     let parts: Vec<String> = path
         .components()
         .filter_map(|c| match c {
-            Component::Normal(s) => Some(s.to_string_lossy().into_owned()),
+            Component::Normal(s) => Some(s.to_string_lossy().to_ascii_lowercase()),
             _ => None,
         })
         .collect();
@@ -190,9 +198,31 @@ fn resolve_inner(path: &Path, links: &mut u32) -> Option<PathBuf> {
     Some(cur)
 }
 
+/// The spelling the disk holds for `path`: the deepest ancestor that exists is canonicalized (on a
+/// file system that ignores case this returns the stored spelling, so `Repo/.GIT` and `repo/.git`
+/// compare equal) and the components after it, which do not exist, are kept as written.
+fn on_disk(path: &Path) -> PathBuf {
+    let mut rest: Vec<&std::ffi::OsStr> = Vec::new();
+    let mut cur = path;
+    loop {
+        if let Ok(real) = fs::canonicalize(cur) {
+            return rest.iter().rev().fold(real, |p, name| p.join(name));
+        }
+        match (cur.file_name(), cur.parent()) {
+            (Some(name), Some(parent)) => {
+                rest.push(name);
+                cur = parent;
+            }
+            _ => return path.to_path_buf(),
+        }
+    }
+}
+
 /// The checkout holding `path` (the nearest ancestor with a `.git` entry), read without a
 /// process: a `.git` folder is a primary checkout, a `.git` file names the folder of a linked
-/// worktree whose `commondir` leads to the primary `.git`.
+/// worktree whose `commondir` leads to the primary `.git`. A `.git` file that cannot be read or
+/// parsed names no checkout, and the search goes on with the parent folder, so a broken file
+/// never hides the checkout around it.
 fn checkout_of(path: &Path) -> Option<Checkout> {
     let mut cur = Some(path);
     while let Some(dir) = cur {
@@ -205,22 +235,29 @@ fn checkout_of(path: &Path) -> Option<Checkout> {
                 });
             }
             if meta.is_file() {
-                let text = fs::read_to_string(&dotgit).ok()?;
-                let rel = text.lines().next()?.strip_prefix("gitdir:")?.trim();
-                let gitdir = resolve(&dir.join(rel))?;
-                let common = match fs::read_to_string(gitdir.join("commondir")) {
-                    Ok(c) => resolve(&gitdir.join(c.trim()))?,
-                    Err(_) => gitdir,
-                };
-                return Some(Checkout {
-                    root: dir.to_path_buf(),
-                    common,
-                });
+                if let Some(common) = linked_common(dir, &dotgit) {
+                    return Some(Checkout {
+                        root: dir.to_path_buf(),
+                        common,
+                    });
+                }
             }
         }
         cur = dir.parent();
     }
     None
+}
+
+/// The common `.git` folder a linked worktree's `.git` file leads to, or `None` when the file
+/// cannot be read or parsed or a link on the way cannot be followed.
+fn linked_common(dir: &Path, dotgit: &Path) -> Option<PathBuf> {
+    let text = fs::read_to_string(dotgit).ok()?;
+    let rel = text.lines().next()?.strip_prefix("gitdir:")?.trim();
+    let gitdir = on_disk(&resolve(&dir.join(rel))?);
+    Some(match fs::read_to_string(gitdir.join("commondir")) {
+        Ok(c) => on_disk(&resolve(&gitdir.join(c.trim()))?),
+        Err(_) => gitdir,
+    })
 }
 
 // ---------------------------------------------------------------- secrets
