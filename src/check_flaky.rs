@@ -68,13 +68,21 @@ fn named(line: &str) -> Option<TestName> {
     })
 }
 
-/// The tests a step log says failed and the tests it says passed on a retry (`FLAKY`). A retry
-/// attempt line (`TRY n FAIL`) is neither.
+/// The tests a step log says failed and the tests it says passed on a retry (`FLAKY`). With
+/// retries on, nextest prints every attempt as `TRY n <STATUS>` and a test that fails all of them
+/// only ever as `TRY n FAIL`; such a line counts as a failure, and a name that later passed on a
+/// retry is dropped from the failures below (real output measured in `target/rerun/danger`).
 pub fn read_log(text: &str) -> (BTreeSet<TestName>, BTreeSet<TestName>) {
     let (mut failed, mut flaky) = (BTreeSet::new(), BTreeSet::new());
     for line in text.lines() {
         let line = line.trim_start();
-        let word = line.split(' ').next().unwrap_or("");
+        let mut words = line.split(' ');
+        let first = words.next().unwrap_or("");
+        let word = if first == "TRY" {
+            words.nth(1).unwrap_or("")
+        } else {
+            first
+        };
         if let Some(t) = named(line) {
             if FAILING.contains(&word) {
                 failed.insert(t);
@@ -494,7 +502,7 @@ pub fn report(dir: &Path) -> Result<serde_json::Value, String> {
     let root = git(dir, &["rev-parse", "--show-toplevel"])
         .map(PathBuf::from)
         .unwrap_or_else(|| dir.to_path_buf());
-    let ledger = ledger_path(root);
+    let ledger = ledger_path(&root);
     let mut counts: std::collections::BTreeMap<String, usize> = Default::default();
     match std::fs::read_to_string(&ledger) {
         Ok(text) => {
@@ -563,6 +571,27 @@ mod tests {
         let text = |s: &BTreeSet<TestName>| s.iter().map(TestName::text).collect::<Vec<_>>();
         assert_eq!(text(&failed), ["moai-cli t_lib::deep", "moai-cli::a t_b"]);
         assert_eq!(text(&flaky), ["moai-cli::b t_c"]);
+    }
+
+    /// The shape real nextest 0.9.152 printed with `--retries 2` (measured in the dangerous-path
+    /// run): a test that fails every attempt only ever appears as `TRY n FAIL`.
+    const REAL: &str = "\
+  TRY 1 FAIL [   0.010s] (───) dz::fails always_fails
+  TRY 1 FAIL [   0.010s] (───) dz::flaky flaky_once
+  TRY 2 FAIL [   0.009s] (───) dz::fails always_fails
+  TRY 2 PASS [   0.009s] (1/2) dz::flaky flaky_once
+  TRY 3 FAIL [   0.026s] (2/2) dz::fails always_fails
+     Summary [   0.048s] 2 tests run: 1 passed (1 flaky), 1 failed, 0 skipped
+   FLAKY 2/3 [   0.009s] (1/2) dz::flaky flaky_once
+  TRY 3 FAIL [   0.026s] (2/2) dz::fails always_fails
+";
+
+    #[test]
+    fn a_test_that_fails_every_attempt_is_read_from_its_try_lines() {
+        let (failed, flaky) = read_log(REAL);
+        let text = |s: &BTreeSet<TestName>| s.iter().map(TestName::text).collect::<Vec<_>>();
+        assert_eq!(text(&failed), ["dz::fails always_fails"]);
+        assert_eq!(text(&flaky), ["dz::flaky flaky_once"]);
     }
 
     #[test]
