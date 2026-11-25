@@ -206,9 +206,12 @@ fn an_added_line_keeps_the_card_set_and_adds_its_targets() {
     }
 }
 
+/// One edit of the base registry that is not growth: what it is called and how it changes the text.
+type Case = (&'static str, Box<dyn Fn(&mut Value)>);
+
 #[test]
 fn an_edit_or_a_removal_still_gives_the_full_set() {
-    let cases: Vec<(&str, Box<dyn Fn(&mut Value)>)> = vec![
+    let cases: Vec<Case> = vec![
         (
             "a scan removed",
             Box::new(|v| {
