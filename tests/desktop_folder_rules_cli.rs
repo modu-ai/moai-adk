@@ -232,13 +232,14 @@ mod preview {
         }
     }
 
-    /// A temporary HOME with `~/.moai-cli/versions/a/bin/moai-cli` and the real package and agent
-    /// sources beside it.
+    /// A temporary HOME with `versions/a/bin/moai-cli` under its state folder (found through
+    /// `home_root`, before anything is created there) and the real package and agent sources
+    /// beside it.
     fn setup() -> (tempfile::TempDir, PathBuf, PathBuf) {
         let tmp = tempfile::TempDir::new().unwrap();
         let root = fs::canonicalize(tmp.path()).unwrap();
         let home = root.join("home");
-        let folder = home.join(".moai-cli/versions/a");
+        let folder = moai_cli::home_root::path(&home).join("versions/a");
         fs::create_dir_all(folder.join("bin")).unwrap();
         let exe = folder.join("bin/moai-cli");
         common::copy_executable(Path::new(EXE), &exe);
@@ -297,8 +298,9 @@ mod preview {
         )
     }
 
-    /// Every file under `dir` with its bytes, leaving out the installed version folder.
-    fn files(dir: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    /// Every file under `dir` with its bytes, leaving out the `versions` folder that holds the
+    /// installed binary `exe` (`<state>/versions/a/bin/<exe>`).
+    fn files(dir: &Path, exe: &Path) -> Vec<(PathBuf, Vec<u8>)> {
         fn walk(dir: &Path, skip: &Path, out: &mut Vec<(PathBuf, Vec<u8>)>) {
             let Ok(entries) = fs::read_dir(dir) else {
                 return;
@@ -316,7 +318,8 @@ mod preview {
             }
         }
         let mut out = Vec::new();
-        walk(dir, &dir.join(".moai-cli/versions"), &mut out);
+        let versions = exe.ancestors().nth(3).expect("exe sits in versions/a/bin");
+        walk(dir, versions, &mut out);
         out.sort();
         out
     }
@@ -382,7 +385,7 @@ mod preview {
     fn notice_is_read_only() {
         let (_t, home, exe) = setup();
         let conf = home.join("elsewhere/claude-conf");
-        let before = files(&home);
+        let before = files(&home, &exe);
         let a = preview(&exe, &home, true, &[("CLAUDE_CONFIG_DIR", &conf)]);
         assert_eq!(folders_notice(&a)["warning"], json!(true), "{a}");
         let b = preview(&exe, &home, true, &[("CLAUDE_CONFIG_DIR", &conf)]);
@@ -390,7 +393,7 @@ mod preview {
             a["plan_digest"], b["plan_digest"],
             "the same preview, the same digest"
         );
-        assert_eq!(files(&home), before, "the preview wrote nothing");
+        assert_eq!(files(&home, &exe), before, "the preview wrote nothing");
         assert!(!conf.exists(), "the named folder was not made");
         assert!(!home.join(".claude").exists(), "no default folder was made");
         // The confirm line a preview prints carries the digest of the parts, not of the notice.
