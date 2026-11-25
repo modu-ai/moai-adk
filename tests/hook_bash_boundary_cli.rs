@@ -2720,6 +2720,10 @@ fn a_moai_line_after_double_dash_that_names_no_runner_passes() {
         "moai check affected --card a..b",
         // The first word after the `--` names no runner.
         "moai card note C-1 -- some text",
+        // The words before the `--` are moai's own: a command word there is not judged, only
+        // the words after the `--` are.
+        "moai rm -rf {OUT}/x -- some text",
+        "moai git -C {OTH} commit -m x -- some text",
     ] {
         let got = w.verdict(S::Own, cmd);
         if got.is_some() {
