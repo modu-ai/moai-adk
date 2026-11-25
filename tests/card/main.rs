@@ -43,6 +43,7 @@ mod card_secret_followups;
 mod card_show_notes_cli;
 mod card_spec_cli;
 mod card_stale_cli;
+mod card_submit_cli;
 mod card_summary_cli;
 mod card_summary_render;
 mod card_sweep_cli;

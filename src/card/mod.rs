@@ -47,6 +47,7 @@ pub mod remote_copy;
 pub mod roles;
 pub mod spec_link;
 pub mod stale;
+pub mod submit;
 pub mod sweep;
 pub mod take_scope;
 pub mod timeline;
