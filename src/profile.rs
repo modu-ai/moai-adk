@@ -298,6 +298,47 @@ pub struct WorkFlowSettings {
     /// registered lanes; no key means 2 and 0 turns the limit off.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wip_limit: Option<u32>,
+    /// The local branches `card land-sync` may merge into the integration branch
+    /// (SPEC-20261125-land-sync-merge REQ-2): at most [`SYNC_SOURCES_LIMIT`] valid branch names,
+    /// no duplicate and not the integration branch; no key means an empty list, which refuses
+    /// every source. `WorkFlowSettings` refuses unknown fields (`deny_unknown_fields`), so an
+    /// installed moai older than this field refuses a profile that holds the key: set the value
+    /// only after the installed binary is updated.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sync_sources: Option<Vec<String>>,
+}
+
+impl WorkFlowSettings {
+    /// The branches of `sync_sources`; empty when the key is absent.
+    pub fn sync_sources(&self) -> &[String] {
+        self.sync_sources.as_deref().unwrap_or(&[])
+    }
+}
+
+/// The most branches `work_flow.sync_sources` may list.
+pub const SYNC_SOURCES_LIMIT: usize = 8;
+
+/// What is wrong with `work_flow.sync_sources`, as words that follow the key name, or `None`
+/// when the list is acceptable. The words never carry a value that was read.
+fn sync_sources_problem(w: &WorkFlowSettings) -> Option<String> {
+    let list = w.sync_sources();
+    if list.len() > SYNC_SOURCES_LIMIT {
+        return Some(format!("must list at most {SYNC_SOURCES_LIMIT} branches"));
+    }
+    if !list.iter().all(|b| branch_name(b)) {
+        return Some("must list only valid branch names".into());
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    if !list.iter().all(|b| seen.insert(b.as_str())) {
+        return Some("must not list a branch twice".into());
+    }
+    if list
+        .iter()
+        .any(|b| w.integration_branch.as_deref() == Some(b.as_str()))
+    {
+        return Some("must not list the integration branch".into());
+    }
+    None
 }
 
 /// The two words of `work_flow.land_verdict`: `observe` reports the refusal a landing would get
@@ -489,6 +530,11 @@ fn validate(p: &Profile) -> Result<()> {
             return Err(format!(
                 "invalid work_flow setting: land_verdict must be {}; no values were logged",
                 LAND_VERDICT_MODES.join(" or ")
+            ));
+        }
+        if let Some(why) = sync_sources_problem(w) {
+            return Err(format!(
+                "invalid work_flow setting: sync_sources {why}; no values were logged"
             ));
         }
     }
@@ -1582,6 +1628,7 @@ mod tests {
                 integration_branch: Some("main".into()),
                 land_verdict: None,
                 wip_limit: None,
+                sync_sources: None,
             }),
             lane_run: Some(LaneRunSettings {
                 default: Some("nonstop".into()),
@@ -2070,6 +2117,141 @@ mod tests {
         assert!(serde_json::to_value(&profile).unwrap()["work_flow"]
             .get("land_verdict")
             .is_none());
+    }
+
+    /// A temporary project whose profile holds `work_flow`, read back by `read_profile`.
+    fn read_with_work_flow(work_flow: Value) -> Result<(Profile, Vec<u8>)> {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut file = serde_json::to_value(v2()).unwrap();
+        file["work_flow"] = work_flow;
+        fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+        read_profile(tmp.path())
+    }
+
+    /// SPEC-20261125-land-sync-merge REQ-2 and AC-7: a missing `sync_sources` key is an empty
+    /// list, whether or not the integration branch is set, and the key is not written back.
+    #[test]
+    fn sync_sources_absent_is_an_empty_list() {
+        for work_flow in [
+            json!({"flow": "m-flow", "integration_branch": "main"}),
+            json!({"flow": "m-flow"}),
+        ] {
+            let (profile, _) = read_with_work_flow(work_flow).unwrap();
+            let w = profile.work_flow.as_ref().unwrap();
+            assert_eq!(w.sync_sources, None);
+            assert!(w.sync_sources().is_empty());
+            assert!(serde_json::to_value(&profile).unwrap()["work_flow"]
+                .get("sync_sources")
+                .is_none());
+        }
+        let parsed: WorkFlowSettings = serde_json::from_value(json!({"flow": "m-flow"})).unwrap();
+        assert_eq!(parsed.sync_sources(), &[] as &[String]);
+    }
+
+    /// SPEC-20261125-land-sync-merge REQ-2 and AC-7: a valid list is accepted by the parser and
+    /// the validator, read back in order through the accessor and kept when the profile is
+    /// written back; the limit is 8 (N passes, N+1 is refused below), and an empty list passes.
+    #[test]
+    fn sync_sources_valid_list_round_trips() {
+        let eight: Vec<String> = (1..=SYNC_SOURCES_LIMIT)
+            .map(|n| format!("spec/sync-{n}"))
+            .collect();
+        for (work_flow, expected) in [
+            (
+                json!({"flow": "m-flow", "integration_branch": "main",
+                       "sync_sources": ["sync-a", "release/next", "v2026.11.0"]}),
+                vec!["sync-a", "release/next", "v2026.11.0"],
+            ),
+            // The key does not need the integration branch.
+            (
+                json!({"flow": "m-flow", "sync_sources": ["sync-a"]}),
+                vec!["sync-a"],
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "main", "sync_sources": []}),
+                vec![],
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "main", "sync_sources": eight}),
+                eight.iter().map(String::as_str).collect(),
+            ),
+        ] {
+            let (profile, _) = read_with_work_flow(work_flow.clone()).unwrap();
+            let w = profile.work_flow.as_ref().unwrap();
+            assert_eq!(w.sync_sources(), expected.as_slice());
+            assert_eq!(
+                serde_json::to_value(&profile).unwrap()["work_flow"]["sync_sources"],
+                work_flow["sync_sources"]
+            );
+            let parsed: WorkFlowSettings = serde_json::from_value(work_flow).unwrap();
+            assert_eq!(&parsed, w);
+        }
+    }
+
+    /// SPEC-20261125-land-sync-merge REQ-2 and AC-7: more than 8 entries, a duplicate, an
+    /// invalid branch name and the integration branch itself are each refused, with a reason
+    /// that names `sync_sources` and never echoes the value that was read.
+    #[test]
+    fn sync_sources_refusals_name_the_key() {
+        let nine: Vec<String> = (1..=SYNC_SOURCES_LIMIT + 1)
+            .map(|n| format!("sync-{n}"))
+            .collect();
+        let mut refused = vec![
+            (
+                json!({"flow": "m-flow", "integration_branch": "main", "sync_sources": nine}),
+                "nine entries",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "main",
+                       "sync_sources": ["sync-a", "sync-b", "sync-a"]}),
+                "a duplicate",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "main",
+                       "sync_sources": ["main"]}),
+                "the integration branch",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "main",
+                       "sync_sources": ["sync-a", "main"]}),
+                "the integration branch among others",
+            ),
+        ];
+        for bad in [
+            "",
+            "a..b",
+            "-x",
+            "a b",
+            "x.lock",
+            "a/",
+            "HEAD",
+            "refs/tags/v1 ",
+            "sentinel-name-not-echoed~1",
+        ] {
+            refused.push((
+                json!({"flow": "m-flow", "integration_branch": "main",
+                       "sync_sources": ["sync-a", bad]}),
+                "an invalid name",
+            ));
+        }
+        for (work_flow, why_case) in refused {
+            let why = read_with_work_flow(work_flow)
+                .err()
+                .unwrap_or_else(|| panic!("{why_case} must be refused"));
+            assert!(
+                why.contains("sync_sources"),
+                "{why_case}: the reason must name the key: {why}"
+            );
+            assert!(
+                !why.contains("sentinel-name-not-echoed"),
+                "{why_case}: the reason must not echo a value: {why}"
+            );
+        }
     }
 
     /// AC-1 (#2293): `language` is additive, and an unknown item or an unsupported code is
