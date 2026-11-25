@@ -85,3 +85,12 @@ digest 를 쓰는 곳은 한 길이에요. `parse` 가 기록된 값과 계산�
 - R-3: `write:` 를 digest 에서 빼면 승인 뒤에 SPEC 의 쓰기 목록이 넓어져 비어 있는 카드의 기본 범위가 커질 수 있어요. 지금도 `card scope` 가 호출자 확인 없이 넓히고 착지가 경로를 견주지 않으므로 새로 생기는 구멍은 아니에요. `outside-scope:` 줄이 READY 에 남고 감사가 읽어요; 쓰기 관문 자체는 한 줄로 `docs/later.md` 에 남겨요.
 - R-4: 옛 계산과 새 계산을 둘 다 받으면 기록된 값 하나가 두 해시 중 하나와 우연히 겹칠 수 있다고 걱정할 수 있어요. 입력이 달라 겹침은 실제로 생기지 않고(sha256), 옛 승인은 옛 엄격함 그대로라 새 계산으로 풀리는 일이 없어요(AC-3).
 - R-5: 이 SPEC 은 승인 관문을 바꾸는 tier 2 라서 승인 없이 코드를 쓰지 않아요. 승인은 리더가 사용자에게 묻고, 이 세션은 승인을 직접 기록하지 않아요.
+
+## Result
+
+- AC-1: met — 커밋 0d8e67dcfc 로 `cargo test --offline --locked --test spec_approval_digest ac1_` 통과(3개 ok, 로그 `target/fay-test.log`).
+- AC-2: met — 커밋 0d8e67dcfc 로 같은 시험 파일의 `ac2_` 통과(2개 ok, 로그 `target/fay-test.log`).
+- AC-3: met — 커밋 0d8e67dcfc 로 같은 시험 파일의 `ac3_` 통과(3개 ok, 로그 `target/fay-test.log`).
+- AC-4: met — 커밋 0d8e67dcfc 로 같은 시험 파일의 `ac4_` 통과(1개 ok, 로그 `target/fay-test.log`); ac1_..ac4_ 합계 9개가 통과했고 나머지 3개는 문서 단계 전의 `ac5_` 였어요.
+- AC-5: met — `skills/moai/references/internal/sdd.md` 규칙 6 과 `skills/moai/workflows/plan.md` 가 승인 digest 문장과 `approval_digest` 를 담고 옛 두 문장을 없앴어요; `cargo test --offline --locked --test spec_approval_digest` 를 슬롯에서 실행해 12개 모두 통과(exit 0, 로그 `target/fay-test3.log`).
+- AC-6: met — 커밋 0d8e67dcfc 로 `tests/spec_cli.rs` 의 `the_repository_specs_pass_check` 통과, 함께 `spec_doc` 36개, `spec_cli` 18개, `spec_card_number_observe` 7개 통과(로그 `target/fay-test2.log`).
