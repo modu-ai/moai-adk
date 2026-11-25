@@ -251,6 +251,67 @@ fn the_screen_header_names_the_earlier_version_and_never_none() {
     assert!(!line.contains("none"), "{line}");
 }
 
+/// The header line (the one that names the installed version) of the screen drawn from the
+/// `preview-latest.json` fixture with `edit` applied to it.
+fn header_line(lang: Lang, edit: impl FnOnce(&mut Value)) -> String {
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/update_tux/preview-latest.json");
+    let mut result: Value = serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+    edit(&mut result);
+    let view = View {
+        painter: Painter {
+            color: false,
+            unicode: true,
+            lang,
+        },
+        width: 100,
+        home: "/home/u".into(),
+        project: None,
+    };
+    let text = screen(&result, Asked::NotAsked, &view);
+    let marker = match lang {
+        Lang::En => "installed",
+        Lang::Ko => "설치본",
+    };
+    text.lines()
+        .find(|l| l.contains(marker))
+        .unwrap_or_else(|| panic!("{text}"))
+        .to_string()
+}
+
+// SPEC-20261125-update-installed-from-link AC-3 (REQ-3, REQ-9): the preview's `installed_version`
+// is the installed side of the header in English and in Korean; without it the header keeps the
+// receipt's source version.
+#[test]
+fn the_header_prefers_the_link_version_in_english_and_korean() {
+    let link = "4.2648.26";
+    let en = header_line(Lang::En, |r| r["installed_version"] = json!(link));
+    assert!(en.contains(&format!("installed {link} → package")), "{en}");
+    let ko = header_line(Lang::Ko, |r| r["installed_version"] = json!(link));
+    assert!(ko.contains(&format!("설치본 {link} → 패키지")), "{ko}");
+
+    // Without the key the receipt's source version stays, as the neighbouring test pins.
+    let source = "2026.11.0-rc.1";
+    let en = header_line(Lang::En, |_| {});
+    assert!(
+        en.contains(&format!("installed {source} = package")),
+        "{en}"
+    );
+    assert!(!en.contains(link), "{en}");
+    let ko = header_line(Lang::Ko, |_| {});
+    assert!(ko.contains(&format!("설치본 {source} = 패키지")), "{ko}");
+
+    // A receipt-less plan (no source version) with the key still shows the link's version.
+    let none = header_line(Lang::En, |r| {
+        r["plan"] = json!({"target_version": source});
+        r["installed_version"] = json!(link);
+    });
+    assert!(
+        none.contains(&format!("installed {link} → package")),
+        "{none}"
+    );
+}
+
 // AC-3 (REQ-3): both names of one folder hold a finished receipt; the newer one is the baseline
 // and the folder never ties with itself.
 #[test]

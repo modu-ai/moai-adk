@@ -1143,8 +1143,6 @@ fn layout_folder(canonical_home: &Path, canonical_exe: &Path) -> Option<(PathBuf
 /// ([`layout_folder`]) and the folder name is UTF-8 and version-shaped. A missing or dangling
 /// link, a plain file, a target outside `versions/` and a name such as `a` all give `None`
 /// for that candidate, and an unreadable one is skipped the same way.
-// @cc:later nothing calls this yet; the installed line of the preview reads it next, then drop the allow.
-#[allow(dead_code)]
 pub(crate) fn execution_link_version(home: &Path) -> Option<String> {
     let canonical_home = fs::canonicalize(home).ok()?;
     let state = crate::home_root::path(&canonical_home);
@@ -2488,6 +2486,11 @@ fn update_command_core(
                 layer.plan_digest
             ),
         });
+        // SPEC-20261125-update-installed-from-link: only a HOME whose execution link names a
+        // version folder shows `installed_version`; it sits outside the plan and its digest.
+        if let Some(v) = execution_link_version(home) {
+            out["installed_version"] = json!(v);
+        }
         // SPEC-20261122-html-report-install: only a release with another skill folder shows it.
         if let Some(x) = layer.extra_skills.to_json() {
             out["extra_skills"] = x;

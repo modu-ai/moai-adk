@@ -1492,8 +1492,10 @@ impl Out<'_> {
         );
         self.buf.push_str(&line);
         let plan = &v["plan"];
-        let from = plan["source_version"]
+        // The version the execution link points to wins over the receipt's source version.
+        let from = v["installed_version"]
             .as_str()
+            .or_else(|| plan["source_version"].as_str())
             .unwrap_or(w(lang, W::NotInstalled));
         let to = plan["target_version"]
             .as_str()
