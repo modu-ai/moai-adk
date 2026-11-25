@@ -89,7 +89,7 @@ pub const EDIT_OPT_IN: &str = "[hooks.edit_diagnostics] enabled + checkers (exte
 
 /// The confirmation class of tool-preflight (B2, Issue #2391 classification row B2).
 pub const CONFIRM_COMMANDS: &str =
-    "git reset --hard, a forced git clean (not a dry run), a force push to a branch other than main or master, and in a MoAI project a direct pull request merge (gh pr merge, gh api PUT .../merge, the GraphQL merge mutations) outside `moai gate-merge`";
+    "git reset --hard, a forced git clean (not a dry run), a force push to a branch other than main or master except a create-only lease (--force-with-lease=<ref>:, with no other force or widening option) and a push to a remote whose push URL is a path on this computer, and in a MoAI project a direct pull request merge (gh pr merge, gh api PUT .../merge, the GraphQL merge mutations) outside `moai gate-merge`";
 
 /// How `[hooks.modes]` changes the direct-merge confirmation (card C-86, decision note 2346).
 pub const CONFIRM_MODES: &str = "[hooks.modes] merge_confirm = off | observe | enforce in the HOME hook-config.toml; absent or any other word is observe: the call goes through and one would_block line says it would have been confirmed; off does nothing; enforce confirms (Claude asks)";
@@ -572,7 +572,7 @@ fn tool_preflight(
             return Verdict::Deny(reason);
         }
     }
-    if let Some(reason) = crate::hook_guards::bash_confirm(command) {
+    if let Some(reason) = crate::hook_guards::bash_confirm_at(command, Some(&dir)) {
         if bypass && reason == crate::hook_guards::CONFIRM_FORCE_PUSH {
             *fixed_reason = Some(crate::hook_guards::CONFIRM_FORCE_PUSH);
             return Verdict::Deny(reason.to_string());
