@@ -1,15 +1,17 @@
-//! An ended lease no longer blocks a new take or scope widening, and the holder of an ended
-//! lease can renew it (SPEC-20261121-card-lease-yield). Every test runs in its own temporary
-//! HOME; none touches the real `~/.moai`. A lease is ended or live by setting `lease_until`
-//! to `unixepoch()` (the lease-end second itself no longer holds) or to `unixepoch() + 300`;
-//! the one-second edge is pinned on the pure rule `blocks_new_claims`, so no test depends on
-//! the clock standing still.
+//! An ended lease and another card's reservation no longer block or reshape a take, a scope
+//! widening or `card next` (SPEC-20261125-card-no-file-locks, which replaced the paths-yield of
+//! SPEC-20261121-card-lease-yield): the claim is made, the other reservation is left as it is, no
+//! `card.yield` event is written, and `reservation::overlaps` names what overlaps. The holder of
+//! an ended lease can still renew it. Every test runs in its own temporary HOME; none touches the
+//! real `~/.moai`. A lease is ended or live by setting `lease_until` to `unixepoch()` (the
+//! lease-end second itself no longer holds) or to `unixepoch() + 300`; the one-second edge is
+//! pinned on the pure rule `blocks_new_claims`, so no test depends on the clock standing still.
 
 use crate::common;
 
 use common::home::TempHome;
 use moai_cli::ledger::reservation::{self, FenceError, ReserveError, WidenError};
-use moai_cli::ledger::workflow::{self, SkipReason};
+use moai_cli::ledger::workflow;
 use moai_cli::ledger::{self, WriteLedger};
 
 const PROJECT: &str = "demo";
@@ -133,10 +135,31 @@ fn lease_end_of(w: &WriteLedger, card: i64) -> i64 {
         .lease_until
 }
 
-// ---- take_ (REQ-1, REQ-2, REQ-9) ----------------------------------------------------------
+/// The cards `reservation::overlaps` names for `scope` of `card`, in card order.
+fn overlap_cards(w: &WriteLedger, card: i64, scope: &[&str]) -> Vec<i64> {
+    let now: i64 = w
+        .conn()
+        .query_row("SELECT unixepoch()", [], |r| r.get(0))
+        .unwrap();
+    reservation::overlaps(w.conn(), now, card, &paths(scope))
+        .unwrap()
+        .into_iter()
+        .map(|o| o.other_card)
+        .collect()
+}
 
-/// The lease edge: only a `held` reservation whose lease has not ended blocks a new claim, one
-/// second before the end, at the end and one second after it.
+fn state_of(w: &WriteLedger, card: i64) -> String {
+    w.conn()
+        .query_row("SELECT state FROM card WHERE card_id = ?1", [card], |r| {
+            r.get(0)
+        })
+        .unwrap()
+}
+
+// ---- take_ ---------------------------------------------------------------------------------
+
+/// The lease edge: only a `held` reservation whose lease has not ended keeps other cards off a
+/// path in the report, one second before the end, at the end and one second after it.
 #[test]
 fn take_lease_edge_is_one_second_before_at_and_after_the_end() {
     assert!(reservation::blocks_new_claims("held", 100, 99), "N-1: live");
@@ -159,7 +182,7 @@ fn take_lease_edge_is_one_second_before_at_and_after_the_end() {
 }
 
 #[test]
-fn take_yields_the_paths_of_an_ended_lease() {
+fn take_over_an_ended_lease_is_made_and_the_old_scope_stays_whole() {
     let (_home, mut w) = setup();
     let old = taken(&mut w, A, &["src/a/**", "docs/**"]);
     end_lease(&mut w, old);
@@ -167,29 +190,24 @@ fn take_yields_the_paths_of_an_ended_lease() {
     try_take(&mut w, new, B, &["src/a/x.rs"]).unwrap();
     assert_eq!(
         scope_of(&w, old),
-        ["docs/**"],
-        "only the overlapping pattern left"
+        ["docs/**", "src/a/**"],
+        "nothing yielded"
     );
     assert_eq!(scope_of(&w, new), ["src/a/x.rs"]);
-    // The old card keeps its holder, generation and state.
+    assert!(events(&w, "card.yield").is_empty(), "no yield event");
+    // The old card keeps its holder, generation, status and state.
     let kept = reservation::current(w.conn(), old).unwrap().unwrap();
     assert_eq!(
         (kept.holder.as_str(), kept.generation, kept.status.as_str()),
         (A, 1, "held")
     );
-    let state: String = w
-        .conn()
-        .query_row("SELECT state FROM card WHERE card_id = ?1", [old], |r| {
-            r.get(0)
-        })
-        .unwrap();
-    assert_eq!(state, "active");
+    assert_eq!(state_of(&w, old), "active");
+    // An ended lease is not reported as an overlap: it no longer keeps anyone off the path.
+    assert!(overlap_cards(&w, new, &["src/a/x.rs"]).is_empty());
 }
 
-/// A card sent to review keeps a `held` reservation, so once its lease has ended its paths are
-/// yielded like any other (the holder of such a card is gone far more often than it is slow).
 #[test]
-fn take_yields_a_card_in_the_review_state_whose_lease_ended() {
+fn take_over_a_card_in_the_review_state_whose_lease_ended_leaves_it_alone() {
     let (_home, mut w) = setup();
     let old = taken(&mut w, A, &["src/a/**"]);
     sql(
@@ -199,103 +217,75 @@ fn take_yields_a_card_in_the_review_state_whose_lease_ended() {
     end_lease(&mut w, old);
     let new = add_card(&mut w, "[]");
     try_take(&mut w, new, B, &["src/a/x.rs"]).unwrap();
-    assert_eq!(scope_of(&w, old), Vec::<String>::new());
-    let state: String = w
-        .conn()
-        .query_row("SELECT state FROM card WHERE card_id = ?1", [old], |r| {
-            r.get(0)
-        })
-        .unwrap();
-    assert_eq!(state, "review", "the card keeps its state");
+    assert_eq!(scope_of(&w, old), ["src/a/**"]);
+    assert_eq!(state_of(&w, old), "review", "the card keeps its state");
 }
 
 #[test]
-fn take_refuses_a_live_lease_and_names_the_card_the_holder_and_the_lease_end() {
+fn take_over_a_live_lease_is_made_and_the_overlap_names_the_card_and_the_lease_end() {
     let (_home, mut w) = setup();
     let old = taken(&mut w, A, &["src/a/**"]);
     live_lease(&mut w, old);
     let end = lease_end_of(&w, old);
     let new = add_card(&mut w, "[]");
-    let err = try_take(&mut w, new, B, &["src/a/x.rs"]).unwrap_err();
-    assert_eq!(err.code(), "scope_overlap", "{err}");
-    let text = err.to_string();
-    assert!(
-        text.starts_with("reservation conflict in write scope:"),
-        "the first words stay: {text}"
-    );
-    for part in [
-        format!("card C-{old}"),
-        format!("held by {A}"),
-        format!("lease until {end}"),
-    ] {
-        assert!(text.contains(&part), "{part:?} missing in: {text}");
-    }
+    try_take(&mut w, new, B, &["src/a/x.rs"]).unwrap();
     assert_eq!(scope_of(&w, old), ["src/a/**"], "nothing was removed");
-    assert!(events(&w, "card.yield").is_empty(), "nothing was written");
-    assert!(reservation::current(w.conn(), new).unwrap().is_none());
-}
-
-#[test]
-fn take_refuses_a_recovered_reservation_even_when_its_lease_ended() {
-    let (_home, mut w) = setup();
-    let old = taken(&mut w, A, &["src/a/**"]);
-    end_lease(&mut w, old);
-    set_status(&mut w, old, "held_for_review");
-    let new = add_card(&mut w, "[]");
-    let err = try_take(&mut w, new, B, &["src/a/x.rs"]).unwrap_err();
-    assert_eq!(err.code(), "scope_overlap", "{err}");
-    assert_eq!(scope_of(&w, old), ["src/a/**"]);
     assert!(events(&w, "card.yield").is_empty());
-}
-
-#[test]
-fn take_refuses_an_expired_candidate_even_when_its_lease_ended() {
-    let (_home, mut w) = setup();
-    let old = taken(&mut w, A, &["src/a/**"]);
-    end_lease(&mut w, old);
-    set_status(&mut w, old, "expired_candidate");
-    let new = add_card(&mut w, "[]");
-    let err = try_take(&mut w, new, B, &["src/a/x.rs"]).unwrap_err();
-    assert_eq!(err.code(), "scope_overlap", "{err}");
-    assert_eq!(scope_of(&w, old), ["src/a/**"]);
-}
-
-#[test]
-fn take_with_a_live_and_an_ended_overlap_refuses_and_yields_nothing() {
-    let (_home, mut w) = setup();
-    let ended = taken(&mut w, A, &["src/a/**"]);
-    let live = taken(&mut w, A, &["src/b/**"]);
-    end_lease(&mut w, ended);
-    live_lease(&mut w, live);
-    let new = add_card(&mut w, "[]");
-    let err = try_take(&mut w, new, B, &["src/a/x.rs", "src/b/y.rs"]).unwrap_err();
-    assert_eq!(err.code(), "scope_overlap", "{err}");
+    let now: i64 = w
+        .conn()
+        .query_row("SELECT unixepoch()", [], |r| r.get(0))
+        .unwrap();
+    let found = reservation::overlaps(w.conn(), now, new, &paths(&["src/a/x.rs"])).unwrap();
+    assert_eq!(found.len(), 1, "{found:?}");
+    let o = &found[0];
     assert_eq!(
-        scope_of(&w, ended),
-        ["src/a/**"],
-        "the ended one is untouched too"
+        (
+            o.other_card,
+            o.holder.as_str(),
+            o.lease_until,
+            o.status.as_str()
+        ),
+        (old, A, end, "held")
     );
-    assert!(events(&w, "card.yield").is_empty());
+    assert_eq!(
+        (o.mine.as_str(), o.theirs.as_str()),
+        ("src/a/x.rs", "src/a/**")
+    );
 }
 
-// ---- widen_ (REQ-3, REQ-4, REQ-9) ---------------------------------------------------------
+#[test]
+fn take_over_a_recovered_or_an_expired_candidate_reservation_is_made_and_still_reported() {
+    for status in ["held_for_review", "expired_candidate"] {
+        let (_home, mut w) = setup();
+        let old = taken(&mut w, A, &["src/a/**"]);
+        end_lease(&mut w, old);
+        set_status(&mut w, old, status);
+        let new = add_card(&mut w, "[]");
+        try_take(&mut w, new, B, &["src/a/x.rs"]).unwrap();
+        assert_eq!(scope_of(&w, old), ["src/a/**"], "{status}");
+        assert_eq!(overlap_cards(&w, new, &["src/a/x.rs"]), [old], "{status}");
+        assert!(events(&w, "card.yield").is_empty(), "{status}");
+    }
+}
+
+// ---- widen_ --------------------------------------------------------------------------------
 
 #[test]
-fn widen_yields_the_paths_of_an_ended_lease() {
+fn widen_over_an_ended_lease_is_made_and_the_old_scope_stays_whole() {
     let (_home, mut w) = setup();
     let old = taken(&mut w, A, &["src/a/**", "docs/**"]);
     end_lease(&mut w, old);
     let mine = taken(&mut w, B, &["tests/b/**"]);
     widen(&mut w, mine, B, &["tests/b/**", "src/a/x.rs"]).unwrap();
-    assert_eq!(scope_of(&w, old), ["docs/**"]);
+    assert_eq!(scope_of(&w, old), ["docs/**", "src/a/**"]);
     let mut now_mine = scope_of(&w, mine);
     now_mine.sort();
     assert_eq!(now_mine, ["src/a/x.rs", "tests/b/**"]);
+    assert!(events(&w, "card.yield").is_empty());
 }
 
-/// A holder whose own lease ended and who widens under its own pattern does not yield to itself:
-/// its pattern stays, nothing is written as a yield. (Without the exclusion of the card's own
-/// reservation in the yield, the holder would delete its own `src/a/**`.)
+/// A holder whose own lease ended and who widens under its own pattern keeps it, and nothing is
+/// written as a yield.
 #[test]
 fn widen_under_the_own_pattern_of_an_ended_lease_removes_nothing() {
     let (_home, mut w) = setup();
@@ -312,99 +302,21 @@ fn widen_under_the_own_pattern_of_an_ended_lease_removes_nothing() {
 }
 
 #[test]
-fn widen_refuses_a_live_lease_and_names_the_card_the_holder_and_the_lease_end() {
+fn widen_over_a_live_lease_is_made_and_leaves_the_other_card_alone() {
     let (_home, mut w) = setup();
     let old = taken(&mut w, A, &["src/a/**"]);
     live_lease(&mut w, old);
-    let end = lease_end_of(&w, old);
     let mine = taken(&mut w, B, &["tests/b/**"]);
-    let err = widen(&mut w, mine, B, &["tests/b/**", "src/a/x.rs"]).unwrap_err();
-    let text = err.to_string();
-    assert!(
-        text.starts_with("reservation conflict in write scope:"),
-        "the first words stay: {text}"
-    );
-    for part in [
-        format!("card C-{old}"),
-        format!("held by {A}"),
-        format!("lease until {end}"),
-    ] {
-        assert!(text.contains(&part), "{part:?} missing in: {text}");
-    }
+    widen(&mut w, mine, B, &["tests/b/**", "src/a/x.rs"]).unwrap();
     assert_eq!(scope_of(&w, old), ["src/a/**"]);
-    assert_eq!(scope_of(&w, mine), ["tests/b/**"]);
+    let mut now_mine = scope_of(&w, mine);
+    now_mine.sort();
+    assert_eq!(now_mine, ["src/a/x.rs", "tests/b/**"]);
+    assert_eq!(overlap_cards(&w, mine, &["src/a/x.rs"]), [old]);
     assert!(events(&w, "card.yield").is_empty());
 }
 
-#[test]
-fn widen_refuses_a_recovered_reservation_even_when_its_lease_ended() {
-    let (_home, mut w) = setup();
-    let old = taken(&mut w, A, &["src/a/**"]);
-    end_lease(&mut w, old);
-    set_status(&mut w, old, "held_for_review");
-    let mine = taken(&mut w, B, &["tests/b/**"]);
-    let err = widen(&mut w, mine, B, &["tests/b/**", "src/a/x.rs"]).unwrap_err();
-    assert!(matches!(err, WidenError::ScopeOverlap { .. }), "{err}");
-    assert_eq!(scope_of(&w, old), ["src/a/**"]);
-    assert_eq!(scope_of(&w, mine), ["tests/b/**"]);
-}
-
-// ---- event_ (REQ-5) -----------------------------------------------------------------------
-
-#[test]
-fn event_yield_names_the_paths_both_scopes_the_holder_the_lease_end_and_the_taker() {
-    let (_home, mut w) = setup();
-    let old = taken(&mut w, A, &["src/a/**", "docs/**"]);
-    end_lease(&mut w, old);
-    let end = lease_end_of(&w, old);
-    let new = add_card(&mut w, "[]");
-    try_take(&mut w, new, B, &["src/a/x.rs"]).unwrap();
-    let all = events(&w, "card.yield");
-    assert_eq!(all.len(), 1, "{all:?}");
-    let (card, p) = &all[0];
-    assert_eq!(*card, old, "the event sits on the old card");
-    assert_eq!(p["yielded"], serde_json::json!(["src/a/**"]));
-    assert_eq!(p["from"], serde_json::json!(["docs/**", "src/a/**"]));
-    assert_eq!(p["to"], serde_json::json!(["docs/**"]));
-    assert_eq!(p["holder"], serde_json::json!(A));
-    assert_eq!(p["generation"], serde_json::json!(1));
-    assert_eq!(p["lease_until"], serde_json::json!(end));
-    assert_eq!(p["by"], serde_json::json!(B));
-    assert_eq!(p["taken_by_card"], serde_json::json!(new));
-    let reason = p["reason"].as_str().unwrap();
-    assert!(reason.contains("lease had ended"), "{reason}");
-}
-
-#[test]
-fn event_yield_is_written_for_each_ended_reservation_that_overlaps() {
-    let (_home, mut w) = setup();
-    let one = taken(&mut w, A, &["src/a/**"]);
-    let two = taken(&mut w, A, &["src/b/**"]);
-    end_lease(&mut w, one);
-    end_lease(&mut w, two);
-    let new = add_card(&mut w, "[]");
-    try_take(&mut w, new, B, &["src/a/x.rs", "src/b/y.rs"]).unwrap();
-    let mut cards: Vec<i64> = events(&w, "card.yield").iter().map(|e| e.0).collect();
-    cards.sort();
-    assert_eq!(cards, [one, two]);
-    assert_eq!(scope_of(&w, one), Vec::<String>::new());
-}
-
-#[test]
-fn event_yield_from_a_widening_names_the_widening_card() {
-    let (_home, mut w) = setup();
-    let old = taken(&mut w, A, &["src/a/**"]);
-    end_lease(&mut w, old);
-    let mine = taken(&mut w, B, &["tests/b/**"]);
-    widen(&mut w, mine, B, &["tests/b/**", "src/a/x.rs"]).unwrap();
-    let all = events(&w, "card.yield");
-    assert_eq!(all.len(), 1, "{all:?}");
-    assert_eq!(all[0].1["taken_by_card"], serde_json::json!(mine));
-    assert_eq!(all[0].1["by"], serde_json::json!(B));
-    assert_eq!(all[0].1["yielded"], serde_json::json!(["src/a/**"]));
-}
-
-// ---- renew_ (REQ-6, REQ-7) ----------------------------------------------------------------
+// ---- renew_ --------------------------------------------------------------------------------
 
 #[test]
 fn renew_extends_an_ended_lease_at_the_same_generation() {
@@ -463,57 +375,41 @@ fn renew_refuses_a_wrong_generation_and_another_session_when_the_lease_ended() {
     );
 }
 
-#[test]
-fn renew_after_a_yield_keeps_the_rest_of_the_scope_and_not_the_yielded_path() {
-    let (_home, mut w) = setup();
-    let old = taken(&mut w, A, &["src/a/**", "docs/**"]);
-    end_lease(&mut w, old);
-    let new = add_card(&mut w, "[]");
-    try_take(&mut w, new, B, &["src/a/x.rs"]).unwrap();
-    reservation::renew(&mut w, old, A, 1, 600).unwrap();
-    assert_eq!(scope_of(&w, old), ["docs/**"]);
-    assert_eq!(scope_of(&w, new), ["src/a/x.rs"]);
-}
+// ---- next_ ---------------------------------------------------------------------------------
 
-// ---- next_ (REQ-8, REQ-9) -----------------------------------------------------------------
-
-fn overlap_skips(w: &WriteLedger, card: i64) -> bool {
+/// `card next` lists a ready card as ready, whatever reservation overlaps its scope.
+fn is_offered(w: &WriteLedger, card: i64) -> bool {
     let n = workflow::next(w.conn(), None).unwrap();
     assert!(
-        n.ready.iter().any(|c| c.card_id == card) != n.skipped.iter().any(|s| s.card_id == card),
-        "the card is either ready or skipped"
+        n.skipped.iter().all(|s| s.reason.code() != "scope_overlap"),
+        "no card is skipped for an overlap"
     );
-    n.skipped
-        .iter()
-        .any(|s| s.card_id == card && matches!(s.reason, SkipReason::ScopeOverlap { .. }))
+    n.ready.iter().any(|c| c.card_id == card)
 }
 
 #[test]
-fn next_offers_a_ready_card_whose_scope_only_an_ended_lease_overlaps() {
-    let (_home, mut w) = setup();
-    let old = taken(&mut w, A, &["src/a/**"]);
-    end_lease(&mut w, old);
-    let ready = add_card(&mut w, "[\"src/a/x.rs\"]");
-    assert!(!overlap_skips(&w, ready));
+fn next_offers_a_ready_card_whose_scope_an_ended_or_a_live_lease_overlaps() {
+    for live in [false, true] {
+        let (_home, mut w) = setup();
+        let old = taken(&mut w, A, &["src/a/**"]);
+        if live {
+            live_lease(&mut w, old);
+        } else {
+            end_lease(&mut w, old);
+        }
+        let ready = add_card(&mut w, "[\"src/a/x.rs\"]");
+        assert!(is_offered(&w, ready), "live={live}");
+    }
 }
 
 #[test]
-fn next_skips_a_ready_card_that_a_live_lease_overlaps() {
-    let (_home, mut w) = setup();
-    let old = taken(&mut w, A, &["src/a/**"]);
-    live_lease(&mut w, old);
-    let ready = add_card(&mut w, "[\"src/a/x.rs\"]");
-    assert!(overlap_skips(&w, ready));
-}
-
-#[test]
-fn next_skips_a_ready_card_that_a_recovered_or_an_expired_candidate_reservation_overlaps() {
+fn next_offers_a_ready_card_that_a_recovered_or_an_expired_candidate_reservation_overlaps() {
     for status in ["held_for_review", "expired_candidate"] {
         let (_home, mut w) = setup();
         let old = taken(&mut w, A, &["src/a/**"]);
         end_lease(&mut w, old);
         set_status(&mut w, old, status);
         let ready = add_card(&mut w, "[\"src/a/x.rs\"]");
-        assert!(overlap_skips(&w, ready), "{status}");
+        assert!(is_offered(&w, ready), "{status}");
     }
 }

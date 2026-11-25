@@ -163,15 +163,6 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
                     v["generation"] = json!(generation);
                     v["lease_until"] = json!(lease_until);
                 }
-                SkipReason::ScopeOverlap {
-                    other_card,
-                    mine,
-                    theirs,
-                } => {
-                    v["other"] = json!(input::card_name(*other_card));
-                    v["mine"] = json!(mine);
-                    v["theirs"] = json!(theirs);
-                }
                 SkipReason::Hold { category, reason } => {
                     v["category"] = json!(category);
                     v["hold_reason"] = json!(reason);
@@ -305,10 +296,11 @@ pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>)
     super::ready_receipt::check_note(project, &input::card_name(card_id), text)?;
     // SPEC-20261124-lane-leftovers: the same notes carry one `leftovers:` line.
     super::ready_leftovers::check_note(&input::card_name(card_id), text)?;
-    let hand_back = matches!(
-        super::ready_receipt::marker_head(text, &input::card_name(card_id)),
-        Ok(Some(_))
-    );
+    let hand_back_head = match super::ready_receipt::marker_head(text, &input::card_name(card_id)) {
+        Ok(Some(head)) => Some(head),
+        _ => None,
+    };
+    let hand_back = hand_back_head.is_some();
     let author = match (req.by, req.session) {
         (Some(by), _) => actor(Some(by), "note")?,
         (None, Some(session)) => session.to_string(),
@@ -333,6 +325,17 @@ pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>)
         "ref": note.reference, "bytes": note.bytes, "created_at": note.created_at,
         "events": 1, "writes": true,
     });
+    if let Some(head) = &hand_back_head {
+        // SPEC-20261125-card-no-file-locks: the files the integration branch changed since the
+        // lane's base that the lane changed too; the note is kept whatever it finds.
+        match super::landed::tip_overlap(project, head) {
+            super::landed::TipOverlap::Checked(paths) => answer["tip_overlap"] = json!(paths),
+            super::landed::TipOverlap::NotChecked(why) => {
+                answer["tip_overlap"] = json!("not_checked");
+                answer["tip_overlap_reason"] = json!(why);
+            }
+        }
+    }
     if hand_back {
         // SPEC-20261124-lane-leftovers (observe): what appeared in the primary checkout since the
         // card was reserved goes in the answer; the note is kept whatever it finds.
@@ -613,15 +616,15 @@ pub fn give_back(
     }))
 }
 
-/// The longest wait for another card's reservation `card line-lease` accepts, in seconds.
+/// The largest `--wait-secs` `card line-lease` accepts, in seconds. The wait is no longer used
+/// (SPEC-20261125-card-no-file-locks): the option stays accepted so a caller keeps working.
 pub const MAX_LEASE_WAIT_SECS: u64 = 600;
-/// The wait `card line-lease` uses without `--wait-secs`, in seconds.
+/// The `--wait-secs` `card line-lease` assumes without the option, in seconds (not used).
 pub const DEFAULT_LEASE_WAIT_SECS: u64 = 60;
 
 /// `card line-lease C-n --path P… [--wait-secs N] -- COMMAND…`: a short lease of a shared file in
-/// which a card needs one line. The paths the reservation does not hold are added (retried every
-/// quarter second while another card's reservation covers them, up to `wait_secs`; then the call
-/// is refused naming that card and writes nothing), `command` runs with its standard output sent
+/// which a card needs one line. The paths the reservation does not hold are added at once (another
+/// card's reservation of them is no reason to wait or refuse), `command` runs with its standard output sent
 /// to standard error (the answer stays one JSON envelope), and the added paths are given back
 /// whatever the command's status was. A command that exits non-zero or cannot start is refused
 /// with its status named, after the paths were given back.
@@ -637,7 +640,7 @@ pub fn line_lease(
     command: &[String],
 ) -> Result<Value> {
     use std::process::{Command, Stdio};
-    use std::time::{Duration, Instant};
+    use std::time::Instant;
     let card_id = card_id("line-lease", reference)?;
     let paths = checked_scope("line-lease", paths)?;
     if paths.is_empty() {
@@ -654,18 +657,10 @@ pub fn line_lease(
     }
     let started = Instant::now();
     let (id, mut ledger) = open_for_write(project, home)?;
-    let leased = loop {
-        match scope_return::lease_take(&mut ledger, card_id, holder, generation, &paths) {
-            Ok(leased) => break leased,
-            Err(scope_return::LeaseError::Overlap(text)) => {
-                if started.elapsed() >= Duration::from_secs(wait) {
-                    return Err(format!("{text}; waited {wait} s for it and wrote nothing"));
-                }
-                std::thread::sleep(Duration::from_millis(250));
-            }
-            Err(other) => return Err(other.to_string()),
-        }
-    };
+    // Another card's reservation of the same path no longer makes a lease wait or refuse
+    // (SPEC-20261125-card-no-file-locks); `--wait-secs` stays accepted and is not needed.
+    let leased = scope_return::lease_take(&mut ledger, card_id, holder, generation, &paths)
+        .map_err(|e| e.to_string())?;
     let waited_ms = started.elapsed().as_millis() as i64;
     // No handle is kept while the command runs: it may take a while and others write the ledger.
     drop(ledger);
@@ -1173,9 +1168,27 @@ pub fn check(
         .map_err(|e| e.to_string())?
         .ok_or("reservation conflict in card: the card has no reservation")?;
     let mut covered = Vec::with_capacity(paths.len());
+    let mut overlaps: Vec<Value> = Vec::new();
+    let now: i64 = ledger
+        .conn()
+        .query_row("SELECT unixepoch()", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
     for path in paths {
         match workflow::covering_pattern(&held, path) {
-            Some(pattern) => covered.push(json!({"path": path, "pattern": pattern})),
+            Some(pattern) => {
+                covered.push(json!({"path": path, "pattern": pattern}));
+                // Another card's reservation of the same path allows nothing less
+                // (SPEC-20261125-card-no-file-locks): it is named so the writer can plan the merge.
+                for (other, theirs, holder) in
+                    reservation::overlaps_on_path(ledger.conn(), now, card_id, path)
+                        .map_err(|e| e.to_string())?
+                {
+                    overlaps.push(json!({
+                        "path": path, "card": input::card_name(other),
+                        "pattern": theirs, "holder": holder,
+                    }));
+                }
+            }
             None => {
                 let mut refusal = format!(
                     "reservation conflict in write scope: `{}` is not under what C-{card_id} reserved ({})",
@@ -1200,7 +1213,7 @@ pub fn check(
         "name": input::card_name(card_id), "card_id": card_id,
         "holder": held.holder, "generation": held.generation,
         "lease_until": held.lease_until, "write_scope": held.write_scope,
-        "allowed": true, "paths": covered, "writes": false,
+        "allowed": true, "paths": covered, "overlaps": overlaps, "writes": false,
     }))
 }
 

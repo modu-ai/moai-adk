@@ -333,29 +333,36 @@ fn a_card_in_review_can_be_widened_too() {
 }
 
 #[test]
-fn a_pattern_another_card_holds_is_refused_by_name() {
+fn a_pattern_another_card_holds_is_made_and_reported_by_name() {
     let w = world();
     let a = w.held(S_A, "a", &["apps/bo/"]);
     let b = w.held(S_B, "b", &["apps/web/"]);
     assert_eq!((a.as_str(), b.as_str()), ("C-1", "C-2"));
-    let before = w.dump();
-    for wanted in [
-        &["apps/bo/", "apps/web/"][..],
-        &["apps/bo/", "apps/web/page.ts"][..],
-    ] {
-        let (kind, message) = refusal(&w.widen(&a, wanted, Some(WHY)));
-        assert_eq!(kind, "conflict", "{message}");
-        assert!(message.contains("C-2"), "names the other card: {message}");
-        assert_eq!(w.dump(), before, "{wanted:?}: nothing was written");
-    }
-    // Once the other card gives the path back, the same request goes through.
-    result(&w.card(Some(S_B), &["release", &b, "--generation", "1"]));
-    let done = result(&w.widen(&a, &["apps/bo/", "apps/web/"], Some(WHY)));
+    // SPEC-20261125-card-no-file-locks: the widening is made and the answer names the other card.
+    let done = result(&w.widen(&a, &["apps/bo/", "apps/web/page.ts"], Some(WHY)));
     assert_eq!(
         done["write_scope"],
-        json!(["apps/bo/", "apps/web/"]),
+        json!(["apps/bo/", "apps/web/page.ts"]),
         "{done}"
     );
+    let overlaps = done["overlaps"].as_array().unwrap();
+    assert_eq!(overlaps.len(), 1, "{done}");
+    assert_eq!(overlaps[0]["card"], json!("C-2"), "{done}");
+    assert_eq!(overlaps[0]["mine"], json!("apps/web/page.ts"), "{done}");
+    assert_eq!(overlaps[0]["theirs"], json!("apps/web/"), "{done}");
+    assert_eq!(
+        w.patterns(2),
+        vec!["apps/web/"],
+        "the other card is left alone"
+    );
+    // A second widening over the whole folder is made too, and the other card still holds it.
+    let done = result(&w.widen(
+        &a,
+        &["apps/bo/", "apps/web/", "apps/web/page.ts"],
+        Some(WHY),
+    ));
+    assert_eq!(done["added"], json!(["apps/web/"]), "{done}");
+    assert_eq!(w.patterns(2), vec!["apps/web/"]);
 }
 
 #[test]
@@ -469,10 +476,11 @@ fn a_card_nobody_holds_keeps_the_old_scope_rules() {
     assert_eq!(done["write_scope"], json!(["tests/"]), "{done}");
 }
 
-/// Two lanes widen toward the same path at the same moment: the ledger serializes the writes,
-/// so exactly one wins and the other is refused by the winner's card name.
+/// Two lanes widen toward the same path at the same moment: the ledger serializes the writes
+/// and, with no file lock between cards (SPEC-20261125-card-no-file-locks), both are made; the
+/// one that came second names the first in `overlaps`.
 #[test]
-fn two_widenings_toward_one_path_have_one_winner() {
+fn two_widenings_toward_one_path_are_both_made_and_the_second_names_the_first() {
     let w = world();
     let a = w.held(S_A, "a", &["apps/bo/"]);
     let b = w.held(S_B, "b", &["apps/web/"]);
@@ -493,29 +501,25 @@ fn two_widenings_toward_one_path_have_one_winner() {
         first.wait_with_output().unwrap(),
         second.wait_with_output().unwrap(),
     ];
-    let won: Vec<&Output> = outcomes
+    let answers: Vec<Value> = outcomes.iter().map(result).collect();
+    // Exactly one of the two saw the other already in place, and names it.
+    let named: Vec<&Value> = answers
         .iter()
-        .filter(|o| o.status.code() == Some(0))
+        .filter(|a| !a["overlaps"].as_array().unwrap().is_empty())
         .collect();
-    let lost: Vec<&Output> = outcomes
-        .iter()
-        .filter(|o| o.status.code() == Some(1))
-        .collect();
-    assert_eq!((won.len(), lost.len()), (1, 1), "{outcomes:?}");
-    let (kind, message) = refusal(lost[0]);
-    assert_eq!(kind, "conflict", "{message}");
-    assert!(
-        message.contains("C-1") || message.contains("C-2"),
-        "names the winner: {message}"
-    );
+    assert!(named.len() <= 1, "{answers:?}");
+    for a in &named {
+        let other = a["overlaps"][0]["card"].as_str().unwrap();
+        assert!(other == "C-1" || other == "C-2", "{a}");
+    }
     let holders = w.rows(
         "SELECT r.card_id FROM reservation_scope s JOIN reservation r \
          ON r.reservation_id = s.reservation_id WHERE s.pattern = 'shared/'",
     );
     assert_eq!(
         holders.len(),
-        1,
-        "one reservation holds shared/: {holders:?}"
+        2,
+        "both reservations hold shared/: {holders:?}"
     );
 }
 
