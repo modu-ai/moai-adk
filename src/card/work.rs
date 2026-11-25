@@ -182,7 +182,14 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
     // The limit of cards in work and in review (SPEC-20261125-landing-moves-checkout REQ-4): at
     // it no card is offered to take; the cards that wait for an audit are named instead.
     let wip = wip_limit::read(project, ledger.conn())?;
-    let audit = wip_limit::audit_needed(ledger.conn(), holder)?;
+    // A registry that cannot be read means the limit cannot be checked: `card take` refuses and
+    // `card next` names no card either, a card waiting for an audit included
+    // (SPEC-20261125-wip-limit-next-registry-error REQ-1).
+    let audit = if wip.registry_error.is_some() {
+        Vec::new()
+    } else {
+        wip_limit::audit_needed(ledger.conn(), holder)?
+    };
     // The card to work on now: one this session already holds, else the first it could take, at
     // the limit the first card that waits for an audit.
     let (next, next_is) = match (found.mine.first(), found.ready.first()) {

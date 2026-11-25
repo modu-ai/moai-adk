@@ -663,6 +663,28 @@ fn lock_ac4_a_registry_folder_that_cannot_be_read_stops_the_take() {
     result(&w.take(&sid(1), &card));
 }
 
+/// SPEC-20261125-wip-limit-next-registry-error REQ-1: a registry folder that cannot be read
+/// leaves `card next` with no card at all, a card that waits for an audit included, because the
+/// answer says the limit is reached and `card take` refuses in the same case.
+#[test]
+fn registry_error_next_names_no_card_not_even_one_that_waits_for_an_audit() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    let held = w.working(&sid(1), 1);
+    result(&w.card(Some(&sid(1)), &["review", &held[0], "--generation", "1"]));
+    let dir = sessions_dir(&w);
+    let elsewhere = w.home.path().join("elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    fs::remove_dir_all(&dir).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, &dir).unwrap();
+
+    let got = result(&w.next(&sid(3)));
+    assert!(got["wip"]["registry_error"].is_string(), "{got}");
+    assert_eq!(got["next_is"], json!("limit"), "{got}");
+    assert_eq!(got["next"], Value::Null, "{got}");
+    assert_eq!(got["audit_needed"], json!([]), "{got}");
+}
+
 /// REQ-5, REQ-6 (AC-5): one malformed entry beside two live lanes leaves the lane count at two,
 /// does not switch the limit off, and is listed as unreadable in the refusal and in `card next`.
 #[test]
