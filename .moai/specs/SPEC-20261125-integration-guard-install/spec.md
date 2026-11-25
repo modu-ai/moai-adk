@@ -1,11 +1,10 @@
 ---
 id: SPEC-20261125-integration-guard-install
 title: "the integration branch guard hook is installed by the managed git-hook installer, a session start notices a missing hook, and card finish asks the same verdict check as the landing"
-status: approved
-revision: 2
+status: draft
+revision: 3
 created: 2026-11-25
 branch: spec/20261125-integration-guard-install
-approval: {by: user, at: 2026-11-25, basis: "user's pick 'approve (Recommended)' to the leader's selection question about revision 2, relayed in leader note 8943 of this card (the leader read the SPEC with spec show at 2026-11-25T03:52:34Z), approving revision 2 at head 082a20e849; recorded by the lane, not approved by it", digest: "sha256:3393eb77b7805b892cbf12e5a3fba1d8d9a42c57d84db6edf7c969a8ff0a5461"}
 ---
 
 # the integration branch guard hook is installed by the managed git-hook installer, a session start notices a missing hook, and card finish asks the same verdict check as the landing
@@ -24,7 +23,7 @@ approval: {by: user, at: 2026-11-25, basis: "user's pick 'approve (Recommended)'
 
 이 SPEC 은 세 가지를 해요. (a) 설치기가 `reference-transaction` 을 세 번째 관리 훅으로 설치하고 기록을 써요. (b) 세션 시작이 훅이 없으면 한 줄로 알려요. (c) `card finish` 가 착지와 같은 판정 검사를 해요. 이 저장소에 실제로 설치하는 일은 사용자의 선택이에요(Decisions D-2).
 
-판 1(head fbfc58557b, digest `sha256:53688f93f71b697d555ff94269323ce9d1e25c0a2070f3df8287eb7e11386f57`)은 아래 Interview 의 두 답으로 승인됐고(리더 노트 8937), 판 2 는 구현 중에 읽은 사실 셋을 고쳐요: (1) 기존 설치기는 지울 Go 훅이 있을 때만 빈 이름을 설치해서, 세 번째 훅이 훅 없는 저장소에는 설치되지 않아요. 설치 조건을 REQ-1 에 적어요(D-6). (2) `tests/git_hooks_cli.rs` 가 `src/git_hooks/mod.rs` 를 경로로 컴파일해서 이 파일은 프로필을 읽을 수 없고, 미리보기 동사 파일 `src/ops/git_hooks_plan.rs` 도 같은 값을 넘겨야 해요(쓰기 목록에 더함). (3) 카드 테스트는 `tests/card/main.rs` 한 묶음(`--test card`)이라 AC-8 의 검증 명령 `--test card_guard_cli …` 는 없는 대상이었어요: AC-8 을 `--test card -- card_guard_cli card_land_cli card_finish_cli` 로 고치고 나머지를 AC-9 로 나눠요. 방향과 D-1(선택지 a)은 그대로예요. 판 2 의 승인은 다시 받아요.
+판 1(head fbfc58557b, digest `sha256:53688f93f71b697d555ff94269323ce9d1e25c0a2070f3df8287eb7e11386f57`)은 아래 Interview 의 두 답으로 승인됐고(리더 노트 8937), 판 2 는 구현 중에 읽은 사실 셋을 고쳐요: (1) 기존 설치기는 지울 Go 훅이 있을 때만 빈 이름을 설치해서, 세 번째 훅이 훅 없는 저장소에는 설치되지 않아요. 설치 조건을 REQ-1 에 적어요(D-6). (2) `tests/git_hooks_cli.rs` 가 `src/git_hooks/mod.rs` 를 경로로 컴파일해서 이 파일은 프로필을 읽을 수 없고, 미리보기 동사 파일 `src/ops/git_hooks_plan.rs` 도 같은 값을 넘겨야 해요(쓰기 목록에 더함). (3) 카드 테스트는 `tests/card/main.rs` 한 묶음(`--test card`)이라 AC-8 의 검증 명령 `--test card_guard_cli …` 는 없는 대상이었어요: AC-8 을 `--test card -- card_guard_cli card_land_cli card_finish_cli` 로 고치고 나머지를 AC-9 로 나눠요. 방향과 D-1(선택지 a)은 그대로예요. 판 2 의 승인은 다시 받아요. 판 3 은 새 테스트 파일의 이름만 바꿔요: `tests/card_finish_verdict_cli.rs` 는 `card` 영역(`tests/card/main.rs` 가 있는 영역)이라 `tests/card/` 안에 있어야 하는데 그 `main.rs` 를 다른 카드가 쥐고 있어서, 영역 낱말이 다른 `tests/gate_finish_verdict_cli.rs` 로 바꿔요(리더 결정, 카드 노트 9002). 쓰기 범위와 AC-5·AC-6 의 검증 줄의 파일 이름만 바뀌고 방향과 D-1~D-6 은 그대로예요. 판 3 의 승인은 다시 받아요.
 
 ## Interview
 
@@ -57,8 +56,8 @@ approval: {by: user, at: 2026-11-25, basis: "user's pick 'approve (Recommended)'
 - AC-2 (REQ-2): in a temporary primary worktree with a profile that names `NeXT` the apply writes `refs/heads/NeXT` as the record and the answer says `written`, a second apply leaves the record and says `present`, a linked worktree and a profile with no branch say `not_written` with the reason, and the record is written after the hook · verify: `cargo test --locked --offline --test integration_guard_install ac2_`
 - AC-3 (REQ-3): in a temporary repository set up only through `git-hooks-plan` and `git-hooks-apply` (the dangerous path itself, not a hand-written hook), `git update-ref`, `git branch -f`, `git branch -D`, `git merge --ff-only` in the worktree that has the branch checked out and `git branch -m` leave the branch where it was and exit non-zero, and a `card land` of an audited head moves it · verify: `cargo test --locked --offline --test integration_guard_install ac3_`
 - AC-4 (REQ-4): the session-start answer for a temporary repository with a profile that names `NeXT` carries one extra line when the hook is absent, when the hook is not executable and when the record is absent, carries none when both are present or when the profile names no branch, and starts no program · verify: `cargo test --locked --offline --test hook_session_start_cli guard_line_`
-- AC-5 (REQ-5): `card finish --head` of a landed code card with no verdict record, with a verdict for another head and with a FAIL refuses with `no_verdict`, `verdict_other_head` and `verdict_fail`, leaves the card and the ledger as they were in observe and enforce mode, closes on a PASS recorded by a session other than the lander, and closes a head landed by `card land` on the verdict of its start row · verify: `cargo test --locked --offline --test card_finish_verdict_cli ac5_`
-- AC-6 (REQ-6): `card finish` with `--evidence-report`, `--evidence-note`, a merged pull request link on a profile with no integration branch and a research card closes as before with no verdict read · verify: `cargo test --locked --offline --test card_finish_verdict_cli ac6_`
+- AC-5 (REQ-5): `card finish --head` of a landed code card with no verdict record, with a verdict for another head and with a FAIL refuses with `no_verdict`, `verdict_other_head` and `verdict_fail`, leaves the card and the ledger as they were in observe and enforce mode, closes on a PASS recorded by a session other than the lander, and closes a head landed by `card land` on the verdict of its start row · verify: `cargo test --locked --offline --test gate_finish_verdict_cli ac5_`
+- AC-6 (REQ-6): `card finish` with `--evidence-report`, `--evidence-note`, a merged pull request link on a profile with no integration branch and a research card closes as before with no verdict read · verify: `cargo test --locked --offline --test gate_finish_verdict_cli ac6_`
 - AC-7 (REQ-7): the three operations documents name the third hook, the record state words, the session-start line and the finish refusal codes · verify: `cargo test --locked --offline --test integration_guard_install ac7_`
 - AC-8 (REQ-3, REQ-5): the existing guard, landing and finish tests of the card test target still pass, and every test that closed a landed code card with `card finish --head` before this SPEC passes after the fixture of that test records the verdict it needs, none by a weaker assertion · verify: `cargo test --locked --offline --test card -- card_guard_cli card_land_cli card_finish_cli`
 - AC-9 (REQ-1, REQ-4, REQ-5): the existing git-hook, update-layer, session-start and cleanup-outbox tests still pass · verify: `cargo test --locked --offline --test git_hooks_cli --test update_git_hooks_cli --test update_tux_git_hooks --test hook_session_start_cli --test card_cleanup_outbox_cli`
@@ -68,14 +67,14 @@ approval: {by: user, at: 2026-11-25, basis: "user's pick 'approve (Recommended)'
 - write: `.moai/specs/SPEC-20261125-integration-guard-install/spec.md`
 - write: `install/git-hooks/reference-transaction`, `src/git_hooks/mod.rs`, `src/git_hooks/update.rs`, `src/ops/git_hooks_plan.rs`, `src/ops/git_hooks_apply.rs`
 - write: `src/card/guard.rs`, `src/card/finish.rs`, `src/hook_session_start.rs`
-- write: `tests/integration_guard_install.rs`, `tests/card_finish_verdict_cli.rs`, `tests/git_hooks_cli.rs`, `tests/hook_session_start_cli.rs`
+- write: `tests/integration_guard_install.rs`, `tests/gate_finish_verdict_cli.rs`, `tests/git_hooks_cli.rs`, `tests/hook_session_start_cli.rs`
 - write: `tests/card/card_finish_cli.rs`, `tests/card_cleanup_outbox_cli.rs`- write: `docs/design-review/appendix/operations/git_hooks_plan.md`, `docs/design-review/appendix/operations/git_hooks_apply.md`
 - read-only: `src/card/land.rs`, `src/card/land/check.rs`, `src/card/landed.rs`, `src/profile.rs`
 - forbidden: the `.git/hooks` and `.git/moai` folders of this repository, `.moai/project.yaml`, `CLAUDE.md`
 
 ## Plan
 
-1. 테스트 먼저(RED): `tests/integration_guard_install.rs` (AC-1·2·3·7, 실제 git 과 임시 저장소, 설치는 `git-hooks-apply` 로만), `tests/card_finish_verdict_cli.rs` (AC-5·6), `tests/hook_session_start_cli.rs` 의 `guard_line_` 시험 (AC-4). 각각 변경 전 트리에서 실패하는 것을 먼저 읽어요.
+1. 테스트 먼저(RED): `tests/integration_guard_install.rs` (AC-1·2·3·7, 실제 git 과 임시 저장소, 설치는 `git-hooks-apply` 로만), `tests/gate_finish_verdict_cli.rs` (AC-5·6), `tests/hook_session_start_cli.rs` 의 `guard_line_` 시험 (AC-4). 각각 변경 전 트리에서 실패하는 것을 먼저 읽어요.
 2. `install/git-hooks/reference-transaction`: `hook_text()` 의 현재 바이트를 그대로 옮긴 파일. `src/card/guard.rs` 의 `hook_text()` 는 같은 파일을 `include_str!` 로 돌려줘요(원본이 하나).
 3. `src/git_hooks/mod.rs`: `MANAGED` 가 셋, `text_of` 가 세 이름을 알아요. 이 파일은 `tests/git_hooks_cli.rs` 가 경로로 컴파일해서 `crate::` 를 쓸 수 없으므로, 계획·적용에 "이 저장소에서 보호 훅을 설치할지"를 불리언으로 받는 짝 함수(`plan_with_guard`, `apply_with_guard`)를 더하고 기존 `plan`·`apply`·`apply_with_pause` 의 모양은 그대로 둬요(불리언 거짓). 세 번째 이름은 불리언이 참일 때만 설치하고, Go 훅을 지우는 실행이 "빈 이름을 함께 설치"하는 목록에도 그 불리언이 거짓이면 넣지 않아요. `tests/git_hooks_cli.rs` 의 `MANAGED` 고정 시험을 셋으로 갱신해요.
 4. `src/git_hooks/update.rs`, `src/ops/git_hooks_plan.rs`, `src/ops/git_hooks_apply.rs`: 불리언은 프로필이 통합 브랜치를 가리키거나 기록이 이미 있을 때 참이에요(`update.rs` 의 한 함수가 계산하고 세 곳이 같은 값을 써서 미리보기와 적용의 토큰이 어긋나지 않아요). 적용이 끝난 뒤 `guard::protected(project, true)` 로 기록을 쓰고 답에 `guard: {record: written|present|not_written, why}` 를 더해요.
