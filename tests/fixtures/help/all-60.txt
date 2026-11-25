@@ -300,6 +300,8 @@ Lane and leader
                           the audited head
   audit-gate              Decide whether a PR head has the
                           audit its tier needs
+  release-audit-summary   Gather a release range's verdicts
+                          into one PR comment
   trailers                Print the identity trailers for a
                           commit
   trailer-check           Report commits with missing or

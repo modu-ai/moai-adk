@@ -223,6 +223,7 @@ pub const GROUPS: &[Group] = &[
             ("audit-claim", false),
             ("audit-verdict-line", false),
             ("audit-gate", false),
+            ("release-audit-summary", false),
             ("trailers", false),
             ("trailer-check", false),
             ("bundle", false),
@@ -585,6 +586,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     (
         "audit-gate",
         &["audit-gate < input.json", "audit-gate --require-pass < input.json"],
+    ),
+    (
+        "release-audit-summary",
+        &[
+            "release-audit-summary . --base <base-sha> --head <head-sha>",
+            "release-audit-summary . --base <base-sha> --head <head-sha> --post --pr 3300 --repo modu-ai/moai-adk --plan-digest <digest> --permission-reference <ref>",
+        ],
     ),
     ("audit-clone-plan", &["audit-clone-plan --pr 2824 --head <sha> --head-branch <head-branch> --base-branch <base-branch> ."]),
     ("audit-slot", &["audit-slot prep auto --head <sha> --holder agent-2 --lane .claude/worktrees/lane-01", "audit-slot done audit-1 --discard --holder agent-2"]),
