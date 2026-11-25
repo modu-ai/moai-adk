@@ -82,6 +82,18 @@ struct CatalogFile {
     /// Code file extensions and the language each one means (SPEC-20261125).
     #[serde(default)]
     code_extensions: Vec<CodeRow>,
+    /// Database dependency names and the kind each one means (SPEC-20261125).
+    #[serde(default)]
+    database_dependencies: Vec<DbRow>,
+}
+
+/// One database kind and the dependency names that mean it (compared lower-case).
+#[derive(Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DbRow {
+    kind: String,
+    #[serde(default)]
+    dependencies: Vec<String>,
 }
 
 /// One language and the code file extensions that mean it, without a dot (`rs`, not `.rs`).
@@ -113,6 +125,7 @@ pub(crate) struct Catalog {
     rows: Vec<CatalogRow>,
     skip_dirs: Vec<String>,
     code_rows: Vec<CodeRow>,
+    db_rows: Vec<DbRow>,
 }
 
 /// What the project's extension file did, reported beside `detected` (`manifest_catalog`).
@@ -156,8 +169,38 @@ fn catalog_file_valid(file: &CatalogFile) -> Result<()> {
     if file.manifests.len() > MAX_ITEMS
         || file.skip_dirs.len() > MAX_ITEMS
         || file.code_extensions.len() > MAX_ITEMS
+        || file.database_dependencies.len() > MAX_ITEMS
     {
         return Err(format!("more than {MAX_ITEMS} rows or folders"));
+    }
+    for row in &file.database_dependencies {
+        let dependencies_ok = !row.dependencies.is_empty()
+            && row.dependencies.len() <= MAX_ITEMS
+            && row.dependencies.iter().all(|d| dependency_name(d));
+        if !recordable(&row.kind) || !dependencies_ok {
+            return Err(
+                "a database dependency row holds a value that cannot be used, or names no dependency"
+                    .into(),
+            );
+        }
+    }
+    // One dependency means one kind in a file: a second kind for it would win or lose by the
+    // order of the rows, so the file is refused and the dependency is named. The same kind again
+    // is no conflict. (Every name is valid by now, so it is safe to quote.)
+    let mut owned: Vec<(&str, &str)> = Vec::new();
+    for row in &file.database_dependencies {
+        for dep in &row.dependencies {
+            match owned.iter().find(|(d, _)| *d == dep.as_str()) {
+                Some((_, kind)) if *kind != row.kind.as_str() => {
+                    return Err(format!(
+                        "the dependency {dep} is claimed by two kinds: {kind} and {}",
+                        row.kind
+                    ));
+                }
+                Some(_) => {}
+                None => owned.push((dep, &row.kind)),
+            }
+        }
     }
     for row in &file.code_extensions {
         let extensions_ok = !row.extensions.is_empty()
@@ -245,6 +288,7 @@ fn shipped() -> &'static Catalog {
                 rows: f.manifests,
                 skip_dirs: f.skip_dirs,
                 code_rows: f.code_extensions,
+                db_rows: f.database_dependencies,
             })
             .unwrap_or_default()
     })
@@ -271,7 +315,9 @@ impl Catalog {
                     .and_then(|file| catalog_file_valid(&file).map(|_| file))
                 {
                     Ok(file) => {
-                        let rows = file.manifests.len() + file.code_extensions.len();
+                        let rows = file.manifests.len()
+                            + file.code_extensions.len()
+                            + file.database_dependencies.len();
                         catalog.add_extension(file);
                         ExtensionReport {
                             extension: "read",
@@ -312,6 +358,8 @@ impl Catalog {
         // a project row never changes the language of a shipped extension (a row that holds only
         // shipped extensions is kept and never found).
         self.code_rows.extend(file.code_extensions);
+        // The same holds for a dependency: shipped rows first, the first row that names it wins.
+        self.db_rows.extend(file.database_dependencies);
         for dir in file.skip_dirs {
             if !self.skip_dirs.contains(&dir) {
                 self.skip_dirs.push(dir);
@@ -325,6 +373,14 @@ impl Catalog {
             .iter()
             .find(|r| r.extensions.iter().any(|e| e == ext))
             .map(|r| r.language.as_str())
+    }
+
+    /// The database kind a dependency name (compared as written) means.
+    fn database_for_dependency(&self, dep: &str) -> Option<&str> {
+        self.db_rows
+            .iter()
+            .find(|r| r.dependencies.iter().any(|d| d == dep))
+            .map(|r| r.kind.as_str())
     }
 
     /// The row a file name belongs to: an exact name first, then a suffix.
@@ -395,32 +451,6 @@ const LSP_PLUGINS: &[(&str, &str, &str, &str)] = &[
     ),
 ];
 
-/// Dependency name → database kind (exact names, compared lower-case).
-const DB_DEPENDENCIES: &[(&str, &str)] = &[
-    ("postgres", "postgres"),
-    ("tokio-postgres", "postgres"),
-    ("pg", "postgres"),
-    ("psycopg", "postgres"),
-    ("psycopg2", "postgres"),
-    ("psycopg2-binary", "postgres"),
-    ("asyncpg", "postgres"),
-    ("github.com/jackc/pgx/v5", "postgres"),
-    ("github.com/lib/pq", "postgres"),
-    ("mysql", "mysql"),
-    ("mysql2", "mysql"),
-    ("pymysql", "mysql"),
-    ("mysqlclient", "mysql"),
-    ("github.com/go-sql-driver/mysql", "mysql"),
-    ("rusqlite", "sqlite"),
-    ("sqlite3", "sqlite"),
-    ("better-sqlite3", "sqlite"),
-    ("mongodb", "mongodb"),
-    ("pymongo", "mongodb"),
-    ("mongoose", "mongodb"),
-    ("redis", "redis"),
-    ("ioredis", "redis"),
-];
-
 /// Walk bounds: folder depth below the root and directory entries looked at.
 pub const MAX_DEPTH: usize = 3;
 pub const MAX_ENTRIES: usize = 5000;
@@ -475,6 +505,20 @@ fn recordable(name: &str) -> bool {
         && name
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'@'))
+}
+
+/// A dependency name a database row may hold: lower-case letters, digits and `- _ . @ /`, at
+/// most 120 bytes, with at least one letter or digit. It is only compared, never recorded, so
+/// it may hold the `/` and `.` of a module path (`github.com/lib/pq`) that [`recordable`] refuses.
+fn dependency_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 120
+        && name.bytes().any(|b| b.is_ascii_alphanumeric())
+        && name.bytes().all(|b| {
+            b.is_ascii_lowercase()
+                || b.is_ascii_digit()
+                || matches!(b, b'-' | b'_' | b'.' | b'@' | b'/')
+        })
 }
 
 /// A path `detected.manifests` may hold (C-61): relative, `/`-separated, every component
@@ -1067,10 +1111,10 @@ pub(crate) fn detect_full(root: &Path) -> Result<Detection> {
         })
         .collect();
     let deps = dependency_names(root);
-    let mut databases: BTreeSet<String> = DB_DEPENDENCIES
+    let mut databases: BTreeSet<String> = deps
         .iter()
-        .filter(|(dep, _)| deps.contains(*dep))
-        .map(|(_, kind)| (*kind).to_string())
+        .filter_map(|d| catalog.database_for_dependency(d))
+        .map(str::to_string)
         .collect();
     databases.extend(prisma_database(root));
     let detected = Detected {
@@ -1487,8 +1531,12 @@ mod tests {
                 "{lang}"
             );
         }
-        for (_, k) in DB_DEPENDENCIES {
-            assert!(recordable(k));
+        assert!(!shipped().db_rows.is_empty());
+        for row in &shipped().db_rows {
+            assert!(recordable(&row.kind), "{}", row.kind);
+            for dep in &row.dependencies {
+                assert!(dependency_name(dep), "{dep}");
+            }
         }
     }
 
