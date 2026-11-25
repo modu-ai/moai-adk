@@ -44,7 +44,7 @@ created: 2026-11-25
 - AC-2 (REQ-2): a plan digest from before a file changed, a made-up digest and a malformed permission reference each leave the whole tree identical before and after the apply · verify: `cargo test --test project_update_go_residue_cli`
 - AC-3 (REQ-3): a manifest that names `../outside/x.md`, an absolute path to a file outside the project, a path through a linked folder and a linked file never makes the survey or the apply read, move or write that outside file (its sha256 is the same before and after), and a forged receipt that names a path outside the project is refused by the revert before it moves anything · verify: `cargo test --test project_update_go_residue_cli`
 - AC-4 (REQ-4, REQ-5): a project with enough proven files for a receipt above 256 KiB applies to `committed` and reverts, and with the backup area made unwritable the apply moves no file (the tree is identical before and after) · verify: `cargo test --test project_update_go_residue_cli`
-- AC-5 (REQ-6, REQ-7): a destination that already exists makes the apply stop at that file with the receipt still listing every planned move, and the revert then restores the files that did move · verify: `cargo test --test project_update_go_residue_cli`
+- AC-5 (REQ-6, REQ-7): a destination that already exists makes the apply stop at that file with the receipt still listing every planned move, and the revert then restores the files that did move · verify: `cargo test --lib go_residue_apply`
 - AC-6 (REQ-8, REQ-9): after a committed apply the revert leaves every file byte for byte as it was before the apply; a new file at an original path, or a changed backup copy, makes only that item `conflict` and touches neither side · verify: `cargo test --test project_update_go_residue_cli`
 - AC-7 (REQ-12): on a git project where the moved files are tracked, the apply result names the tracked count and the checkout warning · verify: `cargo test --test project_update_go_residue_cli`
 
@@ -80,3 +80,41 @@ created: 2026-11-25
 | D-2 | 별도 plan 명령 없이 project-update-plan의 go-residue 단계가 계획이에요 | 리더 디스패치와 계획 노트의 기본값, 명령 수를 줄여요 | 나중에 plan 명령을 더해도 단계는 그대로예요 |
 | D-3 | 되돌리기는 `--receipt <UTC>`를 받고 영수증 상태가 아니라 디스크의 실제 상태로 판단해요 | 조사 보고서 7.2의 6단계, 중간에 멈춘 적용도 되돌려야 해요 | 영수증 파일은 그대로 남아요 |
 | D-4 | 새 영수증은 `go-residue-receipt.json`이에요 | `state_root`가 `go-state-receipt.json`만 읽어서 이 영수증이 분류기와 go-state 되돌리기에 닿지 않아요 | 이름만 바꾸면 돼요 |
+
+## Result
+
+`status: draft`예요. 승인은 이 파일에 기록하지 않았어요(리더의 위임 승인은 카드 노트에 있어요). 구현 head는 `12f50d2d981e79bb556f88331513be66844729b0`이고, 그 뒤의 문서 커밋 하나가 이 Result예요. base는 NeXT의 `e946ae8102`에 S1 수리 head `1aaccb74e1`을 한 번 합친 `70aa4a907d`예요.
+
+한 일: `src/go_residue_apply.rs`(새 파일)에 후보 선별, 계획 digest, 적용, 되돌리기, 영수증을 넣었어요. 하나뿐인 경로 검사 `go_residue::contained`와 `secret_path`를 조사, 적용, 되돌리기가 같이 써요. `go_state.rs`는 helper 가시성만 `pub(crate)`로 바꿨어요(동작 그대로). `go-residue` 단계는 `go_same`/`go_changed`가 남았을 때만 `needs_decision`이고 `plan_digest`와 `--bundle proven` 적용 명령을 내요. 앞선 백업 단계(go-settings, go-state, reports)에 적용이 남아 있으면 명령을 내지 않아요(그 이동이 이 digest를 낡게 만들어요). `src/main.rs`, `src/lib.rs`, `src/help.rs`와 도움말 골든 8개에는 명령 행만 더했어요.
+
+보안 검토가 짚은 것: 매니페스트가 이름 붙인 전체 경로를 파일 이름용 비밀 검사에 넘겨서 `.moai/.env`, `.npmrc`, `credentials*`가 걸러지지 않았어요(S1부터 있던 결함이고 REQ-11을 깼어요). 경로의 모든 성분을 검사하도록 고쳤고, 조사, 후보, 적용 가드, 되돌리기가 모두 같은 `secret_path`를 써요. 테스트 `a_manifest_that_names_a_secret_shaped_path_never_moves_it`가 덮어요.
+
+Verification (이 세션에서 관찰한 실행):
+
+- RED: `cargo nextest run --locked --no-fail-fast --test project_update_go_residue_cli` → 13 tests, 4 passed, 9 failed (새 테스트 9개가 명령이 없어서 실패).
+- 구현 뒤 같은 명령 → 13 passed. 비밀 경로 수정 뒤 → 14 passed, 단위 테스트 `go_residue_apply::tests` 2 passed.
+- `help_layout` 11 passed(골든은 `MOAI_HELP_GOLDEN_WRITE`로 다시 만들고 다시 비교했어요).
+- 첫 `check affected --card` 시도는 `ledger` 단계에서 FAIL: 상태 폴더 리터럴 스캔이 테스트 파일의 `.moai` 철자 58곳(기준 18)을 짚었어요. 허용표를 올리지 않고 매크로 한 곳으로 모아 고쳤고(커밋 `12f50d2d98`), 같은 스캔 2개와 CLI 테스트 14개가 통과했어요.
+- 위험 경로 실제 실행(`target/keziah/danger.sh`, 격리 폴더, 진짜 빌드): 매니페스트가 `../outside/x.md`, 절대 경로, 링크 폴더, 링크 파일, `.moai/.env`를 이름 붙인 프로젝트에서 계획이 `refused_paths: 4`를 내고 바깥 파일과 `.env`를 목록에 올리지 않았어요. 인쇄된 적용 명령이 `a.md` 하나만 옮겼고(`committed`), 바깥 파일 3개와 `.env`의 sha256은 적용 전후 같았어요. 위조 영수증(`../outside/x.md`, 절대 경로, 링크 경로, `.moai/.env`)은 각각 `invalid_input`으로 거절됐고 아무것도 쓰지 않았어요. 진짜 되돌리기는 `a.md`를 바이트 그대로 되살렸어요(`reverted`).
+
+Guard mutants (한 슬롯에서 정확히 한 번씩 편집, 지정 테스트, git으로 복원, 끝난 뒤 트리 깨끗함):
+
+- `guard-mutant: paths_that_leave_the_project_are_never_read_or_moved | go_residue::survey의 contained 검사 | exit 100`
+- `guard-mutant: the_apply_refuses_a_candidate_that_leaves_the_project | apply_chosen의 경로 가드 | exit 100`
+- `guard-mutant: a_forged_receipt_naming_a_path_outside_the_project_is_refused | revert의 receipt 경로 가드 | exit 100`
+- `guard-mutant: a_stale_digest_or_a_rejected_permission_reference_changes_nothing | apply의 plan digest 비교 | exit 100`
+- `guard-mutant: a_manifest_that_names_a_secret_shaped_path_never_moves_it | survey의 secret_path 검사 | exit 100`
+
+추가로 되돌리기의 충돌 판정(`original_there ||` 줄)을 지운 변이도 `a_new_file_or_a_changed_backup_leaves_only_that_item_as_a_conflict`가 죽였어요(exit 100).
+
+Acceptance:
+
+- AC-1 met: `applying_the_proven_bundle_moves_only_the_go_same_files`와 `a_manifest_that_names_a_secret_shaped_path_never_moves_it`가 통과했어요.
+- AC-2 met: `a_stale_digest_or_a_rejected_permission_reference_changes_nothing`와 `only_a_changed_file_can_be_picked_and_one_choice_is_needed`가 통과했어요.
+- AC-3 met: `paths_that_leave_the_project_are_never_read_or_moved`, `a_forged_receipt_naming_a_path_outside_the_project_is_refused`, 단위 테스트 `the_apply_refuses_a_candidate_that_leaves_the_project`가 통과했고 위험 경로 실행이 같은 결과를 보였어요.
+- AC-4 met: `a_receipt_above_256_kib_applies_and_reverts`(영수증 256 KiB 초과, `committed`와 `reverted`)와 `an_unwritable_backup_area_moves_no_file`이 통과했어요.
+- AC-5 met: 단위 테스트 `a_taken_destination_stops_the_apply_and_the_revert_restores_what_moved`가 통과했어요(모듈 안 테스트라서 이 AC의 `verify:` 줄을 `cargo test --lib go_residue_apply`로 고쳤어요; 승인 digest는 `verify:`를 읽지 않아요).
+- AC-6 met: `the_revert_restores_every_byte`와 `a_new_file_or_a_changed_backup_leaves_only_that_item_as_a_conflict`가 통과했어요.
+- AC-7 met: `applying_the_proven_bundle_moves_only_the_go_same_files`가 `tracked_moved: 3`과 checkout 경고 문구를 확인해요.
+
+Not run / 남은 것: clippy와 넓은 테스트 집합은 이 Result의 범위 밖이고 READY 영수증(`check affected --card`)이 맡아요. 되돌리기는 `leftover_folder`와 `go_marker`를 옮기지 않아요(S3, S5의 일). 마무리 커밋 제안은 S6의 일이에요.
