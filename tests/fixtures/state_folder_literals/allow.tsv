@@ -213,6 +213,7 @@ tests/session_check_language_cli.rs	5	0
 tests/session_current_cli.rs	0	2
 tests/session_registry_cli.rs	2	0
 tests/skeleton_language.rs	2	0
+tests/skill_entry_order.rs	0	1
 tests/skill_name_collision.rs	2	0
 tests/skill_references_test.py	1	1
 tests/smoke_harness_test.py	4	0
