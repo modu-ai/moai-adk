@@ -47,17 +47,22 @@ pub const FIRST_INPUT_LEADER: &str = "/moai leader";
 pub const FIRST_INPUT_AGENT: &str = "/moai agent";
 
 /// The English names `-a` picks from, in this order, when `--name` is not given: the session is
-/// called `agent-<name>` (SPEC-20261125-agent-team-session-names D-8, decided 2026-11-25). Adding
-/// to the list is a card of its own.
+/// called `<project name>-agent-<name>` (SPEC-20261125-agent-team-session-names D-8 for the list,
+/// SPEC-20261125-session-names-project-prefix D-1 for the shape, decided 2026-11-25). Adding to
+/// the list is a card of its own.
 pub const AGENT_NAMES: [&str; 24] = [
     "ben", "cara", "dana", "eli", "fay", "gus", "hana", "ivan", "jade", "kai", "lena", "milo",
     "nora", "owen", "pia", "quin", "ruth", "sam", "tess", "uma", "vic", "wren", "xena", "zoe",
 ];
 
-/// The project name of the session `-l` starts (D-9): the `project_id` of the project profile
-/// when it has one, else the name of the checkout folder, in both cases reduced to the registry's
-/// characters (`A-Z a-z 0-9 . _ -`, a letter or digit first) and short enough that `leader-` and
-/// the name fit the registry's 64 characters. A folder outside a git repository uses its own name.
+/// The project name that prefixes the session names `-l` and `-a` give (SPEC-20261125-session-
+/// names-project-prefix D-2, D-3): the `project_id` of the project profile when it is a name a
+/// person chose, else the folder name of the clone's primary checkout (never the folder of a
+/// worktree, whose name changes with every card). A random-form id (`project_id::is_random_form`)
+/// names no project to a person and is not used. The text is reduced to the registry's characters
+/// (`A-Z a-z 0-9 . _ -`, a letter or digit first and last) and cut so that the longest session
+/// name, `<project name>-agent-<longest english name>`, fits the registry's 64 characters. A
+/// folder outside a git repository uses its own name; an empty result is `project`.
 pub fn project_name(dir: &Path) -> String {
     let identity = crate::identity::identity_in(dir, None).ok();
     let root = identity
@@ -65,12 +70,26 @@ pub fn project_name(dir: &Path) -> String {
         .and_then(|id| id["work_tree"].as_str())
         .map(PathBuf::from)
         .unwrap_or_else(|| dir.to_path_buf());
-    let id = crate::project_id::read(&root).ok().flatten();
+    // The primary checkout is the parent of the clone's common `.git` folder; any other layout
+    // (a bare clone, a separate git dir) keeps the folder of the work tree.
+    let primary = identity
+        .as_ref()
+        .and_then(|id| id["clone_anchor"].as_str())
+        .map(PathBuf::from)
+        .filter(|common| common.file_name().is_some_and(|n| n == ".git"))
+        .and_then(|common| common.parent().map(Path::to_path_buf))
+        .unwrap_or_else(|| root.clone());
+    let id = crate::project_id::read(&root)
+        .ok()
+        .flatten()
+        .filter(|id| !crate::project_id::is_random_form(id));
     let raw = id.unwrap_or_else(|| {
-        root.file_name()
+        primary
+            .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default()
     });
+    let is_edge = |c: char| !c.is_ascii_alphanumeric();
     let mut name: String = raw
         .chars()
         .map(|c| {
@@ -81,10 +100,9 @@ pub fn project_name(dir: &Path) -> String {
             }
         })
         .collect();
-    name = name
-        .trim_start_matches(|c: char| !c.is_ascii_alphanumeric())
-        .to_string();
-    name.truncate(crate::lane_registry::MAX_NAME_LEN - "leader-".len());
+    name = name.trim_start_matches(is_edge).to_string();
+    name.truncate(max_project_len());
+    name = name.trim_end_matches(is_edge).to_string();
     if name.is_empty() {
         "project".into()
     } else {
@@ -92,19 +110,32 @@ pub fn project_name(dir: &Path) -> String {
     }
 }
 
-/// `leader-<project name>`, the session name `-l` gives the coordination window.
-pub fn leader_session_name(dir: &Path) -> String {
-    format!("leader-{}", project_name(dir))
+/// The longest project name for which `<project name>-agent-<english name>` still fits the
+/// registry's name length, whichever name of the list is taken.
+fn max_project_len() -> usize {
+    let longest = AGENT_NAMES.iter().map(|n| n.len()).max().unwrap_or(0);
+    crate::lane_registry::MAX_NAME_LEN - "-agent-".len() - longest
 }
 
-/// `agent-<english name>`: the first name of [`AGENT_NAMES`] whose session live lock is not held
-/// and whose registry entry has no running lease (REQ-3). A folder outside a git repository has no
-/// sessions folder to read, so every name is free and the first one is taken. When every name is
-/// taken the answer is one message that names `--name` (REQ-4).
+/// `<project name>-leader`, the session name `-l` gives the coordination window.
+pub fn leader_session_name(dir: &Path) -> String {
+    format!("{}-leader", project_name(dir))
+}
+
+/// `<project name>-agent-`, the start of every lane name of this project.
+pub fn agent_prefix(dir: &Path) -> String {
+    format!("{}-agent-", project_name(dir))
+}
+
+/// `<project name>-agent-<english name>`: the first name of [`AGENT_NAMES`] whose session live
+/// lock is not held and whose registry entry has no running lease (REQ-2, REQ-3). A folder
+/// outside a git repository has no sessions folder to read, so every name is free and the first
+/// one is taken. When every name is taken the answer is one message that names `--name` (REQ-2).
 pub fn pick_agent_name(dir: &Path, now: i64) -> Result<String, String> {
     let sessions = agent_seq_dir(dir).ok();
+    let prefix = agent_prefix(dir);
     for n in AGENT_NAMES {
-        let name = format!("agent-{n}");
+        let name = format!("{prefix}{n}");
         if let Some(sessions) = &sessions {
             if live_lock_held(&sessions.join(format!("{name}.live")))?
                 || crate::lane_registry::is_live(sessions, &name, now)?
@@ -115,7 +146,7 @@ pub fn pick_agent_name(dir: &Path, now: i64) -> Result<String, String> {
         return Ok(name);
     }
     Err(format!(
-        "every name of the launcher's list ({} names, agent-{} to agent-{}) is taken: name this session with `--name <name>`",
+        "every name of the launcher's list ({} names, {prefix}{} to {prefix}{}) is taken: name this session with `--name <name>`",
         AGENT_NAMES.len(),
         AGENT_NAMES[0],
         AGENT_NAMES[AGENT_NAMES.len() - 1]

@@ -1,6 +1,6 @@
 # Team messages
 
-How the leader window and the agents (lanes) talk during one card. A session started with `moai cc -l` is named `leader-<project name>` and one started with `moai cc -a` is named `agent-<english name>`; a session started plain takes the same names with `/rename` (`workflows/work.md`, `workflows/leader.md`). Every step of the flow goes by a cross-session message, and the ledger is the record.
+How the leader window and the agents (lanes) talk during one card. A session started with `moai cc -l` is named `<project name>-leader` and one started with `moai cc -a` is named `<project name>-agent-<english name>` (`moai session-register --names` prints the project name); a session started plain takes the same names with `/rename` (`workflows/work.md`, `workflows/leader.md`). Every step of the flow goes by a cross-session message, and the ledger is the record.
 
 ## The message table
 
@@ -28,7 +28,7 @@ An agent may send a message to another agent to check a fact, for example which 
 
 ## Addressing
 
-Address the registered leader by the session id that `moai session-register --show --name leader` answers, matched to a row of `ListAgents`. Address any other session by its listed name, or by the short id when two rows share a name. Never send to a row picked by the bare name `leader`: another project's session can carry it.
+Address the registered leader by the session id that `moai session-register --show --name leader` answers, matched to a row of `ListAgents`. Before you send a message to any session other than the registered leader, run `moai session-register --lane-check <listed name>` and send only when it answers `lane` (the name's live lock is held or its registry entry has a running lease); on `not_lane` send nothing and write one ledger note that names the row and the answer. When two rows of `ListAgents` carry the same name, send to neither and write one ledger note. Address a checked session by its listed name. Never send to a row picked by the bare name `leader`: another project's session can carry it.
 
 ## Channel order
 

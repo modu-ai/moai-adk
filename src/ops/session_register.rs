@@ -30,6 +30,19 @@ pub struct Args {
     /// folder unless PROJECT is given, exactly as `--show` does.
     #[arg(long, conflicts_with_all = ["instance", "release", "show", "mode", "name"])]
     liveness_of: Option<String>,
+    /// Read-only (SPEC-20261125-session-names-project-prefix REQ-7, REQ-8): whether the session
+    /// name NAME is a lane of this clone's registry, the check a leader runs before it sends a
+    /// message. `lane` when the name's `.live` lock is held (`basis` `live_lock`) or its entry has
+    /// a running lease (`registry_lease`); `not_lane` with the reason in every other case. Writes
+    /// nothing and makes no folder; reads the clone of the current folder unless PROJECT is given.
+    #[arg(long, value_name = "NAME", conflicts_with_all = ["instance", "release", "show", "mode", "name", "liveness_of", "continue_session", "names"])]
+    lane_check: Option<String>,
+    /// Read-only (REQ-12): print the project name the launcher uses, the leader session name and
+    /// the agent name prefix of this project (`<project name>-leader`, `<project name>-agent-`).
+    /// An error outside a git repository. Reads the clone of the current folder unless PROJECT
+    /// is given.
+    #[arg(long, conflicts_with_all = ["instance", "release", "show", "mode", "name", "liveness_of", "continue_session"])]
+    names: bool,
     /// The `instance` a previous registration of this session returned; absent on the first.
     #[arg(long)]
     instance: Option<String>,
@@ -103,6 +116,27 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 Liveness::Unknown => "unknown",
             },
             "evidence": evidence,
+            "writes": false,
+        }));
+    }
+    // SPEC-20261125-session-names-project-prefix REQ-7, REQ-8, REQ-12: two read-only answers that
+    // need no `--name`.
+    if let Some(listed) = &args.lane_check {
+        let project = args.project.clone().unwrap_or_else(|| PathBuf::from("."));
+        let mut answer = moai_cli::lane_registry::lane_check(&project, listed, now);
+        answer["action"] = serde_json::json!("session.lane_check");
+        answer["writes"] = serde_json::json!(false);
+        return Ok(answer);
+    }
+    if args.names {
+        let project = args.project.clone().unwrap_or_else(|| PathBuf::from("."));
+        // A folder outside a git repository has no clone and no sessions: say so.
+        moai_cli::lane_registry::registry_dir(&project)?;
+        return Ok(serde_json::json!({
+            "action": "session.names",
+            "project": moai_cli::session::project_name(&project),
+            "leader": moai_cli::session::leader_session_name(&project),
+            "agent_prefix": moai_cli::session::agent_prefix(&project),
             "writes": false,
         }));
     }

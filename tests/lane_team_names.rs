@@ -133,13 +133,13 @@ fn a_plain_session_gets_the_rename_line_and_the_short_id_fallback() {
     let cases = [
         (
             WORK,
-            "does not already start with `agent-`",
-            "`/rename agent-<english name>`",
+            "does not already start with `<project name>-agent-`",
+            "`/rename <project name>-agent-<english name>`",
         ),
         (
             LEADER,
-            "does not already start with `leader-`",
-            "`/rename leader-<project name>`",
+            "does not already end with `-leader`",
+            "`/rename <project name>-leader`",
         ),
     ];
     for (file, start, line) in cases {
@@ -172,17 +172,60 @@ fn the_address_rule_names_the_registered_id_and_the_short_id() {
         assert_has(file, &text, "moai session-register --show --name leader");
     }
     let table = package(TABLE);
-    assert_has(
-        TABLE,
-        &table,
-        "Address any other session by its listed name, or by the short id when two rows share a name",
-    );
+    assert_has(TABLE, &table, "matched to a row of `ListAgents`");
+}
+
+/// SPEC-20261125-session-names-project-prefix REQ-9, REQ-10: before a message goes to a session
+/// other than the registered leader, the leader runs the read-only lane check with the listed name
+/// and sends only on `lane`; two rows with one name get nothing. The table, the leader workflow and
+/// the agent workflow say it the same way.
+#[test]
+fn a_message_goes_only_to_a_session_the_registry_calls_a_lane() {
+    let table = package(TABLE);
+    for needle in [
+        "Before you send a message to any session other than the registered leader, run `moai session-register --lane-check <listed name>`",
+        "send only when it answers `lane`",
+        "on `not_lane` send nothing and write one ledger note that names the row and the answer",
+        "When two rows of `ListAgents` carry the same name, send to neither and write one ledger note",
+    ] {
+        assert_has(TABLE, &table, needle);
+    }
+    let leader = package(LEADER);
+    for needle in [
+        "Before every send run `moai session-register --lane-check <listed name>` with the listed name of the receiving session and send only when it answers `lane`",
+        "when two rows share the name send to neither",
+    ] {
+        assert_has(LEADER, &leader, needle);
+    }
     assert_has(
         WORK,
         &package(WORK),
-        "Any other session is addressed by its listed name, or by the short id when two rows share the name",
+        "Any other session is addressed by its listed name once `moai session-register --lane-check <listed name>` has answered `lane`; when two rows share the name, send nothing and write one ledger note",
     );
-    assert_has(TABLE, &table, "matched to a row of `ListAgents`");
+}
+
+/// REQ-11, REQ-12, decision D-8: the first action of a session that enters `/moai agent` or
+/// `/moai leader` is `pwd` and the project name; an agent registers its own name when the registry
+/// has no entry for it.
+#[test]
+fn the_first_action_of_a_role_is_the_folder_and_the_project_name() {
+    for file in [WORK, LEADER] {
+        let text = package(file);
+        for needle in [
+            "Before any other action run `pwd` and `moai session-register --names`",
+            "`another repository`",
+            "takes and writes nothing",
+        ] {
+            assert_has(file, &text, needle);
+        }
+    }
+    let work = package(WORK);
+    for needle in [
+        "`moai session-register --show --name <its name>` answers `free`",
+        "`moai session-register . --name <its name> --mode agent`",
+    ] {
+        assert_has(WORK, &work, needle);
+    }
 }
 
 /// REQ-19, REQ-20, REQ-21, REQ-22: the message table names who sends and receives each message

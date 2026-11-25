@@ -102,17 +102,18 @@ fn without_leading_color(mut argv: Vec<String>) -> Vec<String> {
 /// Options of `moai cc|glm` (00-F #2028).
 #[derive(Args)]
 struct LaunchOpts {
-    /// Start the coordination window: session `leader-<project name>`, the permission bypass
+    /// Start the coordination window: session `<project name>-leader`, the permission bypass
     /// (`--dangerously-skip-permissions`) unless `--permissions` is given, and the first input
     /// `/moai leader`.
     #[arg(short = 'l', long)]
     leader: bool,
-    /// Start a lane: session `agent-<english name>` (the first free name of the launcher's list),
+    /// Start a lane: session `<project name>-agent-<english name>` (the first free name of the
+    /// launcher's list),
     /// the permission bypass unless `--permissions` is given, and the first input `/moai agent`.
     #[arg(short = 'a', long)]
     agent: bool,
-    /// Session name (none by default; `-l` names it `leader-<project name>`, `-a` takes the first
-    /// free `agent-<english name>`; with a role flag this name replaces those).
+    /// Session name (none by default; `-l` names it `<project name>-leader`, `-a` takes the first
+    /// free `<project name>-agent-<english name>`; with a role flag this name replaces those).
     #[arg(long)]
     name: Option<String>,
     /// Main model (default `opus`).
@@ -1019,7 +1020,7 @@ enum Command {
     /// Start a Claude Code session
     ///
     /// Claude Code session launcher: `cc`. `-l` starts the coordination window and `-a` a lane,
-    /// named `leader-<project name>` and `agent-<english name>`, in the permission bypass with
+    /// named `<project name>-leader` and `<project name>-agent-<english name>`, in the permission bypass with
     /// the first input `/moai leader` or `/moai agent`. Without a role flag the session is plain
     /// and `--name` names it; the role is then entered inside it with `/moai agent` or
     /// `/moai leader`.
@@ -1027,8 +1028,8 @@ enum Command {
     /// Start a Claude Code session on z.ai GLM
     ///
     /// Claude Code on z.ai GLM: `glm` (needs ANTHROPIC_AUTH_TOKEN in the environment or a key file).
-    /// `-l` starts the coordination window and `-a` a lane, named `leader-<project name>` and
-    /// `agent-<english name>`, in the permission bypass with the first input `/moai leader` or
+    /// `-l` starts the coordination window and `-a` a lane, named `<project name>-leader` and
+    /// `<project name>-agent-<english name>`, in the permission bypass with the first input `/moai leader` or
     /// `/moai agent`. Without a role flag the session is plain and `--name` names it; the role
     /// is then entered inside it with `/moai agent` or `/moai leader`.
     Glm(HostLaunch),
