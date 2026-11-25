@@ -41,16 +41,16 @@ branch: spec/small-mismatches-20261126
 
 ## Acceptance
 
-- AC-1 (REQ-1): `moai trailers --no-spec` prints a `Moai-Session` line and no `Moai-Spec` line, and `--verified tests` adds the `Moai-Verified` line · verify: `cargo test --offline --locked --test small_mismatches ac1_`
-- AC-2 (REQ-2, REQ-3): a call with none of `--spec`, `--no-spec`, `--list` is refused with a message that names `--no-spec`, and `--no-spec` with `--spec` or `--list` is refused · verify: `cargo test --offline --locked --test small_mismatches ac2_`
-- AC-3 (REQ-4): the `trailers --help` text names `--no-spec` and says it is for a card with no SPEC · verify: `cargo test --offline --locked --test small_mismatches ac3_`
-- AC-4 (REQ-5): every `moai` command named in an inline code span of `skills/moai/**/*.md`, `agents/*.md`, `CLAUDE.md`, `docs/lane-rules.md` and `docs/leader-rules.md` is a command of this build, a command with a subcommand group has the named subcommand, and the scan names the first text that cites a command the build does not have · verify: `cargo test --offline --locked --test small_mismatches ac4_`
-- AC-5 (REQ-6): a slot file that records a dead pid and that no process holds is taken by the next acquire at once, and `heavy-slot-status` lists it as free · verify: `cargo test --offline --locked --test small_mismatches ac5_`
+- AC-1 (REQ-1): `moai trailers --no-spec` prints a `Moai-Session` line and no `Moai-Spec` line, and `--verified tests` adds the `Moai-Verified` line · verify: `cargo test --offline --locked --test repo_small_mismatches ac1_`
+- AC-2 (REQ-2, REQ-3): a call with none of `--spec`, `--no-spec`, `--list` is refused with a message that names `--no-spec`, and `--no-spec` with `--spec` or `--list` is refused · verify: `cargo test --offline --locked --test repo_small_mismatches ac2_`
+- AC-3 (REQ-4): the `trailers --help` text names `--no-spec` and says it is for a card with no SPEC · verify: `cargo test --offline --locked --test repo_small_mismatches ac3_`
+- AC-4 (REQ-5): every `moai` command named in an inline code span of `skills/moai/**/*.md`, `agents/*.md`, `CLAUDE.md`, `docs/lane-rules.md` and `docs/leader-rules.md` is a command of this build, a command with a subcommand group has the named subcommand, and the scan names the first text that cites a command the build does not have · verify: `cargo test --offline --locked --test repo_small_mismatches ac4_`
+- AC-5 (REQ-6): a slot file that records a dead pid and that no process holds is taken by the next acquire at once, and `heavy-slot-status` lists it as free · verify: `cargo test --offline --locked --test repo_small_mismatches ac5_`
 - AC-6 (REQ-6): a slot whose wrapper was killed by SIGKILL keeps held while its command runs and is free when the command ends (the landed tests) · verify: `cargo test --offline --locked --test heavy_slot_cli release_ac`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261126-small-mismatches/**`, `src/ops/trailers.rs`, `src/trailers.rs`, `tests/small_mismatches.rs`
+- write: `.moai/specs/SPEC-20261126-small-mismatches/**`, `src/ops/trailers.rs`, `src/trailers.rs`, `tests/repo_small_mismatches.rs`
 - write (when the scan finds one): the shipped text that names a command the build does not have
 - write (한 줄, line-lease): `tools/repo_scans.json`, `skills/moai/references/source-manifest.json`
 - read-only: `src/heavy_slot.rs`, `tests/heavy_slot_cli.rs`, `tests/e2e_temp_home_cli.rs`, `tests/audit_text_facts.rs`
@@ -77,7 +77,7 @@ branch: spec/small-mismatches-20261126
 
 구현 커밋 `bb46e9309b` 는 RED 커밋 `032a6271ea` 위에 있고 NeXT `9c8b7fb763` 에서 갈라졌어요. 아래는 이 실행에서 본 값이에요.
 
-- RED: 구현 전 `cargo test --offline --locked --test small_mismatches` 는 6개 가운데 3개가 실패했어요(ac1_, ac2_, ac3_, `--no-spec` 가 없었어요). 스캔(ac4_)과 죽은 pid 슬롯(ac5_)은 처음부터 통과했어요: 둘째와 셋째 어긋남은 tip 에서 이미 고쳐져 있었어요(기록 `target/small/red.log`).
+- RED: 구현 전 `cargo test --offline --locked --test repo_small_mismatches` 는 6개 가운데 3개가 실패했어요(ac1_, ac2_, ac3_, `--no-spec` 가 없었어요). 스캔(ac4_)과 죽은 pid 슬롯(ac5_)은 처음부터 통과했어요: 둘째와 셋째 어긋남은 tip 에서 이미 고쳐져 있었어요(기록 `target/small/red.log`).
 - GREEN: 같은 실행이 6개 통과, 0개 실패예요(`target/small/green.log`).
 - AC-1: met — `ac1_no_spec_prints_the_session_line_only`
 - AC-2: met — `ac2_a_bare_call_names_no_spec_and_the_flag_conflicts_are_refused`
