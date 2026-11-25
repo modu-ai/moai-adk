@@ -349,13 +349,12 @@ fn assert_holder(entry: &Value, pid: i32, comm: Option<&str>) {
     );
 }
 
-/// #3033 AC-1, pinning today's behaviour: the lock is on the open file, not on a process, so a
-/// background child the command leaves behind keeps the slot after the command and the wrapper
-/// have ended. `status` still lists the slot as held, with the wrapper's pid, which is dead by
-/// then; a second caller waits until the child ends. (The child's stdio is null so no pipe waits
-/// on it.)
+/// SPEC-20261125-heavy-slot-release-on-exit AC-1 (the dangerous path itself): the lock is on the
+/// open file and a background child the command leaves behind inherits it, but the holder gives
+/// the slot back when it ends. While the child is alive `status` lists no held slot and a second
+/// caller runs at once. (The child's stdio is null so no pipe waits on it.)
 #[test]
-fn a_command_that_leaves_a_background_child_keeps_the_slot_and_status_shows_a_dead_pid() {
+fn release_ac1_a_command_that_leaves_a_background_child_gives_the_slot_back() {
     let d = tempfile::tempdir().unwrap();
     let m = tempfile::tempdir().unwrap();
     let (pidfile, s2) = (m.path().join("child.pid"), m.path().join("s2"));
@@ -368,7 +367,6 @@ fn a_command_that_leaves_a_background_child_keeps_the_slot_and_status_shows_a_de
         .stdout(Stdio::null())
         .stderr(Stdio::null());
     let mut wrapper = spawn(c);
-    let wrapper_pid = wrapper.id() as i32;
     // The wrapper ends with the command's own code once `sh` has exited.
     assert_eq!(wrapper.wait_wrapper_only().code(), Some(0));
     let child_pid: i32 = fs::read_to_string(&pidfile)
@@ -381,22 +379,15 @@ fn a_command_that_leaves_a_background_child_keeps_the_slot_and_status_shows_a_de
         pid_is_alive(child_pid),
         "the background child must be alive"
     );
-    assert!(
-        !pid_is_alive(wrapper_pid),
-        "the wrapper has ended and was reaped"
+
+    // The child still has the slot file open, yet the slot is free.
+    assert_eq!(
+        status(d.path())["held"],
+        serde_json::json!([]),
+        "the leftover child keeps the slot"
     );
 
-    // Still held, and the record names the dead wrapper, not the child that holds the lock.
-    let held = status(d.path())["held"].clone();
-    assert_eq!(held.as_array().unwrap().len(), 1, "{held}");
-    assert_eq!(held[0]["name"], "leaver", "{held}");
-    assert_eq!(held[0]["pid"], wrapper_pid, "{held}");
-    // #3033 D1: and says so — the recorded pid is dead although the slot is held.
-    assert_eq!(held[0]["alive"], false, "{held}");
-    // #3033 D2: and names who has the slot file open — the sleeper, never the dead wrapper.
-    assert_holder(&held[0], child_pid, Some("sleep"));
-
-    // A second caller waits; it runs only after the child has gone.
+    // A second caller runs at once, while the child is still alive.
     let mut c = acquire(
         d.path(),
         "1",
@@ -406,22 +397,196 @@ fn a_command_that_leaves_a_background_child_keeps_the_slot_and_status_shows_a_de
     c.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let second = spawn(c);
-    wait_for("second waiting", || {
+    let out = spawn(c).finish();
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(s2.exists(), "the second caller did not run");
+    assert!(
+        pid_is_alive(child_pid),
+        "the child was alive during the second run"
+    );
+}
+
+/// AC-2: a nested caller reuses the slot its outer holder passed down and does not release it
+/// when it ends — the outer slot stays held while the outer command still runs.
+#[test]
+fn release_ac2_a_nested_caller_leaves_the_outer_slot_held() {
+    let d = tempfile::tempdir().unwrap();
+    let m = tempfile::tempdir().unwrap();
+    let (inner_done, release) = (m.path().join("inner-done"), m.path().join("release"));
+    let script = format!(
+        "'{exe}' heavy-slot-acquire --max 1 --name inner --dir '{dir}' -- true; touch '{done}'; while [ ! -e '{rel}' ]; do sleep 0.05; done",
+        exe = EXE,
+        dir = d.path().display(),
+        done = inner_done.display(),
+        rel = release.display()
+    );
+    let mut c = acquire(d.path(), "1", "outer", &["sh", "-c", &script]);
+    c.stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped());
+    let outer = spawn(c);
+    wait_for("inner ended", || inner_done.exists());
+    let held = status(d.path())["held"].clone();
+    assert_eq!(held.as_array().unwrap().len(), 1, "{held}");
+    assert_eq!(held[0]["name"], "outer", "{held}");
+    assert_eq!(held[0]["alive"], true, "{held}");
+    fs::write(&release, "").unwrap();
+    let out = outer.finish();
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(
+        text(&out).contains("inner reuses slot 0 it inherited"),
+        "the inner caller did not reuse the slot: {}",
+        text(&out)
+    );
+    assert_eq!(status(d.path())["held"], serde_json::json!([]));
+}
+
+/// AC-2: a wrapper killed with SIGKILL cannot give the slot back, so the command that still runs
+/// keeps it, and the slot is free once the command ends.
+#[test]
+fn release_ac2_a_wrapper_killed_by_sigkill_keeps_the_slot_while_the_command_runs() {
+    let d = tempfile::tempdir().unwrap();
+    let m = tempfile::tempdir().unwrap();
+    let (s1, r1) = (m.path().join("s1"), m.path().join("r1"));
+    let mut c = acquire(d.path(), "1", "w", &["sh", "-c", &hold(&s1, &r1)]);
+    c.stdout(Stdio::null()).stderr(Stdio::null());
+    let mut wrapper = spawn(c);
+    wait_for("command started", || s1.exists());
+    wrapper.kill_wrapper_only();
+    let held = status(d.path())["held"].clone();
+    assert_eq!(held.as_array().unwrap().len(), 1, "{held}");
+    assert_eq!(held[0]["alive"], false, "{held}");
+    fs::write(&r1, "").unwrap();
+    wait_for("slot released", || {
+        status(d.path())["held"].as_array().unwrap().is_empty()
+    });
+}
+
+/// AC-3: a leftover child that asks for a slot with the descriptor and `MOAI_HEAVY_SLOT_FD` it
+/// inherited waits in the queue while another caller holds the slot, and runs after that caller
+/// ends. It never takes the slot the other caller holds.
+#[test]
+fn release_ac3_a_leftover_childs_inherited_descriptor_queues_like_any_caller() {
+    let d = tempfile::tempdir().unwrap();
+    let m = tempfile::tempdir().unwrap();
+    let (go, ran, started, release) = (
+        m.path().join("go"),
+        m.path().join("ran"),
+        m.path().join("b-started"),
+        m.path().join("b-release"),
+    );
+    let script = format!(
+        "( while [ ! -e '{go}' ]; do sleep 0.05; done; '{exe}' heavy-slot-acquire --max 1 --name leftover --dir '{dir}' -- touch '{ran}' ) </dev/null >/dev/null 2>&1 &",
+        go = go.display(),
+        exe = EXE,
+        dir = d.path().display(),
+        ran = ran.display()
+    );
+    let mut c = acquire(d.path(), "1", "leaver", &["sh", "-c", &script]);
+    c.stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    let mut wrapper = spawn(c);
+    assert_eq!(wrapper.wait_wrapper_only().code(), Some(0));
+    // The leftover child is alive with the descriptor, and the slot is already free.
+    assert_eq!(status(d.path())["held"], serde_json::json!([]));
+
+    // Another caller takes the slot; only then does the leftover child ask for one.
+    let mut c = acquire(d.path(), "1", "b", &["sh", "-c", &hold(&started, &release)]);
+    c.stdout(Stdio::null()).stderr(Stdio::null());
+    let b = spawn(c);
+    wait_for("b started", || started.exists());
+    fs::write(&go, "").unwrap();
+    wait_for("the leftover child queued", || {
         fs::read_dir(d.path().join("waiting"))
             .map(|r| r.count() == 1)
             .unwrap_or(false)
     });
     assert!(
-        !s2.exists(),
-        "the second caller ran while the child held the slot"
+        !ran.exists(),
+        "the leftover child ran while b held the slot"
     );
-    // SAFETY: SIGKILL to the sleeper this test started.
-    unsafe { libc::kill(child_pid, libc::SIGKILL) };
-    wait_for("second ran", || s2.exists());
-    let out = second.finish();
-    assert!(out.status.success(), "{}", text(&out));
-    assert_eq!(status(d.path())["held"], serde_json::json!([]));
+    assert_eq!(status(d.path())["held"][0]["name"], "b");
+    fs::write(&release, "").unwrap();
+    wait_for("the leftover child ran", || ran.exists());
+    drop(b);
+}
+
+/// AC-4: after a wrapper is killed while its command still runs, `status` says the slot is held
+/// by a process other than the recorded one: `alive` false, `holders`, one warning line on the
+/// slot and the same line in the top-level `warnings`. A slot of a live pid adds none.
+#[test]
+fn release_ac4_status_warns_about_a_slot_a_leftover_process_holds() {
+    let d = tempfile::tempdir().unwrap();
+    let m = tempfile::tempdir().unwrap();
+    let (s1, r1, pidfile) = (
+        m.path().join("s1"),
+        m.path().join("r1"),
+        m.path().join("sh.pid"),
+    );
+    let script = format!(
+        "echo $$ > '{}'; touch '{}'; while [ ! -e '{}' ]; do sleep 0.05; done",
+        pidfile.display(),
+        s1.display(),
+        r1.display()
+    );
+    let mut c = acquire(d.path(), "1", "w", &["sh", "-c", &script]);
+    c.stdout(Stdio::null()).stderr(Stdio::null());
+    let mut wrapper = spawn(c);
+    let wrapper_pid = wrapper.id();
+    wait_for("command started", || s1.exists());
+    // Alive: no warning, and `warnings` is there as an empty list.
+    let live = status(d.path());
+    assert_eq!(live["held"][0]["alive"], true, "{live}");
+    assert!(live["held"][0].get("warning").is_none(), "{live}");
+    assert_eq!(live["warnings"], serde_json::json!([]), "{live}");
+
+    wrapper.kill_wrapper_only();
+    let sh_pid: u32 = fs::read_to_string(&pidfile)
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    let dead = status(d.path());
+    assert_eq!(dead["held"][0]["alive"], false, "{dead}");
+    let line = dead["held"][0]["warning"].as_str().unwrap_or_else(|| {
+        panic!("no warning on the slot entry: {dead}");
+    });
+    let warnings = dead["warnings"].as_array().unwrap();
+    assert_eq!(warnings.len(), 1, "{dead}");
+    assert_eq!(warnings[0].as_str().unwrap(), line, "{dead}");
+    assert!(line.contains("slot 0"), "{line}");
+    assert!(line.contains(&wrapper_pid.to_string()), "{line}");
+    // The process name is the shell's own (`sh`, or `bash` where `sh` is bash).
+    assert!(line.contains(&format!("{sh_pid} ")), "{line}");
+    assert!(
+        !line.contains(m.path().to_str().unwrap()),
+        "no argv in the line: {line}"
+    );
+    fs::write(&r1, "").unwrap();
+    wait_for("slot released", || {
+        status(d.path())["held"].as_array().unwrap().is_empty()
+    });
+    assert_eq!(status(d.path())["warnings"], serde_json::json!([]));
+}
+
+/// AC-6: the module documentation states the release at holder exit, the case it cannot cover
+/// and the `warnings` array.
+#[test]
+fn release_ac6_the_module_documentation_names_the_release_the_sigkill_case_and_warnings() {
+    let src = include_str!("../src/heavy_slot.rs");
+    let head: String = src
+        .lines()
+        .take_while(|l| l.starts_with("//!"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for needle in [
+        "unlocks the slot when the holder ends",
+        "SIGKILL",
+        "`warnings`",
+    ] {
+        assert!(head.contains(needle), "the module doc lacks {needle:?}");
+    }
 }
 
 /// A slot file `slot-0` in `dir` holding `body`, with its lock held by this test for as long as
