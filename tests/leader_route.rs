@@ -59,7 +59,21 @@ const RENEW: &str = "Once per round, before you read the ledger, renew the regis
 /// REQ-6: the ledger is the input, a completion message a notice.
 const INPUT: &str = "Read the ledger with `moai card inbox`, `moai card wait` and `moai card next`; a lane's completion message is a notice that you check against the ledger before you act, as the \"Completion message\" and \"Transition\" sections of `flows/next-flow` say.";
 /// D-3: the dispatch channel.
-const DISPATCH: &str = "Send the next card's dispatch with the host's message tool, or with `moai lane-send` when the lanes run in terminals that command can reach: it reads the screen first and sends only to a lane that is working or idle; no `moai` command sends a cross-session message yet.";
+const DISPATCH: &str = "Send the next card's dispatch with the host's message tool; no `moai` command sends a cross-session message yet.";
+/// C-521: the host's message comes first; `moai lane-send` and the lane-terminal manager are the
+/// fallback when that channel is missing, refused or held, and otherwise stay for `/clear` and
+/// screen reads.
+const DISPATCH_FALLBACK: &str = "Only when that channel is missing, refused or held, send with `moai lane-send` (it reads the screen first and sends only to a lane that is working or idle) or with the lane-terminal manager's own messaging";
+const DISPATCH_CLEAR: &str =
+    "The lane-terminal manager otherwise stays for `/clear` and for reading a screen.";
+/// C-521: each step names its command and what comes next.
+const PLAN: &str = "Then run `moai card orchestrate plan`: it reads the ledger and the registry and changes nothing";
+const ASSIGN: &str =
+    "Name the auditor with `moai card assign <card> --auditor <session id> --by leader`";
+const AUDIT_REQUEST: &str = "then send `AUDIT-REQUEST <card> ready head=<head to audit>` with the caps and the receipt to cite";
+const VERDICT_OWN: &str = "The auditor records the verdict with `moai card verdict` from its own session; you read it in the ledger and never write it for the auditor.";
+const BATCH: &str = "Use `moai card land-batch C-n=<head> ... --by leader` for 2 to 4 audited heads, which runs the wide check once on their join, and `moai card land` alone only for one head with a risk or an exception.";
+const LANDED: &str = "send `LANDED <card> landed head=<10 hex>` to the lane concerned";
 /// REQ-7: the audit goes to a session that wrote none of the change.
 const AUDIT: &str = "Send the audit of a head to a session that wrote none of the change (the AUDIT route); the author of a change never audits it.";
 /// REQ-7: landing after a `PASS` for the exact head, by the leader.
@@ -133,7 +147,87 @@ fn round_points_to_the_flow_reference_and_repeats_none_of_it() {
 
 #[test]
 fn round_sends_the_dispatch_by_a_channel_that_exists() {
-    assert_has(&leader(), DISPATCH);
+    let t = leader();
+    for s in [DISPATCH, DISPATCH_FALLBACK, DISPATCH_CLEAR] {
+        assert_has(&t, s);
+    }
+    // The host's message is named first; the terminal manager is the fallback, never the lead.
+    assert_before(&t, DISPATCH, DISPATCH_FALLBACK);
+    assert!(
+        !t.contains("or with `moai lane-send` when the lanes run in terminals"),
+        "{LEADER} puts `moai lane-send` on a par with the host's message"
+    );
+}
+
+/// C-521 criteria 1 and 4: a round names its plan command, the auditor assignment, the audit
+/// request, the one landing sentence for a single head and for a batch, and the landing notice,
+/// in step order, and every step but the last says where it goes next.
+#[test]
+fn round_names_one_command_per_step_and_the_next_action() {
+    let t = leader();
+    for s in [PLAN, ASSIGN, AUDIT_REQUEST, VERDICT_OWN, BATCH, LANDED] {
+        assert_has(&t, s);
+    }
+    assert_before(&t, PLAN, DISPATCH);
+    assert_before(&t, DISPATCH, ASSIGN);
+    assert_before(&t, ASSIGN, LAND);
+    assert_before(&t, LAND, BATCH);
+    assert_before(&t, BATCH, LANDED);
+    let text = raw(LEADER);
+    let start = text.find("## Procedure").unwrap();
+    let rest = &text[start..];
+    let body = &rest[..rest.find("\n## When a head").unwrap()];
+    let steps: Vec<&str> = body
+        .lines()
+        .filter(|l| {
+            l.split_once(". **")
+                .is_some_and(|(n, _)| n.trim().parse::<usize>().is_ok())
+        })
+        .collect();
+    for line in &steps[1..5] {
+        assert!(
+            line.contains("Next: ") || line.contains("Then do steps"),
+            "a step names no next action: {line}"
+        );
+    }
+}
+
+/// C-521 criterion 2: the branches after a `fail`, a second `fail`, `no_pass`, `stale_base` and
+/// `tip_moved` are a table, each row with a next action and no row without one.
+#[test]
+fn a_table_gives_the_next_action_of_each_failed_landing() {
+    let text = raw(LEADER);
+    let start = text
+        .find("## When a head does not land")
+        .expect("the table section");
+    let rest = &text[start..];
+    let section = &rest[..rest.find("\n## ").map_or(rest.len(), |i| i + 1).max(1)];
+    let rows: Vec<Vec<&str>> = section
+        .lines()
+        .filter(|l| l.starts_with("| ") && !l.starts_with("| What") && !l.starts_with("| ---"))
+        .map(|l| l.trim_matches('|').split('|').map(str::trim).collect())
+        .collect();
+    for key in [
+        "a first `fail` verdict",
+        "a second `fail` of the same card",
+        "`no_pass` from `moai card land`",
+        "`stale_base`",
+        "`tip_moved`",
+    ] {
+        let row = rows
+            .iter()
+            .find(|r| r[0] == key)
+            .unwrap_or_else(|| panic!("the table has no row `{key}`"));
+        assert_eq!(row.len(), 3, "{key}");
+        assert!(!row[2].is_empty(), "{key} has no next action");
+    }
+    for r in &rows {
+        assert!(r.iter().all(|c| !c.is_empty()), "an empty cell: {r:?}");
+    }
+    // A repair goes by `moai card reopen` of the author, never of the leader.
+    assert!(section.contains(
+        "the author takes the card back with `moai card reopen <card> --generation <g>`"
+    ));
 }
 
 #[test]
@@ -243,5 +337,5 @@ fn end_the_window_holds_no_standing_role() {
 #[test]
 fn end_workflow_stays_within_its_byte_budget() {
     let n = raw(LEADER).len();
-    assert!(n <= 6144, "{LEADER} is {n} bytes, over 6144");
+    assert!(n <= 10240, "{LEADER} is {n} bytes, over 10240");
 }

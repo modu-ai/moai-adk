@@ -6,9 +6,7 @@ use crate::common;
 
 use common::home::TempHome;
 use moai_cli::ledger::reservation::{self, FenceError};
-use moai_cli::ledger::scope_return::{
-    self, GiveBackError, LeaseError, ReviewKeepError, ScopeReturnError,
-};
+use moai_cli::ledger::scope_return::{self, GiveBackError, ReviewKeepError, ScopeReturnError};
 use moai_cli::ledger::workflow::WorkflowError;
 use moai_cli::ledger::{self, WriteLedger};
 
@@ -179,29 +177,26 @@ fn a_line_lease_adds_a_path_and_gives_back_exactly_what_it_added() {
 }
 
 #[test]
-fn a_line_lease_on_a_path_another_card_holds_is_an_overlap_that_names_that_card() {
+fn a_line_lease_on_a_path_another_card_holds_is_made_and_leaves_that_card_alone() {
     let (_home, mut w) = setup();
     let (owner, _) = taken(&mut w, B, &["src/lib.rs"]);
     let (a, g) = taken(&mut w, A, &["src/a.rs"]);
-    match scope_return::lease_take(&mut w, a, A, g, &paths(&["src/lib.rs"])) {
-        Err(LeaseError::Overlap(text)) => {
-            assert!(text.contains(&format!("C-{owner}")), "{text}");
-        }
-        other => panic!("{other:?}"),
-    }
-    assert_eq!(
-        scope_of(&w, a),
-        ["src/a.rs"],
-        "a refused lease writes nothing"
-    );
-    // Once the owner gives it back, the lease goes through.
-    let og = reservation::current(w.conn(), owner)
-        .unwrap()
-        .unwrap()
-        .generation;
-    scope_return::give_back(&mut w, owner, B, og, &paths(&["src/lib.rs"]), "give-back").unwrap();
+    // SPEC-20261125-card-no-file-locks: another card's reservation of the path is no refusal.
     let leased = scope_return::lease_take(&mut w, a, A, g, &paths(&["src/lib.rs"])).unwrap();
     assert_eq!(leased.added, ["src/lib.rs"]);
+    assert_eq!(scope_of(&w, a), ["src/a.rs", "src/lib.rs"]);
+    assert_eq!(
+        scope_of(&w, owner),
+        ["src/lib.rs"],
+        "the owner is left alone"
+    );
+    // Giving the path back ends only this card's claim.
+    let released = scope_return::lease_release(&mut w, a, A, g, &leased.added)
+        .unwrap()
+        .unwrap();
+    assert_eq!(released.given_back, ["src/lib.rs"]);
+    assert_eq!(scope_of(&w, a), ["src/a.rs"]);
+    assert_eq!(scope_of(&w, owner), ["src/lib.rs"]);
 }
 
 #[test]

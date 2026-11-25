@@ -6,6 +6,15 @@ use std::path::PathBuf;
 ///
 /// Plan project-specific generated files read-only (03-C #1997): typed request on
 /// stdin; judgment envelope on stdout; writes nothing.
+///
+/// The request is one JSON object. A complete one, with one project agent and one project
+/// skill (`host` is required on every agent; the lists may be left out; the pick
+/// `harness-only` plans only the agents and skills). It has no space inside a text, so the
+/// help screen cannot fold it in the middle of one; a purpose is one line of plain text:
+///
+/// {"protocol_version":1,"language":"en","workflow_reference":".moai/workflows/project/","local_file":"none","workflow_id":"project","picks":["harness-only"],"native_roles":[{"role_id":"prj-test-runner","host":"claude","purpose":"Runs-the-tests"}],"project_skills":[{"id":"prj-checks","purpose":"Checks-before-done"}]}
+///
+/// Save the `result` of the answer as plan.json: `generation-apply` reads it on stdin.
 #[derive(clap::Args)]
 pub struct Args {
     project: PathBuf,
