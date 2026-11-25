@@ -1347,9 +1347,10 @@ mod tests {
         let count: u32 = DEFAULT_IGNORABLE.iter().map(|(a, b)| b - a + 1).sum();
         assert_eq!(count, total);
         assert_eq!(total, 4174);
-        // The refusal lists the interview and the operations appendix carry name the same
-        // ranges and the path characters (C-71 audit N1: the appendix too).
-        let reference = include_str!("../skills/moai/references/internal/versioning.md");
+        // The operations appendix names the same ranges and the path characters (C-71 audit N1).
+        // The shipped versioning text no longer lists any range: it names the two Unicode sets
+        // in one line and the code tables above hold the ranges
+        // (SPEC-20261125-skill-versioning-release-text, REQ-7), so only the appendix is read.
         let appendix = include_str!("../docs/design-review/appendix/operations/project_plan.md");
         for (first, last) in DEFAULT_IGNORABLE {
             let name = if first == last {
@@ -1357,10 +1358,8 @@ mod tests {
             } else {
                 format!("U+{first:04X}–U+{last:04X}")
             };
-            assert!(reference.contains(&name), "versioning.md lacks {name}");
             assert!(appendix.contains(&name), "project_plan.md lacks {name}");
         }
-        assert!(reference.contains("`_`, `/` or `\\`"));
         assert!(appendix.contains("`_`·`/`·`\\`"));
         // The excerpt names the license notice it is copied under, and that notice is there.
         let excerpt = include_str!("../tests/fixtures/unicode/default-ignorable-18.0.0.txt");
@@ -1400,14 +1399,14 @@ mod tests {
     }
 
     /// C-71 audit N3: the embedded Cf table is exactly Unicode 18.0.0's General_Category=Format
-    /// set, read from the source excerpt, and both refusal lists name every range.
+    /// set, read from the source excerpt, and the operations appendix names every range (the
+    /// shipped versioning text lists none: SPEC-20261125-skill-versioning-release-text, REQ-7).
     #[test]
     fn format_table_matches_the_unicode_source() {
         let (ranges, total) = source_format();
         assert_eq!(FORMAT.to_vec(), ranges);
         let count: u32 = FORMAT.iter().map(|(a, b)| b - a + 1).sum();
         assert_eq!((count, total), (170, 170));
-        let reference = include_str!("../skills/moai/references/internal/versioning.md");
         let appendix = include_str!("../docs/design-review/appendix/operations/project_plan.md");
         for (first, last) in FORMAT {
             let name = if first == last {
@@ -1415,7 +1414,6 @@ mod tests {
             } else {
                 format!("U+{first:04X}–U+{last:04X}")
             };
-            assert!(reference.contains(&name), "versioning.md lacks {name}");
             assert!(appendix.contains(&name), "project_plan.md lacks {name}");
         }
         let excerpt = include_str!("../tests/fixtures/unicode/general-category-cf-18.0.0.txt");

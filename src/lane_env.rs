@@ -4,7 +4,7 @@
 //! after a refusal: POSIX `eval` of an empty string returns 0.)
 //!
 //! - `CARGO_TARGET_DIR` is unset: a worktree builds in its own `target/` (user decision
-//!   2026-11-22, `skills/moai/workflows/run.md` "Check-run rules"). The lines say `unset
+//!   2026-11-22, `skills/moai/workflows/run.md` step 1). The lines say `unset
 //!   CARGO_TARGET_DIR`, so a shell that held the retired `~/.moai/build/<name>` value loses it.
 //!   Nothing is made under HOME and no owner record is written: the former per-worktree folder
 //!   `<HOME>/.moai/build/<project>-<worktree name>` and its `.moai-build.json` are retired

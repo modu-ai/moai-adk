@@ -27,6 +27,8 @@ The lines after the dated ones came from the leader's carry-over of closed cards
 - 착지 머지에서 tools/repo_scans.json 의 긴 `--test` 한 줄과 source-manifest.json 해시가 카드마다 충돌해요(2026-11-25 네 번): 테스트 이름을 한 줄에 하나씩 쓰는 배열로 바꾸고 해시는 `moai` 명령이 다시 계산해요
 - agents/audit.md 와 workflows/run.md 에 옛 docs-only 줄("the lander reads the change and lands it") 사본이 남았어요(C-522 감사): 세 곳 복사를 한 곳 가리키기로 줄여요
 - `agents-local-merge` 가 사용자가 거절한 옛 백업 `AGENTS.local.md` 를 update 때마다 다시 제안하고, 같은 때 `agents-picks` 는 원본이 없다며 skip 이라 둘이 어긋나요(2026-11-25 `/moai update`): 거절을 기억하는 C-518 이 받아요
+- 카드 쓰기 범위나 SPEC 의 `## Scope` 와 바뀐 경로를 착지·감사 때 견주는 코드가 없고, `card check` 는 레인만 부르며, `card scope` 는 호출자 확인 없이 예약을 넓혀요(2026-11-25, SPEC approval-digest review of the write scope; `src/card/work.rs` check, `src/ops/card.rs` scope, `src/card/submit.rs` 의 outside-scope 줄): 착지 때 헤드의 변경 경로를 예약 범위와 견주거나 `card scope` 에 호출자 확인을 두어요(카드 도구 코드 변경)
+- 실행·동기화 글을 줄이면서 Python 시험 여섯 개가 원격 CI 에서 깨져요(2026-11-25, 로컬 `check affected` 는 Python 시험을 고르지 않아요): `check_pr_self_audit_test.py`(run.md 점검 규칙 표·CI 줄), `self_check_test.py`(self-check.md 의 스크립트·`--full-python` 줄), `smoke_harness_test.py`, `skill_web_pages_test.py`(run.md 웹 페이지 절), `sync_drift_fixture_test.py`(sync.md 3단계의 "일곱 갈래"·부록 경로), `skill_references_test.py`(옮겨진 절 이름): 시험은 C-317 이 Rust 로 옮기고 지워요
 - 작업 수 상한이 세션 등록부의 레인만 세는데 `workflows/work.md` 에 등록 단계가 없어 레인 1개로 세었어요(2026-11-25, C-524 take 거절, 사용자 결정 "레인마다 등록"): 레인 글의 첫 단계에 `moai session-register <프로젝트 경로> --name <이름> --mode agent` 와 갱신·해제를 넣고, 등록 항목의 열쇠를 이름이 아니라 세션 id 로 해서 이름이 같은 다른 세션을 덮어쓰지 않게 해요(mo.ai.kr 덧붙임 7 J)
 - `card land-batch` 가 SPEC 없는 카드를 `no_spec` 으로 떨궈요(src/card/land/batch.rs, C-524 승인 D-2): SPEC 없는 tier 0·1 카드도 묶음 착지가 받게 해요
 - `card submit` 이 예약에 적힌 브랜치 이름과 실제 브랜치가 다르면 "HEAD 가 예약 브랜치의 tip 이 아니다"로 거절해요(2026-11-25 C-520): 예약 브랜치를 실제 브랜치로 맞추는 명령이나 take 때 이름 검사
@@ -36,3 +38,4 @@ The lines after the dated ones came from the leader's carry-over of closed cards
 - 감사·읽기 명령의 `cd` 가 호스트 세션의 작업 폴더를 다른 레인 워크트리 안으로 옮겨요(2026-11-26 C-538 감사 nora 두 번, 앞서 ivan 한 번): 다른 워크트리로 가는 `cd` 를 거절하거나 경고하는 가드
 - src 안의 테스트가 옛 상태 폴더 철자(`.moai-cli`)를 직접 써서 `project_state_dir_is_spelled_once` 스캔에 걸려요(2026-11-26 C-175 조각 1b 첫 영수증, 앞 조각에도 한 번): 테스트 도우미가 상태 폴더 이름을 주고 테스트 작성 지침에 한 줄
 - 부하에 따라 시간이 흔들리는 테스트가 착지 검사를 막아요(2026-11-25 lane_screen C-538, 2026-11-26 outbox ac5 C-539): 고정 임대·고정 대기 대신 장부 시각을 옮기는 도우미를 쓰고, 새 테스트의 고정 대기를 찾는 스캔
+- `SPEC-20261125-check-affected-rerun` 이 착지·닫힘(2026-11-25)까지 Result 절에 AC-1..AC-8 줄이 없어 `moai bundle check` 가 `result_missing` 을 냈는데 `card land` 는 막지 않았어요. 원인을 고칠 곳: `card submit` 이나 `card land` 가 승인 SPEC 의 Result AC 줄을 bundle check 와 같은 규칙으로 읽어 빠지면 거절(그 SPEC 의 Result 는 다음 SYNC 카드가 채워요).
