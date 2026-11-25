@@ -82,19 +82,19 @@ Rust 표식이 유효한 프로젝트는 Rust 세대가 주인이에요. git 이
 
 ## Result
 
-전반(상태 폴더)은 끝났고, 후반(`go-residue` 단계)은 `src/project_update.rs` 를 다른 조각이 쥐고 있어 아직이에요. 아래는 이 레인이 직접 돌려 읽은 결과예요(2026-11-21, `--max 3`, `RUST_TEST_THREADS=4`).
+전반(상태 폴더)은 끝났고, 후반(`go-residue` 단계)은 그 단계를 만드는 다른 조각이 착지한 뒤에 같은 카드에서 이어요. 아래는 NeXT 끝 `9c8b7fb763` 위에서 이 레인이 직접 돌려 읽은 결과예요(2026-11-26, `heavy-slot --max 3`, nextest). 전반은 옛 가지의 변경을 새 끝으로 옮긴 것이고, `state_root::dir` 가 그 사이 `resolves_to_moai` 를 거치도록 바뀌어서 `rust_owned` 일 때 `rust` 로 그 규칙에 넘겨요.
 
-- AC-1 met: `cargo test --locked --offline --lib state_root` → 26 passed (실행 줄 `test result: ok. 26 passed; 0 failed`, 단위 시험 `a_valid_rust_marker_owns_the_state_folder_when_go_markers_come_back` 포함).
-- AC-2 met: `cargo test --locked --offline --test state_root_resurrected_cli` → 3 passed, 1 ignored (`card_commands_work_when_go_markers_came_back_beside_a_valid_marker`, `go_markers_without_a_valid_marker_keep_failing_the_way_they_do`, `the_plan_writes_nothing`).
+- AC-1 met: `cargo nextest run --lib state_root` → 32 passed (단위 시험 `a_valid_rust_marker_owns_the_state_folder_when_go_markers_come_back` 포함, exit 0).
+- AC-2 met: `cargo nextest run --test state_root_resurrected_cli` → 3 passed, 1 skipped(`#[ignore]`) (`card_commands_work_when_go_markers_came_back_beside_a_valid_marker`, `go_markers_without_a_valid_marker_keep_failing_the_way_they_do`, `the_plan_writes_nothing`, exit 0).
 - AC-3 not met yet: `the_plan_offers_to_keep_the_resurrected_markers_instead_of_stopping` 는 일부러 빨강이라 이유와 함께 `#[ignore]` 예요. 이름으로 돌린 결과(`-- --ignored`): `no go-residue` 로 실패해요. `go-residue` 단계가 계획에 생기면 이 표시를 지우고 이 줄을 met 로 바꿔요.
 - AC-4 met for what exists: 계획 앞뒤 스냅샷이 같고(`the_plan_writes_nothing`), `moai.json` 없이 Go 표식만 있으면 지금처럼 실패해요(`go_markers_without_a_valid_marker_keep_failing_the_way_they_do`). `go-residue` 단계가 없다는 부분은 후반이 오면 같은 파일이 다시 확인해요.
-- AC-5 met: 변형 3개(5개 이하), 모두 죽었고 복구 뒤 `git diff` 가 0바이트예요.
+- AC-5 met: 변형 3개(5개 이하), 모두 죽었고 복구 뒤 작업 트리가 깨끗해요(`target/hana/mutants-run.log`).
 
-  | 변형 | 바꾼 곳 | 결과 |
-  | --- | --- | --- |
-  | M1 | `rust_owned`: 옛 이름 표식도 주인으로 봄 (`marker_file == Some("moai.json")` 조건 제거) | 단위 시험이 실패(25 passed, 1 failed) |
-  | M2 | `dir`: 새 규칙을 쓰지 않고 `generation == "rust"` 로 되돌림 | 같은 단위 시험이 실패 |
-  | M3 | `rust_owned`: `mixed` 를 주인으로 보지 않음 | 같은 단위 시험이 실패 |
+  | 변형 | 바꾼 곳 | 단위 시험 | CLI 시험 |
+  | --- | --- | --- | --- |
+  | M1 | `rust_owned`: 옛 이름 표식도 주인으로 봄 (`marker_file == Some("moai.json")` 조건 제거) | 실패(exit 100) | 통과(exit 0) |
+  | M2 | `dir`: `rust_owned` 를 쓰지 않음 (`if false`) | 실패(exit 100) | 실패(exit 100) |
+  | M3 | `rust_owned`: `mixed` 를 주인으로 보지 않음 | 실패(exit 100) | 실패(exit 100) |
 
-  세 변형 모두 같은 단위 시험 하나가 잡았어요. CLI 시험은 단위 시험이 먼저 실패해 그 변형들에서는 돌지 않았어요.
+  M1 은 단위 시험만 잡고(옛 이름 표식 경우는 CLI 시험이 만들지 않아요) 나머지 둘은 둘 다 잡았어요.
 - 돌리지 않은 것: 이 변경만의 독립 감사, 후반의 시험 3개(AC-3, AC-4 의 단계 부분), 전체 시험.
