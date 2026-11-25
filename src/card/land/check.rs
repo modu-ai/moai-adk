@@ -416,6 +416,83 @@ pub(crate) fn is_clean_join(project: &Path, commit: &str, first: &str, second: &
     git_text(project, &["rev-parse", &own]).is_ok_and(|tree| tree.trim() == merged)
 }
 
+/// The paths of a merge commit that [`join_of`] names before it adds "and N more".
+const LISTED_PATHS: usize = 20;
+
+/// How a merge commit stands against the clean merge of its two parents
+/// (SPEC-20261125-land-closes-audited-merge).
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum Join {
+    /// Its tree is the tree `git merge-tree --write-tree` makes of the parents.
+    Clean,
+    /// The parents conflict, so no clean merge exists and the commit holds a resolution.
+    Conflicts,
+    /// Its tree differs from the clean merge: the first paths that differ and how many there are.
+    Differs(Vec<String>, usize),
+    /// git could not tell; the reason.
+    Unreadable(String),
+}
+
+/// Reads how `commit`, a merge of `first` and `second`, stands against their clean merge.
+pub(crate) fn join_of(project: &Path, commit: &str, first: &str, second: &str) -> Join {
+    let out = match git(
+        project,
+        &["merge-tree", "--write-tree", "--no-messages", first, second],
+    ) {
+        Ok(out) => out,
+        Err(why) => return Join::Unreadable(why),
+    };
+    match out.status.code() {
+        Some(0) => {}
+        Some(1) => return Join::Conflicts,
+        _ => {
+            return Join::Unreadable(format!(
+                "git merge-tree failed: {}",
+                String::from_utf8_lossy(&out.stderr).trim()
+            ))
+        }
+    }
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    let Some(merged) = stdout
+        .lines()
+        .next()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+    else {
+        return Join::Unreadable("git merge-tree named no tree".to_string());
+    };
+    let own = match git_text(project, &["rev-parse", &format!("{commit}^{{tree}}")]) {
+        Ok(tree) => tree.trim().to_string(),
+        Err(why) => return Join::Unreadable(why),
+    };
+    if own == merged {
+        return Join::Clean;
+    }
+    match git_text(
+        project,
+        &[
+            "diff-tree",
+            "-r",
+            "--name-only",
+            "--no-renames",
+            "-z",
+            merged,
+            &own,
+        ],
+    ) {
+        Ok(text) => {
+            let paths: Vec<String> = text
+                .split('\0')
+                .filter(|p| !p.is_empty())
+                .map(str::to_string)
+                .collect();
+            let total = paths.len();
+            Join::Differs(paths.into_iter().take(LISTED_PATHS).collect(), total)
+        }
+        Err(why) => Join::Unreadable(why),
+    }
+}
+
 /// The tier a landing judges a head by: the tier the verdict states, raised by the floor of what
 /// the head changed since it left `range_base` (the tip's own changes are not the head's). A
 /// change that only grows the scan registry does not set the tier 2 floor by its path, the same
