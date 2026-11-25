@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261126-wip-limit-all-unreadable
 title: "wip 한도: 레지스트리 항목이 모두 읽히지 않으면 한도를 끄지 않고 take 를 막아요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-26
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 DELEGATED-APPROVAL 노트 9537 (사용자 위임 2026-11-25 ~14:50Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 9536 에 답함: 개정 1 승인, 커밋 b204a60971c972e606e46354f31f8042e526a42b, 추천 기본값 그대로); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:75a8353883570ea2a5bc4162fb5b857d2cfd7fd0fe71a284c97e92e9fcb959cb"
 ---
 
 # wip 한도: 레지스트리 항목이 모두 읽히지 않으면 한도를 끄지 않고 take 를 막아요
@@ -11,6 +16,12 @@ created: 2026-11-26
 ## Intent
 
 작업 한도(`work_flow.wip_limit`)는 살아 있는 레인 수에 곱해요. 레지스트리 폴더 안의 항목이 하나 이상 있는데 하나도 읽히지 않으면(깨진 JSON, 읽을 수 없는 잠금) 지금은 살아 있는 레인이 0 으로 세어져서 한도가 꺼지고, `card take` 와 `card add` 가 아무 말 없이 통과해요. 레지스트리를 읽지 못하는 상태가 한도를 푸는 쪽으로 틀리는 것이에요. 폴더 전체를 읽지 못할 때(SPEC-20261125-wip-limit-live-lock-lanes REQ-4)는 이미 막는 쪽이라서, 같은 쪽으로 맞춰요. 이것은 관문(tier 2)이라 SPEC 과 승인이 있어야 구현해요.
+
+## Interview
+
+- Q1: 읽을 수 있는 항목이 하나라도 있으면 깨진 항목이 있어도 한도가 켜져 있나요? → A: 예. 그 경우는 지금처럼 이름만 알리고 세지 않아요(Non-goals, REQ-2).
+- Q2: 새 필드와 새 거절 문구를 만드나요? → A: 아니요. 기존 `registry_error` 길과 문구를 다시 써요(D-1).
+- Q3: 관문을 조이는 변경인데 누가 승인하나요? → A: 사용자 위임에 따른 리더 승인이에요(D-3).
 
 ## Non-goals
 
