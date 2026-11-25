@@ -131,7 +131,19 @@ branch: spec/update-conflict-baseline-r3-20261125
 
 ## Result
 
-개정 3 (REQ-17…REQ-23, 백업 뿌리와 빈 폴더)은 아직 구현하지 않았어요(사용자 승인 대기; 구현 뒤에 채워요).
+개정 3 (REQ-17…REQ-23, 백업 뿌리와 빈 폴더; digest `sha256:96026db458aed50b2c951ff59e0dd3f7de1f5ad4a5bef1c5fce4fa0c40ec26a9`, 사용자의 "승인, D-7·D-8 기본값 (Recommended)" 선택을 리더가 카드 노트 9045 에 기록한 것을 인용해요) 구현:
+
+- 고치기 전 RED: 새 테스트 ac11~ac14 4개와, 백업 위치를 새 뿌리로 고쳐 쓴 이웃 테스트 4개(`update_adopt_cli` 1, `update_backup_replace` 3)가 옛 코드에서 맞는 이유로 실패했어요(백업이 `.moai-cli/backups` 에 생기고, 화면에 줄이 없고, 빈 폴더가 남았어요). 지킴이 테스트인 ac13 의 거절 쪽(`ac13_recovery_does_not_read_…`)은 코드가 이미 거절해서 RED 가 없고, 뮤턴트가 보증해요.
+- 원인과 고친 곳: 백업을 쓰는 곳 일곱이 `home_root::path(home)/backups` 를 써서, `~/.moai-cli` 가 있고 표지가 없는 HOME 은 `~/.moai-cli` 로 풀렸어요. 새 함수 `home_root::backup_root` 하나가 `<HOME>/.moai/backups` 를 돌려주고(`go`·`mixed`·`interrupted`·`refuse` 판정이면 `Err`), 쓰는 곳 다섯(`update.rs` 계획 셋과 쓰기 둘, `rules.rs` 계획과 쓰기)이 그것을 써요. HOME 상태 폴더의 판정(`resolves_to_moai`)은 안 바꿨어요.
+- AC-11: met — `cargo test --locked --offline --test update_conflict_baseline_cli ac11_` exit 0. `.moai-cli` 로 풀리는 HOME(남의 `.moai` 가 있는 경우도)에서 conflict 교체, 입양, 옛 flow 삭제의 백업이 모두 `.moai/backups` 에 하나씩 생기고 `.moai-cli/backups` 는 안 생겨요. 상태 폴더 판정은 그대로예요.
+- AC-12: met — `… ac12_` exit 0. `.moai` 가 링크이거나 Go 표지(`credentials.yaml`)가 있으면 계획이 `conflict_replace`·`adopt`·`legacy_flow` 를 내지 않고 `backup_blocked` 에 단계와 이유를 담아요. 한국어·영어 화면이 단계와 이유를 말해요. 확정해도 사용자 바이트(충돌 파일, 스킬 폴더, flow 규칙 파일)가 그대로이고 링크 바깥에는 아무것도 안 써요.
+- AC-13: met, 한 가지 해석을 적어요 — `… ac13_` 둘 exit 0. 복구가 `.moai-cli/backups` 의 옛 백업을 읽어 원본을 되돌리고, 백업 폴더는 그 자리에 남고 `MANIFEST.json` 바이트와 읽기만 하는 파일이 그대로이며 `.moai` 에는 아무것도 안 생겨요. 거절 쪽: 알려진 백업 폴더 밖을 가리키는 영수증은 복구가 읽지 않고 백업과 스킬을 그대로 둬요. 해석: 복구는 원래 백업 안의 원본 트리(`moai/…`)를 제자리로 옮기므로 AC-13 의 "모든 파일이 바이트까지 그대로" 를 그 트리에는 적용할 수 없어요. 그 트리는 복구의 목적대로 옮겨지고, 나머지는 위처럼 그대로예요. 심사자가 이 해석을 봐 주세요.
+- AC-14: met — `… ac14_` exit 0. 옛 flow 파일을 지운 뒤 `rules/moai/` 가 비면 치워지고(부모 `rules/` 는 남아요) 결과 JSON 이 `folder_removed` 를 싣고 Applied 화면(ko/en)이 그 폴더를 말해요. 다른 파일(`mine.md`)이 있으면 폴더와 그 파일이 남고 줄도 없어요.
+- 되돌려야 했던 회귀 하나: 백업이 `.moai-cli` 밖으로 나가자 `~/.moai-cli` 자체가 링크일 때의 거절(`a_symlinked_state_directory_is_refused`)이 사라져 영수증이 링크를 따라 HOME 밖에 써졌어요. `update::refuse_backup_roots` 가 백업 폴더와 상태 폴더의 링크를 둘 다 막아요.
+- 이웃: `update_conflict_baseline_cli` 14(개정 2 의 ac1~ac10 포함), `update_adopt_cli` 15, `update_backup_replace` 20, `update_route` 9 통과, clippy `-D warnings` 통과. 백업 위치를 고쳐 쓴 이웃 테스트는 `update_adopt_cli`(2곳), `update_backup_replace`(5곳)이고 이 슬라이스의 범위에 넣었어요.
+- 지킴이 뮤턴트 12(각각 정확히 한 번 고치고 `git checkout` 으로 복원, 트리 깨끗함 확인, 모두 단언 실패 exit 101): `go` 판정 거절 제거 → ac12, `refuse` 판정 거절 제거 → ac12, 상태 폴더로 되돌린 뿌리 → ac11, 상태 폴더 링크 확인 제거 → `a_symlinked_state_directory_is_refused`, `remove_dir` 을 `remove_dir_all` 로 → ac14, `folder_removed` 키 제거 → ac14, 입양 취소 제거 → ac12, conflict 막힘 기록 제거 → ac12, flow 막힘 단계 이름 바꿈 → ac12, 복구 위치 확인 제거 → 처음엔 살아남아(exit 0) 거절 테스트를 더한 뒤 ac13 실패, 막힘 화면 줄 제거 → ac12, 빈 폴더 화면 줄 제거 → ac14.
+- 임시 HOME 에서만 돌렸어요(빌드한 `moai-cli` 를 임시 HOME 에 실행). 진짜 `~/.claude`, `~/.moai`, `~/.moai-cli` 는 읽지도 쓰지도 않았어요.
+- 하지 않은 것: `rules/moai` 가 링크일 때의 `remove_dir` 거절(`plain` 확인)은 테스트가 없어 뮤턴트도 안 돌렸어요. `remove_dir` 은 링크를 따라가지 않으므로 방어층이에요. 복구가 HOME 상태가 `.moai` 로 풀리는 HOME 에서 `.moai-cli/backups` 를 읽는 경우는 시험하지 못했어요(영수증 위치까지 옮겨야 해요).
 
 개정 1 은 REQ-1…REQ-9, 개정 2 는 REQ-10…REQ-16 이에요. (j) 는 구현하지 않았고(사용자 선택 대기), (g) 는 근거가 코드와 어긋나 하지 않았어요.
 
