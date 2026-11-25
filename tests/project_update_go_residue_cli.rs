@@ -340,6 +340,51 @@ fn the_go_residue_step_proves_from_the_backup_manifests() {
     }
 }
 
+/// REQ-3, REQ-4: files only the user (or this generation) wrote are listed as `user_data`
+/// with the action `keep`; they alone never ask for a decision, so the step reads `unchanged`
+/// and the plan's `all_unchanged` is not forced false by it.
+#[test]
+fn user_data_alone_leaves_the_go_residue_step_unchanged() {
+    let fx = Fx::new();
+    // A backup manifest that names no file: it proves nothing for the surveyed ones.
+    fx.manifest_at(".moai-backup/manifest.json");
+    fx.write(".moai/design/x.md", "# user design notes\n");
+    fx.git_commit_all();
+    let plan = fx.update_plan();
+    let found = step(&plan, "go-residue");
+    let user = Fx::residue_item(&plan, "x.md");
+    assert_eq!(user["class"], json!("user_data"), "the unmanifested file");
+    assert_eq!(user["tracked"], json!(true));
+    assert_eq!(user["suggested_action"], json!("keep"));
+    assert_eq!(
+        found["state"],
+        json!("unchanged"),
+        "user data alone is not a decision: {found:?}"
+    );
+    // Every surveyed item is kept as it is, so nothing here could ask for a decision.
+    let items = found["preview"]["items"].as_array().unwrap();
+    assert!(
+        items.iter().all(|i| i["suggested_action"] == json!("keep")),
+        "only keep items in this frame: {items:?}"
+    );
+    // The step takes no part in the other steps' state: the plan's `all_unchanged` is the
+    // AND of every step, so the residue step is the one that must read `unchanged` here.
+    let body = plan.get("result").unwrap_or(&plan);
+    let others_unchanged = body["phases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|p| p["steps"].as_array().into_iter().flatten())
+        .filter(|s| s["step"] != json!("go-residue"))
+        .all(|s| matches!(s["state"].as_str(), Some("unchanged" | "skip" | "optional")));
+    assert_eq!(
+        body["all_unchanged"],
+        json!(others_unchanged),
+        "all_unchanged follows the other steps alone: {:?}",
+        body["all_unchanged"]
+    );
+}
+
 /// AC-3 (REQ-6): with no manifest anywhere the step reports no proof with zero candidates
 /// and the plan still succeeds.
 #[test]
