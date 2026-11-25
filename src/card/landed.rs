@@ -15,7 +15,7 @@
 //! and one explicit `card take` still works.
 //!
 //! The git proofs need the integration branch ([`integration_branch`]: the record in the common
-//! git folder, then the profile's m-flow value). Without it (or when git cannot read it) only the
+//! git folder, then the profile's NeXT-Flow value). Without it (or when git cannot read it) only the
 //! recorded proofs are used and the answer says so in `landing`. Every git
 //! command runs through `scrub_git_env` and takes its program from `MOAI_GIT_BIN` when that is
 //! set, like the other card commands; all of them are read-only except [`move_branch`], the one
@@ -128,18 +128,21 @@ pub fn integration_branch(project: &Path) -> Result<String, String> {
     profile_branch(project)
 }
 
-/// The profile's integration branch, or the reason there is none: only an m-flow profile with
+/// The profile's integration branch, or the reason there is none: only a NeXT-Flow profile with
 /// an `integration_branch` has one. The profile is a tracked file, so this is the value of the
 /// worktree's own branch; [`integration_branch`] prefers the record.
 pub fn profile_branch(project: &Path) -> Result<String, String> {
     let Ok((profile, _)) = crate::profile::read_profile(project) else {
         return Err("the project profile cannot be read".to_string());
     };
-    let Some(flow) = profile.work_flow.filter(|w| w.flow == "m-flow") else {
-        return Err("the profile's work_flow is not m-flow".to_string());
+    let Some(flow) = profile
+        .work_flow
+        .filter(|w| crate::profile::is_local_flow(&w.flow))
+    else {
+        return Err("the profile's work_flow is not NeXT-Flow".to_string());
     };
     flow.integration_branch
-        .ok_or_else(|| "the profile's m-flow work_flow names no integration_branch".to_string())
+        .ok_or_else(|| "the profile's NeXT-Flow work_flow names no integration_branch".to_string())
 }
 
 /// The full reference of the integration branch `branch`: `refs/heads/` names the branch (a tag

@@ -247,8 +247,39 @@ fn validate_shared_files(files: &[String]) -> Result<()> {
     }
 }
 
-/// The flows the `work_flow` key names (card C-70), m-flow first.
-pub const WORK_FLOWS: &[&str] = &["m-flow", "github-flow", "trunk-based", "git-flow"];
+/// The flows the `work_flow` key names (card C-70), next-flow first: the local flow's
+/// name is NeXT-Flow (SPEC-20261122-next-flow) and `m-flow` is its old value, still read.
+pub const WORK_FLOWS: &[&str] = &[
+    "next-flow",
+    "m-flow",
+    "github-flow",
+    "trunk-based",
+    "git-flow",
+];
+
+/// Whether a `work_flow` value names the local flow (NeXT-Flow), under its current or its
+/// old value (SPEC-20261122-next-flow): both select the same flow.
+pub fn is_local_flow(name: &str) -> bool {
+    matches!(name, "next-flow" | "m-flow")
+}
+
+/// The one old-name line of the flow rename (SPEC-20261122-next-flow REQ-2): a profile whose
+/// value is still `m-flow` is read as the same flow and named once, nowhere rewritten.
+pub fn old_flow_notice(flow: &str) -> Option<&'static str> {
+    (flow == "m-flow")
+        .then_some("m-flow is the old name of the NeXT-Flow flow; both values select the same flow")
+}
+
+/// The name a person reads for a `work_flow` value: the local flow is NeXT-Flow under its
+/// current and its old value, and every other value is shown as it is. Texts that name the
+/// flow call this instead of printing the stored value.
+pub fn flow_display_name(flow: &str) -> &str {
+    if is_local_flow(flow) {
+        "NeXT-Flow"
+    } else {
+        flow
+    }
+}
 
 /// The `work_flow` key: one of [`WORK_FLOWS`] and, when named, the integration branch every
 /// card branch starts from.

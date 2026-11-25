@@ -49,7 +49,7 @@ enum Action {
         /// The repository to read.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into; without it the profile's m-flow
+        /// The branch bundles are merged into; without it the profile's NeXT-Flow
         /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
         /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
@@ -85,7 +85,7 @@ enum Action {
         /// The repository to read.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into; without it the profile's m-flow
+        /// The branch bundles are merged into; without it the profile's NeXT-Flow
         /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
         /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
@@ -124,7 +124,7 @@ enum Action {
         /// The repository to read.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into; without it the profile's m-flow
+        /// The branch bundles are merged into; without it the profile's NeXT-Flow
         /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
         /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
@@ -156,7 +156,7 @@ enum Action {
         /// The repository to build in.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into; without it the profile's m-flow
+        /// The branch bundles are merged into; without it the profile's NeXT-Flow
         /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
         /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
@@ -217,7 +217,7 @@ enum Action {
         /// The repository to read.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into; without it the profile's m-flow
+        /// The branch bundles are merged into; without it the profile's NeXT-Flow
         /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
         /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
@@ -246,7 +246,7 @@ pub const OPERATION: &str = "bundle";
 const DEFAULT_TIP: &str = "origin/v2026.11.0";
 
 /// The tip an action judges: an explicit `--tip` wins; without one, the project
-/// profile's m-flow integration branch becomes the local `refs/heads/<branch>` of the
+/// profile's NeXT-Flow integration branch becomes the local `refs/heads/<branch>` of the
 /// repository `dir` (`origin/<branch>` only when that branch does not exist; the stored
 /// value drives the integration ref), and without a recorded branch today's default stays,
 /// so every other repository keeps its answer.
@@ -261,7 +261,7 @@ fn resolve_tip(
     let work_flow = moai_cli::profile::read_profile(project)
         .ok()
         .and_then(|(p, _)| p.work_flow);
-    if work_flow.as_ref().is_some_and(|w| w.flow == "m-flow") {
+    if work_flow.as_ref().is_some_and(|w| moai_cli::profile::is_local_flow(&w.flow)) {
         if let Some(branch) = work_flow
             .and_then(|w| w.integration_branch)
             .filter(|b| !b.trim().is_empty())

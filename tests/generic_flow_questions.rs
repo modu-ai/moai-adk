@@ -49,12 +49,13 @@ fn work_flow_row_lists_github_flow_first_and_recommended() {
 }
 
 #[test]
-fn work_flow_row_describes_m_flow_in_plain_words() {
+fn work_flow_row_describes_next_flow_in_plain_words() {
     let options = &row("work_flow")[3];
-    assert!(options.contains("m-flow"), "{options}");
+    assert!(options.contains("next-flow (NeXT-Flow)"), "{options}");
+    assert!(!options.contains("m-flow"), "{options}");
     assert!(
         options.contains("when several AI agents work at the same time"),
-        "the m-flow option must say when it fits, in plain words: {options}"
+        "the NeXT-Flow option must say when it fits, in plain words: {options}"
     );
     for other in ["trunk-based", "git-flow"] {
         assert!(
@@ -94,7 +95,7 @@ fn only_the_github_flow_bullet_carries_the_recommended_default() {
     let bullet = |name: &str| {
         section
             .lines()
-            .find(|l| l.starts_with(&format!("- **{name}**")))
+            .find(|l| l.starts_with(&format!("- **{name}")))
             .unwrap_or_else(|| panic!("the flow section has no bullet for {name}"))
             .to_string()
     };
@@ -102,7 +103,7 @@ fn only_the_github_flow_bullet_carries_the_recommended_default() {
         bullet("GitHub flow").contains("the recommended default"),
         "the GitHub flow bullet must carry the recommended default"
     );
-    for other in ["m-flow", "trunk-based", "git-flow"] {
+    for other in ["next-flow", "trunk-based", "git-flow"] {
         assert!(
             !bullet(other).contains("recommended default"),
             "the {other} bullet must not carry the recommended default"
@@ -111,10 +112,10 @@ fn only_the_github_flow_bullet_carries_the_recommended_default() {
 }
 
 #[test]
-fn flow_section_tells_the_model_to_describe_m_flow_in_plain_words_first() {
+fn flow_section_tells_the_model_to_describe_next_flow_in_plain_words_first() {
     let section = flow_section();
     for phrase in [
-        "describe m-flow to the user in plain words",
+        "describe the local flow to the user in plain words",
         "until the user has picked it",
     ] {
         assert!(
@@ -177,8 +178,8 @@ fn project_workflow_asks_the_work_flow_row_with_github_flow_first() {
     );
     assert!(
         line.contains(
-            "m-flow (described to the user as \"when several AI agents work at the same time\")"
+            "next-flow (NeXT-Flow, described to the user as \"when several AI agents work at the same time\")"
         ),
-        "project.md must tell the model to describe m-flow in plain words: {line}"
+        "project.md must tell the model to describe NeXT-Flow in plain words: {line}"
     );
 }

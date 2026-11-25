@@ -136,8 +136,8 @@ pub(super) fn parse_met(entries: &[String]) -> Result<Vec<(i64, String)>> {
 }
 
 /// The evidence of a card that changes the repository: a landing that git proves, or, off an
-/// m-flow profile, the merged pull request link the card already has. An explicit `--head` comes
-/// first, then a merged link, then the newest head `card landed` recorded. On an m-flow profile
+/// NeXT-Flow profile, the merged pull request link the card already has. An explicit `--head` comes
+/// first, then a merged link, then the newest head `card landed` recorded. On a NeXT-Flow profile
 /// the link alone is no evidence, the same as for `card done`: a landing git proves is needed.
 fn landing_evidence(
     project: &Path,
@@ -177,7 +177,7 @@ fn landing_evidence(
                     unchanged(
                         "no landing is recorded for the card (`card landed` after the merge, or \
                          give the landed commit as --head <sha>); a merged pull request link alone \
-                         does not close a card on an m-flow profile",
+                         does not close a card on a NeXT-Flow profile",
                     )
                 } else {
                     unchanged(

@@ -2439,6 +2439,28 @@
         }
       ],
       "rejects": "a line of src that spells MOAI_TEST (or uses a constant that holds such a spelling) outside code under #[cfg(debug_assertions)] or #[cfg(test)], so a release build would read a test-only switch, or a release or dist profile in Cargo.toml or .cargo/config.toml that turns debug assertions on or a dist profile that does not inherit release (SPEC-20261125-test-switch-release-scan)"
+    },
+    {
+      "id": "shipped-flow-name-one-old-name-line",
+      "tests": [
+        "tests/flow_name_scan.rs::flow_name_one_old_name_line_only",
+        "tests/flow_name_scan.rs::flow_name_a_planted_text_is_refused"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test flow_name_scan"
+      ],
+      "rules": [
+        "tests/flow_name_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/",
+          "suffixes": [
+            ".md"
+          ]
+        }
+      ],
+      "rejects": "The display name M-Flow in a shipped text outside the one old-name line of the interview (the flow rename, SPEC-20261122-next-flow)"
     }
   ]
 }

@@ -445,7 +445,10 @@ fn conversation_line(home: Option<&Path>) -> Option<String> {
 fn work_flow_line(cwd: &Path) -> Option<String> {
     let (profile, _) = crate::profile::read_profile(cwd).ok()?;
     let work_flow = profile.work_flow?;
-    let mut line = format!("Work flow `{}`", work_flow.flow);
+    let mut line = format!(
+        "Work flow `{}`",
+        crate::profile::flow_display_name(&work_flow.flow)
+    );
     if let Some(branch) = work_flow.integration_branch.as_deref() {
         line.push_str(&format!(", integration branch `{branch}`"));
         if local_branch_absent(cwd, branch) {

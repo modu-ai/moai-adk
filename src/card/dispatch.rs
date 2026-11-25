@@ -1014,17 +1014,17 @@ fn read_worktree(project: &Path, worktree: Option<&str>) -> Result<Option<Worktr
     }))
 }
 
-/// The integration branch the `m-flow` work flow of the profile in `dir` names, if any.
+/// The integration branch the NeXT-Flow work flow of the profile in `dir` names, if any.
 fn mflow_integration_branch(dir: &Path) -> Option<String> {
     let (profile, _) = crate::profile::read_profile(dir).ok()?;
     profile
         .work_flow
-        .filter(|w| w.flow == "m-flow")?
+        .filter(|w| crate::profile::is_local_flow(&w.flow))?
         .integration_branch
 }
 
-/// The local integration branch of an m-flow project, as a full ref: the profile of the
-/// project folder names the `m-flow` work flow with an integration branch, else the profile of
+/// The local integration branch of a NeXT-Flow project, as a full ref: the profile of the
+/// project folder names the NeXT-Flow work flow with an integration branch, else the profile of
 /// the recorded worktree does (a lane worktree has no state-root marker, so its own profile is
 /// the earlier one without a work flow), and that branch exists locally. The ref is looked up
 /// in the worktree, whose refs are the clone's. `None` for every other case (no profile, one

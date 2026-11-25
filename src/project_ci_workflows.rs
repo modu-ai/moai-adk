@@ -71,9 +71,17 @@ struct FlowRow {
 
 const INTEGRATION: &str = "@integration";
 
-/// The one table that maps a work flow to its triggers (REQ-1, REQ-2). The profile's `m-flow`
-/// value becomes the NeXT-Flow value when the rename lands: only its row's name changes here.
+/// The one table that maps a work flow to its triggers (REQ-1, REQ-2). The flow rename
+/// (SPEC-20261122-next-flow) adds the `next-flow` row with the same behaviour as `m-flow`;
+/// the old value keeps its row so old profiles read unchanged.
 const FLOWS: &[FlowRow] = &[
+    FlowRow {
+        flow: "next-flow",
+        push: &[INTEGRATION],
+        pull_requests: PullRequests::No,
+        nightly: true,
+        cancel_per_pull_request: false,
+    },
     FlowRow {
         flow: "m-flow",
         push: &[INTEGRATION],
