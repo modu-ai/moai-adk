@@ -59,9 +59,7 @@ branch: spec/20261125-integration-guard-install
 - write: `install/git-hooks/reference-transaction`, `src/git_hooks/mod.rs`, `src/git_hooks/update.rs`, `src/ops/git_hooks_apply.rs`
 - write: `src/card/guard.rs`, `src/card/finish.rs`, `src/hook_session_start.rs`
 - write: `tests/integration_guard_install.rs`, `tests/card_finish_verdict_cli.rs`, `tests/git_hooks_cli.rs`, `tests/hook_session_start_cli.rs`
-- write: `tests/card/card_finish_cli.rs`, `tests/card_cleanup_outbox_cli.rs` (the fixtures that close a landed card record the verdict first: 59 and 6 `--head` calls read in this tree)
-- write: `docs/design-review/appendix/operations/git_hooks_plan.md`, `docs/design-review/appendix/operations/git_hooks_apply.md`
-- shared files by `card line-lease`, one change each: `docs/design-review/appendix/operations/card.md`, and `tests/fixtures/help/*.txt` or `tests/fixtures/state_folder_literals/allow.tsv` or `tools/repo_scans.json` only when a check names them
+- write: `tests/card/card_finish_cli.rs`, `tests/card_cleanup_outbox_cli.rs`- write: `docs/design-review/appendix/operations/git_hooks_plan.md`, `docs/design-review/appendix/operations/git_hooks_apply.md`
 - read-only: `src/card/land.rs`, `src/card/land/check.rs`, `src/card/landed.rs`, `src/profile.rs`
 - forbidden: the `.git/hooks` and `.git/moai` folders of this repository, `.moai/project.yaml`, `CLAUDE.md`
 
@@ -74,7 +72,7 @@ branch: spec/20261125-integration-guard-install
 5. `src/hook_session_start.rs`: 프로필이 통합 브랜치를 가리키면 `<공통 git 폴더>/hooks/reference-transaction` 의 존재·실행 비트와 `moai/integration-branch` 의 존재를 읽어 한 줄(`MoAI: integration branch <name> is not guarded: <what is missing> (moai git-hooks-plan)`)을 더해요.
 6. `src/card/finish.rs`: `Proven::Landing` 일 때 `check::Input { on_tip: false, verdict_head: head, lander: req.session, .. }` 로 `check::read` 를 부르고, 사용할 수 있는 PASS 가 없으면 `land` 의 `no_pass_reason` 과 같은 말로 거절해요(쓰기 전).
 7. 기존 `finish` 테스트 두 파일의 준비 단계가 닫기 전에 판정을 기록하게 고쳐요(선택지 a 일 때만).
-8. 문서 세 개(한 개는 줄 임대), 가벼운 검사(`cargo fmt --all`, clippy, 장부 테스트 `areas.toml`·`repo_scans.json`·`allow.tsv`·source-manifest), 가드 뮤턴트(Result 에 줄로), 그 다음 `check affected --card` 한 번, READY 노트.
+8. 문서 세 개. 그중 카드 연산 문서(`docs/design-review/appendix/operations/card.md`)는 프로필의 공유 파일이라 스코프에 넣지 않고 줄 임대(`card line-lease`)로 한 번에 써요. 도움말 고정 파일(`tests/fixtures/help/*.txt`), `tests/fixtures/state_folder_literals/allow.tsv`, `tools/repo_scans.json` 도 어떤 검사가 이름을 댈 때만 같은 방식으로 한 줄씩 써요. 그다음 가벼운 검사(`cargo fmt --all`, clippy, 장부 테스트 `areas.toml`·`repo_scans.json`·`allow.tsv`·source-manifest), 가드 뮤턴트(Result 에 줄로), 그 다음 `check affected --card` 한 번, READY 노트.
 
 ## Risks
 
