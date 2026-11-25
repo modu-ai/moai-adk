@@ -105,3 +105,17 @@ branch: spec/land-sync-merge-20261125
 | D-3 | 중단된 sync 의 워크트리 따라가기를 위해 `follow::rerun_from` 을 더해요. | 이동 뒤 멈춘 호출을 다시 불러 닫으려면 카드 없는 길이 필요해요. 없으면 워크트리가 뒤처진 채 남아요. | `follow.rs` 변경을 지우고 수동 `git read-tree` 안내로. |
 | D-4 | `card drift --restore` 는 sync 로 기록된 기대 팁에서도 카드 없는 `card.tip_restored` 행으로 되돌려요. | sync 도 착지처럼 장부가 아는 이동이라서 같은 되돌림 길을 열어 둬요. | sync 출처의 기대에서는 거절하는 판. |
 | D-5 | 출처는 로컬 브랜치 이름만 받고, `origin/main` 같은 원격 추적 이름은 받지 않아요. 목록은 정확히 같은 이름만 맞춰요. | 로컬 브랜치의 팁을 읽는 규칙이 `landed::tip_of` 와 같아요. 원격 추적 이름은 읽는 시점마다 움직여요. | 목록 검사에 원격 이름을 더하는 판. |
+
+## Result
+
+- AC-1 met: `card_land_sync_cli::ac1_a_registered_leader_merges_a_listed_source_in_one_guarded_move`(첫 부모가 옛 tip, 둘째 부모가 출처 tip, 이동은 한 번), `ac1_a_source_already_inside_the_tip_answers_moved_false_and_writes_nothing`, `ac1_a_tip_that_moved_after_the_merge_was_built_is_refused_stale_base`.
+- AC-2 met: `ac2_a_lane_session_and_a_call_with_no_session_id_are_refused`, `ac2_a_missing_or_wrong_by_word_is_refused`, `ac2_no_entry_no_leader_mode_or_an_ended_lease_confirms_nobody`.
+- AC-3 met: `ac3_an_unlisted_source_and_an_empty_or_missing_list_name_the_key`, `ac3_only_a_local_branch_the_list_holds_exactly_is_a_source`, `ac3_an_unapproved_missing_or_malformed_spec_is_refused`, `ac3_a_conflicting_source_is_refused_as_conflicts`, `ac3_an_unrelated_history_is_refused_as_join_failed`, `ac3_a_drifted_tip_is_refused_as_drift`.
+- AC-4 met: `ac4_a_check_that_cannot_start_gives_check_not_started`, `ac4_a_red_check_gives_check_failed`, `ac4_a_replaced_check_program_gives_not_full_pass_even_with_a_pass_line`, `ac4_the_wide_run_of_the_command_itself_lets_the_move_happen`, `ac4_the_private_worktree_is_removed_after_every_outcome_of_the_check`.
+- AC-5 met (위험 경로 그 자체): `ac5_the_installed_hook_refuses_every_hand_move_before_and_after_a_sync` 가 `git-hooks-plan`·`git-hooks-apply` 로만 깐 진짜 훅 아래에서 손 이동을 sync 전후에 거절하고 sync 는 한 번 옮기며 워크트리를 따라가요. 곁들여 `ac5_a_tip_lost_at_the_swap_is_refused_stale_base_and_removes_the_intent_file`, `ac5_a_dirty_checkout_of_the_branch_is_refused_before_the_check_and_any_write`.
+- AC-6 met: `ac6_the_sync_writes_card_less_rows_that_name_the_merge_the_source_the_old_tip_and_the_spec`, `ac6_the_next_landing_of_an_audited_head_is_not_refused_as_drift`, `ac6_the_same_call_again_answers_already_synced_and_writes_nothing`, `ac6_card_export_reads_a_ledger_that_holds_sync_rows`, `ac6_a_sync_stopped_after_the_move_is_closed_by_the_same_call`, 그리고 lib `card::drift` 10개.
+- AC-7 met: lib `profile::` 23개(`sync_sources_refusals_name_the_key` 포함).
+- AC-8 met: `leader_route`(22), `lane_team_names`(10), `next_flow_skill_scan`(75), `repo_claude_md`(27), `leader_reclaim_guidance`(1), `source_manifest_facts`(8) 통과, `leader.md` 는 10100바이트(상한 10240).
+- AC-9 met: `card_land_cli`·`card_land_batch_cli`·`card_land_checked_out_cli`·`card_land_audited_merge_cli`·`card_land_scans_cli`·`card_guard_cli` 141개 통과, 기대 문구는 그대로예요.
+- 가드 뮤턴트: 관문마다 코드를 하나씩 지워 죽는 테스트를 확인했어요(READY 노트의 `guard-mutant:` 줄).
+- 남긴 것: `CLAUDE.md` 는 아직 "`card land` 만 통합 브랜치를 옮긴다"고 적어요(다른 카드). `run_check` 의 폴더 이름 `land-batch` 는 그대로예요. 승인 규칙은 `spec_link::status` 를 복사했어요. 설치된 `moai` 가 `sync_sources` 키를 알기 전에는 리더가 프로필에 그 키를 쓰면 안 돼요.
