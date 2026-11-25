@@ -222,7 +222,7 @@ fn closing_commit_step_lists_by_apply_stages_only_those_paths_and_never_pushes()
 /// step 1): where the status lists are read and how each path is given to a step.
 fn snapshot_paragraph() -> String {
     let text = skill_text("workflows/project.md");
-    let start = position(&text, "Closing-commit snapshots (card C-59)");
+    let start = position(&text, "Closing-commit snapshots. In a git work tree");
     let tail = &text[start..];
     let end = tail.find("\n\n").unwrap_or(tail.len());
     assert!(
