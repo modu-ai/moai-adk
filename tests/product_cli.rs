@@ -2299,8 +2299,18 @@ mod skill_package {
             text.lines().count() <= 500,
             "SKILL.md stays under 500 lines"
         );
-        // One hop: the router names only the route table.
-        assert_eq!(package_paths_in(body), vec!["references/routes.json"]);
+        // The router names the four stops of its start order and nothing else
+        // (SPEC-20261125-skill-entry-order REQ-1): the route table, the chains table, the core
+        // rules and the chosen route text; the route text loads no further file.
+        assert_eq!(
+            package_paths_in(body),
+            vec![
+                "references/routes.json",
+                "references/chains/index.md",
+                "references/internal/core-rules.md",
+                "workflows/<route>.md"
+            ]
+        );
         // REQ-02A-05, narrowed by the #2592 user decisions (6840661050, 6840838042) and #2721:
         // the skill ships no agent material at all; the base agents ship as tool-neutral
         // sources in `agents/` beside `skills/`, rendered per host at install time.

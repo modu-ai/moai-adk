@@ -103,7 +103,11 @@ fn ac2_the_decision_table_stands_once_in_decide_md() {
         "`full` included",
         "no deadline",
     ] {
-        assert!(decide.contains(phrase), "decide.md lost `{phrase}`");
+        // A sentence may start with the phrase, so the capital letter does not count.
+        assert!(
+            decide.to_lowercase().contains(&phrase.to_lowercase()),
+            "decide.md lost `{phrase}`"
+        );
     }
     let skill = package("SKILL.md");
     for restated in [
