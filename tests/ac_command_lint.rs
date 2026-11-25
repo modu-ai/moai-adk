@@ -13,7 +13,6 @@ mod common;
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 const MANIFEST: &str = env!("CARGO_MANIFEST_DIR");
 
@@ -147,15 +146,42 @@ fn git_helper_applies_the_guards_to_every_call() {
     );
 }
 
-/// Runs the recorded-AC-command lint with the given arguments and returns its exit code.
-fn run_lint(args: &[&str]) -> std::process::Output {
-    let script = Path::new(MANIFEST).join("tools/check_ac_commands.py");
-    let mut cmd = Command::new("python3");
-    cmd.arg("-I").arg(&script);
-    for arg in args {
-        cmd.arg(arg);
+fn read_text(path: &Path) -> std::io::Result<String> {
+    fs::read(path).map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+}
+
+/// The lint's verdict and its text (summary line, then one `VIOLATION:` line each).
+struct Run {
+    ok: bool,
+    text: String,
+}
+
+/// Runs the recorded-AC-command lint as `--tree <root>` or `--file <file>` (the file's targets
+/// are resolved under the repository root).
+fn run_lint(args: &[&str]) -> Run {
+    let mut read = read_text;
+    let report = match args {
+        ["--tree", root] => lint::lint_tree(Path::new(root), &mut read),
+        ["--file", file] => lint::lint_file(Path::new(MANIFEST), Path::new(file), &mut read),
+        _ => panic!("usage: --tree <root> | --file <file>, got {args:?}"),
+    };
+    Run {
+        ok: report.ok(),
+        text: report.text(),
     }
-    cmd.output().expect("spawn the AC command lint")
+}
+
+/// One lint run over `root`, with the files it opened in order.
+fn lint_counted(root: &str) -> (lint::Report, Vec<String>) {
+    let mut opened = Vec::new();
+    let report = {
+        let mut read = |path: &Path| {
+            opened.push(path.to_string_lossy().into_owned());
+            read_text(path)
+        };
+        lint::lint_tree(Path::new(root), &mut read)
+    };
+    (report, opened)
 }
 
 /// SPEC-20261122-ac-lint-no-cargo: the lint reads test names from the sources and starts no
@@ -181,154 +207,10 @@ fn nextest_has_no_special_case_for_this_binary() {
     );
 }
 
-/// A fake `cargo` first on PATH, which shadows the real one and records each start in the marker
-/// file. Returns the folder that owns it (keep it alive), the marker and the PATH value to use.
-#[cfg(unix)]
-fn fake_cargo() -> (tempfile::TempDir, PathBuf, std::ffi::OsString) {
-    use std::os::unix::fs::PermissionsExt;
-    let bin = tempfile::TempDir::new().unwrap();
-    let marker = bin.path().join("cargo-started");
-    let fake = bin.path().join("cargo");
-    fs::write(
-        &fake,
-        format!("#!/bin/sh\necho \"$@\" >> '{}'\nexit 1\n", marker.display()),
-    )
-    .unwrap();
-    fs::set_permissions(&fake, fs::Permissions::from_mode(0o755)).unwrap();
-    let path = std::env::var_os("PATH").unwrap_or_default();
-    let path = std::env::join_paths(
-        std::iter::once(bin.path().to_path_buf()).chain(std::env::split_paths(&path)),
-    )
-    .unwrap();
-    (bin, marker, path)
-}
-
-/// Runs the lint with a fake `cargo` first on PATH, which shadows the real one and records each
-/// start in `cargo-started`. Returns the output and whether cargo was started.
-#[cfg(unix)]
-fn run_lint_without_cargo(args: &[&str]) -> (std::process::Output, bool) {
-    let (_bin, marker, path) = fake_cargo();
-    let out = Command::new("python3")
-        .arg("-I")
-        .arg(Path::new(MANIFEST).join("tools/check_ac_commands.py"))
-        .args(args)
-        .env("PATH", path)
-        .output()
-        .expect("spawn the AC command lint");
-    (out, marker.exists())
-}
-
-#[cfg(unix)]
-fn text_of(out: &std::process::Output) -> String {
-    format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    )
-}
-
-/// Runs the lint script unchanged under an interpreter audit hook. The hook writes the process
-/// starts and the repository files opened to a report file, one line each (`spawn <event>` and
-/// `open <path>`), so a test can bound the work the lint does by counting it, never by the clock.
-/// The script itself is opened by the runner and is not counted.
-#[cfg(unix)]
-const AUDIT_RUNNER: &str = r#"
-import os, runpy, sys
-root, report, script = sys.argv[1:4]
-# The separator keeps a sibling folder that shares the root's name as a prefix out of the count.
-prefix = root.rstrip(os.sep) + os.sep
-sys.argv = [script] + sys.argv[4:]
-SPAWN = ("subprocess.Popen", "os.system", "os.exec", "os.posix_spawn", "os.spawn", "os.fork", "os.forkpty")
-lines = []
-def hook(event, args):
-    if event == "open":
-        # One event per file read: Python 3.9 reads through an opener, so `os.open` raises a second
-        # `open` event for the same read, and that one has no mode string.
-        path = args[0]
-        if isinstance(path, int) or not isinstance(args[1], str):
-            return
-        path = os.fsdecode(path)
-        if path.startswith(prefix) and path != script:
-            lines.append("open " + path)
-    elif event in SPAWN:
-        lines.append("spawn " + event)
-sys.addaudithook(hook)
-code = 0
-try:
-    runpy.run_path(script, run_name="__main__")
-except SystemExit as stop:
-    code = stop.code if isinstance(stop.code, int) else (0 if stop.code is None else 1)
-with open(report, "w") as out:
-    out.write("\n".join(lines) + "\n")
-raise SystemExit(code)
-"#;
-
-/// What one counted lint run did: the lint's own output, whether the fake cargo was started, the
-/// repository files it opened (in order) and the process starts the audit hook saw.
-#[cfg(unix)]
-struct CountedRun {
-    out: std::process::Output,
-    cargo_started: bool,
-    opened: Vec<String>,
-    spawned: Vec<String>,
-}
-
-#[cfg(unix)]
-fn run_lint_counted(script: &Path, root: &str) -> CountedRun {
-    let (bin, marker, path) = fake_cargo();
-    let report = bin.path().join("audit-report");
-    let out = Command::new("python3")
-        .arg("-I")
-        .arg("-c")
-        .arg(AUDIT_RUNNER)
-        .arg(root)
-        .arg(&report)
-        .arg(script)
-        .args(["--tree", root])
-        .env("PATH", path)
-        .output()
-        .expect("spawn the AC command lint under the audit runner");
-    let report = fs::read_to_string(&report).unwrap_or_default();
-    let mut opened = Vec::new();
-    let mut spawned = Vec::new();
-    for line in report.lines() {
-        match line.split_once(' ') {
-            Some(("open", p)) => opened.push(p.to_string()),
-            Some(("spawn", e)) => spawned.push(e.to_string()),
-            _ => {}
-        }
-    }
-    CountedRun {
-        out,
-        cargo_started: marker.exists(),
-        opened,
-        spawned,
-    }
-}
-
-/// The recorded files the lint says it checked and the `--test` targets it listed, read from its
-/// summary line `checked <n> recorded files, <m> --test targets listed`.
-#[cfg(unix)]
-fn checked_counts(text: &str) -> (usize, usize) {
-    let line = text
-        .lines()
-        .find(|l| l.starts_with("checked "))
-        .unwrap_or_else(|| panic!("the lint printed no summary line:\n{text}"));
-    let words: Vec<&str> = line.split_whitespace().collect();
-    let number = |i: usize| -> usize {
-        words
-            .get(i)
-            .and_then(|w| w.parse().ok())
-            .unwrap_or_else(|| panic!("unreadable summary line: {line}"))
-    };
-    (number(1), number(4))
-}
-
 /// Files opened more often than the lint's design allows, as `(path, opens)`. The lint reads each
 /// recorded document once and each target root `tests/<name>.rs` once (one reading per target is
 /// cached); a module file in a subfolder of `tests/` (`tests/common/*.rs`) is read once for every
 /// target that declares it, so at most `targets` times.
-#[cfg(unix)]
 fn repeated_opens(opened: &[String], targets: usize) -> Vec<(String, usize)> {
     let mut counts = std::collections::BTreeMap::<&str, usize>::new();
     for path in opened {
@@ -349,7 +231,6 @@ fn repeated_opens(opened: &[String], targets: usize) -> Vec<(String, usize)> {
 
 /// Files opened outside the three folders the lint scans (recorded documents, recorded reports and
 /// the test sources), under `root`.
-#[cfg(unix)]
 fn outside_opens<'a>(opened: &'a [String], root: &str) -> Vec<&'a String> {
     let reports = format!("{}/reports", moai_cli::PROJECT_STATE_DIR);
     let allowed = ["docs", reports.as_str(), "tests"].map(|d| format!("{root}/{d}/"));
@@ -359,34 +240,24 @@ fn outside_opens<'a>(opened: &'a [String], root: &str) -> Vec<&'a String> {
         .collect()
 }
 
-/// The lint is a pure reader that does a bounded amount of work, counted and not timed: it starts
-/// no process of any kind (the 68-112 s cargo build of the earlier lint was one), it opens each
-/// recorded file and each target root once and a shared test module once per target (see
-/// `repeated_opens`), and it opens nothing outside the folders it scans. A clock limit failed at 5.18 s under machine load 200 and
-/// could not tell a slow machine from a slow lint; a count does not move with load.
-#[cfg(unix)]
+/// The lint does a bounded amount of work, counted and not timed: it opens each recorded file and
+/// each target root once and a shared test module once per target (see `repeated_opens`), and it
+/// opens nothing outside the folders it scans. A clock limit failed at 5.18 s under machine load
+/// 200 and could not tell a slow machine from a slow lint; a count does not move with load.
 #[test]
-fn the_repository_lint_starts_no_process_and_reads_each_file_once() {
-    let script = Path::new(MANIFEST).join("tools/check_ac_commands.py");
-    let run = run_lint_counted(&script, MANIFEST);
-    let text = text_of(&run.out);
-    assert!(!run.cargo_started, "the lint must not start cargo:\n{text}");
+fn the_repository_lint_reads_each_file_once_and_only_the_scanned_folders() {
+    let (report, opened) = lint_counted(MANIFEST);
     assert!(
-        run.out.status.success(),
-        "the recorded commands must pass without cargo:\n{text}"
+        report.ok(),
+        "the recorded commands must pass without cargo:\n{}",
+        report.text()
     );
-    assert!(
-        run.spawned.is_empty(),
-        "the lint started processes: {:?}\n{text}",
-        run.spawned
-    );
-    let (files, targets) = checked_counts(&text);
-    let repeated = repeated_opens(&run.opened, targets);
+    let repeated = repeated_opens(&opened, report.targets);
     assert!(
         repeated.is_empty(),
         "the lint opened files more often than its design allows: {repeated:?}"
     );
-    let outside = outside_opens(&run.opened, MANIFEST);
+    let outside = outside_opens(&opened, MANIFEST);
     assert!(
         outside.is_empty(),
         "the lint opened files outside the three folders it scans: {outside:?}"
@@ -394,83 +265,78 @@ fn the_repository_lint_starts_no_process_and_reads_each_file_once() {
     // A counter that saw nothing proves nothing: the lint read every recorded file it reports and
     // at least one test source for every target it listed.
     assert!(
-        run.opened.len() >= files + targets,
-        "the counter saw {} opens for {files} recorded files and {targets} targets:\n{text}",
-        run.opened.len()
+        opened.len() >= report.files + report.targets,
+        "the counter saw {} opens for {} recorded files and {} targets:\n{}",
+        opened.len(),
+        report.files,
+        report.targets,
+        report.text()
     );
 }
 
-/// The counter itself is checked by small stand-in scripts, so the bound above cannot go green
-/// because the counter stopped counting: a script that starts a process, one that reads a recorded
-/// file twice, one that reads outside the scanned folders, and one that reports checked files but
-/// opens none each show up in exactly the count that the bound reads.
-#[cfg(unix)]
+/// The lint module starts no process of any kind (the 68-112 s cargo build of the earlier lint
+/// was one) and opens a file only through the reader it is given, which is what the counted run
+/// above relies on. Read from this file's text between its two marker comments.
 #[test]
-fn the_audit_counter_sees_a_process_a_second_read_a_stray_read_and_a_silent_run() {
-    let tree = tempfile::TempDir::new().unwrap();
-    let root = tree.path().to_str().unwrap().to_string();
-    fs::create_dir_all(tree.path().join("docs")).unwrap();
-    fs::write(tree.path().join(doc("a.md")), "x\n").unwrap();
-    fs::write(tree.path().join("secret.txt"), "x\n").unwrap();
-    let scripts = tempfile::TempDir::new().unwrap();
-    let run_script = |name: &str, body: &str| {
-        let path = scripts.path().join(name);
-        fs::write(&path, body).unwrap();
-        run_lint_counted(&path, &root)
-    };
+fn the_lint_module_starts_no_process_and_opens_files_only_through_its_reader() {
+    let text = include_str!("ac_command_lint.rs");
+    let begin = text
+        .find(concat!("// lint", ":begin"))
+        .expect("the begin marker of the lint module");
+    let end = text
+        .find(concat!("// lint", ":end"))
+        .expect("the end marker of the lint module");
+    assert!(begin < end, "the markers are out of order");
+    let span = &text[begin..end];
+    for needle in [
+        concat!("std::", "process"),
+        concat!("Comm", "and"),
+        concat!("File", "::open"),
+        concat!("fs::", "read("),
+        concat!("fs::", "read_to_string"),
+        concat!("fs::", "write"),
+    ] {
+        assert!(
+            !span.contains(needle),
+            "the lint module must not use `{needle}`: it starts no process and reads only \
+             through its reader"
+        );
+    }
+}
 
-    let spawned = run_script(
-        "spawn.py",
-        "import subprocess\nsubprocess.run(['true'])\nprint('checked 0 recorded files, 0 --test targets listed')\n",
-    );
-    assert_eq!(
-        spawned.spawned,
-        vec!["subprocess.Popen"],
-        "{:?}",
-        spawned.out
-    );
-    assert!(spawned.out.status.success());
-
+/// The counter itself is checked on a small tree, so the bound above cannot go green because the
+/// counter stopped counting: one run lists exactly the recorded file and the target root it read
+/// (a command named twice still reads the target once), and the two bounds report a second read,
+/// a stray read and a shared module read too often.
+#[test]
+fn the_read_counter_sees_each_read_and_the_bounds_catch_a_second_read_or_a_stray_one() {
+    let dir = tree(&[
+        ("tests/t.rs", "#[test]\nfn f() {}\n"),
+        (
+            doc("a.md").as_str(),
+            "`cargo test --test t f`\n`cargo test --test t f`\n",
+        ),
+    ]);
+    let root = dir.path().to_str().unwrap().to_string();
+    let (report, opened) = lint_counted(&root);
+    assert!(report.ok(), "{}", report.text());
+    assert_eq!((report.files, report.targets), (1, 1));
     let doc_path = format!("{root}/{}", doc("a.md"));
-    let twice = run_script(
-        "twice.py",
-        &format!("open('{doc_path}').read()\nopen('{doc_path}').read()\n"),
-    );
-    assert_eq!(twice.opened, vec![doc_path.clone(), doc_path.clone()]);
+    assert_eq!(opened, vec![doc_path.clone(), format!("{root}/tests/t.rs")]);
+    assert!(repeated_opens(&opened, report.targets).is_empty());
+    assert!(outside_opens(&opened, &root).is_empty());
+
     assert_eq!(
-        repeated_opens(&twice.opened, 3),
+        repeated_opens(&[doc_path.clone(), doc_path.clone()], 3),
         vec![(doc_path.clone(), 2)],
         "a recorded document read twice is over the bound however many targets there are"
     );
-    assert!(twice.spawned.is_empty());
-
     let stray_path = format!("{root}/secret.txt");
-    let stray = run_script("stray.py", &format!("open('{stray_path}').read()\n"));
-    assert_eq!(outside_opens(&stray.opened, &root), vec![&stray_path]);
-
-    // A folder next to the root whose name starts with the root's name is not under the root.
-    let sibling = format!("{root}-sibling");
-    fs::create_dir_all(&sibling).unwrap();
-    let sibling_file = format!("{sibling}/note.txt");
-    fs::write(&sibling_file, "x\n").unwrap();
-    let beside = run_script("beside.py", &format!("open('{sibling_file}').read()\n"));
-    fs::remove_dir_all(&sibling).unwrap();
-    assert!(
-        beside.opened.is_empty(),
-        "a sibling folder with the root's name as a prefix is not counted: {:?}",
-        beside.opened
-    );
-
-    let silent = run_script(
-        "silent.py",
-        "print('checked 3 recorded files, 1 --test targets listed')\n",
-    );
-    let (files, targets) = checked_counts(&text_of(&silent.out));
-    assert_eq!((files, targets), (3, 1));
-    assert!(
-        silent.opened.len() < files + targets,
-        "a run that opened nothing must fall below the count the bound requires"
-    );
+    let stray = vec![stray_path.clone()];
+    assert_eq!(outside_opens(&stray, &root), vec![&stray_path]);
+    // A folder next to the root whose name starts with the root's name is not one of the three.
+    let beside = vec![format!("{root}-sibling/docs/note.md")];
+    assert_eq!(outside_opens(&beside, &root).len(), 1);
 
     // The shared modules of the test sources are read once per target, so the same file seen
     // three times is within the bound for three targets and over it for two.
@@ -488,13 +354,11 @@ fn the_audit_counter_sees_a_process_a_second_read_a_stray_read_and_a_silent_run(
 
 /// `docs/<name>` inside a temporary tree. Built at run time so tests/ci_scope_test.py, which greps
 /// quoted `docs/…` strings as repository documents, does not read these temporary paths as such.
-#[cfg(unix)]
 fn doc(name: &str) -> String {
     format!("{}/{name}", "docs")
 }
 
 /// Writes `files` (relative path, text) under a new temporary tree.
-#[cfg(unix)]
 fn tree(files: &[(&str, &str)]) -> tempfile::TempDir {
     let dir = tempfile::TempDir::new().unwrap();
     for (rel, text) in files {
@@ -505,7 +369,6 @@ fn tree(files: &[(&str, &str)]) -> tempfile::TempDir {
     dir
 }
 
-#[cfg(unix)]
 const SHAPES: &str = r##"// a brace in a comment: {
 /* a block comment with a brace } and a /* nested */ one */
 const TEXT: &str = "not a module { mod fake { #[test] fn in_a_string() {} } }";
@@ -539,7 +402,6 @@ mod renamed;
 fn after_the_modules() {}
 "##;
 
-#[cfg(unix)]
 #[test]
 fn test_names_are_read_from_the_sources_with_their_module_paths() {
     let dir = tree(&[
@@ -567,9 +429,8 @@ fn test_names_are_read_from_the_sources_with_their_module_paths() {
         ),
     ]);
     let root = dir.path().to_str().unwrap();
-    let (out, cargo_started) = run_lint_without_cargo(&["--tree", root]);
-    let text = text_of(&out);
-    assert!(!cargo_started, "the lint must not start cargo:\n{text}");
+    let run = run_lint(&["--tree", root]);
+    let text = &run.text;
     let violations: Vec<&str> = text
         .lines()
         .filter(|l| l.starts_with("VIOLATION:"))
@@ -592,10 +453,9 @@ fn test_names_are_read_from_the_sources_with_their_module_paths() {
         );
     }
     assert_eq!(violations.len(), 4, "{text}");
-    assert!(!out.status.success(), "{text}");
+    assert!(!run.ok, "{text}");
 }
 
-#[cfg(unix)]
 #[test]
 fn a_filter_on_macro_made_tests_says_the_names_cannot_be_read() {
     let dir = tree(&[
@@ -607,22 +467,21 @@ fn a_filter_on_macro_made_tests_says_the_names_cannot_be_read() {
         (doc("record.md").as_str(), "`cargo test --test made made_by_macro`\n"),
     ]);
     let root = dir.path().to_str().unwrap();
-    let (out, cargo_started) = run_lint_without_cargo(&["--tree", root]);
-    let text = text_of(&out);
-    assert!(!cargo_started, "the lint must not start cargo:\n{text}");
-    assert!(!out.status.success(), "{text}");
+    let run = run_lint(&["--tree", root]);
+    assert!(!run.ok, "{}", run.text);
     assert!(
-        text.lines().any(|l| l.starts_with("VIOLATION:")
+        run.text.lines().any(|l| l.starts_with("VIOLATION:")
             && l.contains(&doc("record.md"))
             && l.contains("macro")),
-        "the violation must say the names are made by a macro:\n{text}"
+        "the violation must say the names are made by a macro:\n{}",
+        run.text
     );
 }
 
 /// A repository tree with one moved area `repo`: the crate root declares the module `git_a`,
 /// which holds the test `finds_it`; `command` is the recorded line of `docs/record.md`. Returns
-/// the lint's output on that tree (SPEC-20261123-test-area-crates REQ-6, REQ-12).
-fn lint_area_tree(command: &str) -> std::process::Output {
+/// the lint's result on that tree (SPEC-20261123-test-area-crates REQ-6, REQ-12).
+fn lint_area_tree(command: &str) -> Run {
     let dir = tempfile::TempDir::new().unwrap();
     let files = [
         ("tests/repo/main.rs", "mod git_a;\n"),
@@ -643,56 +502,47 @@ fn lint_area_tree(command: &str) -> std::process::Output {
     run_lint(&["--tree", dir.path().to_str().unwrap()])
 }
 
-fn lint_text(out: &std::process::Output) -> String {
-    format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    )
-}
-
 /// A closed SPEC keeps `--test <old target>`: the old name is a module of an area crate and the
 /// recorded filter still selects its test.
 #[test]
 fn area_old_target_name_resolves_to_its_module() {
-    let out = lint_area_tree("cargo test --offline --locked --test git_a finds_it");
-    assert!(out.status.success(), "{}", lint_text(&out));
+    let run = lint_area_tree("cargo test --offline --locked --test git_a finds_it");
+    assert!(run.ok, "{}", run.text);
 }
 
 #[test]
 fn area_crate_name_with_a_module_filter_passes() {
-    let out = lint_area_tree("cargo test --offline --locked --test repo git_a::finds_it");
-    assert!(out.status.success(), "{}", lint_text(&out));
+    let run = lint_area_tree("cargo test --offline --locked --test repo git_a::finds_it");
+    assert!(run.ok, "{}", run.text);
 }
 
 #[test]
 fn area_filter_that_selects_nothing_fails() {
-    let out = lint_area_tree("cargo test --offline --locked --test repo git_zzz::");
-    let text = lint_text(&out);
-    assert!(!out.status.success(), "{text}");
-    assert!(text.contains("select 0 tests in repo"), "{text}");
+    let run = lint_area_tree("cargo test --offline --locked --test repo git_zzz::");
+    assert!(!run.ok, "{}", run.text);
+    assert!(run.text.contains("select 0 tests in repo"), "{}", run.text);
 }
 
 #[test]
 fn area_unknown_target_fails_even_beside_moved_areas() {
-    let out = lint_area_tree("cargo test --offline --locked --test never_moved some_test");
-    let text = lint_text(&out);
-    assert!(!out.status.success(), "{text}");
+    let run = lint_area_tree("cargo test --offline --locked --test never_moved some_test");
+    assert!(!run.ok, "{}", run.text);
     assert!(
-        text.contains("target tests/never_moved.rs does not exist"),
-        "{text}"
+        run.text
+            .contains("target tests/never_moved.rs does not exist"),
+        "{}",
+        run.text
     );
 }
 
 #[test]
 fn recorded_ac_commands_name_existing_targets_and_select_tests() {
-    let out = run_lint(&["--tree", MANIFEST]);
-    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
-    let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+    let run = run_lint(&["--tree", MANIFEST]);
     assert!(
-        out.status.success(),
+        run.ok,
         "recorded `cargo test --test …` commands must name existing targets and \
-         select at least one test:\n{stdout}{stderr}"
+         select at least one test:\n{}",
+        run.text
     );
 }
 
@@ -707,18 +557,951 @@ fn lint_flags_a_zero_selection_command() {
     )
     .unwrap();
     let file = report.to_str().unwrap();
-    let out = run_lint(&["--file", file]);
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
+    let run = run_lint(&["--file", file]);
+    assert!(
+        !run.ok,
+        "a `--test` command whose filters select nothing must be flagged:\n{}",
+        run.text
     );
     assert!(
-        !out.status.success(),
-        "a `--test` command whose filters select nothing must be flagged:\n{combined}"
-    );
-    assert!(
-        combined.contains(file),
-        "violation must name the file: {combined}"
+        run.text.contains(file),
+        "violation must name the file: {}",
+        run.text
     );
 }
+// lint:begin
+/// The recorded-AC-command lint (#2352), ported from the removed `tools/check_ac_commands.py`.
+/// A `cargo test --test X [filters…]` line in the recorded verification commands must name an
+/// existing test target and its filters must select at least one test: cargo exits 0 with
+/// "running 0 tests" for a filter that matches nothing, so such a command has passed as
+/// verification before (survey 2.11).
+///
+/// The scanned files are `docs/**/*.md` and the recorded reports of the project state folder.
+/// A candidate command is a `cargo test` line inside a fenced code block or a backtick code
+/// span; env prefixes are stripped. The target must have `tests/<name>.rs` (or be a module of an
+/// area crate), and its filters must select at least one test, checked against the test names
+/// read from the sources as cargo prints them (`module::name`, one reading per target, cached).
+/// Names a `macro_rules!` body makes cannot be read; a filter only such a name would satisfy is
+/// reported as such. Placeholder filters (`<name>`) are skipped as templates.
+///
+/// The module starts no process and opens a file only through the `read` closure it is given,
+/// so a test can count the reads (SPEC-20261122-ac-lint-no-cargo).
+mod lint {
+    use std::collections::{BTreeSet, HashMap, HashSet};
+    use std::io;
+    use std::path::{Path, PathBuf};
+
+    /// Opens one file as text. The lint reads files only through this.
+    pub type Read<'a> = &'a mut dyn FnMut(&Path) -> io::Result<String>;
+
+    pub struct Report {
+        pub files: usize,
+        pub targets: usize,
+        pub violations: Vec<String>,
+    }
+
+    impl Report {
+        pub fn ok(&self) -> bool {
+            self.violations.is_empty()
+        }
+
+        /// The summary line, then one `VIOLATION:` line each.
+        pub fn text(&self) -> String {
+            let mut out = format!(
+                "checked {} recorded files, {} --test targets listed\n",
+                self.files, self.targets
+            );
+            for v in &self.violations {
+                out.push_str("VIOLATION: ");
+                out.push_str(v);
+                out.push('\n');
+            }
+            out
+        }
+    }
+
+    fn is_word(c: char) -> bool {
+        c.is_alphanumeric() || c == '_'
+    }
+
+    fn is_ident_start(c: char) -> bool {
+        c.is_ascii_alphabetic() || c == '_'
+    }
+
+    fn is_ident(c: char) -> bool {
+        c.is_ascii_alphanumeric() || c == '_'
+    }
+
+    fn starts(s: &[char], i: usize, pat: &str) -> bool {
+        let mut k = i;
+        for p in pat.chars() {
+            if s.get(k) != Some(&p) {
+                return false;
+            }
+            k += 1;
+        }
+        true
+    }
+
+    fn skip_ws(s: &[char], mut i: usize) -> usize {
+        while s.get(i).is_some_and(|c| c.is_whitespace()) {
+            i += 1;
+        }
+        i
+    }
+
+    /// The end of an identifier that starts at `i`, or `None`.
+    fn ident_end(s: &[char], i: usize) -> Option<usize> {
+        if !s.get(i).is_some_and(|&c| is_ident_start(c)) {
+            return None;
+        }
+        let mut e = i + 1;
+        while s.get(e).is_some_and(|&c| is_ident(c)) {
+            e += 1;
+        }
+        Some(e)
+    }
+
+    fn find_seq(s: &[char], needle: &[char], from: usize) -> Option<usize> {
+        if needle.is_empty() || s.len() < needle.len() {
+            return None;
+        }
+        (from..=s.len() - needle.len()).find(|&p| s[p..p + needle.len()] == *needle)
+    }
+
+    fn slice(s: &[char], a: usize, b: usize) -> String {
+        let b = b.min(s.len());
+        if a >= b {
+            String::new()
+        } else {
+            s[a..b].iter().collect()
+        }
+    }
+
+    // ---- recorded files and their commands -------------------------------------------------
+
+    fn markdown_under(dir: &Path, out: &mut Vec<PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                markdown_under(&path, out);
+            } else if path.extension().is_some_and(|e| e == "md") {
+                out.push(path);
+            }
+        }
+    }
+
+    fn markdown_in(dir: &Path) -> Vec<PathBuf> {
+        let mut out: Vec<PathBuf> = std::fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|e| e == "md"))
+            .collect();
+        out.sort();
+        out
+    }
+
+    /// The recorded files under `root`. Frozen RC1 records stay out: the closed-issue mirrors
+    /// (numbers below 2153, the rc.2 split) and the rc1-issue-design HTML export; a historical
+    /// record is not edited to match a renamed test. Live records (bodies 2153 and up, root
+    /// reports, docs) stay guarded.
+    pub fn scan_files(root: &Path) -> Vec<PathBuf> {
+        let mut docs = Vec::new();
+        markdown_under(&root.join("docs"), &mut docs);
+        docs.sort();
+        let reports = root.join(moai_cli::PROJECT_STATE_DIR).join("reports");
+        let mut files = docs;
+        files.extend(markdown_in(&reports));
+        for path in markdown_in(&reports.join("issue-bodies")) {
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let digits: String = name.chars().take_while(|c| c.is_ascii_digit()).collect();
+            let after = name[digits.len()..].starts_with('-');
+            if after && digits.parse::<u64>().is_ok_and(|n| n >= 2153) {
+                files.push(path);
+            }
+        }
+        files
+    }
+
+    /// `cargo test` command strings: fenced-block lines and backtick code spans.
+    fn candidates(text: &str) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut in_fence = false;
+        for line in text.lines() {
+            if line.trim().starts_with("```") {
+                in_fence = !in_fence;
+                continue;
+            }
+            if in_fence {
+                out.push(line.to_string());
+                continue;
+            }
+            let chars: Vec<char> = line.chars().collect();
+            let mut p = 0;
+            while let Some(open) = chars[p..].iter().position(|&c| c == '`').map(|q| p + q) {
+                let Some(close) = chars[open + 1..]
+                    .iter()
+                    .position(|&c| c == '`')
+                    .map(|q| open + 1 + q)
+                else {
+                    break;
+                };
+                if close == open + 1 {
+                    p = close;
+                } else {
+                    out.push(slice(&chars, open + 1, close));
+                    p = close + 1;
+                }
+            }
+        }
+        out
+    }
+
+    /// The line without leading `NAME=value ` env prefixes.
+    fn strip_env_prefix(line: &str) -> &str {
+        let mut rest = line;
+        loop {
+            let chars: Vec<char> = rest.chars().collect();
+            let Some(&first) = chars.first() else {
+                return rest;
+            };
+            if !(first.is_ascii_uppercase() || first == '_') {
+                return rest;
+            }
+            let mut k = 1;
+            while chars
+                .get(k)
+                .is_some_and(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || *c == '_')
+            {
+                k += 1;
+            }
+            if chars.get(k) != Some(&'=') {
+                return rest;
+            }
+            let value_start = k + 1;
+            let mut v = value_start;
+            while chars.get(v).is_some_and(|c| !c.is_whitespace()) {
+                v += 1;
+            }
+            let after = skip_ws(&chars, v);
+            if v == value_start || after == v {
+                return rest;
+            }
+            let byte: usize = chars[..after].iter().map(|c| c.len_utf8()).sum();
+            rest = &rest[byte..];
+        }
+    }
+
+    /// Shell-like tokenization good enough for a recorded cargo command.
+    fn tokens_of(candidate: &str) -> Vec<String> {
+        let mut line = candidate.trim();
+        loop {
+            let stripped = strip_env_prefix(line);
+            if stripped == line {
+                break;
+            }
+            line = stripped;
+        }
+        let line = if line.contains('`') {
+            line.trim_matches('`')
+        } else {
+            line
+        };
+        line.split_whitespace().map(str::to_string).collect()
+    }
+
+    /// Positional filter words after `--test <name>` up to the next flag token.
+    fn filters_after_target(tokens: &[String]) -> Vec<String> {
+        let Some(idx) = tokens.iter().position(|t| t == "--test") else {
+            return Vec::new();
+        };
+        tokens
+            .iter()
+            .skip(idx + 2)
+            .take_while(|t| !t.starts_with('-'))
+            .cloned()
+            .collect()
+    }
+
+    /// Whether `cargo\s+test\b` occurs in `text`.
+    fn mentions_cargo_test(text: &str) -> bool {
+        let chars: Vec<char> = text.chars().collect();
+        let mut from = 0;
+        while let Some(p) = find_seq(&chars, &['c', 'a', 'r', 'g', 'o'], from) {
+            let k = skip_ws(&chars, p + 5);
+            if k > p + 5
+                && starts(&chars, k, "test")
+                && !chars.get(k + 4).is_some_and(|&c| is_word(c))
+            {
+                return true;
+            }
+            from = p + 1;
+        }
+        false
+    }
+
+    /// The name after the first `--test\s+` in `text`.
+    fn test_target_name(text: &str) -> Option<String> {
+        let chars: Vec<char> = text.chars().collect();
+        let mut from = 0;
+        while let Some(p) = find_seq(&chars, &['-', '-', 't', 'e', 's', 't'], from) {
+            let k = skip_ws(&chars, p + 6);
+            if k > p + 6 {
+                let mut e = k;
+                while chars
+                    .get(e)
+                    .is_some_and(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
+                {
+                    e += 1;
+                }
+                if e > k {
+                    return Some(slice(&chars, k, e));
+                }
+            }
+            from = p + 1;
+        }
+        None
+    }
+
+    /// The text of an HTML export with its tags blanked.
+    fn strip_tags(text: &str) -> String {
+        let chars: Vec<char> = text.chars().collect();
+        let mut out = String::new();
+        let mut i = 0;
+        while i < chars.len() {
+            if chars[i] == '<' {
+                let mut j = i + 1;
+                while j < chars.len() && chars[j] != '>' {
+                    j += 1;
+                }
+                if j < chars.len() && j > i + 1 {
+                    out.push(' ');
+                    i = j + 1;
+                    continue;
+                }
+            }
+            out.push(chars[i]);
+            i += 1;
+        }
+        out
+    }
+
+    // ---- test targets and the test names read from their sources ---------------------------
+
+    /// (file to read, folder its `mod x;` lines resolve in) of the test target `name`, or `None`.
+    ///
+    /// A target is a top-level `tests/<name>.rs`, an area crate `tests/<name>/main.rs`, or the
+    /// old name of a file moved into an area (`tests/<area>/<name>.rs`, a module of that crate):
+    /// closed SPECs keep `--test <old name>` and it still resolves (SPEC-20261123-test-area-crates
+    /// REQ-6). Found by where the files are, so no table is read. Anything else is `None`.
+    fn resolve_target(root: &Path, name: &str) -> Option<(PathBuf, PathBuf)> {
+        let tests_dir = root.join("tests");
+        let top = tests_dir.join(format!("{name}.rs"));
+        if top.is_file() {
+            return Some((top, tests_dir));
+        }
+        let crate_main = tests_dir.join(name).join("main.rs");
+        if crate_main.is_file() {
+            return Some((crate_main, tests_dir.join(name)));
+        }
+        if name != "main" && tests_dir.is_dir() {
+            let mut areas: Vec<PathBuf> = std::fs::read_dir(&tests_dir)
+                .into_iter()
+                .flatten()
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| p.is_dir())
+                .collect();
+            areas.sort();
+            for area in areas {
+                let module = area.join(format!("{name}.rs"));
+                if area.join("main.rs").is_file() && module.is_file() {
+                    return Some((module, area.join(name)));
+                }
+            }
+        }
+        None
+    }
+
+    /// The source with comments, string, raw-string and char literals blanked (string contents
+    /// kept only inside attributes, where `#[path = "…"]` needs them). Lengths are not kept;
+    /// only the token order matters to the reader.
+    fn code_only(src: &str) -> Vec<char> {
+        let s: Vec<char> = src.chars().collect();
+        let n = s.len();
+        let mut out: Vec<char> = Vec::with_capacity(n);
+        let mut i = 0;
+        let mut attr_depth = 0usize;
+        while i < n {
+            let c = s[i];
+            if starts(&s, i, "//") {
+                i = s[i..].iter().position(|&x| x == '\n').map_or(n, |p| i + p);
+                continue;
+            }
+            if starts(&s, i, "/*") {
+                let (mut depth, mut k) = (1usize, i + 2);
+                while k < n && depth > 0 {
+                    if starts(&s, k, "/*") {
+                        depth += 1;
+                        k += 2;
+                    } else if starts(&s, k, "*/") {
+                        depth -= 1;
+                        k += 2;
+                    } else {
+                        k += 1;
+                    }
+                }
+                out.push(' ');
+                i = k;
+                continue;
+            }
+            if let Some((hashes, open_len)) = raw_string_open(&s, i) {
+                if i == 0 || !is_word(s[i - 1]) {
+                    let mut close = vec!['"'];
+                    close.extend(std::iter::repeat_n('#', hashes));
+                    let end = find_seq(&s, &close, i + open_len).map_or(n, |p| p + close.len());
+                    if attr_depth > 0 {
+                        out.extend_from_slice(&s[i..end]);
+                    } else {
+                        out.extend(['"', '"']);
+                    }
+                    i = end;
+                    continue;
+                }
+            }
+            if c == '"' {
+                let mut j = i + 1;
+                while j < n && s[j] != '"' {
+                    j += if s[j] == '\\' { 2 } else { 1 };
+                }
+                if attr_depth > 0 {
+                    out.extend_from_slice(&s[i..(j + 1).min(n)]);
+                } else {
+                    out.extend(['"', '"']);
+                }
+                i = j + 1;
+                continue;
+            }
+            if c == '\'' {
+                if let Some(len) = char_literal_len(&s, i) {
+                    out.extend(['\'', ' ', '\'']);
+                    i += len;
+                    continue;
+                }
+            }
+            if starts(&s, i, "#[") || starts(&s, i, "#![") {
+                attr_depth += 1;
+            } else if c == ']' && attr_depth > 0 {
+                attr_depth -= 1;
+            }
+            out.push(c);
+            i += 1;
+        }
+        out
+    }
+
+    /// `b?r#*"` at `i`: (number of `#`, length of the opening).
+    fn raw_string_open(s: &[char], i: usize) -> Option<(usize, usize)> {
+        let mut k = i;
+        if s.get(k) == Some(&'b') {
+            k += 1;
+        }
+        if s.get(k) != Some(&'r') {
+            return None;
+        }
+        k += 1;
+        let mut hashes = 0;
+        while s.get(k) == Some(&'#') {
+            hashes += 1;
+            k += 1;
+        }
+        if s.get(k) == Some(&'"') {
+            Some((hashes, k + 1 - i))
+        } else {
+            None
+        }
+    }
+
+    /// The length of a char literal at `i` (`'a'`, `'\n'`, `'\x41'`, `'\u{1F600}'`), or `None`
+    /// for a lifetime.
+    fn char_literal_len(s: &[char], i: usize) -> Option<usize> {
+        let k = i + 1;
+        let c = *s.get(k)?;
+        if c == '\\' {
+            let e = k + 1;
+            let q = *s.get(e)?;
+            if q == 'x'
+                && s.get(e + 1).is_some_and(|c| c.is_ascii_hexdigit())
+                && s.get(e + 2).is_some_and(|c| c.is_ascii_hexdigit())
+                && s.get(e + 3) == Some(&'\'')
+            {
+                return Some(e + 4 - i);
+            }
+            if q == 'u' && s.get(e + 1) == Some(&'{') {
+                let mut h = e + 2;
+                while s.get(h).is_some_and(|c| c.is_ascii_hexdigit()) {
+                    h += 1;
+                }
+                let digits = h - (e + 2);
+                if (1..=6).contains(&digits)
+                    && s.get(h) == Some(&'}')
+                    && s.get(h + 1) == Some(&'\'')
+                {
+                    return Some(h + 2 - i);
+                }
+            }
+            if q != '\n' && s.get(e + 1) == Some(&'\'') {
+                return Some(e + 2 - i);
+            }
+            return None;
+        }
+        if c != '\'' && c != '\n' && s.get(k + 1) == Some(&'\'') {
+            return Some(3);
+        }
+        None
+    }
+
+    /// The file of `mod name;` declared in a file whose child modules live under `base`.
+    fn module_file(base: &Path, name: &str) -> Option<PathBuf> {
+        [
+            base.join(format!("{name}.rs")),
+            base.join(name).join("mod.rs"),
+        ]
+        .into_iter()
+        .find(|c| c.is_file())
+    }
+
+    /// The end of an optional `pub` / `pub(…)` prefix and its whitespace at `i` (`i` itself
+    /// when there is none); `None` when `pub` is there without the whitespace after it.
+    fn after_pub(code: &[char], i: usize) -> Option<usize> {
+        if !starts(code, i, "pub") {
+            return Some(i);
+        }
+        let mut k = i + 3;
+        if code.get(k) == Some(&'(') {
+            let close = code[k + 1..].iter().position(|&c| c == ')')?;
+            k = k + 1 + close + 1;
+        }
+        let w = skip_ws(code, k);
+        (w > k).then_some(w)
+    }
+
+    /// `[pub …] mod NAME {` or `;` at `i`: (name, the `{` or `;`, end).
+    fn match_mod(code: &[char], i: usize) -> Option<(String, char, usize)> {
+        let mut k = after_pub(code, i)?;
+        if !starts(code, k, "mod") {
+            return None;
+        }
+        k += 3;
+        let w = skip_ws(code, k);
+        if w == k {
+            return None;
+        }
+        let e = ident_end(code, w)?;
+        let at = skip_ws(code, e);
+        match code.get(at) {
+            Some(&c) if c == '{' || c == ';' => Some((slice(code, w, e), c, at + 1)),
+            _ => None,
+        }
+    }
+
+    /// `[pub …] [const] [async] [unsafe] fn NAME` at `i`: (name, end).
+    fn match_fn(code: &[char], i: usize) -> Option<(String, usize)> {
+        let mut k = after_pub(code, i)?;
+        for kw in ["const", "async", "unsafe"] {
+            if starts(code, k, kw) {
+                let w = skip_ws(code, k + kw.len());
+                if w > k + kw.len() {
+                    k = w;
+                }
+            }
+        }
+        if !starts(code, k, "fn") {
+            return None;
+        }
+        k += 2;
+        let w = skip_ws(code, k);
+        if w == k {
+            return None;
+        }
+        let e = ident_end(code, w)?;
+        Some((slice(code, w, e), e))
+    }
+
+    /// `IDENT (\s* :: \s* IDENT)*` at the start of `body`: its end.
+    fn path_head_end(body: &[char]) -> Option<usize> {
+        let mut e = ident_end(body, 0)?;
+        loop {
+            let k = skip_ws(body, e);
+            if starts(body, k, "::") {
+                if let Some(e2) = ident_end(body, skip_ws(body, k + 2)) {
+                    e = e2;
+                    continue;
+                }
+            }
+            return Some(e);
+        }
+    }
+
+    /// `path\s*=\s*"([^"]+)"` at the start of `body`.
+    fn path_attr(body: &[char]) -> Option<String> {
+        if !starts(body, 0, "path") {
+            return None;
+        }
+        let k = skip_ws(body, 4);
+        if body.get(k) != Some(&'=') {
+            return None;
+        }
+        let q = skip_ws(body, k + 1);
+        if body.get(q) != Some(&'"') {
+            return None;
+        }
+        let close = body[q + 1..].iter().position(|&c| c == '"')?;
+        (close > 0).then(|| slice(body, q + 1, q + 1 + close))
+    }
+
+    /// Whether a `macro_rules!` body in `code` holds a test attribute.
+    fn macro_makes_tests(code: &[char]) -> bool {
+        let mut from = 0;
+        let marker: Vec<char> = "macro_rules!".chars().collect();
+        while let Some(p) = find_seq(code, &marker, from) {
+            from = p + 1;
+            let name = skip_ws(code, p + marker.len());
+            let Some(e) = ident_end(code, name) else {
+                continue;
+            };
+            let open = skip_ws(code, e);
+            if code.get(open) != Some(&'{') {
+                continue;
+            }
+            let begin = open + 1;
+            let (mut depth, mut j) = (1i32, begin);
+            while j < code.len() && depth != 0 {
+                match code[j] {
+                    '{' => depth += 1,
+                    '}' => depth -= 1,
+                    _ => {}
+                }
+                j += 1;
+            }
+            if has_test_attribute(&code[begin..j]) {
+                return true;
+            }
+            from = begin;
+        }
+        false
+    }
+
+    /// `#[ (IDENT::)* test ]` or `#[ (IDENT::)* test(` anywhere in `body`.
+    fn has_test_attribute(body: &[char]) -> bool {
+        let mut from = 0;
+        while let Some(p) = find_seq(body, &['#', '['], from) {
+            from = p + 1;
+            let mut k = skip_ws(body, p + 2);
+            loop {
+                let Some(e) = ident_end(body, k) else {
+                    break;
+                };
+                let after = skip_ws(body, e);
+                if starts(body, after, "::") {
+                    k = skip_ws(body, after + 2);
+                    continue;
+                }
+                if slice(body, k, e) == "test" && matches!(body.get(after), Some(']') | Some('(')) {
+                    return true;
+                }
+                break;
+            }
+        }
+        false
+    }
+
+    /// Adds `module::name` for every test function in `file` (and the module files it declares)
+    /// to `out`. Returns whether a `macro_rules!` body there holds a test attribute.
+    fn read_tests(
+        file: &Path,
+        base: &Path,
+        prefix: &str,
+        out: &mut BTreeSet<String>,
+        seen: &mut HashSet<PathBuf>,
+        read: Read,
+    ) -> bool {
+        if seen.contains(file) || !file.is_file() {
+            return false;
+        }
+        seen.insert(file.to_path_buf());
+        let code = code_only(&read(file).unwrap_or_default());
+        let n = code.len();
+        let mut macro_tests = macro_makes_tests(&code);
+        let mut stack: Vec<(String, i64)> = Vec::new();
+        let mut depth: i64 = 0;
+        let mut pending_test = false;
+        let mut pending_path: Option<String> = None;
+        let mut i = 0;
+        let join = |parts: &[&str]| -> String {
+            parts
+                .iter()
+                .filter(|p| !p.is_empty())
+                .copied()
+                .collect::<Vec<_>>()
+                .join("::")
+        };
+        while i < n {
+            let c = code[i];
+            if c == '#' && code.get(i + 1) == Some(&'[') {
+                let (mut depth_a, mut j) = (1i32, i + 2);
+                while j < n && depth_a != 0 {
+                    match code[j] {
+                        '[' => depth_a += 1,
+                        ']' => depth_a -= 1,
+                        _ => {}
+                    }
+                    j += 1;
+                }
+                let body: Vec<char> = slice(&code, i + 2, j.saturating_sub(1))
+                    .trim()
+                    .chars()
+                    .collect();
+                if let Some(e) = path_head_end(&body) {
+                    let head = slice(&body, 0, e);
+                    let rest: String = slice(&body, e, body.len()).trim().to_string();
+                    let last = head.rsplit("::").next().unwrap_or("").trim();
+                    if last == "test" && (rest.is_empty() || rest.starts_with('(')) {
+                        pending_test = true;
+                    }
+                }
+                if let Some(p) = path_attr(&body) {
+                    pending_path = Some(p);
+                }
+                i = j;
+                continue;
+            }
+            if c == '{' {
+                depth += 1;
+                i += 1;
+                continue;
+            }
+            if c == '}' {
+                depth -= 1;
+                if stack.last().is_some_and(|s| s.1 == depth) {
+                    stack.pop();
+                }
+                i += 1;
+                continue;
+            }
+            if c.is_alphabetic() || c == '_' {
+                let at_word_start = i == 0 || !is_word(code[i - 1]);
+                if let Some((name, kind, end)) = match_mod(&code, i).filter(|_| at_word_start) {
+                    if kind == '{' {
+                        stack.push((name, depth));
+                        depth += 1;
+                    } else {
+                        let inner: Vec<&str> = stack.iter().map(|s| s.0.as_str()).collect();
+                        let mut sub_base = base.to_path_buf();
+                        for part in &inner {
+                            sub_base.push(part);
+                        }
+                        let target = match &pending_path {
+                            Some(p) => {
+                                let from = if inner.is_empty() {
+                                    file.parent().unwrap_or(base).to_path_buf()
+                                } else {
+                                    sub_base.clone()
+                                };
+                                Some(from.join(p))
+                            }
+                            None => module_file(&sub_base, &name),
+                        };
+                        if let Some(target) = target.filter(|t| t.is_file()) {
+                            let parent = target.parent().unwrap_or(base).to_path_buf();
+                            let child_base = if target.file_name().is_some_and(|f| f == "mod.rs")
+                                || pending_path.is_some()
+                            {
+                                parent
+                            } else {
+                                parent.join(target.file_stem().unwrap_or_default())
+                            };
+                            let mut parts = vec![prefix];
+                            parts.extend(inner.iter().copied());
+                            parts.push(name.as_str());
+                            let mod_prefix = join(&parts);
+                            macro_tests |=
+                                read_tests(&target, &child_base, &mod_prefix, out, seen, read);
+                        }
+                    }
+                    pending_test = false;
+                    pending_path = None;
+                    i = end;
+                    continue;
+                }
+                if let Some((name, end)) = match_fn(&code, i).filter(|_| at_word_start) {
+                    if pending_test {
+                        let mut parts = vec![prefix];
+                        parts.extend(stack.iter().map(|s| s.0.as_str()));
+                        parts.push(name.as_str());
+                        out.insert(join(&parts));
+                    }
+                    pending_test = false;
+                    pending_path = None;
+                    i = end;
+                    continue;
+                }
+                let mut j = i;
+                while j < n && is_word(code[j]) {
+                    j += 1;
+                }
+                pending_test = false;
+                pending_path = None;
+                i = j;
+                continue;
+            }
+            if c == ';' {
+                pending_test = false;
+                pending_path = None;
+            }
+            i += 1;
+        }
+        macro_tests
+    }
+
+    type Listed = (BTreeSet<String>, bool);
+
+    /// (test names, whether a `macro_rules!` body makes tests) of `tests/<name>.rs`, read from
+    /// the sources: no cargo is started. A moved file's names keep their old form (no module
+    /// prefix), so an old recorded filter selects what it always did.
+    fn list_tests(
+        root: &Path,
+        name: &str,
+        cache: &mut HashMap<String, Listed>,
+        read: Read,
+    ) -> Listed {
+        if !cache.contains_key(name) {
+            let mut tests = BTreeSet::new();
+            let macro_tests = match resolve_target(root, name) {
+                Some((source, base)) => {
+                    read_tests(&source, &base, "", &mut tests, &mut HashSet::new(), read)
+                }
+                None => false,
+            };
+            cache.insert(name.to_string(), (tests, macro_tests));
+        }
+        cache[name].clone()
+    }
+
+    /// cargo's filter rule: a test is selected when ANY positional filter is a substring of the
+    /// full test path; no filters means "select everything".
+    fn selects_any(filters: &[String], tests: &BTreeSet<String>) -> bool {
+        filters.is_empty()
+            || filters
+                .iter()
+                .any(|f| tests.iter().any(|t| t.contains(f.as_str())))
+    }
+
+    /// A filter list as the earlier tool printed it: `['a', 'b']`.
+    fn listed(filters: &[String]) -> String {
+        let items: Vec<String> = filters.iter().map(|f| format!("'{f}'")).collect();
+        format!("[{}]", items.join(", "))
+    }
+
+    fn clip(candidate: &str) -> String {
+        candidate.trim().chars().take(170).collect()
+    }
+
+    fn violations_in(
+        path: &Path,
+        text: &str,
+        root: &Path,
+        cache: &mut HashMap<String, Listed>,
+        read: Read,
+    ) -> Vec<String> {
+        let text = if path.extension().is_some_and(|e| e == "html") {
+            strip_tags(text)
+        } else {
+            text.to_string()
+        };
+        let mut found = Vec::new();
+        let where_ = path.display();
+        for candidate in candidates(&text) {
+            if !mentions_cargo_test(&candidate) || !candidate.contains("--test") {
+                continue;
+            }
+            let tokens = tokens_of(&candidate);
+            let Some(name) = test_target_name(&tokens.join(" ")) else {
+                continue;
+            };
+            if resolve_target(root, &name).is_none() {
+                found.push(format!(
+                    "{where_}: target tests/{name}.rs does not exist :: {}",
+                    clip(&candidate)
+                ));
+                continue;
+            }
+            let filters: Vec<String> = filters_after_target(&tokens)
+                .into_iter()
+                .filter(|f| !f.starts_with('<'))
+                .collect();
+            let (tests, macro_tests) = list_tests(root, &name, cache, read);
+            if macro_tests && !selects_any(&filters, &tests) {
+                found.push(format!(
+                    "{where_}: filters {} select 0 written tests in {name}; its other tests are \
+                     made by a macro_rules! body, whose names cannot be read without cargo: name \
+                     a written test :: {}",
+                    listed(&filters),
+                    clip(&candidate)
+                ));
+                continue;
+            }
+            if tests.is_empty() {
+                found.push(format!(
+                    "{where_}: target {name} lists no tests :: {}",
+                    clip(&candidate)
+                ));
+                continue;
+            }
+            if !selects_any(&filters, &tests) {
+                found.push(format!(
+                    "{where_}: filters {} select 0 tests in {name} ({} available) :: {}",
+                    listed(&filters),
+                    tests.len(),
+                    clip(&candidate)
+                ));
+            }
+        }
+        found
+    }
+
+    fn lint_files(root: &Path, files: Vec<PathBuf>, read: Read) -> Report {
+        let mut cache: HashMap<String, Listed> = HashMap::new();
+        let mut violations = Vec::new();
+        for path in &files {
+            match read(path) {
+                Ok(text) => violations.extend(violations_in(path, &text, root, &mut cache, read)),
+                Err(e) => violations.push(format!("{}: unreadable ({e})", path.display())),
+            }
+        }
+        Report {
+            files: files.len(),
+            targets: cache.len(),
+            violations,
+        }
+    }
+
+    /// The whole recorded set under `root` (`--tree`).
+    pub fn lint_tree(root: &Path, read: Read) -> Report {
+        lint_files(root, scan_files(root), read)
+    }
+
+    /// One recorded file, its targets resolved under `root` (`--file`).
+    pub fn lint_file(root: &Path, file: &Path, read: Read) -> Report {
+        lint_files(root, vec![file.to_path_buf()], read)
+    }
+}
+// lint:end

@@ -6,8 +6,7 @@
 # fails on a word that is not listed here, so a new test file with a new first word adds that word
 # to one line below in the same change.
 #
-# Format: one array per line, so a plain line reader (tools/check_ac_commands.py runs on Python
-# versions without `tomllib`) and `toml_edit` read the same table. Do not wrap an array.
+# Format: one array per line, so a plain line reader and `toml_edit` read the same table. Do not wrap an array.
 #
 # An area counts as moved once `tests/<area>/main.rs` exists; until then its files stay separate
 # targets. A word may be listed before any file uses it.

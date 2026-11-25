@@ -107,6 +107,10 @@ const EXEMPT: &[(&str, &str)] = &[
     ),
     ("tests/status_line_cli.rs", "read_dir of a TempDir settings-backups folder"),
     (
+        "tests/statusline_golden.rs",
+        "read_dir lists the golden files of its own fixture folder to check that none is orphaned; every run and write is in a TempDir",
+    ),
+    (
         "tests/ui_korean_terminal_cli.rs",
         "read_dir of the TempDir project it set up; reads the named golden screens under tests/fixtures/ui",
     ),
@@ -1115,7 +1119,6 @@ fn the_more_readers_in_the_live_tree_are_found() {
     // Tails, not whole paths: this file is a reader itself, and a whole tracked path spelled here
     // would need an exemption of its own (and a state-folder literal moves the literal baseline).
     for (file, tail) in [
-        ("tests/statusline_golden.rs", "/statusline_golden.py"),
         ("tests/atlas_three_arm.rs", "tools"),
         ("tests/ui_summary_terminal_cli.rs", "skills/moai"),
         ("tests/e2e_temp_home_cli.rs", "skills/moai"),

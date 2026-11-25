@@ -354,8 +354,7 @@
         "cargo test --offline --locked --test ac_command_lint recorded_ac_commands_name_existing_targets_and_select_tests"
       ],
       "rules": [
-        "tests/ac_command_lint.rs",
-        "tools/check_ac_commands.py"
+        "tests/ac_command_lint.rs"
       ],
       "scope": [
         {
@@ -2207,7 +2206,7 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test ac_command_lint --test atlas_three_arm --test audit_gate_cli --test check_affected_modes_cli --test check_pipeline_config --test claude_python_adapter_removed --test cli_text_citations --test gate_collect --test heavy_slot_cli --test protected_paths_one_list --test repo_scans_cli --test review_checklist_cli --test search_atlas --test statusline_golden --test test_home_guard --test repo_scans_table"
+        "cargo test --offline --locked --test ac_command_lint --test atlas_three_arm --test audit_gate_cli --test check_affected_modes_cli --test check_pipeline_config --test claude_python_adapter_removed --test cli_text_citations --test gate_collect --test heavy_slot_cli --test protected_paths_one_list --test repo_scans_cli --test review_checklist_cli --test search_atlas --test test_home_guard --test repo_scans_table"
       ],
       "rules": [
         "tests/ac_command_lint.rs",
@@ -2223,7 +2222,6 @@
         "tests/repo_scans_cli.rs",
         "tests/review_checklist_cli.rs",
         "tests/search_atlas.rs",
-        "tests/statusline_golden.rs",
         "tests/test_home_guard.rs",
         "tests/repo_scans_table.rs"
       ],
@@ -2236,9 +2234,6 @@
         },
         {
           "prefix": "tools/build_folder.py"
-        },
-        {
-          "prefix": "tools/check_ac_commands.py"
         },
         {
           "prefix": "tools/ci_scope.py"

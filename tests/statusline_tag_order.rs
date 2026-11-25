@@ -9,7 +9,7 @@
 //! columns" is therefore proven as "byte-equal to the recorded golden": each case of `tests/fixtures/statusline-claude/cases.json` named below runs under
 //! `LANG` ko_KR.UTF-8 / en_US.UTF-8 × `COLUMNS` 80 / 40 × plain (`NO_COLOR=1`) / truecolor
 //! (`COLORTERM=truecolor`, through a pipe as Claude Code reads it), and must print exactly the
-//! `plain` / `ansi` golden. The run mirrors `tools/statusline_golden.py`: a fresh HOME and
+//! `plain` / `ansi` golden. The run mirrors `tests/statusline_golden.rs`: a fresh HOME and
 //! project per run, the case's setup steps, the same hidden seams, and the binary copied under
 //! another name. Unix only, like the golden harness.
 #![cfg(unix)]

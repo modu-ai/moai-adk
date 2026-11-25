@@ -225,8 +225,8 @@ tests/state_root_cli.rs	13	35
 tests/status_line_cli.rs	7	3
 tests/statusline_cards.rs	5	0
 tests/statusline_counts_refresh.rs	3	2
-tests/statusline_fixtures_test.py	0	2
 tests/statusline_git_env.rs	1	5
+tests/statusline_golden.rs	0	6
 tests/statusline_guard_false_positive.rs	1	0
 tests/statusline_home_state.rs	9	8
 tests/statusline_tag_order.rs	1	3
