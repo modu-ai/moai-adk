@@ -49,7 +49,19 @@ fn build_version() {
             .expect("a clock after 1970")
             .as_secs() as i64,
     };
-    match headver::build_numbered(head.as_deref(), now, local, ci, &package) {
+    // SPEC-20261125-headver-weekly-release: `MOAI_RELEASE_VERSION` makes a release build (no
+    // suffix, its serial counts from 0 in the release week); without it every build is `-dev`.
+    println!("cargo:rerun-if-env-changed={}", local_build::RELEASE_ENV);
+    let release = env::var(local_build::RELEASE_ENV)
+        .ok()
+        .filter(|raw| !raw.is_empty());
+    let built = match release {
+        Some(release) => {
+            headver::release_build(head.as_deref(), now, &release, local, ci, &package)
+        }
+        None => headver::build_numbered(head.as_deref(), now, local, ci, &package),
+    };
+    match built {
         Ok(build) => {
             println!("cargo:rustc-env=MOAI_BUILD_VERSION={}", build.version);
             println!("cargo:rustc-env=MOAI_BUILD_NOTE={}", build.note);

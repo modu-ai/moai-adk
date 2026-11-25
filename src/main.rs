@@ -3032,12 +3032,27 @@ mod tests {
             option_env!("MOAI_BUILD_NUMBER"),
         )
         .unwrap();
+        // SPEC-20261125-headver-weekly-release: a release build carries its whole version in
+        // `MOAI_RELEASE_VERSION`; every other build ends in `-dev`.
+        let release = option_env!("MOAI_RELEASE_VERSION").filter(|v| !v.is_empty());
         let head = moai_cli::headver::parse_head(include_str!("../HEADVER")).unwrap();
-        let parts: Vec<&str> = moai_cli::BUILD_VERSION.split('.').collect();
+        match release {
+            Some(version) => assert_eq!(moai_cli::BUILD_VERSION, version),
+            None => assert!(
+                moai_cli::BUILD_VERSION.ends_with("-dev"),
+                "{}",
+                moai_cli::BUILD_VERSION
+            ),
+        }
+        let numbers = moai_cli::BUILD_VERSION.trim_end_matches("-dev");
+        let parts: Vec<&str> = numbers.split('.').collect();
         assert_eq!(parts.len(), 3, "{}", moai_cli::BUILD_VERSION);
         assert_eq!(parts[0], head.to_string());
         assert_eq!(parts[1].len(), 4, "{}", moai_cli::BUILD_VERSION);
-        assert_eq!(parts[2], local.or(ci).unwrap_or(0).to_string());
+        match release {
+            Some(version) => assert_eq!(parts[2], version.rsplit('.').next().unwrap()),
+            None => assert_eq!(parts[2], local.or(ci).unwrap_or(0).to_string()),
+        }
         // The earlier scheme's builds read as older.
         assert!(moai_cli::headver::is_newer(
             moai_cli::BUILD_VERSION,
@@ -3050,10 +3065,14 @@ mod tests {
         let long = format!("{signature}\n{}", moai_cli::BUILD_NOTE);
         assert_eq!(Cli::command().get_long_version(), Some(long.as_str()));
         assert_eq!(moai_cli::LONG_VERSION, long);
-        let kind = match (local, ci) {
-            (Some(n), _) => format!("local build {n} (MOAI_LOCAL_BUILD), built "),
-            (None, Some(n)) => format!("CI build {n} (MOAI_BUILD_NUMBER), built "),
-            (None, None) => {
+        let kind = match (release, local, ci) {
+            (Some(version), _, _) => format!(
+                "release build {} (MOAI_RELEASE_VERSION), built ",
+                version.rsplit('.').next().unwrap()
+            ),
+            (None, Some(n), _) => format!("local build {n} (MOAI_LOCAL_BUILD), built "),
+            (None, None, Some(n)) => format!("CI build {n} (MOAI_BUILD_NUMBER), built "),
+            (None, None, None) => {
                 "unnumbered build (no MOAI_LOCAL_BUILD or MOAI_BUILD_NUMBER), built ".to_string()
             }
         };

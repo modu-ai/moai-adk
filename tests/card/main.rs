@@ -105,6 +105,7 @@ mod orchestrate_cli;
 mod queue_cli;
 mod queue_query_cli;
 mod recurring_problems_rule;
+mod release_branch_version;
 mod release_pr_three_os;
 mod release_suite;
 mod startable_shared;
