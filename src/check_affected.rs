@@ -957,7 +957,9 @@ impl Runner {
 
 /// `cargo nextest --version` in `dir`: nextest when it exits 0, `cargo test` otherwise.
 pub fn runner_in(dir: &Path) -> Runner {
-    let ok = Command::new("cargo")
+    let mut cmd = Command::new("cargo");
+    unnumbered(&mut cmd);
+    let ok = cmd
         .args(["nextest", "--version"])
         .current_dir(dir)
         .stdin(std::process::Stdio::null())
@@ -1873,6 +1875,7 @@ pub struct Facts {
 fn git(dir: &Path, args: &[&str]) -> Result<String> {
     let mut cmd = Command::new("git");
     crate::identity::scrub_git_env(&mut cmd);
+    unnumbered(&mut cmd);
     let o = cmd
         .args(args)
         .current_dir(dir)
@@ -2359,6 +2362,52 @@ fn exit_of(status: std::process::ExitStatus) -> i32 {
     1
 }
 
+/// The variables that number a build (SPEC-20261125-install-build-number): a local build's
+/// number and a CI build's number. A check build carries neither.
+pub const BUILD_NUMBER_VARS: [&str; 2] = [crate::local_build::ENV, crate::local_build::CI_ENV];
+
+/// Takes both build-number variables out of a child's environment, whoever set them: a build that
+/// only checks a change is an unnumbered build, and the number of an install build comes from
+/// `moai build-number next`.
+fn unnumbered(cmd: &mut Command) {
+    for var in BUILD_NUMBER_VARS {
+        cmd.env_remove(var);
+    }
+}
+
+/// SPEC-20261125-install-build-number AC-4: a check build is unnumbered, so no step of a check
+/// run carries `MOAI_LOCAL_BUILD` or `MOAI_BUILD_NUMBER`, whether the step or the run's extra
+/// environment sets them; every other variable still reaches the step. The test sits here and not
+/// in `mod tests` so that the SPEC's filter `check_affected::unnumbered_check_environment`
+/// selects it (a filter that selects no test would pass with zero tests run).
+#[cfg(test)]
+#[test]
+fn unnumbered_check_environment() {
+    assert_eq!(BUILD_NUMBER_VARS, ["MOAI_LOCAL_BUILD", "MOAI_BUILD_NUMBER"]);
+    let dir = tempfile::tempdir().unwrap();
+    let log = dir.path().join("env.log");
+    let mut s = step(
+        "env",
+        "sh",
+        &[
+            "-c",
+            "echo \"[${MOAI_LOCAL_BUILD-unset}][${MOAI_BUILD_NUMBER-unset}][${MOAI_TEST_KEEP-unset}]\"",
+        ],
+        false,
+    );
+    s.env = vec![
+        ("MOAI_LOCAL_BUILD".to_string(), "5".to_string()),
+        ("MOAI_BUILD_NUMBER".to_string(), "7".to_string()),
+        ("MOAI_TEST_KEEP".to_string(), "1".to_string()),
+    ];
+    let extra = [("MOAI_LOCAL_BUILD", std::ffi::OsString::from("9"))];
+    assert_eq!(run_step(dir.path(), &s, &log, &extra), 0);
+    assert_eq!(
+        std::fs::read_to_string(&log).unwrap().trim(),
+        "[unset][unset][1]"
+    );
+}
+
 /// Run one step in `dir` with `extra` added to its environment; its output goes to `log`. A
 /// program that cannot start is 127.
 fn run_step(dir: &Path, s: &Step, log: &Path, extra: &[(&str, std::ffi::OsString)]) -> i32 {
@@ -2379,6 +2428,7 @@ fn run_step(dir: &Path, s: &Step, log: &Path, extra: &[(&str, std::ffi::OsString
         .stdin(std::process::Stdio::null())
         .stdout(file)
         .stderr(err);
+    unnumbered(&mut cmd);
     match cmd.status() {
         Ok(status) => exit_of(status),
         Err(_) => 127,
