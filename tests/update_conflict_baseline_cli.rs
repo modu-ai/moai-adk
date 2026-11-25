@@ -29,6 +29,10 @@ use tempfile::TempDir;
 const EXE: &str = crate::common::MOAI_BIN;
 /// A file every package carries, edited per generation below.
 const FILE: &str = "workflows/work.md";
+/// The HOME state folder of the earlier name and the one of the new name, from the library, so
+/// this file spells neither.
+const EARLIER: &str = moai_cli::HOME_STATE_DIR;
+const NEWER: &str = moai_cli::home_root::MOAI_DIR;
 
 fn package() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
@@ -640,50 +644,50 @@ fn ac10_the_earlier_flow_rule_is_removed_after_a_backup_only_when_it_is_ours() {
     assert!(backup_dirs(&h.home, "-claude-flow-rule").is_empty());
 }
 
-// ---- revision 3: the backup root is `.moai/backups`; the emptied rules folder is removed -------
+// ---- revision 3: backups go under the new state folder; the emptied rules folder is removed ----
 
-/// A HOME whose state folder resolves to the earlier `.moai-cli` (it has that folder and no
-/// marker), the way a real HOME that also holds another tool's `.moai` does. A plain `home()`
-/// resolves to `.moai`, which hid the defect.
+/// A HOME whose state folder resolves to the earlier one (it has that folder and no marker), the
+/// way a real HOME that also holds another tool's folder of the new name does. A plain `home()`
+/// resolves to the new one, which hid the defect.
 fn earlier_home() -> Home {
     let tmp = TempDir::new().unwrap();
     let home = fs::canonicalize(tmp.path()).unwrap().join("home");
-    fs::create_dir_all(home.join(".moai-cli")).unwrap();
-    assert_eq!(moai_cli::home_root::path(&home), home.join(".moai-cli"));
+    fs::create_dir_all(home.join(EARLIER)).unwrap();
+    assert_eq!(moai_cli::home_root::path(&home), home.join(EARLIER));
     Home { _tmp: tmp, home }
 }
 
-/// One backup folder with this suffix stands under `.moai/backups`, nothing was made under the
+/// One backup folder with this suffix stands under the new state folder's backups, nothing was made under the
 /// earlier state folder, and the HOME's state folder did not move.
 fn only_new_root(h: &Home, suffix: &str) {
-    let made: Vec<String> = names_in(&h.home.join(".moai/backups"))
+    let made: Vec<String> = names_in(&h.home.join(NEWER).join("backups"))
         .into_iter()
         .filter(|n| n.ends_with(suffix))
         .collect();
     assert_eq!(
         made.len(),
         1,
-        "one {suffix} backup under .moai/backups: {made:?}"
+        "one {suffix} backup under the new backups folder: {made:?}"
     );
     assert!(
-        !h.home.join(".moai-cli/backups").exists(),
+        !h.home.join(EARLIER).join("backups").exists(),
         "nothing under the earlier state folder"
     );
     assert_eq!(
         moai_cli::home_root::path(&h.home),
-        h.home.join(".moai-cli"),
+        h.home.join(EARLIER),
         "the state folder did not move"
     );
 }
 
 #[test]
 fn ac11_backups_go_under_the_moai_backups_folder_whichever_state_folder_the_home_uses() {
-    let want = |h: &Home| json!(h.home.join(".moai/backups").to_string_lossy());
-    // A conflict replacement, on a plain earlier HOME and on one whose `.moai` holds another
+    let want = |h: &Home| json!(h.home.join(NEWER).join("backups").to_string_lossy());
+    // A conflict replacement, on a plain earlier HOME and on one whose new-name folder holds another
     // tool's files, which stay as they are.
     for foreign in [false, true] {
         let h = earlier_home();
-        let theirs = h.home.join(".moai/other-tool/data.txt");
+        let theirs = h.home.join(NEWER).join("other-tool/data.txt");
         if foreign {
             fs::create_dir_all(theirs.parent().unwrap()).unwrap();
             fs::write(&theirs, b"theirs\n").unwrap();
@@ -745,7 +749,7 @@ fn ac11_backups_go_under_the_moai_backups_folder_whichever_state_folder_the_home
     only_new_root(&h, "-claude-flow-rule");
 }
 
-/// An earlier HOME whose `.moai` cannot take a backup: a link leading out, or a folder that holds
+/// An earlier HOME whose new-name folder cannot take a backup: a link leading out, or a folder that holds
 /// a Go marker.
 fn blocked_home(kind: &str) -> Home {
     let h = earlier_home();
@@ -753,11 +757,11 @@ fn blocked_home(kind: &str) -> Home {
         "link" => {
             let elsewhere = h.home.parent().unwrap().join("elsewhere");
             fs::create_dir_all(&elsewhere).unwrap();
-            std::os::unix::fs::symlink(&elsewhere, h.home.join(".moai")).unwrap();
+            std::os::unix::fs::symlink(&elsewhere, h.home.join(NEWER)).unwrap();
         }
         _ => {
-            fs::create_dir_all(h.home.join(".moai")).unwrap();
-            fs::write(h.home.join(".moai/credentials.yaml"), b"x: 1\n").unwrap();
+            fs::create_dir_all(h.home.join(NEWER)).unwrap();
+            fs::write(h.home.join(NEWER).join("credentials.yaml"), b"x: 1\n").unwrap();
         }
     }
     h
@@ -769,7 +773,7 @@ fn has_step(list: &Value, step: &str) -> bool {
 }
 
 fn nothing_made(h: &Home) {
-    assert!(!h.home.join(".moai-cli/backups").exists());
+    assert!(!h.home.join(EARLIER).join("backups").exists());
     let outside = h.home.parent().unwrap().join("elsewhere");
     assert!(names_in(&outside).is_empty(), "no write through the link");
 }
@@ -957,15 +961,15 @@ fn replaced_with_backup_moved_to(
     ));
     assert_eq!(applied["ok"], json!(true), "{applied}");
 
-    // The backup stands under `.moai/backups`; move it to `place` and point the receipt there.
-    let (new_root, old_root) = (h.home.join(".moai/backups"), h.home.join(place));
+    // The backup stands under the new backups folder; move it to `place` and point the receipt there.
+    let (new_root, old_root) = (h.home.join(NEWER).join("backups"), h.home.join(place));
     let made = names_in(&new_root);
     assert_eq!(made.len(), 1, "{made:?}");
     fs::create_dir_all(&old_root).unwrap();
     fs::rename(new_root.join(&made[0]), old_root.join(&made[0])).unwrap();
     fs::remove_dir(&new_root).unwrap();
     let moved = rewrite_in_tree(
-        &h.home.join(".moai-cli/installations"),
+        &h.home.join(EARLIER).join("installations"),
         &new_root.to_string_lossy(),
         &old_root.to_string_lossy(),
     );
@@ -977,8 +981,9 @@ fn replaced_with_backup_moved_to(
 /// and what the recovery only reads of it is the same afterwards.
 #[test]
 fn ac13_recovery_reads_an_earlier_backup_under_the_earlier_state_folder() {
-    let (h, skill, original, old_root, name) = replaced_with_backup_moved_to(".moai-cli/backups");
-    let new_root = h.home.join(".moai/backups");
+    let (h, skill, original, old_root, name) =
+        replaced_with_backup_moved_to(&format!("{EARLIER}/backups"));
+    let new_root = h.home.join(NEWER).join("backups");
     let exe = Path::new(EXE);
     let home_s = h.home.to_str().unwrap();
     let before = tree(&old_root);
@@ -1009,7 +1014,7 @@ fn ac13_recovery_reads_an_earlier_backup_under_the_earlier_state_folder() {
     assert_eq!(tree(&skill), original, "the original folder is back");
     // The recovery moves the original tree out of its backup by design; what it only reads (the
     // manifest, the file list) is as it was, the folder is where it was, and nothing was made
-    // under `.moai`.
+    // under the new state folder.
     let after = tree(&old_root);
     assert!(old_root.join(&name).is_dir(), "the backup folder stays");
     let manifest = format!("{name}/MANIFEST.json");
@@ -1023,7 +1028,10 @@ fn ac13_recovery_reads_an_earlier_backup_under_the_earlier_state_folder() {
             assert_eq!(after.get(path), Some(bytes), "{path} is as it was");
         }
     }
-    assert!(!new_root.exists(), "nothing was made under .moai");
+    assert!(
+        !new_root.exists(),
+        "nothing was made under the new state folder"
+    );
 }
 
 /// The other side of AC-13: a receipt that names a backup folder outside the known backup folders
@@ -1077,7 +1085,7 @@ fn ac14_the_emptied_rules_folder_is_removed_and_a_folder_with_other_files_stays(
         "state": "applied",
         "legacy_flow_removed": [{
             "path": "/home/u/.claude/rules/moai/flow.md",
-            "backup": "/home/u/.moai/backups/20261125T000000Z-claude-flow-rule",
+            "backup": "/home/u/state/backups/20261125T000000Z-claude-flow-rule",
             "folder_removed": "/home/u/.claude/rules/moai"
         }]
     });
@@ -1113,7 +1121,7 @@ fn ac14_the_emptied_rules_folder_is_removed_and_a_folder_with_other_files_stays(
         "state": "applied",
         "legacy_flow_removed": [{
             "path": "/home/u/.claude/rules/moai/flow.md",
-            "backup": "/home/u/.moai/backups/20261125T000000Z-claude-flow-rule"
+            "backup": "/home/u/state/backups/20261125T000000Z-claude-flow-rule"
         }]
     });
     let out = screen(&shown, Asked::Yes, &view(Lang::En));
