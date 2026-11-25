@@ -510,3 +510,37 @@ fn ac5_the_off_switches_stay_off() {
     w.working(&sid(1), 3);
     result(&add_by(&w, "leader", "more"));
 }
+
+/// AC-2 (REQ-1, SPEC D-3): a card in review whose lease is alive still counts, so two live cards,
+/// one of them in review, still fill the limit.
+#[test]
+fn ac2_a_review_card_with_a_live_lease_still_counts() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    let held = w.working(&sid(1), 2);
+    result(&w.card(Some(&sid(1)), &["review", &held[1], "--generation", "1"]));
+    let (kind, message) = refusal(&add_by(&w, "leader", "more"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains(&held[1]), "{message}");
+    assert!(!message.contains("not counted"), "{message}");
+}
+
+/// AC-2 (REQ-1): a reservation held for its review (what `recover` leaves) with a lease that has
+/// not ended still counts, so the two live cards still fill the limit.
+#[test]
+fn ac2_a_reservation_held_for_review_with_a_live_lease_still_counts() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    let held = w.working(&sid(1), 2);
+    sql(
+        &w,
+        &format!(
+            "UPDATE reservation SET status = 'held_for_review' WHERE card_id = {}",
+            card_id(&held[0])
+        ),
+    );
+    let (kind, message) = refusal(&add_by(&w, "leader", "more"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains(&held[0]), "{message}");
+    assert!(!message.contains("not counted"), "{message}");
+}
