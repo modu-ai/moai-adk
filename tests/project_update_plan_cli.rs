@@ -2363,7 +2363,12 @@ fn the_backup_phase_lists_go_settings_before_go_state() {
         .iter()
         .map(|s| s["step"].as_str().unwrap())
         .collect();
-    assert_eq!(names, ["go-settings", "go-state", "reports"], "{plan}");
+    // The read-only go-residue survey lists after the three moving steps.
+    assert_eq!(
+        names,
+        ["go-settings", "go-state", "reports", "go-residue"],
+        "{plan}"
+    );
     let gs = step(&plan, "go-settings");
     assert_eq!(gs["state"], "unchanged", "{gs}");
     assert_eq!(gs["apply"], Value::Null, "{gs}");
