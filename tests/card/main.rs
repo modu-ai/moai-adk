@@ -52,6 +52,7 @@ mod card_timeline_cli;
 mod card_times_cli;
 mod card_verdict_cli;
 mod card_wait_cli;
+mod card_wip_limit;
 mod card_withdraw_cli;
 mod card_work_cli;
 mod claim_cli;

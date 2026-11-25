@@ -450,6 +450,13 @@ fn insert_card(
     super::dispatch::checked_scope("add", req.scope)?;
     let by = actor(req.by, "add")?;
     let (id, mut ledger) = open_for_write(project, home)?;
+    // At the limit of cards in work and in review only the user's own add goes on
+    // (SPEC-20261125-landing-moves-checkout REQ-2).
+    if by != super::wip_limit::USER {
+        if let Some(why) = super::wip_limit::refusal(project, ledger.conn(), "add")? {
+            return Err(why);
+        }
+    }
     let written = ledger
         .with_write_tx(|tx, now| {
             if let Some((spec, relation)) = link {

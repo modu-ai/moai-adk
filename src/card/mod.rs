@@ -52,4 +52,5 @@ pub mod take_scope;
 pub mod timeline;
 pub mod verdict;
 pub mod wait;
+pub mod wip_limit;
 pub mod work;
