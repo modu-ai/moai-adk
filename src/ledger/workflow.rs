@@ -220,12 +220,6 @@ pub enum SkipReason {
         generation: i64,
         lease_until: i64,
     },
-    /// Its write scope could be written under another card's active reservation.
-    ScopeOverlap {
-        other_card: i64,
-        mine: String,
-        theirs: String,
-    },
     /// It has no write scope, and a reservation needs one.
     EmptyScope,
     /// It is in `review` and nobody holds it, so nobody can close or reopen it.
@@ -244,7 +238,6 @@ impl SkipReason {
     pub fn code(&self) -> &'static str {
         match self {
             SkipReason::Held { .. } => "held",
-            SkipReason::ScopeOverlap { .. } => "scope_overlap",
             SkipReason::EmptyScope => "empty_scope",
             SkipReason::ReviewNoHolder => "review_no_holder",
             SkipReason::NoCriteria => "no_criteria",
@@ -395,16 +388,12 @@ pub fn next_filled(
                 scope_source = Some(source);
             }
         }
+        // A scope that overlaps another card's reservation is no reason to skip a card
+        // (SPEC-20261125-card-no-file-locks); `take` answers the overlap.
         let mut reason = if scope.is_empty() {
             Some(SkipReason::EmptyScope)
         } else {
-            reservation::find_overlap(conn, now, card_id, &scope)?.map(|o| {
-                SkipReason::ScopeOverlap {
-                    other_card: o.other_card,
-                    mine: o.mine,
-                    theirs: o.theirs,
-                }
-            })
+            None
         };
         // A card `take` would refuse for want of a criterion is not offered. The check comes after
         // the reasons above, so a card they skip keeps its reason.

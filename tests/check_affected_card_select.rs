@@ -224,17 +224,22 @@ fn wide_classes_fall_back_to_the_full_set_and_say_why() {
         (".moai/project.yaml", "common settings"),
         (".cargo/config.toml", "build settings"),
         // The audit's table of paths that picked no test and fell back to nothing (B1): the audit
-        // floor, the git hooks and the landing code, a word more than 10 targets share, and a
-        // source file no test can name.
+        // floor, the git hooks and the landing code stay wide. A word more than 10 targets share,
+        // a `mod.rs` and a source file no test can name no longer fall to the full set by
+        // themselves; this fixture has no `tests/areas.toml`, so they need an area it cannot
+        // give and the full set runs for that reason (SPEC-20261125-check-affected-card-areas
+        // REQ-8; the area sets are in `check_affected_card_areas`).
         ("src/gate.rs", "audit floor"),
         ("install/git-hooks/pre-push", "audit floor"),
         ("src/git_hooks/mod.rs", "audit floor"),
         ("tools/local_check.sh", "audit floor"),
         ("REVIEW.md", "audit floor"),
-        ("src/card/land/check.rs", "audit floor"),
-        ("src/ops/card.rs", "common name word"),
-        ("src/ledger/mod.rs", "no test reached"),
-        ("src/lonely.rs", "no test reached"),
+        // The landing code is no wide path any more: with no area table it needs an area it
+        // cannot give (the area path is in `check_affected_card_areas`).
+        ("src/card/land/check.rs", "area table"),
+        ("src/ops/card.rs", "area table"),
+        ("src/ledger/mod.rs", "area table"),
+        ("src/lonely.rs", "area table"),
     ] {
         let fx = Fixture::new(&[(path, "# changed\n"), ("src/card/work.rs", "// b\n")]);
         let (ok, r) = affected(&fx, &["--list", "--card"], None);
@@ -254,12 +259,12 @@ fn wide_classes_fall_back_to_the_full_set_and_say_why() {
 }
 
 #[test]
-fn wide_a_common_word_runs_the_full_set_and_still_names_the_word() {
+fn wide_a_common_word_without_an_area_table_runs_the_full_set_and_still_names_the_word() {
     let fx = Fixture::new(&[("src/ops/card.rs", "// b\n")]);
     let (ok, r) = affected(&fx, &["--list", "--card"], None);
     assert!(ok, "{r}");
     assert_eq!(r["selection"], "full", "{r}");
-    assert_eq!(r["card_wide"]["reason"], "common name word", "{r}");
+    assert_eq!(r["card_wide"]["reason"], "area table", "{r}");
     assert_eq!(names(&r["card_ignored_words"]), ["card"], "{r}");
 }
 

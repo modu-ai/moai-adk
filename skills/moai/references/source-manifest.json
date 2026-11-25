@@ -69,7 +69,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "cfd67f97be651b8609559f082cd7cfa39b04c172e66cb43da04728cd6b2ad5ca",
+      "sha256": "c8a6645e6f2e2ed9788f815d9353ed9e5a3c16aa949ee96a9020cd07dd26f69f",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -96,7 +96,7 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "ea0d85097323c5e7d725c61ab94baee0d6bb79b2cc1b0399b6a3eccac3f0b6b1",
+      "sha256": "8464c9cd644fd7d203f11393d8deeae0a2d066f5cb559f606f56177ba9947b5a",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
@@ -441,7 +441,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261124-moai-leader-route (REQ-1 to REQ-12): `/moai leader` makes the window that types it the registered coordination window; it registers with `session-register`, renews once per round, reads the ledger, sends audits to another session, lands with `moai card land --by leader` and releases the registration at the end. The completion-message and transition sentences stay in `flows/next-flow`."
       },
-      "sha256": "bef50627b65316e82b83660a89cbc3d276c4aefdb07a3fedba9c79d8c58500f2"
+      "sha256": "64d17c813bbe27d48f891c30b244c500c12f5d57cec81280c34d5f54dd329e55"
     },
     "workflows/plan.md": {
       "sha256": "ab27f283d60333933a93aa8a6a5858d88e44018e7edcd0cab9b79e7fe9b27e51",
@@ -453,7 +453,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "7abf903179a0a647330650701e144ea96771b64ca2875ef3cc4dce74a93a4488",
+      "sha256": "3809898c919221c444c297201593d4d7a590f49bc5b122da58b4f5caca10045f",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -504,7 +504,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai work` takes one card at a time through PLAN, RUN, SYNC, AUDIT and the landing command and repeats until no card is left; a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "31ca2f1e0813a8f8d1522d86a78f3234fc8ddb68d2d8571d62947828799f8c5d"
+      "sha256": "e47c77fd438296c2e0be39bd13a1b1deafcf024dde4b27b503e106b236ad8a06"
     }
   }
 }

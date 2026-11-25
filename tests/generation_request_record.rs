@@ -909,6 +909,56 @@ fn the_help_examples_name_the_input_each_command_reads() {
     }
 }
 
+/// The first JSON object that starts a request (`{"protocol_version"`) in `text`.
+fn request_example(text: &str) -> Value {
+    let key = text
+        .find("\"protocol_version\"")
+        .unwrap_or_else(|| panic!("no request example in: {text}"));
+    let at = text[..key]
+        .rfind('{')
+        .expect("the object opens before its first key");
+    serde_json::Deserializer::from_str(&text[at..])
+        .into_iter::<Value>()
+        .next()
+        .unwrap()
+        .unwrap_or_else(|e| panic!("the example is not JSON ({e}): {}", &text[at..]))
+}
+
+/// The complete request example of `generation-plan --help` and of the project workflow's step 6
+/// is one and the same object, `generation-plan` accepts it, and the plan it answers is the
+/// input `generation-apply` accepts: the documented path works as written.
+#[test]
+fn the_documented_request_example_is_accepted_and_its_plan_applies() {
+    let fx = Fx::new();
+    fx.with_profile(json!({}));
+    let from_help = request_example(&help_text(&fx, "generation-plan"));
+    let workflow = fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/project.md"),
+    )
+    .unwrap();
+    assert_eq!(
+        from_help,
+        request_example(&workflow),
+        "help and workflow differ"
+    );
+
+    let plan = fx.call(
+        &["generation-plan", fx.p()],
+        &serde_json::to_vec(&from_help).unwrap(),
+    );
+    let files = plan["files"].to_string();
+    assert!(
+        files.contains("prj-test-runner") && files.contains("prj-checks"),
+        "the plan covers the documented agent and skill: {files}"
+    );
+    let applied = apply_plan(&fx, &plan);
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert!(
+        fx.root.join(ROLE_FILE).exists() && fx.root.join(SKILL_FILE).exists(),
+        "the documented agent and skill were written"
+    );
+}
+
 /// A manifest entry of `kind` (its bare kind and its `section_id`) naming `path`, whose recorded
 /// baseline is the digest of `bytes`, so the file there reads as never edited.
 fn plant_entry(fx: &Fx, section: &str, path: &str, bytes: &[u8]) {

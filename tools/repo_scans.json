@@ -1333,6 +1333,25 @@
       "rejects": "a change to a file that tests/green_test_lock.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
     },
     {
+      "id": "include-str-heavy-slot-cli",
+      "always": true,
+      "tests": [
+        "tests/heavy_slot_cli.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test heavy_slot_cli"
+      ],
+      "rules": [
+        "tests/heavy_slot_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/heavy_slot.rs"
+        }
+      ],
+      "rejects": "a change to src/heavy_slot.rs whose module documentation tests/heavy_slot_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261125-heavy-slot-release-on-exit)"
+    },
+    {
       "id": "include-str-hook-entry-cli",
       "always": true,
       "tests": [
@@ -1871,7 +1890,7 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test agent_defs_package --test agents_flat_ownership --test agents_home_cli --test audit_scratch_rule --test base_agents_discovery_record --test base_agents_nested --test bin_names_signature_cli --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test claude_md_home_cli --test code_atlas_reference --test codex_home_update_removed --test codex_question_tool --test core_rules_2876 --test desktop_folder_rules_cli --test e2e_host_fixture --test e2e_temp_home_cli --test exe_link_cli --test gate_collect --test flow_name_scan --test generic_flow_questions --test home_routing_cli --test home_style_cli --test home_style_ownership_cli --test home_update_notice_follow_ups --test host_home_cli --test html_report_skill --test lane_completion_handshake --test lane_next_rules --test lane_rules_2401 --test lane_rules_2836 --test lane_rules_2879 --test lane_team_names --test leader_route --test mode_cards_53 --test mode_workflow_steps --test models_revert_cli --test next_flow_skill_scan --test orca_alignment --test orca_optional_3005 --test plan_output_sections --test product_cli --test project_decide_model --test project_flow_closing --test project_harness_label --test project_harness_step --test project_interview_minimal --test project_lsp_plugins_cli --test project_preview_order --test project_worktree_move_choice --test protected_paths_one_list --test question_bank_hosts --test repo_claude_md --test repo_scans_cli --test report_rules_core --test retired_hosts_layer --test revert_twice_cli --test review_check_cli --test review_checklist_cli --test rule_history_guard --test sdd_guidance --test self_audit_cli --test skill_structure --test source_manifest_facts --test spec_branch_name_first --test style_banner_scan --test test_isolation_rules --test ui_korean_terminal_cli --test ui_summary_terminal_cli --test update_adopt_cli --test update_always_asks --test update_conflict_baseline_cli --test update_git_hooks_cli --test update_headver --test update_home_layer_cli --test update_hooks_cli --test update_keys_cli --test update_route --test update_switch_cli --test update_user_layer_cli --test workflow_size_budget --test worktree_include_guard --test build_number_texts --test repo_scans_table",
+        "cargo test --offline --locked --test agent_defs_package --test agents_flat_ownership --test agents_home_cli --test audit_scratch_rule --test base_agents_discovery_record --test base_agents_nested --test bin_names_signature_cli --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test claude_md_home_cli --test code_atlas_reference --test codex_home_update_removed --test codex_question_tool --test core_rules_2876 --test desktop_folder_rules_cli --test e2e_host_fixture --test e2e_temp_home_cli --test exe_link_cli --test gate_collect --test flow_name_scan --test generation_request_record --test generic_flow_questions --test home_routing_cli --test home_style_cli --test home_style_ownership_cli --test home_update_notice_follow_ups --test host_home_cli --test html_report_skill --test lane_completion_handshake --test lane_next_rules --test lane_rules_2401 --test lane_rules_2836 --test lane_rules_2879 --test lane_team_names --test leader_route --test mode_cards_53 --test mode_workflow_steps --test models_revert_cli --test next_flow_skill_scan --test orca_alignment --test orca_optional_3005 --test plan_output_sections --test product_cli --test project_decide_model --test project_flow_closing --test project_harness_label --test project_harness_step --test project_interview_minimal --test project_lsp_plugins_cli --test project_preview_order --test project_worktree_move_choice --test protected_paths_one_list --test question_bank_hosts --test repo_claude_md --test repo_scans_cli --test report_rules_core --test retired_hosts_layer --test revert_twice_cli --test review_check_cli --test review_checklist_cli --test rule_history_guard --test sdd_guidance --test self_audit_cli --test skill_structure --test source_manifest_facts --test spec_branch_name_first --test style_banner_scan --test test_isolation_rules --test ui_korean_terminal_cli --test ui_summary_terminal_cli --test update_adopt_cli --test update_always_asks --test update_conflict_baseline_cli --test update_git_hooks_cli --test update_headver --test update_home_layer_cli --test update_hooks_cli --test update_keys_cli --test update_route --test update_switch_cli --test update_user_layer_cli --test workflow_size_budget --test worktree_include_guard --test build_number_texts --test repo_scans_table",
         "cargo test --offline --locked --test card card_generated_scope:: -- card_ready_leftovers_cli:: card_hold_gate_cli:: claim_verify_flags_2838:: followup_per_spec_rules:: trailer_paragraph_guard_cli::"
       ],
       "rules": [
@@ -1901,6 +1920,7 @@
         "tests/card/followup_per_spec_rules.rs",
         "tests/gate_collect.rs",
         "tests/flow_name_scan.rs",
+        "tests/generation_request_record.rs",
         "tests/generic_flow_questions.rs",
         "tests/home_routing_cli.rs",
         "tests/home_style_cli.rs",

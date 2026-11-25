@@ -165,6 +165,13 @@ pub struct GenerationRequest {
     pub picks: Vec<String>,
 }
 
+/// The pick that leaves every conflicting file as it is and applies the rest (`agents::PICKS`).
+const SKIP_CONFLICTS: &str = "skip-conflicts";
+
+/// The detail of a row the pick `skip-conflicts` turned from a conflict into a skip; the agents
+/// engine words its own rows the same way.
+const SKIP_PICKED: &str = "skip-conflicts picked: the file is kept as it is";
+
 /// The request asks for project agents and skills alone (the pick `harness-only`).
 fn is_harness_only(r: &GenerationRequest) -> bool {
     r.picks.iter().any(|p| p == crate::agents::HARNESS_ONLY)
@@ -1187,7 +1194,13 @@ fn plan_filtered(
         } else {
             fs::read(root.join(&flat)).ok()
         };
-        let edited = current.as_deref().is_some_and(|c| digest(c) != baseline);
+        // SPEC-20261125-update-same-bytes-no-conflict REQ-1: bytes equal to the rendered nested
+        // copy are a move, whatever older render the manifest recorded. Only a file that differs
+        // from both the baseline and the new render was edited.
+        let renders_same = current
+            .as_deref()
+            .is_some_and(|c| digest(c) == digest(render_claude_role(role).as_bytes()));
+        let edited = !renders_same && current.as_deref().is_some_and(|c| digest(c) != baseline);
         let detail = refused.or_else(|| {
             edited.then_some(
                 "earlier flat role file was edited after generation; kept, and its nested copy is not written"
@@ -1210,6 +1223,40 @@ fn plan_filtered(
             kind: Some(kind),
             detail,
         });
+    }
+
+    // SPEC-20261125-update-same-bytes-no-conflict REQ-4 and REQ-5: `skip-conflicts` leaves every
+    // conflicting file of this engine as it is (the agents engine does the same for its own
+    // rows). The nested copy of a role whose earlier flat file is kept is not written either, so
+    // a project never holds two agents of one name.
+    if request.picks.iter().any(|p| p == SKIP_CONFLICTS) {
+        let kept_roles: Vec<String> = files
+            .iter()
+            .filter(|f| f.action == "conflict")
+            .filter_map(|f| {
+                let kind = f.kind.as_deref()?;
+                let id = kind.strip_prefix("generation:native-role:claude:")?;
+                (f.path == format!(".claude/agents/{id}.md")).then(|| kind.to_string())
+            })
+            .collect();
+        for f in files.iter_mut() {
+            let kind = f.kind.as_deref().unwrap_or("");
+            if !kind.starts_with("generation:") {
+                continue;
+            }
+            if f.action == "conflict" {
+                let why = f.detail.take().unwrap_or_else(|| "conflict".into());
+                f.action = "skip".into();
+                f.detail = Some(format!("{SKIP_PICKED} ({why})"));
+            } else if kept_roles.iter().any(|k| k == kind)
+                && !matches!(f.action.as_str(), "unchanged" | "remove")
+            {
+                f.action = "skip".into();
+                f.detail = Some(format!(
+                    "{SKIP_PICKED} (the earlier flat file of this role is kept, so its nested copy is not written)"
+                ));
+            }
+        }
     }
 
     let binding = digest(root.to_str().ok_or("non UTF-8 project path")?.as_bytes());
@@ -1235,7 +1282,7 @@ fn plan_filtered(
         let others_unchanged = plan
             .files
             .iter()
-            .all(|f| f.path == manifest_rel || f.action == "unchanged");
+            .all(|f| f.path == manifest_rel || matches!(f.action.as_str(), "unchanged" | "skip"));
         let same = others_unchanged && {
             let mut value = crate::agents::predicted_manifest_value(
                 active,
@@ -1396,10 +1443,13 @@ fn record_generation(
         .expect("owned_files array");
     list.retain(|f| {
         let path = f.get("path").and_then(Value::as_str).unwrap_or("");
+        // A `skip` row keeps the entry it already has.
         !p.files.iter().any(|pf| {
-            pf.kind
-                .as_deref()
-                .is_some_and(|k| k.starts_with("generation:"))
+            pf.action != "skip"
+                && pf
+                    .kind
+                    .as_deref()
+                    .is_some_and(|k| k.starts_with("generation:"))
                 && pf.path == path
         })
     });
@@ -1407,7 +1457,7 @@ fn record_generation(
         let Some(kind) = &f.kind else {
             continue;
         };
-        if !kind.starts_with("generation:") || f.action == "conflict" {
+        if !kind.starts_with("generation:") || matches!(f.action.as_str(), "conflict" | "skip") {
             continue;
         }
         // A `remove` plan carries no rendered digest, so it never re-enters the list.
@@ -1595,7 +1645,8 @@ pub fn generation_apply_in(
             if !kind.starts_with("generation:") || f.path == manifest_rel(root) {
                 continue;
             }
-            if f.action == "unchanged" {
+            // A `skip` row (`skip-conflicts`) writes nothing and keeps its recorded baseline.
+            if matches!(f.action.as_str(), "unchanged" | "skip") {
                 continue;
             }
             // A link that appeared after the plan stops the apply for every kind that writes a
