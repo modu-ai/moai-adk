@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261121-model-defaults-one-table
 title: "One table of model and effort defaults: the launcher starts a role session with the table the question screen shows"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-21
+approval:
+  by: leader
+  at: 2026-11-25
+  basis: "리더 DELEGATED-APPROVAL 노트 9433 (사용자 위임 2026-11-25 ~14:50Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 9432 에 답함: 판 3 승인, 커밋 2f1ed46d0ea34311e5f91358afc3b70baa8035e3, D-6 은 A, 범위 확장은 질문 화면 파일 둘과 update_model_pick·update_command_cli 시험); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:17be360790a37f346e6a624594a81a8bb97e5e3b408e4f9d050bc14825d6311d"
 ---
 
 # One table of model and effort defaults: the launcher starts a role session with the table the question screen shows
@@ -27,7 +32,7 @@ created: 2026-11-21
 - D-2 표는 지금 `default_choice` 4줄이에요: 새 값을 만들지 않아요. 결정자: 리더(2026-11-24).
 - D-3 역할 세션은 저장값 경로와 같은 전체 id 를 호스트에 넘겨요(예: `claude-opus-5-5`, GLM 은 `zai/` 를 뗀 `glm-5.4[1m]`). 별칭(`opus`)이 아니에요. 되돌리기는 커밋 revert 하나예요. 결정자: 리더(2026-11-24).
 - D-4 역할 없는 세션은 `opus`/`medium` 그대로예요(사용자 결정 2026-11-08). 결정자: 사용자.
-- D-5 조각 A 를 먼저 READY·감사·착지해요. 조각 B 는 C-248 착지 뒤 그 위에서 해요. 결정자: 리더(2026-11-24).
+- D-5 조각 A 를 먼저 READY·감사·착지해요. 조각 B 는 GLM 키 질문 변경이 착지한 뒤 그 위에서 해요(착지함, 판 3). 결정자: 리더(2026-11-24).
 - D-6 (판 3, 제안, 기본값 A) 질문 화면의 "(default)" 와 평범한 런처의 저장값 없는 기본값이 갈릴 때 누가 이기나요? A: 런처 값이 이겨요. 화면의 기본 effort 는 `launcher_default(host).effort` 에서 오고(Claude `medium`, GLM `high`), 기본 모델은 별칭 `opus` 가 가리키는 표의 id(`default_choice(tool, "leader").model`)예요. B: 화면 값이 이겨서 런처 기본을 `claude-opus-5-5`/`high` 로 올려요. 이유: A 는 실행 중인 동작을 바꾸지 않고(런처 기본은 사용자 결정 2026-11-08 과 2026-11-24 의 값), 화면은 읽는 쪽이라 고치기 쉬워요. B 는 `cc` 기본 effort 를 `medium` 에서 `high` 로 바꿔서 그 결정을 뒤집어요(노트 4672 의 `claude-opus-5-5`/`high` 는 2026-11-20 값이고 둘이 어긋나는 곳이 이 한 칸이에요). 되돌리기: 커밋 revert 하나.
 - D-7 (판 3, 제안, 기본값 A) 역할 행(`default_choice` 의 leader·agent)은 그대로 둬요. `-a` 세션과 레거시 `session --role` 이 읽고, 화면은 더는 leader 행의 effort 를 기본으로 쓰지 않아요. 별칭 `opus` 가 leader 행의 모델 id 를 가리킨다는 전제는 호스트 쪽 매핑이라 이 저장소의 시험이 못 보여 줘요: 위험 절에 적고, 시험은 두 값(`launcher_default` 의 모델 별칭과 표의 id)이 한 함수에서 나오는지만 지켜요.
 
@@ -35,7 +40,7 @@ created: 2026-11-21
 
 - Q1: 옛 조각(가지 `spec/model-defaults-one-table-20261121`)을 합치나요, 새로 하나요? → A: 새로 해요(D-1). 옛 가지는 Codex·OMP 전제라 충돌 9곳이고 보존만 해요.
 - Q2: 표를 4줄로 줄여도 되나요? → A: 예. 지금 `default_choice` 4줄이 표예요(D-2). 2026-11-20 결정의 Codex·OMP 줄은 철회됐고 GLM leader 는 5.4 로 바뀌었어요.
-- Q3: 조각 B(질문 화면 재설계)를 언제 하나요? → A: C-248 이 착지한 뒤 그 위에서 해요. 이 카드는 B 기준으로 열린 채 남아요(D-5).
+- Q3: 조각 B(질문 화면 재설계)를 언제 하나요? → A: GLM 키 질문 변경이 착지한 뒤 그 위에서 해요. 이 카드는 B 기준으로 열린 채 남아요(D-5).
 - Q4: 조각 A 를 먼저 감사·착지하나요? → A: 예(D-5).
 - Q5: 역할 세션이 별칭 대신 전체 id 를 넘겨도 되나요? → A: 예(D-3). 역할 없는 세션은 `opus`/`medium` 그대로예요(D-4).
 - Q6: 도움말 두 줄을 고치면 `tests/help_layout.rs` 가 읽는 골든 파일 네 개가 낡아지는데(레인 노트 8216), 어떻게 하나요? → A: 판 2 로 가요. 골든 네 파일만 Scope 의 write 에 더하고 요구·인수는 그대로예요(리더 답, 2026-11-24).
@@ -127,5 +132,5 @@ created: 2026-11-21
 
 못 한 것 (not_run):
 
-- 조각 B(질문 화면 재설계)는 C-248 착지 뒤라 이 개정에 없어요. 이 카드는 B 기준으로 열린 채 남아요.
+- 조각 B(판 3): 구현 전이에요(승인됨). 이 줄은 B 의 Result 로 바뀌어요.
 - 실제 `~/.moai`·`~/.claude` 에 쓰기, 실제 호스트 시작, Linux·Windows, 독립 감사(작성자가 아닌 세션 몫).
