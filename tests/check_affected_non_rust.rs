@@ -270,10 +270,13 @@ fn a_failed_cheap_step_is_fail_not_not_run() {
 
 // AC-6 (REQ-5): `Cargo.toml` alone and a `.rs` file alone both keep the Rust steps, also with
 // declared checks.
+/// One case: what it shows, the base files `(path, text)` and the one file the change writes.
+type RustCase<'a> = (&'a str, Vec<(&'a str, &'a str)>, (&'a str, &'a str));
+
 #[test]
 fn a_rust_repository_keeps_its_steps() {
     let declared = profile(DECLARED);
-    let cases: [(&str, Vec<(&str, &str)>, (&str, &str)); 3] = [
+    let cases: [RustCase; 3] = [
         (
             "Cargo.toml only",
             vec![("Cargo.toml", "[package]\nname = \"a\"\n")],
