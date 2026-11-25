@@ -301,7 +301,7 @@ fn check_overlap(tree: &Path, changed: &[String], moved: &BTreeSet<String>) -> R
             changed.len(),
             listed(&overlapping)
         ),
-        "the landing never touches work it does not own: the owner of those changes commits or discards them on a branch of their own, or you land from a worktree of your own (merge the head onto the tip there), then run the call again",
+        "the landing never touches work it does not own: the owner of those changes commits or discards them on a branch of their own, or you land from a worktree of your own that has the integration branch checked out, then run the call again",
     ))
 }
 
