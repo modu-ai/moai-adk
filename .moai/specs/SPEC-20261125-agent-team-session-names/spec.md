@@ -152,3 +152,22 @@ revision 2 는 결정 노트 8849(사용자 결정 2026-11-25T01:18:13Z, 리더 
 - R-5: `-l`/`-a` 는 권한 우회로 시작해요(보호 훅이 막는 것은 AC-9 의 세 가지로 보여 줘요). 우회 모드에서 안전장치는 훅뿐이라서 거절되지 않는 것이 하나라도 있으면 멈춰요. `-l`/`-a` 를 쓰는 Orca 프리셋과 셸 별칭은 이 SPEC 이 되살리는 이름과 같아서 다시 동작해요.
 - R-6: 첫 입력이 호스트에서 슬래시 명령으로 실행되는지는 아직 확인하지 못했어요(`claude_argv` 는 PROMPT 를 넘기지 않아요). Plan 1 에서 확인하고, 안 되면 REQ-7·REQ-8 의 전달 방법을 이 SPEC 에서 바꿔 승인을 다시 받아요.
 - R-7: 이 글이 `docs/lane-rules.md`, `docs/leader-rules.md`(카드 범위 밖)와 어긋날 수 있어요. 어긋나는 문장은 후속으로 리더에게 알려요.
+
+## Result
+
+구현은 런처 `src/session.rs`·`src/main.rs`·`src/help.rs`(한 줄 임대로 쓰고 바로 돌려줌)·`src/model_effort_settings.rs` 쪽, 스킬 글(`SKILL.md`, `routes.json`, `workflows/work.md`·`leader.md`, 새 `references/flows/team-messages.md`, `next-flow.md` 포인터), 문서와 `CLAUDE.md`, 레인 코드의 `/moai work` 문자열(`src/lane_idle.rs`·`lane_loop.rs`·`lane_duty.rs`·`leader_round.rs`)이에요. 커밋은 `66e2919e4b`(런처), `543f15a920`(스킬 글·문서·시험), `2d66176936`(레인 코드 문자열).
+
+- AC-1 met: `tests/launcher_role_flags.rs` `ac1_*` 3개가 통과해요(이름, 우회, 첫 입력, 프로젝트 이름, 잡힌 잠금 거절).
+- AC-2 met: `ac2_*` 2개가 통과해요(첫 빈 영어 이름, 목록이 다 차면 `--name` 안내).
+- AC-3 met: `ac3_*` 2개와 `tests/product_cli.rs` `launcher_default_claude`가 통과해요(우회, `--permissions`, 역할 없는 실행 그대로, 두 플래그 함께나 PROMPT 거절).
+- AC-4 met: `ac4_the_first_input_is_the_last_host_argument`가 통과해요(스텁 `claude` 의 argv).
+- AC-5 met: `ac5_*` 3개가 통과해요(advisor 기본 `opus`, 더 높은 주 모델이면 기본 advisor 생략, agent 행의 모델·effort).
+- AC-6 met: `ac6_the_launcher_help_names_the_four_flags`, `help_layout`, `tests/repo_claude_md.rs` `launcher_role_flags_are_back`·`role_words_are_the_agent_and_leader_modes`, `tests/launcher_retire_role_flags.rs` `no_live_text_calls_the_role_flags_retired` 가 통과해요.
+- AC-7 met: `tests/lane_team_names.rs` 7개가 통과해요. 짝이 되는 옛 시험(`skill_structure`, `next_flow_skill_scan`, `leader_route`, `lane_completion_handshake`)도 새 낱말에 맞춰 통과해요.
+- AC-8 met: `the_flow_points_to_the_table_within_its_byte_budget`(`next-flow.md` 8121 바이트 이하, 매니페스트에 새 파일)와 `next_flow_skill_scan`이 통과해요.
+- AC-9 not met, 틈 확인(사용자 결정 A, 카드 노트 8925): 임시 프로젝트의 실제 `claude -p`(`moai cc -a` 와 같은 `--name`·`--model`·`--effort`·`--dangerously-skip-permissions`)에서 (a) 통합 브랜치 손 이동은 실행됐고(`NeXT` 가 `ff56d012faf3…` 에서 `fb4de21e01ac…` 로 옮겨짐), (b) 절대 경로 삭제는 moai 훅이 아니라 호스트 권한 설정이 막았고(훅 직접 평가는 허용), (c) `main` 강제 푸시는 훅이 막았어요(원격 그대로). 증거는 카드 노트 8922 와 `target/c373/ac9_*.sh`·`ac9/real_output.txt`. 사용자가 이 틈을 알고 `-l`/`-a` 의 우회 시작을 유지하기로 했고(REQ-6 그대로, SPEC 개정 없음), 틈을 닫는 일은 보호 카드 두 장이 해요(번호는 카드 노트 8925). 그 두 카드가 착지하기 전에는 전역 빌드를 설치하지 않아요.
+- AC-10 not_run: 설치한 빌드로 임시 프로젝트에서 두 세션이 한 바퀴를 도는 확인이고, 전역 빌드 설치가 먼저예요. `--name` 으로 띄운 세션이 `ListAgents` 에 보이는지도 여기서 확인해요.
+- 가드 뮤턴트: 21개 중 21개가 시험 실패(exit 100)로 잡혔어요. 한 번에 한 줄을 고정 문자열로 바꾸고 `git checkout --` 로 되돌렸고, 끝난 뒤 `git status --short` 가 비어 있었어요(셸과 perl, `target/c373/mutants.sh`, 출력 `target/c373/mutants.txt`).
+- RED 는 관찰하지 못했어요: 새 시험은 구현과 글을 쓴 뒤에 만들어져서 시험이 먼저 실패하는 것을 보지 못했고, 뮤턴트로 시험이 실제로 잡는다는 것만 보였어요.
+- 범위: `tests/repo_claude_md.rs` 가 `rule-table.md` 의 앵커를 읽어서 R-55 앵커 한 줄을 고쳤고(`.moai/specs/SPEC-20261123-claude-md-rewrite/rule-table.md`), 카드 범위에 그 파일을 더했어요. 범위 밖 수정은 없어요.
+- Not run: 전체 `cargo test`, Windows·Linux, `/moai agent` 첫 입력이 대화형 호스트에서 슬래시 명령으로 실행되는지의 새 확인(R-6, AC-4 는 스텁 argv 만 봐요), AC-10.
