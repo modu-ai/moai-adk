@@ -1,16 +1,17 @@
 ---
 id: SPEC-20261121-project-state-move
 title: "One state folder: the go-state move takes .moai-cli into a .moai that holds the team's kept names, with a preview, a digest, a receipt and a revert"
-status: approved
-revision: 3
+status: draft
+revision: 4
 created: 2026-11-20
 parent: null
-approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8314 of card C-175 (answers lane note 8313, 2026-11-24T07:13:20Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 3 at head fb6aa561d7 with D-1 confirmed as note 8310 option (b); recorded by the lane, not approved by it", digest: "sha256:c8fda77f5f04abb434d44b6b452e809ea2cb533600c3742d566253edf14b4902"}
 ---
 
 # One state folder: the go-state move takes .moai-cli into a .moai that holds the team's kept names, with a preview, a digest, a receipt and a revert
 
 ## Intent
+
+판 4 는 판 3(승인 노트 8314, 구현은 NeXT 에 착지, 마지막 head `e80b345fa6`)에 두 가지를 더해요. (1) 사용자 지시 2026-11-25T01:30:24Z(리더 대화에서 말 그대로, 카드 노트 8861): "reports 커밋을 하면 안된다. 그리고 .moai-cli 제거하기로 하지 않나? reports는 ~/.moai/reports으로 모두 옮기고 제거해라". 리더가 추적 중이던 `.moai-cli/reports` 137개를 `~/.moai/reports/moai-adk/` 로 복사하고 137개 모두 `cmp` 로 같음을 읽었어요(덮어쓰기 없음). 그래서 판 3 이 "사용자 선택"으로 미뤘던 일(Non-goals 의 추적된 보고서 처리)을 이 판이 해요: 저장소에서 빼고(REQ-11), 가리는 줄을 두고(REQ-12), 커밋 전에 막아요(REQ-13). (2) 재감사 후속(노트 8536 의 N1·N2·N3·NB6, 카드 기준 4): REQ-5 문장을 구현대로 좁히고 마커 검사의 빈틈을 닫고 낡은 주석을 고쳐요. `.moai-cli` 의 나머지(manifests 19, project.yaml 1)를 이 저장소에서 옮기는 일은 여전히 이 SPEC 밖의 별도 한 걸음이에요(Plan 8).
 
 판 3 은 판 2(`65071038b8`, 승인 노트 8307)의 설계를 바꿔요. 코드 조각을 읽다가 `go_state` 에 "옛 `.moai-cli/` 상태만 새 `.moai/` 로" 가는 이동이 끝까지 있다는 것을 알았어요(카드 노트 8309): 계획 `plan_state_moves`(src/go_state.rs:1977), 적용 `apply_legacy_move`(:4224, 대기 영수증 → 항목 이동 → 마커 마지막 → `committed`), 되돌리기 `go-state-revert-plan`·`go-state-revert`, 계획의 `layout` 값 `legacy_into_new`. 임시 폴더에 `.moai-cli/` 만 둔 프로젝트에서 `moai go-state-plan` 이 이 배치와 `state_moves` 를 내는 것을 읽었어요(읽기 전용, 2026-11-24). 리더 결정(노트 8310): 같은 `.moai-cli` 항목을 두 엔진·두 미리보기 단계가 주장하지 않게 이 엔진을 넓혀요. 판 2 의 새 엔진·새 명령·새 단계는 없어져요. 판 1·2 의 이동 계약(미리보기 → 토큰 → 영수증 → 되돌리기, 마커 마지막)은 그대로 이 엔진의 것이에요.
 
@@ -36,8 +37,9 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8314 of card
 - Go 세대 `.moai/` 내용의 이전과 그 되돌리기의 변경(`folder_moves`, `folder_stays`). `go`·`mixed`·`interrupted`·`refuse` 판정과 이름이 낯선 `.moai/` 는 이 이동이 거절하고 지금처럼 go-state 의 다른 길이 맡아요.
 - 새 명령, 새 모듈, 새 미리보기 단계: 판 2 의 `src/state_move.rs`·`state-move-*` 명령·update 단계는 만들지 않아요.
 - `~/.moai-cli`(SPEC-20261123-home-state-retire)와 `<git-common>` 아래 클론 공유 상태: 뒤 조각이에요.
-- `reports/` 와 `worktrees/` 의 이동: 각각 reports-move 단계와 worktree-move 단계의 몫이고, 계획은 `leave` 와 그 주인을 보여요. 추적된 보고서 137개를 git 에서 빼는 일도 여기 없어요(지우기라서 사용자 선택).
-- `.gitignore` 편집: 이 도구는 가리는 줄을 알려 주고 막기만 해요. 줄을 고치는 일은 관리 블록 단계(레이아웃 SPEC)나 사람이 해요.
+- `reports/` 와 `worktrees/` 의 이동: 각각 reports-move 단계와 worktree-move 단계의 몫이고, 계획은 `leave` 와 그 주인을 보여요. `reports-move` 명령(`src/reports_move.rs`)은 제품 기능이라 그대로 두고, 이 판은 이 저장소가 보고서를 추적하지 않게만 해요(REQ-11~13).
+- 사용자 프로젝트의 `.gitignore` 편집: 이동 도구는 가리는 줄을 알려 주고 막기만 해요. 이 저장소 자신의 `.gitignore` 에 줄을 더하는 일은 REQ-12 가 해요.
+- `.moai-cli/manifests` 와 `project.yaml` 의 이 저장소 이동, 그리고 `tools/ci_scope.py`·`tests/ci_scope_test.py`·`tools/check_ac_commands.py` 의 `.moai-cli/reports` 철자: 앞의 둘은 Plan 8 의 별도 한 걸음이고, 나머지는 Python 파일이라 이 카드가 쓰지 않아요(CLAUDE.local.md 의 Python 금지). 그 철자는 폴더가 비어도 해가 없어서 후속 한 줄로 남겨요.
 - `git add`·`git commit`: 이동은 작업 폴더만 바꿔요. 커밋은 사람이 해요.
 - `profile::read_dir`·`mixed_layout_ids` 같은 두 폴더 임시 처리를 지우는 일: 이동을 아직 안 한 트리가 있어서 남겨요. 지우기는 뒤 카드예요.
 - `src/project_update.rs` 와 `src/project_detect.rs` 의 변경: 다른 카드가 쓰는 중이라 이 SPEC 의 코드는 건드리지 않아요. `project_detect` 가 같은 술어를 따르는 일은 그 카드 착지 뒤 한 줄이에요.
@@ -49,12 +51,15 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8314 of card
 - REQ-2: The go-state plan of a project whose verdict is `none` and whose `.moai/` holds kept names shall list every top-level entry of the earlier `.moai-cli/` with the action `move`, `set-aside` or `leave` and one reason each while it reads only. · failure: none — an earlier root that is a link or not a folder gives no move and the plan says why.
 - REQ-3: The plan shall give an entry whose name already exists under `.moai/` the action `leave` with the collision named unless the user picked that entry for `set-aside`. · failure: none — a picked entry moves into the backup area of the apply and the `.moai/` entry is never overwritten.
 - REQ-4: The plan shall give `reports` and `worktrees` and every name outside the product-state list and every link or special file the action `leave` with the step that owns that entry named. · failure: none — the plan does not follow a link or read a file beyond its name and type.
-- REQ-5 (REQ-2): IF the target of a `move` or `set-aside` entry or of the marker is ignored by a `.gitignore` rule while its source is tracked THEN the plan shall move nothing and name the entry and the rule. · failure: none — without a git repository the plan says the tracked count is unknown and skips this check.
+- REQ-5 (REQ-2): IF the target of a `move` entry is ignored by a `.gitignore` rule while its source is tracked, or the marker is ignored while the source of any `move` or `set-aside` entry is tracked, THEN the plan shall move nothing and name the entry and the rule. · failure: none — a `set-aside` entry's target is the backup area that `.moai/backups/.gitignore` hides by design, so only its tracked count and a warning that git shows those files as deleted are given; without a git repository the plan says the tracked count is unknown and skips this check.
 - REQ-6: The go-state apply of a `legacy_into_new` plan shall keep the `.moai/` that exists and move each entry beside its kept names without overwrite and write the marker last. · failure: none — a changed folder or a different set of picks refuses the apply and asks for a fresh preview.
 - REQ-7: The go-state revert of such an apply shall move every recorded entry back and remove the marker first and leave every name the `.moai/` held before the apply where it is. · failure: none — the revert refuses a receipt that is not `committed` or `pending` and never sets aside a `.moai/` the apply did not create.
 - REQ-8: The project update preview shall show the existing go-state step as ready with its apply command for a tree whose `.moai/` holds only kept names. · failure: none — the preview writes nothing and no step says the user decides outside this route for such a tree.
 - REQ-9: The status line counts cache shall be written under the state folder the resolver names. · failure: none — a tree with a marker and a tracked `.moai-cli/` gets `.moai/state/github/counts.json` and no `.moai-cli/state`.
 - REQ-10: A scan test shall fail when a product source file outside the listed files spells the earlier state folder name or its constant. · failure: none — a listed file whose count falls still passes.
+- REQ-11: The repository shall track no file under a `reports` folder of `.moai-cli/` or `.moai/`. · failure: none — a scan over `git ls-files` fails and names the first tracked paths; the plan-audit scaffold file `.moai/reports/plan-audit/.gitkeep` that the `.gitignore` allows is the one exception.
+- REQ-12: The repository `.gitignore` shall ignore every file under `.moai-cli/reports/` as it already ignores `.moai/reports/*`. · failure: none — `git check-ignore -v` names the rule for a new file under that folder.
+- REQ-13: A commit whose staged change adds or modifies a file under a `reports` folder of `.moai-cli/` or `.moai/` shall be refused before the commit is made. · failure: none — a staged deletion passes, so the removal itself and any later cleanup can be committed, and the scaffold file of REQ-11 passes.
 
 ## Acceptance
 
@@ -74,12 +79,19 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8314 of card
   verify: `cargo nextest run --locked --offline --test path_root_direct_sites`
 - AC-8: the wider set around the change passes.
   verify: `cargo nextest run --locked --offline --lib`
+- AC-9 (REQ-5): in a temporary git project where only a `set-aside` entry is tracked and `.gitignore` hides the marker, the plan moves nothing and names the marker and the rule; with the marker allowed the same plan is ready and warns that the set-aside files show as deleted; a tracked `move` entry whose target is ignored still blocks.
+  verify: `cargo nextest run --locked --offline --test go_state_cli`
+- AC-10 (REQ-11, REQ-12): `git ls-files` of the repository lists no path under `.moai-cli/reports/` or `.moai/reports/` (the scaffold file excepted), the scan fails a temporary git project that tracks one, and `git check-ignore -v` names a rule for `.moai-cli/reports/x.md`.
+  verify: `cargo nextest run --locked --offline --test reports_untracked`
+- AC-11 (REQ-13): in a temporary git project a staged new or changed file under `.moai-cli/reports/` or `.moai/reports/` makes the commit check refuse with the path named, a staged deletion of such a file passes, the scaffold file passes, and a project with nothing under a reports folder is not affected.
+  verify: `cargo nextest run --locked --offline --test reports_staged_guard`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261121-project-state-move/**`, `src/go_state.rs`, `src/state_root.rs`, `src/main.rs` and `src/help.rs` (the `--set-aside` argument and its help line, by line lease), `tests/go_state_cli.rs`, `tests/state_root_cli.rs`, `tests/path_root_default.rs`, `tests/path_root_direct_sites.rs`, `tests/statusline_counts_refresh.rs`, `tests/project_update_plan_cli.rs`
+- write (revision 4): `.moai-cli/reports/**` (taken out of git's index with `git rm`; the 137 copies are already in the user-level reports folder of this project), `.gitignore` (one block), `src/hook_guards.rs` and `src/hook_engine.rs` (the commit guard, D-8 option a), `src/go_state.rs` and `tests/go_state_cli.rs` (REQ-5, stale comments), `tests/reports_untracked.rs` and `tests/reports_staged_guard.rs` (new), `tests/statusline_counts_refresh.rs` (one requirement number in a comment), `docs/claude-md-rule-provenance.md` and `docs/p07-decision.md` (the lines that still call `.moai-cli/reports` tracked), and by line lease `tests/fixtures/state_folder_literals/allow.tsv` and `tools/repo_scans.json`
 - read-only: `src/update_cleanup.rs`, `src/reports_move.rs`, `src/profile.rs`, `src/statusline/counts.rs`, `src/project_update.rs`, `src/project_detect.rs`
-- forbidden: deleting any entry, following a link or special file, overwriting a `.moai/` entry, `git add` and `git commit` by the tool, editing the user's `.gitignore`, any real HOME state folder, card numbers in outputs
+- forbidden: the move tool deleting any entry, following a link or special file, overwriting a `.moai/` entry, `git add` and `git commit` by the move tool, editing the user's project `.gitignore`, any real HOME state folder (the 137 report copies in the user-level reports folder of this project are read by `cmp` only, never written), any Python file (`tools/ci_scope.py`, `tests/ci_scope_test.py`, `tools/check_ac_commands.py` keep their text), `.moai-cli/manifests` and `.moai-cli/project.yaml`, `src/reports_move.rs`, card numbers in outputs
 
 ## Plan
 
@@ -90,7 +102,8 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8314 of card
 5. Revert plan: the whole-`.moai/` set-aside happens only when the receipt records no earlier names; otherwise the revert removes the marker first, moves entries back and leaves earlier names.
 6. Arguments: `go-state-plan` and `go-state-apply` take the same repeatable `--set-aside <entry>`; the picks are part of the plan digest.
 7. Pin tests for the counts cache (REQ-9) and the direct-site scan (REQ-10); `moai check affected` once at READY; guard mutants on digest recompute, marker-last, no-overwrite, the ignore check and the revert order.
-8. After landing (not in this SPEC): the leader runs the plan on this repository and records the `.gitignore` allow lines it needs, the choice for the tracked `reports/`, and the commit the person makes.
+8. After landing (not in this SPEC): the leader runs the plan on this repository for the rest of `.moai-cli/` (manifests and `project.yaml`) and records the `.gitignore` allow lines it needs and the commit the person makes. The tracked `reports/` is no longer part of that step: Plan 9 removes it.
+9. Revision 4, in this order. (a) Before any removal, read each of the 137 files with `cmp` against `~/.moai/reports/moai-adk/` (read-only) and stop at one mismatch; the leader's own `cmp` run is not taken as this run. (b) RED: `tests/reports_untracked.rs` (the repository tracks no reports file; a temporary git project that tracks one fails the scan; `.moai-cli/reports/x.md` is ignored) and `tests/reports_staged_guard.rs` (staged add and modify refused with the path, delete and scaffold pass), run on a throwaway project first, with the dangerous path (a staged force-added file, a path with a space, a rename into a reports folder) in the throwaway. (c) GREEN: a plain `git rm` of the 137 paths by explicit pathspec (inside this card's own worktree), the `.gitignore` block, and the commit guard. (d) REQ-5 and the stale text: the marker is asked whenever any `move` or `set-aside` source is tracked (`go_state.rs`, the early return of `kept_git_checks`), the comment above `PICK_STAMP` and the constant follow what is left of its use, the requirement number in `tests/statusline_counts_refresh.rs`. (e) The two docs lines name the HOME reports folder instead of a tracked folder. (f) `moai check affected --card` once at READY; guard mutants on the staged-path match, the deletion exception and the marker check.
 
 ## Risks
 
@@ -100,7 +113,10 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8314 of card
 - The move renames git-tracked files, so git shows deletions and additions until the person commits; other worktrees keep the old paths until they merge. The plan counts tracked files per entry so the person sees the size before the pick.
 - A running session can write `.moai-cli/state` during the apply. The plan carries the same warning go-state gives; the tool cannot detect a running session.
 - Until `project_detect.rs` follows the predicate (after C-256), project detection reads a kept-names-only `.moai/` as a folder, not as absent; the effect is not measured.
-- Not run in this revision: any build or test of the engine change (this is a SPEC revision), Windows and Linux rename behavior, and any real HOME.
+- Removing the 137 files from the tree is a deletion inside git: the bytes stay in history (revertable by one revert commit) and in `~/.moai/reports/moai-adk/`. The risk is a mismatched copy, which Plan 9(a) checks before the removal; other worktrees that still hold the files keep them until they merge.
+- The commit guard (D-8 a) is a host hook: it covers a Claude Code session's `git commit` command and nothing that runs git outside the host, and `git add -f` into the index followed by a commit through another tool is not seen. The scan of REQ-11 runs in `moai check affected` and at landing time, so the repository stays at zero tracked reports even when a commit gets past the guard.
+- The `.gitignore` block cannot stop `git add -f`; REQ-13 and REQ-11 are the two nets behind it.
+- Not run in this revision: any build or test of the changes above (this is a SPEC revision), Windows and Linux rename behavior, and any real HOME.
 
 ## Decisions
 
@@ -113,6 +129,8 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8314 of card
 | D-5 | 이동은 `.moai-cli` 에 항목이 남아도 마커로 `.moai` 가 앞서게 한다. 남은 `reports/` 는 reports 단계와 사용자 선택의 몫이다. | 노트 8307 D-5 (a), src/state_root.rs:626-627 | 되돌림 |
 | D-6 | 카드 기준 2 의 경로 `.moai/state/github/` 를 그대로 쓴다. 레이아웃 규칙의 `.moai/local/state/` 로의 이동은 그 규칙의 `state` 조각이 하고 이 SPEC 이 앞질러 하지 않는다. | 노트 8307 D-6 (a) | 카드 열림 |
 | D-7 | 되돌리기는 적용 전에 `.moai/` 에 있던 이름을 건드리지 않는다. 영수증이 그 이름을 기록하고 기록이 없는 옛 영수증은 지금처럼 읽는다. | src/go_state.rs:4735-4761 | 카드 열림 |
+| D-8 | 커밋 전 검사(REQ-13)는 호스트 훅 가드(`src/hook_guards.rs` 의 새 규칙, `hook_engine` 이 부름)에 둔다: 기본 켜짐 거절, 문장 고정. 보고서 폴더 아래 add·modify 가 staged 면 거절하고 삭제와 스캐폴드 파일은 통과한다. 뒷받침은 REQ-11 의 `git ls-files` 스캔이고 `moai check affected` 가 돌려요. 선택지: (a) [기본] 이것. (b) 설치되는 git `pre-commit` 훅 글(`install/git-hooks/pre-commit`)에 검사를 더해요: 훅 글이 바뀌면 이미 설치된 현재 글이 "사용자 훅"으로 읽혀서 옛 글 인식 목록과 갱신 단계가 더 필요하고, 이 저장소의 설치된 훅은 이미 손본 글이라 갱신되지 않아요(.git 쓰기는 사용자 선택). (c) 둘 다. | 사용자 지시 2026-11-25T01:30:24Z("reports 커밋을 하면 안된다"), src/hook_engine.rs 의 E3 신원 가드 선례, install/git-hooks/pre-commit, src/git_hooks/mod.rs:208-250 | 가드 한 줄을 지움 |
+| D-9 | Python 파일 셋(`tools/ci_scope.py`, `tests/ci_scope_test.py`, `tools/check_ac_commands.py`)의 `.moai-cli/reports` 철자는 고치지 않는다: 이 저장소는 Python 을 쓰지 않는다(CLAUDE.local.md). 폴더가 비면 그 철자는 아무것도 가리키지 않아요. `tools/repo_scans.json` 의 `recorded-ac-commands` 범위 줄도 같아요. | CLAUDE.local.md "No Python", `git grep` 읽음 2026-11-25 | 후속 카드 |
 
 ## Result
 
