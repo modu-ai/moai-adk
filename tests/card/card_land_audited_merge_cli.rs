@@ -691,3 +691,42 @@ fn a_slice_of_an_edited_merge_follows_the_mode_of_the_check() {
         }
     }
 }
+
+/// The dangerous path itself: the merge commit is made by a real `git merge --no-ff` in a detached
+/// worktree of the throwaway repository (not by `commit-tree`), and one landing call moves the
+/// branch to it and closes the card.
+#[test]
+fn a_merge_made_by_git_merge_lands_in_one_call() {
+    let w = World::plain("enforce");
+    let card = w.review_card();
+    let lane = w.lane_adding("notes/x.md");
+    let detached = w.home.path().join("merge-checkout");
+    let detached_path = detached.to_str().unwrap();
+    git(
+        &w.project,
+        &["worktree", "add", "--detach", detached_path, &w.tip],
+    );
+    let message = signed("merge the lane on the tip", S_LEAD);
+    git(&detached, &["merge", "--no-ff", "-m", &message, &lane]);
+    let merge = git(&detached, &["rev-parse", "HEAD"]);
+    assert_ne!(merge, w.tip);
+    assert_eq!(
+        git(&detached, &["rev-list", "--parents", "-n", "1", &merge])
+            .split_whitespace()
+            .count(),
+        3,
+        "git made a merge of two parents"
+    );
+    let event = w.verdict(&card, &lane, true, 0, S_AUD, None);
+
+    let got = result(&w.land(&card, &merge));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["audited_head"], json!(lane), "{got}");
+    assert_eq!(
+        got["met"][0]["evidence"],
+        json!(format!("verdict event {event} PASS head {}", &lane[..12])),
+        "{got}"
+    );
+    assert_eq!(w.integ(), merge);
+}
