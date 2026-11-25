@@ -83,3 +83,24 @@ Survey (tip `64b948a105`, `git grep -nE '(^|[^A-Za-z0-9_./-])tools/[A-Za-z0-9_./
 | D5 | The criterion "every check the shipped VERIFY/READY steps name" is read as every `moai` command the READY and check texts name (`self-check.md`, `run.md`, `work.md`, `next-flow.md`) | The VERIFY workflow no longer exists | Reword the criterion on the card |
 | D6 | The change is tier 1 by its paths (no `TIER2_PREFIXES` entry, no deletion, permission, gate or HOME change); the card says tier 2, so this SPEC stays and the leader decides whether an approval is needed | `skills/moai/references/audit.md` is not a floor path; a scan added to the registry is growth | The leader sets the tier |
 | D7 | `cargo`, `git` and `shasum` are the user's own toolchain, not repository scripts, and may be named | They exist on any developer machine | — |
+
+## Result
+
+검증한 head 는 `d00725fc526a6924c34bad4c0c41e8b42f59d7e7` 예요. 아래 명령은 모두 `cargo test --offline --locked ...` 이고 `moai heavy-slot-acquire --name moai-adk-agent-enos --max 3` 안에서 이 head 에 대해 돌렸고 종료 코드는 0 이에요.
+
+- AC-1: met — `--test skill_generalization_scan` 11 passed, 0 failed. 그중 `no_shipped_file_names_a_tools_script` 는 글을 고치기 전에 3 파일 10 곳 때문에 red 였고 고친 뒤 green 이에요. `git grep -nE '(^|[^A-Za-z0-9_./-])tools/[A-Za-z0-9_./-]+\.(sh|py|json)' -- skills agents` 는 아무것도 출력하지 않고 종료 코드 1 이에요. 이웃 시험은 `--test repo_scans_table` 33 passed, `--test repo_scans_cli` 25 passed, `--test test_area_layout` 19 passed 예요. `tools/repo_scans.json` 의 새 `always` 스캔 `shipped-files-name-no-tools-script` 는 레지스트리 성장이에요.
+- AC-2: met — `--test agent_defs_package` 20 passed, `--test update_route` 9 passed, `--test self_audit_cli` 5 passed 예요. `self_audit_cli` 의 두 숫자 하한은 이제 `== 0` 이에요.
+- AC-3: met — `--test next_flow_skill_scan refs_audit` 20 passed, 0 failed 예요. `refs_audit_tiers_match_the_code_floor` 와 심어 둔 틀린 목록(대역어 두 번, 없음, `tools/` 항목 이름 적기)이 모두 실패로 잡혀요.
+- AC-4: met — `--test e2e_temp_home_cli scenario_every_command` 1 passed 예요. 이 시나리오는 `self-check.md`·`run.md`·`work.md`·`next-flow.md` 에서 명령 경로 23 개를 뽑아 `package-inspect`, `session-register --names`, `work-flow-plan --project` 는 실제로 돌리고(HOME 과 프로젝트에 아무것도 쓰지 않아요) 나머지는 `--help` 로 답을 받아요. 파일 전체 14 개 시험이 통과했다는 것은 앞선 impl 실행에서 구현 에이전트가 보고한 값이고 이번 실행에서 다시 돌리지 않았어요.
+- AC-5: met — `--test product_cli skill_package::` 13 passed, `--test source_manifest_facts` 8 passed 예요. `shasum -a 256` 으로 읽은 `references/audit.md` 와 `workflows/update.md` 의 값이 `source-manifest.json` 의 두 sha256 값과 같아요. 이 기준의 verify 줄이 함께 이름한 `--test self_audit_cli` 는 5 passed 예요(AC-2 줄).
+
+D5 읽기: 카드 기준 2 "배포 VERIFY/READY 단계가 이름하는 모든 점검"은 D5 대로 READY·점검 글 네 파일(`self-check.md`, `run.md`, `work.md`, `next-flow.md`)이 이름하는 모든 `moai` 명령으로 읽었고, AC-4 의 시나리오가 그 네 파일에서 뽑은 23 개 경로로 이 읽기를 시험해요.
+
+Tier: 1 by the changed paths (no TIER2_PREFIXES entry except tools/repo_scans.json, which only grew); the card names tier 2, the leader decides.
+
+Not run:
+
+- `moai check affected --card` 영수증과 `moai bundle check`: READY 에서 이 섹션 뒤에 돌려요.
+- 전체 `cargo test`.
+- CI 실행.
+- Plan 5 단계의 `moai repo-scans --refs NeXT HEAD`: 이번 실행에서 돌리지 않았어요.
