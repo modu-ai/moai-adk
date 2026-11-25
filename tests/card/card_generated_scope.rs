@@ -1,7 +1,7 @@
 //! Card C-118 (SPEC-20261119-generated-files-no-lock): a generated shared file
-//! (`skills/moai/references/source-manifest.json`) listed in two cards' write scopes no longer
-//! locks the second card out; every other overlap is refused as before, and the refusal names
-//! its own pair.
+//! (`skills/moai/references/source-manifest.json`) listed in two cards' write scopes makes no
+//! overlap pair. Since SPEC-20261125-card-no-file-locks every other overlap is taken all the
+//! same and reported in `overlaps` with its own pair.
 //!
 //! Every command runs against a temporary HOME and a temporary project; the real `~/.moai` is
 //! not read or written. The one repository file read is `.gitattributes` (AC-2).
@@ -112,25 +112,40 @@ fn two_cards_may_both_list_the_generated_manifest() {
     result(&take(&home, &project, &c, S_C));
 }
 
+/// A real overlap is taken all the same (SPEC-20261125-card-no-file-locks) and reported with its
+/// own pair; the generated manifest never makes a pair.
 #[test]
-fn a_real_overlap_is_still_refused_and_names_its_own_pair() {
+fn a_real_overlap_is_reported_with_its_own_pair() {
     let (home, project) = registered();
     let a = ready_card(&home, &project, &[PLAN_MD, MANIFEST]);
     let same_file = ready_card(&home, &project, &[PLAN_MD, MANIFEST]);
     let broad = ready_card(&home, &project, &["skills/moai/**"]);
     result(&take(&home, &project, &a, S_A));
 
-    // The same skill file: refused, and the refusal is about that file, not the manifest.
-    let (kind, msg) = refusal(&take(&home, &project, &same_file, S_B));
-    assert_eq!(kind, "conflict", "{msg}");
-    assert!(msg.contains(PLAN_MD), "{msg}");
-    assert!(!msg.contains("source-manifest"), "{msg}");
+    // The same skill file: the report is about that file, not the manifest.
+    let taken = result(&take(&home, &project, &same_file, S_B));
+    let overlaps = taken["overlaps"].as_array().unwrap();
+    assert_eq!(overlaps.len(), 1, "{taken}");
+    assert_eq!(overlaps[0]["card"], json!(a), "{taken}");
+    assert_eq!(overlaps[0]["mine"], json!(PLAN_MD), "{taken}");
+    assert_eq!(overlaps[0]["theirs"], json!(PLAN_MD), "{taken}");
+    assert!(
+        !taken["overlaps"].to_string().contains("source-manifest"),
+        "{taken}"
+    );
 
-    // A folder pattern that reaches plan.md: refused for plan.md; the manifest pair never carries it.
-    let (kind, msg) = refusal(&take(&home, &project, &broad, S_B));
-    assert_eq!(kind, "conflict", "{msg}");
-    assert!(msg.contains(PLAN_MD), "{msg}");
-    assert!(!msg.contains("source-manifest"), "{msg}");
+    // A folder pattern that reaches plan.md: reported for plan.md (both holders), no manifest pair.
+    let taken = result(&take(&home, &project, &broad, S_C));
+    let overlaps = taken["overlaps"].as_array().unwrap();
+    assert!(!overlaps.is_empty(), "{taken}");
+    assert!(
+        overlaps.iter().all(|o| o["theirs"] == json!(PLAN_MD)),
+        "{taken}"
+    );
+    assert!(
+        !taken["overlaps"].to_string().contains("source-manifest"),
+        "{taken}"
+    );
 }
 
 #[test]
@@ -145,20 +160,13 @@ fn the_ready_listing_agrees_with_take() {
     // The held card is listed as `held`; nothing is skipped for the shared manifest.
     assert_eq!(skipped(&listing), vec![(a.clone(), "held".to_string())]);
 
-    // A card whose scope really overlaps is still skipped, with the overlap as the reason.
+    // A card whose scope really overlaps is offered too: nothing is skipped for an overlap.
     let c = ready_card(&home, &project, &[PLAN_MD]);
     result(&take(&home, &project, &b, S_B));
     let listing = result(&as_session(&home, S_C, &["card", "next", &project]));
-    assert_eq!(listing["next"], Value::Null, "{listing}");
+    assert_eq!(listing["next"], json!(c), "{listing}");
     let got = skipped(&listing);
-    assert!(
-        got.contains(&(c.clone(), "scope_overlap".to_string())),
-        "{got:?}"
-    );
-    assert!(
-        !got.iter().any(|(n, r)| n == &b && r == "scope_overlap"),
-        "{got:?}"
-    );
+    assert!(got.iter().all(|(_, r)| r != "scope_overlap"), "{got:?}");
 }
 
 /// `(name, reason)` of every card the `next` listing skipped.
@@ -273,25 +281,30 @@ fn a_manifest_only_card_is_taken_beside_a_card_holding_the_whole_skills_folder()
     let skill_file = ready_card(&home, &project, &[PLAN_MD]);
     result(&take(&home, &project, &whole, S_A));
 
-    // Exactly the generated path: not a reason to refuse, although the folder reaches it.
+    // Exactly the generated path: taken and not reported, although the folder reaches it.
     let taken = result(&take(&home, &project, &manifest_only, S_B));
     assert_eq!(
         taken["reservation"]["write_scope"],
         json!([MANIFEST]),
         "{taken}"
     );
+    assert_eq!(taken["overlaps"], json!([]), "{taken}");
 
-    // A skill file the folder reaches is still refused, naming that file.
-    let (kind, msg) = refusal(&take(&home, &project, &skill_file, S_C));
-    assert_eq!(kind, "conflict", "{msg}");
-    assert!(msg.contains(PLAN_MD), "{msg}");
+    // A skill file the folder reaches is taken (SPEC-20261125-card-no-file-locks) and reported,
+    // naming that file.
+    let taken = result(&take(&home, &project, &skill_file, S_C));
+    let overlaps = taken["overlaps"].as_array().unwrap();
+    assert_eq!(overlaps.len(), 1, "{taken}");
+    assert_eq!(overlaps[0]["mine"], json!(PLAN_MD), "{taken}");
 
-    // Audit N3: a spelling that differs only in case is no generated path, so it is refused too.
-    let (kind, msg) = refusal(&take(&home, &project, &cased, S_C));
-    assert_eq!(kind, "conflict", "{msg}");
+    // Audit N3: a spelling that differs only in case is no generated path, so it is reported too.
+    let taken = result(&take(&home, &project, &cased, S_A));
+    let overlaps = taken["overlaps"].as_array().unwrap();
     assert!(
-        msg.to_lowercase().contains("source-manifest.json"),
-        "names the cased spelling: {msg}"
+        overlaps.iter().any(|o| o["mine"]
+            .as_str()
+            .is_some_and(|m| m.to_lowercase().contains("source-manifest.json"))),
+        "names the cased spelling: {taken}"
     );
 }
 
@@ -306,24 +319,31 @@ fn widening_a_held_card_follows_the_same_generated_path_rule() {
     assert_eq!(scope_of(&wide), json!(["docs/a.md"]));
 
     // Audit N3 through the CLI: the cased spelling is another file, so the holder's folder
-    // pattern reaches it and it is refused, naming it. This runs before the manifest is added:
-    // once the reservation has the exact spelling, the ledger refuses a case variant of it as
-    // invalid input before any overlap is asked.
-    let (kind, msg) = refusal(&widen(
+    // pattern reaches it, and the widening (made, SPEC-20261125-card-no-file-locks) names it in
+    // `overlaps`. A second card does this one, because once a reservation has the exact spelling
+    // the ledger refuses a case variant of it as invalid input.
+    let cased_wide = ready_card(&home, &project, &["docs/b.md"]);
+    result(&take(&home, &project, &cased_wide, S_C));
+    let done = result(&widen(
         &home,
         &project,
-        &wide,
-        &["docs/a.md", MANIFEST_CASED],
+        &cased_wide,
+        &["docs/b.md", MANIFEST_CASED],
     ));
-    assert_eq!(kind, "conflict", "{msg}");
-    assert!(msg.to_lowercase().contains("source-manifest.json"), "{msg}");
-    assert_eq!(
-        scope_of(&wide),
-        json!(["docs/a.md"]),
-        "a refusal writes nothing"
+    let overlaps = done["overlaps"].as_array().unwrap();
+    assert_eq!(overlaps.len(), 1, "{done}");
+    assert_eq!(overlaps[0]["card"], json!(holder), "{done}");
+    assert!(
+        overlaps[0]["mine"]
+            .as_str()
+            .unwrap()
+            .to_lowercase()
+            .contains("source-manifest.json"),
+        "{done}"
     );
 
-    // The generated manifest: allowed, although the holder's folder pattern reaches it.
+    // The generated manifest: allowed, and not even reported, although the holder's folder
+    // pattern reaches it.
     let done = result(&widen(&home, &project, &wide, &["docs/a.md", MANIFEST]));
     assert_eq!(
         done["write_scope"],
@@ -332,29 +352,34 @@ fn widening_a_held_card_follows_the_same_generated_path_rule() {
     );
     assert_eq!(done["added"], json!([MANIFEST]), "{done}");
     assert_eq!(done["generation"], json!(1), "{done}");
+    assert_eq!(done["overlaps"], json!([]), "{done}");
     assert_eq!(scope_of(&wide), done["write_scope"], "the ledger agrees");
-    let kept = scope_of(&wide);
 
-    // Another file the holder's pattern reaches: refused, naming that file, nothing written.
-    let (kind, msg) = refusal(&widen(
+    // Another file the holder's pattern reaches: made, and reported by name (not the manifest).
+    let done = result(&widen(
         &home,
         &project,
         &wide,
         &["docs/a.md", MANIFEST, ROUTES_JSON],
     ));
-    assert_eq!(kind, "conflict", "{msg}");
-    assert!(msg.contains(ROUTES_JSON), "{msg}");
-    assert!(!msg.contains("source-manifest"), "{msg}");
-    assert_eq!(scope_of(&wide), kept, "a refusal writes nothing");
+    assert_eq!(done["added"], json!([ROUTES_JSON]), "{done}");
+    let overlaps = done["overlaps"].as_array().unwrap();
+    assert_eq!(overlaps.len(), 1, "{done}");
+    assert_eq!(overlaps[0]["mine"], json!(ROUTES_JSON), "{done}");
+    assert!(
+        overlaps.iter().all(|o| o["mine"] != json!(MANIFEST)),
+        "the manifest pair is never reported: {done}"
+    );
 
-    // A file nobody else reaches: allowed.
+    // A file nobody else reaches: allowed, nothing reported.
     let done = result(&widen(
         &home,
         &project,
         &wide,
-        &["docs/a.md", MANIFEST, "src/new.rs"],
+        &["docs/a.md", MANIFEST, ROUTES_JSON, "src/new.rs"],
     ));
     assert_eq!(done["added"], json!(["src/new.rs"]), "{done}");
+    assert_eq!(done["overlaps"], json!([]), "{done}");
     assert_eq!(scope_of(&wide), done["write_scope"], "the ledger agrees");
 }
 

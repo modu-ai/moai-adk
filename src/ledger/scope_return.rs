@@ -12,12 +12,12 @@
 //! The rows of `reservation_scope` are deleted (no trigger forbids it; the rows of `reservation`,
 //! `card`, notes and events are never deleted). The history of a scope stays in the events: every
 //! change writes `from`, `to` and the paths given back. A given-back path is free for any card the
-//! moment the transaction commits, because [`reservation::find_overlap`] reads those rows.
+//! moment the transaction commits, because [`reservation::overlaps`] reads those rows.
 //!
 //! Nothing here creates a file, calls `git` or reads the network.
 
 use super::reservation::{
-    self, add_event, FenceError, Reservation, WidenError, MAX_PATTERN_LEN, MAX_SCOPE_PATTERNS,
+    self, add_event, FenceError, Reservation, MAX_PATTERN_LEN, MAX_SCOPE_PATTERNS,
 };
 use super::workflow::{Moved, WorkflowError};
 use super::{LedgerError, WriteLedger};
@@ -120,9 +120,7 @@ impl From<LedgerError> for ReviewKeepError {
 #[derive(Debug)]
 pub enum LeaseError {
     Fence(FenceError),
-    /// Another card's reservation covers a path: the text names that card. A caller may retry.
-    Overlap(String),
-    /// Anything else the widening refused (limits, letter case, ...). A retry does not help.
+    /// The widening refused (limits, letter case, ...). A retry does not help.
     Refused(String),
 }
 
@@ -130,7 +128,7 @@ impl std::fmt::Display for LeaseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Fence(e) => write!(f, "{e}"),
-            Self::Overlap(text) | Self::Refused(text) => f.write_str(text),
+            Self::Refused(text) => f.write_str(text),
         }
     }
 }
@@ -367,8 +365,8 @@ pub fn review_keeping(
 }
 
 /// The first step of a line lease: adds the paths that the reservation does not hold yet, by the
-/// same check as a widening (another card's reservation of the same path refuses it with
-/// [`LeaseError::Overlap`], which a caller may retry). A path the reservation already holds is
+/// same check as a widening (another card's reservation of the same path no longer refuses it:
+/// SPEC-20261125-card-no-file-locks). A path the reservation already holds is
 /// left alone and is not part of `added`, so [`lease_release`] never gives it back.
 pub fn lease_take(
     w: &mut WriteLedger,
@@ -404,9 +402,6 @@ pub fn lease_take(
                     added: widened.added,
                     reservation: widened.reservation,
                 })),
-                Err(e @ WidenError::ScopeOverlap { .. }) => {
-                    Ok(Err(LeaseError::Overlap(e.to_string())))
-                }
                 Err(other) => Ok(Err(LeaseError::Refused(other.to_string()))),
             }
         },

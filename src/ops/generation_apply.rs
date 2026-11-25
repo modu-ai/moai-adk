@@ -5,7 +5,8 @@ use std::path::PathBuf;
 /// Write previewed generated agent and skill files
 ///
 /// Apply an approved generation plan (03-C #1997): the exact plan on stdin,
-/// `--plan-digest` and `--permission-reference`.
+/// `--plan-digest` and `--permission-reference`. The plan is the `result` of the
+/// `generation-plan` answer (saved as plan.json), and `--plan-digest` is its `plan_digest`.
 #[derive(clap::Args)]
 pub struct Args {
     project: PathBuf,

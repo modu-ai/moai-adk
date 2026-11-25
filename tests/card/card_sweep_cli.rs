@@ -434,19 +434,17 @@ fn take_refuses_a_card_inside_the_grace_period_as_before_and_writes_nothing() {
 }
 
 #[test]
-fn take_of_a_swept_card_refused_by_the_scope_check_leaves_the_card_ready() {
+fn take_of_a_swept_card_over_a_live_reservation_of_its_path_is_made() {
     let w = world();
     let a = w.held(S_A, "zombie", &["src/a.rs"]);
     w.end_lease(&a, TWENTY_FIVE_HOURS);
-    // Another card holds the path the swept card's scope names, with a live lease.
+    // Another card holds the path the swept card's scope names, with a live lease; with no file
+    // lock between cards (SPEC-20261125-card-no-file-locks) that is no reason to refuse.
     let blocker = w.held(S_B, "blocker", &["src/a.rs"]);
     assert_eq!(w.state_of(&blocker), "active");
-    let _ = refusal(&w.take(S_B, &a));
-    assert_eq!(
-        w.state_of(&a),
-        "ready",
-        "the sweep stays: the card is ready, only the take was refused"
-    );
+    let taken = result(&w.take(S_B, &a));
+    assert_eq!(w.state_of(&a), "active", "swept and taken: {taken}");
+    assert_eq!(taken["overlaps"][0]["card"], json!(blocker), "{taken}");
 }
 
 fn count_kind(w: &World, kind: &str) -> i64 {
@@ -470,8 +468,8 @@ fn ended_lease_paths_a_take_succeeds_over_a_held_reservation() {
     assert_eq!(w.scope_of(&b), ["src/lib.rs"]);
     assert_eq!(
         w.scope_of(&a),
-        ["docs/a.md"],
-        "the old reservation lost only the taken path"
+        ["docs/a.md", "src/lib.rs"],
+        "the old reservation keeps every path (SPEC-20261125-card-no-file-locks)"
     );
 }
 
@@ -490,19 +488,15 @@ fn ended_lease_paths_a_take_succeeds_over_a_card_in_review() {
 }
 
 #[test]
-fn ended_lease_paths_a_recovered_reservation_still_refuses() {
+fn ended_lease_paths_a_recovered_reservation_is_left_alone_and_reported() {
     let w = world();
     let a = w.held(S_A, "recovered", &["src/lib.rs"]);
     w.set_status(&a, "held_for_review", THREE_DAYS);
     let b = w.ready("next", &["src/lib.rs"]);
-    let events = count(&w, "event");
-    let (kind, message) = refusal(&w.take(S_B, &b));
-    assert_eq!(kind, "conflict", "{message}");
-    assert!(
-        message.contains(&a) || message.contains("src/lib.rs"),
-        "{message}"
-    );
-    assert_eq!(count(&w, "event"), events, "a refused take writes nothing");
+    let taken = result(&w.take(S_B, &b));
+    assert_eq!(taken["overlaps"][0]["card"], json!(a), "{taken}");
+    assert_eq!(w.scope_of(&a), ["src/lib.rs"], "the recovered scope stays");
+    assert_eq!(count_kind(&w, "card.yield"), 0, "no yield event");
 }
 
 #[test]
@@ -528,8 +522,9 @@ fn ended_lease_paths_a_line_lease_succeeds_over_a_held_reservation() {
     ));
     assert_eq!(done["added"], json!(["src/lib.rs"]), "{done}");
     assert_eq!(w.scope_of(&b), ["src/b.rs"], "the lease is given back");
-    assert!(
-        w.scope_of(&a).is_empty(),
-        "the old reservation lost the path"
+    assert_eq!(
+        w.scope_of(&a),
+        ["src/lib.rs"],
+        "the old reservation keeps the path (SPEC-20261125-card-no-file-locks)"
     );
 }

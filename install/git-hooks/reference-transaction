@@ -1,0 +1,88 @@
+#!/bin/sh
+# moai reference-transaction hook: the integration branch moves only through the landing command
+# (SPEC-20261121-ref-guard). Written by moai; changes are overwritten.
+case "$1" in prepared | committed) ;; *) exit 0 ;; esac
+common=${GIT_COMMON_DIR:-}
+if [ -z "$common" ]; then
+  case "$0" in /*) self=$0 ;; *) self=$PWD/$0 ;; esac
+  case "$self" in */hooks/*) common=${self%/hooks/*} ;; esac
+  [ -f "$common/moai/integration-branch" ] || common=$(git rev-parse --git-common-dir 2>/dev/null) || exit 0
+fi
+case "$common" in /*) ;; *) common=$PWD/$common ;; esac
+record="$common/moai/integration-branch"
+[ -f "$record" ] || exit 0
+line=
+IFS= read -r line < "$record" || :
+line=${line#"${line%%[![:space:]]*}"}
+line=${line%"${line##*[![:space:]]}"}
+case "$line" in refs/heads/?*) name=${line#refs/heads/} ;; *) exit 0 ;; esac
+input=$(cat)
+# A branch that was deleted is only written down here, one line per ref, for the worktree cleanup
+# to read later (SPEC-20261123-worktree-slots): nothing is removed and no program is started.
+# A line is a hint: the cleanup reads the ref again before it acts on it.
+if [ "$1" = committed ]; then
+  gone=
+  while IFS=' ' read -r qold qnew qref; do
+    case "$qref" in
+      refs/heads/?*) case "$qnew" in *[!0]*) ;; *) gone="$gone$qref
+" ;; esac ;;
+    esac
+  done <<EOF
+$input
+EOF
+  if [ -n "$gone" ]; then
+    mkdir -p "$common/moai" 2>/dev/null && printf '%s' "$gone" >> "$common/moai/worktree-cleanup-queue" 2>/dev/null
+  fi
+fi
+lowered=$(printf '%s\n%s\n' "$name" "$input" | tr 'A-Z' 'a-z')
+nl='
+'
+name=${lowered%%"$nl"*}
+lines=${lowered#*"$nl"}
+hit=0
+deletes=0
+source=
+while read -r old new ref; do
+  for value in "$old" "$new"; do
+    case "$value" in "ref:refs/heads/$name" | "ref:refs/heads/$name"/*) hit=1 ;; esac
+  done
+  case "$ref" in "refs/heads/$name" | "refs/heads/$name"/*) hit=1 ;; esac
+  case "$ref" in refs/heads/*) case "$new" in *[!0]*) ;; *) deletes=1; source=$ref ;; esac ;; esac
+  [ "$hit" = 1 ] && break
+done <<EOF
+$lines
+EOF
+if [ "$hit" = 0 ] && [ "$deletes" = 1 ] && [ "$1" = prepared ]; then
+  cmd=$(ps -o command= -p "$PPID" 2>/dev/null)
+  if [ -z "$cmd" ] && [ -r "/proc/$PPID/cmdline" ]; then cmd=$(tr '\0' ' ' < "/proc/$PPID/cmdline"); fi
+  words=$(printf '%s\n' "$cmd" | tr 'A-Z ' 'a-z\n')
+  target=
+  while read -r word; do
+    case "$word" in "" | -*) ;; *) target=$word ;; esac
+  done <<EOF
+$words
+EOF
+  case "$target" in
+    "$name" | "refs/heads/$name")
+      # git moved the source's reflog aside before this delete and does not move it back
+      moved="$common/logs/refs/.tmp-renamed-log"
+      if [ -n "$source" ] && [ -f "$moved" ] && [ ! -e "$common/logs/$source" ]; then
+        mkdir -p "${common}/logs/${source%/*}" 2>/dev/null
+        mv "$moved" "$common/logs/$source" 2>/dev/null
+      fi
+      echo "moai ref guard refused: this command renames a branch onto the integration branch, and git deletes the source branch before it touches the integration branch; nothing was changed. The integration branch moves only through the landing command (\`moai card land\`)" >&2
+      exit 1 ;;
+  esac
+fi
+[ "$hit" = 1 ] || exit 0
+moai=$(command -v moai 2>/dev/null)
+if [ -z "$moai" ] && [ -x "$HOME/.moai/bin/moai" ]; then moai="$HOME/.moai/bin/moai"; fi
+if [ -z "$moai" ]; then
+  echo "moai ref guard refused: the moai program was not found on PATH or in \$HOME/.moai/bin, so a change of the integration branch cannot be checked" >&2
+  [ "$1" = prepared ] && exit 1
+  exit 0
+fi
+printf '%s\n' "$input" | "$moai" card guard "$1" >/dev/null
+rc=$?
+[ "$1" = prepared ] && exit $rc
+exit 0

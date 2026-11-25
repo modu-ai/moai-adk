@@ -498,41 +498,47 @@ fn line_lease_lets_two_cards_each_add_a_line_to_the_same_file() {
         assert!(Instant::now() < deadline, "the first lease never started");
         std::thread::sleep(Duration::from_millis(50));
     }
-    // While A holds it, B waits and then adds its own line.
+    // While A holds it, B does not wait (SPEC-20261125-card-no-file-locks) and adds its own line.
     let cmd = append_command(&file, "pub mod b;");
     let second = result(&w.lease(S_B, &b, "src/lib.rs", Some("30"), &as_refs(&cmd)));
     assert!(
-        second["waited_ms"].as_i64().unwrap() >= 500,
-        "B should have waited for A: {second}"
+        second["waited_ms"].as_i64().unwrap() < 1500,
+        "B must not wait for A: {second}"
     );
     let first = first.wait_with_output().unwrap();
     result(&first);
-    assert_eq!(
-        fs::read_to_string(&file).unwrap(),
-        "pub mod a;\npub mod b;\n"
+    // Both lines are there; with no wait the order is whichever command ran first.
+    let text = fs::read_to_string(&file).unwrap();
+    assert!(
+        text.contains("pub mod a;\n") && text.contains("pub mod b;\n"),
+        "{text:?}"
     );
     assert_eq!(w.scope_of(&a), ["src/a.rs"]);
     assert_eq!(w.scope_of(&b), ["src/b.rs"]);
 }
 
 #[test]
-fn line_lease_refuses_after_the_wait_limit_naming_the_other_card() {
+fn line_lease_over_a_path_another_card_holds_runs_at_once_and_gives_it_back() {
     let w = world();
     let owner = w.held(S_C, "long reservation", &["src/lib.rs"]);
     let b = w.held(S_B, "needs one line", &["src/b.rs"]);
     let file = Path::new(&w.project).join("lib.rs");
     let cmd = append_command(&file, "pub mod b;");
-    let before = w.dump();
     let started = Instant::now();
-    let (kind, message) = refusal(&w.lease(S_B, &b, "src/lib.rs", Some("1"), &as_refs(&cmd)));
-    assert_eq!(kind, "conflict", "{message}");
-    assert!(message.contains(&owner), "names the other card: {message}");
+    // A wait given with `--wait-secs` is still accepted and is not used.
+    let done = result(&w.lease(S_B, &b, "src/lib.rs", Some("2"), &as_refs(&cmd)));
+    assert_eq!(done["exit_code"], json!(0), "{done}");
     assert!(
-        started.elapsed() >= Duration::from_millis(900),
-        "it waited for the limit"
+        started.elapsed() < Duration::from_secs(2),
+        "it did not wait for the other card"
     );
-    assert!(!file.exists(), "the command did not run");
-    assert_unchanged(&before, &w.dump(), "a refused lease writes nothing");
+    assert!(file.exists(), "the command ran");
+    assert_eq!(w.scope_of(&b), ["src/b.rs"], "the path was given back");
+    assert_eq!(
+        w.scope_of(&owner),
+        ["src/lib.rs"],
+        "the other card is left alone"
+    );
 }
 
 #[test]
@@ -648,34 +654,20 @@ fn line_lease_wait_secs_has_its_edges() {
     assert_eq!(kind, "invalid_input", "{message}");
     assert!(message.contains("600"), "names the limit: {message}");
     assert_unchanged(&before, &w.dump(), "an over-limit wait writes nothing");
-    // 0 does not wait: the overlap is refused at once and names the other card.
+    // 0 is accepted; another card's reservation of the path is no reason to wait or refuse
+    // (SPEC-20261125-card-no-file-locks), so the command runs at once.
     let started = Instant::now();
-    let (kind, message) = refusal(&w.lease(S_B, &b, "src/lib.rs", Some("0"), &as_refs(&cmd)));
-    assert_eq!(kind, "conflict", "{message}");
-    assert!(message.contains(&owner), "{message}");
+    let done = result(&w.lease(S_B, &b, "src/lib.rs", Some("0"), &as_refs(&cmd)));
+    assert_eq!(done["exit_code"], json!(0), "{done}");
     assert!(
         started.elapsed() < Duration::from_secs(3),
-        "a wait of 0 refuses at once"
+        "a wait of 0 runs at once"
     );
-    assert!(!file.exists(), "the command did not run");
+    assert!(file.exists(), "the command ran");
+    assert_eq!(w.scope_of(&owner), ["src/lib.rs"]);
     // 600 is accepted: a free path needs no wait and the command runs.
     let done = result(&w.lease(S_B, &b, "src/free.rs", Some("600"), &as_refs(&cmd)));
     assert_eq!(done["exit_code"], json!(0), "{done}");
-}
-
-#[test]
-fn line_lease_waits_for_its_limit_and_no_longer() {
-    let w = world();
-    w.held(S_C, "long reservation", &["src/lib.rs"]);
-    let b = w.held(S_B, "needs one line", &["src/b.rs"]);
-    let file = Path::new(&w.project).join("lib.rs");
-    let cmd = append_command(&file, "pub mod b;");
-    let started = Instant::now();
-    let (kind, _) = refusal(&w.lease(S_B, &b, "src/lib.rs", Some("2"), &as_refs(&cmd)));
-    let waited = started.elapsed();
-    assert_eq!(kind, "conflict");
-    assert!(waited >= Duration::from_millis(1900), "waited {waited:?}");
-    assert!(waited < Duration::from_secs(5), "waited {waited:?}");
 }
 
 #[test]
