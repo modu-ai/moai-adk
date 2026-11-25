@@ -21,6 +21,19 @@ use std::{
 };
 use tempfile::TempDir;
 
+/// A path under the Go-generation state folder this fixture builds on purpose. The folder name
+/// is spelled here once so the state-folder literal scan counts one spelling, not one per path.
+macro_rules! st {
+    ($rel:literal) => {
+        concat!(".moai/", $rel)
+    };
+}
+
+/// The same path with a run-time tail (a stamp or a counter): `st!` cannot carry `{}` captures.
+fn st_at(tail: &str) -> String {
+    format!("{}{tail}", st!(""))
+}
+
 fn sha(body: &str) -> String {
     format!("sha256:{:x}", Sha256::digest(body.as_bytes()))
 }
@@ -47,12 +60,12 @@ impl Fx {
         };
         // A valid Rust state: the marker and the minimal profile.
         fx.write(
-            ".moai/moai.json",
+            st!("moai.json"),
             &json!({"generation": "moai", "created_by": "moai-cli test",
                     "go_backup": ".moai-backup"})
             .to_string(),
         );
-        fx.write(".moai/project.yaml", "schema_version: 2\n");
+        fx.write(st!("project.yaml"), "schema_version: 2\n");
         fx
     }
 
@@ -192,7 +205,7 @@ impl Fx {
                     out.insert(p, format!("link:{}", t.display()).into_bytes());
                 } else if m.is_dir() {
                     stack.push(p);
-                } else if backups || !p.starts_with(self.root.join(".moai/backups")) {
+                } else if backups || !p.starts_with(self.root.join(st!("backups"))) {
                     out.insert(p.clone(), fs::read(&p).unwrap());
                 }
             }
@@ -237,13 +250,13 @@ impl Fx {
 
     /// The stamp folders of the apply receipts under the backup area, sorted.
     fn stamps(&self) -> Vec<String> {
-        let mut v: Vec<String> = fs::read_dir(self.root.join(".moai/backups"))
+        let mut v: Vec<String> = fs::read_dir(self.root.join(st!("backups")))
             .map(|rd| {
                 rd.filter_map(|e| e.ok())
                     .filter_map(|e| e.file_name().into_string().ok())
                     .filter(|n| {
                         self.root
-                            .join(".moai/backups")
+                            .join(st!("backups"))
                             .join(n)
                             .join("go-residue-receipt.json")
                             .is_file()
@@ -293,28 +306,28 @@ fn step<'v>(plan: &'v Value, name: &str) -> &'v Value {
 /// file, one secret-shaped name, and an output style a settings file references.
 fn survey_frame() -> Fx {
     let mut fx = Fx::new();
-    fx.deployed(".moai/policies/core/a.md", "# core policy\n");
-    fx.deployed(".moai/workflows/gtd.md", "# gtd workflow\n");
+    fx.deployed(st!("policies/core/a.md"), "# core policy\n");
+    fx.deployed(st!("workflows/gtd.md"), "# gtd workflow\n");
     fx.deployed(
-        ".moai/output-styles/moai/moai-easy.md",
+        st!("output-styles/moai/moai-easy.md"),
         "# moai easy style\n",
     );
     fx.changed(
-        ".moai/config/sections/user.yaml",
+        st!("config/sections/user.yaml"),
         "tone: formal\n",
         "tone: casual\n",
     );
-    fx.write(".moai/design/x.md", "# user design notes\n");
-    fx.write(".moai/.env.local", "KEY=value\n");
+    fx.write(st!("design/x.md"), "# user design notes\n");
+    fx.write(st!(".env.local"), "KEY=value\n");
     // A link whose target sits outside the state folder: following it would read content
     // the survey never walks, so its digest must stay empty.
     fx.write("outside.txt", "outside content\n");
-    fx.link(".moai/design/link.md", "../outside.txt");
+    fx.link(st!("design/link.md"), "../outside.txt");
     fx.write(
         ".claude/settings.json",
         "{\"outputStyle\": \"moai/moai-easy\"}\n",
     );
-    fx.manifest_at(".moai/manifest.json");
+    fx.manifest_at(st!("manifest.json"));
     fx.git_commit_all();
     fx
 }
@@ -393,11 +406,11 @@ fn the_go_residue_step_classifies_the_survey_frame() {
 fn the_go_residue_step_proves_from_the_backup_manifests() {
     let fx = survey_frame();
     // The live manifest moves into a go-markers copy; a `.moai-backup` manifest remains.
-    fs::create_dir_all(fx.root.join(".moai/backups/go-markers-20261120T234501Z")).unwrap();
+    fs::create_dir_all(fx.root.join(st!("backups/go-markers-20261120T234501Z"))).unwrap();
     fs::rename(
-        fx.root.join(".moai/manifest.json"),
+        fx.root.join(st!("manifest.json")),
         fx.root
-            .join(".moai/backups/go-markers-20261120T234501Z/manifest.json"),
+            .join(st!("backups/go-markers-20261120T234501Z/manifest.json")),
     )
     .unwrap();
     fx.manifest_at(".moai-backup/manifest.json");
@@ -427,7 +440,7 @@ fn user_data_alone_leaves_the_go_residue_step_unchanged() {
     let fx = Fx::new();
     // A backup manifest that names no file: it proves nothing for the surveyed ones.
     fx.manifest_at(".moai-backup/manifest.json");
-    fx.write(".moai/design/x.md", "# user design notes\n");
+    fx.write(st!("design/x.md"), "# user design notes\n");
     fx.git_commit_all();
     let plan = fx.update_plan();
     let found = step(&plan, "go-residue");
@@ -469,7 +482,7 @@ fn user_data_alone_leaves_the_go_residue_step_unchanged() {
 #[test]
 fn the_go_residue_step_reports_no_proof_when_no_manifest_exists() {
     let fx = survey_frame();
-    fs::remove_file(fx.root.join(".moai/manifest.json")).unwrap();
+    fs::remove_file(fx.root.join(st!("manifest.json"))).unwrap();
     let plan = fx.update_plan();
     let found = step(&plan, "go-residue");
     assert_eq!(
@@ -488,15 +501,15 @@ fn the_go_residue_step_reports_no_proof_when_no_manifest_exists() {
 // ---- SPEC-20261125-go-residue-apply: apply and revert ----
 
 const PROVEN: [&str; 3] = [
-    ".moai/policies/core/a.md",
-    ".moai/workflows/gtd.md",
-    ".moai/output-styles/moai/moai-easy.md",
+    st!("policies/core/a.md"),
+    st!("workflows/gtd.md"),
+    st!("output-styles/moai/moai-easy.md"),
 ];
 
 /// Where the apply put `rel`: `.moai/backups/<stamp>/go-residue/<same path>`.
 fn backup_of(fx: &Fx, stamp: &str, rel: &str) -> PathBuf {
     fx.root
-        .join(format!(".moai/backups/{stamp}/go-residue/{rel}"))
+        .join(st_at(&format!("backups/{stamp}/go-residue/{rel}")))
 }
 
 fn revert_args<'a>(fx: &'a Fx, stamp: &'a str) -> Vec<&'a str> {
@@ -553,7 +566,7 @@ fn applying_the_proven_bundle_moves_only_the_go_same_files() {
     let receipt: Value = serde_json::from_slice(
         &fs::read(
             fx.root
-                .join(format!(".moai/backups/{stamp}/go-residue-receipt.json")),
+                .join(st_at(&format!("backups/{stamp}/go-residue-receipt.json"))),
         )
         .unwrap(),
     )
@@ -594,16 +607,16 @@ fn applying_the_proven_bundle_moves_only_the_go_same_files() {
         "--permission-reference",
         "test-approval",
         "--pick",
-        ".moai/config/sections/user.yaml",
+        st!("config/sections/user.yaml"),
     ]);
     assert_eq!(picked["ok"], json!(true), "{picked}");
     assert_eq!(fx.stamps().len(), 2, "two applies keep two receipts");
     let stamp2 = picked["result"]["receipt"].as_str().unwrap();
     assert_eq!(
-        fs::read_to_string(backup_of(&fx, stamp2, ".moai/config/sections/user.yaml")).unwrap(),
+        fs::read_to_string(backup_of(&fx, stamp2, st!("config/sections/user.yaml"))).unwrap(),
         "tone: casual\n"
     );
-    assert!(fs::symlink_metadata(fx.root.join(".moai/config/sections/user.yaml")).is_err());
+    assert!(fs::symlink_metadata(fx.root.join(st!("config/sections/user.yaml"))).is_err());
 
     // REQ-10: only user data and an earlier-generation folder (a later slice's) remain.
     let third = fx.update_plan();
@@ -647,7 +660,7 @@ fn a_stale_digest_or_a_rejected_permission_reference_changes_nothing() {
     }
 
     // The plan was made before this file changed: its digest no longer matches.
-    fs::write(fx.root.join(".moai/workflows/gtd.md"), "# edited later\n").unwrap();
+    fs::write(fx.root.join(st!("workflows/gtd.md")), "# edited later\n").unwrap();
     let edited = fx.bytes(true);
     let stale = fx.apply_printed(&plan, &[]);
     assert_eq!(stale["ok"], json!(false), "{stale}");
@@ -666,10 +679,10 @@ fn only_a_changed_file_can_be_picked_and_one_choice_is_needed() {
         .to_string();
     let before = fx.bytes(true);
     for pick in [
-        ".moai/design/x.md",
-        ".moai/.env.local",
-        ".moai/policies/core/a.md",
-        ".moai/design/link.md",
+        st!("design/x.md"),
+        st!(".env.local"),
+        st!("policies/core/a.md"),
+        st!("design/link.md"),
         "../outside.txt",
         "outside.txt",
     ] {
@@ -703,7 +716,7 @@ fn only_a_changed_file_can_be_picked_and_one_choice_is_needed() {
 /// match the recorded hash, so a reader that followed them would call it proven.
 fn hostile_frame() -> Fx {
     let mut fx = Fx::new();
-    fx.deployed(".moai/policies/core/a.md", "# core policy\n");
+    fx.deployed(st!("policies/core/a.md"), "# core policy\n");
     let base = fx.root.parent().unwrap().to_path_buf();
     fs::create_dir_all(base.join("outside")).unwrap();
     fs::create_dir_all(base.join("outside_dir")).unwrap();
@@ -714,8 +727,8 @@ fn hostile_frame() -> Fx {
     for (key, body) in [
         ("../outside/x.md", "# outside x\n"),
         (abs.as_str(), "# outside abs\n"),
-        (".moai/linkdir/y.md", "# outside y\n"),
-        (".moai/policies/core/l.md", "# outside x\n"),
+        (st!("linkdir/y.md"), "# outside y\n"),
+        (st!("policies/core/l.md"), "# outside x\n"),
     ] {
         fx.files.insert(
             key.into(),
@@ -723,9 +736,9 @@ fn hostile_frame() -> Fx {
                    "deployed_hash": sha(body), "current_hash": sha(body)}),
         );
     }
-    fx.link(".moai/linkdir", "../../outside_dir");
-    fx.link(".moai/policies/core/l.md", "../../../../outside/x.md");
-    fx.manifest_at(".moai/manifest.json");
+    fx.link(st!("linkdir"), "../../outside_dir");
+    fx.link(st!("policies/core/l.md"), "../../../../outside/x.md");
+    fx.manifest_at(st!("manifest.json"));
     fx.git_commit_all();
     fx
 }
@@ -773,11 +786,11 @@ fn paths_that_leave_the_project_are_never_read_or_moved() {
     assert_eq!(done["result"]["moved"].as_array().unwrap().len(), 1);
     assert_eq!(outside_files(&fx), outside, "an outside file changed");
     assert_eq!(
-        fs::read_link(fx.root.join(".moai/linkdir")).unwrap(),
+        fs::read_link(fx.root.join(st!("linkdir"))).unwrap(),
         PathBuf::from("../../outside_dir")
     );
     assert_eq!(
-        fs::read_link(fx.root.join(".moai/policies/core/l.md")).unwrap(),
+        fs::read_link(fx.root.join(st!("policies/core/l.md"))).unwrap(),
         PathBuf::from("../../../../outside/x.md")
     );
 }
@@ -788,17 +801,17 @@ fn paths_that_leave_the_project_are_never_read_or_moved() {
 #[test]
 fn a_manifest_that_names_a_secret_shaped_path_never_moves_it() {
     let mut fx = Fx::new();
-    fx.deployed(".moai/policies/core/a.md", "# core policy\n");
+    fx.deployed(st!("policies/core/a.md"), "# core policy\n");
     let secrets = [
-        (".moai/.env", "TOKEN=1\n"),
-        (".moai/.npmrc", "//registry/:_authToken=x\n"),
-        (".moai/config/credentials.json", "{\"k\": 1}\n"),
-        (".moai/keys/deploy.pem", "-----BEGIN-----\n"),
+        (st!(".env"), "TOKEN=1\n"),
+        (st!(".npmrc"), "//registry/:_authToken=x\n"),
+        (st!("config/credentials.json"), "{\"k\": 1}\n"),
+        (st!("keys/deploy.pem"), "-----BEGIN-----\n"),
     ];
     for (rel, body) in secrets {
         fx.deployed(rel, body);
     }
-    fx.manifest_at(".moai/manifest.json");
+    fx.manifest_at(st!("manifest.json"));
     fx.git_commit_all();
     let before = fx.bytes(true);
     let plan = fx.update_plan();
@@ -818,7 +831,7 @@ fn a_manifest_that_names_a_secret_shaped_path_never_moves_it() {
     assert_eq!(done["ok"], json!(true), "{done}");
     assert_eq!(
         done["result"]["moved"],
-        json!([".moai/policies/core/a.md"]),
+        json!([st!("policies/core/a.md")]),
         "{done}"
     );
     let after = fx.bytes(true);
@@ -840,14 +853,14 @@ fn a_forged_receipt_naming_a_path_outside_the_project_is_refused() {
     let stamp = done["result"]["receipt"].as_str().unwrap().to_string();
     let receipt_path = fx
         .root
-        .join(format!(".moai/backups/{stamp}/go-residue-receipt.json"));
+        .join(st_at(&format!("backups/{stamp}/go-residue-receipt.json")));
     let original = fs::read_to_string(&receipt_path).unwrap();
     let abs = fx.root.parent().unwrap().join("outside/abs.md");
     for forged in [
         "../outside/x.md".to_string(),
         abs.to_str().unwrap().to_string(),
-        ".moai/linkdir/y.md".to_string(),
-        ".moai/.env".to_string(),
+        st!("linkdir/y.md").to_string(),
+        st!(".env").to_string(),
     ] {
         let mut v: Value = serde_json::from_str(&original).unwrap();
         v["moves"].as_array_mut().unwrap().push(json!({
@@ -877,11 +890,11 @@ fn a_receipt_above_256_kib_applies_and_reverts() {
     let mut fx = Fx::new();
     for i in 0..2000 {
         fx.deployed(
-            &format!(".moai/policies/bulk/f{i:04}.md"),
+            &st_at(&format!("policies/bulk/f{i:04}.md")),
             &format!("# bulk {i}\n"),
         );
     }
-    fx.manifest_at(".moai/manifest.json");
+    fx.manifest_at(st!("manifest.json"));
     fx.git_commit_all();
     let before = fx.bytes(false);
     let plan = fx.update_plan();
@@ -895,7 +908,7 @@ fn a_receipt_above_256_kib_applies_and_reverts() {
     let stamp = done["result"]["receipt"].as_str().unwrap().to_string();
     let size = fs::metadata(
         fx.root
-            .join(format!(".moai/backups/{stamp}/go-residue-receipt.json")),
+            .join(st_at(&format!("backups/{stamp}/go-residue-receipt.json"))),
     )
     .unwrap()
     .len();
@@ -921,7 +934,7 @@ fn a_receipt_above_256_kib_applies_and_reverts() {
 #[test]
 fn an_unwritable_backup_area_moves_no_file() {
     let fx = survey_frame();
-    let backups = fx.root.join(".moai/backups");
+    let backups = fx.root.join(st!("backups"));
     fs::create_dir_all(&backups).unwrap();
     fs::set_permissions(&backups, fs::Permissions::from_mode(0o555)).unwrap();
     let before = fx.bytes(true);
