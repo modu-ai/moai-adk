@@ -2805,6 +2805,79 @@ fn a_moai_line_that_runs_a_command_with_a_computed_word_is_unreadable() {
     );
 }
 
+// SPEC-20261125-boundary-unreadable-detail, REQ-7 (D-6, revision 2): the shell also expands a bare
+// glob character or brace list into a word, so `{--,}` or `??` can stand for the `--` just as `$SEP`
+// can. On a moai line that runs a command, such a bare word before the first literal `--`, in the
+// place of the subcommand or with no `--` at all, is unreadable. A quoted glob character is literal.
+
+#[test]
+fn a_moai_line_that_runs_a_command_with_a_glob_or_brace_word_is_unreadable() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    let prefixes = [
+        "moai heavy-slot-acquire --name wren --max 3",
+        "moai card line-lease C-1 --generation 1 --path p",
+        "moai-cli heavy-slot-acquire --name wren --max 3",
+    ];
+    // A glob or brace word where the `--` would stand: the expansion may produce the `--`.
+    let separators = [
+        "{--,} rm -rf {OUT}/x",
+        "{--,-x} rm -rf {OUT}/x",
+        "?? rm -rf {OUT}/x",
+        "--* rm -rf {OUT}/x",
+        "[-][-] rm -rf {OUT}/x",
+    ];
+    let mut unreadable = Vec::new();
+    for prefix in prefixes {
+        for tail in separators {
+            unreadable.push(format!("{prefix} {tail}"));
+        }
+        // A glob word before a literal `--`: it may be an option, or may swallow the next word.
+        unreadable.push(format!("{prefix} --path src/*.rs -- rm -rf {{OUT}}/x"));
+        unreadable.push(format!("{prefix} --path {{a,b}} -- rm -rf {{OUT}}/x"));
+        // No literal `--` and a glob word anywhere.
+        unreadable.push(format!("{prefix} --path src/*.rs"));
+    }
+    // A glob word in the place of the subcommand, or of the word under `card`.
+    unreadable.push("moai card line-l*ase C-1 -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai card line-l?ase C-1 -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai heavy-slot-acquire* --name x -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai h*vy-slot-acquire --name x -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai ?? x -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai {heavy-slot-acquire,x} --name x -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai ?? x {--,} rm -rf {OUT}/x".to_owned());
+    for cmd in &unreadable {
+        let got = w.verdict(S::Own, cmd);
+        if got.as_deref() != Some("unreadable") {
+            bad.push(format!("  {cmd:?}: want \"unreadable\", got {got:?}"));
+        }
+    }
+    // Moai lines that run no command keep their expansions, and a quoted glob character is
+    // literal text, not a glob.
+    for cmd in [
+        "moai card note C-1 --ref \"$R\"",
+        "moai check affected --card a..b",
+        "moai card note C-1 --kind \"a*b\"",
+        "moai heavy-slot-acquire --name \"a*b\" --max 3 -- rm -rf {OUT}/x",
+    ] {
+        let got = w.verdict(S::Own, cmd);
+        let want = if cmd.contains("rm -rf") {
+            Some("delete-outside")
+        } else {
+            None
+        };
+        if got.as_deref() != want {
+            bad.push(format!("  {cmd:?}: want {want:?}, got {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
 // SPEC-20261125-boundary-unreadable-detail, REQ-4 and AC-2 (D-3): `-n` makes bash, zsh and sh parse
 // a script without running it, so the letter is an allowed option of a shell start. Only the `-`
 // form is added, and a `-c` string given with it is still judged.

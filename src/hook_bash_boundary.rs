@@ -1219,17 +1219,18 @@ fn command_word_unreadable(w: &Word) -> bool {
 /// moai's own (SPEC-20261125-boundary-unreadable-detail, REQ-7).
 fn moai_line_runs_a_command(args: &[Word], dashes: Option<usize>) -> bool {
     let own = &args[..dashes.unwrap_or(args.len())];
-    if own
-        .iter()
-        .any(|w| !w.dynamic && matches!(w.text().as_str(), "heavy-slot-acquire" | "line-lease"))
-    {
+    if own.iter().any(|w| {
+        !command_word_unreadable(w)
+            && matches!(w.text().as_str(), "heavy-slot-acquire" | "line-lease")
+    }) {
         return true;
     }
-    // The subcommand is the first word that is not an option; `card` has one more below it.
+    // The subcommand is the first word that is not an option; `card` has one more below it. A
+    // word the shell expands (a glob or brace list as well as `$`) may be any subcommand.
     let mut operands = own.iter().filter(|w| !w.is_option());
     match operands.next() {
-        Some(sub) if sub.dynamic => true,
-        Some(sub) if sub.text() == "card" => operands.next().is_some_and(|w| w.dynamic),
+        Some(sub) if command_word_unreadable(sub) => true,
+        Some(sub) if sub.text() == "card" => operands.next().is_some_and(command_word_unreadable),
         _ => false,
     }
 }
@@ -1840,10 +1841,12 @@ impl Walker<'_> {
                 // A line that runs a command (REQ-7, D-6) is closed against a word that an
                 // expansion decides: it may stand for the `--`.
                 "moai" | "moai-cli" => {
-                    let dashes = args.iter().position(|w| !w.dynamic && w.text() == "--");
+                    let dashes = args
+                        .iter()
+                        .position(|w| !command_word_unreadable(w) && w.text() == "--");
                     if moai_line_runs_a_command(args, dashes) {
                         let before = &args[..dashes.unwrap_or(args.len())];
-                        if before.iter().any(|w| w.dynamic) {
+                        if before.iter().any(command_word_unreadable) {
                             return Err(Class::Unreadable);
                         }
                     }
