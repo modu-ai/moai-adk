@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261121-moai-name
 title: "The temporary name moai-cli leaves the product: every remaining occurrence, by kind and slice"
-status: draft
+status: approved
 revision: 10
 created: 2026-11-21
 branch: spec/moai-name-r6-20261121
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 DELEGATED-APPROVAL 노트 9519 (사용자 위임 2026-11-25 ~14:50Z, 리더 판단, 사용자 직접 선택 아님, 노트 9517 에 답함): 개정 10 을 승인으로 기록했어요; 바뀐 것은 AC-24·Scope·Plan 4 에서 Python 파일을 빼고 D-27 을 더한 것뿐이에요; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:86eb4115ace619c28cda339997c7f1e91cbcce6ecbeb47d4fd3ff859bb32c21f"
 ---
 
 # The temporary name moai-cli leaves the product
@@ -375,4 +380,17 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 - 수리: 첫 `check affected`(head `7e18a891b3`)가 fmt 단계에서 `fmt=1 result=FAIL` 로 멈췄어요 — 새 이름이 짧아져 `rustfmt` 가 줄을 합치는 네 테스트 파일(`tests/heavy_slot_cli.rs`, `tests/home_retire_cli.rs`, `tests/home_state_retire_cli.rs`, `tests/state_folder_literal_scan.rs`). 그 네 파일만 `rustfmt --edition 2021` 로 고쳤고(`cargo fmt --check` exit 0) 의미 변경은 없어요.
 - 실제 HOME·`~/.moai-cli`·캐시: 열지 않았어요. 모든 자식은 임시 HOME·임시 TMPDIR 만 써요. Python 은 돌리지 않았어요.
 - 이번 조각이 하지 않은 것(결정 D-20·D-21): 환경 변수 `MOAI_CLI_BIN`(조각 5), Rust 상수 `MOAI_CLI_BIN`·`CARGO_BIN_EXE_moai-cli`(조각 5), 릴리스 빌드도 읽는 시임 넷의 `cfg(debug_assertions)` 게이트, 이력 문서의 옛 이름.
+- 같은 head 영수증은 카드의 READY 노트에 있어요(이 문서를 담는 head 에서 돈 값이라 해시를 여기에 적지 않아요).
+
+### 조각 6 (릴리스 태그 가족을 읽는 설치 스크립트, 개정 9·10)
+
+2026-11-26(UTC), 브랜치 `spec/moai-name-r6-20261121`, base NeXT `882cba7497`, 구현 커밋 `63bbe9b27820e0106bc84cb7930c30e5abd9ce3a`(개정 9 `8cbf106863`, 개정 10 `dd2898d735`). 리더 위임 승인: 개정 9 는 노트 9492, 개정 10 은 노트 9519(둘 다 사용자 직접 선택이 아니라 리더 판단이에요). 쓰기 범위는 노트 9492 가 허락한 여섯 파일이에요.
+
+- AC-21: met — `install_sh_finds_no_release_when_only_the_earlier_tag_family_exists`(REST 목록과 피드 둘 다에서 옛 가족만 있으면 `No moai-adk-v* release found for channel stable`, `Latest version` 없음, 임시 HOME·`TMPDIR` 에 아무것도 남지 않음), `install_sh_picks_the_moai_adk_tag_family_and_reads_the_version_argument`(REST 목록은 pre-release 표시로 stable 4.2649.0·rc 4.2649.1, 피드는 가장 새 `moai-adk-v` 태그, `--version` 은 `4.2649.0`·`v4.2649.0`·`moai-adk-v4.2649.0` 을 같은 버전으로 읽고 옛 접두사는 `Not a version`)와 `install_ps1_reads_the_same_tag_family_when_pwsh_exists`(`pwsh` 로 같은 결과; 이 기계에 `/usr/local/bin/pwsh` 가 있어 실제로 돌았어요) 통과. RED: 옛 스크립트로 이 네 시험이 모두 실패했어요(exit 100; ps1 시험은 실패 뒤 `pwsh` 확인 명령 줄을 고쳐 다시 돌았어요).
+- AC-22: met — `install_sh_names_the_moai_adk_tag_in_the_download_address_and_writes_nothing_without_the_archive` 통과: `Downloading from: file://<base>/moai-adk-v4.2649.0/moai-cli-aarch64-apple-darwin.tar.xz`, 아카이브가 없어 `Download failed`, 임시 HOME·`TMPDIR` 비어 있음. 아카이브·바이너리 이름은 그대로예요(D-23).
+- AC-23: met — `the_install_scripts_and_the_release_plan_name_one_tag_family`(`cargo nextest run --test card`) 통과: `release.yml` 의 `tag="moai-adk-v${version}"`, `install.sh` 의 `TAG_PREFIX`, `install.ps1` 의 `$TagPrefix` 가 한 글자열이고 두 스크립트·README·kit 문서에 옛 가족이 없어요.
+- AC-24: met — 개정 10 의 verify `rg -n 'moai-cli-v' install docs/local-rc1-kit.md` 가 아무것도 찍지 않고 exit 1. `tests/install_script_test.py` 의 옛 가족 20 줄은 D-27 에 따라 그대로예요.
+- guard-mutant (한 슬롯 안의 `target/jared/mutants6.sh`, 결과 `target/jared/mutants6-result.txt`, 시험 실패로 확인): `install.sh` `TAG_PREFIX` 를 옛 가족으로 | `install_sh_*` 시험 | exit 100; `install.ps1` `$TagPrefix` 를 옛 가족으로 | `install_ps1_*` 시험 | exit 100; `install.ps1` `$TagPrefix` 를 다른 글자열로 | 한 글자열 시험 | exit 100; `install.sh` `--version` 접두사 떼기를 지움 | `install_sh_picks…` 시험 | exit 100; `install.ps1` 접두사 떼기를 지움 | `install_ps1_*` 시험 | exit 100. 매번 `git checkout` 으로 되돌렸고 마지막에 트리가 깨끗했어요.
+- 위험한 경로: 모든 실행은 임시 HOME·`file://` 가짜 릴리스만 써요(`pwsh` 확인 명령도 임시 HOME 과 `POWERSHELL_TELEMETRY_OPTOUT=1`; 첫 실행에서 확인 명령이 시험 HOME 을 건드려 HOME-GUARD 가 잡았고 그 줄을 고쳤어요). 실제 HOME·네트워크·`~/.moai-cli`·`~/.moai`·`~/.claude` 는 열지 않았고 Python 은 돌리지 않았어요.
+- 그대로 둔 것: 아카이브 이름 `moai-cli-<target>`(조각 5), `tests/install_script_test.py`(D-27), cargo-dist 모델(`tests/card/release_suite.rs` 등, D-25, 조각 11), GitHub 쪽 태그 보호 규칙(읽지도 바꾸지도 않음, 사용자 몫). 태그·릴리스·푸시 없음.
 - 같은 head 영수증은 카드의 READY 노트에 있어요(이 문서를 담는 head 에서 돈 값이라 해시를 여기에 적지 않아요).
