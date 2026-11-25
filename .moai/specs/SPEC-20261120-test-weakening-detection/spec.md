@@ -126,20 +126,20 @@ TDD 이탈: 검사기(`src/test_weakening.rs`)를 시험보다 먼저 썼어요.
 
 수리 변형(커밋한 뒤 하나씩, 되돌린 뒤 작업 트리 깨끗함 확인): MA1 한도 `>` 를 `>=` 로 → 잡힘, MA2 한도 검사 없음 → 잡힘, MF 이름 바꾸기 검출 켬(`--no-renames` 삭제) → 잡힘, MB3 새 시험이 하나라도 있으면 상쇄 → 잡힘, MP1 `TIER2_PREFIXES` 에서 모듈 빼기 → 잡힘, MP2 `protected_checks.json` 에서 빼기 → 잡힘. 생존 0.
 
-### 최근 병합 50개에 돌린 결과(AC-11)
+### NeXT 의 최근 착지 50개에 돌린 결과(AC-11, D-9)
 
-명령: `git log --first-parent --merges -50 v2026.11.0` 의 병합 50개마다 `git diff --no-ext-diff --no-color --no-renames --unified=0 <병합>^1 <병합>` 을 파일로 저장하고, 커밋한 `src/test_weakening.rs` 를 그대로 가져와 빌드한 임시 실행기로 `detect` 를 돌렸어요(PR API 는 쓰지 않았어요). 출력 맨 끝 줄: `TOTAL diffs=50 with_findings=6`.
+이 절은 이전 가지가 PR 시대의 병합 50개로 돌린 결과를 대신해요. 명령: `git log --first-parent --merges -50 882cba7497`(NeXT 끝)의 병합 50개마다 `git diff --no-ext-diff --no-color --no-renames --unified=0 <병합>^1 <병합>` 을 파일로 저장하고, 커밋한 `src/test_weakening.rs` 에서 serde 파생 한 단어만 뺀 복사본을 `rustc` 로 빌드한 던져 버릴 실행기로 `detect` 를 돌렸어요(PR API 는 쓰지 않았어요, 쓴 도구는 셸과 `rustc` 뿐이고 파일은 `target/` 아래에 두었다가 지웠어요). 출력 맨 끝 줄: `TOTAL diffs=50 with_findings=6 findings=27`.
 
-| 병합 | 걸린 것 | diff 로 읽은 판단 |
+| 착지한 SPEC | 걸린 것 | diff 와 병합 메시지로 읽은 판단 |
 | --- | --- | --- |
-| 언어 세 질문(`language-three-questions`) | `assertions_reduced` `tests/language_setting.rs:211` 8 줄 빠짐·6 줄 더함 | 묻는 항목을 8개에서 3개로 줄이는 동작 변경에 맞춘 기대값 축소. 이유가 있는 변경이지만 목록에 올라야 할 변경 |
-| CI 기준 범위(`ci-base-scope`) | `test_deleted` 2건(`test_an_unknown_base_falls_back_to_the_full_matrix`, `test_targets_diff_uses_no_renames`) | 같은 diff 에 다른 이름의 새 시험이 있어요(이름이 바뀐 대체). 검사기는 이름이 같을 때만 옮긴 것으로 봐서 삭제로 보여요 |
-| 릴리스 4(#3234) | `test_deleted` 2건(`ci_superseded_test.py`) | 같은 diff 에 이름이 바뀐 대체 시험이 있어요(위와 같은 한계) |
-| 릴리스 1(#3231) | `sleep_added` `tests/profile_plan_cli.rs:493` | 30 초 마감이 있는 `try_wait` 반복 안의 50ms 대기(기다림 루프). 고정 sleep 이 아니라서 사람이 보면 바로 넘어갈 오탐 |
-| 묶음 6(#3230) | `sleep_added` `tests/hooks_cli.rs:2202` | 로그 시각이 달라지게 하는 5ms 고정 대기(`ac_pause`). 진짜 sleep 이고 이유를 물을 만해요 |
-| 세 도구 launcher(#3211) | `assertions_reduced` 1건 + `test_deleted` 4건(`tests/launcher_three_hosts.rs`) | 제거한 호스트의 시험 파일 전체를 지움(단언 19). 기능 제거에 따른 의도된 삭제 |
+| `update-declined-steps` | `golden_only` 1건(`tests/fixtures/state_folder_literals/allow.tsv:198`) | 허용 목록의 개수표 한 줄(70 에서 72)이 같은 병합에서 시험 파일에 더한 줄을 따라갔어요. 시험 파일도 함께 바뀌었고 소스는 없어서 걸렸어요. 사람이 바로 넘길 오탐 |
+| `codex-home-update-removed` | `test_deleted` 9건 + `assertions_reduced` 2건(`tests/codex_home_update_removed.rs`, `tests/home_update_notice_follow_ups.rs`, `src/ui_text.rs`) | 같은 병합이 소스(`ui_text.rs`, `update.rs`, `update_tux.rs`)에서 알림 기능을 지워서 그 기능의 시험을 함께 지웠어요. 기능 제거에 따른 의도된 삭제 |
+| `home-guard-flake` | `sleep_added` 1건(`tests/check_affected_tmpdir.rs:512`) | 400 번 도는 기다림 반복 안의 50ms 대기(마감이 있어요). 고정 sleep 이 아니라서 오탐 |
+| `heavy-slot-release-on-exit` | `sleep_added` 1건(`tests/launcher_auto_init.rs:537`) | 10 초 마감이 있는 반복 안의 50ms 대기. 오탐 |
+| `card-no-file-locks` | `test_deleted` 9건 + `assertions_reduced` 3건(`tests/card/` 아래 세 파일) | 파일 잠금을 없애는 변경이라 잠금 양보 시험을 지우고 새 시험 파일(527줄)로 바꿨어요. 의도된 교체 |
+| `integration-guard-install` | `sleep_added` 1건(`tests/integration_guard_install.rs:460`) | 1100ms 고정 대기이고 이유가 주석에 있어요(정리 폴더 이름이 시계의 초 단위). 진짜 sleep 이지만 이유가 적혀 있어요 |
 
-결과: 50개 중 6개(12%)가 걸리고 걸린 줄은 모두 12건이에요. 걸린 6개 모두 기능 변경·제거·이름 바꾸기·기다림이 이유로 보이는 변경이고, 이유 없이 시험을 약하게 만든 diff 는 diff 만 봐서는 하나도 확인하지 못했어요(작성자에게 이유를 묻지는 않았어요). 사람이 바로 넘길 오탐은 12건 중 1건(기다림 루프)이에요. 켜면 50개 중 6개가 tier 1 이 되므로 켜는 일은 리더가 이 표를 보고 정해요.
+결과: 50개 중 6개(12%)가 걸리고 걸린 줄은 모두 27건이에요. 이유 없이 시험을 약하게 만든 변경은 하나도 확인하지 못했어요(diff 와 병합 메시지만 읽었고 작성자에게 이유를 묻지는 않았어요): 실제 약화 0건. 6개 중 사람이 바로 넘길 오탐은 3개(개수표 1, 기다림 반복 안의 sleep 2), 기능 제거에 따른 의도된 삭제·교체가 2개, 이유가 적힌 고정 sleep 이 1개예요. 켜면 50개 중 6개가 tier 1 이 되고 그중 3개는 사람이 보면 바로 넘길 변경이라, 켜기 전 조건에 아래 N5·N6 을 더했어요. 켜는 일은 리더가 이 표를 보고 정해요.
 
 ### 알려진 한계
 
@@ -151,7 +151,9 @@ TDD 이탈: 검사기(`src/test_weakening.rs`)를 시험보다 먼저 썼어요.
   - N2: 단언을 지우고 문서 블록(주석·문서 글)에 같은 줄을 쓰면 단언 수가 상쇄돼요.
   - N3: Rust 시험 이름을 바꾸면(속성은 그대로, 함수 이름만 변경) 삭제와 추가로 보여서 이름 바꾸기를 구분하지 못해요.
   - N4: 카드 범위 밖의 약화 형태(단언을 항상 참인 것으로 바꾸기, 시험 본문을 비우기, 기대값 완화 등)는 다섯 가지에 걸리지 않아요.
-  - 이 네 가지를 시험이 고정하는 형태로 줄이는 일은 다음 조각이에요. 켜는 일은 리더 결정이고, 그 조각이 끝나기 전에는 켜지 않기를 권해요.
+  - N5: 마감이 있는 기다림 반복 안의 `sleep` 은 약화가 아니에요. 최근 착지 50개에서 sleep 3건 중 2건이 그런 반복이었어요(위 표).
+  - N6: 시험 파일의 변경을 따라가는 개수표(예: 허용 목록의 줄 수)를 고친 diff 는 골든만 다시 쓴 변경이 아니에요. 최근 착지 50개에서 `golden_only` 1건이 그랬어요.
+  - 이 여섯 가지를 시험이 고정하는 형태로 줄이는 일은 다음 조각이에요. 켜는 일은 리더 결정이고, 그 조각이 끝나기 전에는 켜지 않기를 권해요.
 
 ### 수락 기준
 

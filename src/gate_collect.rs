@@ -86,7 +86,7 @@ fn weakened_tests(dir: &Path, merge_base: &str, head: &str) -> Option<Vec<String
 
 /// The findings of a diff text, one rendered line each, or `None` when the text is longer than
 /// [`MAX_WEAKENING_DIFF`] bytes: a diff of exactly that length is read, one byte more is not.
-fn weakened_in(diff: &str) -> Option<Vec<String>> {
+pub(crate) fn weakened_in(diff: &str) -> Option<Vec<String>> {
     if diff.len() > MAX_WEAKENING_DIFF {
         return None;
     }

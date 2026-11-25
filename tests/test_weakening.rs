@@ -3,11 +3,16 @@
 //! built here from lines, and the marker words are joined at run time so no repository scan
 //! reads this file's strings as an ignored or sleeping test of its own.
 
+mod common;
+
+use common::git::{command, git, git_ok};
+use common::home::TempHome;
 use moai_cli::gate::test_weakening::{detect, is_golden_path, is_test_path, Finding};
 use moai_cli::gate::{
     effective_tier, tier_of, tier_with_weakening, Snapshot, TEST_WEAKENING_ENFORCED,
 };
-use serde_json::json;
+use serde_json::{json, Value};
+use std::{fs, path::Path};
 
 fn ignore_attr() -> String {
     ["#[", "ignore]"].concat()
@@ -415,4 +420,103 @@ fn observe_reports_and_enforce_raises_the_tier() {
         moai_cli::gate::weakening_report(&unread)["tier_with_findings"],
         json!(1)
     );
+}
+
+const THING: &str = "tests/thing.rs";
+const TEST_ONE: &str = "#[test]\nfn it_holds() {\n    assert_eq!(1, 1);\n}\n";
+const TEST_TWO: &str = "\n#[test]\nfn it_also_holds() {\n    assert_eq!(2, 2);\n}\n";
+
+fn commit_all(repo: &Path, message: &str) -> String {
+    git_ok(repo, &["add", "-A"]);
+    let mut cmd = command();
+    cmd.args([
+        "-c",
+        "user.name=Fixture",
+        "-c",
+        "user.email=fixture@example.invalid",
+        "commit",
+        "-q",
+        "-m",
+        message,
+    ])
+    .current_dir(repo)
+    .env("GIT_AUTHOR_DATE", "2026-01-01T00:00:00 +0000")
+    .env("GIT_COMMITTER_DATE", "2026-01-01T00:00:00 +0000");
+    assert!(cmd.status().unwrap().success());
+    git(repo, &["rev-parse", "HEAD"])
+}
+
+/// The `review-package` result of a repository whose base holds one test and whose head holds
+/// `head_text` in its place. The binary runs through a temporary HOME and reads git only.
+fn package_of(head_text: &str) -> Value {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let repo = tmp.path().join("repo");
+    fs::create_dir_all(repo.join("tests")).unwrap();
+    git_ok(&repo, &["init", "-q", "-b", "main"]);
+    fs::write(repo.join("README.md"), "readme\n").unwrap();
+    fs::write(repo.join(THING), TEST_ONE).unwrap();
+    let base = commit_all(&repo, "base");
+    fs::write(repo.join(THING), head_text).unwrap();
+    let head = commit_all(&repo, "head");
+    let home = TempHome::new();
+    let out = home
+        .command(&[
+            "review-package",
+            repo.to_str().unwrap(),
+            "--base",
+            &base,
+            "--head",
+            &head,
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["ok"], json!(true), "{v}");
+    v["result"].clone()
+}
+
+/// AC-10: the quality rule joins "a deleted test is a finding" to "a test whose root cause is not
+/// found is deleted, with the reason written in the card and the SPEC" in one sentence, once.
+#[test]
+fn the_quality_rule_carries_the_connecting_sentence() {
+    let text = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/references/internal/quality.md"),
+    )
+    .unwrap();
+    let sentence = "A deletion whose reason is written in the card and the SPEC";
+    assert_eq!(text.matches(sentence).count(), 1);
+    let at = text.find(sentence).unwrap();
+    let line = text[at..].lines().next().unwrap();
+    assert!(line.contains("is not a finding"), "{line}");
+    assert!(line.contains("check-rules.md"), "{line}");
+}
+
+/// AC-7: the package lists the findings of its diff in `test_weakening`, one line each in the
+/// form the gate result uses, and an empty array for a diff that weakens nothing.
+#[test]
+fn review_package_carries_the_findings() {
+    let weak = package_of("// the test is gone\n");
+    let lines: Vec<&str> = weak["test_weakening"]
+        .as_array()
+        .expect("the package has a `test_weakening` list")
+        .iter()
+        .map(|l| l.as_str().unwrap())
+        .collect();
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.starts_with("test_deleted tests/thing.rs:")),
+        "{lines:?}"
+    );
+    assert!(weak["skipped"].as_array().unwrap().is_empty(), "{weak}");
+
+    let grown = package_of(&format!("{TEST_ONE}{TEST_TWO}"));
+    assert_eq!(grown["test_weakening"], json!([]), "{grown}");
+    assert!(grown["skipped"].as_array().unwrap().is_empty(), "{grown}");
 }
