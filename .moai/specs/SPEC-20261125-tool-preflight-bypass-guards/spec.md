@@ -81,3 +81,17 @@ approval: {by: leader, at: 2026-11-25, basis: "user pick relayed by the leader i
 | D-3 | 경계 판정 전체(다섯 분류)를 그대로 써요. 대안: `protected-ref`·`delete-outside` 만 | 분류를 걸러 쓰면 `git branch -f "$B" HEAD` 가 `unreadable` 로 판정돼 걸러져 틈이 열려요. 감사받은 판정을 쪼개지 않는 편이 안전해요 | 분류 필터를 더해요(경계 모듈 변경 필요) |
 | D-4 | 모드 스위치 없이 우회 모드에서 항상 거절해요. 대안: `[hooks.modes]` 규칙(기본 observe) | 그 설정 파일은 퇴역한 `~/.moai-cli/` 에 있고 기본이 observe 라 측정된 틈이 열려 있어요. 되돌리려면 코드를 되돌려요 | 갈래를 지워요 |
 | D-5 | 우회 모드의 강제 push 는 모든 브랜치에서 거절해요(`+refspec`, `--force`, `-f`). 대안: 통합·보호 브랜치만 | 카드 기준 3 이 "ask 로 끝나던 강제 push"를 말해요. 레인은 push 하지 않는 흐름(`CLAUDE.md` Lane)이라 막혀도 정상 작업이 없어요 | 확인 문장 비교 한 줄을 지워요 |
+
+## Result
+
+- AC-1 met: `hook_preflight_bypass_cli::ac1_a_move_of_the_integration_branch_is_denied_in_bypass_mode` (두 프로필 이름 `NeXT`, `release-line`; 다섯 이동이 `moai-boundary/protected-ref:` deny, 보호되지 않은 브랜치 셋은 허용).
+- AC-2 met: `ac2_a_delete_outside_the_checkout_is_denied_in_bypass_mode` (`/opt/…`, `/usr/local/…`, HOME 아래가 `moai-boundary/delete-outside:` deny; 워크트리 안 상대 경로와 `/tmp` 아래는 허용).
+- AC-3 met: `ac3_a_force_push_is_denied_in_bypass_mode_and_still_asked_otherwise` (네 강제 push 가 deny, 같은 입력이 `default` 모드에서는 `ask`, 사유는 명령 낱말을 담지 않아요).
+- AC-4 met: `ac4_every_other_mode_answers_as_before` (다섯 모드, 값 없음, 숫자, null).
+- AC-5 met: `ac5_outside_a_moai_project_nothing_new_is_judged` (프로젝트 파일 없는 git 체크아웃; 가드 뮤턴트 m4 가 이 테스트를 실패시켜요).
+- AC-6 met: 위험 경로 실행. 임시 프로젝트(베어 원격 포함)에서 `claude -p --setting-sources project --dangerously-skip-permissions`(claude 2.1.332)의 실제 세션이 훅을 `hook-dispatch --host claude --event tool-preflight` 한 줄만 설정한 상태에서 (a) `git branch -f NeXT HEAD` → `moai-boundary/protected-ref`, (b) `rm -rf <프로젝트 밖 절대 경로>` → `moai-boundary/delete-outside`, (c) `git push --force origin feature` → `MoAI tool-preflight: a force push …` 로 세 가지 모두 `PreToolUse:Bash hook error` 로 거절됐고, 통제 명령 `git status --short` 는 실행됐어요. 실행 전후 브랜치 tip(`rev-parse NeXT feature`), 원격(`ls-remote`), 대상 폴더(`ls -l` 과 `data.txt` 내용)가 같아요. 기록: `target/c510/real.sh`, `real.run.log`.
+- AC-7 met: 이웃 테스트 `hook_dispatch_cli`, `hook_bash_boundary_cli`, `hooks_cli`, `hook_entry_cli` 와 새 테스트까지 152개가 통과했어요(nextest, `Summary 152 tests run: 152 passed`).
+- AC-8 met: 지연은 debug 빌드에서 허용 명령 p50 12.8 ms · p90 16.0 ms, 거절 명령 p50 15.0 ms · p90 17.8 ms 예요(15회, 로드 평균 약 44; 경계를 두지 않고 숫자만 보고해요).
+- 가드 뮤턴트 네 줄은 모두 시험 실패로 잡혔어요(`target/c510/mutants.txt`, `mutants-m4_no_project_check.txt`): m1 경계 갈래 끔 → ac1·ac2, m2 강제 push 갈래 끔 → ac3, m3 모든 모드 적용 → ac3·ac4, m4 프로젝트 검사 끔 → ac5. 첫 m4(`|| true` 를 클로저 안에 둠)는 동작이 같은 뮤턴트라 살아남았고, 조건 전체를 끄는 형태로 고쳐 다시 돌렸어요.
+- 알려진 틈: 우회 모드의 `git reset --hard`·강제 `git clean` `ask` 와 직접 PR 머지(`merge_confirm`, `[hooks.modes]` 기본 observe)는 이 SPEC 이 닫지 않아요. 강제 push 거절 사유는 확인 문장(`… confirm it.`)을 그대로 써요(REQ-2 의 글자 그대로).
+- 확인하지 않은 것: release 빌드 지연, 다른 호스트 버전의 `permission_mode` 입력 모양, 설치된 전역 빌드의 세션(설치는 리더의 몫).
