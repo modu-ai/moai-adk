@@ -139,10 +139,17 @@ struct Run {
 
 /// Runs the plan script as GitHub does (`bash -eo pipefail`), in `repo`, with a fixed clock.
 fn plan(repo: &Repo, branch: &str, pushed: &str, epoch: i64) -> Run {
-    plan_with(repo, branch, pushed, epoch, &[])
+    plan_with(repo, branch, pushed, Some(epoch), &[])
 }
 
-fn plan_with(repo: &Repo, branch: &str, pushed: &str, epoch: i64, extra: &[(&str, &str)]) -> Run {
+/// `epoch` of `None` leaves `SOURCE_DATE_EPOCH` unset, so the script reads the clock itself.
+fn plan_with(
+    repo: &Repo,
+    branch: &str,
+    pushed: &str,
+    epoch: Option<i64>,
+    extra: &[(&str, &str)],
+) -> Run {
     let work = repo.dir.parent().unwrap();
     let script = work.join("plan.sh");
     fs::write(&script, step_script(NUMBER_STEP)).unwrap();
@@ -160,8 +167,10 @@ fn plan_with(repo: &Repo, branch: &str, pushed: &str, epoch: i64, extra: &[(&str
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .env("REF_NAME", branch)
         .env("PUSHED", pushed)
-        .env("GITHUB_OUTPUT", &out_file)
-        .env("SOURCE_DATE_EPOCH", epoch.to_string());
+        .env("GITHUB_OUTPUT", &out_file);
+    if let Some(epoch) = epoch {
+        cmd.env("SOURCE_DATE_EPOCH", epoch.to_string());
+    }
     for (k, v) in extra {
         cmd.env(k, v);
     }
@@ -319,6 +328,53 @@ fn the_serial_is_the_lowest_one_no_tag_uses() {
     assert!(!plan(&r, "release/v4.2649.2", &r.sha, clock).ok);
 }
 
+/// REQ-5: tags of another family, or of another shape of name that merely contains the prefix,
+/// never block the plan.
+#[test]
+fn tags_of_other_families_do_not_block_the_plan() {
+    let r = repo(Some("4\n"));
+    for tag in [
+        "moai-adk-v4.2640.6",
+        "v3.1.3",
+        "go-v1.2.3",
+        "moai-cli-v2026.11.0-rc.1",
+        "xmoai-adk-v4.2649.50",
+    ] {
+        git(&r.dir, &["tag", tag]);
+    }
+    let run = plan(&r, "release/v4.2649.0", &r.sha, noon(2026, 11, 25));
+    assert!(run.ok, "{}", run.stderr);
+    assert_eq!(run.outputs["tag"], "moai-adk-v4.2649.0");
+}
+
+/// Without `SOURCE_DATE_EPOCH` the script reads the clock itself, once, and passes that reading
+/// on as `epoch`. The week is computed from the reading taken before the run; a run that crosses
+/// a Monday midnight is skipped so the test never depends on the wall clock's luck.
+#[test]
+fn without_a_given_epoch_the_clock_is_read_once() {
+    let r = repo(Some("4\n"));
+    let now = || {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64
+    };
+    let before = now();
+    let week = library_yearweek(before);
+    let run = plan_with(&r, &format!("release/v4.{week}.0"), &r.sha, None, &[]);
+    let after = now();
+    if library_yearweek(after) != week {
+        return;
+    }
+    assert!(run.ok, "{}", run.stderr);
+    let epoch: i64 = run.outputs["epoch"].parse().unwrap();
+    assert!(
+        before <= epoch && epoch <= after,
+        "{epoch} not in {before}..{after}"
+    );
+    assert_eq!(run.outputs["yearweek"], week);
+}
+
 /// REQ-5: a tag of the same head and week with a shape the plan does not read stops it.
 #[test]
 fn a_malformed_tag_of_the_same_week_stops_the_plan() {
@@ -449,7 +505,7 @@ fn a_commit_outside_the_remote_next_branch_is_refused() {
         &r,
         "release/v4.2649.0",
         &second,
-        clock,
+        Some(clock),
         &[("NEXT_REF", "work")],
     );
     assert!(local.ok, "NEXT_REF is the test's seam: {}", local.stderr);
@@ -518,6 +574,18 @@ fn verify(
     tag: &str,
     branch: &str,
 ) -> Verify {
+    verify_with(first, second, version, serial, tag, branch, "false")
+}
+
+fn verify_with(
+    first: &str,
+    second: &str,
+    version: &str,
+    serial: &str,
+    tag: &str,
+    branch: &str,
+    prerelease: &str,
+) -> Verify {
     let tmp = TempDir::new().unwrap();
     let dir = fs::canonicalize(tmp.path()).unwrap();
     fake_binaries(&dir, first, second);
@@ -535,7 +603,7 @@ fn verify(
         .env("SERIAL", serial)
         .env("TAG", tag)
         .env("SHA", "a".repeat(40))
-        .env("PRERELEASE", "false")
+        .env("PRERELEASE", prerelease)
         .env("REF_NAME", branch)
         .env("GITHUB_STEP_SUMMARY", &summary)
         .output()
@@ -571,15 +639,18 @@ fn the_build_job_checks_both_lines_and_the_tag() {
         assert!(good.summary.contains(text), "{text}: {}", good.summary);
     }
     // The `moai` binary may say `moai` and the release candidate branch is accepted.
-    let rc = verify(
+    let rc = verify_with(
         "moai 4.2649.0 (rust)",
         RELEASE_LINE,
         "4.2649.0",
         "0",
         "moai-adk-v4.2649.0",
         "release/rc/v4.2649.0",
+        "true",
     );
     assert!(rc.ok, "{}", rc.stderr);
+    // A candidate's note says it is a pre-release.
+    assert!(rc.summary.contains("- pre-release: yes"), "{}", rc.summary);
 
     let bad: Vec<(&str, &str, &str, &str, &str, &str)> = vec![
         // The first line carries another version, a suffix, or the wrong generation mark.
@@ -825,4 +896,49 @@ fn the_workflow_publishes_nothing() {
         uses += 1;
     }
     assert!(uses >= 2, "{uses}");
+}
+
+/// The settings of the two jobs the plan and the build rely on: no stored credential, the tags
+/// fetched for the plan, the build on the commit the plan checked, the plan's clock reading, bash
+/// as the shell, and no secret, token scope or publishing action anywhere in the file.
+#[test]
+fn the_jobs_keep_their_settings() {
+    let code: String = WORKFLOW
+        .lines()
+        .filter(|l| !l.trim_start().starts_with('#'))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for word in [
+        "secrets.",
+        "secrets:",
+        "GITHUB_TOKEN",
+        "id-token",
+        "upload-artifact",
+        "attest",
+        "gh release",
+        "gh api",
+        "git push",
+    ] {
+        assert!(!code.contains(word), "the workflow holds {word:?}");
+    }
+    let (plan_job, build_job) = code.split_once("\n  build:\n").expect("a build job");
+    assert!(plan_job.contains("\n  plan:\n"), "a plan job");
+    // Every checkout keeps no credential; the plan reads every tag of the clone it checks out.
+    assert_eq!(code.matches("uses: actions/checkout@").count(), 2);
+    assert_eq!(code.matches("persist-credentials: false").count(), 2);
+    assert!(
+        plan_job.contains("fetch-tags: true"),
+        "the plan reads the tags"
+    );
+    assert!(
+        plan_job.contains("fetch-depth: 0"),
+        "the plan reads the history"
+    );
+    // The build waits for the plan, builds the commit the plan checked and takes its clock reading.
+    assert!(build_job.contains("needs: plan"));
+    assert!(build_job.contains("ref: ${{ needs.plan.outputs.sha }}"));
+    assert!(build_job.contains("SOURCE_DATE_EPOCH: ${{ needs.plan.outputs.epoch }}"));
+    // Both jobs run their scripts under bash.
+    assert_eq!(code.matches("shell: bash").count(), 2);
+    assert!(plan_job.contains("shell: bash") && build_job.contains("shell: bash"));
 }
