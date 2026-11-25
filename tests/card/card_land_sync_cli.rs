@@ -346,11 +346,13 @@ impl World {
         out
     }
 
-    /// The registry entry of the leader.
+    /// The registry entry file of the leader, found through the registry's own lookup by name: the
+    /// file is named by the registering session's id, so no file name is assumed here.
     fn leader_entry(&self) -> PathBuf {
-        moai_cli::clone_root::path(&self.project.join(".git"))
-            .join("sessions")
-            .join("leader.json")
+        let dir = moai_cli::clone_root::path(&self.project.join(".git")).join("sessions");
+        moai_cli::lane_registry::entry_file(&dir, "leader")
+            .expect("the registry entries are readable")
+            .expect("a registered leader entry")
     }
 
     fn script(&self, name: &str, text: &str) -> PathBuf {
