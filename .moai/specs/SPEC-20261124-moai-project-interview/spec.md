@@ -4,7 +4,7 @@ title: "/moai project 설문을 감지로 알 수 없는 것만 묻는 최소 �
 status: approved
 revision: 3
 created: 2026-11-24
-approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8240 of card C-150 (answers lane note 8239, 2026-11-24T05:34:27Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 2 at head 42e490e8fc; revision 1 was approved by note 8167 (head 89231f75e3); recorded by the lane, not approved by it", digest: "sha256:db87bdceca16a98fc142a09dbe3cc5e9c30e73e93c13f0a0fb8e536ab67ca7bb"}
+approval: {by: leader, at: 2026-11-25, basis: "leader DELEGATED-APPROVAL note 9400 of card C-150 (answers lane note 9399, under the user's delegation of 2026-11-25 about 14:50Z, not a direct user pick), approving revision 3 at head 083048e88d; revision 2 was approved by note 8240 (head 42e490e8fc) and revision 1 by note 8167 (head 89231f75e3); recorded by the lane, not approved by it", digest: "sha256:9dcd1dfd677ff43a45d90570d08665f7bac5d37b7a161302bb29f416334d4532"}
 ---
 
 # /moai project 설문을 감지로 알 수 없는 것만 묻는 최소 설문으로 다시 정해요
