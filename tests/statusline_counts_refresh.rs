@@ -179,7 +179,7 @@ fn a_stale_cache_is_refreshed_in_the_background_and_the_go_file_is_left_alone() 
     );
 }
 
-/// SPEC-20261121-project-state-move REQ-10 (card criterion 2): a checkout with the marker and a
+/// SPEC-20261121-project-state-move REQ-9 (card criterion 2): a checkout with the marker and a
 /// git-tracked earlier state folder keeps its counts cache under the folder the resolver names,
 /// and nothing is created beside it under the earlier folder. The folder names come from the
 /// library constants, so the test spells no state folder name of its own.

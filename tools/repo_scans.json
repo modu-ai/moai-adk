@@ -1245,6 +1245,31 @@
       "rejects": "a change to a file that tests/flaky_followups.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
     },
     {
+      "id": "no-tracked-reports",
+      "always": true,
+      "tests": [
+        "tests/reports_untracked.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test reports_untracked"
+      ],
+      "rules": [
+        "tests/reports_untracked.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".gitignore"
+        },
+        {
+          "prefix": ".moai-cli/reports/"
+        },
+        {
+          "prefix": ".moai/reports/"
+        }
+      ],
+      "rejects": "a tracked file under a reports folder of .moai-cli/ or .moai/, or a .gitignore that no longer hides them (SPEC-20261121-project-state-move REQ-11, REQ-12)"
+    },
+    {
       "id": "include-str-gitignore-block-cli",
       "always": true,
       "tests": [

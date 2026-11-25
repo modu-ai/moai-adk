@@ -51,8 +51,8 @@ After removal the code card checks for dead code left behind in `forge::{outbox,
 | `docs/design-review/review-group2-core-brain-sync-owner.md:138,146`, `review-group3-install-host-plan-run-release.md:52,368`, `review-group4-past-designs.md`, `synthesis-improvement-report-2026-11-09.md`, `fixes/group2-0d4538a27fb88191a19ba261bd5a3442.md`, `fixes/top-section20-lessons.md` | dated review records. The SQLite lines there already say SQLite is not adopted or describe the Go factory; review-group3:52 records that promotion was implemented at that time |
 | `docs/design-review/codex-statusline-official-scope-2026-11-10.md:52`, `statusline-rust-stage1-2026-11-10.md:177`, `docs/session-hub-research-2026-11-08.md:176` | Codex's or the Go tool's own SQLite, read as research; not a MoAI store |
 | `tests/fixtures/github/issues-open.json:480`, `tests/fixtures/atlas-tag/go-corpus.txt:1386` | recorded fixtures (Issue title, Go source corpus) |
-| `.moai-cli/manifests/issue-design-research*.json`, `github-issues.json`, `github-duplicate-map.json`, `baseline/rc1-inventory.*`, `.moai-cli/reports/rc1-issue-design-2026-11-08.html` | leader ledger mirror and design snapshots (history) |
-| `.moai-cli/reports/issue-bodies/{1977,1983,1989,2005,2006,2009}*.md` | Issue body copies; the leader edits the live Issue bodies (proposals below) and refreshes the copies |
+| `.moai-cli/manifests/issue-design-research*.json`, `github-issues.json`, `github-duplicate-map.json`, `baseline/rc1-inventory.*` | leader ledger mirror and design snapshots (history) |
+| `rc1-issue-design-2026-11-08.html` and `issue-bodies/{1977,1983,1989,2005,2006,2009}*.md` (formerly tracked under `.moai-cli/reports/`) | design snapshot and Issue body copies; since 2026-11-25 they are no longer tracked (reports are never committed) and live in the user-level reports folder of this project; the leader edits the live Issue bodies (proposals below) and refreshes the copies there |
 
 ## Proposed Issue body edits (the leader applies them)
 
