@@ -1536,6 +1536,74 @@ mod tests {
         assert_eq!(pairs, want);
     }
 
+    /// SPEC-20261125-detect-database-dependency-catalog REQ-1: the shipped file's
+    /// `database_dependencies` rows hold exactly the twenty-two dependency → kind pairs the
+    /// earlier table held, none repeats, each kind can be recorded and each dependency name is
+    /// lower-case, of at most 120 bytes and holds a letter or digit. The shipped file as a whole
+    /// is accepted, so the catalog is not left empty by a rule that rejects its own file.
+    #[test]
+    fn the_shipped_catalog_holds_the_earlier_database_dependencies() {
+        let earlier: [(&str, &str); 22] = [
+            ("postgres", "postgres"),
+            ("tokio-postgres", "postgres"),
+            ("pg", "postgres"),
+            ("psycopg", "postgres"),
+            ("psycopg2", "postgres"),
+            ("psycopg2-binary", "postgres"),
+            ("asyncpg", "postgres"),
+            ("github.com/jackc/pgx/v5", "postgres"),
+            ("github.com/lib/pq", "postgres"),
+            ("mysql", "mysql"),
+            ("mysql2", "mysql"),
+            ("pymysql", "mysql"),
+            ("mysqlclient", "mysql"),
+            ("github.com/go-sql-driver/mysql", "mysql"),
+            ("rusqlite", "sqlite"),
+            ("sqlite3", "sqlite"),
+            ("better-sqlite3", "sqlite"),
+            ("mongodb", "mongodb"),
+            ("pymongo", "mongodb"),
+            ("mongoose", "mongodb"),
+            ("redis", "redis"),
+            ("ioredis", "redis"),
+        ];
+        let file: Value = serde_json::from_str(CATALOG_JSON).unwrap();
+        let rows = file["database_dependencies"]
+            .as_array()
+            .expect("database_dependencies");
+        let mut pairs: Vec<(String, String)> = Vec::new();
+        for row in rows {
+            let kind = row["kind"].as_str().unwrap();
+            assert!(recordable(kind), "{kind}");
+            for dep in row["dependencies"].as_array().unwrap() {
+                let dep = dep.as_str().unwrap();
+                assert!(
+                    (1..=120).contains(&dep.len())
+                        && dep.bytes().any(|b| b.is_ascii_alphanumeric())
+                        && dep.bytes().all(|b| b.is_ascii_lowercase()
+                            || b.is_ascii_digit()
+                            || matches!(b, b'-' | b'_' | b'.' | b'@' | b'/')),
+                    "{dep}"
+                );
+                pairs.push((dep.to_string(), kind.to_string()));
+            }
+        }
+        pairs.sort();
+        let mut want: Vec<(String, String)> = earlier
+            .iter()
+            .map(|(d, k)| (d.to_string(), k.to_string()))
+            .collect();
+        want.sort();
+        assert_eq!(pairs, want);
+
+        // The shipped file passes its own validation, and the manifest and code rows are still
+        // there: a rule that refused the file would empty all three at once.
+        let parsed: CatalogFile = serde_json::from_str(CATALOG_JSON).unwrap();
+        catalog_file_valid(&parsed).unwrap();
+        assert!(!shipped_manifest_languages().is_empty());
+        assert!(!shipped_code_languages().is_empty());
+    }
+
     /// SPEC-20261124-project-detect-monorepo REQ-4: the shipped catalog parses, every value in it
     /// can be recorded, and it holds the twelve manifest names the earlier tables held with the
     /// same language and tools.
