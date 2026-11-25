@@ -146,6 +146,55 @@ fn earlier_layout(root: &TempDir, id: &str) {
     }
 }
 
+/// A digest no file has: the baseline an older render left in the manifest.
+fn other_baseline() -> String {
+    format!("sha256:{}", "0".repeat(64))
+}
+
+/// Rewrites the recorded baseline of `path` in the manifest.
+fn set_baseline(root: &Path, path: &str, value: &str) {
+    let file = manifest_path(root);
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
+    let mut changed = 0;
+    for entry in manifest["owned_files"].as_array_mut().unwrap() {
+        if entry["path"] == json!(path) {
+            entry["baseline_sha256"] = json!(value);
+            changed += 1;
+        }
+    }
+    assert_eq!(changed, 1, "the manifest does not name {path}: {manifest}");
+    fs::write(&file, serde_json::to_vec_pretty(&manifest).unwrap()).unwrap();
+}
+
+/// The baseline the manifest records for `path`.
+fn baseline_of(root: &Path, path: &str) -> Option<String> {
+    let manifest: Value = serde_json::from_slice(&fs::read(manifest_path(root)).unwrap()).unwrap();
+    manifest["owned_files"]
+        .as_array()?
+        .iter()
+        .find(|e| e["path"] == json!(path))
+        .and_then(|e| e["baseline_sha256"].as_str().map(str::to_string))
+}
+
+/// The bytes an apply saved of `rel` before it removed the file, from any receipt backup.
+fn backup_of(root: &Path, rel: &str) -> Option<Vec<u8>> {
+    let receipts = moai_cli::state_root::path(root, "receipts");
+    fs::read_dir(receipts)
+        .ok()?
+        .filter_map(Result::ok)
+        .filter(|e| e.file_name().to_string_lossy().ends_with(".before"))
+        .find_map(|e| fs::read(e.path().join(rel)).ok())
+}
+
+/// The path of the generated workflow file named `tail`, read from a plan.
+fn workflow_path(plan: &Value, tail: &str) -> String {
+    actions(plan)
+        .into_iter()
+        .map(|(p, _)| p)
+        .find(|p| p.ends_with(tail))
+        .unwrap_or_else(|| panic!("no {tail} in {plan}"))
+}
+
 /// REQ-8: a Claude Code role lands inside `agents/moai/`, with its name and tools, and nothing
 /// the plan lists carries a base agent name.
 #[test]
@@ -251,4 +300,136 @@ fn an_edited_flat_role_stays_and_blocks_the_nested_copy() {
         .path()
         .join(".claude/agents/moai/prj-fixer.md")
         .exists());
+}
+
+const FLAT: &str = ".claude/agents/prj-fixer.md";
+const NESTED: &str = ".claude/agents/moai/prj-fixer.md";
+const MINE: &str = "---\nname: prj-fixer\ndescription: mine\n---\n\nmine\n";
+
+/// SPEC-20261125-update-same-bytes-no-conflict REQ-1 and REQ-3: a flat role file whose bytes are
+/// the rendered bytes of its nested copy is a move, not a conflict, even when the recorded
+/// baseline is an older render; the apply keeps its bytes in the receipt backup first.
+#[test]
+fn ac1_a_flat_role_equal_to_the_new_render_is_removed_with_a_backup() {
+    let root = project();
+    let request = build_request(&["prj-fixer"]);
+    ok_result(&apply(&root, &ok_result(&plan(&root, &request))));
+    earlier_layout(&root, "prj-fixer");
+    set_baseline(root.path(), FLAT, &other_baseline());
+    let before = fs::read(root.path().join(FLAT)).unwrap();
+
+    let p = ok_result(&plan(&root, &request));
+    assert_eq!(action_of(&p, FLAT).as_deref(), Some("remove"), "{p}");
+    assert_eq!(action_of(&p, NESTED).as_deref(), Some("create"), "{p}");
+    ok_result(&apply(&root, &p));
+    assert!(!root.path().join(FLAT).exists());
+    assert_eq!(fs::read(root.path().join(NESTED)).unwrap(), before);
+    assert_eq!(
+        backup_of(root.path(), FLAT).as_deref(),
+        Some(before.as_slice()),
+        "the removed file's bytes are not in a receipt backup"
+    );
+    let again = ok_result(&plan(&root, &request));
+    for (path, action) in actions(&again) {
+        if path.contains(".claude/agents/") {
+            assert_eq!(action, "unchanged", "{path}");
+        }
+    }
+}
+
+/// REQ-2: a flat role file that differs from its baseline and from the new render stays a
+/// conflict and keeps its bytes.
+#[test]
+fn ac1_an_edited_flat_role_that_differs_from_baseline_and_render_stays_a_conflict() {
+    let root = project();
+    let request = build_request(&["prj-fixer"]);
+    ok_result(&apply(&root, &ok_result(&plan(&root, &request))));
+    earlier_layout(&root, "prj-fixer");
+    set_baseline(root.path(), FLAT, &other_baseline());
+    fs::write(root.path().join(FLAT), MINE).unwrap();
+
+    let p = ok_result(&plan(&root, &request));
+    assert_eq!(action_of(&p, FLAT).as_deref(), Some("conflict"), "{p}");
+    let out = apply(&root, &p);
+    assert!(!out.status.success(), "{out:?}");
+    assert_eq!(fs::read_to_string(root.path().join(FLAT)).unwrap(), MINE);
+    assert!(!root.path().join(NESTED).exists());
+}
+
+fn with_skip(mut request: Value) -> Value {
+    request["picks"] = json!(["skip-conflicts"]);
+    request
+}
+
+/// REQ-4, REQ-5 and REQ-6: with `skip-conflicts` an edited flat role file and the nested copy of
+/// its role are planned `skip`; the apply writes neither and leaves the recorded baseline.
+#[test]
+fn ac2_skip_conflicts_keeps_an_edited_flat_role_and_skips_its_nested_copy() {
+    let root = project();
+    let request = build_request(&["prj-fixer"]);
+    ok_result(&apply(&root, &ok_result(&plan(&root, &request))));
+    earlier_layout(&root, "prj-fixer");
+    fs::write(root.path().join(FLAT), MINE).unwrap();
+    let recorded = baseline_of(root.path(), FLAT);
+    assert!(recorded.is_some());
+
+    let p = ok_result(&plan(&root, &with_skip(request.clone())));
+    assert_eq!(action_of(&p, FLAT).as_deref(), Some("skip"), "{p}");
+    assert_eq!(action_of(&p, NESTED).as_deref(), Some("skip"), "{p}");
+    let flat_row = p["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"] == FLAT)
+        .unwrap();
+    assert!(
+        flat_row["detail"]
+            .as_str()
+            .is_some_and(|d| d.contains("edited")),
+        "the conflict is not named in the row: {flat_row}"
+    );
+    ok_result(&apply(&root, &p));
+    assert_eq!(fs::read_to_string(root.path().join(FLAT)).unwrap(), MINE);
+    assert!(!root.path().join(NESTED).exists());
+    assert_eq!(baseline_of(root.path(), FLAT), recorded);
+}
+
+/// REQ-4 and REQ-6: with `skip-conflicts` an edited workflow file is planned `skip` while the
+/// rest of the plan is written; the edited file and its recorded baseline stay.
+#[test]
+fn ac2_skip_conflicts_writes_the_rest_and_keeps_an_edited_workflow_file() {
+    let root = project();
+    let request = build_request(&["prj-fixer"]);
+    let first = ok_result(&plan(&root, &request));
+    let workflow = workflow_path(&first, "review-flow/SKILL.md");
+    ok_result(&apply(&root, &first));
+    // The user edits the workflow file while an older render is what the manifest recorded.
+    set_baseline(root.path(), &workflow, &other_baseline());
+    let edited = format!(
+        "{}\nmine\n",
+        fs::read_to_string(root.path().join(&workflow)).unwrap()
+    );
+    fs::write(root.path().join(&workflow), &edited).unwrap();
+    let recorded = baseline_of(root.path(), &workflow);
+
+    let wider = build_request(&["prj-fixer", "prj-tester"]);
+    let conflict = ok_result(&plan(&root, &wider));
+    assert_eq!(action_of(&conflict, &workflow).as_deref(), Some("conflict"));
+    let p = ok_result(&plan(&root, &with_skip(wider)));
+    assert_eq!(action_of(&p, &workflow).as_deref(), Some("skip"), "{p}");
+    assert_eq!(
+        action_of(&p, ".claude/agents/moai/prj-tester.md").as_deref(),
+        Some("create"),
+        "{p}"
+    );
+    ok_result(&apply(&root, &p));
+    assert_eq!(
+        fs::read_to_string(root.path().join(&workflow)).unwrap(),
+        edited
+    );
+    assert!(root
+        .path()
+        .join(".claude/agents/moai/prj-tester.md")
+        .is_file());
+    assert_eq!(baseline_of(root.path(), &workflow), recorded);
 }
