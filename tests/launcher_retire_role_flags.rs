@@ -1,23 +1,24 @@
-//! SPEC-20261124-launcher-retire-role-flags (card C-449; user decision D-1 2026-11-09, restated
-//! 2026-11-24): the launcher retires `-l|-a`. A role flag is refused with one message that names
-//! `--name`, `/moai work` and `/moai leader`; the launcher then starts no host, takes no number
-//! or lock and writes no file. No help screen offers a role flag, and no live text tells anyone
-//! to use one or names a `mode-` spelling. Every case runs in a temporary git project with a
-//! temporary or missing HOME; no real host is started (a stub `claude` stands in).
+//! SPEC-20261124-launcher-retire-role-flags (user decision D-1 2026-11-09, restated 2026-11-24)
+//! retired `-l|-a`; the user decision of 2026-11-25 (SPEC-20261125-agent-team-session-names)
+//! brought them back and reversed D-1, so the cases that pinned the refusal and the help screens
+//! without the flags are replaced by the ones in `tests/launcher_role_flags.rs`. What stays here
+//! is what the retirement SPEC still decides: `--name` names a session by itself, the host
+//! defaults of a launch without a role flag, and no live text names a `mode-` spelling. The
+//! forms that are still refused (`-l` with `-a`, a PROMPT beside a role flag) start no host, take
+//! no lock and write no file. Every case runs in a temporary git project with a temporary or
+//! missing HOME; no real host is started (a stub `claude` stands in).
 mod common;
 use common::CleanEnv;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-/// Each role spelling the launcher used to take, with the host word it came after.
-const ROLE_FORMS: [&[&str]; 6] = [
-    &["cc", "-l"],
-    &["cc", "-a"],
-    &["glm", "--leader"],
-    &["glm", "--agent"],
-    &["-l"],
-    &["-a", "cc"],
+/// Each form the launcher still refuses: both role flags, or a PROMPT beside one.
+const REFUSED_FORMS: [&[&str]; 4] = [
+    &["cc", "-l", "-a"],
+    &["glm", "--leader", "--agent"],
+    &["cc", "-l", "some prompt"],
+    &["glm", "-a", "some prompt"],
 ];
 
 fn git_project() -> tempfile::TempDir {
@@ -50,12 +51,13 @@ fn launcher(dir: &Path, home: &Path, args: &[&str]) -> Command {
     cmd
 }
 
-/// AC-1 (REQ-1): every role spelling exits non-zero and says the replacement, with and without
-/// `--dry-run`; the message names `--name`, `/moai work` and `/moai leader` and no `mode-`.
+/// REQ-12 of SPEC-20261125-agent-team-session-names: a refused form exits non-zero with and
+/// without `--dry-run`, says why in one message, names neither `/moai work` nor a `mode-`
+/// spelling and starts no host.
 #[test]
-fn every_role_flag_is_refused_with_the_replacement() {
+fn a_refused_form_says_why_and_names_no_old_word() {
     let home = tempfile::tempdir().unwrap();
-    for form in ROLE_FORMS {
+    for form in REFUSED_FORMS {
         for dry in [false, true] {
             let project = git_project();
             let mut args: Vec<&str> = form.to_vec();
@@ -72,13 +74,13 @@ fn every_role_flag_is_refused_with_the_replacement() {
                 .unwrap();
             let said = text(&out);
             assert!(!out.status.success(), "{args:?} was accepted: {said}");
-            for want in ["--name", "/moai work", "/moai leader"] {
-                assert!(said.contains(want), "{args:?} lacks {want}: {said}");
+            assert!(said.contains("cannot be"), "{args:?} lacks the reason: {said}");
+            for unwanted in ["/moai work", "mode-", "retired"] {
+                assert!(
+                    !said.contains(unwanted),
+                    "{args:?} names `{unwanted}`: {said}"
+                );
             }
-            assert!(
-                !said.contains("mode-"),
-                "{args:?} names a mode spelling: {said}"
-            );
             assert!(!mark.exists(), "{args:?} started the host");
         }
     }
@@ -120,13 +122,13 @@ fn tree(dir: &Path) -> Vec<PathBuf> {
     out
 }
 
-/// AC-2 (REQ-1): a refused launch leaves the project and its clone folder as they were: no
-/// project file, no `agent-N` number, no `.live` lock and no session folder.
+/// A refused launch leaves the project and its clone folder as they were: no project file, no
+/// name taken, no `.live` lock and no session folder.
 #[cfg(unix)]
 #[test]
-fn a_refused_role_flag_starts_and_writes_nothing() {
+fn a_refused_form_starts_and_writes_nothing() {
     let home = tempfile::tempdir().unwrap();
-    for form in ROLE_FORMS {
+    for form in REFUSED_FORMS {
         let project = git_project();
         let before = tree(project.path());
         let sessions = moai_cli::clone_root::path(&project.path().join(".git"));
@@ -137,12 +139,12 @@ fn a_refused_role_flag_starts_and_writes_nothing() {
             .env("PATH", stub_path(bin.path()))
             .output()
             .unwrap();
-        // Exit 1 and the replacement text come from the one refusal; the parser alone would
+        // Exit 1 and the reason come from the launcher's own refusal; the parser alone would
         // reject an unknown option with exit 2 and its own usage text.
         assert_eq!(out.status.code(), Some(1), "{form:?}: {}", text(&out));
         assert!(
-            text(&out).contains("are retired"),
-            "{form:?} was not refused by the retired-flag message: {}",
+            text(&out).contains("cannot be"),
+            "{form:?} was not refused by the launcher: {}",
             text(&out)
         );
         assert!(!mark.exists(), "{form:?} started the host");
@@ -184,26 +186,32 @@ fn help_screens() -> Vec<(String, String)> {
     out
 }
 
-/// AC-4 (REQ-2): no launcher help or root screen offers a role flag.
+/// SPEC-20261125-agent-team-session-names REQ-13: the launcher help screens offer the four role
+/// flags, and none of the four screens calls them retired (the older form that took a host word
+/// after `--agent` stays gone).
 #[test]
-fn no_help_screen_offers_a_role_flag() {
-    const OFFERS: [&str; 9] = [
-        "-l, --leader",
-        "-a, --agent",
-        "--leader",
-        "--agent <HOST>",
-        "cc|glm -l|-a",
-        "cc -l",
-        "glm -a",
-        "moai -l",
-        "moai -a",
-    ];
+fn the_help_screens_offer_the_role_flags_and_call_none_retired() {
     for (name, text) in help_screens() {
-        for offer in OFFERS {
-            assert!(
-                !text.contains(offer),
-                "`moai {name}` still offers `{offer}`"
-            );
+        assert!(
+            !text.contains("retired"),
+            "`moai {name}` still says retired: {text}"
+        );
+        assert!(
+            !text.contains("--agent <HOST>"),
+            "`moai {name}` offers the old host-word form"
+        );
+    }
+    let screens = help_screens();
+    let launcher_help = |name: &str| {
+        screens
+            .iter()
+            .find(|(n, _)| n == name)
+            .map(|(_, t)| t.as_str())
+            .unwrap()
+    };
+    for name in ["cc --help", "glm --help"] {
+        for want in ["-l, --leader", "-a, --agent"] {
+            assert!(launcher_help(name).contains(want), "`moai {name}` lacks `{want}`");
         }
     }
 }

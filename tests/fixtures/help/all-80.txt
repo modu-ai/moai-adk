@@ -260,8 +260,19 @@ Internal
 Options:
       --color <WHEN>       Color on a terminal: auto, always (even with NO_COLOR
                            or TERM=dumb) or never; put it before the command
-      --name <NAME>        Session name (none by default; the role is entered
-                           inside the session)
+  -l, --leader             Start the coordination window: session
+                           `leader-<project name>`, the permission bypass
+                           (`--dangerously-skip-permissions`) unless
+                           `--permissions` is given, and the first input `/moai
+                           leader`
+  -a, --agent              Start a lane: session `agent-<english name>` (the
+                           first free name of the launcher's list), the
+                           permission bypass unless `--permissions` is given,
+                           and the first input `/moai agent`
+      --name <NAME>        Session name (none by default; `-l` names it
+                           `leader-<project name>`, `-a` takes the first free
+                           `agent-<english name>`; with a role flag this name
+                           replaces those)
       --model <MODEL>      Main model (default `opus`)
       --effort <EFFORT>    Effort (default `medium` on `cc`, `high` on `glm`)
       --advisor <ADVISOR>  Advisor model on Claude hosts (fable|opus|sonnet or a

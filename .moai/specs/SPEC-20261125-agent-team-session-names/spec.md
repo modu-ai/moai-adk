@@ -1,12 +1,21 @@
 ---
 id: SPEC-20261125-agent-team-session-names
 title: "The launcher starts a named leader or agent session with -l and -a, and the team runs every flow step over cross-session messages"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-25
+approval: {by: user, at: 2026-11-25, basis: "leader note on this SPEC's card (user pick 2026-11-25T01:54:30Z, quoted verbatim: 승인, 표 그대로 (Recommended)) approving revision 3; D-12 = A by that pick, D-13 = A and D-14 = A by the leader decision note of 2026-11-25T01:38:33Z", digest: "sha256:bd29c76db92b082489cd7347aeafafe220da7916c1074ee4f6d35f4fc32be4ba"}
 ---
 
 # The launcher starts a named leader or agent session with -l and -a, and the team runs every flow step over cross-session messages
+
+## Interview
+
+- Q1: 런처에서 세션 이름과 권한 모드를 어떻게 정하나요? → A: "아니면 moai cc --agent, -a, --leader -l 으로 처리를 하는게 어떨까? 그리고 moai cc/glm 으로 옵션이 없이 진행하면 auto mode 실행, -a, -l 등이면 --bypass로 자율 코딩 모드로 진행하고 이름도 그때 변경하도록 하자."(사용자 2026-11-25T01:18:13Z, 리더 대화, 결정 노트 8849)
+- Q2: 우회 보호는 확인됐고 advisor 는 누구에게 쓰나요? → A: "우회시 보호 되는지 확인했으니 -a, -l 으로 진행해라. -a 때만 advisor 사용하기"(같은 시각, 결정 노트 8849)
+- Q3: 역할 낱말은 무엇인가요? → A: "worker -> /moai agent로 표기를 하는게 맞겠지?"(결정 노트 8850), "옛 낱말 /moai work 는 계속 사용하지 않는다. /moai work 지시사항 -> 이렇게 사용하지 않는다. 이유는 /moai agent로 설정을 하고 지시는 메시지로 전달하면 된다. 모드 전환이지 명령어가 아니다"(결정 노트 8852)
+- Q4: -a 의 advisor 와 기본 모델은 무엇인가요? → A: "agent의 advisor는 opus로 하고, 기본 모델은 sonnet high 이다."(사용자 2026-11-25T01:36:24Z, 결정 노트 8864)
+- Q5: 이 SPEC 개정 3을 승인하고, GLM 에이전트(moai glm -a)의 모델을 어떻게 할까요? → A: "승인, 표 그대로 (Recommended)"(사용자 2026-11-25T01:54:30Z, 리더의 선택 질문, 리더 노트)
 
 ## Intent
 

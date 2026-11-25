@@ -1639,14 +1639,18 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "cc",
-        "Claude Code 세션 실행기: `cc`. `--name` 은 세션 이름만 정해요. 역할은 세션 안에서 \
-         들어가요: 레인은 `/moai work`, 조정 창은 `/moai leader`.",
+        "Claude Code 세션 실행기: `cc`. `-l`(`--leader`)은 조정 창을, `-a`(`--agent`)는 레인을 \
+         열어요. 세션 이름은 `leader-<프로젝트>` 와 `agent-<영어 이름>`, 첫 입력은 `/moai leader` \
+         와 `/moai agent`, 권한은 우회로 시작해요(`--permissions` 로 끔). 옵션이 없으면 역할 없는 \
+         세션이에요. `--name` 은 이름을 바꿔요.",
     ),
     (
         "glm",
         "z.ai GLM 위의 Claude Code: `glm`(환경의 ANTHROPIC_AUTH_TOKEN 이나 키 파일이 \
-         필요해요). `--name` 은 세션 이름만 정해요. 역할은 세션 안에서 들어가요: 레인은 \
-         `/moai work`, 조정 창은 `/moai leader`.",
+         필요해요). `-l`(`--leader`)은 조정 창을, `-a`(`--agent`)는 레인을 열어요. 세션 이름은 \
+         `leader-<프로젝트>` 와 `agent-<영어 이름>`, 첫 입력은 `/moai leader` 와 `/moai agent`, \
+         권한은 우회로 시작해요(`--permissions` 로 끔). 옵션이 없으면 역할 없는 세션이에요. \
+         `--name` 은 이름을 바꿔요.",
     ),
     (
         "claude-doctor",
