@@ -544,3 +544,183 @@ fn ac2_a_reservation_held_for_review_with_a_live_lease_still_counts() {
     assert!(message.contains(&held[0]), "{message}");
     assert!(!message.contains("not counted"), "{message}");
 }
+
+// SPEC-20261125-wip-limit-live-lock-lanes: a lane is live while its launcher holds the
+// `<name>.live` lock or its registration lease runs, and a registry that cannot be read does not
+// switch the limit off.
+
+/// The sessions folder of the fixture project (the registry and the `.live` locks).
+fn sessions_dir(w: &World) -> PathBuf {
+    moai_cli::lane_registry::registry_dir_unlinked(&w.project).unwrap()
+}
+
+/// Holds the `<name>.live` lock the way a launcher does; the lock ends when the file is dropped.
+fn hold_lock(w: &World, name: &str) -> fs::File {
+    moai_cli::session::lock_named_live(&sessions_dir(w), name).unwrap()
+}
+
+/// REQ-1 (AC-1): three lanes whose registration leases ended but whose launchers hold their locks
+/// are three live lanes, so the limit is six: six cards are taken and the seventh refuses.
+#[test]
+fn lock_ac1_lanes_with_a_held_lock_count_after_their_lease_ended() {
+    let w = world(None);
+    let mut locks = Vec::new();
+    for n in 1..=3u64 {
+        let name = format!("agent-{n}");
+        w.lane(&name, &sid(n));
+        w.expire(&name);
+        locks.push(hold_lock(&w, &name));
+    }
+    w.working(&sid(1), 6);
+    let seventh = w.ready_card("src/seventh/");
+    let (kind, message) = refusal(&w.take(&sid(1), &seventh));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("3 lane(s)"), "{message}");
+    assert!(message.contains("limit is 6"), "{message}");
+}
+
+/// REQ-1 (AC-2): a lane with no lock and an ended lease stays out, its lock makes it count, and
+/// letting the lock go takes it out again (the guard against counting too much).
+#[test]
+fn lock_ac2_a_lane_counts_only_while_its_lock_is_held() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    w.lane("agent-2", &sid(2));
+    w.expire("agent-2");
+    w.working(&sid(1), 2);
+    let third = w.ready_card("src/third/");
+    let (_, message) = refusal(&w.take(&sid(1), &third));
+    assert!(message.contains("1 lane(s)"), "{message}");
+
+    let lock = hold_lock(&w, "agent-2");
+    result(&w.take(&sid(1), &third));
+    let fourth = w.ready_card("src/fourth/");
+    result(&w.take(&sid(1), &fourth));
+    let fifth = w.ready_card("src/fifth/");
+    let (_, message) = refusal(&w.take(&sid(1), &fifth));
+    assert!(message.contains("2 lane(s)"), "{message}");
+
+    drop(lock);
+    let (_, message) = refusal(&w.take(&sid(1), &fifth));
+    assert!(message.contains("1 lane(s)"), "{message}");
+}
+
+/// REQ-2, REQ-3 (AC-3): a leader entry with a held lock and an ended lease, the project's leader
+/// name and a name no lane has all stay out; a held lock named like a lane of this project counts
+/// although it has no entry.
+#[test]
+fn lock_ac3_leaders_and_unknown_names_do_not_count_but_a_lane_name_does() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    w.leader("leader-1", &sid(9));
+    w.expire("leader-1");
+    let _leader_lock = hold_lock(&w, "leader-1");
+    let _named_leader = hold_lock(&w, &moai_cli::session::leader_session_name(&w.project));
+    let _unknown = hold_lock(&w, "misc-session");
+    w.working(&sid(1), 2);
+    let third = w.ready_card("src/third/");
+    let (_, message) = refusal(&w.take(&sid(1), &third));
+    assert!(message.contains("1 lane(s)"), "{message}");
+
+    let lane_name = format!("{}zed", moai_cli::session::agent_prefix(&w.project));
+    let _lane_lock = hold_lock(&w, &lane_name);
+    result(&w.take(&sid(1), &third));
+    let fourth = w.ready_card("src/fourth/");
+    result(&w.take(&sid(1), &fourth));
+    let fifth = w.ready_card("src/fifth/");
+    let (_, message) = refusal(&w.take(&sid(1), &fifth));
+    assert!(message.contains("2 lane(s)"), "{message}");
+}
+
+/// REQ-4, REQ-6, REQ-7 (AC-4): with the sessions folder replaced by a link the limit is not off:
+/// `card take` refuses and names the registry, `card next` answers `registry_error` at the limit
+/// and names no card, and `wip_limit` 0 still takes.
+#[test]
+fn lock_ac4_a_registry_folder_that_cannot_be_read_stops_the_take() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    let card = w.ready_card("src/waiting/");
+    let dir = sessions_dir(&w);
+    let elsewhere = w.home.path().join("elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    fs::remove_dir_all(&dir).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, &dir).unwrap();
+
+    let (kind, message) = refusal(&w.take(&sid(1), &card));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("session registry"), "{message}");
+    assert!(message.contains("symlink"), "{message}");
+    let (kind, message) = refusal(&add_by(&w, "leader", "more"));
+    assert_eq!(kind, "conflict", "{message}");
+
+    let got = result(&w.next(&sid(1)));
+    assert!(got["wip"]["registry_error"].is_string(), "{got}");
+    assert_eq!(got["wip"]["at_limit"], json!(true), "{got}");
+    assert_eq!(got["next_is"], json!("limit"), "{got}");
+    assert_eq!(got["next"], Value::Null, "{got}");
+
+    w.set_limit(Some(0));
+    result(&w.take(&sid(1), &card));
+}
+
+/// SPEC-20261125-wip-limit-next-registry-error REQ-1: a registry folder that cannot be read
+/// leaves `card next` with no card at all, a card that waits for an audit included, because the
+/// answer says the limit is reached and `card take` refuses in the same case.
+#[test]
+fn registry_error_next_names_no_card_not_even_one_that_waits_for_an_audit() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    let held = w.working(&sid(1), 1);
+    result(&w.card(Some(&sid(1)), &["review", &held[0], "--generation", "1"]));
+    let dir = sessions_dir(&w);
+    let elsewhere = w.home.path().join("elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    fs::remove_dir_all(&dir).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, &dir).unwrap();
+
+    let got = result(&w.next(&sid(3)));
+    assert!(got["wip"]["registry_error"].is_string(), "{got}");
+    assert_eq!(got["next_is"], json!("limit"), "{got}");
+    assert_eq!(got["next"], Value::Null, "{got}");
+    assert_eq!(got["audit_needed"], json!([]), "{got}");
+}
+
+/// REQ-5, REQ-6 (AC-5): one malformed entry beside two live lanes leaves the lane count at two,
+/// does not switch the limit off, and is listed as unreadable in the refusal and in `card next`.
+#[test]
+fn lock_ac5_one_broken_entry_is_left_out_and_listed() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    w.lane("agent-2", &sid(2));
+    fs::write(sessions_dir(&w).join("agent-9.json"), "{not json").unwrap();
+    w.working(&sid(1), 4);
+    let fifth = w.ready_card("src/fifth/");
+    let (kind, message) = refusal(&w.take(&sid(1), &fifth));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("2 lane(s)"), "{message}");
+    assert!(message.contains("unreadable"), "{message}");
+    assert!(message.contains("agent-9"), "{message}");
+
+    let got = result(&w.next(&sid(3)));
+    assert_eq!(got["wip"]["registry_error"], Value::Null, "{got}");
+    assert_eq!(got["wip"]["unreadable"], json!(["agent-9"]), "{got}");
+    assert_eq!(got["wip"]["lanes"], json!(2), "{got}");
+}
+
+/// REQ-8 (AC-6): `wip_limit` 0 stays off with locks held, and a registry whose only lane has an
+/// ended lease and no lock stays off too.
+#[test]
+fn lock_ac6_the_off_switches_stay_off() {
+    let w = world(Some(0));
+    w.lane("agent-1", &sid(1));
+    let _lock = hold_lock(&w, "agent-1");
+    w.working(&sid(1), 3);
+
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    w.expire("agent-1");
+    w.working(&sid(1), 3);
+    let got = result(&w.next(&sid(3)));
+    assert_eq!(got["wip"]["registry_error"], Value::Null, "{got}");
+    assert_eq!(got["wip"]["unreadable"], json!([]), "{got}");
+}

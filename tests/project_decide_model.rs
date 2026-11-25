@@ -47,7 +47,7 @@ fn project_workflow_names_no_decision_model() {
     assert!(items.is_empty(), "project.md still has the item: {items:?}");
     let report = text
         .lines()
-        .find(|l| l.starts_with("Final report (card C-87): "))
+        .find(|l| l.starts_with("Final report: before the final report, show one table"))
         .expect("project.md has the final report paragraph");
     assert!(
         !report.to_lowercase().contains("decision model"),
