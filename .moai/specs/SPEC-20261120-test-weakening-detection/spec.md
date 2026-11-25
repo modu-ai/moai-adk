@@ -91,7 +91,7 @@ created: 2026-11-20
 
 ## Result
 
-이 조각(2·3a: 검사기와 `gate-check` 연결)의 근거예요. 코드 head `46d1766cc4`. 카드는 부분 READY 로 열어 두어요: AC-7(`review-package` 키, `src/review.rs` 를 다른 카드가 쥠)과 AC-10(문서 연결 문장, `quality.md`·`mode-agent.md` 를 다른 카드가 쥠)은 이번 조각에 없고 후속이에요. 관찰/켜짐 스위치(`TEST_WEAKENING_ENFORCED`)는 `false` 로 두었어요: 이 조각이 머지돼도 `effective_tier` 는 달라지지 않고 결과가 목록과 올렸을 때의 tier 를 보이기만 해요. 켜는 일은 리더 결정이에요.
+조각 2·3a(검사기와 `gate-check` 연결)는 이전 가지에서 끝나 NeXT 끝(`882cba7497`) 위에 병합했고, 조각 3b(`review-package` 키)와 4(`quality.md` 문장, 최근 착지 50개 결과)를 이번에 끝냈어요. 아래 변형 시험·감사 수리 표는 이전 가지에서 돌린 것이고(코드는 그 뒤로 `gate_collect.rs` 의 `weakened_in` 가시성 한 단어만 달라졌어요), 이번 가지에서 새로 돌린 변형은 "이번 가지의 변형" 절에 있어요. 관찰/켜짐 스위치(`TEST_WEAKENING_ENFORCED`)는 `false` 로 두었어요: 이 조각이 머지돼도 `effective_tier` 는 달라지지 않고 결과가 목록과 올렸을 때의 tier 를 보이기만 해요. 켜는 일은 리더 결정이에요.
 
 TDD 이탈: 검사기(`src/test_weakening.rs`)를 시험보다 먼저 썼어요. 시험은 그 뒤에 다섯 가지 고정물 쌍으로 쓰고, 변형 10개로 시험이 검사기를 정말 지키는지 확인했어요.
 
@@ -167,10 +167,20 @@ TDD 이탈: 검사기(`src/test_weakening.rs`)를 시험보다 먼저 썼어요.
 - AC-6: met — `--test test_weakening a_test_only_change_that_weakens_nothing_stays_tier_zero` 통과
 - AC-8: met — `--test gate_check_cli the_gate_lists_the_findings_and_says_unknown_when_unread` 통과, 수집기 쪽은 `--lib gate_collect::tests::the_collector_lists_weakened_tests_and_says_unknown_when_the_diff_is_unreadable` 통과
 - AC-9: met — `--test test_weakening observe_reports_and_enforce_raises_the_tier` 통과
-- AC-11: met — 위 표와 명령(병합 50개, 걸린 6개)
+- AC-7: met — `--test test_weakening review_package_carries_the_findings`(약화 diff 는 `test_deleted tests/thing.rs:` 줄, 늘린 diff 는 빈 배열과 빈 `skipped`) 통과, 한도 쪽은 `--lib review::tests::a_diff_over_the_weakening_limit_gives_no_findings_and_one_skipped_entry`(한도 길이는 읽고 한 바이트 더 긴 diff 는 빈 목록과 `skipped` 한 줄) 통과
+- AC-10: met — `--test test_weakening the_quality_rule_carries_the_connecting_sentence`(`quality.md` 에 문장이 한 번, "is not a finding" 과 `check-rules.md` 를 담은 줄) 통과
+- AC-11: met — 위 표와 명령(NeXT 의 최근 착지 50개, 걸린 6개, 실제 약화 0건)
 
-AC-7 과 AC-10 은 위에 쓴 대로 이번 조각에 없어요(후속 조각).
+### 이번 가지의 변형(커밋한 뒤 하나씩 바꾸고 `git checkout` 으로 되돌림, 되돌린 뒤 작업 트리 깨끗함 확인)
 
-READY 검사 종료 코드(코드 head `46d1766cc4`, 기준 `341f6c7abb`, 범위를 좁히지 않았고 `CARGO_TARGET_DIR` 는 이 worktree 전용): diff-check 0, fmt 0, ops rustfmt 0, clippy `--all-targets -D warnings` 0, `--lib` 전체 0(1639 통과), `--bins` 0, 영역 시험 대상(`gate_*`·`test_weakening`, 7개 대상, 155 통과) 0, 저장소 전체 검사용 시험(`git_env_scrub`, `home_isolation_scan`, `windows_unix_gate_scan`, `product_cli`) 0, `tools/repo_scans.json` 검사 41개 실패 0, 파이썬 `repo_scans_test`·`source_manifest_test`·`local_check_test` 0, `trailer-check` 0, 이 Mac 에서 도는 `cfg(macos)` 시험(7개 대상) 0. 처음 돈 READY 는 clippy 두 줄과 저장소 검사(`docs/` 글자) 한 건에서 걸렸고, 고친 뒤 처음부터 다시 돌려 위 값을 얻었어요.
+| 변형 | 바꾼 것 | 결과 |
+| --- | --- | --- |
+| MN1 | `review.rs`: 패키지의 `test_weakening` 을 항상 빈 배열로 | `review_package_carries_the_findings` 실패(종료 100, 컴파일 오류 0) |
+| MN2 | `review.rs`: 한도 초과 `skipped` 항목의 경로를 다른 글자로 | `a_diff_over_the_weakening_limit_gives_no_findings_and_one_skipped_entry` 실패(종료 100, 컴파일 오류 0) |
+| MN3 | `quality.md`: 연결 문장을 지움 | `the_quality_rule_carries_the_connecting_sentence` 실패(종료 100, 컴파일 오류 0) |
 
-돌리지 않은 것: GitHub CI(PR 없음), Windows, `review-package` 와 문서 연결 문장(후속).
+세 변형 모두 시험이 실패해서 잡혔어요(생존 0).
+
+이전 가지의 READY 검사 종료 코드(코드 head `46d1766cc4`, 기준 `341f6c7abb`, 이 가지의 것이 아니고 이력으로만 두어요; 이번 가지의 영수증은 READY 노트가 인용해요. 범위를 좁히지 않았고 `CARGO_TARGET_DIR` 는 이 worktree 전용): diff-check 0, fmt 0, ops rustfmt 0, clippy `--all-targets -D warnings` 0, `--lib` 전체 0(1639 통과), `--bins` 0, 영역 시험 대상(`gate_*`·`test_weakening`, 7개 대상, 155 통과) 0, 저장소 전체 검사용 시험(`git_env_scrub`, `home_isolation_scan`, `windows_unix_gate_scan`, `product_cli`) 0, `tools/repo_scans.json` 검사 41개 실패 0, 파이썬 `repo_scans_test`·`source_manifest_test`·`local_check_test` 0, `trailer-check` 0, 이 Mac 에서 도는 `cfg(macos)` 시험(7개 대상) 0. 처음 돈 READY 는 clippy 두 줄과 저장소 검사(`docs/` 글자) 한 건에서 걸렸고, 고친 뒤 처음부터 다시 돌려 위 값을 얻었어요.
+
+돌리지 않은 것: GitHub CI(PR 없음), Windows. 이전 가지의 변형 16개는 이 가지에서 다시 돌리지 않았어요(코드 변화는 `weakened_in` 가시성 한 단어뿐이에요). 켜는 스위치를 `true` 로 한 실행은 하지 않았어요(관찰로 시작하는 결정이 D-1 이에요).
