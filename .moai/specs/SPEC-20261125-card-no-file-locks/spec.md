@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-card-no-file-locks
 title: "카드가 쥔 파일 경로의 쓰기 잠금을 없애요: 한 카드 한 작성자는 그대로, 겹침은 제출과 착지가 찾아요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 8999): \"승인, D-1~D-5 기본값 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:0949d0bf2d291183c4cf499b598f6f3f280128c42e10410b0676c724e153933f"
 ---
 
 # 카드가 쥔 파일 경로의 쓰기 잠금을 없애요: 한 카드 한 작성자는 그대로, 겹침은 제출과 착지가 찾아요
