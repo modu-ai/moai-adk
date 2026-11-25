@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261125-update-conflict-baseline
 title: "moai update 가 패키지와 같은 스킬 파일을 거짓 conflict 로 남기지 않고, 화면이 남은 일을 사실대로 말해요"
-status: draft
+status: approved
 revision: 4
 created: 2026-11-25
 branch: spec/update-conflict-baseline-r3-20261125
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9122): \"승인, 개정 4 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:c1e71021548a8785fc6fb1f0ba5c415f0d968c6468304a3586200ec75b61d339"
 ---
 
 # moai update 가 패키지와 같은 스킬 파일을 거짓 conflict 로 남기지 않고, 화면이 남은 일을 사실대로 말해요
