@@ -162,8 +162,14 @@ fn next_gives_my_cards_then_ready_cards_by_priority_then_number_and_a_reason_for
         .collect();
     assert_eq!(
         ready,
-        [(top, "p0"), (late, "p1"), (early, "p1"), (low, "p3")],
-        "priority first, then the lower number"
+        [
+            (top, "p0"),
+            (clash, "p0"),
+            (late, "p1"),
+            (early, "p1"),
+            (low, "p3")
+        ],
+        "priority first, then the lower number; a scope under another card's reservation is offered"
     );
     assert_eq!(n.ready[0].write_scope, ["top/"]);
     let skipped: Vec<(i64, &str)> = n
@@ -171,14 +177,7 @@ fn next_gives_my_cards_then_ready_cards_by_priority_then_number_and_a_reason_for
         .iter()
         .map(|s| (s.card_id, s.reason.code()))
         .collect();
-    assert_eq!(
-        skipped,
-        [
-            (theirs, "held"),
-            (clash, "scope_overlap"),
-            (bare, "empty_scope")
-        ]
-    );
+    assert_eq!(skipped, [(theirs, "held"), (bare, "empty_scope")]);
     assert_eq!(
         n.skipped[0].reason,
         SkipReason::Held {
@@ -187,14 +186,7 @@ fn next_gives_my_cards_then_ready_cards_by_priority_then_number_and_a_reason_for
             lease_until: theirs_r.lease_until,
         }
     );
-    assert_eq!(
-        n.skipped[1].reason,
-        SkipReason::ScopeOverlap {
-            other_card: theirs,
-            mine: "theirs/deep/x.rs".to_string(),
-            theirs: "theirs/".to_string(),
-        }
-    );
+    assert_eq!(n.skipped[1].reason, SkipReason::EmptyScope);
     assert!(
         n.ready.iter().all(|c| c.card_id != draft) && n.skipped.iter().all(|s| s.card_id != draft),
         "a draft card is neither offered nor skipped"
@@ -217,11 +209,9 @@ fn next_gives_my_cards_then_ready_cards_by_priority_then_number_and_a_reason_for
         .collect();
     assert_eq!(held, [mine]);
     assert!(
-        other
-            .skipped
-            .iter()
-            .any(|s| s.card_id == clash && s.reason.code() == "scope_overlap"),
-        "a card that overlaps the caller's own reservation cannot be taken either"
+        other.ready.iter().any(|c| c.card_id == clash)
+            && other.skipped.iter().all(|s| s.card_id != clash),
+        "a card that overlaps another reservation is offered (SPEC-20261125-card-no-file-locks)"
     );
     let nobody = workflow::next(w.conn(), None).unwrap();
     assert!(nobody.mine.is_empty());

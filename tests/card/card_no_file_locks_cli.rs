@@ -9,9 +9,11 @@
 
 use crate::common;
 
+use common::git::{git, git_ok};
 use common::home::TempHome;
 use moai_cli::ledger;
 use serde_json::{json, Value};
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Output, Stdio};
 
@@ -318,6 +320,157 @@ fn ac4_card_check_names_the_other_card_that_holds_the_path() {
         &["check", &second, "--generation", "1", "--path", "docs/a.md"],
     ));
     assert!(outside.contains("is not under what"), "{outside}");
+}
+
+/// A project folder that is a git repository whose integration branch is `main`, with the base
+/// commit on it and the receipt helpers of the READY gate.
+struct Repo {
+    home: TempHome,
+    root: PathBuf,
+    base: String,
+}
+
+fn commit(dir: &std::path::Path, files: &[&str], msg: &str) -> String {
+    for f in files {
+        let path = dir.join(f);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, format!("{msg}\n")).unwrap();
+    }
+    git_ok(dir, &["add", "-A"]);
+    git_ok(dir, &["commit", "-q", "-m", msg]);
+    git(dir, &["rev-parse", "HEAD"])
+}
+
+impl Repo {
+    /// `with_profile` false leaves the project without a work flow, so no integration branch.
+    fn new(with_profile: bool) -> Repo {
+        let home = TempHome::new();
+        let root = home.project("demo");
+        ledger::register(home.path(), "demo").unwrap();
+        git_ok(&root, &["init", "-q", "-b", "main"]);
+        git_ok(&root, &["config", "user.email", "t@example.invalid"]);
+        git_ok(&root, &["config", "user.name", "t"]);
+        std::fs::write(
+            root.join(".gitignore"),
+            format!("target/\n{}/\n", moai_cli::PROJECT_STATE_DIR),
+        )
+        .unwrap();
+        let base = commit(&root, &["src/a.rs", "src/b.rs"], "base");
+        if with_profile {
+            let cfg = moai_cli::state_root::path(&root, "project.yaml");
+            std::fs::create_dir_all(cfg.parent().unwrap()).unwrap();
+            std::fs::write(
+                &cfg,
+                "{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \
+                 \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \
+                 \"work_flow\": {\"flow\": \"next-flow\", \"integration_branch\": \"main\"}}",
+            )
+            .unwrap();
+        }
+        Repo { home, root, base }
+    }
+
+    /// A lane commit on branch `lane` changing `lane_files`, then the integration branch moves
+    /// by one commit changing `tip_files`; the project ends at the lane head, which is returned.
+    fn diverge(&self, lane_files: &[&str], tip_files: &[&str]) -> String {
+        git_ok(&self.root, &["switch", "-q", "-c", "lane"]);
+        let head = commit(&self.root, lane_files, "lane");
+        git_ok(&self.root, &["switch", "-q", "main"]);
+        commit(&self.root, tip_files, "tip");
+        git_ok(&self.root, &["switch", "-q", "lane"]);
+        head
+    }
+
+    /// Writes the card, the PASS receipt of `head` and a READY note; returns the note answer.
+    fn ready_note(&self, head: &str) -> Value {
+        let project = self.root.to_str().unwrap();
+        let added = result(
+            &self
+                .home
+                .command(&[
+                    "card",
+                    "add",
+                    "--title",
+                    "lane work",
+                    "--scope",
+                    "area/",
+                    "--ac",
+                    "done",
+                    "--project",
+                    project,
+                ])
+                .stdin(Stdio::null())
+                .output()
+                .unwrap(),
+        );
+        let card = added["name"].as_str().unwrap().to_string();
+        crate::ready_receipt::write_receipt_based(&self.root, head, &self.base);
+        let text = format!(
+            "LANE-READY-INTEGRATION {card} head={head}\nbase={}\nleftovers: none\n",
+            self.base
+        );
+        let mut child = self
+            .home
+            .command(&[
+                "card",
+                "note",
+                &card,
+                "--kind",
+                "report",
+                "--by",
+                "lane",
+                "--project",
+                project,
+            ])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(text.as_bytes())
+            .unwrap();
+        result(&child.wait_with_output().unwrap())
+    }
+}
+
+/// AC-5 (REQ-5): a READY note's answer lists the files the lane and the integration branch both
+/// changed since the base.
+#[test]
+fn ac5_a_ready_note_lists_the_files_the_tip_changed_under_the_lane() {
+    let r = Repo::new(true);
+    let head = r.diverge(&["src/a.rs", "src/new.rs"], &["src/a.rs", "src/c.rs"]);
+    let answer = r.ready_note(&head);
+    assert_eq!(answer["tip_overlap"], json!(["src/a.rs"]), "{answer}");
+}
+
+#[test]
+fn ac5_a_ready_note_with_no_shared_file_answers_an_empty_list() {
+    let r = Repo::new(true);
+    let head = r.diverge(&["src/b.rs"], &["src/c.rs"]);
+    let answer = r.ready_note(&head);
+    assert_eq!(answer["tip_overlap"], json!([]), "{answer}");
+}
+
+#[test]
+fn ac5_a_ready_note_keeps_the_note_when_the_integration_branch_is_unknown() {
+    let r = Repo::new(false);
+    let head = r.diverge(&["src/a.rs"], &["src/a.rs"]);
+    let answer = r.ready_note(&head);
+    assert_eq!(answer["tip_overlap"], json!("not_checked"), "{answer}");
+    assert!(
+        answer["tip_overlap_reason"]
+            .as_str()
+            .is_some_and(|s| !s.is_empty()),
+        "{answer}"
+    );
+    assert!(
+        answer["note_id"].as_i64().is_some(),
+        "the note is kept: {answer}"
+    );
 }
 
 /// AC-6 (REQ-6, REQ-9): what stays refused. A card another session holds, a card on HOLD, a

@@ -68,6 +68,26 @@ fn card_id(action: &str, reference: &str) -> Result<i64> {
     }
 }
 
+/// The `overlaps` answer of a take and a widening: each pair of a pattern of this card and a
+/// pattern of another card's active reservation, with that card and its holder
+/// (SPEC-20261125-card-no-file-locks). Nothing refuses on it.
+pub(super) fn overlaps_json(list: &[reservation::Overlap]) -> Value {
+    Value::Array(
+        list.iter()
+            .map(|o| {
+                json!({
+                    "card": input::card_name(o.other_card),
+                    "holder": o.holder,
+                    "mine": o.mine,
+                    "theirs": o.theirs,
+                    "lease_until": o.lease_until,
+                    "status": o.status,
+                })
+            })
+            .collect(),
+    )
+}
+
 pub(super) fn reservation_json(r: &Reservation) -> Value {
     json!({
         "name": input::card_name(r.card_id),
@@ -365,12 +385,14 @@ pub fn scope(
                 };
                 touch_card(tx, card_id)?;
                 let rev = card_rev(tx, card_id)?;
+                let overlaps = reservation::overlaps(tx, now, card_id, &widened.added)?;
                 return Ok(Ok(json!({
                     "state": state, "held": true,
                     "generation": widened.reservation.generation,
                     "holder": widened.reservation.holder,
                     "from": widened.from, "write_scope": widened.reservation.write_scope,
                     "added": widened.added, "reason": reason, "rev": rev,
+                    "overlaps": overlaps_json(&overlaps),
                 })));
             }
             if state != "draft" && state != "ready" {
@@ -621,10 +643,13 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
             ));
         }
     }
+    // The take is made whatever other cards reserve; the overlaps are only reported.
+    let overlaps = reservation::overlaps(ledger.conn(), r.acquired_at, card_id, &r.write_scope)
+        .map_err(|e| e.to_string())?;
     Ok(json!({
         "action": "take", "project_id": id, "reservation": reservation_json(&r),
         "state": "active", "spec": spec, "scope_source": source.word(), "warnings": warnings,
-        "writes": true,
+        "overlaps": overlaps_json(&overlaps), "writes": true,
     }))
 }
 
