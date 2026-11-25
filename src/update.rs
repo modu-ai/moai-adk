@@ -882,6 +882,53 @@ fn known_good_copies(
     Ok(())
 }
 
+/// SPEC-20261125-update-installed-from-link REQ-4 to REQ-8: an apply that writes no file for a
+/// host leaves this build's version in the host's receipt, so the receipt no longer names a build
+/// that is gone. Only a previous receipt that is committed or recovered and names another version
+/// is rewritten; an absent or pending one, or one that already names this build, writes nothing.
+/// The new receipt copies the owned list unchanged, has no entries and no backup, and goes
+/// through [`save_host_receipt`] (under this installation's id, like every apply); a failing save
+/// is an error. A blocked or pending host never gets here: the apply skips it before. Returns
+/// whether a receipt was written.
+fn record_version_only(
+    home: &Path,
+    canonical_home: &Path,
+    install_id: &str,
+    host: &str,
+    target_version: &str,
+    plan_digest: &str,
+    package_digest: &str,
+) -> Result<bool> {
+    let Some(previous) = resolve_host_receipt(canonical_home, install_id, host)?.receipt else {
+        return Ok(false);
+    };
+    if !matches!(previous.status.as_str(), "committed" | "recovered")
+        || previous.package_version == target_version
+    {
+        return Ok(false);
+    }
+    let now = now_rfc3339();
+    let receipt = HostReceipt {
+        schema_version: crate::install::RECEIPT_SCHEMA_VERSION,
+        install_id: install_id.to_string(),
+        host: host.to_string(),
+        operation: "update.apply".into(),
+        plan_digest: plan_digest.to_string(),
+        package_digest: package_digest.to_string(),
+        package_version: target_version.to_string(),
+        version_before: Some(previous.package_version.clone()),
+        top_skills_existed_before: fs::symlink_metadata(skills_parent(home, host)?).is_ok(),
+        status: "committed".into(),
+        started_at: now.clone(),
+        finished_at: Some(now),
+        entries: Vec::new(),
+        owned: owned_vec(host, &owned_map(Some(&previous))),
+        backup: None,
+    };
+    save_host_receipt(canonical_home, install_id, &receipt)?;
+    Ok(true)
+}
+
 pub(crate) fn owned_map(receipt: Option<&HostReceipt>) -> BTreeMap<String, String> {
     let mut map = BTreeMap::new();
     if let Some(r) = receipt {
@@ -3215,11 +3262,22 @@ fn apply_update_in(
                 .iter()
                 .map(|f| file_result(f, false, None))
                 .collect();
+            // SPEC-20261125-update-installed-from-link REQ-4: no file moves, but the receipt keeps
+            // the version of the build that checked the host.
+            let recorded = record_version_only(
+                home,
+                &canonical_home,
+                &install_id,
+                host,
+                &fresh.target_version,
+                plan_digest,
+                &staged.digest,
+            )?;
             outcomes.push(HostOutcome {
                 host: host.to_string(),
                 status: status.into(),
                 files,
-                receipt_status: None,
+                receipt_status: recorded.then(|| "committed".to_string()),
                 reload_required: "no".into(),
                 reload_basis: "no files written".into(),
                 blocked_reason: None,
