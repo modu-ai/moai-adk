@@ -292,7 +292,9 @@ pub fn plan(dir: &Path, facts: &Facts, pick: Pick, full: bool, out: &Path) -> Mo
     ) else {
         return Mode::Full("earlier_head_unknown".to_string());
     };
-    let ancestor = Command::new("git")
+    let mut ancestry = Command::new("git");
+    crate::identity::scrub_git_env(&mut ancestry);
+    let ancestor = ancestry
         .args(["merge-base", "--is-ancestor", &from, &facts.head])
         .current_dir(dir)
         .status()
