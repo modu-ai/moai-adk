@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-check-affected-non-rust
 title: "moai check affected runs the profile's declared checks when the repository has no Rust code, and answers not_run when it has none"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 8890): \"승인, 최우선 + 빌드 27 포함 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:8b859b883a82a780c2aa1e08f9ca404c1feeef73b11f3d22585cca2f068abb28"
 ---
 
 # moai check affected runs the profile's declared checks when the repository has no Rust code, and answers not_run when it has none
