@@ -8,7 +8,7 @@
 
 #![cfg(unix)]
 
-mod common;
+use crate::common;
 use common::pty::Terminal;
 use std::time::Duration;
 use tempfile::TempDir;

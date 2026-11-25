@@ -1796,10 +1796,12 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             // Standard input on a terminal: nobody types the text there, so refuse at once
             // instead of waiting for it (SPEC-20261126-card-note-tty-stdin).
             if std::io::IsTerminal::is_terminal(&std::io::stdin()) {
-                return Err("card note refused: standard input is a terminal; give the note \
+                return Err(
+                    "card note refused: standard input is a terminal; give the note \
                             text from a file or a heredoc, for example `moai card note <card> \
                             --kind <kind> < note.md`"
-                    .to_string());
+                        .to_string(),
+                );
             }
             let home = resolve_home(home)?;
             // The one action that reads standard input (the help rule in `src/main.rs` reads
