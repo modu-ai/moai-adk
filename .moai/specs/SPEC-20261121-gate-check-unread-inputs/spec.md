@@ -68,7 +68,8 @@ mo.ai.kr의 리더가 2026-11-21T00:2xZ 에 보고했어요: `moai gate-check --
 
 ## Result
 
-- AC-1: met (REQ-1) — 비정식 member 줄 장면: G1 사유가 `1 member comment(s) read`·어긋난 줄(`AUDIT PASS 72225828…`)·정식 형식(`AUDIT #`)을 이름해요; 빈 코멘트 장면: `no member comments were read at all (0)`. `cargo test --offline --locked --test gate_check_cli` — g1_names_what_it_read… · g1_names_an_empty_comment_list… 통과(48+3 passed — 수리 시험 3 건 더해요).
+- AC-1: met (REQ-1) — 비정식 member 줄 장면: G1 사유가 `1 member comment(s) read`·어긋난 줄(`AUDIT PASS 72225828…`)·정식 형식(`AUDIT #`)을 이름해요; 빈 코멘트 장면: `no member comments were read at all (0)`. `cargo test --offline --locked --test gate_check_cli` — g1_names_what_it_read… · g1_names_an_empty_comment_list… 통과(NeXT fd8340b166 위로 옮긴 뒤 55 passed — 수리·후속 시험 포함).
 - AC-2: met (REQ-2) — 같은 실행의 답이 `reads` 를 담아요: comments·author_associations·verdict_lines·member_first_lines_that_are_not_verdict_lines·lookalike_first_lines·check_runs·check_run_names — 잘못된 형태 장면은 `verdict_lines: 0`·`check_run_names: ["build"]`·`ci_info: ci=none`.
-- AC-3: met — `cargo test --offline --locked --bins` 통과(help 규칙이 모든 명령을 읽어요)·`cargo test --offline --locked --lib gate` 32 passed.
+- AC-3: met — `cargo test --offline --locked --bins` 통과(help 규칙이 모든 명령을 읽어요)·`cargo test --offline --locked --lib gate` 통과(NeXT fd8340b166 위에서의 확인은 READY 의 `check affected --card` 영수증이 담아요).
 - 감사 수리(같은 감사자 audit-c258 델타): B1 — 사유·`reads.lookalike_first_lines[].first_line` 은 `redact_secret_shapes` 를 먼저 적용하고 그다음 60 자로 잘라요(자르기가 비밀 문자 자체를 보지 않아요 — 마스킹·경계 시험 고정). N1 — member 판정은 `comment_authority::is_member`(OWNER·MEMBER·COLLABORATOR 모두). N3 — g1 위의 중복 doc 주석 제거. not run: 없어요(이 카드의 나머지 조각 없음 — 남은 것은 mo.ai.kr 쪽 판정 코멘트 재기록이에요). closure_status: draft — 승인은 병합 시 사용자 선택 뒤예요.
+- NeXT 위로 옮김: PASS head 3b912015c7 과 그 뒤 시험 커밋 1681cf06ce(OWNER·COLLABORATOR lookalike, reads 의 자르기·마스킹 순서 시험)가 옛 기준 위에 머물러 NeXT 에 없었어요 — 세 커밋을 NeXT fd8340b166 에서 새 가지로 한 커밋에 옮겼고(충돌 없음) 감사 PASS 는 그 새 head 의 델타 감사를 기다려요.
