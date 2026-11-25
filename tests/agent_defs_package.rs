@@ -809,13 +809,16 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
             assert!(section.contains(point), "{scheme} lacks {point:?}");
         }
     }
-    // Audit N9: what "Other" does on each row, and that the keep option can be corrected.
+    // Audit N9: what "Other" does on each row, and that the keep option can be corrected. These
+    // sentences moved from the interview text to `versioning.md`, which holds them once; the
+    // interview paragraph only points there (SPEC-20261125-skill-versioning-release-text,
+    // REQ-4 and REQ-5).
     for text in [
         "An answer through the host's \"Other\" to the `versioning` row is recorded as `{\"scheme\": \"custom\"",
         "An \"Other\" answer to `versioning_format` stays CalVer when it is a format the profile takes",
         "so the user can correct a wrong reading",
     ] {
-        assert!(interview.contains(text), "interview.md lacks {text:?}");
+        assert!(reference.contains(text), "versioning.md lacks {text:?}");
     }
     // Audit N2 and N3: the overlap is named, and the limits are the ones the profile enforces.
     for text in [
@@ -825,13 +828,12 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
         "version order, not date",
         "no program is started",
         // Card C-90: the credential-shape rule the profile applies to custom text.
-        "a key prefix at the start of a word or a token or password assignment is refused, while a prefix inside a word, as in `task-based` or `risk-free`, is ordinary text);",
+        "a key prefix at the start of a word or a token or password assignment is refused, while a prefix inside a word, as in `task-based` or `risk-free`, is ordinary text.",
     ] {
         assert!(reference.contains(text), "versioning.md lacks {text:?}");
     }
-    assert!(interview.contains(
-        "the text rules it must pass, credential shapes included, are in `internal/versioning`"
-    ));
+    // The interview paragraph names the text rules only by pointing to `internal/versioning`.
+    assert!(interview.contains("and the text rules for it"));
     let project = read("workflows/project.md");
     // Audit B1: detection starts no program, the versioning fact included.
     for text in [

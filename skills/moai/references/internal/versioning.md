@@ -2,7 +2,21 @@
 
 When to read: before you ask the `versioning` rows of the question bank (`internal/interview`) in the PROJECT route, and before you compute or check a release version, which `## At every release` below does at every release.
 
-MoAI offers three schemes: SemVer is the default, HeadVer the second, CalVer the third. Anything else is the user's own words, recorded as `custom`. The choice is the profile key `versioning`: `scheme` is `semver`, `headver`, `calver` or `custom`; `format` is the CalVer format, or for `custom` the user's words in one line (at most 128 characters; no control character, no `<`, `>`, backtick, `[`, `]`, `*`, `_`, `/` or `\`, no `#` at the start, no line or paragraph separator (U+2028, U+2029), and no character Unicode marks as default-ignorable, which shows nothing: the Default_Ignorable_Code_Point set of Unicode 18.0.0, U+00AD, U+034F, U+061C, U+115F–U+1160, U+17B4–U+17B5, U+180B–U+180F, U+200B–U+200F, U+202A–U+202E, U+2060–U+206F, U+3164, U+FE00–U+FE0F, U+FEFF, U+FFA0, U+FFF0–U+FFF8, U+1BCA0–U+1BCA3, U+1D173–U+1D17A, U+E0000–U+E0FFF; no format character, which hides or changes how the text around it is drawn: General_Category Cf of Unicode 18.0.0, U+00AD, U+0600–U+0605, U+061C, U+06DD, U+070F, U+0890–U+0891, U+08E2, U+180E, U+200B–U+200F, U+202A–U+202E, U+2060–U+2064, U+2066–U+206F, U+FEFF, U+FFF9–U+FFFB, U+110BD, U+110CD, U+13430–U+1343F, U+1BCA0–U+1BCA3, U+1D173–U+1D17A, U+E0001, U+E0020–U+E007F; and no credential shape: a key prefix at the start of a word or a token or password assignment is refused, while a prefix inside a word, as in `task-based` or `risk-free`, is ordinary text); `head` is the HeadVer head number, at most 9999. `project-plan` refuses any other scheme, a `format` on SemVer or HeadVer, a `head` on anything but HeadVer, and a `versioning` that is not an object. A profile without the key has no recorded choice: ask, never assume SemVer. The `CLAUDE.md` managed section carries the choice as one line, `Versioning: …`.
+MoAI offers three schemes: SemVer is the default, HeadVer the second, CalVer the third. Anything else is the user's own words, recorded as `custom`. The choice is the profile key `versioning`, an object with these keys:
+
+- `scheme` is `semver`, `headver`, `calver` or `custom`.
+- `format` is the CalVer format, or for `custom` the user's words in one line.
+- `head` is the HeadVer head number, at most 9999.
+
+`project-plan` refuses any other scheme, a `format` on SemVer or HeadVer, a `head` on anything but HeadVer, and a `versioning` that is not an object. A profile without the key has no recorded choice: ask, never assume SemVer. The `CLAUDE.md` managed section carries the choice as one line, `Versioning: …`.
+
+The words of a `custom` format must pass every rule of this list, and the profile refuses them otherwise:
+
+- at most 128 characters;
+- no control character, and no line or paragraph separator (U+2028, U+2029);
+- no `<`, `>`, backtick, `[`, `]`, `*`, `_`, `/` or `\`, and no `#` at the start;
+- no hidden character: the Default_Ignorable_Code_Point set and the General_Category Cf set of Unicode 18.0.0, characters that show nothing or change how the text around them is drawn, whose ranges the code table holds;
+- no credential shape: a key prefix at the start of a word or a token or password assignment is refused, while a prefix inside a word, as in `task-based` or `risk-free`, is ordinary text.
 
 ## Keep the existing scheme
 
@@ -14,6 +28,8 @@ MoAI offers three schemes: SemVer is the default, HeadVer the second, CalVer the
 4. `mixed` means the tags show two schemes: say which, then ask without a keep option.
 5. `tags` `unavailable` or `no_repository` means no tag was read: `none` then says nothing about the project's history; say so when you ask, with the `tags_reason`.
 6. A change of scheme must still sort above every published version. SemVer to HeadVer: `head` is the old MAJOR plus one. SemVer to CalVer: the year segment must be greater than the old MAJOR. From CalVer with a full year to SemVer or HeadVer no smaller first number sorts above the old versions: say so before the user picks.
+
+An answer through the host's "Other" to the `versioning` row is recorded as `{"scheme": "custom", "format": "<the user's words in one line>"}`, and neither follow-up row is asked. An "Other" answer to `versioning_format` stays CalVer when it is a format the profile takes (the CalVer section below), and otherwise the whole answer becomes `custom` with those words as `format`. Custom words that break the list above are reworded with the user, never cut.
 
 How `project-detect` reads one version, after dropping a leading `v` and a prefix that ends in `/` or `@`, and ignoring what follows `-` or `+`:
 
@@ -32,7 +48,7 @@ Run this list yourself, without being asked, whenever you prepare, tag or publis
 1. Scheme: read the profile's `versioning`. Without the profile key, run the `versioning` interview row (detect first so the keep option is offered) and record the pick; never compute from the detection alone. With `custom` words you cannot compute from, stop and ask.
 2. Next version, computed, never typed:
    - HeadVer, a development build: `{head}.{yearweek}.{build}-dev`, with `yearweek` from `date -u +%g%V` on the build day and `build` from a counter that never repeats and never restarts: a CI run number only where a re-run cannot repeat it. GitHub Actions keeps `run_number` on a re-run and raises only `run_attempt`, so there use `run_number` only when `run_attempt` is 1, or a dedicated counter. In a project with a `HEADVER` file, `moai build-number next` hands out the number of a build you install and records it, so nobody picks one; a build that only checks a change takes no number and reports `unnumbered build`.
-   - HeadVer, a release: `{head}.{release week}.{serial}` with no suffix. The release week is the ISO week (`date -u -d <that Monday> +%G%V`, last two digits of the year) of the Monday the release ships, which is the next Monday after the day the release is made (made on 2026-11-25, shipped Monday 2026-11-30: `2649`; at a year end the ISO week-year decides, so the Monday 2027-01-04 gives `2701`). The serial counts the releases of that head and week from 0 and never restarts inside the week: the lowest serial no tag of that head and week uses. `head` comes from the newest HeadVer tag, or the profile's `versioning.head` for the first one. For a release that reaches users, offer "raise `head` to N+1 (recommended)" as a selection; never raise it silently, unless the project's rule says every release raises it.
+   - HeadVer, a release: `{head}.{release week}.{serial}` with no suffix. The release week is the two-digit ISO year and the ISO week of the Monday the release ships, which is the next Monday after the day the release is made: `date -u -j -f %Y-%m-%d <that Monday> +%g%V` on macOS, `date -u -d <that Monday> +%g%V` with GNU date. Made on 2026-11-25 and shipped Monday 2026-11-30 gives `2649`; at a year end the ISO week-year decides, so the Monday 2027-01-04 gives `2701`. The serial counts the releases of that head and week from 0 and never restarts inside the week: the lowest serial no tag of that head and week uses. `head` comes from the newest HeadVer tag, or the profile's `versioning.head` for the first one. For a release that reaches users, offer "raise `head` to N+1 (recommended)" as a selection; never raise it silently, unless the project's rule says every release raises it.
    - SemVer: propose MAJOR, MINOR or PATCH from the change set since the newest release tag (`git log <tag>..HEAD`) and name the commits that drove it: any breaking change, MAJOR; else any feature, MINOR; else PATCH. A person decides. Under `0.y.z` anything may change (SemVer item 4), so a breaking change may raise only MINOR.
    - CalVer: from the release day and the profile's `format`, as the CalVer section says.
    - A release candidate takes the scheme's pre-release form below.
