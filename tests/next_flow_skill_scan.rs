@@ -74,13 +74,14 @@ const BUILD_RULE: [&str; 8] = [
     "by relative path, never through an absolute or home path",
 ];
 
-/// REQ-5 and REQ-6: the byte budget of the flow reference and of the audit contract.
-const REF_LIMIT: usize = 6144;
+/// REQ-5 and REQ-6: the byte budget of the flow reference and of the audit contract. The audit
+/// contract grew from 6 KiB to 8 KiB in SPEC-20261125-audit-text-facts: it is now the one home of
+/// the verdict line form and of what `moai card verdict` and `moai card land` do with a verdict.
+const REF_LIMIT: usize = 8192;
 
-/// The flow reference's own budget, 8 KiB: raised from `REF_LIMIT` (6 KiB) to 7 KiB by
+/// The flow reference's own budget, 8 KiB: raised from 6 KiB to 7 KiB by
 /// SPEC-20261123-lane-completion-handshake for the completion-message section, and to 8 KiB by
-/// its audit repair, after the guard-mutant line joined the file; the audit contract keeps
-/// `REF_LIMIT`.
+/// its audit repair, after the guard-mutant line joined the file.
 const FLOW_REF_LIMIT: usize = 8192;
 
 /// REQ-5: the flow reference and the meaning it alone explains.
@@ -900,7 +901,7 @@ fn refs_audit_contract_alone_says_who_records_a_verdict_the_parent_wrote() {
     let audit = read(AUDIT_REF);
     let who = section(&audit, "Who records the verdict");
     assert!(
-        who.contains("The auditing session records the verdict itself with `moai card verdict`"),
+        who.contains("The auditing session records the verdict itself with `moai card verdict "),
         "{AUDIT_REF}: {who}"
     );
     assert!(
@@ -920,12 +921,20 @@ fn refs_audit_contract_alone_says_who_records_a_verdict_the_parent_wrote() {
 }
 
 /// Slice B audit N1: the AUDIT steps of the pull-request era are card notes now; the RUN
-/// lifetime rule starts when the card lands.
+/// lifetime rule starts when the card lands. The verdict line form stands once, in the audit
+/// contract (SPEC-20261125-audit-text-facts REQ-2), and the workflow points to it.
 #[test]
 fn refs_audit_steps_record_on_the_card() {
+    let contract = read(AUDIT_REF);
+    assert!(
+        contract.contains(
+            "`AUDIT <card> (<one-line scope>) head <40-hex> base <40-hex> — verdict: PASS|FAIL`"
+        ),
+        "{AUDIT_REF} lacks the verdict line form"
+    );
     let audit = read("workflows/audit.md");
     for phrase in [
-        "`AUDIT <card> (<one-line scope>) head <40-hex> base <40-hex> — verdict: PASS|FAIL`",
+        "section \"Who records the verdict\"",
         "The lane's ready note names the tier",
         "reserve the head with one note on the card",
         "only when no other reservation note names the same head",
@@ -1148,10 +1157,12 @@ fn refs_audit_sends_no_reader_to_sync_for_integration() {
 /// claims a tool that compares it on a card (the card verdict reader takes the first line only).
 #[test]
 fn refs_the_verdict_names_its_auditor_one_way() {
-    let audit = read("workflows/audit.md");
-    let step = &audit[audit
-        .find("**Verdict note.**")
-        .expect("a Verdict note step")..];
+    // The example verdict note lives in the audit contract's "Who records the verdict" section
+    // (SPEC-20261125-audit-text-facts REQ-2).
+    let contract = read(AUDIT_REF);
+    let step = &contract[contract
+        .find("## Who records the verdict")
+        .expect("a Who records the verdict section")..];
     let example = &step[step.find("```text\n").expect("an example") + 8..];
     let second = example.lines().nth(1).unwrap_or_default().trim();
     assert!(second.starts_with("Moai-Session: "), "{second}");
@@ -1389,10 +1400,11 @@ fn refs_audit_tiers_match_the_code_floor() {
     let contract = read(AUDIT_REF);
     let problems = tier2_list_problems(section(&contract, "Audit tiers"));
     assert!(problems.is_empty(), "the tier 2 list: {problems:#?}");
-    let note = &audit[audit.find("**Verdict note.**").unwrap()..];
-    let note = &note[..note.find("```").unwrap()];
+    // The verdict line form, and so the sentence about the tier in its scope, is the contract's
+    // alone (SPEC-20261125-audit-text-facts REQ-2).
+    let note = section(&contract, "Who records the verdict");
     assert!(
-        note.contains("a `tier <N>` in its scope is read"),
+        note.contains("`tier <N>` in its scope is read"),
         "the verdict note does not say the stated tier is read"
     );
 }
@@ -1573,16 +1585,30 @@ fn tier_lines(text: &str) -> Vec<String> {
 }
 
 /// What is wrong with the tier lines of `text` against the contract's: a line missing, written
-/// twice, or different by a single byte. Empty when the four lines match word for word.
+/// twice, or different by a single byte. Empty when the lines match word for word. The docs-only
+/// line is the exception (SPEC-20261125-audit-text-facts D-1, R-1): the contract's line was
+/// corrected, and the copies in `agents/audit.md` and `workflows/run.md` are outside that SPEC's
+/// scope, so for that one line only its presence once is required here and its key words are
+/// read by `tier_key_word_problems`; the other three lines still match byte for byte.
 fn tier_line_problems(contract: &[String], text: &str) -> Vec<String> {
     let found = tier_lines(text);
     let mut problems = Vec::new();
-    for line in contract {
+    for line in &contract[1..] {
         match found.iter().filter(|l| *l == line).count() {
             1 => {}
             0 => problems.push(format!("lacks {line:?}")),
             n => problems.push(format!("holds {line:?} {n} times")),
         }
+    }
+    let docs_only = found
+        .iter()
+        .filter(|l| l.starts_with(TIER_LINE_STARTS[0]))
+        .count();
+    if docs_only != 1 {
+        problems.push(format!(
+            "holds {docs_only} lines that start with {:?}, not 1",
+            TIER_LINE_STARTS[0]
+        ));
     }
     if found.len() != contract.len() {
         problems.push(format!(
@@ -1594,9 +1620,11 @@ fn tier_line_problems(contract: &[String], text: &str) -> Vec<String> {
     problems
 }
 
-/// AC-1 (REQ-1 to REQ-4, REQ-11): the four lines of the contract's "Audit tiers" section stand
-/// byte for byte in the audit agent, under RUN's "Check-run rules" and in the lander's brief
-/// (AUDIT, "Base agents"). A planted change to any one line is found.
+/// AC-1 (REQ-1 to REQ-4, REQ-11): the lines of the contract's "Audit tiers" section stand byte
+/// for byte in the audit agent and under RUN's "Check-run rules" (the docs-only line by its key
+/// words, see `tier_line_problems`). The AUDIT workflow no longer carries the lines: its "Base
+/// agents" section points to the contract (SPEC-20261125-audit-text-facts REQ-2), and the brief
+/// to `moai-audit` quotes them from there. A planted change to any one line is found.
 #[test]
 fn refs_audit_tier_lines_match_in_every_text() {
     let contract = read(AUDIT_REF);
@@ -1610,17 +1638,12 @@ fn refs_audit_tier_lines_match_in_every_text() {
         assert!(line.starts_with(start), "{line:?} is out of order");
     }
     let run = read("workflows/run.md");
-    let audit = read("workflows/audit.md");
     let agent = repo_text("agents/audit.md");
     let texts = [
         ("agents/audit.md", agent.as_str()),
         (
             "workflows/run.md, Check-run rules",
             section(&run, "Check-run rules"),
-        ),
-        (
-            "workflows/audit.md, Base agents",
-            section(&audit, "Base agents"),
         ),
     ];
     for (name, text) in texts {
@@ -1632,7 +1655,9 @@ fn refs_audit_tier_lines_match_in_every_text() {
             !tier_line_problems(&source, &changed).is_empty(),
             "{name}: a changed line passes"
         );
-        let missing = text.replacen(&format!("{}\n", source[0]), "", 1);
+        // The text's own docs-only line: it may differ from the contract's.
+        let own_docs_only = tier_lines(text).remove(0);
+        let missing = text.replacen(&format!("{own_docs_only}\n"), "", 1);
         assert!(
             !tier_line_problems(&source, &missing).is_empty(),
             "{name}: a missing line passes"
@@ -1758,7 +1783,8 @@ fn refs_audit_brief_names_receipt_and_merged_tree() {
 }
 
 /// AC-7 (REQ-13): the AUDIT tier step separates what the tools judge from what is a rule for the
-/// sessions, and says that `moai card land` reads no verdict.
+/// sessions. It no longer says that `moai card land` reads no verdict: it does read the recorded
+/// verdict and refuses a head with no independent PASS (SPEC-20261125-audit-text-facts REQ-3).
 #[test]
 fn refs_audit_tier_step_names_tool_and_session_parts() {
     let audit = read("workflows/audit.md");
@@ -1769,7 +1795,7 @@ fn refs_audit_tier_step_names_tool_and_session_parts() {
     for phrase in [
         "What the tools judge: the floor of the changed paths (`tier_of`) and the tier a PASS note states (`moai bundle check`, `audit_tier_low`)",
         "Who audits each class is a rule for the sessions, which no tool checks",
-        "`moai card land`, which itself reads no verdict",
+        "`moai card land` itself checks that an independent PASS of the head is recorded",
     ] {
         assert!(tier.contains(phrase), "the tier step lacks {phrase:?}");
     }
@@ -1829,7 +1855,7 @@ fn refs_audit_cleanup_names_the_scope_worktree() {
         ),
         (
             "workflows/audit.md, Cleanup",
-            line_starting("workflows/audit.md", &audit, "- Cleanup (Issue #3054)"),
+            line_starting("workflows/audit.md", &audit, "- Cleanup:"),
             vec![
                 "in the audit worktree named in `scope`",
                 "from inside that worktree and by relative path (`rm -rf target/debug`)",
@@ -1853,7 +1879,7 @@ fn refs_audit_cleanup_names_the_scope_worktree() {
 
 /// AC-2 (REQ-3): the AUDIT `Isolation:` line says the agent sets none, reads the audit worktree in
 /// `scope`, runs every command inside it, ends `blocked` on a missing worktree or another HEAD,
-/// and that the implementation agent keeps its own.
+/// and that the implementation agent works in the lane's worktree.
 #[test]
 fn refs_audit_isolation_line_is_pinned() {
     let audit = read("workflows/audit.md");
@@ -1864,7 +1890,7 @@ fn refs_audit_isolation_line_is_pinned() {
         "runs every command inside it",
         "its shell starts in the lander's folder",
         "ends `blocked` when that worktree is missing or its HEAD is not `head`",
-        "The implementation agent keeps its worktree (RUN workflow)",
+        "The implementation agent works in the lane's worktree (RUN workflow)",
     ];
     let missing = lacking(line, &phrases);
     assert!(missing.is_empty(), "the Isolation line lacks {missing:?}");
@@ -1898,11 +1924,7 @@ fn tier_key_word_problems(text: &str) -> Vec<String> {
     const KEY_WORDS: [(&str, &[&str]); 4] = [
         (
             "- docs-only (tier",
-            &[
-                "only documents or SPEC text change",
-                "the lander reads the change and lands it",
-                "nothing is built",
-            ],
+            &["only documents or SPEC text change", "nothing is built"],
         ),
         (
             "- test-only (tier",
@@ -1947,19 +1969,20 @@ fn tier_key_word_problems(text: &str) -> Vec<String> {
     problems
 }
 
-/// AC-4 (REQ-6): each tier line keeps its key words in the contract and in the three texts; a key
-/// word removed from the high-risk line is found.
+/// AC-4 (REQ-6): each tier line keeps its key words in the contract and in the two copies; a key
+/// word removed from the high-risk line is found. The docs-only line's key words leave out the
+/// old "the lander reads the change and lands it" (false: `moai card land` needs a recorded PASS
+/// for every head, SPEC-20261125-audit-text-facts D-1), which the copies may still carry. The
+/// AUDIT workflow's "Base agents" section points to the contract instead of carrying the lines.
 #[test]
 fn refs_audit_tier_lines_keep_their_key_words() {
     let contract = read(AUDIT_REF);
     let run = read("workflows/run.md");
-    let audit = read("workflows/audit.md");
     let agent = repo_text("agents/audit.md");
     for (name, text) in [
         ("references/audit.md", section(&contract, "Audit tiers")),
         ("agents/audit.md", agent.as_str()),
         ("workflows/run.md", section(&run, "Check-run rules")),
-        ("workflows/audit.md", section(&audit, "Base agents")),
     ] {
         let problems = tier_key_word_problems(text);
         assert!(problems.is_empty(), "{name}: {problems:#?}");
@@ -2110,23 +2133,24 @@ fn land_scans_the_flow_cargo_only_mutants_are_caught() {
     }
 }
 
-/// AC-5 (REQ-7): the three texts that carry the tier lines without the list say where the floor
-/// list is.
+/// AC-5 (REQ-7): the texts that carry the tier lines without the list say where the floor list is.
+/// The AUDIT workflow carries no tier line any more, so it points to the contract's section
+/// "Audit tiers" in its tier step instead (SPEC-20261125-audit-text-facts REQ-2).
 #[test]
 fn refs_audit_floor_list_is_pointed_to() {
     let run = read("workflows/run.md");
     let audit = read("workflows/audit.md");
     let agent = repo_text("agents/audit.md");
     let pointer = "The floor list of paths is in the audit contract, section \"Audit tiers\"";
-    for (name, text) in [
-        ("workflows/run.md", section(&run, "Check-run rules")),
-        ("workflows/audit.md", section(&audit, "Base agents")),
-    ] {
-        assert!(
-            text.contains(pointer),
-            "{name} lacks the floor-list pointer"
-        );
-    }
+    assert!(
+        section(&run, "Check-run rules").contains(pointer),
+        "workflows/run.md lacks the floor-list pointer"
+    );
+    assert!(
+        audit
+            .contains("the tier 2 prefixes the audit contract lists (its section \"Audit tiers\")"),
+        "workflows/audit.md lacks the floor-list pointer"
+    );
     assert!(
         agent.contains("The floor list of paths is in the contract's section \"Audit tiers\""),
         "agents/audit.md lacks the floor-list pointer"
