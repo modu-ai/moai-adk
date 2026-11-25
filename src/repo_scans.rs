@@ -63,7 +63,8 @@ pub fn is_target_name(name: &str) -> bool {
 /// (SPEC-20261124-repo-scans-targets-per-line): the command built from `test_targets`, in the
 /// array's order, then the entries of `checks`. A scan without `test_targets` gives its `checks`
 /// as listed, and `checks` may be left out when `test_targets` is there. A `test_targets` that is
-/// no list of target names, and a scan with neither field, are errors that name the scan.
+/// no list of target names, an empty `test_targets` array (whatever `checks` holds), and a scan
+/// with neither field, are errors that name the scan.
 pub fn checks_of(entry: &Value) -> Result<Vec<String>, String> {
     let id = entry.get("id").and_then(Value::as_str).unwrap_or("?");
     let mut out = Vec::new();
@@ -72,6 +73,11 @@ pub fn checks_of(entry: &Value) -> Result<Vec<String>, String> {
         let list = targets
             .as_array()
             .ok_or_else(|| format!("table: scan {id}: `test_targets` is not a list"))?;
+        if list.is_empty() {
+            return Err(format!(
+                "table: scan {id}: `test_targets` is empty; name a target in it or drop the field"
+            ));
+        }
         let mut command = CARGO_TEST.to_string();
         for target in list {
             let name = target
@@ -86,9 +92,7 @@ pub fn checks_of(entry: &Value) -> Result<Vec<String>, String> {
             command.push_str(" --test ");
             command.push_str(name);
         }
-        if !list.is_empty() {
-            out.push(command);
-        }
+        out.push(command);
     }
     match entry.get("checks").filter(|v| !v.is_null()) {
         None if targets.is_some() => {}
