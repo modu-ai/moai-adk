@@ -103,6 +103,21 @@ pub(super) fn reservation_json(r: &Reservation) -> Value {
     })
 }
 
+/// Names what a fill of an empty reservation reserved (`scope_filled`) and left out
+/// (`scope_left_out`, each with its reason) in an answer; nothing is added when no fill was made
+/// (SPEC-20261125-review-lease-hold REQ-5, REQ-6).
+pub(super) fn add_scope_fill(answer: &mut Value, fill: Option<&reservation::ScopeFill>) {
+    let Some(fill) = fill else {
+        return;
+    };
+    answer["scope_filled"] = json!(fill.filled);
+    answer["scope_left_out"] = json!(fill
+        .left_out
+        .iter()
+        .map(|l| json!({"path": l.path, "reason": l.reason}))
+        .collect::<Vec<_>>());
+}
+
 /// `card ready C-n`: `draft` or `hold` becomes `ready`, with one `card.ready` event.
 pub fn ready(project: &Path, home: &Path, reference: &str, by: Option<&str>) -> Result<Value> {
     let card_id = card_id("ready", reference)?;
@@ -831,6 +846,9 @@ pub fn reclaim(
     };
     // The running folder's worktree fills a worktree the old reservation never recorded.
     let running_worktree = req.running_dir.and_then(crate::lane_registry::worktree_of);
+    // A reservation that comes back without paths is filled from the card's own scope, leaving
+    // out the shared files of the profile (SPEC-20261125-review-lease-hold REQ-5, REQ-6).
+    let shared = take_scope::shared_files(project);
     let taken = reservation::reclaim_recording(
         &mut ledger,
         card_id,
@@ -842,10 +860,15 @@ pub fn reclaim(
         proof.as_ref(),
         kept.as_ref(),
         running_worktree.as_deref(),
+        &shared,
     );
     let out = taken.map_err(|e| match (&e, &early) {
         // The lease is live and the proof is missing: say which part.
-        (reservation::ReclaimError::LeaseLive { .. }, early_reclaim::Early::Unproven(why)) => {
+        (
+            reservation::ReclaimError::LeaseLive { .. }
+            | reservation::ReclaimError::LeaseHeldForAudit { .. },
+            early_reclaim::Early::Unproven(why),
+        ) => {
             format!("{e}; an early reclaim needs proof that the holder is gone, and {why}")
         }
         _ => e.to_string(),
@@ -855,8 +878,12 @@ pub fn reclaim(
         "reservation": reservation_json(&out.reservation),
         "previous": reservation_json(&out.previous),
         "by": by, "reason": reason, "state": out.card_state,
+        "counted": out.counted,
+        "reclaims_counted": out.reclaims_counted,
+        "reclaim_allowance": reservation::RECLAIM_ALLOWANCE,
         "events": 1, "writes": true,
     });
+    add_scope_fill(&mut answer, out.scope_fill.as_ref());
     if let Some(kept) = kept {
         answer["kept_commits"] = kept;
     }

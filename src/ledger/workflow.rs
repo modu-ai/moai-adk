@@ -1420,13 +1420,29 @@ pub fn review(
 }
 
 /// `review -> active`, as the current holder at `generation` with a live lease: the way back
-/// after a review that found something to repair. The reservation stays `held`.
+/// after a review that found something to repair. The reservation stays `held`. A reservation
+/// without paths (a review without `--keep` gave them all back) is filled from the card's own
+/// scope; this plain form leaves no path out for a shared file, because it does not know the
+/// profile: [`reopen_filling`] does.
 pub fn reopen(
     w: &mut WriteLedger,
     card_id: i64,
     holder: &str,
     generation: i64,
 ) -> Result<Moved, WorkflowError> {
+    reopen_filling(w, card_id, holder, generation, &[]).map(|(moved, _)| moved)
+}
+
+/// [`reopen`] with the shared files of the project profile, which a fill of an empty reservation
+/// leaves out. The second answer is what the fill reserved and left out, `None` when the
+/// reservation had paths (SPEC-20261125-review-lease-hold REQ-5, REQ-6).
+pub fn reopen_filling(
+    w: &mut WriteLedger,
+    card_id: i64,
+    holder: &str,
+    generation: i64,
+    shared: &[String],
+) -> Result<(Moved, Option<reservation::ScopeFill>), WorkflowError> {
     reservation::fenced(
         w,
         "reopen",
@@ -1448,22 +1464,33 @@ pub fn reopen(
                 "UPDATE card SET state = 'active', updated_at = ?2 WHERE card_id = ?1",
                 params![card_id, now],
             )?;
-            reservation::add_event(
-                tx,
-                now,
-                holder,
-                card_id,
-                "card.reopen",
-                &json!({"from": from, "generation": generation}),
-            )?;
-            Ok(Ok(Moved {
-                card_id,
-                from,
-                state: "active".to_string(),
-                rev: card_rev(tx, card_id)?,
-                closed_at: None,
-                reservation: row,
-            }))
+            let fill = reservation::fill_empty_scope(tx, now, card_id, row.reservation_id, shared)?;
+            let mut payload = json!({"from": from, "generation": generation});
+            if let Some(f) = &fill {
+                payload["scope_filled"] = json!(f.filled);
+                payload["scope_left_out"] = json!(f
+                    .left_out
+                    .iter()
+                    .map(|l| json!({"path": l.path, "reason": l.reason}))
+                    .collect::<Vec<_>>());
+            }
+            reservation::add_event(tx, now, holder, card_id, "card.reopen", &payload)?;
+            let reservation = match &fill {
+                Some(_) => reservation::current(tx, card_id)?
+                    .ok_or_else(|| LedgerError::Sql("the reservation cannot be read".into()))?,
+                None => row,
+            };
+            Ok(Ok((
+                Moved {
+                    card_id,
+                    from,
+                    state: "active".to_string(),
+                    rev: card_rev(tx, card_id)?,
+                    closed_at: None,
+                    reservation,
+                },
+                fill,
+            )))
         },
     )?
 }
@@ -2066,8 +2093,19 @@ pub fn record_verdict(
         }
         drop(st);
         reservation::add_event(tx, now, verdict.reviewer, card_id, VERDICT_KIND, &payload)?;
+        let event_id = tx.last_insert_rowid();
+        // The card waited in `review` for this verdict; its lane needs time to act on it
+        // (SPEC-20261125-review-lease-hold REQ-2). Only a verdict that was written extends.
+        reservation::hold_in_tx(
+            tx,
+            now,
+            card_id,
+            reservation::VERDICT_HOLD_SECS,
+            verdict.reviewer,
+            "verdict",
+        )?;
         Ok(Ok(VerdictRecorded {
-            event_id: tx.last_insert_rowid(),
+            event_id,
             written: true,
         }))
     })?

@@ -563,6 +563,37 @@ pub fn review_keeping(
     generation: i64,
     keep: &[String],
 ) -> Result<Value> {
+    review_keeping_with_hold(
+        project,
+        home,
+        reference,
+        holder,
+        generation,
+        keep,
+        &reservation::hold_for_review,
+    )
+}
+
+/// The step after the review that keeps the lease for the audit: what `card review` runs, and
+/// what a test replaces with a step that fails.
+pub type HoldFn<'a> = dyn Fn(
+        &mut ledger::WriteLedger,
+        i64,
+        &str,
+        i64,
+    ) -> std::result::Result<reservation::Reservation, reservation::FenceError>
+    + 'a;
+
+/// [`review_keeping`] with the step that holds the lease given.
+pub fn review_keeping_with_hold(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    holder: &str,
+    generation: i64,
+    keep: &[String],
+    hold: &HoldFn<'_>,
+) -> Result<Value> {
     let card_id = card_id("review", reference)?;
     let keep = checked_scope("review", keep)?;
     let (id, mut ledger) = open_for_write(project, home)?;
@@ -576,6 +607,22 @@ pub fn review_keeping(
     let mut answer = moved_json("review", &id, &moved);
     answer["given_back"] = json!(given_back);
     answer["kept"] = json!(kept);
+    // The card now waits for its audit: its lease runs for a day, so the lane can still close or
+    // reopen it when the verdict comes (SPEC-20261125-review-lease-hold REQ-1). This is a second
+    // step after the review is recorded, not part of its transaction: when it fails the review
+    // stands, and the answer says that the lease was not held instead of hiding it.
+    match hold(&mut ledger, card_id, holder, generation) {
+        Ok(held) => answer["reservation"] = reservation_json(&held),
+        Err(e) => {
+            answer["warnings"] = json!([format!(
+                "{}: the review is recorded but the lease could not be held for the audit ({e}); \
+                 the lease keeps the end it had, so renew it with `card renew {} --generation \
+                 {generation}` before it ends",
+                input::card_name(card_id),
+                input::card_name(card_id)
+            )]);
+        }
+    }
     Ok(answer)
 }
 
@@ -734,9 +781,14 @@ pub fn reopen(
 ) -> Result<Value> {
     let card_id = card_id("reopen", reference)?;
     let (id, mut ledger) = open_for_write(project, home)?;
-    let moved = workflow::reopen(&mut ledger, card_id, holder, generation)
+    // A review without `--keep` gave every path back; the reopen brings the card's own scope
+    // back, leaving out the shared files of the profile (SPEC-20261125-review-lease-hold REQ-5).
+    let shared = take_scope::shared_files(project);
+    let (moved, fill) = workflow::reopen_filling(&mut ledger, card_id, holder, generation, &shared)
         .map_err(|e| refusal("reopen", e))?;
-    Ok(moved_json("reopen", &id, &moved))
+    let mut answer = moved_json("reopen", &id, &moved);
+    super::dispatch::add_scope_fill(&mut answer, fill.as_ref());
+    Ok(answer)
 }
 
 /// `card done C-n`: `review` becomes `done` when a criterion is met, none is open and a merged
