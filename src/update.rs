@@ -1133,6 +1133,39 @@ fn layout_folder(canonical_home: &Path, canonical_exe: &Path) -> Option<(PathBuf
     Some((versions, PathBuf::from(folder.file_name()?)))
 }
 
+/// The version the execution link under `home` points to: the name of the version folder
+/// (`<state>/versions/<v>`) that the link's target sits in. Reads only under the `home` argument;
+/// it never reads the process HOME or PATH and never runs a `--version`.
+///
+/// The candidates are read in a fixed order, `<state>/path/moai`, `<state>/path/moai-cli`,
+/// `<state>/bin/moai`, and the first that counts wins. A candidate counts only when it is a
+/// symlink, its canonical target is a regular file, that file sits exactly in the layout
+/// ([`layout_folder`]) and the folder name is UTF-8 and version-shaped. A missing or dangling
+/// link, a plain file, a target outside `versions/` and a name such as `a` all give `None`
+/// for that candidate, and an unreadable one is skipped the same way.
+// @cc:later nothing calls this yet; the installed line of the preview reads it next, then drop the allow.
+#[allow(dead_code)]
+pub(crate) fn execution_link_version(home: &Path) -> Option<String> {
+    let canonical_home = fs::canonicalize(home).ok()?;
+    let state = crate::home_root::path(&canonical_home);
+    [("path", "moai"), ("path", "moai-cli"), ("bin", "moai")]
+        .iter()
+        .find_map(|(folder, name)| {
+            let link = state.join(folder).join(name);
+            if !fs::symlink_metadata(&link).ok()?.file_type().is_symlink() {
+                return None;
+            }
+            let target = fs::canonicalize(&link).ok()?;
+            if !fs::metadata(&target).ok()?.is_file() {
+                return None;
+            }
+            let (_, folder) = layout_folder(&canonical_home, &target)?;
+            let version = folder.to_str()?;
+            crate::headver::compare(version, version)?;
+            Some(version.to_string())
+        })
+}
+
 /// The install ids the builds in the earlier version folders `folders` (names under
 /// `versions`) have, each derived from the same path shape as this build's own id. A folder
 /// whose path cannot form an id (a name that is not UTF-8) lends nothing and is skipped, so
@@ -3927,6 +3960,142 @@ mod version_folder_tests {
             ids[0].1,
             crate::install::install_id(&versions.join(&good).join("bin").join("moai-cli")).unwrap()
         );
+    }
+
+    /// A temporary HOME (canonical, so the paths a test builds equal the ones the function reads)
+    /// with this generation's marker, so [`crate::home_root::path`] keeps naming the same state
+    /// folder while the test adds `versions/`, `path/` and `bin/` under it (without a marker a
+    /// state folder holding those names reads as unknown and the state folder moves).
+    #[cfg(unix)]
+    fn link_home() -> (tempfile::TempDir, PathBuf) {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = fs::canonicalize(tmp.path()).unwrap();
+        let state = home.join(crate::home_root::MOAI_DIR);
+        fs::create_dir_all(&state).unwrap();
+        fs::write(
+            state.join(crate::state_root::NEW_MARKER),
+            crate::state_root::marker_bytes("version_folder_tests", &[]),
+        )
+        .unwrap();
+        assert_eq!(
+            crate::home_root::path(&home),
+            state,
+            "the marked state folder"
+        );
+        (tmp, home)
+    }
+
+    /// A regular file at `<state>/versions/<version>/bin/moai`, the way an installed build sits.
+    #[cfg(unix)]
+    fn version_binary(home: &Path, version: &str) -> PathBuf {
+        let bin = crate::home_root::path(home)
+            .join("versions")
+            .join(version)
+            .join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        let exe = bin.join("moai");
+        fs::write(&exe, b"fixture build\n").unwrap();
+        exe
+    }
+
+    /// A symlink at `<state>/<rel>` (`path/moai`, `bin/moai`, ...) pointing at `target`.
+    #[cfg(unix)]
+    fn link_at(home: &Path, rel: &str, target: &Path) -> PathBuf {
+        let link = crate::home_root::path(home).join(rel);
+        fs::create_dir_all(link.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(target, &link).unwrap();
+        link
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_execution_link_version_is_the_folder_the_link_points_to() {
+        for rel in ["bin/moai", "path/moai-cli", "path/moai"] {
+            let (_tmp, home) = link_home();
+            let exe = version_binary(&home, "4.2648.26");
+            link_at(&home, rel, &exe);
+            assert_eq!(
+                execution_link_version(&home),
+                Some("4.2648.26".to_string()),
+                "link at {rel}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_missing_dangling_plain_file_outside_layout_or_non_version_link_reads_none() {
+        // No link at all.
+        let (_tmp, home) = link_home();
+        version_binary(&home, "4.2648.26");
+        assert_eq!(execution_link_version(&home), None, "no link");
+
+        // A link whose target is gone.
+        let (_tmp, home) = link_home();
+        let gone = version_binary(&home, "4.2648.26");
+        link_at(&home, "bin/moai", &gone);
+        fs::remove_file(&gone).unwrap();
+        assert_eq!(execution_link_version(&home), None, "dangling link");
+
+        // A plain file where the link should be, even one that sits in a version folder.
+        let (_tmp, home) = link_home();
+        let exe = version_binary(&home, "4.2648.26");
+        let plain = crate::home_root::path(&home).join("bin").join("moai");
+        fs::create_dir_all(plain.parent().unwrap()).unwrap();
+        fs::copy(&exe, &plain).unwrap();
+        assert_eq!(execution_link_version(&home), None, "plain file");
+
+        // A link into a build that is not under versions/.
+        let (_tmp, home) = link_home();
+        let outside = home.join("elsewhere").join("4.2648.26").join("bin");
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("moai"), b"fixture build\n").unwrap();
+        link_at(&home, "bin/moai", &outside.join("moai"));
+        assert_eq!(
+            execution_link_version(&home),
+            None,
+            "target outside versions"
+        );
+
+        // A link into a folder whose name is not a version.
+        let (_tmp, home) = link_home();
+        let exe = version_binary(&home, "a");
+        link_at(&home, "bin/moai", &exe);
+        assert_eq!(
+            execution_link_version(&home),
+            None,
+            "non-version folder name"
+        );
+
+        // A link to a folder, not to a regular file.
+        let (_tmp, home) = link_home();
+        let exe = version_binary(&home, "4.2648.26");
+        link_at(&home, "bin/moai", exe.parent().unwrap());
+        assert_eq!(execution_link_version(&home), None, "link to a folder");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_first_candidate_in_order_wins() {
+        let (_tmp, home) = link_home();
+        let first = link_at(&home, "path/moai", &version_binary(&home, "4.2648.26"));
+        let second = link_at(&home, "path/moai-cli", &version_binary(&home, "4.2648.24"));
+        let third = link_at(&home, "bin/moai", &version_binary(&home, "4.2648.20"));
+        assert_eq!(execution_link_version(&home).as_deref(), Some("4.2648.26"));
+
+        fs::remove_file(&first).unwrap();
+        assert_eq!(execution_link_version(&home).as_deref(), Some("4.2648.24"));
+
+        fs::remove_file(&second).unwrap();
+        assert_eq!(execution_link_version(&home).as_deref(), Some("4.2648.20"));
+
+        // An earlier candidate that does not count is skipped, not returned as None.
+        let bad = link_at(&home, "path/moai", &version_binary(&home, "a"));
+        assert_eq!(execution_link_version(&home).as_deref(), Some("4.2648.20"));
+
+        fs::remove_file(&bad).unwrap();
+        fs::remove_file(&third).unwrap();
+        assert_eq!(execution_link_version(&home), None);
     }
 }
 
