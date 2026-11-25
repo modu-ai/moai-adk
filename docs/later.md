@@ -27,3 +27,7 @@ The lines after the dated ones came from the leader's carry-over of closed cards
 - 착지 머지에서 tools/repo_scans.json 의 긴 `--test` 한 줄과 source-manifest.json 해시가 카드마다 충돌해요(2026-11-25 네 번): 테스트 이름을 한 줄에 하나씩 쓰는 배열로 바꾸고 해시는 `moai` 명령이 다시 계산해요
 - agents/audit.md 와 workflows/run.md 에 옛 docs-only 줄("the lander reads the change and lands it") 사본이 남았어요(C-522 감사): 세 곳 복사를 한 곳 가리키기로 줄여요
 - `agents-local-merge` 가 사용자가 거절한 옛 백업 `AGENTS.local.md` 를 update 때마다 다시 제안하고, 같은 때 `agents-picks` 는 원본이 없다며 skip 이라 둘이 어긋나요(2026-11-25 `/moai update`): 거절을 기억하는 C-518 이 받아요
+- 작업 수 상한이 세션 등록부의 레인만 세는데 `workflows/work.md` 에 등록 단계가 없어 레인 1개로 세었어요(2026-11-25, C-524 take 거절, 사용자 결정 "레인마다 등록"): 레인 글의 첫 단계에 `moai session-register <프로젝트 경로> --name <이름> --mode agent` 와 갱신·해제를 넣고, 등록 항목의 열쇠를 이름이 아니라 세션 id 로 해서 이름이 같은 다른 세션을 덮어쓰지 않게 해요(mo.ai.kr 덧붙임 7 J)
+- `card land-batch` 가 SPEC 없는 카드를 `no_spec` 으로 떨궈요(src/card/land/batch.rs, C-524 승인 D-2): SPEC 없는 tier 0·1 카드도 묶음 착지가 받게 해요
+- `card submit` 이 예약에 적힌 브랜치 이름과 실제 브랜치가 다르면 "HEAD 가 예약 브랜치의 tip 이 아니다"로 거절해요(2026-11-25 C-520): 예약 브랜치를 실제 브랜치로 맞추는 명령이나 take 때 이름 검사
+- `moai audit-delta` 가 부모 순서를 [pass_head, tip] 로 요구해서 tip 이 첫째 부모인 착지 머지를 `parent_mismatch` 로 거절해요(2026-11-25 C-508·C-520 묶음 판정): 두 순서를 모두 받아요
