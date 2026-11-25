@@ -29,7 +29,7 @@ created: 2026-11-25
 - REQ-13 (REQ-12): IF the new text would not read as growth, THEN `check fix` shall print it and write nothing.
 - REQ-14: When the ledger list is resolved against the test files of a checkout, each name shall resolve to a test target, to a module of an area crate or to a library test.
 - REQ-15 (REQ-14): IF a name resolves to none, THEN the ledger step shall fail and name it as missing.
-- REQ-16: While a change is judged by the wide set, the ledger tests shall run in it unchanged.
+- REQ-16: While a change is judged by the wide set, the plan of `check affected` shall hold the ledger step with every ledger test.
 
 ## Acceptance
 
@@ -39,7 +39,7 @@ created: 2026-11-25
 - AC-4 (REQ-9, REQ-11, REQ-12, REQ-13): 새 테스트 파일의 등록 줄과 source-manifest 해시를 써넣고, 사람이 정할 줄은 쓰지 않고 출력하며, 쓴 표는 `registry_only_grew` 가 더하기로 읽고, 두 번째 실행은 할 일이 없어요 · verify: `cargo test --offline --locked --test check_fix_cli check_fix_writes_what_is_mechanical_and_prints_the_rest`
 - AC-5 (REQ-10): 링크인 표 파일은 쓰지 않고 이름으로 거절해요 · verify: `cargo test --offline --locked --test check_fix_cli check_fix_refuses_a_linked_table`
 - AC-6 (REQ-14, REQ-15): 장부 목록의 모든 이름이 이 저장소에서 실제 대상으로 풀리고, 풀리지 않는 이름은 빠졌다고 나와요 · verify: `cargo test --offline --locked --lib check_fast::tests::the_ledger_names_resolve_in_this_repository`
-- AC-7 (REQ-16): 넓은 변경의 전체 선택이 장부 대상을 모두 담고 있어요 · verify: `cargo test --offline --locked --lib check_fast::tests::the_full_pick_of_a_wide_change_holds_every_ledger_target`
+- AC-7 (REQ-16): 넓은 변경(`Cargo.toml`)의 계획과 좁은 변경의 계획이 같은 장부 단계를 담고, 그 단계가 장부 목록의 모든 대상과 라이브러리 테스트를 담고 있어요 · verify: `cargo test --offline --locked --lib check_fast::tests::the_plan_of_a_wide_change_holds_every_ledger_target`
 - AC-8 (REQ-1, REQ-5): `moai check affected --card <base>..<head>` 의 요약이 `result=PASS` 예요 · verify: `moai check affected --card <base>..<head>` writes `result=PASS` in `summary.txt`
 
 ## Scope
