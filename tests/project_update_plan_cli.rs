@@ -2477,7 +2477,15 @@ fn go_settings_skips_a_settings_file_the_manifest_proves() {
 // ---- SPEC-20261125-update-declined-steps: a declined choice step stays declined ----
 
 const DECLINE_OP: &str = "project-update-decline";
-const DECLINED_FILE: &str = ".moai/manifests/update-declined.json";
+/// `sub` inside the project's state folder, spelled through the resolver.
+fn state_rel(root: &Path, sub: &str) -> String {
+    moai_cli::state_root::rel(root, sub)
+}
+
+/// The decline record of the project, found through the resolver.
+fn declined_file(root: &Path) -> PathBuf {
+    root.join(state_rel(root, "manifests/update-declined.json"))
+}
 const LOCAL_TEXT: &str = "# My notes\n\nReply in Korean.\n";
 
 /// The paths whose entry differs between two trees (added, removed or changed).
@@ -2612,10 +2620,15 @@ impl Fx {
     /// still the one the go-state apply recorded: only its bytes (the source sha256) change.
     fn rewrite_backed_up_local(&self, backup: &str, text: &str) {
         self.write(
-            &format!(".moai/backups/{backup}/root-files/AGENTS.local.md"),
+            &state_rel(
+                &self.root,
+                &format!("backups/{backup}/root-files/AGENTS.local.md"),
+            ),
             text,
         );
-        let dir = self.root.join(format!(".moai/backups/{backup}"));
+        let dir = self
+            .root
+            .join(state_rel(&self.root, &format!("backups/{backup}")));
         for entry in fs::read_dir(&dir).unwrap() {
             let path = entry.unwrap().path();
             let Ok(bytes) = fs::read(&path) else { continue };
@@ -2654,8 +2667,8 @@ fn declined_record_is_written_for_the_printed_sha_and_nothing_else() {
     assert_eq!(decline["argv"][0], "moai", "{merge}");
     assert_eq!(decline["argv"][1], DECLINE_OP, "{merge}");
     assert_eq!(decline["ask_again_argv"], Value::Null, "{merge}");
-    assert!(fx.root.join(".moai/manifests").is_dir());
-    assert!(!fx.root.join(DECLINED_FILE).exists());
+    assert!(fx.root.join(state_rel(&fx.root, "manifests")).is_dir());
+    assert!(!declined_file(&fx.root).exists());
 
     // Refused, each with the tree (project and HOME) byte-identical.
     let stale = format!("sha256:{}", "0".repeat(64));
@@ -2689,8 +2702,8 @@ fn declined_record_is_written_for_the_printed_sha_and_nothing_else() {
         "permission",
     );
     // A link in place of the record file.
-    fs::write(fx.root.join(".moai/elsewhere.txt"), "x\n").unwrap();
-    std::os::unix::fs::symlink("../elsewhere.txt", fx.root.join(DECLINED_FILE)).unwrap();
+    fs::write(fx.root.join(state_rel(&fx.root, "elsewhere.txt")), "x\n").unwrap();
+    std::os::unix::fs::symlink("../elsewhere.txt", declined_file(&fx.root)).unwrap();
     let before = fx.tree();
     refused(
         "linked record file",
@@ -2698,14 +2711,18 @@ fn declined_record_is_written_for_the_printed_sha_and_nothing_else() {
         &before,
         "symbolic link",
     );
-    fs::remove_file(fx.root.join(DECLINED_FILE)).unwrap();
+    fs::remove_file(declined_file(&fx.root)).unwrap();
     // A link in place of the manifests folder.
     fs::rename(
-        fx.root.join(".moai/manifests"),
-        fx.root.join(".moai/manifests-real"),
+        fx.root.join(state_rel(&fx.root, "manifests")),
+        fx.root.join(state_rel(&fx.root, "manifests-real")),
     )
     .unwrap();
-    std::os::unix::fs::symlink("manifests-real", fx.root.join(".moai/manifests")).unwrap();
+    std::os::unix::fs::symlink(
+        "manifests-real",
+        fx.root.join(state_rel(&fx.root, "manifests")),
+    )
+    .unwrap();
     let before = fx.tree();
     refused(
         "linked folder",
@@ -2713,10 +2730,10 @@ fn declined_record_is_written_for_the_printed_sha_and_nothing_else() {
         &before,
         "symbolic link",
     );
-    fs::remove_file(fx.root.join(".moai/manifests")).unwrap();
+    fs::remove_file(fx.root.join(state_rel(&fx.root, "manifests"))).unwrap();
     fs::rename(
-        fx.root.join(".moai/manifests-real"),
-        fx.root.join(".moai/manifests"),
+        fx.root.join(state_rel(&fx.root, "manifests-real")),
+        fx.root.join(state_rel(&fx.root, "manifests")),
     )
     .unwrap();
 
@@ -2727,10 +2744,10 @@ fn declined_record_is_written_for_the_printed_sha_and_nothing_else() {
     let after = fx.tree();
     assert_eq!(
         changed_paths(&before, &after),
-        [fx.root.join(DECLINED_FILE)],
+        [declined_file(&fx.root)],
         "{out}"
     );
-    let record = fs::read_to_string(fx.root.join(DECLINED_FILE)).unwrap();
+    let record = fs::read_to_string(declined_file(&fx.root)).unwrap();
     assert!(
         record.contains("agents-local-merge") && record.contains(sha),
         "{record}"
@@ -2779,7 +2796,7 @@ fn declined_source_changes_ask_again() {
         "skip",
         "declined"
     );
-    let record = fs::read(fx.root.join(DECLINED_FILE)).unwrap();
+    let record = fs::read(declined_file(&fx.root)).unwrap();
     fx.rewrite_backed_up_local(&backup, "# My notes\n\nReply in English.\n");
     let plan = fx.plan();
     let merge = step(&plan, "agents-local-merge");
@@ -2787,7 +2804,7 @@ fn declined_source_changes_ask_again() {
     assert_ne!(merge["preview"]["decline"]["source_sha256"], json!(old));
     assert_eq!(merge["preview"]["decline"]["ask_again_argv"], Value::Null);
     assert_eq!(plan["all_unchanged"], json!(false));
-    assert_eq!(fs::read(fx.root.join(DECLINED_FILE)).unwrap(), record);
+    assert_eq!(fs::read(declined_file(&fx.root)).unwrap(), record);
 }
 
 /// REQ-6: `--ask-again` removes the one step's record and leaves the others.
@@ -2823,7 +2840,7 @@ fn declined_ask_again_removes_only_that_step() {
         "{plan}"
     );
     assert_eq!(step(&plan, "claude-settings-merge")["state"], "skip");
-    let record = fs::read_to_string(fx.root.join(DECLINED_FILE)).unwrap();
+    let record = fs::read_to_string(declined_file(&fx.root)).unwrap();
     assert!(
         record.contains("claude-settings-merge") && !record.contains("agents-local-merge"),
         "{record}"
@@ -2849,7 +2866,10 @@ fn declined_reason_names_backup() {
     let fx = Fx::new();
     let (backup, merge) = fx.with_backed_up_local_decision();
     let reason = merge["reason"].as_str().unwrap();
-    let path = format!(".moai/backups/{backup}/root-files/AGENTS.local.md");
+    let path = state_rel(
+        &fx.root,
+        &format!("backups/{backup}/root-files/AGENTS.local.md"),
+    );
     assert!(reason.contains(&path), "{merge}");
     assert!(
         reason.contains("copy moved") && reason.contains("earlier"),
