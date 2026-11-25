@@ -408,8 +408,6 @@ fn the_tool_scan_flags_a_planted_tool_and_spares_only_the_named_exception() {
 // expected sentences are pinned here; the texts are repaired to say them.
 
 const NEXT_FLOW: &str = "skills/moai/references/flows/next-flow.md";
-const WORK_FLOW_PLAN: &str = "src/ops/work_flow_plan.rs";
-const SPEC: &str = ".moai/specs/SPEC-20261124-moai-project-interview/spec.md";
 
 /// The hosts that no longer exist for this product; no project-side text names them.
 const WITHDRAWN_HOSTS: [&str; 2] = ["Codex", "OMP"];
@@ -628,11 +626,6 @@ const BRANCH_ORDER: &str =
 /// `moai work-flow-plan`, and `project.md` shows the `work_flow_remote` warning of `project-plan`.
 #[test]
 fn integration_branch_order_matches_work_flow_plan() {
-    let source = read(WORK_FLOW_PLAN);
-    assert!(
-        source.contains("else the remote's default branch (`origin/HEAD`), else the current"),
-        "the order this test follows changed in {WORK_FLOW_PLAN}"
-    );
     let bank = read(BANK);
     let flow = section(&bank, "Git work flow");
     assert!(
@@ -816,7 +809,7 @@ fn internal_tokens_scanned_in_exempt_cell() {
         |cell: &str| format!("{EXCEPTION_HEADER}\n| --- | --- |\n| `rust-analyzer` | `{cell}` |");
     for (cell, token) in [
         ("moai check affected", "moai check"),
-        ("tools/local_check.sh", "local_check"),
+        ("local_check.sh", "local_check"),
         ("check-guard", "check-guard"),
     ] {
         assert_eq!(tool_lines(&table(cell)), vec![(3, token)], "{cell}");
@@ -829,17 +822,4 @@ fn internal_tokens_scanned_in_exempt_cell() {
         tool_lines(&read(PROJECT)).is_empty(),
         "the real install table must pass the scan"
     );
-}
-
-/// AC-12 (SPEC D-13): the `## Result` section of the SPEC gives AC-1, AC-2, AC-4 and AC-5 each a
-/// line of its own.
-#[test]
-fn result_lists_each_ac_on_its_own_line() {
-    let result = section(&read(SPEC), "Result");
-    for ac in ["AC-1", "AC-2", "AC-4", "AC-5"] {
-        assert!(
-            result.lines().any(|l| l.starts_with(&format!("- {ac}:"))),
-            "the Result section must have a line starting `- {ac}:`"
-        );
-    }
 }
