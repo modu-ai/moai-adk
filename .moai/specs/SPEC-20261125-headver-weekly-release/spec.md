@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-headver-weekly-release
 title: "HeadVer 규칙 하나: 개발 빌드는 -dev, 릴리스는 배포 월요일의 주와 0부터의 순번"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(2026-11-25T05:00:41Z, 카드 노트 8976): \"승인 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:3939a62d296de5533d0060cf0d886c34fd66eb3780aaa702696e2899b27b5f4d"
 ---
 
 # HeadVer 규칙 하나: 개발 빌드는 -dev, 릴리스는 배포 월요일의 주와 0부터의 순번
