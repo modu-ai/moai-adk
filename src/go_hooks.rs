@@ -177,6 +177,56 @@ pub fn scripts(project: &Path) -> Result<Vec<String>> {
     Ok(out)
 }
 
+/// The Go-generation hook scripts the project's `.claude/settings.json` points at that the
+/// project's [`GO_HOOK_DIR`] does not hold, sorted, each name once (SPEC-20261125-card-worktree-
+/// hook-config). `Ok(vec![])` when there is no settings file, no `hooks` object or nothing is
+/// missing; an error when the settings or the folder cannot be read (the caller decides whether
+/// that matters). A hook that is not a Go-generation script is not a file this looks for. Reads
+/// only: it never changes the settings file or the folder.
+pub fn missing_scripts(project: &Path) -> Result<Vec<String>> {
+    let Some(settings) = settings(project)? else {
+        return Ok(Vec::new());
+    };
+    let Some(hooks) = settings.get("hooks").and_then(Value::as_object) else {
+        return Ok(Vec::new());
+    };
+    let (pointed, _) = split(hooks);
+    if pointed.is_empty() {
+        return Ok(Vec::new());
+    }
+    let present = scripts(project)?;
+    let mut missing: Vec<String> = pointed
+        .into_iter()
+        .map(|e| e.script)
+        .filter(|s| !present.contains(s))
+        .collect();
+    missing.sort();
+    missing.dedup();
+    Ok(missing)
+}
+
+/// The one-line warning of a card take or reclaim into `worktree` (`card` is the card's name):
+/// the hook scripts its settings point at and it does not have, and the next step. `None` when
+/// nothing is missing or the settings cannot be read, so a take is never refused over it.
+pub fn missing_scripts_warning(card: &str, worktree: &Path) -> Option<String> {
+    let missing = missing_scripts(worktree).ok().filter(|m| !m.is_empty())?;
+    let shown: Vec<&str> = missing.iter().take(3).map(String::as_str).collect();
+    let more = if missing.len() > shown.len() {
+        ", …"
+    } else {
+        ""
+    };
+    Some(format!(
+        "{card}: the hook settings in {}/{SETTINGS} point at {} file(s) under {GO_HOOK_DIR}/ that \
+         are not there ({}{more}), so a hook would fail with `No such file or directory`; start \
+         the lane session in this worktree folder so `$CLAUDE_PROJECT_DIR` is the worktree (the \
+         settings file is not changed)",
+        worktree.display(),
+        missing.len(),
+        shown.join(", "),
+    ))
+}
+
 /// The project's `.claude/settings.json` as an object; `None` when the file is absent. A link,
 /// a file over the profile size limit or text that is not a JSON object is refused.
 fn settings(project: &Path) -> Result<Option<Map<String, Value>>> {
@@ -771,6 +821,96 @@ mod tests {
                      format!("${{CLAUDE_PROJECT_DIR}}/.claude/hooks/moai/{script}")],
             "timeout": 10
         })
+    }
+
+    /// A project folder whose `.claude/settings.json` points at `pointed` (as `go_handler`
+    /// writes them, under two events) and whose `.claude/hooks/moai/` holds `present`.
+    fn project_with(pointed: &[&str], present: &[&str]) -> tempfile::TempDir {
+        let t = tempfile::tempdir().unwrap();
+        let claude = t.path().join(".claude");
+        fs::create_dir_all(claude.join("hooks/moai")).unwrap();
+        let handlers: Vec<Value> = pointed.iter().map(|s| go_handler(s)).collect();
+        let half = handlers.len() / 2;
+        let settings = json!({
+            "hooks": {
+                "Stop": [{"hooks": handlers[..half].to_vec()}],
+                "PreToolUse": [{"matcher": "Bash", "hooks": handlers[half..].to_vec()}],
+            },
+            "permissions": {"allow": ["Bash(ls)"]},
+        });
+        fs::write(claude.join("settings.json"), settings.to_string()).unwrap();
+        for name in present {
+            fs::write(claude.join("hooks/moai").join(name), "#!/bin/sh\n").unwrap();
+        }
+        t
+    }
+
+    #[test]
+    fn missing_scripts_names_only_what_the_settings_point_at_and_the_folder_lacks() {
+        let t = project_with(
+            &[
+                "handle-stop.sh",
+                "handle-pre-tool.sh",
+                "handle-stop.sh",
+                "ok.sh",
+            ],
+            &["ok.sh", "extra-not-pointed-at.sh"],
+        );
+        // sorted, each name once; a script that is there or that nothing points at is not named
+        assert_eq!(
+            missing_scripts(t.path()).unwrap(),
+            vec![
+                "handle-pre-tool.sh".to_string(),
+                "handle-stop.sh".to_string()
+            ]
+        );
+        // a hook that is not a Go-generation script is not a file this check looks for
+        let other = json!({"hooks": {"Stop": [{"hooks": [
+            {"type": "command", "command": "moai hook stop"},
+            {"type": "command", "command": "/usr/local/bin/other.sh"},
+        ]}]}});
+        fs::write(t.path().join(".claude/settings.json"), other.to_string()).unwrap();
+        assert!(missing_scripts(t.path()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn missing_scripts_is_empty_without_settings_or_when_every_file_is_there() {
+        let t = tempfile::tempdir().unwrap();
+        assert!(missing_scripts(t.path()).unwrap().is_empty());
+        let t = project_with(&["a.sh", "b.sh"], &["a.sh", "b.sh"]);
+        assert!(missing_scripts(t.path()).unwrap().is_empty());
+        // the hook folder itself may be absent: then every pointed-at script is missing
+        let t = project_with(&["a.sh", "b.sh"], &[]);
+        fs::remove_dir_all(t.path().join(".claude/hooks")).unwrap();
+        assert_eq!(missing_scripts(t.path()).unwrap(), vec!["a.sh", "b.sh"]);
+    }
+
+    #[test]
+    fn missing_scripts_reads_only_and_refuses_settings_it_cannot_read() {
+        let t = project_with(&["a.sh", "b.sh"], &["a.sh"]);
+        let before: Vec<_> = walk_names(t.path());
+        missing_scripts(t.path()).unwrap();
+        assert_eq!(walk_names(t.path()), before, "the check wrote something");
+        fs::write(t.path().join(".claude/settings.json"), "not json").unwrap();
+        assert!(missing_scripts(t.path()).is_err());
+    }
+
+    /// Every path below `root`, sorted: what a read-only check must leave unchanged.
+    fn walk_names(root: &Path) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut stack = vec![root.to_path_buf()];
+        while let Some(dir) = stack.pop() {
+            for e in fs::read_dir(&dir).unwrap().flatten() {
+                let p = e.path();
+                let len = fs::metadata(&p).map(|m| m.len()).unwrap_or(0);
+                out.push(format!("{} {len}", p.strip_prefix(root).unwrap().display()));
+                if p.is_dir() {
+                    stack.push(p);
+                }
+            }
+        }
+        out.sort();
+        out
     }
 
     #[test]

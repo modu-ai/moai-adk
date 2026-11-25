@@ -375,3 +375,116 @@ fn ac5_a_live_reservation_without_a_worktree_is_still_refused() {
     assert!(message.contains("the lease runs until"), "{message}");
     assert_eq!(w.dump(), before, "a refusal wrote something");
 }
+
+/// The hook scripts the settings of a worktree point at, the way the Go generation wrote them,
+/// and the ones the worktree holds.
+fn hook_settings(worktree: &Path, pointed: &[&str], present: &[&str]) {
+    let claude = worktree.join(".claude");
+    fs::create_dir_all(claude.join("hooks/moai")).unwrap();
+    let handlers: Vec<Value> = pointed
+        .iter()
+        .map(|s| {
+            json!({"type": "command",
+                   "command": format!("\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/{s}")})
+        })
+        .collect();
+    let settings = json!({"hooks": {"Stop": [{"hooks": handlers}]}});
+    fs::write(claude.join("settings.json"), settings.to_string()).unwrap();
+    for name in present {
+        fs::write(claude.join("hooks/moai").join(name), "#!/bin/sh\n").unwrap();
+    }
+}
+
+/// The lines of an answer's `warnings` that name the hook settings, one per line.
+fn hook_warnings(answer: &Value) -> String {
+    let all: Vec<&str> = answer["warnings"]
+        .as_array()
+        .map(|a| a.iter().filter_map(Value::as_str).collect())
+        .unwrap_or_default();
+    all.into_iter()
+        .filter(|s| s.contains("hook settings"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// SPEC-20261125-card-worktree-hook-config AC-2 (REQ-1, REQ-2, REQ-3): a take names the hook
+/// scripts the worktree's settings point at and the worktree lacks, in one warning line; with
+/// every file there, with no settings file or with settings it cannot read, there is no such line
+/// and the take still succeeds.
+#[test]
+fn the_hook_settings_of_the_worktree_are_checked_by_a_take() {
+    let w = world();
+    hook_settings(
+        &w.wt_a,
+        &["handle-stop.sh", "handle-pre-tool.sh", "ok.sh"],
+        &["ok.sh"],
+    );
+    let card = w.ready_card("src/one/");
+    let got = w.take(&w.wt_a, &sid(1), &card, &["--branch", "lane-a"]);
+    assert_eq!(got["state"], json!("active"), "{got}");
+    let line = hook_warnings(&got);
+    assert_eq!(line.lines().count(), 1, "one line: {line}");
+    assert!(
+        line.contains("handle-pre-tool.sh, handle-stop.sh"),
+        "{line}"
+    );
+    assert!(
+        !line.contains("ok.sh"),
+        "a script that is there is not named: {line}"
+    );
+    assert!(line.contains(text(&w.wt_a)), "names the worktree: {line}");
+    assert!(
+        line.contains("start the lane session in this worktree folder"),
+        "{line}"
+    );
+    // nothing was written into the worktree's hook folder
+    assert!(!w.wt_a.join(".claude/hooks/moai/handle-stop.sh").exists());
+
+    // every file is there: no line
+    hook_settings(&w.wt_b, &["a.sh", "b.sh"], &["a.sh", "b.sh"]);
+    let other = w.ready_card("src/two/");
+    let got = w.take(&w.wt_b, &sid(2), &other, &["--branch", "lane-b"]);
+    assert_eq!(got["state"], json!("active"), "{got}");
+    assert_eq!(hook_warnings(&got), "", "{got}");
+
+    // no settings file: no line
+    let third = w.ready_card("src/three/");
+    let got = w.take(&w.plain, &sid(3), &third, &["--worktree", text(&w.plain)]);
+    assert_eq!(hook_warnings(&got), "", "{got}");
+
+    // settings that cannot be read: no line, the take succeeds
+    fs::create_dir_all(w.plain.join(".claude")).unwrap();
+    fs::write(w.plain.join(".claude/settings.json"), "not json").unwrap();
+    let fourth = w.ready_card("src/four/");
+    let got = w.take(&w.plain, &sid(4), &fourth, &["--worktree", text(&w.plain)]);
+    assert_eq!(got["state"], json!("active"), "{got}");
+    assert_eq!(hook_warnings(&got), "", "{got}");
+    let _ = &w.host;
+}
+
+/// SPEC-20261125-card-worktree-hook-config AC-2 (REQ-1, REQ-2): a reclaim into a worktree names
+/// the missing hook scripts too, and says nothing when none is missing.
+#[test]
+fn the_hook_settings_of_the_worktree_are_checked_by_a_reclaim() {
+    let w = world();
+    hook_settings(&w.wt_a, &["handle-stop.sh"], &[]);
+    let card = w.ready_card("src/one/");
+    w.take(&w.plain, &sid(1), &card, &[]);
+    w.end_lease();
+    let got = result(&w.reclaim(&w.wt_a, &sid(2), &card, "1"));
+    let line = hook_warnings(&got);
+    assert_eq!(line.lines().count(), 1, "one line: {got}");
+    assert!(line.contains("handle-stop.sh"), "{line}");
+
+    let w = world();
+    hook_settings(&w.wt_a, &["handle-stop.sh"], &["handle-stop.sh"]);
+    let card = w.ready_card("src/one/");
+    w.take(&w.plain, &sid(1), &card, &[]);
+    w.end_lease();
+    let got = result(&w.reclaim(&w.wt_a, &sid(2), &card, "1"));
+    assert_eq!(hook_warnings(&got), "", "{got}");
+    assert!(
+        got.get("warnings").is_none(),
+        "no warnings key without a warning: {got}"
+    );
+}
