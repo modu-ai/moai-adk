@@ -1068,15 +1068,31 @@ fn ac9_reasons_carry_the_class_and_no_command_byte() {
     for (cmd, class) in probes {
         let run = w.run(S::Own, cmd, "default");
         assert_eq!(parse_verdict(&run, cmd).as_deref(), Some(class), "{cmd}");
-        assert!(
-            !run.stdout.contains(marker),
-            "the reason echoes the command: {}",
-            run.stdout
-        );
         let value: Value = serde_json::from_str(run.stdout.trim()).unwrap();
         let reason = value["hookSpecificOutput"]["permissionDecisionReason"]
             .as_str()
             .unwrap();
+        if class == "unreadable" {
+            // SPEC-20261125-boundary-unreadable-detail, REQ-1: an `unreadable` reason names the
+            // part it could not read, and only there. The other four classes still echo nothing.
+            let (head, part) = reason
+                .split_once("Unread part:")
+                .unwrap_or_else(|| panic!("no unread part named: {reason}"));
+            assert!(
+                !head.contains(marker),
+                "the marker leaks before the tail: {reason}"
+            );
+            assert!(
+                part.contains(marker),
+                "the tail does not name the part: {reason}"
+            );
+        } else {
+            assert!(
+                !run.stdout.contains(marker),
+                "the reason echoes the command: {}",
+                run.stdout
+            );
+        }
         assert!(reason.len() < 400, "{} bytes: {reason}", reason.len());
         assert!(
             reason.starts_with(&format!("moai-boundary/{class}:")),
@@ -2844,6 +2860,247 @@ fn the_n_letter_loosens_no_other_command() {
         if got.as_deref() != want {
             bad.push(format!("  {cmd:?}: want {want:?}, got {got:?}"));
         }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// SPEC-20261125-boundary-unreadable-detail, REQ-1 to REQ-3 and AC-1: an `unreadable` deny says
+// which part of the command it could not read. The general sentence stays as the start of the
+// reason; the part comes after it. The hook only judges the text; no command is executed.
+
+/// The marker the reason puts in front of the unread command.
+const UNREAD_PART: &str = "Unread part: ";
+
+/// The most characters of an unread command a reason names.
+const FRAGMENT_LIMIT: usize = 80;
+
+/// The full reason of a command the hook denies as `unreadable`.
+fn unreadable_reason(w: &World, cmd: &str) -> String {
+    let run = w.run(S::Own, cmd, "default");
+    assert_eq!(
+        parse_verdict(&run, cmd).as_deref(),
+        Some("unreadable"),
+        "class of {cmd:?}"
+    );
+    let value: Value = serde_json::from_str(run.stdout.trim()).unwrap();
+    value["hookSpecificOutput"]["permissionDecisionReason"]
+        .as_str()
+        .unwrap()
+        .to_owned()
+}
+
+/// The reason of a command that stops at a depth limit: it names no part, so it is the general
+/// text on its own, the text every other detail starts with.
+fn general_unreadable_reason(w: &World) -> String {
+    let nested = format!("{}true{}", "echo $(".repeat(9), ")".repeat(9));
+    let reason = unreadable_reason(w, &nested);
+    assert!(
+        !reason.contains(UNREAD_PART),
+        "a depth limit names no part: {reason}"
+    );
+    reason
+}
+
+/// What follows the marker; the reason ends with it.
+fn named_part(reason: &str) -> &str {
+    reason
+        .rsplit_once(UNREAD_PART)
+        .unwrap_or_else(|| panic!("no unread part in: {reason}"))
+        .1
+}
+
+#[test]
+fn an_unreadable_deny_names_the_part_it_could_not_read() {
+    let w = World::new();
+    let general = general_unreadable_reason(&w);
+    let mut bad = Vec::new();
+    // The part is the innermost command the hook could not read, as the text spells it.
+    let named: [(&str, &str); 7] = [
+        ("ls; rm -rf $X", "rm -rf $X"),
+        ("for d in a b; do rm -rf $d; done", "rm -rf $d"),
+        ("ls; $CMD arg", "$CMD arg"),
+        ("sh -c 'rm -rf $X'", "rm -rf $X"),
+        // A `$X` inside double quotes is expanded by the outer shell, so the shell string is
+        // itself the computed part and the outer command is the one named.
+        ("sh -c \"rm -rf $X\"", "sh -c \"rm -rf $X\""),
+        ("echo $(ls; rm -rf $X)", "rm -rf $X"),
+        ("rm -rf \"$HOME/x\"", "rm -rf \"$HOME/x\""),
+    ];
+    for (cmd, part) in named {
+        let reason = unreadable_reason(&w, cmd);
+        if !reason.starts_with(&general) {
+            bad.push(format!("  {cmd:?}: the general sentence is gone: {reason}"));
+        }
+        if named_part(&reason) != part {
+            bad.push(format!(
+                "  {cmd:?}: want part {part:?}, got {:?}",
+                named_part(&reason)
+            ));
+        }
+    }
+    // The inner command is named, not the shell string that holds it.
+    let inner = unreadable_reason(&w, "sh -c 'rm -rf $X'");
+    assert!(
+        !inner.contains("sh -c"),
+        "the outer command is named: {inner}"
+    );
+    // A part in the middle of a longer command line is the one command, not the whole line.
+    let line = unreadable_reason(&w, "ls; rm -rf $X; ls -l");
+    assert_eq!(named_part(&line), "rm -rf $X", "{line}");
+    // A part is cut to 80 characters, counted in characters and not bytes: the last character of
+    // a cut part is the ellipsis, and a part of exactly the limit is not cut.
+    let head = "rm -rf $X ";
+    let fill_to = |chars: usize, fill: char| {
+        let tail = fill.to_string().repeat(chars - head.chars().count());
+        format!("ls; {head}{tail}")
+    };
+    for fill in ['a', 'é'] {
+        let exact = unreadable_reason(&w, &fill_to(FRAGMENT_LIMIT, fill));
+        let part = named_part(&exact);
+        if part.chars().count() != FRAGMENT_LIMIT || part.ends_with('…') {
+            bad.push(format!(
+                "  {fill:?}: a part of 80 characters was cut: {part:?}"
+            ));
+        }
+        let over = unreadable_reason(&w, &fill_to(FRAGMENT_LIMIT + 1, fill));
+        let part = named_part(&over);
+        let kept: String = part.chars().take(FRAGMENT_LIMIT - 1).collect();
+        if part.chars().count() != FRAGMENT_LIMIT
+            || !part.ends_with('…')
+            || !fill_to(FRAGMENT_LIMIT + 1, fill).contains(&kept)
+        {
+            bad.push(format!(
+                "  {fill:?}: a part of 81 characters is not cut to 80 with an ellipsis: {part:?}"
+            ));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// REQ-2: the reason goes back to the model and into the record, so a part that holds a
+// secret-shaped word or a control character is not named; only the command word is.
+
+#[test]
+fn a_secret_shaped_or_control_fragment_names_the_command_word_alone() {
+    let w = World::new();
+    let general = general_unreadable_reason(&w);
+    // A word the secret filter flags, built here so that no such word sits in this file.
+    let secret = ["gh", "p_", "0123456789abcdef"].concat();
+    let esc = '\u{1b}';
+    let mut bad = Vec::new();
+    // The part, the command word the reason names instead, and what must not appear.
+    let cases: Vec<(String, &str, String)> = vec![
+        (format!("ls; rm -rf $X {secret}"), "rm", secret.clone()),
+        (
+            format!("ls; rm -rf $X token={secret}"),
+            "rm",
+            secret.clone(),
+        ),
+        (format!("sh -c 'rm -rf $X {secret}'"), "rm", secret.clone()),
+        (format!("ls; rm -rf \"a{esc}b\" $X"), "rm", esc.to_string()),
+        ("ls; rm -rf \"a\nb\" $X".to_owned(), "rm", "\n".to_owned()),
+        // A computed command word is named as written when the rest holds the secret.
+        (format!("ls; $CMD {secret}"), "$CMD", secret.clone()),
+        // The command word itself holds the secret or a control character: not even it is named.
+        (
+            format!("{}_$X arg", &secret[..4]),
+            "(command word withheld)",
+            secret[..4].to_owned(),
+        ),
+        (
+            format!("\"$X{esc}\" arg"),
+            "(command word withheld)",
+            esc.to_string(),
+        ),
+    ];
+    for (cmd, want, hidden) in &cases {
+        let reason = unreadable_reason(&w, cmd);
+        if !reason.starts_with(&general) {
+            bad.push(format!(
+                "  {cmd:?}: the general sentence is gone: {reason:?}"
+            ));
+        }
+        if named_part(&reason) != *want {
+            bad.push(format!(
+                "  {cmd:?}: want part {want:?}, got {:?}",
+                named_part(&reason)
+            ));
+        }
+        if reason.contains(hidden.as_str()) {
+            bad.push(format!(
+                "  {cmd:?}: the reason holds {hidden:?}: {reason:?}"
+            ));
+        }
+        if reason.chars().any(char::is_control) {
+            bad.push(format!("  {cmd:?}: the reason holds a control character"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// REQ-3: a command over the size limit and syntax that cannot be split into commands name no
+// command; they say so. A depth or count limit keeps the general text.
+
+#[test]
+fn an_oversized_or_unsplittable_command_says_so() {
+    let w = World::new();
+    let general = general_unreadable_reason(&w);
+    let mut bad = Vec::new();
+    let over = "git status; echo ".to_owned() + &"a".repeat(262_145 - "git status; echo ".len());
+    let cases: [(&str, String, &str); 5] = [
+        (
+            "oversized",
+            over,
+            " The command text is over the size limit.",
+        ),
+        (
+            "unterminated quote",
+            "rm -rf \"build".to_owned(),
+            " It holds syntax that cannot be split into commands.",
+        ),
+        (
+            "function definition",
+            "f() { rm -rf x; }; f".to_owned(),
+            " It holds syntax that cannot be split into commands.",
+        ),
+        (
+            "case arm",
+            "case $x in a) rm -rf y;; esac".to_owned(),
+            " It holds syntax that cannot be split into commands.",
+        ),
+        // The inner text is the one that cannot be split, not the shell string around it.
+        (
+            "inside a shell string",
+            "sh -c 'rm -rf \"build'".to_owned(),
+            " It holds syntax that cannot be split into commands.",
+        ),
+    ];
+    for (what, cmd, tail) in &cases {
+        let reason = unreadable_reason(&w, cmd);
+        if reason != format!("{general}{tail}") {
+            bad.push(format!("  {what}: {reason:?}"));
+        }
+    }
+    // A depth limit and a count limit name nothing: the general text, and no command text.
+    let commands = format!("git status{}", ";true".repeat(2048));
+    let count = unreadable_reason(&w, &commands);
+    if count != general {
+        bad.push(format!("  count limit: {count:?}"));
     }
     assert!(
         bad.is_empty(),
