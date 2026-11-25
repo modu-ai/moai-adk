@@ -157,6 +157,9 @@ impl World {
             &["config", "user.email", "fixture@example.invalid"],
         );
         fs::write(project.join("a.txt"), "a\n").unwrap();
+        // A root `Cargo.toml` makes the fixture a Rust repository, so a wide `check affected` run
+        // plans the (fake) cargo steps instead of the profile's declared checks.
+        fs::write(project.join("Cargo.toml"), "[workspace]\n").unwrap();
         // The SPEC every fixture card names: a card is landed only when its SPEC is in the tip.
         let made = home
             .command(&[
@@ -181,7 +184,7 @@ impl World {
             String::from_utf8_lossy(&made.stdout)
         );
         fs::write(&spec_file, filled(&fs::read_to_string(&spec_file).unwrap())).unwrap();
-        git(&project, &["add", "a.txt", ".moai/specs"]);
+        git(&project, &["add", "a.txt", "Cargo.toml", ".moai/specs"]);
         if let Some(text) = table {
             fs::create_dir_all(project.join("tools")).unwrap();
             fs::write(project.join("tools/repo_scans.json"), text).unwrap();

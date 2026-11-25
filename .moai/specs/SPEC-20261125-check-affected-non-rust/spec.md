@@ -85,4 +85,27 @@ created: 2026-11-25
 
 ## Result
 
-(구현 뒤에 채워요.)
+구현 에이전트가 채워요(이어받은 레인 agent-7, 2026-11-25T03:28Z 시계 기준). 감사가 다시 확인해요. SPEC revision 1, 승인 digest `sha256:8b859b883a82a780c2aa1e08f9ca404c1feeef73b11f3d22585cca2f068abb28`(리더 결정 노트 8890 의 인용, `moai spec show` 로 같은 값을 다시 읽었어요). macOS arm64, 이 워크트리, 기준은 NeXT `0befa9cba6` 를 한 번 머지한 `868df65825` 위예요.
+
+- AC-1…AC-6 met: `tests/check_affected_non_rust.rs` 7개 통과(`cargo nextest run`, 로그 `target/c487/baseline-merged.log`: 합친 tip 에서 9개 통과 = 통합 7 + 단위 2; 이웃 8개 대상 `target/c487/neighbours.log` 는 67개 중 66개 통과, 1개 실패를 아래 회귀로 고쳤어요). 고치기 전 RED 는 이전 레인이 기록했어요(`target/c487/red.log`: 새 7개 중 4개가 맞는 이유로 실패).
+- AC-7 met: `summary_line_not_run_pass_and_fail` 통과. AC-8 met: `a_not_run_summary_line_is_no_receipt` 통과(`src/card/ready_receipt.rs`, 코드는 안 바꿨어요).
+- AC-6 의 `--list` 비교: 이 저장소의 `check affected 0befa9cba6..HEAD --list` 를 변경 전 빌드(`moai` 빌드 26)와 이 빌드로 돌려 `jq -S .result` 를 `diff` 하면 같아요(`runner` nextest, `rust_targets` 127, 단계 `diff_check fmt ops_rustfmt test_tables clippy test`).
+- 이웃 테스트의 회귀 둘을 찾아 고쳤어요(REQ-5 의 가정이 틀린 두 고정물): `tests/check_affected_touch.rs` 의 `a_changed_link_is_skipped_and_named` 와 `tests/card/card_land_batch_cli.rs` 의 `scans_the_wide_run_of_this_program_covers_the_scans_and_lands_every_head` 는 `Cargo.toml` 도 `.rs` 도 없는 저장소를 Rust 로 썼어요. 비 Rust 로 읽혀 `not_run`(PASS 아님)이 나와 실패했고, 두 고정물에 루트 `Cargo.toml` 한 줄씩을 넣어 둘 다 통과해요(37개 통과, `target/c487/neighbours3.log`). Rust 판정(D-1)은 바꾸지 않았어요.
+- 실제 Bun 실행(카드 기준 5): bun 1.4.4 가 있어요. 임시 프로젝트(`package.json`, `bun.lock`, `src/index.ts`, `src/index.test.ts`, 프로필 `checks` 둘 `bun test`·`bun run lint`)에서 `--list` 는 `diff_check`, `check:test`, `check:lint` 만 내고(`sh -c`, heavy, cargo 단계 없음), 실제 실행은 `bun test` 1 pass, 린트 번들 성공으로 `check-affected base=41ebdb18a398 head=ed94ca996af9 targets=0 scans=none test-threads=5 diff_check=0 check=0 result=PASS`, `summary.txt` 와 같아요. 임시 HOME 의 임시 장부(`ledger-register-apply`, 진짜 HOME 아님)에서 같은 헤드의 READY 노트가 수락됐어요(`card note` 응답 `ok: true`). 프로필에서 `checks` 를 뺀 다음 커밋은 `result=not_run`(`not_run.reason` = the profile declares no `checks`)이고 READY 노트는 `has no PASS check-affected receipt … result=not_run` 으로 거절되고 장부에는 수락된 노트 하나뿐이에요.
+- 위험 경로 실제 실행(`sh -c` 로 프로필 명령을 시작하는 자리, 같은 임시 프로젝트): 복합 명령(`echo one && false || echo two`)은 `one`, `two` 를 쓰고, 따옴표와 파이프(`printf '%s\n' "a b" | wc -c`)는 그대로 돌고, 신호로 끝나는 명령(`kill -TERM $$`)은 `check=143`, 8초 걸리는 자식(`sleep 8`)은 12:10:50→12:10:58 동안 슬롯 하나를 잡았다가 풀었고(`heavy-slot.log`; 상태에 남은 항목은 다른 프로세스의 것), 앞 단계가 실패해도 뒤 단계(`exit 3`)가 이어서 돌아 `result=FAIL` 이에요. 시간 제한은 없어요: 멈추는 확인은 자식이 끝날 때까지 슬롯을 잡아요(cargo 단계와 같은 동작이라 이 SPEC 이 바꾸지 않았어요; 후속 후보).
+- guard-mutant(셸과 cargo 로 한 슬롯에서 12개, 스크립트 `target/c487/mutants.sh`, 결과 `target/c487/mutants2.out`, 마지막 줄 `summary: 12 of 12 killed`, 이어서 `git status --short` 가 비었어요; 이전 레인의 Python 스크립트는 돌리지 않았어요):
+  - guard-mutant: a_rust_repository_keeps_its_steps | `Cargo.toml` 판정을 지움 | exit 100
+  - guard-mutant: a_rust_repository_keeps_its_steps | `.rs` 추적 판정을 지움 | exit 100
+  - guard-mutant: no_declared_check_answers_not_run_with_the_next_step | 선언 없음이 PASS 로 답함 | exit 100
+  - guard-mutant: a_failed_cheap_step_is_fail_not_not_run | 실패한 단계를 not_run 이 가림 | exit 100
+  - guard-mutant: a_repository_without_rust_plans_no_cargo_step | 선언된 확인을 가벼운 단계로 | exit 100
+  - guard-mutant: a_repository_without_rust_plans_no_cargo_step | 선언된 확인을 모두 건너뜀 | exit 100
+  - guard-mutant: a_repository_without_rust_plans_no_cargo_step | 선언된 확인 순서를 뒤집음 | exit 100
+  - guard-mutant: no_declared_check_answers_not_run_with_the_next_step | 읽을 수 없는 프로필을 빈 선언으로 읽음 | exit 100
+  - guard-mutant: no_declared_check_answers_not_run_with_the_next_step | 다음 걸음 문구에서 프로필 파일 이름을 뺌 | exit 100
+  - guard-mutant: summary_line_not_run_pass_and_fail | not_run 낱말을 PASS 로 | exit 100
+  - guard-mutant: a_not_run_summary_line_is_no_receipt | 관문이 not_run 을 PASS 로 받음 | exit 100
+  - guard-mutant: no_declared_check_answers_not_run_with_the_next_step | PASS 가 아니면 영수증 파일을 안 씀 | exit 100
+- 알려진 한계: `moai check affected` 는 `not_run` 일 때도 종료 코드 0 이에요(READY 관문은 `result=not_run` 줄로 거절하고, 이 SPEC 이 종료 코드를 정하지 않았어요). 종료 코드로만 성공을 읽는 스크립트는 `not_run` 을 성공으로 읽을 수 있으니 후속에서 정해요.
+- outside-scope: tests/check_affected_touch.rs 1줄 추가, tests/card/card_land_batch_cli.rs 3줄 추가(카드 범위를 `card scope` 로 넓혔고 이유는 카드에 있어요).
+- 돌리지 않은 것: 전체 `cargo test`(리더 몫), 다른 호스트의 실행, Windows 와 Linux. READY 영수증(`check affected --card`)은 이 Result 를 커밋한 뒤 한 번 내요.
