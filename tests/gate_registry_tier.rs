@@ -993,7 +993,7 @@ fn the_three_judgments_give_one_tier_for_a_test_targets_registration() {
         f(&mut scans);
         registry(scans)
     };
-    let scenes = vec![
+    let scenes = [
         (
             "a name added",
             w.head(
