@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261125-session-names-project-prefix
 title: "Session names carry the project: <project>-leader and <project>-agent-<english name>, with a registry check before a message is sent"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
 branch: spec/session-names-project-prefix-20261125
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9133): \"승인, D-2~D-9 기본값 A (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:b757e1e5a36b401a0ee6be96d5386cfb3b9f1aa053e032c035864894224325c3"
 ---
 
 # Session names carry the project: <project>-leader and <project>-agent-<english name>, with a registry check before a message is sent

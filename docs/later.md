@@ -22,3 +22,7 @@ The lines after the dated ones came from the leader's carry-over of closed cards
 - 상태줄: 브랜치가 원격 통합 브랜치보다 몇 커밋 앞서고 뒤처졌는지 다시 표시(사용자 2026-11-24, upstream 이 없으면 릴리스 기준 브랜치와 비교)
 - 클라우드 세션 지원: 저장소 .claude/ 에 스킬·훅 커밋 + 시작 스크립트로 moai 설치(공개 릴리스 뒤에 판단)
 - 카드 scope 명령이 공유 파일과 겹치는 글롭을 거절할 때 겹친 파일만 빼고 넣는 선택지
+- 승인 기록을 쓰는 일이 손작업이라 `spec check --all` 을 빠뜨리면 넓은 검사가 실패해요(2026-11-25, interview_missing): 승인 블록을 쓰고 digest·Interview·전체 검사를 한 번에 하는 `moai spec approve-record` 명령
+- check affected 의 TMPDIR 이름이 길거나 세션 id·`agent-` 글자를 담으면 테스트가 깨져요(2026-11-25 세 번, sccache SUN_LEN): TMPDIR 을 받을 때 길이와 글자를 검사해 거절하고, `nextest_with_log` 가 RUSTC_WRAPPER·SCCACHE_* 를 지워요
+- 착지 머지에서 tools/repo_scans.json 의 긴 `--test` 한 줄과 source-manifest.json 해시가 카드마다 충돌해요(2026-11-25 네 번): 테스트 이름을 한 줄에 하나씩 쓰는 배열로 바꾸고 해시는 `moai` 명령이 다시 계산해요
+- agents/audit.md 와 workflows/run.md 에 옛 docs-only 줄("the lander reads the change and lands it") 사본이 남았어요(C-522 감사): 세 곳 복사를 한 곳 가리키기로 줄여요
