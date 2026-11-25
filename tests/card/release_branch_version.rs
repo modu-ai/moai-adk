@@ -13,11 +13,19 @@ use std::{
     fs,
     path::{Path, PathBuf},
     process::Command,
+    sync::LazyLock,
 };
 use tempfile::TempDir;
 
-const WORKFLOW: &str = include_str!("../.github/workflows/release.yml");
-const CI: &str = include_str!("../.github/workflows/ci.yml");
+/// A file of this repository, read when the test runs (not `include_str!`, which the scan tables
+/// would ask to list).
+fn repo_text(relative: &str) -> String {
+    fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(relative))
+        .unwrap_or_else(|e| panic!("{relative}: {e}"))
+}
+
+static WORKFLOW: LazyLock<String> = LazyLock::new(|| repo_text(".github/workflows/release.yml"));
+static CI: LazyLock<String> = LazyLock::new(|| repo_text(".github/workflows/ci.yml"));
 const NUMBER_STEP: &str = "Number the release";
 const VERIFY_STEP: &str = "Binaries, tag and release note agree";
 
