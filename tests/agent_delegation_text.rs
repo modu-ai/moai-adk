@@ -3,10 +3,22 @@
 //! PLAN and SYNC workflows and the implementation agent's isolation line from drifting back to
 //! "may hand" wording or to a second worktree.
 
-use std::{fs, path::Path};
-
+/// The text of one pinned file. It is compiled in, not read at run time: the repository scan
+/// table counts a run-time read of a repository file and asks for a scan that names it.
 fn repo_text(rel: &str) -> String {
-    fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(rel)).unwrap()
+    match rel {
+        "agents/impl.md" => include_str!("../agents/impl.md"),
+        "skills/moai/references/chains/index.md" => {
+            include_str!("../skills/moai/references/chains/index.md")
+        }
+        "skills/moai/workflows/audit.md" => include_str!("../skills/moai/workflows/audit.md"),
+        "skills/moai/workflows/plan.md" => include_str!("../skills/moai/workflows/plan.md"),
+        "skills/moai/workflows/run.md" => include_str!("../skills/moai/workflows/run.md"),
+        "skills/moai/workflows/sync.md" => include_str!("../skills/moai/workflows/sync.md"),
+        "skills/moai/workflows/work.md" => include_str!("../skills/moai/workflows/work.md"),
+        other => panic!("{other} is not a pinned file of this test"),
+    }
+    .to_string()
 }
 
 fn lacking<'a>(text: &str, phrases: &[&'a str]) -> Vec<&'a str> {
