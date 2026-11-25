@@ -1,10 +1,11 @@
 ---
 id: SPEC-20261125-integration-guard-install
 title: "the integration branch guard hook is installed by the managed git-hook installer, a session start notices a missing hook, and card finish asks the same verdict check as the landing"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
 branch: spec/20261125-integration-guard-install
+approval: {by: user, at: 2026-11-25, basis: "user's pick 'approve, D-1 refuses in every mode (Recommended)' to the leader's selection question about revision 1, relayed in leader note 8937 of this card (the leader re-read the SPEC at 2026-11-25T03:46:57Z), approving revision 1 at head fbfc58557b; recorded by the lane, not approved by it", digest: "sha256:53688f93f71b697d555ff94269323ce9d1e25c0a2070f3df8287eb7e11386f57"}
 ---
 
 # the integration branch guard hook is installed by the managed git-hook installer, a session start notices a missing hook, and card finish asks the same verdict check as the landing
@@ -22,6 +23,11 @@ branch: spec/20261125-integration-guard-install
 5. 세션 시작 훅(`src/hook_session_start.rs`)은 파일만 읽고 다른 프로그램을 시작하지 않아요. 한 줄을 더하는 자리가 있어요.
 
 이 SPEC 은 세 가지를 해요. (a) 설치기가 `reference-transaction` 을 세 번째 관리 훅으로 설치하고 기록을 써요. (b) 세션 시작이 훅이 없으면 한 줄로 알려요. (c) `card finish` 가 착지와 같은 판정 검사를 해요. 이 저장소에 실제로 설치하는 일은 사용자의 선택이에요(Decisions D-2).
+
+## Interview
+
+- Q1: 이 SPEC 의 첫 판(revision 1, head fbfc58557b)을 승인할까요? → A: 승인(사용자의 선택 "승인, D-1 은 모든 모드에서 거절 (Recommended)", 리더 노트 8937 이 옮겼어요)
+- Q2: D-1, `card finish` 가 감사 판정 없는 head 를 만나면 어떻게 할까요? → A: 선택지 a, 모든 모드에서 거절해요(같은 선택)
 
 ## Non-goals
 
