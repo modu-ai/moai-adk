@@ -1070,33 +1070,37 @@ fn safe_force_push_is_not_asked_and_the_rest_is_as_before() {
     }
 }
 
-/// Audit repair of SPEC-20261125-preflight-safe-force-push: a create-only lease with no refspec
-/// on the line is pushed by the remote's settings, and a `+` push refspec or `mirror` setting
-/// there overwrites refs the lease does not cover, so the hook asks; with a refspec on the line
-/// git ignores those settings and the push is not asked about.
+/// Audit repair of SPEC-20261125-preflight-safe-force-push: git applies `remote.<name>.push` and
+/// `remote.<name>.mirror` to a push with no refspec and to one that names a ref by one word, and
+/// then a create-only lease does not stop the overwrite (measured with real git, see the SPEC
+/// Result). So the hook asks about every create-only lease line while such a setting exists, and
+/// does not ask once it is gone.
 #[test]
-fn safe_force_push_lease_without_refspec_is_asked_when_settings_force() {
+fn safe_force_push_lease_is_asked_when_settings_force() {
     let (_tmp, repo, _bare) = push_repo();
     let git = common::git::git_ok;
     let answer = |command: &str| force_push_preflight(&repo, command, None).0;
+    let lines = [
+        "git push --force-with-lease=work: net work",
+        "git push --force-with-lease=work: net",
+        "git push --force-with-lease=work: -u net",
+        "git push --force-with-lease=work:",
+    ];
+    assert_eq!(answer(lines[0]), "", "asked with no push setting");
     for (key, value) in [
         ("remote.net.push", "+refs/heads/*:refs/heads/*"),
         ("remote.net.mirror", "true"),
     ] {
         git(&repo, &["config", key, value]);
-        for command in [
-            "git push --force-with-lease=work: net",
-            "git push --force-with-lease=work: -u net",
-            "git push --force-with-lease=work:",
-        ] {
+        for command in lines {
             assert_eq!(answer(command), "ask", "{key}: not asked: {command}");
         }
-        assert_eq!(
-            answer("git push --force-with-lease=work: net work"),
-            "",
-            "{key}: asked with a refspec on the line"
-        );
         git(&repo, &["config", "--unset", key]);
+        assert_eq!(
+            answer(lines[0]),
+            "",
+            "{key}: still asked after unsetting it"
+        );
     }
 }
 
@@ -1227,6 +1231,21 @@ fn safe_force_push_env_that_changes_config_is_asked() {
     ] {
         let decision = force_push_preflight_env(&repo, "git push -f loc work", None, &[var]).0;
         assert_eq!(decision, "ask", "not asked with {var:?}");
+    }
+    // The create-only lease line is read in the same folder, so the same variables ask there too.
+    let lease = "git push --force-with-lease=work: net work";
+    assert_eq!(
+        force_push_preflight_env(&repo, lease, None, &[]).0,
+        "",
+        "asked without extra env: {lease}"
+    );
+    for var in [
+        ("GIT_CONFIG_COUNT", "0"),
+        ("GIT_DIR", "/nonexistent/.git"),
+        ("GIT_CONFIG_GLOBAL", "/dev/null"),
+    ] {
+        let decision = force_push_preflight_env(&repo, lease, None, &[var]).0;
+        assert_eq!(decision, "ask", "lease not asked with {var:?}");
     }
 }
 
