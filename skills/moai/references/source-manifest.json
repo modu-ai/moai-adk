@@ -267,7 +267,7 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "eb938d33488190502d1197a3843d76f87234eb3a331785287618cb86934a9c53",
+      "sha256": "d485a60137203a24056dcd5022ed961b829febd32538e8d8be35d558c1656adf",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
@@ -444,7 +444,7 @@
       "sha256": "e5f0478412b9c09fb3b770c7503e339fc72e9d60733e9b8d9cf160e7d7838dd3"
     },
     "workflows/plan.md": {
-      "sha256": "aa55ae822a25bacacc62c37d780e9abb782b8156e3e90bab63d8ac81f8fee384",
+      "sha256": "9e5dbba8ce80f1a44599f62d0f59343bbfbf27c8c1a4e8293c3e445ebf63bee0",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
