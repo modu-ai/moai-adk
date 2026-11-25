@@ -1,10 +1,11 @@
 ---
 id: SPEC-20261125-integration-guard-install
 title: "the integration branch guard hook is installed by the managed git-hook installer, a session start notices a missing hook, and card finish asks the same verdict check as the landing"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-25
 branch: spec/20261125-integration-guard-install
+approval: {by: user, at: 2026-11-25, basis: "user's pick 'approve (Recommended)' to the leader's selection question about revision 2, relayed in leader note 8943 of this card (the leader read the SPEC with spec show at 2026-11-25T03:52:34Z), approving revision 2 at head 082a20e849; recorded by the lane, not approved by it", digest: "sha256:3393eb77b7805b892cbf12e5a3fba1d8d9a42c57d84db6edf7c969a8ff0a5461"}
 ---
 
 # the integration branch guard hook is installed by the managed git-hook installer, a session start notices a missing hook, and card finish asks the same verdict check as the landing
@@ -29,6 +30,7 @@ branch: spec/20261125-integration-guard-install
 
 - Q1: 이 SPEC 의 첫 판(revision 1, head fbfc58557b)을 승인할까요? → A: 승인(사용자의 선택 "승인, D-1 은 모든 모드에서 거절 (Recommended)", 리더 노트 8937 이 옮겼어요)
 - Q2: D-1, `card finish` 가 감사 판정 없는 head 를 만나면 어떻게 할까요? → A: 선택지 a, 모든 모드에서 거절해요(같은 선택)
+- Q3: 이 SPEC 의 개정 2(head 082a20e849)를 승인할까요? → A: 승인(사용자의 선택 "승인 (Recommended)", 리더 노트 8943 이 옮겼어요)
 
 ## Non-goals
 
