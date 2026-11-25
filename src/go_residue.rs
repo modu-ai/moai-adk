@@ -103,6 +103,13 @@ pub(crate) fn contained(project: &Path, rel: &str) -> bool {
     crate::go_state::plain_relative(rel) && !crate::go_state::linked_component(project, rel)
 }
 
+/// A secret-shaped name anywhere in the path (`.moai/.env`, `.moai/config/credentials.json`),
+/// judged component by component like go-state does. The walk judges bare file names, but a
+/// manifest names whole paths, so the survey, the apply and the revert all use this one check.
+pub(crate) fn secret_path(rel: &str) -> bool {
+    crate::go_state::has_secret_component(rel)
+}
+
 /// Reads the manifest named by the chain and returns its path (relative to the project)
 /// with its `files` map. The chain: `.moai/manifest.json`, a `manifest.json` under any
 /// `.moai-backup*` folder, a `manifest.json` under `.moai/backups/go-markers-*`, then the
@@ -310,7 +317,7 @@ pub fn survey(project: &Path) -> Survey {
             refused += 1;
             continue;
         }
-        if is_secret(rel) || secret_name(rel) {
+        if secret_path(rel) {
             continue;
         }
         let full = project.join(rel);

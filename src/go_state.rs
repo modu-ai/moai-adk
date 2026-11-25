@@ -130,7 +130,7 @@ fn secret_name(name: &str) -> bool {
     crate::home_state::is_secret(name) || crate::worktree_include::secret_name(name)
 }
 
-fn has_secret_component(rel: &str) -> bool {
+pub(crate) fn has_secret_component(rel: &str) -> bool {
     Path::new(rel)
         .components()
         .any(|c| c.as_os_str().to_str().is_some_and(secret_name))

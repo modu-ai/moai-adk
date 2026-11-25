@@ -782,6 +782,52 @@ fn paths_that_leave_the_project_are_never_read_or_moved() {
     );
 }
 
+/// AC-1 (REQ-11): a manifest that names secret-shaped files by their whole path (a bare-name
+/// check on the full path misses `.moai/.env`) never makes the survey hash them or the apply
+/// move them; the ordinary file beside them still moves.
+#[test]
+fn a_manifest_that_names_a_secret_shaped_path_never_moves_it() {
+    let mut fx = Fx::new();
+    fx.deployed(".moai/policies/core/a.md", "# core policy\n");
+    let secrets = [
+        (".moai/.env", "TOKEN=1\n"),
+        (".moai/.npmrc", "//registry/:_authToken=x\n"),
+        (".moai/config/credentials.json", "{\"k\": 1}\n"),
+        (".moai/keys/deploy.pem", "-----BEGIN-----\n"),
+    ];
+    for (rel, body) in secrets {
+        fx.deployed(rel, body);
+    }
+    fx.manifest_at(".moai/manifest.json");
+    fx.git_commit_all();
+    let before = fx.bytes(true);
+    let plan = fx.update_plan();
+    let found = step(&plan, "go-residue");
+    let items = found["preview"]["items"].as_array().unwrap();
+    for (rel, body) in secrets {
+        assert!(
+            items.iter().all(|i| i["path"] != json!(rel)),
+            "{rel} is an item of the step: {found}"
+        );
+        assert!(
+            items.iter().all(|i| i["sha256"] != json!(sha(body))),
+            "the digest of {rel} was read into the step"
+        );
+    }
+    let done = fx.apply_printed(&plan, &[]);
+    assert_eq!(done["ok"], json!(true), "{done}");
+    assert_eq!(
+        done["result"]["moved"],
+        json!([".moai/policies/core/a.md"]),
+        "{done}"
+    );
+    let after = fx.bytes(true);
+    for (rel, _) in secrets {
+        let p = fx.root.join(rel);
+        assert_eq!(after.get(&p), before.get(&p), "{rel} changed");
+    }
+}
+
 /// AC-3 (REQ-3): a receipt is not its own authority. A forged one that names a path outside
 /// the project (through `..`, as an absolute path or through a linked folder) is refused by
 /// the revert before it moves anything.
@@ -801,6 +847,7 @@ fn a_forged_receipt_naming_a_path_outside_the_project_is_refused() {
         "../outside/x.md".to_string(),
         abs.to_str().unwrap().to_string(),
         ".moai/linkdir/y.md".to_string(),
+        ".moai/.env".to_string(),
     ] {
         let mut v: Value = serde_json::from_str(&original).unwrap();
         v["moves"].as_array_mut().unwrap().push(json!({

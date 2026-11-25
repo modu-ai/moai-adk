@@ -13,7 +13,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{fs, path::Path};
 
-use crate::go_residue::{contained, Survey};
+use crate::go_residue::{contained, secret_path, Survey};
 use crate::go_state::{
     make_dirs, make_private_dirs, move_exclusive, parent_of, read_bounded_text, sha256_file,
     still_as_previewed,
@@ -58,7 +58,11 @@ pub fn candidates(survey: &Survey) -> Vec<Candidate> {
     survey
         .items
         .iter()
-        .filter(|i| matches!(i.class, "go_same" | "go_changed") && i.suggested_action == "archive")
+        .filter(|i| {
+            matches!(i.class, "go_same" | "go_changed")
+                && i.suggested_action == "archive"
+                && !secret_path(&i.path)
+        })
         .filter_map(|i| {
             Some(Candidate {
                 path: i.path.clone(),
@@ -119,12 +123,12 @@ fn area_rel(stamp: &str) -> String {
 }
 
 fn guard(root: &Path, rel: &str) -> Result<()> {
-    if contained(root, rel) {
+    if contained(root, rel) && !secret_path(rel) {
         Ok(())
     } else {
         Err(format!(
-            "go-residue refused: {rel} is absolute, holds a `..` component or passes through a \
-             link; nothing was written"
+            "go-residue refused: {rel} is absolute, holds a `..` component, passes through a \
+             link or names a secret-shaped file; nothing was written"
         ))
     }
 }
@@ -492,6 +496,8 @@ mod tests {
             "../outside/x.md".to_string(),
             abs,
             ".moai/linkdir/y.md".to_string(),
+            ".moai/.env".to_string(),
+            ".moai/config/credentials.json".to_string(),
         ] {
             let c = Candidate {
                 path,
