@@ -203,6 +203,9 @@ fn a_changed_link_is_skipped_and_named() {
     git_init(p);
     put(p, "README.md", "x\n");
     put(p, "a/b", "1\n");
+    // A root `Cargo.toml` makes this a Rust repository, so the fake cargo steps run (a repository
+    // with no Rust code runs the profile's checks instead, SPEC-20261125-check-affected-non-rust).
+    put(p, "Cargo.toml", "[workspace]\n");
     let base = commit_all(p, "base");
     // The folder `a` becomes a link to a folder outside; `a/b` is still reachable through it.
     fs::remove_dir_all(p.join("a")).unwrap();
