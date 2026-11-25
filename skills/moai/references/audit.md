@@ -54,7 +54,7 @@ The tier a ready note states never goes below the floor of its changed paths (`s
 ## Rules for every audit
 
 1. Review one exact head against one exact base.
-2. Which checks the auditor runs itself and when a remote run may be cited follow the RUN workflow's section "Check-run rules" (`workflows/run.md`); the verdict names a cited run's id, head and conclusion.
+2. Which checks the auditor runs itself and when a remote run may be cited follow `internal/check-rules`; the verdict names a cited run's id, head and conclusion.
 3. A re-audit checks only the listed repairs and classifies anything new by the four kinds.
 4. A Critical or High security finding blocks. Only an exception record the user approved — finding, severity, reason, scope, approver, expiry — lowers one; a missing or stale scan is unverified, never a pass.
 5. Scratch: one folder per audit, named for it; never read or write another audit's folder.

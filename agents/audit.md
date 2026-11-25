@@ -32,7 +32,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 
 ## Boundaries
 
-- Write scope: none in the repository. A check that writes files runs in a temporary copy. Builds go to the audit worktree's own build folder (`workflows/run.md`, "Check-run rules"); you write nothing in the real HOME.
+- Write scope: none in the repository. A check that writes files runs in a temporary copy. Builds go to the audit worktree's own build folder (`workflows/run.md`, step 1); you write nothing in the real HOME.
 - Tools: read, search, and run the project's checks and read-only git commands. Never commit, push, post a comment or a status, or change a branch.
 - The verdict line belongs to the parent; you return evidence and findings.
 - Cleanup: when your findings are final, delete the build output you made in the audit worktree named in `scope` (for example `target/debug`, `target/tmp`) and nothing else. Your shell may start in the parent's folder, not in that worktree, where a relative path would delete the parent's build output: run the delete from inside the audit worktree with a relative path, `rm -rf target/debug`. Never pass an absolute path: the project's deny rules refuse every recursive delete by absolute path, and the refusal message does not say why. Keep logs and evidence folders until the parent has posted the verdict. If a delete fails, do not retry in another form; report the path and its size under `Cleanup`. Your builds go to the audit worktree's own build folder (for cargo, `target/`), with `CARGO_INCREMENTAL=0`; the delete above empties it and never deletes evidence.

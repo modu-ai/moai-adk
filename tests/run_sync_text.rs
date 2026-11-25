@@ -419,9 +419,12 @@ fn ac4_the_long_rules_have_their_new_homes() {
             .filter(|(_, body)| body.contains(prefix))
             .map(|(rel, _)| rel.as_str())
             .collect();
-        if holders != [contract.as_str()] {
+        // The audit agent file carries a byte copy of the four lines that other tests pin
+        // (`audit_text_facts`, `next_flow_skill_scan`), so it is the one allowed second holder.
+        let allowed = [contract.as_str(), "agents/audit.md"];
+        if holders.iter().any(|h| !allowed.contains(h)) || !holders.contains(&contract.as_str()) {
             problems.push(format!(
-                "the tier line `{prefix}` must stand only in {contract}, found in {holders:?}"
+                "the tier line `{prefix}` must stand only in {contract} (and the audit agent's copy), found in {holders:?}"
             ));
         }
     }
