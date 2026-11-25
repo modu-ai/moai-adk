@@ -183,7 +183,7 @@
       }
     },
     "references/internal/core-rules.md": {
-      "sha256": "240ae3df12816e58182dcdfb76e82dac76e31dede2bc5992d067ae983244326c",
+      "sha256": "d5238f0602cbed4199c385d8ec59cee29c7d034b491bddb71b97918eb749e83b",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-core-rules",
@@ -258,7 +258,7 @@
       }
     },
     "references/internal/questions.md": {
-      "sha256": "c034e1754b55634b527754ebb139f36bca551f5b4f31dbb7f218e92a5eb6303a",
+      "sha256": "a8894322b4b2cc40cfa6dcd76447307018d7dbe509d90664b23a207feb71e868",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-questions",

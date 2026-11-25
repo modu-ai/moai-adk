@@ -8,8 +8,10 @@ use std::{fs, path::Path};
 /// sentence of rule 7 and the recurring-problem rule 22, and to 5120 bytes by
 /// SPEC-20261121-report-rules-in-core-rules for the two report rules that moved out of the
 /// skill entry (the same bytes leave `SKILL.md`, so the two files load as many bytes as before),
-/// and to 5632 bytes by SPEC-20261123-lsp-official-plugins for rule 25 (official LSP plugins).
-const CORE_RULES_MAX_BYTES: usize = 5632;
+/// and to 5632 bytes by SPEC-20261123-lsp-official-plugins for rule 25 (official LSP plugins),
+/// and to 6144 bytes for the own text of the eleven rules that were history pointers (a rule a
+/// session cannot read in the skill is no rule for a user project, which has no history file).
+const CORE_RULES_MAX_BYTES: usize = 6144;
 
 fn package(rel: &str) -> String {
     fs::read_to_string(
