@@ -82,4 +82,11 @@ created: 2026-11-25
 
 ## Result
 
-(구현 뒤에 적어요.)
+- AC-1 met: `card_land_audited_merge_cli::a_clean_merge_of_the_audited_head_closes_the_card_in_one_call`(enforce·observe 두 모드), 진짜 `git merge --no-ff` 로 만든 머지는 `a_merge_made_by_git_merge_lands_in_one_call`.
+- AC-2 met: `every_check_of_the_audited_verdict_still_refuses_the_merge`(self_verdict·lander_review·receipt_missing·verdict_fail·scans_missing).
+- AC-3 met: `a_merge_whose_first_parent_is_not_the_tip_is_refused`.
+- AC-4 met: `a_resolved_or_edited_merge_is_refused_with_the_paths_the_auditor_must_read`.
+- AC-5 met: `a_merge_without_two_parents_or_without_a_verdict_on_the_second_is_refused_as_before`.
+- AC-6 met: `a_verdict_on_the_merge_itself_decides_and_the_second_parent_is_not_read`.
+- AC-7 met: `check affected --card` 로 이웃 모듈(`card_land_cli`, `card_land_batch_cli`, `card_land_checked_out_cli`)까지 158개 대상이 통과했어요(`result=PASS`).
+- 덧붙인 고정: `a_slice_of_an_edited_merge_follows_the_mode_of_the_check` (`--keep-open` 슬라이스는 모드를 따라요).
