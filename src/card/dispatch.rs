@@ -554,7 +554,7 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     // Where the scope comes from (SPEC-20261123-take-scope-stored): the given one, the card's
     // own, the linked SPEC's `write:` list, the last reservation's scope. A scope that is not the
     // card's own is kept on the card once the reservation is made, so a released card is not
-    // empty again; the overlap check of `reserve` runs first and a refusal stores nothing.
+    // empty again; `reserve` runs first and a refusal stores nothing.
     let own = take_scope::own_scope(ledger.conn(), card_id)
         .map_err(|e| ledger::LedgerError::from(e).to_string())?;
     let own_is_empty = own.as_ref().is_some_and(Vec::is_empty);
