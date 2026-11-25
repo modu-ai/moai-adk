@@ -4,7 +4,7 @@
 //! and the lifetime limit of three reclaims is not used.
 //!
 //! Every command runs the built binary against a temporary HOME and a temporary git repository
-//! that holds the session registry; the real `~/.moai` is not read or written. The session
+//! that holds the session registry; the real home state folder is not read or written. The session
 //! registry is built only through `moai session-register`, an empty `<name>.live` file and the
 //! registry-lease rewrite of `card_reclaim_early_cli`. The clock cannot be set, so a test that
 //! needs a lease to end moves it in the ledger directly.
