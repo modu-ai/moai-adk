@@ -225,6 +225,7 @@ pub const GROUPS: &[Group] = &[
             ("trailers", false),
             ("trailer-check", false),
             ("bundle", false),
+            ("build-number", false),
             ("audit-clone-plan", false),
             ("audit-slot", false),
             ("audit-prep", false),
@@ -578,6 +579,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("trailers", &["trailers --spec SPEC-20261117-session-trailer"]),
     ("trailer-check", &["trailer-check origin/v2026.11.0..HEAD"]),
     ("bundle", &["bundle check C-1 C-2", "bundle build C-1 C-2"]),
+    ("build-number", &["build-number next", "build-number show"]),
     (
         "audit-gate",
         &["audit-gate < input.json", "audit-gate --require-pass < input.json"],
