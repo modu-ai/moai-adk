@@ -147,4 +147,9 @@ approval: {by: user, at: 2026-11-25, basis: "user's pick 'approve (Recommended)'
 - AC-7: met — `path_root_direct_sites` 의 기준선 스캔이 저장소를 통과하고 가짜 입력(목록 밖 파일, 상수 철자, 목록 안 파일의 초과)을 막아요. `tools/repo_scans.json` 에 항목 하나를 더했어요. 뮤턴트 "초과 비교 완화"에 실패했어요.
 - AC-8: met — `cargo nextest run --locked --offline --lib` 와 위 AC 대상, `repo_scans_table`, `state_folder_literal_scan` 을 한 번에 돌려 2080개 중 2080개 통과(느린 시험 하나, 기존). 단위 시험 둘(`the_bound_layout_is_pinned` 은 `BOUND_VERSION` 2 와 새 digest, `system_yaml_counts_only_with_a_version_under_moai` 는 `none`)과 `allow.tsv` 네 줄을 갱신했어요.
 
+판 5 구현 끝(2026-11-25, 가지 `spec/project-state-move-20261121-r3`, 조각 1). 조각 2(커밋 거절 가드)는 이 판 밖이에요(Non-goals). 삭제 전에 추적 보고서 137개를 사용자 수준 보고서 폴더의 사본과 `cmp` 로 하나씩 맞춰 137개 모두 같음을 읽은 뒤 `git rm` 했어요.
+
+- AC-9: met — `go_state_cli` 의 새 시험 `a_hidden_marker_blocks_the_plan_when_only_a_set_aside_entry_is_tracked`: 추적된 항목이 `set-aside` 하나뿐이어도 마커가 `.gitignore` 에 가려지면 계획이 이동 0 으로 막히고 마커와 규칙을 대며, 규칙을 풀면 준비돼요. 이 시험은 수리 전 코드에서 실패했어요(종료 코드 100).
+- AC-10: met — `reports_untracked` 시험 다섯: 저장소가 보고서 폴더 아래 추적 파일 0개이고, 스캔이 임시 git 프로젝트의 추적된 보고서(공백이 든 경로와 `.gitkeep` 포함)를 두 폴더 모두 이름 대고, 닮은 폴더는 지나가고, git 이 실패하면 통과가 아니라 실패하고, 저장소 `.gitignore` 가 두 보고서 폴더 아래 파일을 가려요. 이 시험 둘은 변경 전 트리에서 실패했어요(종료 코드 100). `tools/repo_scans.json` 에 항목 `no-tracked-reports` 를 더했어요.
+
 남은 일: `src/project_detect.rs`·`src/project_update.rs` 는 C-256 이 착지한 뒤(project_detect 는 kept 이름만 든 `.moai/` 를 아직 폴더로 읽어요, 효과 안 쟀어요). `docs/rust-product-path.md` 의 go_state 행에 `--set-aside` 가 없어요(범위 밖). `specs/` 병합은 기존 규칙대로 같은 SPEC id 충돌이면 전체 보류예요. 안 돌린 것: Windows·Linux 이름 바꾸기, 실제 HOME, 이 저장소 자신에 적용.
