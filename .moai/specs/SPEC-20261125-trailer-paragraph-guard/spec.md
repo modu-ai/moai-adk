@@ -84,4 +84,16 @@ created: 2026-11-25
 
 ## Result
 
-(구현 전. 구현하면서 채워요.)
+`src/trailers.rs` 에 문단을 나눠 마지막 문단 앞의 `Key: value` 줄만으로 된 문단에서 `Moai-*` 키를 찾는 함수 하나(`split_trailer_lines`)를 두고, 커밋 시점의 판정(`message_file_check`)과 범위 판정(`findings`)이 같은 함수를 써요. 커밋 시점에는 `split_trailer_block`(fails true)로 거절하고 키·줄 번호·고치는 법을 말해요. 범위에서는 같은 이름의 지적을 싣되 fails false 예요. `install/commit-msg` 는 머리 주석만 바뀌었고 동작은 그대로예요. 참조 문서 `commit-trailers.md` 에 한 문장과 예시를 넣고 소스 매니페스트의 해시를 갱신했어요. 설치된 훅과 `moai` 바이너리는 건드리지 않았어요: 새 규칙은 그 바이너리가 이 변경을 담은 빌드로 바뀐 뒤에 커밋 시점에서 작동해요(Risks).
+
+- AC-1: met — `cargo test --locked --offline --test card trailer` 안의 `trailer_paragraph_guard_cli::ac1_` 통과(exit 1, `split_trailer_block` 세 개, 키 이름과 줄 번호와 고치는 법 한 줄).
+- AC-2: met — 같은 실행의 `ac2_` 통과(설치할 `commit-msg` 훅이 갈라진 메시지에 exit 1, 빈 줄만 지운 메시지에 exit 0).
+- AC-3: met — 같은 실행의 `ac3_` 통과(범위의 지적은 fails false 이고 `failing` 이 늘지 않으며, `spec/` 브랜치에서는 전과 같이 `missing_spec` 한 건만 실패해요).
+- AC-4: met — 같은 실행의 `ac4_` 통과(한 문단, `Co-Authored-By` 없음, 문장 안 인용, `Moai-Spec` 줄 뒤에 산문이 이어진 문단).
+- AC-5: met — 개정 3 문구 기준이에요(개정 3 의 digest 승인은 아직이에요). 같은 범위 `origin/v2026.11.0..268cfa807f73736947c77fa7a25e59e5a105d703 --branch release/probe` 를 분할 검사가 없는 빌드(설치된 `moai`)와 이 빌드로 쟀어요: `failing` 137 → 137, 지적 187 → 238 이고 늘어난 51건은 모두 `split_trailer_block`(fails false)이에요. 이름을 댄 커밋은 정확히 AC-5 의 19개이고 그 밖에는 없어요(`target/c501/range-after-fixed.json`, `range-before-fixed.json`). 19개를 `git interpret-trailers --parse` 와 한 개씩 대조했어요(`verify-split.sh`): 모두 메시지의 `Moai-` 줄 수가 git 이 읽는 수보다 많아서 오탐은 0 이에요. 비머지 커밋 중 그런 커밋이 지적에서 빠진 것도 없어요. 범위 판정은 설계상 머지 커밋을 건너뛰어서 같은 모양의 머지 커밋 19개는 대상 밖이에요.
+- AC-6: met — 같은 실행의 `ac6_` 통과(한 문장과 빈 줄 없는 예시가 참조 문서에 있어요).
+- AC-7: met — `--test card trailer` 23개(새 5개와 이웃 `trailer_check_cli`, `trailer_verified_cli` 포함) 통과, `--lib trailers::` 13개 통과, `--lib audit_gate::` 10개 통과.
+
+지킴이 뮤턴트(한 줄씩 고치고 `--lib trailers::` 한 번, 파일을 복사본으로 되돌리고 같은지 확인, 모두 exit 101 로 잡혔어요): 문단이 모두 `Key: value` 줄이어야 한다는 조건을 항상 참으로 → `a_whole_last_paragraph_and_quoted_keys_are_not_split` 실패; 마지막 문단을 제외하는 `paragraphs.pop()` 을 없앰 → 같은 테스트와 `comment_lines_and_the_scissors_tail_are_not_the_message`, `the_message_file_check_fails_on_a_split_block_and_names_the_fix` 실패; 범위 지적의 `fails` 를 true 로 → `a_range_names_a_split_block_without_failing_it` 실패; 주석 줄 건너뛰기를 끔 → `comment_lines_and_the_scissors_tail_are_not_the_message` 실패; 가위선 자르기를 끔 → 같은 테스트 실패. 키가 `Moai-*` 인지 보는 바깥 조건을 항상 참으로 바꾼 뮤턴트는 안쪽 줄별 키 필터가 같은 결과를 내서 살아남았어요(동치 변이). 그 중복 조건을 지웠고(커밋 `35d42a7431`) 지운 뒤 `--lib trailers::` 13개가 통과해요.
+
+이번에 하지 않은 것: 이미 착지한 커밋의 메시지 다시 쓰기, `audit-gate` 의 저자 읽기 변경(D-3 의 기본 선택지가 그대로예요), 설치된 훅과 `moai` 바이너리 갱신(착지 뒤 리더의 `moai update`). AC-5 가 보여 준 19개 중 5개는 이 SPEC 의 첫 측정 뒤에 착지한 같은 모양의 커밋이에요: 같은 실수가 계속 나고 있어서 새 규칙이 작동하기 시작하는 시점이 중요해요.
