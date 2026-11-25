@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-approval-digest-requirements-only
 title: "A SPEC approval binds only the requirements and acceptance criteria, so a changed plan or test place needs no new approval"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9179): \"승인, D-1~D-4 기본값 A (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:d0cbcecaf3f3c15d7606ed2ca8127665bc6b95cb6b532c446bc21f91ef9f07f6"
 ---
 
 # A SPEC approval binds only the requirements and acceptance criteria, so a changed plan or test place needs no new approval

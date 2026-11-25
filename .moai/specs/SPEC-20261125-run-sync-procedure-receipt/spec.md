@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-run-sync-procedure-receipt
 title: "Cut RUN and SYNC to numbered steps and a failure table, and state the receipt rule once"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9183): \"승인, D-1~D-6 기본값 A (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:8cafbb9d36a702bce1cb95663d7d6301fccd1f86daeeb612022530f63d1e4d59"
 ---
 
 # Cut RUN and SYNC to numbered steps and a failure table, and state the receipt rule once

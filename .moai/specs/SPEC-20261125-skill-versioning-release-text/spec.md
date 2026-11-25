@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-skill-versioning-release-text
 title: "The shipped versioning text states today's release rule once, in short sentences, and the interview only points to it"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9200): \"승인, O-1~O-5 기본값 (a) (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:c167a317d3de8cfa3a65812b1e3a7a8f875d865c05767cf21d6121ba450d498c"
 ---
 
 # The shipped versioning text states today's release rule once, in short sentences, and the interview only points to it

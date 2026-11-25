@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-plan-card-branch-without-spec
 title: "PLAN and SDD text: a card branch without a SPEC for tier 0 and 1"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9186): \"승인, D-1~D-3 기본값 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:c297e8bc36bdd9f01eb8597c6dbd8d89c8211ea0763c583b000fd84f29003f21"
 ---
 
 # PLAN and SDD text: a card branch without a SPEC for tier 0 and 1
