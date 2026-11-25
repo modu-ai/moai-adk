@@ -1652,6 +1652,104 @@ mod tests {
         assert!(!shipped_code_languages().is_empty());
     }
 
+    /// SPEC-20261125-detect-language-server-catalog REQ-1: the shipped file's `language_servers`
+    /// rows hold exactly the fourteen (language, server, plugin, executable) tuples the earlier
+    /// table held, no language repeats, each value can be recorded and each language is one the
+    /// shipped `code_extensions` rows know. The shipped file as a whole is accepted and all four
+    /// kinds of shipped row are there, so a rule that rejects its own file cannot empty the
+    /// catalog unseen.
+    #[test]
+    fn the_shipped_catalog_holds_the_earlier_language_servers() {
+        let earlier: [(&str, &str, &str, &str); 14] = [
+            ("c", "clangd", "clangd-lsp", "clangd"),
+            ("cpp", "clangd", "clangd-lsp", "clangd"),
+            ("csharp", "csharp-ls", "csharp-lsp", "csharp-ls"),
+            ("go", "gopls", "gopls-lsp", "gopls"),
+            ("java", "jdtls", "jdtls-lsp", "jdtls"),
+            (
+                "javascript",
+                "typescript-language-server",
+                "typescript-lsp",
+                "typescript-language-server",
+            ),
+            ("kotlin", "kotlin-lsp", "kotlin-lsp", "kotlin-lsp"),
+            (
+                "lua",
+                "lua-language-server",
+                "lua-lsp",
+                "lua-language-server",
+            ),
+            ("php", "intelephense", "php-lsp", "intelephense"),
+            ("python", "pyright", "pyright-lsp", "pyright-langserver"),
+            ("ruby", "ruby-lsp", "ruby-lsp", "ruby-lsp"),
+            (
+                "rust",
+                "rust-analyzer",
+                "rust-analyzer-lsp",
+                "rust-analyzer",
+            ),
+            ("swift", "sourcekit-lsp", "swift-lsp", "sourcekit-lsp"),
+            (
+                "typescript",
+                "typescript-language-server",
+                "typescript-lsp",
+                "typescript-language-server",
+            ),
+        ];
+        let file: Value = serde_json::from_str(CATALOG_JSON).unwrap();
+        let code_languages: Vec<&str> = file["code_extensions"]
+            .as_array()
+            .expect("code_extensions")
+            .iter()
+            .map(|row| row["language"].as_str().unwrap())
+            .collect();
+        let rows = file["language_servers"]
+            .as_array()
+            .expect("language_servers");
+        let mut tuples: Vec<(String, String, String, String)> = Vec::new();
+        for row in rows {
+            let field = |key: &str| {
+                row[key]
+                    .as_str()
+                    .unwrap_or_else(|| panic!("{key} of {row}"))
+                    .to_string()
+            };
+            let (language, server, plugin, executable) = (
+                field("language"),
+                field("server"),
+                field("plugin"),
+                field("executable"),
+            );
+            for name in [&language, &server, &plugin, &executable] {
+                assert!(recordable(name), "{name}");
+            }
+            assert!(
+                code_languages.contains(&language.as_str()),
+                "{language} has no code extension row"
+            );
+            tuples.push((language, server, plugin, executable));
+        }
+        let mut languages: Vec<&String> = tuples.iter().map(|t| &t.0).collect();
+        languages.sort();
+        languages.dedup();
+        assert_eq!(languages.len(), tuples.len(), "a language repeats");
+        tuples.sort();
+        let mut want: Vec<(String, String, String, String)> = earlier
+            .iter()
+            .map(|(l, s, p, e)| (l.to_string(), s.to_string(), p.to_string(), e.to_string()))
+            .collect();
+        want.sort();
+        assert_eq!(tuples, want);
+
+        // The shipped file passes its own validation, and the other three kinds of shipped row
+        // are still there: a rule that refused the file would empty all four at once.
+        let parsed: CatalogFile = serde_json::from_str(CATALOG_JSON).unwrap();
+        catalog_file_valid(&parsed).unwrap();
+        assert!(!shipped_manifest_languages().is_empty());
+        assert!(!shipped_code_languages().is_empty());
+        assert!(!shipped().db_rows.is_empty());
+    }
+
     /// SPEC-20261124-project-detect-monorepo REQ-4: the shipped catalog parses, every value in it
     /// can be recorded, and it holds the twelve manifest names the earlier tables held with the
     /// same language and tools.
