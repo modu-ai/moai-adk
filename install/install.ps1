@@ -35,7 +35,7 @@ $RepoUrl = "https://github.com/modu-ai/moai-adk"
 $ReleaseBase = if ($env:MOAI_RELEASE_BASE) { $env:MOAI_RELEASE_BASE } else { "$RepoUrl/releases/download" }
 $ReleaseFeed = if ($env:MOAI_RELEASE_FEED) { $env:MOAI_RELEASE_FEED } else { "$RepoUrl/releases.atom" }
 $ReleaseApi = if ($env:MOAI_RELEASE_API) { $env:MOAI_RELEASE_API } else { "https://api.github.com/repos/modu-ai/moai-adk/releases?per_page=100" }
-$TagPrefix = "moai-cli-v"
+$TagPrefix = "moai-adk-v"
 $IsWin = ($IsWindows -or ($null -eq $IsWindows -and $env:OS -eq "Windows_NT"))
 $Exe = if ($IsWin) { ".exe" } else { "" }
 
@@ -208,7 +208,7 @@ function Get-Url([string]$Url, [string]$OutFile) {
     }
 }
 
-# The first candidate (newest first) that is a moai-cli-v<version> release for the channel. A
+# The first candidate (newest first) that is a moai-adk-v<version> release for the channel. A
 # pre-release is told by the release's own mark; a `-` in the version marks one of the earlier
 # scheme only, because a HeadVer version has no suffix. The feed has no mark, so a HeadVer
 # pre-release cannot be told there and the newest tag is taken (docs/release-checklist.md).
@@ -224,7 +224,7 @@ function Select-Version($Candidates, [string]$Channel) {
     return $null
 }
 
-# The newest moai-cli-v<version> release. /releases/latest is the Go edition's (Rust final
+# The newest moai-adk-v<version> release. /releases/latest is the Go edition's (Rust final
 # releases are published with --latest=false). First the REST list (100 newest, with the draft
 # and prerelease fields); when it cannot be read (no network to the API, or the
 # unauthenticated limit is spent), the releases feed, which holds only the 10 newest entries
@@ -379,7 +379,7 @@ function Main {
         if ($arg -in "--version", "-version") {
             if ($i + 1 -ge $Arguments.Count) { Fail "--version needs a value" }
             $given = [string]$Arguments[++$i]
-            # `v2026.11.0` and the tag `moai-cli-v2026.11.0` name the same version.
+            # `v2026.11.0` and the tag `moai-adk-v2026.11.0` name the same version.
             $Version = $given
             if ($Version.StartsWith($TagPrefix)) { $Version = $Version.Substring($TagPrefix.Length) }
             if ($Version.StartsWith("v")) { $Version = $Version.Substring(1) }

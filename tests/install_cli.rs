@@ -17,6 +17,7 @@
 
 mod common;
 
+use common::CleanEnv;
 use moai_cli::install::{
     plan_receipt, record_receipt, validate_receipt, InstallReceipt, InstallerOwner, ReceiptPlan,
 };
@@ -464,7 +465,7 @@ fn go_updater_feed_contamination_table() {
     assert_eq!(sample[0]["draft"], json!(true));
 
     let rows: Vec<(String, bool)> = vec![
-        ("moai-cli-v2026.11.0-rc.1".into(), true), // decided namespace (B)
+        ("moai-adk-v2026.11.0-rc.1".into(), true), // decided namespace (B)
         ("v2026.11.0-rc.1".into(), true),
         ("v2026.11.0".into(), false),
         ("rust-v2026.11.0-rc.1".into(), true),
@@ -507,14 +508,14 @@ fn go_updater_feed_contamination_table() {
     );
 
     // Decided namespace B: invisible to both channels.
-    let feed = feed_with_candidate(&sample, "moai-cli-v2026.11.0-rc.1", true);
+    let feed = feed_with_candidate(&sample, "moai-adk-v2026.11.0-rc.1", true);
     assert_ne!(
         go_rc_channel_selects(&feed).as_deref(),
-        Some("moai-cli-v2026.11.0-rc.1")
+        Some("moai-adk-v2026.11.0-rc.1")
     );
     assert_ne!(
         go_stable_channel_selects(&feed).as_deref(),
-        Some("moai-cli-v2026.11.0-rc.1")
+        Some("moai-adk-v2026.11.0-rc.1")
     );
     assert_eq!(
         go_update_available(go_rc_channel_selects(&feed).as_deref(), rc_current),
@@ -691,4 +692,283 @@ fn the_first_moai_on_path_is_reported_with_its_generation() {
         .unwrap_or_else(|| panic!("{r}"))
         .clone();
     assert_eq!(item["probed"], json!(false), "{item}");
+}
+
+// --- The install scripts read the release tag family of the release plan -----------------
+// SPEC-20261121-moai-name, slice 6: the scripts pick `moai-adk-v<version>` releases and no
+// longer the earlier family. Every run below uses a temporary HOME and a release list served
+// from file://; the real HOME, the network and the installed binary are never touched, and a
+// run stops at the download because no archive exists.
+
+/// The earlier tag family, joined at run time so no line of this file spells it.
+fn earlier_tag_prefix() -> String {
+    ["moai", "cli", "v"].join("-")
+}
+
+/// The archive target the shell script detects on this machine; `None` on a platform the
+/// installer does not support (the script stops there before it reads a release).
+fn installer_target() -> Option<&'static str> {
+    let say = |flag: &str| {
+        let out = Command::new("uname").arg(flag).output().unwrap();
+        String::from_utf8(out.stdout).unwrap().trim().to_string()
+    };
+    match (say("-s").as_str(), say("-m").as_str()) {
+        ("Darwin", "arm64") => Some("aarch64-apple-darwin"),
+        ("Linux", "x86_64") => Some("x86_64-unknown-linux-gnu"),
+        _ => None,
+    }
+}
+
+struct ReleaseFixture {
+    _tmp: TempDir,
+    root: PathBuf,
+    home: PathBuf,
+    scratch: PathBuf,
+}
+
+impl ReleaseFixture {
+    fn url(&self, name: &str) -> String {
+        format!("file://{}", self.root.join(name).display())
+    }
+}
+
+/// A release list in the two shapes the scripts read: `releases.json` (the REST list, newest
+/// first, left out when `rest_readable` is false so the script falls back to the feed) and
+/// `releases.atom`. `base/` stays empty: no archive exists, so every run ends at the download.
+fn release_fixture(releases: &[(String, bool)], rest_readable: bool) -> ReleaseFixture {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path().join("fixture");
+    let home = tmp.path().join("home");
+    let scratch = tmp.path().join("tmp");
+    for dir in [&root, &home, &scratch, &root.join("base")] {
+        fs::create_dir_all(dir).unwrap();
+    }
+    if rest_readable {
+        let list: Vec<Value> = releases
+            .iter()
+            .map(|(tag, pre)| json!({"tag_name": tag, "draft": false, "prerelease": pre}))
+            .collect();
+        fs::write(root.join("releases.json"), Value::Array(list).to_string()).unwrap();
+    }
+    let entries: String = releases
+        .iter()
+        .map(|(tag, _)| {
+            format!(
+                "<entry><link rel=\"alternate\" type=\"text/html\" \
+                 href=\"https://github.com/modu-ai/moai-adk/releases/tag/{tag}\"/></entry>"
+            )
+        })
+        .collect();
+    fs::write(
+        root.join("releases.atom"),
+        format!("<?xml version=\"1.0\"?><feed>{entries}</feed>"),
+    )
+    .unwrap();
+    ReleaseFixture {
+        _tmp: tmp,
+        root,
+        home,
+        scratch,
+    }
+}
+
+fn install_env(cmd: &mut Command, fx: &ReleaseFixture, path: &str) {
+    cmd.clean_env()
+        .env("PATH", path)
+        .env("HOME", &fx.home)
+        .env("TMPDIR", &fx.scratch)
+        .env("NO_COLOR", "1")
+        .env("POWERSHELL_TELEMETRY_OPTOUT", "1")
+        .env("MOAI_LANGUAGE", "en")
+        .env("MOAI_RELEASE_API", fx.url("releases.json"))
+        .env("MOAI_RELEASE_FEED", fx.url("releases.atom"))
+        .env("MOAI_RELEASE_BASE", fx.url("base"))
+        .current_dir(&fx.root)
+        .stdin(Stdio::null());
+}
+
+fn script_path(name: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("install")
+        .join(name)
+}
+
+/// The output of both streams in one text: the scripts print errors on stderr (shell) or on
+/// the host stream (PowerShell).
+fn text_of(out: &std::process::Output) -> String {
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    )
+}
+
+fn run_install_sh(fx: &ReleaseFixture, args: &[&str]) -> std::process::Output {
+    let mut cmd = Command::new("sh");
+    cmd.arg(script_path("install.sh")).args(args);
+    install_env(&mut cmd, fx, "/usr/bin:/bin:/usr/sbin:/sbin");
+    cmd.output().unwrap()
+}
+
+/// A run that stops before the archive exists writes nothing: the temporary HOME is empty and
+/// the script's own temporary folder is gone.
+fn assert_nothing_written(fx: &ReleaseFixture, text: &str) {
+    for dir in [&fx.home, &fx.scratch] {
+        let left: Vec<_> = fs::read_dir(dir).unwrap().flatten().collect();
+        assert!(left.is_empty(), "{dir:?} holds {left:?}\n{text}");
+    }
+}
+
+fn tag(prefix: &str, version: &str) -> String {
+    format!("{prefix}{version}")
+}
+
+#[test]
+fn install_sh_finds_no_release_when_only_the_earlier_tag_family_exists() {
+    if installer_target().is_none() {
+        eprintln!("unsupported platform: install.sh stops before it reads a release");
+        return;
+    }
+    let earlier = earlier_tag_prefix();
+    for rest_readable in [true, false] {
+        let fx = release_fixture(&[(tag(&earlier, "4.2649.0"), false)], rest_readable);
+        let out = run_install_sh(&fx, &[]);
+        let text = text_of(&out);
+        assert!(!out.status.success(), "{text}");
+        assert!(
+            text.contains("No moai-adk-v* release found for channel stable"),
+            "rest_readable={rest_readable}\n{text}"
+        );
+        assert!(!text.contains("Latest version"), "{text}");
+        assert_nothing_written(&fx, &text);
+    }
+}
+
+#[test]
+fn install_sh_picks_the_moai_adk_tag_family_and_reads_the_version_argument() {
+    if installer_target().is_none() {
+        eprintln!("unsupported platform: install.sh stops before it reads a release");
+        return;
+    }
+    let earlier = earlier_tag_prefix();
+    let releases = [
+        (tag(&earlier, "4.2650.0"), false),
+        (tag("moai-adk-v", "4.2649.1"), true),
+        (tag("moai-adk-v", "4.2649.0"), false),
+    ];
+    // The REST list marks a pre-release, so the stable channel skips 4.2649.1 and the earlier
+    // family; the rc channel takes it.
+    let fx = release_fixture(&releases, true);
+    let text = text_of(&run_install_sh(&fx, &[]));
+    assert!(text.contains("Latest version (stable): 4.2649.0"), "{text}");
+    let text = text_of(&run_install_sh(&fx, &["--channel", "rc"]));
+    assert!(text.contains("Latest version (rc): 4.2649.1"), "{text}");
+    // The feed has no pre-release mark: the newest moai-adk-v tag is taken.
+    let fx = release_fixture(&releases, false);
+    let text = text_of(&run_install_sh(&fx, &[]));
+    assert!(text.contains("Latest version (stable): 4.2649.1"), "{text}");
+    assert!(
+        !text.contains("4.2650.0"),
+        "the earlier family was read: {text}"
+    );
+    // `--version` strips a leading `v` or the tag prefix, and refuses the earlier prefix.
+    for given in ["4.2649.0", "v4.2649.0", "moai-adk-v4.2649.0"] {
+        let text = text_of(&run_install_sh(&fx, &["--version", given]));
+        assert!(
+            text.contains("Installing version: 4.2649.0"),
+            "{given}: {text}"
+        );
+    }
+    let given = tag(&earlier, "4.2649.0");
+    let out = run_install_sh(&fx, &["--version", &given]);
+    let text = text_of(&out);
+    assert!(!out.status.success(), "{text}");
+    assert!(text.contains("Not a version"), "{text}");
+    assert!(!text.contains("Installing version"), "{text}");
+    assert_nothing_written(&fx, &text);
+}
+
+#[test]
+fn install_sh_names_the_moai_adk_tag_in_the_download_address_and_writes_nothing_without_the_archive(
+) {
+    let Some(target) = installer_target() else {
+        eprintln!("unsupported platform: install.sh stops before it reads a release");
+        return;
+    };
+    let fx = release_fixture(&[(tag("moai-adk-v", "4.2649.0"), false)], true);
+    let out = run_install_sh(&fx, &["--version", "4.2649.0"]);
+    let text = text_of(&out);
+    let base = fx.root.join("base");
+    let address = format!(
+        "Downloading from: file://{}/moai-adk-v4.2649.0/moai-cli-{target}.tar.xz",
+        base.display()
+    );
+    assert!(text.contains(&address), "{text}");
+    assert!(!out.status.success(), "{text}");
+    assert!(text.contains("Download failed"), "{text}");
+    assert_nothing_written(&fx, &text);
+}
+
+#[test]
+fn install_ps1_reads_the_same_tag_family_when_pwsh_exists() {
+    let Some(target) = installer_target() else {
+        eprintln!("unsupported platform: install.ps1 stops before it reads a release");
+        return;
+    };
+    // PowerShell writes its own cache and telemetry files under HOME, so even the probe runs
+    // in a temporary one.
+    let probe_home = TempDir::new().unwrap();
+    let probe = Command::new("pwsh")
+        .args(["-NoProfile", "-NonInteractive", "-Command", "exit 0"])
+        .env("PATH", "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin")
+        .env("HOME", probe_home.path())
+        .env("POWERSHELL_TELEMETRY_OPTOUT", "1")
+        .stdin(Stdio::null())
+        .output();
+    if probe.map(|o| !o.status.success()).unwrap_or(true) {
+        eprintln!("pwsh not found: install.ps1 not run");
+        return;
+    }
+    let run = |fx: &ReleaseFixture, args: &[&str]| {
+        let mut cmd = Command::new("pwsh");
+        cmd.args(["-NoProfile", "-NonInteractive", "-File"])
+            .arg(script_path("install.ps1"))
+            .args(args);
+        install_env(
+            &mut cmd,
+            fx,
+            "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin",
+        );
+        cmd.output().unwrap()
+    };
+    let earlier = earlier_tag_prefix();
+    let fx = release_fixture(&[(tag(&earlier, "4.2649.0"), false)], true);
+    let out = run(&fx, &[]);
+    let text = text_of(&out);
+    assert!(!out.status.success(), "{text}");
+    assert!(
+        text.contains("No moai-adk-v* release found for channel stable"),
+        "{text}"
+    );
+    let fx = release_fixture(
+        &[
+            (tag(&earlier, "4.2650.0"), false),
+            (tag("moai-adk-v", "4.2649.0"), false),
+        ],
+        true,
+    );
+    let out = run(&fx, &["--version", "moai-adk-v4.2649.0"]);
+    let text = text_of(&out);
+    let address = format!(
+        "Downloading from: file://{}/moai-adk-v4.2649.0/moai-cli-{target}.tar.xz",
+        fx.root.join("base").display()
+    );
+    assert!(text.contains(&address), "{text}");
+    assert!(text.contains("Download failed"), "{text}");
+    let out = run(&fx, &[]);
+    assert!(
+        text_of(&out).contains("Latest version (stable): 4.2649.0"),
+        "{}",
+        text_of(&out)
+    );
 }

@@ -949,3 +949,48 @@ fn the_jobs_keep_their_settings() {
     assert_eq!(code.matches("shell: bash").count(), 2);
     assert!(plan_job.contains("shell: bash") && build_job.contains("shell: bash"));
 }
+
+/// SPEC-20261121-moai-name REQ-25: the tag family the plan script names, the `TAG_PREFIX` of
+/// `install.sh` and the `$TagPrefix` of `install.ps1` are one string, and neither script nor the
+/// install README spells the earlier family. The earlier family is joined at run time so this
+/// file does not spell it either.
+#[test]
+fn the_install_scripts_and_the_release_plan_name_one_tag_family() {
+    // The plan names the tag as `tag="<family>${version}"`.
+    let family = WORKFLOW
+        .lines()
+        .find_map(|l| {
+            l.trim()
+                .strip_prefix("tag=\"")
+                .and_then(|rest| rest.strip_suffix("${version}\""))
+        })
+        .expect("the plan script names the tag as tag=\"<family>${version}\"")
+        .to_string();
+    assert_eq!(
+        family, "moai-adk-v",
+        "the release plan changed its tag family"
+    );
+    let sh = repo_text("install/install.sh");
+    let ps1 = repo_text("install/install.ps1");
+    assert!(
+        sh.lines().any(|l| l == format!("TAG_PREFIX=\"{family}\"")),
+        "install.sh TAG_PREFIX is not {family:?}"
+    );
+    assert!(
+        ps1.lines()
+            .any(|l| l == format!("$TagPrefix = \"{family}\"")),
+        "install.ps1 $TagPrefix is not {family:?}"
+    );
+    let earlier = ["moai", "cli", "v"].join("-");
+    for (name, text) in [
+        ("install/install.sh", &sh),
+        ("install/install.ps1", &ps1),
+        ("install/README.md", &repo_text("install/README.md")),
+        ("docs/local-rc1-kit.md", &repo_text("docs/local-rc1-kit.md")),
+    ] {
+        assert!(
+            !text.contains(&earlier),
+            "{name} still spells the earlier tag family"
+        );
+    }
+}
