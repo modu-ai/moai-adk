@@ -22,6 +22,7 @@ use super::landed;
 use super::spec_link;
 use super::stale;
 use super::take_scope;
+use super::wip_limit;
 use crate::forge::connector::{HostConnector, HostKind, PrPhase, ProjectRef};
 use crate::ledger::close;
 use crate::ledger::reservation;
@@ -187,20 +188,34 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
         })
         .collect();
     skipped.extend(landed_skips);
-    // The card to work on now: one this session already holds, else the first it could take.
+    // The limit of cards in work and in review (SPEC-20261125-landing-moves-checkout REQ-4): at
+    // it no card is offered to take; the cards that wait for an audit are named instead.
+    let wip = wip_limit::read(project, ledger.conn())?;
+    let audit = wip_limit::audit_needed(ledger.conn(), holder)?;
+    // The card to work on now: one this session already holds, else the first it could take, at
+    // the limit the first card that waits for an audit.
     let (next, next_is) = match (found.mine.first(), found.ready.first()) {
         (Some(m), _) => (
             json!(input::card_name(m.reservation.card_id)),
             json!("mine"),
         ),
+        (None, _) if wip.at_limit() => match audit.first() {
+            Some(c) => (json!(input::card_name(c.card_id)), json!("audit")),
+            None => (Value::Null, json!("limit")),
+        },
         (None, Some(c)) => (json!(input::card_name(c.card_id)), json!("ready")),
         (None, None) => (Value::Null, Value::Null),
     };
+    let audit_needed: Vec<Value> = audit
+        .iter()
+        .map(|c| json!({"name": input::card_name(c.card_id), "card_id": c.card_id, "title": c.title}))
+        .collect();
     Ok(json!({
         "action": "next", "project_id": id, "ledger": "ready", "holder": holder,
         "now": found.now, "next": next, "next_is": next_is,
         "mine": mine, "ready": ready, "skipped": skipped, "warnings": warnings,
         "landing": landing.json(), "stale": stale, "writes": false,
+        "wip": wip.json(), "audit_needed": audit_needed,
     }))
 }
 
@@ -769,14 +784,14 @@ pub fn done(
     Ok(answer)
 }
 
-/// The M-Flow landing evidence for `card done` (SPEC-20261120-card-done-mflow): when the
-/// project's profile names the m-flow work_flow with an integration branch, the newest
+/// The NeXT-Flow landing evidence for `card done` (SPEC-20261120-card-done-mflow): when the
+/// project's profile names the NeXT-Flow work_flow with an integration branch, the newest
 /// `card.landed` event's head must be an ancestor of that branch's tip — checked here with
 /// git, because the ledger never spawns commands. `None` for any other flow, which keeps the
 /// merged-pull-request rule. The profile problem is never swallowed silently
 /// (SPEC-20261121-mixed-profile-read): the second value is a hint for the merged-pull-request
 /// refusal of a card with a landing on record whose profile could not be read, or was read but
-/// does not name the m-flow work_flow with an integration branch: which profile, and why. A
+/// does not name the NeXT-Flow work_flow with an integration branch: which profile, and why. A
 /// project whose profile is only a stub (the card commands write one) keeps the old rule and
 /// closes through a merged pull request.
 fn mflow_landing(
@@ -819,14 +834,14 @@ fn mflow_landing(
     let not_used = |why: String, ledger: &mut ledger::WriteLedger| -> Option<String> {
         recorded(
             format!(
-                "the project profile {profile_rel} does not name the m-flow work_flow with an \
+                "the project profile {profile_rel} does not name the NeXT-Flow work_flow with an \
                  integration branch ({why})"
             ),
             ledger,
         )
     };
     let wf = match profile.work_flow {
-        Some(w) if w.flow == "m-flow" => w,
+        Some(w) if crate::profile::is_local_flow(&w.flow) => w,
         Some(w) => {
             let hint = not_used(format!("its work_flow is {}", w.flow), ledger);
             return Ok((None, hint));
@@ -838,7 +853,7 @@ fn mflow_landing(
     };
     let Some(branch) = wf.integration_branch else {
         let hint = not_used(
-            "its m-flow work_flow has no integration_branch".to_string(),
+            "its NeXT-Flow work_flow has no integration_branch".to_string(),
             ledger,
         );
         return Ok((None, hint));
@@ -886,7 +901,7 @@ fn mflow_landing(
 }
 
 /// `card landed C-n --head <sha>`: record that this card's head landed on the local
-/// integration branch (M-Flow, SPEC-20261120-card-done-mflow). The card must be in `review`;
+/// integration branch (NeXT-Flow, SPEC-20261120-card-done-mflow). The card must be in `review`;
 /// one `card.landed` event names the head and the by, with the writing session as the actor.
 pub fn landed(project: &Path, home: &Path, reference: &str, head: &str, by: &str) -> Result<Value> {
     let card_id = card_id("landed", reference)?;

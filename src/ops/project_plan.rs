@@ -26,5 +26,16 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     if let Some(wf) = moai_cli::profile::plan_work_flow_remote(&args.project, work_flow.as_ref()) {
         answer["work_flow_remote"] = wf;
     }
+    // The flow rename (SPEC-20261122-next-flow REQ-2): the old value selects the same
+    // flow and is named once, here in the one profile-bearing preview — on stderr, so
+    // the plan object stays exactly what `project-apply` reads back.
+    if let Some(line) = moai_cli::profile::old_flow_notice(
+        work_flow
+            .as_ref()
+            .map(|w| w.flow.as_str())
+            .unwrap_or_default(),
+    ) {
+        eprintln!("{line}");
+    }
     Ok(answer)
 }

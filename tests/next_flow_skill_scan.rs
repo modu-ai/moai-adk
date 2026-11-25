@@ -124,8 +124,9 @@ const MODE_SPELLINGS: [&str; 5] = [
 const DASH_SENTENCE: &str =
     "A word of the request that is not a route, a dash option included, is request text and picks no route.";
 
-/// REQ-3: the sentence of SKILL.md that picks WORK by the leading word.
-const WORK_SENTENCE: &str = "A request whose first word after the skill name is `work` picks WORK";
+/// REQ-3: the sentence of SKILL.md that picks WORK by the leading word (the word is `agent` since
+/// SPEC-20261125-agent-team-session-names REQ-15; `work` is no route word).
+const WORK_SENTENCE: &str = "A request whose first word after the skill name is `agent` picks WORK";
 
 /// SPEC-20261124-moai-leader-route REQ-2: the part of the same SKILL.md sentence that picks
 /// LEADER by the leading word.
@@ -619,8 +620,12 @@ fn work_asks_by_note_and_never_by_a_selection_prompt() {
 fn work_is_picked_by_the_leading_word() {
     let skill = read("SKILL.md");
     assert!(
-        skill.contains("`/moai work`"),
-        "SKILL.md names `/moai work`"
+        skill.contains("`/moai agent`"),
+        "SKILL.md names `/moai agent`"
+    );
+    assert!(
+        !skill.contains("`/moai work`"),
+        "SKILL.md still names `/moai work`"
     );
     assert!(
         skill.contains(WORK_SENTENCE),
@@ -1003,9 +1008,10 @@ fn refs_route_start_names_the_flow_reference() {
     }
 }
 
-/// Slice B audit N11: the flows folder holds the one flow reference and nothing else.
+/// Slice B audit N11: the flows folder holds the flow reference and, since
+/// SPEC-20261125-agent-team-session-names REQ-19 and REQ-23, the message table beside it.
 #[test]
-fn refs_flows_folder_holds_exactly_one_file() {
+fn refs_flows_folder_holds_exactly_the_flow_and_the_message_table() {
     let folder = package().join(Path::new(FLOW_REF).parent().unwrap());
     let mut names: Vec<String> = fs::read_dir(&folder)
         .unwrap_or_else(|e| panic!("{}: {e}", folder.display()))
@@ -1017,7 +1023,7 @@ fn refs_flows_folder_holds_exactly_one_file() {
         .unwrap()
         .to_string_lossy()
         .into_owned();
-    assert_eq!(names, [want]);
+    assert_eq!(names, [want, "team-messages.md".to_string()]);
 }
 
 /// Slice B audit N11: both references of slice B begin, after their title, with the line that
@@ -2134,9 +2140,10 @@ fn refs_audit_floor_list_is_pointed_to() {
 
 const SELF_CHECK: &str = "references/internal/self-check.md";
 
-/// The byte size of the flow reference on the integration tip that landed the cargo-only pin
-/// (leader dispatch of 2026-11-23); the restored meanings fit inside it.
-const FLOW_REF_TIP_BYTES: usize = 8051;
+/// The byte size of the flow reference on the tip that carries the pointer to the message table
+/// (SPEC-20261125-agent-team-session-names REQ-23: 8041 bytes before the pointer line, and
+/// `FLOW_REF_LIMIT` stays the budget); the restored meanings fit inside it.
+const FLOW_REF_TIP_BYTES: usize = 8121;
 
 /// The first line of `text` that holds `marker`, a list item found by its first words so that a
 /// renumbered list does not break the pin.

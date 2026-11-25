@@ -428,12 +428,24 @@ fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path) -> String {
         .work_flow
         .as_ref()
         .map(|w| match (ko, w.integration_branch.as_deref()) {
-            (true, Some(b)) => format!("작업 흐름: {} (통합 브랜치 `{b}`).\n", w.flow),
-            (true, None) => format!("작업 흐름: {}.\n", w.flow),
+            (true, Some(b)) => format!(
+                "작업 흐름: {} (통합 브랜치 `{b}`).\n",
+                crate::profile::flow_display_name(&w.flow)
+            ),
+            (true, None) => format!(
+                "작업 흐름: {}.\n",
+                crate::profile::flow_display_name(&w.flow)
+            ),
             (false, Some(b)) => {
-                format!("Work flow: {} (integration branch `{b}`).\n", w.flow)
+                format!(
+                    "Work flow: {} (integration branch `{b}`).\n",
+                    crate::profile::flow_display_name(&w.flow)
+                )
             }
-            (false, None) => format!("Work flow: {}.\n", w.flow),
+            (false, None) => format!(
+                "Work flow: {}.\n",
+                crate::profile::flow_display_name(&w.flow)
+            ),
         })
         .unwrap_or_default();
     let body = if ko {

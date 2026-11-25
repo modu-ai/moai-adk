@@ -293,7 +293,7 @@ Lane and leader
                          commit
   trailer-check          Report commits with missing or
                          malformed trailers
-  bundle                 Assemble the M-Flow bundle from
+  bundle                 Assemble the NeXT-Flow bundle from
                          READY heads
   audit-clone-plan       Preview an independent audit clone
   audit-slot             Audit slots that inherit the lane's
@@ -407,9 +407,22 @@ Options:
           Color on a terminal: auto, always (even with
           NO_COLOR or TERM=dumb) or never; put it before the
           command
+  -l, --leader
+          Start the coordination window: session
+          `leader-<project name>`, the permission bypass
+          (`--dangerously-skip-permissions`) unless
+          `--permissions` is given, and the first input
+          `/moai leader`
+  -a, --agent
+          Start a lane: session `agent-<english name>` (the
+          first free name of the launcher's list), the
+          permission bypass unless `--permissions` is given,
+          and the first input `/moai agent`
       --name <NAME>
-          Session name (none by default; the role is entered
-          inside the session)
+          Session name (none by default; `-l` names it
+          `leader-<project name>`, `-a` takes the first free
+          `agent-<english name>`; with a role flag this name
+          replaces those)
       --model <MODEL>
           Main model (default `opus`)
       --effort <EFFORT>

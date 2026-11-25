@@ -4,7 +4,7 @@
 /// Print the line a leader types into a lane
 ///
 /// Print the one line a leader types into a lane's terminal to start its non-stop loop
-/// (#2902 O3a): `/moai work 레인 <lane> — <duty>` (`$moai` on Codex), with
+/// (#2902 O3a): `레인 <lane> — <duty>` (`$moai work …` on Codex), with
 /// ` 먼저: <task>` when `--first` names the first card. A task with a control, line-separator
 /// or bidirectional character, or over 300 characters, is refused. Reads and writes nothing.
 #[derive(clap::Args)]

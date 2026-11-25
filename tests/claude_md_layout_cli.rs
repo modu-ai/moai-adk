@@ -22,7 +22,13 @@ use tempfile::TempDir;
 const PERMISSION: &str = "fixture-approved";
 const BEGIN: &str = "<!-- moai:managed:begin id=moai-workflow -->";
 const END: &str = "<!-- moai:managed:end id=moai-workflow -->";
-const FLOWS: [&str; 4] = ["m-flow", "github-flow", "trunk-based", "git-flow"];
+const FLOWS: [&str; 5] = [
+    "next-flow",
+    "m-flow",
+    "github-flow",
+    "trunk-based",
+    "git-flow",
+];
 
 struct Fx {
     _tmp: TempDir,
@@ -238,7 +244,8 @@ fn blocks_hold_facts_only_within_fifteen_lines() {
         lines.join("\n")
     );
     let joined = lines.join("\n");
-    for fact in ["demo", "Rust", "m-flow", "main", ".moai/specs"] {
+    // The stored old value `m-flow` shows as the flow's name, NeXT-Flow.
+    for fact in ["demo", "Rust", "NeXT-Flow", "main", ".moai/specs"] {
         assert!(joined.contains(fact), "missing {fact:?} in:\n{joined}");
     }
     // Only the facts REQ-3 lists: no purpose, no development methods, no hosts.
@@ -486,9 +493,17 @@ fn flow_is_named_with_its_branch_and_no_path_for_every_flow() {
         fx.apply_ok("none", &[]);
         let text = fx.read("CLAUDE.md");
         let joined = block_lines(&text).join("\n");
+        // The block names the flow the way a person reads it: the local flow's current and
+        // old stored values both show as NeXT-Flow.
+        let shown = moai_cli::profile::flow_display_name(flow);
         assert!(
-            joined.contains(&format!("Work flow: {flow} (integration branch `main`)")),
+            joined.contains(&format!("Work flow: {shown} (integration branch `main`)")),
             "{flow}:\n{joined}"
+        );
+        assert_eq!(
+            shown == "NeXT-Flow",
+            flow == "next-flow" || flow == "m-flow",
+            "{flow}"
         );
         for path_word in [".claude", "rules/", "flow.md"] {
             assert!(

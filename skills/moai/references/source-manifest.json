@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "a27cd8a93125a8a16458ff0dbda5be216f8fa03623e53637a5d85ba1923f84f7",
+      "sha256": "d65f7881da67283262fee44af109a0db04b62e8c073d1ee82b0883905605a59f",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -69,7 +69,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "a4ee6a61ce05f4277eb6c6a9e9994fe9e3bb85c90affbf725ab7495c90a77d6d",
+      "sha256": "cfd67f97be651b8609559f082cd7cfa39b04c172e66cb43da04728cd6b2ad5ca",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -96,12 +96,21 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "481f3b8c3ebed5c87252e929f33fa96773835394cf5a002aac1d6517589ec78e",
+      "sha256": "d61ca33e27c647a8dfabcd19d1cb72df4692e30828fb49400b3b53c41b1d75c7",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-5, text slice B; decisions D-2, D-8, D-9): the one full description of the flow, at most 6144 bytes. It explains the name once, describes the four technical rules as how the flow runs, and states the worktree place, that a lane submits its head and base only, the landing command, the protection hook, the fast-forward push only when the user has turned the remote copy on, and that remote checks never block a landing. Each landing and hook statement was checked against src/card/land.rs and src/card/guard.rs. The flow rule file in the config folder points here (REQ-11)."
+      }
+    },
+    "references/flows/team-messages.md": {
+      "sha256": "b0afe447dd78f0ccb7af59636676feeffdbbdfcbea8192c3e3a45261dc8c51e4",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "flow-team-messages",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261125-agent-team-session-names (REQ-19 to REQ-22, decision D-5): the message table of the leader window and the agents (dispatch, question, answer, audit request, verdict, repair request, landing notice, completion, next card), the notice rule, the agent-to-agent rule, the address rule and the channel order. It lives in its own file so the flow reference stays within its byte budget."
       }
     },
     "references/home/flow.md": {
@@ -165,7 +174,7 @@
       }
     },
     "references/internal/commit-trailers.md": {
-      "sha256": "4f6890d4bc8b8fcec6c1a1620d106deebe062330ff50f2d8eb092b7115210b61",
+      "sha256": "3f975c5caad6916f307695b3925760b62203ea1ded47d624a73eed97c8b10b83",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-commit-trailers",
@@ -204,7 +213,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "853c13ee7a0ae05bb5ea5e47a7b2ae1ccd26e06b06d5aa7711fe12b3249d5dfe",
+      "sha256": "9168c039d21f360980abe0dd1508ed83d275b28d87f7adbc41a7478ae8fe3fe9",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
@@ -213,7 +222,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "fbfdcfac838d7fa16d63272d98d3000846a685d13c10d2799dfe0b8610e64b16",
+      "sha256": "de02867ae04b107f7e1d09fba6900f5c682a9dac197c931b927064c25d98da98",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -309,7 +318,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "9785ee1c4a67397d5ee896cd897213e25af7949a0c37167f69aa6c5335028b07",
+      "sha256": "85ce2ceb603f0806d307ac6b064d1d46f8e387c4540ca6dfd3643defa53e71c9",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
@@ -408,7 +417,7 @@
       }
     },
     "references/routes.json": {
-      "sha256": "9c6c552356f5fea14ae4897397971309a7d416d4d45f70de0c662006cf813b33",
+      "sha256": "3b3c8962cb8882ba9db60840ddb260960051c2e91a29fe22f0a1c56686e55671",
       "origin": {
         "kind": "design-template",
         "template_id": "router-routes",
@@ -432,7 +441,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261124-moai-leader-route (REQ-1 to REQ-12): `/moai leader` makes the window that types it the registered coordination window; it registers with `session-register`, renews once per round, reads the ledger, sends audits to another session, lands with `moai card land --by leader` and releases the registration at the end. The completion-message and transition sentences stay in `flows/next-flow`."
       },
-      "sha256": "bf4811c5d0f3b2c2809172f2641cdd886b198ef4e3dcaee249ecfe2ec96cd93b"
+      "sha256": "bef50627b65316e82b83660a89cbc3d276c4aefdb07a3fedba9c79d8c58500f2"
     },
     "workflows/plan.md": {
       "sha256": "ab27f283d60333933a93aa8a6a5858d88e44018e7edcd0cab9b79e7fe9b27e51",
@@ -444,7 +453,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "708e33403433550c945ba2802ec2817cbe5fbe9a3cd6e6f46d2fd93c4a41f29b",
+      "sha256": "7abf903179a0a647330650701e144ea96771b64ca2875ef3cc4dce74a93a4488",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -495,7 +504,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai work` takes one card at a time through PLAN, RUN, SYNC, AUDIT and the landing command and repeats until no card is left; a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "3a52e8c1437c5fc8f729d32776fbe5821bce2161b7dfc9bc5537554ba18448aa"
+      "sha256": "e47c77fd438296c2e0be39bd13a1b1deafcf024dde4b27b503e106b236ad8a06"
     }
   }
 }
