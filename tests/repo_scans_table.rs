@@ -789,7 +789,7 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
     (
         "tests/spec_approval_digest.rs",
         &[".moai/specs"],
-        "`World::write_spec` writes `.moai/specs/<id>/spec.md` into the temporary project it builds",
+        "`World::write_spec` puts the SPEC file under the specs folder of the temporary project it builds",
     ),
     (
         "tests/spec_branch_name_first.rs",
