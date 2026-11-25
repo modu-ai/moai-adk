@@ -148,12 +148,23 @@ fn ac2_tier_lines_fail_kinds_and_verdict_form_have_one_home() {
         !wf.contains("AUDIT C-12 "),
         "workflow carries the example line"
     );
-    for pointer in [
-        "section \"Audit tiers\"",
-        "section \"Who records the verdict\"",
-        "section \"What blocks\"",
+    // Each pointer stands in the Procedure step that needs it, not anywhere in the file.
+    for (step, pointer) in [
+        ("**Audit tier.**", "section \"Audit tiers\""),
+        ("**Audit tier.**", "section \"What blocks\""),
+        (
+            "**Record the verdict.**",
+            "section \"Who records the verdict\"",
+        ),
     ] {
-        assert!(wf.contains(pointer), "workflow lacks the pointer {pointer}");
+        let line = wf
+            .lines()
+            .find(|l| l.contains(step))
+            .unwrap_or_else(|| panic!("no Procedure step {step}"));
+        assert!(
+            line.contains(pointer),
+            "step {step} lacks the pointer {pointer}"
+        );
     }
 }
 
