@@ -40,7 +40,6 @@ created: 2026-11-25
 - AC-5 (REQ-10): 링크인 표 파일은 쓰지 않고 이름으로 거절해요 · verify: `cargo test --offline --locked --test check_fix_cli check_fix_refuses_a_linked_table`
 - AC-6 (REQ-14, REQ-15): 장부 목록의 모든 이름이 이 저장소에서 실제 대상으로 풀리고, 풀리지 않는 이름은 빠졌다고 나와요 · verify: `cargo test --offline --locked --lib check_fast::tests::the_ledger_names_resolve_in_this_repository`
 - AC-7 (REQ-16): 넓은 변경(`Cargo.toml`)의 계획과 좁은 변경의 계획이 같은 장부 단계를 담고, 그 단계가 장부 목록의 모든 대상과 라이브러리 테스트를 담고 있어요 · verify: `cargo test --offline --locked --lib check_fast::tests::the_plan_of_a_wide_change_holds_every_ledger_target`
-- AC-8 (REQ-1, REQ-5): `moai check affected --card <base>..<head>` 의 요약이 `result=PASS` 예요 · verify: `moai check affected --card <base>..<head>` writes `result=PASS` in `summary.txt`
 
 ## Scope
 
@@ -70,4 +69,15 @@ created: 2026-11-25
 
 ## Result
 
-(구현 뒤에 AC 별 met·not_run 을 적어요.)
+head 6d3a508bfe 에서 이 세션이 직접 돌린 결과예요(`cargo test --offline --locked --test check_fast_cli --test check_fix_cli --test check_affected_registry_add --test check_affected_scans_cli --test source_manifest_facts` 종료 0, 통합 테스트 5+5+6+3+8개 통과; `--lib check_fast::tests` 종료 0, 7개 통과).
+
+- AC-1 met: `check_fast_cli::check_fast_collects_every_failure` (`diff_check`, 끝줄, `test_tables`, `ledger` 실패 네 개가 한 답의 `failures` 에 모두 있고 `result` 는 FAIL).
+- AC-2 met: `check_fast_cli::the_endline_check_flags_a_missing_final_newline` (끝줄이 없는 파일은 나오고, 빈 파일·NUL 파일·`templates/bundle-packs/` 파일은 안 나오며, 읽을 수 없는 파일은 검사의 실패로 나와요).
+- AC-3 met: `check_fast_cli::a_failed_ledger_step_stops_clippy_and_test` (진짜 `moai check affected --card` 프로세스와 가짜 cargo: 종료 1, `stopped_at` 이 `ledger`, `skipped` 에 `clippy` 와 `test`, 가짜 cargo 는 clippy 도 `--lib` 도 받지 않았어요). 가드 뮤턴트: 계획의 장부 끼우기를 지우면 이 테스트가 깨져요(종료 101).
+- AC-4 met: `check_fix_cli::check_fix_writes_what_is_mechanical_and_prints_the_rest` (`--area` 로 영역 낱말과 매니페스트 해시를 써넣고, 사람이 정할 줄은 쓰지 않고 출력하며, 쓴 표는 `registry_only_grew` 가 더하기로 읽고, 고친 뒤 커밋하고 다시 돌리면 `nothing_to_do`). 더하기가 아닌 표 수정은 `check_fix_prints_a_registry_edit_that_would_not_read_as_growth` 가 지켜요.
+- AC-5 met: `check_fix_cli::check_fix_refuses_a_linked_table` (링크인 표 파일은 쓰지 않고 경로를 이름으로 거절, `result` FAIL; 유닉스 전용 테스트라 Windows 결과는 말하지 않아요).
+- AC-6 met: `check_fast::tests::the_ledger_names_resolve_in_this_repository` (장부 목록의 이름이 모두 실제 대상으로 풀려요).
+- AC-7 met: `check_fast::tests::the_plan_of_a_wide_change_holds_every_ledger_target` (REQ-16 의 말을 계획 쪽으로 바꾼 뒤의 기준; 넓은 변경과 좁은 변경의 계획이 같은 장부 단계를 담아요).
+- 자기 검사: 이 트리의 바이너리로 `moai check fast NeXT..HEAD` 가 `result=PASS`(`diff_check`·`fmt`·`ops_rustfmt`·`test_tables`·`endline`·`ledger` 모두 0, 장부 단계 48.2초, 기계 부하 약 45)이고 `moai check fix NeXT..HEAD` 가 `nothing_to_do`예요.
+- 범위 목록에 없던 파일: `tests/check_affected_registry_add.rs`, `tests/check_affected_scans_cli.rs`(두 픽스처가 장부 이름을 한 개만 담아 REQ-15 로 깨져서 나머지 장부 이름의 빈 파일을 더했어요; 단언은 그대로예요).
+- 알려진 틈: ① `check affected` 의 전체 선택(`Pick::Full`)은 `rule_history_guard` 와 `test_area_layout` 을 담지 않아요(그 스캔이 `always` 라서 경로를 건드릴 때만 합류해요); 장부 단계가 레인 영수증에서는 매번 돌려서 메꿔요. ② `hold_slot`·`table_step` 은 `check_fast.rs` 에 사본이 하나씩 남아 있어요(두 함수의 매개변수와 메시지가 달라 합치지 않았어요). ③ 멈춰서 끝나지 않는 가짜 cargo(걸린 자식 프로세스)는 시험하지 않았어요; `check fast` 는 `check affected` 와 같은 프로세스 실행 방식이고 시간 제한은 두지 않았어요. ④ `src/help.rs` 의 `check` 예시 줄에는 두 새 동작을 넣지 않았어요(공유 파일이고 어느 테스트도 요구하지 않아요).
