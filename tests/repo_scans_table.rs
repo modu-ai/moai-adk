@@ -51,7 +51,7 @@ const EXEMPT: &[(&str, &str)] = &[
     ("tests/ci_install_ripgrep_test.py", "rglob over the test's own temporary runner folder"),
     (
         "tests/codex_home_update_removed.rs",
-        "read_dir of temporary homes (before/after trees of the Codex and OMP folders); reads no checked-in tree",
+        "read_dir of temporary homes (before/after trees of the Codex and OMP folders) and of src/update, whose files the `reads-src` scan names",
     ),
     ("tests/card/decision_append_cli.rs", "read_dir of a TempDir docs folder"),
     (
@@ -71,10 +71,6 @@ const EXEMPT: &[(&str, &str)] = &[
     (
         "tests/home_style_ownership_cli.rs",
         "read_dir of the temporary home it built (before/after trees); reads the named template and fixtures",
-    ),
-    (
-        "tests/home_update_notice_follow_ups.rs",
-        "read_dir copies the named skills/moai and agents folders into a temporary home; reads named fixtures",
     ),
     (
         "tests/hook_bash_boundary_cli.rs",
