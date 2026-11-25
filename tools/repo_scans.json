@@ -2243,9 +2243,6 @@
           "prefix": "tools/ci_scope.py"
         },
         {
-          "prefix": "tools/heavy_check_slot.py"
-        },
-        {
           "prefix": "tools/local_check.sh"
         },
         {

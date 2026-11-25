@@ -3,6 +3,7 @@
 - 상위: #2153 (EP-A). 근거: 사용자 결정 06:02(2026-11-09) 2건 — #1975 comment 6733458567(claim 범위), `docs/decisions-2026-11-08.md`(WIP 상한 값·수리 인계).
 - 카드가 요구한 것: 관측(출처 표기) → 흐름 모델 → 정책 4종(채택/기각 근거) → 제품화(#2279 본 PR) → 기준선 1회 실측.
 - 구현 분해: `src/flow.rs`(WIP·게이트 판정, GET-only), `src/main.rs` op 2개, `tools/check_pr_self_audit.py`, `tools/flow_metrics.py`, 본 문서 + `flow-baseline-2026-11-09.json`.
+- 알림: `tools/flow_metrics.py` 와 `tests/flow_metrics_test.py` 는 저장소의 Python 도구와 함께 제거됐다(사용자 지시 2026-11-24, `SPEC-20261125-rust-only-finish`). 아래 측정 명령은 더 돌지 않고 2026-11-09 기준선은 기록으로만 남는다.
 
 ## 1. 관측 (행마다 출처)
 
