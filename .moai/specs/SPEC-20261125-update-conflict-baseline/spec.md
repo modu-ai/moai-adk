@@ -99,7 +99,19 @@ branch: spec/update-conflict-baseline-r2-20261125
 
 ## Result
 
-구현은 REQ-1…REQ-9 까지예요. (h), (i), (j) 는 구현하지 않았고(사용자 선택 대기), (g) 는 근거가 코드와 어긋나 하지 않았어요.
+개정 1 은 REQ-1…REQ-9, 개정 2 는 REQ-10…REQ-16 이에요. (j) 는 구현하지 않았고(사용자 선택 대기), (g) 는 근거가 코드와 어긋나 하지 않았어요.
+
+개정 2 (digest `sha256:b2431bc1ce2e59cc10ca8b93a17e6396e8408fd8f1ef140496973bd79518cba4`, 사용자의 "승인 (Recommended)" 선택을 리더가 카드 노트에 기록한 것을 인용해요) 구현:
+
+- AC-8: met — `cargo test --locked --offline --test update_conflict_baseline_cli ac8_` exit 0. 충돌 호스트의 미리보기 JSON 에 `conflict_replace`(파일, 백업 폴더, 토큰, `--confirm-conflict-replace` 플래그)가 있고 한국어·영어 화면이 `moai update --confirm <digest> <플래그>` 를 보여 줘요. 충돌 없는 픽스처에는 제안도 줄도 없어요.
+- AC-9: met — `… ac9_` exit 0. 플래그 없이 확정하면 사용자 바이트가 그대로이고 백업 폴더가 없어요. `MOAI_TEST_FAULT=conflict_backup_copy` 실행은 파일을 안 덮고 백업 폴더도 안 남겨요. 플래그와 확정은 사본(원래 바이트)을 먼저 만든 뒤 패키지 바이트를 쓰고 영수증이 그 다이제스트를 소유해요.
+- AC-10: met — `… ac10_` exit 0. 옛 영수증이 기록한 다이제스트와 같은 `rules/moai/flow.md` 는 미리보기가 삭제 대상으로 말하고 확정하면 `<stamp>-claude-flow-rule` 사본을 만든 뒤 지워요. Applied 화면이 백업 폴더를 말해요. `MOAI_TEST_FAULT=flow_rule_backup` 실행은 파일을 남겨요. 다른 바이트는 그대로이고 이름만 말해요.
+- AC-7: met — 개정 2 코드에서 `update_adopt_cli` 15, `update_cli` 11, `update_moved_receipts` 8, `update_tux_git_hooks` 6, `update_linked_config_files` 9, `help_layout` 11, `update_tux_golden` 16 통과. 골든은 다시 쓰지 않았어요.
+- 지킴이 뮤턴트(각각 정확히 한 번 고치고 `git checkout` 으로 복원, 트리 깨끗함 확인, 모두 단언 실패 exit 101): 토큰 확인을 `true` 로 → ac9 실패, 백업 복사 실패 주입점 제거 → ac9 실패, 제안 대상을 `conflict` 가 아닌 파일로 → ac8 실패, 영수증 다이제스트 확인 제거 → ac10 실패, 옛 flow 백업 실패 주입점 제거 → ac10 실패, 옛 flow 사본 쓰기 제거 → ac10 실패.
+- 옛 flow 삭제는 영수증 항목을 만들지 않아요(사본이 되돌리는 길이에요). 삭제가 있으면 라우팅 쓰기로 세어 터미널 질문이 떠요. 새 플래그는 `src/main.rs` 8줄, `src/help.rs` 7줄을 바꿔요(리더가 허락했어요).
+- 임시 HOME 에서만 돌렸어요. 진짜 `~/.claude` 와 `~/.moai-cli` 는 읽지도 쓰지도 않았어요.
+
+개정 1 결과:
 
 - AC-1…AC-6 met: 각 verify 줄을 적힌 그대로 돌려 모두 exit 0. 고치기 전 RED 는 ac1(baseline 이 안 움직임), ac2(conflict), ac4·ac5·ac6(화면에 줄이 없음)이 맞는 이유로 실패했고 ac3 은 지킴이라 RED 가 없어요(뮤턴트 M2 가 보증해요).
 - AC-7 met: `update_adopt_cli` 15, `update_cli` 11, `update_moved_receipts` 8, `update_tux_git_hooks` 6, `update_linked_config_files` 9 통과. 이웃 실행(`update_*`, `home_update*`, `project_update*` 통합 테스트와 lib 의 update·tux 테스트 388개)에서 `update_tux_golden` 4개가 실패했는데, 화면이 되돌리기 줄의 `<HOME>` 을 실제 HOME 으로 바꿔 보여 주기 때문에 그 자리표시자를 고정해 둔 단언과 골든 다섯 개(ko/en `update-applied*.golden`)가 옛 동작을 가리킨 것이었어요. 단언은 뷰의 HOME 으로 바꾸고 골든은 `MOAI_UPDATE_GOLDEN_WRITE=1` 로 다시 만든 뒤 diff 가 그 줄들뿐임을 읽었어요. 그 뒤 22개(새 테스트 6 + 골든 16) 통과, clippy `-D warnings` 통과.
