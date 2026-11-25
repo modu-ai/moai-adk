@@ -966,7 +966,7 @@ mod lint {
             if let Some((hashes, open_len)) = raw_string_open(&s, i) {
                 if i == 0 || !is_word(s[i - 1]) {
                     let mut close = vec!['"'];
-                    close.extend(std::iter::repeat('#').take(hashes));
+                    close.extend(std::iter::repeat_n('#', hashes));
                     let end = find_seq(&s, &close, i + open_len).map_or(n, |p| p + close.len());
                     if attr_depth > 0 {
                         out.extend_from_slice(&s[i..end]);
