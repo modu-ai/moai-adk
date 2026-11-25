@@ -49,6 +49,8 @@ Where the project offers lane commands that run a card in a lane of its own, a s
 | the leader sends `AUDIT-REQUEST <card> ready head=<head>` for a card you did not write | Run the AUDIT route on that exact head and record the verdict with `moai card verdict` from your own session; the author of a change never audits it. |
 | a card is held by a session that is gone, or a reclaim answers `reclaim_limit` | Never free or take another session's reservation yourself. Write the `LANE-BLOCKED` note; the leader ends the reservation with `--by leader` (it refuses a live session without proof), the card returns to `ready`, and you take it again with `moai card take`. |
 
+A REPAIRED note lists each finding it answers with the probe or test that reproduced it and that probe's result on the audited head and on the repair head; a finding without that pair is not claimed as fixed. A change the lane could not make because the file lies outside its scope goes under `Not done` with the file and its holder and is handed over as a note, never in a commit message.
+
 ## Base agents
 
 Skip this section when you are a base agent yourself: base agents never start other agents.
