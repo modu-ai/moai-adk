@@ -5,6 +5,7 @@
 #![cfg(unix)]
 mod common;
 
+use common::CleanEnv;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
@@ -47,7 +48,7 @@ impl Fixture {
             .arg("session-register")
             .args(args)
             .current_dir(&self.repo)
-            .env_clear()
+            .clean_env()
             .env("HOME", &self.home)
             .env("PATH", "/usr/bin:/bin")
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
@@ -219,7 +220,7 @@ fn ac3_names_prints_the_names_of_this_project() {
     let out = Command::new(common::MOAI_BIN)
         .args(["session-register", "--names"])
         .current_dir(plain.path())
-        .env_clear()
+        .clean_env()
         .env("HOME", &f.home)
         .env("PATH", "/usr/bin:/bin")
         .env("GIT_CEILING_DIRECTORIES", plain.path().parent().unwrap())
