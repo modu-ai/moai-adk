@@ -1,11 +1,20 @@
 ---
 id: SPEC-20261125-preflight-safe-force-push
 title: "tool-preflight 가 덮어쓸 수 없는 새 ref 전용 lease 푸시와 이 컴퓨터의 경로로 가는 강제 푸시에는 확인을 묻지 않아요"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-25
 branch: spec/preflight-safe-force-push-r2-20261125
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9562 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님; 방향은 사용자가 2026-11-24T23:35:48Z 에 고른 \"안전한 경우만 통과\"); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:6d76e2813e844acc0acaaf48b65383d3675ab45583b64fb6e4161732ab019fac"
 ---
+
+## Interview
+
+- Q1: 덮어쓸 수 없는 강제 푸시에도 확인을 물을까요? → A: "안전한 경우만 통과" (사용자 선택, 2026-11-24T23:35:48Z; 이 SPEC 의 방향이에요)
 
 # tool-preflight 가 덮어쓸 수 없는 새 ref 전용 lease 푸시와 이 컴퓨터의 경로로 가는 강제 푸시에는 확인을 묻지 않아요
 

@@ -1,10 +1,19 @@
 ---
 id: SPEC-20261126-gate-test-targets-growth
 title: "the gate reads a target name added to test_targets of the scan registry as growth"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-26
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9447 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:45cb80903a042be5ba0f2d96c3cc2a90347604000b447eed026801f2ea9eb46f"
 ---
+
+## Interview
+
+- none: the card came from a lane's finding while converting the scan registry; the leader decided from the measured evidence and no question went to the user.
 
 # the gate reads a target name added to test_targets of the scan registry as growth
 
