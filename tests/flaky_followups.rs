@@ -1,11 +1,14 @@
 //! SPEC-20261119-flaky-followups, slice A (card C-99, REQ-1 to REQ-3): the flaky rule's card
 //! command carries a criterion and the card it makes can be read back with that criterion; the
 //! repair rule (no sleep, retry or skip; a test whose root cause is not found is deleted with the
-//! reason written) and the one record home (the flaky card, the `[flake]` Issue only for a
-//! project without a card ledger) are in the RUN text, which carries the retired VERIFY route and
-//! the flaky rules of the retired mode workflows (SPEC-20261122-next-flow-skills-agents REQ-2).
+//! reason written) and the one record home (the flaky card) are in the RUN workflow's rule
+//! reference, `references/internal/check-rules.md`. The rules came from the retired VERIFY route
+//! and the mode workflows (SPEC-20261122-next-flow-skills-agents REQ-2) and moved out of
+//! `run.md` with SPEC-20261125-run-sync-procedure-receipt; the `[flake]` Issue procedure for a
+//! project without a card ledger and its two commands are retired there (decisions of
+//! 2026-11-16 to 2026-11-25: the card ledger is the work ledger, GitHub is no ledger).
 //!
-//! The tests read the RUN workflow, compiled in with `include_str!`, and run `moai card add` and
+//! The tests read the rule reference, compiled in with `include_str!`, and run `moai card add` and
 //! `moai card show` against a temporary HOME; the real `~/.moai` is not read or written.
 
 mod common;
@@ -14,15 +17,15 @@ use common::home::TempHome;
 use moai_cli::ledger;
 use serde_json::Value;
 
-const RUN: &str = include_str!("../skills/moai/workflows/run.md");
+const RULES: &str = include_str!("../skills/moai/references/internal/check-rules.md");
 
-/// The command the flaky rule gives for the flaky card: the text between the backtick after
-/// `titled "flaky: <test>" (` and the closing backtick.
+/// The command the flaky rule gives for the flaky card: the code span that opens with
+/// `moai card add --kind task --title "flaky: <test>"`, without its backticks.
 fn flaky_command() -> String {
-    let at = RUN
-        .find("(`moai card add --kind task --title \"flaky: <test>\"")
+    let at = RULES
+        .find("`moai card add --kind task --title \"flaky: <test>\"")
         .expect("the flaky rule gives the flaky card command");
-    let rest = &RUN[at + 2..];
+    let rest = &RULES[at + 1..];
     rest[..rest.find('`').expect("the command ends with a backtick")].to_string()
 }
 
@@ -106,45 +109,53 @@ fn the_flaky_card_command_carries_an_ac_and_the_card_can_be_read_with_it() {
     );
 }
 
-/// SPEC-20261119-flaky-followups AC-2 (REQ-2).
+/// SPEC-20261119-flaky-followups AC-2 (REQ-2). The repair rule is two sentences of one bullet
+/// now: the repair itself, then the test whose root cause is not found.
 #[test]
 fn the_repair_rule_is_in_the_mode_agent_workflow() {
-    let para = line_with(RUN, "Flaky repair (card C-99): ");
-    let s = sentence_from(para, "Flaky repair (card C-99): ");
+    let mark = "A repair of a flaky test never adds";
+    let para = line_with(RULES, mark);
+    let repair = sentence_from(para, mark);
     // Whole phrases, so a sentence that turns the rule round ("is never deleted") does not pass.
-    for word in [
-        "never adds a sleep, a retry or a skip",
-        "root cause",
-        "is deleted, with the reason written in the card and the SPEC",
-    ] {
+    for word in ["never adds a sleep, a retry or a skip", "root cause"] {
         assert!(
-            s.contains(word),
-            "the repair sentence must say {word:?}: {s}"
+            repair.contains(word),
+            "the repair sentence must say {word:?}: {repair}"
         );
     }
+    let deleted = sentence_from(para, "A test whose root cause is not found");
+    assert!(
+        deleted.contains("is deleted, with the reason written in the card and the SPEC"),
+        "the unfound-root-cause sentence must say the test is deleted with its reason: {deleted}"
+    );
 }
 
-/// SPEC-20261119-flaky-followups AC-2 (REQ-3).
+/// SPEC-20261119-flaky-followups AC-2 (REQ-3). The one record home is the flaky card; the
+/// `[flake]` Issue, `moai flake-record` and the project-without-a-ledger path are retired (the
+/// card ledger is the work ledger), so the pin reads the card's own sentences and that the Issue
+/// path stays out.
 #[test]
 fn the_record_home_is_in_the_verify_workflow() {
-    let para = line_with(RUN, "Record home (card C-99): ");
-    assert!(
-        para.starts_with("A test that fails on one run and passes when the same head is run again"),
-        "the sentence sits in the flaky paragraph"
+    let para = line_with(
+        RULES,
+        "A failure that a re-run on the same SHA turned green",
     );
-    let s = sentence_from(para, "Record home (card C-99): ");
-    // Whole phrases: the card is the home where a ledger exists, the Issue only where none does.
+    // Whole phrases: one card per test, a note on the open one, the four facts it records, and
+    // the merge comment when the card cannot be written.
     for word in [
-        // SPEC-20261122-next-flow-skills-agents REQ-8: the merge train is no longer named; the
-        // flaky card belongs to the landing step.
-        "where the project has a card ledger, the record is the flaky card of the landing step (`flaky: <test>`)",
-        "the `[flake]` Issue and the two commands below are for a project without a card ledger",
+        "does not stop the merge and is not forgotten",
+        "Open one card per test:",
+        "when one is open, add a `moai card note <card> --kind report` note instead",
+        "Record the test, the failed run id, the passing run id and the SHA.",
+        "If the card cannot be written, put those four facts in the merge comment and say the card is missing.",
     ] {
         assert!(
-            s.contains(word),
-            "the record-home sentence must say {word:?}: {s}"
+            para.contains(word),
+            "the record-home bullet must say {word:?}: {para}"
         );
     }
-    // The Issue path and its two commands stay.
-    assert!(para.contains("flake-record"), "the commands stay");
+    assert!(
+        !RULES.contains("[flake]") && !RULES.contains("flake-record"),
+        "check-rules.md names the retired Issue path"
+    );
 }

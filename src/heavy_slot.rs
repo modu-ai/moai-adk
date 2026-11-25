@@ -2014,8 +2014,10 @@ mod docs_tests {
         let docs = [
             ("src/heavy_slot.rs", include_str!("heavy_slot.rs")),
             (
-                "skills/moai/workflows/run.md",
-                include_str!("../skills/moai/workflows/run.md"),
+                // The slot rules moved from `workflows/run.md` into this reference with
+                // SPEC-20261125-run-sync-procedure-receipt; RUN step 1 points to it.
+                "skills/moai/references/internal/build-slots.md",
+                include_str!("../skills/moai/references/internal/build-slots.md"),
             ),
             (
                 "docs/rust-product-path.md",

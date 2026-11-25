@@ -87,7 +87,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "ef08db18cc3ccb706947809fcda1c62189913d87ec3b8ee4e985d35e5e574e2c",
+      "sha256": "b50e33b0659b474c843b0d832e2548cb249422e4fb870ce1502ac0d45c4c097f",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",

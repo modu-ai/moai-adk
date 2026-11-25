@@ -25,7 +25,7 @@ Rules for every chain:
 - A bug fix starts with a test that fails for the reported reason (`moai-impl` reads `internal/test-design`).
 - A flaky test is classified from evidence only (the same head, the same job, the failing and the passing run) and recorded once per test until a change repairs it; a rerun that turns green is not a fix (`internal/check-rules`).
 - The re-audit after a FAIL goes to the first auditor, who judges the repair again and every changed criterion.
-- Whoever wrote a change runs `internal/self-check` before asking for an audit or opening a pull request.
+- Whoever wrote a change runs `internal/self-check` before asking for an audit or opening a pull request. RUN reads `internal/build-slots` for builds, slots and cleanup, `internal/shell-guards` when a shell guard or a hook refuses a command, and `internal/web-pages` before it reads a web page.
 - Every commit for a SPEC carries the identity trailers of `internal/commit-trailers`, and every audit verdict names its auditor's session the same way.
 - In a user project, RUN takes the check commands, the AC-to-test tracing and the dependency existence check from `internal/quality`.
 - `moai-research` fans out: the parent may start several at once, each on one question, and merges their answers with the sources and read times they report.
