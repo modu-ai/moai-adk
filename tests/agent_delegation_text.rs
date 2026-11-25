@@ -78,6 +78,36 @@ fn plan_delegates_research_then_one_plan() {
     assert!(missing.is_empty(), "workflows/plan.md lacks {missing:?}");
 }
 
+/// The chain table's lane row names the three base agents a lane hands a card to, in order, and
+/// the rule under it says the lane audits and lands nothing; AUDIT says the implementation agent
+/// works in the lane's worktree.
+#[test]
+fn chains_and_audit_name_the_lane_delegation() {
+    let chains = repo_text("skills/moai/references/chains/index.md");
+    let row = chains
+        .lines()
+        .find(|l| l.starts_with("| Work through the cards |"))
+        .expect("the chain table has the WORK row");
+    assert!(
+        row.contains("| WORK | moai-plan, moai-impl, moai-docs |"),
+        "the WORK row: {row}"
+    );
+    let missing = lacking(
+        &chains,
+        &[
+            "hands its plan, implementation and documents to `moai-plan`, `moai-impl` and `moai-docs` in turn",
+            "It audits and lands nothing.",
+        ],
+    );
+    assert!(missing.is_empty(), "chains/index.md lacks {missing:?}");
+    let audit = repo_text("skills/moai/workflows/audit.md");
+    assert!(
+        audit.contains("The implementation agent works in the lane's worktree (RUN workflow)."),
+        "workflows/audit.md Isolation line"
+    );
+    assert!(!audit.contains("The implementation agent keeps its worktree"));
+}
+
 /// SYNC hands the document writing to one `moai-docs`, after `moai-impl` has returned.
 #[test]
 fn sync_delegates_the_documents_after_impl() {

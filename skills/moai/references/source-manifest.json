@@ -87,7 +87,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "29613634119197df6090b4e5f3f37a85b212c65e4b8b7ebb33f5895daf55b112",
+      "sha256": "e4034e76f5ee378946367317783e55244731a98ee23bb9438cffa93bf7437fce",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -426,7 +426,7 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "9b3f985749e1f3fcab94bdaebb4e9197dfd45325db9424fb3aabe0a2876a348c",
+      "sha256": "b2df28bb9d98a25ee5eca4d158c4051cd47882b30f53b96a96ce156dd4d58b11",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
