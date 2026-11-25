@@ -17,8 +17,9 @@
 //!   `move-to-backup` class of [`crate::home_state::SELECTIVE_TABLE`] that is an empty folder or
 //!   named `tmp-*`, `scratch` or `cache`. Every other top-level entry is listed as `keep`.
 //!
-//! `~/.agents` is not the cleanup's: it lists, keeps and archives nothing there (user decision
-//! 2026-11-22), and the user removes old moai files in it if wanted.
+//! `~/.codex` and `~/.agents` are not the cleanup's: it lists, keeps and archives nothing there
+//! (user decision 2026-11-22). Old moai files in them get the one "no longer managed" notice of
+//! the home update, and the user removes them if wanted.
 //!
 //! Never archived: a path with a secret name (listed by name, never read or hashed), Go run data
 //! (`claude-profiles`, `backups`, `state`, `releases`, `db`, `handoffs`, `gpt-appserver`,
