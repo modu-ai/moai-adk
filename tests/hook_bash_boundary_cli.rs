@@ -3186,3 +3186,61 @@ fn an_oversized_or_unsplittable_command_says_so() {
         bad.join("\n")
     );
 }
+
+// SPEC-20261125-boundary-unreadable-detail, REQ-6 and AC-4 (D-1): a characterization test, not a
+// change. A relative delete is judged against the folder the session stands in: inside its own
+// checkout it passes, from a folder outside every checkout it is `delete-outside`, and a path that
+// climbs out of the checkout root is `delete-outside` wherever it starts. The hook only judges the
+// text; no command of a case is executed.
+
+#[test]
+fn a_relative_delete_is_judged_by_the_folder_the_session_stands_in() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    let relative_deletes = [
+        "rm -rf audit-x-scratch",
+        "rm -rf node_modules/.vite",
+        "rm -rf ./audit-x-scratch",
+    ];
+    // Inside the checkout (its root, and a subfolder of it): no decision.
+    for s in [S::Own, S::Sub] {
+        for cmd in relative_deletes {
+            let got = w.verdict(s, cmd);
+            if got.is_some() {
+                bad.push(format!("  inside {cmd:?}: want no decision, got {got:?}"));
+            }
+        }
+    }
+    // The same words from a folder outside every checkout: the session's project folder is its own
+    // worktree and the shell stands in a plain folder (and in a folder of another repository).
+    let foreign = w.root.join("foreign");
+    fs::create_dir_all(&foreign).unwrap();
+    git(&foreign, &["init", "-q", "-b", "main"]);
+    for (what, folder) in [("plain folder", &w.plain), ("other repository", &foreign)] {
+        for cmd in relative_deletes {
+            let input = w.input(&json!(cmd), folder, "default");
+            let run = w.spawn(&w.own, input.to_string().as_bytes(), Some(&w.own));
+            let got = parse_verdict(&run, cmd);
+            if got.as_deref() != Some("delete-outside") {
+                bad.push(format!(
+                    "  {what} {cmd:?}: want \"delete-outside\", got {got:?}"
+                ));
+            }
+        }
+    }
+    // A path that climbs out of the checkout root is outside even when the session stands inside.
+    for cmd in ["rm -rf ../x", "rm -rf ../audit-x-scratch"] {
+        let got = w.verdict(S::Own, cmd);
+        if got.as_deref() != Some("delete-outside") {
+            bad.push(format!(
+                "  climbing {cmd:?}: want \"delete-outside\", got {got:?}"
+            ));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
