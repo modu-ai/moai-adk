@@ -46,13 +46,61 @@ pub const NOTE_ADVISOR_OMITTED_GLM: &str =
 pub const FIRST_INPUT_LEADER: &str = "/moai leader";
 pub const FIRST_INPUT_AGENT: &str = "/moai agent";
 
-/// The English names `-a` picks from, in this order, when `--name` is not given: the session is
-/// called `<project name>-agent-<name>` (SPEC-20261125-agent-team-session-names D-8 for the list,
-/// SPEC-20261125-session-names-project-prefix D-1 for the shape, decided 2026-11-25). Adding to
-/// the list is a card of its own.
-pub const AGENT_NAMES: [&str; 24] = [
-    "ben", "cara", "dana", "eli", "fay", "gus", "hana", "ivan", "jade", "kai", "lena", "milo",
-    "nora", "owen", "pia", "quin", "ruth", "sam", "tess", "uma", "vic", "wren", "xena", "zoe",
+/// The Biblical names `-a` picks from when `--name` is not given: the session is called
+/// `<project name>-agent-<name>` (SPEC-20261125-session-names-project-prefix D-1 for the shape,
+/// decided 2026-11-25). The pick is random among the names that are free (see
+/// [`pick_agent_name`]); SPEC-20261125-agent-names-bible replaces D-8 of SPEC-20261125-agent-team-
+/// session-names, which listed 24 English names taken in order. Adding to the list is a card of
+/// its own.
+pub const AGENT_NAMES: [&str; 48] = [
+    "adam",
+    "eve",
+    "noah",
+    "abraham",
+    "sarah",
+    "isaac",
+    "rebekah",
+    "jacob",
+    "rachel",
+    "leah",
+    "joseph",
+    "moses",
+    "aaron",
+    "miriam",
+    "joshua",
+    "deborah",
+    "gideon",
+    "samson",
+    "ruth",
+    "naomi",
+    "boaz",
+    "hannah",
+    "samuel",
+    "david",
+    "saul",
+    "solomon",
+    "elijah",
+    "elisha",
+    "isaiah",
+    "jeremiah",
+    "ezekiel",
+    "daniel",
+    "esther",
+    "jonah",
+    "mary",
+    "martha",
+    "lazarus",
+    "peter",
+    "andrew",
+    "james",
+    "john",
+    "thomas",
+    "matthew",
+    "luke",
+    "paul",
+    "timothy",
+    "lydia",
+    "priscilla",
 ];
 
 /// The project name that prefixes the session names `-l` and `-a` give (SPEC-20261125-session-
@@ -127,13 +175,22 @@ pub fn agent_prefix(dir: &Path) -> String {
     format!("{}-agent-", project_name(dir))
 }
 
-/// `<project name>-agent-<english name>`: the first name of [`AGENT_NAMES`] whose session live
-/// lock is not held and whose registry entry has no running lease (REQ-2, REQ-3). A folder
-/// outside a git repository has no sessions folder to read, so every name is free and the first
-/// one is taken. When every name is taken the answer is one message that names `--name` (REQ-2).
+/// `<project name>-agent-<name>`: a name of [`AGENT_NAMES`] chosen at random, with equal chance,
+/// among the names whose session live lock is not held and whose registry entry has no running
+/// lease. A folder outside a git repository has no sessions folder to read, so every name is
+/// free. When every name is taken the answer is one message that names `--name`. The seed comes
+/// from the clock, the process id, `now` and a process-wide counter, so two calls in one
+/// nanosecond differ; [`pick_agent_name_seeded`] takes it from the caller.
 pub fn pick_agent_name(dir: &Path, now: i64) -> Result<String, String> {
+    pick_agent_name_seeded(dir, now, agent_pick_seed(now))
+}
+
+/// [`pick_agent_name`] with the seed given: the free names are collected in list order and the
+/// one at `seed % free count` is returned, so a test reaches every free name and no other.
+pub fn pick_agent_name_seeded(dir: &Path, now: i64, seed: u64) -> Result<String, String> {
     let sessions = agent_seq_dir(dir).ok();
     let prefix = agent_prefix(dir);
+    let mut free: Vec<String> = Vec::new();
     for n in AGENT_NAMES {
         let name = format!("{prefix}{n}");
         if let Some(sessions) = &sessions {
@@ -143,14 +200,38 @@ pub fn pick_agent_name(dir: &Path, now: i64) -> Result<String, String> {
                 continue;
             }
         }
-        return Ok(name);
+        free.push(name);
     }
-    Err(format!(
-        "every name of the launcher's list ({} names, {prefix}{} to {prefix}{}) is taken: name this session with `--name <name>`",
-        AGENT_NAMES.len(),
-        AGENT_NAMES[0],
-        AGENT_NAMES[AGENT_NAMES.len() - 1]
-    ))
+    if free.is_empty() {
+        return Err(format!(
+            "every name of the launcher's list ({} names) is taken: name this session with `--name <name>`",
+            AGENT_NAMES.len()
+        ));
+    }
+    let at = (seed % free.len() as u64) as usize;
+    Ok(free.swap_remove(at))
+}
+
+/// A seed for [`pick_agent_name_seeded`] from the standard library only: the clock nanoseconds,
+/// the process id, `now` and a counter that grows with every call in this process, mixed by the
+/// splitmix64 finalizer so that neighbouring inputs give unrelated seeds.
+fn agent_pick_seed(now: i64) -> u64 {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+    let count = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let mut z = nanos
+        ^ (u64::from(std::process::id()) << 32)
+        ^ (now as u64).rotate_left(17)
+        ^ count.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    z = z.wrapping_add(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
 }
 
 /// User decision 2026-11-08 (#2053 HOLD-L1 = A, #2062): a session without a role still gets the
