@@ -43,6 +43,24 @@ fn assert_before(text: &str, first: &str, second: &str) {
     assert!(a < b, "{LEADER}: `{first}` must come before `{second}`");
 }
 
+/// The text of the failure table's section (`## When a head does not land`), up to the next one.
+fn table_section(text: &str) -> &str {
+    let start = text
+        .find("## When a head does not land")
+        .expect("the table section");
+    let rest = &text[start..];
+    &rest[..rest.find("\n## ").map_or(rest.len(), |i| i + 1).max(1)]
+}
+
+/// The cells of every body row of the failure table (the header and the rule line are left out).
+fn table_rows(section: &str) -> Vec<Vec<&str>> {
+    section
+        .lines()
+        .filter(|l| l.starts_with("| ") && !l.starts_with("| What") && !l.starts_with("| ---"))
+        .map(|l| l.trim_matches('|').split('|').map(str::trim).collect())
+        .collect()
+}
+
 /// REQ-10: what the window is, and that it holds no standing role.
 const INTRO: &str = "`/moai leader` makes the window that types it the registered coordination window of the project; the window holds no standing role, and when it ends the lanes go on from the ledger alone.";
 /// REQ-3: the registry is read first.
@@ -74,6 +92,11 @@ const AUDIT_REQUEST: &str = "then send `AUDIT-REQUEST <card> ready head=<head to
 const VERDICT_OWN: &str = "The auditor records the verdict with `moai card verdict` from its own session; you read it in the ledger and never write it for the auditor.";
 const BATCH: &str = "Use `moai card land-batch C-n=<head> ... --by leader` for 2 to 4 audited heads, which runs the wide check once on their join, and `moai card land` alone only for one head with a risk or an exception.";
 const LANDED: &str = "send `LANDED <card> landed head=<10 hex>` to the lane concerned";
+/// SPEC-20261125-land-sync-merge REQ-8: a branch that is not a card head enters only through
+/// `moai card land-sync`, and the sentence says who calls it, what it makes and refuses.
+const LAND_SYNC: &str = "A branch that is not a card head (such as `main` coming back after a release) enters only through `moai card land-sync <branch> --spec <SPEC-ID> --by leader`, called from this leader session for a branch that `work_flow.sync_sources` lists and an approved SPEC (an empty list refuses all): the command makes the merge commit, runs the wide check itself, moves the branch by one compare-and-swap and refuses `stale_base` and the check codes without moving;";
+/// SPEC-20261125-land-sync-merge REQ-8: the first cell of the failure table's land-sync row.
+const LAND_SYNC_CMD: &str = "`moai card land-sync`";
 /// REQ-7: the audit goes to a session that wrote none of the change.
 const AUDIT: &str = "Send the audit of a head to a session that wrote none of the change (the AUDIT route); the author of a change never audits it.";
 /// REQ-7: landing after a `PASS` for the exact head, by the leader.
@@ -197,16 +220,8 @@ fn round_names_one_command_per_step_and_the_next_action() {
 #[test]
 fn a_table_gives_the_next_action_of_each_failed_landing() {
     let text = raw(LEADER);
-    let start = text
-        .find("## When a head does not land")
-        .expect("the table section");
-    let rest = &text[start..];
-    let section = &rest[..rest.find("\n## ").map_or(rest.len(), |i| i + 1).max(1)];
-    let rows: Vec<Vec<&str>> = section
-        .lines()
-        .filter(|l| l.starts_with("| ") && !l.starts_with("| What") && !l.starts_with("| ---"))
-        .map(|l| l.trim_matches('|').split('|').map(str::trim).collect())
-        .collect();
+    let section = table_section(&text);
+    let rows = table_rows(section);
     for key in [
         "a first `fail` verdict",
         "a second `fail` of the same card",
@@ -332,6 +347,90 @@ fn end_a_closed_window_can_be_freed_by_the_leader() {
 #[test]
 fn end_the_window_holds_no_standing_role() {
     assert_has(&leader(), INTRO);
+}
+
+/// SPEC-20261125-land-sync-merge AC-8: step 5 holds the land-sync sentence exactly once.
+#[test]
+fn land_sync_sentence_is_in_step_5_exactly_once() {
+    let t = leader();
+    assert_has(&t, LAND_SYNC);
+    assert_eq!(
+        t.matches(LAND_SYNC).count(),
+        1,
+        "{LEADER} holds the land-sync sentence more than once"
+    );
+}
+
+/// SPEC-20261125-land-sync-merge AC-8: the sentence follows the single-head landing and the batch
+/// landing, and comes before the landing notice.
+#[test]
+fn land_sync_sentence_comes_after_land_and_batch_and_before_landed() {
+    let t = leader();
+    assert_before(&t, LAND, BATCH);
+    assert_before(&t, BATCH, LAND_SYNC);
+    assert_before(&t, LAND_SYNC, LANDED);
+}
+
+/// SPEC-20261125-land-sync-merge AC-8: the failure table has one land-sync row, as wide as the
+/// header, with no empty cell.
+#[test]
+fn land_sync_has_one_complete_row_in_the_failure_table() {
+    let text = raw(LEADER);
+    let section = table_section(&text);
+    let header: Vec<&str> = section
+        .lines()
+        .find(|l| l.starts_with("| What"))
+        .expect("the table header")
+        .trim_matches('|')
+        .split('|')
+        .map(str::trim)
+        .collect();
+    let rows = table_rows(section);
+    let sync: Vec<&Vec<&str>> = rows
+        .iter()
+        .filter(|r| r[0].contains(LAND_SYNC_CMD))
+        .collect();
+    assert_eq!(sync.len(), 1, "the table needs one row for {LAND_SYNC_CMD}");
+    let row = sync[0];
+    assert_eq!(row.len(), header.len(), "the land-sync row's cell count");
+    assert_eq!(row.len(), 3, "the land-sync row's cell count");
+    assert!(row.iter().all(|c| !c.is_empty()), "an empty cell: {row:?}");
+}
+
+/// SPEC-20261125-land-sync-merge AC-8: the leader rules name the command and the profile key and
+/// carry no card number (a card number is the letter C, a hyphen and digits that do not continue
+/// a longer word, so `SPEC-2026...` is not one).
+#[test]
+fn leader_rules_name_land_sync_and_its_key_without_a_card_number() {
+    let text =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/leader-rules.md"))
+            .unwrap_or_else(|e| panic!("docs/leader-rules.md: {e}"));
+    let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    for s in ["`moai card land-sync <branch>", "`work_flow.sync_sources`"] {
+        assert!(text.contains(s), "docs/leader-rules.md lacks {s}");
+    }
+    if let Some(found) = card_number(&text) {
+        panic!("docs/leader-rules.md names a card number: {found}");
+    }
+}
+
+/// The first card number in `text`: `C-` and a digit, where the `C` does not end a longer word.
+fn card_number(text: &str) -> Option<String> {
+    let bytes = text.as_bytes();
+    bytes.windows(3).enumerate().find_map(|(i, w)| {
+        let after_word = i > 0 && bytes[i - 1].is_ascii_alphanumeric();
+        (w[0] == b'C' && w[1] == b'-' && w[2].is_ascii_digit() && !after_word)
+            .then(|| String::from_utf8_lossy(&bytes[i..(i + 8).min(bytes.len())]).into_owned())
+    })
+}
+
+/// The card-number scan refuses a card number and lets the lookalikes through.
+#[test]
+fn card_number_scan_refuses_a_card_number_and_passes_a_spec_id() {
+    assert_eq!(card_number("see (C-523) here").as_deref(), Some("C-523) h"));
+    assert_eq!(card_number("C-7").as_deref(), Some("C-7"));
+    assert_eq!(card_number("SPEC-20261125-land-sync-merge"), None);
+    assert_eq!(card_number("a card `C-n` or C-"), None);
 }
 
 #[test]
