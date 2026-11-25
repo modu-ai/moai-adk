@@ -13,6 +13,10 @@ approval:
 
 # The home update stops writing Codex and OMP files, says nothing about them, and an old receipt of those hosts reverts as skipped
 
+## Interview
+
+- Q1: 개정 2 를 승인할까요? 개정 1 은 HOME 에 Codex·OMP 폴더가 있으면 update 가 "더는 관리하지 않고 그대로 둡니다"라는 안내를 보여 주라고 했고, 개정 2 는 그 안내를 없애요(REQ-4, REQ-5). 그 폴더의 파일과 쓰기·삭제 동작은 그대로예요. → A: 사용자 선택 그대로(2026-11-25, 카드 노트 9154): "승인, 개정 2 (Recommended)".
+
 ## Intent
 
 The user decided on 2026-11-21 that moai-adk supports Claude Code and GLM only (GLM runs through the Claude Code launcher), and on 2026-11-22 that the next local build is installed only after no part of moai writes Codex or OMP files any more. SPEC-20261121-remove-codex-support (slice 1b of its plan, writers W-1 to W-5) names the home update as the first of those writers. This change removes them:
