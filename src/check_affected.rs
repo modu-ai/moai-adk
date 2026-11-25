@@ -555,23 +555,28 @@ fn wide_class(path: &str) -> Option<&'static str> {
     None
 }
 
-/// The source paths of the audit floor that are no gate, permission, secret, install or migration
-/// code: the update and home commands, the agent install and the state folder code. They take the
-/// area path of `select_card` like any module; the gate, the hooks, the secrets and the rest of the
-/// floor stay wide. The landing code `src/card/land/` is no floor path: it was wide on its own and
-/// takes the area path now (SPEC-20261125-check-affected-card-areas REQ-13).
-const NARROWED_FLOOR: [&str; 7] = [
-    "src/update",
-    "src/home",
-    "src/ops/home",
-    "src/ops/agents_home",
-    "src/agent_install",
-    "src/go_state",
-    "src/state_root",
+/// The audit-floor source files that take the area path of `select_card` like any module, named
+/// one by one (SPEC-20261125-check-affected-card-areas REQ-13): the update command, its model and
+/// terminal screens and its two helpers, and the home style and routing text. A name is an exact
+/// path, never a prefix: `src/update_keys.rs` (secrets), `src/update_hooks.rs` (hooks),
+/// `src/home_install*.rs`, `src/ops/home_install_*.rs`, `src/agent_install.rs` (install),
+/// `src/update_cleanup.rs`, `src/home_retire*.rs`, `src/ops/home_*_revert.rs` (HOME moves and
+/// undo), `src/state_root.rs`, `src/home_root.rs`, `src/go_state.rs` and every file added later stay
+/// on the audit floor. The landing code `src/card/land/` is no floor path: it was wide on its own
+/// and takes the area path now.
+const NARROWED_FLOOR: [&str; 8] = [
+    "src/update.rs",
+    "src/update_models.rs",
+    "src/update_tux.rs",
+    "src/update/switch.rs",
+    "src/update/extra_skill.rs",
+    "src/home_style.rs",
+    "src/home_routing.rs",
+    "src/home_routing/rules.rs",
 ];
 
 fn narrowed_floor(path: &str) -> bool {
-    path.ends_with(".rs") && NARROWED_FLOOR.iter().any(|p| path.starts_with(p))
+    NARROWED_FLOOR.contains(&path)
 }
 
 /// The module a changed source path names: its leaf word and the path a test names it by
@@ -3730,6 +3735,51 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         let tests = [module("card_cli", "use crate::common::git;")];
         let sel = select(&paths(&["tests/common/mod.rs"]), &tests, None, "linux");
         assert!(sel.rust.contains("card_cli"), "{:?}", sel.rust);
+    }
+
+    /// SPEC-20261125-check-affected-card-areas REQ-13: the audit floor is narrowed by exact file
+    /// names. The named files take their area; the secret, hook, install, HOME move and state
+    /// folder files that sit next to them in `src/` stay on the floor, and so does every file
+    /// that is not named.
+    #[test]
+    fn the_named_floor_files_are_narrowed_and_their_siblings_stay_wide() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        for named in NARROWED_FLOOR {
+            assert!(root.join(named).is_file(), "{named} is named but missing");
+            assert_eq!(wide_class(named), None, "{named} must take its area");
+        }
+        for wide in [
+            "src/update_keys.rs",
+            "src/update_hooks.rs",
+            "src/update_cleanup.rs",
+            "src/update_home.rs",
+            "src/home_install.rs",
+            "src/home_install_apply.rs",
+            "src/home_retire.rs",
+            "src/home_state_retire.rs",
+            "src/home_root.rs",
+            "src/home_workdir.rs",
+            "src/home_layout.rs",
+            "src/home_state.rs",
+            "src/agent_install.rs",
+            "src/go_state.rs",
+            "src/state_root.rs",
+            "src/ops/home_install_plan.rs",
+            "src/ops/home_install_apply.rs",
+            "src/ops/home_install_revert.rs",
+            "src/ops/home_retire_revert.rs",
+            "src/ops/home_style_revert.rs",
+            "src/ops/home_routing_revert.rs",
+            "src/ops/agents_home_revert.rs",
+            "src/update/new_file_added_later.rs",
+            "src/home_routing/new_file_added_later.rs",
+        ] {
+            assert_eq!(
+                wide_class(wide),
+                Some("audit floor"),
+                "{wide} must stay wide"
+            );
+        }
     }
 
     /// An old name in the scan list and a module filter through the crate are the same target.

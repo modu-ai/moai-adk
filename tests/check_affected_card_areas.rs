@@ -99,6 +99,23 @@ impl Fixture {
             "src/self_update.rs",
             "src/gate.rs",
             "src/hook_engine.rs",
+            "src/update.rs",
+            "src/update_tux.rs",
+            "src/update/switch.rs",
+            "src/update/extra_skill.rs",
+            "src/home_routing.rs",
+            "src/home_routing/rules.rs",
+            "src/update_keys.rs",
+            "src/update_hooks.rs",
+            "src/update_cleanup.rs",
+            "src/home_install.rs",
+            "src/home_retire.rs",
+            "src/home_root.rs",
+            "src/state_root.rs",
+            "src/agent_install.rs",
+            "src/go_state.rs",
+            "src/ops/home_install_apply.rs",
+            "src/ops/home_style_revert.rs",
         ] {
             put(p, src, "// a\n");
         }
@@ -504,6 +521,61 @@ fn narrowed_floor_paths_take_their_area_and_the_scan_table_pins_its_tests() {
     assert_eq!(
         r["card_wide"]["paths"],
         serde_json::json!(["src/gate.rs"]),
+        "{r}"
+    );
+}
+
+/// REQ-13 (the floor stays wide): the audit-floor files that carry secrets, hooks, installs, HOME
+/// moves and the state folder stay on the floor even when they sit next to a narrowed file, and a
+/// narrowed file changed with one of them does not hide it.
+#[test]
+fn floor_files_next_to_the_narrowed_ones_stay_wide() {
+    for path in [
+        "src/update_keys.rs",
+        "src/update_hooks.rs",
+        "src/update_cleanup.rs",
+        "src/home_install.rs",
+        "src/home_retire.rs",
+        "src/home_root.rs",
+        "src/state_root.rs",
+        "src/agent_install.rs",
+        "src/go_state.rs",
+        "src/ops/home_install_apply.rs",
+        "src/ops/home_style_revert.rs",
+    ] {
+        let fx = Fixture::with(&[path]);
+        let r = affected(&fx, &["--list", "--card"]);
+        assert_eq!(r["selection"], "full", "{path}: {r}");
+        assert_eq!(r["card_wide"]["reason"], "audit floor", "{path}: {r}");
+        assert_eq!(
+            r["card_wide"]["paths"],
+            serde_json::json!([path]),
+            "{path}: {r}"
+        );
+    }
+    // The narrowed files take their area, one by one.
+    for path in [
+        "src/update.rs",
+        "src/update_models.rs",
+        "src/update_tux.rs",
+        "src/update/switch.rs",
+        "src/update/extra_skill.rs",
+        "src/home_style.rs",
+        "src/home_routing.rs",
+        "src/home_routing/rules.rs",
+    ] {
+        let fx = Fixture::with(&[path]);
+        let r = affected(&fx, &["--list", "--card"]);
+        assert_eq!(r["selection"], "card", "{path}: {r}");
+        assert!(r["card_wide"].is_null(), "{path}: {r}");
+    }
+    // A narrowed file changed together with a secret file: the secret file decides.
+    let fx = Fixture::with(&["src/update.rs", "src/update_keys.rs"]);
+    let r = affected(&fx, &["--list", "--card"]);
+    assert_eq!(r["selection"], "full", "{r}");
+    assert_eq!(
+        r["card_wide"]["paths"],
+        serde_json::json!(["src/update_keys.rs"]),
         "{r}"
     );
 }
