@@ -61,6 +61,12 @@ fn refusal(out: &Output) -> Value {
 /// starts at the card's head commit; `main` moves ahead of it. Returns the home, the project
 /// path, the card id and the head sha.
 fn world(mflow: bool) -> (TempHome, String, i64, String) {
+    world_flow(mflow.then_some("m-flow"))
+}
+
+/// [`world`] with the stored `work_flow` value named: the old `m-flow`, the current
+/// `next-flow`, or none.
+fn world_flow(flow: Option<&str>) -> (TempHome, String, i64, String) {
     let home = TempHome::new();
     let project = home.project("demo");
     let p = project.to_str().unwrap().to_string();
@@ -115,12 +121,12 @@ fn world(mflow: bool) -> (TempHome, String, i64, String) {
     drop(w);
     // The profile goes last: some card commands rewrite it (the id stub), and done must read
     // the m-flow work_flow from the final bytes.
-    if mflow {
+    if let Some(flow) = flow {
         let cfg = project.join(".moai-cli/project.yaml");
         std::fs::create_dir_all(cfg.parent().unwrap()).unwrap();
         std::fs::write(
             &cfg,
-            &b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\"}}"[..],
+            format!("{{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {{\"flow\": \"{flow}\", \"integration_branch\": \"integ\"}}}}"),
         )
         .unwrap();
     }
@@ -214,6 +220,34 @@ fn m_flow_done_closes_on_a_landed_head_contained_in_the_integration_branch() {
         .trim()
         .to_string();
     assert_eq!(event["mflow"]["tip"], json!(tip), "{event}");
+}
+
+/// The flow rename (SPEC-20261122-next-flow): the current value `next-flow` closes a card on
+/// a landed head exactly as the old value `m-flow` does above.
+#[test]
+fn next_flow_done_closes_on_a_landed_head_contained_in_the_integration_branch() {
+    let (home, p, _card, head) = world_flow(Some("next-flow"));
+    result(&run(
+        &home,
+        &[
+            "card",
+            "landed",
+            "C-1",
+            "--head",
+            &head,
+            "--by",
+            "leader",
+            "--project",
+            &p,
+        ],
+    ));
+    let done = result(&run(
+        &home,
+        &["card", "done", "C-1", "--generation", "1", "--project", &p],
+    ));
+    assert_eq!(done["name"], json!("C-1"), "{done}");
+    let event = last_event(&home, "card.done");
+    assert_eq!(event["mflow"]["head"], json!(head), "{event}");
 }
 
 /// AC-2: a landed head that is not an ancestor of the integration branch is refused at done
@@ -494,7 +528,7 @@ fn an_m_flow_without_an_integration_branch_names_the_profile_in_the_hint() {
         "the hint names the profile: {message}"
     );
     assert!(
-        message.contains("does not name the m-flow work_flow with an integration branch"),
+        message.contains("does not name the NeXT-Flow work_flow with an integration branch"),
         "{message}"
     );
     assert_eq!(done_events(&home), 0);

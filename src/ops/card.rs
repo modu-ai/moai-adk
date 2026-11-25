@@ -485,9 +485,9 @@ enum Action {
     /// Writes the ledger. Record that this card's head landed on the local integration branch
     ///
     /// Writes the ledger. A `review` card gains one `card.landed` event naming the head and the
-    /// by, with the writing session as the actor (M-Flow, SPEC-20261120-card-done-mflow). The
+    /// by, with the writing session as the actor (NeXT-Flow, SPEC-20261120-card-done-mflow). The
     /// head must be 40 lowercase hex. `card done` then closes the card without a pull request
-    /// when the profile's `work_flow` is `m-flow` and the head sits inside the profile's
+    /// when the profile's work flow is NeXT-Flow and the head sits inside the profile's
     /// integration branch.
     Landed {
         /// The card whose head landed (`C-12` or `#3066`).
@@ -1009,7 +1009,7 @@ enum Action {
     ///
     /// Writes the ledger. A `review` card becomes `done` and its reservation ends, when at least
     /// one criterion is met, none is open and a merged pull request is linked (`card pr` after
-    /// the merge) — or, when the profile's `work_flow` is `m-flow`, the card's `card landed`
+    /// the merge) — or, when the profile's work flow is NeXT-Flow, the card's `card landed`
     /// head is contained in the profile's integration branch. Anything else is refused with the
     /// rule that is not met. As this session, holding the card at `--generation`.
     Done {
@@ -1032,7 +1032,7 @@ enum Action {
     /// it holds is released, with one `card.landed` and one `card.finish` event naming `--by`.
     /// A card that changes the repository needs a landing: `--head`, else its merged pull request
     /// link, else the head `card landed` recorded, and git must show that head inside the
-    /// profile's integration branch (`work_flow` m-flow). When an open criterion of such a card
+    /// profile's integration branch (NeXT-Flow). When an open criterion of such a card
     /// has no `--met`, the proven landing is recorded once (one `card.landed` event with the
     /// head, the tip, the generation and `--by`), nothing else changes, and the answer says
     /// `closed` false and lists `open_criteria`. A `research` or `audit` card gives exactly one
@@ -1078,7 +1078,7 @@ enum Action {
     /// Writes the ledger and the integration branch. Move the branch to a candidate commit and close the card
     ///
     /// Writes the ledger and, when the candidate is not inside the tip yet, the profile's
-    /// integration branch (`work_flow` m-flow): one `git update-ref` that moves the branch to
+    /// integration branch (NeXT-Flow): one `git update-ref` that moves the branch to
     /// `--head` only while it still points at the tip that was read, then the same close as `card
     /// finish` with `--head` as the landed head. Only `--by leader` lands until the typed verdict
     /// exists. Everything `card finish` would refuse is refused before the branch moves; so is a

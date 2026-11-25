@@ -293,7 +293,7 @@ Lane and leader
                          commit
   trailer-check          Report commits with missing or
                          malformed trailers
-  bundle                 Assemble the M-Flow bundle from
+  bundle                 Assemble the NeXT-Flow bundle from
                          READY heads
   audit-clone-plan       Preview an independent audit clone
   audit-slot             Audit slots that inherit the lane's

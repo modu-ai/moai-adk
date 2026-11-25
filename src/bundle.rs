@@ -1274,7 +1274,7 @@ pub fn body(
         b.push_str(&format!("Moai-Spec: {s}\n"));
     }
     b.push_str(
-        "\nM-Flow bundle (lanes push only, the leader integrates audited heads locally, verifies the \
+        "\nNeXT-Flow bundle (lanes push only, the leader integrates audited heads locally, verifies the \
          pinned SHA locally, then opens one pull request; CI, independent audit and the ruleset are unchanged).\n\n\
          | SPEC | Branch head | Audit before integration |\n| --- | --- | --- |\n",
     );
