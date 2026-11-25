@@ -43,6 +43,24 @@ fn assert_before(text: &str, first: &str, second: &str) {
     assert!(a < b, "{LEADER}: `{first}` must come before `{second}`");
 }
 
+/// The text of the failure table's section (`## When a head does not land`), up to the next one.
+fn table_section(text: &str) -> &str {
+    let start = text
+        .find("## When a head does not land")
+        .expect("the table section");
+    let rest = &text[start..];
+    &rest[..rest.find("\n## ").map_or(rest.len(), |i| i + 1).max(1)]
+}
+
+/// The cells of every body row of the failure table (the header and the rule line are left out).
+fn table_rows(section: &str) -> Vec<Vec<&str>> {
+    section
+        .lines()
+        .filter(|l| l.starts_with("| ") && !l.starts_with("| What") && !l.starts_with("| ---"))
+        .map(|l| l.trim_matches('|').split('|').map(str::trim).collect())
+        .collect()
+}
+
 /// REQ-10: what the window is, and that it holds no standing role.
 const INTRO: &str = "`/moai leader` makes the window that types it the registered coordination window of the project; the window holds no standing role, and when it ends the lanes go on from the ledger alone.";
 /// REQ-3: the registry is read first.
@@ -74,6 +92,10 @@ const AUDIT_REQUEST: &str = "then send `AUDIT-REQUEST <card> ready head=<head to
 const VERDICT_OWN: &str = "The auditor records the verdict with `moai card verdict` from its own session; you read it in the ledger and never write it for the auditor.";
 const BATCH: &str = "Use `moai card land-batch C-n=<head> ... --by leader` for 2 to 4 audited heads, which runs the wide check once on their join, and `moai card land` alone only for one head with a risk or an exception.";
 const LANDED: &str = "send `LANDED <card> landed head=<10 hex>` to the lane concerned";
+/// SPEC-20261125-land-sync-merge REQ-8: a branch that is not a card head enters only through
+/// `moai card land-sync`, and the sentence names its gates and refusal codes and says that the
+/// answer tells whether the branch moved.
+const LAND_SYNC: &str = "A branch that is no card head (such as `main`) enters only through `moai card land-sync <branch> --spec <SPEC-ID> --by leader`, for a branch `work_flow.sync_sources` lists and an approved SPEC; it refuses `conflicts`, `check_failed`, `not_full_pass`, `stale_base` and `drift`, and its answer says whether the branch moved.";
 /// REQ-7: the audit goes to a session that wrote none of the change.
 const AUDIT: &str = "Send the audit of a head to a session that wrote none of the change (the AUDIT route); the author of a change never audits it.";
 /// REQ-7: landing after a `PASS` for the exact head, by the leader.
@@ -197,16 +219,8 @@ fn round_names_one_command_per_step_and_the_next_action() {
 #[test]
 fn a_table_gives_the_next_action_of_each_failed_landing() {
     let text = raw(LEADER);
-    let start = text
-        .find("## When a head does not land")
-        .expect("the table section");
-    let rest = &text[start..];
-    let section = &rest[..rest.find("\n## ").map_or(rest.len(), |i| i + 1).max(1)];
-    let rows: Vec<Vec<&str>> = section
-        .lines()
-        .filter(|l| l.starts_with("| ") && !l.starts_with("| What") && !l.starts_with("| ---"))
-        .map(|l| l.trim_matches('|').split('|').map(str::trim).collect())
-        .collect();
+    let section = table_section(&text);
+    let rows = table_rows(section);
     for key in [
         "a first `fail` verdict",
         "a second `fail` of the same card",
@@ -332,6 +346,53 @@ fn end_a_closed_window_can_be_freed_by_the_leader() {
 #[test]
 fn end_the_window_holds_no_standing_role() {
     assert_has(&leader(), INTRO);
+}
+
+/// SPEC-20261125-land-sync-merge AC-8: step 5 holds the land-sync sentence exactly once.
+#[test]
+fn land_sync_sentence_is_in_step_5_exactly_once() {
+    let t = leader();
+    assert_has(&t, LAND_SYNC);
+    assert_eq!(
+        t.matches(LAND_SYNC).count(),
+        1,
+        "{LEADER} holds the land-sync sentence more than once"
+    );
+}
+
+/// SPEC-20261125-land-sync-merge AC-8: the sentence follows the single-head landing and the batch
+/// landing, and comes before the landing notice.
+#[test]
+fn land_sync_sentence_comes_after_land_and_batch_and_before_landed() {
+    let t = leader();
+    assert_before(&t, LAND, BATCH);
+    assert_before(&t, BATCH, LAND_SYNC);
+    assert_before(&t, LAND_SYNC, LANDED);
+}
+
+/// SPEC-20261125-land-sync-merge AC-8: the sentence names each gate and each refusal code, and the
+/// failure table holds no row of its own for `land-sync` (the byte budget leaves no room): a
+/// refusal after the move is told by the answer, which the sentence says.
+#[test]
+fn land_sync_sentence_names_its_gates_and_refusal_codes() {
+    let t = leader();
+    let line = t
+        .lines()
+        .find(|l| l.contains(LAND_SYNC))
+        .expect("the land-sync sentence");
+    for needle in [
+        "`--by leader`",
+        "`work_flow.sync_sources`",
+        "an approved SPEC",
+        "`conflicts`",
+        "`check_failed`",
+        "`not_full_pass`",
+        "`stale_base`",
+        "`drift`",
+        "whether the branch moved",
+    ] {
+        assert!(line.contains(needle), "the sentence lacks {needle}");
+    }
 }
 
 #[test]

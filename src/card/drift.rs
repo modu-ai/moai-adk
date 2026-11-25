@@ -20,14 +20,22 @@
 //! reference and the leader word, the move itself under the guard (a restore intent that names the
 //! ledger's recorded landing and its row: the one move that may be no fast-forward) and one
 //! `card.tip_restored` ledger row. The plain view writes no file at all. Nothing here prints or runs a bare `git update-ref`.
+//!
+//! A `card land-sync` (SPEC-20261125-land-sync-merge) moves the branch too, and it has no card:
+//! its two rows, `card.sync_started` before the move and `card.synced` after it, carry the merge
+//! commit, the source tip and the old tip, and `card_id` NULL. They are a second pair beside the
+//! landing pair and count the same way: the newest start row of the two kinds decides, a complete
+//! sync expects its merge commit, an interrupted one accepts the merge (the move was done) and the
+//! old tip (it was not). The two kinds are read by two queries, so a card-less row never reaches
+//! the landing query, which reads `card_id` as a number.
 
 use super::command::open_for_write;
 use super::guard;
 use super::input;
 use super::landed::{self, RefMove};
 use crate::ledger::workflow::{self, LEADER_BY};
-use crate::ledger::{self, LedgerError};
-use rusqlite::Connection;
+use crate::ledger::{self, LedgerError, WriteLedger};
+use rusqlite::{params, Connection, Transaction};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::path::Path;
@@ -37,28 +45,39 @@ type Result<T> = std::result::Result<T, String>;
 /// The most dropped commits a preview lists.
 const DROPS_LISTED: usize = 20;
 
+/// The ledger row `card land-sync` writes before it moves the branch (no card).
+pub const SYNC_STARTED: &str = "card.sync_started";
+/// The ledger row `card land-sync` writes after it moved the branch (no card).
+pub const SYNCED: &str = "card.synced";
+/// The ledger row `card drift --restore --apply` writes after the move back.
+const TIP_RESTORED: &str = "card.tip_restored";
+
 /// Where the ledger says the branch must be.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Expected {
-    /// The commit a restore moves the branch to: the result of the newest successful landing, or
-    /// for a branch whose first landing was interrupted, the tip that landing started from.
+    /// The commit a restore moves the branch to: the result of the newest successful landing or
+    /// sync, or for a branch whose first move was interrupted, the tip that move started from.
     pub commit: String,
-    /// The card that landing belongs to.
-    pub card: i64,
-    /// The ledger row the commit was read from: the landed row of the newest successful landing,
-    /// or the start row of an interrupted first landing.
+    /// The card that landing belongs to; `None` for a sync, which has no card.
+    pub card: Option<i64>,
+    /// The ledger row the commit was read from: the landed (or synced) row of the newest
+    /// successful move, or the start row of an interrupted first move.
     pub row: i64,
-    /// `landing` or `interrupted_landing`.
+    /// `landing`, `sync`, `interrupted_landing` or `interrupted_sync`.
     pub source: &'static str,
     /// Every tip that is no drift.
     pub accepted: Vec<String>,
 }
 
+/// One start row of a landing or of a sync. For a sync `from` is the old tip, `head` the merge
+/// commit and `landed_row` the `card.synced` row.
 struct Row {
-    card: i64,
+    card: Option<i64>,
+    sync: bool,
     from: String,
     head: String,
-    /// The id of the `card.landed` row that follows this start row, when there is one.
+    /// The id of the `card.landed` (or `card.synced`) row that follows this start row, when there
+    /// is one.
     landed_row: Option<i64>,
     /// The id of the start row itself.
     start_row: i64,
@@ -68,9 +87,53 @@ fn sql_err(e: rusqlite::Error) -> String {
     LedgerError::from(e).to_string()
 }
 
-/// The start rows of `branch`, newest first, each with whether a `card.landed` row of the same
-/// card and head follows it.
+/// The start rows of `branch`, landings and syncs together, newest first, each with whether its
+/// closing row follows it.
 fn rows(conn: &Connection, branch: &str) -> Result<Vec<Row>> {
+    let mut found = landing_rows(conn, branch)?;
+    found.extend(sync_rows(conn, branch)?);
+    found.sort_by_key(|r| std::cmp::Reverse(r.start_row));
+    Ok(found)
+}
+
+/// The `card.sync_started` rows of `branch`, newest first, each with whether a `card.synced` row
+/// of the same merge and old tip follows it. Their `card_id` is NULL and is never selected.
+fn sync_rows(conn: &Connection, branch: &str) -> Result<Vec<Row>> {
+    let mut stmt = conn
+        .prepare(&format!(
+            "SELECT json_extract(s.payload, '$.old_tip'), json_extract(s.payload, '$.merge'), \
+                    (SELECT min(l.event_id) FROM event l WHERE l.kind = '{SYNCED}' \
+                              AND l.event_id > s.event_id \
+                              AND json_extract(l.payload, '$.branch') = ?1 \
+                              AND json_extract(l.payload, '$.merge') = json_extract(s.payload, '$.merge') \
+                              AND json_extract(l.payload, '$.old_tip') = json_extract(s.payload, '$.old_tip')), \
+                    s.event_id \
+             FROM event s WHERE s.kind = '{SYNC_STARTED}' \
+               AND json_extract(s.payload, '$.branch') = ?1 \
+               AND json_type(s.payload, '$.merge') = 'text' AND json_type(s.payload, '$.old_tip') = 'text' \
+             ORDER BY s.event_id DESC"
+        ))
+        .map_err(sql_err)?;
+    let found = stmt
+        .query_map([branch], |r| {
+            Ok(Row {
+                card: None,
+                sync: true,
+                from: r.get(0)?,
+                head: r.get(1)?,
+                landed_row: r.get(2)?,
+                start_row: r.get(3)?,
+            })
+        })
+        .map_err(sql_err)?
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .map_err(sql_err)?;
+    Ok(found)
+}
+
+/// The `card.land_started` rows of `branch`, newest first, each with whether a `card.landed` row
+/// of the same card and head follows it.
+fn landing_rows(conn: &Connection, branch: &str) -> Result<Vec<Row>> {
     let mut stmt = conn
         .prepare(
             "SELECT s.card_id, json_extract(s.payload, '$.tip'), json_extract(s.payload, '$.head'), \
@@ -87,7 +150,8 @@ fn rows(conn: &Connection, branch: &str) -> Result<Vec<Row>> {
     let found = stmt
         .query_map([branch], |r| {
             Ok(Row {
-                card: r.get(0)?,
+                card: Some(r.get(0)?),
+                sync: false,
                 from: r.get(1)?,
                 head: r.get(2)?,
                 landed_row: r.get(3)?,
@@ -122,7 +186,7 @@ pub fn expected(conn: &Connection, branch: &str) -> Result<Option<Expected>> {
             commit: done.head.clone(),
             card: done.card,
             row: landed_row,
-            source: "landing",
+            source: if done.sync { "sync" } else { "landing" },
             accepted,
         }));
     }
@@ -132,7 +196,11 @@ pub fn expected(conn: &Connection, branch: &str) -> Result<Option<Expected>> {
         commit: newest.from.clone(),
         card: newest.card,
         row: newest.start_row,
-        source: "interrupted_landing",
+        source: if newest.sync {
+            "interrupted_sync"
+        } else {
+            "interrupted_landing"
+        },
         accepted,
     }))
 }
@@ -156,10 +224,18 @@ pub fn refusal(conn: &Connection, branch: &str, tip: &str) -> Result<Option<Stri
          no landing). `moai card drift` shows the comparison; after the \
          user's pick, `{RESTORE_COMMAND}` previews the move back to {} and applies it only with \
          the user's yes; then land again",
-        input::card_name(want.card),
+        card_label(want.card),
         want.commit,
         want.commit,
     )))
+}
+
+/// The card a drift answer names, or the sync that has none.
+fn card_label(card: Option<i64>) -> String {
+    card.map_or_else(
+        || "a `moai card land-sync` merge".to_string(),
+        input::card_name,
+    )
 }
 
 fn compare_json(branch: &str, tip: &str, want: &Option<Expected>) -> Value {
@@ -173,7 +249,9 @@ fn compare_json(branch: &str, tip: &str, want: &Option<Expected>) -> Value {
     json!({
         "branch": branch, "tip": tip,
         "state": if drift { "drift" } else { "ok" },
-        "expected": {"commit": w.commit, "card": input::card_name(w.card), "source": w.source},
+        "expected": {
+            "commit": w.commit, "card": w.card.map(input::card_name), "source": w.source,
+        },
         "accepted": w.accepted,
         "restore_command": if drift { Value::from(RESTORE_COMMAND) } else { Value::Null },
     })
@@ -185,16 +263,18 @@ struct Plan {
     full: String,
     from: String,
     to: String,
-    card: i64,
+    card: Option<i64>,
     row: i64,
     drops: Vec<String>,
     drops_total: usize,
     digest: String,
 }
 
-/// The digest of a restore plan: the move, the card and the nonce the preview wrote into the git
-/// folder, so it cannot be computed without that preview and a used or older one never matches.
-fn digest_of(branch: &str, from: &str, to: &str, card: i64, nonce: &str) -> String {
+/// The digest of a restore plan: the move, the card (`none` for a sync) and the nonce the preview
+/// wrote into the git folder, so it cannot be computed without that preview and a used or older
+/// one never matches.
+fn digest_of(branch: &str, from: &str, to: &str, card: Option<i64>, nonce: &str) -> String {
+    let card = card.map_or_else(|| "none".to_string(), |c| c.to_string());
     format!(
         "{:x}",
         Sha256::digest(format!(
@@ -254,7 +334,7 @@ fn plan(project: &Path, conn: &Connection, branch: &str, tip: &str, nonce: &str)
 
 fn plan_json(p: &Plan, moved: bool) -> Value {
     json!({
-        "branch": p.branch, "from": p.from, "to": p.to, "card": input::card_name(p.card),
+        "branch": p.branch, "from": p.from, "to": p.to, "card": p.card.map(input::card_name),
         "drops": p.drops, "drops_total": p.drops_total,
         "plan_digest": p.digest, "moved": moved,
         "apply": format!(
@@ -263,6 +343,149 @@ fn plan_json(p: &Plan, moved: bool) -> Value {
             p.digest
         ),
     })
+}
+
+/// What a `card.sync_started` or `card.synced` row names.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SyncRow {
+    /// The integration branch, spelled as the landing rows spell it.
+    pub branch: String,
+    /// The merge commit the sync moves the branch to.
+    pub merge: String,
+    /// The source branch.
+    pub from: String,
+    /// The tip of the source branch the merge was made from.
+    pub from_tip: String,
+    /// The integration tip the merge was made on.
+    pub old_tip: String,
+    /// The approved SPEC the sync names.
+    pub spec: String,
+}
+
+/// The card-less row `card land-sync` writes before the move; written once per branch, merge and
+/// old tip, so a rerun after an interrupted sync adds none.
+pub fn record_sync_started(w: &mut WriteLedger, row: &SyncRow) -> Result<()> {
+    write_sync(w, row, SYNC_STARTED)
+}
+
+/// The card-less row `card land-sync` writes after the move; written once per branch, merge and
+/// old tip, and only after the start row of the same sync.
+pub fn record_synced(w: &mut WriteLedger, row: &SyncRow) -> Result<()> {
+    write_sync(w, row, SYNCED)
+}
+
+/// A full lower-case commit id: what git prints and what the landing rows hold.
+fn is_commit_id(text: &str) -> bool {
+    text.len() == 40 && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+}
+
+/// A card-less row with no `card_id`, in the transaction of the caller.
+fn add_cardless_event(
+    tx: &Transaction<'_>,
+    now: i64,
+    actor: &str,
+    kind: &str,
+    payload: &Value,
+) -> std::result::Result<(), LedgerError> {
+    let key = ledger::new_event_key(tx, kind, None)?;
+    tx.execute(
+        "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+         VALUES (?1, ?2, ?3, NULL, ?4, ?5)",
+        params![key, now, actor, kind, payload.to_string()],
+    )?;
+    Ok(())
+}
+
+/// One `card.sync_started` or `card.synced` row, in one write transaction: refused for a value
+/// that is no commit id or an empty name, a no-op when a row of that kind already names the branch,
+/// the merge and the old tip, and, for the synced row, refused when no start row of that sync exists.
+fn write_sync(w: &mut WriteLedger, row: &SyncRow, kind: &str) -> Result<()> {
+    for (name, value) in [
+        ("merge", &row.merge),
+        ("from_tip", &row.from_tip),
+        ("old_tip", &row.old_tip),
+    ] {
+        if !is_commit_id(value) {
+            return Err(format!("card sync row refused: {name} is no commit id"));
+        }
+    }
+    for (name, value) in [
+        ("branch", &row.branch),
+        ("from", &row.from),
+        ("spec", &row.spec),
+    ] {
+        if value.is_empty() {
+            return Err(format!("card sync row refused: {name} is empty"));
+        }
+    }
+    let payload = json!({
+        "branch": row.branch, "merge": row.merge, "from": row.from, "from_tip": row.from_tip,
+        "old_tip": row.old_tip, "spec": row.spec, "by": LEADER_BY,
+    });
+    w.with_write_tx(|tx, now| {
+        let exists = |of: &str| -> std::result::Result<bool, LedgerError> {
+            Ok(tx.query_row(
+                "SELECT EXISTS (SELECT 1 FROM event WHERE kind = ?1 \
+                   AND json_extract(payload, '$.branch') = ?2 \
+                   AND json_extract(payload, '$.merge') = ?3 \
+                   AND json_extract(payload, '$.old_tip') = ?4)",
+                params![of, row.branch, row.merge, row.old_tip],
+                |r| r.get(0),
+            )?)
+        };
+        if exists(kind)? {
+            return Ok(Ok(()));
+        }
+        if kind == SYNCED && !exists(SYNC_STARTED)? {
+            return Ok(Err(format!(
+                "card sync row refused: no {SYNC_STARTED} row names the merge {} on {}",
+                row.merge, row.old_tip
+            )));
+        }
+        add_cardless_event(tx, now, LEADER_BY, kind, &payload)?;
+        Ok(Ok(()))
+    })
+    .map_err(|e| e.to_string())?
+}
+
+/// The `card.tip_restored` row of a restore with no card (the move back of a sync): the same
+/// payload as the card-bound row, `card_id` NULL.
+pub fn record_tip_restored_cardless(
+    w: &mut WriteLedger,
+    by: &str,
+    branch: &str,
+    from: &str,
+    to: &str,
+    reference: &str,
+) -> Result<()> {
+    w.with_write_tx(|tx, now| {
+        add_cardless_event(
+            tx,
+            now,
+            by,
+            TIP_RESTORED,
+            &json!({"branch": branch, "from": from, "to": to, "reference": reference, "by": by}),
+        )
+    })
+    .map_err(|e| e.to_string())
+}
+
+/// The ledger row of a restore: card-bound for a landing, card-less for a sync.
+fn record_restore(
+    w: &mut WriteLedger,
+    card: Option<i64>,
+    branch: &str,
+    from: &str,
+    to: &str,
+    reference: &str,
+) -> Result<()> {
+    match card {
+        Some(card) => {
+            workflow::record_tip_restored(w, card, LEADER_BY, branch, from, to, reference)
+                .map_err(|e| e.to_string())
+        }
+        None => record_tip_restored_cardless(w, LEADER_BY, branch, from, to, reference),
+    }
 }
 
 /// What `card drift` was given.
@@ -402,16 +625,7 @@ pub fn drift(project: &Path, home: &Path, req: &DriftRequest<'_>) -> Result<Valu
             ));
         }
     }
-    workflow::record_tip_restored(
-        &mut writer,
-        p.card,
-        LEADER_BY,
-        &branch,
-        &p.from,
-        &p.to,
-        reference,
-    )
-    .map_err(|e| {
+    record_restore(&mut writer, p.card, &branch, &p.from, &p.to, reference).map_err(|e| {
         format!(
             "card drift refused after the move: {e}; the integration branch {branch} already \
              moved back to {} and the ledger row is missing",
@@ -444,12 +658,397 @@ mod tests {
 
     #[test]
     fn the_digest_changes_with_every_part_of_the_move() {
-        let base = digest_of("integ", "a", "b", 1, "n");
-        assert_ne!(base, digest_of("other", "a", "b", 1, "n"));
-        assert_ne!(base, digest_of("integ", "x", "b", 1, "n"));
-        assert_ne!(base, digest_of("integ", "a", "y", 1, "n"));
-        assert_ne!(base, digest_of("integ", "a", "b", 2, "n"));
-        assert_ne!(base, digest_of("integ", "a", "b", 1, "m"));
-        assert_eq!(base, digest_of("integ", "a", "b", 1, "n"));
+        let base = digest_of("integ", "a", "b", Some(1), "n");
+        assert_ne!(base, digest_of("other", "a", "b", Some(1), "n"));
+        assert_ne!(base, digest_of("integ", "x", "b", Some(1), "n"));
+        assert_ne!(base, digest_of("integ", "a", "y", Some(1), "n"));
+        assert_ne!(base, digest_of("integ", "a", "b", Some(2), "n"));
+        assert_ne!(base, digest_of("integ", "a", "b", None, "n"));
+        assert_ne!(base, digest_of("integ", "a", "b", Some(1), "m"));
+        assert_eq!(base, digest_of("integ", "a", "b", Some(1), "n"));
+    }
+
+    // ---- land-sync rows (SPEC-20261125-land-sync-merge REQ-6, REQ-9, D-4) -------------------
+
+    use crate::ledger::schema;
+
+    const BRANCH: &str = "integ";
+
+    fn h(c: char) -> String {
+        c.to_string().repeat(40)
+    }
+
+    /// An in-memory ledger with two cards.
+    fn ledger() -> Connection {
+        let mut conn = Connection::open_in_memory().unwrap();
+        schema::create_v1(&mut conn, "unit", "test").unwrap();
+        conn.execute(
+            "INSERT INTO card (card_id, title, created_by, created_at, updated_at) \
+             VALUES (1, 'a', 'x', 1, 1), (2, 'b', 'x', 1, 1)",
+            [],
+        )
+        .unwrap();
+        conn
+    }
+
+    /// One event row, returning its id.
+    fn put(conn: &Connection, kind: &str, card: Option<i64>, payload: Value) -> i64 {
+        let key = ledger::new_event_key(conn, kind, card).unwrap();
+        conn.execute(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES (?1, 1, 'x', ?2, ?3, ?4)",
+            params![key, card, kind, payload.to_string()],
+        )
+        .unwrap();
+        conn.last_insert_rowid()
+    }
+
+    /// A landing of `head` from `from`: its start row and, when `done`, its landed row.
+    fn landing(
+        conn: &Connection,
+        card: i64,
+        from: &str,
+        head: &str,
+        done: bool,
+    ) -> (i64, Option<i64>) {
+        let payload = json!({"branch": BRANCH, "tip": from, "head": head, "by": "leader"});
+        let start = put(conn, "card.land_started", Some(card), payload);
+        let landed = done.then(|| put(conn, "card.landed", Some(card), json!({"head": head})));
+        (start, landed)
+    }
+
+    fn sync_row(old: &str, merge: &str) -> SyncRow {
+        SyncRow {
+            branch: BRANCH.to_string(),
+            merge: merge.to_string(),
+            from: "hotfix".to_string(),
+            from_tip: h('9'),
+            old_tip: old.to_string(),
+            spec: "SPEC-20261117-sync-fixture".to_string(),
+        }
+    }
+
+    fn sync_payload(row: &SyncRow) -> Value {
+        json!({
+            "branch": row.branch, "merge": row.merge, "from": row.from,
+            "from_tip": row.from_tip, "old_tip": row.old_tip, "spec": row.spec, "by": "leader",
+        })
+    }
+
+    /// A sync of `merge` on `old`: its start row and, when `done`, its synced row, both written
+    /// by hand with no card.
+    fn syncing(conn: &Connection, old: &str, merge: &str, done: bool) -> (i64, Option<i64>) {
+        let payload = sync_payload(&sync_row(old, merge));
+        let start = put(conn, SYNC_STARTED, None, payload.clone());
+        let synced = done.then(|| put(conn, SYNCED, None, payload));
+        (start, synced)
+    }
+
+    fn want(conn: &Connection) -> Expected {
+        expected(conn, BRANCH).unwrap().expect("a recorded move")
+    }
+
+    /// A ledger the real writers use: a temporary HOME and a registered project.
+    fn write_ledger() -> (tempfile::TempDir, WriteLedger) {
+        let home = tempfile::tempdir().unwrap();
+        ledger::register(home.path(), "demo").unwrap();
+        let w = ledger::open_write(home.path(), "demo").unwrap();
+        (home, w)
+    }
+
+    /// The rows of `kind`: id, card and payload.
+    fn events(conn: &Connection, kind: &str) -> Vec<(i64, Option<i64>, Value)> {
+        let mut stmt = conn
+            .prepare(
+                "SELECT event_id, card_id, payload FROM event WHERE kind = ?1 ORDER BY event_id",
+            )
+            .unwrap();
+        let rows = stmt
+            .query_map([kind], |r| {
+                let text: String = r.get(2)?;
+                Ok((r.get(0)?, r.get(1)?, serde_json::from_str(&text).unwrap()))
+            })
+            .unwrap()
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .unwrap();
+        rows
+    }
+
+    /// REQ-9: a complete sync (start and synced row) expects its merge commit, whether it follows
+    /// a landing or is the only move the ledger knows; the landing's own tip is drift after it.
+    #[test]
+    fn a_complete_sync_is_the_expected_tip() {
+        let conn = ledger();
+        landing(&conn, 1, &h('a'), &h('b'), true);
+        let (_, synced) = syncing(&conn, &h('b'), &h('c'), true);
+        let got = want(&conn);
+        assert_eq!(got.commit, h('c'));
+        assert_eq!(got.card, None);
+        assert_eq!(got.source, "sync");
+        assert_eq!(got.row, synced.unwrap());
+        assert_eq!(got.accepted, vec![h('c')]);
+        assert_eq!(refusal(&conn, BRANCH, &h('c')).unwrap(), None);
+        let why = refusal(&conn, BRANCH, &h('b')).unwrap().expect("drift");
+        assert!(why.starts_with("drift: "), "{why}");
+        assert!(why.contains("a `moai card land-sync` merge"), "{why}");
+        assert!(why.contains(&format!("left it at {}", h('c'))), "{why}");
+
+        let alone = ledger();
+        let (_, synced) = syncing(&alone, &h('b'), &h('c'), true);
+        let got = want(&alone);
+        assert_eq!(
+            (got.commit, got.source, got.row),
+            (h('c'), "sync", synced.unwrap())
+        );
+        assert!(refusal(&alone, BRANCH, &h('b')).unwrap().is_some());
+    }
+
+    /// REQ-9: an interrupted sync (start row, no synced row) accepts the merge (the move was done)
+    /// and the old tip (it was not), and nothing else.
+    #[test]
+    fn an_interrupted_sync_accepts_the_merge_and_the_old_tip() {
+        let conn = ledger();
+        landing(&conn, 1, &h('a'), &h('b'), true);
+        syncing(&conn, &h('b'), &h('c'), false);
+        let got = want(&conn);
+        assert_eq!(got.accepted, vec![h('b'), h('c')]);
+        assert_eq!((got.commit.as_str(), got.card), (h('b').as_str(), Some(1)));
+        assert_eq!(refusal(&conn, BRANCH, &h('c')).unwrap(), None);
+        assert_eq!(refusal(&conn, BRANCH, &h('b')).unwrap(), None);
+        assert!(refusal(&conn, BRANCH, &h('0')).unwrap().is_some());
+        assert!(refusal(&conn, BRANCH, &h('a')).unwrap().is_some());
+
+        // The first move of the branch, interrupted: it restores to the tip it started from.
+        let first = ledger();
+        let (start, _) = syncing(&first, &h('b'), &h('c'), false);
+        let got = want(&first);
+        assert_eq!(got.commit, h('b'));
+        assert_eq!(got.card, None);
+        assert_eq!(got.source, "interrupted_sync");
+        assert_eq!(got.row, start);
+        assert_eq!(got.accepted, vec![h('b'), h('c')]);
+        assert!(refusal(&first, BRANCH, &h('0')).unwrap().is_some());
+    }
+
+    /// REQ-9: the newer of a landing and a sync decides, in both directions, and what the older
+    /// one expected is drift once the newer one is complete.
+    #[test]
+    fn the_newer_of_a_landing_and_a_sync_decides() {
+        let sync_then_landing = ledger();
+        syncing(&sync_then_landing, &h('b'), &h('c'), true);
+        let (_, landed) = landing(&sync_then_landing, 2, &h('c'), &h('d'), true);
+        let got = want(&sync_then_landing);
+        assert_eq!(got.commit, h('d'));
+        assert_eq!((got.card, got.source), (Some(2), "landing"));
+        assert_eq!(got.row, landed.unwrap());
+        assert_eq!(got.accepted, vec![h('d')]);
+        assert!(refusal(&sync_then_landing, BRANCH, &h('c'))
+            .unwrap()
+            .is_some());
+
+        let landing_then_sync = ledger();
+        landing(&landing_then_sync, 1, &h('a'), &h('b'), true);
+        syncing(&landing_then_sync, &h('b'), &h('c'), true);
+        let got = want(&landing_then_sync);
+        assert_eq!((got.commit.as_str(), got.source), (h('c').as_str(), "sync"));
+        assert!(refusal(&landing_then_sync, BRANCH, &h('b'))
+            .unwrap()
+            .is_some());
+
+        // An interrupted landing after a complete sync accepts the merge and its own two tips.
+        let interrupted = ledger();
+        syncing(&interrupted, &h('b'), &h('c'), true);
+        landing(&interrupted, 2, &h('c'), &h('d'), false);
+        let got = want(&interrupted);
+        assert_eq!((got.commit.as_str(), got.source), (h('c').as_str(), "sync"));
+        assert_eq!(got.accepted, vec![h('c'), h('d')]);
+    }
+
+    /// REQ-9: a landing that follows a landing is refused with the same bytes as before the sync
+    /// rows existed, and its digest is the digest of the same move with the card spelled as before.
+    #[test]
+    fn a_landing_after_a_landing_keeps_its_refusal_text_and_digest() {
+        let conn = ledger();
+        landing(&conn, 1, &h('a'), &h('b'), true);
+        landing(&conn, 2, &h('b'), &h('d'), true);
+        let tip = h('e');
+        let why = refusal(&conn, BRANCH, &tip).unwrap().expect("drift");
+        let pinned = format!(
+            "drift: the integration branch integ points at {tip}, but the newest landing the \
+             ledger recorded (C-2) left it at {d}: something moved the branch outside `moai card land` \
+             (for example `git branch -C`, which no hook sees, or a commit added by hand, which is \
+             no landing). `moai card drift` shows the comparison; after the \
+             user's pick, `moai card drift --restore` previews the move back to {d} and applies it only with \
+             the user's yes; then land again",
+            d = h('d'),
+        );
+        assert_eq!(why, pinned);
+        let got = want(&conn);
+        assert_eq!((got.card, got.source), (Some(2), "landing"));
+        let literal = format!(
+            "{:x}",
+            Sha256::digest("moai card drift --restore\ninteg\na\nb\n1\nn\n".as_bytes())
+        );
+        assert_eq!(digest_of("integ", "a", "b", Some(1), "n"), literal);
+        assert_ne!(digest_of("integ", "a", "b", None, "n"), literal);
+    }
+
+    /// REQ-6: rows with no card never reach the landing query: a ledger that holds card-less
+    /// rows of every kind the sync writes, a `claude.run` row and sync rows that are malformed or
+    /// belong to another branch still answers, and only the sync rows of this branch count.
+    #[test]
+    fn card_less_rows_never_make_the_landing_query_error() {
+        let conn = ledger();
+        assert_eq!(expected(&conn, BRANCH).unwrap(), None);
+        put(&conn, "claude.run", None, json!({"verdict": "ok"}));
+        let restored = json!({"branch": BRANCH, "from": h('7'), "to": h('8')});
+        put(&conn, TIP_RESTORED, None, restored);
+        put(&conn, SYNC_STARTED, None, json!({"branch": BRANCH}));
+        let numeric = json!({"branch": BRANCH, "merge": 7, "old_tip": h('b')});
+        put(&conn, SYNC_STARTED, None, numeric);
+        let mut other = sync_payload(&sync_row(&h('b'), &h('c')));
+        other["branch"] = json!("other");
+        put(&conn, SYNC_STARTED, None, other.clone());
+        put(&conn, SYNCED, None, other);
+        assert_eq!(expected(&conn, BRANCH).unwrap(), None);
+        assert_eq!(refusal(&conn, BRANCH, &h('0')).unwrap(), None);
+        landing(&conn, 1, &h('a'), &h('b'), true);
+        let got = want(&conn);
+        assert_eq!(
+            (got.commit.as_str(), got.source),
+            (h('b').as_str(), "landing")
+        );
+        // A synced row of another merge closes no start row.
+        syncing(&conn, &h('b'), &h('c'), false);
+        put(
+            &conn,
+            SYNCED,
+            None,
+            sync_payload(&sync_row(&h('b'), &h('f'))),
+        );
+        assert_eq!(want(&conn).accepted, vec![h('b'), h('c')]);
+    }
+
+    /// REQ-6: the writers add one card-less row each, the start row once per branch, merge and
+    /// old tip (a rerun adds none), the synced row once and only after its start row, and a value
+    /// that is no commit id is refused with nothing written.
+    #[test]
+    fn the_sync_writers_write_card_less_rows_once() {
+        let (_home, mut w) = write_ledger();
+        let row = sync_row(&h('b'), &h('c'));
+        let err = record_synced(&mut w, &row).unwrap_err();
+        assert!(err.contains(SYNC_STARTED), "{err}");
+        assert!(events(w.conn(), SYNCED).is_empty());
+        for bad in [
+            SyncRow {
+                merge: "abc".into(),
+                ..row.clone()
+            },
+            SyncRow {
+                old_tip: h('B'),
+                ..row.clone()
+            },
+            SyncRow {
+                from_tip: String::new(),
+                ..row.clone()
+            },
+            SyncRow {
+                branch: String::new(),
+                ..row.clone()
+            },
+            SyncRow {
+                spec: String::new(),
+                ..row.clone()
+            },
+        ] {
+            assert!(record_sync_started(&mut w, &bad).is_err(), "{bad:?}");
+        }
+        assert!(events(w.conn(), SYNC_STARTED).is_empty());
+
+        record_sync_started(&mut w, &row).unwrap();
+        record_sync_started(&mut w, &row).unwrap();
+        let started = events(w.conn(), SYNC_STARTED);
+        assert_eq!(started.len(), 1);
+        assert_eq!(started[0].1, None);
+        assert_eq!(started[0].2, sync_payload(&row));
+        // The move may have happened: both tips are accepted until the close row is written.
+        assert_eq!(want(w.conn()).accepted, vec![h('b'), h('c')]);
+
+        record_synced(&mut w, &row).unwrap();
+        record_synced(&mut w, &row).unwrap();
+        let synced = events(w.conn(), SYNCED);
+        assert_eq!(synced.len(), 1);
+        assert_eq!(synced[0].1, None);
+        assert_eq!(synced[0].2, sync_payload(&row));
+        assert!(started[0].0 < synced[0].0);
+        let got = want(w.conn());
+        assert_eq!((got.commit.as_str(), got.source), (h('c').as_str(), "sync"));
+        assert_eq!(got.row, synced[0].0);
+        assert_eq!(got.accepted, vec![h('c')]);
+
+        // A second sync of the same merge on another old tip is a sync of its own.
+        record_sync_started(&mut w, &sync_row(&h('c'), &h('c'))).unwrap();
+        assert_eq!(events(w.conn(), SYNC_STARTED).len(), 2);
+    }
+
+    /// D-4: the restore row of a sync-sourced expectation has no card and the payload of the
+    /// card-bound row; a landing's restore row stays on its card.
+    #[test]
+    fn a_restore_from_a_sync_records_a_card_less_row() {
+        let (_home, mut w) = write_ledger();
+        let row = sync_row(&h('b'), &h('c'));
+        record_sync_started(&mut w, &row).unwrap();
+        record_synced(&mut w, &row).unwrap();
+        let got = want(w.conn());
+        assert_eq!(got.card, None);
+        record_restore(
+            &mut w,
+            got.card,
+            BRANCH,
+            &h('0'),
+            &got.commit,
+            "user-pick-1",
+        )
+        .unwrap();
+        let rows = events(w.conn(), TIP_RESTORED);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].1, None);
+        assert_eq!(
+            rows[0].2,
+            json!({
+                "branch": BRANCH, "from": h('0'), "to": h('c'),
+                "reference": "user-pick-1", "by": LEADER_BY,
+            })
+        );
+
+        let card = w
+            .with_write_tx(|tx, now| {
+                tx.execute(
+                    "INSERT INTO card (title, state, created_by, created_at, updated_at) \
+                     VALUES ('card', 'ready', 'test', ?1, ?1)",
+                    [now],
+                )?;
+                Ok(tx.last_insert_rowid())
+            })
+            .unwrap();
+        record_restore(&mut w, Some(card), BRANCH, &h('0'), &h('b'), "user-pick-2").unwrap();
+        let rows = events(w.conn(), TIP_RESTORED);
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[1].1, Some(card));
+        assert_eq!(rows[1].2["to"], json!(h('b')));
+    }
+
+    /// The compare view of a sync-sourced expectation names no card and the `sync` source.
+    #[test]
+    fn the_compare_view_of_a_sync_names_no_card() {
+        let conn = ledger();
+        syncing(&conn, &h('b'), &h('c'), true);
+        let ok = compare_json(BRANCH, &h('c'), &expected(&conn, BRANCH).unwrap());
+        assert_eq!(ok["state"], json!("ok"));
+        assert_eq!(ok["expected"]["card"], Value::Null);
+        assert_eq!(ok["expected"]["source"], json!("sync"));
+        let drift = compare_json(BRANCH, &h('b'), &expected(&conn, BRANCH).unwrap());
+        assert_eq!(drift["state"], json!("drift"));
+        assert_eq!(drift["restore_command"], json!(RESTORE_COMMAND));
     }
 }
