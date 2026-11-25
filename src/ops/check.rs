@@ -40,7 +40,14 @@ enum Action {
     /// `module:<word>` and `units:<module path>` reasons why the set is narrow, or `none`),
     /// `test-threads=<n>` (the cap the
     /// `test` step ran with), the exit status of each step in the order they ran, then
-    /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs,
+    /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. A repository with no
+    /// `Cargo.toml` at its top folder and no `.rs` file at the head gets no cargo step: it runs
+    /// `git diff --check`, `bash -n` and one `sh -c` step per entry of `checks` in
+    /// `.moai/project.yaml` (a heavy step each, in the declared order). When it declares none (no
+    /// profile, one that cannot be read, or no `checks`) and no step failed, the result is
+    /// `not_run`, never `PASS`: the line ends in `result=not_run`, the answer's `not_run.next`
+    /// says what to write in the profile, and the READY note gate takes no receipt from it.
+    /// Writes the step logs,
     /// `heavy-slot.log` and `summary.txt` (the summary line, whatever its result: the receipt
     /// `card note` reads before it keeps a READY or REPAIRED note of this head) under
     /// `<build folder>/check-affected-<head>` (or `--out`). The bare command

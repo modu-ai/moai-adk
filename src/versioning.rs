@@ -809,6 +809,12 @@ pub fn validate(v: &VersioningSettings) -> Result<()> {
     Ok(())
 }
 
+/// What the managed line says about HeadVer (SPEC-20261125-headver-weekly-release): the
+/// development form, the release form and the release branch name, in the words every HeadVer
+/// project reads.
+const HEADVER_RULE: &str = "development {head}.{yearweek}.{build}-dev, release \
+     {head}.{release week}.{serial from 0}, release branch release/v{head}.{yearweek}.{n}";
+
 /// The line the `AGENTS.md` managed section carries for the choice, in the section's
 /// language (`ko`, else English), newline included.
 pub fn render_line(v: &VersioningSettings, lang: &str) -> String {
@@ -819,10 +825,8 @@ pub fn render_line(v: &VersioningSettings, lang: &str) -> String {
     };
     let scheme = match (v.scheme.as_str(), v.format.as_deref(), v.head) {
         ("semver", ..) => "SemVer (MAJOR.MINOR.PATCH)".to_string(),
-        ("headver", _, Some(head)) => {
-            format!("HeadVer ({{head}}.{{yearweek}}.{{build}}), head {head}")
-        }
-        ("headver", ..) => "HeadVer ({head}.{yearweek}.{build})".to_string(),
+        ("headver", _, Some(head)) => format!("HeadVer ({HEADVER_RULE}), head {head}"),
+        ("headver", ..) => format!("HeadVer ({HEADVER_RULE})"),
         ("calver", Some(format), _) => format!("CalVer ({format})"),
         ("calver", ..) => "CalVer".to_string(),
         (_, Some(text), _) => format!("custom ({text})"),
@@ -1674,11 +1678,15 @@ mod tests {
         );
         assert_eq!(
             render_line(&settings("headver", None, Some(3)), "en"),
-            "Versioning: HeadVer ({head}.{yearweek}.{build}), head 3.\n"
+            "Versioning: HeadVer (development {head}.{yearweek}.{build}-dev, release \
+             {head}.{release week}.{serial from 0}, release branch \
+             release/v{head}.{yearweek}.{n}), head 3.\n"
         );
         assert_eq!(
             render_line(&settings("headver", None, None), "en"),
-            "Versioning: HeadVer ({head}.{yearweek}.{build}).\n"
+            "Versioning: HeadVer (development {head}.{yearweek}.{build}-dev, release \
+             {head}.{release week}.{serial from 0}, release branch \
+             release/v{head}.{yearweek}.{n}).\n"
         );
         assert_eq!(
             render_line(&settings("calver", Some("YYYY.0M.MICRO"), None), "en"),

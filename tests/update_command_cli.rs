@@ -801,7 +801,7 @@ fn in_a_terminal_nothing_to_write_asks_nothing() {
     assert!(!text.contains("[y/N]"), "{text}");
     // #2894 U1: the blocked screen instead of the preview envelope.
     assert!(
-        text.contains("Nothing can be applied — clear the blocked part first"),
+        text.contains("Nothing left to apply — the rest is up to date"),
         "{text}"
     );
     assert_eq!(state(&f.home), before);

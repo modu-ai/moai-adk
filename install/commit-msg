@@ -1,7 +1,9 @@
 #!/bin/sh
-# MoAI commit-msg hook: refuse card numbers in the commit message — the same scan
-# `moai trailer-check --card-numbers-since` runs on a range, judging the draft
-# message git hands this hook (SPEC-20261120-commit-message-card-numbers).
+# MoAI commit-msg hook: judge the draft message git hands this hook with two scans of
+# `moai trailer-check --message-file`: card numbers (the scan `--card-numbers-since` runs on a
+# range, SPEC-20261120-commit-message-card-numbers) and a Moai-* trailer block split from the
+# last paragraph, for example by a blank line before Co-Authored-By, which git never reads as a
+# trailer (SPEC-20261125-trailer-paragraph-guard).
 # Install: a hand install copies or links this file into .git/hooks/ (or your
 # core.hooksPath folder) as commit-msg and makes it executable. This hook is not part of
 # the managed git-hook set: the card-number scan belongs to the repositories that own the

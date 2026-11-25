@@ -2101,15 +2101,14 @@ fn unused_picks(picks: &[String], used: &[&str]) -> Result<()> {
     }
 }
 
-/// Throwaway stamp for the git question about a set-aside target before the apply has one.
-const PICK_STAMP: &str = EXAMPLE_STAMP;
-
 /// The tracked files of `.moai-cli/` per planned row and the `.gitignore` check (SPEC
-/// REQ-5). One read-only `git ls-files` counts the tracked files under each row; then every
-/// target of a row whose source is tracked, and the marker, is asked of `git check-ignore`. A
-/// target ignored while its source is tracked blocks the whole move (the returned reason names
-/// the entry and the rule). Without a git work tree the counts are unknown and nothing blocks;
-/// git failing to answer blocks, because the answer is then unknown too.
+/// REQ-5). One read-only `git ls-files` counts the tracked files under each row; then the target
+/// of every `move` row whose source is tracked is asked of `git check-ignore`, and so is the
+/// marker whenever the source of any `move` or `set-aside` row is tracked. A target ignored
+/// while its source is tracked blocks the whole move (the returned reason names the entry and
+/// the rule). A `set-aside` target is the backup area, which git ignores by design, so only its
+/// count and a warning are given. Without a git work tree the counts are unknown and nothing
+/// blocks; git failing to answer blocks, because the answer is then unknown too.
 fn kept_git_checks(project: &Path, moves: &mut [StateMove]) -> (Option<String>, Option<String>) {
     if fs::symlink_metadata(project.join(".git")).is_err() {
         return (
@@ -2170,12 +2169,17 @@ fn kept_git_checks(project: &Path, moves: &mut [StateMove]) -> (Option<String>, 
         .iter()
         .filter(|m| m.tracked.is_some() && m.action == "move")
         .map(|m| {
-            let to = m.to.replace("<UTC>", PICK_STAMP);
+            let to = m.to.clone();
             let folder = fs::symlink_metadata(project.join(&m.from)).is_ok_and(|s| s.is_dir());
             (m.from.clone(), if folder { format!("{to}/") } else { to })
         })
         .collect();
-    if sources.is_empty() {
+    // The marker is written whenever anything moves, so a tracked `set-aside` source asks for it
+    // too, not only a tracked `move` source.
+    let marker_matters = moves
+        .iter()
+        .any(|m| m.tracked.is_some() && matches!(m.action.as_str(), "move" | "set-aside"));
+    if sources.is_empty() && !marker_matters {
         return (None, aside_note);
     }
     let marker = format!("{MOAI_DIR}/{}", crate::state_root::RUST_MARKER);

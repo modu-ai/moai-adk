@@ -66,7 +66,7 @@ fn host_lines_match_goldens() {
     assert_eq!(claude["operation"], json!("lane.loop_line"));
     assert_eq!(
         claude["result"]["lines"],
-        json!([{"kind": "prompt", "text": "/loop 5m /moai work 레인 agent-1 — 순환 계속, self-pick (1)부터. compact·clear 뒤 첫 행동은 내 카드 Issue 의 moai-resume 메모 읽기"}])
+        json!([{"kind": "prompt", "text": "/loop 5m 레인 agent-1 — 순환 계속, self-pick (1)부터. compact·clear 뒤 첫 행동은 내 카드 Issue 의 moai-resume 메모 읽기"}])
     );
     let (_, codex) = run(
         &[

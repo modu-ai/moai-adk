@@ -2,7 +2,7 @@
 //! O5 of the #2899 orchestration redesign, section B; user decision D-O2: a Codex lane keeps
 //! one session with `/goal` plus a trusted `Stop` hook).
 //!
-//! - Claude Code: `/loop 5m /moai work <duty>` — a fixed five-minute loop that fires
+//! - Claude Code: `/loop 5m <duty>` — a fixed five-minute loop that fires
 //!   only while the session is idle.
 //! - Codex CLI: `/goal <end condition>` (enabled with `codex features enable goals`; at most
 //!   4,000 characters) and a `Stop` hook whose `decision: "block"` makes Codex continue with the
@@ -174,7 +174,7 @@ pub fn lines(
         Host::Claude => {
             out["lines"] = json!([line(
                 "prompt",
-                format!("/loop 5m /moai work {}", self::duty(lane, duty))
+                format!("/loop 5m {}", self::duty(lane, duty))
             )]);
             out["verified"] = json!("documented");
             out["note"] =
@@ -748,15 +748,12 @@ mod tests {
     fn each_host_gets_its_line() {
         let c = lines(Host::Claude, "agent-10", None, None).unwrap();
         let text = c["lines"][0]["text"].as_str().unwrap();
-        assert!(
-            text.starts_with("/loop 5m /moai work 레인 agent-10 "),
-            "{text}"
-        );
+        assert!(text.starts_with("/loop 5m 레인 agent-10 "), "{text}");
         assert!(text.contains(RESUME_FIRST), "{text}");
         let custom = lines(Host::Claude, "agent-10", None, Some("#2904 먼저")).unwrap();
         assert_eq!(
             custom["lines"][0]["text"],
-            json!("/loop 5m /moai work 레인 agent-10 — #2904 먼저")
+            json!("/loop 5m 레인 agent-10 — #2904 먼저")
         );
         let x = lines(Host::Codex, "agent-10", Some("modu-ai/moai-adk"), None).unwrap();
         let texts: Vec<&str> = x["lines"]

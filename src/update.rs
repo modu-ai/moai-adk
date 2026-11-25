@@ -2761,7 +2761,7 @@ pub fn update_command_full(
     if out["mode"] != json!("applied") && !nothing_to_apply {
         return Ok(out);
     }
-    let wrote = out["applied"] == json!(true);
+    let wrote = visible_change(&out);
     let terminal = crate::update_tux::human() && crate::update_tux::can_ask();
     let opens = model_step_opens(scripted, terminal, wrote, models_saved(home));
     if nothing_to_apply && !opens {
@@ -2774,6 +2774,32 @@ pub fn update_command_full(
         crate::update_models::report(home)
     };
     Ok(out)
+}
+
+/// Whether a finished update changed anything a person can see (SPEC-20261125-update-screen-facts
+/// REQ-1): a skill file published, or an agents, routing, style, bin-names, hooks, extra-skills or
+/// keys part that wrote. An update that only adopted files or moved receipt baselines changed
+/// nothing visible, so it does not open the model step by itself.
+pub fn visible_change(out: &serde_json::Value) -> bool {
+    let state = |key: &str| out[key]["state"].as_str();
+    let skill_file = out["result"]["hosts"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .flat_map(|h| h["files"].as_array().into_iter().flatten())
+        .any(|f| f["published"] == json!(true));
+    skill_file
+        || state("keys_result") == Some("applied")
+        || state("agents_result") == Some("applied")
+        || (state("agents_result") == Some("partial")
+            && out["agents_result"]["written"]
+                .as_array()
+                .is_some_and(|w| !w.is_empty()))
+        || state("routing_result") == Some("applied")
+        || state("style_result") == Some("applied")
+        || state("bin_names_result") == Some("applied")
+        || matches!(state("extra_skills_result"), Some("applied" | "partial"))
+        || matches!(state("hooks_result"), Some("applied" | "partial"))
 }
 
 /// Whether the terminal model step opens after the update part: never on a scripted run
@@ -2945,6 +2971,8 @@ fn apply_update_in(
     let install_id = current_install_id(&canonical_home)?;
 
     let mut outcomes: Vec<HostOutcome> = Vec::new();
+    // SPEC-20261125-update-screen-facts REQ-4: the files each host adopted, kept beside its outcome.
+    let mut adopted_counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut published_anywhere = false;
     let mut any_failed = false;
     let mut any_conflict_only = false;
@@ -3284,6 +3312,9 @@ fn apply_update_in(
         receipt.finished_at = Some(now_rfc3339());
         save_host_receipt(&canonical_home, &install_id, &receipt)?;
         published_anywhere |= host_plan.adopt.is_some();
+        if let Some(a) = &host_plan.adopt {
+            adopted_counts.insert(host.to_string(), a.files.len());
+        }
 
         let (reload, basis) = reload_state(host, top_skills_existed, host_published > 0);
         let mut all: Vec<serde_json::Value> = writes
@@ -3336,7 +3367,16 @@ fn apply_update_in(
         "plan_digest": plan_digest,
         "package_digest": staged.digest,
         "package_version": fresh.target_version,
-        "hosts": outcomes.iter().map(host_outcome_json).collect::<Vec<_>>(),
+        "hosts": outcomes
+            .iter()
+            .map(|o| {
+                let mut v = host_outcome_json(o);
+                if let Some(n) = adopted_counts.get(&o.host) {
+                    v["adopted"] = json!(n);
+                }
+                v
+            })
+            .collect::<Vec<_>>(),
         "host_loaded": false,
         "execution_verified": "not_run",
         "reload_note": "host loading is not measured here (08-C owns the live check)",
