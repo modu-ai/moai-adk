@@ -99,7 +99,8 @@ fn step_script(workflow: &str, id: &str) -> String {
     script
 }
 
-const VERSION: &str = "4.2648.9";
+// SPEC-20261125-headver-weekly-release: a release is {head}.{week}.{serial from 0}, no suffix.
+const VERSION: &str = "4.2649.0";
 
 /// Runs the release workflow's real "Binaries, tag and release note agree" script in a folder
 /// whose `target/release/` holds two stand-in binaries that print the given first lines. Returns
@@ -114,7 +115,7 @@ fn run_release_check(first_of_cli: &str, first_of_moai: &str) -> (bool, String, 
         common::write_executable(
             &release.join(name),
             &format!(
-                "#!/bin/sh\nprintf '%s\\n%s\\n' '{first}' 'CI build 9 (MOAI_BUILD_NUMBER), built 2026-11-23'\n"
+                "#!/bin/sh\nprintf '%s\\n%s\\n' '{first}' 'release build 0 (MOAI_RELEASE_VERSION), built 2026-11-23'\n"
             ),
         );
     }
@@ -123,7 +124,8 @@ fn run_release_check(first_of_cli: &str, first_of_moai: &str) -> (bool, String, 
         .args(["-eo", "pipefail", "-c", &script])
         .current_dir(&root)
         .env("VERSION", VERSION)
-        .env("BUILD", "9")
+        .env("SERIAL", "0")
+        .env("REF_NAME", format!("release/v{VERSION}"))
         .env("TAG", format!("moai-adk-v{VERSION}"))
         .env("SHA", "0".repeat(40))
         .env("PRERELEASE", "false")
