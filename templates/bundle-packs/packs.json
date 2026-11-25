@@ -442,7 +442,15 @@
      "kind": "skill",
      "root": "claude-skills",
      "path": ".claude/skills/moai-ref-aside-browser",
-     "sha256": "653940540ae35059faa4dcdd7d4f2bf4d7b4960de023f6da405e9632c0030b5f",
+     "sha256": "fc9714d3a50613a566a247e816c0f206b39c795106a281544a8a7e42dbe49b29",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-ref-ego-browser",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-ego-browser",
+     "sha256": "ce692d8ad669ee59685983f9824a3e6aa96c73c8e30a99b623442378570aff7b",
      "depends_skills": []
     },
     {
