@@ -189,6 +189,20 @@ fn receipt_covers(line: &str, last: &str) -> bool {
 /// Writes the summary line of an in-process run where `moai check affected` writes it for its
 /// caller (`<out>/summary.txt`), so that [`read_run_receipt`] finds it. The command line does this
 /// after `check_affected::run` returns; a direct call of `run` does not.
+/// The options of the wide check of a batch: the full selection, and no earlier run is read —
+/// the wide check is the safety net (SPEC-20261125-check-affected-rerun REQ-11).
+fn wide_options() -> crate::check_affected::RunOptions {
+    crate::check_affected::RunOptions {
+        slot_dir: None,
+        max: 4,
+        min_free_gb: 50,
+        out: None,
+        pick: crate::check_affected::Pick::Full,
+        integration_ref: None,
+        full: true,
+    }
+}
+
 fn record_summary(answer: &Value) {
     if let (Some(out), Some(summary)) = (answer["out"].as_str(), answer["summary"].as_str()) {
         let _ = crate::card::ready_receipt::write_summary(Path::new(out), summary);
@@ -373,16 +387,7 @@ fn run_check(
             }
         }
         None => {
-            let opts = crate::check_affected::RunOptions {
-                slot_dir: None,
-                max: 4,
-                min_free_gb: 50,
-                out: None,
-                pick: crate::check_affected::Pick::Full,
-                integration_ref: None,
-                // The wide check is the safety net: it reads no earlier run (SPEC-20261125-check-affected-rerun REQ-11).
-                full: true,
-            };
+            let opts = wide_options();
             match crate::check_affected::run(&work, &range, &opts) {
                 Ok(answer) => {
                     let summary = answer["summary"].as_str().unwrap_or_default();
@@ -609,6 +614,14 @@ mod tests {
     use super::*;
 
     const LAST: &str = "da585ae4d507bec047ab5a6446bda6e367649282";
+
+    /// SPEC-20261125-check-affected-rerun AC-6: the wide check of a batch reads no earlier run.
+    #[test]
+    fn the_wide_check_of_a_batch_runs_full_and_reads_no_earlier_run() {
+        let opts = wide_options();
+        assert!(opts.full, "land-batch must not narrow its wide check");
+        assert!(matches!(opts.pick, crate::check_affected::Pick::Full));
+    }
 
     /// SPEC-20261124-card-select-batch-land REQ-24: the `Verify` section of `CLAUDE.md` and the
     /// flow reference say that the READY receipt is the card set, that the wide set runs once per
