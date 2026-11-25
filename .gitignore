@@ -361,7 +361,7 @@ dist-ssr/
 /.moai/*
 !/.moai/specs/
 # The audit eval set is shared project files too (card C-102, leader decision note 2415):
-# replayed incidents and controls, graded by tools/audit_eval.py.
+# replayed incidents and controls (the grading tool was removed with the Python tools).
 !/.moai/evals/
 # The same secret shapes as the specs folder above, for the eval records (card C-107:
 # replayed incidents may embed private fixtures by accident).

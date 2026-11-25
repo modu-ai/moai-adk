@@ -1,5 +1,7 @@
 # Claude Code 실세션 시험 체크리스트 (I8 #2245, rc.2)
 
+> 하네스 `tools/host_live_harness.py` 와 그 시험은 저장소의 Python 도구와 함께 제거됐다(사용자 지시 2026-11-24, `SPEC-20261125-rust-only-finish`). 아래에서 그 하네스를 부르는 명령(`python3 -I tools/host_live_harness.py …`)은 더 돌지 않는다. 실세션 측정이 다시 필요하면 `moai` 명령으로 새로 만든다.
+
 Claude Code에서 **AGENTS.md 로드·skill 노출·hook 발화**를 운영자가 한 번에 실측하기 위한 절차다. 레인은 실세션을 실행하지 않는다(카드 '항상 blocked': 미승인 host 실세션·유료 호출 금지). 레인 산출물은 이 문서, 하네스 `tools/host_live_harness.py`, 하네스 시험 `tests/host_live_harness_test.py`까지다.
 
 기존 T2 스크립트(`tests/e2e/host-claude.sh` AC-08C-3/5/6)는 `/moai` 명시 호출과 권한 거부를 다룬다. 이 체크리스트는 그 앞 단계인 "호스트가 지침 파일과 skill을 실제로 읽는가, hook이 실제로 도는가"를 따로 잰다.

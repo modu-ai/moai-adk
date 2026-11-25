@@ -1,5 +1,6 @@
 //! #2677 (AC-1, AC-2): `heavy-slot-acquire` / `heavy-slot-status` — a machine-wide limit on
-//! concurrent heavy runs, the product port of `tools/heavy_check_slot.py` (#2491). Every case
+//! concurrent heavy runs, the product port of the removed `tools/heavy_check_slot.py` (#2491),
+//! whose cases without a Rust twin were ported here before it went. Every case
 //! uses its own temporary slot folder (`--dir`, or a temporary HOME and `XDG_CACHE_HOME` for
 //! the default folder); nothing under the real HOME cache is touched.
 //! Waits are bounded by progress markers plus a generous hang guard, never a bare budget.
@@ -616,6 +617,123 @@ fn a_hard_linked_slot_is_refused_before_anything_runs() {
     assert!(text(&out).contains("not a plain file"), "{}", text(&out));
     assert!(!ran.exists());
     assert_eq!(fs::read_to_string(&target).unwrap(), "keep\n");
+}
+
+/// A dangling symlink at a slot path is refused too, and nothing is created at its target.
+#[test]
+fn a_dangling_symlinked_slot_creates_nothing_at_its_target() {
+    let d = tempfile::tempdir().unwrap();
+    let outside = tempfile::tempdir().unwrap();
+    let target = outside.path().join("created-elsewhere");
+    std::os::unix::fs::symlink(&target, d.path().join("slot-0")).unwrap();
+    let ran = outside.path().join("ran");
+    let out = run(acquire(
+        d.path(),
+        "1",
+        "x",
+        &["sh", "-c", &format!("touch '{}'", ran.display())],
+    ));
+    assert_eq!(out.status.code(), Some(125), "{}", text(&out));
+    assert!(!target.exists(), "the link target was created");
+    assert!(!ran.exists());
+    assert!(
+        d.path().join("slot-0").is_symlink(),
+        "the link is left as found"
+    );
+}
+
+/// A FIFO or a folder at a slot path is refused with 125 and no traceback or panic text, and
+/// the command does not run (a FIFO once ended in an unhandled error).
+#[test]
+fn a_fifo_or_folder_slot_is_refused_without_a_crash() {
+    for kind in ["fifo", "folder"] {
+        let d = tempfile::tempdir().unwrap();
+        let slot = d.path().join("slot-0");
+        match kind {
+            "fifo" => {
+                let c = std::ffi::CString::new(slot.to_str().unwrap()).unwrap();
+                // SAFETY: mkfifo(3) on a path inside this test's temporary folder.
+                assert_eq!(unsafe { libc::mkfifo(c.as_ptr(), 0o600) }, 0);
+            }
+            _ => fs::create_dir(&slot).unwrap(),
+        }
+        let ran = d.path().join("ran");
+        let out = run(acquire(
+            d.path(),
+            "1",
+            "x",
+            &["sh", "-c", &format!("touch '{}'", ran.display())],
+        ));
+        let said = text(&out);
+        assert_eq!(out.status.code(), Some(125), "{kind}: {said}");
+        assert!(said.contains("not a plain file"), "{kind}: {said}");
+        assert!(
+            !said.contains("panicked") && !said.contains("Traceback"),
+            "{kind}: {said}"
+        );
+        assert!(!ran.exists(), "{kind}: the command ran");
+    }
+}
+
+/// A symlink planted among the waiting files is never counted as a waiter and never written
+/// through: the next caller waits for 1 slot as the only waiter and the link target keeps its
+/// bytes.
+#[test]
+fn a_symlink_among_the_waiters_is_skipped_never_written() {
+    let d = tempfile::tempdir().unwrap();
+    let m = tempfile::tempdir().unwrap();
+    let victim = m.path().join("victim.txt");
+    fs::write(&victim, "precious\n").unwrap();
+    let (s1, r1) = (m.path().join("s1"), m.path().join("r1"));
+    let mut c = acquire(d.path(), "1", "holder", &["sh", "-c", &hold(&s1, &r1)]);
+    c.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let holder = spawn(c);
+    wait_for("holder started", || s1.exists());
+    std::os::unix::fs::symlink(&victim, d.path().join("waiting/00000000000000000000-1")).unwrap();
+    let mut c = acquire(d.path(), "1", "next", &["true"]);
+    c.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let next = spawn(c);
+    wait_for("the next caller queued beside the link", || {
+        fs::read_dir(d.path().join("waiting"))
+            .map(|r| r.count() == 2)
+            .unwrap_or(false)
+    });
+    fs::write(&r1, "").unwrap();
+    let out = next.finish();
+    assert!(holder.finish().status.success());
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(
+        text(&out).contains("waiting 1 of 1 for 1 slot(s)"),
+        "the link was counted as a waiter: {}",
+        text(&out)
+    );
+    assert_eq!(fs::read_to_string(&victim).unwrap(), "precious\n");
+}
+
+/// SIGKILL of the whole group of a holder frees its slot at once: the next caller takes slot 0
+/// on its first try, never queues, and nothing stays held.
+#[test]
+fn killing_a_holders_whole_group_frees_the_slot_at_once() {
+    let d = tempfile::tempdir().unwrap();
+    let mut c = acquire(d.path(), "1", "victim", &["sleep", "60"]);
+    c.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let holder = spawn(c);
+    wait_for("the holder is listed", || {
+        status(d.path())["held"][0]["name"] == "victim"
+    });
+    kill_group(holder.group);
+    wait_for("the killed holder's slot is free", || {
+        status(d.path())["held"] == serde_json::json!([])
+    });
+    let out = run(acquire(d.path(), "1", "next", &["true"]));
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    assert!(!text(&out).contains("waiting"), "{}", text(&out));
+    assert!(
+        text(&out).contains("slot 0 taken by next"),
+        "{}",
+        text(&out)
+    );
+    drop(holder);
 }
 
 /// Bad arguments: `--max 0` or no command is a usage error (2); nothing is created.
@@ -1332,77 +1450,14 @@ fn a_waiter_whose_parent_ended_leaves_the_queue() {
     assert!(holder.finish().status.success());
 }
 
-fn python_tool() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tools/heavy_check_slot.py")
-}
-
-/// The Rust command and the repository's Python tool share one folder and one lock: with one
-/// slot, whichever holds it makes the other wait (each direction).
+/// B2 of audit 6855554250: without `--dir` two callers resolve the same default folder
+/// `${XDG_CACHE_HOME:-~/.cache}/moai/heavy-slots` — with the variable set, set but empty (it
+/// falls back to `~/.cache`; an empty value must not become a folder relative to the working
+/// directory), and unset — and take turns in it. HOME, the cache variable and the working
+/// directory are all temporary; the real HOME is never read. (The Python tool this once
+/// shared the folder with was removed.)
 #[test]
-fn the_python_tool_and_the_command_take_turns_in_one_folder() {
-    for python_first in [true, false] {
-        let d = tempfile::tempdir().unwrap();
-        let m = tempfile::tempdir().unwrap();
-        let (s1, r1, s2) = (
-            m.path().join("s1"),
-            m.path().join("r1"),
-            m.path().join("s2"),
-        );
-        let py = |cmd: &str| {
-            let mut c = Command::new("python3");
-            // The same roomy machine as the Rust side: without it the Python tool measures the
-            // runner's real disk, a CI runner under 50 GB refuses to start (exit 75) and the
-            // holder never runs (tip red on macos-arm64, #2829 6869898907).
-            c.env("MOAI_TEST_MACHINE", ROOMY)
-                .arg("-I")
-                .arg(python_tool())
-                .args(["acquire", "--max", "1", "--name", "py", "--dir"])
-                .arg(d.path())
-                .args(["--", "sh", "-c", cmd]);
-            c
-        };
-        let hold_cmd = hold(&s1, &r1);
-        let then_cmd = format!("touch '{}'", s2.display());
-        let (mut a, mut b) = if python_first {
-            (
-                py(&hold_cmd),
-                acquire(d.path(), "1", "rs", &["sh", "-c", &then_cmd]),
-            )
-        } else {
-            (
-                acquire(d.path(), "1", "rs", &["sh", "-c", &hold_cmd]),
-                py(&then_cmd),
-            )
-        };
-        a.stdout(Stdio::piped()).stderr(Stdio::piped());
-        let first = spawn(a);
-        wait_for("holder started", || s1.exists());
-        b.stdout(Stdio::piped()).stderr(Stdio::piped());
-        let second = spawn(b);
-        wait_for("second waiting", || {
-            fs::read_dir(d.path().join("waiting"))
-                .map(|r| r.count() == 1)
-                .unwrap_or(false)
-        });
-        assert!(
-            !s2.exists(),
-            "python_first={python_first}: both ran at once"
-        );
-        fs::write(&r1, "").unwrap();
-        let (x, y) = (first.finish(), second.finish());
-        assert!(x.status.success(), "{}", text(&x));
-        assert!(y.status.success(), "{}", text(&y));
-        assert!(s2.exists());
-    }
-}
-
-/// B2 of audit 6855554250: without `--dir` the command and the Python tool resolve the same
-/// default folder `${XDG_CACHE_HOME:-~/.cache}/moai/heavy-slots` — with the variable set,
-/// set but empty (both fall back to `~/.cache`; an empty value must not become a folder
-/// relative to the working directory), and unset — and take turns in it. HOME, the cache
-/// variable and the working directory are all temporary; the real HOME is never read.
-#[test]
-fn without_dir_both_tools_use_the_same_default_folder() {
+fn without_dir_two_callers_use_the_same_default_folder() {
     for case in ["set", "empty", "unset"] {
         let home = tempfile::tempdir().unwrap();
         let xdg = tempfile::tempdir().unwrap();
@@ -1468,15 +1523,15 @@ fn without_dir_both_tools_use_the_same_default_folder() {
             "{case}: something was made under the earlier folder"
         );
 
-        let mut py = Command::new("python3");
-        py.arg("-I")
-            .arg(python_tool())
-            .args(["acquire", "--max", "1", "--name", "py", "--"])
+        // A second caller with the same environment waits in the same default folder.
+        let mut second = Command::new(EXE);
+        second
+            .args(["heavy-slot-acquire", "--max", "1", "--name", "rs2", "--"])
             .args(["sh", "-c", &format!("touch '{}'", s2.display())]);
-        env(&mut py);
-        py.stdout(Stdio::piped()).stderr(Stdio::piped());
-        let waiter = spawn(py);
-        wait_for("python waiting in the default folder", || {
+        env(&mut second);
+        second.stdout(Stdio::piped()).stderr(Stdio::piped());
+        let waiter = spawn(second);
+        wait_for("the second caller waiting in the default folder", || {
             fs::read_dir(expected.join("waiting"))
                 .map(|r| r.count() == 1)
                 .unwrap_or(false)
@@ -1486,7 +1541,7 @@ fn without_dir_both_tools_use_the_same_default_folder() {
         let (x, y) = (holder.finish(), waiter.finish());
         assert!(x.status.success(), "{case}: {}", text(&x));
         assert!(y.status.success(), "{case}: {}", text(&y));
-        assert!(s2.exists(), "{case}: the python command never ran");
+        assert!(s2.exists(), "{case}: the second command never ran");
     }
 }
 

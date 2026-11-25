@@ -39,7 +39,7 @@ Rules with their full text, source and enforcer live in the moai-adk repository'
 
 ## Recurring problems
 
-22. A problem of the same kind seen a second time is not worked around again: record it and open a work item that changes the tool, its rule or its test at the source.
+22. A problem of the same kind seen a second time is not worked around again: add one line to `docs/later.md` that names the change at the source (the tool, its rule or its test).
 
 ## Reports
 

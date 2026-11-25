@@ -1,6 +1,6 @@
 //! Issue #2677 (AC-1, AC-2): a machine-wide limit on concurrent heavy runs — the product port
-//! of the repository tool `tools/heavy_check_slot.py` (#2491), with the same folder, file
-//! names and lock, so the two take turns with each other.
+//! of the repository tool `tools/heavy_check_slot.py` (#2491), which was removed with the
+//! repository's Python tools; the folder, file names and lock stay the ones it used.
 //!
 //! `heavy-slot-acquire [--max N] --name LANE [--dir DIR] -- COMMAND…` waits for one of N slots,
 //! runs COMMAND and returns COMMAND's exit code (128 + the signal number when it ends on a
@@ -573,7 +573,7 @@ fn cache_dir() -> Result<PathBuf> {
     )
 }
 
-/// `${XDG_CACHE_HOME:-$HOME/.cache}/moai/heavy-slots`, the Python tool's folder too.
+/// `${XDG_CACHE_HOME:-$HOME/.cache}/moai/heavy-slots`, the folder the removed Python tool used.
 pub fn default_dir() -> Result<PathBuf> {
     Ok(cache_dir()?.join("moai").join("heavy-slots"))
 }
@@ -1957,12 +1957,13 @@ mod holders_tests {
     }
 }
 
-/// #3033 D3: the four places that describe the slot say the same thing — a child or descendant
+/// #3033 D3: the three places that describe the slot say the same thing — a child or descendant
 /// that outlives the command keeps the slot, status shows who, and no one edits a slot file.
+/// (A fourth place, the Python tool's own text, went with the tool.)
 #[cfg(test)]
 mod docs_tests {
     #[test]
-    fn the_four_descriptions_name_the_leftover_child_and_the_hands_off_rule() {
+    fn the_three_descriptions_name_the_leftover_child_and_the_hands_off_rule() {
         let docs = [
             ("src/heavy_slot.rs", include_str!("heavy_slot.rs")),
             (
@@ -1973,10 +1974,6 @@ mod docs_tests {
                 "docs/rust-product-path.md",
                 include_str!("../docs/rust-product-path.md"),
             ),
-            (
-                "tools/heavy_check_slot.py",
-                include_str!("../tools/heavy_check_slot.py"),
-            ),
         ];
         for (name, text) in docs {
             assert!(text.contains("descendant"), "{name}: leftover descendant");
@@ -1985,9 +1982,6 @@ mod docs_tests {
                 "{name}: hands off the slot file"
             );
             assert!(text.contains("`alive`"), "{name}: names alive");
-        }
-        // Only the Rust status has `holders`; the Python tool says so instead of listing it.
-        for (name, text) in docs {
             assert!(text.contains("`holders`"), "{name}: names holders");
         }
     }

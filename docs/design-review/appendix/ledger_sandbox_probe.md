@@ -1,5 +1,7 @@
 # 원장 위치 샌드박스 쓰기 측정 (`tools/sandbox_write_probe.py`)
 
+> 도구 `tools/sandbox_write_probe.py` 와 `tools/home_entry_count.py` 는 저장소의 Python 도구와 함께 제거됐다(사용자 지시 2026-11-24, `SPEC-20261125-rust-only-finish`). 아래 명령은 더 돌지 않고, 재측정이 필요하면 `moai` 명령으로 새로 만든다. 이 문서는 그때 잰 기록으로만 남는다.
+
 Issue #3068 P8 · AC9: "원장 위치가 샌드박스 안에서 쓰기 가능한지 측정한 기록이 있다." 이 문서는 도구, 실행 명령, 실제로 잰 결과, 그 결과가 말해 주지 않는 것을 적는다. 실제 `~/.moai` 에 대한 측정은 하지 않았다(아래 "실제 HOME 측정은 하지 않았다").
 
 ## 무엇을 재나

@@ -1,6 +1,6 @@
 # LEADER
 
-`/moai leader` makes the window that types it the registered coordination window of the project; the window holds no standing role, and when it ends the lanes go on from the ledger alone. Round after round it reads the ledger, answers the lanes, sends audits and lands audited heads.
+`/moai leader` makes the window that types it the registered coordination window of the project; the window holds no standing role, and when it ends the lanes go on from the ledger alone. With no registered leader the flow ends at the submission: nothing is audited or landed, and no lane takes that over. Round after round it reads the ledger, answers the lanes, sends audits and lands audited heads.
 
 ## Input
 

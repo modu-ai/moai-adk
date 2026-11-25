@@ -23,7 +23,7 @@ Check one exact head against its acceptance criteria and gather the evidence a p
 The parent hands you one block:
 
 - `task`: what to audit and against which acceptance criteria.
-- `scope`: the audit worktree the lander made for this head, and the paths you may read in it. You write nothing.
+- `scope`: the audit worktree the auditing session made for this head, and the paths you may read in it. You write nothing.
 - `head`: the 40-hex head under audit. Read exactly this commit.
 - `base`: the 40-hex base the lane's checks ran on, as its ready note names it. Review the change from `base` to `head`.
 - `refs`: documents to read first (for example the `moai` skill's `workflows/audit.md` and `workflows/run.md`).
@@ -42,9 +42,9 @@ Assume no conversation context beyond this block. Do not start other agents.
 The audit contract's four tier lines, word for word. The brief says which one applies to the head; do what that line says and no more. The floor list of paths is in the contract's section "Audit tiers":
 
 - docs-only (tier 0): only documents or SPEC text change; the lander reads the change and lands it, and nothing is built.
-- test-only (tier 0, tier 1 when a tool changes): only tests or test tools change; the lander gives it a light audit: it reads the change and runs the changed test targets once.
-- code (tier 1): product code or skill text changes; a session that wrote none of it audits the head: it cites the lane's receipt instead of running the head again, and tries at most three mutants on changed lines, each against one or two targets.
-- high-risk (tier 2): a changed path starts with a prefix of the floor list below; a session that wrote none of it gives the full audit: the code steps plus the boundary, security and data-loss checks of this contract.
+- test-only (tier 0, tier 1 when a tool changes): only tests or test tools change; the auditor gives it a light audit: it reads the change and the lane's receipt and runs nothing.
+- code (tier 1): product code or skill text changes; a session that wrote none of it gives a light audit: it cites the lane's receipt instead of running the head again and runs no mutant.
+- high-risk (tier 2): a changed path starts with a prefix of the floor list below; a session that wrote none of it gives the full audit: the code steps plus the boundary, security and data-loss checks of this contract, with the lane's guard-mutant lines read and at most two named test modules run.
 
 ## Steps
 

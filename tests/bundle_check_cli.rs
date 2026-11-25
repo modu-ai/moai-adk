@@ -1106,3 +1106,161 @@ fn every_bundle_action_help_names_the_local_branch_tip() {
         );
     }
 }
+
+// ---------------------------------------------------------------------------------------------
+// SPEC-20261125-bundle-reads-repaired-note: the newest hand-back note is read, a REPAIRED one
+// included, and the answer names the note it read
+
+impl World {
+    /// A note of the kind `card note` accepts as a hand-back after a failed audit: the gate takes
+    /// `REPAIRED <card> head=<head>` as the first line.
+    fn repaired_note(&self, card: &str, head: &str, body: &str) -> i64 {
+        self.note(card, &format!("REPAIRED {card} head={head}\n{body}"))
+    }
+
+    /// A note with the kind and the author the test names (the leader's notes are `decision`
+    /// notes by `leader`).
+    fn note_by(&self, card: &str, kind: &str, author: &str, text: &str) -> i64 {
+        let id: i64 = card.strip_prefix("C-").unwrap().parse().unwrap();
+        let mut w = ledger::open_write(self.home.path(), "demo").unwrap();
+        ledger::workflow::add_note(&mut w, id, kind, author, None, text, None)
+            .unwrap()
+            .note_id
+    }
+}
+
+/// The `heads` entry of a `check` answer.
+fn head_entry(v: &Value) -> &Value {
+    &v["result"]["heads"][0]
+}
+
+/// REQ-1, REQ-2: after a READY note a REPAIRED note with another head is the note that is read,
+/// the answer names it, and the first card's answer names its READY note.
+#[test]
+fn a_repaired_note_after_a_ready_note_is_the_note_that_is_read() {
+    let w = World::new();
+    let (old, new) = (w.clean_head("spec/r1a"), w.clean_head("spec/r1b"));
+    let c = w.new_card();
+    w.ready_note_with(&c, &old, "guard-mutant: a | removed x | exit 1");
+    let repaired = w.repaired_note(&c, &new, "guard-mutant: b | removed y | exit 100");
+    let (v, code) = w.bundle(&["check", &c]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(head_entry(&v)["head"], new.as_str(), "{v}");
+    assert_eq!(
+        head_entry(&v)["read_note"],
+        serde_json::json!({"note_id": repaired, "marker": "REPAIRED"}),
+        "{v}"
+    );
+    assert_eq!(warnings(&v), Vec::<(String, String)>::new(), "{v}");
+
+    // A card with its READY note only: the answer names that note.
+    let only = w.new_card();
+    let head = w.clean_head("spec/r1c");
+    let ready = w.ready_note_with(&only, &head, "guard-mutant: a | removed x | exit 1");
+    let (v, _) = w.bundle(&["check", &only]);
+    assert_eq!(
+        head_entry(&v)["read_note"],
+        serde_json::json!({"note_id": ready, "marker": "LANE-READY-INTEGRATION"}),
+        "{v}"
+    );
+
+    // `bundle ready` lists the repaired head and its marker, not the old head.
+    let (v, _) = w.bundle(&["ready"]);
+    let listed = v["result"]["heads"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|h| h["card"] == c.as_str())
+        .unwrap_or_else(|| panic!("{c} is not listed: {v}"));
+    assert_eq!(listed["head"], new.as_str(), "{v}");
+    assert_eq!(listed["note_id"], repaired, "{v}");
+    assert_eq!(listed["marker"], "REPAIRED", "{v}");
+}
+
+/// REQ-3: a REPAIRED note with no `guard-mutant:` line is warned about even when the READY note
+/// before it has good lines; naming the old head reads the old note's lines.
+#[test]
+fn a_repaired_note_without_mutant_lines_is_not_filled_from_the_old_note() {
+    let w = World::new();
+    let (old, new) = (w.clean_head("spec/r2a"), w.clean_head("spec/r2b"));
+    let c = w.new_card();
+    w.ready_note_with(&c, &old, "guard-mutant: a | removed x | exit 1");
+    w.repaired_note(&c, &new, "checks: all green");
+    let (v, code) = w.bundle(&["check", &c]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(
+        warnings(&v),
+        vec![(c.clone(), "mutant_line_missing".to_string())],
+        "{v}"
+    );
+    assert_eq!(v["result"]["warnings"][0]["head"], new.as_str(), "{v}");
+
+    let arg = format!("{c}={old}");
+    let (v, _) = w.bundle(&["check", &arg]);
+    assert_eq!(warnings(&v), Vec::<(String, String)>::new(), "{v}");
+}
+
+/// REQ-4: a note by the leader, or a decision note, is no hand-back note whatever its first line
+/// says: the lane's READY note stays the one that is read.
+#[test]
+fn a_note_written_by_the_leader_is_not_a_hand_back_note() {
+    let w = World::new();
+    let (old, other) = (w.clean_head("spec/r3a"), w.clean_head("spec/r3b"));
+    let c = w.new_card();
+    let ready = w.ready_note_with(&c, &old, "guard-mutant: a | removed x | exit 1");
+    // The leader quotes a marker line (kind decision, author leader).
+    w.note_by(
+        &c,
+        "decision",
+        "leader",
+        &format!("REPAIRED {c} head={other}\nthe leader quotes the lane"),
+    );
+    // A report by the leader, and a decision note by a lane, both with a marker first line.
+    w.note_by(
+        &c,
+        "report",
+        "leader",
+        &format!("LANE-READY-INTEGRATION {c} head={other}\nby the leader"),
+    );
+    w.note_by(
+        &c,
+        "decision",
+        "lane",
+        &format!("REPAIRED {c} head={other}\na decision note"),
+    );
+    let (v, code) = w.bundle(&["check", &c]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(head_entry(&v)["head"], old.as_str(), "{v}");
+    assert_eq!(
+        head_entry(&v)["read_note"],
+        serde_json::json!({"note_id": ready, "marker": "LANE-READY-INTEGRATION"}),
+        "{v}"
+    );
+}
+
+/// REQ-1: a newest hand-back note that does not read (a card name that is not this card's, a head
+/// that is not 40 lowercase hex digits) is not replaced by an older note: the answer says the note
+/// does not read.
+#[test]
+fn a_newest_hand_back_note_that_does_not_read_is_not_replaced_by_an_older_one() {
+    let w = World::new();
+    let old = w.clean_head("spec/r4a");
+    for first in [
+        "REPAIRED C-999 head=0123456789abcdef0123456789abcdef01234567".to_string(),
+        format!("REPAIRED {{card}} head={}", &old[..39]),
+    ] {
+        let c = w.new_card();
+        w.ready_note_with(&c, &old, "guard-mutant: a | removed x | exit 1");
+        let bad = w.note(&c, &first.replace("{card}", &c));
+        let (v, code) = w.bundle(&["check", &c]);
+        assert_ne!(code, 2, "{v}");
+        assert_eq!(
+            findings(&v),
+            vec![(c.clone(), "no_ready_line".to_string())],
+            "{first}: {v}"
+        );
+        let detail = v["result"]["findings"][0]["detail"].to_string();
+        assert!(detail.contains(&bad.to_string()), "{detail}");
+        assert!(head_entry(&v)["head"].is_null(), "{v}");
+    }
+}

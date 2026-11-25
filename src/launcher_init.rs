@@ -436,6 +436,14 @@ fn agents(top: &Path) -> Result<Vec<String>, String> {
             "CLAUDE.md not generated (a generated path is already in use)".into(),
         ]);
     }
+    // This empty request is applied without a preview, so it never applies the removal of a file
+    // the manifest owns (SPEC-20261125-generation-empty-request REQ-10): the next `moai update`
+    // shows those removals as `remove` lines and applies them only on the user's word.
+    if plan.files.iter().any(|f| f.action == "remove") {
+        return Ok(vec![
+            "CLAUDE.md not generated (generated files this launch would remove are left for the next moai update)".into(),
+        ]);
+    }
     let digest = plan.plan_digest.clone();
     generation_apply(top, plan, &digest, PERMISSION)?;
     Ok(vec!["CLAUDE.md".into()])

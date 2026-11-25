@@ -895,7 +895,11 @@ fn refs_audit_contract_alone_says_who_records_a_verdict_the_parent_wrote() {
     let audit = read(AUDIT_REF);
     let who = section(&audit, "Who records the verdict");
     assert!(
-        who.contains("hands the recording to another session, such as the lander"),
+        who.contains("The auditing session records the verdict itself with `moai card verdict`"),
+        "{AUDIT_REF}: {who}"
+    );
+    assert!(
+        who.contains("The leader never records a verdict for an auditor"),
         "{AUDIT_REF}: {who}"
     );
     let chains = read("references/chains/index.md");
@@ -1899,18 +1903,17 @@ fn tier_key_word_problems(text: &str) -> Vec<String> {
             &[
                 "tier 0, tier 1 when a tool changes",
                 "only tests or test tools change",
-                "the lander gives it a light audit",
-                "runs the changed test targets once",
+                "the auditor gives it a light audit",
+                "reads the change and the lane's receipt and runs nothing",
             ],
         ),
         (
             "- code (tier",
             &[
                 "product code or skill text changes",
-                "a session that wrote none of it audits the head",
+                "a session that wrote none of it gives a light audit",
                 "cites the lane's receipt instead of running the head again",
-                "at most three mutants on changed lines",
-                "each against one or two targets",
+                "runs no mutant",
             ],
         ),
         (
@@ -1919,6 +1922,8 @@ fn tier_key_word_problems(text: &str) -> Vec<String> {
                 "a changed path starts with a prefix of the floor list",
                 "a session that wrote none of it gives the full audit",
                 "the code steps plus the boundary, security and data-loss checks",
+                "the lane's guard-mutant lines read",
+                "at most two named test modules run",
             ],
         ),
     ];
@@ -1957,7 +1962,8 @@ fn refs_audit_tier_lines_keep_their_key_words() {
         for (start, word) in [
             ("- high-risk (tier", "data-loss"),
             ("- high-risk (tier", "wrote none of it gives the full audit"),
-            ("- code (tier", "at most three mutants"),
+            ("- code (tier", "runs no mutant"),
+            ("- high-risk (tier", "at most two named test modules run"),
         ] {
             let mutant = text
                 .lines()

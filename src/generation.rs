@@ -506,6 +506,133 @@ fn refuse_link_after_plan(root: &Path, kind: &str, path: &str) -> Result<()> {
     }
 }
 
+/// The generated kinds a plan removes when the request no longer names them
+/// (SPEC-20261125-generation-empty-request REQ-1).
+const UNREQUESTED_KINDS: [&str; 3] = [
+    "generation:project-skill:",
+    "generation:native-role:",
+    "generation:skill-projection:",
+];
+
+/// The manifest kinds the request still names: its project skills, project agents and skill
+/// projections, one per host.
+fn requested_kinds(request: &GenerationRequest) -> Vec<String> {
+    let skills = request.project_skills.iter().flat_map(|ps| {
+        project_skill_hosts(ps)
+            .into_iter()
+            .map(move |h| format!("generation:project-skill:{h}:{}", ps.id))
+    });
+    let roles = request
+        .native_roles
+        .iter()
+        .map(|r| format!("generation:native-role:{}:{}", r.host, r.role_id));
+    let projections = request.skill_projections.iter().flat_map(|p| {
+        let hosts: Vec<String> = if p.host_targets.is_empty() {
+            vec!["claude".into()]
+        } else {
+            p.host_targets.clone()
+        };
+        hosts
+            .into_iter()
+            .map(move |h| format!("generation:skill-projection:{h}:{}", p.id))
+    });
+    skills.chain(roles).chain(projections).collect()
+}
+
+/// Whether `id` is one plain path piece: not empty, not `.` or `..`, no separator and not an
+/// absolute path. The id of a manifest `kind` is text a tracked file carries, so it is checked
+/// before it builds a path (SPEC-20261125-generation-empty-request REQ-3).
+fn one_path_piece(id: &str) -> bool {
+    let mut parts = Path::new(id).components();
+    matches!(
+        (parts.next(), parts.next()),
+        (Some(std::path::Component::Normal(_)), None)
+    ) && !id.contains(['/', '\\', '\0'])
+}
+
+/// Whether `rel` stays below `folder` once `.` and `..` are folded away: a `..` that climbs out
+/// of the start, an absolute path and a path that folds to `folder` itself are all outside.
+fn stays_below(rel: &str, folder: &str) -> bool {
+    let mut folded: Vec<&std::ffi::OsStr> = Vec::new();
+    for part in Path::new(rel).components() {
+        match part {
+            std::path::Component::Normal(c) => folded.push(c),
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                if folded.pop().is_none() {
+                    return false;
+                }
+            }
+            _ => return false,
+        }
+    }
+    let inside: std::path::PathBuf = folded.iter().collect();
+    inside.starts_with(folder) && inside != Path::new(folder)
+}
+
+/// The folder a manifest `kind` writes below; empty for a kind this tool does not know.
+fn kind_folder(kind: &str) -> &'static str {
+    if kind.starts_with("generation:native-role:") {
+        ".claude/agents"
+    } else if kind.starts_with("generation:project-skill:")
+        || kind.starts_with("generation:skill-projection:")
+    {
+        ".claude/skills"
+    } else {
+        ""
+    }
+}
+
+/// Whether a recorded `path` is one a manifest `kind` may name: it is one of the paths the kind
+/// builds from its id, the id is one plain path piece, and the path stays below the kind's folder.
+fn kind_names_path(kind: &str, path: &str) -> bool {
+    named_paths(kind).iter().any(|n| n == path) && stays_below(path, kind_folder(kind))
+}
+
+/// The paths a manifest `kind` names: a recorded path is trusted only when it is one of these.
+/// A Claude Code role also keeps the flat path an earlier version wrote
+/// (SPEC-20261121-base-agents-user-folder); a projection lives at the skill folder of its id.
+/// An id that is not one plain path piece names no path.
+fn named_paths(kind: &str) -> Vec<String> {
+    if let Some(rest) = kind.strip_prefix("generation:project-skill:") {
+        return rest
+            .split_once(':')
+            .filter(|(_, id)| one_path_piece(id))
+            .and_then(|(host, id)| project_skill_path(host, id))
+            .into_iter()
+            .collect();
+    }
+    if let Some(rest) = kind.strip_prefix("generation:native-role:") {
+        return match rest.split_once(':') {
+            Some(("claude", id)) if one_path_piece(id) => vec![
+                format!(".claude/agents/moai/{id}.md"),
+                format!(".claude/agents/{id}.md"),
+            ],
+            _ => Vec::new(),
+        };
+    }
+    if let Some(rest) = kind.strip_prefix("generation:skill-projection:") {
+        return rest
+            .split_once(':')
+            .filter(|(_, id)| one_path_piece(id))
+            .map(|(_, id)| format!(".claude/skills/{id}/SKILL.md"))
+            .into_iter()
+            .collect();
+    }
+    Vec::new()
+}
+
+/// What a manifest `kind` names, for a conflict's detail.
+fn kind_noun(kind: &str) -> &'static str {
+    if kind.starts_with("generation:native-role:") {
+        "role"
+    } else if kind.starts_with("generation:skill-projection:") {
+        "skill projection"
+    } else {
+        "skill"
+    }
+}
+
 /// Where a project skill of `host` lives; `None` for a host this tool does not write.
 fn project_skill_path(host: &str, id: &str) -> Option<String> {
     match host {
@@ -958,18 +1085,11 @@ fn plan_filtered(
         }
     }
 
-    // Project skills no longer requested (#2706 P2b): a file this tool wrote and nobody edited
-    // is planned `remove` (apply keeps its bytes in the receipt first); an edited one is a
+    // Project skills, project agents (native roles) and skill projections no longer requested
+    // (#2706 P2b; SPEC-20261125-generation-empty-request): a file this tool wrote and nobody
+    // edited is planned `remove` (apply keeps its bytes in the receipt first); an edited one is a
     // conflict and stays. A recorded file that is already gone only leaves the list.
-    let requested: Vec<String> = request
-        .project_skills
-        .iter()
-        .flat_map(|ps| {
-            project_skill_hosts(ps)
-                .into_iter()
-                .map(move |h| format!("generation:project-skill:{h}:{}", ps.id))
-        })
-        .collect();
+    let requested: Vec<String> = requested_kinds(&request);
     let owned: Vec<(String, String, String)> = manifest
         .get("owned_files")
         .and_then(Value::as_array)
@@ -977,7 +1097,7 @@ fn plan_filtered(
             list.iter()
                 .filter_map(|f| {
                     let kind = f.get("section_id")?.as_str()?;
-                    if !kind.starts_with("generation:project-skill:") {
+                    if !UNREQUESTED_KINDS.iter().any(|k| kind.starts_with(k)) {
                         return None;
                     }
                     Some((
@@ -999,13 +1119,12 @@ fn plan_filtered(
         }
         // Pre-audit 6854760758 B1: the recorded path is trusted only when it is the path the
         // kind names, and nothing on the way is a symbolic link; otherwise it is a conflict.
-        let named = kind
-            .strip_prefix("generation:project-skill:")
-            .and_then(|rest| rest.split_once(':'))
-            .and_then(|(host, id)| project_skill_path(host, id));
         let link = link_on_path(&root, &rel);
-        let refused = if named.as_deref() != Some(rel.as_str()) {
-            Some("the recorded path is not the path of its skill; nothing removed".to_string())
+        let refused = if !kind_names_path(&kind, &rel) {
+            Some(format!(
+                "the recorded path is not the path of its {}; nothing removed",
+                kind_noun(&kind)
+            ))
         } else {
             link.map(|l| format!("{l} is a symbolic link; nothing removed through it"))
         };
@@ -1018,6 +1137,7 @@ fn plan_filtered(
         let detail = refused.or_else(|| {
             edited.then_some("no longer requested, but edited after generation; kept".to_string())
         });
+        let project_skill = kind.starts_with("generation:project-skill:");
         files.push(GenerationFilePlan {
             path: rel,
             action: if detail.is_some() {
@@ -1026,11 +1146,15 @@ fn plan_filtered(
                 "remove"
             }
             .into(),
-            tracked_by_default: true,
+            tracked_by_default: project_skill,
             expected_sha256: current.as_deref().map(digest),
             baseline_sha256: Some(baseline),
             rendered_sha256: None,
-            source_refs: vec![project_profile_rel(&root)],
+            source_refs: if project_skill {
+                vec![project_profile_rel(&root)]
+            } else {
+                Vec::new()
+            },
             kind: Some(kind),
             detail,
         });
@@ -1763,6 +1887,79 @@ mod record_tests {
         ] {
             let err = recorded_request_lists(&bad).unwrap_err();
             assert!(err.contains("/moai project"), "{bad}: {err}");
+        }
+    }
+}
+
+/// SPEC-20261125-generation-empty-request REQ-3: the id of a manifest kind and the path of its
+/// entry are text a tracked file carries, so they name a file to remove only inside their folder.
+#[cfg(test)]
+mod owned_path_tests {
+    use super::*;
+
+    #[test]
+    fn an_id_is_one_plain_path_piece() {
+        for good in ["prj-checks", "a.b", "role_1"] {
+            assert!(one_path_piece(good), "{good}");
+        }
+        for bad in ["", ".", "..", "a/b", "../x", "/abs", "a\\b", "x/..", "a\0b"] {
+            assert!(!one_path_piece(bad), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn a_path_stays_below_its_folder_only_without_climbing_out() {
+        let folder = ".claude/agents";
+        for inside in [
+            ".claude/agents/moai/x.md",
+            ".claude/agents/./x.md",
+            ".claude/agents/moai/../x.md",
+        ] {
+            assert!(stays_below(inside, folder), "{inside}");
+        }
+        for outside in [
+            ".claude/agents/moai/../../../README.md",
+            ".claude/agents/../x.md",
+            ".claude/agents",
+            "README.md",
+            "/etc/x.md",
+            "../x.md",
+        ] {
+            assert!(!stays_below(outside, folder), "{outside}");
+        }
+    }
+
+    #[test]
+    fn a_kind_names_only_the_paths_built_from_its_own_one_piece_id() {
+        let role = "generation:native-role:claude:prj-fixer";
+        assert!(kind_names_path(role, ".claude/agents/moai/prj-fixer.md"));
+        assert!(kind_names_path(role, ".claude/agents/prj-fixer.md"));
+        assert!(!kind_names_path(role, ".claude/agents/moai/other.md"));
+        let skill = "generation:project-skill:claude:prj-checks";
+        assert!(kind_names_path(skill, ".claude/skills/prj-checks/SKILL.md"));
+        let projection = "generation:skill-projection:claude:ref-b";
+        assert!(kind_names_path(projection, ".claude/skills/ref-b/SKILL.md"));
+        // An id that climbs out names no path, whatever path the entry records.
+        for (kind, path) in [
+            (
+                "generation:native-role:claude:../../../README",
+                ".claude/agents/moai/../../../README.md",
+            ),
+            (
+                "generation:project-skill:claude:../..",
+                ".claude/skills/../../SKILL.md",
+            ),
+            (
+                "generation:skill-projection:claude:../../..",
+                ".claude/skills/../../../SKILL.md",
+            ),
+            (
+                "generation:native-role:claude:sub/dir",
+                ".claude/agents/moai/sub/dir.md",
+            ),
+        ] {
+            assert!(named_paths(kind).is_empty(), "{kind}");
+            assert!(!kind_names_path(kind, path), "{kind}");
         }
     }
 }

@@ -800,8 +800,9 @@ fn ac5_every_refusal_of_finish_comes_before_the_move() {
 
 // ---- AC-6: a checked-out branch and a head that is no commit ----------------------------------
 
-/// AC-6: the integration branch checked out in another worktree refuses and names it, and a
-/// candidate that is no commit refuses; both before any write.
+/// AC-6: the integration branch checked out in another worktree that holds a tracked change
+/// refuses and names it (a clean checkout follows the landing instead, SPEC-20261125-land-
+/// checked-out-branch D-6), and a candidate that is no commit refuses; both before any write.
 #[test]
 fn ac6_a_checked_out_branch_and_a_head_that_is_no_commit_refuse_before_the_move() {
     let w = World::new();
@@ -819,14 +820,15 @@ fn ac6_a_checked_out_branch_and_a_head_that_is_no_commit_refuse_before_the_move(
         &w.project,
         &["worktree", "add", "-q", tree.to_str().unwrap(), "integ"],
     );
+    fs::write(tree.join("a.txt"), "edited\n").unwrap();
     let out = w.land(
         &card,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     );
-    let message = w.refuse(&out, "conflict", &["checked out"], &before, &w.tip);
+    let message = w.refuse(&out, "conflict", &["tracked change"], &before, &w.tip);
     assert!(
-        message.contains("integ-checkout"),
-        "the refusal names the worktree: {message}"
+        message.contains("integ-checkout") && message.contains("a.txt"),
+        "the refusal names the worktree and the path: {message}"
     );
 }
 

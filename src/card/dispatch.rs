@@ -450,6 +450,9 @@ pub struct TakeRequest<'a> {
     pub branch: Option<&'a str>,
     /// Refuse a card that changes the repository unless the SPEC it names is approved.
     pub require_approved_spec: bool,
+    /// The folder the command runs in: without `worktree` the reservation records its git
+    /// worktree (SPEC-20261125-card-take-records-worktree REQ-1).
+    pub running_dir: Option<&'a Path>,
 }
 
 /// `card take C-n`: reserves a `ready` card for the holder. Without `--scope` the card's own
@@ -514,6 +517,13 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         }
     }
     let lease = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
+    // The worktree is always recorded when it can be known: the given path as it is, else the
+    // git worktree of the running folder (SPEC-20261125-card-take-records-worktree REQ-1, REQ-2).
+    let running_worktree: Option<String> = match req.worktree {
+        Some(_) => None,
+        None => req.running_dir.and_then(crate::lane_registry::worktree_of),
+    };
+    let worktree: Option<&str> = req.worktree.or(running_worktree.as_deref());
     // Where the scope comes from (SPEC-20261123-take-scope-stored): the given one, the card's
     // own, the linked SPEC's `write:` list, the last reservation's scope. A scope that is not the
     // card's own is kept on the card once the reservation is made, so a released card is not
@@ -555,7 +565,7 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
             req.holder,
             &scope,
             lease,
-            req.worktree,
+            worktree,
             req.branch,
             grace,
         ),
@@ -564,13 +574,20 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
             card_id,
             req.holder,
             lease,
-            req.worktree,
+            worktree,
             req.branch,
             grace,
         ),
     }
     .map_err(|e| e.to_string())?;
     let mut warnings: Vec<String> = warning.into_iter().collect();
+    if worktree.is_none() {
+        warnings.push(format!(
+            "{}: the reservation records no worktree (no `--worktree` and the running folder is \
+             not inside a git worktree); `card adopt` needs one, so pass `--worktree`",
+            input::card_name(card_id)
+        ));
+    }
     if !merged.is_empty() {
         let names: Vec<String> = merged.iter().map(|p| format!("`{p}`")).collect();
         warnings.push(format!(
@@ -741,6 +758,9 @@ pub struct ReclaimRequest<'a> {
     pub reason: &'a str,
     /// Lease of the new reservation in seconds (default [`DEFAULT_LEASE_SECS`]).
     pub lease_secs: Option<i64>,
+    /// The folder the command runs in: a reservation that records no worktree takes its git
+    /// worktree (SPEC-20261125-card-take-records-worktree REQ-3).
+    pub running_dir: Option<&'a Path>,
 }
 
 /// `card reclaim C-n`: the reservation at `generation` must be `held` with a lease that has
@@ -779,39 +799,20 @@ pub fn reclaim(
         }),
         _ => None,
     };
-    let taken = match (&kept, &proof) {
-        // The worktree was read: the event names the commits the takeover keeps.
-        (Some(kept), _) => reservation::reclaim_keeping(
-            &mut ledger,
-            card_id,
-            req.to_holder,
-            req.generation,
-            &by,
-            &reason,
-            lease_secs,
-            proof.as_ref(),
-            kept,
-        ),
-        (None, Some(proof)) => reservation::reclaim_early(
-            &mut ledger,
-            card_id,
-            req.to_holder,
-            req.generation,
-            &by,
-            &reason,
-            lease_secs,
-            proof,
-        ),
-        (None, None) => reservation::reclaim(
-            &mut ledger,
-            card_id,
-            req.to_holder,
-            req.generation,
-            &by,
-            &reason,
-            lease_secs,
-        ),
-    };
+    // The running folder's worktree fills a worktree the old reservation never recorded.
+    let running_worktree = req.running_dir.and_then(crate::lane_registry::worktree_of);
+    let taken = reservation::reclaim_recording(
+        &mut ledger,
+        card_id,
+        req.to_holder,
+        req.generation,
+        &by,
+        &reason,
+        lease_secs,
+        proof.as_ref(),
+        kept.as_ref(),
+        running_worktree.as_deref(),
+    );
     let out = taken.map_err(|e| match (&e, &early) {
         // The lease is live and the proof is missing: say which part.
         (reservation::ReclaimError::LeaseLive { .. }, early_reclaim::Early::Unproven(why)) => {

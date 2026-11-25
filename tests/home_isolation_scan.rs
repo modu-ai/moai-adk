@@ -15,8 +15,9 @@
 //! endpoint or reaches into `crate::forge`. Comments are not code and are ignored.
 //!
 //! Both scans are text matches: they show a name is absent, not that a path is never reached.
-//! The entry-count tool `tools/home_entry_count.py` measures the real `~/.moai` before and
-//! after a verification run, which is the dynamic half of AC8 and is not run by any test.
+//! The dynamic half of AC8 (the real `~/.moai` entry count before and after a verification
+//! run) had a measuring tool that was removed with the repository's Python tools; every test
+//! here uses a temporary HOME instead, so the real one is never touched.
 
 mod common;
 

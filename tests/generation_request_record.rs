@@ -336,7 +336,9 @@ fn a_later_apply_replaces_the_record_and_an_agents_apply_keeps_it() {
         "{record}"
     );
 
-    // A request with nothing left drops the record, so the key never outlives its files.
+    // A request with nothing left drops the record. The files it no longer names are planned
+    // `remove` (SPEC-20261125-generation-empty-request), so after the apply of that plan no
+    // owned file is left for a missing record to leave undecided; the tests below pin that.
     let mut none = request.clone();
     none["native_roles"] = json!([]);
     none["project_skills"] = json!([]);
@@ -518,4 +520,478 @@ fn an_apply_with_every_file_unchanged_still_records_the_request_and_clears_the_d
     }
     let plan = fx.plan();
     assert_eq!(step(&plan, "generation")["state"], "unchanged", "{plan}");
+}
+
+// SPEC-20261125-generation-empty-request: a request that no longer names an owned project agent,
+// skill or skill projection plans the removal of its file, so an empty request leaves no
+// `needs_decision` behind.
+
+const ROLE_FILE: &str = ".claude/agents/moai/prj-test-runner.md";
+const SKILL_FILE: &str = ".claude/skills/prj-checks/SKILL.md";
+const PROJECTION_FILE: &str = ".claude/skills/ref-b/SKILL.md";
+const GENERATED_KINDS: [&str; 3] = [
+    "generation:native-role:",
+    "generation:project-skill:",
+    "generation:skill-projection:",
+];
+
+/// `request` with no project agent and no project skill.
+fn emptied(request: &Value) -> Value {
+    let mut empty = request.clone();
+    empty["native_roles"] = json!([]);
+    empty["project_skills"] = json!([]);
+    empty
+}
+
+fn plan_of(fx: &Fx, request: &Value) -> Value {
+    fx.call(
+        &["generation-plan", fx.p()],
+        &serde_json::to_vec(request).unwrap(),
+    )
+}
+
+/// The answer of `generation-apply` for `plan`, ok or not.
+fn apply_plan(fx: &Fx, plan: &Value) -> Value {
+    fx.run(
+        &[
+            "generation-apply",
+            fx.p(),
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            REF,
+        ],
+        &serde_json::to_vec(plan).unwrap(),
+    )
+}
+
+fn row<'a>(plan: &'a Value, path: &str) -> &'a Value {
+    plan["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"] == path)
+        .unwrap_or_else(|| panic!("no row for {path}: {plan}"))
+}
+
+/// The manifest's owned entries of the kinds a request builds, as `section_id`s.
+fn owned_generated(fx: &Fx) -> Vec<String> {
+    fx.manifest()["owned_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|f| f["section_id"].as_str())
+        .filter(|s| GENERATED_KINDS.iter().any(|k| s.starts_with(k)))
+        .map(String::from)
+        .collect()
+}
+
+#[test]
+fn an_empty_request_previews_the_removal_of_the_agent_and_skill_files() {
+    let (fx, request) = settled_project();
+    let role_before = fs::read(fx.root.join(ROLE_FILE)).unwrap();
+    let skill_before = fs::read(fx.root.join(SKILL_FILE)).unwrap();
+    let manifest_before = fs::read(fx.manifest_path()).unwrap();
+
+    let plan = plan_of(&fx, &emptied(&request));
+    assert_eq!(row(&plan, ROLE_FILE)["action"], "remove", "{plan}");
+    assert_eq!(row(&plan, SKILL_FILE)["action"], "remove", "{plan}");
+
+    // A plan writes nothing: the files and the manifest keep their bytes until the apply.
+    assert_eq!(fs::read(fx.root.join(ROLE_FILE)).unwrap(), role_before);
+    assert_eq!(fs::read(fx.root.join(SKILL_FILE)).unwrap(), skill_before);
+    assert_eq!(fs::read(fx.manifest_path()).unwrap(), manifest_before);
+}
+
+#[test]
+fn an_empty_request_clears_the_decision_and_the_removal_is_recoverable() {
+    let (fx, request) = settled_project();
+    let role_before = fs::read(fx.root.join(ROLE_FILE)).unwrap();
+    let skill_before = fs::read(fx.root.join(SKILL_FILE)).unwrap();
+
+    let plan = plan_of(&fx, &emptied(&request));
+    let applied = apply_plan(&fx, &plan);
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert!(!fx.root.join(ROLE_FILE).exists(), "the agent file is gone");
+    assert!(!fx.root.join(SKILL_FILE).exists(), "the skill file is gone");
+    assert_eq!(owned_generated(&fx), Vec::<String>::new());
+    assert!(fx.manifest().get("generation_request").is_none());
+
+    // The next preview has nothing left to decide.
+    let next = fx.plan();
+    let generation = step(&next, "generation");
+    assert_ne!(generation["state"], "needs_decision", "{generation}");
+    assert_eq!(generation["state"], "unchanged", "{generation}");
+
+    // The bytes went to the receipt, so the removal can be recovered.
+    let receipt = applied["result"]["receipt"]
+        .as_str()
+        .unwrap_or_else(|| panic!("the apply names its receipt: {applied}"));
+    let recovered = fx.run(
+        &[
+            "apply-recover",
+            fx.p(),
+            "--receipt",
+            receipt,
+            "--permission-reference",
+            REF,
+        ],
+        b"{}",
+    );
+    assert_eq!(recovered["ok"], json!(true), "{recovered}");
+    assert_eq!(fs::read(fx.root.join(ROLE_FILE)).unwrap(), role_before);
+    assert_eq!(fs::read(fx.root.join(SKILL_FILE)).unwrap(), skill_before);
+}
+
+#[test]
+fn an_edited_or_misplaced_owned_agent_is_a_conflict_and_is_kept() {
+    let (fx, request) = settled_project();
+    let empty = emptied(&request);
+
+    // An agent file edited after generation is kept, and the apply stops.
+    let original = fs::read(fx.root.join(ROLE_FILE)).unwrap();
+    let mut edited = original.clone();
+    edited.extend_from_slice(b"\nA line the user added.\n");
+    fs::write(fx.root.join(ROLE_FILE), &edited).unwrap();
+    let plan = plan_of(&fx, &empty);
+    let role = row(&plan, ROLE_FILE);
+    assert_eq!(role["action"], "conflict", "{plan}");
+    assert!(
+        role["detail"].as_str().unwrap().contains("edited"),
+        "{role}"
+    );
+    let refused = apply_plan(&fx, &plan);
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert_eq!(fs::read(fx.root.join(ROLE_FILE)).unwrap(), edited);
+    assert!(fx.root.join(SKILL_FILE).exists(), "nothing was applied");
+    fs::write(fx.root.join(ROLE_FILE), &original).unwrap();
+
+    // An owned entry whose recorded path is not a path its kind names is never removed through.
+    let other = ".claude/agents/moai/not-the-role-path.md";
+    set_role_path(&fx, other);
+    let plan = plan_of(&fx, &empty);
+    assert_eq!(row(&plan, other)["action"], "conflict", "{plan}");
+    assert!(fx.root.join(ROLE_FILE).exists(), "the real file is kept");
+
+    // Under a request that still names the role, that entry is not judged at all.
+    let named = plan_of(&fx, &request);
+    assert!(
+        named["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|f| f["path"] != other),
+        "{named}"
+    );
+}
+
+/// The manifest's native-role entry moved to `path`.
+fn set_role_path(fx: &Fx, path: &str) {
+    let mut manifest = fx.manifest();
+    for entry in manifest["owned_files"].as_array_mut().unwrap() {
+        if entry["section_id"]
+            .as_str()
+            .is_some_and(|s| s.starts_with("generation:native-role:"))
+        {
+            entry["path"] = json!(path);
+        }
+    }
+    let mut bytes = serde_json::to_vec_pretty(&manifest).unwrap();
+    bytes.push(b'\n');
+    fs::write(fx.manifest_path(), bytes).unwrap();
+}
+
+#[test]
+fn an_unrequested_role_at_its_earlier_flat_path_is_removed() {
+    let (fx, request) = settled_project();
+    // An earlier version wrote the role flat; its manifest entry names that path.
+    let flat = ".claude/agents/prj-test-runner.md";
+    fs::rename(fx.root.join(ROLE_FILE), fx.root.join(flat)).unwrap();
+    set_role_path(&fx, flat);
+    let plan = plan_of(&fx, &emptied(&request));
+    assert_eq!(row(&plan, flat)["action"], "remove", "{plan}");
+    assert!(fx.root.join(flat).exists(), "a plan removes nothing");
+}
+
+#[test]
+fn an_owned_agent_behind_a_link_is_a_conflict_and_nothing_outside_is_removed() {
+    let (fx, request) = settled_project();
+    let outside = TempDir::new().unwrap();
+    let moved = outside.path().join("moai");
+    fs::rename(fx.root.join(".claude/agents/moai"), &moved).unwrap();
+    std::os::unix::fs::symlink(&moved, fx.root.join(".claude/agents/moai")).unwrap();
+    let plan = plan_of(&fx, &emptied(&request));
+    let role = row(&plan, ROLE_FILE);
+    assert_eq!(role["action"], "conflict", "{plan}");
+    assert!(
+        role["detail"].as_str().unwrap().contains("symbolic link"),
+        "{role}"
+    );
+    let refused = apply_plan(&fx, &plan);
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert!(
+        moved.join("prj-test-runner.md").exists(),
+        "nothing outside the project was removed"
+    );
+}
+
+/// A project whose one skill projection `ref-b` is generated from a license-reviewed source,
+/// and the request that built it.
+fn projection_project() -> (Fx, Value) {
+    let fx = Fx::new();
+    fx.with_profile(json!({}));
+    let sources = json!({"schema_version": 1, "sources": [
+        {"source_url": "fixtures/skill-b", "license": {"status": "reviewed", "spdx": "MIT"},
+         "resolved_revision": null}]});
+    let at = sources_path(&fx);
+    fs::create_dir_all(at.parent().unwrap()).unwrap();
+    fs::write(at, serde_json::to_vec_pretty(&sources).unwrap()).unwrap();
+    let mut request = request_with(&fx, Vec::new(), Vec::new());
+    request["skill_projections"] = json!([
+        {"id": "ref-b", "source_url": "fixtures/skill-b", "host_targets": ["claude"]}
+    ]);
+    fx.generate(&request);
+    assert!(fx.root.join(PROJECTION_FILE).exists());
+    assert_eq!(
+        owned_generated(&fx),
+        vec!["generation:skill-projection:claude:ref-b".to_string()]
+    );
+    (fx, request)
+}
+
+fn sources_path(fx: &Fx) -> PathBuf {
+    moai_cli::state_root::path(&fx.root, "manifests/sources.json")
+}
+
+#[test]
+fn a_projection_the_request_names_but_cannot_plan_is_not_removed() {
+    let (fx, request) = projection_project();
+    // The source is no longer license-reviewed, so the projection is not planned (a warning);
+    // the request still names it, so its file stays owned and stays.
+    fs::remove_file(sources_path(&fx)).unwrap();
+    let plan = plan_of(&fx, &request);
+    assert!(
+        plan["warnings"]
+            .to_string()
+            .contains("not license-reviewed"),
+        "{plan}"
+    );
+    let removals: Vec<&Value> = plan["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["action"] == "remove" || f["path"] == PROJECTION_FILE)
+        .collect();
+    assert!(removals.is_empty(), "{removals:?}");
+    assert!(fx.root.join(PROJECTION_FILE).exists());
+}
+
+#[test]
+fn an_unrequested_skill_projection_is_removed_like_a_project_skill() {
+    let (fx, request) = projection_project();
+
+    let mut without = request.clone();
+    without["skill_projections"] = json!([]);
+    let plan = plan_of(&fx, &without);
+    assert_eq!(row(&plan, PROJECTION_FILE)["action"], "remove", "{plan}");
+    assert!(
+        fx.root.join(PROJECTION_FILE).exists(),
+        "a plan removes nothing"
+    );
+    let applied = apply_plan(&fx, &plan);
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert!(!fx.root.join(PROJECTION_FILE).exists());
+    assert_eq!(owned_generated(&fx), Vec::<String>::new());
+}
+
+#[test]
+fn a_harness_only_request_plans_no_removal() {
+    let (fx, request) = settled_project();
+    let mut harness = emptied(&request);
+    harness["picks"] = json!(["harness-only"]);
+    let plan = plan_of(&fx, &harness);
+    let removals: Vec<&Value> = plan["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["action"] == "remove")
+        .collect();
+    assert!(removals.is_empty(), "{removals:?}");
+    assert!(fx.root.join(ROLE_FILE).exists() && fx.root.join(SKILL_FILE).exists());
+}
+
+/// The text `moai <command> --help` prints.
+fn help_text(fx: &Fx, command: &str) -> String {
+    let out = Command::new(EXE)
+        .args([command, "--help"])
+        .clean_env()
+        .env("HOME", &fx.home)
+        .env("PATH", "/usr/bin:/bin")
+        .env("LC_ALL", "C")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    )
+}
+
+#[test]
+fn the_help_examples_name_the_input_each_command_reads() {
+    let fx = Fx::new();
+    for command in ["generation-plan", "generation-apply"] {
+        let help = help_text(&fx, command);
+        let examples: Vec<&str> = help
+            .lines()
+            .filter(|l| {
+                (l.contains("generation-apply ") || l.contains("generation-plan "))
+                    && l.contains(" < ")
+            })
+            .collect();
+        assert!(!examples.is_empty(), "{command} prints examples: {help}");
+        for line in examples {
+            // The plan reads a request; the apply reads the plan the plan answered.
+            let wants = if line.contains("generation-apply ") {
+                "< plan.json"
+            } else {
+                "< request.json"
+            };
+            assert!(
+                line.contains(wants),
+                "{command}: `{}` should read `{wants}`",
+                line.trim()
+            );
+        }
+    }
+}
+
+/// A manifest entry of `kind` (its bare kind and its `section_id`) naming `path`, whose recorded
+/// baseline is the digest of `bytes`, so the file there reads as never edited.
+fn plant_entry(fx: &Fx, section: &str, path: &str, bytes: &[u8]) {
+    let bare = section
+        .strip_prefix("generation:")
+        .and_then(|rest| rest.split(':').next())
+        .unwrap();
+    let mut manifest = fx.manifest();
+    manifest["owned_files"].as_array_mut().unwrap().push(json!({
+        "path": path, "kind": bare, "section_id": section,
+        "baseline_sha256": moai_cli::digest(bytes),
+    }));
+    let mut out = serde_json::to_vec_pretty(&manifest).unwrap();
+    out.push(b'\n');
+    fs::write(fx.manifest_path(), out).unwrap();
+}
+
+#[test]
+fn an_owned_entry_whose_id_leaves_its_folder_is_a_conflict_and_the_file_stays() {
+    let (fx, request) = settled_project();
+    let outside_dir = fx.root.parent().unwrap().join("outside");
+    fs::create_dir_all(&outside_dir).unwrap();
+    // The three shapes of the audit: a file of the project, a file outside it, and the file
+    // named SKILL.md that a project-skill entry reaches. Kind and path are planted together.
+    let cases = [
+        (
+            "generation:native-role:claude:../../../README",
+            ".claude/agents/moai/../../../README.md",
+            fx.root.join("README.md"),
+        ),
+        (
+            "generation:native-role:claude:../../../../outside/secret",
+            ".claude/agents/moai/../../../../outside/secret.md",
+            outside_dir.join("secret.md"),
+        ),
+        (
+            "generation:project-skill:claude:../..",
+            ".claude/skills/../../SKILL.md",
+            fx.root.join("SKILL.md"),
+        ),
+        // A separator in the id, with a path that stays inside the folder.
+        (
+            "generation:native-role:claude:sub/dir",
+            ".claude/agents/moai/sub/dir.md",
+            fx.root.join(".claude/agents/moai/sub/dir.md"),
+        ),
+    ];
+    for (section, path, target) in &cases {
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(target, b"keep me\n").unwrap();
+        plant_entry(&fx, section, path, b"keep me\n");
+    }
+    let plan = plan_of(&fx, &emptied(&request));
+    for (section, path, _) in &cases {
+        let planned = row(&plan, path);
+        assert_eq!(planned["action"], "conflict", "{section}: {planned}");
+    }
+    // The apply of that plan stops, and then so does the plan after it: nothing is deleted.
+    let refused = apply_plan(&fx, &plan);
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    for (section, _, target) in &cases {
+        assert_eq!(fs::read(target).unwrap(), b"keep me\n", "{section}");
+    }
+    // The update preview does not offer the removal either.
+    let update = fx.plan();
+    let generation = step(&update, "generation");
+    assert!(
+        !generation.to_string().contains("\"remove\""),
+        "the update preview offers no removal: {generation}"
+    );
+}
+
+/// `moai cc` in `root`, with a host stub on PATH that exits at once; the combined output.
+fn first_launch(fx: &Fx) -> String {
+    use std::os::unix::fs::PermissionsExt;
+    let bin = fx.root.parent().unwrap().join("bin");
+    fs::create_dir_all(&bin).unwrap();
+    let host = bin.join("claude");
+    fs::write(&host, "#!/bin/sh\nexit 0\n").unwrap();
+    fs::set_permissions(&host, fs::Permissions::from_mode(0o755)).unwrap();
+    let out = Command::new(EXE)
+        .args(["cc", "--name", "lane-1"])
+        .current_dir(&fx.root)
+        .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
+        .env("HOME", &fx.home)
+        .env("USERPROFILE", &fx.home)
+        .env("MOAI_TEST_HOST_MARKER", fx.home.join("host-started"))
+        .env("ANTHROPIC_AUTH_TOKEN", "moai-test-dummy-not-real")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    )
+}
+
+#[test]
+fn a_first_launch_never_applies_the_removal_of_an_owned_file() {
+    // A project set up by the launcher (its project id is the one a first launch derives from
+    // the folder name) and generated with the pick `harness-only`, so the manifest owns an agent
+    // and a skill but no instruction file; its settings are then lost. The first launch plans
+    // its empty request over those owned files.
+    let fx = Fx::new();
+    let named = moai_cli::key_vault::folder_name(None, "project", "");
+    fx.with_profile(json!({"project_id": named.strip_suffix('-').unwrap_or(&named)}));
+    let mut request = request_with(&fx, vec![role()], vec![skill()]);
+    request["picks"] = json!(["harness-only"]);
+    fx.generate(&request);
+    for state in ["project.yaml", "manifests/profile-baseline.json"] {
+        fs::remove_file(fx.root.join(moai_cli::state_root::rel(&fx.root, state))).unwrap();
+    }
+    for name in ["CLAUDE.md", "AGENTS.md"] {
+        let _ = fs::remove_file(fx.root.join(name));
+    }
+    let role = fs::read(fx.root.join(ROLE_FILE)).unwrap();
+    let skill = fs::read(fx.root.join(SKILL_FILE)).unwrap();
+    let said = first_launch(&fx);
+    assert!(
+        said.contains("not generated"),
+        "the launch says it left CLAUDE.md out: {said}"
+    );
+    assert_eq!(fs::read(fx.root.join(ROLE_FILE)).unwrap(), role, "{said}");
+    assert_eq!(fs::read(fx.root.join(SKILL_FILE)).unwrap(), skill, "{said}");
 }

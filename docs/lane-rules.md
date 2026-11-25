@@ -5,8 +5,11 @@ The detail behind the "Lane rules" section of `CLAUDE.md`. A lane is one session
 ## One card at a time
 
 - A lane works one card at a time and runs one receipt check (`moai check affected`) at a time; a follow-up slice does not start while another card of the lane is open.
-- A non-blocking finding goes in the note with its file and line; a lane adds no card for it, and the leader adds it as a criterion of the SPEC's open follow-up card (`docs/leader-rules.md`, Refill).
+- A non-blocking finding goes in the note with its file and line and, once the card has landed, becomes one line of `docs/later.md`; nobody adds a criterion or a card for it.
+- Work cap: the cards in work plus the cards waiting for a check number at most twice the lanes. At the cap a resting lane takes no new card; it audits or helps land (`skills/moai/references/flows/next-flow.md`).
 - A READY note or a `LANE-DONE` line hands a card back; it is never the start signal for the next card. The next card is taken once, when the ledger shows the previous card done or released, and only when no leader is registered; with a registered leader the lane waits for that leader's dispatch.
+- Handing a card back ends the lane's work on it, not the card: only the landing closes it, and a lane never ends a reservation by hand or sends `/clear` to itself. The READY note is the submission signal and is not the ledger state `ready` (a card that can be taken). With no registered leader the flow ends at the submission: the lane audits and lands nothing.
+- A skill or workflow text has three separate facts: the source file's hash in the repository, the copy installed in the home skill folder, and what a new session loads. A lane reports each on its own, never writes the home folder to make them agree, and treats a difference in rendering only as normal; a real difference is one line of `docs/later.md`.
 - New lane sessions are opened only by the operator; no session spawns another.
 - A session-end notice means: finish the card in hand, take no new card, then report `SESSION-END-READY`. It never means stop the work in hand. A card in `review` cannot be released (`card release` refuses it; `card reopen` first), so its session stays until the card is landed.
 
@@ -24,7 +27,7 @@ The detail behind the "Lane rules" section of `CLAUDE.md`. A lane is one session
 
 Implement, run the checks, commit, then:
 
-1. Add one READY note with `moai card note`: first line `LANE-READY-INTEGRATION <card> head=<40hex>`, the base the checks ran on below it, the `moai check affected` receipt of the same head (summary line, every step's exit code, log folder), every acceptance criterion as met, not met or not_run, remaining responsibilities and HOLDs, and one `leftovers:` line: `leftovers: none`, or `leftovers: <path> | <path>` for what you could not remove (`moai card note` refuses a hand-back note without exactly one such line; its answer lists `shared_checkout_new`, the files that appeared in the shared checkout since your reservation, so that a file you made there is named). A head that differs from the checked head names what the extra commits change.
+1. Add one READY note with `moai card note`: first line `LANE-READY-INTEGRATION <card> head=<40hex>`, the base the checks ran on below it, the `moai check affected --card` receipt of the same head (summary line with `selection=card`, every step's exit code, log folder), every acceptance criterion as met, not met or not_run, remaining responsibilities and HOLDs, and one `leftovers:` line: `leftovers: none`, or `leftovers: <path> | <path>` for what you could not remove (`moai card note` refuses a hand-back note without exactly one such line; its answer lists `shared_checkout_new`, the files that appeared in the shared checkout since your reservation, so that a file you made there is named). A head that differs from the checked head names what the extra commits change.
 2. Stop writing and confirm nothing is lost: `git status --short` is empty.
 3. `ExitWorktree(keep)`.
 4. `LANE-DONE` as the last line of the turn.
@@ -38,7 +41,7 @@ Write each commit message in the profile's `language.commit_messages` (`en` in t
 - Report a real block (permission or hook denial, missing decision, failing gate) with the exact command and stop; a card that needs a decision ends in `LANE-BLOCKED kind=decision …` as a note on the card. Never route around an unapproved permission, spend, HOLD or security gate. Stop after three failures of the same step.
 - No forced deletion or process kill, and no branch switch, reset or stash in the shared checkout.
 - A rejection is not non-execution: after a denied or interrupted side-effecting command, re-query the real effects before reporting.
-- A lane runs its own self-audit and repairs; it never audits another lane's change and never declares PASS for its own.
+- A lane runs its own self-audit and repairs, and never declares PASS for its own change. A resting lane may audit another lane's card (`skills/moai/references/audit.md`) and records that verdict itself with `moai card verdict`.
 
 ## Dangerous path
 
@@ -46,7 +49,7 @@ A change that deletes, resets, starts a process or builds a permission rule carr
 
 ## Guard mutants
 
-The READY carries one `guard-mutant: <test> | <code removed> | exit <n>` line per new guard test (`none | <reason>` without one); `exit 0` is repaired first.
+At tier 2 the READY carries one `guard-mutant: <test> | <code removed> | exit <n>` line per new guard test (`none | <reason>` without one); `exit 0` is repaired first. Below tier 2 none is asked for.
 
 ## Audit clone (release pull request only)
 

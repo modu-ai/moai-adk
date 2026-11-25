@@ -104,7 +104,7 @@ pub fn absent_json() -> Value {
 // ---- git ---------------------------------------------------------------------------------------
 
 /// One read-only git command in `project`.
-fn git(project: &Path, args: &[&str]) -> Result<Output, String> {
+pub(super) fn git(project: &Path, args: &[&str]) -> Result<Output, String> {
     // `MOAI_GIT_BIN` names the git program for a runner whose child carries no `PATH`.
     let program = std::env::var("MOAI_GIT_BIN").unwrap_or_else(|_| "git".to_string());
     let mut cmd = Command::new(program);
