@@ -266,7 +266,9 @@ pub fn bash_confirm(command: &str) -> Option<&'static str> {
 }
 
 /// [`bash_confirm`] with the folder the command runs in, which lets a forced push to a remote
-/// *name* be judged by that remote's push URL (SPEC-20261125-preflight-safe-force-push).
+/// *name* be judged by that remote's push URL, and a written local path by the `insteadOf`
+/// settings that could rewrite it (SPEC-20261125-preflight-safe-force-push). Without a folder
+/// a forced push to anything but a create-only lease is asked about.
 pub fn bash_confirm_at(command: &str, cwd: Option<&Path>) -> Option<&'static str> {
     let commands = crate::claim_verify::shell_commands(command);
     // A remote name is read in the folder the line runs in, which only a line that is one plain
@@ -379,23 +381,70 @@ fn is_local_url(url: &str) -> bool {
         || url.starts_with("../")
 }
 
+/// Whether a `url.<base>.insteadOf` or `url.<base>.pushInsteadOf` setting that git reads in
+/// `dir` begins with `written`, which git would then replace by the setting's `<base>` (it
+/// applies both to a URL written on the push line, not only to a remote's). Anything that
+/// cannot be read as "no setting begins it" answers true: a folder that is no repository (a
+/// bare `git config` there still reads the global files, so the folder is checked first), a
+/// spawn failure, an exit status other than 0 or 1, and a record without a value.
+fn url_is_rewritten(dir: &Path, written: &str) -> bool {
+    let git = |args: &[&str]| {
+        let mut cmd = std::process::Command::new("git");
+        crate::identity::scrub_git_env(&mut cmd);
+        cmd.arg("-C")
+            .arg(dir)
+            .args(args)
+            .stdin(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .output()
+            .ok()
+    };
+    if !git(&["rev-parse", "--git-dir"]).is_some_and(|o| o.status.success()) {
+        return true;
+    }
+    let Some(out) = git(&[
+        "config",
+        "--null",
+        "--get-regexp",
+        r"^url\..*\.(push)?insteadof$",
+    ]) else {
+        return true;
+    };
+    match out.status.code() {
+        // No setting of that name at all.
+        Some(1) => !out.stdout.is_empty(),
+        // `key\nvalue\0` records.
+        Some(0) => String::from_utf8_lossy(&out.stdout)
+            .split('\0')
+            .filter(|record| !record.is_empty())
+            .any(|record| {
+                record
+                    .split_once('\n')
+                    .is_none_or(|(_, value)| written.starts_with(value))
+            }),
+        _ => true,
+    }
+}
+
 /// SPEC-20261125-preflight-safe-force-push REQ-2 and REQ-3: the remote of a `git push` is on
-/// this computer. A word that is itself a local path or URL is judged as written; a remote
-/// name is judged by `git remote get-url --push --all`, run in `dir` (the folder of a line that
-/// is one plain `git` command, with no git option before `push`), and every URL it prints
-/// must be local. A missing folder, a failed or empty lookup, a network URL or no remote
-/// word at all answers no, which the caller turns into a question.
+/// this computer. Both kinds of word are judged in `dir` (the folder of a line that is one plain
+/// `git` command, with no git option before `push`; no folder answers no). A word that is
+/// itself a local path or URL is judged as written, unless a `url.<base>.insteadOf` or
+/// `pushInsteadOf` setting begins it ([`url_is_rewritten`]); a remote name is judged by
+/// `git remote get-url --push --all`, and every URL it prints must be local. A failed or empty
+/// lookup, a network URL or no remote word at all answers no, which the caller turns into a
+/// question.
 fn remote_is_on_this_computer(rest: &[String], global: &[String], dir: Option<&Path>) -> bool {
     let positionals = push_positionals(rest);
     let Some(remote) = positionals.first() else {
         return false;
     };
-    if is_local_url(remote) {
-        return true;
-    }
     let (Some(dir), true) = (dir, global.is_empty()) else {
         return false;
     };
+    if is_local_url(remote) {
+        return !url_is_rewritten(dir, remote);
+    }
     let mut cmd = std::process::Command::new("git");
     crate::identity::scrub_git_env(&mut cmd);
     let Ok(out) = cmd
@@ -2780,8 +2829,8 @@ mod tests {
             at(&format!("git push -f {bare} a; git push -f net b")),
             Some(CONFIRM_FORCE_PUSH)
         );
-        // A folder that is no repository cannot resolve a remote name, so it asks; a path needs
-        // no folder.
+        // A folder that is no repository cannot resolve a remote name, so it asks; a written path
+        // needs the folder too (revision 2: the settings that could rewrite it are read there).
         let nowhere = repo.parent().unwrap();
         assert_eq!(
             bash_confirm_at("git push -f loc feature", Some(nowhere)),
@@ -2791,12 +2840,72 @@ mod tests {
             bash_confirm("git push -f loc feature"),
             Some(CONFIRM_FORCE_PUSH)
         );
-        assert_eq!(bash_confirm(&format!("git push -f {bare} feature")), None);
+        assert_eq!(
+            bash_confirm(&format!("git push -f {bare} feature")),
+            Some(CONFIRM_FORCE_PUSH)
+        );
         // The deny for a protected branch still wins over a remote on this computer.
         assert_eq!(
             bash_guard(&format!("git push -f {bare} main")),
             Some(FORCE_PUSH)
         );
+    }
+
+    /// REQ-2 and REQ-3 (revision 2): git applies `url.<base>.insteadOf` and `pushInsteadOf` to a
+    /// path written on the push line too, so a written local path is not asked about only when
+    /// the folder is a repository whose settings do not rewrite its beginning.
+    #[test]
+    fn push_confirm_remote_written_path_is_judged_by_insteadof() {
+        let (_tmp, repo, bare) = push_confirm_repo();
+        let root = repo.parent().unwrap();
+        let prefix = format!("{}/", root.display());
+        let cmd = format!("git push -f {bare} feature");
+        let at = |c: &str| bash_confirm_at(c, Some(&repo));
+        // The repository has an `insteadOf` rule, but not one that begins this path.
+        assert_eq!(at(&cmd), None, "asked without a matching rule");
+        for key in [
+            "url.https://other.invalid/.insteadOf",
+            "url.https://other.invalid/.pushInsteadOf",
+        ] {
+            // A rule whose value is not the beginning of the path does not make it ask: a
+            // missing prefix, and a word that is inside the path but not at its start.
+            for value in ["/nonexistent-prefix/", "bare.git", "feature"] {
+                push_confirm_git(&repo, &["config", key, value]);
+                assert_eq!(at(&cmd), None, "{key}={value}: asked");
+                push_confirm_git(&repo, &["config", "--unset-all", key]);
+            }
+            // A rule whose value begins the path asks, whole path or only its first folder.
+            for value in [prefix.as_str(), bare.as_str(), "/"] {
+                push_confirm_git(&repo, &["config", key, value]);
+                assert_eq!(
+                    at(&cmd),
+                    Some(CONFIRM_FORCE_PUSH),
+                    "{key}={value}: not asked"
+                );
+                push_confirm_git(&repo, &["config", "--unset-all", key]);
+            }
+            // A relative path is read as written.
+            push_confirm_git(&repo, &["config", key, "../"]);
+            assert_eq!(
+                at("git push -f ../bare.git feature"),
+                Some(CONFIRM_FORCE_PUSH),
+                "{key}: relative path not asked"
+            );
+            push_confirm_git(&repo, &["config", "--unset-all", key]);
+        }
+        // With the rules gone the path is unasked again.
+        assert_eq!(at(&cmd), None);
+        // No folder, or a folder whose settings cannot be read, asks.
+        assert_eq!(bash_confirm(&cmd), Some(CONFIRM_FORCE_PUSH));
+        assert_eq!(bash_confirm_at(&cmd, Some(root)), Some(CONFIRM_FORCE_PUSH));
+        // A line that is not one plain `git` command stays asked.
+        for cmd in [
+            format!("cd {} && git push -f {bare} feature", repo.display()),
+            format!("FOO=1 git push -f {bare} feature"),
+            format!("git -C {} push -f {bare} feature", repo.display()),
+        ] {
+            assert_eq!(at(&cmd), Some(CONFIRM_FORCE_PUSH), "not asked: {cmd}");
+        }
     }
 
     /// A temporary folder holding `repo/` (with a `.git` folder), `allowed/` and `outside/`.
