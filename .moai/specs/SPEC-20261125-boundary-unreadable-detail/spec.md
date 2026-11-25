@@ -2,7 +2,7 @@
 id: SPEC-20261125-boundary-unreadable-detail
 title: "The boundary hook names the unreadable part, reads a syntax check as read-only and judges the command a moai line runs after --"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-25
 ---
 
@@ -45,7 +45,8 @@ created: 2026-11-25
 - REQ-3: IF the command text is over the size limit or cannot be split into commands, THEN the hook shall say that in its reason instead of naming a command.
 - REQ-4: When a shell is started with the `-n` letter, the hook shall read that letter as an allowed option. · failure: none — a `-c` string given with it is still judged as before.
 - REQ-5: When a `moai` or `moai-cli` command line holds a `--`, the hook shall judge the words after the first `--` as a command of their own, with every rule it applies to that command typed bare. · failure: none — a pathspec after `--` names no runner and passes as before.
-- REQ-6: The hook shall judge every command that is not a `moai` line with a `--` exactly as before this SPEC, the delete boundary, the checkout roots and the other four classes included.
+- REQ-6: The hook shall judge every command that is not a `moai` line that runs a command exactly as before this SPEC, the delete boundary, the checkout roots and the other four classes included.
+- REQ-7: IF a `moai` line that names `heavy-slot-acquire` or `line-lease` holds a word that an expansion decides before its first literal `--`, or has no literal `--`, or has an expansion in the place of its subcommand, THEN the hook shall deny it as `unreadable`. · revision 2: 보안 검토가 짚은 구멍(변수가 `--` 로 펼쳐지면 뒤의 명령이 판단되지 않았어요)을 막고, 다른 래퍼(`nice $X …`)가 이미 하는 닫힘과 같아요.
 
 ## Acceptance
 
@@ -53,8 +54,9 @@ created: 2026-11-25
   verify: `cargo test --locked --offline --test hook_bash_boundary_cli a_secret_shaped_or_control_fragment_names_the_command_word_alone`
   verify: `cargo test --locked --offline --test hook_bash_boundary_cli an_oversized_or_unsplittable_command_says_so`
 - AC-2 (REQ-4): `bash -n 파일`, `zsh -n 파일`, `sh -n 파일` 과 `-n` 이 든 묶음 글자는 통과해요; `-n -c 'rm -rf /opt/…'` 는 여전히 `delete-outside` 로 거절돼요 · verify: `cargo test --locked --offline --test hook_bash_boundary_cli a_read_only_syntax_check_is_not_unreadable`
-- AC-3 (REQ-5): `moai heavy-slot-acquire … --` 와 `moai card line-lease … --` 뒤의 삭제, git 상태 변경, 보호 브랜치 변경, 훅 건너뛰기가 직접 쓴 같은 명령과 같은 거절을 받아요; 뒤가 스크립트 파일 실행이거나 `--` 뒤 경로 목록이면 통과해요; 변수가 정하는 명령 단어는 `unreadable` 이에요 · verify: `cargo test --locked --offline --test hook_bash_boundary_cli a_moai_line_after_double_dash_is_judged_like_the_bare_command`
+- AC-3 (REQ-5, REQ-7): `moai heavy-slot-acquire … --` 와 `moai card line-lease … --` 뒤의 삭제, git 상태 변경, 보호 브랜치 변경, 훅 건너뛰기가 직접 쓴 같은 명령과 같은 거절을 받아요; 뒤가 스크립트 파일 실행이거나 `--` 뒤 경로 목록이면 통과해요; 변수가 정하는 명령 단어는 `unreadable` 이에요 · verify: `cargo test --locked --offline --test hook_bash_boundary_cli a_moai_line_after_double_dash_is_judged_like_the_bare_command`
   verify: `cargo test --locked --offline --test hook_bash_boundary_cli a_moai_line_after_double_dash_that_names_no_runner_passes`
+  verify: `cargo test --locked --offline --test hook_bash_boundary_cli a_moai_line_that_runs_a_command_with_a_computed_word_is_unreadable`
 - AC-4 (REQ-6): 체크아웃 안의 상대 경로 삭제는 통과하고 체크아웃 밖의 폴더에서는 거절돼요; 기존 표의 모든 사례와 통과 시험 둘은 그대로예요 · verify: `cargo test --locked --offline --test hook_bash_boundary_cli a_relative_delete_is_judged_by_the_folder_the_session_stands_in`
   verify: `cargo test --locked --offline --test hook_bash_boundary_cli`
   verify: `cargo test --locked --offline --test hook_preflight_bypass_cli`
@@ -73,6 +75,7 @@ created: 2026-11-25
 - 비밀 모양 단어(`crate::secret_shaped`)나 제어 문자가 든 조각은 첫 단어(명령 이름)만 말해요. 훅의 이유는 모델에게 돌아가고 기록에 남기 때문이에요.
 - `-n`: `OPTION_LETTERS_MINUS` 에 `n` 을 더해요(`+n` 은 아님). `set -n` 의 글자표도 같은 표를 쓰는데, 뒤 명령은 어차피 글자로 판단돼요.
 - 감싸기: `simple()` 의 명령 이름이 `moai` 나 `moai-cli` 이면 `--` 뒤의 단어를 새 명령으로 `simple()` 에 다시 넣어요(`peel` 의 `--` 처리와 같은 모양). `--` 앞의 단어(자기 옵션)는 판단하지 않아요. `--` 가 없으면 지금처럼 통과해요.
+- 닫힘(REQ-7, revision 2): 그 줄의 글자 단어가 `heavy-slot-acquire` 나 `line-lease` 를 이름으로 대면 명령을 실행하는 줄이에요. 이런 줄에서 첫 글자 `--` 앞에 확장이 정하는 단어가 있거나(`$X`, `-$X`, 명령 치환이 `--` 로 펼쳐질 수 있어요), 글자 `--` 가 하나도 없는데 확장이 있거나, 하위 명령 자리(첫 옵션 아닌 단어)가 확장이면 `Unreadable` 이에요(`Peel::Dynamic` 과 같은 닫힘). 다른 `moai` 하위 명령(`card note --ref "$R"` 등)은 변수가 있어도 지금처럼 통과해요: 명령을 실행하지 않아요.
 
 ## Plan
 
@@ -81,7 +84,7 @@ created: 2026-11-25
 3. `src/hook_bash_boundary.rs`: 판단기 기록, 문구, `n` 글자, `moai` 감싸기를 시험 하나씩 초록으로 만들어요.
 4. `cargo fmt --all` 뒤 `moai check affected --card` 를 한 번 돌려요. READY 에 `guard-mutant:` 줄(아래)과 위험 경로 실행(훅 판단만 하는 임시 세계에서 감싼 삭제 글자를 보내요: 명령은 실행되지 않아요)을 담아요.
 
-변이(READY 에 줄마다 `guard-mutant: <시험> | <뺀 코드> | exit <n>`): (1) `moai` 감싸기 분기를 빼면 AC-3 이 실패, (2) 감싸기에서 첫 `--` 뒤 대신 전체 단어를 넘기면 AC-3 의 통과 사례가 실패, (3) `n` 글자를 빼면 AC-2 가 실패, (4) `-n -c` 에서 `-c` 문자열 판단을 건너뛰면 AC-2 의 거절 사례가 실패, (5) 조각 기록을 빼면 AC-1 이 실패, (6) 비밀 모양 검사를 빼면 AC-1 둘째 시험이 실패, (7) 80자 자르기를 빼면 AC-1 이 실패.
+변이(READY 에 줄마다 `guard-mutant: <시험> | <뺀 코드> | exit <n>`): (1) `moai` 감싸기 분기를 빼면 AC-3 이 실패, (2) 감싸기에서 첫 `--` 뒤 대신 전체 단어를 넘기면 AC-3 의 통과 사례가 실패, (3) `n` 글자를 빼면 AC-2 가 실패, (4) `-n -c` 에서 `-c` 문자열 판단을 건너뛰면 AC-2 의 거절 사례가 실패, (5) 조각 기록을 빼면 AC-1 이 실패, (6) 비밀 모양 검사를 빼면 AC-1 둘째 시험이 실패, (7) 80자 자르기를 빼면 AC-1 이 실패, (8) 명령을 실행하는 `moai` 줄의 확장 단어 닫힘(REQ-7)을 빼면 AC-3 의 `a_moai_line_that_runs_a_command_with_a_computed_word_is_unreadable` 가 실패.
 
 ## Risks
 
@@ -91,6 +94,7 @@ created: 2026-11-25
 - 이 실측은 설치된 빌드 46 에서 한 것이고 나무 끝(`NeXT` c3e73024ac)의 빌드는 아니에요: 첫 RED 시험이 이 나무에서 다시 재현해요.
 - 보고된 거절 세 가지(`/bin/zsh 파일`, 리터럴 세 줄, heredoc `cat > 파일`)는 재현되지 않았고, 보고자의 정확한 명령과 작업 폴더 없이는 원인을 알 수 없어요(`not_run`).
 - 이 변경의 시험은 훅이 글자만 판단하는 임시 세계에서 하고 어떤 명령도 실행하지 않아요.
+- 변수가 `--` 로 펼쳐지는 우회(`moai heavy-slot-acquire --name x $SEP rm -rf …`)는 revision 1 에 없었고 자동 보안 검토가 짚었어요: REQ-7 로 닫아요. 대가는 명령을 실행하는 두 하위 명령에서 `--name "$X"` 같은 변수 사용이 거절된다는 점이에요(글자로 쓰면 통과해요).
 
 ## Decisions
 
@@ -101,3 +105,4 @@ created: 2026-11-25
 | D-3 | `-n` 을 `-` 글자표에만 더해요 | 파싱만 하고 실행하지 않아요; `-c` 판단은 그대로 | `n` 한 글자를 빼요 |
 | D-4 | 조각은 판단기의 기록 하나로 남기고 `Class`/`Verdict` 모양은 바꾸지 않아요 | 약 100곳을 건드리지 않아요 | 오류 값에 조각을 싣는 큰 변경 |
 | D-5 | 재현되지 않은 보고 구문 세 가지는 이 SPEC 이 고치지 않고, 새 문구가 다음 거절에서 조각을 말해요 | 재현 없이 훅을 느슨하게 하지 않아요 | 보고자의 정확한 명령과 폴더로 새 RED 시험 |
+| D-6 | 명령을 실행하는 두 하위 명령의 줄에서만 확장 단어를 `unreadable` 로 닫아요(revision 2, 보안 검토의 지적) | `nice $X …` 가 이미 닫혀 있어 같은 수준이에요; 모든 `moai` 줄을 닫으면 `moai card note --ref "$R"` 같은 정상 호출이 막혀요 | 모든 `moai` 줄의 확장을 닫기(더 엄격, 정상 호출이 거절돼요) |
