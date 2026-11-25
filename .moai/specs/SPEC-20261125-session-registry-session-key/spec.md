@@ -25,8 +25,8 @@ User decision 2026-11-25 (decisions log line `11:27Z(11-25)`): a session registr
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5): a Rust test registers sessions with distinct host session ids in a temporary clone and shows the entry file name, the refusal of a name held by another live session with both entries unchanged, one entry after a rename, and the name lookups reading an entry of each form · verify: `cargo test --locked --test session_registry_session_key`
-- AC-2 (REQ-6, REQ-7): a Rust test shows the limit counting a session once for two entry forms and the lane route text holding the register, renew and release steps, with the multiple unchanged · verify: `cargo test --locked --test session_registry_session_key`
+- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5): a Rust test registers sessions with distinct host session ids in a temporary clone and shows the entry file name, the refusal of a name held by another live session with both entries unchanged, one entry after a rename, and the name lookups reading an entry of each form · verify: `cargo test --locked --test session_registry_owner_id`
+- AC-2 (REQ-6, REQ-7): a Rust test shows the limit counting a session once for two entry forms and the lane route text holding the register, renew and release steps, with the multiple unchanged · verify: `cargo test --locked --test session_registry_owner_id --test lane_team_names`
 - AC-3 (REQ-8): a Rust test shows the `-a` pick skipping a name taken in either form and returning the first name free in both · verify: `cargo test --locked --test lane_team_names`
 
 ## Scope
@@ -37,7 +37,7 @@ User decision 2026-11-25 (decisions log line `11:27Z(11-25)`): a session registr
 - write: `src/card/wip_limit.rs`
 - write: `src/ops/session_register.rs`
 - write: `skills/moai/workflows/work.md`
-- write: `tests/session_registry_session_key.rs`
+- write: `tests/session_registry_owner_id.rs`
 - write: `tests/session_registry_cli.rs`
 - write: `tests/lane_team_names.rs`
 

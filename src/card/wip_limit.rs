@@ -35,8 +35,11 @@ pub fn per_lane(project: &Path) -> u32 {
         .unwrap_or(DEFAULT_PER_LANE)
 }
 
-/// The live registered lanes: entries whose lease has not ended and that are no leader entry; 0
-/// when the registry is empty or unreadable, which turns the limit off.
+/// The live registered lanes: the sessions with an entry whose lease has not ended and that is no
+/// leader entry, each counted once (SPEC-20261125-session-registry-session-key REQ-6). Entries
+/// of one session count once: the key is the entry's host `session` id when it has one, else
+/// its name, and the two kinds of key never meet. 0 when the registry is empty or unreadable,
+/// which turns the limit off.
 pub fn live_lanes(project: &Path) -> usize {
     let now = now_secs();
     lane_registry::session_entries(project)
@@ -44,7 +47,12 @@ pub fn live_lanes(project: &Path) -> usize {
             entries
                 .iter()
                 .filter(|e| e.lease_until > now && e.mode.as_deref() != Some("leader"))
-                .count()
+                .map(|e| match &e.session {
+                    Some(session) => (true, session.as_str()),
+                    None => (false, e.name.as_str()),
+                })
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
         })
         .unwrap_or(0)
 }
