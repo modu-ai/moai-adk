@@ -380,6 +380,8 @@ fn run_check(
                 out: None,
                 pick: crate::check_affected::Pick::Full,
                 integration_ref: None,
+                // The wide check is the safety net: it reads no earlier run (SPEC-20261125-check-affected-rerun REQ-11).
+                full: true,
             };
             match crate::check_affected::run(&work, &range, &opts) {
                 Ok(answer) => {

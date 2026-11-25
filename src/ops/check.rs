@@ -101,6 +101,23 @@ enum Action {
         /// gets a `range_note` in the answer.
         #[arg(long)]
         integration_ref: Option<String>,
+        /// Run the full selection and read no earlier run: without this flag a run on a head
+        /// whose earlier run failed re-runs only the tests that failed there (`rerun_of=` in the
+        /// summary), and a head that moved runs the diff's targets and the earlier failures.
+        #[arg(long)]
+        full: bool,
+    },
+    /// Reads the ledger. Print the tests that passed only on a retry, with their counts
+    ///
+    /// Reads `check-flaky.jsonl` in the project's state folder: the test step of `check affected`
+    /// retries a failing test twice (`--retries 2 --flaky-result pass`), lists one that passed on
+    /// a retry as FLAKY in the summary line, in `flaky.txt` of the check folder and in this ledger
+    /// (one line per run). The answer lists each name with its count; a name seen twice has
+    /// `status` `fix`: fix that test. An unreadable ledger answers an error and no counts.
+    Flaky {
+        /// The repository (default: the current folder).
+        #[arg(long, default_value = ".")]
+        dir: PathBuf,
     },
 }
 
@@ -119,6 +136,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             lane,
             card,
             integration_ref,
+            full,
         } => {
             let pick = if card {
                 moai_cli::check_affected::Pick::Card
@@ -142,6 +160,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 out,
                 pick,
                 integration_ref,
+                full,
             };
             let answer = moai_cli::check_affected::run(&dir, &range, &opts)?;
             // SPEC-20261124-ready-receipt-gate: the summary line is the receipt `card note` reads.
@@ -151,5 +170,6 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             }
             Ok(answer)
         }
+        Action::Flaky { dir } => moai_cli::check_flaky::report(&dir),
     }
 }

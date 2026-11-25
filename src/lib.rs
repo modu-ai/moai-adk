@@ -22,6 +22,7 @@ pub mod bundle;
 pub mod card;
 pub mod card_times;
 pub mod check_affected;
+pub mod check_flaky;
 pub mod check_tree;
 pub mod claim;
 pub mod claim_cache;

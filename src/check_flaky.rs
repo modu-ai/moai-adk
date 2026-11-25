@@ -133,7 +133,10 @@ fn find_earlier(out: &Path) -> Option<Earlier> {
     folders
         .into_iter()
         .filter_map(|f| {
-            let at = std::fs::metadata(f.join("summary.txt")).ok()?.modified().ok()?;
+            let at = std::fs::metadata(f.join("summary.txt"))
+                .ok()?
+                .modified()
+                .ok()?;
             Some((at, f))
         })
         .max_by_key(|(at, _)| *at)
@@ -160,10 +163,7 @@ pub enum Mode {
     /// An earlier run failed but cannot be used: the full set, and the summary says why.
     Full(String),
     /// The same head failed before: only the failed tests run (`of` is the earlier folder).
-    Same {
-        of: PathBuf,
-        failed: Vec<TestName>,
-    },
+    Same { of: PathBuf, failed: Vec<TestName> },
     /// The head moved since the earlier failed run: the targets of the diff between the two heads
     /// and the earlier failures run.
     Moved {
@@ -196,7 +196,9 @@ impl Mode {
 }
 
 fn plain_name(s: &str) -> bool {
-    !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == ':')
+    !s.is_empty()
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == ':')
 }
 
 fn plain_binary(s: &str) -> bool {
@@ -491,7 +493,11 @@ pub fn report(dir: &Path) -> Result<serde_json::Value, String> {
     let mut counts: std::collections::BTreeMap<String, usize> = Default::default();
     match std::fs::read_to_string(&ledger) {
         Ok(text) => {
-            for (n, line) in text.lines().enumerate().filter(|(_, l)| !l.trim().is_empty()) {
+            for (n, line) in text
+                .lines()
+                .enumerate()
+                .filter(|(_, l)| !l.trim().is_empty())
+            {
                 let name = serde_json::from_str::<serde_json::Value>(line)
                     .ok()
                     .and_then(|v| v["name"].as_str().map(str::to_string))
@@ -585,21 +591,38 @@ mod tests {
             }],
         };
         let mut step = test_step(&[
-            "nextest", "run", "--locked", "--no-fail-fast", "--lib", "--test", "z", "-E", "kind(lib)",
+            "nextest",
+            "run",
+            "--locked",
+            "--no-fail-fast",
+            "--lib",
+            "--test",
+            "z",
+            "-E",
+            "kind(lib)",
         ]);
         tune(&mut step, &mode);
         let line = step.args.join(" ");
         assert!(line.contains("--retries 2 --flaky-result pass"), "{line}");
         assert!(line.contains("--test a"), "{line}");
-        assert!(!line.contains("--test z") && !line.contains("kind(lib)"), "{line}");
-        assert!(line.ends_with("-E (binary_id(=moai-cli::a) & test(=t_b))"), "{line}");
+        assert!(
+            !line.contains("--test z") && !line.contains("kind(lib)"),
+            "{line}"
+        );
+        assert!(
+            line.ends_with("-E (binary_id(=moai-cli::a) & test(=t_b))"),
+            "{line}"
+        );
     }
 
     #[test]
     fn a_plain_run_only_gets_the_retries_and_cargo_test_nothing() {
         let mut step = test_step(&["nextest", "run", "--locked"]);
         tune(&mut step, &Mode::Plain);
-        assert_eq!(step.args.join(" "), "nextest run --retries 2 --flaky-result pass --locked");
+        assert_eq!(
+            step.args.join(" "),
+            "nextest run --retries 2 --flaky-result pass --locked"
+        );
         let mut other = test_step(&["test", "--locked"]);
         tune(&mut other, &Mode::Plain);
         assert_eq!(other.args.join(" "), "test --locked");

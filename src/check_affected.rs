@@ -2558,6 +2558,23 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     let sel = chosen.selection.clone();
     let target = target_dir(&std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf()));
     let range3 = format!("{}...{}", facts.base, facts.head);
+    let out = opts
+        .out
+        .clone()
+        .unwrap_or_else(|| target.join(format!("check-affected-{}", short(&facts.head))));
+    // SPEC-20261125-check-affected-rerun: what an earlier failed run of this project lets this run
+    // skip. A moved head selects the targets of the diff between the two heads instead.
+    let rerun = crate::check_flaky::plan(dir, &facts, pick, opts.full, &out);
+    let sel = match &rerun {
+        crate::check_flaky::Mode::Moved { selection, .. } => selection.clone(),
+        _ => sel,
+    };
+    let tuned = |mut steps: Vec<Step>| {
+        steps
+            .iter_mut()
+            .for_each(|s| crate::check_flaky::tune(s, &rerun));
+        steps
+    };
     // The cap goes onto the test step unless the caller set the runner's own knob; what the
     // summary shows is the caller's value then.
     let env = |k: &str| std::env::var_os(k);
@@ -2567,7 +2584,7 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     // slot starts no cargo at all. The labels do not depend on the runner.
     let table = table_step(&facts);
     let rust = facts.stack == Stack::Rust;
-    let mut planned = plan(
+    let mut planned = tuned(plan(
         &table,
         plan_steps(
             &facts,
@@ -2576,11 +2593,9 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
             Runner::Nextest,
             cap_for(Runner::Nextest),
         ),
-    );
-    let out = opts
-        .out
-        .clone()
-        .unwrap_or_else(|| target.join(format!("check-affected-{}", short(&facts.head))));
+    ));
+    // The earlier folder a narrowed run continues is kept (moved aside when it sits at `out`).
+    let kept = crate::check_flaky::keep_earlier(&rerun, &out);
     std::fs::create_dir_all(&out).map_err(|e| {
         format!(
             "check affected refused: cannot create {}: {e}",
@@ -2611,7 +2626,10 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
             match hold_slot(opts, &out) {
                 Ok(h) => {
                     let r = runner_in(dir);
-                    planned = plan(&table, plan_steps(&facts, &sel, &range3, r, cap_for(r)));
+                    planned = tuned(plan(
+                        &table,
+                        plan_steps(&facts, &sel, &range3, r, cap_for(r)),
+                    ));
                     if let Some(theirs) = caller_threads(r, env) {
                         shown = theirs;
                     }
@@ -2694,6 +2712,21 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         verdict,
         chosen.card_by().as_deref(),
     );
+    // SPEC-20261125-check-affected-rerun REQ-7, REQ-9, REQ-12: the FLAKY names of this run's test
+    // step go to `flaky.txt` and the ledger, and the summary names what the run continued.
+    let flaky = if results.iter().any(|(label, _)| label == "test") {
+        crate::check_flaky::flaky_of(&out)
+    } else {
+        Vec::new()
+    };
+    if let Err(why) = crate::check_flaky::record(&facts.root, &out, &facts.head, &flaky) {
+        eprintln!("check affected: FLAKY not fully recorded: {why}");
+    }
+    let mut extra = rerun.words(kept.as_deref());
+    if !flaky.is_empty() {
+        extra.push(format!("flaky={}", flaky.len()));
+    }
+    let line = crate::check_flaky::with_words(&line, &extra);
     let mut answer = serde_json::json!({
         "action": "affected",
         "mode": "run",
@@ -2710,6 +2743,11 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         "writes": true,
     });
     card_fields(&chosen, &mut answer);
+    answer["flaky"] = serde_json::json!(flaky
+        .iter()
+        .map(crate::check_flaky::TestName::text)
+        .collect::<Vec<_>>());
+    answer["rerun_of"] = serde_json::json!(kept.as_ref().map(|p| p.to_string_lossy().into_owned()));
     if verdict == Verdict::NotRun {
         answer["not_run"] = not_run_note(&facts.stack);
     }
