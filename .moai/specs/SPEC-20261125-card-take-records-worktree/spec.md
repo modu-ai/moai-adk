@@ -146,4 +146,10 @@ mo.ai.kr 리더 세션이 보낸 개선 요청(카드 본문, 그 저장소에�
 - 위험 경로: 임시 HOME 의 임시 git 리포지터리에서 링크된 워크트리 take(AC-1), git 워크트리가 아닌 일반 폴더 take(AC-1 의 둘째 절, 경고), 살아 있는 리스의 reclaim 거절(AC-5)을 직접 돌렸어요. 하나라도 진짜 HOME 이나 설치된 바이너리를 쓰지 않았어요.
 - 안 한 것: `moai check affected --card` 영수증은 READY 노트에 있어요.
 
-개정 2 (2026-11-26): draft, 구현 전이에요. 승인 기록을 기다려요. AC-7…AC-13 은 not_run 이에요.
+개정 2 (2026-11-26): 승인은 원장 노트(리더의 위임 승인)에 있고 승인 블록은 착지 때 리더가 적어요. 구현은 `release_by_leader`(`src/ledger/reservation.rs`), `release_by_leader`(`src/card/dispatch.rs`), `--by`·`--reason`(`src/ops/card.rs`), `confirm_leader` 를 `pub(crate)` 로(`src/card/land/batch.rs`), 스킬 글(`leader.md` 의 두 행, `work.md` 의 한 행)이에요.
+
+- AC-7…AC-11 met: 각 verify 줄을 적힌 그대로 돌려 ac7·ac8·ac9·ac10·ac11 이 통과했어요(고치기 전 RED 는 여섯 개 모두 맞는 이유로 실패: `card release` 가 `--by` 를 몰라 clap 사용법 오류, ac12 는 스킬 글 없음).
+- AC-12 met: `card_leader_release_cli::ac12_` 통과(`leader.md` 와 `work.md` 의 낱말). 스킬 글을 읽는 테스트(`leader_route`, `mode_cards_53`, `source_manifest_facts`, `repo_scans_table`, `next_flow_skill_scan`, `skill_structure`, `mode_workflow_steps`, `workflow_size_budget`)도 통과했어요.
+- AC-13 met: `card_review_lease_hold_cli`, `card_sweep_cli`, `card_take_worktree_cli` 와 이웃(`card_reclaim_cli`, `card_reclaim_early_cli`, `card_adopt_cli`, `ledger_reservation`, `card_cli`, `card_dispatch_cli`, `card_hold_gate_cli`) 199개가 모두 통과했어요.
+- 지킴이 뮤턴트(각각 뒤에 `git checkout` 으로 복원, 트리 깨끗함 확인): 리더 확인을 뺌 → ac9 실패 exit 101, 살아 있는 임대를 증명 없이 풂 → ac8 실패 exit 101, 판정 pass 검사를 뺌 → ac10 실패 exit 101, `card.reclaim` 이벤트도 씀 → ac7·ac11 실패 exit 101.
+- 안 한 것: `moai check affected --card` 영수증과 clippy 는 READY 노트에 있어요. 라이브러리 수준의 `HolderChanged` 시험(증명을 읽은 뒤 holder 가 바뀜)은 따로 쓰지 않았어요(not_run).

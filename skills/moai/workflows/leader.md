@@ -34,6 +34,8 @@ For every round: the entry this window holds, the notes it answered, the heads i
 | `tip_moved` | the branch moved between the read and the move; nothing changed | Read the tip again and run the same landing again; a new tip that is not under the head answers `stale_base`. |
 | a head in `dropped` of `moai card land-batch` | it could not be joined or failed the wide check alone | Land the others as the answer says; send the dropped head back as a `fail` with the check's log as a note on the card. |
 | `tip_kept_moving` from `moai card land-batch` | the tip moved after three joined checks; nothing landed | Run the same batch again on the new tip. |
+| a card held by a session that is gone | the reservation still names the old session, and nobody else may write the card | Run `moai card release <card> --generation <g> --by leader --reason <what was found>` from this window: it ends the reservation when the lease ended or every early proof holds (launcher exited, worktree clean, no process) and the card returns to `ready`. `not_leader`: this session is not the registered leader. `lease_live`: a proof is missing, so the reservation of a live session stays. `verdict_pass`: land the head instead. |
+| `reclaim_limit` from `moai card reclaim` | the card used its three reclaims | Release it as the row above says, then any lane takes it with `moai card take`; the limit stays at three. |
 
 ## Exceptions and Permissions
 
