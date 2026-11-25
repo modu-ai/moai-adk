@@ -91,3 +91,4 @@ created: 2026-11-25
 | D-1 | 설치용 빌드 번호는 `moai build-number next` 가 내주고, 검사용 빌드는 번호 없이 돌아요 | 사용자 결정 2026-11-25(이 SPEC 의 카드 본문, 말 그대로): "용 번호는 moai 가 내주게 하자" — 리더의 제안 '검사용 빌드는 번호 없이 돌고, 설치용 번호는 moai 가 내주게 하면 26 → 27 처럼 이어져요'에 대한 답 | 새 사용자 결정으로만 |
 | D-2 | 내준 번호는 쓰였든 아니든 다시 내주지 않아요 | HeadVer 규칙(`CLAUDE.md` Development build versions): "`{build}` is one counter that only goes up and never restarts; never reuse a number, also not for a rebuild of the same commit" | 새 사용자 결정으로만 |
 | D-3 | 기록 자리·시작 번호·실패한 번호·명령의 범위·환경을 없애는 자리는 위 Options 의 추천안을 초안으로 삼아요 | 사용자가 고르기 전까지의 기본값이에요(레인이 정하는 것이 아니에요). 승인 기록은 사용자만 남겨요 | Options 에서 다른 안을 고르면 REQ·Plan 을 고쳐요 |
+| D-4 | 사용자가 Options O-1…O-5 를 모두 추천안(첫째)으로 골랐어요: O-1 HOME 의 프로젝트 상태 폴더 기록, O-2 설치 폴더 최대+1 로 이어감, O-3 내준 번호는 다시 내주지 않음, O-4 번호만 내줌, O-5 `check affected` 자식에서만 번호 환경을 없앰 | 사용자 선택 2026-11-25T07:53:57Z(카드 노트 9106, 말 그대로): "승인, O-1~O-5 기본값 (Recommended)"; 승인 기록은 리더가 착지 머지에서 써요 | 새 사용자 결정으로만
