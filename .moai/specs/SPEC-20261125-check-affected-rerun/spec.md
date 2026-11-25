@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-check-affected-rerun
 title: "A repeated receipt run re-runs only the tests that failed, and a test that passes on retry is recorded as FLAKY"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9000): \"승인, 재시도는 모든 검사에 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:205410128c25a3340624375cde90e5570416fcf5f062253b6be2de8aa5081db7"
 ---
 
 # A repeated receipt run re-runs only the tests that failed, and a test that passes on retry is recorded as FLAKY

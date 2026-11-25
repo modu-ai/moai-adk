@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-review-lease-hold
 title: "A card in review keeps its lease until the verdict is recorded, and a reclaimed reservation brings back its scope"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9093): 임대 방식 \"24시간 창 (Recommended)\", 승인 \"승인, (가)(나) 모두 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:8348f5f7940606534b66a96240881687bdecea679f7efb4b5ad7eb066012897f"
 ---
 
 # A card in review keeps its lease until the verdict is recorded, and a reclaimed reservation brings back its scope
