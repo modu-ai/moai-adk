@@ -2066,9 +2066,13 @@ fn undo_order() -> Value {
 
 /// The read-only `go-residue` step (SPEC-20261121-go-residue-detect): the files the Go
 /// generation left behind, proven against the first manifest the survey still finds. Every
-/// surveyed item is listed, but only an item with an action other than `keep` asks for a
-/// decision; files that are the user's own (`keep`) leave the step `unchanged`. The step
-/// applies nothing; the apply and the revert are the next slice.
+/// surveyed item is listed. The step returns one of two states: `unchanged` when nothing is
+/// surveyed or every item is `keep` (the user's own files), and `optional` when at least one
+/// item has an action other than `keep`. It never returns `needs_decision`: the step applies
+/// nothing and offers no command, so no answer to a decision could ever reach it, and
+/// `needs_decision` would hold `all_unchanged` false for good. `optional` is the state for a
+/// report nobody has to act on and counts as nothing to do. The apply and the revert are the
+/// next slice.
 fn go_residue_step(root: &Path, _shown: &str) -> Result<Step> {
     let survey = crate::go_residue::survey(root);
     let to_act = survey
@@ -2091,9 +2095,9 @@ fn go_residue_step(root: &Path, _shown: &str) -> Result<Step> {
         )
     } else {
         (
-            "needs_decision",
+            "optional",
             format!(
-                "{to_act} of {} surveyed files the Go generation left behind are proven by {}; the apply is the next slice",
+                "{to_act} of {} surveyed files the Go generation left behind are proven by {}; this update changes none of these files, and moving or restoring them is a later step",
                 survey.items.len(),
                 survey.proof.as_deref().unwrap_or("no manifest"),
             ),
@@ -2137,7 +2141,8 @@ pub fn plan(project: &Path) -> Result<Value> {
     }
     // The read-only go-residue survey (SPEC-20261121-go-residue-detect) runs after the backup
     // previews: it proves the Go files the generation left against the first manifest it
-    // finds, applies nothing, and its items decide `all_unchanged` like any other step.
+    // finds and applies nothing; it reads `optional` while it only reports, so it never holds
+    // `all_unchanged` false.
     let residue = or_blocked("go-residue", go_residue_step(&root, &shown));
     let backup = vec![settings, state, reports, residue];
     // A move still to make: every install preview would be stale after it.

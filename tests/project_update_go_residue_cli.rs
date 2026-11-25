@@ -385,6 +385,45 @@ fn user_data_alone_leaves_the_go_residue_step_unchanged() {
     );
 }
 
+/// The step only reports (the apply is a later slice), so nothing can answer a decision it
+/// asks for: a surveyed file the survey would act on reads `optional`, which the plan counts
+/// as nothing to do, and `all_unchanged` follows the other steps alone.
+#[test]
+fn residue_to_act_on_is_reported_and_does_not_hold_the_update() {
+    let fx = survey_frame();
+    let plan = fx.update_plan();
+    let found = step(&plan, "go-residue");
+    let same = Fx::residue_item(&plan, "a.md");
+    assert_eq!(same["class"], json!("go_same"), "the byte-identical file");
+    assert_ne!(
+        same["suggested_action"],
+        json!("keep"),
+        "the survey would act on this file: {same:?}"
+    );
+    assert_eq!(
+        found["state"],
+        json!("optional"),
+        "a report nobody can answer is not a decision: {found:?}"
+    );
+    assert_eq!(found["apply"], json!(null), "the step applies nothing");
+    // The step stays out of the other steps' state: `all_unchanged` is the AND of every step
+    // that is not this one, because `optional` counts as nothing to do.
+    let body = plan.get("result").unwrap_or(&plan);
+    let others_unchanged = body["phases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|p| p["steps"].as_array().into_iter().flatten())
+        .filter(|s| s["step"] != json!("go-residue"))
+        .all(|s| matches!(s["state"].as_str(), Some("unchanged" | "skip" | "optional")));
+    assert_eq!(
+        body["all_unchanged"],
+        json!(others_unchanged),
+        "all_unchanged follows the other steps alone: {:?}",
+        body["all_unchanged"]
+    );
+}
+
 /// AC-3 (REQ-6): with no manifest anywhere the step reports no proof with zero candidates
 /// and the plan still succeeds.
 #[test]
