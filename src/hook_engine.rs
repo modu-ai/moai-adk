@@ -563,7 +563,20 @@ fn tool_preflight(
         .as_str()
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| cwd.to_path_buf());
+    // SPEC-20261125-tool-preflight-bypass-guards: nobody answers a confirmation in a session that
+    // skips permission prompts, so such a session gets the bash-boundary judgment as a deny and
+    // the force-push confirmation as a deny. Every other mode is answered as before.
+    let bypass = input["permission_mode"].as_str() == Some(BYPASS_MODE);
+    if bypass {
+        if let Some(reason) = bypass_boundary_deny(input, cwd) {
+            return Verdict::Deny(reason);
+        }
+    }
     if let Some(reason) = crate::hook_guards::bash_confirm(command) {
+        if bypass && reason == crate::hook_guards::CONFIRM_FORCE_PUSH {
+            *fixed_reason = Some(crate::hook_guards::CONFIRM_FORCE_PUSH);
+            return Verdict::Deny(reason.to_string());
+        }
         return Verdict::Ask(reason.to_string());
     }
     match crate::hook_guards::merge_confirm(command, &dir) {
@@ -578,6 +591,39 @@ fn tool_preflight(
         ),
         None => Verdict::Allow,
     }
+}
+
+/// The `permission_mode` the host reports for a session started with the permission checks
+/// skipped (Claude Code hooks page, https://code.claude.com/docs/en/hooks, read 2026-11-25).
+const BYPASS_MODE: &str = "bypassPermissions";
+
+/// The deny of the bash-boundary judgment (`hook_bash_boundary::decide`) for this call, or
+/// `None`: in a folder that is no MoAI project (no `.moai/project.yaml` at the project folder,
+/// `CLAUDE_PROJECT_DIR` or else the hook's working folder, as `moai hook` entries read it) or
+/// when the judgment allows the command.
+fn bypass_boundary_deny(input: &Value, cwd: &Path) -> Option<String> {
+    let map = input.as_object()?;
+    let project_dir = std::env::var_os("CLAUDE_PROJECT_DIR")
+        .filter(|v| !v.is_empty())
+        .map(std::path::PathBuf::from);
+    let root = project_dir.as_deref().unwrap_or(cwd);
+    if !std::fs::metadata(crate::state_root::path(root, "project.yaml")).is_ok_and(|m| m.is_file())
+    {
+        return None;
+    }
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+    let verdict = crate::hook_bash_boundary::decide(
+        map,
+        &crate::hook_bash_boundary::Env {
+            project_root: root,
+            project_dir: project_dir.as_deref(),
+            home: home.as_deref(),
+            process_cwd: cwd,
+        },
+    )?;
+    verdict["hookSpecificOutput"]["permissionDecisionReason"]
+        .as_str()
+        .map(str::to_owned)
 }
 
 /// The rule id of the direct-merge confirmation in `[hooks.modes]` and in the engine log.
