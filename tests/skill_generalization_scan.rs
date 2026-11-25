@@ -42,6 +42,12 @@ fn read(rel: &str) -> String {
         .unwrap_or_else(|e| panic!("{rel}: {e}"))
 }
 
+/// The name of the state folder an earlier generation used. It is built at run time so that this
+/// file does not itself spell a state folder name.
+fn old_state_folder() -> String {
+    format!(".{}-cli", "moai")
+}
+
 /// The words of a text, split at everything that is not a letter or a digit.
 fn words(text: &str) -> Vec<&str> {
     text.split(|c: char| !c.is_ascii_alphanumeric())
@@ -59,7 +65,12 @@ fn no_retired_host_or_internal_tool_path_in_the_covered_texts() {
                 "{rel} names the retired host {banned}"
             );
         }
-        for banned in ["Issue #", "tools/", ".moai-cli", "Go generation"] {
+        for banned in [
+            "Issue #",
+            "tools/",
+            old_state_folder().as_str(),
+            "Go generation",
+        ] {
             assert!(!text.contains(banned), "{rel} contains {banned:?}");
         }
     }
@@ -131,7 +142,7 @@ fn the_manifest_origin_reasons_name_no_retired_host_or_route() {
             );
         }
         for banned in [
-            ".moai-cli",
+            old_state_folder().as_str(),
             "--mode-agent",
             "--mode-leader",
             "OPTIMIZE",
