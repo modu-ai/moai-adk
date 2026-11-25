@@ -1968,7 +1968,8 @@ fn user_layer_plan_in(
     let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
     // A project value of `outputStyle` that hides ours, and the `/status` pointer after a style
     // write: notices only, read-only and outside every digest (install-checks SPEC).
-    let notices = crate::home_style::notices(&style, &cwd);
+    let mut notices = crate::home_style::notices(&style, &cwd);
+    notices.extend(claude_folders_notice(home));
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
@@ -2017,6 +2018,63 @@ fn user_layer_plan_in(
         plan_digest,
         cleanup,
     })
+}
+
+/// The `claude_folders` notice (SPEC-20261124-desktop-install-agents REQ-5 to REQ-9): the Claude
+/// folder each part writes (the skill copy, the base agents and the output style follow
+/// `CLAUDE_CONFIG_DIR` when it counts for this account; the routing rules are always the one copy
+/// in `~/.claude`), and, when the variable names another folder, that Desktop reads it only after
+/// a login shell export and a restart and otherwise reads `~/.claude`, with the run that targets
+/// `~/.claude`. Text only: it reads the environment and writes nothing, and it is no part of any
+/// digest. `None` when a folder cannot be resolved; the part plans name that problem themselves.
+fn claude_folders_notice(home: &Path) -> Option<serde_json::Value> {
+    use crate::host_home::{place, resolve, Host};
+    let home = std::fs::canonicalize(home).unwrap_or_else(|_| home.to_path_buf());
+    let default = home.join(Host::Claude.default_dir());
+    let base = |rel: &str| place(Host::Claude, &home, rel).ok().map(|p| p.base);
+    let (skills, agents, style) = (base("skills")?, base("agents")?, base("output-styles")?);
+    let configured = resolve(Host::Claude, &home).ok()?;
+    let same_folder = |a: &Path, b: &Path| {
+        a == b
+            || matches!(
+                (std::fs::canonicalize(a), std::fs::canonicalize(b)),
+                (Ok(x), Ok(y)) if x == y
+            )
+    };
+    let warning = !same_folder(&configured, &default);
+    let shown = |p: &Path| p.display().to_string();
+    let parts = format!(
+        "skills {}, agents {}, output style {} and rules {}",
+        shown(&skills),
+        shown(&agents),
+        shown(&style),
+        shown(&default)
+    );
+    let reason = if warning {
+        format!(
+            "CLAUDE_CONFIG_DIR names {c}: this update writes {parts}. Desktop reads {c} only after a login shell export of CLAUDE_CONFIG_DIR and a Desktop restart, and otherwise reads {d}. To write into {d} instead, run: env -u CLAUDE_CONFIG_DIR moai update",
+            c = shown(&configured),
+            d = shown(&default),
+        )
+    } else {
+        format!(
+            "this update writes {parts}; Desktop reads {}",
+            shown(&default)
+        )
+    };
+    Some(json!({
+        "kind": "claude_folders",
+        "part": "folders",
+        "host": "claude",
+        "reason": reason,
+        "folders": {
+            "skills": shown(&skills),
+            "agents": shown(&agents),
+            "style": shown(&style),
+            "rules": shown(&default),
+        },
+        "warning": warning,
+    }))
 }
 
 /// The cleanup block of the terminal summary; empty when nothing would be archived.

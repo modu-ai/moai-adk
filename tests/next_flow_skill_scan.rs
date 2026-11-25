@@ -60,19 +60,25 @@ const REMOVED: [&str; 9] = [
     "references/rule-history.md",
 ];
 
-/// D-14: the build rule RUN's "Check-run rules" holds now that the build-folder reference left
-/// the package: worktrees under `.claude/worktrees`, each building into its own folder, fixed
-/// slots warmed by a clone of the seed's build folder, and removal when the work lands.
+/// D-14: the build rule RUN's "Check-run rules" held when the build-folder reference left the
+/// package, and that `internal/build-slots` holds since SPEC-20261125-run-sync-procedure-receipt
+/// (sections "Worktrees and build folders" and "Cleanup"; the sentences were reworded when they
+/// moved): worktrees under `.claude/worktrees`, each building into its own folder, fixed slots
+/// warmed by a clone of the seed's build folder, and removal when the work lands.
 const BUILD_RULE: [&str; 8] = [
     "`.claude/worktrees/<name>`",
-    "the build tool's default folder inside that worktree",
-    "for cargo, the worktree's own `target/`",
-    "leave `CARGO_TARGET_DIR` unset or point it at that folder",
+    "the build tool's default folder inside it",
+    "for cargo, its own `target/`",
+    "Leave `CARGO_TARGET_DIR` unset or point it at that folder",
     "`cp -c -R -p seed/target <slot>/target`",
-    "are removed when its branch lands or is deleted",
-    "an audit worktree when its verdict is posted",
-    "by relative path, never through an absolute or home path",
+    "After the card lands, a lane removes its own merged card worktree",
+    "an audit worktree goes when its verdict is posted",
+    "by relative path (`rm -rf target/debug`), never through an absolute or home path",
 ];
+
+/// The lander's landing and release reference, where the lander's part of SYNC went
+/// (SPEC-20261125-run-sync-procedure-receipt).
+const LANDING_RELEASE: &str = "references/flows/landing-release.md";
 
 /// REQ-5 and REQ-6: the byte budget of the flow reference and of the audit contract. The audit
 /// contract grew from 6 KiB to 8 KiB in SPEC-20261125-audit-text-facts: it is now the one home of
@@ -725,6 +731,13 @@ fn absorb_update_picks_check_reads_what_it_says() {
     assert_eq!(update_picks_problems(good), Vec::<String>::new(), "{good}");
 }
 
+/// RUN carried the retired VERIFY route's sections: "Check-run rules", "Lane worktrees and build
+/// cache", "Change-specific rules" and "Shell and helper rules". SPEC-20261125-run-sync-
+/// procedure-receipt (D-5) cut `run.md` to a procedure and moved the sections into references
+/// that RUN's steps name: the check and test rules into `internal/check-rules`, the slots, build
+/// folders, cleanup and cache into `internal/build-slots`, and the two rule sections and the
+/// host worktree guard table into `internal/shell-guards`. Each stands once in its new file and
+/// `run.md` holds none of the four old headings.
 #[test]
 fn absorb_run_carries_the_verify_sections() {
     let run = read("workflows/run.md");
@@ -736,8 +749,50 @@ fn absorb_run_carries_the_verify_sections() {
     ] {
         assert_eq!(
             run.matches(&format!("\n## {name}\n")).count(),
-            1,
-            "run.md holds `## {name}` once"
+            0,
+            "run.md holds `## {name}` again: its rules belong in a reference"
+        );
+    }
+    for (file, names) in [
+        (
+            "references/internal/check-rules.md",
+            &["Who runs which check", "Citing a remote run", "Tests"][..],
+        ),
+        (
+            "references/internal/build-slots.md",
+            &[
+                "Slots",
+                "Limits",
+                "Worktrees and build folders",
+                "Cleanup",
+                "Build cache",
+            ][..],
+        ),
+        (
+            "references/internal/shell-guards.md",
+            &[
+                "Change-specific rules",
+                "Shell and helper rules",
+                "Host worktree guard",
+            ][..],
+        ),
+    ] {
+        let text = read(file);
+        for name in names {
+            assert_eq!(
+                text.matches(&format!("\n## {name}\n")).count(),
+                1,
+                "{file} holds `## {name}` once"
+            );
+        }
+        // Every one of them is named by RUN, which is how a reader finds it.
+        let entry = file
+            .strip_prefix("references/")
+            .and_then(|f| f.strip_suffix(".md"))
+            .unwrap();
+        assert!(
+            run.contains(&format!("`{entry}`")),
+            "run.md does not name `{entry}`"
         );
     }
 }
@@ -953,15 +1008,22 @@ fn refs_audit_steps_record_on_the_card() {
     ] {
         assert!(audit.contains(phrase), "audit.md lacks {phrase:?}");
     }
+    // The worktree's lifetime rule left RUN's "Lane worktrees and build cache" for the cleanup
+    // list of `internal/build-slots` (SPEC-20261125-run-sync-procedure-receipt): its words
+    // "After the card lands" and "an audit worktree goes when its verdict is posted".
     let run = read("workflows/run.md");
+    let slots = section(&read("references/internal/build-slots.md"), "Cleanup").to_string();
     assert!(
-        run.contains("**Lifetime.** After the card lands"),
-        "run.md: the lifetime rule does not start when the card lands"
+        slots.contains("After the card lands, a lane removes its own merged card worktree")
+            && slots.contains("an audit worktree goes when its verdict is posted"),
+        "build-slots.md: the lifetime rule does not start when the card lands"
     );
-    assert!(
-        !run.contains("pull request is merged"),
-        "run.md waits for a merged pull request"
-    );
+    for (file, text) in [("run.md", &run), ("build-slots.md", &slots)] {
+        assert!(
+            !text.contains("pull request is merged"),
+            "{file} waits for a merged pull request"
+        );
+    }
 }
 
 /// Slice B audit N1: no shipped text names the verdict comment or the reservation line of the
@@ -1029,7 +1091,9 @@ fn refs_route_start_names_the_flow_reference() {
 }
 
 /// Slice B audit N11: the flows folder holds the flow reference and, since
-/// SPEC-20261125-agent-team-session-names REQ-19 and REQ-23, the message table beside it.
+/// SPEC-20261125-agent-team-session-names REQ-19 and REQ-23, the message table beside it; since
+/// SPEC-20261125-run-sync-procedure-receipt it also holds the lander's landing and release
+/// reference, where the lander's part of SYNC went.
 #[test]
 fn refs_flows_folder_holds_exactly_the_flow_and_the_message_table() {
     let folder = package().join(Path::new(FLOW_REF).parent().unwrap());
@@ -1043,7 +1107,14 @@ fn refs_flows_folder_holds_exactly_the_flow_and_the_message_table() {
         .unwrap()
         .to_string_lossy()
         .into_owned();
-    assert_eq!(names, [want, "team-messages.md".to_string()]);
+    assert_eq!(
+        names,
+        [
+            "landing-release.md".to_string(),
+            want,
+            "team-messages.md".to_string()
+        ]
+    );
 }
 
 /// Slice B audit N11: both references of slice B begin, after their title, with the line that
@@ -1065,12 +1136,14 @@ fn refs_new_references_begin_with_when_to_read() {
 
 #[test]
 fn refs_audit_contract_points_to_the_check_run_rules() {
+    // RUN's "Check-run rules" became `internal/check-rules` (SPEC-20261125-run-sync-procedure-
+    // receipt), the one place that says who runs which check and when a remote run may be cited.
     let audit = read(AUDIT_REF);
     assert!(
-        audit.contains("`workflows/run.md`") && audit.contains("\"Check-run rules\""),
-        "{AUDIT_REF} does not point to RUN's check-run rules"
+        audit.contains("`internal/check-rules`"),
+        "{AUDIT_REF} does not point to the check rules"
     );
-    // RUN's own words stay in RUN.
+    // The check rules' own words stay there.
     for restated in ["Citation conditions", "| Role and change |", "head_sha"] {
         assert!(
             !audit.contains(restated),
@@ -1079,35 +1152,52 @@ fn refs_audit_contract_points_to_the_check_run_rules() {
     }
 }
 
+/// The build rule lives in `internal/build-slots`, which RUN step 1 names (SPEC-20261125-run-
+/// sync-procedure-receipt moved it out of RUN's "Check-run rules"): the sections "Worktrees and
+/// build folders" and "Cleanup" together hold `BUILD_RULE`.
 #[test]
 fn refs_run_check_run_rules_hold_the_build_rule() {
     let run = read("workflows/run.md");
-    let rules = section(&run, "Check-run rules");
+    let slots = read("references/internal/build-slots.md");
+    let rules = format!(
+        "{}\n{}",
+        section(&slots, "Worktrees and build folders"),
+        section(&slots, "Cleanup")
+    );
     for phrase in BUILD_RULE {
         assert!(
             rules.contains(phrase),
-            "run.md \"Check-run rules\" lacks {phrase:?}"
+            "build-slots.md \"Worktrees and build folders\" and \"Cleanup\" lack {phrase:?}"
         );
     }
     // The retired rule's home build folder is not the rule any more.
     let home_build = format!("~/{}/build", moai_cli::state_root::MOAI_DIR);
     assert!(
         !rules.contains(&home_build),
-        "run.md \"Check-run rules\" names {home_build}"
+        "build-slots.md names {home_build}"
     );
     // Slice C audit B1, revised by SPEC-20261123-lane-env-own-target: `moai lane-env` only
     // unsets `CARGO_TARGET_DIR` and points the cargo home at a prepared cache (it makes no
-    // build folder under the home), so RUN names no lane-env step: the worktree's own
-    // `target/` needs none.
-    for step in ["lane-env", "eval \"$(moai lane-env", "eval \"$e\""] {
-        assert!(!run.contains(step), "run.md names {step:?}");
+    // build folder under the home), so neither RUN nor its build reference names a lane-env
+    // step: the worktree's own `target/` needs none.
+    for (file, text) in [("run.md", &run), ("build-slots.md", &slots)] {
+        for step in ["lane-env", "eval \"$(moai lane-env", "eval \"$e\""] {
+            assert!(!text.contains(step), "{file} names {step:?}");
+        }
     }
     // Slice C audit N-g: the build output goes by relative path, the worktree itself through
-    // the one removal command, in the build rule and in AUDIT's cleanup alike.
-    assert!(
-        rules.contains("the worktree itself through `moai worktree-gc-apply --worktree <path>`"),
-        "run.md \"Check-run rules\" does not name how the worktree itself is removed"
-    );
+    // the one removal command: a read-only plan (`--worktree <path>` plans only that worktree),
+    // then the apply command with the plan's digest (both flags are in `--help`), in the build
+    // rule and in AUDIT's cleanup alike.
+    for phrase in [
+        "`--worktree <path>` (repeatable) plans only that worktree",
+        "`moai worktree-gc-apply <project> --integration-ref <ref> --plan-digest <digest> --permission-reference <ref>`",
+    ] {
+        assert!(
+            rules.contains(phrase),
+            "build-slots.md \"Cleanup\" does not name how the worktree itself is removed: {phrase:?}"
+        );
+    }
     assert!(
         !read("workflows/audit.md").contains("after the user confirms"),
         "audit.md removes an audit worktree another way"
@@ -1117,16 +1207,30 @@ fn refs_run_check_run_rules_hold_the_build_rule() {
 /// Slice C audit B2: SYNC lands a card through the flow — the lane only commits, the lander lands
 /// once after a recorded verdict — and keeps the pull request for a release. The references the
 /// plan's step 5 names no longer tie a SPEC to a pull request or read a lane's merge state.
+/// SPEC-20261125-run-sync-procedure-receipt split SYNC: the lane's part stays in `sync.md`
+/// ("A lane only commits"), the lander's landing and release part is `flows/landing-release`.
 #[test]
 fn refs_sync_lands_a_card_through_the_flow() {
     let sync = read("workflows/sync.md");
+    let landing = read(LANDING_RELEASE);
+    assert!(
+        sync.contains("A lane only commits"),
+        "sync.md lacks \"A lane only commits\""
+    );
+    assert!(
+        sync.contains("`flows/landing-release`"),
+        "sync.md does not point to the landing and release reference"
+    );
     for phrase in [
         "A lane only commits",
         "`moai card land <card> --head <40 hex> --by leader`",
         "after a passing verdict is recorded on the card",
         "A release pull request is the only pull request",
     ] {
-        assert!(sync.contains(phrase), "sync.md lacks {phrase:?}");
+        assert!(
+            landing.contains(phrase),
+            "landing-release.md lacks {phrase:?}"
+        );
     }
     for retired in [
         "M-Flow",
@@ -1137,6 +1241,10 @@ fn refs_sync_lands_a_card_through_the_flow() {
         "pushes it; gets the independent audit",
     ] {
         assert!(!sync.contains(retired), "sync.md keeps {retired:?}");
+        assert!(
+            !landing.contains(retired),
+            "landing-release.md keeps {retired:?}"
+        );
     }
     let sdd = read("references/internal/sdd.md");
     assert!(
@@ -1367,8 +1475,12 @@ fn refs_sync_names_a_pull_request_only_for_a_release() {
         pull_request_outside_a_release("A step after the merge. A PRESS kit.\n"),
         ["A step after the merge"]
     );
+    // SYNC's lander part is `flows/landing-release.md` since SPEC-20261125-run-sync-procedure-
+    // receipt: the scan covers both files.
     let hits = pull_request_outside_a_release(&read("workflows/sync.md"));
     assert!(hits.is_empty(), "sync.md: {hits:#?}");
+    let hits = pull_request_outside_a_release(&read(LANDING_RELEASE));
+    assert!(hits.is_empty(), "landing-release.md: {hits:#?}");
 }
 
 /// Follow-up F3 of the slice C verdict: SYNC's work ledger is the card ledger WORK reads.
@@ -1595,47 +1707,16 @@ fn tier_lines(text: &str) -> Vec<String> {
         .collect()
 }
 
-/// What is wrong with the tier lines of `text` against the contract's: a line missing, written
-/// twice, or different by a single byte. Empty when the lines match word for word. The docs-only
-/// line is the exception (SPEC-20261125-audit-text-facts D-1, R-1): the contract's line was
-/// corrected, and the copies in `agents/audit.md` and `workflows/run.md` are outside that SPEC's
-/// scope, so for that one line only its presence once is required here and its key words are
-/// read by `tier_key_word_problems`; the other three lines still match byte for byte.
-fn tier_line_problems(contract: &[String], text: &str) -> Vec<String> {
-    let found = tier_lines(text);
-    let mut problems = Vec::new();
-    for line in &contract[1..] {
-        match found.iter().filter(|l| *l == line).count() {
-            1 => {}
-            0 => problems.push(format!("lacks {line:?}")),
-            n => problems.push(format!("holds {line:?} {n} times")),
-        }
-    }
-    let docs_only = found
-        .iter()
-        .filter(|l| l.starts_with(TIER_LINE_STARTS[0]))
-        .count();
-    if docs_only != 1 {
-        problems.push(format!(
-            "holds {docs_only} lines that start with {:?}, not 1",
-            TIER_LINE_STARTS[0]
-        ));
-    }
-    if found.len() != contract.len() {
-        problems.push(format!(
-            "holds {} tier lines, not {}",
-            found.len(),
-            contract.len()
-        ));
-    }
-    problems
-}
-
-/// AC-1 (REQ-1 to REQ-4, REQ-11): the lines of the contract's "Audit tiers" section stand byte
-/// for byte in the audit agent and under RUN's "Check-run rules" (the docs-only line by its key
-/// words, see `tier_line_problems`). The AUDIT workflow no longer carries the lines: its "Base
-/// agents" section points to the contract (SPEC-20261125-audit-text-facts REQ-2), and the brief
-/// to `moai-audit` quotes them from there. A planted change to any one line is found.
+/// AC-1 (REQ-1 to REQ-4, REQ-11): the lines of the contract's "Audit tiers" section stand only
+/// there. The AUDIT workflow no longer carries the lines: its "Base agents" section points to the
+/// contract (SPEC-20261125-audit-text-facts REQ-2), and the brief to `moai-audit` quotes them
+/// from there. RUN's "Check-run rules" carried a copy too; SPEC-20261125-run-sync-procedure-
+/// receipt REQ-5 removed it: neither `run.md` nor `internal/check-rules` holds a tier line, and
+/// the check rules say where the tier lines stand.
+/// SPEC-20261125-base-agent-contract REQ-5 and REQ-14: the audit agent states the four tiers once,
+/// as the rows of one table, so it holds none of the four bullet lines; the table is pinned line
+/// by line in `refs_audit_agent_tier_table_is_exact` and its rows are read by their key words in
+/// `refs_audit_tier_lines_keep_their_key_words`.
 #[test]
 fn refs_audit_tier_lines_match_in_every_text() {
     let contract = read(AUDIT_REF);
@@ -1649,34 +1730,31 @@ fn refs_audit_tier_lines_match_in_every_text() {
         assert!(line.starts_with(start), "{line:?} is out of order");
     }
     let run = read("workflows/run.md");
+    let rules = read("references/internal/check-rules.md");
     let agent = repo_text("agents/audit.md");
-    let texts = [
-        ("agents/audit.md", agent.as_str()),
-        (
-            "workflows/run.md, Check-run rules",
-            section(&run, "Check-run rules"),
+    for (name, text) in [
+        ("workflows/run.md", &run),
+        ("internal/check-rules.md", &rules),
+        ("agents/audit.md", &agent),
+    ] {
+        assert_eq!(
+            tier_lines(text),
+            Vec::<String>::new(),
+            "{name} holds a tier line again; the lines stand in the audit contract (the audit agent holds them as a table)"
+        );
+    }
+    assert!(
+        rules.contains(
+            "The tier line of a head and the floor list of paths stand only in the audit contract's section \"Audit tiers\"."
         ),
-    ];
-    for (name, text) in texts {
-        let problems = tier_line_problems(&source, text);
-        assert!(problems.is_empty(), "{name}: {problems:#?}");
-        // The check reads what it says: a changed byte, a missing line and a doubled line fail.
-        let changed = text.replacen(&source[2], &format!("{}.", source[2]), 1);
-        assert!(
-            !tier_line_problems(&source, &changed).is_empty(),
-            "{name}: a changed line passes"
-        );
-        // The text's own docs-only line: it may differ from the contract's.
-        let own_docs_only = tier_lines(text).remove(0);
-        let missing = text.replacen(&format!("{own_docs_only}\n"), "", 1);
-        assert!(
-            !tier_line_problems(&source, &missing).is_empty(),
-            "{name}: a missing line passes"
-        );
-        let doubled = text.replacen(&source[1], &format!("{}\n{}", source[1], source[1]), 1);
-        assert!(
-            !tier_line_problems(&source, &doubled).is_empty(),
-            "{name}: a doubled line passes"
+        "internal/check-rules.md does not say where the tier lines stand"
+    );
+    // The check reads what it says: a bullet tier line planted in a text is found.
+    for line in &source {
+        assert_eq!(
+            tier_lines(&format!("{agent}\n{line}\n")),
+            vec![line.clone()],
+            "a planted tier line is not found"
         );
     }
 }
@@ -1745,10 +1823,15 @@ fn refs_audit_agent_reads_the_given_worktree() {
 /// reproduction and the full check set; the heavy-check paragraph states the slot rule of
 /// `moai heavy-slot-acquire` in place of one full build per machine. The word list of the
 /// scrub (`REQ8_WORDS`) keeps "fresh-clone reproduction" out of every shipped text.
+///
+/// Both moved into references with SPEC-20261125-run-sync-procedure-receipt: the Auditor row is
+/// a row of `internal/check-rules` ("Who runs which check"), which names the head's tier line
+/// ("what the tier line of the head says") where RUN said "the tier lines below", and the heavy
+/// check paragraph is the slot list of `internal/build-slots` ("Slots", "Limits").
 #[test]
 fn refs_run_auditor_row_names_the_tiers() {
-    let run = read("workflows/run.md");
-    let row = run
+    let rules = read("references/internal/check-rules.md");
+    let row = rules
         .lines()
         .find(|l| l.starts_with("| Auditor: the audited head changes code"))
         .expect("an Auditor row");
@@ -1759,26 +1842,28 @@ fn refs_run_auditor_row_names_the_tiers() {
         );
     }
     assert!(
-        row.contains("the tier lines below"),
-        "the Auditor row does not name the tier lines: {row}"
+        row.contains("what the tier line of the head says"),
+        "the Auditor row does not name the head's tier line: {row}"
     );
-    let heavy = run
+    let slots = read("references/internal/build-slots.md");
+    let heavy = slots
         .lines()
-        .find(|l| l.starts_with("Heavy checks are serialised"))
-        .expect("the heavy-check paragraph");
+        .find(|l| l.starts_with("- At most as many heavy runs execute at a time"))
+        .expect("the heavy-run bullet of the slot list");
     assert!(
-        !heavy.contains("at most one full build"),
-        "the heavy-check paragraph keeps one build per machine"
+        !slots.contains("at most one full build"),
+        "the slot list keeps one build per machine"
     );
-    for phrase in [
-        "at most as many heavy runs execute at a time as `moai heavy-slot-acquire` has slots",
-        "`limits.json`",
-    ] {
-        assert!(
-            heavy.contains(phrase),
-            "the heavy-check paragraph lacks {phrase:?}"
-        );
-    }
+    assert!(
+        heavy.contains(
+            "At most as many heavy runs execute at a time as `moai heavy-slot-acquire` has slots"
+        ),
+        "the heavy-run bullet lacks the slot rule: {heavy}"
+    );
+    assert!(
+        section(&slots, "Slots").contains("`limits.json`"),
+        "the slot list does not say where the slot count comes from"
+    );
     assert!(
         REQ8_WORDS.contains(&"fresh-clone reproduction"),
         "the scrub word list lacks \"fresh-clone reproduction\""
@@ -1936,7 +2021,9 @@ fn refs_no_text_says_the_audit_agent_has_an_isolated_worktree() {
 
 /// What is wrong with the four tier lines of `text`: a line missing a key word. The key words are
 /// what each class means; the four texts being equal does not protect them when all four change.
-fn tier_key_word_problems(text: &str) -> Vec<String> {
+/// `lead` is how a tier line starts: `- ` for the contract's and RUN's bullets, `| ` for a row of
+/// the audit agent's table (SPEC-20261125-base-agent-contract REQ-5).
+fn tier_key_word_problems(text: &str, lead: &str) -> Vec<String> {
     const KEY_WORDS: [(&str, &[&str]); 4] = [
         (
             "- docs-only (tier",
@@ -1973,6 +2060,8 @@ fn tier_key_word_problems(text: &str) -> Vec<String> {
     ];
     let mut problems = Vec::new();
     for (start, words) in KEY_WORDS {
+        let start = start.replacen("- ", lead, 1);
+        let start = start.as_str();
         match text.lines().find(|l| l.starts_with(start)) {
             None => problems.push(format!("no line starts with {start:?}")),
             Some(line) => {
@@ -1985,35 +2074,124 @@ fn tier_key_word_problems(text: &str) -> Vec<String> {
     problems
 }
 
+/// The tier table of `agents/audit.md`, exactly: the header, the separator and the four rows
+/// (SPEC-20261125-base-agent-contract REQ-5). The key words above are found by "contains", so a
+/// clause that reverses a rule and is added to a row (the author may audit when no other session
+/// is free) would pass them; the table is pinned line by line instead.
+const AGENT_TIER_TABLE: [&str; 6] = [
+    "| Tier | Changed paths | Runs | Cites | Who audits, and what the verdict then needs |",
+    "| --- | --- | --- | --- | --- |",
+    "| docs-only (tier 0) | only documents or SPEC text change | nothing is built | no receipt | the auditor records a PASS without a receipt |",
+    "| test-only (tier 0, tier 1 when a tool changes) | only tests or test tools change | nothing | the lane's receipt | the auditor gives it a light audit: it reads the change and the lane's receipt and runs nothing |",
+    "| code (tier 1) | product code or skill text changes | runs no mutant | cites the lane's receipt instead of running the head again | a session that wrote none of it gives a light audit |",
+    "| high-risk (tier 2) | a changed path starts with a prefix of the floor list | the code steps plus the boundary, security and data-loss checks of this contract, and at most two named test modules run | the lane's guard-mutant lines read | a session that wrote none of it gives the full audit |",
+];
+
+/// What is wrong with the audit agent's tier table: a line that is not exactly the pinned one, or
+/// a row after the table.
+fn agent_tier_table_problems(text: &str) -> Vec<String> {
+    let lines: Vec<&str> = text.lines().collect();
+    let Some(first) = lines.iter().position(|l| l.starts_with("| Tier |")) else {
+        return vec!["no table starts with the header".to_string()];
+    };
+    let mut problems = Vec::new();
+    for (k, want) in AGENT_TIER_TABLE.iter().enumerate() {
+        if lines.get(first + k) != Some(want) {
+            problems.push(format!(
+                "table line {k} is not exactly {want:?}: {:?}",
+                lines.get(first + k)
+            ));
+        }
+    }
+    if lines
+        .get(first + AGENT_TIER_TABLE.len())
+        .is_some_and(|l| l.starts_with('|'))
+    {
+        problems.push("a row follows the table".to_string());
+    }
+    problems
+}
+
+/// The audit agent's tier table is exactly the pinned one, and a clause added to the end of any
+/// row, a changed word, a missing row and an extra row are each found (guard mutants: the first
+/// is the one the audit planted, "or the author when no other session is free").
+#[test]
+fn refs_audit_agent_tier_table_is_exact() {
+    let agent = repo_text("agents/audit.md");
+    let problems = agent_tier_table_problems(&agent);
+    assert!(problems.is_empty(), "agents/audit.md: {problems:#?}");
+    const CLAUSE: &str = ", or the author when no other session is free";
+    for want in &AGENT_TIER_TABLE[2..] {
+        let longer = format!("{}{CLAUSE} |", want.trim_end_matches(" |"));
+        let mutants = [
+            ("a clause added", agent.replacen(want, &longer, 1)),
+            (
+                "a word changed",
+                agent.replacen(want, &want.replacen("audit", "check", 1), 1),
+            ),
+            ("a row missing", agent.replacen(&format!("{want}\n"), "", 1)),
+        ];
+        for (name, mutant) in mutants {
+            assert!(
+                mutant != agent,
+                "{name}: the mutant did not change the text"
+            );
+            assert!(
+                !agent_tier_table_problems(&mutant).is_empty(),
+                "{name}: the table passes for {want}"
+            );
+        }
+    }
+    let extra = agent.replacen(
+        AGENT_TIER_TABLE[5],
+        &format!(
+            "{}\n| extra (tier 9) | a | b | c | d |",
+            AGENT_TIER_TABLE[5]
+        ),
+        1,
+    );
+    assert!(extra != agent, "the extra row did not change the text");
+    assert!(
+        !agent_tier_table_problems(&extra).is_empty(),
+        "a row added after the table passes"
+    );
+}
+
 /// AC-4 (REQ-6): each tier line keeps its key words in the contract and in the two copies; a key
 /// word removed from the high-risk line is found. The docs-only line's key words leave out the
 /// old "the lander reads the change and lands it" (false: `moai card land` needs a recorded PASS
 /// for every head, SPEC-20261125-audit-text-facts D-1), which the copies may still carry. The
 /// AUDIT workflow's "Base agents" section points to the contract instead of carrying the lines.
+/// RUN's copy is gone (SPEC-20261125-run-sync-procedure-receipt REQ-5); that no tier line is
+/// left in `run.md` or `internal/check-rules` is pinned by `refs_audit_tier_lines_match_in_every_text`.
 #[test]
 fn refs_audit_tier_lines_keep_their_key_words() {
     let contract = read(AUDIT_REF);
-    let run = read("workflows/run.md");
     let agent = repo_text("agents/audit.md");
-    for (name, text) in [
-        ("references/audit.md", section(&contract, "Audit tiers")),
-        ("agents/audit.md", agent.as_str()),
-        ("workflows/run.md", section(&run, "Check-run rules")),
+    // The audit agent states the tiers as the rows of one table (`| `), the contract as bullets.
+    for (name, text, lead) in [
+        (
+            "references/audit.md",
+            section(&contract, "Audit tiers"),
+            "- ",
+        ),
+        ("agents/audit.md", agent.as_str(), "| "),
     ] {
-        let problems = tier_key_word_problems(text);
+        let problems = tier_key_word_problems(text, lead);
         assert!(problems.is_empty(), "{name}: {problems:#?}");
         // The mutant drops the word from the tier line itself: another line of the text may
         // hold the same words (the Auditor row of RUN does).
-        for (start, word) in [
-            ("- high-risk (tier", "data-loss"),
-            ("- high-risk (tier", "wrote none of it gives the full audit"),
-            ("- code (tier", "runs no mutant"),
-            ("- high-risk (tier", "at most two named test modules run"),
+        for (class, word) in [
+            ("high-risk (tier", "data-loss"),
+            ("high-risk (tier", "wrote none of it gives the full audit"),
+            ("code (tier", "runs no mutant"),
+            ("high-risk (tier", "at most two named test modules run"),
         ] {
+            let start = format!("{lead}{class}");
             let mutant = text
                 .lines()
                 .map(|l| {
-                    if l.starts_with(start) {
+                    if l.starts_with(&start) {
                         l.replacen(word, "", 1)
                     } else {
                         l.to_string()
@@ -2022,7 +2200,7 @@ fn refs_audit_tier_lines_keep_their_key_words() {
                 .collect::<Vec<_>>()
                 .join("\n");
             assert!(
-                !tier_key_word_problems(&mutant).is_empty(),
+                !tier_key_word_problems(&mutant, lead).is_empty(),
                 "{name}: dropping {word:?} from {start:?} passes"
             );
         }
@@ -2151,16 +2329,19 @@ fn land_scans_the_flow_cargo_only_mutants_are_caught() {
 
 /// AC-5 (REQ-7): the texts that carry the tier lines without the list say where the floor list is.
 /// The AUDIT workflow carries no tier line any more, so it points to the contract's section
-/// "Audit tiers" in its tier step instead (SPEC-20261125-audit-text-facts REQ-2).
+/// "Audit tiers" in its tier step instead (SPEC-20261125-audit-text-facts REQ-2). RUN's copy of
+/// the tier lines left with SPEC-20261125-run-sync-procedure-receipt REQ-5; `internal/check-rules`
+/// says the tier line and the floor list stand only in that section.
 #[test]
 fn refs_audit_floor_list_is_pointed_to() {
-    let run = read("workflows/run.md");
+    let rules = read("references/internal/check-rules.md");
     let audit = read("workflows/audit.md");
     let agent = repo_text("agents/audit.md");
-    let pointer = "The floor list of paths is in the audit contract, section \"Audit tiers\"";
+    let pointer =
+        "the floor list of paths stand only in the audit contract's section \"Audit tiers\"";
     assert!(
-        section(&run, "Check-run rules").contains(pointer),
-        "workflows/run.md lacks the floor-list pointer"
+        rules.contains(pointer),
+        "internal/check-rules.md lacks the floor-list pointer"
     );
     assert!(
         audit
@@ -2191,12 +2372,13 @@ fn item_holding<'a>(text: &'a str, marker: &str) -> Option<&'a str> {
     text.lines().find(|l| l.contains(marker))
 }
 
-/// What item 3 of the self-check list (`Whole binaries:`) gets wrong: it must say that tests are
-/// Rust only, run the cargo checks of the scan table and the macOS-only tests, and name no Python
-/// test.
+/// What item 3 of the self-check list (`Receipt:`; the item was `Whole binaries:` until
+/// SPEC-20261125-run-sync-procedure-receipt made the receipt of RUN step 7 the set before READY)
+/// gets wrong: it must say that the set before READY is that receipt and no other, that tests are
+/// Rust only, and name no Python test.
 fn self_check_tests_item_problems(text: &str) -> Vec<String> {
-    let Some(item) = item_holding(text, "Whole binaries:") else {
-        return vec![format!("{SELF_CHECK} has no `Whole binaries:` item")];
+    let Some(item) = item_holding(text, "Receipt:") else {
+        return vec![format!("{SELF_CHECK} has no `Receipt:` item")];
     };
     let lower = item.to_lowercase();
     let mut problems: Vec<String> = ["python", "unittest"]
@@ -2215,19 +2397,21 @@ fn self_check_tests_item_problems(text: &str) -> Vec<String> {
     problems
 }
 
-/// Item 3 of the self-check list from `The set before READY` to the end of its line.
-const SELF_CHECK_ITEM3_TAIL: &str = "The set before READY is never narrowed: also `cargo test --offline --locked --lib` whole, every test target (`--test <name>`) whose name shares the first word of the changed `src/` area, every `cargo` check of `tools/repo_scans.json`, and the macOS-only (`cfg(target_os)`) tests this host can run. Tests are Rust only. Write each command with its exit code in the READY note, and read every failing CI leg before you repair it.";
+/// Item 3 of the self-check list from `The set before READY` to the end of its line. The
+/// whole-binaries run and the table checks that the older sentence listed are retired
+/// (SPEC-20261125-run-sync-procedure-receipt D-5): the receipt of RUN step 7 is the set.
+const SELF_CHECK_ITEM3_TAIL: &str = "The set before READY is that receipt and no other. Tests are Rust only. Write each command with its exit code in the READY note, and read every failing CI leg before you repair it.";
 
-/// Item 5 of the self-check list from its repo-scans command to the end of its line.
-const SELF_CHECK_ITEM5_TAIL: &str = "`moai repo-scans --refs <tip> HEAD` lists the repo-wide scans the change set needs; run only their `cargo` checks and leave out a Python line, as `moai card land` asks for cargo checks only.";
+/// Item 5 of the self-check list from its repo-scans command to the end of its line. The word
+/// Python left the item with the same SPEC; the flow reference's audit-brief bullet keeps its own.
+const SELF_CHECK_ITEM5_TAIL: &str = "`moai repo-scans --refs <tip> HEAD` lists the repo-wide scans the change set needs; run only their `cargo` checks, as `moai card land` asks for cargo checks only.";
 
 /// The audit-brief bullet of the flow reference, the whole line.
 const FLOW_AUDIT_BRIEF_BULLET: &str = "- Audit brief: name the scan tests `moai repo-scans --refs <tip> <head>` picks; run only their `cargo` checks on the merge tree, leaving out a Python line, and record each as a receipt step `scan:<id>` of the PASS for `moai card land`.";
 
 /// What item 5 (`Files tests read:`) gets wrong: the repo-scans command must be named and its
-/// list read as cargo checks only, with a Python line left out. The item is read whole from its
-/// command to the end of its line, so that `never run only …` and a word after it are not the
-/// sentence.
+/// list read as cargo checks only. The item is read whole from its command to the end of its
+/// line, so that `never run only …` and a word after it are not the sentence.
 fn self_check_repo_scans_item_problems(text: &str) -> Vec<String> {
     let Some(item) = item_holding(text, "Files tests read:") else {
         return vec![format!("{SELF_CHECK} has no `Files tests read:` item")];
@@ -2265,8 +2449,8 @@ fn self_check_repo_scans_item_runs_cargo_checks_only() {
 #[test]
 fn self_check_pins_reject_reversed_sentences() {
     let text = read(SELF_CHECK);
-    let item3 = item_holding(&text, "Whole binaries:")
-        .unwrap_or_else(|| panic!("{SELF_CHECK} has no `Whole binaries:` item"))
+    let item3 = item_holding(&text, "Receipt:")
+        .unwrap_or_else(|| panic!("{SELF_CHECK} has no `Receipt:` item"))
         .to_string();
     let item5 = item_holding(&text, "Files tests read:")
         .unwrap_or_else(|| panic!("{SELF_CHECK} has no `Files tests read:` item"))
@@ -2285,21 +2469,18 @@ fn self_check_pins_reject_reversed_sentences() {
             format!("{item3} Also run the Python tests of the area."),
         ),
         (
-            "cargo word dropped from the table checks",
-            item3.replace("every `cargo` check of", "every check of"),
+            "receipt sentence removed",
+            item3.replace("The set before READY is that receipt and no other.", ""),
         ),
         (
-            "table checks negated with their words kept",
-            item3.replace(
-                "area, every `cargo` check of",
-                "area, not every `cargo` check of",
-            ),
+            "receipt widened with its words kept",
+            item3.replace("that receipt and no other", "that receipt and others"),
         ),
         (
             "Rust-only sentence disowned with its words kept",
             item3.replace(
-                "can run. Tests are Rust only.",
-                "can run. Never assume Tests are Rust only.",
+                "and no other. Tests are Rust only.",
+                "and no other. Never assume Tests are Rust only.",
             ),
         ),
     ];
@@ -2314,13 +2495,13 @@ fn self_check_pins_reject_reversed_sentences() {
         (
             "meaning reversed",
             item5.replace(
-                "run only their `cargo` checks and leave out a Python line",
-                "run all their checks and include a Python line",
+                "run only their `cargo` checks",
+                "run all their checks, not only their `cargo` checks",
             ),
         ),
         (
-            "Python line kept",
-            item5.replace("leave out a Python line", "leave in a Python line"),
+            "landing command disowned",
+            item5.replace("as `moai card land` asks", "as `moai card land` never asks"),
         ),
         (
             "sentence negated",
@@ -2328,10 +2509,7 @@ fn self_check_pins_reject_reversed_sentences() {
         ),
         (
             "clause removed",
-            item5.replace(
-                "run only their `cargo` checks and leave out a Python line",
-                "",
-            ),
+            item5.replace("run only their `cargo` checks, ", ""),
         ),
     ];
     for (name, mutant) in item5_mutants {
@@ -2448,7 +2626,7 @@ fn pinned_sentences() -> Vec<Pinned> {
             .unwrap_or_else(|| panic!("{from:?} is not in {item:?}"));
         item[at..].to_string()
     };
-    let item3 = item_holding(&self_check, "Whole binaries:").expect("item 3");
+    let item3 = item_holding(&self_check, "Receipt:").expect("item 3");
     let item5 = item_holding(&self_check, "Files tests read:").expect("item 5");
     let bullet = flow
         .lines()
@@ -2486,25 +2664,25 @@ fn pinned_sentences_are_read_to_their_end() {
     let mutants: Vec<(&str, &str, String)> = vec![
         (
             "item 3",
-            "a word after the table checks",
+            "a word after the receipt sentence",
             by("item 3").region.replace(
-                "`tools/repo_scans.json`, and the macOS",
-                "`tools/repo_scans.json` left out, and the macOS",
+                "that receipt and no other.",
+                "that receipt left out and no other.",
             ),
         ),
         (
             "item 3",
-            "the changed area turned into the unchanged one",
+            "the receipt turned into another one",
             by("item 3")
                 .region
-                .replace("the changed `src/` area", "the unchanged `src/` area"),
+                .replace("is that receipt", "is another receipt"),
         ),
         (
             "item 3",
-            "the whole-set sentence turned into a never",
+            "the receipt sentence turned into a never",
             by("item 3")
                 .region
-                .replace("also `cargo test", "never `cargo test"),
+                .replace("is that receipt", "is never that receipt"),
         ),
         (
             "item 3",

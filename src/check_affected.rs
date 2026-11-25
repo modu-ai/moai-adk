@@ -607,6 +607,22 @@ fn module_of(path: &str) -> Option<(String, Option<String>)> {
     Some((word, key))
 }
 
+/// The module path of the folder a changed source file sits in, `home_routing` for
+/// `src/home_routing/rules.rs` and `card::land` for `src/card/land/check.rs`; `None` for a top-level
+/// file and for `src/ops/`, which holds binary modules no test can call.
+fn folder_module(path: &str) -> Option<String> {
+    let rest = path.strip_prefix("src/")?.strip_suffix(".rs")?;
+    let parts: Vec<&str> = rest.split('/').collect();
+    if parts.len() < 2 || parts[0] == "ops" {
+        return None;
+    }
+    let folder: Vec<String> = parts[..parts.len() - 1]
+        .iter()
+        .map(|p| p.replace('-', "_"))
+        .collect();
+    Some(folder.join("::"))
+}
+
 /// Whether `text` names `key` as a whole path: no identifier character before it or after it.
 fn names_path(text: &str, key: &str) -> bool {
     let ident = |c: char| c.is_alphanumeric() || c == '_';
@@ -794,6 +810,24 @@ pub fn select_card_with_registry(
                             rust.extend(inside.iter().map(|s| s.to_string()));
                         }
                     }
+                }
+            }
+        }
+        // A submodule is mostly called through its folder's module (`moai_cli::home_routing::apply`
+        // is a re-export of `home_routing/rules.rs`): the tests that name that folder module as a
+        // whole path join the pick, never replacing one, and only while few targets name it
+        // (SPEC-20261125-flow-receipt-revert-slot REQ-5, REQ-6).
+        if let Some(folder) = folder_module(path) {
+            let named: Vec<&str> = tests
+                .iter()
+                .filter(|t| names_path(&t.text, &format!("moai_cli::{folder}")))
+                .map(|t| t.name.as_str())
+                .collect();
+            if !named.is_empty() && named.len() <= COMMON_WORD_CAP {
+                rust.extend(named.iter().map(|s| s.to_string()));
+                let reason = format!("module:{folder}");
+                if !by.contains(&reason) {
+                    by.push(reason);
                 }
             }
         }
@@ -2309,6 +2343,50 @@ fn short(sha: &str) -> &str {
     sha.get(..12).unwrap_or(sha)
 }
 
+/// SPEC-20261125-check-affected-exit-code REQ-5, REQ-8: a base that is not an ancestor of the head
+/// (the integration branch moved ahead of the lane) is replaced in `facts` by `git merge-base
+/// <base> <head>`, and the base that was given is returned. An ancestor base, and a base with no
+/// merge base (the later `git diff` refuses that run as before), change nothing and give `None`.
+fn fork_point(facts: &mut Facts) -> Option<String> {
+    let dir = facts.root.as_path();
+    if git(
+        dir,
+        &["merge-base", "--is-ancestor", &facts.base, &facts.head],
+    )
+    .is_ok()
+    {
+        return None;
+    }
+    let mb = git(dir, &["merge-base", &facts.base, &facts.head])
+        .ok()?
+        .trim()
+        .to_string();
+    if mb.is_empty() {
+        return None;
+    }
+    Some(std::mem::replace(&mut facts.base, mb))
+}
+
+/// The summary line with ` base_from=<12 hex of the given base>` right before its final
+/// ` result=` word; no given base leaves the line as it is (REQ-5, REQ-6).
+fn with_base_from(line: String, given: Option<&str>) -> String {
+    let Some(given) = given else {
+        return line;
+    };
+    match line.rfind(" result=") {
+        Some(at) => format!("{} base_from={}{}", &line[..at], short(given), &line[at..]),
+        None => line,
+    }
+}
+
+/// The step a run stops at: the first failed step's label up to its `:` (REQ-3).
+fn first_failed(results: &[(String, i32)]) -> Option<String> {
+    results
+        .iter()
+        .find(|(_, c)| *c != 0)
+        .map(|(label, _)| label.split(':').next().unwrap_or(label).to_string())
+}
+
 /// REQ-7: when the range's base is a strict ancestor of the merge base of its head and
 /// `integration_ref`, the range re-tests the integration branch's own changes. The note names that
 /// merge base and how many changed paths the range has beyond the merge base's own range. It warns
@@ -2358,7 +2436,8 @@ pub fn list(
     pick: Pick,
     integration_ref: Option<&str>,
 ) -> Result<serde_json::Value> {
-    let facts = read_facts(dir, range)?;
+    let mut facts = read_facts(dir, range)?;
+    fork_point(&mut facts);
     let chosen = choose_with_registry(
         pick,
         &facts.changed,
@@ -2681,15 +2760,29 @@ fn summary_words(results: &[(String, i32)]) -> Vec<(String, i32)> {
     words
 }
 
-/// `check affected <range>`: refuse unless the checkout is the range's head and clean, then run
-/// every cheap step, then every heavy step unless a cheap one failed (the run stops before the
-/// heavy steps and the summary says `stopped_at=<step>`), and give one summary line (REQ-8 to
-/// REQ-11 of the earlier SPEC, changed by SPEC-20261122-check-light-stop). The heavy steps run
-/// under one heavy slot, taken before the first and let go after the last; a
-/// slot that is not obtained gives its exit code to every heavy step and none starts
-/// (SPEC-20261122-check-affected-one-slot REQ-1, REQ-2).
+/// `check affected <range>` with the default stop: [`run_with`] without `--keep-going`.
 pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Value> {
-    let facts = read_facts(dir, range)?;
+    run_with(dir, range, opts, false)
+}
+
+/// `check affected <range>`: refuse unless the checkout is the range's head and clean, then run
+/// every cheap step, then the heavy steps in order, and give one summary line (REQ-8 to REQ-11 of
+/// the earlier SPEC). Without `keep_going`, no step starts after a failed one (the cheap steps all
+/// run first): the run stops before the next step, the unstarted steps are listed in the answer's
+/// `skipped`, and the summary says `stopped_at=<step>` for the first failed one
+/// (SPEC-20261125-check-affected-exit-code REQ-3). With `keep_going` every planned step runs
+/// (REQ-4). The heavy steps run under one heavy slot, taken before the first and let go after the
+/// last; a slot that is not obtained gives its exit code to every heavy step and none starts, and
+/// no stop lies between them (SPEC-20261122-check-affected-one-slot REQ-1, REQ-2; REQ-7). A base
+/// that is not an ancestor of the head is replaced by the fork point ([`fork_point`]).
+pub fn run_with(
+    dir: &Path,
+    range: &str,
+    opts: &RunOptions,
+    keep_going: bool,
+) -> Result<serde_json::Value> {
+    let mut facts = read_facts(dir, range)?;
+    let base_given = fork_point(&mut facts);
     let dir = facts.root.as_path();
     let at = git(dir, &["rev-parse", "HEAD"])?.trim().to_string();
     if at != facts.head {
@@ -2769,10 +2862,11 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     })?;
     let mut results: Vec<(String, i32)> = Vec::new();
     let mut records = Vec::new();
-    // The cheap steps are the ones planned before the first heavy step. They all run; when one
-    // failed, the run stops before the first heavy step (SPEC-20261122-check-light-stop).
+    // The cheap steps are the ones planned before the first heavy step. They all run; after that
+    // no step starts once one has failed, unless `keep_going` (SPEC-20261125-check-affected-exit-code).
     let cheap = planned.iter().take_while(|s| !s.heavy).count();
     let mut stopped_at: Option<String> = None;
+    let mut skipped: Vec<String> = Vec::new();
     let mut tried = false;
     let mut held: Option<(crate::heavy_slot::Held, usize)> = None;
     let mut refused: Option<i32> = None;
@@ -2780,9 +2874,11 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     // What became of the private `TMPDIR` of the test step (SPEC-20261124-home-guard-flake REQ-13).
     let mut test_tmpdir = tmp::not_run();
     for i in 0..planned.len() {
-        if i == cheap {
-            if let Some((label, _)) = results.iter().find(|(_, c)| *c != 0) {
-                stopped_at = Some(label.split(':').next().unwrap_or(label).to_string());
+        // A refused slot gives its code to every heavy step, so no stop lies between them (REQ-7).
+        if !keep_going && i >= cheap && refused.is_none() {
+            if let Some(label) = first_failed(&results) {
+                stopped_at = Some(label);
+                skipped = planned[i..].iter().map(|s| s.label.clone()).collect();
                 break;
             }
         }
@@ -2862,20 +2958,23 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         (Stack::Undeclared(_), false) => Verdict::NotRun,
         _ => Verdict::Pass,
     };
-    let line = summary_line_full(
-        &SummaryParts {
-            base: &facts.base,
-            head: &facts.head,
-            targets: sel.rust.len(),
-            scans: &sel.scans.word(),
-            pick,
-            threads: &shown,
-            results: &results,
-            stopped_at: stopped_at.as_deref(),
-            pass: verdict == Verdict::Pass,
-        },
-        verdict,
-        chosen.card_by().as_deref(),
+    let line = with_base_from(
+        summary_line_full(
+            &SummaryParts {
+                base: &facts.base,
+                head: &facts.head,
+                targets: sel.rust.len(),
+                scans: &sel.scans.word(),
+                pick,
+                threads: &shown,
+                results: &results,
+                stopped_at: stopped_at.as_deref(),
+                pass: verdict == Verdict::Pass,
+            },
+            verdict,
+            chosen.card_by().as_deref(),
+        ),
+        base_given.as_deref(),
     );
     // SPEC-20261125-check-affected-rerun REQ-7, REQ-9, REQ-12: the FLAKY names of this run's test
     // step go to `flaky.txt` and the ledger, and the summary names what the run continued.
@@ -2897,9 +2996,11 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         "mode": "run",
         "selection": pick.word(),
         "range_note": range_note(&facts, opts.integration_ref.as_deref()),
+        "base_given": base_given,
         "summary": line,
         "result": verdict.word(),
         "stopped_at": stopped_at,
+        "skipped": skipped,
         "runner": runner.map(Runner::word),
         "refresh": {"touched": refresh.touched, "skipped": refresh.skipped},
         "steps": records,
@@ -3005,6 +3106,36 @@ pub fn summary_line_full(p: &SummaryParts<'_>, verdict: Verdict, card_by: Option
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn base_from_goes_right_before_the_result_word() {
+        let line = "check-affected base=aaaaaaaaaaaa head=bbbbbbbbbbbb clippy=3 stopped_at=clippy result=FAIL";
+        let given = "0123456789abcdef0123456789abcdef01234567";
+        assert_eq!(
+            with_base_from(line.to_string(), Some(given)),
+            "check-affected base=aaaaaaaaaaaa head=bbbbbbbbbbbb clippy=3 stopped_at=clippy base_from=0123456789ab result=FAIL"
+        );
+        assert_eq!(with_base_from(line.to_string(), None), line);
+        // A line with no result word is left alone rather than guessed at.
+        assert_eq!(with_base_from("x".to_string(), Some(given)), "x");
+    }
+
+    #[test]
+    fn the_stop_names_the_first_failed_step_by_its_key() {
+        let r = |v: &[(&str, i32)]| -> Vec<(String, i32)> {
+            v.iter().map(|(l, c)| (l.to_string(), *c)).collect()
+        };
+        assert_eq!(first_failed(&r(&[])), None);
+        assert_eq!(first_failed(&r(&[("fmt", 0), ("clippy", 0)])), None);
+        assert_eq!(
+            first_failed(&r(&[("bash_n:a.sh", 0), ("bash_n:b.sh", 2), ("fmt", 1)])),
+            Some("bash_n".to_string())
+        );
+        assert_eq!(
+            first_failed(&r(&[("fmt", 0), ("clippy", 3)])),
+            Some("clippy".to_string())
+        );
+    }
 
     #[test]
     fn a_repeated_label_keeps_its_first_failure() {

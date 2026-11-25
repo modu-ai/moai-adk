@@ -3,6 +3,9 @@
 //! is and named by the preview, and a receipt reverts the path its kind names. Every test runs
 //! against a temporary HOME only, never the real one.
 
+#[cfg(unix)]
+mod common;
+
 use moai_cli::home_routing::{apply, plan, revert, Plan};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -200,4 +203,206 @@ fn revert_follows_the_kind() {
         bytes,
         "the new path is not touched by an earlier receipt"
     );
+}
+
+/// The `moai update` preview names the Claude folders its parts write (REQ-5 to REQ-9). It runs
+/// the real binary in a temporary HOME beside a copy of the package; the real HOME is never read.
+#[cfg(unix)]
+mod preview {
+    use serde_json::{json, Value};
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::process::{Command, Stdio};
+
+    use crate::common::{self, CleanEnv};
+
+    const EXE: &str = common::MOAI_BIN;
+    const ENV_UNSET: &str = "env -u CLAUDE_CONFIG_DIR moai update";
+
+    fn copy_tree(from: &Path, to: &Path) {
+        fs::create_dir_all(to).unwrap();
+        for entry in fs::read_dir(from).unwrap() {
+            let p = entry.unwrap().path();
+            let dest = to.join(p.file_name().unwrap());
+            if p.is_dir() {
+                copy_tree(&p, &dest);
+            } else {
+                fs::copy(&p, &dest).unwrap();
+            }
+        }
+    }
+
+    /// A temporary HOME with `versions/a/bin/moai-cli` under its state folder (found through
+    /// `home_root`, before anything is created there) and the real package and agent sources
+    /// beside it.
+    fn setup() -> (tempfile::TempDir, PathBuf, PathBuf) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        let home = root.join("home");
+        let folder = moai_cli::home_root::path(&home).join("versions/a");
+        fs::create_dir_all(folder.join("bin")).unwrap();
+        let exe = folder.join("bin/moai-cli");
+        common::copy_executable(Path::new(EXE), &exe);
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+        copy_tree(&repo.join("skills/moai"), &folder.join("skills/moai"));
+        copy_tree(&repo.join("agents"), &folder.join("agents"));
+        (tmp, home, exe)
+    }
+
+    /// `moai update` (a preview) with `vars` set; `account` makes HOME the account home, so the
+    /// Claude variable counts.
+    fn preview(exe: &Path, home: &Path, account: bool, vars: &[(&str, &Path)]) -> Value {
+        let mut cmd = Command::new(exe);
+        cmd.arg("update")
+            .clean_env()
+            .env("PATH", "/usr/bin:/bin")
+            .env("HOME", home)
+            .env("LC_ALL", "C")
+            .current_dir(home)
+            .stdin(Stdio::null());
+        if account {
+            cmd.env("MOAI_ACCOUNT_HOME", home);
+        }
+        for (k, v) in vars {
+            cmd.env(k, v);
+        }
+        let out = cmd.output().unwrap();
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
+            panic!(
+                "stdout is not JSON ({e}): {} {}",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            )
+        });
+        assert_eq!(v["ok"], json!(true), "{v}");
+        v["result"].clone()
+    }
+
+    /// The one `claude_folders` notice of a preview.
+    fn folders_notice(p: &Value) -> Value {
+        let all: Vec<&Value> = p["notices"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|n| n["kind"] == json!("claude_folders"))
+            .collect();
+        assert_eq!(all.len(), 1, "one claude_folders notice: {p}");
+        all[0].clone()
+    }
+
+    fn folder(n: &Value, part: &str) -> PathBuf {
+        PathBuf::from(
+            n["folders"][part]
+                .as_str()
+                .unwrap_or_else(|| panic!("no folder for {part}: {n}")),
+        )
+    }
+
+    /// Every file under `dir` with its bytes, leaving out the `versions` folder that holds the
+    /// installed binary `exe` (`<state>/versions/a/bin/<exe>`).
+    fn files(dir: &Path, exe: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+        fn walk(dir: &Path, skip: &Path, out: &mut Vec<(PathBuf, Vec<u8>)>) {
+            let Ok(entries) = fs::read_dir(dir) else {
+                return;
+            };
+            for e in entries {
+                let p = e.unwrap().path();
+                if p.starts_with(skip) {
+                    continue;
+                }
+                if p.is_dir() {
+                    walk(&p, skip, out);
+                } else {
+                    out.push((p.clone(), fs::read(&p).unwrap()));
+                }
+            }
+        }
+        let mut out = Vec::new();
+        let versions = exe.ancestors().nth(3).expect("exe sits in versions/a/bin");
+        walk(dir, versions, &mut out);
+        out.sort();
+        out
+    }
+
+    #[test]
+    fn preview_names_each_claude_folder() {
+        let (_t, home, exe) = setup();
+        let default = home.join(".claude");
+        let conf = home.join("elsewhere/claude-conf");
+
+        // The variable is unset: one folder for every part, no warning.
+        let n = folders_notice(&preview(&exe, &home, true, &[]));
+        for part in ["skills", "agents", "style", "rules"] {
+            assert_eq!(folder(&n, part), default, "{part}: {n}");
+        }
+        assert_eq!(n["warning"], json!(false), "{n}");
+        assert!(!n["reason"].as_str().unwrap().contains(ENV_UNSET), "{n}");
+
+        // Another absolute folder under this account: both folders, the warning and the command.
+        let n = folders_notice(&preview(&exe, &home, true, &[("CLAUDE_CONFIG_DIR", &conf)]));
+        for part in ["skills", "agents", "style"] {
+            assert_eq!(folder(&n, part), conf, "{part}: {n}");
+        }
+        assert_eq!(folder(&n, "rules"), default, "the routing copy: {n}");
+        assert_eq!(n["warning"], json!(true), "{n}");
+        let reason = n["reason"].as_str().unwrap();
+        for want in [
+            conf.to_str().unwrap(),
+            default.to_str().unwrap(),
+            "Desktop",
+            "login shell",
+            ENV_UNSET,
+        ] {
+            assert!(reason.contains(want), "missing {want:?}: {reason}");
+        }
+
+        // The variable names the default folder: one folder, no warning.
+        let n = folders_notice(&preview(
+            &exe,
+            &home,
+            true,
+            &[("CLAUDE_CONFIG_DIR", &default)],
+        ));
+        for part in ["skills", "agents", "style", "rules"] {
+            assert_eq!(folder(&n, part), default, "{part}: {n}");
+        }
+        assert_eq!(n["warning"], json!(false), "{n}");
+
+        // The variable does not count for this account (HOME is not the account home).
+        let n = folders_notice(&preview(
+            &exe,
+            &home,
+            false,
+            &[("CLAUDE_CONFIG_DIR", &conf)],
+        ));
+        for part in ["skills", "agents", "style", "rules"] {
+            assert_eq!(folder(&n, part), default, "{part}: {n}");
+        }
+        assert_eq!(n["warning"], json!(false), "{n}");
+    }
+
+    #[test]
+    fn notice_is_read_only() {
+        let (_t, home, exe) = setup();
+        let conf = home.join("elsewhere/claude-conf");
+        let before = files(&home, &exe);
+        let a = preview(&exe, &home, true, &[("CLAUDE_CONFIG_DIR", &conf)]);
+        assert_eq!(folders_notice(&a)["warning"], json!(true), "{a}");
+        let b = preview(&exe, &home, true, &[("CLAUDE_CONFIG_DIR", &conf)]);
+        assert_eq!(
+            a["plan_digest"], b["plan_digest"],
+            "the same preview, the same digest"
+        );
+        assert_eq!(files(&home, &exe), before, "the preview wrote nothing");
+        assert!(!conf.exists(), "the named folder was not made");
+        assert!(!home.join(".claude").exists(), "no default folder was made");
+        // The confirm line a preview prints carries the digest of the parts, not of the notice.
+        assert!(
+            a["confirm_with"]
+                .as_str()
+                .unwrap()
+                .ends_with(a["plan_digest"].as_str().unwrap()),
+            "{a}"
+        );
+    }
 }

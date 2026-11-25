@@ -49,6 +49,11 @@ const CARD_TARGETS: [&str; 12] = [
 
 impl Fixture {
     fn new(table: Option<&str>, changed: &[(&str, &str)]) -> Fixture {
+        Fixture::build(table, &[], changed)
+    }
+
+    /// [`Fixture::new`] with more test files in the base commit: `(path, text)` pairs.
+    fn build(table: Option<&str>, extra: &[(String, String)], changed: &[(&str, &str)]) -> Fixture {
         let dir = tempfile::tempdir().unwrap();
         let p = dir.path();
         git_ok(p, &["init", "-q", "-b", "main"]);
@@ -69,6 +74,9 @@ impl Fixture {
         put(p, "tests/spec_check_cli.rs", "fn main() {}\n");
         put(p, "tests/update_command_cli.rs", "fn main() {}\n");
         put(p, "tests/home_cli.rs", "fn main() {}\n");
+        for (rel, text) in extra {
+            put(p, rel, text);
+        }
         put(
             p,
             "tests/pins_scans.rs",
@@ -592,4 +600,53 @@ fn floor_files_next_to_the_narrowed_ones_stay_wide() {
         serde_json::json!(["src/update_keys.rs"]),
         "{r}"
     );
+}
+
+/// SPEC-20261125-flow-receipt-revert-slot AC-4 (REQ-5, REQ-6): a changed submodule also reaches
+/// the tests that name its folder module (`moai_cli::home_routing`, called through a re-export)
+/// on top of today's selection, and a folder module that more than ten targets name adds none.
+#[test]
+fn a_submodule_change_selects_the_tests_that_name_its_folder_module() {
+    // `slots_cli` belongs to no area and names the folder module only, never `home_routing::rules`.
+    let slots = vec![(
+        "tests/slots_cli.rs".to_string(),
+        "use moai_cli::home_routing::{apply, revert};\nfn main() {}\n".to_string(),
+    )];
+    let fx = Fixture::build(
+        Some(AREAS),
+        &slots,
+        &[("src/home_routing/rules.rs", "// b\n")],
+    );
+    let r = affected(&fx, &["--list", "--card"]);
+    assert_eq!(r["selection"], "card", "{r}");
+    assert!(r["card_wide"].is_null(), "{r}");
+    assert_eq!(
+        names(&r["rust_targets"]),
+        set(&["home_cli", "slots_cli"]),
+        "the area set stays and the named test joins: {r}"
+    );
+    let by = by_of(&r, "src/home_routing/rules.rs");
+    assert!(
+        by.contains(&"area:home".to_string()) && by.contains(&"module:home_routing".to_string()),
+        "{by:?}"
+    );
+
+    // Without the test that names the folder module nothing joins: the area set alone.
+    let fx = Fixture::build(Some(AREAS), &[], &[("src/home_routing/rules.rs", "// b\n")]);
+    let r = affected(&fx, &["--list", "--card"]);
+    assert_eq!(names(&r["rust_targets"]), set(&["home_cli"]), "{r}");
+
+    // Eleven targets name `moai_cli::zzz`: more than the cap, so none of them joins.
+    let many: Vec<(String, String)> = (0..11)
+        .map(|n| {
+            (
+                format!("tests/named_zzz_{n}.rs"),
+                "use moai_cli::zzz::bar;\nfn main() {}\n".to_string(),
+            )
+        })
+        .collect();
+    let fx = Fixture::build(Some(AREAS), &many, &[("src/zzz/foo.rs", "// b\n")]);
+    let r = affected(&fx, &["--list", "--card"]);
+    assert_eq!(r["selection"], "card", "{r}");
+    assert!(names(&r["rust_targets"]).is_empty(), "{r}");
 }

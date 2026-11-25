@@ -183,13 +183,26 @@ enum Action {
         criteria: Vec<String>,
         /// The SPEC the card names (`SPEC-<yyyymmdd>-<slug>`). The card and its link are one
         /// write, and a SPEC that already has a card that is not `done` refuses the add unless
-        /// `--follow-up` or `--split-of` is given.
+        /// `--follow-up`, `--follow-up-of` or `--split-of` is given.
         #[arg(long, value_name = "SPEC_ID")]
         spec: Option<String>,
-        /// With `--spec`: the SPEC's one open follow-up card (a second one is refused; add a
-        /// criterion to it with `card criterion-add`).
-        #[arg(long = "follow-up", requires = "spec", conflicts_with = "split_of")]
+        /// With `--spec`: a follow-up card of the SPEC. A SPEC may have several open follow-up
+        /// cards.
+        #[arg(
+            long = "follow-up",
+            requires = "spec",
+            conflicts_with_all = ["split_of", "follow_up_of"]
+        )]
         follow_up: bool,
+        /// With `--spec`: a follow-up card that names the card it follows; that card must name
+        /// the same SPEC.
+        #[arg(
+            long = "follow-up-of",
+            requires = "spec",
+            value_name = "CARD",
+            conflicts_with = "split_of"
+        )]
+        follow_up_of: Option<String>,
         /// With `--spec`: the card this one is split from; it must name the same SPEC.
         #[arg(long = "split-of", requires = "spec", value_name = "CARD")]
         split_of: Option<String>,
@@ -1493,6 +1506,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             criteria,
             spec,
             follow_up,
+            follow_up_of,
             split_of,
             by,
             project,
@@ -1511,10 +1525,11 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 None => c::add(&project, &resolve_home(home)?, &request),
                 Some(spec) => {
                     use moai_cli::card::spec_link::Relation;
-                    let relation = match (follow_up, split_of.as_deref()) {
-                        (true, _) => Relation::FollowUp,
-                        (false, Some(origin)) => Relation::SplitOf(origin),
-                        (false, None) => Relation::Plain,
+                    let relation = match (follow_up, follow_up_of.as_deref(), split_of.as_deref()) {
+                        (true, _, _) => Relation::FollowUp,
+                        (false, Some(origin), _) => Relation::FollowUpOf(origin),
+                        (false, None, Some(origin)) => Relation::SplitOf(origin),
+                        (false, None, None) => Relation::Plain,
                     };
                     c::add_with_spec(&project, &resolve_home(home)?, &request, spec, relation)
                 }

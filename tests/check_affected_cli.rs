@@ -489,12 +489,12 @@ fn list_reads_only_and_shows_the_selection() {
 }
 
 #[test]
-fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
+fn a_failed_step_with_keep_going_does_not_stop_the_rest_and_the_summary_says_fail() {
     let fx = Fixture::new(true, &[("src/update_models.rs", "// b\n")]);
     let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
     let slots = slot_dir();
     let slot = slots.path().to_string_lossy().to_string();
-    let args = ["--slot-dir", slot.as_str()];
+    let args = ["--slot-dir", slot.as_str(), "--keep-going"];
     // A heavy step fails (the cheap steps all pass): the rest still run (REQ-4).
     let (ok, r) = affected(&fx, &args, Some((&tools, "clippy")));
     assert!(ok, "{r}");
