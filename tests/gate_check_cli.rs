@@ -2031,3 +2031,76 @@ fn the_reads_summary_masks_before_it_cuts() {
         "AUDIT PASS [redacted] [redacted] conclusion=success"
     );
 }
+
+/// The decision runs with the working folder `dir`, so a state folder under it is the only
+/// thing the layout can change.
+fn gate_in(dir: &std::path::Path, snapshot: &Value) -> Value {
+    let mut child = Command::new(crate::common::MOAI_BIN)
+        .arg("gate-check")
+        .current_dir(dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, snapshot.to_string().as_bytes());
+    let out = child.wait_with_output().unwrap();
+    serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&out.stderr)))
+}
+
+/// A project folder in one of the two state layouts of the mo.ai.kr report: `mixed` keeps the
+/// Go-generation markers (`.moai/manifest.json`, `.moai/config/sections/system.yaml`) beside the
+/// Rust profile; `rust` has them moved to `.moai/backups/go-markers-<stamp>/`.
+fn project_layout(root: &std::path::Path, layout: &str) {
+    let state = root.join(".moai");
+    std::fs::create_dir_all(state.join("config/sections")).unwrap();
+    std::fs::write(state.join("project.yaml"), "project:\n  name: fixture\n").unwrap();
+    let markers = [
+        ("manifest.json", "{}\n"),
+        ("config/sections/system.yaml", "moai:\n  version: 2\n"),
+    ];
+    let home = if layout == "mixed" {
+        state.clone()
+    } else {
+        state.join("backups/go-markers-20261120T234501Z")
+    };
+    for (name, text) in markers {
+        let path = home.join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    }
+}
+
+/// Card criterion 1: a member's verdict line with a successful head CI passes G1, and a member
+/// line in the wrong shape stops at G1 naming what was read — in both state layouts, with the
+/// same answer. The gate reads the snapshot only, so the layout cannot reach it; the test pins
+/// that (the mo.ai.kr report blamed the move of the Go markers).
+#[test]
+fn the_state_layout_does_not_change_what_the_gate_reads_or_says() {
+    let mut wrong_shape = passing();
+    wrong_shape["comments"] = json!([
+        {"id": 2, "author_association": "MEMBER", "body": "AUDIT PASS 72225828140168a0560d988694c7fac7430f3f7f ci-run=44831965524 conclusion=success\n"},
+    ]);
+    wrong_shape["checks"] = json!([{"name": "build", "conclusion": "success", "head_sha": H}]);
+
+    let mut answers = Vec::new();
+    for layout in ["mixed", "rust"] {
+        let dir = tempfile::tempdir().unwrap();
+        project_layout(dir.path(), layout);
+        let good = gate_in(dir.path(), &passing());
+        let bad = gate_in(dir.path(), &wrong_shape);
+        assert_eq!(good["result"]["pass"], json!(true), "{layout}: {good}");
+        assert_eq!(good["result"]["reads"]["verdict_lines"], json!(1), "{good}");
+        assert_eq!(stopped(&bad), (false, "G1".to_string()), "{layout}: {bad}");
+        let reason = bad["result"]["reason"].as_str().unwrap();
+        assert!(reason.contains("1 member comment(s) read"), "{reason}");
+        assert!(reason.contains("AUDIT PASS 72225828"), "{reason}");
+        assert_eq!(bad["result"]["reads"]["check_run_names"], json!(["build"]));
+        answers.push((good, bad));
+    }
+    assert_eq!(
+        answers[0], answers[1],
+        "the answers of the two state layouts must be identical"
+    );
+}
