@@ -1071,7 +1071,7 @@ settings, Go scripts or Orca wrappers.
 
 `tests/fixtures/statusline/` preserves the historical Go recordings unchanged.
 The active Rust layout recordings are in `tests/fixtures/statusline-claude/`;
-`tools/statusline_golden.py --check` verifies them with isolated state and actual
+the Rust test `tests/statusline_golden.rs` verifies them with isolated state and actual
 terminal capture for the ANSI variants. The main layout follows Issue #2376 and
 decision comment `6774899518` (recommendation rows 7–12 and 28). The official
 [status-line contract](https://code.claude.com/docs/en/statusline.md), including the

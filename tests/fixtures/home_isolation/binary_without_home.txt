@@ -64,7 +64,6 @@ tests/search_graph.rs
 tests/secret_shapes_content.rs
 tests/self_audit_cli.rs
 tests/state_root_cli.rs
-tests/statusline_golden.rs
 tests/update_known_good.rs
 tests/update_version_folders.rs
 tests/workflow_e2e.rs
