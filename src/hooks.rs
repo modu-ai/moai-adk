@@ -793,7 +793,6 @@ mod tests {
         let bare = tempfile::tempdir().unwrap();
         let got = append_receipt_line_in(None, bare.path(), "hooks.jsonl", &json!({"k": 1}));
         assert_eq!(got, Err("no state folder in the working directory"));
-        assert!(!got.unwrap_err().contains(".moai-cli"));
     }
 }
 
