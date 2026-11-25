@@ -41,13 +41,18 @@ fn copy_tree(from: &Path, to: &Path) {
     }
 }
 
-/// A temporary HOME with `~/.moai-cli/versions/a/bin/moai-cli`, the real package beside it and
-/// the agent sources next to `skills/`.
+/// The folder of the installed versions under the HOME state folder.
+fn versions(home: &Path) -> PathBuf {
+    home.join(moai_cli::HOME_STATE_DIR).join("versions")
+}
+
+/// A temporary HOME with one installed version folder holding a copy of the binary, the real
+/// package beside it and the agent sources next to `skills/`.
 fn setup() -> (TempDir, PathBuf, PathBuf) {
     let tmp = TempDir::new().unwrap();
     let root = fs::canonicalize(tmp.path()).unwrap();
     let home = root.join("home");
-    let folder = home.join(".moai-cli/versions/a");
+    let folder = versions(&home).join("a");
     fs::create_dir_all(folder.join("bin")).unwrap();
     let exe = folder.join("bin/moai-cli");
     common::copy_executable(Path::new(EXE), &exe);
@@ -113,7 +118,7 @@ fn state(home: &Path) -> Vec<(PathBuf, Vec<u8>)> {
         }
     }
     let mut out = Vec::new();
-    walk(home, &home.join(".moai-cli/versions"), &mut out);
+    walk(home, &versions(home), &mut out);
     out.sort();
     out
 }
@@ -201,7 +206,7 @@ fn a_failure_behind_the_skills_ends_partial_names_what_is_left_and_a_rerun_finis
 #[test]
 fn every_written_skill_file_is_read_back_and_its_digest_compared() {
     let (_t, home, exe) = setup();
-    let pkg = home.join(".moai-cli/versions/a/skills");
+    let pkg = versions(&home).join("a/skills");
     copy_tree(
         &repo().join("skills").join(HTML_REPORT),
         &pkg.join(HTML_REPORT),
