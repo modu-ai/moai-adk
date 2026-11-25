@@ -54,6 +54,8 @@ enum Action {
     /// profile, one that cannot be read, or no `checks`) and no step failed, the result is
     /// `not_run`, never `PASS`: the line ends in `result=not_run`, the answer's `not_run.next`
     /// says what to write in the profile, and the READY note gate takes no receipt from it.
+    /// The command exits 0 only when the summary says `result=PASS`; `result=FAIL` and
+    /// `result=not_run` exit 1 with the same answer printed (`--list` has no result and exits 0).
     /// Writes the step logs,
     /// `heavy-slot.log` and `summary.txt` (the summary line, whatever its result: the receipt
     /// `card note` reads before it keeps a READY or REPAIRED note of this head) under
