@@ -2,7 +2,7 @@
 //! card to one named session, nothing moves until that session accepts, and every situation in
 //! which the offer is no longer good is refused with the ledger exactly as it was.
 //!
-//! Every command runs against a temporary HOME; the real `~/.moai` is not read or written. The
+//! Every command runs against a temporary HOME; the real home state is not read or written. The
 //! session is the id in the environment (`CLAUDE_CODE_SESSION_ID`). No test sleeps: a lease is
 //! ended by the same `UPDATE reservation` the reclaim tests use, and an offer whose validity has
 //! run out is a second `card.offer` row copied from the real one with `valid_until` in the past.
