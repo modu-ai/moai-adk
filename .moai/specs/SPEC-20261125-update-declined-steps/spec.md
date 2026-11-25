@@ -88,3 +88,18 @@ created: 2026-11-25
 | D-2 | 거절은 단계 이름과 출처 sha256 에 묶어요. 대안: 단계 이름만(출처가 바뀌어도 영영 안 물어요). | 카드 기준 1·2. | `project_update/declined.rs` 를 지우면 이전 동작이에요. |
 | D-3 | 거절을 되돌리는 길은 `--ask-again` 이에요. | 리더 지시 "기억된 거절은 다시 물어 달라고 할 수 있어야 해요". | 해당 없음. |
 | D-4 | 설정 충돌의 `keep-mine` 은 충돌한 키를 파일의 현재 값으로 두고 나머지를 합쳐요. | 카드 기준 4 의 "내 값 유지". | 선택지를 지우면 이전 동작이에요. |
+
+## Result
+
+구현 head 8ee4c79ce7(base dfe34f874c). 아래는 이 실행에서 본 값이에요.
+
+- AC-1 met: `cargo test --locked --offline --test project_update_plan_cli declined_record` 가 통과해요(전체 파일 60개 통과, exit 0).
+- AC-2 met: `declined_skip` 통과. 거절 뒤 단계는 `skip`, 이유가 거절을 말해요.
+- AC-3 met: `declined_source_changes` 통과. 출처 바이트가 바뀌면 다시 물어요.
+- AC-4 met: `declined_ask_again` 통과.
+- AC-5 met: `declined_reason_names_backup` 통과. 이유가 백업 경로를 담아요.
+- AC-6 met: `declined_settings_conflict` 세 시험 통과. `keep-mine` 은 그 키를 두고 나머지를 합치지만, 설정 적용기가 같은 값의 기준을 새로 쓰지 않아서 그 키의 충돌은 다음 미리보기에도 남고 `skip` 으로 끝내요(Risks).
+- AC-7 met: `project_update_plan_cli` 전체 60개 통과.
+- 영수증: `moai check affected --card dfe34f874c..HEAD`, `result=PASS`, targets=93, diff_check=0 fmt=0 ops_rustfmt=0 clippy=0 test=0.
+- AC-1 의 링크 거부(REQ-15)는 기록 파일이 링크일 때와 `manifests` 폴더가 링크일 때 둘 다 시험해요.
+- not_run: 전체 `cargo test`, Windows 확인.
