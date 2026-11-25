@@ -2067,21 +2067,51 @@ fn undo_order() -> Value {
 /// The read-only `go-residue` step (SPEC-20261121-go-residue-detect): the files the Go
 /// generation left behind, proven against the first manifest the survey still finds. Every
 /// surveyed item is listed, but only an item with an action other than `keep` asks for a
-/// decision; files that are the user's own (`keep`) leave the step `unchanged`. The step
-/// applies nothing; the apply and the revert are the next slice.
-fn go_residue_step(root: &Path, _shown: &str) -> Result<Step> {
+/// decision; files that are the user's own (`keep`) leave the step `unchanged`.
+///
+/// SPEC-20261125-go-residue-apply: the step asks only while a `go_same` or `go_changed` file is
+/// left (REQ-10), whatever other classes it still lists (a marker, an earlier-generation
+/// folder and the files another step owns wait for the slices that own them). The proven
+/// bundle has a printed `go-residue-apply` command; a changed file moves only when the user
+/// names it with `--pick`, so no command carries one. While another backup step still has a
+/// move to make, the command waits: that move would make this plan's digest stale.
+fn go_residue_step(root: &Path, shown: &str, others_pending: bool) -> Result<Step> {
     let survey = crate::go_residue::survey(root);
-    let to_act = survey
-        .items
+    let found = crate::go_residue_apply::candidates(&survey);
+    let proven = found.iter().filter(|c| c.class == "go_same").count();
+    let changed: Vec<&str> = found
         .iter()
-        .filter(|i| i.suggested_action != "keep")
-        .count();
+        .filter(|c| c.class == "go_changed")
+        .map(|c| c.path.as_str())
+        .collect();
+    let proof = survey.proof.clone().unwrap_or_default();
+    let digest = crate::go_residue_apply::plan_digest(&proof, &found);
+    let others_listed = survey.items.iter().any(|i| i.suggested_action != "keep");
     let (state, reason) = if survey.items.is_empty() {
         (
             "unchanged",
             "no Go residue is proven by any manifest this survey can find".into(),
         )
-    } else if to_act == 0 {
+    } else if !found.is_empty() {
+        (
+            "needs_decision",
+            format!(
+                "{proven} proven and {} changed Go files the Go generation left behind are proven \
+                 by {proof}; move the proven bundle with the printed command, and a changed file \
+                 only with `--pick <path>` (the plan_digest below is the one to confirm)",
+                changed.len(),
+            ),
+        )
+    } else if others_listed {
+        (
+            "unchanged",
+            format!(
+                "{} surveyed files are listed; none is a Go file to move now (markers, \
+                 earlier-generation folders and files another step owns wait for their own step)",
+                survey.items.len(),
+            ),
+        )
+    } else {
         (
             "unchanged",
             format!(
@@ -2089,23 +2119,21 @@ fn go_residue_step(root: &Path, _shown: &str) -> Result<Step> {
                 survey.items.len(),
             ),
         )
-    } else {
-        (
-            "needs_decision",
-            format!(
-                "{to_act} of {} surveyed files the Go generation left behind are proven by {}; the apply is the next slice",
-                survey.items.len(),
-                survey.proof.as_deref().unwrap_or("no manifest"),
-            ),
-        )
     };
+    let mut preview = crate::go_residue::preview(&survey);
+    preview["bundles"] = json!({"proven": proven, "changed": changed});
+    let apply = (proven > 0 && !others_pending).then(|| {
+        let mut words = argv("go-residue-apply", shown, &digest);
+        words.extend(["--bundle", "proven"].map(String::from));
+        (words, Value::Null)
+    });
     Ok(Step {
         name: "go-residue",
         state,
         reason,
-        preview: crate::go_residue::preview(&survey),
-        plan_digest: None,
-        apply: None,
+        preview,
+        plan_digest: (!found.is_empty()).then_some(digest),
+        apply,
     })
 }
 
@@ -2138,7 +2166,10 @@ pub fn plan(project: &Path) -> Result<Value> {
     // The read-only go-residue survey (SPEC-20261121-go-residue-detect) runs after the backup
     // previews: it proves the Go files the generation left against the first manifest it
     // finds, applies nothing, and its items decide `all_unchanged` like any other step.
-    let residue = or_blocked("go-residue", go_residue_step(&root, &shown));
+    let others_pending = [&settings, &state, &reports]
+        .iter()
+        .any(|s| s.apply.is_some());
+    let residue = or_blocked("go-residue", go_residue_step(&root, &shown, others_pending));
     let backup = vec![settings, state, reports, residue];
     // A move still to make: every install preview would be stale after it.
     let mut install: Vec<Step> = if backup_pending(&backup) {

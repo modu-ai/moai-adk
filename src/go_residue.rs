@@ -78,6 +78,29 @@ pub struct Survey {
     pub proof: Option<String>,
     /// Secret-shaped names among the candidates when a proof exists; `0` without one.
     pub secret_names: usize,
+    /// Manifest-named paths the path guard refused (absolute, `..`, through a link): counted,
+    /// never read.
+    pub refused: usize,
+}
+
+/// Files another step owns: the host settings (the go-settings and claude-settings steps) and
+/// the root instruction files (the go-state and claude-md steps). They are surveyed and shown,
+/// but the apply never moves them.
+const OWNED_ELSEWHERE: [&str; 6] = [
+    ".claude/settings.json",
+    ".claude/settings.local.json",
+    "CLAUDE.md",
+    "CLAUDE.local.md",
+    "AGENTS.md",
+    "AGENTS.local.md",
+];
+
+/// The one path guard (SPEC-20261125-go-residue-apply REQ-3), used by the survey, the apply and
+/// the revert before they read, write or move anything at `rel`: a plain relative path (normal
+/// components only, so no absolute path and no `..`) none of whose existing components, from the
+/// project root down, is a link.
+pub(crate) fn contained(project: &Path, rel: &str) -> bool {
+    crate::go_state::plain_relative(rel) && !crate::go_state::linked_component(project, rel)
 }
 
 /// Reads the manifest named by the chain and returns its path (relative to the project)
@@ -276,10 +299,17 @@ pub fn survey(project: &Path) -> Survey {
     let tracked = tracked_paths(project);
     let moved = moved_by_receipts(project);
     let mut items: Vec<Item> = Vec::new();
+    let mut refused = 0usize;
 
     // Manifest-named files: the proof decides go_same against go_changed; a named path
-    // outside the state folder is surveyed too (never through a link, never a secret).
+    // outside the state folder is surveyed too (never through a link, never a secret). A named
+    // path the guard refuses is counted and never joined to the project, so an absolute path,
+    // a `..` or a link cannot make the survey read a file outside it.
     for (rel, deployed) in &named {
+        if !contained(project, rel) {
+            refused += 1;
+            continue;
+        }
         if is_secret(rel) || secret_name(rel) {
             continue;
         }
@@ -302,7 +332,11 @@ pub fn survey(project: &Path) -> Survey {
             sha256: actual,
             tracked: tracked.contains(rel),
             resurrected: moved.contains(rel),
-            suggested_action: "archive",
+            suggested_action: if OWNED_ELSEWHERE.contains(&rel.as_str()) {
+                "owned_elsewhere"
+            } else {
+                "archive"
+            },
         });
     }
     // Walked files the manifest does not name: a Go marker back on disk, else the user's
@@ -354,6 +388,7 @@ pub fn survey(project: &Path) -> Survey {
         items,
         proof: Some(proof),
         secret_names: secrets,
+        refused,
     }
 }
 
@@ -370,5 +405,6 @@ pub fn preview(survey: &Survey) -> Value {
         })).collect::<Vec<_>>(),
         "proof": survey.proof.clone().unwrap_or_else(|| "none".into()),
         "secret_names": survey.secret_names,
+        "refused_paths": survey.refused,
     })
 }
