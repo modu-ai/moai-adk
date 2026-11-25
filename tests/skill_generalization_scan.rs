@@ -48,6 +48,11 @@ fn old_state_folder() -> String {
     format!(".{}-cli", "moai")
 }
 
+/// The name of a project's state folder, built at run time for the same reason.
+fn state_folder() -> String {
+    format!(".{}", "moai")
+}
+
 /// The words of a text, split at everything that is not a letter or a digit.
 fn words(text: &str) -> Vec<&str> {
     text.split(|c: char| !c.is_ascii_alphanumeric())
@@ -173,7 +178,8 @@ fn is_path_byte(b: u8) -> bool {
 
 /// Every `tools/<path>.<ext>` of a text, with `<ext>` one of `sh`, `py` or `json`. The byte before
 /// `tools/` must not be a path byte (the start of the text counts as allowed), so
-/// `.moai/tools/x.sh`, `golang.org/x/tools/gopls` and `mytools/x.sh` are not mentions.
+/// a script under a project's own support folder, `golang.org/x/tools/gopls` and `mytools/x.sh`
+/// are not mentions.
 fn tools_script_mentions(text: &str) -> Vec<String> {
     const PREFIX: &str = "tools/";
     let bytes = text.as_bytes();
@@ -293,8 +299,9 @@ fn the_matcher_finds_a_tools_script_in_each_written_form() {
 
 #[test]
 fn the_matcher_misses_what_is_not_a_repository_tools_script() {
+    let project_script = format!("{}/tools/x.sh", state_folder());
     for text in [
-        ".moai/tools/x.sh",
+        project_script.as_str(),
         "golang.org/x/tools/gopls@latest",
         "mytools/x.sh",
         "a-tools/x.sh",
@@ -318,6 +325,10 @@ fn the_matcher_misses_what_is_not_a_repository_tools_script() {
 fn the_scan_finds_every_planted_mention_and_not_the_clean_file() {
     let dir = tempfile::TempDir::new().unwrap();
     let root = dir.path();
+    let clean = format!(
+        "uses {}/tools/ok.sh and golang.org/x/tools/gopls\n",
+        state_folder()
+    );
     for (rel, body) in [
         ("skills/moai/x.md", "run `tools/a.sh` first\n"),
         ("agents/y.md", "see (tools/b.py)\n"),
@@ -325,10 +336,7 @@ fn the_scan_finds_every_planted_mention_and_not_the_clean_file() {
             "skills/moai/references/z.json",
             "{\"gen\": \"tools/c.json\"}\n",
         ),
-        (
-            "skills/moai/clean.md",
-            "uses .moai/tools/ok.sh and golang.org/x/tools/gopls\n",
-        ),
+        ("skills/moai/clean.md", clean.as_str()),
     ] {
         let path = root.join(rel);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
