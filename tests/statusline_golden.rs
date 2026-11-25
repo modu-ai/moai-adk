@@ -115,7 +115,9 @@ fn path_var() -> String {
 
 /// One `git` call in the temporary project, with the fixed author, dates and no config files.
 fn run_git(cwd: &Path, args: &[&str]) -> Result<(), String> {
-    let mut cmd = Command::new("git");
+    // The shared runner adds the gc/maintenance guards; the environment is then built from
+    // scratch, like every other child of this harness.
+    let mut cmd = common::git::command();
     cmd.clean_env()
         .arg("-C")
         .arg(cwd)
@@ -207,7 +209,7 @@ fn apply_setup(step: &Value, root: &Path, project: &Path, moai_home: &Path) -> R
         "git_upstream" => {
             let bare = root.join("origin.git");
             let bare_text = bare.to_string_lossy().into_owned();
-            let mut cmd = Command::new("git");
+            let mut cmd = common::git::command();
             cmd.clean_env()
                 .args(["init", "-q", "--bare", &bare_text])
                 .envs(GIT_ENV)
