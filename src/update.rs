@@ -1370,9 +1370,9 @@ pub fn plan_update_in(
         // adopted. Only a host with no other block gets here with a scan.
         let mut adopt_files: Vec<AdoptFile> = Vec::new();
         let mut adopt_foreign = 0usize;
+        let mut generations: Option<Generations> = None;
         if blocked.is_none() {
             if let Some(scan) = &scan {
-                let mut generations: Option<Generations> = None;
                 for (rel, new_bytes) in &staged.files {
                     let Some(current) = scan.files.get(rel) else {
                         continue;
@@ -1417,6 +1417,28 @@ pub fn plan_update_in(
         let mut baselines = owned.clone();
         for a in &adopt_files {
             baselines.insert(a.path.clone(), a.sha256.clone());
+        }
+        // SPEC-20261125-update-conflict-baseline REQ-3: an owned file whose bytes are an earlier
+        // generation's copy of the same file is a file this tool wrote, not the user's edit, so it
+        // is planned against its own bytes. A byte no generation has stays a conflict (REQ-4).
+        if blocked.is_none() {
+            if let Some(scan) = &scan {
+                for (rel, new_bytes) in &staged.files {
+                    let (Some(base), Some(current)) = (owned.get(rel), scan.files.get(rel)) else {
+                        continue;
+                    };
+                    if base == current || *current == sha256_hex(new_bytes) {
+                        continue;
+                    }
+                    let ours = generations
+                        .get_or_insert_with(|| earlier_generations(&canonical_home))
+                        .get(rel)
+                        .is_some_and(|by_sha| by_sha.contains_key(current));
+                    if ours {
+                        baselines.insert(rel.clone(), current.clone());
+                    }
+                }
+            }
         }
 
         // Package files vs disk, three-way per file (REQ-04B-01).
@@ -2514,6 +2536,17 @@ fn update_command_core(
         out["revert"]["home"] = h["revert"].clone();
         out["home_result"] = h;
     }
+    // SPEC-20261125-update-conflict-baseline REQ-8: a switch this run did not confirm keeps its
+    // part in the result, so the screen can show the command that confirms it.
+    if switch_part.is_none() {
+        if let Some(s) = layer
+            .switch
+            .to_json()
+            .filter(|s| s["apply_flag"].is_string())
+        {
+            out["switch"] = s.clone();
+        }
+    }
     if let Some(s) = switch_part {
         out["revert"]["switch"] = s["revert"].clone();
         out["switch_result"] = s;
@@ -2656,9 +2689,22 @@ pub fn plan_writes_anything(plan: &UpdatePlan) -> bool {
     plan.hosts.iter().any(|h| {
         h.preflight != "blocked"
             && (h.adopt.is_some()
+                || baseline_moves(h).next().is_some()
                 || h.files
                     .iter()
                     .any(|f| f.action == "create" || f.action == "update"))
+    })
+}
+
+/// SPEC-20261125-update-conflict-baseline REQ-1: the files of a host that are already the
+/// package's but that the receipt owns at other bytes. The confirmed update records the bytes on
+/// disk as their baseline; no file byte is written.
+fn baseline_moves(host: &HostPlan) -> impl Iterator<Item = &FilePlan> {
+    host.files.iter().filter(|f| {
+        f.action == "unchanged"
+            && f.baseline_sha256.is_some()
+            && f.current_sha256.is_some()
+            && f.baseline_sha256 != f.current_sha256
     })
 }
 
@@ -2673,6 +2719,10 @@ pub fn plan_summary(plan: &UpdatePlan) -> String {
         let mut counts: Vec<String> = counts.iter().map(|(a, n)| format!("{a} {n}")).collect();
         if let Some(a) = &h.adopt {
             counts.push(format!("adopt {}", a.files.len()));
+        }
+        let moves = baseline_moves(h).count();
+        if moves > 0 {
+            counts.push(format!("baseline {moves}"));
         }
         out.push_str(&format!(
             "  {}: {} — {}{}\n",
@@ -2806,7 +2856,8 @@ fn apply_update_in(
             .collect();
         let conflict_only = host_plan.files.iter().any(|f| f.action == "conflict");
 
-        if writes.is_empty() && host_plan.adopt.is_none() {
+        let moves: Vec<&FilePlan> = baseline_moves(host_plan).collect();
+        if writes.is_empty() && host_plan.adopt.is_none() && moves.is_empty() {
             // Nothing to write: report, never touch (REQ-04B-07 rerun; conflicts keep
             // the user bytes, REQ-04B-09).
             let status = if conflict_only {
@@ -2920,6 +2971,12 @@ fn apply_update_in(
                 owned_now.insert(a.path.clone(), a.sha256.clone());
             }
         }
+        // REQ-1: a file that is already the package's is owned at the bytes it has.
+        for m in &moves {
+            if let Some(sha) = &m.current_sha256 {
+                owned_now.insert(m.path.clone(), sha.clone());
+            }
+        }
         let mut host_published = 0usize;
         let mut failed: Option<String> = None;
         for (idx, w) in writes.iter().enumerate() {
@@ -3017,6 +3074,14 @@ fn apply_update_in(
                 }
             }
         }
+        // REQ-1: a file whose baseline moves must still be the bytes the plan saw, or the receipt
+        // would own bytes that are not there.
+        for m in &moves {
+            let now = read_opt(&root.join(&m.path))?.map(|b| sha256_hex(&b));
+            if now != m.current_sha256 {
+                return Err("a file changed during apply; run recovery-plan".into());
+            }
+        }
         receipt.owned = owned_vec(host, &owned_now);
         receipt.status = "committed".into();
         receipt.finished_at = Some(now_rfc3339());
@@ -3036,9 +3101,20 @@ fn apply_update_in(
         {
             all.push(file_result(f, false, None));
         }
+        // A host whose receipt alone moved (REQ-1) wrote no file: it is unchanged, or a conflict
+        // when files of it are in conflict.
+        let wrote = host_published > 0 || host_plan.adopt.is_some();
+        any_conflict_only |= !wrote && conflict_only;
         outcomes.push(HostOutcome {
             host: host.to_string(),
-            status: "applied".into(),
+            status: if wrote {
+                "applied"
+            } else if conflict_only {
+                "conflict"
+            } else {
+                "unchanged"
+            }
+            .into(),
             files: all,
             receipt_status: Some("committed".into()),
             reload_required: reload.into(),
