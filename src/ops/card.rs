@@ -499,7 +499,11 @@ enum Action {
     ///
     /// Writes the ledger. A `review` card gains one `card.landed` event naming the head and the
     /// by, with the writing session as the actor (NeXT-Flow, SPEC-20261120-card-done-mflow). The
-    /// head must be 40 lowercase hex. `card done` then closes the card without a pull request
+    /// head must be 40 lowercase hex. A `ready` card (sent back after its audit) gains the event
+    /// only with `--by leader`, when a verdict of the card names exactly the head, the newest
+    /// verdict of every reviewer on it is a PASS and no reviewer held a reservation of the card;
+    /// the event then carries `from_state` `ready`. Any other state is refused naming `ready`
+    /// and `review`. `card done` then closes the card without a pull request
     /// when the profile's work flow is NeXT-Flow and the head sits inside the profile's
     /// integration branch.
     Landed {
@@ -523,7 +527,9 @@ enum Action {
     /// Writes the ledger. One `card.audit_assigned` event for a card in `review` with the
     /// auditor's identity and `--by leader`; only the leader word assigns. Refused (`conflict`)
     /// when the identity holds or ever held a reservation of the card, in any spelling (ASCII
-    /// case and a `:<12hex>` worktree suffix are ignored), and when the card is not in review.
+    /// case and a `:<12hex>` worktree suffix are ignored), and when the card is not in review. A
+    /// `ready` card takes the assignment only for the reviewer of a PASS verdict of the card
+    /// (`conflict` for any other identity); no other state does.
     /// Refused too when the value is not a session identity, a lane name such as `agent-4`
     /// included: a session id (hex digits and dashes, 8 to 64 characters), optionally followed
     /// by `:` and 12 hex digits. Nothing is written then.
