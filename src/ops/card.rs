@@ -1192,6 +1192,37 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the integration branch and the ledger. Merge another branch into the integration branch
+    ///
+    /// `card land-sync <from> --spec <SPEC-ID> --by leader` merges the tip of the local branch
+    /// `<from>` onto the integration tip as one merge commit (the tip is the first parent), runs
+    /// the wide `check affected` of this program on that commit in a private worktree and, only
+    /// after a full-selection PASS, moves the integration branch to it by one compare-and-swap
+    /// through the same intent record `card land` writes, so the protection hook is not weakened.
+    /// The branch must be listed in `work_flow.sync_sources` of the profile (an empty list refuses
+    /// every branch) and `--spec` must name an approved SPEC present at the tip. Only the session of
+    /// the live `leader` entry of the lane registry may call it. A tip that is not the one the merge
+    /// was built on is refused as `stale_base`; a branch the tip already holds answers
+    /// `moved: false`. Two card-less ledger rows (`card.sync_started`, `card.synced`) record the
+    /// move so the next landing is not refused as drift. The answer has `moved`, `merge`,
+    /// `to_tip`, `rev_list_count` (`git rev-list --count <branch>..<from>` after the move),
+    /// `worktree_follow`, `runs` and `remote_copy`.
+    LandSync {
+        /// The local branch to merge in (listed in `work_flow.sync_sources`).
+        from: String,
+        /// The approved SPEC that decided this sync (written as the `Moai-Spec` trailer).
+        #[arg(long)]
+        spec: String,
+        /// Who syncs: only `leader` is accepted, from the registered leader session.
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id and the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Record the audit verdict of one exact head as an event of the card
     ///
     /// Writes one `card.verdict` event of the card: the head and the base it was judged against
@@ -2012,6 +2043,38 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             )?;
             // One copy for the whole batch, after the last landing.
             if answer["landed"].as_array().is_some_and(|l| !l.is_empty()) {
+                let copy = moai_cli::card::remote_copy::copy(&project, "land");
+                answer["remote_copy"] = copy.json();
+            }
+            Ok(answer)
+        }
+        Action::LandSync {
+            from,
+            spec,
+            by,
+            project,
+            home,
+        } => {
+            let session = d::session_holder("land", env).ok();
+            // The tests' seam for the check program; the command line has no flag for it and a
+            // release build does not read the variable at all.
+            #[cfg(debug_assertions)]
+            let check_cmd = env("MOAI_TEST_LAND_SYNC_CHECK").map(PathBuf::from);
+            #[cfg(not(debug_assertions))]
+            let check_cmd: Option<PathBuf> = None;
+            let mut answer = moai_cli::card::land::sync::land_sync(
+                &project,
+                &resolve_home(home)?,
+                &moai_cli::card::land::sync::SyncRequest {
+                    session: session.as_deref(),
+                    by: &by,
+                    from: &from,
+                    spec: &spec,
+                    check_cmd: check_cmd.as_deref(),
+                },
+            )?;
+            // The remote copy never fails the sync; its state rides in the answer.
+            if answer["moved"].as_bool() == Some(true) {
                 let copy = moai_cli::card::remote_copy::copy(&project, "land");
                 answer["remote_copy"] = copy.json();
             }
