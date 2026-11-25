@@ -35,7 +35,7 @@ The command does the whole submission and writes nothing to the ledger until eve
 
 1. It refuses, by name and all at once, a worktree that is not clean, a HEAD that is not the tip of the reserved branch and a criterion that is still `open`.
 2. It runs every fast gate (`diff_check`, `fmt`, `ops_rustfmt`, `tables`, `trailers`) and lists every failure together; a failing gate starts no long step.
-3. It quotes the PASS receipt (`target/check-affected-<head12>/summary.txt`) of the same head and base, or runs `moai check affected --card` once.
+3. It quotes the PASS receipt (`target/check-affected-<head12>/summary.txt`) of the same head and base, or runs `moai check affected --card` once. Before that run `moai check fast <base>..<head>` first (it names every table or ledger miss at once), and `moai check fix <base>..<head>` writes the mechanical fixes.
 4. It writes the READY note from the receipt: first line `LANE-READY-INTEGRATION <card> head=<40hex>`, the base, the tier (the floor of the changed paths, as `moai bundle check` reads it), the receipt line and log folder, the fast-gate exits, each criterion, one `outside-scope:` line and one `leftovers:` line. A path outside the reserved scope is never a refusal: it is named on the `outside-scope:` line and the auditor reads it. At tier 2 pass `--mutants <file>` with one `guard-mutant: <test> | <code removed> | exit <n>` line per new guard test (`guard-mutant: none | <reason>` without one); the command copies them into the note.
 5. It sends the card to `review` and gives the reserved paths back, as `moai card review` does, and prints the head, the tier and the next card to take.
 

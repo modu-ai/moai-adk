@@ -6,7 +6,8 @@
 //! does two more things around the move, and nothing else:
 //!
 //! - [`plan`], before the first write: the worktree is found and every precondition is read (the
-//!   state it is in, a tracked change, a path the new commit adds that something stands on, a
+//!   state it is in, a tracked change at a path the move changes (a tracked change anywhere else
+//!   is someone's own work and stays), a path the new commit adds that something stands on, a
 //!   submodule entry, and a dry run of the same two-tree merge git itself would make). A refusal
 //!   carries its reason and the next thing to do; the landing adds `nothing was changed`.
 //! - [`apply`], right after the move: `git read-tree -m -u <old tip> <new head>`, git's own
@@ -41,7 +42,10 @@ pub struct Plan {
     pub to: String,
 }
 
-/// What a landing did to the worktree, as the answer's `worktree_follow` key.
+/// What a landing did to the worktree, as the answer's `worktree_follow` key. A worktree that
+/// followed (`followed`, `finished`) also says how many tracked changes it still holds, the ones
+/// the landing left alone (`kept_changes`; `null` when it did not follow or the count cannot be
+/// read).
 pub fn answer(
     tree: Option<&Path>,
     status: &str,
@@ -49,9 +53,14 @@ pub fn answer(
     to: &str,
     note: Option<&str>,
 ) -> Value {
+    let kept = match (tree, status) {
+        (Some(t), "followed" | "finished") => tracked_changes(t).ok().map(|c| c.len()),
+        _ => None,
+    };
     json!({
         "worktree": tree.map(|t| t.display().to_string()),
         "status": status, "from": from, "to": to, "note": note,
+        "kept_changes": kept,
     })
 }
 
@@ -228,9 +237,9 @@ fn check_entry_tags(tree: &Path) -> Result<()> {
     Ok(())
 }
 
-/// The refusal for a tracked change in the worktree: a staged change, an unstaged change or a
-/// deleted tracked file.
-fn check_clean(tree: &Path) -> Result<()> {
+/// The tracked changes of the worktree: a staged change, an unstaged change or a deleted tracked
+/// file, one path each (untracked files are not counted).
+fn tracked_changes(tree: &Path) -> Result<Vec<String>> {
     let out = run(
         tree,
         &[
@@ -241,23 +250,69 @@ fn check_clean(tree: &Path) -> Result<()> {
             "--no-renames",
         ],
     )?;
-    let changed: Vec<String> = out
+    Ok(out
         .split(|b| *b == 0)
         .filter(|entry| entry.len() > 3)
         .map(|entry| String::from_utf8_lossy(&entry[3..]).into_owned())
+        .collect())
+}
+
+/// The files whose working-tree copy differs from the index (an edit or a deletion), one path
+/// each. `git diff` compares content for an entry whose stat data differs (a file rewritten with
+/// the same bytes); the plumbing `diff-files` would call it changed and never refreshes.
+fn unstaged_changes(tree: &Path) -> Result<Vec<String>> {
+    let out = run(
+        tree,
+        &["diff", "--name-only", "-z", "--no-ext-diff", "--no-renames"],
+    )?;
+    Ok(out
+        .split(|b| *b == 0)
+        .filter(|path| !path.is_empty())
+        .map(|path| String::from_utf8_lossy(path).into_owned())
+        .collect())
+}
+
+/// The paths a move from `from` to `to` changes (added, changed or deleted files).
+fn moved_paths(tree: &Path, from: &str, to: &str) -> Result<BTreeSet<String>> {
+    Ok(changes(tree, from, to)?
+        .into_iter()
+        .map(|c| c.path)
+        .collect())
+}
+
+/// The refusal for a tracked change at a path the move changes. A tracked change at any other
+/// path is someone else's work the move leaves alone: `git read-tree -m -u` keeps it, so it is no
+/// reason to refuse. A file deleted at a changed path must refuse as much as an edited one,
+/// because git brings it back without a word (SPEC-20261125-land-unrelated-tracked-changes).
+fn check_overlap(tree: &Path, changed: &[String], moved: &BTreeSet<String>) -> Result<()> {
+    let overlapping: Vec<String> = changed
+        .iter()
+        .filter(|path| moved.contains(path.as_str()))
+        .cloned()
         .collect();
-    if changed.is_empty() {
+    if overlapping.is_empty() {
         return Ok(());
     }
     Err(refusal(
         format!(
-            "{} has {} tracked change(s): {}",
+            "{} has overlapping tracked changes: {} of its {} tracked change(s) are at paths the landing changes ({})",
             tree.display(),
+            overlapping.len(),
             changed.len(),
-            listed(&changed)
+            listed(&overlapping)
         ),
-        "commit, stash or discard them there (the landing never touches work it does not own), then run the call again",
+        "the landing never touches work it does not own: the owner of those changes commits or discards them on a branch of their own, or you land from a worktree of your own that has the integration branch checked out, then run the call again",
     ))
+}
+
+/// Before the move: no staged, unstaged or deleted tracked change of the worktree is at a path the
+/// move from `from` to `to` changes.
+fn check_clean(tree: &Path, from: &str, to: &str) -> Result<()> {
+    let changed = tracked_changes(tree)?;
+    if changed.is_empty() {
+        return Ok(());
+    }
+    check_overlap(tree, &changed, &moved_paths(tree, from, to)?)
 }
 
 /// One path a move changes.
@@ -506,7 +561,7 @@ pub fn plan(
         return Ok(None);
     };
     check_state(&tree, tip, branch)?;
-    check_clean(&tree)?;
+    check_clean(&tree, tip, head)?;
     check_paths(&tree, tip, head)?;
     dry_run(&tree, tip, head)?;
     Ok(Some(Plan {
@@ -528,13 +583,41 @@ pub fn apply(plan: &Plan) -> Result<()> {
             plan.from, plan.to
         )
     })?;
-    if !quiet(&plan.tree, &["diff-index", "--cached", "--quiet", &plan.to])? {
+    // A staged change at a path the move leaves alone stays staged, so the index equals the new
+    // commit at every path the move changed, not everywhere.
+    let moved = moved_paths(&plan.tree, &plan.from, &plan.to)?;
+    let behind: Vec<String> = staged_differences(&plan.tree, &plan.to)?
+        .into_iter()
+        .filter(|path| moved.contains(path))
+        .collect();
+    if !behind.is_empty() {
         return Err(format!(
-            "the worktree {at} was brought along but its index does not equal {}",
-            plan.to
+            "the worktree {at} was brought along but its index does not equal {} at {}",
+            plan.to,
+            listed(&behind)
         ));
     }
     Ok(())
+}
+
+/// The paths where the index differs from the tree of `commit`.
+fn staged_differences(tree: &Path, commit: &str) -> Result<Vec<String>> {
+    let out = run(
+        tree,
+        &[
+            "diff-index",
+            "--cached",
+            "--name-only",
+            "-z",
+            "--no-renames",
+            commit,
+        ],
+    )?;
+    Ok(out
+        .split(|b| *b == 0)
+        .filter(|path| !path.is_empty())
+        .map(|path| String::from_utf8_lossy(path).into_owned())
+        .collect())
 }
 
 /// The tip this card's start row recorded for a landing of `head`.
@@ -625,16 +708,11 @@ pub fn rerun(
         )));
     }
     check_state(&tree, &tip, branch)?;
-    // `git diff` compares content for an entry whose stat data differs (a file rewritten with the
-    // same bytes); the plumbing `diff-files` would call it changed and never refreshes.
-    if !quiet(&tree, &["diff", "--quiet", "--no-ext-diff"])? {
-        return Err(refusal(
-            format!(
-                "{} has edited tracked files, and its index still lags at {old}",
-                tree.display()
-            ),
-            "save a copy of the edited files elsewhere, discard the edits there (`git restore .`; a commit is refused on the integration branch and a stash would carry the lagging index too) and run the call again",
-        ));
+    // The index is the old tip's tree, so an edit or a deletion in the working tree is somebody's
+    // own change: it matters only where the move changes the same path.
+    let edited = unstaged_changes(&tree)?;
+    if !edited.is_empty() {
+        check_overlap(&tree, &edited, &moved_paths(&tree, &old, &tip)?)?;
     }
     // The added paths are read by `apply` right before the write, so they are not read here.
     dry_run(&tree, &old, &tip)?;
