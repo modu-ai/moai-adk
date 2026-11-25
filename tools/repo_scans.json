@@ -1796,7 +1796,7 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test agent_delegation_text --test agents_choices_step_cli --test audit_gate_cli --test integration_guard_install --test bin_names_signature_cli --test bundle_user_assets_cli --test claude_python_adapter_removed --test git_hooks_cli --test launcher_reads_models --test launcher_retire_role_flags --test next_flow_skill_scan --test omp_launcher_removed --test orca_optional_3005 --test product_cli --test protected_paths_one_list --test repo_claude_md --test retired_host_words --test sdd_guidance --test style_banner_scan --test worktree_report --test repo_scans_table",
+        "cargo test --offline --locked --test agent_delegation_text --test agents_choices_step_cli --test audit_gate_cli --test integration_guard_install --test bin_names_signature_cli --test bundle_user_assets_cli --test claude_python_adapter_removed --test git_hooks_cli --test launcher_reads_models --test launcher_retire_role_flags --test next_flow_skill_scan --test omp_launcher_removed --test optional_browser_refs_cli --test orca_optional_3005 --test product_cli --test protected_paths_one_list --test repo_claude_md --test retired_host_words --test sdd_guidance --test style_banner_scan --test worktree_report --test repo_scans_table",
         "cargo test --offline --locked --test card github_cli:: -- labels_check:: labels_sync:: release_branch_version:: release_pr_three_os:: trailer_check_cli:: trailer_paragraph_guard_cli:: verified_trailer_in_use_cli::"
       ],
       "rules": [
@@ -1815,6 +1815,7 @@
         "tests/launcher_retire_role_flags.rs",
         "tests/next_flow_skill_scan.rs",
         "tests/omp_launcher_removed.rs",
+        "tests/optional_browser_refs_cli.rs",
         "tests/orca_optional_3005.rs",
         "tests/product_cli.rs",
         "tests/protected_paths_one_list.rs",
