@@ -4,9 +4,10 @@ use std::path::PathBuf;
 
 /// Choose the writing language item by item
 ///
-/// Writing-language setup (#2293): asks three questions (commit messages, documents,
-/// instruction files; the conversation language comes from the install step's saved value and
-/// is not asked) and returns a complete profile for `project-plan`;
+/// Writing-language setup: asks four questions (the conversation language, the documents,
+/// the commit messages and the instruction files; the value the install step saved is the
+/// conversation question's suggested answer) and returns a complete profile for
+/// `project-plan`;
 /// writes nothing. `--questions` prints the question
 /// set for a host question tool, `--answers` reads that tool's `{item: code}` JSON on
 /// stdin, and neither flag asks on the terminal (prompts on stderr, answers on stdin).
