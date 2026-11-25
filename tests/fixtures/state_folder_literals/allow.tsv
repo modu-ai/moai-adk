@@ -78,6 +78,7 @@ tests/card/queue_query_cli.rs	2	0
 tests/card/recurring_problems_rule.rs	0	1
 tests/card/release_suite.rs	1	4
 tests/check_affected_card_select.rs	0	1
+tests/check_affected_exit_code.rs	0	2
 tests/check_affected_non_rust.rs	0	3
 tests/check_tree_cli.rs	7	61
 tests/ci_scope_test.py	3	3
@@ -195,11 +196,11 @@ tests/project_layer_follow_ups.rs	0	1
 tests/project_scale_detect_lib.rs	2	3
 tests/project_skill_links.rs	4	0
 tests/project_update_hooks_cli.rs	3	4
-tests/project_update_plan_cli.rs	12	70
+tests/project_update_plan_cli.rs	12	72
 tests/project_worktree_move_choice.rs	0	3
 tests/recovery_cli.rs	1	3
 tests/repo_claude_md.rs	2	9
-tests/repo_scans_table.rs	0	17
+tests/repo_scans_table.rs	0	18
 tests/report_rules_core.rs	0	1
 tests/reports_move_cli.rs	62	13
 tests/retired_hosts_layer.rs	5	0
@@ -216,6 +217,7 @@ tests/skill_entry_order.rs	0	1
 tests/skill_name_collision.rs	2	0
 tests/skill_references_test.py	1	1
 tests/smoke_harness_test.py	4	0
+tests/spec_approval_digest.rs	0	1
 tests/spec_before_code_hook.rs	0	26
 tests/spec_branch_name_first.rs	0	6
 tests/spec_cli.rs	28	50

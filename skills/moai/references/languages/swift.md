@@ -15,9 +15,9 @@ Take the scheme and destination from the CI file or `xcodebuild -list`; never pi
 
 | Kind | Default command | Use it only when |
 | --- | --- | --- |
-| format | `swift format lint --recursive .` | `.swift-format` exists |
+| format | `swift format lint --recursive .` | `.swift-format` exists and the toolchain is Swift 6 (Xcode 16) or later, which includes `swift format`; with an older toolchain the tool is a separate `swift-format` install, and without it the format step is `not_run` |
 | lint | `swiftlint` | `.swiftlint.yml` exists |
-| type check | covered by the build | |
+| type check | covered by the build | n/a: no separate step exists |
 
 ## Dependency existence
 

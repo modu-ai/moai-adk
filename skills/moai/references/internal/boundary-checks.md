@@ -15,4 +15,4 @@ Defects at a boundary pass each side's own tests and fail only when the two meet
 6. **Distrust casts and unchecked conversions.** A cast or an untyped parse lets a mismatch compile. Name each one and prove it with a test that uses real data from the other side.
 7. **Test across the boundary.** The test drives both sides together and fails when they disagree. State the assumptions it relies on.
 
-Adapted from revfactory/harness `qa-agent-guide.md` (Apache License 2.0), as carried in the MoAI ADK Go generation `rules/moai/quality/boundary-verification.md` with its `rules/moai/NOTICE.md` at revision `4fa2aa9db2`; the framework-specific case studies were generalised.
+Adapted from revfactory/harness `qa-agent-guide.md` (Apache License 2.0); the framework-specific case studies were generalised.

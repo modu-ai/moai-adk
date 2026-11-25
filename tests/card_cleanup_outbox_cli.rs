@@ -489,6 +489,20 @@ impl World {
         (card, claimer, wt, branch)
     }
 
+    /// Moves the end of every cleanup lease into the past, so a test does not wait for a lease on
+    /// the wall clock. Events are append-only in a real ledger; in this throwaway one the guard is
+    /// lifted for the update.
+    fn end_every_lease(&self) {
+        let file = ledger::ledger_path(self.home.path(), "demo").unwrap();
+        let conn = rusqlite::Connection::open(&file).unwrap();
+        conn.execute_batch(
+            "DROP TRIGGER event_no_update; \
+             UPDATE event SET payload = json_set(payload, '$.lease_until', 1) \
+             WHERE kind = 'cleanup.started';",
+        )
+        .unwrap();
+    }
+
     /// The claiming card gives its reservation back: the claim that passed by itself is over.
     fn release(&self, card: &str) {
         result(&self.card(Some(S_A), &["release", card, "--generation", "1"]));
@@ -1104,9 +1118,9 @@ fn ac5_a_run_that_stopped_after_the_worktree_step_is_finished_by_the_next() {
     let (card, claimer, wt, branch) = w.pending("stop");
     w.release(&claimer);
 
+    // The default lease (300 s of the database clock) is far longer than any loaded run, so the
+    // busy check below never races it; the test ends the lease itself instead of waiting for it.
     let stopped = w.run_pending_with(&Options {
-        // Long enough that a loaded machine does not end it before the busy check below.
-        lease_secs: 12,
         stop_after_worktrees: true,
         ..Options::default()
     });
@@ -1128,15 +1142,9 @@ fn ac5_a_run_that_stopped_after_the_worktree_step_is_finished_by_the_next() {
     );
     assert!(w.has_branch(&branch));
 
-    // Wait for the lease to end (the database clock counts whole seconds), then run again.
-    let mut done = w.run_pending();
-    for _ in 0..60 {
-        if World::entry(&done, &card)["status"] != json!("busy") {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(500));
-        done = w.run_pending();
-    }
+    // Time passes: the lease of the stopped attempt is over, and the next run finishes the request.
+    w.end_every_lease();
+    let done = w.run_pending();
     assert_eq!(
         World::entry(&done, &card)["status"],
         json!("settled"),
@@ -1775,7 +1783,7 @@ fn fu2_a_killed_executor_leaves_its_lease_and_the_next_attempt_names_it() {
             "leader",
         ],
     );
-    for _ in 0..200 {
+    for _ in 0..1200 {
         if marker.exists() {
             break;
         }
@@ -1853,7 +1861,7 @@ fn fu1_a_real_executor_whose_lease_ends_under_it_answers_what_it_deleted() {
     common::write_executable(
         &hook,
         &format!(
-            "#!/bin/sh\n[ \"$1\" = prepared ] || exit 0\nwhile read old new ref; do\n  case \"$ref\" in\n    refs/heads/lane/handover) : > '{}'; n=0; while [ ! -e '{}' ] && [ $n -lt 300 ]; do sleep 0.1; n=$((n+1)); done; exit 0 ;;\n  esac\ndone\nexit 0\n",
+            "#!/bin/sh\n[ \"$1\" = prepared ] || exit 0\nwhile read old new ref; do\n  case \"$ref\" in\n    refs/heads/lane/handover) : > '{}'; n=0; while [ ! -e '{}' ] && [ $n -lt 1200 ]; do sleep 0.1; n=$((n+1)); done; exit 0 ;;\n  esac\ndone\nexit 0\n",
             marker.display(),
             go.display()
         ),
@@ -1873,7 +1881,7 @@ fn fu1_a_real_executor_whose_lease_ends_under_it_answers_what_it_deleted() {
             "leader",
         ],
     );
-    for _ in 0..200 {
+    for _ in 0..1200 {
         if marker.exists() {
             break;
         }

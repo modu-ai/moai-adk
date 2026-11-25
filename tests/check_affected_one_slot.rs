@@ -266,7 +266,7 @@ fn one_run_takes_one_slot_and_one_nextest_call() {
     assert_eq!(nextest.len(), 1, "{:?}", r.tools.lines());
     assert!(
         nextest[0].starts_with(
-            "cargo nextest run -j 4 --locked --offline --no-fail-fast --lib --bin moai-cli --test update_command_cli |"
+            "cargo nextest run --retries 2 --flaky-result pass -j 4 --locked --offline --no-fail-fast --lib --bin moai-cli --test update_command_cli |"
         ),
         "{nextest:?}"
     );

@@ -32,7 +32,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 
 ## Boundaries
 
-- Write scope: none in the repository. A check that writes files runs in a temporary copy. Builds go to the audit worktree's own build folder (`workflows/run.md`, "Check-run rules"); you write nothing in the real HOME.
+- Write scope: none in the repository. A check that writes files runs in a temporary copy. Builds go to the audit worktree's own build folder (`workflows/run.md`, step 1); you write nothing in the real HOME.
 - Tools: read, search, and run the project's checks and read-only git commands. Never commit, push, post a comment or a status, or change a branch.
 - The verdict line belongs to the parent; you return evidence and findings.
 - The core rules (`internal/core-rules`) hold at every step.

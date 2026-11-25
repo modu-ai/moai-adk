@@ -23,6 +23,9 @@ use crate::{
 use serde_json::{json, Map, Value};
 use std::{fs, path::Path};
 
+/// The choice steps the user declined (SPEC-20261125-update-declined-steps).
+pub mod declined;
+
 type Result<T> = std::result::Result<T, String>;
 
 /// The one placeholder a printed command carries.
@@ -1436,12 +1439,15 @@ fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> V
     } else {
         or_blocked(PICKS, agents_picks_step(root, shown))
     };
+    // A declined pick still reads as pending below: declining it must not open a new question
+    // about the same file, so the merge decision follows the pick as it was before the record.
+    let picks_pending = matches!(picks.state, "needs_decision" | "conflict");
     let agents = if install
         .iter()
         .any(|s| s.name == "generation" && s.state == "ready")
     {
         Step::waiting(NAME, "blocked", AFTER_INSTALL)
-    } else if matches!(picks.state, "needs_decision" | "conflict") {
+    } else if picks_pending {
         // The text of `AGENTS.local.md` goes into `CLAUDE.local.md` through the pick `move`.
         Step::waiting(NAME, "skip", AFTER_PICKS)
     } else {
@@ -1453,7 +1459,24 @@ fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> V
         SETTINGS,
         claude_settings_merge_step(root, shown, pending("claude-settings")),
     );
-    vec![picks, agents, settings]
+    // The user's declines (SPEC-20261125-update-declined-steps): a step that would ask and holds
+    // the source it was declined for reads `skip`. A record that cannot be read changes nothing.
+    let record = declined::read(root).unwrap_or_default();
+    let sha_in = |step: &Step, key: &[&str]| {
+        let mut v = &step.preview;
+        for k in key {
+            v = &v[*k];
+        }
+        v.as_str().map(String::from)
+    };
+    let picks_sha = declined::picks_source_sha256(root);
+    let agents_sha = sha_in(&agents, &["source", "sha256"]);
+    let settings_sha = sha_in(&settings, &["backup_sha256"]);
+    vec![
+        declined::read_step(shown, &record, picks, picks_sha),
+        declined::read_step(shown, &record, agents, agents_sha),
+        declined::read_step(shown, &record, settings, settings_sha),
+    ]
 }
 
 /// The step name of the picks for a project that holds `AGENTS.md` or `AGENTS.local.md`.
@@ -1644,6 +1667,51 @@ fn claude_settings_merge_step(root: &Path, shown: &str, install_pending: bool) -
             "a key was changed in the file since MoAI wrote it; nothing is merged",
         ),
     };
+    let conflicts: Vec<String> = plan["conflicts"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|k| k.as_str().map(String::from))
+        .collect();
+    let file = plan["settings_path"]
+        .as_str()
+        .unwrap_or(".claude/settings.json");
+    // REQ-9: a conflict names the keys and the file, and the two ways out.
+    let reason = if state == "conflict" && !conflicts.is_empty() {
+        format!(
+            "{file} holds a different value than the earlier settings for {}; nothing is merged: \
+             keep the file's value for them and merge the rest (keep-mine), or skip this step",
+            conflicts.join(", ")
+        )
+    } else {
+        reason.to_string()
+    };
+    let mut pv = preview(json!({
+        "action": plan["action"],
+        "settings_path": plan["settings_path"],
+        "conflicts": plan["conflicts"],
+    }));
+    if state == "conflict" && !conflicts.is_empty() {
+        let keep = claude::current_settings(root).ok().and_then(|current| {
+            let mut mine = stdin.clone();
+            for key in &conflicts {
+                match current.get(key) {
+                    Some(v) => mine.insert(key.clone(), v.clone()),
+                    None => mine.remove(key),
+                };
+            }
+            let desired =
+                claude::user_settings_desired_in(root, &mine, SettingsScope::Project).ok()?;
+            let plan = claude::settings_plan_in(root, &desired, SettingsScope::Project).ok()?;
+            keep_mine_choice(shown, &conflicts, &plan, mine)
+        });
+        let skip = json!({
+            "id": "skip",
+            "effect": declined::decline_object(shown, NAME, &found.sha256, false)["effect"],
+            "apply": {"argv": declined::decline_argv(shown, NAME, &found.sha256), "stdin": Value::Null},
+        });
+        pv["choices"] = json!(keep.into_iter().chain([skip]).collect::<Vec<_>>());
+    }
     let apply = match (&digest, state) {
         (Some(d), "needs_decision") => Some((
             argv("claude-settings-apply", shown, d),
@@ -1654,15 +1722,36 @@ fn claude_settings_merge_step(root: &Path, shown: &str, install_pending: bool) -
     Ok(Step {
         name: NAME,
         state,
-        reason: reason.into(),
-        preview: preview(json!({
-            "action": plan["action"],
-            "settings_path": plan["settings_path"],
-            "conflicts": plan["conflicts"],
-        })),
+        reason,
+        preview: pv,
         plan_digest: digest,
         apply,
     })
+}
+
+/// The `keep-mine` choice (REQ-11, REQ-12): the settings apply whose stdin leaves each conflicting
+/// key at the file's value. `plan` is the plan made with that stdin; with a conflict left, or with
+/// nothing to write, there is no such command and the choice is left out.
+fn keep_mine_choice(
+    shown: &str,
+    conflicts: &[String],
+    plan: &Value,
+    stdin: Map<String, Value>,
+) -> Option<Value> {
+    if !matches!(plan["action"].as_str(), Some("create" | "update")) {
+        return None;
+    }
+    let digest = plan["plan_digest"].as_str()?;
+    Some(json!({
+        "id": "keep-mine",
+        "effect": format!(
+            "the file keeps its value for {}; the other earlier settings are merged back, and \
+             this step still names the key until you choose skip",
+            conflicts.join(", ")
+        ),
+        "plan_digest": digest,
+        "apply": {"argv": argv("claude-settings-apply", shown, digest), "stdin": Value::Object(stdin)},
+    }))
 }
 
 fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {
@@ -2025,6 +2114,28 @@ mod tests {
             Value::Object(settings_stdin(owned)),
             json!({"outputStyle": "Explanatory"})
         );
+    }
+
+    /// REQ-12: `keep-mine` is printed only for a plan that still writes something and has no
+    /// conflict left; a conflict, no change or no digest leaves the choice out.
+    #[test]
+    fn keep_mine_is_left_out_unless_its_plan_writes_without_a_conflict() {
+        let conflicts = ["statusLine".to_string()];
+        let stdin: Map<String, Value> =
+            serde_json::from_value(json!({"statusLine": {"command": "mine"}})).unwrap();
+        let make = |plan: Value| keep_mine_choice("/p", &conflicts, &plan, stdin.clone());
+        for plan in [
+            json!({"action": "conflict", "plan_digest": "sha256:d", "conflicts": ["statusLine"]}),
+            json!({"action": "unchanged", "plan_digest": "sha256:d"}),
+            json!({"action": "update"}),
+        ] {
+            assert_eq!(make(plan.clone()), None, "{plan}");
+        }
+        let choice = make(json!({"action": "update", "plan_digest": "sha256:d"})).unwrap();
+        assert_eq!(choice["id"], "keep-mine");
+        assert_eq!(choice["apply"]["argv"][1], "claude-settings-apply");
+        assert_eq!(choice["apply"]["argv"][4], "sha256:d");
+        assert_eq!(choice["apply"]["stdin"], json!(stdin));
     }
 
     #[test]

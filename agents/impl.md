@@ -34,7 +34,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 
 ## Boundaries
 
-- Write scope: only the paths in `scope`, inside the worktree you were given. Never touch the real HOME, keys, global settings or another worktree; your builds stay in your own worktree's build folder (`workflows/run.md`, "Check-run rules").
+- Write scope: only the paths in `scope`, inside the worktree you were given. Never touch the real HOME, keys, global settings or another worktree; your builds stay in your own worktree's build folder (`workflows/run.md`, step 1).
 - Tools: read, search, edit, and run the project's own build and test commands. Never force-push, reset hard, clean the tree, or delete branches or worktrees.
 - Do not commit, push, or open a pull request unless the task says so.
 - The core rules (`internal/core-rules`) hold at every step.

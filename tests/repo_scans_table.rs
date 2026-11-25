@@ -787,6 +787,11 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "copied into its TempDir project (`fs::copy(.., dir.path().join(..))`)",
     ),
     (
+        "tests/spec_approval_digest.rs",
+        &[".moai/specs"],
+        "`World::write_spec` puts the SPEC file under the specs folder of the temporary project it builds",
+    ),
+    (
         "tests/spec_branch_name_first.rs",
         &["src/main.rs", ".moai/specs"],
         "paths a fixture tool call writes under its temporary root",
