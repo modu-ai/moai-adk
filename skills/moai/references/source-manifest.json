@@ -192,7 +192,7 @@
       }
     },
     "references/internal/decide.md": {
-      "sha256": "94e4017f61de1b65044d653d9bed98454f0b94a309f5c18cc4406712ef74b214",
+      "sha256": "28b5fb778e27114b388cf6973c78b38f405a00efa2fe54759e766d3737fbbb50",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-decide",
@@ -222,7 +222,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "de02867ae04b107f7e1d09fba6900f5c682a9dac197c931b927064c25d98da98",
+      "sha256": "e2d7c4314c56223592201e61a290296eedcddd7f25f1683879d40e8e482c1929",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -258,7 +258,7 @@
       }
     },
     "references/internal/questions.md": {
-      "sha256": "a8894322b4b2cc40cfa6dcd76447307018d7dbe509d90664b23a207feb71e868",
+      "sha256": "fb66712547ed0124b7c535f7f1b832b1ac6c9090af3e0eb29bbaf63bce678df3",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-questions",
@@ -318,7 +318,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "85ce2ceb603f0806d307ac6b064d1d46f8e387c4540ca6dfd3643defa53e71c9",
+      "sha256": "b67be1bd9605c3e906fc4c79a77140925d813eb0637f869bd3d8f9a64d315427",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",

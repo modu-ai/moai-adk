@@ -2499,10 +2499,11 @@ mod skill_package {
     #[test]
     fn open_questions_are_sorted_and_holds_name_five_categories() {
         let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
-        let start = skill
+        let decide = fs::read_to_string(root().join("references/internal/decide.md")).unwrap();
+        let start = decide
             .find("the five HOLD categories")
-            .expect("SKILL.md names the five HOLD categories");
-        let clause = &skill[start..start + skill[start..].find(", or that changes").unwrap()];
+            .expect("decide.md names the five HOLD categories");
+        let clause = &decide[start..start + decide[start..].find(", or that changes").unwrap()];
         let named: Vec<&str> = clause.split('`').skip(1).step_by(2).collect();
         assert_eq!(
             named,
@@ -2510,7 +2511,7 @@ mod skill_package {
             "{clause}"
         );
         for line in [
-            "a question that a read, a command or a document answers is not a decision",
+            "A question that a read, a command or a document answers is not a decision",
             "goes to the user and waits — no deadline applies it by default",
             "the leader decides it within the chosen autonomy level, records it, and the user may reverse it afterwards",
             "a lane asks the leader, not the user",
@@ -2523,12 +2524,12 @@ mod skill_package {
             // Card C-81 (leader decision after audit B1): a tag or release left case (4), where a
             // deadline default applies, for case (2) at every autonomy level; lifting a HOLD stays
             // a `semi` case-(4) choice until the user decides it.
-            "what the chosen autonomy level still reserves for the user (new Issues, lifting a HOLD and merge-policy changes at `semi`) goes to the user as case (4)",
-            "pushing a tag or publishing a release is case (2) at every autonomy level, `full` included",
+            "What the chosen autonomy level still reserves for the user (the list is the project's `autonomy` setting, `internal/interview`) goes to the user as case (4)",
+            "Pushing a tag or publishing a release is case (2) at every autonomy level, `full` included",
             "Independent audit and the CI gate are never delegated.",
             "its options, the default, whether it is reversible, its category (`none`, `guarded` or one of the five), its deadline and who decided; a decision without a record does not count.",
         ] {
-            assert!(skill.contains(line), "SKILL.md lacks: {line}");
+            assert!(decide.contains(line), "decide.md lacks: {line}");
         }
         // #2678, moved by SPEC-20261121-report-rules-in-core-rules: a reported figure comes
         // from a named command, and silence is not zero. The skill entry points to rules 23 and 24.
@@ -2551,7 +2552,7 @@ mod skill_package {
         // (SPEC-20261122-next-flow-skills-agents REQ-2).
         // Card C-81: no text still puts a release among the case-(4) choices or limits it to
         // `semi`; lifting a HOLD is not moved to case (2) without a user decision.
-        for (name, body) in [("SKILL.md", &skill)] {
+        for (name, body) in [("decide.md", &decide)] {
             for old in [
                 "merge-policy changes and releases",
                 "releases at `semi`",

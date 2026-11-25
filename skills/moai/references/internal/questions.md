@@ -2,7 +2,7 @@
 
 When to read: before you ask the user anything in the UPDATE or PROJECT route, or go down the interview question bank (`internal/interview`).
 
-How a question reaches the user. It holds for every question of those routes, including a pick that SKILL.md sorts as case (2).
+How a question reaches the user. It holds for every question of those routes, including a pick that `internal/decide` sorts as case (2).
 
 1. Run, do not hand over. Read-only previews run without asking. After the user has seen the preview and picked, run the command yourself. Never tell the user to run a command in a terminal when this session can run it; the user only chooses.
 2. Every question is a selection. List the options, put the recommended one first and mark it, and give the reason for it in one line. Never ask an open or free-text question when the options can be listed: take them from what was read (`project-detect`, the manifests, the preview) or from the row's options in the question bank. A yes-or-no ask is a selection of two options with a recommendation. The one exception is the purpose of a project: only the user's own words can answer it, so ask it as plain text in the conversation (the one question asked as plain text even on a host that lists a question tool), with no draft and no option written from the README, the manifests or the code, and take the user's typed answer as it is.

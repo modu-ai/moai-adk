@@ -195,16 +195,12 @@ fn merged_rules_live_in_their_workflow_files() {
 fn release_tags_wait_for_the_user_at_every_level() {
     for (file, phrase) in [
         (
-            "SKILL.md",
-            "pushing a tag or publishing a release is case (2) at every autonomy level, `full` included",
-        ),
-        (
             "references/internal/decide.md",
-            "goes to the user and waits, and so does pushing a tag or publishing a release at every autonomy level;",
+            "Pushing a tag or publishing a release is case (2) at every autonomy level, `full` included",
         ),
         (
             "references/internal/versioning.md",
-            "pushing a tag or publishing a release is `SKILL.md` case (2) at every autonomy level, `full` included: the user picks it and it waits, with no deadline default",
+            "pushing a tag or publishing a release is `internal/decide` case (2) at every autonomy level, `full` included: the user picks it and it waits, with no deadline default",
         ),
     ] {
         assert!(package(file).contains(phrase), "{file} must say `{phrase}`");
