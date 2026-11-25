@@ -415,6 +415,8 @@ fn lane_send_sends_failure_is_never_reported_as_sent() {
     let message = r.error().to_string();
     assert!(message.contains("send failed"), "{message}");
     assert!(!message.to_lowercase().contains("sent"), "{message}");
+    // A send that exited non-zero carries no hint that the text may have arrived.
+    assert!(!message.contains("may have reached the lane"), "{message}");
     // The send was attempted once and not repeated.
     assert_eq!(fake.sent().map(|s| s.len()), Some(1));
 }
@@ -443,6 +445,27 @@ fn lane_send_a_send_whose_output_a_child_holds_says_the_text_may_have_reached_th
     );
     // The send happened once and was not repeated.
     assert_eq!(fake.sent().map(|s| s.len()), Some(1));
+}
+
+/// The error text of a call says what happened first and names the program last, so a program
+/// path that is long cannot push the meaning out of a text that a reader cuts.
+#[test]
+fn lane_send_a_send_whose_output_a_child_holds_names_the_program_after_the_meaning() {
+    let fake = Fake::screen("synthetic-idle.txt");
+    fake.flag("send-child-holds");
+    let r = run(&fake, "hello", &[]);
+    let message = r.error().to_string();
+    let program = fake.bin.display().to_string();
+    let meaning = message
+        .find("did not finish its output")
+        .unwrap_or_else(|| panic!("no meaning in {message}"));
+    let path = message
+        .find(&program)
+        .unwrap_or_else(|| panic!("no program path in {message}"));
+    assert!(
+        meaning < path,
+        "the meaning comes at {meaning}, the program at {path}: {message}"
+    );
 }
 
 // ---- AC-3: unsafe text, unreachable lane ----
