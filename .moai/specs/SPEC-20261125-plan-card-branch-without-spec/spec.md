@@ -78,4 +78,14 @@ PLAN 글은 모든 계획이 SPEC 과 승인으로 끝난다고 말하고, SDD �
 
 ## Result
 
-구현 head 는 카드의 READY 노트에 있어요(영수증도 거기에 있어요). 아직 구현하지 않았어요.
+구현 head 는 카드의 READY 노트에 있어요(영수증도 거기에 있어요).
+
+- AC-1: met — `cargo test --locked --offline --test sdd_guidance card_branch_ac1_` 가 통과했어요(1개). `plan.md` 에 `## Card branches` 절이 있고, 1단계 Sort(바닥 목록 경로나 삭제·권한·관문·HOME 변경이면 tier 2, 아니면 tier 0 또는 1, 모르면 tier 2), 2단계 tier 0 또는 1(SPEC 없음, 승인 없음), 3단계 tier 2(SPEC, Interview, 승인)가 있어요.
+- AC-2: met — `card_branch_ac2_` 가 통과했어요. 4단계가 계획 에이전트의 Write set 과 바뀐 글을 읽는 Tests 를 카드 범위(`moai card take --scope`, `moai card scope`)로, Shared spots 를 `moai card line-lease` 로, Open questions 를 tier 2 SPEC 의 열린 물음 표지나 `LANE-BLOCKED kind=decision` 노트로 보내요. 테스트가 절이 이름 지은 모든 `moai card <verb>` 의 `--help` 를 실행했고 모두 있었어요.
+- AC-3: met — `card_branch_ac3_` 가 통과했어요. `sdd.md` 가 "A SPEC is for tier 2 changes" 를 말하고, 카드 본문과 기준이 그 아래 변경의 설계이고, SPEC 없는 카드는 `spec/` 로 시작하지 않는 브랜치에서 일하고, 감사는 네 가지에만 FAIL 을 준다고 해요. 옛 문장 셋("Every change that modifies the repository has a SPEC", "FAILs on any drift", "cards stay personal to-do items")은 없어졌고 `plan.md` 에 `Issue` 낱말이 없어요. `tests/sdd_guidance.rs` 에서 옛 첫 문장 고정은 "A SPEC is for tier 2 changes" 로 바꿨어요.
+- AC-4: met — `card_branch_ac4_` 가 통과했어요. `read.md` 가 한 가지 사실 물음은 바로 답하고 그 밖에는 갈래 나눔을 그대로 둬요.
+- AC-5: met — `cargo test --locked --offline --test skill_structure` 가 통과했어요(`agent_delegation_text`, `core_rules_2876`, `next_flow_skill_scan`, `spec_card_number_observe`, `spec_branch_name_first` 와 한 번에 실행했고 exit 0). `cargo test --locked --offline --test product_cli skill_package` 는 고친 뒤 통과했어요(13개). 카드 영수증의 첫 실행은 `product_cli skill_package::routes_reference_existing_workflows` 에서 한 번 실패했어요. `plan.md` 의 Sort 단계가 패키지 경로를 이름 지었기 때문이에요. 지금은 "the audit contract (the `audit` reference)" 라고 쓰고 같은 커밋에서 매니페스트 해시를 새로 고쳤어요.
+- Manifest: `skills/moai/references/source-manifest.json` 에서 `plan.md`, `read.md`, `sdd.md` 의 sha256 값 셋을 줄 임대 아래서 바꿨고, head 에서 49개 항목 중 49개가 파일 바이트와 같아요. `tests/fixtures/update_tux/*.json` 과 범위에 적은 테스트 파일 `agent_delegation_text.rs`, `skill_structure.rs` 는 바꿀 필요가 없었어요.
+- REQ-10 간극과 Non-goals 의 긴장: `sdd.md` 6항에서 ", and repeat the digest in the pull request body" 절을 지웠어요. Non-goals 는 승인 줄을 승인 digest SPEC 의 몫으로 두는데, 그 SPEC 을 가진 레인이 절 제거를 거절했어요. 그래서 이 변경은 그 절만 지우고, 두 변경은 착지 때 그 한 줄에서 만나요(다른 SPEC 의 문장을 두되 그 절은 뺀 채로 두세요).
+- not_run: `card/<slug>-<yyyymmdd>` 브랜치에서 SPEC 없는 카드를 끝에서 끝까지 실행하지 않았어요(도구 사전 점검 hook, `moai card submit` 과 그 트레일러 관문을 그런 브랜치에서 돌리지 않았어요). SPEC 없는 카드의 `moai card land` 도 실행하지 않았어요. 이 둘은 확인되지 않은 채로 남아요.
+- not_run: 고치기 전에 product_cli 테스트를 RED 로 돌리지 않았어요.
