@@ -40,3 +40,4 @@ The lines after the dated ones came from the leader's carry-over of closed cards
 - src 안의 테스트가 옛 상태 폴더 철자(`.moai-cli`)를 직접 써서 `project_state_dir_is_spelled_once` 스캔에 걸려요(2026-11-26 C-175 조각 1b 첫 영수증, 앞 조각에도 한 번): 테스트 도우미가 상태 폴더 이름을 주고 테스트 작성 지침에 한 줄
 - 부하에 따라 시간이 흔들리는 테스트가 착지 검사를 막아요(2026-11-25 lane_screen C-538, 2026-11-26 outbox ac5 C-539): 고정 임대·고정 대기 대신 장부 시각을 옮기는 도우미를 쓰고, 새 테스트의 고정 대기를 찾는 스캔
 - `SPEC-20261125-check-affected-rerun` 이 착지·닫힘(2026-11-25)까지 Result 절에 AC-1..AC-8 줄이 없어 `moai bundle check` 가 `result_missing` 을 냈는데 `card land` 는 막지 않았어요. 원인을 고칠 곳: `card submit` 이나 `card land` 가 승인 SPEC 의 Result AC 줄을 bundle check 와 같은 규칙으로 읽어 빠지면 거절(그 SPEC 의 Result 는 다음 SYNC 카드가 채워요).
+- `revert_entry` 가 before_sha256 이 있는 flow 항목의 파일이 current apply 에 지워진 경우 슬롯을 낡은 채 남겨요(2026-11-26 C-545 노트 9353, SPEC-20261125-flow-receipt-revert-slot REQ-3; 옛 바이트를 되살리면 업데이트가 지운 배치가 돌아와요): 슬롯만 비우고 파일은 되살리지 않을지 결정이 필요해요 (소스: src/home_routing/rules.rs)

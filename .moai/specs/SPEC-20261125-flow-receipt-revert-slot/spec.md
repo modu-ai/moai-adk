@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-flow-receipt-revert-slot
 title: "Reverting an earlier flow receipt after a later apply removed its file clears the slot, and the card check selects the slot tests"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9336 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님, 노트 9335 의 D-1·D-2 추천 기본값); 리더가 기록 직전과 착지 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:e6969dccfd7809acbbbd7a4805bb6789a9619cb8daaa3b48a488ce33a8cc5d10"
 ---
 
 # Reverting an earlier flow receipt after a later apply removed its file clears the slot, and the card check selects the slot tests
