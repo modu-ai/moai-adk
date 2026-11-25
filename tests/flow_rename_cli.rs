@@ -98,7 +98,7 @@ fn apply(root: &TempDir, plan: &Value) -> Output {
 
 /// The project profile the apply wrote, so a stored value is read from disk, not echoed.
 fn stored_profile(root: &Path) -> String {
-    let yaml = root.join(".moai").join("project.yaml");
+    let yaml = moai_cli::state_root::path(root, "project.yaml");
     let text = fs::read_to_string(&yaml).unwrap_or_default();
     assert!(!text.is_empty(), "the apply wrote no project.yaml");
     text

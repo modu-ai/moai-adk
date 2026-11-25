@@ -261,7 +261,10 @@ fn resolve_tip(
     let work_flow = moai_cli::profile::read_profile(project)
         .ok()
         .and_then(|(p, _)| p.work_flow);
-    if work_flow.as_ref().is_some_and(|w| moai_cli::profile::is_local_flow(&w.flow)) {
+    if work_flow
+        .as_ref()
+        .is_some_and(|w| moai_cli::profile::is_local_flow(&w.flow))
+    {
         if let Some(branch) = work_flow
             .and_then(|w| w.integration_branch)
             .filter(|b| !b.trim().is_empty())
