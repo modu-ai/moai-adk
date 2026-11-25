@@ -1426,10 +1426,33 @@ fn record_generation(
             "baseline_sha256": rendered,
         }));
     }
+    // SPEC-20261125-generation-request-record: the project agents and skills this apply built
+    // are recorded as the request's own lists, so a later plan from the stored state can rebuild
+    // them. A request with none leaves no key, so such a manifest reads as it did before. A
+    // request for the harness alone is recorded the same way when it names agents or skills (it
+    // builds them), and says nothing about an earlier record when it names none.
+    let r = &p.request;
+    let harness_only = is_harness_only(r);
+    let names_none =
+        r.native_roles.is_empty() && r.skill_projections.is_empty() && r.project_skills.is_empty();
+    if names_none {
+        if !harness_only {
+            map.remove(RECORD_KEY);
+        }
+    } else {
+        map.insert(
+            RECORD_KEY.into(),
+            json!({
+                "native_roles": r.native_roles,
+                "skill_projections": r.skill_projections,
+                "project_skills": r.project_skills,
+            }),
+        );
+    }
     // A request for the harness alone says nothing about the files the linkage vouches for: the
     // workflow id and the interview revision are carried by the engine, and the profile digest
     // goes back to the one the last full generation recorded.
-    if is_harness_only(&p.request) {
+    if harness_only {
         if let Some(old) = previous.get("profile_sha256") {
             map.insert("profile_sha256".into(), old.clone());
         }
@@ -1441,22 +1464,6 @@ fn record_generation(
         json!(profile.interview_revision),
     );
     map.insert("profile_sha256".into(), json!(digest(profile_bytes)));
-    // SPEC-20261125-generation-request-record: the project agents and skills this apply built
-    // are recorded as the request's own lists, so a later plan from the stored state can rebuild
-    // them. A request with none leaves no key, so such a manifest reads as it did before.
-    let r = &p.request;
-    if r.native_roles.is_empty() && r.skill_projections.is_empty() && r.project_skills.is_empty() {
-        map.remove(RECORD_KEY);
-    } else {
-        map.insert(
-            RECORD_KEY.into(),
-            json!({
-                "native_roles": r.native_roles,
-                "skill_projections": r.skill_projections,
-                "project_skills": r.project_skills,
-            }),
-        );
-    }
 }
 
 /// The manifest key that holds the recorded project agent and skill request.
