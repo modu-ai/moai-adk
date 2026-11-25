@@ -30,7 +30,7 @@
       "location": "repository only; not part of the installed package",
       "sha256": "93dcdca13b5d33735a9b1c710e39cab27a9c562496e6441a6b7d925cac5b9f5d",
       "rows": 1107,
-      "status": "every row has a verdict (user decision 2026-11-17); none unchecked; the generator tools/legacy_verdicts.py was removed with the Python tools",
+      "status": "every row has a verdict (user decision 2026-11-17); none unchecked; the generator was removed with the Python tools",
       "verdicts": {
         "adopted": 16,
         "deferred": 300,
@@ -78,7 +78,7 @@
       }
     },
     "references/audit.md": {
-      "sha256": "9b49ad7a706b2a827b927da178774ff75ead7ecdc4ae09201a25760cd78c079d",
+      "sha256": "6107af7374a5b435a164557c7fd1bcaf049b1ff165b8c48464cf47b0a9a093aa",
       "origin": {
         "kind": "design-spec",
         "template_id": "audit-contract",
@@ -249,7 +249,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "5502d4ccff0d5f40d3466a77d38196956f00810bc24e710b29f3db39ed59e623",
+      "sha256": "7d7b7c02d2e33bc492a6dc03e138cff0b12f906b509bd410dc89d88d78f23729",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -486,7 +486,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261124-moai-leader-route (REQ-1 to REQ-12): `/moai leader` makes the window that types it the registered coordination window; it registers with `session-register`, renews once per round, reads the ledger, sends audits to another session, lands with `moai card land --by leader` and releases the registration at the end. The completion-message and transition sentences stay in `flows/next-flow`."
       },
-      "sha256": "f1b6e90f288b122d62d0d3dc8295c4c2cee1126d53676a5107cc074ebfaf0826"
+      "sha256": "89679771c1bf25d52af53037cf4795465fc88aaa200698f5e603683244848dc3"
     },
     "workflows/plan.md": {
       "sha256": "690ea42cee7448ee4528f43c0b9137237a0c77a7a56197fb8347839b38891725",
@@ -498,7 +498,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "3809898c919221c444c297201593d4d7a590f49bc5b122da58b4f5caca10045f",
+      "sha256": "ab4c59839341179fdff9db94ec0bd2f36d88605f626429830fe349d55d3830c1",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -534,7 +534,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "b448d378e6b427a54106425d0137a36c9db3a12c23003965b5bb9dd15c266be9",
+      "sha256": "10533f6464f430eb6d110cfcd4fc3b6c6efbbe2b4167d7d9bdccdd027751f2fd",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
@@ -549,7 +549,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai agent` takes one card at a time, hands its plan, implementation and documents to the base agents in turn, submits it with `moai card submit` and waits for the leader (user decision 2026-11-25); a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "d8cdfd8f8a0c34e976e2ba15dd0efef6d6cccdc33982e98bd7e4933bae4a65b8"
+      "sha256": "d04816328bc143b0d35de074589468db7c1804797d75e4d9752baaa09619b77b"
     }
   }
 }

@@ -241,6 +241,7 @@ tests/update_adopt_cli.rs	1	1
 tests/update_backup_replace.rs	11	1
 tests/update_cleanup_cli.rs	8	43
 tests/update_cli.rs	4	14
+tests/update_closing_commit.rs	3	4
 tests/update_command_cli.rs	8	0
 tests/update_end_to_end_cli.rs	30	36
 tests/update_git_hooks_cli.rs	4	0

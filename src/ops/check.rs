@@ -27,7 +27,9 @@ enum Action {
     /// The checkout must be at the head with no modified tracked file, otherwise nothing runs.
     /// The cheap steps all run; after any failed step no later step starts, the answer's `skipped`
     /// lists the steps that did not start and `stopped_at` names the failed step; `--keep-going`
-    /// runs every step anyway. The cargo steps (clippy,
+    /// runs every step anyway. The first heavy step of a Rust repository is the `ledger` step of
+    /// `check fast` (the tests that fail when a hand-kept table was not updated), so a failed
+    /// `ledger` step stops `clippy` and `test`. The cargo steps (clippy,
     /// one `test` call by `cargo nextest run`, or `cargo test` when nextest is missing) run under
     /// one heavy slot held from the first to the last; a slot that is not obtained gives its exit
     /// code to each of them and no cargo starts. The `test` step runs with a cap of 4 threads
@@ -115,6 +117,63 @@ enum Action {
         #[arg(long)]
         keep_going: bool,
     },
+    /// Runs commands. Run the cheap checks and the ledger tests of a range, every one of them
+    ///
+    /// Runs commands: `git diff --check`, `cargo fmt --check`, `rustfmt --check` of each changed
+    /// operation file, the table check of the test files the range adds, the end-line check
+    /// (every changed text file ends in a newline) and the ledger tests, the few tests that fail
+    /// when a hand-kept table was not updated. No step stops the others: the answer lists every
+    /// failed step with its exit code, its log and the names of its failing tests, `result` is
+    /// `PASS` or `FAIL`, and `FAIL` exits 1. The range is `<base>..<head>` and the checkout must
+    /// be at the head with no modified tracked file, otherwise nothing runs. The ledger step
+    /// runs under one heavy slot. The step logs go under `<build folder>/check-fast-<head>` (or
+    /// `--out`); no `summary.txt` is written, because only `check affected` writes the receipt
+    /// of a READY note.
+    Fast {
+        /// The range, `<base>..<head>`.
+        range: String,
+        /// The repository (default: the current folder).
+        #[arg(long, default_value = ".")]
+        dir: PathBuf,
+        /// The heavy slot folder (default: the machine's).
+        #[arg(long)]
+        slot_dir: Option<PathBuf>,
+        /// The most heavy builds at once.
+        #[arg(long, default_value_t = 4)]
+        max: u32,
+        /// The free disk space, in GB, a heavy build needs.
+        #[arg(long, default_value_t = 50)]
+        min_free_gb: u32,
+        /// Where the step logs go.
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// The integration branch (kept for the same options as `check affected`).
+        #[arg(long)]
+        integration_ref: Option<String>,
+    },
+    /// Writes files. Write the table lines and hashes a range needs, print the rest
+    ///
+    /// Writes files in the checkout: the sha256 values of the skill package's source manifest,
+    /// the first word of a new test file in `tests/areas.toml` (only for a word given with
+    /// `--area <word>=<area>`), and a `--test` option on a check line of `tools/repo_scans.json`
+    /// when the result reads as growth of that table. It writes nothing for a choice a person
+    /// makes (an allow-list row, an exemption reason, a manifest entry's origin, an area for a
+    /// first word that no `--area` names): the line to add is printed as it is, in `print`. A
+    /// file that is a link, or lies under a linked folder, is not written and is named. After
+    /// writing it asks the same checks again: `result` is `PASS` only when nothing is left to
+    /// print, `nothing_to_do` is `true` when it wrote nothing and nothing is left, and `FAIL`
+    /// exits 1. The range is `<base>..<head>` and the checkout must be at the head with no
+    /// modified tracked file; commit what it wrote and run it again on the new head.
+    Fix {
+        /// The range, `<base>..<head>`.
+        range: String,
+        /// The repository (default: the current folder).
+        #[arg(long, default_value = ".")]
+        dir: PathBuf,
+        /// The area of the first word of a new test file, as `<word>=<area>`; repeat for more.
+        #[arg(long, value_parser = parse_area)]
+        area: Vec<(String, String)>,
+    },
     /// Reads the ledger. Print the tests that passed only on a retry, with their counts
     ///
     /// Reads `check-flaky.jsonl` in the project's state folder: the test step of `check affected`
@@ -179,6 +238,43 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             }
             Ok(answer)
         }
+        Action::Fast {
+            range,
+            dir,
+            slot_dir,
+            max,
+            min_free_gb,
+            out,
+            integration_ref,
+        } => {
+            let opts = moai_cli::check_fast::Options {
+                slot_dir,
+                max,
+                min_free_gb,
+                out,
+                integration_ref,
+                cargo: None,
+            };
+            moai_cli::check_fast::run(&dir, &range, &opts)
+        }
+        Action::Fix { range, dir, area } => {
+            let opts = moai_cli::check_fix::Options {
+                areas: area,
+                integration_ref: None,
+            };
+            moai_cli::check_fix::run(&dir, &range, &opts)
+        }
         Action::Flaky { dir } => moai_cli::check_flaky::report(&dir),
+    }
+}
+
+/// `<word>=<area>`, split on the first `=`; a value without one, or with an empty side, is a usage
+/// error.
+fn parse_area(value: &str) -> Result<(String, String), String> {
+    match value.split_once('=') {
+        Some((word, area)) if !word.is_empty() && !area.is_empty() => {
+            Ok((word.to_string(), area.to_string()))
+        }
+        _ => Err(format!("`{value}` is not `<word>=<area>`")),
     }
 }

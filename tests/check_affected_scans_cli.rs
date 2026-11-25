@@ -8,6 +8,7 @@
 //! of them, so the repository scan table asks nothing of it.
 mod common;
 use common::git::{git, git_ok};
+use moai_cli::check_fast::{self, Entry};
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -116,6 +117,31 @@ fn put_bytes(root: &Path, rel: &str, bytes: &[u8]) {
     fs::write(path, bytes).unwrap();
 }
 
+/// The rest of the ledger of `check affected`: a stub for every other name of the ledger list (the
+/// limited entries with the functions they name) and the library file with the library tests, so
+/// the checkout holds a complete ledger and its step is the heavy test run, not a missing-name
+/// report. `skip` is the name the caller wrote itself.
+fn ledger_stubs(root: &Path, skip: &str) {
+    let mut lib = String::new();
+    for e in check_fast::LEDGER {
+        match e {
+            Entry::Target(name) if *name != skip => {
+                put(root, &format!("tests/{name}.rs"), "fn main() {}\n")
+            }
+            Entry::Tests(name, fns) if *name != skip => {
+                let text: String = fns.iter().map(|f| format!("fn {f}() {{}}\n")).collect();
+                put(root, &format!("tests/{name}.rs"), &text);
+            }
+            Entry::Lib(path) => lib.push_str(&format!(
+                "fn {}() {{}}\n",
+                path.rsplit("::").next().unwrap()
+            )),
+            _ => {}
+        }
+    }
+    put(root, "src/check_affected.rs", &lib);
+}
+
 struct Fixture {
     dir: tempfile::TempDir,
     base: String,
@@ -157,6 +183,7 @@ impl Fixture {
         }
         if tables.exempt_file {
             put(p, "tests/repo_scans_table.rs", EXEMPT_FILE);
+            ledger_stubs(p, "repo_scans_table");
         }
         git_ok(p, &["add", "-A"]);
         git_ok(p, &["commit", "-q", "-m", "base"]);

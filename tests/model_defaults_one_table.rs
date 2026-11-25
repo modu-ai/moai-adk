@@ -142,3 +142,51 @@ fn the_model_and_effort_help_names_no_role() {
         assert!(!text.contains("role"), "{flag}: {text}");
     }
 }
+
+/// SPEC-20261121-model-defaults-one-table (revision 3) REQ-10, REQ-11, AC-9: with no settings
+/// file, the effort that the questions of `moai update` offer first for a tool is the effort of
+/// the plain `--dry-run` launch of that tool in the same fixture, and the model they offer first
+/// is the table id that the launch alias (`opus`) names. No terminal is used: the questions are
+/// the library functions with their defaults.
+#[test]
+fn the_question_screen_defaults_match_a_plain_launch_with_nothing_saved() {
+    use moai_cli::model_effort_questions::{effort_question, model_question};
+    use moai_cli::model_effort_settings::launcher_default;
+
+    let f = Fixture::new();
+    assert!(
+        !moai_cli::home_root::path(f.home.path())
+            .join("config")
+            .join("launcher.yaml")
+            .exists(),
+        "the fixture holds no settings file"
+    );
+    // glm first: its half already agrees today, so a red run shows that the glm dry-run of this
+    // fixture works and that only claude differs.
+    for (tool, host) in [("glm", "glm"), ("claude", "cc")] {
+        let launch = f.argv(&[host]);
+        let launch_model = value_of(&launch, "--model").expect("a plain launch passes a model");
+        let launch_effort = value_of(&launch, "--effort").expect("a plain launch passes an effort");
+
+        let models = model_question(tool).expect("known tool");
+        let screen_model = models.options[models.defaults[0]].value.clone();
+        assert_eq!(
+            screen_model,
+            default_choice(tool, "leader").unwrap().model,
+            "{tool}: the screen model is the table id of the leader row"
+        );
+        assert_eq!(
+            launch_model,
+            launcher_default(tool).model,
+            "{tool}: the launch passes the alias"
+        );
+        assert_eq!(launch_model, "opus", "{tool}: {launch:?}");
+
+        let efforts = effort_question(tool, &screen_model).expect("the model has efforts");
+        let screen_effort = efforts.options[efforts.defaults[0]].value.clone();
+        assert_eq!(
+            screen_effort, launch_effort,
+            "{tool}: the effort of the screen default and of a plain launch {launch:?}"
+        );
+    }
+}
