@@ -338,6 +338,13 @@ fn ac4_assign_on_a_ready_card_names_the_pass_reviewer_only() {
     let message = conflict(&w.assign(&name, S_D));
     assert!(message.contains(S_D), "{message}");
     assert_eq!(w.events(), before);
+    // A reviewer whose only verdict is a FAIL is no PASS reviewer.
+    let failed = w.ready_with(&[(S_D, &w.head, false)]);
+    let before = w.events();
+    let message = conflict(&w.assign(&failed, S_D));
+    assert!(message.contains("PASS"), "{message}");
+    assert_eq!(w.events(), before);
+    let before = w.events();
     // The author of the card stays refused, as in review.
     let message = conflict(&w.assign(&name, S_A));
     assert!(message.contains(S_A), "{message}");
