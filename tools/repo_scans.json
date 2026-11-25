@@ -1308,6 +1308,25 @@
       "rejects": "a change to a file that tests/green_test_lock.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
     },
     {
+      "id": "include-str-heavy-slot-cli",
+      "always": true,
+      "tests": [
+        "tests/heavy_slot_cli.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test heavy_slot_cli"
+      ],
+      "rules": [
+        "tests/heavy_slot_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/heavy_slot.rs"
+        }
+      ],
+      "rejects": "a change to src/heavy_slot.rs whose module documentation tests/heavy_slot_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261125-heavy-slot-release-on-exit)"
+    },
+    {
       "id": "include-str-hook-entry-cli",
       "always": true,
       "tests": [
