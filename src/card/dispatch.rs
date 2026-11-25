@@ -697,6 +697,104 @@ pub fn release(
     Ok(answer)
 }
 
+/// The leader's `card release C-n --by leader --reason <why>`
+/// (SPEC-20261125-card-take-records-worktree REQ-8 to REQ-14): the reservation of ANOTHER session
+/// ends as `released` and the card returns to `ready`, so any lane takes it again with `card take`.
+/// It is no reclaim: no `card.reclaim` event is written and the three-reclaim allowance is not
+/// used, which is the way out of a card that reached the limit.
+///
+/// Only the session of the live registered leader entry may call it (the proof `card land-batch`
+/// asks for, `confirm_leader`): the word `--by leader` proves nothing, and a call without a
+/// session id reaches the same refusal (`not_leader`). A reservation whose
+/// lease ended is released as it is; a live one needs the same proofs as an early reclaim
+/// ([`early_reclaim::assess`]) and the first missing proof is named in the `lease_live` refusal.
+/// A card in `review` with a `pass` verdict is refused (`verdict_pass`): it is landed instead.
+/// Every refusal writes nothing.
+pub fn release_by_leader(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    generation: i64,
+    session: Option<&str>,
+    by: &str,
+    reason: &str,
+) -> Result<Value> {
+    if by != ledger::workflow::LEADER_BY {
+        return Err(format!(
+            "card release refused: --by must be `{}`; nothing was changed",
+            ledger::workflow::LEADER_BY
+        ));
+    }
+    let card_id = card_id("release", reference)?;
+    let reason = checked_reason("release", reason)?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64);
+    if let Err(inner) = super::land::batch::confirm_leader(project, session, now) {
+        // The land-batch wording of the shared check is replaced by this command's own; the
+        // `conflict in` words make `contract::classify` answer `conflict`.
+        let inner = inner
+            .strip_prefix("card land-batch refused: ")
+            .unwrap_or(&inner);
+        let inner = inner.strip_suffix("; nothing was changed").unwrap_or(inner);
+        return Err(format!(
+            "card release refused: conflict in leader: not_leader: {inner}; nothing was changed"
+        ));
+    }
+    let early = early_reclaim::assess(project, home, card_id, session.unwrap_or_default());
+    let proof = match &early {
+        early_reclaim::Early::Proven(proof) => Some(reservation::EarlyProof {
+            holder: &proof.holder,
+            detail: &proof.detail,
+        }),
+        _ => None,
+    };
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let out = reservation::release_by_leader(
+        &mut ledger,
+        card_id,
+        generation,
+        by,
+        &reason,
+        proof.as_ref(),
+    )
+    .map_err(|e| match (&e, &early) {
+        (
+            reservation::ReclaimError::LeaseLive { .. }
+            | reservation::ReclaimError::LeaseHeldForAudit { .. },
+            early_reclaim::Early::Unproven(why),
+        ) => format!(
+            "{e}; lease_live: a release of a live reservation needs the early proof that \
+                 the holder is gone, and {why}"
+        ),
+        (
+            reservation::ReclaimError::LeaseLive { .. }
+            | reservation::ReclaimError::LeaseHeldForAudit { .. },
+            _,
+        ) => format!(
+            "{e}; lease_live: a release of a live reservation needs the early proof that \
+                 the holder is gone"
+        ),
+        (reservation::ReclaimError::HolderChanged { .. }, _) => format!(
+            "{e}; holder_changed: the proof was read for another holder, read the card again"
+        ),
+        _ => e.to_string(),
+    })?;
+    let mut answer = json!({
+        "action": "release", "project_id": id,
+        "by": by, "reason": reason,
+        "reservation": reservation_json(&out.previous),
+        "state": out.card_state_after,
+        "card_state_before": out.card_state_before,
+        "from_holder": out.previous.holder,
+        "events": 1, "writes": true,
+    });
+    if let Some(p) = &proof {
+        answer["early_proof"] = p.detail.clone();
+    }
+    Ok(answer)
+}
+
 /// Whether the ledger records a landing of the card: a `card.landed` event or a merged pull
 /// request link.
 fn has_recorded_landing(conn: &rusqlite::Connection, card_id: i64) -> rusqlite::Result<bool> {
