@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261125-trailer-paragraph-guard
 title: "Moai 트레일러가 마지막 문단 밖에 있으면 커밋할 때 거절하고, 검사기가 그 원인을 이름으로 말해요"
-status: approved
-revision: 2
+status: draft
+revision: 3
 created: 2026-11-25
-approval:
-  by: user
-  at: 2026-11-25
-  basis: "리더 결정 노트 8883 (2026-11-25T02:04:56Z): 리더의 선택 질문 '이 SPEC 개정 2를 승인하시나요? 요구와 기준의 뜻은 그대로이고, 새 테스트 파일의 위치만 tests/card/ 로 옮겼어요.' 에 사용자가 고른 답 '승인 (Recommended)'; 개정 1 의 승인은 노트 8879; 레인은 그 노트를 인용만 해요"
-  digest: "sha256:fbfc4b9dceedc3772a4f107d9b0e9e30b1fcfb79b2bd0cd49369a67d8d272d64"
 ---
 
 # Moai 트레일러가 마지막 문단 밖에 있으면 커밋할 때 거절하고, 검사기가 그 원인을 이름으로 말해요
@@ -47,7 +42,7 @@ approval:
 - AC-2 (REQ-1): 설치할 commit-msg 훅(`install/commit-msg`)을 그 메시지로 실제로 실행하면 exit 1 이고, 같은 메시지에서 빈 줄만 지우면 exit 0 이에요 · verify: `cargo test --locked --offline --test card trailer_paragraph_guard_cli::ac2_`
 - AC-3 (REQ-3): 갈라진 커밋이 든 범위의 `trailer-check` 는 그 커밋에 `split_trailer_block`(fails false)을 싣고, 그 줄 때문에 `failing` 이 늘지 않아요 · verify: `cargo test --locked --offline --test card trailer_paragraph_guard_cli::ac3_`
 - AC-4 (REQ-4): 마지막 문단에 `Moai-*` 가 다 있는 메시지, `Co-Authored-By` 가 없는 메시지, 앞 문단 문장 안에 `Moai-Spec: x` 를 인용한 메시지는 통과해요 · verify: `cargo test --locked --offline --test card trailer_paragraph_guard_cli::ac4_`
-- AC-5 (REQ-3, REQ-4): 이 빌드로 `moai trailer-check origin/v2026.11.0..NeXT --branch release/probe` 를 돌려 `split_trailer_block` 이 정확히 위 8개를 이름으로 대고 그 밖의 커밋에는 없어요. 숫자와 해시를 READY 노트에 적어요 · verify: `moai trailer-check origin/v2026.11.0..NeXT --branch release/probe > target/c501/range-after.json`
+- AC-5 (REQ-3, REQ-4): 이 빌드로 `moai trailer-check origin/v2026.11.0..268cfa807f73736947c77fa7a25e59e5a105d703 --branch release/probe` 를 돌리면 `failing` 이 분할 검사가 없는 빌드로 같은 범위를 잰 값(137)과 같고, `split_trailer_block` 이 정확히 아래 19개 커밋을 이름으로 대며 그 밖의 커밋에는 없어요. 19개는 모두 git 의 `git interpret-trailers --parse` 가 읽지 못하는 `Moai-` 줄이 메시지에 있는 비머지 커밋이에요(SPEC 개정 2 가 적은 8개, 그 뒤에 착지한 같은 모양 5개, 앞 문단에 불완전한 블록이 남은 6개): `1482e10012 1bca31c694 25a75d204a 295fc852e0 2c9384e65d 49c1854465 534617602f 5b89e3af41 5b9a98d320 71b43f0ba4 7d6bf8617f 865a894084 87451004a1 a4dd2a0864 b6a73d4597 b7e1bcfd1c bd7cdaf8bd c27b962dab fc41ab568d`. 숫자와 해시를 READY 노트에 적어요 · verify: `moai trailer-check origin/v2026.11.0..268cfa807f73736947c77fa7a25e59e5a105d703 --branch release/probe > target/c501/range-after.json`
 - AC-6 (REQ-5): 참조 문서에 그 한 문장과 빈 줄이 없는 예시가 있어요 · verify: `cargo test --locked --offline --test card trailer_paragraph_guard_cli::ac6_`
 - AC-7 (REQ-1…REQ-5): 이웃 테스트가 그대로 통과해요 · verify: `cargo test --locked --offline --test card trailer`
   verify: `cargo test --locked --offline --lib trailers::`
@@ -69,7 +64,7 @@ approval:
 ## Risks
 
 - 설치된 commit-msg 훅은 `PATH` 의 `moai` 를 불러요. 새 규칙은 그 `moai` 가 이 변경을 담은 빌드로 바뀐 뒤에야 커밋 시점에 작동해요(착지 뒤 리더의 `moai update`). 그 전에는 지금처럼 통과해요. 이 SPEC 은 설치본을 건드리지 않아요.
-- 문단 규칙이 너무 넓으면 정상 메시지를 막아요. 그래서 "앞 문단의 모든 줄이 `Key: value` 이고 키 하나가 `Moai-*`" 로 좁혔고, AC-4 가 문장 인용을, AC-5 가 실제 2183 커밋을 확인해요. AC-5 가 8개 밖의 커밋을 이름으로 대면 훅은 observe(경고만, exit 0)로 두고 D-2 를 사용자에게 올려요.
+- 문단 규칙이 너무 넓으면 정상 메시지를 막아요. 그래서 "앞 문단의 모든 줄이 `Key: value` 이고 키 하나가 `Moai-*`" 로 좁혔고, AC-4 가 문장 인용을, AC-5 가 실제 범위의 커밋을 확인해요. AC-5 가 git 파서로 확인되지 않는 커밋을 이름으로 대면(오탐) 훅은 observe(경고만, exit 0)로 두고 D-2 를 사용자에게 올려요.
 - 검사기는 이제 두 가지를 말해요: 원인(`split_trailer_block`)과 증상(`missing_spec`). 둘이 같은 커밋에 같이 보이는 것이 정상이에요.
 
 ## Decisions
@@ -77,13 +72,15 @@ approval:
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | **선택지**: (A) 커밋 시점에 거절하고 원인을 이름으로 말해요(기본, 이 SPEC); (B) 검사기가 마지막 두 문단을 읽어요. 기본 A | B 는 git 의 트레일러 블록(`%(trailers)`, `spec_ids`)과 `audit_gate::sessions_of`(마지막 문단만, 테스트로 고정)와 어긋나고, 본문 인용이 저자나 SPEC 으로 읽히는 길을 열어요(아이덴티티 위조 면). A 는 같은 실수를 만드는 순간에 끝내요 | A 의 검사를 빼요 |
-| D-2 | **선택지**: 훅이 바로 거절해요(exit 1, 기본) / observe(경고만) 로 시작해요. 기본은 거절이고, AC-5 가 8개 밖을 대면 observe | 이 SPEC 의 막는 검사는 observe 부터라는 템플릿 규칙을 지키되, 실제 범위 측정(AC-5)으로 거짓 양성이 0 임을 먼저 보여요 | observe 로 낮추는 것은 한 줄이에요 |
+| D-2 | **선택지**: 훅이 바로 거절해요(exit 1, 기본) / observe(경고만) 로 시작해요. 기본은 거절이고, AC-5 가 오탐(git 파서로 확인되지 않는 커밋)을 대면 observe. 사용자 결정(개정 3): 거절을 유지해요 | 이 SPEC 의 막는 검사는 observe 부터라는 템플릿 규칙을 지키되, 실제 범위 측정(AC-5)으로 거짓 양성이 0 임을 먼저 보여요. 측정은 개정 2 의 8개가 아니라 19개를 댔고, 19개 모두 git 파서가 `Moai-` 줄을 읽지 못하는 진짜 사례예요(오탐 0) | observe 로 낮추는 것은 한 줄이에요 |
 | D-3 | **선택지 (이미 착지한 8개)**: (1) 다시 쓰지 않아요. 릴리스 PR 감사 기록에 "감사자 세션은 `850726f6-eb78-492d-978f-66edb7ab9649` 가 아니에요" 를 남겨요(기본, 코드 없음); (2) `audit-gate` 가 `Moai-*` 만으로 된 바로 앞 문단도 저자로 읽게 해요(`src/audit_gate.rs` 변경, 별도 SPEC, 위조 면 검토 필요); (3) 메시지를 다시 써요(해시가 바뀌어 재감사, 하지 않아요) | 막는 곳은 없어요: 8개는 `NeXT` 안이라 `bundle check`/`verify` 범위 밖이고 CI 는 `trailer-check` 를 안 불러요. 남는 것은 `audit-gate` 의 저자 목록에서 세션 하나가 빠지는 점이에요 | 기본이라 되돌릴 것이 없어요 |
 | D-4 | 개정 2: 새 통합 테스트는 최상위 파일이 아니라 `tests/card/` 모듈이에요. REQ·AC 의 뜻은 그대로고 테스트 위치와 verify 줄(`--test card trailer_paragraph_guard_cli::acN_`)과 Scope 만 바뀌어요 | `tests/areas.toml` 이 낱말 `trailer` 를 `card` 영역에 두고 `tests/card/main.rs` 가 있어 영역이 옮겨졌어요(`test_area_layout` 의 `area_table_maps_every_real_test_file` 이 최상위 새 파일을 거절해요). 개정 1 은 이를 몰랐어요 | 최상위 파일과 영역 표 변경이 필요한데 표는 공유 파일이에요 |
+| D-5 | 개정 3: AC-5 를 개정 2 의 "정확히 8개"에서 측정한 19개 집합(범위의 끝을 `268cfa807f…` 해시로 고정)으로 바꾸고, D-2 의 observe 조건과 Risks 의 같은 문장을 "8개 밖"에서 "오탐"으로 바꿔요. REQ-1…REQ-5 와 나머지 AC 는 그대로예요 | 레인이 같은 범위를 이 빌드와 분할 검사 없는 빌드로 재서 `failing` 이 137 로 같고, 19개를 git 의 트레일러 파서와 한 개씩 대조해 오탐 0 임을 확인했어요. 사용자가 선택지 1(거절 유지, AC-5 개정)을 골랐어요(결정 노트 8927) | 개정 2 로 되돌리면 AC-5 가 측정과 어긋나요 |
 
 ## Interview
 
 - Q1: 이 SPEC 개정 1을 승인하시나요? (리더의 선택 질문, 결정 노트 8879 가 인용해요; 개정 1 의 digest sha256:7e0d5fa8…cf06) → A: 승인, 커밋할 때 거절 (Recommended). 개정 2 는 D-4 의 테스트 위치만 바꿔요.
+- Q2: 측정이 SPEC 의 8개가 아니라 19개를 댔어요(오탐 0). 거절을 유지하고 AC-5 를 측정한 집합으로 고칠까요? (리더의 선택 질문, 결정 노트 8927 이 인용해요) → A: 선택지 1, 거절 유지 + AC-5 개정. 이 답은 방향의 결정이고 개정 3 의 digest 승인은 아직 아니에요.
 
 ## Result
 
