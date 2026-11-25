@@ -83,3 +83,22 @@ branch: spec/heavy-slot-release-on-exit-20261125
 | D-1 | (a) 슬롯을 쥔 쪽이 끝날 때 `flock(LOCK_UN)` 으로 잠금을 풀어요. 후손이 기술자를 쥐고 있어도 슬롯이 비어요. 대안 (b) 기술자를 후손에게 안 넘기기: 중첩 호출이 바깥 슬롯을 다시 쓰는 규칙(REQ-5 of check-affected-one-slot)이 깨져서 조상 확인을 새로 만들어야 해요. (c) 죽은 pid 의 슬롯 파일을 바꿔 치기: 슬롯 파일을 지우는 일이라 리더가 하지 않기로 했어요 | 사용자 지시(2026-11-25 "죽음검사가 또 발생하지 않도록")와 이 일을 맡긴 카드의 "프로세스를 끝내거나 슬롯 파일을 지우는 명령은 만들지 않아요". (a) 가 가장 작고 두 제약을 지켜요 | `Drop` 한 곳을 되돌려요 |
 | D-2 | `heavy-slot-status` 는 읽기만 해요. 경고와 `warnings` 만 더하고 슬롯을 회수하거나 프로세스를 끝내지 않아요 | 카드 본문. 끝내는 일은 소유자 몫이에요 | `warnings` 필드를 빼요 |
 | D-3 | 가짜 호스트는 부모가 끝나거나 300초 뒤에 끝나요 | 카드 본문 (3) | 루프를 되돌려요 |
+
+## Result
+
+2026-11-25(UTC) macOS, 워크트리 `.claude/worktrees/heavy-slot-release-on-exit`, 코드 head `f427b7ea3d53e429f4ceb1d9e50e8bd2e1cf7557`, base `12dab143c9191080f04b2daef4120d6f8107fc80`(워크트리를 만들 때의 `NeXT` 팁, 따라가지 않았어요).
+
+- AC-1 met: `release_ac1_a_command_that_leaves_a_background_child_gives_the_slot_back`(`heavy_slot_cli`)가 실제 `sleep 600` 자식을 남기고 래퍼가 끝난 뒤 `status` 의 `held` 가 비고 두 번째 호출이 기다리지 않고 도는 것을 읽어요. 손으로도 한 번(`target/debug/moai-cli`, 임시 슬롯 폴더): 자식 살아 있음, `held: []`, 두 번째 호출이 바로 실행됨.
+- AC-2 met: `release_ac2_a_nested_caller_leaves_the_outer_slot_held`(중첩 호출이 끝나도 바깥 슬롯이 held)와 `release_ac2_a_wrapper_killed_by_sigkill_keeps_the_slot_while_the_command_runs`(SIGKILL 한계는 그대로).
+- AC-3 met: `release_ac3_a_leftover_childs_inherited_descriptor_queues_like_any_caller`가 낡은 fd 로 요청한 후손이 줄을 서고 다른 호출이 끝난 뒤 도는 것을 읽어요.
+- AC-4 met: `release_ac4_status_warns_about_a_slot_a_leftover_process_holds`가 `alive: false`, 슬롯·죽은 pid·holders 가 든 `warning` 줄, 최상위 `warnings`, 살아 있는 pid 의 슬롯은 경고 없음을 읽어요.
+- AC-5 met: `stub_host_ends_when_its_launcher_is_killed`(`launcher_auto_init`)가 런처를 SIGKILL 로 죽이면 가짜 호스트가 10초 안에 사라지고 release 파일이 쓰이지 않는 것을 읽어요.
+- AC-6 met: `release_ac6_the_module_documentation_names_the_release_the_sigkill_case_and_warnings`.
+- AC-7 met: 기존 슬롯 시험(`heavy_slot_cli` 38, `heavy_slot_fifo_cli` 10, `heavy_slot_jobs_cleanup_cli` 6, `check_affected_one_slot`)과 `launcher_auto_init` 22개가 통과하고, 오늘의 동작을 못박던 시험은 AC-1·AC-4 로 대체했어요. 약한 단언은 없어요.
+- 영수증: `check-affected base=12dab143c919 head=f427b7ea3d53 targets=84 scans=listed:70 test-threads=5 diff_check=0 fmt=0 clippy=0 test=0 result=PASS`(3253개 통과), 묶지 않고 `CLAUDE_CODE_SESSION_ID` 를 풀고 한 번, 로그 폴더 `target/check-affected-f427b7ea3d53/`. 첫 영수증(head `853590dc70`)은 `include_str!` 읽기를 `tools/repo_scans.json` 에 등록하지 않아 FAIL 이었고 항목 하나로 고쳤어요.
+- 가드 뮤턴트 5개(각각 한 줄을 고치고 대상 시험 후 복원·`cmp`): `Held::drop` 의 `file.is_some()` 조건을 `false`/`true` 로, `warnings` 를 빈 배열로, `inherited()` 의 `flock` 검사를 `&& false` 로, 가짜 호스트의 부모 확인 줄을 `true` 로. 모두 해당 시험이 exit 101 로 FAIL.
+- Gap: 래퍼가 SIGKILL 로 죽으면 잠금을 풀지 못해요(Non-goals). 경고로만 보여요.
+- Gap: `check affected`·`audit-prep` 의 `hold` 경로 위에서 남는 자식을 만든 실행은 따로 안 했어요(같은 `Held` 의 `Drop` 이 덮어요).
+- Gap: 이미 잡힌 슬롯은 이 수정이 풀지 않아요. 새 바이너리가 설치된 뒤의 래퍼부터 적용돼요.
+- Gap: 가짜 호스트 시험의 RED 는 못 읽었어요(호스트 루프를 시험 전에 고쳤어요). 호스트 줄을 되돌린 뮤턴트가 FAIL 하는 것으로 대신 증명했어요.
+- Gap: `tools/repo_scans.json` 항목은 줄 임대로 썼고 SPEC 쓰기 목록에 없는 공유 파일이에요.
