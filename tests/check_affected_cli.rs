@@ -530,7 +530,7 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
     // The steps after the failed one still ran: one test call (the fake `cargo nextest
     // --version` succeeds, so nextest runs it).
     let calls = tools.calls_text();
-    let later = "cargo nextest run -j 4 --locked --offline --no-fail-fast --lib --bin moai-cli --test home_isolation_scan --test update_command_cli";
+    let later = "cargo nextest run --retries 2 --flaky-result pass -j 4 --locked --offline --no-fail-fast --lib --bin moai-cli --test home_isolation_scan --test update_command_cli";
     assert!(calls.contains(later), "{later} in {calls}");
     // No step runs Python, though the fixture holds a module of the same area.
     assert!(!calls.contains("python3"), "{calls}");
@@ -769,7 +769,10 @@ fn the_summary_names_the_thread_cap_and_only_the_test_step_gets_it() {
             "only the nextest test step is capped: {l}"
         );
     }
-    assert!(calls.contains("cargo nextest run -j 4 --locked"), "{calls}");
+    assert!(
+        calls.contains("cargo nextest run --retries 2 --flaky-result pass -j 4 --locked"),
+        "{calls}"
+    );
 
     // libtest: `--version` fails, so `cargo test` runs and takes the cap from its env.
     let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
@@ -815,7 +818,10 @@ fn a_thread_knob_the_caller_set_is_kept() {
         "{r}"
     );
     let calls = tools.calls_text();
-    assert!(calls.contains("cargo nextest run --locked"), "{calls}");
+    assert!(
+        calls.contains("cargo nextest run --retries 2 --flaky-result pass --locked"),
+        "{calls}"
+    );
     assert!(!calls.contains(" -j "), "{calls}");
 
     let tools = Tools::new(&["cargo", "python3", "rustfmt"]);

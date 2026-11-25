@@ -268,7 +268,7 @@ pub fn submit(project: &Path, home: &Path, req: &SubmitRequest<'_>) -> Result<Va
         .ok()
         .and_then(|v| v.get("next").cloned())
         .unwrap_or(Value::Null);
-    Ok(json!({
+    let mut answer = json!({
         "action": "submit", "name": name, "card_id": card_id,
         "head": head, "base": base, "tier": tier, "state": "review",
         "note_id": noted["note_id"],
@@ -277,7 +277,13 @@ pub fn submit(project: &Path, home: &Path, req: &SubmitRequest<'_>) -> Result<Va
         "given_back": moved["given_back"],
         "next": next,
         "writes": true,
-    }))
+    });
+    // The review is recorded even when the lease could not be held for the audit; the answer
+    // says so (SPEC-20261125-review-lease-hold REQ-1) instead of dropping the warning.
+    if let Some(warnings) = moved.get("warnings") {
+        answer["warnings"] = warnings.clone();
+    }
+    Ok(answer)
 }
 
 /// The reservation the card holds and its criteria, from a read-only ledger.

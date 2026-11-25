@@ -313,8 +313,16 @@ fn review_without_keep_gives_back_the_whole_scope() {
     );
     assert_eq!(strings(&done["kept"]), Vec::<String>::new(), "{done}");
     assert_eq!(w.scope_of(&a), Vec::<String>::new());
-    // The reservation is still held: a repair widens it again with a reason.
-    result(&w.card(Some(S_A), &["reopen", &a, "--generation", "1"]));
+    // The reservation is still held and a reopen brings the card's own scope back
+    // (SPEC-20261125-review-lease-hold REQ-5); a repair that needs one more file widens it with
+    // a reason.
+    let reopened = result(&w.card(Some(S_A), &["reopen", &a, "--generation", "1"]));
+    assert_eq!(
+        strings(&reopened["scope_filled"]),
+        ["src/a.rs", "tests/a.rs"],
+        "{reopened}"
+    );
+    assert_eq!(w.scope_of(&a), ["src/a.rs", "tests/a.rs"]);
     let widened = result(&w.card(
         None,
         &[
@@ -322,13 +330,21 @@ fn review_without_keep_gives_back_the_whole_scope() {
             &a,
             "--scope",
             "src/a.rs",
+            "--scope",
+            "tests/a.rs",
+            "--scope",
+            "src/b.rs",
             "--by",
             "leader",
             "--reason",
-            "the audit asked for a repair in this file",
+            "the audit asked for a repair in another file",
         ],
     ));
-    assert_eq!(strings(&widened["write_scope"]), ["src/a.rs"], "{widened}");
+    assert_eq!(
+        strings(&widened["write_scope"]),
+        ["src/a.rs", "src/b.rs", "tests/a.rs"],
+        "{widened}"
+    );
 }
 
 #[test]

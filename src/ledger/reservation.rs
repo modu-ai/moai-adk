@@ -998,6 +998,84 @@ pub fn renew(
     )
 }
 
+/// How long a card in `review` keeps its lease from the moment it is sent there, in seconds: the
+/// longest lease a reservation can have (SPEC-20261125-review-lease-hold REQ-1, D-4).
+pub const REVIEW_HOLD_SECS: i64 = MAX_LEASE_SECS;
+
+/// How long the lease of a card in `review` runs from the moment a verdict is recorded on it, in
+/// seconds (SPEC-20261125-review-lease-hold REQ-2).
+pub const VERDICT_HOLD_SECS: i64 = 14_400;
+
+/// The one place that holds a lease for an audit: when the card is in `review` and its current
+/// reservation is `held`, the lease ends no earlier than `now + secs` (a lease that already ends
+/// later is left as it is). One `renew` event, signed by `actor` and carrying `reason`, records a
+/// lease that moved; the answer is the lease end after the call, or `None` when the card is not
+/// in `review` or holds no `held` reservation (SPEC-20261125-review-lease-hold REQ-1, REQ-2).
+pub fn hold_in_tx(
+    tx: &Connection,
+    now: i64,
+    card_id: i64,
+    secs: i64,
+    actor: &str,
+    reason: &str,
+) -> Result<Option<i64>, LedgerError> {
+    let Some((state, _)) = card_row(tx, card_id)? else {
+        return Ok(None);
+    };
+    if state != "review" {
+        return Ok(None);
+    }
+    let Some(row) = current(tx, card_id)?.filter(|r| r.status == "held") else {
+        return Ok(None);
+    };
+    let until = row.lease_until.max(now + secs);
+    if until != row.lease_until {
+        tx.execute(
+            "UPDATE reservation SET lease_until = ?1, updated_at = ?2 WHERE reservation_id = ?3",
+            params![until, now, row.reservation_id],
+        )?;
+        add_event(
+            tx,
+            now,
+            actor,
+            card_id,
+            "renew",
+            &json!({
+                "generation": row.generation,
+                "holder": row.holder,
+                "lease_until": until,
+                "was_ended": lease_ended(row.lease_until, now),
+                "reason": reason,
+            }),
+        )?;
+    }
+    Ok(Some(until))
+}
+
+/// Extends the lease of a card that was just sent to `review` to a day, at the generation the
+/// sender holds (REQ-1). The answer is the reservation as it is now.
+pub fn hold_for_review(
+    w: &mut WriteLedger,
+    card_id: i64,
+    holder: &str,
+    generation: i64,
+) -> Result<Reservation, FenceError> {
+    check_holder(holder).map_err(FenceError::InvalidInput)?;
+    fenced(
+        w,
+        "review",
+        card_id,
+        holder,
+        generation,
+        true,
+        |tx, now, _row| {
+            hold_in_tx(tx, now, card_id, REVIEW_HOLD_SECS, holder, "review")?;
+            current(tx, card_id)?
+                .ok_or_else(|| LedgerError::Sql("the held reservation cannot be read".into()))
+        },
+    )
+}
+
 /// What [`widen_in_tx`] did: the reservation as it is now, what it had, what it gained.
 pub struct Widened {
     pub reservation: Reservation,
@@ -1283,6 +1361,96 @@ pub struct Reclaimed {
     pub reservation: Reservation,
     /// The card's state, which a reclaim does not change.
     pub card_state: String,
+    /// Whether this reclaim is one of the card's three (SPEC-20261125-review-lease-hold REQ-7:
+    /// the first reclaim after a FAIL verdict is not).
+    pub counted: bool,
+    /// The reclaims the allowance has counted so far, this one included when it counted.
+    pub reclaims_counted: i64,
+    /// What the new reservation was filled with when it came without paths (REQ-5, REQ-6).
+    pub scope_fill: Option<ScopeFill>,
+}
+
+/// The lifetime allowance of reclaims of one card (SPEC-20261119-card-reclaim-guard REQ-5).
+pub const RECLAIM_ALLOWANCE: i64 = 3;
+
+/// A path of the card's own scope that a fill did not reserve, and why.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LeftOutPath {
+    pub path: String,
+    pub reason: String,
+}
+
+/// What a reclaim or a reopen put into a reservation that came back without paths: the paths of
+/// the card's own scope it reserved and the ones it left out
+/// (SPEC-20261125-review-lease-hold REQ-5, REQ-6).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScopeFill {
+    pub filled: Vec<String>,
+    pub left_out: Vec<LeftOutPath>,
+}
+
+/// Fills the reservation `reservation_id` of the card from the card's own scope when it holds no
+/// path, as a take does: a path that overlaps a shared file (`shared`, the profile's list) or a
+/// path another card's live reservation holds is left out and named, the rest is reserved. The
+/// answer is `None` when the reservation already has paths or the card has no scope of its own:
+/// nothing is changed then.
+pub fn fill_empty_scope(
+    tx: &Connection,
+    now: i64,
+    card_id: i64,
+    reservation_id: i64,
+    shared: &[String],
+) -> Result<Option<ScopeFill>, LedgerError> {
+    let held: i64 = tx.query_row(
+        "SELECT COUNT(*) FROM reservation_scope WHERE reservation_id = ?1",
+        [reservation_id],
+        |r| r.get(0),
+    )?;
+    if held > 0 {
+        return Ok(None);
+    }
+    let own_text: String = tx.query_row(
+        "SELECT write_scope FROM card WHERE card_id = ?1",
+        [card_id],
+        |r| r.get(0),
+    )?;
+    // The column is a JSON array (schema CHECK); anything but strings is no scope.
+    let own: Vec<String> = serde_json::from_str(&own_text).unwrap_or_default();
+    if own.is_empty() {
+        return Ok(None);
+    }
+    let mut fill = ScopeFill {
+        filled: Vec::new(),
+        left_out: Vec::new(),
+    };
+    for path in own {
+        if let Some(hit) = shared.iter().find(|s| crate::scope::overlap(&path, s)) {
+            fill.left_out.push(LeftOutPath {
+                reason: format!(
+                    "`{path}` overlaps the shared file `{hit}` (`shared_files` of the project \
+                     profile); write it in short with `card line-lease`"
+                ),
+                path,
+            });
+            continue;
+        }
+        if let Some(other) = overlaps(tx, now, card_id, std::slice::from_ref(&path))?.first() {
+            fill.left_out.push(LeftOutPath {
+                reason: format!(
+                    "C-{} holds `{}` with a live reservation",
+                    other.other_card, other.theirs
+                ),
+                path,
+            });
+            continue;
+        }
+        tx.execute(
+            "INSERT INTO reservation_scope (reservation_id, pattern) VALUES (?1, ?2)",
+            params![reservation_id, path],
+        )?;
+        fill.filled.push(path);
+    }
+    Ok(Some(fill))
 }
 
 /// Why [`reclaim`] refused. Every refusal leaves the ledger as it was: no `fence_reject`
@@ -1315,7 +1483,13 @@ pub enum ReclaimError {
         lease_until: i64,
         now: i64,
     },
-    /// The card already carries three `card.reclaim` events; a fourth would exceed the
+    /// The lease has not ended and the card is in `review`: the lease is held for the audit
+    /// (SPEC-20261125-review-lease-hold REQ-4). Its code is `lease_live`, like [`LeaseLive`].
+    LeaseHeldForAudit {
+        lease_until: i64,
+        now: i64,
+    },
+    /// The card already carries three counted `card.reclaim` events; a fourth would exceed the
     /// lifetime allowance (SPEC-20261119-card-reclaim-guard REQ-5).
     ReclaimLimit {
         card_id: i64,
@@ -1341,7 +1515,7 @@ impl ReclaimError {
             ReclaimError::StaleGeneration { .. } => "stale_generation",
             ReclaimError::UnknownGeneration { .. } => "unknown_generation",
             ReclaimError::NotHeld { .. } => "not_held",
-            ReclaimError::LeaseLive { .. } => "lease_live",
+            ReclaimError::LeaseLive { .. } | ReclaimError::LeaseHeldForAudit { .. } => "lease_live",
             ReclaimError::ReclaimLimit { .. } => "reclaim_limit",
             ReclaimError::HolderChanged { .. } => "holder_changed",
             ReclaimError::Ledger(e) => e.code(),
@@ -1378,6 +1552,12 @@ impl std::fmt::Display for ReclaimError {
                 f,
                 "reservation conflict in card: the lease runs until {lease_until} (now {now}); \
                  only an ended lease is reclaimed"
+            ),
+            ReclaimError::LeaseHeldForAudit { lease_until, now } => write!(
+                f,
+                "reservation conflict in card: the lease is held for the audit of this card in \
+                 review and runs until {lease_until} (now {now}); it is reclaimed once it ends, \
+                 which a recorded verdict pushes back"
             ),
             ReclaimError::ReclaimLimit { card_id, reclaims } => write!(
                 f,
@@ -1435,7 +1615,14 @@ pub fn reclaim(
     lease_secs: i64,
 ) -> Result<Reclaimed, ReclaimError> {
     reclaim_with(
-        w, card_id, to_holder, generation, by, reason, lease_secs, None, None, None,
+        w,
+        card_id,
+        to_holder,
+        generation,
+        by,
+        reason,
+        lease_secs,
+        ReclaimOptions::default(),
     )
 }
 
@@ -1464,9 +1651,11 @@ pub fn reclaim_keeping(
         by,
         reason,
         lease_secs,
-        early,
-        Some(kept),
-        None,
+        ReclaimOptions {
+            early,
+            kept: Some(kept),
+            ..ReclaimOptions::default()
+        },
     )
 }
 
@@ -1502,9 +1691,10 @@ pub fn reclaim_early(
         by,
         reason,
         lease_secs,
-        Some(proof),
-        None,
-        None,
+        ReclaimOptions {
+            early: Some(proof),
+            ..ReclaimOptions::default()
+        },
     )
 }
 
@@ -1525,6 +1715,7 @@ pub fn reclaim_recording(
     early: Option<&EarlyProof<'_>>,
     kept: Option<&Value>,
     worktree_if_missing: Option<&str>,
+    shared: &[String],
 ) -> Result<Reclaimed, ReclaimError> {
     reclaim_with(
         w,
@@ -1534,10 +1725,23 @@ pub fn reclaim_recording(
         by,
         reason,
         lease_secs,
-        early,
-        kept,
-        worktree_if_missing,
+        ReclaimOptions {
+            early,
+            kept,
+            worktree_if_missing,
+            shared,
+        },
     )
+}
+
+/// What a caller may add to a reclaim: the early proof, the kept commits, the worktree to record
+/// when the old reservation has none, and the shared files of the profile a scope fill leaves out.
+#[derive(Default)]
+struct ReclaimOptions<'a> {
+    early: Option<&'a EarlyProof<'a>>,
+    kept: Option<&'a Value>,
+    worktree_if_missing: Option<&'a str>,
+    shared: &'a [String],
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1549,10 +1753,14 @@ fn reclaim_with(
     by: &str,
     reason: &str,
     lease_secs: i64,
-    early: Option<&EarlyProof<'_>>,
-    kept: Option<&Value>,
-    worktree_if_missing: Option<&str>,
+    options: ReclaimOptions<'_>,
 ) -> Result<Reclaimed, ReclaimError> {
+    let ReclaimOptions {
+        early,
+        kept,
+        worktree_if_missing,
+        shared,
+    } = options;
     check_holder(to_holder)
         .map_err(|why| ReclaimError::InvalidInput(format!("to_holder: {why}")))?;
     check_label("by", by, MAX_BY_LEN)?;
@@ -1588,6 +1796,14 @@ fn reclaim_with(
         }
         match early {
             // The ordinary rule: only an ended lease is reclaimed.
+            // A card in `review` keeps its lease for the audit and says so
+            // (SPEC-20261125-review-lease-hold REQ-4).
+            None if !lease_ended(old.lease_until, now) && state == "review" => {
+                return Ok(Err(ReclaimError::LeaseHeldForAudit {
+                    lease_until: old.lease_until,
+                    now,
+                }));
+            }
             None if !lease_ended(old.lease_until, now) => {
                 return Ok(Err(ReclaimError::LeaseLive {
                     lease_until: old.lease_until,
@@ -1606,14 +1822,34 @@ fn reclaim_with(
         // REQ-5 (SPEC-20261119-card-reclaim-guard): three reclaims are a card's lifetime
         // allowance, counted from its own events so the cap survives any caller; the fourth
         // is refused in this transaction and nothing is written.
+        //
+        // SPEC-20261125-review-lease-hold REQ-7, REQ-8: a reclaim whose event says
+        // `counted: false` is not one of the three, and the first reclaim after a FAIL verdict
+        // is such a reclaim: the verdict means a repair is coming, and the allowance must not
+        // stand in its way. The event of that reclaim is newer than the verdict, so one verdict
+        // frees one reclaim.
         let reclaims: i64 = tx
             .query_row(
-                "SELECT COUNT(*) FROM event WHERE card_id = ?1 AND kind = 'card.reclaim'",
+                "SELECT COUNT(*) FROM event WHERE card_id = ?1 AND kind = 'card.reclaim' \
+                 AND COALESCE(json_extract(payload, '$.counted'), 1) <> 0",
                 [card_id],
                 |r| r.get(0),
             )
             .map_err(LedgerError::from)?;
-        if reclaims >= 3 {
+        let after_fail: bool = tx
+            .query_row(
+                "SELECT EXISTS ( \
+                   SELECT 1 FROM event v WHERE v.card_id = ?1 AND v.kind = ?2 \
+                     AND json_extract(v.payload, '$.verdict') = 'fail' \
+                     AND NOT EXISTS ( \
+                       SELECT 1 FROM event r WHERE r.card_id = ?1 AND r.kind = 'card.reclaim' \
+                         AND r.event_id > v.event_id))",
+                params![card_id, super::workflow::VERDICT_KIND],
+                |r| r.get(0),
+            )
+            .map_err(LedgerError::from)?;
+        let counted = !after_fail;
+        if counted && reclaims >= RECLAIM_ALLOWANCE {
             return Ok(Err(ReclaimError::ReclaimLimit { card_id, reclaims }));
         }
         tx.execute(
@@ -1653,6 +1889,9 @@ fn reclaim_with(
              SELECT ?1, pattern FROM reservation_scope WHERE reservation_id = ?2",
             params![new_id, old.reservation_id],
         )?;
+        // A review without `--keep` gave every path back, so the copy above can be empty: the
+        // card's own scope comes back, as a take fills it (REQ-5, REQ-6).
+        let scope_fill = fill_empty_scope(tx, now, card_id, new_id, shared)?;
         let mut payload = json!({
             "from_holder": old.holder,
             "from_generation": current,
@@ -1665,9 +1904,18 @@ fn reclaim_with(
             "card_state": state,
             "worktree": worktree,
             "branch": old.branch,
+            "counted": counted,
         });
         if filled {
             payload["worktree_filled"] = json!(true);
+        }
+        if let Some(fill) = &scope_fill {
+            payload["scope_filled"] = json!(fill.filled);
+            payload["scope_left_out"] = json!(fill
+                .left_out
+                .iter()
+                .map(|l| json!({"path": l.path, "reason": l.reason}))
+                .collect::<Vec<_>>());
         }
         if let Some(p) = early {
             payload["early_proof"] = p.detail.clone();
@@ -1684,6 +1932,9 @@ fn reclaim_with(
             previous,
             reservation,
             card_state: state,
+            counted,
+            reclaims_counted: reclaims + i64::from(counted),
+            scope_fill,
         }))
     })?
 }

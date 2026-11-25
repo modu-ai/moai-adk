@@ -2473,3 +2473,529 @@ fn go_settings_skips_a_settings_file_the_manifest_proves() {
         "{go}"
     );
 }
+
+// ---- SPEC-20261125-update-declined-steps: a declined choice step stays declined ----
+
+const DECLINE_OP: &str = "project-update-decline";
+/// `sub` inside the project's state folder, spelled through the resolver.
+fn state_rel(root: &Path, sub: &str) -> String {
+    moai_cli::state_root::rel(root, sub)
+}
+
+/// The decline record of the project, found through the resolver.
+fn declined_file(root: &Path) -> PathBuf {
+    root.join(state_rel(root, "manifests/update-declined.json"))
+}
+const LOCAL_TEXT: &str = "# My notes\n\nReply in Korean.\n";
+
+/// The paths whose entry differs between two trees (added, removed or changed).
+fn changed_paths(before: &[(PathBuf, Node)], after: &[(PathBuf, Node)]) -> Vec<PathBuf> {
+    let b: std::collections::BTreeMap<&PathBuf, &Node> =
+        before.iter().map(|(p, n)| (p, n)).collect();
+    let a: std::collections::BTreeMap<&PathBuf, &Node> =
+        after.iter().map(|(p, n)| (p, n)).collect();
+    let mut out: Vec<PathBuf> = b
+        .keys()
+        .chain(a.keys())
+        .filter(|p| b.get(*p) != a.get(*p))
+        .map(|p| (*p).clone())
+        .collect();
+    out.sort();
+    out.dedup();
+    out
+}
+
+impl Fx {
+    /// A Go project whose personal `AGENTS.local.md` (and, with `settings`, its recorded
+    /// `.claude/settings.json`) `go-state-apply` moved into its backup. Returns the backup stamp.
+    fn go_project_with_backed_up_local(&self, settings: Option<&Value>) -> String {
+        let mut files = serde_json::Map::new();
+        let mut record = |rel: &str, body: String| {
+            self.write(rel, &body);
+            let h = format!("sha256:{:x}", Sha256::digest(body.as_bytes()));
+            files.insert(
+                rel.into(),
+                json!({"provenance": "template_managed", "template_hash": h,
+                       "deployed_hash": h, "current_hash": h}),
+            );
+        };
+        record(".moai/config/sections/a.yaml", "a: 1\n".to_string());
+        if let Some(s) = settings {
+            record(".claude/settings.json", s.to_string());
+        }
+        self.write("AGENTS.local.md", LOCAL_TEXT);
+        self.write(
+            ".moai/manifest.json",
+            &json!({"version": "v3.2.1-rc.6", "deployed_at": "2026-11-01T00:00:00Z",
+                    "files": files})
+            .to_string(),
+        );
+        let plan = self.call(&["go-state-plan", self.p()], b"");
+        let digest = plan["plan_digest"].as_str().unwrap().to_string();
+        let applied = self.call(
+            &[
+                "go-state-apply",
+                self.p(),
+                "--plan-digest",
+                &digest,
+                "--permission-reference",
+                REF,
+            ],
+            b"",
+        );
+        assert!(!self.root.join("AGENTS.local.md").exists(), "{applied}");
+        applied["backup"].as_str().unwrap().to_string()
+    }
+
+    /// The profile, then every printed `ready` command until none is left.
+    fn settle_install(&self) {
+        self.with_profile(false);
+        for _ in 0..4 {
+            if !steps(&self.plan()).iter().any(|s| s["state"] == "ready") {
+                return;
+            }
+            self.apply_ready();
+        }
+    }
+
+    /// Runs a printed command (`argv` and `stdin` of `printed`): `moai` is this binary and the
+    /// placeholder is a permission reference.
+    fn run_printed(&self, printed: &Value) -> Value {
+        let words: Vec<&str> = printed["argv"]
+            .as_array()
+            .unwrap_or_else(|| panic!("no printed command: {printed}"))
+            .iter()
+            .map(|w| w.as_str().unwrap())
+            .collect();
+        assert_eq!(words[0], "moai", "{words:?}");
+        let args: Vec<&str> = words[1..]
+            .iter()
+            .map(|w| if *w == PLACEHOLDER { REF } else { *w })
+            .collect();
+        let stdin = match &printed["stdin"] {
+            Value::Null => Vec::new(),
+            v => serde_json::to_vec(v).unwrap(),
+        };
+        self.run(&args, &stdin)
+    }
+
+    /// The decline command with its own arguments, as a caller types it.
+    fn decline_with(&self, step: &str, sha: &str, reference: &str) -> Value {
+        self.run(
+            &[
+                DECLINE_OP,
+                self.p(),
+                "--step",
+                step,
+                "--source-sha256",
+                sha,
+                "--permission-reference",
+                reference,
+            ],
+            b"",
+        )
+    }
+
+    /// A project whose merge step wants a decision about the backed-up personal file.
+    fn with_backed_up_local_decision(&self) -> (String, Value) {
+        let backup = self.go_project_with_backed_up_local(None);
+        self.settle_install();
+        let plan = self.plan();
+        let merge = step(&plan, "agents-local-merge").clone();
+        assert_eq!(merge["state"], "needs_decision", "{merge}");
+        (backup, merge)
+    }
+
+    /// Declines the merge step the way the preview prints it; returns its source sha256.
+    fn decline_merge(&self, merge: &Value) -> String {
+        let out = self.run_printed(&merge["preview"]["decline"]);
+        assert_eq!(out["ok"], json!(true), "{out}");
+        merge["preview"]["decline"]["source_sha256"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    }
+
+    /// Rewrites the backed-up personal file and the receipt's sha256 of it, so the copy is
+    /// still the one the go-state apply recorded: only its bytes (the source sha256) change.
+    fn rewrite_backed_up_local(&self, backup: &str, text: &str) {
+        self.write(
+            &state_rel(
+                &self.root,
+                &format!("backups/{backup}/root-files/AGENTS.local.md"),
+            ),
+            text,
+        );
+        let dir = self
+            .root
+            .join(state_rel(&self.root, &format!("backups/{backup}")));
+        for entry in fs::read_dir(&dir).unwrap() {
+            let path = entry.unwrap().path();
+            let Ok(bytes) = fs::read(&path) else { continue };
+            let Ok(mut receipt) = serde_json::from_slice::<Value>(&bytes) else {
+                continue;
+            };
+            let Some(moves) = receipt["moves"].as_array_mut() else {
+                continue;
+            };
+            for m in moves.iter_mut() {
+                if m["path"] == "AGENTS.local.md" {
+                    m["sha256"] = json!(format!("sha256:{:x}", Sha256::digest(text.as_bytes())));
+                }
+            }
+            fs::write(&path, serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
+            return;
+        }
+        panic!("no go-state receipt under {}", dir.display());
+    }
+}
+
+/// REQ-1, REQ-2, REQ-14, REQ-15: the decline command records the step and the sha256 the preview
+/// printed and writes nothing else; a stale sha256, an unknown step, a placeholder permission
+/// reference and a link for the folder or the file are refused with nothing written.
+#[test]
+fn declined_record_is_written_for_the_printed_sha_and_nothing_else() {
+    let fx = Fx::new();
+    let (_backup, merge) = fx.with_backed_up_local_decision();
+    let decline = &merge["preview"]["decline"];
+    let sha = decline["source_sha256"].as_str().expect("a source sha256");
+    assert_eq!(sha, merge["preview"]["source"]["sha256"], "{merge}");
+    assert!(
+        decline["effect"].as_str().is_some_and(|e| !e.is_empty()),
+        "{merge}"
+    );
+    assert_eq!(decline["argv"][0], "moai", "{merge}");
+    assert_eq!(decline["argv"][1], DECLINE_OP, "{merge}");
+    assert_eq!(decline["ask_again_argv"], Value::Null, "{merge}");
+    assert!(fx.root.join(state_rel(&fx.root, "manifests")).is_dir());
+    assert!(!declined_file(&fx.root).exists());
+
+    // Refused, each with the tree (project and HOME) byte-identical.
+    let stale = format!("sha256:{}", "0".repeat(64));
+    let refused = |what: &str, out: Value, before: &[(PathBuf, Node)], needle: &str| {
+        assert_eq!(out["ok"], json!(false), "{what}: {out}");
+        let message = out["error"]["message"].as_str().unwrap_or_default();
+        assert!(message.contains(needle), "{what}: {out}");
+        assert_eq!(
+            before,
+            fx.tree(),
+            "{what}: a refused decline wrote something"
+        );
+    };
+    let before = fx.tree();
+    refused(
+        "stale sha256",
+        fx.decline_with("agents-local-merge", &stale, REF),
+        &before,
+        "source",
+    );
+    refused(
+        "unknown step",
+        fx.decline_with("go-state", sha, REF),
+        &before,
+        "go-state",
+    );
+    refused(
+        "placeholder reference",
+        fx.decline_with("agents-local-merge", sha, "placeholder"),
+        &before,
+        "permission",
+    );
+    // A link in place of the record file.
+    fs::write(fx.root.join(state_rel(&fx.root, "elsewhere.txt")), "x\n").unwrap();
+    std::os::unix::fs::symlink("../elsewhere.txt", declined_file(&fx.root)).unwrap();
+    let before = fx.tree();
+    refused(
+        "linked record file",
+        fx.decline_with("agents-local-merge", sha, REF),
+        &before,
+        "symbolic link",
+    );
+    fs::remove_file(declined_file(&fx.root)).unwrap();
+    // A link in place of the manifests folder.
+    fs::rename(
+        fx.root.join(state_rel(&fx.root, "manifests")),
+        fx.root.join(state_rel(&fx.root, "manifests-real")),
+    )
+    .unwrap();
+    std::os::unix::fs::symlink(
+        "manifests-real",
+        fx.root.join(state_rel(&fx.root, "manifests")),
+    )
+    .unwrap();
+    let before = fx.tree();
+    refused(
+        "linked folder",
+        fx.decline_with("agents-local-merge", sha, REF),
+        &before,
+        "symbolic link",
+    );
+    fs::remove_file(fx.root.join(state_rel(&fx.root, "manifests"))).unwrap();
+    fs::rename(
+        fx.root.join(state_rel(&fx.root, "manifests-real")),
+        fx.root.join(state_rel(&fx.root, "manifests")),
+    )
+    .unwrap();
+
+    // The printed command records, and only the record file changes.
+    let before = fx.tree();
+    let out = fx.run_printed(decline);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let after = fx.tree();
+    assert_eq!(
+        changed_paths(&before, &after),
+        [declined_file(&fx.root)],
+        "{out}"
+    );
+    let record = fs::read_to_string(declined_file(&fx.root)).unwrap();
+    assert!(
+        record.contains("agents-local-merge") && record.contains(sha),
+        "{record}"
+    );
+}
+
+/// REQ-3, REQ-4, REQ-7: a declined merge reads `skip` with a reason that says so and names the
+/// command that asks again, and the preview is `all_unchanged` again.
+#[test]
+fn declined_skip_reads_skip_and_names_the_way_back() {
+    let fx = Fx::new();
+    let (_backup, merge) = fx.with_backed_up_local_decision();
+    assert_eq!(fx.plan()["all_unchanged"], json!(false));
+    fx.decline_merge(&merge);
+    let plan = fx.plan();
+    let merge = step(&plan, "agents-local-merge");
+    assert_eq!(merge["state"], "skip", "{merge}");
+    let reason = merge["reason"].as_str().unwrap();
+    assert!(
+        reason.contains("declined")
+            && reason.contains(DECLINE_OP)
+            && reason.contains("--ask-again"),
+        "{merge}"
+    );
+    assert_eq!(merge["apply"], Value::Null, "{merge}");
+    let again: Vec<&str> = merge["preview"]["decline"]["ask_again_argv"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no ask_again_argv: {merge}"))
+        .iter()
+        .map(|w| w.as_str().unwrap())
+        .collect();
+    assert_eq!(&again[..2], ["moai", DECLINE_OP], "{merge}");
+    assert!(again.contains(&"--ask-again"), "{merge}");
+    assert_eq!(plan["all_unchanged"], json!(true), "{plan}");
+}
+
+/// REQ-5: a record of another source sha256 is not read: the step asks again, and the record
+/// stays in its file.
+#[test]
+fn declined_source_changes_ask_again() {
+    let fx = Fx::new();
+    let (backup, merge) = fx.with_backed_up_local_decision();
+    let old = fx.decline_merge(&merge);
+    assert_eq!(
+        step(&fx.plan(), "agents-local-merge")["state"],
+        "skip",
+        "declined"
+    );
+    let record = fs::read(declined_file(&fx.root)).unwrap();
+    fx.rewrite_backed_up_local(&backup, "# My notes\n\nReply in English.\n");
+    let plan = fx.plan();
+    let merge = step(&plan, "agents-local-merge");
+    assert_eq!(merge["state"], "needs_decision", "{merge}");
+    assert_ne!(merge["preview"]["decline"]["source_sha256"], json!(old));
+    assert_eq!(merge["preview"]["decline"]["ask_again_argv"], Value::Null);
+    assert_eq!(plan["all_unchanged"], json!(false));
+    assert_eq!(fs::read(declined_file(&fx.root)).unwrap(), record);
+}
+
+/// REQ-6: `--ask-again` removes the one step's record and leaves the others.
+#[test]
+fn declined_ask_again_removes_only_that_step() {
+    let fx = Fx::new();
+    let settings = json!({"env": {"EDITOR": "vim"}, "model": "opus"});
+    fx.go_project_with_backed_up_local(Some(&settings));
+    fx.settle_install();
+    let plan = fx.plan();
+    let (local, merge) = (
+        step(&plan, "agents-local-merge").clone(),
+        step(&plan, "claude-settings-merge").clone(),
+    );
+    assert_eq!(local["state"], "needs_decision", "{local}");
+    assert_eq!(merge["state"], "needs_decision", "{merge}");
+    for s in [&local, &merge] {
+        let out = fx.run_printed(&s["preview"]["decline"]);
+        assert_eq!(out["ok"], json!(true), "{out}");
+    }
+    let plan = fx.plan();
+    assert_eq!(step(&plan, "agents-local-merge")["state"], "skip");
+    assert_eq!(step(&plan, "claude-settings-merge")["state"], "skip");
+
+    let out = fx.run_printed(&json!({
+        "argv": step(&plan, "agents-local-merge")["preview"]["decline"]["ask_again_argv"]
+    }));
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let plan = fx.plan();
+    assert_eq!(
+        step(&plan, "agents-local-merge")["state"],
+        "needs_decision",
+        "{plan}"
+    );
+    assert_eq!(step(&plan, "claude-settings-merge")["state"], "skip");
+    let record = fs::read_to_string(declined_file(&fx.root)).unwrap();
+    assert!(
+        record.contains("claude-settings-merge") && !record.contains("agents-local-merge"),
+        "{record}"
+    );
+
+    // A step with no record is left as it is: nothing is written.
+    let before = fx.tree();
+    let out = fx.run_printed(&json!({
+        "argv": ["moai", DECLINE_OP, fx.p(), "--step", "agents-local-merge", "--ask-again",
+                 "--permission-reference", PLACEHOLDER]
+    }));
+    assert_eq!(out["ok"], json!(true), "{out}");
+    assert_eq!(
+        before,
+        fx.tree(),
+        "an ask-again with no record wrote something"
+    );
+}
+
+/// REQ-8: the merge step's reason names the backup path and says the file is a copy moved there.
+#[test]
+fn declined_reason_names_backup() {
+    let fx = Fx::new();
+    let (backup, merge) = fx.with_backed_up_local_decision();
+    let reason = merge["reason"].as_str().unwrap();
+    let path = state_rel(
+        &fx.root,
+        &format!("backups/{backup}/root-files/AGENTS.local.md"),
+    );
+    assert!(reason.contains(&path), "{merge}");
+    assert!(
+        reason.contains("copy moved") && reason.contains("earlier"),
+        "{merge}"
+    );
+}
+
+impl Fx {
+    /// A Go project whose earlier settings were moved into the backup, and whose new
+    /// `.claude/settings.json` already carries a status line of the user's own: the earlier
+    /// `statusLine` is then a conflict, `env` and `model` merge.
+    fn with_settings_conflict(&self) -> Value {
+        let earlier = json!({
+            "statusLine": {"type": "command", "command": "my-status"},
+            "env": {"EDITOR": "vim"},
+            "model": "opus",
+        });
+        self.go_project_with_backed_up_local(Some(&earlier));
+        self.write(
+            ".claude/settings.json",
+            "{\"statusLine\":{\"type\":\"command\",\"command\":\"current-status\"}}\n",
+        );
+        self.settle_install();
+        let plan = self.plan();
+        step(&plan, "claude-settings-merge").clone()
+    }
+}
+
+fn choice<'a>(step: &'a Value, id: &str) -> &'a Value {
+    step["preview"]["choices"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no choices: {step}"))
+        .iter()
+        .find(|c| c["id"] == id)
+        .unwrap_or_else(|| panic!("no choice {id}: {step}"))
+}
+
+/// REQ-9, REQ-10, REQ-13: the conflict names the key and the file and lists `keep-mine` and
+/// `skip`; `skip` is the decline command.
+#[test]
+fn declined_settings_conflict_names_the_keys_and_the_choices() {
+    let fx = Fx::new();
+    let merge = fx.with_settings_conflict();
+    assert_eq!(merge["state"], "conflict", "{merge}");
+    let reason = merge["reason"].as_str().unwrap();
+    assert!(
+        reason.contains("statusLine") && reason.contains(".claude/settings.json"),
+        "{merge}"
+    );
+    assert!(
+        !reason.contains("env"),
+        "only the conflicting keys: {merge}"
+    );
+    let ids: Vec<&Value> = merge["preview"]["choices"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no choices: {merge}"))
+        .iter()
+        .map(|c| &c["id"])
+        .collect();
+    assert_eq!(ids, ["keep-mine", "skip"], "{merge}");
+    let skip = &choice(&merge, "skip")["apply"];
+    assert_eq!(skip["argv"][1], DECLINE_OP, "{merge}");
+    assert_eq!(
+        skip["argv"], merge["preview"]["decline"]["argv"],
+        "the skip choice is the decline command: {merge}"
+    );
+    let keep = &choice(&merge, "keep-mine")["apply"];
+    assert_eq!(keep["argv"][1], "claude-settings-apply", "{merge}");
+    assert_eq!(
+        keep["stdin"]["statusLine"],
+        json!({"type": "command", "command": "current-status"}),
+        "{merge}"
+    );
+}
+
+/// REQ-11: `keep-mine` run as printed leaves the conflicting key at the file's value and merges
+/// the other earlier settings.
+#[test]
+fn declined_settings_conflict_keep_mine_leaves_the_key_and_merges_the_rest() {
+    let fx = Fx::new();
+    let merge = fx.with_settings_conflict();
+    let out = fx.run_printed(&choice(&merge, "keep-mine")["apply"]);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let written = fx.settings_json();
+    assert_eq!(
+        written["statusLine"],
+        json!({"type": "command", "command": "current-status"}),
+        "{written}"
+    );
+    assert_eq!(written["env"], json!({"EDITOR": "vim"}), "{written}");
+    assert_eq!(written["model"], json!("opus"), "{written}");
+    // The settings apply does not record the file's value as MoAI's, so the earlier copy still
+    // differs for that key: the next preview still reads the conflict, and the way to end it is
+    // the `skip` choice, whose command declines the step.
+    let plan = fx.plan();
+    let merge = step(&plan, "claude-settings-merge");
+    assert_eq!(merge["state"], "conflict", "{merge}");
+    let skip = choice(merge, "skip");
+    assert_eq!(
+        skip["apply"]["argv"][1], "project-update-decline",
+        "{merge}"
+    );
+    let out = fx.run_printed(&skip["apply"]);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let plan = fx.plan();
+    assert_eq!(step(&plan, "claude-settings-merge")["state"], "skip");
+}
+
+/// REQ-13, REQ-3: `skip` run as printed declines the conflict; the step then reads `skip`.
+#[test]
+fn declined_settings_conflict_skip_declines_the_step() {
+    let fx = Fx::new();
+    let merge = fx.with_settings_conflict();
+    let before = fx.settings_json();
+    let out = fx.run_printed(&choice(&merge, "skip")["apply"]);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    assert_eq!(
+        fx.settings_json(),
+        before,
+        "a decline never writes the settings"
+    );
+    let plan = fx.plan();
+    let merge = step(&plan, "claude-settings-merge");
+    assert_eq!(merge["state"], "skip", "{merge}");
+    assert!(
+        merge["reason"].as_str().unwrap().contains("declined"),
+        "{merge}"
+    );
+}
