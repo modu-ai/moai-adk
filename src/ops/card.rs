@@ -1494,11 +1494,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 None => c::add(&project, &resolve_home(home)?, &request),
                 Some(spec) => {
                     use moai_cli::card::spec_link::Relation;
-                    let relation = match (
-                        follow_up,
-                        follow_up_of.as_deref(),
-                        split_of.as_deref(),
-                    ) {
+                    let relation = match (follow_up, follow_up_of.as_deref(), split_of.as_deref()) {
                         (true, _, _) => Relation::FollowUp,
                         (false, Some(origin), _) => Relation::FollowUpOf(origin),
                         (false, None, Some(origin)) => Relation::SplitOf(origin),
