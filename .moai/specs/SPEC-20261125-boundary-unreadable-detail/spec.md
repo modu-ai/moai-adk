@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-boundary-unreadable-detail
 title: "The boundary hook names the unreadable part, reads a syntax check as read-only and judges the command a moai line runs after --"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-25
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9367 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 기록 직전과 착지 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:6e73682dda626fdb3b4120d0fd2bffaf3b2e1be015092c7cb090e2022d748f84"
 ---
 
 # The boundary hook names the unreadable part, reads a syntax check as read-only and judges the command a moai line runs after --
