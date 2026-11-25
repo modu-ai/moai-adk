@@ -130,15 +130,31 @@ fn session_checkout(cwd: &Path, env: &Env) -> Option<Checkout> {
     }
 }
 
-/// True when a component of the path, written or resolved, is a protected place. Names are
-/// compared without regard to ASCII case, because the file system of a Mac ignores it: `.GIT`
-/// is the `.git` folder there. (The names are ASCII, so a normalization difference cannot spell
-/// one.)
+/// A name as a file system that ignores case sees it: ASCII letters in lower case, and the few
+/// non-ASCII letters that Unicode case folding turns into ASCII letters folded the same way (the
+/// long s, the Kelvin sign, the sharp s and the `st` ligatures), so `.GIT`, `.\u{17f}sh` and
+/// `ID_RSA` all spell a protected name. Other non-ASCII letters never fold to an ASCII one.
+fn fold_name(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    for c in name.chars() {
+        match c {
+            '\u{17f}' => out.push('s'),
+            '\u{212a}' => out.push('k'),
+            '\u{df}' | '\u{1e9e}' => out.push_str("ss"),
+            '\u{fb05}' | '\u{fb06}' => out.push_str("st"),
+            _ => out.push(c.to_ascii_lowercase()),
+        }
+    }
+    out
+}
+
+/// True when a component of the path, written or resolved, is a protected place, compared as
+/// `fold_name` spells it (the file system of a Mac ignores case: `.GIT` is the `.git` folder).
 fn is_protected(path: &Path) -> bool {
     let parts: Vec<String> = path
         .components()
         .filter_map(|c| match c {
-            Component::Normal(s) => Some(s.to_string_lossy().to_ascii_lowercase()),
+            Component::Normal(s) => Some(fold_name(&s.to_string_lossy())),
             _ => None,
         })
         .collect();
@@ -397,6 +413,24 @@ mod tests {
         assert!(carries_secret(&format!("{begin}{end}")));
         assert!(!carries_secret(&begin));
         assert!(!carries_secret(&end));
+    }
+
+    #[test]
+    fn folded_spellings_of_a_protected_name_are_protected() {
+        for yes in [
+            "/a/.GIT/config",
+            "/a/.\u{17f}sh/x",
+            "/a/.\u{17f}\u{17f}h/x",
+            "/a/.\u{df}h/x",
+            "/a/.\u{212a}ube/x",
+            "/a/ID_R\u{17f}A",
+            "/a/.config/GCLOUD/x",
+        ] {
+            assert!(is_protected(Path::new(yes)), "{yes}");
+        }
+        assert!(!is_protected(Path::new("/a/.config/G\u{212a}loud/x")));
+        assert_eq!(fold_name("\u{fb06}x"), "stx");
+        assert_eq!(fold_name("\u{e9}"), "\u{e9}");
     }
 
     #[test]

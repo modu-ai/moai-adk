@@ -652,6 +652,10 @@ fn ac5_case_spellings_and_unreadable_shapes_fail_closed() {
         ".CONFIG/gcloud/x",
         "ID_RSA",
         "Id_Ed25519",
+        ".\u{17f}sh/x",
+        ".\u{212a}ube/x",
+        ".\u{df}h/x",
+        "ID_R\u{17f}A",
     ] {
         for tool in TOOLS {
             let path = format!("{{PLAIN}}/{place}");
@@ -677,6 +681,17 @@ fn ac5_case_spellings_and_unreadable_shapes_fail_closed() {
         assert_eq!(
             w.verdict(S::Own, tool, &path, "hello\n").as_deref(),
             want,
+            "{tool} {path}"
+        );
+    }
+
+    // The session's own checkout written in another case is still the own checkout.
+    let own_respelled = w.root.join("WT-OWN");
+    for tool in TOOLS {
+        let path = format!("{}/src/x.txt", own_respelled.display());
+        assert_eq!(
+            w.verdict(S::Own, tool, &path, "hello\n"),
+            None,
             "{tool} {path}"
         );
     }
