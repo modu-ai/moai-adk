@@ -1153,8 +1153,10 @@ fn names_cdpath_variable(w: &Word) -> bool {
 
 /// Letters after `-` in a short option word: `c` and `s` are the command-line letters of a shell
 /// start, `e u x f v C l` are `ERR_EXIT`, `NO_UNSET`, `XTRACE`, `NO_RCS`, `VERBOSE`, `NO_CLOBBER`
-/// and `LOGIN` in zsh and the same letters in bash. `o` is read apart (last letter only).
-const OPTION_LETTERS_MINUS: &str = "csexufvlC";
+/// and `LOGIN` in zsh and the same letters in bash. `n` is `NO_EXEC`: the shell parses and does
+/// not run (`bash -n FILE`); a `-c` string given with it is still judged. `o` is read apart (last
+/// letter only).
+const OPTION_LETTERS_MINUS: &str = "csexufvlCn";
 /// Letters after `+` (the same options turned off); `c` and `s` have no `+` form.
 const OPTION_LETTERS_PLUS: &str = "exufvC";
 /// The names a separate `-o` or `+o` may take, and the first names of `setopt` and `unsetopt`.

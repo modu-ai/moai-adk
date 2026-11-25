@@ -2470,7 +2470,9 @@ fn fifth_audit_denied_cases() -> Vec<Case> {
         "shopt \"$X\"; ls",
         "zsh --cdablevars -c 'ls'",
         "zsh --no-cdable-vars -c 'ls'",
-        "zsh -n -c 'ls'",
+        // A letter outside the table (`-n` was this example until SPEC-20261125-boundary-unreadable-detail
+        // added it; its rows are in `a_read_only_syntax_check_is_not_unreadable`).
+        "zsh -z -c 'ls'",
         "bash +O extglob -c 'ls'",
         "bash -o posix -c 'ls'",
         "zsh -o errexit -o cdablevars -c 'ls'",
@@ -2706,6 +2708,70 @@ fn a_moai_line_after_double_dash_that_names_no_runner_passes() {
         let got = w.verdict(S::Own, cmd);
         if got.is_some() {
             bad.push(format!("  {cmd:?}: want no decision, got {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// SPEC-20261125-boundary-unreadable-detail, REQ-4 and AC-2 (D-3): `-n` makes bash, zsh and sh parse
+// a script without running it, so the letter is an allowed option of a shell start. Only the `-`
+// form is added, and a `-c` string given with it is still judged.
+
+#[test]
+fn a_read_only_syntax_check_is_not_unreadable() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    let cases: [(&str, Option<&str>); 9] = [
+        ("bash -n script.sh", None),
+        ("zsh -n script.sh", None),
+        ("sh -n script.sh", None),
+        ("/bin/zsh -n script.sh", None),
+        ("bash -ne script.sh", None),
+        // A `-c` string is judged whatever else the word holds.
+        ("bash -n -c \"rm -rf {OUT}/x\"", Some("delete-outside")),
+        ("sh -nc \"rm -rf {OUT}/x\"", Some("delete-outside")),
+        // Only the `-` form is added, and a letter outside the table stays unreadable.
+        ("bash +n script.sh", Some("unreadable")),
+        ("bash -z script.sh", Some("unreadable")),
+    ];
+    for (cmd, want) in cases {
+        let got = w.verdict(S::Own, cmd);
+        if got.as_deref() != want {
+            bad.push(format!("  {cmd:?}: want {want:?}, got {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// Guard for the `n` letter: it is read by the shell start and by `set` only. The `-n` of other
+// commands (their own option tables) and the commands that follow a `set -n` are judged as before.
+// The expected values are the verdicts the hook gave before the letter was added.
+
+#[test]
+fn the_n_letter_loosens_no_other_command() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    let cases: [(&str, Option<&str>); 5] = [
+        ("sudo -n rm -rf {OUT}/x", Some("delete-outside")),
+        ("nice -n 5 rm -rf {OUT}/x", Some("delete-outside")),
+        ("xargs -n 1 rm -rf {OUT}/x", Some("unreadable")),
+        ("env -n x rm -rf {OUT}/x", Some("unreadable")),
+        ("set -n; rm -rf {OUT}/x", Some("delete-outside")),
+    ];
+    for (cmd, want) in cases {
+        let got = w.verdict(S::Own, cmd);
+        if got.as_deref() != want {
+            bad.push(format!("  {cmd:?}: want {want:?}, got {got:?}"));
         }
     }
     assert!(
