@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-wip-limit-live-leases
 title: "The work-in-progress limit counts only the cards whose lease is alive, and a refusal names the cards left out"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9046): \"승인, D-2·D-3 기본값 A (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:6e6e73c8d134159dabad477c914da4e8d5fcd39af33c24b88bdddd2c8d3e8595"
 ---
 
 # The work-in-progress limit counts only the cards whose lease is alive, and a refusal names the cards left out

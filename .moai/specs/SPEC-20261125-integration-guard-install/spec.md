@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-integration-guard-install
 title: "the integration branch guard hook is installed by the managed git-hook installer, a session start notices a missing hook, and card finish asks the same verdict check as the landing"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9011): \"승인 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:29840514f64451a49f0051d82384f3b1d11f6762d923ea41211b4f11e0e5d024"
 branch: spec/20261125-integration-guard-install
 ---
 
@@ -30,6 +35,7 @@ branch: spec/20261125-integration-guard-install
 - Q1: 이 SPEC 의 첫 판(revision 1, head fbfc58557b)을 승인할까요? → A: 승인(사용자의 선택 "승인, D-1 은 모든 모드에서 거절 (Recommended)", 리더 노트 8937 이 옮겼어요)
 - Q2: D-1, `card finish` 가 감사 판정 없는 head 를 만나면 어떻게 할까요? → A: 선택지 a, 모든 모드에서 거절해요(같은 선택)
 - Q3: 이 SPEC 의 개정 2(head 082a20e849)를 승인할까요? → A: 승인(사용자의 선택 "승인 (Recommended)", 리더 노트 8943 이 옮겼어요)
+- Q4: 이 SPEC 의 개정 3 을 승인할까요? → A: 승인(사용자의 선택 "승인 (Recommended)", 리더 노트 9011 이 옮겼어요)
 
 ## Non-goals
 
