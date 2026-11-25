@@ -54,6 +54,8 @@ These four operating rules are never asked (user decision 2026-11-24). Record ea
 
 Sort the `autonomy` answer the way `internal/decide` sorts an open question when the user changes it later: what `internal/decide` calls case (2) is the "asked first" side. The user is shown the plain words of the default, never those terms.
 
+What the chosen autonomy level still reserves for the user, which `internal/decide` calls case (4), is this list until the user sets another one: opening a new Issue, lifting a HOLD, and changing the merge policy (how pull requests are merged; a repository protection setting is case (2), not this list). Each such choice goes to the user with its options, a default and a deadline.
+
 ## Git work flow (SPEC-20261117-mflow-project)
 
 The `work_flow` row fills `work_flow` with `{"flow": "next-flow" | "github-flow" | "trunk-based" | "git-flow", "integration_branch": "<branch>"}`; name the integration branch from the repository (the branch the open pull requests target, else the current branch) as the first option of a follow-up selection, and leave it out when there is none. GitHub flow is the recommended default (user decision 2026-11-20; the local flow was the default from 2026-11-17 until then, first as `m-flow`, renamed `next-flow` on 2026-11-22; a stored `m-flow` reads as the same flow). When you offer the options, describe the local flow to the user in plain words ("when several AI agents work at the same time on one project") and keep the SPEC, worktree, audit and leader words below until the user has picked it. The four flows:

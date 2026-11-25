@@ -127,6 +127,13 @@ fn ac2_the_decision_table_stands_once_in_decide_md() {
         skill.contains("`internal/decide`"),
         "SKILL.md must point to `internal/decide`"
     );
+    // Case 4 names no list itself: the list the autonomy level reserves for the user is in the
+    // interview reference (D-1), so the pointer in decide.md reaches real text.
+    let interview = package("references/internal/interview.md");
+    assert!(
+        interview.contains("opening a new Issue, lifting a HOLD, and changing the merge policy"),
+        "interview.md lost the list the autonomy level reserves for the user"
+    );
 }
 
 /// AC-3 (REQ-4): every row of the sentence table pairs an old sentence with a new place, and a
