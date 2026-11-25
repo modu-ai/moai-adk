@@ -156,6 +156,9 @@ enum W {
     Home,
     Retire,
     HomeNext,
+    ConflictNext,
+    FlowRuleBackup,
+    HostBackup,
     Retired,
     HomeFailed,
     Switch,
@@ -596,6 +599,27 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "Go 항목은 따로 확인해요:"
             } else {
                 "the Go items are retired on their own:"
+            }
+        }
+        ConflictNext => {
+            if ko {
+                "충돌한 파일은 백업을 만든 뒤 패키지 파일로 바꿀 수 있어요(선택):"
+            } else {
+                "the conflicting files can be replaced after a backup (optional):"
+            }
+        }
+        FlowRuleBackup => {
+            if ko {
+                "옛 flow 규칙 파일을 지웠어요 — 백업:"
+            } else {
+                "Removed the earlier flow rule file — backup:"
+            }
+        }
+        HostBackup => {
+            if ko {
+                "바꾸기 전에 만든 백업 폴더:"
+            } else {
+                "Backup folder made before the update wrote:"
             }
         }
         Retired => {
@@ -1535,6 +1559,95 @@ impl Out<'_> {
         );
         self.buf.push_str(&line);
     }
+    /// SPEC-20261125-update-conflict-baseline revision 2 (REQ-13): a preview whose host has files
+    /// in conflict shows the whole command that replaces them after a backup, one line per host,
+    /// so it can be copied. An applied result shows none.
+    fn conflict_next(&mut self, v: &Value) {
+        if v["mode"].as_str() != Some("preview") {
+            return;
+        }
+        let Some(digest) = v["plan_digest"].as_str() else {
+            return;
+        };
+        let flags: Vec<&str> = v["plan"]["hosts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|h| h["conflict_replace"]["apply_flag"].as_str())
+            .collect();
+        if flags.is_empty() {
+            return;
+        }
+        self.blank();
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Info),
+            visible(w(self.lang(), W::ConflictNext))
+        );
+        self.buf.push_str(&line);
+        for flag in flags {
+            let line = format!(
+                "  {}\n",
+                self.p().paint(
+                    Token::Code,
+                    &visible(&format!("moai update --confirm {digest} {flag}"))
+                )
+            );
+            self.buf.push_str(&line);
+        }
+    }
+    /// Revision 2 (REQ-16): the earlier flow rule files an update removed after a backup, with the
+    /// backup folder of each.
+    fn flow_rule_done(&mut self, v: &Value) {
+        let removed = v["routing_result"]["legacy_flow_removed"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        if removed.is_empty() {
+            return;
+        }
+        self.blank();
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Ok),
+            visible(w(self.lang(), W::FlowRuleBackup))
+        );
+        self.buf.push_str(&line);
+        for r in &removed {
+            let backup = r["backup"].as_str().unwrap_or("");
+            let line = format!("  {}\n", self.home(backup));
+            self.buf.push_str(&line);
+        }
+    }
+    /// Revision 2 (REQ-16): the backup folder a host's update made before it wrote (conflicting
+    /// files replaced on request, adopted files), one line per host that made one.
+    fn host_backup_done(&mut self, v: &Value) {
+        let backups: Vec<(String, String)> = v["result"]["hosts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|h| {
+                Some((
+                    h["host"].as_str()?.to_string(),
+                    h["backup_dir"].as_str()?.to_string(),
+                ))
+            })
+            .collect();
+        if backups.is_empty() {
+            return;
+        }
+        self.blank();
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Ok),
+            visible(w(self.lang(), W::HostBackup))
+        );
+        self.buf.push_str(&line);
+        for (host, dir) in &backups {
+            let line = format!("  {host}: {}\n", visible(&self.home(dir)));
+            self.buf.push_str(&line);
+        }
+    }
     /// A switch part that ran (`--confirm-switch`): where the old file is kept and the revert.
     fn switch_done(&mut self, v: &Value, with_revert: bool) {
         let r = &v["switch_result"];
@@ -1903,6 +2016,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
             o.home_next(result);
             o.switch_next(result);
             o.git_hooks_next(result);
+            o.conflict_next(result);
             return o.buf;
         }
         Asked::Stale => {
@@ -1961,6 +2075,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
         o.switch_next(result);
         o.git_hooks_done(result, true);
         o.git_hooks_next(result);
+        o.conflict_next(result);
         o.project_next();
         return o.buf;
     }
@@ -1991,6 +2106,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     o.switch_next(result);
     o.git_hooks_done(result, true);
     o.git_hooks_next(result);
+    o.conflict_next(result);
     o.buf
 }
 
@@ -2211,6 +2327,8 @@ fn applied(v: &Value, view: &View) -> String {
     // A switch the update did not confirm still waits for its own token.
     o.switch_next(v);
     o.git_hooks_done(v, false);
+    o.flow_rule_done(v);
+    o.host_backup_done(v);
     // A partly applied run ends with what failed, not the next step (#2894 7b).
     if !bad {
         o.project_next();

@@ -100,6 +100,23 @@ pub struct HostPlan {
     /// The earlier block in the folder's `CLAUDE.md`; none when there is no block to offer.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub old_block: Option<OldBlockPlan>,
+    /// SPEC-20261125-update-conflict-baseline revision 2: the earlier flow rule file when its bytes
+    /// are ones an earlier routing receipt recorded, so the update may remove it after a backup.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legacy_flow: Option<LegacyFlowPlan>,
+}
+
+/// The earlier flow rule file (`rules/moai/flow.md`) an update removes after a backup.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LegacyFlowPlan {
+    pub path: String,
+    /// remove
+    pub action: String,
+    /// The file's sha256 at plan time; the recorded digest it matched.
+    pub sha256: String,
+    pub backup_root: String,
+    pub backup_layout: String,
 }
 
 /// What the plan says about the earlier block.
@@ -460,6 +477,7 @@ pub fn apply_with(
     let receipt_path = receipt_dir.join("receipt.json");
     write_json(&receipt_path, &receipt)?;
     let mut written = Vec::new();
+    let mut removed = Vec::new();
     for folder in &folders {
         written.extend(rules::apply_folder(
             &home,
@@ -468,16 +486,21 @@ pub fn apply_with(
             folder,
             &routing_text,
             flow_text.as_deref(),
+            &mut removed,
         )?);
     }
     receipt.status = "committed".into();
     write_json(&receipt_path, &receipt)?;
-    Ok(serde_json::json!({
+    let mut out = serde_json::json!({
         "state": "applied",
         "plan_digest": fresh.plan_digest,
         "receipt": id,
         "written": written,
-    }))
+    });
+    if !removed.is_empty() {
+        out["legacy_flow_removed"] = serde_json::Value::Array(removed);
+    }
+    Ok(out)
 }
 
 fn receipt_id_ok(id: &str) -> bool {

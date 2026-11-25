@@ -241,6 +241,11 @@ pub struct HostPlan {
     /// Left out when nothing is adopted, so other plans keep their bytes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub adopt: Option<AdoptPreview>,
+    /// SPEC-20261125-update-conflict-baseline revision 2: the opt-in replacement of the files in
+    /// conflict (a backup first). Left out when no file is in conflict, so other plans keep
+    /// their bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conflict_replace: Option<ConflictReplace>,
     /// #2521: the `install_id` of the earlier version folder whose host receipt supplies
     /// this host's baseline (see [`resolve_host_receipt`]). Left out when the baseline is
     /// this installation's own receipt or there is none, so other plans keep their bytes.
@@ -274,6 +279,74 @@ pub struct AdoptPreview {
     pub files: Vec<AdoptFile>,
     pub backup_root: String,
     pub backup_layout: String,
+}
+
+/// One conflicting file a confirmed replacement would overwrite (SPEC-20261125-update-conflict-
+/// baseline revision 2, REQ-10): the bytes on disk at plan time and the package's.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ConflictFile {
+    pub path: String,
+    pub current_sha256: String,
+    pub new_sha256: String,
+}
+
+/// The replacement offer of a host with files in conflict. Only `--confirm-conflict-replace
+/// <confirm_token>` together with `--confirm` copies each file below into a new folder under
+/// `backup_root` and then writes the package bytes over it; without the flag every conflict keeps
+/// the user's bytes.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ConflictReplace {
+    pub files: Vec<ConflictFile>,
+    pub backup_root: String,
+    pub backup_layout: String,
+    pub confirm_token: String,
+    pub apply_flag: String,
+}
+
+/// The offer for the conflicting files of one host; `None` when no file is in conflict with a
+/// package file to write.
+fn conflict_offer(
+    host: &str,
+    files: &[FilePlan],
+    canonical_home: &Path,
+) -> Option<ConflictReplace> {
+    let offered: Vec<ConflictFile> = files
+        .iter()
+        .filter(|f| f.action == "conflict")
+        .filter_map(|f| {
+            Some(ConflictFile {
+                path: f.path.clone(),
+                current_sha256: f.current_sha256.clone()?,
+                new_sha256: f.new_sha256.clone()?,
+            })
+        })
+        .collect();
+    if offered.is_empty() {
+        return None;
+    }
+    let listing: String = offered
+        .iter()
+        .map(|f| format!("{}\t{}\t{}\n", f.path, f.current_sha256, f.new_sha256))
+        .collect();
+    let digest = sha256_hex(format!("{host}\n{listing}").as_bytes());
+    let hex = digest.strip_prefix("sha256:").unwrap_or(&digest);
+    let token = format!("conflict-replace:{host}:{}", &hex[..16]);
+    Some(ConflictReplace {
+        files: offered,
+        backup_root: crate::home_root::path(canonical_home)
+            .join("backups")
+            .to_string_lossy()
+            .into_owned(),
+        backup_layout: format!(
+            "<apply UTC>-{host}-conflict/{ADOPT_MANIFEST} and <apply UTC>-{host}-conflict/\
+             {ADOPT_FILES}/<path> (a copy of every replaced file, taken before any file is \
+             written; a second run in the same second uses <apply UTC>.2-{host}-conflict)"
+        ),
+        apply_flag: format!("--confirm-conflict-replace {token}"),
+        confirm_token: token,
+    })
 }
 
 /// How many sibling version folders adoption reads, bounded like the projection scan.
@@ -1594,6 +1667,9 @@ pub fn plan_update_in(
                 reason,
             )
         };
+        let conflict_replace = (preflight == "ok")
+            .then(|| conflict_offer(host, &files, &canonical_home))
+            .flatten();
         hosts.push(HostPlan {
             host: (*host).to_string(),
             projection_root: root_text,
@@ -1621,6 +1697,7 @@ pub fn plan_update_in(
                      <apply UTC>.2-{host}-adopt)"
                 ),
             }),
+            conflict_replace,
             receipt_from,
             going_back,
         });
@@ -2119,9 +2196,10 @@ fn agents_write_anything(p: &crate::agent_install::Plan) -> bool {
 fn routing_writes_anything(p: &crate::home_routing::Plan) -> bool {
     p.hosts.iter().any(|h| {
         h.preflight == "ok"
-            && h.section
-                .as_ref()
-                .is_some_and(|s| ["create", "append", "merge"].contains(&s.action.as_str()))
+            && (h.legacy_flow.is_some()
+                || h.section
+                    .as_ref()
+                    .is_some_and(|s| ["create", "append", "merge"].contains(&s.action.as_str())))
     })
 }
 
@@ -2224,9 +2302,15 @@ fn update_command_core(
     confirm_home: Option<&str>,
     confirm_switch: Option<&str>,
     confirm_git_hooks: Option<&str>,
+    confirm_conflict_replace: &[String],
     allow_older: bool,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
+    if !confirm_conflict_replace.is_empty() && confirm.is_none() {
+        return Err(
+            "--confirm-conflict-replace is applied together with --confirm <plan digest>; nothing applied".into(),
+        );
+    }
     const PERMISSION: &str = "moai-cli update confirmation";
     let package = installed_package_dir()?;
     let agents_dir = installed_agents_dir()?;
@@ -2359,6 +2443,7 @@ fn update_command_core(
         &fresh.skills.plan_digest,
         PERMISSION,
         &[],
+        confirm_conflict_replace,
         allow_older,
     )?;
     let gate = gate_on_skills(&skills, &fresh);
@@ -2605,12 +2690,43 @@ pub fn update_command_switch(
     allow_older: bool,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
+    update_command_full(
+        home,
+        confirm,
+        confirm_cleanup,
+        confirm_home,
+        confirm_switch,
+        confirm_git_hooks,
+        &[],
+        revert_switch,
+        allow_older,
+        ask,
+    )
+}
+
+/// [`update_command_switch`] with the conflict replacement tokens
+/// (SPEC-20261125-update-conflict-baseline revision 2): `confirm_conflict_replace` carries the
+/// `--confirm-conflict-replace` tokens, applied together with `confirm` only.
+#[allow(clippy::too_many_arguments)]
+pub fn update_command_full(
+    home: &Path,
+    confirm: Option<&str>,
+    confirm_cleanup: Option<&str>,
+    confirm_home: Option<&str>,
+    confirm_switch: Option<&str>,
+    confirm_git_hooks: Option<&str>,
+    confirm_conflict_replace: &[String],
+    revert_switch: Option<&str>,
+    allow_older: bool,
+    ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
+) -> Result<serde_json::Value> {
     if let Some(stamp) = revert_switch {
         if confirm.is_some()
             || confirm_cleanup.is_some()
             || confirm_home.is_some()
             || confirm_switch.is_some()
             || confirm_git_hooks.is_some()
+            || !confirm_conflict_replace.is_empty()
         {
             return Err(
                 "--revert-switch cannot be combined with a confirming flag; nothing changed".into(),
@@ -2623,7 +2739,8 @@ pub fn update_command_switch(
         || confirm_cleanup.is_some()
         || confirm_home.is_some()
         || confirm_switch.is_some()
-        || confirm_git_hooks.is_some();
+        || confirm_git_hooks.is_some()
+        || !confirm_conflict_replace.is_empty();
     let mut out = update_command_core(
         home,
         confirm,
@@ -2631,6 +2748,7 @@ pub fn update_command_switch(
         confirm_home,
         confirm_switch,
         confirm_git_hooks,
+        confirm_conflict_replace,
         allow_older,
         ask,
     )?;
@@ -2760,12 +2878,18 @@ pub fn apply_update(
         plan_digest,
         permission_reference,
         confirm_backup_replace,
+        &[],
         false,
     )
 }
 
 /// [`apply_update`] recomputing the plan with `allow_older` (audit N1): only `moai update
 /// --allow-older` passes it, so `update-apply` never goes back to an older build.
+/// `confirm_conflict_replace` carries the `--confirm-conflict-replace` tokens
+/// (SPEC-20261125-update-conflict-baseline revision 2): a host whose offer token is in it gets
+/// its conflicting files copied to a backup folder and then replaced; a token the plan did not
+/// offer is refused before any write.
+#[allow(clippy::too_many_arguments)]
 fn apply_update_in(
     home: &Path,
     staged: &StagedPackage,
@@ -2773,6 +2897,7 @@ fn apply_update_in(
     plan_digest: &str,
     permission_reference: &str,
     confirm_backup_replace: &[String],
+    confirm_conflict_replace: &[String],
     allow_older: bool,
 ) -> Result<serde_json::Value> {
     validate_permission(permission_reference)?;
@@ -2796,6 +2921,19 @@ fn apply_update_in(
         if !offered {
             return Err(
                 "confirmation token does not match any backup-then-replace in the plan; nothing written"
+                    .into(),
+            );
+        }
+    }
+    for token in confirm_conflict_replace {
+        let offered = fresh.hosts.iter().any(|h| {
+            h.conflict_replace
+                .as_ref()
+                .is_some_and(|c| &c.confirm_token == token)
+        });
+        if !offered {
+            return Err(
+                "confirmation token does not match any conflict replacement in the plan; nothing written"
                     .into(),
             );
         }
@@ -2849,12 +2987,64 @@ fn apply_update_in(
         }
 
         let root = projection_root(&canonical_home, host)?;
-        let writes: Vec<&FilePlan> = host_plan
-            .files
+        // Revision 2 (REQ-11): with this host's replacement token, every conflicting file is
+        // copied into a backup folder first and then planned as an update of the bytes it has; a
+        // failed copy starts nothing for the host. Without the token the files stay conflicts.
+        let mut host_files: Vec<FilePlan> = host_plan.files.clone();
+        let mut conflict_backup_dir: Option<String> = None;
+        if let Some(offer) = host_plan.conflict_replace.as_ref().filter(|c| {
+            confirm_conflict_replace
+                .iter()
+                .any(|t| t == &c.confirm_token)
+        }) {
+            let named: Vec<AdoptFile> = offer
+                .files
+                .iter()
+                .map(|f| AdoptFile {
+                    path: f.path.clone(),
+                    sha256: f.current_sha256.clone(),
+                    matched: "conflict".into(),
+                })
+                .collect();
+            match adopt_backup(
+                &canonical_home,
+                host,
+                &root,
+                &named,
+                "conflict",
+                plan_digest,
+            ) {
+                Ok(dir) => {
+                    conflict_backup_dir = Some(dir.to_string_lossy().into_owned());
+                    for f in host_files
+                        .iter_mut()
+                        .filter(|f| f.action == "conflict")
+                        .filter(|f| offer.files.iter().any(|c| c.path == f.path))
+                    {
+                        f.action = "update".into();
+                    }
+                }
+                Err(e) => {
+                    any_failed = true;
+                    outcomes.push(HostOutcome {
+                        host: host.to_string(),
+                        status: "failed".into(),
+                        files: Vec::new(),
+                        receipt_status: None,
+                        reload_required: "no".into(),
+                        reload_basis: format!("conflict backup failed; host not started: {e}"),
+                        blocked_reason: None,
+                        backup_dir: None,
+                    });
+                    continue;
+                }
+            }
+        }
+        let writes: Vec<&FilePlan> = host_files
             .iter()
             .filter(|f| f.action == "create" || f.action == "update")
             .collect();
-        let conflict_only = host_plan.files.iter().any(|f| f.action == "conflict");
+        let conflict_only = host_files.iter().any(|f| f.action == "conflict");
 
         let moves: Vec<&FilePlan> = baseline_moves(host_plan).collect();
         if writes.is_empty() && host_plan.adopt.is_none() && moves.is_empty() {
@@ -2888,7 +3078,14 @@ fn apply_update_in(
         // folder BEFORE any receipt is written; a failure starts nothing for this host.
         let mut adopt_backup_dir: Option<String> = None;
         if let Some(adopt) = &host_plan.adopt {
-            match adopt_backup(&canonical_home, host, &root, adopt, plan_digest) {
+            match adopt_backup(
+                &canonical_home,
+                host,
+                &root,
+                &adopt.files,
+                "adopt",
+                plan_digest,
+            ) {
                 Ok(dir) => adopt_backup_dir = Some(dir.to_string_lossy().into_owned()),
                 Err(e) => {
                     any_failed = true;
@@ -3094,8 +3291,7 @@ fn apply_update_in(
             .zip(&receipt.entries)
             .map(|(f, e)| file_result_with(f, e))
             .collect();
-        for f in host_plan
-            .files
+        for f in host_files
             .iter()
             .filter(|f| f.action != "create" && f.action != "update")
         {
@@ -3120,7 +3316,7 @@ fn apply_update_in(
             reload_required: reload.into(),
             reload_basis: basis,
             blocked_reason: None,
-            backup_dir: adopt_backup_dir,
+            backup_dir: conflict_backup_dir.or(adopt_backup_dir),
         });
     }
 
@@ -3200,15 +3396,19 @@ pub(crate) fn create_backup_dir(backups: &Path, stamp: &str, host: &str) -> Resu
 /// file is read again first and must still have the sha256 the plan saw; nothing is written
 /// before that holds. The skill folder is only read. A failure after the folder was made leaves
 /// it as it is (it holds copies, nothing else) and the host starts nothing.
+///
+/// Revision 2 of SPEC-20261125-update-conflict-baseline takes the same copy (`kind` `conflict`,
+/// folder `<stamp>-<host>-conflict`) of the files a confirmed replacement overwrites.
 fn adopt_backup(
     home: &Path,
     host: &str,
     root: &Path,
-    adopt: &AdoptPreview,
+    adopted: &[AdoptFile],
+    kind: &str,
     plan_digest: &str,
 ) -> Result<PathBuf> {
     let mut copies: Vec<(String, Vec<u8>, u32)> = Vec::new();
-    for a in &adopt.files {
+    for a in adopted {
         if !relative_ok(&a.path) {
             return Err("an adopted path is not a plain relative path".into());
         }
@@ -3225,13 +3425,15 @@ fn adopt_backup(
         }
         copies.push((a.path.clone(), bytes, file_mode(&meta)));
     }
+    if kind == "conflict" {
+        test_fault("conflict_backup_copy")?;
+    }
     let backups = crate::home_root::path(home).join("backups");
     refuse_state_symlinks(&backups, "backup")?;
     fs::create_dir_all(&backups).map_err(|_| "backup directory unavailable")?;
     refuse_state_symlinks(&backups, "backup")?;
-    let dir = create_backup_dir(&backups, &compact_stamp(), &format!("{host}-adopt"))?;
-    let files: Vec<serde_json::Value> = adopt
-        .files
+    let dir = create_backup_dir(&backups, &compact_stamp(), &format!("{host}-{kind}"))?;
+    let files: Vec<serde_json::Value> = adopted
         .iter()
         .zip(&copies)
         .map(|(a, (_, _, mode))| {
@@ -3240,7 +3442,7 @@ fn adopt_backup(
         .collect();
     let manifest = json!({
         "schema_version": 1,
-        "kind": "adopt",
+        "kind": kind,
         "host": host,
         "source_root": root.to_string_lossy(),
         "plan_digest": plan_digest,
@@ -3781,6 +3983,7 @@ mod routing_recheck_tests {
             section: None,
             flow: None,
             old_block: None,
+            legacy_flow: None,
         }
     }
 
