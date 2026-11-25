@@ -853,11 +853,11 @@ fn ac1_session_entries_and_live_session_count_read_both_forms() {
     assert_eq!(live_session_count(&fx.sessions, LIVE), Ok(0));
 }
 
-/// REQ-4, REQ-5: what cannot be read stays an error and the file is kept: a symlink, a malformed
-/// file, one over 4096 bytes, and an entry whose file name is neither its name nor its session id.
+/// REQ-4: the file of the name itself that is a symlink stays an error and is kept. Links need
+/// Unix, so this part is its own test.
+#[cfg(unix)]
 #[test]
-fn ac1_a_broken_or_mismatched_entry_is_still_an_error_and_is_kept() {
-    // The file of the name itself: a symlink.
+fn ac1_a_symlinked_entry_is_still_an_error_and_is_kept() {
     let fx = Fixture::new();
     let target = fx.sessions.parent().unwrap().join("elsewhere.json");
     fs::write(&target, "keep").unwrap();
@@ -870,7 +870,13 @@ fn ac1_a_broken_or_mismatched_entry_is_still_an_error_and_is_kept() {
         .unwrap()
         .file_type()
         .is_symlink());
+}
 
+/// REQ-4, REQ-5: what cannot be read stays an error and the file is kept: a malformed file, one
+/// over 4096 bytes, an entry whose file name is neither its name nor its session id, and (on
+/// Unix) a symlink at the file of a session id.
+#[test]
+fn ac1_a_broken_or_mismatched_entry_is_still_an_error_and_is_kept() {
     let over = {
         let mut s = json!({
             "schema_version": 1, "name": "agent-1", "instance": inst('a'), "lease_until": LIVE
@@ -906,20 +912,26 @@ fn ac1_a_broken_or_mismatched_entry_is_still_an_error_and_is_kept() {
         "lease_until": LIVE, "session": sid(8)
     })
     .to_string();
-    for (label, text) in [
+    #[cfg_attr(not(unix), allow(unused_mut))]
+    let mut cases: Vec<(&str, Option<String>)> = vec![
         ("malformed", Some("{not json".to_string())),
         ("over 4096 bytes", Some(over.clone())),
         // Its name is the one looked up, but its file name is neither its name nor its session.
         ("neither name nor session", Some(neither)),
-        ("symlink", None),
-    ] {
+    ];
+    #[cfg(unix)]
+    cases.push(("symlink", None));
+    for (label, text) in cases {
         let fx = Fixture::new();
         match &text {
             Some(t) => fs::write(fx.sessions.join(&file), t).unwrap(),
             None => {
-                let other = fx.sessions.parent().unwrap().join("other.json");
-                fs::write(&other, "keep").unwrap();
-                std::os::unix::fs::symlink(&other, fx.sessions.join(&file)).unwrap();
+                #[cfg(unix)]
+                {
+                    let other = fx.sessions.parent().unwrap().join("other.json");
+                    fs::write(&other, "keep").unwrap();
+                    std::os::unix::fs::symlink(&other, fx.sessions.join(&file)).unwrap();
+                }
             }
         }
         for args in [
