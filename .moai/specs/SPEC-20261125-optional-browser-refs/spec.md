@@ -16,6 +16,22 @@ created: 2026-11-25
 
 바뀌는 것: Aside 글(MCP 등록 안내 제거, 안내 가리키기, 명령 집합 고정), 새 ego(lite) 글, `ops-tools` 팩 데이터 한 항목, 이를 고정하는 새 시험 파일. 바뀌지 않는 것: `skills/moai` 의 워크플로 글과 어댑터, 사용자의 도구 설정과 MCP 설정, 도구 설치.
 
+### Sources
+
+읽기 전용 명령이고 읽은 곳은 이 Mac 이에요. 출력은 명령의 표준 출력이라 체크섬은 기록하지 않았어요.
+
+| Source | What was read | Read at | Result used here |
+| --- | --- | --- | --- |
+| `ego-browser --version` | 도구와 브라우저 버전 | 2026-11-25 15:19Z, 조사 에이전트 | 0.6.3.17, chromium 156.0.8078.96 |
+| `ego-browser skill` | 설치된 사용 안내 | 2026-11-25 15:19Z, 조사 에이전트 | "ego-browser usage guide v2.2.1 (macos)": 한 목표 한 공간, 프로필은 요청할 때만, 막힌 페이지에서 새 공간으로 우회 금지, 사용자가 넘겨받으면 멈춤, 로그인·CAPTCHA·2차 인증은 사용자 몫, 업그레이드는 사용자 승인 뒤 |
+| `ego-browser help` | 명령 목록 | 2026-11-25 15:19Z, 조사 에이전트 | 명령 이름 확인. 안내가 `ego-browser import` 를 말하지 않아서 금지는 MoAI 규칙이에요 |
+| `aside --version` | 도구 버전 | 2026-11-25 15:19Z, 조사 에이전트 | 1.26.1121.1917 |
+| `aside --help` | 옵션과 하위 명령 | 2026-11-25 15:19Z, 조사 에이전트 | `--permission <MODE>`: ask 와 guard 는 같은 모드(기본 Guard), full-access. "읽기 전용" 모드는 없어요. `aside repl --help` 에는 `--permission` 이 없어요 |
+| `aside guide` | 설치된 CLI 안내 | 2026-11-25 15:19Z, 조사 에이전트 | "Aside CLI 1.26.1121.1917 · Skill version 5", 4593 바이트: `aside guide repl` 먼저 읽기, `aside skills show <name>` 먼저 읽기, `aside memory` 는 읽기만, `aside session delete` 전에 묻기. 멈춤 규칙, 탭 재사용 규칙, CLI 설치 명령은 말하지 않아요 |
+| `aside skills list` | 설치된 Aside 스킬 | 2026-11-25 15:19Z, 조사 에이전트 | 목록 명령이 있어요 |
+| 위 도움말과 안내 글 다시 읽기 | 같은 글 | 같은 날 늦게, 계획 에이전트(정확한 시각은 기록하지 않았어요) | 위 내용과 같아요 |
+| 카드 본문의 확인 규칙 | Interview 의 답 | 사용자 확인 2026-11-21, 다른 세션이 전달 | 정본은 설치된 공식 스킬·CLI 의 안내예요. 승인으로 기록하지 않아요 |
+
 ## Interview
 
 - Q1: 번들되는 선택 도구(Aside, ego(lite)) 레퍼런스에서 도구 사용법의 정본은 무엇이고 MoAI 글은 무엇을 말하나요? → A: 각 도구의 정본은 설치된 공식 스킬·CLI 가 말하는 현재 버전의 안내예요. MoAI 글은 언제 쓰는가, 어디까지 허용하는가, 도구가 없을 때의 안전한 멈춤만 말해요(사용자 확인 2026-11-21, 카드 본문, 다른 세션이 전달).
@@ -104,22 +120,38 @@ created: 2026-11-25
 | D-5 | 금지 명령(`aside mcp`, `aside update`, `aside skills install`, `aside settings`, `aside host use`, `ego-browser import`)은 공식 안내보다 엄격하게 둬요 | 카드 본문 규칙: 공식 스킬 설치와 사용자 설정·MCP 설정 변경이 없어요. 두 안내 모두 이 명령들의 사용을 막지는 않아서 글이 MoAI 자신의 규칙이라고 밝혀요 | 금지 줄을 빼요 |
 | D-6 | `tools/repo_scans.json` 은 시험 파일 이름과 검사 인자만 늘리는 두 줄로 줄 임대로 고쳐요 | 공유 파일은 범위에 넣지 않고 줄 임대로 쓰는 저장소 규칙이에요. 새 시험이 배포 파일을 읽어서 AC-13 의 등록이 필요해요 | 두 줄을 되돌려요 |
 
-## Sources
-
-읽기 전용 명령이고 읽은 곳은 이 Mac 이에요. 출력은 명령의 표준 출력이라 체크섬은 기록하지 않았어요.
-
-| Source | What was read | Read at | Result used here |
-| --- | --- | --- | --- |
-| `ego-browser --version` | 도구와 브라우저 버전 | 2026-11-25 15:19Z, 조사 에이전트 | 0.6.3.17, chromium 156.0.8078.96 |
-| `ego-browser skill` | 설치된 사용 안내 | 2026-11-25 15:19Z, 조사 에이전트 | "ego-browser usage guide v2.2.1 (macos)": 한 목표 한 공간, 프로필은 요청할 때만, 막힌 페이지에서 새 공간으로 우회 금지, 사용자가 넘겨받으면 멈춤, 로그인·CAPTCHA·2차 인증은 사용자 몫, 업그레이드는 사용자 승인 뒤 |
-| `ego-browser help` | 명령 목록 | 2026-11-25 15:19Z, 조사 에이전트 | 명령 이름 확인. 안내가 `ego-browser import` 를 말하지 않아서 금지는 MoAI 규칙이에요 |
-| `aside --version` | 도구 버전 | 2026-11-25 15:19Z, 조사 에이전트 | 1.26.1121.1917 |
-| `aside --help` | 옵션과 하위 명령 | 2026-11-25 15:19Z, 조사 에이전트 | `--permission <MODE>`: ask 와 guard 는 같은 모드(기본 Guard), full-access. "읽기 전용" 모드는 없어요. `aside repl --help` 에는 `--permission` 이 없어요 |
-| `aside guide` | 설치된 CLI 안내 | 2026-11-25 15:19Z, 조사 에이전트 | "Aside CLI 1.26.1121.1917 · Skill version 5", 4593 바이트: `aside guide repl` 먼저 읽기, `aside skills show <name>` 먼저 읽기, `aside memory` 는 읽기만, `aside session delete` 전에 묻기. 멈춤 규칙, 탭 재사용 규칙, CLI 설치 명령은 말하지 않아요 |
-| `aside skills list` | 설치된 Aside 스킬 | 2026-11-25 15:19Z, 조사 에이전트 | 목록 명령이 있어요 |
-| 위 도움말과 안내 글 다시 읽기 | 같은 글 | 같은 날 늦게, 계획 에이전트(정확한 시각은 기록하지 않았어요) | 위 내용과 같아요 |
-| 카드 본문의 확인 규칙 | Interview 의 답 | 사용자 확인 2026-11-21, 다른 세션이 전달 | 정본은 설치된 공식 스킬·CLI 의 안내예요. 승인으로 기록하지 않아요 |
-
 ## Result
 
-구현 뒤에 moai-docs 가 써요.
+모든 명령은 브랜치 `spec/optional-browser-refs-20261125` 의 워크트리에서 이번 실행 중에 돌렸고, 출력은 `target/optional-browser-refs/` 아래에 있어요. 공식 안내를 읽은 때는 Intent 의 `### Sources` 표에 날짜와 함께 적혀 있고, 두 레퍼런스 각각의 세 줄은 MoAI 자신의 규칙이며 글이 그렇게 밝혀요.
+
+RED 와 단계별 결과:
+
+- RED(시험 파일만 커밋한 시점, `red.out`): `cargo test --locked --offline --test optional_browser_refs_cli` exit 101, 1 passed(AC-9 의 픽스처 시험), 10 failed. 실패 이유는 ego 파일 없음, 옛 Aside 글, 낡은 팩 해시로 모두 맞는 이유예요.
+- Aside 글을 고친 뒤(`step4.out`): 5 passed, 6 failed. ego 글을 더한 뒤(`step5.out`): 9 passed, 2 failed(`packs.json` 이 필요한 팩 해시 시험과 설치 시험). `packs.json` 을 고친 뒤(`step6.out`): `optional_browser_refs_cli` 11 passed, 0 failed, exit 0. AC-1..AC-11 이 시험 하나씩이에요.
+
+AC 별 결과:
+
+- AC-1: met — `cargo test --locked --offline --test optional_browser_refs_cli` 한 번 실행(`gates.out`, `moai heavy-slot-acquire --name milo --max 3 --` 안에서 exit 0)에서 `the_aside_reference_is_cli_only_and_points_to_the_installed_guide` ok, 그 파일 11 passed, 0 failed.
+- AC-2: met — 같은 실행에서 `the_aside_reference_names_exactly_the_commands_its_safe_lines_allow` ok.
+- AC-3: met — 같은 실행에서 `the_aside_reference_marks_the_guides_lines_apart_from_its_own_rules` ok.
+- AC-4: met — 같은 실행에서 `the_aside_reference_stops_safely_when_the_tool_is_missing` ok.
+- AC-5: met — 같은 실행에서 `the_ego_reference_points_to_the_installed_guide_without_copying_it` ok.
+- AC-6: met — 같은 실행에서 `the_ego_reference_names_exactly_the_commands_its_safe_lines_allow` ok.
+- AC-7: met — 같은 실행에서 `the_ego_reference_keeps_the_official_conditions_and_its_own_rules_apart` ok.
+- AC-8: met — 같은 실행에서 `the_ego_reference_stops_safely_when_the_tool_is_missing` ok.
+- AC-9: met — 같은 실행에서 `the_command_set_comparison_catches_an_extra_and_a_reworded_command` ok. 이 시험은 RED 때도 통과한 픽스처 시험이에요.
+- AC-10: met — 같은 실행에서 `the_ops_tools_pack_lists_both_references_with_matching_names_and_hashes` ok. `packs.json` 의 두 해시는 커밋된 `SKILL.md` 바이트의 `shasum -a 256` 값과 같아요.
+- AC-11: met — 같은 실행에서 `adding_ops_tools_installs_both_references_with_no_browser_tool_present` ok.
+- AC-12: met — 같은 묶음 실행(`optional_browser_refs_cli`, `bundle_user_assets_cli`, `home_isolation_scan`, `repo_scans_table`, `test_area_layout`, `ac_command_lint`, `state_folder_literal_scan`, `launcher_reads_models`, `gates.out`)에서 `bundle_user_assets_cli` 6 passed, 0 failed.
+- AC-13: met — 같은 묶음 실행에서 `repo_scans_table` 33 passed, 0 failed, `every_file_reader_has_an_always_scan_or_an_exemption` ok.
+
+같은 묶음 실행의 나머지: `home_isolation_scan` 15, `test_area_layout` 19, `ac_command_lint` 15, `state_folder_literal_scan` 10, `launcher_reads_models` 12 passed, 모두 0 failed, 전체 exit 0.
+
+그 밖에 돌린 것:
+
+- `cargo fmt --all` exit 0, 바뀐 것 없음. `git diff --check` exit 0.
+- `moai trailer-check c5c0eda5259cb04d6dcc7a51acf7a94f62556a7d..HEAD` ok(커밋 6 개, 발견 0 건).
+- `moai spec check --all`: 이 문서를 고치기 전에는 459 개 SPEC, 오류 0, 경고 50(기준선은 458 개, 오류 0, 경고 49 이고 하나 더 늘어난 것이 이 SPEC 의 `## Sources` 제목이었어요). `## Sources` 를 `## Intent` 아래 `### Sources` 로 옮긴 뒤에는 459 개 SPEC, 오류 0, 경고 49.
+- 공유 파일 `tools/repo_scans.json` 은 `moai card line-lease` 로 정확히 두 줄만 늘렸어요(`git diff --numstat` 가 `2 1`: 규칙 한 줄, `--test` 옵션 하나). `packs.json` 의 `git diff --numstat` 는 `9 1` 이고 Aside 해시가 바뀌고 ego 항목이 더해졌어요.
+
+Not run: `moai check affected --card`(READY 에서 돌리고 READY 노트에 인용해요), clippy 와 `product_cli` 의 base-names 시험(둘 다 check affected 와 함께 와요), 뮤턴트 증명(tier 1 이라 요구되지 않아요), ego(lite) 나 Aside 를 설치한 상태의 실제 사용, 독립 감사.
