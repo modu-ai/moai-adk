@@ -43,3 +43,20 @@ created: 2026-11-25
 2. `src/lane_send.rs`: `ProcessOrca::call` 의 네 문장을 뜻 먼저, 경로 마지막으로 바꿔요.
 3. `tests/lane_send_cli.rs`: AC-4 테스트를 더하고, `lane_send_sends_failure_is_never_reported_as_sent` 에 힌트가 없음을 확인하는 한 줄을 더해요(AC-6 의 REQ-4 증거). AC-6 의 테스트 둘이 그대로 통과하는지 봐요.
 4. AC-5~AC-7 을 돌리고, `cargo fmt --all` 뒤에 `moai check affected --card <base>..<head>` 영수증을 받아요.
+
+## Result
+
+구현 head 077cc1558278bc292d1241ef7c7feeb4ea71960e(짧게 077cc15582, base 59ac3344cd). 아래는 이 실행에서 본 값이에요.
+
+- 고치기 전: `target/lena/red_screen.log` 에서 새 `lane_screen_cli` 시험 3개가 모두 실패했어요(`test result: FAILED. 0 passed; 3 failed`). `target/lena/red_send.log` 에서 `lane_send_a_send_whose_output_a_child_holds_names_the_program_after_the_meaning` 이 실패했어요(1 passed, 1 failed).
+- AC-1 met: `lane_screen_scan_a_held_output_under_a_path_over_200_characters_keeps_its_time_limit` 통과. `target/lena/green_screen.log` 의 `cargo test --locked --test lane_screen_cli -- <시험 5개>` 가 `test result: ok. 5 passed; 0 failed`.
+- AC-2 met: `lane_screen_scan_a_hanging_read_under_a_path_over_200_characters_keeps_its_time_limit` 통과(같은 `green_screen.log` 실행).
+- AC-3 met: `lane_screen_scan_an_absent_orca_under_a_path_over_200_characters_says_why_it_cannot_run` 통과(같은 `green_screen.log` 실행).
+- AC-4 met: `lane_send_a_send_whose_output_a_child_holds_names_the_program_after_the_meaning` 통과. `target/lena/green_send.log` 의 `cargo test --locked --test lane_send_cli -- <시험 5개>` 가 `test result: ok. 5 passed; 0 failed`.
+- AC-5 met: `lane_screen_scan_an_orca_child_holding_the_output_does_not_hold_the_scan` 과 `lane_screen_scan_fails_when_the_list_cannot_be_read_and_sends_and_writes_nothing` 이 고치지 않은 채로 통과(`green_screen.log` 의 같은 실행).
+- AC-6 met: `lane_send_a_send_whose_output_a_child_holds_says_the_text_may_have_reached_the_lane` 과 `lane_send_sends_failure_is_never_reported_as_sent` 통과(`green_send.log` 의 같은 실행; 같은 실행의 `lane_send_unsafe_a_hanging_orca_is_cut_off_and_nothing_is_sent` 와 `lane_send_unsafe_an_absent_orca_is_an_unreachable_lane` 도 통과). `lane_send_sends_failure_is_never_reported_as_sent` 에 더한 `!message.contains("may have reached the lane")` 줄은 고치기 전에도 통과했어요(REQ-4 를 지키는 줄이고 뮤턴트는 주장하지 않아요).
+- AC-7 met: `rg -n '"`\{shown\}`|cannot (run|wait for) `\{shown\}`' src/lane_send.rs` 가 아무것도 찍지 않고 exit 1(구현 에이전트의 실행). `cannot wait for` 문장은 `try_wait` 가 OS 오류로만 실패해서 시험으로 일으킬 수 없고, AC-7 과 코드 읽기로만 덮여요.
+- AC-8: not_run in this file: the receipt names the head it ran on and this file is part of that head, so the receipt (`moai check affected --card <base>..<head>`, summary line, step exit codes) is quoted in the card's READY note.
+- 문서: `docs/design-review/appendix/operations/lane_send.md` 13행과 `lane_screen.md` 24행은 `did not finish its output` / `did not finish its output within N seconds` 문구만 인용하고 둘 다 그대로 맞아서 문서는 고치지 않았어요.
+- not_run: 전체 `cargo test`, 뮤턴트, Windows 확인.
+- 이 SPEC 은 `status: draft` 로 두어요(tier 1, 기록된 승인 없음).
