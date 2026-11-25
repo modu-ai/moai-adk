@@ -130,10 +130,11 @@ Skip this section when you are a base agent yourself: base agents never start ot
 - Use only what the host itself offers. Never stand in for a missing feature with extra sessions, folders or scripts: name the feature as not supported on this host, with the reason, and use the fallback given below.
 - When the agent is not installed on this host, do the step in this session and say so.
 
-RUN hands one planned change at a time to `moai-impl`: in its own worktree where the host offers that, otherwise in this worktree, and always in sequence. Do not write in its scope while it runs.
+RUN hands every planned change to `moai-impl` with the host's agent tool; do not write the change yourself when the agent is installed. It works in this worktree, one change at a time and always in sequence: start the next only after its `RESULT` line is in, and do not write in its scope while it runs. Never run two `moai-impl` at once; only `moai-research` runs several at once.
 
-- Claude Code: the installed agent file sets `isolation: worktree`. That worktree starts from the default branch, so pass `base`; the agent checks it out and confirms `git rev-parse HEAD` before writing.
-- Kiro and Cursor CLI document no subagent worktree isolation. Fallback: the agent works in this worktree, one change at a time, and you wait for its result before the next step.
+- Claude Code: the installed agent file sets `isolation: none`, so the agent starts in this session's working folder, the card's worktree, and builds on what is already built there. `isolation: worktree` would make a second worktree from the remote default branch and build it from nothing (Claude Code sub-agents and worktrees pages, read 2026-11-25T03:52Z). Pass `base`; the agent confirms `git rev-parse HEAD` equals it before writing and ends `blocked` when it does not.
+- Claude Code starts an agent the session spawns in the background by default and tells this session when it finishes; wait for that notice before you read its result or start the next step, and do other work only outside its scope meanwhile.
+- Kiro and Cursor CLI document no subagent worktree isolation. Fallback: the agent works in this worktree like any other host, one change at a time, and you wait for its result before the next step.
 - Cleanup: the agent deletes only the build output it made in the worktree it works in (its own where the host offers one, else this worktree), from inside that worktree and by relative path (`rm -rf target/debug`), never by an absolute path, and reports in its `Cleanup` section what it could not delete. Read that section before you take the worktree's result.
 
 ## Web pages
