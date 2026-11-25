@@ -16,7 +16,12 @@ use std::process::Command;
 pub const RETRIES: u32 = 2;
 
 /// The ledger of FLAKY names, one JSON object per line, in the project state folder (REQ-9).
-pub const LEDGER: &str = crate::project_state!("check-flaky.jsonl");
+const LEDGER_FILE: &str = "check-flaky.jsonl";
+
+/// The ledger of the project at `root`, in the folder that holds its state now.
+pub fn ledger_path(root: &Path) -> PathBuf {
+    crate::state_root::path(root, LEDGER_FILE)
+}
 
 /// A name seen this many times is marked `fix` by `moai check flaky` (REQ-10).
 const FIX_AT: usize = 2;
@@ -451,7 +456,7 @@ pub fn record(root: &Path, out: &Path, head: &str, names: &[TestName]) -> Result
     if let Err(e) = std::fs::write(out.join("flaky.txt"), format!("{}\n", list.join("\n"))) {
         problems.push(format!("cannot write flaky.txt: {e}"));
     }
-    let ledger = root.join(LEDGER);
+    let ledger = ledger_path(root);
     let append = || -> std::io::Result<()> {
         use std::io::Write;
         if let Some(parent) = ledger.parent() {
@@ -489,7 +494,7 @@ pub fn report(dir: &Path) -> Result<serde_json::Value, String> {
     let root = git(dir, &["rev-parse", "--show-toplevel"])
         .map(PathBuf::from)
         .unwrap_or_else(|| dir.to_path_buf());
-    let ledger = root.join(LEDGER);
+    let ledger = ledger_path(root);
     let mut counts: std::collections::BTreeMap<String, usize> = Default::default();
     match std::fs::read_to_string(&ledger) {
         Ok(text) => {
