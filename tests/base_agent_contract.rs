@@ -141,14 +141,47 @@ const TIER_ROWS: [(&str, &[&str]); 4] = [
     ),
 ];
 
+/// The tier table of `agents/audit.md`, line by line and exactly: the header, the separator and
+/// the four rows. A row holds the contract's words and nothing else, so a clause added to a row
+/// (an exception that lets the author audit, say) is not a row of the table.
+const TIER_TABLE: [&str; 6] = [
+    "| Tier | Changed paths | Runs | Cites | Who audits, and what the verdict then needs |",
+    "| --- | --- | --- | --- | --- |",
+    "| docs-only (tier 0) | only documents or SPEC text change | nothing is built | no receipt | the auditor records a PASS without a receipt |",
+    "| test-only (tier 0, tier 1 when a tool changes) | only tests or test tools change | nothing | the lane's receipt | the auditor gives it a light audit: it reads the change and the lane's receipt and runs nothing |",
+    "| code (tier 1) | product code or skill text changes | runs no mutant | cites the lane's receipt instead of running the head again | a session that wrote none of it gives a light audit |",
+    "| high-risk (tier 2) | a changed path starts with a prefix of the floor list | the code steps plus the boundary, security and data-loss checks of this contract, and at most two named test modules run | the lane's guard-mutant lines read | a session that wrote none of it gives the full audit |",
+];
+
 /// The table row of `text` that starts with `start`.
 fn row<'a>(text: &'a str, start: &str) -> Option<&'a str> {
     text.lines().find(|l| l.starts_with(start))
 }
 
-/// What is wrong with the tier table of `text`: a row missing, or a row without a word.
+/// What is wrong with the tier table of `text`: a line that is not exactly the pinned one, a row
+/// after the table, a row missing, or a row without a word the contract's line holds.
 fn tier_table_problems(text: &str) -> Vec<String> {
     let mut problems = Vec::new();
+    let lines: Vec<&str> = text.lines().collect();
+    match lines.iter().position(|l| l.starts_with("| Tier |")) {
+        None => problems.push("no table starts with the header".to_string()),
+        Some(first) => {
+            for (k, want) in TIER_TABLE.iter().enumerate() {
+                if lines.get(first + k) != Some(want) {
+                    problems.push(format!(
+                        "table line {k} is not exactly {want:?}: {:?}",
+                        lines.get(first + k)
+                    ));
+                }
+            }
+            if lines
+                .get(first + TIER_TABLE.len())
+                .is_some_and(|l| l.starts_with('|'))
+            {
+                problems.push("a row follows the table".to_string());
+            }
+        }
+    }
     for (start, words) in TIER_ROWS {
         match row(text, start) {
             None => problems.push(format!("no row starts with {start:?}")),
@@ -273,6 +306,47 @@ fn ac3_tier_rows_carry_the_contract_facts() {
             "dropping {word:?} from {start:?} passes"
         );
     }
+}
+
+/// AC-3 guard mutant (the repair of the audit's FAIL): a clause that reverses a rule, added to the
+/// end of any one row, is found, and so is a row added after the table. The first mutant is the
+/// one the audit planted: the high-risk row ends with "or the author when no other session is
+/// free".
+#[test]
+fn ac3_a_clause_added_to_a_row_is_found() {
+    const CLAUSE: &str = ", or the author when no other session is free";
+    let planted = AUDIT.replacen(
+        "gives the full audit |",
+        &format!("gives the full audit{CLAUSE} |"),
+        1,
+    );
+    assert!(
+        planted != AUDIT,
+        "the planted clause did not change the text"
+    );
+    assert!(
+        !tier_table_problems(&planted).is_empty(),
+        "the high-risk row with the author clause passes"
+    );
+    for want in &TIER_TABLE[2..] {
+        let longer = format!("{}{CLAUSE} |", want.trim_end_matches(" |"));
+        let mutant = AUDIT.replacen(want, &longer, 1);
+        assert!(mutant != AUDIT, "the clause did not change {want:?}");
+        assert!(
+            !tier_table_problems(&mutant).is_empty(),
+            "a row with an added clause passes: {want}"
+        );
+    }
+    let extra = AUDIT.replacen(
+        TIER_TABLE[5],
+        &format!("{}\n| extra (tier 9) | a | b | c | d |", TIER_TABLE[5]),
+        1,
+    );
+    assert!(extra != AUDIT, "the extra row did not change the text");
+    assert!(
+        !tier_table_problems(&extra).is_empty(),
+        "a row added after the table passes"
+    );
 }
 
 /// AC-4 (REQ-8, REQ-16): the documentation agent takes `head` and ends `blocked` when HEAD

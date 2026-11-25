@@ -1994,6 +1994,89 @@ fn tier_key_word_problems(text: &str, lead: &str) -> Vec<String> {
     problems
 }
 
+/// The tier table of `agents/audit.md`, exactly: the header, the separator and the four rows
+/// (SPEC-20261125-base-agent-contract REQ-5). The key words above are found by "contains", so a
+/// clause that reverses a rule and is added to a row (the author may audit when no other session
+/// is free) would pass them; the table is pinned line by line instead.
+const AGENT_TIER_TABLE: [&str; 6] = [
+    "| Tier | Changed paths | Runs | Cites | Who audits, and what the verdict then needs |",
+    "| --- | --- | --- | --- | --- |",
+    "| docs-only (tier 0) | only documents or SPEC text change | nothing is built | no receipt | the auditor records a PASS without a receipt |",
+    "| test-only (tier 0, tier 1 when a tool changes) | only tests or test tools change | nothing | the lane's receipt | the auditor gives it a light audit: it reads the change and the lane's receipt and runs nothing |",
+    "| code (tier 1) | product code or skill text changes | runs no mutant | cites the lane's receipt instead of running the head again | a session that wrote none of it gives a light audit |",
+    "| high-risk (tier 2) | a changed path starts with a prefix of the floor list | the code steps plus the boundary, security and data-loss checks of this contract, and at most two named test modules run | the lane's guard-mutant lines read | a session that wrote none of it gives the full audit |",
+];
+
+/// What is wrong with the audit agent's tier table: a line that is not exactly the pinned one, or
+/// a row after the table.
+fn agent_tier_table_problems(text: &str) -> Vec<String> {
+    let lines: Vec<&str> = text.lines().collect();
+    let Some(first) = lines.iter().position(|l| l.starts_with("| Tier |")) else {
+        return vec!["no table starts with the header".to_string()];
+    };
+    let mut problems = Vec::new();
+    for (k, want) in AGENT_TIER_TABLE.iter().enumerate() {
+        if lines.get(first + k) != Some(want) {
+            problems.push(format!(
+                "table line {k} is not exactly {want:?}: {:?}",
+                lines.get(first + k)
+            ));
+        }
+    }
+    if lines
+        .get(first + AGENT_TIER_TABLE.len())
+        .is_some_and(|l| l.starts_with('|'))
+    {
+        problems.push("a row follows the table".to_string());
+    }
+    problems
+}
+
+/// The audit agent's tier table is exactly the pinned one, and a clause added to the end of any
+/// row, a changed word, a missing row and an extra row are each found (guard mutants: the first
+/// is the one the audit planted, "or the author when no other session is free").
+#[test]
+fn refs_audit_agent_tier_table_is_exact() {
+    let agent = repo_text("agents/audit.md");
+    let problems = agent_tier_table_problems(&agent);
+    assert!(problems.is_empty(), "agents/audit.md: {problems:#?}");
+    const CLAUSE: &str = ", or the author when no other session is free";
+    for want in &AGENT_TIER_TABLE[2..] {
+        let longer = format!("{}{CLAUSE} |", want.trim_end_matches(" |"));
+        let mutants = [
+            ("a clause added", agent.replacen(want, &longer, 1)),
+            (
+                "a word changed",
+                agent.replacen(want, &want.replacen("audit", "check", 1), 1),
+            ),
+            ("a row missing", agent.replacen(&format!("{want}\n"), "", 1)),
+        ];
+        for (name, mutant) in mutants {
+            assert!(
+                mutant != agent,
+                "{name}: the mutant did not change the text"
+            );
+            assert!(
+                !agent_tier_table_problems(&mutant).is_empty(),
+                "{name}: the table passes for {want}"
+            );
+        }
+    }
+    let extra = agent.replacen(
+        AGENT_TIER_TABLE[5],
+        &format!(
+            "{}\n| extra (tier 9) | a | b | c | d |",
+            AGENT_TIER_TABLE[5]
+        ),
+        1,
+    );
+    assert!(extra != agent, "the extra row did not change the text");
+    assert!(
+        !agent_tier_table_problems(&extra).is_empty(),
+        "a row added after the table passes"
+    );
+}
+
 /// AC-4 (REQ-6): each tier line keeps its key words in the contract and in the two copies; a key
 /// word removed from the high-risk line is found. The docs-only line's key words leave out the
 /// old "the lander reads the change and lands it" (false: `moai card land` needs a recorded PASS
