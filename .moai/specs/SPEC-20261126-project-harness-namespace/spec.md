@@ -78,4 +78,18 @@ created: 2026-11-26
 
 ## Result
 
-(아직 구현 전이에요.)
+- AC-1: met — `cargo test --locked --offline --no-fail-fast --test project_harness_namespace ...` 종료 코드 0, 10 passed 0 failed(로그 `target/ns/green1.log`). 시험 `fresh_plan_names_the_namespaced_agent_and_skill_paths` 가 계획이 `.claude/agents/moai/prj-reviewer.md`, `.claude/skills/moai-prj-checks/SKILL.md`, `.claude/skills/moai-ref-b/SKILL.md` 만 이름 짓고, 옛 스킬 경로에는 줄이 없고, front matter `name` 이 역할 id 와 폴더 이름이고, apply 뒤 두 번째 계획이 모두 `unchanged` 임을 확인해요. 구현 코드는 `src/generation.rs` 의 `skill_path`/`skill_folder_name`/`former_skill_path`예요.
+- AC-2: met — 같은 실행의 시험 `folder_name_of_sixty_four_characters_is_planned_and_sixty_five_is_refused` 와 `folder_name_limit_holds_for_a_skill_projection_id` 가 폴더 이름 64자는 계획되고 65자는 필드 이름과 한도 64 를 말하며 값은 말하지 않고 거절됨을 확인해요.
+- AC-3: met — 같은 실행의 시험 `moved_owned_unedited_skill_moves_with_its_body_kept`, `moved_edited_skill_stays_and_both_paths_are_conflict`, `moved_user_skill_folder_beside_ours_is_left_alone`, `moved_former_path_edited_after_the_plan_is_not_removed` 가 통과해요. 더해서 임시 프로젝트에서 실제 `moai generation-plan`/`generation-apply` 를 돌렸어요(`target/ns/danger2.sh`, 로그 `target/ns/danger2.log`): 소유하고 편집 안 된 옛 스킬 둘은 계획에서 `remove` + `create` 였고 계획 뒤에도 트리가 그대로였고, apply 종료 코드 0 뒤 옛 파일과 비워진 폴더는 없어지고 새 파일의 `name` 이 `moai-prj-checks`, `moai-ref-b` 였고 다음 계획은 둘 다 `unchanged` 였어요. 편집된 파일은 옛 경로와 새 경로 둘 다 `conflict`(이유 문장 포함), apply 종료 코드 1("nothing applied"), 편집된 파일의 바이트 그대로 남고 새 폴더는 만들어지지 않았어요. 사용자 스킬 폴더(`my-own`)는 두 실행 모두 계획에 없고 바이트가 그대로였어요.
+- AC-4: met — 같은 실행의 시험 `research_holds_official_quotes_and_read_times` 가 `research.md` 의 인용과 읽은 시각 열한 개를 확인해요.
+- AC-5: met — 같은 실행의 시험 `text_step_six_names_the_namespace_folders` 가 `skills/moai/workflows/project.md` 단계 6 이 `.claude/agents/moai/` 와 `.claude/skills/moai-` 를 말함을 확인해요. 그 글을 읽는 시험 열한 개 대상(`project_decide_model`, `project_worktree_move_choice`, `generic_flow_questions`, `project_applied_table`, `project_interview_minimal`, `project_flow_closing`, `project_preview_order`, `flow_name_scan`, `next_flow_skill_scan`, `agent_defs_package`, `source_manifest_facts`)가 같은 로그에서 모두 통과해요.
+
+옛 스킬 경로를 고정했던 시험은 기대 경로만 새 경로로 고쳤어요(`project_skills_generation`, `generation_native_role_link`, `generation_apply_result_cli`, `retired_hosts_layer`, `empty_parent_prune_cli`, `project_harness_pick`, `generation_request_record`, `product_cli`). 시험이나 단언을 지우거나 약하게 하지 않았어요.
+
+가드 변이(`src/generation.rs` 에 한 줄씩, 매번 `git checkout --` 로 되돌렸고 마지막에 트리가 깨끗해요; 로그 `target/ns/m*.log`, `u2.log`): 편집 검사 제거(`m1`)는 `moved_edited_skill_stays_and_both_paths_are_conflict` 를, 프로젝션 폴더 한도 제거(`m2`)는 `folder_name_limit_holds_for_a_skill_projection_id` 를, 프로젝트 스킬 폴더 한도 제거(`m3`)는 `folder_name_of_sixty_four_characters_is_planned_and_sixty_five_is_refused` 를, 기록 없는 파일 보호 제거(`m4`)는 `moved_user_skill_folder_beside_ours_is_left_alone` 를 실패시켰어요(모두 종료 코드 101). 바뀐 파일 삭제 거부는 두 겹이에요: apply 가 먼저 계획을 다시 만들어 비교하고(`m6`, 그 한 줄만 끄면 종료 코드 0), 삭제 단계가 다시 비교해요(`m5`, 한 줄만 끄면 통합 시험은 종료 코드 0 이었어요). 그래서 삭제 단계만 직접 부르는 단위 시험 `the_removal_step_keeps_a_file_that_changed_after_the_plan` 을 더했고 `m5` 는 그 시험을 종료 코드 101 로 실패시켜요. 두 겹을 함께 끄면(`m7`) 통합 시험 `moved_former_path_edited_after_the_plan_is_not_removed` 가 종료 코드 101 로 실패해요. `m6` 한 줄은 이 SPEC 이전부터 있던 검사라서 그것만 따로 죽이는 시험은 더하지 않았어요.
+
+Not done:
+
+- SPEC frontmatter 는 `status: draft` 이고 `approval:` 블록이 없어요. 위임된 승인은 리더가 노트 9593 으로 기록했고, 블록은 리더가 랜딩 때 써요.
+- 생성된 스킬을 Claude Code 가 `moai-` 폴더에서 실제로 읽는지의 실행 확인은 하지 않았어요(`research.md` 의 "Not read"). 공식 문서가 한 단계 폴더로 문서화한 배치만 따라요.
+- `moai check affected --card` 영수증은 READY 노트에 붙이고, 이 Result 에는 붙이지 않아요.
