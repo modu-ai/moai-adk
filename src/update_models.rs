@@ -36,6 +36,18 @@ pub fn settings_path(home: &Path) -> PathBuf {
 /// The tools whose folder exists under the home: `claude` for `~/.claude`. A link or a file of
 /// that name is not a folder.
 pub fn installed_tools(home: &Path) -> Vec<&'static str> {
+    installed_tools_with(home, None, |_| None)
+}
+
+/// [`installed_tools`] with the account home and the environment given (tests pass a map).
+// @cc:later RED stub of SPEC-20261126-install-docs-match-code: ignores `account` and `get` until
+// the GREEN step makes it follow the host home resolver.
+pub fn installed_tools_with(
+    home: &Path,
+    account: Option<&Path>,
+    get: impl Fn(&str) -> Option<std::ffi::OsString>,
+) -> Vec<&'static str> {
+    let _ = (account, get);
     [("claude", ".claude")]
         .into_iter()
         .filter(|(_, folder)| {
