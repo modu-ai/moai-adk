@@ -57,7 +57,7 @@ Orca is optional for every workflow. Nothing in the `moai` tool runs `orca`, and
 | AUDIT | works | works | read-only is enforced by the agent file on Claude Code only; the verdict's first line has one format on every host |
 | SYNC | works | works | none |
 | WORK | works (Orca not used) | works | none |
-| LEADER | works: `moai lane-send` reads a lane terminal and sends to it | replaced: the host's message tool carries the dispatch | the cross-session message has no `moai` command on any host yet |
+| LEADER | works: the host's message tool carries the dispatch first, and `moai lane-send` (a lane terminal read and a send) is the fallback, with `/clear` and screen reads | replaced: the host's message tool carries the dispatch | the cross-session message has no `moai` command on any host yet |
 
 Unsupported today, tracked in Issue #2936: the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see, so UPDATE is unsupported with Orca until that repair lands. The table is pinned by `tests/orca_optional_3005.rs`: a workflow without a row, or a row without one of the three words, fails the test.
 

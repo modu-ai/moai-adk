@@ -11,7 +11,15 @@ use common::home::TempHome;
 use std::{fs, path::Path};
 
 /// The card actions the WORK workflow uses.
-const ACTIONS: [&str; 6] = ["next", "take", "check", "criterion", "land", "note"];
+const ACTIONS: [&str; 7] = [
+    "next",
+    "take",
+    "check",
+    "criterion",
+    "land",
+    "note",
+    "submit",
+];
 
 fn workflow(name: &str) -> String {
     fs::read_to_string(

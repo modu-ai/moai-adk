@@ -4,9 +4,8 @@
 //! skills with the Go generation's `moai-*` skills beside it (#2592 comment 6848426992).
 //! `moai-cli update` installs and owns only `moai`, so the older folders stay and compete for
 //! the same requests. This read-only check lists them so the person can back them up or turn
-//! them off; it never moves, deletes or edits anything. The folders of hosts moai no longer
-//! manages (Codex, OMP, Cursor) are not read
-//! (SPEC-20261122-codex-home-update-removed).
+//! them off; it never moves, deletes or edits anything. The folders of hosts moai does not
+//! manage are not read.
 use serde_json::{json, Value};
 use std::io::Read;
 use std::path::Path;

@@ -19,5 +19,8 @@ pub struct Args {
 pub const OPERATION: &str = "git_hooks.plan";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    moai_cli::git_hooks::plan(&args.project)
+    // The guard hook installs only where the integration branch guard can act; the apply verb
+    // is given the same answer, or its token would not match this preview.
+    let guard = moai_cli::card::guard::can_act(&args.project);
+    moai_cli::git_hooks::plan_with_guard(&args.project, guard)
 }

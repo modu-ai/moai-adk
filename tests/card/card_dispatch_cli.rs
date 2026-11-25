@@ -441,20 +441,18 @@ fn six_takes_at_once_give_the_card_to_exactly_one() {
 }
 
 #[test]
-fn two_cards_with_overlapping_scopes_cannot_both_be_taken() {
+fn two_cards_with_overlapping_scopes_can_both_be_taken_and_the_second_reports_it() {
     let (home, project) = registered();
     let a = ready_card(&home, &project, "src/shared/**");
     let b = ready_card(&home, &project, "src/shared/x.rs");
     result(&take(&home, &project, &a, S_A));
-    let (kind, message) = refusal(&take(&home, &project, &b, S_B));
-    assert_eq!(kind, "conflict", "{message}");
-    assert!(message.contains("write scope"), "{message}");
+    // SPEC-20261125-card-no-file-locks: the second take is made and names the first card.
+    let taken = result(&take(&home, &project, &b, S_B));
+    let overlaps = taken["overlaps"].as_array().unwrap();
+    assert_eq!(overlaps.len(), 1, "{taken}");
+    assert_eq!(overlaps[0]["card"], json!(a), "{taken}");
     let shown = result(&run(&home, &["card", "show", &b, "--project", &project]));
-    assert_eq!(
-        shown["state"],
-        json!("ready"),
-        "the refused card is untouched"
-    );
+    assert_eq!(shown["state"], json!("active"), "the second card is taken");
 }
 
 #[test]

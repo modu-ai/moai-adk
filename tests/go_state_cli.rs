@@ -3266,6 +3266,47 @@ fn a_tracked_entry_set_aside_is_not_blocked_by_the_team_gitignore() {
     assert!(action(&p, ".moai-cli").1.contains(".moai/manifests"), "{p}");
 }
 
+/// SPEC REQ-5 (audit non-blocking 2): when the only tracked entry is one picked for the backup
+/// area, the marker the team keeps in git is still asked of `.gitignore`; a hidden marker blocks
+/// the plan and an allowed one lets it through.
+#[test]
+fn a_hidden_marker_blocks_the_plan_when_only_a_set_aside_entry_is_tracked() {
+    // The folder names come from the library constants: the test builds no earlier layout of
+    // its own beyond what `kept_fixture` writes.
+    let (earlier, moai) = (moai_cli::PROJECT_STATE_DIR, moai_cli::state_root::MOAI_DIR);
+    let marker = format!("{moai}/{}", moai_cli::state_root::RUST_MARKER);
+    let hidden = format!(
+        "/{moai}/*\n!/{moai}/project.yaml\n!/{moai}/specs/\n!/{moai}/evals/\n!/{moai}/manifests/\n"
+    );
+    let fx = kept_fixture();
+    fx.write(".gitignore", &hidden);
+    git_here(&fx, &["init", "-q", "-b", "main"]);
+    git_here(
+        &fx,
+        &[
+            "add",
+            "--",
+            ".gitignore",
+            &format!("{earlier}/project.yaml"),
+        ],
+    );
+    let p = plan_picks(&fx, &["project.yaml"]);
+    assert_eq!(moves(&p), 0, "{p}");
+    assert_eq!(p["state_moves"], json!([]), "{p}");
+    assert!(
+        action(&p, earlier).1.contains(&marker),
+        "the marker and the rule are named: {p}"
+    );
+    fx.write(".gitignore", &format!("{hidden}!/{marker}\n"));
+    let p = plan_picks(&fx, &["project.yaml"]);
+    assert_eq!(action(&p, earlier).0, "move", "{p}");
+    assert_eq!(
+        state_move(&p, &format!("{earlier}/project.yaml"))["action"],
+        json!("set-aside"),
+        "{p}"
+    );
+}
+
 /// Audit of the project state move, non-blocking 4: beside the kept names no new `.moai/` is
 /// made, and the plan says so. A project with no `.moai/` keeps the earlier words.
 #[test]

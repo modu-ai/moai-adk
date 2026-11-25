@@ -6,7 +6,9 @@
 //!   landing: `--head <sha>` (or the newest head `card landed` recorded, or a merged pull request
 //!   link) that git proves is an ancestor of the profile's integration branch tip, and, when the
 //!   card names a SPEC, that SPEC passes `spec_link::judge`, the check `card done` makes, read
-//!   from the tip git proved the landing against (not from the working tree);
+//!   from the tip git proved the landing against (not from the working tree); a call that closes
+//!   the card on such a head also needs an independent PASS of that exact head, the verdict
+//!   check of `card land` read in every mode (SPEC-20261125-integration-guard-install);
 //! - a `research` or `audit` card closes on exactly one of `--evidence-report PATH` (a regular
 //!   file under the reports folder of the user level home or under the project folder) or
 //!   `--evidence-note REF` (a report or decision note of the card), and refuses `--head`.
@@ -21,6 +23,7 @@
 
 use super::command::open_for_write;
 use super::input::{self, CardRef};
+use super::land::check;
 use super::landed::{self, Containment};
 use super::spec_link;
 use crate::ledger::reservation::Reservation;
@@ -79,6 +82,23 @@ fn refused(why: impl std::fmt::Display) -> String {
 /// A refusal that comes before any write.
 fn unchanged(why: impl std::fmt::Display) -> String {
     refused(format!("{why}; nothing was changed"))
+}
+
+/// Whether this call would close the card: every open criterion is named by a `--met` option
+/// (the rule of [`workflow::finish`]; a call that leaves one open only records the landing).
+fn closes_card(conn: &rusqlite::Connection, card_id: i64, met: &[(i64, String)]) -> Result<bool> {
+    let sql_err = |e: rusqlite::Error| LedgerError::from(e).to_string();
+    let mut stmt = conn
+        .prepare("SELECT seq FROM card_ac WHERE card_id = ?1 AND status = 'open'")
+        .map_err(sql_err)?;
+    let open: Vec<i64> = stmt
+        .query_map([card_id], |r| r.get(0))
+        .map_err(sql_err)?
+        .collect::<std::result::Result<_, _>>()
+        .map_err(sql_err)?;
+    Ok(open
+        .iter()
+        .all(|seq| met.iter().any(|(named, _)| named == seq)))
 }
 
 /// The card's number; a host number (`#12`) needs a lookup, so finish refuses it.
@@ -302,6 +322,24 @@ pub fn finish(
         };
         if let Some(why) = refusal {
             return Err(unchanged(why));
+        }
+        // A close on a landed head reads the verdict step of the landing (SPEC-20261125-
+        // integration-guard-install REQ-5): the same check, with the head already inside the tip,
+        // in every mode. A call that only records the landing closes nothing and reads none.
+        if let Proven::Landing { head, tip } = &proven {
+            if closes_card(ledger.conn(), card_id, &met)? {
+                let input = check::Input {
+                    project,
+                    conn: ledger.conn(),
+                    card_id,
+                    head,
+                    verdict_head: head,
+                    tip,
+                    on_tip: false,
+                    lander: req.session,
+                };
+                check::read(&input, check::Mode::Enforce).map_err(unchanged)?;
+            }
         }
         proven
     } else {

@@ -176,6 +176,51 @@ pub fn tip_of(project: &Path, branch: &str) -> Result<String, String> {
     }
 }
 
+/// What a hand-back note says about files that moved on the integration branch under a lane
+/// (SPEC-20261125-card-no-file-locks REQ-5).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TipOverlap {
+    /// The files that both the lane (base to head) and the integration branch (base to tip)
+    /// changed, sorted; empty when none.
+    Checked(Vec<String>),
+    /// Git or the ledger could not say; the reason. The note is kept anyway.
+    NotChecked(String),
+}
+
+/// The files `head` and the integration tip both changed since their merge base. Reads only.
+pub fn tip_overlap(project: &Path, head: &str) -> TipOverlap {
+    let names = |from: &str, to: &str| -> Result<Vec<String>, String> {
+        let range = format!("{from}..{to}");
+        let out = git(project, &["diff", "--name-only", &range])?;
+        if !out.status.success() {
+            return Err(format!("git diff {range} failed"));
+        }
+        Ok(String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .map(str::to_string)
+            .collect())
+    };
+    let run = || -> Result<Vec<String>, String> {
+        let branch = integration_branch(project)?;
+        let tip = tip_of(project, &branch)?;
+        let out = git(project, &["merge-base", &tip, head])?;
+        let base = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if !out.status.success() || !crate::gate::is_full_sha(&base) {
+            return Err(format!("no merge base of {head} and the tip of {branch}"));
+        }
+        let lane = names(&base, head)?;
+        let moved = names(&base, &tip)?;
+        let mut both: Vec<String> = lane.into_iter().filter(|p| moved.contains(p)).collect();
+        both.sort();
+        both.dedup();
+        Ok(both)
+    };
+    match run() {
+        Ok(paths) => TipOverlap::Checked(paths),
+        Err(why) => TipOverlap::NotChecked(why),
+    }
+}
+
 /// The text of `path` (relative to the project folder) as `commit` holds it, or `None` when the
 /// commit has no such file.
 pub fn show_at(project: &Path, commit: &str, path: &str) -> Result<Option<String>, String> {
@@ -421,11 +466,7 @@ pub fn candidates(found: &Next) -> Vec<i64> {
 /// the set: its proof wins over `no_criteria`, because the proof says what to do with the card
 /// (SPEC-20261124-card-next-skip-reason).
 fn is_landable_skip(s: &workflow::Skipped) -> bool {
-    s.state == "ready"
-        && matches!(
-            s.reason,
-            SkipReason::EmptyScope | SkipReason::ScopeOverlap { .. } | SkipReason::NoCriteria
-        )
+    s.state == "ready" && matches!(s.reason, SkipReason::EmptyScope | SkipReason::NoCriteria)
 }
 
 /// Looks for a proof of landing for each of `candidates`. No git command runs unless a card has

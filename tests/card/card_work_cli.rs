@@ -394,19 +394,16 @@ fn next_orders_by_priority_then_number_and_says_why_a_card_is_skipped() {
     let before = w.home.snapshot();
     let next = w.next(Some(S_A));
     assert_eq!(w.home.snapshot(), before, "next writes nothing");
-    assert_eq!(names(&next["ready"]), [urgent.clone(), also, low]);
+    // A scope under another card's reservation is offered (SPEC-20261125-card-no-file-locks).
+    assert_eq!(names(&next["ready"]), [urgent.clone(), also, clash, low]);
     assert_eq!(next["next"], json!(urgent));
-    assert_eq!(names(&next["skipped"]), [held.clone(), clash, bare.clone()]);
+    assert_eq!(names(&next["skipped"]), [held.clone(), bare.clone()]);
     let skipped = next["skipped"].as_array().unwrap();
     assert_eq!(skipped[0]["reason"], json!("held"));
     assert_eq!(skipped[0]["holder"], json!(S_B));
     assert_eq!(skipped[0]["generation"], json!(1));
     assert!(skipped[0]["lease_until"].is_i64());
-    assert_eq!(skipped[1]["reason"], json!("scope_overlap"));
-    assert_eq!(skipped[1]["other"], json!(held));
-    assert_eq!(skipped[1]["mine"], json!("held/deep/x.rs"));
-    assert_eq!(skipped[1]["theirs"], json!("held/"));
-    assert_eq!(skipped[2]["reason"], json!("empty_scope"));
+    assert_eq!(skipped[1]["reason"], json!("empty_scope"));
     let (kind, message) = refusal(&w.card(Some(S_A), &["take", &bare]));
     assert_eq!(kind, "invalid_input", "take agrees: {message}");
 

@@ -30,6 +30,11 @@ const SESSION_VAR: &str = "CLAUDE_CODE_SESSION_ID";
 const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
 const S_B: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
 const S_L: &str = "cccccccc-0000-4000-8000-00000000000c";
+/// The independent reviewer whose PASS closes a landed code card: no author, no holder and no
+/// caller of these tests.
+const S_V: &str = "dddddddd-0000-4000-8000-00000000000d";
+/// The worktree key of the `Moai-Session` trailer the fixture commits carry.
+const WORKTREE_KEY: &str = "0123456789ab";
 const MERGE: &str = "0123456789abcdef0123456789abcdef01234567";
 const PR_HEAD: &str = "89abcdef0123456789abcdef0123456789abcdef";
 const UNKNOWN_HEAD: &str = "fedcba9876543210fedcba9876543210fedcba98";
@@ -70,8 +75,20 @@ fn git(dir: &Path, args: &[&str]) -> String {
 /// parent; `branch` is moved to it without a checkout, so the working tree never changes.
 fn commit_on(project: &Path, branch: &str, parent: &str, paragraphs: &[&str]) -> String {
     let tree = git(project, &["rev-parse", &format!("{parent}^{{tree}}")]);
+    // Signed by the lane session, so the authors of a head built from this commit are known: a
+    // close on a landed head reads the verdict of that head, and the check needs its authors. The
+    // trailer joins the last paragraph when that one is a trailer block already.
+    let trailer = format!("Moai-Session: {S_A}:{WORKTREE_KEY}");
+    let mut paragraphs: Vec<String> = paragraphs.iter().map(|p| p.to_string()).collect();
+    match paragraphs.last_mut() {
+        Some(last) if last.starts_with("Moai-") => {
+            last.push('\n');
+            last.push_str(&trailer);
+        }
+        _ => paragraphs.push(trailer),
+    }
     let mut args = vec!["commit-tree", tree.as_str(), "-p", parent];
-    for paragraph in paragraphs {
+    for paragraph in &paragraphs {
         args.push("-m");
         args.push(paragraph);
     }
@@ -111,9 +128,10 @@ fn put_on(project: &Path, branch: &str, parent: &str, path: &str, content: &str)
     ]);
     let tree = with_index(&["write-tree"]);
     fs::remove_file(&index).unwrap();
+    let message = format!("docs: add a file\n\nMoai-Session: {S_A}:{WORKTREE_KEY}");
     let sha = git(
         project,
-        &["commit-tree", &tree, "-p", parent, "-m", "docs: add a file"],
+        &["commit-tree", &tree, "-p", parent, "-m", &message],
     );
     git(
         project,
@@ -269,7 +287,15 @@ impl World {
         git(&project, &["commit", "-q", "-m", "init"]);
         fs::write(project.join("b.txt"), "b\n").unwrap();
         git(&project, &["add", "b.txt"]);
-        git(&project, &["commit", "-q", "-m", "the card's change"]);
+        git(
+            &project,
+            &[
+                "commit",
+                "-q",
+                "-m",
+                &format!("the card's change\n\nMoai-Session: {S_A}:{WORKTREE_KEY}"),
+            ],
+        );
         let head = git(&project, &["rev-parse", "HEAD"]);
         git(&project, &["branch", "integ"]);
         let tip = commit_on(&project, "integ", &head, &["integration moved on"]);
@@ -366,6 +392,56 @@ impl World {
         self.run(session, &all)
     }
 
+    /// The fixture of every test that closes a landed code card and is not about the verdict: a
+    /// close reads the verdict of the head (SPEC-20261125-integration-guard-install), so an
+    /// independent PASS of `head` is recorded for the card, once (a tier 1 PASS with a green
+    /// receipt, from a session that is no author, holder or caller of these tests). A head with
+    /// no parent commit gets none.
+    fn pass_of(&self, card: &str, head: &str) {
+        let Ok(id) = card.trim_start_matches("C-").parse::<i64>() else {
+            return;
+        };
+        let conn =
+            Connection::open(ledger::ledger_path(self.home.path(), "demo").unwrap()).unwrap();
+        if head.len() != 40 {
+            return;
+        }
+        let known: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM event WHERE card_id = ?1 AND kind = 'card.verdict' \
+                 AND json_extract(payload, '$.head') = ?2",
+                rusqlite::params![id, head],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let parent = common::git::command()
+            .arg("-C")
+            .arg(&self.project)
+            .args(["rev-parse", "--verify", "-q", &format!("{head}^")])
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+        let (0, Some(base)) = (known, parent) else {
+            return;
+        };
+        let payload = json!({
+            "head": head, "base": base, "verdict": "pass", "tier": 1,
+            "evidence": "the fixture's evidence",
+            "receipt": {"head": head, "steps": [{"name": "test", "exit": 0}]},
+            "reviewer": S_V,
+        });
+        let rows: i64 = conn
+            .query_row("SELECT count(*) FROM event", [], |r| r.get(0))
+            .unwrap();
+        conn.execute(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES (?1, unixepoch(), ?2, ?3, 'card.verdict', ?4)",
+            rusqlite::params![format!("test-verdict-{rows}"), S_V, id, payload.to_string()],
+        )
+        .unwrap();
+    }
+
     /// `moai card next <project>` as `session`, with the profile written last.
     fn next(&self, session: &str) -> Value {
         self.write_profile();
@@ -423,6 +499,9 @@ impl World {
         let added = result(&self.card(None, &args));
         let name = added["name"].as_str().unwrap().to_string();
         result(&self.card(None, &["ready", &name]));
+        if kind != "research" && kind != "audit" {
+            self.pass_of(&name, &self.head);
+        }
         name
     }
 
@@ -430,6 +509,7 @@ impl World {
     /// it then reopens and gives the card back (a ready card with a landing event); without,
     /// it stays in review with the reservation held.
     fn land(&self, card: &str, head: &str, release: bool) {
+        self.pass_of(card, head);
         result(&self.card(Some(S_A), &["take", card]));
         result(&self.card(Some(S_A), &["review", card, "--generation", "1"]));
         result(&self.card(
@@ -1076,9 +1156,13 @@ fn ac3_a_live_lease_of_another_session_refuses_and_an_ended_one_passes() {
         "the rule is named: {message}"
     );
 
+    // A call with no session of its own on a code card: the verdict step of the landing names it
+    // first (a landing with no session cannot be told from its reviewer, tier 1), before the
+    // lease is read; the lease rule for a caller without a session is the unit test
+    // `ac3_a_caller_without_a_session_id_passes_only_when_the_lease_has_ended`.
     let no_session = w.finish(None, &held, &args);
-    let message = w.refuse(&no_session, "conflict", &["is held by"], &before);
-    assert!(message.contains(S_A), "{message}");
+    let message = w.refuse(&no_session, "invalid_input", &["lander_review"], &before);
+    assert!(message.contains("no session"), "{message}");
 
     // The lease ends: the same call by the same other session passes and gives the
     // reservation back.
@@ -2702,6 +2786,7 @@ fn ac21_a_tag_named_like_the_integration_branch_does_not_win() {
     );
 
     let on_branch = w.card_named("task", "apps/b/", &["one"]);
+    w.pass_of(&on_branch, &w.tip);
     let got = result(&w.finish(
         Some(S_L),
         &on_branch,

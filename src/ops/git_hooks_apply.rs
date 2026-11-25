@@ -22,7 +22,7 @@ pub struct Args {
 pub const OPERATION: &str = "git_hooks.apply";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    moai_cli::git_hooks::apply(
+    moai_cli::card::guard::apply_hooks(
         &args.project,
         &args.confirm_git_hooks,
         &moai_cli::audit::utc_now(),
