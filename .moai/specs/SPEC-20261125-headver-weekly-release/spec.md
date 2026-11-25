@@ -102,3 +102,14 @@ created: 2026-11-25
 | D-3 | 안전장치 둘: (a) 릴리스 워크플로가 푸시된 커밋이 원격 `NeXT` 의 착지 커밋인지 확인하고 아니면 실패, (b) `release/**` 에 강제 푸시 금지 규칙(같은 이름을 다른 커밋으로 덮어쓰지 않고 순번을 올려 새로 내요) | note 8830 의 리더 제안에 사용자가 방향으로 동의. (a) 는 REQ-7, (b) 의 원격 규칙 세트 생성은 사용자 확인 뒤 리더가 해요(Non-goals) | (a) 는 REQ-7 삭제, (b) 는 규칙 세트 삭제 |
 | D-4 | 이 규칙은 moai-adk 만이 아니라 제품 기본값: HeadVer 를 고른 프로젝트의 출하 글과 생성되는 설정이 같은 규칙을 말해요 | 사용자 결정 2026-11-25T00:49:09Z(note 8840): "오늘 정하신 버전 규칙(개발 -dev, 릴리스는 주마다 0부터)는 범용적으로 이규칙 사용한다" | 새 사용자 결정으로만 |
 | D-5 | 릴리스 후보·연말 경계·`-dev` 위치·비교 규칙·태그 꼴·배포 요일·빌드 입력·계산 위치·생성 줄은 위 Options 의 추천안을 초안으로 삼아요 | 사용자가 고르기 전까지의 기본값이에요(레인이 정하는 것이 아니에요). 승인 기록은 사용자만 남겨요 | Options 에서 다른 안을 고르면 REQ·Plan 을 고쳐요 |
+
+## Result
+
+- AC-1 met: `cargo test --lib headver::` 15개 통과(`a_development_build_ends_in_dev`, `a_release_build_reports_its_version_without_a_suffix`, `a_wrong_release_version_stops_the_build`). 종단 시험(`src/main.rs` 의 버전 플래그 시험)도 `-dev` 와 `MOAI_RELEASE_VERSION` 두 모양을 읽어요.
+- AC-2 met: `headver::tests::a_release_ranks_above_the_dev_build_of_the_same_numbers` 와 `cargo test --test update_headver` 6개(새 `an_installed_release_of_the_same_numbers_reads_newer_than_this_dev_build` 포함).
+- AC-3 met: `cargo test --test release_branch_version` 의 plan 스크립트 시험 12개(이름·주·순번·연말 표·`NeXT` 조상·옛 모양 거절·잘못된 tag 거절). 주 계산 표는 `headver::yearweek` 와 맞춰요.
+- AC-4 met: 같은 파일의 `the_build_job_checks_both_lines_and_the_tag`, `the_workflow_publishes_nothing`, `the_jobs_keep_their_settings`, 그리고 `tests/bin_names_signature_cli.rs` 3개. 옛 Python 시험의 단언은 모두 이 Rust 시험으로 옮겼고(대조는 그 시험 삭제를 감사한 노트에 있어요), Python 은 쓰지도 돌리지도 않았어요.
+- AC-5 met: `cargo test --test versioning_cli` 15개와 `cargo test --lib versioning::` 22개, 출하 글 `skills/moai/references/internal/versioning.md` 와 소스 매니페스트 해시.
+- AC-6 not_run: `CLAUDE.md` 와 `docs/decisions-2026-11-08.md` 는 다른 카드가 쥐고 있어 이 카드의 범위가 아니에요. 그 카드가 착지한 뒤의 조각으로 같은 규칙을 적어요(interview.md 는 그 파일의 카드가 착지한 뒤).
+- AC-7 met: 가드 뮤턴트 12개를 한 슬롯에서 돌려 12개 모두 이름 지은 시험이 잡았어요(`KILLED`, 트리는 깨끗). 이웃 시험과 `moai check affected --card` 영수증은 READY 노트에 인용해요.
+- 알려진 한계: `build.rs` 가 `MOAI_RELEASE_VERSION` 을 읽는 배선은 릴리스 workflow 의 실제 실행에서만 끝까지 지나가요(not_run; 계산은 `headver::release_build` 단위 시험이 덮어요). 같은 주의 개발 빌드가 릴리스보다 새로 읽히는 한계는 Risks 대로예요. `install/install.sh` 의 tag 접두사(`moai-cli-v`)는 바꾸지 않았어요. `src/lib.rs` 의 주석과 `docs/local-rc1-kit.md`, `skills/moai/workflows/sync.md` 에는 옛 규칙의 글이 남아 있고 이 카드의 범위 밖이에요.
