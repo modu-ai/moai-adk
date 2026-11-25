@@ -42,3 +42,17 @@ SPEC-20261125-wip-limit-live-lock-lanes REQ-7 says that `card next` names no car
 1. RED: `tests/card/card_wip_limit.rs` 에 AC-1 의 시험을 더해요. 지금 코드에서는 `next_is` 가 `audit` 라서 실패해요.
 2. `src/card/work.rs` 에서 `wip.registry_error` 가 있으면 `audit_needed` 를 읽지 않고 빈 목록으로 해요. GREEN.
 3. 가드 뮤턴트(그 한 줄을 빼면 AC-1 이 죽어요), `cargo fmt --all`, `moai check affected --card` 영수증, READY.
+
+## Result
+
+구현 head f157175fcf(base 64b948a105). 아래는 이 실행에서 본 값이에요.
+
+- 바뀐 코드: `src/card/work.rs`(`wip.registry_error` 가 있으면 `audit_needed` 를 읽지 않고 빈 목록으로 해요), 시험 `tests/card/card_wip_limit.rs`(`registry_error_next_names_no_card_not_even_one_that_waits_for_an_audit`).
+- RED: 코드를 바꾸기 전에 새 시험이 `next_is` 가 `audit`(`limit` 아님)라서 실패했어요(`cargo nextest run --locked --offline --test card -E 'test(/card_wip_limit::registry_error_next/)'` exit 100).
+- GREEN: 같은 파일의 `card_wip_limit::` 21개가 모두 통과해요(21 passed, 앞선 20개와 새 1개).
+- AC-1 met: 새 시험 통과.
+- AC-2 met: `next_at_the_limit_names_the_cards_that_wait_for_an_audit` 통과(레지스트리를 읽을 수 있을 때 감사 경로는 그대로예요).
+- 가드 뮤턴트: 새 분기를 빼면(RED 실행과 같은 코드) 새 시험이 exit 100 으로 죽어요.
+- 알려진 틈이었던 부모 SPEC 의 Result 줄(REQ-7 과 `audit_needed` 의 어긋남)은 이 SPEC 으로 닫혀요. 승인된 부모 SPEC 본문은 digest 때문에 고치지 않았어요.
+- 일부러 하지 않은 것: `src/card/wip_limit.rs`·`src/lane_registry.rs`(세션 키 SPEC 이 만져요), D-1 의 B(감사는 계속 내놓기, 부모 REQ-7 개정이 필요해요).
+- not_run: 전체 `cargo test`, Windows 와 Linux 확인.
