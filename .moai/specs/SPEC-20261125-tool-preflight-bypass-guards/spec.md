@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261125-tool-preflight-bypass-guards
 title: "tool-preflight 가 우회 모드에서도 통합 브랜치 이동, 프로젝트 밖 rm -r, 강제 push 를 거절해요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval: {by: leader, at: 2026-11-25, basis: "user pick relayed by the leader in card note 8948 (2026-11-25T03:58:34Z): 'approve, D-1~D-5 defaults (Recommended)' for revision 1 as committed in ee51af960e; the leader read the digest with spec show", digest: "sha256:db767f8d8475c833ee90fe17ff3b14b4ef5b20155cf5b7985b5af9a16be78832"}
 ---
 
 # tool-preflight 가 우회 모드에서도 통합 브랜치 이동, 프로젝트 밖 rm -r, 강제 push 를 거절해요
