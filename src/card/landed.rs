@@ -263,6 +263,103 @@ pub fn contained(project: &Path, head: &str, tip: &str) -> Result<Containment, S
     }
 }
 
+/// One read-only git command in `project` that reads `input` on its standard input.
+fn git_with_stdin(project: &Path, args: &[&str], input: &str) -> Result<Output, String> {
+    use std::io::Write;
+    let program = std::env::var("MOAI_GIT_BIN").unwrap_or_else(|_| "git".to_string());
+    let mut cmd = Command::new(program);
+    crate::identity::scrub_git_env(&mut cmd);
+    let mut child = cmd
+        .arg("--no-optional-locks")
+        .arg("-C")
+        .arg(project)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("git could not run: {e}"))?;
+    if let Some(mut stdin) = child.stdin.take() {
+        // A write error means git has exited; its status says why.
+        let _ = stdin.write_all(input.as_bytes());
+    }
+    child
+        .wait_with_output()
+        .map_err(|e| format!("git could not run: {e}"))
+}
+
+/// [`contained`] for many heads in two git commands instead of two per head: one
+/// `cat-file --batch-check` tells which heads name a commit, and one
+/// `rev-list <known heads> --not <tip>` lists the commits that reach a head but not the tip, so a
+/// known head is `Outside` exactly when it is in that list. The answer holds one entry per distinct
+/// `heads` element; the order of `heads` does not matter.
+pub fn contained_many(
+    project: &Path,
+    heads: &[&str],
+    tip: &str,
+) -> Result<BTreeMap<String, Containment>, String> {
+    let mut answer: BTreeMap<String, Containment> = BTreeMap::new();
+    let mut asked: Vec<&str> = Vec::new();
+    for head in heads {
+        if answer.contains_key(*head) {
+            continue;
+        }
+        if crate::gate::is_full_sha(head) {
+            // Settled below; a placeholder keeps the head from being asked twice.
+            answer.insert((*head).to_string(), Containment::NotACommit);
+            asked.push(head);
+        } else {
+            answer.insert((*head).to_string(), Containment::NotACommit);
+        }
+    }
+    if asked.is_empty() {
+        return Ok(answer);
+    }
+    let input: String = asked.iter().map(|h| format!("{h}^{{commit}}\n")).collect();
+    let checked = git_with_stdin(project, &["cat-file", "--batch-check"], &input)?;
+    if !checked.status.success() {
+        return Err(format!(
+            "git could not tell which heads are commits: {}",
+            String::from_utf8_lossy(&checked.stderr).trim()
+        ));
+    }
+    let text = String::from_utf8_lossy(&checked.stdout).into_owned();
+    // One output line per input line, in order: `<sha> commit <size>` or `<spec> missing`.
+    let known: Vec<&str> = asked
+        .iter()
+        .zip(text.lines())
+        .filter(|(_, line)| line.split(' ').nth(1) == Some("commit"))
+        .map(|(head, _)| *head)
+        .collect();
+    if text.lines().count() != asked.len() {
+        return Err("git cat-file answered a different number of lines than heads asked".into());
+    }
+    if known.is_empty() {
+        return Ok(answer);
+    }
+    let mut args: Vec<&str> = vec!["rev-list"];
+    args.extend(known.iter().copied());
+    args.extend(["--not", tip]);
+    let listed = git(project, &args)?;
+    if !listed.status.success() {
+        return Err(format!(
+            "git could not tell which heads are inside {tip}: {}",
+            String::from_utf8_lossy(&listed.stderr).trim()
+        ));
+    }
+    let listed_text = String::from_utf8_lossy(&listed.stdout).into_owned();
+    let outside: BTreeSet<&str> = listed_text.lines().collect();
+    for head in known {
+        let verdict = if outside.contains(head) {
+            Containment::Outside
+        } else {
+            Containment::Inside
+        };
+        answer.insert(head.to_string(), verdict);
+    }
+    Ok(answer)
+}
+
 /// Where a candidate sits against the integration tip, for a landing (SPEC-20261121-card-land).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Standing {
@@ -535,21 +632,25 @@ pub fn find(project: &Path, conn: &Connection, candidates: &[i64]) -> Result<Rep
         }
     };
     let mut problem: Option<String> = None;
-    // One ancestor check per distinct head.
-    let mut inside: BTreeMap<String, bool> = BTreeMap::new();
+    // The distinct heads are checked together, in two git commands.
+    let heads: Vec<&str> = pending
+        .iter()
+        .filter_map(|(_, head, _)| head.as_deref())
+        .collect();
+    let inside: BTreeMap<String, Containment> = if heads.is_empty() {
+        BTreeMap::new()
+    } else {
+        match contained_many(project, &heads, &tip) {
+            Ok(found) => found,
+            Err(why) => {
+                problem.get_or_insert(why);
+                BTreeMap::new()
+            }
+        }
+    };
     for (card_id, head, _) in &pending {
         let Some(head) = head else { continue };
-        if !inside.contains_key(head) {
-            let verdict = match contained(project, head, &tip) {
-                Ok(c) => c == Containment::Inside,
-                Err(why) => {
-                    problem.get_or_insert(why);
-                    false
-                }
-            };
-            inside.insert(head.clone(), verdict);
-        }
-        if inside[head] {
+        if inside.get(head) == Some(&Containment::Inside) {
             report
                 .proofs
                 .insert(*card_id, Proof::Head { head: head.clone() });

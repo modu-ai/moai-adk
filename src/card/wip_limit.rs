@@ -68,8 +68,12 @@ pub fn live_lanes(project: &Path) -> Lanes {
         }
     };
     let now = now_secs();
-    let leader_name = crate::session::leader_session_name(project);
-    let lane_prefixes = ["agent-".to_string(), crate::session::agent_prefix(project)];
+    // One project name for both: each `session::*_name` call reads the git identity again, and a
+    // git process costs far more than the registry scan. The forms mirror
+    // `session::leader_session_name` and `session::agent_prefix`; a unit test pins them.
+    let name = crate::session::project_name(project);
+    let leader_name = format!("{name}-leader");
+    let lane_prefixes = ["agent-".to_string(), format!("{name}-agent-")];
     let mut live = std::collections::BTreeSet::new();
     for entry in &scan.entries {
         let leader = entry.mode.as_deref() == Some("leader") || entry.name == leader_name;

@@ -149,6 +149,9 @@ pub fn open_write(home: &Path, project_id: &str) -> Result<WriteLedger, LedgerEr
     let (mut conn, _) = open_at(&path, project_id, true)?;
     let done_guard_upgrade =
         migrate::upgrade_done_guard(&mut conn, &path)?.map(|upgraded| upgraded.backup);
+    // The index of events by card and kind (SPEC-20261126-card-next-speed): a ledger made before
+    // it gets it on the first writable open; nothing else is touched and no word is printed.
+    migrate::ensure_event_index(&conn)?;
     // One line, only when the upgrade really ran (a later open finds nothing to do): the person
     // learns that the ledger changed and where its backup is.
     if let Some(backup) = &done_guard_upgrade {
@@ -373,7 +376,12 @@ pub(crate) fn open_at_timeout(
     // behind a link (`/var` on macOS) is normal. The ledger file itself was checked above.
     let conn = Connection::open_with_flags(path, access | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
     conn.busy_timeout(busy)?;
-    conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA recursive_triggers = ON;")?;
+    // A page cache that holds the whole `event` table of a long-lived ledger (about 7 MB at 18,000
+    // events): SQLite's default of 2 MB made every scan read the same pages again from the file
+    // (SPEC-20261126-card-next-speed REQ-1). The memory is taken page by page as pages are read.
+    conn.execute_batch(
+        "PRAGMA foreign_keys = ON; PRAGMA recursive_triggers = ON; PRAGMA cache_size = -65536;",
+    )?;
     let version = verify_identity(&conn, project_id, writable).map_err(|e| match e {
         // A read-only connection cannot roll back a journal a crashed writer left behind.
         LedgerError::ReadOnly => LedgerError::Unavailable(
