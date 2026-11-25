@@ -115,7 +115,10 @@ impl World {
     /// Ends the lease of the registry entry `name`: its `lease_until` becomes 1.
     fn expire(&self, name: &str) {
         let dir = moai_cli::lane_registry::registry_dir_unlinked(&self.project).unwrap();
-        let file = dir.join(format!("{name}.json"));
+        let file = moai_cli::lane_registry::entry_file(&dir, name)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| dir.join(format!("{name}.json")));
         let mut entry: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
         entry["lease_until"] = json!(1);
         fs::write(&file, entry.to_string()).unwrap();

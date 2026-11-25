@@ -47,8 +47,15 @@ impl Fixture {
     fn sessions(&self) -> PathBuf {
         moai_cli::clone_root::path(&self.repo.join(".git")).join("sessions")
     }
+    /// The entry file of the lane `name`, in either file form (named by the lane or by the host
+    /// session that registered it, SPEC-20261125-session-registry-session-key). Where no readable
+    /// entry holds the name — a file about to be written, one that is broken or linked, or one
+    /// that was removed — it is the name-keyed path `<name>.json`.
     fn entry(&self, name: &str) -> PathBuf {
-        self.sessions().join(format!("{name}.json"))
+        moai_cli::lane_registry::entry_file(&self.sessions(), name)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| self.sessions().join(format!("{name}.json")))
     }
 }
 
@@ -997,6 +1004,7 @@ fn linked_worktree(fx: &Fixture, name: &str) -> PathBuf {
     fs::canonicalize(wt).unwrap()
 }
 
+/// The entry of the lane `name`, found in either file form (`Fixture::entry`).
 fn entry_json(fx: &Fixture, name: &str) -> Value {
     serde_json::from_slice(&fs::read(fx.entry(name)).unwrap()).unwrap()
 }
