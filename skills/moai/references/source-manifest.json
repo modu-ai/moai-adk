@@ -69,7 +69,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "cfd67f97be651b8609559f082cd7cfa39b04c172e66cb43da04728cd6b2ad5ca",
+      "sha256": "c8a6645e6f2e2ed9788f815d9353ed9e5a3c16aa949ee96a9020cd07dd26f69f",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -441,7 +441,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261124-moai-leader-route (REQ-1 to REQ-12): `/moai leader` makes the window that types it the registered coordination window; it registers with `session-register`, renews once per round, reads the ledger, sends audits to another session, lands with `moai card land --by leader` and releases the registration at the end. The completion-message and transition sentences stay in `flows/next-flow`."
       },
-      "sha256": "bef50627b65316e82b83660a89cbc3d276c4aefdb07a3fedba9c79d8c58500f2"
+      "sha256": "64d17c813bbe27d48f891c30b244c500c12f5d57cec81280c34d5f54dd329e55"
     },
     "workflows/plan.md": {
       "sha256": "ab27f283d60333933a93aa8a6a5858d88e44018e7edcd0cab9b79e7fe9b27e51",
