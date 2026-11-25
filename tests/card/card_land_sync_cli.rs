@@ -624,6 +624,40 @@ impl World {
         .unwrap();
     }
 
+    /// An event with no card, written as the command that owns the kind writes it.
+    fn insert_cardless_event(&self, actor: &str, kind: &str, payload: Value) {
+        let conn =
+            Connection::open(ledger::ledger_path(self.home.path(), "demo").unwrap()).unwrap();
+        let rows: i64 = conn
+            .query_row("SELECT count(*) FROM event", [], |r| r.get(0))
+            .unwrap();
+        conn.execute(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES (?1, unixepoch(), ?2, NULL, ?3, ?4)",
+            rusqlite::params![
+                format!("test-{kind}-{rows}"),
+                actor,
+                kind,
+                payload.to_string()
+            ],
+        )
+        .unwrap();
+    }
+
+    /// The folders under `<project>/target/land-batch/` that the private worktrees of the wide
+    /// check are made in (the logs beside them stay, so the files are left out).
+    fn private_worktree_folders(&self) -> Vec<String> {
+        let base = self.project.join("target").join("land-batch");
+        let Ok(entries) = fs::read_dir(&base) else {
+            return Vec::new();
+        };
+        entries
+            .map(|e| e.unwrap())
+            .filter(|e| e.path().is_dir())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect()
+    }
+
     /// A new card with a lane head on the integration tip and an independent PASS of it, landed
     /// by `card land`; answers the card, the head and the landing's output.
     fn land_next(&self, n: usize) -> (String, String, Output) {
@@ -736,6 +770,15 @@ impl World {
         refuse(&self.project, &["branch", "-f", BRANCH, &lane]);
         refuse(&self.project, &["branch", "-D", BRANCH]);
         refuse(wt, &["merge", "--no-ff", "-m", "a hand merge", "lane"]);
+        // The refused merge leaves its MERGE_HEAD in that worktree, and a worktree with an
+        // operation in progress is one the sync's follow step refuses to touch; a person who
+        // met the refusal aborts the merge, so the fixture does too.
+        let aborted = self.hand(wt, &["merge", "--abort"]);
+        assert!(
+            aborted.status.success(),
+            "git merge --abort failed: {}",
+            String::from_utf8_lossy(&aborted.stderr)
+        );
         refuse(&self.project, &["branch", "-M", "lane", BRANCH]);
         assert!(
             !self.rev("refs/heads/lane").is_empty(),
@@ -1276,4 +1319,155 @@ fn ac6_card_export_reads_a_ledger_that_holds_sync_rows() {
     let events = fs::read_to_string(out_dir.join("events.jsonl")).unwrap();
     assert!(events.contains("card.sync_started"), "{events}");
     assert!(events.contains("card.synced"), "{events}");
+}
+
+// ---- the cases the first set left open --------------------------------------------------------
+
+/// AC-4: the command's private worktree is removed after every outcome of the wide check: the
+/// folder it was made in (`run_check` names it under `target/land-batch/`) and git's own list of
+/// worktrees hold nothing of it. The `land-sync` word the tests above look for in the list never
+/// appears, because the folder is the batch's, so this one reads the folder itself.
+#[test]
+fn ac4_the_private_worktree_is_removed_after_every_outcome_of_the_check() {
+    let cases: [(&str, Option<&str>); 4] = [
+        ("cannot start", None),
+        ("red", Some(RED)),
+        ("replaced", Some(GREEN)),
+        ("full pass", None),
+    ];
+    for (why, text) in cases {
+        let w = World::new();
+        w.diverge();
+        w.set_sources(&[SOURCE]);
+        let out = match (why, text) {
+            ("cannot start", _) => w.lead_check(SOURCE, &w.scripts.path().join("missing.sh")),
+            ("full pass", _) => w.lead(SOURCE),
+            (_, Some(text)) => w.lead_check(SOURCE, &w.script("check.sh", text)),
+            _ => unreachable!(),
+        };
+        assert_eq!(
+            out.status.code(),
+            Some(if why == "full pass" { 0 } else { 1 }),
+            "{why}: {}",
+            said(&out)
+        );
+        assert_eq!(
+            w.private_worktree_folders(),
+            Vec::<String>::new(),
+            "{why}: a private worktree was left"
+        );
+        let listed = w.worktrees();
+        assert_eq!(
+            listed.matches("worktree ").count(),
+            1,
+            "{why}: only the checkout is listed: {listed}"
+        );
+    }
+}
+
+/// AC-5 (REQ-7): a worktree that has the branch checked out and holds a tracked change is refused
+/// before the wide check and before any write: the change is the owner's and nothing deletes it.
+#[test]
+fn ac5_a_dirty_checkout_of_the_branch_is_refused_before_the_check_and_any_write() {
+    let w = World::new();
+    w.diverge();
+    let wt = w.scripts.path().join("integ-wt");
+    git(
+        &w.project,
+        &["worktree", "add", "-q", wt.to_str().unwrap(), BRANCH],
+    );
+    fs::write(wt.join("notes/tip.md"), "my work\n").unwrap();
+    w.set_sources(&[SOURCE]);
+    let before = w.snap();
+    let out = w.lead(SOURCE);
+    let message = w.refused(&out, &["tracked change"], &before);
+    assert!(message.contains("notes/tip.md"), "{message}");
+    assert!(
+        w.cargo_calls().is_empty(),
+        "the check ran: {:?}",
+        w.cargo_calls()
+    );
+    assert_eq!(
+        fs::read_to_string(wt.join("notes/tip.md")).unwrap(),
+        "my work\n",
+        "the refusal touched the owner's change"
+    );
+}
+
+/// AC-6 (REQ-6): a sync that stopped after the move (the branch is on the merge, the start row is
+/// written, the closing row is not, and the worktree that has the branch checked out is still on
+/// the old tree) is closed by the same call: no merge, no check, no second start row; the
+/// worktree follows, the closing row is written and the answer says `closed_previous`. The call
+/// after it writes nothing.
+#[test]
+fn ac6_a_sync_stopped_after_the_move_is_closed_by_the_same_call() {
+    let w = World::new();
+    let (tip, src) = w.diverge();
+    let wt = w.scripts.path().join("integ-wt");
+    git(
+        &w.project,
+        &["worktree", "add", "-q", wt.to_str().unwrap(), BRANCH],
+    );
+    // The sync as the interrupted call left it: the merge exists and the branch stands on it.
+    let tree = git(&w.project, &["merge-tree", "--write-tree", &tip, &src]);
+    let tree = tree.lines().next().unwrap().to_string();
+    let merge = git(
+        &w.project,
+        &[
+            "commit-tree",
+            &tree,
+            "-p",
+            &tip,
+            "-p",
+            &src,
+            "-m",
+            &signed("a sync merge", S_LEAD),
+        ],
+    );
+    w.point(BRANCH, &merge);
+    w.insert_cardless_event(
+        "leader",
+        "card.sync_started",
+        json!({
+            "branch": BRANCH, "merge": merge, "from": SOURCE, "from_tip": src,
+            "old_tip": tip, "spec": SPEC, "by": "leader",
+        }),
+    );
+    assert!(
+        !wt.join("notes/h.md").exists(),
+        "the worktree is still behind"
+    );
+    w.set_sources(&[SOURCE]);
+    let r = result(&w.lead(SOURCE));
+    assert_eq!(r["moved"], json!(false), "{r}");
+    assert_eq!(r["already_synced"], json!(true), "{r}");
+    assert_eq!(r["closed_previous"], json!(true), "{r}");
+    assert_eq!(r["merge"], json!(merge), "{r}");
+    assert_eq!(r["to_tip"], json!(merge), "{r}");
+    assert_eq!(r["writes"], json!(true), "{r}");
+    assert_eq!(r["worktree_follow"]["status"], json!("finished"), "{r}");
+    assert_eq!(w.integ(), merge);
+    assert!(w.cargo_calls().is_empty(), "{:?}", w.cargo_calls());
+    assert!(!w.intent().exists());
+    assert!(
+        wt.join("notes/h.md").is_file(),
+        "the worktree did not follow"
+    );
+    assert_eq!(git(&wt, &["status", "--porcelain"]), "");
+    let started = w.rows("card.sync_started");
+    let synced = w.rows("card.synced");
+    assert_eq!(started.len(), 1, "no second start row: {started:?}");
+    assert_eq!(synced.len(), 1, "{synced:?}");
+    let (_, card, payload) = &synced[0];
+    assert_eq!(*card, None, "{payload}");
+    assert_eq!(payload["merge"], json!(merge), "{payload}");
+    assert_eq!(payload["old_tip"], json!(tip), "{payload}");
+    assert_eq!(payload["from_tip"], json!(src), "{payload}");
+    // The call after the close writes nothing.
+    let before = w.snap();
+    let again = result(&w.lead(SOURCE));
+    assert_eq!(again["moved"], json!(false), "{again}");
+    assert_eq!(again["closed_previous"], json!(false), "{again}");
+    assert_eq!(again["writes"], json!(false), "{again}");
+    assert_eq!(w.snap(), before);
 }
