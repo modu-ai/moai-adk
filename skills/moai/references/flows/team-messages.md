@@ -32,4 +32,4 @@ Address the registered leader by the session id that `moai session-register --sh
 
 ## Channel order
 
-Use the host's cross-session message first. When that channel is missing, refused or held, use Orca messaging (`orca orchestration send`, and `orca orchestration check` for the leader). When neither exists, write the ledger note alone. `/clear` and screen reading stay with the lane-terminal manager.
+Use the host's cross-session message first. When that channel is missing, refused or held, use the lane-terminal manager's own messaging (its adapter reference under `references/adapters/` names the send command, and the check command for the leader). When neither exists, write the ledger note alone. `/clear` and screen reading stay with the lane-terminal manager.

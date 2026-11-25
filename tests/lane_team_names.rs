@@ -41,8 +41,7 @@ fn the_agent_workflow_tells_this_agent_from_base_agents_and_subagents() {
     let work = raw(WORK);
     let first = work
         .lines()
-        .skip_while(|l| l.trim().is_empty() || l.starts_with('#'))
-        .next()
+        .find(|l| !(l.trim().is_empty() || l.starts_with('#')))
         .unwrap()
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -211,7 +210,7 @@ fn the_message_table_and_its_rules_are_in_the_reference_file() {
         "An agent may send a message to another agent to check a fact",
         "A verdict, a decision and a repair request go to the ledger as well",
         "Use the host's cross-session message first",
-        "use Orca messaging (`orca orchestration send`, and `orca orchestration check` for the leader)",
+        "use the lane-terminal manager's own messaging (its adapter reference under `references/adapters/` names the send command, and the check command for the leader)",
         "write the ledger note alone",
         "`/clear` and screen reading stay with the lane-terminal manager",
     ] {
@@ -224,6 +223,12 @@ fn the_message_table_and_its_rules_are_in_the_reference_file() {
         table.find("write the ledger note alone").unwrap(),
     );
     assert!(a < b, "the channel order puts the host message first");
+    // The one place that names the terminal manager's commands is its adapter reference
+    // (`orca_optional_3005` keeps the word out of every other package file).
+    let adapter = package("references/adapters/orca.md");
+    for needle in ["`orca orchestration send`", "`orca orchestration check`"] {
+        assert_has("references/adapters/orca.md", &adapter, needle);
+    }
 }
 
 /// REQ-23: the flow reference points to the message table and stays within 8192 bytes, and the

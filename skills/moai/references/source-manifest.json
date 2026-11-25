@@ -105,7 +105,7 @@
       }
     },
     "references/flows/team-messages.md": {
-      "sha256": "27d540d7fe45898f318050be4d4721b5559b223230c5bec986e4f8f902322710",
+      "sha256": "b0afe447dd78f0ccb7af59636676feeffdbbdfcbea8192c3e3a45261dc8c51e4",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-team-messages",
@@ -441,7 +441,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261124-moai-leader-route (REQ-1 to REQ-12): `/moai leader` makes the window that types it the registered coordination window; it registers with `session-register`, renews once per round, reads the ledger, sends audits to another session, lands with `moai card land --by leader` and releases the registration at the end. The completion-message and transition sentences stay in `flows/next-flow`."
       },
-      "sha256": "54d7ee651399127f60346210cb4bb3bd5ab114515b3c2030ba83bea1eb4b234f"
+      "sha256": "1243734a2864e87be412dcc66ed3b7c6340567c73134444449b750241b8c0a13"
     },
     "workflows/plan.md": {
       "sha256": "ab27f283d60333933a93aa8a6a5858d88e44018e7edcd0cab9b79e7fe9b27e51",
