@@ -72,6 +72,9 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
 
 fn decide(snapshot: &Snapshot) -> serde_json::Value {
     let mut out = decide_rules(snapshot);
+    // The 2026-11-21 mo.ai.kr report: the gate names every input it read, so an empty read
+    // and a read failure are distinguishable in the answer, not only in the rule that stopped.
+    out["reads"] = gate::reads_summary(snapshot);
     if !snapshot.ignored.is_empty() {
         out["ignored_control_lines"] = snapshot.ignored.to_json();
     }

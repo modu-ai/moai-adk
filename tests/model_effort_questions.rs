@@ -62,7 +62,9 @@ fn the_tool_question_lists_two_tools_and_defaults_to_the_installed_ones() {
 #[test]
 fn model_and_effort_questions_offer_only_table_values_with_the_default_first() {
     for (tool, default_model, default_effort) in [
-        ("claude", "claude-opus-5-5", "high"),
+        // SPEC-20261121-model-defaults-one-table D-6: the screen default effort is the effort a
+        // plain launch runs with, `medium` for claude.
+        ("claude", "claude-opus-5-5", "medium"),
         // SPEC-20261123-glm-54-followups D-3: the glm default is 5.4.
         ("glm", "zai/glm-5.4[1m]", "high"),
     ] {
@@ -90,7 +92,7 @@ fn model_and_effort_questions_offer_only_table_values_with_the_default_first() {
     let e = effort_question("glm", "zai/glm-5.3").unwrap();
     assert_eq!(e.options[e.defaults[0]].value, "high");
     let e = effort_question("claude", "claude-haiku-5-5").unwrap();
-    assert_eq!(e.options[e.defaults[0]].value, "high");
+    assert_eq!(e.options[e.defaults[0]].value, "medium");
     // The GLM default effort is high, which flash also offers.
     let e = effort_question("glm", "zai/glm-5.3-flash").unwrap();
     assert_eq!(e.options[e.defaults[0]].value, "high");
@@ -199,7 +201,7 @@ fn enter_everywhere_picks_the_defaults_of_the_installed_tools() {
     assert_eq!(
         outcome,
         Outcome::Picks(vec![
-            pick("claude", "claude-opus-5-5", "high"),
+            pick("claude", "claude-opus-5-5", "medium"),
             pick("glm", "zai/glm-5.4[1m]", "high"),
         ])
     );
@@ -229,6 +231,42 @@ fn enter_everywhere_picks_the_defaults_of_the_installed_tools() {
         !text.contains("leader") && !text.contains("agent"),
         "{text}"
     );
+}
+
+/// SPEC-20261121-model-defaults-one-table (revision 3) REQ-10, REQ-11, AC-8: the screen marks as
+/// its default the table id that the launch alias of the tool names, and the effort a plain launch
+/// runs with when nothing is saved; both come from the source of truth, never from a literal.
+#[test]
+fn the_screen_default_is_what_a_plain_launch_runs_with() {
+    use moai_cli::model_effort_settings::{default_choice, launcher_default, TOOLS};
+    // glm first: its half already agrees today, so a red run shows that the glm branch ran and
+    // that only claude differs.
+    for (index, tool) in TOOLS.into_iter().enumerate().rev() {
+        let table_model = default_choice(tool, "leader").expect("a leader row").model;
+        let launch_effort = launcher_default(tool).effort;
+
+        let q = model_question(tool).expect("known tool");
+        assert_eq!(q.options[q.defaults[0]].value, table_model, "{tool}: model");
+        let e = effort_question(tool, &table_model).expect("the default model has efforts");
+        assert_eq!(
+            e.options[e.defaults[0]].value, launch_effort,
+            "{tool}: the screen effort is the launch effort"
+        );
+
+        // Enter at every question of the tool picks that pair.
+        let input = format!("{}\n\n\n", index + 1);
+        let outcome = run(&mut Cursor::new(input), &mut Vec::new(), &[]).unwrap();
+        assert_eq!(
+            outcome,
+            Outcome::Picks(vec![pick(tool, &table_model, &launch_effort)]),
+            "{tool}"
+        );
+    }
+    // The values the SPEC names (AC-8), as a second pin beside the sources above.
+    let claude = effort_question("claude", "claude-opus-5-5").unwrap();
+    assert_eq!(claude.options[claude.defaults[0]].value, "medium");
+    let glm = effort_question("glm", "zai/glm-5.4[1m]").unwrap();
+    assert_eq!(glm.options[glm.defaults[0]].value, "high");
 }
 
 /// SPEC-20261123-glm-54-followups REQ-1..REQ-3 / AC-1: the glm model question offers the
@@ -751,7 +789,7 @@ fn a_saved_value_is_the_default_of_its_questions_and_enter_keeps_it() {
     let efforts = effort_question_with("claude", "claude-sonnet-5-5", Some(&saved)).unwrap();
     assert_eq!(efforts.options[efforts.defaults[0]].value, "max");
     let other = effort_question_with("claude", "claude-opus-5-5", Some(&saved)).unwrap();
-    assert_eq!(other.options[other.defaults[0]].value, "high");
+    assert_eq!(other.options[other.defaults[0]].value, "medium");
 
     // Enter at every question keeps the saved flat entry of claude and gives the table default to
     // glm, which nobody saved; a saved role entry beside it is not a default of any question.

@@ -9,8 +9,8 @@
 use serde_json::{json, Map, Value};
 
 use moai_cli::model_effort_settings::{
-    default_choice, resolve, saved_choice, supported, unsupported_entries, with_choice, Choice,
-    Source,
+    default_choice, launch_default_choice, launcher_default, resolve, saved_choice, supported,
+    unsupported_entries, with_choice, Choice, Source,
 };
 use moai_cli::model_effort_settings::{ROLES, TOOLS};
 
@@ -622,4 +622,21 @@ fn fast_pair_an_opus_48_or_fast_mode_entry_is_listed_and_never_resolved() {
     let base = object(json!({"models": {}}));
     assert!(with_choice(&base, "claude", "leader", "claude-opus-4-8", "high").is_err());
     assert!(with_choice(&base, "claude", "leader", "claude-opus-4.8", "high").is_err());
+}
+
+/// SPEC-20261121-model-defaults-one-table REQ-12: the question screen and a plain launch read one
+/// function. The model is the `leader` row of the table, the effort is the launcher default of the
+/// host (the tool and its host are the same name), and a tool without a row has no default.
+#[test]
+fn the_launch_default_is_the_leader_row_model_with_the_launcher_effort() {
+    for tool in TOOLS {
+        let leader = default_choice(tool, "leader").unwrap();
+        assert_eq!(
+            launch_default_choice(tool),
+            Some(choice(&leader.model, &launcher_default(tool).effort)),
+            "{tool}"
+        );
+    }
+    assert_eq!(launch_default_choice("codex"), None);
+    assert_eq!(launch_default_choice(""), None);
 }
