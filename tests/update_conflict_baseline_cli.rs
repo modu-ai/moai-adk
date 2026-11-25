@@ -635,3 +635,235 @@ fn ac10_the_earlier_flow_rule_is_removed_after_a_backup_only_when_it_is_ours() {
     assert_eq!(fs::read_to_string(&file).unwrap(), "the user's own rule\n");
     assert!(backup_dirs(&h.home, "-claude-flow-rule").is_empty());
 }
+
+// ---- SPEC-20261125-update-screen-facts: the update screen and its model step tell the facts ----
+
+fn applied_with(parts: Value) -> Value {
+    let mut v = json!({
+        "mode": "applied",
+        "applied": true,
+        "result": {"status": "applied", "hosts": [{
+            "host": "claude", "status": "applied",
+            "files": [{"path": "SKILL.md", "action": "unchanged", "published": false}]
+        }]},
+        "agents_result": {"state": "unchanged"},
+        "routing_result": {"state": "unchanged"},
+        "style_result": {"state": "unchanged"},
+        "bin_names_result": {"state": "unchanged"},
+        "hooks_result": {"state": "unchanged"}
+    });
+    for (k, p) in parts.as_object().unwrap() {
+        v[k] = p.clone();
+    }
+    v
+}
+
+/// A run that only adopted files or moved receipt baselines changed nothing a person can see, so
+/// it does not open the model questions on its own; a written file or a written part does.
+#[test]
+fn screen_facts_ac1_only_a_visible_change_opens_the_model_step() {
+    use moai_cli::update::{model_step_opens, visible_change};
+    assert!(!visible_change(&applied_with(json!({}))), "adopt only");
+    let one_file = json!({"result": {"status": "applied", "hosts": [{
+        "host": "claude", "status": "applied",
+        "files": [{"path": "SKILL.md", "action": "update", "published": true}]
+    }]}});
+    assert!(visible_change(&applied_with(one_file)), "a skill file");
+    for (key, state) in [
+        ("agents_result", json!({"state": "applied"})),
+        (
+            "agents_result",
+            json!({"state": "partial", "written": ["a"]}),
+        ),
+        ("routing_result", json!({"state": "applied"})),
+        ("style_result", json!({"state": "applied"})),
+        ("bin_names_result", json!({"state": "applied"})),
+        ("hooks_result", json!({"state": "partial"})),
+        ("extra_skills_result", json!({"state": "applied"})),
+        ("keys_result", json!({"state": "applied"})),
+    ] {
+        let v = applied_with(json!({ key: state.clone() }));
+        assert!(visible_change(&v), "{key} {state}");
+    }
+    let nothing = applied_with(json!({"agents_result": {"state": "partial", "written": []}}));
+    assert!(!visible_change(&nothing), "a partial that wrote nothing");
+
+    // scripted, terminal, wrote, models saved
+    assert!(
+        !model_step_opens(false, true, false, true),
+        "saved, nothing seen"
+    );
+    assert!(model_step_opens(false, true, false, false), "nothing saved");
+    assert!(
+        model_step_opens(false, true, true, true),
+        "a visible change"
+    );
+    assert!(!model_step_opens(true, true, true, false), "a scripted run");
+}
+
+/// Every end of the model step has one line on both screens; a report that asked nothing has none.
+#[test]
+fn screen_facts_ac2_the_model_step_result_has_one_line() {
+    let path = moai_cli::update_models::settings_path(Path::new("/home/u"));
+    let tail = path.file_name().unwrap().to_string_lossy().into_owned();
+    let cases = [
+        (
+            json!({"state": "applied"}),
+            "Model settings saved:",
+            "모델 설정을 저장했어요",
+        ),
+        (
+            json!({"state": "unchanged"}),
+            "Model settings left as they were",
+            "모델 설정은 그대로예요",
+        ),
+        (
+            json!({"state": "nothing_picked"}),
+            "Model settings left as they were",
+            "모델 설정은 그대로예요",
+        ),
+        (
+            json!({"state": "declined"}),
+            "Model settings not saved",
+            "모델 설정을 저장하지 않았어요",
+        ),
+        (
+            json!({"state": "cancelled"}),
+            "Model questions cancelled",
+            "모델 질문을 취소했어요",
+        ),
+        (
+            json!({"state": "error", "message": "the file broke"}),
+            "Model settings problem: the file broke",
+            "모델 설정 문제: the file broke",
+        ),
+    ];
+    for (models, en, ko) in &cases {
+        let mut v = fixture("applied");
+        v["models"] = models.clone();
+        let out = screen(&v, Asked::Yes, &view(Lang::En));
+        assert!(out.contains(en), "{models}: {out}");
+        assert_eq!(out.matches("Model ").count(), 1, "one line: {out}");
+        let out = screen(&v, Asked::Yes, &view(Lang::Ko));
+        assert!(out.contains(ko), "{models}: {out}");
+    }
+    let mut saved = fixture("applied");
+    saved["models"] = json!({"state": "applied"});
+    for lang in [Lang::En, Lang::Ko] {
+        let out = screen(&saved, Asked::Yes, &view(lang));
+        assert!(
+            out.contains(&tail),
+            "the saved line names the settings file: {out}"
+        );
+    }
+    let mut report = fixture("applied");
+    report["models"] = json!({"state": "ok", "values": []});
+    let out = screen(&report, Asked::Yes, &view(Lang::En));
+    assert!(
+        !out.contains("Model settings") && !out.contains("Model questions"),
+        "{out}"
+    );
+    // The nothing-to-apply screen of a person's terminal shows it as well.
+    let mut latest = fixture("preview-latest");
+    latest["models"] = json!({"state": "declined"});
+    let out = screen(&latest, Asked::NotAsked, &view(Lang::En));
+    assert!(out.contains("Model settings not saved"), "{out}");
+}
+
+/// The Checking row and the Applied row of a host that adopted files say how many; a host that
+/// adopted none has neither the words nor the key.
+#[test]
+fn screen_facts_ac3_the_adopted_files_are_counted() {
+    let h = home();
+    let exe = install(&h.home, "a", |_| {});
+    copy_tree(&package(), &skill_dir(&h.home));
+    let preview = result(&run(&exe, &h.home, &["update"]));
+    let n = preview["plan"]["hosts"][0]["adopt"]["files"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no adopt list: {preview}"))
+        .len();
+    assert!(n > 0);
+    let out = screen(&preview, Asked::NotAsked, &view(Lang::En));
+    assert!(out.contains(&format!("{n} to adopt")), "{out}");
+    let out = screen(&preview, Asked::NotAsked, &view(Lang::Ko));
+    assert!(
+        out.contains("기록 예정") && out.contains(&format!("{n}개")),
+        "{out}"
+    );
+
+    let applied = result(&run(
+        &exe,
+        &h.home,
+        &["update", "--confirm", &digest_of(&preview)],
+    ));
+    assert_eq!(
+        applied["result"]["hosts"][0]["adopted"],
+        json!(n),
+        "{applied}"
+    );
+    let out = screen(&applied, Asked::Yes, &view(Lang::En));
+    assert!(out.contains(&format!("{n} adopted")), "{out}");
+    let out = screen(&applied, Asked::Yes, &view(Lang::Ko));
+    assert!(
+        out.contains("기록함") && out.contains(&format!("{n}개")),
+        "{out}"
+    );
+
+    let plain = fixture("applied");
+    assert!(plain["result"]["hosts"][0]["adopted"].is_null());
+    assert!(!screen(&plain, Asked::Yes, &view(Lang::En)).contains("adopted"));
+    let (_h2, _exe2, preview2) = user_edited_state();
+    assert!(
+        preview2["plan"]["hosts"][0]["adopt"].is_null(),
+        "no adopt here: {preview2}"
+    );
+    assert!(!screen(&preview2, Asked::NotAsked, &view(Lang::En)).contains("to adopt"));
+}
+
+/// A plan with nothing to write never says everything is up to date above an open conflict, a
+/// skipped line or a blocked host; it says nothing is left to apply, that the rest is up to date
+/// and which rows are still open. With no open row the screen keeps its single line.
+#[test]
+fn screen_facts_ac4_the_headline_follows_the_rows() {
+    let conflicts = || {
+        let mut v = fixture("preview-latest");
+        let files = v["plan"]["hosts"][0]["files"].as_array_mut().unwrap();
+        files[0]["action"] = json!("conflict");
+        files[1]["action"] = json!("conflict");
+        v
+    };
+    let skipped = || {
+        let mut v = fixture("preview-latest");
+        v["routing"]["hosts"][0]["section"]["action"] = json!("held");
+        v
+    };
+    for (name, v, open) in [
+        ("conflict", conflicts(), "skills claude"),
+        ("skipped", skipped(), "routing"),
+        ("blocked", fixture("preview-blocked"), "skills claude"),
+    ] {
+        let out = screen(&v, Asked::NotAsked, &view(Lang::En));
+        assert!(!out.contains("Everything is up to date"), "{name}: {out}");
+        assert!(
+            !out.contains("clear the blocked part first"),
+            "{name}: {out}"
+        );
+        assert!(out.contains("Nothing left to apply"), "{name}: {out}");
+        assert!(out.contains("the rest is up to date"), "{name}: {out}");
+        let line = out
+            .lines()
+            .find(|l| l.contains("Still open:"))
+            .unwrap_or_else(|| panic!("{name}: {out}"));
+        assert!(line.contains(open), "{name}: {line}");
+        let ko = screen(&v, Asked::NotAsked, &view(Lang::Ko));
+        assert!(
+            !ko.contains("모두 최신이에요") && ko.contains("아직 열린 줄"),
+            "{name}: {ko}"
+        );
+    }
+    let out = screen(&fixture("preview-latest"), Asked::NotAsked, &view(Lang::En));
+    assert!(
+        out.contains("Everything is up to date") && !out.contains("Still open"),
+        "{out}"
+    );
+}

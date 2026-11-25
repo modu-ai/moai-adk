@@ -127,7 +127,6 @@ enum W {
     NoHookSet,
     NotGitTree,
     AllUpToDate,
-    NothingApplied,
     NotWritten,
     NextConfirm,
     StaleRefused,
@@ -159,6 +158,15 @@ enum W {
     ConflictNext,
     FlowRuleBackup,
     HostBackup,
+    ToAdopt,
+    Adopted,
+    NothingLeft,
+    StillOpen,
+    ModelSaved,
+    ModelLeft,
+    ModelDeclined,
+    ModelCancelled,
+    ModelProblem,
     Retired,
     HomeFailed,
     Switch,
@@ -397,13 +405,6 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "Everything is up to date"
             }
         }
-        NothingApplied => {
-            if ko {
-                "적용할 수 있는 것이 없어요 — 막힌 곳을 먼저 풀어 주세요"
-            } else {
-                "Nothing can be applied — clear the blocked part first"
-            }
-        }
         NotWritten => {
             if ko {
                 "쓰지 않았어요."
@@ -620,6 +621,69 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "바꾸기 전에 만든 백업 폴더:"
             } else {
                 "Backup folder made before the update wrote:"
+            }
+        }
+        ToAdopt => {
+            if ko {
+                "기록 예정"
+            } else {
+                "to adopt"
+            }
+        }
+        Adopted => {
+            if ko {
+                "기록함"
+            } else {
+                "adopted"
+            }
+        }
+        NothingLeft => {
+            if ko {
+                "적용할 것이 더 없어요 — 나머지는 최신이에요"
+            } else {
+                "Nothing left to apply — the rest is up to date"
+            }
+        }
+        StillOpen => {
+            if ko {
+                "아직 열린 줄"
+            } else {
+                "Still open"
+            }
+        }
+        ModelSaved => {
+            if ko {
+                "모델 설정을 저장했어요"
+            } else {
+                "Model settings saved"
+            }
+        }
+        ModelLeft => {
+            if ko {
+                "모델 설정은 그대로예요"
+            } else {
+                "Model settings left as they were"
+            }
+        }
+        ModelDeclined => {
+            if ko {
+                "모델 설정을 저장하지 않았어요"
+            } else {
+                "Model settings not saved"
+            }
+        }
+        ModelCancelled => {
+            if ko {
+                "모델 질문을 취소했어요 — 저장한 것은 없어요"
+            } else {
+                "Model questions cancelled — nothing saved"
+            }
+        }
+        ModelProblem => {
+            if ko {
+                "모델 설정 문제"
+            } else {
+                "Model settings problem"
             }
         }
         Retired => {
@@ -853,6 +917,21 @@ fn tally_text(lang: Lang, t: (usize, usize, usize, usize, usize)) -> (Mark, Stri
     (mark, parts.join(" · "))
 }
 
+/// The labels of the rows still open — in conflict, skipped for a reason that is not a plain note,
+/// or blocked — once each, in the order the rows are shown.
+fn open_labels(rows: &[Row]) -> Vec<String> {
+    let mut labels: Vec<String> = Vec::new();
+    for r in rows
+        .iter()
+        .filter(|r| matches!(r.mark, Mark::Warn | Mark::Error))
+    {
+        if !labels.contains(&r.label) {
+            labels.push(r.label.clone());
+        }
+    }
+    labels
+}
+
 fn blocked_row(lang: Lang, label: String, reason: &Value) -> Row {
     let reason = reason.as_str().unwrap_or("");
     row(
@@ -965,6 +1044,16 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             continue;
         }
         let (m, text) = tally_text(lang, tally(h["files"].as_array().map_or(&[], |a| a)));
+        // SPEC-20261125-update-screen-facts REQ-3: the files the update will adopt are counted.
+        let adopt_n = h["adopt"]["files"].as_array().map_or(0, Vec::len);
+        let (m, text) = if adopt_n > 0 {
+            (
+                m.max(Mark::Update),
+                format!("{text} · {}", counted(lang, W::ToAdopt, adopt_n)),
+            )
+        } else {
+            (m, text)
+        };
         rows.push(row(m, label.clone(), text));
         // Card C-67 (audit N1): `--allow-older` goes back to an older build; say so per host.
         if let Some(w) = h["going_back"].as_str() {
@@ -1619,6 +1708,46 @@ impl Out<'_> {
             self.buf.push_str(&line);
         }
     }
+    /// SPEC-20261125-update-screen-facts REQ-5: nothing is left to apply, the rest is up to date,
+    /// and these rows are still open.
+    fn nothing_left(&mut self, mark: Mark, open: &[String]) {
+        let lang = self.lang();
+        self.status(mark, w(lang, W::NothingLeft));
+        let line = format!("{}: {}", w(lang, W::StillOpen), open.join(" · "));
+        self.muted(&line);
+    }
+    /// REQ-2: one line for how the model step ended. A report that asked nothing (`ok`) has none.
+    fn models_done(&mut self, v: &Value) {
+        let lang = self.lang();
+        let m = &v["models"];
+        let (mark, text) = match m["state"].as_str() {
+            Some("applied") => {
+                let path = crate::update_models::settings_path(std::path::Path::new(&self.v.home));
+                (
+                    Mark::Ok,
+                    format!(
+                        "{}: {}",
+                        w(lang, W::ModelSaved),
+                        visible(&self.home(&path.to_string_lossy()))
+                    ),
+                )
+            }
+            Some("unchanged" | "nothing_picked") => (Mark::Ok, w(lang, W::ModelLeft).to_string()),
+            Some("declined") => (Mark::Skip, w(lang, W::ModelDeclined).to_string()),
+            Some("cancelled") => (Mark::Skip, w(lang, W::ModelCancelled).to_string()),
+            Some("error") => (
+                Mark::Error,
+                format!(
+                    "{}: {}",
+                    w(lang, W::ModelProblem),
+                    visible(m["message"].as_str().unwrap_or(""))
+                ),
+            ),
+            _ => return,
+        };
+        self.blank();
+        self.status(mark, &text);
+    }
     /// Revision 2 (REQ-16): the backup folder a host's update made before it wrote (conflicting
     /// files replaced on request, adopted files), one line per host that made one.
     fn host_backup_done(&mut self, v: &Value) {
@@ -2008,6 +2137,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     let lang = o.lang();
     let rows = preview_rows(result, lang);
     let blocked = rows.iter().any(|r| r.mark == Mark::Error);
+    let open = open_labels(&rows);
     match asked {
         // The question already showed the head, rows and changes: one line now.
         Asked::No => {
@@ -2017,6 +2147,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
             o.switch_next(result);
             o.git_hooks_next(result);
             o.conflict_next(result);
+            o.models_done(result);
             return o.buf;
         }
         Asked::Stale => {
@@ -2028,7 +2159,13 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     o.header(result);
     o.blank();
     if !writes(result) && !blocked {
-        o.status(Mark::Ok, w(lang, W::AllUpToDate));
+        // REQ-5, REQ-6: a row in conflict or skipped is open, so the screen never calls the run
+        // up to date above it.
+        if open.is_empty() {
+            o.status(Mark::Ok, w(lang, W::AllUpToDate));
+        } else {
+            o.nothing_left(Mark::Warn, &open);
+        }
         let mut totals = Vec::new();
         for h in result["plan"]["hosts"].as_array().into_iter().flatten() {
             totals.push(format!(
@@ -2076,6 +2213,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
         o.git_hooks_done(result, true);
         o.git_hooks_next(result);
         o.conflict_next(result);
+        o.models_done(result);
         o.project_next();
         return o.buf;
     }
@@ -2087,7 +2225,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     }
     o.blank();
     if blocked && !writes(result) {
-        o.status(Mark::Error, w(lang, W::NothingApplied));
+        o.nothing_left(Mark::Error, &open);
     } else if let Some(cmd) = result["confirm_with"].as_str() {
         let line = format!(
             "{} {}\n",
@@ -2107,6 +2245,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     o.git_hooks_done(result, true);
     o.git_hooks_next(result);
     o.conflict_next(result);
+    o.models_done(result);
     o.buf
 }
 
@@ -2157,11 +2296,12 @@ fn applied(v: &Value, view: &View) -> String {
         match h["status"].as_str().unwrap_or("") {
             "applied" | "replaced" => {
                 total += n;
-                rows.push(row(
-                    Mark::Ok,
-                    label.clone(),
-                    format!("{} {}", count(lang, n), w(lang, W::Changed)),
-                ));
+                let mut text = format!("{} {}", count(lang, n), w(lang, W::Changed));
+                // REQ-7: the files the run adopted.
+                if let Some(a) = h["adopted"].as_u64().filter(|a| *a > 0) {
+                    text = format!("{text} · {}", counted(lang, W::Adopted, a as usize));
+                }
+                rows.push(row(Mark::Ok, label.clone(), text));
                 // Files of the host that stayed in conflict while others were written are named,
                 // so the run does not end as if everything were done.
                 let left: Vec<&str> = files
@@ -2329,6 +2469,7 @@ fn applied(v: &Value, view: &View) -> String {
     o.git_hooks_done(v, false);
     o.flow_rule_done(v);
     o.host_backup_done(v);
+    o.models_done(v);
     // A partly applied run ends with what failed, not the next step (#2894 7b).
     if !bad {
         o.project_next();
