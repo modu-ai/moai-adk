@@ -81,3 +81,21 @@ created: 2026-11-25
 - R-1: 잠금이 잡힌 채 멈춘 세션(실행기는 살았는데 호스트가 죽음)을 레인으로 세요. 그 세션은 임대 기준에서도 이미 4시간 동안 세어지므로 새 위험이 아니에요. 카드 쪽 임대(`card reclaim`)가 죽은 카드를 상한에서 빼요.
 - R-2: 이름 규칙(`agent-`, `<프로젝트>-agent-`)을 벗어난 레인 이름은 항목이 없으면 안 세어요. `session-register` 로 등록하면 항목이 생겨서 세어져요(레인 글의 등록 단계).
 - R-3: 폴더를 못 읽으면 모든 take 가 막혀요. 이유 문구가 폴더 경로를 말하고, `wip_limit` 0 이 우회로가 아니라 응급 스위치로 남아요(사용자의 프로필 값이에요).
+
+## Result
+
+구현 head 2b84313170(base 6a0e3aa8b1). 아래는 이 실행에서 본 값이에요.
+
+- 바뀐 코드: `src/card/wip_limit.rs`(`live_lanes` 가 `Lanes` 를 돌려주고, `Reading` 에 `registry_error` 와 `unreadable` 이 생겼고, `at_limit`·`refusal`·`json` 이 따라 바뀌어요), `src/lane_registry.rs`(새 읽기 함수 `scan_registry` 와 `RegistryScan`), 시험 `tests/card/card_wip_limit.rs`(`lock_ac1_` 부터 `lock_ac6_`).
+- 실행: `cargo nextest run --locked --offline --test card -E 'test(/card_wip_limit::/)'` 가 20개 실행, 20개 통과해요(앞선 14개와 새 6개). 코드를 바꾸기 전에는 새 6개가 모두 실패했어요(6 failed).
+- AC-1 met: `lock_ac1_` 통과.
+- AC-2 met: `lock_ac2_` 통과.
+- AC-3 met: `lock_ac3_` 통과.
+- AC-4 met: `lock_ac4_` 통과.
+- AC-5 met: `lock_ac5_` 통과.
+- AC-6 met: `lock_ac6_` 통과.
+- 가드 뮤턴트는 워크트리에서 한 줄씩 바꿔 하나씩 돌리고, 돌린 뒤마다 되돌려 트리가 깨끗한 것을 확인했어요. 명령은 `cargo nextest run ... 'test(/card_wip_limit::lock_ac/)'` 이고 셋 다 exit 100 이에요. 잠금이 잡힌 이름을 세는 절(`|| scan.locked.contains(&entry.name)`)을 빼면 `lock_ac1_` 과 `lock_ac2_` 가 실패하고, 리더 제외를 빼면 `lock_ac3_` 이 실패하고, `at_limit` 이 `registry_error` 를 무시하게 하면 `lock_ac4_` 가 실패해요.
+- 영수증: `moai check affected --card 6a0e3aa8b1..HEAD`(head 2b84313170e7), `result=PASS`, targets=3, selection=card, diff_check=0 fmt=0 clippy=0 test=0.
+- 알려진 틈: REQ-7 은 `registry_error` 가 있으면 `card next` 가 카드를 고르지 않는다고 하지만, 한도에서 검사를 기다리는 카드는 `card next` 가 아직 골라 줘요(`src/card/work.rs` 의 기존 `audit_needed` 규칙이고 이 SPEC 의 범위 밖이에요). AC-4 는 검토 카드가 없는 경우를 덮어요.
+- 일부러 하지 않은 것: 한 세션이 두 이름으로 등록된 중복의 합치기(D-5)는 session-registry-session-key SPEC 이 착지한 뒤에 해요.
+- not_run: 전체 `cargo test`, Windows 와 Linux 확인.
