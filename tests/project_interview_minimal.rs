@@ -445,7 +445,7 @@ fn sentence_from(text: &str, at: usize) -> &str {
     let rest = &text[at..];
     let mut chars = rest.char_indices().peekable();
     while let Some((i, c)) = chars.next() {
-        if c == '.' && chars.peek().map_or(true, |(_, next)| next.is_whitespace()) {
+        if c == '.' && chars.peek().is_none_or(|(_, next)| next.is_whitespace()) {
             return &rest[..=i];
         }
     }
