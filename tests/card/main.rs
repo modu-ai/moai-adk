@@ -32,6 +32,7 @@ mod card_list_title_prefix;
 mod card_needs_criteria_cli;
 mod card_next_skip_reason_cli;
 mod card_no_file_locks_cli;
+mod card_note_tty_cli;
 mod card_precheck_cli;
 mod card_ready_leftovers_cli;
 mod card_ready_pass_landing_cli;

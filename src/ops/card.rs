@@ -813,7 +813,9 @@ enum Action {
     /// Writes the ledger. Stores the text read from stdin as one note with one `card.note`
     /// event. Notes are only ever added, never changed or removed, and anyone may add one: a
     /// decision is answered by someone who does not hold the card. The event keeps the id of the
-    /// session that wrote the note, whatever `--by` says, and `card show` prints it. The text is
+    /// session that wrote the note, whatever `--by` says, and `card show` prints it. When stdin
+    /// is a terminal the command refuses at once with a usage error and waits for nothing: give
+    /// the text from a file or a heredoc. The text is
     /// at most 1 MiB, with no control character but tabs and line breaks, and no word with the
     /// shape of a secret: `card export` writes notes out. The answer's `ref` names the note.
     ///
@@ -1791,6 +1793,16 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
         } => {
+            // Standard input on a terminal: nobody types the text there, so refuse at once
+            // instead of waiting for it (SPEC-20261126-card-note-tty-stdin).
+            if std::io::IsTerminal::is_terminal(&std::io::stdin()) {
+                return Err(
+                    "card note refused: standard input is a terminal; give the note \
+                            text from a file or a heredoc, for example `moai card note <card> \
+                            --kind <kind> < note.md`"
+                        .to_string(),
+                );
+            }
             let home = resolve_home(home)?;
             // The one action that reads standard input (the help rule in `src/main.rs` reads
             // this arm).
