@@ -246,6 +246,11 @@ pub struct HostPlan {
     /// their bytes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conflict_replace: Option<ConflictReplace>,
+    /// SPEC-20261125-update-conflict-baseline revision 3 (REQ-19): the steps that need a backup
+    /// and are left undone because the HOME's `.moai` cannot take one. Left out when empty, so
+    /// other plans keep their bytes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub backup_blocked: Vec<BackupBlocked>,
     /// #2521: the `install_id` of the earlier version folder whose host receipt supplies
     /// this host's baseline (see [`resolve_host_receipt`]). Left out when the baseline is
     /// this installation's own receipt or there is none, so other plans keep their bytes.
@@ -305,14 +310,20 @@ pub struct ConflictReplace {
     pub apply_flag: String,
 }
 
-/// The offer for the conflicting files of one host; `None` when no file is in conflict with a
-/// package file to write.
-fn conflict_offer(
-    host: &str,
-    files: &[FilePlan],
-    canonical_home: &Path,
-) -> Option<ConflictReplace> {
-    let offered: Vec<ConflictFile> = files
+/// A step of the update that needs a backup and was left undone because the HOME has no usable
+/// backup folder (SPEC-20261125-update-conflict-baseline revision 3, REQ-19, REQ-20).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BackupBlocked {
+    /// `conflict-replace`, `adopt`, `backup-replace` or `flow-rule-removal`.
+    pub step: String,
+    /// Why the backup folder is unusable.
+    pub reason: String,
+}
+
+/// The files of a host that are in conflict with a package file to write.
+fn conflict_files(files: &[FilePlan]) -> Vec<ConflictFile> {
+    files
         .iter()
         .filter(|f| f.action == "conflict")
         .filter_map(|f| {
@@ -322,7 +333,13 @@ fn conflict_offer(
                 new_sha256: f.new_sha256.clone()?,
             })
         })
-        .collect();
+        .collect()
+}
+
+/// The offer for the conflicting files of one host; `None` when no file is in conflict with a
+/// package file to write.
+fn conflict_offer(host: &str, files: &[FilePlan], backup_root: &Path) -> Option<ConflictReplace> {
+    let offered = conflict_files(files);
     if offered.is_empty() {
         return None;
     }
@@ -335,10 +352,7 @@ fn conflict_offer(
     let token = format!("conflict-replace:{host}:{}", &hex[..16]);
     Some(ConflictReplace {
         files: offered,
-        backup_root: crate::home_root::path(canonical_home)
-            .join("backups")
-            .to_string_lossy()
-            .into_owned(),
+        backup_root: backup_root.to_string_lossy().into_owned(),
         backup_layout: format!(
             "<apply UTC>-{host}-conflict/{ADOPT_MANIFEST} and <apply UTC>-{host}-conflict/\
              {ADOPT_FILES}/<path> (a copy of every replaced file, taken before any file is \
@@ -608,6 +622,15 @@ pub(crate) fn refuse_state_symlinks(dir: &Path, what: &str) -> Result<()> {
             None => return Ok(()),
         };
     }
+}
+
+/// The guard before an update writes a backup: no link on the way to the backup folder, and none
+/// on the way to the HOME's state folder either. The state folder holds the receipts the same
+/// update writes next; the backup used to sit under it, so its guard covered both, and a link at
+/// `~/.moai-cli` now needs its own check (the audit of the symlink refusal, B1).
+pub(crate) fn refuse_backup_roots(home: &Path, backups: &Path) -> Result<()> {
+    refuse_state_symlinks(backups, "backup")?;
+    refuse_state_symlinks(&crate::home_root::path(home), "state")
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -1357,6 +1380,8 @@ pub fn plan_update_in(
 ) -> Result<UpdatePlan> {
     let canonical_home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
     let install_id = current_install_id(&canonical_home)?;
+    // The one folder this plan's backups go to; a HOME that cannot take one leaves those steps out.
+    let backup_root = crate::home_root::backup_root(&canonical_home);
     let mut hosts = Vec::new();
     let mut expected = Vec::new();
     let mut rollback = Vec::new();
@@ -1486,6 +1511,20 @@ pub fn plan_update_in(
         } else {
             None
         };
+        // REQ-19: an adoption copies the files first; with no usable backup folder nothing is
+        // adopted and the host stays as it is.
+        let mut backup_blocked: Vec<BackupBlocked> = Vec::new();
+        let adopt_note = match (&backup_root, adopt_note) {
+            (Err(why), note) if !adopt_files.is_empty() => {
+                adopt_files.clear();
+                backup_blocked.push(BackupBlocked {
+                    step: "adopt".into(),
+                    reason: why.clone(),
+                });
+                note.or_else(|| Some(format!("adoption left undone: {why}")))
+            }
+            (_, note) => note,
+        };
         // The baseline of an adopted file is what is on disk: the receipt will own it.
         let mut baselines = owned.clone();
         for a in &adopt_files {
@@ -1611,8 +1650,14 @@ pub fn plan_update_in(
             .collect();
         // #2483: a host blocked ONLY by the unmanaged package (clean scan, no other
         // reason, nothing owned) gets the backup-then-replace preview.
-        let backup_then_replace = if !unmanaged.is_empty() && blocked.is_none() && owned.is_empty()
-        {
+        let replace_candidate = !unmanaged.is_empty() && blocked.is_none() && owned.is_empty();
+        if let (true, Err(why)) = (replace_candidate, &backup_root) {
+            backup_blocked.push(BackupBlocked {
+                step: "backup-replace".into(),
+                reason: why.clone(),
+            });
+        }
+        let backup_then_replace = if replace_candidate && backup_root.is_ok() {
             source_files(&root).ok().map(|source| {
                 let tree = source_tree_sha256(&source);
                 let hex = tree.strip_prefix("sha256:").unwrap_or(&tree);
@@ -1622,10 +1667,10 @@ pub fn plan_update_in(
                     source_file_count: source.len(),
                     source_files: source,
                     source_tree_sha256: tree.clone(),
-                    backup_root: crate::home_root::path(&canonical_home)
-                        .join("backups")
-                        .to_string_lossy()
-                        .into_owned(),
+                    backup_root: backup_root
+                        .as_ref()
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .unwrap_or_default(),
                     backup_layout: format!(
                         "<apply UTC>-{host}/{BACKUP_TREE} (the folder, moved as is) and \
                          <apply UTC>-{host}/{BACKUP_MANIFEST}; a second run in the same \
@@ -1667,9 +1712,22 @@ pub fn plan_update_in(
                 reason,
             )
         };
-        let conflict_replace = (preflight == "ok")
-            .then(|| conflict_offer(host, &files, &canonical_home))
-            .flatten();
+        let conflict_replace = if preflight == "ok" {
+            match &backup_root {
+                Ok(root) => conflict_offer(host, &files, root),
+                Err(why) => {
+                    if !conflict_files(&files).is_empty() {
+                        backup_blocked.push(BackupBlocked {
+                            step: "conflict-replace".into(),
+                            reason: why.clone(),
+                        });
+                    }
+                    None
+                }
+            }
+        } else {
+            None
+        };
         hosts.push(HostPlan {
             host: (*host).to_string(),
             projection_root: root_text,
@@ -1686,10 +1744,10 @@ pub fn plan_update_in(
             backup_then_replace,
             adopt: (!adopt_files.is_empty()).then(|| AdoptPreview {
                 files: adopt_files,
-                backup_root: crate::home_root::path(&canonical_home)
-                    .join("backups")
-                    .to_string_lossy()
-                    .into_owned(),
+                backup_root: backup_root
+                    .as_ref()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
                 backup_layout: format!(
                     "<apply UTC>-{host}-adopt/{ADOPT_MANIFEST} and <apply UTC>-{host}-adopt/\
                      {ADOPT_FILES}/<path> (a copy of every adopted file, taken before any \
@@ -1698,6 +1756,7 @@ pub fn plan_update_in(
                 ),
             }),
             conflict_replace,
+            backup_blocked,
             receipt_from,
             going_back,
         });
@@ -3468,8 +3527,8 @@ fn adopt_backup(
     if kind == "conflict" {
         test_fault("conflict_backup_copy")?;
     }
-    let backups = crate::home_root::path(home).join("backups");
-    refuse_state_symlinks(&backups, "backup")?;
+    let backups = crate::home_root::backup_root(home)?;
+    refuse_backup_roots(home, &backups)?;
     fs::create_dir_all(&backups).map_err(|_| "backup directory unavailable")?;
     refuse_state_symlinks(&backups, "backup")?;
     let dir = create_backup_dir(&backups, &compact_stamp(), &format!("{host}-{kind}"))?;
@@ -3610,8 +3669,8 @@ fn run_backup_then_replace(
     if source_files(&root)? != btr.source_files {
         return Err("projection changed since the plan; nothing moved".into());
     }
-    let backups = crate::home_root::path(home).join("backups");
-    refuse_state_symlinks(&backups, "backup")?;
+    let backups = crate::home_root::backup_root(home)?;
+    refuse_backup_roots(home, &backups)?;
     fs::create_dir_all(&backups).map_err(|_| "backup directory unavailable")?;
     refuse_state_symlinks(&backups, "backup")?;
     let dir = create_backup_dir(&backups, &compact_stamp(), host)?;
@@ -4024,6 +4083,7 @@ mod routing_recheck_tests {
             flow: None,
             old_block: None,
             legacy_flow: None,
+            backup_blocked: Vec::new(),
         }
     }
 

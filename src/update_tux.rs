@@ -157,6 +157,8 @@ enum W {
     HomeNext,
     ConflictNext,
     FlowRuleBackup,
+    FlowRuleFolder,
+    BackupBlocked,
     HostBackup,
     ToAdopt,
     Adopted,
@@ -614,6 +616,20 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "옛 flow 규칙 파일을 지웠어요 — 백업:"
             } else {
                 "Removed the earlier flow rule file — backup:"
+            }
+        }
+        FlowRuleFolder => {
+            if ko {
+                "남은 빈 폴더도 치웠어요:"
+            } else {
+                "Removed the empty folder it left:"
+            }
+        }
+        BackupBlocked => {
+            if ko {
+                "백업 폴더를 쓸 수 없어요 — 하지 않은 일:"
+            } else {
+                "Backup folder unusable — left undone:"
             }
         }
         HostBackup => {
@@ -1707,6 +1723,72 @@ impl Out<'_> {
             let line = format!("  {}\n", self.home(backup));
             self.buf.push_str(&line);
         }
+        // Revision 3 (REQ-23): the folder that held the file and was empty afterwards.
+        let folders: Vec<&str> = removed
+            .iter()
+            .filter_map(|r| r["folder_removed"].as_str())
+            .collect();
+        if folders.is_empty() {
+            return;
+        }
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Ok),
+            visible(w(self.lang(), W::FlowRuleFolder))
+        );
+        self.buf.push_str(&line);
+        for f in folders {
+            let line = format!("  {}\n", self.home(f));
+            self.buf.push_str(&line);
+        }
+    }
+    /// Revision 3 (REQ-20): the steps left undone because the HOME's `.moai` cannot take a backup,
+    /// each with the reason, from the skill hosts' plan and the routing plan.
+    fn backup_blocked_note(&mut self, v: &Value) {
+        let ko = self.lang() == Lang::Ko;
+        let step_words = |step: &str| -> String {
+            match (step, ko) {
+                ("conflict-replace", true) => "충돌한 파일 바꾸기",
+                ("conflict-replace", false) => "replacing the conflicting files",
+                ("adopt", true) => "임자 없는 파일 넘겨받기",
+                ("adopt", false) => "adopting the unowned files",
+                ("backup-replace", true) => "백업한 뒤 폴더 바꾸기",
+                ("backup-replace", false) => "backing up and replacing the folder",
+                ("flow-rule-removal", true) => "옛 flow 규칙 파일 지우기",
+                ("flow-rule-removal", false) => "removing the earlier flow rule file",
+                (other, _) => other,
+            }
+            .to_string()
+        };
+        let mut lines: Vec<String> = Vec::new();
+        for list in [&v["plan"]["hosts"], &v["routing"]["hosts"]] {
+            for h in list.as_array().into_iter().flatten() {
+                for b in h["backup_blocked"].as_array().into_iter().flatten() {
+                    let line = format!(
+                        "{}: {}",
+                        step_words(b["step"].as_str().unwrap_or("")),
+                        b["reason"].as_str().unwrap_or("")
+                    );
+                    if !lines.contains(&line) {
+                        lines.push(line);
+                    }
+                }
+            }
+        }
+        if lines.is_empty() {
+            return;
+        }
+        self.blank();
+        let head = format!(
+            "{} {}\n",
+            self.p().mark(Token::Warn),
+            visible(w(self.lang(), W::BackupBlocked))
+        );
+        self.buf.push_str(&head);
+        for l in lines {
+            let line = format!("  {}\n", visible(&l));
+            self.buf.push_str(&line);
+        }
     }
     /// SPEC-20261125-update-screen-facts REQ-5: nothing is left to apply, the rest is up to date,
     /// and these rows are still open.
@@ -2148,6 +2230,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
             o.git_hooks_next(result);
             o.conflict_next(result);
             o.models_done(result);
+            o.backup_blocked_note(result);
             return o.buf;
         }
         Asked::Stale => {
@@ -2214,6 +2297,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
         o.git_hooks_next(result);
         o.conflict_next(result);
         o.models_done(result);
+        o.backup_blocked_note(result);
         o.project_next();
         return o.buf;
     }
@@ -2246,6 +2330,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     o.git_hooks_next(result);
     o.conflict_next(result);
     o.models_done(result);
+    o.backup_blocked_note(result);
     o.buf
 }
 

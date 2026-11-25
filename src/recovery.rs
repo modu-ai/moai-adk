@@ -97,8 +97,21 @@ const REPLACED_TREE: &str = "replaced";
 /// The manifest's file list, only when the manifest still has the receipt's digest.
 fn backup_manifest(home: &Path, b: &ReplaceBackup) -> Option<(PathBuf, Vec<BackupFile>)> {
     let dir = PathBuf::from(&b.dir);
-    let backups = crate::home_root::path(home).join("backups");
-    if dir.parent() != Some(backups.as_path()) || refuse_state_symlinks(&dir, "backup").is_err() {
+    // A backup stands in the `backups` folder of one of the HOME's state folders: the new one
+    // (SPEC-20261125-update-conflict-baseline revision 3) or the earlier one, where an earlier
+    // update made it. Both are only read; the recovery changes nothing in them but its own record.
+    let in_state_folder = |p: &Path| {
+        p.file_name().is_some_and(|n| n == "backups")
+            && p.parent().is_some_and(|s| {
+                s.parent() == Some(home)
+                    && s.file_name()
+                        .is_some_and(crate::home_root::is_state_dir_name)
+            })
+    };
+    let known = dir
+        .parent()
+        .is_some_and(|p| p == crate::home_root::path(home).join("backups") || in_state_folder(p));
+    if !known || refuse_state_symlinks(&dir, "backup").is_err() {
         return None;
     }
     let manifest = dir.join("MANIFEST.json");
