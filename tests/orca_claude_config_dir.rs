@@ -225,25 +225,23 @@ fn adapter_rows_update_works_with_orca_through_the_moved_folder() {
         !text.lines().any(|l| l.starts_with("| SETUP |")),
         "the table has a row for a workflow that is gone"
     );
-    for row in ["UPDATE"] {
-        let cells = table_cells(&text, row);
-        assert_eq!(cells.len(), 4, "row {row}: {cells:?}");
-        assert!(
-            cells[1].starts_with("works"),
-            "row {row}, With Orca must start with works: {}",
-            cells[1]
-        );
-        assert!(
-            cells[1].contains("CLAUDE_CONFIG_DIR"),
-            "row {row} names the variable: {}",
-            cells[1]
-        );
-        assert!(
-            !cells[1].contains("unsupported"),
-            "row {row} still says unsupported: {}",
-            cells[1]
-        );
-    }
+    let cells = table_cells(&text, "UPDATE");
+    assert_eq!(cells.len(), 4, "row UPDATE: {cells:?}");
+    assert!(
+        cells[1].starts_with("works"),
+        "row UPDATE, With Orca must start with works: {}",
+        cells[1]
+    );
+    assert!(
+        cells[1].contains("CLAUDE_CONFIG_DIR"),
+        "row UPDATE names the variable: {}",
+        cells[1]
+    );
+    assert!(
+        !cells[1].contains("unsupported"),
+        "row UPDATE still says unsupported: {}",
+        cells[1]
+    );
 }
 
 /// REQ-6: the settings folder of an Orca profile is not an unsupported item any more.
