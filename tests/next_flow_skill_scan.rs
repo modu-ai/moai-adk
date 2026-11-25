@@ -1707,49 +1707,16 @@ fn tier_lines(text: &str) -> Vec<String> {
         .collect()
 }
 
-/// What is wrong with the tier lines of `text` against the contract's: a line missing, written
-/// twice, or different by a single byte. Empty when the lines match word for word. The docs-only
-/// line is the exception (SPEC-20261125-audit-text-facts D-1, R-1): the contract's line was
-/// corrected, and the copies in `agents/audit.md` and `workflows/run.md` are outside that SPEC's
-/// scope, so for that one line only its presence once is required here and its key words are
-/// read by `tier_key_word_problems`; the other three lines still match byte for byte.
-fn tier_line_problems(contract: &[String], text: &str) -> Vec<String> {
-    let found = tier_lines(text);
-    let mut problems = Vec::new();
-    for line in &contract[1..] {
-        match found.iter().filter(|l| *l == line).count() {
-            1 => {}
-            0 => problems.push(format!("lacks {line:?}")),
-            n => problems.push(format!("holds {line:?} {n} times")),
-        }
-    }
-    let docs_only = found
-        .iter()
-        .filter(|l| l.starts_with(TIER_LINE_STARTS[0]))
-        .count();
-    if docs_only != 1 {
-        problems.push(format!(
-            "holds {docs_only} lines that start with {:?}, not 1",
-            TIER_LINE_STARTS[0]
-        ));
-    }
-    if found.len() != contract.len() {
-        problems.push(format!(
-            "holds {} tier lines, not {}",
-            found.len(),
-            contract.len()
-        ));
-    }
-    problems
-}
-
-/// AC-1 (REQ-1 to REQ-4, REQ-11): the lines of the contract's "Audit tiers" section stand byte
-/// for byte in the audit agent (the docs-only line by its key words, see `tier_line_problems`).
-/// The AUDIT workflow no longer carries the lines: its "Base agents" section points to the
+/// AC-1 (REQ-1 to REQ-4, REQ-11): the lines of the contract's "Audit tiers" section stand only
+/// there. The AUDIT workflow no longer carries the lines: its "Base agents" section points to the
 /// contract (SPEC-20261125-audit-text-facts REQ-2), and the brief to `moai-audit` quotes them
 /// from there. RUN's "Check-run rules" carried a copy too; SPEC-20261125-run-sync-procedure-
 /// receipt REQ-5 removed it: neither `run.md` nor `internal/check-rules` holds a tier line, and
-/// the check rules say where the tier lines stand. A planted change to any one line is found.
+/// the check rules say where the tier lines stand.
+/// SPEC-20261125-base-agent-contract REQ-5 and REQ-14: the audit agent states the four tiers once,
+/// as the rows of one table, so it holds none of the four bullet lines; the table is pinned line
+/// by line in `refs_audit_agent_tier_table_is_exact` and its rows are read by their key words in
+/// `refs_audit_tier_lines_keep_their_key_words`.
 #[test]
 fn refs_audit_tier_lines_match_in_every_text() {
     let contract = read(AUDIT_REF);
@@ -1768,11 +1735,12 @@ fn refs_audit_tier_lines_match_in_every_text() {
     for (name, text) in [
         ("workflows/run.md", &run),
         ("internal/check-rules.md", &rules),
+        ("agents/audit.md", &agent),
     ] {
         assert_eq!(
             tier_lines(text),
             Vec::<String>::new(),
-            "{name} holds a tier line again; the lines stand in the audit contract"
+            "{name} holds a tier line again; the lines stand in the audit contract (the audit agent holds them as a table)"
         );
     }
     assert!(
@@ -1781,27 +1749,12 @@ fn refs_audit_tier_lines_match_in_every_text() {
         ),
         "internal/check-rules.md does not say where the tier lines stand"
     );
-    let texts = [("agents/audit.md", agent.as_str())];
-    for (name, text) in texts {
-        let problems = tier_line_problems(&source, text);
-        assert!(problems.is_empty(), "{name}: {problems:#?}");
-        // The check reads what it says: a changed byte, a missing line and a doubled line fail.
-        let changed = text.replacen(&source[2], &format!("{}.", source[2]), 1);
-        assert!(
-            !tier_line_problems(&source, &changed).is_empty(),
-            "{name}: a changed line passes"
-        );
-        // The text's own docs-only line: it may differ from the contract's.
-        let own_docs_only = tier_lines(text).remove(0);
-        let missing = text.replacen(&format!("{own_docs_only}\n"), "", 1);
-        assert!(
-            !tier_line_problems(&source, &missing).is_empty(),
-            "{name}: a missing line passes"
-        );
-        let doubled = text.replacen(&source[1], &format!("{}\n{}", source[1], source[1]), 1);
-        assert!(
-            !tier_line_problems(&source, &doubled).is_empty(),
-            "{name}: a doubled line passes"
+    // The check reads what it says: a bullet tier line planted in a text is found.
+    for line in &source {
+        assert_eq!(
+            tier_lines(&format!("{agent}\n{line}\n")),
+            vec![line.clone()],
+            "a planted tier line is not found"
         );
     }
 }
@@ -2068,7 +2021,9 @@ fn refs_no_text_says_the_audit_agent_has_an_isolated_worktree() {
 
 /// What is wrong with the four tier lines of `text`: a line missing a key word. The key words are
 /// what each class means; the four texts being equal does not protect them when all four change.
-fn tier_key_word_problems(text: &str) -> Vec<String> {
+/// `lead` is how a tier line starts: `- ` for the contract's and RUN's bullets, `| ` for a row of
+/// the audit agent's table (SPEC-20261125-base-agent-contract REQ-5).
+fn tier_key_word_problems(text: &str, lead: &str) -> Vec<String> {
     const KEY_WORDS: [(&str, &[&str]); 4] = [
         (
             "- docs-only (tier",
@@ -2105,6 +2060,8 @@ fn tier_key_word_problems(text: &str) -> Vec<String> {
     ];
     let mut problems = Vec::new();
     for (start, words) in KEY_WORDS {
+        let start = start.replacen("- ", lead, 1);
+        let start = start.as_str();
         match text.lines().find(|l| l.starts_with(start)) {
             None => problems.push(format!("no line starts with {start:?}")),
             Some(line) => {
@@ -2115,6 +2072,89 @@ fn tier_key_word_problems(text: &str) -> Vec<String> {
         }
     }
     problems
+}
+
+/// The tier table of `agents/audit.md`, exactly: the header, the separator and the four rows
+/// (SPEC-20261125-base-agent-contract REQ-5). The key words above are found by "contains", so a
+/// clause that reverses a rule and is added to a row (the author may audit when no other session
+/// is free) would pass them; the table is pinned line by line instead.
+const AGENT_TIER_TABLE: [&str; 6] = [
+    "| Tier | Changed paths | Runs | Cites | Who audits, and what the verdict then needs |",
+    "| --- | --- | --- | --- | --- |",
+    "| docs-only (tier 0) | only documents or SPEC text change | nothing is built | no receipt | the auditor records a PASS without a receipt |",
+    "| test-only (tier 0, tier 1 when a tool changes) | only tests or test tools change | nothing | the lane's receipt | the auditor gives it a light audit: it reads the change and the lane's receipt and runs nothing |",
+    "| code (tier 1) | product code or skill text changes | runs no mutant | cites the lane's receipt instead of running the head again | a session that wrote none of it gives a light audit |",
+    "| high-risk (tier 2) | a changed path starts with a prefix of the floor list | the code steps plus the boundary, security and data-loss checks of this contract, and at most two named test modules run | the lane's guard-mutant lines read | a session that wrote none of it gives the full audit |",
+];
+
+/// What is wrong with the audit agent's tier table: a line that is not exactly the pinned one, or
+/// a row after the table.
+fn agent_tier_table_problems(text: &str) -> Vec<String> {
+    let lines: Vec<&str> = text.lines().collect();
+    let Some(first) = lines.iter().position(|l| l.starts_with("| Tier |")) else {
+        return vec!["no table starts with the header".to_string()];
+    };
+    let mut problems = Vec::new();
+    for (k, want) in AGENT_TIER_TABLE.iter().enumerate() {
+        if lines.get(first + k) != Some(want) {
+            problems.push(format!(
+                "table line {k} is not exactly {want:?}: {:?}",
+                lines.get(first + k)
+            ));
+        }
+    }
+    if lines
+        .get(first + AGENT_TIER_TABLE.len())
+        .is_some_and(|l| l.starts_with('|'))
+    {
+        problems.push("a row follows the table".to_string());
+    }
+    problems
+}
+
+/// The audit agent's tier table is exactly the pinned one, and a clause added to the end of any
+/// row, a changed word, a missing row and an extra row are each found (guard mutants: the first
+/// is the one the audit planted, "or the author when no other session is free").
+#[test]
+fn refs_audit_agent_tier_table_is_exact() {
+    let agent = repo_text("agents/audit.md");
+    let problems = agent_tier_table_problems(&agent);
+    assert!(problems.is_empty(), "agents/audit.md: {problems:#?}");
+    const CLAUSE: &str = ", or the author when no other session is free";
+    for want in &AGENT_TIER_TABLE[2..] {
+        let longer = format!("{}{CLAUSE} |", want.trim_end_matches(" |"));
+        let mutants = [
+            ("a clause added", agent.replacen(want, &longer, 1)),
+            (
+                "a word changed",
+                agent.replacen(want, &want.replacen("audit", "check", 1), 1),
+            ),
+            ("a row missing", agent.replacen(&format!("{want}\n"), "", 1)),
+        ];
+        for (name, mutant) in mutants {
+            assert!(
+                mutant != agent,
+                "{name}: the mutant did not change the text"
+            );
+            assert!(
+                !agent_tier_table_problems(&mutant).is_empty(),
+                "{name}: the table passes for {want}"
+            );
+        }
+    }
+    let extra = agent.replacen(
+        AGENT_TIER_TABLE[5],
+        &format!(
+            "{}\n| extra (tier 9) | a | b | c | d |",
+            AGENT_TIER_TABLE[5]
+        ),
+        1,
+    );
+    assert!(extra != agent, "the extra row did not change the text");
+    assert!(
+        !agent_tier_table_problems(&extra).is_empty(),
+        "a row added after the table passes"
+    );
 }
 
 /// AC-4 (REQ-6): each tier line keeps its key words in the contract and in the two copies; a key
@@ -2128,24 +2168,30 @@ fn tier_key_word_problems(text: &str) -> Vec<String> {
 fn refs_audit_tier_lines_keep_their_key_words() {
     let contract = read(AUDIT_REF);
     let agent = repo_text("agents/audit.md");
-    for (name, text) in [
-        ("references/audit.md", section(&contract, "Audit tiers")),
-        ("agents/audit.md", agent.as_str()),
+    // The audit agent states the tiers as the rows of one table (`| `), the contract as bullets.
+    for (name, text, lead) in [
+        (
+            "references/audit.md",
+            section(&contract, "Audit tiers"),
+            "- ",
+        ),
+        ("agents/audit.md", agent.as_str(), "| "),
     ] {
-        let problems = tier_key_word_problems(text);
+        let problems = tier_key_word_problems(text, lead);
         assert!(problems.is_empty(), "{name}: {problems:#?}");
         // The mutant drops the word from the tier line itself: another line of the text may
         // hold the same words (the Auditor row of RUN does).
-        for (start, word) in [
-            ("- high-risk (tier", "data-loss"),
-            ("- high-risk (tier", "wrote none of it gives the full audit"),
-            ("- code (tier", "runs no mutant"),
-            ("- high-risk (tier", "at most two named test modules run"),
+        for (class, word) in [
+            ("high-risk (tier", "data-loss"),
+            ("high-risk (tier", "wrote none of it gives the full audit"),
+            ("code (tier", "runs no mutant"),
+            ("high-risk (tier", "at most two named test modules run"),
         ] {
+            let start = format!("{lead}{class}");
             let mutant = text
                 .lines()
                 .map(|l| {
-                    if l.starts_with(start) {
+                    if l.starts_with(&start) {
                         l.replacen(word, "", 1)
                     } else {
                         l.to_string()
@@ -2154,7 +2200,7 @@ fn refs_audit_tier_lines_keep_their_key_words() {
                 .collect::<Vec<_>>()
                 .join("\n");
             assert!(
-                !tier_key_word_problems(&mutant).is_empty(),
+                !tier_key_word_problems(&mutant, lead).is_empty(),
                 "{name}: dropping {word:?} from {start:?} passes"
             );
         }

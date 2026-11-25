@@ -16,7 +16,7 @@ A chain is the order in which the parent session uses agents for one kind of req
 | Work through the cards | WORK | moai-plan, moai-impl, moai-docs | internal/git-safety, flows/next-flow |
 | Coordinate the lanes | LEADER | none | flows/next-flow |
 | A test fails once and passes on a rerun of the same head (flaky) | RUN | none | internal/check-rules |
-| Repair after a FAIL verdict | RUN, SYNC, AUDIT | moai-impl, moai-audit | audit |
+| Repair after a FAIL verdict | RUN, SYNC, AUDIT | moai-impl, moai-docs, moai-audit | audit |
 
 Rules for every chain:
 
