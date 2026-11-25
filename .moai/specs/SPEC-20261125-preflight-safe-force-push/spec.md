@@ -4,7 +4,7 @@ title: "tool-preflight 가 덮어쓸 수 없는 새 ref 전용 lease 푸시와 �
 status: draft
 revision: 1
 created: 2026-11-25
-branch: spec/preflight-safe-force-push-20261125
+branch: spec/preflight-safe-force-push-r2-20261125
 ---
 
 # tool-preflight 가 덮어쓸 수 없는 새 ref 전용 lease 푸시와 이 컴퓨터의 경로로 가는 강제 푸시에는 확인을 묻지 않아요
