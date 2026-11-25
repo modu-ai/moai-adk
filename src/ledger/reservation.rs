@@ -537,6 +537,9 @@ pub struct Overlap {
     pub status: String,
 }
 
+/// One pattern of another card's reservation: card, pattern, holder, lease end and status.
+type OtherPattern = (i64, String, String, i64, String);
+
 /// The active reservations of every card but `card_id` that still keep other cards off their
 /// paths at `now` ([`blocks_new_claims`]): card, pattern, holder, lease end and status of each
 /// pattern, in card and pattern order. A `held` reservation whose lease has ended is not listed.
@@ -544,14 +547,14 @@ fn other_patterns(
     conn: &Connection,
     now: i64,
     card_id: i64,
-) -> Result<Vec<(i64, String, String, i64, String)>, LedgerError> {
+) -> Result<Vec<OtherPattern>, LedgerError> {
     let mut stmt = conn.prepare(&format!(
         "SELECT r.card_id, s.pattern, r.holder, r.lease_until, r.status FROM reservation r \
          JOIN reservation_scope s ON s.reservation_id = r.reservation_id \
          WHERE r.status IN {ACTIVE_STATUSES} AND r.card_id <> ?1 \
          ORDER BY r.card_id, s.pattern"
     ))?;
-    let rows: Vec<(i64, String, String, i64, String)> = stmt
+    let rows: Vec<OtherPattern> = stmt
         .query_map([card_id], |r| {
             Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
         })?
