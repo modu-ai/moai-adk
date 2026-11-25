@@ -2,7 +2,7 @@
 id: SPEC-20261125-agent-team-session-names
 title: "The launcher starts a named leader or agent session with -l and -a, and the team runs every flow step over cross-session messages"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-25
 ---
 
@@ -24,7 +24,7 @@ revision 2 는 결정 노트 8849(사용자 결정 2026-11-25T01:18:13Z, 리더 
 
 - `moai cc|glm` (옵션 없음): 지금처럼 역할 없는 세션, 이름 없음, `cc` 는 auto mode, `glm` 은 우회.
 - `moai cc|glm -l|--leader`: 세션 이름 `leader-<프로젝트명>`(`claude --name`), 권한 우회(`--dangerously-skip-permissions`), 첫 입력 `/moai leader`.
-- `moai cc|glm -a|--agent`: 세션 이름 `agent-<영어이름>`, 권한 우회, 첫 입력 `/moai agent`, advisor 켬(`cc` 만, `glm` 은 advisor 가 없어 지금의 안내 그대로). `-l` 과 옵션 없음에서는 advisor 를 켜지 않아요(`--advisor` 를 직접 주면 그대로 따라요).
+- `moai cc|glm -a|--agent`: 세션 이름 `agent-<영어이름>`, 권한 우회, 첫 입력 `/moai agent`, advisor 는 `opus`(`cc` 만, `glm` 은 advisor 가 없어 지금의 안내 그대로), 기본 모델은 sonnet 이고 effort 는 high(결정 노트 8864, 사용자 결정 2026-11-25T01:36:24Z, 말 그대로 "agent의 advisor는 opus로 하고, 기본 모델은 sonnet high 이다." — 리더의 해석: `-a` 에만 해당하고 `-l` 과 옵션 없는 launch 의 기본값은 그대로예요). `--model`, `--effort`, `--advisor` 를 직접 주면 그것이 이겨요. `-l` 과 옵션 없음에서는 advisor 를 켜지 않아요.
 - 세션 안의 `/moai leader`, `/moai agent` 는 모드 전환이에요(결정 노트 8852, 사용자 결정 2026-11-25T01:22:08Z, 말 그대로 "옛 낱말 /moai work 는 계속 사용하지 않는다. /moai work 지시사항 -> 이렇게 사용하지 않는다. 이유는 /moai agent로 설정을 하고 지시는 메시지로 전달하면 된다. 모드 전환이지 명령어가 아니다"): 뒤에 지시 글을 받지 않고, 세션을 그 역할로 설정한 뒤(이름 확인, 등록, 흐름 참조 읽기) 대기해요. `/moai work` 는 별칭으로도 받지 않아요. 지시(배차, 카드 번호, 범위)는 크로스 세션 메시지로 와요. 옵션 없이 띄운 세션과 Desktop 이 이 길을 쓰고, 이때만 이름은 사용자에게 `/rename` 한 줄을 안내하고 `ListAgents` 첫 줄로 확인해요(보조 길).
 - 영어이름은 런처가 골라요(코드 안의 이름 목록, 등록부에 살아 있는 이름은 건너뜀). `--name` 을 주면 그 이름을 써요.
 - 레인 경로 낱말은 `agent` 예요(결정 노트 8850, 사용자 결정 2026-11-25T01:19:50Z, 말 그대로 "worker -> /moai agent로 표기를 하는게 맞겠지?" 에 리더가 동의). 런처 `-a|--agent`, 세션 이름 `agent-<영어이름>`, 등록부의 mode 값 `agent` 와 한 낱말이에요. `worker` 는 쓰지 않고 옛 낱말 `work` 도 받지 않아요(결정 노트 8852). 경로 낱말은 `agent` 와 `leader` 둘뿐이에요. 이 `agent` 는 카드를 맡는 세션(레인)이고 스킬의 base agents(`moai-plan` 등)나 호스트의 서브에이전트와 다른 것이라서 워크플로 글 첫 문장이 한 번 구분해요(REQ-24).
@@ -63,7 +63,8 @@ revision 2 는 결정 노트 8849(사용자 결정 2026-11-25T01:18:13Z, 리더 
 - REQ-6: When `-l` or `-a` is given, the launcher shall start the host with `--dangerously-skip-permissions`, unless `--permissions` is given. · failure: none — `--permissions` keeps the host's own prompts (D-7).
 - REQ-7: When `-l` is given, the launcher shall hand the host the first input `/moai leader`. · failure: none — if the host does not run it, the session is the plain session the user can type into (R-6).
 - REQ-8: When `-a` is given, the launcher shall hand the host the first input `/moai agent`. · failure: none — the same as REQ-7.
-- REQ-9: When `-a` is given on the `cc` host and `--no-advisor` is not, the launcher shall pass `--advisor` with the value of `--advisor`, else of the setting `launcher.advisor`, else the default model of D-6. · failure: none — a model that ranks below the main model is refused as it is today.
+- REQ-9: When `-a` is given on the `cc` host and `--no-advisor` is not, the launcher shall pass `--advisor` with the value of `--advisor`, else of the setting `launcher.advisor` (D-13), else `opus` (D-6). · failure: none — a model that ranks below the main model is handled as D-14 says.
+- REQ-28: When `-a` is given and neither `--model` nor `--effort` is, the launcher shall start the host with the model and effort of the saved choice for the agent role, else of the `agent` row of the default table for that host (D-12). · failure: none — `--model` and `--effort` each win for their own value, and `-l` and a launch without a role flag keep today's defaults.
 - REQ-10: The launcher shall pass no `--advisor` by default for `-l`, for a launch without a role flag and on `glm`. · failure: none — the existing `--advisor` and `launcher.advisor` forms stay.
 - REQ-11: The launcher shall keep a launch without a role flag as it is: no name, no first input, `cc` in auto mode, `glm` in the bypass. · failure: none — the existing tests pin it.
 - REQ-12: IF `-l` and `-a` are both given, or a PROMPT is given with a role flag, THEN the launcher shall refuse the launch with one message and start no host.
@@ -89,7 +90,7 @@ revision 2 는 결정 노트 8849(사용자 결정 2026-11-25T01:18:13Z, 리더 
 - AC-2 (REQ-3, REQ-4, REQ-5): `moai cc -a --dry-run` picks the first free name of the list, skips a name whose live lock is held or that a registry entry has, refuses with a message naming `--name` when the list is used up, and takes `--name` as given · verify: `cargo test --offline --locked --test launcher_role_flags ac2_`
 - AC-3 (REQ-6, REQ-11, REQ-12): `-l` and `-a` start in the bypass on `cc` and `glm`, `--permissions` keeps the host's own prompts, a launch without a role flag is unchanged, and `-l -a` together or a PROMPT with a role flag is refused · verify: `cargo test --offline --locked --test launcher_role_flags ac3_`
 - AC-4 (REQ-7, REQ-8): `-l` hands `/moai leader` and `-a` hands `/moai agent` as the host's first input · verify: `cargo test --offline --locked --test launcher_role_flags ac4_`
-- AC-5 (REQ-9, REQ-10): `-a` on `cc` passes `--advisor` from the option, else the setting, else the D-6 default, `--no-advisor` removes it, `-l`, a roleless launch and `glm` pass none · verify: `cargo test --offline --locked --test launcher_role_flags ac5_`
+- AC-5 (REQ-9, REQ-10, REQ-28): `-a` on `cc` passes `--advisor` from the option, else the setting, else `opus`, `--no-advisor` removes it, `-l`, a roleless launch and `glm` pass none; `-a` starts the host with the saved agent choice, else the default table's agent row of the host (on `claude` today `claude-sonnet-5-5` and `high`), `--model` and `--effort` win, and `-l` and a roleless launch keep their model and effort · verify: `cargo test --offline --locked --test launcher_role_flags ac5_`
 - AC-6 (REQ-13, REQ-14): the help golden files name the four flags and no help text calls them retired; `CLAUDE.md` and the four docs carry the new sentence; the decisions log has the reversing line · verify: `cargo test --offline --locked --test launcher_role_flags ac6_` and `cargo test --offline --locked --test repo_claude_md` and `cargo test --offline --locked --test help_layout`
 - AC-7 (REQ-15, REQ-16, REQ-17, REQ-18, REQ-19, REQ-20, REQ-21, REQ-22, REQ-24, REQ-25, REQ-26, REQ-27): the agent workflow's first sentence tells this agent from the base agents and host subagents; the route table and the skill entry name `agent` and `leader` and not `work` (REQ-25, REQ-26, REQ-27: text after the mode word sets the mode only with a one-line notice, a registered leader's message is awaited, no `/moai work` form is left in the skill text); the workflows carry the rename line and its fallback, the address rule, and the flow text points to the table with the notice rule, the agent-to-agent rule and the channel order · verify: `cargo test --offline --locked --test lane_team_names`
 - AC-8 (REQ-23): the flow reference is at most 8192 bytes, the new reference file is in the source manifest and the package scans pass · verify: `cargo test --offline --locked --test next_flow_skill_scan` and `cargo test --offline --locked --test product_cli skill_package::`
@@ -105,10 +106,13 @@ revision 2 는 결정 노트 8849(사용자 결정 2026-11-25T01:18:13Z, 리더 
 - D-3 (리더가 정함): 모델이 이름을 못 바꾸는 경우의 안내(REQ-16, REQ-17)는 옵션 없이 띄운 세션과 Desktop 의 보조 길에만 써요.
 - D-4 (리더가 정함): 워크플로 파일 이름은 `workflows/work.md` 그대로 두고 경로 낱말 `agent` 만 더해요.
 - D-5 (리더가 정함): 메시지 표는 새 참조 파일 `references/flows/team-messages.md` 에 두고 `next-flow.md` 는 한 줄로 가리켜요.
-- D-6 (advisor 기본 모델, 비용이 드는 선택): (A, 추천, 리더 추천) `fable`. (B) `opus`. (C) `sonnet`. 사용자 설정 `launcher.advisor` 가 있으면 그것이 먼저예요. `--advisor` 는 사용량 크레딧에 청구될 수 있고 메인 모델 이상이어야 해요(`claude_argv` 의 순위 검사). 기본값은 A.
+- D-6 (advisor 기본 모델, 비용이 드는 선택, 사용자가 정함): `-a` 의 advisor 기본은 `opus`예요(노트 8864; 앞의 `fable` 은 취소). `--advisor` 는 사용량 크레딧에 청구될 수 있고 메인 모델 이상이어야 해요(`claude_argv` 의 순위 검사).
 - D-7 (`--permissions` 와 `launcher.role_access`): (A, 추천) `-l`/`-a` 는 항상 우회로 시작하고, `--permissions` 를 직접 주면 그것이 이겨서 호스트의 프롬프트를 유지해요. 사용자 설정 `launcher.role_access` 는 역할 없는 launch 에만 적용돼요. (B) `--permissions` 를 `-l`/`-a` 와 함께 쓰면 거절해요. (C) `launcher.role_access` 가 `-l`/`-a` 도 바꿔요. 기본값은 A.
 - D-8 (영어이름 목록): (A, 추천) 24개, 소문자 한 낱말, 코드 안의 상수: ben, cara, dana, eli, fay, gus, hana, ivan, jade, kai, lena, milo, nora, owen, pia, quin, ruth, sam, tess, uma, vic, wren, xena, zoe. 앞에서부터 빈 것을 써요. (B) 12개로 줄여요. 목록을 늘리는 일은 새 카드예요. 기본값은 A.
 - D-9 (`-l` 의 프로젝트명): (A, 추천) `.moai/project.yaml` 의 `project_id`, 없으면 저장소 폴더 이름을 `valid_name` 문자(영문·숫자·`.`·`_`·`-`)로 고쳐 쓰고 이름 전체를 64자 안으로 줄여요. (B) 폴더 이름만. 기본값은 A.
+- D-12 (`-a` 의 모델·effort 가 어디서 와요, 새로 열린 선택): 이전 런처는 역할 기본값을 `저장된 선택(moai update) 있으면 그것, 없으면 default_choice(호스트, 역할)` 로 읽었고(`2e6873482e` 의 `src/session.rs`, `zai/` 접두사는 떼고 넘겨요) 지금 표의 `claude`/`agent` 행이 이미 `claude-sonnet-5-5`·`high` 라서 사용자의 문장과 같아요. (A, 추천) 그 방식을 `-a` 에만 되살려요: `--model`/`--effort` > 저장된 선택 > 표의 agent 행. `claude` 는 sonnet·high, `glm` 은 표의 agent 행 그대로(`zai/glm-5.3-flash`, `max`)로 표가 하나인 채로 있어요. (B) 두 호스트 모두 별칭 `sonnet` 과 `high` 로 고정해요: `glm` 은 환경 표대로 `glm-5.4[1m]`·`high` 가 되어 표의 glm agent 행(앞선 사용자 결정)과 갈라져요. (C) `claude` 에서만 바꾸고 `glm` 은 지금의 `glm` 기본(`opus` 별칭, `high`)을 그대로 둬요. 기본값은 A. `glm` 값이 걸려서 사용자가 보는 선택이에요.
+- D-13 (`launcher.advisor` 설정과 `-a` 의 기본 advisor): (A, 추천) 지금의 우선순위를 지켜요: `--no-advisor`/`--advisor` > `launcher.advisor` > `-a` 의 기본 `opus`. 설정이 있는 사용자는 자기 설정이 이겨요. (B) `-a` 에서는 설정보다 `opus` 가 먼저예요. 기본값은 A.
+- D-14 (메인 모델이 기본 advisor 보다 높을 때, 예 `-a --model fable`): (A, 추천) 기본 advisor 를 넘기지 않고 이유를 한 줄로 알려요. 직접 준 `--advisor` 가 메인보다 낮으면 오늘처럼 거절해요. (B) 어떤 경우든 거절해요. (C) advisor 를 메인 모델과 같은 별칭으로 올려요. 기본값은 A.
 - D-11 (SPEC 크기): `spec check` 가 요구 27개에 경고를 내요("12개 넘으면 `parent` 로 이은 SPEC 으로 쪼개요", 오류 아님). (A, 추천) 한 SPEC 으로 가요: 리더가 한 카드로 정했고 두 갈래(런처, 스킬 글)가 같은 메시지 표와 이름 규칙을 서로 가리켜요. 경고는 그대로 둬요. (B) 런처(REQ-1..14)와 글(REQ-15..27) 두 SPEC 으로 쪼개고 글 SPEC 의 `parent` 를 런처 SPEC 으로 해요: 감사 단위가 작아지지만 카드를 둘로 쪼개야 해요. 기본값은 A.
 - D-10 (조합): (A, 추천) `-l` 과 `-a` 를 함께, 또는 PROMPT 를 역할 플래그와 함께 주면 거절해요(REQ-12). (B) 첫 입력 뒤에 PROMPT 를 이어 붙여요. 기본값은 A.
 
