@@ -215,6 +215,7 @@ tests/skeleton_language.rs	2	0
 tests/skill_name_collision.rs	2	0
 tests/skill_references_test.py	1	1
 tests/smoke_harness_test.py	4	0
+tests/spec_approval_digest.rs	0	1
 tests/spec_before_code_hook.rs	0	26
 tests/spec_branch_name_first.rs	0	6
 tests/spec_cli.rs	28	50
