@@ -46,7 +46,7 @@ Skip this section when you are a base agent yourself: base agents never start ot
 - Use only what the host itself offers. Never stand in for a missing feature with extra sessions, folders or scripts: name the feature as not supported on this host, with the reason, and use the fallback given below.
 - When the agent is not installed on this host, do the step in this session and say so.
 
-SYNC may hand the writing before the audit — the SPEC's `## Result` and status, the document mismatches of step 3 and the `@cc:` comments — to one `moai-docs` at a time, with `scope` naming only those paths. The effects in steps 4 to 9 (push, the release pull request, comments, merge) stay with this session: the agent writes files and reports, and never sends anything. Step 7's independent review goes to `moai-audit` as the AUDIT workflow describes, not to the agent that wrote the change.
+SYNC hands the writing before the audit — the SPEC's `## Result` and status, the document mismatches of step 3 and the `@cc:` comments — to one `moai-docs` with the host's agent tool, with `scope` naming only those paths; do not write them yourself when the agent is installed. It starts after `moai-impl` has returned, runs in this worktree and never beside `moai-impl`, and you wait for its `RESULT` line before the effects below. The effects in steps 4 to 9 (push, the release pull request, comments, merge) stay with this session: the agent writes files and reports, and never sends anything. Step 7's independent review goes to `moai-audit` as the AUDIT workflow describes, not to the agent that wrote the change.
 
 ## Integration receipt fields
 

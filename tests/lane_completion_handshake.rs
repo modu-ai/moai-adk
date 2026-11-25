@@ -159,7 +159,7 @@ fn ac6_a_blocked_card_moves_the_lane_on_only_when_no_leader_is_registered() {
     assert_has(
         &nf,
         NEXT_FLOW,
-        "With no registered leader the worker reserves the next eligible card once,",
+        "With no registered leader the agent reserves the next eligible card once,",
     );
     let w = work();
     assert_has(

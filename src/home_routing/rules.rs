@@ -358,28 +358,49 @@ fn recorded_legacy_flow_digests(home: &Path, dir: &Path) -> Vec<String> {
 
 /// REQ-14: the earlier flow rule file is offered for removal only when it is a plain file whose
 /// digest an earlier routing receipt recorded for that path; any other bytes are the user's.
-fn legacy_flow_plan(home: &Path, dir: &Path) -> Option<LegacyFlowPlan> {
-    let base = base_of(home, dir, LEGACY_FLOW_FILE).ok()?;
+fn legacy_flow_plan(
+    home: &Path,
+    dir: &Path,
+    backup_root: &std::result::Result<PathBuf, String>,
+) -> (Option<LegacyFlowPlan>, Option<crate::update::BackupBlocked>) {
+    let none = (None, None);
+    let Ok(base) = base_of(home, dir, LEGACY_FLOW_FILE) else {
+        return none;
+    };
     let Cur::Bytes(bytes) = read_target(&base, LEGACY_FLOW_FILE) else {
-        return None;
+        return none;
     };
     let digest = sha(&bytes);
     if !recorded_legacy_flow_digests(home, dir).contains(&digest) {
-        return None;
+        return none;
     }
-    Some(LegacyFlowPlan {
-        path: base.join(LEGACY_FLOW_FILE).to_string_lossy().into_owned(),
-        action: "remove".into(),
-        sha256: digest,
-        backup_root: crate::home_root::path(home)
-            .join("backups")
-            .to_string_lossy()
-            .into_owned(),
-        backup_layout: format!(
-            "<apply UTC>-claude-flow-rule/{LEGACY_FLOW_FILE} (a copy of the file, taken before it \
-             is removed; a second run in the same second uses <apply UTC>.2-claude-flow-rule)"
-        ),
-    })
+    // REQ-19: the removal needs its backup; with no usable backup folder the file stays.
+    let backup_root = match backup_root {
+        Ok(root) => root,
+        Err(why) => {
+            return (
+                None,
+                Some(crate::update::BackupBlocked {
+                    step: "flow-rule-removal".into(),
+                    reason: why.clone(),
+                }),
+            )
+        }
+    };
+    (
+        Some(LegacyFlowPlan {
+            path: base.join(LEGACY_FLOW_FILE).to_string_lossy().into_owned(),
+            action: "remove".into(),
+            sha256: digest,
+            backup_root: backup_root.to_string_lossy().into_owned(),
+            backup_layout: format!(
+                "<apply UTC>-claude-flow-rule/{LEGACY_FLOW_FILE} (a copy of the file, taken \
+                 before it is removed; a second run in the same second uses \
+                 <apply UTC>.2-claude-flow-rule)"
+            ),
+        }),
+        None,
+    )
 }
 
 /// REQ-15: copies the earlier flow rule file into a new backup folder, then removes it. The file
@@ -399,8 +420,8 @@ fn remove_legacy_flow(
         return Err(changed());
     }
     crate::update::test_fault("flow_rule_backup")?;
-    let backups = crate::home_root::path(j.home).join("backups");
-    crate::update::refuse_state_symlinks(&backups, "backup")?;
+    let backups = crate::home_root::backup_root(j.home)?;
+    crate::update::refuse_backup_roots(j.home, &backups)?;
     fs::create_dir_all(&backups).map_err(|_| "backup directory unavailable")?;
     crate::update::refuse_state_symlinks(&backups, "backup")?;
     let backup = crate::update::create_backup_dir(
@@ -419,10 +440,20 @@ fn remove_legacy_flow(
         _ => return Err(changed()),
     }
     fs::remove_file(&target).map_err(|_| format!("{} not removed", target.display()))?;
-    Ok(serde_json::json!({
+    let mut done = serde_json::json!({
         "path": target.to_string_lossy(),
         "backup": backup.to_string_lossy(),
-    }))
+    });
+    // REQ-22: the folder that held the file goes too when nothing else is in it. One
+    // `remove_dir` (never recursive) refuses a folder with any entry, so another file, a link or
+    // a subfolder keeps it; a folder that is itself a link is never removed.
+    if let Some(folder) = target.parent() {
+        let plain = fs::symlink_metadata(folder).is_ok_and(|m| m.is_dir());
+        if plain && fs::remove_dir(folder).is_ok() {
+            done["folder_removed"] = serde_json::json!(folder.to_string_lossy());
+        }
+    }
+    Ok(done)
 }
 
 /// Two paths name the same folder: equal real paths, or equal as written when either cannot be
@@ -502,6 +533,7 @@ pub(super) fn consumer_folder(dir: &Path, default: &Folder) -> Folder {
         flow,
         old_block: None,
         legacy_flow: None,
+        backup_blocked: Vec::new(),
     };
     let folder = |row: HostPlan, routing: Option<FilePlan>, flow: Option<FilePlan>| Folder {
         row,
@@ -588,6 +620,7 @@ pub(super) fn plan_folder(
             flow: None,
             old_block: None,
             legacy_flow: None,
+            backup_blocked: Vec::new(),
         },
         dir: None,
         id: String::new(),
@@ -623,10 +656,11 @@ pub(super) fn plan_folder(
     // A flow rule an earlier build wrote below `rules/moai/` is offered for removal after a backup
     // when an earlier routing receipt recorded its digest; any other bytes stay where they are and
     // the preview names the file.
-    let legacy = legacy_flow_plan(home, &dir);
+    let (legacy, backup_blocked) =
+        legacy_flow_plan(home, &dir, &crate::home_root::backup_root(home));
     if let Some(f) = flow.as_mut() {
         let old = dir.join(LEGACY_FLOW_FILE);
-        if legacy.is_none() && fs::symlink_metadata(&old).is_ok() {
+        if legacy.is_none() && backup_blocked.is_none() && fs::symlink_metadata(&old).is_ok() {
             let note = format!(
                 "an earlier build wrote {}; it is left in place for you to delete",
                 old.display()
@@ -665,6 +699,7 @@ pub(super) fn plan_folder(
             flow: flow.clone(),
             old_block: old.clone(),
             legacy_flow: legacy.clone(),
+            backup_blocked: backup_blocked.into_iter().collect(),
         },
         dir: Some(dir),
         id,

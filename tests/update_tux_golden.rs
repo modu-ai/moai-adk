@@ -693,7 +693,7 @@ fn the_preview_shows_routing_appends_and_blocked_style_targets() {
         flat_text.contains("blocked: is a symlink; refusing"),
         "{text}"
     );
-    assert!(text.contains("Nothing can be applied"), "{text}");
+    assert!(text.contains("Nothing left to apply"), "{text}");
     let name = path.rsplit('/').next().unwrap();
     assert!(flat_text.contains(name), "{text}");
 }

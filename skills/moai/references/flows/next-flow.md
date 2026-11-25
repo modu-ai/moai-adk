@@ -19,7 +19,7 @@ Four technical rules make the flow run.
 
 - Work in a worktree under the project's `.claude/worktrees`, on its own branch; never in the primary checkout.
 - A lane only commits: no push, no pull request and no merge of a moved integration tip. A background session never pushes and never opens a pull request.
-- A lane submits two things and nothing else: its head commit and the base its checks ran on. It adds one `moai card note` whose first line is `LANE-READY-INTEGRATION <card> head=<40 hex>` and names the base in the lines below it.
+- A lane submits two things and nothing else: its head commit and the base its checks ran on, by `moai card submit <card> --generation <g>`. Its note starts `LANE-READY-INTEGRATION <card> head=<40 hex>` and names the base below it.
 - At tier 2 the READY note carries one line per new guard test: `guard-mutant: <test> | <code removed or flipped> | exit <n>`, where `<n>` is the non-zero exit code the test gave on a copy that lacks the guarded code, or `guard-mutant: none | <reason>` when the change adds no guard test; the lane runs that mutant once per new guard test before READY. Below tier 2 none is asked for. `moai bundle check` lists a missing, unreadable or `exit 0` line as a warning.
 - Work cap: cards in work and awaiting a check at most twice the lanes; at the cap take no new card, help check and land; the leader opens none above it.
 - A decision the lane cannot make goes on the card as a blocked note (`workflows/work.md`); with no registered leader the lane takes the next card, and with a registered leader it waits for that leader's dispatch.
@@ -48,8 +48,8 @@ Four technical rules make the flow run.
 ### Final flow
 
 - `/clear` and a lane-terminal manager are not conditions of dispatch. The start signal is the card verified and landed on the local integration branch, then done with its reservation released in the ledger.
-- With no registered leader the worker reserves the next eligible card once, and an automatic restart runs only through the existing HOLD, ownership, priority and safety checks.
-- No leader: flow ends at submission. Waiting for an audit and the hand-back of a card are separate from done and start nothing. A worker clearing its own session is not documented as a guarantee.
+- With no registered leader the agent reserves the next eligible card once, and an automatic restart runs only through the existing HOLD, ownership, priority and safety checks.
+- No leader: flow ends at submission. Waiting for an audit and the hand-back of a card are separate from done and start nothing. An agent clearing its own session is not documented as a guarantee.
 
 ## Landing
 

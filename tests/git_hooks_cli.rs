@@ -265,10 +265,14 @@ fn recognition_a_current_rust_hook_is_not_retired_and_not_kept() {
 }
 
 #[test]
-fn the_managed_set_is_the_two_git_hooks_without_commit_msg() {
+fn the_managed_set_is_the_two_git_hooks_and_the_guard_without_commit_msg() {
     // The card-number scan of a commit message belongs to the repositories that own the rule;
-    // the product ships pre-commit and pre-push only.
-    assert_eq!(&MANAGED[..], ["pre-commit", "pre-push"]);
+    // the product ships pre-commit, pre-push and the integration-branch guard
+    // (SPEC-20261125-integration-guard-install), which is installed only where the guard can act.
+    assert_eq!(
+        &MANAGED[..],
+        ["pre-commit", "pre-push", "reference-transaction"]
+    );
     assert!(
         !Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("install/git-hooks/commit-msg")

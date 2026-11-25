@@ -820,6 +820,48 @@ fn a_harness_only_request_plans_no_removal() {
     assert!(fx.root.join(ROLE_FILE).exists() && fx.root.join(SKILL_FILE).exists());
 }
 
+/// A request for the harness alone that names a project agent records it like any other apply,
+/// so the next plan reads `unchanged` instead of asking to rebuild it every time.
+#[test]
+fn a_harness_only_apply_records_its_agents_and_the_next_plan_reads_unchanged() {
+    let fx = Fx::new();
+    fx.with_profile(json!({}));
+    // The harness is in place first; the agents are then made on their own.
+    let base = request_with(&fx, Vec::new(), Vec::new());
+    fx.generate(&base);
+    let mut request = base.clone();
+    request["native_roles"] = json!([role()]);
+    request["picks"] = json!(["harness-only"]);
+    fx.generate(&request);
+
+    let record = &fx.manifest()["generation_request"];
+    assert_eq!(record["native_roles"], request["native_roles"], "{record}");
+    for s in steps(&fx.plan())
+        .into_iter()
+        .filter(|s| s["state"] == "ready")
+    {
+        assert_eq!(fx.apply_step(s)["ok"], json!(true), "{s}");
+    }
+    let plan = fx.plan();
+    let generation = step(&plan, "generation");
+    assert_eq!(generation["state"], "unchanged", "{generation}");
+    assert_eq!(generation["apply"], Value::Null, "{generation}");
+}
+
+/// A request for the harness alone that names no agent says nothing about the ones an earlier
+/// apply recorded: the record stays as it was.
+#[test]
+fn a_harness_only_apply_without_agents_keeps_the_earlier_record() {
+    let (fx, request) = settled_project();
+    let before = fx.manifest()["generation_request"].clone();
+    assert!(before.is_object(), "{before}");
+    let mut harness = emptied(&request);
+    harness["picks"] = json!(["harness-only"]);
+    let applied = apply_plan(&fx, &plan_of(&fx, &harness));
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert_eq!(fx.manifest()["generation_request"], before);
+}
+
 /// The text `moai <command> --help` prints.
 fn help_text(fx: &Fx, command: &str) -> String {
     let out = Command::new(EXE)
@@ -865,6 +907,56 @@ fn the_help_examples_name_the_input_each_command_reads() {
             );
         }
     }
+}
+
+/// The first JSON object that starts a request (`{"protocol_version"`) in `text`.
+fn request_example(text: &str) -> Value {
+    let key = text
+        .find("\"protocol_version\"")
+        .unwrap_or_else(|| panic!("no request example in: {text}"));
+    let at = text[..key]
+        .rfind('{')
+        .expect("the object opens before its first key");
+    serde_json::Deserializer::from_str(&text[at..])
+        .into_iter::<Value>()
+        .next()
+        .unwrap()
+        .unwrap_or_else(|e| panic!("the example is not JSON ({e}): {}", &text[at..]))
+}
+
+/// The complete request example of `generation-plan --help` and of the project workflow's step 6
+/// is one and the same object, `generation-plan` accepts it, and the plan it answers is the
+/// input `generation-apply` accepts: the documented path works as written.
+#[test]
+fn the_documented_request_example_is_accepted_and_its_plan_applies() {
+    let fx = Fx::new();
+    fx.with_profile(json!({}));
+    let from_help = request_example(&help_text(&fx, "generation-plan"));
+    let workflow = fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/project.md"),
+    )
+    .unwrap();
+    assert_eq!(
+        from_help,
+        request_example(&workflow),
+        "help and workflow differ"
+    );
+
+    let plan = fx.call(
+        &["generation-plan", fx.p()],
+        &serde_json::to_vec(&from_help).unwrap(),
+    );
+    let files = plan["files"].to_string();
+    assert!(
+        files.contains("prj-test-runner") && files.contains("prj-checks"),
+        "the plan covers the documented agent and skill: {files}"
+    );
+    let applied = apply_plan(&fx, &plan);
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert!(
+        fx.root.join(ROLE_FILE).exists() && fx.root.join(SKILL_FILE).exists(),
+        "the documented agent and skill were written"
+    );
 }
 
 /// A manifest entry of `kind` (its bare kind and its `section_id`) naming `path`, whose recorded

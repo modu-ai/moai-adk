@@ -10,8 +10,19 @@ mod common;
 use common::home::TempHome;
 use std::{fs, path::Path};
 
-/// The card actions the WORK workflow uses.
-const ACTIONS: [&str; 6] = ["next", "take", "check", "criterion", "land", "note"];
+/// The card actions the WORK workflow uses. A lane lands nothing (C-493), so `land` is not one of
+/// them; it submits, takes a card back for a repair and records a verdict when it audits.
+const ACTIONS: [&str; 9] = [
+    "next",
+    "take",
+    "check",
+    "criterion",
+    "note",
+    "submit",
+    "review",
+    "reopen",
+    "verdict",
+];
 
 fn workflow(name: &str) -> String {
     fs::read_to_string(

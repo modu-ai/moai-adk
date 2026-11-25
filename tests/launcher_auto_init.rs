@@ -38,12 +38,19 @@ fn fixture() -> Fixture {
 
 /// A host stub that exits at once, or, when `MOAI_TEST_HOLD_UNTIL` is set, writes its pid to
 /// `MOAI_TEST_READY` and stays alive until the `MOAI_TEST_HOLD_UNTIL` file exists (#2971: a
-/// launcher keeps its named session live while its host runs).
+/// launcher keeps its named session live while its host runs). It also ends when the process that
+/// started it has ended and after 300 seconds, so a test that dies or times out leaves no stub
+/// behind that keeps a descriptor (the heavy slot lock) open for hours.
 const STUB: &str = "#!/bin/sh
 printf started > \"$MOAI_TEST_HOST_MARKER\"
 if [ -n \"$MOAI_TEST_HOLD_UNTIL\" ]; then
   echo $$ > \"$MOAI_TEST_READY.tmp\" && mv \"$MOAI_TEST_READY.tmp\" \"$MOAI_TEST_READY\"
-  while [ ! -e \"$MOAI_TEST_HOLD_UNTIL\" ]; do sleep 0.05; done
+  end=$(( $(date +%s) + 300 ))
+  while [ ! -e \"$MOAI_TEST_HOLD_UNTIL\" ]; do
+    kill -0 \"$PPID\" 2>/dev/null || exit 0
+    [ \"$(date +%s)\" -lt \"$end\" ] || exit 0
+    sleep 0.05
+  done
 fi
 exit 0
 ";
@@ -468,6 +475,68 @@ fn concurrent_first_launches_initialize_once_and_keep_their_names() {
     assert_eq!(names, ["lane-0", "lane-1", "lane-2", "lane-3"]);
     assert!(plain.path().join(".moai/project.yaml").is_file());
     assert!(plain.path().join("CLAUDE.md").is_file());
+}
+
+/// Kills one process on drop, so a failed case leaves no stub host behind.
+struct KillStub(i32);
+
+impl Drop for KillStub {
+    fn drop(&mut self) {
+        // SAFETY: kill(2) on a pid this test started; ESRCH when it already ended.
+        unsafe { libc::kill(self.0, libc::SIGKILL) };
+    }
+}
+
+fn pid_alive(pid: i32) -> bool {
+    // SAFETY: signal 0 only checks that the process exists.
+    unsafe { libc::kill(pid, 0) == 0 }
+}
+
+/// SPEC-20261125-heavy-slot-release-on-exit AC-5: a stub host whose launcher died (a test that
+/// panics or times out) ends by itself instead of looping for hours with the descriptors it
+/// inherited; the release file is never written.
+#[test]
+fn stub_host_ends_when_its_launcher_is_killed() {
+    let f = fixture();
+    let plain = tempfile::tempdir().unwrap();
+    let mut held = Held::spawn(
+        &f,
+        plain.path(),
+        &with_git(&f),
+        &["cc", "--name", "lane-9"],
+        "killed",
+    );
+    held.wait_ready();
+    let stub: i32 = fs::read_to_string(&held.ready)
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    let _guard = KillStub(stub);
+    let launcher = held.child.as_ref().unwrap().id();
+    // The stub is a child of the launcher, so killing the launcher leaves it behind.
+    let parent = Command::new("ps")
+        .args(["-o", "ppid=", "-p", &stub.to_string()])
+        .output()
+        .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&parent.stdout).trim(),
+        launcher.to_string(),
+        "the stub is not a child of the launcher"
+    );
+    // The launcher is reaped, so it is gone for the stub's liveness check (a zombie parent
+    // would still answer `kill -0`), as a launcher that died in a real run is.
+    held.child.as_mut().unwrap().kill().unwrap();
+    held.child.as_mut().unwrap().wait().unwrap();
+    let start = Instant::now();
+    while pid_alive(stub) {
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "the stub host outlived its launcher"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    assert!(!held.release.exists(), "the release file was written");
 }
 
 #[test]

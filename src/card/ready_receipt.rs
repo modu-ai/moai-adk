@@ -354,6 +354,29 @@ mod tests {
         ));
     }
 
+    /// SPEC-20261125-check-affected-card-areas REQ-12: the `card_by=` word that a card run writes
+    /// after `selection=card` changes nothing for the gate (it reads `result=` and `selection=`).
+    #[test]
+    fn a_card_summary_line_with_its_reasons_is_a_receipt_and_a_lane_one_is_not() {
+        let own = short(HEAD);
+        let line = |sel: &str, result: &str| {
+            format!("check-affected base=aaaaaaaaaaaa head={own} targets=7 scans=listed:1{sel} test-threads=4 test=0 {result}\n")
+        };
+        let by = "card_by=area:card,module:card,units:card::work";
+        assert_eq!(
+            judge(&line(&format!(" selection=card {by}"), "result=PASS"), HEAD),
+            Receipt::Pass("aaaaaaaaaaaa".to_string())
+        );
+        assert_eq!(
+            judge(&line(&format!(" selection=card {by}"), "result=FAIL"), HEAD),
+            not("result=FAIL")
+        );
+        assert!(matches!(
+            judge(&line(&format!(" selection=lane {by}"), "result=PASS"), HEAD),
+            Receipt::Not(_)
+        ));
+    }
+
     /// SPEC-20261125-check-affected-non-rust REQ-3: a run that checked nothing because the project
     /// declares no check writes `result=not_run`, and the gate counts that as no receipt.
     #[test]
@@ -363,6 +386,12 @@ mod tests {
             "check-affected base=aaaaaaaaaaaa head={own} targets=0 scans=none test-threads=4 diff_check=0 result=not_run\n"
         );
         assert_eq!(judge(&line, HEAD), not("result=not_run"));
+        // The `card_by=` word of a card run changes nothing about that: `not_run` is still no
+        // receipt (SPEC-20261125-check-affected-card-areas REQ-12 with the non-Rust REQ-3).
+        let card = format!(
+            "check-affected base=aaaaaaaaaaaa head={own} targets=0 scans=none selection=card card_by=none test-threads=4 diff_check=0 result=not_run\n"
+        );
+        assert_eq!(judge(&card, HEAD), not("result=not_run"));
     }
 
     #[test]

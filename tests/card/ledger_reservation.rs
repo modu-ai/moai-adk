@@ -224,19 +224,6 @@ fn reserve_refusals_leave_the_ledger_byte_for_byte_as_it_was() {
             other => panic!("{other:?}"),
         }
     }
-    // Overlap with the other card's active reservation.
-    match take(&mut w, free, "a", &s(&["docs/", "src/taken/inner.rs"])).unwrap_err() {
-        ReserveError::ScopeOverlap {
-            other_card,
-            mine,
-            theirs,
-            ..
-        } => assert_eq!(
-            (other_card, mine.as_str(), theirs.as_str()),
-            (taken, "src/taken/inner.rs", "src/taken/")
-        ),
-        other => panic!("{other:?}"),
-    }
     assert_eq!(rejection_code(take(&mut w, free, "a", &[])), "empty_scope");
     assert_eq!(
         reservation::reserve(&mut w, free, "a", &zone(free), 3600, None, Some(""))
@@ -248,6 +235,53 @@ fn reserve_refusals_leave_the_ledger_byte_for_byte_as_it_was() {
     assert_eq!(
         card_state(reader(&home).conn(), free),
         ("ready".to_string(), 0)
+    );
+}
+
+/// The overlaps `reservation::overlaps` lists for `scope` of `card` now: (other card, mine,
+/// theirs).
+fn overlaps_of(w: &WriteLedger, card: i64, scope: &[String]) -> Vec<(i64, String, String)> {
+    let now: i64 = w
+        .conn()
+        .query_row("SELECT unixepoch()", [], |r| r.get(0))
+        .unwrap();
+    reservation::overlaps(w.conn(), now, card, scope)
+        .unwrap()
+        .into_iter()
+        .map(|o| (o.other_card, o.mine, o.theirs))
+        .collect()
+}
+
+/// SPEC-20261125-card-no-file-locks: a scope that overlaps another card's active reservation is
+/// reserved all the same, the other card is left alone, and `overlaps` names the pair.
+#[test]
+fn a_take_over_another_cards_paths_is_made_and_overlaps_names_the_pair() {
+    let (home, mut w) = setup();
+    let taken = ready_card(&mut w);
+    take(&mut w, taken, "first", &s(&["src/taken/"])).unwrap();
+    let free = ready_card(&mut w);
+    let scope_free = s(&["docs/", "src/taken/inner.rs"]);
+    let made = take(&mut w, free, "a", &scope_free).unwrap();
+    assert_eq!(made.generation, 1);
+    assert_eq!(
+        overlaps_of(&w, free, &scope_free),
+        [(
+            taken,
+            "src/taken/inner.rs".to_string(),
+            "src/taken/".to_string()
+        )]
+    );
+    assert_eq!(
+        reservation::current(reader(&home).conn(), taken)
+            .unwrap()
+            .unwrap()
+            .write_scope,
+        s(&["src/taken/"]),
+        "the first card is left alone"
+    );
+    assert_eq!(
+        card_state(reader(&home).conn(), free),
+        ("active".to_string(), 1)
     );
 }
 
@@ -307,32 +341,21 @@ fn scope_overlap_decides_between_two_cards_exactly_as_the_shared_predicate() {
         let (home, mut w) = setup();
         let (one, two) = (ready_card(&mut w), ready_card(&mut w));
         take(&mut w, one, "a", &s(&[a])).unwrap();
-        let second = take(&mut w, two, "b", &s(&[b]));
-        match (*expected, second) {
-            (
-                true,
-                Err(ReserveError::ScopeOverlap {
-                    other_card,
-                    mine,
-                    theirs,
-                    ..
-                }),
-            ) => {
-                assert_eq!(
-                    (other_card, mine.as_str(), theirs.as_str()),
-                    (one, *b, *a),
-                    "{a:?} / {b:?}"
-                )
-            }
-            (false, Ok(r)) => assert_eq!(r.generation, 1, "{a:?} / {b:?}"),
-            (_, other) => panic!("{a:?} / {b:?}: expected overlap {expected}, got {other:?}"),
+        // The take is made whatever the predicate says; `overlaps` reports what it finds.
+        let second = take(&mut w, two, "b", &s(&[b])).unwrap();
+        assert_eq!(second.generation, 1, "{a:?} / {b:?}");
+        let found = overlaps_of(&w, two, &s(&[b]));
+        if *expected {
+            assert_eq!(
+                found,
+                [(one, b.to_string(), a.to_string())],
+                "{a:?} / {b:?}"
+            );
+        } else {
+            assert!(found.is_empty(), "{a:?} / {b:?}: {found:?}");
         }
         let still = card_state(reader(&home).conn(), two);
-        assert_eq!(
-            still.0,
-            if *expected { "ready" } else { "active" },
-            "{a:?} / {b:?}"
-        );
+        assert_eq!(still.0, "active", "{a:?} / {b:?}");
     }
 }
 
@@ -342,27 +365,25 @@ fn only_other_cards_active_reservations_count_for_the_overlap() {
     let (one, two, three) = (ready_card(&mut w), ready_card(&mut w), ready_card(&mut w));
     take(&mut w, one, "a", &s(&["src/shared/"])).unwrap();
     // One pattern of several is enough.
-    assert_eq!(
-        rejection_code(take(&mut w, two, "b", &s(&["docs/", "src/shared/x"]))),
-        "scope_overlap"
-    );
+    let two_scope = s(&["docs/", "src/shared/x"]);
+    assert_eq!(overlaps_of(&w, two, &two_scope).len(), 1);
     // A handoff keeps the scope reserved.
     reservation::handoff(&mut w, one, "a", 1, "c").unwrap();
-    assert_eq!(
-        rejection_code(take(&mut w, two, "b", &s(&["src/shared/"]))),
-        "scope_overlap"
-    );
-    // A released reservation no longer blocks.
+    assert_eq!(overlaps_of(&w, two, &s(&["src/shared/"])).len(), 1);
+    // A released reservation no longer counts.
     reservation::release(&mut w, one, "c", 2).unwrap();
+    assert!(overlaps_of(&w, two, &s(&["src/shared/"])).is_empty());
     take(&mut w, two, "b", &s(&["src/shared/"])).unwrap();
-    // The card that holds the scope again blocks the third.
-    assert_eq!(
-        rejection_code(take(&mut w, three, "d", &s(&["src/shared/y"]))),
-        "scope_overlap"
-    );
-    // The reserved card can take its own scope again later (no self-conflict across generations).
+    // The card that holds the scope again counts for the third; the take is made.
+    let three_scope = s(&["src/shared/y"]);
+    assert_eq!(overlaps_of(&w, three, &three_scope).len(), 1);
+    take(&mut w, three, "d", &three_scope).unwrap();
+    // The card never counts against itself, across generations.
     reservation::release(&mut w, two, "b", 1).unwrap();
     take(&mut w, one, "a", &s(&["src/shared/"])).unwrap();
+    assert!(overlaps_of(&w, one, &s(&["src/shared/"]))
+        .iter()
+        .all(|(other, _, _)| *other != one));
     assert_eq!(rows(reader(&home).conn(), one).len(), 3);
 }
 

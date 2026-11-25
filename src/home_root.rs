@@ -49,6 +49,33 @@ pub fn path(home: &Path) -> PathBuf {
     }
 }
 
+/// The folder every backup of an update is made in: `<HOME>/.moai/backups`, whichever folder
+/// [`path`] gives for the state (SPEC-20261125-update-conflict-baseline revision 3, REQ-17).
+/// The earlier `~/.moai-cli` was retired by the user, so nothing new is written there; a backup it
+/// already holds stays and is only read ([`crate::recovery`]). The folder is not created here.
+/// `Err` says why this HOME cannot take a backup: its `.moai` is a link or holds another
+/// generation's state (verdict `go`, `mixed`, `interrupted` or `refuse`), which is never written
+/// into. Reads only.
+pub fn backup_root(home: &Path) -> Result<PathBuf, String> {
+    let verdict = crate::state_root::classify_home(home);
+    if matches!(
+        verdict.generation,
+        "go" | "mixed" | "interrupted" | "refuse"
+    ) {
+        return Err(format!(
+            "the {MOAI_DIR} folder under HOME cannot take a backup (verdict {}: {})",
+            verdict.generation, verdict.reason
+        ));
+    }
+    // A `rust-first` HOME keeps its layout's root; every other HOME uses `<HOME>/.moai`.
+    let root = if dir(home) == MOAI_DIR {
+        path(home)
+    } else {
+        home.join(MOAI_DIR)
+    };
+    Ok(root.join("backups"))
+}
+
 /// #2696 C4b2: a HOME with no MoAI state at all — no earlier `~/.moai-cli` and verdict `none`
 /// (no `~/.moai` of any kind, Go's included) — starts on `~/.moai`.
 pub fn is_new_home(home: &Path) -> bool {

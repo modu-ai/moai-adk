@@ -225,6 +225,7 @@ pub const GROUPS: &[Group] = &[
             ("trailers", false),
             ("trailer-check", false),
             ("bundle", false),
+            ("build-number", false),
             ("audit-clone-plan", false),
             ("audit-slot", false),
             ("audit-prep", false),
@@ -578,6 +579,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("trailers", &["trailers --spec SPEC-20261117-session-trailer"]),
     ("trailer-check", &["trailer-check origin/v2026.11.0..HEAD"]),
     ("bundle", &["bundle check C-1 C-2", "bundle build C-1 C-2"]),
+    ("build-number", &["build-number next", "build-number show"]),
     (
         "audit-gate",
         &["audit-gate < input.json", "audit-gate --require-pass < input.json"],
@@ -1640,7 +1642,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     (
         "cc",
         "Claude Code 세션 실행기: `cc`. `-l`(`--leader`)은 조정 창을, `-a`(`--agent`)는 레인을 \
-         열어요. 세션 이름은 `leader-<프로젝트>` 와 `agent-<영어 이름>`, 첫 입력은 `/moai leader` \
+         열어요. 세션 이름은 `<프로젝트>-leader` 와 `<프로젝트>-agent-<영어 이름>`, 첫 입력은 `/moai leader` \
          와 `/moai agent`, 권한은 우회로 시작해요(`--permissions` 로 끔). 옵션이 없으면 역할 없는 \
          세션이에요. `--name` 은 이름을 바꿔요.",
     ),
@@ -1648,7 +1650,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
         "glm",
         "z.ai GLM 위의 Claude Code: `glm`(환경의 ANTHROPIC_AUTH_TOKEN 이나 키 파일이 \
          필요해요). `-l`(`--leader`)은 조정 창을, `-a`(`--agent`)는 레인을 열어요. 세션 이름은 \
-         `leader-<프로젝트>` 와 `agent-<영어 이름>`, 첫 입력은 `/moai leader` 와 `/moai agent`, \
+         `<프로젝트>-leader` 와 `<프로젝트>-agent-<영어 이름>`, 첫 입력은 `/moai leader` 와 `/moai agent`, \
          권한은 우회로 시작해요(`--permissions` 로 끔). 옵션이 없으면 역할 없는 세션이에요. \
          `--name` 은 이름을 바꿔요.",
     ),
@@ -1736,12 +1738,12 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "cc|glm",
         "leader",
-        "조정 창으로 시작해요: 세션 이름 `leader-<프로젝트 이름>`, 권한 우회(`--permissions` 로 확인 모드 유지), 첫 입력 `/moai leader`",
+        "조정 창으로 시작해요: 세션 이름 `<프로젝트 이름>-leader`, 권한 우회(`--permissions` 로 확인 모드 유지), 첫 입력 `/moai leader`",
     ),
     (
         "cc|glm",
         "agent",
-        "레인으로 시작해요: 세션 이름 `agent-<영어 이름>`(목록에서 비어 있는 첫 이름), 권한 우회, 첫 입력 `/moai agent`",
+        "레인으로 시작해요: 세션 이름 `<프로젝트 이름>-agent-<영어 이름>`(목록에서 비어 있는 첫 이름), 권한 우회, 첫 입력 `/moai agent`",
     ),
     (
         "cc|glm",

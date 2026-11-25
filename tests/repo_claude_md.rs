@@ -213,12 +213,17 @@ fn launcher_role_flags_are_back() {
         &[
             "Start a session with `moai cc|glm`: a plain host session with no role (model `opus`; effort `medium` for `cc`, `high` for `glm`); `--name <name>` names it.",
             "`-l|--leader` and `-a|--agent` are launcher options again (user decision 2026-11-25, `SPEC-20261125-agent-team-session-names`, reversing D-1 of `SPEC-20261124-launcher-retire-role-flags`)",
+            // SPEC-20261125-session-names-project-prefix REQ-14: the session names carry the project.
+            "`-l` starts the coordination window as `<project name>-leader` and `-a` a lane as `<project name>-agent-<english name>`",
+            "before the leader sends a message to a lane it runs `moai session-register --lane-check <listed name>` and sends only on `lane`",
         ],
     );
     assert_lacks(
         &text,
         "CLAUDE.md",
         &[
+            "as `leader-<project name>`",
+            "a lane as `agent-<english name>`",
             "`-l|-a` only name the session and set its access",
             "`moai -l`/`-a`",
             "deprecated since",
