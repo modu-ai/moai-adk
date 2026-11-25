@@ -27,3 +27,4 @@ The lines after the dated ones came from the leader's carry-over of closed cards
 - 착지 머지에서 tools/repo_scans.json 의 긴 `--test` 한 줄과 source-manifest.json 해시가 카드마다 충돌해요(2026-11-25 네 번): 테스트 이름을 한 줄에 하나씩 쓰는 배열로 바꾸고 해시는 `moai` 명령이 다시 계산해요
 - agents/audit.md 와 workflows/run.md 에 옛 docs-only 줄("the lander reads the change and lands it") 사본이 남았어요(C-522 감사): 세 곳 복사를 한 곳 가리키기로 줄여요
 - `agents-local-merge` 가 사용자가 거절한 옛 백업 `AGENTS.local.md` 를 update 때마다 다시 제안하고, 같은 때 `agents-picks` 는 원본이 없다며 skip 이라 둘이 어긋나요(2026-11-25 `/moai update`): 거절을 기억하는 C-518 이 받아요
+- 실행·동기화 글을 줄이면서 Python 시험 여섯 개가 원격 CI 에서 깨져요(2026-11-25, 로컬 `check affected` 는 Python 시험을 고르지 않아요): `check_pr_self_audit_test.py`(run.md 점검 규칙 표·CI 줄), `self_check_test.py`(self-check.md 의 스크립트·`--full-python` 줄), `smoke_harness_test.py`, `skill_web_pages_test.py`(run.md 웹 페이지 절), `sync_drift_fixture_test.py`(sync.md 3단계의 "일곱 갈래"·부록 경로), `skill_references_test.py`(옮겨진 절 이름): 시험은 C-317 이 Rust 로 옮기고 지워요
