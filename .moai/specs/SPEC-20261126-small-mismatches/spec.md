@@ -75,4 +75,16 @@ branch: spec/small-mismatches-20261126
 
 ## Result
 
-(구현 뒤에 채워요.)
+구현 커밋 `bb46e9309b` 는 RED 커밋 `032a6271ea` 위에 있고 NeXT `9c8b7fb763` 에서 갈라졌어요. 아래는 이 실행에서 본 값이에요.
+
+- RED: 구현 전 `cargo test --offline --locked --test small_mismatches` 는 6개 가운데 3개가 실패했어요(ac1_, ac2_, ac3_, `--no-spec` 가 없었어요). 스캔(ac4_)과 죽은 pid 슬롯(ac5_)은 처음부터 통과했어요: 둘째와 셋째 어긋남은 tip 에서 이미 고쳐져 있었어요(기록 `target/small/red.log`).
+- GREEN: 같은 실행이 6개 통과, 0개 실패예요(`target/small/green.log`).
+- AC-1: met — `ac1_no_spec_prints_the_session_line_only`
+- AC-2: met — `ac2_a_bare_call_names_no_spec_and_the_flag_conflicts_are_refused`
+- AC-3: met — `ac3_the_help_says_no_spec_is_for_a_card_with_no_spec`
+- AC-4: met — `ac4_every_command_the_shipped_texts_name_is_a_command_of_this_build`가 `skills/moai/**`, `agents/*.md`, `CLAUDE.md`, `docs/lane-rules.md`, `docs/leader-rules.md` 의 부르는 명령을 모두 만든 바이너리에 물어 없는 것이 하나도 없음을 읽어요. `ac4_the_scan_finds_a_command_the_build_does_not_have` 가 스캔의 읽는 법(말글·자리표시자는 명령이 아님, `moai version` 같은 없는 명령은 못 찾음)을 고정해요. 글을 고칠 일은 없었어요.
+- AC-5: met — `ac5_a_slot_of_a_dead_pid_that_nobody_holds_is_taken_by_the_next_acquire`
+- AC-6: met — `cargo test --offline --locked --test heavy_slot_cli release_ac` 가 6개 통과, 0개 실패(`target/small/slot.log`). SIGKILL 로 죽은 래퍼의 슬롯은 명령이 도는 동안 held 이고 끝나면 풀리며, 후손이 슬롯을 열고 있으면 `holders` 와 경고로 보여요.
+- 코드를 고친 곳은 `--no-spec` 하나예요(`src/trailers.rs`, `src/ops/trailers.rs`). heavy slot 은 코드를 바꾸지 않았고 프로세스를 죽이는 일도 하지 않았어요.
+- 보고서의 B(`card prereq` 의 선행 관계 지우기)와 C(카드 명령의 프로젝트 인자 모양)는 이 카드에 넣지 않았어요(크기가 달라 따로 카드가 필요해요).
+- 남은 것: 독립 감사(tier 1)와 넓은 `check affected` 는 아직이에요. Windows 와 Linux 는 Mac 에서만 돌렸어요. 보고한 저장소(다른 저장소)의 환경은 재현하지 않았어요.
