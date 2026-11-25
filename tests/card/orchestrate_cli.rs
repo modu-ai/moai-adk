@@ -107,9 +107,18 @@ impl World {
         moai_cli::clone_root::path(&self.project.join(".git")).join("sessions")
     }
 
+    /// The entry file of the lane `name` in either file form (named by the lane or by its host
+    /// session); the name-keyed path where no entry holds the name yet.
+    fn entry_file(&self, name: &str) -> PathBuf {
+        moai_cli::lane_registry::entry_file(&self.sessions_dir(), name)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| self.sessions_dir().join(format!("{name}.json")))
+    }
+
     /// Adds `previous_sessions` to a registered entry, as `session-register --continue` leaves it.
     fn previous(&self, name: &str, previous: &[&str]) {
-        let file = self.sessions_dir().join(format!("{name}.json"));
+        let file = self.entry_file(name);
         let mut v: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
         v["previous_sessions"] = json!(previous);
         fs::write(&file, serde_json::to_vec(&v).unwrap()).unwrap();
@@ -321,12 +330,9 @@ fn plan_window_reads_registered_other_and_none() {
     let theirs = result(&w.plan_as(Some(S_ONE), &[]));
     assert_eq!(theirs["window"]["status"], json!("other"));
     // A plan never registers or renews: the entry is as the registration wrote it.
-    let entry = fs::read(w.sessions_dir().join("leader.json")).unwrap();
+    let entry = fs::read(w.entry_file("leader")).unwrap();
     let _ = w.plan_as(Some(S_ONE), &[]);
-    assert_eq!(
-        entry,
-        fs::read(w.sessions_dir().join("leader.json")).unwrap()
-    );
+    assert_eq!(entry, fs::read(w.entry_file("leader")).unwrap());
 }
 
 // ---- lanes_ (AC-2: REQ-3, REQ-4) --------------------------------------------------------------

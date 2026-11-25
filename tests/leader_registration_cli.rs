@@ -84,8 +84,17 @@ impl Fixture {
         moai_cli::clone_root::path(&self.repo.join(".git")).join("sessions")
     }
 
+    /// The entry file of the lane `name` in either file form (named by the lane or by its host
+    /// session); the name-keyed path where no entry holds the name yet.
+    fn entry_path(&self, name: &str) -> PathBuf {
+        moai_cli::lane_registry::entry_file(&self.sessions(), name)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| self.sessions().join(format!("{name}.json")))
+    }
+
     fn entry_bytes(&self, name: &str) -> Vec<u8> {
-        fs::read(self.sessions().join(format!("{name}.json"))).unwrap()
+        fs::read(self.entry_path(name)).unwrap()
     }
 
     fn entry(&self, name: &str) -> Value {
