@@ -811,8 +811,9 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
 /// REQ-6..8, card C-57). Each one is the whole request planned again with that choice in
 /// `picks`, so its digest and its `generation-apply` command belong to that choice alone.
 ///
-/// - `CLAUDE.md` is a conflict for a missing managed block: `append-managed` (recommended)
-///   and `skip-conflicts`.
+/// - `CLAUDE.md` is a conflict for a missing managed block: `append-managed` (recommended).
+/// - Any conflict row at all (SPEC-20261125-update-same-bytes-no-conflict): `skip-conflicts`,
+///   which keeps each conflicting file as it is and writes the rest; its effect names those files.
 ///
 /// There is no import choice: the writer owns `CLAUDE.md`, and a project that holds an `AGENTS.md`
 /// picks `move` or `leave` in the project questions instead.
@@ -832,6 +833,18 @@ fn generation_choices(
                 .as_deref()
                 .is_some_and(|d| d.contains(crate::agents::BLOCK_MISSING))
     });
+    // SPEC-20261125-update-same-bytes-no-conflict REQ-7 to REQ-9: any conflict row gets the skip,
+    // and its effect names the files it keeps as they are; the append stays for a missing block.
+    let kept: Vec<&str> = plan
+        .files
+        .iter()
+        .filter(|f| f.action == "conflict")
+        .map(|f| f.path.as_str())
+        .collect();
+    let skip_effect = format!(
+        "keep these files as they are, the other files are still written: {}",
+        kept.join(", ")
+    );
     let mut sets: Vec<(&str, Vec<&str>, &str)> = Vec::new();
     if missing_block {
         sets.push((
@@ -839,11 +852,9 @@ fn generation_choices(
             vec!["append-managed"],
             "add the managed section at the end of CLAUDE.md; every other byte stays",
         ));
-        sets.push((
-            "skip-conflicts",
-            vec!["skip-conflicts"],
-            "keep CLAUDE.md as it is; the other files are still written",
-        ));
+    }
+    if !kept.is_empty() {
+        sets.push(("skip-conflicts", vec!["skip-conflicts"], &skip_effect));
     }
     let mut out = Vec::new();
     for (id, picks, effect) in sets {
