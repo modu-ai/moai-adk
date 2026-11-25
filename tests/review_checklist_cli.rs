@@ -549,7 +549,8 @@ fn real_file() {
 }
 
 /// The rules of `run.md`, formerly `verify.md` ("Change-specific rules" and "Shell and helper
-/// rules"): each has an item whose `check` is the bullet's text word for word.
+/// rules"; now reworded in `references/internal/shell-guards.md`): each has an item whose
+/// `check` starts with the label below.
 const VERIFY_RULES: [(&str, &str); 9] = [
     ("base-drift", "Base drift (WF-OBS #9):"),
     (
@@ -597,21 +598,20 @@ const REVIEW_RULES: [(&str, &str); 5] = [
     ),
 ];
 
-fn verify_bullets() -> Vec<String> {
-    // The RUN workflow carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
-    let text = fs::read_to_string(root().join("skills/moai/workflows/run.md")).unwrap();
-    let mut in_section = false;
-    let mut out = Vec::new();
-    for line in text.lines() {
-        if let Some(head) = line.strip_prefix("## ") {
-            in_section = head == "Change-specific rules" || head == "Shell and helper rules";
-        } else if in_section {
-            if let Some(bullet) = line.strip_prefix("- ") {
-                out.push(bullet.to_string());
-            }
-        }
-    }
-    out
+/// The two rule sections the RUN workflow carried (the retired VERIFY route,
+/// SPEC-20261122-next-flow-skills-agents). They left `run.md` with
+/// SPEC-20261125-run-sync-procedure-receipt: `references/internal/shell-guards.md` holds them in
+/// reworded form and `tools/review_checklist.json` holds the nine rules word for word.
+const RULE_SECTIONS: [&str; 2] = ["Change-specific rules", "Shell and helper rules"];
+
+/// The headings of `skills/moai/<rel>` that are one of the two rule sections, in file order.
+fn rule_section_headings(rel: &str) -> Vec<String> {
+    let text = fs::read_to_string(root().join("skills/moai").join(rel)).unwrap();
+    text.lines()
+        .filter_map(|l| l.strip_prefix("## "))
+        .filter(|head| RULE_SECTIONS.contains(head))
+        .map(str::to_string)
+        .collect()
 }
 
 /// SPEC REQ-7: nothing is lost by the move.
@@ -631,16 +631,19 @@ fn moved_rules() {
     for (id, _) in VERIFY_RULES.iter().chain(REVIEW_RULES.iter()) {
         let _ = check_of(id);
     }
-    // While verify.md holds a rule, its item carries the text exactly; and every bullet that is
-    // still there is one of the nine.
-    let bullets = verify_bullets();
-    for bullet in &bullets {
-        let known = VERIFY_RULES
-            .iter()
-            .find(|(_, lead)| bullet.starts_with(lead));
-        let (id, _) = known.unwrap_or_else(|| panic!("a verify.md rule has no item: {bullet}"));
-        assert_eq!(&check_of(id), bullet, "item `{id}` differs from verify.md");
-    }
+    // `run.md` holds none of the two rule sections any more, so no bullet of it can differ from
+    // an item: the items of the data file are the one word-for-word home of the nine rules, and
+    // `shell-guards.md` is where the sections stand, once each, in reworded form.
+    assert_eq!(
+        rule_section_headings("workflows/run.md"),
+        Vec::<String>::new(),
+        "run.md holds a rule section again; its bullets would have to equal the items"
+    );
+    assert_eq!(
+        rule_section_headings("references/internal/shell-guards.md"),
+        RULE_SECTIONS,
+        "shell-guards.md holds the two rule sections once each"
+    );
     for (id, lead) in VERIFY_RULES {
         let text = check_of(id);
         assert!(text.starts_with(lead), "item `{id}` lost its label: {text}");

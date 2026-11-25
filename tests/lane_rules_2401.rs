@@ -23,13 +23,25 @@ fn says(text: &str, file: &str, phrases: &[&str]) {
 
 #[test]
 fn run_puts_a_new_test_in_a_file_of_its_own() {
+    // The rule with its reason and the example lives in `references/internal/check-rules.md`
+    // now (SPEC-20261125-run-sync-procedure-receipt); RUN's step 3 keeps the short form.
+    let rules = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("skills/moai/references/internal/check-rules.md"),
+    )
+    .unwrap();
     says(
-        &workflow("run.md"),
-        "run.md",
+        &rules,
+        "check-rules.md",
         &[
             "Add a test to a file of its own under `tests/`",
             "`tests/product_cli.rs`",
         ],
+    );
+    says(
+        &workflow("run.md"),
+        "run.md",
+        &["Add a test to a file of its own under `tests/`"],
     );
 }
 
