@@ -107,5 +107,6 @@ created: 2026-11-25
   - guard-mutant: a_not_run_summary_line_is_no_receipt | 관문이 not_run 을 PASS 로 받음 | exit 100
   - guard-mutant: no_declared_check_answers_not_run_with_the_next_step | PASS 가 아니면 영수증 파일을 안 씀 | exit 100
 - 알려진 한계: `moai check affected` 는 `not_run` 일 때도 종료 코드 0 이에요(READY 관문은 `result=not_run` 줄로 거절하고, 이 SPEC 이 종료 코드를 정하지 않았어요). 종료 코드로만 성공을 읽는 스크립트는 `not_run` 을 성공으로 읽을 수 있으니 후속에서 정해요.
-- outside-scope: tests/check_affected_touch.rs 1줄 추가, tests/card/card_land_batch_cli.rs 3줄 추가(카드 범위를 `card scope` 로 넓혔고 이유는 카드에 있어요).
+- 첫 READY 영수증(`check affected --card`)은 `test_tables=1 stopped_at=test_tables` 로 FAIL 이었어요: 새 테스트 파일 `tests/check_affected_non_rust.rs` 가 상태 폴더 이름을 적는데 `tests/fixtures/state_folder_literals/allow.tsv` 에 행이 없었어요. 표가 알려 준 행(`0`, `3`)을 더했어요.
+- outside-scope: tests/check_affected_touch.rs 1줄 추가, tests/card/card_land_batch_cli.rs 3줄 추가, tests/fixtures/state_folder_literals/allow.tsv 1줄 추가(카드 범위를 `card scope` 로 넓혔고 이유는 카드에 있어요).
 - 돌리지 않은 것: 전체 `cargo test`(리더 몫), 다른 호스트의 실행, Windows 와 Linux. READY 영수증(`check affected --card`)은 이 Result 를 커밋한 뒤 한 번 내요.
