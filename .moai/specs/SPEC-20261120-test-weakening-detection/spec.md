@@ -54,7 +54,7 @@ created: 2026-11-20
 
 ## Scope
 
-- write: 이 SPEC, `src/test_weakening.rs`(새), `src/gate.rs`, `src/gate_collect.rs`, `src/ops/gate_check.rs`, `src/review.rs`, `tests/test_weakening.rs`(새), `tests/gate_check_cli.rs`, `tools/protected_checks.json`, `skills/moai/references/internal/quality.md`
+- write: 이 SPEC, `src/test_weakening.rs`(새), `src/gate.rs`, `src/gate_collect.rs`, `src/ops/gate_check.rs`, `src/review.rs`, `tests/test_weakening.rs`(새), `tests/gate_check_cli.rs`, `tools/protected_checks.json`, `skills/moai/references/internal/quality.md`, `skills/moai/references/audit.md`(감사 규약의 tier 2 접두사 목록에 `src/test_weakening` 한 단어, 영수증이 짚었어요)
 - 이 SPEC 이 쓰는 파일을 다른 카드가 쥐고 있지 않아요(2026-11-26 읽음): `src/review.rs` 와 `quality.md` 를 쥐던 카드는 끝났어요
 - read-only: `src/audit_gate.rs`, `tools/protected_checks.json`, `skills/moai/workflows/audit.md`
 - forbidden: 모델 호출, 네트워크, 약화가 걸린 PR 을 막는 규칙, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것
@@ -180,6 +180,8 @@ TDD 이탈: 검사기(`src/test_weakening.rs`)를 시험보다 먼저 썼어요.
 | MN3 | `quality.md`: 연결 문장을 지움 | `the_quality_rule_carries_the_connecting_sentence` 실패(종료 100, 컴파일 오류 0) |
 
 세 변형 모두 시험이 실패해서 잡혔어요(생존 0).
+
+영수증 수리: 이번 가지의 첫 `check affected --card`(머리 `0bc16399a2`)는 `result=FAIL`(test=100, 4121개 중 1개)이었어요. `next_flow_skill_scan refs_audit_tiers_match_the_code_floor` 가 감사 규약의 tier 2 접두사 목록에 `src/test_weakening` 이 없다고 알렸어요(코드의 `TIER2_PREFIXES` 에는 이미 있었어요). 목록에 한 단어를 더해 고쳤어요. 지정한 시험 몇 개만 돌린 앞선 실행에는 이 시험이 없어서 영수증이 처음 잡았어요.
 
 이전 가지의 READY 검사 종료 코드(코드 head `46d1766cc4`, 기준 `341f6c7abb`, 이 가지의 것이 아니고 이력으로만 두어요; 이번 가지의 영수증은 READY 노트가 인용해요. 범위를 좁히지 않았고 `CARGO_TARGET_DIR` 는 이 worktree 전용): diff-check 0, fmt 0, ops rustfmt 0, clippy `--all-targets -D warnings` 0, `--lib` 전체 0(1639 통과), `--bins` 0, 영역 시험 대상(`gate_*`·`test_weakening`, 7개 대상, 155 통과) 0, 저장소 전체 검사용 시험(`git_env_scrub`, `home_isolation_scan`, `windows_unix_gate_scan`, `product_cli`) 0, `tools/repo_scans.json` 검사 41개 실패 0, 파이썬 `repo_scans_test`·`source_manifest_test`·`local_check_test` 0, `trailer-check` 0, 이 Mac 에서 도는 `cfg(macos)` 시험(7개 대상) 0. 처음 돈 READY 는 clippy 두 줄과 저장소 검사(`docs/` 글자) 한 건에서 걸렸고, 고친 뒤 처음부터 다시 돌려 위 값을 얻었어요.
 
