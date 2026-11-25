@@ -78,7 +78,7 @@
       }
     },
     "references/audit.md": {
-      "sha256": "8be16d499f6e7171f1a910bc28e8934f0d1f95c71e4713c097cdd5e7acf8ba2c",
+      "sha256": "b67d45651e1d5f063ae069f2c86e9e8550a9ac59e9f89543007e206c54bf1e5a",
       "origin": {
         "kind": "design-spec",
         "template_id": "audit-contract",
@@ -426,7 +426,7 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "9b3f985749e1f3fcab94bdaebb4e9197dfd45325db9424fb3aabe0a2876a348c",
+      "sha256": "1193e9a0f3909dc16b81dee1bae104b459e608da40f8c2aa29fc1bd9210e9f22",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
