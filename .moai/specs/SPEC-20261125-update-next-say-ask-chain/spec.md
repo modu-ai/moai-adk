@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-update-next-say-ask-chain
 title: "The project update plan says per step what comes next in one easy sentence and asks one question for every runnable step, with the apply order and the places to preview again"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9245): \"승인, D-4~D-9 기본값 (Recommended)\"; 리더가 묻기 직전과 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:9cfdb6a8ee7b11fefd2b81f004c60313c1240a953397d581a7aa409d5f24234e"
 ---
 
 # The project update plan says per step what comes next in one easy sentence and asks one question for every runnable step, with the apply order and the places to preview again
