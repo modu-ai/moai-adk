@@ -2,7 +2,7 @@
 id: SPEC-20261125-update-conflict-baseline
 title: "moai update 가 패키지와 같은 스킬 파일을 거짓 conflict 로 남기지 않고, 화면이 남은 일을 사실대로 말해요"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-25
 branch: spec/update-conflict-baseline-r3-20261125
 ---
@@ -22,11 +22,14 @@ branch: spec/update-conflict-baseline-r3-20261125
 
 개정 3 의 이유: 개정 2 를 실제 HOME 에 적용해 보니 결함 둘이 나왔어요. (1) 백업이 퇴역한 `~/.moai-cli/backups/` 아래에 새로 쓰였어요. 쓰는 곳 일곱이 모두 `home_root::path(home)` 에 `backups` 를 붙이는데, 이 기계의 HOME 은 `~/.moai` 가 마커 없이 항목 28개를 가진 `unknown` 이고 `~/.moai-cli` 도 있어서 그 함수가 `~/.moai-cli` 로 풀려요(`home-state-plan` 으로 읽어 확인했어요; 임시 HOME 은 `.moai` 로 풀려서 테스트가 못 잡았어요). (2) 옛 `rules/moai/flow.md` 를 지운 뒤 빈 `rules/moai/` 폴더가 남아요.
 
+개정 4 의 이유(정오표, 코드 변경 없음): 개정 3 을 감사하니 AC-13 의 "그 폴더의 모든 파일이 바이트까지 그대로" 가 복구의 동작과 어긋났어요. 복구의 `restore_backup` 은 처음부터 백업 안의 원본 트리를 제자리로 옮겨요(`src/recovery.rs` 의 `fs::rename`, 개정 3 이전의 같은 줄). 코드는 맞고 글이 그 한 가지 예외를 빠뜨렸어요. 개정 4 는 REQ-21 과 AC-13 에 그 예외 하나만 적어요.
+
 ## Interview
 
 - Q1: 백업을 어디에 둘지 → A: 사용자가 "백업만 ~/.moai 로 (Recommended)" 를 골랐어요(2026-11-25T05:00:41Z, 선택 질문, 리더가 카드 노트에 기록). 이미 `~/.moai-cli/backups/` 에 있는 것은 그대로 두고 읽기만 해요.
 - Q2: 이 기계의 HOME 상태 폴더가 왜 `~/.moai-cli` 로 풀리는지 → A: 읽기 전용 `home-state-plan` 이 `~/.moai` 를 `unknown`(항목 28개, 마커 없음)으로 읽고 `~/.moai-cli` 도 있어서 `resolves_to_moai` 의 표가 `~/.moai-cli` 를 골라요(2026-11-25, 레인이 읽어서 확인).
 - Q3: 옛 `rules/moai/flow.md` 를 지운 뒤 남는 빈 폴더를 치울지 → A: 비어 있을 때만 치워요. 리더 지시이고 삭제라서, 사용자 승인은 이 SPEC 의 digest 승인에 포함해 받아요(Decisions D-8).
+- Q4: AC-13 의 "모든 파일이 바이트까지 그대로" 와 복구의 동작이 어긋날 때 → A: 사용자가 "착지하고 SPEC 정오표를 따로 (Recommended)" 를 골랐어요(2026-11-25T08:28:23Z, 카드 결정 노트 9120). 이 선택은 개정 4 의 승인이 아니에요.
 
 ## Non-goals
 
@@ -61,7 +64,7 @@ branch: spec/update-conflict-baseline-r3-20261125
 - REQ-18: When a confirmed update makes a backup, the update shall create the backup folder under the `backups` folder of the HOME's `.moai` folder whichever folder the HOME's state resolves to. · failure: none — 확정한 실행이 `.moai-cli` 아래에 새 파일을 만들지 않아요.
 - REQ-19: When the HOME's `.moai` folder is a link or its verdict is go, mixed, interrupted or refuse, the update shall make no backup there and leave every step that needs the backup undone. · failure: none — 백업 없이 파일을 덮거나 지우지 않고, 백업이 필요 없는 단계는 그대로 해요.
 - REQ-20: When the update leaves a step undone for want of a usable backup root, the screen shall name the step and the reason. · failure: none — 그 단계가 없으면 줄이 없어요.
-- REQ-21: When a backup folder of an earlier update lies under the HOME's earlier state folder, the revert and recovery readers shall read it without changing it. · failure: none — 옛 백업은 옮기지도 지우지도 않아요.
+- REQ-21: When a backup folder of an earlier update lies under the HOME's earlier state folder, the revert and recovery readers shall read it without changing it, except that the recovery moves the original tree inside it back to its place. · failure: none — 옛 백업 폴더는 옮기지도 지우지도 않고, 복구가 원본 트리를 제자리로 옮기는 것만 예외예요.
 - REQ-22: When the update removes the earlier flow rule file and the folder that held it is empty afterwards, the update shall remove that empty folder. · failure: none — 비어 있지 않으면 그 폴더도 그 안의 파일도 그대로예요(폴더만 지우고 안을 지우지 않아요).
 - REQ-23: When the empty folder of the earlier flow rule file was removed, the Applied screen shall name that folder. · failure: none — 지우지 않았으면 그 줄이 없어요.
 
@@ -78,7 +81,7 @@ branch: spec/update-conflict-baseline-r3-20261125
 - AC-10 (REQ-14, REQ-15, REQ-16): 임시 HOME 에 옛 라우팅 영수증(옛 경로의 흐름 규칙을 쓴 항목과 그 다이제스트)과 그 바이트 그대로의 `rules/moai/flow.md` 가 있으면 미리보기가 삭제 대상으로 말하고, 확정하면 백업 사본이 생기고 파일이 없어지며 Applied 화면이 백업 폴더를 말해요. 바이트가 다른 파일은 그대로이고 이름만 말해요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac10_`
 - AC-11 (REQ-17, REQ-18): HOME 에 `.moai-cli` 폴더가 있어서 HOME 상태 폴더가 그쪽으로 풀리는 임시 HOME 에서, conflict 와 입양과 옛 flow 삭제 각각의 미리 보기 JSON `backup_root` 가 `<HOME>/.moai/backups` 이고, 확정한 실행의 백업 폴더가 그 아래에 생기며 `.moai-cli` 아래에는 `backups` 가 생기지 않아요. 상태 폴더가 `.moai` 로 풀리는 임시 HOME 은 전과 같아요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac11_`
 - AC-12 (REQ-19, REQ-20): `.moai` 가 링크인 임시 HOME 과 Go 마커가 있는 임시 HOME 에서 플래그와 함께 확정해도 conflict 파일과 옛 flow 파일의 바이트가 그대로이고 어느 곳에도 백업 폴더가 생기지 않으며, 화면이 그 단계와 이유를 한국어와 영어로 말해요. 백업이 필요 없는 단계는 적용돼요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac12_`
-- AC-13 (REQ-21): `.moai-cli/backups/<폴더>` 에 있는 옛 백업을 가리키는 영수증의 되돌리기와 복구가 그 백업을 읽고, 실행 뒤 그 폴더의 모든 파일이 바이트까지 그대로예요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac13_`
+- AC-13 (REQ-21): `.moai-cli/backups/<폴더>` 에 있는 옛 백업을 가리키는 영수증의 되돌리기와 복구가 그 백업을 읽고, 실행 뒤 그 폴더가 제자리에 있고 `MANIFEST.json` 과 읽기만 하는 파일이 바이트까지 그대로예요(복구가 제자리로 옮기는 원본 트리 `moai/…` 만 예외예요) · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac13_`
 - AC-14 (REQ-22, REQ-23): 옛 flow 삭제를 확정한 임시 HOME 에서 `rules/moai/` 가 비면 그 폴더가 없어지고 Applied 화면이 그 폴더를 말해요. 같은 폴더에 다른 파일이 있으면 폴더와 그 파일이 그대로이고 그 줄이 없어요 · verify: `cargo test --locked --offline --test update_conflict_baseline_cli ac14_`
 - AC-7 (REQ-1…REQ-23): 이웃 테스트가 그대로 통과해요 · verify: `cargo test --locked --offline --test update_adopt_cli`
   verify: `cargo test --locked --offline --test update_cli`
@@ -105,6 +108,7 @@ branch: spec/update-conflict-baseline-r3-20261125
 9. 개정 3 `src/recovery.rs`: 백업 폴더의 부모가 새 뿌리이거나 옛 `home_root::path(home)/backups` 일 때 읽어요. 읽기만 하고 쓰지 않아요(REQ-21).
 10. 개정 3 `src/home_routing/rules.rs`: 옛 flow 파일을 지운 뒤 `rules/moai/` 가 비어 있으면 그 폴더만 `remove_dir` 로 지워요(재귀 삭제 없음). 결과에 폴더 경로를 실어 화면이 말해요(REQ-22, REQ-23).
 11. 개정 3 위험 경로 실행: READY 는 임시 HOME 에서 실제로 돌린 확정 실행(상태 폴더가 `.moai-cli` 로 풀리는 HOME, 링크된 `.moai`, 링크된 백업 폴더, 비어 있지 않은 `rules/moai/`)의 결과를 담아요.
+12. 개정 4 (정오표, 글만): REQ-21 과 AC-13 에 복구가 원본 트리를 제자리로 옮기는 예외 하나를 적어요. 코드와 테스트는 바꾸지 않아요(AC-13 의 첫 테스트가 이미 폴더가 제자리에 있고 매니페스트와 읽기만 하는 파일이 그대로인 것을 확인해요).
 
 ## Risks
 
@@ -128,8 +132,11 @@ branch: spec/update-conflict-baseline-r3-20261125
 | D-6 | **(k) 결정됨**: 백업의 새 뿌리는 `<HOME>/.moai/backups` 예요. 사용자가 "백업만 ~/.moai 로 (Recommended)" 를 골랐어요(2026-11-25T05:00:41Z, 리더가 카드 노트에 기록). 구현은 REQ-17, REQ-18, REQ-21 | 선택지: 백업만 `~/.moai` 로(추천, 선택됨); `~/.moai-cli` 에 계속 써요; HOME 상태 전체를 옮겨요(개정 3 의 일이 아니에요). 이미 있는 `~/.moai-cli/backups/` 는 그대로 두고 읽기만 해요 | 새 뿌리 함수가 옛 `home_root::path(home)/backups` 를 돌려주게 해요 |
 | D-7 | `<HOME>/.moai` 가 링크이거나 판정이 go·mixed·interrupted·refuse 면 백업을 거절하고 그 단계를 하지 않아요(REQ-19). 기본이에요 | `resolves_to_moai` 의 표는 Go 의 폴더를 쓰지 않고, 링크는 따라가지 않아요. 선택지: (a) 거절하고 그 단계를 하지 않아요(기본); (b) 옛 `~/.moai-cli/backups` 로 되돌려 써요(사용자가 퇴역한 폴더에 새로 쓰지 말라고 했어요); (c) 다른 폴더를 만들어요(새 규칙이 필요해요) | 거절 대신 (b) 로 바꿔요 |
 | D-8 | 빈 `rules/moai/` 폴더를 치워요. 옛 flow 파일을 지운 직후에만, 폴더가 비어 있을 때만, `remove_dir` 한 번(재귀 없음)으로 해요(REQ-22). 리더의 지시이고 삭제라서(`guarded`) 사용자 승인이 이 SPEC 의 승인에 들어 있어요 | 빈 폴더는 아무것도 안 담아서 잃는 것이 없어요. 선택지: 치워요(기본); 빈 폴더를 두고 화면에 알려요 | REQ-22, REQ-23 을 빼요 |
+| D-9 | AC-13·REQ-21 의 "바이트까지 그대로" 에 복구가 백업 안의 원본 트리를 제자리로 옮기는 예외를 적어요(REQ-21, AC-13). 사용자가 "착지하고 SPEC 정오표를 따로 (Recommended)" 를 골랐어요(2026-11-25T08:28:23Z, 카드 결정 노트 9120). 그 선택은 개정 3 을 착지하고 이 정오표를 따로 만들라는 것이지 개정 4 의 승인이 아니에요 | 복구의 이 동작은 개정 3 이전부터 있었고 사용자 데이터를 잃지 않아요(원본은 제자리로, 설치된 패키지는 `replaced/` 로 남아요). 선택지: 정오표를 따로 써요(기본, 선택됨); 복구가 원본을 복사만 하게 코드를 바꿔요(개정 3 의 범위 밖이에요); 글을 그대로 두고 어긋남을 알려요 | REQ-21·AC-13 의 예외 문장을 빼요. 코드는 안 바뀌어요 |
 
 ## Result
+
+개정 4 (정오표, 글만 바꿨어요): REQ-21 과 AC-13 의 예외 한 가지를 적었어요. 구현과 테스트는 개정 3 의 그대로이고 아래 개정 3 결과가 그대로 유효해요. 개정 3 감사(노트 9119, PASS)가 막지 않고 덧붙인 둘도 그대로예요: `rules/moai` 가 링크일 때의 `remove_dir` 거절 시험이 없고, 상수화 커밋 `92dc64dcb5` 뒤에는 뮤턴트를 다시 돌리지 않았어요. 승인 전에는 이 개정이 draft 예요.
 
 개정 3 (REQ-17…REQ-23, 백업 뿌리와 빈 폴더; digest `sha256:96026db458aed50b2c951ff59e0dd3f7de1f5ad4a5bef1c5fce4fa0c40ec26a9`, 사용자의 "승인, D-7·D-8 기본값 (Recommended)" 선택을 리더가 카드 노트 9045 에 기록한 것을 인용해요) 구현:
 
