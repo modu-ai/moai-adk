@@ -40,6 +40,7 @@ created: 2026-11-25
 - write: `src/check_affected.rs`
 - write: `docs/lane-rules.md`
 - write: `docs/later.md`
+- write: `tests/prop_reservation.rs` (added by the leader's decision in the card notes: the receipt of this change stopped on this test, which still asserted the file-lock rule that SPEC-20261125-card-no-file-locks removed)
 - write: `.moai/specs/SPEC-20261125-state-folder-test-helpers/**`
 
 ## Plan
@@ -58,6 +59,8 @@ Filled in SYNC for the change in commit `25aeae9ffc26f0ad4c30b7ab0ac33799f4ca360
 - AC-3: met — `the_scan_rejection_names_the_helpers` in `tests/state_folder_literal_scan.rs`, same run (13 passed, exit 0)
 - AC-4: met — lib test `a_new_test_file_with_a_state_folder_literal_is_told_the_helpers` in `src/check_affected.rs`; 2 passed together with `the_repository_tests_pass_the_table_step_as_added_files`, exit 0
 - AC-5: met — `docs/lane-rules.md` carries the added bullet under "Tests" (the line naming `TempHome::state_dir`, `TempHome::make_earlier_state_dir`, `tests/common/home.rs` and the `allow.tsv` row); the line was added in SYNC and the AC-5 `verify:` lib test was not run by the documentation step
+
+Added by the leader's decision (card notes): `tests/prop_reservation.rs` now follows SPEC-20261125-card-no-file-locks REQ-1 ("the card ledger shall make the reservation and answer each overlap as `overlaps`"). The old assertion that no two live reservations cover one path became: a card has at most one active reservation, and for every pair of live reservations whose patterns overlap, `reservation::overlaps` names the other card, both patterns and its holder. `cargo nextest run --offline --locked --test prop_reservation` 11 passed, exit 0.
 
 Decision D-1 holds: the guidance line went to `docs/lane-rules.md` and not to `skills/moai/references/internal/test-design.md`, which ships to user projects and is pinned by `source-manifest.json`.
 
