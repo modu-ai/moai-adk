@@ -210,15 +210,11 @@ pub enum Msg {
     /// The `star-ask` line: one polite ask for a star, with the repository
     /// link in the text (SPEC-20261122-star-and-reports).
     StarAskLine,
-    /// The update's "no longer managed" notice of the retired Codex and OMP home files; the
-    /// English texts are the `reason` of the `unmanaged` rows of `src/update.rs`.
-    CodexUnmanaged,
-    OmpUnmanaged,
 }
 
 impl Msg {
     /// Every variant, for the tests that walk the table.
-    pub const ALL: [Msg; 51] = [
+    pub const ALL: [Msg; 49] = [
         Msg::WordOk,
         Msg::WordWarning,
         Msg::WordError,
@@ -268,8 +264,6 @@ impl Msg {
         Msg::CodexRemoved,
         Msg::OmpRemoved,
         Msg::StarAskLine,
-        Msg::CodexUnmanaged,
-        Msg::OmpUnmanaged,
     ];
 }
 
@@ -407,10 +401,6 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
         (StarAskLine, Ko) => {
             "별은 이 프로젝트에 실제 힘이 돼요 — 도움이 되셨다면 https://github.com/modu-ai/moai-adk"
         }
-        (CodexUnmanaged, En) => "Codex files under ~/.codex and ~/.agents/skills are left as they are; moai no longer manages them; remove them yourself if you do not use them",
-        (CodexUnmanaged, Ko) => "~/.codex와 ~/.agents/skills의 Codex 파일은 그대로 두며 moai가 더는 관리하지 않아요. 쓰지 않으면 직접 지우세요",
-        (OmpUnmanaged, En) => "OMP files under ~/.omp are left as they are; moai no longer manages them; remove them yourself if you do not use them",
-        (OmpUnmanaged, Ko) => "~/.omp의 OMP 파일은 그대로 두며 moai가 더는 관리하지 않아요. 쓰지 않으면 직접 지우세요",
     }
 }
 
@@ -778,30 +768,5 @@ mod tests {
         // An unreadable profile is nothing, not an error.
         fs::write(&file, b"not json").unwrap();
         assert_eq!(profile_chat(&sub, None), None);
-    }
-
-    /// SPEC-20261122-project-layer-follow-ups AC-8: the update screen takes the Korean
-    /// "no longer managed" rows of the retired hosts from this table, not from literals of its
-    /// own.
-    #[test]
-    fn update_tux_reads_the_unmanaged_rows_from_the_table() {
-        let screen = include_str!("update_tux.rs");
-        let code = screen.split("#[cfg(test)]").next().unwrap();
-        for literal in ["더는 관리하지 않아요", "직접 지우세요"] {
-            assert!(
-                !code.contains(literal),
-                "src/update_tux.rs writes `{literal}` itself"
-            );
-        }
-        // The English rows are the command's own reasons, byte for byte.
-        let update = include_str!("update.rs");
-        for msg in [Msg::CodexUnmanaged, Msg::OmpUnmanaged] {
-            let en = text(msg, Lang::En);
-            assert!(
-                update.contains(&format!("\"reason\": \"{en}\"")),
-                "{msg:?}: {en}"
-            );
-            assert!(text(msg, Lang::Ko).ends_with("직접 지우세요"), "{msg:?}");
-        }
     }
 }
