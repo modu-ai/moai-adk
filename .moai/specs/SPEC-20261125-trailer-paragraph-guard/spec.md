@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-trailer-paragraph-guard
 title: "Moai 트레일러가 마지막 문단 밖에 있으면 커밋할 때 거절하고, 검사기가 그 원인을 이름으로 말해요"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "리더 결정 노트 8883 (2026-11-25T02:04:56Z): 리더의 선택 질문 '이 SPEC 개정 2를 승인하시나요? 요구와 기준의 뜻은 그대로이고, 새 테스트 파일의 위치만 tests/card/ 로 옮겼어요.' 에 사용자가 고른 답 '승인 (Recommended)'; 개정 1 의 승인은 노트 8879; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:fbfc4b9dceedc3772a4f107d9b0e9e30b1fcfb79b2bd0cd49369a67d8d272d64"
 ---
 
 # Moai 트레일러가 마지막 문단 밖에 있으면 커밋할 때 거절하고, 검사기가 그 원인을 이름으로 말해요
