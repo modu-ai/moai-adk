@@ -25,6 +25,7 @@ use std::{fs, path::Path};
 
 /// The choice steps the user declined (SPEC-20261125-update-declined-steps).
 pub mod declined;
+pub mod guide;
 
 type Result<T> = std::result::Result<T, String>;
 

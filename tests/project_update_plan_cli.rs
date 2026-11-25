@@ -2999,3 +2999,921 @@ fn declined_settings_conflict_skip_declines_the_step() {
         "{merge}"
     );
 }
+
+// ---- SPEC-20261125-update-next-say-ask-chain: `next`, `say`, `decline`, `ask`, `chain`, `finish` ----
+
+const NEXT_WORDS: [&str; 5] = ["apply", "ask", "wait", "report", "none"];
+/// REQ-18: the steps whose entries read `guarded`.
+const GUARDED_STEPS: [&str; 6] = [
+    "go-settings",
+    "go-state",
+    "reports",
+    "claude-settings",
+    "hooks",
+    "claude-settings-merge",
+];
+const STATE_WORDS: [&str; 7] = [
+    "unchanged",
+    "skip",
+    "optional",
+    "ready",
+    "needs_decision",
+    "conflict",
+    "blocked",
+];
+/// Every step id a plan prints (the retired-hosts ids come from the plan itself).
+const STEP_IDS: [&str; 12] = [
+    "go-settings",
+    "go-state",
+    "reports",
+    "profile",
+    "generation",
+    "claude-settings",
+    "hooks",
+    "github",
+    "agents-picks",
+    "agents-local-merge",
+    "claude-settings-merge",
+    "retired-hosts",
+];
+
+/// The five projects of AC-1 and AC-3, each with its preview (taken with the tree compared
+/// before and after): an empty project, a project with a profile, a Go project whose backup
+/// step is open, a project whose `AGENTS.local.md` waits for the install, and a project with
+/// one blocked step.
+fn five_plans() -> Vec<(&'static str, Fx, Value)> {
+    let empty = Fx::new();
+    let profile = Fx::new();
+    profile.with_profile(false);
+    let go = Fx::new();
+    go.go_project();
+    let local = Fx::new();
+    local.with_profile(false);
+    local.write("AGENTS.local.md", "# mine\n\ntext\n");
+    let blocked = Fx::new();
+    blocked.with_profile(false);
+    let outside = blocked.home.parent().unwrap().join("elsewhere.json");
+    fs::write(&outside, "{}\n").unwrap();
+    fs::create_dir_all(blocked.root.join(".claude")).unwrap();
+    std::os::unix::fs::symlink(&outside, blocked.root.join(".claude/settings.json")).unwrap();
+    [
+        ("empty", empty),
+        ("profile", profile),
+        ("go-backup", go),
+        ("local-waits-for-install", local),
+        ("one-blocked-step", blocked),
+    ]
+    .into_iter()
+    .map(|(label, fx)| {
+        let plan = fx.plan();
+        (label, fx, plan)
+    })
+    .collect()
+}
+
+/// The keys this SPEC adds: `ask` and `finish` on the plan (null or an object), `next`, `say`
+/// and `decline` on every step.
+fn assert_new_keys(label: &str, plan: &Value) {
+    for key in ["ask", "finish"] {
+        assert!(
+            plan.get(key).is_some(),
+            "{label}: the plan lacks {key}: {plan}"
+        );
+    }
+    for s in steps(plan) {
+        for key in ["next", "say", "decline"] {
+            assert!(s.get(key).is_some(), "{label}: a step lacks {key}: {s}");
+        }
+    }
+}
+
+/// `plan["phases"][..]["steps"][..]["next"]` of the step `name`.
+fn assert_next(plan: &Value, name: &str, want: &str) {
+    let s = step(plan, name);
+    assert_eq!(s["next"], json!(want), "{name}: {s}");
+}
+
+/// The entry of `list` (an array of objects with a `step`) for `id`.
+fn entry<'a>(list: &'a Value, id: &str) -> &'a Value {
+    list.as_array()
+        .into_iter()
+        .flatten()
+        .find(|e| e["step"] == id)
+        .unwrap_or_else(|| panic!("no entry for {id} in {list}"))
+}
+
+/// The `step` ids of an array of entries, in order.
+fn entry_ids(list: &Value) -> Vec<&str> {
+    list.as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|e| e["step"].as_str())
+        .collect()
+}
+
+/// The string ids of an array of strings.
+fn strings(list: &Value) -> Vec<&str> {
+    list.as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect()
+}
+
+/// The ids the `chain` says to preview again after `id` has run.
+fn then_of<'a>(plan: &'a Value, id: &str) -> Vec<&'a str> {
+    plan["chain"]["preview_again"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|e| e["after"] == id)
+        .flat_map(|e| strings(&e["then"]))
+        .collect()
+}
+
+/// `ask` is an object, `finish` is null.
+fn assert_asks(plan: &Value) {
+    assert!(plan["ask"].is_object(), "no ask: {plan}");
+    assert_eq!(plan["finish"], Value::Null, "{plan}");
+}
+
+/// REQ-18: every entry of `ask` says whether its step is guarded, true for the six named steps.
+fn assert_guarded(label: &str, plan: &Value) {
+    for key in ["steps", "follows", "picks"] {
+        for e in plan["ask"][key].as_array().into_iter().flatten() {
+            let id = e["step"].as_str().unwrap_or_default();
+            assert_eq!(
+                e["guarded"],
+                json!(GUARDED_STEPS.contains(&id)),
+                "{label}: {key}: {e}"
+            );
+        }
+    }
+}
+
+/// AC-1, REQ-1, REQ-2, REQ-3, REQ-4: every step carries `next`, `say` and `decline` next to the
+/// keys it had, `next` is one of five words, the top-level keys stay, and the preview leaves the
+/// project and HOME as they were (`Fx::plan` compares the whole tree before and after).
+#[test]
+fn next_say_ac1_every_step_carries_the_new_keys_and_keeps_the_old_ones() {
+    let plans = five_plans();
+    assert_eq!(plans.len(), 5);
+    for (label, _fx, plan) in &plans {
+        assert_new_keys(label, plan);
+        for s in steps(plan) {
+            let next = s["next"].as_str().unwrap_or_default();
+            assert!(
+                NEXT_WORDS.contains(&next),
+                "{label}: next is one of five words: {s}"
+            );
+            assert!(s["say"].is_string(), "{label}: {s}");
+            for key in ["step", "state", "reason", "preview", "plan_digest", "apply"] {
+                assert!(s.get(key).is_some(), "{label}: a step lost {key}: {s}");
+            }
+        }
+        for key in [
+            "project",
+            "detected",
+            "state_root",
+            "leftovers",
+            "phases",
+            "all_unchanged",
+            "undo_order",
+        ] {
+            assert!(plan.get(key).is_some(), "{label}: the plan lost {key}");
+        }
+        let names: Vec<&str> = plan["phases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["phase"].as_str().unwrap())
+            .collect();
+        assert_eq!(names, ["backup", "install", "merge"], "{label}");
+    }
+}
+
+/// What REQ-5 to REQ-9 say `next` is, from what a step prints.
+fn expected_next(
+    state: &str,
+    has_command: bool,
+    needs_confirmation: bool,
+    has_choices: bool,
+    waits_behind: bool,
+) -> &'static str {
+    match state {
+        "unchanged" | "skip" | "optional" => "none",
+        "blocked" if waits_behind => "wait",
+        "ready" | "needs_decision" | "conflict"
+            if has_choices || (has_command && needs_confirmation) =>
+        {
+            "ask"
+        }
+        _ if has_command && !needs_confirmation && !has_choices => "apply",
+        _ => "report",
+    }
+}
+
+/// AC-2, REQ-5 to REQ-9: `next_of` agrees with the rules for every state and every combination
+/// of command, confirmation word, choices and waiting that a step can print. A confirmation word
+/// belongs to a printed command, and a blocked step prints neither command nor choices.
+#[test]
+fn next_say_ac2_the_table_holds_for_every_combination() {
+    use moai_cli::project_update::guide::next_of;
+    let mut checked = 0;
+    for state in STATE_WORDS {
+        for bits in 0..16u8 {
+            let (has_command, needs_confirmation, has_choices, waits_behind) =
+                (bits & 1 != 0, bits & 2 != 0, bits & 4 != 0, bits & 8 != 0);
+            if needs_confirmation && !has_command {
+                continue;
+            }
+            if state == "blocked" && (has_command || has_choices) {
+                continue;
+            }
+            assert_eq!(
+                next_of(
+                    state,
+                    has_command,
+                    needs_confirmation,
+                    has_choices,
+                    waits_behind
+                ),
+                expected_next(
+                    state,
+                    has_command,
+                    needs_confirmation,
+                    has_choices,
+                    waits_behind
+                ),
+                "state={state} command={has_command} confirmation={needs_confirmation} \
+                 choices={has_choices} waits={waits_behind}"
+            );
+            checked += 1;
+        }
+    }
+    // Six states with 12 combinations each (16 minus the 4 with a confirmation word and no
+    // command) and the blocked state with 2: every combination was reached.
+    assert_eq!(checked, 6 * 12 + 2, "combinations checked");
+}
+
+/// AC-2, REQ-5 to REQ-9: the named steps read as the table says, in real previews.
+#[test]
+fn next_say_ac2_named_steps_read_as_the_table_says() {
+    // Unchanged and skip read `none`; an install step with no profile prints no command: `report`.
+    let empty = Fx::new();
+    let plan = empty.plan();
+    assert_next(&plan, "go-state", "none");
+    assert_next(&plan, "agents-local-merge", "none");
+    for name in INSTALL {
+        assert_next(&plan, name, "report");
+    }
+
+    // A ready generation prints a plain command: `apply`.
+    let profile = Fx::new();
+    profile.with_profile(false);
+    let plan = profile.plan();
+    assert_eq!(step(&plan, "generation")["state"], "ready", "{plan}");
+    assert_next(&plan, "generation", "apply");
+    assert_next(&plan, "profile", "none");
+
+    // The backup step is a decision with a plain command; the install steps wait behind it.
+    let go = Fx::new();
+    go.go_project();
+    let plan = go.plan();
+    assert_next(&plan, "go-state", "apply");
+    for name in INSTALL {
+        assert_next(&plan, name, "wait");
+    }
+
+    // A settings merge conflict prints choices: `ask`.
+    let conflict = Fx::new();
+    let merge = conflict.with_settings_conflict();
+    assert_eq!(merge["state"], "conflict", "{merge}");
+    assert_eq!(merge["next"], json!("ask"), "{merge}");
+
+    // A go-state hold with no command, and a blocked step that waits for nothing: `report`.
+    let interrupted = Fx::new();
+    fs::create_dir_all(interrupted.root.join(".moai-backup/config")).unwrap();
+    let plan = interrupted.plan();
+    let hold = step(&plan, "go-state");
+    assert_eq!(hold["state"], "needs_decision", "{hold}");
+    assert_eq!(hold["apply"], Value::Null, "{hold}");
+    assert_next(&plan, "go-state", "report");
+    let blocked = five_plans().remove(4);
+    assert_eq!(step(&blocked.2, "claude-settings")["state"], "blocked");
+    assert_next(&blocked.2, "claude-settings", "report");
+
+    // A declined step reads `none`, and so does the personal-file merge that skips while the
+    // picks are pending.
+    let declined = Fx::new();
+    let (_backup, merge) = declined.with_backed_up_local_decision();
+    assert_eq!(merge["next"], json!("apply"), "{merge}");
+    declined.decline_merge(&merge);
+    let plan = declined.plan();
+    assert_next(&plan, "agents-local-merge", "none");
+    let pending = Fx::new();
+    pending.settled();
+    pending.write("AGENTS.local.md", LOCAL_TEXT);
+    let plan = pending.plan();
+    assert_eq!(step(&plan, "agents-picks")["state"], "needs_decision");
+    assert_eq!(step(&plan, "agents-local-merge")["state"], "skip");
+    assert_next(&plan, "agents-local-merge", "none");
+}
+
+/// The words of `text`, lower-cased, split at everything but letters, digits, `_` and `-`.
+fn plain_words(text: &str) -> Vec<String> {
+    text.to_lowercase()
+        .split(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
+        .map(|w| w.trim_matches('-').to_string())
+        .filter(|w| !w.is_empty())
+        .collect()
+}
+
+/// What breaks REQ-10 in one sentence for a person: not one short line ending in a full stop, or
+/// a step id, a state word, an issue number, a SPEC id, `digest`, `argv`, `<` or a backtick.
+fn sentence_problems(text: &str, ids: &[String]) -> Vec<String> {
+    let mut problems = Vec::new();
+    if text.is_empty() {
+        problems.push("empty".to_string());
+    }
+    if text.contains('\n') || text.contains('\r') {
+        problems.push("more than one line".into());
+    }
+    if text.chars().count() > 200 {
+        problems.push("longer than 200 characters".into());
+    }
+    if !text.ends_with('.') {
+        problems.push("no final full stop".into());
+    }
+    let words = plain_words(text);
+    for w in &words {
+        if ids.contains(w) {
+            problems.push(format!("step id {w}"));
+        }
+        if STATE_WORDS.contains(&w.as_str()) {
+            problems.push(format!("state word {w}"));
+        }
+    }
+    if text
+        .as_bytes()
+        .windows(2)
+        .any(|w| w[0] == b'#' && w[1].is_ascii_digit())
+    {
+        problems.push("an issue number".into());
+    }
+    let lower = text.to_lowercase();
+    for needle in ["spec-", "digest", "argv", "<", "`"] {
+        if lower.contains(needle) {
+            problems.push(format!("contains {needle}"));
+        }
+    }
+    problems
+}
+
+/// Every sentence the plan adds for a person: the `say` of each step, the question and the
+/// option sentences and the entry sentences of `ask`, and the `say` of `finish`.
+fn plan_sentences(plan: &Value) -> Vec<(String, String)> {
+    let text = |v: &Value| v.as_str().unwrap_or_default().to_string();
+    let mut out = Vec::new();
+    for s in steps(plan) {
+        out.push((format!("say of {}", s["step"]), text(&s["say"])));
+    }
+    let ask = &plan["ask"];
+    if ask.is_object() {
+        out.push(("ask.question".into(), text(&ask["question"])));
+        for o in ask["options"].as_array().into_iter().flatten() {
+            out.push((format!("option {}", o["id"]), text(&o["say"])));
+        }
+        for key in ["steps", "follows", "picks"] {
+            for e in ask[key].as_array().into_iter().flatten() {
+                out.push((format!("ask.{key} {}", e["step"]), text(&e["say"])));
+            }
+        }
+    }
+    if plan["finish"].is_object() {
+        out.push(("finish.say".into(), text(&plan["finish"]["say"])));
+    }
+    out
+}
+
+/// AC-3, REQ-10: in every plan of AC-1 each sentence is one line of at most 200 characters ending
+/// in a full stop, and names no step id, state word, issue number, SPEC id, digest, command or
+/// backtick. Each plan has exactly one of `ask` and `finish`, so a sentence of each kind is read.
+#[test]
+fn next_say_ac3_every_sentence_is_one_plain_line() {
+    let (mut asked, mut finished) = (0, 0);
+    for (label, _fx, plan) in five_plans() {
+        assert_new_keys(label, &plan);
+        let mut ids: Vec<String> = STEP_IDS.iter().map(|s| s.to_string()).collect();
+        ids.extend(
+            steps(&plan)
+                .iter()
+                .map(|s| s["step"].as_str().unwrap().to_string()),
+        );
+        let (ask, finish) = (plan["ask"].is_object(), plan["finish"].is_object());
+        assert!(ask != finish, "{label}: one of ask and finish: {plan}");
+        asked += usize::from(ask);
+        finished += usize::from(finish);
+        for (what, text) in plan_sentences(&plan) {
+            let problems = sentence_problems(&text, &ids);
+            assert!(
+                problems.is_empty(),
+                "{label}: {what}: {text:?}: {problems:?}"
+            );
+        }
+    }
+    assert!(
+        asked > 0 && finished > 0,
+        "asked {asked}, finished {finished}"
+    );
+}
+
+/// AC-4, REQ-11, REQ-12: a step's `decline` is the object of its preview, copied as it is; a
+/// declined step reads `none` and its `decline` carries the command that asks again; a step with
+/// no `decline` object in its preview has `decline` null.
+#[test]
+fn next_say_ac4_decline_copies_the_preview_and_a_declined_step_reads_none() {
+    let fx = Fx::new();
+    let (_backup, _decision) = fx.with_backed_up_local_decision();
+    let plan = fx.plan();
+    let merge = step(&plan, "agents-local-merge");
+    let decline = &merge["preview"]["decline"];
+    assert!(decline.is_object(), "{merge}");
+    assert_eq!(merge.get("decline"), Some(decline), "{merge}");
+    // Every step of the plan: a copy where the preview has one, null where it has none.
+    let check_all = |label: &str, plan: &Value| {
+        for s in steps(plan) {
+            let want = if s["preview"]["decline"].is_object() {
+                s["preview"]["decline"].clone()
+            } else {
+                Value::Null
+            };
+            assert_eq!(s.get("decline"), Some(&want), "{label}: {s}");
+        }
+    };
+    check_all("before the decline", &plan);
+    assert_eq!(
+        step(&plan, "generation").get("decline"),
+        Some(&Value::Null),
+        "a step that cannot be declined"
+    );
+
+    let merge = merge.clone();
+    fx.decline_merge(&merge);
+    let after = fx.plan();
+    let declined = step(&after, "agents-local-merge");
+    assert_eq!(declined["state"], "skip", "{declined}");
+    assert_eq!(declined["next"], json!("none"), "{declined}");
+    assert!(
+        declined["decline"]["ask_again_argv"].is_array(),
+        "{declined}"
+    );
+    check_all("after the decline", &after);
+
+    // The settings conflict prints its decline too.
+    let conflict = Fx::new();
+    let merge = conflict.with_settings_conflict();
+    assert_eq!(
+        merge.get("decline"),
+        Some(&merge["preview"]["decline"]),
+        "{merge}"
+    );
+    assert!(merge["decline"].is_object(), "{merge}");
+    check_all("settings conflict", &conflict.plan());
+}
+
+/// AC-5, REQ-13 to REQ-15, REQ-17, REQ-18: with the install done and only an `AGENTS.local.md`
+/// added, the picks step has a recommended choice, so it goes into `ask.steps` with its `pick`
+/// `move`; the options are `apply`, `choose`, `leave` with `apply` recommended.
+#[test]
+fn next_say_ac5_a_recommended_pick_goes_into_steps_with_its_choice() {
+    let fx = Fx::new();
+    fx.settled();
+    fx.write("AGENTS.local.md", LOCAL_TEXT);
+    let plan = fx.plan();
+    assert_eq!(step(&plan, "agents-picks")["state"], "needs_decision");
+    assert_asks(&plan);
+    let ask = &plan["ask"];
+    assert!(ask["question"].is_string(), "{ask}");
+    let picks = entry(&ask["steps"], "agents-picks");
+    assert_eq!(picks["pick"], json!("move"), "{picks}");
+    assert_eq!(picks["guarded"], json!(false), "{picks}");
+    assert!(picks["say"].is_string(), "{picks}");
+    let ids: Vec<&Value> = ask["options"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no options: {ask}"))
+        .iter()
+        .map(|o| &o["id"])
+        .collect();
+    assert_eq!(ids, ["apply", "choose", "leave"], "{ask}");
+    assert_eq!(ask["options"][0]["recommended"], json!(true), "{ask}");
+    assert_ne!(ask["options"][1]["recommended"], json!(true), "{ask}");
+    assert_guarded("settled + AGENTS.local.md", &plan);
+}
+
+/// AC-5, REQ-13, REQ-16, REQ-18: a project whose generation is ready has it in `steps`, and the
+/// merge steps that wait behind it in `follows`, each with the `after` that names `generation`.
+#[test]
+fn next_say_ac5_a_waiting_step_goes_into_follows_after_the_step_it_waits_behind() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    fx.write("AGENTS.local.md", "# mine\n\ntext\n");
+    let plan = fx.plan();
+    assert_eq!(step(&plan, "generation")["state"], "ready", "{plan}");
+    assert_asks(&plan);
+    let ask = &plan["ask"];
+    let generation = entry(&ask["steps"], "generation");
+    assert_eq!(generation["pick"], Value::Null, "{generation}");
+    for name in ["agents-picks", "agents-local-merge"] {
+        assert_next(&plan, name, "wait");
+        let e = entry(&ask["follows"], name);
+        assert!(e["say"].is_string(), "{e}");
+        assert_eq!(e["guarded"], json!(false), "{e}");
+        assert!(strings(&e["after"]).contains(&"generation"), "{e}");
+    }
+    assert!(
+        !entry_ids(&ask["steps"]).contains(&"agents-local-merge"),
+        "{ask}"
+    );
+    assert_guarded("profile + AGENTS.local.md", &plan);
+}
+
+/// AC-5, REQ-14, REQ-17, REQ-18: a settings merge conflict has no recommended choice, so it goes
+/// into `picks`; while another step is runnable the options are `apply`, `choose`, `leave`, and
+/// with `steps` empty they are `choose` (recommended) and `leave`. The guarded flag is true for
+/// the settings merge and for the backup steps, false for the others.
+#[test]
+fn next_say_ac5_a_conflict_goes_into_picks_and_empty_steps_recommend_choose() {
+    let fx = Fx::new();
+    let conflict = fx.with_settings_conflict();
+    assert_eq!(conflict["state"], "conflict", "{conflict}");
+    let plan = fx.plan();
+    assert_asks(&plan);
+    let ask = &plan["ask"];
+    let merge = entry(&ask["picks"], "claude-settings-merge");
+    assert_eq!(merge["guarded"], json!(true), "{merge}");
+    assert!(merge["say"].is_string(), "{merge}");
+    assert!(
+        !entry_ids(&ask["steps"]).contains(&"claude-settings-merge"),
+        "{ask}"
+    );
+    let local = step(&plan, "agents-local-merge");
+    assert_eq!(local["next"], json!("apply"), "{local}");
+    assert!(
+        entry_ids(&ask["steps"]).contains(&"agents-local-merge"),
+        "{ask}"
+    );
+    let ids: Vec<&Value> = ask["options"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no options: {ask}"))
+        .iter()
+        .map(|o| &o["id"])
+        .collect();
+    assert_eq!(ids, ["apply", "choose", "leave"], "{ask}");
+    assert_guarded("settings conflict", &plan);
+
+    // With the personal-file merge declined, nothing is left to apply: the conflict is a pick.
+    fx.decline_merge(local);
+    let plan = fx.plan();
+    assert_asks(&plan);
+    let ask = &plan["ask"];
+    assert_eq!(entry_ids(&ask["steps"]), Vec::<&str>::new(), "{ask}");
+    assert!(
+        entry_ids(&ask["picks"]).contains(&"claude-settings-merge"),
+        "{ask}"
+    );
+    let ids: Vec<&Value> = ask["options"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no options: {ask}"))
+        .iter()
+        .map(|o| &o["id"])
+        .collect();
+    assert_eq!(ids, ["choose", "leave"], "{ask}");
+    assert_eq!(ask["options"][0]["recommended"], json!(true), "{ask}");
+    assert_guarded("settings conflict, merge declined", &plan);
+
+    // The Go project: the move is a guarded step in `steps`; the install steps follow it.
+    let go = Fx::new();
+    go.go_project();
+    let plan = go.plan();
+    assert_asks(&plan);
+    assert_eq!(
+        entry(&plan["ask"]["steps"], "go-state")["guarded"],
+        json!(true),
+        "{plan}"
+    );
+    assert_guarded("go project", &plan);
+
+    // The Go settings step is guarded too, and the profile and generation steps are not.
+    let go = go_project_with_go_made_plans_key(false);
+    let plan = go.plan();
+    assert_asks(&plan);
+    assert_eq!(
+        entry(&plan["ask"]["steps"], "go-settings")["guarded"],
+        json!(true),
+        "{plan}"
+    );
+    assert_guarded("go-made key", &plan);
+}
+
+/// AC-6, REQ-19: `apply_order` is the ids of `ask.steps`, in the same order.
+#[test]
+fn next_say_ac6_apply_order_is_the_ids_of_the_steps() {
+    let go = Fx::new();
+    go.go_project();
+    let profile = Fx::new();
+    profile.with_profile(false);
+    profile.write("AGENTS.local.md", "# mine\n\ntext\n");
+    let conflict = Fx::new();
+    conflict.with_settings_conflict();
+    for (label, fx) in [("go", &go), ("profile", &profile), ("conflict", &conflict)] {
+        let plan = fx.plan();
+        assert_asks(&plan);
+        let order = strings(&plan["chain"]["apply_order"]);
+        assert!(!order.is_empty(), "{label}: {plan}");
+        assert_eq!(order, entry_ids(&plan["ask"]["steps"]), "{label}: {plan}");
+    }
+}
+
+/// AC-6, REQ-6, REQ-16, REQ-20: for each of the six reasons a step waits (the backup, the
+/// go-settings step, the reports step, the profile, the settings and the install), the waiting
+/// step reads `wait`, is in the `follows` of `ask` after the step its reason speaks of, and is in
+/// the `then` of that step in `chain.preview_again`.
+#[test]
+fn next_say_ac6_each_waiting_reason_names_the_step_it_waits_behind() {
+    // (project label, the plan, [(waiting step, the reason it prints, the step it waits behind)])
+    let mut cases: Vec<(&str, Value, Vec<(&str, &str, &str)>)> = Vec::new();
+
+    // The backup: every install step waits behind the move.
+    let go = Fx::new();
+    go.go_project();
+    cases.push((
+        "backup",
+        go.plan(),
+        INSTALL
+            .iter()
+            .map(|n| (*n, BLOCKED_BY_BACKUP, "go-state"))
+            .collect(),
+    ));
+
+    // The go-settings step: the install steps wait behind it (the go-state step of this project
+    // is held by the Go-made keys and prints no command).
+    let go_made = go_project_with_go_made_plans_key(false);
+    let waits: Vec<(&str, &str, &str)> = INSTALL
+        .iter()
+        .map(|n| (*n, BLOCKED_BY_BACKUP, "go-settings"))
+        .collect();
+    cases.push(("go-settings", go_made.plan(), waits));
+
+    // The reports step: the go-state command waits behind it.
+    let reports = go_project_with_go_made_plans_key(false);
+    common::git::git_ok(&reports.root, &["init", "-q"]);
+    let gs = step(&reports.plan(), "go-settings").clone();
+    assert_eq!(reports.apply_step(&gs)["ok"], json!(true));
+    reports.write(
+        &state_rel(&reports.root, "reports/earlier.md"),
+        "an earlier report",
+    );
+    cases.push((
+        "reports",
+        reports.plan(),
+        vec![("go-state", "re-run after the reports apply", "reports")],
+    ));
+
+    // The profile: the generation step waits behind it.
+    let profile = Fx::new();
+    profile.with_profile(false);
+    profile.write(
+        "Cargo.toml",
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+    );
+    cases.push((
+        "profile",
+        profile.plan(),
+        vec![("generation", "re-run after the profile apply", "profile")],
+    ));
+
+    // The settings: the hooks step waits behind them.
+    let settings = Fx::new();
+    settings.go_project_with_moved_settings(&json!({"permissions": {"deny": ["Read(./.env)"]}}));
+    settings.with_profile(false);
+    cases.push((
+        "settings",
+        settings.plan(),
+        vec![(
+            "hooks",
+            "re-run after the claude-settings apply",
+            "claude-settings",
+        )],
+    ));
+
+    // The install: the personal-file merge waits behind the generation step, and the settings
+    // merge behind the settings step.
+    let install = Fx::new();
+    install.with_profile(false);
+    install.write("AGENTS.local.md", "# mine\n\ntext\n");
+    cases.push((
+        "install (generation)",
+        install.plan(),
+        vec![(
+            "agents-local-merge",
+            "re-run after the install phase",
+            "generation",
+        )],
+    ));
+    let merge = Fx::new();
+    merge.go_project_with_moved_settings(&user_settings());
+    merge.with_profile(false);
+    cases.push((
+        "install (settings)",
+        merge.plan(),
+        vec![(
+            "claude-settings-merge",
+            "re-run after the install phase",
+            "claude-settings",
+        )],
+    ));
+
+    for (label, plan, waits) in &cases {
+        assert_asks(plan);
+        for (name, reason, behind) in waits {
+            let s = step(plan, name);
+            assert!(
+                s["reason"].as_str().unwrap_or_default().contains(reason),
+                "{label}: {name} prints its reason: {s}"
+            );
+            assert_eq!(s["next"], json!("wait"), "{label}: {name}: {s}");
+            let follows = entry(&plan["ask"]["follows"], name);
+            assert!(
+                strings(&follows["after"]).contains(behind),
+                "{label}: {name} follows {behind}: {follows}"
+            );
+            assert!(
+                then_of(plan, behind).contains(name),
+                "{label}: {name} is in the then of {behind}: {}",
+                plan["chain"]
+            );
+            assert!(
+                strings(&plan["chain"]["apply_order"]).contains(behind),
+                "{label}: {behind} is run first: {}",
+                plan["chain"]
+            );
+        }
+    }
+}
+
+/// AC-6, REQ-16: a step that waits behind a go-state step with no command is in `follows`, and
+/// its `after` names only steps that can run: never the go-state step, which prints no command,
+/// and `then_of` the go-state step is empty. The project holds a stopped move (the go-state step
+/// wants the user's decision and prints no command) and an untracked earlier report (the reports
+/// step can run), so the plan still asks; `after` is then exactly the reports step.
+#[test]
+fn next_say_ac6_a_wait_behind_a_step_without_a_command_is_not_after_it() {
+    let fx = Fx::new();
+    common::git::git_ok(&fx.root, &["init", "-q"]);
+    fx.write(
+        &format!(
+            "{}/reports/earlier.md",
+            moai_cli::state_root::EARLIER_PROJECT_DIR
+        ),
+        "an earlier report",
+    );
+    fs::create_dir_all(fx.root.join(".moai-backup/config")).unwrap();
+    let plan = fx.plan();
+    assert_eq!(step(&plan, "reports")["state"], "ready", "{plan}");
+    let hold = step(&plan, "go-state");
+    assert_eq!(hold["state"], "needs_decision", "{hold}");
+    assert_eq!(hold["apply"], Value::Null, "{hold}");
+    assert_next(&plan, "go-state", "report");
+    assert_asks(&plan);
+    let ask = &plan["ask"];
+    for name in INSTALL {
+        let s = step(&plan, name);
+        assert_eq!(s["reason"], BLOCKED_BY_BACKUP, "{name}: {s}");
+        assert_eq!(s["next"], json!("wait"), "{name}: {s}");
+        let follows = entry(&ask["follows"], name);
+        assert_eq!(strings(&follows["after"]), ["reports"], "{name}: {follows}");
+    }
+    assert!(then_of(&plan, "go-state").is_empty(), "{}", plan["chain"]);
+}
+
+/// AC-7, REQ-21, REQ-22, REQ-23: a project that is all current has `ask` null, a `finish` that
+/// says nothing is left and an empty `open`, and every step reads `none`; an empty project has
+/// `ask` null and the five install steps in `finish.open`, and `all_unchanged` stays false; a plan
+/// with a step to run has `finish` null.
+#[test]
+fn next_say_ac7_nothing_to_ask_ends_with_finish() {
+    let fx = Fx::new();
+    fx.settled();
+    let plan = fx.plan();
+    assert_eq!(plan["all_unchanged"], json!(true), "{plan}");
+    assert_eq!(plan["ask"], Value::Null, "{plan}");
+    let finish = &plan["finish"];
+    assert!(finish.is_object(), "{plan}");
+    assert!(
+        finish["say"]
+            .as_str()
+            .is_some_and(|s| s.to_lowercase().contains("nothing")),
+        "{finish}"
+    );
+    assert_eq!(finish["open"], json!([]), "{finish}");
+    for s in steps(&plan) {
+        assert_eq!(s["next"], json!("none"), "{s}");
+    }
+
+    let empty = Fx::new();
+    let plan = empty.plan();
+    assert_eq!(plan["all_unchanged"], json!(false), "{plan}");
+    assert_eq!(plan["ask"], Value::Null, "{plan}");
+    let finish = &plan["finish"];
+    assert!(finish["say"].is_string(), "{plan}");
+    let mut open: Vec<&str> = finish["open"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no open list: {finish}"))
+        .iter()
+        .map(|e| {
+            e.as_str()
+                .or_else(|| e["step"].as_str())
+                .unwrap_or_default()
+        })
+        .collect();
+    open.sort_unstable();
+    let mut install = INSTALL.to_vec();
+    install.sort_unstable();
+    assert_eq!(open, install, "{finish}");
+
+    let profile = Fx::new();
+    profile.with_profile(false);
+    let plan = profile.plan();
+    assert_asks(&plan);
+}
+
+/// Runs the command a step prints, or the command of its recommended choice.
+fn run_step_or_pick(fx: &Fx, step: &Value) -> Value {
+    if step["apply"].is_object() {
+        return fx.run_printed(&step["apply"]);
+    }
+    let pick = step["preview"]["choices"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|c| c["recommended"] == json!(true))
+        .unwrap_or_else(|| panic!("no command and no recommended choice: {step}"));
+    fx.run_printed(&pick["apply"])
+}
+
+/// Follows the `chain` the way the update does: run `apply_order` as printed, preview again, and
+/// repeat until `ask` is null. After each round the steps of `then` no longer wait. Returns the
+/// last preview and the number of rounds.
+fn follow_chain(fx: &Fx) -> (Value, usize) {
+    for round in 1..=6 {
+        let plan = fx.plan();
+        if plan["ask"].is_null() {
+            return (plan, round - 1);
+        }
+        let order: Vec<String> = strings(&plan["chain"]["apply_order"])
+            .into_iter()
+            .map(String::from)
+            .collect();
+        assert!(!order.is_empty(), "round {round}: {plan}");
+        for id in &order {
+            let out = run_step_or_pick(fx, step(&plan, id));
+            assert_eq!(out["ok"], json!(true), "round {round}: {id}: {out}");
+        }
+        let again = fx.plan();
+        for id in &order {
+            for later in then_of(&plan, id) {
+                assert_ne!(
+                    step(&again, later)["next"],
+                    json!("wait"),
+                    "round {round}: {later} still waits after {id}: {again}"
+                );
+            }
+        }
+    }
+    panic!("the chain did not end in six rounds: {}", fx.plan());
+}
+
+/// AC-8, REQ-19, REQ-20, REQ-21: following the chain ends in a plan with `ask` null, a `finish`
+/// and `all_unchanged` true, for a project whose merge steps wait for the install and for a
+/// settled project whose `CLAUDE.md` imports `AGENTS.md` and holds a personal file.
+#[test]
+fn next_say_ac8_following_the_chain_ends_in_finish() {
+    let waits = Fx::new();
+    waits.with_profile(false);
+    waits.write("AGENTS.local.md", LOCAL_TEXT);
+    let imports = Fx::new();
+    imports.settled();
+    imports.import_agents_md();
+    imports.write("AGENTS.local.md", LOCAL_TEXT);
+    for (label, fx) in [
+        ("waits for the install", &waits),
+        ("imports AGENTS.md", &imports),
+    ] {
+        let (last, rounds) = follow_chain(fx);
+        assert!(rounds >= 1, "{label}: the chain ran no round");
+        assert_eq!(last["ask"], Value::Null, "{label}: {last}");
+        assert!(last["finish"].is_object(), "{label}: {last}");
+        assert_eq!(last["all_unchanged"], json!(true), "{label}: {last}");
+    }
+}
