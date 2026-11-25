@@ -777,6 +777,96 @@ fn a_merge_that_adds_a_change_is_not_a_clean_join() {
     assert_eq!(plan["missing"][0]["why"], "verdict_other_head", "{plan}");
 }
 
+/// A landing row that names a PASS on a head that is neither the landed commit nor the audited
+/// second parent of a clean join proves nothing about the commit: the line is not a `PASS`, it is
+/// judged on the commit itself and has no verdict there.
+#[test]
+fn a_relied_verdict_on_an_unrelated_head_is_not_a_pass_line() {
+    let w = World::new();
+    let base = w.head();
+    // A commit on a side branch that the landed commit does not contain, with a PASS of its own.
+    let n = w.bump();
+    git(&w.project, &["switch", "-q", "-c", &format!("side{n}")]);
+    let unrelated = w.commit("an audited commit elsewhere", Some(S_AUTH));
+    git(&w.project, &["switch", "-q", "main"]);
+    // The landed commit is a direct commit; its row names the PASS on the unrelated head.
+    let landed = w.commit("the landed commit", Some(S_AUTH));
+    let card = w.card();
+    let pass = w.verdict(card, &unrelated, true, S_REV);
+    w.landed(card, &landed, Some((pass, S_REV)));
+
+    let plan = w.plan(&base, &landed);
+    let s = read(&plan);
+    let line = s.lines.last().unwrap();
+    assert_eq!(line.sha, landed);
+    assert!(
+        matches!(&line.kind, Kind::None { cards, .. } if cards == &vec![card]),
+        "{:?}\n{}",
+        line.kind,
+        plan["text"]
+    );
+    assert_eq!(plan["missing"][0]["why"], "verdict_other_head", "{plan}");
+    assert_eq!(
+        plan["counts"],
+        json!({"pass": 0, "abs": 0, "none": 1, "fail": 0})
+    );
+}
+
+/// A merge of a lane onto a tip that moved is not a fast-forward: a direct commit that stands
+/// between the tip the landing started from and the merge has no card and no verdict, and the
+/// merge does not absorb it. It is a line of its own with no verdict.
+#[test]
+fn a_direct_commit_under_a_merge_on_a_moved_tip_is_not_absorbed() {
+    let w = World::new();
+    let base = w.head();
+    // The lane starts at the tip the landing will name (the base).
+    let n = w.bump();
+    git(&w.project, &["switch", "-q", "-c", &format!("lane{n}")]);
+    let lane = w.commit("lane commit", Some(S_AUTH));
+    git(&w.project, &["switch", "-q", "main"]);
+    // Someone commits straight on the tip: no card, no verdict.
+    let direct = w.commit("a direct commit on the moved tip", None);
+    // The lane is joined onto the moved tip by a clean merge that the audited lane head covers.
+    git(
+        &w.project,
+        &[
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            "merge(next-flow): lane on a moved tip",
+            &format!("lane{n}"),
+        ],
+    );
+    let merge = w.head();
+    let card = w.card();
+    let pass = w.verdict(card, &lane, true, S_REV);
+    w.landed(card, &merge, Some((pass, S_REV)));
+    w.started(card, &merge, &base);
+
+    let plan = w.plan(&base, &merge);
+    let s = read(&plan);
+    let listed: Vec<&str> = s.lines.iter().map(|l| l.sha.as_str()).collect();
+    assert_eq!(
+        listed,
+        [direct.as_str(), merge.as_str()],
+        "{}",
+        plan["text"]
+    );
+    assert!(
+        matches!(&s.lines[0].kind, Kind::None { cards, .. } if cards.is_empty()),
+        "{:?}\n{}",
+        s.lines[0].kind,
+        plan["text"]
+    );
+    assert_eq!(pass_verdicts(&s.lines[1].kind)[0].card, card);
+    assert_eq!(plan["missing"][0]["why"], "no_landing_row", "{plan}");
+    assert_eq!(
+        plan["counts"],
+        json!({"pass": 1, "abs": 0, "none": 1, "fail": 0})
+    );
+}
+
 /// AC-2 (REQ-2): a FAIL recorded after the landing marks the line `FAIL`; the newest verdict of
 /// a reviewer is the one that counts.
 #[test]

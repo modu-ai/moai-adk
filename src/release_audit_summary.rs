@@ -757,27 +757,30 @@ fn renderable(session: &str) -> bool {
     !session.is_empty() && session.bytes().all(|b| b.is_ascii_graphic())
 }
 
-/// Judges one card on one first-parent commit by the rules `card land` applies
-/// ([`check::judge`], SPEC D-2). The verdict is read on the head the landing row names, else on
-/// the commit, else on the second parent of a clean join; `tip` is the commit the card's work
-/// was added to.
-fn judge_card(
+/// Whether `head` is a head a landing of `entry` can have relied a verdict on: the landed commit
+/// itself (a fast-forward), or the second parent of a two-parent commit that is a clean join.
+fn relied_head_fits(project: &Path, entry: &Entry, head: &str) -> bool {
+    head == entry.sha
+        || (entry.parents.len() == 2
+            && head == entry.parents[1]
+            && check::is_clean_join(project, &entry.sha, &entry.parents[0], &entry.parents[1]))
+}
+
+/// The head the verdict of one card on one first-parent commit is read on. The head of the event
+/// the landing row relied on counts only when [`relied_head_fits`]; otherwise, and when the row
+/// names none, the verdict is read on the commit, else on the second parent of a clean join, and
+/// last on the commit itself, so that [`check::judge`] answers `verdict_other_head` (fail closed).
+fn verdict_head_of(
     project: &Path,
-    conn: &Connection,
     entry: &Entry,
-    card: i64,
+    events: &[workflow::VerdictEvent],
     row: &Landed,
-    tip: &str,
-) -> Judged {
-    let events = match workflow::verdict_events(conn, card) {
-        Ok(events) => events,
-        Err(e) => return none("check_unreadable", e.to_string()),
-    };
+) -> String {
     let second = entry.parents.get(1).filter(|_| entry.parents.len() == 2);
-    let verdict_head = row
-        .relied
+    row.relied
         .and_then(|id| events.iter().find(|e| e.event_id == id))
         .map(|e| e.head.clone())
+        .filter(|head| relied_head_fits(project, entry, head))
         .or_else(|| {
             events
                 .iter()
@@ -790,7 +793,25 @@ fn judge_card(
             (on_second && check::is_clean_join(project, &entry.sha, &entry.parents[0], second))
                 .then(|| second.clone())
         })
-        .unwrap_or_else(|| entry.sha.clone());
+        .unwrap_or_else(|| entry.sha.clone())
+}
+
+/// Judges one card on one first-parent commit by the rules `card land` applies
+/// ([`check::judge`], SPEC D-2). The verdict is read on the head [`verdict_head_of`] names;
+/// `tip` is the commit the card's work was added to.
+fn judge_card(
+    project: &Path,
+    conn: &Connection,
+    entry: &Entry,
+    card: i64,
+    row: &Landed,
+    tip: &str,
+) -> Judged {
+    let events = match workflow::verdict_events(conn, card) {
+        Ok(events) => events,
+        Err(e) => return none("check_unreadable", e.to_string()),
+    };
+    let verdict_head = verdict_head_of(project, entry, &events, row);
     let input = check::Input {
         project,
         conn,
@@ -888,16 +909,24 @@ pub fn build(req: &Request) -> Result<Built> {
             .map(|&i| i as isize)
     };
     // A commit between the tip a landing started from and its head, with no landing of its own,
-    // belongs to that landing (a fast-forwarded lane); the nearest later landing takes it.
+    // belongs to that landing (a fast-forwarded lane); the nearest later landing takes it. Only a
+    // fast-forward absorbs: the audited head of a merge onto a moved tip is not the landed
+    // commit, so the commits under it were not audited with it.
     let mut absorbed: Vec<Option<usize>> = vec![None; entries.len()];
     for (at, entry) in entries.iter().enumerate() {
         let Some(rows) = by_head.get(&entry.sha) else {
             continue;
         };
-        for &card in rows.keys() {
+        for (&card, row) in rows {
             let Some(from) = start_of(card, at) else {
                 continue;
             };
+            let Ok(events) = workflow::verdict_events(conn, card) else {
+                continue;
+            };
+            if verdict_head_of(project, entry, &events, row) != entry.sha {
+                continue;
+            }
             for k in (from + 1) as usize..at {
                 if absorbed[k].is_none() && !by_head.contains_key(&entries[k].sha) {
                     absorbed[k] = Some(at);
