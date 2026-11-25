@@ -66,3 +66,30 @@ Reversible, category `none`; the leader's delegation covers decisions of this ki
 | D-2 | a stale submission is counted as ready (`📋`), the recommended default; the alternative is a separate item with its own icon | no new icon or render change, the drawn items still add up to the open cards, and a card nobody checks is a card waiting for a lane; a separate item needs an icon choice that is the user's | draw `Stage::Stale`-like item in `render.rs` |
 | D-3 | an audit PASS marker keeps its stage whatever its age | a PASS card waits to land, not to be checked, so `🚀` stays true | add the age test to the audited branch |
 | D-4 | `active` and `review` cards are not aged | the reservation is held; the existing live and stale lease rules already say what they are | add the age test to the held branches |
+
+## Result
+
+구현했어요(2026-11-26, 브랜치 `spec/statusline-stale-submit-20261126`). SPEC 초안은 `b7be0bbe36`, red 시험은 `bf0854a248`, 코드는 `188d3d2b8a`(`src/statusline/state.rs` 한 파일)예요. red 시험은 코드를 바꾸기 전에 먼저 돌렸어요. 독립 감사는 이 레인이 하지 않아요.
+
+- 바뀐 것: `STALE_SUBMIT_SECS` 는 86400(하루)이에요. 노트를 읽는 두 번째 문장이 `n.created_at` 도 고르고, 문장은 여전히 네 개이고 모두 읽기 전용이에요. 순수 함수 `stage_marker(state, marker, noted_at, now)` 는 `ready` 카드의 제출 표식이 한계보다 엄격히 오래됐을 때만 None 을 돌려주고, 그 밖에는 표식을 그대로 돌려줘요(시계보다 새로운 노트는 젊은 것으로 세요). `stage_of` 와 그 표는 그대로이고 `render.rs` 는 건드리지 않았어요.
+- 동작: 제출 노트가 하루보다 오래된 표식만 가진 `ready` 카드는 이제 `ready` 항목(`📋`)에 들어가요. 감사 PASS 는 오래돼도 `🚀` 에 남고, `active`·`review` 카드는 그대로예요(D-2 ~ D-4).
+- 기존 픽스처: 하루보다 오래된 제출 노트를 `ready` 카드에 찍은 기존 픽스처는 없어서 기존 기대값은 하나도 바뀌지 않았어요.
+- 시험: 새 lib 모듈 `stale_submit_tests` 의 `a_ready_submission_goes_stale_strictly_after_the_limit`(한계−1, 한계, 한계+1, 한계의 30배, 음수 나이)와 `no_other_marker_state_or_age_changes`(모든 상태와 표식, 나이 다섯 가지), 통합 시험 `an_old_submission_on_a_ready_card_counts_as_ready` 예요.
+
+- AC-1: met — `an_old_submission_on_a_ready_card_counts_as_ready` 가 한계보다 한 초 오래된 제출의 `ready` 카드와 옛 REPAIRED 카드를 `📋 3 → 👀 4 → 🚀 1 | 🙋 1` 로 고정해요. red(`bf0854a248`)에서는 `📋 1 → 👀 6 → 🚀 1 | 🙋 1` 이 그려졌어요.
+- AC-2: met — `a_ready_submission_goes_stale_strictly_after_the_limit` 가 나이 경계(한계−1, 한계, 한계+1, 한계의 30배, 음수)에서 `ready`+제출의 단계를, `no_other_marker_state_or_age_changes` 가 모든 상태·표식·나이 다섯 가지에서 그 밖의 칸이 안 바뀌는 것(감사 PASS 는 `Audited`, `active`+제출과 `review` 는 `Submitted`)을 고정해요.
+- AC-3: met — 기존 시험을 하나도 고치지 않았고, 아래 green 실행의 `statusline::` lib 시험과 `statusline_counts_truth`, `statusline_flow`, `statusline_cards` 가 모두 통과해요.
+- AC-4: met — 같은 green 실행의 `statusline::` lib 시험과 `statusline_flow` 가 통과해요. 흐름 읽기는 여전히 문장 네 개이고 SELECT 뿐이에요.
+- AC-5: met — 가벼운 검사 다섯 개를 이 가지에서 직접 돌렸어요: `git diff --check` exit 0, `cargo fmt --all -- --check` exit 0, `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0(아래), `moai spec check` errors 0·warnings 0, `moai trailer-check 882cba7497..HEAD` failing 0. 이 줄을 담은 커밋의 해시와 `check affected --card` 영수증은 READY 노트에 있어요.
+
+증거(헤드 `188d3d2b8a` 의 작업 트리):
+
+- red, 커밋 `bf0854a248`: `cargo nextest run --locked --offline --no-fail-fast --test statusline_counts_truth` exit 100, 4개 실행, 3 통과·1 실패(`an_old_submission_on_a_ready_card_counts_as_ready`; 86401초 된 제출과 옛 REPAIRED 카드가 제출됨으로 셌어요) (`target/c551/red.log`).
+- green, 커밋 `188d3d2b8a`: lib `statusline::` 시험과 `statusline_counts_truth`, `statusline_flow`, `statusline_cards`, `statusline_card_flow_icons`, `statusline_counts_refresh`, `statusline_golden`, `statusline_numbers_only`, `statusline_tag_order` 를 한 번에 돌려 327개 실행, 327 통과, 0 실패(`target/c551/green.log`).
+- clippy: `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0 (`target/c551/clippy.log`).
+- 가드 뮤턴트 (1): `stage_marker` 의 나이 검사 `> STALE_SUBMIT_SECS` 를 `> i64::MAX` 로 바꾸고 `cargo nextest run --locked --offline --no-fail-fast --lib --test statusline_counts_truth -E 'test(stale_submit_tests) | test(an_old_submission_on_a_ready_card_counts_as_ready)'` 를 돌려 exit 100, 3개 실행, 2개 실패(`a_ready_submission_goes_stale_strictly_after_the_limit`, `an_old_submission_on_a_ready_card_counts_as_ready`). 되돌린 뒤 `git status --short` 는 아무것도 찍지 않았어요(`target/c551/mutant1.log`).
+
+not_run:
+
+- `check affected --card` 영수증은 이 Result 가 든 헤드를 이름 짓는 READY 노트가 담아요.
+- 실제 원장에 대한 렌더, 다른 운영체제, 독립 감사는 돌리지 않았어요.
