@@ -47,6 +47,8 @@ impl Fixture {
             .arg("session-register")
             .arg(&self.repo)
             .args(["--name", name])
+            // One inherited host session id would make the three lanes one session renaming itself.
+            .env_remove("CLAUDE_CODE_SESSION_ID")
             .env("HOME", &self.home)
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
             .env("GIT_CONFIG_SYSTEM", "/dev/null")
@@ -64,6 +66,7 @@ impl Fixture {
         cmd.args(["lane-next", "--lane", lane, "--repo", "o/r", "--snapshot"])
             .arg(&file)
             .current_dir(&self.home)
+            .env_remove("CLAUDE_CODE_SESSION_ID")
             .env("HOME", &self.home)
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
             .env("GIT_CONFIG_SYSTEM", "/dev/null");
