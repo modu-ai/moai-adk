@@ -892,10 +892,19 @@ fn run_stdin(exe: &Path, home: &Path, args: &[&str], stdin: &Value) -> Output {
     child.wait_with_output().unwrap()
 }
 
-/// A backup an earlier update left under the earlier state folder is still read by the recovery,
-/// and every file it held is the same afterwards (the recovery adds its own record beside them).
-#[test]
-fn ac13_recovery_reads_an_earlier_backup_under_the_earlier_state_folder() {
+/// A HOME whose skill folder was backed up and replaced by a confirmed update, with the backup
+/// folder then moved to `<HOME>/<place>` and the receipt pointed at it, the way an earlier update
+/// or a stray folder would leave it. Returns the HOME, the skill folder, its original files, the
+/// folder that now holds the backup and the backup folder's name.
+fn replaced_with_backup_moved_to(
+    place: &str,
+) -> (
+    Home,
+    PathBuf,
+    std::collections::BTreeMap<String, Vec<u8>>,
+    PathBuf,
+    String,
+) {
     let h = earlier_home();
     let stage = h.home.parent().unwrap().join("stage");
     fs::create_dir_all(stage.join("references")).unwrap();
@@ -948,12 +957,8 @@ fn ac13_recovery_reads_an_earlier_backup_under_the_earlier_state_folder() {
     ));
     assert_eq!(applied["ok"], json!(true), "{applied}");
 
-    // The backup stands under `.moai/backups`; make it an earlier update's, under the earlier
-    // state folder, and point the receipt at that place.
-    let (new_root, old_root) = (
-        h.home.join(".moai/backups"),
-        h.home.join(".moai-cli/backups"),
-    );
+    // The backup stands under `.moai/backups`; move it to `place` and point the receipt there.
+    let (new_root, old_root) = (h.home.join(".moai/backups"), h.home.join(place));
     let made = names_in(&new_root);
     assert_eq!(made.len(), 1, "{made:?}");
     fs::create_dir_all(&old_root).unwrap();
@@ -965,6 +970,17 @@ fn ac13_recovery_reads_an_earlier_backup_under_the_earlier_state_folder() {
         &old_root.to_string_lossy(),
     );
     assert!(moved > 0, "the receipt names the backup folder");
+    (h, skill, original, old_root, made[0].clone())
+}
+
+/// A backup an earlier update left under the earlier state folder is still read by the recovery,
+/// and what the recovery only reads of it is the same afterwards.
+#[test]
+fn ac13_recovery_reads_an_earlier_backup_under_the_earlier_state_folder() {
+    let (h, skill, original, old_root, name) = replaced_with_backup_moved_to(".moai-cli/backups");
+    let new_root = h.home.join(".moai/backups");
+    let exe = Path::new(EXE);
+    let home_s = h.home.to_str().unwrap();
     let before = tree(&old_root);
 
     let rp = result(&run(exe, &h.home, &["recovery-plan", home_s]));
@@ -995,8 +1011,8 @@ fn ac13_recovery_reads_an_earlier_backup_under_the_earlier_state_folder() {
     // manifest, the file list) is as it was, the folder is where it was, and nothing was made
     // under `.moai`.
     let after = tree(&old_root);
-    assert!(old_root.join(&made[0]).is_dir(), "the backup folder stays");
-    let manifest = format!("{}/MANIFEST.json", made[0]);
+    assert!(old_root.join(&name).is_dir(), "the backup folder stays");
+    let manifest = format!("{name}/MANIFEST.json");
     assert_eq!(
         after.get(&manifest),
         before.get(&manifest),
@@ -1008,6 +1024,29 @@ fn ac13_recovery_reads_an_earlier_backup_under_the_earlier_state_folder() {
         }
     }
     assert!(!new_root.exists(), "nothing was made under .moai");
+}
+
+/// The other side of AC-13: a receipt that names a backup folder outside the known backup folders
+/// is not read, so the recovery restores nothing from it and leaves it as it is.
+#[test]
+fn ac13_recovery_does_not_read_a_backup_outside_the_known_folders() {
+    let (h, skill, _original, elsewhere, name) = replaced_with_backup_moved_to("stray-backups");
+    let exe = Path::new(EXE);
+    let home_s = h.home.to_str().unwrap();
+    let replaced = tree(&skill);
+    let before = tree(&elsewhere);
+    let rp = result(&run(exe, &h.home, &["recovery-plan", home_s]));
+    let rb = rp["hosts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|x| x["host"] == json!("claude"))
+        .expect("host row")["restore_backup"]
+        .clone();
+    assert_ne!(rb["action"], json!("restore_backup"), "{rp}");
+    assert_eq!(tree(&skill), replaced, "the replaced package is untouched");
+    assert_eq!(tree(&elsewhere), before, "the stray backup is untouched");
+    assert!(elsewhere.join(&name).is_dir());
 }
 
 #[test]
