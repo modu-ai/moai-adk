@@ -720,7 +720,7 @@ pub fn rerun_from(
     // own change: it matters only where the move changes the same path.
     let edited = unstaged_changes(&tree)?;
     if !edited.is_empty() {
-        check_overlap(&tree, &edited, &moved_paths(&tree, &old, &tip)?)?;
+        check_overlap(&tree, &edited, &moved_paths(&tree, old, &tip)?)?;
     }
     // The added paths are read by `apply` right before the write, so they are not read here.
     dry_run(&tree, old, &tip)?;
