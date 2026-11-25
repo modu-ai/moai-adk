@@ -48,7 +48,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 3. Make the smallest change that does the task. Follow the style of the file you edit. For a bug fix, write the test that fails for the reported reason first (`internal/test-design`). Where the change leaves something a later reader must know, add a `@cc:` comment of the fitting kind (`@cc:later`, `@cc:careful` or `@cc:proves`); tools link it automatically.
 4. Run the checks the task or the refs name for this change. Record each command and its exit code, and the failing and the passing run of a test the way `internal/tdd-results` says.
 5. Do not commit, push, or open a pull request unless the task says so.
-6. When the task says to commit, follow `internal/git-safety` and end each commit message with the trailers that `moai trailers --spec <SPEC id> --verified <kinds>` prints, and name in `Moai-Verified` only the kinds of check you ran (`tests`, `mutants`, `e2e`, `smoke`), and `none` when no check ran.
+6. When the task says to commit, end each commit message with the trailers that `moai trailers --spec <SPEC id> --verified <kinds>` prints, and name in `Moai-Verified` only the kinds of check you ran (`tests`, `mutants`, `e2e`, `smoke`), and `none` when no check ran. Before that commit, follow `internal/git-safety`.
 7. Leave the change uncommitted: the change stays as uncommitted files in your parent's worktree, and `RESULT impl` names the HEAD the change sits on. Run `git status --short` and make it agree with `Files written`; the parent compares them with `Files written` before it runs its own `moai card check` and commits.
 
 ## Verification
