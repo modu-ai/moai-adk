@@ -69,6 +69,6 @@ created: 2026-11-25
 - AC-2 met: `screen_facts_ac2_the_model_step_result_has_one_line` 통과(한국어·영어, saved 줄에 설정 파일 경로, `ok` 는 줄 없음, 미리 보기 화면에도 줄이 나와요).
 - AC-3 met: `screen_facts_ac3_the_adopted_files_are_counted` 통과(임시 HOME 에서 미리 보기의 "N to adopt", 확정한 결과 JSON 의 `adopted`, Applied 행의 "N adopted", adopt 없는 호스트는 키도 문구도 없음).
 - AC-4 met: `screen_facts_ac4_the_headline_follows_the_rows` 통과(충돌 둘, 건너뛴 라우팅, 막힌 호스트에서 "Everything is up to date" 와 "clear the blocked part first" 가 없고 "Nothing left to apply … Still open" 이 있어요).
-- AC-5 met: `cargo test --locked --offline --test update_tux_golden` 16개 통과. 골든은 `update-blocked-40` 한국어·영어 두 개만 바뀌었고 바뀐 줄은 이 SPEC 의 머리말 줄뿐이에요. `tests/update_tux_golden.rs` 의 한 줄("Nothing can be applied" → "Nothing left to apply")은 리더 결정으로 범위에 더해 고쳤어요.
+- AC-5 met: `cargo test --locked --offline --test update_tux_golden` 16개 통과. 골든은 `update-blocked-40` 한국어·영어 두 개만 바뀌었고 바뀐 줄은 이 SPEC 의 머리말 줄뿐이에요. `tests/update_tux_golden.rs` 의 한 줄("Nothing can be applied" → "Nothing left to apply")은 리더 결정으로 범위에 더해 고쳤어요. 첫 영수증(head 37528e1051)은 `tests/update_command_cli.rs:804` 가 같은 옛 문구를 고정해서 FAIL 이었고, 그 한 줄도 리더 결정으로 범위에 더해 고친 뒤 영수증을 다시 돌렸어요.
 - 지킴이 뮤턴트 9개(visible_change 두 곳, `adopted` 키, 머리말 분기, 열린 줄 표시 조건, 모델 결과 두 곳, adopt 수 두 곳)가 모두 지정한 테스트의 단언 실패로 죽었어요(컴파일 오류 아님, 뮤턴트별 로그 확인).
 - not_run: 구현 전에 RED 를 돌리지 않았어요. 실제 HOME 의 설치본 화면은 보지 않았어요(임시 HOME 과 고정 JSON 만 썼어요).
