@@ -634,7 +634,7 @@ pub fn split_trailer_lines(text: &str) -> Vec<(String, usize)> {
             })
             .collect();
         let pure = keys.iter().all(Option::is_some);
-        if pure && keys.iter().flatten().any(|k| MOAI_KEYS.contains(k)) {
+        if pure {
             for ((n, _), key) in paragraph.iter().zip(&keys) {
                 if let Some(k) = key.filter(|k| MOAI_KEYS.contains(k)) {
                     out.push((k.to_string(), *n));
@@ -1045,6 +1045,9 @@ mod tests {
         assert!(split_trailer_lines(quoted).is_empty());
         let other = "s\n\nReviewed-by: B <b@example.invalid>\n\nMoai-Spec: S\n";
         assert!(split_trailer_lines(other).is_empty());
+        // A paragraph that mixes a `Moai-*` line with a prose line is not a trailer block.
+        let mixed = "s\n\nMoai-Spec: S\nThis line explains the one above.\n\nCo-Authored-By: A <a@example.invalid>\n";
+        assert!(split_trailer_lines(mixed).is_empty());
         // A subject alone, or an empty message, has no earlier paragraph.
         assert!(split_trailer_lines("Moai-Spec: S").is_empty());
         assert!(split_trailer_lines("").is_empty());

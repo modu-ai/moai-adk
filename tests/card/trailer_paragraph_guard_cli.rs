@@ -153,7 +153,13 @@ fn ac4_whole_blocks_and_quoted_keys_pass() {
     let tmp = tempfile::tempdir().unwrap();
     let alone = "s\n\nbody\n\nMoai-Spec: SPEC-20261125-x\nMoai-Verified: none\n";
     let quoted = "s\n\nThe line Moai-Spec: SPEC-20261125-x is read from the last paragraph only.\n\nMoai-Spec: SPEC-20261125-x\nMoai-Session: 0123456789ab\n";
-    for (name, message) in [("joined", joined()), ("alone", alone.into()), ("quoted", quoted.into())] {
+    let mixed = "s\n\nMoai-Spec: SPEC-20261125-x\nThis line explains the one above.\n\nCo-Authored-By: A <a@example.invalid>\n";
+    for (name, message) in [
+        ("joined", joined()),
+        ("alone", alone.into()),
+        ("quoted", quoted.into()),
+        ("mixed", mixed.into()),
+    ] {
         let (code, v) = judge_message(tmp.path(), &message);
         assert_eq!(code, Some(0), "{name}: {v}");
         assert!(kinds(&v).is_empty(), "{name}: {v}");
