@@ -150,7 +150,7 @@ pub(super) fn short(sha: &str) -> &str {
 /// confirmed leader"): the lane registry holds a live entry named `leader` in mode `leader`, and
 /// its `session` is the session that made this call. The name of a session, its folder or the word
 /// `--by leader` prove nothing; an unreadable registry is a refusal, never an answer of "yes".
-fn confirm_leader(project: &Path, session: Option<&str>, now: i64) -> Result<()> {
+pub(crate) fn confirm_leader(project: &Path, session: Option<&str>, now: i64) -> Result<()> {
     leader_reason(project, session, now, "land-batch")
 }
 

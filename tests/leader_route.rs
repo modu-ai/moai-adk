@@ -93,10 +93,9 @@ const VERDICT_OWN: &str = "The auditor records the verdict with `moai card verdi
 const BATCH: &str = "Use `moai card land-batch C-n=<head> ... --by leader` for 2 to 4 audited heads, which runs the wide check once on their join, and `moai card land` alone only for one head with a risk or an exception.";
 const LANDED: &str = "send `LANDED <card> landed head=<10 hex>` to the lane concerned";
 /// SPEC-20261125-land-sync-merge REQ-8: a branch that is not a card head enters only through
-/// `moai card land-sync`, and the sentence says who calls it, what it makes and refuses.
-const LAND_SYNC: &str = "A branch that is not a card head (such as `main` coming back after a release) enters only through `moai card land-sync <branch> --spec <SPEC-ID> --by leader`, called from this leader session for a branch that `work_flow.sync_sources` lists and an approved SPEC (an empty list refuses all): the command makes the merge commit, runs the wide check itself, moves the branch by one compare-and-swap and refuses `stale_base` and the check codes without moving;";
-/// SPEC-20261125-land-sync-merge REQ-8: the first cell of the failure table's land-sync row.
-const LAND_SYNC_CMD: &str = "`moai card land-sync`";
+/// `moai card land-sync`, and the sentence names its gates and refusal codes and says that the
+/// answer tells whether the branch moved.
+const LAND_SYNC: &str = "A branch that is no card head (such as `main`) enters only through `moai card land-sync <branch> --spec <SPEC-ID> --by leader`, for a branch `work_flow.sync_sources` lists and an approved SPEC; it refuses `conflicts`, `check_failed`, `not_full_pass`, `stale_base` and `drift`, and its answer says whether the branch moved.";
 /// REQ-7: the audit goes to a session that wrote none of the change.
 const AUDIT: &str = "Send the audit of a head to a session that wrote none of the change (the AUDIT route); the author of a change never audits it.";
 /// REQ-7: landing after a `PASS` for the exact head, by the leader.
@@ -371,30 +370,29 @@ fn land_sync_sentence_comes_after_land_and_batch_and_before_landed() {
     assert_before(&t, LAND_SYNC, LANDED);
 }
 
-/// SPEC-20261125-land-sync-merge AC-8: the failure table has one land-sync row, as wide as the
-/// header, with no empty cell.
+/// SPEC-20261125-land-sync-merge AC-8: the sentence names each gate and each refusal code, and the
+/// failure table holds no row of its own for `land-sync` (the byte budget leaves no room): a
+/// refusal after the move is told by the answer, which the sentence says.
 #[test]
-fn land_sync_has_one_complete_row_in_the_failure_table() {
-    let text = raw(LEADER);
-    let section = table_section(&text);
-    let header: Vec<&str> = section
+fn land_sync_sentence_names_its_gates_and_refusal_codes() {
+    let t = leader();
+    let line = t
         .lines()
-        .find(|l| l.starts_with("| What"))
-        .expect("the table header")
-        .trim_matches('|')
-        .split('|')
-        .map(str::trim)
-        .collect();
-    let rows = table_rows(section);
-    let sync: Vec<&Vec<&str>> = rows
-        .iter()
-        .filter(|r| r[0].contains(LAND_SYNC_CMD))
-        .collect();
-    assert_eq!(sync.len(), 1, "the table needs one row for {LAND_SYNC_CMD}");
-    let row = sync[0];
-    assert_eq!(row.len(), header.len(), "the land-sync row's cell count");
-    assert_eq!(row.len(), 3, "the land-sync row's cell count");
-    assert!(row.iter().all(|c| !c.is_empty()), "an empty cell: {row:?}");
+        .find(|l| l.contains(LAND_SYNC))
+        .expect("the land-sync sentence");
+    for needle in [
+        "`--by leader`",
+        "`work_flow.sync_sources`",
+        "an approved SPEC",
+        "`conflicts`",
+        "`check_failed`",
+        "`not_full_pass`",
+        "`stale_base`",
+        "`drift`",
+        "whether the branch moved",
+    ] {
+        assert!(line.contains(needle), "the sentence lacks {needle}");
+    }
 }
 
 #[test]

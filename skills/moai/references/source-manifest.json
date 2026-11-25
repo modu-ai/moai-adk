@@ -105,7 +105,7 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "d2338bdefbd50808f257d73c6dd8420b4512c7bc93f16200349f481b9c529a98",
+      "sha256": "a660fba4dcdaf633f49e7327b90e718c9a108d89eaa3cdd8b488337495485e94",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
@@ -486,7 +486,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261124-moai-leader-route (REQ-1 to REQ-12): `/moai leader` makes the window that types it the registered coordination window; it registers with `session-register`, renews once per round, reads the ledger, sends audits to another session, lands with `moai card land --by leader` and releases the registration at the end. The completion-message and transition sentences stay in `flows/next-flow`."
       },
-      "sha256": "5a290aaaa346fb33aba91412da9f456f2482a3d92aa590122dcf317563cb93ba"
+      "sha256": "89679771c1bf25d52af53037cf4795465fc88aaa200698f5e603683244848dc3"
     },
     "workflows/plan.md": {
       "sha256": "690ea42cee7448ee4528f43c0b9137237a0c77a7a56197fb8347839b38891725",
@@ -534,7 +534,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "b448d378e6b427a54106425d0137a36c9db3a12c23003965b5bb9dd15c266be9",
+      "sha256": "c55a1e45486a5fe872f72b9b80a4dfeda20867fe84c42b0663cdf288bdce83c0",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
@@ -549,7 +549,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai agent` takes one card at a time, hands its plan, implementation and documents to the base agents in turn, submits it with `moai card submit` and waits for the leader (user decision 2026-11-25); a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "33f9d27519dc0126b8ad06d3ffcbc0b08ee0751b75a02a4b5fd9ce6d7af4d318"
+      "sha256": "d8cdfd8f8a0c34e976e2ba15dd0efef6d6cccdc33982e98bd7e4933bae4a65b8"
     }
   }
 }
