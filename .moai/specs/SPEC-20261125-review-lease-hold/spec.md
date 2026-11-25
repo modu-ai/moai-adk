@@ -10,21 +10,21 @@ created: 2026-11-25
 
 ## Intent
 
-A card that is submitted waits for an independent audit, and the lease of its reservation keeps running while it waits (default 14400 seconds from `card take`). When the lease ends the author lane cannot close the card: `release` is refused on a `review` card, `reopen` needs a live lease, and a different session can only `card reclaim` it, which counts against a lifetime allowance of three. A measurement in another repository (addendum 4 of the mo.ai.kr leader's improvement request, moai 4.2648.35) shows the result: one card in review lost its lease twice, reached generation 3 and 2 of 3 reclaims, so a FAIL verdict and a repair would have found the allowance gone; this repository had the same thing when a card stayed held until 05:36Z on 2026-11-25. The same measurement shows that every reclaim came back with an empty scope, so the lane restored it by hand with `card scope` each time. The cause is in this repository's code, not a bug of the other one: `card review` gives every path of the reservation back unless `--keep` names it, `card reclaim` copies the scope of the old reservation (`reservation_scope`) and so copies nothing, and `yield_overlaps` can take paths away from an ended lease besides. This SPEC makes the lease of a card in review last until its verdict, gives the lane a fresh lease at the verdict, lets the reclaim and the reopen of a repair bring the scope back, and does not count the first reclaim after a FAIL against the allowance.
+제출한 카드는 독립 감사를 기다리는데, 그동안에도 예약의 임대(lease)는 계속 흘러요(`card take` 때 기본 14400초). 임대가 끝나면 작성한 레인은 카드를 닫을 수 없어요: `release` 는 `review` 카드에 거절되고(`CardInReview`), `reopen` 은 살아 있는 임대가 필요하고, 다른 세션은 `card reclaim` 만 쓸 수 있는데 이것은 평생 3회까지만 세어요. 다른 저장소(mo.ai.kr 리더의 개선 요청 부록 4, moai 4.2648.35)의 실측이 결과를 보여 줘요: review 카드 하나가 임대를 두 번 잃어 generation 3, reclaim 2/3 이 됐고, FAIL 판정이 나와 고치려 하면 한도가 이미 없어요. 이 저장소에서도 2026-11-25 05:36Z 까지 한 카드가 묶여 같은 일이 있었어요. 같은 실측에서 reclaim 할 때마다 범위가 비어 돌아와서 레인이 매번 `card scope` 로 손으로 되살렸어요. 원인은 이 저장소의 코드에 있어요: `card review` 는 `--keep` 으로 이름을 대지 않은 경로를 모두 돌려주고, `card reclaim` 은 옛 예약의 범위(`reservation_scope`)를 그대로 복사하니 복사할 게 없고, `yield_overlaps` 가 끝난 임대의 경로를 더 지울 수도 있어요. 이 SPEC 은 review 카드의 임대가 판정까지 이어지게 하고, 판정이 나오면 레인에게 새 임대를 주고, reclaim 과 reopen 이 카드 자신의 범위를 되살리게 하고, FAIL 뒤 첫 reclaim 은 한도에 세지 않아요.
 
 ## Interview
 
-- Q1: A card waits in review for its audit while its lease ends and costs reclaims. Which way do you want it fixed? Options: (a) the lease of a card in review lasts until the verdict is recorded, then the lane gets a fresh lease; (b) the leader renews other sessions' reservations; (c) a takeover after an ended lease does not count against the allowance. → A: not asked yet. The leader's default is (a), and this SPEC recommends (a) with a 24 hour cap (D-1): a review that waits longer than a day is a stalled card the leader should see, and the lease checks keep working unchanged. Pick (a) pure (no cap) if you want the literal pause; it needs a pause marker in the ledger (D-1, option 2).
-- Q2: After a reclaim the new reservation has no paths, so the lane writes them back by hand. Should a reclaim (and a reopen after a FAIL) bring the card's own scope back the way a take does? → A: not asked yet. Default: yes, minus paths of another card's live reservation and shared files, which are named in the answer (D-3).
-- Q3: After a FAIL verdict the lane may find its three reclaims used up. Should the first reclaim after each FAIL verdict stay out of the count? → A: not asked yet. Default: yes, one per FAIL verdict (D-2). A general way out for a card that reached the limit belongs to `SPEC-20261125-card-take-records-worktree` and is not decided here.
+- Q1: review 에서 감사를 기다리는 동안 임대가 끝나 reclaim 횟수를 써요. 어떻게 고칠까요? 선택지: (가) review 카드의 임대가 판정이 기록될 때까지 이어지고, 판정 뒤 레인이 새 임대를 받아요 (나) 리더가 다른 세션의 예약을 갱신해요 (다) 임대가 끝난 뒤의 인수는 한도에 세지 않아요. → A: 아직 묻지 않았어요. 리더의 기본안은 (가)이고, 이 SPEC 은 (가)에 24시간 상한을 둔 안을 추천해요(D-1): 하루 넘게 감사가 안 오는 review 는 리더가 봐야 할 멈춘 카드이고, 임대 확인 지점은 그대로 둘 수 있어요. 말 그대로 멈추는 안(상한 없음)을 원하면 원장에 정지 표시가 필요해요(D-1 선택 2).
+- Q2: reclaim 하면 새 예약이 경로 없이 와서 레인이 손으로 써요. reclaim(과 FAIL 뒤 reopen)이 `card take` 처럼 카드 자신의 범위를 되살릴까요? → A: 아직 묻지 않았어요. 기본: 예. 다른 카드의 살아 있는 예약과 공유 파일에 걸리는 경로는 빼고 답에 이름을 적어요(D-3).
+- Q3: FAIL 판정 뒤 레인이 reclaim 3회를 이미 다 썼을 수 있어요. FAIL 판정마다 첫 reclaim 을 한도에 세지 않을까요? → A: 아직 묻지 않았어요. 기본: 예, FAIL 판정마다 하나(D-2). 한도에 닿은 카드의 일반적인 출구는 `SPEC-20261125-card-take-records-worktree` 의 몫이고 여기서 정하지 않아요.
 
 ## Non-goals
 
-- A general exit for a card that reached the three-reclaim limit for any other reason (it belongs to `SPEC-20261125-card-take-records-worktree`).
-- Which sessions may renew or take over another session's reservation (the ownership checks stay as they are: a live session's reservation is never taken).
-- The work-in-progress limit and what it counts (`SPEC-20261125-wip-limit-live-leases`).
-- Removing path-overlap refusals between cards (`SPEC-20261125-card-no-file-locks`); this SPEC only reads the overlap rule where it exists.
-- The lease of an `active` card, the sweep of ended leases, the early reclaim of a proven-gone holder and `card adopt`.
+- 다른 이유로 reclaim 3회 한도에 닿은 카드의 일반적인 출구(`SPEC-20261125-card-take-records-worktree` 의 몫).
+- 어떤 세션이 다른 세션의 예약을 갱신하거나 인수할 수 있는지(소유 확인은 그대로: 살아 있는 세션의 예약은 가져가지 않아요).
+- 작업 중 한도와 그것이 세는 대상(`SPEC-20261125-wip-limit-live-leases`).
+- 카드 사이의 경로 겹침 거절 제거(`SPEC-20261125-card-no-file-locks`): 이 SPEC 은 겹침 규칙이 있는 곳에서만 그것을 읽어요.
+- `active` 카드의 임대, 끝난 임대의 sweep, 사라진 보유자의 이른 reclaim, `card adopt`.
 
 ## Requirements
 
@@ -61,26 +61,26 @@ A card that is submitted waits for an independent audit, and the lease of its re
 
 ## Plan
 
-1. Wait for the approval of this SPEC and for `SPEC-20261125-card-no-file-locks` to land: it removes the path-overlap refusal between cards, which changes what REQ-6 has to leave out; if it lands first the overlap clause of REQ-6 shrinks to the shared-file case.
-2. Write the failing tests first (`tests/card/card_review_lease_hold_cli.rs`, AC-1 to AC-4) against a temporary ledger with a test clock.
-3. In `src/ledger/workflow.rs` extend the lease inside the same transaction as the state change of `review` (REQ-1) and of the verdict (REQ-2); keep one helper for "lease no earlier than clock plus n seconds".
-4. In `src/ledger/reservation.rs` word the `lease_live` answer for a card in `review` (REQ-4) and exclude a reclaim that follows a FAIL verdict from the count (REQ-7); the count stays derived from events, with the `counted: false` payload as the only exception.
-5. In `src/card/dispatch.rs` and `src/card/work.rs` fill an empty scope after reclaim and reopen from the card's own scope with the take's overlap and shared-file rules (REQ-5, REQ-6) and add the three fields of REQ-8 to the reclaim answer.
-6. Run the neighbour tests of AC-5, record the Result with one line per acceptance criterion, and name every run that was not made.
+1. 이 SPEC 의 승인과 `SPEC-20261125-card-no-file-locks` 의 착지를 기다려요: 그 SPEC 이 카드 사이 경로 겹침 거절을 없애므로 REQ-6 이 빼야 할 것이 바뀌어요. 먼저 착지하면 REQ-6 의 겹침 절은 공유 파일 경우로 줄어요.
+2. 시험 먼저: `tests/card/card_review_lease_hold_cli.rs` 에 AC-1 ~ AC-4 의 실패하는 시험을 시험 시계가 있는 임시 원장에 써요.
+3. `src/ledger/workflow.rs`: `review` 의 상태 변경(REQ-1)과 판정 기록(REQ-2)과 같은 트랜잭션에서 임대를 늘려요. "임대가 시계 + n초 이상" 도우미는 하나만 둬요.
+4. `src/ledger/reservation.rs`: review 카드의 `lease_live` 답 문구(REQ-4)와, FAIL 판정 뒤 reclaim 을 한도 계산에서 빼는 일(REQ-7)을 넣어요. 센 횟수는 계속 이벤트에서 구하고 `counted: false` 페이로드가 유일한 예외예요.
+5. `src/card/dispatch.rs`, `src/card/work.rs`: reclaim 과 reopen 뒤 빈 범위를 카드 자신의 범위로 채우고(`take` 의 겹침·공유 파일 규칙, REQ-5·6) reclaim 답에 REQ-8 의 세 필드를 더해요.
+6. AC-5 의 이웃 시험을 돌리고 Result 에 기준마다 한 줄을 적고 안 돌린 실행을 모두 밝혀요.
 
 ## Risks
 
-- The lease of a review card is longer, so a path kept with `card review --keep` stays reserved for up to a day; the leader sees it as a review card without a verdict and can ask for the audit. If the audit never comes the cap of REQ-3 ends it.
-- `SPEC-20261125-card-take-records-worktree` and `SPEC-20261125-card-no-file-locks` also change `src/ledger/reservation.rs` and `src/card/dispatch.rs`; this SPEC must be rebased on both and the reclaim count query must stay one place.
-- The work-in-progress limit (`SPEC-20261125-wip-limit-live-leases`) counts cards with a live lease, so a review card now counts for up to a day; the measurement after the change should look at how many review cards the limit holds.
-- A lane that is gone while its card is in review can neither renew nor reopen; after the cap the reclaim is the only way, and with REQ-7 only the first one after a FAIL is free. A card that fails twice goes to the leader as the flow says.
-- Filling the scope on reclaim can reserve a path that a lane no longer needs; the answer names what was filled and `card scope` can still change it.
+- review 카드의 임대가 길어지므로 `card review --keep` 으로 남긴 경로가 최대 하루 예약된 채 있어요. 리더는 판정 없는 review 카드로 보고 감사를 요청할 수 있고, 감사가 끝내 안 오면 REQ-3 의 상한이 끝내요.
+- `SPEC-20261125-card-take-records-worktree` 와 `SPEC-20261125-card-no-file-locks` 도 `src/ledger/reservation.rs` 와 `src/card/dispatch.rs` 를 바꿔요. 이 SPEC 은 둘 위로 rebase 해야 하고 reclaim 횟수를 세는 질의는 한 곳에 있어야 해요.
+- 작업 중 한도(`SPEC-20261125-wip-limit-live-leases`)는 임대가 살아 있는 카드를 세므로 review 카드가 최대 하루 세어져요. 바꾼 뒤 한도가 몇 개의 review 카드를 쥐는지 측정해야 해요.
+- review 중에 레인이 사라지면 갱신도 reopen 도 못 해요. 상한 뒤에는 reclaim 이 유일한 길이고 REQ-7 로는 FAIL 뒤 첫 번째만 공짜예요. 두 번 FAIL 한 카드는 흐름대로 리더에게 가요.
+- reclaim 이 범위를 채울 때 레인이 더는 필요 없는 경로를 예약할 수 있어요. 답에 채운 경로를 적고 `card scope` 로 고칠 수 있어요.
 
 ## Decisions
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | The lease of a card in review is extended to 24 hours at `review` and to the default 4 hours at the verdict (REQ-1 to REQ-3). Options: 1 this window (recommended: no schema change, every lease check keeps one rule); 2 a literal pause until the verdict (needs a pause marker in the ledger and a change in every lease check); 3 no change, the leader renews other sessions' reservations. | The leader's default is a pause until the verdict; this SPEC proposes the window with the same effect for any audit that arrives within a day. The user has not chosen yet. | Remove the two extensions and the reclaim wording (REQ-1, REQ-2, REQ-4). |
-| D-2 | The first reclaim after a FAIL verdict is not counted (REQ-7). | A repair after a FAIL must not stop at the allowance; one per FAIL keeps the allowance bounded because a second FAIL goes to the leader. | Count every reclaim again (remove the event exception). |
-| D-3 | A reclaim and a reopen fill an empty scope from the card's own scope and leave out overlapping and shared paths (REQ-5, REQ-6). | `card take` already fills an empty scope this way, and `card review` empties the scope on purpose (`card review` gives back every path without `--keep`). | Remove the fill; the lane widens the scope by hand as before. |
-| D-4 | The 86400 second cap equals the existing maximum lease (`MAX_LEASE_SECS`). | No new number: a lease may already be at most one day. | Change the one constant. |
+| D-1 | review 카드의 임대는 `review` 때 24시간으로, 판정 때 기본 4시간으로 늘려요(REQ-1 ~ REQ-3). 선택지: 1 이 창 방식(추천: 스키마 변경 없고 모든 임대 확인이 한 규칙을 유지) · 2 판정까지 말 그대로 멈춤(원장에 정지 표시와 모든 임대 확인의 변경이 필요) · 3 변경 없음, 리더가 다른 세션의 예약을 갱신. | 리더의 기본안은 판정까지 멈춤이고, 이 SPEC 은 하루 안에 오는 감사에는 같은 효과인 창 방식을 제안해요. 사용자는 아직 고르지 않았어요. | 두 연장과 reclaim 문구(REQ-1, REQ-2, REQ-4)를 지워요. |
+| D-2 | FAIL 판정 뒤 첫 reclaim 은 세지 않아요(REQ-7). | FAIL 뒤 고치는 일이 한도에 막히면 안 돼요. 두 번째 FAIL 은 리더에게 가므로 FAIL 하나에 하나만 면제하면 한도는 한정돼요. | 모든 reclaim 을 다시 세요(이벤트 예외를 지워요). |
+| D-3 | reclaim 과 reopen 이 빈 범위를 카드 자신의 범위로 채우고 겹치거나 공유 파일인 경로는 빼요(REQ-5, REQ-6). | `card take` 가 이미 빈 범위를 이렇게 채우고, `card review` 는 `--keep` 이 없으면 경로를 모두 돌려줘서 일부러 비워요. | 채움을 지워요. 레인이 예전처럼 손으로 넓혀요. |
+| D-4 | 86400초 상한은 기존 최대 임대(`MAX_LEASE_SECS`)와 같아요. | 새 숫자가 없어요: 임대는 이미 하루까지 가능해요. | 상수 하나를 바꿔요. |
