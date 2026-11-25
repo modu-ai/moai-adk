@@ -114,6 +114,77 @@ fn first_parent_refusal(project: &Path, candidate: &str, want: &str) -> Option<S
     })
 }
 
+/// What the verdict check reads for a head that no `audited` option names
+/// (SPEC-20261125-land-closes-audited-merge).
+enum Covering {
+    /// The verdicts of the head itself: it has some, or it is no merge of two parents, or no
+    /// verdict of the card names its second parent.
+    Own,
+    /// The head is the clean merge of its first parent and a second parent the card has a verdict
+    /// on and no verdict names the head itself: the verdicts of the second parent are read.
+    Second(String),
+    /// The head merges a second parent the card has a verdict on, but its tree is not the clean
+    /// merge of its parents: the reason a closing landing is refused.
+    NotClean(String),
+}
+
+/// Reads which head the verdict check reads for `head` (REQ-1, REQ-4, REQ-5, REQ-6). A verdict
+/// that names the head itself decides, a FAIL included; otherwise a two-parent merge whose second
+/// parent has a verdict of the card is covered by it only when its tree is the clean merge.
+fn covering(
+    project: &Path,
+    conn: &rusqlite::Connection,
+    card_id: i64,
+    head: &str,
+) -> Result<Covering> {
+    let events = workflow::verdict_events(conn, card_id).map_err(|e| e.to_string())?;
+    if events.iter().any(|e| e.head == head) {
+        return Ok(Covering::Own);
+    }
+    let Ok(line) = check::git_text(project, &["rev-list", "--parents", "-n", "1", head]) else {
+        return Ok(Covering::Own);
+    };
+    let ids: Vec<&str> = line.split_whitespace().collect();
+    if ids.len() != 3 || !events.iter().any(|e| e.head == ids[2]) {
+        return Ok(Covering::Own);
+    }
+    let (first, second) = (ids[1], ids[2]);
+    Ok(match check::join_of(project, head, first, second) {
+        check::Join::Clean => Covering::Second(second.to_string()),
+        other => Covering::NotClean(not_clean_reason(head, second, &other)),
+    })
+}
+
+/// The refusal of a closing landing of a merge that is not the clean merge of its parents: it
+/// begins `no_pass:`, names what differs and says what the auditor records instead.
+fn not_clean_reason(head: &str, second: &str, join: &check::Join) -> String {
+    let how = match join {
+        check::Join::Conflicts => {
+            "the merge of its parents conflicts, so it holds a conflict resolution".to_string()
+        }
+        check::Join::Differs(paths, total) => {
+            let more = if *total > paths.len() {
+                format!(" and {} more", total - paths.len())
+            } else {
+                String::new()
+            };
+            format!(
+                "it differs from the clean merge of its parents in {}{more}",
+                paths.join(", ")
+            )
+        }
+        check::Join::Unreadable(why) => {
+            format!("git could not compute the merge of its parents: {why}")
+        }
+        check::Join::Clean => String::new(),
+    };
+    format!(
+        "no_pass: the merge commit {head} is not the clean merge of its parents ({how}), so the \
+         PASS of its second parent {second} does not cover it; the auditor must record a verdict \
+         on the merge commit itself with `card verdict --head {head}`"
+    )
+}
+
 fn refused(why: impl std::fmt::Display) -> String {
     format!("card land refused: {why}")
 }
@@ -263,7 +334,6 @@ fn land_inner(
             return Err(unchanged(why));
         }
     }
-    let verdict_head = req.audited.unwrap_or(req.head);
     let sql_err = |e: rusqlite::Error| LedgerError::from(e).to_string();
     let (id, mut ledger) = open_for_write(project, home)?;
     let (kind, spec) = spec_link::kind_and_spec(ledger.conn(), card_id)
@@ -332,6 +402,20 @@ fn land_inner(
         )));
     }
 
+    // The head the verdict check reads: the audited head a batch names, the second parent of a
+    // clean merge the card has a verdict on (SPEC-20261125-land-closes-audited-merge), or the
+    // candidate itself.
+    let covering = if req.audited.is_some() {
+        Covering::Own
+    } else {
+        covering(project, ledger.conn(), card_id, req.head).map_err(unchanged)?
+    };
+    let audited_head: Option<String> = match &covering {
+        Covering::Second(second) => Some(second.clone()),
+        _ => req.audited.map(str::to_string),
+    };
+    let verdict_head: &str = audited_head.as_deref().unwrap_or(req.head);
+
     // Git: the branch, the tip, the candidate and where it stands.
     let branch = landed::integration_branch(project).map_err(|why| {
         unchanged(format!(
@@ -369,10 +453,15 @@ fn land_inner(
     }
     // A join candidate is landed from the commit it was made on: its first parent is the tip read
     // here (or, in the batch's preflight, the commit of the head before it).
-    if req.audited.is_some() && standing == Standing::OnTip {
+    if audited_head.is_some() && standing == Standing::OnTip {
         if let Some(why) = first_parent_refusal(project, req.head, preflight.unwrap_or(&tip)) {
             return Err(unchanged(why));
         }
+    }
+    // A merge that holds more than the clean merge of its parents is not covered by the verdict of
+    // its second parent (REQ-4); a slice (`--keep-open`) goes on as the mode of the check says.
+    if let (Covering::NotClean(why), false) = (&covering, req.keep_open) {
+        return Err(unchanged(why));
     }
     if let Some(why) = drift::refusal(ledger.conn(), &branch, &tip).map_err(unchanged)? {
         return Err(conflict(why));
@@ -592,6 +681,7 @@ fn land_inner(
     let mut answer = json!({
         "action": "land", "project_id": id, "name": name, "card_id": card_id,
         "branch": branch, "moved": moved, "from_tip": tip, "to_tip": to_tip, "head": req.head,
+        "audited_head": audited_head,
         "variants": variants, "profile_disagrees": profile_disagrees,
         "from": done.from, "state": done.state, "rev": done.rev, "closed_at": done.closed_at,
         "closed": done.closed, "open_criteria": done.open_criteria,
