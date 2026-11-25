@@ -128,3 +128,17 @@ created: 2026-11-25
 | D-7 | 명령이 있는 `needs_decision`(go-state 이동 등)은 `apply` 예요. 대안: `ask`. | 사용자 결정 (가): 실행할 수 있는 모든 단계를 한 번에. 제안, 승인 전. | `next_of` 의 조건 하나를 바꿔요. |
 | D-8 | 새 문장은 영어로 내요. 옮기는 일은 세션이 해요(`reason` 과 같아요). | 제안, 승인 전. | 해당 없음. |
 | D-9 | 막힌 단계만 남아도 `ask` 는 null 이고 `finish.open` 이 알려요. | 사용자 결정 (나)를 넓힌 해석. 제안, 승인 전. | `finish` 의 조건을 `all_unchanged` 로 좁혀요. |
+
+## Result
+
+- AC-1: met — `cargo test --locked --offline --test project_update_plan_cli next_say_ac1_` passed (exit 0, 13 passed with the whole `next_say_` filter, log target/impl-green/next_say.log).
+- AC-2: met — `... next_say_ac2_` passed in the same run, 74 state/command/confirmation/choices/waiting combinations plus the named steps.
+- AC-3: met — `... next_say_ac3_` passed, and the unit test `project_update::guide` (1 passed, target/impl-green/unit.log) checks every sentence of the table.
+- AC-4: met — `... next_say_ac4_` passed.
+- AC-5: met — `... next_say_ac5_` passed, three tests.
+- AC-6: met, with one reading — `... next_say_ac6_` passed. The sentence "after is empty behind go-state" cannot hold literally: while a runnable step exists, `after` names the runnable step the waiting step stands behind (for the backup it is `reports`), and it never names a step that prints no command. The tests assert that reading, which matches REQ-16.
+- AC-7: met — `... next_say_ac7_` passed.
+- AC-8: met — `... next_say_ac8_` passed; the chain converges in two rounds to `all_unchanged` true.
+- AC-9: met — the whole `project_update_plan_cli` target passed (73 passed, target/impl-green/whole2.log) and the nine neighbour targets of the SPEC plan passed (target/impl-green/neighbours.out). `cargo clippy --locked --offline --all-targets -- -D warnings` exited 0 (target/impl-green/clippy2.log).
+
+Deviation from the Plan text: `Step` carries no new `behind` field. The test helper of the declined-step code builds `Step { .. }` literally outside this SPEC's scope, so the table `BEHIND` next to the `AFTER_*` constants and the method `Step::behind` give the same facts without touching that file. When `ask` is null, `chain` prints empty lists instead of null.
