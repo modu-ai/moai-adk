@@ -249,10 +249,11 @@ fn the_worktree_and_what_lies_inside_it_are_refused() {
     std::fs::write(work.path().join(".git"), "gitdir: elsewhere\n").unwrap();
     let inner = work.path().join("target").join("t");
     std::fs::create_dir_all(&inner).unwrap();
+    // The reason names the worktree itself, not the repository check that comes after it.
     let why = fits(&inner, work.path()).unwrap_err();
-    assert!(why.contains("worktree"), "{why}");
+    assert_eq!(why, "it lies inside the worktree");
     let why = fits(work.path(), work.path()).unwrap_err();
-    assert!(why.contains("worktree"), "{why}");
+    assert_eq!(why, "it lies inside the worktree");
 }
 
 /// AC-16: a case a test cannot build with the real `/tmp`: every candidate fails.
