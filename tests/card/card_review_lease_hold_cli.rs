@@ -1,8 +1,8 @@
 //! SPEC-20261125-review-lease-hold: a card in `review` keeps its lease until the verdict is
 //! recorded, and a reclaimed or reopened reservation brings back the card's own scope. Every
 //! command runs the built binary against a temporary HOME and a temporary repository; the real
-//! `~/.moai` is not read or written. The clock cannot be set, so a test that needs time to pass
-//! moves the lease in the ledger directly (the way `card_reclaim_cli` ends a lease).
+//! home state folder is not read or written. The clock cannot be set, so a test that needs time
+//! to pass moves the lease in the ledger directly (the way `card_reclaim_cli` ends a lease).
 #![cfg(unix)]
 
 use crate::common;
