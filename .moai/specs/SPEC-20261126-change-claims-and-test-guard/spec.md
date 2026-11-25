@@ -77,4 +77,19 @@ created: 2026-11-26
 
 ## Result
 
-(아직 구현 전이에요.)
+- AC-1: met — `cargo test --locked --offline --no-fail-fast --test agent_defs_package ...` 종료 코드 0, 22 passed 0 failed(로그 `target/claims/green3.log`), 시험 `change_claims_rules_are_in_the_shipped_agents_and_reference`가 `agents/audit.md` 의 Steps 4번(다섯 종류 주장을 diff 와 명령 출력에 하나씩 맞대는 줄)과 맞는 변경이 없는 주장을 감사 계약의 분류로 지적하는 규칙을 확인해요.
+- AC-2: met — 같은 실행(22 passed, 종료 코드 0)의 같은 시험이 `agents/audit.md` 의 Claims 출력 항목과 `agents/impl.md` 의 Claims 출력 항목을 확인해요.
+- AC-3: met — 같은 실행(22 passed, 종료 코드 0)의 같은 시험이 `agents/audit.md` Steps 5번(지워지거나 바뀐 시험 목록과 이유 묻기)과 `agents/impl.md` Boundaries 항목("Never delete or weaken a test")을 확인해요.
+- AC-4: met — 같은 실행(22 passed, 종료 코드 0)의 같은 시험이 `agents/impl.md` 의 Claims 출력 항목에 있는 범위 밖 줄을 `handed to` 로 쓰라는 문구를 확인해요.
+- AC-5: met — 같은 실행(22 passed)의 시험 `reads_lists_match_the_design_and_render_on_every_host`가 통과해요. `base_agent_contract` 8 passed 종료 코드 0(`moai-impl` 과 `moai-audit` 의 고정된 reads 목록에 `internal/change-claims` 와 `internal/quality` 추가), `base_agents_nested` 7 passed. 참조 문서는 `skills/moai/references/internal/change-claims.md` 예요.
+- AC-6: met — 같은 실행(22 passed, 종료 코드 0)의 시험 `change_claims_rules_are_in_the_shipped_agents_and_reference`가 `agents/audit.md` Steps 6번, `skills/moai/references/internal/change-claims.md`, `agents/impl.md` 의 Verification 줄을 확인해요.
+- AC-7: met — `cargo test --locked --offline --test source_manifest_facts` 8 passed 종료 코드 0, `this_repository_manifest_is_what_the_tool_writes` 포함(`references/internal/change-claims.md` 항목과 새로 쓴 `workflows/work.md` 해시).
+- AC-8: met — 시험 `the_repair_ready_note_names_each_finding_with_its_probe`가 `agent_defs_package` 실행(22 passed, 종료 코드 0)에서 통과해요. 해당 문단은 `skills/moai/workflows/work.md` 의 "## Base agents" 앞에 있어요.
+
+가드 변이(시험 한 번씩, 로그 `target/claims/mutant-<name>.log`, 모두 종료 코드 101, 매번 `git checkout --` 뒤 트리가 깨끗해요): `agents/audit.md` 에서 "one by one against the diff and the command output" 를 빼기, `agents/audit.md` 에서 "git diff --stat --diff-filter=DM" 을 빼기, `agents/impl.md` 에서 "Never delete or weaken a test" 를 빼기, `skills/moai/workflows/work.md` 에서 "never in a commit message" 를 빼기. 네 변이 모두 해당 시험을 "lacks ..." 메시지로 실패시켰어요.
+
+Not done:
+
+- SPEC frontmatter 는 `status: draft` 이고 `approval:` 블록이 없어요. 위임된 승인은 리더가 원장 노트로 기록했고, 블록은 리더가 랜딩 때 써요.
+- 워크플로 린트 단계와 도움말 변경이 도움말 시험을 고르는지의 고정은 이 SPEC 밖이에요(다른 카드가 가진 코드).
+- `moai check affected --card` 영수증은 READY 노트에 붙이고, 이 Result 에는 붙이지 않아요.
