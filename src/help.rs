@@ -1867,6 +1867,13 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ),
     (
         "update",
+        "confirm_conflict_replace",
+        "미리 보기의 `plan.hosts[].conflict_replace.confirm_token`: 그 호스트에서 충돌한 파일을 \
+         `<상태 폴더>/backups/<UTC>-<호스트>-conflict/` 에 복사한 뒤 패키지 바이트로 덮음. \
+         --confirm 과 함께만 쓰며 여러 번 쓸 수 있음",
+    ),
+    (
+        "update",
         "revert_switch",
         "앞선 --confirm-switch 가 `moai.before-<STAMP>` 로 보관한 옛 전환 스크립트를 되돌림. \
          혼자 실행되며 --confirm 류 플래그와 같이 못 씀",

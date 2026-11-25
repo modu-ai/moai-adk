@@ -887,6 +887,11 @@ enum Command {
         /// the rest stays a preview.
         #[arg(long, value_name = "TOKEN")]
         confirm_git_hooks: Option<String>,
+        /// The preview's `plan.hosts[].conflict_replace.confirm_token`: copy the files of that host that are
+        /// in conflict into `<state home>/backups/<UTC>-<host>-conflict/` and then write the package
+        /// bytes over them. Repeatable; applied together with --confirm, never alone.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_conflict_replace: Vec<String>,
         /// Put back the old name-switch script saved as `moai.before-<STAMP>` by an earlier
         /// --confirm-switch; runs alone (not combinable with a --confirm flag), nothing else changes.
         #[arg(long, value_name = "STAMP")]
@@ -1937,6 +1942,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             confirm_home,
             confirm_switch,
             confirm_git_hooks,
+            confirm_conflict_replace,
             revert_switch,
             allow_older,
             json: _,
@@ -1949,13 +1955,14 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             // The shared confirm prompt (#2806): same terminal rule and question as before. With
             // screens on (#2894) the question shows the check and change lists instead of the
             // summary text, and what was answered is kept for the end screen.
-            let result = moai_cli::update::update_command_switch(
+            let result = moai_cli::update::update_command_full(
                 &home,
                 confirm.as_deref(),
                 confirm_cleanup.as_deref(),
                 confirm_home.as_deref(),
                 confirm_switch.as_deref(),
                 confirm_git_hooks.as_deref(),
+                &confirm_conflict_replace,
                 revert_switch.as_deref(),
                 allow_older,
                 |summary, preview| {
