@@ -5,6 +5,7 @@ status: approved
 revision: 1
 created: 2026-11-24
 parent: SPEC-20261122-claude-md-flow-rule
+branch: spec/desktop-install-agents-r2-20261124
 approval:
   by: leader
   at: 2026-11-23
