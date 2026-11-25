@@ -178,19 +178,19 @@ shasum -a 256 -c sha256.sum
 
 ## 7. HeadVer 릴리스 workflow (C-93, SPEC-20261119-headver-release-workflow)
 
-사용자 결정 2026-11-18T22:03:35Z(카드 C-67 note 2245): 릴리스 `{build}` 는 릴리스를 만드는 workflow 하나의 첫 시도 run number(D5), tag 는 `moai-adk-v{head}.{yearweek}.{build}` 이고 접미사 없이 RC 는 GitHub pre-release 표시(D6), 로컬 빌드는 작은 계수기를 유지하고 둘째 `--version` 줄로 구분(D4). 이 절은 그 결정을 담은 `.github/workflows/release.yml` 의 사용 순서와 한계를 적는다. 위 1~6절의 cargo-dist 제안과 `moai-cli-v` 이름은 설계 기록이라 그대로 두고, 아래 tag 이름이 그 이름을 대체한다(`tag-namespace` 와 `--source-ref` 의 이름은 적용 전에 승인 항목 1 과 함께 바뀌어야 한다).
+사용자 결정 2026-11-25(`SPEC-20261125-headver-weekly-release`, 앞선 2026-11-18T22:03:35Z 의 D5 "릴리스 `{build}` 는 workflow 의 run number" 를 대체한다): 개발 빌드는 `{head}.{yearweek}.{build}-dev`(`build` 는 계속 올라간다, 예 `4.2648.26-dev`), 릴리스는 `{head}.{배포 월요일의 주}.{0부터의 순번}`(예 `4.2649.0`), 릴리스 브랜치는 `release/v{head}.{yearweek}.{n}`, tag 는 `moai-adk-v{버전}` 이고 접미사 없이 RC 는 GitHub pre-release 표시(D6 그대로), 개발 빌드는 둘째 `--version` 줄로 구분(D4). 이 절은 그 결정을 담은 `.github/workflows/release.yml` 의 사용 순서와 한계를 적는다. 위 1~6절의 cargo-dist 제안과 `moai-cli-v` 이름은 설계 기록이라 그대로 두고, 아래 tag 이름이 그 이름을 대체한다(`tag-namespace` 와 `--source-ref` 의 이름은 적용 전에 승인 항목 1 과 함께 바뀌어야 한다).
 
 ### 7.1 workflow가 하는 일과 하지 않는 일
 
-- 시작: 사람이 `git push origin <40자 sha>:refs/heads/release/<40자 sha>`(후보는 `release/rc/<40자 sha>`)를 push 할 때만. `workflow_dispatch` 는 기본 브랜치에 파일이 있어야 해서 쓰지 않는다(`candidate.yml` 과 같은 이유).
-- `plan` job: 브랜치 이름이 push 한 commit 을 가리키는지, 첫 시도인지(재실행은 run number 를 그대로 가져 번호가 겹치므로 거절), `HEADVER` 와 UTC 시계 한 번으로 `{head}.{yearweek}.{build}` 를 만들고, 같은 tag 가 있거나 기존 `moai-adk-v*` tag 의 build 가 이번 번호보다 크거나 같으면 거절한다.
-- `build` job: 그 번호(`MOAI_BUILD_NUMBER`)로 빌드해 `moai-cli`·`moai` 의 `--version` 이 `moai-cli <버전> (rust)` 와 `CI build <번호> (MOAI_BUILD_NUMBER), built …` 이고 tag 가 `moai-adk-v<버전>` 인지 확인한 뒤 릴리스 노트를 job 요약에 쓴다.
+- 시작: 사람이 `git push origin <40자 sha>:refs/heads/release/v{head}.{yearweek}.{n}`(후보는 `release/rc/v{head}.{yearweek}.{n}`)를 push 할 때만. 예: 2026-11-25 에 만들어 월요일 2026-11-30 에 내보내는 첫 릴리스는 `release/v4.2649.0`. 옛 `release/<40자 sha>` 모양은 받지 않는다. `workflow_dispatch` 는 기본 브랜치에 파일이 있어야 해서 쓰지 않는다(`candidate.yml` 과 같은 이유).
+- `plan` job: `{head}` 는 push 한 commit 의 `HEADVER`, `{yearweek}` 는 UTC 시계 한 번 뒤의 첫 월요일이 속한 ISO 주(월요일에 push 해도 그 다음 월요일; 연말은 그 월요일의 ISO 주-연도: 2026-12-28 은 `2653`, 2027-01-04 는 `2701`), `{n}` 은 같은 head·주의 `moai-adk-v*` tag 가 쓰지 않은 가장 낮은 번호(없으면 0)다. 브랜치 이름이 이 버전과 정확히 같지 않으면(다른 head·주·번호, 이미 쓰인 번호 포함) 거절하고, push 한 commit 이 원격 `NeXT` 에 없으면(또는 클론에 원격 `NeXT` 가 없으면) 빌드 전에 멈춘다.
+- `build` job: 그 버전(`MOAI_RELEASE_VERSION`)으로 빌드해 `moai-cli`·`moai` 의 `--version` 이 `moai-cli <버전> (rust)` 와 `release build <번호> (MOAI_RELEASE_VERSION), built …` 이고 tag 가 `moai-adk-v<버전>`, 브랜치가 `release/v<버전>`(또는 `release/rc/v<버전>`)인지 확인한 뒤 릴리스 노트를 job 요약에 쓴다.
 - 하지 않는 일: tag 만들기·push, 릴리스 만들기·게시, 산출물 업로드, API 호출, secret 읽기. token 은 읽기 전용이다.
 
 ### 7.2 사람이 하는 순서 (매번 사용자 확인)
 
 1. 올릴 commit 이 통합 브랜치에서 `ci` 성공인지 읽는다.
-2. 위 브랜치를 push 한다. 실행이 실패하면 재실행하지 말고 새 commit 이름으로 새 브랜치를 push 한다.
+2. 위 브랜치를 push 한다. 이름은 요약이 말하는 버전과 같아야 한다(계산은 plan 이 한다). 먼저 원격 `NeXT` 가 그 commit 을 가지고 있어야 한다. 같은 이름을 다른 commit 으로 덮어쓰지 않는다: 바뀐 릴리스는 다음 번호로 새 브랜치를 낸다.
 3. `release` 실행의 요약에서 tag·버전·commit·pre-release 표시를 읽는다.
 4. 올리기 직전에 원격 tag 를 다시 읽는다: `git ls-remote --tags origin 'moai-adk-v*'`. plan 은 checkout 이 가져온 tag 만 본다.
 5. 사용자가 확인하면 tag 를 만들고 push 하고(`--verify-tag` 로) 릴리스를 게시한다. RC 는 `--prerelease`. 정식판의 latest 격리(위 6번)는 여전히 HOLD 다.
@@ -198,7 +198,7 @@ shasum -a 256 -c sha256.sum
 
 ### 7.3 한계
 
-- 같은 주에는 숫자만 순서를 정한다. 릴리스 계수기는 1 부터 시작하고 로컬 계수기는 이미 더 크므로, 릴리스 `4.2648.1` 이 설치된 호스트의 같은 주 로컬 빌드 `4.2648.7` 은 더 새 빌드로 읽혀 `--allow-older` 없이 업데이트된다. 설치 기록에는 버전 글자만 있어 종류를 구별하지 못한다. 반대로 로컬 빌드가 릴리스보다 낮으면 `--allow-older` 가 필요하다. 둘 다 `tests/update_headver.rs` 의 시험이 고정한다(리더 결정, 카드 C-93 note 2260). 종류 표시로 순서를 바꾸는 방안은 새 카드에서 사용자에게 묻는다.
+- 순서는 숫자(head, 주, 세 번째 숫자)가 정하고, 세 숫자가 모두 같을 때만 릴리스가 그 `-dev` 보다 위다. 릴리스 번호는 주마다 0 부터 시작하고 개발 `{build}` 는 계속 올라가므로(수십), 배포 월요일 뒤에 만든 개발 빌드(`4.2649.27-dev`)는 같은 주 릴리스(`4.2649.0`)보다 새 빌드로 읽혀 `--allow-older` 없이 업데이트된다. 개발 빌드가 설치된 호스트에 같은 주 릴리스 `4.2649.1` 이 나오면 개발 빌드가 더 새로 읽혀 `--allow-older` 가 필요하다(사용자 배포는 릴리스만 설치하므로 영향이 없다). 접미사 없는 옛 설치 폴더(`4.2648.26`)는 릴리스 모양으로 읽는다. 이 순서는 `tests/update_headver.rs` 와 `src/headver.rs` 의 시험이 고정한다(`SPEC-20261125-headver-weekly-release` O-5 a).
 - `install/install.sh` 와 `install/install.ps1` 은 릴리스를 찾을 때와 내려받을 때(`--version` 으로 고정해도) `moai-cli-v` 접두사만 쓴다(`TAG_PREFIX`, `$TagPrefix`). 그래서 `moai-adk-v*` tag 로 게시한 릴리스는 설치 스크립트가 찾지도 내려받지도 못한다. `install/**` 는 이 SPEC 이 쓰지 않아서 고치지 않았다. 접두사를 맞추는 일(설치 스크립트가 `moai-adk-v` 를 읽게 하거나, tag 를 `moai-cli-v` 로 돌리기)은 사용자가 고른 뒤 새 카드에서 한다.
 - `moai-adk-v*` tag ruleset 이 아직 없어서 tag 를 지우거나 옮길 수 있고, 그러면 plan 의 "build 는 올라가기만 한다" 검사가 약해진다. ruleset 변경은 별도 사용자 선택이다.
 - 한 번의 Linux 빌드로 버전만 확인한다. 세 플랫폼 산출물, attestation, 게시 job 은 이 절의 범위 밖이다(위 6절의 승인 항목).

@@ -29,8 +29,7 @@ const SCHEMA_VERSION: u32 = 1;
 const STATE_DIR: &str = "agents";
 
 /// The user-level agent folder of a host: Claude Code `~/.claude/agents/`
-/// (code.claude.com/docs/en/sub-agents). The Codex and OMP folders are no longer written
-/// (SPEC-20261122-codex-home-update-removed). The host folder is [`crate::host_home`]'s
+/// (code.claude.com/docs/en/sub-agents). The host folder is [`crate::host_home`]'s
 /// (`CLAUDE_CONFIG_DIR`, card C-79); a relocated `agents` link to the default folder is
 /// followed there (decision "기본 폴더 링크만 허용").
 fn host_dir(home: &Path, host: &str) -> Result<PathBuf> {

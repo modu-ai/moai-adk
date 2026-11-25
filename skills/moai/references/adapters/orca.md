@@ -19,6 +19,10 @@ Run these before relying on any flag, and prefer `--json` for agent calls:
 
 Never invent a flag from memory. Resolve the executable the way Orca's skill stub does: `ORCA_CLI_COMMAND` when set, then `orca-dev`, then `orca-ide` on Linux, otherwise `orca`.
 
+## Messaging between sessions
+
+When the host has no cross-session message (or it is refused or held), send with `orca orchestration send` to the session's terminal handle, and let the leader read replies with `orca orchestration check`. This is the second step of the channel order in `flows/team-messages`; the ledger note alone is the third. A message is a notice and the ledger is the record.
+
 ## Lines MoAI keeps
 
 - Read a terminal before sending to it, and never overwrite another session's unsubmitted input.
@@ -53,7 +57,7 @@ Orca is optional for every workflow. Nothing in the `moai` tool runs `orca`, and
 | AUDIT | works | works | read-only is enforced by the agent file on Claude Code only; the verdict's first line has one format on every host |
 | SYNC | works | works | none |
 | WORK | works (Orca not used) | works | none |
-| LEADER | works: `moai lane-send` reads a lane terminal and sends to it | replaced: the host's message tool carries the dispatch | the cross-session message has no `moai` command on any host yet |
+| LEADER | works: the host's message tool carries the dispatch first, and `moai lane-send` (a lane terminal read and a send) is the fallback, with `/clear` and screen reads | replaced: the host's message tool carries the dispatch | the cross-session message has no `moai` command on any host yet |
 
 Unsupported today, tracked in Issue #2936: the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see, so UPDATE is unsupported with Orca until that repair lands. The table is pinned by `tests/orca_optional_3005.rs`: a workflow without a row, or a row without one of the three words, fails the test.
 

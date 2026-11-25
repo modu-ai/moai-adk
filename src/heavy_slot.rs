@@ -5,18 +5,23 @@
 //! `heavy-slot-acquire [--max N] --name LANE [--dir DIR] -- COMMAND…` waits for one of N slots,
 //! runs COMMAND and returns COMMAND's exit code (128 + the signal number when it ends on a
 //! signal). A slot is a file `slot-<i>` with an exclusive `flock` (std `File::try_lock`); the
-//! open file is handed to COMMAND, so the slot stays held while the wrapper, COMMAND or any
-//! child or descendant of COMMAND that still has the file open is alive, and the operating
-//! system frees it when every one of them is gone, also after SIGKILL — no slot file is left
-//! to clean. A descendant that outlives COMMAND (a background process the command started)
-//! therefore keeps the slot after the wrapper has ended; `status` then still lists the slot
-//! with the wrapper's recorded pid, which is dead. Each `held` entry of `status` says so
-//! (`alive`: true, false, or null when the record names no process); for a dead pid it also
-//! lists the processes that have the slot file open (`holders`, `pid` and `comm`, from
-//! `/proc` or `lsof`; `unavailable` with `holders` null is not "nobody"). That is the list of
-//! processes with the file open, not a proof of who owns the lock. Ending such a process is
-//! for its owner; a slot file is never edited or deleted by hand. The Python twin has no
-//! `alive` or `holders`. A waiter holds `waiting/<ns>-<pid>-<max>` (its own `--max` last), and
+//! open file is handed to COMMAND, so a nested caller in COMMAND can reuse the slot. The
+//! holder unlocks the slot when the holder ends (SPEC-20261125-heavy-slot-release-on-exit):
+//! `flock(LOCK_UN)` on the holder's own open file description frees the slot for every
+//! descriptor that shares it, so a child or descendant of COMMAND that outlives it (a
+//! background process, a test child) and still has the file open no longer keeps the slot. A
+//! caller that only reuses an inherited slot never unlocks the outer holder's slot. A holder
+//! killed by SIGKILL cannot unlock: the slot then stays held until the wrapper's command and
+//! every descendant that has the file open are gone, and the operating system frees it — no
+//! slot file is left to clean. `status` then lists the slot with the wrapper's recorded pid,
+//! which is dead. Each `held` entry of `status` says so (`alive`: true, false, or null when
+//! the record names no process); for a dead pid it also lists the processes that have the slot
+//! file open (`holders`, `pid` and `comm`, from `/proc` or `lsof`; `unavailable` with
+//! `holders` null is not "nobody"), carries one `warning` line naming the slot, the dead pid
+//! and those processes, and the same line is in the top-level `warnings` array (empty when no
+//! slot has one). That is the list of processes with the file open, not a proof of who owns
+//! the lock. Ending such a process is for its owner; a slot file is never edited or deleted
+//! by hand. The Python twin has no `alive` or `holders`. A waiter holds `waiting/<ns>-<pid>-<max>` (its own `--max` last), and
 //! its place is its rank among live waiters by name. Waiters start in arrival order
 //! (SPEC-20261122-check-affected-one-slot REQ-4): every caller first creates and locks its own
 //! waiting file. On each look it lists the free slots of its own `0..max`, lowest first, and
@@ -1198,6 +1203,21 @@ mod sys {
         }
     }
 
+    /// A holder that took the slot gives it back when it ends: `flock(LOCK_UN)` on its own open
+    /// file description unlocks it for every descriptor that shares that description, so a
+    /// descendant that outlives the command and still has the descriptor open (a test child, a
+    /// background process) no longer keeps the slot. A holder killed by SIGKILL never gets here;
+    /// the slot then stays held until every process with the file is gone. An inherited slot
+    /// (`file` is `None`) belongs to the outer holder and is never unlocked here.
+    impl Drop for Held {
+        fn drop(&mut self) {
+            if self.file.is_some() {
+                // SAFETY: flock(2) on the descriptor this value owns; it is closed after this.
+                unsafe { libc::flock(self.fd, libc::LOCK_UN) };
+            }
+        }
+    }
+
     /// The slot named by [`super::SLOT_FD_ENV`], reused only when all of these hold; anything
     /// else is `None`, and the caller queues as before:
     /// 1. the path names `slot-<digits>` in `folder` itself (the same folder by device and inode,
@@ -1591,19 +1611,40 @@ mod sys {
         let alive = alive_of(&rec);
         rec["alive"] = json!(alive);
         if alive == Some(false) {
-            match find(slot) {
+            let open_by = match find(slot) {
                 Some((found, source)) => {
                     rec["holders"] = json!(found
                         .iter()
                         .map(|h| json!({"pid": h.pid, "comm": h.comm}))
                         .collect::<Vec<_>>());
                     rec["holders_source"] = json!(source);
+                    if found.is_empty() {
+                        "no process found with the file open".to_string()
+                    } else {
+                        found
+                            .iter()
+                            .map(|h| format!("{} {}", h.pid, h.comm))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    }
                 }
                 None => {
                     rec["holders"] = Value::Null;
                     rec["holders_source"] = json!("unavailable");
+                    "holders unavailable".to_string()
                 }
-            }
+            };
+            // One line a person reads: the slot, the recorded pid that is gone, and who has the
+            // slot file open now (pid and name only, never argv).
+            let number = slot
+                .file_name()
+                .and_then(|n| n.to_str())
+                .and_then(|n| n.strip_prefix("slot-"))
+                .unwrap_or("?");
+            let pid = rec.get("pid").and_then(Value::as_i64).unwrap_or(0);
+            rec["warning"] = json!(format!(
+                "slot {number} is held by a process other than its recorded holder (pid {pid} is not running); open by: {open_by}"
+            ));
         }
         rec
     }
@@ -1647,9 +1688,15 @@ mod sys {
             }
             Err(_) => Value::Null,
         };
+        // The warning line of every held slot that has one, so a reader finds them in one place.
+        let warnings: Vec<Value> = held
+            .iter()
+            .filter_map(|h| h.get("warning").cloned())
+            .collect();
         let mut answer = json!({
             "folder": folder.display().to_string(),
             "held": held,
+            "warnings": warnings,
             "refused": refused,
             "build_jobs_cap": build_jobs_cap,
             "stale_waiting": stale_waiting,

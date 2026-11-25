@@ -29,6 +29,11 @@ pub fn version(package: &str, raw: Option<&str>) -> Result<String, String> {
 /// workflow's run number on the run's first attempt, nothing on a re-run.
 pub const CI_ENV: &str = "MOAI_BUILD_NUMBER";
 
+/// The variable a release build sets to its whole version (SPEC-20261125-headver-weekly-release):
+/// `{head}.{release week}.{serial}`, planned by the release workflow from the branch name
+/// `release/v{head}.{yearweek}.{n}`. A build without it is a development build (`-dev`).
+pub const RELEASE_ENV: &str = "MOAI_RELEASE_VERSION";
+
 /// The local build number in the raw `MOAI_LOCAL_BUILD` value: `None` when unset or empty,
 /// otherwise 1 to [`MAX`] in plain decimal digits (card C-67 S1: the HeadVer `{build}`).
 pub fn number(raw: Option<&str>) -> Result<Option<u32>, String> {

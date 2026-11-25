@@ -90,10 +90,17 @@ pub fn context(
         },
         _ => ledger_failure = Some("ledger_absent"),
     }
-    let text = match second {
+    let mut text = match second {
         Some(line) => format!("{first}\n{line}"),
         None => first,
     };
+    if let Some(line) = checkout
+        .as_ref()
+        .and_then(|c| guard_line(&root, &c.git_dir))
+    {
+        text.push('\n');
+        text.push_str(&line);
+    }
     Context {
         output: json!({"hookSpecificOutput": {
             "hookEventName": "SessionStart",
@@ -106,6 +113,45 @@ pub fn context(
 struct Checkout {
     root: PathBuf,
     git_dir: PathBuf,
+}
+
+/// The one line that names a missing integration branch guard (SPEC-20261125-integration-guard-
+/// install REQ-4): only for a profile that names an integration branch, exactly when the hook
+/// `reference-transaction` of the common git folder is absent or not executable or the record
+/// `moai/integration-branch` is absent. It reads the profile and looks at two paths, starts no
+/// program and decides nothing; a read that fails adds no line.
+fn guard_line(root: &Path, git_dir: &Path) -> Option<String> {
+    let branch = moai_cli::card::landed::profile_branch(root).ok()?;
+    let common = match read_small(&git_dir.join("commondir"), 4096) {
+        Some(text) => {
+            let line = text.lines().next()?.trim().to_owned();
+            git_dir.join(line)
+        }
+        None => git_dir.to_path_buf(),
+    };
+    let hook = fs::metadata(common.join("hooks/reference-transaction")).ok();
+    let mut missing = Vec::new();
+    match hook {
+        None => missing.push("the hook reference-transaction is missing"),
+        Some(meta) if !meta.is_file() => missing.push("the hook reference-transaction is missing"),
+        Some(meta) => {
+            use std::os::unix::fs::PermissionsExt;
+            if meta.permissions().mode() & 0o111 == 0 {
+                missing.push("the hook reference-transaction is not executable");
+            }
+        }
+    }
+    if !fs::metadata(common.join("moai/integration-branch")).is_ok_and(|m| m.is_file()) {
+        missing.push("the record moai/integration-branch is missing");
+    }
+    if missing.is_empty() {
+        return None;
+    }
+    Some(format!(
+        "MoAI: integration branch {} is not guarded: {} (moai git-hooks-plan)",
+        clean(&branch, BRANCH_LIMIT),
+        missing.join(" and ")
+    ))
 }
 
 /// The nearest folder at or above `from` that holds a `.git` entry: a folder (a plain checkout)

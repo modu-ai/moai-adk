@@ -25,12 +25,21 @@ The detail behind the "Lane rules" section of `CLAUDE.md`. A lane is one session
 
 ## Hand-off
 
-Implement, run the checks, commit, then:
+Implement, commit, mark each criterion (`moai card criterion <card> <n> --generation <g> --met --evidence <ref>`, or `--withdraw --reason <text>`), then hand in with one command:
 
-1. Add one READY note with `moai card note`: first line `LANE-READY-INTEGRATION <card> head=<40hex>`, the base the checks ran on below it, the `moai check affected --card` receipt of the same head (summary line with `selection=card`, every step's exit code, log folder), every acceptance criterion as met, not met or not_run, remaining responsibilities and HOLDs, and one `leftovers:` line: `leftovers: none`, or `leftovers: <path> | <path>` for what you could not remove (`moai card note` refuses a hand-back note without exactly one such line; its answer lists `shared_checkout_new`, the files that appeared in the shared checkout since your reservation, so that a file you made there is named). A head that differs from the checked head names what the extra commits change.
-2. Stop writing and confirm nothing is lost: `git status --short` is empty.
-3. `ExitWorktree(keep)`.
-4. `LANE-DONE` as the last line of the turn.
+```
+moai card submit <card> --generation <g> [--mutants <file>]
+```
+
+The command does the whole submission and writes nothing to the ledger until every step before the write has passed:
+
+1. It refuses, by name and all at once, a worktree that is not clean, a HEAD that is not the tip of the reserved branch and a criterion that is still `open`.
+2. It runs every fast gate (`diff_check`, `fmt`, `ops_rustfmt`, `tables`, `trailers`) and lists every failure together; a failing gate starts no long step.
+3. It quotes the PASS receipt (`target/check-affected-<head12>/summary.txt`) of the same head and base, or runs `moai check affected --card` once.
+4. It writes the READY note from the receipt: first line `LANE-READY-INTEGRATION <card> head=<40hex>`, the base, the tier (the floor of the changed paths, as `moai bundle check` reads it), the receipt line and log folder, the fast-gate exits, each criterion, one `outside-scope:` line and one `leftovers:` line. A path outside the reserved scope is never a refusal: it is named on the `outside-scope:` line and the auditor reads it. At tier 2 pass `--mutants <file>` with one `guard-mutant: <test> | <code removed> | exit <n>` line per new guard test (`guard-mutant: none | <reason>` without one); the command copies them into the note.
+5. It sends the card to `review` and gives the reserved paths back, as `moai card review` does, and prints the head, the tier and the next card to take.
+
+A failing step leaves the ledger as it was and names the step and its log. The command writes no verdict and lands nothing; a READY note written by hand without a receipt is still refused by `moai card note`. After it succeeds, `git status --short` is empty by construction: leave with `ExitWorktree(keep)` and end the turn with `LANE-DONE` as the last line.
 
 A lane never waits for the audit or the landing, and its hand-off is not completion.
 

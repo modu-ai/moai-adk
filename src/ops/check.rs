@@ -31,14 +31,30 @@ enum Action {
     /// code to each of them and no cargo starts. The `test` step runs with a cap of 4 threads
     /// (`-j 4` for nextest, `RUST_TEST_THREADS=4` for `cargo test`); a `NEXTEST_TEST_THREADS` or
     /// `RUST_TEST_THREADS` the caller set stays as it is, and the slot folder's `limits.json` does
-    /// not carry the cap yet. The answer has one `summary` line of `key=value` words in a fixed
+    /// not carry the cap yet. The `test` step also gets a private `TMPDIR`: a new
+    /// `moai-affected-<id>` folder under the first root of the caller's `TMPDIR`, the macOS user
+    /// temporary folder and `/tmp` that lies outside the worktree, inside no git repository and
+    /// has no session id shape in its path (the other steps keep the caller's `TMPDIR`; with no
+    /// such root the test step inherits it). A passed `test` step removes that folder and
+    /// nothing else; a failed one keeps it. The answer's `test_tmpdir` says `removed`, `kept`
+    /// (with its path), `left` (with the reason it was not removed), `inherited` (with the
+    /// reason) or `not_run`. The answer has one `summary` line of `key=value` words in a fixed
     /// order: `check-affected`, base, head, targets, scans, `selection=lane` (only a `--lane` run
     /// writes it: its `summary.txt` is no receipt for a READY or REPAIRED note, a bare run is),
     /// `selection=card` (only a `--card` run that narrowed writes it; its `summary.txt` is a
     /// receipt for a READY or REPAIRED note, and a `--card` run that fell back to the full set
-    /// writes the bare line), `test-threads=<n>` (the cap the
+    /// writes the bare line) followed by `card_by=<reasons>` (the sorted `area:<name>`,
+    /// `module:<word>` and `units:<module path>` reasons why the set is narrow, or `none`),
+    /// `test-threads=<n>` (the cap the
     /// `test` step ran with), the exit status of each step in the order they ran, then
-    /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs,
+    /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. A repository with no
+    /// `Cargo.toml` at its top folder and no `.rs` file at the head gets no cargo step: it runs
+    /// `git diff --check`, `bash -n` and one `sh -c` step per entry of `checks` in
+    /// `.moai/project.yaml` (a heavy step each, in the declared order). When it declares none (no
+    /// profile, one that cannot be read, or no `checks`) and no step failed, the result is
+    /// `not_run`, never `PASS`: the line ends in `result=not_run`, the answer's `not_run.next`
+    /// says what to write in the profile, and the READY note gate takes no receipt from it.
+    /// Writes the step logs,
     /// `heavy-slot.log` and `summary.txt` (the summary line, whatever its result: the receipt
     /// `card note` reads before it keeps a READY or REPAIRED note of this head) under
     /// `<build folder>/check-affected-<head>` (or `--out`). The bare command
@@ -74,8 +90,11 @@ enum Action {
         #[arg(long)]
         lane: bool,
         /// Select what this card's change reaches: the tests the range changes or adds, the
-        /// tests that name a changed module, the scans it touches; a wide path (dependencies,
-        /// build or common settings, permission guards, ledger storage) gives the full set.
+        /// tests that name a changed module, the scans it touches. A source path that no name
+        /// narrows (a `mod.rs`, a word that more than 10 targets carry, a path no test names)
+        /// takes the tests of its area in `tests/areas.toml`, and the library's unit tests narrow
+        /// to the changed modules; a wide path (dependencies, build or common settings,
+        /// permission guards, ledger storage, the audit floor) gives the full set.
         #[arg(long, conflicts_with = "lane")]
         card: bool,
         /// The integration branch: a range whose base lies behind its merge base with the head

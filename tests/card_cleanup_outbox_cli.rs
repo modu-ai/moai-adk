@@ -135,7 +135,17 @@ impl World {
         git(&project, &["commit", "-q", "-m", "init"]);
         fs::write(project.join("b.txt"), "b\n").unwrap();
         git(&project, &["add", "b.txt"]);
-        git(&project, &["commit", "-q", "-m", "the card's change"]);
+        // Signed by the lane session: a close on a landed head reads the verdict of the head, and
+        // that check needs the authors of the head.
+        git(
+            &project,
+            &[
+                "commit",
+                "-q",
+                "-m",
+                &format!("the card's change\n\nMoai-Session: {S_A}:0123456789ab"),
+            ],
+        );
         let head = git(&project, &["rev-parse", "HEAD"]);
         let tip = commit_with(&project, &head, &[&head], "integration moved on");
         git(&project, &["update-ref", "refs/heads/integ", &tip]);
@@ -319,6 +329,33 @@ impl World {
         .unwrap();
     }
 
+    /// [`World::pass_of`] for a head that changes code (`b.txt`): judged at tier 1, so the PASS
+    /// cites a green receipt of the head. `card finish` on a landed head reads it
+    /// (SPEC-20261125-integration-guard-install).
+    fn pass_of_code(&self, card: &str, head: &str) {
+        let base = git(&self.project, &["rev-parse", &format!("{head}^1")]);
+        let conn =
+            rusqlite::Connection::open(ledger::ledger_path(self.home.path(), "demo").unwrap())
+                .unwrap();
+        let payload = json!({
+            "head": head, "base": base, "verdict": "pass", "tier": 1,
+            "evidence": "the fixture's evidence",
+            "receipt": {"head": head, "steps": [{"name": "test", "exit": 0}]},
+            "reviewer": S_AUDITOR,
+        });
+        conn.execute(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES (?1, unixepoch(), ?2, ?3, 'card.verdict', ?4)",
+            rusqlite::params![
+                format!("test-verdict-code-{card}-{head}"),
+                S_AUDITOR,
+                number(card),
+                payload.to_string()
+            ],
+        )
+        .unwrap();
+    }
+
     fn integ(&self) -> String {
         git(&self.project, &["rev-parse", "refs/heads/integ"])
     }
@@ -338,6 +375,7 @@ impl World {
 
     /// `card finish` as the holder, on the card's change.
     fn finish(&self, card: &str) -> Value {
+        self.pass_of_code(card, &self.head);
         result(&self.card(
             Some(S_A),
             &[
@@ -1723,6 +1761,7 @@ fn fu2_a_killed_executor_leaves_its_lease_and_the_next_attempt_names_it() {
         ),
     );
     let card = w.card_in("apps/a/", &wt, Some("lane/kill"), &["one"]);
+    w.pass_of_code(&card, &w.head);
     let mut child = w.spawn_card(
         S_A,
         &[
@@ -1820,6 +1859,7 @@ fn fu1_a_real_executor_whose_lease_ends_under_it_answers_what_it_deleted() {
         ),
     );
     let card = w.card_in("apps/h/", &wt, Some("lane/handover"), &["one"]);
+    w.pass_of_code(&card, &w.head);
     let child = w.spawn_card_piped(
         S_A,
         &[

@@ -27,6 +27,8 @@ use std::{
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
+/// The HOME state folder of the new name, where every backup is made.
+const NEWER: &str = ".moai";
 const ROOTS: [(&str, &str); 1] = [("claude", ".claude/skills/moai")];
 
 fn write_pkg(dir: &Path) {
@@ -80,8 +82,8 @@ fn fixture() -> Fixture {
     for (host, rel) in ROOTS {
         write_go_skill(&home.join(rel), host);
     }
-    // An earlier-root HOME: its state stays in `~/.moai-cli` (#2696 C4b2 gives a HOME with no
-    // state `~/.moai`; that layout is pinned by home_root tests and update_cli).
+    // An earlier-root HOME: its state stays in `~/.moai-cli` (#2696 C4b2 puts a HOME with no
+    // state on the new state folder; that layout is pinned by home_root tests and update_cli).
     fs::create_dir_all(home.join(".moai-cli")).unwrap();
     let home = fs::canonicalize(&home).unwrap();
     Fixture {
@@ -231,7 +233,7 @@ fn token(plan: &Value, name: &str) -> String {
 }
 
 fn backups(home: &Path) -> Vec<PathBuf> {
-    let dir = home.join(".moai-cli/backups");
+    let dir = home.join(NEWER).join("backups");
     if !dir.exists() {
         return Vec::new();
     }
@@ -311,7 +313,7 @@ fn plan_previews_backup_then_replace_and_writes_nothing() {
             .starts_with("sha256:"));
         assert_eq!(
             b["backup_root"],
-            json!(f.home.join(".moai-cli/backups").to_str().unwrap())
+            json!(f.home.join(NEWER).join("backups").to_str().unwrap())
         );
         assert_eq!(b["replace_with"]["file_count"], json!(3));
         assert_eq!(b["replace_with"]["package_digest"], p["package_digest"]);
@@ -320,7 +322,7 @@ fn plan_previews_backup_then_replace_and_writes_nothing() {
     }
     assert_eq!(originals(&f), before, "plan wrote nothing");
     assert!(
-        !f.home.join(".moai-cli/backups").exists(),
+        !f.home.join(NEWER).join("backups").exists(),
         "no backup folder from a plan"
     );
 }
@@ -666,10 +668,11 @@ fn assert_symlinked_state_path_is_refused(link_rel: &str) {
     );
 }
 
-/// B1 (audit 6812528075): `~/.moai-cli/backups` is a symlink leading out of HOME.
+/// B1 (audit 6812528075): the backups folder (now under the new state folder, revision 3 of the update
+/// baseline SPEC) is a symlink leading out of HOME.
 #[test]
 fn a_symlinked_backups_directory_is_refused() {
-    assert_symlinked_state_path_is_refused(".moai-cli/backups");
+    assert_symlinked_state_path_is_refused(&format!("{NEWER}/backups"));
 }
 
 /// B1 (audit 6812528075): `~/.moai-cli` itself is a symlink leading out of HOME.
@@ -753,7 +756,7 @@ fn apply_env(
 }
 
 fn backups_dir(f: &Fixture) -> PathBuf {
-    f.home.join(".moai-cli/backups")
+    f.home.join(NEWER).join("backups")
 }
 
 /// AC-1: replace, restore, replace again within the same (pinned) second. The second run

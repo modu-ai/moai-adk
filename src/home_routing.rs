@@ -11,9 +11,8 @@
 //! way to read the one copy, otherwise; moai makes no link. The `moai-routing` block that an
 //! earlier version wrote into the folder's `CLAUDE.md` is no longer refreshed; its removal is a
 //! separate pick (`remove_old_block`) and only happens while the block still holds the bytes
-//! that version recorded and the routing file is in place. The Codex section that an even
-//! earlier version wrote into `~/.codex/AGENTS.md` is no longer written
-//! (SPEC-20261122-codex-home-update-removed); a receipt that names it is skipped.
+//! that version recorded and the routing file is in place. A receipt entry that names a host
+//! this module does not write is skipped.
 //!
 //! `plan` writes nothing. A whole file is moai's own only while it holds the bytes moai last
 //! wrote (`home-routing/rules-<folder id>.json`); anything else, and any link or file that is
@@ -104,6 +103,10 @@ pub struct HostPlan {
     /// are ones an earlier routing receipt recorded, so the update may remove it after a backup.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub legacy_flow: Option<LegacyFlowPlan>,
+    /// SPEC-20261125-update-conflict-baseline revision 3 (REQ-19): the removal of the earlier flow
+    /// rule is left undone because the HOME's `.moai` cannot take its backup.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub backup_blocked: Vec<crate::update::BackupBlocked>,
 }
 
 /// The earlier flow rule file (`rules/moai/flow.md`) an update removes after a backup.

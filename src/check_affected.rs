@@ -3,9 +3,12 @@
 //! (changed paths, test file facts, the scan list text and the host name in; a selection and
 //! a step list out); [`read_facts`] is the one place that reads git and the files.
 
+use crate::project_ci::CheckEntry;
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::Command;
+
+mod tmp;
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -76,6 +79,11 @@ pub struct Selection {
     pub scans: Scans,
     /// Old target name to area crate, for the selected names that are modules of an area crate.
     pub areas: std::collections::BTreeMap<String, String>,
+    /// The module paths (`card::land`) whose library unit tests the card set runs instead of the
+    /// whole library (SPEC-20261125-check-affected-card-areas REQ-5); empty keeps them all.
+    pub units: Vec<String>,
+    /// The area crates whose every module is selected: the filterset names the crate once.
+    pub whole: BTreeSet<String>,
 }
 
 /// The first word of an area name: `update_models` → `update`.
@@ -400,7 +408,13 @@ pub fn select_pick(
         }
     }
     let areas = areas_of(tests, &rust);
-    Selection { rust, scans, areas }
+    Selection {
+        rust,
+        scans,
+        areas,
+        units: Vec::new(),
+        whole: BTreeSet::new(),
+    }
 }
 
 /// Old target name to area crate for the selected names that are modules of an area crate.
@@ -434,6 +448,59 @@ pub struct CardPick {
     pub wide: Option<Wide>,
     /// The name words of changed modules that more than [`COMMON_WORD_CAP`] targets carry.
     pub ignored_words: Vec<String>,
+    /// Per changed source path, why its tests were picked (SPEC-20261125-check-affected-card-areas
+    /// REQ-9, REQ-10): `module:<word>`, `area:<name>` or `units:<module path>`.
+    pub picks: Vec<(String, Vec<String>)>,
+}
+
+/// The `[areas]` of `tests/areas.toml` as `(area, words)`; `None` when the table is absent,
+/// unreadable or lists no area.
+fn read_area_table(text: Option<&str>) -> Option<Vec<(String, Vec<String>)>> {
+    let (areas, _) = parse_area_table(text?);
+    (!areas.is_empty()).then_some(areas)
+}
+
+/// The area of `tests/areas.toml` that lists `word`.
+fn word_area<'a>(table: &'a [(String, Vec<String>)], word: &str) -> Option<&'a str> {
+    table
+        .iter()
+        .find(|(_, words)| words.iter().any(|w| w == word))
+        .map(|(a, _)| a.as_str())
+}
+
+/// The table area of a changed source path: the area that lists the first word of its top
+/// folder or file name (`src/check_affected.rs` → `check` → `spec`). `src/lib.rs` and `src/main.rs`
+/// name no area (SPEC-20261125-check-affected-card-areas REQ-2, REQ-4).
+fn path_area<'a>(path: &str, table: &'a [(String, Vec<String>)]) -> Option<&'a str> {
+    if matches!(path, "src/lib.rs" | "src/main.rs") {
+        return None;
+    }
+    word_area(table, first_word(&area(path)?))
+}
+
+/// Every test target of one table area: the targets whose name's first word the area lists.
+fn area_set<'a>(
+    tests: &'a [TestFile],
+    table: &[(String, Vec<String>)],
+    name: &str,
+) -> BTreeSet<&'a str> {
+    tests
+        .iter()
+        .filter(|t| word_area(table, first_word(&t.name)) == Some(name))
+        .map(|t| t.name.as_str())
+        .collect()
+}
+
+/// The library module path of a changed source path (`src/card/land.rs` → `card::land`,
+/// `src/card/mod.rs` → `card`); `None` for the crate roots and the binary's `src/ops/`
+/// (SPEC-20261125-check-affected-card-areas REQ-5).
+fn unit_prefix(path: &str) -> Option<String> {
+    let rest = path.strip_prefix("src/")?.strip_suffix(".rs")?;
+    if matches!(rest, "lib" | "main") || rest.starts_with("ops/") {
+        return None;
+    }
+    let rest = rest.strip_suffix("/mod").unwrap_or(rest);
+    Some(rest.replace('-', "_").replace('/', "::"))
 }
 
 /// The class of a path whose effect on the tests is not clear (REQ-3): the whole dependency graph,
@@ -471,18 +538,48 @@ fn wide_class(path: &str) -> Option<&'static str> {
     {
         return Some("permission");
     }
-    // The audit floor (`gate::TIER2_PREFIXES`, the paths a full audit covers), the git hooks and the
-    // landing code: a change there can break a test that does not name its module.
-    if crate::gate::TIER2_PREFIXES
+    // The scan table is no wide path: the tests that name it and the scans of its rule files cover
+    // it, and the batch's wide check runs every scan (SPEC-20261125-check-affected-card-areas REQ-14).
+    if path == crate::gate::SCAN_REGISTRY {
+        return None;
+    }
+    // The audit floor (`gate::TIER2_PREFIXES`, the paths a full audit covers) and the git hooks: a
+    // change there can break a test that does not name its module. The floor's ordinary source
+    // paths (see [`NARROWED_FLOOR`]) take their area instead.
+    if (crate::gate::TIER2_PREFIXES
         .iter()
         .any(|p| path.starts_with(p))
+        && !narrowed_floor(path))
         || path.starts_with("install/git-hooks/")
         || path.starts_with("src/git_hooks/")
-        || path.starts_with("src/card/land/")
     {
         return Some("audit floor");
     }
     None
+}
+
+/// The audit-floor source files that take the area path of `select_card` like any module, named
+/// one by one (SPEC-20261125-check-affected-card-areas REQ-13): the update command, its model and
+/// terminal screens and its two helpers, and the home style and routing text. A name is an exact
+/// path, never a prefix: `src/update_keys.rs` (secrets), `src/update_hooks.rs` (hooks),
+/// `src/home_install*.rs`, `src/ops/home_install_*.rs`, `src/agent_install.rs` (install),
+/// `src/update_cleanup.rs`, `src/home_retire*.rs`, `src/ops/home_*_revert.rs` (HOME moves and
+/// undo), `src/state_root.rs`, `src/home_root.rs`, `src/go_state.rs` and every file added later stay
+/// on the audit floor. The landing code `src/card/land/` is no floor path: it was wide on its own
+/// and takes the area path now.
+const NARROWED_FLOOR: [&str; 8] = [
+    "src/update.rs",
+    "src/update_models.rs",
+    "src/update_tux.rs",
+    "src/update/switch.rs",
+    "src/update/extra_skill.rs",
+    "src/home_style.rs",
+    "src/home_routing.rs",
+    "src/home_routing/rules.rs",
+];
+
+fn narrowed_floor(path: &str) -> bool {
+    NARROWED_FLOOR.contains(&path)
 }
 
 /// The module a changed source path names: its leaf word and the path a test names it by
@@ -532,14 +629,19 @@ fn name_has_word(name: &str, word: &str) -> bool {
 }
 
 /// Pick the test targets one card's change reaches (SPEC-20261124-card-select-batch-land REQ-1 to
-/// REQ-3): the tests the range changes or adds, the tests whose source names a changed module or
-/// whose name carries its word, the targets of each scan a changed path touches, and the tests
-/// that name a changed `skills/` or `docs/` path. A wide path (see [`wide_class`]) or a scan list
-/// that cannot be read sets `wide`: the caller then uses the full set.
+/// REQ-3, SPEC-20261125-check-affected-card-areas): the tests the range changes or adds, the tests
+/// whose source names a changed module or whose name carries its word, the targets of each scan a
+/// changed path touches, and the tests that name a changed `skills/` or `docs/` path. A source path
+/// that no name word narrows (a `mod.rs`, a word that more than [`COMMON_WORD_CAP`] targets
+/// carry, a path that reaches no test) takes the carrying targets of its table area, or the whole
+/// area, never the full set; the library's unit tests narrow to the changed modules. A wide path
+/// (see [`wide_class`]), a source path that needs the area table when it is absent, or a scan
+/// list that cannot be read sets `wide`: the caller then uses the full set.
 pub fn select_card(
     changed: &[String],
     tests: &[TestFile],
     scan_list: Option<&str>,
+    areas_text: Option<&str>,
     host_os: &str,
 ) -> CardPick {
     let mut wide_paths: Vec<(&'static str, String)> = changed
@@ -553,36 +655,90 @@ pub fn select_card(
         .cloned()
         .collect();
     let mut rust = select_pick(Pick::Lane, &own, tests, None, host_os).rust;
+    let table = read_area_table(areas_text);
     let mut ignored = BTreeSet::new();
+    let mut units = BTreeSet::new();
+    let mut picks: Vec<(String, Vec<String>)> = Vec::new();
+    // The scan table is no wide path: the tests whose source names it cover it (REQ-14).
+    for path in changed
+        .iter()
+        .filter(|p| p.as_str() == crate::gate::SCAN_REGISTRY)
+    {
+        rust.extend(
+            tests
+                .iter()
+                .filter(|t| t.text.contains(path.as_str()))
+                .map(|t| t.name.clone()),
+        );
+        picks.push((path.clone(), vec![format!("pins:{path}")]));
+    }
     for path in changed {
         let is_source = path.starts_with("src/") && path.ends_with(".rs");
-        let Some((word, key)) = module_of(path) else {
-            // `mod.rs`, `lib.rs` and `main.rs` name no module a test can call: nothing narrows
-            // them, so the full set runs (a source path that picks no test is not a pass).
-            if is_source {
-                wide_paths.push(("no test reached", path.clone()));
-            }
+        if !is_source {
             continue;
-        };
-        // The targets that carry the module's name word or name its path in their source; a
-        // module that more than the cap of them reach is a common one and says nothing.
-        let reached: BTreeSet<&str> = tests
-            .iter()
-            .filter(|t| {
-                name_has_word(&t.name, &word)
-                    || key.as_ref().is_some_and(|k| names_path(&t.text, k))
-            })
-            .map(|t| t.name.as_str())
-            .collect();
-        if reached.len() > COMMON_WORD_CAP {
-            // A word that says nothing is not a reason to run nothing: the full set runs.
-            ignored.insert(word);
-            wide_paths.push(("common name word", path.clone()));
-        } else if reached.is_empty() && is_source {
-            wide_paths.push(("no test reached", path.clone()));
-        } else {
-            rust.extend(reached.into_iter().map(String::from));
         }
+        let mut by: Vec<String> = Vec::new();
+        if let Some(prefix) = unit_prefix(path) {
+            by.push(format!("units:{prefix}"));
+            units.insert(prefix);
+        }
+        // The targets that carry the module's name word or name its path in their source;
+        // `mod.rs`, `lib.rs` and `main.rs` name no module a test can call.
+        let module = module_of(path);
+        let reached: BTreeSet<&str> = match &module {
+            Some((word, key)) => tests
+                .iter()
+                .filter(|t| {
+                    name_has_word(&t.name, word)
+                        || key.as_ref().is_some_and(|k| names_path(&t.text, k))
+                })
+                .map(|t| t.name.as_str())
+                .collect(),
+            None => BTreeSet::new(),
+        };
+        let common = reached.len() > COMMON_WORD_CAP;
+        if common {
+            if let Some((word, _)) = &module {
+                ignored.insert(word.clone());
+            }
+        }
+        if module.is_some() && !reached.is_empty() && !common {
+            // A name word that few targets carry picks them (REQ-1 of the earlier SPEC).
+            if let Some((word, _)) = &module {
+                by.push(format!("module:{word}"));
+            }
+            rust.extend(reached.iter().map(|s| s.to_string()));
+        } else {
+            // Nothing narrows the path by its name: the area of the path decides (REQ-1 to REQ-4).
+            match table.as_deref() {
+                None => wide_paths.push(("area table", path.clone())),
+                Some(table) => {
+                    if let Some(name) = path_area(path, table) {
+                        let set = area_set(tests, table, name);
+                        let inside: BTreeSet<&str> = reached.intersection(&set).copied().collect();
+                        by.push(format!("area:{name}"));
+                        if inside.is_empty() {
+                            rust.extend(set.iter().map(|s| s.to_string()));
+                        } else {
+                            if let Some((word, _)) = &module {
+                                by.push(format!("module:{word}"));
+                            }
+                            rust.extend(inside.iter().map(|s| s.to_string()));
+                        }
+                    }
+                }
+            }
+        }
+        if !by.is_empty() {
+            picks.push((path.clone(), by));
+        }
+    }
+    // A change of a crate root can break any module: the library's unit tests stay whole.
+    if changed
+        .iter()
+        .any(|p| p == "src/lib.rs" || p == "src/main.rs")
+    {
+        units.clear();
     }
     // A path is named once, under the first reason it was found for.
     let mut seen = BTreeSet::new();
@@ -616,10 +772,28 @@ pub fn select_card(
         }
     }
     let areas = areas_of(tests, &rust);
+    // An area crate with every module selected is named once by the filterset.
+    let whole: BTreeSet<String> = tests
+        .iter()
+        .filter_map(|t| t.area.clone())
+        .filter(|c| {
+            tests
+                .iter()
+                .filter(|t| t.area.as_deref() == Some(c))
+                .all(|t| rust.contains(&t.name))
+        })
+        .collect();
     CardPick {
-        selection: Selection { rust, scans, areas },
+        selection: Selection {
+            rust,
+            scans,
+            areas,
+            units: units.into_iter().collect(),
+            whole,
+        },
         wide,
         ignored_words: ignored.into_iter().collect(),
+        picks,
     }
 }
 
@@ -631,6 +805,27 @@ pub struct Chosen {
     pub selection: Selection,
     /// Only for a `--card` request: the wide reason, if any, and the ignored name words.
     pub card: Option<(Option<Wide>, Vec<String>)>,
+    /// Only for a card set: per changed source path, why its tests were picked.
+    pub picks: Vec<(String, Vec<String>)>,
+}
+
+impl Chosen {
+    /// The `card_by=` word of a card set's summary line: the sorted reasons of every path, or
+    /// `none` (SPEC-20261125-check-affected-card-areas REQ-9); `None` for any other pick.
+    pub fn card_by(&self) -> Option<String> {
+        (self.pick == Pick::Card).then(|| {
+            let all: BTreeSet<&str> = self
+                .picks
+                .iter()
+                .flat_map(|(_, by)| by.iter().map(String::as_str))
+                .collect();
+            if all.is_empty() {
+                "none".to_string()
+            } else {
+                all.into_iter().collect::<Vec<_>>().join(",")
+            }
+        })
+    }
 }
 
 pub fn choose(
@@ -638,6 +833,7 @@ pub fn choose(
     changed: &[String],
     tests: &[TestFile],
     scan_list: Option<&str>,
+    areas_text: Option<&str>,
     host_os: &str,
 ) -> Chosen {
     if pick != Pick::Card {
@@ -645,25 +841,28 @@ pub fn choose(
             pick,
             selection: select_pick(pick, changed, tests, scan_list, host_os),
             card: None,
+            picks: Vec::new(),
         };
     }
-    let card = select_card(changed, tests, scan_list, host_os);
+    let card = select_card(changed, tests, scan_list, areas_text, host_os);
     if card.wide.is_some() {
         return Chosen {
             pick: Pick::Full,
             selection: select_pick(Pick::Full, changed, tests, scan_list, host_os),
             card: Some((card.wide, card.ignored_words)),
+            picks: Vec::new(),
         };
     }
     Chosen {
         pick: Pick::Card,
         selection: card.selection,
         card: Some((None, card.ignored_words)),
+        picks: card.picks,
     }
 }
 
-/// The answer fields a `--card` request adds: `card_wide` (`{reason, paths}` or null) and
-/// `card_ignored_words`.
+/// The answer fields a `--card` request adds: `card_wide` (`{reason, paths}` or null),
+/// `card_ignored_words`, and for a card set `card_by` and `card_picks` (`[{path, by}]`).
 fn card_fields(chosen: &Chosen, answer: &mut serde_json::Value) {
     if let Some((wide, ignored)) = &chosen.card {
         answer["card_wide"] = match wide {
@@ -671,6 +870,14 @@ fn card_fields(chosen: &Chosen, answer: &mut serde_json::Value) {
             None => serde_json::Value::Null,
         };
         answer["card_ignored_words"] = serde_json::json!(ignored);
+        answer["card_by"] = serde_json::json!(chosen.card_by());
+        answer["card_picks"] = serde_json::Value::Array(
+            chosen
+                .picks
+                .iter()
+                .map(|(path, by)| serde_json::json!({"path": path, "by": by}))
+                .collect(),
+        );
     }
 }
 
@@ -1335,6 +1542,98 @@ pub struct Step {
     pub report: Option<Vec<String>>,
 }
 
+/// How a repository is verified (SPEC-20261125-check-affected-non-rust).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Stack {
+    /// A `Cargo.toml` at the top folder or a `.rs` file at the head: the cargo steps, as always.
+    Rust,
+    /// No Rust code, and the profile declares these checks.
+    Declared(Vec<CheckEntry>),
+    /// No Rust code and no declared check can be read; the text says why.
+    Undeclared(String),
+}
+
+/// What the answer says when nothing could be verified: the result is `not_run`, never `PASS`.
+const NOT_RUN_NEXT: &str = "declare the project's check commands as `checks` (a list of {\"id\": \"test\", \"command\": \"<one-line command>\"}) in .moai/project.yaml, commit it, and run `moai check affected` again; the `/moai project` interview saves them. Until then nothing was verified.";
+
+/// The answer's `not_run` object, `Null` unless the stack has no declared check.
+fn not_run_note(stack: &Stack) -> serde_json::Value {
+    match stack {
+        Stack::Undeclared(reason) => serde_json::json!({"reason": reason, "next": NOT_RUN_NEXT}),
+        _ => serde_json::Value::Null,
+    }
+}
+
+/// Whether `head` tracks a `.rs` file. A git that cannot answer reads as `true`, so the Rust steps
+/// stay as they were.
+fn tracks_rust(root: &Path, head: &str) -> bool {
+    git(root, &["ls-tree", "-r", "--name-only", "-z", head])
+        .map(|out| out.split('\0').any(|p| p.ends_with(".rs")))
+        .unwrap_or(true)
+}
+
+/// The stack of the checkout at `root`: a `Cargo.toml` or a tracked `.rs` file makes it Rust
+/// (D-1); otherwise the profile's declared `checks`, or why there are none (D-4).
+fn read_stack(root: &Path, head: &str) -> Stack {
+    if root.join("Cargo.toml").is_file() || tracks_rust(root, head) {
+        return Stack::Rust;
+    }
+    match crate::profile::read_profile(root) {
+        Ok((profile, _)) => match profile.checks.filter(|c| !c.is_empty()) {
+            Some(checks) => Stack::Declared(checks),
+            None => Stack::Undeclared("the profile declares no `checks`".to_string()),
+        },
+        Err(e) if e == crate::profile::PROFILE_MISSING => {
+            Stack::Undeclared("the project has no profile".to_string())
+        }
+        Err(e) => Stack::Undeclared(format!("the profile cannot be read ({e})")),
+    }
+}
+
+/// The steps of a repository without Rust code: `git diff --check`, `bash -n` of each changed
+/// script and one heavy `sh -c` step per declared check, in the declared order (REQ-2).
+fn other_steps(checks: &[CheckEntry], present: &[String], range: &str) -> Vec<Step> {
+    let mut out = vec![step(
+        "diff_check",
+        "git",
+        &["diff", "--check", range],
+        false,
+    )];
+    for p in present.iter().filter(|p| p.ends_with(".sh")) {
+        out.push(step(
+            &format!("bash_n:{p}"),
+            "bash",
+            &["-n", "--", p],
+            false,
+        ));
+    }
+    for c in checks {
+        out.push(step(
+            &format!("check:{}", c.id),
+            "sh",
+            &["-c", &c.command],
+            true,
+        ));
+    }
+    out
+}
+
+/// The steps of a range for the repository's stack: [`steps`] for a Rust repository, the declared
+/// checks otherwise.
+pub fn plan_steps(
+    facts: &Facts,
+    sel: &Selection,
+    range: &str,
+    runner: Runner,
+    threads: Option<usize>,
+) -> Vec<Step> {
+    match &facts.stack {
+        Stack::Rust => steps(sel, &facts.present, range, runner, threads),
+        Stack::Declared(checks) => other_steps(checks, &facts.present, range),
+        Stack::Undeclared(_) => other_steps(&[], &facts.present, range),
+    }
+}
+
 fn step(label: &str, program: &str, args: &[&str], heavy: bool) -> Step {
     Step {
         label: label.to_string(),
@@ -1478,7 +1777,7 @@ pub fn steps(
             rest.push(target.clone());
         }
     }
-    if runner == Runner::Nextest && !sel.areas.is_empty() {
+    if runner == Runner::Nextest && (!sel.areas.is_empty() || !sel.units.is_empty()) {
         rest.push("-E".to_string());
         rest.push(area_filterset(sel));
     }
@@ -1499,10 +1798,20 @@ pub fn steps(
     out
 }
 
-/// The nextest filterset of a selection that holds modules of area crates: the library and the
-/// binary tests, every target of its own, and in each area crate only the selected modules.
+/// The nextest filterset of a selection that holds modules of area crates or narrows the library
+/// tests: the library tests (all of them, or only the changed modules' when the selection names
+/// `units`), the binary tests, every target of its own, and in each area crate only the selected
+/// modules, or the crate itself when every module is selected.
 fn area_filterset(sel: &Selection) -> String {
-    let mut parts = vec!["kind(lib)".to_string(), "kind(bin)".to_string()];
+    let mut parts = if sel.units.is_empty() {
+        vec!["kind(lib)".to_string()]
+    } else {
+        sel.units
+            .iter()
+            .map(|u| format!("(kind(lib) & test(/^{u}::/))"))
+            .collect()
+    };
+    parts.push("kind(bin)".to_string());
     let mut modules: std::collections::BTreeMap<&str, Vec<&str>> = Default::default();
     for t in &sel.rust {
         match sel.areas.get(t) {
@@ -1511,6 +1820,10 @@ fn area_filterset(sel: &Selection) -> String {
         }
     }
     for (area, names) in modules {
+        if sel.whole.contains(area) {
+            parts.push(format!("binary(={area})"));
+            continue;
+        }
         let tests: Vec<String> = names.iter().map(|m| format!("test(/^{m}::/)")).collect();
         parts.push(format!("(binary(={area}) & ({}))", tests.join(" | ")));
     }
@@ -1555,6 +1868,8 @@ pub struct Facts {
     pub tracked: Option<Vec<String>>,
     /// The test folders that hold a `main.rs` (the moved areas).
     pub moved: Vec<String>,
+    /// How the repository is verified: the cargo steps, or the profile's declared checks.
+    pub stack: Stack,
 }
 
 fn git(dir: &Path, args: &[&str]) -> Result<String> {
@@ -1704,6 +2019,7 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         "tests/fixtures/state_folder_literals/allow.tsv",
         &mut unreadable,
     );
+    let stack = read_stack(dir, &head);
     Ok(Facts {
         root,
         base,
@@ -1718,6 +2034,7 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         unreadable,
         tracked,
         moved,
+        stack,
     })
 }
 
@@ -1931,6 +2248,7 @@ pub fn list(
         &facts.changed,
         &facts.tests,
         facts.scan_list.as_deref(),
+        facts.areas_text.as_deref(),
         host_os(),
     );
     let pick = chosen.pick;
@@ -1939,14 +2257,15 @@ pub fn list(
     // `--list` reads nothing from the slot folder, so it names no cap.
     let planned = plan(
         &table_step(&facts),
-        steps(
+        plan_steps(
+            &facts,
             &sel,
-            &facts.present,
             &format!("{}...{}", facts.base, facts.head),
             runner,
             None,
         ),
     );
+    let rust = facts.stack == Stack::Rust;
     let mut answer = serde_json::json!({
         "action": "affected",
         "mode": "list",
@@ -1956,7 +2275,7 @@ pub fn list(
         "head": facts.head,
         "changed": facts.changed.len(),
         "host_os": host_os(),
-        "runner": runner.word(),
+        "runner": rust.then(|| runner.word()),
         "scans": sel.scans.word(),
         "rust_targets": sel.rust,
         "steps": planned.iter().map(|s| {
@@ -1971,6 +2290,9 @@ pub fn list(
         "writes": false,
     });
     card_fields(&chosen, &mut answer);
+    if let Stack::Undeclared(_) = &facts.stack {
+        answer["not_run"] = not_run_note(&facts.stack);
+    }
     Ok(answer)
 }
 
@@ -2226,6 +2548,7 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         &facts.changed,
         &facts.tests,
         facts.scan_list.as_deref(),
+        facts.areas_text.as_deref(),
         host_os(),
     );
     let pick = chosen.pick;
@@ -2240,11 +2563,12 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     // Planned with nextest until the slot is held: the runner is asked only then, so a refused
     // slot starts no cargo at all. The labels do not depend on the runner.
     let table = table_step(&facts);
+    let rust = facts.stack == Stack::Rust;
     let mut planned = plan(
         &table,
-        steps(
+        plan_steps(
+            &facts,
             &sel,
-            &facts.present,
             &range3,
             Runner::Nextest,
             cap_for(Runner::Nextest),
@@ -2270,6 +2594,8 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     let mut held: Option<(crate::heavy_slot::Held, usize)> = None;
     let mut refused: Option<i32> = None;
     let mut runner: Option<Runner> = None;
+    // What became of the private `TMPDIR` of the test step (SPEC-20261124-home-guard-flake REQ-13).
+    let mut test_tmpdir = tmp::not_run();
     for i in 0..planned.len() {
         if i == cheap {
             if let Some((label, _)) = results.iter().find(|(_, c)| *c != 0) {
@@ -2282,11 +2608,11 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
             match hold_slot(opts, &out) {
                 Ok(h) => {
                     let r = runner_in(dir);
-                    planned = plan(&table, steps(&sel, &facts.present, &range3, r, cap_for(r)));
+                    planned = plan(&table, plan_steps(&facts, &sel, &range3, r, cap_for(r)));
                     if let Some(theirs) = caller_threads(r, env) {
                         shown = theirs;
                     }
-                    runner = Some(r);
+                    runner = rust.then_some(r);
                     held = Some(h);
                 }
                 Err(code) => refused = Some(code),
@@ -2307,7 +2633,23 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
                 if let Some(jobs) = build_jobs(*slots) {
                     extra.push(("CARGO_BUILD_JOBS", jobs));
                 }
-                run_step(dir, s, &log, &extra)
+                // Only the test step gets the private folder; every other step keeps the
+                // caller's `TMPDIR` (REQ-13, REQ-21).
+                let mut private = None;
+                if s.label == "test" {
+                    match tmp::prepare(dir, &tmp::candidates(env("TMPDIR"))) {
+                        Ok(p) => {
+                            extra.push(("TMPDIR", p.path.clone().into_os_string()));
+                            private = Some(p);
+                        }
+                        Err(why) => test_tmpdir = tmp::inherited(&why),
+                    }
+                }
+                let code = run_step(dir, s, &log, &extra);
+                if let Some(p) = private {
+                    test_tmpdir = tmp::finish(p, code);
+                }
+                code
             }
             (None, true, None, Some(code)) => {
                 let _ = std::fs::write(
@@ -2326,33 +2668,48 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         }));
     }
     drop(held);
-    let pass = results.iter().all(|(_, c)| *c == 0);
-    let line = summary_line(&SummaryParts {
-        base: &facts.base,
-        head: &facts.head,
-        targets: sel.rust.len(),
-        scans: &sel.scans.word(),
-        pick,
-        threads: &shown,
-        results: &results,
-        stopped_at: stopped_at.as_deref(),
-        pass,
-    });
+    // Nothing verified a repository without Rust code that declares no check: that is `not_run`,
+    // unless a step failed (REQ-3, REQ-4).
+    let failed = results.iter().any(|(_, c)| *c != 0);
+    let verdict = match (&facts.stack, failed) {
+        (_, true) => Verdict::Fail,
+        (Stack::Undeclared(_), false) => Verdict::NotRun,
+        _ => Verdict::Pass,
+    };
+    let line = summary_line_full(
+        &SummaryParts {
+            base: &facts.base,
+            head: &facts.head,
+            targets: sel.rust.len(),
+            scans: &sel.scans.word(),
+            pick,
+            threads: &shown,
+            results: &results,
+            stopped_at: stopped_at.as_deref(),
+            pass: verdict == Verdict::Pass,
+        },
+        verdict,
+        chosen.card_by().as_deref(),
+    );
     let mut answer = serde_json::json!({
         "action": "affected",
         "mode": "run",
         "selection": pick.word(),
         "range_note": range_note(&facts, opts.integration_ref.as_deref()),
         "summary": line,
-        "result": if pass { "PASS" } else { "FAIL" },
+        "result": verdict.word(),
         "stopped_at": stopped_at,
         "runner": runner.map(Runner::word),
         "refresh": {"touched": refresh.touched, "skipped": refresh.skipped},
         "steps": records,
+        "test_tmpdir": test_tmpdir,
         "out": out.to_string_lossy(),
         "writes": true,
     });
     card_fields(&chosen, &mut answer);
+    if verdict == Verdict::NotRun {
+        answer["not_run"] = not_run_note(&facts.stack);
+    }
     Ok(answer)
 }
 
@@ -2373,10 +2730,53 @@ pub struct SummaryParts<'a> {
 /// read. A `--lane` or `--card` run says so right after `scans=`; the bare line has no such word
 /// (SPEC-20261124-ready-receipt-followup REQ-6, REQ-9).
 pub fn summary_line(p: &SummaryParts<'_>) -> String {
-    let selection_word = match p.pick {
-        Pick::Lane => " selection=lane",
-        Pick::Card => " selection=card",
-        Pick::Full => "",
+    summary_line_by(p, None)
+}
+
+/// [`summary_line`] with the `card_by=` word of a card set right after `selection=card`
+/// (SPEC-20261125-check-affected-card-areas REQ-9); `None` writes the line as before.
+pub fn summary_line_by(p: &SummaryParts<'_>, card_by: Option<&str>) -> String {
+    summary_line_full(
+        p,
+        if p.pass { Verdict::Pass } else { Verdict::Fail },
+        card_by,
+    )
+}
+
+/// How a run ended: every step passed, one failed, or nothing could be verified because the
+/// project declares no check (SPEC-20261125-check-affected-non-rust).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Verdict {
+    Pass,
+    Fail,
+    NotRun,
+}
+
+impl Verdict {
+    /// The word of the answer's `result` field.
+    pub fn word(self) -> &'static str {
+        match self {
+            Verdict::Pass => "PASS",
+            Verdict::Fail => "FAIL",
+            Verdict::NotRun => "not_run",
+        }
+    }
+}
+
+/// [`summary_line`] with the verdict given: the last word is `result=<word>`.
+pub fn summary_line_for(p: &SummaryParts<'_>, verdict: Verdict) -> String {
+    summary_line_full(p, verdict, None)
+}
+
+/// The summary line with both the verdict and the `card_by=` word given: the one place that
+/// writes it, so a `not_run` card run keeps its `card_by=` word and a narrowed run keeps its
+/// verdict word.
+pub fn summary_line_full(p: &SummaryParts<'_>, verdict: Verdict, card_by: Option<&str>) -> String {
+    let selection_word = match (p.pick, card_by) {
+        (Pick::Lane, _) => " selection=lane".to_string(),
+        (Pick::Card, Some(by)) => format!(" selection=card card_by={by}"),
+        (Pick::Card, None) => " selection=card".to_string(),
+        (Pick::Full, _) => String::new(),
     };
     let mut line = format!(
         "check-affected base={} head={} targets={} scans={}{selection_word} test-threads={}",
@@ -2392,11 +2792,7 @@ pub fn summary_line(p: &SummaryParts<'_>) -> String {
     if let Some(label) = p.stopped_at {
         line.push_str(&format!(" stopped_at={label}"));
     }
-    line.push_str(if p.pass {
-        " result=PASS"
-    } else {
-        " result=FAIL"
-    });
+    line.push_str(&format!(" result={}", verdict.word()));
     line
 }
 
@@ -2416,6 +2812,105 @@ mod tests {
             summary_words(&r),
             [("bash_n".to_string(), 2), ("fmt".to_string(), 0)]
         );
+    }
+
+    /// SPEC-20261125-check-affected-non-rust AC-7: the last word of the summary line is the
+    /// verdict; `summary_line` keeps writing `PASS` and `FAIL` as before.
+    #[test]
+    fn summary_line_not_run_pass_and_fail() {
+        let results = vec![("diff_check".to_string(), 0)];
+        let parts = |pass: bool| SummaryParts {
+            base: "aaaaaaaaaaaaaaaa",
+            head: "bbbbbbbbbbbbbbbb",
+            targets: 0,
+            scans: "none",
+            pick: Pick::Full,
+            threads: "4",
+            results: &results,
+            stopped_at: None,
+            pass,
+        };
+        let head = "check-affected base=aaaaaaaaaaaa head=bbbbbbbbbbbb targets=0 scans=none test-threads=4 diff_check=0";
+        assert_eq!(
+            summary_line_for(&parts(false), Verdict::NotRun),
+            format!("{head} result=not_run")
+        );
+        assert_eq!(summary_line(&parts(true)), format!("{head} result=PASS"));
+        assert_eq!(summary_line(&parts(false)), format!("{head} result=FAIL"));
+        assert_eq!(
+            summary_line_for(&parts(true), Verdict::Pass),
+            summary_line(&parts(true))
+        );
+    }
+
+    /// The merge of the non-Rust verdict and the card reasons: a card run writes both words, the
+    /// `card_by=` word right after `selection=card` and the verdict last, whatever the verdict.
+    #[test]
+    fn a_card_line_keeps_its_reasons_for_every_verdict() {
+        let results = vec![("diff_check".to_string(), 0)];
+        let parts = SummaryParts {
+            base: "aaaaaaaaaaaaaaaa",
+            head: "bbbbbbbbbbbbbbbb",
+            targets: 0,
+            scans: "none",
+            pick: Pick::Card,
+            threads: "4",
+            results: &results,
+            stopped_at: None,
+            pass: false,
+        };
+        let head = "check-affected base=aaaaaaaaaaaa head=bbbbbbbbbbbb targets=0 scans=none selection=card";
+        for (verdict, word) in [
+            (Verdict::Pass, "PASS"),
+            (Verdict::Fail, "FAIL"),
+            (Verdict::NotRun, "not_run"),
+        ] {
+            assert_eq!(
+                summary_line_full(&parts, verdict, Some("area:card")),
+                format!("{head} card_by=area:card test-threads=4 diff_check=0 result={word}")
+            );
+            assert_eq!(
+                summary_line_full(&parts, verdict, None),
+                format!("{head} test-threads=4 diff_check=0 result={word}")
+            );
+            assert_eq!(
+                summary_line_full(&parts, verdict, None),
+                summary_line_for(&parts, verdict)
+            );
+        }
+        assert_eq!(
+            summary_line_by(&parts, Some("none")),
+            format!("{head} card_by=none test-threads=4 diff_check=0 result=FAIL")
+        );
+    }
+
+    /// SPEC-20261125-check-affected-non-rust REQ-2: a declared check is one heavy `sh -c` step
+    /// after the cheap ones, in the declared order; no declared check adds none.
+    #[test]
+    fn declared_checks_follow_the_cheap_steps_in_their_order() {
+        let check = |id: &str, command: &str| CheckEntry {
+            id: id.to_string(),
+            command: command.to_string(),
+        };
+        let planned = other_steps(
+            &[check("lint", "npm run lint"), check("test", "npm test")],
+            &["bin/run.sh".to_string(), "src/a.ts".to_string()],
+            "a...b",
+        );
+        let labels: Vec<&str> = planned.iter().map(|s| s.label.as_str()).collect();
+        assert_eq!(
+            labels,
+            [
+                "diff_check",
+                "bash_n:bin/run.sh",
+                "check:lint",
+                "check:test"
+            ]
+        );
+        assert_eq!(planned[2].program, "sh");
+        assert_eq!(planned[2].args, ["-c", "npm run lint"]);
+        assert!(planned[2].heavy && planned[3].heavy && !planned[0].heavy && !planned[1].heavy);
+        assert_eq!(other_steps(&[], &[], "a...b").len(), 1);
     }
 
     const AREAS: &str = "# t\n[areas]\ncard = [\"card\"]\nspec = [\"spec\", \"check\"]\nlane = [\"lane\"]\n\n[solo]\nfiles = [\"check_solo\"]\n";
@@ -3415,7 +3910,7 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
     fn the_card_pick_of_an_area_module_names_its_crate() {
         let tests = [module("card_cli", "fn a() {}"), rust("solo_cli", &[], &[])];
         let changed = paths(&["tests/card/card_cli.rs"]);
-        let pick = select_card(&changed, &tests, None, "linux");
+        let pick = select_card(&changed, &tests, None, None, "linux");
         assert!(pick.wide.is_none(), "{:?}", pick.wide);
         assert!(pick.selection.rust.contains("card_cli"));
         assert_eq!(pick.selection.areas["card_cli"], "card");
@@ -3505,6 +4000,51 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         let tests = [module("card_cli", "use crate::common::git;")];
         let sel = select(&paths(&["tests/common/mod.rs"]), &tests, None, "linux");
         assert!(sel.rust.contains("card_cli"), "{:?}", sel.rust);
+    }
+
+    /// SPEC-20261125-check-affected-card-areas REQ-13: the audit floor is narrowed by exact file
+    /// names. The named files take their area; the secret, hook, install, HOME move and state
+    /// folder files that sit next to them in `src/` stay on the floor, and so does every file
+    /// that is not named.
+    #[test]
+    fn the_named_floor_files_are_narrowed_and_their_siblings_stay_wide() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        for named in NARROWED_FLOOR {
+            assert!(root.join(named).is_file(), "{named} is named but missing");
+            assert_eq!(wide_class(named), None, "{named} must take its area");
+        }
+        for wide in [
+            "src/update_keys.rs",
+            "src/update_hooks.rs",
+            "src/update_cleanup.rs",
+            "src/update_home.rs",
+            "src/home_install.rs",
+            "src/home_install_apply.rs",
+            "src/home_retire.rs",
+            "src/home_state_retire.rs",
+            "src/home_root.rs",
+            "src/home_workdir.rs",
+            "src/home_layout.rs",
+            "src/home_state.rs",
+            "src/agent_install.rs",
+            "src/go_state.rs",
+            "src/state_root.rs",
+            "src/ops/home_install_plan.rs",
+            "src/ops/home_install_apply.rs",
+            "src/ops/home_install_revert.rs",
+            "src/ops/home_retire_revert.rs",
+            "src/ops/home_style_revert.rs",
+            "src/ops/home_routing_revert.rs",
+            "src/ops/agents_home_revert.rs",
+            "src/update/new_file_added_later.rs",
+            "src/home_routing/new_file_added_later.rs",
+        ] {
+            assert_eq!(
+                wide_class(wide),
+                Some("audit floor"),
+                "{wide} must stay wide"
+            );
+        }
     }
 
     /// An old name in the scan list and a module filter through the crate are the same target.

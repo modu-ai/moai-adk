@@ -49,95 +49,7 @@ pub struct Protected {
 /// The hook text (a POSIX shell script) for the managed-hook installer. It holds no branch name:
 /// it reads the record.
 pub fn hook_text() -> &'static str {
-    r#"#!/bin/sh
-# moai reference-transaction hook: the integration branch moves only through the landing command
-# (SPEC-20261121-ref-guard). Written by moai; changes are overwritten.
-case "$1" in prepared | committed) ;; *) exit 0 ;; esac
-common=${GIT_COMMON_DIR:-}
-if [ -z "$common" ]; then
-  case "$0" in /*) self=$0 ;; *) self=$PWD/$0 ;; esac
-  case "$self" in */hooks/*) common=${self%/hooks/*} ;; esac
-  [ -f "$common/moai/integration-branch" ] || common=$(git rev-parse --git-common-dir 2>/dev/null) || exit 0
-fi
-case "$common" in /*) ;; *) common=$PWD/$common ;; esac
-record="$common/moai/integration-branch"
-[ -f "$record" ] || exit 0
-line=
-IFS= read -r line < "$record" || :
-line=${line#"${line%%[![:space:]]*}"}
-line=${line%"${line##*[![:space:]]}"}
-case "$line" in refs/heads/?*) name=${line#refs/heads/} ;; *) exit 0 ;; esac
-input=$(cat)
-# A branch that was deleted is only written down here, one line per ref, for the worktree cleanup
-# to read later (SPEC-20261123-worktree-slots): nothing is removed and no program is started.
-# A line is a hint: the cleanup reads the ref again before it acts on it.
-if [ "$1" = committed ]; then
-  gone=
-  while IFS=' ' read -r qold qnew qref; do
-    case "$qref" in
-      refs/heads/?*) case "$qnew" in *[!0]*) ;; *) gone="$gone$qref
-" ;; esac ;;
-    esac
-  done <<EOF
-$input
-EOF
-  if [ -n "$gone" ]; then
-    mkdir -p "$common/moai" 2>/dev/null && printf '%s' "$gone" >> "$common/moai/worktree-cleanup-queue" 2>/dev/null
-  fi
-fi
-lowered=$(printf '%s\n%s\n' "$name" "$input" | tr 'A-Z' 'a-z')
-nl='
-'
-name=${lowered%%"$nl"*}
-lines=${lowered#*"$nl"}
-hit=0
-deletes=0
-source=
-while read -r old new ref; do
-  for value in "$old" "$new"; do
-    case "$value" in "ref:refs/heads/$name" | "ref:refs/heads/$name"/*) hit=1 ;; esac
-  done
-  case "$ref" in "refs/heads/$name" | "refs/heads/$name"/*) hit=1 ;; esac
-  case "$ref" in refs/heads/*) case "$new" in *[!0]*) ;; *) deletes=1; source=$ref ;; esac ;; esac
-  [ "$hit" = 1 ] && break
-done <<EOF
-$lines
-EOF
-if [ "$hit" = 0 ] && [ "$deletes" = 1 ] && [ "$1" = prepared ]; then
-  cmd=$(ps -o command= -p "$PPID" 2>/dev/null)
-  if [ -z "$cmd" ] && [ -r "/proc/$PPID/cmdline" ]; then cmd=$(tr '\0' ' ' < "/proc/$PPID/cmdline"); fi
-  words=$(printf '%s\n' "$cmd" | tr 'A-Z ' 'a-z\n')
-  target=
-  while read -r word; do
-    case "$word" in "" | -*) ;; *) target=$word ;; esac
-  done <<EOF
-$words
-EOF
-  case "$target" in
-    "$name" | "refs/heads/$name")
-      # git moved the source's reflog aside before this delete and does not move it back
-      moved="$common/logs/refs/.tmp-renamed-log"
-      if [ -n "$source" ] && [ -f "$moved" ] && [ ! -e "$common/logs/$source" ]; then
-        mkdir -p "${common}/logs/${source%/*}" 2>/dev/null
-        mv "$moved" "$common/logs/$source" 2>/dev/null
-      fi
-      echo "moai ref guard refused: this command renames a branch onto the integration branch, and git deletes the source branch before it touches the integration branch; nothing was changed. The integration branch moves only through the landing command (\`moai card land\`)" >&2
-      exit 1 ;;
-  esac
-fi
-[ "$hit" = 1 ] || exit 0
-moai=$(command -v moai 2>/dev/null)
-if [ -z "$moai" ] && [ -x "$HOME/.moai/bin/moai" ]; then moai="$HOME/.moai/bin/moai"; fi
-if [ -z "$moai" ]; then
-  echo "moai ref guard refused: the moai program was not found on PATH or in \$HOME/.moai/bin, so a change of the integration branch cannot be checked" >&2
-  [ "$1" = prepared ] && exit 1
-  exit 0
-fi
-printf '%s\n' "$input" | "$moai" card guard "$1" >/dev/null
-rc=$?
-[ "$1" = prepared ] && exit $rc
-exit 0
-"#
+    include_str!("../../install/git-hooks/reference-transaction")
 }
 
 // ---- git -------------------------------------------------------------------------------------
@@ -280,6 +192,58 @@ fn write_record(common: &Path, full_ref: &str) -> Result<(), String> {
 pub fn recorded_branch(project: &Path) -> Option<String> {
     let common = common_dir_of(project).ok()?;
     read_record(&common).map(|full| full[HEADS.len()..].to_string())
+}
+
+/// Whether the guard can act in the repository of `project`: the record already names a protected
+/// branch, or the profile names an integration branch the record can be seeded from. The hook
+/// installer installs the guard hook only then (SPEC-20261125-integration-guard-install REQ-1).
+pub fn can_act(project: &Path) -> bool {
+    recorded_branch(project).is_some() || landed::profile_branch(project).is_ok()
+}
+
+/// The git-hook part of a `moai update` preview and of `git-hooks-plan`, given the answer of
+/// [`can_act`]. The hook installer module is compiled by path from a test and cannot read the
+/// profile, so every library caller goes through this and [`apply_hooks`].
+pub fn plan_hooks_layer(
+    home: &Path,
+    cwd: &Path,
+) -> Result<crate::git_hooks::update::Layer, String> {
+    crate::git_hooks::update::plan_with_guard(home, cwd, can_act(cwd))
+}
+
+/// The confirmed git-hook install of `moai update` and `git-hooks-apply`, given the same answer
+/// as the preview, followed by the guard record when it is absent: the answer always carries
+/// `guard: {record, ..}` ([`seed_record`]), a `not_written` with its reason where the record
+/// cannot be written. The record is written after the hooks.
+pub fn apply_hooks(cwd: &Path, token: &str, now: &str) -> Result<Value, String> {
+    let can = can_act(cwd);
+    let mut answer = crate::git_hooks::update::apply_guarded(cwd, token, now, can)?;
+    answer["guard"] = seed_record(cwd);
+    Ok(answer)
+}
+
+/// The record after an install, for the installer's answer (SPEC-20261125-integration-guard-install
+/// REQ-2): the record is written when it is absent, from the profile, in the primary worktree
+/// only. `{record: "written" | "present" | "not_written", why?}`; it never fails, a read that does
+/// not work is a `not_written` with its reason.
+pub fn seed_record(project: &Path) -> Value {
+    if let Some(name) = recorded_branch(project) {
+        return json!({"record": "present", "branch": name});
+    }
+    match protected(project, true) {
+        Ok(Some(p)) if p.written => {
+            json!({"record": "written", "branch": p.full_ref.trim_start_matches(HEADS)})
+        }
+        Ok(Some(_)) => json!({
+            "record": "not_written",
+            "why": "this is a linked worktree: the record is written from the primary worktree",
+        }),
+        Ok(None) => json!({
+            "record": "not_written",
+            "why": "the profile names no integration branch to protect",
+        }),
+        Err(why) => json!({"record": "not_written", "why": why}),
+    }
 }
 
 /// What the lander says it is about to do: `old` to `new` of `reference`.

@@ -929,3 +929,156 @@ fn ac10_an_input_over_the_limit_is_read_to_its_end() {
     assert_eq!(lines.len(), 1, "{lines:?}");
     assert_eq!(lines[0]["reason"], "stdin_too_large");
 }
+
+// ---- SPEC-20261125-integration-guard-install AC-4: the missing-guard line ----------------------
+
+const GUARD_BRANCH: &str = "NeXT";
+
+impl Fx {
+    /// The profile at `at` names `GUARD_BRANCH` as the integration branch (or none).
+    fn profile_names(&self, at: &Path, branch: Option<&str>) {
+        let flow = branch.map_or(String::new(), |b| {
+            format!(", \"work_flow\": {{\"flow\": \"next-flow\", \"integration_branch\": \"{b}\"}}")
+        });
+        fs::write(
+            at.join(moai_cli::state_root::MOAI_DIR).join("project.yaml"),
+            format!(
+                "{{\"schema_version\": 2, \"project_id\": \"{PROJECT}\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"]{flow}}}\n"
+            ),
+        )
+        .unwrap();
+    }
+
+    /// The guard files of the common git folder `common`: the hook (mode `hook_mode`) and the record.
+    fn guard_files(&self, common: &Path, hook_mode: Option<u32>, record: bool) {
+        use std::os::unix::fs::PermissionsExt;
+        if let Some(mode) = hook_mode {
+            fs::create_dir_all(common.join("hooks")).unwrap();
+            let path = common.join("hooks/reference-transaction");
+            fs::write(&path, "#!/bin/sh\nexit 0\n").unwrap();
+            fs::set_permissions(&path, fs::Permissions::from_mode(mode)).unwrap();
+        }
+        if record {
+            fs::create_dir_all(common.join("moai")).unwrap();
+            fs::write(
+                common.join("moai/integration-branch"),
+                format!("refs/heads/{GUARD_BRANCH}\n"),
+            )
+            .unwrap();
+        }
+    }
+
+    fn guard_context(&self) -> Vec<String> {
+        self.context("startup").lines().map(str::to_owned).collect()
+    }
+}
+
+fn not_guarded(what: &str) -> String {
+    format!("MoAI: integration branch {GUARD_BRANCH} is not guarded: {what} (moai git-hooks-plan)")
+}
+
+/// AC-4: the line is there exactly when the hook is absent, not executable, or the record is
+/// absent, and it names what is missing.
+#[test]
+fn guard_line_names_what_is_missing() {
+    let fx = Fx::new(true);
+    fx.profile_names(&fx.checkout, Some(GUARD_BRANCH));
+    let common = fx.checkout.join(".git");
+    let one = |lines: Vec<String>| {
+        assert_eq!(lines.len(), 2, "{lines:?}");
+        lines[1].clone()
+    };
+    // Nothing installed: both are named, in one line.
+    assert_eq!(
+        one(fx.guard_context()),
+        not_guarded("the hook reference-transaction is missing and the record moai/integration-branch is missing")
+    );
+    // The record only.
+    fx.guard_files(&common, None, true);
+    assert_eq!(
+        one(fx.guard_context()),
+        not_guarded("the hook reference-transaction is missing")
+    );
+    // The hook, not executable, and the record.
+    fx.guard_files(&common, Some(0o644), true);
+    assert_eq!(
+        one(fx.guard_context()),
+        not_guarded("the hook reference-transaction is not executable")
+    );
+    // The hook, executable, and no record.
+    fs::remove_file(common.join("moai/integration-branch")).unwrap();
+    fx.guard_files(&common, Some(0o755), false);
+    assert_eq!(
+        one(fx.guard_context()),
+        not_guarded("the record moai/integration-branch is missing")
+    );
+}
+
+/// AC-4: both present adds no line; a profile that names no branch adds no line whatever the
+/// folder holds.
+#[test]
+fn guard_line_is_absent_when_the_guard_is_in_place_or_the_profile_names_no_branch() {
+    let fx = Fx::new(true);
+    fx.profile_names(&fx.checkout, Some(GUARD_BRANCH));
+    let common = fx.checkout.join(".git");
+    fx.guard_files(&common, Some(0o755), true);
+    assert_eq!(fx.guard_context().len(), 1);
+    fs::remove_file(common.join("hooks/reference-transaction")).unwrap();
+    fs::remove_file(common.join("moai/integration-branch")).unwrap();
+    fx.profile_names(&fx.checkout, None);
+    assert_eq!(fx.guard_context().len(), 1);
+}
+
+/// AC-4: a linked worktree reads the hook and the record of the common git folder, and the
+/// handler starts no git process while it looks.
+#[test]
+fn guard_line_reads_the_common_git_folder_of_a_linked_worktree_and_starts_no_program() {
+    let fx = Fx::new(true);
+    let common = fx.root.join("common-git");
+    let git_dir = common.join("worktrees/w");
+    let linked = fx.root.join("linked");
+    fs::create_dir_all(&git_dir).unwrap();
+    fs::create_dir_all(linked.join(moai_cli::state_root::MOAI_DIR)).unwrap();
+    fs::write(git_dir.join("HEAD"), format!("ref: refs/heads/{BRANCH}\n")).unwrap();
+    fs::write(git_dir.join("commondir"), "../..\n").unwrap();
+    fs::write(
+        linked.join(".git"),
+        format!("gitdir: {}\n", git_dir.display()),
+    )
+    .unwrap();
+    fx.profile_names(&linked, Some(GUARD_BRANCH));
+    let input = serde_json::json!({
+        "hook_event_name": "SessionStart", "session_id": "s1",
+        "cwd": linked.to_str().unwrap(), "source": "startup",
+    })
+    .to_string()
+    .into_bytes();
+    let bin = fx.root.join("fakebin");
+    fs::create_dir_all(&bin).unwrap();
+    let marker = fx.root.join("git-was-started");
+    common::write_executable(
+        &bin.join("git"),
+        &format!("#!/bin/sh\n/usr/bin/touch '{}'\nexit 0\n", marker.display()),
+    );
+    let run = |input: &[u8]| {
+        context_of(&fx.exec(
+            &["hook", "session-context"],
+            &linked,
+            input,
+            &[("PATH", bin.to_str().unwrap())],
+            Out::Pipe,
+            Out::Pipe,
+        ))
+    };
+    let text = run(&input);
+    assert!(
+        text.lines()
+            .nth(1)
+            .is_some_and(|l| l.contains("is not guarded")),
+        "{text}"
+    );
+    fx.guard_files(&common, Some(0o755), true);
+    let text = run(&input);
+    assert_eq!(text.lines().count(), 1, "{text}");
+    assert!(!marker.exists(), "a git process was started");
+}

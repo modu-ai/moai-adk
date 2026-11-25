@@ -269,26 +269,23 @@ fn no_source_names_the_two_ways_out() {
     assert_eq!(w.own_scope(&name), json!([]));
 }
 
-/// AC-6 (REQ-7): the fill meets the overlap check in the same transaction; a refusal leaves the
-/// card's scope empty and writes no `card.scope` event.
+/// AC-6 (REQ-7), after SPEC-20261125-card-no-file-locks: a fill that meets another card's
+/// reservation is taken all the same, and the answer names the overlap and that card.
 #[test]
-fn a_fill_keeps_the_overlap_check() {
+fn a_fill_over_another_cards_paths_is_taken_and_reports_the_overlap() {
     let w = world();
     let holder = w.empty_card("holder");
     result(&w.card(Some(S_A), &["take", &holder, "--scope", "src/x.rs"]));
     let name = w.empty_card("filled");
     let spec = w.spec("fill-overlap", &["src/x.rs".into()]);
     w.link(&name, &spec);
-    let events = w.count("SELECT count(*) FROM event WHERE kind = 'card.scope'");
-    let message = refusal(&w.card(Some(S_B), &["take", &name]));
-    // The reservation's own refusal names the write scope in conflict and the card that holds it.
-    assert!(message.contains("conflict in write scope"), "{message}");
-    assert!(message.contains(&holder), "{message}");
-    assert_eq!(w.own_scope(&name), json!([]));
-    assert_eq!(
-        w.count("SELECT count(*) FROM event WHERE kind = 'card.scope'"),
-        events
-    );
+    let took = result(&w.card(Some(S_B), &["take", &name]));
+    assert_eq!(took["scope_source"], json!("spec"), "{took}");
+    let overlaps = took["overlaps"].as_array().unwrap();
+    assert_eq!(overlaps.len(), 1, "{took}");
+    assert_eq!(overlaps[0]["card"], json!(holder), "{took}");
+    assert_eq!(overlaps[0]["theirs"], json!("src/x.rs"), "{took}");
+    assert_eq!(w.own_scope(&name), json!(["src/x.rs"]));
 }
 
 /// AC-7 (REQ-8): a SPEC list of 64 paths fills the scope, a list of 65 is refused with the limit.
@@ -517,10 +514,10 @@ fn the_last_reservation_is_the_newest_one() {
     assert_eq!(w.own_scope(&name), json!(["src/second.rs"]));
 }
 
-/// B3 (REQ-9, REQ-7): `card next` runs the overlap check on the scope it fills in, so a card
-/// whose fill meets another card's active reservation is skipped as `scope_overlap`.
+/// B3 (REQ-9, REQ-7), after SPEC-20261125-card-no-file-locks: a card whose fill meets another
+/// card's active reservation is offered by `card next` like any other ready card.
 #[test]
-fn next_skips_a_fill_that_overlaps_a_held_scope() {
+fn next_offers_a_fill_that_overlaps_a_held_scope() {
     let w = world();
     let holder = w.empty_card("holder");
     result(&w.card(Some(S_A), &["take", &holder, "--scope", "src/x.rs"]));
@@ -530,15 +527,16 @@ fn next_skips_a_fill_that_overlaps_a_held_scope() {
     let next = w.next(Some(S_B));
     let ready = next["ready"].as_array().unwrap();
     assert!(
-        ready.iter().all(|c| c["name"] != json!(name)),
-        "{name} is offered although its fill overlaps {holder}: {next}"
+        ready.iter().any(|c| c["name"] == json!(name)),
+        "{name} is not offered: {next}"
     );
     let skipped = next["skipped"].as_array().unwrap();
-    let card = skipped
-        .iter()
-        .find(|c| c["name"] == json!(name))
-        .unwrap_or_else(|| panic!("no {name} in {next}"));
-    assert_eq!(card["reason"], json!("scope_overlap"), "{card}");
+    assert!(
+        skipped
+            .iter()
+            .all(|c| c["reason"] != json!("scope_overlap")),
+        "{next}"
+    );
 }
 
 /// N2 (REQ-12): a comma inside a `--scope` value is refused, for a take and for `card scope`; one

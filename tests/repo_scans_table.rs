@@ -731,6 +731,11 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "a path leased in its temporary ledger, never opened",
     ),
     (
+        "tests/card/release_branch_version.rs",
+        &["HEADVER"],
+        "writes `HEADVER` into the temporary repository it builds and plans a release there",
+    ),
+    (
         "tests/check_affected_modes_cli.rs",
         &["README.md"],
         "`put(p, \"README.md\", ..)` into the fixture repository it builds",
@@ -751,6 +756,11 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "committed into the fixture repository (`commit(d, &[(\"src/lib.rs\", ..)])`)",
     ),
     (
+        "tests/generation_request_record.rs",
+        &["CLAUDE.md", "README.md"],
+        "names of files in the temporary project it builds (a planted link target, the launch text)",
+    ),
+    (
         "tests/ops_table_gen_cli.rs",
         &["src/main.rs", "src/lib.rs"],
         "the shared file names it looks for in the research table text",
@@ -767,8 +777,8 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
     ),
     (
         "tests/repo_scans_table.rs",
-        &[".moai/specs"],
-        "a name in the fixture tests of this file",
+        &[".moai/specs", "HEADVER"],
+        "a name in the fixture tests of this file, and in the exemption row of the release test",
     ),
     (
         "tests/review_check_cli.rs",

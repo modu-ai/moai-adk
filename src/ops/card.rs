@@ -229,8 +229,8 @@ enum Action {
     /// A card that has an active reservation (`active` or `review`) is widened instead, under
     /// the same generation: no release and no retake, and the holder, lease, worktree and branch
     /// stay. A held card's scope only grows: the list must keep every pattern the reservation
-    /// has (a list that leaves one out is a `conflict` naming it), and the added patterns must
-    /// not overlap another card's reservation (a `conflict` naming that card). `--reason` is
+    /// has (a list that leaves one out is a `conflict` naming it), and a pattern that another card's reservation also covers
+    /// is added all the same and named in `overlaps` (no file lock). `--reason` is
     /// required for a held card; the `card.scope` event records `--by`, the reason, the
     /// generation and the holder; the card's own scope is not changed, so a later `card take`
     /// without `--scope` still reads the old one. `--generation` is the generation the caller
@@ -280,8 +280,8 @@ enum Action {
     /// last reservation leaves it out and names it in `warnings`; write the file in short with
     /// `card line-lease`.
     /// Refused when the card is not `ready`, is already held, has no `open` or `met` criterion
-    /// (the answer names `card criterion-add`), or its scope overlaps another
-    /// card's reservation (`conflict`). The answer's `generation` is what `release` and
+    /// (the answer names `card criterion-add`). A scope that overlaps another
+    /// card's reservation is no reason to refuse: the answer's `overlaps` names it. The answer's `generation` is what `release` and
     /// `handoff` need. The holder is this session's own id (`CLAUDE_CODE_SESSION_ID` or
     /// `CODEX_THREAD_ID`), never typed; a session without one is refused. The answer's `spec`
     /// is the SPEC the card names (`card spec`) and its status; `warnings` names a card that
@@ -682,7 +682,7 @@ enum Action {
     /// Reads the ledger only. Prints the cards this session holds (`mine`: generation, lease
     /// end, worktree, branch), then the `ready` cards it could take, by priority and then by
     /// number, then every card it cannot take with the reason (`held` by another session,
-    /// `scope_overlap` with another card's reservation, `empty_scope`: a card without a write
+    /// `empty_scope`: a card without a write
     /// scope that has no usable SPEC `write:` list or earlier reservation to fill it from, so
     /// `take` refuses it; a card that `take` could fill is listed `ready` with the scope it would
     /// get and its `scope_source`; `no_criteria`: a `ready` card with no criterion that is not
@@ -928,6 +928,38 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Hand in a finished card: gates, receipt, READY note and review in one
+    ///
+    /// Writes the ledger, and only after every step before the write passed. As this session,
+    /// holding the card at `--generation`: (1) the reserved worktree is clean, its HEAD is the
+    /// tip of the reserved branch and no criterion is `open` (mark it with `card criterion`);
+    /// (2) the fast gates all run, so one refusal lists every failure: `diff_check`, `fmt`,
+    /// `ops_rustfmt`, `tables` and `trailers`; a failing gate starts no long step; (3) a PASS
+    /// summary of the same head and base is quoted, otherwise `check affected --card` runs once;
+    /// (4) the READY note is written from the receipt: first line `LANE-READY-INTEGRATION
+    /// <card> head=<40hex>`, base, tier (the floor of the changed paths), receipt line, fast-gate
+    /// exits, each criterion, the paths outside the reserved scope on one `outside-scope:` line
+    /// (never a refusal), the `--mutants` lines and `leftovers: none`; (5) the card goes to
+    /// `review` and its paths are given back, as `card review` does. The answer names the head,
+    /// the tier and the next card. It writes no verdict and lands nothing. A failing step
+    /// leaves the ledger as it was and names the step and its log.
+    Submit {
+        /// `C-12`.
+        card: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// A file of `guard-mutant: <test> | <code removed> | exit <n>` lines; a tier 2 head
+        /// needs it (`guard-mutant: none | <reason>` for no new guard test).
+        #[arg(long)]
+        mutants: Option<PathBuf>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Give paths of a held card back
     ///
     /// Writes the ledger. The holder removes the named `--path`s from the reservation of this
@@ -956,9 +988,9 @@ enum Action {
     ///
     /// Writes the ledger. Adds the named `--path`s to the reservation, runs the command given
     /// after `--` and gives the added paths back in one call: a short lease for a line in a
-    /// shared file. While another card's reservation covers a path the call retries until
-    /// `--wait-secs` (default 60, at most 600), then is refused naming that card and writes
-    /// nothing. The command's standard output goes to standard error, so the answer stays one
+    /// shared file. Another card's reservation of a path is no reason to wait or refuse; the
+    /// `--wait-secs` option is still accepted (at most 600) and is not used.
+    /// The command's standard output goes to standard error, so the answer stays one
     /// JSON envelope. A command that exits non-zero or cannot start is refused with its status
     /// named, after the lease gives the paths back. A path given back is free for any card at
     /// once. If this process is killed while the command runs, the leased paths stay in the
@@ -1814,6 +1846,31 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             generation,
             &keep,
         ),
+        Action::Submit {
+            card,
+            generation,
+            mutants,
+            project,
+            home,
+        } => {
+            // The tests' seam for the long check program; the command line has no flag for it
+            // and a release build does not read the variable at all.
+            #[cfg(debug_assertions)]
+            let submit_check = env("MOAI_TEST_SUBMIT_CHECK").map(PathBuf::from);
+            #[cfg(not(debug_assertions))]
+            let submit_check: Option<PathBuf> = None;
+            moai_cli::card::submit::submit(
+                &project,
+                &resolve_home(home)?,
+                &moai_cli::card::submit::SubmitRequest {
+                    card: &card,
+                    holder: &d::session_holder("submit", env)?,
+                    generation,
+                    mutants: mutants.as_deref(),
+                    check_cmd: submit_check,
+                },
+            )
+        }
         Action::GiveBack {
             card,
             generation,
