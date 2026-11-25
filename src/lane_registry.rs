@@ -303,6 +303,85 @@ pub fn session_entries(project: &Path) -> Result<Vec<SessionEntry>, String> {
     Ok(out)
 }
 
+/// What a reader of the whole registry folder finds
+/// (SPEC-20261125-wip-limit-live-lock-lanes REQ-1, REQ-5).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RegistryScan {
+    /// Every entry that could be read, its lease running or ended.
+    pub entries: Vec<SessionEntry>,
+    /// The names whose `.live` lock is held by a launcher.
+    pub locked: std::collections::BTreeSet<String>,
+    /// The names whose entry or lock could not be read; each is left out, never an error.
+    pub unreadable: std::collections::BTreeSet<String>,
+}
+
+/// Scans the registry folder of the clone `project` belongs to without a lock or a write. Unlike
+/// [`session_entries`], one entry or lock that cannot be read leaves only its name out
+/// (`unreadable`). `Ok(None)` when no registry exists to read: the folder is not a git clone, or
+/// the clone has no sessions folder yet. An error when the folder is there and cannot be read as a
+/// whole (a link anywhere below the common dir, a file instead of a folder, no permission): the
+/// caller must tell that from "no session".
+pub fn scan_registry(project: &Path) -> Result<Option<RegistryScan>, String> {
+    let identity = crate::identity::identity_in(project, None)
+        .map_err(|e| format!("session registry: {e}"))?;
+    if identity["identity_status"].as_str() != Some("ok") {
+        return Ok(None);
+    }
+    let dir = registry_dir_unlinked(project)?;
+    match fs::symlink_metadata(&dir) {
+        Ok(m) if m.is_dir() => {}
+        Ok(_) => {
+            return Err(format!(
+                "session registry {} is not a folder",
+                dir.display()
+            ))
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => {
+            return Err(format!(
+                "session registry {} cannot be read: {e}",
+                dir.display()
+            ))
+        }
+    }
+    let read = fs::read_dir(&dir)
+        .map_err(|e| format!("session registry {} cannot be read: {e}", dir.display()))?;
+    let mut scan = RegistryScan::default();
+    for item in read {
+        // A file name the folder listing cannot give is one broken file, not a broken folder.
+        let Ok(item) = item else { continue };
+        let path = item.path();
+        let Some(stem) = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .filter(|s| valid_name(s))
+        else {
+            continue;
+        };
+        match path.extension().and_then(|x| x.to_str()) {
+            Some("json") => match read_full(&path, stem) {
+                Ok(Some(entry)) => scan.entries.push(entry),
+                Ok(None) => {}
+                Err(_) => {
+                    scan.unreadable.insert(stem.to_string());
+                }
+            },
+            Some("live") => match crate::session::live_lock_held(&path) {
+                Ok(true) => {
+                    scan.locked.insert(stem.to_string());
+                }
+                Ok(false) => {}
+                Err(_) => {
+                    scan.unreadable.insert(stem.to_string());
+                }
+            },
+            _ => {}
+        }
+    }
+    scan.entries.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(Some(scan))
+}
+
 /// The canonical path of the git worktree that holds the running folder (`git rev-parse
 /// --show-toplevel`, resolved), or `None` outside a git worktree or when git cannot answer. This
 /// is the "running worktree" of `session-register` and `card adopt`; nothing is written.

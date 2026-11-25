@@ -99,15 +99,13 @@ const SRC_ORCA_FILES: [&str; 16] = [
     "src/statusline/state.rs",
 ];
 
-/// The only places in the skill package and the agent files that name Orca. The research
-/// agent lists the adapter among the documents it reads (checked below to be that line only).
+/// The only place in the skill package and the agent files that names Orca. The research agent
+/// no longer lists the adapter among the documents it reads, since its body never uses it
+/// (SPEC-20261125-base-agent-contract D-4), and is checked below to name Orca nowhere.
 /// The two mode files left with their routes (SPEC-20261122-next-flow-skills-agents REQ-2), and
 /// the rule history, which quotes their sentences word for word, left the package for
 /// `docs/rule-history.md` (the same SPEC's Plan step 6).
-const PACKAGE_ORCA_FILES: [&str; 2] = [
-    "agents/research.md",
-    "skills/moai/references/adapters/orca.md",
-];
+const PACKAGE_ORCA_FILES: [&str; 1] = ["skills/moai/references/adapters/orca.md"];
 
 fn src_files() -> Vec<PathBuf> {
     let mut files = Vec::new();
@@ -176,8 +174,8 @@ fn the_word_orca_stays_in_the_two_modes_and_the_adapter() {
     let research = read("agents/research.md");
     let naming: Vec<&str> = research.lines().filter(|l| mentions_orca(l)).collect();
     assert!(
-        naming.len() == 1 && naming[0].starts_with("reads: "),
-        "agents/research.md may name Orca only in its `reads:` line: {naming:?}"
+        naming.is_empty(),
+        "agents/research.md names Orca nowhere, not even in its `reads:` line: {naming:?}"
     );
 }
 

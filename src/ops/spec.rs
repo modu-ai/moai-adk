@@ -54,7 +54,9 @@ enum Action {
     ///
     /// Reads only. Checks one SPEC or every SPEC against the format and reports each problem with
     /// a stable code, an error or a warning. Exit 0 only when no SPEC has an error. Runs no
-    /// program: a `verify:` command is read, never run.
+    /// program: a `verify:` command is read, never run. An approved SPEC passes while its
+    /// `approval.digest` equals the `approval_digest` or the earlier `digest` that `spec show`
+    /// prints; a body that matches neither is the error `approval_digest`.
     Check {
         /// The SPEC id.
         #[arg(conflicts_with = "all", required_unless_present = "all")]
@@ -80,8 +82,10 @@ enum Action {
     },
     /// Reads only. Show one SPEC as JSON
     ///
-    /// Reads only. The frontmatter, the sections, every REQ and AC, the scope, the content
-    /// digest an approval records, and the findings. `local_cards` lists the cards of this
+    /// Reads only. The frontmatter, the sections, every REQ and AC, the scope, two digests and
+    /// the findings: `digest` is the earlier content digest an old approval records, and
+    /// `approval_digest` is the value a new approval records (requirements, criteria and
+    /// `forbidden:` entries only). `local_cards` lists the cards of this
     /// machine's ledger that name the SPEC (`moai card spec`); they are personal and never
     /// written to the SPEC. Without a project profile or a ledger the list is empty and
     /// `ledger` says why; the SPEC is shown all the same.

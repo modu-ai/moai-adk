@@ -78,7 +78,7 @@
       }
     },
     "references/audit.md": {
-      "sha256": "f278092f400dbf49ecfbdf82b62447887e87b42c6e2ba32a3d0a9246412fd7b9",
+      "sha256": "9b49ad7a706b2a827b927da178774ff75ead7ecdc4ae09201a25760cd78c079d",
       "origin": {
         "kind": "design-spec",
         "template_id": "audit-contract",
@@ -87,7 +87,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "e4034e76f5ee378946367317783e55244731a98ee23bb9438cffa93bf7437fce",
+      "sha256": "0cd28f0d591282ee219370f438d30f41e4b1664e9761db057b8d367f36b8ee22",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -95,8 +95,17 @@
         "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): request kind -> route -> agents in order -> what the parent reads first. Agents' own lists stay in their `reads:` key, so the chain never repeats them. A rule line for internal/lenses added by #3096 S1."
       }
     },
+    "references/flows/landing-release.md": {
+      "sha256": "b29e81d2e8ae00722db7b2a80960de557f168f576600e4f9e09b5313e6f393cd",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "flow-landing-release",
+        "adoption": "new",
+        "reason": "Moved out of the SYNC workflow by the RUN and SYNC procedure SPEC: the lander and release part (effects, landing, release pull request, CI evidence, independent review, release merge, reconcile, integration receipt). Named once by SYNC."
+      }
+    },
     "references/flows/next-flow.md": {
-      "sha256": "d2338bdefbd50808f257d73c6dd8420b4512c7bc93f16200349f481b9c529a98",
+      "sha256": "a660fba4dcdaf633f49e7327b90e718c9a108d89eaa3cdd8b488337495485e94",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
@@ -141,7 +150,7 @@
       }
     },
     "references/internal/boundary-checks.md": {
-      "sha256": "e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7",
+      "sha256": "40d6b07dafbba885d87946ba782a5d80a9ea243c448c44242c2e97f4abf8192d",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-boundary-checks",
@@ -150,6 +159,15 @@
         "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
         "source_path": "internal/template/templates/.claude/rules/moai/quality/boundary-verification.md",
         "license": "Apache-2.0"
+      }
+    },
+    "references/internal/build-slots.md": {
+      "sha256": "d36353c05174ec5feb28cd43c3b6c43c8fc8d11724d2c8f645abb8196fd9923f",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-build-slots",
+        "adoption": "new",
+        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: heavy slots, one build folder per worktree, cleanup and the build cache facts, with the Python slot and tool paths removed. Read from RUN step 1."
       }
     },
     "references/internal/check-completeness.md": {
@@ -162,6 +180,15 @@
         "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
         "source_path": "internal/template/templates/.claude/rules/moai/development/verification-completeness.md",
         "license": "Apache-2.0"
+      }
+    },
+    "references/internal/check-rules.md": {
+      "sha256": "3d22b021ae4a662eafa94fe9b11fc6a0232bd4e1905ae276a43120a16cc90343",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-check-rules",
+        "adoption": "new",
+        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: who runs which check, when a remote run may be cited, the test rules and the flaky rule, with internal numbers, tool paths and Python lines removed. Read from RUN step 5."
       }
     },
     "references/internal/code-atlas.md": {
@@ -213,7 +240,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "c6fbbb398a24979704ed2cbc46f34553f032f37280787430019c686076f8f072",
+      "sha256": "d3f70c843649b189a9fb21de3f2ae0b5c2d66b2b269539a45c8fe0c24708bdb8",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
@@ -222,7 +249,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "325c7a531690a5aec1bed8e836caca86a952eb6f13e41b52ad839588c83aa6d4",
+      "sha256": "5502d4ccff0d5f40d3466a77d38196956f00810bc24e710b29f3db39ed59e623",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -267,7 +294,7 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "eb938d33488190502d1197a3843d76f87234eb3a331785287618cb86934a9c53",
+      "sha256": "c510ceeef9c35f9935e60fa7ead11e34daa30c43f6311948a17772f67678bb56",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
@@ -288,12 +315,21 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "88347a63d2117b0a86d0aeab6cb061620f1a44ff7ed0ed0eed19f0ed3bd38c7c",
+      "sha256": "0684759a7a0adc744456fec5c427e8055b7bc56058a41130d24b48e307b407c9",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
         "adoption": "new",
         "reason": "The checks whoever wrote a change runs before asking for an audit or opening a pull request, one line each with its command, grouped as tests, package and documents, and the pull request. Read by moai-impl (`reads:`) and named by the rules of chains/index.md; its machine items are run by the repository's own check script."
+      }
+    },
+    "references/internal/shell-guards.md": {
+      "sha256": "9423fb72a4f5664adbedac8bb618d68fd4ddde6eeb61ea932525dda7a313bd8c",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-shell-guards",
+        "adoption": "new",
+        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: the change-specific rules, the shell and helper rules and the host worktree guard table, with internal numbers removed. Read from RUN Exceptions and Permissions."
       }
     },
     "references/internal/tdd-results.md": {
@@ -309,7 +345,7 @@
       }
     },
     "references/internal/test-design.md": {
-      "sha256": "895d9819b8b4428bfa7802ad1b1163306ab4f91ca5a6aee7fc267b42c5692b75",
+      "sha256": "90c7535f2b3fbab55969b7a25c3b1e4551ce52416cfc94230f08a604334082b5",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-test-design",
@@ -318,12 +354,21 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "bcec9110d3a7e3d71c0bad94418d752685c4a7011e18ebe1cfe7039b48195fda",
+      "sha256": "cfea10b078577bd91c2b4e02d3fc5f3340c34e9fa73d8a8dbf056545fc4682c7",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
         "adoption": "new",
         "reason": "Written for rc.2 card C-69 (user instruction 2026-11-17): the three versioning schemes the PROJECT interview offers — SemVer (default), HeadVer and CalVer — each with its format, who bumps what, when to pick it, how the next version is computed, its pre-release marking and two examples, plus the rule to keep the scheme a project already uses and how `project-detect` reads a version. Sources read 2026-11-17: semver.org 2.0.0, github.com/line/headver, calver.org spec 26.0. Named by project.md, internal/interview and chains/index.md."
+      }
+    },
+    "references/internal/web-pages.md": {
+      "sha256": "fcbc89dd2e25cfaac597728d27dbea477a924877ca07d161d37b65c88c57f760",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-web-pages",
+        "adoption": "new",
+        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: how a session reads a web page. Read from RUN step 2."
       }
     },
     "references/languages/c-cpp.md": {
@@ -426,7 +471,7 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "f4fec08f7150db820daf51216342783319b6df323f480f65559b8d759913a51e",
+      "sha256": "731779dbb3111316150e6dfe52b17a249ca51dad10b89ab43c6a1668a82c69eb",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
@@ -441,10 +486,10 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261124-moai-leader-route (REQ-1 to REQ-12): `/moai leader` makes the window that types it the registered coordination window; it registers with `session-register`, renews once per round, reads the ledger, sends audits to another session, lands with `moai card land --by leader` and releases the registration at the end. The completion-message and transition sentences stay in `flows/next-flow`."
       },
-      "sha256": "e5f0478412b9c09fb3b770c7503e339fc72e9d60733e9b8d9cf160e7d7838dd3"
+      "sha256": "f1b6e90f288b122d62d0d3dc8295c4c2cee1126d53676a5107cc074ebfaf0826"
     },
     "workflows/plan.md": {
-      "sha256": "aa55ae822a25bacacc62c37d780e9abb782b8156e3e90bab63d8ac81f8fee384",
+      "sha256": "690ea42cee7448ee4528f43c0b9137237a0c77a7a56197fb8347839b38891725",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
@@ -462,7 +507,7 @@
       }
     },
     "workflows/read.md": {
-      "sha256": "e7fb334685d277878925f7ec04756ece7a7001639bbd0a52c078b90d5912e2b2",
+      "sha256": "bd50381adcc55f840bf614aa0097c86093c0f52db68a8847d4229bfb0e19a684",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-read",
@@ -471,7 +516,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "6cbd4fe0a1a881753429faff85360e24b65830926b2f409402c7f0c3e35c7438",
+      "sha256": "6934eb776809ae18e8ce690687060de97c711b8e6e7ba5e28cbdc32e5698924f",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -480,7 +525,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "07406dc797d800846cac5c0c6becc219ca866424d94be92020a3fc2f88db49d8",
+      "sha256": "d04ec90fec47a99120caa203d73e43c1bd1e16d882bb38d7bb82c39de6013e28",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
@@ -489,7 +534,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "6842b9f5466669c681a841bf827ce4bfbe66700d66efb135bcb72dcdfea581d8",
+      "sha256": "c55a1e45486a5fe872f72b9b80a4dfeda20867fe84c42b0663cdf288bdce83c0",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
@@ -504,7 +549,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai agent` takes one card at a time, hands its plan, implementation and documents to the base agents in turn, submits it with `moai card submit` and waits for the leader (user decision 2026-11-25); a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "33f9d27519dc0126b8ad06d3ffcbc0b08ee0751b75a02a4b5fd9ce6d7af4d318"
+      "sha256": "d8cdfd8f8a0c34e976e2ba15dd0efef6d6cccdc33982e98bd7e4933bae4a65b8"
     }
   }
 }

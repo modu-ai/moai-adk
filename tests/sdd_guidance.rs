@@ -26,7 +26,9 @@ fn the_reference_states_the_rules_the_user_decided() {
     let text = sdd();
     assert!(text.starts_with("# Internal: sdd\n\nWhen to read: "));
     for phrase in [
-        "Every change that modifies the repository has a SPEC",
+        // SPEC-20261125-plan-card-branch-without-spec REQ-7: the old "every change has a SPEC"
+        // sentence is replaced; a SPEC is for tier 2 changes and the card is the design below it.
+        "A SPEC is for tier 2 changes",
         // SPEC-20261122-next-flow-skills-agents (slice C audit B2): a card lands once through the
         // landing command; the pull request is a release's.
         "One SPEC = one branch `spec/<slug>-<yyyymmdd>` = one landing",
@@ -495,5 +497,131 @@ fn test_design_has_one_work_count_rule() {
             rules[0].contains(part),
             "the work-count rule lacks {part:?}"
         );
+    }
+}
+
+/// The text of `rel` from `heading` to the next `## ` heading or the end of the file.
+fn card_branch_part(rel: &str, heading: &str) -> String {
+    let text = read(rel);
+    let start = text
+        .find(heading)
+        .unwrap_or_else(|| panic!("{rel} has no {heading:?}"));
+    let rest = &text[start + heading.len()..];
+    let end = rest.find("\n## ").unwrap_or(rest.len());
+    rest[..end].to_string()
+}
+
+/// SPEC-20261125-plan-card-branch-without-spec AC-1 (REQ-1 to REQ-4): the PLAN workflow sorts a
+/// card by its Write set and has one step for a card with no SPEC and one for tier 2.
+#[test]
+fn card_branch_ac1_plan_has_a_branch_for_each_tier() {
+    let part = card_branch_part("skills/moai/workflows/plan.md", "## Card branches");
+    for phrase in [
+        "1. **Sort.**",
+        "tier 2 when",
+        "tier 0 or 1 otherwise",
+        "treat the card as tier 2",
+        "2. **Tier 0 or 1: no SPEC.**",
+        "body and criteria are the design",
+        "Write no SPEC and ask for no approval",
+        "does not start with `spec/`",
+        "`card/<slug>-<yyyymmdd>`",
+        "never a card number",
+        "`moai card land`",
+        "does not take a card that names no SPEC",
+        "3. **Tier 2: SPEC and approval.**",
+        "`## Interview`",
+        "hand only the approved revision to RUN",
+        "never recorded by the lane",
+    ] {
+        assert!(
+            part.contains(phrase),
+            "plan.md Card branches lacks {phrase:?}"
+        );
+    }
+    // The two branches come after the sort, in this order.
+    let at = |p: &str| part.find(p).unwrap_or_else(|| panic!("lacks {p:?}"));
+    assert!(at("1. **Sort.**") < at("2. **Tier 0 or 1: no SPEC.**"));
+    assert!(at("2. **Tier 0 or 1: no SPEC.**") < at("3. **Tier 2: SPEC and approval.**"));
+}
+
+/// AC-2 (REQ-5, REQ-6): where the planning agent's Write set, Shared spots and Open questions
+/// go, with only commands this build has.
+#[test]
+fn card_branch_ac2_plan_places_the_plan_agent_output() {
+    let part = card_branch_part("skills/moai/workflows/plan.md", "## Card branches");
+    for phrase in [
+        "4. **Planning agent output.**",
+        "`Write set`",
+        "`Tests that read changed text`",
+        "the card's scope",
+        "`moai card scope`",
+        "`Shared spots`",
+        "`moai card line-lease`",
+        "`Open questions`",
+        "open-question marker (`internal/sdd` item 5)",
+        "`LANE-BLOCKED kind=decision`",
+    ] {
+        assert!(
+            part.contains(phrase),
+            "plan.md Card branches lacks {phrase:?}"
+        );
+    }
+    // Every `moai card <verb>` the section names is a command of this build.
+    let home = tempfile::tempdir().unwrap();
+    let mut seen = 0;
+    for chunk in part.split("`moai card ").skip(1) {
+        let verb: String = chunk
+            .chars()
+            .take_while(|c| c.is_ascii_lowercase() || *c == '-')
+            .collect();
+        let out = Command::new(common::MOAI_BIN)
+            .clean_env()
+            .env("HOME", home.path())
+            .args(["card", &verb, "--help"])
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "`moai card {verb}` is not a command");
+        seen += 1;
+    }
+    assert!(seen >= 4, "the section names too few card commands: {seen}");
+}
+
+/// AC-3 (REQ-7, REQ-8, REQ-10): the SDD reference says a SPEC is for tier 2 and a FAIL is for
+/// the four kinds, and the PLAN workflow names no Issue.
+#[test]
+fn card_branch_ac3_sdd_and_plan_follow_the_recorded_decisions() {
+    let sdd = sdd();
+    for phrase in [
+        "A SPEC is for tier 2 changes",
+        "the card's body and criteria are the design",
+        "does not start with `spec/`",
+        "it FAILs for the four kinds that `references/audit.md` names",
+        "is a non-blocking finding",
+    ] {
+        assert!(sdd.contains(phrase), "sdd.md lacks {phrase:?}");
+    }
+    for gone in [
+        "Every change that modifies the repository has a SPEC",
+        "FAILs on any drift",
+        "cards stay personal to-do items",
+    ] {
+        assert!(!sdd.contains(gone), "sdd.md still says {gone:?}");
+    }
+    let plan = read("skills/moai/workflows/plan.md");
+    assert!(!plan.contains("Issue"), "plan.md still names an Issue");
+}
+
+/// AC-4 (REQ-9): READ answers a one-fact question directly and keeps the fan-out for the rest.
+#[test]
+fn card_branch_ac4_read_does_not_fan_out_one_fact() {
+    let read_md = read("skills/moai/workflows/read.md");
+    for phrase in [
+        "A question that is one fact one source answers",
+        "answered directly",
+        "start no `moai-research` for it",
+        "Otherwise READ fans out: split the question into independent parts",
+    ] {
+        assert!(read_md.contains(phrase), "read.md lacks {phrase:?}");
     }
 }

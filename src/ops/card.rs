@@ -499,7 +499,11 @@ enum Action {
     ///
     /// Writes the ledger. A `review` card gains one `card.landed` event naming the head and the
     /// by, with the writing session as the actor (NeXT-Flow, SPEC-20261120-card-done-mflow). The
-    /// head must be 40 lowercase hex. `card done` then closes the card without a pull request
+    /// head must be 40 lowercase hex. A `ready` card (sent back after its audit) gains the event
+    /// only with `--by leader`, when a verdict of the card names exactly the head, the newest
+    /// verdict of every reviewer on it is a PASS and no reviewer held a reservation of the card;
+    /// the event then carries `from_state` `ready`. Any other state is refused naming `ready`
+    /// and `review`. `card done` then closes the card without a pull request
     /// when the profile's work flow is NeXT-Flow and the head sits inside the profile's
     /// integration branch.
     Landed {
@@ -523,7 +527,9 @@ enum Action {
     /// Writes the ledger. One `card.audit_assigned` event for a card in `review` with the
     /// auditor's identity and `--by leader`; only the leader word assigns. Refused (`conflict`)
     /// when the identity holds or ever held a reservation of the card, in any spelling (ASCII
-    /// case and a `:<12hex>` worktree suffix are ignored), and when the card is not in review.
+    /// case and a `:<12hex>` worktree suffix are ignored), and when the card is not in review. A
+    /// `ready` card takes the assignment only for the reviewer of a PASS verdict of the card
+    /// (`conflict` for any other identity); no other state does.
     /// Refused too when the value is not a session identity, a lane name such as `agent-4`
     /// included: a session id (hex digits and dashes, 8 to 64 characters), optionally followed
     /// by `:` and 12 hex digits. Nothing is written then.
@@ -575,12 +581,28 @@ enum Action {
     /// Writes the ledger. Ends this session's reservation at the given generation; an `active`
     /// card becomes `ready`. A `review` card is refused: `card reopen` it first. A stale generation or a card held by another session is refused
     /// (`conflict`).
+    ///
+    /// With `--by leader --reason <why>` this is the leader's release of another session's
+    /// reservation: only the confirmed leader session (the live registered `leader` entry in
+    /// leader mode) may use it. It ends another session's `held` reservation as `released` when
+    /// its lease ended or every early proof holds (the launcher exited, the worktree is clean or
+    /// gone, no process works in it); a `review` card goes back through `active`, and the card
+    /// returns to ready. Refusals: `not_leader`, `lease_live` (the first missing proof is named),
+    /// `verdict_pass` (a card in `review` with a `pass` verdict is landed with `card land`
+    /// instead) and `holder_changed`. No reclaim is counted: a card at the reclaim limit is taken
+    /// again with `card take` after the release.
     Release {
         /// `C-12`.
         card: String,
         /// The generation `take` or `handoff` answered with.
         #[arg(long)]
         generation: i64,
+        /// Who releases for the holder: `leader`, together with `--reason`.
+        #[arg(long, requires = "reason")]
+        by: Option<String>,
+        /// Why the reservation of the other session is released (with `--by leader`).
+        #[arg(long, requires = "by")]
+        reason: Option<String>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -791,7 +813,9 @@ enum Action {
     /// Writes the ledger. Stores the text read from stdin as one note with one `card.note`
     /// event. Notes are only ever added, never changed or removed, and anyone may add one: a
     /// decision is answered by someone who does not hold the card. The event keeps the id of the
-    /// session that wrote the note, whatever `--by` says, and `card show` prints it. The text is
+    /// session that wrote the note, whatever `--by` says, and `card show` prints it. When stdin
+    /// is a terminal the command refuses at once with a usage error and waits for nothing: give
+    /// the text from a file or a heredoc. The text is
     /// at most 1 MiB, with no control character but tabs and line breaks, and no word with the
     /// shape of a secret: `card export` writes notes out. The answer's `ref` names the note.
     ///
@@ -1641,15 +1665,28 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         Action::Release {
             card,
             generation,
+            by,
+            reason,
             project,
             home,
-        } => d::release(
-            &project,
-            &resolve_home(home)?,
-            &card,
-            &d::session_holder("release", env)?,
-            generation,
-        ),
+        } => match (by, reason) {
+            (Some(by), Some(reason)) => d::release_by_leader(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                generation,
+                d::session_holder("release", env).ok().as_deref(),
+                &by,
+                &reason,
+            ),
+            _ => d::release(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &d::session_holder("release", env)?,
+                generation,
+            ),
+        },
         Action::Handoff {
             card,
             generation,
@@ -1756,6 +1793,16 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
         } => {
+            // Standard input on a terminal: nobody types the text there, so refuse at once
+            // instead of waiting for it (SPEC-20261126-card-note-tty-stdin).
+            if std::io::IsTerminal::is_terminal(&std::io::stdin()) {
+                return Err(
+                    "card note refused: standard input is a terminal; give the note \
+                            text from a file or a heredoc, for example `moai card note <card> \
+                            --kind <kind> < note.md`"
+                        .to_string(),
+                );
+            }
             let home = resolve_home(home)?;
             // The one action that reads standard input (the help rule in `src/main.rs` reads
             // this arm).

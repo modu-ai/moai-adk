@@ -47,6 +47,7 @@ Where the project offers lane commands that run a card in a lane of its own, a s
 | the card needs a decision its body and criteria do not give | Write the `LANE-BLOCKED kind=decision` note and go to step 8: with a registered leader wait for its answer, with none take the next card. |
 | the leader sends `REPAIR <card> fail head=<head>` after a first FAIL | Run `moai card reopen <card> --generation <g>`, repair on the same branch, and submit again from step 6; the second FAIL goes to the leader. |
 | the leader sends `AUDIT-REQUEST <card> ready head=<head>` for a card you did not write | Run the AUDIT route on that exact head and record the verdict with `moai card verdict` from your own session; the author of a change never audits it. |
+| a card is held by a session that is gone, or a reclaim answers `reclaim_limit` | Never free or take another session's reservation yourself. Write the `LANE-BLOCKED` note; the leader ends the reservation with `--by leader` (it refuses a live session without proof), the card returns to `ready`, and you take it again with `moai card take`. |
 
 ## Base agents
 

@@ -869,8 +869,15 @@ fn notice_rows(lang: Lang, v: &Value) -> Vec<Row> {
         .map(|n| {
             let part = n["part"].as_str().unwrap_or("");
             let host = n["host"].as_str().unwrap_or("");
+            // A notice that says it carries no warning (the `claude_folders` notice of a plain
+            // setup) is information, not a warning mark.
+            let mark = if n["warning"] == serde_json::json!(false) {
+                Mark::Ok
+            } else {
+                Mark::Warn
+            };
             row(
-                Mark::Warn,
+                mark,
                 format!("{part} {host}").trim().to_string(),
                 format!(
                     "{}: {}",

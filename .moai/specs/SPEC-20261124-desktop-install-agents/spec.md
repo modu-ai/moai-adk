@@ -5,6 +5,7 @@ status: approved
 revision: 1
 created: 2026-11-24
 parent: SPEC-20261122-claude-md-flow-rule
+branch: spec/desktop-install-agents-r2-20261124
 approval:
   by: leader
   at: 2026-11-23
@@ -133,8 +134,8 @@ approval:
 - AC-1: met — `flow_rule_is_written_directly_under_rules` 통과: 계획이 `rules/moai-flow.md` 를 말하고, 적용이 패키지 글 그대로 쓰고, `rules/moai/` 폴더가 생기지 않아요.
 - AC-2: met — `earlier_flow_file_is_left_in_place` 통과: 옛 `rules/moai/flow.md` 가 있으면 계획이 그 이름과 `left in place` 를 말하고, 적용 뒤 옛 파일의 바이트와 수정 시각이 그대로이고, 두 번째 계획은 `unchanged` 예요.
 - AC-3: met — `revert_follows_the_kind` 통과: 새 적용의 영수증은 `rules/moai-flow.md` 를 되돌리고, 옛 배치가 쓰던 kind `flow` 항목은 `rules/moai/flow.md` 만 되돌리며 새 경로를 건드리지 않아요.
-- AC-4: not_run — 알림 조각(REQ-5, REQ-6, REQ-7, REQ-9)은 이 조각에 없어요.
-- AC-5: not_run — 알림 조각(REQ-8)은 이 조각에 없어요.
+- AC-4: met (알림 조각, 아래 "알림 조각" 절) — `preview_names_each_claude_folder` 통과.
+- AC-5: met (알림 조각) — `notice_is_read_only` 통과. 다이제스트 절반은 같은 미리보기가 같은 `plan_digest` 를 내는 것과 HOME 이 바이트 그대로인 것으로 못박았어요(아래 "알림 조각" 절의 한계 참고).
 - AC-6: 여섯 파일 중 `update_user_layer_cli` 를 포함해 모두 새 경로를 이름 붙였어요. `check affected` 본 실행의 결과는 READY 노트가 가지고 있어요(같은 head).
 
 ### 첫 감사 뒤 수리 (2026-11-24, 같은 가지, 임시 HOME 만)
@@ -147,9 +148,20 @@ approval:
 - N3: `docs/design-review/appendix/operations/home_routing_plan.md` 와 `home_routing_apply.md` 의 흐름 파일 경로를 `rules/moai-flow.md` 로, 영수증 kind 목록을 `routing`·`moai_flow`·`old_block`(옛 `flow` 는 `rules/moai/flow.md` 만)으로, 계획 문서의 충돌 목록에서 더는 흐름 길이 아닌 `rules/moai` 를 빼고 예전 파일 안내를 한 줄 더했어요. `skills/moai/references/source-manifest.json` 의 한 줄(`rules/moai/flow.md` → `rules/moai-flow.md`)은 `moai card line-lease` 안에서 `sed` 로 바꿨어요.
 - 인수 기준은 위와 같아요(AC-1, AC-2, AC-3 met · AC-4, AC-5 not_run · AC-6 는 수리 head 의 `check affected` 영수증이 근거).
 
+### 알림 조각 (2026-11-25, 가지 `spec/desktop-install-agents-r2-20261124`, 리더 배차로 이어받음, 임시 HOME 만)
+
+REQ-5 에서 REQ-9, AC-4, AC-5 를 구현했어요. 첫 조각이 땅에 놓인 NeXT 끝(`c5c0eda525`)에서 새 가지를 땄고, 가지 이름이 SPEC id 와 달라서(훅이 SPEC 을 찾음) 이 문서 머리말에 `branch:` 한 줄을 더했어요. 이 줄은 승인 다이제스트 밖이에요(`moai spec check` 오류 0).
+
+- `src/update.rs` 의 `claude_folders_notice(home)` 가 알림 한 개를 `UserLayerPlan.notices` 에 더해요(D-4, 다이제스트 밖). 알림은 `kind: claude_folders`, `part: folders`, `host: claude`, `reason`, 부분별 폴더(`folders.skills|agents|style|rules`), `warning`(true 또는 false)을 담아요. 스킬·에이전트·스타일 폴더는 `host_home::place` 가 푼 폴더(`CLAUDE_CONFIG_DIR` 이 이 계정 것으로 셀 때 그 폴더)이고, rules 는 라우팅 층이 항상 쓰는 `~/.claude` 예요.
+- `CLAUDE_CONFIG_DIR` 이 다른 폴더를 가리킬 때(`warning: true`) `reason` 은 쓰는 폴더 넷, "Desktop 은 로그인 셸 export 와 Desktop 재시작 뒤에만 그 폴더를 읽고 아니면 `~/.claude` 를 읽는다", 그리고 명령 `env -u CLAUDE_CONFIG_DIR moai update` 를 말해요(REQ-6, REQ-7). 변수가 없거나, 이 계정 것으로 세지 않거나, 기본 폴더를 가리키면 폴더 하나만 말하고 경고가 없어요(`warning: false`, REQ-9).
+- 화면 표시(범위 밖 두 파일): `src/update_tux.rs` 의 알림 줄은 `warning: false` 인 알림에 경고 표시 대신 확인 표시를 써요(그 키가 없는 이전 알림은 그대로 경고 표시). 매 업데이트 화면에 경고 표시가 붙는 것을 막으려는 한 줄이고, 시험은 `tests/update_tux_golden.rs` 의 `a_notice_without_a_warning_has_no_warning_mark` 예요. 카드 범위에 이 두 경로를 더한 근거는 카드 원장의 범위 확장 기록(리더 배차 2026-11-25, 카드 범위 직접 맞춤)이고 판 1 `write:` 줄에는 없어요.
+- 실행 기록(`cargo nextest run --locked`, 임시 HOME, 슬롯): `desktop_folder_rules_cli` 7 passed(새 시험 둘 포함), `update_tux_golden` 의 새 시험 1 passed. 새 시험을 구현 전에 빨갛게 돌린 RED 실행은 없어요(구현을 같은 빌드 전에 이미 써 둠). 대신 아래 뮤턴트로 "구현이 없으면 시험이 실패한다" 를 보였어요.
+- 뮤턴트(손으로 한 줄 변이, 커밋 `1256ae2f56` 위에서 `target/jade/mutants.sh`, 변이마다 `git checkout` 으로 복구, 모두 종료 코드 100 = 시험 실패): (1) `notices.extend(claude_folders_notice(home))` 를 알림을 버리는 줄로 → `desktop_folder_rules_cli` 실패. (2) `let warning = !same_folder(..)` 를 `false` 로 → 실패. (3) `"rules": shown(&default)` 를 `shown(&skills)` 로 → 실패. (4) `update_tux.rs` 의 `== json!(false)` 를 `== json!(true)` 로 → `update_tux_golden` 실패.
+- 한계: `plan_digest` 가 알림을 안 담는 것을 `user_layer_plan` 을 직접 부르는 단위 시험으로 못박으려 했으나, 그 함수가 HOME-GUARD 의 미끼 `user-assets.json` 을 읽어서 baseline 에 줄을 더해야 했고 baseline 은 줄어들기만 해서(`BASELINE_CAP`) 그 시험은 뺐어요. AC-5 의 다이제스트 절반은 같은 미리보기의 `plan_digest` 가 같다는 것과 `confirm_with` 가 그 다이제스트로 끝난다는 것, HOME 이 바이트 그대로라는 것으로만 못박았고, "알림이 다이제스트에 들어가면 실패한다" 를 보이는 시험은 없어요(코드에서 알림은 `plan_digest` 계산 입력에 없어요).
+
 ### 남은 것
 
-- 알림 조각(REQ-5 에서 REQ-9)은 `src/update.rs` 를 쥔 카드가 놓은 뒤 SCOPE-REQUEST 로 이어요.
+- 카드 기준 3 은 운영자 단계라 이번 조각에서도 not_run 이에요(리더 배차 2026-11-25).
 - `tests/fixtures/home-style/render-5.md` 의 설명 글이 옛 경로를 말로 적고 있어요(범위 밖, 이 조각에서 바꾸지 않았어요).
 - 후속 카드 후보(감사 N1, N4): 예전 영수증을 새 apply 뒤에 되돌리면 공용 `flow_sha256` 칸이 비어 다음 새 판이 `conflict` 로 계획돼요(데이터 손실 없음, 순서대로 되돌리면 맞아요). 되돌리기가 `~/.moai` 의 상태 파일과 영수증 폴더를 남기는 것은 기존 동작이에요.
 - 카드 기준 3(임시 HOME 설치 뒤 진짜 claude 세션에서 /moai, 에이전트 다섯, rules 확인)은 운영자 단계라 not_run 이에요.

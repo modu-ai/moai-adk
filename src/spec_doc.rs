@@ -21,10 +21,15 @@
 //!   `forbidden:` relative paths; an untagged path is `write`) and `## Plan` always;
 //!   `## Non-goals` and `## Risks` make a full SPEC, which then needs both; `## Decisions` and
 //!   `## Result` are optional. Headings inside fenced code are text.
-//! - digest: [`crate::spec::content_digest`] over the requirements, acceptance and scope; an
-//!   approved SPEC records it as `approval.digest`, and a body that no longer matches it is an
-//!   error (a change needs the next revision and a new approval). No `cards:` key: personal card
-//!   numbers stay out of shared files.
+//! - digests: `approval_digest` covers the requirement sentences with their links, the criteria
+//!   (id, links, result text, verification kind) and the `forbidden:` entries, and nothing else
+//!   (no front matter, no other section, no `write:` or `read-only:` entry, no `verify:`
+//!   command). `digest` is the earlier [`crate::spec::content_digest`] over the requirements,
+//!   acceptance (with the `verify:` commands) and all scope entries. An approved SPEC records
+//!   one of them as `approval.digest`; the record is read as valid when it equals either, and a
+//!   body that matches neither is an error (a change needs the next revision and a new
+//!   approval). A record of the earlier `digest` keeps that stricter coverage. No `cards:` key:
+//!   personal card numbers stay out of shared files.
 
 use serde::Serialize;
 use std::fs;
@@ -146,7 +151,8 @@ pub struct Approval {
     pub by: Option<String>,
     pub at: Option<String>,
     pub basis: Option<String>,
-    /// [`SpecDoc::digest`] at approval.
+    /// [`SpecDoc::approval_digest`] or the earlier [`SpecDoc::digest`] at approval; either one
+    /// keeps the approval valid, and an earlier one keeps its earlier, stricter coverage.
     pub digest: Option<String>,
 }
 
@@ -233,9 +239,14 @@ pub struct SpecDoc {
     pub acceptance: Vec<Criterion>,
     pub scope: Scope,
     pub result: Vec<Outcome>,
-    /// `spec::content_digest` over requirements, acceptance and scope; `None` while a
-    /// requirement is not a GEARS sentence.
+    /// The earlier content digest, `spec::content_digest` over requirements, acceptance
+    /// (including each `verify:` command) and every `## Scope` entry; `None` while a
+    /// requirement is not a GEARS sentence. An approval made before `approval_digest` records it.
     pub digest: Option<String>,
+    /// The approval digest, over the requirements with their links, the criteria (id, links,
+    /// result text, verification kind) and the `forbidden:` entries only; `None` while a
+    /// requirement is not a GEARS sentence. A new approval records it.
+    pub approval_digest: Option<String>,
     pub findings: Vec<Finding>,
     #[serde(skip)]
     gears: Vec<crate::spec::Requirement>,
@@ -1979,6 +1990,7 @@ fn digest(doc: &mut SpecDoc, approval_line: Option<usize>) {
             }
         })
         .collect();
+    let approval_digest = approval_digest(doc, &requirements);
     let s = &doc.scope;
     let scope = [
         ("write", &s.write),
@@ -2009,16 +2021,55 @@ fn digest(doc: &mut SpecDoc, approval_line: Option<usize>) {
     let digest = crate::spec::content_digest(&content, &crate::spec::SortedKeys);
     let recorded = doc.approval.as_ref().and_then(|a| a.digest.clone());
     if let Some(recorded) = recorded.filter(|r| !r.trim().is_empty()) {
-        if recorded != digest {
+        if recorded != approval_digest && recorded != digest {
             doc.error(
                 "approval_digest",
                 approval_line,
-                "the requirements, acceptance or scope changed after approval (`approval.digest` \
-                 differs); raise `revision` and approve again",
+                "the requirements, acceptance or `forbidden:` entries changed after approval \
+                 (`approval.digest` matches neither `approval_digest` nor the earlier `digest`); \
+                 raise `revision` and approve again",
             );
         }
     }
     doc.digest = Some(digest);
+    doc.approval_digest = Some(approval_digest);
+}
+
+/// The approval digest: the requirement records (sentence, GEARS parts, linked criterion ids),
+/// the criteria (id, links, result text, verification kind; the text of `manual:` and
+/// `unknown:`, never the command after `verify:`) and the `forbidden:` entries, under the
+/// domain tag `approval@1`. Nothing else is hashed: no front matter, no other section, no
+/// `write:` or `read-only:` entry.
+fn approval_digest(doc: &SpecDoc, requirements: &[crate::spec::Requirement]) -> String {
+    let acceptance: Vec<_> = doc
+        .acceptance
+        .iter()
+        .map(|c| {
+            let (kind, detail) = match (&c.verify, &c.manual, &c.unknown) {
+                (Some(_), _, _) => ("verify", ""),
+                (_, Some(m), _) => ("manual", m.as_str()),
+                (_, _, Some(u)) => ("unknown", u.as_str()),
+                _ => ("none", ""),
+            };
+            serde_json::json!({
+                "id": c.id,
+                "refs": c.refs,
+                "observable_result": c.text,
+                "kind": kind,
+                "detail": detail,
+            })
+        })
+        .collect();
+    let approved = serde_json::json!({
+        "kind": "approval@1",
+        "requirements": requirements,
+        "acceptance": acceptance,
+        "forbidden": doc.scope.forbidden,
+    });
+    crate::digest(&crate::spec::Canonical::bytes(
+        &crate::spec::SortedKeys,
+        &approved,
+    ))
 }
 
 fn result(doc: &mut SpecDoc, content: &[(usize, &str)]) {
