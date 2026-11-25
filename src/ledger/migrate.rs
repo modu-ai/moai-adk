@@ -598,7 +598,7 @@ mod tests {
     #[test]
     fn an_earlier_ledger_gets_the_event_index_and_no_row_or_version_changes() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("ledger.db");
+        let path = dir.path().join("earlier-shape.sqlite");
         ledger_without_event_index(&path);
         let conn = Connection::open(&path).unwrap();
         assert!(!has_event_index(&conn).unwrap());
@@ -647,7 +647,7 @@ mod tests {
     #[test]
     fn a_read_only_connection_tells_the_index_state_and_writes_nothing() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("ledger.db");
+        let path = dir.path().join("earlier-shape.sqlite");
         ledger_without_event_index(&path);
         let before = std::fs::read(&path).unwrap();
         let conn = Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();

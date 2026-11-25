@@ -376,12 +376,7 @@ pub(crate) fn open_at_timeout(
     // behind a link (`/var` on macOS) is normal. The ledger file itself was checked above.
     let conn = Connection::open_with_flags(path, access | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
     conn.busy_timeout(busy)?;
-    // A page cache that holds the whole `event` table of a long-lived ledger (about 7 MB at 18,000
-    // events): SQLite's default of 2 MB made every scan read the same pages again from the file
-    // (SPEC-20261126-card-next-speed REQ-1). The memory is taken page by page as pages are read.
-    conn.execute_batch(
-        "PRAGMA foreign_keys = ON; PRAGMA recursive_triggers = ON; PRAGMA cache_size = -65536;",
-    )?;
+    conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA recursive_triggers = ON;")?;
     let version = verify_identity(&conn, project_id, writable).map_err(|e| match e {
         // A read-only connection cannot roll back a journal a crashed writer left behind.
         LedgerError::ReadOnly => LedgerError::Unavailable(
@@ -389,6 +384,12 @@ pub(crate) fn open_at_timeout(
         ),
         other => other,
     })?;
+    // A page cache that holds the whole `event` table of a long-lived ledger (about 7 MB at 18,000
+    // events): SQLite's default of 2 MB made every scan read the same pages again from the file
+    // (SPEC-20261126-card-next-speed REQ-3). The memory is taken page by page as pages are read.
+    // It is set after the identity check on purpose: the pragma reads the schema, and on a file
+    // with a leftover journal that read is what the check above has to meet first.
+    conn.pragma_update(None, "cache_size", -65536)?;
     Ok((conn, version))
 }
 
