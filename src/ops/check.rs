@@ -25,7 +25,9 @@ enum Action {
     /// Runs commands (`--list` only reads). The range is `<base>..<head>` (two dots); the changed
     /// paths are `<base>...<head>`, so a head behind its base's tip counts only its own changes.
     /// The checkout must be at the head with no modified tracked file, otherwise nothing runs.
-    /// The cheap steps all run; when one fails, nothing after them runs. The cargo steps (clippy,
+    /// The cheap steps all run; after any failed step no later step starts, the answer's `skipped`
+    /// lists the steps that did not start and `stopped_at` names the failed step; `--keep-going`
+    /// runs every step anyway. The cargo steps (clippy,
     /// one `test` call by `cargo nextest run`, or `cargo test` when nextest is missing) run under
     /// one heavy slot held from the first to the last; a slot that is not obtained gives its exit
     /// code to each of them and no cargo starts. The `test` step runs with a cap of 4 threads
@@ -54,6 +56,8 @@ enum Action {
     /// profile, one that cannot be read, or no `checks`) and no step failed, the result is
     /// `not_run`, never `PASS`: the line ends in `result=not_run`, the answer's `not_run.next`
     /// says what to write in the profile, and the READY note gate takes no receipt from it.
+    /// The command exits 0 only when the summary says `result=PASS`; `result=FAIL` and
+    /// `result=not_run` exit 1 with the same answer printed (`--list` has no result and exits 0).
     /// Writes the step logs,
     /// `heavy-slot.log` and `summary.txt` (the summary line, whatever its result: the receipt
     /// `card note` reads before it keeps a READY or REPAIRED note of this head) under
@@ -106,6 +110,10 @@ enum Action {
         /// summary), and a head that moved runs the diff's targets and the earlier failures.
         #[arg(long)]
         full: bool,
+        /// Run every step even after one failed; the default stops before the first step that
+        /// follows a failed one.
+        #[arg(long)]
+        keep_going: bool,
     },
     /// Reads the ledger. Print the tests that passed only on a retry, with their counts
     ///
@@ -137,6 +145,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             card,
             integration_ref,
             full,
+            keep_going,
         } => {
             let pick = if card {
                 moai_cli::check_affected::Pick::Card
@@ -162,7 +171,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 integration_ref,
                 full,
             };
-            let answer = moai_cli::check_affected::run(&dir, &range, &opts)?;
+            let answer = moai_cli::check_affected::run_with(&dir, &range, &opts, keep_going)?;
             // SPEC-20261124-ready-receipt-gate: the summary line is the receipt `card note` reads.
             if let (Some(out), Some(summary)) = (answer["out"].as_str(), answer["summary"].as_str())
             {
