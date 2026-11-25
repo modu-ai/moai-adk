@@ -87,3 +87,16 @@ created: 2026-11-25
 | D-3 | 공유 파일 규칙(`shared_files`, `card line-lease`)을 이번에는 그대로 둬요(기본). 대안: 같은 변경에서 함께 지워요 | 겹침 거절이 없으면 line-lease 의 필요가 사라지지만 지우려면 프로필 스키마, 도움말, 테스트, 문서가 같이 바뀌어요. 한 카드 한 관심사로 나눠요 | 후속 카드 |
 | D-4 | 제출 때 겹침 목록은 hand-back 노트가 남겨질 때 답에 `tip_overlap` 으로 내요(기본). 대안: 같은 목록을 원장 이벤트로도 남겨 `card show` 에 보인다 | READY 관문이 이미 base·head 를 git 으로 읽어요(추가 의존 없음). 이벤트는 새 종류와 읽는 쪽이 늘어요. 알림이 목적이라 답으로 충분해요 | 이벤트 쓰기 한 줄을 더해요 |
 | D-5 | 만료된 임대의 경로를 새 take 에게 내주던 `yield_overlaps` 는 호출을 없애요(기본). 대안: 만료 예약의 범위를 계속 정리한다 | 겹침이 허용되면 내줄 이유가 없고, 그 함수는 다른 카드의 예약 범위를 줄이는 쓰기라 REQ-8(다른 카드는 그대로)과 맞지 않아요. 만료 예약은 `card reclaim` 이 정리해요 | 호출을 되살려요 |
+
+## Result
+
+- AC-1 met: `card_no_file_locks_cli::ac1_a_take_over_another_cards_paths_is_made_and_reports_the_overlap` 와 `ac1_an_ended_lease_keeps_its_paths_when_another_card_takes_over_them` (take 가 만들어지고 `overlaps` 가 첫 카드·holder·두 패턴을 담으며, 첫 카드의 범위·임대와 `card.yield` 이벤트 수가 그대로예요; 임대가 끝난 첫 예약도 범위를 지켜요).
+- AC-2 met: `ac2_a_widening_over_another_cards_paths_is_made_and_reports_the_overlap` (넓히기가 되고 `overlaps` 가 나오며 다른 카드 범위는 그대로예요).
+- AC-3 met: `ac3_card_next_no_longer_skips_a_card_for_an_overlap` (겹치는 두 카드가 모두 `ready`, `scope_overlap` 없음, HOLD 카드는 `hold` 로 건너뛰어요).
+- AC-4 met: `ac4_card_check_names_the_other_card_that_holds_the_path` (겹치는 경로는 `allowed: true` 와 `overlaps`, 겹치지 않는 경로는 빈 목록, 예약 밖 경로는 그대로 거절).
+- AC-5 met: `ac5_a_ready_note_lists_the_files_the_tip_changed_under_the_lane`, `ac5_a_ready_note_with_no_shared_file_answers_an_empty_list`, `ac5_a_ready_note_keeps_the_note_when_the_integration_branch_is_unknown` (임시 git 저장소: `["src/a.rs"]`, `[]`, 통합 브랜치를 몰라서 `not_checked` 와 이유를 내고 노트는 남아요). 겹침 목록은 영수증 base 가 아니라 통합 tip 과 head 의 merge-base 에서 구해요(`landed::tip_overlap`).
+- AC-6 met: `ac6_the_card_owner_hold_scope_and_generation_checks_stay` (이미 보유된 카드, HOLD, 빈 범위, 낡은 generation 의 `card check`·`card scope` 가 그대로 거절돼요)와 이웃 `ledger_reservation::` 테스트. 가드 뮤턴트: 이미 보유 검사 끔 → ac6 실패, HOLD 관문 끔 → ac6 실패. 빈 범위·낡은 generation 거절은 이 변경이 건드리지 않아 뮤턴트를 두지 않았어요.
+- AC-7 met: `card_land_cli::`, `card_land_batch_cli::` 를 포함한 `--test card` 전체 1400개가 통과했어요(착지 코드는 바꾸지 않았어요).
+- AC-8 met: 옛 테스트 `ledger_reservation`, `ledger_workflow`, `ledger_lease_yield`(통째로 다시 씀), `card_take_scope_cli`, `card_work_cli`, `card_generated_scope`, `card_dispatch_cli`, `card_sweep_cli`, `card_scope_widen_cli`, `card_line_lease_cli`, `ledger_scope_return` 이 새 동작을 고정해요. `plan_admission` 과 `boundary_repro` 는 겹침 판정 함수만 시험해서 바꾸지 않았어요.
+- 범위 목록에 없던 파일: `src/card/dispatch.rs`(take·scope 답을 만들어요), `src/card/landed.rs`(`tip_overlap` 을 둬요; `src/card/ready_receipt.rs` 는 다른 카드가 쥐고 있어서 쓰지 않았어요), 위 테스트 파일 넷(`card_dispatch_cli`, `card_sweep_cli`, `card_scope_widen_cli`, `card_line_lease_cli`, `ledger_scope_return`).
+- 알려진 틈: `card line-lease` 는 기다리지 않고 바로 실행해서(옵션 `--wait-secs` 는 받지만 쓰지 않아요) 두 카드가 같은 공유 파일에 동시에 줄을 붙일 수 있어요(D-3: 후속 카드가 공유 파일 규칙을 지워요). 문서(`docs/design-review/appendix/ledger_reservation.md`, `operations/card.md`)와 스킬 글의 "겹침 거절" 설명은 고치지 않았어요.
