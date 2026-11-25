@@ -1,13 +1,22 @@
 ---
 id: SPEC-20261125-card-take-records-worktree
 title: "card take 와 card reclaim 이 예약에 워크트리를 항상 기록해서, 재시작된 레인이 card adopt 로 자기 카드를 이어받아요"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-25
 branch: spec/card-take-records-worktree-20261125
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9258 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 기록 직전과 착지 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:6db7b1c9a9fc9e043d60281fe16351538b00694fa7e83f1bdc885bfed1bea5c8"
 ---
 
 # card take 와 card reclaim 이 예약에 워크트리를 항상 기록해서, 재시작된 레인이 card adopt 로 자기 카드를 이어받아요
+
+## Interview
+
+- none: 사용자는 쉬는 중이라 인터뷰를 하지 않았어요. 요구사항은 카드 본문과 기준, 레인의 결정 요청(노트 9256)과 추천 기본값이 정했고, 승인은 사용자 위임(2026-11-25 ~14:50Z)에 따라 리더가 노트 9258 로 기록했어요. 리더가 착지 때 이 줄을 적었어요.
 
 ## Intent
 

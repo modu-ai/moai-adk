@@ -1,13 +1,22 @@
 ---
 id: SPEC-20261125-card-ready-pass-landing-path
 title: "PASS 판정이 기록된 ready 카드도 리더가 착지 기록까지 이어 가요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
 branch: spec/card-ready-pass-landing-path-20261125
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9347 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 기록 직전과 착지 직전에 moai spec show 로 approval_digest 를 다시 읽었어요"
+  digest: "sha256:1653d71dea25876361b8239c0c80dca614d06c54e6c6d6f55a84624e4f04dd3d"
 ---
 
 # PASS 판정이 기록된 ready 카드도 리더가 착지 기록까지 이어 가요
+
+## Interview
+
+- none: 사용자는 쉬는 중이라 인터뷰를 하지 않았어요. 요구사항은 카드 본문과 기준, SPEC 의 결정 D-1~D-4 추천 기본값(선택지 A)이 정했고, 승인은 사용자 위임(2026-11-25 ~14:50Z)에 따라 리더가 노트 9347 로 기록했어요. 리더가 착지 때 이 줄을 적었어요.
 
 ## Intent
 
