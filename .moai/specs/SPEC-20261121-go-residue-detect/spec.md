@@ -41,7 +41,7 @@ The Go-generation update survey (2026-11-21, mo.ai.kr measured) found the root g
 
 ## Scope
 
-- write: `src/go_residue.rs` (new), `src/project_update.rs` (the step), `tests/project_update_go_residue_cli.rs` (new), the step-list pins `tests/go_settings_cli.rs`, `tests/project_update_plan_cli.rs` and `tests/reports_move_cli.rs` (each gains the read-only step name), one allow-list line in `src/lib.rs` (a shared file, written by line lease), `.moai/specs/SPEC-20261121-go-residue-detect/**`
+- write: `src/go_residue.rs` (new), `src/project_update.rs` (the step), `tests/project_update_go_residue_cli.rs` (new), the step-list pins `tests/go_settings_cli.rs`, `tests/project_update_plan_cli.rs` and `tests/reports_move_cli.rs` (each gains the read-only step name), one allow-list line in `src/lib.rs` (a shared file, written by line lease), one row of `tests/fixtures/state_folder_literals/allow.tsv` for the new test file, `.moai/specs/SPEC-20261121-go-residue-detect/**`
 - read-only: `src/go_state.rs`, `src/state_root.rs`, the survey report sections 4-8
 - forbidden: any card number in shipped text, real HOME or real project writes, apply or revert behaviour
 

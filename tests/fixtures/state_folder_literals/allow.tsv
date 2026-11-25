@@ -195,6 +195,7 @@ tests/project_id_cli.rs	5	2
 tests/project_layer_follow_ups.rs	0	1
 tests/project_scale_detect_lib.rs	2	3
 tests/project_skill_links.rs	4	0
+tests/project_update_go_residue_cli.rs	0	18
 tests/project_update_hooks_cli.rs	3	4
 tests/project_update_plan_cli.rs	12	72
 tests/project_worktree_move_choice.rs	0	3
