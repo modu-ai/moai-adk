@@ -515,3 +515,42 @@ fn a_table_with_test_targets_selects_the_same_targets_as_the_listed_command() {
     assert_eq!(from_named["rust_targets"], from_listed["rust_targets"]);
     assert_eq!(from_named["scans"], from_listed["scans"]);
 }
+
+/// SPEC-20261125-repo-scans-convert-test-targets REQ-8: the two lines that tell a lane where to
+/// add a target name `test_targets`, the field the checked-in table keeps its `--test` names in:
+/// the line for an `always` scan whose rule file `tests/<stem>.rs` no check runs, and the line for
+/// a scan list that cannot be read. The cases are the ones the tests above already print them for.
+#[test]
+fn a_rule_file_without_a_check_names_test_targets() {
+    let nocheck = Fixture::new(ALL, &[file("check_nocheck_cli", reader())]);
+    let log = stopped_log(&nocheck);
+    let line = line_of(&log, "reads-nocheck");
+    assert!(
+        line.contains("--test check_nocheck_cli"),
+        "the line still names the target to add: {line}"
+    );
+    assert!(
+        line.contains("test_targets"),
+        "the rule file line names `test_targets` as the place to add the target: {line}"
+    );
+
+    let fresh = [file("check_plain_cli", "fn main() {}\n".to_string())];
+    let broken: [(&str, &[u8]); 3] = [
+        ("invalid UTF-8", &[0xff, 0xfe, b'{', b'}']),
+        ("not JSON", b"{ not json"),
+        ("no scans list", b"{\"about\":\"x\"}"),
+    ];
+    for (what, bytes) in broken {
+        let fx = Fixture::with_bytes(ALL, &changed_bytes(&fresh), Some(bytes));
+        let log = stopped_log(&fx);
+        let line = line_of(&log, "cannot be read");
+        assert!(
+            line.contains("tools/repo_scans.json"),
+            "{what}: the line still names the table: {line}"
+        );
+        assert!(
+            line.contains("test_targets"),
+            "{what}: the unreadable-table line names `test_targets`: {line}"
+        );
+    }
+}

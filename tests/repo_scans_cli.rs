@@ -759,3 +759,74 @@ fn a_table_with_test_targets_gives_the_same_checks_as_the_listed_command() {
     );
     assert_eq!(from_named, from_listed);
 }
+
+/// A temporary repository with `table` committed on `base`; branch `tip` adds the rule file `r`
+/// and branch `pull` adds a path in the scope `s/`. The repository lives under the temporary HOME
+/// of `Home`, and git is run with the fixture identity of `git_in`.
+fn needed_fixture(home: &Home, table: &Value) -> PathBuf {
+    let repo = fs::canonicalize(home.0.path()).unwrap().join("needed");
+    fs::create_dir_all(repo.join("tools")).unwrap();
+    git_in(&repo, &["init", "-q", "-b", "base"]);
+    fs::write(repo.join("src.txt"), "base\n").unwrap();
+    fs::write(
+        repo.join("tools/repo_scans.json"),
+        serde_json::to_string_pretty(table).unwrap() + "\n",
+    )
+    .unwrap();
+    git_in(&repo, &["add", "-A"]);
+    git_in(&repo, &["commit", "-q", "-m", "base"]);
+    git_in(&repo, &["checkout", "-q", "-b", "tip"]);
+    fs::write(repo.join("r"), "a changed rule file\n").unwrap();
+    git_in(&repo, &["add", "-A"]);
+    git_in(&repo, &["commit", "-q", "-m", "tip"]);
+    git_in(&repo, &["checkout", "-q", "-b", "pull", "base"]);
+    fs::create_dir_all(repo.join("s")).unwrap();
+    fs::write(repo.join("s/1"), "a changed scope path\n").unwrap();
+    git_in(&repo, &["add", "-A"]);
+    git_in(&repo, &["commit", "-q", "-m", "pull"]);
+    repo
+}
+
+/// SPEC-20261125-repo-scans-convert-test-targets REQ-7: `needed`, the function a landing asks,
+/// names the same scans and the same commands for a table that keeps its `--test` names in
+/// `test_targets` as for the earlier form with the one plain command in `checks`. Scan `a` is hit
+/// across the two sides (the rule file changed on `tip`, the scope on `pull`), scan `b` is an own
+/// hit of `pull` (`always`); `a` also keeps a non-cargo-test command in `checks`.
+#[test]
+fn needed_reads_a_table_with_test_targets_like_the_listed_form() {
+    let lib = "cargo test --offline --locked --lib state_dir";
+    let scope = json!([{"prefix": "s/"}]);
+    let listed = json!({"scans": [
+        {"id": "a", "rules": ["r"], "scope": scope, "checks": [
+            "cargo test --offline --locked --test alpha_cli --test beta_cli", lib]},
+        {"id": "b", "always": true, "rules": ["x"], "scope": scope, "checks": [
+            "cargo test --offline --locked --test gamma_cli"]}]});
+    let named = json!({"scans": [
+        {"id": "a", "rules": ["r"], "scope": scope,
+         "test_targets": ["alpha_cli", "beta_cli"], "checks": [lib]},
+        {"id": "b", "always": true, "rules": ["x"], "scope": scope,
+         "test_targets": ["gamma_cli"]}]});
+    let home = Home::new();
+    let from_listed =
+        moai_cli::repo_scans::needed(&needed_fixture(&home, &listed), "tip", "pull").unwrap();
+    let other = Home::new();
+    let from_named =
+        moai_cli::repo_scans::needed(&needed_fixture(&other, &named), "tip", "pull").unwrap();
+    let ids: Vec<&str> = from_listed.iter().map(|n| n.id.as_str()).collect();
+    assert_eq!(
+        ids,
+        ["a", "b"],
+        "the earlier form is the golden: {from_listed:?}"
+    );
+    assert_eq!(
+        from_listed[0].checks,
+        [
+            "cargo test --offline --locked --test alpha_cli --test beta_cli",
+            lib
+        ]
+    );
+    assert_eq!(
+        from_named, from_listed,
+        "the table with test_targets needs other scans or other commands"
+    );
+}
