@@ -433,3 +433,133 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
         );
     }
 }
+
+/// SPEC-20261125-release-audit-summary AC-5 (REQ-11 to REQ-14): a release summary comment of a
+/// member decides the gate through the command, with the merge base the input carries. The
+/// summary names landings and sessions only by id, and the gate reads it without a commit list.
+#[test]
+fn a_release_summary_comment_decides_the_gate() {
+    use moai_cli::release_audit_summary::{self as summary, Kind, Line, Summary, Verdict};
+
+    const MB: &str = "4444444444444444444444444444444444444444";
+    const S_AUTH: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
+    const S_REV: &str = "cccccccc-0000-4000-8000-00000000000c";
+
+    let pass = |excluded: Vec<usize>| {
+        Kind::Pass(vec![Verdict {
+            card: 1,
+            head: "abcdef012345".into(),
+            tier: 0,
+            reviewer: 1,
+            excluded,
+            event: 7,
+        }])
+    };
+    // Two landings from `base` to `H`: the first one passes, the second is `second`.
+    let comment = |id: u64, base: &str, second: Kind, association: &str| -> Value {
+        let first = "5".repeat(40);
+        let s = Summary {
+            head: H.into(),
+            base: base.into(),
+            sessions: vec![S_AUTH.into(), S_REV.into()],
+            lines: vec![
+                Line {
+                    sha: first.clone(),
+                    parent: base[..12].into(),
+                    kind: pass(vec![0]),
+                },
+                Line {
+                    sha: H.into(),
+                    parent: first[..12].into(),
+                    kind: second,
+                },
+            ],
+        };
+        json!({"id": id, "author_association": association,
+               "body": summary::comment(&s).unwrap()})
+    };
+    // A release PR: no file list and no commit list, so tier 2 and unknown authors.
+    let release = |comments: Vec<Value>, merge_base: Option<&str>| -> Value {
+        let mut v = json!({"schema_version": 1, "pr": 9, "head": H,
+                           "body": "audit-tier: 2 release\n\nbody", "comments": comments});
+        if let Some(b) = merge_base {
+            v["release_base"] = json!(b);
+        }
+        v
+    };
+
+    // A complete summary of a non-author auditor passes, and `--require-pass` exits 0.
+    let good = comment(41, MB, pass(vec![0]), "MEMBER");
+    let r = decide(&release(vec![good.clone()], Some(MB)));
+    assert_eq!(r["state"], "pass", "{r}");
+    assert_eq!(r["rule"], "release-summary", "{r}");
+    assert_eq!(r["tier"], json!(2), "{r}");
+    assert_eq!(r["comment"], json!(41), "{r}");
+    let ok = run(&release(vec![good.clone()], Some(MB)), &["--require-pass"]);
+    assert_eq!(
+        ok.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&ok.stderr)
+    );
+
+    // Without the merge base, or with another one, the summary does not match the PR.
+    for merge_base in [None, Some(H)] {
+        let r = decide(&release(vec![good.clone()], merge_base));
+        assert_eq!(
+            (r["state"].clone(), r["rule"].clone()),
+            (json!("missing"), json!("summary-base")),
+            "{merge_base:?}: {r}"
+        );
+    }
+
+    // A landing with no verdict is missing, by name, and the job's exit code is 1.
+    let none = Kind::None {
+        cards: vec![3],
+        title: "a direct commit".into(),
+    };
+    let gap = release(vec![comment(41, MB, none, "MEMBER")], Some(MB));
+    let r = decide(&gap);
+    assert_eq!(
+        (r["state"].clone(), r["rule"].clone()),
+        (json!("missing"), json!("summary-landings")),
+        "{r}"
+    );
+    assert!(r["reason"].as_str().unwrap().contains(&H[..12]), "{r}");
+    let out = run(&gap, &["--require-pass"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&out.stdout).contains("audit gate missing"));
+
+    // An auditor that is among the excluded sessions is no pass.
+    let own = comment(41, MB, pass(vec![0, 1]), "MEMBER");
+    let r = decide(&release(vec![own], Some(MB)));
+    assert_eq!(r["rule"], "summary-landings", "{r}");
+
+    // A FAIL line fails the gate; a non-member's summary is not read at all.
+    let fail = Kind::Fail {
+        why: "late_fail".into(),
+        cards: vec![2],
+        title: "a late FAIL".into(),
+    };
+    let r = decide(&release(
+        vec![comment(41, MB, fail.clone(), "MEMBER")],
+        Some(MB),
+    ));
+    assert_eq!(
+        (r["state"].clone(), r["rule"].clone()),
+        (json!("fail"), json!("summary-fail")),
+        "{r}"
+    );
+    let r = decide(&release(vec![comment(41, MB, fail, "NONE")], Some(MB)));
+    assert_eq!(r["rule"], "pass-on-head", "{r}");
+    let r = decide(&release(
+        vec![comment(41, MB, pass(vec![0]), "NONE")],
+        Some(MB),
+    ));
+    assert_eq!(r["rule"], "pass-on-head", "{r}");
+
+    // A merge base that is no string is a malformed input, refused, not ignored.
+    let mut bad = release(vec![good], Some(MB));
+    bad["release_base"] = json!(5);
+    assert_eq!(run(&bad, &[]).status.code(), Some(1));
+}

@@ -8,6 +8,7 @@ use crate::common;
 
 use common::fake_exe::write_marking_executable;
 use common::home::TempHome;
+use moai_cli::audit_gate;
 use moai_cli::ledger;
 use moai_cli::release_audit_summary::{self as summary, Kind, Summary, Verdict};
 use rusqlite::Connection;
@@ -1104,4 +1105,81 @@ fn a_range_that_is_not_a_first_parent_line_from_the_base_is_refused() {
     assert!(w.calls().is_empty());
     // And the control: the good range reads.
     assert_eq!(w.plan(&base, &c1)["landings"], json!(1));
+}
+
+/// AC-5 (REQ-11, REQ-12, REQ-13): the comment the command prints is the comment the audit gate
+/// reads. The dry-run text of a complete range, fed as a member's comment of a release PR, passes
+/// the gate; a landing the ledger has no verdict for prints a `NONE` line and the gate is
+/// `missing`, naming it; a line cut out of the printed text is a comment that does not read, and
+/// the gate fails it.
+#[test]
+fn the_comment_the_command_prints_is_what_audit_gate_reads() {
+    let w = World::new();
+    let base = w.head();
+    let c1 = w.commit("card one", Some(S_AUTH));
+    w.passed(&c1, S_REV);
+    let c2 = w.commit("card two", Some(S_AUTH));
+    w.passed(&c2, S_REV);
+
+    // A release PR: more than 250 commits and no file list, so the gate knows neither the authors
+    // nor the files; the printed lines have to carry the decision.
+    let gate = |head: &str, merge_base: &str, text: &str| -> Value {
+        let input: audit_gate::Input = serde_json::from_value(json!({
+            "schema_version": 1, "pr": 9, "head": head, "body": "audit-tier: 2\n\nbody",
+            "comments": [{"id": 31, "body": text, "author_association": "MEMBER"}],
+            "release_base": merge_base,
+        }))
+        .unwrap();
+        audit_gate::decide(&input)
+    };
+
+    let plan = w.plan(&base, &c2);
+    assert_eq!(plan["complete"], json!(true), "{plan}");
+    let text = plan["text"].as_str().unwrap().to_string();
+    let decided = gate(&c2, &base, &text);
+    assert_eq!(decided["state"], "pass", "{decided}");
+    assert_eq!(decided["rule"], "release-summary", "{decided}");
+    assert_eq!(decided["comment"], 31, "{decided}");
+
+    // Cutting any one session or landing line out of the printed text is refused, never a pass.
+    let lines: Vec<&str> = text.lines().collect();
+    let cuttable: Vec<usize> = (0..lines.len())
+        .filter(|&i| lines[i].starts_with("S ") || lines[i].starts_with("L "))
+        .collect();
+    assert!(cuttable.len() >= 4, "{text}");
+    for cut in cuttable {
+        let without: Vec<&str> = lines
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| *i != cut)
+            .map(|(_, l)| *l)
+            .collect();
+        let decided = gate(&c2, &base, &without.join("\n"));
+        assert_eq!(decided["state"], "fail", "cut `{}`: {decided}", lines[cut]);
+        assert_eq!(decided["rule"], "summary-malformed", "{decided}");
+    }
+
+    // The merge base the gate read must be the base the command printed; a text of an older head
+    // is no summary of this PR.
+    let decided = gate(&c2, &c1, &text);
+    assert_eq!(decided["rule"], "summary-base", "{decided}");
+    assert_eq!(decided["state"], "missing", "{decided}");
+
+    // A landing with no verdict on the ledger prints a NONE line and the gate names the commit.
+    let c3 = w.commit("a direct commit", None);
+    let plan = w.plan(&base, &c3);
+    assert_eq!(plan["complete"], json!(false), "{plan}");
+    let text3 = plan["text"].as_str().unwrap().to_string();
+    let decided = gate(&c3, &base, &text3);
+    assert_eq!(decided["state"], "missing", "{decided}");
+    assert_eq!(decided["rule"], "summary-landings", "{decided}");
+    assert!(
+        decided["reason"].as_str().unwrap().contains(&c3[..12]),
+        "{decided}"
+    );
+    let stale = gate(&c3, &base, &text);
+    assert_eq!(
+        stale["rule"], "pass-on-head",
+        "an older head's text: {stale}"
+    );
 }
