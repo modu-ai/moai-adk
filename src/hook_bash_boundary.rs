@@ -1675,6 +1675,19 @@ impl Walker<'_> {
                     words = &args[i.min(args.len())..];
                     continue;
                 }
+                // `moai heavy-slot-acquire … -- COMMAND` and `moai card line-lease … -- COMMAND`
+                // run the words after the first `--` as a command: they are judged like the same
+                // command typed bare. The words before it are moai's own options. Without a `--`
+                // no command is named (SPEC-20261125-boundary-unreadable-detail, D-2).
+                "moai" | "moai-cli" => {
+                    match args.iter().position(|w| !w.dynamic && w.text() == "--") {
+                        Some(i) => {
+                            words = &args[i + 1..];
+                            continue;
+                        }
+                        None => return Ok(()),
+                    }
+                }
                 "source" | "." => return Ok(()),
                 _ => {}
             }

@@ -2609,3 +2609,109 @@ fn ac15_a_checkout_under_a_temporary_root_never_borrows_the_real_home() {
         manifest.join("target").join("hook-bash-boundary-tests")
     );
 }
+
+// SPEC-20261125-boundary-unreadable-detail, REQ-5 and AC-3: a `moai` or `moai-cli` line that holds
+// a `--` runs the words after it as a command (`heavy-slot-acquire` and the card line lease do),
+// so those words are judged like the same command typed bare. The wrapped words are the bare
+// cases of the tables above; no command is executed, the hook only judges the text.
+
+/// The moai lines whose first `--` ends moai's own options and starts a command.
+const MOAI_LINES_THAT_RUN_A_COMMAND: [&str; 3] = [
+    "moai heavy-slot-acquire --name wren --max 3 --",
+    "moai card line-lease C-1 --generation 1 --path p --",
+    "moai-cli heavy-slot-acquire --name wren --max 3 --",
+];
+
+/// The first denied case of a table with the class `class`: its session and its command text.
+fn first_denied(cases: Vec<Case>, class: &str) -> (S, String) {
+    let case = cases
+        .into_iter()
+        .find(|c| c.want == Some(class))
+        .unwrap_or_else(|| panic!("a table holds no denied case of class {class}"));
+    (case.s, case.cmd)
+}
+
+#[test]
+fn a_moai_line_after_double_dash_is_judged_like_the_bare_command() {
+    let w = World::new();
+    let bare_cases = [
+        (
+            "delete-outside",
+            first_denied(delete_cases(), "delete-outside"),
+        ),
+        ("git-state", first_denied(git_state_cases(), "git-state")),
+        (
+            "protected-ref",
+            first_denied(protected_ref_cases(), "protected-ref"),
+        ),
+        ("hook-skip", first_denied(hook_skip_cases(), "hook-skip")),
+    ];
+    let mut bad = Vec::new();
+    for (class, (s, bare)) in &bare_cases {
+        // The bare command holds the class itself, so the wrapped answer means something.
+        let got = w.verdict(*s, bare);
+        if got.as_deref() != Some(*class) {
+            bad.push(format!("  bare {bare:?}: want {class:?}, got {got:?}"));
+        }
+        for prefix in MOAI_LINES_THAT_RUN_A_COMMAND {
+            let wrapped = format!("{prefix} {bare}");
+            let got = w.verdict(*s, &wrapped);
+            if got.as_deref() != Some(*class) {
+                bad.push(format!("  {wrapped:?}: want {class:?}, got {got:?}"));
+            }
+        }
+    }
+    // A shell string after the `--` is judged like the same string typed bare.
+    let (s, delete) = &bare_cases[0].1;
+    for prefix in MOAI_LINES_THAT_RUN_A_COMMAND {
+        let wrapped = format!("{prefix} sh -c \"{delete}\"");
+        let got = w.verdict(*s, &wrapped);
+        if got.as_deref() != Some("delete-outside") {
+            bad.push(format!(
+                "  {wrapped:?}: want \"delete-outside\", got {got:?}"
+            ));
+        }
+    }
+    // A command word that a variable sets cannot be read, as when it is typed bare.
+    for prefix in MOAI_LINES_THAT_RUN_A_COMMAND {
+        let wrapped = format!("{prefix} $CMD arg");
+        let got = w.verdict(S::Own, &wrapped);
+        if got.as_deref() != Some("unreadable") {
+            bad.push(format!("  {wrapped:?}: want \"unreadable\", got {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} wrapped cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+#[test]
+fn a_moai_line_after_double_dash_that_names_no_runner_passes() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    for cmd in [
+        // The words after the `--` start a script file: its content is not read.
+        "moai heavy-slot-acquire --name wren --max 3 -- /bin/zsh script.sh",
+        "moai card line-lease C-1 --generation 1 --path p -- /bin/zsh script.sh",
+        "moai-cli heavy-slot-acquire --name wren --max 3 -- /bin/zsh script.sh",
+        // No `--`: moai's own words are not judged.
+        "moai card note C-1 --kind report",
+        "moai check affected --card a..b",
+        // The first word after the `--` names no runner.
+        "moai card note C-1 -- some text",
+    ] {
+        let got = w.verdict(S::Own, cmd);
+        if got.is_some() {
+            bad.push(format!("  {cmd:?}: want no decision, got {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
