@@ -82,7 +82,7 @@ impl Fixture {
     }
 
     fn lanes(&self) -> usize {
-        live_lanes(&self.repo)
+        live_lanes(&self.repo).live
     }
 }
 
@@ -153,6 +153,78 @@ fn ac2_an_entry_without_a_session_counts_by_name() {
         LIVE,
     );
     assert_eq!(fx.lanes(), 3);
+}
+
+/// REQ-6 with the lock lanes (SPEC-20261125-wip-limit-live-lock-lanes): an entry file named by its
+/// session id is read by the lane scan, not left out as unreadable.
+#[test]
+fn ac2_a_session_keyed_entry_is_counted_not_unreadable() {
+    let fx = Fixture::new();
+    fx.entry(
+        "sess-one",
+        "demo-agent-ben",
+        Some("sess-one"),
+        "agent",
+        LIVE,
+    );
+    let lanes = live_lanes(&fx.repo);
+    assert_eq!(lanes.live, 1, "{lanes:?}");
+    assert!(lanes.unreadable.is_empty(), "{lanes:?}");
+}
+
+/// REQ-6 with the lock lanes: a held launcher lock and the session-keyed entry of the same lane
+/// are one lane, whichever of the two name forms the lock carries and whether the lease ended.
+#[test]
+fn ac2_a_held_lock_and_a_session_keyed_entry_are_one_lane() {
+    let fx = Fixture::new();
+    // The lock carries the short form, the entry the project-prefixed form.
+    fx.entry(
+        "sess-one",
+        "demo-agent-ben",
+        Some("sess-one"),
+        "agent",
+        LIVE,
+    );
+    let _short = moai_cli::session::lock_named_live(&fx.sessions, "agent-ben").unwrap();
+    assert_eq!(fx.lanes(), 1);
+    // Its lease ends while the launcher still holds the lock: still one lane.
+    fx.entry(
+        "sess-one",
+        "demo-agent-ben",
+        Some("sess-one"),
+        "agent",
+        ENDED,
+    );
+    assert_eq!(fx.lanes(), 1);
+    // An older entry of the same lane name under another session does not make a second lane.
+    fx.entry(
+        "demo-agent-ben",
+        "demo-agent-ben",
+        Some("sess-old"),
+        "agent",
+        ENDED,
+    );
+    assert_eq!(fx.lanes(), 1);
+    // A different lane with its own lock is a second lane.
+    fx.entry(
+        "sess-two",
+        "demo-agent-cara",
+        Some("sess-two"),
+        "agent",
+        ENDED,
+    );
+    let _cara = moai_cli::session::lock_named_live(&fx.sessions, "demo-agent-cara").unwrap();
+    assert_eq!(fx.lanes(), 2);
+}
+
+/// REQ-6 with the lock lanes: a lock with no entry counts once whichever name form it carries,
+/// and not again beside the entry of the same lane.
+#[test]
+fn ac2_a_lock_alone_counts_once_for_either_name_form() {
+    let fx = Fixture::new();
+    let _short = moai_cli::session::lock_named_live(&fx.sessions, "agent-dana").unwrap();
+    let _long = moai_cli::session::lock_named_live(&fx.sessions, "demo-agent-dana").unwrap();
+    assert_eq!(fx.lanes(), 1);
 }
 
 /// REQ-6: the multiple per lane is still 2, with no profile in the clone to change it.

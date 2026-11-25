@@ -105,7 +105,7 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "d2338bdefbd50808f257d73c6dd8420b4512c7bc93f16200349f481b9c529a98",
+      "sha256": "a660fba4dcdaf633f49e7327b90e718c9a108d89eaa3cdd8b488337495485e94",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
@@ -486,7 +486,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261124-moai-leader-route (REQ-1 to REQ-12): `/moai leader` makes the window that types it the registered coordination window; it registers with `session-register`, renews once per round, reads the ledger, sends audits to another session, lands with `moai card land --by leader` and releases the registration at the end. The completion-message and transition sentences stay in `flows/next-flow`."
       },
-      "sha256": "e5f0478412b9c09fb3b770c7503e339fc72e9d60733e9b8d9cf160e7d7838dd3"
+      "sha256": "f1b6e90f288b122d62d0d3dc8295c4c2cee1126d53676a5107cc074ebfaf0826"
     },
     "workflows/plan.md": {
       "sha256": "690ea42cee7448ee4528f43c0b9137237a0c77a7a56197fb8347839b38891725",
@@ -549,7 +549,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai agent` takes one card at a time, hands its plan, implementation and documents to the base agents in turn, submits it with `moai card submit` and waits for the leader (user decision 2026-11-25); a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "77edfbda44fda7e756868cf231d2885943a9ce6c6ef397701fd060ac27768a37"
+      "sha256": "d04816328bc143b0d35de074589468db7c1804797d75e4d9752baaa09619b77b"
     }
   }
 }
