@@ -115,13 +115,26 @@ pub fn default_choice(tool: &str, role: &str) -> Option<Choice> {
 /// `launcher.models.<host>` entry (SPEC-20261124-launcher-retire-role-flags D-8, REQ-15): the
 /// alias `opus` on both hosts, effort `medium` on `claude` and `high` on `glm`. The glm
 /// environment maps the alias `opus` to `glm-5.4[1m]`, so glm needs no model id of its own here.
-/// The role rows of [`default_choice`] are not read by a launch; they are the "(default)" of the
-/// question screen.
+/// The role rows of [`default_choice`] are not read by a launch; they serve `-a` sessions and the
+/// legacy `session --role` path. The "(default)" of the question screen comes from
+/// [`launch_default_choice`], which reads this function for the effort.
 pub fn launcher_default(host: &str) -> Choice {
     Choice {
         model: "opus".to_string(),
         effort: if host == "glm" { "high" } else { "medium" }.to_string(),
     }
+}
+
+/// The pair the question screen marks "(default)" and that a plain launch with nothing saved
+/// runs (SPEC-20261121-model-defaults-one-table REQ-10 to REQ-12): the table model id that the
+/// launch alias `opus` names (the `leader` row of [`default_choice`]) and the effort of
+/// [`launcher_default`]. The tool and its launcher host are the same name (`claude`, `glm`).
+/// `None` for a tool without a `leader` row.
+pub fn launch_default_choice(tool: &str) -> Option<Choice> {
+    Some(Choice {
+        model: default_choice(tool, "leader")?.model,
+        effort: launcher_default(tool).effort,
+    })
 }
 
 /// What a launch reads of `launcher.models` for one host.

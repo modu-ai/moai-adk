@@ -26,6 +26,7 @@ mod card_land_batch_cli;
 mod card_land_checked_out_cli;
 mod card_land_cli;
 mod card_land_scans_cli;
+mod card_land_sync_cli;
 mod card_leader_release_cli;
 mod card_line_lease_cli;
 mod card_list_title_prefix;

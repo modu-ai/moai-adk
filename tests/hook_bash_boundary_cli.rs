@@ -1068,15 +1068,31 @@ fn ac9_reasons_carry_the_class_and_no_command_byte() {
     for (cmd, class) in probes {
         let run = w.run(S::Own, cmd, "default");
         assert_eq!(parse_verdict(&run, cmd).as_deref(), Some(class), "{cmd}");
-        assert!(
-            !run.stdout.contains(marker),
-            "the reason echoes the command: {}",
-            run.stdout
-        );
         let value: Value = serde_json::from_str(run.stdout.trim()).unwrap();
         let reason = value["hookSpecificOutput"]["permissionDecisionReason"]
             .as_str()
             .unwrap();
+        if class == "unreadable" {
+            // SPEC-20261125-boundary-unreadable-detail, REQ-1: an `unreadable` reason names the
+            // part it could not read, and only there. The other four classes still echo nothing.
+            let (head, part) = reason
+                .split_once("Unread part:")
+                .unwrap_or_else(|| panic!("no unread part named: {reason}"));
+            assert!(
+                !head.contains(marker),
+                "the marker leaks before the tail: {reason}"
+            );
+            assert!(
+                part.contains(marker),
+                "the tail does not name the part: {reason}"
+            );
+        } else {
+            assert!(
+                !run.stdout.contains(marker),
+                "the reason echoes the command: {}",
+                run.stdout
+            );
+        }
         assert!(reason.len() < 400, "{} bytes: {reason}", reason.len());
         assert!(
             reason.starts_with(&format!("moai-boundary/{class}:")),
@@ -2470,7 +2486,9 @@ fn fifth_audit_denied_cases() -> Vec<Case> {
         "shopt \"$X\"; ls",
         "zsh --cdablevars -c 'ls'",
         "zsh --no-cdable-vars -c 'ls'",
-        "zsh -n -c 'ls'",
+        // A letter outside the table (`-n` was this example until SPEC-20261125-boundary-unreadable-detail
+        // added it; its rows are in `a_read_only_syntax_check_is_not_unreadable`).
+        "zsh -z -c 'ls'",
         "bash +O extglob -c 'ls'",
         "bash -o posix -c 'ls'",
         "zsh -o errexit -o cdablevars -c 'ls'",
@@ -2607,5 +2625,622 @@ fn ac15_a_checkout_under_a_temporary_root_never_borrows_the_real_home() {
     assert_eq!(
         fixture_base_in(manifest, None).unwrap(),
         manifest.join("target").join("hook-bash-boundary-tests")
+    );
+}
+
+// SPEC-20261125-boundary-unreadable-detail, REQ-5 and AC-3: a `moai` or `moai-cli` line that holds
+// a `--` runs the words after it as a command (`heavy-slot-acquire` and the card line lease do),
+// so those words are judged like the same command typed bare. The wrapped words are the bare
+// cases of the tables above; no command is executed, the hook only judges the text.
+
+/// The moai lines whose first `--` ends moai's own options and starts a command.
+const MOAI_LINES_THAT_RUN_A_COMMAND: [&str; 3] = [
+    "moai heavy-slot-acquire --name wren --max 3 --",
+    "moai card line-lease C-1 --generation 1 --path p --",
+    "moai-cli heavy-slot-acquire --name wren --max 3 --",
+];
+
+/// The first denied case of a table with the class `class`: its session and its command text.
+fn first_denied(cases: Vec<Case>, class: &str) -> (S, String) {
+    let case = cases
+        .into_iter()
+        .find(|c| c.want == Some(class))
+        .unwrap_or_else(|| panic!("a table holds no denied case of class {class}"));
+    (case.s, case.cmd)
+}
+
+#[test]
+fn a_moai_line_after_double_dash_is_judged_like_the_bare_command() {
+    let w = World::new();
+    let bare_cases = [
+        (
+            "delete-outside",
+            first_denied(delete_cases(), "delete-outside"),
+        ),
+        ("git-state", first_denied(git_state_cases(), "git-state")),
+        (
+            "protected-ref",
+            first_denied(protected_ref_cases(), "protected-ref"),
+        ),
+        ("hook-skip", first_denied(hook_skip_cases(), "hook-skip")),
+    ];
+    let mut bad = Vec::new();
+    for (class, (s, bare)) in &bare_cases {
+        // The bare command holds the class itself, so the wrapped answer means something.
+        let got = w.verdict(*s, bare);
+        if got.as_deref() != Some(*class) {
+            bad.push(format!("  bare {bare:?}: want {class:?}, got {got:?}"));
+        }
+        for prefix in MOAI_LINES_THAT_RUN_A_COMMAND {
+            let wrapped = format!("{prefix} {bare}");
+            let got = w.verdict(*s, &wrapped);
+            if got.as_deref() != Some(*class) {
+                bad.push(format!("  {wrapped:?}: want {class:?}, got {got:?}"));
+            }
+        }
+    }
+    // A shell string after the `--` is judged like the same string typed bare.
+    let (s, delete) = &bare_cases[0].1;
+    for prefix in MOAI_LINES_THAT_RUN_A_COMMAND {
+        let wrapped = format!("{prefix} sh -c \"{delete}\"");
+        let got = w.verdict(*s, &wrapped);
+        if got.as_deref() != Some("delete-outside") {
+            bad.push(format!(
+                "  {wrapped:?}: want \"delete-outside\", got {got:?}"
+            ));
+        }
+    }
+    // A command word that a variable sets cannot be read, as when it is typed bare.
+    for prefix in MOAI_LINES_THAT_RUN_A_COMMAND {
+        let wrapped = format!("{prefix} $CMD arg");
+        let got = w.verdict(S::Own, &wrapped);
+        if got.as_deref() != Some("unreadable") {
+            bad.push(format!("  {wrapped:?}: want \"unreadable\", got {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} wrapped cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+#[test]
+fn a_moai_line_after_double_dash_that_names_no_runner_passes() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    for cmd in [
+        // The words after the `--` start a script file: its content is not read.
+        "moai heavy-slot-acquire --name wren --max 3 -- /bin/zsh script.sh",
+        "moai card line-lease C-1 --generation 1 --path p -- /bin/zsh script.sh",
+        "moai-cli heavy-slot-acquire --name wren --max 3 -- /bin/zsh script.sh",
+        // No `--`: moai's own words are not judged.
+        "moai card note C-1 --kind report",
+        "moai check affected --card a..b",
+        // The first word after the `--` names no runner.
+        "moai card note C-1 -- some text",
+        // The words before the `--` are moai's own: a command word there is not judged, only
+        // the words after the `--` are.
+        "moai rm -rf {OUT}/x -- some text",
+        "moai git -C {OTH} commit -m x -- some text",
+    ] {
+        let got = w.verdict(S::Own, cmd);
+        if got.is_some() {
+            bad.push(format!("  {cmd:?}: want no decision, got {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// SPEC-20261125-boundary-unreadable-detail, REQ-7 and AC-3 (D-6): a word that an expansion decides
+// can stand for the `--` (`$SEP` set to `--`), so the command after it would never be judged. On a
+// moai line that names `heavy-slot-acquire` or `line-lease`, an expansion before the first literal
+// `--`, an expansion with no literal `--` at all, and an expansion in the place of the subcommand
+// are all unreadable. Other moai lines keep their expansions. The hook only judges the text; no
+// command of a case is executed.
+
+#[test]
+fn a_moai_line_that_runs_a_command_with_a_computed_word_is_unreadable() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    // A computed word where the `--` would stand, in each spelling of an expansion.
+    let computed_separators = [
+        "$SEP rm -rf {OUT}/x",
+        "${SEP} rm -rf {OUT}/x",
+        "$(printf -- --) rm -rf {OUT}/x",
+        "`printf -- --` rm -rf {OUT}/x",
+        "-- rm -rf {OUT}/x",
+    ];
+    let prefixes = [
+        "moai heavy-slot-acquire --name wren --max 3",
+        "moai card line-lease C-1 --generation 1 --path p",
+        "moai-cli heavy-slot-acquire --name wren --max 3",
+    ];
+    let mut unreadable = Vec::new();
+    for prefix in prefixes {
+        for tail in &computed_separators[..4] {
+            unreadable.push(format!("{prefix} {tail}"));
+        }
+        // A computed word before a literal `--`: it may be an option, or may swallow the next word.
+        unreadable.push(format!("{prefix} --name \"$X\" -- rm -rf {{OUT}}/x"));
+        // No literal `--` and a computed word anywhere.
+        unreadable.push(format!("{prefix} --name \"$X\""));
+    }
+    // A computed subcommand, before any literal runner name.
+    unreadable.push("moai $SUB x -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai card $SUB C-1 -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai $SUB x $SEP rm -rf {OUT}/x".to_owned());
+    for cmd in &unreadable {
+        let got = w.verdict(S::Own, cmd);
+        if got.as_deref() != Some("unreadable") {
+            bad.push(format!("  {cmd:?}: want \"unreadable\", got {got:?}"));
+        }
+    }
+    // The same lines with a literal `--` and no expansion before it are judged by the command
+    // after it (the regression of the wrapping rule).
+    for prefix in prefixes {
+        let cmd = format!("{prefix} {}", computed_separators[4]);
+        let got = w.verdict(S::Own, &cmd);
+        if got.as_deref() != Some("delete-outside") {
+            bad.push(format!("  {cmd:?}: want \"delete-outside\", got {got:?}"));
+        }
+    }
+    // Moai lines that run no command keep their expansions.
+    for cmd in [
+        "moai card note C-1 --ref \"$R\"",
+        "moai check affected --card \"$A..$B\"",
+    ] {
+        let got = w.verdict(S::Own, cmd);
+        if got.is_some() {
+            bad.push(format!("  {cmd:?}: want no decision, got {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// SPEC-20261125-boundary-unreadable-detail, REQ-7 (D-6, revision 2): the shell also expands a bare
+// glob character or brace list into a word, so `{--,}` or `??` can stand for the `--` just as `$SEP`
+// can. On a moai line that runs a command, such a bare word before the first literal `--`, in the
+// place of the subcommand or with no `--` at all, is unreadable. A quoted glob character is literal.
+
+#[test]
+fn a_moai_line_that_runs_a_command_with_a_glob_or_brace_word_is_unreadable() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    let prefixes = [
+        "moai heavy-slot-acquire --name wren --max 3",
+        "moai card line-lease C-1 --generation 1 --path p",
+        "moai-cli heavy-slot-acquire --name wren --max 3",
+    ];
+    // A glob or brace word where the `--` would stand: the expansion may produce the `--`.
+    let separators = [
+        "{--,} rm -rf {OUT}/x",
+        "{--,-x} rm -rf {OUT}/x",
+        "?? rm -rf {OUT}/x",
+        "--* rm -rf {OUT}/x",
+        "[-][-] rm -rf {OUT}/x",
+    ];
+    let mut unreadable = Vec::new();
+    for prefix in prefixes {
+        for tail in separators {
+            unreadable.push(format!("{prefix} {tail}"));
+        }
+        // A glob word before a literal `--`: it may be an option, or may swallow the next word.
+        unreadable.push(format!("{prefix} --path src/*.rs -- rm -rf {{OUT}}/x"));
+        unreadable.push(format!("{prefix} --path {{a,b}} -- rm -rf {{OUT}}/x"));
+        // No literal `--` and a glob word anywhere.
+        unreadable.push(format!("{prefix} --path src/*.rs"));
+    }
+    // A glob word in the place of the subcommand, or of the word under `card`.
+    unreadable.push("moai card line-l*ase C-1 -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai card line-l?ase C-1 -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai heavy-slot-acquire* --name x -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai h*vy-slot-acquire --name x -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai ?? x -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai {heavy-slot-acquire,x} --name x -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai ?? x {--,} rm -rf {OUT}/x".to_owned());
+    for cmd in &unreadable {
+        let got = w.verdict(S::Own, cmd);
+        if got.as_deref() != Some("unreadable") {
+            bad.push(format!("  {cmd:?}: want \"unreadable\", got {got:?}"));
+        }
+    }
+    // Moai lines that run no command keep their expansions, and a quoted glob character is
+    // literal text, not a glob.
+    for cmd in [
+        "moai card note C-1 --ref \"$R\"",
+        "moai check affected --card a..b",
+        "moai card note C-1 --kind \"a*b\"",
+        "moai heavy-slot-acquire --name \"a*b\" --max 3 -- rm -rf {OUT}/x",
+    ] {
+        let got = w.verdict(S::Own, cmd);
+        let want = if cmd.contains("rm -rf") {
+            Some("delete-outside")
+        } else {
+            None
+        };
+        if got.as_deref() != want {
+            bad.push(format!("  {cmd:?}: want {want:?}, got {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// SPEC-20261125-boundary-unreadable-detail, REQ-4 and AC-2 (D-3): `-n` makes bash, zsh and sh parse
+// a script without running it, so the letter is an allowed option of a shell start. Only the `-`
+// form is added, and a `-c` string given with it is still judged.
+
+#[test]
+fn a_read_only_syntax_check_is_not_unreadable() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    let cases: [(&str, Option<&str>); 9] = [
+        ("bash -n script.sh", None),
+        ("zsh -n script.sh", None),
+        ("sh -n script.sh", None),
+        ("/bin/zsh -n script.sh", None),
+        ("bash -ne script.sh", None),
+        // A `-c` string is judged whatever else the word holds.
+        ("bash -n -c \"rm -rf {OUT}/x\"", Some("delete-outside")),
+        ("sh -nc \"rm -rf {OUT}/x\"", Some("delete-outside")),
+        // Only the `-` form is added, and a letter outside the table stays unreadable.
+        ("bash +n script.sh", Some("unreadable")),
+        ("bash -z script.sh", Some("unreadable")),
+    ];
+    for (cmd, want) in cases {
+        let got = w.verdict(S::Own, cmd);
+        if got.as_deref() != want {
+            bad.push(format!("  {cmd:?}: want {want:?}, got {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// Guard for the `n` letter: it is read by the shell start and by `set` only. The `-n` of other
+// commands (their own option tables) and the commands that follow a `set -n` are judged as before.
+// The expected values are the verdicts the hook gave before the letter was added.
+
+#[test]
+fn the_n_letter_loosens_no_other_command() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    let cases: [(&str, Option<&str>); 5] = [
+        ("sudo -n rm -rf {OUT}/x", Some("delete-outside")),
+        ("nice -n 5 rm -rf {OUT}/x", Some("delete-outside")),
+        ("xargs -n 1 rm -rf {OUT}/x", Some("unreadable")),
+        ("env -n x rm -rf {OUT}/x", Some("unreadable")),
+        ("set -n; rm -rf {OUT}/x", Some("delete-outside")),
+    ];
+    for (cmd, want) in cases {
+        let got = w.verdict(S::Own, cmd);
+        if got.as_deref() != want {
+            bad.push(format!("  {cmd:?}: want {want:?}, got {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// SPEC-20261125-boundary-unreadable-detail, REQ-1 to REQ-3 and AC-1: an `unreadable` deny says
+// which part of the command it could not read. The general sentence stays as the start of the
+// reason; the part comes after it. The hook only judges the text; no command is executed.
+
+/// The marker the reason puts in front of the unread command.
+const UNREAD_PART: &str = "Unread part: ";
+
+/// The most characters of an unread command a reason names.
+const FRAGMENT_LIMIT: usize = 80;
+
+/// The full reason of a command the hook denies as `unreadable`.
+fn unreadable_reason(w: &World, cmd: &str) -> String {
+    let run = w.run(S::Own, cmd, "default");
+    assert_eq!(
+        parse_verdict(&run, cmd).as_deref(),
+        Some("unreadable"),
+        "class of {cmd:?}"
+    );
+    let value: Value = serde_json::from_str(run.stdout.trim()).unwrap();
+    value["hookSpecificOutput"]["permissionDecisionReason"]
+        .as_str()
+        .unwrap()
+        .to_owned()
+}
+
+/// The reason of a command that stops at a depth limit: it names no part, so it is the general
+/// text on its own, the text every other detail starts with.
+fn general_unreadable_reason(w: &World) -> String {
+    let nested = format!("{}true{}", "echo $(".repeat(9), ")".repeat(9));
+    let reason = unreadable_reason(w, &nested);
+    assert!(
+        !reason.contains(UNREAD_PART),
+        "a depth limit names no part: {reason}"
+    );
+    reason
+}
+
+/// What follows the marker; the reason ends with it.
+fn named_part(reason: &str) -> &str {
+    reason
+        .rsplit_once(UNREAD_PART)
+        .unwrap_or_else(|| panic!("no unread part in: {reason}"))
+        .1
+}
+
+#[test]
+fn an_unreadable_deny_names_the_part_it_could_not_read() {
+    let w = World::new();
+    let general = general_unreadable_reason(&w);
+    let mut bad = Vec::new();
+    // The part is the innermost command the hook could not read, as the text spells it.
+    let named: [(&str, &str); 7] = [
+        ("ls; rm -rf $X", "rm -rf $X"),
+        ("for d in a b; do rm -rf $d; done", "rm -rf $d"),
+        ("ls; $CMD arg", "$CMD arg"),
+        ("sh -c 'rm -rf $X'", "rm -rf $X"),
+        // A `$X` inside double quotes is expanded by the outer shell, so the shell string is
+        // itself the computed part and the outer command is the one named.
+        ("sh -c \"rm -rf $X\"", "sh -c \"rm -rf $X\""),
+        ("echo $(ls; rm -rf $X)", "rm -rf $X"),
+        ("rm -rf \"$HOME/x\"", "rm -rf \"$HOME/x\""),
+    ];
+    for (cmd, part) in named {
+        let reason = unreadable_reason(&w, cmd);
+        if !reason.starts_with(&general) {
+            bad.push(format!("  {cmd:?}: the general sentence is gone: {reason}"));
+        }
+        if named_part(&reason) != part {
+            bad.push(format!(
+                "  {cmd:?}: want part {part:?}, got {:?}",
+                named_part(&reason)
+            ));
+        }
+    }
+    // The inner command is named, not the shell string that holds it.
+    let inner = unreadable_reason(&w, "sh -c 'rm -rf $X'");
+    assert!(
+        !inner.contains("sh -c"),
+        "the outer command is named: {inner}"
+    );
+    // A part in the middle of a longer command line is the one command, not the whole line.
+    let line = unreadable_reason(&w, "ls; rm -rf $X; ls -l");
+    assert_eq!(named_part(&line), "rm -rf $X", "{line}");
+    // A part is cut to 80 characters, counted in characters and not bytes: the last character of
+    // a cut part is the ellipsis, and a part of exactly the limit is not cut.
+    let head = "rm -rf $X ";
+    let fill_to = |chars: usize, fill: char| {
+        let tail = fill.to_string().repeat(chars - head.chars().count());
+        format!("ls; {head}{tail}")
+    };
+    for fill in ['a', 'é'] {
+        let exact = unreadable_reason(&w, &fill_to(FRAGMENT_LIMIT, fill));
+        let part = named_part(&exact);
+        if part.chars().count() != FRAGMENT_LIMIT || part.ends_with('…') {
+            bad.push(format!(
+                "  {fill:?}: a part of 80 characters was cut: {part:?}"
+            ));
+        }
+        let over = unreadable_reason(&w, &fill_to(FRAGMENT_LIMIT + 1, fill));
+        let part = named_part(&over);
+        let kept: String = part.chars().take(FRAGMENT_LIMIT - 1).collect();
+        if part.chars().count() != FRAGMENT_LIMIT
+            || !part.ends_with('…')
+            || !fill_to(FRAGMENT_LIMIT + 1, fill).contains(&kept)
+        {
+            bad.push(format!(
+                "  {fill:?}: a part of 81 characters is not cut to 80 with an ellipsis: {part:?}"
+            ));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// REQ-2: the reason goes back to the model and into the record, so a part that holds a
+// secret-shaped word or a control character is not named; only the command word is.
+
+#[test]
+fn a_secret_shaped_or_control_fragment_names_the_command_word_alone() {
+    let w = World::new();
+    let general = general_unreadable_reason(&w);
+    // A word the secret filter flags, built here so that no such word sits in this file.
+    let secret = ["gh", "p_", "0123456789abcdef"].concat();
+    let esc = '\u{1b}';
+    let mut bad = Vec::new();
+    // The part, the command word the reason names instead, and what must not appear.
+    let cases: Vec<(String, &str, String)> = vec![
+        (format!("ls; rm -rf $X {secret}"), "rm", secret.clone()),
+        (
+            format!("ls; rm -rf $X token={secret}"),
+            "rm",
+            secret.clone(),
+        ),
+        (format!("sh -c 'rm -rf $X {secret}'"), "rm", secret.clone()),
+        (format!("ls; rm -rf \"a{esc}b\" $X"), "rm", esc.to_string()),
+        ("ls; rm -rf \"a\nb\" $X".to_owned(), "rm", "\n".to_owned()),
+        // A computed command word is named as written when the rest holds the secret.
+        (format!("ls; $CMD {secret}"), "$CMD", secret.clone()),
+        // The command word itself holds the secret or a control character: not even it is named.
+        (
+            format!("{}_$X arg", &secret[..4]),
+            "(command word withheld)",
+            secret[..4].to_owned(),
+        ),
+        (
+            format!("\"$X{esc}\" arg"),
+            "(command word withheld)",
+            esc.to_string(),
+        ),
+    ];
+    for (cmd, want, hidden) in &cases {
+        let reason = unreadable_reason(&w, cmd);
+        if !reason.starts_with(&general) {
+            bad.push(format!(
+                "  {cmd:?}: the general sentence is gone: {reason:?}"
+            ));
+        }
+        if named_part(&reason) != *want {
+            bad.push(format!(
+                "  {cmd:?}: want part {want:?}, got {:?}",
+                named_part(&reason)
+            ));
+        }
+        if reason.contains(hidden.as_str()) {
+            bad.push(format!(
+                "  {cmd:?}: the reason holds {hidden:?}: {reason:?}"
+            ));
+        }
+        if reason.chars().any(char::is_control) {
+            bad.push(format!("  {cmd:?}: the reason holds a control character"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// REQ-3: a command over the size limit and syntax that cannot be split into commands name no
+// command; they say so. A depth or count limit keeps the general text.
+
+#[test]
+fn an_oversized_or_unsplittable_command_says_so() {
+    let w = World::new();
+    let general = general_unreadable_reason(&w);
+    let mut bad = Vec::new();
+    let over = "git status; echo ".to_owned() + &"a".repeat(262_145 - "git status; echo ".len());
+    let cases: [(&str, String, &str); 5] = [
+        (
+            "oversized",
+            over,
+            " The command text is over the size limit.",
+        ),
+        (
+            "unterminated quote",
+            "rm -rf \"build".to_owned(),
+            " It holds syntax that cannot be split into commands.",
+        ),
+        (
+            "function definition",
+            "f() { rm -rf x; }; f".to_owned(),
+            " It holds syntax that cannot be split into commands.",
+        ),
+        (
+            "case arm",
+            "case $x in a) rm -rf y;; esac".to_owned(),
+            " It holds syntax that cannot be split into commands.",
+        ),
+        // The inner text is the one that cannot be split, not the shell string around it.
+        (
+            "inside a shell string",
+            "sh -c 'rm -rf \"build'".to_owned(),
+            " It holds syntax that cannot be split into commands.",
+        ),
+    ];
+    for (what, cmd, tail) in &cases {
+        let reason = unreadable_reason(&w, cmd);
+        if reason != format!("{general}{tail}") {
+            bad.push(format!("  {what}: {reason:?}"));
+        }
+    }
+    // A depth limit and a count limit name nothing: the general text, and no command text.
+    let commands = format!("git status{}", ";true".repeat(2048));
+    let count = unreadable_reason(&w, &commands);
+    if count != general {
+        bad.push(format!("  count limit: {count:?}"));
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
+// SPEC-20261125-boundary-unreadable-detail, REQ-6 and AC-4 (D-1): a characterization test, not a
+// change. A relative delete is judged against the folder the session stands in: inside its own
+// checkout it passes, from a folder outside every checkout it is `delete-outside`, and a path that
+// climbs out of the checkout root is `delete-outside` wherever it starts. The hook only judges the
+// text; no command of a case is executed.
+
+#[test]
+fn a_relative_delete_is_judged_by_the_folder_the_session_stands_in() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    let relative_deletes = [
+        "rm -rf audit-x-scratch",
+        "rm -rf node_modules/.vite",
+        "rm -rf ./audit-x-scratch",
+    ];
+    // Inside the checkout (its root, and a subfolder of it): no decision.
+    for s in [S::Own, S::Sub] {
+        for cmd in relative_deletes {
+            let got = w.verdict(s, cmd);
+            if got.is_some() {
+                bad.push(format!("  inside {cmd:?}: want no decision, got {got:?}"));
+            }
+        }
+    }
+    // The same words from a folder outside every checkout: the session's project folder is its own
+    // worktree and the shell stands in a plain folder (and in a folder of another repository).
+    let foreign = w.root.join("foreign");
+    fs::create_dir_all(&foreign).unwrap();
+    git(&foreign, &["init", "-q", "-b", "main"]);
+    for (what, folder) in [("plain folder", &w.plain), ("other repository", &foreign)] {
+        for cmd in relative_deletes {
+            let input = w.input(&json!(cmd), folder, "default");
+            let run = w.spawn(&w.own, input.to_string().as_bytes(), Some(&w.own));
+            let got = parse_verdict(&run, cmd);
+            if got.as_deref() != Some("delete-outside") {
+                bad.push(format!(
+                    "  {what} {cmd:?}: want \"delete-outside\", got {got:?}"
+                ));
+            }
+        }
+    }
+    // A path that climbs out of the checkout root is outside even when the session stands inside.
+    for cmd in ["rm -rf ../x", "rm -rf ../audit-x-scratch"] {
+        let got = w.verdict(S::Own, cmd);
+        if got.as_deref() != Some("delete-outside") {
+            bad.push(format!(
+                "  climbing {cmd:?}: want \"delete-outside\", got {got:?}"
+            ));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
     );
 }

@@ -667,7 +667,7 @@ fn interview_question_bank_covers_the_project_axes() {
                 || [
                     "profile `purpose`",
                     "profile `tools`",
-                    "profile `development_methods`",
+                    "profile `development_methods` (records `TDD` or `characterization`)",
                     "profile `hosts`",
                     "profile `versioning`",
                     "profile `work_flow`"
