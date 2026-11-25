@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261125-landing-moves-checkout
 title: "작업 수에 상한이 생기고 card next 가 감사할 카드를 말해요"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-25
 branch: spec/landing-moves-checkout-20261125
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "리더 결정 노트 8926 (USER-APPROVAL C-481, 2026-11-25T03:30Z): 사용자가 개정 2 를 승인했어요(\"위의 내용대로 승인이다\"); 레인은 그 노트를 인용만 해요"
+  digest: "sha256:adf2188cd8252d26d42ed72c4c1f87f3295277adefded2b7e1f65a6ab62eff32"
 ---
 
 # 작업 수에 상한이 생기고 card next 가 감사할 카드를 말해요
@@ -16,6 +21,12 @@ branch: spec/landing-moves-checkout-20261125
 revision 1 은 체크아웃된 통합 브랜치를 `card land` 가 함께 옮기는 일과 착지하면 카드가 닫히는 일도 담았어요. 앞의 것은 다른 SPEC(SPEC-20261125-land-checked-out-branch)이 착지했고, 뒤의 것은 `SPEC-20261124-land-closes-card` 가 이미 하고 있어요(`--keep-open` 이 없는 착지는 열린 기준을 PASS 판정의 증거로 `met` 으로 채우고 카드를 닫아요; 배차 노트의 "남은 기준을 withdrawn" 은 따르지 않아요, 감사가 덮은 사실을 지우기 때문이에요). 그래서 이 revision 은 남은 일 하나만 담아요.
 
 - 작업 수 상한: 작업 중(`active`)과 검사 대기(`review`) 카드가 레인 수의 두 배에 닿으면 새 카드를 잡는 대신 검사와 착지를 도와야 해요. `card next` 는 감사가 필요한 카드를 이름으로 말해요(감사 레인용).
+
+## Interview
+
+- Q1: 한도는 어떻게 정하는가? -> A: `wip_limit`(기본 2) × 살아 있는 레인 수예요 (D-1). 작업 중과 검사 대기 카드를 합쳐 세요(사용자 결정 4번).
+- Q2: 한도에 닿으면 막는가, 넘으면 막는가? -> A: 닿으면 막아요 (D-2). 한도를 넘는 카드를 만들지 않아요.
+- Q3: 등록된 레인이 하나도 없으면 한도가 있는가? -> A: 없어요 (D-3). 사용자가 개정 2 를 승인했어요(리더 노트 8926).
 
 ## Non-goals
 
