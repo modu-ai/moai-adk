@@ -126,6 +126,10 @@ fn a_record_that_is_not_whole_numbers_is_refused_and_left_as_it_is() {
         ("garbage\n", "not a record line"),
         ("1\t20261125T000000Z\t-\n3", "a torn last line"),
         (
+            "1\t20261125T000000Z\t-",
+            "a whole last line without its line break",
+        ),
+        (
             "2\t20261125T000000Z\t-\n1\t20261125T000001Z\t-\n",
             "a number that goes down",
         ),
