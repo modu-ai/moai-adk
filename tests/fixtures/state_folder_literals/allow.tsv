@@ -78,6 +78,7 @@ tests/card/queue_query_cli.rs	2	0
 tests/card/recurring_problems_rule.rs	0	1
 tests/card/release_suite.rs	1	4
 tests/check_affected_card_select.rs	0	1
+tests/check_affected_exit_code.rs	0	2
 tests/check_affected_non_rust.rs	0	3
 tests/check_tree_cli.rs	7	61
 tests/ci_scope_test.py	3	3

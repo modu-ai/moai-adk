@@ -228,7 +228,7 @@ pub fn submit(project: &Path, home: &Path, req: &SubmitRequest<'_>) -> Result<Va
                         .map(|s| s.trim().to_string())
                         .unwrap_or_else(|_| "no summary was written".to_string());
                     return Err(refuse(format!(
-                        "the check did not end in result=PASS; the ledger is unchanged\n  - summary: {said}\n  - check program exit {code} (the summary decides: check affected exits 0 on a FAIL too)\n  - log folder: {}",
+                        "the check did not end in result=PASS; the ledger is unchanged\n  - summary: {said}\n  - check program exit {code} (the summary decides)\n  - log folder: {}",
                         receipt_dir.display()
                     )));
                 }

@@ -2858,9 +2858,13 @@ pub(crate) fn main() -> ExitCode {
         Ok(result) => {
             // A computed delta is evidence, not audit admission; only a pure replay exits 0.
             // A trailer check that found a failing commit keeps its result and exits 1
-            // (SPEC-20261117-session-trailer, audit B1).
+            // (SPEC-20261117-session-trailer, audit B1). A check affected answer whose `result`
+            // is not PASS (FAIL or not_run) exits 1 with the answer printed as before; a
+            // `--list` answer has no `result` and exits 0 (SPEC-20261125-check-affected-exit-code).
             let exit = if (op == "audit.delta" && result["status"] != "pure_merge")
                 || (op == "trailers.check" && result["ok"] == false)
+                || (op == "check.affected"
+                    && result["result"].as_str().is_some_and(|r| r != "PASS"))
             {
                 ExitCode::from(1)
             } else {
