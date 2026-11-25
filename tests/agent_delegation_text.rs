@@ -108,6 +108,65 @@ fn chains_and_audit_name_the_lane_delegation() {
     assert!(!audit.contains("The implementation agent keeps its worktree"));
 }
 
+/// The lane route (C-493 criteria 6 to 9, 11): its steps are one action each and run take,
+/// worktree, plan, impl, docs, submit, message, wait; the plan, impl and docs steps hand the work
+/// to the base agents; a lane audits and lands nothing; the route says the first check, the
+/// branch name, the status line before a wait and the `## Base agents` rules.
+#[test]
+fn work_route_delegates_plan_impl_and_docs_in_turn() {
+    let text = repo_text("skills/moai/workflows/work.md");
+    let procedure = text
+        .split("## Procedure\n")
+        .nth(1)
+        .and_then(|rest| rest.split("\n## ").next())
+        .expect("work.md has a Procedure section");
+    let keys: Vec<&str> = procedure
+        .lines()
+        .filter_map(|l| l.split_once(". **"))
+        .filter(|(n, _)| n.trim().parse::<usize>().is_ok())
+        .filter_map(|(_, rest)| rest.split("**").next())
+        .collect();
+    assert_eq!(
+        keys,
+        ["take", "worktree", "plan", "impl", "docs", "submit", "message", "wait"]
+    );
+    let step = |key: &str| {
+        procedure
+            .lines()
+            .find(|l| l.contains(&format!(". **{key}** — ")))
+            .unwrap_or_else(|| panic!("no step {key}"))
+    };
+    for (key, phrase) in [
+        ("take", "First run `pwd` and confirm that the folder and the `project_id` of the `moai card next` answer are the project this session was started for"),
+        ("take", "Name the branch `spec/<slug>-<yyyymmdd>`"),
+        ("take", "`SPEC-20261125-card-no-file-locks` gives `spec/card-no-file-locks-20261125`, and `spec/20261125-card-no-file-locks` is wrong"),
+        ("plan", "hands the draft to `moai-plan` after `moai-research` has settled each open fact"),
+        ("impl", "hands each planned change to `moai-impl`, one at a time"),
+        ("docs", "hands the SPEC Result, the document mismatches and the `@cc:` comments to `moai-docs` after `moai-impl` has returned"),
+        ("submit", "Run `moai card submit <card> --generation <g>`"),
+        ("submit", "`leftovers:` line and one `audit-tier: 0|1|2 <reason>` line"),
+        ("message", "`LANE-DONE <card> <state> head=<10 hex> (<name>)`"),
+    ] {
+        assert!(step(key).contains(phrase), "step {key} lacks {phrase:?}");
+    }
+    // A lane audits and lands nothing: no audit or land step, and no `card land` command.
+    assert!(!procedure.contains(". **audit** — ") && !procedure.contains(". **land** — "));
+    assert!(!text.contains("moai card land"));
+    let missing = lacking(
+        &text,
+        &[
+            "Whenever you start a background run or begin to wait (for an agent, a check or the leader's message), first write one line: what is running, what you wait for and what comes next.",
+            "## When a step stops",
+            "the leader sends `REPAIR <card> fail head=<head>` after a first FAIL",
+            "A lane hands each card's plan, implementation and documents to the base agents in turn with the host's agent tool; do not do them yourself when the agents are installed.",
+            "then `moai-impl` for each planned change one at a time",
+            "They work in this worktree (`moai-impl` sets `isolation: none`)",
+        ],
+    );
+    assert!(missing.is_empty(), "workflows/work.md lacks {missing:?}");
+    assert_eq!(text.matches("## Base agents\n").count(), 1);
+}
+
 /// SYNC hands the document writing to one `moai-docs`, after `moai-impl` has returned.
 #[test]
 fn sync_delegates_the_documents_after_impl() {
