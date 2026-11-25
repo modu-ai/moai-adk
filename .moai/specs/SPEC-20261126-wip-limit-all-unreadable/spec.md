@@ -38,9 +38,9 @@ approval:
 
 ## Acceptance
 
-- AC-1 (REQ-1): a registry whose only item is a malformed entry makes `card take` and `card add` refuse with the registry-cannot-be-read text that names that entry, and `card next` answers `registry_error` as a string, `at_limit` true, `unreadable` with the name and no card · verify: `cargo nextest run --locked --offline --test card_wip_limit all_unreadable_registry_stops_the_take`
-- AC-2 (REQ-2): an empty registry folder, a registry of one readable entry whose lease ended beside one malformed entry, and a held lock beside one malformed entry each keep their earlier answer, and the existing wip limit tests are unchanged and pass · verify: `cargo nextest run --locked --offline --test card_wip_limit`
-- AC-3 (REQ-3): with `wip_limit` 0 a registry whose only item is malformed takes and adds without a refusal · verify: `cargo nextest run --locked --offline --test card_wip_limit all_unreadable_registry_stops_the_take`
+- AC-1 (REQ-1): a registry whose only item is a malformed entry makes `card take` and `card add` refuse with the registry-cannot-be-read text that names that entry, and `card next` answers `registry_error` as a string, `at_limit` true, `unreadable` with the name and no card · verify: `cargo test --locked --offline --test card card_wip_limit::all_unreadable_ac1_`
+- AC-2 (REQ-2): an empty registry folder, a registry of one readable entry whose lease ended beside one malformed entry, and a held lock beside one malformed entry each keep their earlier answer, and the existing wip limit tests are unchanged and pass · verify: `cargo test --locked --offline --test card card_wip_limit::`
+- AC-3 (REQ-3): with `wip_limit` 0 a registry whose only item is malformed takes and adds without a refusal · verify: `cargo test --locked --offline --test card card_wip_limit::all_unreadable_ac3_`
 - AC-4: light checks · verify: `git diff --check`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`; `moai spec check`; `moai trailer-check`
 
 ## Scope
@@ -51,7 +51,7 @@ approval:
 
 ## Plan
 
-1. RED: in `tests/card/card_wip_limit.rs` add `all_unreadable_registry_stops_the_take` (AC-1, AC-3) and `unreadable_beside_a_readable_item_keeps_the_earlier_answer` (AC-2: empty folder, ended lease plus malformed entry, held lock plus malformed entry); the first fails on this tree because the limit is off.
+1. RED: in `tests/card/card_wip_limit.rs` add `all_unreadable_ac1_…` (AC-1), `all_unreadable_ac2_…` (AC-2: empty folder, ended lease plus malformed entry, held lock plus malformed entry) and `all_unreadable_ac3_…` (AC-3); AC-1 fails on this tree because the limit is off. The test binary is `card` (`tests/card/main.rs`), the module `card_wip_limit`.
 2. GREEN: in `live_lanes` of `src/card/wip_limit.rs`, after the scan, when `scan.entries` and `scan.locked` are both empty and `scan.unreadable` is not, answer `registry_error: Some(..)` that names every unreadable item (and keep `unreadable` filled); `at_limit`, `refusal`, `card next` and `card/work.rs` already treat `registry_error` as the limit being reached, so they need no change.
 3. Guard mutant: drop the all-unreadable condition and see the AC-1 test fail (exit 100).
 4. Record the Result with the commands and exit codes.
