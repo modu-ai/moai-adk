@@ -295,6 +295,8 @@ Lane and leader
                          malformed trailers
   bundle                 Assemble the NeXT-Flow bundle from
                          READY heads
+  build-number           Hand out the next install build
+                         number
   audit-clone-plan       Preview an independent audit clone
   audit-slot             Audit slots that inherit the lane's
                          build

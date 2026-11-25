@@ -18,6 +18,7 @@ pub mod banner;
 pub mod baseline;
 pub mod bin_names;
 pub mod branch_gc;
+pub mod build_number;
 pub mod bundle;
 pub mod card;
 pub mod card_times;
