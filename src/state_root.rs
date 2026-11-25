@@ -114,6 +114,15 @@ pub struct Classified {
 }
 
 impl Classified {
+    /// This generation owns the project's state: the verdict is `rust`, or `mixed` with a valid
+    /// `moai.json` — git brought Go markers back beside the marker (SPEC-20261121-resurrected-marker).
+    /// The older marker name `moai-cli.json` beside Go markers owns nothing. The verdict name
+    /// stays `mixed`, which go-state and the HOME code read as before.
+    pub fn rust_owned(&self) -> bool {
+        self.generation == "rust"
+            || (self.generation == "mixed" && self.marker_file == Some("moai.json"))
+    }
+
     pub fn to_json(&self) -> Value {
         let mut v = json!({
             "generation": self.generation,
@@ -716,16 +725,21 @@ pub(crate) fn resolves_to_moai(
 /// The project-relative folder that holds `root`'s state now (#2725 S2b): `.moai` once
 /// [`classify`] says `rust`, or when the project has no earlier `.moai-cli` and no Go state
 /// ([`resolves_to_moai`]); otherwise the earlier `.moai-cli` (decision D7: both are read, one
-/// writes). A project that has `.moai-cli` and no valid marker keeps exactly the paths it had
+/// writes). A `mixed` verdict whose marker is a valid `moai.json` (git brought Go markers back
+/// beside it) counts as `rust` ([`Classified::rust_owned`]); the verdict name stays `mixed`.
+/// A project that has `.moai-cli` and no valid marker keeps exactly the paths it had
 /// before, and a new project, a worktree without a marker included, never gets `.moai-cli`
 /// from this function.
 pub fn dir(root: &Path) -> &'static str {
-    if resolves_to_moai(
-        classify(root).generation,
-        root,
-        crate::PROJECT_STATE_DIR,
-        Unknown::Ours,
-    ) {
+    let classified = classify(root);
+    // SPEC-20261121-resurrected-marker: a valid `moai.json` beside Go markers that git brought
+    // back owns the project, so it resolves like the verdict `rust`.
+    let generation = if classified.rust_owned() {
+        "rust"
+    } else {
+        classified.generation
+    };
+    if resolves_to_moai(generation, root, crate::PROJECT_STATE_DIR, Unknown::Ours) {
         MOAI_DIR
     } else {
         crate::PROJECT_STATE_DIR
@@ -1569,6 +1583,48 @@ mod tests {
         put(tmp.path(), "moai.json", &body("moai", 1));
         assert_eq!(dir(tmp.path()), MOAI_DIR);
         assert!(!is_new_project(tmp.path()));
+    }
+
+    /// SPEC-20261121-resurrected-marker: a valid `moai.json` keeps the project Rust-owned when
+    /// the Go markers come back, whichever Go marker it is; every other shape is as before.
+    #[test]
+    fn a_valid_rust_marker_owns_the_state_folder_when_go_markers_come_back() {
+        let go_markers: [(&str, &str); 3] = [
+            (".moai/manifest.json", "{}"),
+            (".moai/config/config.yaml", "x: 1\n"),
+            (".moai/config/sections/system.yaml", SYSTEM_YAML),
+        ];
+        for (rel, text) in go_markers {
+            let tmp = tempfile::tempdir().unwrap();
+            put(tmp.path(), "moai.json", &body("moai", 1));
+            write(tmp.path(), rel, text);
+            let c = classify(tmp.path());
+            assert_eq!(c.generation, "mixed", "{rel}");
+            assert_eq!(c.marker_file, Some("moai.json"), "{rel}");
+            assert_eq!(dir(tmp.path()), MOAI_DIR, "{rel}");
+
+            // The same Go marker without the Rust marker: the Go generation, the earlier folder.
+            let tmp = tempfile::tempdir().unwrap();
+            write(tmp.path(), rel, text);
+            assert_eq!(classify(tmp.path()).generation, "go", "{rel}");
+            assert_eq!(dir(tmp.path()), crate::PROJECT_STATE_DIR, "{rel}");
+
+            // The older marker name beside the Go marker: still `mixed`, not owned.
+            let tmp = tempfile::tempdir().unwrap();
+            put(tmp.path(), "moai-cli.json", &body("moai-cli", 1));
+            write(tmp.path(), rel, text);
+            assert_eq!(classify(tmp.path()).generation, "mixed", "{rel}");
+            assert_eq!(dir(tmp.path()), crate::PROJECT_STATE_DIR, "{rel}");
+
+            // A newer or unreadable `moai.json` is refused and owns nothing.
+            for bad in [body("moai", 99), "not json".to_string()] {
+                let tmp = tempfile::tempdir().unwrap();
+                put(tmp.path(), "moai.json", &bad);
+                write(tmp.path(), rel, text);
+                assert_eq!(classify(tmp.path()).generation, "refuse", "{rel} {bad}");
+                assert_eq!(dir(tmp.path()), crate::PROJECT_STATE_DIR, "{rel} {bad}");
+            }
+        }
     }
 
     /// The name and the generation travel together: either mismatch is not a marker.
