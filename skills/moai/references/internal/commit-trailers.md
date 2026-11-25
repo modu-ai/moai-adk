@@ -9,6 +9,19 @@ Moai-Spec: SPEC-<yyyymmdd>-<slug>
 Moai-Session: <this session's id>:<worktree key>
 ```
 
+The `Moai-*` lines and any `Co-Authored-By` line are one last paragraph with no blank line between them. Git reads trailers from the last paragraph only, so a blank line before `Co-Authored-By` leaves the `Moai-*` lines unread: `moai trailer-check` then reports `missing_spec`, and the commit-msg hook refuses the message as `split_trailer_block`.
+
+```
+fix(scope): subject
+
+Body.
+
+Moai-Spec: SPEC-<yyyymmdd>-<slug>
+Moai-Session: <this session's id>:<worktree key>
+Moai-Verified: tests
+Co-Authored-By: <name> <email>
+```
+
 1. `moai trailers --spec <SPEC-id>`, run in the worktree you commit from, prints both lines in `text`; put them in the trailer block, next to any `Co-Authored-By` line. Never type the value yourself.
 2. The session id is the one the host gives this session (`CLAUDE_CODE_SESSION_ID`; `moai session-current` reads the same): not a secret, 8 to 64 hex digits and `-`. It is not stable for a whole stretch of work: Claude Code gives a new id after `/clear` (its environment-variable reference says the variable is "updated on `/clear`"), so one author's commits may carry several values. Comparing lane names stays the fallback. When the host gives none, or the folder is in no git worktree, `moai trailers` says so (`session_missing`): commit with `Moai-Spec` only and say in the report why the session line is missing. That change's authors are then unknown to the session that records its verdict, which says so in the verdict note.
 3. Why the worktree key (leader decision 2026-11-17): a Claude Code subagent inherits its parent's session id, so the id alone cannot tell an author from the audit agent it started. The worktree key is the first 12 hex digits of the sha256 of the worktree's canonical git directory (`git rev-parse --absolute-git-dir`): each worktree of a repository has its own, and one worktree always gets the same. So an audit agent runs in a worktree of its own, never in the author's.

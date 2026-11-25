@@ -165,7 +165,7 @@
       }
     },
     "references/internal/commit-trailers.md": {
-      "sha256": "4f6890d4bc8b8fcec6c1a1620d106deebe062330ff50f2d8eb092b7115210b61",
+      "sha256": "3f975c5caad6916f307695b3925760b62203ea1ded47d624a73eed97c8b10b83",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-commit-trailers",
