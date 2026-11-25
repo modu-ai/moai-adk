@@ -112,3 +112,29 @@ git 2.x of this machine (`git --version` read in the session), throwaway reposit
 | `a.txt` deleted in the worktree (moved) | 0 | **the file is brought back with the new content** (`a1`), the deletion is lost: git does not refuse, so the command's own overlap check is the guard |
 
 Sources already read for the earlier SPEC (`SPEC-20261125-land-checked-out-branch`, Appendix A, read 2026-11-24): `git-read-tree` (the two-tree form is `git switch`'s carry-forward), `unpack-trees.c` v2.54.0. This SPEC adds no new source; the table above is the new measurement.
+
+## Result
+
+`status: draft`; the approval is the user's and was recorded by the leader's delegated approval note on the card (digest `sha256:947c4562553732159a4fcb6a8d7a3ad4953fa6595aaafc6300c98e9d019039c8`, revision 1); it is not recorded in this file. Implemented in `src/card/follow.rs` (the call sites in `src/card/land.rs` are unchanged: `answer` reads `kept_changes` itself). The checks of the READY head are in the card's READY note.
+
+Acceptance (each line is a result of this run on this machine, the commands quoted):
+
+- AC-1 met: `unrelated_tracked_changes_are_kept_and_the_landing_follows` passes (`cargo test --locked --offline --test card -- card_land_checked_out_cli::` → `22 passed; 0 failed`, 2026-11-25).
+- AC-2 met: `overlapping_tracked_changes_still_refuse_with_the_counts` passes in that run. Observed refusal, three cases (staged, unstaged, deleted `a.txt`), each: `<tmp>/demo has overlapping tracked changes: 1 of its 3 tracked change(s) are at paths the landing changes (a.txt); …; nothing was changed`.
+- AC-3 met: `the_overlap_refusal_follows_the_shared_checkout_contract` passes in that run. Observed: `… the landing never touches work it does not own: the owner of those changes commits or discards them on a branch of their own, or you land from a worktree of your own that has the integration branch checked out, then run the call again; nothing was changed`.
+- AC-4 met: `a_thousand_unrelated_deletions_follow` passes in that run (1,200 tracked files deleted, `kept_changes` 1200, the deletions still deletions).
+- AC-5 met: `a_dry_run_that_git_refuses_stops_the_landing_before_the_move` and `a_follow_that_leaves_the_index_behind_is_refused_after_the_move` pass in that run.
+- AC-6 met: `a_rerun_follows_past_unrelated_tracked_changes_and_refuses_overlapping_ones` passes in that run (finished with `kept_changes` 2; refused with `1 of its 2 tracked change(s)`, then finished).
+- AC-7 met: `cargo test --locked --offline --test card -- card_land_checked_out_cli:: card_land_cli:: card_land_batch_cli:: card_guard_cli:: card_land_scans_cli::` → `137 passed; 0 failed`. Two existing tests were rewritten because they held the old refusal of every tracked change: `a_tracked_change_refuses_and_changes_nothing` (replaced by AC-2's test) and the edit case of `a_rerun_refuses_what_a_first_run_would_refuse` (an edit at an unmoved path is no obstacle any more); `ac6_a_checked_out_branch_and_a_head_that_is_no_commit_refuse_before_the_move` of `tests/card/card_land_cli.rs` now lands a candidate that changes the edited `a.txt`.
+- AC-8 met: `grep -c overlap docs/leader-rules.md skills/moai/references/flows/next-flow.md` → `2` and `1`; the flow reference is 8111 bytes (the pinned limit is 8121; the sentence is paid by shortening other words) and the sha256 line of `source-manifest.json` follows.
+- AC-9 met: the dangerous path ran in throwaway repositories with a temporary HOME and the built binary (the card CLI tests): staged, unstaged and deleted changes at unmoved paths followed byte for byte (status and file contents equal before and after, the staged change still staged); the same three at a changed path refused with the answer of AC-2, changed nothing and left the card open; 1,200 deletions followed; a rerun finished past unrelated changes and refused an overlapping one. Observed in `target/c540/danger2.log`.
+
+Guard mutants (one heavy slot, the committed head, restored with git; `target/c540/mutants.out`): `overlap_refusal_removed` exit 101 (3 tests fail), `deleted_file_not_counted` exit 101 (4), `rerun_overlap_skipped` exit 101 (1), `final_check_dropped` exit 101 (1), `final_check_everywhere` exit 101 (1), `kept_changes_zero` exit 101 (3).
+
+Differences from the approved text, none of them weakening a gate:
+
+- The refusal reads `<tree> has overlapping tracked changes: N of its M tracked change(s) are at paths the landing changes (<paths>)`, the wording of AC-2, instead of D-2's template; both carry the two counts and the paths.
+- The way out names a worktree of the lander's own that has the integration branch checked out, because the landing follows only the worktree that holds the branch; the leader rules say that a merge worktree alone does not lift the refusal.
+- REQ-10 on a rerun applies to edits and deletions in the working tree; an unrelated staged change on a rerun still makes the index match neither commit, and the rerun leaves the worktree alone with its note as before (the safe side; no test changed for it).
+- The write scope grew by `tests/card/card_land_cli.rs` (card scope event, reason recorded), found by AC-7.
+- The docs step was done in this session, not by `moai-docs`.

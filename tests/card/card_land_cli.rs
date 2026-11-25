@@ -800,14 +800,14 @@ fn ac5_every_refusal_of_finish_comes_before_the_move() {
 
 // ---- AC-6: a checked-out branch and a head that is no commit ----------------------------------
 
-/// AC-6: the integration branch checked out in another worktree that holds a tracked change
-/// refuses and names it (a clean checkout follows the landing instead, SPEC-20261125-land-
-/// checked-out-branch D-6), and a candidate that is no commit refuses; both before any write.
+/// AC-6: the integration branch checked out in another worktree that holds a tracked change at a
+/// path the candidate changes refuses and names it (a clean checkout follows the landing instead,
+/// SPEC-20261125-land-checked-out-branch D-6; a change at another path stays, SPEC-20261125-land-
+/// unrelated-tracked-changes), and a candidate that is no commit refuses; both before any write.
 #[test]
 fn ac6_a_checked_out_branch_and_a_head_that_is_no_commit_refuse_before_the_move() {
     let w = World::new();
     let card = w.review_card(&["one"]);
-    let candidate = w.candidate();
     let before = w.dump();
     let out = w.land(
         &card,
@@ -821,6 +821,9 @@ fn ac6_a_checked_out_branch_and_a_head_that_is_no_commit_refuse_before_the_move(
         &["worktree", "add", "-q", tree.to_str().unwrap(), "integ"],
     );
     fs::write(tree.join("a.txt"), "edited\n").unwrap();
+    // A candidate that changes `a.txt`, the path the other worktree holds an edit of.
+    let lane = put_on(&w.project, &w.head, "a.txt", "lane edit\n");
+    let candidate = commit_with(&w.project, &lane, &[&w.tip, &lane], "merge the lane head");
     let out = w.land(
         &card,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
