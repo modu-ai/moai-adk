@@ -17,7 +17,7 @@ created: 2026-11-25
 - Q1: 거절을 어디에 기억할까요? → A: 아직 묻지 않았어요. 기본: 프로젝트 상태 폴더의 `.moai/manifests/update-declined.json` 한 파일(리더 지시 2026-11-25). HOME 은 건드리지 않아요(D-1).
 - Q2: 거절은 무엇에 묶을까요? → A: 아직 묻지 않았어요. 기본: 단계 이름과 그 단계가 제안하는 글의 출처 sha256. 출처가 바뀌면 거절은 읽히지 않고 단계는 다시 물어요(D-2).
 - Q3: 거절을 되돌릴 수 있어야 할까요? → A: 아직 묻지 않았어요. 기본: 예. 같은 명령의 `--ask-again` 이 그 단계의 기록을 지워요(D-3).
-- Q4: 설정 합치기의 충돌에서 "내 값 유지"는 무엇을 하나요? → A: 아직 묻지 않았어요. 기본: 충돌한 키는 파일의 현재 값을 그대로 두고 나머지 키만 합쳐요. 명령은 그 계획이 충돌 없이 만들어질 때만 보여요(D-4).
+- Q4: 설정 충돌의 "내 값 유지"는 무엇을 하나요? → A: 아직 묻지 않았어요. 기본: 충돌한 키는 파일의 현재 값을 그대로 두고 나머지 키만 합쳐요. 그 키의 충돌은 다음 미리보기에도 남고 `skip` 으로 끝내요. 명령은 그 계획이 충돌 없이 만들어질 때만 보여요(D-4).
 
 ## Non-goals
 
@@ -57,7 +57,7 @@ created: 2026-11-25
 ## Scope
 
 - write: `.moai/specs/SPEC-20261125-update-declined-steps/spec.md`
-- write: `src/project_update.rs`, `src/project_update_declined.rs`, `src/agents_local_merge.rs`
+- write: `src/project_update.rs`, `src/project_update/declined.rs`, `src/agents_local_merge.rs`
 - write: `src/ops/project_update_decline.rs`, `tests/project_update_plan_cli.rs`
 - shared files by line lease, only as far as a new operation needs them: `src/help.rs`, `tests/areas.toml`, `tools/repo_scans.json`
 - read-only: `src/claude_settings_merge.rs`, `src/claude.rs`, `src/apply.rs`, `src/state_root.rs`
@@ -66,7 +66,7 @@ created: 2026-11-25
 ## Plan
 
 1. 시험 먼저: `tests/project_update_plan_cli.rs` 에 AC-1~AC-6 의 시험을 임시 프로젝트로 쓰고 지금 코드에서 실패하는 이유를 기록해요.
-2. `src/project_update_declined.rs`: 기록 읽기·쓰기(`.moai/manifests/update-declined.json`, `apply::publish_replace`, 링크 거부), 단계별 출처 sha256, 단계를 `skip` 으로 읽는 함수, 거절·다시 묻기 함수를 만들어요.
+2. `src/project_update/declined.rs`(`src/project_update.rs` 가 `pub mod declined;` 로 선언해서 공유 파일 `src/lib.rs` 를 건드리지 않아요): 기록 읽기·쓰기(`.moai/manifests/update-declined.json`, `apply::publish_replace`, 링크 거부), 단계별 출처 sha256, 단계를 `skip` 으로 읽는 함수, 거절·다시 묻기 함수를 만들어요.
 3. `src/ops/project_update_decline.rs`: 명령 한 개. 옵션은 `--step`, `--source-sha256`, `--ask-again`, `--permission-reference`, 프로젝트 경로예요.
 4. `src/project_update.rs`: `merge_steps` 의 세 단계 결과에 거절을 반영하고 단계의 preview 에 `decline` 객체를 넣어요. 설정 합치기의 이유 문장과 `choices` 를 바꿔요.
 5. `src/agents_local_merge.rs`: 출처가 백업이면 이유 문장에 경로와 "moved copy" 를 넣어요.
@@ -77,7 +77,7 @@ created: 2026-11-25
 
 - 거절 기록은 프로젝트 안의 한 파일이라 다른 체크아웃에는 따라가지 않아요(`.moai/manifests/` 는 팀이 git 에 올리는 목록에 없어요). 다른 체크아웃에서는 한 번 더 물어요.
 - 거절한 출처의 바이트가 한 번 바뀌면 거절이 풀려요. 백업 사본은 보통 바뀌지 않으므로 의도한 동작이에요.
-- `keep-mine` 은 충돌한 키를 MoAI 가 소유한 값으로 기록하게 만들어요. 그 키의 이후 변경은 다시 충돌로 보여요.
+- `keep-mine` 은 나머지 키를 합치지만 설정 적용기는 값이 이미 같은 키의 기준값을 새로 쓰지 않아서(`src/claude.rs`, 이 SPEC 의 범위 밖), 다음 미리보기에도 그 키의 충돌이 남고 끝내는 길은 `skip` 이에요. 선택지의 `effect` 가 그렇게 말해요.
 - `agents-picks` 가 `skip` 이고 합치기가 `needs_decision` 인 어긋남은 이유 문장에 출처를 말하는 것으로만 풀어요. 단계를 합치는 일은 이 SPEC 이 아니에요.
 
 ## Decisions
@@ -85,6 +85,6 @@ created: 2026-11-25
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | 거절은 `.moai/manifests/update-declined.json` 에 기억해요. 대안: HOME 에 기억하기(다른 프로젝트와 섞여요). | 리더 지시 2026-11-25. | 파일을 지우거나 `--ask-again` 을 실행해요. |
-| D-2 | 거절은 단계 이름과 출처 sha256 에 묶어요. 대안: 단계 이름만(출처가 바뀌어도 영영 안 물어요). | 카드 기준 1·2. | `project_update_declined.rs` 를 지우면 이전 동작이에요. |
+| D-2 | 거절은 단계 이름과 출처 sha256 에 묶어요. 대안: 단계 이름만(출처가 바뀌어도 영영 안 물어요). | 카드 기준 1·2. | `project_update/declined.rs` 를 지우면 이전 동작이에요. |
 | D-3 | 거절을 되돌리는 길은 `--ask-again` 이에요. | 리더 지시 "기억된 거절은 다시 물어 달라고 할 수 있어야 해요". | 해당 없음. |
 | D-4 | 설정 충돌의 `keep-mine` 은 충돌한 키를 파일의 현재 값으로 두고 나머지를 합쳐요. | 카드 기준 4 의 "내 값 유지". | 선택지를 지우면 이전 동작이에요. |
