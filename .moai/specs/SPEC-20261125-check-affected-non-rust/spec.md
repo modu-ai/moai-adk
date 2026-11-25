@@ -87,7 +87,7 @@ created: 2026-11-25
 
 구현 에이전트가 채워요(이어받은 레인 agent-7, 2026-11-25T03:28Z 시계 기준). 감사가 다시 확인해요. SPEC revision 1, 승인 digest `sha256:8b859b883a82a780c2aa1e08f9ca404c1feeef73b11f3d22585cca2f068abb28`(리더 결정 노트 8890 의 인용, `moai spec show` 로 같은 값을 다시 읽었어요). macOS arm64, 이 워크트리, 기준은 NeXT `0befa9cba6` 를 한 번 머지한 `868df65825` 위예요.
 
-- AC-1…AC-6 met: `tests/check_affected_non_rust.rs` 7개 통과(`cargo nextest run`, 로그 `target/c487/baseline-merged.log`: 합친 tip 에서 9개 통과 = 통합 7 + 단위 2; 이웃 8개 대상 `target/c487/neighbours.log` 는 67개 중 66개 통과, 1개 실패를 아래 회귀로 고쳤어요). 고치기 전 RED 는 이전 레인이 기록했어요(`target/c487/red.log`: 새 7개 중 4개가 맞는 이유로 실패).
+- AC-1…AC-6 met: `tests/check_affected_non_rust.rs` 6개 통과(`cargo nextest run`, 로그 `target/c487/baseline-merged.log`: 합친 tip 에서 9개 통과 = 통합 6 + 단위 3; 이웃 8개 대상 `target/c487/neighbours.log` 는 67개 중 66개 통과, 1개 실패를 아래 회귀로 고쳤어요). 고치기 전 RED 는 이전 레인이 기록했어요(`target/c487/red.log`: 새 7개 중 4개가 맞는 이유로 실패).
 - AC-7 met: `summary_line_not_run_pass_and_fail` 통과. AC-8 met: `a_not_run_summary_line_is_no_receipt` 통과(`src/card/ready_receipt.rs`, 코드는 안 바꿨어요).
 - AC-6 의 `--list` 비교: 이 저장소의 `check affected 0befa9cba6..HEAD --list` 를 변경 전 빌드(`moai` 빌드 26)와 이 빌드로 돌려 `jq -S .result` 를 `diff` 하면 같아요(`runner` nextest, `rust_targets` 127, 단계 `diff_check fmt ops_rustfmt test_tables clippy test`).
 - 이웃 테스트의 회귀 둘을 찾아 고쳤어요(REQ-5 의 가정이 틀린 두 고정물): `tests/check_affected_touch.rs` 의 `a_changed_link_is_skipped_and_named` 와 `tests/card/card_land_batch_cli.rs` 의 `scans_the_wide_run_of_this_program_covers_the_scans_and_lands_every_head` 는 `Cargo.toml` 도 `.rs` 도 없는 저장소를 Rust 로 썼어요. 비 Rust 로 읽혀 `not_run`(PASS 아님)이 나와 실패했고, 두 고정물에 루트 `Cargo.toml` 한 줄씩을 넣어 둘 다 통과해요(37개 통과, `target/c487/neighbours3.log`). Rust 판정(D-1)은 바꾸지 않았어요.
