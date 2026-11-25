@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "b5cc8982ab7e5bc13ad5884ab3543ab94e5c9d36a71aac2be2a22eeb835fb1b6",
+      "sha256": "8997868cfee1562a636d0cf93a768b679e029ce99242447d5a80184296f85d53",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
