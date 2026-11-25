@@ -89,3 +89,21 @@ created: 2026-11-25
 | --- | --- | --- | --- |
 | D-1 | 규칙의 뜻은 바뀌지 않고 글만 맞춰요 | 사용자가 승인한 `SPEC-20261125-headver-weekly-release` 와 `SPEC-20261125-install-build-number` 가 규칙을 정했고 이 SPEC 의 Non-goals 가 그것을 못박아요 | 해당 없음(규칙을 바꾸는 결정이 아니에요) |
 | D-2 | O-1…O-5 는 위 Options 의 추천안을 초안으로 삼아요 | 사용자가 고르기 전까지의 기본값이에요(레인이 정하는 것이 아니에요). 승인 기록은 사용자만 남겨요 | Options 에서 다른 안을 고르면 REQ 와 Plan 을 고쳐요 |
+
+## Result
+
+Landed text on branch `spec/skill-versioning-release-text-20261125`, code head `e8fe65421e` (user approval of revision 1 on 2026-11-25, options O-1…O-5 all (a)). The check receipt `check-affected base=4ddb7c9c3166 head=e8fe65421e1b targets=126 selection=card` ended `result=PASS`.
+
+- AC-1: met. `cargo test --locked --offline --test versioning_release_texts` passed 6 tests; the week command printed `2649`, `2701` and `2653` for the three Mondays through the macOS form.
+- AC-2: met. The text holds no `U+` range other than the two separators, one line names the two Unicode sets, and no sentence of the profile key passage has more than 60 words.
+- AC-3: met. The interview paragraph is one line that points to `internal/versioning`; the `Other` answers and the keep correction are in `versioning.md`.
+- AC-4: met. `cargo test --locked --offline --test agent_defs_package versioning_` passed 2 tests with the pins moved to `versioning.md`.
+- AC-5: met. `cargo test --locked --offline --lib versioning::tests` passed 22 tests, both table tests included; they read the appendix only.
+- AC-6: met for the manifest hashes and the receipt; the commands named in the changed text (`project-plan`, `project-detect`) are listed by `moai --help` of build 42. Not run: the GNU form `date -u -d <that Monday> +%g%V` (this Mac has no GNU `date`).
+
+Left open, outside this card:
+
+- `moai build-number` answers `--help` but the top-level `moai --help` list does not show it.
+- `interview.md` still holds stale lines (`C-51`, `SPEC-20261117-mflow-project`, a retired host name) and the operations appendix `project_plan.md` still says `card C-69`.
+- `CLAUDE.md` step 8 and the decisions log are another card's (`SPEC-20261125-headver-weekly-release` AC-6).
+- The new test file needed one line in `tools/repo_scans.json` (shared file, line-lease, given back).
