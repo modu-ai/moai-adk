@@ -36,7 +36,9 @@ enum Action {
     /// writes it: its `summary.txt` is no receipt for a READY or REPAIRED note, a bare run is),
     /// `selection=card` (only a `--card` run that narrowed writes it; its `summary.txt` is a
     /// receipt for a READY or REPAIRED note, and a `--card` run that fell back to the full set
-    /// writes the bare line), `test-threads=<n>` (the cap the
+    /// writes the bare line) followed by `card_by=<reasons>` (the sorted `area:<name>`,
+    /// `module:<word>` and `units:<module path>` reasons why the set is narrow, or `none`),
+    /// `test-threads=<n>` (the cap the
     /// `test` step ran with), the exit status of each step in the order they ran, then
     /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs,
     /// `heavy-slot.log` and `summary.txt` (the summary line, whatever its result: the receipt
@@ -74,8 +76,11 @@ enum Action {
         #[arg(long)]
         lane: bool,
         /// Select what this card's change reaches: the tests the range changes or adds, the
-        /// tests that name a changed module, the scans it touches; a wide path (dependencies,
-        /// build or common settings, permission guards, ledger storage) gives the full set.
+        /// tests that name a changed module, the scans it touches. A source path that no name
+        /// narrows (a `mod.rs`, a word that more than 10 targets carry, a path no test names)
+        /// takes the tests of its area in `tests/areas.toml`, and the library's unit tests narrow
+        /// to the changed modules; a wide path (dependencies, build or common settings,
+        /// permission guards, ledger storage, the audit floor) gives the full set.
         #[arg(long, conflicts_with = "lane")]
         card: bool,
         /// The integration branch: a range whose base lies behind its merge base with the head

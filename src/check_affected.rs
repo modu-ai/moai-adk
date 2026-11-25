@@ -76,6 +76,11 @@ pub struct Selection {
     pub scans: Scans,
     /// Old target name to area crate, for the selected names that are modules of an area crate.
     pub areas: std::collections::BTreeMap<String, String>,
+    /// The module paths (`card::land`) whose library unit tests the card set runs instead of the
+    /// whole library (SPEC-20261125-check-affected-card-areas REQ-5); empty keeps them all.
+    pub units: Vec<String>,
+    /// The area crates whose every module is selected: the filterset names the crate once.
+    pub whole: BTreeSet<String>,
 }
 
 /// The first word of an area name: `update_models` → `update`.
@@ -400,7 +405,13 @@ pub fn select_pick(
         }
     }
     let areas = areas_of(tests, &rust);
-    Selection { rust, scans, areas }
+    Selection {
+        rust,
+        scans,
+        areas,
+        units: Vec::new(),
+        whole: BTreeSet::new(),
+    }
 }
 
 /// Old target name to area crate for the selected names that are modules of an area crate.
@@ -434,6 +445,59 @@ pub struct CardPick {
     pub wide: Option<Wide>,
     /// The name words of changed modules that more than [`COMMON_WORD_CAP`] targets carry.
     pub ignored_words: Vec<String>,
+    /// Per changed source path, why its tests were picked (SPEC-20261125-check-affected-card-areas
+    /// REQ-9, REQ-10): `module:<word>`, `area:<name>` or `units:<module path>`.
+    pub picks: Vec<(String, Vec<String>)>,
+}
+
+/// The `[areas]` of `tests/areas.toml` as `(area, words)`; `None` when the table is absent,
+/// unreadable or lists no area.
+fn read_area_table(text: Option<&str>) -> Option<Vec<(String, Vec<String>)>> {
+    let (areas, _) = parse_area_table(text?);
+    (!areas.is_empty()).then_some(areas)
+}
+
+/// The area of `tests/areas.toml` that lists `word`.
+fn word_area<'a>(table: &'a [(String, Vec<String>)], word: &str) -> Option<&'a str> {
+    table
+        .iter()
+        .find(|(_, words)| words.iter().any(|w| w == word))
+        .map(|(a, _)| a.as_str())
+}
+
+/// The table area of a changed source path: the area that lists the first word of its top
+/// folder or file name (`src/check_affected.rs` → `check` → `spec`). `src/lib.rs` and `src/main.rs`
+/// name no area (SPEC-20261125-check-affected-card-areas REQ-2, REQ-4).
+fn path_area<'a>(path: &str, table: &'a [(String, Vec<String>)]) -> Option<&'a str> {
+    if matches!(path, "src/lib.rs" | "src/main.rs") {
+        return None;
+    }
+    word_area(table, first_word(&area(path)?))
+}
+
+/// Every test target of one table area: the targets whose name's first word the area lists.
+fn area_set<'a>(
+    tests: &'a [TestFile],
+    table: &[(String, Vec<String>)],
+    name: &str,
+) -> BTreeSet<&'a str> {
+    tests
+        .iter()
+        .filter(|t| word_area(table, first_word(&t.name)) == Some(name))
+        .map(|t| t.name.as_str())
+        .collect()
+}
+
+/// The library module path of a changed source path (`src/card/land.rs` → `card::land`,
+/// `src/card/mod.rs` → `card`); `None` for the crate roots and the binary's `src/ops/`
+/// (SPEC-20261125-check-affected-card-areas REQ-5).
+fn unit_prefix(path: &str) -> Option<String> {
+    let rest = path.strip_prefix("src/")?.strip_suffix(".rs")?;
+    if matches!(rest, "lib" | "main") || rest.starts_with("ops/") {
+        return None;
+    }
+    let rest = rest.strip_suffix("/mod").unwrap_or(rest);
+    Some(rest.replace('-', "_").replace('/', "::"))
 }
 
 /// The class of a path whose effect on the tests is not clear (REQ-3): the whole dependency graph,
@@ -471,18 +535,43 @@ fn wide_class(path: &str) -> Option<&'static str> {
     {
         return Some("permission");
     }
-    // The audit floor (`gate::TIER2_PREFIXES`, the paths a full audit covers), the git hooks and the
-    // landing code: a change there can break a test that does not name its module.
-    if crate::gate::TIER2_PREFIXES
+    // The scan table is no wide path: the tests that name it and the scans of its rule files cover
+    // it, and the batch's wide check runs every scan (SPEC-20261125-check-affected-card-areas REQ-14).
+    if path == crate::gate::SCAN_REGISTRY {
+        return None;
+    }
+    // The audit floor (`gate::TIER2_PREFIXES`, the paths a full audit covers) and the git hooks: a
+    // change there can break a test that does not name its module. The floor's ordinary source
+    // paths (see [`NARROWED_FLOOR`]) take their area instead.
+    if (crate::gate::TIER2_PREFIXES
         .iter()
         .any(|p| path.starts_with(p))
+        && !narrowed_floor(path))
         || path.starts_with("install/git-hooks/")
         || path.starts_with("src/git_hooks/")
-        || path.starts_with("src/card/land/")
     {
         return Some("audit floor");
     }
     None
+}
+
+/// The source paths of the audit floor that are no gate, permission, secret, install or migration
+/// code: the update and home commands, the agent install and the state folder code. They take the
+/// area path of `select_card` like any module; the gate, the hooks, the secrets and the rest of the
+/// floor stay wide. The landing code `src/card/land/` is no floor path: it was wide on its own and
+/// takes the area path now (SPEC-20261125-check-affected-card-areas REQ-13).
+const NARROWED_FLOOR: [&str; 7] = [
+    "src/update",
+    "src/home",
+    "src/ops/home",
+    "src/ops/agents_home",
+    "src/agent_install",
+    "src/go_state",
+    "src/state_root",
+];
+
+fn narrowed_floor(path: &str) -> bool {
+    path.ends_with(".rs") && NARROWED_FLOOR.iter().any(|p| path.starts_with(p))
 }
 
 /// The module a changed source path names: its leaf word and the path a test names it by
@@ -532,14 +621,19 @@ fn name_has_word(name: &str, word: &str) -> bool {
 }
 
 /// Pick the test targets one card's change reaches (SPEC-20261124-card-select-batch-land REQ-1 to
-/// REQ-3): the tests the range changes or adds, the tests whose source names a changed module or
-/// whose name carries its word, the targets of each scan a changed path touches, and the tests
-/// that name a changed `skills/` or `docs/` path. A wide path (see [`wide_class`]) or a scan list
-/// that cannot be read sets `wide`: the caller then uses the full set.
+/// REQ-3, SPEC-20261125-check-affected-card-areas): the tests the range changes or adds, the tests
+/// whose source names a changed module or whose name carries its word, the targets of each scan a
+/// changed path touches, and the tests that name a changed `skills/` or `docs/` path. A source path
+/// that no name word narrows (a `mod.rs`, a word that more than [`COMMON_WORD_CAP`] targets
+/// carry, a path that reaches no test) takes the carrying targets of its table area, or the whole
+/// area, never the full set; the library's unit tests narrow to the changed modules. A wide path
+/// (see [`wide_class`]), a source path that needs the area table when it is absent, or a scan
+/// list that cannot be read sets `wide`: the caller then uses the full set.
 pub fn select_card(
     changed: &[String],
     tests: &[TestFile],
     scan_list: Option<&str>,
+    areas_text: Option<&str>,
     host_os: &str,
 ) -> CardPick {
     let mut wide_paths: Vec<(&'static str, String)> = changed
@@ -553,36 +647,90 @@ pub fn select_card(
         .cloned()
         .collect();
     let mut rust = select_pick(Pick::Lane, &own, tests, None, host_os).rust;
+    let table = read_area_table(areas_text);
     let mut ignored = BTreeSet::new();
+    let mut units = BTreeSet::new();
+    let mut picks: Vec<(String, Vec<String>)> = Vec::new();
+    // The scan table is no wide path: the tests whose source names it cover it (REQ-14).
+    for path in changed
+        .iter()
+        .filter(|p| p.as_str() == crate::gate::SCAN_REGISTRY)
+    {
+        rust.extend(
+            tests
+                .iter()
+                .filter(|t| t.text.contains(path.as_str()))
+                .map(|t| t.name.clone()),
+        );
+        picks.push((path.clone(), vec![format!("pins:{path}")]));
+    }
     for path in changed {
         let is_source = path.starts_with("src/") && path.ends_with(".rs");
-        let Some((word, key)) = module_of(path) else {
-            // `mod.rs`, `lib.rs` and `main.rs` name no module a test can call: nothing narrows
-            // them, so the full set runs (a source path that picks no test is not a pass).
-            if is_source {
-                wide_paths.push(("no test reached", path.clone()));
-            }
+        if !is_source {
             continue;
-        };
-        // The targets that carry the module's name word or name its path in their source; a
-        // module that more than the cap of them reach is a common one and says nothing.
-        let reached: BTreeSet<&str> = tests
-            .iter()
-            .filter(|t| {
-                name_has_word(&t.name, &word)
-                    || key.as_ref().is_some_and(|k| names_path(&t.text, k))
-            })
-            .map(|t| t.name.as_str())
-            .collect();
-        if reached.len() > COMMON_WORD_CAP {
-            // A word that says nothing is not a reason to run nothing: the full set runs.
-            ignored.insert(word);
-            wide_paths.push(("common name word", path.clone()));
-        } else if reached.is_empty() && is_source {
-            wide_paths.push(("no test reached", path.clone()));
-        } else {
-            rust.extend(reached.into_iter().map(String::from));
         }
+        let mut by: Vec<String> = Vec::new();
+        if let Some(prefix) = unit_prefix(path) {
+            by.push(format!("units:{prefix}"));
+            units.insert(prefix);
+        }
+        // The targets that carry the module's name word or name its path in their source;
+        // `mod.rs`, `lib.rs` and `main.rs` name no module a test can call.
+        let module = module_of(path);
+        let reached: BTreeSet<&str> = match &module {
+            Some((word, key)) => tests
+                .iter()
+                .filter(|t| {
+                    name_has_word(&t.name, word)
+                        || key.as_ref().is_some_and(|k| names_path(&t.text, k))
+                })
+                .map(|t| t.name.as_str())
+                .collect(),
+            None => BTreeSet::new(),
+        };
+        let common = reached.len() > COMMON_WORD_CAP;
+        if common {
+            if let Some((word, _)) = &module {
+                ignored.insert(word.clone());
+            }
+        }
+        if module.is_some() && !reached.is_empty() && !common {
+            // A name word that few targets carry picks them (REQ-1 of the earlier SPEC).
+            if let Some((word, _)) = &module {
+                by.push(format!("module:{word}"));
+            }
+            rust.extend(reached.iter().map(|s| s.to_string()));
+        } else {
+            // Nothing narrows the path by its name: the area of the path decides (REQ-1 to REQ-4).
+            match table.as_deref() {
+                None => wide_paths.push(("area table", path.clone())),
+                Some(table) => {
+                    if let Some(name) = path_area(path, table) {
+                        let set = area_set(tests, table, name);
+                        let inside: BTreeSet<&str> = reached.intersection(&set).copied().collect();
+                        by.push(format!("area:{name}"));
+                        if inside.is_empty() {
+                            rust.extend(set.iter().map(|s| s.to_string()));
+                        } else {
+                            if let Some((word, _)) = &module {
+                                by.push(format!("module:{word}"));
+                            }
+                            rust.extend(inside.iter().map(|s| s.to_string()));
+                        }
+                    }
+                }
+            }
+        }
+        if !by.is_empty() {
+            picks.push((path.clone(), by));
+        }
+    }
+    // A change of a crate root can break any module: the library's unit tests stay whole.
+    if changed
+        .iter()
+        .any(|p| p == "src/lib.rs" || p == "src/main.rs")
+    {
+        units.clear();
     }
     // A path is named once, under the first reason it was found for.
     let mut seen = BTreeSet::new();
@@ -616,10 +764,28 @@ pub fn select_card(
         }
     }
     let areas = areas_of(tests, &rust);
+    // An area crate with every module selected is named once by the filterset.
+    let whole: BTreeSet<String> = tests
+        .iter()
+        .filter_map(|t| t.area.clone())
+        .filter(|c| {
+            tests
+                .iter()
+                .filter(|t| t.area.as_deref() == Some(c))
+                .all(|t| rust.contains(&t.name))
+        })
+        .collect();
     CardPick {
-        selection: Selection { rust, scans, areas },
+        selection: Selection {
+            rust,
+            scans,
+            areas,
+            units: units.into_iter().collect(),
+            whole,
+        },
         wide,
         ignored_words: ignored.into_iter().collect(),
+        picks,
     }
 }
 
@@ -631,6 +797,27 @@ pub struct Chosen {
     pub selection: Selection,
     /// Only for a `--card` request: the wide reason, if any, and the ignored name words.
     pub card: Option<(Option<Wide>, Vec<String>)>,
+    /// Only for a card set: per changed source path, why its tests were picked.
+    pub picks: Vec<(String, Vec<String>)>,
+}
+
+impl Chosen {
+    /// The `card_by=` word of a card set's summary line: the sorted reasons of every path, or
+    /// `none` (SPEC-20261125-check-affected-card-areas REQ-9); `None` for any other pick.
+    pub fn card_by(&self) -> Option<String> {
+        (self.pick == Pick::Card).then(|| {
+            let all: BTreeSet<&str> = self
+                .picks
+                .iter()
+                .flat_map(|(_, by)| by.iter().map(String::as_str))
+                .collect();
+            if all.is_empty() {
+                "none".to_string()
+            } else {
+                all.into_iter().collect::<Vec<_>>().join(",")
+            }
+        })
+    }
 }
 
 pub fn choose(
@@ -638,6 +825,7 @@ pub fn choose(
     changed: &[String],
     tests: &[TestFile],
     scan_list: Option<&str>,
+    areas_text: Option<&str>,
     host_os: &str,
 ) -> Chosen {
     if pick != Pick::Card {
@@ -645,25 +833,28 @@ pub fn choose(
             pick,
             selection: select_pick(pick, changed, tests, scan_list, host_os),
             card: None,
+            picks: Vec::new(),
         };
     }
-    let card = select_card(changed, tests, scan_list, host_os);
+    let card = select_card(changed, tests, scan_list, areas_text, host_os);
     if card.wide.is_some() {
         return Chosen {
             pick: Pick::Full,
             selection: select_pick(Pick::Full, changed, tests, scan_list, host_os),
             card: Some((card.wide, card.ignored_words)),
+            picks: Vec::new(),
         };
     }
     Chosen {
         pick: Pick::Card,
         selection: card.selection,
         card: Some((None, card.ignored_words)),
+        picks: card.picks,
     }
 }
 
-/// The answer fields a `--card` request adds: `card_wide` (`{reason, paths}` or null) and
-/// `card_ignored_words`.
+/// The answer fields a `--card` request adds: `card_wide` (`{reason, paths}` or null),
+/// `card_ignored_words`, and for a card set `card_by` and `card_picks` (`[{path, by}]`).
 fn card_fields(chosen: &Chosen, answer: &mut serde_json::Value) {
     if let Some((wide, ignored)) = &chosen.card {
         answer["card_wide"] = match wide {
@@ -671,6 +862,14 @@ fn card_fields(chosen: &Chosen, answer: &mut serde_json::Value) {
             None => serde_json::Value::Null,
         };
         answer["card_ignored_words"] = serde_json::json!(ignored);
+        answer["card_by"] = serde_json::json!(chosen.card_by());
+        answer["card_picks"] = serde_json::Value::Array(
+            chosen
+                .picks
+                .iter()
+                .map(|(path, by)| serde_json::json!({"path": path, "by": by}))
+                .collect(),
+        );
     }
 }
 
@@ -1478,7 +1677,7 @@ pub fn steps(
             rest.push(target.clone());
         }
     }
-    if runner == Runner::Nextest && !sel.areas.is_empty() {
+    if runner == Runner::Nextest && (!sel.areas.is_empty() || !sel.units.is_empty()) {
         rest.push("-E".to_string());
         rest.push(area_filterset(sel));
     }
@@ -1499,10 +1698,20 @@ pub fn steps(
     out
 }
 
-/// The nextest filterset of a selection that holds modules of area crates: the library and the
-/// binary tests, every target of its own, and in each area crate only the selected modules.
+/// The nextest filterset of a selection that holds modules of area crates or narrows the library
+/// tests: the library tests (all of them, or only the changed modules' when the selection names
+/// `units`), the binary tests, every target of its own, and in each area crate only the selected
+/// modules, or the crate itself when every module is selected.
 fn area_filterset(sel: &Selection) -> String {
-    let mut parts = vec!["kind(lib)".to_string(), "kind(bin)".to_string()];
+    let mut parts = if sel.units.is_empty() {
+        vec!["kind(lib)".to_string()]
+    } else {
+        sel.units
+            .iter()
+            .map(|u| format!("(kind(lib) & test(/^{u}::/))"))
+            .collect()
+    };
+    parts.push("kind(bin)".to_string());
     let mut modules: std::collections::BTreeMap<&str, Vec<&str>> = Default::default();
     for t in &sel.rust {
         match sel.areas.get(t) {
@@ -1511,6 +1720,10 @@ fn area_filterset(sel: &Selection) -> String {
         }
     }
     for (area, names) in modules {
+        if sel.whole.contains(area) {
+            parts.push(format!("binary(={area})"));
+            continue;
+        }
         let tests: Vec<String> = names.iter().map(|m| format!("test(/^{m}::/)")).collect();
         parts.push(format!("(binary(={area}) & ({}))", tests.join(" | ")));
     }
@@ -1931,6 +2144,7 @@ pub fn list(
         &facts.changed,
         &facts.tests,
         facts.scan_list.as_deref(),
+        facts.areas_text.as_deref(),
         host_os(),
     );
     let pick = chosen.pick;
@@ -2226,6 +2440,7 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         &facts.changed,
         &facts.tests,
         facts.scan_list.as_deref(),
+        facts.areas_text.as_deref(),
         host_os(),
     );
     let pick = chosen.pick;
@@ -2327,17 +2542,20 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     }
     drop(held);
     let pass = results.iter().all(|(_, c)| *c == 0);
-    let line = summary_line(&SummaryParts {
-        base: &facts.base,
-        head: &facts.head,
-        targets: sel.rust.len(),
-        scans: &sel.scans.word(),
-        pick,
-        threads: &shown,
-        results: &results,
-        stopped_at: stopped_at.as_deref(),
-        pass,
-    });
+    let line = summary_line_by(
+        &SummaryParts {
+            base: &facts.base,
+            head: &facts.head,
+            targets: sel.rust.len(),
+            scans: &sel.scans.word(),
+            pick,
+            threads: &shown,
+            results: &results,
+            stopped_at: stopped_at.as_deref(),
+            pass,
+        },
+        chosen.card_by().as_deref(),
+    );
     let mut answer = serde_json::json!({
         "action": "affected",
         "mode": "run",
@@ -2373,10 +2591,17 @@ pub struct SummaryParts<'a> {
 /// read. A `--lane` or `--card` run says so right after `scans=`; the bare line has no such word
 /// (SPEC-20261124-ready-receipt-followup REQ-6, REQ-9).
 pub fn summary_line(p: &SummaryParts<'_>) -> String {
-    let selection_word = match p.pick {
-        Pick::Lane => " selection=lane",
-        Pick::Card => " selection=card",
-        Pick::Full => "",
+    summary_line_by(p, None)
+}
+
+/// [`summary_line`] with the `card_by=` word of a card set right after `selection=card`
+/// (SPEC-20261125-check-affected-card-areas REQ-9); `None` writes the line as before.
+pub fn summary_line_by(p: &SummaryParts<'_>, card_by: Option<&str>) -> String {
+    let selection_word = match (p.pick, card_by) {
+        (Pick::Lane, _) => " selection=lane".to_string(),
+        (Pick::Card, Some(by)) => format!(" selection=card card_by={by}"),
+        (Pick::Card, None) => " selection=card".to_string(),
+        (Pick::Full, _) => String::new(),
     };
     let mut line = format!(
         "check-affected base={} head={} targets={} scans={}{selection_word} test-threads={}",
@@ -3415,7 +3640,7 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
     fn the_card_pick_of_an_area_module_names_its_crate() {
         let tests = [module("card_cli", "fn a() {}"), rust("solo_cli", &[], &[])];
         let changed = paths(&["tests/card/card_cli.rs"]);
-        let pick = select_card(&changed, &tests, None, "linux");
+        let pick = select_card(&changed, &tests, None, None, "linux");
         assert!(pick.wide.is_none(), "{:?}", pick.wide);
         assert!(pick.selection.rust.contains("card_cli"));
         assert_eq!(pick.selection.areas["card_cli"], "card");
