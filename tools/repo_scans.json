@@ -1749,7 +1749,7 @@
       ],
       "checks": [
         "cargo test --offline --locked --test agents_choices_step_cli --test audit_gate_cli --test bin_names_signature_cli --test bundle_user_assets_cli --test claude_python_adapter_removed --test git_hooks_cli --test launcher_reads_models --test launcher_retire_role_flags --test next_flow_skill_scan --test omp_launcher_removed --test orca_optional_3005 --test product_cli --test protected_paths_one_list --test repo_claude_md --test retired_host_words --test sdd_guidance --test style_banner_scan --test worktree_report --test repo_scans_table",
-        "cargo test --offline --locked --test card github_cli:: -- labels_check:: labels_sync:: release_pr_three_os:: trailer_check_cli:: verified_trailer_in_use_cli::"
+        "cargo test --offline --locked --test card github_cli:: -- labels_check:: labels_sync:: release_branch_version:: release_pr_three_os:: trailer_check_cli:: verified_trailer_in_use_cli::"
       ],
       "rules": [
         "tests/agents_choices_step_cli.rs",
@@ -1768,6 +1768,7 @@
         "tests/orca_optional_3005.rs",
         "tests/product_cli.rs",
         "tests/protected_paths_one_list.rs",
+        "tests/card/release_branch_version.rs",
         "tests/card/release_pr_three_os.rs",
         "tests/repo_claude_md.rs",
         "tests/retired_host_words.rs",

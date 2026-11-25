@@ -7,6 +7,7 @@
 
 #![cfg(unix)]
 
+use crate::common::CleanEnv;
 use moai_cli::headver;
 use std::{
     collections::HashMap,
@@ -72,13 +73,11 @@ fn all_scripts() -> Vec<String> {
 }
 
 fn git(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
+    let out = crate::common::git::command()
         .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
         .args(["-c", "commit.gpgsign=false"])
         .args(args)
         .current_dir(dir)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .output()
         .unwrap();
     assert!(
@@ -168,7 +167,7 @@ fn plan_with(
     cmd.args(["-eo", "pipefail"])
         .arg(&script)
         .current_dir(&repo.dir)
-        .env_clear()
+        .clean_env()
         .env("PATH", std::env::var("PATH").unwrap())
         .env("HOME", work)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
@@ -605,7 +604,7 @@ fn verify_with(
         .args(["-eo", "pipefail"])
         .arg(&script)
         .current_dir(&dir)
-        .env_clear()
+        .clean_env()
         .env("PATH", std::env::var("PATH").unwrap())
         .env("VERSION", version)
         .env("SERIAL", serial)
@@ -790,7 +789,7 @@ fn the_build_job_checks_both_lines_and_the_tag() {
         .args(["-eo", "pipefail"])
         .arg(&script)
         .current_dir(&dir)
-        .env_clear()
+        .clean_env()
         .env("PATH", std::env::var("PATH").unwrap())
         .env("VERSION", "4.2649.0")
         .env("SERIAL", "0")

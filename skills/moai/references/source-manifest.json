@@ -309,7 +309,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "9c5fee91a4e91b68cb22af5217f2253d640e1401017f7865d68b7e387a26158b",
+      "sha256": "85ce2ceb603f0806d307ac6b064d1d46f8e387c4540ca6dfd3643defa53e71c9",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
