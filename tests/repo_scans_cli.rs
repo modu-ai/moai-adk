@@ -70,6 +70,13 @@ fn load() -> Vec<Value> {
         .clone()
 }
 
+/// The commands of one scan of the checked-in table, read as the product reads them: the command
+/// built from `test_targets` first, then the listed `checks` (a scan may hold only `test_targets`).
+fn scan_commands(scan: &Value) -> Vec<String> {
+    moai_cli::repo_scans::checks_of(scan)
+        .unwrap_or_else(|e| panic!("scan {}: {e}", scan["id"].as_str().unwrap_or("(no id)")))
+}
+
 struct Home(TempDir);
 
 impl Home {
@@ -253,11 +260,7 @@ fn checks_are_the_hit_scans_in_table_order_without_duplicates() {
     seen.sort();
     seen.dedup();
     assert_eq!(checks.len(), seen.len(), "duplicate check in {checks:?}");
-    let order: Vec<String> = load()
-        .iter()
-        .flat_map(|s| s["checks"].as_array().unwrap().clone())
-        .map(|c| c.as_str().unwrap().to_string())
-        .collect();
+    let order: Vec<String> = load().iter().flat_map(scan_commands).collect();
     let place = |c: &String| order.iter().position(|o| o == c).unwrap();
     let mut sorted = checks.clone();
     sorted.sort_by_key(place);
@@ -352,11 +355,11 @@ fn refs_read_the_change_sets_from_git() {
 #[test]
 fn bad_input_fails_safe_with_every_check() {
     let home = Home::new();
-    let mut every: Vec<Value> = Vec::new();
+    let mut every: Vec<String> = Vec::new();
     for scan in load() {
-        for check in scan["checks"].as_array().unwrap() {
-            if !every.contains(check) {
-                every.push(check.clone());
+        for check in scan_commands(&scan) {
+            if !every.contains(&check) {
+                every.push(check);
             }
         }
     }
