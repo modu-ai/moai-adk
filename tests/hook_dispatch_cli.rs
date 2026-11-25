@@ -1858,10 +1858,26 @@ fn session_check_names_the_profile_work_flow() {
     );
     let text = session_context("claude", &root, None);
     assert!(
-        text.contains("Work flow `m-flow`, integration branch `NeXT`."),
+        text.contains("Work flow `NeXT-Flow`, integration branch `NeXT`."),
         "{text}"
     );
     assert!(!text.contains("absent locally"), "{text}");
+}
+
+/// The flow rename (SPEC-20261122-next-flow): the current stored value `next-flow` shows
+/// as the same name as the old value `m-flow` above.
+#[test]
+fn session_check_names_next_flow_by_its_name() {
+    let (_d, root) = repo("NeXT");
+    write_profile(
+        &root,
+        Some(json!({"flow": "next-flow", "integration_branch": "NeXT"})),
+    );
+    let text = session_context("claude", &root, None);
+    assert!(
+        text.contains("Work flow `NeXT-Flow`, integration branch `NeXT`."),
+        "{text}"
+    );
 }
 
 /// AC-2: no profile, a profile that does not parse and a profile without `work_flow` all answer
@@ -1890,7 +1906,7 @@ fn session_check_flags_a_missing_integration_branch() {
     );
     let text = session_context("claude", &root, None);
     assert!(
-        text.contains("Work flow `m-flow`, integration branch `NeXT` (absent locally)."),
+        text.contains("Work flow `NeXT-Flow`, integration branch `NeXT` (absent locally)."),
         "{text}"
     );
 }
@@ -1908,7 +1924,7 @@ fn session_check_outside_a_git_repository_adds_no_absent_note() {
     );
     let text = session_context("claude", &root, None);
     assert!(
-        text.contains("Work flow `m-flow`, integration branch `NeXT`."),
+        text.contains("Work flow `NeXT-Flow`, integration branch `NeXT`."),
         "{text}"
     );
     assert!(!text.contains("absent locally"), "{text}");
