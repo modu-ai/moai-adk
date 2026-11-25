@@ -1011,17 +1011,8 @@ fn push_repo() -> (tempfile::TempDir, std::path::PathBuf, String) {
     let base = fs::canonicalize(tmp.path()).unwrap();
     let (repo, bare) = (base.join("repo"), base.join("bare.git"));
     fs::create_dir_all(&repo).unwrap();
-    let git = |dir: &Path, args: &[&str]| {
-        let out = Command::new("git")
-            .arg("-C")
-            .arg(dir)
-            .args(args)
-            .env("GIT_CONFIG_GLOBAL", "/dev/null")
-            .env("GIT_CONFIG_SYSTEM", "/dev/null")
-            .output()
-            .unwrap();
-        assert!(out.status.success(), "git {args:?}: {out:?}");
-    };
+    // The shared helper carries the gc/maintenance and config guards of every fixture git call.
+    let git = common::git::git_ok;
     git(&base, &["init", "-q", "--bare", "bare.git"]);
     git(&repo, &["init", "-q"]);
     let bare = bare.to_str().unwrap().to_string();
