@@ -86,7 +86,11 @@ pub fn read(project: &Path) -> Result<Option<String>> {
 /// The primary checkout of `project` when `project` is a linked worktree, read from its `.git`
 /// file (`gitdir: <primary>/.git/worktrees/<name>`, absolute or relative to the worktree);
 /// `None` for a clone, a submodule (`.git/modules/<name>`), a `.git` that is a link or a file
-/// that names no such folder. No git process runs.
+/// that names no such folder. The entry is accepted only the way git checks it: a real folder
+/// whose `gitdir` file names this worktree's `.git` back, so a `.git` file that points at another
+/// project's worktree entry borrows nothing. No git process runs. The primary's owner is not
+/// compared: every path here is read with the caller's own rights, as the profile read of the
+/// project folder itself is.
 fn primary_checkout(project: &Path) -> Option<std::path::PathBuf> {
     let dotgit = project.join(".git");
     if !std::fs::symlink_metadata(&dotgit).ok()?.is_file() {
@@ -108,9 +112,26 @@ fn primary_checkout(project: &Path) -> Option<std::path::PathBuf> {
     if worktrees.file_name()? != "worktrees" || common.file_name()? != ".git" {
         return None;
     }
+    // Accepted the way git checks a linked worktree: the folder is a real folder (not a link)
+    // and its `gitdir` file names this worktree's `.git` back. A `.git` file that only points at
+    // some other project's `worktrees/<name>` therefore borrows no id.
+    if !std::fs::symlink_metadata(&gitdir).ok()?.is_dir() {
+        return None;
+    }
+    let back = std::fs::read_to_string(gitdir.join("gitdir")).ok()?;
+    let back = Path::new(back.lines().next()?.trim());
+    let back = if back.is_absolute() {
+        back.to_path_buf()
+    } else {
+        gitdir.join(back)
+    };
+    let project = project.canonicalize().ok()?;
+    if back.canonicalize().ok()? != project.join(".git") {
+        return None;
+    }
     let primary = common.parent()?.canonicalize().ok()?;
     // The primary must be a real checkout of its own, not the worktree itself.
-    (primary != project.canonicalize().ok()?).then_some(primary)
+    (primary != project).then_some(primary)
 }
 
 #[cfg(test)]
@@ -161,6 +182,13 @@ mod tests {
                 "gitdir: {}\n",
                 primary.join(".git/worktrees/lane").display()
             ),
+        )
+        .unwrap();
+        // git also writes the way back: `<primary>/.git/worktrees/<name>/gitdir` names the
+        // worktree's `.git` file
+        fs::write(
+            primary.join(".git/worktrees/lane/gitdir"),
+            format!("{}\n", linked.join(".git").display()),
         )
         .unwrap();
         (primary, linked)
@@ -233,6 +261,34 @@ mod tests {
         fs::create_dir_all(&odd).unwrap();
         fs::write(odd.join(".git"), "garbage\n").unwrap();
         assert_eq!(read(&odd).unwrap(), None);
+    }
+
+    #[test]
+    fn a_git_file_without_the_way_back_borrows_no_profile() {
+        let t = tempfile::tempdir().unwrap();
+        let (primary, linked) = linked_pair(t.path());
+        put_profile(&primary, crate::PROJECT_STATE_DIR, &profile_text(GOOD));
+        // another project's worktree entry that names a different worktree, or none at all
+        let entry = primary.join(".git/worktrees/lane/gitdir");
+        fs::write(
+            &entry,
+            format!("{}\n", t.path().join("elsewhere/.git").display()),
+        )
+        .unwrap();
+        assert_eq!(read(&linked).unwrap(), None);
+        fs::remove_file(&entry).unwrap();
+        assert_eq!(read(&linked).unwrap(), None);
+    }
+
+    #[test]
+    fn a_worktree_entry_that_is_a_link_is_not_followed() {
+        let t = tempfile::tempdir().unwrap();
+        let (primary, linked) = linked_pair(t.path());
+        put_profile(&primary, crate::PROJECT_STATE_DIR, &profile_text(GOOD));
+        let real = primary.join(".git/worktrees/real");
+        fs::rename(primary.join(".git/worktrees/lane"), &real).unwrap();
+        std::os::unix::fs::symlink(&real, primary.join(".git/worktrees/lane")).unwrap();
+        assert_eq!(read(&linked).unwrap(), None);
     }
 
     #[test]

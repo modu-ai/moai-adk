@@ -17,12 +17,12 @@ created: 2026-11-25
 - REQ-1: When a linked worktree has no profile of its own, the project id reader shall return the `project_id` of its primary checkout's profile.
 - REQ-2 (REQ-1): IF the worktree has a profile of its own, THEN the project id reader shall return that profile's id and not the primary's.
 - REQ-3 (REQ-1): IF the primary checkout's profile cannot give an id, THEN the project id reader shall return an error and not a missing profile.
-- REQ-4 (REQ-1): The project id reader shall find the primary checkout only from the `gitdir:` line of a `.git` file that names `<primary>/.git/worktrees/<name>`, absolute or relative to the worktree.
+- REQ-4 (REQ-1): The project id reader shall find the primary checkout only from the `gitdir:` line of a `.git` file that names `<primary>/.git/worktrees/<name>`, absolute or relative to the worktree, and only when that entry is a real folder whose `gitdir` file names this worktree's `.git` back.
 - REQ-5 (REQ-1): IF neither the project nor its primary checkout has a profile, THEN the card commands shall refuse with `project profile missing in <folder>` followed by the next step, which is to run `/moai project` in the main checkout or to pass `--project <folder>`.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4): 합성 주 체크아웃과 `.git` 파일이 있는 연결 워크트리에서 프로필 없는 워크트리가 주 프로필의 id 를 읽고, 자기 프로필이 있으면 그것을, 주 프로필이 깨졌으면 오류를, 서브모듈·깨진 `.git` 파일에서는 아무것도 빌리지 않고, 상대 경로 `gitdir:` 도 읽어요; 읽기는 워크트리에 아무것도 쓰지 않아요 · verify: `cargo nextest run --lib -E 'test(project_id::)'`
+- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4): 합성 주 체크아웃과 `.git` 파일이 있는 연결 워크트리에서 프로필 없는 워크트리가 주 프로필의 id 를 읽고, 자기 프로필이 있으면 그것을, 주 프로필이 깨졌으면 오류를, 서브모듈·깨진 `.git` 파일, 되돌림(`gitdir` 파일)이 없거나 다른 워크트리를 가리키는 항목, 링크인 항목에서는 아무것도 빌리지 않고, 상대 경로 `gitdir:` 도 읽어요; 읽기는 워크트리에 아무것도 쓰지 않아요 · verify: `cargo nextest run --lib -E 'test(project_id::)'`
 - AC-2 (REQ-1, REQ-5): `project_id_of` 가 연결 워크트리와 주 체크아웃에 같은 id 를 내고, 프로필이 없으면 폴더와 다음 단계(`/moai project`, `--project <folder>`)를 말하며 계약 분류는 NotFound 로 그대로예요 · verify: `cargo nextest run --lib -E 'test(ledger::command::)'`
 
 ## Scope

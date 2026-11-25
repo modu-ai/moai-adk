@@ -256,6 +256,11 @@ mod tests {
             ),
         )
         .unwrap();
+        fs::write(
+            primary.join(".git/worktrees/lane/gitdir"),
+            format!("{}\n", linked.join(".git").display()),
+        )
+        .unwrap();
         if with_profile {
             let dir = primary.join(crate::PROJECT_STATE_DIR);
             fs::create_dir_all(&dir).unwrap();
