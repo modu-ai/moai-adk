@@ -302,7 +302,7 @@ fn check_one(part: &str, host: &str, rel: &str, root: &Path, expected: &str) -> 
 }
 
 /// The written files of a result's file list that name an expected digest.
-fn written<'a>(files: &'a Value) -> impl Iterator<Item = (&'a str, &'a str)> {
+fn written(files: &Value) -> impl Iterator<Item = (&str, &str)> {
     files.as_array().into_iter().flatten().filter_map(|f| {
         if f["published"].as_bool() != Some(true) {
             return None;
