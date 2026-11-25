@@ -1002,6 +1002,81 @@ fn merge_confirm_capabilities_name_the_direct_merge() {
     }
 }
 
+// ---- SPEC-20261125-preflight-safe-force-push: two force pushes that overwrite nothing ----------
+
+/// A temporary work tree `repo` (a real `git init`, so remote names resolve) next to a bare
+/// repository on this computer; returns the temporary folder, the work tree and the bare path.
+fn push_repo() -> (tempfile::TempDir, std::path::PathBuf, String) {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let base = fs::canonicalize(tmp.path()).unwrap();
+    let (repo, bare) = (base.join("repo"), base.join("bare.git"));
+    fs::create_dir_all(&repo).unwrap();
+    let git = |dir: &Path, args: &[&str]| {
+        let out = Command::new("git")
+            .arg("-C")
+            .arg(dir)
+            .args(args)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "git {args:?}: {out:?}");
+    };
+    git(&base, &["init", "-q", "--bare", "bare.git"]);
+    git(&repo, &["init", "-q"]);
+    let bare = bare.to_str().unwrap().to_string();
+    git(&repo, &["remote", "add", "loc", &bare]);
+    git(
+        &repo,
+        &["remote", "add", "net", "https://example.invalid/x.git"],
+    );
+    fs::create_dir_all(repo.join("home")).unwrap();
+    (tmp, repo, bare)
+}
+
+/// REQ-1, REQ-2, REQ-4, REQ-5: the hook command, fed a Bash call as Claude sends it, does not
+/// ask about a create-only lease push or a forced push to a path on this computer, still asks
+/// about every other forced push, and still refuses a force push to `main`.
+#[test]
+fn safe_force_push_is_not_asked_and_the_rest_is_as_before() {
+    let (_tmp, repo, bare) = push_repo();
+    let answer = |command: &str| merge_preflight("claude", &repo, command).1;
+    for command in [
+        "git push --force-with-lease=work: up work".to_string(),
+        "git push --force-w=work: up work".to_string(),
+        format!("git push -f {bare} feature"),
+        format!("git push --force {bare} feature"),
+        format!("git push {bare} +feature"),
+        "git push -f ../bare.git feature".to_string(),
+        format!("git push -f file://{bare} feature"),
+    ] {
+        assert_eq!(answer(&command), "", "asked: {command}");
+    }
+    for command in [
+        "git push --force-with-lease=work:abc up work".to_string(),
+        "git push --force-with-lease up work".to_string(),
+        "git push --force-with-lease=work: --force up work".to_string(),
+        "git push --force-with-lease=work: up +work".to_string(),
+        "git push --force-with-lease=work: --mirror up".to_string(),
+        "git push -f net feature".to_string(),
+        "git push -f https://example.invalid/x.git feature".to_string(),
+        "git push -f git@example.invalid:x.git feature".to_string(),
+        "git push -f ssh://example.invalid/x.git feature".to_string(),
+        "git push -f".to_string(),
+        format!("git push -f {bare} a; git push -f net b"),
+    ] {
+        assert_eq!(answer(&command), "ask", "not asked: {command}");
+    }
+    for command in [
+        "git push -f up main".to_string(),
+        format!("git push -f {bare} main"),
+        "git push --force-with-lease=main: up main".to_string(),
+        format!("git push {bare} +master"),
+    ] {
+        assert_eq!(answer(&command), "deny", "not refused: {command}");
+    }
+}
+
 /// #2877 Q1: the Claude set carries the hook engine's preflight guard after the claim guard, and
 /// the generated command, run as the host runs it, denies a dangerous Bash call and a write
 /// into `.git`, and lets an ordinary call through.
