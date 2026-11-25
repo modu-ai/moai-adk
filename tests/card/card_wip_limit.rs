@@ -346,3 +346,167 @@ fn next_at_the_limit_with_nothing_to_audit_names_the_limit() {
     assert_eq!(got["next"], Value::Null, "{got}");
     assert_eq!(got["audit_needed"], json!([]), "{got}");
 }
+
+// SPEC-20261125-wip-limit-live-leases: the limit counts only the cards whose lease is alive.
+
+/// Runs `statement` against the temporary ledger (the only way to end a lease: its length is at
+/// least 60 seconds).
+fn sql(w: &World, statement: &str) {
+    let mut l = ledger::open_write(w.home.path(), "demo").unwrap();
+    l.with_write_tx(|tx, _| {
+        tx.execute_batch(statement)?;
+        Ok(())
+    })
+    .unwrap();
+}
+
+fn card_id(card: &str) -> i64 {
+    card.trim_start_matches("C-").parse().unwrap()
+}
+
+/// Ends the lease of the reservation of `card` (held, or held for its review).
+fn end_lease(w: &World, card: &str) {
+    sql(
+        w,
+        &format!(
+            "UPDATE reservation SET lease_until = unixepoch() - 5 \
+             WHERE card_id = {} AND status IN ('held', 'held_for_review')",
+            card_id(card)
+        ),
+    );
+}
+
+/// `card add` by `by` with a scope of its own.
+fn add_by(w: &World, by: &str, title: &str) -> Output {
+    w.card(
+        None,
+        &[
+            "add",
+            "--title",
+            title,
+            "--scope",
+            &format!("src/{title}/"),
+            "--ac",
+            "one",
+            "--by",
+            by,
+        ],
+    )
+}
+
+/// AC-1 (REQ-1): cards in work whose leases ended do not fill the limit: a new `card add` and a
+/// new `card take` pass although two cards are still `active`.
+#[test]
+fn ac1_cards_with_ended_leases_do_not_fill_the_limit() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    let held = w.working(&sid(1), 2);
+    for card in &held {
+        end_lease(&w, card);
+    }
+    result(&add_by(&w, "leader", "more"));
+    let next = w.ready_card("src/next/");
+    result(&w.take(&sid(1), &next));
+}
+
+/// AC-2 (REQ-1, REQ-2): cards with live leases still fill the limit, and with one card of the two
+/// left out the next take passes while the one after it refuses again (the guard against counting
+/// too little).
+#[test]
+fn ac2_live_cards_still_fill_the_limit() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    let held = w.working(&sid(1), 2);
+    let (kind, message) = refusal(&add_by(&w, "leader", "full"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("work-in-progress limit"), "{message}");
+
+    end_lease(&w, &held[0]);
+    let third = w.ready_card("src/third/");
+    let fourth = w.ready_card("src/fourth/");
+    result(&w.take(&sid(1), &third));
+    let (kind, message) = refusal(&w.take(&sid(1), &fourth));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("work-in-progress limit"), "{message}");
+    assert!(message.contains(&held[1]), "{message}");
+    assert!(message.contains(&third), "{message}");
+}
+
+/// AC-3 (REQ-3, REQ-4): the refusal names the counted cards first and, apart from them, each
+/// card left out with the end of its lease or the words `no reservation`.
+#[test]
+fn ac3_the_refusal_lists_the_cards_left_out_apart() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    let old = w.working(&sid(1), 2);
+    end_lease(&w, &old[0]);
+    sql(
+        &w,
+        &format!(
+            "UPDATE reservation SET status = 'released' WHERE card_id = {}",
+            card_id(&old[1])
+        ),
+    );
+    let live = w.working(&sid(1), 2);
+    let (kind, message) = refusal(&add_by(&w, "leader", "more"));
+    assert_eq!(kind, "conflict", "{message}");
+    let (counted, left_out) = message
+        .split_once("not counted")
+        .unwrap_or_else(|| panic!("the refusal has no `not counted` part: {message}"));
+    for card in &live {
+        assert!(counted.contains(card.as_str()), "{card} counted: {message}");
+        assert!(!left_out.contains(card.as_str()), "{card}: {message}");
+    }
+    for card in &old {
+        assert!(!counted.contains(card.as_str()), "{card}: {message}");
+        assert!(
+            left_out.contains(card.as_str()),
+            "{card} left out: {message}"
+        );
+    }
+    assert!(left_out.contains("lease ended"), "{message}");
+    assert!(left_out.contains("no reservation"), "{message}");
+}
+
+/// AC-4 (REQ-5): `card next` answers `wip` with the counted number and the cards left out, and a
+/// card in review whose lease ended stays in `audit_needed`.
+#[test]
+fn ac4_next_names_the_cards_left_out_and_keeps_the_audit_list() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    let held = w.working(&sid(1), 2);
+    result(&w.card(Some(&sid(1)), &["review", &held[1], "--generation", "1"]));
+    for card in &held {
+        end_lease(&w, card);
+    }
+    let got = result(&w.next(&sid(3)));
+    assert_eq!(got["wip"]["count"], json!(0), "{got}");
+    assert_eq!(got["wip"]["at_limit"], json!(false), "{got}");
+    let left: Vec<&str> = got["wip"]["not_counted"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no `not_counted` list in wip: {got}"))
+        .iter()
+        .map(|c| c["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(left, vec![held[0].as_str(), held[1].as_str()], "{got}");
+    let audit: Vec<&str> = got["audit_needed"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(audit, vec![held[1].as_str()], "{got}");
+}
+
+/// AC-5 (REQ-6): `wip_limit` 0 and a project with no live lane stay off, whatever the leases.
+#[test]
+fn ac5_the_off_switches_stay_off() {
+    let w = world(Some(0));
+    w.lane("agent-1", &sid(1));
+    w.working(&sid(1), 3);
+    result(&add_by(&w, "leader", "more"));
+
+    let w = world(None);
+    w.working(&sid(1), 3);
+    result(&add_by(&w, "leader", "more"));
+}
