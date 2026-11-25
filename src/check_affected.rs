@@ -1713,13 +1713,25 @@ pub fn plan_steps(
     threads: Option<usize>,
 ) -> Vec<Step> {
     match &facts.stack {
-        Stack::Rust => steps(sel, &facts.present, range, runner, threads),
+        Stack::Rust => {
+            let mut planned = steps(sel, &facts.present, range, runner, threads);
+            // The ledger tests are the first heavy step, so a hand-kept table that was not
+            // updated stops the run before `clippy` and `test` (SPEC-20261125-check-fast-and-fix
+            // REQ-5, REQ-7). An end-line violation is a cheap step before it.
+            let at = planned.iter().take_while(|s| !s.heavy).count();
+            let early = crate::check_fast::endline_step_if_any(facts)
+                .into_iter()
+                .chain(crate::check_fast::ledger_step(facts, runner));
+            planned.splice(at..at, early);
+            planned
+        }
         Stack::Declared(checks) => other_steps(checks, &facts.present, range),
         Stack::Undeclared(_) => other_steps(&[], &facts.present, range),
     }
 }
 
-fn step(label: &str, program: &str, args: &[&str], heavy: bool) -> Step {
+/// A step of the plan: `<program> <args>`, no environment, run as a program (`report` is `None`).
+pub(crate) fn step(label: &str, program: &str, args: &[&str], heavy: bool) -> Step {
     Step {
         label: label.to_string(),
         program: program.to_string(),

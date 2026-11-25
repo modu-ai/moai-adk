@@ -4,7 +4,7 @@
 //! ledger list are pure; [`run`] is the one place that starts programs.
 
 use crate::check_affected::{
-    read_facts, scan_violations, table_violations, Facts, Runner, Stack, Step, TestFile,
+    read_facts, scan_violations, step, table_violations, Facts, Runner, Stack, Step, TestFile,
 };
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
@@ -162,20 +162,9 @@ pub fn lib_missing(root: &Path) -> Vec<String> {
 
 /// An in-process step: `lines` are its verdict, decided when the plan is made.
 fn report_step(label: &str, what: &str, lines: Vec<String>) -> Step {
-    let mut s = simple(label, "(in-process)", &[label, what], false);
+    let mut s = step(label, "(in-process)", &[label, what], false);
     s.report = Some(lines);
     s
-}
-
-fn simple(label: &str, program: &str, args: &[&str], heavy: bool) -> Step {
-    Step {
-        label: label.to_string(),
-        program: program.to_string(),
-        args: args.iter().map(|s| s.to_string()).collect(),
-        heavy,
-        env: Vec::new(),
-        report: None,
-    }
 }
 
 /// The ledger step: one heavy test run of every ledger name, or a failing in-process report that
@@ -274,6 +263,16 @@ fn endline_step(facts: &Facts) -> Step {
     )
 }
 
+/// The end-line step of a range, only when it has a violation to name: a clean range plans no
+/// such step, so the summary words of every earlier run stay as they were.
+pub fn endline_step_if_any(facts: &Facts) -> Option<Step> {
+    let s = endline_step(facts);
+    s.report
+        .as_ref()
+        .is_some_and(|l| !l.is_empty())
+        .then_some(s)
+}
+
 /// Whether the scan registry's text is a list of scans whose checks can be read.
 fn registry_readable(text: &str) -> bool {
     let Ok(value) = serde_json::from_str::<serde_json::Value>(text) else {
@@ -348,14 +347,14 @@ fn table_step(facts: &Facts) -> Option<Step> {
 pub fn plan(facts: &Facts, runner: Runner) -> Vec<Step> {
     let range = format!("{}...{}", facts.base, facts.head);
     let rust = facts.stack == Stack::Rust;
-    let mut out = vec![simple(
+    let mut out = vec![step(
         "diff_check",
         "git",
         &["diff", "--check", &range],
         false,
     )];
     if rust {
-        out.push(simple(
+        out.push(step(
             "fmt",
             "cargo",
             &["fmt", "--all", "--", "--check"],
@@ -367,7 +366,7 @@ pub fn plan(facts: &Facts, runner: Runner) -> Vec<Step> {
             .filter(|p| p.starts_with("src/ops/") && p.ends_with(".rs"))
             .collect();
         if !ops.is_empty() {
-            let mut s = simple(
+            let mut s = step(
                 "ops_rustfmt",
                 "rustfmt",
                 &["--edition", "2021", "--check"],

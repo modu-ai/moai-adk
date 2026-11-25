@@ -282,3 +282,195 @@ fn the_endline_check_flags_a_missing_final_newline() {
         fs::set_permissions(root.join("locked.md"), fs::Permissions::from_mode(0o644)).unwrap();
     }
 }
+
+/// Roomy machine numbers (debug-only seam), so the test machine's real disk and memory never
+/// decide the outcome of a run of the real binary.
+#[cfg(unix)]
+const ROOMY: &str = "free_gb=1000,swap_pct=0";
+
+/// A folder with a fake `cargo` that appends `cargo <args>` to `calls.log` with the shell's own
+/// redirection. It answers the nextest probe; a `nextest run` without `--bin moai-cli` is the
+/// ledger run and, when `FAKE_FAIL_LEDGER` is set, fails with one failure line on stderr; every
+/// other call exits 0.
+#[cfg(unix)]
+fn process_tools() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    common::write_executable(
+        &dir.path().join("cargo"),
+        "#!/bin/sh\n\
+         echo \"cargo $*\" >> \"$FAKE_CALLS\"\n\
+         case \"$1 $2\" in\n\
+           \"nextest --version\") exit 0 ;;\n\
+           \"nextest run\")\n\
+             case \"$*\" in\n\
+               *--bin\\ moai-cli*) exit 0 ;;\n\
+             esac\n\
+             if [ -n \"$FAKE_FAIL_LEDGER\" ]; then\n\
+               echo '        FAIL [   0.1s] repo_scans_table some_test' >&2\n\
+               exit 1\n\
+             fi\n\
+             exit 0 ;;\n\
+         esac\n\
+         exit 0\n",
+    );
+    dir
+}
+
+/// What one run of the real `moai` binary printed: its exit code and the `result` of the envelope.
+#[cfg(unix)]
+struct Ran {
+    code: i32,
+    answer: Value,
+    stdout: String,
+    stderr: String,
+}
+
+/// Runs `moai check <args…> --dir <root>` with the fake tools first on PATH, a temporary HOME, the
+/// given slot folder and the machine seam; `fail_ledger` makes the fake ledger run fail.
+#[cfg(unix)]
+fn moai_check(root: &Path, tools: &Path, slots: &Path, args: &[&str], fail_ledger: bool) -> Ran {
+    use std::process::{Command, Stdio};
+    let git_dir = Command::new("sh")
+        .args(["-c", "dirname \"$(command -v git)\""])
+        .output()
+        .unwrap();
+    let path = format!(
+        "{}:{}:/usr/bin:/bin",
+        tools.display(),
+        String::from_utf8_lossy(&git_dir.stdout).trim()
+    );
+    let home = tempfile::tempdir().unwrap();
+    let mut cmd = Command::new(common::MOAI_BIN);
+    cmd.arg("check").args(args).arg("--dir").arg(root);
+    if args.first() != Some(&"fix") {
+        cmd.arg("--slot-dir").arg(slots);
+    }
+    let out = cmd
+        .env("HOME", home.path())
+        .env_remove("MOAI_HOME")
+        .env_remove("XDG_CACHE_HOME")
+        .env_remove("CARGO_TARGET_DIR")
+        .env_remove("MOAI_HEAVY_SLOT_FD")
+        .env_remove("CARGO_BUILD_JOBS")
+        .env_remove("RUST_TEST_THREADS")
+        .env_remove("NEXTEST_TEST_THREADS")
+        .env("MOAI_TEST_MACHINE", ROOMY)
+        .env("PATH", path)
+        .env("FAKE_CALLS", tools.join("calls.log"))
+        .env("FAKE_FAIL_LEDGER", if fail_ledger { "1" } else { "" })
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+    let envelope: Value = stdout
+        .find('{')
+        .and_then(|at| serde_json::from_str(&stdout[at..]).ok())
+        .unwrap_or(Value::Null);
+    Ran {
+        code: out.status.code().expect("the process was not killed"),
+        answer: envelope["result"].clone(),
+        stdout,
+        stderr: String::from_utf8_lossy(&out.stderr).to_string(),
+    }
+}
+
+/// AC-3 (REQ-5, REQ-7, REQ-8): the real `check affected --card` binary plans the ledger step before
+/// `clippy`; the ledger run fails, so `clippy` and `test` never start, the answer lists them as
+/// skipped and stops at `ledger`, the summary says so and the process exits 1. The fake cargo's
+/// call log shows no `clippy` call and no test call with `--bin moai-cli` (the `test` step's).
+#[cfg(unix)]
+#[test]
+fn a_failed_ledger_step_stops_clippy_and_test() {
+    let fx = Fixture::new(&[("docs/ok.md", b"fine\n")]);
+    let tools = process_tools();
+    let slots = slot_dir();
+    let ran = moai_check(
+        fx.root(),
+        tools.path(),
+        slots.path(),
+        &["affected", "--card", &fx.range()],
+        true,
+    );
+    let (a, shown) = (&ran.answer, format!("{} / {}", ran.stdout, ran.stderr));
+    assert_eq!(ran.code, 1, "{shown}");
+    assert_eq!(a["result"], "FAIL", "{shown}");
+    assert_eq!(a["stopped_at"], "ledger", "{shown}");
+    assert_eq!(
+        a["skipped"],
+        serde_json::json!(["clippy", "test"]),
+        "{shown}"
+    );
+    let steps = labels(a, "steps");
+    let at = |l: &str| steps.iter().position(|s| s == l);
+    assert_eq!(
+        steps.last().map(String::as_str),
+        Some("ledger"),
+        "{steps:?}"
+    );
+    assert!(at("fmt").unwrap() < at("ledger").unwrap(), "{steps:?}");
+    let line = a["summary"].as_str().unwrap();
+    assert!(line.contains(" ledger=1 "), "{line}");
+    assert!(line.contains(" stopped_at=ledger"), "{line}");
+    assert!(!line.contains(" clippy="), "{line}");
+    assert!(!line.contains(" test="), "{line}");
+    assert!(line.ends_with(" result=FAIL"), "{line}");
+    let calls = fs::read_to_string(tools.path().join("calls.log")).unwrap();
+    assert!(calls.contains("nextest run"), "the ledger ran: {calls}");
+    assert!(!calls.contains("clippy"), "{calls}");
+    assert!(!calls.contains("--bin moai-cli"), "{calls}");
+    assert_eq!(calls.matches("nextest run").count(), 1, "{calls}");
+}
+
+/// `check fast` and `check fix` are commands: a clean range passes the first with exit 0, and the
+/// second finds nothing to write on it.
+#[cfg(unix)]
+#[test]
+fn check_fast_and_fix_run_as_commands() {
+    let fx = Fixture::new(&[("docs/ok.md", b"fine\n")]);
+    let tools = process_tools();
+    let slots = slot_dir();
+    let out = tempfile::tempdir().unwrap();
+    let ran = moai_check(
+        fx.root(),
+        tools.path(),
+        slots.path(),
+        &["fast", &fx.range(), "--out", out.path().to_str().unwrap()],
+        false,
+    );
+    let shown = format!("{} / {}", ran.stdout, ran.stderr);
+    assert_eq!(ran.code, 0, "{shown}");
+    assert_eq!(ran.answer["action"], "fast", "{shown}");
+    assert_eq!(ran.answer["result"], "PASS", "{shown}");
+    let ran = moai_check(
+        fx.root(),
+        tools.path(),
+        slots.path(),
+        &["fix", &fx.range()],
+        false,
+    );
+    let shown = format!("{} / {}", ran.stdout, ran.stderr);
+    assert_eq!(ran.code, 0, "{shown}");
+    assert_eq!(ran.answer["action"], "fix", "{shown}");
+    assert_eq!(ran.answer["nothing_to_do"], true, "{shown}");
+    // `--area` is `<word>=<area>`, split at the first `=`: a pair is accepted (and unused on a range
+    // that adds no test file), a value without `=` is a usage error and nothing runs.
+    for pair in ["zz=spec", "zz=a=b"] {
+        let ran = moai_check(
+            fx.root(),
+            tools.path(),
+            slots.path(),
+            &["fix", &fx.range(), "--area", pair],
+            false,
+        );
+        assert_eq!(ran.code, 0, "{pair}: {} / {}", ran.stdout, ran.stderr);
+    }
+    let ran = moai_check(
+        fx.root(),
+        tools.path(),
+        slots.path(),
+        &["fix", &fx.range(), "--area", "noequals"],
+        false,
+    );
+    assert_eq!(ran.code, 2, "{} / {}", ran.stdout, ran.stderr);
+    assert!(ran.stdout.contains("\"kind\":\"usage\""), "{}", ran.stdout);
+}
