@@ -1,10 +1,19 @@
 ---
 id: SPEC-20261126-statusline-stale-submit
 title: "The status line counts a submission nobody audited for a day as ready again"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-26
+approval:
+  by: leader
+  at: 2026-11-25
+  basis: "리더 위임 승인 노트 9649 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:b90a05c2b756152f29d458ec24ffbeead84e6ffae0473e907e9dd258fb68221d"
 ---
+
+## Interview
+
+- none: the card came from a status line miscount the leader saw while running lanes; the leader decided from that observation and no question went to the user.
 
 # The status line counts a submission nobody audited for a day as ready again
 

@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261125-agent-names-bible
 title: "Lane session names come at random from a list of Biblical names, among the names that are free"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
 branch: spec/agent-names-bible-20261125
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답 \"승인, D-1~D-4 기본값 (Recommended)\" (리더 노트 9247, 그때 읽은 digest sha256:c58a7a63a9fedcf743fe62cc622c451bc12917109c0fdf5f10b40cd32be47dcd 이 착지 직전 다시 읽은 값과 같아요)"
+  digest: "sha256:a36a0b8e55f9d919b1a2ae8dad6f8fdd3216612ce47096929d8efbc62867625f"
 ---
 
 # Lane session names come at random from a list of Biblical names, among the names that are free

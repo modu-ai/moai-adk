@@ -1,10 +1,19 @@
 ---
 id: SPEC-20261120-test-weakening-detection
 title: "Detect a weakened test in the diff and hand the findings to the auditor"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-20
+approval:
+  by: leader
+  at: 2026-11-25
+  basis: "리더 위임 승인 노트 9487 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:8618b6fc5614139212f8c787f9ca3d3947d553205973f41fb16fd98a7a01073f"
 ---
+
+## Interview
+
+- none: revision 2 came from the lane's plan under the overnight delegation; the leader decided the open choices and no question went to the user.
 
 # Detect a weakened test in the diff and hand the findings to the auditor
 

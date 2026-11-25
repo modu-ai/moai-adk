@@ -7,7 +7,7 @@ created: 2026-11-21
 branch: spec/moai-name-r6-20261121
 approval:
   by: leader
-  at: 2026-11-26
+  at: 2026-11-25
   basis: "리더 DELEGATED-APPROVAL 노트 9519 (사용자 위임 2026-11-25 ~14:50Z, 리더 판단, 사용자 직접 선택 아님, 노트 9517 에 답함): 개정 10 을 승인으로 기록했어요; 바뀐 것은 AC-24·Scope·Plan 4 에서 Python 파일을 빼고 D-27 을 더한 것뿐이에요; 레인은 그 노트를 인용만 해요"
   digest: "sha256:86eb4115ace619c28cda339997c7f1e91cbcce6ecbeb47d4fd3ff859bb32c21f"
 ---
@@ -384,7 +384,7 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 
 ### 조각 6 (릴리스 태그 가족을 읽는 설치 스크립트, 개정 9·10)
 
-2026-11-26(UTC), 브랜치 `spec/moai-name-r6-20261121`, base NeXT `882cba7497`, 구현 커밋 `63bbe9b27820e0106bc84cb7930c30e5abd9ce3a`(개정 9 `8cbf106863`, 개정 10 `dd2898d735`). 리더 위임 승인: 개정 9 는 노트 9492, 개정 10 은 노트 9519(둘 다 사용자 직접 선택이 아니라 리더 판단이에요). 쓰기 범위는 노트 9492 가 허락한 여섯 파일이에요.
+2026-11-25(UTC), 브랜치 `spec/moai-name-r6-20261121`, base NeXT `882cba7497`, 구현 커밋 `63bbe9b27820e0106bc84cb7930c30e5abd9ce3a`(개정 9 `8cbf106863`, 개정 10 `dd2898d735`). 리더 위임 승인: 개정 9 는 노트 9492, 개정 10 은 노트 9519(둘 다 사용자 직접 선택이 아니라 리더 판단이에요). 쓰기 범위는 노트 9492 가 허락한 여섯 파일이에요.
 
 - AC-21: met — `install_sh_finds_no_release_when_only_the_earlier_tag_family_exists`(REST 목록과 피드 둘 다에서 옛 가족만 있으면 `No moai-adk-v* release found for channel stable`, `Latest version` 없음, 임시 HOME·`TMPDIR` 에 아무것도 남지 않음), `install_sh_picks_the_moai_adk_tag_family_and_reads_the_version_argument`(REST 목록은 pre-release 표시로 stable 4.2649.0·rc 4.2649.1, 피드는 가장 새 `moai-adk-v` 태그, `--version` 은 `4.2649.0`·`v4.2649.0`·`moai-adk-v4.2649.0` 을 같은 버전으로 읽고 옛 접두사는 `Not a version`)와 `install_ps1_reads_the_same_tag_family_when_pwsh_exists`(`pwsh` 로 같은 결과; 이 기계에 `/usr/local/bin/pwsh` 가 있어 실제로 돌았어요) 통과. RED: 옛 스크립트로 이 네 시험이 모두 실패했어요(exit 100; ps1 시험은 실패 뒤 `pwsh` 확인 명령 줄을 고쳐 다시 돌았어요).
 - AC-22: met — `install_sh_names_the_moai_adk_tag_in_the_download_address_and_writes_nothing_without_the_archive` 통과: `Downloading from: file://<base>/moai-adk-v4.2649.0/moai-cli-aarch64-apple-darwin.tar.xz`, 아카이브가 없어 `Download failed`, 임시 HOME·`TMPDIR` 비어 있음. 아카이브·바이너리 이름은 그대로예요(D-23).
