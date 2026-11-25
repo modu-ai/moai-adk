@@ -449,9 +449,9 @@ pub fn tier_of_changes(body_tier: Option<u8>, files: &[ChangedFile]) -> u8 {
 /// - a rule file or a test name added to the `rules` or `tests` list of a scan,
 /// - a `--test <name>` option added to a cargo line of the `checks` list of a scan, before the
 ///   `--` that starts libtest's arguments and with a name that is a target name (`[a-z0-9_]+`),
-/// - a target name inserted at its sorted place in a non-empty `test_targets` list that stays
-///   sorted with no name twice and keeps every old name (`target_names_only_grew`;
-///   SPEC-20261126-gate-test-targets-growth),
+/// - a target name inserted at its sorted place in a non-empty `test_targets` list that was
+///   sorted with no name twice, stays so, is longer and keeps every old name
+///   (`target_names_only_grew`; SPEC-20261126-gate-test-targets-growth),
 /// - a scan added.
 ///
 /// A line edited, a line removed, a text field changed, a check line of any other change, a
@@ -516,18 +516,23 @@ fn strings_only_grew(old: &serde_json::Value, new: &serde_json::Value) -> bool {
     old.iter().all(|o| rest.any(|n| n == o))
 }
 
-/// `test_targets`: `new` is `old` with target names inserted at their sorted places. Both are
-/// non-empty arrays; every name of `new` is a target name ([`crate::repo_scans::is_target_name`]),
-/// `new` is in strictly ascending byte order (sorted, no name twice), and every name of `old` is
+/// `test_targets`: `new` is `old` with one or more target names inserted at their sorted places.
+/// Both are non-empty arrays in strictly ascending byte order (sorted, no name twice: a base that
+/// is not is no list to grow), every name of `new` is a target name
+/// ([`crate::repo_scans::is_target_name`]), `new` is longer than `old`, and every name of `old` is
 /// still in it. An empty list on either side, a value that is no list, a name removed or replaced,
-/// a broken order and a repeated name are not growth. An unchanged list is judged by the caller.
+/// a reorder, a repeat removed, a broken order and a repeated name are not growth. An unchanged
+/// list is judged by the caller.
 fn target_names_only_grew(old: &serde_json::Value, new: &serde_json::Value) -> bool {
     let (Some(old), Some(new)) = (strings(old), strings(new)) else {
         return false;
     };
+    let ascending = |list: &[&str]| list.windows(2).all(|pair| pair[0] < pair[1]);
     !old.is_empty()
+        && ascending(&old)
+        && new.len() > old.len()
         && new.iter().all(|n| crate::repo_scans::is_target_name(n))
-        && new.windows(2).all(|pair| pair[0] < pair[1])
+        && ascending(&new)
         && old.iter().all(|o| new.binary_search(o).is_ok())
 }
 

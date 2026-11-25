@@ -495,6 +495,54 @@ fn a_test_targets_change_that_is_no_growth_is_tier_2() {
     );
 }
 
+/// REQ-1 and REQ-2 (audit repair): growth is names added to a list that was itself sorted and
+/// free of repeats. A base that is not, and a head that only reorders or de-duplicates it, are no
+/// growth, whether or not the head is the sorted, de-duplicated form (the three cases the audit
+/// probed, and the unsorted or repeated base with a name really added).
+#[test]
+fn a_test_targets_base_that_is_not_sorted_and_unique_is_no_growth_even_beside_a_sorted_head() {
+    for (what, old, new) in [
+        (
+            "a reorder, no name added",
+            json!(["gamma", "alpha"]),
+            json!(["alpha", "gamma"]),
+        ),
+        (
+            "a repeat removed, no name added",
+            json!(["a", "a"]),
+            json!(["a"]),
+        ),
+        (
+            "an unsorted base and a name added",
+            json!(["gamma", "alpha"]),
+            json!(["alpha", "beta", "gamma"]),
+        ),
+        (
+            "a base with a repeat and a name added",
+            json!(["a", "a"]),
+            json!(["a", "b"]),
+        ),
+        (
+            "a base with a last name twice and a name added",
+            json!(["alpha", "gamma", "gamma"]),
+            json!(["alpha", "beta", "delta", "gamma"]),
+        ),
+        (
+            "the same length, a name replaced",
+            json!(["alpha", "gamma"]),
+            json!(["alpha", "delta"]),
+        ),
+    ] {
+        assert_eq!(tt_floor_between(old, new.clone()), 2, "{what}: {new}");
+    }
+    // The controls: a sorted base with one name added, and a sorted base with two.
+    assert_eq!(
+        tt_floor_between(json!(["alpha", "gamma"]), json!(["alpha", "beta", "gamma"])),
+        1
+    );
+    assert_eq!(tt_floor_between(json!(["a"]), json!(["a", "b", "c"])), 1);
+}
+
 /// REQ-3 and REQ-6: an unchanged list is no difference, whatever it holds; a key that appears or
 /// goes is a change of the table's shape; the other fields of the scan are judged as before.
 #[test]
