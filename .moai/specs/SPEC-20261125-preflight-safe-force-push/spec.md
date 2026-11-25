@@ -2,7 +2,7 @@
 id: SPEC-20261125-preflight-safe-force-push
 title: "tool-preflight 가 덮어쓸 수 없는 새 ref 전용 lease 푸시와 이 컴퓨터의 경로로 가는 강제 푸시에는 확인을 묻지 않아요"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-25
 branch: spec/preflight-safe-force-push-r2-20261125
 ---
@@ -20,21 +20,22 @@ git 2.54 를 임시 저장소(원격은 bare 저장소)에서 돌려 읽은 사�
 - `--mirror --force-with-lease=work: up` 은 원격의 `other` 를 지우고 ref 를 덮어요. 새로 만들기 전용 lease 가 있어도 `--mirror` 는 안전하지 않아요.
 - `+work` 는 lease 와 상관없이 강제 갱신이에요(`forced update`).
 - `git remote get-url --push --all <이름>` 은 `insteadOf` 바꿔 쓰기와 `pushurl` 을 거친 실제 푸시 주소를 주고, 없는 이름은 `No such remote` 로 실패해요.
+- git 은 푸시 줄에 직접 적은 주소에도 `url.<base>.insteadOf` 와 `url.<base>.pushInsteadOf` 를 적용해요. 그래서 글자가 `/…` 인 주소도 설정이 그 접두를 네트워크 주소로 바꿔 쓰면 실제 푸시는 네트워크로 가요(revision 2 에서 더한 사실, 보안 리뷰 지적과 리더 결정 9318).
 
 ## Non-goals
 
 - `main`/`master` 강제 푸시 거절, `git reset --hard`·`git clean -f` 확인, 직접 PR 병합 확인(모드 층)은 바꾸지 않아요.
 - 네트워크 드라이브에 마운트된 경로(NFS·SMB)는 이 컴퓨터의 경로로 읽어요. 마운트 여부는 판정하지 않아요(D-4).
 - `remote.<이름>.push` 설정이나 `push.default` 가 만드는 강제, `GIT_CONFIG_*` 환경 변수, `git -C <폴더>`·`-c`·`--git-dir` 로 바뀐 저장소는 읽지 않고 물어요(REQ-3).
-- 줄 안에 `cd`·파이프·환경 변수 앞붙임이 있는 줄의 원격 이름 조회: 어느 저장소의 설정을 읽어야 하는지 알 수 없어 물어요. 경로를 직접 적은 푸시는 폴더와 상관없이 판정해요.
+- 줄 안에 `cd`·파이프·환경 변수 앞붙임이 있는 줄의 원격 이름 조회: 어느 저장소의 설정을 읽어야 하는지 알 수 없어 물어요. 경로를 직접 적은 푸시도 같아요: 바꿔 쓰기 설정을 읽을 수 있을 때만 판정하고, 읽을 수 없으면 물어요.
 - `~/` 로 시작하는 경로, 윈도 경로(`C:\`), `//host/share`: 이 컴퓨터의 경로로 읽지 않고 물어요.
 - 새 모드(`[hooks.modes]`)를 만들지 않아요: 이 규칙은 기존 확인 규칙처럼 모드가 없어요.
 
 ## Requirements
 
 - REQ-1: When a `git push` has every force marker in the create-only lease form `--force-with-lease=<ref>:` (a non-empty ref, an empty expected value, the option or a prefix git reads as it) and has none of `-f`, `--force`, `--force-if-includes`, a `+` refspec, `--mirror`, `--all`, `--branches`, `--prune` or `--delete`, the tool-preflight guard shall not ask for confirmation. · failure: none — a lease that is not create-only, or any other force marker beside it, is not this case and falls to the confirmation as before.
-- REQ-2: When a forced `git push` names a remote whose every push URL is a path on this computer (`/…`, `./…`, `../…`, `file:///…`, `file://localhost/…`), the tool-preflight guard shall not ask for confirmation.
-- REQ-3 (REQ-2): IF the remote cannot be judged to be on this computer (its name has no push URL, the lookup fails or prints nothing, any push URL is not one of those forms, the line holds another command, does not start with `git`, or `git` carries its own options before `push`), THEN the guard shall ask for confirmation as before.
+- REQ-2: When a forced `git push` names a remote that is a path on this computer (`/…`, `./…`, `../…`, `file:///…`, `file://localhost/…`) which no `url.<base>.insteadOf` or `url.<base>.pushInsteadOf` setting rewrites, or a remote name whose every push URL is such a path, the tool-preflight guard shall not ask for confirmation.
+- REQ-3 (REQ-2): IF the remote cannot be judged to be on this computer (its name has no push URL, the lookup fails or prints nothing, any push URL is not one of those forms, a written path starts with a `url.<base>.insteadOf` or `url.<base>.pushInsteadOf` value, those settings cannot be read, there is no folder to read them in, the line holds another command, does not start with `git`, or `git` carries its own options before `push`), THEN the guard shall ask for confirmation as before.
 - REQ-4: The guard shall ask for confirmation of every other forced `git push` as before.
 - REQ-5: The guard shall refuse a force push to `main` or `master` as before, whatever its lease or remote.
 - REQ-6: The `capabilities` answer of the hook engine shall state the two cases that are not asked about.
@@ -42,9 +43,9 @@ git 2.54 를 임시 저장소(원격은 bare 저장소)에서 돌려 읽은 사�
 ## Acceptance
 
 - AC-1 (REQ-1): 새 ref 전용 lease(`--force-with-lease=work:`, 접두 `--force-w=work:`, 여러 개)는 묻지 않고, 값이 있는 lease(`=work:abc`)·값 없는 `--force-with-lease`·`-f`·`--force`·`--force-if-includes`·`+work`·`--mirror`·`--all`·`--prune`·`--delete` 와 섞이면 지금처럼 물어요 · verify: `cargo test --locked --offline --lib push_confirm_lease_`
-- AC-2 (REQ-2, REQ-3): 경로를 직접 적은 푸시와 `get-url` 이 로컬 경로를 주는 원격 이름(임시 bare 저장소)은 묻지 않고, 네트워크 주소(`https://`, `ssh://`, `git@host:`, `git://`)·없는 원격 이름·`file://otherhost/`·`git -C x push`·`cd x && git push`·`FOO=1 git push` 는 물어요 · verify: `cargo test --locked --offline --lib push_confirm_remote_`
+- AC-2 (REQ-2, REQ-3): 폴더를 줄 때(`bash_confirm_at`) 경로를 직접 적은 푸시와 `get-url` 이 로컬 경로를 주는 원격 이름(임시 bare 저장소)은 묻지 않고, 네트워크 주소(`https://`, `ssh://`, `git@host:`, `git://`)·없는 원격 이름·`file://otherhost/`·`git -C x push`·`cd x && git push`·`FOO=1 git push`·그 접두와 맞는 `insteadOf` 나 `pushInsteadOf` 설정이 있는 경로(두 설정 모두)·폴더 없이 부른 경로 푸시(`bash_confirm`)·설정을 읽지 못하는 폴더는 물어요 · verify: `cargo test --locked --offline --lib push_confirm_remote_`
 - AC-3 (REQ-1…REQ-5): 위험 경로를 실제로 돌려요. 임시 저장소에서 훅 명령(`moai hook-dispatch --host claude --event tool-preflight`)에 Bash 입력을 먹여, 묻지 않는 두 경우(`--force-with-lease=work:`, 로컬 bare 원격으로 `git push -f`)는 `ask` 가 없고, 네트워크 원격(`git remote add` 로 `https://` 주소)·값 있는 lease·`--mirror` 는 `ask`, `main` 으로의 강제 푸시는 `deny` 예요 · verify: `cargo test --locked --offline --test hooks_cli safe_force_push_`
-- AC-4 (REQ-6): 세 host 의 `capabilities` 가 두 경우를 말해요 · verify: `cargo test --locked --offline --test hooks_cli safe_force_push_capabilities`
+- AC-4 (REQ-6): host `claude` 의 `capabilities` 가 두 경우를 말해요(Codex 와 OMP 는 2026-11-21 에 철회돼 host 는 하나예요) · verify: `cargo test --locked --offline --test hooks_cli safe_force_push_capabilities`
 - AC-5 (REQ-1…REQ-6): 이웃 테스트가 그대로 통과해요 · verify: `cargo test --locked --offline --lib hook_`
   verify: `cargo test --locked --offline --test hooks_cli`
   verify: `cargo test --locked --offline --test statusline_guard_false_positive`
@@ -60,13 +61,14 @@ git 2.54 를 임시 저장소(원격은 bare 저장소)에서 돌려 읽은 사�
 
 1. 테스트 먼저: `src/hook_guards.rs` 의 단위 테스트 표(`push_confirm_lease_`, `push_confirm_remote_`)와 `tests/hooks_cli.rs` 의 `safe_force_push_` 를 쓰고, 지금 코드에서 두 묻지 않는 경우가 `ask` 로 실패하는 것을 먼저 봐요.
 2. `bash_confirm(command)` 는 그대로 두고(조회할 폴더가 없으니 원격 이름은 물어요), `bash_confirm_at(command, cwd)` 를 더해요. 엔진(`src/hook_engine.rs` 의 `tool_preflight`)은 입력의 `cwd` 로 이 함수를 불러요.
-3. `push` 갈래에서 강제 표지가 있을 때만: 전부 새 ref 전용 lease 이면(REQ-1) 통과, 아니면 원격이 이 컴퓨터의 경로이면(REQ-2) 통과, 아니면 물어요. 원격 이름 조회는 `git remote get-url --push --all`(환경 정리 `scrub_git_env`, 입력 닫음, 오류 닫음)이고, 줄이 `git` 한 명령이고 전역 옵션이 없을 때만 해요.
+3. `push` 갈래에서 강제 표지가 있을 때만: 전부 새 ref 전용 lease 이면(REQ-1) 통과, 아니면 원격이 이 컴퓨터의 경로이면(REQ-2) 통과, 아니면 물어요. 원격 이름 조회는 `git remote get-url --push --all`(환경 정리 `scrub_git_env`, 입력 닫음, 오류 닫음)이고, 직접 적은 경로의 바꿔 쓰기 조회는 `git config --null --get-regexp '^url\..*\.(push)?insteadof$'` 예요. 둘 다 줄이 `git` 한 명령이고 전역 옵션이 없고 폴더가 있을 때만 해요. 아니면 경로도 물어요.
 4. `CONFIRM_COMMANDS` 문구에 두 경우를 더해 `capabilities` 가 말하게 해요.
 5. 위험 경로 실행(AC-3)과 가드마다 뮤턴트 한 번(조건을 지우면 테스트가 실패하는지), 이웃 테스트, READY 에서 `check affected --card` 한 번.
 
 ## Risks
 
-- 이 컴퓨터의 경로 판정은 글자 모양만 봐요. 네트워크 드라이브에 마운트된 경로로의 강제 푸시는 묻지 않게 돼요(D-4). 원격 이름은 설정의 바꿔 쓰기를 거친 `get-url` 결과를 써서, 이름이 로컬이어도 `insteadOf` 가 네트워크로 바꾸면 물어요.
+- 이 컴퓨터의 경로 판정은 글자 모양과 바꿔 쓰기 설정의 접두만 봐요. 네트워크 드라이브에 마운트된 경로로의 강제 푸시는 묻지 않게 돼요(D-4). 원격 이름은 설정의 바꿔 쓰기를 거친 `get-url` 결과를 써서, 이름이 로컬이어도 `insteadOf` 가 네트워크로 바꾸면 물어요. 직접 적은 경로는 접두가 맞는 `insteadOf`·`pushInsteadOf` 가 있거나 설정을 읽을 수 없으면 물어요(D-6).
+- 로컬 경로의 저장소로 가는 강제 푸시는 그 저장소에 다른 사람의 푸시 안 한 작업이 있으면 확인 없이 덮어요. 사용자가 고른 범위(D-1)라 이 SPEC 이 좁히지 않아요. 좁히려면 사용자 선택 항목으로 올려요(작업 폴더·임시 폴더 안만 / 지금대로).
 - 훅이 `git` 자식 프로세스를 새로 띄워요. 읽기 전용 조회이고 네트워크를 쓰지 않아요. 저장소를 못 읽거나 `safe.directory` 때문에 실패하면 묻는 쪽으로 떨어져요(REQ-3).
 - 묻지 않는 경우가 늘어나는 변경이라, 두 조건 중 하나를 잘못 읽으면 실제 원격 덮어쓰기가 확인 없이 지나가요. 그래서 판정이 불확실한 모든 경우를 묻는 쪽에 두고, 테스트에 묻는 표를 둬요.
 
@@ -79,6 +81,7 @@ git 2.54 를 임시 저장소(원격은 bare 저장소)에서 돌려 읽은 사�
 | D-3 | 원격 이름은 `git remote get-url --push --all` 로 풀고, 조회가 불확실하면 물어요 | 바꿔 쓰기와 `pushurl` 을 거친 실제 주소예요. 설정 파일을 직접 읽는 것보다 틀릴 곳이 적어요 | `.git/config` 직접 파싱 |
 | D-4 | 마운트된 네트워크 경로도 로컬 경로로 읽어요(한계로 기록) | 마운트 판정은 플랫폼마다 달라 드문 경우를 위해 설계하지 않아요(규칙 20). 후속으로 남겨요 | 경로가 어느 파일시스템인지 읽기 |
 | D-5 | `bash_confirm(command)` 시그니처를 두고 `bash_confirm_at` 를 더해요 | 다른 테스트 파일(`statusline_guard_false_positive`)이 공개 함수를 써요 | 시그니처에 cwd 추가 |
+| D-6 | 직접 적은 경로도 글자 모양만 믿지 않아요: 폴더가 있고 한 `git` 명령일 때 `insteadOf`·`pushInsteadOf` 접두와 맞으면 물어요, 폴더가 없거나 설정을 읽지 못하면 물어요 | 리더 결정 노트 9318(2026-11-25, 사용자 위임·보안 리뷰 8897 #1): git 이 직접 적은 주소에도 바꿔 쓰기를 적용해 글자가 로컬이어도 네트워크로 갈 수 있어요. revision 1 의 "글자 모양으로 판정"을 대신해요 | 글자 모양만 판정(revision 1) |
 
 ## Result
 
