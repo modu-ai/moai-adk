@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "a27cd8a93125a8a16458ff0dbda5be216f8fa03623e53637a5d85ba1923f84f7",
+      "sha256": "d65f7881da67283262fee44af109a0db04b62e8c073d1ee82b0883905605a59f",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -96,12 +96,21 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "5da27fa18cc891d16d52d0169856d510af9517eafab4dac4014ea8274e07de9d",
+      "sha256": "be61f68b53fbee65e086523db886ffa3de8e5134ce68b6670642c8f3943d5ee4",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-5, text slice B; decisions D-2, D-8, D-9): the one full description of the flow, at most 6144 bytes. It explains the name once, describes the four technical rules as how the flow runs, and states the worktree place, that a lane submits its head and base only, the landing command, the protection hook, the fast-forward push only when the user has turned the remote copy on, and that remote checks never block a landing. Each landing and hook statement was checked against src/card/land.rs and src/card/guard.rs. The flow rule file in the config folder points here (REQ-11)."
+      }
+    },
+    "references/flows/team-messages.md": {
+      "sha256": "27d540d7fe45898f318050be4d4721b5559b223230c5bec986e4f8f902322710",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "flow-team-messages",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261125-agent-team-session-names (REQ-19 to REQ-22, decision D-5): the message table of the leader window and the agents (dispatch, question, answer, audit request, verdict, repair request, landing notice, completion, next card), the notice rule, the agent-to-agent rule, the address rule and the channel order. It lives in its own file so the flow reference stays within its byte budget."
       }
     },
     "references/home/flow.md": {
@@ -204,7 +213,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "853c13ee7a0ae05bb5ea5e47a7b2ae1ccd26e06b06d5aa7711fe12b3249d5dfe",
+      "sha256": "9168c039d21f360980abe0dd1508ed83d275b28d87f7adbc41a7478ae8fe3fe9",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
@@ -408,7 +417,7 @@
       }
     },
     "references/routes.json": {
-      "sha256": "9c6c552356f5fea14ae4897397971309a7d416d4d45f70de0c662006cf813b33",
+      "sha256": "3b3c8962cb8882ba9db60840ddb260960051c2e91a29fe22f0a1c56686e55671",
       "origin": {
         "kind": "design-template",
         "template_id": "router-routes",
@@ -432,7 +441,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261124-moai-leader-route (REQ-1 to REQ-12): `/moai leader` makes the window that types it the registered coordination window; it registers with `session-register`, renews once per round, reads the ledger, sends audits to another session, lands with `moai card land --by leader` and releases the registration at the end. The completion-message and transition sentences stay in `flows/next-flow`."
       },
-      "sha256": "00cfe5a9652c52ce966c237d6988cababbe592cf8a678ed4a63685390bab79a3"
+      "sha256": "54d7ee651399127f60346210cb4bb3bd5ab114515b3c2030ba83bea1eb4b234f"
     },
     "workflows/plan.md": {
       "sha256": "ab27f283d60333933a93aa8a6a5858d88e44018e7edcd0cab9b79e7fe9b27e51",
@@ -495,7 +504,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai work` takes one card at a time through PLAN, RUN, SYNC, AUDIT and the landing command and repeats until no card is left; a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "2c4d134065ee350c3027b150156b97224d51e601fb5953f20c57093947db1059"
+      "sha256": "add9cde2ac3ceb2b5b7d51381883a0ff9deb786f135b83d670f1d4bd2af82a12"
     }
   }
 }

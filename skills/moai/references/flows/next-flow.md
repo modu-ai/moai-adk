@@ -33,6 +33,7 @@ Four technical rules make the flow run.
 - The message is a notice, not proof: the ledger decides.
 - A lane never sends `/clear` to itself, and never takes its next card on its own while a leader is registered.
 - No `moai` command sends this message yet: `moai host-wake` addresses a session by name, which the address rule forbids, so a lane uses the host's own message tool (SPEC-20261122-session-messages).
+- Every other message of the flow and the channel order: `flows/team-messages`.
 
 ### Transition (the leader and a lane-terminal manager today)
 

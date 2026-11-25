@@ -1735,6 +1735,16 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ),
     (
         "cc|glm",
+        "leader",
+        "조정 창으로 시작해요: 세션 이름 `leader-<프로젝트 이름>`, 권한 우회(`--permissions` 로 확인 모드 유지), 첫 입력 `/moai leader`",
+    ),
+    (
+        "cc|glm",
+        "agent",
+        "레인으로 시작해요: 세션 이름 `agent-<영어 이름>`(목록에서 비어 있는 첫 이름), 권한 우회, 첫 입력 `/moai agent`",
+    ),
+    (
+        "cc|glm",
         "name",
         "세션 이름(기본 없음, 역할은 세션 안에서 들어가요)",
     ),

@@ -1013,15 +1013,19 @@ enum Command {
     },
     /// Start a Claude Code session
     ///
-    /// Claude Code session launcher: `cc`. `--name` names the session; the role is entered
-    /// inside the session with `/moai work` for a lane or `/moai leader` for the coordination
-    /// window.
+    /// Claude Code session launcher: `cc`. `-l` starts the coordination window and `-a` a lane,
+    /// named `leader-<project name>` and `agent-<english name>`, in the permission bypass with
+    /// the first input `/moai leader` or `/moai agent`. Without a role flag the session is plain
+    /// and `--name` names it; the role is then entered inside it with `/moai agent` or
+    /// `/moai leader`.
     Cc(HostLaunch),
     /// Start a Claude Code session on z.ai GLM
     ///
     /// Claude Code on z.ai GLM: `glm` (needs ANTHROPIC_AUTH_TOKEN in the environment or a key file).
-    /// `--name` names the session; the role is entered inside the session with `/moai work` for
-    /// a lane or `/moai leader` for the coordination window.
+    /// `-l` starts the coordination window and `-a` a lane, named `leader-<project name>` and
+    /// `agent-<english name>`, in the permission bypass with the first input `/moai leader` or
+    /// `/moai agent`. Without a role flag the session is plain and `--name` names it; the role
+    /// is then entered inside it with `/moai agent` or `/moai leader`.
     Glm(HostLaunch),
     /// Start a Claude Code session (legacy form)
     ///
@@ -3621,8 +3625,8 @@ mod help_rules {
 
     /// SPEC-20261118-launcher-agent-entry AC-6: the Korean texts of the launchers (unused while
     /// the CLI prints English only, #2825 R1, but kept in step with the English) name the entry
-    /// commands of the two roles in the long about of each launcher (SPEC-20261124-launcher-
-    /// retire-role-flags: the launchers have no role flag any more) and no retired spelling.
+    /// commands of the two roles in the long about of each launcher and no retired spelling. The
+    /// launchers have the two role flags again (SPEC-20261125-agent-team-session-names REQ-13).
     #[test]
     fn the_korean_launcher_help_names_the_entry_command() {
         let mut korean = moai_cli::help::configure_in(
@@ -3641,13 +3645,20 @@ mod help_rules {
             let cmd = korean.find_subcommand(host).unwrap();
             for id in ["leader", "agent"] {
                 assert!(
-                    !cmd.get_arguments().any(|a| a.get_id() == id),
-                    "{host} still has a `{id}` argument"
+                    cmd.get_arguments().any(|a| a.get_id() == id),
+                    "{host} lacks the `{id}` argument"
                 );
             }
             let about = flat(cmd.get_long_about());
             assert!(!about.contains("--mode-"), "{host} long about: {about}");
-            for want in ["`/moai work`", "`/moai leader`", "`--name`"] {
+            assert!(!about.contains("/moai work"), "{host} long about: {about}");
+            for want in [
+                "`/moai agent`",
+                "`/moai leader`",
+                "`--name`",
+                "`-l`",
+                "`-a`",
+            ] {
                 assert!(
                     about.contains(want),
                     "{host} long about lacks {want}: {about}"

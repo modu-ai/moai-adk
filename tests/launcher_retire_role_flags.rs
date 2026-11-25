@@ -74,7 +74,10 @@ fn a_refused_form_says_why_and_names_no_old_word() {
                 .unwrap();
             let said = text(&out);
             assert!(!out.status.success(), "{args:?} was accepted: {said}");
-            assert!(said.contains("cannot be"), "{args:?} lacks the reason: {said}");
+            assert!(
+                said.contains("cannot be"),
+                "{args:?} lacks the reason: {said}"
+            );
             for unwanted in ["/moai work", "mode-", "retired"] {
                 assert!(
                     !said.contains(unwanted),
@@ -211,7 +214,10 @@ fn the_help_screens_offer_the_role_flags_and_call_none_retired() {
     };
     for name in ["cc --help", "glm --help"] {
         for want in ["-l, --leader", "-a, --agent"] {
-            assert!(launcher_help(name).contains(want), "`moai {name}` lacks `{want}`");
+            assert!(
+                launcher_help(name).contains(want),
+                "`moai {name}` lacks `{want}`"
+            );
         }
     }
 }
@@ -256,24 +262,20 @@ const LIVE_FILES: [&str; 5] = [
     "docs/rust-product-path.md",
 ];
 
-/// A line that names a retired form is a record when it also says so.
-const RETIRED_MARKERS: [&str; 10] = [
-    "retired",
-    "refuse",
-    "earlier",
-    "record",
-    "withdrawn",
-    "폐기",
-    "거절",
-    "옛",
-    "이전",
-    "없어졌",
+/// Words that call a form retired.
+const RETIRED_WORDS: [&str; 2] = ["retired", "폐기"];
+
+/// Words that show a line records the reversal (SPEC-20261125-agent-team-session-names) or is
+/// about something else that was retired (the `agent-N` numbers, the withdrawn Codex CLI).
+const REVERSAL_MARKERS: [&str; 9] = [
+    "again", "revers", "뒤집", "다시", "번호", "number", "codex", "earlier", "record",
 ];
 
-/// AC-11 (REQ-8): no live line tells a person to use `-l|-a`; a line that mentions the old
-/// forms says in the same line that they are retired or a record.
+/// SPEC-20261125-agent-team-session-names REQ-13, REQ-14: no live line calls the role flags
+/// retired or refused unless the same line says the decision was reversed; the four flags are
+/// named in the live files.
 #[test]
-fn no_live_text_tells_anyone_to_use_the_role_flags() {
+fn no_live_text_calls_the_role_flags_retired() {
     const FORMS: [&str; 14] = [
         "moai cc -l",
         "moai cc -a",
@@ -291,14 +293,16 @@ fn no_live_text_tells_anyone_to_use_the_role_flags() {
         "`-a`",
     ];
     let mut bad = Vec::new();
+    let mut naming = 0;
     for file in LIVE_FILES {
         for (n, line) in root_file(file).lines().enumerate() {
             let lower = line.to_lowercase();
-            // A line about the withdrawn Codex CLI names that CLI's own `-s` and `-a`.
-            let other_cli = lower.contains("codex");
-            if FORMS.iter().any(|f| line.contains(f))
-                && !other_cli
-                && !RETIRED_MARKERS.iter().any(|m| lower.contains(m))
+            if !FORMS.iter().any(|f| line.contains(f)) {
+                continue;
+            }
+            naming += 1;
+            if RETIRED_WORDS.iter().any(|w| lower.contains(w))
+                && !REVERSAL_MARKERS.iter().any(|m| lower.contains(m))
             {
                 bad.push(format!("{file}:{}", n + 1));
             }
@@ -306,7 +310,11 @@ fn no_live_text_tells_anyone_to_use_the_role_flags() {
     }
     assert!(
         bad.is_empty(),
-        "live text still names the role flags: {bad:?}"
+        "live text still calls the role flags retired: {bad:?}"
+    );
+    assert!(
+        naming >= 4,
+        "the live files name the flags on {naming} lines"
     );
 }
 
