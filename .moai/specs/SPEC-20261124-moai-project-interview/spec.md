@@ -2,7 +2,7 @@
 id: SPEC-20261124-moai-project-interview
 title: "/moai project 설문을 감지로 알 수 없는 것만 묻는 최소 설문으로 다시 정해요"
 status: approved
-revision: 2
+revision: 3
 created: 2026-11-24
 approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8240 of card C-150 (answers lane note 8239, 2026-11-24T05:34:27Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 2 at head 42e490e8fc; revision 1 was approved by note 8167 (head 89231f75e3); recorded by the lane, not approved by it", digest: "sha256:db87bdceca16a98fc142a09dbe3cc5e9c30e73e93c13f0a0fb8e536ab67ca7bb"}
 ---
@@ -53,6 +53,19 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8240 of card
 - REQ-10 (REQ-9): IF a scanned file holds a token of the scan's list (`cargo`, `rustup`, `npm`, `pipx`, `go install`, `moai check`, `local_check`, `check-guard`) outside the named exceptions, THEN the scan test shall fail and name the file and the line.
 - REQ-11: When `moai project-apply` reads the `result` object of `moai project-plan` exactly as printed, including `work_flow_remote`, it shall apply the plan the digest names.
 - REQ-12 (REQ-11): IF the input holds an unknown key other than `work_flow_remote`, THEN `moai project-apply` shall refuse it as invalid typed JSON input.
+- REQ-13: When the project workflow meets earlier-generation state, it shall name `/moai update` in one boundary sentence. · failure: none
+- REQ-14: IF the boundary sentence is missing from `project.md`, THEN the shipped-text test shall fail.
+- REQ-15: The three project-side files shall carry no card number and no Issue number and no dated user decision.
+- REQ-16: The interview reference shall describe the next-flow work flow as `flows/next-flow` does and name no withdrawn host. · failure: none
+- REQ-17: When the interview names the integration branch, it shall give the profile value first and then the remote default branch and then the current branch. · failure: none
+- REQ-18: When step 4 builds the plan, its profile field list shall include `work_flow` and `language`. · failure: none
+- REQ-19: The `method` row shall use the words the profile records. · failure: none
+- REQ-25: The `hosts` row shall offer only a host the project still supports. · failure: none
+- REQ-20: The texts shown to the user shall carry none of the internal words the scan lists (head number, a bare version-format token, a development-leftover sentence). · failure: none
+- REQ-21: The project-side texts shall not contradict each other on editing the profile later, on who runs the worktree base write, or on the receipt step. · failure: none
+- REQ-22: IF a scanned file holds `pytest`, `go test` or `cargo-nextest` outside the named exception, THEN the scan test shall fail and name the file and the line.
+- REQ-23: IF the named install-table cell holds a MoAI-internal token, THEN the scan test shall fail and name the file and the line.
+- REQ-24: When `project-plan` prints a `work_flow_remote` warning, the project workflow shall show that warning. · failure: none
 
 ## Acceptance
 
@@ -66,11 +79,19 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8240 of card
 - AC-8 (REQ-11, REQ-12): in a temporary project with a remote, the `result` of `project-plan` piped to `project-apply` applies when it holds `work_flow_remote`, and a plan with another extra key is refused as `invalid typed JSON input` · verify: `cargo test --locked --offline --test project_apply_plan_result`
 - AC-9 (REQ-7): on the repository's own profile after the change, `moai project-plan .` shows only two changed keys, `language.instruction_files` set to `en` and `done` set to the default sentence, and nothing is applied before the user picks the plan · verify: `moai project-plan .` with the profile of `moai project-detect .` on stdin, read by the leader (not_run in the lane)
 
+- AC-10 (REQ-13, REQ-14): `project.md` carries the one boundary sentence that names `/moai update`, and the test pins it; the removal of the step-2 body waits for `update.md` (D-12) · verify: `cargo test --locked --offline --test project_interview_minimal boundary_sentence_is_pinned`
+- AC-11 (REQ-15): the three project-side files hold no `C-<digits>`, no `#<3 to 5 digits>` and no `user decision <date>` · verify: `cargo test --locked --offline --test project_interview_minimal no_citation_in_project_side_files`
+- AC-12 (REQ-16, REQ-17, REQ-18, REQ-19, REQ-20, REQ-21, REQ-24, REQ-25): the flow text, the integration-branch order, the step-4 field list, the `method` and `hosts` rows, the internal words and the three contradictions are pinned · verify: `cargo test --locked --offline --test project_interview_minimal flow_text_matches_next_flow` and `cargo test --locked --offline --test question_bank_hosts`
+- AC-13 (REQ-22, REQ-23): the scan lists `pytest`, `go test` and `cargo-nextest` and reads the install-table cell for internal tokens · verify: `cargo test --locked --offline --test project_interview_minimal scan_tokens_cover_pytest_go_test_nextest`
+- AC-14 (REQ-12): a duplicate key in a `project-apply` input is pinned as it behaves today (an altered duplicate is refused, an identical one applies) · verify: `cargo test --locked --offline --test project_apply_plan_result duplicate_key_altered_is_refused`
+
 ## Scope
 
 - write: `.moai/specs/SPEC-20261124-moai-project-interview/**`
 - write (after the approval, widened by the leader): `skills/moai/workflows/project.md`, `skills/moai/references/internal/interview.md`, `skills/moai/references/internal/questions.md`, `skills/moai/references/source-manifest.json`, `src/language.rs`, `src/agents.rs`, `src/ops/project_apply.rs`, `tests/project_interview_minimal.rs` (new), `tests/project_apply_plan_result.rs` (new)
 - write by line lease (pinned test files other cards also edit): `tests/language_three_questions.rs`, `tests/agent_defs_package.rs`, `tests/project_detect_cli.rs`, `tests/generic_flow_questions.rs`, `tests/question_bank_hosts.rs`; the plan names each pin it changes after running them
+- write (revision 3, leader-approved scope of card C-150): `tests/project_apply_plan_result.rs`, and one line each in the pins that quote a removed citation: `tests/product_cli.rs`, `tests/project_applied_table.rs`, `tests/project_decide_model.rs`, `tests/project_flow_closing.rs`, `tests/update_route.rs`, `tests/next_flow_skill_scan.rs`
+- revision 3 does not touch `skills/moai/workflows/update.md` (another card holds it), `src/**`, or `skills/moai/references/internal/versioning.md`
 - read-only: `skills/moai/workflows/update.md` (scanned; edited only if the scan finds a token), `skills/moai/references/internal/versioning.md` (scanned), `src/profile.rs`, `src/ops/project_plan.rs`, `src/project_detect.rs`
 - forbidden: `CLAUDE.md`, the repository's `.moai/project.yaml` (Plan step 8 is the leader's), the real HOME, `skills/moai/SKILL.md`
 
@@ -107,6 +128,11 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8240 of card
 | D-8 | Card criterion 5 (ask `done` only when detection found commands) is replaced by criterion 8 (`done` is never asked); the leader withdraws criterion 5 with that reason. | The two criteria conflict; note 8158 (2) decides the later one. | Reopen criterion 5 and drop REQ-7 for `done`. |
 | D-9 | `project-apply` ignores `work_flow_remote` only and still refuses every other unknown key; the plan digest covers the same bytes as before. | Card criterion 9; refusing unknown keys protects the typed input. | Accept every key (not recommended). |
 | D-10 | The repository's own run plans only the two changed keys and waits for the user's plan approval before it applies. | User decision, note 8159 (6). | Re-run the full interview. |
+| D-11 | Revision 3 supersedes the revision-2 Non-goal lines that keep the versioning and `work_flow` option lists and the flow description unchanged, for REQ-16 to REQ-20 only. | The survey of 2026-11-25 (items B4, B5, B8, B9) found those lines wrong against `flows/next-flow` and `moai work-flow-plan`. Derived, reversible in-repo. | Restore the revision-2 lines. |
+| D-12 | Revision 3 takes over the project half of criteria 1 and 3 of the draft `SPEC-20261120-project-update-boundary`: the boundary sentence and the citation scan. The removal of the step-2 body (the earlier-generation move steps) waits until `update.md` carries that guidance; card criterion 1 stays open until then. | `update.md` is held by another card and does not yet carry the worktree-move, "I closed other sessions" and root-file picks. Deleting first would drop them. | Remove the boundary sentence and its test. |
+| D-13 | Splitting the combined line of `## Result` into one line per AC is not a revision: `## Result` is outside the approval digest. | `moai spec show` hashes requirements, acceptance and `forbidden:` only. | Re-join the lines. |
+| D-14 | `moai language-setup --help` (N6), default-sourced rules in project skills (N7) and the `KNOWN_HOSTS` cleanup need `src/**` and are follow-ups of card C-150, not part of revision 3. | Outside the write scope. | none |
+| D-15 | The final table keeps its state words (`applied`, `default`, `HOLD`, `not applied: <reason>`) and gets one plain sentence that explains them; the worktree base sentence keeps the clause that the user adds `baseRef` themselves for a `conflict`. | Other SPEC pins the words; changing them is a leader decision, not a lane one (plan Q2, Q4). | Rename the words and their pins in a later revision. |
 
 ## Result
 
