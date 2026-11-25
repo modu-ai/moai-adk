@@ -186,7 +186,7 @@ fn workflow_text_names_the_step_where_it_lists_it() {
             .any(|l| l.starts_with("   - Generation (from SETUP):")),
         "the harness step's item still carries the id as its title"
     );
-    let report = line(&project, "Final report (");
+    let report = line(&project, "Final report: before the final report");
     assert!(
         report.contains("hosts, the project harness, the official plugins"),
         "the final report table names the harness row by its display name: {report}"

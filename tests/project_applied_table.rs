@@ -10,7 +10,7 @@
 const PROJECT: &str = include_str!("../skills/moai/workflows/project.md");
 
 /// Where the paragraph starts.
-const MARK: &str = "Final report (card C-87): ";
+const MARK: &str = "Final report: before the final report, show one table";
 
 fn paragraph() -> &'static str {
     let start = PROJECT
