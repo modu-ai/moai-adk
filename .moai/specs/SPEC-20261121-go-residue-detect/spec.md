@@ -29,6 +29,7 @@ The Go-generation update survey (2026-11-21, mo.ai.kr measured) found the root g
 - REQ-5: The go-residue step shall count secret-shaped names without opening their files and never follow a link.
 - REQ-6: When no manifest proves any file, the go-residue step shall report no proof with zero candidates and the plan still succeeds. · failure: none — the no-manifest case is this requirement's own subject and leaves nothing to retry
 - REQ-7: A second run of the plan shall read the go-residue step unchanged with the same items and the same digests.
+- REQ-8: When every surveyed file is user data that no manifest names, the go-residue step shall read unchanged and still list every surveyed file. · failure: none — the user-data-only case is this requirement's own subject and leaves nothing to retry
 
 ## Acceptance
 
@@ -36,10 +37,11 @@ The Go-generation update survey (2026-11-21, mo.ai.kr measured) found the root g
 - AC-2 (REQ-2): with `.moai/manifest.json` absent the step still proves the same files from the backup manifest and the go-markers manifest · verify: `cargo test --test project_update_go_residue_cli`
 - AC-3 (REQ-6): with no manifest anywhere the step reports no proof and zero candidates while the plan exits 0 · verify: `cargo test --test project_update_go_residue_cli`
 - AC-4 (REQ-3, REQ-4, REQ-5): every item carries path, sha256, tracked, resurrected and a suggested action, a symlink is never followed, and the snapshots around the plan are identical · verify: `cargo test --test project_update_go_residue_cli`
+- AC-5 (REQ-8): a project whose only surveyed file is an unmanifested committed file reads the step as unchanged, lists the file as user_data with tracked true and action keep, and does not turn the update's all_unchanged false · verify: `cargo test --test project_update_go_residue_cli`
 
 ## Scope
 
-- write: `src/go_residue.rs` (new), `src/project_update.rs` (the step), `tests/project_update_go_residue_cli.rs` (new), `.moai/specs/SPEC-20261121-go-residue-detect/**`
+- write: `src/go_residue.rs` (new), `src/project_update.rs` (the step), `tests/project_update_go_residue_cli.rs` (new), the step-list pins `tests/go_settings_cli.rs`, `tests/project_update_plan_cli.rs` and `tests/reports_move_cli.rs` (each gains the read-only step name), one allow-list line in `src/lib.rs` (a shared file, written by line lease), `.moai/specs/SPEC-20261121-go-residue-detect/**`
 - read-only: `src/go_state.rs`, `src/state_root.rs`, the survey report sections 4-8
 - forbidden: any card number in shipped text, real HOME or real project writes, apply or revert behaviour
 
@@ -52,3 +54,24 @@ The temp frame follows the survey's section 8: a git repository with a valid Rus
 - A `deployed_hash` collision across manifests: the first-found manifest wins and the item names which manifest proved it.
 - Large projects: the survey walks the state folders and the manifest-named paths only, never the whole tree, and stops at the same depth limits go-state uses.
 - The step must stay read-only even on error: the test asserts identical snapshots after a failing run.
+
+## Result
+
+`status: draft`예요. 승인은 이 파일에 기록하지 않았어요. 구현 head는 `ba3659ba637915955d044ef0de59ba357ee44f2c`이고, base는 NeXT의 `64b948a105932a0168d4b835b7bffb47b9a90b91`이에요. 이 작업은 같은 SPEC의 이전 브랜치를 이어받아요. 그 브랜치의 커밋 네 개(SPEC, 조사 모듈과 step, house-rules 수정, step 목록 고정 테스트)를 충돌 없이 cherry-pick으로 현재 NeXT 끝에 옮겼고, 그 위에 `src/lib.rs`의 state 폴더 allow-list 한 줄과 수리 커밋 하나를 더했어요. 체크 영수증(`check affected --card`)은 READY 노트에 있어요.
+
+수리가 고친 것: 수리 전에는 평범하게 업데이트된 프로젝트의 plan이 `.moai/workflows/project/` 아래 현재 세대의 자체 파일을 `user_data`로 나열했고, step이 `needs_decision`으로 읽혔어요. 그래서 기존 테스트 `declined_skip_reads_skip_and_names_the_way_back`이 `all_unchanged`가 false라며 실패했어요. 새 테스트 `user_data_alone_leaves_the_go_residue_step_unchanged`의 RED는 `left: "needs_decision"`, `right: "unchanged"`였고(이 세션에서 관찰), 변경 뒤에는 GREEN이에요.
+
+Verification (이 세션에서 관찰한 실행):
+
+- 옮겨 온 커밋에서 `cargo nextest run --locked --test project_update_go_residue_cli` → 3 passed (exit 0).
+- 수리 뒤 `cargo nextest run --locked --no-fail-fast --test project_update_go_residue_cli --test project_update_plan_cli --test go_settings_cli --test reports_move_cli` → 126 tests run, 126 passed, exit 0 (새 테스트 `user_data_alone_leaves_the_go_residue_step_unchanged` 포함).
+
+Acceptance:
+
+- AC-1 met: `project_update_go_residue_cli`의 원래 테스트 중 분류 프레임 테스트가 통과했어요(위 3 passed와 126 passed 실행).
+- AC-2 met: 같은 파일의 백업 manifest 증명 테스트(`.moai/manifest.json` 없음)가 통과했어요.
+- AC-3 met: 같은 파일의 manifest 없음 테스트가 통과했어요.
+- AC-4 met: 위 원래 세 테스트가 덮는 범위로만 말해요. 위 두 실행에서 `project_update_go_residue_cli`가 모두 통과했어요.
+- AC-5 met: 새 테스트 `user_data_alone_leaves_the_go_residue_step_unchanged`가 통과했어요(126 passed 실행).
+
+Not run: clippy는 `not_run`이에요. guard-mutant 줄도 `not_run`이에요(tier 1이라 요구되지 않아요). 문서 단계는 `moai-docs`가 했고, `@cc:` 주석은 추가하지 않았고 필요하지도 않았어요.
