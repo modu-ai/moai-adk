@@ -76,6 +76,23 @@ fn boundary_checks_state_units_limits_and_tool_versions() {
     }
 }
 
+/// The chains table is how the parent reaches the new reference until the two agents' `reads:`
+/// lines name it: it names the reference and the two new boundary items.
+#[test]
+fn the_chains_table_names_the_new_checklists() {
+    let text = read("skills/moai/references/chains/index.md");
+    assert_eq!(
+        missing(
+            &text,
+            &[
+                "`internal/destructive-ops`",
+                "items 8 and 9 of `internal/boundary-checks`",
+            ]
+        ),
+        Vec::<&str>::new()
+    );
+}
+
 /// The checks above compare against a phrase list: dropping any phrase from the text must show
 /// up as that phrase missing, so a deleted sentence cannot pass unnoticed.
 #[test]

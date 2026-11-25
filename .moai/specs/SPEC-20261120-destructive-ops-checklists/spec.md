@@ -32,6 +32,7 @@ created: 2026-11-20
 - REQ-3: The `boundary-checks` reference shall state that both sides of a comparison count the same unit and that the writer's limit equals the reader's limit.
 - REQ-4: The `boundary-checks` reference shall state that a change using a new option of an external tool names the oldest supported version, checks support at run time and tests the fallback branch.
 - REQ-5: The guidance test shall fail when a reference lacks one of these items.
+- REQ-6: The chains table shall name `internal/destructive-ops` and items 8 and 9 of `internal/boundary-checks`, so that the reference-name test finds a reader for the new file until the agents' `reads:` lines name it.
 
 ## Acceptance
 
@@ -41,10 +42,12 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test destructive_ops_guidance boundary_checks_state_units_limits_and_tool_versions`
 - AC-3 (REQ-5): 위 문장 하나를 지우면 해당 시험이 실패해요(변이 확인).
   verify: `cargo test --locked --offline --test destructive_ops_guidance the_guidance_test_fails_when_an_item_is_missing`
+- AC-4 (REQ-6): `chains/index.md` 가 `internal/destructive-ops` 와 `internal/boundary-checks` 의 8·9번 항목을 이름으로 말하고, 참조 이름 목록 시험이 새 파일을 받아들여요.
+  verify: `cargo test --locked --offline --test destructive_ops_guidance the_chains_table_names_the_new_checklists` and `cargo test --locked --offline --test agent_defs_package internal_references_say_when_to_read_them`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261120-destructive-ops-checklists/spec.md`, `skills/moai/references/internal/destructive-ops.md`(새), `skills/moai/references/internal/boundary-checks.md`, `skills/moai/references/source-manifest.json`, `tests/agent_defs_package.rs`(참조 이름 목록 한 줄), `tests/destructive_ops_guidance.rs`(새)
+- write: `.moai/specs/SPEC-20261120-destructive-ops-checklists/spec.md`, `skills/moai/references/internal/destructive-ops.md`(새), `skills/moai/references/internal/boundary-checks.md`, `skills/moai/references/source-manifest.json`(공유 파일, line-lease), `tests/areas.toml`(공유 파일, line-lease, 새 시험 파일의 첫 단어 한 개), `tools/repo_scans.json`(공유 파일, line-lease, `reads-skills` 항목에 새 시험 파일 한 줄과 check 옵션 하나), `skills/moai/references/chains/index.md`(표에 문장 하나), `docs/later.md`(한 줄), `tests/agent_defs_package.rs`(참조 이름 목록 한 줄), `tests/destructive_ops_guidance.rs`(새)
 - read-only: 조사 보고서의 G3·G4·G5, `skills/moai/references/internal/security-checklist.md`, `skills/moai/references/internal/self-check.md`
 - forbidden: `agents/*.md` 와 `tests/agent_defs_package.rs` 의 에이전트별 읽기 목록(뒤 SPEC), 새 기본 에이전트, 코드의 지우기 경로
 
@@ -52,7 +55,7 @@ created: 2026-11-20
 
 1. SPEC 을 먼저 커밋해요(이 문서).
 2. RED: `tests/destructive_ops_guidance.rs` 에 시험 넷을 먼저 써서 문장이 없을 때 실패하는 것을 봐요.
-3. GREEN: `destructive-ops.md` 를 쓰고 `boundary-checks.md` 에 8·9번 항목을 더하고 `tests/agent_defs_package.rs` 의 참조 이름 목록에 `destructive-ops` 를 더해요(그 파일을 쥔 변경이 돌려준 뒤). 두 에이전트의 `reads:` 줄과 에이전트별 읽기 목록은 뒤 SPEC 이 맡아요. 스킬 파일을 고쳤으니 `python3 -I tools/source_manifest.py write` 로 매니페스트를 갱신해요.
+3. GREEN: `destructive-ops.md` 를 쓰고 `boundary-checks.md` 에 8·9번 항목을 더하고 `tests/agent_defs_package.rs` 의 참조 이름 목록에 `destructive-ops` 를 더해요(그 파일을 쥔 변경이 돌려준 뒤). 두 에이전트의 `reads:` 줄과 에이전트별 읽기 목록은 뒤 SPEC 이 맡아요. 스킬 파일을 고쳤으니 매니페스트의 해시와 새 항목을 `shasum -a 256` 로 읽어 고치고(공유 파일이라 line-lease 로 써요), 매니페스트 시험이 맞다고 하는지 봐요.
 4. 확인: `destructive_ops_guidance`·`agent_defs_package`(이름 목록)·`product_cli skill_package`·`update_tux_golden`·`tests.source_manifest_test`·`tests.skill_references_test`·`tests.repo_scans_test`, fmt, clippy `--all-targets`, `moai check affected`, 변이(문장·읽기 항목 지우기).
 
 ## Risks

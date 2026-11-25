@@ -472,6 +472,9 @@ fn internal_references_say_when_to_read_them() {
         "tdd-results",
         "check-completeness",
         "boundary-checks",
+        // SPEC-20261120-destructive-ops-checklists: the checks for code that removes, moves or
+        // overwrites what the user owns; the chains table names it.
+        "destructive-ops",
         "doc-claims",
         "security-checklist",
         // #2876: the rules every route, host and base agent follows.
