@@ -94,7 +94,7 @@ created: 2026-11-25
 - AC-5 met: `the_list_and_a_run_pick_the_same_set` (`--list` 와 가짜 `cargo` 실행이 더하기에서 `card`(영수증 `selection=card`), 편집에서 `full`(영수증에 `selection=` 없음)). 수동: `grep -c "registry_only_grew" src/check_affected.rs` 는 2 예요(문서 한 줄과 호출 한 곳); 판정 규칙의 사본은 없어요.
 - AC-6 met: `gate_registry_tier` 전체가 통과해요(바닥 코드는 바꾸지 않았어요).
 - AC-7 met: `check_affected_card_select`, `check_affected_scans_cli`, `check_affected_tables_cli` 가 그대로 통과해요. `choose` 의 옛 서명은 레지스트리 글이 없다는 뜻이라 레지스트리를 바꾸는 범위에 `full` 을 답해요; 그 서명을 직접 부르는 시험은 없어서 이 줄은 코드로만 읽어요(`choose` → `choose_with_registry(…, None, …)`).
-- AC-8 not_run: `audit.md` 는 다른 카드가 통째로 다시 정리하는 중이라 그 카드가 착지한 뒤에 한 줄을 더해요.
+- AC-8 met: `audit.md` 바닥 목록 문단 끝에 영어 문장 두 개를 더했어요(레지스트리는 더하기만이면 바닥을 세우지 않고 `gate::registry_only_grew` 가 규칙이며, `check affected --card` 가 같은 규칙을 읽어 더하기는 카드 세트, 그 밖은 전체 세트). `grep -c "registry_only_grew" skills/moai/references/audit.md` 가 1 이에요. `source-manifest.json` 의 `references/audit.md` sha256 도 다시 계산했어요(`f278092f…d7b9`). `audit_text_facts`, `audit_scratch_rule`, `core_rules_2876`, `agent_defs_package`, `next_flow_skill_scan`, `bundle_check_cli` 를 포함한 139개가 통과했어요.
 - 범위 목록에 없던 파일: `tests/check_affected_card_areas.rs`. 영역 세트 SPEC 의 한 시험(`narrowed_floor_paths_take_their_area_and_the_scan_table_pins_its_tests`)이 "베이스에 표가 없다가 생긴 표"를 카드 세트로 고정했어요. 그 변경은 이 SPEC 의 REQ-3 으로 `full` 이 되므로, 픽스처 베이스에 표를 두고 변경을 "표에 스캔 한 개 더하기"로 바꿨어요. 예전 경우(표가 새로 생김)가 `full` 로 가는 것은 `an_unreadable_registry_gives_the_full_set` 의 셋째 경우가 지켜요.
 - 읽는 곳: 옛 글은 `facts.base` 가 아니라 `git merge-base <base> <head>` 에서 읽어요. `changed` 가 `base...head` 로 재어지는 쪽과 같고, base 가 head 의 조상이면 둘은 같아요(D-1 의 뜻은 그대로예요).
 - 확인하지 않은 것: 병합 base 가 head 의 조상이 아닌 범위에서의 실제 실행(시험은 조상인 범위만 써요).
