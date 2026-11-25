@@ -515,6 +515,11 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         {
             return Err(why);
         }
+        // At the limit of cards in work and in review a session helps with a check or a landing
+        // instead of taking one more (SPEC-20261125-landing-moves-checkout REQ-1).
+        if let Some(why) = super::wip_limit::refusal(project, ledger.conn(), "take")? {
+            return Err(why);
+        }
     }
     let lease = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
     // The worktree is always recorded when it can be known: the given path as it is, else the

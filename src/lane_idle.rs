@@ -246,7 +246,7 @@ pub fn save(anchor: &Path, file: &Path, state: &IdleState) -> Result<(), String>
 /// `idle_limit`. The leader's round reads it as an idle lane.
 pub fn idle_line(lane: &str, checks: u64, last: &str) -> String {
     format!(
-        "LANE-IDLE lane={lane} checks={checks} last={last} restart=run /moai work again as lane {lane}"
+        "LANE-IDLE lane={lane} checks={checks} last={last} restart=run /moai agent again as lane {lane}"
     )
 }
 
@@ -669,7 +669,8 @@ mod tests {
             line.starts_with("LANE-IDLE lane=agent-22 checks=6 last=2026-11-15T02:00:00Z restart=")
         );
         assert!(
-            line.ends_with("restart=run /moai work again as lane agent-22") && !line.contains('\n')
+            line.ends_with("restart=run /moai agent again as lane agent-22")
+                && !line.contains('\n')
         );
     }
 

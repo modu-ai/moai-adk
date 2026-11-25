@@ -1639,14 +1639,18 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "cc",
-        "Claude Code 세션 실행기: `cc`. `--name` 은 세션 이름만 정해요. 역할은 세션 안에서 \
-         들어가요: 레인은 `/moai work`, 조정 창은 `/moai leader`.",
+        "Claude Code 세션 실행기: `cc`. `-l`(`--leader`)은 조정 창을, `-a`(`--agent`)는 레인을 \
+         열어요. 세션 이름은 `leader-<프로젝트>` 와 `agent-<영어 이름>`, 첫 입력은 `/moai leader` \
+         와 `/moai agent`, 권한은 우회로 시작해요(`--permissions` 로 끔). 옵션이 없으면 역할 없는 \
+         세션이에요. `--name` 은 이름을 바꿔요.",
     ),
     (
         "glm",
         "z.ai GLM 위의 Claude Code: `glm`(환경의 ANTHROPIC_AUTH_TOKEN 이나 키 파일이 \
-         필요해요). `--name` 은 세션 이름만 정해요. 역할은 세션 안에서 들어가요: 레인은 \
-         `/moai work`, 조정 창은 `/moai leader`.",
+         필요해요). `-l`(`--leader`)은 조정 창을, `-a`(`--agent`)는 레인을 열어요. 세션 이름은 \
+         `leader-<프로젝트>` 와 `agent-<영어 이름>`, 첫 입력은 `/moai leader` 와 `/moai agent`, \
+         권한은 우회로 시작해요(`--permissions` 로 끔). 옵션이 없으면 역할 없는 세션이에요. \
+         `--name` 은 이름을 바꿔요.",
     ),
     (
         "claude-doctor",
@@ -1728,6 +1732,16 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "cc|glm",
         "prompt",
         "첫 프롬프트에 덧붙일 글(받는 호스트가 없어요)",
+    ),
+    (
+        "cc|glm",
+        "leader",
+        "조정 창으로 시작해요: 세션 이름 `leader-<프로젝트 이름>`, 권한 우회(`--permissions` 로 확인 모드 유지), 첫 입력 `/moai leader`",
+    ),
+    (
+        "cc|glm",
+        "agent",
+        "레인으로 시작해요: 세션 이름 `agent-<영어 이름>`(목록에서 비어 있는 첫 이름), 권한 우회, 첫 입력 `/moai agent`",
     ),
     (
         "cc|glm",
@@ -1864,6 +1878,13 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "confirm_git_hooks",
         "미리 보기의 `git_hooks.confirm_token`: 프로젝트의 Go 세대 git 훅을 은퇴하고 \
          Rust 훅을 설치함. --confirm 이 없으면 나머지는 미리 보기로 남음",
+    ),
+    (
+        "update",
+        "confirm_conflict_replace",
+        "미리 보기의 `plan.hosts[].conflict_replace.confirm_token`: 그 호스트에서 충돌한 파일을 \
+         `<상태 폴더>/backups/<UTC>-<호스트>-conflict/` 에 복사한 뒤 패키지 바이트로 덮음. \
+         --confirm 과 함께만 쓰며 여러 번 쓸 수 있음",
     ),
     (
         "update",

@@ -321,8 +321,108 @@ impl Folder {
         self.row.preflight == "ok"
             && (self.routing.iter().any(|p| is_write(&p.action))
                 || self.flow.iter().any(|p| is_write(&p.action))
-                || self.old.iter().any(|p| p.action == "remove"))
+                || self.old.iter().any(|p| p.action == "remove")
+                || self.row.legacy_flow.is_some())
     }
+}
+
+/// The sha256 values the earlier routing receipts recorded for the flow rule at its earlier path
+/// (`rules/moai/flow.md`, entries of kind `flow`) in the config folder `dir`.
+fn recorded_legacy_flow_digests(home: &Path, dir: &Path) -> Vec<String> {
+    const MAX_RECEIPTS: usize = 256;
+    let receipts = state_root(home).join("receipts");
+    let Ok(entries) = fs::read_dir(&receipts) else {
+        return Vec::new();
+    };
+    let mut digests = Vec::new();
+    for entry in entries.flatten().take(MAX_RECEIPTS) {
+        let file = entry.path().join("receipt.json");
+        if !fs::symlink_metadata(&file).is_ok_and(|m| m.is_file()) {
+            continue;
+        }
+        let Ok(bytes) = fs::read(&file) else { continue };
+        let Ok(receipt) = serde_json::from_slice::<Receipt>(&bytes) else {
+            continue;
+        };
+        for e in receipt.entries.iter().filter(|e| {
+            e.kind.as_deref() == Some("flow")
+                && e.config_dir
+                    .as_deref()
+                    .is_none_or(|d| same_folder(Path::new(d), dir))
+        }) {
+            digests.push(e.after_sha256.clone());
+        }
+    }
+    digests
+}
+
+/// REQ-14: the earlier flow rule file is offered for removal only when it is a plain file whose
+/// digest an earlier routing receipt recorded for that path; any other bytes are the user's.
+fn legacy_flow_plan(home: &Path, dir: &Path) -> Option<LegacyFlowPlan> {
+    let base = base_of(home, dir, LEGACY_FLOW_FILE).ok()?;
+    let Cur::Bytes(bytes) = read_target(&base, LEGACY_FLOW_FILE) else {
+        return None;
+    };
+    let digest = sha(&bytes);
+    if !recorded_legacy_flow_digests(home, dir).contains(&digest) {
+        return None;
+    }
+    Some(LegacyFlowPlan {
+        path: base.join(LEGACY_FLOW_FILE).to_string_lossy().into_owned(),
+        action: "remove".into(),
+        sha256: digest,
+        backup_root: crate::home_root::path(home)
+            .join("backups")
+            .to_string_lossy()
+            .into_owned(),
+        backup_layout: format!(
+            "<apply UTC>-claude-flow-rule/{LEGACY_FLOW_FILE} (a copy of the file, taken before it \
+             is removed; a second run in the same second uses <apply UTC>.2-claude-flow-rule)"
+        ),
+    })
+}
+
+/// REQ-15: copies the earlier flow rule file into a new backup folder, then removes it. The file
+/// is read again first and must still have the planned digest; a failed copy leaves it in place.
+/// The copy is the way back, so the removal has no receipt entry.
+fn remove_legacy_flow(
+    j: &mut Journal,
+    dir: &Path,
+    plan: &LegacyFlowPlan,
+) -> Result<serde_json::Value> {
+    let changed = || format!("{} changed since the plan; re-preview required", plan.path);
+    let base = base_of(j.home, dir, LEGACY_FLOW_FILE)?;
+    let Cur::Bytes(before) = read_target(&base, LEGACY_FLOW_FILE) else {
+        return Err(changed());
+    };
+    if sha(&before) != plan.sha256 {
+        return Err(changed());
+    }
+    crate::update::test_fault("flow_rule_backup")?;
+    let backups = crate::home_root::path(j.home).join("backups");
+    crate::update::refuse_state_symlinks(&backups, "backup")?;
+    fs::create_dir_all(&backups).map_err(|_| "backup directory unavailable")?;
+    crate::update::refuse_state_symlinks(&backups, "backup")?;
+    let backup = crate::update::create_backup_dir(
+        &backups,
+        &crate::update::compact_stamp(),
+        "claude-flow-rule",
+    )?;
+    let copy = backup.join(LEGACY_FLOW_FILE);
+    publish_exclusive(&copy, &before)?;
+    if read_opt(&copy)?.map(|b| sha(&b)) != Some(plan.sha256.clone()) {
+        return Err("the flow rule backup copy does not match its source".into());
+    }
+    let target = base.join(LEGACY_FLOW_FILE);
+    match read_target(&base, LEGACY_FLOW_FILE) {
+        Cur::Bytes(now) if sha(&now) == plan.sha256 => {}
+        _ => return Err(changed()),
+    }
+    fs::remove_file(&target).map_err(|_| format!("{} not removed", target.display()))?;
+    Ok(serde_json::json!({
+        "path": target.to_string_lossy(),
+        "backup": backup.to_string_lossy(),
+    }))
 }
 
 /// Two paths name the same folder: equal real paths, or equal as written when either cannot be
@@ -401,6 +501,7 @@ pub(super) fn consumer_folder(dir: &Path, default: &Folder) -> Folder {
         section,
         flow,
         old_block: None,
+        legacy_flow: None,
     };
     let folder = |row: HostPlan, routing: Option<FilePlan>, flow: Option<FilePlan>| Folder {
         row,
@@ -486,6 +587,7 @@ pub(super) fn plan_folder(
             section: None,
             flow: None,
             old_block: None,
+            legacy_flow: None,
         },
         dir: None,
         id: String::new(),
@@ -518,11 +620,13 @@ pub(super) fn plan_folder(
             ));
         }
     }
-    // A flow rule an earlier build wrote below `rules/moai/` stays where it is; the preview
-    // names it (the file's existence only: its bytes are never read here).
+    // A flow rule an earlier build wrote below `rules/moai/` is offered for removal after a backup
+    // when an earlier routing receipt recorded its digest; any other bytes stay where they are and
+    // the preview names the file.
+    let legacy = legacy_flow_plan(home, &dir);
     if let Some(f) = flow.as_mut() {
         let old = dir.join(LEGACY_FLOW_FILE);
-        if fs::symlink_metadata(&old).is_ok() {
+        if legacy.is_none() && fs::symlink_metadata(&old).is_ok() {
             let note = format!(
                 "an earlier build wrote {}; it is left in place for you to delete",
                 old.display()
@@ -560,6 +664,7 @@ pub(super) fn plan_folder(
             section: Some(section),
             flow: flow.clone(),
             old_block: old.clone(),
+            legacy_flow: legacy.clone(),
         },
         dir: Some(dir),
         id,
@@ -716,6 +821,7 @@ pub(super) fn apply_folder(
     f: &Folder,
     routing_text: &str,
     flow_text: Option<&str>,
+    removed: &mut Vec<serde_json::Value>,
 ) -> Result<Vec<String>> {
     let (Some(dir), true) = (&f.dir, f.row.preflight == "ok") else {
         return Ok(Vec::new());
@@ -732,6 +838,10 @@ pub(super) fn apply_folder(
     }
     if let (Some(p), Some(text)) = (f.flow.as_ref().filter(|p| is_write(&p.action)), flow_text) {
         write_rules_file(&mut j, dir, &f.id, "moai_flow", FLOW_FILE, p, text)?;
+        written.push(p.path.clone());
+    }
+    if let Some(p) = f.row.legacy_flow.as_ref().filter(|p| p.action == "remove") {
+        removed.push(remove_legacy_flow(&mut j, dir, p)?);
         written.push(p.path.clone());
     }
     if let Some(p) = f.old.as_ref().filter(|p| p.action == "remove") {

@@ -9,8 +9,9 @@
 # runs linux-x86_64 only — until C-76 (SPEC-20261119-macos-on-pr): a PR whose merged diff
 # touches a platform-sensitive path also runs macos-arm64 before merge; the push that merges
 # into v2026.11.0 (and workflow_dispatch) always runs linux-x86_64 and macos-arm64 plus
-# windows-build with the same check set. A release pull request — head branch `release/<40 hex>`
-# or `release/rc/<40 hex>`, the names the release workflow numbers — also runs the check set on
+# windows-build with the same check set. A release pull request — head branch
+# `release/v{head}.{yearweek}.{n}` or `release/rc/v{head}.{yearweek}.{n}`, the names the release
+# workflow numbers (SPEC-20261125-headver-weekly-release) — also runs the check set on
 # windows-x86_64 before merge (user decision 2026-11-20, SPEC-20261120-release-pr-three-os): the
 # `windows-check` job calls `.github/workflows/candidate-target.yml`, and `ci` fails unless it
 # succeeded. The `ci` job
@@ -90,14 +91,14 @@ jobs:
           linux='[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"nextest"},{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"rest"}]'
           matrix="$full"
           # A release pull request (SPEC-20261120-release-pr-three-os): the head branch is
-          # `release/<40 hex>` or `release/rc/<40 hex>`, the two names the release workflow
-          # numbers, so this pull request is the release unit. It runs the full matrix, and the
+          # `release/v{head}.{yearweek}.{n}` or `release/rc/v{head}.{yearweek}.{n}`, the two
+          # names the release workflow numbers, so this pull request is the release unit. It runs the full matrix, and the
           # `windows-check` job below runs the check set on Windows. The classifier is not
           # asked and the files API is not read. The head branch name is the pull request
           # author's text: it reaches this script through env only.
           release=false
           if [ "${{ github.event_name }}" = "pull_request" ] \
-            && [[ "${HEAD_REF:-}" =~ ^release/(rc/)?[0-9a-f]{40}$ ]]; then
+            && [[ "${HEAD_REF:-}" =~ ^release/(rc/)?v(0|[1-9][0-9]{0,3})\.[0-9]{4}\.(0|[1-9][0-9]{0,9})$ ]]; then
             release=true
             echo "release pull request: full matrix and the Windows check set"
           elif [ "${{ github.event_name }}" = "pull_request" ]; then
