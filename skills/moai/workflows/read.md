@@ -31,7 +31,7 @@ Skip this section when you are a base agent yourself: base agents never start ot
 - Use only what the host itself offers. Never stand in for a missing feature with extra sessions, folders or scripts: name the feature as not supported on this host, with the reason, and use the fallback given below.
 - When the agent is not installed on this host, do the step in this session and say so.
 
-READ fans out: split the question into independent parts, give each part a short id, start one `moai-research` per part, and answer only after every part's `RESULT` line is in. A part that came back `blocked` or `not_run` stays unconfirmed in the answer.
+A question that is one fact one source answers (a value, one line of a file, one command's output) is answered directly: start no `moai-research` for it. Otherwise READ fans out: split the question into independent parts, give each part a short id, start one `moai-research` per part, and answer only after every part's `RESULT` line is in. A part that came back `blocked` or `not_run` stays unconfirmed in the answer.
 
 - Claude Code: several agent calls in one message run at once; a background agent reports when it finishes.
 - Kiro and Cursor CLI: the documents read do not settle starting several at once and collecting them. Fallback: start them one after another.

@@ -2,7 +2,7 @@
 
 ## Input
 
-The user's goal, a repository snapshot, existing Issues, and constraints.
+The user's goal, a repository snapshot, the card and its notes, and constraints.
 
 ## Output
 
@@ -13,13 +13,22 @@ A SPEC file as `internal/sdd` says — GEARS requirements, acceptance criteria w
 1. Separate established facts from the assumptions that are needed.
 2. Write or update the SPEC (`moai spec new <slug> --title <title> --minimal` for a new one): the GEARS conditions, states, events, actors, and actions, with an IF…THEN failure path for every `When` requirement, and `[NEEDS CLARIFICATION: …]` where an answer is missing. Read legacy EARS through a meaning-preserving import.
 3. Link each AC to its actual means of verification, risks, write scope, and dependencies.
-4. Distinguish an Issue's draft from its approved snapshot.
+4. Distinguish a draft SPEC from its approved revision.
 5. Confirm scope, cost, data, and the required safety conditions. Run `moai spec check`, record the user's selection as the approval with the digest `moai spec show` prints, and hand only that approved revision to RUN.
 6. Record each judgment you make (intent, next step) with the internal `decision-record` operation: `decision_source: native`, `authority: none`. A judgment is a candidate next step; when it points past the authorized permissions, cost, external transmission, or destructive effects, ask the user instead of acting.
 
 Before reading the code a plan touches, check the code atlas as `internal/code-atlas` says: use it only when `moai index-query` reports it `fresh` (or for the files a `stale` answer does not name), search and read the files otherwise, and never build it here.
 
 When the plan hinges on how a stateful part behaves, why a pipeline is slow, what of an old part is worth keeping or what a refactor could break, read `internal/lenses` and apply the lens that fits.
+
+## Card branches
+
+Read this section when the plan is for a card (`moai card show <card>`); a question that changes nothing needs neither branch.
+
+1. **Sort.** Read the card's Write set and put the card in a tier by `references/audit.md`: tier 2 when a path starts with a prefix of its floor list or the change deletes, changes permissions, gates or HOME; tier 0 or 1 otherwise. When the tier cannot be told from the Write set, treat the card as tier 2 and write why in the SPEC.
+2. **Tier 0 or 1: no SPEC.** The card's body and criteria are the design, and its criteria are the acceptance criteria. Write no SPEC and ask for no approval. Reserve the card on a branch whose name does not start with `spec/`, `card/<slug>-<yyyymmdd>`, the slug naming the work and never a card number: a missing `Moai-Spec` trailer fails `moai trailer-check` only on a `spec/` branch. The card lands alone with `moai card land`; `moai card land-batch` does not take a card that names no SPEC.
+3. **Tier 2: SPEC and approval.** Follow the Procedure above: write the SPEC (`moai spec new`) with an `## Interview` of the choices the user made, put every open choice with its options and default in its `## Decisions`, and hand only the approved revision to RUN. A lane files the SPEC's digest and the open choices as a `LANE-BLOCKED kind=decision` note on the card and waits; the approval is the user's selection and is never recorded by the lane.
+4. **Planning agent output.** When `moai-plan` returns, its `Write set` and `Tests that read changed text` become the card's scope (`moai card take --scope`, or `moai card scope` for a card already held), each of its `Shared spots` is written under `moai card line-lease`, and its `Current holders` name the cards to ask first. Each of its `Open questions` becomes an open-question marker (`internal/sdd` item 5) in the SPEC of a tier 2 card, and a `LANE-BLOCKED kind=decision` note on the card in tier 0 or 1 when nobody has answered it.
 
 ## Base agents
 
