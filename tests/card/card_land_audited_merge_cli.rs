@@ -646,3 +646,48 @@ fn a_verdict_on_the_merge_itself_decides_and_the_second_parent_is_not_read() {
         "{got}"
     );
 }
+
+/// A slice (`--keep-open`) of a merge that holds an edit is not refused by the covering rule: it
+/// goes on as the mode of the verdict check says, as it did before the rule (REQ-4 refuses the
+/// closing landing only). Observe mode lands it and keeps the card open; enforce mode refuses.
+#[test]
+fn a_slice_of_an_edited_merge_follows_the_mode_of_the_check() {
+    for mode in ["observe", "enforce"] {
+        let w = World::plain(mode);
+        let card = w.review_card();
+        let lane = w.lane_adding("notes/x.md");
+        let clean = w.join(&w.tip, &lane);
+        let edited_on = put_on(
+            &w.project,
+            &clean,
+            "extra.txt",
+            "extra\n",
+            &signed("an edit after the merge", S_LEAD),
+        );
+        let tree = git(&w.project, &["rev-parse", &format!("{edited_on}^{{tree}}")]);
+        let edited = w.merge_of(&tree, &[&w.tip, &lane]);
+        w.verdict(&card, &lane, true, 0, S_AUD, None);
+        let before = w.dump();
+        let out = w.card(
+            Some(S_LEAD),
+            &[
+                "land",
+                &card,
+                "--head",
+                &edited,
+                "--keep-open",
+                "--by",
+                "leader",
+            ],
+        );
+        if mode == "enforce" {
+            w.refuse(&out, &["verdict_other_head"], &before, &card);
+        } else {
+            let got = result(&out);
+            assert_eq!(got["moved"], json!(true), "{got}");
+            assert_eq!(got["closed"], json!(false), "{got}");
+            assert_eq!(got["audited_head"], Value::Null, "{got}");
+            assert_eq!(w.integ(), edited);
+        }
+    }
+}
