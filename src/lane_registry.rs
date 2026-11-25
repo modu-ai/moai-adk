@@ -5,16 +5,24 @@
 //! first lane's card. The launcher never hands out an `agent-<n>` that is alive (#2971; it
 //! reads this folder with [`live_agent_numbers`]), but a session started without it can pick
 //! any name. `session-register` closes that gap on one machine and one
-//! clone: it keeps `<clone common dir>/.moai-cli/sessions/<name>.json` with a random
-//! `instance` and a lease, and refuses a name that another instance holds under a live lease.
-//! A lane registers once at start and renews with the same instance at every wake; the
-//! MODE-AGENT `session-id` step calls it before claiming and stops the round on a refusal.
+//! clone: it keeps one entry file per session under `<clone common dir>/.moai-cli/sessions/`
+//! with a random `instance` and a lease, and refuses a name that another instance holds under a
+//! live lease. A lane registers once at start and renews with the same instance at every wake;
+//! the MODE-AGENT `session-id` step calls it before claiming and stops the round on a refusal.
+//!
+//! The entry file is named by the registering session's host session id (`<id>.json`,
+//! SPEC-20261125-session-registry-session-key), so one session never owns two entries and a
+//! session of another name never replaces a live entry; the lane name stays inside the entry.
+//! A session without a usable id (none, not well formed, or one that is no file name) keeps the
+//! old form, `<name>.json`. An entry is valid when its file name is its `name` or its own
+//! `session`; both forms are read, and every lookup by name scans both ([`scan_by_name`]).
 //!
 //! The folder is the one the named-session locks use (`session::agent_seq_dir`), so every
 //! worktree of the clone shares it and git never lists it. Writes go through a temporary file
 //! and a rename under an exclusive `File::lock` on `registry.lock`, so two registrations of one
 //! name cannot both succeed. Symlinks, non-regular files and oversized or malformed entries are
-//! refused, never followed or overwritten.
+//! refused, never followed or overwritten. The `.live` locks stay keyed by name and belong to
+//! the launcher.
 //!
 //! An entry may also carry `mode` (`leader` or `agent`, #2928 decision D1 = (A)), written by
 //! `session-register --mode`. The statusline reads it with [`mode_of`] to tag the session.
@@ -129,9 +137,9 @@ pub(crate) fn is_live(dir: &Path, name: &str, now: i64) -> Result<bool, String> 
     if !valid_name(name) {
         return Ok(false);
     }
-    let file = dir.join(format!("{name}.json"));
-    refuse_symlink(&file)?;
-    Ok(matches!(read_entry(&file, name)?, Some((_, lease, _)) if lease > now))
+    Ok(scan_by_name(dir, name)?
+        .iter()
+        .any(|f| f.entry.lease_until > now))
 }
 
 /// Whether `name` holds a live lease in the session registry of the clone `project` belongs
@@ -209,24 +217,27 @@ pub struct SessionEntry {
     pub previous_sessions: Vec<String>,
 }
 
-/// The current entry — see [`SessionEntry`] — or `None` when there is none. A non-regular file,
-/// an oversized file or one that is not a well-formed entry for `name` is an error, never
-/// treated as absent. Unknown keys are ignored, so an entry with `mode` is still schema 1.
-fn read_full(file: &Path, name: &str) -> Result<Option<SessionEntry>, String> {
-    let broken = || {
-        format!(
-            "session registry entry {} is invalid; remove it after checking that no session uses that name",
-            file.display()
-        )
-    };
+/// The error of an entry file that cannot be trusted.
+fn broken(file: &Path) -> String {
+    format!(
+        "session registry entry {} is invalid; remove it after checking that no session uses that name",
+        file.display()
+    )
+}
+
+/// The entry at `file` — see [`SessionEntry`] — or `None` when there is no such file. A
+/// non-regular file, an oversized file or one that is not a well-formed entry is an error, never
+/// treated as absent; the file name is not judged here. Unknown keys are ignored, so an entry with
+/// `mode` is still schema 1.
+fn parse_entry(file: &Path) -> Result<Option<SessionEntry>, String> {
     match fs::symlink_metadata(file) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(_) => return Err(broken()),
-        Ok(m) if !m.file_type().is_file() || m.len() > MAX_ENTRY_BYTES => return Err(broken()),
+        Err(_) => return Err(broken(file)),
+        Ok(m) if !m.file_type().is_file() || m.len() > MAX_ENTRY_BYTES => return Err(broken(file)),
         Ok(_) => {}
     }
-    let text = fs::read_to_string(file).map_err(|_| broken())?;
-    let v: Value = serde_json::from_str(&text).map_err(|_| broken())?;
+    let text = fs::read_to_string(file).map_err(|_| broken(file))?;
+    let v: Value = serde_json::from_str(&text).map_err(|_| broken(file))?;
     let instance = v["instance"].as_str().filter(|i| valid_instance(i));
     let lease = v["lease_until"].as_i64();
     match (
@@ -235,7 +246,7 @@ fn read_full(file: &Path, name: &str) -> Result<Option<SessionEntry>, String> {
         instance,
         lease,
     ) {
-        (Some(1), Some(n), Some(i), Some(l)) if n == name => Ok(Some(SessionEntry {
+        (Some(1), Some(n), Some(i), Some(l)) if valid_name(n) => Ok(Some(SessionEntry {
             name: n.to_string(),
             instance: i.to_string(),
             lease_until: l,
@@ -251,15 +262,142 @@ fn read_full(file: &Path, name: &str) -> Result<Option<SessionEntry>, String> {
                 })
                 .unwrap_or_default(),
         })),
-        _ => Err(broken()),
+        _ => Err(broken(file)),
     }
+}
+
+/// The current entry of the file `name.json` — see [`SessionEntry`] — or `None` when there is
+/// none. A non-regular file, an oversized file or one that is not a well-formed entry for `name`
+/// is an error, never treated as absent.
+fn read_full(file: &Path, name: &str) -> Result<Option<SessionEntry>, String> {
+    match parse_entry(file)? {
+        Some(e) if e.name != name => Err(broken(file)),
+        other => Ok(other),
+    }
+}
+
+/// The entry at `file` when the file name is one an entry may have: its `name` (the old form) or
+/// its own `session` (the form keyed by the host session id). Any other pairing is an error, as
+/// is anything [`parse_entry`] refuses; no file is `None`.
+fn read_any(file: &Path) -> Result<Option<SessionEntry>, String> {
+    let Some(entry) = parse_entry(file)? else {
+        return Ok(None);
+    };
+    let stem = file.file_stem().and_then(|s| s.to_str());
+    if stem == Some(entry.name.as_str()) || (stem.is_some() && entry.session.as_deref() == stem) {
+        Ok(Some(entry))
+    } else {
+        Err(broken(file))
+    }
+}
+
+/// An entry and the file it was read from.
+struct Found {
+    entry: SessionEntry,
+    file: PathBuf,
+}
+
+/// Every entry that holds `name` in the registry folder `dir`, whatever its file form
+/// (SPEC-20261125-session-registry-session-key REQ-5), in the order of the file names. The
+/// candidates are `<name>.json` and every `*.json` whose file name is a well-formed host session
+/// id; the files of other lanes are not read. Each candidate is read strictly: a symlink, a
+/// non-regular, oversized or malformed file, or an entry whose file name is neither its name nor
+/// its session fails the lookup with the file named, so a name never reads as free because of an
+/// entry that could not be read. A missing folder has none; nothing is created.
+fn scan_by_name(dir: &Path, name: &str) -> Result<Vec<Found>, String> {
+    let mut out = Vec::new();
+    let own = dir.join(format!("{name}.json"));
+    refuse_symlink(&own)?;
+    if let Some(entry) = read_any(&own)? {
+        if entry.name == name {
+            out.push(Found { entry, file: own });
+        }
+    }
+    let read = match fs::read_dir(dir) {
+        Ok(read) => read,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(out),
+        Err(e) => {
+            return Err(format!(
+                "session registry {} cannot be read: {e}",
+                dir.display()
+            ))
+        }
+    };
+    let mut files: Vec<PathBuf> = read
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.extension().and_then(|x| x.to_str()) == Some("json")
+                && p.file_stem()
+                    .and_then(|s| s.to_str())
+                    .is_some_and(|s| s != name && crate::session_current::well_formed(s))
+        })
+        .collect();
+    files.sort();
+    for file in files {
+        refuse_symlink(&file)?;
+        if let Some(entry) = read_any(&file)? {
+            if entry.name == name {
+                out.push(Found { entry, file });
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// The entry of `found` that holds the name at `now`: a live one carrying `instance` when it is
+/// given, else the one with the longest lease (a live one when any is live).
+fn holder<'a>(found: &'a [Found], now: i64, instance: Option<&str>) -> Option<&'a Found> {
+    instance
+        .and_then(|i| {
+            found
+                .iter()
+                .find(|f| f.entry.lease_until > now && f.entry.instance == i)
+        })
+        .or_else(|| found.iter().max_by_key(|f| f.entry.lease_until))
+}
+
+/// The files of `dir` whose entry, in either file form, has the host session id `session`. Lenient
+/// on purpose: what cannot be read as an entry (a link, an oversized or malformed file, a file
+/// name that is not its entry's) is skipped, so the caller never removes a file it could not read.
+fn files_of_session(dir: &Path, session: &str) -> Vec<PathBuf> {
+    let Ok(read) = fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    let mut out: Vec<PathBuf> = read
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.extension().and_then(|x| x.to_str()) == Some("json")
+                && p.file_stem()
+                    .and_then(|s| s.to_str())
+                    .is_some_and(valid_name)
+        })
+        .filter(|p| matches!(read_any(p), Ok(Some(e)) if e.session.as_deref() == Some(session)))
+        .collect();
+    out.sort();
+    out
+}
+
+/// The path of the entry file that holds `name` in the registry folder `dir`, whichever form it
+/// is in; `None` when no entry names it. With several entries for one name (made by hand) the
+/// one with the longest lease. Read only; an entry that cannot be read is an error. A fixture
+/// that must reach the file of an entry through the lane name uses this.
+pub fn entry_file(dir: &Path, name: &str) -> Result<Option<PathBuf>, String> {
+    if !valid_name(name) {
+        return Ok(None);
+    }
+    let found = scan_by_name(dir, name)?;
+    Ok(holder(&found, 0, None).map(|f| f.file.clone()))
 }
 
 /// Every entry of the clone `project` belongs to, read without a lock or a write. Unlike the
 /// lenient scans above, anything that cannot be read is an error that names it — a symlinked
 /// folder or entry, a non-regular or oversized file, a malformed entry — because the caller
 /// (`card adopt`, REQ-10) must tell "no entry names this session" from "an entry could not be
-/// read". A folder that does not exist yet holds no entry.
+/// read". A folder that does not exist yet holds no entry. Entries of both file forms are read
+/// (a file named by its entry's `name` or by its own `session`) and listed by name; two entries
+/// that name one lane are both listed.
 pub fn session_entries(project: &Path) -> Result<Vec<SessionEntry>, String> {
     let dir = registry_dir_unlinked(project)?;
     match fs::symlink_metadata(&dir) {
@@ -280,22 +418,27 @@ pub fn session_entries(project: &Path) -> Result<Vec<SessionEntry>, String> {
     }
     let read = fs::read_dir(&dir)
         .map_err(|e| format!("session registry {} cannot be read: {e}", dir.display()))?;
-    let mut out = Vec::new();
+    let mut files = Vec::new();
     for item in read {
         let item =
             item.map_err(|e| format!("session registry {} cannot be read: {e}", dir.display()))?;
-        let path = item.path();
+        files.push(item.path());
+    }
+    // File order first, so two entries of one name always come out in the same order.
+    files.sort();
+    let mut out = Vec::new();
+    for path in files {
         if path.extension().and_then(|x| x.to_str()) != Some("json") {
             continue;
         }
-        let Some(stem) = path
+        if !path
             .file_stem()
             .and_then(|s| s.to_str())
-            .filter(|s| valid_name(s))
-        else {
+            .is_some_and(valid_name)
+        {
             continue;
-        };
-        if let Some(entry) = read_full(&path, stem)? {
+        }
+        if let Some(entry) = read_any(&path)? {
             out.push(entry);
         }
     }
@@ -468,12 +611,13 @@ fn registered_entry_of(project: &Path, session: &str) -> Option<(i64, String)> {
         // R-N3 of the audit: the name in the entry is what the lock lookup will join with, so
         // it must pass the registry's own name rules and match the file it was read from —
         // an entry written under another name (or one that spells a path, `../../outside`)
-        // is skipped, never trusted.
+        // is skipped, never trusted. The file is named by the entry's name (old form) or by
+        // the session id the lookup asks for (the form keyed by the host session id).
         if !valid_name(&name) {
             continue;
         }
         let file_stem = path.file_stem().and_then(|s| s.to_str());
-        if file_stem != Some(name.as_str()) {
+        if file_stem != Some(name.as_str()) && file_stem != Some(session) {
             continue;
         }
         let lease = v["lease_until"].as_i64().unwrap_or(0);
@@ -505,8 +649,8 @@ fn check_name(name: &str) -> Result<(), String> {
     }
 }
 
-/// The registry folder, the entry path for `name`, and the held exclusive lock.
-fn open_locked(project: &Path, name: &str) -> Result<(PathBuf, PathBuf, fs::File), String> {
+/// The registry folder and the held exclusive lock.
+fn open_locked(project: &Path) -> Result<(PathBuf, fs::File), String> {
     let dir = registry_dir(project)?;
     refuse_symlink(&dir)?;
     fs::create_dir_all(&dir)
@@ -521,26 +665,26 @@ fn open_locked(project: &Path, name: &str) -> Result<(PathBuf, PathBuf, fs::File
         .open(&lock_path)
         .and_then(|f| f.lock().map(|()| f))
         .map_err(|_| format!("session registry lock {} unavailable", lock_path.display()))?;
-    let file = dir.join(format!("{name}.json"));
-    refuse_symlink(&file)?;
-    Ok((dir, file, lock))
+    Ok((dir, lock))
 }
 
 /// The mode a live entry records for `name` in the clone whose git common dir is `common`
 /// (#2928, decision D1 = (A)): `Some("leader")` or `Some("agent")` only when the entry is for
-/// exactly this name, its lease runs past `now`, and its `mode` is exactly one of the two.
-/// Read-only for the statusline: no lock, no folder created; an unsafe name, a symlinked
-/// folder or entry, an oversized or malformed entry — anything unreadable — is `None`.
+/// exactly this name (in either file form), its lease runs past `now`, and its `mode` is exactly
+/// one of the two. Read-only for the statusline: no lock, no folder created; an unsafe name, a
+/// symlinked folder or entry, an oversized or malformed entry — anything unreadable — is `None`.
 pub fn mode_of(common: &Path, name: &str, now: i64) -> Option<&'static str> {
     if !valid_name(name) {
         return None;
     }
     let dir = crate::clone_root::path(common).join("sessions");
     refuse_symlink(&dir).ok()?;
-    let file = dir.join(format!("{name}.json"));
-    match read_entry(&file, name).ok()?? {
-        (_, lease, mode) if lease > now => accepted_mode(mode.as_deref()),
-        _ => None,
+    let found = scan_by_name(&dir, name).ok()?;
+    let held = holder(&found, now, None)?;
+    if held.entry.lease_until > now {
+        accepted_mode(held.entry.mode.as_deref())
+    } else {
+        None
     }
 }
 
@@ -584,7 +728,8 @@ pub fn live_agent_numbers(dir: &Path, now: i64) -> Result<Vec<u64>, String> {
 }
 
 /// How many sessions of this clone are alive at `now` in the registry folder `dir` (#2871 U3c,
-/// leader decision 6886405676): every `<name>.json` entry whose lease runs past `now`, and every
+/// leader decision 6886405676): every entry file, of either form, whose lease runs past `now`
+/// (counted by the name inside the entry), and every
 /// `agent-<n>` whose launcher holds the `.live` lock, each session counted once. This is the
 /// liveness [`live_agent_numbers`] and the launcher already use, for every name instead of the
 /// `agent-<n>` ones. Read only: no lock is kept, nothing is created, and a missing folder has no
@@ -615,10 +760,12 @@ pub fn live_session_count(dir: &Path, now: i64) -> Result<usize, String> {
             if crate::session::live_lock_held(&entry.path())? {
                 live.insert(format!("agent-{n}"));
             }
-        } else if let Some(name) = file.strip_suffix(".json").filter(|n| valid_name(n)) {
-            if let Some((_, lease, _)) = read_entry(&entry.path(), name)? {
-                if lease > now {
-                    live.insert(name.to_string());
+        } else if file.strip_suffix(".json").is_some_and(valid_name) {
+            // Either file form; the lane is counted by the name inside the entry, so a lane
+            // with two entry files is one session.
+            if let Some(held) = read_any(&entry.path())? {
+                if held.lease_until > now {
+                    live.insert(held.name);
                 }
             }
         }
@@ -638,9 +785,8 @@ pub fn show(project: &Path, name: &str, now: i64) -> Result<Value, String> {
     check_name(name)?;
     let dir = registry_dir(project)?;
     refuse_symlink(&dir)?;
-    let file = dir.join(format!("{name}.json"));
-    refuse_symlink(&file)?;
-    Ok(match read_full(&file, name)? {
+    let found = scan_by_name(&dir, name)?;
+    Ok(match holder(&found, now, None).map(|f| &f.entry) {
         Some(held) if held.lease_until > now => {
             let mut out = json!({
                 "status": "held",
@@ -730,22 +876,31 @@ pub fn release(
                 .into(),
         );
     }
-    let (_, file, lock) = open_locked(project, name)?;
-    let status = match read_entry(&file, name)? {
-        None => "already_free",
-        Some((_, lease, _)) if lease <= now => "already_free",
-        Some((held, _, _)) if held == instance => {
-            fs::remove_file(&file).map_err(|e| {
-                format!("session registry entry {} write failed: {e}", file.display())
-            })?;
-            "released"
-        }
-        Some((_, lease, _)) => {
-            return Err(format!(
-                "conflict in session registry: name `{name}` is held by another instance until {}; only that instance releases it",
-                crate::forge::policy::format_utc(lease)
-            ))
-        }
+    let (dir, lock) = open_locked(project)?;
+    let found = scan_by_name(&dir, name)?;
+    // Only an entry whose lease runs is held; the compare is against the live entry that carries
+    // the instance, in whichever file it is.
+    let live: Vec<&Found> = found.iter().filter(|f| f.entry.lease_until > now).collect();
+    let status = if live.is_empty() {
+        "already_free"
+    } else if let Some(f) = live.iter().find(|f| f.entry.instance == instance) {
+        fs::remove_file(&f.file).map_err(|e| {
+            format!(
+                "session registry entry {} write failed: {e}",
+                f.file.display()
+            )
+        })?;
+        "released"
+    } else {
+        let lease = live
+            .iter()
+            .map(|f| f.entry.lease_until)
+            .max()
+            .unwrap_or(now);
+        return Err(format!(
+            "conflict in session registry: name `{name}` is held by another instance until {}; only that instance releases it",
+            crate::forge::policy::format_utc(lease)
+        ));
     };
     drop(lock);
     let mut out = json!({"status": status, "name": name});
@@ -761,7 +916,11 @@ pub fn release(
 ///   `previous` `none` or `expired`.
 /// - A live entry with the same instance: `renewed` (`previous` `same_instance`).
 /// - A live entry with another instance: refused as a conflict naming the lease end; the
-///   other instance's id is not shown.
+///   other instance's id is not shown. The entry is found in either file form.
+///
+/// A renewal rewrites the entry in the file it is in; any other registration writes the file
+/// named by the registering session's host session id (or by the name when it has none) and
+/// removes the files it replaces: the other entries of the name and the session's other entries.
 ///
 /// `mode` (#2928, `leader` or `agent`) is written into the entry and the result only when it is
 /// given; every write replaces the whole entry, so a renew records the mode it is given.
@@ -860,8 +1019,24 @@ pub fn register_with(
         crate::leader_round::registration::require_session(own.as_deref())?;
     }
     let running_worktree = running_worktree();
-    let (dir, file, lock) = open_locked(project, name)?;
-    let current = read_full(&file, name)?;
+    let (dir, lock) = open_locked(project)?;
+    let found = scan_by_name(&dir, name)?;
+    // The entry that holds the name, in whichever file it is. Two live entries of one name exist
+    // only by hand: it is a conflict unless every one carries the instance the caller gives.
+    let held = holder(&found, now, instance);
+    for other in &found {
+        let is_held = held.is_some_and(|h| h.file == other.file);
+        if !is_held
+            && other.entry.lease_until > now
+            && instance != Some(other.entry.instance.as_str())
+        {
+            return Err(format!(
+                "conflict in session registry: name `{name}` is in use by another instance until {}; pick another name, or wait for that lease to end",
+                crate::forge::policy::format_utc(other.entry.lease_until)
+            ));
+        }
+    }
+    let current = held.map(|h| h.entry.clone());
     let previous = match (&current, instance) {
         (None, _) => "none",
         // The proofs are read under the registry lock; a lease that has ended does not matter
@@ -972,7 +1147,46 @@ pub fn register_with(
             object.remove("worktree");
         }
     }
-    let tmp = dir.join(format!("{name}.json.tmp-{}", std::process::id()));
+    // SPEC-20261125-session-registry-session-key REQ-1: a renewal rewrites the entry in the file
+    // it is in; every other registration writes the file named by the session's own id, or by
+    // the name when the session has no usable id (`own` is well formed, so a `-` id is the one
+    // shape `valid_name` still refuses).
+    let key = own.as_deref().filter(|id| valid_name(id)).unwrap_or(name);
+    let file = match (renewed, held) {
+        (true, Some(h)) => h.file.clone(),
+        _ => dir.join(format!("{key}.json")),
+    };
+    refuse_symlink(&file)?;
+    // The file may already exist: it is replaced only when it holds this name or is this
+    // session's own entry; the entry of a lane that is named like a session id is not ours.
+    let written_session = entry["session"].as_str().map(str::to_string);
+    if let Some(at) = read_any(&file)? {
+        let ours = found.iter().any(|f| f.file == file)
+            || (written_session.is_some() && at.session == written_session);
+        if !ours {
+            return Err(format!(
+                "conflict in session registry: the entry file {} holds the lane `{}`, which is not this session's; remove it after checking that no session uses that name",
+                file.display(),
+                at.name
+            ));
+        }
+    }
+    // The files this registration replaces, listed before the write: every other file that holds
+    // the name (all are expired, carry this instance, or are the predecessor `--continue` takes
+    // over) and every other file whose entry has the session being written, so one session keeps
+    // one entry. A live entry of another session is in neither list.
+    // @cc:careful the sweep by session skips a file it cannot read, never removes it, and a
+    // session with no id sweeps nothing by session, so entries that name no session stay.
+    let mut replaced: Vec<PathBuf> = found.iter().map(|f| f.file.clone()).collect();
+    if let Some(s) = &written_session {
+        replaced.extend(files_of_session(&dir, s));
+    }
+    replaced.retain(|f| *f != file);
+    replaced.sort();
+    replaced.dedup();
+    let mut tmp_name = file.clone().into_os_string();
+    tmp_name.push(format!(".tmp-{}", std::process::id()));
+    let tmp = PathBuf::from(tmp_name);
     let written = OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -988,6 +1202,20 @@ pub fn register_with(
             "session registry entry {} write failed: {e}",
             file.display()
         ));
+    }
+    // Written first, removed second: a failure here leaves the new entry in place, and the error
+    // names the file that stayed.
+    for old in &replaced {
+        match fs::remove_file(old) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => {
+                return Err(format!(
+                    "session registry entry {} removal failed: {e}",
+                    old.display()
+                ))
+            }
+        }
     }
     drop(lock);
     let mut out = json!({
@@ -1330,6 +1558,141 @@ mod tests {
             let err = counted.expect_err("an unlistable folder is not zero sessions");
             assert!(err.contains("cannot be read"), "{err}");
         }
+    }
+
+    const SID_1: &str = "00000001-0000-4000-8000-000000000001";
+    const SID_2: &str = "00000002-0000-4000-8000-000000000002";
+
+    fn session_entry(name: &str, session: &str, lease: i64) -> String {
+        named_entry(name, lease).replace('}', &format!(",\"session\":\"{session}\"}}"))
+    }
+
+    /// SPEC-20261125-session-registry-session-key REQ-5: a lookup by name reads `<name>.json` and
+    /// the files named by a session id; the files of other lanes are not read.
+    #[test]
+    fn scan_by_name_reads_both_forms_and_leaves_other_lanes_alone() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path();
+        fs::write(dir.join("agent-1.json"), named_entry("agent-1", 10)).unwrap();
+        fs::write(
+            dir.join(format!("{SID_1}.json")),
+            session_entry("agent-2", SID_1, 20),
+        )
+        .unwrap();
+        // The file of another lane is never opened, so even a broken one is no obstacle.
+        fs::write(dir.join("agent-3.json"), "{not json").unwrap();
+        let files = |name: &str| -> Vec<String> {
+            scan_by_name(dir, name)
+                .unwrap()
+                .iter()
+                .map(|f| f.file.file_name().unwrap().to_string_lossy().to_string())
+                .collect()
+        };
+        assert_eq!(files("agent-1"), ["agent-1.json"]);
+        assert_eq!(files("agent-2"), [format!("{SID_1}.json")]);
+        assert!(files("agent-4").is_empty());
+        // The broken file is the file of its own lane: that lookup fails, naming it.
+        let e = scan_by_name(dir, "agent-3").err().unwrap();
+        assert!(e.contains("agent-3.json"), "{e}");
+        // A missing folder has no entry and stays missing.
+        let missing = tmp.path().join("none");
+        assert!(scan_by_name(&missing, "agent-1").unwrap().is_empty());
+        assert!(!missing.exists());
+    }
+
+    /// A broken file named by a session id fails the lookup of every name; it never reads as free.
+    #[test]
+    fn scan_by_name_fails_on_a_broken_id_named_file() {
+        for bad in [
+            "{not json".to_string(),
+            session_entry("agent-2", SID_2, 20),
+            format!(
+                "{}{}",
+                session_entry("agent-2", SID_1, 20),
+                " ".repeat(5_000)
+            ),
+        ] {
+            let tmp = tempfile::tempdir().unwrap();
+            fs::write(tmp.path().join(format!("{SID_1}.json")), &bad).unwrap();
+            for name in ["agent-2", "agent-9"] {
+                let e = scan_by_name(tmp.path(), name).err().unwrap();
+                assert!(e.contains(&format!("{SID_1}.json")), "{e}");
+            }
+            assert!(entry_file(tmp.path(), "agent-2").is_err());
+        }
+    }
+
+    /// An entry is valid under its name or its own session id, and under no other file name.
+    #[test]
+    fn read_any_accepts_the_name_or_the_session_as_the_file_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let put = |file: &str, text: String| {
+            let path = tmp.path().join(file);
+            fs::write(&path, text).unwrap();
+            path
+        };
+        let by_name = put("agent-2.json", named_entry("agent-2", 5));
+        assert_eq!(read_any(&by_name).unwrap().unwrap().name, "agent-2");
+        let by_session = put(&format!("{SID_1}.json"), session_entry("agent-2", SID_1, 5));
+        assert_eq!(read_any(&by_session).unwrap().unwrap().name, "agent-2");
+        let neither = put(&format!("{SID_2}.json"), session_entry("agent-2", SID_1, 5));
+        assert!(read_any(&neither).is_err());
+        let nameless = put("agent-5.json", named_entry("agent-2", 5));
+        assert!(read_any(&nameless).is_err());
+        assert_eq!(read_any(&tmp.path().join("agent-7.json")), Ok(None));
+    }
+
+    /// `entry_file` names the file that holds the name, in either form; the longest lease wins when
+    /// two files name it.
+    #[test]
+    fn entry_file_finds_the_file_of_either_form() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path();
+        assert_eq!(entry_file(dir, "agent-2"), Ok(None));
+        assert_eq!(entry_file(dir, "../x"), Ok(None), "no file name is read");
+        fs::write(dir.join("agent-2.json"), named_entry("agent-2", 10)).unwrap();
+        assert_eq!(
+            entry_file(dir, "agent-2"),
+            Ok(Some(dir.join("agent-2.json")))
+        );
+        let keyed = dir.join(format!("{SID_1}.json"));
+        fs::write(&keyed, session_entry("agent-2", SID_1, 20)).unwrap();
+        assert_eq!(entry_file(dir, "agent-2"), Ok(Some(keyed)));
+        assert_eq!(entry_file(dir, "agent-3"), Ok(None));
+    }
+
+    /// The holder is the live entry that carries the instance, else the longest lease.
+    #[test]
+    fn holder_prefers_the_live_entry_with_the_instance() {
+        let entry = |instance: &str, lease: i64| Found {
+            entry: SessionEntry {
+                name: "agent-2".into(),
+                instance: instance.into(),
+                lease_until: lease,
+                mode: None,
+                session: None,
+                worktree: None,
+                previous_sessions: Vec::new(),
+            },
+            file: PathBuf::from(format!("{instance}.json")),
+        };
+        let (a, b) = ("a".repeat(32), "b".repeat(32));
+        let found = [entry(&a, 50), entry(&b, 100)];
+        let at = |now: i64, instance: Option<&str>| {
+            holder(&found, now, instance).map(|f| f.entry.lease_until)
+        };
+        assert_eq!(at(10, None), Some(100), "the longest lease");
+        assert_eq!(
+            at(10, Some(&a)),
+            Some(50),
+            "the live entry with the instance"
+        );
+        assert_eq!(
+            at(60, Some(&a)),
+            Some(100),
+            "an ended entry is not the holder"
+        );
+        assert!(holder(&[], 0, None).is_none());
     }
 
     #[test]
