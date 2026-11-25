@@ -69,7 +69,9 @@ fn every_ci_scope_mention_in_the_skill_names_this_repository() {
             }
         }
     }
-    assert!(seen >= 3, "the three mentions moved: {seen}");
+    // The RUN text no longer names the script (the Python scope check is not a shipped step), so
+    // one mention remains; the rule that every mention names this repository is unchanged.
+    assert!(seen >= 1, "the mention moved: {seen}");
     assert_eq!(bare, Vec::<String>::new());
 }
 

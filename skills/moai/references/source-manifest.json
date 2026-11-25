@@ -95,6 +95,15 @@
         "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): request kind -> route -> agents in order -> what the parent reads first. Agents' own lists stay in their `reads:` key, so the chain never repeats them. A rule line for internal/lenses added by #3096 S1."
       }
     },
+    "references/flows/landing-release.md": {
+      "sha256": "b29e81d2e8ae00722db7b2a80960de557f168f576600e4f9e09b5313e6f393cd",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "flow-landing-release",
+        "adoption": "new",
+        "reason": "Moved out of the SYNC workflow by the RUN and SYNC procedure SPEC: the lander and release part (effects, landing, release pull request, CI evidence, independent review, release merge, reconcile, integration receipt). Named once by SYNC."
+      }
+    },
     "references/flows/next-flow.md": {
       "sha256": "d2338bdefbd50808f257d73c6dd8420b4512c7bc93f16200349f481b9c529a98",
       "origin": {
@@ -152,6 +161,15 @@
         "license": "Apache-2.0"
       }
     },
+    "references/internal/build-slots.md": {
+      "sha256": "d36353c05174ec5feb28cd43c3b6c43c8fc8d11724d2c8f645abb8196fd9923f",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-build-slots",
+        "adoption": "new",
+        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: heavy slots, one build folder per worktree, cleanup and the build cache facts, with the Python slot and tool paths removed. Read from RUN step 1."
+      }
+    },
     "references/internal/check-completeness.md": {
       "sha256": "7b32a82dc07e67b439a3f97602d8a2db198af18c196de24c8150e321fc10d955",
       "origin": {
@@ -162,6 +180,15 @@
         "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
         "source_path": "internal/template/templates/.claude/rules/moai/development/verification-completeness.md",
         "license": "Apache-2.0"
+      }
+    },
+    "references/internal/check-rules.md": {
+      "sha256": "3d22b021ae4a662eafa94fe9b11fc6a0232bd4e1905ae276a43120a16cc90343",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-check-rules",
+        "adoption": "new",
+        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: who runs which check, when a remote run may be cited, the test rules and the flaky rule, with internal numbers, tool paths and Python lines removed. Read from RUN step 5."
       }
     },
     "references/internal/code-atlas.md": {
@@ -296,6 +323,15 @@
         "reason": "Written for rc.2 card C-77 (user selection 2026-11-17 after the PR history analysis of 193 audit FAILs): the checks whoever wrote a change runs before asking for an audit or opening a pull request, one line each with its command, grouped as tests, package and documents, and the pull request. Read by moai-impl (`reads:`) and named by the rules of chains/index.md; its machine items run from the repository's tools/self_check.sh."
       }
     },
+    "references/internal/shell-guards.md": {
+      "sha256": "9423fb72a4f5664adbedac8bb618d68fd4ddde6eeb61ea932525dda7a313bd8c",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-shell-guards",
+        "adoption": "new",
+        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: the change-specific rules, the shell and helper rules and the host worktree guard table, with internal numbers removed. Read from RUN Exceptions and Permissions."
+      }
+    },
     "references/internal/tdd-results.md": {
       "sha256": "4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df",
       "origin": {
@@ -324,6 +360,15 @@
         "template_id": "internal-versioning",
         "adoption": "new",
         "reason": "Written for rc.2 card C-69 (user instruction 2026-11-17): the three versioning schemes the PROJECT interview offers — SemVer (default), HeadVer and CalVer — each with its format, who bumps what, when to pick it, how the next version is computed, its pre-release marking and two examples, plus the rule to keep the scheme a project already uses and how `project-detect` reads a version. Sources read 2026-11-17: semver.org 2.0.0, github.com/line/headver, calver.org spec 26.0. Named by project.md, internal/interview and chains/index.md."
+      }
+    },
+    "references/internal/web-pages.md": {
+      "sha256": "fcbc89dd2e25cfaac597728d27dbea477a924877ca07d161d37b65c88c57f760",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-web-pages",
+        "adoption": "new",
+        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: how a session reads a web page. Read from RUN step 2."
       }
     },
     "references/languages/c-cpp.md": {
@@ -505,51 +550,6 @@
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai agent` takes one card at a time, hands its plan, implementation and documents to the base agents in turn, submits it with `moai card submit` and waits for the leader (user decision 2026-11-25); a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
       "sha256": "33f9d27519dc0126b8ad06d3ffcbc0b08ee0751b75a02a4b5fd9ce6d7af4d318"
-    },
-    "references/internal/check-rules.md": {
-      "sha256": "3d22b021ae4a662eafa94fe9b11fc6a0232bd4e1905ae276a43120a16cc90343",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-check-rules",
-        "adoption": "new",
-        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: who runs which check, when a remote run may be cited, the test rules and the flaky rule, with internal numbers, tool paths and Python lines removed. Read from RUN step 5."
-      }
-    },
-    "references/internal/build-slots.md": {
-      "sha256": "d36353c05174ec5feb28cd43c3b6c43c8fc8d11724d2c8f645abb8196fd9923f",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-build-slots",
-        "adoption": "new",
-        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: heavy slots, one build folder per worktree, cleanup and the build cache facts, with the Python slot and tool paths removed. Read from RUN step 1."
-      }
-    },
-    "references/internal/shell-guards.md": {
-      "sha256": "9423fb72a4f5664adbedac8bb618d68fd4ddde6eeb61ea932525dda7a313bd8c",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-shell-guards",
-        "adoption": "new",
-        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: the change-specific rules, the shell and helper rules and the host worktree guard table, with internal numbers removed. Read from RUN Exceptions and Permissions."
-      }
-    },
-    "references/internal/web-pages.md": {
-      "sha256": "fcbc89dd2e25cfaac597728d27dbea477a924877ca07d161d37b65c88c57f760",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-web-pages",
-        "adoption": "new",
-        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: how a session reads a web page. Read from RUN step 2."
-      }
-    },
-    "references/flows/landing-release.md": {
-      "sha256": "b29e81d2e8ae00722db7b2a80960de557f168f576600e4f9e09b5313e6f393cd",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "flow-landing-release",
-        "adoption": "new",
-        "reason": "Moved out of the SYNC workflow by the RUN and SYNC procedure SPEC: the lander and release part (effects, landing, release pull request, CI evidence, independent review, release merge, reconcile, integration receipt). Named once by SYNC."
-      }
     }
   }
 }
