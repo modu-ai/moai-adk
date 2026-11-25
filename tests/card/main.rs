@@ -37,6 +37,7 @@ mod card_ready_receipt_cli;
 mod card_reclaim_cli;
 mod card_reclaim_early_cli;
 mod card_remote_copy_cli;
+mod card_review_lease_hold_cli;
 mod card_roles_cli;
 mod card_scope_widen_cli;
 mod card_scope_widen_followup_cli;
