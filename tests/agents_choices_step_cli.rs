@@ -479,9 +479,11 @@ fn choices_review_md_is_written_whichever_pick_settles_the_agents_md_conflict() 
     }
 }
 
-// REQ-6: only a missing block is offered the append and the skip; an edited block is not.
+// SPEC-20261125-update-same-bytes-no-conflict REQ-7, REQ-8 and REQ-9: an edited block is a
+// conflict too, so the skip is offered and names the file it keeps; the append stays for a
+// missing block only.
 #[test]
-fn choices_an_edited_block_conflict_offers_no_append_or_skip() {
+fn ac3_an_edited_block_conflict_offers_the_skip_and_no_append() {
     let fx = Fx::new();
     fx.with_language(&["claude", "codex"], Some("en"));
     let plan = fx.update_plan();
@@ -508,15 +510,21 @@ fn choices_an_edited_block_conflict_offers_no_append_or_skip() {
         .unwrap_or_default()
         .to_string();
     assert!(!detail.contains("missing"), "{detail}");
+    assert_eq!(choice_ids(generation), ["skip-conflicts"], "{generation}");
+    let skip = choice(generation, "skip-conflicts");
     assert!(
-        generation["preview"].get("choices").is_none(),
-        "{generation}"
+        skip["effect"].as_str().unwrap().contains("CLAUDE.md"),
+        "the effect does not name the file it keeps: {skip}"
     );
+    let applied = fx.apply(skip);
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert!(fx.read("CLAUDE.md").contains("hand edit"));
 }
 
-// REQ-12: a choice that could not be applied is not offered.
+// REQ-10: a choice that could not be applied is not offered. The append still conflicts on the
+// edited workflow file, so it is left out; the skip keeps both edits and stays.
 #[test]
-fn choices_a_choice_whose_own_plan_still_conflicts_is_left_out() {
+fn ac3_a_choice_whose_own_plan_still_conflicts_is_left_out_and_the_skip_stays() {
     let (fx, _) = Fx::conflict(&["claude", "codex"]);
     // A hand edit of a generated workflow file: its own conflict stays whatever is picked for
     // AGENTS.md, so no command printed here could be applied.
@@ -534,11 +542,74 @@ fn choices_a_choice_whose_own_plan_still_conflicts_is_left_out() {
         .map(|f| f["path"].as_str().unwrap())
         .collect();
     assert_eq!(conflicts, ["CLAUDE.md", workflow], "{generation}");
-    assert!(
-        generation["preview"].get("choices").is_none(),
-        "{generation}"
-    );
+    assert_eq!(choice_ids(generation), ["skip-conflicts"], "{generation}");
     assert_eq!(fx.read(workflow), edited, "a preview writes nothing");
+    let applied = fx.apply(choice(generation, "skip-conflicts"));
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert_eq!(fx.read(workflow), edited, "the skip keeps the edited file");
+    assert_eq!(fx.read("CLAUDE.md"), HUMAN, "the skip keeps CLAUDE.md");
+}
+
+// REQ-7 and REQ-9: an edited flat role file of an earlier layout is a conflict of the generation
+// step; the skip is offered, keeps that file and the nested copy of its role out, and nothing
+// else is stopped.
+#[test]
+fn ac3_an_edited_flat_role_conflict_offers_the_skip() {
+    let fx = Fx::new();
+    fx.with_profile(&["claude"]);
+    let plan = fx.update_plan();
+    let mut request = step(&plan, "generation")["apply"]["stdin"]["request"].clone();
+    request["native_roles"] = json!([{
+        "role_id": "prj-fixer", "host": "claude",
+        "purpose": "Fix lint and test failures", "tools": ["Bash", "Edit"]
+    }]);
+    let (planned, digest) = plan_digest(&fx, &request);
+    fx.call(
+        &[
+            "generation-apply",
+            fx.p(),
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            REF,
+        ],
+        &serde_json::to_vec(&planned).unwrap(),
+    );
+    // The earlier layout: the role file flat, and the manifest naming that path.
+    let (nested, flat) = (
+        ".claude/agents/moai/prj-fixer.md",
+        ".claude/agents/prj-fixer.md",
+    );
+    fs::rename(fx.root.join(nested), fx.root.join(flat)).unwrap();
+    let manifest = moai_cli::state_root::path(&fx.root, "manifests/generation.json");
+    let mut value: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
+    for entry in value["owned_files"].as_array_mut().unwrap() {
+        if entry["path"] == json!(nested) {
+            entry["path"] = json!(flat);
+        }
+    }
+    fs::write(&manifest, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+    fx.write(
+        flat,
+        "---\nname: prj-fixer\ndescription: mine\n---\n\nmine\n",
+    );
+
+    let plan = fx.update_plan();
+    let generation = step(&plan, "generation");
+    assert_eq!(generation["state"], "conflict", "{generation}");
+    assert_eq!(choice_ids(generation), ["skip-conflicts"], "{generation}");
+    let skip = choice(generation, "skip-conflicts");
+    assert!(
+        skip["effect"].as_str().unwrap().contains(flat),
+        "the effect does not name the file it keeps: {skip}"
+    );
+    let applied = fx.apply(skip);
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert!(fx.read(flat).contains("mine"), "the edited file stays");
+    assert!(
+        !fx.root.join(nested).exists(),
+        "the nested copy is skipped too"
+    );
 }
 
 // REQ-9: nothing to choose, no key.
