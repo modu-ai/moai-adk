@@ -44,7 +44,10 @@ fn moai(dir: &Path, args: &[&str]) -> (Option<i32>, Value) {
 fn judge_message(dir: &Path, message: &str) -> (Option<i32>, Value) {
     let file = dir.join("MSG");
     std::fs::write(&file, message).unwrap();
-    moai(dir, &["trailer-check", "--message-file", file.to_str().unwrap()])
+    moai(
+        dir,
+        &["trailer-check", "--message-file", file.to_str().unwrap()],
+    )
 }
 
 fn kinds(v: &Value) -> Vec<String> {
@@ -141,7 +144,10 @@ fn ac3_a_range_names_the_split_block_and_it_adds_no_failure() {
         .filter(|f| f["kind"] == "split_trailer_block")
         .collect();
     assert_eq!(split.len(), 3, "{v}");
-    assert!(split.iter().all(|f| f["fails"] == Value::Bool(false)), "{v}");
+    assert!(
+        split.iter().all(|f| f["fails"] == Value::Bool(false)),
+        "{v}"
+    );
     // On a `spec/` branch the unread `Moai-Spec` fails exactly as it did before this check.
     let (code, v) = moai(dir, &["trailer-check", &range, "--branch", "spec/x"]);
     assert_eq!(code, Some(1), "{v}");

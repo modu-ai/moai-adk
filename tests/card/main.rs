@@ -107,5 +107,6 @@ mod release_pr_three_os;
 mod release_suite;
 mod startable_shared;
 mod trailer_check_cli;
+mod trailer_paragraph_guard_cli;
 mod trailer_verified_cli;
 mod verified_trailer_in_use_cli;
