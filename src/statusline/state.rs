@@ -1689,6 +1689,10 @@ const _: () = assert!(CARDS_BUSY_TIMEOUT.as_millis() <= 100);
 /// that was never taken has none, and an active or review card with no reservation row at all, an
 /// older ledger's, keeps every note as it did); a landing counts when it is at or after that
 /// reservation (REQ-6).
+///
+/// SPEC-20261126-statusline-stale-submit: the notes statement also selects each note's
+/// `created_at` as its fifth column, so the age of the marker note can be told from the render's
+/// clock; it stays one SELECT and the count stays four.
 const FLOW_STATEMENTS: [&str; 4] = [
     "SELECT card_id, \
             CASE WHEN state = 'hold' AND card_id IN \
@@ -1697,7 +1701,7 @@ const FLOW_STATEMENTS: [&str; 4] = [
      UNION ALL SELECT -1, 'done_today', count(*) FROM card \
      WHERE state = 'done' AND closed_at >= ?1",
     // `NOTE_HEAD_CHARS` is 1000: the literal keeps the statement a constant.
-    "SELECT n.card_id, n.kind, n.author, substr(n.body, 1, 1000) FROM card_note n \
+    "SELECT n.card_id, n.kind, n.author, substr(n.body, 1, 1000), n.created_at FROM card_note n \
      JOIN card c ON c.card_id = n.card_id WHERE c.state IN ('ready', 'active', 'review') \
      AND n.created_at >= coalesce((SELECT max(r.acquired_at) FROM reservation r \
                                    WHERE r.card_id = n.card_id), \
@@ -1711,6 +1715,11 @@ const FLOW_STATEMENTS: [&str; 4] = [
 ];
 
 const _: () = assert!(NOTE_HEAD_CHARS == 1000);
+
+/// How old, in seconds, the submit marker of a `ready` card may be before the card counts as
+/// ready again (SPEC-20261126-statusline-stale-submit D-1): one day. A marker exactly this old is
+/// still a submission; a card nobody audited for longer waits for a lane, not for a check.
+const STALE_SUBMIT_SECS: i64 = 86_400;
 
 /// The cards of `project`'s local ledger (`$HOME/.moai/projects/<project_id>/`, the one
 /// `moai card list` reads) by the stage of their progress, for the flow line. Read-only like
@@ -1880,10 +1889,12 @@ fn split_flow(
                 r.get::<_, String>(1)?,
                 r.get::<_, String>(2)?,
                 r.get::<_, String>(3)?,
+                r.get::<_, i64>(4)?,
             ))
         })
         .ok()?;
-    let mut markers: HashMap<i64, Marker> = HashMap::new();
+    // The marker of each card with the time of the note that decided it.
+    let mut markers: HashMap<i64, (Marker, i64)> = HashMap::new();
     let mut decided: Option<i64> = None;
     // The card the walk is on and whether a note of the leader's answer was seen above (newer
     // than) the notes still to read.
@@ -1893,7 +1904,7 @@ fn split_flow(
         if spent() {
             return None;
         }
-        let (card, kind, author, body) = row.ok()?;
+        let (card, kind, author, body, noted_at) = row.ok()?;
         if walking != Some(card) {
             walking = Some(card);
             answered = false;
@@ -1908,7 +1919,7 @@ fn split_flow(
         match marker_of(&body) {
             Some(Marker::Blocked) if answered => {}
             Some(marker) => {
-                markers.insert(card, marker);
+                markers.insert(card, (marker, noted_at));
                 decided = Some(card);
             }
             None => {}
@@ -1971,9 +1982,12 @@ fn split_flow(
     };
     let mut stages: HashMap<i64, Stage> = HashMap::new();
     for (card, state) in open {
+        let (marker, noted_at) = markers
+            .get(card)
+            .map_or((None, 0), |(marker, at)| (Some(*marker), *at));
         let Some(stage) = stage_of(
             state,
-            markers.get(card).copied(),
+            stage_marker(state, marker, noted_at, now),
             landed.contains(card),
             live.contains(card),
         ) else {
@@ -2020,6 +2034,21 @@ impl Reservation {
 
     fn is_held(&self) -> bool {
         matches!(self.status.as_str(), "held" | "held_for_review")
+    }
+}
+
+/// The marker [`stage_of`] should see (SPEC-20261126-statusline-stale-submit REQ-1 to REQ-3): a
+/// submit marker of a `ready` card whose note is strictly older than [`STALE_SUBMIT_SECS`] at the
+/// render's clock is none, so the card counts as ready again; every other marker, and every other
+/// state, passes unchanged. A note newer than the clock has a negative age and is fresh.
+fn stage_marker(state: &str, marker: Option<Marker>, noted_at: i64, now: i64) -> Option<Marker> {
+    match marker {
+        Some(Marker::Submitted)
+            if state == "ready" && now.saturating_sub(noted_at) > STALE_SUBMIT_SECS =>
+        {
+            None
+        }
+        other => other,
     }
 }
 
@@ -4019,6 +4048,125 @@ mod stage_tests_edges {
             dir: Some(Path::new("relative/path")),
         };
         assert_eq!(f.flow(NOW, &elsewhere).mine, None);
+    }
+}
+
+/// AC-2 of SPEC-20261126-statusline-stale-submit: a submit marker of a ready card older than the
+/// limit is no marker, at its edges; no other marker, state or age changes.
+#[cfg(test)]
+mod stale_submit_tests {
+    use super::*;
+
+    const NOW: i64 = 1_800_000_000;
+
+    /// The stage of a card whose newest marker note is `age` seconds old at `NOW`, through the
+    /// pure function and `stage_of`, as `split_flow` calls them.
+    fn stage_at(state: &str, marker: Option<Marker>, age: i64) -> Option<Stage> {
+        stage_of(
+            state,
+            stage_marker(state, marker, NOW - age, NOW),
+            false,
+            false,
+        )
+    }
+
+    #[test]
+    fn a_ready_submission_goes_stale_strictly_after_the_limit() {
+        let table = [
+            (
+                STALE_SUBMIT_SECS - 1,
+                Some(Marker::Submitted),
+                Stage::Submitted,
+            ),
+            (STALE_SUBMIT_SECS, Some(Marker::Submitted), Stage::Submitted),
+            (STALE_SUBMIT_SECS + 1, None, Stage::Ready),
+            (30 * STALE_SUBMIT_SECS, None, Stage::Ready),
+            // A note newer than the clock is fresh.
+            (-1, Some(Marker::Submitted), Stage::Submitted),
+            (
+                -STALE_SUBMIT_SECS - 1,
+                Some(Marker::Submitted),
+                Stage::Submitted,
+            ),
+        ];
+        for (age, kept, stage) in table {
+            assert_eq!(
+                stage_marker("ready", Some(Marker::Submitted), NOW - age, NOW),
+                kept,
+                "age {age}"
+            );
+            assert_eq!(
+                stage_at("ready", Some(Marker::Submitted), age),
+                Some(stage),
+                "age {age}"
+            );
+        }
+    }
+
+    #[test]
+    fn no_other_marker_state_or_age_changes() {
+        let ages = [
+            -1,
+            0,
+            STALE_SUBMIT_SECS,
+            STALE_SUBMIT_SECS + 1,
+            3 * STALE_SUBMIT_SECS,
+        ];
+        // The marker passes unchanged for every state and age but a ready card's submission.
+        for state in ["draft", "ready", "active", "review", "hold", "done"] {
+            for marker in [
+                None,
+                Some(Marker::Submitted),
+                Some(Marker::Audited),
+                Some(Marker::Blocked),
+                Some(Marker::Working),
+            ] {
+                for age in ages {
+                    if state == "ready"
+                        && marker == Some(Marker::Submitted)
+                        && age > STALE_SUBMIT_SECS
+                    {
+                        continue;
+                    }
+                    assert_eq!(
+                        stage_marker(state, marker, NOW - age, NOW),
+                        marker,
+                        "{state} {marker:?} age {age}"
+                    );
+                }
+            }
+        }
+        // The resulting stages: an audit PASS keeps its stage for three days (D-3), a block or a
+        // working marker on a ready card is as before, and a held card is not aged (D-4).
+        let old = 3 * STALE_SUBMIT_SECS;
+        assert_eq!(
+            stage_at("ready", Some(Marker::Audited), old),
+            Some(Stage::Audited)
+        );
+        assert_eq!(
+            stage_at("ready", Some(Marker::Blocked), old),
+            Some(Stage::Ready)
+        );
+        assert_eq!(
+            stage_at("ready", Some(Marker::Working), old),
+            Some(Stage::Ready)
+        );
+        assert_eq!(stage_at("ready", None, old), Some(Stage::Ready));
+        assert_eq!(
+            stage_at("active", Some(Marker::Submitted), 2 * STALE_SUBMIT_SECS),
+            Some(Stage::Submitted)
+        );
+        assert_eq!(
+            stage_at("review", None, 2 * STALE_SUBMIT_SECS),
+            Some(Stage::Submitted)
+        );
+        assert_eq!(
+            stage_at("review", Some(Marker::Submitted), 2 * STALE_SUBMIT_SECS),
+            Some(Stage::Submitted)
+        );
+        assert_eq!(stage_at("draft", None, old), Some(Stage::Draft));
+        assert_eq!(stage_at("hold", None, old), Some(Stage::Hold));
+        assert_eq!(stage_at("done", Some(Marker::Submitted), old), None);
     }
 }
 
