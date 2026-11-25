@@ -68,6 +68,7 @@ created: 2026-11-26
 - write: `tests/docs_installer_paths.rs`
 - write: `.moai/specs/SPEC-20261126-install-docs-match-code/**`
 - write (shared file, only by `moai card line-lease`): `tools/repo_scans.json`
+- write (shared file, only by `moai card line-lease`): `tests/areas.toml` (the word `docs` of the new test file's name)
 - read-only: `src/state_root.rs`, `src/home_root.rs`, `src/host_home.rs`, `install/install.ps1`
 - forbidden: `Cargo.toml`, `skills/**`, `docs/**`, `src/gate.rs`
 
@@ -97,3 +98,26 @@ created: 2026-11-26
 | D-5 | 호스트 감지는 Claude 만이에요(Codex 는 빠졌어요). `CLAUDE_CONFIG_DIR` 은 `host_home` 의 규칙을 그대로 따라요. | 사용자 선택(2026-11-20) 과 Codex 제거 결정(2026-11-21) | — |
 | D-6 | `install/` 아래 쓰기(조각 B)는 그 이름 바꾸기 카드가 착지한 뒤 NeXT 끝에서 해요. | 그 레인과의 합의(2026-11-26): 줄은 겹치지 않지만 예약은 그쪽이에요 | 리더가 지금 쓰라고 하면 조각 B 를 앞당겨요 |
 | D-7 | `install.sh` 의 `detect_hosts` 시험은 새 Rust 시험이 함수 본문을 임시 HOME 에서 `sh` 로 돌려요. 기존 Python 시험은 고치지 않아요. | Python 금지, 스크립트에는 Rust 로 돌릴 틀이 아직 없어요 | 틀이 생기면 그쪽으로 옮겨요 |
+
+## Result
+
+2026-11-25T23:23:59Z (`date -u`) 기준, macOS, 작업 폴더 `.claude/worktrees/docs-install-g10`, 바탕 `e946ae8102bc234fe083408d644b0c822215956e`(가지를 딴 `NeXT` 끝; 이후 `NeXT` 가 움직였고 검사는 따라가지 않았어요).
+
+- 순서: SPEC 초안 `54a81365cf`, RED `6163dd0a80`(`moai tdd red`가 새 시험 5개의 실패를 기록, `test-failure` exit 100), GREEN `7c70f8ad1d`, 시험 등록 `77f5488e72`. `moai tdd green`이 RED 체크를 다시 돌려 통과를 확인했고 사이클은 `moai tdd done` 으로 닫았어요.
+- AC-1 met: `the_state_folder_sentences_match_the_state_root_rules` 통과(README.md 와 README.ko.md 의 상태 폴더 칸과 FAQ 문장이 새 폴더, 이전 RC 가 유지하는 폴더, 사용자 상태 규칙을 `earlier`/`이전` 낱말과 함께 말해요).
+- AC-2 met, AC-3 met: `the_installer_section_names_the_scripts_and_the_entry_the_installer_prints` 통과(설치 섹션이 두 스크립트·두 주소·`install/README.md` 링크를 이름하고, `moai update` → `moai cc` → `/moai project` 차례가 설치 스크립트의 Next steps 출력과 같아요).
+- AC-4 met: `the_question_source_sentence_matches_the_installer` 통과(`install/README.md` 의 한 문장이 표준 입력, `/dev/tty`, 묻지 않음을 이 차례로 말하고 "never shows the menu" 는 없어요; 같은 문단 앞 문장의 "stdin 과 stdout 이 둘 다 터미널" 은 `install.ps1` 만 말하도록 고쳤어요).
+- AC-5 met: `the_installed_tools_follow_the_claude_config_dir`, `the_installed_tools_fall_back_to_the_home_folder_when_the_variable_is_refused` 통과. `installed_tools_with` 는 resolver 를 쓰고, `installed_tools` 는 `host_home::resolve` 로 프로세스 환경을 읽어요(차이는 아래).
+- AC-6 met: `the_installer_host_detection_follows_the_claude_config_dir` 통과(`detect_hosts` 를 임시 HOME 에서 `sh` 로 돌려 세 경우와 경고 줄의 두 낱말을 확인).
+- AC-7 met, AC-8 met, AC-9 met: 세 가드 시험이 현재 문서에서 통과하고, 변이로 각각 죽어요(아래).
+- 시험 실행: `docs_installer_paths` + `update_model_pick` 27개 통과(`target/irad/green1.log`), 등록 뒤 `repo_scans_table`, `repo_scans_cli`, `gate_registry_tier`, `docs_installer_paths`, `update_model_pick` 110개 통과(`target/irad/reg1.log`).
+- guard mutants: 9개, 각각 정확한 한 줄 치환으로 적용하고 `git checkout` 으로 되돌렸으며 마지막 `git status --short` 는 비었어요. 모두 exit 100 으로 죽었고 `FAIL` 줄이 대상 시험의 이름이에요(`target/irad/mutants3.out`, 줄은 READY 노트에 있어요).
+- 차이 1: `installed_tools(home)` 는 `installed_tools_with(home, Some(home), env)` 가 아니라 `host_home::resolve(Claude, home)` 를 불러요. 이 세션처럼 `CLAUDE_CONFIG_DIR` 가 있는 환경에서 `Some(home)` 은 시험용 임시 HOME 에도 변수를 적용해 기존 시험 2개를 깨뜨렸어요. `resolve` 는 `home` 이 계정 홈일 때만 변수를 세요.
+- 차이 2: Decision D-6 (조각 B 는 이름 바꾸기 카드 착지 뒤)을 리더가 풀었어요(리더 메시지, 이름 바꾸기 카드의 READY 가 예약 경로를 반납한 뒤). 그 카드의 줄(install.sh 39·266·285·311·603, install.ps1, README 18·40)은 건드리지 않았고, 착지는 그쪽이 먼저예요.
+- 차이 3: 새 시험 파일은 `tests/areas.toml` 에 첫 낱말 `docs` 가 있어야 해서 `spec` 영역의 `doc` 옆에 더했어요(공유 파일, line-lease).
+- Gap: `README.md` 45번째 줄의 "릴리스 아카이브는 macOS arm64 에만 올라가요" 문장은 Rust 릴리스가 아직 없다는 사실과 어긋나 보이지만 릴리스 워크플로가 올리는 것을 읽지 않아 그대로 뒀어요. README.ko.md 는 같은 줄에 다른 문장(RC1 목표 범위)을 가져 영문과 어긋나요.
+- Gap: README.ko.md 의 옛 GitHub Issue 장부 문구(다이어그램, "Issue 하나에 세션 하나")와 Codex 단어는 README.md 와 달리 그대로예요. Codex 단어는 Codex 제거 SPEC 의 조각이 맡아요.
+- Gap: `install/install.ps1`, `README` 의 소개 문장, 설치 스크립트가 Rust 릴리스를 서빙하는 일은 범위 밖이에요.
+- Gap: `CLAUDE_CONFIG_DIR` 가 없는 폴더를 가리키고 홈의 `.claude` 가 있을 때 `install.sh` 가 무엇을 해야 하는지는 SPEC 이 말하지 않아서 정하지 않았어요(지금은 변수가 가리키는 폴더만 봐요). 시험도 이 경우를 고정하지 않아요.
+- Gap: 이 카드의 계획, 구현, 문서는 `moai-impl` 과 `moai-docs` 에이전트가 했고 별도 `moai-plan` 은 쓰지 않았어요(계획은 SPEC 의 Plan 이 그대로 대신해요). 위험한 경로는 없어요: 지우는 일과 프로세스를 띄우는 일이 없고, `sh` 는 임시 HOME 에서 `detect_hosts` 함수 본문만 돌려요.
+- `check affected --card` 영수증과 그 단계별 exit 는 READY 노트에 있어요.

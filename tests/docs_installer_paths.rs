@@ -367,7 +367,7 @@ struct Readme {
     install_heading: &'static str,
     first_run_heading: &'static str,
     state_row_label: &'static str,
-    /// The word that says the `.moai-cli` folder is the earlier RC's.
+    /// The word that says the kept state folder belongs to the earlier RC.
     earlier: &'static str,
     /// Wording that says the installer is not published, which the tree contradicts.
     banned: &'static [&'static str],
@@ -405,7 +405,8 @@ fn section(text: &str, heading: &str) -> Option<(usize, Vec<(usize, String)>)> {
     Some((start + 1, body))
 }
 
-/// Whether `text` names `folder` as a whole name: `.moai` followed by `-cli` is another folder.
+/// Whether `text` names `folder` as a whole name: the new folder name followed by `-cli` is the
+/// earlier folder, not this one.
 fn names_folder(text: &str, folder: &str) -> bool {
     text.match_indices(folder).any(|(i, _)| {
         let next = text[i + folder.len()..].chars().next();
