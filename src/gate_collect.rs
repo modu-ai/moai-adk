@@ -58,6 +58,46 @@ fn git_ok(dir: &Path, args: &[&str]) -> Result<String> {
     }
 }
 
+/// The longest diff read for the weakened-test check; a longer one is not read.
+const MAX_WEAKENING_DIFF: usize = 8 * 1024 * 1024;
+
+/// The weakened-test findings of the diff from the merge base to the head, rendered one line
+/// each, or `None` when the diff cannot be read or is too long to read: unknown is never an
+/// empty list (SPEC-20261120-test-weakening-detection REQ-9).
+fn weakened_tests(dir: &Path, merge_base: &str, head: &str) -> Option<Vec<String>> {
+    let (ok, diff) = git(
+        dir,
+        &[
+            "diff",
+            "--no-ext-diff",
+            "--no-color",
+            "--no-renames",
+            "--unified=0",
+            merge_base,
+            head,
+        ],
+    )
+    .ok()?;
+    if !ok {
+        return None;
+    }
+    weakened_in(&diff)
+}
+
+/// The findings of a diff text, one rendered line each, or `None` when the text is longer than
+/// [`MAX_WEAKENING_DIFF`] bytes: a diff of exactly that length is read, one byte more is not.
+fn weakened_in(diff: &str) -> Option<Vec<String>> {
+    if diff.len() > MAX_WEAKENING_DIFF {
+        return None;
+    }
+    Some(
+        gate::test_weakening::detect(diff)
+            .iter()
+            .map(|f| f.render())
+            .collect(),
+    )
+}
+
 /// Claims named by `Moai-Claim` trailers read at most per pull request.
 const MAX_CLAIMS: usize = 20;
 
@@ -991,6 +1031,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         dir,
         &["diff", "--no-renames", "--name-only", &merge_base, &head],
     )?);
+    let test_weakening = weakened_tests(dir, &merge_base, &head);
     let authors = pr_authors(t, &base_url, dir, &merge_base, &head)?;
     let unclaimed = commits_without_claim(dir, &merge_base, &head)?;
 
@@ -1128,6 +1169,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         stacked_below: Some(stacked),
         body_tier: gate::parse_body_tier(&body),
         merge_base: Some(merge_base),
+        test_weakening,
         ignored: stacked_ignored,
     };
     snapshot.keep_member_comments();
@@ -1192,5 +1234,107 @@ mod tests {
         assert!(lib_mods_only_kept(d, &tree_of(&head), &base, &head).unwrap());
         // The tip's tree lacks it: not kept, so G6 stops on the overlap.
         assert!(!lib_mods_only_kept(d, &tree_of(&tip), &base, &head).unwrap());
+    }
+
+    fn commit_file(dir: &Path, path: &str, text: &str, msg: &str) -> String {
+        let full = dir.join(path);
+        std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+        std::fs::write(full, text).unwrap();
+        git_in(dir, &["add", "-A"]);
+        git_in(dir, &["commit", "-q", "-m", msg]);
+        git_in(dir, &["rev-parse", "HEAD"])
+    }
+
+    /// SPEC-20261120-test-weakening-detection REQ-8, REQ-9: the collector lists the findings of
+    /// the diff from the merge base to the head, an empty list for a diff that weakens nothing,
+    /// and `None` (unknown) for a diff it cannot read, never an empty list.
+    #[test]
+    fn the_collector_lists_weakened_tests_and_says_unknown_when_the_diff_is_unreadable() {
+        let tmp = tempfile::tempdir().unwrap();
+        let d = tmp.path();
+        git_in(d, &["init", "-q", "-b", "main"]);
+        let two = "#[test]\nfn one() {\n    assert!(true);\n}\n\n#[test]\nfn two() {\n    assert!(true);\n}\n";
+        let base = commit_file(d, "tests/a.rs", two, "base");
+
+        // Weakened: the second test is removed and the first gains a skip.
+        let ignore = ["#[", "ignore]"].concat();
+        let weak = format!("{ignore}\n#[test]\nfn one() {{\n    assert!(true);\n}}\n");
+        let head = commit_file(d, "tests/a.rs", &weak, "weaken");
+        let found = weakened_tests(d, &base, &head).expect("a readable diff");
+        let kinds: Vec<&str> = found.iter().filter_map(|l| l.split(' ').next()).collect();
+        assert!(kinds.contains(&"test_deleted"), "{found:?}");
+        assert!(kinds.contains(&"skip_added"), "{found:?}");
+        assert!(found.iter().all(|l| l.contains("tests/a.rs:")), "{found:?}");
+
+        // Nothing weakened: a new test with an assertion is an empty list, not unknown.
+        let more = commit_file(
+            d,
+            "tests/b.rs",
+            "#[test]\nfn b() {\n    assert!(true);\n}\n",
+            "add",
+        );
+        assert_eq!(weakened_tests(d, &head, &more), Some(vec![]));
+
+        // Unreadable: a revision that does not exist is unknown, never an empty list.
+        assert_eq!(weakened_tests(d, &"0".repeat(40), &head), None);
+        assert_eq!(weakened_tests(&d.join("no-such-dir"), &base, &head), None);
+    }
+
+    /// The limit is 8 MiB and the edge is exact (audit B1): a diff of that many bytes is read, one
+    /// byte more is unknown, never an empty list.
+    #[test]
+    fn the_diff_limit_reads_exactly_eight_mebibytes_and_not_one_byte_more() {
+        assert_eq!(MAX_WEAKENING_DIFF, 8 * 1024 * 1024);
+        // A diff that deletes one test, padded with one long added line of a plain text file to
+        // the length wanted.
+        let diff_of = |len: usize| -> String {
+            let head = "diff --git a/tests/a.rs b/tests/a.rs\nindex 1111111..2222222 100644\n--- a/tests/a.rs\n+++ b/tests/a.rs\n@@ -1,3 +0,0 @@\n-#[test]\n-fn gone() {\n-}\n";
+            let pad_head = "diff --git a/notes.txt b/notes.txt\nnew file mode 100644\nindex 0000000..2222222\n--- /dev/null\n+++ b/notes.txt\n@@ -0,0 +1 @@\n+";
+            let fixed = head.len() + pad_head.len() + 1;
+            assert!(len > fixed);
+            format!("{head}{pad_head}{}\n", "x".repeat(len - fixed))
+        };
+        for (len, readable) in [
+            (MAX_WEAKENING_DIFF - 1, true),
+            (MAX_WEAKENING_DIFF, true),
+            (MAX_WEAKENING_DIFF + 1, false),
+        ] {
+            let diff = diff_of(len);
+            assert_eq!(diff.len(), len);
+            let found = weakened_in(&diff);
+            if readable {
+                let lines = found.unwrap_or_else(|| panic!("{len} bytes must be read"));
+                assert_eq!(lines.len(), 1, "{lines:?}");
+                assert!(
+                    lines[0].starts_with("test_deleted tests/a.rs:1 "),
+                    "{lines:?}"
+                );
+            } else {
+                assert_eq!(found, None, "{len} bytes is one byte too long");
+            }
+        }
+    }
+
+    /// The diff is read without rename detection (audit B2). A test file moved out of the test
+    /// folders with its assertions would otherwise show as a bare rename with no removed line;
+    /// read as a delete and an add, the assertions that left the test folders are counted.
+    #[test]
+    fn a_test_file_moved_out_of_the_test_folders_is_read_as_a_delete_and_an_add() {
+        let tmp = tempfile::tempdir().unwrap();
+        let d = tmp.path();
+        git_in(d, &["init", "-q", "-b", "main"]);
+        let body = "#[test]\nfn one() {\n    assert!(true);\n    assert_eq!(1, 1);\n}\n";
+        let base = commit_file(d, "tests/a.rs", body, "base");
+        std::fs::create_dir_all(d.join("src")).unwrap();
+        git_in(d, &["mv", "tests/a.rs", "src/a.rs"]);
+        git_in(d, &["commit", "-q", "-m", "move"]);
+        let head = git_in(d, &["rev-parse", "HEAD"]);
+        let found = weakened_tests(d, &base, &head).expect("a readable diff");
+        assert!(
+            found
+                .iter()
+                .any(|l| l.starts_with("assertions_reduced tests/a.rs:")),
+            "the moved assertions are counted as removed from the test folders: {found:?}"
+        );
     }
 }
