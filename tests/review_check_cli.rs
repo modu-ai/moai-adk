@@ -355,7 +355,9 @@ fn the_audit_workflow_describes_the_review_steps() {
     )
     .unwrap();
     for needle in [
-        "## Review steps",
+        // The four review steps are items 4 to 7 of the one Procedure list
+        // (SPEC-20261125-audit-text-facts REQ-1), so the old `## Review steps` heading is gone.
+        "## Procedure",
         "moai review-package PROJECT --base <base SHA> --head <head SHA>",
         "moai review-check PROJECT --head <head SHA>",
         "come from the base commit only",
