@@ -69,3 +69,31 @@ approval:
 | D-1 | Reuse `registry_error` for the all-unreadable case instead of a new field and a new refusal text. | One path: `at_limit`, the refusal, `card next` and `card/work.rs` already stop on it, and the wording "the session registry cannot be read" is true here too. | Give the case its own field and text. |
 | D-2 | A registry is "all unreadable" when it has no readable entry, no held lock and at least one unreadable item; a released lock file is not an item. | The scan records only these three kinds; the stricter reading fails closed and needs no change to `lane_registry`. | Count released locks as readable items by extending the scan. |
 | D-3 | The card is a tier 2 gate change, so the SPEC needs the leader's delegated approval before the code is written. | `CLAUDE.md` Flow step 3. | none |
+
+## Result
+
+구현했어요(2026-11-26, 브랜치 `spec/wip-limit-all-unreadable-20261126`). 승인 front matter 는 `3493b0ba27`, verify 명령 수정은 `96b1bc5bac`, red 시험은 `605eb629d7`, 코드는 `7d46809fdf`(`src/card/wip_limit.rs` 한 파일)예요. 기반은 통합 브랜치 `NeXT` 의 `e946ae8102` 와 합쳐진 세션 레지스트리 세션 키 헤드 `76b6b54dc8`(머지 `b509058658`)이에요. red 시험은 코드를 바꾸기 전에 먼저 돌렸어요. 독립 감사는 이 레인이 하지 않아요.
+
+- 바뀐 것: `live_lanes` 에서 `scan.entries` 와 `scan.locked` 가 모두 비었고 `scan.unreadable` 만 비지 않았을 때 `registry_error: Some("the sessions folder holds N item(s) and none can be read: <names>")` 를 돌려줘요. `live` 는 0 이고 `unreadable` 은 채워 둬요. `Reading::at_limit`, `refusal`, `json`, `read`, `src/card/work.rs`, `src/lane_registry.rs` 는 건드리지 않았어요(D-1, D-2).
+- 동작: 이 변경 전에는 모든 항목이 읽히지 않는 레지스트리가 살아 있는 레인 0 으로 세어져서 한도가 꺼지고 `card take` 가 아무 말 없이 통과했어요. 이제는 읽히지 않는 항목의 이름을 밝히며 거절해요. 항목이 없는 레지스트리, 읽을 수 있는 항목이 있는 레지스트리, `wip_limit` 0 은 전과 같아요.
+- 시험: `all_unreadable_ac1_…`(깨진 항목 하나, 그다음 둘: `card take` 와 `card add` 가 항목을 이름으로 밝히며 거절하고, `card next` 는 `registry_error` 를 문자열로, `at_limit` 을 true 로, `unreadable` 을 채워서 답하며 다음 카드는 없어요), `all_unreadable_ac2_…`(빈 폴더, 끝난 lease 와 깨진 항목, 살아 있는 레인과 깨진 항목: 각각 전의 답을 지켜요), `all_unreadable_ac3_…`(`wip_limit` 0 은 꺼진 채예요)를 `tests/card/card_wip_limit.rs` 끝에 더했어요. 기존 wip 한도 시험은 하나도 고치지 않았고 모두 통과해요.
+- 어긋난 점: SPEC 의 verify 명령이 처음에는 없는 시험 바이너리를 가리켰어요. `96b1bc5bac` 이 `card` 바이너리로 고쳤고, verify 명령은 승인 digest 에 들지 않아서 digest 는 그대로예요.
+
+- AC-1: met — `all_unreadable_ac1_a_registry_with_only_unreadable_items_stops_the_take` 가 red(`605eb629d7`)에서는 `card take` 가 거절 1 대신 exit 0 으로 통과해 실패했고, green(`7d46809fdf`)에서는 통과해요. 가드 뮤턴트 (1) 이 이 시험을 실패시켜요.
+- AC-2: met — `all_unreadable_ac2_a_readable_item_or_no_item_keeps_the_earlier_answer` 가 세 경우를 고정하고, 기존 wip 한도 시험이 고치지 않은 채 같은 실행에서 통과해요. AC-2 시험은 old 트리에서도 통과했어요. 바뀌면 안 되는 동작을 고정하는 시험이기 때문이에요.
+- AC-3: met — `all_unreadable_ac3_wip_limit_zero_stays_off` 가 통과해요. AC-3 시험도 old 트리에서 통과했어요(위와 같은 이유예요).
+- AC-4: met — 가벼운 검사 다섯 개를 직접 돌렸어요: `git diff --check` exit 0, `cargo fmt --all -- --check` exit 0, `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0(`target/c550/clippy.log`), `moai spec check` errors 0·warnings 0, `moai trailer-check b509058658..HEAD`(이 카드의 커밋만) failing 0. 주의: 아직 착지하지 않은 앞선 카드의 합친 커밋을 포함한 `e946ae8102..HEAD` 범위는 그쪽 커밋의 `Moai-Verified` 가 규칙의 시작점이 되어 앞선 네 커밋이 `missing_verified` 로 걸려요. 그 카드가 착지하면 범위가 줄어서 풀려요.
+
+증거(헤드 `7d46809fdf` 의 작업 트리):
+
+- red, 커밋 `605eb629d7`: `cargo nextest run --locked --offline --no-fail-fast --test card -E 'test(/card_wip_limit::/)'` exit 100, 24개 실행, 23 통과·1 실패(`all_unreadable_ac1_a_registry_with_only_unreadable_items_stops_the_take`; `card take` 가 거절 1 대신 exit 0 으로 통과했어요) (`target/c550/red.log`).
+- green, 커밋 `7d46809fdf`: `cargo nextest run --locked --offline --no-fail-fast --test card -E 'test(/card_wip_limit::/) | test(/wip_limit/) | test(/card_next/)'` 28개 실행, 28 통과, 0 실패(`target/c550/green.log`).
+- clippy: `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0 (`target/c550/clippy.log`).
+- 가드 뮤턴트 (1): `live_lanes` 의 `!unreadable.is_empty()` 를 `unreadable.is_empty()` 로 뒤집고 `cargo nextest run --locked --offline --no-fail-fast --test card -E 'test(/card_wip_limit::/)'` 를 돌려 exit 100, 24개 실행, 2개 실패(`all_unreadable_ac1_…`, `all_unreadable_ac2_…`) (`target/c550/mutant1.log`).
+- 가드 뮤턴트 (2): `scan.entries.is_empty() &&` 조건을 빼고 같은 명령을 돌려 exit 100, 24개 실행, 2개 실패(`all_unreadable_ac2_…`, `lock_ac5_one_broken_entry_is_left_out_and_listed`) (`target/c550/mutant2.log`). 두 뮤턴트 모두 되돌린 뒤 `git status --short` 는 아무것도 찍지 않았어요.
+- 위험한 길의 실행: 임시 HOME 과 프로젝트를 `target/c550/` 아래에 만들고, 헤드 `7d46809fdf` 로 빌드한 실제 `target/debug/moai-cli` 로 `target/c550/dry.sh` 를 돌렸어요(exit 0, 출력은 `target/c550/dry.out`). 등록된 레인이 하나일 때 한도는 2 이고 `card take` 가 통과해요. 레지스트리의 그 항목 하나를 `{not json` 으로 덮어 모든 항목이 읽히지 않게 하자 `card next` 는 `lanes` 0, `at_limit` true, 항목 이름을 밝힌 `registry_error` 를 보이고, `card take` 는 `card conflict in wip_limit: card take refused: the session registry cannot be read, so the work-in-progress limit cannot be checked: the sessions folder holds 1 item(s) and none can be read: <항목 이름>; fix the registry folder, or set work_flow.wip_limit to 0 …` 로 거절돼요. `wip_limit` 0 에서는 같은 `card take` 가 성공해요.
+
+not_run:
+
+- `check affected --card` 영수증은 이 Result 가 든 헤드를 이름 짓는 READY 노트가 담아요.
+- 실제 프로젝트 레지스트리에 대한 실행, 다른 운영체제, 독립 감사는 돌리지 않았어요.
