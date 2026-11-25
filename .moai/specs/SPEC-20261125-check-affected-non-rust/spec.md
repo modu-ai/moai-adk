@@ -26,6 +26,10 @@ approval:
 
 읽는 사람: 레인, 이 변경의 감사자, Rust 가 아닌 저장소에서 MoAI 를 쓰는 사람.
 
+## Interview
+
+- none: 사용자가 방향을 직접 지시했고(카드 노트 8890: Rust 가 아닌 저장소도 지원한다) 따로 물은 선택이 없어요. 레인이 정한 것은 Decisions 에 있어요.
+
 ## Non-goals
 
 - Rust 저장소의 단계 선택·순서·요약 줄은 바뀌지 않아요(REQ-5). 이 SPEC 은 Rust 저장소에 프로필 `checks` 를 더하지 않아요.
