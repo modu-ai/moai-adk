@@ -441,3 +441,37 @@ fn a_folder_under_another_parent_is_left() {
     assert!(why.contains("parent"), "{why}");
     assert!(elsewhere.path().join("x").is_dir());
 }
+
+/// A folder that is no link itself but whose path now runs through a link resolves elsewhere:
+/// it is left, and what the link leads to keeps its content.
+#[cfg(unix)]
+#[test]
+fn a_path_that_now_runs_through_a_link_is_left() {
+    let (holder, work) = (scratch(), scratch());
+    let root = holder.path().canonicalize().unwrap().join("root");
+    std::fs::create_dir(&root).unwrap();
+    let from = vec![("root", root.clone())];
+    let private = prepare(work.path(), &from).unwrap();
+    std::fs::write(private.path.join("keep"), "kept\n").unwrap();
+    // The root moves away and a link takes its place.
+    let moved = holder.path().canonicalize().unwrap().join("moved");
+    std::fs::rename(&root, &moved).unwrap();
+    std::os::unix::fs::symlink(&moved, &root).unwrap();
+    let answer = finish(private, 0);
+    assert_eq!(answer["state"], "left", "{answer}");
+    assert!(
+        answer["reason"].as_str().unwrap().contains("resolves"),
+        "{answer}"
+    );
+    let name = moved
+        .read_dir()
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .file_name();
+    assert_eq!(
+        std::fs::read_to_string(moved.join(name).join("keep")).unwrap(),
+        "kept\n"
+    );
+}
