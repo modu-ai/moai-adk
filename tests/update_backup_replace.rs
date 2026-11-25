@@ -231,7 +231,7 @@ fn token(plan: &Value, name: &str) -> String {
 }
 
 fn backups(home: &Path) -> Vec<PathBuf> {
-    let dir = home.join(".moai-cli/backups");
+    let dir = home.join(".moai/backups");
     if !dir.exists() {
         return Vec::new();
     }
@@ -311,7 +311,7 @@ fn plan_previews_backup_then_replace_and_writes_nothing() {
             .starts_with("sha256:"));
         assert_eq!(
             b["backup_root"],
-            json!(f.home.join(".moai-cli/backups").to_str().unwrap())
+            json!(f.home.join(".moai/backups").to_str().unwrap())
         );
         assert_eq!(b["replace_with"]["file_count"], json!(3));
         assert_eq!(b["replace_with"]["package_digest"], p["package_digest"]);
@@ -320,7 +320,7 @@ fn plan_previews_backup_then_replace_and_writes_nothing() {
     }
     assert_eq!(originals(&f), before, "plan wrote nothing");
     assert!(
-        !f.home.join(".moai-cli/backups").exists(),
+        !f.home.join(".moai/backups").exists(),
         "no backup folder from a plan"
     );
 }
@@ -666,10 +666,11 @@ fn assert_symlinked_state_path_is_refused(link_rel: &str) {
     );
 }
 
-/// B1 (audit 6812528075): `~/.moai-cli/backups` is a symlink leading out of HOME.
+/// B1 (audit 6812528075): the backups folder (now `~/.moai/backups`, revision 3 of the update
+/// baseline SPEC) is a symlink leading out of HOME.
 #[test]
 fn a_symlinked_backups_directory_is_refused() {
-    assert_symlinked_state_path_is_refused(".moai-cli/backups");
+    assert_symlinked_state_path_is_refused(".moai/backups");
 }
 
 /// B1 (audit 6812528075): `~/.moai-cli` itself is a symlink leading out of HOME.
@@ -753,7 +754,7 @@ fn apply_env(
 }
 
 fn backups_dir(f: &Fixture) -> PathBuf {
-    f.home.join(".moai-cli/backups")
+    f.home.join(".moai/backups")
 }
 
 /// AC-1: replace, restore, replace again within the same (pinned) second. The second run

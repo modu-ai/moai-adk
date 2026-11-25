@@ -111,8 +111,10 @@ fn actions(host: &Value) -> BTreeMap<String, String> {
         .collect()
 }
 
+/// The backup folders: always under the HOME's `.moai`, whichever folder holds the state
+/// (SPEC-20261125-update-conflict-baseline revision 3, REQ-17).
 fn backups(home: &Path) -> Vec<String> {
-    names_in(&home.join(EARLIER).join("backups"))
+    names_in(&home.join(".moai/backups"))
 }
 
 fn host_receipts(home: &Path) -> Vec<Value> {
@@ -398,7 +400,7 @@ fn the_confirmed_run_backs_up_then_owns_the_adopted_files() {
     let names = backups(&h.home);
     assert_eq!(names.len(), 1, "{names:?}");
     assert!(names[0].ends_with("-claude-adopt"), "{names:?}");
-    let dir = h.home.join(EARLIER).join("backups").join(&names[0]);
+    let dir = h.home.join(".moai/backups").join(&names[0]);
     let manifest: Value =
         serde_json::from_slice(&fs::read(dir.join("MANIFEST.json")).unwrap()).unwrap();
     assert_eq!(

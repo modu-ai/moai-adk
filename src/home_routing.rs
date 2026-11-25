@@ -104,6 +104,10 @@ pub struct HostPlan {
     /// are ones an earlier routing receipt recorded, so the update may remove it after a backup.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub legacy_flow: Option<LegacyFlowPlan>,
+    /// SPEC-20261125-update-conflict-baseline revision 3 (REQ-19): the removal of the earlier flow
+    /// rule is left undone because the HOME's `.moai` cannot take its backup.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub backup_blocked: Vec<crate::update::BackupBlocked>,
 }
 
 /// The earlier flow rule file (`rules/moai/flow.md`) an update removes after a backup.
