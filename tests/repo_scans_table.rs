@@ -1544,31 +1544,6 @@ fn test_targets_are_sorted_unique_and_one_per_line() {
     );
 }
 
-/// REQ-9: the scans of a table that name `test_targets`.
-fn scans_naming_test_targets(scans: &[Value]) -> Vec<String> {
-    scans
-        .iter()
-        .filter(|s| s.get("test_targets").is_some())
-        .map(id)
-        .collect()
-}
-
-#[test]
-fn the_checked_in_table_names_no_test_targets_before_the_conversion() {
-    let scans = [
-        json!({"id": "reads-zz", "test_targets": ["a_cli"]}),
-        json!({"id": "other", "checks": ["cargo test --offline --locked --test a_cli"]}),
-    ];
-    assert_eq!(scans_naming_test_targets(&scans), ["reads-zz"]);
-    assert_eq!(
-        scans_naming_test_targets(&load()),
-        Vec::<String>::new(),
-        "tools/repo_scans.json names `test_targets`: an installed moai that does not read the \
-         field skips those targets without a word; the table is converted by the follow-up card \
-         after a build that reads both forms is installed, and that card removes this test"
-    );
-}
-
 /// The table text with one scan whose `test_targets` hold `names`, one name per line.
 fn table_with_targets(names: &[&str]) -> String {
     let lines: Vec<String> = names.iter().map(|n| format!("        \"{n}\"")).collect();
