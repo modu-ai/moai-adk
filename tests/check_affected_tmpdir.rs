@@ -2,7 +2,9 @@
 //! for its `test` step and passes it as `TMPDIR` to that step only. The folder lies outside the
 //! worktree, inside no git repository and with no session id shape in its path; a passed run
 //! removes it, a failed run keeps it, and the summary line gets no new word. Temporary git
-//! repositories and a fake `cargo` that writes the `TMPDIR` it received into a probe file.
+//! repositories and a fake `cargo` that writes the `TMPDIR` it received into a probe file; the
+//! fake is a shell script, so the file is Unix only.
+#![cfg(unix)]
 mod common;
 use common::git::{git, git_ok};
 use serde_json::Value;
@@ -67,7 +69,11 @@ fn fake_path() -> (tempfile::TempDir, String) {
         echo \"$* | TMPDIR=${TMPDIR-unset}\" >> \"$PROBE_OUT\"\n\
         case \"$*\" in\n\
         \"nextest run\"*)\n\
-          if [ -d \"$TMPDIR\" ]; then echo written > \"$TMPDIR/written\"; fi\n\
+          case \"${FAKE_TEST_MODE-}\" in\n\
+          swap) rm -r \"$TMPDIR\"; ln -s \"$VICTIM\" \"$TMPDIR\" ;;\n\
+          hang) echo written > \"$TMPDIR/written\"; echo $$ > \"$PROBE_PID\"; exec sleep 60 ;;\n\
+          *) if [ -d \"$TMPDIR\" ]; then echo written > \"$TMPDIR/written\"; fi ;;\n\
+          esac\n\
           exit \"${FAKE_TEST_EXIT:-0}\" ;;\n\
         esac\n\
         exit 0\n";
@@ -127,29 +133,61 @@ impl Run {
 }
 
 fn affected(fx: &Fixture, caller_tmp: &Path, test_exit: &str) -> Run {
+    affected_with(fx, caller_tmp, test_exit, &[])
+}
+
+/// The `check affected --card` command of a fixture with the fake `cargo` in front, run under
+/// `caller_tmp` as its `TMPDIR`; `envs` are further variables for the fake.
+fn card_command(
+    fx: &Fixture,
+    caller_tmp: &Path,
+    test_exit: &str,
+    probe_file: &Path,
+    tools_path: &str,
+    slots: &Path,
+    envs: &[(&str, &Path)],
+) -> Command {
+    let mut cmd = Command::new(BIN);
+    cmd.args([
+        "check",
+        "affected",
+        &format!("{}..{}", fx.base, fx.head),
+        "--dir",
+    ])
+    .arg(fx.root())
+    .args(["--card", "--slot-dir"])
+    .arg(slots)
+    .env("PATH", tools_path)
+    .env("TMPDIR", caller_tmp)
+    .env("PROBE_OUT", probe_file)
+    .env("FAKE_TEST_EXIT", test_exit)
+    .env_remove("MOAI_HOME")
+    .env_remove("CARGO_TARGET_DIR")
+    .env_remove("FAKE_TEST_MODE")
+    .stdin(Stdio::null());
+    for (k, v) in envs {
+        cmd.env(k, v);
+    }
+    cmd
+}
+
+/// `affected` with more variables for the fake `cargo`; a string value is a mode word.
+fn affected_with(fx: &Fixture, caller_tmp: &Path, test_exit: &str, envs: &[(&str, &Path)]) -> Run {
     let (_tools, path) = fake_path();
     let slots = slot_dir();
     let probe = tempfile::tempdir().unwrap();
     let probe_file = probe.path().join("probe.txt");
-    let out = Command::new(BIN)
-        .args([
-            "check",
-            "affected",
-            &format!("{}..{}", fx.base, fx.head),
-            "--dir",
-        ])
-        .arg(fx.root())
-        .args(["--card", "--slot-dir"])
-        .arg(slots.path())
-        .env("PATH", &path)
-        .env("TMPDIR", caller_tmp)
-        .env("PROBE_OUT", &probe_file)
-        .env("FAKE_TEST_EXIT", test_exit)
-        .env_remove("MOAI_HOME")
-        .env_remove("CARGO_TARGET_DIR")
-        .stdin(Stdio::null())
-        .output()
-        .unwrap();
+    let out = card_command(
+        fx,
+        caller_tmp,
+        test_exit,
+        &probe_file,
+        &path,
+        slots.path(),
+        envs,
+    )
+    .output()
+    .unwrap();
     let text = String::from_utf8_lossy(&out.stdout).to_string();
     let v: Value = serde_json::from_str(&text)
         .unwrap_or_else(|_| panic!("{text} / {}", String::from_utf8_lossy(&out.stderr)));
@@ -355,4 +393,138 @@ fn the_summary_line_has_no_new_word() {
         assert!(known.contains(&key), "a new word `{key}` in {line}");
     }
     assert!(!line.contains("tmp"), "{line}");
+}
+
+/// AC-18, the dangerous path: the test step replaces its folder with a link to a victim folder
+/// while it runs. The removal never follows or removes the link, the victim keeps its content,
+/// and the answer says `left` with the reason.
+#[test]
+fn a_folder_swapped_for_a_link_during_the_run_is_never_followed() {
+    let fx = Fixture::new();
+    let caller = tempfile::tempdir().unwrap();
+    let caller_path = caller.path().canonicalize().unwrap();
+    let victim = tempfile::tempdir().unwrap();
+    fs::create_dir(victim.path().join("deep")).unwrap();
+    fs::write(victim.path().join("deep/keep"), "victim\n").unwrap();
+    let run = affected_with(
+        &fx,
+        &caller_path,
+        "0",
+        &[
+            ("FAKE_TEST_MODE", Path::new("swap")),
+            ("VICTIM", victim.path()),
+        ],
+    );
+    assert_eq!(run.answer["test_tmpdir"]["state"], "left", "{}", run.answer);
+    let reason = run.answer["test_tmpdir"]["reason"].as_str().unwrap();
+    assert!(reason.contains("no longer a folder"), "{reason}");
+    let seen = run.test_tmpdir();
+    assert!(Path::new(&seen)
+        .symlink_metadata()
+        .unwrap()
+        .file_type()
+        .is_symlink());
+    assert_eq!(
+        fs::read_to_string(victim.path().join("deep/keep")).unwrap(),
+        "victim\n"
+    );
+}
+
+/// AC-17, the dangerous path: a link and a folder that already carry names like the private
+/// folder's sit under the root. A run leaves them, and what the link leads to, as they were.
+#[test]
+fn a_planted_link_and_folder_under_the_root_survive_a_run() {
+    let fx = Fixture::new();
+    let caller = tempfile::tempdir().unwrap();
+    let caller_path = caller.path().canonicalize().unwrap();
+    let victim = tempfile::tempdir().unwrap();
+    fs::write(victim.path().join("keep"), "victim\n").unwrap();
+    std::os::unix::fs::symlink(victim.path(), caller_path.join("moai-affected-link")).unwrap();
+    fs::create_dir(caller_path.join("moai-affected-dir")).unwrap();
+    fs::write(caller_path.join("moai-affected-dir/keep"), "dir\n").unwrap();
+    let run = affected(&fx, &caller_path, "0");
+    assert_eq!(
+        run.answer["test_tmpdir"]["state"], "removed",
+        "{}",
+        run.answer
+    );
+    assert_eq!(
+        fs::read_to_string(victim.path().join("keep")).unwrap(),
+        "victim\n"
+    );
+    assert!(caller_path
+        .join("moai-affected-link")
+        .symlink_metadata()
+        .unwrap()
+        .file_type()
+        .is_symlink());
+    assert_eq!(
+        fs::read_to_string(caller_path.join("moai-affected-dir/keep")).unwrap(),
+        "dir\n"
+    );
+}
+
+/// The dangerous path of a hung child: the test step never ends and the run is killed. The
+/// folder stays with what the tests wrote, and nothing else under the root is removed.
+#[test]
+fn a_killed_run_leaves_its_folder_and_deletes_nothing() {
+    let fx = Fixture::new();
+    let caller = tempfile::tempdir().unwrap();
+    let caller_path = caller.path().canonicalize().unwrap();
+    fs::create_dir(caller_path.join("sibling")).unwrap();
+    fs::write(caller_path.join("sibling/keep"), "sibling\n").unwrap();
+    let (_tools, path) = fake_path();
+    let slots = slot_dir();
+    let probe = tempfile::tempdir().unwrap();
+    let probe_file = probe.path().join("probe.txt");
+    let pid_file = probe.path().join("child.pid");
+    let log = fs::File::create(probe.path().join("answer.json")).unwrap();
+    let mut child = card_command(
+        &fx,
+        &caller_path,
+        "0",
+        &probe_file,
+        &path,
+        slots.path(),
+        &[
+            ("FAKE_TEST_MODE", Path::new("hang")),
+            ("PROBE_PID", pid_file.as_path()),
+        ],
+    )
+    .stdout(log)
+    .spawn()
+    .unwrap();
+    // Wait for the fake test step to write into its folder, then kill the run.
+    let mut private = None;
+    for _ in 0..400 {
+        private = fs::read_dir(&caller_path).unwrap().find_map(|e| {
+            let p = e.unwrap().path();
+            let ours = p
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("moai-affected-");
+            (ours && p.join("written").is_file()).then_some(p)
+        });
+        if private.is_some() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    child.kill().unwrap();
+    child.wait().unwrap();
+    if let Ok(pid) = fs::read_to_string(&pid_file) {
+        let _ = Command::new("kill").arg(pid.trim()).status();
+    }
+    let private = private.expect("the test step reached its folder");
+    assert_eq!(
+        fs::read_to_string(private.join("written")).unwrap(),
+        "written\n"
+    );
+    assert_eq!(
+        fs::read_to_string(caller_path.join("sibling/keep")).unwrap(),
+        "sibling\n"
+    );
+    let entries = fs::read_dir(&caller_path).unwrap().count();
+    assert_eq!(entries, 2, "only the sibling and the private folder remain");
 }
