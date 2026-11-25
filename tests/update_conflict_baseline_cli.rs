@@ -1034,6 +1034,52 @@ fn ac13_recovery_reads_an_earlier_backup_under_the_earlier_state_folder() {
     );
 }
 
+/// The case the retirement of the earlier folder makes real: the HOME's state has since moved to the
+/// new folder (a valid marker, the receipts there), while the backup an earlier update made still
+/// stands under the earlier folder. The recovery reads it from there.
+#[test]
+fn ac13_recovery_reads_the_earlier_backup_once_the_state_is_the_new_folder() {
+    let (h, skill, original, old_root, name) =
+        replaced_with_backup_moved_to(&format!("{EARLIER}/backups"));
+    let (earlier, newer) = (h.home.join(EARLIER), h.home.join(NEWER));
+    fs::create_dir_all(&newer).unwrap();
+    fs::rename(earlier.join("installations"), newer.join("installations")).unwrap();
+    fs::write(
+        newer.join(moai_cli::state_root::RUST_MARKER),
+        moai_cli::state_root::marker_bytes("test", &[]),
+    )
+    .unwrap();
+    assert_eq!(moai_cli::home_root::path(&h.home), newer, "the state moved");
+    assert!(old_root.join(&name).is_dir());
+    let exe = Path::new(EXE);
+    let home_s = h.home.to_str().unwrap();
+    let rp = result(&run(exe, &h.home, &["recovery-plan", home_s]));
+    let rb = rp["hosts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|x| x["host"] == json!("claude"))
+        .expect("host row")["restore_backup"]
+        .clone();
+    assert_eq!(rb["action"], json!("restore_backup"), "{rp}");
+    let r = result(&run_stdin(
+        exe,
+        &h.home,
+        &[
+            "recovery-apply",
+            home_s,
+            "--plan-digest",
+            rp["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &rp,
+    ));
+    assert_eq!(r["status"], json!("success"), "{r}");
+    assert_eq!(tree(&skill), original, "the original folder is back");
+    assert!(old_root.join(&name).is_dir(), "the backup folder stays");
+}
+
 /// The other side of AC-13: a receipt that names a backup folder outside the known backup folders
 /// is not read, so the recovery restores nothing from it and leaves it as it is.
 #[test]
