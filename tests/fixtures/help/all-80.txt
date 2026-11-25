@@ -186,7 +186,7 @@ Lane and leader
   audit-gate             Decide whether a PR head has the audit its tier needs
   trailers               Print the identity trailers for a commit
   trailer-check          Report commits with missing or malformed trailers
-  bundle                 Assemble the M-Flow bundle from READY heads
+  bundle                 Assemble the NeXT-Flow bundle from READY heads
   audit-clone-plan       Preview an independent audit clone
   audit-slot             Audit slots that inherit the lane's build
   audit-prep             Prepare the audit slot of a card at a head and build it

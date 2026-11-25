@@ -4,10 +4,10 @@
 
 use std::path::PathBuf;
 
-/// Assemble the M-Flow bundle from READY heads
+/// Assemble the NeXT-Flow bundle from READY heads
 ///
 /// `moai bundle <action>` reads the READY heads, judges them, writes the bundle pull request
-/// body and builds the branch; it helps the leader assemble one M-Flow bundle pull request from the
+/// body and builds the branch; it helps the leader assemble one NeXT-Flow bundle pull request from the
 /// heads that lanes marked `LANE-READY-INTEGRATION`. Every action's help starts with what it
 /// does: `Reads only.` (no ledger row, ref, branch, card note or remote is written) or, for
 /// `body --out`, `Reads only. Writes one new file.` None of them fetches, pushes or opens a pull

@@ -81,6 +81,8 @@ parent: null
 - 승인 상태: 이 revision 2 의 digest 승인은 제가 확인하지 못했어요. 리더가 `moai spec show` 로 대조해 주세요.
 
 검증(임시 HOME·임시 프로젝트에서만, 진짜 `~/.claude` 는 읽지도 쓰지도 않았어요):
-- AC-1, AC-2: `flow_rename_cli ac1_`, `ac2_` 통과. AC-3: `flow_name_scan flow_` 통과(질문 은행이 `next-flow (NeXT-Flow)` 를 보여 주는지와 표시 이름 함수를 고정한 새 테스트 둘 포함).
+- AC-1: met — `cargo test --locked --offline --test flow_rename_cli ac1_` 통과(next-flow 와 m-flow 프로필이 같은 흐름을 고르고 옛 값은 한 줄로 한 번만 알려요).
+- AC-2: met — `cargo test --locked --offline --test flow_rename_cli ac2_` 통과(새 선택은 next-flow 로 기록되고 기존 m-flow 프로필은 그대로예요).
+- AC-3: met — `cargo test --locked --offline --test flow_name_scan flow_` 통과(질문 은행이 `next-flow (NeXT-Flow)` 를 보여 주는지와 표시 이름 함수를 고정한 새 테스트 둘 포함).
 - 이웃 테스트: `generic_flow_questions` 10, `claude_md_layout_cli` 16, `agent_defs_package`, `next_flow_skill_scan`, `cli_text_citations`, `source_manifest_facts`, `card` 묶음의 `card_done_mflow_cli` 25(next-flow 짝 1개 추가), `hook_dispatch_cli` 53(세션 시작 줄의 표시 이름을 다시 고정하고 next-flow 짝 1개 추가) 통과. 전체 영수증의 첫 테스트 실행에서 `hook_dispatch_cli` 3개만 실패했고(옛 글 고정) 위처럼 고쳤어요. 옛 글을 고정한 단언은 새 글로 다시 고정했어요.
 - 지킴이 뮤턴트(각각 복원, 트리 깨끗함 확인): 수용 목록에서 `next-flow` 제거 → `flow_rename_cli` ac1·ac2 실패; `work.rs` 비교를 `== "m-flow"` 로 → `next_flow_done_closes…` 실패; CLAUDE.md 줄의 표시 이름 제거 → `claude_md_layout_cli` 2개 실패; 질문 은행 행을 옛 값으로 → `flow_name_the_interview_offers_next_flow_by_name` 실패. 모두 exit 100. `ops/bundle.rs`·`hook_engine.rs` 는 뮤턴트를 만들지 않았어요(not_run).
