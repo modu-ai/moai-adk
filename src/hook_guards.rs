@@ -253,7 +253,7 @@ const CONFIRM_RESET: &str =
     "MoAI tool-preflight: `git reset --hard` discards uncommitted changes; confirm it.";
 const CONFIRM_CLEAN: &str =
     "MoAI tool-preflight: a forced `git clean` deletes untracked files; confirm it.";
-const CONFIRM_FORCE_PUSH: &str =
+pub const CONFIRM_FORCE_PUSH: &str =
     "MoAI tool-preflight: a force push rewrites the remote branch; confirm it.";
 
 /// The confirmation class (decision B2 = A, Issue #2389 c6774899518 row 25): commands that

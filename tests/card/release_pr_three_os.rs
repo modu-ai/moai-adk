@@ -1,5 +1,6 @@
-//! SPEC-20261120-release-pr-three-os: a release pull request (head branch `release/<40 hex>` or
-//! `release/rc/<40 hex>`) runs the check set on Windows x86_64 before merge, and the `ci`
+//! SPEC-20261120-release-pr-three-os: a release pull request (head branch
+//! `release/v{head}.{yearweek}.{n}` or `release/rc/v{head}.{yearweek}.{n}`, the names of
+//! SPEC-20261125-headver-weekly-release) runs the check set on Windows x86_64 before merge, and the `ci`
 //! aggregate fails unless that job succeeded; every other run is judged as before. The tests run
 //! the workflow's real step scripts in a temporary folder, with stand-in `gh` and `python3`
 //! programs that record what they were asked. Unix only: the stand-ins are sh scripts.
@@ -284,7 +285,8 @@ fn linux_matrix() -> Value {
 }
 
 /// Whether the release workflow's plan step accepts `name` as a release branch: a name it accepts
-/// gets past its three name checks and stops at the missing `HEADVER` file of an empty folder.
+/// gets past its name checks (shape, serial, pushed commit) and stops at the missing NeXT branch
+/// of an empty folder; a refused name stops at the shape check with its own message.
 fn release_workflow_plan_accepts(name: &str) -> bool {
     let script = step_script(&repo_file(".github/workflows/release.yml"), "plan");
     let dir = TempDir::new().unwrap();
@@ -298,15 +300,15 @@ fn release_workflow_plan_accepts(name: &str) -> bool {
             ("RUN_ATTEMPT", "1"),
         ],
     );
-    ran.stderr.contains("HEADVER refused: the file is missing")
+    !ran.ok && !ran.stderr.contains("the branch must be release/")
 }
 
 /// A pull request whose head branch is a release name runs the full matrix and reports a release
 /// pull request; the classifier and the files API are not asked for it.
 #[test]
 fn a_release_pull_request_gets_the_full_matrix_and_the_windows_flag() {
-    for head in [format!("release/{HEX}"), format!("release/rc/{HEX}")] {
-        let d = decide("pull_request", &head, &[]);
+    for head in ["release/v4.2649.0", "release/rc/v4.2649.0"] {
+        let d = decide("pull_request", head, &[]);
         assert!(d.ok, "{head}: {}", d.stderr);
         assert_eq!(d.matrix, full_matrix(), "{head}");
         assert_eq!(d.release, "true", "{head}");
@@ -323,15 +325,17 @@ fn a_release_pull_request_gets_the_full_matrix_and_the_windows_flag() {
 #[test]
 fn the_decide_step_and_the_release_workflow_accept_the_same_branch_names() {
     let names = [
+        "release/v4.2649.0".to_string(),
+        "release/rc/v4.2649.0".to_string(),
+        // The earlier shape, a commit id, is no release name any more.
         format!("release/{HEX}"),
         format!("release/rc/{HEX}"),
-        format!("release/{}", &HEX[..39]),
-        format!("release/{HEX}0"),
-        format!("release/{}", HEX.to_uppercase()),
-        "release/v4.2648.23".to_string(),
-        format!("candidate/{HEX}"),
-        format!("Release/{HEX}"),
-        format!("release/{HEX}/x"),
+        "release/v4.2649".to_string(),
+        "release/v4.2649.00".to_string(),
+        "release/V4.2649.0".to_string(),
+        "candidate/v4.2649.0".to_string(),
+        "Release/v4.2649.0".to_string(),
+        "release/v4.2649.0/x".to_string(),
         "release/".to_string(),
     ];
     let mut accepted = 0;
@@ -353,7 +357,7 @@ fn the_decide_step_and_the_release_workflow_accept_the_same_branch_names() {
     }
     assert_eq!(
         accepted, 2,
-        "the list holds two release names and eight others"
+        "the list holds two release names and nine others"
     );
 }
 
@@ -402,7 +406,8 @@ fn an_ordinary_pull_request_keeps_the_classifier_rule() {
 
     for head in [
         format!("release/{}", &HEX[..39]),
-        "release/v4.2648.23".to_string(),
+        "release/v4.2648".to_string(),
+        format!("release/{HEX}"),
         format!("Release/{HEX}"),
     ] {
         let d = decide("pull_request", &head, &[("STUB_MACOS_NEEDED", "False")]);
@@ -417,7 +422,7 @@ fn an_ordinary_pull_request_keeps_the_classifier_rule() {
 #[test]
 fn push_and_dispatch_keep_the_full_matrix() {
     for event in ["push", "workflow_dispatch"] {
-        for head in ["", &format!("release/{HEX}")] {
+        for head in ["", "release/v4.2649.0"] {
             let d = decide(event, head, &[]);
             assert!(d.ok, "{event} {head:?}: {}", d.stderr);
             assert_eq!(d.matrix, full_matrix(), "{event} {head:?}");

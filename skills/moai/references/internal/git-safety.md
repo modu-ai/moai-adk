@@ -2,7 +2,7 @@
 
 When to read: before you commit, push, merge or switch branches in a worktree.
 
-1. Write only while you hold the card: run `moai card check` for the files you are about to write before every commit and every push. A refusal stops the write and is reported as it is (the WORK route, `/moai work`).
+1. Write only while you hold the card: run `moai card check` for the files you are about to write before every commit and every push. A refusal stops the write and is reported as it is (the WORK route, `/moai agent`).
 2. Keep the trailer paragraph last: the `Moai-Spec` and `Moai-Session` trailers and the attribution line, nothing after them; no card number goes into a commit message, a branch name or a pull request. Confirm each new commit with `git interpret-trailers --parse`. Write the message in the project's `language.commit_messages` (read it from the project profile).
 3. Work in your own worktree, with its one build folder inside it (`workflows/run.md`, "Check-run rules"). Never write in another worktree and never share a build folder with another worktree; after switching worktrees, trust only a run whose `Compiling` line names the worktree you are checking. New worktrees go to the project's `.claude/worktrees/<name>` (`workflows/run.md`, "Check-run rules"); never move an existing worktree, and never touch `~/.moai/worktrees/projects/`, which the Go generation uses.
 4. Never force-push, `reset --hard`, `clean`, delete a branch or rewrite history that others may have. Never use a bare `git stash`; the stash stack is shared between worktrees.

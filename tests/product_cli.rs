@@ -1095,15 +1095,15 @@ fn launcher_default_claude() {
     );
     assert_eq!(v["role"], Value::Null);
     assert!(!v["notes"].to_string().contains("HOLD"));
-    // The retired role flags, alone or with a host word, fail instead of guessing.
+    // A role flag before the host word, or without one, or both flags together, fails instead of
+    // guessing (`cc -l` is the valid form since SPEC-20261125-agent-team-session-names).
     for args in [
         &["-l", "--dry-run"][..],
         &["--leader", "--dry-run"][..],
         &["-a", "--dry-run"][..],
         &["-l", "-a", "--dry-run"][..],
         &["-l", "cc", "--dry-run"][..],
-        &["cc", "-l", "--dry-run"][..],
-        &["-a", "zcode", "--dry-run"][..],
+        &["cc", "-l", "-a", "--dry-run"][..],
     ] {
         assert!(!launcher(args, None).status.success(), "{args:?}");
     }
@@ -2711,8 +2711,8 @@ mod skill_package {
     // Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `mode_routing_flags_map_to_routes` mapped the two mode flags to their routes; a dash option is now plain request text (tests/next_flow_skill_scan.rs).
 
     /// #2286 CLOSE-TABLE item 1: the repository's own instruction files carry no retired mode
-    /// spelling either. The role is typed inside the session as `/moai work` or `/moai leader`
-    /// (SPEC-20261124-launcher-retire-role-flags), no `--mode-*` spelling is left.
+    /// spelling either. A plain session enters a role as `/moai agent` or `/moai leader`
+    /// (SPEC-20261125-agent-team-session-names), no `--mode-*` spelling and no `/moai work` is left.
     #[test]
     fn repository_instruction_files_carry_no_retired_mode_spelling() {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -2722,7 +2722,8 @@ mod skill_package {
             None,
             "retired mode spelling is still in CLAUDE.md"
         );
-        assert!(text.contains("/moai work"), "CLAUDE.md");
+        assert!(!text.contains("/moai work"), "CLAUDE.md");
+        assert!(text.contains("/moai agent"), "CLAUDE.md");
         assert!(text.contains("/moai leader"), "CLAUDE.md");
     }
 

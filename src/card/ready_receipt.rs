@@ -377,6 +377,23 @@ mod tests {
         ));
     }
 
+    /// SPEC-20261125-check-affected-non-rust REQ-3: a run that checked nothing because the project
+    /// declares no check writes `result=not_run`, and the gate counts that as no receipt.
+    #[test]
+    fn a_not_run_summary_line_is_no_receipt() {
+        let own = short(HEAD);
+        let line = format!(
+            "check-affected base=aaaaaaaaaaaa head={own} targets=0 scans=none test-threads=4 diff_check=0 result=not_run\n"
+        );
+        assert_eq!(judge(&line, HEAD), not("result=not_run"));
+        // The `card_by=` word of a card run changes nothing about that: `not_run` is still no
+        // receipt (SPEC-20261125-check-affected-card-areas REQ-12 with the non-Rust REQ-3).
+        let card = format!(
+            "check-affected base=aaaaaaaaaaaa head={own} targets=0 scans=none selection=card card_by=none test-threads=4 diff_check=0 result=not_run\n"
+        );
+        assert_eq!(judge(&card, HEAD), not("result=not_run"));
+    }
+
     #[test]
     fn a_summary_line_is_a_receipt_only_for_its_own_head_and_a_pass() {
         let line = |head: &str, result: &str| {

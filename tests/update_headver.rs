@@ -427,9 +427,10 @@ fn going_back_to_an_older_build_needs_allow_older() {
     }
 }
 
-/// This build's `(head, yearweek, build)` from `BUILD_VERSION`.
+/// This build's `(head, yearweek, build)` from `BUILD_VERSION`, without its `-dev` suffix.
 fn build_parts() -> (u32, u32, u32) {
     let mut parts = moai_cli::BUILD_VERSION
+        .trim_end_matches("-dev")
         .split('.')
         .map(|p| p.parse::<u32>().unwrap());
     (
@@ -440,8 +441,9 @@ fn build_parts() -> (u32, u32, u32) {
 }
 
 /// SPEC-20261119-headver-release-workflow D-6 (leader decision, card C-93 note 2260): only the
-/// numbers `(head, yearweek, build)` order a local build and a release. A release counter
-/// starts at 1 and a local one is already higher, so a release of this build's own week with a
+/// numbers `(head, yearweek, build)` order a development build and a release, except that at the
+/// same three numbers the release is above its `-dev` (SPEC-20261125-headver-weekly-release
+/// REQ-4). A release serial starts at 0 and a development build number is already higher, so a release of this build's own week with a
 /// lower number reads as older: this build updates over it without `--allow-older`. The
 /// install record holds the version text only, so `update` cannot tell the two kinds apart.
 #[test]
@@ -495,6 +497,37 @@ fn a_build_below_the_installed_release_of_the_same_week_needs_allow_older() {
     let p = plan(&me, &f.home, &f.v1);
     apply(&me, &f.home, &f.v1, &p);
     let release = format!("{head}.{week:04}.{}", build + 1);
+    set_receipt_versions(&f.home, &release);
+
+    let p = plan(&me, &f.home, &f.v2);
+    assert_eq!(p["source_version"], json!(release), "{p}");
+    for h in HOSTS {
+        let hp = host(&p, h);
+        assert_eq!(hp["preflight"], json!("blocked"), "{h}: {p}");
+        let reason = hp["blocked_reason"].as_str().unwrap();
+        assert!(
+            reason.contains(&release) && reason.contains("moai update --allow-older"),
+            "{h}: {reason}"
+        );
+    }
+}
+
+/// SPEC-20261125-headver-weekly-release REQ-4: at the same three numbers an installed release
+/// (a version without `-dev`, which is also how a folder from before the suffix reads) is newer
+/// than this `-dev` build, so this build goes back over it only with `--allow-older`.
+#[test]
+fn an_installed_release_of_the_same_numbers_reads_newer_than_this_dev_build() {
+    let (head, week, build) = build_parts();
+    assert!(
+        moai_cli::BUILD_VERSION.ends_with("-dev"),
+        "this test runs on a development build: {}",
+        moai_cli::BUILD_VERSION
+    );
+    let f = fixture();
+    let me = version_exe(&f.home, moai_cli::BUILD_VERSION);
+    let p = plan(&me, &f.home, &f.v1);
+    apply(&me, &f.home, &f.v1, &p);
+    let release = format!("{head}.{week:04}.{build}");
     set_receipt_versions(&f.home, &release);
 
     let p = plan(&me, &f.home, &f.v2);

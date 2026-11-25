@@ -3,6 +3,7 @@
 //! (changed paths, test file facts, the scan list text and the host name in; a selection and
 //! a step list out); [`read_facts`] is the one place that reads git and the files.
 
+use crate::project_ci::CheckEntry;
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::Command;
@@ -1541,6 +1542,98 @@ pub struct Step {
     pub report: Option<Vec<String>>,
 }
 
+/// How a repository is verified (SPEC-20261125-check-affected-non-rust).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Stack {
+    /// A `Cargo.toml` at the top folder or a `.rs` file at the head: the cargo steps, as always.
+    Rust,
+    /// No Rust code, and the profile declares these checks.
+    Declared(Vec<CheckEntry>),
+    /// No Rust code and no declared check can be read; the text says why.
+    Undeclared(String),
+}
+
+/// What the answer says when nothing could be verified: the result is `not_run`, never `PASS`.
+const NOT_RUN_NEXT: &str = "declare the project's check commands as `checks` (a list of {\"id\": \"test\", \"command\": \"<one-line command>\"}) in .moai/project.yaml, commit it, and run `moai check affected` again; the `/moai project` interview saves them. Until then nothing was verified.";
+
+/// The answer's `not_run` object, `Null` unless the stack has no declared check.
+fn not_run_note(stack: &Stack) -> serde_json::Value {
+    match stack {
+        Stack::Undeclared(reason) => serde_json::json!({"reason": reason, "next": NOT_RUN_NEXT}),
+        _ => serde_json::Value::Null,
+    }
+}
+
+/// Whether `head` tracks a `.rs` file. A git that cannot answer reads as `true`, so the Rust steps
+/// stay as they were.
+fn tracks_rust(root: &Path, head: &str) -> bool {
+    git(root, &["ls-tree", "-r", "--name-only", "-z", head])
+        .map(|out| out.split('\0').any(|p| p.ends_with(".rs")))
+        .unwrap_or(true)
+}
+
+/// The stack of the checkout at `root`: a `Cargo.toml` or a tracked `.rs` file makes it Rust
+/// (D-1); otherwise the profile's declared `checks`, or why there are none (D-4).
+fn read_stack(root: &Path, head: &str) -> Stack {
+    if root.join("Cargo.toml").is_file() || tracks_rust(root, head) {
+        return Stack::Rust;
+    }
+    match crate::profile::read_profile(root) {
+        Ok((profile, _)) => match profile.checks.filter(|c| !c.is_empty()) {
+            Some(checks) => Stack::Declared(checks),
+            None => Stack::Undeclared("the profile declares no `checks`".to_string()),
+        },
+        Err(e) if e == crate::profile::PROFILE_MISSING => {
+            Stack::Undeclared("the project has no profile".to_string())
+        }
+        Err(e) => Stack::Undeclared(format!("the profile cannot be read ({e})")),
+    }
+}
+
+/// The steps of a repository without Rust code: `git diff --check`, `bash -n` of each changed
+/// script and one heavy `sh -c` step per declared check, in the declared order (REQ-2).
+fn other_steps(checks: &[CheckEntry], present: &[String], range: &str) -> Vec<Step> {
+    let mut out = vec![step(
+        "diff_check",
+        "git",
+        &["diff", "--check", range],
+        false,
+    )];
+    for p in present.iter().filter(|p| p.ends_with(".sh")) {
+        out.push(step(
+            &format!("bash_n:{p}"),
+            "bash",
+            &["-n", "--", p],
+            false,
+        ));
+    }
+    for c in checks {
+        out.push(step(
+            &format!("check:{}", c.id),
+            "sh",
+            &["-c", &c.command],
+            true,
+        ));
+    }
+    out
+}
+
+/// The steps of a range for the repository's stack: [`steps`] for a Rust repository, the declared
+/// checks otherwise.
+pub fn plan_steps(
+    facts: &Facts,
+    sel: &Selection,
+    range: &str,
+    runner: Runner,
+    threads: Option<usize>,
+) -> Vec<Step> {
+    match &facts.stack {
+        Stack::Rust => steps(sel, &facts.present, range, runner, threads),
+        Stack::Declared(checks) => other_steps(checks, &facts.present, range),
+        Stack::Undeclared(_) => other_steps(&[], &facts.present, range),
+    }
+}
+
 fn step(label: &str, program: &str, args: &[&str], heavy: bool) -> Step {
     Step {
         label: label.to_string(),
@@ -1775,6 +1868,8 @@ pub struct Facts {
     pub tracked: Option<Vec<String>>,
     /// The test folders that hold a `main.rs` (the moved areas).
     pub moved: Vec<String>,
+    /// How the repository is verified: the cargo steps, or the profile's declared checks.
+    pub stack: Stack,
 }
 
 fn git(dir: &Path, args: &[&str]) -> Result<String> {
@@ -1924,6 +2019,7 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         "tests/fixtures/state_folder_literals/allow.tsv",
         &mut unreadable,
     );
+    let stack = read_stack(dir, &head);
     Ok(Facts {
         root,
         base,
@@ -1938,6 +2034,7 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         unreadable,
         tracked,
         moved,
+        stack,
     })
 }
 
@@ -2160,14 +2257,15 @@ pub fn list(
     // `--list` reads nothing from the slot folder, so it names no cap.
     let planned = plan(
         &table_step(&facts),
-        steps(
+        plan_steps(
+            &facts,
             &sel,
-            &facts.present,
             &format!("{}...{}", facts.base, facts.head),
             runner,
             None,
         ),
     );
+    let rust = facts.stack == Stack::Rust;
     let mut answer = serde_json::json!({
         "action": "affected",
         "mode": "list",
@@ -2177,7 +2275,7 @@ pub fn list(
         "head": facts.head,
         "changed": facts.changed.len(),
         "host_os": host_os(),
-        "runner": runner.word(),
+        "runner": rust.then(|| runner.word()),
         "scans": sel.scans.word(),
         "rust_targets": sel.rust,
         "steps": planned.iter().map(|s| {
@@ -2192,6 +2290,9 @@ pub fn list(
         "writes": false,
     });
     card_fields(&chosen, &mut answer);
+    if let Stack::Undeclared(_) = &facts.stack {
+        answer["not_run"] = not_run_note(&facts.stack);
+    }
     Ok(answer)
 }
 
@@ -2462,11 +2563,12 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     // Planned with nextest until the slot is held: the runner is asked only then, so a refused
     // slot starts no cargo at all. The labels do not depend on the runner.
     let table = table_step(&facts);
+    let rust = facts.stack == Stack::Rust;
     let mut planned = plan(
         &table,
-        steps(
+        plan_steps(
+            &facts,
             &sel,
-            &facts.present,
             &range3,
             Runner::Nextest,
             cap_for(Runner::Nextest),
@@ -2506,11 +2608,11 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
             match hold_slot(opts, &out) {
                 Ok(h) => {
                     let r = runner_in(dir);
-                    planned = plan(&table, steps(&sel, &facts.present, &range3, r, cap_for(r)));
+                    planned = plan(&table, plan_steps(&facts, &sel, &range3, r, cap_for(r)));
                     if let Some(theirs) = caller_threads(r, env) {
                         shown = theirs;
                     }
-                    runner = Some(r);
+                    runner = rust.then_some(r);
                     held = Some(h);
                 }
                 Err(code) => refused = Some(code),
@@ -2566,8 +2668,15 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         }));
     }
     drop(held);
-    let pass = results.iter().all(|(_, c)| *c == 0);
-    let line = summary_line_by(
+    // Nothing verified a repository without Rust code that declares no check: that is `not_run`,
+    // unless a step failed (REQ-3, REQ-4).
+    let failed = results.iter().any(|(_, c)| *c != 0);
+    let verdict = match (&facts.stack, failed) {
+        (_, true) => Verdict::Fail,
+        (Stack::Undeclared(_), false) => Verdict::NotRun,
+        _ => Verdict::Pass,
+    };
+    let line = summary_line_full(
         &SummaryParts {
             base: &facts.base,
             head: &facts.head,
@@ -2577,8 +2686,9 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
             threads: &shown,
             results: &results,
             stopped_at: stopped_at.as_deref(),
-            pass,
+            pass: verdict == Verdict::Pass,
         },
+        verdict,
         chosen.card_by().as_deref(),
     );
     let mut answer = serde_json::json!({
@@ -2587,7 +2697,7 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         "selection": pick.word(),
         "range_note": range_note(&facts, opts.integration_ref.as_deref()),
         "summary": line,
-        "result": if pass { "PASS" } else { "FAIL" },
+        "result": verdict.word(),
         "stopped_at": stopped_at,
         "runner": runner.map(Runner::word),
         "refresh": {"touched": refresh.touched, "skipped": refresh.skipped},
@@ -2597,6 +2707,9 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         "writes": true,
     });
     card_fields(&chosen, &mut answer);
+    if verdict == Verdict::NotRun {
+        answer["not_run"] = not_run_note(&facts.stack);
+    }
     Ok(answer)
 }
 
@@ -2623,6 +2736,42 @@ pub fn summary_line(p: &SummaryParts<'_>) -> String {
 /// [`summary_line`] with the `card_by=` word of a card set right after `selection=card`
 /// (SPEC-20261125-check-affected-card-areas REQ-9); `None` writes the line as before.
 pub fn summary_line_by(p: &SummaryParts<'_>, card_by: Option<&str>) -> String {
+    summary_line_full(
+        p,
+        if p.pass { Verdict::Pass } else { Verdict::Fail },
+        card_by,
+    )
+}
+
+/// How a run ended: every step passed, one failed, or nothing could be verified because the
+/// project declares no check (SPEC-20261125-check-affected-non-rust).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Verdict {
+    Pass,
+    Fail,
+    NotRun,
+}
+
+impl Verdict {
+    /// The word of the answer's `result` field.
+    pub fn word(self) -> &'static str {
+        match self {
+            Verdict::Pass => "PASS",
+            Verdict::Fail => "FAIL",
+            Verdict::NotRun => "not_run",
+        }
+    }
+}
+
+/// [`summary_line`] with the verdict given: the last word is `result=<word>`.
+pub fn summary_line_for(p: &SummaryParts<'_>, verdict: Verdict) -> String {
+    summary_line_full(p, verdict, None)
+}
+
+/// The summary line with both the verdict and the `card_by=` word given: the one place that
+/// writes it, so a `not_run` card run keeps its `card_by=` word and a narrowed run keeps its
+/// verdict word.
+pub fn summary_line_full(p: &SummaryParts<'_>, verdict: Verdict, card_by: Option<&str>) -> String {
     let selection_word = match (p.pick, card_by) {
         (Pick::Lane, _) => " selection=lane".to_string(),
         (Pick::Card, Some(by)) => format!(" selection=card card_by={by}"),
@@ -2643,11 +2792,7 @@ pub fn summary_line_by(p: &SummaryParts<'_>, card_by: Option<&str>) -> String {
     if let Some(label) = p.stopped_at {
         line.push_str(&format!(" stopped_at={label}"));
     }
-    line.push_str(if p.pass {
-        " result=PASS"
-    } else {
-        " result=FAIL"
-    });
+    line.push_str(&format!(" result={}", verdict.word()));
     line
 }
 
@@ -2667,6 +2812,105 @@ mod tests {
             summary_words(&r),
             [("bash_n".to_string(), 2), ("fmt".to_string(), 0)]
         );
+    }
+
+    /// SPEC-20261125-check-affected-non-rust AC-7: the last word of the summary line is the
+    /// verdict; `summary_line` keeps writing `PASS` and `FAIL` as before.
+    #[test]
+    fn summary_line_not_run_pass_and_fail() {
+        let results = vec![("diff_check".to_string(), 0)];
+        let parts = |pass: bool| SummaryParts {
+            base: "aaaaaaaaaaaaaaaa",
+            head: "bbbbbbbbbbbbbbbb",
+            targets: 0,
+            scans: "none",
+            pick: Pick::Full,
+            threads: "4",
+            results: &results,
+            stopped_at: None,
+            pass,
+        };
+        let head = "check-affected base=aaaaaaaaaaaa head=bbbbbbbbbbbb targets=0 scans=none test-threads=4 diff_check=0";
+        assert_eq!(
+            summary_line_for(&parts(false), Verdict::NotRun),
+            format!("{head} result=not_run")
+        );
+        assert_eq!(summary_line(&parts(true)), format!("{head} result=PASS"));
+        assert_eq!(summary_line(&parts(false)), format!("{head} result=FAIL"));
+        assert_eq!(
+            summary_line_for(&parts(true), Verdict::Pass),
+            summary_line(&parts(true))
+        );
+    }
+
+    /// The merge of the non-Rust verdict and the card reasons: a card run writes both words, the
+    /// `card_by=` word right after `selection=card` and the verdict last, whatever the verdict.
+    #[test]
+    fn a_card_line_keeps_its_reasons_for_every_verdict() {
+        let results = vec![("diff_check".to_string(), 0)];
+        let parts = SummaryParts {
+            base: "aaaaaaaaaaaaaaaa",
+            head: "bbbbbbbbbbbbbbbb",
+            targets: 0,
+            scans: "none",
+            pick: Pick::Card,
+            threads: "4",
+            results: &results,
+            stopped_at: None,
+            pass: false,
+        };
+        let head = "check-affected base=aaaaaaaaaaaa head=bbbbbbbbbbbb targets=0 scans=none selection=card";
+        for (verdict, word) in [
+            (Verdict::Pass, "PASS"),
+            (Verdict::Fail, "FAIL"),
+            (Verdict::NotRun, "not_run"),
+        ] {
+            assert_eq!(
+                summary_line_full(&parts, verdict, Some("area:card")),
+                format!("{head} card_by=area:card test-threads=4 diff_check=0 result={word}")
+            );
+            assert_eq!(
+                summary_line_full(&parts, verdict, None),
+                format!("{head} test-threads=4 diff_check=0 result={word}")
+            );
+            assert_eq!(
+                summary_line_full(&parts, verdict, None),
+                summary_line_for(&parts, verdict)
+            );
+        }
+        assert_eq!(
+            summary_line_by(&parts, Some("none")),
+            format!("{head} card_by=none test-threads=4 diff_check=0 result=FAIL")
+        );
+    }
+
+    /// SPEC-20261125-check-affected-non-rust REQ-2: a declared check is one heavy `sh -c` step
+    /// after the cheap ones, in the declared order; no declared check adds none.
+    #[test]
+    fn declared_checks_follow_the_cheap_steps_in_their_order() {
+        let check = |id: &str, command: &str| CheckEntry {
+            id: id.to_string(),
+            command: command.to_string(),
+        };
+        let planned = other_steps(
+            &[check("lint", "npm run lint"), check("test", "npm test")],
+            &["bin/run.sh".to_string(), "src/a.ts".to_string()],
+            "a...b",
+        );
+        let labels: Vec<&str> = planned.iter().map(|s| s.label.as_str()).collect();
+        assert_eq!(
+            labels,
+            [
+                "diff_check",
+                "bash_n:bin/run.sh",
+                "check:lint",
+                "check:test"
+            ]
+        );
+        assert_eq!(planned[2].program, "sh");
+        assert_eq!(planned[2].args, ["-c", "npm run lint"]);
+        assert!(planned[2].heavy && planned[3].heavy && !planned[0].heavy && !planned[1].heavy);
+        assert_eq!(other_steps(&[], &[], "a...b").len(), 1);
     }
 
     const AREAS: &str = "# t\n[areas]\ncard = [\"card\"]\nspec = [\"spec\", \"check\"]\nlane = [\"lane\"]\n\n[solo]\nfiles = [\"check_solo\"]\n";

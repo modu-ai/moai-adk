@@ -210,7 +210,7 @@ fn skill_entry_points_to_the_loop_reference_and_does_not_repeat_it() {
 fn skill_entry_names_the_work_route_without_its_steps() {
     let entry = read(SKILL_ENTRY);
     assert!(
-        entry.contains("`/moai work` picks WORK"),
+        entry.contains("`/moai agent` picks WORK"),
         "the entry still names the WORK route"
     );
     for steps in [

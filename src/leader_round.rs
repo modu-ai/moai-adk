@@ -926,7 +926,7 @@ mod tests {
     // #3005 P9: a lane that stopped itself with `LANE-IDLE` (the `lane-next` `idle_limit` line)
     // is an idle lane, a card the leader can hand it, not a loop to restart.
 
-    const IDLE_LINE: &str = "LANE-IDLE lane=agent-29 checks=6 last=2026-11-14T09:19:00Z restart=enter MODE-AGENT again as lane agent-29 (`/moai work` in Claude Code, `$moai work` in Codex CLI)";
+    const IDLE_LINE: &str = "LANE-IDLE lane=agent-29 checks=6 last=2026-11-14T09:19:00Z restart=enter MODE-AGENT again as lane agent-29 (`/moai agent` in Claude Code)";
 
     #[test]
     fn a_lane_idle_line_is_a_marker_of_its_own_lane_only() {
