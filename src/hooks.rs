@@ -407,8 +407,9 @@ pub fn written_files(root: &Path, host: &str) -> Result<(Vec<String>, Vec<PathBu
     Ok((files, dirs))
 }
 
-/// The JSON lines of `<root>/.moai-cli/receipts/<file>` (bounded by [`RECEIPT_LOG_LIMIT`];
-/// a missing, oversized or non-regular log reads as empty).
+/// The JSON lines of `<root>/<state folder>/receipts/<file>` (the folder `state_root::path`
+/// resolves; bounded by [`RECEIPT_LOG_LIMIT`]; a missing, oversized or non-regular log reads
+/// as empty).
 fn receipt_lines(root: &Path, file: &str) -> Vec<Value> {
     receipt_lines_in(env_home().as_deref(), root, file)
 }
@@ -574,9 +575,11 @@ pub fn status_with(
 /// Size bound for a hook receipt log; past it lines are not appended (never truncated).
 pub const RECEIPT_LOG_LIMIT: u64 = 4 * 1024 * 1024;
 
-/// Appends one JSON line to `<cwd>/.moai-cli/receipts/<file>`, the write path every hook
-/// handler shares (`hook-receipt`, and the hook engine's tool-observe, #2391). It writes only
-/// when `<cwd>/.moai-cli` is a real directory (never through a symlink), creates `receipts/`
+/// Appends one JSON line to `<cwd>/<state folder>/receipts/<file>`, the write path every hook
+/// handler shares (`hook-receipt`, and the hook engine's tool-observe, #2391). The state folder
+/// is the one `state_root::path` resolves: `.moai` for a current project, the earlier
+/// `.moai-cli` folder (read only, never created) for a project that has not moved. It writes
+/// only when the state folder is a real directory (never through a symlink), creates `receipts/`
 /// once, refuses a log that is not a regular file or has reached [`RECEIPT_LOG_LIMIT`], and
 /// only appends — concurrent hooks never read-modify-write. The error is a fixed reason.
 pub fn append_receipt_line(
@@ -590,7 +593,8 @@ pub fn append_receipt_line(
 /// [`append_receipt_line`] with the HOME named by the caller (#3009 S4b). The log goes to the
 /// project's folder in the HOME (`<HOME state root>/projects/<project_id>/receipts/`) when the
 /// project has a fixed id and the HOME state root is a real folder, so every worktree of the
-/// project writes one log; in every other case it goes to `<cwd>/.moai-cli/receipts/` as before.
+/// project writes one log; in every other case it goes to `<cwd>/<state folder>/receipts/` as
+/// before.
 /// The working directory must be a project with a state folder either way. The HOME side is
 /// created private (folders 0700, the log 0600) and is never reached through a link.
 pub(crate) fn append_receipt_line_in(
@@ -602,7 +606,7 @@ pub(crate) fn append_receipt_line_in(
     let state_dir = crate::state_root::path(cwd, "");
     match fs::symlink_metadata(&state_dir) {
         Ok(m) if m.is_dir() => {}
-        _ => return Err("no .moai-cli directory in the working directory"),
+        _ => return Err("no state folder in the working directory"),
     }
     let home_dir = home_receipts_dir(home, cwd);
     let dir = match &home_dir {
@@ -680,9 +684,10 @@ const RECEIPT_FIELDS: &[&str] = &["hook_event_name", "tool_name", "source"];
 const FIELD_LIMIT: usize = 128;
 
 /// `hook-receipt`: the handler the generated hooks run. Reads the host's hook stdin and appends
-/// one line to `<cwd>/.moai-cli/receipts/hooks.jsonl` with the allow-listed fields, the host and
-/// the time. It never fails the hook: every refusal is `recorded: false` with a reason, so the
-/// host sees exit 0. It writes only when the working directory already has `.moai-cli/`.
+/// one line to the receipts log `hooks.jsonl` of the state folder with the allow-listed fields,
+/// the host and the time. It never fails the hook: every refusal is `recorded: false` with a
+/// reason, so the host sees exit 0. It writes only when the working directory already has its
+/// state folder.
 pub fn receipt(host: &str, stdin: &[u8], cwd: &Path, now_unix_ms: u128) -> Value {
     let skip = |reason: &str| json!({"recorded": false, "reason": reason});
     if check_host(host).is_err() {
@@ -779,6 +784,16 @@ mod tests {
             !dir.path().join(".codex").exists() && !dir.path().join(".omp").exists(),
             "nothing was written"
         );
+    }
+
+    /// The refusal for a folder with no state folder is a fixed text that names no folder, so it
+    /// is right for a project on `.moai` and for one that still keeps the earlier folder.
+    #[test]
+    fn a_missing_state_folder_is_refused_without_naming_the_earlier_folder() {
+        let bare = tempfile::tempdir().unwrap();
+        let got = append_receipt_line_in(None, bare.path(), "hooks.jsonl", &json!({"k": 1}));
+        assert_eq!(got, Err("no state folder in the working directory"));
+        assert!(!got.unwrap_err().contains(".moai-cli"));
     }
 }
 

@@ -87,7 +87,7 @@ const SPELLINGS: [&str; 2] = ["PROJECT_STATE_DIR", ".moai-cli"];
 /// file may spell it less often and still pass; a file that is not here, or spells it more
 /// often, fails the scan. A spelling that is deliberate (a read of the earlier folder, the
 /// resolver, the move) is added here by a card whose scope names this file.
-const BASELINE: [(&str, usize); 17] = [
+const BASELINE: [(&str, usize); 16] = [
     ("agents.rs", 5),
     ("apply.rs", 1),
     ("bin_names.rs", 1),
@@ -97,7 +97,6 @@ const BASELINE: [(&str, usize); 17] = [
     ("go_state.rs", 1),
     ("help.rs", 10),
     ("hook_guards.rs", 4),
-    ("hooks.rs", 1),
     ("lib.rs", 19),
     ("main.rs", 1),
     ("ops/star_ask.rs", 1),
