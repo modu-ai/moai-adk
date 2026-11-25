@@ -3642,7 +3642,8 @@ fn next_say_ac6_apply_order_is_the_ids_of_the_steps() {
 #[test]
 fn next_say_ac6_each_waiting_reason_names_the_step_it_waits_behind() {
     // (project label, the plan, [(waiting step, the reason it prints, the step it waits behind)])
-    let mut cases: Vec<(&str, Value, Vec<(&str, &str, &str)>)> = Vec::new();
+    type Waits<'a> = Vec<(&'a str, &'a str, &'a str)>;
+    let mut cases: Vec<(&str, Value, Waits)> = Vec::new();
 
     // The backup: every install step waits behind the move.
     let go = Fx::new();
