@@ -551,7 +551,17 @@ fn decide_for(
                     ),
                 );
             }
-            let what = format!("the text of {}", kind.source_name());
+            // A backup source is a copy `go-state-apply` moved earlier: the reason names where
+            // it is, so the question does not read as if the file were in place.
+            let what = if src.kind == "backup" {
+                format!(
+                    "the text of {}, a copy moved into {} earlier,",
+                    kind.source_name(),
+                    src.rel
+                )
+            } else {
+                format!("the text of {}", kind.source_name())
+            };
             Decision {
                 action: "merge",
                 reason: if creates {
