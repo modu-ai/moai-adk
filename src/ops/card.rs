@@ -229,8 +229,8 @@ enum Action {
     /// A card that has an active reservation (`active` or `review`) is widened instead, under
     /// the same generation: no release and no retake, and the holder, lease, worktree and branch
     /// stay. A held card's scope only grows: the list must keep every pattern the reservation
-    /// has (a list that leaves one out is a `conflict` naming it), and the added patterns must
-    /// not overlap another card's reservation (a `conflict` naming that card). `--reason` is
+    /// has (a list that leaves one out is a `conflict` naming it), and a pattern that another card's reservation also covers
+    /// is added all the same and named in `overlaps` (no file lock). `--reason` is
     /// required for a held card; the `card.scope` event records `--by`, the reason, the
     /// generation and the holder; the card's own scope is not changed, so a later `card take`
     /// without `--scope` still reads the old one. `--generation` is the generation the caller
@@ -280,8 +280,8 @@ enum Action {
     /// last reservation leaves it out and names it in `warnings`; write the file in short with
     /// `card line-lease`.
     /// Refused when the card is not `ready`, is already held, has no `open` or `met` criterion
-    /// (the answer names `card criterion-add`), or its scope overlaps another
-    /// card's reservation (`conflict`). The answer's `generation` is what `release` and
+    /// (the answer names `card criterion-add`). A scope that overlaps another
+    /// card's reservation is no reason to refuse: the answer's `overlaps` names it. The answer's `generation` is what `release` and
     /// `handoff` need. The holder is this session's own id (`CLAUDE_CODE_SESSION_ID` or
     /// `CODEX_THREAD_ID`), never typed; a session without one is refused. The answer's `spec`
     /// is the SPEC the card names (`card spec`) and its status; `warnings` names a card that
@@ -682,7 +682,7 @@ enum Action {
     /// Reads the ledger only. Prints the cards this session holds (`mine`: generation, lease
     /// end, worktree, branch), then the `ready` cards it could take, by priority and then by
     /// number, then every card it cannot take with the reason (`held` by another session,
-    /// `scope_overlap` with another card's reservation, `empty_scope`: a card without a write
+    /// `empty_scope`: a card without a write
     /// scope that has no usable SPEC `write:` list or earlier reservation to fill it from, so
     /// `take` refuses it; a card that `take` could fill is listed `ready` with the scope it would
     /// get and its `scope_source`; `no_criteria`: a `ready` card with no criterion that is not
@@ -956,9 +956,9 @@ enum Action {
     ///
     /// Writes the ledger. Adds the named `--path`s to the reservation, runs the command given
     /// after `--` and gives the added paths back in one call: a short lease for a line in a
-    /// shared file. While another card's reservation covers a path the call retries until
-    /// `--wait-secs` (default 60, at most 600), then is refused naming that card and writes
-    /// nothing. The command's standard output goes to standard error, so the answer stays one
+    /// shared file. Another card's reservation of a path is no reason to wait or refuse; the
+    /// `--wait-secs` option is still accepted (at most 600) and is not used.
+    /// The command's standard output goes to standard error, so the answer stays one
     /// JSON envelope. A command that exits non-zero or cannot start is refused with its status
     /// named, after the lease gives the paths back. A path given back is free for any card at
     /// once. If this process is killed while the command runs, the leased paths stay in the
