@@ -133,7 +133,11 @@ const WORK_SENTENCE: &str = "A request whose first word after the skill name is 
 const LEADER_SENTENCE: &str = "one whose first word is `leader` picks LEADER";
 
 /// REQ-3: the WORK procedure's step keys, in order.
-const WORK_STEPS: [&str; 7] = ["take", "plan", "run", "sync", "audit", "land", "repeat"];
+/// C-493: a lane takes, makes its worktree, hands plan, impl and docs to the base agents in turn,
+/// submits, sends its completion message and waits; it audits and lands nothing.
+const WORK_STEPS: [&str; 8] = [
+    "take", "worktree", "plan", "impl", "docs", "submit", "message", "wait",
+];
 
 /// The mode spellings `text` holds, in the order of `MODE_SPELLINGS`.
 fn mode_spellings(text: &str) -> Vec<&'static str> {
@@ -507,28 +511,35 @@ fn work_steps_run_in_order() {
 }
 
 #[test]
-fn work_takes_with_card_next_and_lands_with_card_land() {
+fn work_takes_with_card_next_and_submits_with_card_submit() {
     let work = read("workflows/work.md");
     for command in [
         "`moai card next`",
         "`moai card take",
         "`moai card check <card> --generation <g> --path <p>`",
-        "`moai card land <card> --head <40 hex>`",
+        "`moai card submit <card> --generation <g>`",
+        "`moai check affected --card <base>..<head>`",
+        "`moai card review <card> --generation <g>`",
     ] {
         assert!(work.contains(command), "work.md lacks {command}");
     }
+    // C-493: a lane audits and lands nothing, so no step lands a head.
+    assert!(
+        !work.contains("moai card land"),
+        "work.md tells a lane to land a head"
+    );
 }
 
 #[test]
-fn work_repeats_until_no_card_is_left() {
+fn work_waits_and_goes_back_until_no_card_is_left() {
     let work = read("workflows/work.md");
-    let repeat = section(&work, "Procedure")
+    let wait = section(&work, "Procedure")
         .lines()
-        .find(|l| l.contains(". **repeat** — "))
-        .expect("work.md has a repeat step");
+        .find(|l| l.contains(". **wait** — "))
+        .expect("work.md has a wait step");
     assert!(
-        repeat.contains("until no card is left"),
-        "the repeat step: {repeat}"
+        wait.contains("until no card is left"),
+        "the wait step: {wait}"
     );
 }
 
@@ -1646,7 +1657,8 @@ fn refs_audit_tier_lines_match_in_every_text() {
 }
 
 /// AC-2 (REQ-5): the audit agent's front matter no longer sets `isolation: worktree`; the key is
-/// required, so it says `none`. The implementation agent keeps its worktree.
+/// required, so it says `none`. The implementation agent sets none either (C-493): it works in
+/// the worktree its parent works in instead of making a second one that builds from nothing.
 #[test]
 fn refs_audit_agent_sets_no_isolation() {
     let front = |text: &str| {
@@ -1666,8 +1678,12 @@ fn refs_audit_agent_sets_no_isolation() {
     );
     let imp = front(&repo_text("agents/impl.md"));
     assert!(
-        imp.lines().any(|l| l == "isolation: worktree"),
-        "agents/impl.md lost its worktree isolation"
+        imp.lines().any(|l| l == "isolation: none"),
+        "agents/impl.md front matter lacks the required `isolation: none`"
+    );
+    assert!(
+        !imp.lines().any(|l| l == "isolation: worktree"),
+        "agents/impl.md still sets isolation: worktree"
     );
 }
 
@@ -1853,7 +1869,7 @@ fn refs_audit_cleanup_names_the_scope_worktree() {
 
 /// AC-2 (REQ-3): the AUDIT `Isolation:` line says the agent sets none, reads the audit worktree in
 /// `scope`, runs every command inside it, ends `blocked` on a missing worktree or another HEAD,
-/// and that the implementation agent keeps its own.
+/// and that the implementation agent works in the lane's worktree.
 #[test]
 fn refs_audit_isolation_line_is_pinned() {
     let audit = read("workflows/audit.md");
@@ -1864,7 +1880,7 @@ fn refs_audit_isolation_line_is_pinned() {
         "runs every command inside it",
         "its shell starts in the lander's folder",
         "ends `blocked` when that worktree is missing or its HEAD is not `head`",
-        "The implementation agent keeps its worktree (RUN workflow)",
+        "The implementation agent works in the lane's worktree (RUN workflow)",
     ];
     let missing = lacking(line, &phrases);
     assert!(missing.is_empty(), "the Isolation line lacks {missing:?}");

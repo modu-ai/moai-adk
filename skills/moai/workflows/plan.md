@@ -33,7 +33,7 @@ Skip this section when you are a base agent yourself: base agents never start ot
 - Use only what the host itself offers. Never stand in for a missing feature with extra sessions, folders or scripts: name the feature as not supported on this host, with the reason, and use the fallback given below.
 - When the agent is not installed on this host, do the step in this session and say so.
 
-PLAN may hand the draft to one `moai-plan` at a time, read-only, and may first fan out `moai-research` for open facts as the READ workflow describes. The agent drafts steps and an AC table; approval and the decisions in steps 4 and 5 stay with this session and the user. Read-only is enforced only where the installed agent file can carry it; confirm afterwards that nothing changed.
+PLAN hands the draft to one `moai-plan` with the host's agent tool; do not draft it yourself when the agent is installed. First fan out `moai-research` for every open fact, several at once in one message and one question each, as the READ workflow describes, and wait until every part's `RESULT` line is in. Then start one `moai-plan`, read-only, and wait for its `RESULT` line before RUN starts: the plan comes first, `moai-impl` starts after it and never beside it. The agent drafts steps and an AC table; approval and the decisions in steps 4 and 5 stay with this session and the user. Read-only is enforced only where the installed agent file can carry it; confirm afterwards that nothing changed.
 
 ## Resume
 
