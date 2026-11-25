@@ -156,3 +156,38 @@ D-2 부터 D-8 은 레인 추천값으로 가요(리더 배차 2026-11-25, 승�
 | D-6 | 이 변경을 처음 싣는 릴리스는 옛 게이트가 판정해요; 이 카드는 워크플로를 고치지 않아요 | CI 면은 사용자의 선택 | 릴리스 때 사용자가 처리 방법을 정해요 |
 | D-7 | `land_started` 행이 없는 빨리감기 중간 커밋은 자기 `NONE` 줄이에요 | 닫힌 쪽으로 | 흡수 추정 허용 |
 | D-8 | 올리기는 한 명령의 `--post` 플래그와 digest·허가 참조로 확인해요(기존 `card-summary-plan`/`apply` 의 두 명령 방식이 아님) | 카드가 "명령 하나"를 말해요 | plan 과 apply 두 명령으로 나누기 |
+
+## Result
+
+SPEC 승인 근거는 카드 원장 노트 9479(`DELEGATED-APPROVAL`, revision 1, approval_digest sha256:65051388…3953)이고, D-1 은 사용자가 직접 고른 (가) 엄격이에요(노트 9473). 구현은 이 브랜치의 세 커밋과 보안 수리 한 커밋이에요: 문법·만드는 명령·올리기 `fd1009cba6`, 게이트가 요약 읽기 `5c941d16ff`, 보안 지적 수리 `bf0c5e73d4`. 실제 GitHub 에는 아무것도 보내지 않았어요(시험은 가짜 `gh` 실행 파일과 임시 HOME, 임시 저장소만 써요).
+
+### 실행 기록 (2026-11-26, 이 워크트리, 슬롯 안, nextest 와 SPEC verify 줄 그대로)
+
+- SPEC 의 `verify:` 줄 26개를 적힌 그대로(`cargo test --locked --offline …`) 한 번씩 돌렸어요: 모두 exit 0 이고 이름 붙인 시험은 각각 1개가 실제로 돌았어요(`audit_gate_cli` 전체 7, `gate_registry_tier` 전체 25). 결과 파일은 `target/jade/verify-lines.out`(카드가 열려 있는 동안만 둬요).
+- 구현 1·2 에이전트와 수리 에이전트의 nextest: lib 와 `card` 와 `audit_gate_cli` 34개 통과, `clippy -D warnings` 와 `cargo fmt --check` exit 0.
+- 만드는 쪽 시험 12개는 코드보다 먼저 빨갛게 돌지 못했어요(문법 시험 3개만 먼저 실패를 봤어요). 대신 가드 뮤턴트가 증거예요. 게이트 쪽 시험은 먼저 빨갛게 돌렸어요(`red-gate-*.log`): 거절 방향 시험 3개는 단언에서 실패했고, 받아들이는 방향이나 대조 시험은 옛 게이트가 요약을 읽지 못해 실패했어요.
+- 보안 지적(자동 검토) 두 건을 코드로 확인하고 고쳤어요: (1) 착지 행이 가리키는 판정 이벤트의 head 를 커밋 자신이나 깨끗한 병합의 두 번째 부모일 때만 받아요, (2) 빨리감기 착지만 사이 커밋을 흡수해요(옮겨진 tip 위 병합은 안 해요). 시험 `a_relied_verdict_on_an_unrelated_head_is_not_a_pass_line` 과 `a_direct_commit_under_a_merge_on_a_moved_tip_is_not_absorbed` 는 고치기 전에 단언에서 실패했고, 뮤턴트 두 개가 각각 죽여요.
+
+### 가드 뮤턴트 (손으로 한 줄 변이, 하나씩 한 번 편집, 복구 확인)
+
+- 만드는 쪽 6개: digest 재확인 빼기, 완전성 검사 빼기, 예약 보유자를 제외 목록에서 빼기, 흡수 끄기, `verdict_fail` 만 FAIL 로 보기, 깨끗한 병합 검사 빼기(처음엔 살아남아서 시험 `a_merge_that_adds_a_change_is_not_a_clean_join` 을 더했어요): 모두 죽었어요.
+- 게이트 쪽 16개와 수리 쪽 2개: 감사자 ∉ 제외 목록 검사, 빈 제외 목록, `same_identity` 대신 `==`, `NONE` 무시, head 일치, base 일치, 줄 수와 이어짐, `retain_members` 둘, 열린 FAIL 우선, 옛 PASS 가 실패 요약 덮기, `v=` 없는 PASS, 병합 기준 읽기 조건 둘, 이름 열 개 제한, 공백 검사 등: 모두 exit 100 으로 죽었어요. READY 노트의 `guard-mutant:` 줄이 시험 이름과 함께 있어요.
+- 한계: 게이트 쪽 뮤턴트 16개는 타입 별칭을 더하기 전 파일에서 돌렸고, 별칭 줄만 다른 `m23b` 만 최종 파일에서 돌았어요.
+
+### 인수 기준
+
+- AC-1: met — `one_line_per_first_parent_commit_and_none_is_dropped`, `a_landing_without_a_verdict_is_listed_by_name`, `a_batch_commit_lists_every_card_it_closed_on_one_line`, `a_fast_forwarded_lane_absorbs_only_its_own_commits` 통과.
+- AC-2: met — `a_reviewer_who_wrote_or_held_the_card_is_not_a_pass_line`, `a_pass_event_without_a_relied_row_is_judged_by_the_land_rules`, `a_fail_recorded_after_the_landing_marks_the_line_fail` 통과.
+- AC-3: met — 미리보기, 올리기 거절, 한 번 올리기, 바뀐 원장·범위, 한도 거절 시험 다섯과 `render_and_parse_round_trip` 통과.
+- AC-4: met — 게이트 lib 시험 여섯 통과.
+- AC-5: met — 열린 FAIL, 실패 요약, 병합 기준 읽기 조건, 명령이 낸 글이 게이트가 읽는 글이라는 끝에서 끝까지 시험, `audit_gate_cli` 와 `gate_registry_tier` 전체 통과.
+
+### SPEC 과 다른 점, 알려 둘 것
+
+- 만드는 쪽 digest 는 올리는 바이트만 덮어서 미리보기에 `--pr` 이 필요 없어요(SPEC 의 문장과 달라요).
+- "요약에서 한 줄을 빼면 `missing`" 은 `S` 나 `L` 줄을 자르면 줄 수나 이어짐이 깨져 REQ-12 로 `fail`(`summary-malformed`)이에요. 끝에서 끝까지 시험은 판정 없는 커밋이 든 원장으로 `missing`/`summary-landings` 를 확인해요.
+- 게이트 규칙 이름 `release-summary`, `summary-malformed`, `summary-fail`, `summary-base`, `summary-landings` 는 SPEC 에 이름이 없어서 구현이 정했어요. `Input.release_base` 에는 `skip_serializing_if` 를 `registry` 처럼 더했어요.
+- 선택 항목이던 `src/ops/audit_gate.rs` 의 도움말 한 문장은 공유 도움말 골든이 바뀌어서 넣지 않았어요.
+- 판정이 하나도 없는 착지는 판정 head 가 커밋 자신이라 자기 레인의 커밋을 흡수할 수 있지만, 그 줄이 `NONE` 이라 게이트는 실패해요.
+- 멤버가 자기 일관성 있는 요약을 꾸며 올릴 수 있는 위험(Risks)은 그대로예요. D-6(처음 싣는 릴리스는 옛 게이트가 판정)과 첫 릴리스 범위의 판정 없는 착지 처리는 리더의 릴리스 계획 몫이에요.
+- 위험 경로 실행: 올리기 길이 `gh` 프로세스를 시작하므로, 시험 `one_post_with_the_planned_bytes_then_nothing` 등이 진짜 `moai` 바이너리를 임시 HOME, 임시 저장소, 가짜 `gh` 실행 파일로 돌려요. 게이트는 프로세스를 시작하지 않아요.
