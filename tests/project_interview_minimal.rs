@@ -213,7 +213,16 @@ fn operating_rules_are_never_asked_and_have_defaults() {
 }
 
 /// Tokens that tie a question, an option or an example to one language's tooling (REQ-9).
-const LANGUAGE_TOOL_TOKENS: [&str; 5] = ["cargo", "rustup", "npm", "pipx", "go install"];
+const LANGUAGE_TOOL_TOKENS: [&str; 8] = [
+    "cargo",
+    "rustup",
+    "npm",
+    "pipx",
+    "go install",
+    "pytest",
+    "go test",
+    "cargo-nextest",
+];
 
 /// Tokens that name this repository's own commands and scripts (REQ-9). They are file or command
 /// names, so any boundary after them counts (`tools/local_check.sh`, `moai check affected`).
@@ -268,6 +277,8 @@ fn is_command(lower: &str, start: usize, end: usize, internal: bool) -> bool {
 }
 
 /// Lines of `text` that hold a token of the two lists as a whole word, outside the exception.
+/// The exception spares the command cell of the install table from the language tools only: that
+/// cell is still read for the MoAI-internal tokens (REQ-23).
 fn tool_lines(text: &str) -> Vec<(usize, &'static str)> {
     let mut found = Vec::new();
     let mut in_exception_table = false;
@@ -277,16 +288,19 @@ fn tool_lines(text: &str) -> Vec<(usize, &'static str)> {
         } else if !is_row(line) {
             in_exception_table = false;
         }
-        let lower = scanned_part(line, in_exception_table).to_lowercase();
-        let lists: [(&[&'static str], bool); 2] =
-            [(&LANGUAGE_TOOL_TOKENS, false), (&INTERNAL_TOKENS, true)];
-        for (tokens, internal) in lists {
+        let spared = scanned_part(line, in_exception_table).to_lowercase();
+        let whole = line.to_lowercase();
+        let lists: [(&[&'static str], bool, &str); 2] = [
+            (&LANGUAGE_TOOL_TOKENS, false, &spared),
+            (&INTERNAL_TOKENS, true, &whole),
+        ];
+        for (tokens, internal, lower) in lists {
             for token in tokens {
                 let mut from = 0;
                 while let Some(pos) = lower[from..].find(token) {
                     let start = from + pos;
                     let end = start + token.len();
-                    if is_command(&lower, start, end, internal) {
+                    if is_command(lower, start, end, internal) {
                         found.push((at + 1, *token));
                         break;
                     }
@@ -388,4 +402,444 @@ fn the_tool_scan_flags_a_planted_tool_and_spares_only_the_named_exception() {
         tool_lines("the version in the root `Cargo.toml` and `package.json`").is_empty(),
         "a manifest file name is a detection fact, not a command"
     );
+}
+
+// Revision 3 of the SPEC (REQ-13 to REQ-25): the text repair of the project-side files. The
+// expected sentences are pinned here; the texts are repaired to say them.
+
+const NEXT_FLOW: &str = "skills/moai/references/flows/next-flow.md";
+const WORK_FLOW_PLAN: &str = "src/ops/work_flow_plan.rs";
+const SPEC: &str = ".moai/specs/SPEC-20261124-moai-project-interview/spec.md";
+
+/// The hosts that no longer exist for this product; no project-side text names them.
+const WITHDRAWN_HOSTS: [&str; 2] = ["Codex", "OMP"];
+
+/// True when `word` stands in `text` as a whole word.
+fn whole_word(text: &str, word: &str) -> bool {
+    let alnum = |c: Option<char>| c.is_some_and(char::is_alphanumeric);
+    let mut from = 0;
+    while let Some(pos) = text[from..].find(word) {
+        let start = from + pos;
+        let end = start + word.len();
+        if !alnum(text[..start].chars().next_back()) && !alnum(text[end..].chars().next()) {
+            return true;
+        }
+        from = end;
+    }
+    false
+}
+
+/// The last cell of a table row, trimmed.
+fn last_cell(row: &str) -> &str {
+    row.trim_end()
+        .trim_end_matches('|')
+        .rsplit('|')
+        .next()
+        .unwrap_or("")
+        .trim()
+}
+
+/// The text from `at` to the end of its sentence: the first full stop followed by a space or the
+/// end of the text (a full stop inside a name such as `a.b` does not end it).
+fn sentence_from(text: &str, at: usize) -> &str {
+    let rest = &text[at..];
+    let mut chars = rest.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        if c == '.' && chars.peek().map_or(true, |(_, next)| next.is_whitespace()) {
+            return &rest[..=i];
+        }
+    }
+    rest
+}
+
+/// A line is a numbered step of the PROJECT procedure: `2. **…` or `6a. **…`.
+fn is_step_line(line: &str) -> bool {
+    let digits = line.chars().take_while(char::is_ascii_digit).count();
+    digits > 0
+        && line[digits..]
+            .trim_start_matches(|c: char| c.is_ascii_lowercase())
+            .starts_with(". **")
+}
+
+/// The one boundary sentence of `project.md` (REQ-13): the route does not move earlier-generation
+/// state, `/moai update` does, and when updates remain the route ends with one line naming it.
+/// The full sentence the text carries is
+/// "Moving state of an earlier MoAI generation is `/moai update`'s job: this route does not move
+/// it, and when updates remain the route ends with one line that names `/moai update`."
+const BOUNDARY: &str = "Moving state of an earlier MoAI generation is `/moai update`'s job";
+
+/// AC-10 (REQ-13, REQ-14): `project.md` carries the boundary sentence once, before the first
+/// numbered step that handles earlier-generation state, and the sentence also says the route ends
+/// with one line naming `/moai update` when updates remain.
+#[test]
+fn boundary_sentence_is_pinned() {
+    let project = read(PROJECT);
+    assert_eq!(
+        project.matches(BOUNDARY).count(),
+        1,
+        "`{PROJECT}` must carry exactly one boundary sentence starting `{BOUNDARY}`"
+    );
+    let at = project.find(BOUNDARY).unwrap();
+    let sentence = sentence_from(&project, at);
+    for needle in ["when updates remain", "one line"] {
+        assert!(
+            sentence.contains(needle),
+            "the boundary sentence must say `{needle}`: {sentence}"
+        );
+    }
+    assert!(
+        sentence.matches("`/moai update`").count() >= 2,
+        "the boundary sentence must name `/moai update` as the owner and in the closing line: {sentence}"
+    );
+    // The first numbered step that handles earlier-generation state: the sentence stands before it.
+    let mut offset = 0;
+    for line in project.split_inclusive('\n') {
+        if is_step_line(line) && line.to_lowercase().contains("earlier-generation") {
+            assert!(
+                at < offset,
+                "the boundary sentence must stand before the step `{}`",
+                line.trim()
+            );
+            break;
+        }
+        offset += line.len();
+    }
+}
+
+/// Lines of `text` that carry a card number (`C-59`), an Issue number (`#2639`, three to five
+/// digits) or a dated user decision (`user decision 2026-11-16`, `user decision 16`), numbered
+/// from 1 (REQ-15).
+fn citation_lines(text: &str) -> Vec<(usize, String)> {
+    let digits = |s: &str| s.chars().take_while(char::is_ascii_digit).count();
+    let alnum = |c: Option<char>| c.is_some_and(char::is_alphanumeric);
+    let card = |line: &str| {
+        line.match_indices("C-").any(|(at, _)| {
+            let rest = &line[at + 2..];
+            let n = digits(rest);
+            n > 0 && !alnum(line[..at].chars().next_back()) && !alnum(rest[n..].chars().next())
+        })
+    };
+    let issue = |line: &str| {
+        line.match_indices('#')
+            .any(|(at, _)| (3..=5).contains(&digits(&line[at + 1..])))
+    };
+    let decision = |line: &str| {
+        let lower = line.to_lowercase();
+        lower
+            .match_indices("user decision ")
+            .any(|(at, found)| digits(&lower[at + found.len()..]) > 0)
+    };
+    text.lines()
+        .enumerate()
+        .filter(|(_, l)| card(l) || issue(l) || decision(l))
+        .map(|(at, l)| (at + 1, l.to_string()))
+        .collect()
+}
+
+/// AC-11 (REQ-15): the three project-side files carry no card number, no Issue number and no dated
+/// user decision. `update.md` is another card's file and is not read here.
+#[test]
+fn no_citation_in_project_side_files() {
+    let planted =
+        "a card C-59 closes\nsee Issue #2639\n(user decision 2026-11-16)\nuser decision 16 = B";
+    let flagged: Vec<usize> = citation_lines(planted).iter().map(|(n, _)| *n).collect();
+    assert_eq!(
+        flagged,
+        vec![1, 2, 3, 4],
+        "the guard must flag each planted shape"
+    );
+    for fine in [
+        "SPEC-20261121-x and ABC-12 and C-x",
+        "issue #12 and #123456",
+        "the user decision, noted",
+    ] {
+        assert!(citation_lines(fine).is_empty(), "{fine} is not a citation");
+    }
+    for rel in [PROJECT, BANK, QUESTIONS] {
+        if let Some((line, text)) = citation_lines(&read(rel)).first() {
+            panic!("{rel}:{line} carries a card, Issue or dated decision: {text}");
+        }
+    }
+}
+
+/// True when `text` says that a lane pushes or opens a pull request.
+fn says_lane_publishes(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    [
+        "pushes",
+        "pushing",
+        "opens a pull request",
+        "open a pull request",
+        "opens a pr",
+    ]
+    .iter()
+    .any(|phrase| lower.contains(phrase))
+}
+
+/// AC-12 (REQ-16): the flow text names no withdrawn host, does not send a lane to push or open a
+/// pull request, and says what `flows/next-flow` says: the lane only commits and the leader lands.
+#[test]
+fn flow_text_matches_next_flow() {
+    let truth = read(NEXT_FLOW);
+    assert!(
+        truth.contains("A lane only commits"),
+        "the flow description this test follows changed: {NEXT_FLOW}"
+    );
+    assert!(says_lane_publishes(
+        "the lane pushes its branch and opens a pull request"
+    ));
+    assert!(!says_lane_publishes(
+        "the lane only commits: no push, no pull request per change"
+    ));
+    for rel in [BANK, PROJECT] {
+        let text = read(rel);
+        for host in WITHDRAWN_HOSTS {
+            assert!(
+                !whole_word(&text, host),
+                "{rel} names the withdrawn host {host}"
+            );
+        }
+        for (at, line) in text.lines().enumerate() {
+            assert!(
+                !(line.to_lowercase().contains("next-flow") && says_lane_publishes(line)),
+                "{rel}:{} says a lane pushes or opens a pull request: {line}",
+                at + 1
+            );
+        }
+    }
+    let bank = read(BANK);
+    let flow = bank
+        .lines()
+        .find(|l| l.starts_with("- **next-flow"))
+        .expect("the next-flow bullet");
+    for needle in ["the lane only commits", "the leader lands"] {
+        assert!(
+            flow.contains(needle),
+            "the next-flow bullet must say `{needle}`: {flow}"
+        );
+    }
+}
+
+/// The order the interview gives the integration branch: the order `moai work-flow-plan` uses.
+const BRANCH_ORDER: &str =
+    "the profile value first, then the remote default branch, then the current branch";
+
+/// AC-12 (REQ-17, REQ-24): the bank names the integration branch in the order of
+/// `moai work-flow-plan`, and `project.md` shows the `work_flow_remote` warning of `project-plan`.
+#[test]
+fn integration_branch_order_matches_work_flow_plan() {
+    let source = read(WORK_FLOW_PLAN);
+    assert!(
+        source.contains("else the remote's default branch (`origin/HEAD`), else the current"),
+        "the order this test follows changed in {WORK_FLOW_PLAN}"
+    );
+    let bank = read(BANK);
+    let flow = section(&bank, "Git work flow");
+    assert!(
+        flow.contains(BRANCH_ORDER),
+        "the Git work flow section must say `{BRANCH_ORDER}`: {flow}"
+    );
+    let project = read(PROJECT);
+    assert!(
+        project.lines().any(|l| {
+            l.contains("`work_flow_remote`")
+                && l.contains("`project-plan`")
+                && l.contains("warning")
+                && l.to_lowercase().contains("show")
+        }),
+        "project.md must say to show the `work_flow_remote` warning of `project-plan`"
+    );
+}
+
+/// The profile fields step 4 puts into the plan (REQ-18).
+const PROFILE_FIELDS: [&str; 8] = [
+    "purpose",
+    "tools",
+    "development methods",
+    "hosts",
+    "versioning",
+    "decisions",
+    "work_flow",
+    "language",
+];
+
+/// AC-12 (REQ-18): the field list of step 4 holds every field the interview fills.
+#[test]
+fn step_four_lists_all_profile_fields() {
+    let project = read(PROJECT);
+    let step = project
+        .lines()
+        .find(|l| l.starts_with("4. **Plan and apply.**"))
+        .expect("step 4");
+    let rest = &step[step
+        .find("`result.profile`")
+        .expect("`result.profile` in step 4")..];
+    let open = rest.find('(').expect("the field list of step 4");
+    let close = open + rest[open..].find(')').expect("the end of the field list");
+    let list = &rest[open + 1..close];
+    for field in PROFILE_FIELDS {
+        assert!(
+            list.contains(field),
+            "the step 4 field list must name `{field}`: ({list})"
+        );
+    }
+}
+
+/// AC-12 (REQ-19, REQ-25): the `method` row says the words the profile records (`TDD`,
+/// `characterization`), and the `hosts` row offers `claude` and no withdrawn host.
+#[test]
+fn rows_use_profile_words() {
+    let bank = read(BANK);
+    let confirmed = section(&bank, "Confirmed");
+    let method = row_line(&confirmed, "method");
+    let goes_to = last_cell(&method);
+    for word in ["TDD", "characterization"] {
+        assert!(
+            goes_to.contains(word),
+            "the method row's Goes-to cell must name the recorded word `{word}`: {goes_to}"
+        );
+    }
+    let hosts = row_line(&confirmed, "hosts");
+    assert!(
+        hosts.contains("claude"),
+        "the hosts row must name `claude`: {hosts}"
+    );
+    for host in WITHDRAWN_HOSTS {
+        assert!(
+            !whole_word(&hosts, host),
+            "the hosts row must not name the withdrawn host {host}: {hosts}"
+        );
+    }
+}
+
+/// Lines of `text` that hold the CalVer format `YYYY.0M.MICRO` with no plain example (a date such
+/// as `2026.11.0`) within the next 60 characters, numbered from 1.
+fn bare_calver_format_lines(text: &str) -> Vec<usize> {
+    let example = |s: &str| {
+        let b = s.as_bytes();
+        (0..b.len()).any(|i| {
+            let digit = |k: usize| b.get(i + k).is_some_and(u8::is_ascii_digit);
+            let dot = |k: usize| b.get(i + k) == Some(&b'.');
+            (0..4).all(digit) && dot(4) && digit(5) && digit(6) && dot(7) && digit(8)
+        })
+    };
+    text.lines()
+        .enumerate()
+        .filter(|(_, line)| {
+            line.match_indices("YYYY.0M.MICRO").any(|(at, found)| {
+                let after: String = line[at + found.len()..].chars().take(60).collect();
+                !example(&after)
+            })
+        })
+        .map(|(at, _)| at + 1)
+        .collect()
+}
+
+/// The sentences of the development phase that no user should read (REQ-20).
+const LEFTOVER_SENTENCES: [&str; 3] = [
+    "not_run until then",
+    "is planned and not implemented in 2026.11.0-rc.1",
+    "Host use of `/moai project` is verified only after",
+];
+
+/// AC-12 (REQ-20): the texts the user reads carry no head number, no bare version-format token, no
+/// phrase about the session's own host and no development-leftover sentence.
+#[test]
+fn no_internal_word_in_user_shown_text() {
+    assert_eq!(
+        bare_calver_format_lines("| `YYYY.0M.MICRO` (recommended) |"),
+        vec![1]
+    );
+    assert!(bare_calver_format_lines("`YYYY.0M.MICRO` (for example 2026.11.0)").is_empty());
+    for rel in [BANK, PROJECT] {
+        let text = read(rel);
+        for phrase in ["HeadVer head", "this session's host"] {
+            assert!(!text.contains(phrase), "{rel} says `{phrase}`");
+        }
+        let bare = bare_calver_format_lines(&text);
+        assert!(
+            bare.is_empty(),
+            "{rel} shows `YYYY.0M.MICRO` with no plain example (lines): {bare:?}"
+        );
+        for sentence in LEFTOVER_SENTENCES {
+            assert!(!text.contains(sentence), "{rel} says `{sentence}`");
+        }
+    }
+}
+
+/// AC-12 (REQ-21): the Defaults text does not send the user to edit the profile by hand, it says to
+/// run `/moai project` again, and `project.md` no longer calls the receipt step unimplemented.
+#[test]
+fn contradictions_are_gone() {
+    let bank = read(BANK);
+    let defaults = section(&bank, "Defaults").to_lowercase();
+    assert!(
+        !defaults.contains("editing the profile") && !defaults.contains("edit the profile"),
+        "the Defaults text must not tell the user to edit the profile by hand: {defaults}"
+    );
+    assert!(
+        defaults.contains("`/moai project` again"),
+        "the Defaults text must say to run `/moai project` again: {defaults}"
+    );
+    let project = read(PROJECT);
+    assert!(
+        !project.contains("planned and not implemented"),
+        "project.md must not call the receipt step planned and not implemented"
+    );
+}
+
+/// AC-13 (REQ-22): the scan lists `pytest`, `go test` and `cargo-nextest`, in a command position
+/// and inside backticks, and does not flag a longer word.
+#[test]
+fn scan_tokens_cover_pytest_go_test_nextest() {
+    for (planted, token) in [
+        ("run pytest here", "pytest"),
+        ("then `pytest` passes", "pytest"),
+        ("run go test ./... here", "go test"),
+        ("`go test` passes", "go test"),
+        ("run cargo-nextest run", "cargo-nextest"),
+        ("| `done` | `cargo-nextest` passes |", "cargo-nextest"),
+    ] {
+        assert_eq!(tool_lines(planted), vec![(1, token)], "{planted}");
+    }
+    assert!(
+        tool_lines("a pytester or the gopher test is not the token").is_empty(),
+        "a token inside a longer word is not flagged"
+    );
+}
+
+/// AC-13 (REQ-23): the exempt install-table cell is still read for the MoAI-internal tokens; the
+/// real cells hold none.
+#[test]
+fn internal_tokens_scanned_in_exempt_cell() {
+    let table =
+        |cell: &str| format!("{EXCEPTION_HEADER}\n| --- | --- |\n| `rust-analyzer` | `{cell}` |");
+    for (cell, token) in [
+        ("moai check affected", "moai check"),
+        ("tools/local_check.sh", "local_check"),
+        ("check-guard", "check-guard"),
+    ] {
+        assert_eq!(tool_lines(&table(cell)), vec![(3, token)], "{cell}");
+    }
+    assert!(
+        tool_lines(&table("rustup component add rust-analyzer")).is_empty(),
+        "a language-tool command in the exempt cell stays exempt"
+    );
+    assert!(
+        tool_lines(&read(PROJECT)).is_empty(),
+        "the real install table must pass the scan"
+    );
+}
+
+/// AC-12 (SPEC D-13): the `## Result` section of the SPEC gives AC-1, AC-2, AC-4 and AC-5 each a
+/// line of its own.
+#[test]
+fn result_lists_each_ac_on_its_own_line() {
+    let result = section(&read(SPEC), "Result");
+    for ac in ["AC-1", "AC-2", "AC-4", "AC-5"] {
+        assert!(
+            result.lines().any(|l| l.starts_with(&format!("- {ac}:"))),
+            "the Result section must have a line starting `- {ac}:`"
+        );
+    }
 }
