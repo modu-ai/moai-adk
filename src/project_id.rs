@@ -68,8 +68,49 @@ pub fn of_profile_bytes(bytes: &[u8]) -> Result<String> {
 /// The id of `project`: `Ok(None)` when it has no profile yet, `Ok(Some(id))` when the profile
 /// carries one, and an error when the profile is there but is a link, is not a regular file,
 /// is too large, is not JSON, or has no usable `project_id`. Reads only.
+///
+/// A linked worktree of a project whose profile is not tracked has no profile of its own: it
+/// reads the id of its primary checkout's profile, so every worktree names the same project
+/// (the same ledger and HOME folder). A worktree's own profile always wins, and a primary
+/// profile that cannot give an id is an error, never a missing profile.
 pub fn read(project: &Path) -> Result<Option<String>> {
-    crate::profile::existing_project_id(project)
+    match crate::profile::existing_project_id(project)? {
+        Some(id) => Ok(Some(id)),
+        None => match primary_checkout(project) {
+            Some(primary) => crate::profile::existing_project_id(&primary),
+            None => Ok(None),
+        },
+    }
+}
+
+/// The primary checkout of `project` when `project` is a linked worktree, read from its `.git`
+/// file (`gitdir: <primary>/.git/worktrees/<name>`, absolute or relative to the worktree);
+/// `None` for a clone, a submodule (`.git/modules/<name>`), a `.git` that is a link or a file
+/// that names no such folder. No git process runs.
+fn primary_checkout(project: &Path) -> Option<std::path::PathBuf> {
+    let dotgit = project.join(".git");
+    if !std::fs::symlink_metadata(&dotgit).ok()?.is_file() {
+        return None;
+    }
+    let text = std::fs::read_to_string(&dotgit).ok()?;
+    let line = text
+        .lines()
+        .find_map(|l| l.trim().strip_prefix("gitdir:"))?;
+    let gitdir = Path::new(line.trim());
+    let gitdir = if gitdir.is_absolute() {
+        gitdir.to_path_buf()
+    } else {
+        project.join(gitdir)
+    };
+    // `<primary>/.git/worktrees/<name>`: the folder two levels up is `worktrees` in a `.git`.
+    let worktrees = gitdir.parent()?;
+    let common = worktrees.parent()?;
+    if worktrees.file_name()? != "worktrees" || common.file_name()? != ".git" {
+        return None;
+    }
+    let primary = common.parent()?.canonicalize().ok()?;
+    // The primary must be a real checkout of its own, not the worktree itself.
+    (primary != project.canonicalize().ok()?).then_some(primary)
 }
 
 #[cfg(test)]
@@ -104,6 +145,107 @@ mod tests {
         assert!(!is_random_form(&format!("{}1", &GOOD[..25])));
         assert!(!is_random_form("demo"));
         assert!(!is_random_form(""));
+    }
+
+    /// A primary checkout and one linked worktree of it, laid out the way git does it (no git
+    /// process): `<primary>/.git/worktrees/<name>/` and a `.git` file in the worktree that names
+    /// that folder. Returns `(primary, linked)`.
+    fn linked_pair(root: &Path) -> (std::path::PathBuf, std::path::PathBuf) {
+        let primary = root.join("primary");
+        let linked = root.join("linked");
+        fs::create_dir_all(primary.join(".git/worktrees/lane")).unwrap();
+        fs::create_dir_all(&linked).unwrap();
+        fs::write(
+            linked.join(".git"),
+            format!(
+                "gitdir: {}\n",
+                primary.join(".git/worktrees/lane").display()
+            ),
+        )
+        .unwrap();
+        (primary, linked)
+    }
+
+    fn profile_text(id: &str) -> String {
+        format!("{{\n  \"schema_version\": 2,\n  \"project_id\": \"{id}\"\n}}\n")
+    }
+
+    #[test]
+    fn a_linked_worktree_without_a_profile_reads_the_primarys_id() {
+        let t = tempfile::tempdir().unwrap();
+        let (primary, linked) = linked_pair(t.path());
+        put_profile(&primary, crate::PROJECT_STATE_DIR, &profile_text(GOOD));
+        // the worktree has no profile of its own (the profile is not tracked in this project)
+        assert_eq!(read(&linked).unwrap().as_deref(), Some(GOOD));
+        assert_eq!(read(&primary).unwrap().as_deref(), Some(GOOD));
+        // reading writes nothing into either folder
+        assert!(!linked.join(crate::PROJECT_STATE_DIR).exists());
+    }
+
+    #[test]
+    fn a_linked_worktree_with_its_own_profile_keeps_its_own_id() {
+        let t = tempfile::tempdir().unwrap();
+        let (primary, linked) = linked_pair(t.path());
+        put_profile(&primary, crate::PROJECT_STATE_DIR, &profile_text("primary"));
+        put_profile(&linked, crate::PROJECT_STATE_DIR, &profile_text("own"));
+        assert_eq!(read(&linked).unwrap().as_deref(), Some("own"));
+    }
+
+    #[test]
+    fn a_linked_worktree_whose_primary_has_no_profile_has_no_id() {
+        let t = tempfile::tempdir().unwrap();
+        let (_primary, linked) = linked_pair(t.path());
+        assert_eq!(read(&linked).unwrap(), None);
+    }
+
+    #[test]
+    fn a_primary_profile_that_cannot_give_an_id_is_an_error_not_a_missing_profile() {
+        let t = tempfile::tempdir().unwrap();
+        let (primary, linked) = linked_pair(t.path());
+        put_profile(&primary, crate::PROJECT_STATE_DIR, "not json\n");
+        assert!(read(&linked).is_err());
+    }
+
+    #[test]
+    fn a_git_file_that_is_not_a_linked_worktree_does_not_borrow_a_profile() {
+        let t = tempfile::tempdir().unwrap();
+        let super_project = t.path().join("super");
+        let module = t.path().join("sub");
+        fs::create_dir_all(super_project.join(".git/modules/sub")).unwrap();
+        fs::create_dir_all(&module).unwrap();
+        put_profile(
+            &super_project,
+            crate::PROJECT_STATE_DIR,
+            &profile_text(GOOD),
+        );
+        // a submodule's `.git` file names `.git/modules/<name>`, not `.git/worktrees/<name>`
+        fs::write(
+            module.join(".git"),
+            format!(
+                "gitdir: {}\n",
+                super_project.join(".git/modules/sub").display()
+            ),
+        )
+        .unwrap();
+        assert_eq!(read(&module).unwrap(), None);
+        // a `.git` file with no gitdir line, and one that is a link, are not read either
+        let odd = t.path().join("odd");
+        fs::create_dir_all(&odd).unwrap();
+        fs::write(odd.join(".git"), "garbage\n").unwrap();
+        assert_eq!(read(&odd).unwrap(), None);
+    }
+
+    #[test]
+    fn a_relative_gitdir_line_is_read_against_the_worktree() {
+        let t = tempfile::tempdir().unwrap();
+        let (primary, linked) = linked_pair(t.path());
+        put_profile(&primary, crate::PROJECT_STATE_DIR, &profile_text(GOOD));
+        fs::write(
+            linked.join(".git"),
+            "gitdir: ../primary/.git/worktrees/lane\n",
+        )
+        .unwrap();
+        assert_eq!(read(&linked).unwrap().as_deref(), Some(GOOD));
     }
 
     #[test]
