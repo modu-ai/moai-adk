@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-update-same-bytes-no-conflict
 title: "A flat project agent file equal to the new render is moved, and one conflict does not stop the rest of the update"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9097): \"승인, 세 가지 모두 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:8cd73aebe6b81f1200ced70359a09cb4da0008b02d959ff2114ce3a08b8970c6"
 ---
 
 # A flat project agent file equal to the new render is moved, and one conflict does not stop the rest of the update
