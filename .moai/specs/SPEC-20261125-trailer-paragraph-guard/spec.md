@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-trailer-paragraph-guard
 title: "Moai 트레일러가 마지막 문단 밖에 있으면 커밋할 때 거절하고, 검사기가 그 원인을 이름으로 말해요"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "리더 결정 노트 8936 (2026-11-25T03:46:57Z): 리더의 선택 질문 '(카드 번호 생략)(커밋 끝줄 검사) SPEC-20261125-trailer-paragraph-guard 개정 3 (digest sha256:7417cb3b…9335)을 승인할까요?' 에 사용자가 고른 답 '승인 (Recommended)'; 개정 3 의 방향 결정은 노트 8927, 개정 2 의 승인은 노트 8883; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:7417cb3b5388e061eb9a1593d321dbef692aa49acfac7f8e6aa1c87fc02f9335"
 ---
 
 # Moai 트레일러가 마지막 문단 밖에 있으면 커밋할 때 거절하고, 검사기가 그 원인을 이름으로 말해요
