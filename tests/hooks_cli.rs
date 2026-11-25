@@ -1002,6 +1002,291 @@ fn merge_confirm_capabilities_name_the_direct_merge() {
     }
 }
 
+// ---- SPEC-20261125-preflight-safe-force-push: two force pushes that overwrite nothing ----------
+
+/// A temporary work tree `repo` (a real `git init`, so remote names resolve) next to a bare
+/// repository on this computer; returns the temporary folder, the work tree and the bare path.
+fn push_repo() -> (tempfile::TempDir, std::path::PathBuf, String) {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let base = fs::canonicalize(tmp.path()).unwrap();
+    let (repo, bare) = (base.join("repo"), base.join("bare.git"));
+    fs::create_dir_all(&repo).unwrap();
+    // The shared helper carries the gc/maintenance and config guards of every fixture git call.
+    let git = common::git::git_ok;
+    git(&base, &["init", "-q", "--bare", "bare.git"]);
+    git(&repo, &["init", "-q"]);
+    let bare = bare.to_str().unwrap().to_string();
+    git(&repo, &["remote", "add", "loc", &bare]);
+    git(
+        &repo,
+        &["remote", "add", "net", "https://example.invalid/x.git"],
+    );
+    fs::create_dir_all(repo.join("home")).unwrap();
+    (tmp, repo, bare)
+}
+
+/// REQ-1, REQ-2, REQ-4, REQ-5: the hook command, fed a Bash call as Claude sends it, does not
+/// ask about a create-only lease push or a forced push to a path on this computer, still asks
+/// about every other forced push, and still refuses a force push to `main`.
+#[test]
+fn safe_force_push_is_not_asked_and_the_rest_is_as_before() {
+    let (_tmp, repo, bare) = push_repo();
+    let answer = |command: &str| force_push_preflight(&repo, command, None).0;
+    for command in [
+        "git push --force-with-lease=work: up work".to_string(),
+        "git push --force-w=work: up work".to_string(),
+        format!("git push -f {bare} feature"),
+        format!("git push --force {bare} feature"),
+        format!("git push {bare} +feature"),
+        "git push -f ../bare.git feature".to_string(),
+        format!("git push -f file://{bare} feature"),
+    ] {
+        assert_eq!(answer(&command), "", "asked: {command}");
+    }
+    for command in [
+        "git push --force-with-lease=work:abc up work".to_string(),
+        "git push --force-with-lease up work".to_string(),
+        "git push --force-with-lease=work: --force up work".to_string(),
+        "git push --force-with-lease=work: up +work".to_string(),
+        "git push --force-with-lease=work: --mirror up".to_string(),
+        "git push --force-with-lease=work: up".to_string(),
+        "git push --force-with-lease=work:".to_string(),
+        "git push -f net feature".to_string(),
+        "git push -f https://example.invalid/x.git feature".to_string(),
+        "git push -f git@example.invalid:x.git feature".to_string(),
+        "git push -f ssh://example.invalid/x.git feature".to_string(),
+        "git push -f".to_string(),
+        format!("git push -f {bare} a; git push -f net b"),
+    ] {
+        assert_eq!(answer(&command), "ask", "not asked: {command}");
+    }
+    for command in [
+        "git push -f up main".to_string(),
+        format!("git push -f {bare} main"),
+        "git push --force-with-lease=main: up main".to_string(),
+        format!("git push {bare} +master"),
+    ] {
+        assert_eq!(answer(&command), "deny", "not refused: {command}");
+    }
+}
+
+/// Audit repair of SPEC-20261125-preflight-safe-force-push: git applies `remote.<name>.push` and
+/// `remote.<name>.mirror` to a push with no refspec and to one that names a ref by one word, and
+/// then a create-only lease does not stop the overwrite (measured with real git, see the SPEC
+/// Result). So the hook asks about every create-only lease line while such a setting exists, and
+/// does not ask once it is gone.
+#[test]
+fn safe_force_push_lease_is_asked_when_settings_force() {
+    let (_tmp, repo, _bare) = push_repo();
+    let git = common::git::git_ok;
+    let answer = |command: &str| force_push_preflight(&repo, command, None).0;
+    let lines = [
+        "git push --force-with-lease=work: net work",
+        "git push --force-with-lease=work: net",
+        "git push --force-with-lease=work: -u net",
+        "git push --force-with-lease=work:",
+    ];
+    assert_eq!(answer(lines[0]), "", "asked with no push setting");
+    for (key, value) in [
+        ("remote.net.push", "+refs/heads/*:refs/heads/*"),
+        ("remote.net.mirror", "true"),
+    ] {
+        git(&repo, &["config", key, value]);
+        for command in lines {
+            assert_eq!(answer(command), "ask", "{key}: not asked: {command}");
+        }
+        git(&repo, &["config", "--unset", key]);
+        assert_eq!(
+            answer(lines[0]),
+            "",
+            "{key}: still asked after unsetting it"
+        );
+    }
+}
+
+/// The tool-preflight decision and reason for a Bash `command` whose hook input holds `cwd` and,
+/// when given, `permission_mode`.
+fn force_push_preflight(cwd: &Path, command: &str, mode: Option<&str>) -> (String, String) {
+    force_push_preflight_env(cwd, command, mode, &[])
+}
+
+/// [`force_push_preflight`] with `env` set on the hook process. The hook refuses to judge a push
+/// when its own environment changes the settings git reads (`GIT_CONFIG_*`, `GIT_DIR`, …), so
+/// this process starts without any such variable (a temporary `HOME` and `XDG_CONFIG_HOME`
+/// keep the user's settings out) and only `env` adds them.
+fn force_push_preflight_env(
+    cwd: &Path,
+    command: &str,
+    mode: Option<&str>,
+    env: &[(&str, &str)],
+) -> (String, String) {
+    let mut input = json!({"session_id": "s", "hook_event_name": "PreToolUse",
+        "tool_name": "Bash", "tool_use_id": "t1",
+        "tool_input": {"command": command}, "cwd": cwd});
+    if let Some(mode) = mode {
+        input["permission_mode"] = json!(mode);
+    }
+    let mut hook = Command::new(common::MOAI_BIN);
+    hook.args([
+        "hook-dispatch",
+        "--host",
+        "claude",
+        "--event",
+        "tool-preflight",
+    ])
+    .current_dir(cwd)
+    .env("HOME", cwd.join("home"))
+    .env("XDG_CONFIG_HOME", cwd.join("home/.config"));
+    for (name, _) in std::env::vars_os() {
+        let name = name.to_string_lossy().into_owned();
+        if name == "GIT_CONFIG"
+            || name == "GIT_DIR"
+            || name == "GIT_COMMON_DIR"
+            || name == "GIT_WORK_TREE"
+            || name.starts_with("GIT_CONFIG_")
+        {
+            hook.env_remove(&name);
+        }
+    }
+    for (name, value) in env {
+        hook.env(name, value);
+    }
+    let mut child = hook
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, input.to_string().as_bytes());
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(out.status.code(), Some(0), "{command}");
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
+    let h = &v["hookSpecificOutput"];
+    (
+        h["permissionDecision"].as_str().unwrap_or("").to_string(),
+        h["permissionDecisionReason"]
+            .as_str()
+            .unwrap_or("")
+            .to_string(),
+    )
+}
+
+/// REQ-2, REQ-3: a remote *name* is judged by its push URL, read in the hook input's folder: a
+/// name that points at a path on this computer is not asked about; a network URL, a name that
+/// does not exist, and a line that is not one plain `git push` (`cd … &&`, `git -C …`) are.
+#[test]
+fn safe_force_push_remote_name_is_judged_by_its_push_url() {
+    let (_tmp, repo, _bare) = push_repo();
+    let decision = |command: &str| force_push_preflight(&repo, command, None).0;
+    // `loc` is the bare repository's path, `net` an unreachable network URL (never contacted).
+    assert_eq!(decision("git push -f loc work"), "", "local name asked");
+    assert_eq!(
+        decision("git push --force loc work"),
+        "",
+        "local name asked"
+    );
+    for command in [
+        "git push -f net work",
+        "git push -f nope work",
+        "git push -f work",
+    ] {
+        assert_eq!(decision(command), "ask", "not asked: {command}");
+    }
+    let dir = repo.to_str().unwrap();
+    for command in [
+        format!("cd {dir} && git push -f loc work"),
+        format!("git -C {dir} push -f loc work"),
+        "git push -f loc work | cat".to_string(),
+        "FOO=1 git push -f loc work".to_string(),
+    ] {
+        assert_eq!(decision(&command), "ask", "not asked: {command}");
+    }
+}
+
+/// REQ-3: when the hook's own environment changes the settings git reads, the lookups (which run
+/// with those variables removed) would read other settings than the push, so a forced push to a
+/// local remote name or a written local path is asked about.
+#[test]
+fn safe_force_push_env_that_changes_config_is_asked() {
+    let (_tmp, repo, bare) = push_repo();
+    let changed = [
+        ("GIT_CONFIG_COUNT", "1"),
+        ("GIT_CONFIG_KEY_0", "url.https://other.invalid/.insteadOf"),
+        ("GIT_CONFIG_VALUE_0", "/nonexistent/"),
+    ];
+    for command in [
+        "git push -f loc work".to_string(),
+        format!("git push -f {bare} work"),
+    ] {
+        let plain = force_push_preflight_env(&repo, &command, None, &[]).0;
+        assert_eq!(plain, "", "asked without extra env: {command}");
+        let with_env = force_push_preflight_env(&repo, &command, None, &changed).0;
+        assert_eq!(with_env, "ask", "not asked with the env: {command}");
+    }
+    // One variable is enough, and a repository variable counts too.
+    for var in [
+        ("GIT_DIR", "/nonexistent/.git"),
+        ("GIT_CONFIG_PARAMETERS", "'a.b=c'"),
+        ("GIT_CONFIG_GLOBAL", "/dev/null"),
+    ] {
+        let decision = force_push_preflight_env(&repo, "git push -f loc work", None, &[var]).0;
+        assert_eq!(decision, "ask", "not asked with {var:?}");
+    }
+    // The create-only lease line is read in the same folder, so the same variables ask there too.
+    let lease = "git push --force-with-lease=work: net work";
+    assert_eq!(
+        force_push_preflight_env(&repo, lease, None, &[]).0,
+        "",
+        "asked without extra env: {lease}"
+    );
+    for var in [
+        ("GIT_CONFIG_COUNT", "0"),
+        ("GIT_DIR", "/nonexistent/.git"),
+        ("GIT_CONFIG_GLOBAL", "/dev/null"),
+    ] {
+        let decision = force_push_preflight_env(&repo, lease, None, &[var]).0;
+        assert_eq!(decision, "ask", "lease not asked with {var:?}");
+    }
+}
+
+/// REQ-4: a session that skips permission prompts gets the force-push confirmation as a deny
+/// (nobody answers it); the two cases that are not asked about are not denied either.
+#[test]
+fn safe_force_push_bypass_mode() {
+    let (_tmp, repo, _bare) = push_repo();
+    let bypass = |command: &str| force_push_preflight(&repo, command, Some("bypassPermissions"));
+    let (decision, reason) = bypass("git push -f net work");
+    assert_eq!(decision, "deny", "{reason}");
+    assert!(
+        reason.contains(moai_cli::hook_guards::CONFIRM_FORCE_PUSH),
+        "{reason}"
+    );
+    for command in [
+        "git push --force-with-lease=work: up work",
+        "git push -f loc work",
+    ] {
+        let (decision, reason) = bypass(command);
+        assert_eq!(decision, "", "{command}: {reason}");
+    }
+}
+
+/// REQ-6: the Claude `capabilities` answer names both cases the confirmation leaves out.
+#[test]
+fn safe_force_push_capabilities() {
+    let caps = moai_cli::hook_engine::capabilities("claude");
+    let commands = caps["tool-preflight"]["confirm"]["commands"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    for word in [
+        "--force-with-lease=<ref>:",
+        "create-only",
+        "path on this computer",
+    ] {
+        assert!(commands.contains(word), "{word} missing: {commands}");
+    }
+}
+
 /// #2877 Q1: the Claude set carries the hook engine's preflight guard after the claim guard, and
 /// the generated command, run as the host runs it, denies a dangerous Bash call and a write
 /// into `.git`, and lets an ordinary call through.

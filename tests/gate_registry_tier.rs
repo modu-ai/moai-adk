@@ -349,6 +349,312 @@ fn a_registry_of_another_shape_is_tier_2() {
     assert!(!registry_only_grew(REG, &old, "{}"));
 }
 
+// ---- `test_targets` (SPEC-20261126-gate-test-targets-growth) ---------------------------------
+
+/// A scan in the per-line form: its `test_targets` as given, one `checks` line that is no plain
+/// target list.
+fn tt_scan(id: &str, targets: Value) -> Value {
+    json!({
+        "id": id,
+        "tests": ["tests/alpha.rs::t"],
+        "test_targets": targets,
+        "checks": ["cargo test --offline --locked --lib one"],
+        "rules": ["tests/alpha.rs", "tests/gamma.rs"],
+        "scope": [{"prefix": "src/", "suffixes": [".rs"]}],
+        "rejects": "a change the scan guards",
+    })
+}
+
+fn tt_base_scans() -> Vec<Value> {
+    vec![
+        tt_scan("reads-src", json!(["alpha", "gamma"])),
+        tt_scan("second", json!(["beta", "delta"])),
+    ]
+}
+
+fn tt_base() -> String {
+    registry(tt_base_scans())
+}
+
+/// The floor of the one registry change from `tt_base()` to the scans `edit` returns.
+fn tt_floor_after(edit: impl Fn(&mut Vec<Value>)) -> u8 {
+    let mut scans = tt_base_scans();
+    edit(&mut scans);
+    floor(&[file(REG, &tt_base(), &registry(scans))])
+}
+
+/// The floor of the change that turns the first scan's `test_targets` from `old` into `new`.
+fn tt_floor_between(old: Value, new: Value) -> u8 {
+    let mut before = tt_base_scans();
+    before[0]["test_targets"] = old;
+    let mut after = tt_base_scans();
+    after[0]["test_targets"] = new;
+    floor(&[file(REG, &registry(before), &registry(after))])
+}
+
+/// REQ-1: names inserted at their sorted places keep the low floor, wherever they go.
+#[test]
+fn a_target_name_added_to_test_targets_keeps_the_floor_at_tier_1() {
+    for (what, new) in [
+        ("in the middle", json!(["alpha", "beta", "gamma"])),
+        ("at the start", json!(["aaa", "alpha", "gamma"])),
+        ("at the end", json!(["alpha", "gamma", "zeta"])),
+        (
+            "several at once",
+            json!(["a1", "alpha", "beta", "gamma", "zeta_2"]),
+        ),
+        (
+            "digits and an underscore",
+            json!(["0", "alpha", "g_1", "gamma"]),
+        ),
+    ] {
+        assert_eq!(
+            tt_floor_between(json!(["alpha", "gamma"]), new),
+            1,
+            "{what}"
+        );
+    }
+    // Both scans grow, next to a grown rule list.
+    assert_eq!(
+        tt_floor_after(|s| {
+            s[0]["test_targets"] = json!(["alpha", "beta", "gamma"]);
+            s[1]["test_targets"] = json!(["beta", "delta", "epsilon"]);
+            s[0]["rules"] = json!(["tests/alpha.rs", "tests/beta.rs", "tests/gamma.rs"]);
+        }),
+        1
+    );
+    // A scan added with its own `test_targets`.
+    assert_eq!(
+        tt_floor_after(|s| s.push(tt_scan("third", json!(["zeta"])))),
+        1
+    );
+    // The library answer is the same one.
+    let mut grown = tt_base_scans();
+    grown[0]["test_targets"] = json!(["alpha", "beta", "gamma"]);
+    assert!(registry_only_grew(REG, &tt_base(), &registry(grown)));
+}
+
+/// REQ-2: every other change of the list is no growth.
+#[test]
+fn a_test_targets_change_that_is_no_growth_is_tier_2() {
+    let old = json!(["alpha", "gamma"]);
+    for (what, new) in [
+        ("a name removed", json!(["alpha"])),
+        ("every name removed", json!([])),
+        ("a name replaced", json!(["alpha", "delta"])),
+        (
+            "a name replaced and one added",
+            json!(["alpha", "beta", "delta"]),
+        ),
+        (
+            "an unsorted insert at the end",
+            json!(["alpha", "gamma", "beta"]),
+        ),
+        (
+            "an unsorted insert at the start",
+            json!(["beta", "alpha", "gamma"]),
+        ),
+        ("the old order reversed", json!(["gamma", "alpha"])),
+        ("a name twice", json!(["alpha", "alpha", "gamma"])),
+        ("the last name twice", json!(["alpha", "gamma", "gamma"])),
+        ("an uppercase name", json!(["Alpha", "alpha", "gamma"])),
+        ("a name with a dash", json!(["a-b", "alpha", "gamma"])),
+        ("a name with a dot", json!(["a.b", "alpha", "gamma"])),
+        ("a name with a slash", json!(["a/b", "alpha", "gamma"])),
+        ("a shell fragment", json!(["alpha", "gamma", "x;true"])),
+        ("an option", json!(["--list", "alpha", "gamma"])),
+        ("an empty name", json!(["", "alpha", "gamma"])),
+        ("a number", json!(["alpha", "gamma", 7])),
+        ("a null in the list", json!(["alpha", "gamma", null])),
+        ("null instead of a list", json!(null)),
+        ("a string instead of a list", json!("alpha")),
+        ("an object instead of a list", json!({"alpha": 1})),
+    ] {
+        assert_eq!(
+            tt_floor_between(old.clone(), new.clone()),
+            2,
+            "{what}: {new}"
+        );
+    }
+    // An empty list at the base is no registration to grow from.
+    assert_eq!(
+        tt_floor_between(json!([]), json!(["alpha"])),
+        2,
+        "from empty"
+    );
+    // A list that was no list of names stays no list of names when a good one is added.
+    assert_eq!(
+        tt_floor_between(json!(["Bad", "alpha"]), json!(["Bad", "alpha", "beta"])),
+        2,
+        "a bad name at both sides"
+    );
+    assert_eq!(
+        tt_floor_between(json!("alpha"), json!(["alpha"])),
+        2,
+        "from a string"
+    );
+}
+
+/// REQ-1 and REQ-2 (audit repair): growth is names added to a list that was itself sorted and
+/// free of repeats. A base that is not, and a head that only reorders or de-duplicates it, are no
+/// growth, whether or not the head is the sorted, de-duplicated form (the three cases the audit
+/// probed, and the unsorted or repeated base with a name really added).
+#[test]
+fn a_test_targets_base_that_is_not_sorted_and_unique_is_no_growth_even_beside_a_sorted_head() {
+    for (what, old, new) in [
+        (
+            "a reorder, no name added",
+            json!(["gamma", "alpha"]),
+            json!(["alpha", "gamma"]),
+        ),
+        (
+            "a repeat removed, no name added",
+            json!(["a", "a"]),
+            json!(["a"]),
+        ),
+        (
+            "an unsorted base and a name added",
+            json!(["gamma", "alpha"]),
+            json!(["alpha", "beta", "gamma"]),
+        ),
+        (
+            "a base with a repeat and a name added",
+            json!(["a", "a"]),
+            json!(["a", "b"]),
+        ),
+        (
+            "a base with a last name twice and a name added",
+            json!(["alpha", "gamma", "gamma"]),
+            json!(["alpha", "beta", "delta", "gamma"]),
+        ),
+        (
+            "the same length, a name replaced",
+            json!(["alpha", "gamma"]),
+            json!(["alpha", "delta"]),
+        ),
+    ] {
+        assert_eq!(tt_floor_between(old, new.clone()), 2, "{what}: {new}");
+    }
+    // The controls: a sorted base with one name added, and a sorted base with two.
+    assert_eq!(
+        tt_floor_between(json!(["alpha", "gamma"]), json!(["alpha", "beta", "gamma"])),
+        1
+    );
+    assert_eq!(tt_floor_between(json!(["a"]), json!(["a", "b", "c"])), 1);
+}
+
+/// REQ-3 and REQ-6: an unchanged list is no difference, whatever it holds; a key that appears or
+/// goes is a change of the table's shape; the other fields of the scan are judged as before.
+#[test]
+fn an_unchanged_test_targets_is_no_difference_and_a_changed_key_set_is_tier_2() {
+    let grown_rules = |s: &mut Vec<Value>| {
+        s[0]["rules"] = json!(["tests/alpha.rs", "tests/beta.rs", "tests/gamma.rs"]);
+    };
+    // The same list of any content beside a registration of another kind.
+    for list in [
+        json!(["Bad", "alpha"]),
+        json!([]),
+        json!(null),
+        json!("alpha"),
+        json!(["gamma", "alpha"]),
+    ] {
+        let mut before = tt_base_scans();
+        before[0]["test_targets"] = list.clone();
+        let mut after = before.clone();
+        grown_rules(&mut after);
+        assert_eq!(
+            floor(&[file(REG, &registry(before), &registry(after))]),
+            1,
+            "unchanged {list}"
+        );
+    }
+    // A `test_targets` key added to a scan, and one taken away: the conversion's own shape.
+    let mut converted = base_scans();
+    converted[0]["test_targets"] = json!(["alpha"]);
+    assert_eq!(
+        floor(&[file(REG, &base(), &registry(converted.clone()))]),
+        2,
+        "key added"
+    );
+    assert_eq!(
+        floor(&[file(REG, &registry(converted), &base())]),
+        2,
+        "key removed"
+    );
+    // The scan's other fields are judged as before, beside a grown list.
+    let grow = |s: &mut Vec<Value>| s[0]["test_targets"] = json!(["alpha", "beta", "gamma"]);
+    assert_eq!(
+        tt_floor_after(|s| {
+            grow(s);
+            s[0]["rejects"] = json!("another text");
+        }),
+        2,
+        "a text edited"
+    );
+    assert_eq!(
+        tt_floor_after(|s| {
+            grow(s);
+            s[0]["checks"][0] = json!("cargo test --offline --locked --lib other");
+        }),
+        2,
+        "a check line edited"
+    );
+    assert_eq!(
+        tt_floor_after(|s| {
+            grow(s);
+            s[0]["rules"] = json!(["tests/alpha.rs"]);
+        }),
+        2,
+        "a rule file removed"
+    );
+    assert_eq!(
+        tt_floor_after(|s| {
+            grow(s);
+            s[0]["checks"][0] = json!("cargo test --offline --locked --lib one --test omega");
+        }),
+        1,
+        "a check line that gains a test option, the old form"
+    );
+    // The two forms in one table: the list shrinks while a check line gains a test option.
+    assert_eq!(
+        tt_floor_after(|s| {
+            s[0]["test_targets"] = json!(["alpha"]);
+            s[0]["checks"][0] = json!("cargo test --offline --locked --lib one --test omega");
+        }),
+        2,
+        "a list that shrinks beside an old-form registration"
+    );
+}
+
+/// The growth rule reads a name as `repo_scans` reads a `test_targets` entry: a name that one
+/// accepts and the other refuses would make a registration the table cannot run, or the other way
+/// round (REQ-4).
+#[test]
+fn a_test_targets_name_is_read_as_repo_scans_reads_a_target_name() {
+    for name in [
+        "alpha",
+        "a_1",
+        "0",
+        "_",
+        "A",
+        "a-b",
+        "a.b",
+        "x;true",
+        "--list",
+        "ünï",
+        "",
+        "alpha beta",
+    ] {
+        let entry = json!({"id": "x", "test_targets": [name]});
+        let accepted = moai_cli::repo_scans::checks_of(&entry).is_ok();
+        // The old list is one valid name; the new list is sorted, so only the name decides.
+        let mut new = vec!["m_old", name];
+        new.sort_unstable();
+        let grew = tt_floor_between(json!(["m_old"]), json!(new)) == 1;
+        assert_eq!(grew, accepted, "{name:?}");
+    }
+}
+
 #[test]
 fn only_the_registry_path_is_judged_by_its_text() {
     let old = base();
@@ -437,6 +743,11 @@ struct World {
 
 impl World {
     fn new() -> World {
+        World::with_registry(&base())
+    }
+
+    /// A world whose tip holds this text as the registry.
+    fn with_registry(text: &str) -> World {
         let home = TempHome::new();
         let project = home.project("demo");
         ledger::register(home.path(), "demo").unwrap();
@@ -454,7 +765,7 @@ impl World {
         };
         w.git(&["init", "-q", "-b", "trunk"]);
         w.put("README.md", "tip\n");
-        w.put(REG, &base());
+        w.put(REG, text);
         w.git(&["add", "-A"]);
         w.git(&["commit", "-q", "-m", "chore: the tip"]);
         w
@@ -711,6 +1022,82 @@ fn the_three_judgments_give_one_tier_for_the_same_head() {
     let w = World::new();
     let scenes = scenes(&w);
     w.move_the_tip();
+    for (n, (what, head, floor)) in scenes.iter().enumerate() {
+        let bundle = w.audit_floor(n as u32 + 1, head).as_u64().unwrap();
+        assert_eq!(bundle, *floor, "bundle check: {what}");
+        assert_eq!(w.landing_floor(head), bundle, "landing: {what}");
+        assert_eq!(w.audit_gate_tier(head), bundle, "audit-gate: {what}");
+    }
+}
+
+/// REQ-1 and REQ-2 through the three judgments, on a tip whose registry is in the per-line form:
+/// a name added to `test_targets` is tier 1 for `bundle check`, the landing floor and `audit-gate`
+/// alike, and the changes that are no growth are tier 2 for all three.
+#[test]
+fn the_three_judgments_give_one_tier_for_a_test_targets_registration() {
+    let w = World::with_registry(&tt_base());
+    let edit = |f: &dyn Fn(&mut Vec<Value>)| {
+        let mut scans = tt_base_scans();
+        f(&mut scans);
+        registry(scans)
+    };
+    let scenes = [
+        (
+            "a name added",
+            w.head(
+                "spec/registered",
+                &[
+                    (
+                        REG,
+                        &edit(&|s| s[0]["test_targets"] = json!(["alpha", "beta", "gamma"])),
+                    ),
+                    ("tests/beta.rs", "// t\n"),
+                ],
+            ),
+            1,
+        ),
+        (
+            "a name added next to src/gate.rs",
+            w.head(
+                "spec/with-gate",
+                &[
+                    (
+                        REG,
+                        &edit(&|s| s[0]["test_targets"] = json!(["alpha", "beta", "gamma"])),
+                    ),
+                    ("src/gate.rs", "// g\n"),
+                ],
+            ),
+            2,
+        ),
+        (
+            "a name removed",
+            w.head(
+                "spec/removed",
+                &[(REG, &edit(&|s| s[0]["test_targets"] = json!(["alpha"])))],
+            ),
+            2,
+        ),
+        (
+            "an unsorted name",
+            w.head(
+                "spec/unsorted",
+                &[(
+                    REG,
+                    &edit(&|s| s[0]["test_targets"] = json!(["alpha", "gamma", "beta"])),
+                )],
+            ),
+            2,
+        ),
+        (
+            "a list made empty",
+            w.head(
+                "spec/emptied",
+                &[(REG, &edit(&|s| s[0]["test_targets"] = json!([])))],
+            ),
+            2,
+        ),
+    ];
     for (n, (what, head, floor)) in scenes.iter().enumerate() {
         let bundle = w.audit_floor(n as u32 + 1, head).as_u64().unwrap();
         assert_eq!(bundle, *floor, "bundle check: {what}");
