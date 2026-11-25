@@ -431,11 +431,12 @@ place() {
     [ -z "$PARTS_ADDED" ] || print_success "With the release parts:$PARTS_ADDED"
 }
 
-# The hosts this machine has: the host's command on PATH, or its folder in HOME.
+# The hosts this machine has: the host's command on PATH, or its folder: CLAUDE_CONFIG_DIR when
+# that variable is set and not empty, else `.claude` in HOME.
 detect_hosts() {
     HOSTS=""
     for host in claude; do
-        if command -v "$host" >/dev/null 2>&1 || [ -d "$HOME/.$host" ]; then
+        if command -v "$host" >/dev/null 2>&1 || [ -d "${CLAUDE_CONFIG_DIR:-$HOME/.$host}" ]; then
             HOSTS="$HOSTS $host"
         fi
     done
@@ -456,7 +457,7 @@ install_skill() {
     detect_hosts
     echo ""
     if [ -z "$HOSTS" ]; then
-        print_warning "No Claude Code found (no claude command, no ~/.claude)."
+        print_warning "No Claude Code found (no claude command, no folder: CLAUDE_CONFIG_DIR when set, else ~/.claude)."
         print_info "Install it, then install the MoAI skill and agents with: moai update"
         return 0
     fi
