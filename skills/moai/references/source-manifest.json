@@ -444,7 +444,7 @@
       "sha256": "e5f0478412b9c09fb3b770c7503e339fc72e9d60733e9b8d9cf160e7d7838dd3"
     },
     "workflows/plan.md": {
-      "sha256": "c82fcba9ffc04b1f82b6a5824636d6af97dca9f7953078674b349d2cc63eefcf",
+      "sha256": "3f59d24d0ff5a99286a6d5fd80eac2a0c3a5c732eda6e6568ba982135b00f0f2",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
