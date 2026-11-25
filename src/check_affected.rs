@@ -506,7 +506,7 @@ fn unit_prefix(path: &str) -> Option<String> {
 /// The class of a path whose effect on the tests is not clear (REQ-3): the whole dependency graph,
 /// the build and the common settings, the permission and hook guards and the ledger's storage
 /// layer. Everything else under `src/ledger/` is ordinary code and takes the card set (D-1).
-fn wide_class(path: &str) -> Option<&'static str> {
+pub(crate) fn wide_class(path: &str) -> Option<&'static str> {
     let file = path.rsplit('/').next().unwrap_or(path);
     if matches!(file, "Cargo.toml" | "Cargo.lock") {
         return Some("dependencies");
@@ -2307,6 +2307,9 @@ pub struct RunOptions {
     pub pick: Pick,
     /// The integration branch the range note compares the base with; none gives no note.
     pub integration_ref: Option<String>,
+    /// The full set with no earlier run read (`--full`, and the wide check of `card land-batch`):
+    /// SPEC-20261125-check-affected-rerun REQ-11. The test step still retries and records FLAKY.
+    pub full: bool,
 }
 
 /// What [`refresh_changed`] did: how many files got a new time and which paths it left alone.
