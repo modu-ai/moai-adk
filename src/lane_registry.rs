@@ -667,6 +667,46 @@ pub fn show(project: &Path, name: &str, now: i64) -> Result<Value, String> {
     })
 }
 
+/// SPEC-20261125-session-names-project-prefix REQ-7, REQ-8: whether the session name `name` is a
+/// lane of this clone's registry, answered before the leader sends it a message. `lane` only when
+/// the name's `.live` lock is held (`basis` `live_lock`) or its registry entry has a running lease
+/// (`registry_lease`); every other case, an unreadable entry and a linked sessions folder
+/// included, is `not_lane` with the reason, never `lane`. Reads only: no folder, lock or entry is
+/// made or changed.
+pub fn lane_check(project: &Path, name: &str, now: i64) -> Value {
+    let not_lane = |reason: String| json!({"status": "not_lane", "name": name, "reason": reason});
+    if !valid_name(name) {
+        return not_lane("the name is not a session name (1 to 64 of A-Z a-z 0-9 . _ -)".into());
+    }
+    let dir = match registry_dir_unlinked(project) {
+        Ok(dir) => dir,
+        Err(e) => return not_lane(e),
+    };
+    match fs::symlink_metadata(&dir) {
+        Ok(m) if m.is_dir() => {}
+        Ok(_) => return not_lane(format!("{} is not a folder", dir.display())),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return not_lane(
+                "this clone has no session registry folder: no session was ever started with a name or registered here".into(),
+            )
+        }
+        Err(e) => return not_lane(format!("session registry folder cannot be read: {e}")),
+    }
+    let lock_error = match crate::session::live_lock_held(&dir.join(format!("{name}.live"))) {
+        Ok(true) => return json!({"status": "lane", "name": name, "basis": "live_lock"}),
+        Ok(false) => None,
+        Err(e) => Some(e),
+    };
+    match is_live(&dir, name, now) {
+        Ok(true) => json!({"status": "lane", "name": name, "basis": "registry_lease"}),
+        Ok(false) => not_lane(lock_error.unwrap_or_else(|| {
+            "no live lock of this name is held and no registry entry of it has a running lease"
+                .into()
+        })),
+        Err(e) => not_lane(e),
+    }
+}
+
 /// Release `name` held by `instance` (before a lane's session is cleared), so the next
 /// session may register it at once. Only the holding instance releases a live entry; an
 /// entry whose lease has ended, or none, is `already_free`. `by` (`leader`, #2902 O3a) is
