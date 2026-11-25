@@ -84,3 +84,17 @@ branch: spec/agent-names-bible-20261125
 - D-2 (난수 원천): (A, 추천) 표준 라이브러리만: 시계 나노초, 프로세스 id, 프로세스 안에서 세어 가는 수를 섞어요. (B) 외부 crate 를 더해요. (C) 운영체제 난수를 읽어요. 기본값은 A.
 - D-3 (같은 이름을 동시에 고른 두 시작): (A, 추천) 다시 고르지 않아요. 독점 잠금이 나중 쪽을 거절하고 사용자가 다시 시작해요. (B) 거절되면 다른 이름으로 다시 골라요. 기본값은 A.
 - D-4 (자리표시자 철자): (A, 추천) `<영어 이름>` 을 `CLAUDE.md`, 스킬 글, 골든에 그대로 둬요(성경 이름도 영어 철자라서 어긋나는 곳이 없어요). (B) `<이름>` 으로 바꿔요: `CLAUDE.md` 카드와 스킬 글 변경이 따로 필요해요. 기본값은 A.
+
+## Result
+
+구현 커밋 `f859b741dd` 는 RED 커밋 `756d8aae8b` 위에 있어요. 아래는 이 실행에서 본 값이에요.
+
+- RED: 구현 전 실행은 컴파일에 실패했어요(E0425 오류 3개, `pick_agent_name_seeded` 가 없었어요. 기록 `target/agent-names-bible/red.log`).
+- AC-1: met — `cargo test --offline --locked --test launcher_role_flags` 를 슬롯에서 돌려 19개가 통과하고 0개가 실패했어요. `bible_ac1_the_list_is_pinned_and_every_name_fits_the_registry` 가 목록을 글자 그대로 고정하고 등록부 이름 검사를 통과해요. 목록은 `sort | uniq -d` 로 중복 0개, `wc -w` 로 48개, `awk length` 로 가장 긴 이름 `priscilla` 9자예요.
+- AC-2: met — 같은 19개 실행에서 `bible_ac2_the_seeded_pick_reaches_exactly_the_free_names`, `bible_ac2_the_binary_takes_the_one_free_name`, `bible_ac2_unseeded_picks_vary` 가 통과해요. 만든 바이너리로 임시 git 프로젝트 `demo`(HOME 은 따로 둔 폴더)에서 `moai cc -a --dry-run` 을 여섯 번 돌리니 이름이 `demo-agent-luke`, `deborah`, `aaron`, `esther`, `aaron`, `timothy` 로 나와 서로 다른 이름이 다섯 개였어요(스크립트 `target/agent-names-bible/real-run.sh`, 출력 `target/agent-names-bible/real-run.out`).
+- AC-3: met — `bible_ac3_a_used_up_list_refuses_and_names_the_name_option` 통과(같은 19개 실행). 모든 이름이 잡히면 `--name` 을 알리는 한 메시지로 거절해요.
+- AC-4: met — `bible_ac4_name_is_used_as_given` 통과(같은 19개 실행).
+- AC-5: met — `bible_ac5_help_and_docs_say_the_name_is_chosen_at_random` 통과(같은 19개 실행). 도움말 골든 4개는 `MOAI_HELP_GOLDEN_WRITE=1 cargo test --offline --locked --test help_layout` 로 다시 만들었고 11개가 통과해요.
+- AC-6: met — `bible_ac6_the_decisions_log_carries_the_replacing_line` 통과(같은 19개 실행).
+- AC-7: met — 구현 실행에서 `session_lane_check_cli` 5개가 통과하고, 같은 대상 모음의 `cli_text_citations`(5), `help_text_names_moai`(2), `launcher_retire_role_flags`(14), `retired_host_words`(9), `repo_claude_md`(27), `lane_team_names`(10) 도 모두 통과했어요.
+- 남은 것: 독립 감사(tier 1)는 아직 안 했어요. 돌리지 않은 것은 clippy 와 넓은 `check affected` 모음(READY 영수증이 담아요), Windows 와 Linux 예요(Mac 에서만 돌렸어요).
