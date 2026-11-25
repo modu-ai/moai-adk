@@ -31,3 +31,4 @@ The lines after the dated ones came from the leader's carry-over of closed cards
 - `card land-batch` 가 SPEC 없는 카드를 `no_spec` 으로 떨궈요(src/card/land/batch.rs, C-524 승인 D-2): SPEC 없는 tier 0·1 카드도 묶음 착지가 받게 해요
 - `card submit` 이 예약에 적힌 브랜치 이름과 실제 브랜치가 다르면 "HEAD 가 예약 브랜치의 tip 이 아니다"로 거절해요(2026-11-25 C-520): 예약 브랜치를 실제 브랜치로 맞추는 명령이나 take 때 이름 검사
 - `moai audit-delta` 가 부모 순서를 [pass_head, tip] 로 요구해서 tip 이 첫째 부모인 착지 머지를 `parent_mismatch` 로 거절해요(2026-11-25 C-508·C-520 묶음 판정): 두 순서를 모두 받아요
+- `card submit` 이 예약에 상대 경로로 적힌 워크트리(`--worktree .claude/worktrees/<이름>`)를 풀지 못해 거절해요(2026-11-25 C-509·C-518·C-524 세 레인, 워크트리 안에서는 "not a folder", 주 체크아웃에서는 trailers 관문의 `git -C` 이중 해석): `card take` 가 `--worktree` 를 프로젝트 기준 절대 경로로 저장하거나 submit 이 예약 경로를 프로젝트 기준으로 풀어요. 그때까지 레인은 READY 노트 → `card review` 손 순서를 써요
