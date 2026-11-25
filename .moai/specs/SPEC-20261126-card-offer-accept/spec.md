@@ -1,13 +1,25 @@
 ---
 id: SPEC-20261126-card-offer-accept
 title: "A card holder offers a card to one named session and that session accepts it, with every refusal writing nothing"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-26
 parent: SPEC-20261120-launcher-liveness
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 DELEGATED-APPROVAL 노트 9599 (사용자 위임 2026-11-25 ~14:50Z, 리더 판단, 사용자 직접 선택 아님, 노트 9598 에 답함): 개정 1 과 D-1~D-4 기본값을 승인으로 기록했어요; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:78c90124401f94ee7a67d9211fc77e2af80bb5823ef4176046e3231e4cca4e52"
 ---
 
 # A card holder offers a card to one named session and that session accepts it, with every refusal writing nothing
+
+## Interview
+
+- Q1: Why two new verbs when `card handoff --to` exists? -> A: A handoff moves the card at once and the receiver has no say; the design report (section 5.2, slice d) asks for an offer the receiver accepts, and it keeps `card handoff` as it is. The design report also records no `handoff` row in the real ledger when it was written, so the new verbs change no habit.
+- Q2: How long is an offer valid, and how long is the new lease? -> A: 1800 seconds by default and a new 4-hour lease at the accept (decisions D-1; the leader confirmed both defaults with the approval).
+- Q3: Do slices (b) and (c) of the card need code here? -> A: No. Own-session resume is `card adopt` (SPEC-20261123-lane-continues-card, test `ac12_adoptions_do_not_use_up_the_reclaim_allowance`); the `lease_expired` recount is a report in the Result.
+- Q4: How does the target learn of an open offer? -> A: In this slice by a cross-session message from the offering session; showing an open offer in `card show` or `card inbox` is a later slice (Non-goals).
 
 ## Intent
 
