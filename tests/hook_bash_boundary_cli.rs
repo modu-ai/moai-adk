@@ -2718,6 +2718,77 @@ fn a_moai_line_after_double_dash_that_names_no_runner_passes() {
     );
 }
 
+// SPEC-20261125-boundary-unreadable-detail, REQ-7 and AC-3 (D-6): a word that an expansion decides
+// can stand for the `--` (`$SEP` set to `--`), so the command after it would never be judged. On a
+// moai line that names `heavy-slot-acquire` or `line-lease`, an expansion before the first literal
+// `--`, an expansion with no literal `--` at all, and an expansion in the place of the subcommand
+// are all unreadable. Other moai lines keep their expansions. The hook only judges the text; no
+// command of a case is executed.
+
+#[test]
+fn a_moai_line_that_runs_a_command_with_a_computed_word_is_unreadable() {
+    let w = World::new();
+    let mut bad = Vec::new();
+    // A computed word where the `--` would stand, in each spelling of an expansion.
+    let computed_separators = [
+        "$SEP rm -rf {OUT}/x",
+        "${SEP} rm -rf {OUT}/x",
+        "$(printf -- --) rm -rf {OUT}/x",
+        "`printf -- --` rm -rf {OUT}/x",
+        "-- rm -rf {OUT}/x",
+    ];
+    let prefixes = [
+        "moai heavy-slot-acquire --name wren --max 3",
+        "moai card line-lease C-1 --generation 1 --path p",
+        "moai-cli heavy-slot-acquire --name wren --max 3",
+    ];
+    let mut unreadable = Vec::new();
+    for prefix in prefixes {
+        for tail in &computed_separators[..4] {
+            unreadable.push(format!("{prefix} {tail}"));
+        }
+        // A computed word before a literal `--`: it may be an option, or may swallow the next word.
+        unreadable.push(format!("{prefix} --name \"$X\" -- rm -rf {{OUT}}/x"));
+        // No literal `--` and a computed word anywhere.
+        unreadable.push(format!("{prefix} --name \"$X\""));
+    }
+    // A computed subcommand, before any literal runner name.
+    unreadable.push("moai $SUB x -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai card $SUB C-1 -- rm -rf {OUT}/x".to_owned());
+    unreadable.push("moai $SUB x $SEP rm -rf {OUT}/x".to_owned());
+    for cmd in &unreadable {
+        let got = w.verdict(S::Own, cmd);
+        if got.as_deref() != Some("unreadable") {
+            bad.push(format!("  {cmd:?}: want \"unreadable\", got {got:?}"));
+        }
+    }
+    // The same lines with a literal `--` and no expansion before it are judged by the command
+    // after it (the regression of the wrapping rule).
+    for prefix in prefixes {
+        let cmd = format!("{prefix} {}", computed_separators[4]);
+        let got = w.verdict(S::Own, &cmd);
+        if got.as_deref() != Some("delete-outside") {
+            bad.push(format!("  {cmd:?}: want \"delete-outside\", got {got:?}"));
+        }
+    }
+    // Moai lines that run no command keep their expansions.
+    for cmd in [
+        "moai card note C-1 --ref \"$R\"",
+        "moai check affected --card \"$A..$B\"",
+    ] {
+        let got = w.verdict(S::Own, cmd);
+        if got.is_some() {
+            bad.push(format!("  {cmd:?}: want no decision, got {got:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "{} cases differ\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
+}
+
 // SPEC-20261125-boundary-unreadable-detail, REQ-4 and AC-2 (D-3): `-n` makes bash, zsh and sh parse
 // a script without running it, so the letter is an allowed option of a shell start. Only the `-`
 // form is added, and a `-c` string given with it is still judged.

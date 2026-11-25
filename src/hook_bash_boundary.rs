@@ -1104,6 +1104,27 @@ fn command_word_unreadable(w: &Word) -> bool {
         || w.chars.first() == Some(&('=', true))
 }
 
+/// Whether the words after `moai` name a subcommand that runs a command after its first `--`
+/// (`heavy-slot-acquire`, `card line-lease`), or leave the subcommand to an expansion so that
+/// they might. `dashes` is the place of the first literal `--`; only the words before it are
+/// moai's own (SPEC-20261125-boundary-unreadable-detail, REQ-7).
+fn moai_line_runs_a_command(args: &[Word], dashes: Option<usize>) -> bool {
+    let own = &args[..dashes.unwrap_or(args.len())];
+    if own
+        .iter()
+        .any(|w| !w.dynamic && matches!(w.text().as_str(), "heavy-slot-acquire" | "line-lease"))
+    {
+        return true;
+    }
+    // The subcommand is the first word that is not an option; `card` has one more below it.
+    let mut operands = own.iter().filter(|w| !w.is_option());
+    match operands.next() {
+        Some(sub) if sub.dynamic => true,
+        Some(sub) if sub.text() == "card" => operands.next().is_some_and(|w| w.dynamic),
+        _ => false,
+    }
+}
+
 /// Whether `cd` looks the operand up in `CDPATH`: a relative name that does not start with `.`
 /// or `..` as its first component.
 fn searched_by_cdpath(text: &str) -> bool {
@@ -1681,8 +1702,17 @@ impl Walker<'_> {
                 // run the words after the first `--` as a command: they are judged like the same
                 // command typed bare. The words before it are moai's own options. Without a `--`
                 // no command is named (SPEC-20261125-boundary-unreadable-detail, D-2).
+                // A line that runs a command (REQ-7, D-6) is closed against a word that an
+                // expansion decides: it may stand for the `--`.
                 "moai" | "moai-cli" => {
-                    match args.iter().position(|w| !w.dynamic && w.text() == "--") {
+                    let dashes = args.iter().position(|w| !w.dynamic && w.text() == "--");
+                    if moai_line_runs_a_command(args, dashes) {
+                        let before = &args[..dashes.unwrap_or(args.len())];
+                        if before.iter().any(|w| w.dynamic) {
+                            return Err(Class::Unreadable);
+                        }
+                    }
+                    match dashes {
                         Some(i) => {
                             words = &args[i + 1..];
                             continue;
