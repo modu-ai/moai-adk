@@ -2050,10 +2050,11 @@ fn gate_in(dir: &std::path::Path, snapshot: &Value) -> Value {
 }
 
 /// A project folder in one of the two state layouts of the mo.ai.kr report: `mixed` keeps the
-/// Go-generation markers (`.moai/manifest.json`, `.moai/config/sections/system.yaml`) beside the
-/// Rust profile; `rust` has them moved to `.moai/backups/go-markers-<stamp>/`.
+/// Go-generation markers (`manifest.json` and `config/sections/system.yaml` in the state folder)
+/// beside the Rust profile; `rust` has them moved to a `backups/go-markers-<stamp>/` folder
+/// inside it. The state folder name comes from the resolver constant, not a literal.
 fn project_layout(root: &std::path::Path, layout: &str) {
-    let state = root.join(".moai");
+    let state = root.join(moai_cli::state_root::MOAI_DIR);
     std::fs::create_dir_all(state.join("config/sections")).unwrap();
     std::fs::write(state.join("project.yaml"), "project:\n  name: fixture\n").unwrap();
     let markers = [
