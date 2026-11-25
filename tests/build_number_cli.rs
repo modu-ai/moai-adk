@@ -1,6 +1,6 @@
 //! SPEC-20261125-install-build-number: `build-number next` records and prints the next install
 //! build number, `build-number show` reads it. Every run uses a temporary HOME and a temporary
-//! project in a clean environment; the real `~/.moai` is never read or written.
+//! project in a clean environment; the real HOME state folder is never read or written.
 mod common;
 
 use common::home::TempHome;
@@ -14,7 +14,7 @@ const LOG: &str = "build-number.log";
 struct World {
     home: TempHome,
     project: PathBuf,
-    /// `<home>/.moai/projects/demo`, the folder the record lives in.
+    /// The project's state folder under the temporary HOME, where the record lives.
     state: PathBuf,
 }
 
@@ -50,7 +50,8 @@ impl World {
 
     /// The installed version folders the floor is read from.
     fn install(&self, name: &str) {
-        fs::create_dir_all(self.home.path().join(".moai/versions").join(name)).unwrap();
+        let versions = moai_cli::home_workdir::root(self.home.path()).join("versions");
+        fs::create_dir_all(versions.join(name)).unwrap();
     }
 }
 
