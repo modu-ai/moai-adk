@@ -122,8 +122,8 @@ fn host<'a>(v: &'a Value, name: &str) -> &'a Value {
         .unwrap_or_else(|| panic!("no host {name}: {v}"))
 }
 
-/// REQ-1: the preview names the moved folder for Claude Code and is not blocked; Codex keeps
-/// `~/.agents/skills/moai`.
+/// REQ-1: the preview names the moved folder for Claude Code, which is the only host, and is not
+/// blocked.
 #[test]
 fn profile_plan_targets_the_moved_folder() {
     let w = World::new();
@@ -136,9 +136,13 @@ fn profile_plan_targets_the_moved_folder() {
     );
     assert!(claude["blocked_reason"].is_null(), "{plan}");
     assert_eq!(claude["preflight"], json!("ok"), "{plan}");
-    assert_eq!(
-        host(&plan, "codex")["projection_root"],
-        json!(w.base.join(".agents/skills/moai").to_str().unwrap())
+    assert!(
+        plan["hosts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|h| h["host"] == json!("claude")),
+        "Claude Code is the only host (Codex is retired): {plan}"
     );
 }
 
@@ -212,11 +216,16 @@ fn table_cells(text: &str, row: &str) -> Vec<String> {
         .collect()
 }
 
-/// REQ-5: SETUP and UPDATE work with Orca because the skill copy follows `CLAUDE_CONFIG_DIR`.
+/// REQ-5: UPDATE works with Orca because the skill copy follows `CLAUDE_CONFIG_DIR` (the SETUP
+/// workflow left with its route, so the table has no SETUP row).
 #[test]
-fn adapter_rows_setup_and_update_work_with_orca_through_the_moved_folder() {
+fn adapter_rows_update_works_with_orca_through_the_moved_folder() {
     let text = adapter();
-    for row in ["SETUP", "UPDATE"] {
+    assert!(
+        !text.lines().any(|l| l.starts_with("| SETUP |")),
+        "the table has a row for a workflow that is gone"
+    );
+    for row in ["UPDATE"] {
         let cells = table_cells(&text, row);
         assert_eq!(cells.len(), 4, "row {row}: {cells:?}");
         assert!(
@@ -243,17 +252,21 @@ fn adapter_rows_unsupported_list_drops_the_profile_settings_folder() {
     let text = adapter();
     let list = text
         .lines()
-        .find(|l| l.starts_with("Unsupported today"))
-        .expect("the section has an `Unsupported today` paragraph");
+        .find(|l| l.starts_with("Nothing is unsupported with Orca today"))
+        .expect("the section has a `Nothing is unsupported with Orca today` paragraph");
     for gone in [
         "the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see",
-        "SETUP and UPDATE are unsupported with Orca",
+        "UPDATE is unsupported with Orca",
     ] {
         assert!(!list.contains(gone), "the list still says `{gone}`");
     }
     assert!(
-        list.contains("a Codex or OMP leader's periodic run"),
-        "the other unsupported item stays: {list}"
+        text.lines().all(|l| !l.starts_with("Unsupported today")),
+        "an `Unsupported today` paragraph is back"
+    );
+    assert!(
+        !list.contains('#'),
+        "the shipped paragraph carries an Issue number: {list}"
     );
 }
 
