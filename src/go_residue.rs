@@ -334,9 +334,9 @@ pub fn survey(project: &Path) -> Survey {
             suggested_action: if marker { "archive" } else { "keep" },
         });
     }
-    // Earlier-generation folders kept whole. The earlier root's name is spelled only in
-    // lib.rs; every other file takes the constant.
-    for folder in [crate::PROJECT_STATE_DIR, ".moai-backups"] {
+    // Earlier-generation folders kept whole. The earlier root's name comes from the
+    // resolver module's constant, so this file never spells it.
+    for folder in [crate::state_root::EARLIER_PROJECT_DIR, ".moai-backups"] {
         let rel = folder.to_string();
         if fs::symlink_metadata(project.join(folder)).is_ok_and(|m| m.is_dir()) {
             items.push(Item {

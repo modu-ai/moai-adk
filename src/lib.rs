@@ -527,11 +527,6 @@ mod state_dir_tests {
                 1,
                 "the shared-interface glob (REQ-06C-06, pinned by worktree_cli)",
             ),
-            (
-                "go_residue.rs",
-                1,
-                "the survey names the earlier generation's leftover folder itself (go-residue slice S1)",
-            ),
         ];
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut stack = vec![root.clone()];
