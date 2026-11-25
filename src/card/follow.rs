@@ -768,6 +768,11 @@ mod tests {
     }
 
     fn lagging() -> Lagging {
+        lagging_with(false)
+    }
+
+    /// [`lagging`]; with `edit_a` the move also changes `a.txt`, so an edit of it overlaps.
+    fn lagging_with(edit_a: bool) -> Lagging {
         let dir = tempfile::tempdir().unwrap();
         let at = dir.path();
         git(at, &["init", "-q", "-b", BRANCH]);
@@ -778,6 +783,10 @@ mod tests {
         git(at, &["checkout", "-q", "-b", "side"]);
         std::fs::write(at.join("b.txt"), "two\n").unwrap();
         git(at, &["add", "b.txt"]);
+        if edit_a {
+            std::fs::write(at.join("a.txt"), "three\n").unwrap();
+            git(at, &["add", "a.txt"]);
+        }
         git(at, &["commit", "-q", "-m", "two"]);
         let tip = git(at, &["rev-parse", "HEAD"]);
         git(at, &["checkout", "-q", BRANCH]);
@@ -839,17 +848,34 @@ mod tests {
         assert_eq!(after, shown(rerun(at, &conn, 7, FULL, BRANCH, &f.tip)));
     }
 
-    /// A tracked file edited in the lagging worktree is refused, as `rerun` refuses it, and the
-    /// file is left as it was.
+    /// A tracked file edited in the lagging worktree at a path the move changes is refused, as
+    /// `rerun` refuses it, and the file is left as it was.
     #[test]
     fn rerun_from_refuses_a_dirty_lagging_worktree_like_rerun() {
-        let f = lagging();
+        let f = lagging_with(true);
         let at = f.dir.path();
         std::fs::write(at.join("a.txt"), "edited\n").unwrap();
         let direct = shown(rerun_from(at, &f.old, FULL, BRANCH, &f.tip));
         assert!(direct.starts_with("refused "), "{direct}");
-        assert!(direct.contains("has edited tracked files"), "{direct}");
-        assert!(direct.contains(&format!("lags at {}", f.old)), "{direct}");
+        assert!(direct.contains("overlapping tracked changes"), "{direct}");
+        assert!(direct.contains("a.txt"), "{direct}");
+        let conn = ledger(Some((&f.tip, &f.old)));
+        assert_eq!(direct, shown(rerun(at, &conn, 7, FULL, BRANCH, &f.tip)));
+        assert_eq!(
+            std::fs::read_to_string(at.join("a.txt")).unwrap(),
+            "edited\n"
+        );
+    }
+
+    /// An edit at a path the move does not change is the owner's own work: `rerun_from` follows
+    /// as `rerun` does and leaves the file as it was.
+    #[test]
+    fn rerun_from_follows_past_an_edit_the_move_does_not_touch_like_rerun() {
+        let f = lagging();
+        let at = f.dir.path();
+        std::fs::write(at.join("a.txt"), "edited\n").unwrap();
+        let direct = shown(rerun_from(at, &f.old, FULL, BRANCH, &f.tip));
+        assert!(direct.starts_with("needed "), "{direct}");
         let conn = ledger(Some((&f.tip, &f.old)));
         assert_eq!(direct, shown(rerun(at, &conn, 7, FULL, BRANCH, &f.tip)));
         assert_eq!(

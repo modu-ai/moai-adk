@@ -1365,8 +1365,9 @@ fn ac4_the_private_worktree_is_removed_after_every_outcome_of_the_check() {
     }
 }
 
-/// AC-5 (REQ-7): a worktree that has the branch checked out and holds a tracked change is refused
-/// before the wide check and before any write: the change is the owner's and nothing deletes it.
+/// AC-5 (REQ-7): a worktree that has the branch checked out and holds a tracked change at a path
+/// the sync changes is refused before the wide check and before any write: the change is the
+/// owner's and nothing deletes it. (A staged file at the path the source adds is such a change.)
 #[test]
 fn ac5_a_dirty_checkout_of_the_branch_is_refused_before_the_check_and_any_write() {
     let w = World::new();
@@ -1376,21 +1377,53 @@ fn ac5_a_dirty_checkout_of_the_branch_is_refused_before_the_check_and_any_write(
         &w.project,
         &["worktree", "add", "-q", wt.to_str().unwrap(), BRANCH],
     );
-    fs::write(wt.join("notes/tip.md"), "my work\n").unwrap();
+    fs::write(wt.join("notes/h.md"), "my work\n").unwrap();
+    git(&wt, &["add", "notes/h.md"]);
     w.set_sources(&[SOURCE]);
     let before = w.snap();
     let out = w.lead(SOURCE);
-    let message = w.refused(&out, &["tracked change"], &before);
-    assert!(message.contains("notes/tip.md"), "{message}");
+    let message = w.refused(&out, &["overlapping tracked changes"], &before);
+    assert!(message.contains("notes/h.md"), "{message}");
     assert!(
         w.cargo_calls().is_empty(),
         "the check ran: {:?}",
         w.cargo_calls()
     );
     assert_eq!(
-        fs::read_to_string(wt.join("notes/tip.md")).unwrap(),
+        fs::read_to_string(wt.join("notes/h.md")).unwrap(),
         "my work\n",
         "the refusal touched the owner's change"
+    );
+}
+
+/// AC-5 (REQ-7): a tracked change of the checkout at a path the sync does not change does not stop
+/// the sync: the branch moves, the worktree follows and keeps the owner's change, and the answer
+/// counts it in `kept_changes`.
+#[test]
+fn ac5_a_tracked_change_the_sync_does_not_touch_is_kept_and_the_sync_goes_on() {
+    let w = World::new();
+    let (tip, src) = w.diverge();
+    let wt = w.scripts.path().join("integ-wt");
+    git(
+        &w.project,
+        &["worktree", "add", "-q", wt.to_str().unwrap(), BRANCH],
+    );
+    fs::write(wt.join("notes/tip.md"), "my work\n").unwrap();
+    w.set_sources(&[SOURCE]);
+    let r = result(&w.lead(SOURCE));
+    let merge = r["merge"].as_str().expect("a merge commit").to_string();
+    assert_eq!(r["moved"], json!(true), "{r}");
+    assert_eq!(w.integ(), merge);
+    assert_eq!(w.parents(&merge), vec![tip, src]);
+    assert_eq!(r["worktree_follow"]["kept_changes"], json!(1), "{r}");
+    assert_eq!(
+        fs::read_to_string(wt.join("notes/tip.md")).unwrap(),
+        "my work\n",
+        "the sync touched the owner's change"
+    );
+    assert!(
+        wt.join("notes/h.md").is_file(),
+        "the worktree did not follow"
     );
 }
 
