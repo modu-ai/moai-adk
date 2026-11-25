@@ -1,8 +1,8 @@
 //! Host projection UPDATE (Issue #1999, 04-B).
 //!
 //! `update-plan` inventories every host projection (Claude `~/.claude/skills/moai/` — the
-//! design-verified path; project-level projections are a P04 HOLD and are not included; the
-//! Codex copy under `~/.agents/skills/moai/` is no longer written), compares each file
+//! design-verified path; project-level projections are a P04 HOLD and are not included),
+//! compares each file
 //! three-way (baseline = the
 //! ownership manifest of the latest host receipt, current = bytes on disk, new = the
 //! staged package) and writes nothing. `update-apply` recomputes the plan and refuses
@@ -1859,31 +1859,6 @@ pub fn installed_agents_dir() -> Result<PathBuf> {
     }
 }
 
-/// The notice for a host whose files an earlier version wrote and this one leaves as they are
-/// (SPEC-20261122-codex-home-update-removed): one entry per host, only when its folder exists
-/// under the home (a link counts). It names the folder and says moai no longer manages it.
-/// Not part of `plan_digest`: nothing is applied for it.
-fn unmanaged_notices(home: &Path) -> Vec<serde_json::Value> {
-    let home = fs::canonicalize(home).unwrap_or_else(|_| home.to_path_buf());
-    let present = |rel: &str| fs::symlink_metadata(home.join(rel)).is_ok();
-    let mut out = Vec::new();
-    if present(".codex") || present(".agents/skills") {
-        out.push(json!({
-            "part": "unmanaged",
-            "host": "codex",
-            "reason": "Codex files under ~/.codex and ~/.agents/skills are left as they are; moai no longer manages them; remove them yourself if you do not use them",
-        }));
-    }
-    if present(".omp") {
-        out.push(json!({
-            "part": "unmanaged",
-            "host": "omp",
-            "reason": "OMP files under ~/.omp are left as they are; moai no longer manages them; remove them yourself if you do not use them",
-        }));
-    }
-    out
-}
-
 /// The user layer `moai-cli update` installs (#2638): the skill copies, the base agents, the
 /// routing section of the global instruction files and the MoAI-Easy output style (#2875), all
 /// from one package snapshot.
@@ -1985,8 +1960,6 @@ fn user_layer_plan_in(
             skipped.push(json!({"part": "style", "host": h, "reason": format!("the {h} skill copy is blocked")}));
         }
     }
-    // The hosts whose files are left alone, named once each (not part of the digest).
-    skipped.extend(unmanaged_notices(home));
     let agents = crate::agent_install::plan_for(home, package, agents, &agent_hosts)?;
     let routing = crate::home_routing::plan_for(home, package, &routing_hosts)?;
     let style = crate::home_style::plan_for(home, package, &style_hosts)?;

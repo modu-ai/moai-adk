@@ -13,7 +13,7 @@
 //! by display cells (Korean takes two).
 
 use crate::ui::{visible, Painter, Token};
-use crate::ui_text::{text, Lang, Msg};
+use crate::ui_text::Lang;
 use serde_json::Value;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
@@ -850,17 +850,12 @@ struct Row {
 }
 
 /// The row label and reason of one `skipped` entry. The label is the part and the host, on the
-/// preview and the apply screens alike. The "no longer managed" notice of a retired host reads in
-/// Korean on the Korean screens; every other reason is printed as the command gave it.
+/// preview and the apply screens alike; the reason is printed as the command gave it.
 fn skipped_row(lang: Lang, s: &Value) -> (String, String) {
     let part = s["part"].as_str().unwrap_or("");
     let host = s["host"].as_str().unwrap_or("");
     let label = format!("{part} {host}").trim().to_string();
-    let reason = match (lang, part, host) {
-        (Lang::Ko, "unmanaged", "codex") => text(Msg::CodexUnmanaged, lang),
-        (Lang::Ko, "unmanaged", "omp") => text(Msg::OmpUnmanaged, lang),
-        _ => s["reason"].as_str().unwrap_or(""),
-    };
+    let reason = s["reason"].as_str().unwrap_or("");
     (label, format!("{}: {reason}", w(lang, W::Skipped)))
 }
 
