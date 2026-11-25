@@ -2,7 +2,7 @@
 id: SPEC-20261124-home-guard-flake
 title: "HOME 가드가 부하 아래에서 테스트가 읽지 않은 HOME 읽기를 테스트 탓으로 실패시키는 일을, 먼저 증거로 가려내요"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-24
 ---
 
@@ -10,7 +10,9 @@ created: 2026-11-24
 
 ## Interview
 
-- none: 리더 배차(카드 본문)가 요구를 정했어요 — 가드를 느슨하게 하지 않고, 진짜 HOME 쓰기는 계속 실패시키며, 원인을 재현으로 찾아요. 사용자 인터뷰는 없었어요.
+- Q1: 이 SPEC 의 첫 세 개정(증거 장치, 원인 하나의 수리)에 사용자 인터뷰가 있었나요? → A: 없었어요. 리더 배차(카드 본문)가 요구를 정했어요: 가드를 느슨하게 하지 않고, 진짜 HOME 쓰기는 계속 실패시키며, 원인을 재현으로 찾아요.
+- Q2: 묶음 넓은 검사를 어떤 임시 폴더로 다시 돌릴까요(2026-11-25, 공용 TMPDIR 에서 HOME-GUARD 거짓 실패가 났어요)? → A: "시스템 임시 폴더 아래 전용 폴더로 한 번 더 (Recommended)"를 골랐어요(사용자 선택, 리더가 이 카드 note 9053 에 옮겨 적었어요). 이 답은 그 재실행 한 번에 대한 것이고, `check affected` 가 스스로 전용 폴더를 만드는 제품 변경(개정 4)에 대한 답이 아니에요.
+- Q3: `check affected` 가 실행마다 전용 TMPDIR 을 스스로 만들고 지우는 변경(개정 4)을 원하나요? → A: 아직 묻지 않았어요. 폴더를 지우는 코드가 들어가서 승인이 필요한 변경으로 보고, 리더가 이 개정의 digest 와 함께 사용자에게 물어요. 승인 기록은 레인이 쓰지 않아요.
 
 ## Intent
 
@@ -61,6 +63,18 @@ Revision 2 failed its first audit (card note 8367: B1, B2, and the non-blocking 
 
 The audit repairs: a peer folder's name is written to a line a machine reads, so a name with a line break or a blank forges or breaks a line (B1); the rule that a baseline-tolerated run leaves no detail line has no test (B2); `ps -o comm` shows `argv[0]`, which a process may fill with text after a blank (N1).
 
+### Revision 4: a private temporary folder for each `check affected` test step
+
+What 2026-11-25 added (leader note 9049 of the card; the log folders named there are the leader's, not read by this lane):
+
+- A batch wide check ran with the shared `TMPDIR` (`/var/folders/.../T/`): 2 of 4087 tests passed in body and failed with `HOME-GUARD: touched its HOME` (`home_state_plan`, `home_state_selective`); a lane receipt ran at the same time and failed one test the same way (`statusline_golden`). This is shape 2 of revision 3 again, with a reader that is still unknown.
+- Two hand-picked private `TMPDIR` folders then failed for a different reason each: a folder whose path holds a session id made `bundle_verify_cli` fail (it refuses a run record that carries a session id, `src/bundle.rs`, shape: hex groups 8-4-4-4-12), and a folder inside a git repository made 76 tests fail (worktree, launcher, project and e2e tests assume the temporary folder is outside any repository).
+- So a private `TMPDIR` must meet three conditions at once: outside the worktree (and outside the repository it belongs to), inside no git repository at all, and with no session-id shape in its path. The written rule "a private folder outside the worktree" names none of the last two, and a person who picks one by hand keeps getting one wrong.
+
+What this revision does: `check affected` makes its own folder that meets the three conditions, once per run, passes it to the `test` step only as `TMPDIR`, and removes exactly that folder after a passing step. `tools/test_home_guard.sh`, the baseline and the `enforce` default are not touched, so the guard compares the same decoy HOME with the same rule in whatever folder it runs; a real HOME write still exits 1. What it does not do: find the reader of shape 2. The card's criterion 1 stays open; this revision removes the hand-picked folders and the sharing of one `TMPDIR` between the guard folders of different runs, and only repeated receipts under load can show whether the false failures go away.
+
+Reading of the code (this run): `check_affected::run` is the one place that runs the steps, called by `moai check affected` (bare, `--lane`, `--card`) and by the batch's wide check (`src/card/land/batch.rs`); `run_step` already takes extra environment for a step. `card note` only reads a receipt and runs nothing.
+
 ## Non-goals
 
 - 가드를 느슨하게 하는 일. 진짜 HOME 읽기·쓰기·삭제는 계속 exit 1 이에요. 판정 규칙, 기준선, `enforce` 기본값은 이 SPEC 이 건드리지 않아요.
@@ -84,6 +98,16 @@ The audit repairs: a peer folder's name is written to a line a machine reads, so
 - REQ-11: A scan test in `tests/worktree_report.rs` shall fail when a file under `tests/` runs `moai worktree-report`, `moai hygiene-plan` or `moai hygiene-apply` without the option that names its own temporary folder (`--tmp-root` for the report, `--tmp` for the other two), so no test of the repository reads the real `/tmp` or `TMPDIR` through them.
 - REQ-12 (REQ-9): The `HOME-GUARD-DETAIL:` lines shall carry, as `kind=scan` lines, the process id and the command file name (cut at its first white space) of every running process whose command file name is `find`, `du`, `ls`, `rg`, `grep`, `fd`, `tree`, `lsof`, `mdworker`, `mdworker_shared` or `mds`.
 
+- REQ-13: When `check affected` runs its `test` step, the command shall create one new folder of its own under a temporary root and set `TMPDIR` to that folder for that step only. · failure: none — REQ-14 covers a root that meets no condition.
+- REQ-14 (REQ-13): The temporary root the command picks shall be the first of the caller's `TMPDIR` (or `temp_dir()`), the macOS user temporary folder (`getconf DARWIN_USER_TEMP_DIR`) and `/tmp` whose canonical path lies outside the worktree being checked and outside the repository it belongs to, has no folder holding a `.git` entry on its way up, and holds no hex group shape 8-4-4-4-12 anywhere in the path.
+- REQ-15 (REQ-14): IF no candidate root meets the three conditions of REQ-14, THEN the command shall leave `TMPDIR` as the caller gave it and name the reason in the `test_tmpdir` field of its answer.
+- REQ-16 (REQ-13): The command shall create the folder fresh with a name that is neither predictable nor a session id shape (`moai-affected-<process id>-<nanoseconds>`) and with mode `0700`.
+- REQ-17 (REQ-16): IF a folder, a file or a link already carries the name the command would take, THEN the command shall take another name and never adopt, remove or follow what is there.
+- REQ-18 (REQ-13): When the `test` step has exited 0, the command shall remove the folder it created and no other path. · failure: none — REQ-19 covers a folder whose recorded path no longer fits.
+- REQ-19 (REQ-18): IF the folder it created is no longer a folder (a link or a file), or its canonical path or its parent differs from the ones recorded when it was created, THEN the command shall remove nothing and say `left` with the reason in the `test_tmpdir` field.
+- REQ-20 (REQ-13): When the `test` step has exited non-zero, the command shall keep the folder and name its path in the `test_tmpdir` field. · failure: none — the folder is the evidence of the failed run.
+- REQ-21: The command shall keep its summary line, its exit codes and the environment of every other step as they were before this revision.
+
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): a test that reads the decoy `user-assets.json` under a log file gives a `HOME-GUARD:` line and one `HOME-GUARD-DETAIL:` line for each hit entry, each with an access time and a modification time that has a fraction, and the test's start time is not later than the comparison time. · verify: `cargo nextest run --locked --offline --test test_home_guard`
@@ -102,9 +126,16 @@ The audit repairs: a peer folder's name is written to a line a machine reads, so
 - AC-13 (REQ-11): `moai worktree-report --help` names the value of `DEFAULT_TMP_ROOT`, that value is `/tmp`, and a report run with `--tmp-root <fixture folder>` returns that folder as `tmp_root`; no test runs the command without `--tmp-root`. · verify: `cargo nextest run --locked --offline --test worktree_report`
 - AC-14 (REQ-12): a process named `find` (a link to `sleep`) beside the test gives a `kind=scan` line with its id and `name=find` and none of its arguments. · verify: `cargo nextest run --locked --offline --test test_home_guard`
 
+- AC-15 (REQ-13, REQ-14): with a fake `cargo` that writes the `TMPDIR` it received into a file, a `--card` run of a temporary repository hands the `test` step a `TMPDIR` that is a new `moai-affected-*` folder whose canonical path is outside the repository, has no `.git` entry on its way up and holds no hex group shape 8-4-4-4-12; the other steps see the caller's `TMPDIR` · verify: `cargo nextest run --locked --offline --test check_affected_tmpdir -E 'test(the_test_step_gets_a_private_tmpdir_that_meets_the_three_conditions)'`
+- AC-16 (REQ-14, REQ-15): a caller `TMPDIR` whose path holds a session id, or lies inside a git repository, or inside the worktree is not used as the root; when no candidate meets the conditions the step gets the caller's `TMPDIR` unchanged and the answer's `test_tmpdir` names the reason · verify: `cargo nextest run --locked --offline --test check_affected_tmpdir -E 'test(a_caller_tmpdir_that_breaks_a_condition_is_not_the_root)'` and `cargo nextest run --locked --offline --lib -E 'test(check_affected::tmp::no_candidate_root_that_fits_gives_the_reason)'` (the second one holds the case that every candidate fails, which a test cannot build with the real `/tmp`)
+- AC-17 (REQ-16, REQ-17): a folder, a file and a link already carrying a name that the command would take are never adopted, removed or followed; the command takes another name · verify: `cargo nextest run --locked --offline --lib -E 'test(check_affected::tmp::)'`
+- AC-18 (REQ-18, REQ-19): after a passing `test` step the created folder is gone and a sibling folder and the root are untouched; when the created folder has been replaced by a link to another folder before the removal, nothing is removed, the other folder keeps its content, and `test_tmpdir` says `left` with the reason · verify: `cargo nextest run --locked --offline --test check_affected_tmpdir -E 'test(a_passed_run_removes_only_its_own_folder) | test(a_swapped_link_is_never_followed_or_removed)'`
+- AC-19 (REQ-20): after a failing `test` step the folder is kept and `test_tmpdir` names it · verify: `cargo nextest run --locked --offline --test check_affected_tmpdir -E 'test(a_failed_run_keeps_the_folder_and_names_it)'`
+- AC-20 (REQ-21): the summary line of a run has the words it had before this revision (no new word) and the exit codes are the same · verify: `cargo nextest run --locked --offline --test check_affected_tmpdir -E 'test(the_summary_line_has_no_new_word)'` and `cargo nextest run --locked --offline --test check_affected_cli --test check_affected_card_select --test test_home_guard`
+
 ## Scope
 
-- write: `tools/test_home_guard.sh`, `tests/test_home_guard.rs`, `.moai/specs/SPEC-20261124-home-guard-flake/spec.md`, `tests/worktree_report.rs`, `src/worktree_report.rs`, `src/ops/worktree_report.rs`
+- write: `tools/test_home_guard.sh`, `tests/test_home_guard.rs`, `.moai/specs/SPEC-20261124-home-guard-flake/spec.md`, `tests/worktree_report.rs`, `src/worktree_report.rs`, `src/ops/worktree_report.rs`; revision 4 adds `src/check_affected.rs`, `src/check_affected/**`, `src/ops/check.rs` and `tests/check_affected_tmpdir.rs`, and its card holds none of the guard files
 - read-only: the rest of `src/`, `tests/fixtures/test_home_guard/baseline.tsv`, `.config/nextest.toml`
 - forbidden: the baseline's lines (it never grows), the `enforce` default, the decoy files and their old access time, any rule that excuses a hit
 
@@ -128,6 +159,15 @@ Revision 3 plan (steps 6 to 11; steps 1 to 5 above are done):
 10. Guard mutants, one line each in the READY note: a peer name of the audit's forged-line case written unchecked fails AC-9; `if [ "$tolerated" -eq 0 ]` turned into `if :` fails AC-10; no cut at the first blank fails AC-11; the scan's detection of a missing `--tmp-root` removed fails AC-12; `DEFAULT_TMP_ROOT` changed to `/var/tmp` fails AC-13; the REQ-17 name list emptied fails AC-14.
 11. Measure the cause fix with the experiment of note 8377: under the guard (`sleep 4`) run the `worktree_report` test binary 3 times with the decoy in `/tmp`; the expected result is 0 of 3 `touched`, against 3 of 3 for the one `moai worktree-report .` without `--tmp-root`. Then `moai check affected` once at the head with `MOAI_HOME_GUARD_LOG` set; the receipt goes in the READY note. Shape 2 is not measured as fixed (D-8).
 
+Revision 4 plan (steps 12 to 17; steps 1 to 11 above are done):
+
+12. RED first: `tests/check_affected_tmpdir.rs` (AC-15, AC-16, AC-18, AC-19, AC-20) and the unit tests of `src/check_affected/tmp.rs` (AC-17, the three conditions, the removal judgement) fail on the current code.
+13. New module `src/check_affected/tmp.rs` (`mod tmp;` in `src/check_affected.rs`): `pick_root(caller, dir)`, `create_private(root)`, `remove_own(&Private)` as small pure functions over `Path`; no shell, no `rm`, one `std::fs::remove_dir_all` of the recorded canonical path after the re-checks of REQ-19.
+14. `check_affected::run` creates the folder before the first `test` step, adds `("TMPDIR", folder)` to that step's extra environment only, and after the loop removes it when the step exited 0 or names it in the answer's `test_tmpdir` when it did not. The summary line, the step list and the exit codes do not change.
+15. Help paragraph of `moai check affected` in `src/ops/check.rs` names the private `TMPDIR` and the `test_tmpdir` field.
+16. Dangerous path run in a throwaway, quoted in the READY note: a link and a plain folder at a name the command would take, a link swapped in just before the removal, a `test` step that hangs, and a root that sits in a git repository.
+17. Guard mutants, one line each in the READY note: no `TMPDIR` passed; the `.git` ancestor check removed; the session-id check removed; the removal not re-checking the canonical path; the removal following a link. Then `moai check affected --card` once at the head, and a reading of whether its own `test` step got a private `TMPDIR` and ran with no `touched` line.
+
 ## Risks
 
 - A planted peer check that opens a file would change the peer's access time and make the guard cause the very flake it measures. REQ-4 and AC-2 pin that.
@@ -136,6 +176,9 @@ Revision 3 plan (steps 6 to 11; steps 1 to 5 above are done):
 - A scan of test text is a hypothesis about what a test runs (a command built from a variable is missed): REQ-11 is a net for the known shape, not a proof that no test reads `/tmp`. The guard's own `kind=hit` lines stay the proof.
 - Skipping a peer with an odd name loses its line: the count in `kind=peer_skipped` says that one was skipped, and a name like that is not one the wrapper made.
 - The `kind=scan` names are a fixed list, so a reader outside it is still not named; the list is evidence for the next occurrence, not a filter.
+- (Revision 4) The new code removes a folder. A removal by a recorded canonical path with three re-checks (a folder and no link, the same canonical path, the same parent) cannot reach a path the command did not create, but a bug in those checks would delete the wrong tree; REQ-18, REQ-19, AC-18 and the dangerous path run of step 16 pin it, and nothing is removed through a shell or by a path built from the caller's input.
+- (Revision 4) A process that is killed in the middle of a run leaves its `moai-affected-*` folder in the temporary root. The folder holds only what the tests wrote; the existing `hygiene-plan` sees the `moai-` prefix, and this revision does not change that sweeper.
+- (Revision 4) The folder does not stop a same-user reader that knows or finds its path: it moves the decoys out of the `TMPDIR` that other runs share, and it makes the three conditions a rule of the code instead of a hand-picked choice. Whether the false `touched` failures stop is measured over repeated receipts under load, not proved by this revision.
 
 ## Decisions
 
@@ -152,6 +195,10 @@ Revision 3 plan (steps 6 to 11; steps 1 to 5 above are done):
 | D-9 | Not in this revision, left to the leader: a private `TMPDIR` for each `check affected` test run (a folder under that worktree's `target/`), which would keep the decoys out of every other session's `TMPDIR`. It needs `src/check_affected.rs`, which this SPEC's scope does not hold, and it moves where every test's temporary folder lands. A `0700` parent folder is not an option (see Intent). | proposed by the lane; the leader's note 8386 gave the `0700` example, which does not stop a same-user reader | none: nothing is written |
 | D-10 | Scope grows by `tests/worktree_report.rs`, `src/worktree_report.rs` and `src/ops/worktree_report.rs` (the card's own write scope does not list them; the leader widens it with `moai card scope`). `tests/worktree_report.rs` is already a trigger of the repository scans in `tools/repo_scans.json`, so the scan of REQ-16 needs no new table entry. | proposed by the lane, awaiting the leader (LANE-BLOCKED kind=decision) | drop REQ-11 |
 | D-11 | The non-blocking findings N2 (a hit file name with a line break splits into two lines), N3 (the end time is taken later than REQ-2 says), N4 (the `touched` line prints `$*` as it is) and N5 (Linux `ps` not run) of note 8367 are not scheduled in this revision. | leader decision note 8367: repair B1, B2 and N1 only | schedule a follow-up |
+| D-12 | Revision 4 takes up D-9 with one change: the private folder is under a temporary root outside the repository, not under the worktree's `target/`. | the leader's note 9049 shows a folder inside a git repository fails 76 tests, so a folder under `target/` (inside the repository) cannot meet condition 2 of REQ-14 | return to the shared `TMPDIR` by removing the `TMPDIR` entry of the `test` step |
+| D-13 | A failed run keeps its folder, a passed run removes it (REQ-18, REQ-20). | the folder of a failed run is the only copy of what its tests wrote while a `touched` line was printed; proposed by the lane, reversible by one line | remove the folder after every run |
+| D-14 | The summary line gets no new word; the folder is reported in the answer's `test_tmpdir` field only (REQ-21). | the READY gate and the batch read words of the line; a new word is a contract change that needs its own SPEC | add a word later with its own SPEC |
+| D-15 | The revision is treated as needing the user's approval although its paths are not on the audit floor list. | it adds a removal of a folder (the CLAUDE.md tier 2 rule names deleting); the lane records no approval, the leader reads the digest from the plan note and asks the user | none: this is the safer reading |
 
 ## Result
 
@@ -214,3 +261,24 @@ Shape 1 measured with the experiment of note 8377 (`TMPDIR=/tmp sh tools/test_ho
 Shape 2 (note 8383, a guard folder under a `TMPDIR` of `/var/folders/.../T` hit as folders only) is not fixed and its reader is still unknown (uncertain): the repository holds no recursive walker of `TMPDIR` (see Intent, revision 3), and this revision only adds the `kind=scan` lines that name a scanner alive at the verdict. The card's criterion 1 stays `not_met` for shape 2; a lane that sets `TMPDIR` by hand (notes 8398, D-9) is a workaround, not a fix. Not scheduled: N2 to N5 of note 8367 (D-11).
 
 Not measured: the cost per test (a test that touches nothing still pays no new command: the three function definitions are parsed and nothing more); the new scan reads every file of `tests/` once, a text read of a few megabytes.
+
+### Result of revision 4
+
+Measured 2026-11-25 (08:17Z to 08:34Z) on macOS arm64 in this branch's worktree, nextest 0.9.152, in-tree `target/`, heavy slots `--max 3`, load shared with the other lanes. Linux and Windows were not run. The branch holds the card areas branch (and through it the NeXT tip `2549655301`) merged in, with no conflict.
+
+RED (before `check_affected::run` used the new module, `target/c451/red.log`): 5 tests of `tests/check_affected_tmpdir.rs` run, 1 passed (the summary line has no new word, which holds before and after) and 4 failed, each because the answer had no `test_tmpdir` and the test step saw the caller's `TMPDIR`.
+
+- AC-15 met: with a fake `cargo` that writes the `TMPDIR` it received, a `--card` run gives the `nextest run` step a new `moai-affected-*` folder under the caller's root that is outside the repository, has no `.git` entry on its way up and no session id shape, while every other cargo step sees the caller's `TMPDIR` (`the_test_step_gets_a_private_tmpdir_that_meets_the_three_conditions`).
+- AC-16 met: a caller `TMPDIR` inside the worktree, inside a git repository elsewhere or holding a session id shape is not used as the root (`a_caller_tmpdir_that_breaks_a_condition_is_not_the_root`); the case that every candidate fails gives one reason per candidate and leaves `TMPDIR` as the caller gave it (`check_affected::tmp::no_candidate_root_that_fits_gives_the_reason`).
+- AC-17 met: a folder, a file, a link and a dangling link that carry the names tried are skipped, never adopted, removed or followed, and a free name after them is taken (`a_taken_name_is_never_adopted`); a link and a folder planted under the root with names like the private folder's survive a real run with what the link leads to (`a_planted_link_and_folder_under_the_root_survive_a_run`).
+- AC-18 met: a passed run removes the folder with its content and leaves a sibling and the root (`a_passed_run_removes_only_its_own_folder`, unit and integration); a folder replaced by a link, a file in its place, a parent that is not the recorded root and a root that moved away and was replaced by a link are each left alone with a reason and what they lead to keeps its content (`a_swapped_link_is_never_followed_or_removed`, `a_file_in_place_of_the_folder_is_left`, `a_folder_under_another_parent_is_left`, `a_path_that_now_runs_through_a_link_is_left`, and for the real command `a_folder_swapped_for_a_link_during_the_run_is_never_followed`).
+- AC-19 met: a failing test step keeps the folder with what its tests wrote and the answer names its path (`a_failed_run_keeps_the_folder_and_names_it`, unit and integration); a run killed while its test step hangs leaves that folder and removes nothing else (`a_killed_run_leaves_its_folder_and_deletes_nothing`).
+- AC-20 met: the summary line keeps the words it had and holds no `tmp` word (`the_summary_line_has_no_new_word`); `check_affected_cli`, `check_affected_card_select`, `check_affected_card_areas` and `test_home_guard` are in the `--card` selection of the second receipt below (read with `--card --list`) and pass, and `tools/test_home_guard.sh`, the baseline and `.config/nextest.toml` are not in this branch's diff.
+
+GREEN: `check_affected::tmp::` (13 unit tests), `check_affected_tmpdir` (8 integration tests) and `windows_unix_gate_scan` (11) together, 32 tests, 32 passed (`target/c451/green3.log`).
+
+Guard mutants (each applied to the committed head `0f6f2dee5d`, the unit and integration tests of this change run under nextest, then restored; `target/c451/mutants.out`, `mutants2.out`): no `TMPDIR` passed → killed by 4 tests, exit 100; every step gets the folder → killed by `the_test_step_gets_a_private_tmpdir_that_meets_the_three_conditions`, exit 100; the `.git` ancestor check removed → killed by `a_git_ancestor_is_refused`, exit 100; the session id check removed → killed by `a_session_id_shape_in_the_path_is_refused`, exit 100; the worktree check removed → survived the first test (its reason also names the worktree), killed by `the_worktree_and_what_lies_inside_it_are_refused` once it compares the whole reason, exit 100; the canonical path re-check removed → survived until `a_path_that_now_runs_through_a_link_is_left` was added, then killed, exit 100; the parent re-check removed → killed by `a_folder_under_another_parent_is_left`, exit 100; the removal without any re-check → killed by `a_swapped_link_is_never_followed_or_removed` and `a_path_that_now_runs_through_a_link_is_left`, exit 100; a failed run removes the folder → killed by `a_failed_run_keeps_the_folder_and_names_it`, exit 100. The tests of the dangerous-path set (`a_folder_swapped_for_a_link_during_the_run_is_never_followed`, `a_planted_link_and_folder_under_the_root_survive_a_run`, `a_killed_run_leaves_its_folder_and_deletes_nothing`) were added after the merge; a mutant run on them was refused by the host's auto mode classifier and not run (`not_run`). `src/check_affected/tmp.rs` did not change after the mutant run.
+
+`moai check affected --card ae5bd8a3e1e3..b27db6174d81` (the head's own build, the session id variable unset): first run `targets=87 … test=100 result=FAIL`, 1117 tests, 1111 passed, 6 failed, every one `HOME-GUARD: touched its HOME` with a test body that passed (4 of `doc_reference_boundaries`, 2 of `gate_collect`; the decoy folders lay under the private folder). Second run on the same head with `MOAI_HOME_GUARD_LOG` set: `test=0 result=PASS`, 1117 tests, 1117 passed, 0 `touched` lines in the guard log and the folder `removed` (`target/c451/receipt2.json`, `guard-receipt2.log`). The first run's logs are kept in `target/c451/receipt-fail-1`.
+
+The card's criterion 1 stays open. This revision makes the choice of the private folder a rule of the code, and the run that failed in it shows the guard folders are still reached by a reader that touches several of them in one moment; the leader's batch check failed the same way in its own folder under the same parent on the same morning, and its reader is still unknown (uncertain). Not run: Linux and Windows, the whole `cargo test`.
