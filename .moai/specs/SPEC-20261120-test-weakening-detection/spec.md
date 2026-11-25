@@ -2,7 +2,7 @@
 id: SPEC-20261120-test-weakening-detection
 title: "Detect a weakened test in the diff and hand the findings to the auditor"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-20
 ---
 
@@ -34,7 +34,7 @@ created: 2026-11-20
 - REQ-10: While the weakening gate is in observe, `effective_tier` shall ignore the findings. · failure: none
 - REQ-13: While the weakening gate is in observe, the gate's result shall name the tier it would give with the findings. · failure: none
 - REQ-12: While the weakening gate is enforcing, `effective_tier` shall be at least 1 when the findings are not empty or are unknown. · failure: none
-- REQ-11: When the quality rule and the agent workflow speak of a deleted test, the text shall say in one connecting sentence that a deletion whose reason is written in the card and the SPEC is not a finding. · failure: none
+- REQ-11: When the quality rule speaks of a deleted test, the quality rule shall say in one connecting sentence that a deletion whose reason is written in the card and the SPEC is not a finding. · failure: none
 
 ## Acceptance
 
@@ -47,24 +47,24 @@ created: 2026-11-20
 - AC-7 (REQ-7): `review-package` 결과의 `test_weakening` 이 약화 diff 에서는 목록, 아닌 diff 에서는 빈 배열이에요 · verify: `cargo test --locked --offline --test test_weakening review_package_carries_the_findings`
 - AC-8 (REQ-8, REQ-9): `gate-check` 의 결과가 걸린 목록을 보이고, diff 를 읽을 수 없으면 `unknown` 을 보여요 · verify: `cargo test --locked --offline --test gate_check_cli the_gate_lists_the_findings_and_says_unknown_when_unread`
 - AC-9 (REQ-10, REQ-12, REQ-13): 관찰 중에는 `effective_tier` 가 그대로이고 결과가 올렸을 때의 tier 를 말하며, 켜면 목록이 비어 있지 않거나 unknown 일 때 최소 1 이에요 · verify: `cargo test --locked --offline --test test_weakening observe_reports_and_enforce_raises_the_tier`
-- AC-10 (REQ-11): 두 문서에 연결 문장이 한 번씩 있어요 · verify: `cargo test --locked --offline --test test_weakening the_two_documents_carry_the_connecting_sentence`
+- AC-10 (REQ-11): `skills/moai/references/internal/quality.md` 에 연결 문장이 한 번 있고, 그 문장이 이유를 카드와 SPEC 에 적은 삭제는 지적이 아니라고 말해요 · verify: `cargo test --locked --offline --test test_weakening the_quality_rule_carries_the_connecting_sentence`
 - AC-12 (REQ-9): 수집기는 8 MiB(8388608바이트) 이하의 diff 는 읽고 한 바이트 더 긴 diff 는 `unknown` 으로 두며, 이름 바꾸기 검출을 끄고 읽어서 시험 파일을 시험 폴더 밖으로 옮긴 diff 는 지운 단언으로 세요 · verify: `cargo test --locked --offline --lib gate_collect::tests`
 - AC-13 (REQ-14): `src/test_weakening.rs` 가 `TIER2_PREFIXES` 와 `tools/protected_checks.json` 에 모두 있고 `tier_of(Some(0), …)` 가 2 예요 · verify: `cargo test --locked --offline --test test_weakening the_detector_module_is_a_protected_path_on_both_lists`
-- AC-11: 최근 병합된 PR 50개(로컬 병합 커밋의 두 부모 사이)에 돌린 결과 — 걸린 수, 그중 실제 약화 수 — 가 이 SPEC 의 Result 에 있어요 · verify: manual: Result 표를 읽어요(명령과 출력이 Result 에 적혀 있어요)
+- AC-11: NeXT 의 최근 착지 50개(first-parent 병합 커밋마다 첫 부모와 병합 사이의 diff, D-9)에 돌린 결과 — 걸린 수, 그중 실제 약화 수 — 가 이 SPEC 의 Result 에 있어요 · verify: manual: Result 표를 읽어요(명령과 출력이 Result 에 적혀 있어요)
 
 ## Scope
 
-- write: 이 SPEC, `src/test_weakening.rs`(새), `src/gate.rs`, `src/gate_collect.rs`, `src/ops/gate_check.rs`, `src/review.rs`(조각 3b), `tests/test_weakening.rs`(새), `tests/gate_check_cli.rs`, `skills/moai/references/internal/quality.md`와 `skills/moai/workflows/mode-agent.md`(조각 4)
-- 다른 카드가 쥔 파일(2026-11-20 예약 읽음): `src/review.rs`(조각 3 의 `review-package` 키), `skills/moai/references/internal/quality.md`와 `skills/moai/workflows/mode-agent.md`(조각 4 의 연결 문장)는 쥔 카드가 풀거나 리더가 순서를 정한 뒤에 써요. 그 전까지 조각 2와 `gate-check` 쪽(`src/gate.rs`, `src/gate_collect.rs`)을 먼저 해요
+- write: 이 SPEC, `src/test_weakening.rs`(새), `src/gate.rs`, `src/gate_collect.rs`, `src/ops/gate_check.rs`, `src/review.rs`, `tests/test_weakening.rs`(새), `tests/gate_check_cli.rs`, `tools/protected_checks.json`, `skills/moai/references/internal/quality.md`
+- 이 SPEC 이 쓰는 파일을 다른 카드가 쥐고 있지 않아요(2026-11-26 읽음): `src/review.rs` 와 `quality.md` 를 쥐던 카드는 끝났어요
 - read-only: `src/audit_gate.rs`, `tools/protected_checks.json`, `skills/moai/workflows/audit.md`
 - forbidden: 모델 호출, 네트워크, 약화가 걸린 PR 을 막는 규칙, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것
 
 ## Plan
 
-1. 조각 1(이번): SPEC, 조사 보고, PLAN 노트. 범위 확장 요청(`src/gate.rs`, `src/review.rs` 가 다른 카드에 잡혀 있으면 순서를 리더에게).
-2. 조각 2(검사기): `src/test_weakening.rs` 순수 함수(diff 글 → 목록)와 다섯 가지 고정물 쌍 시험(AC-1~6). 별도 명령은 만들지 않아요(D-7).
-3. 조각 3a(소비, gate-check): 스냅샷 키 `test_weakening`, 수집기가 diff 를 읽음, 결과에 목록·`tier_with_findings`, 관찰/켜짐 스위치(AC-8, AC-9). 조각 3b: `review-package` 의 새 키(AC-7, `src/review.rs` 를 쥔 카드가 풀린 뒤).
-4. 조각 4(문서와 결과): 연결 문장 두 곳(AC-10), 최근 PR 50개 실행 결과를 Result 에(AC-11).
+1. 조각 2(검사기): `src/test_weakening.rs` 순수 함수(diff 글 → 목록)와 다섯 가지 고정물 쌍 시험(AC-1~6). 별도 명령은 만들지 않아요(D-7). 이전 가지에서 끝나 NeXT 끝에 합쳤어요.
+2. 조각 3a(소비, gate-check): 스냅샷 키 `test_weakening`, 수집기가 diff 를 읽음, 결과에 목록·`tier_with_findings`, 관찰/켜짐 스위치(AC-8, AC-9). 같은 가지에서 끝나 합쳤어요.
+3. 조각 3b(소비, review-package): `review-package` 결과의 새 키 `test_weakening`(AC-7, D-11).
+4. 조각 4(문서와 결과): `quality.md` 의 연결 문장(AC-10, D-10), NeXT 의 최근 착지 50개 실행 결과를 Result 에(AC-11, D-9).
 
 ## Risks
 
@@ -85,6 +85,9 @@ created: 2026-11-20
 | D-6 | 관찰/켜짐 스위치는 `gate.rs` 의 상수 하나(`TEST_WEAKENING_ENFORCED`, 지금 false)예요 | 켜는 일은 리더 결정이라 코드 한 줄로 되돌릴 수 있게 해요 | 상수 값 |
 | D-7 | 검사기 모듈은 `src/lib.rs` 가 아니라 `src/gate.rs` 가 `#[path]` 로 선언하고(`gate::test_weakening`), 별도 명령 대신 `gate-check` 결과로만 보여요 | `src/lib.rs`·`src/help.rs` 같은 공용 한 줄 파일을 다른 카드가 오래 쥐고 있어서, 게이트 파일만 건드리게 해요 | `lib.rs` 로 옮기기, 명령 더하기 |
 | D-8 | 한 파일에서 지운 시험을 다른 파일에서 같은 이름으로 다시 시작하면 시험 삭제로 세지 않지만, 지운 쪽 파일의 단언 순감소는 파일 단위로 그대로 세요 | 옮긴 시험의 오탐은 감사 한 번이고, 단언을 파일 단위로 세는 가장 단순한 규칙이에요 | 시험 함수 단위로 단언을 세기 |
+| D-9 | 카드 기준 3 의 "최근 병합된 PR 50개"를 "NeXT 의 최근 착지 50개"로 읽어요: `git log --first-parent --merges -50 <NeXT 끝>` 의 병합마다 첫 부모와 병합 사이의 diff 에 검사기를 돌려요 | 카드는 PR 시대(2026-11-20)에 쓰였고 지금 흐름(NeXT-Flow)은 PR 없이 로컬 병합으로 착지해서, 같은 뜻의 단위가 착지예요. 리더가 2026-11-26 디스패치에서 이렇게 읽고 SPEC 에 결정으로 적으라고 했어요 | PR 이 다시 생기면 PR 단위로 |
+| D-10 | 연결 문장은 `quality.md` 에만 넣어요. 카드가 짝으로 든 `mode-agent.md` 는 더는 없어요: 그 문장("원인 불명이면 삭제")은 `check-rules.md` 로 옮겨 갔고 이미 "이유를 카드와 SPEC 에 적는다"가 들어 있어서, `quality.md` 의 한 문장이 둘을 잇기에 충분해요 | 2026-11-26 에 `skills/moai` 를 읽었어요(`mode-agent.md` 없음, `check-rules.md` 38줄) | `check-rules.md` 에도 같은 문장을 넣기 |
+| D-11 | `review-package` 결과의 `test_weakening` 은 `gate-check` 와 같은 글(`kind path:line detail`)의 배열이고, 패키지의 diff 가 8 MiB 를 넘으면 배열은 비우고 `skipped` 에 `test-weakening: diff-over-limit` 한 줄을 남겨요 | 두 결과가 한 가지 모양을 써야 감사자가 같은 방식으로 읽어요. 패키지는 이미 `skipped` 로 못 읽은 것을 말해요 | 구조체 배열로 바꾸기 |
 
 ## Result
 
