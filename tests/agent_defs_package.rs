@@ -318,11 +318,11 @@ fn a_package_without_sources_has_no_agents_and_a_stray_file_is_refused() {
         .contains("name must be moai-impl"));
 }
 
-/// #2637: each base agent's `reads:` list is the final design's §3 table (#2634) —
-/// `moai-research` reads the two adapters #2636 added, and the five Go-generation references
-/// #2582 adopted (leader confirmation 6856677422) go to `moai-impl`, `moai-audit` and
-/// `moai-docs`; every entry is a file of the package and every rendered agent opens with the
-/// generated line that names exactly those files.
+/// #2637: each base agent's `reads:` list is the final design's §3 table (#2634) less what
+/// SPEC-20261125-base-agent-contract D-4 removed; the five Go-generation references #2582
+/// adopted (leader confirmation 6856677422) go to `moai-impl`, `moai-audit` and `moai-docs`;
+/// every entry is a file of the package and every rendered agent opens with the generated line
+/// that names exactly those files.
 #[test]
 fn reads_lists_match_the_design_and_render_on_every_host() {
     let defs = package_agents(&agents(), &package()).unwrap();
@@ -337,23 +337,21 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
     };
     // SPEC-20261117-atlas-in-read-plan: the two read-only agents of READ and PLAN check the
     // code atlas before they search.
+    // SPEC-20261125-base-agent-contract D-4: an entry the agent's body does not name is read for
+    // nothing, so `internal/interview` (the PROJECT question bank, which a chain row names for
+    // the parent) left `moai-plan`, and the two browser adapters left `moai-research`, whose
+    // body names only the host's own web tool.
     assert_eq!(
         reads("moai-plan"),
         [
             "internal/core-rules",
             "internal/decide",
-            "internal/interview",
             "internal/code-atlas"
         ]
     );
     assert_eq!(
         reads("moai-research"),
-        [
-            "internal/core-rules",
-            "adapters/aside",
-            "adapters/orca",
-            "internal/code-atlas"
-        ]
+        ["internal/core-rules", "internal/code-atlas"]
     );
     assert_eq!(
         reads("moai-impl"),
