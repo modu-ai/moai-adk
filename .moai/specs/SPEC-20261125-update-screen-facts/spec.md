@@ -59,8 +59,16 @@ created: 2026-11-25
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | 모델 단계의 "사람이 볼 변경" 은 파일을 쓴 것(스킬 파일 published, 다른 부분이 applied 또는 쓴 partial)이에요. adopt 와 영수증 baseline 이동은 보이지 않는 변경이에요 | 사용자 실행에서 보이지 않는 adopt 뿐인데 질문 다섯 개가 열렸어요 | `visible_change` 대신 `applied` 로 돌아가요 |
-| D-2 | 열린 줄은 Warn·Skip·Error 표시의 행이고, 문구는 행 이름을 이어서 보여요 | 한 줄로 어느 줄을 볼지 말해야 해요 | 문구만 바꿔요 |
+| D-2 | 열린 줄은 Warn·Error 표시의 행(충돌, 막힘, 파일을 건너뛴 라우팅, 붙잡힌 대상)이고, 문구는 행 이름을 한 번씩 이어서 보여요. 순수 Skip 표시의 안내 줄(예: 이 프로젝트에 hook 없음)은 열린 줄이 아니어서 "모두 최신" 한 줄이 그대로예요 | 한 줄로 어느 줄을 볼지 말해야 하고, 안내 줄까지 열린 줄로 세면 흔한 최신 화면이 사라져요 | `open_labels` 의 표시 조건만 바꿔요 |
 
 ## Result
 
-(구현 뒤에 채워요)
+구현 head 는 카드의 READY 노트에 있어요(영수증도 거기에 있어요).
+
+- AC-1 met: `screen_facts_ac1_only_a_visible_change_opens_the_model_step` 통과. `update::visible_change` 는 adopt 만 한 결과와 쓰지 않은 partial 에서 거짓, 파일을 쓴 결과와 쓴 부분에서 참이에요. 모델 단계 호출부는 `let wrote = visible_change(&out)` 한 줄이고 터미널이 있어야 열려서 테스트가 못 잡아요(not_run).
+- AC-2 met: `screen_facts_ac2_the_model_step_result_has_one_line` 통과(한국어·영어, saved 줄에 설정 파일 경로, `ok` 는 줄 없음, 미리 보기 화면에도 줄이 나와요).
+- AC-3 met: `screen_facts_ac3_the_adopted_files_are_counted` 통과(임시 HOME 에서 미리 보기의 "N to adopt", 확정한 결과 JSON 의 `adopted`, Applied 행의 "N adopted", adopt 없는 호스트는 키도 문구도 없음).
+- AC-4 met: `screen_facts_ac4_the_headline_follows_the_rows` 통과(충돌 둘, 건너뛴 라우팅, 막힌 호스트에서 "Everything is up to date" 와 "clear the blocked part first" 가 없고 "Nothing left to apply … Still open" 이 있어요).
+- AC-5 met: `cargo test --locked --offline --test update_tux_golden` 16개 통과. 골든은 `update-blocked-40` 한국어·영어 두 개만 바뀌었고 바뀐 줄은 이 SPEC 의 머리말 줄뿐이에요. `tests/update_tux_golden.rs` 의 한 줄("Nothing can be applied" → "Nothing left to apply")은 리더 결정으로 범위에 더해 고쳤어요.
+- 지킴이 뮤턴트 9개(visible_change 두 곳, `adopted` 키, 머리말 분기, 열린 줄 표시 조건, 모델 결과 두 곳, adopt 수 두 곳)가 모두 지정한 테스트의 단언 실패로 죽었어요(컴파일 오류 아님, 뮤턴트별 로그 확인).
+- not_run: 구현 전에 RED 를 돌리지 않았어요. 실제 HOME 의 설치본 화면은 보지 않았어요(임시 HOME 과 고정 JSON 만 썼어요).
