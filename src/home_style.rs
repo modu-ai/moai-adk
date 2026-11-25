@@ -4,8 +4,7 @@
 //! as the output style file `~/.claude/output-styles/MoAI-Easy.md` (frontmatter added) and
 //! selects it by default through `outputStyle` in `~/.claude/settings.json`. Hosts without a
 //! user-level file this module can write are reported in `not_supported`, as for the routing
-//! section. The Codex block that an earlier version wrote into `~/.codex/AGENTS.md` is no longer
-//! written (SPEC-20261122-codex-home-update-removed); a receipt that names it is skipped.
+//! section. A receipt entry that names a host this module does not write is skipped.
 //!
 //! `plan` writes nothing. Every target is three-way: the style file is ours while it holds the
 //! bytes the record names (`<state folder>/home-style/<host>.json`; a config folder other than
