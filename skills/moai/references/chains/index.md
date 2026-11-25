@@ -13,7 +13,7 @@ A chain is the order in which the parent session uses agents for one kind of req
 | Check a page or do a web task | RUN | none | none |
 | Set up a project | PROJECT | none | internal/interview, internal/questions |
 | Update documents and the work card after a merge | SYNC | moai-docs | internal/decide |
-| Work through the cards | WORK | none | internal/git-safety, flows/next-flow |
+| Work through the cards | WORK | moai-plan, moai-impl, moai-docs | internal/git-safety, flows/next-flow |
 | Coordinate the lanes | LEADER | none | flows/next-flow |
 | A test fails once and passes on a rerun of the same head (flaky) | RUN | none | internal/test-design |
 | Repair after a FAIL verdict | RUN, SYNC, AUDIT | moai-impl, moai-audit | audit |
@@ -33,6 +33,6 @@ Rules for every chain:
 - A question about how a stateful part behaves, why a pipeline is slow, what of an old part to keep or what a refactor could break is looked at with `internal/lenses`, which reports and changes no code.
 - The `versioning` rows of the PROJECT interview are asked with `internal/versioning`, read only when those rows are asked or a release version is computed.
 - Any route that prepares, tags or publishes a release or release candidate runs `internal/versioning` `## At every release` first.
-- WORK takes one card at a time and runs the chain of that card's request, then lands it; its own steps are in `workflows/work.md`.
+- WORK takes one card at a time, hands its plan, implementation and documents to `moai-plan`, `moai-impl` and `moai-docs` in turn, and hands the card back for audit; its own steps are in `workflows/work.md`. It audits and lands nothing.
 - A timer that repeats the leader round (`/loop`, a cron task or a wakeup) is armed only as `internal/loop` says.
 - When the host cannot start agents, the parent session follows the same order itself and keeps the implementing and auditing contexts apart.

@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-check-affected-card-areas
 title: "check affected --card: area sets and module filters instead of the full set"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9147): \"승인, 개정 1 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:63e2f1d22fb6f58a9b61815f513c100317ca33e780eaa0c7fbf51b2eb414a0e1"
 ---
 
 # check affected --card: area sets and module filters instead of the full set

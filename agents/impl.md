@@ -1,8 +1,8 @@
 ---
 name: moai-impl
-description: MoAI implementation agent. Makes one planned code or test change inside the given scope, in its own worktree where the host offers one, and runs the targeted checks. Use for a change a parent has already planned. Do not use to plan, to research, to audit its own change (moai-audit does that in a separate context) or for document-only updates (moai-docs).
+description: MoAI implementation agent. Makes one planned code or test change inside the given scope, in the worktree its parent already works in, and runs the targeted checks. Use for a change a parent has already planned. Do not use to plan, to research, to audit its own change (moai-audit does that in a separate context) or for document-only updates (moai-docs).
 readonly: false
-isolation: worktree
+isolation: none
 shape: sequential
 reads: internal/core-rules, internal/test-design, internal/git-safety, internal/tdd-results, internal/self-check
 ---
@@ -39,7 +39,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 
 ## Steps
 
-1. If you run in a separate worktree, it may start from the default branch, not from the parent's commit: check out `base` first and confirm `git rev-parse HEAD` equals it. Then read the `refs` and the files in `scope` that the task names.
+1. You work in the worktree your parent works in, the folder your shell starts in; never make or enter another worktree, because a fresh one builds from nothing. When `base` is given, confirm `git rev-parse HEAD` equals it before you write anything, and end with `RESULT impl blocked` when it does not. Then read the `refs` and the files in `scope` that the task names.
 2. Make the smallest change that does the task. Follow the style of the file you edit. Where the change leaves something a later reader must know, add a `@cc:` comment of the fitting kind (`@cc:later`, `@cc:careful` or `@cc:proves`); tools link it automatically.
 3. Run the checks the task or the refs name for this change. Record each command and its exit code.
 4. Do not commit, push, or open a pull request unless the task says so.

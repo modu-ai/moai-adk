@@ -199,8 +199,10 @@ fn the_package_holds_the_five_roles_of_the_contract() {
     );
     let get = |n: &str| defs.iter().find(|d| d.name == n).unwrap();
     // Contract 6840103566: audit, research and plan write nothing; research fans out;
-    // implementation runs isolated where the host can; audit reads the worktree its brief gives
-    // (SPEC-20261123-audit-rule-text D-4), so it sets no isolation of its own.
+    // implementation and audit set no isolation of their own: audit reads the worktree its brief
+    // gives (SPEC-20261123-audit-rule-text D-4) and implementation works in the worktree its
+    // parent is already in (C-493, user decision 2026-11-25), because a second worktree rebuilds
+    // from nothing.
     for n in ["moai-audit", "moai-research", "moai-plan"] {
         assert!(get(n).readonly, "{n}");
     }
@@ -208,7 +210,7 @@ fn the_package_holds_the_five_roles_of_the_contract() {
         assert!(!get(n).readonly, "{n}");
     }
     assert_eq!(get("moai-research").shape, "fanout");
-    assert_eq!(get("moai-impl").isolation, "worktree", "moai-impl");
+    assert_eq!(get("moai-impl").isolation, "none", "moai-impl");
     assert_eq!(get("moai-audit").isolation, "none", "moai-audit");
     for d in &defs {
         let role = d.name.trim_start_matches("moai-");

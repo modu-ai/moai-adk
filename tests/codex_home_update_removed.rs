@@ -1,7 +1,7 @@
 //! SPEC-20261122-codex-home-update-removed: the home update plans, writes and reverts for the host
 //! `claude` only. A home that holds Codex, shared-agents or OMP files keeps them byte for byte and
-//! gets one notice per host; an old receipt that names those hosts reverts its Claude entries and
-//! skips the rest. Every case runs in a temporary HOME; the real one is never touched.
+//! the update prints no row for them; an old receipt that names those hosts reverts its Claude
+//! entries and skips the rest. Every case runs in a temporary HOME; the real one is never touched.
 
 #![cfg(unix)]
 
@@ -20,7 +20,6 @@ use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
 const PERM: &str = "test-permission";
-const NOTICE: &str = "no longer manages";
 
 fn package() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
@@ -128,21 +127,6 @@ fn retired_trees(home: &Path) -> Vec<BTreeSet<(String, Vec<u8>)>> {
     [".codex", ".agents", ".omp"]
         .iter()
         .map(|d| tree(&home.join(d)))
-        .collect()
-}
-
-fn notices(layer: &Value) -> Vec<(String, String)> {
-    layer["skipped"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter(|s| s["reason"].as_str().is_some_and(|r| r.contains(NOTICE)))
-        .map(|s| {
-            (
-                s["host"].as_str().unwrap().to_string(),
-                s["reason"].as_str().unwrap().to_string(),
-            )
-        })
         .collect()
 }
 
@@ -256,78 +240,58 @@ fn a_home_without_retired_folders_gets_none_made() {
     }
 }
 
-// ---- the notice (REQ-4, REQ-5, REQ-6) -------------------------------------------------------
+// ---- no row for the retired hosts (REQ-4, REQ-5, REQ-6) ------------------------------------
 
-#[test]
-fn a_home_with_codex_files_shows_one_notice_for_codex() {
-    let (_t, home, exe) = setup();
-    put(&home, ".codex/AGENTS.md", "mine\n");
-    put(&home, ".agents/skills/other/SKILL.md", "x\n");
-    let p = result(&run(&exe, &home, &["update"]));
-    let found = notices(&p);
-    assert_eq!(found.len(), 1, "{p}");
-    assert_eq!(found[0].0, "codex");
-    assert!(found[0].1.contains("Codex"), "{}", found[0].1);
-    assert!(found[0].1.contains("~/.codex"), "{}", found[0].1);
+/// Every entry of the layer whose host is a retired one, as text.
+fn retired_rows(layer: &Value) -> Vec<String> {
+    layer["skipped"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|s| matches!(s["host"].as_str(), Some("codex" | "omp")))
+        .map(Value::to_string)
+        .collect()
 }
 
-/// Each Codex folder alone is enough for the one Codex notice: the mutants that dropped one of the
-/// two checks survived the case above, which creates both.
+/// The preview and the apply result print no Codex or OMP row, with or without their folders in
+/// the home, and the plan digest is the same either way.
 #[test]
-fn the_codex_folder_alone_shows_the_codex_notice() {
-    let (_t, home, exe) = setup();
-    put(&home, ".codex/AGENTS.md", "mine\n");
-    let found = notices(&result(&run(&exe, &home, &["update"])));
-    assert_eq!(found.len(), 1, "{found:?}");
-    assert_eq!(found[0].0, "codex");
-}
-
-#[test]
-fn the_shared_agents_folder_alone_shows_the_codex_notice() {
-    let (_t, home, exe) = setup();
-    put(&home, ".agents/skills/other/SKILL.md", "x\n");
-    let found = notices(&result(&run(&exe, &home, &["update"])));
-    assert_eq!(found.len(), 1, "{found:?}");
-    assert_eq!(found[0].0, "codex");
-}
-
-#[test]
-fn a_home_with_omp_files_shows_one_notice_for_omp() {
-    let (_t, home, exe) = setup();
-    put(&home, ".omp/agent/agents/mine.md", "x\n");
-    let p = result(&run(&exe, &home, &["update"]));
-    let found = notices(&p);
-    assert_eq!(found.len(), 1, "{p}");
-    assert_eq!(found[0].0, "omp");
-    assert!(found[0].1.contains("OMP"), "{}", found[0].1);
-}
-
-#[test]
-fn a_home_without_them_shows_no_notice() {
-    let (_t, home, exe) = setup();
-    let p = result(&run(&exe, &home, &["update"]));
-    assert!(notices(&p).is_empty(), "{p}");
-}
-
-#[test]
-fn the_apply_result_carries_the_notice() {
-    let (_t, home, exe) = setup();
-    leave_retired_files(&home);
-    let p = result(&run(&exe, &home, &["update"]));
-    let top = p["plan_digest"].as_str().unwrap();
-    let r = result(&run(&exe, &home, &["update", "--confirm", top]));
-    let hosts: Vec<String> = notices(&r).into_iter().map(|(h, _)| h).collect();
-    assert_eq!(hosts, ["codex", "omp"], "{r}");
-}
-
-#[test]
-fn the_notice_does_not_change_the_plan_digest() {
+fn the_retired_hosts_leave_no_row_in_the_plan_or_the_apply_result() {
     let (_t, home, exe) = setup();
     let without = result(&run(&exe, &home, &["update"]));
     leave_retired_files(&home);
     let with = result(&run(&exe, &home, &["update"]));
+    assert!(retired_rows(&without).is_empty(), "{without}");
+    assert!(retired_rows(&with).is_empty(), "{with}");
     assert_eq!(with["plan_digest"], without["plan_digest"]);
-    assert!(notices(&without).is_empty() && !notices(&with).is_empty());
+    let top = with["plan_digest"].as_str().unwrap();
+    let applied = result(&run(&exe, &home, &["update", "--confirm", top]));
+    assert!(retired_rows(&applied).is_empty(), "{applied}");
+    assert!(
+        !applied.to_string().to_ascii_lowercase().contains("codex"),
+        "{applied}"
+    );
+}
+
+/// The update path carries no code that handles the retired hosts: its sources name neither
+/// Codex nor OMP.
+#[test]
+fn the_update_sources_hold_no_code_for_the_retired_hosts() {
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut files = vec![src.join("update.rs"), src.join("update_tux.rs")];
+    for entry in fs::read_dir(src.join("update")).unwrap() {
+        files.push(entry.unwrap().path());
+    }
+    for file in files {
+        let text = fs::read_to_string(&file).unwrap().to_ascii_lowercase();
+        for word in ["codex", "omp"] {
+            let hit = text.lines().position(|l| {
+                l.split(|c: char| !c.is_ascii_alphanumeric())
+                    .any(|w| w == word)
+            });
+            assert!(hit.is_none(), "{} names `{word}`", file.display());
+        }
+    }
 }
 
 // ---- an old receipt that names the retired hosts (REQ-7) -----------------------------------

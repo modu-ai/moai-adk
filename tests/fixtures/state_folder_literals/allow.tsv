@@ -136,7 +136,6 @@ tests/home_state_retire_cli.rs	30	20
 tests/home_state_selective.rs	0	28
 tests/home_style_cli.rs	0	1
 tests/home_style_ownership_cli.rs	1	1
-tests/home_update_notice_follow_ups.rs	2	0
 tests/hook_dispatch_cli.rs	39	0
 tests/hook_legacy_cli.rs	2	0
 tests/hook_mode_cli.rs	3	0
