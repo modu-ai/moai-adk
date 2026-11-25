@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-base-agent-contract
 title: "The base agent contract hands implementation over inside the lane worktree, gives the audit agent one tier table and leaves no unused read"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9243): \"승인, D-1~D-7 기본값 A (Recommended)\"; 리더가 묻기 직전과 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:664a91146c207c53525353520f263b8d4c8386413bf9cf0e7590a87201161e87"
 ---
 
 # The base agent contract hands implementation over inside the lane worktree, gives the audit agent one tier table and leaves no unused read
