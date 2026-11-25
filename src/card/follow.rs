@@ -575,26 +575,34 @@ pub fn rerun(
     let Some(old) = started_from(conn, card_id, head)? else {
         return Ok(Rerun::Nothing(none()));
     };
+    rerun_from(project, &old, full_ref, branch, head)
+}
+
+/// [`rerun`] with the old tip given: the same look at the worktree that has `full_ref` checked
+/// out, for a caller that knows the tip the branch moved from and has no card to read it from
+/// (`card land-sync`, SPEC-20261125-land-sync-merge D-3). `head` names the commit the branch moved
+/// to; the tip is read from the branch, as `rerun` does, so `head` is not read again here.
+pub fn rerun_from(
+    project: &Path,
+    old: &str,
+    full_ref: &str,
+    branch: &str,
+    _head: &str,
+) -> Result<Rerun> {
     let Some(tree) = holder(project, full_ref, branch)? else {
         return Ok(Rerun::Nothing(none()));
     };
     let tip = landed::tip_of(project, branch)?;
     if old == tip || quiet(&tree, &["diff-index", "--cached", "--quiet", &tip])? {
-        return Ok(Rerun::Nothing(answer(
-            Some(&tree),
-            "none",
-            &old,
-            &tip,
-            None,
-        )));
+        return Ok(Rerun::Nothing(answer(Some(&tree), "none", old, &tip, None)));
     }
-    if !quiet(&tree, &["diff-index", "--cached", "--quiet", &old])? {
+    if !quiet(&tree, &["diff-index", "--cached", "--quiet", old])? {
         // The branch moved and the landing is done, so the card closes; the worktree is left as
         // it is and the answer says how its owner brings it along (REQ-13).
         // `git reset --hard` also overwrites a file no commit tracks (ignored or not) that stands
         // where the new tip adds one, and the saved patch does not hold such a file: name them.
-        let overwritten = match changes(&tree, &old, &tip)
-            .and_then(|all| stands_on_added_paths(&tree, &all, &old))
+        let overwritten = match changes(&tree, old, &tip)
+            .and_then(|all| stands_on_added_paths(&tree, &all, old))
         {
             Ok(stands) if stands.is_empty() => String::new(),
             Ok(stands) => format!(
@@ -619,7 +627,7 @@ pub fn rerun(
         return Ok(Rerun::Nothing(answer(
             Some(&tree),
             "none",
-            &old,
+            old,
             &tip,
             Some(&note),
         )));
@@ -637,10 +645,158 @@ pub fn rerun(
         ));
     }
     // The added paths are read by `apply` right before the write, so they are not read here.
-    dry_run(&tree, &old, &tip)?;
+    dry_run(&tree, old, &tip)?;
     Ok(Rerun::Needed(Plan {
         tree,
-        from: old,
+        from: old.to_string(),
         to: tip,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const FULL: &str = "refs/heads/integ";
+    const BRANCH: &str = "integ";
+
+    fn git(dir: &Path, args: &[&str]) -> String {
+        let mut cmd = std::process::Command::new("git");
+        cmd.arg("-C").arg(dir).args([
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+        ]);
+        cmd.args(args);
+        crate::identity::scrub_git_env(&mut cmd);
+        let out = cmd.output().unwrap();
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    /// A repository whose checked-out branch moved by `update-ref` only: the branch is at `tip`,
+    /// the index and the files of its worktree are still at `old`.
+    struct Lagging {
+        dir: tempfile::TempDir,
+        old: String,
+        tip: String,
+    }
+
+    fn lagging() -> Lagging {
+        let dir = tempfile::tempdir().unwrap();
+        let at = dir.path();
+        git(at, &["init", "-q", "-b", BRANCH]);
+        std::fs::write(at.join("a.txt"), "one\n").unwrap();
+        git(at, &["add", "a.txt"]);
+        git(at, &["commit", "-q", "-m", "one"]);
+        let old = git(at, &["rev-parse", "HEAD"]);
+        git(at, &["checkout", "-q", "-b", "side"]);
+        std::fs::write(at.join("b.txt"), "two\n").unwrap();
+        git(at, &["add", "b.txt"]);
+        git(at, &["commit", "-q", "-m", "two"]);
+        let tip = git(at, &["rev-parse", "HEAD"]);
+        git(at, &["checkout", "-q", BRANCH]);
+        git(at, &["update-ref", FULL, &tip, &old]);
+        Lagging { dir, old, tip }
+    }
+
+    /// A ledger that holds only the events `rerun` reads, with the start row of a landing of
+    /// `head` that left the branch at `old`.
+    fn ledger(start: Option<(&str, &str)>) -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE event (event_id INTEGER PRIMARY KEY, card_id INTEGER, kind TEXT, \
+             payload TEXT)",
+        )
+        .unwrap();
+        if let Some((head, old)) = start {
+            conn.execute(
+                "INSERT INTO event (card_id, kind, payload) VALUES (7, 'card.land_started', ?1)",
+                [json!({"head": head, "tip": old}).to_string()],
+            )
+            .unwrap();
+        }
+        conn
+    }
+
+    /// What a call found, as text to compare.
+    fn shown(found: Result<Rerun>) -> String {
+        match found {
+            Ok(Rerun::Needed(p)) => format!("needed {} {} {}", p.tree.display(), p.from, p.to),
+            Ok(Rerun::Nothing(v)) => format!("nothing {v}"),
+            Err(why) => format!("refused {why}"),
+        }
+    }
+
+    /// An explicit old tip follows a lagging checked-out worktree, as `rerun` does with the tip its
+    /// start row recorded.
+    #[test]
+    fn rerun_from_follows_a_lagging_checked_out_worktree_like_rerun() {
+        let f = lagging();
+        let at = f.dir.path();
+        let direct = shown(rerun_from(at, &f.old, FULL, BRANCH, &f.tip));
+        assert!(direct.starts_with("needed "), "{direct}");
+        assert!(
+            direct.ends_with(&format!(" {} {}", f.old, f.tip)),
+            "{direct}"
+        );
+        let conn = ledger(Some((&f.tip, &f.old)));
+        let by_card = shown(rerun(at, &conn, 7, FULL, BRANCH, &f.tip));
+        assert_eq!(direct, by_card);
+        // The plan it gave brings the worktree along; the same call then finds nothing to do.
+        let Ok(Rerun::Needed(plan)) = rerun_from(at, &f.old, FULL, BRANCH, &f.tip) else {
+            panic!("the lagging worktree needs the follow");
+        };
+        apply(&plan).unwrap();
+        let after = shown(rerun_from(at, &f.old, FULL, BRANCH, &f.tip));
+        assert!(after.starts_with("nothing "), "{after}");
+        assert!(after.contains("\"status\":\"none\""), "{after}");
+        assert_eq!(after, shown(rerun(at, &conn, 7, FULL, BRANCH, &f.tip)));
+    }
+
+    /// A tracked file edited in the lagging worktree is refused, as `rerun` refuses it, and the
+    /// file is left as it was.
+    #[test]
+    fn rerun_from_refuses_a_dirty_lagging_worktree_like_rerun() {
+        let f = lagging();
+        let at = f.dir.path();
+        std::fs::write(at.join("a.txt"), "edited\n").unwrap();
+        let direct = shown(rerun_from(at, &f.old, FULL, BRANCH, &f.tip));
+        assert!(direct.starts_with("refused "), "{direct}");
+        assert!(direct.contains("has edited tracked files"), "{direct}");
+        assert!(direct.contains(&format!("lags at {}", f.old)), "{direct}");
+        let conn = ledger(Some((&f.tip, &f.old)));
+        assert_eq!(direct, shown(rerun(at, &conn, 7, FULL, BRANCH, &f.tip)));
+        assert_eq!(
+            std::fs::read_to_string(at.join("a.txt")).unwrap(),
+            "edited\n"
+        );
+    }
+
+    /// `rerun` still reads the old tip from the card's start row: a head no start row names finds
+    /// nothing, while `rerun_from` with an explicit old tip needs no row.
+    #[test]
+    fn rerun_looks_the_old_tip_up_and_rerun_from_needs_no_row() {
+        let f = lagging();
+        let at = f.dir.path();
+        let empty = ledger(None);
+        assert_eq!(
+            shown(rerun(at, &empty, 7, FULL, BRANCH, &f.tip)),
+            format!("nothing {}", none())
+        );
+        let other = ledger(Some((&f.old, &f.old)));
+        assert_eq!(
+            shown(rerun(at, &other, 7, FULL, BRANCH, &f.tip)),
+            format!("nothing {}", none())
+        );
+        let direct = shown(rerun_from(at, &f.old, FULL, BRANCH, &f.tip));
+        assert!(direct.starts_with("needed "), "{direct}");
+    }
 }
