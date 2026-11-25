@@ -96,6 +96,31 @@ impl World {
         result(&out);
     }
 
+    /// A leader entry of the session registry (`session-register --mode leader`).
+    fn leader(&self, name: &str, session: &str) {
+        let out = self.run(
+            Some(session),
+            &[
+                "session-register",
+                self.project.to_str().unwrap(),
+                "--name",
+                name,
+                "--mode",
+                "leader",
+            ],
+        );
+        result(&out);
+    }
+
+    /// Ends the lease of the registry entry `name`: its `lease_until` becomes 1.
+    fn expire(&self, name: &str) {
+        let dir = moai_cli::lane_registry::registry_dir_unlinked(&self.project).unwrap();
+        let file = dir.join(format!("{name}.json"));
+        let mut entry: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
+        entry["lease_until"] = json!(1);
+        fs::write(&file, entry.to_string()).unwrap();
+    }
+
     /// A ready card with one criterion and its own write scope; returns its name.
     fn ready_card(&self, scope: &str) -> String {
         let added = result(&self.card(
@@ -274,4 +299,48 @@ fn next_at_the_limit_names_the_cards_that_wait_for_an_audit() {
     // The session that wrote the card in review is not asked to audit it.
     let mine = result(&w.next(&sid(1)));
     assert_eq!(mine["audit_needed"], json!([]), "{mine}");
+}
+
+/// REQ-7 (AC-6): with no lane registered the limit is still one lane's, two: the first two takes
+/// pass and the third refuses.
+#[test]
+fn with_no_lane_registered_the_limit_is_two() {
+    let w = world(None);
+    w.working(&sid(1), 2);
+    let third = w.ready_card("src/third/");
+    let (kind, message) = refusal(&w.take(&sid(1), &third));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("1 lane(s)"), "{message}");
+}
+
+/// REQ-7 (AC-6): a lane whose lease ended and a leader entry are no lanes; only the one live lane
+/// counts, so the limit stays two and the third take refuses.
+#[test]
+fn a_lane_with_an_ended_lease_and_a_leader_entry_do_not_count() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    w.lane("agent-2", &sid(2));
+    w.expire("agent-2");
+    w.leader("leader-1", &sid(9));
+    w.working(&sid(1), 2);
+    let third = w.ready_card("src/third/");
+    let (kind, message) = refusal(&w.take(&sid(1), &third));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("1 lane(s)"), "{message}");
+}
+
+/// REQ-10 (AC-7): at the limit with no review card to audit, `card next` names the limit and no
+/// card.
+#[test]
+fn next_at_the_limit_with_nothing_to_audit_names_the_limit() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    w.working(&sid(1), 2);
+    w.ready_card("src/waiting/");
+
+    let got = result(&w.next(&sid(3)));
+    assert_eq!(got["wip"]["at_limit"], json!(true), "{got}");
+    assert_eq!(got["next_is"], json!("limit"), "{got}");
+    assert_eq!(got["next"], Value::Null, "{got}");
+    assert_eq!(got["audit_needed"], json!([]), "{got}");
 }
