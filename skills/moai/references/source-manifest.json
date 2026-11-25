@@ -30,7 +30,7 @@
       "location": "repository only; not part of the installed package",
       "sha256": "93dcdca13b5d33735a9b1c710e39cab27a9c562496e6441a6b7d925cac5b9f5d",
       "rows": 1107,
-      "status": "every row has a verdict (user decision 2026-11-17); none unchecked; the generator tools/legacy_verdicts.py was removed with the Python tools",
+      "status": "every row has a verdict (user decision 2026-11-17); none unchecked; the generator was removed with the Python tools",
       "verdicts": {
         "adopted": 16,
         "deferred": 300,
@@ -78,7 +78,7 @@
       }
     },
     "references/audit.md": {
-      "sha256": "9b49ad7a706b2a827b927da178774ff75ead7ecdc4ae09201a25760cd78c079d",
+      "sha256": "6107af7374a5b435a164557c7fd1bcaf049b1ff165b8c48464cf47b0a9a093aa",
       "origin": {
         "kind": "design-spec",
         "template_id": "audit-contract",
@@ -534,7 +534,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "b448d378e6b427a54106425d0137a36c9db3a12c23003965b5bb9dd15c266be9",
+      "sha256": "19e01696aa4576fb2d1fcd4d18861b9608ceacadbf70c865655f1bc752e1bbf9",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
