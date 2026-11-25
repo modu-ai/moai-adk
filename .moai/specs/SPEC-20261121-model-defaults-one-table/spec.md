@@ -120,6 +120,9 @@ approval:
 - AC-5: met — 낡은 기대 16개를 지우지 않고 표의 값으로 바꿨어요(`launcher_advisor_setting`, `launcher_agent_entry`, `launcher_agent_numbering`, `launcher_permissions_setting`, `launcher_reads_models`, `launcher_roleless`, `product_cli`). 한 가지 바뀐 행동: 에이전트 기본 모델이 sonnet 이라 advisor `sonnet` 이 더는 낮은 등급이 아니어서, 낮은 등급 거절 시험은 `cc -a --model opus` 로 물어요.
 - AC-6: met — `the_model_and_effort_help_names_the_default_table`(낡은 문구가 없고 `default table`·`role` 이 있음)와 `MOAI_HELP_GOLDEN_WRITE=1 cargo test --test help_layout` 로 다시 쓴 골든 네 파일(`all`·`all-60`·`all-80`·`all-dumb`)이 그 두 줄만 바뀐 것을 diff 로 읽었어요.
 - AC-7: met — 가벼운 검사 다섯 개를 이 Result 가 든 헤드에서 돌렸어요. `git diff --check`, `cargo fmt --check`, `cargo clippy --locked --offline --all-targets -- -D warnings` 는 `moai check affected` 의 `diff_check`·`fmt`·`clippy` 단계 exit 0 이고, `moai spec check` 는 errors 0·warnings 0, `moai trailer-check` 는 실패 0 이에요. 이 줄을 담은 커밋의 해시는 그 커밋 뒤에야 알 수 있어서 헤드 해시와 단계별 exit·로그 폴더는 READY 노트에 있어요. 첫 독립 감사(FAIL, 노트 8304)가 이 줄이 없다는 것(B1)과 `tests/launcher_reads_models.rs` 의 낡은 주석(N1)을 지적했고, 둘 다 이 수리에서 고쳤어요.
+- AC-8: met — `the_screen_default_is_what_a_plain_launch_runs_with`(`tests/model_effort_questions.rs`)와 `the_launch_default_is_the_leader_row_model_with_the_launcher_effort`(`tests/model_effort_settings.rs`)예요. 화면의 기본은 `src/model_effort_settings.rs` 의 `launch_default_choice` 에서 와서 `claude` 는 `claude-opus-5-5`/`medium`, `glm` 은 `zai/glm-5.4[1m]`/`high` 예요(`src/model_effort_questions.rs` 의 `table_default` 가 그 함수를 읽어요). 명령: `cargo nextest run --locked --offline --no-fail-fast --test model_effort_questions --test update_model_pick --test update_command_cli --test update_model_step_reachable --test update_model_step_reachable_tty --test model_effort_settings --test model_defaults_one_table --test launcher_roleless --test launcher_reads_models --test launcher_retire_role_flags` → exit 0, 132 run, 132 passed(`target/c242/green.log`).
+- AC-9: met — `the_question_screen_defaults_match_a_plain_launch_with_nothing_saved`(`tests/model_defaults_one_table.rs`)와 Enter 로 저장하는 시험 `in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes`(`tests/update_command_cli.rs`)예요. 둘 다 위 묶음 실행(exit 0, 132 passed)에 들어 있고, 저장값 없는 버리는 HOME 의 `cc --dry-run`·`glm --dry-run` 은 아래 증거에 있어요.
+- AC-10: met — 낡아진 기대를 지우지 않고 새 기본으로 바꿨어요. 값이 `high` 에서 `medium` 으로 바뀐 것은 `claude` 쪽뿐이고 `glm` 은 `high` 그대로예요: `tests/model_effort_questions.rs` 67·95·204·792 줄, `tests/update_model_pick.rs` 111·125·151·339 줄, `tests/update_command_cli.rs` 404~412 줄(`want` 가 모델은 `default_choice("claude", "leader")` 에서, effort 는 `launcher_default("claude")` 에서 가져와요). 같은 묶음 실행이 exit 0 이에요.
 
 증거 (이 가지에서 직접 돌린 것):
 
@@ -128,9 +131,18 @@ approval:
 - 뮤턴트 7개가 모두 죽었어요(`target/model-defaults/mutants.sh`, 결과 `mutants.log`, 매번 적용 여부와 복원을 확인): M1 표 폴백 제거, M2 설정 파일이 있을 때만 표, M3 GLM `zai/` 접두사를 떼지 않음, M4 준 모델 깃발을 덮어씀, M5 기본값에도 저장값 노트, M6 표가 저장값을 이김, M7 역할 없는 세션에도 표 → 모두 `--test model_defaults_one_table` exit 100.
 - 버리는 HOME 의 `--dry-run`(`target/model-defaults/dry.sh`, 출력 `dry.out`, 설정 파일 없음, 더미 토큰, 호스트 미시작): `cc -l` → `claude-opus-5-5`/`high`, `cc -a` → `claude-sonnet-5-5`/`high`, `glm -l` → `glm-5.4[1m]`/`high`, `glm -a` → `glm-5.3-flash`/`max`, `cc` → `opus`/`medium`; 모두 exit 0.
 
+증거 — 조각 B(판 3), 이 가지에서 직접 돌린 것:
+
+- 먼저 실패함: RED 커밋 `401976b1d6` 에서 `cargo nextest run --locked --offline --no-fail-fast --test model_effort_questions --test update_model_pick --test update_command_cli --test model_defaults_one_table` → exit 100, 78 run, 68 passed, 10 failed. 실패마다 `high` 가 나오고 기대는 `medium` 이에요(`target/c242/red.log`).
+- 통과: GREEN 커밋 `c47537c5bb` 에서 `cargo nextest run --locked --offline --no-fail-fast --test model_effort_questions --test update_model_pick --test update_command_cli --test update_model_step_reachable --test update_model_step_reachable_tty --test model_effort_settings --test model_defaults_one_table --test launcher_roleless --test launcher_reads_models --test launcher_retire_role_flags` 한 번 → exit 0, 132 run, 132 passed(`target/c242/green.log`). `cargo clippy --locked --offline --all-targets -- -D warnings` → exit 0(`target/c242/clippy.log`).
+- 가드 뮤턴트(1개): `src/model_effort_questions.rs` 의 `table_default` 가 `launch_default_choice(tool)` 대신 `default_choice(tool, "leader")` 를 다시 읽게 했어요. `cargo nextest run --locked --offline --no-fail-fast --test model_effort_questions --test model_defaults_one_table` → exit 100, 33 run, 5 failed(`the_screen_default_is_what_a_plain_launch_runs_with`, `a_saved_value_is_the_default_of_its_questions_and_enter_keeps_it`, `model_and_effort_questions_offer_only_table_values_with_the_default_first`, `enter_everywhere_picks_the_defaults_of_the_installed_tools`, `the_question_screen_defaults_match_a_plain_launch_with_nothing_saved`). 되돌린 뒤 `git status --short` 가 아무것도 안 찍었어요(`target/c242/mutant1.log`).
+- 버리는 HOME 의 `--dry-run`(`target/c242/dry.sh`, `target/c242/home` 아래 빈 HOME 폴더, 더미 토큰 변수, 호스트 미시작; 출력 `dry-cc.out`·`dry-glm.out`): `cc --dry-run` → exit 0, argv `claude --model opus --effort medium --permission-mode auto`; `glm --dry-run` → exit 0, argv `claude --model opus --effort high --dangerously-skip-permissions`. 이 조각은 런처 동작을 바꾸지 않아요.
+- 바뀐 행동: 판 3 뒤 `moai update` 의 `claude` 질문에서 Enter 만 누르면 `claude-opus-5-5`/`medium` 이 저장돼요(전에는 `high`). 결정은 D-6 의 A 예요(리더 노트, 2026-11-25).
+
 결정 (D-1~D-5 는 위 Decisions): 새로 함, 표는 지금 4줄, 전체 id, 조각 A 먼저, 도움말 골든은 판 2 로 범위에 더함.
 
 못 한 것 (not_run):
 
-- 조각 B(판 3): 구현 전이에요(승인됨). 이 줄은 B 의 Result 로 바뀌어요.
+- 조각 B(판 3)를 구현했고 위 AC-8~AC-10 줄과 "증거 — 조각 B" 가 그 결과예요. 판 3 의 가벼운 검사(AC-7)와 `check affected` 영수증은 이 Result 가 든 헤드를 이름 짓는 READY 노트에 있고 여기에는 없어요.
+- 별칭 `opus` 가 `claude-opus-5-5` 를 가리킨다는 전제(위험 절)는 호스트의 매핑이라 여기서 시험하지 않았어요.
 - 실제 `~/.moai`·`~/.claude` 에 쓰기, 실제 호스트 시작, Linux·Windows, 독립 감사(작성자가 아닌 세션 몫).
