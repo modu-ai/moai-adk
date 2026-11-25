@@ -538,8 +538,8 @@ fn wide_class(path: &str) -> Option<&'static str> {
     {
         return Some("permission");
     }
-    // The scan table is no wide path: the tests that name it and the scans of its rule files cover
-    // it, and the batch's wide check runs every scan (SPEC-20261125-check-affected-card-areas REQ-14).
+    // The scan table is judged by its text, not by its name: `select_card_with_registry` makes it a
+    // wide path unless the change only grows it (SPEC-20261125-registry-add-check-set).
     if path == crate::gate::SCAN_REGISTRY {
         return None;
     }
@@ -644,9 +644,72 @@ pub fn select_card(
     areas_text: Option<&str>,
     host_os: &str,
 ) -> CardPick {
+    select_card_with_registry(changed, tests, scan_list, areas_text, None, host_os)
+}
+
+/// The text of the scan registry at the range's merge base and at its head, read only when the
+/// range changes it (SPEC-20261125-registry-add-check-set). A side that git cannot read as a
+/// regular file is `None`, and absence is never read as growth.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct RegistryTexts {
+    pub old: Option<String>,
+    pub new: Option<String>,
+    /// The cargo targets the head text lists and the base text did not, read the way the scan list
+    /// of the selection is read (an area crate's module check folded to its old target).
+    pub added_targets: BTreeSet<String>,
+}
+
+impl RegistryTexts {
+    /// REQ-1, REQ-3, REQ-5: the change only grows the registry, by the one rule the audit floor
+    /// reads (`gate::registry_only_grew`); an unreadable side is no growth.
+    pub fn only_grew(&self) -> bool {
+        matches!(
+            (&self.old, &self.new),
+            (Some(old), Some(new))
+                if crate::gate::registry_only_grew(crate::gate::SCAN_REGISTRY, old, new)
+        )
+    }
+}
+
+/// The cargo targets `new` lists and `old` does not (both texts folded the way the selection
+/// reads them); none when either text is not a scan list.
+fn added_targets(old: &str, new: &str) -> BTreeSet<String> {
+    let targets = |text: &str| -> Option<BTreeSet<String>> {
+        Some(
+            scan_entries(text)?
+                .into_iter()
+                .flat_map(|e| e.targets)
+                .collect(),
+        )
+    };
+    match (targets(old), targets(new)) {
+        (Some(old), Some(new)) => new.difference(&old).cloned().collect(),
+        _ => BTreeSet::new(),
+    }
+}
+
+/// [`select_card`] for a range whose change of the scan registry is read from its texts
+/// (SPEC-20261125-registry-add-check-set). A change that only grows the registry keeps the card
+/// set and adds the targets it lists (REQ-1, REQ-2); any other change of it, a text that cannot be
+/// read and a range with no registry text (`None`) are an audit floor path, so the full set runs
+/// (REQ-3).
+pub fn select_card_with_registry(
+    changed: &[String],
+    tests: &[TestFile],
+    scan_list: Option<&str>,
+    areas_text: Option<&str>,
+    registry: Option<&RegistryTexts>,
+    host_os: &str,
+) -> CardPick {
+    let grew = registry.is_some_and(RegistryTexts::only_grew);
     let mut wide_paths: Vec<(&'static str, String)> = changed
         .iter()
-        .filter_map(|p| wide_class(p).map(|c| (c, p.clone())))
+        .filter_map(|p| {
+            if p == crate::gate::SCAN_REGISTRY {
+                return (!grew).then(|| ("audit floor", p.clone()));
+            }
+            wide_class(p).map(|c| (c, p.clone()))
+        })
         .collect();
     // The tests, fixtures and documents the range changes: the lane rules, no OS rule.
     let own: Vec<String> = changed
@@ -659,7 +722,9 @@ pub fn select_card(
     let mut ignored = BTreeSet::new();
     let mut units = BTreeSet::new();
     let mut picks: Vec<(String, Vec<String>)> = Vec::new();
-    // The scan table is no wide path: the tests whose source names it cover it (REQ-14).
+    // A change of the scan table that only grows it is no wide path: the tests whose source names
+    // it and the targets it adds cover it (SPEC-20261125-check-affected-card-areas REQ-14,
+    // SPEC-20261125-registry-add-check-set REQ-2). Any other change of it is wide, above.
     for path in changed
         .iter()
         .filter(|p| p.as_str() == crate::gate::SCAN_REGISTRY)
@@ -670,6 +735,9 @@ pub fn select_card(
                 .filter(|t| t.text.contains(path.as_str()))
                 .map(|t| t.name.clone()),
         );
+        if let Some(texts) = registry.filter(|_| grew) {
+            rust.extend(texts.added_targets.iter().cloned());
+        }
         picks.push((path.clone(), vec![format!("pins:{path}")]));
     }
     for path in changed {
@@ -836,6 +904,21 @@ pub fn choose(
     areas_text: Option<&str>,
     host_os: &str,
 ) -> Chosen {
+    choose_with_registry(pick, changed, tests, scan_list, areas_text, None, host_os)
+}
+
+/// [`choose`] for a range whose registry change is read from its texts (see
+/// [`select_card_with_registry`]); `list` and a run call it with the facts of one range, so both
+/// give the same selection (SPEC-20261125-registry-add-check-set REQ-6).
+pub fn choose_with_registry(
+    pick: Pick,
+    changed: &[String],
+    tests: &[TestFile],
+    scan_list: Option<&str>,
+    areas_text: Option<&str>,
+    registry: Option<&RegistryTexts>,
+    host_os: &str,
+) -> Chosen {
     if pick != Pick::Card {
         return Chosen {
             pick,
@@ -844,7 +927,7 @@ pub fn choose(
             picks: Vec::new(),
         };
     }
-    let card = select_card(changed, tests, scan_list, areas_text, host_os);
+    let card = select_card_with_registry(changed, tests, scan_list, areas_text, registry, host_os);
     if card.wide.is_some() {
         return Chosen {
             pick: Pick::Full,
@@ -1855,6 +1938,9 @@ pub struct Facts {
     pub present: Vec<String>,
     pub tests: Vec<TestFile>,
     pub scan_list: Option<String>,
+    /// The scan registry's text at the merge base and at the head, read only when the range
+    /// changes it (SPEC-20261125-registry-add-check-set).
+    pub registry: Option<RegistryTexts>,
     /// The paths the range adds (`--diff-filter=A`).
     pub added: Vec<String>,
     /// `tests/areas.toml` and the state-folder allow list, as the checkout holds them.
@@ -1998,6 +2084,10 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
     // (`--test card card_cli::`) is read as the old target `card_cli`.
     let scan_list = read_table(dir, "tools/repo_scans.json", &mut unreadable)
         .map(|text| fold_area_checks(&text, &moved));
+    let registry = changed
+        .iter()
+        .any(|p| p == crate::gate::SCAN_REGISTRY)
+        .then(|| read_registry_texts(dir, &base, &head, &moved));
     let adds_test_file = added.iter().any(|p| {
         p.strip_prefix("tests/")
             .and_then(|r| r.strip_suffix(".rs"))
@@ -2028,6 +2118,7 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         present,
         tests,
         scan_list,
+        registry,
         added,
         areas_text,
         allow_text,
@@ -2036,6 +2127,28 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         moved,
         stack,
     })
+}
+
+/// The scan registry's text at the merge base of `base` and `head` and at `head`, as git holds it
+/// and only where it is a regular file (`gate::regular_file_text`, the reader the audit floor
+/// uses); the merge base is the side `changed` is measured from. A side git cannot read is `None`.
+fn read_registry_texts(dir: &Path, base: &str, head: &str, moved: &[String]) -> RegistryTexts {
+    let run = |args: &[&str]| git(dir, args).ok();
+    let read = |rev: &str| crate::gate::regular_file_text(run, rev, crate::gate::SCAN_REGISTRY);
+    let merge_base = run(&["merge-base", base, head]).map(|s| s.trim().to_string());
+    let old = merge_base.as_deref().and_then(read);
+    let new = read(head);
+    let added_targets = match (&old, &new) {
+        (Some(old), Some(new)) => {
+            added_targets(&fold_area_checks(old, moved), &fold_area_checks(new, moved))
+        }
+        _ => BTreeSet::new(),
+    };
+    RegistryTexts {
+        old,
+        new,
+        added_targets,
+    }
 }
 
 /// The modules of the area crate `area` (`<path>/<module>.rs`, `main.rs` and folders left out) as
@@ -2243,12 +2356,13 @@ pub fn list(
     integration_ref: Option<&str>,
 ) -> Result<serde_json::Value> {
     let facts = read_facts(dir, range)?;
-    let chosen = choose(
+    let chosen = choose_with_registry(
         pick,
         &facts.changed,
         &facts.tests,
         facts.scan_list.as_deref(),
         facts.areas_text.as_deref(),
+        facts.registry.as_ref(),
         host_os(),
     );
     let pick = chosen.pick;
@@ -2543,12 +2657,13 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     // last build (SPEC-20261124-check-affected-touch).
     let refresh = refresh_changed(dir, &facts.present);
     let threads = DEFAULT_TEST_THREADS;
-    let chosen = choose(
+    let chosen = choose_with_registry(
         opts.pick,
         &facts.changed,
         &facts.tests,
         facts.scan_list.as_deref(),
         facts.areas_text.as_deref(),
+        facts.registry.as_ref(),
         host_os(),
     );
     let pick = chosen.pick;
