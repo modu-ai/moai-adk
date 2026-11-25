@@ -155,8 +155,11 @@ fn fake_path() -> (tempfile::TempDir, String) {
     for n in ["cargo", "rustfmt"] {
         let path = dir.path().join(n);
         fs::write(&path, "#!/bin/sh\nexit 0\n").unwrap();
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+        }
     }
     let git_dir = Command::new("sh")
         .args(["-c", "dirname \"$(command -v git)\""])
