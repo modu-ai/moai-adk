@@ -6,8 +6,10 @@
 //! others are listed apart in a refusal and in `card next`. At the limit a session helps with a
 //! check or a landing instead of
 //! taking a card, so `card take` and `card add` refuse and `card next` names the cards that wait
-//! for an audit. `wip_limit` 0 turns the limit off, and so does a project with no live
-//! registered lane (SPEC D-3).
+//! for an audit. `wip_limit` 0 turns the limit off, and so does a project with no registry
+//! folder or no live lane (SPEC D-3). A lane is live while its launcher holds the `<name>.live`
+//! lock or its registration lease runs (SPEC-20261125-wip-limit-live-lock-lanes); a registry
+//! folder that cannot be read does not turn the limit off: the limit is then reached.
 
 use crate::lane_registry;
 use rusqlite::Connection;
@@ -35,18 +37,58 @@ pub fn per_lane(project: &Path) -> u32 {
         .unwrap_or(DEFAULT_PER_LANE)
 }
 
-/// The live registered lanes: entries whose lease has not ended and that are no leader entry; 0
-/// when the registry is empty or unreadable, which turns the limit off.
-pub fn live_lanes(project: &Path) -> usize {
+/// The live lanes of the session registry and what could not be read of it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Lanes {
+    /// The live lanes; 0 when the registry does not exist, which turns the limit off.
+    pub live: usize,
+    /// The names whose entry or lock could not be read; each is left out of `live`.
+    pub unreadable: Vec<String>,
+    /// Why the registry folder could not be read as a whole; the limit is then not off but
+    /// reached, so that nothing is taken past a limit that cannot be checked
+    /// (SPEC-20261125-wip-limit-live-lock-lanes REQ-4).
+    pub registry_error: Option<String>,
+}
+
+/// The live lanes (SPEC-20261125-wip-limit-live-lock-lanes REQ-1 to REQ-5): every session name
+/// whose launcher holds the `<name>.live` lock or whose registry entry has a lease that has not
+/// ended, each name once, the leaders left out. A name with a held lock and no readable entry
+/// counts only when it is named like a lane of this project (`agent-…` or
+/// `<project name>-agent-…`): a lock alone does not say what the session is. This is the rule
+/// of `session-register --lane-check`, so the limit and the leader's message check agree.
+pub fn live_lanes(project: &Path) -> Lanes {
+    let scan = match lane_registry::scan_registry(project) {
+        Ok(Some(scan)) => scan,
+        Ok(None) => return Lanes::default(),
+        Err(why) => {
+            return Lanes {
+                registry_error: Some(why),
+                ..Lanes::default()
+            }
+        }
+    };
     let now = now_secs();
-    lane_registry::session_entries(project)
-        .map(|entries| {
-            entries
-                .iter()
-                .filter(|e| e.lease_until > now && e.mode.as_deref() != Some("leader"))
-                .count()
-        })
-        .unwrap_or(0)
+    let leader_name = crate::session::leader_session_name(project);
+    let lane_prefixes = ["agent-".to_string(), crate::session::agent_prefix(project)];
+    let mut live = std::collections::BTreeSet::new();
+    for entry in &scan.entries {
+        let leader = entry.mode.as_deref() == Some("leader") || entry.name == leader_name;
+        if !leader && (entry.lease_until > now || scan.locked.contains(&entry.name)) {
+            live.insert(entry.name.as_str());
+        }
+    }
+    for name in &scan.locked {
+        let has_entry = scan.entries.iter().any(|e| &e.name == name);
+        let lane_like = lane_prefixes.iter().any(|p| name.starts_with(p.as_str()));
+        if !has_entry && *name != leader_name && lane_like {
+            live.insert(name.as_str());
+        }
+    }
+    Lanes {
+        live: live.len(),
+        unreadable: scan.unreadable.iter().cloned().collect(),
+        registry_error: None,
+    }
 }
 
 /// How the reservation of a card's current generation stands (SPEC-20261125-wip-limit-live-leases
@@ -142,11 +184,19 @@ pub struct Reading {
     /// The cards in work or in review that the count leaves out: an ended lease, or no
     /// reservation (REQ-3).
     pub not_counted: Vec<InWork>,
+    /// The names whose registry entry or lock could not be read (REQ-5).
+    pub unreadable: Vec<String>,
+    /// Why the registry folder could not be read as a whole (REQ-4); the limit is then reached.
+    pub registry_error: Option<String>,
 }
 
 impl Reading {
+    /// Reached: the cards counted fill `per_lane` times the live lanes, or the registry folder
+    /// cannot be read, so the limit cannot be checked. Off with `wip_limit` 0, with no registry
+    /// folder and with no live lane (REQ-8).
     pub fn at_limit(&self) -> bool {
-        self.per_lane != 0 && self.lanes != 0 && self.count >= self.limit
+        self.per_lane != 0
+            && (self.registry_error.is_some() || (self.lanes != 0 && self.count >= self.limit))
     }
 
     pub fn json(&self) -> Value {
@@ -167,6 +217,7 @@ impl Reading {
         json!({
             "per_lane": self.per_lane, "lanes": self.lanes, "limit": self.limit,
             "count": self.count, "at_limit": self.at_limit(), "not_counted": left_out,
+            "registry_error": self.registry_error, "unreadable": self.unreadable,
         })
     }
 }
@@ -175,7 +226,8 @@ impl Reading {
 /// listed apart (SPEC-20261125-wip-limit-live-leases REQ-1 and REQ-3).
 pub fn read(project: &Path, conn: &Connection) -> Result<Reading, String> {
     let per_lane = per_lane(project);
-    let lanes = live_lanes(project);
+    let found = live_lanes(project);
+    let lanes = found.live;
     let (cards, not_counted): (Vec<InWork>, Vec<InWork>) = in_work(conn)?
         .into_iter()
         .partition(|c| c.lease == Lease::Live);
@@ -186,6 +238,8 @@ pub fn read(project: &Path, conn: &Connection) -> Result<Reading, String> {
         count: cards.len(),
         cards,
         not_counted,
+        unreadable: found.unreadable,
+        registry_error: found.registry_error,
     })
 }
 
@@ -195,6 +249,15 @@ pub fn refusal(project: &Path, conn: &Connection, action: &str) -> Result<Option
     let reading = read(project, conn)?;
     if !reading.at_limit() {
         return Ok(None);
+    }
+    // A registry folder that cannot be read is no reason to take past the limit: say why and stop
+    // (REQ-4). `wip_limit` 0 is the way past it.
+    if let Some(why) = &reading.registry_error {
+        return Ok(Some(format!(
+            "card conflict in wip_limit: card {action} refused: the session registry cannot be \
+             read, so the work-in-progress limit cannot be checked: {why}; fix the registry \
+             folder, or set work_flow.wip_limit to 0 in the project profile to turn the limit off"
+        )));
     }
     let waiting: Vec<String> = reading
         .cards
@@ -211,6 +274,15 @@ pub fn refusal(project: &Path, conn: &Connection, action: &str) -> Result<Option
             .map(InWork::left_out_text)
             .collect();
         format!("; not counted (no live lease): {}", texts.join("; "))
+    };
+    // The registry names that could not be read and so are left out of the lane count (REQ-5).
+    let left_out = if reading.unreadable.is_empty() {
+        left_out
+    } else {
+        format!(
+            "{left_out}; unreadable (left out of the lane count): {}",
+            reading.unreadable.join(", ")
+        )
     };
     Ok(Some(format!(
         "card conflict in wip_limit: card {action} refused: the work-in-progress limit is reached: \
