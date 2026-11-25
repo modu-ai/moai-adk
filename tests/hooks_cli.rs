@@ -1077,6 +1077,116 @@ fn safe_force_push_is_not_asked_and_the_rest_is_as_before() {
     }
 }
 
+/// The tool-preflight decision and reason for a Bash `command` whose hook input holds `cwd` and,
+/// when given, `permission_mode`.
+fn force_push_preflight(cwd: &Path, command: &str, mode: Option<&str>) -> (String, String) {
+    let mut input = json!({"session_id": "s", "hook_event_name": "PreToolUse",
+        "tool_name": "Bash", "tool_use_id": "t1",
+        "tool_input": {"command": command}, "cwd": cwd});
+    if let Some(mode) = mode {
+        input["permission_mode"] = json!(mode);
+    }
+    let mut child = Command::new(common::MOAI_BIN)
+        .args([
+            "hook-dispatch",
+            "--host",
+            "claude",
+            "--event",
+            "tool-preflight",
+        ])
+        .current_dir(cwd)
+        .env("HOME", cwd.join("home"))
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, input.to_string().as_bytes());
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(out.status.code(), Some(0), "{command}");
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
+    let h = &v["hookSpecificOutput"];
+    (
+        h["permissionDecision"].as_str().unwrap_or("").to_string(),
+        h["permissionDecisionReason"]
+            .as_str()
+            .unwrap_or("")
+            .to_string(),
+    )
+}
+
+/// REQ-2, REQ-3: a remote *name* is judged by its push URL, read in the hook input's folder: a
+/// name that points at a path on this computer is not asked about; a network URL, a name that
+/// does not exist, and a line that is not one plain `git push` (`cd … &&`, `git -C …`) are.
+#[test]
+fn safe_force_push_remote_name_is_judged_by_its_push_url() {
+    let (_tmp, repo, _bare) = push_repo();
+    let decision = |command: &str| force_push_preflight(&repo, command, None).0;
+    // `loc` is the bare repository's path, `net` an unreachable network URL (never contacted).
+    assert_eq!(decision("git push -f loc work"), "", "local name asked");
+    assert_eq!(
+        decision("git push --force loc work"),
+        "",
+        "local name asked"
+    );
+    for command in [
+        "git push -f net work",
+        "git push -f nope work",
+        "git push -f work",
+    ] {
+        assert_eq!(decision(command), "ask", "not asked: {command}");
+    }
+    let dir = repo.to_str().unwrap();
+    for command in [
+        format!("cd {dir} && git push -f loc work"),
+        format!("git -C {dir} push -f loc work"),
+        "git push -f loc work | cat".to_string(),
+        "FOO=1 git push -f loc work".to_string(),
+    ] {
+        assert_eq!(decision(&command), "ask", "not asked: {command}");
+    }
+}
+
+/// REQ-4: a session that skips permission prompts gets the force-push confirmation as a deny
+/// (nobody answers it); the two cases that are not asked about are not denied either.
+#[test]
+fn safe_force_push_bypass_mode() {
+    let (_tmp, repo, _bare) = push_repo();
+    let bypass = |command: &str| force_push_preflight(&repo, command, Some("bypassPermissions"));
+    let (decision, reason) = bypass("git push -f net work");
+    assert_eq!(decision, "deny", "{reason}");
+    assert!(
+        reason.contains(moai_cli::hook_guards::CONFIRM_FORCE_PUSH),
+        "{reason}"
+    );
+    for command in [
+        "git push --force-with-lease=work: up work",
+        "git push -f loc work",
+    ] {
+        let (decision, reason) = bypass(command);
+        assert_eq!(decision, "", "{command}: {reason}");
+    }
+}
+
+/// REQ-6: the Claude `capabilities` answer names both cases the confirmation leaves out.
+#[test]
+fn safe_force_push_capabilities() {
+    let caps = moai_cli::hook_engine::capabilities("claude");
+    let commands = caps["tool-preflight"]["confirm"]["commands"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    for word in [
+        "--force-with-lease=<ref>:",
+        "create-only",
+        "path on this computer",
+    ] {
+        assert!(commands.contains(word), "{word} missing: {commands}");
+    }
+}
+
 /// #2877 Q1: the Claude set carries the hook engine's preflight guard after the claim guard, and
 /// the generated command, run as the host runs it, denies a dangerous Bash call and a write
 /// into `.git`, and lets an ordinary call through.
