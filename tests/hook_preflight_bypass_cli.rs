@@ -138,7 +138,7 @@ impl World {
         for dir in [&primary, &home, &plain] {
             fs::create_dir_all(dir).unwrap();
         }
-        // A checkout with no `.moai/project.yaml`: the boundary judgment would deny here, so only
+        // A checkout with no project file: the boundary judgment would deny here, so only
         // the project check keeps it from running.
         git(&plain, &["init", "-q", "-b", branch]);
         git(&primary, &["init", "-q", "-b", branch]);
