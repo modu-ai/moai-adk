@@ -5,9 +5,9 @@ Orca is a desktop app with a CLI that manages git worktrees, terminals, agent se
 ## When to use it
 
 - Use Orca only when the user chose it for this project and `orca` answers on this machine; installed is not chosen.
-- Lane worktrees, reading and sending to lane terminals, searching lane sessions (`orca search`), linking Issues and pull requests to a workspace (`orca reference`), and checking a page in Orca's embedded browser.
+- Lane worktrees, reading and sending to lane terminals, searching lane sessions (`orca search`), linking a pull request to a workspace (`orca reference`), and checking a page in Orca's embedded browser.
 - Plain shell, git and HTTP work does not need Orca.
-- MoAI uses Orca through its CLI only (user decision).
+- MoAI uses Orca through its CLI only.
 
 ## Open the version-matched guide first
 
@@ -51,15 +51,15 @@ Orca is optional for every workflow. Nothing in the `moai` tool runs `orca`, and
 |---|---|---|---|
 | READ | works (Orca not used) | works | parallel reads: Claude Code several agents in one message |
 | PROJECT | works | works | entry `/moai project` |
-| UPDATE | unsupported: an Orca profile starts Claude Code with `CLAUDE_CONFIG_DIR` set to its own folder, and `moai update` does not see the settings folder of an Orca profile (Issue #2936) | works | files go to the host's own settings folder, which an Orca profile can move away from `~/.claude` |
+| UPDATE | unsupported: an Orca profile starts Claude Code with `CLAUDE_CONFIG_DIR` set to its own folder, and `moai update` does not see the settings folder of an Orca profile | works | files go to the host's own settings folder, which an Orca profile can move away from `~/.claude` |
 | PLAN | works | works | the `moai-plan` agent runs through the host's own subagent tool |
-| RUN | works (Orca terminals and worktrees are not used) | works | isolation: Claude Code `isolation: worktree`; Kiro and Cursor work in one worktree, one change at a time |
+| RUN | works (Orca terminals and worktrees are not used) | works | isolation: Claude Code `isolation: worktree` |
 | AUDIT | works | works | read-only is enforced by the agent file on Claude Code only; the verdict's first line has one format on every host |
 | SYNC | works | works | none |
 | WORK | works (Orca not used) | works | none |
 | LEADER | works: the host's message tool carries the dispatch first, and `moai lane-send` (a lane terminal read and a send) is the fallback, with `/clear` and screen reads | replaced: the host's message tool carries the dispatch | the cross-session message has no `moai` command on any host yet |
 
-Unsupported today, tracked in Issue #2936: the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see, so UPDATE is unsupported with Orca until that repair lands. The table is pinned by `tests/orca_optional_3005.rs`: a workflow without a row, or a row without one of the three words, fails the test.
+Unsupported today, and left for the leader to track: the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see, so UPDATE is unsupported with Orca until that repair lands. A workflow without a row, or a row without one of the three words, fails the repository scan.
 
 ## Sources
 

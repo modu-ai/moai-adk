@@ -218,12 +218,12 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
             );
         }
         // The audit of #3018 (B1): an Orca profile moves the settings folder to
-        // `CLAUDE_CONFIG_DIR`, which `moai update` does not look at (Issue #2936), so SETUP and
-        // UPDATE are not "works" with Orca (SETUP left with its route).
+        // `CLAUDE_CONFIG_DIR`, which `moai update` does not look at, so SETUP and UPDATE are not
+        // "works" with Orca (SETUP left with its route). The shipped text carries no Issue number.
         if name == "UPDATE" {
             assert!(
-                cells[1].starts_with("unsupported") && cells[1].contains("#2936"),
-                "row `{name}`, With Orca must start with unsupported and name Issue #2936: {}",
+                cells[1].starts_with("unsupported") && !cells[1].contains('#'),
+                "row `{name}`, With Orca must start with unsupported and carry no number: {}",
                 cells[1]
             );
         }
@@ -241,9 +241,14 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
     // SPEC-20261122-next-flow-skills-agents REQ-8 retired Codex and OMP: the Codex or OMP
     // leader's periodic run is no longer an unsupported item, and the settled OMP entry
     // spelling, skill folders and lane wake of #3005 P10 and P11 left the paragraph with it.
-    for cell in ["the settings folder of an Orca profile", "Issue #2936"] {
-        assert!(list.contains(cell), "the unsupported list lost `{cell}`");
-    }
+    assert!(
+        list.contains("the settings folder of an Orca profile"),
+        "the unsupported list lost the settings folder of an Orca profile"
+    );
+    assert!(
+        !list.contains('#'),
+        "the unsupported paragraph carries an Issue number: {list}"
+    );
     for gone in ["Codex", "OMP", "/skill:moai"] {
         assert!(
             !list.contains(gone),

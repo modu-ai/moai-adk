@@ -934,10 +934,6 @@ fn git_safety_tells_each_host_how_to_work_in_a_worktree() {
         "| Claude Code | `EnterWorktree` (`path` for an existing one) and `ExitWorktree`",
         "create the worktree with `git worktree add` first and enter it by `path`",
         "(`$VAR`, `$?`, `$(…)`)",
-        // The `| Codex CLI |` row is retired with Codex (SPEC-20261122-next-flow-skills-agents
-        // REQ-8); the Cursor row now states its git use itself.
-        "| Cursor CLI | `-w` / `--worktree` at start only. | Inside a session started there, plain `git <verb>`; otherwise `git -C <worktree> <verb>`. |",
-        "| Kiro CLI | None documented. | `git -C <worktree> <verb>`. |",
     ] {
         assert!(text.contains(line), "git-safety.md lacks: {line}");
     }
@@ -945,6 +941,13 @@ fn git_safety_tells_each_host_how_to_work_in_a_worktree() {
         !text.contains("| Codex CLI |"),
         "git-safety.md keeps a Codex row"
     );
+    // The Cursor and Kiro rows are retired with those hosts.
+    for retired in ["| Cursor CLI |", "| Kiro CLI |"] {
+        assert!(
+            !text.contains(retired),
+            "git-safety.md keeps a retired host row: {retired}"
+        );
+    }
 }
 
 /// Card C-77: the pre-PR self-check list ships in the package, holds the two rules that turned
