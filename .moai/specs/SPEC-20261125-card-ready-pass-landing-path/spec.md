@@ -93,3 +93,15 @@ mo.ai.kr 리더 덧붙임 8 O(이 카드의 출처)는 레인을 재시작하려
 | D-2 | `card assign` 의 `ready` 길은 "PASS 의 검토자 본인"만 받아요 | 레인이 추천한 기본값. 나중에 감사자를 PASS 한 사람과 다른 신원으로 못 박는 길을 막아요 | `named_auditor_passed` 를 "PASS 가 하나라도 있으면"으로 느슨하게 하는 것이고, 약해지는 쪽이라 새 결정이 필요해요 |
 | D-3 | `card landed` 의 `ready` 길은 `--by leader` 를 요구해요 | 레인이 추천한 기본값. 카드 본문이 "리더 전용"을 바랐어요. `review` 길의 자유 `--by` 는 그대로예요 | `work.rs` 의 한 검사를 지워요 |
 | D-4 | `ready` 길의 판정 읽기는 원장만 읽고 git 을 읽지 않아요 | 레인이 추천한 기본값. 착지 관문(`card land` 의 `check::judge`)은 그대로 두고 기록 명령에는 원장의 증거만 요구해요 | 읽기 함수에 git 입력을 더해요(별도 SPEC) |
+
+## Result
+
+구현 head `d50f6412ba193dd302942b78482f2790b6a20730` (기준 NeXT `c3e73024ac`), 선택지 A 와 D-2부터 D-4 의 추천 기본값이에요.
+
+- AC-1…AC-6 met: 각 verify 줄을 적힌 그대로 돌려 모두 exit 0 (ac1…ac6 각 1개 통과). 고치기 전 RED 는 6개 모두 실패했어요: ac1·ac6 은 `only a review card can be landed` 로, ac2·ac3·ac4 는 옛 거절 문장에 PASS·leader·reservation 낱말이 없어서 실패했고, ac5 는 `card finish` 가 head 의 독립 PASS 를 요구해서(`no_verdict`) 픽스처를 고쳐야 했어요(고친 픽스처로 다시 돌린 RED 는 따로 읽지 않았어요).
+- AC-7 met: `card_roles_cli` 7, `card_done_mflow_cli` 25, `card_land_cli` 70 통과(모두 exit 0).
+- 구현 위치: `src/ledger/workflow.rs` 의 `land`(새 `ready_landing_refusal` 읽기 함수와 새 오류 `LandingRefused`), `src/card/roles.rs` 의 `assign`, `src/ops/card.rs` 의 도움말 두 문단(줄 임대). 계획의 `src/card/work.rs` 는 바꾸지 않았어요: `--by leader` 검사를 `workflow::land` 안에 둬서 모든 호출자가 같은 검사를 받아요. 이벤트 payload 의 `from_state` 는 `ready` 길에서만 붙고 `review` 길의 payload 는 그대로예요(AC-5 가 키가 없음을 읽어요).
+- 지킴이 뮤턴트 11개(각각 뒤에 `git checkout` 으로 복원, 끝의 `git status --short` 가 비어 있음): 판정 없음 검사 제거(M1)·FAIL 검사 제거(M2)·`--by leader` 검사 제거(M3)·예약자 검토자 검사 제거(M4)·`from_state` 제거(M5)·다른 상태도 받음(M6)·ready 길이 PASS 없이도 받아짐(M7)이 `workflow.rs` 에서, assign 의 PASS 검사 제거(M8)·assign 이 다른 상태도 받음(M9)·FAIL 도 PASS 로 셈(M10)·검토자 신원 무시(M11)가 `roles.rs` 에서 모두 exit 101 로 죽었어요. 베이스라인(변경 없음)은 exit 0 이에요.
+- 위험 경로: 임시 HOME 과 임시 git 리포지터리에서 `review` 카드의 PASS 뒤 `reopen`, `release` 로 `ready` 로 돌린 카드에 `card landed`, `card assign`, `card finish`, `card next` 를 직접 돌렸어요(AC-1…AC-6). 진짜 HOME 이나 설치된 바이너리로 쓰기를 하지 않았어요. 처음 재현(설치된 빌드 46, 읽기만)도 임시 HOME 이었어요.
+- 안 한 것: `moai check affected --card` 영수증은 READY 노트에 있어요. 설계 부록 `docs/design-review/appendix/operations/card.md` 의 `card landed`, `card assign` 행은 이 SPEC 의 범위 밖이라 고치지 않았어요(후속).
+- 기본 에이전트(`moai-plan`, `moai-impl`, `moai-docs`)는 쓰지 않고 이 세션이 계획·구현·문서를 했어요. 변경이 작았고, 감사는 이 세션이 하지 않아요.
