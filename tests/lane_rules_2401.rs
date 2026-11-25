@@ -33,11 +33,21 @@ fn run_puts_a_new_test_in_a_file_of_its_own() {
     );
 }
 
-/// The fenced example after AUDIT's **Verdict note.** step, without its list indent.
+/// The audit contract (`references/audit.md`): since SPEC-20261125-audit-text-facts REQ-2 it holds
+/// the verdict line form and its example, and the AUDIT workflow points to it.
+fn contract() -> String {
+    fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/references/audit.md"),
+    )
+    .unwrap()
+}
+
+/// The fenced example after the contract's "Who records the verdict" section heading, without its
+/// list indent.
 fn verdict_example(audit: &str) -> String {
     let step = audit
-        .find("**Verdict note.**")
-        .expect("AUDIT has a Verdict note step");
+        .find("## Who records the verdict")
+        .expect("the contract has a Who records the verdict section");
     let open = step + audit[step..].find("```text\n").expect("an example") + "```text\n".len();
     let close = open + audit[open..].find("```").expect("a closed example");
     audit[open..close]
@@ -52,10 +62,10 @@ fn verdict_example(audit: &str) -> String {
 /// pull-request comment; its first line keeps the shape the card-verdict reader parses.
 #[test]
 fn the_documented_verdict_example_passes_the_card_verdict_parser() {
-    let audit = workflow("audit.md");
+    let audit = contract();
     says(
         &audit,
-        "audit.md",
+        "references/audit.md",
         &[
             "`AUDIT <card> (<one-line scope>) head <40-hex> base <40-hex> — verdict: PASS|FAIL`",
             "lowercase hex",
@@ -86,7 +96,7 @@ fn the_documented_verdict_example_passes_the_card_verdict_parser() {
 /// are the parser's: each broken form is refused.
 #[test]
 fn each_rule_the_text_states_is_one_the_parser_enforces() {
-    let example = verdict_example(&workflow("audit.md"));
+    let example = verdict_example(&contract());
     let first = example.lines().next().unwrap();
     let upper = first.replace("997af563", "997AF563");
     assert_eq!(parse_verdict(&upper), None, "uppercase hex");

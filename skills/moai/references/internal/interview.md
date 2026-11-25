@@ -52,7 +52,9 @@ These four operating rules are never asked (user decision 2026-11-24). Record ea
 | `autonomy` | never | not asked | reads, tests and edits inside the task's scope run without asking; anything hard to undo, or touches money, secrets or deletion, is asked first | decisions |
 | `done` | never | not asked | the project's own tests pass | decisions |
 
-Sort the `autonomy` answer the way SKILL.md sorts an open question when the user changes it later: what SKILL.md calls case (2) is the "asked first" side. The user is shown the plain words of the default, never those terms.
+Sort the `autonomy` answer the way `internal/decide` sorts an open question when the user changes it later: what `internal/decide` calls case (2) is the "asked first" side. The user is shown the plain words of the default, never those terms.
+
+What the chosen autonomy level still reserves for the user, which `internal/decide` calls case (4), is this list until the user sets another one: opening a new Issue, lifting a HOLD, and changing the merge policy (how pull requests are merged; a repository protection setting is case (2), not this list). Each such choice goes to the user with its options, a default and a deadline.
 
 ## Git work flow (SPEC-20261117-mflow-project)
 

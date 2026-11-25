@@ -21,7 +21,18 @@ The auditor never writes the verdict, never fixes what it finds and never commit
 
 ## Who records the verdict
 
-The auditing session records the verdict itself with `moai card verdict` (head, base, `pass` or `fail`, tier, one evidence line, and for a PASS above tier 0 the lane's receipt), the event `moai card land` reads. It then adds one `moai card note` whose first line is `AUDIT <card> (<one-line scope>) head <40 hex> base <40 hex> — verdict: PASS|FAIL`. The leader never records a verdict for an auditor, and the `moai-audit` agent only returns evidence.
+The auditing session records the verdict itself with `moai card verdict <card> --head <40 hex> --base <40 hex> --verdict pass|fail --tier <0-2> --evidence "<one line>"`, and for a PASS above tier 0 the lane's receipt (`--receipt-head <head>`, one `--receipt-step NAME=EXIT` per step). The reviewer is the session id the host sets. `moai card land` refuses a head that has no independent PASS of it (`no_pass`) in every mode, tier 0 included. A PASS is independent when its session wrote no commit of the head and held no reservation of the card (`self_verdict`); above tier 0 it also comes from a session other than the lander (`lander_review`) and cites a receipt of the head whose every step exited 0 (`receipt_missing`).
+
+The leader never records a verdict for an auditor, and the `moai-audit` agent only returns evidence.
+
+The base is the base the lane's ready note names when the head is the lane's own head, and the tip the head will land on when the head is a merge that joins the tip: `card verdict` accepts only a base that is an ancestor of the head, and an older base puts commits of other cards, maybe the auditing session's own, into the range read for authors; a verdict never names a head nobody audited.
+
+The auditing session then adds one `moai card note`. Its first line is the verdict line, `AUDIT <card> (<one-line scope>) head <40-hex> base <40-hex> — verdict: PASS|FAIL`: lowercase hex, the em dash `—` with one space on each side, nothing after the verdict word; a first line that starts with `AUDIT ` in any other shape is an unreadable verdict, not a pass. A `tier <N>` in its scope is read too: `moai bundle check` reports a PASS below the floor of the head's changed paths as `audit_tier_low`. The next line names the auditing session as `Moai-Session: <value>`, the value `moai trailers --spec <SPEC id>` prints in the auditor's own worktree (`internal/commit-trailers`). For example:
+
+```text
+AUDIT C-12 (repo-scans 4/4, tier 1) head 997af563452bfb36f2ce722a66e9068dae191568 base 9c8a8c51c9c059be389deeaebb19a3e45709b273 — verdict: PASS
+Moai-Session: <session id>:<worktree key>
+```
 
 The author of a change never audits it. Whoever wrote or repaired a change hands it to a separate context (`chains/index.md`); a session that made a commit between the base and the head is an author of that head.
 
@@ -33,12 +44,12 @@ A verdict is FAIL for four things only: behaviour that differs from the card's a
 
 Four lines say who audits what. The audit agent, the RUN workflow and the auditor's brief carry them word for word:
 
-- docs-only (tier 0): only documents or SPEC text change; the lander reads the change and lands it, and nothing is built.
+- docs-only (tier 0): only documents or SPEC text change; the auditor records a PASS without a receipt, and nothing is built.
 - test-only (tier 0, tier 1 when a tool changes): only tests or test tools change; the auditor gives it a light audit: it reads the change and the lane's receipt and runs nothing.
 - code (tier 1): product code or skill text changes; a session that wrote none of it gives a light audit: it cites the lane's receipt instead of running the head again and runs no mutant.
 - high-risk (tier 2): a changed path starts with a prefix of the floor list below; a session that wrote none of it gives the full audit: the code steps plus the boundary, security and data-loss checks of this contract, with the lane's guard-mutant lines read and at most two named test modules run.
 
-The tier a ready note states never goes below the floor of its changed paths (`src/gate.rs` `tier_of`). A change that mixes classes takes the highest one. A changed path that starts with one of these prefixes sets the floor to tier 2: `src/gate`, `src/ops/gate`, `src/flow.rs`, `src/hook`, `src/ops/hook`, `src/go_hooks`, `src/ops/go_hooks`, `.github/`, `install`, `scripts/install`, `src/install`, `src/agent_install`, `src/update`, `src/self_update`, `src/home`, `src/ops/home`, `src/ops/agents_home`, `src/migrat`, `src/go_state`, `src/go_settings`, `src/ops/go_settings`, `src/state_root`, `src/secret`, `src/vault`, `src/keys`, `src/key_vault`, `src/redact`, `src/forge/audit_status`, `src/forge/transport`, `src/worktree_include`, `src/audit_gate.rs`, `.worktreeinclude`, `.claude/`, the retired second host's dot folder, `REVIEW.md`, `agents/audit.md`, `skills/moai/workflows/audit.md`, `CLAUDE.md` and the older `AGENTS.md`; and, of the moai-adk repository's own tools, `tools/local_check.sh`, `tools/ci_scope.py`, `tools/check_guard.py`, `tools/protected_checks.json`, `tools/repo_scans.json`, `tools/self_check.sh` and `tools/review_checklist.json`. This is the list the tier code reads (`moai bundle check` judges a head's floor with it).
+The tier a ready note states never goes below the floor of its changed paths (`src/gate.rs` `tier_of`). A change that mixes classes takes the highest one. A changed path that starts with one of these prefixes sets the floor to tier 2: `src/gate`, `src/ops/gate`, `src/flow.rs`, `src/hook`, `src/ops/hook`, `src/go_hooks`, `src/ops/go_hooks`, `.github/`, `install`, `scripts/install`, `src/install`, `src/agent_install`, `src/update`, `src/self_update`, `src/home`, `src/ops/home`, `src/ops/agents_home`, `src/migrat`, `src/go_state`, `src/go_settings`, `src/ops/go_settings`, `src/state_root`, `src/secret`, `src/vault`, `src/keys`, `src/key_vault`, `src/redact`, `src/forge/audit_status`, `src/forge/transport`, `src/worktree_include`, `src/audit_gate.rs`, `.worktreeinclude`, `.claude/`, the retired second host's dot folder, `REVIEW.md`, `agents/audit.md`, `skills/moai/workflows/audit.md`, `CLAUDE.md` and the older `AGENTS.md`; and, of the moai-adk repository's own tools, `tools/local_check.sh`, `tools/ci_scope.py`, `tools/check_guard.py`, `tools/protected_checks.json`, `tools/repo_scans.json`, `tools/self_check.sh` and `tools/review_checklist.json`. This is the list the tier code reads (`moai bundle check` judges a head's floor with it). A change of `tools/repo_scans.json` sets the floor only when it does more than grow the registry: a rule file, a test name, a `--test` option or a scan added is growth (`gate::registry_only_grew`); any other change of it, or a text that cannot be read, is tier 2. `moai check affected --card` reads the same rule: growth keeps the card set, anything else runs the full set.
 
 ## Rules for every audit
 

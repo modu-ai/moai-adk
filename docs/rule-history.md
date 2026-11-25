@@ -36,22 +36,22 @@ test file is missing, or a history entry is still word for word in the live file
 
 | # | Rule (short) | Source | Enforcer |
 | --- | --- | --- | --- |
-| 1 | pointer | #2876 | text only → history |
-| 2 | pointer | #2876 | text only → history |
+| 1 | assumptions first, guesses never | #2876 | text only |
+| 2 | a problem with an approach is named with cost and alternative | #2876 | text only |
 | 3 | cheapest source; trust-boundary checks stay | #2876 | `core_rules_2876.rs` (pinned via rule 20's "as in rule 3") |
 | 4 | touch only what was asked | #2876 | text only (diff-visible: extra paths in a diff) |
-| 5 | pointer | #2876 | text only → history |
-| 6 | pointer | #2876 | text only → history |
+| 5 | done-condition stated first as a testable sentence | #2876 | text only |
+| 6 | three retries, then report | #2876 | text only |
 | 7 | conversation language, relay in it | #2876 + C-87 S1 (6da6026430) | `core_rules_2876.rs` `rule_seven…`; `language_setting.rs`, `src/hook_engine.rs` |
-| 8 | pointer | #2876 | text only → history |
-| 9 | pointer | #2876 | text only → history |
-| 10 | pointer | #2876 | text only → history (restated in `workflows/audit.md`) |
-| 11 | pointer | #2876 | text only → history |
-| 12 | pointer | #2876 | text only → history |
+| 8 | no duration predictions | #2876 | text only |
+| 9 | Markdown to the user | #2876 | text only |
+| 10 | a text-match inference is a hypothesis | #2876 | text only (restated in `workflows/audit.md`) |
+| 11 | a refused command is named with its substitute | #2876 | text only |
+| 12 | cite a result from the measured tree | #2876 | text only |
 | 13 | baseline committed on its own | #2876 | text only (diff-visible: commit order) |
-| 14 | pointer | #2876 | text only → history (partly enforced by `pr-self-audit-check` fields) |
+| 14 | verification report shape | #2876 | text only (partly enforced by `pr-self-audit-check` fields) |
 | 15 | tree compared before "no changes" | #2876 | text only (the pattern the `*_changes_nothing` CLI tests follow) |
-| 16 | pointer | #2876 | text only → history |
+| 16 | a delegated task that did not return is recorded | #2876 | text only |
 | 17 | rule change = decision record naming what it replaces | #2876 | `mode_workflow_steps.rs`, `mode_cards_53.rs` (phrase) |
 | 18 | final report: conclusion first, two lists; test data marked | #2876 | `core_rules_2876.rs` (report-first phrase) and `mode_workflow_steps.rs` (`Mark test data as test data`) — both phrases stay in the live rule |
 | 19 | two public implementations first | #2876 | `core_rules_2876.rs` (verbatim) |

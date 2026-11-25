@@ -1685,14 +1685,15 @@ fn a_verdict_line_the_gate_would_not_read_is_refused() {
 }
 
 /// AC-3 (document and gate agree), re-pinned for the card note (SPEC-20261122-next-flow-skills-agents,
-/// slice B audit N1): the example verdict line in the AUDIT workflow is one the gate's parser
+/// slice B audit N1): the example verdict line in the audit contract is one the gate's parser
 /// reads, and it has exactly the card-note shape. `gate::format_verdict_line` prints the release
 /// pull-request form (`AUDIT #<pr>`) only, so the expected line is rebuilt here from the parsed
-/// values.
+/// values. The example moved from the AUDIT workflow to the contract, the one home of the verdict
+/// line form (SPEC-20261125-audit-text-facts REQ-2).
 #[test]
-fn the_audit_workflow_example_is_read_by_the_gate_parser() {
+fn the_audit_contract_example_is_read_by_the_gate_parser() {
     let text = fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/audit.md"),
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/references/audit.md"),
     )
     .unwrap();
     let example = text

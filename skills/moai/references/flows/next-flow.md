@@ -48,8 +48,8 @@ Four technical rules make the flow run.
 ### Final flow
 
 - `/clear` and a lane-terminal manager are not conditions of dispatch. The start signal is the card verified and landed on the local integration branch, then done with its reservation released in the ledger.
-- With no registered leader the worker reserves the next eligible card once, and an automatic restart runs only through the existing HOLD, ownership, priority and safety checks.
-- No leader: flow ends at submission. Waiting for an audit and the hand-back of a card are separate from done and start nothing. A worker clearing its own session is not documented as a guarantee.
+- With no registered leader the agent reserves the next eligible card once, and an automatic restart runs only through the existing HOLD, ownership, priority and safety checks.
+- No leader: flow ends at submission. Waiting for an audit and the hand-back of a card are separate from done and start nothing. An agent clearing its own session is not documented as a guarantee.
 
 ## Landing
 

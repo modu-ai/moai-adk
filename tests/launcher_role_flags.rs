@@ -116,9 +116,9 @@ fn value_after(argv: &[String], flag: &str) -> Option<String> {
         .map(|i| argv[i + 1].clone())
 }
 
-/// AC-1 (REQ-1, REQ-5, REQ-6, REQ-7): `-l` and `--leader` name the session `leader-<project
-/// name>`, start in the bypass and hand `/moai leader` as the last argument; `--name` replaces
-/// the name; `glm` takes the same flags with its own effort.
+/// AC-1 (SPEC-20261125-session-names-project-prefix REQ-1, REQ-5): `-l` and `--leader` name the
+/// session `<project name>-leader`, start in the bypass and hand `/moai leader` as the last
+/// argument; `--name` replaces the name; `glm` takes the same flags with its own effort.
 #[test]
 fn ac1_leader_names_the_session_bypasses_and_hands_the_first_input() {
     let f = Fixture::new("myproj");
@@ -130,7 +130,7 @@ fn ac1_leader_names_the_session_bypasses_and_hands_the_first_input() {
             [
                 "claude",
                 "--name",
-                "leader-myproj",
+                "myproj-leader",
                 "--model",
                 "opus",
                 "--effort",
@@ -140,12 +140,12 @@ fn ac1_leader_names_the_session_bypasses_and_hands_the_first_input() {
             ],
             "{flag}"
         );
-        assert_eq!(v["name"], "leader-myproj", "{flag}");
+        assert_eq!(v["name"], "myproj-leader", "{flag}");
     }
     let (code, v, said) = f.dry(&["glm", "-l"]);
     assert_eq!(code, 0, "{said}");
     let a = argv(&v);
-    assert_eq!(value_after(&a, "--name").as_deref(), Some("leader-myproj"));
+    assert_eq!(value_after(&a, "--name").as_deref(), Some("myproj-leader"));
     assert_eq!(value_after(&a, "--effort").as_deref(), Some("high"));
     assert!(
         a.contains(&"--dangerously-skip-permissions".to_string()),
@@ -160,14 +160,16 @@ fn ac1_leader_names_the_session_bypasses_and_hands_the_first_input() {
     assert_ne!(code, 0, "a name the check refuses stays refused: {said}");
 }
 
-/// AC-1 (REQ-1, decision D-9): the project name is the `project_id` of the profile when it has
-/// one, and the folder name goes through the registry's character rule otherwise.
+/// AC-1 (REQ-4, decisions D-2 and D-3): the project name is the `project_id` of the profile when
+/// it is a name a person chose, the folder name of the primary checkout when the id is of the
+/// random 26-character form (never the folder of a worktree), reduced to the registry's
+/// characters, and short enough that the longest session name fits the registry's 64 characters.
 #[test]
 fn ac1_the_project_name_comes_from_the_profile_else_the_folder() {
     let f = Fixture::new("some folder.name");
     let (code, v, said) = f.dry(&["cc", "-l"]);
     assert_eq!(code, 0, "{said}");
-    assert_eq!(v["name"], "leader-some-folder.name", "{said}");
+    assert_eq!(v["name"], "some-folder.name-leader", "{said}");
     let state = f.project.join(moai_cli::PROJECT_STATE_DIR);
     fs::create_dir_all(&state).unwrap();
     fs::write(
@@ -177,25 +179,83 @@ fn ac1_the_project_name_comes_from_the_profile_else_the_folder() {
     .unwrap();
     let (code, v, said) = f.dry(&["cc", "-l"]);
     assert_eq!(code, 0, "{said}");
-    assert_eq!(v["name"], "leader-demo-id", "{said}");
-    // The whole name stays within the registry's 64 characters.
-    let long = Fixture::new(&"p".repeat(80));
-    let (code, v, said) = long.dry(&["cc", "-l"]);
+    assert_eq!(v["name"], "demo-id-leader", "{said}");
+    let (code, v, said) = f.dry(&["cc", "-a"]);
     assert_eq!(code, 0, "{said}");
-    let name = v["name"].as_str().unwrap().to_string();
-    assert!(name.starts_with("leader-p") && name.len() <= 64, "{name}");
-    assert!(moai_cli::lane_registry::valid_name(&name), "{name}");
+    assert_eq!(
+        v["name"],
+        format!("demo-id-agent-{}", moai_cli::session::AGENT_NAMES[0]),
+        "{said}"
+    );
+    // A random-form id names no project to a person: the folder name is used.
+    fs::write(
+        state.join("project.yaml"),
+        "{\"project_id\": \"abcdefghijklmnopqrstuvwxyz\"}\n",
+    )
+    .unwrap();
+    assert!(moai_cli::project_id::is_random_form(
+        "abcdefghijklmnopqrstuvwxyz"
+    ));
+    let (code, v, said) = f.dry(&["cc", "-l"]);
+    assert_eq!(code, 0, "{said}");
+    assert_eq!(v["name"], "some-folder.name-leader", "{said}");
+    // The longest session name stays within the registry's 64 characters.
+    let long = Fixture::new(&"p".repeat(80));
+    for (flag, tail) in [("-l", "-leader"), ("-a", "-agent-")] {
+        let (code, v, said) = long.dry(&["cc", flag]);
+        assert_eq!(code, 0, "{said}");
+        let name = v["name"].as_str().unwrap().to_string();
+        assert!(name.starts_with('p') && name.contains(tail), "{name}");
+        assert!(moai_cli::lane_registry::valid_name(&name), "{name}");
+    }
+    let longest = moai_cli::session::AGENT_NAMES
+        .iter()
+        .map(|n| n.len())
+        .max()
+        .unwrap();
+    let project = moai_cli::session::project_name(&long.project);
+    assert!(
+        project.len() + "-agent-".len() + longest <= moai_cli::lane_registry::MAX_NAME_LEN,
+        "{project}"
+    );
 }
 
-/// AC-1 (REQ-2): a held live lock of `leader-<project name>` refuses the launch and starts no
+/// AC-1 (REQ-4, decision D-2): a worktree of the project gets the project's name, not the
+/// folder name of the worktree.
+#[test]
+fn ac1_a_worktree_uses_the_primary_checkouts_name() {
+    let f = Fixture::new("wtproj");
+    let git = |args: &[&str]| {
+        assert!(common::git::command()
+            .args(args)
+            .current_dir(&f.project)
+            .status()
+            .unwrap()
+            .success());
+    };
+    git(&["config", "user.email", "t@example.invalid"]);
+    git(&["config", "user.name", "t"]);
+    git(&["commit", "-q", "--allow-empty", "-m", "init"]);
+    let wt = f._root.path().join("card-worktree-name");
+    git(&["worktree", "add", "-q", wt.to_str().unwrap()]);
+    let out = f
+        .command(&["cc", "-l", "--dry-run"])
+        .current_dir(&wt)
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
+    assert_eq!(v["name"], "wtproj-leader", "{}", text(&out));
+}
+
+/// AC-2 (REQ-15): a held live lock of `<project name>-leader` refuses the launch and starts no
 /// host; once it is free the host starts and receives the first input.
 #[test]
-fn ac1_a_held_leader_lock_refuses_the_launch() {
+fn ac2_a_held_leader_lock_refuses_the_launch() {
     let f = Fixture::new("lockproj");
-    let held = f.hold("leader-lockproj");
+    let held = f.hold("lockproj-leader");
     let (out, seen) = f.run(&["cc", "-l"]);
     assert!(!out.status.success(), "{}", text(&out));
-    assert!(text(&out).contains("leader-lockproj"), "{}", text(&out));
+    assert!(text(&out).contains("lockproj-leader"), "{}", text(&out));
     assert!(seen.is_none(), "the host started: {seen:?}");
     drop(held);
     let (out, seen) = f.run(&["cc", "-l"]);
@@ -206,31 +266,35 @@ fn ac1_a_held_leader_lock_refuses_the_launch() {
         Some("/moai leader"),
         "{seen:?}"
     );
-    assert!(seen.contains(&"leader-lockproj".to_string()), "{seen:?}");
+    assert!(seen.contains(&"lockproj-leader".to_string()), "{seen:?}");
 }
 
-/// AC-2 (REQ-3, REQ-5): `-a` without `--name` takes the first name of the list that has no
-/// held live lock and no live registry entry, and `--name` replaces it.
+/// AC-2 (REQ-2, REQ-3, REQ-5): `-a` without `--name` takes the first `<project name>-agent-<name>`
+/// of the list that has no held live lock and no live registry entry, and `--name` replaces it.
 #[test]
 fn ac2_agent_takes_the_first_free_english_name() {
     let names = moai_cli::session::AGENT_NAMES;
     assert!(names.len() >= 12, "the list holds at least 12 names");
     assert!(names
         .iter()
-        .all(|n| moai_cli::lane_registry::valid_name(&format!("agent-{n}"))));
+        .all(|n| moai_cli::lane_registry::valid_name(&format!("agentproj-agent-{n}"))));
     let unique: std::collections::BTreeSet<_> = names.iter().collect();
     assert_eq!(unique.len(), names.len(), "no name twice");
     let f = Fixture::new("agentproj");
     let (code, v, said) = f.dry(&["cc", "-a"]);
     assert_eq!(code, 0, "{said}");
-    assert_eq!(v["name"], format!("agent-{}", names[0]), "{said}");
+    assert_eq!(v["name"], format!("agentproj-agent-{}", names[0]), "{said}");
     // A held live lock skips a name.
-    let _first = f.hold(&format!("agent-{}", names[0]));
+    let _first = f.hold(&format!("agentproj-agent-{}", names[0]));
     let (_, v, said) = f.dry(&["cc", "--agent"]);
-    assert_eq!(v["name"], format!("agent-{}", names[1]), "{said}");
+    assert_eq!(v["name"], format!("agentproj-agent-{}", names[1]), "{said}");
     // So does a live registry entry.
     let registered = Command::new(common::MOAI_BIN)
-        .args(["session-register", "--name", &format!("agent-{}", names[1])])
+        .args([
+            "session-register",
+            "--name",
+            &format!("agentproj-agent-{}", names[1]),
+        ])
         .args(["--mode", "agent"])
         .arg(&f.project)
         .clean_env()
@@ -240,7 +304,7 @@ fn ac2_agent_takes_the_first_free_english_name() {
         .unwrap();
     assert!(registered.status.success(), "{}", text(&registered));
     let (_, v, said) = f.dry(&["cc", "-a"]);
-    assert_eq!(v["name"], format!("agent-{}", names[2]), "{said}");
+    assert_eq!(v["name"], format!("agentproj-agent-{}", names[2]), "{said}");
     // `--name` is used as given.
     let (_, v, said) = f.dry(&["cc", "-a", "--name", "scout"]);
     assert_eq!(v["name"], "scout", "{said}");
@@ -253,7 +317,7 @@ fn ac2_a_used_up_list_refuses_and_names_the_name_option() {
     let f = Fixture::new("fullproj");
     let held: Vec<fs::File> = moai_cli::session::AGENT_NAMES
         .iter()
-        .map(|n| f.hold(&format!("agent-{n}")))
+        .map(|n| f.hold(&format!("fullproj-agent-{n}")))
         .collect();
     let (out, seen) = f.run(&["cc", "-a"]);
     assert!(!out.status.success(), "{}", text(&out));

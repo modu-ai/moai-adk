@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-home-guard-flake
 title: "HOME 가드가 부하 아래에서 테스트가 읽지 않은 HOME 읽기를 테스트 탓으로 실패시키는 일을, 먼저 증거로 가려내요"
-status: draft
+status: approved
 revision: 4
 created: 2026-11-24
+approval:
+  by: user
+  at: 2026-11-25
+  basis: "사용자가 리더 대화의 선택지에서 직접 고른 답(카드 노트 9064): \"승인 (Recommended)\"; 리더가 기록 직전에 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:578d13d7f8b16b7c3bf2f180394002a531d5c6956f9bdefee0cf0e5acbe0bf9f"
 ---
 
 # HOME 가드가 부하 아래에서 테스트가 읽지 않은 HOME 읽기를 테스트 탓으로 실패시키는 일을, 먼저 증거로 가려내요

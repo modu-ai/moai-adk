@@ -69,14 +69,20 @@ fn the_skill_entry_points_to_the_core_rules_and_keeps_the_decision_order() {
         pointer.len() < 260,
         "the pointer is one short line: {pointer}"
     );
-    // The decision order, the HOLD categories and the record fields stay where they are defined.
+    // The decision order, the HOLD categories and the record fields stand once, in
+    // `internal/decide` (SPEC-20261125-skill-entry-order REQ-2), and the entry points there.
+    assert!(
+        entry.contains("`internal/decide`"),
+        "SKILL.md does not point to the decision table"
+    );
+    let decide = skill("references/internal/decide.md");
     for kept in [
         "the five HOLD categories",
         "Independent audit and the CI gate are never delegated.",
         "Every decision record names what was decided, its options, the default, whether it is reversible",
         "a decision without a record does not count.",
     ] {
-        assert!(entry.contains(kept), "SKILL.md lost {kept:?}");
+        assert!(decide.contains(kept), "decide.md lost {kept:?}");
     }
 }
 

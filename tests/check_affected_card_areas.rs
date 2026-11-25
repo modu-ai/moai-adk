@@ -121,6 +121,13 @@ impl Fixture {
         }
         put(p, "Cargo.lock", "# lock\n");
         put(p, "docs/note.md", "note\n");
+        // The scan registry the base holds: an edit of it is judged against this text
+        // (SPEC-20261125-registry-add-check-set).
+        put(
+            p,
+            "tools/repo_scans.json",
+            "{\"about\":\"x\",\"scans\":[]}\n",
+        );
         git_ok(p, &["add", "-A"]);
         git_ok(p, &["commit", "-q", "-m", "base"]);
         let base = git(p, &["rev-parse", "HEAD"]).trim().to_string();
@@ -504,10 +511,14 @@ fn narrowed_floor_paths_take_their_area_and_the_scan_table_pins_its_tests() {
         assert!(r["card_wide"].is_null(), "{path}: {r}");
         assert_eq!(names(&r["rust_targets"]), want, "{path}: {r}");
     }
-    // The scan table: the tests that name it, as a pinned path, never the full set.
+    // The scan table, with a scan added to it: the tests that name it, as a pinned path, never the
+    // full set. A change of it that is not growth is wide (SPEC-20261125-registry-add-check-set).
     let fx = Fixture::new(
         Some(AREAS),
-        &[("tools/repo_scans.json", "{\"about\":\"x\",\"scans\":[]}\n")],
+        &[(
+            "tools/repo_scans.json",
+            "{\"about\":\"x\",\"scans\":[{\"id\":\"s\",\"checks\":[\"cargo test --offline --locked --test pins_scans\"],\"scope\":[{\"prefix\":\"docs/\"}],\"rules\":[\"docs/note.md\"]}]}\n",
+        )],
     );
     let r = affected(&fx, &["--list", "--card"]);
     assert_eq!(r["selection"], "card", "{r}");
