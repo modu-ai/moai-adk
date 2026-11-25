@@ -762,6 +762,31 @@ fn a_notice_is_its_own_row_never_a_skipped_one() {
     }
 }
 
+/// SPEC-20261124-desktop-install-agents REQ-9: a notice that carries `"warning": false` (the
+/// `claude_folders` notice of a plain setup) is drawn without the warning mark; a notice with a
+/// warning, or with no such key (every earlier notice), keeps it.
+#[test]
+fn a_notice_without_a_warning_has_no_warning_mark() {
+    let prefix = |warning: Option<bool>| {
+        let mut n = serde_json::json!({"part": "folders", "host": "claude",
+            "reason": "this update writes skills /h/.claude"});
+        if let Some(w) = warning {
+            n["warning"] = serde_json::json!(w);
+        }
+        let mut v = fixture("preview-changes");
+        v["notices"] = serde_json::json!([n]);
+        let text = question(&v, &view(Lang::En, Look::Ascii, 100, None));
+        let line = text
+            .lines()
+            .find(|l| l.contains("this update writes"))
+            .unwrap_or_else(|| panic!("no notice row: {text}"))
+            .to_string();
+        line.split("folders claude").next().unwrap().to_string()
+    };
+    assert_ne!(prefix(Some(false)), prefix(Some(true)));
+    assert_eq!(prefix(None), prefix(Some(true)));
+}
+
 /// SPEC-20261124-update-flat-agent-ownership REQ-10: an agents result that is `partial` (a flat
 /// file of the person's was kept) shows an agents row with the number kept and ends on Partly
 /// applied; the same run with nothing kept still ends on Done.

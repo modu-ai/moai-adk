@@ -266,7 +266,7 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
 fn the_ledger_is_local_cards_and_previews_run_without_asking() {
     let project = skill("workflows/project.md");
     for text in [
-        "the previews are read-only and run without asking (user decision 2026-11-16, card C-51)",
+        "the previews are read-only and run without asking, and the one ask comes after the preview is shown",
         "`go-settings` comes before `go-state`",
         "never ask about a step that reads `blocked` or `re-run after …` behind an earlier step",
         "ask once, after the preview is shown",

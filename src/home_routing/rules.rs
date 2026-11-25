@@ -928,12 +928,19 @@ pub(super) fn revert_entry(
         Ok(c) => c,
         Err(why) => return skip(&target, format!("file_not_plain: {why}")),
     };
-    if current.as_deref().map(sha) != Some(e.after_sha256.clone()) {
+    // SPEC-20261125-flow-receipt-revert-slot REQ-1: a current apply copies the earlier layout's
+    // flow rule file to a backup folder and removes it, with no receipt entry. An entry of that
+    // kind that created its file (`before_sha256` null) and finds it gone has nothing left to
+    // undo: it counts as reverted and goes on to give the slot back. An absent file of any other
+    // entry, or of one that replaced earlier bytes (REQ-3), stays a skip.
+    let gone = kind == "flow" && e.before_sha256.is_none() && current.is_none();
+    if !gone && current.as_deref().map(sha) != Some(e.after_sha256.clone()) {
         return skip(&target, "user_changed_since_apply".into());
     }
-    let current = current.expect("checked above");
-    match &e.before_sha256 {
-        None => {
+    match (&e.before_sha256, current) {
+        // Only reachable when `gone`: the check above skipped every other absent file.
+        (_, None) => {}
+        (None, Some(_)) => {
             fs::remove_file(&target).map_err(|_| format!("{} not removed", target.display()))?;
             for d in e.created_dirs.iter().rev() {
                 // Only a real, empty folder this apply made goes; `remove_dir` refuses the rest.
@@ -942,7 +949,7 @@ pub(super) fn revert_entry(
                 }
             }
         }
-        Some(before_sha) => {
+        (Some(before_sha), Some(current)) => {
             let name = if e.kind.is_some() {
                 format!("{kind}-{}.before", folder_id(&dir)?)
             } else {

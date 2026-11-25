@@ -99,15 +99,13 @@ const SRC_ORCA_FILES: [&str; 16] = [
     "src/statusline/state.rs",
 ];
 
-/// The only places in the skill package and the agent files that name Orca. The research
-/// agent lists the adapter among the documents it reads (checked below to be that line only).
+/// The only place in the skill package and the agent files that names Orca. The research agent
+/// no longer lists the adapter among the documents it reads, since its body never uses it
+/// (SPEC-20261125-base-agent-contract D-4), and is checked below to name Orca nowhere.
 /// The two mode files left with their routes (SPEC-20261122-next-flow-skills-agents REQ-2), and
 /// the rule history, which quotes their sentences word for word, left the package for
 /// `docs/rule-history.md` (the same SPEC's Plan step 6).
-const PACKAGE_ORCA_FILES: [&str; 2] = [
-    "agents/research.md",
-    "skills/moai/references/adapters/orca.md",
-];
+const PACKAGE_ORCA_FILES: [&str; 1] = ["skills/moai/references/adapters/orca.md"];
 
 fn src_files() -> Vec<PathBuf> {
     let mut files = Vec::new();
@@ -176,8 +174,8 @@ fn the_word_orca_stays_in_the_two_modes_and_the_adapter() {
     let research = read("agents/research.md");
     let naming: Vec<&str> = research.lines().filter(|l| mentions_orca(l)).collect();
     assert!(
-        naming.len() == 1 && naming[0].starts_with("reads: "),
-        "agents/research.md may name Orca only in its `reads:` line: {naming:?}"
+        naming.is_empty(),
+        "agents/research.md names Orca nowhere, not even in its `reads:` line: {naming:?}"
     );
 }
 
@@ -218,12 +216,12 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
             );
         }
         // The audit of #3018 (B1): an Orca profile moves the settings folder to
-        // `CLAUDE_CONFIG_DIR`, which `moai update` does not look at (Issue #2936), so SETUP and
-        // UPDATE are not "works" with Orca (SETUP left with its route).
+        // `CLAUDE_CONFIG_DIR`, which `moai update` does not look at, so SETUP and UPDATE are not
+        // "works" with Orca (SETUP left with its route). The shipped text carries no Issue number.
         if name == "UPDATE" {
             assert!(
-                cells[1].starts_with("unsupported") && cells[1].contains("#2936"),
-                "row `{name}`, With Orca must start with unsupported and name Issue #2936: {}",
+                cells[1].starts_with("unsupported") && !cells[1].contains('#'),
+                "row `{name}`, With Orca must start with unsupported and carry no number: {}",
                 cells[1]
             );
         }
@@ -241,9 +239,14 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
     // SPEC-20261122-next-flow-skills-agents REQ-8 retired Codex and OMP: the Codex or OMP
     // leader's periodic run is no longer an unsupported item, and the settled OMP entry
     // spelling, skill folders and lane wake of #3005 P10 and P11 left the paragraph with it.
-    for cell in ["the settings folder of an Orca profile", "Issue #2936"] {
-        assert!(list.contains(cell), "the unsupported list lost `{cell}`");
-    }
+    assert!(
+        list.contains("the settings folder of an Orca profile"),
+        "the unsupported list lost the settings folder of an Orca profile"
+    );
+    assert!(
+        !list.contains('#'),
+        "the unsupported paragraph carries an Issue number: {list}"
+    );
     for gone in ["Codex", "OMP", "/skill:moai"] {
         assert!(
             !list.contains(gone),

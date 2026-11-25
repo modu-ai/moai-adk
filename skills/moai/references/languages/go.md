@@ -9,7 +9,7 @@ When to read: `internal/quality` sent you here because the project's detected la
 | format | `gofmt -l .` | `go.mod`; any file it lists is unformatted (the command exits 0 either way, so read its output) |
 | lint | `go vet ./...` | `go.mod` |
 | lint | `golangci-lint run` | `.golangci.yml`, `.golangci.yaml` or `.golangci.toml` exists |
-| type check | covered by `go vet ./...` and the build | |
+| type check | covered by `go vet ./...` and the build | n/a: no separate step exists |
 | test | `go test ./...` | `go.mod`; add `-count=1` so a cached result is not reported as a new run |
 | build | `go build ./...` | `go.mod` |
 

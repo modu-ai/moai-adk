@@ -231,7 +231,7 @@ impl ProcessOrca {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| format!("cannot run `{shown}`: {}", e.kind()))?;
+            .map_err(|e| format!("cannot run the orca program: {}: `{shown}`", e.kind()))?;
         // Each stream is read on a thread that sends its text over a channel, so the caller can
         // stop waiting for it (re-audit C-N2, note 3497): a child of `orca` that outlives it keeps
         // the pipe open, and a plain `join` waited for that child with no limit.
@@ -266,12 +266,17 @@ impl ProcessOrca {
                     let _ = child.kill();
                     let _ = child.wait();
                     return Err(format!(
-                        "`{shown}` did not answer within {} seconds",
+                        "did not answer within {} seconds: `{shown}`",
                         self.timeout.as_secs()
                     ));
                 }
                 Ok(None) => std::thread::sleep(Duration::from_millis(20)),
-                Err(e) => return Err(format!("cannot wait for `{shown}`: {}", e.kind())),
+                Err(e) => {
+                    return Err(format!(
+                        "cannot wait for the orca program: {}: `{shown}`",
+                        e.kind()
+                    ))
+                }
             }
         };
         // The program has exited; its output gets what is left of the same time limit, and at
@@ -282,7 +287,7 @@ impl ProcessOrca {
         };
         let (Ok(stdout), Ok(stderr)) = (wait(out), wait(err)) else {
             return Err(format!(
-                "`{shown}` did not finish its output within {} seconds",
+                "did not finish its output within {} seconds: `{shown}`",
                 self.timeout.as_secs()
             ));
         };

@@ -164,6 +164,20 @@ fn builders_clean_up_by_relative_path_inside_their_own_worktree() {
             "{flow}: absolute recursive delete shown"
         );
     }
+    // The cleanup rule of the cargo output moved into `internal/build-slots`, which RUN step 1
+    // names (SPEC-20261125-run-sync-procedure-receipt): it deletes by relative path too.
+    let slots =
+        std::fs::read_to_string(package().join("references/internal/build-slots.md")).unwrap();
+    assert!(
+        slots.contains(
+            "by relative path (`rm -rf target/debug`), never through an absolute or home path"
+        ),
+        "build-slots.md: the cleanup rule does not say relative path and never absolute"
+    );
+    assert!(
+        !slots.contains("rm -rf /") && !slots.contains("rm -rf ~"),
+        "build-slots.md: absolute recursive delete shown"
+    );
 }
 
 /// #2721: a symlinked or non-folder source path is refused, never followed.
@@ -318,11 +332,11 @@ fn a_package_without_sources_has_no_agents_and_a_stray_file_is_refused() {
         .contains("name must be moai-impl"));
 }
 
-/// #2637: each base agent's `reads:` list is the final design's §3 table (#2634) —
-/// `moai-research` reads the two adapters #2636 added, and the five Go-generation references
-/// #2582 adopted (leader confirmation 6856677422) go to `moai-impl`, `moai-audit` and
-/// `moai-docs`; every entry is a file of the package and every rendered agent opens with the
-/// generated line that names exactly those files.
+/// #2637: each base agent's `reads:` list is the final design's §3 table (#2634) less what
+/// SPEC-20261125-base-agent-contract D-4 removed; the five Go-generation references #2582
+/// adopted (leader confirmation 6856677422) go to `moai-impl`, `moai-audit` and `moai-docs`;
+/// every entry is a file of the package and every rendered agent opens with the generated line
+/// that names exactly those files.
 #[test]
 fn reads_lists_match_the_design_and_render_on_every_host() {
     let defs = package_agents(&agents(), &package()).unwrap();
@@ -337,23 +351,21 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
     };
     // SPEC-20261117-atlas-in-read-plan: the two read-only agents of READ and PLAN check the
     // code atlas before they search.
+    // SPEC-20261125-base-agent-contract D-4: an entry the agent's body does not name is read for
+    // nothing, so `internal/interview` (the PROJECT question bank, which a chain row names for
+    // the parent) left `moai-plan`, and the two browser adapters left `moai-research`, whose
+    // body names only the host's own web tool.
     assert_eq!(
         reads("moai-plan"),
         [
             "internal/core-rules",
             "internal/decide",
-            "internal/interview",
             "internal/code-atlas"
         ]
     );
     assert_eq!(
         reads("moai-research"),
-        [
-            "internal/core-rules",
-            "adapters/aside",
-            "adapters/orca",
-            "internal/code-atlas"
-        ]
+        ["internal/core-rules", "internal/code-atlas"]
     );
     assert_eq!(
         reads("moai-impl"),
@@ -364,7 +376,8 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             "internal/tdd-results",
             // C-77: the pre-PR self-check list, run before the change goes to the audit.
             // SPEC-20261122-next-flow-skills-agents slice C: `internal/build-folder` left the
-            // package; where builds go is RUN's "Check-run rules", which the body points to.
+            // package; where builds go is RUN step 1 (`internal/build-slots`), which the body
+            // points to.
             "internal/self-check"
         ]
     );
@@ -374,7 +387,7 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             // SPEC-20261122-next-flow-skills-agents slice B: the review note became the audit
             // contract `references/audit.md`, which no `<folder>/<name>` entry can name; the
             // source body points to it instead. Slice C: `internal/build-folder` left the
-            // package as well; the body points to RUN's "Check-run rules".
+            // package as well; the body points to RUN step 1.
             "internal/core-rules",
             "internal/test-design",
             "internal/check-completeness",
@@ -474,7 +487,8 @@ fn internal_references_say_when_to_read_them() {
         // SPEC-20261117-atlas-in-read-plan: READ and PLAN read the code atlas when it is fresh.
         "code-atlas",
         // `build-folder` left the package in SPEC-20261122-next-flow-skills-agents slice C:
-        // its rule, rewritten (D-14), is part of RUN's "Check-run rules".
+        // its rule, rewritten (D-14), became part of RUN's "Check-run rules" and is now
+        // `internal/build-slots` (SPEC-20261125-run-sync-procedure-receipt).
         // SDD-6 (user decision U-B): the identity trailers every agent commit carries.
         "commit-trailers",
         // SPEC-20261117-quality-guides: the project's own check commands, AC-to-test tracing
@@ -482,6 +496,13 @@ fn internal_references_say_when_to_read_them() {
         "quality",
         // SPEC-20261123-skill-structure: when a timer may repeat the leader round.
         "loop",
+        // SPEC-20261125-run-sync-procedure-receipt: the long rules that left RUN's text, one
+        // reference each, read from the step that names it (RUN steps 1, 2 and 5, and the
+        // failure table's refused-command row).
+        "build-slots",
+        "check-rules",
+        "shell-guards",
+        "web-pages",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()
@@ -646,7 +667,7 @@ fn interview_question_bank_covers_the_project_axes() {
                 || [
                     "profile `purpose`",
                     "profile `tools`",
-                    "profile `development_methods`",
+                    "profile `development_methods` (records `TDD` or `characterization`)",
                     "profile `hosts`",
                     "profile `versioning`",
                     "profile `work_flow`"
@@ -809,13 +830,16 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
             assert!(section.contains(point), "{scheme} lacks {point:?}");
         }
     }
-    // Audit N9: what "Other" does on each row, and that the keep option can be corrected.
+    // Audit N9: what "Other" does on each row, and that the keep option can be corrected. These
+    // sentences moved from the interview text to `versioning.md`, which holds them once; the
+    // interview paragraph only points there (SPEC-20261125-skill-versioning-release-text,
+    // REQ-4 and REQ-5).
     for text in [
         "An answer through the host's \"Other\" to the `versioning` row is recorded as `{\"scheme\": \"custom\"",
         "An \"Other\" answer to `versioning_format` stays CalVer when it is a format the profile takes",
         "so the user can correct a wrong reading",
     ] {
-        assert!(interview.contains(text), "interview.md lacks {text:?}");
+        assert!(reference.contains(text), "versioning.md lacks {text:?}");
     }
     // Audit N2 and N3: the overlap is named, and the limits are the ones the profile enforces.
     for text in [
@@ -825,13 +849,12 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
         "version order, not date",
         "no program is started",
         // Card C-90: the credential-shape rule the profile applies to custom text.
-        "a key prefix at the start of a word or a token or password assignment is refused, while a prefix inside a word, as in `task-based` or `risk-free`, is ordinary text);",
+        "a key prefix at the start of a word or a token or password assignment is refused, while a prefix inside a word, as in `task-based` or `risk-free`, is ordinary text.",
     ] {
         assert!(reference.contains(text), "versioning.md lacks {text:?}");
     }
-    assert!(interview.contains(
-        "the text rules it must pass, credential shapes included, are in `internal/versioning`"
-    ));
+    // The interview paragraph names the text rules only by pointing to `internal/versioning`.
+    assert!(interview.contains("and the text rules for it"));
     let project = read("workflows/project.md");
     // Audit B1: detection starts no program, the versioning fact included.
     for text in [
@@ -934,10 +957,6 @@ fn git_safety_tells_each_host_how_to_work_in_a_worktree() {
         "| Claude Code | `EnterWorktree` (`path` for an existing one) and `ExitWorktree`",
         "create the worktree with `git worktree add` first and enter it by `path`",
         "(`$VAR`, `$?`, `$(…)`)",
-        // The `| Codex CLI |` row is retired with Codex (SPEC-20261122-next-flow-skills-agents
-        // REQ-8); the Cursor row now states its git use itself.
-        "| Cursor CLI | `-w` / `--worktree` at start only. | Inside a session started there, plain `git <verb>`; otherwise `git -C <worktree> <verb>`. |",
-        "| Kiro CLI | None documented. | `git -C <worktree> <verb>`. |",
     ] {
         assert!(text.contains(line), "git-safety.md lacks: {line}");
     }
@@ -945,13 +964,28 @@ fn git_safety_tells_each_host_how_to_work_in_a_worktree() {
         !text.contains("| Codex CLI |"),
         "git-safety.md keeps a Codex row"
     );
+    // The Cursor and Kiro rows are retired with those hosts.
+    for retired in ["| Cursor CLI |", "| Kiro CLI |"] {
+        assert!(
+            !text.contains(retired),
+            "git-safety.md keeps a retired host row: {retired}"
+        );
+    }
 }
 
-/// Card C-77: the pre-PR self-check list ships in the package, holds the two rules that turned
-/// pull requests red most often on their own (the whole, unfiltered `--bin moai` run that
-/// carries the help rules, and the package file bound of `profile::LIMIT`), names its one
-/// local runner, and is named by `moai-impl` (its `reads:` and its Verification) and by the
-/// rules every chain follows.
+/// Card C-77: the pre-PR self-check list ships in the package, holds the rule that turned pull
+/// requests red most often on their own (the package file bound of `profile::LIMIT`), and is
+/// named by `moai-impl` (its `reads:` and its Verification) and by the rules every chain follows.
+///
+/// SPEC-20261125-run-sync-procedure-receipt (D-5) retired the needles of rules that decisions of
+/// 2026-11-23 to 2026-11-25 overturned: the whole `--bin moai` and `--bin moai-cli` runs, the
+/// `--test git_env_scrub`, `--test home_isolation_scan` and `--test ac_command_lint` items and
+/// `rustfmt --check src/ops` (the receipt of RUN step 7 is the one set before READY), the
+/// in-repository runner `tools/self_check.sh` with `--full-python` and its `exit=75` line, the
+/// Python `tools/source_manifest.py` pair (the manifest hash is `shasum -a 256`), the
+/// `profile::LIMIT` wording of the size item (the bound itself is still read from the code
+/// below), and "at most 5 for audit tier 1 and 12 for tier 2" (mutants are asked for at audit
+/// tier 2 only).
 #[test]
 fn self_check_lists_the_pre_pr_checks_and_is_named_by_impl_and_the_chains() {
     let read = |rel: &str| std::fs::read_to_string(package().join(rel)).unwrap();
@@ -959,25 +993,19 @@ fn self_check_lists_the_pre_pr_checks_and_is_named_by_impl_and_the_chains() {
     let manifest = read("references/source-manifest.json");
     assert!(manifest.contains("\"references/internal/self-check.md\""));
     for needle in [
-        "`cargo test --offline --locked --bin moai` and `cargo test --offline --locked --bin moai-cli`, whole: never with a test-name filter",
-        "`moai package-inspect skills/moai` exits 0 and no package file is over 65,536 bytes (`profile::LIMIT`)",
+        "`moai package-inspect skills/moai` exits 0 and no package file is over 65,536 bytes",
         "`cargo clippy --offline --locked --all-targets -- -D warnings`",
         "`cargo fmt --check`",
-        "`--test git_env_scrub`",
-        "`--test home_isolation_scan`",
-        "`--test ac_command_lint`",
         "`moai pr-self-audit-check --file BODY.md`",
         "`audit-tier: ",
         "skip it with the reason",
-        "`tools/self_check.sh`",
         // Audit of 421b11a2c9, N1-N6.
         "`git diff --check <base>...HEAD`",
-        "`--full-python`",
-        "`rustfmt --check --edition 2021 src/ops/*.rs`",
-        "`exit=75 slot-refused (not run)`",
-        "`tools/source_manifest.py write`, then `tools/source_manifest.py check`",
         "no commit message, branch name or pull request title carries a card number",
-        "one mutation per new guard, the riskiest first; at most 5 for audit tier 1 and 12 for tier 2",
+        // The receipt of RUN step 7, the mutants of audit tier 2, and the manifest hash.
+        "Receipt: run the `verify:` commands of the SPEC's criteria, then the receipt of `workflows/run.md`, step 7.",
+        "at audit tier 2 only, one mutation per new guard, the riskiest first, at most 12; below tier 2 none is asked for",
+        "`shasum -a 256`",
     ] {
         assert!(text.contains(needle), "self-check.md lacks {needle:?}");
     }
@@ -1029,12 +1057,14 @@ fn self_check_lists_the_pre_pr_checks_and_is_named_by_impl_and_the_chains() {
 
 /// The words that send a reader to where the build rule lives now: by path from an agent or an
 /// internal reference, by name from another workflow (a workflow names no package path).
-const BUILD_RULE_POINTER: &str = "(`workflows/run.md`, \"Check-run rules\")";
-const BUILD_RULE_WORKFLOW_POINTER: &str = "(the RUN workflow, \"Check-run rules\")";
+const BUILD_RULE_POINTER: &str = "(`workflows/run.md`, step 1)";
+const BUILD_RULE_WORKFLOW_POINTER: &str = "(the RUN workflow, step 1)";
 
 /// A user decision of 2026-11-17 wrote the build rule as the reference
 /// `internal/build-folder`; SPEC-20261122-next-flow-skills-agents slice C (D-14, the user's build
-/// rule of 2026-11-22) removed that reference and rewrote the rule in RUN's "Check-run rules".
+/// rule of 2026-11-22) removed that reference and rewrote the rule in RUN's "Check-run rules";
+/// SPEC-20261125-run-sync-procedure-receipt moved it to `internal/build-slots`, which RUN step 1
+/// names, so the agents and references point to "step 1" now.
 /// The pins whose rule still holds moved with it: one build folder per worktree, never shared;
 /// the end-of-task cleanup of the cargo output the worker made; evidence kept apart from that
 /// cleanup; `CARGO_INCREMENTAL=0` in the builder agents; leftover agent build folders removed
@@ -1050,21 +1080,47 @@ fn build_rule_lives_in_run_and_the_builders_point_to_it() {
         .exists());
     assert!(!read("references/source-manifest.json").contains("internal/build-folder"));
     let run = read("workflows/run.md");
-    let rules = run
-        .split("\n## Check-run rules\n")
-        .nth(1)
-        .and_then(|s| s.split("\n## ").next())
-        .expect("run.md has a `## Check-run rules` section");
-    for needle in [
-        "Use one build folder per worktree",
-        "never share it with another worktree",
-        "a lane removes only the cargo output it made itself",
-        "the notes, evidence and scripts under `target/<name>/`",
+    // RUN's step 1 sends the reader to the reference that holds the rule.
+    let step1 = run
+        .lines()
+        .find(|l| l.starts_with("1. "))
+        .expect("run.md has a step 1");
+    assert!(
+        step1.contains("`internal/build-slots`"),
+        "run.md step 1 does not name internal/build-slots: {step1}"
+    );
+    let slots = read("references/internal/build-slots.md");
+    let section = |name: &str| -> String {
+        slots
+            .split(&format!("\n## {name}\n"))
+            .nth(1)
+            .and_then(|s| s.split("\n## ").next())
+            .unwrap_or_else(|| panic!("build-slots.md has no `## {name}` section"))
+            .to_string()
+    };
+    for (name, needles) in [
+        (
+            "Worktrees and build folders",
+            [
+                "Use one build folder per worktree",
+                "never share it with another worktree",
+            ],
+        ),
+        (
+            "Cleanup",
+            [
+                "a lane removes only the cargo output it made itself",
+                "the notes, evidence and scripts under `target/<name>/`",
+            ],
+        ),
     ] {
-        assert!(
-            rules.contains(needle),
-            "run.md \"Check-run rules\" lacks {needle:?}"
-        );
+        let rules = section(name);
+        for needle in needles {
+            assert!(
+                rules.contains(needle),
+                "build-slots.md \"{name}\" lacks {needle:?}"
+            );
+        }
     }
     assert!(
         read("workflows/update.md").contains("go only as the rows the user picks"),

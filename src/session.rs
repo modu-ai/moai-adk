@@ -176,11 +176,14 @@ pub fn agent_prefix(dir: &Path) -> String {
 }
 
 /// `<project name>-agent-<name>`: a name of [`AGENT_NAMES`] chosen at random, with equal chance,
-/// among the names whose session live lock is not held and whose registry entry has no running
-/// lease. A folder outside a git repository has no sessions folder to read, so every name is
-/// free. When every name is taken the answer is one message that names `--name`. The seed comes
-/// from the clock, the process id, `now` and a process-wide counter, so two calls in one
-/// nanosecond differ; [`pick_agent_name_seeded`] takes it from the caller.
+/// among the names that are free in both of their forms, `agent-<name>` and
+/// `<project name>-agent-<name>` (SPEC-20261125-session-registry-session-key REQ-8). A form is
+/// taken while its `<form>.live` lock is held or its registry entry `<form>.json` has a running
+/// lease (REQ-2, REQ-3); the answer always carries the project prefix. A folder outside a git
+/// repository has no sessions folder to read, so every name is free. When every name is taken
+/// the answer is one message that names `--name` (REQ-2). The seed comes from the clock, the
+/// process id, `now` and a process-wide counter, so two calls in one nanosecond differ;
+/// [`pick_agent_name_seeded`] takes it from the caller.
 pub fn pick_agent_name(dir: &Path, now: i64) -> Result<String, String> {
     pick_agent_name_seeded(dir, now, agent_pick_seed(now))
 }
@@ -194,9 +197,16 @@ pub fn pick_agent_name_seeded(dir: &Path, now: i64, seed: u64) -> Result<String,
     for n in AGENT_NAMES {
         let name = format!("{prefix}{n}");
         if let Some(sessions) = &sessions {
-            if live_lock_held(&sessions.join(format!("{name}.live")))?
-                || crate::lane_registry::is_live(sessions, &name, now)?
-            {
+            let mut taken = false;
+            for form in [format!("agent-{n}"), name.clone()] {
+                if live_lock_held(&sessions.join(format!("{form}.live")))?
+                    || crate::lane_registry::is_live(sessions, &form, now)?
+                {
+                    taken = true;
+                    break;
+                }
+            }
+            if taken {
                 continue;
             }
         }

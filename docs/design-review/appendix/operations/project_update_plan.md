@@ -19,3 +19,13 @@ operation `project.update_plan` · 코드 `src/ops/project_update_plan.rs`, `src
 - 그 밖: `project`(정규 경로), `detected`(감지 사실, 실패 시 `null`), `state_root`, `all_unchanged`(`backup`·`install`·`merge` 의 모든 step 이 `unchanged` 또는 `skip`).
 
 자리표시자 프로필(#2936 R3): `generation` 단계는 프로필이 첫 실행의 자리표시자 그대로면 `needs_decision` 으로 멈추고 `/moai project` 를 안내한다. 적용 명령은 나오지 않는다(`generation-apply` 가 거부하는 계획을 보이지 않으려는 것).
+
+## 다음 할 일 키 (`next`·`say`·`decline`·`ask`·`chain`·`finish`)
+
+`SPEC-20261125-update-next-say-ask-chain` · 코드 `src/project_update.rs`, `src/project_update/guide.rs`. 세션이 `state`·`apply`·`preview.choices`·`reason` 을 맞춰 읽지 않고 단계마다 따로 묻지 않아도 되도록, 이미 찍힌 값에서 정해지는 사실을 더한다. 아무것도 쓰지 않고(프로젝트도 HOME 도 그대로), 위의 필드와 값은 하나도 바뀌지 않는다(`all_unchanged` 식 포함). 새 키는 `workflows/update.md` 가 아직 읽지 않는다: 그 글은 다음 조각이다.
+
+- 단계마다 `next`(`apply`·`ask`·`wait`·`report`·`none` 중 하나), `say`, `decline` 이 붙는다. `next` 는 `guide::next_of` 가 위에서부터 첫 규칙으로 정한다: `unchanged`·`skip`·`optional` 이면 `none`; `blocked` 이고 이유가 기다림 표(`BEHIND`: 이유 → 그 이유가 말하는 앞선 단계)에 있으면 `wait`(표에 없는 이유의 `blocked` 는 `report`); `ready`·`needs_decision`·`conflict` 이고 선택지가 있거나 명령에 `<warning-confirmation>`·`--confirm-replace` 가 있으면 `ask`; 선택지도 그 낱말도 없이 명령이 있으면 `apply`(명령이 있는 `needs_decision` 도 `apply`); 그 밖은 `report`.
+- `say` 는 영어 한 줄이다. 단계 id·상태 낱말·이슈·명령 이름을 담지 않고(`guide.rs` 시험이 고정) `reason` 을 되풀이하지 않는다(오류 문구가 들어갈 수 있다). 하는 일·고를 것·이미 최신인 이유·막힌 이유·기다림·거절이 각각 한 문장이고, 표에 없는 단계는 일반 문장을 쓴다. `decline` 은 그 단계 `preview.decline` 객체의 복사이고 없으면 `null` 이다(거절 기록은 `SPEC-20261125-update-declined-steps` 의 몫).
+- 최상위 `ask`: 실행할 수 있는 단계(`next` 가 `apply` 또는 `ask`)가 하나라도 있으면 객체 하나, 없으면 `null`. `question` 과 `options`(`apply`(추천)·`choose`·`leave`; `steps` 가 비면 `choose`(추천)·`leave`) 에 이어 세 목록을 싣는다. `steps`: 찍힌 순서대로 `next` 가 `apply` 인 단계와, `ask` 이면서 확인 낱말 없는 추천 선택지가 있는 단계, 항목은 `{step, say, guarded, pick}`(`pick` 은 추천 선택지 id, `apply` 단계는 `null`). `follows`: `next` 가 `wait` 인 단계, `{step, say, guarded, after}`(`after` 는 그 단계가 뒤에 서는 `steps` 의 단계 id, 비어 있을 수 있다). `picks`: 나머지 `ask` 단계, `{step, say, guarded}`. `guarded` 는 `go-settings`·`go-state`·`reports`·`claude-settings`·`hooks`·`claude-settings-merge` 에서만 참이다.
+- 최상위 `chain`: `apply_order` 는 `ask.steps` 의 id 를 같은 순서로, `preview_again` 은 다른 단계가 뒤에 서는 실행 단계마다 `{after, then}` 하나(`then` 은 그 뒤에 기다리는 단계 id). `ask` 가 `null` 이면 두 목록 다 비어 있다(`chain` 은 `null` 이 아니다).
+- 최상위 `finish`: `ask` 가 `null` 일 때만 `{say, open}`, 아니면 `null` — 둘 중 정확히 하나만 객체다. `open` 은 `next` 가 `report` 또는 `wait` 인 단계의 `{step, next, say}` 목록이고, `say` 는 `all_unchanged` 이면 남은 것이 없어 묻지 않고 끝난다는 문장, 아니면 스스로 실행할 단계가 없어 묻지 않고 끝나며 `open` 의 단계는 살펴봐야 한다는 문장이다.

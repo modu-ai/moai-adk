@@ -12,6 +12,16 @@ fn workflow(name: &str) -> String {
     .unwrap()
 }
 
+/// The shell-guards reference, where the host worktree guard table and the check-and-push rule
+/// live since SPEC-20261125-run-sync-procedure-receipt.
+fn shell_guards() -> String {
+    fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("skills/moai/references/internal/shell-guards.md"),
+    )
+    .unwrap()
+}
+
 fn says(text: &str, file: &str, phrases: &[&str]) {
     for p in phrases {
         assert!(text.contains(p), "{file} must say `{p}`");
@@ -23,14 +33,18 @@ fn says(text: &str, file: &str, phrases: &[&str]) {
 #[test]
 fn mode_agent_lists_every_host_guard_refusal_with_its_accepted_shape() {
     // The table moved to RUN with the retired MODE-AGENT route
-    // (SPEC-20261122-next-flow-skills-agents REQ-2); the name stays.
+    // (SPEC-20261122-next-flow-skills-agents REQ-2) and from RUN to
+    // `references/internal/shell-guards.md` (SPEC-20261125-run-sync-procedure-receipt); the
+    // name stays. RUN names the reference for a refused command.
     let run = workflow("run.md");
+    says(&run, "run.md", &["follow `internal/shell-guards`"]);
+    let run = shell_guards();
     says(
         &run,
-        "run.md",
+        "shell-guards.md",
         &[
-            "Host worktree guard (Issue #2836",
-            "not a MoAI hook, whose refusals start with `MoAI tool-preflight:`",
+            "\n## Host worktree guard\n",
+            "not from a MoAI hook (whose refusals start with `MoAI tool-preflight:`)",
             // The four refusal kinds of the #2836 sample, as the host words them.
             "| `names git in a form too complex to verify`",
             "| `gives worktree add a path that can't be verified`",
@@ -43,7 +57,7 @@ fn mode_agent_lists_every_host_guard_refusal_with_its_accepted_shape() {
             "`git -C <own worktree> show <ref>:<path>`",
             "`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_SYSTEM=/dev/null`",
             // Never a bypass.
-            "a refusal of the effect itself — a write in another worktree, the real HOME — stays a refusal",
+            "a refusal of the effect itself, such as a write in another worktree or the real HOME, stays a refusal",
         ],
     );
 }
@@ -53,23 +67,22 @@ fn mode_agent_lists_every_host_guard_refusal_with_its_accepted_shape() {
 #[test]
 fn mode_agent_keeps_a_check_apart_from_the_push_and_the_comments_it_guards() {
     // The rule moved to RUN with the retired MODE-AGENT route
-    // (SPEC-20261122-next-flow-skills-agents REQ-2); the name stays.
-    let run = workflow("run.md");
+    // (SPEC-20261122-next-flow-skills-agents REQ-2) and from RUN to
+    // `references/internal/shell-guards.md` (SPEC-20261125-run-sync-procedure-receipt); the
+    // name stays.
+    let guards = shell_guards();
     says(
-        &run,
-        "run.md",
+        &guards,
+        "shell-guards.md",
         &[
             "Never send a check and the push it guards as parallel calls in one response",
-            // C-53 S5: a card note (was: an Issue or pull request comment).
-            "The same holds for a card note, a pull request comment and a leader message that report the check",
+            // C-53 S5: a card note (was: an Issue or pull request comment); the pull request
+            // comment is the release pull request's.
+            "The same holds for a card note, a release pull request comment and a leader message that report the check",
             "a guard refusal stops only the refused call, so the other calls of the same response still run",
+            // REQ-8: the reference lists the shapes itself instead of naming the retired
+            // MODE-AGENT workflow.
+            "The shapes it accepts are in \"Host worktree guard\"",
         ],
-    );
-    // The RUN workflow carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents);
-    // REQ-8: it lists the shapes itself instead of naming the retired MODE-AGENT workflow.
-    says(
-        &run,
-        "run.md",
-        &["the shapes it accepts are listed below (\"Host worktree guard\")"],
     );
 }

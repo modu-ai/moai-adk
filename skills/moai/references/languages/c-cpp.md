@@ -9,7 +9,7 @@ When to read: `internal/quality` sent you here because the project's detected la
 | `CMakeLists.txt` | `cmake -S . -B build` then `cmake --build build` | `ctest --test-dir build --output-on-failure` |
 | `meson.build` | `meson setup build` then `meson compile -C build` | `meson test -C build` |
 | `Makefile` | `make` | `make test` or `make check`, only when that target exists |
-| none of these | nothing to run: record build and test as `not_run` and ask how the project builds | |
+| none of these | nothing to run: record build and test as `not_run` and ask how the project builds | n/a: nothing is built, so there is no test command |
 
 Use a build folder inside the worktree, and the one the project's docs name when there is one.
 
@@ -25,7 +25,7 @@ Use a build folder inside the worktree, and the one the project's docs name when
 There is no single registry. Check in the manager the project uses:
 
 - `vcpkg.json`: `vcpkg search <name>`;
-- `conanfile.txt` or `conanfile.py`: `conan search <name>`;
+- `conanfile.txt` or `conanfile.py`: `conan search <name>`. Conan 2 searches all configured remotes unless `-r <remote>` names one; Conan 1 searches only the local cache unless `-r` names a remote (`-r all` for every remote). It matches recipe names, so it does not show that a binary exists;
 - a system package: the distribution's package search, and say which distribution you checked.
 
 ## Traps

@@ -108,7 +108,7 @@ fn only_supported_values_are_offered_and_an_unknown_saved_value_is_kept() {
     );
     assert_eq!(
         saved["launcher"]["models"]["claude"],
-        json!({"model": "claude-opus-5-5", "effort": "high"})
+        json!({"model": "claude-opus-5-5", "effort": "medium"})
     );
 }
 
@@ -122,7 +122,7 @@ fn enter_selects_the_defaults_and_the_preview_shows_them() {
     let (result, out) = run_stage(&h.path, &enters(3));
     assert_eq!(result["state"], json!("declined"), "{result}");
     assert!(
-        out.contains("claude: nothing saved -> claude-opus-5-5 high"),
+        out.contains("claude: nothing saved -> claude-opus-5-5 medium"),
         "the preview shows the one pick of the host: {out}"
     );
     assert!(
@@ -148,7 +148,7 @@ fn the_choice_is_written_through_the_digest_bound_apply_and_read_back() {
     assert_eq!(saved["launcher"]["advisor"], json!("x"));
     assert_eq!(
         saved["launcher"]["models"]["claude"],
-        json!({"model": "claude-opus-5-5", "effort": "high"})
+        json!({"model": "claude-opus-5-5", "effort": "medium"})
     );
     // The report reads the same file back.
     let reported = report(&h.path);
@@ -336,7 +336,7 @@ fn a_saved_role_entry_is_listed_as_replaced_and_dropped_by_the_write() {
     let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(
         saved["launcher"]["models"]["claude"],
-        json!({"model": "claude-opus-5-5", "effort": "high"}),
+        json!({"model": "claude-opus-5-5", "effort": "medium"}),
         "no role entry is left beside the flat pair"
     );
 }
