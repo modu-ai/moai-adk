@@ -48,3 +48,17 @@ created: 2026-11-25
 2. Add the two helpers to `tests/common/home.rs`.
 3. Name the helpers in the scan test's message and in the `test_tables` message.
 4. Add the lane rules line; read whether `check affected --card` reads the tip's scan table and note the answer.
+
+## Result
+
+Filled in SYNC for the change in commit `25aeae9ffc26f0ad4c30b7ab0ac33799f4ca3602` (base `71d819ce8a4e7f5c3fc1805b8befb485f3712f81`). The status stays `draft`; approval is the user's.
+
+- AC-1: met — `the_state_folder_helpers_agree_with_the_resolver` in `tests/state_folder_literal_scan.rs`; `cargo nextest run --test state_folder_literal_scan` 13 passed, exit 0 (helper code in `tests/common/home.rs`, commit `25aeae9ffc26f0ad4c30b7ab0ac33799f4ca3602`)
+- AC-2: met — `a_test_that_uses_the_helpers_spells_no_state_folder_name` in `tests/state_folder_literal_scan.rs`, same run (13 passed, exit 0)
+- AC-3: met — `the_scan_rejection_names_the_helpers` in `tests/state_folder_literal_scan.rs`, same run (13 passed, exit 0)
+- AC-4: met — lib test `a_new_test_file_with_a_state_folder_literal_is_told_the_helpers` in `src/check_affected.rs`; 2 passed together with `the_repository_tests_pass_the_table_step_as_added_files`, exit 0
+- AC-5: met — `docs/lane-rules.md` carries the added bullet under "Tests" (the line naming `TempHome::state_dir`, `TempHome::make_earlier_state_dir`, `tests/common/home.rs` and the `allow.tsv` row); the line was added in SYNC and the AC-5 `verify:` lib test was not run by the documentation step
+
+Decision D-1 holds: the guidance line went to `docs/lane-rules.md` and not to `skills/moai/references/internal/test-design.md`, which ships to user projects and is pinned by `source-manifest.json`.
+
+Finding from the Plan step 4: `check affected --card` reads the scan tables (`tools/repo_scans.json`, `tests/fixtures/state_folder_literals/allow.tsv`, `tests/areas.toml`, the `EXEMPT` lists of `tests/repo_scans_table.rs`) only from the lane's own tree, so a lane whose base predates a new scan still passes its receipt. One line was added to `docs/later.md` for the source change.
