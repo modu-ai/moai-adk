@@ -240,7 +240,7 @@ fn fresh_plan_names_the_namespaced_agent_and_skill_paths() {
     assert_eq!(action(&p, AGENT).as_deref(), Some("create"), "{p}");
     assert_eq!(
         generated(&p),
-        vec![AGENT, PROJECTION, SKILL],
+        vec![AGENT, SKILL, PROJECTION],
         "a plan names the agent, the skill and the projection at their namespaced paths only"
     );
     for path in [SKILL, PROJECTION] {
