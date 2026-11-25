@@ -7,6 +7,8 @@ use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::Command;
 
+mod tmp;
+
 type Result<T> = std::result::Result<T, String>;
 
 /// One Rust test target of `tests/` as the caller read it.
@@ -2490,6 +2492,8 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     let mut held: Option<(crate::heavy_slot::Held, usize)> = None;
     let mut refused: Option<i32> = None;
     let mut runner: Option<Runner> = None;
+    // What became of the private `TMPDIR` of the test step (SPEC-20261124-home-guard-flake REQ-13).
+    let mut test_tmpdir = tmp::not_run();
     for i in 0..planned.len() {
         if i == cheap {
             if let Some((label, _)) = results.iter().find(|(_, c)| *c != 0) {
@@ -2527,7 +2531,23 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
                 if let Some(jobs) = build_jobs(*slots) {
                     extra.push(("CARGO_BUILD_JOBS", jobs));
                 }
-                run_step(dir, s, &log, &extra)
+                // Only the test step gets the private folder; every other step keeps the
+                // caller's `TMPDIR` (REQ-13, REQ-21).
+                let mut private = None;
+                if s.label == "test" {
+                    match tmp::prepare(dir, &tmp::candidates(env("TMPDIR"))) {
+                        Ok(p) => {
+                            extra.push(("TMPDIR", p.path.clone().into_os_string()));
+                            private = Some(p);
+                        }
+                        Err(why) => test_tmpdir = tmp::inherited(&why),
+                    }
+                }
+                let code = run_step(dir, s, &log, &extra);
+                if let Some(p) = private {
+                    test_tmpdir = tmp::finish(p, code);
+                }
+                code
             }
             (None, true, None, Some(code)) => {
                 let _ = std::fs::write(
@@ -2572,6 +2592,7 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         "runner": runner.map(Runner::word),
         "refresh": {"touched": refresh.touched, "skipped": refresh.skipped},
         "steps": records,
+        "test_tmpdir": test_tmpdir,
         "out": out.to_string_lossy(),
         "writes": true,
     });

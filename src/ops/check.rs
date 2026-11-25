@@ -31,7 +31,14 @@ enum Action {
     /// code to each of them and no cargo starts. The `test` step runs with a cap of 4 threads
     /// (`-j 4` for nextest, `RUST_TEST_THREADS=4` for `cargo test`); a `NEXTEST_TEST_THREADS` or
     /// `RUST_TEST_THREADS` the caller set stays as it is, and the slot folder's `limits.json` does
-    /// not carry the cap yet. The answer has one `summary` line of `key=value` words in a fixed
+    /// not carry the cap yet. The `test` step also gets a private `TMPDIR`: a new
+    /// `moai-affected-<id>` folder under the first root of the caller's `TMPDIR`, the macOS user
+    /// temporary folder and `/tmp` that lies outside the worktree, inside no git repository and
+    /// has no session id shape in its path (the other steps keep the caller's `TMPDIR`; with no
+    /// such root the test step inherits it). A passed `test` step removes that folder and
+    /// nothing else; a failed one keeps it. The answer's `test_tmpdir` says `removed`, `kept`
+    /// (with its path), `left` (with the reason it was not removed), `inherited` (with the
+    /// reason) or `not_run`. The answer has one `summary` line of `key=value` words in a fixed
     /// order: `check-affected`, base, head, targets, scans, `selection=lane` (only a `--lane` run
     /// writes it: its `summary.txt` is no receipt for a READY or REPAIRED note, a bare run is),
     /// `selection=card` (only a `--card` run that narrowed writes it; its `summary.txt` is a
