@@ -1003,6 +1003,13 @@ fn language_key_plan_sets_the_saved_conversation_language() {
     let again = plan(&home, &package()).unwrap();
     assert_eq!(action(&again, "setting"), "unchanged");
     assert!(key_list(&again).is_empty());
+    // A language MoAI wrote itself is not reported as "the user's value" on every later plan.
+    let own_note = again
+        .targets
+        .iter()
+        .find(|t| t.kind == "setting")
+        .and_then(|t| t.detail.clone());
+    assert_eq!(own_note, None, "{own_note:?}");
 
     // A settings file without the key keeps its own keys and order.
     let (_t, home) = fresh();
@@ -1076,7 +1083,8 @@ fn language_key_plan_sets_the_saved_conversation_language() {
 }
 
 /// AC-2 (REQ-2): a `language` key that is already there is kept whatever it holds (another name,
-/// the empty string, a number, `null`, the same name) and the plan's detail says so.
+/// the empty string, a number, `null`, the same name) and the plan's detail says so, except for
+/// the name MoAI would write itself, which stays without a note.
 #[test]
 fn language_key_user_value_is_kept_and_said_so() {
     for (text, shown) in [
@@ -1098,10 +1106,15 @@ fn language_key_user_value_is_kept_and_said_so() {
             "{text}"
         );
         let d = detail(&p, "setting");
-        assert!(
-            d.contains("language") && d.contains(shown) && d.contains("kept"),
-            "{d}"
-        );
+        if text == "\"korean\"" {
+            // The value MoAI would write itself: kept as it is, and nothing said about it.
+            assert!(!d.contains("kept"), "{d}");
+        } else {
+            assert!(
+                d.contains("language") && d.contains(shown) && d.contains("kept"),
+                "{d}"
+            );
+        }
         apply(&home, &package(), &p.plan_digest, PERM).unwrap();
         // Every byte of the user's key stays; only `outputStyle` is added after it.
         assert_eq!(

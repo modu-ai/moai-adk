@@ -694,6 +694,8 @@ fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
     match language_key(home) {
         Ok(k) => match map.get("language") {
             None => keys.push(k),
+            // The value already there is the one MoAI would write: nothing to say.
+            Some(v) if *v == k.value => {}
             Some(v) => notes.push(format!("language is {v}: the user's value; kept")),
         },
         Err(reason) => notes.push(reason),
