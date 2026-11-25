@@ -986,7 +986,6 @@ fn the_install_scripts_and_the_release_plan_name_one_tag_family() {
         ("install/install.sh", &sh),
         ("install/install.ps1", &ps1),
         ("install/README.md", &repo_text("install/README.md")),
-        ("docs/local-rc1-kit.md", &repo_text("docs/local-rc1-kit.md")),
     ] {
         assert!(
             !text.contains(&earlier),

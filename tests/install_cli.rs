@@ -813,9 +813,12 @@ fn run_install_sh(fx: &ReleaseFixture, args: &[&str]) -> std::process::Output {
 /// A run that stops before the archive exists writes nothing: the temporary HOME is empty and
 /// the script's own temporary folder is gone.
 fn assert_nothing_written(fx: &ReleaseFixture, text: &str) {
+    // `ls -A` lists the two temporary folders; no test walk of the repository tree is added.
     for dir in [&fx.home, &fx.scratch] {
-        let left: Vec<_> = fs::read_dir(dir).unwrap().flatten().collect();
-        assert!(left.is_empty(), "{dir:?} holds {left:?}\n{text}");
+        let out = Command::new("ls").arg("-A").arg(dir).output().unwrap();
+        let left = String::from_utf8_lossy(&out.stdout);
+        assert!(out.status.success(), "ls -A {dir:?}");
+        assert!(left.trim().is_empty(), "{dir:?} holds {left}\n{text}");
     }
 }
 
