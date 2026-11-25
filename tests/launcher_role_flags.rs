@@ -168,9 +168,10 @@ fn ac1_the_project_name_comes_from_the_profile_else_the_folder() {
     let (code, v, said) = f.dry(&["cc", "-l"]);
     assert_eq!(code, 0, "{said}");
     assert_eq!(v["name"], "leader-some-folder.name", "{said}");
-    fs::create_dir_all(f.project.join(".moai")).unwrap();
+    let state = f.project.join(moai_cli::PROJECT_STATE_DIR);
+    fs::create_dir_all(&state).unwrap();
     fs::write(
-        f.project.join(".moai/project.yaml"),
+        state.join("project.yaml"),
         "{\"project_id\": \"demo-id\"}\n",
     )
     .unwrap();
