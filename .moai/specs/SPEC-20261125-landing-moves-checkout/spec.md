@@ -68,4 +68,7 @@ revision 1 은 체크아웃된 통합 브랜치를 `card land` 가 함께 옮기
 
 ## Result
 
-(구현 뒤에 적어요.)
+- AC-1 met: `tests/card/card_wip_limit.rs` — `take_stops_at_the_limit_and_a_second_lane_raises_it`, `add_stops_at_the_limit_unless_the_user_adds`, `a_wip_limit_of_zero_turns_the_limit_off`, `with_no_live_lane_registered_there_is_no_limit`, `a_lane_with_an_ended_lease_and_a_leader_entry_do_not_count`.
+- AC-2 met: `next_at_the_limit_names_the_cards_that_wait_for_an_audit`, `next_at_the_limit_with_nothing_to_audit_names_the_limit`.
+- AC-3 met: `check affected --card` 가 175개 대상(이웃 `card_dispatch_cli`, `card_cli`, `profile` 포함)을 실행했고 4402개가 모두 통과했어요.
+- 풀이: 한도 비교는 `>=` (D-2), 레인이 0 이면 한도를 적용하지 않아요(D-3). 첫 영수증이 29개 실패(레인을 등록하지 않은 세션의 기존 테스트 28개와 새 테스트의 상태 폴더 글자 1개)해서 D-3 으로 고쳤어요.
