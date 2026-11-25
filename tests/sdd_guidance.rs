@@ -369,7 +369,8 @@ fn each_stage_workflow_keeps_its_own_duty() {
         (
             "skills/moai/workflows/audit.md",
             "reads only, and any drift between the SPEC (its Scope, requirements and `## Result`), \
-             the code, the tests, the documents and the `@cc:` comments is a FAIL finding, never a fix.",
+             the code, the tests, the documents and the `@cc:` comments is a non-blocking finding, \
+             never a fix, unless it is one of the four FAIL kinds",
         ),
         (
             "skills/moai/workflows/sync.md",

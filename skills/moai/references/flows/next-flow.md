@@ -12,7 +12,7 @@ Four technical rules make the flow run.
 
 - **No tip chase.** A lane works from the base it started on. When the integration tip moves, the lane does not merge the new tip, rebase or start its checks again. The lander deals with a moved tip once, at landing.
 - **Evidence before landing.** A head lands only with its evidence: the checks the lane ran on that head, with their exit codes, and a passing verdict from a session that did not write the change (`references/audit.md`). The landing command itself refuses a head whose SPEC check or card criteria do not pass at that head.
-- **Exactly-once landing.** A card lands once. The landing command moves the integration branch by one compare-and-swap and closes the card in the same call; a rerun of the same call finds the head already inside the tip and never moves the branch twice. A worktree on the branch follows the move (`worktree_follow`).
+- **Exactly-once landing.** A card lands once. The landing command moves the integration branch by one compare-and-swap and closes the card in the same call; a rerun of the same call finds the head already inside the tip and never moves the branch twice. Its worktree follows too.
 - **A guarded tip.** The integration branch moves only through the landing command. A protection hook refuses every other change of it.
 
 ## A lane
@@ -20,9 +20,10 @@ Four technical rules make the flow run.
 - Work in a worktree under the project's `.claude/worktrees`, on its own branch; never in the primary checkout.
 - A lane only commits: no push, no pull request and no merge of a moved integration tip. A background session never pushes and never opens a pull request.
 - A lane submits two things and nothing else: its head commit and the base its checks ran on. It adds one `moai card note` whose first line is `LANE-READY-INTEGRATION <card> head=<40 hex>` and names the base in the lines below it.
-- The READY note carries one line per new guard test: `guard-mutant: <test> | <code removed or flipped> | exit <n>`, where `<n>` is the non-zero exit code the test gave on a copy that lacks the guarded code, or `guard-mutant: none | <reason>` when the change adds no guard test. A guard test that passes with its code removed is not a guard; the lane runs that mutant once per new guard test before READY. `moai bundle check` lists a missing, unreadable or `exit 0` line as a warning; it cannot tell whether a line is true, so the auditor reads it.
+- At tier 2 the READY note carries one line per new guard test: `guard-mutant: <test> | <code removed or flipped> | exit <n>`, where `<n>` is the non-zero exit code the test gave on a copy that lacks the guarded code, or `guard-mutant: none | <reason>` when the change adds no guard test; the lane runs that mutant once per new guard test before READY. Below tier 2 none is asked for. `moai bundle check` lists a missing, unreadable or `exit 0` line as a warning.
+- Work cap: cards in work and awaiting a check at most twice the lanes; at the cap take no new card, help check and land; the leader opens none above it.
 - A decision the lane cannot make goes on the card as a blocked note (`workflows/work.md`); with no registered leader the lane takes the next card, and with a registered leader it waits for that leader's dispatch.
-- A `LANE-READY-INTEGRATION`, READY, REPAIRED or MERGE-READY note and a `LANE-DONE` line on the screen hand a card back; none of them is done in the ledger. How the session is cleared and the next card starts goes in two stages.
+- A `LANE-READY-INTEGRATION`, READY, REPAIRED or MERGE-READY note and a `LANE-DONE` line on the screen hand a card back; none of them is done in the ledger, and the READY note is the submission signal, not the ledger state `ready`.
 
 ### Completion message (a lane to the leader)
 
@@ -47,7 +48,7 @@ Four technical rules make the flow run.
 
 - `/clear` and a lane-terminal manager are not conditions of dispatch. The start signal is the card verified and landed on the local integration branch, then done with its reservation released in the ledger.
 - With no registered leader the worker reserves the next eligible card once, and an automatic restart runs only through the existing HOLD, ownership, priority and safety checks.
-- Waiting for an audit and the hand-back of a card are separate from done and start nothing. A worker clearing its own session is not documented as a guarantee.
+- No leader: flow ends at submission. Waiting for an audit and the hand-back of a card are separate from done and start nothing. A worker clearing its own session is not documented as a guarantee.
 
 ## Landing
 
@@ -57,5 +58,5 @@ Four technical rules make the flow run.
 - Audit brief: name the scan tests `moai repo-scans --refs <tip> <head>` picks; run only their `cargo` checks on the merge tree, leaving out a Python line, and record each as a receipt step `scan:<id>` of the PASS for `moai card land`.
 - The protection hook is git's `reference-transaction` hook, which runs `moai card guard`. It refuses every create, move and delete of the integration branch that the landing command did not announce, a rename or copy onto its name included. Land with `moai card land`; never look for a way around the hook.
 - After a landing the landing command pushes the integration branch to the remote, fast-forward only, and only when the user has turned the remote copy on: the `remote_copy` setting, off by default, a key of the project profile. While it is off nothing is pushed and the remote is not read. A copy that could not finish waits for the next landing, and a remote whose branch went another way is held as it is; neither undoes the landing.
-- Remote checks never block a landing; a failed remote run becomes a criterion of the open follow-up card of the SPEC the failed head names (`moai card criterion-add`).
+- Remote checks never block a landing; a failed remote run becomes one line of `docs/later.md`.
 - Nobody moves the integration branch by hand, by a reset or by a push to it, and a landing never names a head nobody audited.
