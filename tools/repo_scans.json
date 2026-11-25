@@ -2031,7 +2031,7 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test agent_defs_package --test atlas_query_cli --test check_affected_modes_cli --test cli_text_citations --test codex_home_update_removed --test e2e_temp_home_cli --test gate_collect --test git_hooks_cli --test help_text_names_moai --test home_isolation_scan --test hook_bash_boundary_cli --test hot_file_ops_merge --test next_flow_skill_scan --test orca_optional_3005 --test product_cli --test profile_apply_engine --test project_harness_label --test project_layer_follow_ups --test project_preview_order --test project_worktree_move_choice --test repo_scans_cli --test retired_host_words --test retired_hosts_layer --test worktree_cli --test repo_scans_table",
+        "cargo test --offline --locked --test agent_defs_package --test atlas_query_cli --test check_affected_modes_cli --test cli_text_citations --test codex_home_update_removed --test e2e_temp_home_cli --test gate_collect --test git_hooks_cli --test help_text_names_moai --test home_isolation_scan --test hook_bash_boundary_cli --test hook_write_boundary_cli --test hot_file_ops_merge --test next_flow_skill_scan --test orca_optional_3005 --test product_cli --test profile_apply_engine --test project_harness_label --test project_layer_follow_ups --test project_preview_order --test project_worktree_move_choice --test repo_scans_cli --test retired_host_words --test retired_hosts_layer --test worktree_cli --test repo_scans_table",
         "cargo test --offline --locked --test card board_bundle_link_cli:: -- ledger_recover::"
       ],
       "rules": [
@@ -2047,6 +2047,7 @@
         "tests/help_text_names_moai.rs",
         "tests/home_isolation_scan.rs",
         "tests/hook_bash_boundary_cli.rs",
+        "tests/hook_write_boundary_cli.rs",
         "tests/hot_file_ops_merge.rs",
         "tests/card/ledger_recover.rs",
         "tests/next_flow_skill_scan.rs",
@@ -2159,6 +2160,9 @@
         },
         {
           "prefix": "src/hook_engine.rs"
+        },
+        {
+          "prefix": "src/hook_write_boundary.rs"
         },
         {
           "prefix": "src/hooks.rs"

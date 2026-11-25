@@ -526,3 +526,73 @@ fn ac7_orca_variables_change_nothing_and_no_settings_file_appears() {
     variables.dedup();
     assert_eq!(variables, ["CLAUDE_PROJECT_DIR", "HOME"]);
 }
+
+/// AC-8 (SPEC-20261126-hook-write-boundary): a `hook_event_name` that differs from the event the
+/// name belongs to is judged by nobody: nothing is printed and one `event_mismatch` receipt line
+/// is written without any input byte; the matching name and an absent name write no such line.
+#[test]
+fn ac8_a_call_of_another_event_is_refused_with_one_receipt_line() {
+    let event_of = |name: &str| match name {
+        "session-context" => "SessionStart",
+        _ => "PreToolUse",
+    };
+    for name in NAMES {
+        let fx = Fx::new(true, true);
+        let right = event_of(name);
+        let wrong = if right == "PreToolUse" {
+            "SessionStart"
+        } else {
+            "PreToolUse"
+        };
+        let make = |event: Option<Value>| {
+            let mut object = serde_json::json!({
+                "session_id": "s1",
+                "cwd": fx.project,
+                "tool_name": "Write",
+                "tool_input": { "file_path": "/x/SECRETMARKER", "content": "SECRETMARKER" },
+            });
+            if let Some(event) = event {
+                object["hook_event_name"] = event;
+            }
+            object.to_string().into_bytes()
+        };
+        // The matching and the absent event name write no mismatch line.
+        for input in [make(Some(Value::from(right))), make(None)] {
+            let r = fx.hook(name, &input);
+            assert_eq!(r.code, 0, "{name}: {}", r.stderr);
+            assert!(
+                receipt_lines(&fx.receipt())
+                    .iter()
+                    .all(|l| !l.contains("event_mismatch")),
+                "{name}"
+            );
+        }
+        // Another event name, a number, a null and an array each write exactly one line.
+        let wrong_inputs = [
+            make(Some(Value::from(wrong))),
+            make(Some(Value::from(7))),
+            make(Some(Value::Null)),
+            make(Some(serde_json::json!([right]))),
+        ];
+        for (i, input) in wrong_inputs.iter().enumerate() {
+            let r = fx.hook(name, input);
+            assert_eq!(r.code, 0, "{name} {i}: {}", r.stderr);
+            assert_eq!(r.stdout, "", "{name} {i}");
+            assert_eq!(r.stderr, "", "{name} {i}");
+            // `session-context` may also write its own ledger line; only the mismatch lines count.
+            let lines: Vec<String> = receipt_lines(&fx.receipt())
+                .into_iter()
+                .filter(|l| l.contains("event_mismatch"))
+                .collect();
+            assert_eq!(lines.len(), i + 1, "{name} {i}");
+            let v: Value = serde_json::from_str(lines.last().unwrap()).unwrap();
+            assert_eq!(v["name"], name);
+            assert_eq!(v["reason"], "event_mismatch");
+        }
+        let text = fs::read_to_string(fx.receipt()).unwrap();
+        assert!(
+            !text.contains("SECRETMARKER"),
+            "the input must not reach the receipt"
+        );
+    }
+}

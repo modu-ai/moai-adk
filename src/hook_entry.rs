@@ -103,6 +103,12 @@ fn decide(name: &str, input: &[u8], cwd: &Path, env: &Env, now_ms: u128) -> Answ
         Err(reason) => return failure(name, reason, &project, env, now_ms),
         Ok(object) => object,
     };
+    // A call that names another event than the registered name belongs to is judged by nobody.
+    if let (Some(expected), Some(seen)) = (expected_event(name), object.get("hook_event_name")) {
+        if seen.as_str() != Some(expected) {
+            return failure(name, "event_mismatch", &project, env, now_ms);
+        }
+    }
     if name == "session-context" {
         let context = session_start::context(
             &object,
@@ -160,7 +166,7 @@ fn parse(input: &[u8]) -> Result<Map<String, Value>, &'static str> {
 }
 
 /// The handlers of the other hooks: H1 (`session-context`) is `session_start::context`, H2
-/// (`bash-boundary`) judges in `hook_bash_boundary`, and H3 decides nothing yet.
+/// (`bash-boundary`) judges in `hook_bash_boundary`, and H3 (`write-boundary`) judges in `hook_write_boundary`.
 fn handle(
     name: &str,
     input: &Map<String, Value>,
@@ -178,14 +184,24 @@ fn handle(
                 process_cwd: cwd,
             },
         ),
-        "write-boundary" => write_boundary(input),
+        "write-boundary" => moai_cli::hook_write_boundary::decide(
+            input,
+            &moai_cli::hook_write_boundary::Env {
+                project_dir: env.project_dir.as_deref(),
+                process_cwd: cwd,
+            },
+        ),
         _ => None,
     }
 }
 
-/// H3 (a later slice fills it).
-fn write_boundary(_input: &Map<String, Value>) -> Option<Value> {
-    None
+/// The event a registered name belongs to, `None` for a name that is not one of the three.
+fn expected_event(name: &str) -> Option<&'static str> {
+    match name {
+        "session-context" => Some("SessionStart"),
+        "bash-boundary" | "write-boundary" => Some("PreToolUse"),
+        _ => None,
+    }
 }
 
 /// One receipt line, or one stderr line saying why there is none. The line holds the name, the
