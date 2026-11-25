@@ -928,6 +928,38 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Hand in a finished card: gates, receipt, READY note and review in one
+    ///
+    /// Writes the ledger, and only after every step before the write passed. As this session,
+    /// holding the card at `--generation`: (1) the reserved worktree is clean, its HEAD is the
+    /// tip of the reserved branch and no criterion is `open` (mark it with `card criterion`);
+    /// (2) the fast gates all run, so one refusal lists every failure: `diff_check`, `fmt`,
+    /// `ops_rustfmt`, `tables` and `trailers`; a failing gate starts no long step; (3) a PASS
+    /// summary of the same head and base is quoted, otherwise `check affected --card` runs once;
+    /// (4) the READY note is written from the receipt: first line `LANE-READY-INTEGRATION
+    /// <card> head=<40hex>`, base, tier (the floor of the changed paths), receipt line, fast-gate
+    /// exits, each criterion, the paths outside the reserved scope on one `outside-scope:` line
+    /// (never a refusal), the `--mutants` lines and `leftovers: none`; (5) the card goes to
+    /// `review` and its paths are given back, as `card review` does. The answer names the head,
+    /// the tier and the next card. It writes no verdict and lands nothing. A failing step
+    /// leaves the ledger as it was and names the step and its log.
+    Submit {
+        /// `C-12`.
+        card: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// A file of `guard-mutant: <test> | <code removed> | exit <n>` lines; a tier 2 head
+        /// needs it (`guard-mutant: none | <reason>` for no new guard test).
+        #[arg(long)]
+        mutants: Option<PathBuf>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Give paths of a held card back
     ///
     /// Writes the ledger. The holder removes the named `--path`s from the reservation of this
@@ -1814,6 +1846,31 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             generation,
             &keep,
         ),
+        Action::Submit {
+            card,
+            generation,
+            mutants,
+            project,
+            home,
+        } => {
+            // The tests' seam for the long check program; the command line has no flag for it
+            // and a release build does not read the variable at all.
+            #[cfg(debug_assertions)]
+            let submit_check = env("MOAI_TEST_SUBMIT_CHECK").map(PathBuf::from);
+            #[cfg(not(debug_assertions))]
+            let submit_check: Option<PathBuf> = None;
+            moai_cli::card::submit::submit(
+                &project,
+                &resolve_home(home)?,
+                &moai_cli::card::submit::SubmitRequest {
+                    card: &card,
+                    holder: &d::session_holder("submit", env)?,
+                    generation,
+                    mutants: mutants.as_deref(),
+                    check_cmd: submit_check,
+                },
+            )
+        }
         Action::GiveBack {
             card,
             generation,
