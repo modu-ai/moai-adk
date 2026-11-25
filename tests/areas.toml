@@ -14,7 +14,7 @@
 [areas]
 card = ["card", "claim", "ledger", "queue", "dispatch", "startable", "board", "journal", "handoff", "recurring", "close", "goal", "decision", "trailer", "verified", "commit", "forge", "labels", "github", "gitlab", "import", "release", "followup", "orchestrate"]
 update = ["update", "integration", "install", "migrate", "migration", "generation", "versioning", "switch", "models", "model", "retired", "removed", "self", "freshness", "baseline", "go"]
-home = ["home", "hygiene", "worktree", "heavy", "process", "path", "exe", "fake", "binary", "bin", "archive", "recovery", "revert", "state", "apply", "star", "desktop"]
+home = ["home", "build", "hygiene", "worktree", "heavy", "process", "path", "exe", "fake", "binary", "bin", "archive", "recovery", "revert", "state", "apply", "star", "desktop"]
 project = ["project", "profile", "language", "placeholder", "gitignore", "skeleton", "agents", "agent", "claude", "codex", "omp", "orca", "host", "hook", "hooks", "script", "secret", "key", "scope", "herdr", "optional"]
 lane = ["lane", "leader", "session", "launcher", "headless", "run", "work", "flow", "next", "message", "context", "usage", "pty", "stdin", "mode", "question", "bg"]
 screen = ["statusline", "status", "ui", "style", "banner", "output", "help", "cli", "error", "html", "report", "reports", "troubleshooting", "struct"]
