@@ -195,14 +195,23 @@ fn the_declared_checks_run_in_order_and_give_the_receipt() {
     assert_eq!(log.trim(), top.to_string_lossy(), "the check ran elsewhere");
 }
 
-// AC-3 (REQ-4): a failing check fails the run and the next check still runs.
+// AC-3 (REQ-4): with `--keep-going` a failing check fails the run and the next check still runs.
 #[test]
 fn a_failed_declared_check_fails_the_run() {
     let repo = Repo::web(Some(&profile(&[
         ("lint", "exit 3"),
         ("test", "echo after"),
     ])));
-    let r = run(&repo);
+    let slots = slot_dir();
+    let (ok, r) = affected(
+        &repo,
+        &[
+            "--slot-dir",
+            &slots.path().to_string_lossy(),
+            "--keep-going",
+        ],
+    );
+    assert!(ok, "{r}");
     assert_eq!(r["result"], "FAIL", "{r}");
     let line = r["summary"].as_str().unwrap();
     assert!(line.contains(" check=3 "), "{line}");
@@ -212,6 +221,23 @@ fn a_failed_declared_check_fails_the_run() {
         r["steps"][2]["exit"], 0,
         "the later check must still run: {r}"
     );
+    assert_eq!(summary_file(&r), format!("{line}\n"));
+}
+
+// AC-3 (REQ-4): without `--keep-going` a failing check stops the run: the next check is skipped.
+#[test]
+fn a_failed_declared_check_stops_the_next_check_by_default() {
+    let repo = Repo::web(Some(&profile(&[
+        ("lint", "exit 3"),
+        ("test", "echo after"),
+    ])));
+    let r = run(&repo);
+    assert_eq!(r["result"], "FAIL", "{r}");
+    assert_eq!(labels(&r), ["diff_check", "check:lint"], "{r}");
+    assert_eq!(r["steps"][1]["exit"], 3, "{r}");
+    assert_eq!(r["skipped"], serde_json::json!(["check:test"]), "{r}");
+    let line = r["summary"].as_str().unwrap();
+    assert!(line.ends_with(" stopped_at=check result=FAIL"), "{line}");
     assert_eq!(summary_file(&r), format!("{line}\n"));
 }
 

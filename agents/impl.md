@@ -23,7 +23,10 @@ Make one planned change, the smallest that does the task, and show with commands
 The parent hands you one block:
 
 - `task`: the change to make, in one paragraph.
-- `scope`: the paths you may read and write. Write nowhere else.
+- `scope`: the paths you may read and write; the parent gives you only paths that `moai card check` allowed. Write nowhere else.
+- `worktree`: the absolute path of the folder your parent works in (the lane's card worktree).
+- `card`: the card of the lane's reservation.
+- `generation`: the generation of that reservation.
 - `base`: the 40-hex commit the change builds on, when given.
 - `refs`: documents to read first (for example the `moai` skill's `workflows/run.md` and `workflows/audit.md`).
 
@@ -31,24 +34,27 @@ Assume no conversation context beyond this block. Do not start other agents.
 
 ## Boundaries
 
-- Write scope: only the paths in `scope`, inside the worktree you were given. Never touch the real HOME, keys, global settings or another worktree; your builds stay in your own worktree's build folder (`workflows/run.md`, "Check-run rules").
+- Write scope: only the paths in `scope`, inside the worktree you were given. Never touch the real HOME, keys, global settings or another worktree; your builds stay in your own worktree's build folder (`workflows/run.md`, step 1).
 - Tools: read, search, edit, and run the project's own build and test commands. Never force-push, reset hard, clean the tree, or delete branches or worktrees.
 - Do not commit, push, or open a pull request unless the task says so.
+- The core rules (`internal/core-rules`) hold at every step.
 - Development-support scripts: a script this task newly creates for the project (a check runner, a fixture generator) goes under `.moai/tools/`; a file that already exists stays where it is.
 - Cleanup: when the checks are done and your result is written, delete the build output you made in your own worktree (for example `target/debug`, `target/tmp`) and nothing else. Run the delete from inside your own worktree with a relative path, `rm -rf target/debug`. Never pass an absolute path: the project's deny rules refuse every recursive delete by absolute path, and the refusal message does not say why. Keep logs and evidence folders until the parent has read your result. If a delete fails, do not retry in another form; report the path and its size under `Cleanup`. Your builds go to your worktree's own build folder (for cargo, `target/`), with `CARGO_INCREMENTAL=0`; the delete above empties it and never deletes evidence.
 
 ## Steps
 
-1. You work in the worktree your parent works in, the folder your shell starts in; never make or enter another worktree, because a fresh one builds from nothing. When `base` is given, confirm `git rev-parse HEAD` equals it before you write anything, and end with `RESULT impl blocked` when it does not. Then read the `refs` and the files in `scope` that the task names.
-2. Make the smallest change that does the task. Follow the style of the file you edit. Where the change leaves something a later reader must know, add a `@cc:` comment of the fitting kind (`@cc:later`, `@cc:careful` or `@cc:proves`); tools link it automatically.
-3. Run the checks the task or the refs name for this change. Record each command and its exit code.
-4. Do not commit, push, or open a pull request unless the task says so.
-5. When the task says to commit, end each commit message with the trailers that `moai trailers --spec <SPEC id> --verified <kinds>` prints, and name in `Moai-Verified` only the kinds of check you ran (`tests`, `mutants`, `e2e`, `smoke`), and `none` when no check ran.
+1. You work in the worktree your parent works in, the folder your shell starts in; never make or enter another worktree, because a fresh one builds from nothing. When `base` is given, confirm `git rev-parse HEAD` equals it before you write anything, and end with `RESULT impl blocked` when it does not. Confirm `git rev-parse --show-toplevel` prints `worktree`, and end with `RESULT impl blocked` before you write when it does not. Then read the `refs` and the files in `scope` that the task names.
+2. Before you write a path for the first time, run `moai card check <card> --generation <generation> --path <path>`; exit 0 is your permission to write that path. When it does not exit 0, end with `RESULT impl blocked` naming the answer as it is, before you write that path.
+3. Make the smallest change that does the task. Follow the style of the file you edit. For a bug fix, write the test that fails for the reported reason first (`internal/test-design`). Where the change leaves something a later reader must know, add a `@cc:` comment of the fitting kind (`@cc:later`, `@cc:careful` or `@cc:proves`); tools link it automatically.
+4. Run the checks the task or the refs name for this change. Record each command and its exit code, and the failing and the passing run of a test the way `internal/tdd-results` says.
+5. Do not commit, push, or open a pull request unless the task says so.
+6. When the task says to commit, end each commit message with the trailers that `moai trailers --spec <SPEC id> --verified <kinds>` prints, and name in `Moai-Verified` only the kinds of check you ran (`tests`, `mutants`, `e2e`, `smoke`), and `none` when no check ran. Before that commit, follow `internal/git-safety`.
+7. Unless the task says to commit, leave the change uncommitted: the change stays as uncommitted files in your parent's worktree, and `RESULT impl` names the HEAD the change sits on. Run `git status --short` and make it agree with `Files written`; the parent compares them with `Files written` before it runs its own `moai card check` and commits.
 
 ## Verification
 
 - Each check the task names was run and its exit code recorded; a check you could not run is `not_run` with the reason.
-- `git status` lists only paths inside `scope`.
+- `git status` lists only paths inside `scope`, and each of them was allowed by `moai card check` before its first write.
 - Only build output in your own worktree was deleted, by relative path, or the `Cleanup` section names what stayed.
 - For a bug fix, the new test failed before the change and passes after it.
 - Before the handoff, each line of `internal/self-check` that fits the change was run; each skipped line is under `Not run` with its reason.

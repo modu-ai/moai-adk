@@ -1,18 +1,21 @@
 //! SPEC-20261119-flaky-policy (card C-99, Verify D): a check that a re-run on the same SHA turned
 //! green is never simply passed. The flaky rule lets the merge through and records the test, both
 //! run ids and the SHA on one flaky card. It moved from the merge train of the retired
-//! `mode-leader.md` to `run.md` (SPEC-20261122-next-flow-skills-agents). Pinned here: what the
-//! rule says and that it stays inside its byte budget.
+//! `mode-leader.md` to `run.md` (SPEC-20261122-next-flow-skills-agents) and from there to
+//! `references/internal/check-rules.md` (SPEC-20261125-run-sync-procedure-receipt). Pinned here:
+//! what the rule says and that it stays inside its byte budget.
 //!
-//! The tests read the workflow file of this checkout; nothing is run and no HOME is touched.
+//! The tests read the reference file of this checkout; nothing is run and no HOME is touched.
 
 use std::{fs, path::Path};
 
-const FILE: &str = "run.md";
-/// Where the rule starts and the words it ends with; the tests cut the rule out between them.
-const RULE_START: &str = "Flaky rule (card C-99): ";
-const RULE_END: &str = "touches that test.";
-/// SPEC REQ-3: the rule is at most this many bytes.
+const FILE: &str = "check-rules.md";
+/// Where the rule starts and the words it ends with; the tests cut the rule out between them. The
+/// rule is two bullets of the file's "Tests" list: the flaky card, then the re-run's pass.
+const RULE_START: &str = "A failure that a re-run on the same SHA turned green";
+const RULE_END: &str = "touches that test or its fixtures.";
+/// SPEC REQ-3: the rule is at most this many bytes. Measured on the two bullets above: the Issue
+/// procedure and the `Flaky rule (card C-99): ` prefix left the text, so the bound still holds.
 const RULE_BUDGET: usize = 700;
 /// The bound `profile::read` puts on every package file.
 const PACKAGE_FILE_BOUND: usize = 65536;
@@ -20,7 +23,7 @@ const PACKAGE_FILE_BOUND: usize = 65536;
 fn workflow() -> String {
     fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("skills/moai/workflows")
+            .join("skills/moai/references/internal")
             .join(FILE),
     )
     .unwrap()
@@ -44,7 +47,7 @@ fn flaky_rule_names_the_card_and_what_it_records() {
     let rule = rule(&text);
     for needle in [
         // The card: one per test, found by its title, a note on the open one.
-        "`flaky: <test>`",
+        "--title \"flaky: <test>\"",
         "moai card add --kind task --title",
         "one card per test",
         "--kind report",
@@ -79,9 +82,8 @@ fn flaky_rule_card_add_example_carries_a_criterion() {
         .find(head)
         .unwrap_or_else(|| panic!("the flaky rule lost its `card add` example: {rule}"));
     let example = &rule[at..];
-    let example = &example[..example
-        .find("`)")
-        .expect("the example ends with a backtick")];
+    // The example is one code span: it ends at the closing backtick.
+    let example = &example[..example.find('`').expect("the example ends with a backtick")];
     let criterion = example
         .strip_prefix(head)
         .and_then(|rest| rest.strip_prefix(" --ac \""))

@@ -848,6 +848,54 @@ fn a_harness_only_apply_records_its_agents_and_the_next_plan_reads_unchanged() {
     assert_eq!(generation["apply"], Value::Null, "{generation}");
 }
 
+/// An agent made by a harness-only apply is recorded, so a later profile change that reaches it
+/// plans the rebuild (a `ready` step that prints its command) and applying it settles the step.
+#[test]
+fn a_profile_change_after_a_harness_only_agent_plans_its_rebuild() {
+    let fx = Fx::new();
+    fx.with_profile(json!({}));
+    let base = request_with(&fx, Vec::new(), Vec::new());
+    fx.generate(&base);
+    let mut request = base.clone();
+    request["native_roles"] = json!([role()]);
+    request["picks"] = json!(["harness-only"]);
+    fx.generate(&request);
+    for s in steps(&fx.plan())
+        .into_iter()
+        .filter(|s| s["state"] == "ready")
+    {
+        assert_eq!(fx.apply_step(s)["ok"], json!(true), "{s}");
+    }
+    let settled = fx.plan();
+    assert_eq!(
+        step(&settled, "generation")["state"],
+        "unchanged",
+        "{settled}"
+    );
+
+    fx.with_profile(json!({"decisions": [
+        {"id": "test_command", "topic": "test_command", "value": "cargo test",
+         "source": "user", "scope": "project"}
+    ]}));
+    let plan = fx.plan();
+    let generation = step(&plan, "generation");
+    assert_eq!(generation["state"], "ready", "{generation}");
+    assert!(
+        generation["apply"]["argv"].is_array(),
+        "the rebuild prints its command: {generation}"
+    );
+    let agent_row = generation["preview"]["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"].as_str().unwrap().contains("prj-test-runner"))
+        .unwrap_or_else(|| panic!("no prj-test-runner row: {generation}"));
+    assert_ne!(agent_row["action"], "remove", "{agent_row}");
+    assert_eq!(fx.apply_step(generation)["ok"], json!(true));
+    let again = fx.plan();
+    assert_eq!(step(&again, "generation")["state"], "unchanged", "{again}");
+}
+
 /// A request for the harness alone that names no agent says nothing about the ones an earlier
 /// apply recorded: the record stays as it was.
 #[test]

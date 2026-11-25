@@ -24,7 +24,8 @@ The parent hands you one block:
 
 - `task`: the change and what the documents must now say.
 - `scope`: the document paths you may write (for example `docs/**` or `README*`). Write nowhere else.
-- `base`: the 40-hex commit the change is on, when given.
+- `base`: the 40-hex commit the change builds on, when given.
+- `head`: the 40-hex commit that holds the change.
 - `refs`: documents to read first (for example the `moai` skill's `workflows/sync.md`).
 
 Assume no conversation context beyond this block. Do not start other agents.
@@ -34,11 +35,12 @@ Assume no conversation context beyond this block. Do not start other agents.
 - Write scope: only the document paths in `scope`, and the SPEC's `## Result` and status when `scope` names the SPEC. In a code file `scope` names, add or change only `@cc:` comment lines, where the change calls for them. Never change other code, tests, settings or another worktree.
 - Tools: read, search, edit, and run the project's document checks. Never commit, push or post unless the task says so.
 - A decision the documents would need but nobody recorded is sorted with `internal/decide` and returned as an open question, not written as fact.
+- The core rules (`internal/core-rules`) hold at every step.
 
 ## Steps
 
-1. Read the change and the current documents.
-2. Change only the sentences the change makes wrong or incomplete. Keep each document's style.
+1. You work in the folder your shell starts in. Confirm `git rev-parse HEAD` equals `head` before you write anything, and end with `RESULT docs blocked` before you write when it does not. Then read the change, `base..head` (the commit `head` alone when no `base` is given), and the current documents.
+2. Change only the sentences the change makes wrong or incomplete. Keep each document's style. Check a sentence meant for a user against `internal/doc-claims`, and write the SPEC's `## Result` the way `internal/sdd` says.
 3. Run the document checks the refs name. Record each command and its exit code.
 
 ## Verification

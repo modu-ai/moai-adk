@@ -81,6 +81,12 @@ fn flow_slot(home: &Path) -> Value {
 /// state file's flow slot, and a committed receipt with one entry of kind `flow`. The state file
 /// is written the way the product writes it (pretty JSON and a newline).
 fn earlier_layout(home: &Path, bytes: &str) {
+    earlier_layout_with(home, bytes, None);
+}
+
+/// [`earlier_layout`] whose receipt entry also records the digest `before` of bytes the earlier
+/// apply replaced (`None`: the apply created the file).
+fn earlier_layout_with(home: &Path, bytes: &str, before: Option<&str>) {
     write(&home.join(OLD_FLOW), bytes);
     let digest = moai_cli::digest(bytes.as_bytes());
     let state = serde_json::json!({
@@ -106,7 +112,7 @@ fn earlier_layout(home: &Path, bytes: &str) {
             "kind": "flow",
             "config_dir": home.join(".claude").to_string_lossy(),
             "action": "create",
-            "before_sha256": null,
+            "before_sha256": before,
             "after_sha256": digest,
             "baseline_before": null
         }]
@@ -193,6 +199,57 @@ fn an_earlier_receipt_revert_without_the_new_file_clears_the_slot() {
         "the user wrote this\n",
         "the user's file keeps every byte"
     );
+}
+
+#[test]
+fn an_earlier_entry_whose_created_file_is_gone_is_reverted_and_clears_the_slot() {
+    // SPEC-20261125-flow-receipt-revert-slot REQ-1, REQ-2: a current apply removes the earlier
+    // file after a backup (no receipt entry), so the earlier receipt's entry finds nothing to
+    // remove. It still counts as reverted and gives the slot back; no file is written.
+    let (_t, home) = temp_home();
+    earlier_layout(&home, "the flow rule an earlier build wrote\n");
+    fs::remove_file(home.join(OLD_FLOW)).unwrap();
+    let v = revert(&home, EARLIER_ID, PERM).unwrap();
+    assert_eq!(v["state"], "reverted", "{v}");
+    assert_eq!(
+        v["skipped"].as_array().map_or(0, Vec::len),
+        0,
+        "nothing is skipped: {v}"
+    );
+    assert_eq!(flow_slot(&home), Value::Null);
+    assert!(!home.join(OLD_FLOW).exists(), "no file is written: {v}");
+    assert!(!home.join(NEW_FLOW).exists(), "no file is written: {v}");
+
+    // The new file holds the slot's digest: the slot stays with it, as for a present file.
+    let (_t2, home) = temp_home();
+    earlier_layout(&home, "the flow rule an earlier build wrote\n");
+    let pkg = package(&source_text(FLOW_SOURCE));
+    current_apply(&home, pkg.path());
+    assert!(!home.join(OLD_FLOW).exists(), "the apply removed it");
+    let new_digest = moai_cli::digest(fs::read(home.join(NEW_FLOW)).unwrap().as_slice());
+    let v = revert(&home, EARLIER_ID, PERM).unwrap();
+    assert_eq!(v["state"], "reverted", "{v}");
+    assert_eq!(v["skipped"].as_array().map_or(0, Vec::len), 0, "{v}");
+    assert_eq!(flow_slot(&home), Value::String(new_digest));
+}
+
+#[test]
+fn an_absent_earlier_file_with_recorded_bytes_is_still_skipped() {
+    // SPEC-20261125-flow-receipt-revert-slot REQ-3: an entry that replaced bytes (`before_sha256`
+    // set) with its file gone is not counted as reverted: it is skipped and the slot stays.
+    let (_t, home) = temp_home();
+    earlier_layout_with(
+        &home,
+        "the flow rule an earlier build wrote\n",
+        Some("sha256:the-bytes-the-earlier-apply-replaced"),
+    );
+    let slot = flow_slot(&home);
+    assert!(slot.is_string());
+    fs::remove_file(home.join(OLD_FLOW)).unwrap();
+    let v = revert(&home, EARLIER_ID, PERM).unwrap();
+    assert_eq!(v["skipped"][0]["reason"], "user_changed_since_apply", "{v}");
+    assert_eq!(flow_slot(&home), slot, "the slot keeps its value");
+    assert!(!home.join(OLD_FLOW).exists(), "no file is written: {v}");
 }
 
 #[test]

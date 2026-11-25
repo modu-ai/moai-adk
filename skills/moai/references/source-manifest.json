@@ -56,7 +56,7 @@
         "kind": "design-template",
         "template_id": "router-core",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). Mode sentence: both modes run rounds that do not end the turn until their end condition holds — #2515. Open questions are sorted before asking (fact, one-way or five HOLD categories, leader-recorded reversible choice, default after deadline) by #2619. Report figures name their command; an empty output is not zero (#2678). OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13). Codex parity (#2592): the skill requests delegation in words and names each host's subagent tool (Codex spawn_agent/wait_agent), since Codex spawns agents on a skill instruction that requests delegation."
+        "reason": "English rendering of the router-core design template, with status notes where a step is not implemented yet. A request is routed to READ, PLAN, RUN, AUDIT, SYNC, PROJECT, UPDATE, WORK or LEADER through references/routes.json; an open question is sorted before anyone is asked; a report figure names its command (an empty output is not zero); and the skill asks the host's agent tool for delegation."
       }
     },
     "references/adapters/aside.md": {
@@ -69,7 +69,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "c8a6645e6f2e2ed9788f815d9353ed9e5a3c16aa949ee96a9020cd07dd26f69f",
+      "sha256": "7e1d3cb1b35f2ef091f6582dc4297c812e053bd9826b8054deeebc3ffcf96440",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -78,7 +78,7 @@
       }
     },
     "references/audit.md": {
-      "sha256": "f278092f400dbf49ecfbdf82b62447887e87b42c6e2ba32a3d0a9246412fd7b9",
+      "sha256": "9b49ad7a706b2a827b927da178774ff75ead7ecdc4ae09201a25760cd78c079d",
       "origin": {
         "kind": "design-spec",
         "template_id": "audit-contract",
@@ -87,12 +87,21 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "e4034e76f5ee378946367317783e55244731a98ee23bb9438cffa93bf7437fce",
+      "sha256": "0cd28f0d591282ee219370f438d30f41e4b1664e9761db057b8d367f36b8ee22",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
         "adoption": "new",
         "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): request kind -> route -> agents in order -> what the parent reads first. Agents' own lists stay in their `reads:` key, so the chain never repeats them. A rule line for internal/lenses added by #3096 S1."
+      }
+    },
+    "references/flows/landing-release.md": {
+      "sha256": "b29e81d2e8ae00722db7b2a80960de557f168f576600e4f9e09b5313e6f393cd",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "flow-landing-release",
+        "adoption": "new",
+        "reason": "Moved out of the SYNC workflow by the RUN and SYNC procedure SPEC: the lander and release part (effects, landing, release pull request, CI evidence, independent review, release merge, reconcile, integration receipt). Named once by SYNC."
       }
     },
     "references/flows/next-flow.md": {
@@ -141,7 +150,7 @@
       }
     },
     "references/internal/boundary-checks.md": {
-      "sha256": "e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7",
+      "sha256": "40d6b07dafbba885d87946ba782a5d80a9ea243c448c44242c2e97f4abf8192d",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-boundary-checks",
@@ -150,6 +159,15 @@
         "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
         "source_path": "internal/template/templates/.claude/rules/moai/quality/boundary-verification.md",
         "license": "Apache-2.0"
+      }
+    },
+    "references/internal/build-slots.md": {
+      "sha256": "d36353c05174ec5feb28cd43c3b6c43c8fc8d11724d2c8f645abb8196fd9923f",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-build-slots",
+        "adoption": "new",
+        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: heavy slots, one build folder per worktree, cleanup and the build cache facts, with the Python slot and tool paths removed. Read from RUN step 1."
       }
     },
     "references/internal/check-completeness.md": {
@@ -164,6 +182,15 @@
         "license": "Apache-2.0"
       }
     },
+    "references/internal/check-rules.md": {
+      "sha256": "3d22b021ae4a662eafa94fe9b11fc6a0232bd4e1905ae276a43120a16cc90343",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-check-rules",
+        "adoption": "new",
+        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: who runs which check, when a remote run may be cited, the test rules and the flaky rule, with internal numbers, tool paths and Python lines removed. Read from RUN step 5."
+      }
+    },
     "references/internal/code-atlas.md": {
       "sha256": "cf02b8c4a34c8d7616267fefa22e39849262f8e7d9382e230f8cf141d048a664",
       "origin": {
@@ -174,7 +201,7 @@
       }
     },
     "references/internal/commit-trailers.md": {
-      "sha256": "3f975c5caad6916f307695b3925760b62203ea1ded47d624a73eed97c8b10b83",
+      "sha256": "dc354b4784c3ef6aebf2afe1879f043a1a7cc8bbe8036db55bd973bffaa988b4",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-commit-trailers",
@@ -213,7 +240,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "9168c039d21f360980abe0dd1508ed83d275b28d87f7adbc41a7478ae8fe3fe9",
+      "sha256": "d3f70c843649b189a9fb21de3f2ae0b5c2d66b2b269539a45c8fe0c24708bdb8",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
@@ -222,7 +249,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "325c7a531690a5aec1bed8e836caca86a952eb6f13e41b52ad839588c83aa6d4",
+      "sha256": "5502d4ccff0d5f40d3466a77d38196956f00810bc24e710b29f3db39ed59e623",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -263,11 +290,11 @@
         "kind": "design-spec",
         "template_id": "internal-questions",
         "adoption": "new",
-        "reason": "Written for rc.2 cards C-51 and C-52 slice S1 (user decision 2026-11-16): how a question reaches the user in UPDATE, PROJECT and SETUP — the session runs the commands itself, every question is a selection with the recommended option first, and one table names the question tool per host (Claude Code, Codex CLI, OMP) with its plain-text fallback. Named by update.md, project.md, setup.md, internal/interview and the PROJECT row of chains/index.md instead of being repeated."
+        "reason": "How a question reaches the user in UPDATE and PROJECT: the session runs the commands itself, every question is a selection with the recommended option first, and one table names the question tool per host with its plain-text fallback. Named by update.md, project.md, internal/interview and the PROJECT row of chains/index.md instead of being repeated."
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "eb938d33488190502d1197a3843d76f87234eb3a331785287618cb86934a9c53",
+      "sha256": "c510ceeef9c35f9935e60fa7ead11e34daa30c43f6311948a17772f67678bb56",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
@@ -288,12 +315,21 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "88347a63d2117b0a86d0aeab6cb061620f1a44ff7ed0ed0eed19f0ed3bd38c7c",
+      "sha256": "0684759a7a0adc744456fec5c427e8055b7bc56058a41130d24b48e307b407c9",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
         "adoption": "new",
-        "reason": "Written for rc.2 card C-77 (user selection 2026-11-17 after the PR history analysis of 193 audit FAILs): the checks whoever wrote a change runs before asking for an audit or opening a pull request, one line each with its command, grouped as tests, package and documents, and the pull request. Read by moai-impl (`reads:`) and named by the rules of chains/index.md; its machine items run from the repository's tools/self_check.sh."
+        "reason": "The checks whoever wrote a change runs before asking for an audit or opening a pull request, one line each with its command, grouped as tests, package and documents, and the pull request. Read by moai-impl (`reads:`) and named by the rules of chains/index.md; its machine items are run by the repository's own check script."
+      }
+    },
+    "references/internal/shell-guards.md": {
+      "sha256": "9423fb72a4f5664adbedac8bb618d68fd4ddde6eeb61ea932525dda7a313bd8c",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-shell-guards",
+        "adoption": "new",
+        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: the change-specific rules, the shell and helper rules and the host worktree guard table, with internal numbers removed. Read from RUN Exceptions and Permissions."
       }
     },
     "references/internal/tdd-results.md": {
@@ -309,7 +345,7 @@
       }
     },
     "references/internal/test-design.md": {
-      "sha256": "895d9819b8b4428bfa7802ad1b1163306ab4f91ca5a6aee7fc267b42c5692b75",
+      "sha256": "90c7535f2b3fbab55969b7a25c3b1e4551ce52416cfc94230f08a604334082b5",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-test-design",
@@ -318,7 +354,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "bcec9110d3a7e3d71c0bad94418d752685c4a7011e18ebe1cfe7039b48195fda",
+      "sha256": "cfea10b078577bd91c2b4e02d3fc5f3340c34e9fa73d8a8dbf056545fc4682c7",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
@@ -326,8 +362,17 @@
         "reason": "Written for rc.2 card C-69 (user instruction 2026-11-17): the three versioning schemes the PROJECT interview offers — SemVer (default), HeadVer and CalVer — each with its format, who bumps what, when to pick it, how the next version is computed, its pre-release marking and two examples, plus the rule to keep the scheme a project already uses and how `project-detect` reads a version. Sources read 2026-11-17: semver.org 2.0.0, github.com/line/headver, calver.org spec 26.0. Named by project.md, internal/interview and chains/index.md."
       }
     },
+    "references/internal/web-pages.md": {
+      "sha256": "fcbc89dd2e25cfaac597728d27dbea477a924877ca07d161d37b65c88c57f760",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-web-pages",
+        "adoption": "new",
+        "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: how a session reads a web page. Read from RUN step 2."
+      }
+    },
     "references/languages/c-cpp.md": {
-      "sha256": "5164187907d38660305a11549367fcc7caaabd196b17818beb6dbdb84d295cc2",
+      "sha256": "901b14c00310a609ef175f80b1eeda2ffd3a4099ecd0abc82db1796476e60269",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -336,7 +381,7 @@
       }
     },
     "references/languages/csharp.md": {
-      "sha256": "63828c1a8286ccc263f67199afafaccc2d9272fcf69afac633ab839a7cbc771b",
+      "sha256": "e5b179365a307fec104e95b6b0cb3c52bb8d4a92f76e8255bdd6ef5407d0e24e",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -345,7 +390,7 @@
       }
     },
     "references/languages/go.md": {
-      "sha256": "b6acc83c5e7ac23326b753ccdab918cc5630f4d9082833a3fb014482b2227ea2",
+      "sha256": "17e4afa4162422afc362fce30de80fbcdd3ef88b5c121ef908be463eb0419656",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -399,7 +444,7 @@
       }
     },
     "references/languages/rust.md": {
-      "sha256": "77ef40580e566f1f61b9fb531a67c885b02abcb51362a3d3aef52c284721dd31",
+      "sha256": "d3f07852f7dd0f4512f8e0d86665d7b8689590b656568d2c8866ad50a24c0d17",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -408,7 +453,7 @@
       }
     },
     "references/languages/swift.md": {
-      "sha256": "b892608b4cdb2d50c31e2a687b920abcc7d474b633b8b004131460cf4c6fcc22",
+      "sha256": "744aa1eff7f8082941fe316dcf10e25fe32b4c3f5b13fb1532f5f6f6cb764986",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -422,11 +467,11 @@
         "kind": "design-template",
         "template_id": "router-routes",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). #2637: top-level `chains` names references/chains/index.md, the agent order per route. OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13)."
+        "reason": "English rendering of the router-core design template, with status notes where a step is not implemented yet. The routes are READ, PLAN, RUN, AUDIT, SYNC, PROJECT, UPDATE, WORK and LEADER; the top-level `chains` names references/chains/index.md, the agent order per route."
       }
     },
     "workflows/audit.md": {
-      "sha256": "f4fec08f7150db820daf51216342783319b6df323f480f65559b8d759913a51e",
+      "sha256": "731779dbb3111316150e6dfe52b17a249ca51dad10b89ab43c6a1668a82c69eb",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
@@ -444,7 +489,7 @@
       "sha256": "e5f0478412b9c09fb3b770c7503e339fc72e9d60733e9b8d9cf160e7d7838dd3"
     },
     "workflows/plan.md": {
-      "sha256": "aa55ae822a25bacacc62c37d780e9abb782b8156e3e90bab63d8ac81f8fee384",
+      "sha256": "690ea42cee7448ee4528f43c0b9137237a0c77a7a56197fb8347839b38891725",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
@@ -462,7 +507,7 @@
       }
     },
     "workflows/read.md": {
-      "sha256": "e7fb334685d277878925f7ec04756ece7a7001639bbd0a52c078b90d5912e2b2",
+      "sha256": "bd50381adcc55f840bf614aa0097c86093c0f52db68a8847d4229bfb0e19a684",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-read",
@@ -471,7 +516,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "6cbd4fe0a1a881753429faff85360e24b65830926b2f409402c7f0c3e35c7438",
+      "sha256": "6934eb776809ae18e8ce690687060de97c711b8e6e7ba5e28cbdc32e5698924f",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -480,7 +525,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "07406dc797d800846cac5c0c6becc219ca866424d94be92020a3fc2f88db49d8",
+      "sha256": "d04ec90fec47a99120caa203d73e43c1bd1e16d882bb38d7bb82c39de6013e28",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
@@ -489,7 +534,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "6842b9f5466669c681a841bf827ce4bfbe66700d66efb135bcb72dcdfea581d8",
+      "sha256": "b448d378e6b427a54106425d0137a36c9db3a12c23003965b5bb9dd15c266be9",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",

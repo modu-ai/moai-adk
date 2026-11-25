@@ -25,6 +25,7 @@ use std::{fs, path::Path};
 
 /// The choice steps the user declined (SPEC-20261125-update-declined-steps).
 pub mod declined;
+pub mod guide;
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -63,6 +64,28 @@ const INSTALL_REASON: &str = "profile, project harness (CLAUDE.md managed sectio
 /// Why the merge step waits while the generation step has files to write: the merge reads and
 /// writes `AGENTS.md`, whose bytes that step's digest binds.
 pub const AFTER_INSTALL: &str = "re-run after the install phase";
+
+/// The steps each waiting reason stands behind (SPEC-20261125-update-next-say-ask-chain): the
+/// plan reads a waiting step's `behind` from this one table, by its reason and, where the same
+/// reason has another meaning for one step, by its name too. A reason without a row here reads
+/// as a step that waits for nothing. Only the steps of the table that can run in this preview are
+/// named by the plan.
+const BEHIND: [(&str, Option<&str>, &[&str]); 7] = [
+    (AFTER_BACKUP, None, &["go-settings", "go-state", "reports"]),
+    (AFTER_PROFILE, None, &["profile"]),
+    (AFTER_SETTINGS, None, &["claude-settings"]),
+    (AFTER_GO_SETTINGS, None, &["go-settings"]),
+    (AFTER_REPORTS, None, &["reports"]),
+    // The settings merge reads the settings file the install writes; every other merge step
+    // reads `AGENTS.md`, which the generation step writes.
+    (
+        AFTER_INSTALL,
+        Some("claude-settings-merge"),
+        &["claude-settings"],
+    ),
+    (AFTER_INSTALL, None, &["generation"]),
+];
+
 const MERGE_REASON: &str = "AGENTS.md and AGENTS.local.md move into CLAUDE.md and \
      CLAUDE.local.md or are left, and once their text is there the user may delete the \
      originals, as the user picks (agents-picks); the text of \
@@ -115,6 +138,80 @@ impl Step {
         }
     }
 
+    /// The steps this blocked step waits behind (see [`BEHIND`]); empty for any other step.
+    fn behind(&self) -> &'static [&'static str] {
+        if self.state != "blocked" {
+            return &[];
+        }
+        BEHIND
+            .iter()
+            .find(|(reason, only, _)| {
+                *reason == self.reason && only.is_none_or(|name| name == self.name)
+            })
+            .map_or(&[], |(_, _, behind)| behind)
+    }
+
+    /// Whether the printed command of the step needs the user's confirmation word.
+    fn needs_confirmation(&self) -> bool {
+        self.apply
+            .as_ref()
+            .is_some_and(|(argv, _)| confirms(argv.iter().map(String::as_str)))
+    }
+
+    /// The choices the step prints.
+    fn choices(&self) -> &[Value] {
+        self.preview["choices"]
+            .as_array()
+            .map_or(&[], Vec::as_slice)
+    }
+
+    /// The `next` of the step, from what it prints (see [`guide::next_of`]).
+    fn next(&self) -> &'static str {
+        guide::next_of(
+            self.state,
+            self.apply.is_some(),
+            self.needs_confirmation(),
+            !self.choices().is_empty(),
+            !self.behind().is_empty(),
+        )
+    }
+
+    /// The id of the recommended choice of a step that asks, when that choice needs no
+    /// confirmation word.
+    fn pick(&self) -> Option<String> {
+        self.choices()
+            .iter()
+            .find(|c| {
+                c["recommended"] == json!(true)
+                    && !confirms(
+                        c["apply"]["argv"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(Value::as_str),
+                    )
+            })
+            .and_then(|c| c["id"].as_str().map(String::from))
+    }
+
+    /// The sentence for a person (see [`guide::say`]).
+    fn say(&self) -> String {
+        let declined = self.preview["declined"] == json!(true);
+        guide::say(self.name, self.state, self.next(), declined)
+    }
+
+    /// What the plan's one question needs to know about the step.
+    fn fact(&self) -> guide::Fact {
+        let next = self.next();
+        guide::Fact {
+            step: self.name,
+            next,
+            say: self.say(),
+            pick: if next == "ask" { self.pick() } else { None },
+            behind: self.behind(),
+        }
+    }
+
     fn to_json(&self) -> Value {
         json!({
             "step": self.name,
@@ -123,8 +220,19 @@ impl Step {
             "preview": self.preview,
             "plan_digest": self.plan_digest,
             "apply": self.apply.as_ref().map(|(argv, stdin)| json!({"argv": argv, "stdin": stdin})),
+            "next": self.next(),
+            "say": self.say(),
+            "decline": match &self.preview["decline"] {
+                d if d.is_object() => d.clone(),
+                _ => Value::Null,
+            },
         })
     }
+}
+
+/// Whether a printed command carries a word that needs the user's explicit yes.
+fn confirms<'a>(mut argv: impl Iterator<Item = &'a str>) -> bool {
+    argv.any(|word| word == CONFIRM_PLACEHOLDER || word == "--confirm-replace")
 }
 
 /// A step's error becomes that step's `blocked` state; the plan goes on.
@@ -2008,6 +2116,13 @@ pub fn plan(project: &Path) -> Result<Value> {
             "steps": steps.iter().map(Step::to_json).collect::<Vec<_>>(),
         })
     };
+    let facts: Vec<guide::Fact> = backup
+        .iter()
+        .chain(&install)
+        .chain(&merge)
+        .map(Step::fact)
+        .collect();
+    let (ask, chain, finish) = guide::overview(&facts, all_unchanged);
     let classified = state_root::classify(&root);
     Ok(json!({
         "project": shown,
@@ -2021,6 +2136,9 @@ pub fn plan(project: &Path) -> Result<Value> {
         ],
         "all_unchanged": all_unchanged,
         "undo_order": undo_order(),
+        "ask": ask,
+        "chain": chain,
+        "finish": finish,
     }))
 }
 
