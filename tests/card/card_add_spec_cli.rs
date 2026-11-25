@@ -1,8 +1,11 @@
 //! SPEC-20261124-followup-per-spec: `moai card add --spec <SPEC-ID>` records the SPEC in the same
-//! write as the card and refuses a second open card on one SPEC; `--follow-up` allows one open
-//! follow-up card per SPEC and `--split-of <card>` names the card it was split from. The relation
-//! lives in the `card.spec` event payload, never in a new column. Every command runs against a
-//! temporary HOME and a temporary project; the real home state folder is not read or written.
+//! write as the card and refuses a second open card on one SPEC; `--follow-up` adds a follow-up
+//! card and is never refused for open cards, so a SPEC may have several open follow-up cards;
+//! `--follow-up-of <card>` does the same and names the card it follows, and `--split-of <card>`
+//! names the card it was split from (each origin must name the same SPEC). The relation lives in
+//! the `card.spec` event payload, never in a new column, and `card show` prints it as
+//! `spec_link`. Every command runs against a temporary HOME and a temporary project; the real
+//! home state folder is not read or written.
 
 use crate::common;
 
@@ -350,38 +353,191 @@ fn a_hold_card_is_not_an_open_card_of_its_spec() {
     assert!(message.contains("has an open card (C-4)"), "{message}");
 }
 
-/// REQ-4, REQ-5: one open follow-up card per SPEC, whatever other cards the SPEC has.
+/// REQ-4, REQ-5: a SPEC may have several open follow-up cards at once, whatever other cards it
+/// has; each carries `relation: follow-up`, and every one is listed by the SPEC's open cards.
 #[test]
-fn one_open_follow_up_per_spec() {
+fn several_open_follow_ups_per_spec() {
     let w = World::new();
     let spec = w.spec("login-fix");
     ok(&w.add(&spec, &[]));
-    let follow = ok(&w.add(&spec, &["--follow-up"]));
-    assert_eq!(follow["name"], json!("C-2"), "{follow}");
-    assert_eq!(follow["relation"], json!("follow-up"), "{follow}");
-    assert_eq!(w.link_payload(2)["relation"], json!("follow-up"));
-    assert_eq!(w.link_payload(2)["to"], json!(spec));
-    let (kind, message) = refusal(&w.add(&spec, &["--follow-up"]));
-    assert_eq!(kind, "conflict", "{message}");
-    assert!(message.contains("C-2"), "{message}");
-    assert!(message.contains("card criterion-add C-2 --ac"), "{message}");
-    assert_eq!(w.cards(), 2, "nothing was written");
-    // A plain add is refused while the follow-up card is the only open card too.
-    w.close(1);
+    for n in 2..=4 {
+        let follow = ok(&w.add(&spec, &["--follow-up"]));
+        assert_eq!(follow["name"], json!(format!("C-{n}")), "{follow}");
+        assert_eq!(follow["relation"], json!("follow-up"), "{follow}");
+        assert_eq!(follow.get("of"), None, "{follow}");
+        assert_eq!(w.link_payload(n)["relation"], json!("follow-up"));
+        assert_eq!(w.link_payload(n)["to"], json!(spec));
+        assert_eq!(w.link_payload(n).get("of"), None);
+    }
+    assert_eq!(w.cards(), 4);
+    // The three follow-ups are open together: `card show` gives each its link, and the ledger
+    // counts all of them as cards of the SPEC.
+    for n in 2..=4 {
+        let shown = ok(&w.card(&["show", &format!("C-{n}")]));
+        assert_eq!(shown["spec"], json!(spec), "{shown}");
+        assert_eq!(
+            shown["spec_link"],
+            json!({"relation": "follow-up", "of": null}),
+            "{shown}"
+        );
+        assert_eq!(shown["state"], json!("draft"), "{shown}");
+    }
+    let linked = format!(
+        "SELECT count(*) FROM card WHERE state NOT IN ('done', 'hold') AND {} = '{spec}'",
+        moai_cli::card::spec_link::LINKED_COLUMN
+    );
+    assert_eq!(w.count(&linked), 4);
+    // A plain add is still refused, and its refusal names every open card, the follow-ups too.
     let (kind, message) = refusal(&w.add(&spec, &[]));
     assert_eq!(kind, "conflict", "{message}");
-    assert!(message.contains("C-2"), "{message}");
+    assert!(message.contains("C-1, C-2, C-3, C-4"), "{message}");
+    assert_eq!(w.cards(), 4, "nothing was written");
 }
 
-/// REQ-5: a follow-up card that is `done` makes room for the next one.
+/// REQ-4: a plain add on a SPEC whose only open cards are follow-ups is refused and names all
+/// of them and the ways out.
 #[test]
-fn a_closed_follow_up_makes_room() {
+fn a_plain_add_names_every_open_follow_up() {
+    let w = World::new();
+    let spec = w.spec("login-fix");
+    for _ in 0..3 {
+        ok(&w.add(&spec, &["--follow-up"]));
+    }
+    let (kind, message) = refusal(&w.add(&spec, &[]));
+    assert_eq!(kind, "conflict", "{message}");
+    for word in [
+        "C-1, C-2, C-3",
+        "--follow-up",
+        "--follow-up-of <card>",
+        "--split-of",
+        "card criterion-add C-1 --ac",
+    ] {
+        assert!(
+            message.contains(word),
+            "the refusal lacks {word}: {message}"
+        );
+    }
+    assert!(!message.contains("one follow-up"), "{message}");
+    assert_eq!(w.cards(), 3, "nothing was written");
+    // Closing all three makes room again.
+    for n in 1..=3 {
+        w.close(n);
+    }
+    ok(&w.add(&spec, &[]));
+}
+
+/// REQ-5: a follow-up card that is `done` leaves the SPEC's open cards; the next follow-up and
+/// the one still open stay side by side.
+#[test]
+fn a_closed_follow_up_leaves_the_open_cards() {
     let w = World::new();
     let spec = w.spec("login-fix");
     ok(&w.add(&spec, &["--follow-up"]));
+    ok(&w.add(&spec, &["--follow-up"]));
     w.close(1);
     let next = ok(&w.add(&spec, &["--follow-up"]));
-    assert_eq!(next["name"], json!("C-2"), "{next}");
+    assert_eq!(next["name"], json!("C-3"), "{next}");
+    // C-2 and C-3 are open; a plain add names both and not the closed C-1.
+    let (kind, message) = refusal(&w.add(&spec, &[]));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("has an open card (C-2, C-3)"), "{message}");
+}
+
+/// A card that names no SPEC link shows `spec_link: null`; a link made by `card spec` shows both
+/// fields null, and an unlink shows `null` again.
+#[test]
+fn card_show_spec_link_follows_the_newest_link() {
+    let w = World::new();
+    let spec = w.spec("login-fix");
+    ok(&w.card(&["add", "--title", "t", "--ac", "fixture"]));
+    let shown = ok(&w.card(&["show", "C-1"]));
+    assert_eq!(shown["spec"], Value::Null, "{shown}");
+    assert_eq!(shown["spec_link"], Value::Null, "{shown}");
+    ok(&w.card(&["spec", "C-1", &spec]));
+    let shown = ok(&w.card(&["show", "C-1"]));
+    assert_eq!(
+        shown["spec_link"],
+        json!({"relation": null, "of": null}),
+        "{shown}"
+    );
+    ok(&w.card(&["spec", "C-1", "--unlink"]));
+    let shown = ok(&w.card(&["show", "C-1"]));
+    assert_eq!(shown["spec_link"], Value::Null, "{shown}");
+    // A plain add with `--spec` has a link with no relation.
+    ok(&w.add(&spec, &[]));
+    let shown = ok(&w.card(&["show", "C-2"]));
+    assert_eq!(
+        shown["spec_link"],
+        json!({"relation": null, "of": null}),
+        "{shown}"
+    );
+}
+
+/// `--follow-up-of <card>` is a follow-up card that records the card it follows, and it is never
+/// refused for open cards. Needs the `--follow-up-of` flag of `src/ops/card.rs`.
+#[test]
+fn follow_up_of_names_its_origin() {
+    let w = World::new();
+    let spec = w.spec("login-fix");
+    ok(&w.add(&spec, &[]));
+    let follow = ok(&w.add(&spec, &["--follow-up-of", "C-1"]));
+    assert_eq!(follow["name"], json!("C-2"), "{follow}");
+    assert_eq!(follow["relation"], json!("follow-up"), "{follow}");
+    assert_eq!(follow["of"], json!("C-1"), "{follow}");
+    let payload = w.link_payload(2);
+    assert_eq!(payload["relation"], json!("follow-up"), "{payload}");
+    assert_eq!(payload["of"], json!("C-1"), "{payload}");
+    assert_eq!(payload["to"], json!(spec), "{payload}");
+    let shown = ok(&w.card(&["show", "C-2"]));
+    assert_eq!(
+        shown["spec_link"],
+        json!({"relation": "follow-up", "of": "C-1"}),
+        "{shown}"
+    );
+    // A follow-up of the follow-up and a second follow-up of C-1 are both accepted, next to the
+    // two cards that are already open.
+    let second = ok(&w.add(&spec, &["--follow-up-of", "C-2"]));
+    assert_eq!(second["of"], json!("C-2"), "{second}");
+    let third = ok(&w.add(&spec, &["--follow-up-of", "C-1"]));
+    assert_eq!(third["name"], json!("C-4"), "{third}");
+    assert_eq!(w.cards(), 4);
+    // The origin may be a closed card.
+    w.close(1);
+    ok(&w.add(&spec, &["--follow-up-of", "C-1"]));
+    assert_eq!(w.cards(), 5);
+}
+
+/// `--follow-up-of` names a card that exists and names the same SPEC; a refused add writes
+/// nothing. Needs the `--follow-up-of` flag of `src/ops/card.rs`.
+#[test]
+fn follow_up_of_needs_the_same_spec() {
+    let w = World::new();
+    let spec = w.spec("login-fix");
+    let other = w.spec("other-fix");
+    ok(&w.add(&other, &[])); // C-1: another SPEC
+    ok(&w.card(&["add", "--title", "no spec", "--ac", "fixture"])); // C-2: no SPEC
+    ok(&w.add(&spec, &["--follow-up"])); // C-3: the SPEC's own card
+    let cards = w.cards();
+    let events = w.count("SELECT count(*) FROM event");
+    // C-99 is missing, C-1 names another SPEC, C-2 none; `not-a-card` is no card name.
+    for origin in ["C-99", "C-1", "C-2", "not-a-card"] {
+        let (kind, message) = refusal(&w.add(&spec, &["--follow-up-of", origin]));
+        assert!(
+            kind == "not_found" || kind == "invalid_input",
+            "{origin}: {kind} {message}"
+        );
+        assert!(message.contains(origin), "{origin}: {message}");
+        assert!(message.contains("--follow-up-of"), "{origin}: {message}");
+        assert_eq!(w.cards(), cards, "{origin}: nothing was written");
+        assert_eq!(
+            w.count("SELECT count(*) FROM event"),
+            events,
+            "{origin}: no event was written"
+        );
+    }
+    // The card of the SPEC itself is accepted.
+    ok(&w.add(&spec, &["--follow-up-of", "C-3"]));
+    assert_eq!(w.cards(), cards + 1);
 }
 
 /// REQ-6: `--split-of` is accepted for a card that names the SPEC and records where it came from.
@@ -433,10 +589,29 @@ fn relation_flags_need_a_spec_and_exclude_each_other() {
         args.extend_from_slice(extra);
         w.card(&args)
     };
+    // The `--follow-up-of` rows pass once `src/ops/card.rs` has the flag (`requires = "spec"`,
+    // `conflicts_with` the other two); until then clap refuses the unknown flag, which is also a
+    // refusal, so the rows pin the three flags' exclusion once the flag exists.
     for extra in [
         vec!["--follow-up"],
         vec!["--split-of", "C-1"],
+        vec!["--follow-up-of", "C-1"],
         vec!["--spec", spec.as_str(), "--follow-up", "--split-of", "C-1"],
+        vec![
+            "--spec",
+            spec.as_str(),
+            "--follow-up-of",
+            "C-1",
+            "--follow-up",
+        ],
+        vec![
+            "--spec",
+            spec.as_str(),
+            "--follow-up-of",
+            "C-1",
+            "--split-of",
+            "C-1",
+        ],
     ] {
         let message = parse_refusal(&with(&extra));
         assert!(

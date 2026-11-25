@@ -350,6 +350,7 @@ pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
     card["spec"] = json!(super::spec_link::kind_and_spec(conn, card_id)
         .map_err(sql_err)?
         .and_then(|(_, spec)| spec));
+    card["spec_link"] = super::spec_link::link_json(conn, card_id).map_err(sql_err)?;
     card["reservation"] = ledger::reservation::current(conn, card_id)
         .map_err(|e| e.to_string())?
         .map_or(Value::Null, |r| super::dispatch::reservation_json(&r));
@@ -398,12 +399,13 @@ pub fn add(project: &Path, home: &Path, req: &AddRequest<'_>) -> Result<Value> {
     insert_card(project, home, req, None)
 }
 
-/// `card add --spec <SPEC-ID> [--follow-up | --split-of <card>]` (SPEC-20261124-followup-per-spec):
-/// [`add`] plus the card's link to its SPEC, as a `card.spec` event in the same transaction. A
-/// SPEC that cannot be read, has an error finding or is not of this generation refuses the add
-/// before the ledger is opened; a second open card on the SPEC, a second open follow-up card and a
-/// `--split-of` card that does not name the SPEC are refused inside the transaction, so nothing is
-/// written (`spec_link::add_conflict`).
+/// `card add --spec <SPEC-ID> [--follow-up | --follow-up-of <card> | --split-of <card>]`
+/// (SPEC-20261124-followup-per-spec): [`add`] plus the card's link to its SPEC, as a `card.spec`
+/// event in the same transaction. A SPEC that cannot be read, has an error finding or is not of
+/// this generation refuses the add before the ledger is opened; a plain second open card on the
+/// SPEC and a `--split-of` or `--follow-up-of` card whose origin does not name the SPEC are
+/// refused inside the transaction, so nothing is written (`spec_link::add_conflict`). Follow-up
+/// cards are never refused for open cards: a SPEC may have several at once.
 pub fn add_with_spec(
     project: &Path,
     home: &Path,
@@ -460,8 +462,13 @@ fn insert_card(
     let written = ledger
         .with_write_tx(|tx, now| {
             if let Some((spec, relation)) = link {
-                if let spec_link::Relation::SplitOf(origin) = relation {
-                    if let Some(why) = split_origin_refusal(tx, spec, origin)? {
+                let origin_flag = match relation {
+                    spec_link::Relation::SplitOf(origin) => Some(("--split-of", origin)),
+                    spec_link::Relation::FollowUpOf(origin) => Some(("--follow-up-of", origin)),
+                    spec_link::Relation::Plain | spec_link::Relation::FollowUp => None,
+                };
+                if let Some((flag, origin)) = origin_flag {
+                    if let Some(why) = origin_refusal(tx, spec, flag, origin)? {
                         return Ok(Err(why));
                     }
                 }
@@ -500,15 +507,11 @@ fn insert_card(
             )?;
             if let Some((spec, relation)) = link {
                 let mut link_payload = json!({"from": Value::Null, "to": spec});
-                match relation {
-                    spec_link::Relation::Plain => {}
-                    spec_link::Relation::FollowUp => {
-                        link_payload["relation"] = json!(spec_link::RELATION_FOLLOW_UP);
-                    }
-                    spec_link::Relation::SplitOf(origin) => {
-                        link_payload["relation"] = json!(spec_link::RELATION_SPLIT_OF);
-                        link_payload["of"] = json!(origin);
-                    }
+                if let Some(name) = relation.name() {
+                    link_payload["relation"] = json!(name);
+                }
+                if let Some(origin) = relation.origin() {
+                    link_payload["of"] = json!(origin);
                 }
                 let key = ledger::new_event_key(tx, spec_link::EVENT, Some(card_id))?;
                 tx.execute(
@@ -542,36 +545,37 @@ fn insert_card(
     if let Some((spec, relation)) = link {
         answer["events"] = json!(2);
         answer["spec"] = json!(spec);
-        answer["relation"] = match relation {
-            spec_link::Relation::Plain => Value::Null,
-            spec_link::Relation::FollowUp => json!(spec_link::RELATION_FOLLOW_UP),
-            spec_link::Relation::SplitOf(_) => json!(spec_link::RELATION_SPLIT_OF),
-        };
+        answer["relation"] = relation.name().map_or(Value::Null, |n| json!(n));
+        if let Some(origin) = relation.origin() {
+            answer["of"] = json!(origin);
+        }
     }
     Ok(answer)
 }
 
-/// Why `--split-of <origin>` cannot be taken for a card of SPEC `spec`: the origin is not a card
-/// reference, does not exist or names another SPEC or none. `None` when it names `spec`.
-fn split_origin_refusal(
+/// Why `<flag> <origin>` (`--split-of` or `--follow-up-of`) cannot be taken for a card of SPEC
+/// `spec`: the origin is not a card reference, does not exist or names another SPEC or none.
+/// `None` when it names `spec`.
+fn origin_refusal(
     tx: &Connection,
     spec: &str,
+    flag: &str,
     origin: &str,
 ) -> rusqlite::Result<Option<String>> {
     let n = match input::parse_ref(origin) {
         Ok(CardRef::Id(n)) => n,
         _ => {
             return Ok(Some(format!(
-                "card add refused: --split-of {origin} is not a card name (`C-1`)"
+                "card add refused: {flag} {origin} is not a card name (`C-1`)"
             )))
         }
     };
     Ok(match spec_link::kind_and_spec(tx, n)? {
         None => Some(format!(
-            "card not found: --split-of {origin}: there is no {origin}"
+            "card not found: {flag} {origin}: there is no {origin}"
         )),
         Some((_, named)) if named.as_deref() != Some(spec) => Some(format!(
-            "card add refused: --split-of {origin} names {}, not {spec}",
+            "card add refused: {flag} {origin} names {}, not {spec}",
             named.as_deref().unwrap_or("no SPEC")
         )),
         Some(_) => None,
