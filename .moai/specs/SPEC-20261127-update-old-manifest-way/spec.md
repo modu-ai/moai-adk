@@ -104,7 +104,8 @@ branch: spec/update-old-manifest-way-20261127
 - AC-3: met — `after_keep_the_step_reads_unchanged` 통과(`an_old_manifest_with_every_row_current_reads_unchanged` 도 통과)
 - AC-4: met — `a_conflict_keeps_its_choices_and_the_project_files` 통과(블록 기준선이 낡고 블록이 지워진 `CLAUDE.md` 는 `conflict` 이고, `append-managed` 선택지가 `keep-harness` pick 도 싣고 프로젝트 파일은 그대로)
 - AC-5: met — `the_pick_stops_removals_and_still_plans_the_named_files` 통과
-- AC-6: met — `project_update_plan_cli` 6/6(`unrebuildable_not_removed` 포함), `generation_request_record` 22/22, `project_harness_pick` 1/1, `project_harness_step` 74/74, `cargo fmt --check` 와 `cargo clippy -- -D warnings` exit 0
+- AC-6: met — `project_update_plan_cli unrebuildable_not_removed` 1/1 통과(기록이 있는 매니페스트와 소유 파일이 없는 매니페스트는 `generation_request_record`·`project_update_plan_cli` 가 그대로 통과)
+- AC-7: met — `project_update_plan_cli` 6/6, `generation_request_record` 22/22, `project_harness_pick` 1/1, `project_harness_step` 74/74 통과, `cargo fmt --check` 와 `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0
 
 AC 문구와 테스트 픽스처의 차이: 관리 블록이 지워진 파일은 기준선과 새 렌더가 같으면 "사용자가 지운 것"으로 보존돼 줄이 생기지 않아요(`decide`). 그래서 AC-1·AC-2·AC-3 은 블록 기록이 없는 옛 매니페스트(`CLAUDE.md` 항목과 파일이 없음)로, AC-4 는 기준선이 낡은 매니페스트로 만들었어요. 동작(REQ)은 그대로예요.
 
