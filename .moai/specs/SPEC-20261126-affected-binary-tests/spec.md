@@ -2,7 +2,7 @@
 id: SPEC-20261126-affected-binary-tests
 title: "Select the integration tests that drive the built binary in check affected"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-26
 ---
 
@@ -24,13 +24,25 @@ created: 2026-11-26
 
 까닭: 앞의 세 범위에서 빠진 테스트들은 모듈 경로가 아니라 명령 이름(`"project-apply"`, `"trailer-check"`)으로 실행 파일을 돌려요. 일부는 그 글자가 `#[path]` 로 가져오는 도움 파일 `tests/common/go_project_real_run.rs` 에만 있어요. `3a6c46fc95` 에서 `state_root::` 글자를 가진 `src` 파일은 65개인데 그중 `src/ops` 파일은 `leader_run.rs`, `spec.rs` 뿐이라, 명령 파일에서 한 단계만 따라가서는 `go_project_real_run_cli` 에 닿지 않아요.
 
+다시 나타난 사례(revision 3, 리더 노트 10103):
+
+- `trailer_check_cli`: 열두째 묶음의 넓은 검사(`c62f942eea..b3048a821a`, 247개, PASS)도 `src/trailers.rs` 가 바뀌었는데 이 모듈 9개를 돌리지 않았어요. 위 표의 세 번째 범위와 같은 까닭이고 REQ-4 가 덮는 모양이에요.
+- 라이브러리 표 검사: 범위 `e946ae8102..4db9be4f90`(`src/update.rs`, `src/update_tux.rs` 변경)의 카드 선택은 라이브러리 테스트를 `update::`, `update_tux::` 로만 좁혀서 `home_layout::tests::every_rust_written_home_name_is_in_the_table` 이 빠졌어요(설치본 `--list --card` 로 다시 읽음, 전체와 레인 선택은 라이브러리 테스트를 모두 돌려요). 열셋째 묶음의 넓은 검사에서 FAIL 로 잡혔어요. 까닭은 카드 선택이 규칙 파일이 바뀐 스캔만 고르기 때문이에요(`SPEC-20261124-card-select-batch-land` D-6). 이 검사의 규칙 파일은 `src/home_layout.rs` 이고 범위(scope)는 `src/` 예요.
+
+`SPEC-20261126-affected-card-readers` 의 지금 head `7fd6bfbea4` 를 읽으면 그 변경은 통합 테스트 대상만 더해서 위 라이브러리 표 검사는 다루지 않아요(코드 읽기, 그 head 의 실행 파일로 고르지는 않았어요).
+
 읽는 사람: 레인, 이 변경의 감사자, 착지 묶음을 도는 리더.
+
+## Interview
+
+- none: 별도 사용자 인터뷰는 없었어요. 요구는 이 일의 카드 본문과 기준, 리더 노트 9979 와 10103 이 정했어요.
 
 ## Non-goals
 
 - 호출 관계(call graph)를 여러 단계 따라가지 않아요.
 - `src/main.rs` 안의 명령 분기(`cc`, `glm` 등)는 명령 이름으로 잇지 않아요.
-- 넓은 경로, 상한, 영역 규칙, 스캔 규칙, `SPEC-20261126-affected-card-readers` 의 두 규칙은 바꾸지 않아요.
+- 넓은 경로, 상한, 영역 규칙, `SPEC-20261126-affected-card-readers` 의 두 규칙은 바꾸지 않아요.
+- 스캔 규칙은 REQ-9 의 라이브러리 검사만 더해요. 카드 세트의 통합 테스트(`--test`) 대상은 지금처럼 규칙 파일이 바뀐 스캔에서만 골라요.
 - READY 관문과 요약 줄의 낱말 종류는 바꾸지 않아요.
 
 ## Requirements
@@ -44,6 +56,7 @@ created: 2026-11-26
 - REQ-6 (REQ-3, REQ-4): IF a helper file named by `#[path]` or a file under `src/ops` that these rules read cannot be read, THEN the `check affected` command shall stop the selection with an error that names that file.
 - REQ-7 (REQ-3): The repository shall name each `.rs` file under `src/ops`, `mod.rs` aside, after a command that `src/help.rs` lists (`_` written as `-`). · failure: none — 어긋난 파일이 생기면 AC-8 의 테스트가 빨개져요.
 - REQ-8: When a range changes a path under `tools/`, the `check affected` command shall select, in the card set, the full set and the lane set, every test target whose own source holds that path as text. · failure: none — 글자 검색이고 읽지 못한 테스트 파일은 지금과 같게 다뤄요.
+- REQ-9: When a range changes a path that a scan of `tools/repo_scans.json` holds in its scope, and a check of that scan runs library unit tests (`--lib`), the `check affected` command shall select, in the card set, the full set and the lane set, the library unit tests that the check names (every library unit test when it names none). · failure: none — 전체와 레인 세트는 지금도 라이브러리 테스트를 모두 돌려요. 읽지 못한 스캔 표는 지금처럼 전체 세트가 돼요.
 
 ## Acceptance
 
@@ -52,10 +65,11 @@ created: 2026-11-26
 - AC-3 (REQ-4): `src/trailers.rs` 가 바뀐 모양에서 `src/ops/trailers.rs`, `src/ops/trailer_check.rs` 의 명령 이름을 가진 테스트가 들어 있고, 모듈을 부르지만 이름이 다른 명령 파일의 테스트는 이 규칙으로 더해지지 않아요 · verify: `cargo nextest run --locked --offline --test check_affected_binary_tests -E 'test(a_library_change_selects_the_tests_of_its_own_command_files)'`
 - AC-4 (REQ-1, REQ-2, REQ-3, REQ-4): 저장소의 지금 파일로 고르면 `src/launcher_init.rs` 와 `src/ops/project_apply.rs` 의 선택, `src/state_root.rs` 의 선택에 `go_project_real_run_cli`, `go_settings_cli`, `update_end_to_end_cli` 가, `src/trailers.rs` 의 카드 선택과 전체 선택에 `trailer_check_cli` 가 들어 있고, REQ-2 의 다섯 대상이 모두 `src/` 변경에 들어 있어요 · verify: `cargo nextest run --locked --offline --test check_affected_binary_tests -E 'test(the_missed_binary_tests_of_this_repository_are_selected)'`
 - AC-5 (REQ-5): 기존 선택 테스트가 기대값을 바꾸지 않고 통과해요 · verify: `cargo nextest run --locked --offline --test check_affected_card_select --test check_affected_card_areas --test check_affected_selection`
-- AC-6 (REQ-5): READY 의 Result 에, 위 표의 세 범위를 바꾸기 전 실행 파일과 후 실행 파일로 `--list` 와 `--list --card` 를 돌린 대상 목록 비교(빠진 것 0, 늘어난 수)를 적어요 · verify: `moai check affected <base>..<head> --list` 와 `moai check affected --card <base>..<head> --list`
-- AC-7 (REQ-1, REQ-3, REQ-4, REQ-8): `moai check affected` 가 READY 의 head 에서 PASS 이고, 네 규칙의 코드를 하나씩 지운 변조에서 AC-1 에서 AC-3 과 AC-9 의 테스트가 실패해요(READY 의 guard-mutant 줄) · verify: `moai check affected --card <base>..<head>`
+- AC-6 (REQ-5): READY 의 Result 에, 위 표의 세 범위와 `c62f942eea..b3048a821a`, `e946ae8102..4db9be4f90` 를 바꾸기 전 실행 파일과 후 실행 파일로 `--list` 와 `--list --card` 를 돌린 대상 목록과 라이브러리 테스트 필터의 비교(빠진 것 0, 늘어난 수)를 적고, 앞의 `c62f942eea..b3048a821a` 의 후 목록에 `trailer_check_cli` 가, 뒤 범위의 후 카드 목록에 `every_rust_written_home_name_is_in_the_table` 이 있어요 · verify: `moai check affected <base>..<head> --list` 와 `moai check affected --card <base>..<head> --list`
+- AC-7 (REQ-1, REQ-3, REQ-4, REQ-8, REQ-9): `moai check affected` 가 READY 의 head 에서 PASS 이고, 다섯 규칙의 코드를 하나씩 지운 변조에서 AC-1 에서 AC-3, AC-9, AC-10 의 테스트가 실패해요(READY 의 guard-mutant 줄) · verify: `moai check affected --card <base>..<head>`
 - AC-8 (REQ-7): 저장소의 `src/ops` 파일 이름이 모두 `src/help.rs` 의 명령 목록에 있어요(2026-11-26 `8f472c5811` 에서 174개가 모두 맞고 예외 0개) · verify: `cargo nextest run --locked --offline --test check_affected_binary_tests -E 'test(every_command_file_is_named_like_a_listed_command)'`
 - AC-9 (REQ-8): 임시 저장소에서 `tools/` 아래 파일 하나가 바뀐 범위의 카드, 전체, 레인 선택에 그 경로 글자를 가진 테스트가 들어 있고, 파일 이름만 가진 테스트는 더해지지 않아요. 저장소의 지금 파일로 고르면 `tools/repo_scans.json` 의 선택에 `gate_registry_tier` 가 들어 있어요 · verify: `cargo nextest run --locked --offline --test check_affected_binary_tests -E 'test(a_tools_change_selects_the_tests_that_name_the_path)'`
+- AC-10 (REQ-9, REQ-5): 임시 저장소에서 `src/` 의 `.rs` 하나가 바뀐 범위의 카드 선택에, 범위(scope)가 `src/` 이고 규칙 파일은 바뀌지 않은 스캔의 라이브러리 테스트 이름(`--lib <이름>` 꼴과 `--lib -- <이름> <이름>` 꼴)이 들어 있고, 범위가 `docs/` 인 스캔의 이름은 없고, 그 스캔의 통합 테스트 대상은 더해지지 않고, 전체와 레인 선택은 라이브러리 테스트를 모두 돌려요. 저장소의 지금 파일로 고르면 `src/update.rs` 의 카드 선택에 `every_rust_written_home_name_is_in_the_table` 이 있어요 · verify: `cargo nextest run --locked --offline --test check_affected_binary_tests -E 'test(a_source_change_in_a_scan_scope_selects_its_library_tests)'`
 
 ## Scope
 
@@ -68,8 +82,8 @@ created: 2026-11-26
 ## Plan
 
 1. `SPEC-20261126-affected-card-readers` 가 착지한 뒤 그 tip 에서 시작해요. 그 전에는 새 테스트 파일(빨간 테스트)만 쓰고 `src/` 와 기존 테스트는 쓰지 않아요.
-2. 빨간 테스트를 먼저 써요(AC-1 에서 AC-4).
-3. `src/check_affected.rs` 에 표시 줄 규칙, 명령 파일 규칙, 라이브러리에서 같은 낱말의 명령 파일로 한 단계 가는 규칙을 합집합으로 더해요.
+2. 빨간 테스트를 먼저 써요(AC-1 에서 AC-4, AC-9, AC-10).
+3. `src/check_affected.rs` 에 표시 줄 규칙, 명령 파일 규칙, 라이브러리에서 같은 낱말의 명령 파일로 한 단계 가는 규칙, `tools/` 경로 규칙, 라이브러리 스캔 검사 규칙을 합집합으로 더해요.
 4. 다섯 테스트에 표시 줄을 넣고, 새 테스트를 줄 임대로 스캔 표에 등록해요.
 5. AC-6 의 전후 비교를 재요.
 
@@ -82,6 +96,7 @@ created: 2026-11-26
 - REQ-7 은 파일 이름이 명령 목록에 있는지만 봐요. 한 파일이 다른 이름의 명령까지 처리하면 그 명령의 테스트는 REQ-3 으로 더해지지 않아요.
 - 몇몇 테스트는 문자열 안에 `#[path]` 글자를 가져요(`tests/ac_command_lint.rs` 의 raw 문자열). 불러오기가 아니므로 REQ-3, REQ-6 은 실제 속성만 읽어야 해요. AC-4 가 저장소 파일로 이를 확인해요.
 - AC-4 의 테스트는 저장소 파일을 읽어서, 이름이 바뀌면 빨개져요. 조용히 빠지는 것보다 낫다고 봤어요.
+- REQ-9 는 `src/` 를 바꾸는 카드 영수증이 라이브러리 스캔 테스트를 함께 돌리게 해서, 묶음의 넓은 검사와 같은 테스트가 한 번 더 돌아요. 열두째 묶음 로그에서 지금 `src/` 범위인 라이브러리 스캔 테스트 10개의 시간은 하나에 0.11초에서 0.73초, 합쳐 약 4.2초였어요. 라이브러리 테스트 실행 파일은 소스 변경의 카드 선택이 이미 지어요.
 
 ## Decisions
 
@@ -92,6 +107,7 @@ created: 2026-11-26
 | D-3 | 세 규칙 모두 카드 세트에도 상한 없이 써요 | 놓친 두 번은 카드 영수증이었어요. 리더가 앞선 SPEC 에서 상한 없이 두기로 했어요 | 카드 세트에서 REQ-3, REQ-4 를 빼요(대상이 줄어드는 쪽이라 승인이 필요해요) |
 | D-4 | 표시 줄은 실행 도움 파일을 가져오는 다섯 대상에 모두 넣어요 | 카드 기준은 셋을 이름으로 말하고 나머지 둘도 같은 도움 파일로 같은 명령을 돌려요 | 두 파일의 표시 줄을 지워요 |
 | D-5 | `tools/` 파일도 `skills/`, `docs/` 처럼 경로 글자를 가진 테스트를 고르고, 같은 카드에서 고쳐요(revision 2) | 리더 결정(2026-11-26, 사용자 위임에 따른 판단): 바뀐 파일을 쓰는 테스트를 선택이 모른다는 같은 원인이에요 | REQ-8 의 코드를 지워요 |
+| D-6 | 라이브러리 단위 테스트로 도는 스캔 검사만, 규칙 파일이 안 바뀌어도 범위 조건으로 카드 세트에 넣어요(revision 3). 통합 테스트 대상은 `SPEC-20261124-card-select-batch-land` D-6(규칙 파일이 바뀐 스캔만)을 그대로 둬요 | 리더 요청(노트 10103). 그 D-6 의 까닭은 범위만으로 고르면 통합 대상이 63개, 모두 89개가 돼 "20개 안팎" 기준을 넘는다는 실측이에요. 라이브러리 필터는 대상 수를 늘리지 않아요 | REQ-9 의 코드를 지워요 |
 
 ## Result
 
