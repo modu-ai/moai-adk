@@ -94,7 +94,7 @@ base `41c16e60ac` 의 동작을 일회용 프로젝트(임시 HOME, `env -i`)에
 
 ## Result
 
-코드 head `a3ad057e5345ec345b551bb1c6c201db83752d8f`(base `41c16e60ac`)에서 Mac 의 임시 HOME 픽스처로 확인했어요. Windows 와 Linux 는 `not_run` 이에요.
+통합 브랜치 `0aa62fd249` 를 합친 `62183c64f259266b5f3460fd04d78d7aa3ab9a25` 에서 Mac 의 임시 HOME 픽스처로 확인했어요. Windows 와 Linux 는 `not_run` 이에요.
 
 | AC | 상태 | 증거(확인 명령은 적힌 그대로 실행) |
 | --- | --- | --- |
@@ -106,8 +106,8 @@ base `41c16e60ac` 의 동작을 일회용 프로젝트(임시 HOME, `env -i`)에
 | AC-6 | met | `next_step_` exit 0, 1 passed |
 | AC-7 | met | `update_` exit 0, 5 passed |
 
-- 관련 테스트 대상 7개(`go_local_reference_cli`, `project_update_plan_cli`, `go_settings_cli`, `update_end_to_end_cli`, `go_state_cli`, `project_update_go_residue_cli`, `go_project_real_run_cli`): nextest 222/222 통과.
-- 뮤턴트: `src/go_state.rs` 경로 14/14 를 `10f29528b1` 에서(그 뒤 이 파일과 `src/main.rs` 는 그대로), `src/project_update.rs` 경로 10/10 을 `a3ad057e53` 에서 테스트가 잡았어요.
+- 관련 테스트 대상 10개(`go_local_reference_cli`, `project_update_plan_cli`, `go_settings_cli`, `update_end_to_end_cli`, `go_state_cli`, `project_update_go_residue_cli`, `go_project_real_run_cli`, `next_flow_skill_scan`, `state_folder_literal_scan`, `source_manifest_facts`): nextest 331/331 통과.
+- 뮤턴트(합치기 전): `src/go_state.rs` 경로 14/14 를 `10f29528b1` 에서, `src/project_update.rs` 경로 10/10 을 `a3ad057e53` 에서, 다시 미리보기 문장 1/1 을 `d2ccd43e8b` 내용에서 테스트가 잡았어요. 합친 뒤에는 다시 돌리지 않았어요.
 - 위험 경로(덮어쓰기·옮기기·되돌리기)는 임시 HOME 에서 실제 바이너리를 돌리는 Rust 통합 테스트로 확인했어요.
 
 알아 둘 것:
@@ -118,5 +118,7 @@ base `41c16e60ac` 의 동작을 일회용 프로젝트(임시 HOME, `env -i`)에
 - Go 도구가 상속한 `PATH` 를 `env.PATH` 에 베끼므로, 거기에 HOME 의 `.moai` 가 있으면 선택 뒤에도 폴더가 묶여요(D-5).
 - worktree 나 중첩 체크아웃이 함께 폴더를 묶어도 `.moai` 항목 이유는 선택을 이름 불러요. 로컬 설정이 묶을 때 update 계획은 이동 계획을 두 번 만들어요.
 - 한 번의 update 미리보기에서 선택 apply 를 먼저 하고 다른 `ready` 명령을 이어 돌리면: 지시 파일 생성 명령은 `not_found` 로 거절하고 아무것도 쓰지 않아요. 설정 명령은 성공하고 옛 상태 폴더에 새 파일을 만들지 않아요.
+- 선택 명령이 찍혀 있는 동안 `go-residue` 명령은 기다려요. 선택이 `.moai/` 를 옮기면 residue 계획의 digest 가 낡기 때문이고, 통합 브랜치의 대기 규칙 그대로예요. 통합 브랜치에서는 로컬 설정이 폴더를 묶으면 residue 명령이 바로 찍혔어요. 사용자가 선택하거나 설정을 직접 고친 뒤에 찍혀요.
+- 설치·merge 단계를 계속 기다리게 하는 명령 없는 갈래(Risks)는 `docs/later.md` 한 줄로 남겨요.
 - `skills/moai/workflows/update.md` 는 새 미리보기 키 `local_references` 를 아직 말하지 않아요(`docs/later.md` 한 줄).
-- 남은 확인: 통합 브랜치를 합친 뒤의 테스트 재실행, `check affected` 영수증, 독립 감사.
+- `check affected` 영수증과 독립 감사 결과는 작업 원장에 남겨요.
