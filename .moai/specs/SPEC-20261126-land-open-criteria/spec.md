@@ -153,7 +153,11 @@ guard-mutant: card_land_open_criteria::a_withdrawn_criterion_is_held_no_longer |
 - RED: 수리 전 코드에서 `card_land_open_criteria` 11개 중 5개 실패(`target/keziah/red-558.log`). 감사의 재현과 같은 모양인 `a_rerun_after_a_later_verdict_keeps_the_hold`가 `closed: true`로 실패했어요. `--open 0` 한 건은 명령 해석기가 먼저 거절하는 것이어서 테스트 기대값을 고쳤어요.
 - GREEN: 11개 통과. 관련 대상 593개 통과(0 실패), `cargo clippy --all-targets -D warnings` 깨끗함.
 
-guard-mutant 15줄이에요(head `5eddc6f982`, 위 9줄을 대신해요. 각 테스트만 실행, 모두 그 테스트의 단언에서 실패, 뒤에 `git checkout`으로 복원, 워크트리 깨끗함).
+두 번째 수리 커밋 `a7e0eddec7`(READY 전에 찾음): 보류를 푼 뒤의 다시 실행이 시작 행의 판정, 곧 보류를 적었던 PASS에 기대 기준을 `met`으로 채우며 닫았어요. 기준 1의 글자에 어긋나요. 닫는 호출에서 보류가 없고 시작 행의 PASS가 보류를 적었으면 지금의 판정을 다시 읽어요(`land/check.rs`의 `read_for_close`). 그래서 머지에 새 FAIL이 있으면 그 머지를 다시 통과시킬 때까지 거절해요. 보류를 적지 않은 시작 행은 전과 같아요. 반복한 `card verdict`는 같은 값의 가장 새 사건을 답해요. RED: 새 단언 3개 테스트가 실패(`target/keziah/red-558c.log`), GREEN: 11개 통과.
+
+head `a7e0eddec7`에서: SPEC 검증 줄 AC-1~AC-8 모두 exit 0(AC-7 180개 통과), `cargo clippy --all-targets -D warnings` exit 0, 관련 대상 593개 통과.
+
+guard-mutant 16줄이에요(head `a7e0eddec7`, 위 9줄을 대신해요. 각 테스트만 실행, 모두 그 테스트에서 실패, 뒤에 `git checkout`으로 복원, 워크트리 깨끗함).
 
 ```
 guard-mutant: card_land_open_criteria::card_verdict_stores_only_a_hold_it_can_keep | src/ledger/workflow.rs record_verdict hold_refusal | exit 100
@@ -171,4 +175,5 @@ guard-mutant: card_land_open_criteria::a_rerun_opens_a_held_criterion_marked_met
 guard-mutant: card_land_open_criteria::a_hold_set_again_after_a_release_applies | src/ledger/workflow.rs changes_a_hold exception to the repeat | exit 100
 guard-mutant: card_land_open_criteria::a_hold_set_again_after_a_release_applies | src/ledger/workflow.rs changes_a_hold newest-verdict-is-PASS condition | exit 100
 guard-mutant: card_land_open_criteria::land_batch_lands_a_held_head_as_a_slice | src/card/land/batch.rs held copied into the batch answer | exit 100
+guard-mutant: card_land_open_criteria::a_rerun_after_a_later_verdict_keeps_the_hold | src/card/land/check.rs start row not trusted when its PASS held (read_for_close) | exit 100
 ```
