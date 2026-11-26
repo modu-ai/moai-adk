@@ -505,8 +505,11 @@ fn config_shaped(name: &str) -> bool {
         })
 }
 
-/// The restore candidates under the Go folder's user-data folders ([`USER_DATA_FROM`], #2936
-/// O1; `.moai/specs` was the first, AC-5): regular files are copied unless the target exists
+/// The restore candidates of the Go `.moai/` folder: every regular file of the user-data folders
+/// ([`USER_DATA_FROM`], #2936 O1; `.moai/specs` was the first, AC-5), and, outside them, every
+/// file the Go manifest does not record (a recorded file is Go's own and stays in the backup;
+/// the markers and the Go backups folder are never restored, [`restore_excluded`],
+/// SPEC-20261126-go-state-restore-rule). Regular files are copied unless the target exists
 /// (never overwritten) or the name or content is or may be a secret (a secret name is
 /// excluded before any read). A document (`.md`, `.txt`, anything but a config file) passes on
 /// its name and size; a config-shaped file (`.json`, `.toml`, `.yaml`, `.yml`) and anything
@@ -514,126 +517,166 @@ fn config_shaped(name: &str) -> bool {
 /// reason. Links, a linked user-data folder and special files are never followed or opened. The copy reads the file from the Go
 /// backup after the rename. A folder the earlier root also moves into `.moai/` (only `specs/`)
 /// lands there first, so a file already at `.moai-cli/<folder>/<same path>` is the conflict.
-fn plan_restores(project: &Path, go_backup: &str) -> Vec<Restore> {
+fn plan_restores(
+    project: &Path,
+    go_backup: &str,
+    recorded: &HashMap<String, Entry>,
+) -> Vec<Restore> {
     let mut out = Vec::new();
-    for folder in USER_DATA_FROM {
-        let top = project.join(MOAI_DIR).join(folder);
-        // A folder that is itself a link is never entered: the apply refuses to read through
-        // it (after the Go folder was renamed), so the preview leaves it where it is.
-        if fs::symlink_metadata(&top).is_ok_and(|m| m.file_type().is_symlink()) {
-            out.push(Restore {
-                from: format!("{go_backup}/{folder}"),
-                to: format!("{MOAI_DIR}/{folder}"),
-                sha256: String::new(),
-                action: "leave_link".into(),
-                reason: "the folder is a link; never followed, it stays in the backup".into(),
-            });
-            continue;
-        }
-        let mut stack = vec![top.clone()];
-        while let Some(dir) = stack.pop() {
-            let Ok(entries) = fs::read_dir(&dir) else {
-                continue;
-            };
-            for e in entries.flatten() {
-                let p = e.path();
-                let Some(rel) = p
-                    .strip_prefix(&top)
-                    .ok()
-                    .and_then(|r| r.to_str())
-                    .map(|r| r.replace('\\', "/"))
-                else {
+    let moai = project.join(MOAI_DIR);
+    {
+        {
+            let mut stack = vec![moai.clone()];
+            while let Some(dir) = stack.pop() {
+                let Ok(entries) = fs::read_dir(&dir) else {
                     continue;
                 };
-                let from = format!("{go_backup}/{folder}/{rel}");
-                let to = format!("{MOAI_DIR}/{folder}/{rel}");
-                if e.file_name().to_str().is_none_or(secret_name) {
+                for e in entries.flatten() {
+                    let p = e.path();
+                    let Some(rel) = p
+                        .strip_prefix(&moai)
+                        .ok()
+                        .and_then(|r| r.to_str())
+                        .map(|r| r.replace('\\', "/"))
+                    else {
+                        continue;
+                    };
+                    let folder = rel.split('/').next().unwrap_or_default().to_string();
+                    let folder = folder.as_str();
+                    let user_data = USER_DATA_FROM.contains(&folder);
+                    // Outside the ten folders only what the Go manifest does not record is
+                    // the user's: a recorded file is Go's own and stays in the backup, and the
+                    // markers and the Go backups are never restored
+                    // (SPEC-20261126-go-state-restore-rule REQ-2, REQ-3).
+                    if !user_data
+                        && (restore_excluded(&rel)
+                            || recorded.contains_key(&format!("{MOAI_DIR}/{rel}")))
+                    {
+                        continue;
+                    }
+                    // A user-data folder that is itself a link is never entered: the apply
+                    // refuses to read through it (after the Go folder was renamed), so the
+                    // preview leaves it where it is.
+                    if user_data
+                        && rel == folder
+                        && fs::symlink_metadata(&p).is_ok_and(|m| m.file_type().is_symlink())
+                    {
+                        out.push(Restore {
+                            from: format!("{go_backup}/{folder}"),
+                            to: format!("{MOAI_DIR}/{folder}"),
+                            sha256: String::new(),
+                            action: "leave_link".into(),
+                            reason: "the folder is a link; never followed, it stays in the backup"
+                                .into(),
+                        });
+                        continue;
+                    }
+                    let from = format!("{go_backup}/{rel}");
+                    let to = format!("{MOAI_DIR}/{rel}");
+                    if e.file_name().to_str().is_none_or(secret_name) {
+                        out.push(Restore {
+                            from,
+                            to,
+                            sha256: String::new(),
+                            action: "excluded_secret".into(),
+                            reason: "a secret name; never opened".into(),
+                        });
+                        continue;
+                    }
+                    let name = e.file_name().to_string_lossy().into_owned();
+                    let Ok(m) = fs::symlink_metadata(&p) else {
+                        continue;
+                    };
+                    if m.is_dir() {
+                        stack.push(p);
+                        continue;
+                    }
+                    let lands = STATE_ENTRIES
+                        .contains(&folder)
+                        .then(|| format!("{LEGACY_ROOT}/{rel}"));
+                    let unreadable = "larger than the file limit or not readable; not copied";
+                    let (sha, action, reason) = if !m.is_file() {
+                        (
+                            String::new(),
+                            "leave_link",
+                            "a link or special file; never opened or followed".to_string(),
+                        )
+                    } else if m.len() > FILE_LIMIT {
+                        (
+                            String::new(),
+                            "excluded_unclassifiable",
+                            format!("larger than the file limit ({FILE_LIMIT} bytes); not read"),
+                        )
+                    } else {
+                        match fs::read(&p) {
+                            Ok(bytes) if (bytes.len() as u64) <= FILE_LIMIT => {
+                                let sha = format!("sha256:{:x}", Sha256::digest(&bytes));
+                                let is_spec = folder == "specs";
+                                // The config classifier is for config files. A document in a
+                                // user-data folder passes on its name and size alone; SPECs keep
+                                // the stricter text check they have always had.
+                                let verdict = if is_spec || config_shaped(&name) {
+                                    crate::migrate::sensitive_content(&bytes, is_spec)
+                                } else {
+                                    Ok(false)
+                                };
+                                let (action, reason) = match verdict {
+                                    Ok(true) => (
+                                        "excluded_secret",
+                                        "the content looks like a credential; not copied"
+                                            .to_string(),
+                                    ),
+                                    Err(why) => ("excluded_unclassifiable", why),
+                                    Ok(false) => (
+                                        match &lands {
+                                            Some(l) if linked_component(project, l) => {
+                                                "conflict_link"
+                                            }
+                                            Some(l)
+                                                if fs::symlink_metadata(project.join(l))
+                                                    .is_ok() =>
+                                            {
+                                                "conflict"
+                                            }
+                                            _ => "copy",
+                                        },
+                                        String::new(),
+                                    ),
+                                };
+                                (sha, action, reason)
+                            }
+                            _ => (
+                                String::new(),
+                                "excluded_unclassifiable",
+                                unreadable.to_string(),
+                            ),
+                        }
+                    };
                     out.push(Restore {
                         from,
                         to,
-                        sha256: String::new(),
-                        action: "excluded_secret".into(),
-                        reason: "a secret name; never opened".into(),
+                        sha256: sha,
+                        action: action.into(),
+                        reason,
                     });
-                    continue;
                 }
-                let name = e.file_name().to_string_lossy().into_owned();
-                let Ok(m) = fs::symlink_metadata(&p) else {
-                    continue;
-                };
-                if m.is_dir() {
-                    stack.push(p);
-                    continue;
-                }
-                let lands = STATE_ENTRIES
-                    .contains(&folder)
-                    .then(|| format!("{LEGACY_ROOT}/{folder}/{rel}"));
-                let unreadable = "larger than the file limit or not readable; not copied";
-                let (sha, action, reason) = if !m.is_file() {
-                    (
-                        String::new(),
-                        "leave_link",
-                        "a link or special file; never opened or followed".to_string(),
-                    )
-                } else if m.len() > FILE_LIMIT {
-                    (
-                        String::new(),
-                        "excluded_unclassifiable",
-                        format!("larger than the file limit ({FILE_LIMIT} bytes); not read"),
-                    )
-                } else {
-                    match fs::read(&p) {
-                        Ok(bytes) if (bytes.len() as u64) <= FILE_LIMIT => {
-                            let sha = format!("sha256:{:x}", Sha256::digest(&bytes));
-                            let is_spec = folder == "specs";
-                            // The config classifier is for config files. A document in a
-                            // user-data folder passes on its name and size alone; SPECs keep
-                            // the stricter text check they have always had.
-                            let verdict = if is_spec || config_shaped(&name) {
-                                crate::migrate::sensitive_content(&bytes, is_spec)
-                            } else {
-                                Ok(false)
-                            };
-                            let (action, reason) = match verdict {
-                                Ok(true) => (
-                                    "excluded_secret",
-                                    "the content looks like a credential; not copied".to_string(),
-                                ),
-                                Err(why) => ("excluded_unclassifiable", why),
-                                Ok(false) => (
-                                    match &lands {
-                                        Some(l) if linked_component(project, l) => "conflict_link",
-                                        Some(l)
-                                            if fs::symlink_metadata(project.join(l)).is_ok() =>
-                                        {
-                                            "conflict"
-                                        }
-                                        _ => "copy",
-                                    },
-                                    String::new(),
-                                ),
-                            };
-                            (sha, action, reason)
-                        }
-                        _ => (
-                            String::new(),
-                            "excluded_unclassifiable",
-                            unreadable.to_string(),
-                        ),
-                    }
-                };
-                out.push(Restore {
-                    from,
-                    to,
-                    sha256: sha,
-                    action: action.into(),
-                    reason,
-                });
             }
         }
     }
     out.sort_by(|a, b| a.from.cmp(&b.from));
     out
+}
+
+/// A path under the Go `.moai/` (relative to it) that is never restored, whoever wrote it: the
+/// three Go markers, whose restore would make the new `.moai/` read as the Go generation again
+/// (`state_root`), and the Go tool's own backups folder.
+fn restore_excluded(rel: &str) -> bool {
+    const MARKERS: [&str; 3] = [
+        "manifest.json",
+        "config/config.yaml",
+        "config/sections/system.yaml",
+    ];
+    MARKERS.contains(&rel) || rel.split('/').next() == Some("backups")
 }
 
 pub(crate) fn sha256_file(path: &Path) -> Result<String> {
@@ -3456,7 +3499,7 @@ pub fn plan_picked(project: &Path, picks: &[String], rewrite_local: bool) -> Res
         BTreeMap::new()
     };
     let restores = if folder_moves {
-        plan_restores(&project, go_backup)
+        plan_restores(&project, go_backup, &recorded)
     } else {
         Vec::new()
     };
@@ -5213,9 +5256,8 @@ fn restored_path_allowed(path: &str, moving: bool) -> bool {
         return false;
     }
     if moving {
-        USER_DATA_FROM
-            .iter()
-            .any(|f| path.starts_with(&format!("{MOAI_DIR}/{f}/")))
+        path.strip_prefix(&format!("{MOAI_DIR}/"))
+            .is_some_and(|rel| !rel.is_empty() && !restore_excluded(rel))
     } else {
         path.starts_with(&format!("{LEGACY_ROOT}/specs/"))
     }
