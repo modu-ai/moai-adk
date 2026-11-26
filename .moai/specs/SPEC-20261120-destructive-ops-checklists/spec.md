@@ -76,4 +76,11 @@ created: 2026-11-20
 
 ## Result
 
-구현 전(2026-11-20, 가지 `spec/20261120-destructive-ops-checklists`). 구현이 끝나면 AC 마다 `- AC-n: met — <근거>` 줄을 이 자리에 적어요.
+구현 커밋 `239158b582`(점검표)·`80e7030a4a`(chains 표 문장과 시험 등록), NeXT tip `5a6aa857d3` 을 합친 `eb5c33c3ea`(브랜치 `spec/destructive-ops-checklists-20261120`). 영수증은 `check-affected base=5a6aa857d3d0 head=eb5c33c3ea3e targets=137 selection=card … test=0 result=PASS`(`target/check-affected-eb5c33c3ea3e/`, 3838 passed, 1318 skipped). SPEC 의 verify 명령 그대로의 실행(AC-1~AC-4, 모두 exit 0)은 `80e7030a4a` 의 READY 노트 9616 이 인용한 것이고, 그 뒤 점검표 두 파일·`chains/index.md`·안내 시험은 바뀌지 않았어요. 판정은 PASS 9621(`80e7030a4a`)·9770(`eb5c33c3ea`)이에요.
+
+- AC-1: met — `destructive_ops_guidance destructive_ops_names_every_check` 통과(영수증 로그, verify exit 0). 가드 뮤턴트: `destructive-ops.md` 의 "Fail closed" 를 바꾸면 exit 100.
+- AC-2: met — `destructive_ops_guidance boundary_checks_state_units_limits_and_tool_versions` 통과. 가드 뮤턴트: `boundary-checks.md` 의 "drives the fallback branch" 를 바꾸면 exit 100.
+- AC-3: met — `destructive_ops_guidance the_guidance_test_fails_when_an_item_is_missing` 통과, 위 변이 확인에서 문장을 바꾸면 해당 시험이 실패했어요.
+- AC-4: met — `destructive_ops_guidance the_chains_table_names_the_new_checklists` 와 `agent_defs_package internal_references_say_when_to_read_them` 통과. 가드 뮤턴트: chains 문장의 `internal/destructive-ops` 이름을 바꾸면 exit 100.
+- 돌리지 않은 것(not_run): Plan 4 의 Python 모듈 시험(`tests.source_manifest_test` 등)은 손으로 돌리지 않았어요(Python 금지). 매니페스트와 패키지는 영수증의 Rust 시험(`source_manifest_facts`, `product_cli skill_package`)이 통과했어요. 전체 `cargo test` 는 리더 몫이에요.
+- 남은 것: `moai-audit`·`moai-impl` 의 `reads:` 줄은 이 SPEC 의 금지 경로라 뒤 SPEC 이 맡아요(D-3, `docs/later.md`).
