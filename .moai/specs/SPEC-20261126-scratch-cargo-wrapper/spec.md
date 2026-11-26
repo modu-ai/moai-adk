@@ -59,7 +59,7 @@ created: 2026-11-26
 
 ## Result
 
-코드 head 는 `aa78987a6f`(base `91dd561a5a`)예요. 아래는 같은 내용의 작업 트리에서 2026-11-26 에 macOS, debug 빌드로 heavy slot 안에서 실행한 결과예요.
+코드 head 는 `d35964d097`(base `91dd561a5a`)예요. 아래는 `aa78987a6f` 와 같은 내용의 작업 트리에서 2026-11-26 에 macOS, debug 빌드로 heavy slot 안에서 실행한 결과예요. 그 head 의 첫 카드 검사는 `tests/worktree_slot_cli.rs` 의 안 쓰는 import 때문에 clippy 에서 FAIL 이었고(시험 단계는 안 돌았어요), `d35964d097` 이 그 한 줄을 지워요. 지운 뒤에는 바꾼 시험 대상 7개의 `cargo clippy ... -D warnings` 가 exit 0 이었어요. 그 head 이후의 시험 실행 결과는 READY 노트의 카드 검사 영수증에 있어요.
 
 재현(고치기 전 바이너리, `RUSTC_WRAPPER` 와 `CARGO_BUILD_RUSTC_WRAPPER` 를 없는 프로그램으로 둠): `test_home_guard` 48 통과·6 실패, `run_verify` 12 통과·1 실패(`real_runner_receipt`). 같은 바이너리를 wrapper 없이 돌리면 54·13 모두 통과였어요. 실패 수는 사고 때(6개와 1개)와 같아요.
 
