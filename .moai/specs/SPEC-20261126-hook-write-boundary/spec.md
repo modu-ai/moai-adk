@@ -137,30 +137,31 @@ created: 2026-11-26
 
 ## Result
 
-코드와 시험의 head 는 `f88679b5f6` (그 뒤 커밋은 이 절만 더해요). 개정 2 의 위임 승인은 카드 노트 9726 (승인 블록은 착지 때 리더가 써요). 아래 검증은 각 AC 의 `verify:` 줄을 적힌 그대로 heavy slot 안에서 돌린 결과예요 (2026-11-26, macOS, debug 빌드).
+코드와 시험의 head 는 `dbe5384fa6` (그 뒤 커밋은 이 절만 더해요). 승인은 개정 4 의 위임 승인 노트 9867 이에요 (승인 블록은 착지 때 리더가 써요). 아래 검증은 각 AC 의 `verify:` 줄을 적힌 그대로 heavy slot 안에서 돌린 결과예요 (2026-11-26, macOS, debug 빌드, 통합 tip `91dd561a5a` 를 한 번 머지한 트리).
 
 - AC-1: met — `ac1_the_case_tables_decide_for_every_tool`, exit 0 (1 passed).
 - AC-2: met — `ac2_outside_a_project_silent_and_inside_one_exactly_one_object`, exit 0 (1 passed).
 - AC-3: met — `ac3_input_it_does_not_judge_prints_nothing`, exit 0 (1 passed).
-- AC-4: met — `ac4_own_checkout_others_and_places_in_no_checkout` (중첩 워크트리 세션, 안쪽의 별도 저장소, `.git` 을 잃은 등록 워크트리 포함), exit 0 (1 passed).
-- AC-5: met — `ac5_every_protected_place_in_each_spelling`, `ac5_case_spellings_and_unreadable_shapes_fail_closed`, exit 0 (2 passed).
+- AC-4: met — `ac4_own_checkout_others_and_places_in_no_checkout` (중첩 워크트리 세션, 안쪽의 별도 저장소, `.git` 을 잃은 등록 워크트리, `CLAUDE_PROJECT_DIR` 이 가리키는 세션 체크아웃 포함), exit 0 (1 passed).
+- AC-5: met — `ac5_every_protected_place_in_each_spelling`, `ac5_case_spellings_and_unreadable_shapes_fail_closed` (`fi` 합자 포함), exit 0 (2 passed).
 - AC-6: met — `ac6_each_token_shape_at_its_minimum_and_not_below`, exit 0 (1 passed).
 - AC-7: met — `ac7_reasons_carry_the_class_and_no_input_byte`, exit 0 (1 passed).
 - AC-8: met — `ac8_a_call_of_another_event_is_refused_with_one_receipt_line`, exit 0 (1 passed).
-- AC-9: met — `ac9_the_handler_is_read_only_and_mode_independent`, exit 0 (1 passed); `git diff --name-only e946ae8102..f88679b5f6` 에 설정 파일, `src/hook_bash_boundary.rs`, `src/hook_guards.rs`, `src/hook_engine.rs`, `src/main.rs` 가 없어요.
+- AC-9: met — `ac9_the_handler_is_read_only_and_mode_independent`, exit 0 (1 passed); `git diff --name-only 91dd561a5a..dbe5384fa6` 에 설정 파일, `src/hook_bash_boundary.rs`, `src/hook_guards.rs`, `src/hook_engine.rs`, `src/main.rs` 가 없어요.
 - AC-10: met — `ac10_no_name_allows_or_asks_and_none_changes_the_ledger`, exit 0 (1 passed).
 - AC-11: met — `ac11_the_default_hook_set_installs_no_worktree_or_stop_event`, exit 0 (1 passed).
 - AC-12: met — `ac12_the_guards_that_do_not_read_a_hook_refuse_with_hooks_disabled`, exit 0 (1 passed).
-- AC-13: met — exit 0; 측정(200회씩, 부하 54.6): 허용 p50 5.7 ms · p90 7.6 ms, 거절 p50 6.6 ms · p90 10.0 ms (목표 20 · 40 ms). 시험 저장소는 등록 워크트리가 3개예요.
-- AC-14: met — `hook_entry_cli`, `hook_latency_cli`, `hook_dispatch_cli`, `hook_session_start_cli`, exit 0 (83 passed).
-- AC-15: met — `moai spec check` errors 0.
+- AC-13: met — exit 0; 측정(200회씩, 부하 43.5): 허용 p50 6.6 ms · p90 10.4 ms, 거절 p50 6.3 ms · p90 9.8 ms (목표 20 · 40 ms). 시험 저장소는 등록 워크트리가 3개예요.
+- AC-14: met — `hook_entry_cli`, `hook_latency_cli`, `hook_dispatch_cli`, `hook_session_start_cli`, exit 0 (83 passed). 한도 초과의 기대값은 `write-boundary` 만 거절로 바뀌었어요(REQ-13).
+- AC-15: met — `moai spec check` errors 0, warnings 1 (`size_requirements`: 요구 13개).
+- AC-16: met — `ac16_a_call_over_the_input_limit_is_denied`, exit 0 (1 passed).
 
-가드 뮤턴트: 28개를 하나씩 정확히 한 번 적용했고 모두 대상 시험이 실패했어요(exit 100). `m15`(깨진 `.git`)는 처음에 살아남아(`6bf8f010f3`, 등록 목록 검사가 같은 사례를 거절) 시험을 더한 뒤 `f88679b5f6` 에서 죽었어요. 줄 목록은 READY 노트에 있어요.
+가드 뮤턴트: 32개를 하나씩 정확히 한 번 적용했고 모두 대상 시험이 실패했어요(exit 100). 앞의 28개는 `6bf8f010f3`·`f88679b5f6` 에서, 개정 3·4 의 4개(`m20`–`m23`)는 `dbe5384fa6` 에서 돌렸어요. `m15`(깨진 `.git`)는 처음에 살아남아(`6bf8f010f3`, 등록 목록 검사가 같은 사례를 거절) 시험을 더한 뒤 `f88679b5f6` 에서 죽었어요. 줄 목록은 REPAIRED 노트에 있어요.
 
-위험 경로: 일회용 저장소(설정에 `disableAllHooks`)에서 만든 바이너리를 직접 불렀어요. 거절 확인: 주 체크아웃 파일, 주 체크아웃으로 가는 링크, 주 체크아웃의 없는 깊은 폴더, `.git` 을 잃은 등록 워크트리, 자격 증명 폴더, 자기 워크트리의 `.git`, 대문자 `.GIT`, 긴 s 의 `.ssh`, 링크 고리, 토큰이 든 내용. 허용(출력 없음): 자기 파일, 자기 워크트리의 없는 깊은 폴더. 다른 이벤트 이름은 판단하지 않았어요. 직접 호출이라 `disableAllHooks` 는 이 실행에 영향이 없고, 훅이 꺼졌을 때의 증거는 AC-12 예요.
+위험 경로(`dbe5384fa6` 에서 만든 바이너리를 일회용 저장소에 직접 호출, 설정에 `disableAllHooks`): 거절 확인 — 주 체크아웃 파일, 주 체크아웃으로 가는 링크, 주 체크아웃의 없는 깊은 폴더, `.git` 을 잃은 등록 워크트리, 자격 증명 폴더, 자기 워크트리의 `.git`, 대문자 `.GIT`, 긴 s 의 `.ssh`, `fi` 합자의 `.config/gcloud`, 링크 고리, 토큰이 든 내용, 4 MiB 초과 입력. 허용(출력 없음) — 자기 파일, 자기 워크트리의 없는 깊은 폴더, MoAI 프로젝트 밖의 초과 입력. 다른 이벤트 이름은 판단하지 않았고, `bash-boundary` 의 초과 입력은 출력 없이 지나갔어요(R-10). 첫 실행은 확인 스크립트의 인자 오류로 중간에 멈췄고, 스크립트를 고쳐 같은 바이너리로 다시 돌린 결과예요. 직접 호출이라 `disableAllHooks` 는 이 실행에 영향이 없고, 훅이 꺼졌을 때의 증거는 AC-12 예요.
 
-범위 밖에서 달라진 점: 개정 2 (D-13…D-16, R-8)는 거절만 넓혔어요. REQ-8 때문에 `tests/hook_session_start_cli.rs` 의 입력 하나를 고쳤어요(개정 2 Scope 에 있어요). `docs/later.md` 는 두 줄이에요.
+개정 2 뒤의 바뀜: 개정 3 (D-17, D-13 의 `f` 합자)과 개정 4 (REQ-13, AC-16, D-18, R-9, R-10). REQ-3 의 개정 3 문장은 이미 있던 코드를 적은 것이에요. REQ-8 때문에 `tests/hook_session_start_cli.rs` 의 입력 하나를 고쳤어요. `docs/later.md` 는 세 줄이에요.
 
 카드 기준: 첫 기준은 훅을 읽지 않는 관문에 대해 충족해요. 단, 파일 내용의 비밀이 커밋에 들어가는 것과 보호 경로 쓰기는 훅만 거절하고 훅을 끄면 지나가요(R-2, `docs/later.md` 의 사전 커밋 비밀 검사 줄). 둘째 기준(실제 훅 연결, MoAI 가 아닌 저장소의 허용 경로)은 이 SPEC 범위 밖이라 열려 있어요(D-8).
 
-not_run: 진짜 Claude Code 세션에서 항목이 로드되는지(설치는 1-e), `NotebookEdit` 의 실제 훅 입력 키(R-3), `dontAsk`·`auto` 모드의 deny 동작(R-6), Windows·Linux, 등록 워크트리가 많은 저장소에서의 지연(R-8), 전체 `cargo test`.
+not_run: 진짜 Claude Code 세션에서 항목이 로드되는지(설치는 1-e), `NotebookEdit` 의 실제 훅 입력 키(R-3), `dontAsk`·`auto` 모드의 deny 동작(R-6), UTF-8·JSON·객체가 아닌 입력의 거절(범위 밖, R-10), Windows·Linux, 등록 워크트리가 많은 저장소에서의 지연(R-8), 전체 `cargo test`.
