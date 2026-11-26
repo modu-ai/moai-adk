@@ -1599,6 +1599,7 @@
         "sdd_guidance",
         "skill_references_scan",
         "skill_text_fixtures",
+        "spec_approval_digest",
         "troubleshooting_doc"
       ],
       "checks": [
@@ -1643,6 +1644,7 @@
         "tests/sdd_guidance.rs",
         "tests/skill_references_scan.rs",
         "tests/skill_text_fixtures.rs",
+        "tests/spec_approval_digest.rs",
         "tests/troubleshooting_doc.rs",
         "tests/repo_scans_table.rs"
       ],
