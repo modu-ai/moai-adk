@@ -88,6 +88,16 @@ created: 2026-11-26
 
 가드 변이(`src/generation.rs` 에 한 줄씩, 매번 `git checkout --` 로 되돌렸고 마지막에 트리가 깨끗해요; 로그 `target/ns/m*.log`, `u2.log`): 편집 검사 제거(`m1`)는 `moved_edited_skill_stays_and_both_paths_are_conflict` 를, 프로젝션 폴더 한도 제거(`m2`)는 `folder_name_limit_holds_for_a_skill_projection_id` 를, 프로젝트 스킬 폴더 한도 제거(`m3`)는 `folder_name_of_sixty_four_characters_is_planned_and_sixty_five_is_refused` 를, 기록 없는 파일 보호 제거(`m4`)는 `moved_user_skill_folder_beside_ours_is_left_alone` 를 실패시켰어요(모두 종료 코드 101). 바뀐 파일 삭제 거부는 이 SPEC 이전부터 있던 두 겹이에요: apply 가 먼저 계획을 다시 만들어 비교하고, 삭제 단계(`remove_owned`)가 다시 비교해요. 한 겹씩 끄면 통합 시험은 종료 코드 0 이고(`m5` 삭제 단계, `m6` 재계획 비교), 두 겹을 함께 끄면(`m7`) `moved_former_path_edited_after_the_plan_is_not_removed` 가 종료 코드 101 로 실패해요. 삭제 단계만 부르는 단위 시험을 한 번 더했지만(`m5` 를 죽였어요) 그 함수가 영수증 폴더를 프로세스 HOME 에서 찾아서 영수증의 HOME-GUARD 가 거절했고, 다시 뺐어요. 그래서 `m5` 와 `m6` 를 따로 죽이는 시험은 없어요.
 
+### 수리 (감사 노트 9794 의 1번, 리더 결정 9795)
+
+고친 것: `skip-conflicts` 를 고르면 새 `moai-` 경로가 conflict 인 스킬의 옛 생성 파일이 대체 파일 없이 지워졌어요(REQ-4 의 "삭제와 생성을 함께"와 달라요). 이제 `src/generation.rs` 의 `SKIP_CONFLICTS` 블록이, 요청한 역할·스킬의 두 행(옛 경로, 새 경로) 가운데 하나가 conflict 이면 다른 쪽도 하지 않아요: 옛 파일은 지우지 않고(`skip`), 새 복사본은 쓰지 않아요(`skip`, 이미 `unchanged` 면 그대로). 기록 항목은 남아서 다음 계획이 옮김을 다시 제안해요.
+
+- 평면 경로 에이전트(`.claude/agents/<id>.md`)도 같은 모양이었고 함께 고쳤어요.
+- 판단 하나: 옛 스킬 경로가 심볼릭 링크라 conflict 인 경우에도 새 복사본을 쓰지 않아요(전에는 `skip-conflicts` 에서 새 복사본을 써서 같은 스킬이 둘이 됐어요). 리더 지시 문장보다 한 경우가 넓어요.
+- 요청에 더 이상 없는 종류의 삭제는 바꾸지 않았어요.
+
+테스트(`tests/project_harness_namespace.rs`, 임시 HOME·임시 프로젝트에서 실제 `moai generation-plan`/`generation-apply`): `moved_skip_conflicts_keeps_the_former_skill_when_its_new_path_is_taken`, `moved_skip_conflicts_keeps_the_flat_agent_when_its_nested_path_is_taken`, `moved_skip_conflicts_writes_no_second_skill_when_the_former_path_is_a_link`. 수정 전에는 13개 중 이 3개가 실패했고(`target/ns/skip-red.log`), 수정 뒤에는 13개 모두 통과했어요(`target/ns/skip-green.log`). 가드 뮤턴트 3개(`target/ns/mutant-*.log`, nextest 종료 코드 100): 두 행을 묶는 조건 제거는 3개 모두를, 옛 파일 보류 제거는 앞의 2개를, 새 복사본 보류 제거는 링크 테스트를 실패시켰어요. 요구사항과 인수 기준 문장은 바꾸지 않았어요.
+
 Not done:
 
 - SPEC frontmatter 는 `status: draft` 이고 `approval:` 블록이 없어요. 위임된 승인은 리더가 노트 9593 으로 기록했고, 블록은 리더가 랜딩 때 써요.
