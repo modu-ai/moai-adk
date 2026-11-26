@@ -118,4 +118,28 @@ parent: SPEC-20261121-flow-skeleton
 
 ## Result
 
-(draft)
+구현 보고예요(2026-11-26). 감사와 착지 판정은 아직 없어요.
+
+커밋(base `41c16e60ac35e9d5266e9b3857f4b907f6067e54`)
+
+- RED `aa770ce4d23e33d0cbb2bd15c4df7c93daae74fb`: CLI 테스트 8개 중 6개 실패(`would_refuse` 와 기록 줄이 없음), 지금 동작을 못박는 2개 통과. 병합 단위 테스트는 기능 스위치를 그대로 옮겨 실패(같은 모듈 13개 중 12개 통과).
+- 구현 `f01866781cd84ee8542e8474ba293a32c5d6f2d1`: `src/settings_write.rs`(새 모듈, 판정 표 한 곳), `src/claude.rs`, `src/claude_settings_merge.rs`, `src/go_settings_clean.rs`(두 함수를 공개 범위만 넓힘), `src/lib.rs` 한 줄.
+- 글 `2969b9d7af`: `docs/rust-product-path.md` 한 단락.
+
+확인한 것
+
+- 지정한 테스트 대상(41개 바이너리) 한 번: `cargo nextest run` 839 run, 839 passed, exit 0.
+- 가드 뮤턴트: 새 테스트 11개마다 지키는 코드 한 곳을 지우고 그 테스트만 실행해 11개 모두 exit 100, "1 test run: 0 passed, 1 failed". 테스트별 실패 문장은 읽지 않았어요(not_run: 읽기 명령이 워크트리 보호 장치에 거절돼 다시 하지 않았어요).
+- 위험 경로: 계획 6단계의 임시 HOME 셸 스크립트 대신, 임시 HOME 으로 실제 바이너리를 부르는 Rust 통합 테스트로 확인했어요(2026-11-26 리더 지시). 알림이 있어도 쓰는 바이트와 계획 digest 가 같음(`invalid_shapes_are_reported_not_refused`), 답과 기록 줄에 값이 없음(`no_value_reaches_a_new_answer_or_line`), 기록 경로의 링크·끊어진 링크·폴더에는 적용이 끝나고 `observation_recorded: false`, 링크 대상은 그대로(`every_changing_apply_is_recorded`). 링크인 `receipts` 폴더 밖에 아무것도 만들지 않음은 단위 테스트(`the_log_is_private_and_nothing_is_made_through_a_linked_receipts_folder`)예요.
+
+구현하며 정한 것
+
+- 기록 줄이 상태 폴더의 `receipts/` 를 처음 만들 때는 폴더 0700, 로그 0600 으로 먼저 만들어요. 같은 폴더가 바꾼 훅 파일의 원본도 보관해서예요.
+- `Bash` 와일드카드 판정은 낱말만 보는 근사예요: 첫 `*` 앞의 평범한 낱말이 2개 미만이고 뒤에 평범한 낱말이 있으면 알려요.
+
+남은 것
+
+- 계획 5단계의 `docs/later.md` 세 줄(미리보기가 설정 값을 보여 줌, `crossSessionInbound` 기본값, 커밋되는 설정의 자체 점검)은 아직 쓰지 않았어요. 같은 파일을 고친 다른 작업이 착지를 기다려요.
+- 모양 틀린 값을 쓰기 전에 거절하는 것과 거절된 쓰기의 되돌림은 이 SPEC 이 하지 않아요(D-2, D-4, D-6).
+- not_run: 실제 `claude` 실행(설정을 호스트가 읽는지), Windows, Linux, D-6 의 점검(착지 7일 뒤).
+- `check affected` 영수증과 clippy 결과는 제출 노트에 적어요.
