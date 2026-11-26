@@ -2,94 +2,188 @@
 id: SPEC-20261122-secret-file-deny-rules
 title: "Key files found in a project are offered as Read deny rules in the root project settings, with the .claudeignore entries carried over, only on the user's pick"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 parent: SPEC-20261121-flow-skeleton
 ---
 
 # Key files found in a project are offered as Read deny rules in the root project settings, with the .claudeignore entries carried over, only on the user's pick
 
+## Interview
+
+- Q1: 설정 문서 조사 보고서의 항목들을 어떻게 다루나요? → A: 모든 항목을 카드로 만들어요(2026-11-22 사용자 선택, 이 작업의 카드 본문에 기록). 비밀 파일 거절 규칙은 그중 한 항목이고, 가드 파일이라 미리보기 뒤 사용자의 선택으로만 써요.
+- Q2: 루트 설정 파일이 git 에 무시되면 어떻게 하나요? → A: 쓰기를 거부하고, 메시지는 고치는 법(`.claude/settings.json` 추적)만 안내해요(리더 결정 카드 노트 6132, 2026-11-22. 사용자의 직접 선택은 아니에요).
+- Q3: 이 작업이 쓰는 설정은 어디까지인가요? → A: 사용자 설정 폴더는 쓰지 않고 프로젝트 설정과 템플릿만이에요(리더 지시, 2026-11-26).
+- Q4: Decisions 의 D-1, D-2, D-4, D-10 은? → A: 아직 답이 없어요. 기본값 A 로 적었고, 승인 전에 리더가 바꿀 수 있어요.
+
 ## Intent
 
-비밀 파일 거절 규칙. 공식 문서의 사실(2026-11-22 받은 원문에서 확인): (1) "If your project has a `.claudeignore` file, it has no effect, so move its entries into `Read` deny rules"(permissions.md) — `.claudeignore` 는 아무 효과가 없어요. (2) "`@` 언급은 훅을 거치지 않음": "Your `PreToolUse` hooks don't run when Claude Code includes a file you reference with `@`, because it makes no tool call"(common-workflows.md) — 훅으로 읽기를 막는 길은 `@` 언급을 놓쳐요; 거절 규칙은 `@` 언급·붙여넣은 그림 경로·디렉터리 목록에도 최선을 다해 적용돼요(permissions.md). (3) 거절 규칙은 모든 모드에서 이겨요("deny, then ask, then allow"), 작업공간 신뢰 단계를 기다리지 않아요("deny and ask rules aren't affected, since they only restrict" — permissions.md). (4) 공유 프로젝트 설정은 세션의 주 작업 디렉터리에서 읽혀요(settings.md) — 작업트리는 자기 체크아웃이므로, 규칙이 작업트리에 닿으려면 저장소 루트의 설정 파일이 git 에 추적돼야 해요; 이 저장소는 지금 `.claude/` 를 무시해서(.gitignore) 그 경우예요. (5) `Read(path)` 거절은 같은 경로의 Edit·Write(새 파일 만들기 포함)까지 막아요; `Write(path)`·`Glob(path)`·`Grep(path)` 꼴은 아무것도 못 맞춰요(permissions.md). (6) 같은 파일 안에서 `!` 항목은 자기 앞의 상대 거절을 다 파내요(permissions.md). (7) 어떤 파일이 자격 증명인지: secure-deployment 의 표(`.env`·`*.pem`·`*.key`·`*-service-account.json`·`.npmrc`·`.pypirc` …). 무인 레인이 이 저장소의 비밀 파일을 읽는 사고가 실제로 일어났고(안내 문구 규칙의 유래), 이 조각은 그 문을 닫아요. 규칙은 프로젝트 설정이므로 미리보기 뒤 사용자의 선택으로만 쓰여요. 첫 조각은 SPEC 만 쓰고, 테스트는 Rust 만이에요.
+비밀 파일을 읽지 못하게 하는 `Read` 거절 규칙을, 프로젝트에서 실제로 찾은 파일과 `.claudeignore` 항목에서 만들어 미리보기로 보여 주고, 사용자가 고른 것만 저장소 루트의 프로젝트 설정에 더해요. 첫 조각은 SPEC 만 쓰고, 테스트는 Rust 만이에요.
+
+2026-11-26 에 직접 받은 원문(`https://code.claude.com/docs/en/<이름>`):
+
+| 문서 | 받은 시각 | sha256 | 읽은 절 |
+| --- | --- | --- | --- |
+| permissions.md | 07:55:33Z | 687a80f8ae55138a03648fbd54fa1c109291656a512a8ed28c1c3f2825460615 | Read and Edit(범위·경로 꼴·깊이·`!`·심볼릭 링크), Project allow rules and workspace trust 부터 What runs before you trust a folder 까지 |
+| settings.md | 07:55:33Z | 7587a3251756cd151948718b70fff20fd26e3a4b545858d172d0941d57ab8f10 | Keep personal settings out of a repository, Where Claude Code keeps the local file, Settings precedence, Lists merge |
+| settings-reference.md | 07:56:00Z | f87b28f014d323f1d99655f4dd8f329693e8295eec0f1cecf8af0bcc534a5249 | `permissions.deny` |
+| worktrees.md | 07:56:00Z | 1b3eac588abbe62de80f6f6d4275c80de00d989883007cddcf9cdb773b373f20 | Copy gitignored files into worktrees, What worktrees share with the main checkout |
+| large-codebases.md | 07:55:33Z | 672c530f0ba7e26782daf13f7e51d0f7aa065da7351cf341ec29f49e8c9438d6 | Block reads of generated and vendored code, 거절 규칙 두 번째 사본 문단 |
+| common-workflows.md | 07:55:33Z | 9d44630362418bf644178eacf71479537b4646aba63d56f29940e02c7a47e2e6 | `@` 참조 파일의 훅 문단 |
+| agent-sdk/secure-deployment.md | 07:55:33Z | 1d1ad468499aa0fe108ba85c10f0be7697958d9287cb77d67d439f2ca880fa02 | 마운트 전에 빼야 할 자격 증명 파일 표 |
+
+문서의 사실:
+
+1. "If your project has a `.claudeignore` file, it has no effect, so move its entries into `Read` deny rules" (permissions.md, Read and Edit).
+2. `@` 로 참조한 파일은 `PreToolUse` 훅을 거치지 않고, `Read` 거절 규칙에 맞는 파일은 실리지 않아요(common-workflows.md).
+3. 거절은 어느 범위에서 와도 허용을 이겨요. `deny`·`ask` 는 작업공간 신뢰를 기다리지 않아요. `--setting-sources user` 나 프로젝트 설정을 뺀 SDK 실행은 프로젝트 설정을 읽지 않아요(permissions.md).
+4. 공유 프로젝트 설정은 세션의 주 작업 디렉터리에서 읽어요. 워크트리는 자기 체크아웃이라, 규칙이 워크트리에 닿으려면 루트의 설정 파일이 커밋돼 있어야 해요. 로컬 설정(`.claude/settings.local.json`)은 git 저장소에서는 메인 체크아웃 루트의 것을 써요(Windows 등 예외 있음, settings.md; large-codebases.md "Yourself only").
+5. `Read` 거절은 같은 경로의 Edit·Write(새 파일 만들기 포함)도 막고 NotebookEdit 은 덮지 않아요. Bash 에서는 Claude Code 가 알아보는 파일 명령과 리디렉션 대상에만 닿고, 파일을 직접 여는 하위 프로세스에는 닿지 않아요(permissions.md).
+6. `Read(<이름>)` 은 `**/<이름>` 과 같아 현재 폴더 아래 모든 깊이에 맞아요. 앞의 `/` 는 설정 출처(프로젝트 설정이면 주 작업 디렉터리)에 붙어요. 폴더 안 내용만 막는 문서의 꼴은 `./**/<폴더>/**/*` 예요(permissions.md, large-codebases.md).
+7. `!` 로 시작하는 거절 항목은 같은 설정 파일에서 자기 앞의 `path`·`./path` 규칙을 파내요. 뒤의 규칙은 파내지 못해요(permissions.md, Special characters and `!` negation).
+8. 자격 증명 파일의 모양: `.env`, `.env.local`, `.npmrc`, `.pypirc`, `*-service-account.json`, `*.pem`, `*.key` (secure-deployment.md 의 표. `~/` 경로 줄은 이 SPEC 밖이에요).
+
+받은 팁(b3048a821a)의 코드에서 확인한 것:
+
+- 프로젝트 설정 쓰기는 `claude-settings-plan`/`-apply`(`src/claude.rs`) 하나예요. `permissions` 는 통째로 하나의 키예요: 사용자가 이미 가진 `permissions` 는 충돌로 계획되고, 확인 토큰으로 키 전체를 바꿔야 해요. 그렇게 바꾸면 영수증이 그 키 전체를 moai 소유로 적고, 뒤의 요청이 `permissions` 를 빼고 `--keep-owned` 도 없으면 그 키의 삭제가 충돌 없이 계획돼요(`plan_settings`).
+- 같은 계획의 답은 `settings_ignored`(`ignored`·`not_ignored`·`unknown`)와 `worktree_sessions` 를 이미 내요.
+- `SPEC-20261122-settings-write-check` 개정 4 는 별도 쓰기 함수를 만들지 않고 이 쓰기 길 안에 관찰 검사를 넣어요. 아직 착지 전이에요.
+- `src/project_scale.rs` 는 루트 설정의 `permissions.deny` 에 `Read(./<폴더>/**/*)` 줄을 제안하는 라이브러리이고 CLI 에 연결돼 있지 않아요.
+- 템플릿과 `src` 는 `.claudeignore` 를 만들거나 읽지 않아요.
+- 이 저장소의 `.gitignore` 는 `.claude/` 를 무시해요(357행 `/.claude/`, 398행 `.claude/`). `.claudeignore` 는 메인 체크아웃에만 있는 추적 안 된 파일이에요.
 
 ## Non-goals
 
-- 운영체제 수준의 차단(샌드박스) — Read 거절은 "arbitrary subprocesses that read or write files indirectly" 에 닿지 않아요(permissions.md 경고); 샌드박스는 별개의 기능이에요.
-- NotebookEdit 경로 — `Read` 거절이 덮지 못하는 한 곳(permissions.md); 위험에 기록만 해요.
-- 사용자 범위·전역 경로(`~/`·`//`) 거절 규칙 — 이 카드는 프로젝트 안의 파일이에요.
-- 훅 실행 전 검사와 `.claudeignore` 파일 자체의 문법 — 파일은 그대로 두고 규칙으로 옮기는 것만.
-- 프로젝트 규모별 생성·벤더 폴더 거절(큰 저장소 카드)과 키 파일 질의(의사 카드).
-- `.gitignore` 의 `.claude/` 무시를 좁히는 변경 자체 — 별개의 변경(무시 좁히기)이 전제를 바꿔요; 이 SPEC 은 감지와 알림만.
+- 운영체제 수준의 차단(샌드박스). `Read` 거절은 파일을 직접 여는 하위 프로세스에 닿지 않아요.
+- NotebookEdit 을 막는 `Edit` 규칙.
+- 사용자 범위·관리 설정, `~/`·`//` 경로 규칙.
+- 훅 검사, 큰 저장소의 생성·벤더 폴더 규칙(`SPEC-20261122-project-scale-settings` 의 몫), 키 파일 진단.
+- `.gitignore` 의 `.claude/` 무시를 좁히는 변경.
+- `claude-settings-plan`/`-apply` 의 다른 키 동작 변경, 로컬 설정 파일에 거절 규칙 쓰기(D-2 의 B).
+- 실제 Claude Code 를 돌려 규칙의 맞춤을 관찰하는 일.
 
 ## Requirements
 
-- REQ-1: When the project-setup route previews a project, the planner shall list every Read deny rule it proposes for the key files found in that project, writing nothing before the user's pick and only hinting from the update route. · failure: none — the preview names the matched files and their proposed rules and touches no settings file.
-- REQ-2: The planner shall build its proposals from one documented pattern list of credential file shapes (`.env` variants, `*.pem`, `*.key`, `*-service-account.json`, `.npmrc`, `.pypirc` and the like), walking the project by file names only — ignored files included, no symlink followed out of the project — and marking the patterns that matched files in this project. · failure: none — a pattern that matched nothing proposes no rule.
-- REQ-3: When the project has a `.claudeignore` file, the planner shall offer each of its entries — comments and blank lines skipped, a trailing `/` kept — as one Read deny rule the user picks one by one, warning that a deny rule also blocks editing the path and marking the entries that match tracked files. · failure: none — the plan names the file and shows one row per entry with its marks.
-- REQ-4: The planner's matching shall be by file name only, never opening, reading, hashing or printing a matched file. · failure: none — a matched fixture with mode 000 or a planted secret value proves it: the preview names the file and neither its content nor an opening error appears.
-- REQ-5: The plan shall order the key-file rules after every carried-over `.claudeignore` entry and list each `!` carve-out that reaches a key-file rule. · failure: none — a carried-over negation that would carve into a key-file rule is named in the plan before the pick.
-- REQ-6: The applied rules shall land in the tracked repository-root project settings file — so worktree sessions pick them up — with the preview detecting an ignored or untracked root settings file and saying the rules will not reach worktrees. · failure: none — the write is refused while the root file stays ignored or untracked and the preview says why.
-- REQ-7: The write of the rules shall go through the checked settings writer (the settings write check) with its backup, merge, validation and doctor steps. · failure: none — a direct settings write that skips the check is a finding.
-- REQ-8: The planner shall propose only `Read(path)` rule forms, never `Write(path)`·`Glob(path)`·`Grep(path)` shapes that match no call. · failure: none — a proposed rule in a never-matching shape is a build error of the plan.
-- REQ-9: Retiring the `.claudeignore` file shall be a second explicit pick offered in the same preview, and the file is never deleted without it. · failure: none — the rules apply whether or not the file is retired, and the preview says the file has no effect either way.
-- REQ-10: The preview shall state that deny rules apply without the workspace-trust step and in headless runs whenever project settings load. · failure: none — the same line names the exception: a run started with `--setting-sources user`, or an SDK session without project settings, does not read the rules.
-- REQ-11: Every test of the planner shall run in a temporary project tree with a temporary config folder, writing no real user settings. · failure: none — a test that touches a real settings file is a finding.
+- REQ-1: When the secret deny preview runs on a project, the planner shall list every `Read` deny rule it proposes with the files that rule matched and the settings file it would write, writing nothing. · failure: none — no settings file, receipt or backup changes.
+- REQ-2: The planner shall build its key-file proposals from one list of credential file shapes (`.env`, `.env.*`, `*.pem`, `*.key`, `*-service-account.json`, `.npmrc`, `.pypirc`), proposing a shape only when a file in the project matches it. · failure: none — a shape that matched nothing proposes no rule.
+- REQ-3: When the project root holds a `.claudeignore` file, the planner shall list each entry that is neither blank nor a comment as one `Read` deny rule in the converted form of D-5, to be picked one by one, with the warning that the rule also blocks editing, the present files it matches (tracked ones named) and a recommendation only where the entry matches a credential file shape. · failure: none — an entry with no matching file is still listed.
+- REQ-4: The planner shall match files by name only, without opening, hashing or printing any matched file. · failure: none — a matched file the process cannot read is listed like any other.
+- REQ-5: The planner's walk shall visit ignored files, skip `.git` and every folder below the root that holds its own `.git` entry, follow no symlink and stop at a fixed entry bound while saying that its file list is partial. · failure: none — the preview names the bound it stopped at and the folders it skipped as nested checkouts.
+- REQ-6: The resulting `permissions.deny` list shall hold every key-file rule after the last `!` entry, with each `!` entry that preceded and could carve a key-file rule named in the preview before the pick. · failure: none — this holds for the list as written, entries that were already in the file included, on every apply.
+- REQ-7: The apply shall add only the picked rules to `permissions.deny` of the root `.claude/settings.json`, keeping every other settings key and permission entry with its value, keeping the original file in the settings backup folder and taking no ownership of `permissions` that MoAI did not already hold. · failure: none — a stale preview digest or a file that is not a JSON object writes nothing.
+- REQ-8: While git ignores the root `.claude/settings.json`, the apply shall write nothing, saying that the rules would not reach worktree sessions and naming the fix of tracking that file. · failure: none — a file git does not ignore is written and the answer says the rules reach worktrees once committed; an `unknown` answer from git is stated as unknown.
+- REQ-9: Where the user makes the separate pick to retire `.claudeignore`, the apply shall move the file into the settings backup folder, never deleting it. · failure: none — without that pick the file stays and the preview says it has no effect either way.
+- REQ-10: The preview shall propose only `Read(...)` rule forms and state that deny rules apply without the workspace trust step, headless runs included, except in a run that does not load project settings (`--setting-sources user`, or an SDK session without them). · failure: none — no `Write`, `Glob` or `Grep` path rule is ever proposed.
+- REQ-11: The project-setup route shall offer the preview as one pick, while the update route only names it. · failure: none — neither route applies a rule without the user's pick.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2): the preview lists the Read deny rules for the key files found in a temporary project and writes nothing without the pick.
-  verify: `cargo test --locked --offline --test secret_deny_cli preview_lists_rules_and_writes_nothing` — red first in the code slice
-- AC-2 (REQ-3, REQ-9): each `.claudeignore` entry of the project appears as one Read deny rule the user picks one by one with the edit-blocking warning and the tracked-file marks, and retiring the file needs the second explicit pick.
-  verify: `cargo test --locked --offline --test secret_deny_cli claudeignore_entries_are_picked_one_by_one` — red first
-- AC-3 (REQ-7, REQ-8): after the pick the rules land in the root project settings through the checked writer, every rule read back from the written file in `Read(path)` form.
-  verify: `cargo test --locked --offline --test secret_deny_cli rules_land_in_root_settings_through_the_checked_writer` — red first
-- AC-4 (REQ-6): with the root settings file ignored by git in the fixture, the preview says the rules will not reach worktrees and the write is refused.
-  verify: `cargo test --locked --offline --test secret_deny_cli ignored_root_settings_warns_worktrees` — red first
-- AC-5 (REQ-4): a matched fixture file with mode 000 (and one carrying a planted secret value) is never opened — the preview names it and neither its content nor an opening error appears.
-  verify: `cargo test --locked --offline --test secret_deny_cli matched_file_is_never_opened` — red first
-- AC-6 (REQ-5): the plan orders the key-file rules after the carried-over entries and lists the `!` entry that carves into a key-file rule.
-  verify: `cargo test --locked --offline --test secret_deny_cli negation_ordering_is_listed` — red first
-- AC-7 (REQ-10): the preview's one line names the no-trust, headless and `--setting-sources user` behavior of deny rules.
-  verify: `cargo test --locked --offline --test secret_deny_cli preview_states_trust_and_headless_behavior` — red first
-- AC-8: the wider READY set passes.
-  verify: `cargo test --locked --offline --bins` and `--lib`
+- AC-1 (REQ-1, REQ-2): the preview of a temporary project lists the rules for the key files present, with their matched files, and changes no file.
+  verify: `cargo test --locked --offline --test secret_deny_cli preview_lists_rules_and_writes_nothing`
+- AC-2 (REQ-3): a fixture holding this repository's `.claudeignore` entries (the table under Plan) lists each one as its converted rule with the edit warning and marks, recommending only the credential-shaped ones.
+  verify: `cargo test --locked --offline --test secret_deny_cli claudeignore_entries_are_picked_one_by_one`
+- AC-3 (REQ-4): a matched file with mode 000 and one holding a planted secret value are listed, and neither the value nor an open error appears.
+  verify: `cargo test --locked --offline --test secret_deny_cli matched_file_is_never_opened`
+- AC-4 (REQ-5): ignored files are found; a nested checkout, `.git` and a symlinked folder are not entered; past the bound the preview says the list is partial.
+  verify: `cargo test --locked --offline --test secret_deny_cli the_walk_is_bounded_and_stays_in_the_project`
+- AC-5 (REQ-6): with a user `!` entry already in the file and a carried-over negation applied in a second run, every key-file rule ends after the last `!` entry and the preview names the carve-out.
+  verify: `cargo test --locked --offline --test secret_deny_cli key_rules_stay_after_every_negation`
+- AC-6 (REQ-7): after an apply on a file with user `permissions` and other keys, every earlier value is kept, the original is in the backup folder, and a following `claude-settings-plan` without `permissions` plans no removal of it.
+  verify: `cargo test --locked --offline --test secret_deny_cli apply_adds_rules_without_taking_ownership`
+- AC-7 (REQ-8): with the root settings file ignored the apply writes nothing and names the fix; with an untracked file git does not ignore it writes and says to commit it.
+  verify: `cargo test --locked --offline --test secret_deny_cli ignored_root_settings_refuses_the_write`
+- AC-8 (REQ-9): `.claudeignore` stays without the second pick, and with it the file is in the backup folder with the same bytes.
+  verify: `cargo test --locked --offline --test secret_deny_cli retiring_claudeignore_needs_the_second_pick`
+- AC-9 (REQ-10): every proposed rule starts with `Read(` and the preview carries the trust, headless and setting-sources sentence.
+  verify: `cargo test --locked --offline --test secret_deny_cli preview_states_rule_forms_and_trust_behavior`
+- AC-10 (REQ-11): the project-setup route text names the preview as one pick and the update route text names it without an apply step.
+  verify: `cargo test --locked --offline --test secret_deny_cli the_routes_offer_the_preview_and_apply_only_on_a_pick`
+- AC-11: the READY set of the code slices passes.
+  verify: `moai check affected --card <base>..<head>` — `summary.txt` 의 `result=PASS`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261122-secret-file-deny-rules/**`
-- later code slices on this card (joined by card scope when their turn come): one planner module under `src/` (planned name fixed in the code slice), the test target `tests/secret_deny_cli.rs` with temporary project fixtures, and the preview and apply steps it hooks into on the project-setup route
-- read-only: `.moai/specs/SPEC-20261122-settings-write-check/**` (the checked writer it calls), `.moai/specs/SPEC-20261122-headless-run-contract/**` (the stand-in and temp-config test patterns), `.gitignore` (the root-settings tracked check reads it)
-- forbidden: writes to any real user settings file or the real `.claudeignore` of this repository outside the user's pick; a direct settings write that skips the checked writer; opening, reading or hashing a matched key file; force pushes; pushes of the integration branch
+- write (지금): `.moai/specs/SPEC-20261122-secret-file-deny-rules/**`
+- write (코드 조각, 차례가 오면 `card scope` 로 넓혀요): `src/secret_deny.rs`(새 모듈), `tests/secret_deny_cli.rs`, `src/claude.rs`(`SPEC-20261122-settings-write-check` 착지 뒤), `skills/moai/workflows/project.md`, `skills/moai/workflows/update.md`
+- write (공유 파일은 줄 임대): `src/lib.rs`, `src/main.rs`(명령 `moai secret-deny-plan`·`moai secret-deny-apply`), `tests/areas.toml`
+- read-only: `.moai/specs/SPEC-20261122-settings-write-check/**`, `src/project_scale.rs`, `.gitignore`
+- forbidden: 실제 사용자 설정이나 메인 체크아웃의 `.claudeignore` 를 테스트·명령이 쓰는 일, 맞은 키 파일을 열거나 해시하는 일, 실제 `claude` 실행, 기존 설정 쓰기의 거절을 약하게 하는 변경, Python
 
 ## Plan
 
-1. This slice: this SPEC (revision 2 answers the independent review), committed on its branch, READY note with head and base; a moved tip is not re-merged.
-2. Code slice A (after the settings-write-check SPEC lands): the planner and its preview, red tests first (REQ-1 to REQ-5, REQ-8, REQ-10, AC-1·AC-2·AC-4 to AC-7).
-3. Code slice B: the apply step through the checked writer into the root settings and the second pick for retiring `.claudeignore` (REQ-6·REQ-7·REQ-9, AC-3).
-4. Code slice C: the project-setup route offers the preview (one entry among its picks) and the update route hints at it.
+1. 이 조각: 이 SPEC(개정 3). 커밋하고 SPEC-READY 를 보내요.
+2. 코드 조각 A: 플래너와 `secret-deny-plan`, 빨간 테스트 먼저(REQ-1~5, REQ-10; AC-1~4, AC-9).
+3. 코드 조각 B: `secret-deny-apply`, 순서 맞춤, 퇴역(REQ-6~9; AC-5~8). `src/claude.rs` 를 만지므로 `SPEC-20261122-settings-write-check` 착지 뒤에 해요. 지우기·덮어쓰기·옮기기를 하므로 위험 경로 확인은 임시 프로젝트의 Rust 통합 테스트로 해요.
+4. 코드 조각 C: 두 라우트 글(REQ-11, AC-10). `skills/moai/**` 가 바뀌므로 착지 때 사용자 사본 맞추기 규칙이 적용돼요.
+
+### 이 저장소의 `.claudeignore` 를 옮긴 계획
+
+메인 체크아웃의 추적 안 된 파일을 2026-11-26 에 읽은 항목 34개예요. 비밀값은 없어요. `권장` 표시가 없는 줄은 기본으로 고르지 않아요.
+
+| 항목 | 제안 규칙 | 권장 |
+| --- | --- | --- |
+| `.env` | `Read(.env)` | 권장 |
+| `.env.local` | `Read(.env.local)` | 권장 |
+| `.env.*.local` | `Read(.env.*.local)` | 권장 |
+| `.env.production` | `Read(.env.production)` | 권장 |
+| `.env.test` | `Read(.env.test)` | 권장 |
+| `node_modules/` | `Read(**/node_modules/**/*)` | |
+| `vendor/` | `Read(**/vendor/**/*)` | |
+| `.venv/` | `Read(**/.venv/**/*)` | |
+| `__pycache__/` | `Read(**/__pycache__/**/*)` | |
+| `target/` | `Read(**/target/**/*)` | |
+| `dist/` | `Read(**/dist/**/*)` | |
+| `build/` | `Read(**/build/**/*)` | |
+| `out/` | `Read(**/out/**/*)` | |
+| `.next/` | `Read(**/.next/**/*)` | |
+| `.git/` | `Read(**/.git/**/*)` | |
+| `.vscode/` | `Read(**/.vscode/**/*)` | |
+| `.idea/` | `Read(**/.idea/**/*)` | |
+| `.cache/` | `Read(**/.cache/**/*)` | |
+| `tmp/` | `Read(**/tmp/**/*)` | |
+| `temp/` | `Read(**/temp/**/*)` | |
+| `logs/` | `Read(**/logs/**/*)` | |
+| `.moai/cache/` | `Read(.moai/cache/**/*)` | |
+| `.moai/archive/` | `Read(.moai/archive/**/*)` | |
+| `docs-site/public/` | `Read(docs-site/public/**/*)` | |
+| `.claude/worktrees/` | `Read(.claude/worktrees/**/*)` | |
+| `*.pyc` | `Read(*.pyc)` | |
+| `.gitignore` | `Read(.gitignore)` | |
+| `.gitattributes` | `Read(.gitattributes)` | |
+| `*.swp` | `Read(*.swp)` | |
+| `*.swo` | `Read(*.swo)` | |
+| `*~` | `Read(*~)` | |
+| `.DS_Store` | `Read(.DS_Store)` | |
+| `*.tmp` | `Read(*.tmp)` | |
+| `*.log` | `Read(*.log)` | |
 
 ## Risks
 
-- 패턴 목록이 좁으면 비밀이 새고 넓으면 정상 파일이 막혀요: 목록은 문서 인용 한 곳(secure-deployment 표)에서 와고, 미리보기가 실제로 맞은 파일만 제안해요.
-- `Read` 거절은 간접 읽기(스크립트가 파일을 여는 경우)를 못 막아요(permissions.md 경고): 미리보기가 샌드박스를 함께 켜라고 한 줄 권해요; 강제는 별개 기능.
-- NotebookEdit 은 `Read` 거절이 덮지 못해요: 위험으로만 기록(규칙을 더 늘리지 않아요).
-- `.claudeignore` 항목이 gitignore 문법을 이미 쓰므로 변환은 거의 그대로 복사예요 — 그래서 항목 텍스트를 손대지 않는 규칙(REQ-3)이 와요.
-- 루트 설정이 무시되는 저장소(이 저장소가 지금 그래요)에서는 규칙이 작업트리에 닿지 않아요: 미리보기가 감지해 알리고 쓰기를 거부해요; `.gitignore` 무시 좁히기 변경이 그 전제를 바꿀 때까지 이 저장소의 적용은 미뤄져요.
+- 규칙이 실제 Claude Code 에서 어떻게 맞는지는 관찰하지 않았어요. 테스트는 쓰인 글자를 봐요. 폴더 꼴 변환(D-5)은 문서의 예에 기대요.
+- 폴더·로그 항목을 고르면 읽기뿐 아니라 쓰기와 알아보는 Bash 파일 명령도 막혀요. 예를 들어 `target/`, `*.log` 를 고르면 빌드 기록을 읽거나 그 아래에 적는 흐름이 멈춰요. 그래서 자격 증명 모양만 권장해요.
+- 모양 목록이 좁으면 비밀이 새고, `.env.*` 는 `.env.example` 같은 본보기 파일도 막아요. 미리보기가 맞은 파일을 보여 줘요.
+- 키 파일 규칙을 `!` 항목 뒤로 두면 사용자가 일부러 만든 예외가 효력을 잃을 수 있어요. 고르기 전에 이름을 보여 줘요.
+- 파일을 직접 여는 하위 프로세스와 NotebookEdit 은 막지 못해요.
+- 걷기가 상한에서 멈추면 못 찾은 파일이 있을 수 있어요. 미리보기가 말해요.
+- 이 저장소는 루트 설정이 무시돼서 지금은 적용할 수 없어요.
+- Windows 는 not_run 이에요.
 
 ## Decisions
 
-| Id | Decision | Basis | Undo |
-| --- | --- | --- | --- |
-| D-1 | 거절 규칙은 `Read(path)` 꼴만 (`Edit` 덮임: 같은 경로의 Edit·Write·새 파일 생성까지 차단) — 그래서 항목마다 "편집도 막힘" 경고가 붙어요. | permissions.md "A `Read` deny rule also blocks the Edit and Write tools on the same path"; 리뷰 6130 (2) | 카드 열림 |
-| D-2 | 규칙은 git 에 추적되는 저장소 루트의 프로젝트 설정 파일에 — 작업트리가 읽는 자리; 무시되거나 추적 안 된 루트 파일은 감지해 알리고 쓰기를 거부한다. | settings.md 주 작업 디렉터리 읽기, 리뷰 6130 (1), 이 저장소 .gitignore 의 `.claude/` 무시 | 카드 열림 |
-| D-3 | 쓰기는 설정 쓰기 검사를 통과해서(백업·병합·검증·doctor); 이 카드는 직접 쓰기를 만들지 않는다. | settings-write-check SPEC, 가드 파일은 사용자 선택 | 카드 열림 |
-| D-4 | `.claudeignore` 항목은 텍스트 그대로 `Read(<항목>)` 후보가 되지만 하나씩 사용자가 고른다(주석·빈 줄 건너뛰기, 끝 `/` 유지); 파일 자체는 두 번째 선택 없이 지우지 않는다. | permissions.md ".claudeignore … has no effect"; 리뷰 6130 (2)·N3 | 카드 열림 |
-| D-5 | 키 파일 규칙은 옮겨 온 항목 뒤에 둔다 — 같은 파일의 `!` 항목이 자기 앞의 상대 거절을 파내므로; 파내기가 키 파일 규칙에 닿으면 계획이 이름한다. | permissions.md "A deny or ask pattern that starts with `!` is a gitignore negation… carves the paths it matches out of the `path` or `./path` rules listed before it"; 리뷰 6130 (3) | 카드 열림 |
-| D-6 | 미리보기는 거절 규칙이 신뢰 단계 없이·프로젝트 설정을 읽는 무인 실행에서도 적용됨을 한 줄로 말한다(예외 포함: `--setting-sources user`·SDK 프로젝트 설정 없음). | permissions.md "deny and ask rules aren't affected"; permissions.md 841; 리뷰 6130 N2 | 카드 열림 |
-| D-7 | 짝 맞춤은 이름으로만 — 플래너는 맞은 파일을 열지·읽지·해시하지·출력하지 않는다. | 리뷰 6130 (4) | 카드 열림 |
-| D-8 | 테스트는 임시 프로젝트 나무 + 임시 설정 폴더만. | "테스트는 Rust 만" 결정, 카드 기준 1 | 카드 열림 |
+추천이 맨 앞이고 기본값이에요.
+
+- D-1 (규칙을 쓰는 길): (A, 기본·권장) 기존 설정 쓰기(`src/claude.rs`) 안에 `permissions.deny` 에 항목만 더하는 길을 넣어요: 원본 백업, 계획 digest 확인, 원자 교체, 영수증의 파일 지문 갱신, 소유 표시는 그대로. (B) 지금 코드 그대로, 기존 `permissions` 에 새 규칙을 합친 값을 `claude-settings-apply` 의 확인 교체로 써요 — 새 쓰기 코드가 없지만 moai 가 키 전체를 소유하게 되어, 뒤의 요청이 그 키를 빼면 사용자의 규칙 삭제가 충돌 없이 계획돼요. (C) 설정 쓰기의 목록 병합 후속 일이 생길 때까지 적용 조각을 미뤄요.
+- D-2 (규칙을 두는 곳): (A, 기본) git 에 추적되는 루트 `.claude/settings.json`(리더 결정 노트 6132; 팀과 워크트리에 같은 규칙). (B) 루트가 무시되는 저장소에는 메인 체크아웃의 `.claude/settings.local.json` 을 두 번째 선택으로 내요 — 문서상 워크트리에도 닿지만 개인 설정이고 Windows 는 달라요. 후속.
+- D-3 (쓰기 검사): 별도 검사나 쓰기 함수를 만들지 않아요. D-1 의 길은 `SPEC-20261122-settings-write-check` 가 쓰기 길에 넣는 관찰 검사를 같이 지나가요(개정 2 의 "검사된 writer 로만" 을 지금 설계에 맞춰 바꿨어요).
+- D-4 (`.claudeignore` 항목의 기본 선택): (A, 기본·권장) 자격 증명 모양에 맞는 항목만 권장하고 나머지는 고르지 않은 채로 내요. (B) 모두 권장 — 로그·빌드 폴더 읽기와 쓰기가 막혀요. (C) 아무것도 권장하지 않아요.
+- D-5 (변환 꼴): `/` 로 끝나는 항목은 폴더 안 내용을 막는 문서의 꼴로 바꿔요: 중간에 `/` 가 없으면 `Read(**/<폴더>/**/*)`, 있으면 `Read(<경로>/**/*)`, 앞의 `/` 는 그대로 둬요. 다른 항목과 `!` 항목은 글자 그대로 `Read(<항목>)`·`Read(!<항목>)` 이에요. 개정 2 의 "끝 `/` 유지" 는 문서에 없는 꼴이라 바꿨어요.
+- D-6 (순서): 키 파일 규칙은 목록의 마지막 `!` 항목 뒤로 옮겨 써요. 뒤로 옮기는 것은 보호를 늘리기만 해요. 다른 항목의 서로 순서는 그대로예요.
+- D-7 (짝 맞춤): 이름으로만 해요(리뷰 노트 6130).
+- D-8 (걷기 상한): `.git` 과 중첩 체크아웃을 건너뛰고 링크를 따라가지 않으며 항목 100,000개에서 멈춰요. `project_detect` 의 걷기(깊이 3, 5,000개)는 비밀 파일을 찾기에 얕아서 쓰지 않아요.
+- D-9 (퇴역): 지우지 않고 백업 폴더로 옮겨요.
+- D-10 (템플릿): (A, 기본) 템플릿은 거절 규칙을 싣지 않고, 규칙은 미리보기의 선택으로만 프로젝트에 생겨요(2026-11-22 사용자 결정 "프로젝트의 `.claude` 에는 기본으로 아무것도 두지 않아요"). (B) 새 프로젝트 템플릿에 자격 증명 규칙을 기본으로 실어요 — 그 사용자 결정을 바꾸는 일이라 사용자만 고를 수 있어요.
+- D-11 (테스트): 임시 프로젝트와 임시 설정 폴더의 Rust 테스트만이에요.
 
 ## Result
 
-(status draft — written when the slice lands)
+(draft)
