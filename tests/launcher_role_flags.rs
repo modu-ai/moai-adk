@@ -2,8 +2,9 @@
 //! SPEC-20261124-launcher-retire-role-flags): `moai cc|glm -l|--leader` and `-a|--agent` start a
 //! named session in the permission bypass and hand the host the first input `/moai leader` or
 //! `/moai agent`. Every case runs in a temporary git project with a temporary HOME; no real host
-//! is started (a stub `claude` records its arguments). AC-5 (advisor and model defaults of `-a`)
-//! waits for the approval of revision 3 of the SPEC and is not in this file yet.
+//! is started (a stub `claude` records its arguments). The advisor tests are the `advisor_` ones
+//! (SPEC-20261126-lane-advisor-opt-in: `-a` passes no advisor unless `--advisor` or the user
+//! setting asks for one).
 //!
 //! SPEC-20261125-agent-names-bible replaces the first-free-name pick of `-a` with a pick at
 //! random among the free names of a list of 48 Biblical names; its tests are the `bible_` ones.
@@ -642,18 +643,15 @@ fn pair(argv: &[String], flag: &str, value: &str) -> bool {
     argv.windows(2).any(|w| w[0] == flag && w[1] == value)
 }
 
-/// AC-5 (REQ-9, REQ-10, D-6, D-13): `-a` on `cc` passes `--advisor opus` unless the option, the
-/// setting or `--no-advisor` says otherwise; `-l`, a launch without a role flag and `glm` pass none.
+/// SPEC-20261126-lane-advisor-opt-in AC-1 and AC-4 (user decision 2026-11-26): `-a` passes no
+/// advisor unless it is asked for, whatever the main model, and its note says how to ask.
 #[test]
-fn ac5_agent_advisor_is_opus_unless_told_otherwise() {
+fn advisor_agent_launch_passes_none_unless_asked() {
     let f = Fixture::new("advproj");
-    let (_, v, said) = f.dry(&["cc", "-a"]);
-    assert!(pair(&argv(&v), "--advisor", "opus"), "{said}");
-    let (_, v, said) = f.dry(&["cc", "-a", "--no-advisor"]);
-    assert!(!argv(&v).contains(&"--advisor".to_string()), "{said}");
-    let (_, v, said) = f.dry(&["cc", "-a", "--advisor", "fable"]);
-    assert!(pair(&argv(&v), "--advisor", "fable"), "{said}");
     for args in [
+        &["cc", "-a"][..],
+        &["cc", "-a", "--model", "fable"][..],
+        &["cc", "-a", "--no-advisor"][..],
         &["cc", "-l"][..],
         &["cc"][..],
         &["glm", "-a"][..],
@@ -665,33 +663,66 @@ fn ac5_agent_advisor_is_opus_unless_told_otherwise() {
             !argv(&v).contains(&"--advisor".to_string()),
             "{args:?} passed an advisor: {said}"
         );
+        // No note about an advisor that was passed, or about a default that was left out.
+        let notes = v["notes"].to_string();
+        assert!(!notes.contains("usage credits"), "{args:?}: {said}");
+        assert!(
+            !notes.contains("ranks below the main model"),
+            "{args:?}: {said}"
+        );
     }
-    // D-13: the user setting beats the `-a` default, and `none` in it keeps no advisor.
-    f.user_launcher(r#"{"launcher":{"advisor":"fable"}}"#);
     let (_, v, said) = f.dry(&["cc", "-a"]);
-    assert!(pair(&argv(&v), "--advisor", "fable"), "{said}");
-    f.user_launcher(r#"{"launcher":{"advisor":"none"}}"#);
-    let (_, v, said) = f.dry(&["cc", "-a"]);
-    assert!(pair(&argv(&v), "--advisor", "opus"), "{said}");
-}
-
-/// AC-5 (D-14): a main model that ranks above the default advisor leaves the default out with
-/// one line of reason; an `--advisor` the person gave that ranks lower is refused as before.
-#[test]
-fn ac5_a_higher_main_model_drops_the_default_advisor_and_refuses_a_lower_given_one() {
-    let f = Fixture::new("rankproj");
-    let (code, v, said) = f.dry(&["cc", "-a", "--model", "fable"]);
-    assert_eq!(code, 0, "{said}");
-    assert!(!argv(&v).contains(&"--advisor".to_string()), "{said}");
     assert!(
         v["notes"]
             .to_string()
-            .contains("ranks below the main model"),
+            .contains("no advisor unless --advisor [model]"),
         "{said}"
     );
-    let (code, _, said) = f.dry(&["cc", "-a", "--model", "fable", "--advisor", "opus"]);
-    assert_ne!(code, 0, "{said}");
-    assert!(said.contains("advisor must rank at or above"), "{said}");
+    f.user_launcher(r#"{"launcher":{"advisor":"none"}}"#);
+    let (_, v, said) = f.dry(&["cc", "-a"]);
+    assert!(!argv(&v).contains(&"--advisor".to_string()), "{said}");
+}
+
+/// AC-2 and AC-4: `--advisor` without a model means `opus` wherever it stands, a given model
+/// stays, and a main model that ranks above `opus` refuses the launch before a host starts.
+#[test]
+fn advisor_option_without_a_model_means_opus() {
+    let f = Fixture::new("bareproj");
+    for args in [
+        &["cc", "-a", "--advisor"][..],
+        &["cc", "-a", "--advisor", "--name", "mine"][..],
+        &["cc", "--advisor", "-a"][..],
+        &["cc", "-l", "--advisor"][..],
+        &["cc", "--advisor"][..],
+    ] {
+        let (code, v, said) = f.dry(args);
+        assert_eq!(code, 0, "{args:?}: {said}");
+        assert!(pair(&argv(&v), "--advisor", "opus"), "{args:?}: {said}");
+        assert!(
+            v["notes"].to_string().contains("usage credits"),
+            "{args:?}: {said}"
+        );
+    }
+    let (_, v, said) = f.dry(&["cc", "-a", "--advisor", "fable"]);
+    assert!(pair(&argv(&v), "--advisor", "fable"), "{said}");
+    let (out, seen) = f.run(&["cc", "-a", "--model", "fable", "--advisor"]);
+    assert!(!out.status.success(), "{}", text(&out));
+    assert!(
+        text(&out).contains("advisor must rank at or above"),
+        "{}",
+        text(&out)
+    );
+    assert_eq!(seen, None, "a host started");
+}
+
+/// AC-4: the launcher help says the model of `--advisor` may be left out.
+#[test]
+fn advisor_help_says_the_model_may_be_left_out() {
+    let f = Fixture::new("helpproj");
+    for host in ["cc", "glm"] {
+        let said = text(&f.command(&[host, "--help"]).output().unwrap());
+        assert!(said.contains("--advisor [<MODEL>]"), "{host}: {said}");
+    }
 }
 
 /// AC-5 (REQ-28, D-12): `-a` starts the host with the saved agent choice, else the agent row of

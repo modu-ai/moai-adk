@@ -282,6 +282,32 @@ fn cli_and_setting_enable_the_advisor_with_cli_precedence() {
     );
 }
 
+/// SPEC-20261126-lane-advisor-opt-in AC-3: a lane launch follows the setting like any launch,
+/// and an `--advisor` without a model is refused beside `--no-advisor` and left out on glm with
+/// the note.
+#[test]
+fn a_lane_follows_the_setting_and_a_bare_option_keeps_the_rules() {
+    let f = fixture();
+    let passed = |v: &Value, model: &str| argv(v).windows(2).any(|w| w == ["--advisor", model]);
+    let v = dry(&f, &["glm", "-a", "--advisor"]);
+    assert!(!argv(&v).contains(&"--advisor".to_string()), "{v}");
+    assert!(
+        v["notes"].to_string().contains("--advisor omitted on glm"),
+        "{v}"
+    );
+    let out = command(&f, &["cc", "-a", "--advisor", "--no-advisor", "--dry-run"])
+        .output()
+        .unwrap();
+    assert!(rejected(&out).contains("--no-advisor"));
+    config(f.home.path(), r#"{"launcher":{"advisor":"fable"}}"#);
+    let v = dry(&f, &["cc", "-a"]);
+    assert!(passed(&v, "fable"), "{v}");
+    let v = dry(&f, &["cc", "-a", "--advisor"]);
+    assert!(passed(&v, "opus"), "{v}");
+    let v = dry(&f, &["cc", "-a", "--no-advisor"]);
+    assert!(!argv(&v).contains(&"--advisor".to_string()), "{v}");
+}
+
 /// AC-2: `--advisor` with `--no-advisor` is refused before a host starts or a lock is taken.
 #[test]
 fn advisor_and_no_advisor_together_are_refused() {
