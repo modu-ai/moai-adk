@@ -1442,6 +1442,34 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the git folder only with `--apply` or `--revert`. Show a stale guard record and re-point it
+    ///
+    /// The guard record is the file `moai/integration-branch` in the common git folder. After the
+    /// profile's integration branch changes it still names the old branch, so the new branch is
+    /// not guarded. The plain view writes nothing: it answers `state` (`stale`, `current`,
+    /// `no_record`, `no_profile_branch` or `linked_worktree`) and, for `stale`, a plan digest and
+    /// the exact `--apply` command. `--apply` needs `--plan-digest` and `--permission-reference`
+    /// naming the user's yes: it rewrites the record under a lock, writes a receipt under
+    /// `moai/record-repoint/` and answers the receipt, its stamp and the `--revert` command.
+    /// `--revert <stamp>` restores the old bytes only while the record still equals the receipt's
+    /// new bytes. The old branch is not guarded after the re-point; the preview says so.
+    GuardRepoint {
+        /// Make the re-point; needs `--plan-digest` and `--permission-reference`.
+        #[arg(long, conflicts_with = "revert")]
+        apply: bool,
+        /// Put the old record back from the receipt of this stamp; needs `--permission-reference`.
+        #[arg(long)]
+        revert: Option<String>,
+        /// The `plan_digest` of the preview of the same record.
+        #[arg(long)]
+        plan_digest: Option<String>,
+        /// The reference of the user's yes (1 to 80 letters, digits or . _ : / -).
+        #[arg(long)]
+        permission_reference: Option<String>,
+        /// The project folder (its profile holds the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+    },
     /// Writes the git folder only. Guard the integration branch (run by git, never typed)
     ///
     /// Run by the `reference-transaction` hook, never by hand: git runs it with the state of a
@@ -2349,6 +2377,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 plan_digest: plan_digest.as_deref(),
                 permission_reference: permission_reference.as_deref(),
                 by: by.as_deref(),
+            },
+        ),
+        Action::GuardRepoint {
+            apply,
+            revert,
+            plan_digest,
+            permission_reference,
+            project,
+        } => moai_cli::card::guard::repoint::repoint(
+            &project,
+            &moai_cli::card::guard::repoint::RepointRequest {
+                apply,
+                revert: revert.as_deref(),
+                plan_digest: plan_digest.as_deref(),
+                permission_reference: permission_reference.as_deref(),
             },
         ),
         Action::Guard { state } => {
