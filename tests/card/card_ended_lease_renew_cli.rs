@@ -11,7 +11,7 @@ use common::home::TempHome;
 use moai_cli::ledger;
 use serde_json::{json, Value};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Output, Stdio};
 
 const SESSION_VAR: &str = "CLAUDE_CODE_SESSION_ID";
@@ -95,10 +95,6 @@ impl World {
                 .tempdir()
                 .unwrap(),
         }
-    }
-
-    fn project(&self) -> PathBuf {
-        PathBuf::from(&self.p)
     }
 
     /// `moai card <args> --project <project>`, as `session`.
