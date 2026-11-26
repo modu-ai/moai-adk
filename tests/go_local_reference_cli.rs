@@ -26,6 +26,8 @@ const SHARED: &str = ".claude/settings.json";
 /// A proven `.claude/` file that moves even when the Go folder stays: a refusal must keep it.
 const FREE: &str = ".claude/workflows/free.md";
 const REF: &str = "test-pick";
+/// A value of the local settings that stands for a token: no command output may hold it.
+const KEPT_VALUE: &str = "fixture-value-that-stays-private";
 
 fn sha(bytes: &[u8]) -> String {
     format!("sha256:{:x}", Sha256::digest(bytes))
@@ -217,6 +219,7 @@ impl Fx {
         let (v, text) = self.apply(&plan, true, None);
         assert_eq!(v["ok"], json!(true), "{text}");
         assert_eq!(v["result"]["state"], json!("committed"), "{text}");
+        assert!(!text.contains(KEPT_VALUE), "{text}");
         v["result"].clone()
     }
 
@@ -291,7 +294,7 @@ fn all_forms(fx: &Fx) -> String {
     let root = fx.shown();
     format!(
         r#"{{
-  "env": {{"EDITOR": "vi"}},
+  "env": {{"EXAMPLE_TOKEN": "{KEPT_VALUE}"}},
   "statusLine": {{"type": "command", "command": "bash {m}/status_line.sh"}},
   "hooks": {{"Stop": [{{"hooks": [
     {{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/{m}/hooks/a.sh"}},
@@ -733,6 +736,7 @@ fn revert_restores_the_original_bytes_and_keeps_the_later_file() {
         );
         let (v, out) = fx.revert(stamp, &plan);
         assert_eq!(v["ok"], json!(true), "{out}");
+        assert!(!out.contains(KEPT_VALUE), "{out}");
         assert_eq!(fx.read(LOCAL), text);
         assert_eq!(fx.mode(LOCAL), 0o600);
         assert_eq!(set_aside(&fx), vec![current]);
