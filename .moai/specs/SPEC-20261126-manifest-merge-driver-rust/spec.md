@@ -4,6 +4,7 @@ title: "the source-manifest merge driver is a moai command, so a merge runs no P
 status: draft
 revision: 1
 created: 2026-11-26
+branch: spec/manifest-driver-rust-20261126
 ---
 
 # the source-manifest merge driver is a moai command, so a merge runs no Python
