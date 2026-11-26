@@ -2957,3 +2957,24 @@ fn file_tools_first_line_stands_in_the_four_lane_texts() {
         "{missing:?} lack the line {FILE_TOOLS_FIRST:?}"
     );
 }
+
+/// The words the rule texts say about how a mutant is run.
+const MUTANTS_WITHOUT_A_SCRIPT: &str = "Run each mutant without a script: change the code with Edit, run the test with one command, and change the code back with Edit; never use a script that holds `git apply`, `git checkout` or `sed -i`.";
+
+/// SPEC-20261126-file-tools-first AC-4, AC-5: the implementation agent, the shell guard
+/// reference and the lane rules each hold the no-script mutant line.
+#[test]
+fn mutants_without_a_script_line_stands_in_the_three_rule_texts() {
+    let missing: Vec<&str> = [
+        "agents/impl.md",
+        "skills/moai/references/internal/shell-guards.md",
+        "docs/lane-rules.md",
+    ]
+    .into_iter()
+    .filter(|rel| !repo_text(rel).contains(MUTANTS_WITHOUT_A_SCRIPT))
+    .collect();
+    assert!(
+        missing.is_empty(),
+        "{missing:?} lack the line {MUTANTS_WITHOUT_A_SCRIPT:?}"
+    );
+}
