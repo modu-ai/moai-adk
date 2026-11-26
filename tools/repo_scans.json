@@ -568,13 +568,13 @@
     {
       "id": "tracked-skill-references",
       "tests": [
-        "tests/skill_references_test.py::test_current_tracked_skill_file_references_resolve"
+        "tests/skill_references_scan.rs::every_current_skill_file_reference_resolves"
       ],
-      "checks": [
-        "python3 -m unittest tests.skill_references_test"
+      "test_targets": [
+        "skill_references_scan"
       ],
       "rules": [
-        "tests/skill_references_test.py"
+        "tests/skill_references_scan.rs"
       ],
       "scope": [
         {
@@ -1597,6 +1597,8 @@
         "retired_host_words",
         "rule_history_guard",
         "sdd_guidance",
+        "skill_references_scan",
+        "skill_text_fixtures",
         "troubleshooting_doc"
       ],
       "checks": [
@@ -1639,6 +1641,8 @@
         "tests/retired_host_words.rs",
         "tests/rule_history_guard.rs",
         "tests/sdd_guidance.rs",
+        "tests/skill_references_scan.rs",
+        "tests/skill_text_fixtures.rs",
         "tests/troubleshooting_doc.rs",
         "tests/repo_scans_table.rs"
       ],
@@ -1663,6 +1667,9 @@
         },
         {
           "prefix": "docs/design-review/appendix/operations"
+        },
+        {
+          "prefix": "docs/design-review/appendix/state-vocabulary-crosswalk.md"
         },
         {
           "prefix": "docs/design-review/autonomy-modes-spec.md"
@@ -1690,6 +1697,9 @@
         },
         {
           "prefix": "docs/llms.txt"
+        },
+        {
+          "prefix": "docs/product-naming-inventory.md"
         },
         {
           "prefix": "docs/protocol-v1.md"
@@ -1963,6 +1973,7 @@
         "repo_scans_table",
         "retired_host_words",
         "sdd_guidance",
+        "skill_references_scan",
         "style_banner_scan",
         "worktree_report"
       ],
@@ -1996,6 +2007,7 @@
         "tests/repo_claude_md.rs",
         "tests/retired_host_words.rs",
         "tests/sdd_guidance.rs",
+        "tests/skill_references_scan.rs",
         "tests/style_banner_scan.rs",
         "tests/card/trailer_check_cli.rs",
         "tests/card/trailer_paragraph_guard_cli.rs",
@@ -2009,6 +2021,9 @@
         },
         {
           "prefix": ".github/moai"
+        },
+        {
+          "prefix": ".github/pull_request_template.md"
         },
         {
           "prefix": ".github/workflows"
@@ -2145,7 +2160,9 @@
         "self_audit_cli",
         "skill_entry_order",
         "skill_generalization_scan",
+        "skill_references_scan",
         "skill_structure",
+        "skill_text_fixtures",
         "source_manifest_facts",
         "spec_approval_digest",
         "spec_branch_name_first",
@@ -2254,6 +2271,8 @@
         "tests/sdd_guidance.rs",
         "tests/self_audit_cli.rs",
         "tests/skill_entry_order.rs",
+        "tests/skill_references_scan.rs",
+        "tests/skill_text_fixtures.rs",
         "tests/skill_structure.rs",
         "tests/source_manifest_facts.rs",
         "tests/spec_approval_digest.rs",
