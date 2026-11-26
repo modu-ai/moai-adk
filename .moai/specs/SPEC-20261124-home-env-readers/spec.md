@@ -1,17 +1,12 @@
 ---
 id: SPEC-20261124-home-env-readers
-title: "환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 조각 1 은 layout, 조각 2 는 클레임 장부 호출부와 git 자식"
-status: approved
-revision: 4
+title: "환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: layout, 클레임 장부, 읽기 목록 검사와 남은 묶음"
+status: draft
+revision: 5
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-23
-  basis: "리더 결정 노트 7858 (2026-11-23T20:31:59Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 7856 에 답함: 판 4 승인 — REQ-10 한 문장, D-8 고정 폐기와 같은 HOME 판정 한 곳, AC-14·15·16, N2·N3 문구; 앞 판은 노트 7763·7830); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
-  digest: "sha256:5c22627fc9788b7bcc3948eef8a7a9fffdf18ea3572122152a355b8cafb3f174"
 ---
 
-# 환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 조각 1 은 layout, 조각 2 는 클레임 장부 호출부와 git 자식
+# 환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: layout, 클레임 장부, 읽기 목록 검사와 남은 묶음
 
 ## Intent
 
@@ -27,11 +22,14 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 
 판 4(조각 2 수리, 감사 #410 막는 것 B1, 리더 결정 노트 7851)는 판 2 ② 의 git 자식 방식을 바꿔요. 판 2 는 받은 HOME 이 있으면 `GIT_CONFIG_GLOBAL` 을 그 HOME 의 `.gitconfig`(없으면 `/dev/null`)로 고정했어요. git 은 `GIT_CONFIG_GLOBAL` 이 있으면 `$XDG_CONFIG_HOME/git/config` 를 읽지 않아서(git 2.54.0, git(1) ENVIRONMENT), `identity()` 가 XDG 파일에 `safe.directory` 를 둔 사용자와 자기 `GIT_CONFIG_GLOBAL` 을 둔 사용자의 설정을 버렸어요. 판 4 는 그 고정을 없애요: 받은 HOME 이 프로세스의 환경 HOME 과 같거나 HOME 이 없으면 자식은 환경을 그대로 받고, 다르면 자식의 HOME 을 받은 HOME 으로 두고 `XDG_CONFIG_HOME` 과 `GIT_CONFIG_GLOBAL` 을 지워요. 같은 판에서 감사 #410 비차단 N2(Scope 의 금지 문장과 D-5 의 어긋남)와 N3(`spec show` 가 Scope 를 잘못 읽음)의 문구를 고쳐요.
 
+판 5(조각 3)는 카드 기준 1 의 남은 몫을 작은 묶음으로 나눠요. 이 판이 요구로 묶는 것은 첫 묶음 하나예요: ① 환경 HOME 을 읽는 곳과 어댑터 호출 자리의 목록을 테스트로 만들어 소스와 어긋나면 실패하게 해요. ② 잡힌 파일이 없는 두 곳(`baseline::inventory`, `host-wake` 의 설정 폴더 기본값)에서 읽기를 명령 가장자리로 올려요. 남은 묶음은 Plan 의 표에만 두고, 파일을 잡은 카드가 놓는 차례에 다음 판에서 요구로 올려요.
+
 ## Non-goals
 
-- 아래 인벤토리의 안쪽 읽기 A·B 모듈 — 조각 3 이후. `src/forge/outbox.rs`, `src/apply.rs` 는 관찰 실행 뒤에 정해요(D-7).
+- Plan 의 B2 이후 묶음 — 이 판의 요구가 아니에요. 다음 판에서 요구로 올려요.
 - 명령 가장자리(`src/main.rs`, `src/ops/*::run`)의 읽기를 없애는 일. 가장자리는 한 번 읽는 자리라 남겨요.
 - `identity::identity` 호출을 `identity_in` 으로 바꾸는 일 — C-409 의 몫이에요. 이 카드는 `journal_root_in` 이 필요한 곳만 바꿔요.
+- 감사 #410 비차단 N1(`journal_root_in` 의 git 자식이 환경 HOME 설정을 읽음)과 R2(같은 HOME 을 다른 철자로 주면 사용자 git 설정을 잃음)의 수리 — 어느 카드가 받을지는 리더가 정해요.
 
 ## Requirements
 
@@ -47,6 +45,10 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - REQ-10: The `identity_in` function shall run its git children with the HOME it is given as their HOME and without `XDG_CONFIG_HOME` and `GIT_CONFIG_GLOBAL` when that HOME is not the process's own HOME, and with the process's own environment when it is that HOME or none.
 - REQ-11: The layout tests shall run every git child they start with a HOME in a temporary folder.
 - REQ-12: The baseline of `tests/fixtures/test_home_guard/baseline.tsv` shall list no test that the observation run of the changed tree shows leaving its HOME untouched.
+- REQ-13: IF the product expressions under `src/` that read `HOME` through `env::var` or `env::var_os` differ from the listed file, enclosing function, count and class (edge or inner), THEN the `home_env_readers` test shall fail and name the file and the function.
+- REQ-14: IF a call site of a HOME adapter outside a command edge is added, removed or moved to another function without the same change in the list, THEN the `home_env_readers` test shall fail.
+- REQ-15: The `baseline::inventory` function shall report each HOME entry from the HOME its caller hands over, `null` when none is handed over, without reading the environment HOME.
+- REQ-16: The `host-wake` operation `run` shall be the only place in its module that reads `HOME`, handing it to `default_config_dir` with the precedence of `CLAUDE_CONFIG_DIR` and the relative `.claude` for an unset or empty HOME unchanged.
 
 ## Acceptance
 
@@ -66,12 +68,19 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - AC-14 (REQ-10): 소유자가 다른 저장소에서, 신뢰(`safe.directory`)를 받은 HOME 의 `.config/git/config` 에만 둔 HOME 을 넘기면 `identity_in(path, Some(home))` 이 성공하고, 신뢰가 없는 HOME 은 거절 문구로 실패해요(판 2 의 `GIT_CONFIG_GLOBAL` 고정은 이 파일을 버렸어요). · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_reads_the_xdg)'`
 - AC-15 (REQ-10): 환경이 `$XDG_CONFIG_HOME/git/config` 나 `GIT_CONFIG_GLOBAL` 이 가리키는 파일로만 신뢰를 두면 `identity(path)` 가 성공하고, 그 둘이 없으면 거절 문구로 실패해요; 환경 HOME 과 같은 HOME 을 넘긴 `identity_in` 도 같아요. · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_keeps_the)'`
 - AC-16 (REQ-10): 환경이 `.gitconfig`·`$XDG_CONFIG_HOME/git/config`·`GIT_CONFIG_GLOBAL` 로 모두 신뢰해도, 환경 HOME 과 다른 HOME 을 넘기고 그 HOME 이 신뢰를 두지 않으면 `identity_in` 이 거절 문구로 실패해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_leaves_the)'`
+- AC-17 (REQ-13): 목록과 소스가 같으면 통과하고, 목록에 없는 읽기를 더한 가짜 소스에서는 파일과 함수 이름을 말하며 실패해요. 주석 줄과 첫 칸의 `#[cfg(test)]` 모듈은 세지 않아요. · verify: `cargo nextest run --offline --locked --test home_env_readers`
+- AC-18 (REQ-14): 어댑터(`key_vault::home`, `home_workdir::home`, `hooks::env_home`, `layout::environment_home`, `default_home_root`, `switched_dir`, `switched_dir_checked`, `claim::journal_root`, `worktree::open_locked_journal`)의 호출 자리 목록이 소스와 같고, 스캔 표에 등록돼요. 별칭으로 들여온 맨 `home()` 호출과 상수에 담은 이름은 못 보는 것이 한계예요. · verify: `cargo nextest run --offline --locked --test home_env_readers` 와 `cargo nextest run --offline --locked --test repo_scans_table`
+- AC-19 (REQ-15): HOME 이 설정·빈 값·없음 세 경우에 `baseline-inventory` 의 HOME 항목 답이 바뀌기 전과 같아요(옛 코드에서 먼저 통과하는 특성 테스트). · verify: `cargo nextest run --offline --locked --test baseline_git_env -E 'test(baseline_inventory_reports_home_entries)'`
+- AC-20 (REQ-16): `CLAUDE_CONFIG_DIR` 이 있을 때와 없을 때, HOME 이 설정·빈 값·없음일 때 `host-wake` 가 쓰는 설정 폴더가 바뀌기 전과 같아요(자식 프로세스 환경만 바꾸는 특성 테스트). · verify: `cargo nextest run --offline --locked --test host_wake_cli -E 'test(host_wake_default_config_dir)'`
+- AC-21 (REQ-13, REQ-15, REQ-16): 두 읽기가 안쪽에서 가장자리로 옮겨진 목록(가장자리 30, 안쪽 17)이 통과해요. 목록을 먼저 고치면 옛 코드에서 실패해요(RED). · verify: `cargo nextest run --offline --locked --test home_env_readers`
 
 ## Scope
 
-- write: `src/layout.rs`, `src/claim.rs`, `src/worktree.rs`, `src/identity.rs`, `tests/claim_link_cli.rs`, `tests/claim_verify_cli.rs`, `tests/hook_dispatch_cli.rs`, `tests/test_home_guard.rs`, `tests/fixtures/test_home_guard/baseline.tsv`, `.moai/specs/SPEC-20261124-home-env-readers/spec.md`
-- read-only: `src/home_root.rs`, `src/forge/outbox.rs`, `src/apply.rs`, `src/handoff.rs`, `src/scope.rs`
+- write: `src/baseline.rs`, `src/ops/baseline_inventory.rs`, `src/ops/host_wake.rs`, `tests/home_env_readers.rs`, `tests/baseline_git_env.rs`, `tests/host_wake_cli.rs`, `tools/repo_scans.json`, `.moai/specs/SPEC-20261124-home-env-readers/spec.md`
+- read-only: `src/home_root.rs`, `src/layout.rs`, `src/claim.rs`, `src/worktree.rs`, `src/identity.rs`, `src/key_vault.rs`, `src/main.rs`
 - forbidden: `CLAUDE.md`
+
+판 5 의 쓰기 칸은 첫 묶음의 파일이에요. `tools/repo_scans.json` 은 공유 파일이라 예약 범위에 넣지 않고 `card line-lease` 로 한 줄만 더해요. `src/key_vault.rs`·`src/identity.rs`·`src/layout.rs` 는 identity 를 HOME 인자로 바꾸는 카드와 나눠 쓰기로 해서 이 묶음은 읽기만 해요. 앞 조각의 쓰기 칸은 각 조각의 Result 에 남아 있어요.
 
 조각 2 의 쓰기 칸에서 `tests/claim_link_cli.rs`, `tests/claim_verify_cli.rs`, `tests/hook_dispatch_cli.rs` 는 클레임 장부를 프로세스 안에서 부르는 기준선 테스트 파일이고, 관찰 실행이 같은 종류 파일을 더 보여 주면 확정 목록은 Result 에 적어요. `tests/test_home_guard.rs` 는 상한 한 줄만 바꿔요. `src/claim.rs`·`src/identity.rs` 는 identity 를 HOME 인자로 바꾸는 카드의 조각 2a 가 착지한 뒤(NeXT `5b6fcb4689`)에 이 카드가 예약을 넓혔어요(리더 결정 노트 7763). 기준선·`tools/repo_scans.json` 쓰기의 파일 차례는 지났어요.
 
@@ -79,18 +88,38 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 
 ## Plan
 
-인벤토리(2026-11-24, `rg 'env::var(_os)?\("HOME"\)' src` 와 함수 이름 확인; 본문 분류는 함수 이름만 보았어요 — 조각마다 읽어 확인하고 증거로 남겨요, 그 전은 unverified):
+인벤토리(판 5, 기준 `b3048a821a`; `rg` 로 `env::var(_os)?("HOME")` 를 찾고 감싸는 함수를 읽었어요. 글자 검색이라 상수에 담은 이름으로 읽는 곳이 있으면 못 봐요). 제품 코드의 직접 읽기는 47곳이에요: 가장자리 28, 안쪽 19. 테스트 안의 3곳은 세지 않아요.
 
-| 구분 | 곳 | 조각 |
+| 구분 | 곳 |
+| --- | --- |
+| 가장자리 28 | `src/main.rs` 6, `src/ops/*::run` 18(`star_ask::run` 포함), `src/ledger/command.rs::resolve_home`, `src/hook_entry.rs::env`, `src/statusline/mod.rs::run`, `src/identity.rs::identity`(identity 를 HOME 인자로 바꾸는 카드의 몫) |
+| 안쪽 19 | `src/agents.rs` `tilde`·`default_global_excludes`, `src/baseline.rs::inventory`, `src/claude.rs` `doctor`·`refuse_user_scope`, `src/edit_diagnostics.rs::lock_dir`, `src/heavy_slot.rs::cache_dir`, `src/home_workdir.rs::home`, `src/hook_config.rs::load`, `src/hook_engine.rs` `session_check`·`bypass_boundary_deny`, `src/hooks.rs::env_home`, `src/key_vault.rs::home`, `src/layout.rs::environment_home`, `src/migrate.rs::open_cli_home`, `src/ops/host_wake.rs::default_config_dir`, `src/project_update.rs` `go_settings_step`·`settings_step`, `src/update_tux.rs::view_for` |
+| 간접 읽기 | `src/host_home.rs` 의 `key_vault::home()` 대체 길, `src/statusline/state.rs` 의 환경 통째 담기(가장자리에서 받아요). 그 밖의 클로저는 `CLAUDE_CONFIG_DIR`·`CODEX_HOME` 같은 다른 이름만 읽어요 |
+| 어댑터 호출 | `key_vault::home` 14(가장자리 밖 7), `home_workdir::home` 12(6), `hooks::env_home` 6(5), `layout::environment_home` 6(6), `claim::journal_root` 7(7), `worktree::open_locked_journal` 5(5), `default_home_root` 2(2), `switched_dir_checked` 2(2) |
+
+묶음(판 5). 요구로 묶는 것은 첫 묶음(B0+B1)이고, 나머지는 파일을 잡은 카드가 놓는 차례에 다음 판에서 올려요. 파일을 잡은 카드는 2026-11-26 에 원장에서 읽은 값이라 묶음마다 다시 읽어요.
+
+| 묶음 | 내용 | 기다리는 것 |
 | --- | --- | --- |
-| 가장자리(한 번 읽는 자리, 남겨요) | `src/main.rs` 여섯 곳, `src/ops/*::run` 열네 곳(`args.home` 이 없으면 환경), `src/ledger/command.rs::resolve_home`, `src/hook_entry.rs::env`, `src/statusline/mod.rs::run`, `src/identity.rs::identity`(C-409) | — |
-| layout 안 | `src/layout.rs::default_home_root`(읽는 곳), `switched_dir`, `claims_legacy_dir`(`identity` 호출) | 1(이 판) |
-| layout 호출부(장부) | `src/claim.rs::journal_root`(`switched_dir`), `src/worktree.rs::open_locked_journal`(`apply_at` 이 부르며 `claim::journal_root` 를 거쳐 환경을 읽어요) | 2 |
-| layout 호출부(저장소) | `src/forge/outbox.rs:202`(`switched_dir`), `src/apply.rs:368`(`switched_dir`) | 관찰 실행 뒤 정해요(D-7) |
-| git 자식 | `src/identity.rs::rev_parse`(환경 HOME 의 전역 git 설정을 읽음, C-409 N1) | 2 (D-4, D-8) |
-| 안쪽 읽기 A | `src/key_vault.rs::home`, `src/home_workdir.rs::home`, `src/hooks.rs::env_home`, `src/hook_config.rs::load`, `src/hook_engine.rs::session_check`, `src/edit_diagnostics.rs::lock_dir`, `src/heavy_slot.rs::cache_dir` | 3 |
-| 안쪽 읽기 B | `src/claude.rs::doctor`·`refuse_user_scope`, `src/project_update.rs::go_settings_step`·`settings_step`, `src/baseline.rs::inventory`, `src/migrate.rs::open_cli_home`, `src/update_tux.rs::view_for`, `src/ops/host_wake.rs::default_config_dir`, `src/ops/star_ask.rs::run` | 4 |
-| 줄 지우기 | `tests/fixtures/test_home_guard/baseline.tsv` | C-406 착지 뒤 |
+| B0+B1 | 목록·호출 자리 검사(`tests/home_env_readers.rs`)와 `baseline::inventory`, `host-wake` 설정 폴더 기본값 | 없음 |
+| B2 | `migrate::open_cli_home` 의 HOME 거절을 받은 사용자 HOME 으로(거절은 약해지지 않아야 해요) | `src/main.rs` |
+| B3 | 훅 분배: 세션 확인, 권한 우회 경계 판정, 진단 잠금 폴더 | `src/main.rs`, `src/hook_engine.rs` 를 바꾼 카드의 착지 |
+| B4 | 영수증 읽기·쓰기와 `hooks::env_home` 호출 자리 | B3, `src/hooks.rs`, `src/project_update.rs` |
+| B5 | `claude::doctor` | `src/claude.rs` |
+| B6 | `project_update::plan` 의 설정 단계 둘 | `src/project_update.rs` |
+| B7 | `update_tux::view_for` | `src/main.rs`, `src/update.rs` |
+| B8 | `hook_config::load` | B4 와 그 호출부 파일 |
+| B9 | `refuse_user_scope`(안전 거절) | `src/claude.rs`, `src/hooks.rs` |
+| B10 | `agents` 의 전역 제외 파일 두 곳 | `src/agents.rs`, `src/project_update.rs` |
+| B11 | `key_vault::home` 의 안쪽 호출 자리 | `src/main.rs`, identity 를 HOME 인자로 바꾸는 카드의 `src/key_vault.rs` |
+| B12 | `home_workdir::home` 의 안쪽 호출 자리(링크된 이동 뿌리 거절 유지) | `src/home_workdir.rs`·`src/worktree_move.rs` |
+| B13 | layout·클레임 장부 어댑터의 호출 자리(링크 거절 유지) | `src/worktree.rs`, `src/main.rs` |
+| B14 | `heavy_slot::cache_dir` | `src/heavy_slot.rs`, `src/check_affected.rs` |
+| B15 | 안쪽 목록이 비고 이름 붙은 예외만 남는지 닫기 | 위 모두 |
+
+기준선(`tests/fixtures/test_home_guard/baseline.tsv`) 줄은 관찰 실행으로 확인한 묶음에서만 지워요(D-9). 첫 묶음은 그 파일을 쓰지 않아요.
+
+조각 3 첫 묶음 순서: 1) 승인 노트를 받아요. 2) 특성 테스트(AC-19, AC-20)를 옛 코드에서 통과시켜요. 3) 목록 검사를 옛 소스에 맞춰 통과시키고, 목록의 두 줄을 가장자리로 먼저 옮겨 실패(RED)를 봐요. 4) `inventory` 가 HOME 을 인자로 받고 `host_wake::run` 이 읽어 넘기게 바꿔요(GREEN). 5) 스캔 표 한 줄을 line-lease 로 더해요. 6) 새 테스트마다 뮤턴트, fmt, clippy, `check affected --card` 한 번.
 
 1조각 순서: 1) 승인 노트를 받아요. 2) RED: 위 테스트 이름으로 `default_home_root_in`·`switched_dir_in` 이 없어 컴파일이 실패하는 것을 봐요. 3) GREEN: `default_home_root_in`·`switched_dir_in` 을 더하고 `default_home_root`·`switched_dir` 는 어댑터로, `claims_legacy_dir` 는 `identity_in(project, None)` 으로 바꿔요. 4) 이웃: `layout` 모듈 기존 테스트와 `claim` 의 `journal_root` 테스트, fmt, clippy.
 
@@ -112,6 +141,10 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - 조각 2: `apply_at` 의 잠금이 `None`(프로젝트 쪽 저널)을 쓰면, 환경 HOME 과 다른 `home_root` 로 `apply_at` 을 부르는 호출에서 잠그는 저널이 달라질 수 있어요. 지금 그렇게 부르는 곳은 없어요(`apply_cli` 는 `default_home_root()` 를 넘겨요; `rg 'apply_at\(' src tests` 로 확인, 판 2 승인 뒤 한 번 더). `check_destinations` 가 이미 전환된 포인터를 잠금 앞에서 거절하므로(`src/layout.rs:274`) 잠금에 닿는 호출의 저널은 늘 프로젝트 쪽이에요.
 - 조각 2: 기준선 줄이 몇 개 줄지는 변경 뒤 관찰 실행 전에는 몰라요(unverified). `journal_root_in` 으로 바꾸는 테스트 도우미는 `identity::identity`(C-409 몫)도 불러서, 두 카드가 모두 끝나야 그 테스트가 HOME 을 안 건드릴 수 있어요. 한쪽만 끝난 파일은 줄을 지우지 않아요.
 - 조각 2: 실험(D-4)을 돌리려면 `HOME`·`GIT_CONFIG_GLOBAL` 을 정한 `git` 명령이 필요한데, 워크트리 격리 훅이 그런 명령을 막았어요(이 세션, 2026-11-23). 그 명령줄 실험은 다시 돌리지 않았고, 리더 결정(노트 7763)대로 자식 프로세스에만 HOME 을 주는 Rust 테스트로 D-8 의 동작을 RED 먼저 확인했어요(Result).
+- 판 5: 목록 검사는 목록과 정확히 같아야 통과해요. 착지 전의 다른 카드가 HOME 읽기나 어댑터 호출을 더하거나 옮기면 그 카드의 착지 묶음 검사가 실패하고, 그 카드가 목록 파일을 함께 고쳐야 해요(D-13). 새 관문이라 승인자가 보고 정해요.
+- 판 5: 목록 검사는 글자 검색이에요. 별칭으로 들여온 맨 `home()` 호출, 상수에 담은 변수 이름, git 같은 자식 프로세스가 HOME 을 읽는 것은 못 봐요.
+- 판 5: `identity.rs` 가 일부러 `environment_home` 을 부르는 곳(D-8)과 `identity::identity` 는 이 카드만으로는 0 이 되지 않아요. 예외로 남길지는 B13·B15 에서 승인자가 정해요.
+- 판 5: B12·B13 은 호출 사슬의 위쪽(`apply::receipts_dir`, `outbox::outbox_dir`, 워크트리 정리 쪽)을 아직 끝까지 따라가지 않았어요(unverified). 그 묶음을 요구로 올리기 전에 따라가요.
 
 ## Decisions
 
@@ -127,8 +160,12 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 | D-8 | git 자식의 전역 설정은 `GIT_CONFIG_GLOBAL` 로 고정하지 않아요(판 4; 판 2 의 옵션 (a) 고정은 감사 #410 B1 이 막았어요). 받은 HOME 이 프로세스의 환경 HOME 과 같으면 자식은 환경을 그대로 받아 사용자의 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 이 살아요. 다르면 자식의 HOME 을 받은 HOME 으로 두고 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 지워 git 이 `<home>/.gitconfig` 와 `<home>/.config/git/config` 를 둘 다 읽어요. `home` 이 `None` 이면 건드리지 않아요(프로세스 환경 그대로) | git(1) ENVIRONMENT(git 2.54.0): `GIT_CONFIG_GLOBAL` 이 있으면 `$HOME/.gitconfig` 도 `$XDG_CONFIG_HOME/git/config` 도 읽지 않아요, 그래서 고정은 둘 중 하나를 버려요; (b) 는 `safe.directory` 를 막을 수 있어 고르지 않아요(리더 결정 노트 7680); `None` 을 `/dev/null` 로 막으면 `identity_in(path, None)` 을 부르는 명령 경로의 사용자가 자기 `safe.directory` 설정을 잃어요; 같은 HOME 의 판정은 `layout::environment_home` 한 곳을 거쳐요; 리더 결정 노트 7851 | `rev_parse` 의 환경 분기 삭제 |
 | D-9 | 기준선 줄은 마지막 단계에서 관찰 실행 결과로만 지워요; 상한(`BASELINE_CAP`)은 남은 줄 수로 같은 변경에서 낮춰요 | 줄 수는 "이 변경 뒤 가드가 건드렸다고 말하지 않는 테스트"만 줄일 수 있어요(핵심 규칙 10: 글자 일치는 가설) | 지운 줄을 되살리기 |
 | D-10 | `tests/claim_link_cli.rs` 도우미 `record()` 의 `identity::identity(&self.root)` 한 줄을 `identity_in(&self.root, None)` 으로 바꿔요. 금지 문장은 `src/` 안의 교체 줄로 좁혀요 | 리더 결정 노트 7830(7828 에 답함; 리더 판단, 사용자 위임). 그 도우미가 읽는 칸은 HOME 과 무관하고, 관찰 실행에서 그 한 줄이 스물다섯 테스트를 기준선에서 빼요(`guard-after2.log`). identity 를 HOME 인자로 바꾸는 카드의 범위에는 `tests/` 가 없어 부딪치는 카드가 없어요 | 그 한 줄을 `identity(&self.root)` 로 되돌리고 지운 스물다섯 줄을 되살리기 |
+| D-11 | 여럿이 부르는 어댑터는 모든 호출 자리가 가장자리일 때만 가장자리로 쳐요. 그래서 목록 검사는 직접 읽기와 어댑터 호출 자리를 둘 다 적어요 | 어댑터를 늘 가장자리로 치면 안쪽 읽기를 도우미로 감싸기만 해도 카드 기준 1 이 통과해요. 어댑터를 모두 없애는 안은 `identity` 쪽 설계(D-8)와 부딪쳐요 | REQ-14 와 두 번째 목록을 지우기 |
+| D-12 | 호출자가 모두 그 묶음 안에 있으면 읽는 어댑터를 남기지 않고 함수 서명을 바로 바꿔요(D-1 을 좁혀요) | `baseline::inventory` 와 `default_config_dir` 의 호출자는 각각 한 곳이에요(읽어서 확인) | 어댑터를 되살리기 |
+| D-13 | 목록 검사는 목록과 정확히 같아야 해요. 테스트 코드 안의 읽기는 세지 않아요 | 줄어들기만 허용하면 새 안쪽 읽기가 숨어요. 목록은 줄 번호가 아니라 파일·함수·개수라 다른 편집에는 안 흔들려요 | 검사를 "늘지 않음"으로 바꾸기 |
+| D-14 | 안전 거절(`migrate::open_cli_home`, `refuse_user_scope`, 링크 거절)에 넘기는 HOME 은 가장자리가 읽은 프로세스 HOME 이고 명령줄 `--home` 이 아니에요. 빈 HOME 같은 기존의 특이한 동작은 그대로 두고, 고치려면 따로 카드를 내요 | `--home` 을 받으면 거절을 비켜 갈 수 있어요. 이 카드는 읽는 자리를 옮기는 일이에요 | 해당 없음 |
 
-- 판 4: 받은 HOME 이 환경 HOME 과 같은지는 경로 글자 그대로 비교해요. 같은 폴더를 다르게 적은 경로(끝 슬래시, 심볼릭 링크 경유)는 다른 HOME 으로 보아, 그때는 환경의 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 이 자식에게 가지 않아요. `identity()` 는 환경 HOME 을 그대로 넘기므로 이 경우를 만나지 않아요(unverified: 다른 호출자가 그렇게 부르는 곳은 이 판에서 읽지 않았어요).
+- 판 4: 받은 HOME 이 환경 HOME 과 같은지는 `Path` 비교예요. 구성요소 비교라 끝 슬래시만 다른 경로는 같은 HOME 이고(감사 #410 R1 이 앞 문장을 바로잡았어요), 심볼릭 링크 경유나 대소문자만 다른 경로는 다른 HOME 으로 보아, 그때는 환경의 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 이 자식에게 가지 않아요. `identity()` 는 환경 HOME 을 그대로 넘기므로 이 경우를 만나지 않아요(unverified: 다른 호출자가 그렇게 부르는 곳은 이 판에서 읽지 않았어요).
 - 판 4: 자식에게 HOME 을 주는 방식은 유닉스 가정이에요(Windows 의 git 은 `USERPROFILE` 도 읽어요); Windows 결과는 not_run 이에요.
 
 ## Interview
@@ -137,6 +174,8 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - Q2: 환경 HOME 읽기를 전부 이 카드 하나로 끝내나요? → A: 아니요. 인벤토리를 조각으로 나눠요; 조각 2 이후는 시작할 때 리더 노트로 범위를 받아요.
 - Q3: 조각 2 가 C-409 조각 2a 와 같은 파일(`src/claim.rs`, `src/identity.rs`)을 만지는데 어떻게 하나요? → A: C-409 가 먼저예요(카드 본문의 순서). 이 카드는 겹치지 않는 부분(`src/layout.rs`)을 먼저 하고, 겹치는 파일은 C-409 착지 뒤 `moai card scope` 로 예약을 넓혀 해요.
 - Q4: `journal_root` 호출부(서른 곳 넘음)를 모두 `journal_root_in` 으로 옮기나요? → A: 아니요. 어댑터를 남기고 기준선 테스트가 부르는 곳과 `apply_at` 만 옮겨요. 나머지 호출부는 가장자리에서 HOME 을 받아 내려오는 조각에서 옮겨요.
+- Q5: 판 5 는 남은 읽기를 한꺼번에 요구로 묶나요? → A: 아니요. 리더 지시가 "한 번에 한 묶음씩 작게"이고 많은 파일을 다른 카드가 잡고 있어요. 첫 묶음만 REQ-13~16 으로 묶고 나머지는 Plan 표에 둬요(요구가 열두 개를 넘어 `spec check` 경고가 나는지는 승인 요청 노트에 적어요).
+- Q6: 새 목록 검사가 다른 카드의 착지를 막을 수 있는데 괜찮나요? → A: 승인자가 정할 일이에요. 기본은 정확히 같아야 통과(D-13)이고, 다른 안은 "늘지 않음"만 보는 검사예요.
 
 ## Result
 
