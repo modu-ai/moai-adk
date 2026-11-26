@@ -5,9 +5,10 @@ use std::path::PathBuf;
 
 /// Decline a choice step of the project update, or ask again
 ///
-/// Record that the user declined one choice step of `project-update-plan` (`agents-picks`,
-/// `agents-local-merge` or `claude-settings-merge`) for the source it offered: the step name and
-/// the `source_sha256` the preview printed go into `.moai/manifests/update-declined.json`. While
+/// Record that the user declined one choice step of `project-update-plan` (`claude-md`,
+/// `agents-picks`, `agents-local-merge` or `claude-settings-merge`) for the source it offered: the
+/// step name and the `source_sha256` the preview printed go into
+/// `.moai/manifests/update-declined.json`. While
 /// the step's source keeps that sha256, the preview reads the step as `skip`; a source with other
 /// bytes asks again by itself. Nothing but that one file is written: no project file is changed or
 /// deleted. A sha256 that is not the step's source now, a step that cannot be declined, and a
@@ -15,7 +16,7 @@ use std::path::PathBuf;
 /// the step's record is removed and the other records stay.
 #[derive(clap::Args)]
 pub struct Args {
-    /// The step: `agents-picks`, `agents-local-merge` or `claude-settings-merge`.
+    /// The step: `claude-md`, `agents-picks`, `agents-local-merge` or `claude-settings-merge`.
     #[arg(long)]
     step: String,
     /// The `source_sha256` the update preview printed for the step (not with `--ask-again`).

@@ -4369,6 +4369,34 @@ fn step_declined_the_writers_stay_away_and_nothing_keeps_asking() {
     }
 }
 
+/// The sentences a person reads while the Go file is held: the step has one of its own, and no
+/// other writer says that its work is already done.
+#[test]
+fn step_says_in_plain_words_that_the_held_files_are_not_settled() {
+    let fx = apply_project();
+    fx.settle_profile();
+    let first = fx.update();
+    let asked = update_step(&first, STEP)["say"].as_str().unwrap();
+    assert!(asked.contains("old Go tool"), "{asked}");
+    fx.generate(update_step(&first, "generation"));
+
+    let plan = fx.update();
+    assert_stays_away(&plan);
+    assert_eq!(
+        update_step(&plan, "generation")["state"],
+        json!("unchanged"),
+        "{plan}"
+    );
+    for (name, claim) in [
+        ("agents-picks", "no further move"),
+        ("agents-local-merge", "no copying"),
+        ("generation", "up to date"),
+    ] {
+        let said = update_step(&plan, name)["say"].as_str().unwrap();
+        assert!(!said.contains(claim), "{name}: {said}");
+    }
+}
+
 #[test]
 fn step_leaves_the_writers_as_before_without_a_go_file() {
     // No Go manifest and no Go marker: a recorded block that was removed still offers the

@@ -63,7 +63,7 @@ struct Row {
 }
 
 /// The sentence table. A step without a row reads the generic sentences of [`say`].
-const ROWS: [Row; 12] = [
+const ROWS: [Row; 13] = [
     Row {
         id: "go-settings",
         topic: "Cleaning the old Go tool values out of your Claude Code settings",
@@ -101,7 +101,8 @@ const ROWS: [Row; 12] = [
         topic: "Writing the MoAI instruction files",
         change: "Write or refresh the MoAI instruction and workflow files in this project.",
         choose: Some("Some MoAI instruction files were edited by hand, so you choose how to keep them."),
-        current: "The MoAI instruction and workflow files are already up to date.",
+        // Also read while a file of the old Go tool is kept, so it claims nothing about that file.
+        current: "This step has no MoAI instruction or workflow file left to write.",
         held: "The MoAI instruction and workflow files cannot be written here and need a look first.",
     },
     Row {
@@ -127,6 +128,14 @@ const ROWS: [Row; 12] = [
         choose: None,
         current: "The issue and pull request templates are already up to date.",
         held: "The issue and pull request templates cannot be written here and need a look first.",
+    },
+    Row {
+        id: "claude-md",
+        topic: "Replacing the instruction files of the old Go tool",
+        change: "Replace the instruction files of the old Go tool with a new CLAUDE.md file and keep the old ones in a backup.",
+        choose: Some("You choose what happens to the instruction files of the old Go tool, and none of them is deleted."),
+        current: "No CLAUDE.md file of the old Go tool is here to replace.",
+        held: "The instruction files of the old Go tool cannot be replaced here and need a look first.",
     },
     Row {
         id: "agents-picks",
@@ -193,6 +202,14 @@ pub fn say(step: &str, state: &str, next: &str, declined: bool) -> String {
             .to_string(),
         "none" if state == "optional" && step == "agents-picks" => {
             "The text is already in the CLAUDE files, and you may delete the original AGENTS files if you wish.".into()
+        }
+        // These two read `skip` for several causes, a held CLAUDE.md of the old Go tool among
+        // them, so the sentence says only that nothing is offered or copied now.
+        "none" if state == "skip" && step == "agents-picks" => {
+            "No move of your AGENTS.md text is offered in this check.".into()
+        }
+        "none" if state == "skip" && step == "agents-local-merge" => {
+            "Your AGENTS.local.md text is not copied by this step in this check.".into()
         }
         "none" => row
             .map_or("This step needs nothing.", |r| r.current)
@@ -332,7 +349,8 @@ mod tests {
     use super::*;
 
     /// Whole words a sentence for a person never holds: step ids and state words.
-    const FORBIDDEN_WORDS: [&str; 19] = [
+    const FORBIDDEN_WORDS: [&str; 20] = [
+        "claude-md",
         "go-settings",
         "go-state",
         "reports",
@@ -385,6 +403,7 @@ mod tests {
                 ("blocked", "report"),
                 ("needs_decision", "report"),
                 ("unchanged", "none"),
+                ("skip", "none"),
                 ("optional", "none"),
             ] {
                 plain(&say(id, state, next, false));
@@ -398,5 +417,41 @@ mod tests {
                 plain(o["say"].as_str().unwrap());
             }
         }
+    }
+
+    #[test]
+    fn the_older_instruction_files_have_sentences_of_their_own() {
+        for (state, next) in [
+            ("needs_decision", "ask"),
+            ("needs_decision", "report"),
+            ("unchanged", "none"),
+            ("blocked", "wait"),
+            ("blocked", "report"),
+        ] {
+            let said = say("claude-md", state, next, false);
+            assert_ne!(
+                said,
+                say("unknown-step", state, next, false),
+                "{state} {next}"
+            );
+        }
+    }
+
+    /// While a Go-generation `CLAUDE.md` is held, the two writers of the older files read `skip`
+    /// and the project harness can read `unchanged`: no such sentence may say that nothing needs
+    /// moving or copying, or that the instruction files are up to date.
+    #[test]
+    fn a_held_instruction_file_is_never_said_to_be_settled() {
+        for (id, claim) in [
+            ("agents-picks", "no further move"),
+            ("agents-local-merge", "no copying"),
+        ] {
+            let skipped = say(id, "skip", "none", false);
+            assert!(!skipped.contains(claim), "{id}: {skipped}");
+            // A settled file keeps its own sentence.
+            assert!(say(id, "unchanged", "none", false).contains(claim), "{id}");
+        }
+        let harness = say("generation", "unchanged", "none", false);
+        assert!(!harness.contains("up to date"), "{harness}");
     }
 }
