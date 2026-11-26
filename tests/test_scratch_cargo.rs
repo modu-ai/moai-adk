@@ -31,14 +31,6 @@ const NOT_CARGO: [&str; 3] = ["CARGO_BIN_EXE", "CARGO_MANIFEST_DIR", "CARGO_TARG
 /// one: no test here runs the binary.
 const A_BUILT_PROGRAM: &str = concat!("CARGO_BIN", "_EXE_moai");
 
-/// Test files that may start cargo themselves, each with its reason. A file counts at the top of
-/// `tests/` or in one area folder below it.
-const EXCEPTIONS: [(&str, &str); 1] = [(
-    "check_affected_touch.rs",
-    "starts the toolchain's cargo and removes RUSTC_WRAPPER itself; moving it to the helper \
-     waits for the work that holds the file",
-)];
-
 /// The text of a call's argument: up to the parenthesis that closes it, else the rest of the line.
 fn argument(rest: &str) -> &str {
     let mut depth = 0usize;
@@ -93,22 +85,12 @@ fn rust_files(dir: &Path) -> Vec<PathBuf> {
     out
 }
 
-fn exempt(relative: &Path) -> bool {
-    if relative == Path::new("common/cargo.rs") {
-        return true;
-    }
-    relative.components().count() <= 2
-        && relative
-            .file_name()
-            .is_some_and(|name| EXCEPTIONS.iter().any(|(file, _)| name == OsStr::new(file)))
-}
-
-/// `tests/<file>:<line>` for every direct start under `tests`.
+/// `tests/<file>:<line>` for every direct start under `tests`, outside the helper itself.
 fn violations(tests: &Path) -> Vec<String> {
     let mut out = Vec::new();
     for file in rust_files(tests) {
         let relative = file.strip_prefix(tests).unwrap();
-        if exempt(relative) {
+        if relative == Path::new("common/cargo.rs") {
             continue;
         }
         for line in direct_starts(&fs::read_to_string(&file).unwrap()) {
@@ -149,9 +131,6 @@ fn the_scan_names_the_file_and_line_of_a_direct_start() {
         ("d_variable.rs", &by_variable),
         ("e_clean.rs", &clean),
         ("common/cargo.rs", &by_name),
-        ("check_affected_touch.rs", &by_path),
-        ("spec/check_affected_touch.rs", &by_path),
-        ("spec/deep/check_affected_touch.rs", &by_path),
         ("other/cargo.rs", &by_name),
     ] {
         let file = dir.path().join(relative);
@@ -166,7 +145,6 @@ fn the_scan_names_the_file_and_line_of_a_direct_start() {
             "tests/b_path.rs:1",
             "tests/d_variable.rs:1",
             "tests/other/cargo.rs:2",
-            "tests/spec/deep/check_affected_touch.rs:1",
         ]
     );
 }
