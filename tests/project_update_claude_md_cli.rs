@@ -6,8 +6,11 @@
 //! `--keep` picks, the texts they compose, the warnings, the plan digest and the apply command.
 //! The `apply_` cases (AC-4: REQ-6, REQ-7, REQ-8, D-1, D-3, D-5): the printed command moves every
 //! source into the backup folder, writes the new files and saves a receipt, and a step that fails
-//! leaves that receipt pending. The `refuse_` cases (AC-5: REQ-9, D-8): each refusal says why and
-//! leaves every byte, `.git` included, as it was.
+//! undoes the earlier ones from that receipt. The `refuse_` cases (AC-5: REQ-9, D-8): each
+//! refusal says why and leaves every byte, `.git` included, as it was. The `receipt_` cases
+//! (AC-6: REQ-10, REQ-11): a failed apply restores or names what it could not, and
+//! `claude-md-revert` undoes a receipt, also after a stop between two steps, keeps what changed
+//! since, follows no link and refuses a receipt no apply writes.
 //! Every case runs the real binary on a temporary project with a temporary HOME; a
 //! credential-shaped value is built at run time and appears in no output.
 
@@ -2110,24 +2113,40 @@ fn apply_outside_a_git_repository_adds_no_ignore_rule() {
     assert_eq!(receipt["moves"][0]["git"], json!("unknown"), "{receipt}");
 }
 
-/// A failed apply that began: its message says `partial apply` and holds every needle, and the
-/// receipt it left is pending.
-fn stopped_apply(fx: &Fx, fault: &str, keep: &[&str], needles: &[&str]) -> (String, Value) {
+/// A failed apply that began: its error kind is `kind`, its message holds every needle and
+/// names the receipt, and that receipt reads `state`.
+fn stopped_apply(
+    fx: &Fx,
+    fault: &str,
+    keep: &[&str],
+    (kind, state): (&str, &str),
+    needles: &[&str],
+) -> (String, Value) {
     let words = fx.command(keep);
-    let (kind, message) = fx.failed(&words, &[("MOAI_TEST_FAULT", fault)]);
-    assert_eq!(kind, "partial", "{message}");
-    for needle in needles.iter().chain(&["partial apply", "pending"]) {
+    let (got, message) = fx.failed(&words, &[("MOAI_TEST_FAULT", fault)]);
+    assert_eq!(got, kind, "{message}");
+    let reads = format!("reads {state}");
+    for needle in needles.iter().copied().chain([reads.as_str()]) {
         assert!(message.contains(needle), "no {needle:?} in: {message}");
     }
     let stamp = fx.only_stamp();
     assert!(message.contains(&Fx::receipt_rel(&stamp)), "{message}");
     let receipt = fx.receipt(&stamp);
-    assert_eq!(receipt["state"], json!("pending"), "{receipt}");
+    assert_eq!(receipt["state"], json!(state), "{receipt}");
     (stamp, receipt)
 }
 
+/// The kind and state of a failed apply that left nothing changed.
+const RESTORED: (&str, &str) = ("conflict", "restored");
+/// The kind and state of a failed apply that could not restore everything.
+const PARTIAL: (&str, &str) = ("partial", "partial");
+/// What the message of a failed apply says when it undid what it had done.
+const UNDONE: &str = "every change the apply made was undone";
+/// What it says when it had changed nothing.
+const UNCHANGED: &str = "no project file was moved or changed";
+
 #[test]
-fn apply_a_source_edited_before_its_move_stops_with_a_pending_receipt() {
+fn apply_a_source_edited_before_its_move_restores_the_earlier_files() {
     let fx = apply_project();
     let sources = go_sources();
     let original = fx.read("CLAUDE.md");
@@ -2135,20 +2154,20 @@ fn apply_a_source_edited_before_its_move_stops_with_a_pending_receipt() {
         &fx,
         "claude_md_source_edit",
         &[],
-        &["AGENTS.md", "changed after the preview"],
+        RESTORED,
+        &["AGENTS.md", "changed after the preview", UNDONE],
     );
-    let mut want = vec![false; sources.len()];
-    want[0] = true;
-    assert_eq!(moved_flags(&receipt), want, "{receipt}");
-    assert_eq!(written_flags(&receipt), [("CLAUDE.md".to_string(), false)]);
     assert_eq!(
-        fx.read(&format!("{}/CLAUDE.md", Fx::area(&stamp))),
-        original
+        moved_flags(&receipt),
+        vec![false; sources.len()],
+        "{receipt}"
     );
-    assert!(absent(&fx.root.join("CLAUDE.md")), "a new file was written");
-    // The edited file and every later source stay where they are.
+    assert_eq!(written_flags(&receipt), [("CLAUDE.md".to_string(), false)]);
+    // The moved file is back and no new file was written.
+    assert_eq!(fx.read("CLAUDE.md"), original);
+    // The edited file and every later source stay where they are, and the backup holds none.
     assert!(fx.read("AGENTS.md").starts_with(EDITED_AGENTS.as_bytes()));
-    for path in &sources[1..] {
+    for path in &sources {
         assert!(fx.root.join(path).is_file(), "{path}");
         assert!(absent(&fx.root.join(Fx::area(&stamp)).join(path)), "{path}");
     }
@@ -2157,13 +2176,16 @@ fn apply_a_source_edited_before_its_move_stops_with_a_pending_receipt() {
 #[test]
 fn apply_never_overwrites_a_file_at_a_backup_path() {
     let fx = apply_project();
+    let original = fx.read("CLAUDE.md");
     let (stamp, receipt) = stopped_apply(
         &fx,
         "claude_md_backup_taken",
         &[],
-        &["AGENTS.md", "destination already exists"],
+        RESTORED,
+        &["AGENTS.md", "destination already exists", UNDONE],
     );
-    assert_eq!(moved_flags(&receipt)[..2], [true, false], "{receipt}");
+    assert_eq!(moved_flags(&receipt)[..2], [false, false], "{receipt}");
+    assert_eq!(fx.read("CLAUDE.md"), original);
     assert_eq!(fx.read("AGENTS.md"), EDITED_AGENTS.as_bytes());
     assert_eq!(
         fx.read(&format!("{}/AGENTS.md", Fx::area(&stamp))),
@@ -2174,29 +2196,40 @@ fn apply_never_overwrites_a_file_at_a_backup_path() {
 #[test]
 fn apply_never_overwrites_a_file_that_appears_at_a_destination() {
     let fx = apply_project();
+    let original = fx.read("CLAUDE.md");
     let keep = ["CLAUDE.local.md:1=personal"];
     let (stamp, receipt) = stopped_apply(
         &fx,
         "claude_md_destination_taken",
         &keep,
-        &["CLAUDE.local.md"],
+        PARTIAL,
+        &[
+            "partial apply",
+            "could not restore: CLAUDE.local.md",
+            "claude-md-revert",
+        ],
     );
-    assert!(
-        moved_flags(&receipt).iter().all(|moved| *moved),
-        "{receipt}"
-    );
+    let want: Vec<bool> = go_sources()
+        .iter()
+        .map(|path| path == "CLAUDE.local.md")
+        .collect();
+    assert_eq!(moved_flags(&receipt), want, "{receipt}");
     assert_eq!(
         written_flags(&receipt),
         [
-            ("CLAUDE.md".to_string(), true),
+            ("CLAUDE.md".to_string(), false),
             ("CLAUDE.local.md".to_string(), false)
         ]
     );
+    // The other writer's file stays, the original it stands on stays in the backup, and the
+    // rest is back.
     assert_eq!(fx.read("CLAUDE.local.md"), b"fault\n");
     assert_eq!(
         fx.read(&format!("{}/CLAUDE.local.md", Fx::area(&stamp))),
         b"# zq-local\nzq-other\n"
     );
+    assert_eq!(fx.read("CLAUDE.md"), original);
+    assert_eq!(fx.read("AGENTS.md"), EDITED_AGENTS.as_bytes());
 }
 
 #[test]
@@ -2472,4 +2505,939 @@ fn refuse_an_ignore_file_among_the_sources() {
     let words = fx.command(&[]);
     fx.write(&rules("sub/.gitignore"), "!*\n");
     fx.blocks(&[], &words, &[&rules("sub/.gitignore")]);
+}
+
+#[test]
+fn hunk_a_managed_block_marker_line_is_left_out() {
+    let fx = Fx::new();
+    fx.profile(json!(null));
+    let agents = [
+        "## zq-a",                                            // 1
+        "zq-a rule",                                          // 2
+        "<!-- moai:managed:begin id=zq -->",                  // 3: no end of its own
+        "```",                                                // 4
+        "<!--moai:managed:end id=zq-other -->",               // 5: also inside a fence
+        "```",                                                // 6
+        "zq <!-- moai:managed:end id=moai-workflow --> tail", // 7
+        "zq the moai:managed:begin word alone stays",         // 8
+    ];
+    fx.write("AGENTS.md", agents.join("\n"));
+    fx.write(
+        "CLAUDE.local.md",
+        "## zq-local\nzq-mine\n<!-- moai:managed:begin id=moai-workflow -->\n",
+    );
+    let block_text = composed_text(&fx.plan(), "CLAUDE.md");
+    let result = fx.plan_with(&["AGENTS.md:1=shared", "CLAUDE.local.md:1=personal"]);
+    assert_eq!(
+        composed_text(&result, "CLAUDE.md"),
+        format!(
+            "{block_text}\n## zq-a\nzq-a rule\n```\n```\n\
+             zq the moai:managed:begin word alone stays\n"
+        ),
+        "{result}"
+    );
+    let reason = "managed_block_marker".to_string();
+    assert_eq!(
+        left_out(&result, "CLAUDE.md"),
+        [3, 5, 7].map(|n| (format!("AGENTS.md:{n}"), reason.clone())),
+        "{result}"
+    );
+    assert!(composed_text(&result, "CLAUDE.local.md").ends_with("\n## zq-local\nzq-mine\n"));
+    assert_eq!(
+        left_out(&result, "CLAUDE.local.md"),
+        vec![("CLAUDE.local.md:3".to_string(), reason)],
+        "{result}"
+    );
+}
+
+/// The exit code of a run that a test seam stopped between two steps.
+const STOPPED: Option<i32> = Some(70);
+
+impl Fx {
+    /// Every entry of the project and HOME outside the backup folder.
+    fn files(&self) -> BTreeMap<PathBuf, (String, Vec<u8>)> {
+        let backups = self.root.join(MOAI_DIR).join("backups");
+        let mut files = self.snapshot();
+        files.retain(|path, _| !path.starts_with(&backups));
+        files
+    }
+
+    fn revert_words(&self, stamp: &str) -> Vec<String> {
+        [
+            "claude-md-revert",
+            self.root.to_str().unwrap(),
+            "--receipt",
+            stamp,
+            "--permission-reference",
+            APPROVAL,
+        ]
+        .map(String::from)
+        .to_vec()
+    }
+
+    /// `claude-md-revert` of that receipt, which must answer.
+    fn revert(&self, stamp: &str) -> Value {
+        let out = self.run_words(&self.revert_words(stamp), &[]);
+        assert_eq!(
+            out.code,
+            Some(0),
+            "claude-md-revert failed: stdout {} stderr {}",
+            out.stdout,
+            out.stderr
+        );
+        let v: Value = serde_json::from_str(&out.stdout).expect("a JSON answer");
+        assert_eq!(v["operation"], json!("claude_md.revert"), "{v}");
+        assert_eq!(v["ok"], json!(true), "{v}");
+        let notice = v["result"]["notice"].as_str().expect("a notice");
+        assert!(notice.contains("restart"), "{notice}");
+        v["result"].clone()
+    }
+
+    /// A revert that ends with an error: its kind and message.
+    fn revert_failed(&self, words: &[String], extra: &[(&str, &str)]) -> (String, String) {
+        let out = self.run_words(words, extra);
+        assert_eq!(
+            out.code,
+            Some(1),
+            "{words:?}: stdout {} stderr {}",
+            out.stdout,
+            out.stderr
+        );
+        let v: Value = serde_json::from_str(&out.stdout).expect("a JSON answer");
+        assert_eq!(v["operation"], json!("claude_md.revert"), "{v}");
+        assert_eq!(v["ok"], json!(false), "{v}");
+        (
+            v["error"]["kind"].as_str().unwrap().to_string(),
+            v["error"]["message"].as_str().unwrap().to_string(),
+        )
+    }
+
+    /// The revert refuses and leaves every byte as it was. Returns the error kind.
+    fn revert_refuses(&self, words: &[String], needles: &[&str]) -> String {
+        let before = self.snapshot();
+        let (kind, message) = self.revert_failed(words, &[]);
+        for needle in needles.iter().chain(&["refused", "nothing was written"]) {
+            assert!(message.contains(needle), "no {needle:?} in: {message}");
+        }
+        assert_eq!(self.snapshot(), before, "a refused revert wrote: {message}");
+        kind
+    }
+
+    /// A new apply with these picks; the receipt id.
+    fn applied(&self, keep: &[&str]) -> String {
+        let result = self.apply(&self.command(keep));
+        result["receipt"]
+            .as_str()
+            .expect("a receipt id")
+            .to_string()
+    }
+
+    /// The path of a moved file's backup copy.
+    fn backup(&self, stamp: &str, path: &str) -> PathBuf {
+        self.root.join(Fx::area(stamp)).join(path)
+    }
+}
+
+/// A revert's state with its restored, removed, conflicting and missing paths.
+fn assert_reverted(
+    result: &Value,
+    state: &str,
+    restored: &[&str],
+    removed: &[&str],
+    conflicts: &[&str],
+    missing: &[&str],
+) {
+    assert_eq!(result["state"], json!(state), "{result}");
+    assert_eq!(result["restored"], json!(restored), "{result}");
+    assert_eq!(result["removed"], json!(removed), "{result}");
+    assert_eq!(result["conflicts"], json!(conflicts), "{result}");
+    assert_eq!(result["missing"], json!(missing), "{result}");
+    for path in conflicts.iter().chain(missing) {
+        let why = result["reasons"][*path].as_str().unwrap_or_default();
+        assert!(!why.is_empty(), "no reason for {path}: {result}");
+    }
+}
+
+/// [`apply_project`] with no personal file of Claude Code and no rule that would ignore one, so
+/// that a personal pick of `AGENTS.local.md` adds the rule.
+fn rule_project() -> Fx {
+    let fx = apply_project();
+    fs::remove_file(fx.root.join("CLAUDE.local.md")).unwrap();
+    fx.write(
+        ".gitignore",
+        format!("AGENTS.local.md\n{}\n", backups_rule()),
+    );
+    fx
+}
+
+/// The pick that writes a personal file in [`rule_project`].
+const PERSONAL_PICK: &str = "AGENTS.local.md:1=personal";
+
+fn strs(values: &[String]) -> Vec<&str> {
+    values.iter().map(String::as_str).collect()
+}
+
+#[test]
+fn receipt_a_failure_after_the_first_move_brings_every_file_back() {
+    // A later source whose folder takes no change: the copy is made and the source stays.
+    let fx = apply_project();
+    fx.chmod("CLAUDE.md", 0o640);
+    fx.chmod("AGENTS.md", 0o400);
+    fx.chmod(&rules_dir(), 0o500);
+    let before = fx.files();
+    let words = fx.command(&[]);
+    let (kind, message) = fx.failed(&words, &[]);
+    assert_eq!(fx.files(), before, "{message}");
+    assert_eq!(kind, "conflict", "{message}");
+    for needle in [
+        rules("gitflow.md").as_str(),
+        "both copies kept",
+        UNDONE,
+        "reads restored",
+    ] {
+        assert!(message.contains(needle), "no {needle:?} in: {message}");
+    }
+    let stamp = fx.only_stamp();
+    assert_eq!(fx.receipt(&stamp)["state"], json!("restored"));
+    // The apply left nothing for the revert.
+    let snapshot = fx.snapshot();
+    assert_reverted(&fx.revert(&stamp), "reverted", &[], &[], &[], &[]);
+    assert_eq!(
+        fx.snapshot(),
+        snapshot,
+        "a revert of a restored apply wrote"
+    );
+    fx.chmod(&rules_dir(), 0o755);
+}
+
+#[test]
+fn receipt_a_failed_apply_that_changed_nothing_says_so() {
+    let fx = apply_project();
+    fs::set_permissions(&fx.root, fs::Permissions::from_mode(0o500)).unwrap();
+    let before = fx.files();
+    let words = fx.command(&[]);
+    let (kind, message) = fx.failed(&words, &[]);
+    let after = fx.files();
+    fs::set_permissions(&fx.root, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(after, before, "{message}");
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(
+        message.contains("CLAUDE.md") && message.contains(UNCHANGED),
+        "{message}"
+    );
+    assert!(
+        !message.contains(UNDONE) && !message.contains("partial"),
+        "{message}"
+    );
+    assert_eq!(fx.receipt(&fx.only_stamp())["state"], json!("restored"));
+}
+
+#[test]
+fn receipt_an_ignore_rule_that_cannot_be_added_restores() {
+    let fx = rule_project();
+    let before = fx.files();
+    let (_, receipt) = stopped_apply(
+        &fx,
+        "claude_md_ignore_edit",
+        &[PERSONAL_PICK],
+        RESTORED,
+        &[".gitignore", UNDONE],
+    );
+    assert_eq!(receipt["ignore"]["written"], json!(false), "{receipt}");
+    // Everything is as it was but the other writer's line, which stays.
+    let mut after = fx.files();
+    let ignore = fx.root.join(".gitignore");
+    let mut want = before[&ignore].clone();
+    want.1.extend_from_slice(b"fault\n");
+    assert_eq!(after.remove(&ignore), Some(want));
+    let mut before = before;
+    before.remove(&ignore);
+    assert_eq!(after, before);
+}
+
+#[test]
+fn receipt_a_receipt_that_cannot_be_saved_still_restores() {
+    let fx = apply_project();
+    let before = fx.files();
+    let words = fx.command(&[]);
+    let (kind, message) = fx.failed(&words, &[("MOAI_TEST_FAULT", "claude_md_save_fails")]);
+    assert_eq!(fx.files(), before, "{message}");
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(
+        message.contains(UNDONE) && message.contains("could not be updated"),
+        "{message}"
+    );
+    // The receipt still reads what it read before the first move; the revert judges the disk.
+    let stamp = fx.only_stamp();
+    assert_eq!(fx.receipt(&stamp)["state"], json!("pending"));
+    assert_reverted(&fx.revert(&stamp), "reverted", &[], &[], &[], &[]);
+    assert_eq!(fx.files(), before);
+    assert_eq!(fx.receipt(&stamp)["state"], json!("reverted"));
+}
+
+#[test]
+fn receipt_what_cannot_be_restored_is_named_and_the_revert_finishes_it() {
+    // Another file stands where an original goes back.
+    let fx = apply_project();
+    let before = fx.files();
+    let (stamp, _) = stopped_apply(
+        &fx,
+        "claude_md_destination_taken",
+        &["CLAUDE.local.md:1=personal"],
+        PARTIAL,
+        &["could not restore: CLAUDE.local.md"],
+    );
+    let held = fx.snapshot();
+    assert_reverted(
+        &fx.revert(&stamp),
+        "conflict",
+        &[],
+        &[],
+        &["CLAUDE.local.md"],
+        &[],
+    );
+    assert_eq!(fx.snapshot(), held, "a revert that could do nothing wrote");
+    fs::remove_file(fx.root.join("CLAUDE.local.md")).unwrap();
+    assert_reverted(
+        &fx.revert(&stamp),
+        "reverted",
+        &["CLAUDE.local.md"],
+        &[],
+        &[],
+        &[],
+    );
+    assert_eq!(fx.files(), before);
+
+    // Another file stands where the new personal file goes: the rule that hides it stays.
+    let fx = rule_project();
+    let before = fx.files();
+    let (stamp, receipt) = stopped_apply(
+        &fx,
+        "claude_md_destination_taken",
+        &[PERSONAL_PICK],
+        PARTIAL,
+        &["CLAUDE.local.md", ".gitignore"],
+    );
+    assert_eq!(receipt["ignore"]["written"], json!(true), "{receipt}");
+    assert_eq!(fx.read("CLAUDE.local.md"), b"fault\n");
+    assert!(fx.ignored("CLAUDE.local.md"));
+    fs::remove_file(fx.root.join("CLAUDE.local.md")).unwrap();
+    assert_reverted(
+        &fx.revert(&stamp),
+        "reverted",
+        &[".gitignore"],
+        &[],
+        &[],
+        &[],
+    );
+    assert_eq!(fx.files(), before);
+}
+
+#[test]
+fn receipt_the_revert_restores_bytes_and_modes_and_runs_twice() {
+    let fx = apply_project();
+    for (path, bits) in [
+        ("CLAUDE.md".to_string(), 0o640),
+        ("AGENTS.md".to_string(), 0o644),
+        ("CLAUDE.local.md".to_string(), 0o644),
+        (rules("kanban.md"), 0o400),
+        (rules("sub/deep.md"), 0o755),
+    ] {
+        fx.chmod(&path, bits);
+    }
+    let before = fx.files();
+    let stamp = fx.applied(&["AGENTS.md:4=shared", "CLAUDE.local.md:1=personal"]);
+    // The mode comes from the receipt, even when the backup copy's was changed since.
+    let kanban = fx.backup(&stamp, &rules("kanban.md"));
+    fs::set_permissions(&kanban, fs::Permissions::from_mode(0o600)).unwrap();
+    let sources = go_sources();
+    let result = fx.revert(&stamp);
+    assert_reverted(
+        &result,
+        "reverted",
+        &strs(&sources),
+        &["CLAUDE.local.md", "CLAUDE.md"],
+        &[],
+        &[],
+    );
+    assert_eq!(result["receipt"], json!(stamp), "{result}");
+    assert_eq!(fx.files(), before);
+    let receipt = fx.receipt(&stamp);
+    assert_eq!(receipt["state"], json!("reverted"), "{receipt}");
+    assert_eq!(moved_flags(&receipt), vec![false; sources.len()]);
+    assert!(written_flags(&receipt).iter().all(|(_, written)| !written));
+    for path in &sources {
+        assert!(absent(&fx.backup(&stamp, path)), "{path}");
+    }
+
+    // The second run does nothing, also after the user changed a restored file.
+    fx.write("CLAUDE.md", "zq-later\n");
+    let snapshot = fx.snapshot();
+    assert_reverted(&fx.revert(&stamp), "reverted", &[], &[], &[], &[]);
+    assert_eq!(fx.snapshot(), snapshot);
+}
+
+#[test]
+fn receipt_a_new_file_edited_after_the_apply_stays_and_is_named() {
+    let fx = apply_project();
+    let before = fx.files();
+    let original = fx.read("CLAUDE.md");
+    let stamp = fx.applied(&[]);
+    let mut edited = fx.read("CLAUDE.md");
+    edited.extend_from_slice(b"zq-mine\n");
+    fx.write("CLAUDE.md", &edited);
+    let sources = go_sources();
+    assert_reverted(
+        &fx.revert(&stamp),
+        "conflict",
+        &strs(&sources[1..]),
+        &[],
+        &["CLAUDE.md"],
+        &[],
+    );
+    assert_eq!(fx.read("CLAUDE.md"), edited);
+    assert_eq!(fs::read(fx.backup(&stamp, "CLAUDE.md")).unwrap(), original);
+    assert_eq!(fx.receipt(&stamp)["state"], json!("partial"));
+
+    // Again: the same conflict and not a byte changed. A restored file the user changes in
+    // between is theirs.
+    fx.write("AGENTS.md", "zq-after the first revert\n");
+    let snapshot = fx.snapshot();
+    assert_reverted(
+        &fx.revert(&stamp),
+        "conflict",
+        &[],
+        &[],
+        &["CLAUDE.md"],
+        &[],
+    );
+    assert_eq!(fx.snapshot(), snapshot);
+    fx.write("AGENTS.md", EDITED_AGENTS);
+    fs::remove_file(fx.root.join("CLAUDE.md")).unwrap();
+    assert_reverted(
+        &fx.revert(&stamp),
+        "reverted",
+        &["CLAUDE.md"],
+        &[],
+        &[],
+        &[],
+    );
+    assert_eq!(fx.files(), before);
+}
+
+#[test]
+fn receipt_the_ignore_line_is_taken_back_with_the_file_it_hid() {
+    // The rule was added to a file with CRLF lines, and to one the apply had to create.
+    for before in [
+        Some(format!("{}\r\nAGENTS.local.md\r\n", backups_rule())),
+        Some(format!("AGENTS.local.md\n{}", backups_rule())),
+        None,
+    ] {
+        let fx = rule_project();
+        match &before {
+            Some(text) => fx.write(".gitignore", text),
+            None => {
+                fs::remove_file(fx.root.join(".gitignore")).unwrap();
+                fx.write(".git/info/exclude", format!("{}\n", backups_rule()));
+            }
+        }
+        let files = fx.files();
+        let stamp = fx.applied(&[PERSONAL_PICK]);
+        assert!(fx.ignored("CLAUDE.local.md"));
+        let result = fx.revert(&stamp);
+        assert_eq!(result["state"], json!("reverted"), "{result}");
+        let removed: &[&str] = if before.is_some() {
+            &["CLAUDE.local.md", "CLAUDE.md"]
+        } else {
+            &["CLAUDE.local.md", "CLAUDE.md", ".gitignore"]
+        };
+        assert_eq!(result["removed"], json!(removed), "{result}");
+        assert_eq!(fx.files(), files, "{before:?}");
+        assert_eq!(fx.receipt(&stamp)["ignore"]["written"], json!(false));
+    }
+}
+
+#[test]
+fn receipt_the_ignore_line_stays_while_it_hides_a_file_or_the_file_changed() {
+    // `.gitignore` changed after the apply.
+    let fx = rule_project();
+    let stamp = fx.applied(&[PERSONAL_PICK]);
+    let mut ignore = fx.read(".gitignore");
+    ignore.extend_from_slice(b"zq-theirs\n");
+    fx.write(".gitignore", &ignore);
+    let result = fx.revert(&stamp);
+    assert_eq!(result["state"], json!("conflict"), "{result}");
+    assert_eq!(result["conflicts"], json!([".gitignore"]), "{result}");
+    assert_eq!(fx.read(".gitignore"), ignore);
+    assert!(absent(&fx.root.join("CLAUDE.local.md")));
+
+    // The new personal file changed after the apply: it stays and stays out of git.
+    let fx = rule_project();
+    let stamp = fx.applied(&[PERSONAL_PICK]);
+    let ignore = fx.read(".gitignore");
+    fx.write("CLAUDE.local.md", "zq-edited personal\n");
+    let result = fx.revert(&stamp);
+    assert_eq!(
+        result["conflicts"],
+        json!(["CLAUDE.local.md", ".gitignore"]),
+        "{result}"
+    );
+    assert_eq!(fx.read(".gitignore"), ignore);
+    assert_eq!(fx.read("CLAUDE.local.md"), b"zq-edited personal\n");
+    assert!(fx.ignored("CLAUDE.local.md"));
+}
+
+/// [`apply_project`] with no rule that would ignore its `CLAUDE.local.md`: git shows the
+/// original, and a personal pick adds the rule.
+fn visible_local_project() -> Fx {
+    let fx = apply_project();
+    fx.write(
+        ".gitignore",
+        format!("AGENTS.local.md\n{}\n", backups_rule()),
+    );
+    assert!(!fx.ignored("CLAUDE.local.md"));
+    fx
+}
+
+/// The pick that writes a personal file in [`visible_local_project`].
+const LOCAL_PICK: &str = "CLAUDE.local.md:1=personal";
+
+#[test]
+fn receipt_a_visible_original_personal_file_comes_back_without_the_line() {
+    // After a whole apply, and after one stopped once the rule or the first new file was there.
+    for stop in [
+        None,
+        Some("claude_md_stop_after_ignore"),
+        Some("claude_md_stop_after_write"),
+    ] {
+        let fx = visible_local_project();
+        let before = fx.files();
+        let stamp = match stop {
+            None => fx.applied(&[LOCAL_PICK]),
+            Some(point) => {
+                let words = fx.command(&[LOCAL_PICK]);
+                let out = fx.run_words(&words, &[("MOAI_TEST_FAULT", point)]);
+                assert_eq!(out.code, STOPPED, "{point}: {}{}", out.stdout, out.stderr);
+                fx.only_stamp()
+            }
+        };
+        assert!(fx.ignored("CLAUDE.local.md"), "{stop:?}");
+        let result = fx.revert(&stamp);
+        assert_eq!(result["state"], json!("reverted"), "{stop:?}: {result}");
+        assert_eq!(result["conflicts"], json!([]), "{stop:?}: {result}");
+        if stop.is_none() {
+            let mut restored = go_sources();
+            restored.push(".gitignore".into());
+            assert_reverted(
+                &result,
+                "reverted",
+                &strs(&restored),
+                &["CLAUDE.local.md", "CLAUDE.md"],
+                &[],
+                &[],
+            );
+        }
+        // Every byte is as before the apply, `.gitignore` included.
+        assert_eq!(fx.files(), before, "{stop:?}");
+        assert!(!fx.ignored("CLAUDE.local.md"), "{stop:?}");
+        let receipt = fx.receipt(&stamp);
+        assert_eq!(receipt["state"], json!("reverted"), "{receipt}");
+        assert_eq!(receipt["ignore"]["written"], json!(false), "{receipt}");
+    }
+
+    // A revert stopped halfway ends the same way when it runs again.
+    for point in [
+        "claude_md_stop_after_removal",
+        "claude_md_stop_after_restore",
+    ] {
+        let fx = visible_local_project();
+        let before = fx.files();
+        let stamp = fx.applied(&[LOCAL_PICK]);
+        let new = fx.read("CLAUDE.local.md");
+        let out = fx.run_words(&fx.revert_words(&stamp), &[("MOAI_TEST_FAULT", point)]);
+        assert_eq!(out.code, STOPPED, "{point}: {}{}", out.stdout, out.stderr);
+        // The text the apply wrote is never on disk without its rule.
+        if fs::read(fx.root.join("CLAUDE.local.md")).is_ok_and(|bytes| bytes == new) {
+            assert!(fx.ignored("CLAUDE.local.md"), "{point}");
+        }
+        let result = fx.revert(&stamp);
+        assert_eq!(result["state"], json!("reverted"), "{point}: {result}");
+        assert_eq!(fx.files(), before, "{point}");
+    }
+}
+
+#[test]
+fn receipt_a_failed_apply_restores_a_visible_personal_file_and_its_ignore() {
+    let fx = visible_local_project();
+    let before = fx.files();
+    let (_, receipt) = stopped_apply(
+        &fx,
+        "claude_md_personal_write_fails",
+        &[LOCAL_PICK],
+        RESTORED,
+        &["CLAUDE.local.md", UNDONE],
+    );
+    assert_eq!(receipt["ignore"]["written"], json!(false), "{receipt}");
+    assert_eq!(fx.files(), before);
+    assert!(!fx.ignored("CLAUDE.local.md"));
+}
+
+#[test]
+fn receipt_the_ignore_line_stays_over_anything_but_the_original() {
+    // After the apply, something else stands where the original goes back: the edited new file,
+    // a link to the original's very bytes, a folder, a file that cannot be read.
+    for case in ["edited", "linked", "folder", "unreadable"] {
+        let fx = visible_local_project();
+        let original = fx.read("CLAUDE.local.md");
+        let stamp = fx.applied(&[LOCAL_PICK]);
+        let ignore = fx.read(".gitignore");
+        let local = fx.root.join("CLAUDE.local.md");
+        match case {
+            "edited" => fx.write("CLAUDE.local.md", "zq-edited personal\n"),
+            "linked" => {
+                let copy = fx.base.join("zq-copy.md");
+                fs::write(&copy, &original).unwrap();
+                fs::remove_file(&local).unwrap();
+                fx.link("CLAUDE.local.md", &copy);
+            }
+            "folder" => {
+                fs::remove_file(&local).unwrap();
+                fs::create_dir(&local).unwrap();
+            }
+            _ => {
+                fs::write(&local, &original).unwrap();
+                fx.chmod("CLAUDE.local.md", 0o000);
+            }
+        }
+        let result = fx.revert(&stamp);
+        assert_eq!(result["state"], json!("conflict"), "{case}: {result}");
+        assert_eq!(
+            result["conflicts"],
+            json!(["CLAUDE.local.md", ".gitignore"]),
+            "{case}: {result}"
+        );
+        assert_eq!(fx.read(".gitignore"), ignore, "{case}");
+        assert!(fx.ignored("CLAUDE.local.md"), "{case}");
+        let backup = fx.backup(&stamp, "CLAUDE.local.md");
+        assert_eq!(fs::read(backup).unwrap(), original, "{case}");
+    }
+
+    // The automatic restore: another writer's file takes the place before the new one is written.
+    let fx = visible_local_project();
+    let (_, receipt) = stopped_apply(
+        &fx,
+        "claude_md_destination_taken",
+        &[LOCAL_PICK],
+        PARTIAL,
+        &["could not restore", ".gitignore"],
+    );
+    assert_eq!(receipt["ignore"]["written"], json!(true), "{receipt}");
+    assert_eq!(fx.read("CLAUDE.local.md"), b"fault\n");
+    assert!(fx.ignored("CLAUDE.local.md"));
+
+    // A receipt edited to call the new file's digest the original's does not show that text.
+    let fx = visible_local_project();
+    let stamp = fx.applied(&[LOCAL_PICK]);
+    let ignore = fx.read(".gitignore");
+    let new = fx.read("CLAUDE.local.md");
+    let mut receipt = fx.receipt(&stamp);
+    let written = receipt["writes"][1]["sha256"].clone();
+    for item in receipt["moves"].as_array_mut().unwrap() {
+        if item["path"] == json!("CLAUDE.local.md") {
+            item["sha256"] = written.clone();
+        }
+    }
+    fx.write(&Fx::receipt_rel(&stamp), receipt.to_string());
+    let result = fx.revert(&stamp);
+    assert_eq!(result["conflicts"], json!([".gitignore"]), "{result}");
+    assert_eq!(fx.read("CLAUDE.local.md"), new);
+    assert_eq!(fx.read(".gitignore"), ignore);
+    assert!(fx.ignored("CLAUDE.local.md"));
+
+    // The new file is gone and the original cannot come back: nothing stands to hide.
+    let fx = visible_local_project();
+    let before = fx.files();
+    let stamp = fx.applied(&[LOCAL_PICK]);
+    fs::remove_file(fx.root.join("CLAUDE.local.md")).unwrap();
+    fs::write(fx.backup(&stamp, "CLAUDE.local.md"), "zq-altered\n").unwrap();
+    let result = fx.revert(&stamp);
+    assert_eq!(result["state"], json!("conflict"), "{result}");
+    assert_eq!(result["conflicts"], json!([]), "{result}");
+    assert_eq!(result["missing"], json!(["CLAUDE.local.md"]), "{result}");
+    let ignore = fx.root.join(".gitignore");
+    assert_eq!(fx.files()[&ignore], before[&ignore], "{result}");
+}
+
+#[test]
+fn receipt_an_interrupted_apply_is_undone() {
+    for stop in [
+        "claude_md_stop_after_move",
+        "claude_md_stop_after_ignore",
+        "claude_md_stop_after_write",
+    ] {
+        let fx = rule_project();
+        let before = fx.files();
+        let words = fx.command(&[PERSONAL_PICK]);
+        let out = fx.run_words(&words, &[("MOAI_TEST_FAULT", stop)]);
+        assert_eq!(out.code, STOPPED, "{stop}: {}{}", out.stdout, out.stderr);
+        assert_ne!(fx.files(), before, "{stop}: nothing had changed");
+        let stamp = fx.only_stamp();
+        assert_eq!(fx.receipt(&stamp)["state"], json!("pending"), "{stop}");
+        let result = fx.revert(&stamp);
+        assert_eq!(result["state"], json!("reverted"), "{stop}: {result}");
+        assert_eq!(fx.files(), before, "{stop}");
+    }
+}
+
+#[test]
+fn receipt_an_interrupted_revert_runs_again() {
+    for stop in [
+        "claude_md_stop_after_removal",
+        "claude_md_stop_after_restore",
+    ] {
+        let fx = rule_project();
+        let before = fx.files();
+        let stamp = fx.applied(&[PERSONAL_PICK]);
+        let out = fx.run_words(&fx.revert_words(&stamp), &[("MOAI_TEST_FAULT", stop)]);
+        assert_eq!(out.code, STOPPED, "{stop}: {}{}", out.stdout, out.stderr);
+        assert_eq!(fx.receipt(&stamp)["state"], json!("committed"), "{stop}");
+        // The personal text is never on disk without its rule.
+        if !absent(&fx.root.join("CLAUDE.local.md")) {
+            assert!(fx.ignored("CLAUDE.local.md"), "{stop}");
+        }
+        let result = fx.revert(&stamp);
+        assert_eq!(result["state"], json!("reverted"), "{stop}: {result}");
+        assert_eq!(fx.files(), before, "{stop}");
+    }
+
+    // Stopped between the link and the removal of one move back: both copies are there, and
+    // neither is touched.
+    let fx = apply_project();
+    let before = fx.files();
+    let stamp = fx.applied(&[]);
+    let backup = fx.backup(&stamp, "CLAUDE.md");
+    fs::remove_file(fx.root.join("CLAUDE.md")).unwrap();
+    fs::hard_link(&backup, fx.root.join("CLAUDE.md")).unwrap();
+    let sources = go_sources();
+    assert_reverted(
+        &fx.revert(&stamp),
+        "reverted",
+        &strs(&sources[1..]),
+        &[],
+        &[],
+        &[],
+    );
+    assert_eq!(fx.files(), before);
+    assert!(backup.is_file(), "a backup copy was deleted");
+
+    // The receipt cannot be saved at the end: the files are back and the next run says so.
+    let fx = apply_project();
+    let before = fx.files();
+    let stamp = fx.applied(&[]);
+    let (kind, message) = fx.revert_failed(
+        &fx.revert_words(&stamp),
+        &[("MOAI_TEST_FAULT", "claude_md_save_fails")],
+    );
+    assert_eq!(kind, "partial", "{message}");
+    assert!(message.contains("could not be updated"), "{message}");
+    assert_eq!(fx.files(), before);
+    assert_reverted(&fx.revert(&stamp), "reverted", &[], &[], &[], &[]);
+    assert_eq!(fx.receipt(&stamp)["state"], json!("reverted"));
+}
+
+#[test]
+fn receipt_a_lost_or_altered_backup_keeps_the_new_file() {
+    let fx = apply_project();
+    let stamp = fx.applied(&[]);
+    let new = fx.read("CLAUDE.md");
+    fs::remove_file(fx.backup(&stamp, "CLAUDE.md")).unwrap();
+    fs::write(fx.backup(&stamp, "AGENTS.md"), "zq-altered\n").unwrap();
+    let sources = go_sources();
+    assert_reverted(
+        &fx.revert(&stamp),
+        "conflict",
+        &strs(&sources[2..]),
+        &[],
+        &["CLAUDE.md"],
+        &["CLAUDE.md", "AGENTS.md"],
+    );
+    assert_eq!(fx.read("CLAUDE.md"), new);
+    assert!(absent(&fx.root.join("AGENTS.md")));
+    assert_eq!(
+        fs::read(fx.backup(&stamp, "AGENTS.md")).unwrap(),
+        b"zq-altered\n"
+    );
+    assert_eq!(fx.receipt(&stamp)["state"], json!("partial"));
+}
+
+#[test]
+fn receipt_a_link_is_never_followed() {
+    let fx = rule_project();
+    let stamp = fx.applied(&[PERSONAL_PICK]);
+    let outside = fx.base.join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    // The new file moved outside, a link in its place: the very bytes the apply wrote.
+    let moved_new = outside.join("claude.md");
+    fs::rename(fx.root.join("CLAUDE.md"), &moved_new).unwrap();
+    fx.link("CLAUDE.md", &moved_new);
+    let new = fs::read(&moved_new).unwrap();
+    // A dangling link where an original goes back.
+    fx.link("AGENTS.md", &outside.join("agents.md"));
+    // The local rules folder swapped for a link to an empty folder.
+    let rules_outside = outside.join("rules");
+    fs::create_dir_all(&rules_outside).unwrap();
+    fs::remove_dir_all(fx.root.join(rules_dir())).unwrap();
+    fx.link(&rules_dir(), &rules_outside);
+    // A backup copy swapped for a link to the same bytes.
+    let local = fx.backup(&stamp, "AGENTS.local.md");
+    let kept = outside.join("local.md");
+    fs::rename(&local, &kept).unwrap();
+    std::os::unix::fs::symlink(&kept, &local).unwrap();
+    // The `.gitignore` swapped for a link to the same bytes.
+    let ignore = outside.join("gitignore");
+    fs::rename(fx.root.join(".gitignore"), &ignore).unwrap();
+    fx.link(".gitignore", &ignore);
+    let ignore_bytes = fs::read(&ignore).unwrap();
+
+    let result = fx.revert(&stamp);
+    assert_eq!(result["state"], json!("conflict"), "{result}");
+    assert_eq!(result["restored"], json!([]), "{result}");
+    assert_eq!(result["removed"], json!(["CLAUDE.local.md"]), "{result}");
+    let mut conflicts: Vec<String> = ["CLAUDE.md", "AGENTS.md", ".gitignore"]
+        .map(String::from)
+        .to_vec();
+    conflicts.extend(["gitflow.md", "kanban.md", "sub/deep.md", "zz-new.md"].map(rules));
+    conflicts.sort();
+    let mut got = words(list(&result, "conflicts"));
+    got.sort();
+    assert_eq!(got, conflicts, "{result}");
+    assert_eq!(result["missing"], json!(["AGENTS.local.md"]), "{result}");
+    assert_eq!(fs::read(&moved_new).unwrap(), new);
+    assert!(absent(&outside.join("agents.md")));
+    assert_eq!(fs::read_dir(&rules_outside).unwrap().count(), 0);
+    assert_eq!(fs::read(&ignore).unwrap(), ignore_bytes);
+    assert!(fs::symlink_metadata(&local)
+        .unwrap()
+        .file_type()
+        .is_symlink());
+
+    // A receipt reached through a link is not read.
+    let receipt = fx.root.join(Fx::receipt_rel(&stamp));
+    let real = outside.join("receipt.json");
+    fs::rename(&receipt, &real).unwrap();
+    std::os::unix::fs::symlink(&real, &receipt).unwrap();
+    fx.revert_refuses(&fx.revert_words(&stamp), &["symlink"]);
+}
+
+#[test]
+fn receipt_a_hostile_receipt_is_refused_with_nothing_written() {
+    let mut fx = rule_project();
+    let token = format!("ghp_{}", fx.secret("Q"));
+    let stamp = fx.applied(&[PERSONAL_PICK]);
+    let rel = Fx::receipt_rel(&stamp);
+    let honest = fx.read(&rel);
+    let area = Fx::area(&stamp);
+    let words = fx.revert_words(&stamp);
+    fs::write(fx.base.join("outside.md"), "zq-outside\n").unwrap();
+    // (the field as a JSON pointer, the value it is given).
+    let moved = |path: &str| {
+        json!({"path": path, "backup": format!("{area}/{path}"),
+        "sha256": sha(b"zq"), "mode": 0o644, "git": "untracked", "moved": true})
+    };
+    let absolute = fx.base.join("outside.md").display().to_string();
+    let other_area = Fx::area("19990101T000000Z");
+    let cases: Vec<(&str, Value)> = vec![
+        ("/schema_version", json!(2)),
+        ("/operation", json!("go_residue.apply")),
+        ("/project", json!(fx.base.display().to_string())),
+        ("/stamp", json!("19990101T000000Z")),
+        ("/state", json!("zq-state")),
+        ("/state", json!(token)),
+        ("/moves/1", moved("../outside.md")),
+        ("/moves/1", moved(&absolute)),
+        ("/moves/1", moved(".git/config")),
+        ("/moves/1", moved(&rules("../../../outside.md"))),
+        ("/moves/1", moved(&rules("sub/.gitignore"))),
+        ("/moves/1", moved(&format!("{MOAI_DIR}/docs/local-rules"))),
+        ("/moves/1", moved(&format!("src/{token}"))),
+        ("/moves/1", moved("CLAUDE.md")),
+        ("/moves/0", moved("README.md")),
+        ("/moves/1/backup", json!("AGENTS.md")),
+        ("/moves/1/backup", json!(format!("{other_area}/AGENTS.md"))),
+        ("/moves/1/backup", json!(format!("{area}/../../AGENTS.md"))),
+        ("/moves/1/sha256", json!(token)),
+        ("/moves/1/mode", json!(0o4755)),
+        ("/moves/1/git", json!("zq")),
+        ("/writes/0/path", json!("README.md")),
+        ("/writes/0/path", json!("CLAUDE.local.md")),
+        ("/writes/1/path", json!("../outside.md")),
+        ("/writes/0/sha256", json!("sha256:zq")),
+        ("/writes/0/mode", json!(0o1000)),
+        ("/writes", json!([])),
+        ("/ignore/path", json!("AGENTS.md")),
+        ("/ignore/line", json!("*")),
+        ("/ignore/after_sha256", json!("zq")),
+        ("/ignore/before_sha256", json!("zq")),
+        ("/ignore/before_sha256", json!(null)),
+        ("/moves/0", json!({"zq": token})),
+    ];
+    for (pointer, value) in cases {
+        let mut receipt: Value = serde_json::from_slice(&honest).unwrap();
+        *receipt
+            .pointer_mut(pointer)
+            .unwrap_or_else(|| panic!("no field {pointer}")) = value.clone();
+        fx.write(&rel, receipt.to_string());
+        let before = fx.snapshot();
+        let (_, message) = fx.revert_failed(&words, &[]);
+        assert!(
+            message.contains("refused") && message.contains("nothing was written"),
+            "{pointer} = {value}: {message}"
+        );
+        assert_eq!(fx.snapshot(), before, "{pointer} = {value}: {message}");
+    }
+    // A field no receipt has, and text that is no receipt at all.
+    let mut receipt: Value = serde_json::from_slice(&honest).unwrap();
+    receipt["zq"] = json!(token);
+    for text in [receipt.to_string(), format!("zq {token}"), String::new()] {
+        fx.write(&rel, text);
+        fx.revert_refuses(&words, &["no receipt of this step"]);
+    }
+    fx.write(&rel, &honest);
+
+    // A receipt id that is no plain stamp, and a stamp without a receipt.
+    for id in [
+        "",
+        "..",
+        "../../..",
+        "20260101T000000",
+        "20260101T000000Z/..",
+        token.as_str(),
+    ] {
+        let kind = fx.revert_refuses(&fx.revert_words(id), &["invalid receipt name"]);
+        assert_eq!(kind, "invalid_input", "{id:?}");
+    }
+    let kind = fx.revert_refuses(&fx.revert_words("19990101T000000Z"), &["not found"]);
+    assert_eq!(kind, "not_found");
+    // A permission reference that is none.
+    for reference in ["", "null", PERMISSION_PLACEHOLDER, token.as_str()] {
+        let mut words = words.clone();
+        *words.last_mut().unwrap() = reference.to_string();
+        let kind = fx.revert_refuses(&words, &["permission reference"]);
+        assert_eq!(kind, "permission_reference_missing", "{reference:?}");
+    }
+
+    // A receipt that claims more of `.gitignore` than the one line is of the right shape and
+    // changes nothing of it: the bytes decide.
+    let ignore = fx.read(".gitignore");
+    let mut claimed: Value = serde_json::from_slice(&honest).unwrap();
+    claimed["ignore"]["before_sha256"] = json!(sha(b""));
+    claimed["ignore"]["before_len"] = json!(0);
+    fx.write(&rel, claimed.to_string());
+    let result = fx.revert(&stamp);
+    assert_eq!(result["conflicts"], json!([".gitignore"]), "{result}");
+    assert_eq!(fx.read(".gitignore"), ignore);
+    assert_eq!(
+        fs::read(fx.base.join("outside.md")).unwrap(),
+        b"zq-outside\n"
+    );
 }

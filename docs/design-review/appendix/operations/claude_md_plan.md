@@ -35,8 +35,8 @@ operation `claude_md.plan` · 코드 `src/ops/claude_md_plan.rs`, `src/project_u
 
 - `--keep <id>=shared` 는 새 `CLAUDE.md` 에, `--keep <id>=personal` 은 `CLAUDE.local.md` 에 묶음을 둔다. 모르는 id, 두 번 준 id, 두 낱말이 아닌 목적지는 명령 오류다. 오류에 되돌려 보이는 값이 비밀 모양이면 가린다.
 - `results` 는 프로필을 쓸 수 없으면 빈 목록이다. `CLAUDE.md` 는 프로필에서 렌더한 관리 블록 뒤에 `shared` 묶음을 출처 순서로 붙인다. `personal` 선택이 하나라도 있으면 `CLAUDE.local.md` 가 moai 가 처음 만들 때 쓰는 글 뒤에 그 묶음들을 붙인 것으로 더해진다. 언어는 프로필의 `language.instruction_files`, 없으면 `user_chat`, 없으면 `en` 이다(생성 매니페스트는 요청 언어를 기록하지 않는다).
-- 묶음 앞에는 빈 줄 하나를 두고 묶음 양 끝의 빈 줄은 버린다. 옮기는 파일을 가리키는 import(`@<경로>`, 프로젝트 루트나 그 출처의 폴더 기준, 코드 펜스와 백틱 밖)가 있는 줄과 Go 큐레이터 시작·끝 표지가 든 줄은 뺀다. 원래 펜스 안이던 import 줄도 새 파일에서 펜스 밖이 되면 뺀다.
-- 각 결과는 `path`, `line_count`, `sha256`(쓸 파일 전체 기준), `text`(비밀 모양 줄을 뺀 글), `hidden_lines`, `hunks`(고른 묶음의 id), `left_out`(뺀 줄의 `<path>:<줄>` 과 `reason`: `imports_a_moved_file` | `go_curator_marker`).
+- 묶음 앞에는 빈 줄 하나를 두고 묶음 양 끝의 빈 줄은 버린다. 옮기는 파일을 가리키는 import(`@<경로>`, 프로젝트 루트나 그 출처의 폴더 기준, 코드 펜스와 백틱 밖)가 있는 줄, Go 큐레이터 시작·끝 표지가 든 줄, 관리 블록 표지 주석(`<!-- moai:managed:begin …`, `<!-- moai:managed:end …`, `<!--` 뒤의 공백 유무와 관계없고 코드 펜스 안도 포함)이 든 줄은 뺀다. 원래 펜스 안이던 import 줄도 새 파일에서 펜스 밖이 되면 뺀다. 주석이 아닌 글에서 표지 낱말만 말한 줄은 남는다.
+- 각 결과는 `path`, `line_count`, `sha256`(쓸 파일 전체 기준), `text`(비밀 모양 줄을 뺀 글), `hidden_lines`, `hunks`(고른 묶음의 id), `left_out`(뺀 줄의 `<path>:<줄>` 과 `reason`: `imports_a_moved_file` | `go_curator_marker` | `managed_block_marker`).
 
 ## 경고와 적용 명령
 

@@ -1,15 +1,19 @@
 //! The instruction files a Go-generation project carries (`claude-md-plan`,
-//! `claude-md-apply`): whether the root `CLAUDE.md` is a Go-generation file, the sources in their
-//! fixed order with their facts, the lines of each that are the project's own, those lines as
-//! hunks of one heading section each, the texts the `--keep` picks compose, the digest and
-//! command of that plan, and the apply of it.
+//! `claude-md-apply`, `claude-md-revert`): whether the root `CLAUDE.md` is a Go-generation file,
+//! the sources in their fixed order with their facts, the lines of each that are the project's
+//! own, those lines as hunks of one heading section each, the texts the `--keep` picks compose,
+//! the digest and command of that plan, the apply of it and the undo of that apply.
 //!
 //! The preview reads only: no file is written, a link is never followed and only read-only git
 //! commands run. The apply composes through the same code, refuses before its first write, saves
 //! a receipt, moves every source into an owner-only backup folder and then writes the new files;
-//! it deletes no file and overwrites none but `.gitignore`, which only gains a line. Hunk text
-//! and the composed texts are part of the preview's answer; a line that holds a credential-shaped
-//! value is counted and printed nowhere, and the receipt holds paths and digests, never text.
+//! it overwrites none but `.gitignore`, which only gains a line, and a step that fails is undone
+//! from that receipt. The undo, also run by the revert, removes only a file the apply wrote that
+//! still holds those bytes, puts an original back only into an empty place, takes the
+//! `.gitignore` line back only while no personal file would show, and never deletes an original.
+//! Hunk text and the composed texts are part of the preview's answer; a line that holds a
+//! credential-shaped value is counted and printed nowhere, and the receipt holds paths and
+//! digests, never text.
 
 use super::PERMISSION_PLACEHOLDER;
 // By name: the crate root also has a function `apply`, which a module import would bring along.
@@ -18,8 +22,8 @@ use crate::apply::{
 };
 use crate::go_residue::{find_manifest, Recorded};
 use crate::go_state::{
-    linked_component, make_private_dirs, move_exclusive, parent_of, plain_relative, sha256_file,
-    still_as_previewed,
+    linked_component, make_dirs, make_private_dirs, move_exclusive, parent_of, plain_relative,
+    read_bounded_text, sha256_file, still_as_previewed,
 };
 use crate::{agents, agents_local_merge, claude, contract, identity, state_root};
 use serde::{Deserialize, Serialize};
@@ -69,6 +73,7 @@ const CONFIG_CLAUDE_MD: &str = ".claude/CLAUDE.md";
 /// Why a picked line is in no resulting file.
 const IMPORTS_MOVED: &str = "imports_a_moved_file";
 const CURATOR_MARKER: &str = "go_curator_marker";
+const BLOCK_MARKER: &str = "managed_block_marker";
 
 const IS_LINK: &str = "is a link";
 const BELOW_LINK: &str = "lies below a link folder";
@@ -860,6 +865,17 @@ fn imports_moved(line: &str, source: &str, moved: &[String]) -> bool {
         })
 }
 
+/// Whether the line holds a comment that begins or ends a managed block of moai: copied into a
+/// new file beside the block moai renders there, it could leave that file's markers unpaired.
+fn holds_block_marker(line: &str) -> bool {
+    line.split("<!--").skip(1).any(|comment| {
+        let comment = comment.trim_start();
+        ["moai:managed:begin", "moai:managed:end"]
+            .iter()
+            .any(|word| comment.starts_with(word))
+    })
+}
+
 /// A file the apply would write: its lines, each with whether it must not be printed.
 struct Resulting<'a> {
     path: &'static str,
@@ -913,9 +929,10 @@ struct Composer<'a> {
 
 impl<'a> Composer<'a> {
     /// `head` followed by the hunks picked for `to` in source order, one blank line before each.
-    /// A line that imports a moved file (in its source, or where it would now stand) and a line
-    /// that holds a Go curator start or end marker are left out; blank lines at a hunk's ends
-    /// are dropped.
+    /// A line that imports a moved file (in its source, or where it would now stand), a line that
+    /// holds a Go curator start or end marker and a line that holds a managed-block marker (also
+    /// inside a code block, where the markers are found as well) are left out; blank lines at a
+    /// hunk's ends are dropped.
     fn file(&self, path: &'static str, head: &'a str, to: Destination) -> Resulting<'a> {
         let head: Vec<&str> = head.lines().collect();
         let mut fence = Fence::default();
@@ -941,6 +958,8 @@ impl<'a> Composer<'a> {
                 let mut markers = CURATOR_STARTS.iter().chain(&CURATOR_ENDS);
                 let reason = if markers.any(|marker| line.contains(marker)) {
                     Some(CURATOR_MARKER)
+                } else if holds_block_marker(line) {
+                    Some(BLOCK_MARKER)
                 } else if !(reading.code[n - 1] && code_here)
                     && imports_moved(line, source, self.moved)
                 {
@@ -1271,8 +1290,17 @@ const BACKUPS: &str = "backups";
 const AREA: &str = "claude-md";
 /// The receipt beside it. No other receipt has this name, so no other reader takes it for its own.
 const RECEIPT_FILE: &str = "claude-md-receipt.json";
-/// One size limit for writing the receipt and for replacing it.
+/// One size limit for writing the receipt, replacing it and reading it.
 const RECEIPT_MAX: u64 = state_root::GO_STATE_RECEIPT_MAX;
+/// The operation a receipt names.
+const APPLY_OPERATION: &str = "claude_md.apply";
+/// The receipt's states.
+const PENDING: &str = "pending";
+const COMMITTED: &str = "committed";
+const RESTORED: &str = "restored";
+const PARTIAL: &str = "partial";
+const REVERTED: &str = "reverted";
+const STATES: [&str; 5] = [PENDING, COMMITTED, RESTORED, PARTIAL, REVERTED];
 /// The receipt and the personal file are their owner's alone.
 const PRIVATE_FILE: u32 = 0o600;
 /// How many following seconds a stamp may be moved on when its folder is taken already.
@@ -1424,7 +1452,14 @@ fn personal_ignore(root: &Path) -> Result<Option<IgnoreAdd>, String> {
     }
     let before = read_opt(&root.join(GITIGNORE))
         .map_err(|e| format!("{GITIGNORE} cannot be changed ({e})"))?;
-    let mut after = before.clone().unwrap_or_default();
+    let after = with_ignore_line(before.as_deref());
+    Ok(Some(IgnoreAdd { before, after }))
+}
+
+/// `.gitignore` as an apply leaves it: the earlier bytes (`None`: no such file) and the one line
+/// that names the personal file, in the line ends the file uses.
+fn with_ignore_line(before: Option<&[u8]>) -> Vec<u8> {
+    let mut after = before.unwrap_or_default().to_vec();
     let eol = if after.windows(2).any(|w| w == b"\r\n") {
         "\r\n"
     } else {
@@ -1433,8 +1468,8 @@ fn personal_ignore(root: &Path) -> Result<Option<IgnoreAdd>, String> {
     if !after.is_empty() && !after.ends_with(b"\n") {
         after.extend_from_slice(eol.as_bytes());
     }
-    after.extend_from_slice(format!("{file}{eol}").as_bytes());
-    Ok(Some(IgnoreAdd { before, after }))
+    after.extend_from_slice(format!("{CLAUDE_LOCAL_MD}{eol}").as_bytes());
+    after
 }
 
 /// A git command about ignore rules, built apart from [`git`]: `check-ignore` reads its path the
@@ -1527,6 +1562,8 @@ struct IgnoreRule {
 /// Everything an undo of one apply needs: paths, digests and modes, never file text. It is saved
 /// before the first move with every flag off, and again after each step, so a step that was done
 /// and not saved is possible: a reader checks the disk against the digests, not the flags alone.
+// @cc:careful `check_receipt` refuses what this apply does not write: a new field, path, state or
+// word goes into both.
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Receipt {
@@ -1538,7 +1575,9 @@ struct Receipt {
     plan_digest: String,
     /// The caller's `--permission-reference`, recorded as given (not an authorization).
     permission_reference: String,
-    /// `pending` until every step is done, then `committed`.
+    /// One of [`STATES`]: `pending` until every step is done, then `committed`; `restored` or
+    /// `partial` after an apply that failed and undid its steps, `reverted` or `partial` after a
+    /// revert.
     state: String,
     moves: Vec<MovedFile>,
     writes: Vec<WrittenFile>,
@@ -1584,6 +1623,9 @@ impl Journal {
     }
 
     fn save(&mut self) -> Result<(), String> {
+        if faulted("claude_md_save_fails") {
+            return Err("fault".into());
+        }
         let bytes = encode(&self.receipt)?;
         publish_replace_limited(&self.path, Some(&self.saved), &bytes, RECEIPT_MAX)?;
         self.saved = bytes;
@@ -1600,28 +1642,321 @@ impl Journal {
             .collect()
     }
 
-    /// The error of a step that failed after the pending receipt was saved.
-    fn stopped(&self, at: &str, why: &str, area: &str) -> String {
+    /// Undoes an apply a step of which failed after the pending receipt was saved, saves what
+    /// the receipt then reads, and returns the apply's error: `restored` when nothing is left,
+    /// else `partial` with every path that is left.
+    fn restore(&mut self, root: &Path, at: &str, why: &str, area: &str) -> String {
+        let done = undo(root, &mut self.receipt);
+        let state = if done.clean() { RESTORED } else { PARTIAL };
+        self.receipt.state = state.into();
+        let saved = self.save();
         let rel = &self.rel;
-        let moved = self.receipt.moves.iter().filter(|m| m.moved).count();
-        let written = self.written();
-        if moved == 0 && written.is_empty() {
-            return format!(
-                "claude-md-apply refused: stopped at {at}: {why}; no file was moved or written; \
-                 the receipt {rel} stays pending"
-            );
+        let receipt = match saved {
+            Ok(()) => format!("the receipt {rel} reads {state}"),
+            Err(e) => {
+                format!("the receipt {rel} could not be updated ({e}) and may show an earlier step")
+            }
+        };
+        if done.clean() {
+            // `contract::classify` reads the first words as `conflict`, whatever the reason.
+            let what = if done.restored.is_empty() && done.removed.is_empty() {
+                "no project file was moved or changed"
+            } else {
+                "every change the apply made was undone"
+            };
+            return format!("conflict in claude-md-apply at {at}: {why}; {what}; {receipt}");
         }
-        let total = self.receipt.moves.len();
-        let written = if written.is_empty() {
+        let undone: Vec<&str> = done
+            .removed
+            .iter()
+            .chain(&done.restored)
+            .map(String::as_str)
+            .collect();
+        let undone = if undone.is_empty() {
             "none".to_string()
         } else {
-            written.join(", ")
+            undone.join(", ")
         };
+        let left: Vec<String> = done
+            .reasons
+            .iter()
+            .map(|(path, why)| format!("{path} ({why})"))
+            .collect();
         format!(
-            "partial apply: stopped at {at}: {why}; {moved} of {total} files moved; written: \
-             {written}; the receipt {rel} stays pending; every moved file is under {area} at its \
-             own path, and nothing was deleted"
+            "partial apply: stopped at {at}: {why}; undone: {undone}; could not restore: {}; \
+             {receipt}; an original that is not back stays under {area}; clear what is in the way \
+             and run `moai claude-md-revert {} --receipt {} --permission-reference \
+             {PERMISSION_PLACEHOLDER}`",
+            left.join(", "),
+            self.receipt.project,
+            self.receipt.stamp,
         )
+    }
+}
+
+/// What an undo of one receipt did, and what it had to leave.
+#[derive(Default)]
+struct Undone {
+    /// Originals put back, and the `.gitignore` given its earlier bytes.
+    restored: Vec<String>,
+    /// Files of the apply removed.
+    removed: Vec<String>,
+    /// Paths left as they are.
+    conflicts: Vec<String>,
+    /// Originals whose recorded bytes are neither at their place nor in the backup.
+    missing: Vec<String>,
+    /// Why, for each path of `conflicts` and `missing`.
+    reasons: BTreeMap<String, String>,
+}
+
+impl Undone {
+    /// Nothing is left of the apply.
+    fn clean(&self) -> bool {
+        self.conflicts.is_empty() && self.missing.is_empty()
+    }
+
+    /// Leaves `path` as it is; the first reason given for it stays.
+    fn keep(&mut self, path: &str, why: impl Into<String>) {
+        if !self.conflicts.iter().any(|known| known == path) {
+            self.conflicts.push(path.into());
+        }
+        self.reasons
+            .entry(path.into())
+            .or_insert_with(|| why.into());
+    }
+
+    fn lost(&mut self, path: &str) {
+        self.missing.push(path.into());
+        self.reasons.entry(path.into()).or_insert_with(|| {
+            "the recorded bytes are neither at its place nor in the backup".into()
+        });
+    }
+}
+
+/// What stands at a path inside the project, read through no link.
+#[derive(PartialEq, Eq)]
+enum Standing {
+    Absent,
+    /// The path is a link or lies below one.
+    Linked,
+    /// A regular file with the `sha256:<hex>` of its bytes.
+    File(String),
+    /// Anything else, and what cannot be read.
+    Other,
+}
+
+fn standing(root: &Path, rel: &str) -> Standing {
+    if linked_component(root, rel) {
+        return Standing::Linked;
+    }
+    let path = root.join(rel);
+    match fs::symlink_metadata(&path) {
+        Err(e) if is_absent(&e) => Standing::Absent,
+        Ok(meta) if meta.is_file() => sha256_file(&path).map_or(Standing::Other, Standing::File),
+        _ => Standing::Other,
+    }
+}
+
+/// Whether a regular file with these bytes stands at `rel`.
+fn holds(root: &Path, rel: &str, sha256: &str) -> bool {
+    matches!(standing(root, rel), Standing::File(found) if found == sha256)
+}
+
+/// Undoes what an apply did, as far as the disk allows, and marks in the receipt what is undone.
+/// Every step is decided by what stands on the disk against the recorded digests, so it serves an
+/// apply that failed, one that was stopped between two steps and a revert that runs again. The
+/// order keeps the text the apply wrote hidden: the files it wrote go first, then the originals
+/// come back, and the `.gitignore` line is taken back last, only while the personal file's place
+/// is empty or holds its original again.
+fn undo(root: &Path, receipt: &mut Receipt) -> Undone {
+    let mut done = Undone::default();
+    remove_written(root, receipt, &mut done);
+    move_back(root, receipt, &mut done);
+    take_ignore_back(root, receipt, &mut done);
+    done
+}
+
+/// Removes each file the apply wrote that still holds those bytes, the last written first, while
+/// the original of its path, if it had one, can come back.
+fn remove_written(root: &Path, receipt: &mut Receipt, done: &mut Undone) {
+    for file in receipt.writes.iter_mut().rev() {
+        let original = receipt.moves.iter().find(|m| m.path == file.path);
+        let kept = original.is_some_and(|m| holds(root, &m.backup, &m.sha256));
+        match standing(root, &file.path) {
+            Standing::Absent => file.written = false,
+            Standing::File(found) if found == file.sha256 && (original.is_none() || kept) => {
+                match fs::remove_file(root.join(&file.path)) {
+                    Ok(()) => {
+                        done.removed.push(file.path.clone());
+                        file.written = false;
+                        test_stop("claude_md_stop_after_removal");
+                    }
+                    Err(e) => done.keep(&file.path, format!("it could not be removed ({e})")),
+                }
+            }
+            // The original is at its place already.
+            Standing::File(found) if original.is_some_and(|m| m.sha256 == found) => {
+                file.written = false;
+            }
+            Standing::File(found) if found == file.sha256 => done.keep(
+                &file.path,
+                "it is kept because its original cannot be put back from the backup",
+            ),
+            // Something else stands there. Where the apply never wrote and an original had the
+            // path, the original's own step decides.
+            _ if file.written || original.is_none() => done.keep(
+                &file.path,
+                "it does not hold what the apply writes, so it is kept",
+            ),
+            _ => {}
+        }
+    }
+}
+
+/// Puts each original back where its place is empty, with its recorded bytes and mode. A backup
+/// copy beside an original that is already at its place is left alone.
+fn move_back(root: &Path, receipt: &mut Receipt, done: &mut Undone) {
+    for file in &mut receipt.moves {
+        let place = standing(root, &file.path);
+        if matches!(&place, Standing::File(found) if *found == file.sha256) {
+            file.moved = false;
+            continue;
+        }
+        if !holds(root, &file.backup, &file.sha256) {
+            // Lost: the receipt says it was moved, or its place is empty while something else
+            // stands at its backup path. Otherwise it was never moved, or came back before and
+            // whatever happened to it since is its owner's doing: nothing to undo.
+            let emptied =
+                place == Standing::Absent && standing(root, &file.backup) != Standing::Absent;
+            if file.moved || emptied {
+                done.lost(&file.path);
+            }
+            continue;
+        }
+        match place {
+            Standing::Absent => {}
+            Standing::Linked => {
+                done.keep(
+                    &file.path,
+                    "a link is at or above its place; the original stays in the backup",
+                );
+                continue;
+            }
+            _ => {
+                done.keep(
+                    &file.path,
+                    "its place is taken; the original stays in the backup",
+                );
+                continue;
+            }
+        }
+        let (from, to) = (root.join(&file.backup), root.join(&file.path));
+        let moved = parent_of(&file.path)
+            .and_then(|parent| make_dirs(root, &parent))
+            .and_then(|()| still_as_previewed(&from, &file.path, &file.sha256))
+            .and_then(|()| move_exclusive(&from, &to));
+        // A move that linked the file back and could not remove the copy put it back all the same.
+        if let Err(e) = moved {
+            if !holds(root, &file.path, &file.sha256) {
+                done.keep(&file.path, format!("{e}; the original stays in the backup"));
+                continue;
+            }
+        }
+        file.moved = false;
+        done.restored.push(file.path.clone());
+        if let Err(e) = set_mode(&to, file.mode) {
+            done.keep(&file.path, format!("it is back, but its mode is not ({e})"));
+        }
+        test_stop("claude_md_stop_after_restore");
+    }
+}
+
+/// Why the `.gitignore` line stays although the file holds what the apply left.
+const IGNORE_STAYS: &str =
+    "CLAUDE.local.md is not the recorded original, and taking the line back \
+     would show it to git; move it away and revert again, or remove the line yourself";
+
+/// Takes the apply's line out of `.gitignore`, or removes the file the apply created, while that
+/// file holds what the apply left and the line has nothing to hide: nothing stands at the
+/// personal file's place, or the recorded original does, which git showed before the apply added
+/// the line. The text the apply writes there stays hidden, even where a receipt calls it the
+/// original.
+fn take_ignore_back(root: &Path, receipt: &mut Receipt, done: &mut Undone) {
+    let personal = match standing(root, CLAUDE_LOCAL_MD) {
+        Standing::Absent => true,
+        Standing::File(found) => {
+            let original = receipt.moves.iter().find(|m| m.path == CLAUDE_LOCAL_MD);
+            let written = receipt.writes.iter().find(|w| w.path == CLAUDE_LOCAL_MD);
+            original.is_some_and(|m| m.sha256 == found)
+                && !written.is_some_and(|w| w.sha256 == found)
+        }
+        Standing::Linked | Standing::Other => false,
+    };
+    let Some(rule) = receipt.ignore.as_mut() else {
+        return;
+    };
+    match standing(root, GITIGNORE) {
+        Standing::Absent if rule.before_sha256.is_none() => rule.written = false,
+        Standing::File(found) if rule.before_sha256.as_ref() == Some(&found) => {
+            rule.written = false;
+        }
+        Standing::File(found) if found == rule.after_sha256 => {
+            if !personal {
+                done.keep(GITIGNORE, IGNORE_STAYS);
+                return;
+            }
+            match restore_ignore(root, rule) {
+                Ok(()) => {
+                    let list = match rule.before_sha256 {
+                        Some(_) => &mut done.restored,
+                        None => &mut done.removed,
+                    };
+                    list.push(GITIGNORE.into());
+                    rule.written = false;
+                }
+                Err(e) => done.keep(GITIGNORE, e),
+            }
+        }
+        // Changed since, or never written: it is named while it may hold the apply's line.
+        found => {
+            let holds_line = matches!(found, Standing::File(_))
+                && read_opt(&root.join(GITIGNORE))
+                    .ok()
+                    .flatten()
+                    .is_some_and(|bytes| {
+                        bytes
+                            .split(|b| *b == b'\n')
+                            .any(|line| line.trim_ascii_end() == CLAUDE_LOCAL_MD.as_bytes())
+                    });
+            if rule.written || holds_line {
+                done.keep(GITIGNORE, "it changed after the apply, so it is kept");
+            }
+        }
+    }
+}
+
+/// The write of [`take_ignore_back`]. Whatever the receipt says, only the exact line an apply
+/// adds is taken out: the earlier bytes plus that line must be the file as it is.
+fn restore_ignore(root: &Path, rule: &IgnoreRule) -> Result<(), String> {
+    let path = root.join(GITIGNORE);
+    let now = read_opt(&path)?.ok_or("it is gone")?;
+    let other = || "it does not hold the one line an apply adds, so it is kept".to_string();
+    let earlier = match &rule.before_sha256 {
+        Some(sha256) => Some(
+            usize::try_from(rule.before_len)
+                .ok()
+                .and_then(|length| now.get(..length))
+                .filter(|earlier| digest(earlier) == *sha256)
+                .ok_or_else(other)?,
+        ),
+        None => None,
+    };
+    if with_ignore_line(earlier) != now {
+        return Err(other());
+    }
+    match earlier {
+        Some(earlier) => publish_replace(&path, Some(&now), earlier),
+        None => fs::remove_file(&path).map_err(|e| format!("it could not be removed ({e})")),
     }
 }
 
@@ -1638,6 +1973,25 @@ fn test_fault(point: &str, path: &Path) {
     let _ = (point, path);
 }
 
+/// Test seam: whether `MOAI_TEST_FAULT` names this point. Debug builds only.
+#[cfg(debug_assertions)]
+fn faulted(point: &str) -> bool {
+    std::env::var("MOAI_TEST_FAULT").as_deref() == Ok(point)
+}
+
+#[cfg(not(debug_assertions))]
+fn faulted(_point: &str) -> bool {
+    false
+}
+
+/// Test seam: ends the process at this point, as an interrupted run does, with exit code 70.
+/// Debug builds only.
+fn test_stop(point: &str) {
+    if faulted(point) {
+        std::process::exit(70);
+    }
+}
+
 #[cfg(unix)]
 fn mode_bits(meta: &fs::Metadata) -> u32 {
     use std::os::unix::fs::PermissionsExt;
@@ -1647,6 +2001,22 @@ fn mode_bits(meta: &fs::Metadata) -> u32 {
 #[cfg(not(unix))]
 fn mode_bits(_meta: &fs::Metadata) -> u32 {
     PRIVATE_FILE
+}
+
+/// Gives a regular file the recorded permission bits when it has others.
+#[cfg(unix)]
+fn set_mode(path: &Path, mode: u32) -> io::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let meta = fs::symlink_metadata(path)?;
+    if meta.is_file() && mode_bits(&meta) != mode {
+        fs::set_permissions(path, fs::Permissions::from_mode(mode))?;
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn set_mode(_path: &Path, _mode: u32) -> io::Result<()> {
+    Ok(())
 }
 
 /// Creates a folder that must not exist yet, its owner's alone from the start.
@@ -1717,6 +2087,7 @@ fn perform(
     for i in 0..journal.receipt.moves.len() {
         let file = journal.receipt.moves[i].clone();
         move_source(root, &file, i == 1).map_err(at(&file.path))?;
+        test_stop("claude_md_stop_after_move");
         journal.receipt.moves[i].moved = true;
         journal.save().map_err(at("saving the receipt"))?;
     }
@@ -1729,7 +2100,9 @@ fn perform(
         }
     }
     if let Some(add) = ignore {
+        test_fault("claude_md_ignore_edit", &root.join(GITIGNORE));
         add_ignore_rule(root, add).map_err(at(GITIGNORE))?;
+        test_stop("claude_md_stop_after_ignore");
         if let Some(rule) = journal.receipt.ignore.as_mut() {
             rule.written = true;
         }
@@ -1744,19 +2117,23 @@ fn perform(
         let destination = root.join(path);
         if *path == CLAUDE_LOCAL_MD {
             test_fault("claude_md_destination_taken", &destination);
+            if faulted("claude_md_personal_write_fails") {
+                return Err(at(path)("fault".into()));
+            }
         }
         let (mode, sha256) = {
             let file = &journal.receipt.writes[i];
             (file.mode, file.sha256.clone())
         };
         publish_exclusive_mode(&destination, text.as_bytes(), Some(mode)).map_err(at(path))?;
+        test_stop("claude_md_stop_after_write");
         journal.receipt.writes[i].written = true;
         journal.save().map_err(at("saving the receipt"))?;
         if !sha256_file(&destination).is_ok_and(|h| h == sha256) {
             return Err(at(path)("it does not read back".into()));
         }
     }
-    journal.receipt.state = "committed".into();
+    journal.receipt.state = COMMITTED.into();
     journal.save().map_err(at("marking the receipt committed"))
 }
 
@@ -1769,8 +2146,8 @@ fn accepted_reference(reference: &str) -> bool {
 }
 
 /// Applies the preview whose digest the caller confirmed. Everything that can refuse is asked
-/// before the first write; after it, a step that fails leaves the receipt pending with what was
-/// done and names it. No file is deleted.
+/// before the first write; after it, a step that fails is undone from the receipt
+/// ([`Journal::restore`]) and the error says what is left.
 pub fn apply(
     project: &Path,
     keep: &[String],
@@ -1826,12 +2203,12 @@ pub fn apply(
         .map_or(PRIVATE_FILE, |m| m.mode);
     let receipt = Receipt {
         schema_version: 1,
-        operation: "claude_md.apply".into(),
+        operation: APPLY_OPERATION.into(),
         project: root.to_string_lossy().into_owned(),
         stamp: stamp.clone(),
         plan_digest: plan_digest.into(),
         permission_reference: permission_reference.into(),
-        state: "pending".into(),
+        state: PENDING.into(),
         moves,
         writes: files
             .iter()
@@ -1873,12 +2250,13 @@ pub fn apply(
              file was moved or written"
         )
     })?;
-    perform(&root, &mut journal, ground.ignore.as_ref(), &files)
-        .map_err(|(at, why)| journal.stopped(&at, &why, &area))?;
+    if let Err((at, why)) = perform(&root, &mut journal, ground.ignore.as_ref(), &files) {
+        return Err(journal.restore(&root, &at, &why, &area));
+    }
 
     let moves = &journal.receipt.moves;
     Ok(json!({
-        "state": "committed",
+        "state": COMMITTED,
         "receipt": stamp,
         "receipt_path": rel,
         "backup": area,
@@ -1896,6 +2274,166 @@ pub fn apply(
             .as_ref()
             .map(|rule| json!({"path": rule.path, "line": rule.line})),
         "backup_ignore": if ground.repository { "git" } else { "not_a_repository" },
+        "notice": RESTART_NOTICE,
+    }))
+}
+
+/// A refusal of the revert that comes before its first write.
+fn revert_refused(why: &str) -> String {
+    format!("claude-md-revert refused: {why}; nothing was written")
+}
+
+/// `sha256:` and 64 hex digits.
+fn is_digest(text: &str) -> bool {
+    text.strip_prefix("sha256:")
+        .is_some_and(|hex| hex.len() == 64 && hex.bytes().all(|b| b.is_ascii_hexdigit()))
+}
+
+/// Whether an apply can move this path: a root source, or a file under the local rules folder.
+fn movable(path: &str) -> bool {
+    let folder = format!("{}/{LOCAL_RULES}/", state_root::MOAI_DIR);
+    plain_relative(path)
+        && path.rsplit('/').next() != Some(GITIGNORE)
+        && (ROOT_SOURCES.contains(&path)
+            || path
+                .strip_prefix(&folder)
+                .is_some_and(|rest| !rest.is_empty()))
+}
+
+/// Why the receipt is none an apply of this project and stamp writes. The receipt is a file
+/// anyone may have changed, so every value an undo acts on is held to what an apply produces; the
+/// reason names the field and repeats no value.
+fn check_receipt(
+    receipt: &Receipt,
+    root: &Path,
+    state: &str,
+    stamp: &str,
+) -> Result<(), &'static str> {
+    if receipt.schema_version != 1 {
+        return Err("its schema version");
+    }
+    if receipt.operation != APPLY_OPERATION {
+        return Err("its operation");
+    }
+    if receipt.project != root.to_string_lossy() {
+        return Err("it is another project's");
+    }
+    if receipt.stamp != stamp {
+        return Err("it is another apply's");
+    }
+    if !STATES.contains(&receipt.state.as_str()) {
+        return Err("its state");
+    }
+    let area = area_rel(state, stamp);
+    let mut seen = HashSet::new();
+    for file in &receipt.moves {
+        if !movable(&file.path) || !seen.insert(file.path.as_str()) {
+            return Err("a moved path");
+        }
+        if file.backup != format!("{area}/{}", file.path) {
+            return Err("a backup path");
+        }
+        let tracking = [Tracking::Tracked, Tracking::Untracked, Tracking::Unknown];
+        if !is_digest(&file.sha256)
+            || file.mode > 0o777
+            || !tracking.iter().any(|t| t.word() == file.git)
+        {
+            return Err("the facts of a moved file");
+        }
+    }
+    if !seen.contains(CLAUDE_MD) {
+        return Err("it moves no root instruction file");
+    }
+    let written: Vec<&str> = receipt.writes.iter().map(|w| w.path.as_str()).collect();
+    if written != [CLAUDE_MD] && written != [CLAUDE_MD, CLAUDE_LOCAL_MD] {
+        return Err("a written path");
+    }
+    if receipt
+        .writes
+        .iter()
+        .any(|w| !is_digest(&w.sha256) || w.mode > 0o777)
+    {
+        return Err("the facts of a written file");
+    }
+    if let Some(rule) = &receipt.ignore {
+        let before = match &rule.before_sha256 {
+            Some(sha256) => is_digest(sha256),
+            None => rule.before_len == 0,
+        };
+        if rule.path != GITIGNORE
+            || rule.line != CLAUDE_LOCAL_MD
+            || !is_digest(&rule.after_sha256)
+            || !before
+            || !written.contains(&CLAUDE_LOCAL_MD)
+        {
+            return Err("its ignore rule");
+        }
+    }
+    Ok(())
+}
+
+/// Undoes the apply whose receipt is `stamp`. Everything that can refuse is asked before the
+/// first write. What cannot be undone is left, named, and a later run tries it again; a receipt
+/// with nothing left to undo is answered without a write.
+pub fn revert(project: &Path, stamp: &str, permission_reference: &str) -> Result<Value, String> {
+    if !accepted_reference(permission_reference) {
+        return Err(revert_refused(
+            "permission reference required: --permission-reference takes a short line that names \
+             the user's approval, neither the printed placeholder nor a credential",
+        ));
+    }
+    if !state_root::utc_stamp(stamp) {
+        return Err(revert_refused(
+            "invalid receipt name: --receipt takes the id the apply answered, YYYYMMDDTHHMMSSZ",
+        ));
+    }
+    let root = fs::canonicalize(project).map_err(|_| contract::PROJECT_PATH_UNAVAILABLE)?;
+    let state = state_root::dir(&root);
+    let rel = receipt_rel(state, stamp);
+    let text = read_bounded_text(&root, &rel, RECEIPT_MAX)
+        .map_err(|e| revert_refused(&e))?
+        .ok_or_else(|| revert_refused(&format!("receipt not found: {rel}")))?;
+    let receipt: Receipt = serde_json::from_str(&text)
+        .map_err(|_| revert_refused(&format!("{rel} is no receipt of this step")))?;
+    check_receipt(&receipt, &root, state, stamp).map_err(|what| {
+        revert_refused(&format!("{rel} is not a receipt an apply writes ({what})"))
+    })?;
+
+    let mut journal = Journal {
+        path: root.join(&rel),
+        rel,
+        saved: text.into_bytes(),
+        receipt,
+    };
+    let finished = [RESTORED, REVERTED].contains(&journal.receipt.state.as_str());
+    let done = if finished {
+        Undone::default()
+    } else {
+        let done = undo(&root, &mut journal.receipt);
+        journal.receipt.state = if done.clean() { REVERTED } else { PARTIAL }.into();
+        journal.save().map_err(|e| {
+            format!(
+                "partial apply: the revert put back {} paths, removed {} and left {}, but the \
+                 receipt {} could not be updated ({e}); run the same revert again",
+                done.restored.len(),
+                done.removed.len(),
+                done.reasons.len(),
+                journal.rel,
+            )
+        })?;
+        done
+    };
+    Ok(json!({
+        "state": if done.clean() { REVERTED } else { "conflict" },
+        "receipt": stamp,
+        "receipt_path": journal.rel,
+        "receipt_state": journal.receipt.state,
+        "restored": done.restored,
+        "removed": done.removed,
+        "conflicts": done.conflicts,
+        "missing": done.missing,
+        "reasons": done.reasons,
+        "note": finished.then_some("nothing was left to undo; nothing was written"),
         "notice": RESTART_NOTICE,
     }))
 }
