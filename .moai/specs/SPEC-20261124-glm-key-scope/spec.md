@@ -82,7 +82,7 @@ approval:
 
 ## Result
 
-구현 커밋은 `1168e7f047` 이에요(브랜치 `spec/glm-key-scope-kz-20261124`). AC-3 은 충족이 아니고, AC-4·AC-5 는 `verify:` 줄 그대로의 실행 기록이 아직 없어요.
+구현 커밋은 `1168e7f047` 이에요(브랜치 `spec/glm-key-scope-kz-20261124`). AC-1~AC-6 은 `d811cd2004` 에서 `verify:` 줄 그대로 실행해 충족을 확인했어요. AC-3 의 테스트 교체 예외는 리더 결정 노트 10379 가 받아들였어요.
 
 ### 커밋
 
@@ -105,16 +105,16 @@ approval:
 
 ### 인수 기준
 
-테스트 결과는 나중에 `1168e7f047` 로 커밋한 미커밋 변경에서 얻은 것이에요(`target/keziah/green-457.log`).
+`d811cd2004` 에서 `verify:` 줄을 적힌 그대로 실행한 결과예요(`target/keziah/verify-457.txt`, 모두 exit 0, AC-3 의 grep 은 출력 없이 exit 1).
 
 - AC-1: met — 2 passed
 - AC-2: met — 세 테스트 타깃 30 passed
-- AC-3: not met — 세 테스트 타깃 56 passed, grep exit 1 이에요. 하지만 "C-248 키 테스트는 단언 그대로"에 예외가 있어요. 예전 테스트 `a_glm_pick_outside_a_project_skips_the_key_and_saves_the_pick` 은 REQ-4 가 바꾸는 동작을 단언해서 `a_glm_pick_outside_a_project_asks_and_stores_a_shared_key`, `a_glm_pick_outside_a_project_keeps_the_shared_key_on_enter`, `a_glm_pick_outside_a_project_replaces_the_shared_key_on_n` 으로 대체했어요. 다른 예전 테스트에서 바뀐 것은 기대 범위를 계산하는 호출뿐이에요. 이 예외를 받아들이는 결정은 이 SPEC 에 아직 없어요.
-- AC-4: pending — 같은 필터의 테스트 3 passed 예요. 다만 플래그 순서가 SPEC 줄과 다르고 `--no-fail-fast` 를 더한 명령이라, `verify:` 줄 그대로의 실행은 남아 있어요.
-- AC-5: pending — AC-4 와 같은 한 번의 실행(3 passed)이고, `verify:` 줄 그대로의 실행은 남아 있어요.
+- AC-3: met — 세 테스트 타깃 56 passed, grep 은 출력 없이 exit 1 이에요. 단언이 바뀐 옛 테스트는 하나뿐이에요: `a_glm_pick_outside_a_project_skips_the_key_and_saves_the_pick` 은 REQ-4 가 바꾸는 동작을 단언해서 `a_glm_pick_outside_a_project_asks_and_stores_a_shared_key`, `a_glm_pick_outside_a_project_keeps_the_shared_key_on_enter`, `a_glm_pick_outside_a_project_replaces_the_shared_key_on_n` 으로 대체했어요. 리더 결정 노트 10379 가 이것을 필요한 예외로 받아들였어요. 다른 옛 테스트에서 바뀐 것은 기대 범위를 계산하는 호출 세 곳뿐이에요.
+- AC-4: met — 3 passed
+- AC-5: met — AC-4 와 같은 한 번의 실행(3 passed)
 - AC-6: met — 2 passed
 
-그 밖에 lib 와 세 테스트 타깃, lib 테스트 프로필의 `clippy -D warnings` 는 exit 0 이었고, `state_folder_literal_scan` 과 `ac_command_lint` 는 28 passed 였어요.
+`1168e7f047` 로 커밋한 변경에서는 lib 와 세 테스트 타깃, lib 테스트 프로필의 `clippy -D warnings` 가 exit 0 이었고, `state_folder_literal_scan` 과 `ac_command_lint` 는 28 passed 였어요.
 
 ### RED
 
