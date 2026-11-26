@@ -2,7 +2,7 @@
 id: SPEC-20261126-audit-reads-by-object-id
 title: "감사는 다른 레인의 head 를 자기 워크트리에서 객체 id 로 읽어요"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-26
 ---
 
@@ -58,7 +58,8 @@ created: 2026-11-26
 ## Risks
 
 - 감사 계약은 8192 바이트 한도이고 지금 7966 바이트예요. 새 줄을 넣고도 한도 아래여야 하고 한도는 올리지 않아요.
-- 스캔 표를 `test_targets` 형식으로 바꾸는 SPEC-20261125-repo-scans-convert-test-targets 가 먼저 착지하면 새 항목은 `checks` 대신 `test_targets` 를 써야 해요.
+- 스캔 표를 `test_targets` 형식으로 바꾸는 SPEC-20261125-repo-scans-convert-test-targets 가 착지한 뒤에는 새 항목도 `checks` 대신 `test_targets` 를 써요. 그 전에는 변환 전 가드 테스트가 그 형식을 거절해요.
+- 스캔 항목의 docs 범위는 세 경로뿐이에요. `docs/` 의 다른 자리에 audit 이름 파일이 새로 생기면 바뀐 범위로 고르는 검사는 이 스캔을 고르지 않고, 이 테스트가 도는 실행이 잡아요.
 - 탐지는 글자 기준이라 자기 워크트리를 가리키는 새 줄도 실패해요. 그런 줄은 baseline 을 함께 고쳐요.
 - 감사 에이전트 글은 감사 워크트리를 `git -C` 로 가리키라고 하는데 호스트 관문 안내는 격리 세션이 다른 워크트리를 가리키는 그 형태를 거절한다고 적어요. 이 SPEC 은 그 차이를 고치지 않아요.
 
@@ -71,4 +72,4 @@ Reversible, category `none`.
 | D-1 | the ban names a worktree that is not the auditor's own | the criterion says another worktree, and the two audit texts outside the scope let the auditor use the audit worktree it made | widen the line and its baseline substring |
 | D-2 | audit texts are the files named audit under three folders and five named rule files | small and stable, and a new audit file joins by its name | edit the named list |
 | D-3 | each occurrence is covered by a baseline substring with a count | an added occurrence fails and a removed one asks to shrink the baseline | edit the baseline |
-| D-4 | the scan has its own always entry over the three folders | the existing read groups list named files and would miss a new audit file | remove the entry and join those groups |
+| D-4 | the scan has its own always entry over `skills/`, `agents/`, `docs/lane-rules.md`, `docs/leader-rules.md` and `docs/design-review/appendix/operations/` | the existing read groups list named files and would miss a new audit file, and a scope over all of `docs/` makes a docs-only change an own hit, which an existing repository test refuses | remove the entry and join those groups |
