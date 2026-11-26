@@ -252,8 +252,10 @@ fn hooks_read_elsewhere(project: &Path) -> Option<PathBuf> {
     if !out.status.success() {
         return None;
     }
-    // A relative answer is relative to the project folder; an absolute one replaces it.
-    let read = project.join(text_of(&out));
+    // A relative answer is relative to the project folder (`.` by default), whose absolute
+    // spelling is taken so the folder is named absolute; an absolute answer replaces it.
+    let base = fs::canonicalize(project).ok()?;
+    let read = base.join(text_of(&out));
     let real = |p: &Path| fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
     let installed = common_dir(env).ok()?.join("hooks");
     (real(&read) != real(&installed)).then(|| real(&read))

@@ -581,6 +581,27 @@ fn a_relative_hooks_path_answers_not_active_and_makes_no_folder() {
     assert!(!folder.exists(), "the folder of the setting is not made");
 }
 
+/// The folder is named absolute also when the command is given the project as `.`, the default.
+#[test]
+fn the_named_folder_is_absolute_when_the_project_is_the_dot() {
+    let fx = Fx::new(Some(BRANCH));
+    fx.git(&fx.repo, &["config", "core.hooksPath", ".husky"]);
+    let (code, plan) = fx.moai(&fx.repo, None, &["git-hooks-plan", "."]);
+    assert_eq!(code, 0, "{plan}");
+    let token = plan["result"]["confirm_token"].as_str().expect("a token");
+    let (code, applied) = fx.moai(
+        &fx.repo,
+        None,
+        &["git-hooks-apply", ".", "--confirm-git-hooks", token],
+    );
+    assert_eq!(code, 0, "{applied}");
+    let guard = &applied["result"]["guard"];
+    assert_eq!(guard["record"], "not_active", "{applied}");
+    let named = Path::new(guard["hooks_path"].as_str().unwrap());
+    assert!(named.is_absolute(), "{applied}");
+    assert!(named.ends_with("r/.husky"), "{applied}");
+}
+
 /// The setting of the user's global git configuration counts the same.
 #[test]
 fn a_global_hooks_path_answers_not_active() {
