@@ -179,7 +179,8 @@ const STATE_ENTRIES: [&str; 18] = [
     "workflows",
 ];
 /// Root instruction files that move into the backup's `root-files/` with the Go folder (#2936
-/// O4); the install step writes new ones. `CLAUDE.local.md` is the user's and stays.
+/// O4); the install step writes a new `CLAUDE.md`, and the CLAUDE files take the place of the
+/// older two. `CLAUDE.local.md` is the user's and stays.
 const ROOT_FILES: [&str; 3] = ["CLAUDE.md", "AGENTS.md", "AGENTS.local.md"];
 /// The folder of an apply's backup area that takes the earlier entries the user picked for
 /// `--set-aside`.
@@ -315,7 +316,8 @@ pub struct GoStatePlan {
     /// #2696: the earlier root's entries, each `move` (into `.moai/`) or `leave`.
     pub state_moves: Vec<StateMove>,
     /// #2696, #2936 O4: `CLAUDE.md`, `AGENTS.md` and `AGENTS.local.md`, moved into the backup
-    /// (`move`: gone from the project root until the install step writes a new one) or left
+    /// (`move`: gone from the project root; the install step writes a new `CLAUDE.md`, and the
+    /// older files are not written again) or left
     /// (`leave`), and `.claude/settings.local.json`, copied (`copy`, the original stays).
     pub root_files: Vec<RootFile>,
     /// #2696: the Go folder's top-level entries; all of them stay in the backup.
@@ -2414,6 +2416,26 @@ fn read_bounded_file(path: &Path) -> Option<Vec<u8>> {
     ((bytes.len() as u64) <= FILE_LIMIT).then_some(bytes)
 }
 
+/// Why a root instruction file moves into the backup (SPEC-20261122-claude-md-text-and-ignore
+/// REQ-13). `CLAUDE.md` is written again by the install step; an older file is not: the CLAUDE
+/// file of its kind takes its place and the moved copy stays in the backup.
+fn moved_reason(name: &str, no_go_proof: bool) -> String {
+    let lead = if no_go_proof {
+        "no Go proof; moves to the backup as D-M1 says (O4)"
+    } else {
+        "moves to the backup"
+    };
+    let instead = match name {
+        "AGENTS.md" => "CLAUDE.md",
+        "AGENTS.local.md" => "CLAUDE.local.md",
+        _ => return format!("{lead}; the install step writes a new one"),
+    };
+    format!(
+        "{lead}; {instead} takes its place, {name} is not written again, and the moved copy \
+         stays in the backup"
+    )
+}
+
 /// The root instruction files (#2936 O4, D-M1): each moves into the backup's `root-files/`
 /// with the Go folder, its Go proof shown (`manifest`, a Go curator `marker`, or `none`). A
 /// link stays and is never followed; this generation's file (its managed section) stays; one
@@ -2471,6 +2493,7 @@ fn plan_root_files(project: &Path, recorded: &HashMap<String, Entry>) -> Vec<Roo
         } else {
             "none"
         };
+        let moved = moved_reason(name, proof == "none");
         let (action, reason, class) = if rec.is_some_and(|e| e.provenance == "user_created") {
             ("leave", "user_created: the user's own file", "user_data")
         } else if rust && proof != "none" {
@@ -2485,19 +2508,8 @@ fn plan_root_files(project: &Path, recorded: &HashMap<String, Entry>) -> Vec<Roo
                 "this generation's file (managed section); it stays",
                 "rust",
             )
-        } else if proof == "none" {
-            (
-                "move",
-                "no Go proof; moves to the backup as D-M1 says (O4); the install step writes a \
-                 new one",
-                "instructions",
-            )
         } else {
-            (
-                "move",
-                "moves to the backup; the install step writes a new one",
-                "instructions",
-            )
+            ("move", moved.as_str(), "instructions")
         };
         out.push(row(name, digest(&bytes), action, reason, class, proof));
     }

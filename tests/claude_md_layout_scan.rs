@@ -308,7 +308,6 @@ const GUIDE: &str = "src/project_update/guide.rs";
 const MERGE_APPLY: &str = "src/ops/agents_merge_apply.rs";
 const MERGE_PLAN: &str = "src/ops/agents_merge_plan.rs";
 const MERGE_REVERT: &str = "src/ops/agents_merge_revert.rs";
-const PROJECT_MD: &str = "skills/moai/workflows/project.md";
 const UPDATE_MD: &str = "skills/moai/workflows/update.md";
 
 /// Only text that moves, reads, backs up, guards, undoes or advises about the user's older files.
@@ -379,6 +378,8 @@ const EXCEPTIONS: &[Row] = &[
     row("src/go_residue.rs", r#""AGENTS.md","#, GUARD),
     row("src/go_residue.rs", r#""AGENTS.local.md","#, GUARD),
     row("src/go_state.rs", r#"const ROOT_FILES: [&str; 3] = ["CLAUDE.md", "AGENTS.md", "AGENTS.local.md"];"#, BACKUP),
+    row("src/go_state.rs", r#""AGENTS.md" => "CLAUDE.md","#, BACKUP),
+    row("src/go_state.rs", r#""AGENTS.local.md" => "CLAUDE.local.md","#, BACKUP),
     row("src/launcher_init.rs", r#"["CLAUDE.md", "AGENTS.md"]"#, READ),
 
     row(UPDATE_RS, "AGENTS.md and AGENTS.local.md move into CLAUDE.md", MOVE),
@@ -427,10 +428,11 @@ const EXCEPTIONS: &[Row] = &[
 
     row("skills/moai/references/audit.md", "`CLAUDE.md` and the older `AGENTS.md`", GUARD),
     row("skills/moai/workflows/audit.md", "and an older `AGENTS.md` while the project still has one", READ),
-    // The first of these is part of a sentence tests/go_state_classes_cli.rs pins.
-    row(PROJECT_MD, "the root instruction files `CLAUDE.md`, `AGENTS.md` and `AGENTS.local.md` are moved to", BACKUP),
-    row(PROJECT_MD, "`AGENTS.md` and `AGENTS.local.md` are the older instruction files", ADVISE),
-    row(PROJECT_MD, "the older `AGENTS.md` and `AGENTS.local.md` are gone from it", BACKUP),
+    // The first of these is part of a sentence tests/go_state_classes_cli.rs pins. The three
+    // stand in the update workflow, where the integration branch moved them from project.md.
+    row(UPDATE_MD, "the root instruction files `CLAUDE.md`, `AGENTS.md` and `AGENTS.local.md` are moved to", BACKUP),
+    row(UPDATE_MD, "`AGENTS.md` and `AGENTS.local.md` are the older instruction files", ADVISE),
+    row(UPDATE_MD, "the older `AGENTS.md` and `AGENTS.local.md` are gone from it", BACKUP),
     row(UPDATE_MD, "older personal file `AGENTS.local.md` is copied into `CLAUDE.local.md`", MOVE),
     row(UPDATE_MD, "the text written in `AGENTS.md` below it and the text written in `AGENTS.local.md`", MOVE),
     row(UPDATE_MD, "`AGENTS.md` and `AGENTS.local.md` stay unchanged by `move` and `leave`", MOVE),
@@ -504,7 +506,7 @@ fn shipped_rewritten_sentences_name_the_new_files() {
         ("src/language.rs", LABEL_KO),
         ("src/generation.rs", NEXT_ACTION),
         ("src/home_routing.rs", CURSOR_REASON),
-        (PROJECT_MD, INSTALL_PHRASE),
+        (UPDATE_MD, INSTALL_PHRASE),
         (CLAUDE_RS, SUGGESTION),
         (UPDATE_RS, UNKNOWN_TRACKING),
         (UPDATE_RS, UNDO_NOTE),
@@ -516,8 +518,8 @@ fn shipped_rewritten_sentences_name_the_new_files() {
         }
     }
     for (rel, stale) in [
-        (PROJECT_MD, "writes new ones"),
-        (PROJECT_MD, "writes a new one"),
+        (UPDATE_MD, "writes new ones"),
+        (UPDATE_MD, "writes a new one"),
         (CLAUDE_RS, "add an `@AGENTS.md` import"),
         (
             CLAUDE_RS,

@@ -38,6 +38,7 @@ moai 의 지침 파일은 `CLAUDE.md`(팀)와 `CLAUDE.local.md`(개인)예요. �
 - REQ-10: The exception list shall hold one row per line fragment, with its exact count and its reason, only for text that moves, reads, backs up, guards, undoes or advises about the user's old files.
 - REQ-11: When a temporary project is set up in English or Korean, the files moai writes in it and under its HOME shall name no old instruction file.
 - REQ-12 (REQ-11): IF a setup command fails or writes no instruction file, THEN the test shall fail.
+- REQ-13: When the go-state plan moves an older `AGENTS.md` or `AGENTS.local.md` into the backup, the plan shall give a reason that says `CLAUDE.md` or `CLAUDE.local.md` takes its place, that the older file is not written again and that the moved copy stays in the backup, with no claim that the install step writes a new one. · failure: none — a reason text has no failing input; an unreadable root file is a separate `leave` row.
 
 "배포되는 줄"은 Plan 1 이 정해요: `src/` 의 줄 주석과 `#[cfg(test)]` 모듈은 빼고, 명령 도움말이 되는 문서 주석은 넣어요.
 
@@ -65,6 +66,8 @@ moai 의 지침 파일은 `CLAUDE.md`(팀)와 `CLAUDE.local.md`(개인)예요. �
   verify: `cargo test --locked --offline --test repo_scans_table every_`
 - AC-10 (REQ-5): 예전 파일이 가려진 임시 프로젝트에서 `claude-doctor` 가 내용을 `CLAUDE.md` 로 옮기라고 권하고, import 나 두 파일 함께 읽기 설정은 권하지 않아요.
   verify: `cargo test --locked --offline --test product_cli claude_doctor_agents_loading_combinations`
+- AC-11 (REQ-13): 옛 `AGENTS.md`·`AGENTS.local.md` 를 백업으로 옮기는 계획의 사유가, Go 증거가 없을 때와 매니페스트가 증거일 때 모두 대신하는 CLAUDE 파일과 "다시 쓰지 않는다", 백업에 있다는 말을 담고 "writes a new one" 을 말하지 않아요.
+  verify: `cargo test --locked --offline --test claude_md_layout_scan a_moved_older_file_reason`
 
 ## Scope
 
@@ -101,6 +104,7 @@ moai 의 지침 파일은 `CLAUDE.md`(팀)와 `CLAUDE.local.md`(개인)예요. �
 | D-9 | 라벨은 두 파일 이름을 다 적어요. 이 설정이 있는 프로젝트는 다음 업데이트에서 관리 블록이 한 번 바뀌어요. | 팀·개인 파일이 모두 그 언어 설정의 대상이에요. | `CLAUDE.md` 만. |
 | D-10 | 개정 1 의 REQ-1~4·7 은 빼고, 무시 파일은 리더가 후속 카드로 열어요(노트 10248). 배너는 지금 글이 형식을 지켜 새 일이 없어요. | 저장소 `.gitignore` 허용 목록은 `CLAUDE.md` 의 "`.claude/` 는 스테이징하지 않는다" 와 부딪치고, 결정 기록에서 그것을 푸는 행을 찾지 못했어요. layout SPEC 의 조각 4 는 아직 이 SPEC 을 가리켜요. | 이 개정에 남기기(그 결정이 먼저 필요해요). |
 | D-11 | 저장해 둔 업데이트 미리보기 픽스처 세 개도 새 문장으로 고쳐요. | 제품 문장과 같게 해요. | 그대로 두기. |
+| D-12 | 개정 4: 옛 `AGENTS.md`·`AGENTS.local.md` 행의 이동 사유(`src/go_state.rs`)와 `update.md` 의 같은 문장을 고쳐요. `CLAUDE.md` 행의 사유는 그대로예요. | 감사 노트 10424 의 FAIL 과 리더 결정 10426: 이 세대는 두 파일을 새로 쓰지 않아요. | 사유를 옛 문장으로 되돌리고 예외 행으로 남기기. |
 
 ## Risks
 
