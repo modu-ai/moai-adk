@@ -873,21 +873,6 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
         "The apply's backup stamp (`YYYYMMDDTHHMMSSZ`)",
     ),
     (
-        "go-residue-apply",
-        "bundle",
-        "Move the byte-proven files (the only value is `proven`)",
-    ),
-    (
-        "go-residue-apply",
-        "pick",
-        "A changed Go file to move too (repeat for more)",
-    ),
-    (
-        "go-residue-revert",
-        "receipt",
-        "The apply's receipt stamp (`YYYYMMDDTHHMMSSZ`)",
-    ),
-    (
         "update-apply",
         "home",
         "The HOME to change (default `$HOME`). Tests pass a temporary folder",
@@ -2227,6 +2212,21 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "go-state-apply",
         "set_aside",
         "확인한 미리 보기를 만들 때 쓴 `--set-aside` 와 같게 넘기기(다르면 digest 가 달라 거절해요)",
+    ),
+    (
+        "go-residue-apply",
+        "bundle",
+        "바이트가 manifest 와 같은 파일 묶음 옮기기(값은 `proven` 하나)",
+    ),
+    (
+        "go-residue-apply",
+        "pick",
+        "함께 옮길 바뀐 Go 파일 경로(여러 번 쓸 수 있어요)",
+    ),
+    (
+        "go-residue-revert",
+        "receipt",
+        "적용 영수증의 시각 이름(`YYYYMMDDTHHMMSSZ`)",
     ),
     (
         "language-setup",

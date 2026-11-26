@@ -477,6 +477,84 @@ fn user_data_alone_leaves_the_go_residue_step_unchanged() {
     );
 }
 
+/// The step stays out of the other steps' state: `all_unchanged` is the AND of every step that
+/// is not the go-residue one, because `optional` and `unchanged` count as nothing to do.
+fn assert_all_unchanged_follows_the_other_steps(plan: &Value) {
+    let body = plan.get("result").unwrap_or(plan);
+    let others_unchanged = body["phases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|p| p["steps"].as_array().into_iter().flatten())
+        .filter(|s| s["step"] != json!("go-residue"))
+        .all(|s| matches!(s["state"].as_str(), Some("unchanged" | "skip" | "optional")));
+    assert_eq!(
+        body["all_unchanged"],
+        json!(others_unchanged),
+        "all_unchanged follows the other steps alone: {:?}",
+        body["all_unchanged"]
+    );
+}
+
+/// Leaving the files where they are is a valid answer, so a surveyed file the survey would act
+/// on reads `optional`, never a decision, and never holds `all_unchanged` false. A command is
+/// printed only for the proven bundle: with no proven file there is none.
+#[test]
+fn residue_to_act_on_is_reported_and_does_not_hold_the_update() {
+    // A proven file is there: `optional` with the printed proven-bundle command.
+    let fx = survey_frame();
+    let plan = fx.update_plan();
+    let found = step(&plan, "go-residue");
+    let same = Fx::residue_item(&plan, "a.md");
+    assert_eq!(same["class"], json!("go_same"), "the byte-identical file");
+    assert_ne!(
+        same["suggested_action"],
+        json!("keep"),
+        "the survey would act on this file: {same:?}"
+    );
+    assert_eq!(
+        found["state"],
+        json!("optional"),
+        "leaving the files is a valid answer, so this is not a decision: {found:?}"
+    );
+    let argv = Fx::printed_apply(&plan, "test-approval");
+    assert_eq!(argv[0], "go-residue-apply", "{argv:?}");
+    assert!(
+        argv.windows(2).any(|w| w == ["--bundle", "proven"]),
+        "the command names the proven bundle only: {argv:?}"
+    );
+    assert!(
+        !argv.iter().any(|a| a == "--pick"),
+        "no command moves a changed file: {argv:?}"
+    );
+    assert_all_unchanged_follows_the_other_steps(&plan);
+
+    // Only a changed file: still reported, but nothing is proven, so there is no command.
+    let mut changed_only = Fx::new();
+    changed_only.changed(
+        st!("config/sections/user.yaml"),
+        "tone: formal\n",
+        "tone: casual\n",
+    );
+    changed_only.manifest_at(st!("manifest.json"));
+    changed_only.git_commit_all();
+    let plan = changed_only.update_plan();
+    let found = step(&plan, "go-residue");
+    assert_eq!(found["state"], json!("optional"), "{found:?}");
+    assert_eq!(found["apply"], json!(null), "{found:?}");
+    assert_all_unchanged_follows_the_other_steps(&plan);
+
+    // No manifest proves anything: nothing to move and nothing held.
+    let unproven = Fx::new();
+    unproven.write(st!("design/x.md"), "# user design notes\n");
+    unproven.git_commit_all();
+    let plan = unproven.update_plan();
+    let found = step(&plan, "go-residue");
+    assert_eq!(found["state"], json!("unchanged"), "{found:?}");
+    assert_eq!(found["apply"], json!(null), "{found:?}");
+    assert_all_unchanged_follows_the_other_steps(&plan);
+}
+
 /// AC-3 (REQ-6): with no manifest anywhere the step reports no proof with zero candidates
 /// and the plan still succeeds.
 #[test]
@@ -533,7 +611,7 @@ fn applying_the_proven_bundle_moves_only_the_go_same_files() {
     fs::create_dir_all(fx.root.join(".moai-backups/20261101T000000Z")).unwrap();
     let before = fx.bytes(true);
     let plan = fx.update_plan();
-    assert_eq!(step(&plan, "go-residue")["state"], json!("needs_decision"));
+    assert_eq!(step(&plan, "go-residue")["state"], json!("optional"));
 
     let done = fx.apply_printed(&plan, &[]);
     assert_eq!(done["ok"], json!(true), "{done}");
@@ -582,10 +660,15 @@ fn applying_the_proven_bundle_moves_only_the_go_same_files() {
         "the warning names the checkout: {r}"
     );
 
-    // The changed file is still asked about, and nothing proven is left to move.
+    // The changed file is still offered by name, and nothing proven is left to move.
     let second = fx.update_plan();
     let found = step(&second, "go-residue");
-    assert_eq!(found["state"], json!("needs_decision"), "{found}");
+    assert_eq!(found["state"], json!("optional"), "{found}");
+    assert_eq!(
+        found["apply"],
+        json!(null),
+        "no command moves a changed file"
+    );
     assert_eq!(
         Fx::residue_item(&second, "user.yaml")["class"],
         json!("go_changed")
@@ -960,9 +1043,12 @@ fn the_revert_restores_every_byte() {
     assert_eq!(fx.bytes(false), before, "the revert left a file different");
     // A reverted apply is found again by the next preview.
     let replan = fx.update_plan();
+    let again = step(&replan, "go-residue");
+    assert_eq!(again["state"], json!("optional"), "{again}");
     assert_eq!(
-        step(&replan, "go-residue")["state"],
-        json!("needs_decision")
+        again["apply"]["argv"][1],
+        json!("go-residue-apply"),
+        "{again}"
     );
 }
 

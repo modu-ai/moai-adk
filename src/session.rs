@@ -127,19 +127,29 @@ pub fn agent_prefix(dir: &Path) -> String {
     format!("{}-agent-", project_name(dir))
 }
 
-/// `<project name>-agent-<english name>`: the first name of [`AGENT_NAMES`] whose session live
-/// lock is not held and whose registry entry has no running lease (REQ-2, REQ-3). A folder
-/// outside a git repository has no sessions folder to read, so every name is free and the first
-/// one is taken. When every name is taken the answer is one message that names `--name` (REQ-2).
+/// `<project name>-agent-<english name>`: the first name of [`AGENT_NAMES`] that is free in both
+/// of its forms, `agent-<english name>` and `<project name>-agent-<english name>`
+/// (SPEC-20261125-session-registry-session-key REQ-8). A form is taken while its `<form>.live`
+/// lock is held or its registry entry `<form>.json` has a running lease (REQ-2, REQ-3); the
+/// answer always carries the project prefix. A folder outside a git repository has no sessions
+/// folder to read, so every name is free and the first one is taken. When every name is taken
+/// the answer is one message that names `--name` (REQ-2).
 pub fn pick_agent_name(dir: &Path, now: i64) -> Result<String, String> {
     let sessions = agent_seq_dir(dir).ok();
     let prefix = agent_prefix(dir);
     for n in AGENT_NAMES {
         let name = format!("{prefix}{n}");
         if let Some(sessions) = &sessions {
-            if live_lock_held(&sessions.join(format!("{name}.live")))?
-                || crate::lane_registry::is_live(sessions, &name, now)?
-            {
+            let mut taken = false;
+            for form in [format!("agent-{n}"), name.clone()] {
+                if live_lock_held(&sessions.join(format!("{form}.live")))?
+                    || crate::lane_registry::is_live(sessions, &form, now)?
+                {
+                    taken = true;
+                    break;
+                }
+            }
+            if taken {
                 continue;
             }
         }

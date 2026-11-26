@@ -12,6 +12,7 @@ mod ready_receipt;
 use common::CleanEnv;
 use moai_cli::tree_digest;
 use serde_json::{json, Value};
+use std::collections::{BTreeSet, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
@@ -1102,4 +1103,393 @@ fn scenario_card_cycle_takes_checks_audits_lands_and_names_the_next_card() {
     ));
     assert_eq!(next["next"], json!(second), "{next}");
     assert_eq!(next["next_is"], json!("ready"), "{next}");
+}
+
+// ---- every command the shipped READY and check texts name ---------------------------------------
+
+/// The shipped texts whose `moai` commands the scenario answers, relative to the installed
+/// package folder (`skills/moai`).
+const READY_TEXTS: [&str; 4] = [
+    "references/internal/self-check.md",
+    "workflows/run.md",
+    "workflows/work.md",
+    "references/flows/next-flow.md",
+];
+
+/// One inline code span of a shipped text that starts with `moai `.
+#[derive(Debug, PartialEq)]
+struct NamedCommand {
+    /// The span as written, without its backticks.
+    span: String,
+    /// Up to two leading words that look like command names (`card`, `note`). The second one is a
+    /// subcommand only when the first names a group; otherwise it is an argument.
+    words: Vec<String>,
+    /// Every `--flag` word of the span, without `=value` or trailing punctuation.
+    flags: Vec<String>,
+}
+
+/// The `moai` commands a text names: every inline code span that starts with `moai `, and every
+/// line of a fenced block that starts with `moai ` (after an optional `$ `). A span never
+/// crosses a line; an unclosed backtick names nothing.
+fn named_commands(text: &str) -> Vec<NamedCommand> {
+    let mut out = Vec::new();
+    let mut fenced = false;
+    for line in text.lines() {
+        if line.trim_start().starts_with("```") {
+            fenced = !fenced;
+        } else if fenced {
+            out.extend(named_command(line.trim().trim_start_matches("$ ")));
+        } else {
+            // The odd pieces between backticks are inside a span; the last piece of a line with
+            // an odd number of backticks is not closed.
+            let pieces: Vec<&str> = line.split('`').collect();
+            for (i, piece) in pieces.iter().enumerate() {
+                if i % 2 == 1 && i + 1 < pieces.len() {
+                    out.extend(named_command(piece));
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The command a span names, or none when it does not start with `moai `.
+fn named_command(span: &str) -> Option<NamedCommand> {
+    let span = span.trim();
+    let rest = span.strip_prefix("moai ")?;
+    // A command word is lower-case letters, digits and `-`, starting with a letter; the first
+    // word that is anything else (a flag, a placeholder, a path, a number) ends the command.
+    let is_word = |w: &str| {
+        w.starts_with(|c: char| c.is_ascii_lowercase())
+            && w.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+    };
+    let words = rest
+        .split_whitespace()
+        .take_while(|w| is_word(w))
+        .take(2)
+        .map(str::to_string)
+        .collect();
+    let flags = rest
+        .split_whitespace()
+        .filter_map(|w| w.strip_prefix("--"))
+        .map(|name| {
+            name.chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '-')
+                .collect::<String>()
+        })
+        .filter(|name| !name.is_empty())
+        .map(|name| format!("--{name}"))
+        .collect();
+    Some(NamedCommand {
+        span: span.to_string(),
+        words,
+        flags,
+    })
+}
+
+/// Every whole `--flag` word of a help text, so `--head` never passes as a prefix of
+/// `--head-only`.
+fn help_flags(help: &str) -> BTreeSet<&str> {
+    help.split(|c: char| !(c.is_ascii_alphanumeric() || c == '-'))
+        .filter(|w| w.starts_with("--") && w.len() > 2)
+        .collect()
+}
+
+/// What the installed `moai` answers to `moai <path> --help`: whether it exited 0, and its text.
+type Help = (bool, String);
+
+/// The result of checking every named command against what the binary answers.
+struct Checked {
+    /// One line per command or flag the binary does not know, naming source file and span.
+    problems: Vec<String>,
+    /// The distinct command paths the texts name (`card note`, `package-inspect`).
+    paths: BTreeSet<String>,
+}
+
+/// Resolves each named command to its path, asks `help` for that path once, and lists what is
+/// unknown: a path whose `--help` does not exit 0, and every `--flag` the text shows that the
+/// help text does not list as a whole word.
+fn command_problems(texts: &[(&str, &str)], mut help: impl FnMut(&[String]) -> Help) -> Checked {
+    let mut cache: HashMap<Vec<String>, Help> = HashMap::new();
+    let mut ask = |path: &[String]| -> Help {
+        cache
+            .entry(path.to_vec())
+            .or_insert_with(|| help(path))
+            .clone()
+    };
+    let mut checked = Checked {
+        problems: Vec::new(),
+        paths: BTreeSet::new(),
+    };
+    for (source, text) in texts {
+        for cmd in named_commands(text) {
+            let mut path: Vec<String> = cmd.words.iter().take(1).cloned().collect();
+            if let Some(second) = cmd.words.get(1) {
+                // Only a group (its help has a `Commands:` line) takes a subcommand; after any
+                // other command the second word is an argument.
+                let (exited_ok, text) = ask(&path);
+                if exited_ok && text.lines().any(|l| l.starts_with("Commands:")) {
+                    path.push(second.clone());
+                }
+            }
+            let shown = format!("moai {}", path.join(" "));
+            let shown = shown.trim_end();
+            let (exited_ok, text) = ask(&path);
+            if !exited_ok {
+                checked.problems.push(format!(
+                    "{source}: `{}` names `{shown}`, and `{shown} --help` does not exit 0",
+                    cmd.span
+                ));
+                continue;
+            }
+            let known = help_flags(&text);
+            for flag in &cmd.flags {
+                if !known.contains(flag.as_str()) {
+                    checked.problems.push(format!(
+                        "{source}: `{}` shows {flag}, and `{shown} --help` does not list it",
+                        cmd.span
+                    ));
+                }
+            }
+            if !path.is_empty() {
+                checked.paths.insert(path.join(" "));
+            }
+        }
+    }
+    checked
+}
+
+impl World {
+    /// `moai-cli <path> --help` in `cwd`.
+    fn help_of(&self, cwd: &Path, path: &[String]) -> Help {
+        let mut args: Vec<&str> = path.iter().map(String::as_str).collect();
+        args.push("--help");
+        let out = self.run_in(cwd, &args);
+        (
+            out.status.success(),
+            String::from_utf8_lossy(&out.stdout).into_owned(),
+        )
+    }
+
+    /// The installed copy of one shipped text, with its name as the repository spells it.
+    fn shipped(&self, rel: &str) -> (String, String) {
+        let path = self.pkg(rel);
+        let text = fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("the installed copy lacks {}: {e}", path.display()));
+        (format!("skills/moai/{rel}"), text)
+    }
+}
+
+/// A temporary project with one commit, a branch `integ` and a MoAI profile; test data.
+fn demo_project(w: &World) -> PathBuf {
+    let project = w.root.join("work/demo");
+    fs::create_dir_all(&project).unwrap();
+    git(&project, &["init", "-q", "-b", "main"]);
+    write(&project.join("a.txt"), "a\n");
+    git(&project, &["add", "a.txt"]);
+    git(&project, &["commit", "-q", "-m", "init"]);
+    git(&project, &["branch", "integ"]);
+    write(
+        &project
+            .join(moai_cli::PROJECT_STATE_DIR)
+            .join("project.yaml"),
+        PROFILE,
+    );
+    project
+}
+
+/// The commands the scenario really runs, besides `--help`. Each key must be a command the texts
+/// name, so this list cannot go stale; every other named command is answered with `--help` only.
+const RUN_FOR_REAL: [&str; 3] = ["package-inspect", "session-register", "work-flow-plan"];
+
+/// Runs the read-only command `key` as the text shows it, in the temporary project, and checks
+/// its answer. The HOME and the project are compared before and after: nothing is written.
+fn run_for_real(w: &World, project: &Path, key: &str) {
+    let before = (w.digest(), tree_digest(project, &[]).unwrap());
+    let pkg = w.pkg_dir();
+    let p = project.to_str().unwrap();
+    let args: Vec<&str> = match key {
+        "package-inspect" => vec!["package-inspect", &pkg],
+        "session-register" => vec!["session-register", "--names"],
+        "work-flow-plan" => vec!["work-flow-plan", "--project", p],
+        other => panic!("no run for {other}"),
+    };
+    let out = w.run_with(project, &[("MOAI_GIT_BIN", "/usr/bin/git")], None, &args);
+    let result = ok(&out);
+    w.assert_inside(&result);
+    match key {
+        "package-inspect" => assert!(
+            result["digest"]
+                .as_str()
+                .is_some_and(|d| d.starts_with("sha256:")),
+            "{result}"
+        ),
+        "session-register" => assert_eq!(result["writes"], json!(false), "{result}"),
+        _ => assert!(result["recommendation"].is_object(), "{result}"),
+    }
+    let after = (w.digest(), tree_digest(project, &[]).unwrap());
+    assert_eq!(
+        after, before,
+        "moai {key} wrote into the HOME or the project"
+    );
+}
+
+/// REQ-4, REQ-5: every `moai` command the READY and check texts name answers in a fresh HOME and
+/// project, from the installed copy of the texts and of `moai`, with every flag the texts show.
+#[test]
+fn scenario_every_command_the_ready_steps_name_answers_in_a_temporary_home() {
+    let w = World::new();
+    let project = demo_project(&w);
+    let shipped: Vec<(String, String)> = READY_TEXTS.iter().map(|rel| w.shipped(rel)).collect();
+    let texts: Vec<(&str, &str)> = shipped
+        .iter()
+        .map(|(name, text)| (name.as_str(), text.as_str()))
+        .collect();
+    for (name, text) in &texts {
+        assert!(
+            !named_commands(text).is_empty(),
+            "{name} names no moai command"
+        );
+    }
+    let checked = command_problems(&texts, |path| w.help_of(&project, path));
+    assert!(
+        checked.problems.is_empty(),
+        "commands or flags of the shipped texts the installed moai does not answer:\n{}",
+        checked.problems.join("\n")
+    );
+    assert!(
+        checked.paths.len() >= 12,
+        "the shipped texts name {} distinct commands, fewer than 12: {:?}",
+        checked.paths.len(),
+        checked.paths
+    );
+    for key in RUN_FOR_REAL {
+        assert!(
+            checked.paths.contains(key),
+            "{key} is run for real but no shipped text names it: {:?}",
+            checked.paths
+        );
+        run_for_real(&w, &project, key);
+    }
+    eprintln!(
+        "EVERY-COMMAND {} commands: {:?}; run for real: {RUN_FOR_REAL:?}",
+        checked.paths.len(),
+        checked.paths
+    );
+}
+
+fn strings(v: &[&str]) -> Vec<String> {
+    v.iter().map(|s| s.to_string()).collect()
+}
+
+/// The derivation: spans that start with `moai `, up to two command words, every `--flag`, and
+/// nothing from prose, other programs or short flags.
+#[test]
+fn scenario_named_commands_are_derived_from_spans_and_fences() {
+    let text = "\
+Run `moai card check <card> --generation <g> --path <p>` and `moai check affected --card <base>..<head>`.
+`moai package-inspect skills/moai` then `moai cc -a`, `moai card`, `moai repo-scans --refs=<tip> HEAD,`.
+Not these: `moai`, `moai-cli update`, `cargo test`, `Moai card`, an unclosed `moai card note
+```
+$ moai card land <card> --head <40 hex> --by leader
+moai session-register . --name x
+cargo build
+```
+`moai Card note` and `moai 9 --x` name no command word.
+";
+    let got: Vec<(Vec<String>, Vec<String>)> = named_commands(text)
+        .into_iter()
+        .map(|c| (c.words, c.flags))
+        .collect();
+    let want = vec![
+        (
+            strings(&["card", "check"]),
+            strings(&["--generation", "--path"]),
+        ),
+        (strings(&["check", "affected"]), strings(&["--card"])),
+        (strings(&["package-inspect"]), strings(&[])),
+        (strings(&["cc"]), strings(&[])),
+        (strings(&["card"]), strings(&[])),
+        (strings(&["repo-scans"]), strings(&["--refs"])),
+        (strings(&["card", "land"]), strings(&["--head", "--by"])),
+        (strings(&["session-register"]), strings(&["--name"])),
+        (strings(&[]), strings(&[])),
+        (strings(&[]), strings(&["--x"])),
+    ];
+    assert_eq!(got, want);
+    let spans: Vec<String> = named_commands("`moai card note --kind report`")
+        .into_iter()
+        .map(|c| c.span)
+        .collect();
+    assert_eq!(spans, strings(&["moai card note --kind report"]));
+}
+
+/// A stand-in for the binary: `card` is a group with `note` and `land` inside, `package-inspect`
+/// is a plain command, and a path the table lacks does not exit 0.
+fn fake_help(table: &'static [(&'static str, &'static str)]) -> impl FnMut(&[String]) -> Help {
+    move |path| {
+        let key = path.join(" ");
+        match table.iter().find(|(k, _)| *k == key) {
+            Some((_, text)) => (true, text.to_string()),
+            None => (false, String::new()),
+        }
+    }
+}
+
+const FAKE_BINARY: &[(&str, &str)] = &[
+    ("card", "Usage: moai card\n\nCommands:\n  note\n  land\n"),
+    ("card note", "Options:\n      --kind <KIND>\n  -h, --help\n"),
+    (
+        "card land",
+        "Options:\n      --head <HEAD>\n      --by <BY>\n",
+    ),
+    ("package-inspect", "Options:\n  -h, --help\n"),
+];
+
+/// REQ-5: a command the binary does not know, a subcommand it does not know and a flag it does
+/// not list each fail the check and are named with the file and the span; what is real passes.
+#[test]
+fn scenario_planted_unknown_command_or_flag_fails_the_resolver() {
+    let clean = "`moai card note --kind x`, `moai card land --head h --by leader` and `moai package-inspect skills/moai`";
+    let got = command_problems(&[("clean.md", clean)], fake_help(FAKE_BINARY));
+    assert!(got.problems.is_empty(), "{:?}", got.problems);
+    assert_eq!(
+        got.paths.iter().map(String::as_str).collect::<Vec<_>>(),
+        ["card land", "card note", "package-inspect"]
+    );
+
+    let planted = "`moai no-such-thing --help`, `moai card note --no-such-flag`, \
+        `moai card land --head h --hea` and `moai card no-such-sub`";
+    let got = command_problems(&[("planted.md", planted)], fake_help(FAKE_BINARY));
+    assert_eq!(got.problems.len(), 4, "{:#?}", got.problems);
+    for (needle, span) in [
+        ("moai no-such-thing", "moai no-such-thing --help"),
+        ("--no-such-flag", "moai card note --no-such-flag"),
+        // A flag that is only a prefix of `--head` is not a whole word of the help.
+        ("--hea", "moai card land --head h --hea"),
+        ("moai card no-such-sub", "moai card no-such-sub"),
+    ] {
+        assert!(
+            got.problems
+                .iter()
+                .any(|p| p.contains("planted.md") && p.contains(needle) && p.contains(span)),
+            "no problem names {needle} with {span}: {:#?}",
+            got.problems
+        );
+    }
+}
+
+/// REQ-5 on the real binary: the same planted names fail against the installed `moai`, and the
+/// help of a real command lists the flag a text shows.
+#[test]
+fn scenario_planted_unknown_command_or_flag_fails_against_the_installed_moai() {
+    let w = World::new();
+    let project = demo_project(&w);
+    let real = "`moai card note --kind report` and `moai session-register --names`";
+    let got = command_problems(&[("real.md", real)], |p| w.help_of(&project, p));
+    assert!(got.problems.is_empty(), "{:?}", got.problems);
+    let planted = "`moai no-such-thing --help` and `moai card note --no-such-flag`";
+    let got = command_problems(&[("planted.md", planted)], |p| w.help_of(&project, p));
+    assert_eq!(got.problems.len(), 2, "{:#?}", got.problems);
 }

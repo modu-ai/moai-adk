@@ -164,7 +164,11 @@ impl World {
 
     /// Moves the registry lease of `name` to `offset` seconds from now (negative: ended).
     fn set_registry_lease(&self, name: &str, offset: i64) {
-        let file = self.sessions_dir().join(format!("{name}.json"));
+        // A session-id registration is filed under its session id: find the entry by its name.
+        let file = moai_cli::lane_registry::entry_file(&self.sessions_dir(), name)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| self.sessions_dir().join(format!("{name}.json")));
         let mut entry: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
         let now = self.count("SELECT unixepoch()");
         entry["lease_until"] = json!(now + offset);

@@ -2544,6 +2544,28 @@
         }
       ],
       "rejects": "The display name M-Flow in a shipped text outside the one old-name line of the interview (the flow rename, SPEC-20261122-next-flow)"
+    },
+    {
+      "id": "shipped-files-name-no-tools-script",
+      "always": true,
+      "tests": [
+        "tests/skill_generalization_scan.rs::no_shipped_file_names_a_tools_script"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test skill_generalization_scan"
+      ],
+      "rules": [
+        "tests/skill_generalization_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/"
+        },
+        {
+          "prefix": "agents/"
+        }
+      ],
+      "rejects": "A file under skills/ or agents/ that names a tools/ script of this repository (.sh, .py or .json); a user project has none"
     }
   ]
 }

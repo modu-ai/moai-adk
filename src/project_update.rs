@@ -2051,6 +2051,9 @@ fn undo_order() -> Value {
                 "moai apply-recover --receipt <agents_receipt of the project harness step> --permission-reference <reference> <PROJECT>",
                 "moai apply-recover --receipt <receipt of the project harness step> --permission-reference <reference> <PROJECT>",
             ], "note": "the instruction file has a receipt of its own; undo it before the workflow files"},
+            {"step": "go-residue", "commands": [
+                "moai go-residue-revert <PROJECT> --receipt <receipt of the go-residue step> --permission-reference <reference>",
+            ], "note": "only when a go-residue-apply ran (the user picked it); it puts the moved files back from their backup and leaves an item as a conflict when its place is taken"},
             {"step": "go-state", "commands": [
                 "moai go-state-revert-plan <PROJECT> --backup <backup of the go-state step>",
                 "moai go-state-revert --backup <backup of the go-state step> --plan-digest <digest of that plan> --permission-reference <reference> <PROJECT>",
@@ -2064,17 +2067,18 @@ fn undo_order() -> Value {
     })
 }
 
-/// The read-only `go-residue` step (SPEC-20261121-go-residue-detect): the files the Go
-/// generation left behind, proven against the first manifest the survey still finds. Every
-/// surveyed item is listed, but only an item with an action other than `keep` asks for a
-/// decision; files that are the user's own (`keep`) leave the step `unchanged`.
+/// The `go-residue` step (SPEC-20261121-go-residue-detect, SPEC-20261125-go-residue-apply):
+/// the files the Go generation left behind, proven against the first manifest the survey still
+/// finds. Every surveyed item is listed. The step returns one of two states: `optional` while a
+/// `go_same` or `go_changed` file is left to move or at least one other item is not `keep`, and
+/// `unchanged` when nothing is surveyed or every item is `keep` (the user's own files) or only
+/// items another step owns remain beside the moved ones. It never returns `needs_decision`:
+/// leaving the files where they are is a valid answer, and `needs_decision` would hold
+/// `all_unchanged` false for good. `optional` counts as nothing to do.
 ///
-/// SPEC-20261125-go-residue-apply: the step asks only while a `go_same` or `go_changed` file is
-/// left (REQ-10), whatever other classes it still lists (a marker, an earlier-generation
-/// folder and the files another step owns wait for the slices that own them). The proven
-/// bundle has a printed `go-residue-apply` command; a changed file moves only when the user
-/// names it with `--pick`, so no command carries one. While another backup step still has a
-/// move to make, the command waits: that move would make this plan's digest stale.
+/// The proven bundle has a printed `go-residue-apply` command; a changed file moves only when
+/// the user names it with `--pick`, so no command carries one. While another backup step still
+/// has a move to make, the command waits: that move would make this plan's digest stale.
 fn go_residue_step(root: &Path, shown: &str, others_pending: bool) -> Result<Step> {
     let survey = crate::go_residue::survey(root);
     let found = crate::go_residue_apply::candidates(&survey);
@@ -2087,18 +2091,30 @@ fn go_residue_step(root: &Path, shown: &str, others_pending: bool) -> Result<Ste
     let proof = survey.proof.clone().unwrap_or_default();
     let digest = crate::go_residue_apply::plan_digest(&proof, &found);
     let others_listed = survey.items.iter().any(|i| i.suggested_action != "keep");
+    let apply = (proven > 0 && !others_pending).then(|| {
+        let mut words = argv("go-residue-apply", shown, &digest);
+        words.extend(["--bundle", "proven"].map(String::from));
+        (words, Value::Null)
+    });
     let (state, reason) = if survey.items.is_empty() {
         (
             "unchanged",
             "no Go residue is proven by any manifest this survey can find".into(),
         )
     } else if !found.is_empty() {
+        let how = if apply.is_some() {
+            "the printed command moves the proven files into a backup"
+        } else if proven > 0 {
+            "the command for the proven files is printed after the earlier backup steps have moved"
+        } else {
+            "no proven file is left"
+        };
         (
-            "needs_decision",
+            "optional",
             format!(
                 "{proven} proven and {} changed Go files the Go generation left behind are proven \
-                 by {proof}; move the proven bundle with the printed command, and a changed file \
-                 only with `--pick <path>` (the plan_digest below is the one to confirm)",
+                 by {proof}; {how}; a changed file moves only with `--pick <path>` (confirm with \
+                 the plan_digest below), and leaving the files where they are is fine",
                 changed.len(),
             ),
         )
@@ -2122,11 +2138,6 @@ fn go_residue_step(root: &Path, shown: &str, others_pending: bool) -> Result<Ste
     };
     let mut preview = crate::go_residue::preview(&survey);
     preview["bundles"] = json!({"proven": proven, "changed": changed});
-    let apply = (proven > 0 && !others_pending).then(|| {
-        let mut words = argv("go-residue-apply", shown, &digest);
-        words.extend(["--bundle", "proven"].map(String::from));
-        (words, Value::Null)
-    });
     Ok(Step {
         name: "go-residue",
         state,
@@ -2163,9 +2174,10 @@ pub fn plan(project: &Path) -> Result<Value> {
     if reports.apply.is_some() && state.apply.is_some() {
         state = Step::waiting("go-state", "blocked", AFTER_REPORTS);
     }
-    // The read-only go-residue survey (SPEC-20261121-go-residue-detect) runs after the backup
-    // previews: it proves the Go files the generation left against the first manifest it
-    // finds, applies nothing, and its items decide `all_unchanged` like any other step.
+    // The go-residue step runs after the backup previews: it proves the Go files the generation
+    // left against the first manifest it finds. It reads `optional` or `unchanged`, so it never
+    // holds `all_unchanged` false or the install phase; its command waits while an earlier
+    // backup step still has one to run.
     let others_pending = [&settings, &state, &reports]
         .iter()
         .any(|s| s.apply.is_some());
