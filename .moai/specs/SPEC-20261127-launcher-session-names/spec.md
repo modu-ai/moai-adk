@@ -2,7 +2,7 @@
 id: SPEC-20261127-launcher-session-names
 title: "Launcher names lanes agent-<name>, unique on the whole machine, and the leader leader-<project name>"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-27
 ---
 
@@ -64,7 +64,7 @@ created: 2026-11-27
 - AC-4 (REQ-7, REQ-8): HOME 이 없거나 폴더·파일이 링크이면 호스트 없이 이유와 함께 거절되고, `--dry-run` 은 폴더와 파일을 만들지 않으며 트리가 그대로예요 · verify: `cargo test --locked --offline --test launcher_machine_names_cli refuse_` and `... dry_run_`
 - AC-5 (REQ-5): 역할 플래그 옆의 `--name agent-ben` 이 다른 프로젝트에 쥐어져 있으면 그 프로젝트 이름과 `--name` 을 말하며 거절돼요. 역할 플래그 없는 `--name` 은 HOME 잠금 없이 전과 같이 돌아요 · verify: `cargo test --locked --offline --test launcher_machine_names_cli named_`
 - AC-6 (REQ-9, REQ-10): `--names` 가 새 이름·접두사·`earlier` 를 내고, `--lane-check` 가 옛 모양 이름과 새 모양 이름 모두 이 클론의 잠금이 있을 때만 `lane` 이라고 하며 다른 프로젝트의 레인은 `not_lane` 이에요 · verify: `cargo test --locked --offline --test session_lane_check_cli`
-- AC-7 (REQ-11): 카드 잡기의 레인 수가 `agent-ben` 과 `<p>-agent-ben` 을 한 레인으로 세고 옛·새 리더 이름을 레인으로 세지 않아요 · verify: `cargo test --locked --offline --lib card::wip_limit`
+- AC-7 (REQ-11): 카드 잡기의 레인 수가 `agent-ben` 과 `<p>-agent-ben` 을 한 레인으로 세고 옛·새 리더 이름을 레인으로 세지 않아요 · verify: `cargo test --locked --offline --test card card_wip_limit::`
 - AC-8 (REQ-12): 도움말 골든, 스킬 글, 문서가 새 모양을 말하고 옛 모양을 런처 이름으로 말하는 곳이 없어요(CLAUDE.md 줄은 D-6 의 사용자 선택 뒤) · verify: `cargo test --locked --offline --test launcher_role_flags` and `cargo test --locked --offline --test help_layout` and `cargo test --locked --offline --test lane_team_names` and `cargo test --locked --offline --test repo_claude_md`
 
 ## Scope
