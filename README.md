@@ -37,10 +37,10 @@ The workflow text the hosts load is in [skills/moai/](skills/moai/SKILL.md).
 | Language | Rust | Go |
 | Command | `moai` (alias `moai-cli`) | `moai` |
 | Version | `2026.11.0-rc.1` (prerelease, unreleased) | latest release `v3.1.2` |
-| State folders | `.moai-cli/` (project), `~/.moai-cli/` (user) | `.moai/`, `~/.moai/` |
+| State folders | `.moai/` (new project; a project that began on the earlier RC keeps its `.moai-cli/`), `~/.moai/` (user, when the HOME holds this generation's marker or no state files; otherwise the earlier `~/.moai-cli/`) | `.moai/`, `~/.moai/` |
 | Host entry | `/moai <request>` in Claude Code, `$moai <request>` in Codex | `/moai` commands in Claude Code |
 
-The two generations use separate state folders and do not update each other. Both commands are called `moai`; `moai --version` tells them apart (the release candidate ends its line with `(rust)`). The release candidate also builds `moai-cli` as an alias: it prints the same `--version` line, and its help names `moai-cli` as the command.
+The two generations do not update each other. Both can use a folder named `.moai`, so RC1 reads the marker files in it to tell whose it is before it changes anything there. Both commands are called `moai`; `moai --version` tells them apart (the release candidate ends its line with `(rust)`). The release candidate also builds `moai-cli` as an alias: it prints the same `--version` line, and its help names `moai-cli` as the command.
 
 **Supported platforms** (decided 2026-11-17, `SPEC-20261117-supported-platforms`): macOS on Apple silicon (`aarch64-apple-darwin`), Linux x86_64 (`x86_64-unknown-linux-gnu`) and Windows x86_64 (`x86_64-pc-windows-msvc`). Intel macOS and Linux arm64 are not supported: CI does not run them and the install scripts stop with an "Unsupported platform" message. CI tests Linux x86_64 and macOS arm64 and builds Windows x86_64; release archives are still published for macOS arm64 only.
 
@@ -48,9 +48,19 @@ The two generations use separate state folders and do not update each other. Bot
 
 ## Install
 
-### From a release (not available yet)
+### From a release (no Rust release yet)
 
-Release assets and an installer for RC1 are not published. This section will list the real commands once they exist; until then they are `not_run`. Release files will be verifiable with GitHub artifact attestations ([docs/release-attestation.md](docs/release-attestation.md)).
+The tree holds two installer scripts: `install/install.sh` (macOS and Linux) and `install/install.ps1` (Windows). Their addresses are `https://adk.mo.ai.kr/install.sh` and `https://adk.mo.ai.kr/install.ps1`, and the one-line commands are:
+
+```sh
+curl -fsSL https://adk.mo.ai.kr/install.sh | sh
+```
+
+```powershell
+irm https://adk.mo.ai.kr/install.ps1 | iex
+```
+
+No Rust release exists yet (`gh release list` showed only Go 3.x releases on 2026-11-26), so until one is made these addresses serve the Go edition's scripts. To run RC1 now, build it from source (below). What the scripts do and which options they take is in [install/README.md](install/README.md). Release files will be verifiable with GitHub artifact attestations ([docs/release-attestation.md](docs/release-attestation.md)).
 
 > 💡 **To cut costs — z.ai GLM recommended**: signing up via [this link](https://z.ai/subscribe?ic=1NDV03BGWU) grants bonus tokens. The link is also a way to sponsor moai-adk open-source development. Free models (GLM-4.7-Flash, GLM-4.5-Flash) exist too — see the [z.ai pricing](https://docs.z.ai/guides/overview/pricing).
 
@@ -70,12 +80,18 @@ The last command prints `moai 2026.11.0-rc.1 (rust)`; `./target/release/moai-cli
 
 ## First run
 
-The intended entry is natural language in the host session at your project root:
+The installer ends by printing the next steps, in this order:
+
+1. `moai update` installs the MoAI skill and agents (it shows what it writes, then asks). The installer prints this step only when the skill is not installed yet.
+2. In a project folder, start a session with `moai cc` (or `moai glm`).
+3. In the session, run `/moai project` to set the project up.
+
+The draft user flow also words the first request in natural language, in the host session at your project root:
 
 - Claude Code: `/moai read this project and set it up`
 - Codex: `$moai read this project and set it up`
 
-Adding the `moai` skill to a project and these first-run requests have **not been tested end to end yet** (`not_run`, pending the RC1 release). The draft user flow is in [docs/user-entry-draft.md](docs/user-entry-draft.md).
+Adding the `moai` skill to a project and these first-run steps and requests have **not been tested end to end yet** (`not_run`, pending the RC1 release). The draft user flow is in [docs/user-entry-draft.md](docs/user-entry-draft.md).
 
 `moai --help` lists the internal commands the workflow calls. They are building blocks for the skill, not a daily interface.
 
@@ -94,7 +110,7 @@ Adding the `moai` skill to a project and these first-run requests have **not bee
 ## FAQ
 
 **How is RC1 different from Go 3.x?**
-RC1 is a rewrite in Rust with one common `moai` skill shared by Claude Code and Codex. It keeps its state in `.moai-cli/` and `~/.moai-cli/`, so it does not touch a Go 3.x setup. See [docs/rust-product-path.md](docs/rust-product-path.md).
+RC1 is a rewrite in Rust with one common `moai` skill shared by Claude Code and Codex. A new project starts with a `.moai/` folder, and a project that began on the earlier RC keeps its `.moai-cli/` folder. The user state is the `.moai/` folder of your home when it holds this generation's marker or no state files, and otherwise the earlier `~/.moai-cli/` folder. A plain RC1 command never writes into a Go 3.x `~/.moai/`, so it does not touch a Go 3.x setup. See [docs/rust-product-path.md](docs/rust-product-path.md).
 
 **Can I use it today?**
 You can build it from source and read the code and documents. It is not released, and the host end-to-end tests have not run. For daily use, the stable choice is still Go 3.x on `main`.
@@ -103,7 +119,7 @@ You can build it from source and read the code and documents. It is not released
 No. Either host is a target on its own. The same workflow text serves both; host differences are listed in [docs/host-support-matrix.md](docs/host-support-matrix.md).
 
 **Does it change files in my home directory?**
-RC1 keeps its own user state under `~/.moai-cli/` and does not modify the Go generation's `~/.moai/`. Commands that generate or apply managed files (for example project setup, host settings, hooks and skill copies) come as a plan → apply pair: the plan step writes nothing, and the apply step refuses to run without the plan's digest. Installing the skill into a host's skill folder is one of those explicit apply steps.
+RC1 keeps its user state in the `.moai` folder of your home when that folder holds this generation's marker or the home has no state files, and otherwise in the earlier `~/.moai-cli/` folder. A plain RC1 command never writes into the Go generation's `~/.moai/`. Commands that generate or apply managed files (for example project setup, host settings, hooks and skill copies) come as a plan → apply pair: the plan step writes nothing, and the apply step refuses to run without the plan's digest. Installing the skill into a host's skill folder is one of those explicit apply steps.
 
 **How do I contribute?**
 Read [CONTRIBUTING.md](CONTRIBUTING.md). You do not need to follow the internal claim and audit procedure; maintainers handle it for external pull requests.

@@ -300,6 +300,8 @@ Lane and leader
                           the audited head
   audit-gate              Decide whether a PR head has the
                           audit its tier needs
+  release-audit-summary   Gather a release range's verdicts
+                          into one PR comment
   trailers                Print the identity trailers for a
                           commit
   trailer-check           Report commits with missing or
@@ -431,15 +433,17 @@ Options:
           `/moai leader`
   -a, --agent
           Start a lane: session `<project
-          name>-agent-<english name>` (the first free name
-          of the launcher's list), the permission bypass
-          unless `--permissions` is given, and the first
-          input `/moai agent`
+          name>-agent-<english name>` (a name chosen at
+          random among the free names of the launcher's
+          list), the permission bypass unless
+          `--permissions` is given, and the first input
+          `/moai agent`
       --name <NAME>
           Session name (none by default; `-l` names it
-          `<project name>-leader`, `-a` takes the first free
-          `<project name>-agent-<english name>`; with a role
-          flag this name replaces those)
+          `<project name>-leader`, `-a` takes a name chosen
+          at random among the free `<project
+          name>-agent-<english name>`; with a role flag this
+          name replaces those)
       --model <MODEL>
           Main model (default `opus`)
       --effort <EFFORT>

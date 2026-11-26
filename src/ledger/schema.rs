@@ -139,7 +139,16 @@ CREATE TABLE event (
   kind           TEXT    NOT NULL,
   payload        TEXT    NOT NULL DEFAULT '{}' CHECK (json_valid(payload))
 ) STRICT;
+CREATE INDEX event_card_kind ON event(card_id, kind, event_id);
 ";
+
+/// The index of the events of one card by kind, newest last. Every read of `next`, `list` and the
+/// card checks asks `event WHERE card_id = ? AND kind = ?` once per card; without it each ask reads
+/// the whole table. A ledger made before the index existed is given the same index by
+/// [`super::migrate::ensure_event_index`] when a writer opens it; the schema version stays 1, so
+/// an earlier build opens the file as before.
+pub const EVENT_CARD_KIND_INDEX: &str =
+    "CREATE INDEX IF NOT EXISTS event_card_kind ON event(card_id, kind, event_id)";
 
 /// The triggers up to the done guard (contract section 2 and amendment 1 section A-4). The guard
 /// is its own constant so a ledger made before its `card.landed` exception can be given the same

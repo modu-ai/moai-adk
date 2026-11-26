@@ -107,13 +107,13 @@ struct LaunchOpts {
     /// `/moai leader`.
     #[arg(short = 'l', long)]
     leader: bool,
-    /// Start a lane: session `<project name>-agent-<english name>` (the first free name of the
-    /// launcher's list),
+    /// Start a lane: session `<project name>-agent-<english name>` (a name chosen at random among
+    /// the free names of the launcher's list),
     /// the permission bypass unless `--permissions` is given, and the first input `/moai agent`.
     #[arg(short = 'a', long)]
     agent: bool,
-    /// Session name (none by default; `-l` names it `<project name>-leader`, `-a` takes the first
-    /// free `<project name>-agent-<english name>`; with a role flag this name replaces those).
+    /// Session name (none by default; `-l` names it `<project name>-leader`, `-a` takes a name chosen
+    /// at random among the free `<project name>-agent-<english name>`; with a role flag this name replaces those).
     #[arg(long)]
     name: Option<String>,
     /// Main model (default `opus`).

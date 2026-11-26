@@ -284,7 +284,12 @@ fn update_plan_shows_the_reports_step() {
     assert!(ok, "{v}");
     let steps = v["result"]["phases"][0]["steps"].as_array().unwrap();
     let names: Vec<&str> = steps.iter().map(|s| s["step"].as_str().unwrap()).collect();
-    assert_eq!(names, ["go-settings", "go-state", "reports"], "{v}");
+    // The read-only go-residue survey lists after the three moving steps.
+    assert_eq!(
+        names,
+        ["go-settings", "go-state", "reports", "go-residue"],
+        "{v}"
+    );
     assert_eq!(steps[2]["state"], "unchanged", "{}", steps[2]);
     assert!(steps[2]["apply"].is_null(), "{}", steps[2]);
 

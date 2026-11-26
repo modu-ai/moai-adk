@@ -78,7 +78,7 @@
       }
     },
     "references/audit.md": {
-      "sha256": "6107af7374a5b435a164557c7fd1bcaf049b1ff165b8c48464cf47b0a9a093aa",
+      "sha256": "64fef15665919740f58cb759592f65605fe8684b566089663cce44fba7e88c83",
       "origin": {
         "kind": "design-spec",
         "template_id": "audit-contract",
@@ -87,7 +87,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "0cd28f0d591282ee219370f438d30f41e4b1664e9761db057b8d367f36b8ee22",
+      "sha256": "11cab25ef4aee94acc5f1686803132a43d4aff7c51e1a0c0323c5681a9df9139",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -150,7 +150,7 @@
       }
     },
     "references/internal/boundary-checks.md": {
-      "sha256": "40d6b07dafbba885d87946ba782a5d80a9ea243c448c44242c2e97f4abf8192d",
+      "sha256": "0309c1a33082b6da8885feb17bf09c2d8bfc122811e6da74d2902c6c398106f1",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-boundary-checks",
@@ -168,6 +168,15 @@
         "template_id": "internal-build-slots",
         "adoption": "new",
         "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: heavy slots, one build folder per worktree, cleanup and the build cache facts, with the Python slot and tool paths removed. Read from RUN step 1."
+      }
+    },
+    "references/internal/change-claims.md": {
+      "sha256": "136b2558a9b9dd9e29e21f2d69bdbaf758200a6c6becd77c398b905139243ae5",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-change-claims",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261126-change-claims-and-test-guard (REQ-9): how to list the claims of a change and match each to the diff, the four labels, how to check deleted or altered tests and the tests that read an altered output, and the repair ready note. Read by moai-impl and moai-audit through their reads: lists."
       }
     },
     "references/internal/check-completeness.md": {
@@ -227,6 +236,15 @@
         "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
       }
     },
+    "references/internal/destructive-ops.md": {
+      "sha256": "b2f51f4c7abe005b03089343e36812d81a10e6c1b45f60fa9729559b48d6a72e",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-destructive-ops",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261120-destructive-ops-checklists (user instruction 2026-11-20, a survey of the skills and agents against that day's audit findings): the checks for code that removes, moves or overwrites data the user owns (a link in any path component, NUL-separated machine output, commits that stay reachable, the way back saved first, a just-created target left alone, a nested repository left alone, failing closed). The `reads:` lines of moai-audit and moai-impl that name it come with a later SPEC."
+      }
+    },
     "references/internal/doc-claims.md": {
       "sha256": "edf009f0bb26b6f43a37870d8ca541040efcd20d912daf387005d4e60434d079",
       "origin": {
@@ -276,7 +294,7 @@
       }
     },
     "references/internal/quality.md": {
-      "sha256": "1775e7ecc447b63561a74ec21f30bb86f7ca25688e162a3a9f1de35599a143c6",
+      "sha256": "ccdaa44ddd8d2f4019a1b420cfeeccce451096c19f6dcd635e2c44d833e69b58",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-quality",
@@ -549,7 +567,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai agent` takes one card at a time, hands its plan, implementation and documents to the base agents in turn, submits it with `moai card submit` and waits for the leader (user decision 2026-11-25); a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "d04816328bc143b0d35de074589468db7c1804797d75e4d9752baaa09619b77b"
+      "sha256": "d0c0bf12b102d64cdc1966229023136560e3aff7af35d496a1cfd0a43896f67e"
     }
   }
 }
