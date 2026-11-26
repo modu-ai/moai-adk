@@ -2,7 +2,7 @@
 id: SPEC-20261125-update-installed-from-link
 title: "moai update shows the version the execution link points to and keeps it in the receipt of an apply that writes nothing"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-25
 ---
 
@@ -19,10 +19,13 @@ created: 2026-11-25
 - REQ-3: When the preview screen shows the installed version, it shall prefer `installed_version` over the receipt's source version in English and in Korean. · failure: none — without the key the earlier header stays unchanged.
 - REQ-4: When an apply writes no file for a host, the apply shall record this build's version in that host's receipt only when the previous receipt is committed or recovered and names another version. · failure: none — REQ-5 lists the cases that write nothing.
 - REQ-5 (REQ-4): IF the previous receipt is absent, pending or names this build's version, or the host is blocked, THEN the apply shall write no receipt for that host.
-- REQ-6: When the apply records the version for a host that wrote no file, it shall copy the previous receipt's owned list unchanged. · failure: none — a copy of an existing list.
+- REQ-6: When the apply records the version for a host that wrote no file and this installation has its own host receipt, it shall change only that receipt's `package_version`, `finished_at` and owned list, taking the owned list from the previous receipt. · failure: none — every recovery field of the own receipt, the backup and the entries included, stays as it was.
 - REQ-7: When the apply records the version for a host that wrote no file, it shall write the receipt through the existing host receipt writer only. · failure: none — one writer, the one every apply uses.
 - REQ-8 (REQ-7): IF the receipt write fails, THEN the apply shall report the error as every other receipt write does.
 - REQ-9 (REQ-2): IF the preview carries no `installed_version` key, THEN the header shall show the receipt's source version, or none without a receipt.
+- REQ-10 (REQ-4): IF this installation's own host receipt exists and is neither committed nor recovered, THEN the apply shall write no receipt for that host.
+- REQ-11: When the apply records the version for a host that wrote no file and this installation has no own host receipt, it shall write a new receipt with the previous receipt's owned list, no entries and no backup. · failure: none — no receipt of this installation exists to lose.
+- REQ-12: When the apply records the version for a host that wrote no file, the host outcome shall report the saved receipt's status as `receipt_status`. · failure: none — the value of the file just written.
 
 ## Acceptance
 
@@ -32,15 +35,19 @@ created: 2026-11-25
   verify: `cargo test --offline --locked --test update_user_layer_cli -- the_preview_names_the_version_the_execution_link_points_to`
 - AC-3 (REQ-3, REQ-9): The header reads `installed 4.2648.26 → package` in English and `설치본 4.2648.26 → 패키지` in Korean from the key, and keeps the receipt version without it.
   verify: `cargo test --offline --locked --test update_installed_by_name -- the_header_prefers_the_link_version_in_english_and_korean`
-- AC-4 (REQ-4, REQ-5, REQ-6, REQ-7): In a temporary HOME, an apply that writes no file leaves this build's version in the host receipt with the owned list and the skill bytes unchanged, a conflict-only host does the same, and a second such apply writes no receipt.
+- AC-4 (REQ-4, REQ-5, REQ-6, REQ-7, REQ-12): In a temporary HOME, an apply that writes no file leaves this build's version in the host receipt, keeps the entries, operation, previous version and status of an own receipt, leaves the skill bytes unchanged, does the same for a conflict-only host, the outcome reports the saved receipt's status, and a second such apply writes no receipt.
   verify: `cargo test --offline --locked --test update_installed_by_name -- a_no_write_apply a_conflict_only_no_write_apply a_second_no_write_apply`
 - AC-5 (REQ-5, REQ-8): A blocked or pending host and a previous receipt that names this build write no receipt, and a failing save reports an error.
   verify: `cargo test --offline --locked --test update_installed_by_name -- a_blocked_or_pending_host_writes_no_version_only_receipt`
+- AC-6 (REQ-6, REQ-10): In a temporary HOME, after a no-write apply over a backup-then-replace receipt `recovery-plan` still offers `restore_backup` and `recovery-apply` restores the original bytes and modes, both for a version change under the same installation and for going back with `moai update --allow-older` in the version layout; an own receipt that is neither committed nor recovered stays byte-identical.
+  verify: `cargo test --offline --locked --test update_backup_replace -- a_no_write_apply`
+- AC-7 (REQ-11): In a temporary HOME, an installation with no own receipt writes a new receipt under its own id and leaves the earlier receipt as it was.
+  verify: `cargo test --offline --locked --test update_installed_by_name -- a_no_write_apply_over_an_earlier_folders_receipt_writes_this_installations_receipt`
 
 ## Scope
 
-- write: `src/update.rs`, `src/update_tux.rs`, `tests/update_installed_by_name.rs`, `tests/update_user_layer_cli.rs`, this SPEC folder
-- read-only: `src/gate.rs`, `src/home_root.rs`, `src/headver.rs`, `tests/update_tux_golden.rs`
+- write: `src/update.rs`, `src/update_tux.rs`, `tests/update_installed_by_name.rs`, `tests/update_user_layer_cli.rs`, `tests/update_backup_replace.rs`, this SPEC folder
+- read-only: `src/recovery.rs`, `src/gate.rs`, `src/home_root.rs`, `src/headver.rs`, `tests/update_tux_golden.rs`
 - forbidden: changing a field of the update plan or its digest, deleting or moving a file, touching a blocked or pending host, reading the process HOME or PATH in the link reader, writing under the real HOME in any test
 
 ## Plan
@@ -50,6 +57,7 @@ created: 2026-11-25
 3. Header prefers the key, English and Korean, and its test.
 4. Version-only receipt in the no-write branch of the apply, guarded as REQ-4 to REQ-8 say, with the tests of AC-4 and AC-5 in a temporary HOME.
 5. Neighbours: the tests that read the preview key set, the header and the receipt version keep passing.
+6. Repair after the first audit (revision 2): update the own receipt in place as REQ-6, REQ-10, REQ-11 and REQ-12 say, with the tests of AC-4, AC-6 and AC-7.
 
 ## Decisions
 
@@ -61,6 +69,8 @@ created: 2026-11-25
 | D4 | A conflict-only host is refreshed too | It is the reported screen: 45 up to date and 4 conflict | Refresh only hosts with no conflict |
 | D5 | `installed` is the link's version as the card asks; skill copies that lag show in the rows | The card's criterion | Show both versions |
 | D6 | Tier 2 by the floor list (`src/update`) and by the HOME state the receipt write touches; the link reader is read-only | CLAUDE.md names HOME state; the leader asked for this SPEC (card note) | The leader sets the tier |
+| D7 | An existing own receipt is updated in place; only version, finish time and owned list change | The audit of the first head failed on data loss: a replaced receipt dropped the backup, so `recovery-plan` no longer offered the user's original folder | Write no version when the own receipt holds a backup |
+| D8 | The owned list comes from the receipt the apply was planned against; the refreshed finish time makes this receipt the next baseline | The next preview must compare against the same list; recovery reads the entries, not the owned list | Keep the own owned list |
 
 ## Result
 
