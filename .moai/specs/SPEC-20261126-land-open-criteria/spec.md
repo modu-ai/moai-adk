@@ -4,6 +4,7 @@ title: "A landing keeps open the criteria the verdict holds open"
 status: draft
 revision: 1
 created: 2026-11-26
+branch: spec/land-open-criteria-kz-20261126
 ---
 
 ## Interview
