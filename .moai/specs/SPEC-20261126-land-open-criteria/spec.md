@@ -91,3 +91,18 @@ branch: spec/land-open-criteria-kz-20261126
 | D-3 | `--open`은 open 또는 met인 기준을 받고 withdrawn은 거절. | `card submit`이 열린 기준 0을 요구해서, open만 받으면 표준 흐름에서 옵션을 쓸 수 없어요. | REQ-2의 조건을 바꿈 |
 | D-4 | 보류는 검토자별 최신 PASS의 합집합. 착지가 기대지 않는 PASS의 보류도 셈. | 닫지 않는 쪽이 안전해요. 검토자는 새 PASS로 자기 보류를 풀어요. | 기대는 PASS 하나의 보류만 읽음 |
 | D-5 | observe 단계 없이 바로 적용. | 기존 판정에는 `open` 키가 없어서 지금의 흐름에서 새로 막히거나 달라지는 착지가 없어요. | 모드 설정 뒤로 옮김 |
+
+## Result
+
+- 결정: D-1 = A, D-2 = C (승인 노트 9863, 리더의 위임 승인). 승인 블록은 착지 때 리더가 써요.
+- 구현: `card verdict --open <n>`, 착지의 보류 집합 계산(`land/check.rs`의 `held`), 보류가 있는 조각 착지와 met 기준 다시 열기(`ledger/workflow.rs`의 한 트랜잭션), `audit.md` 안내 한 문단, 운영 문서의 land·verdict 행.
+- RED/GREEN: 새 테스트 8개(`tests/card/card_land_open_criteria.rs`). AC-1~AC-6의 6개에 더해, 보류가 있어도 닫는 착지와 같은 독립 PASS를 요구하는지(`a_hold_asks_for_the_same_pass_as_a_close`), 철회한 기준은 더 보류되지 않는지(`a_withdrawn_criterion_is_held_no_longer`)를 확인해요.
+- 기존 테스트: card의 land·verdict·finish·submit·ledger, audit 문구, help, 운영 문서, lib의 card·ledger 모듈에서 777개 통과(0 실패).
+
+SPEC과 달라진 점과 한계예요.
+
+- `tests/card/main.rs`는 프로필의 공유 파일이 아니어서 줄 임대 대신 카드 범위에 넣었어요. `src/help.rs`는 고칠 필요가 없었어요.
+- REQ-6보다 넓게, 보류가 있는 head에는 `--met`을 번호와 상관없이 거절해요. 조각 착지는 어떤 기준도 met으로 바꾸지 않아서(REQ-4), 보류 밖 번호의 `--met`을 조용히 버리지 않으려는 거예요.
+- 같은 head의 다시 실행은 착지 사건을 쓰지 않아서 기준을 다시 열지 않아요. 카드는 닫히지 않아요.
+- 이 옵션을 모르는 이전 설치본 `moai`는 `open`을 넘기고 카드를 닫아요. 새 빌드를 설치한 착지부터 효과가 있어요.
+- `card finish`는 바꾸지 않았어요(범위 밖). 보류가 있는 카드도 `card finish`의 기존 조건으로는 닫을 수 있어요.

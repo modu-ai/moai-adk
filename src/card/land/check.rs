@@ -322,6 +322,58 @@ fn receipt_ok(event: &VerdictEvent) -> bool {
     })
 }
 
+/// One criterion a verdict of the head holds open (SPEC-20261126-land-open-criteria): its
+/// number, the reviewer who holds it and that reviewer's verdict event.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Hold {
+    pub seq: i64,
+    pub reviewer: String,
+    pub event: i64,
+}
+
+impl Hold {
+    pub fn json(&self) -> Value {
+        json!({"seq": self.seq, "reviewer": self.reviewer, "event": self.event})
+    }
+}
+
+/// What the verdicts on `verdict_head` hold open: the union of the `open` numbers of each
+/// reviewer's newest PASS on it, the PASS the landing relies on or not, without the criteria
+/// withdrawn since. A reviewer releases its hold with a newer PASS. Ordered by criterion number,
+/// then event. Read in every mode: a hold only keeps a card open.
+pub fn held(conn: &Connection, card_id: i64, verdict_head: &str) -> Result<Vec<Hold>> {
+    let events = workflow::verdict_events(conn, card_id).map_err(|e| e.to_string())?;
+    let mut seen: Vec<&str> = Vec::new();
+    let mut holds = Vec::new();
+    for event in events.iter().rev() {
+        if event.head != verdict_head
+            || !event.pass
+            || seen.iter().any(|r| r.eq_ignore_ascii_case(&event.reviewer))
+        {
+            continue;
+        }
+        seen.push(&event.reviewer);
+        holds.extend(event.open.iter().map(|&seq| Hold {
+            seq,
+            reviewer: event.reviewer.clone(),
+            event: event.event_id,
+        }));
+    }
+    if holds.is_empty() {
+        return Ok(holds);
+    }
+    let mut stmt = conn
+        .prepare("SELECT seq FROM card_ac WHERE card_id = ?1 AND status <> 'withdrawn'")
+        .map_err(|e| e.to_string())?;
+    let standing = stmt
+        .query_map([card_id], |r| r.get::<_, i64>(0))
+        .and_then(Iterator::collect::<std::result::Result<Vec<_>, _>>)
+        .map_err(|e| e.to_string())?;
+    holds.retain(|h| standing.contains(&h.seq));
+    holds.sort_by_key(|h| (h.seq, h.event));
+    Ok(holds)
+}
+
 /// A FAIL on the head recorded after the verdict the landing relied on: `{event, reviewer}` of
 /// the newest one (REQ-17). The landing is not undone; the answer names it.
 pub fn late_fail(conn: &Connection, card_id: i64, head: &str, after: i64) -> Result<Option<Value>> {

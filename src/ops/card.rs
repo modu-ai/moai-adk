@@ -1234,7 +1234,10 @@ enum Action {
     /// `work_flow.land_verdict`. `--keep-open` lands a slice instead: the landing is recorded
     /// (`card.landed` with `keep_open` true), nothing is closed and the answer names the open
     /// criteria; the mode of `land_verdict` still judges the verdict, and `--keep-open` is refused
-    /// with a `--met` option or on a card with no open criterion.
+    /// with a `--met` option or on a card with neither an open criterion nor a hold. A head whose
+    /// verdicts hold criteria open (`card verdict --open`) lands as such a slice: no criterion is
+    /// marked met, a held one that is met is open again, no `--met` is taken and the answer lists
+    /// them under `held`.
     Land {
         /// The card to land (`C-12`).
         card: String,
@@ -1333,6 +1336,8 @@ enum Action {
     /// `--receipt-step NAME=EXIT` for each step). The reviewer is the session id the host sets;
     /// no option names one. The same call again writes nothing and answers the first event.
     /// `card land` reads these events and lands a head only on an independent PASS of it.
+    /// `--open N` (PASS only, repeatable) holds criterion N open: the landing marks no criterion
+    /// met and keeps the card open until the same reviewer records a PASS without it.
     Verdict {
         /// The card the audit belongs to (`C-12`).
         card: String,
@@ -1357,6 +1362,9 @@ enum Action {
         /// One step of the receipt, `NAME=EXIT`; repeat for each step.
         #[arg(long = "receipt-step", requires = "receipt_head")]
         receipt_step: Vec<String>,
+        /// A criterion this PASS holds open; repeat for each.
+        #[arg(long = "open", value_parser = clap::value_parser!(i64).range(1..))]
+        open: Vec<i64>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -2253,6 +2261,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             evidence,
             receipt_head,
             receipt_step,
+            open,
             project,
             home,
         } => {
@@ -2270,6 +2279,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                     evidence: &evidence,
                     receipt_head: receipt_head.as_deref(),
                     steps: &receipt_step,
+                    open: &open,
                 },
             )
         }
