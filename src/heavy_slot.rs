@@ -246,8 +246,9 @@ fn read_limits_in(folder: &Path) -> Result<Option<LimitsFile>> {
     }
     // Read from the value before serde sees it, so the refusal names the key: a negative
     // number, a text or a fraction would otherwise only say "expected u64".
-    if let Some(v) = value.get("min_cpu_free_pct") {
-        if !v.as_u64().is_some_and(|p| p <= 100) {
+    // `null` means the key is not set, as for every other key.
+    if let Some(v) = value.get("min_cpu_free_pct").filter(|v| !v.is_null()) {
+        if v.as_u64().is_none_or(|p| p > 100) {
             return Err(format!(
                 "{}: min_cpu_free_pct must be a whole number from 0 to 100 (0 switches the rule off), not {v}",
                 path.display()
@@ -576,7 +577,11 @@ impl CpuGauge {
 /// reason to refuse (it is shown as `unknown` elsewhere). A machine with memory readings
 /// (macOS) is judged on them and its swap is only shown; one without them (Linux) on swap.
 pub fn over_limits(folder: &Path, limits: Limits) -> Option<String> {
-    let Machine { free, swap, memory } = measured(folder);
+    // The CPU readings are not part of these limits: low CPU is a wait ([`sys::hold`]), not a
+    // refusal.
+    let Machine {
+        free, swap, memory, ..
+    } = measured(folder);
     let mut why = Vec::new();
     if let Some(b) = free {
         if b < limits.min_free_gb.saturating_mul(1_000_000_000) {
@@ -1434,8 +1439,8 @@ mod sys {
 
         /// The line a caller prints once it has the slot: `heavy-slot: slot <i> taken by <name>`,
         /// or `heavy-slot: <name> reuses slot <i> it inherited`. A caller that waited for CPU
-        /// headroom adds `; waited <n>s for CPU headroom`, and `; cpu wait ended by the 300 s
-        /// cap after <n>s` when the cap ended the wait.
+        /// headroom ends it with `; waited <n>s for CPU headroom`, with `; cpu wait ended by
+        /// the 300 s cap after <n>s` before that when the cap ended the wait.
         pub fn taken_line(&self, name: &str) -> String {
             let mut line = if self.inherited() {
                 format!("heavy-slot: {name} reuses slot {} it inherited", self.slot)
@@ -1443,7 +1448,6 @@ mod sys {
                 format!("heavy-slot: slot {} taken by {name}", self.slot)
             };
             if let Some(w) = &self.cpu_wait {
-                line.push_str(&format!("; waited {}s for CPU headroom", w.secs));
                 if w.capped {
                     line.push_str(&format!(
                         "; cpu wait ended by the {} s cap after {}s",
@@ -1451,6 +1455,7 @@ mod sys {
                         w.secs
                     ));
                 }
+                line.push_str(&format!("; waited {}s for CPU headroom", w.secs));
             }
             line
         }
@@ -1698,10 +1703,11 @@ mod sys {
         let mut cpu_said: Option<Instant> = None;
         let mut cpu_capped = false;
         let taken = loop {
+            // Read at every look, so a reading is always the last pause's and not an older one;
+            // before the queue is read, since the first reading may wait out the sample gap.
+            let cpu_free = gauge.as_mut().and_then(CpuGauge::read);
             // One read of the queue per look serves both the turn and the place.
             let live = live_waiters(&waiting, &me);
-            // Read at every look, so a reading is always the last pause's and not an older one.
-            let cpu_free = gauge.as_mut().and_then(CpuGauge::read);
             let mut cpu_hold = false;
             match free_slots(folder, max).map(|free| my_slots(free, &live, &me)) {
                 Err(e) => break Err(e),
