@@ -60,7 +60,7 @@
       }
     },
     "references/adapters/aside.md": {
-      "sha256": "c344fe7eacbf4fbe0d4d76c64d7c051dfc1e2c4f09a7a2f98121fecf799806bf",
+      "sha256": "821ba6c058e265aa2d65dc64dd69bdc8212f487b095ab8fdc5822d99ce99ec46",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-aside",
@@ -552,7 +552,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "10533f6464f430eb6d110cfcd4fc3b6c6efbbe2b4167d7d9bdccdd027751f2fd",
+      "sha256": "e8982246a282712d71cf3476919e7e9415b433a50f64192315bc64b1bcc678f9",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",

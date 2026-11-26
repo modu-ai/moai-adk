@@ -2589,6 +2589,7 @@
         "repo_scans_table",
         "review_checklist_cli",
         "search_atlas",
+        "skill_text_citations",
         "test_home_guard",
         "test_weakening"
       ],
@@ -2606,6 +2607,7 @@
         "tests/repo_scans_cli.rs",
         "tests/review_checklist_cli.rs",
         "tests/search_atlas.rs",
+        "tests/skill_text_citations.rs",
         "tests/test_home_guard.rs",
         "tests/test_weakening.rs",
         "tests/repo_scans_table.rs"
@@ -2844,6 +2846,34 @@
         }
       ],
       "rejects": "The display name M-Flow in a shipped text outside the one old-name line of the interview (the flow rename, SPEC-20261122-next-flow)"
+    },
+    {
+      "id": "shipped-text-citations",
+      "always": true,
+      "tests": [
+        "tests/skill_text_citations.rs::scan_shipped_files_outside_the_pending_list_are_clean"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test skill_text_citations"
+      ],
+      "rules": [
+        "tests/skill_text_citations.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/"
+        },
+        {
+          "prefix": "agents/"
+        },
+        {
+          "prefix": "templates/"
+        },
+        {
+          "prefix": "install/"
+        }
+      ],
+      "rejects": "a shipped file under skills/, agents/, templates/ or install/ that carries a card number, an Issue or pull-request number, a decision citation or a moai-adk development script or repository name, outside the exempt pack folder and the pending list (SPEC-20261126-shipped-text-citations)"
     },
     {
       "id": "shipped-files-name-no-tools-script",
