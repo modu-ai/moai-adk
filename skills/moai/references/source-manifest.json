@@ -78,7 +78,7 @@
       }
     },
     "references/audit.md": {
-      "sha256": "6107af7374a5b435a164557c7fd1bcaf049b1ff165b8c48464cf47b0a9a093aa",
+      "sha256": "64fef15665919740f58cb759592f65605fe8684b566089663cce44fba7e88c83",
       "origin": {
         "kind": "design-spec",
         "template_id": "audit-contract",
@@ -276,7 +276,7 @@
       }
     },
     "references/internal/quality.md": {
-      "sha256": "1775e7ecc447b63561a74ec21f30bb86f7ca25688e162a3a9f1de35599a143c6",
+      "sha256": "ccdaa44ddd8d2f4019a1b420cfeeccce451096c19f6dcd635e2c44d833e69b58",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-quality",
