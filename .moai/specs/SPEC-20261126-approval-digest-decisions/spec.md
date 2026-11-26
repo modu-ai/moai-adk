@@ -86,3 +86,14 @@ SPEC 규칙으로 보면 결정 표는 승인받는 글이에요. `workflows/pla
 - D-1 (승인 digest 가 새로 덮는 것): (A, 사용자 선택 2026-11-26) `## Decisions` 만 더해요 — 승인의 `basis` 가 결정 id 를 인용하므로 결정 글이 바뀌면 승인한 선택이 바뀐 것이에요. 선행 SPEC 의 REQ-2·Non-goals 와 `internal/sdd` 규칙 6 의 Decisions 부분이 바뀌어요. (B) 바꾸지 않고 카드를 접어요 — 11-25 선택이 그대로이고, 행동을 묶는 결정은 요구(REQ)로 옮겨 적어요; 카드 기준 1 은 못 채워요. (C) `## Decisions` 와 `## Risks` 를 더해요 — 가장 엄격하지만 위험 문장을 다듬거나 새 위험을 더할 때마다 다시 승인해야 해서 11-25 선택과 더 멀어요.
 - D-2 (이미 승인된 SPEC 과 이전 값): (A, 기본값으로 정함) 이전 승인 digest 와 옛 content digest 를 계속 받아요 — 다시 승인할 것이 없고 지금 거절되는 것은 계속 거절돼요. (B) 이전 승인 digest 는 `approval.at` 이 정한 날짜보다 앞선 기록에만 받아요 — 새 기록의 우회를 닫지만, 바뀌는 날 당일의 승인은 날짜로 가를 수 없고 설치본이 옛것일 때 한 승인이 거절돼요. (C) 승인된 SPEC 을 모두 새 값으로 다시 승인해요 — 사용자 승인 86건을 다시 받아야 해서 권하지 않아요.
 - D-3 (`spec show` 의 새 필드): (A, 기본값으로 정함) `approval_covers` 를 더해 어떤 범위로 승인됐는지 보여 줘요. (B) 필드를 더하지 않아요(REQ-8 의 마지막 구절과 AC-4 가 줄어요).
+
+## Result
+
+- AC-1: met — `cargo test --offline --locked --test spec_approval_digest decisions1_` exit 0, 2 passed (head a0a0b01617).
+- AC-2: met — `cargo test --offline --locked --test spec_approval_digest decisions2_` exit 0, 1 passed (head a0a0b01617).
+- AC-3: met — `cargo test --offline --locked --test spec_approval_digest decisions3_` exit 0, 1 passed (head a0a0b01617). 못박은 이전 값 두 개는 코드를 바꾸기 전 빌드로 계산했고 RED 커밋 0cb6ed5ae5 에서도 같았어요.
+- AC-4: met — `cargo test --offline --locked --test spec_approval_digest decisions4_` exit 0, 1 passed (head a0a0b01617).
+- AC-5: met — `cargo test --offline --locked --test spec_approval_digest decisions5_` exit 0, 1 passed (head a0a0b01617).
+- AC-6: met — `cargo test --offline --locked --test spec_cli the_repository_specs_pass_check` exit 0, 1 passed (head a0a0b01617).
+
+RED 커밋 0cb6ed5ae5 에서는 18개 중 7개가 의도한 이유로 실패했어요. 구현 36fd13a327 에서 새 테스트 6개마다 가드 뮤턴트 하나를 돌렸고 모두 exit 100 이에요. 스캔 표 `reads-docs` 두 줄(a0a0b01617, 리더 결정 노트 10378)은 계획에 없던 변경이에요: 새 글 검사가 운영 문서를 실행 중에 읽어서 필요해요. 설치 순서(R-2)는 그대로예요: 착지 뒤 새 빌드를 설치한 다음에 새 값으로 승인을 기록해요.
