@@ -395,6 +395,58 @@ fn hook_first_then_branch_create_is_refused() {
             .any(|l| l.starts_with(&format!("{BRANCH} "))),
         "the branch was not made"
     );
+
+    // Step 9 gives that as the reason for its order.
+    let step = step_9();
+    let head = line_starting(&step, STEP_9);
+    assert!(
+        head.contains("every hand move of the integration branch is refused, creating it included"),
+        "{head}"
+    );
+}
+
+/// REQ-4, the case the hook cannot cover: with `core.hooksPath` set, git runs no hook from
+/// `.git/hooks`, so a hand move goes through although the apply wrote the record. Step 9 reads
+/// that setting and never calls the branch protected then.
+#[test]
+fn hooks_path_leaves_the_hook_unused_and_step_9_says_so() {
+    let fx = Fx::new();
+    fx.apply_profile(&profile(Some(BRANCH)));
+    fx.git(&["branch", BRANCH, &fx.tip]);
+    fx.git(&["config", "core.hooksPath", ".husky"]);
+    let applied = fx.install_hook();
+    assert_eq!(applied["guard"]["record"], "written", "{applied}");
+    assert!(fx.hook().exists(), "{applied}");
+    let other = fx.git(&[
+        "commit-tree",
+        &format!("{}^{{tree}}", fx.tip),
+        "-p",
+        &fx.tip,
+        "-m",
+        "a head no landing made",
+    ]);
+    fx.git(&["branch", "-f", BRANCH, &other]);
+    assert_eq!(
+        fx.git(&["rev-parse", BRANCH]),
+        other,
+        "the hand move went through"
+    );
+
+    let step = step_9();
+    let hook_part = part(&step, "Protection hook.");
+    for text in [
+        "`git config --get core.hooksPath`",
+        "other than the repository's `.git/hooks`",
+        "`not applied: git runs hooks from <that folder>`",
+        "never call the branch protected",
+    ] {
+        assert!(hook_part.contains(text), "{text:?}: {hook_part}");
+    }
+    assert!(
+        position(&hook_part, "`git config --get core.hooksPath`")
+            < position(&hook_part, "`moai git-hooks-apply"),
+        "the setting is read before the apply: {hook_part}"
+    );
 }
 
 /// The cells of the follow-up table of the question bank: name, question, options, goes to.
@@ -657,6 +709,9 @@ fn setup_guidance_is_work_flow_plans_answer() {
         "no option is preselected",
         "exists on origin",
         "run `work-flow-plan` again",
+        "create the branch from the current tip, or leave it",
+        "also create it from `origin/<branch>`",
+        "will not hold the setup files",
     ] {
         assert!(missing.contains(text), "{text:?}: {missing}");
     }
