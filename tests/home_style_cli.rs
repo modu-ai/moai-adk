@@ -913,3 +913,502 @@ fn revert_refuses_a_linked_receipts_folder() {
     assert_eq!(fs::read(&outside_receipt).unwrap(), before);
     assert!(home.join(STYLE).exists());
 }
+
+// SPEC-20261120-reply-language-rule revision 2: besides `outputStyle`, the settings target plans
+// the Claude Code `language` key (the saved conversation language's lower-case English name), in
+// one file replacement with one receipt entry.
+
+/// A new temporary HOME for the tests below, which shadow `home` with the path they get.
+fn fresh() -> (tempfile::TempDir, PathBuf) {
+    home()
+}
+
+/// The HOME's state folder and its saved conversation language, as the installer leaves them.
+fn save_language(home: &Path, code: &str) {
+    moai_cli::home_root::adopt_new(home, "test").unwrap();
+    let r = moai_cli::language::set_home(home, code).unwrap();
+    assert_eq!(r["written"], json!(true), "{r}");
+}
+
+/// A saved conversation language MoAI has no name for (`fr`): `language-set` refuses such a code,
+/// so the record is written the way the installer's file holds it.
+fn save_unnamed_language(home: &Path, code: &str) {
+    moai_cli::home_root::adopt_new(home, "test").unwrap();
+    let file = moai_cli::home_root::path(home)
+        .join(moai_cli::language::HOME_FILE[0])
+        .join(moai_cli::language::HOME_FILE[1]);
+    fs::create_dir_all(file.parent().unwrap()).unwrap();
+    fs::write(
+        file,
+        format!("language:\n  conversation_language: {code}\n"),
+    )
+    .unwrap();
+}
+
+/// The `language` value MoAI plans for a saved code: the lower-case English name of its table.
+fn language_value(code: &str) -> Value {
+    json!(moai_cli::language::english_name(code)
+        .unwrap()
+        .to_lowercase())
+}
+
+/// The keys the settings target of a plan writes, in order.
+fn key_list(p: &Plan) -> Vec<(String, Value)> {
+    p.targets
+        .iter()
+        .find(|t| t.kind == "setting")
+        .unwrap()
+        .keys
+        .iter()
+        .map(|k| (k.key.clone(), k.value.clone()))
+        .collect()
+}
+
+fn pair(key: &str, value: Value) -> (String, Value) {
+    (key.to_string(), value)
+}
+
+fn receipt_json(home: &Path, id: &str) -> Value {
+    let path = moai_cli::home_root::path(home)
+        .join("home-style/receipts")
+        .join(id)
+        .join("receipt.json");
+    serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
+}
+
+/// AC-1 (REQ-1, REQ-4): a saved Korean conversation language plans `language = korean` beside
+/// `outputStyle`, for no settings file, a file without the key, and a file where only the language
+/// is missing (the style already ours, the user's own style, or a style file MoAI does not own).
+#[test]
+fn language_key_plan_sets_the_saved_conversation_language() {
+    let name = language_value("ko");
+    assert_eq!(name, json!("korean"));
+    let (_t, home) = fresh();
+    save_language(&home, "ko");
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(action(&p, "setting"), "set");
+    assert_eq!(
+        key_list(&p),
+        [
+            pair("outputStyle", json!(STYLE_NAME)),
+            pair("language", name.clone())
+        ]
+    );
+    let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(r["state"], "applied");
+    assert_eq!(
+        settings(&home),
+        json!({"outputStyle": STYLE_NAME, "language": "korean"})
+    );
+    let again = plan(&home, &package()).unwrap();
+    assert_eq!(action(&again, "setting"), "unchanged");
+    assert!(key_list(&again).is_empty());
+    // A language MoAI wrote itself is not reported as "the user's value" on every later plan.
+    let own_note = again
+        .targets
+        .iter()
+        .find(|t| t.kind == "setting")
+        .and_then(|t| t.detail.clone());
+    assert_eq!(own_note, None, "{own_note:?}");
+
+    // A settings file without the key keeps its own keys and order.
+    let (_t, home) = fresh();
+    save_language(&home, "ko");
+    write(&home, SETTINGS, "{\"a\": 1}\n");
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(
+        key_list(&p),
+        [
+            pair("outputStyle", json!(STYLE_NAME)),
+            pair("language", name.clone())
+        ]
+    );
+    apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    let s = settings(&home);
+    let order: Vec<&String> = s.as_object().unwrap().keys().collect();
+    assert_eq!(order, ["a", "outputStyle", "language"]);
+    assert_eq!(s["language"], "korean");
+
+    // Only the language is missing: the style is already the default.
+    let (_t, home) = fresh();
+    save_language(&home, "ko");
+    write(&home, SETTINGS, "{\"outputStyle\": \"MoAI-Easy\"}\n");
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(action(&p, "setting"), "set");
+    assert_eq!(key_list(&p), [pair("language", name.clone())]);
+    apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(
+        settings(&home),
+        json!({"outputStyle": "MoAI-Easy", "language": "korean"})
+    );
+
+    // The user's own output style is kept and still says so; the language is filled.
+    let (_t, home) = fresh();
+    save_language(&home, "ko");
+    let set = "{\"outputStyle\": \"Explanatory\"}\n";
+    write(&home, SETTINGS, set);
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(action(&p, "setting"), "set");
+    assert_eq!(key_list(&p), [pair("language", name.clone())]);
+    assert!(detail(&p, "setting").contains("Explanatory"));
+    apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(
+        settings(&home),
+        json!({"outputStyle": "Explanatory", "language": "korean"})
+    );
+
+    // A style file MoAI does not own keeps `outputStyle` out; the language is still filled.
+    let (_t, home) = fresh();
+    save_language(&home, "ko");
+    let style = "---\nname: MoAI-Easy\n---\n\nmy own style\n";
+    write(&home, STYLE, style);
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(action(&p, "style_file"), "conflict");
+    assert_eq!(action(&p, "setting"), "set");
+    assert_eq!(key_list(&p), [pair("language", name)]);
+    assert!(detail(&p, "setting").contains("the style file is conflict"));
+    apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), style);
+    assert_eq!(settings(&home), json!({"language": "korean"}));
+
+    // A settings file that is not an object stops both keys.
+    let (_t, home) = fresh();
+    save_language(&home, "ko");
+    write(&home, SETTINGS, "[1, 2]\n");
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(action(&p, "setting"), "conflict");
+    assert!(key_list(&p).is_empty());
+    apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(fs::read_to_string(home.join(SETTINGS)).unwrap(), "[1, 2]\n");
+}
+
+/// AC-2 (REQ-2): a `language` key that is already there is kept whatever it holds (another name,
+/// the empty string, a number, `null`, the same name) and the plan's detail says so, except for
+/// the name MoAI would write itself, which stays without a note.
+#[test]
+fn language_key_user_value_is_kept_and_said_so() {
+    for (text, shown) in [
+        ("\"japanese\"", "japanese"),
+        ("\"\"", "\"\""),
+        ("5", "5"),
+        ("null", "null"),
+        ("\"korean\"", "korean"),
+    ] {
+        let (_t, home) = fresh();
+        save_language(&home, "ko");
+        let before = format!("{{\"language\": {text}}}\n");
+        write(&home, SETTINGS, &before);
+        let p = plan(&home, &package()).unwrap();
+        assert_eq!(action(&p, "setting"), "set", "{text}");
+        assert_eq!(
+            key_list(&p),
+            [pair("outputStyle", json!(STYLE_NAME))],
+            "{text}"
+        );
+        let d = detail(&p, "setting");
+        if text == "\"korean\"" {
+            // The value MoAI would write itself: kept as it is, and nothing said about it.
+            assert!(!d.contains("kept"), "{d}");
+        } else {
+            assert!(
+                d.contains("language") && d.contains(shown) && d.contains("kept"),
+                "{d}"
+            );
+        }
+        apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+        // Every byte of the user's key stays; only `outputStyle` is added after it.
+        assert_eq!(
+            fs::read_to_string(home.join(SETTINGS)).unwrap(),
+            format!("{{\"language\": {text}, \"outputStyle\": \"MoAI-Easy\"}}\n"),
+            "{text}"
+        );
+    }
+    // Style already ours and the language the user's: nothing to write at all.
+    let (_t, home) = fresh();
+    save_language(&home, "ko");
+    let both = "{\"outputStyle\": \"MoAI-Easy\", \"language\": \"japanese\"}\n";
+    write(&home, SETTINGS, both);
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(action(&p, "setting"), "unchanged");
+    assert!(detail(&p, "setting").contains("japanese"));
+    apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(fs::read_to_string(home.join(SETTINGS)).unwrap(), both);
+}
+
+/// AC-3 (REQ-3): no saved conversation language, or a saved one MoAI has no name for (`fr`), plans
+/// no `language` key and names the reason.
+#[test]
+fn language_key_unknown_language_names_the_reason() {
+    let (_t, home) = fresh();
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(key_list(&p), [pair("outputStyle", json!(STYLE_NAME))]);
+    let d = detail(&p, "setting");
+    assert!(
+        d.contains("language") && d.contains("no conversation language saved"),
+        "{d}"
+    );
+    apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(settings(&home), json!({"outputStyle": STYLE_NAME}));
+
+    let (_t, home) = fresh();
+    save_unnamed_language(&home, "fr");
+    assert_eq!(
+        moai_cli::language::home_conversation(&home).as_deref(),
+        Some("fr")
+    );
+    assert!(moai_cli::language::english_name("fr").is_none());
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(key_list(&p), [pair("outputStyle", json!(STYLE_NAME))]);
+    let d = detail(&p, "setting");
+    assert!(
+        d.contains("language") && d.contains("`fr`") && d.contains("not set"),
+        "{d}"
+    );
+    apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(settings(&home), json!({"outputStyle": STYLE_NAME}));
+
+    // Nothing else to write and no language to name: the target stays unchanged, with the reason.
+    let (_t, home) = fresh();
+    save_unnamed_language(&home, "fr");
+    write(&home, SETTINGS, "{\"outputStyle\": \"MoAI-Easy\"}\n");
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(action(&p, "setting"), "unchanged");
+    assert!(key_list(&p).is_empty());
+    assert!(detail(&p, "setting").contains("`fr`"));
+}
+
+/// The names of the reverted and skipped targets of a revert answer, for one target.
+fn skipped_of(rev: &Value, target: &str) -> Vec<Value> {
+    rev["skipped"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|s| s["target"] == target)
+        .cloned()
+        .collect()
+}
+
+fn reverted(rev: &Value, target: &str) -> bool {
+    rev["reverted"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|w| w == target)
+}
+
+/// AC-4 (REQ-4, REQ-5, REQ-6, REQ-11): one apply writes both keys in one file replacement with one
+/// receipt entry; a revert removes exactly the keys that still hold what was written, keeps the
+/// user's other keys, leaves a key changed afterwards and says so, and a receipt without a key
+/// list still reverts through its `inserted` text.
+#[test]
+fn language_key_one_apply_one_receipt_revert_removes_only_those() {
+    let before = "{\n  \"theme\": \"dark\",\n  \"n\": 1.50\n}\n";
+    let after = "{\n  \"theme\": \"dark\",\n  \"n\": 1.50,\n  \"outputStyle\": \"MoAI-Easy\",\n  \"language\": \"korean\"\n}\n";
+    // A HOME with `before` applied: its receipt id and the apply's answer.
+    let applied = |code: Option<&str>| {
+        let (t, home) = fresh();
+        if let Some(code) = code {
+            save_language(&home, code);
+        }
+        write(&home, SETTINGS, before);
+        let p = plan(&home, &package()).unwrap();
+        let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+        let id = r["receipt"].as_str().unwrap().to_string();
+        (t, home, id, r)
+    };
+
+    // One write, one receipt entry: the entry's after hash is the final file with both keys.
+    let (_t, home, id, r) = applied(Some("ko"));
+    assert_eq!(fs::read_to_string(home.join(SETTINGS)).unwrap(), after);
+    let written = r["written"].as_array().unwrap();
+    assert_eq!(written.iter().filter(|w| *w == "claude:setting").count(), 1);
+    let receipt = receipt_json(&home, &id);
+    let entries: Vec<&Value> = receipt["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["kind"] == "setting")
+        .collect();
+    assert_eq!(entries.len(), 1, "{receipt}");
+    let names: Vec<&str> = entries[0]["inserted_keys"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|k| k["key"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["outputStyle", "language"]);
+    assert_eq!(
+        entries[0]["after_sha256"],
+        json!(moai_cli::digest(after.as_bytes()))
+    );
+
+    // A file nobody touched gets its before bytes back byte for byte.
+    let rev = revert(&home, &id, PERM).unwrap();
+    assert_eq!(fs::read_to_string(home.join(SETTINGS)).unwrap(), before);
+    assert!(reverted(&rev, "claude:setting"));
+    assert!(skipped_of(&rev, "claude:setting").is_empty(), "{rev}");
+
+    // Another key added since: both keys still go, the new key stays, nothing is reported.
+    let (_t, home, id, _) = applied(Some("ko"));
+    fs::write(
+        home.join(SETTINGS),
+        after.replace("{\n", "{\n  \"b\": 2,\n"),
+    )
+    .unwrap();
+    let rev = revert(&home, &id, PERM).unwrap();
+    assert_eq!(
+        fs::read_to_string(home.join(SETTINGS)).unwrap(),
+        "{\n  \"b\": 2,\n  \"theme\": \"dark\",\n  \"n\": 1.50\n}\n"
+    );
+    assert!(skipped_of(&rev, "claude:setting").is_empty(), "{rev}");
+
+    // The language changed since: it stays and is reported by name; `outputStyle` still goes.
+    let (_t, home, id, _) = applied(Some("ko"));
+    fs::write(
+        home.join(SETTINGS),
+        after.replace("\"korean\"", "\"english\""),
+    )
+    .unwrap();
+    let rev = revert(&home, &id, PERM).unwrap();
+    assert_eq!(
+        fs::read_to_string(home.join(SETTINGS)).unwrap(),
+        "{\n  \"theme\": \"dark\",\n  \"n\": 1.50,\n  \"language\": \"english\"\n}\n"
+    );
+    assert!(reverted(&rev, "claude:setting"));
+    let skipped = skipped_of(&rev, "claude:setting");
+    assert_eq!(skipped.len(), 1, "{rev}");
+    assert_eq!(skipped[0]["reason"], "user_changed_since_apply");
+    assert_eq!(skipped[0]["keys"], json!(["language"]));
+
+    // The output style changed since: it stays, the language goes.
+    let (_t, home, id, _) = applied(Some("ko"));
+    fs::write(
+        home.join(SETTINGS),
+        after.replace("\"MoAI-Easy\"", "\"Learning\""),
+    )
+    .unwrap();
+    let rev = revert(&home, &id, PERM).unwrap();
+    assert_eq!(
+        fs::read_to_string(home.join(SETTINGS)).unwrap(),
+        "{\n  \"theme\": \"dark\",\n  \"n\": 1.50,\n  \"outputStyle\": \"Learning\"\n}\n"
+    );
+    let skipped = skipped_of(&rev, "claude:setting");
+    assert_eq!(skipped[0]["keys"], json!(["outputStyle"]));
+
+    // Both changed since: nothing is written and the target is skipped as before.
+    let (_t, home, id, _) = applied(Some("ko"));
+    let both = after
+        .replace("\"MoAI-Easy\"", "\"Learning\"")
+        .replace("\"korean\"", "\"english\"");
+    fs::write(home.join(SETTINGS), &both).unwrap();
+    let rev = revert(&home, &id, PERM).unwrap();
+    assert_eq!(fs::read_to_string(home.join(SETTINGS)).unwrap(), both);
+    assert!(!reverted(&rev, "claude:setting"));
+    let skipped = skipped_of(&rev, "claude:setting");
+    assert_eq!(skipped.len(), 1, "{rev}");
+    assert_eq!(skipped[0]["reason"], "user_changed_since_apply");
+
+    // A receipt written before the key list (`outputStyle` alone, only `inserted`) still reverts.
+    let (_t, home, id, _) = applied(None);
+    let path = moai_cli::home_root::path(&home)
+        .join("home-style/receipts")
+        .join(&id)
+        .join("receipt.json");
+    let mut old = receipt_json(&home, &id);
+    for e in old["entries"].as_array_mut().unwrap() {
+        if e["kind"] == "setting" {
+            assert!(e["inserted"].is_string(), "{e}");
+            e.as_object_mut().unwrap().remove("inserted_keys");
+        }
+    }
+    fs::write(&path, serde_json::to_vec_pretty(&old).unwrap()).unwrap();
+    let now = fs::read_to_string(home.join(SETTINGS)).unwrap();
+    fs::write(home.join(SETTINGS), now.replace("{\n", "{\n  \"b\": 2,\n")).unwrap();
+    let rev = revert(&home, &id, PERM).unwrap();
+    assert_eq!(
+        fs::read_to_string(home.join(SETTINGS)).unwrap(),
+        "{\n  \"b\": 2,\n  \"theme\": \"dark\",\n  \"n\": 1.50\n}\n"
+    );
+    assert!(reverted(&rev, "claude:setting"));
+}
+
+/// AC-5 (REQ-7): `CLAUDE_CONFIG_DIR` names the folder whose `settings.json` is filled, through the
+/// binary; the temporary HOME's default Claude folder is not made or touched, a key the user holds
+/// in that folder is kept, and the revert runs in that folder too.
+#[test]
+fn language_key_config_dir_profile_gets_its_own_settings() {
+    let (_t, home) = fresh();
+    assert!(moai_cli::home_root::adopt_new(&home, "test").unwrap());
+    save_language(&home, "ko");
+    let second = home.join("profiles/b");
+    let (planned, id) = folder_install(&home, Some(&second));
+    let setting_of = |plan: &Value| -> Value {
+        plan["targets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["kind"] == "setting")
+            .unwrap()
+            .clone()
+    };
+    let setting = setting_of(&planned);
+    assert_eq!(
+        setting["path"],
+        json!(second.join("settings.json").to_str().unwrap())
+    );
+    assert_eq!(
+        setting["keys"],
+        json!([
+            {"key": "outputStyle", "value": STYLE_NAME},
+            {"key": "language", "value": "korean"}
+        ])
+    );
+    let written: Value =
+        serde_json::from_slice(&fs::read(second.join("settings.json")).unwrap()).unwrap();
+    assert_eq!(
+        written,
+        json!({"outputStyle": STYLE_NAME, "language": "korean"})
+    );
+    assert!(
+        !home.join(".claude").exists(),
+        "the default folder is not touched"
+    );
+
+    // A key the user holds in another profile's folder is kept.
+    let third = home.join("profiles/c");
+    fs::create_dir_all(&third).unwrap();
+    fs::write(
+        third.join("settings.json"),
+        "{\"language\": \"japanese\"}\n",
+    )
+    .unwrap();
+    let (planned, _) = folder_install(&home, Some(&third));
+    assert_eq!(
+        setting_of(&planned)["keys"],
+        json!([{"key": "outputStyle", "value": STYLE_NAME}])
+    );
+    assert_eq!(
+        fs::read_to_string(third.join("settings.json")).unwrap(),
+        "{\"language\": \"japanese\", \"outputStyle\": \"MoAI-Easy\"}\n"
+    );
+    assert!(!home.join(".claude").exists());
+
+    // The revert runs where the apply ran and removes the file it created.
+    let id = id.unwrap();
+    let h = home.to_str().unwrap();
+    let v = folder_run(
+        &home,
+        Some(&second),
+        &[
+            "home-style-revert",
+            h,
+            "--receipt",
+            &id,
+            "--permission-reference",
+            PERM,
+        ],
+    );
+    assert_eq!(v["result"]["state"], "reverted", "{v}");
+    assert!(!second.join("settings.json").exists());
+    assert!(!home.join(".claude").exists());
+}

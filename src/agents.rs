@@ -405,6 +405,14 @@ fn writing_line(p: &Profile, ui: &str, root: &Path) -> Option<String> {
     Some(format!("{head}: {}; {tail}.\n", rows.join("; ")))
 }
 
+/// The reply-language sentence on its own line, from the profile's `user_chat` only: an unset
+/// item is never guessed (card C-87), so a profile without `user_chat` gets no sentence
+/// (SPEC-20261120-reply-language-rule REQ-8, REQ-9).
+fn reply_line(p: &Profile, ui: &str) -> Option<String> {
+    let code = p.language.as_ref()?.get("user_chat")?;
+    crate::language::reply_sentence(code, ui).map(|s| format!("{s}\n"))
+}
+
 /// The managed block of `CLAUDE.md`: facts only, within [`BLOCK_MAX_LINES`] lines (REQ-3): the
 /// project id, the tools, the check command, the language, the versioning line, the flow with its
 /// integration branch, and the places of SPECs, cards and project scripts. What to do and how to decide is the
@@ -415,6 +423,7 @@ fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path) -> String {
     let ko = lang == "ko";
     let tools = p.tools.join(", ");
     let writing = writing_line(p, lang, root).unwrap_or_default();
+    let reply = reply_line(p, lang).unwrap_or_default();
     // C-69: the versioning line appears only when the profile records a choice.
     let versioning = p
         .versioning
@@ -453,7 +462,7 @@ fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path) -> String {
             "## MoAI 프로젝트 사실 (관리 구간)\n\n\
 프로젝트 `{id}` · 도구: {tools}.\n\
 검사: `moai check affected`.\n\
-{writing}{versioning}{flow}\
+{writing}{reply}{versioning}{flow}\
 SPEC: `{specs}` · 카드: `moai card list`.\n\
 프로젝트 스크립트: `{scripts}`.\n",
             id = p.project_id,
@@ -463,7 +472,7 @@ SPEC: `{specs}` · 카드: `moai card list`.\n\
             "## MoAI project facts (managed block)\n\n\
 Project `{id}` · tools: {tools}.\n\
 Checks: `moai check affected`.\n\
-{writing}{versioning}{flow}\
+{writing}{reply}{versioning}{flow}\
 SPECs: `{specs}` · cards: `moai card list`.\n\
 Project scripts: `{scripts}`.\n",
             id = p.project_id,
