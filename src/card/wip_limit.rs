@@ -9,7 +9,9 @@
 //! for an audit. `wip_limit` 0 turns the limit off, and so does a project with no registry
 //! folder or no live lane (SPEC D-3). A lane is live while its launcher holds the `<name>.live`
 //! lock or its registration lease runs (SPEC-20261125-wip-limit-live-lock-lanes); a registry
-//! folder that cannot be read does not turn the limit off: the limit is then reached.
+//! folder that cannot be read, or whose items none can be read
+//! (SPEC-20261126-wip-limit-all-unreadable), does not turn the limit off: the limit is then
+//! reached.
 
 use crate::lane_registry;
 use rusqlite::Connection;
@@ -44,7 +46,8 @@ pub struct Lanes {
     pub live: usize,
     /// The names whose entry or lock could not be read; each is left out of `live`.
     pub unreadable: Vec<String>,
-    /// Why the registry folder could not be read as a whole; the limit is then not off but
+    /// Why the registry folder could not be read as a whole, or why none of its items could be
+    /// read (SPEC-20261126-wip-limit-all-unreadable REQ-1); the limit is then not off but
     /// reached, so that nothing is taken past a limit that cannot be checked
     /// (SPEC-20261125-wip-limit-live-lock-lanes REQ-4).
     pub registry_error: Option<String>,
@@ -61,6 +64,10 @@ pub struct Lanes {
 /// REQ-6): the two name forms `agent-<name>` and `<project name>-agent-<name>` are one name, a
 /// held lock makes the entries of its name one lane, and entries that carry one host session id
 /// are one lane.
+///
+/// A registry that holds items of which none can be read (no entry, no held lock) answers with a
+/// `registry_error` naming them, so the limit is reached and not off
+/// (SPEC-20261126-wip-limit-all-unreadable REQ-1).
 pub fn live_lanes(project: &Path) -> Lanes {
     let scan = match lane_registry::scan_registry(project) {
         Ok(Some(scan)) => scan,
@@ -105,10 +112,21 @@ pub fn live_lanes(project: &Path) -> Lanes {
             live.insert((false, name_canon));
         }
     }
+    let unreadable: Vec<String> = scan.unreadable.iter().cloned().collect();
+    // A registry whose every item is unreadable is no registry that says "no lane": the limit
+    // cannot be checked, so it is reached (SPEC-20261126-wip-limit-all-unreadable REQ-1).
+    let registry_error =
+        (scan.entries.is_empty() && scan.locked.is_empty() && !unreadable.is_empty()).then(|| {
+            format!(
+                "the sessions folder holds {} item(s) and none can be read: {}",
+                unreadable.len(),
+                unreadable.join(", ")
+            )
+        });
     Lanes {
         live: live.len(),
-        unreadable: scan.unreadable.iter().cloned().collect(),
-        registry_error: None,
+        unreadable,
+        registry_error,
     }
 }
 
