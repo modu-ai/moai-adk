@@ -114,3 +114,7 @@ SPEC-20261126-shipped-text-citations. The files under `skills/`, `agents/`, `tem
 
 - `license` of nine entries read `unspecified: the moai-adk repository has no LICENSE file; recorded, not decided` and now reads `unspecified: recorded, not decided`. The stated reason was out of date: the repository has had a `LICENSE` file since commit `0c72320d39` (2026-11-11). Which license these templates carry is still undecided.
 - Removed `#2434 AC-6 (design 6788185980, decisions 6842518327): ` from `contract`.
+
+## `skills/moai-html-report/references/artifact-contract.md` and `fonts.md`
+
+- Removed `User decision (2026-11-22): ` (artifact-contract.md, section 6) and `User decisions (2026-11-22): ` (fonts.md). The font rules stay as they were.

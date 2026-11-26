@@ -120,7 +120,12 @@ fn kinds(line: &str) -> Vec<&'static str> {
     }
     for phrase in DECISIONS {
         for (at, _) in low.match_indices(phrase) {
-            let end = at + phrase.len();
+            let mut end = at + phrase.len();
+            // The plural cites like the singular: `user decisions (<date>)`.
+            let after = &low[end..];
+            if after.starts_with('s') && !after[1..].chars().next().is_some_and(is_word) {
+                end += 1;
+            }
             // `(user decision)` names who decided and nothing a reader can follow.
             if low[..at].ends_with('(') && low[end..].starts_with(')') {
                 out.push("decision");
@@ -128,6 +133,8 @@ fn kinds(line: &str) -> Vec<&'static str> {
             let rest = line[end..].trim_start();
             let rest = rest.strip_prefix(',').map_or(rest, str::trim_start);
             let rest = rest.strip_prefix("of ").unwrap_or(rest);
+            // What is cited may stand in parentheses: `user decision (<date or id>)`.
+            let rest = rest.strip_prefix('(').unwrap_or(rest);
             let mut it = rest.chars();
             let (first, second) = (it.next().unwrap_or(' '), it.next().unwrap_or(' '));
             if first.is_ascii_digit()
@@ -234,6 +241,20 @@ fn scan_flags_each_kind_and_leaves_markers_alone() {
         ("\u{130} the user decision 2026-11-16", "decision"),
         ("사용자 결정 2026-11-17", "decision"),
         ("리더 결정 D7 에 따라", "decision"),
+        // A phrase followed by what it cites in parentheses, singular and plural.
+        (
+            "User decision (2026-11-22): the artifact version uses",
+            "decision",
+        ),
+        (
+            "User decisions (2026-11-22): html files use Pretendard",
+            "decision",
+        ),
+        ("the leader decision (U-B 2026-11-17) says", "decision"),
+        ("leader decisions 2026-11-17 say so", "decision"),
+        ("both user's decisions (#2634) hold", "decision"),
+        ("MoAI does it that way (user decisions).", "decision"),
+        ("사용자 결정 (2026-11-17) 에 따라", "decision"),
         ("Issue #2434의 결정", "number"),
         ("in the moai-adk repository run it", "tool"),
         ("run `local_check.sh` first", "tool"),
@@ -256,6 +277,9 @@ fn scan_flags_each_kind_and_leaves_markers_alone() {
         "the user decision is recorded with its answer",
         "  needs:decision  a user decision is pending; work waits for it",
         "ask the user for a decision before the pick",
+        "user decisions are recorded with their answers",
+        "setting it is the user's decision (`guarded`); nothing does it",
+        "a user decision (see the table) opens the work",
         "issue 12 of the series, and PR 12 of the other",
         "# (SPEC-20261117-installer-tty)",
     ] {
