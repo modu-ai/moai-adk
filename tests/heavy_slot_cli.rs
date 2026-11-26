@@ -1012,6 +1012,10 @@ fn the_earlier_test_machine_name_is_not_read() {
     for (name, read) in [("MOAI_TEST_MACHINE", true), (earlier, false)] {
         let d = tempfile::tempdir().unwrap();
         let slots = d.path().join("slots");
+        // The real machine decides in the second case: switch the CPU rule off, so a busy
+        // machine cannot hold the run in the queue.
+        fs::create_dir_all(&slots).unwrap();
+        fs::write(slots.join("limits.json"), r#"{"min_cpu_free_pct":0}"#).unwrap();
         let mut c = Command::new(EXE);
         c.env_remove("MOAI_TEST_MACHINE")
             .env_remove(earlier)
@@ -2501,6 +2505,62 @@ fn cpu_ac2_a_caller_that_did_not_wait_gets_no_cpu_text() {
     for (what, s) in [("stdout", &out), ("stderr", &err)] {
         assert!(!s.contains("for CPU headroom"), "{what}: {s}");
     }
+}
+
+/// AC-2 (REQ-2): on the real sampler a caller keeps waiting over many looks. macOS hands the
+/// same tick counters to calls that follow each other closely, and a look with no new tick must
+/// not read as headroom. One busy thread keeps the free share under the limit of 100.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[test]
+fn cpu_ac2_the_real_reading_keeps_a_caller_waiting() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let (_d, slots) = limits_dir(
+        r#"{"min_free_gb":0,"max_swap_pct":100,"min_mem_free_pct":0,"min_cpu_free_pct":100}"#,
+    );
+    let w = tempfile::tempdir().unwrap();
+    let marker = w.path().join("ran");
+    let (out, err) = (w.path().join("out"), w.path().join("err"));
+    let stop = AtomicBool::new(false);
+    std::thread::scope(|s| {
+        s.spawn(|| {
+            let start = Instant::now();
+            while !stop.load(Ordering::Relaxed) && start.elapsed() < CPU_BOUND * 2 {
+                std::hint::spin_loop();
+            }
+        });
+        let mut c = Command::new(EXE);
+        c.env_remove("MOAI_TEST_MACHINE")
+            .env("HOME", w.path())
+            .args([
+                "heavy-slot-acquire",
+                "--max",
+                "1",
+                "--name",
+                "real",
+                "--dir",
+            ])
+            .arg(&slots)
+            .args(["--", "touch"])
+            .arg(&marker)
+            .stdin(Stdio::null())
+            .stdout(fs::File::create(&out).unwrap())
+            .stderr(fs::File::create(&err).unwrap());
+        let mut caller = CpuCaller {
+            run: spawn(c),
+            out: out.clone(),
+            err: err.clone(),
+        };
+        let said = caller.line_with("waiting for CPU headroom");
+        std::thread::sleep(CPU_STAYS);
+        let (ended, ran) = (caller.exited(), marker.exists());
+        stop.store(true, Ordering::Relaxed);
+        assert!(said.is_some(), "no waiting line\n{}", caller.shown());
+        assert!(
+            ended.is_none() && !ran,
+            "the wait ended while the limit was 100\n{}",
+            caller.shown()
+        );
+    });
 }
 
 /// AC-3 (REQ-5): with no limits file the status says the limit is 20.
