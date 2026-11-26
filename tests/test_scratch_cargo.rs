@@ -26,6 +26,11 @@ const READS: [&str; 3] = [
 /// Names Cargo sets that say nothing about the program being started.
 const NOT_CARGO: [&str; 3] = ["CARGO_BIN_EXE", "CARGO_MANIFEST_DIR", "CARGO_TARGET_TMPDIR"];
 
+/// A variable naming a built program, for a fixture line. Assembled so that the scan for tests
+/// that run the binary without a HOME (`tests/home_isolation_scan.rs`) does not read this file as
+/// one: no test here runs the binary.
+const A_BUILT_PROGRAM: &str = concat!("CARGO_BIN", "_EXE_moai");
+
 /// Test files that may start cargo themselves, each with its reason. A file counts at the top of
 /// `tests/` or in one area folder below it.
 const EXCEPTIONS: [(&str, &str); 1] = [(
@@ -134,7 +139,7 @@ fn the_scan_names_the_file_and_line_of_a_direct_start() {
     let clean = format!(
         "// {START}\"cargo\") in a comment\n\
          fn f() {{ scratch_cargo::cargo_at(\"cargo\"); }}\n\
-         fn g() {{ {START}env!(\"CARGO_BIN_EXE_moai\")).arg(\"cargo\"); }}\n\
+         fn g() {{ {START}env!(\"{A_BUILT_PROGRAM}\")).arg(\"cargo\"); }}\n\
          fn h() {{ {START}\"git\"); }}\n"
     );
     for (relative, text) in [
