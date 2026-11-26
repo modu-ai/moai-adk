@@ -15,6 +15,12 @@ fn project_md() -> String {
     read("skills/moai/workflows/project.md")
 }
 
+/// The update workflow: it owns the backup and merge steps (the project workflow offers the install
+/// steps only and names `/moai update` for the rest), so their waiting reasons are quoted there.
+fn update_md() -> String {
+    read("skills/moai/workflows/update.md")
+}
+
 /// The numbered step `5. **Refresh the managed section` up to the next numbered step.
 fn step_5() -> String {
     let text = project_md();
@@ -68,12 +74,14 @@ fn constant(name: &str) -> String {
     source[start..end].to_string()
 }
 
-const WAITING: [&str; 5] = [
+const WAITING: [&str; 6] = [
     "AFTER_BACKUP",
     "AFTER_PROFILE",
     "AFTER_SETTINGS",
     "AFTER_GO_SETTINGS",
     "AFTER_INSTALL",
+    // The reports step waits for its own apply; `update.md` quotes it.
+    "AFTER_REPORTS",
 ];
 
 #[test]
@@ -97,15 +105,34 @@ fn step_5_asks_about_generation_only_when_it_reads_ready() {
 #[test]
 fn completion_check_offers_steps_in_the_printed_phase_order() {
     let check = completion_check();
-    let order =
-        "phase `backup`, then `install`, then `merge`, each phase in the order of its steps";
-    assert!(check.contains(order), "the Completion Check lacks: {order}");
+    // The sentences that hold for the install steps stay in the project workflow's check.
     for phrase in [
         "a waiting step is reported with that reason and asked about only after the earlier step is applied and the plan is run again",
         "as UPDATE step 5 says",
-        "the merge steps read `re-run after the backup phase` while the backup phase still has a move to make and `re-run after the install phase` behind the install phase",
     ] {
         assert!(check.contains(phrase), "the Completion Check lacks: {phrase}");
+    }
+    // The offer of the project workflow is the install steps only (REQ-28): the backup and merge
+    // steps are named to `/moai update`, in one sentence that names all three.
+    let order =
+        "phase `backup`, then `install`, then `merge`, each phase in the order of its steps";
+    assert!(
+        !check.contains(order),
+        "the Completion Check still offers the backup and merge phases: {order}"
+    );
+    assert!(
+        check
+            .split(". ")
+            .any(|s| s.contains("`/moai update`") && s.contains("backup") && s.contains("merge")),
+        "the Completion Check must name `/moai update` for the backup and merge steps"
+    );
+    // The phase order and the merge steps' waiting reasons are the update workflow's text now.
+    let update = update_md();
+    for phrase in [
+        order,
+        "the merge steps read `re-run after the backup phase` while the backup phase still has a move to make and `re-run after the install phase` behind the install phase",
+    ] {
+        assert!(update.contains(phrase), "update.md lacks: {phrase}");
     }
     // The code prints the phases in that order.
     let source = read("src/project_update.rs");
@@ -119,7 +146,9 @@ fn completion_check_offers_steps_in_the_printed_phase_order() {
 
 #[test]
 fn quoted_waiting_reasons_are_the_ones_the_code_prints() {
-    let text = project_md();
+    // The reasons are quoted by the two workflows together: the project workflow for the install
+    // steps, the update workflow for the backup and merge steps it owns.
+    let text = format!("{}\n{}", project_md(), update_md());
     // Every waiting reason the text quotes in backticks is one the code prints.
     let known: Vec<String> = WAITING.iter().map(|n| constant(n)).collect();
     let mut quoted = 0;
@@ -128,7 +157,7 @@ fn quoted_waiting_reasons_are_the_ones_the_code_prints() {
             quoted += 1;
             assert!(
                 known.iter().any(|k| k == span),
-                "project.md quotes `{span}`, which src/project_update.rs does not print"
+                "a workflow quotes `{span}`, which src/project_update.rs does not print"
             );
         }
     }
@@ -144,13 +173,20 @@ fn quoted_waiting_reasons_are_the_ones_the_code_prints() {
         ("go-state", "AFTER_GO_SETTINGS"),
     ] {
         let sentence = format!("`{step}` reads `{}`", constant(name));
-        let in_text = text.contains(&sentence)
-            || (step == "generation"
-                && text.contains(&format!(
-                    "`generation` reads `blocked` with `{}`",
+        // A step of the backup phase (`go-state`) waits behind an earlier step in the update
+        // workflow's text only: the project workflow no longer names it.
+        let home = if step == "go-state" {
+            update_md()
+        } else {
+            text.clone()
+        };
+        let in_text = home.contains(&sentence)
+            || ((step == "generation" || step == "hooks")
+                && home.contains(&format!(
+                    "`{step}` reads `blocked` with `{}`",
                     constant(name)
                 )));
-        assert!(in_text, "project.md does not say: {sentence}");
+        assert!(in_text, "the workflows do not say: {sentence}");
         assert!(
             source.contains(&format!("Step::waiting(\"{step}\", \"blocked\", {name})")),
             "the code does not hold `{step}` with {name}"
