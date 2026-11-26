@@ -11,6 +11,7 @@ mod common;
 use common::git::git_ok;
 use common::CleanEnv;
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 use std::{
     fs,
     io::Write,
@@ -1113,4 +1114,89 @@ fn generated_next_action_with_a_kept_old_file_claims_no_new_file() {
             "a next action names {name}: {next:?}"
         );
     }
+}
+
+/// A Go-generation project (a deployed config file and skill files, and the manifest that
+/// records them) with the older instruction files in its root. `recorded` names the root
+/// files the manifest records as the Go deployer's own.
+fn go_project(fx: &Fx, recorded: &[&str]) {
+    let write = |rel: &str, body: &str| {
+        let path = fx.root.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, body).unwrap();
+    };
+    let mut files = serde_json::Map::new();
+    let mut deployed = |rel: &str, body: &str| {
+        write(rel, body);
+        let hash = format!("sha256:{:x}", Sha256::digest(body.as_bytes()));
+        files.insert(
+            rel.into(),
+            json!({"provenance": "template_managed", "template_hash": hash,
+                   "deployed_hash": hash, "current_hash": hash}),
+        );
+    };
+    deployed(".moai/config/sections/a.yaml", "a: 1\n");
+    deployed(".claude/skills/moai-a/SKILL.md", "# a\n");
+    for name in ["AGENTS.md", "AGENTS.local.md"] {
+        if recorded.contains(&name) {
+            deployed(name, "# the Go deployer wrote this\n");
+        } else {
+            write(name, "# the user wrote this\n");
+        }
+    }
+    write(
+        ".moai/manifest.json",
+        &json!({"version": "v3.2.1-rc.6", "deployed_at": "2026-11-01T00:00:00Z", "files": files})
+            .to_string(),
+    );
+}
+
+/// SPEC-20261122-claude-md-text-and-ignore AC-11 (REQ-13): the reason of a moved older
+/// instruction file says `CLAUDE.md` (or `CLAUDE.local.md`) takes its place, that the older
+/// file is not written again and that the moved copy is in the backup; it never says the
+/// install step writes a new one.
+#[test]
+fn a_moved_older_file_reason_says_the_claude_file_takes_its_place() {
+    let mut problems = Vec::new();
+    // Without a Go proof, and with the manifest as the Go proof: both reasons.
+    for (case, recorded) in [
+        ("no Go proof", &[][..]),
+        ("manifest proof", &["AGENTS.md", "AGENTS.local.md"][..]),
+    ] {
+        let fx = Fx::new();
+        go_project(&fx, recorded);
+        let (plan, _) = fx.run(&["go-state-plan", fx.p()], b"");
+        for (name, instead) in [
+            ("AGENTS.md", "CLAUDE.md"),
+            ("AGENTS.local.md", "CLAUDE.local.md"),
+        ] {
+            let row = plan["root_files"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|r| r["path"] == json!(name))
+                .unwrap_or_else(|| panic!("[{case}] no root_files row for {name}: {plan}"));
+            let reason = row["reason"].as_str().unwrap();
+            if row["action"] != json!("move") {
+                problems.push(format!("[{case}] {name} is not moved: {row}"));
+            }
+            for wanted in [
+                format!("{instead} takes its place"),
+                format!("{name} is not written again"),
+                "backup".to_string(),
+            ] {
+                if !reason.contains(&wanted) {
+                    problems.push(format!(
+                        "[{case}] {name}: the reason lacks `{wanted}`: {reason}"
+                    ));
+                }
+            }
+            if reason.contains("writes a new one") {
+                problems.push(format!(
+                    "[{case}] {name}: the reason says an install step writes it: {reason}"
+                ));
+            }
+        }
+    }
+    assert!(problems.is_empty(), "{}", problems.join("\n"));
 }
