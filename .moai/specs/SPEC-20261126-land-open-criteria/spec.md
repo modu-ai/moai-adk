@@ -110,7 +110,8 @@ SPEC과 달라진 점과 한계예요.
 검증 기록이에요(구현 커밋 `8e335035e8`).
 
 - SPEC 검증 줄: AC-1~AC-6 각 1개 통과, AC-7 `--test card card_land` 177개 통과, AC-8 `grep` exit 0.
-- 위험 경로 실행(임시 저장소와 HOME, 빈 환경, 새로 빌드한 `moai-cli`): 두 기준이 met인 카드를 `--open 2` PASS로 `--keep-open` 없이 착지 → 브랜치 이동, 카드 `review` 유지, 1 met, 2 open, `card.landed`에 `keep_open` true·`held`·바꾼 근거. 다시 실행 → 이동 없음, 안 닫힘. 두 번째 카드의 `--met 2=x` → 거절, 브랜치 그대로, 착지 사건 0개.
+- 위험 경로 근거는 Rust 통합 테스트예요(결정 10013, 임시 HOME에서 실제 `moai-cli`): `a_held_criterion_the_author_marked_met_is_opened_again`(AC-2: 보류한 met 기준을 다시 열고 근거를 착지 사건에 남김, 같은 head의 다시 실행은 닫지 않음)과 `land_refuses_met_for_a_held_criterion`(AC-4: 거절, 브랜치 그대로, 사건 없음).
+- 첫 영수증(head `ddd048c5b2`)은 `ledger` 단계에서 FAIL이었어요: 새 테스트가 상태 폴더 이름을 직접 적어 `state_folder_literal_scan`에 걸렸어요. 픽스처가 `moai spec new`가 답한 경로를 쓰도록 고쳤고 `allow.tsv`는 바꾸지 않았어요. 상태 폴더 resolver는 이 픽스처(예전 폴더의 프로필)에서 SPEC이 써진 곳과 다른 폴더를 답해 쓰지 않았어요. 아래 뮤턴트는 이 픽스처 수정 전의 `8e335035e8`에서 돌렸고, 수정은 픽스처 준비 부분만 바꿨어요.
 
 guard-mutant 9줄이에요(각 테스트만 실행, 모두 실패, 뒤에 `git checkout`으로 복원).
 

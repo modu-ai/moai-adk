@@ -144,14 +144,11 @@ impl World {
             .stdin(Stdio::null())
             .output()
             .expect("run moai spec new");
-        let spec_file = project.join(".moai/specs").join(SPEC).join("spec.md");
-        assert!(
-            spec_file.is_file(),
-            "{}",
-            String::from_utf8_lossy(&made.stdout)
-        );
+        // The command answers where it wrote the SPEC, so the test spells no state folder.
+        let spec_rel = result(&made)["path"].as_str().unwrap().to_string();
+        let spec_file = project.join(&spec_rel);
         fs::write(&spec_file, filled(&fs::read_to_string(&spec_file).unwrap())).unwrap();
-        git(&project, &["add", "a.txt", "Cargo.toml", ".moai/specs"]);
+        git(&project, &["add", "a.txt", "Cargo.toml", &spec_rel]);
         git(&project, &["commit", "-q", "-m", "init"]);
         let c0 = git(&project, &["rev-parse", "HEAD"]);
         git(&project, &["update-ref", "refs/heads/integ", &c0]);
