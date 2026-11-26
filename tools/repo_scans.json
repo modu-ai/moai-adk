@@ -1271,6 +1271,25 @@
       "rejects": "a change to a file that tests/card/card_generated_scope.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
     },
     {
+      "id": "include-str-check-affected-rerun",
+      "always": true,
+      "tests": [
+        "tests/check_affected_rerun.rs (all)"
+      ],
+      "test_targets": [
+        "check_affected_rerun"
+      ],
+      "rules": [
+        "tests/check_affected_rerun.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".gitignore"
+        }
+      ],
+      "rejects": "a change to .gitignore that tests/check_affected_rerun.rs reads with include_str! that the test did not re-run on the merge tree (card C-590)"
+    },
+    {
       "id": "include-str-flaky-followups",
       "always": true,
       "tests": [

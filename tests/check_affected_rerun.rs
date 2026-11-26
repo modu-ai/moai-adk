@@ -467,11 +467,10 @@ fn ac5_an_unwritable_ledger_does_not_change_the_result() {
 
 /// Card C-590: the repository's own ignore rules decide what `git status` lists as untracked, and
 /// `card submit` refuses a worktree that lists a path. The fixture takes those rules over, so the
-/// tests below read the real file, not a copy that could drift.
+/// tests below read the real file (compiled in, so `tools/repo_scans.json` selects this target
+/// when the file changes), not a copy that could drift.
 fn with_the_repository_ignore_rules(fx: &Fixture) {
-    let rules = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(".gitignore"))
-        .expect("the repository ignore rules");
-    fx.commit(&[(".gitignore", &rules)]);
+    fx.commit(&[(".gitignore", include_str!("../.gitignore"))]);
 }
 
 /// The untracked paths of the fixture, one per line (empty when there is none).
