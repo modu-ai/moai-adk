@@ -10,6 +10,7 @@
 mod common;
 use common::git::git_ok;
 use common::CleanEnv;
+use moai_cli::state_root::MOAI_DIR;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -1137,7 +1138,7 @@ fn go_project(fx: &Fx, recorded: &[&str]) {
                    "deployed_hash": hash, "current_hash": hash}),
         );
     };
-    deployed(".moai/config/sections/a.yaml", "a: 1\n");
+    deployed(&format!("{MOAI_DIR}/config/sections/a.yaml"), "a: 1\n");
     deployed(".claude/skills/moai-a/SKILL.md", "# a\n");
     for name in ["AGENTS.md", "AGENTS.local.md"] {
         if recorded.contains(&name) {
@@ -1147,7 +1148,7 @@ fn go_project(fx: &Fx, recorded: &[&str]) {
         }
     }
     write(
-        ".moai/manifest.json",
+        &format!("{MOAI_DIR}/manifest.json"),
         &json!({"version": "v3.2.1-rc.6", "deployed_at": "2026-11-01T00:00:00Z", "files": files})
             .to_string(),
     );
