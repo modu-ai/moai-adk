@@ -636,4 +636,127 @@ mod tests {
         assert!(r.iter().all(|r| r.carry.is_none()));
         assert_eq!(state(&r, "fastMode"), "kept_in_backup");
     }
+
+    /// A project whose earlier shared settings `old` sit in the backup of a committed
+    /// `go-state-apply` that kept the earlier state folder, with `current` as the settings file now.
+    fn backed_up_project(old: &Value, current: Option<&Value>) -> tempfile::TempDir {
+        let dir = tempfile::TempDir::new().unwrap();
+        let root = std::fs::canonicalize(dir.path()).unwrap();
+        let write = |rel: String, bytes: &[u8]| {
+            let path = root.join(rel);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, bytes).unwrap();
+        };
+        let stamp = "20261101T000000Z";
+        let area = format!("{}/backups/{stamp}", crate::PROJECT_STATE_DIR);
+        let bytes = serde_json::to_vec(old).unwrap();
+        let receipt = json!({
+            "schema_version": 1, "project": root.to_string_lossy(), "backup": stamp,
+            "plan_digest": "sha256:fixture", "permission_reference": "fixture",
+            "state": "committed",
+            "moves": [{"path": ".claude/settings.json", "sha256": crate::digest(&bytes),
+                       "moved": true}],
+        });
+        write(format!("{area}/go-state/.claude/settings.json"), &bytes);
+        write(
+            format!("{area}/{}", crate::state_root::GO_STATE_RECEIPT),
+            &serde_json::to_vec(&receipt).unwrap(),
+        );
+        if let Some(current) = current {
+            write(
+                ".claude/settings.json".into(),
+                &serde_json::to_vec(current).unwrap(),
+            );
+        }
+        dir
+    }
+
+    fn preview(old: &Value, current: Option<&Value>) -> Candidates {
+        let dir = backed_up_project(old, current);
+        candidates(dir.path())
+            .unwrap()
+            .expect("the backup holds the settings")
+    }
+
+    /// The reason the `env` row gives for leaving `name` in the backup; `None` when it gives none.
+    fn left_out_reason(found: &Candidates, name: &str) -> Option<String> {
+        let env = found.rows.iter().find(|r| r["key"] == "env")?;
+        env["summary"]["refused"]
+            .as_array()?
+            .iter()
+            .find(|r| r["name"] == name)?["why"]
+            .as_str()
+            .filter(|why| !why.is_empty())
+            .map(str::to_string)
+    }
+
+    // SPEC-20261122-settings-write-check AC-5 (REQ-5): the preview leaves a feature switch the
+    // merge would newly turn on in the backup, and keeps every other candidate.
+    #[test]
+    fn merge_keeps_feature_switches_in_backup() {
+        const SWITCHES: [&str; 2] = [
+            "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
+            "CLAUDE_CODE_EXPERIMENTAL_CODE_MODE",
+        ];
+        let others = json!({
+            "model": "opus", "outputStyle": "Explanatory",
+            "permissions": {"allow": ["Bash(ls)"]},
+            "statusLine": {"type": "command", "command": "my-status"},
+        });
+        let with_env = |env: Value| {
+            let mut old = others.clone();
+            old["env"] = env;
+            old
+        };
+        let others_kept = |found: &Candidates| {
+            for key in ["model", "outputStyle", "permissions", "statusLine"] {
+                assert_eq!(found.carry.get(key), Some(&others[key]), "{key}");
+            }
+        };
+
+        // A switch that is off is an ordinary entry.
+        for off in ["0", ""] {
+            let env = json!({"EDITOR": "vim", SWITCHES[0]: off, SWITCHES[1]: off});
+            let found = preview(&with_env(env.clone()), None);
+            others_kept(&found);
+            assert_eq!(found.carry.get("env"), Some(&env), "{off:?}");
+        }
+
+        // Both switches on, and the file now holds neither.
+        let on = with_env(json!({"EDITOR": "vim", SWITCHES[0]: "1", SWITCHES[1]: "1"}));
+        let found = preview(&on, None);
+        others_kept(&found);
+        assert_eq!(found.carry.get("env"), Some(&json!({"EDITOR": "vim"})));
+        for name in SWITCHES {
+            assert!(left_out_reason(&found, name).is_some(), "{name}");
+        }
+
+        // A switch the file now holds is carried; the other one stays in the backup.
+        for (held, other) in [(SWITCHES[0], SWITCHES[1]), (SWITCHES[1], SWITCHES[0])] {
+            let current = json!({"env": { held: "1" }});
+            let found = preview(&on, Some(&current));
+            others_kept(&found);
+            assert_eq!(
+                found.carry.get("env"),
+                Some(&json!({"EDITOR": "vim", held: "1"})),
+                "{held}"
+            );
+            assert!(left_out_reason(&found, other).is_some(), "{other}");
+            assert!(left_out_reason(&found, held).is_none(), "{held}");
+        }
+
+        // Held as off is not held as on: the merge would turn it on.
+        let found = preview(&on, Some(&json!({"env": { SWITCHES[0]: "0" }})));
+        assert_eq!(found.carry.get("env"), Some(&json!({"EDITOR": "vim"})));
+
+        // Nothing else in `env`: no `env` candidate, and the reason carries no value.
+        let planted = "plantedswitchvalue41";
+        let found = preview(&with_env(json!({ SWITCHES[0]: planted })), None);
+        others_kept(&found);
+        assert!(found.carry.get("env").is_none(), "{:?}", found.carry);
+        let why = left_out_reason(&found, SWITCHES[0]).expect("a reason");
+        assert!(!why.contains(planted), "{why}");
+        let shown = Value::Array(found.rows).to_string();
+        assert!(!shown.contains(planted), "{shown}");
+    }
 }
