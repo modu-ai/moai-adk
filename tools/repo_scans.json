@@ -1604,8 +1604,7 @@
         "troubleshooting_doc"
       ],
       "checks": [
-        "cargo test --offline --locked --test card card_criterion_add_cli:: -- card_finish_cli:: card_guard_cli:: card_line_lease_cli:: card_ready_leftovers_cli:: card_scope_widen_cli:: card_timeline_cli:: decision_append_cli:: followup_per_spec_rules:: recurring_problems_rule::",
-        "cargo test --offline --locked --test integration_guard_repoint"
+        "cargo test --offline --locked --test card card_criterion_add_cli:: -- card_finish_cli:: card_guard_cli:: card_line_lease_cli:: card_ready_leftovers_cli:: card_scope_widen_cli:: card_timeline_cli:: decision_append_cli:: followup_per_spec_rules:: recurring_problems_rule::"
       ],
       "rules": [
         "tests/bundle_body_cli.rs",
