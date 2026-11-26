@@ -3056,7 +3056,7 @@ const STATE_WORDS: [&str; 7] = [
     "blocked",
 ];
 /// Every step id a plan prints (the retired-hosts ids come from the plan itself).
-const STEP_IDS: [&str; 12] = [
+const STEP_IDS: [&str; 13] = [
     "go-settings",
     "go-state",
     "reports",
@@ -3065,6 +3065,7 @@ const STEP_IDS: [&str; 12] = [
     "claude-settings",
     "hooks",
     "github",
+    "claude-md",
     "agents-picks",
     "agents-local-merge",
     "claude-settings-merge",

@@ -240,19 +240,10 @@ pub fn preview(project: &Path) -> Result<Preview, String> {
         None => (None, BTreeMap::<String, Recorded>::new()),
     };
     let tracked = tracked_paths(project);
-    let mut candidates: Vec<(String, Option<&'static str>)> = ROOT_SOURCES
-        .iter()
-        .map(|name| (name.to_string(), None))
-        .collect();
-    candidates.extend(local_rules(project));
 
     let mut sources = Vec::new();
     let mut refused = Vec::new();
-    for (path, refusal) in candidates {
-        let read = match refusal {
-            Some(reason) => Err(reason),
-            None => read_source(project, &path),
-        };
+    for (path, read) in read_candidates(project) {
         match read {
             Ok(Some(text)) => {
                 let sha256 = digest(text.as_bytes());
@@ -282,6 +273,39 @@ pub fn preview(project: &Path) -> Result<Preview, String> {
         sources,
         refused,
     })
+}
+
+/// One digest over the path and the bytes of every file the step would move, what a decline of
+/// the step is bound to. `None` while the root `CLAUDE.md` is no Go-generation file or a source
+/// cannot be read. Reads only, without git.
+pub fn source_digest(project: &Path) -> Option<String> {
+    go_claude_md(project)?;
+    let mut bound = Vec::new();
+    for (path, read) in read_candidates(project) {
+        if let Some(text) = read.ok()? {
+            bound.push(json!([path, digest(text.as_bytes())]));
+        }
+    }
+    Some(digest(Value::Array(bound).to_string().as_bytes()))
+}
+
+/// What one read of a source gives: its text, `None` without such a file, or why it is refused.
+type SourceRead = Result<Option<String>, &'static str>;
+
+/// Every path that can be a source, read: the root files in their order, then the local rules by
+/// path.
+fn read_candidates(project: &Path) -> impl Iterator<Item = (String, SourceRead)> + '_ {
+    ROOT_SOURCES
+        .iter()
+        .map(|name| (name.to_string(), None))
+        .chain(local_rules(project))
+        .map(move |(path, refusal)| {
+            let read = match refusal {
+                Some(reason) => Err(reason),
+                None => read_source(project, &path),
+            };
+            (path, read)
+        })
 }
 
 /// The answer of `claude-md-plan` for the `--keep` values `keep`. An error is a project that is

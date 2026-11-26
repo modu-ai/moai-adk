@@ -10,7 +10,9 @@
 //! refusal says why and leaves every byte, `.git` included, as it was. The `receipt_` cases
 //! (AC-6: REQ-10, REQ-11): a failed apply restores or names what it could not, and
 //! `claude-md-revert` undoes a receipt, also after a stop between two steps, keeps what changed
-//! since, follows no link and refuses a receipt no apply writes.
+//! since, follows no link and refuses a receipt no apply writes. The `step_` cases (AC-1: REQ-1,
+//! D-2) read the `claude-md` step of `project-update-plan`, the `leave_` cases (AC-7: D-9) its
+//! decline record, and the last `apply_` cases the preview and the undo order after an apply.
 //! Every case runs the real binary on a temporary project with a temporary HOME; a
 //! credential-shaped value is built at run time and appears in no output.
 
@@ -3440,4 +3442,636 @@ fn receipt_a_hostile_receipt_is_refused_with_nothing_written() {
         fs::read(fx.base.join("outside.md")).unwrap(),
         b"zq-outside\n"
     );
+}
+
+/// The id of the step of `project-update-plan` that replaces a Go-generation instruction file.
+const STEP: &str = "claude-md";
+
+impl Fx {
+    /// `project-update-plan`: it succeeds and leaves every byte as it was.
+    fn update(&self) -> Value {
+        let before = self.snapshot();
+        let out = self.run(&["project-update-plan", self.root.to_str().unwrap()]);
+        assert_eq!(
+            self.snapshot(),
+            before,
+            "project-update-plan wrote something"
+        );
+        assert_eq!(
+            out.code,
+            Some(0),
+            "project-update-plan failed: stdout {} stderr {}",
+            out.stdout,
+            out.stderr
+        );
+        let v: Value = serde_json::from_str(&out.stdout).expect("a JSON answer");
+        assert_eq!(v["ok"], json!(true), "{v}");
+        v["result"].clone()
+    }
+
+    /// Applies the profile step while it has a write, so that the generation step is computed
+    /// and not left waiting behind it.
+    fn settle_profile(&self) {
+        let plan = self.update();
+        let profile = update_step(&plan, "profile");
+        if profile["state"] == "ready" {
+            let words = filled(&profile["apply"]["argv"]);
+            self.piped(&strs(&words), &profile["apply"]["stdin"]);
+        }
+    }
+
+    /// A generation manifest that owns a project skill and records no request, as an earlier
+    /// release left it: the generation step asks the user and prints no command.
+    fn unrecorded_generation(&self) {
+        let skill = ".claude/skills/prj-checks/SKILL.md";
+        self.write(skill, "# zq-checks\n");
+        self.write(
+            &format!("{MOAI_DIR}/manifests/generation.json"),
+            json!({"owned_files": [{
+                "path": skill,
+                "section_id": "generation:project-skill:claude:prj-checks",
+                "baseline_sha256": sha(b"# zq-checks\n"),
+            }]})
+            .to_string(),
+        );
+    }
+
+    /// Runs a command with `stdin`, which must succeed; the answer's `result`.
+    fn piped(&self, args: &[&str], stdin: &Value) -> Value {
+        let mut child = Command::new(MOAI_BIN)
+            .args(args)
+            .clean_env()
+            .env("HOME", &self.home)
+            .env("PATH", "/usr/bin:/bin")
+            .env("LC_ALL", "C")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("spawn the binary");
+        common::feed_stdin(&mut child, stdin.to_string().as_bytes());
+        let out = child.wait_with_output().unwrap();
+        let v: Value = serde_json::from_slice(&out.stdout)
+            .unwrap_or_else(|_| panic!("{args:?}: {}", String::from_utf8_lossy(&out.stderr)));
+        assert_eq!(v["ok"], json!(true), "{args:?}: {v}");
+        v["result"].clone()
+    }
+
+    /// Runs a command the plan printed, with the permission filled in; the answer's `result`.
+    fn printed(&self, argv: &Value) -> Value {
+        let out = self.run_words(&filled(argv), &[]);
+        assert_eq!(
+            out.code,
+            Some(0),
+            "{argv}: stdout {} stderr {}",
+            out.stdout,
+            out.stderr
+        );
+        let v: Value = serde_json::from_str(&out.stdout).expect("a JSON answer");
+        assert_eq!(v["ok"], json!(true), "{v}");
+        v["result"].clone()
+    }
+}
+
+/// The words after `moai` of a printed command, with the permission filled in.
+fn filled(argv: &Value) -> Vec<String> {
+    let argv = words(argv.as_array().unwrap_or_else(|| panic!("no argv: {argv}")));
+    assert_eq!(argv[0], "moai", "{argv:?}");
+    argv[1..]
+        .iter()
+        .map(|word| {
+            if word == PERMISSION_PLACEHOLDER {
+                APPROVAL.to_string()
+            } else {
+                word.clone()
+            }
+        })
+        .collect()
+}
+
+fn update_step<'v>(plan: &'v Value, name: &str) -> &'v Value {
+    list(plan, "phases")
+        .iter()
+        .flat_map(|phase| list(phase, "steps"))
+        .find(|step| step["step"] == name)
+        .unwrap_or_else(|| panic!("no step {name}: {plan}"))
+}
+
+fn phase_ids(plan: &Value, phase: &str) -> Vec<String> {
+    let phase = list(plan, "phases")
+        .iter()
+        .find(|p| p["phase"] == phase)
+        .unwrap_or_else(|| panic!("no phase {phase}: {plan}"));
+    list(phase, "steps")
+        .iter()
+        .map(|s| s["step"].as_str().unwrap().to_string())
+        .collect()
+}
+
+/// The `step` values (or the strings) of a list of the plan's question.
+fn named(values: &Value) -> Vec<String> {
+    values
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|v| v.as_str().or_else(|| v["step"].as_str()))
+        .map(String::from)
+        .collect()
+}
+
+/// The ids of a step's choices, none for a step that prints none.
+fn choice_ids(step: &Value) -> Vec<String> {
+    step["preview"]["choices"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|c| c["id"].as_str().unwrap().to_string())
+        .collect()
+}
+
+fn choice<'v>(step: &'v Value, id: &str) -> &'v Value {
+    step["preview"]["choices"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|c| c["id"] == id)
+        .unwrap_or_else(|| panic!("no choice {id}: {step}"))
+}
+
+/// The step asks, and nothing the plan's one question runs by itself includes it.
+fn assert_left_to_the_user(plan: &Value) {
+    let step = update_step(plan, STEP);
+    assert_eq!(step["state"], json!("needs_decision"), "{step}");
+    assert_eq!(step["apply"], Value::Null, "{step}");
+    assert_eq!(step["plan_digest"], Value::Null, "{step}");
+    assert_eq!(step["next"], json!("ask"), "{step}");
+    let ask = &plan["ask"];
+    assert!(named(&ask["picks"]).contains(&STEP.to_string()), "{ask}");
+    assert!(!named(&ask["steps"]).contains(&STEP.to_string()), "{ask}");
+    let order = &plan["chain"]["apply_order"];
+    assert!(!named(order).contains(&STEP.to_string()), "{order}");
+}
+
+/// Why the step prints no `replace`: the reasons the preview lists for that choice.
+fn replace_blocked(step: &Value) -> Vec<String> {
+    let blocked = step["preview"]["blocked"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no blocked choice: {step}"));
+    assert_eq!(blocked.len(), 1, "{step}");
+    assert_eq!(blocked[0]["id"], json!("replace"), "{step}");
+    words(list(&blocked[0], "blocked"))
+}
+
+#[test]
+fn step_asks_replace_or_leave_beside_a_generation_that_cannot_rebuild() {
+    let fx = apply_project();
+    fx.settle_profile();
+    fx.unrecorded_generation();
+    let plan = fx.update();
+    let step = update_step(&plan, STEP);
+    assert_eq!(
+        update_step(&plan, "generation")["state"],
+        json!("needs_decision"),
+        "{plan}"
+    );
+    // After every backup step, first of the merge phase.
+    assert_eq!(
+        phase_ids(&plan, "backup"),
+        ["go-settings", "go-state", "reports", "go-residue"]
+    );
+    assert_eq!(
+        phase_ids(&plan, "merge"),
+        [
+            STEP,
+            "agents-picks",
+            "agents-local-merge",
+            "claude-settings-merge"
+        ]
+    );
+    assert_left_to_the_user(&plan);
+    assert_eq!(plan["all_unchanged"], json!(false));
+    assert_eq!(step["preview"]["go_claude_md"], json!("manifest"), "{step}");
+    assert_eq!(paths(&step["preview"]), go_sources(), "{step}");
+    assert_eq!(choice_ids(step), ["replace", "leave"]);
+
+    // `replace` is the recommended one and prints no apply: its command is the preview that
+    // takes the picks, which prints the apply.
+    let replace = choice(step, "replace");
+    assert_eq!(replace["recommended"], json!(true), "{replace}");
+    assert_eq!(replace.get("apply"), None, "{replace}");
+    let root = fx.root.to_str().unwrap();
+    assert_eq!(
+        replace["plan"]["argv"],
+        json!(["moai", "claude-md-plan", root]),
+        "{replace}"
+    );
+    let (_, apply) = assert_apply(&fx.printed(&replace["plan"]["argv"]));
+    assert_eq!(apply[1], "claude-md-apply");
+
+    let leave = choice(step, "leave");
+    assert_eq!(leave["recommended"], json!(false), "{leave}");
+    let sha256 = step["decline"]["source_sha256"]
+        .as_str()
+        .unwrap_or_else(|| panic!("no decline: {step}"));
+    assert_eq!(
+        leave["apply"]["argv"],
+        json!([
+            "moai",
+            "project-update-decline",
+            root,
+            "--step",
+            STEP,
+            "--source-sha256",
+            sha256,
+            "--permission-reference",
+            PERMISSION_PLACEHOLDER
+        ]),
+        "{leave}"
+    );
+    assert_eq!(step["decline"]["argv"], leave["apply"]["argv"], "{step}");
+    let effect = step["decline"]["effect"].as_str().unwrap();
+    assert!(
+        effect.contains("old instruction files") && effect.contains("loaded"),
+        "{effect}"
+    );
+}
+
+#[test]
+fn step_shows_for_a_go_file_that_gained_a_managed_block() {
+    let fx = apply_project();
+    let (begin, end) = block("moai-workflow");
+    fx.write(
+        "CLAUDE.md",
+        format!(
+            "<!-- moai:learned-start -->\n<!-- moai:learned-end -->\n\n{begin}\nzq-managed\n{end}\n"
+        ),
+    );
+    let plan = fx.update();
+    let step = update_step(&plan, STEP);
+    assert_left_to_the_user(&plan);
+    assert_eq!(step["preview"]["go_claude_md"], json!("marker"), "{step}");
+    assert_eq!(choice_ids(step), ["replace", "leave"]);
+}
+
+#[test]
+fn step_reads_unchanged_without_a_go_proof_and_the_other_steps_stay() {
+    let fx = apply_project();
+    let (begin, end) = block("moai-workflow");
+    // A managed block and no Go marker, although the Go manifest records the path.
+    let managed = format!("# zq-own\n\n{begin}\nzq-managed\n{end}\n");
+    for body in [Some(managed.as_str()), None] {
+        match body {
+            Some(body) => fx.write("CLAUDE.md", body),
+            None => fs::remove_file(fx.root.join("CLAUDE.md")).unwrap(),
+        }
+        let plan = fx.update();
+        let step = update_step(&plan, STEP);
+        assert_eq!(step["state"], json!("unchanged"), "{step}");
+        assert_eq!(step["next"], json!("none"), "{step}");
+        for key in ["apply", "plan_digest", "preview", "decline"] {
+            assert_eq!(step[key], Value::Null, "{key}: {step}");
+        }
+        assert!(!named(&plan["ask"]["picks"]).contains(&STEP.to_string()));
+        // The other phases list the steps they listed, and none of them speaks of this one.
+        assert_eq!(
+            phase_ids(&plan, "merge"),
+            [
+                STEP,
+                "agents-picks",
+                "agents-local-merge",
+                "claude-settings-merge"
+            ]
+        );
+        for phase in list(&plan, "phases") {
+            for other in list(phase, "steps") {
+                if other["step"] != STEP {
+                    assert!(!other.to_string().contains(STEP), "{other}");
+                }
+            }
+        }
+        // The pick of `AGENTS.md` is not skipped for the sake of a file that is no Go file.
+        let picks = update_step(&plan, "agents-picks");
+        assert_ne!(picks["state"], json!("skip"), "{picks}");
+    }
+}
+
+#[test]
+fn step_waits_while_the_reports_step_has_a_command() {
+    let fx = apply_project();
+    fx.write(&format!("{MOAI_DIR}/reports/zq-report.md"), "zq-report\n");
+    let plan = fx.update();
+    let step = update_step(&plan, STEP);
+    assert!(update_step(&plan, "reports")["apply"].is_object(), "{plan}");
+    assert_eq!(step["state"], json!("blocked"), "{step}");
+    assert_eq!(step["next"], json!("wait"), "{step}");
+    assert!(
+        step["reason"].as_str().unwrap().contains("backup"),
+        "{step}"
+    );
+    for key in ["apply", "plan_digest", "preview", "decline"] {
+        assert_eq!(step[key], Value::Null, "{key}: {step}");
+    }
+    let follows = list(&plan["ask"], "follows");
+    let waiting = follows
+        .iter()
+        .find(|f| f["step"] == STEP)
+        .unwrap_or_else(|| panic!("the step does not follow: {plan}"));
+    assert_eq!(waiting["after"], json!(["reports"]), "{waiting}");
+}
+
+#[test]
+fn step_waits_while_the_optional_residue_step_has_a_command() {
+    let mut fx = apply_project();
+    let agent = ".claude/agents/zq-go.md";
+    fx.record(agent, "zq-go agent\n");
+    fx.manifest();
+    fx.write(agent, "zq-go agent\n");
+    let plan = fx.update();
+    let residue = update_step(&plan, "go-residue");
+    assert_eq!(residue["state"], json!("optional"), "{residue}");
+    assert!(residue["apply"].is_object(), "{residue}");
+    let step = update_step(&plan, STEP);
+    assert_eq!(step["state"], json!("blocked"), "{step}");
+    assert_eq!(step["next"], json!("wait"), "{step}");
+    assert_eq!(step["preview"], Value::Null, "{step}");
+
+    // Once the printed command ran, the step asks.
+    fx.printed(&residue["apply"]["argv"]);
+    assert_left_to_the_user(&fx.update());
+}
+
+#[test]
+fn step_offers_no_replace_command_while_the_profile_is_unusable() {
+    let fx = apply_project();
+    fs::remove_file(fx.root.join(profile_rel())).unwrap();
+    for needle in ["project profile", "placeholder"] {
+        if needle == "placeholder" {
+            fx.write(
+                &profile_rel(),
+                json!({"schema_version": 2, "project_id": "zq-demo", "purpose": "zq",
+                       "tools": ["unspecified"], "development_methods": ["unspecified"],
+                       "hosts": ["claude"]})
+                .to_string(),
+            );
+        }
+        let plan = fx.update();
+        let step = update_step(&plan, STEP);
+        assert_left_to_the_user(&plan);
+        assert_eq!(choice_ids(step), ["leave"]);
+        let blocked = replace_blocked(step);
+        assert!(
+            blocked
+                .iter()
+                .any(|r| r.contains(needle) && r.contains("/moai project")),
+            "{blocked:?}"
+        );
+        assert!(
+            step["reason"].as_str().unwrap().contains("/moai project"),
+            "{step}"
+        );
+    }
+}
+
+#[test]
+fn step_names_every_reason_the_preview_blocks_the_apply_for() {
+    // The backup folder is not ignored, and the backup folder is a link: `leave` stays.
+    let unignored = apply_project();
+    unignored.write(".gitignore", "AGENTS.local.md\nCLAUDE.local.md\n");
+    let linked = apply_project();
+    let outside = linked.base.join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    linked.link(&format!("{MOAI_DIR}/backups"), &outside);
+    for fx in [unignored, linked] {
+        let expected = words(list(&fx.plan(), "apply_blocked"));
+        assert!(!expected.is_empty());
+        let plan = fx.update();
+        let step = update_step(&plan, STEP);
+        assert_left_to_the_user(&plan);
+        assert_eq!(choice_ids(step), ["leave"]);
+        assert_eq!(replace_blocked(step), expected, "{step}");
+        let reason = step["reason"].as_str().unwrap();
+        for why in &expected {
+            assert!(reason.contains(why), "no {why:?} in {reason}");
+        }
+    }
+}
+
+#[test]
+fn leave_writes_only_the_decline_record_and_the_step_reads_skip() {
+    let fx = apply_project();
+    let plan = fx.update();
+    let step = update_step(&plan, STEP);
+    let argv = choice(step, "leave")["apply"]["argv"].clone();
+    let sha256 = step["decline"]["source_sha256"].clone();
+    let before = fx.snapshot();
+    let answer = fx.printed(&argv);
+    assert_eq!(answer["state"], json!("declined"), "{answer}");
+
+    let record = fx
+        .root
+        .join(MOAI_DIR)
+        .join("manifests/update-declined.json");
+    let mut after = fx.snapshot();
+    let (_, bytes) = after
+        .remove(&record)
+        .unwrap_or_else(|| panic!("no record: {answer}"));
+    // The folder of the record is the one other new entry.
+    after.retain(|path, _| before.contains_key(path) || record.parent() != Some(path.as_path()));
+    assert_eq!(after, before, "leave wrote more than its record");
+    let written: Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(
+        written["declined"],
+        json!({STEP: {"source_sha256": sha256}}),
+        "{written}"
+    );
+
+    let plan = fx.update();
+    let step = update_step(&plan, STEP);
+    assert_eq!(step["state"], json!("skip"), "{step}");
+    assert_eq!(step["next"], json!("none"), "{step}");
+    assert_eq!(step["apply"], Value::Null, "{step}");
+    assert_eq!(step["preview"]["declined"], json!(true), "{step}");
+    assert_eq!(step["preview"].get("choices"), None, "{step}");
+    assert_eq!(
+        step["decline"]["ask_again_argv"][5],
+        json!("--ask-again"),
+        "{step}"
+    );
+
+    fx.printed(&step["decline"]["ask_again_argv"]);
+    assert_left_to_the_user(&fx.update());
+}
+
+#[test]
+fn leave_asks_again_when_the_bytes_of_a_source_change() {
+    let fx = apply_project();
+    let plan = fx.update();
+    fx.printed(&choice(update_step(&plan, STEP), "leave")["apply"]["argv"]);
+    let state = || update_step(&fx.update(), STEP)["state"].clone();
+    assert_eq!(state(), json!("skip"));
+    // A file the step does not move changes nothing.
+    fx.write("README.md", "zq-readme\n");
+    assert_eq!(state(), json!("skip"));
+
+    for source in go_sources() {
+        let bytes = fx.read(&source);
+        let mut changed = bytes.clone();
+        // The marker keeps `CLAUDE.md` a Go-generation file whatever its record says.
+        changed.extend_from_slice(b"<!-- moai:learned-start -->\nzq-more\n");
+        fx.write(&source, changed);
+        assert_eq!(state(), json!("needs_decision"), "{source}");
+        fx.write(&source, bytes);
+        assert_eq!(state(), json!("skip"), "{source}");
+    }
+
+    fx.write(&rules("added.md"), "zq-added\n");
+    assert_eq!(state(), json!("needs_decision"));
+}
+
+#[test]
+fn leave_is_not_offered_while_a_source_cannot_be_read() {
+    let fx = apply_project();
+    let plan = fx.update();
+    let argv = choice(update_step(&plan, STEP), "leave")["apply"]["argv"].clone();
+    let outside = fx.base.join("outside.md");
+    fs::rename(fx.root.join("AGENTS.md"), &outside).unwrap();
+    fx.link("AGENTS.md", &outside);
+    let plan = fx.update();
+    let step = update_step(&plan, STEP);
+    assert_eq!(step["state"], json!("needs_decision"), "{step}");
+    assert_eq!(step["next"], json!("report"), "{step}");
+    assert!(choice_ids(step).is_empty(), "{step}");
+    assert_eq!(step["decline"], Value::Null, "{step}");
+    assert!(
+        replace_blocked(step)
+            .iter()
+            .any(|r| r.contains("AGENTS.md is a link")),
+        "{step}"
+    );
+    // The command printed before the link appeared records nothing.
+    let before = fx.snapshot();
+    let out = fx.run_words(&filled(&argv), &[]);
+    assert_eq!(out.code, Some(1), "{} {}", out.stdout, out.stderr);
+    assert!(out.stdout.contains("has no source now"), "{}", out.stdout);
+    assert_eq!(fx.snapshot(), before);
+}
+
+#[test]
+fn apply_reads_the_step_unchanged_on_the_next_preview() {
+    let fx = apply_project();
+    fx.settle_profile();
+    fx.unrecorded_generation();
+    assert_left_to_the_user(&fx.update());
+    fx.applied(&[]);
+    // The Go manifest still records `CLAUDE.md` in the backup folder.
+    assert!(fx.root.join(GO_BACKUP).join("manifest.json").is_file());
+    fx.settle_profile();
+    let plan = fx.update();
+    let step = update_step(&plan, STEP);
+    assert_eq!(step["state"], json!("unchanged"), "{step}");
+    assert_eq!(step["preview"], Value::Null, "{step}");
+    assert_eq!(
+        update_step(&plan, "generation")["state"],
+        json!("needs_decision"),
+        "{plan}"
+    );
+}
+
+#[test]
+fn apply_leaves_the_claude_md_line_of_a_recorded_generation_unchanged() {
+    for old_file_is_the_baseline in [false, true] {
+        let fx = Fx::new();
+        // The language only the chat setting names reaches both renderings.
+        fx.profile(json!({"user_chat": "ko"}));
+        // A project skill, so that the apply records the request.
+        fx.settle_profile();
+        let first = fx.update();
+        let mut request = update_step(&first, "generation")["apply"]["stdin"]["request"].clone();
+        assert!(request.is_object(), "{first}");
+        request["project_skills"] = json!([{"id": "prj-checks", "hosts": [],
+            "purpose": "The checks to run before a change is done"}]);
+        let root = fx.root.to_str().unwrap().to_string();
+        let planned = fx.piped(&["generation-plan", &root], &request);
+        let digest = planned["plan_digest"].as_str().unwrap().to_string();
+        fx.piped(
+            &[
+                "generation-apply",
+                &root,
+                "--plan-digest",
+                &digest,
+                "--permission-reference",
+                APPROVAL,
+            ],
+            &planned,
+        );
+
+        // The Go file stands where the generation recorded its managed section.
+        fx.go_marker();
+        if old_file_is_the_baseline {
+            let rel = format!("{MOAI_DIR}/manifests/generation.json");
+            let mut manifest: Value = serde_json::from_slice(&fx.read(&rel)).unwrap();
+            let old = sha(&fx.read("CLAUDE.md"));
+            let mut seen = 0;
+            for entry in manifest["owned_files"].as_array_mut().unwrap() {
+                if entry["path"] == "CLAUDE.md" {
+                    entry["baseline_sha256"] = json!(old);
+                    seen += 1;
+                }
+            }
+            assert_eq!(seen, 1, "{manifest}");
+            fx.write(&rel, manifest.to_string());
+        }
+        assert_left_to_the_user(&fx.update());
+        fx.applied(&[]);
+        fx.settle_profile();
+
+        let plan = fx.update();
+        assert_eq!(update_step(&plan, STEP)["state"], json!("unchanged"));
+        let generation = update_step(&plan, "generation");
+        let row = list(&generation["preview"], "files")
+            .iter()
+            .find(|f| f["path"] == "CLAUDE.md")
+            .unwrap_or_else(|| panic!("no CLAUDE.md row: {generation}"));
+        assert_eq!(row["action"], json!("unchanged"), "{generation}");
+    }
+}
+
+#[test]
+fn apply_undo_order_takes_the_step_back_first() {
+    let fx = apply_project();
+    let plan = fx.update();
+    let undo = list(&plan["undo_order"], "steps");
+    // The step is applied after the backup and install steps, so it is undone before them.
+    assert_eq!(
+        named(&plan["undo_order"]["steps"]),
+        [
+            STEP,
+            "hooks",
+            "generation",
+            "go-residue",
+            "go-state",
+            "go-settings"
+        ]
+    );
+    let entry = undo.iter().find(|s| s["step"] == STEP).unwrap();
+    let commands = words(list(entry, "commands"));
+    assert_eq!(commands.len(), 1, "{entry}");
+
+    let before = fx.files();
+    let stamp = fx.applied(&[]);
+    let filled: Vec<String> = commands[0]
+        .replace("<receipt of the claude-md step>", &stamp)
+        .replace("<reference>", APPROVAL)
+        .replace("<PROJECT>", fx.root.to_str().unwrap())
+        .split(' ')
+        .map(String::from)
+        .collect();
+    assert_eq!(filled[0], "moai", "{filled:?}");
+    let out = fx.run_words(&filled[1..], &[]);
+    assert_eq!(out.code, Some(0), "{} {}", out.stdout, out.stderr);
+    let after = fx.files();
+    for source in go_sources() {
+        let path = fx.root.join(&source);
+        assert_eq!(after.get(&path), before.get(&path), "{source}");
+    }
 }

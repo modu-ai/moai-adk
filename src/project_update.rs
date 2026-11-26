@@ -54,6 +54,9 @@ pub const AFTER_GO_SETTINGS: &str = "re-run after the go-settings apply";
 /// changes what the go-state plan lists under the report folders, so a digest made before it
 /// would be stale.
 pub const AFTER_REPORTS: &str = "re-run after the reports apply";
+/// Why the `claude-md` step waits while an earlier backup step has a command to run: that command
+/// moves or rewrites project files, so the instruction files are read after it.
+pub const AFTER_BACKUP_COMMANDS: &str = "re-run after the backup steps that still print a command";
 
 const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/ state, the \
      Go tool files under .claude/ and .agents/, settings and instruction files \
@@ -71,8 +74,13 @@ pub const AFTER_INSTALL: &str = "re-run after the install phase";
 /// reason has another meaning for one step, by its name too. A reason without a row here reads
 /// as a step that waits for nothing. Only the steps of the table that can run in this preview are
 /// named by the plan.
-const BEHIND: [(&str, Option<&str>, &[&str]); 7] = [
+const BEHIND: [(&str, Option<&str>, &[&str]); 8] = [
     (AFTER_BACKUP, None, &["go-settings", "go-state", "reports"]),
+    (
+        AFTER_BACKUP_COMMANDS,
+        None,
+        &["go-settings", "go-state", "reports", "go-residue"],
+    ),
     (AFTER_PROFILE, None, &["profile"]),
     (AFTER_SETTINGS, None, &["claude-settings"]),
     (AFTER_GO_SETTINGS, None, &["go-settings"]),
@@ -87,7 +95,8 @@ const BEHIND: [(&str, Option<&str>, &[&str]); 7] = [
     (AFTER_INSTALL, None, &["generation"]),
 ];
 
-const MERGE_REASON: &str = "AGENTS.md and AGENTS.local.md move into CLAUDE.md and \
+const MERGE_REASON: &str = "a Go-generation CLAUDE.md is replaced by a new one or left, as the \
+     user picks (claude-md); AGENTS.md and AGENTS.local.md move into CLAUDE.md and \
      CLAUDE.local.md or are left, and once their text is there the user may delete the \
      originals, as the user picks (agents-picks); the text of \
      AGENTS.local.md alone merges into CLAUDE.local.md (#2936 R10); the user's earlier \
@@ -177,13 +186,15 @@ impl Step {
         )
     }
 
-    /// The id of the recommended choice of a step that asks, when that choice needs no
-    /// confirmation word.
+    /// The id of the recommended choice of a step that asks, when that choice prints its own
+    /// command and the command needs no confirmation word: only such a choice can be run by the
+    /// plan's one question.
     fn pick(&self) -> Option<String> {
         self.choices()
             .iter()
             .find(|c| {
                 c["recommended"] == json!(true)
+                    && c["apply"].is_object()
                     && !confirms(
                         c["apply"]["argv"]
                             .as_array()
@@ -2045,6 +2056,9 @@ fn undo_order() -> Value {
     json!({
         "rule": "undo the step applied last first; every command needs its own permission reference",
         "steps": [
+            {"step": "claude-md", "commands": [
+                "moai claude-md-revert <PROJECT> --receipt <receipt of the claude-md step> --permission-reference <reference>",
+            ], "note": "only when a claude-md-apply ran (the user picked replace); it puts the moved instruction files back from their backup and keeps a new file changed since as a conflict"},
             {"step": "hooks", "commands": [
                 "moai go-hooks-revert --receipt <receipt of the hooks step> --permission-reference <reference> <PROJECT>",
             ], "note": "for a hooks step that ran go-hooks-apply (the Go hook set); a hooks step that ran hooks-apply --host claude over an existing settings file printed its own `revert` (moai hooks-revert <PROJECT> --receipt <id> --permission-reference <reference>), and a first install has nothing to revert"},
@@ -2149,6 +2163,89 @@ fn go_residue_step(root: &Path, shown: &str, others_pending: bool) -> Result<Ste
     })
 }
 
+/// The `claude-md` step, the merge phase's first: a `CLAUDE.md` of the Go generation (see
+/// [`claude_md::go_claude_md`]) is replaced by a new one, its text moved into a backup, or left
+/// as it is. Nothing here writes, and the step never carries a command of its own: `replace`
+/// starts at the `claude-md-plan` preview, which takes the picks and prints the apply, and
+/// `leave` records the decline.
+///
+/// - `unchanged`: the root `CLAUDE.md` is no Go-generation file; nothing more is read.
+/// - `blocked`: an earlier backup step has a command to run.
+/// - `needs_decision`: the user picks. `replace` is offered only while the preview prints an apply
+///   command; otherwise it is listed under `blocked` with every reason. `leave` is offered only
+///   while every file the step would move can be read.
+/// - `skip`: the user declined the step for the bytes those files have now.
+fn claude_md_step(root: &Path, shown: &str, backup: &[Step]) -> Result<Step> {
+    const NAME: &str = declined::CLAUDE_MD;
+    if claude_md::go_claude_md(root).is_none() {
+        return Ok(Step::waiting(
+            NAME,
+            "unchanged",
+            "the root CLAUDE.md is not a Go-generation instruction file",
+        ));
+    }
+    if backup.iter().any(|s| s.apply.is_some()) {
+        return Ok(Step::waiting(NAME, "blocked", AFTER_BACKUP_COMMANDS));
+    }
+    let plan = claude_md::plan(root, &[])?;
+    let reasons: Vec<&str> = plan["apply_blocked"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    let source = claude_md::source_digest(root);
+    let mut choices = Vec::new();
+    let mut blocked = Vec::new();
+    let reason = if reasons.is_empty() {
+        choices.push(json!({
+            "id": "replace",
+            "recommended": true,
+            "effect": "move the listed instruction files into a backup and write a new CLAUDE.md \
+                       from the project profile; run the plan command, adding --keep \
+                       <id>=shared|personal for each hunk to keep, then the apply command it \
+                       prints",
+            "plan": {"argv": ["moai", "claude-md-plan", shown], "stdin": Value::Null},
+        }));
+        "the root CLAUDE.md is a Go-generation instruction file; the user picks replace \
+         (recommended) or leave"
+            .to_string()
+    } else {
+        blocked.push(json!({"id": "replace", "blocked": reasons}));
+        format!(
+            "the root CLAUDE.md is a Go-generation instruction file; replace prints no command: {}",
+            reasons.join("; ")
+        )
+    };
+    if let Some(sha) = &source {
+        choices.push(json!({
+            "id": "leave",
+            "recommended": false,
+            "effect": declined::decline_object(shown, NAME, sha, false)["effect"],
+            "apply": {"argv": declined::decline_argv(shown, NAME, sha), "stdin": Value::Null},
+        }));
+    }
+    let step = Step {
+        name: NAME,
+        state: "needs_decision",
+        reason,
+        preview: json!({
+            "go_claude_md": plan["go_claude_md"],
+            "go_manifest": plan["go_manifest"],
+            "sources": plan["sources"],
+            "refused": plan["refused"],
+            "warnings": plan["warnings"],
+            "blocked": blocked,
+            "choices": choices,
+        }),
+        plan_digest: None,
+        apply: None,
+    };
+    // A record that cannot be read changes nothing.
+    let record = declined::read(root).unwrap_or_default();
+    Ok(declined::read_step(shown, &record, step, source))
+}
+
 /// The whole preview. Writes nothing.
 pub fn plan(project: &Path) -> Result<Value> {
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
@@ -2195,7 +2292,11 @@ pub fn plan(project: &Path) -> Result<Value> {
     };
     // The retired hosts are always in the preview, whatever the profile or the backup phase says.
     install.extend(host_steps(&root));
-    let merge = merge_steps(&root, &shown, &backup, &install);
+    let mut merge = merge_steps(&root, &shown, &backup, &install);
+    // The old instruction files come first in the merge phase, whatever the install steps read;
+    // they wait only while a backup step prints a command.
+    let instructions = or_blocked(declined::CLAUDE_MD, claude_md_step(&root, &shown, &backup));
+    merge.insert(0, instructions);
     let all_unchanged = backup
         .iter()
         .chain(&install)

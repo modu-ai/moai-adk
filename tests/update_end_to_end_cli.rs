@@ -561,8 +561,11 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
     assert_eq!(w.order, ORDER, "{:?}", open_steps(&w.last));
     let steps = w.last["undo_order"]["steps"].as_array().unwrap();
     let printed: Vec<&str> = steps.iter().map(|s| s["step"].as_str().unwrap()).collect();
-    let mut reverse = ORDER.to_vec();
-    reverse.reverse();
+    // `claude-md` is listed first: it applies after the install steps, on the user's pick only,
+    // so this walk, which runs the commands the steps print, never applies it.
+    assert!(!w.order.iter().any(|s| s == "claude-md"), "{:?}", w.order);
+    let mut reverse = vec!["claude-md"];
+    reverse.extend(ORDER.iter().rev());
     assert_eq!(printed, reverse, "{}", w.last["undo_order"]);
     let commands = |step: &str| -> Vec<String> {
         steps.iter().find(|s| s["step"] == step).unwrap()["commands"]
@@ -639,9 +642,10 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
         "a refused revert writes nothing"
     );
 
-    // The printed order: every printed command of every step, one after the other.
+    // The printed order: every printed command of every step the walk applied, one after the
+    // other.
     let mut ran = 0;
-    for step in steps {
+    for step in steps.iter().filter(|s| s["step"] != "claude-md") {
         for cmd in step["commands"].as_array().unwrap() {
             let out = run_printed(cmd.as_str().unwrap());
             assert_eq!(out["ok"], json!(true), "{}: {cmd}: {out}", step["step"]);

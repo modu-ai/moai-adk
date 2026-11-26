@@ -43,3 +43,22 @@ operation `claude_md.plan` · 코드 `src/ops/claude_md_plan.rs`, `src/project_u
 - `warnings`: 결과 파일이 200줄을 넘으면 파일 이름과 줄 수. `.claude/CLAUDE.md` 가 있으면 알린다(읽지도 옮기지도 않는다). 경고는 적용 명령을 막지 않는다.
 - `apply_blocked`: 적용 명령을 내지 않는 이유들. Go 세대 지침 파일이 아닌 루트 `CLAUDE.md`(`go_claude_md` 가 `null`), 거절한 출처, 보통 상대 경로가 아니거나 이름이 `.gitignore` 인 출처, 없거나 읽지 못하는 프로필, 첫 실행의 자리표시 프로필, 관리 표지 문법이 든 프로필 값, 비밀 모양 줄이 있는 묶음의 `shared` 선택, 링크이거나 폴더가 아닌 백업 폴더, git 작업 트리에서 git 이 무시하지 않는(또는 git 이 대답하지 못하는) 백업 폴더, `personal` 선택인데 `CLAUDE.local.md` 를 git 에서 빼 둘 수 없는 경우(추적 중, 사용자의 `!` 규칙, 규칙이 필요한데 `.gitignore` 가 링크이거나 바꿀 수 없음). 백업 폴더는 형식만 같은 임시 시각 이름으로 git 에 물어보고, 적용은 실제 이름으로 다시 확인한다. 자세한 조건은 [`claude-md-apply`](claude_md_apply.md)에 있다.
 - `plan_digest` 와 `apply`: `apply_blocked` 가 비었을 때만 값이 있다(그 밖은 `null`). digest 는 모든 출처의 경로와 sha256, 프로필 바이트, 정렬한 선택, 결과 글을 묶는다. `apply.argv` 는 `moai claude-md-apply <프로젝트> [--keep ...] --plan-digest <digest> --permission-reference <permission-reference>` 낱말 목록이고 선택이 없어도 낸다.
+
+## `project-update-plan` 의 `claude-md` 단계
+
+merge 단계의 첫 단계다. 설치 단계의 상태와 상관없이 계산하고, 아무것도 쓰지 않는다. 단계 자체의 `apply` 와 `plan_digest` 는 항상 `null` 이고, 명령은 선택(`preview.choices`) 안에만 있다.
+
+| 상태 | 조건 |
+| --- | --- |
+| `unchanged` | 루트 `CLAUDE.md` 가 Go 세대 지침 파일이 아니다(`go_claude_md` 가 `null`). 그 밖은 읽지 않고 `preview` 는 `null` 이다. |
+| `blocked` | 백업 단계(`go-settings`, `go-state`, `reports`, `go-residue`) 가운데 명령을 낸 단계가 있다. `reason` 은 `re-run after the backup steps that still print a command`, `next` 는 `wait` 이다. `go-residue` 는 `optional` 이어도 명령이 있으면 여기에 든다. 명령 없이 `needs_decision` 인 `go-state` 는 들지 않는다. |
+| `needs_decision` | 그 밖. 사용자가 고른다. |
+| `skip` | 지금 출처 바이트에 대해 사용자가 거절했다. 선택은 빠지고 `decline.ask_again_argv` 가 붙는다. |
+
+`preview` 의 `go_claude_md`, `go_manifest`, `sources`, `refused`, `warnings` 는 선택 없이 실행한 `claude-md-plan` 의 같은 필드다. 프로젝트 줄의 글은 싣지 않는다.
+
+- `replace`(권장): `claude-md-plan` 이 적용 명령을 낼 때만 있다. `apply` 대신 `plan.argv`(`moai claude-md-plan <프로젝트>`)를 낸다. 그 명령에 `--keep` 선택을 더해 실행하면 적용 명령이 나온다. `apply` 가 없으므로 계획의 한 번 묻기(`ask.steps`, `chain.apply_order`)는 이 단계를 실행하지 않고 `ask.picks` 에 둔다.
+- `leave`: 옮길 출처를 모두 읽을 수 있을 때만 있다. `apply.argv` 는 `project-update-decline --step claude-md` 이고 거절 기록 한 파일만 쓴다.
+- `blocked`: `replace` 를 낼 수 없으면 `[{"id": "replace", "blocked": [...]}]` 에 `apply_blocked` 의 이유(프로필이 없거나 자리표시, git 이 무시하지 않는 백업 폴더, 거절한 출처 등)를 모두 싣고 `reason` 에도 적는다. 읽지 못하는 출처가 있으면 선택이 하나도 없고 `next` 는 `report` 다.
+
+거절 digest 는 옮길 모든 출처의 경로와 sha256 을 묶는다. 출처의 바이트가 바뀌거나 출처가 늘거나 줄면 다시 묻는다. `claude-md-apply` 를 실행했다면 `undo_order` 의 첫 항목인 [`claude-md-revert`](claude_md_revert.md)로 되돌린다.
