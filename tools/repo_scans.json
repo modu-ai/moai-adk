@@ -2858,8 +2858,8 @@
       "tests": [
         "tests/skill_text_citations.rs::scan_shipped_files_outside_the_pending_list_are_clean"
       ],
-      "checks": [
-        "cargo test --offline --locked --test skill_text_citations"
+      "test_targets": [
+        "skill_text_citations"
       ],
       "rules": [
         "tests/skill_text_citations.rs"
