@@ -2953,6 +2953,25 @@
         }
       ],
       "rejects": "A file under skills/ or agents/ that names a tools/ script of this repository (.sh, .py or .json); a user project has none"
+    },
+    {
+      "id": "home-env-readers",
+      "always": true,
+      "tests": [
+        "tests/home_env_readers.rs::the_checked_in_sources_match_the_list"
+      ],
+      "test_targets": [
+        "home_env_readers"
+      ],
+      "rules": [
+        "tests/home_env_readers.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/"
+        }
+      ],
+      "rejects": "Reports, and fails only with MOAI_HOME_READERS=enforce: a product source under src/ whose direct HOME reads or HOME adapter calls differ from the list in tests/home_env_readers.rs (SPEC-20261124-home-env-readers REQ-13, REQ-14)"
     }
   ]
 }
