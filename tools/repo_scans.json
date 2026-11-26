@@ -1571,6 +1571,7 @@
         "retired_host_words",
         "rule_history_guard",
         "sdd_guidance",
+        "spec_approval_digest",
         "troubleshooting_doc"
       ],
       "checks": [
@@ -1612,6 +1613,7 @@
         "tests/retired_host_words.rs",
         "tests/rule_history_guard.rs",
         "tests/sdd_guidance.rs",
+        "tests/spec_approval_digest.rs",
         "tests/troubleshooting_doc.rs",
         "tests/repo_scans_table.rs"
       ],

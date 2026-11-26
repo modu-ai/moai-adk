@@ -56,7 +56,8 @@ SPEC 규칙으로 보면 결정 표는 승인받는 글이에요. `workflows/pla
 
 - write: `.moai/specs/SPEC-20261126-approval-digest-decisions/**`, `src/spec_doc.rs`, `src/ops/spec.rs`, `tests/spec_approval_digest.rs`, `skills/moai/references/internal/sdd.md`, `skills/moai/workflows/plan.md`, `docs/design-review/appendix/operations/spec.md`, `docs/later.md`
 - write: `skills/moai/references/source-manifest.json` (두 글의 sha256 줄, shared file 이라 line-lease)
-- read-only: `src/spec.rs`, `src/plan.rs`, `src/card/spec_link.rs`, `tests/spec_cli.rs`, `tests/spec_doc.rs`, `tests/card/card_spec_cli.rs`, `tools/repo_scans.json`
+- write: `tools/repo_scans.json` (reads-docs 스캔에 새 테스트의 두 줄, shared file 이라 line-lease)
+- read-only: `src/spec.rs`, `src/plan.rs`, `src/card/spec_link.rs`, `tests/spec_cli.rs`, `tests/spec_doc.rs`, `tests/card/card_spec_cli.rs`
 - forbidden: `moai spec check` 가 오류를 내는 길을 약하게 하는 변경, 이미 승인된 SPEC 의 `approval` 블록을 고치는 일, 전역 설치본과 실제 HOME, 네트워크, Python
 
 ## Plan
