@@ -459,11 +459,12 @@ Options:
           Main model (default `opus`)
       --effort <EFFORT>
           Effort (default `medium` on `cc`, `high` on `glm`)
-      --advisor <ADVISOR>
+      --advisor [<MODEL>]
           Advisor model on Claude hosts (fable|opus|sonnet
-          or a full claude-* id). None by default; the user
-          setting `launcher.advisor` can turn it on. May
-          bill to usage credits
+          or a full claude-* id); `opus` when the model is
+          left out. None by default, also with `-a`; the
+          user setting `launcher.advisor` can turn it on.
+          May bill to usage credits
       --no-advisor
           Pass no `--advisor` even when the user setting
           `launcher.advisor` turns it on
