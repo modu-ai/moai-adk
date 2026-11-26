@@ -40,6 +40,7 @@ created: 2026-11-26
 - REQ-4: When a range changes a library source file with a module path, the `check affected` command shall apply the rule of REQ-3 to each `src/ops/<other>.rs` that names that module path and whose `<other>` equals the changed file's stem or starts with that stem, its trailing `s` removed, followed by `_`.
 - REQ-5: The `check affected` command shall keep in every selection each test target that it selected for the same range before this change. · failure: none — 세 규칙은 합집합으로만 더해요.
 - REQ-6 (REQ-3, REQ-4): IF a helper file named by `#[path]` or a file under `src/ops` that these rules read cannot be read, THEN the `check affected` command shall stop the selection with an error that names that file.
+- REQ-7 (REQ-3): The repository shall name each `.rs` file under `src/ops`, `mod.rs` aside, after a command that `src/help.rs` lists (`_` written as `-`). · failure: none — 어긋난 파일이 생기면 AC-8 의 테스트가 빨개져요.
 
 ## Acceptance
 
@@ -50,6 +51,7 @@ created: 2026-11-26
 - AC-5 (REQ-5): 기존 선택 테스트가 기대값을 바꾸지 않고 통과해요 · verify: `cargo nextest run --locked --offline --test check_affected_card_select --test check_affected_card_areas --test check_affected_selection`
 - AC-6 (REQ-5): READY 의 Result 에, 위 표의 세 범위를 바꾸기 전 실행 파일과 후 실행 파일로 `--list` 와 `--list --card` 를 돌린 대상 목록 비교(빠진 것 0, 늘어난 수)를 적어요 · verify: `moai check affected <base>..<head> --list` 와 `moai check affected --card <base>..<head> --list`
 - AC-7 (REQ-1, REQ-3, REQ-4): `moai check affected` 가 READY 의 head 에서 PASS 이고, 세 규칙의 코드를 하나씩 지운 변조에서 AC-1 에서 AC-3 의 테스트가 실패해요(READY 의 guard-mutant 줄) · verify: `moai check affected --card <base>..<head>`
+- AC-8 (REQ-7): 저장소의 `src/ops` 파일 이름이 모두 `src/help.rs` 의 명령 목록에 있어요(2026-11-26 `8f472c5811` 에서 174개가 모두 맞고 예외 0개) · verify: `cargo nextest run --locked --offline --test check_affected_binary_tests -E 'test(every_command_file_is_named_like_a_listed_command)'`
 
 ## Scope
 
@@ -72,7 +74,7 @@ created: 2026-11-26
 - 영수증이 커져요. 구현 전에 손으로 센 예상(확인 안 됨): 카드 선택이 `12510df496` 범위에서 3개에서 약 33개, `6bb4f8a031` 범위에서 2개에서 약 17개, 넓은 선택은 각각 112에서 약 131, 59에서 약 74, `3a6c46fc95` 범위는 83에서 약 86. 카드 세트의 "20개 안팎" 안내를 넘어요. AC-6 에서 재요.
 - `src/` 를 바꾸는 모든 범위가 다섯 대상을 더 돌려요. 다른 워크트리의 영수증 로그 하나(`check-affected-60cfb37da8f1`)에서 그중 네 대상의 테스트 시간 합은 62.2초였고, `update_end_to_end_cli` 의 시간과 링크 시간은 안 쟀어요.
 - 표시가 없는 실행 파일 테스트가 깊은 라이브러리 호출에만 기대면 여전히 빠져요. 그런 일이 보이면 표시 줄 하나를 더해요. 마지막 보호는 리더가 착지 다섯 번마다 도는 전체 `cargo test` 예요.
-- 명령 파일 이름과 명령 이름이 다르면 REQ-3 이 아무것도 더하지 않아요.
+- REQ-7 은 파일 이름이 명령 목록에 있는지만 봐요. 한 파일이 다른 이름의 명령까지 처리하면 그 명령의 테스트는 REQ-3 으로 더해지지 않아요.
 - AC-4 의 테스트는 저장소 파일을 읽어서, 이름이 바뀌면 빨개져요. 조용히 빠지는 것보다 낫다고 봤어요.
 
 ## Decisions
