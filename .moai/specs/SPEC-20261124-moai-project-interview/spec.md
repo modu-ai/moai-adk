@@ -229,3 +229,12 @@ Revision 4 (the update.md half), base `9c8b7fb763` (the NeXT tip), commits on th
   - Targets that read `project.md` or `update.md` and were not in these runs: `agent_defs_package`, `next_flow_skill_scan`, `product_cli`, `update_closing_commit` and `project_applied_table`, unless the receipt covers them.
   - A real `/moai update` session on earlier-generation state.
   - The independent audit.
+
+Revision 4 감사 수리 (같은 요구 안의 글과 테스트 수정, REQ·AC 는 그대로):
+
+- 첫 독립 감사는 FAIL 이었어요. `project.md` 2단계 본문을 지우면서 `state_root.generation` 이 `interrupted` 일 때의 멈춤도 지워져서, 29행은 "`interrupted` is handled in step 2" 라고 말하는데 route 는 적용까지 이어졌어요. 고정 테스트는 그 문장만 보고 있어서 통과했어요.
+- 수리: 커밋 `35e424db6f` (바로 앞에서 NeXT `e3450e0ede` 를 `55c3fc5cb5` 로 한 번 합침). `project.md` 의 같은 bullet 이 인터뷰와 적용 전에 멈추고 `/moai update` 를 안내해요. `tests/project_detect_cli.rs` 는 그 문장이 한 번, step 4 앞에 있고 옛 "handled in step 2" 문구가 없는 것을 봐요. `update.md` 에는 step 8 이 쓰는 snapshot 방법 문단을 더했어요.
+- RED: 글 수정 전 `--test project_detect_cli` 28 run, 27 passed, 1 failed, exit 100 (`target/c549/repair-red.log`).
+- GREEN: workflow 두 글을 읽는 11개 대상 172 run, 171 passed, 1 failed(manifest 해시, 뒤의 `moai check fix` 커밋으로 맞춤), exit 100 (`target/c549/repair-green.log`); 추가 8개 대상 110 run, 110 passed, exit 0 (`target/c549/repair-extra.log`).
+- guard-mutant: `the_state_root_generation_is_reported_and_nothing_is_written` | `project.md` 의 멈춤 문장 삭제 | exit 100.
+- not_run: 수리 head 의 `check affected --card` 영수증(REPAIRED 노트에 적어요), 실제 interrupted 프로젝트에서의 `/moai project` 세션, 재감사.
