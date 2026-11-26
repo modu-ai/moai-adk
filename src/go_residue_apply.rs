@@ -278,8 +278,7 @@ fn apply_chosen(
     let revert_hint = format!(
         "run `moai go-residue-revert <project> --receipt {stamp} --permission-reference <ref>` to put the moved files back"
     );
-    let mut moved = 0usize;
-    for c in chosen {
+    for (moved, c) in chosen.iter().enumerate() {
         let from = root.join(&c.path);
         let to_rel = format!("{area}/{}", c.path);
         let step = (|| -> Result<()> {
@@ -312,7 +311,6 @@ fn apply_chosen(
                 c.path
             ));
         }
-        moved += 1;
     }
     // Read every moved file back before the receipt says `committed`.
     for c in chosen {
@@ -505,7 +503,14 @@ mod tests {
                 sha256: format!("sha256:{:x}", Sha256::digest(b"# outside\n")),
                 tracked: false,
             };
-            let refused = apply_chosen(&root, "20261125T000000Z", &[c.clone()], "d", "ref", "p");
+            let refused = apply_chosen(
+                &root,
+                "20261125T000000Z",
+                std::slice::from_ref(&c),
+                "d",
+                "ref",
+                "p",
+            );
             assert!(refused.is_err(), "{}: {refused:?}", c.path);
             assert!(
                 fs::symlink_metadata(root.join(".moai/backups")).is_err(),

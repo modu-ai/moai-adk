@@ -2159,14 +2159,12 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &permission_reference,
             bundle.as_deref() == Some("proven"),
             &pick,
-        )
-        .map_err(Into::into),
+        ),
         Command::GoResidueRevert {
             project,
             receipt,
             permission_reference,
-        } => moai_cli::go_residue_apply::revert(&project, &receipt, &permission_reference)
-            .map_err(Into::into),
+        } => moai_cli::go_residue_apply::revert(&project, &receipt, &permission_reference),
         Command::UpdatePlan { home, stage } => {
             let staged = moai_cli::update::stage_package(&stage)?;
             serde_json::to_value(moai_cli::update::plan_update(&home, &staged)?)
