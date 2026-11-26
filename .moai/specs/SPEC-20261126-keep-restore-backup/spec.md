@@ -108,3 +108,21 @@ backup-then-replace(`update-apply --confirm-backup-replace`)는 원래 폴더를
 | D-4 (노트 10154) | 버전 업그레이드 뒤의 새 설치 id 에서는 제안을 이어 주지 않아요. 후속 p1 작업은 리더가 따로 열었어요. | `recovery-plan` 은 지금 id 만 읽어요. 이어 주려면 복구 설계가 따로 필요해요. | 이 카드의 범위를 넓혀요. |
 | D-5 (노트 10154) | 같은 설치의 성공한 적용이 이어지는 동안 복원 제안을 계속 남겨요. | 카드 기준 1. 원본을 되돌릴 길이 조용히 사라지지 않아요. | 제안 기간을 따로 정해요. |
 | D-6 (노트 10154) | `docs/rust-product-path.md` 를 고치고 AC-9 를 유지해요. 카드 범위에는 넣지 않고 `card line-lease` 로 잠깐 빌려 쓰고, 커밋 뒤 바로 돌려줘요. 지금 문서는 제안이 사라지는 것을 동작으로 적어요. 그 파일은 진행 중인 다른 작업 둘도 예약하고 있어서(2026-11-26 읽음), 착지한 tip 을 받은 뒤의 내용에 맞춰 고쳐요. | 결정 기록 22번 행은 "막고, 따로 확인한 뒤 백업하고 교체"만 정해요. 제안이 사라지는 것은 #2505 가 한계로 적었어요. | 문서 변경을 되돌려요. |
+
+## Result
+
+2026-11-26, 기준 `75b69200669812ef3ff83aa976b4b649fc6d0180`. 실행 환경은 Mac 한 대이고 Windows 와 Linux 에서는 돌리지 않았어요.
+
+- 커밋: SPEC `265ff52572`, 빨강 `a91e03fb7b`, 수정 `ffbb84769f`, 문서 `ba21bbd8a2`.
+- 빨강(`a91e03fb7b`): 새 테스트 8개 중 AC-1, AC-3, AC-4, AC-10 의 4개가 단언에서 실패했고 AC-2, AC-5, AC-6, AC-7 의 4개는 통과했어요. Plan 3 은 AC-4 를 통과 쪽으로 적었지만 이 head 에서는 `restore_backup` 행이 없어서 실패해요.
+- 초록: `moai tdd green` 이 빨강 때의 확인 명령을 다시 돌려 exit 0 이었어요.
+- `ba21bbd8a2` 에서 AC-1~AC-10 의 verify 명령을 적힌 그대로 돌려 모두 exit 0 이었어요. AC 별 필터는 각각 테스트 1개, AC-8 의 타깃 다섯 개는 84개 통과, HOME 이름 표 검사는 1개 통과, AC-9 의 grep 은 2줄이에요. `cargo nextest run --test update_backup_replace` 는 31개 통과예요.
+- 가드 뮤턴트(`ba21bbd8a2`, Plan 6 의 표): 8개 모두 지목한 테스트가 exit 100 으로 실패했고, 하나씩 되돌린 뒤 `git status --short` 가 비었어요.
+- `src/recovery.rs`, `src/apply.rs`, `src/home_layout.rs`, `tools/repo_scans.json` 은 바꾸지 않았고, `HostReceipt` 와 `HostReceiptEntry` 의 필드도 그대로예요(diff 는 문서 주석과 `apply_update_in` 두 곳).
+- 위험 경로 실행 근거: AC-1 의 테스트가 임시 HOME 에서 실제 바이너리로 교체, 보통 적용 두 번, `recovery-apply` 를 돌리고 원본의 바이트와 모드, `<backup>/replaced` 를 확인해요.
+
+남은 것(코드 읽기만, 실행 안 함):
+
+- 다른 빌드가 파일을 바꾸거나 더한 뒤, 원래 설치가 그 내용과 같은 패키지를 적용하면 쓰기가 없어서 이 설치의 entries 가 갱신되지 않아요. 그때 복원 제안은 `user_changed` 로 막혀요. 커밋하는 적용이 아니라서 REQ-1 밖이에요.
+- `docs/rust-product-path.md` 의 손 복원 문단 마지막의 "reports the folder as unmanaged again" 은 이 변경 전부터 있던 문장이고, 영수증이 그 경로를 소유하면 맞지 않아 보여요.
+- `src/recovery.rs` 의 `root_holds_only_ours` 주석("one this receipt created")은 범위 밖이라 낡은 채예요.
