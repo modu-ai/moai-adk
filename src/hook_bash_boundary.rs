@@ -86,35 +86,131 @@ pub fn decide(input: &Map<String, Value>, env: &Env) -> Option<Value> {
         }
     }
     let command = input.get("tool_input")?.get("command")?.as_str()?;
-    let class = judge(command, input, env).err()?;
+    let (verdict, unread) = judge(command, input, env);
+    let class = verdict.err()?;
+    let mut reason = class.reason();
+    if class == Class::Unreadable {
+        if let Some(unread) = unread {
+            reason.push_str(&unread.sentence());
+        }
+    }
     Some(json!({
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
-            "permissionDecisionReason": class.reason(),
+            "permissionDecisionReason": reason,
         }
     }))
 }
 
-fn judge(command: &str, input: &Map<String, Value>, env: &Env) -> Verdict {
+/// What an `unreadable` deny adds to its general sentence (SPEC-20261125-boundary-unreadable-detail).
+enum Unread {
+    /// The innermost command that could not be read, already cut and cleaned (`unread_command`).
+    Fragment(String),
+    /// The command text is over `MAX_BYTES`.
+    TooLong,
+    /// The lexer could not split the text into commands.
+    Unsplittable,
+    /// A depth or count limit, or a command with nothing to name: the general text stands alone.
+    Unnamed,
+}
+
+/// The marker in front of the fragment; the reason ends with the fragment.
+const UNREAD_PART: &str = "Unread part:";
+/// The most characters of the fragment a reason names, the cut marker included.
+const FRAGMENT_MAX_CHARS: usize = 80;
+/// Said instead of the command word when the command word itself must not be repeated.
+const COMMAND_WORD_WITHHELD: &str = "(command word withheld)";
+
+impl Unread {
+    /// The words after the general sentence, with the space that joins them; empty for `Unnamed`.
+    fn sentence(&self) -> String {
+        match self {
+            Unread::Fragment(part) => format!(" {UNREAD_PART} {part}"),
+            Unread::TooLong => " The command text is over the size limit.".to_owned(),
+            Unread::Unsplittable => {
+                " It holds syntax that cannot be split into commands.".to_owned()
+            }
+            Unread::Unnamed => String::new(),
+        }
+    }
+}
+
+/// The reason goes back to the model and into the record, so a word that is secret-shaped (the
+/// shared filter `crate::secret_shaped`) or holds a control character (a newline and ESC
+/// included) is not repeated.
+fn repeatable(word: &str) -> bool {
+    !word.chars().any(char::is_control) && !crate::secret_shaped(word)
+}
+
+/// At most `FRAGMENT_MAX_CHARS` characters, counted as characters; a cut ends with `…`, which
+/// counts inside the limit.
+fn cut_to_limit(text: &str) -> String {
+    if text.chars().count() <= FRAGMENT_MAX_CHARS {
+        return text.to_owned();
+    }
+    let mut cut: String = text.chars().take(FRAGMENT_MAX_CHARS - 1).collect();
+    cut.push('…');
+    cut
+}
+
+/// What a command that could not be read is called in a reason: its words as the text spells
+/// them, joined by single spaces; only the command word when any word of it must not be repeated.
+fn unread_command(cmd: &Cmd) -> Unread {
+    let skip = cmd
+        .words
+        .iter()
+        .take_while(|w| {
+            !w.dynamic
+                && w.chars.iter().all(|&(_, b)| b)
+                && RESERVED_BEFORE_COMMAND.contains(&w.text().as_str())
+        })
+        .count();
+    let words = &cmd.words[skip..];
+    if words.is_empty() {
+        return Unread::Unnamed;
+    }
+    let whole = words
+        .iter()
+        .map(|w| w.raw.as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
+    if words.iter().all(|w| repeatable(&w.raw)) {
+        return Unread::Fragment(cut_to_limit(&whole));
+    }
+    let command_word = words
+        .iter()
+        .find(|w| split_assign(w).is_none())
+        .unwrap_or(&words[0]);
+    if repeatable(&command_word.raw) {
+        Unread::Fragment(cut_to_limit(&command_word.raw))
+    } else {
+        Unread::Fragment(COMMAND_WORD_WITHHELD.to_owned())
+    }
+}
+
+/// The verdict, and what the walk could not read when the verdict is `unreadable`.
+fn judge(command: &str, input: &Map<String, Value>, env: &Env) -> (Verdict, Option<Unread>) {
     if command.len() > MAX_BYTES {
-        return Err(Class::Unreadable);
+        return (Err(Class::Unreadable), Some(Unread::TooLong));
     }
     if !needs_walk(command) {
-        return Ok(());
+        return (Ok(()), None);
     }
     let world = World::build(input, env);
     let mut walker = Walker {
         world: &world,
         count: 0,
         others: None,
+        unread: None,
     };
     let mut state = State {
         cwd: world.cwd.clone(),
         stack: Vec::new(),
         git_env: BTreeMap::new(),
     };
-    walker.walk(command, &mut state, 0)
+    let verdict = walker.walk(command, &mut state, 0);
+    (verdict, walker.unread)
 }
 
 /// Words the checks react to. The scan runs on the command with quotes and backslashes removed,
@@ -399,6 +495,9 @@ struct Word {
     dynamic: bool,
     /// Scripts run by a substitution inside the word.
     subs: Vec<String>,
+    /// The word as the command text spells it (quotes and expansions included), for the part an
+    /// `unreadable` reason names. A word made by the walk itself has none.
+    raw: String,
 }
 
 impl Word {
@@ -681,10 +780,12 @@ impl Lexer {
             dynamic: true,
             ..Word::default()
         };
+        let start = self.i.saturating_sub(1);
         match match_paren(&self.s, self.i + 1) {
             Some(close) => {
                 w.subs.push(self.s[self.i + 1..close].iter().collect());
                 self.i = close + 1;
+                w.raw = self.s[start..self.i].iter().collect();
             }
             None => {
                 self.unsupported = true;
@@ -696,6 +797,13 @@ impl Lexer {
 
     fn read_word(&mut self) -> Word {
         let mut w = Word::default();
+        let start = self.i;
+        self.read_word_parts(&mut w);
+        w.raw = self.s[start..self.i.min(self.s.len())].iter().collect();
+        w
+    }
+
+    fn read_word_parts(&mut self, w: &mut Word) {
         while let Some(c) = self.peek(0) {
             if WORD_END.contains(&c) {
                 break;
@@ -730,17 +838,16 @@ impl Lexer {
                 }
                 '"' => {
                     self.i += 1;
-                    self.read_double(&mut w);
+                    self.read_double(w);
                 }
-                '$' => self.read_dollar(&mut w, false),
-                '`' => self.read_backtick(&mut w),
+                '$' => self.read_dollar(w, false),
+                '`' => self.read_backtick(w),
                 _ => {
                     w.chars.push((c, true));
                     self.i += 1;
                 }
             }
         }
-        w
     }
 
     fn read_double(&mut self, w: &mut Word) {
@@ -1068,6 +1175,8 @@ struct Walker<'a> {
     world: &'a World,
     count: usize,
     others: Option<(PathBuf, Vec<PathBuf>)>,
+    /// The first thing the walk could not read (SPEC-20261125-boundary-unreadable-detail).
+    unread: Option<Unread>,
 }
 
 /// What the stdin of the command is.
@@ -1102,6 +1211,28 @@ fn command_word_unreadable(w: &Word) -> bool {
         .iter()
         .any(|&(c, bare)| bare && matches!(c, '*' | '?' | '[' | '{'))
         || w.chars.first() == Some(&('=', true))
+}
+
+/// Whether the words after `moai` name a subcommand that runs a command after its first `--`
+/// (`heavy-slot-acquire`, `card line-lease`), or leave the subcommand to an expansion so that
+/// they might. `dashes` is the place of the first literal `--`; only the words before it are
+/// moai's own (SPEC-20261125-boundary-unreadable-detail, REQ-7).
+fn moai_line_runs_a_command(args: &[Word], dashes: Option<usize>) -> bool {
+    let own = &args[..dashes.unwrap_or(args.len())];
+    if own.iter().any(|w| {
+        !command_word_unreadable(w)
+            && matches!(w.text().as_str(), "heavy-slot-acquire" | "line-lease")
+    }) {
+        return true;
+    }
+    // The subcommand is the first word that is not an option; `card` has one more below it. A
+    // word the shell expands (a glob or brace list as well as `$`) may be any subcommand.
+    let mut operands = own.iter().filter(|w| !w.is_option());
+    match operands.next() {
+        Some(sub) if command_word_unreadable(sub) => true,
+        Some(sub) if sub.text() == "card" => operands.next().is_some_and(command_word_unreadable),
+        _ => false,
+    }
 }
 
 /// Whether `cd` looks the operand up in `CDPATH`: a relative name that does not start with `.`
@@ -1153,8 +1284,10 @@ fn names_cdpath_variable(w: &Word) -> bool {
 
 /// Letters after `-` in a short option word: `c` and `s` are the command-line letters of a shell
 /// start, `e u x f v C l` are `ERR_EXIT`, `NO_UNSET`, `XTRACE`, `NO_RCS`, `VERBOSE`, `NO_CLOBBER`
-/// and `LOGIN` in zsh and the same letters in bash. `o` is read apart (last letter only).
-const OPTION_LETTERS_MINUS: &str = "csexufvlC";
+/// and `LOGIN` in zsh and the same letters in bash. `n` is `NO_EXEC`: the shell parses and does
+/// not run (`bash -n FILE`); a `-c` string given with it is still judged. `o` is read apart (last
+/// letter only).
+const OPTION_LETTERS_MINUS: &str = "csexufvlCn";
 /// Letters after `+` (the same options turned off); `c` and `s` have no `+` form.
 const OPTION_LETTERS_PLUS: &str = "exufvC";
 /// The names a separate `-o` or `+o` may take, and the first names of `setopt` and `unsetopt`.
@@ -1396,6 +1529,7 @@ fn split_assign(w: &Word) -> Option<(String, Word)> {
                 chars: w.chars[eq + 1..].to_vec(),
                 dynamic: w.dynamic,
                 subs: Vec::new(),
+                raw: String::new(),
             },
         )
     })
@@ -1420,6 +1554,10 @@ const RUNNERS: &[&str] = &[
     "builtin", "exec", "nohup", "nice", "timeout", "time",
 ];
 const RUNNERS_MORE: &[&str] = &["parallel", "watch", "busybox", "setsid", "stdbuf"];
+/// Reserved words that may stand in front of a command word and are skipped to find it.
+const RESERVED_BEFORE_COMMAND: &[&str] = &[
+    "if", "then", "else", "elif", "do", "while", "until", "!", "{", "}", "fi", "done",
+];
 
 fn is_runner(name: &str) -> bool {
     RUNNERS.contains(&name) || RUNNERS_MORE.contains(&name)
@@ -1428,10 +1566,12 @@ fn is_runner(name: &str) -> bool {
 impl Walker<'_> {
     fn walk(&mut self, src: &str, state: &mut State, depth: usize) -> Verdict {
         if depth > MAX_DEPTH {
+            self.note(Unread::Unnamed);
             return Err(Class::Unreadable);
         }
         let script = lex(src);
         if script.unsupported {
+            self.note(Unread::Unsplittable);
             return Err(Class::Unreadable);
         }
         let mut groups: Vec<Option<PathBuf>> = Vec::new();
@@ -1446,6 +1586,7 @@ impl Walker<'_> {
                 Item::Cmd(cmd) => {
                     self.count += 1;
                     if self.count > MAX_COMMANDS {
+                        self.note(Unread::Unnamed);
                         return Err(Class::Unreadable);
                     }
                     self.command(cmd, &script.bodies, state, depth)?;
@@ -1455,7 +1596,31 @@ impl Walker<'_> {
         Ok(())
     }
 
+    /// Keeps the first thing the walk could not read, so the innermost command is the one named
+    /// (D-4: the verdict keeps its shape and the note rides on the walker).
+    fn note(&mut self, unread: Unread) {
+        if self.unread.is_none() {
+            self.unread = Some(unread);
+        }
+    }
+
+    /// One command with the note of what it could not read: an inner command, reached through a
+    /// shell string or a substitution, has noted itself by the time the error comes back here.
     fn command(
+        &mut self,
+        cmd: &Cmd,
+        bodies: &[Heredoc],
+        state: &mut State,
+        depth: usize,
+    ) -> Verdict {
+        let verdict = self.command_body(cmd, bodies, state, depth);
+        if verdict == Err(Class::Unreadable) {
+            self.note(unread_command(cmd));
+        }
+        verdict
+    }
+
+    fn command_body(
         &mut self,
         cmd: &Cmd,
         bodies: &[Heredoc],
@@ -1494,13 +1659,7 @@ impl Walker<'_> {
         while let Some(first) = rest.first() {
             let text = first.text();
             let bare = !first.dynamic && first.chars.iter().all(|&(_, b)| b);
-            if bare
-                && [
-                    "if", "then", "else", "elif", "do", "while", "until", "!", "{", "}", "fi",
-                    "done",
-                ]
-                .contains(&text.as_str())
-            {
+            if bare && RESERVED_BEFORE_COMMAND.contains(&text.as_str()) {
                 rest = &rest[1..];
                 continue;
             }
@@ -1674,6 +1833,30 @@ impl Walker<'_> {
                     }
                     words = &args[i.min(args.len())..];
                     continue;
+                }
+                // `moai heavy-slot-acquire … -- COMMAND` and `moai card line-lease … -- COMMAND`
+                // run the words after the first `--` as a command: they are judged like the same
+                // command typed bare. The words before it are moai's own options. Without a `--`
+                // no command is named (SPEC-20261125-boundary-unreadable-detail, D-2).
+                // A line that runs a command (REQ-7, D-6) is closed against a word that an
+                // expansion decides: it may stand for the `--`.
+                "moai" | "moai-cli" => {
+                    let dashes = args
+                        .iter()
+                        .position(|w| !command_word_unreadable(w) && w.text() == "--");
+                    if moai_line_runs_a_command(args, dashes) {
+                        let before = &args[..dashes.unwrap_or(args.len())];
+                        if before.iter().any(command_word_unreadable) {
+                            return Err(Class::Unreadable);
+                        }
+                    }
+                    match dashes {
+                        Some(i) => {
+                            words = &args[i + 1..];
+                            continue;
+                        }
+                        None => return Ok(()),
+                    }
                 }
                 "source" | "." => return Ok(()),
                 _ => {}

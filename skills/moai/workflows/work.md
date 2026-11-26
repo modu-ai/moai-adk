@@ -8,6 +8,8 @@ Before any other action run `pwd` and `moai session-register --names`: its `proj
 
 A session whose name does not already start with `<project name>-agent-` (it was not started with `moai cc -a`; `<project name>` is the `project` that `--names` printed) gives the user the one line `/rename <project name>-agent-<english name>` once, in the user's conversation language, and reads its own name from the first line of `ListAgents` before it goes on. If that name is not the wanted one after the user's reply, or the user gives none, go on under the name the session has and write one ledger note that says so and names the short id of its `ListAgents` row. When `moai session-register --show --name <its name>` answers `free`, register the session with `moai session-register . --name <its name> --mode agent`, so that the leader's lane check reads it as a lane; an entry that is already `held` is left alone.
 
+Keep the `instance` the registration answered. Renew it with `moai session-register . --name <its name> --mode agent --instance <instance>` at every take step and every wake from a wait, always inside its lease of four hours, and release it with `moai session-register . --name <its name> --release --instance <instance>` when the lane ends.
+
 ## Input
 
 The project's card ledger, read with `moai card next`, the SPEC each card names and the worktree each card is worked in. Read the flow reference `flows/next-flow` before the first take: how a lane works, what it submits and how a card lands.
@@ -48,6 +50,8 @@ Where the project offers lane commands that run a card in a lane of its own, a s
 | the leader sends `REPAIR <card> fail head=<head>` after a first FAIL | Run `moai card reopen <card> --generation <g>`, repair on the same branch, and submit again from step 6; the second FAIL goes to the leader. |
 | the leader sends `AUDIT-REQUEST <card> ready head=<head>` for a card you did not write | Run the AUDIT route on that exact head and record the verdict with `moai card verdict` from your own session; the author of a change never audits it. |
 | a card is held by a session that is gone, or a reclaim answers `reclaim_limit` | Never free or take another session's reservation yourself. Write the `LANE-BLOCKED` note; the leader ends the reservation with `--by leader` (it refuses a live session without proof), the card returns to `ready`, and you take it again with `moai card take`. |
+
+A REPAIRED note lists each finding it answers with the probe or test that reproduced it and that probe's result on the audited head and on the repair head; a finding without that pair is not claimed as fixed. A change the lane could not make because the file lies outside its scope goes under `Not done` with the file and its holder and is handed over as a note, never in a commit message.
 
 ## Base agents
 

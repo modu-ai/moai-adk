@@ -9,7 +9,9 @@
 //! for an audit. `wip_limit` 0 turns the limit off, and so does a project with no registry
 //! folder or no live lane (SPEC D-3). A lane is live while its launcher holds the `<name>.live`
 //! lock or its registration lease runs (SPEC-20261125-wip-limit-live-lock-lanes); a registry
-//! folder that cannot be read does not turn the limit off: the limit is then reached.
+//! folder that cannot be read, or whose items none can be read
+//! (SPEC-20261126-wip-limit-all-unreadable), does not turn the limit off: the limit is then
+//! reached.
 
 use crate::lane_registry;
 use rusqlite::Connection;
@@ -44,18 +46,28 @@ pub struct Lanes {
     pub live: usize,
     /// The names whose entry or lock could not be read; each is left out of `live`.
     pub unreadable: Vec<String>,
-    /// Why the registry folder could not be read as a whole; the limit is then not off but
+    /// Why the registry folder could not be read as a whole, or why none of its items could be
+    /// read (SPEC-20261126-wip-limit-all-unreadable REQ-1); the limit is then not off but
     /// reached, so that nothing is taken past a limit that cannot be checked
     /// (SPEC-20261125-wip-limit-live-lock-lanes REQ-4).
     pub registry_error: Option<String>,
 }
 
-/// The live lanes (SPEC-20261125-wip-limit-live-lock-lanes REQ-1 to REQ-5): every session name
-/// whose launcher holds the `<name>.live` lock or whose registry entry has a lease that has not
-/// ended, each name once, the leaders left out. A name with a held lock and no readable entry
-/// counts only when it is named like a lane of this project (`agent-…` or
-/// `<project name>-agent-…`): a lock alone does not say what the session is. This is the rule
-/// of `session-register --lane-check`, so the limit and the leader's message check agree.
+/// The live lanes (SPEC-20261125-wip-limit-live-lock-lanes REQ-1 to REQ-5): every lane whose
+/// launcher holds the `<name>.live` lock or whose registry entry has a lease that has not ended,
+/// each lane once, the leaders left out. A name with a held lock and no readable entry counts
+/// only when it is named like a lane of this project (`agent-…` or `<project name>-agent-…`): a
+/// lock alone does not say what the session is. This is the rule of `session-register
+/// --lane-check`, so the limit and the leader's message check agree.
+///
+/// A lane is counted once whatever its files are (SPEC-20261125-session-registry-session-key
+/// REQ-6): the two name forms `agent-<name>` and `<project name>-agent-<name>` are one name, a
+/// held lock makes the entries of its name one lane, and entries that carry one host session id
+/// are one lane.
+///
+/// A registry that holds items of which none can be read (no entry, no held lock) answers with a
+/// `registry_error` naming them, so the limit is reached and not off
+/// (SPEC-20261126-wip-limit-all-unreadable REQ-1).
 pub fn live_lanes(project: &Path) -> Lanes {
     let scan = match lane_registry::scan_registry(project) {
         Ok(Some(scan)) => scan,
@@ -68,26 +80,57 @@ pub fn live_lanes(project: &Path) -> Lanes {
         }
     };
     let now = now_secs();
-    let leader_name = crate::session::leader_session_name(project);
-    let lane_prefixes = ["agent-".to_string(), crate::session::agent_prefix(project)];
-    let mut live = std::collections::BTreeSet::new();
+    // One project name for both: each `session::*_name` call reads the git identity again, and a
+    // git process costs far more than the registry scan. The forms mirror
+    // `session::leader_session_name` and `session::agent_prefix`; a unit test pins them.
+    let project_name = crate::session::project_name(project);
+    let leader_name = format!("{project_name}-leader");
+    let project_prefix = format!("{project_name}-agent-");
+    let lane_prefixes = ["agent-".to_string(), project_prefix.clone()];
+    // The one name of a lane: the project-prefixed form reads as the short form.
+    let canon = |name: &str| match name.strip_prefix(project_prefix.as_str()) {
+        Some(rest) => format!("agent-{rest}"),
+        None => name.to_string(),
+    };
+    let locked: std::collections::BTreeSet<String> = scan.locked.iter().map(|n| canon(n)).collect();
+    // `(true, session id)` for an entry that carries one, `(false, name)` for a lane known by its
+    // name (an entry without a session, or a name whose lock is held).
+    let mut live: std::collections::BTreeSet<(bool, String)> = std::collections::BTreeSet::new();
     for entry in &scan.entries {
         let leader = entry.mode.as_deref() == Some("leader") || entry.name == leader_name;
-        if !leader && (entry.lease_until > now || scan.locked.contains(&entry.name)) {
-            live.insert(entry.name.as_str());
+        let name = canon(&entry.name);
+        let by_lock = locked.contains(&name);
+        if leader || !(entry.lease_until > now || by_lock) {
+            continue;
         }
+        live.insert(match (&entry.session, by_lock) {
+            (Some(session), false) => (true, session.clone()),
+            _ => (false, name),
+        });
     }
     for name in &scan.locked {
-        let has_entry = scan.entries.iter().any(|e| &e.name == name);
+        let name_canon = canon(name);
+        let has_entry = scan.entries.iter().any(|e| canon(&e.name) == name_canon);
         let lane_like = lane_prefixes.iter().any(|p| name.starts_with(p.as_str()));
         if !has_entry && *name != leader_name && lane_like {
-            live.insert(name.as_str());
+            live.insert((false, name_canon));
         }
     }
+    let unreadable: Vec<String> = scan.unreadable.iter().cloned().collect();
+    // A registry whose every item is unreadable is no registry that says "no lane": the limit
+    // cannot be checked, so it is reached (SPEC-20261126-wip-limit-all-unreadable REQ-1).
+    let registry_error =
+        (scan.entries.is_empty() && scan.locked.is_empty() && !unreadable.is_empty()).then(|| {
+            format!(
+                "the sessions folder holds {} item(s) and none can be read: {}",
+                unreadable.len(),
+                unreadable.join(", ")
+            )
+        });
     Lanes {
         live: live.len(),
-        unreadable: scan.unreadable.iter().cloned().collect(),
-        registry_error: None,
+        unreadable,
+        registry_error,
     }
 }
 

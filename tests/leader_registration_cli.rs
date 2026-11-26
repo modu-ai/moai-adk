@@ -84,8 +84,17 @@ impl Fixture {
         moai_cli::clone_root::path(&self.repo.join(".git")).join("sessions")
     }
 
+    /// The entry file of the lane `name` in either file form (named by the lane or by its host
+    /// session); the name-keyed path where no entry holds the name yet.
+    fn entry_path(&self, name: &str) -> PathBuf {
+        moai_cli::lane_registry::entry_file(&self.sessions(), name)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| self.sessions().join(format!("{name}.json")))
+    }
+
     fn entry_bytes(&self, name: &str) -> Vec<u8> {
-        fs::read(self.sessions().join(format!("{name}.json"))).unwrap()
+        fs::read(self.entry_path(name)).unwrap()
     }
 
     fn entry(&self, name: &str) -> Value {
@@ -140,7 +149,12 @@ fn ac1_a_leader_registration_without_a_session_id_is_refused() {
     assert_eq!(v["ok"], json!(false), "{v}");
     assert!(message(&v).contains("session id"), "{v}");
     assert_eq!(snapshot(&f.sessions()), before);
-    assert!(!f.sessions().join("leader.json").exists());
+    assert!(
+        moai_cli::lane_registry::entry_file(&f.sessions(), "leader")
+            .unwrap()
+            .is_none(),
+        "no entry holds the name `leader` in either file form"
+    );
     let agent = f.run(None, &["--name", "agent-4", "--mode", "agent", "--now", T0]);
     assert_eq!(agent["ok"], json!(true), "{agent}");
 }
@@ -162,7 +176,12 @@ fn ac2_a_second_live_leader_is_refused() {
     assert!(text.contains("leader"), "{text}");
     assert!(text.contains("2026-11-23T04:00:00Z"), "{text}");
     assert!(!text.contains(&instance), "{text}");
-    assert!(!f.sessions().join("boss.json").exists());
+    assert!(
+        moai_cli::lane_registry::entry_file(&f.sessions(), "boss")
+            .unwrap()
+            .is_none(),
+        "no entry holds the name `boss` in either file form"
+    );
 
     let same_name = f.leader(Some(S_B), "leader", None, T0);
     assert_eq!(same_name["ok"], json!(false), "{same_name}");

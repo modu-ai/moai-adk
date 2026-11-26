@@ -257,9 +257,11 @@ impl World {
 
     /// The registry entry of the leader.
     fn leader_entry(&self) -> PathBuf {
-        moai_cli::clone_root::path(&self.project.join(".git"))
-            .join("sessions")
-            .join("leader.json")
+        let dir = moai_cli::clone_root::path(&self.project.join(".git")).join("sessions");
+        moai_cli::lane_registry::entry_file(&dir, "leader")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| dir.join("leader.json"))
     }
 
     fn script(&self, name: &str, text: &str) -> PathBuf {

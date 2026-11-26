@@ -32,6 +32,7 @@
 pub mod batch;
 pub mod check;
 pub mod scans;
+pub mod sync;
 
 use super::command::open_for_write;
 use super::drift;

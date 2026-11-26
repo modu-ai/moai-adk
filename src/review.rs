@@ -131,9 +131,16 @@ pub struct Package {
     pub review: Vec<File>,
     pub context: Vec<File>,
     pub checklist: Vec<ChecklistItem>,
+    /// The weakened-test findings of `diff`, one `kind path:line detail` line each, the form the
+    /// gate result lists (SPEC-20261120-test-weakening-detection). Empty for a diff that weakens
+    /// no test and for one too long to read; the latter leaves a `skipped` entry.
+    pub test_weakening: Vec<String>,
     pub skipped: Vec<Skipped>,
     pub package_digest: String,
 }
+
+/// The `skipped` path of the weakened-test check, which reads a diff and no file.
+const WEAKENING_SKIP_PATH: &str = "test-weakening";
 
 /// One item of the checklist table, checked for every field the judge reads.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -399,6 +406,21 @@ fn judge_checklist(
         });
     }
     out
+}
+
+/// The weakened-test findings of the package's diff; a diff too long to read gives no findings
+/// and one `skipped` entry, so a reader sees the check did not run rather than found nothing.
+fn weakening_of(diff: &str, skipped: &mut Vec<Skipped>) -> Vec<String> {
+    match crate::gate_collect::weakened_in(diff) {
+        Some(findings) => findings,
+        None => {
+            skipped.push(Skipped {
+                path: WEAKENING_SKIP_PATH.into(),
+                reason: "diff-over-limit".into(),
+            });
+            Vec::new()
+        }
+    }
 }
 
 /// The checklist of the BASE commit judged against the diff, and the skips it leaves. No table
@@ -1003,6 +1025,7 @@ fn package_with(
     }
     let (checklist, checklist_skips) = read_checklist(repo, &base, &changed, &diff)?;
     skipped.extend(checklist_skips);
+    let test_weakening = weakening_of(&diff, &mut skipped);
     let mut package = Package {
         schema_version: 1,
         diff_sha256: crate::digest(diff.as_bytes()),
@@ -1015,6 +1038,7 @@ fn package_with(
         review,
         context,
         checklist,
+        test_weakening,
         skipped,
         package_digest: String::new(),
     };
@@ -1492,5 +1516,23 @@ mod tests {
             Err(e) => e,
         };
         assert!(err.starts_with("review package git failed:"), "{err}");
+    }
+
+    /// SPEC-20261120-test-weakening-detection AC-7: a diff the weakened-test check cannot read is
+    /// told apart from a diff with no finding, by one `skipped` entry.
+    #[test]
+    fn a_diff_over_the_weakening_limit_gives_no_findings_and_one_skipped_entry() {
+        const LIMIT: usize = 8 * 1024 * 1024;
+        let mut skipped = Vec::new();
+        assert!(weakening_of(&"x".repeat(LIMIT), &mut skipped).is_empty());
+        assert!(skipped.is_empty(), "a diff of exactly the limit is read");
+        assert!(weakening_of(&"x".repeat(LIMIT + 1), &mut skipped).is_empty());
+        assert_eq!(
+            skipped,
+            vec![Skipped {
+                path: "test-weakening".into(),
+                reason: "diff-over-limit".into()
+            }]
+        );
     }
 }

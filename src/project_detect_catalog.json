@@ -28,5 +28,12 @@
     {"language": "swift", "extensions": ["swift"]},
     {"language": "lua", "extensions": ["lua"]}
   ],
+  "database_dependencies": [
+    {"kind": "postgres", "dependencies": ["postgres", "tokio-postgres", "pg", "psycopg", "psycopg2", "psycopg2-binary", "asyncpg", "github.com/jackc/pgx/v5", "github.com/lib/pq"]},
+    {"kind": "mysql", "dependencies": ["mysql", "mysql2", "pymysql", "mysqlclient", "github.com/go-sql-driver/mysql"]},
+    {"kind": "sqlite", "dependencies": ["rusqlite", "sqlite3", "better-sqlite3"]},
+    {"kind": "mongodb", "dependencies": ["mongodb", "pymongo", "mongoose"]},
+    {"kind": "redis", "dependencies": ["redis", "ioredis"]}
+  ],
   "skip_dirs": [".venv", "venv", "target", "node_modules", "dist", "build", "vendor"]
 }

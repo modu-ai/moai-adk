@@ -249,7 +249,12 @@ fn plan_apply_replan(fx: GoFx) {
         .iter()
         .map(|s| s["step"].as_str().unwrap())
         .collect();
-    assert_eq!(backup, ["go-settings", "go-state", "reports"], "{up}");
+    // The read-only go-residue survey reads after the three moving steps and applies nothing.
+    assert_eq!(
+        backup,
+        ["go-settings", "go-state", "reports", "go-residue"],
+        "{up}"
+    );
     let step = step_in(&up, 0, "go-settings");
     assert_eq!(step["state"], "ready", "{step}");
     assert_eq!(step["plan_digest"], p["plan_digest"], "{step}");
