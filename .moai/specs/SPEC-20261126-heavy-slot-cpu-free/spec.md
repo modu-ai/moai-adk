@@ -102,16 +102,20 @@ created: 2026-11-26
 
 바뀐 파일: `src/heavy_slot.rs`, `src/check_affected.rs`, `src/ops/check.rs`, `tests/heavy_slot_cli.rs`, `tests/check_affected_one_slot.rs`.
 
-코드 head `f5af3ae71c8bb8c0fca3a16d82b8a3c58900ee30` 에서 돌린 확인이에요(macOS, `--max 2` 슬롯, 로그 `target/zoe/green-ac5.log`, 종료 0). AC 의 이름 필터는 따로 돌리지 않고 그 필터가 들어 있는 대상 전체를 돌렸어요.
+AC 의 확인 명령을 적힌 그대로 돌렸어요. head `3ea9c4b83754c2fc64b535004010d5ecaf64a2e3`(코드는 `f5af3ae71c` 와 같음), macOS, `--max 2` 슬롯, 로그 `target/zoe/ac-verbatim.log`, 모든 명령 종료 0.
 
-| 확인 | 결과 | 덮는 AC |
+| AC | 명령 | 통과한 테스트 |
 | --- | --- | --- |
-| `cargo clippy --locked --offline --lib --test heavy_slot_cli --test check_affected_one_slot -- -D warnings` | 통과 | — |
-| `cargo test --locked --offline --lib heavy_slot` | 32 통과 | AC-4 |
-| `--test heavy_slot_cli` | 54 통과 | AC-1, AC-2, AC-3, AC-6, AC-8 |
-| `--test check_affected_one_slot` | 9 통과 (`cpu_ac5_` 2개 포함) | AC-5 |
-| `--test heavy_slot_fifo_cli`, `--test heavy_slot_jobs_cleanup_cli` | 10, 6 통과 | AC-7 |
-| `--test test_switch_release_scan`, `--test cli_text_citations` | 4, 5 통과 | — |
+| AC-1 | `cargo test --locked --offline --test heavy_slot_cli cpu_ac1_` | 4 |
+| AC-2 | `cargo test --locked --offline --test heavy_slot_cli cpu_ac2_` | 3 |
+| AC-3 | `cargo test --locked --offline --test heavy_slot_cli cpu_ac3_` | 6 |
+| AC-4 | `cargo test --locked --offline --lib heavy_slot::cpu_tests` | 9 |
+| AC-5 | `cargo test --locked --offline --test check_affected_one_slot cpu_ac5_` | 2 |
+| AC-6 | `cargo test --locked --offline --test heavy_slot_cli cpu_ac6_` | 1 |
+| AC-7 | `cargo test --locked --offline --test heavy_slot_cli --test heavy_slot_fifo_cli --test heavy_slot_jobs_cleanup_cli --test check_affected_one_slot` | 54, 10, 6, 9 |
+| AC-8 | `cargo test --locked --offline --test heavy_slot_cli cpu_ac8_` | 2 |
+
+같은 실행에서 스캔 테스트 `state_folder_literal_scan`(13), `next_flow_skill_scan`(76), `source_manifest_facts`(8)도 통과했어요. 코드 head `f5af3ae71c` 에서는 `cargo clippy --locked --offline --lib --test heavy_slot_cli --test check_affected_one_slot -- -D warnings`, `--lib heavy_slot`(32), `test_switch_release_scan`(4), `cli_text_citations`(5)가 통과했어요(로그 `target/zoe/green-ac5.log`).
 
 AC-5 의 실패 확인: `bab95d2cc9` 에 테스트만 더해(`6b79bebf2b`) `cargo test --locked --offline --test check_affected_one_slot cpu_ac5_` 를 돌리면 종료 101 이에요. 기다린 실행의 테스트가 `no slot_wait word` 단언에서 실패하고, 기다리지 않은 실행의 테스트는 통과해요.
 
@@ -124,3 +128,4 @@ AC-5 의 실패 확인: `bab95d2cc9` 에 테스트만 더해(`6b79bebf2b`) `carg
 - Linux 와 Windows 에서는 돌리지 않았어요. 릴리스 빌드도 만들지 않았어요.
 - 설치된 이전 빌드는 새 키가 있는 `limits.json` 을 거절해요. 키는 새 빌드를 설치한 뒤에만 넣고, 되돌리기 전에 지워요.
 - 이 카드의 영수증은 설치된 빌드의 `check affected` 가 만들어요. 그 줄에는 `slot_wait` 가 나올 수 없어요.
+- `docs/design-review/appendix/operations/check.md` 의 요약 줄 설명에는 `slot_wait` 가 없어요. 이 카드의 쓰기 범위 밖이에요.
