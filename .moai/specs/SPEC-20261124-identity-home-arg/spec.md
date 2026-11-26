@@ -2,7 +2,7 @@
 id: SPEC-20261124-identity-home-arg
 title: "identity takes the HOME as an argument: identity_in, the claim group, then every remaining caller, and the identity adapter removed"
 status: draft
-revision: 5
+revision: 6
 created: 2026-11-24
 ---
 
@@ -16,6 +16,8 @@ created: 2026-11-24
 
 판 5 는 카드의 남은 일(조각표의 2b·3·4)을 한 판으로 해요. 남은 제품 호출부(`src/apply.rs`, `src/audit.rs`, `src/audit_clone.rs`, `src/key_vault.rs`, `src/update_hooks.rs`, `src/launcher_init.rs`, `src/ops/lane_next.rs`, `src/ops/identity.rs`)를 `identity_in` 으로 옮기고, 어댑터 `identity` 를 지우고, 이 변경으로 HOME 을 더는 건드리지 않게 된 테스트의 기준선 줄을 지워요. HOME 을 다루는 변경이라 tier 2 예요.
 
+판 6 은 리더 결정 노트 10218 을 반영해요. `apply` 영수증, `audit::observe`, `lane-next` 는 환경 HOME 을 넘겨 지금의 링크 HOME 거절을 지키고, 카드 기준 1 은 not met 으로 두고 착지해요.
+
 ## Interview
 
 - Q1: `identity` 의 서명을 바로 바꾸나요, 새 함수를 더하나요? → A: 새 함수 `identity_in(path, home)` 를 더하고 `identity(path)` 는 그것을 부르는 가장자리 어댑터로 남겨요(D-1). 서명을 바로 바꾸면 한 번에 16개 파일이 깨져 한 카드·한 감사로 닿기엔 너무 커요.
@@ -23,10 +25,11 @@ created: 2026-11-24
 - Q3: HOME 을 환경 변수에서 읽는 곳이 `identity` 뿐인가요? → A: 아니에요. `src/layout.rs:35` `default_home_root` 도 읽고 클레임 장부 경로(`claim::journal_root` → `layout::switched_dir`)가 거쳐요. 이 SPEC 의 범위 밖이고 따로 카드로 열어요(D-3).
 - Q4: (판 5) 남은 일을 나누나요? → A: 레인 제안은 한 판, READY 하나예요(D-8). 어댑터 삭제는 마지막 호출부와 같이 가야 해요.
 - Q5: (판 5) 어느 호출부가 HOME 을 받나요? → A: 홈 상태 폴더 아래를 읽거나 쓰는 길과, 그 거절이 첫 문턱인 길이에요: 키 금고, 첫 실행 초기화, update 훅 층, audit clone 계획, `identity` 명령(D-10, D-11, D-12, D-14).
-- Q6: (판 5) 어느 호출부가 HOME 없이 부르나요? → A: `apply` 영수증, `audit::observe`, `lane-next` 예요. 근거는 Plan 의 읽기 증거(판 5)예요. 링크 HOME 에서 동작이 바뀌어요(REQ-21..23, D-13). 승인자가 바꿀 수 있는 기본값이에요.
+- Q6: (판 6) `apply` 영수증, `audit::observe`, `lane-next` 는 무엇을 넘기나요? → A: 환경 HOME 이에요(리더 결정 노트 10218). 링크 HOME 거절과 지금 동작이 그대로예요(REQ-20..23, D-13).
 - Q7: (판 5) 빈 HOME 은 어디서 거르나요? → A: `identity_in` 한 곳이에요(D-9).
 - Q8: (판 5) `identity` 를 쓰던 테스트는 어떻게 하나요? → A: 환경 HOME 을 드러내어 읽어 `identity_in` 에 넘기거나 `None` 을 넘기도록 고치고, 어댑터 자체를 재던 AC-4 테스트는 지워요(D-14).
 - Q9: (판 5) 기준선은 몇 줄 줄어요? → A: 읽기만으로는 몰라요(unverified). 변경 전후 관찰 실행으로 재요(D-15).
+- Q10: (판 6) 카드 기준 1 은 어떻게 적나요? → A: not met 으로 두고 `card land --keep-open` 으로 착지해요. 비교용 HOME 을 인자로 넘기는 일은 후속 카드예요(리더 결정 노트 10218, D-16).
 
 ## Non-goals
 
@@ -36,6 +39,7 @@ created: 2026-11-24
 - `rev_parse` 의 git 자식 환경 규칙 바꾸기(SPEC-20261124-home-env-readers D-8).
 - `identity` 답의 모양 바꾸기. 값 규칙의 변화는 REQ-10(빈 HOME) 하나예요.
 - `src/home_state.rs` 변경(D-2).
+- `identity_in` 이 git 자식 준비에서 비교용으로 읽는 환경 HOME 을 인자로 넘기는 일. 후속 카드예요(D-16).
 
 ## Requirements
 
@@ -58,10 +62,10 @@ created: 2026-11-24
 - REQ-17: The `audit_clone::plan` function shall resolve the evidence folder from the HOME it is given and from no environment variable.
 - REQ-18: WHEN the home state root of that HOME is a symlink, `audit_clone::plan` shall return the error `home state root is a symlink; refused`. · failure: none — the answer is the refusal
 - REQ-19: WHEN `audit_clone::plan` is given no HOME for a project that has a project id, it shall answer with a null evidence folder and the reason `HOME unavailable`. · failure: none — the rest of the plan is answered
-- REQ-20: The three callers that read no home state (the `apply` receipt and `audit::observe` and `lane-next`) shall resolve identities through `identity_in(path, None)`.
-- REQ-21: WHEN the environment HOME holds a symlinked home state root, `apply::Receipt::new` shall record the clone id and the workspace id it records with a sound HOME.
-- REQ-22: WHEN the environment HOME holds a symlinked home state root, `audit::observe` shall answer as it answers with a sound HOME.
-- REQ-23: WHEN the environment HOME holds a symlinked home state root and the idle count is on, `lane-next` shall keep the count in the clone's state folder.
+- REQ-20: The three callers (the `apply` receipt and `audit::observe` and `lane-next`) shall resolve identities through `identity_in` with the environment HOME read at the call.
+- REQ-21: WHEN the environment HOME holds a symlinked home state root, `apply::Receipt::new` shall record the clone id and the workspace id as null.
+- REQ-22: WHEN the environment HOME holds a symlinked home state root, `audit::observe` shall return the error `home state root is a symlink; refused`.
+- REQ-23: WHEN the environment HOME holds a symlinked home state root and the idle count is on, `lane-next` shall answer without keeping a count.
 - REQ-24: WHEN the receipt store is switched to a home state folder behind a symlink, the apply engine shall keep refusing the receipt path. · failure: none — nothing is written behind the link
 - REQ-25: The `identity` command shall give `identity_in` the environment HOME read once, an unset or empty HOME counting as no HOME.
 - REQ-26: The source tree shall hold no `identity` function in the `identity` module and no call of one under `src` or `tests`.
@@ -90,9 +94,9 @@ created: 2026-11-24
 - AC-15 (REQ-13, REQ-14): 자식 프로세스의 환경 HOME 이 링크일 때 저장소가 아닌 폴더에서 `prepare` 가 `.git` 도 프로젝트 파일도 만들지 않아요. 고정 테스트이고, `identity_in(cwd, None)` 으로 바꾸면 실패해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(home_arg_rest_a_linked_home_initializes_nothing)'`
 - AC-16 (REQ-15, REQ-16): 환경 HOME 은 건전하고 `plan_in` 에 넘긴 HOME 만 링크이면 프로젝트가 없고 위 이유가 남아요. 수리 전에는 실패해요. · verify: `cargo nextest run --offline --locked --test hook_legacy_cli -E 'test(home_arg_rest_update_layer_refuses_a_linked_given_home)'`
 - AC-17 (REQ-17, REQ-18, REQ-19): 넘긴 링크 HOME 은 거절, `None` 은 `HOME unavailable`, 기존 audit plan 테스트는 그대로 통과해요. 새 테스트의 RED 는 컴파일 실패예요. · verify: `cargo nextest run --offline --locked --test home_writer_links -E 'test(audit_plan)'`
-- AC-18 (REQ-20, REQ-21, REQ-24, REQ-29): 링크 환경 HOME 에서 영수증에 두 id 가 있어요(수리 전에는 null 이라 실패). 홈으로 돌린 영수증 저장소의 거절은 기존 테스트가 지켜요. · verify: `cargo nextest run --offline --locked --lib -E 'test(home_arg_rest_apply_receipt_records_ids_under_a_linked_home)'` 와 `cargo nextest run --offline --locked --test home_writer_links -E 'test(receipt_refuses)'`
-- AC-19 (REQ-22, REQ-30): 링크 환경 HOME 에서 `observe` 가 workspace id 를 답해요. 수리 전에는 거절이라 실패해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(home_arg_rest_audit_observe_answers_under_a_linked_home)'`
-- AC-20 (REQ-23, REQ-31): 링크 환경 HOME 에서 스냅샷 읽기에 `--max-empty` 를 주면 클론 상태 폴더의 `lane-idle` 에 횟수가 생겨요. 수리 전에는 생기지 않아 실패해요. · verify: `cargo nextest run --offline --locked --test lane_next_cli -E 'test(home_arg_rest_lane_next_counts_under_a_linked_home)'`
+- AC-18 (REQ-20, REQ-21, REQ-24, REQ-29): 링크 환경 HOME 에서 영수증의 두 id 가 null 이고, 같은 테스트의 건전한 HOME 대조에서는 두 id 가 있어요. 기준 커밋에서도 통과하는 고정 테스트이고, 호출이 `None` 을 넘기면 실패해요. 홈으로 돌린 영수증 저장소의 거절은 기존 테스트가 지켜요. · verify: `cargo nextest run --offline --locked --lib -E 'test(home_arg_rest_apply_receipt_records_no_ids_under_a_linked_home)'` 와 `cargo nextest run --offline --locked --test home_writer_links -E 'test(receipt_refuses)'`
+- AC-19 (REQ-22, REQ-30): 링크 환경 HOME 에서 `observe` 가 `home state root is a symlink; refused` 로 거절해요. 고정 테스트이고, 호출이 `None` 을 넘기면 실패해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(home_arg_rest_audit_observe_refuses_a_linked_home)'`
+- AC-20 (REQ-23, REQ-31): 링크 환경 HOME 에서 스냅샷 읽기에 `--max-empty` 를 줘도 명령은 답하고 클론 상태 폴더의 `lane-idle` 에 횟수가 생기지 않아요. 같은 테스트의 건전한 HOME 대조에서는 생겨요. 고정 테스트이고, 호출이 `None` 을 넘기면 실패해요. · verify: `cargo nextest run --offline --locked --test lane_next_cli -E 'test(home_arg_rest_lane_next_counts_nothing_under_a_linked_home)'`
 - AC-21 (REQ-25): `moai identity` 는 설정된 HOME 의 홈 상태 폴더를 답하고, 링크면 실패하고, HOME 이 없거나 비면 `home_state_root` 가 null 이에요. 고정 테스트예요. · verify: `cargo nextest run --offline --locked --test cli_diagnose`
 - AC-22 (REQ-26, REQ-7, REQ-9): 어댑터를 쓰던 테스트(클레임 묶음 도우미, identity 의 git 설정 테스트, `claims_legacy_dir`)가 고친 뒤에도 통과해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(home_arg_claim_group) | test(identity::) | test(claims_legacy_dir_ignores)'`
 - AC-23 (REQ-27, REQ-28): 기준 커밋의 기준선에 이름이 있는 테스트만, 변경 전과 변경 후에 관찰 모드로 돌려 두 로그를 비교하고, 앞에는 닿고 뒤에는 닿지 않은 줄만 지워요. 먼저 `cp tests/fixtures/test_home_guard/baseline.tsv target/c409/baseline-base.tsv` 로 기준 커밋의 목록을 남겨요(코드 변경 전). 관찰 실행의 HOME 은 가드가 만드는 임시 폴더예요(`tools/test_home_guard.sh`). 지운 뒤에는 같은 명령을 환경 변수 없이(enforce) 돌려 exit 0, `cargo nextest run --offline --locked --test test_home_guard` exit 0 이에요. · verify: `MOAI_HOME_GUARD=observe MOAI_HOME_GUARD_LOG="$PWD/target/c409/guard-before.log" cargo nextest run --offline --locked --no-fail-fast $(awk -F'\t' '!/^#/ && NF==2 {print ($1=="moai_cli" ? "--lib" : "--test=" $1)}' target/c409/baseline-base.tsv | sort -u) -E "$(awk -F'\t' '!/^#/ && NF==2 {printf "%stest(=%s)", s, $2; s=" | "}' target/c409/baseline-base.tsv)"` (heavy slot 안에서; 변경 후에는 로그 이름만 `guard-after.log`)
@@ -121,9 +125,11 @@ created: 2026-11-24
 
 판 5 는 표의 2b·3·4 를 한 판, READY 하나로 해요(D-8). 순서: 승인과 범위 확장 → 변경 전 관찰 실행 → 동작 RED → 호출부 하나씩 → 어댑터 삭제 → 뮤턴트 → 변경 후 관찰 실행과 기준선 → 검사와 READY.
 
+판 6 이 위 순서와 표에서 바꾸는 것: 표의 2b 가운데 `apply`·`audit`·`lane-next` 는 `None` 대신 환경 HOME 을 넘겨요(리더 결정 노트 10218). `identity_in` 의 빈 HOME 거르기(AC-12)의 RED·GREEN 을 이 호출들을 바꾸기 전에 해요. 변경 전 관찰 실행 앞에 예약의 lease 를 확인해요. 관찰 실행은 heavy slot `--max 2` 안에서 돌려요.
+
 읽기 증거(판 5, 2026-11-26, `b3048a821a`): 남은 제품 호출은 `apply.rs:427`(`clone_id`, `workspace_id`), `audit.rs:271`(`workspace_id`), `audit_clone.rs:148`(`project_id`, `home_state_root`), `key_vault.rs:204`(`identity_status`, `work_tree`, `clone_id`, `clone_anchor`, `project_id`), `update_hooks.rs:121`(`work_tree`), `ops/lane_next.rs:81`(`identity_status`, `clone_anchor`), `ops/identity.rs:17`(전체), `launcher_init.rs:101·256·269`(`identity_status`, `work_tree`, `clone_anchor`)예요.
 
-`None` 으로 부르는 세 길의 증거(REQ-20): ① `apply`: 쓰는 값은 두 id 뿐이고 영수증 경로는 `receipts_dir` → `layout::switched_dir_checked(root, "receipts")`(`src/apply.rs:394`)가 링크 낀 홈 상태 폴더를 따로 거절해요. 오류는 지금도 `_ => (None, None)` 로 삼켜서 그 거절은 명령을 멈추지 않아요. ② `lane-next`: 오류는 지금도 `.ok()` 로 삼키고, 횟수 파일은 클론 상태 폴더예요(`src/lane_idle.rs`, `state_file` → `clone_root::path(anchor).join("lane-idle")`). ③ `audit`: `audit` 는 `observe` → `run::run` → `observe` → `reduce` 이고, `src/run.rs`·`src/verify.rs`·`src/plan.rs`·`src/tdd.rs` 에서 `switched_dir`·`default_home_root`·`active_home`·`home_root::` 를 부르는 줄이 없어요(grep). `src/run.rs` 의 identity 호출은 `identity_in(project, None)`(기준선 저장소, 클론 쪽)뿐이에요. 승인된 검증 명령은 자식 프로세스로 환경을 물려받고, 같은 명령을 돌리는 `run-verify`(`src/ops/run_verify.rs`)는 지금도 링크 HOME 거절이 없어요. 간접 호출과 검증 명령이 하는 일은 따라가지 않았어요(unverified).
+환경 HOME 을 넘기는 세 길(REQ-20, 판 6): `src/apply.rs` 의 `identity_fields` 와 `src/audit.rs` 의 `observe` 는 그 자리에서 `layout::environment_home()` 을 읽어 `identity_in` 에 넘겨요(선례 `src/claim.rs` 의 `journal_root`). `Receipt::new` 와 `observe` 의 서명은 바꾸지 않아요. `src/ops/lane_next.rs` 는 바이너리 쪽이라 `std::env::var_os("HOME")` 을 읽어 넘겨요. `environment_home()` 은 빈 값을 거르지 않고 `identity_in` 이 걸러요(REQ-10). 거절을 삼키는 모양(`apply` 의 `_ => (None, None)`, `lane-next` 의 `.ok()`)과 `audit` 의 `?` 는 그대로예요.
 
 순서(판 1): 1) 결정 D-1..D-4 와 SPEC 승인을 리더에게 노트로 받아요. 2) RED: 위 테스트 이름들로 실패를 먼저 봐요. 3) GREEN: `identity` 본문을 `identity_in` 으로 옮기고 `identity` 는 한 줄 어댑터로 줄여요. 4) 이웃: `identity` 를 거치는 기존 테스트 대표 몇 개, fmt, clippy.
 
@@ -137,11 +143,10 @@ created: 2026-11-24
 - 조각 2a 는 동작이 하나 바뀌어요: 환경 HOME 의 홈 상태 폴더가 심볼릭 링크일 때 클레임 묶음의 함수들은 지금 `home state root is a symlink; refused` 로 실패하고, 2a 뒤에는 그 폴더를 풀지 않아 실패하지 않아요(REQ-7, D-5). 단 `claim::journal_root` 는 예외예요: `layout.json` 이 저널을 그 홈 상태 폴더로 돌려 놓았으면 `identity` 의 거절이 사라진 자리에서 링크 너머에 저널을 쓰게 되므로, `journal_root` 가 같은 문장으로 거절해요(REQ-9, D-7; 감사 B1 수리). 묶음의 나머지 함수는 홈 상태 폴더 아래에 읽거나 쓰지 않아요(`grep -nwE "switched_dir|default_home_root|active_home|store_dir" src/lane_registry.rs src/session.rs src/goal.rs src/run.rs src/worktree_move.rs src/claim_link.rs` 가 아무것도 찍지 않고 exit 1, 2026-11-24). 거부를 단언하는 기존 테스트는 `src/contract.rs:553` 의 오류 분류 표뿐이었어요(`grep -rn "home state root is a symlink" src tests`, 2026-11-24).
 - 조각 2a 도 `baseline.tsv` 줄을 줄이지 못할 수 있어요: 클레임 묶음은 `layout::switched_dir` → `layout::default_home_root` 로 환경 HOME 을 또 읽어요(C-410). 줄어드는 양은 판 3 뒤에 C-406 가드를 다시 돌려 재고, 그 전의 수는 unverified 예요(D-4).
 - 7개 파일 약 12곳을 한 조각에 바꿔요. 호출 한 줄씩의 기계적 교체이고 `identity` 어댑터는 그대로 남아 있어서(조각 3 이 지워요) 되돌리기는 쉬워요.
-- 판 5, 카드 기준 1: `identity_in` 의 git 자식 준비(`rev_parse`)는 받은 HOME 이 환경 HOME 과 같은지 보려고 `layout::environment_home()` 을 읽고, HOME 이 없거나 같으면 자식이 환경의 전역 git 설정을 읽어요. `home_state_root` 는 환경에서 오지 않아요. 이 예외를 기준 1 충족으로 볼지는 승인자의 판단을 받기 전에는 met 으로 적지 않아요.
+- 판 5, 카드 기준 1: `identity_in` 의 git 자식 준비(`rev_parse`)는 받은 HOME 이 환경 HOME 과 같은지 보려고 `layout::environment_home()` 을 읽고, HOME 이 없거나 같으면 자식이 환경의 전역 git 설정을 읽어요. `home_state_root` 는 환경에서 오지 않아요. 판 6: 이 예외 때문에 기준 1 은 not met 이에요(D-16).
 - 판 5: Windows 에서 HOME 이 없으면 `key_vault::home()` 이 `USERPROFILE` 을 줘서 금고와 첫 실행 초기화에 링크 거절이 새로 생기고 git 자식의 설정 조회가 바뀌어요. Mac 테스트로는 확인할 수 없어요(unverified).
 - 판 5: 공유 범위 금고는 홈 상태 폴더가 링크여도 지금처럼 링크 너머를 읽고 써요(이 판 전부터).
-- 판 5: D-13 은 링크 HOME 에서의 거절을 줄여요. `audit-reduce` 는 지금 실패하던 것이 검증 명령을 돌리고 판정해요.
-- 판 5: 기준선 감소량은 unverified 예요. 후보는 `lane_next_cli`, `audit_admission`, `boundary_repro`, `hook_legacy_cli`, lib 의 `update`·`lane_next` 줄이고, `apply_*`(C-410 의 읽기), `cli_diagnose`(명령 가장자리), `launcher_liveness_cli`(거절 유지)는 남을 것으로 봐요. 0줄이면 기준 2 는 not met 이에요.
+- 판 6: 남은 제품 호출이 모두 HOME 을 넘기므로 `identity_in` 은 이 길들에서 계속 그 HOME 을 읽어요. 줄어들 수 있는 것은 가드의 HOME 과 다른 픽스처 HOME 을 넘기게 되는 테스트(후보: `plan_in` 을 거치는 lib 의 `update::` 줄)뿐일 것으로 봐요. 0 에서 몇 줄 사이이고 unverified 예요. `lane_next_cli`, `audit_admission`, `apply_*` 줄은 남을 것으로 봐요. 0줄이면 기준 2 도 not met 이에요(REQ-28).
 - 판 5, 다른 카드와의 겹침: C-457(`spec/glm-key-scope-20261124`, 착지 전 커밋 `cc22a0d9a8`)이 `src/key_vault.rs` 에 `project_scope_in(dir, home)` 를 더했고 `project_scope(dir)` 는 `identity(dir)` 를 불러요. 판 5 의 키 금고 변경은 같은 이름과 몸통(`scope_of_identity`)을 써서 합치기를 맞추고, 뒤에 착지하는 쪽이 남은 `identity` 호출을 없애야 컴파일돼요. C-410 의 새 목록 검사(`tests/home_env_readers.rs`)가 먼저 착지하면 이 판이 바꾼 HOME 읽기 자리를 그 목록에 맞춰요. `src/main.rs` 의 audit clone 가장자리에 환경 HOME 읽기가 하나 늘어요.
 
 ## Decisions
@@ -160,9 +165,10 @@ created: 2026-11-24
 | D-10 | `project_scope_in(dir, home)` 을 더하고(C-457 과 같은 이름·몸통) `scope_for` 는 HOME 을 인자로 받아요. `scope_here` 는 `key_vault::home().ok()` 를, `read_here` 는 받은 HOME 을 넘겨요. `ops/key_*.rs` 와 `session.rs` 는 그대로예요. 대안: `scope_here` 도 인자를 받고 `ops/key_*.rs` 다섯 파일이 넘겨요 | `None` 이면 프로젝트 금고의 읽기·쓰기·삭제 앞의 링크 거절이 사라져요(`check_dir` 와 `O_NOFOLLOW` 는 마지막 구성요소만 봐요). 선례 `model_effort_questions.rs` 의 `identity_in(dir, Some(home))` | 호출 줄 되돌리기 |
 | D-11 | 첫 실행 초기화는 `key_vault::home()` 의 값을 그대로 세 호출에 넘겨요. 정규화한 값은 넘기지 않아요 | `None` 이면 링크 HOME 에서 초기화가 새로 돌고 일부만 적용된 상태가 남을 수 있어요. `rev_parse` 는 HOME 을 글자 그대로 비교해서 다르게 적으면 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 이 빠져요 | 호출 줄 되돌리기 |
 | D-12 | update 훅 층은 `plan_in` 의 HOME 을, `audit_clone::plan` 은 새 인자 `home` 을 받고 `main.rs` 가 환경 HOME 을 넘겨요. 대안: `plan_in` 짝을 더해 `main.rs` 를 안 고쳐요 | `update` 명령의 HOME 은 환경 HOME 을 빈 값 걸러 읽은 것이라 명령 동작은 같아요 | 인자와 호출 줄 되돌리기 |
-| D-13 | `apply` 영수증, `audit::observe`, `lane-next` 는 `identity_in(path, None)` 이에요. 링크 HOME 에서 영수증에 id 가 남고, `audit-reduce` 가 오류 대신 돌고, `lane-next` 가 클론에 횟수를 써요. 대안: 명령 가장자리가 환경 HOME 을 넘겨 지금의 거절을 지켜요(REQ-20..23, AC-18..20 이 바뀌고 파일이 늘어요) | Plan 의 읽기 증거(판 5): 이 길의 뒤따르는 홈 상태 읽기·쓰기는 이 거절에 기대지 않아요. 홈으로 돌린 영수증 저장소는 `switched_dir_checked` 가 따로 거절해요. 리더 조건(노트 7748)과 감사 B1 의 경계예요. 조각표(판 1) 2b 가 이 파일들을 `None` 으로 정했어요 | 세 호출에 환경 HOME 넘기기 |
+| D-13 | `apply` 영수증, `audit::observe`, `lane-next` 는 그 자리에서 읽은 환경 HOME 을 `identity_in` 에 넘겨요. 링크 HOME 거절과 지금 동작이 그대로예요. 버린 대안: `None`(판 5 기본값, 링크 HOME 거절이 사라져요). 다른 대안: 명령 가장자리부터 HOME 인자를 내려요(`Receipt::new` 를 부르는 `agents.rs`·`generation.rs`·`github_templates.rs`·`profile.rs`·`project_ci_plan.rs` 와 `ops/audit_reduce.rs` 가 범위에 더 들어요) | 리더 결정 노트 10218(위임으로는 있는 거절을 없애지 않아요). 받은 범위 안에서 끝나요 | 세 호출 줄 되돌리기 |
 | D-14 | `identity` 명령은 환경 HOME 을 읽어 넘기고 `identity` 를 지워요. 테스트는 `identity_in` 으로 고치고(클레임 도우미의 사전 단언 문장은 유지), git 설정 테스트의 이름은 유지해요. 대안: `#[cfg(test)]` 환경 도우미를 남겨요 | 마지막 호출부가 떠나요. C-410 SPEC 의 AC-15 문장(`identity(path)`)은 C-410 이 고쳐야 해요 | 어댑터 되살리기 |
-| D-15 | 기준선은 변경 전후 관찰 실행의 차이만 지우고 `BASELINE_CAP` 을 남은 줄 수로 낮춰요. 머리 주석의 `identity::identity` 설명도 고쳐요 | C-410 노트 10179 의 나눔: 각 카드는 자기 변경이 비운 줄만, 뒤 카드는 앞 카드가 착지한 tip 에서 지워요 | 지운 줄 되살리기 |
+| D-15 | 기준선은 변경 전후 관찰 실행의 차이만 지우고 `BASELINE_CAP` 을 남은 줄 수로 낮춰요. 머리 주석의 `identity::identity` 설명도 고쳐요 | C-410 노트 10179 의 나눔: 각 카드는 자기 변경이 비운 줄만, 뒤 카드는 앞 카드가 착지한 tip 에서 지워요. 변경 전 관찰에서 이미 닿지 않는 줄은 지우지 않고 목록을 리더에게 알려요 | 지운 줄 되살리기 |
+| D-16 | 카드 기준 1 은 not met 으로 두고 `card land --keep-open` 으로 착지해요. 비교용 HOME 을 인자로 넘기는 일은 후속 카드예요 | 리더 결정 노트 10218. 알려진 예외가 남으면 met 이 아니에요(노트 10212) | 해당 없음 |
 
 ## Result
 
