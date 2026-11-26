@@ -79,4 +79,42 @@ branch: spec/manifest-driver-rust-20261126
 
 ## Result
 
-(아직 구현 전이에요.)
+2026-11-26, 작성 레인 `moai-adk-agent-jabez`. 커밋: `2dc169a601`(빨강 테스트: 55개 중 43개 실패, 명령이 없어서), `97bdee041c`(구현), 이어지는 테스트 수리 커밋(거절 이유를 확인하게 한 두 테스트).
+
+### 바뀐 것
+
+- 새로: `src/manifest_merge.rs`, `src/ops/manifest_merge_driver.rs`, `tests/manifest_merge_driver_cli.rs`, `docs/design-review/appendix/operations/manifest_merge_driver.md`.
+- 고침: `.gitattributes`(`merge=moai-manifest-rs`), `docs/agents-md-maintenance.md`(등록 줄), `src/scope.rs`(주석), `tests/card/card_generated_scope.rs`(속성 이름), `tests/source_manifest_facts.rs`, `tools/source_manifest.py`(글만), 공유 파일 `src/lib.rs`·`src/help.rs`·`tests/areas.toml`·`tools/repo_scans.json`·`tests/fixtures/help/all*.txt`(줄 자리 예약으로).
+- 삭제: `tools/merge_driver_manifest.py`, `tests/source_manifest_test.py` 와 `tests/prop_manifest_test.py` 의 드라이버 부분.
+
+### 검증 (macOS, git 2.54.0)
+
+- 대상 실행(REQ-5 수리 뒤, 한 슬롯): `manifest_merge_driver_cli`·`source_manifest_facts`, lib `manifest_merge`, `card card_generated_scope`, 문서·격리 스캔, nextest, `cargo clippy --all-targets`, 빌드가 모두 exit 0. 로그 `target/md/step3-*.log`.
+- 인수 기준의 verify 명령(쓴 그대로): AC-1 18, AC-2 20, AC-3 8, AC-4 2, AC-5 9, AC-6 1 passed, 모두 exit 0. 이름 접두어는 부분 일치라 AC-1 과 AC-5 의 수에는 다른 접두어의 테스트도 들어가요.
+- 마지막 코드의 `manifest_merge_driver_cli`: 59 passed.
+- 위험 경로(`env -i`, 임시 저장소, 문서에서 읽은 등록 줄, 가짜 `python3`): 37개 확인이 모두 맞았어요. 깨끗한 머지와 하위 폴더 머지의 해시가 합친 파일과 같음, 실제 충돌과 설정 거절은 git 글 머지가 남고 이유와 `moai check fix` 를 표준 오류에 말함, `merge-tree` 표준 출력은 트리 id 한 줄, `moai` 가 없거나 설치된 4.2648.53-dev(`--help` exit 2)면 글 머지, 옛 설정 줄만 있으면 가짜 `python3` 호출 없음, 옛 속성 줄을 가진 체크아웃에서는 호출됨.
+- 뮤턴트: 24개를 모두 테스트가 잡았어요. 처음 19개 중 `not-package` 와 `utf8-lossy` 는 살아남았어요(두 테스트가 다른 거절 이유로도 통과). 두 테스트가 이유를 확인하게 고친 뒤 둘 다 exit 101 이에요. panic 보호를 지운 뮤턴트는 lib 테스트만 잡아요.
+- 영수증(`moai check affected --card`)은 READY 노트에 적어요.
+
+### 구현 중에 정한 것
+
+- REQ-5 의 "자기 `merge` 속성"은 **어느 한쪽이라도 바꾼 스킬 파일**에 적용해요. 첫 구현은 이전 드라이버처럼 양쪽이 바꾼 파일만 봤는데, 승인된 문장은 그렇게 좁히지 않아서 글자에 맞췄어요(더 보수적). 이 저장소의 스킬 파일에는 그런 속성이 없어요.
+- 공통 조상의 항목이 `null` 이거나 객체가 아니면 거절해요(이전 드라이버와 같음).
+- 등록 줄은 `if … then … else … fi` 예요. `||` 로 쓰면 거절한 뒤 글 머지가 한 번 더 돌아 `%A` 가 망가지고, 그 형태의 뮤턴트를 테스트가 잡아요.
+- 결과는 임시 파일에 쓰고 이름을 바꿔 `%A` 에 넣어요.
+
+### 이전 Python 테스트의 대응
+
+- 같은 사례의 Rust 테스트로 옮겼어요: 같은 파일 갈라 고치기, 다른 파일, 하위 폴더, 새 파일, 이름 바꾸기, 폴더 이름 바꾸기, histogram, 설정 거절, 속성 거절, `origin` 충돌, 실제 충돌, 낡은 해시, 손으로 쓴 해시, 두 브랜치의 자기 줄, 키 중복 방지, 드라이버 바이트.
+- 없어진 것(D-3 으로 단계가 사라짐): `--install` 의 반복 실행, `--check` 의 다른 줄·낡은 복사본 보고, 브랜치의 스크립트를 돌리지 않음.
+- 약해진 것: 입력 순서 속성 테스트가 1000 사례에서 씨앗 고정 30 사례가 됐어요.
+- Python 의 import 실패 사례는 panic 보호 lib 테스트와 저장소 밖 실행 테스트가 대신해요.
+
+### 한계와 남은 것
+
+- 새 속성 줄을 가진 체크아웃에서만 성립해요. 착지 전에 만든 브랜치(옛 `.gitattributes`)에서 머지할 때 옛 설정 줄이 있는 클론은 여전히 `python3` 를 불러요(`git merge` 에서 측정, `merge-tree` 는 재지 않음). 2026-11-26 에 이 저장소의 로컬 설정에는 `merge.*` 키가 없었어요(리더 노트 9955 와 읽기).
+- 충돌로 남은 매니페스트를 `moai check fix` 는 읽지 못해요(올바른 JSON 과 깨끗한 작업 폴더가 필요). 사람이 충돌을 풀고 커밋한 뒤 돌려요. 이전 `source_manifest.py write` 는 충돌 상태를 직접 읽었어요.
+- 편집한 두 Python 테스트 모듈과 `tools/source_manifest.py` 는 손으로 돌리지 않았어요(규칙). `check affected` 가 돌리면 그 결과를 READY 에 그대로 적고, 아니면 `not_run` 이에요.
+- 사람 몫: 착지·설치 뒤 새 이름 등록(선택), 옛 복사 폴더 `.git/moai-manifest-driver/` 삭제(선택, 지금 부르는 설정 없음).
+- panic 은 바이너리를 통한 종단 실행으로는 재지 않았어요(lib 테스트만). Linux·Windows 는 `not_run`.
+- 작업 중 편차: 구현 에이전트가 막힌 앞쪽 `sleep` 대신 `caffeinate` 로 슬롯 실행을 기다렸어요(스스로 보고). 되풀이하지 않아요.
