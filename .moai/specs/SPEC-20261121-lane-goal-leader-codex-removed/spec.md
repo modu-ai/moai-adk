@@ -86,10 +86,21 @@ Revision 2 rewrites revision 1 for the tree of 2026-11-26. Revision 1 and its fi
 
 ## Result
 
-Run on 2026-11-26 on the working tree based on `c62f942eea` (macOS).
+Run on 2026-11-26 on macOS, base `c62f942eea`, code commit `ffdda7490a`. The verify lines were run as written, one after another, on the tree that became that commit; all exit 0.
 
-- The verify lines of AC-1 to AC-8 as written, one after another: all exit 0. Tests passed per line: AC-1 1; AC-2 1 and 1; AC-3 7 and 1; AC-4 8; AC-5 1; AC-6 10; AC-7 1 and 33; AC-8 11 and 16.
-- Before that, two `cargo nextest run` runs of the wider named set (the lane loop, lane duty, stop hook, leader round, home writer link and help layout targets, the goal block module and the matching unit tests): 168 run, 166 passed, 2 failed each time. Both failures were the two new usage-error assertions: they expected the message to name `claude`, then the refused word, while the real message is `invalid argument value; see --help`. The assertions, REQ-2, AC-2 and the operation document now say what the command does; the two tests pass in the AC-2 lines. The other 166 tests were not changed after those runs.
+- AC-1: met. 1 test passed.
+- AC-2: met. Both lines passed, 1 test each.
+- AC-3: met. 7 unit tests and 1 command test passed.
+- AC-4: met. 8 tests passed.
+- AC-5: met. 1 test passed.
+- AC-6: met. 10 tests passed.
+- AC-7: met. 1 command test and 33 unit tests passed.
+- AC-8: met. 11 and 16 tests passed.
+
+Further:
+
+- On `ffdda7490a`, `moai check affected --card` over the range from the base answered PASS: 73 targets; the table step 88 of 88 tests, the test step 3019 of 3019; format, clippy and the diff check exit 0.
+- Before the verify lines, two `cargo nextest run` runs of the wider named set (the lane loop, lane duty, stop hook, leader round, home writer link and help layout targets, the goal block module and the matching unit tests): 168 run, 166 passed, 2 failed each time. Both failures were the two new usage-error assertions: they expected the message to name `claude`, then the refused word, while the real message is `invalid argument value; see --help`. The assertions, REQ-2, AC-2 and the operation document now say what the command does; the two tests pass in the AC-2 lines. The other 166 tests were not changed after those runs.
 - The pinned Claude answer of AC-1 equals what the installed `moai 4.2648.54-dev`, built before this change, printed for the same arguments.
 - Left out on purpose: `CODEX_THREAD_ID` (Non-goals), the `lane-stop-hook` entries of the state folder lists (D-6), and one comment in `src/go_state.rs` that still says the lane loop writes a count file, because another open card works on that file. Four link tests of the removed Stop hook writer are gone with the writer.
 - The affected card set and the independent audit are recorded on the card.
