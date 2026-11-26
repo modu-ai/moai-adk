@@ -18,6 +18,12 @@ created: 2026-11-26
 
 이 SPEC 은 읽는 곳이 있는 파일을 보관 후보에서 빼고, 미리보기에 읽는 곳을 보여 줘요. 조사(survey)가 보지 않던 `.moai/docs/local-rules` 와 사용자가 만든 `.claude` 파일도 보여 주기만 해요. 옮기는 일은 지금보다 줄기만 하고 늘지 않아요.
 
+근거:
+
+- `https://code.claude.com/docs/en/memory.md`, 2026-11-26T11:23Z 에 읽음, sha256 `7e52db857de441b381a3ee7ce1182a4267f6bbddee08000574e61e54fc335eac`. 가져온 규칙: `@path` 가져오기, 상대 경로는 가져오는 파일 기준, 최대 네 단계, 코드 구간과 코드 블록은 건너뜀, 공백은 `\` 로 이스케이프, 따옴표로 감싸면 가져오지 않음, 4 MiB 를 넘는 파일은 건너뜀, 작업 폴더 밖 가져오기는 사용자 승인이 필요함. 적용: REQ-2, REQ-3.
+- `mo.ai.kr` 을 2026-11-26 에 읽기만 했어요(아무것도 쓰지 않았어요): 위의 파일과 설정의 읽는 곳 키, `.moai-backup/manifest.json` 의 경로 목록. REQ-3 의 조건은 하나도 걸리지 않아 보였어요: `CLAUDE.md`, `AGENTS.md`, `AGENTS.local.md`, `CLAUDE.local.md` 에 밖 가져오기 0건, 링크 아님, `.claude/rules` 없음, 설정의 상태줄과 훅은 설치된 `moai` 실행 파일 호출이에요. 구현으로 확인한 것은 아니에요.
+- 제품의 훅과 claim 코드(`src/hook*.rs`, `src/claim*.rs`)를 `config/sections`, `.yaml`, ast-grep, `.moai/workflows` 글자로 찾았을 때 읽는 Go 시대 파일은 없었고 `.moai/project.yaml`(이번 세대 파일, 조사에서 빠짐)만 나왔어요. 상태줄 목록은 `src/statusline/state.rs:432-480`, `:822`, `:874` 에서 옮겼어요.
+
 읽는 사람: 승인하는 사용자와 리더, 구현 레인, 감사자.
 
 ## Interview
@@ -37,8 +43,8 @@ created: 2026-11-26
 
 <!-- 이 SPEC 은 옮기는 파일을 줄이는 쪽으로만 바꿔요. 읽는 곳을 확인하지 못하면 옮기지 않아요. -->
 - REQ-1: When the go-residue survey finds a `go_same` or `go_changed` file that a reader of REQ-2 names, the survey shall list it as class `go_in_use` with the suggested action `keep` and a `used_by` list that holds, for each reader, its project path and how it names the file (`import`, `settings`, `script` or `statusline`), and no setting value.
-- REQ-2: The survey shall read as readers: the files that `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `AGENTS.local.md` and `.claude/rules/**/*.md` import with `@path` (relative to the importing file, at most four hops, code spans and fenced blocks skipped); every string of `.claude/settings.json` and `.claude/settings.local.json` outside `permissions`, the `outputStyle` name matched against the style file name and its frontmatter `name`; the project scripts those strings name, followed at most four hops; and the status line's own files `statusline.yaml`, `llm.yaml` and `system.yaml` under `.moai/config/sections/` and `.moai/statusline.local.yaml`. · failure: REQ-3
-- REQ-3 (REQ-1, REQ-2): IF a reader that exists cannot be read (a read error, a link on its path, more than 4 MiB, settings that are not JSON, text that is not UTF-8, a secret-shaped name, a survey walk cut at its limit) or a reader names an import or a script outside the project, THEN the survey shall suggest `keep` for every `go_same` and `go_changed` file and list each such reader with its reason under `unread_readers`, which leaves the step without an apply command.
+- REQ-2: The survey shall treat these project files as readers and count every file one of them names as read: `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `AGENTS.local.md`, `.claude/rules/**/*.md` and the files they import with `@path` (relative to the importing file, at most four hops, code spans and fenced blocks skipped), where an import is the name; `.claude/settings.json` and `.claude/settings.local.json`, where any string outside `permissions` is a name and `outputStyle` names the style file whose file name or frontmatter `name` matches it; and the project scripts those strings name, followed at most four hops. The survey also counts as read the status line's own files `statusline.yaml`, `llm.yaml` and `system.yaml` under `.moai/config/sections/` and `.moai/statusline.local.yaml`. · failure: REQ-3
+- REQ-3 (REQ-1, REQ-2): IF a reader of REQ-2 that exists cannot be read (a read error, a link on its path, more than 4 MiB, settings that are not JSON, text that is not UTF-8, a secret-shaped name), the listing of `.claude/rules` is cut at its limit, an `@path` import points outside the project, or a settings string names a script outside the project (a path passed to `bash`, `sh`, `zsh`, `node`, `python3`, `ruby`, `perl`, `deno` or `bun`, or a path ending in `.sh`, `.bash`, `.zsh`, `.js`, `.mjs`, `.cjs`, `.ts`, `.py`, `.rb` or `.ps1`; an installed program such as `$HOME/.moai/bin/moai` is none of these and is not followed), THEN the survey shall suggest `keep` for every `go_same` and `go_changed` file and list each such reader with its reason under `unread_readers`, which leaves the step without an apply command.
 - REQ-4: The `go-residue-apply` command shall move only files that its own fresh survey lists neither as `go_in_use` nor as kept under REQ-3, and refuse a `--pick` of any other file with a message that names a reader. · failure: none — 거절은 아무것도 옮기지 않고, 미리보기 뒤에 참조가 생기면 다이제스트(digest)가 달라져 기존의 stale 거절이 나요
 - REQ-5: The survey shall list each file under `.moai/docs/local-rules/`, `.claude/commands/harness/` and each `.claude/workflows/hns-*` file with the suggested action `keep`, outside every apply bundle, and mark the preview when that listing was cut at its limit. · failure: none — 보여 주기만 해요
 - REQ-6: The go-residue step shall read `optional` while a `go_same` or `go_changed` file is left to move and `unchanged` otherwise, with a reason that gives the number of files in use and of unread readers and with no `needs_decision` state. · failure: none — 상태를 정하는 규칙이에요
@@ -47,7 +53,7 @@ created: 2026-11-26
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): 임시 프로젝트에서 `@` 가져오기(두 단계 포함), `outputStyle`, 설정의 상태줄 스크립트, 훅 스크립트가 읽는 파일, 상태줄의 yaml 이 각각 `go_in_use` 와 `keep` 이고 `used_by` 가 읽는 곳의 경로와 종류를 대며, 코드 블록 속의 `@` 와 `permissions` 의 글자는 읽는 곳이 아니고, 읽는 곳이 없는 증명된 파일은 `go_same` 으로 남아요 · verify: `cargo test --locked --test project_update_go_residue_cli a_go_file_still_read_is_in_use_and_names_its_reader`
-- AC-2 (REQ-3): 깨진 JSON 설정, 링크인 지시 파일, UTF-8 이 아닌 스크립트, 프로젝트 밖 `@` 가져오기 각각에서 모든 `go_same`/`go_changed` 가 `keep` 이고 `unread_readers` 가 그 파일과 까닭을 대며 적용 명령이 없고 트리는 그대로예요. 읽는 곳 파일이 아예 없는 것은 막지 않아요 · verify: `cargo test --locked --test project_update_go_residue_cli a_reader_that_cannot_be_read_keeps_every_go_file`
+- AC-2 (REQ-3): 깨진 JSON 설정, 링크인 지시 파일, UTF-8 이 아닌 스크립트, 프로젝트 밖 `@` 가져오기, 설정이 `bash` 로 부르는 프로젝트 밖 스크립트 각각에서 모든 `go_same`/`go_changed` 가 `keep` 이고 `unread_readers` 가 그 파일과 까닭을 대며 적용 명령이 없고 트리는 그대로예요. 읽는 곳 파일이 아예 없는 것은 막지 않아요 · verify: `cargo test --locked --test project_update_go_residue_cli a_reader_that_cannot_be_read_keeps_every_go_file`
 - AC-3 (REQ-4): 쓰는 중인 파일은 증명 묶음 적용에 들어가지 않고 `--pick` 은 읽는 곳을 대며 거절하고, 미리보기 뒤에 참조를 더하면 인쇄된 명령이 stale 로 거절되고 아무것도 옮기지 않아요 · verify: `cargo test --locked --test project_update_go_residue_cli an_in_use_file_is_never_moved_and_a_new_reference_makes_the_plan_stale`
 - AC-4 (REQ-5): `.moai/docs/local-rules` 파일(매니페스트가 이름 붙인 것 포함), `.claude/commands/harness` 파일, `.claude/workflows/hns-` 파일이 `keep` 으로 보이고 적용 전후 바이트가 같으며 `.claude/worktrees` 아래는 보지 않아요 · verify: `cargo test --locked --test project_update_go_residue_cli the_survey_lists_local_rules_and_harness_files_and_moves_none`
 - AC-5 (REQ-6): 후보가 남으면 `optional`, 쓰는 중이거나 못 읽는 것만 남으면 `unchanged`, 어느 프레임에서도 `needs_decision` 이 없고 이유 글에 두 수가 있어요 · verify: `cargo test --locked --test project_update_go_residue_cli the_step_is_optional_with_a_candidate_and_never_needs_decision`
@@ -72,8 +78,8 @@ created: 2026-11-26
 
 ## Risks
 
-- 지금 `update_end_to_end_cli` 의 프레임은 설정이 아직 이름을 부르는 Go 훅 스크립트를 `go-residue` 가 옮겨요(`tests/update_end_to_end_cli.rs:44`, `:316-326`). 이 변경 뒤에는 `hooks` 단계가 설정을 바꾸기 전까지 남아요. 후보가 하나도 없는 모양에서는 단계 순서에서 `go-residue` 가 빠질 수 있어요. 빨간 테스트에서 확인해요.
-- `hooks` 단계 뒤에 안 쓰게 된 Go 훅 스크립트는 다음 `/moai update` 에서 후보로 보여요(같은 실행에서는 `optional` 이라 다시 돌지 않아요). Go 흔적이 한 번에 다 없어지지는 않아요.
+- 지금 `update_end_to_end_cli` 는 단계 순서에 `go-residue` 를 두고(`tests/update_end_to_end_cli.rs:316-326`), 그 프레임의 설정은 Go 훅 스크립트 두 개를 아직 이름으로 불러요(`:44`). 코드로 읽은 예상(아직 안 돌렸어요): 규칙 파일은 앞의 `go-state` 가 옮기므로 이 변경 뒤에는 `go-residue` 에 후보가 없어 순서가 `go-settings`, `go-state`, `generation`, `hooks` 가 돼요. 빨간 테스트에서 확인하고, 예상과 다르면 이 줄을 고쳐요.
+- Go 훅 스크립트는 `hooks` 단계(`go-hooks-apply`)가 설정을 바꾼 뒤에야 안 쓰는 파일이 돼요. 갱신 흐름 테스트의 반복은 `all_unchanged` 에서 끝나므로(`:196-210`) 같은 반복에서는 옮기지 않고, 다음 `/moai update` 에서 `optional` 후보로 보여요. Go 흔적이 한 번에 다 없어지지는 않아요.
 - 읽는 곳 규칙과 제품의 실제 읽기가 어긋날 수 있어요(상태줄 yaml 목록은 `src/statusline/state.rs:432-480`, `:822`, `:874` 를 옮겨 적어요). 새 읽기가 생기면 목록도 고쳐야 해요.
 - 문장으로만 부르는 파일은 옮겨져요: `mo.ai.kr` 에서 `quality.yaml`(`CLAUDE.md:69`, `AGENTS.md:328`), `harness.yaml`(`AGENTS.md:328`), `.moai/workflows/project/`(`AGENTS.md:396`)가 그래요. 코드나 `skills/` 에서 이 파일을 읽는 곳은 계획 조사에서 찾지 못했어요(확인하지 못한 것으로 남겨요). 옮김은 되돌릴 수 있어요.
 - `SPEC-20261126-claude-md-fresh-merge`(`CLAUDE.md` 새로 합치기)가 가져오기를 없애면 그 yaml 은 다시 후보가 돼요. 의도한 동작이에요.
@@ -92,11 +98,6 @@ created: 2026-11-26
 | D-8 | `go_state::read_bounded_text` 는 불러 쓰고, 출력 스타일 이름 맞추기는 `readers.rs` 에 따로 둬요 | `src/go_state.rs` 는 다른 작업이 바꾸고 있는 tier 2 경로라 바꾸지 않아요. 두 곳이 어긋날 수 있어요 | 나중에 한 곳으로 합쳐요 |
 | D-9 | 테스트는 지금 파일 `tests/project_update_go_residue_cli.rs` 를 늘려요 | 카드 범위의 `tests/go_residue_cli.rs` 는 없는 파일이에요 | 파일을 나눠요 |
 | D-10 | `update.md` 는 바꾸지 않아요 | 완료 기준에 없고 `SPEC-20261126-claude-md-fresh-merge` 가 같은 파일을 바꿔요. 새 분류 `go_in_use` 설명은 후속이에요 | 후속에서 더해요 |
-
-## Sources
-
-- `https://code.claude.com/docs/en/memory.md`, 2026-11-26T11:23Z 에 읽음, sha256 `7e52db857de441b381a3ee7ce1182a4267f6bbddee08000574e61e54fc335eac`. 가져온 규칙: `@path` 가져오기, 상대 경로는 가져오는 파일 기준, 최대 네 단계, 코드 구간과 코드 블록은 건너뜀, 공백은 `\` 로 이스케이프, 따옴표로 감싸면 가져오지 않음, 4 MiB 를 넘는 파일은 건너뜀, 작업 폴더 밖 가져오기는 사용자 승인이 필요함. 적용: REQ-2, REQ-3.
-- `mo.ai.kr` 의 `CLAUDE.md`, `.claude/settings.json`, `.claude/settings.local.json`(읽는 곳 키만), `.moai-backup/manifest.json` 의 경로 목록: 2026-11-26 읽기만, 아무것도 쓰지 않았어요.
 
 ## Result
 
