@@ -106,3 +106,24 @@ SPEC과 달라진 점과 한계예요.
 - 같은 head의 다시 실행은 착지 사건을 쓰지 않아서 기준을 다시 열지 않아요. 카드는 닫히지 않아요.
 - 이 옵션을 모르는 이전 설치본 `moai`는 `open`을 넘기고 카드를 닫아요. 새 빌드를 설치한 착지부터 효과가 있어요.
 - `card finish`는 바꾸지 않았어요(범위 밖). 보류가 있는 카드도 `card finish`의 기존 조건으로는 닫을 수 있어요.
+
+검증 기록이에요(구현 커밋 `8e335035e8`).
+
+- SPEC 검증 줄: AC-1~AC-6 각 1개 통과, AC-7 `--test card card_land` 177개 통과, AC-8 `grep` exit 0.
+- 위험 경로 실행(임시 저장소와 HOME, 빈 환경, 새로 빌드한 `moai-cli`): 두 기준이 met인 카드를 `--open 2` PASS로 `--keep-open` 없이 착지 → 브랜치 이동, 카드 `review` 유지, 1 met, 2 open, `card.landed`에 `keep_open` true·`held`·바꾼 근거. 다시 실행 → 이동 없음, 안 닫힘. 두 번째 카드의 `--met 2=x` → 거절, 브랜치 그대로, 착지 사건 0개.
+
+guard-mutant 9줄이에요(각 테스트만 실행, 모두 실패, 뒤에 `git checkout`으로 복원).
+
+```
+guard-mutant: card_land_open_criteria::card_verdict_stores_only_a_hold_it_can_keep | src/ledger/workflow.rs record_verdict hold_refusal | exit 100
+guard-mutant: card_land_open_criteria::card_verdict_stores_only_a_hold_it_can_keep | src/ledger/workflow.rs verdict_from_row held_of unreadable-open rejection | exit 100
+guard-mutant: card_land_open_criteria::land_refuses_met_for_a_held_criterion | src/card/land.rs --met refusal while a criterion is held | exit 100
+guard-mutant: card_land_open_criteria::a_held_criterion_the_author_marked_met_is_opened_again | src/ledger/workflow.rs reopen_held call | exit 100
+guard-mutant: card_land_open_criteria::a_held_criterion_keeps_the_card_open_and_marks_nothing | src/card/land.rs held.is_empty condition around the met fill | exit 100
+guard-mutant: card_land_open_criteria::the_hold_is_the_union_of_each_reviewers_newest_pass | src/card/land/check.rs newest-PASS-per-reviewer dedupe | exit 100
+guard-mutant: card_land_open_criteria::land_batch_lands_a_held_head_as_a_slice | src/card/land.rs holds read on the verdict head (replaced by the landing head) | exit 100
+guard-mutant: card_land_open_criteria::a_hold_asks_for_the_same_pass_as_a_close | src/card/land.rs PASS requirement keyed on the requested keep_open | exit 100
+guard-mutant: card_land_open_criteria::a_withdrawn_criterion_is_held_no_longer | src/card/land/check.rs withdrawn-criterion filter | exit 100
+```
+
+영수증(`check affected --card`)의 결과와 head는 READY 노트에 적어요.
