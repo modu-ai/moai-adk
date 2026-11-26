@@ -164,6 +164,7 @@ pub mod self_audit;
 pub mod self_update;
 pub mod session;
 pub mod session_current;
+pub mod settings_write;
 pub mod shim_check;
 pub mod skills_legacy;
 pub mod spec;
