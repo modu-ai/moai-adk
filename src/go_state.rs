@@ -6762,10 +6762,14 @@ mod tests {
             ".moai/",
             ".claude/rules/a.md",
             "design/x.md",
-            ".moai-cli/specs/a.md",
         ] {
             assert!(!restored_path_allowed(refused, true), "{refused}");
         }
+        // The earlier root is not a place the moving layout restores into.
+        assert!(!restored_path_allowed(
+            &format!("{LEGACY_ROOT}/specs/a.md"),
+            true
+        ));
     }
 
     /// SPEC-20261126-go-state-restore-rule AC-6: the earlier-root layout restores into its
