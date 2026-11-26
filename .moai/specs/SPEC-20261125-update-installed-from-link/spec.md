@@ -116,6 +116,8 @@ SPEC 의 verify 명령은 head `ee2b3c8612` 에서 적힌 그대로 돌렸고 �
 
 위험한 경로: `ee2b3c8612` 빌드를 `env -i` 아래 임시 HOME 에서 돌렸고 결과는 PASS 예요. 두 길(같은 설치 id 에서 버전만 다른 경우, 버전 폴더 배치에서 `update --allow-older` 로 되돌아가는 경우) 모두 backup-then-replace 뒤 쓰기 없는 적용이 `unchanged` 였고, 자기 영수증의 `backup` 이 남았고, `recovery-plan` 이 `restore_backup` 을 내놓았고, `recovery-apply` 가 원래 바이트와 모드를 되돌렸어요. 버전 차이는 픽스처 영수증의 `package_version` 을 고쳐 만든 테스트 데이터예요.
 
+묶음 검사 수리: head `4db9be4f90` 는 독립 감사를 통과했지만 착지 묶음의 넓은 검사에서 `home_layout::tests::every_rust_written_home_name_is_in_the_table` 가 실패했어요. `src` 를 훑는 이 스캔은 테스트 코드의 `home_root::path(…).join("bin")` 도 이 세대가 쓰는 이름으로 세는데, 제품 코드는 `bin/moai` 링크를 읽기만 해요. 커밋 `501ecbffa8` 은 일반 파일 픽스처를 상대 경로를 인자로 받는 테스트 도우미(`plain_file_at`)로 옮겼어요. HOME 이름 표, 스캔, 단언, 제품 코드는 바꾸지 않았고, 이 픽스처는 이제 그 스캔에 세지 않아요. 수정 전에는 그 테스트가 실패했고, 수정한 작업 트리에서 `cargo nextest run --locked --offline --lib` 는 2009 passed, 0 failed 였어요. 위 영수증과 뮤턴트는 이 수정 전 head 의 것이에요. 카드 선택 영수증은 그 lib 스캔 테스트를 고르지 않았어요.
+
 알려진 한계:
 
 - backup-then-replace 뒤에 파일을 쓰거나 baseline 을 옮기는 적용은 `backup` 이 없는 새 영수증을 만들어서, 그때는 `restore_backup` 을 더 이상 내놓지 않아요. 코드를 읽고 확인했고 테스트하지 않았어요. 이 SPEC 전부터 있던 동작이고 바꾸지 않았어요.
