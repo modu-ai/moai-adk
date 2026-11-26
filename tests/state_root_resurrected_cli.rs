@@ -136,7 +136,16 @@ fn go_markers_without_a_valid_marker_keep_failing_the_way_they_do() {
     assert!(message.contains("project profile missing"), "{v}");
     let plan = fx.plan();
     assert_eq!(plan["state_root"]["generation"], json!("go"), "{plan}");
-    assert!(step(&plan, "go-residue").is_none(), "{plan}");
+    // The read-only `go-residue` survey (SPEC-20261121-go-residue-detect) is in every plan. With
+    // no valid marker and no usable manifest it proves nothing, offers no command and no keeping
+    // of the markers.
+    let residue = step(&plan, "go-residue").unwrap_or_else(|| panic!("no go-residue: {plan}"));
+    assert_eq!(residue["state"], json!("unchanged"), "{residue}");
+    assert!(residue["apply"].is_null(), "{residue}");
+    assert_eq!(residue["preview"]["items"], json!([]), "{residue}");
+    assert_eq!(residue["preview"]["proof"], json!("none"), "{residue}");
+    assert!(residue["preview"]["markers"].is_null(), "{residue}");
+    assert!(residue["preview"]["keep_in"].is_null(), "{residue}");
     let go_state = step(&plan, "go-state").unwrap();
     assert!(
         !go_state["reason"].as_str().unwrap().contains("go-residue"),
@@ -144,11 +153,12 @@ fn go_markers_without_a_valid_marker_keep_failing_the_way_they_do() {
     );
 }
 
-// The second half of SPEC-20261121-resurrected-marker: this test is RED on purpose until the
-// `go-residue` step exists in `project-update-plan`; it is ignored so the suite stays green and
-// is run by name (`-- --ignored`) when that step is written.
+// The second half of SPEC-20261121-resurrected-marker: this test is RED on purpose until
+// `project-update-plan` offers to keep the resurrected markers (REQ-4, REQ-8). The `go-residue`
+// step exists as a read-only survey and reports `unchanged` here, so no offer is made yet. It is
+// ignored so the suite stays green and is run by name (`-- --ignored`) when the offer is written.
 #[test]
-#[ignore = "RED until the go-residue step exists in the update plan (second half of the SPEC)"]
+#[ignore = "RED until the plan offers to keep the resurrected markers (second half of the SPEC)"]
 fn the_plan_offers_to_keep_the_resurrected_markers_instead_of_stopping() {
     let fx = Fx::new(true);
     let plan = fx.plan();
