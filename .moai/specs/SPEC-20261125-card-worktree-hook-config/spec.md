@@ -37,3 +37,13 @@ Go 세대 프로젝트의 `.claude/settings.json` 은 훅을 `$CLAUDE_PROJECT_DI
 2. GREEN: `go_hooks::missing_scripts(project)` 를 더해요(`settings`, `split`, `scripts` 를 그대로 써요).
 3. `take` 와 `reclaim` 의 응답에 경고를 더하고(읽기 오류는 경고 없음), 통합 시험으로 고정해요.
 4. WORK 글에 레인 세션의 시작 위치를 적고 매니페스트를 맞춰요.
+
+## Result
+
+head a7ee9ee498687622c9b79cc8722e0548ef858ec5(base 9c8b7fb76313f0bd2d90950e3aa52531d3151904)에서 `verify` 명령을 쓴 그대로 다시 실행했어요(2026-11-26).
+
+- AC-1: met — `cargo nextest run --lib -E 'test(go_hooks::tests::missing_scripts)'` 3/3 통과
+- AC-2: met — `cargo nextest run --test card -E 'test(the_hook_settings_of_the_worktree)'` 2/2 통과
+- AC-3: met — `rg -n 'hook settings' skills/moai/workflows/work.md` exit 0(40행)
+
+가드 뮤턴트 6/6 exit 100(READY 노트 9779). 승인은 노트 9715(리더 위임 판단)이고 승인 블록은 착지 때 리더가 써요.
