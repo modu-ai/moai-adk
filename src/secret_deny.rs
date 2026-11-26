@@ -323,10 +323,9 @@ fn entry_selects(entry: &str, file: &str) -> bool {
 }
 
 /// Whether the entry itself has a credential file shape: the only entries recommended (D-4). A
-/// negation or a folder entry never is.
+/// negation never is; a folder entry has no last name, so no shape matches it.
 fn credential_shaped(entry: &str) -> bool {
     !entry.starts_with('!')
-        && !entry.ends_with('/')
         && KEY_SHAPES
             .iter()
             .any(|shape| glob_match(shape.as_bytes(), file_name(entry).as_bytes()))

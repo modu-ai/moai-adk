@@ -188,7 +188,7 @@ fn claudeignore_entries_are_picked_one_by_one() {
     let table = expected_rules();
     assert_eq!(table.len(), 34, "the SPEC table holds 34 entries");
     // Forms the repository's list does not hold: a negation and a root-anchored folder.
-    let list = format!("{REPOSITORY_LIST}!.env.example\n/generated/\n");
+    let list = format!("{REPOSITORY_LIST}!.env.example\n/generated/\n!certs/dev.pem\n");
     put(&root, ".claudeignore", &list);
     put(&root, ".env.production", "x\n");
     put(&root, ".env.example", "x\n");
@@ -204,7 +204,7 @@ fn claudeignore_entries_are_picked_one_by_one() {
     let ignore = &envelope["result"]["claudeignore"];
     assert_eq!(ignore["state"], "present");
     let entries = ignore["entries"].as_array().expect("entries");
-    assert_eq!(entries.len(), table.len() + 2, "no blank or comment line");
+    assert_eq!(entries.len(), table.len() + 3, "no blank or comment line");
     for (entry, expected) in entries.iter().zip(table) {
         assert_eq!(entry["entry"], expected.0);
         assert_eq!(entry["rule"], expected.1, "{}", expected.0);
@@ -223,6 +223,8 @@ fn claudeignore_entries_are_picked_one_by_one() {
         negation["warning"].as_str().unwrap().contains("carves"),
         "a negation says what it does instead: {negation}"
     );
+    // A negation naming a key file is still never recommended: it would open the file.
+    assert_eq!(find(list, "Read(!certs/dev.pem)")["recommended"], false);
     let anchored = find(list, "Read(/generated/**/*)");
     assert_eq!(strings(&anchored["matched"]), ["generated/a.txt"]);
 
