@@ -66,3 +66,15 @@ created: 2026-11-26
 - R-2: 계산된 명령어(`$C x`), 별칭·함수 안의 `cd`, zsh 의 폴더 이름만 입력(autocd)은 판정하지 않아요.
 - R-3: 세션 폴더가 이미 워크트리 밖이면 이 규칙은 적용되지 않아요(기존 경계 판정은 그대로).
 - R-4: 새 빌드를 리더가 설치한 뒤에야 레인 세션에 적용돼요.
+
+## Result
+
+코드 head c2a322d3087808512ed612e5e605533f43de6e9a(base 91dd561a5aa2740aad0fae713a2e51a74525e7fc), 2026-11-26T06:22Z 까지 확인. AC 명령은 9b1daccb7b(그 뒤 변경은 시험 파일에 시험 하나 추가)에서 `verify` 에 쓴 그대로 실행했어요. 코드를 쓰기 전에는 AC-1 시험이 `"cd src"` 허용으로 실패했고 AC-2·AC-3 시험은 통과했어요.
+
+- AC-1: met — `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_worktree_session_cd_is_denied)'` 1/1 통과
+- AC-2: met — `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_cd_that_does_not_move_the_session_is_allowed)'` 1/1 통과
+- AC-3: met — `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_session_outside_a_worktree_keeps_cd)'` 1/1 통과
+- AC-4: met — `rg -c 'cd into it' src` exit 1
+- AC-5: met — `cargo nextest run --test hook_bash_boundary_cli` 38/38 통과
+
+위험 경로 확인: `a_linked_session_folder_is_judged_by_where_it_leads`(임시 HOME 에서 실제 바이너리, 링크를 거친 세션 폴더, 판정한 명령은 실행 안 됨), c2a322d308 에서 `hooks_cd_guard_cli` 4/4 통과. 가드 뮤턴트 7/7 exit 100(반납 노트). 승인은 노트 9869(리더 위임 판단)이고 승인 블록은 착지 때 리더가 써요.
