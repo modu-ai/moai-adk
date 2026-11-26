@@ -441,18 +441,21 @@ fn go_state_step(
     Ok(step)
 }
 
+/// Whether the step's command carries the local settings pick.
+fn carries_pick(step: &Step) -> bool {
+    step.apply
+        .as_ref()
+        .is_some_and(|(words, _)| words.iter().any(|w| w.as_str() == go_state::REWRITE_PICK))
+}
+
 /// REQ-9: while the local settings hold the Go folder, no go-state command without the pick is
-/// printed. The step keeps its state, and the steps built before this waited for it as before.
-fn picked_command_only(plan: Option<&go_state::GoStatePlan>, mut backup: Vec<Step>) -> Vec<Step> {
-    if plan.is_some_and(|p| p.local_references.is_some()) {
-        for step in backup.iter_mut().filter(|s| s.name == "go-state") {
-            step.apply = step
-                .apply
-                .take()
-                .filter(|(words, _)| words.iter().any(|w| w.as_str() == go_state::REWRITE_PICK));
-        }
+/// printed. It runs after the waits behind the other steps were decided, so the step keeps the
+/// state it had with that command.
+fn picked_command_only(plan: Option<&go_state::GoStatePlan>, mut state: Step) -> Step {
+    if plan.is_some_and(|p| p.local_references.is_some()) && !carries_pick(&state) {
+        state.apply = None;
     }
-    backup
+    state
 }
 
 /// Whether the plain preview moves or copies anything.
@@ -465,13 +468,8 @@ fn has_move(plan: &go_state::GoStatePlan) -> bool {
 
 /// SPEC-20261126-go-local-settings-reference D-8: the go-state step offers the pick where the
 /// plain preview moves nothing. The later steps did not wait there, so they still do not.
-fn offers_only_the_pick(plan: Option<&go_state::GoStatePlan>, backup: &[Step]) -> bool {
-    plan.is_some_and(|p| !has_move(p))
-        && backup
-            .iter()
-            .filter(|s| s.name == "go-state")
-            .filter_map(|s| s.apply.as_ref())
-            .any(|(words, _)| words.iter().any(|w| w.as_str() == go_state::REWRITE_PICK))
+fn offers_only_the_pick(plan: Option<&go_state::GoStatePlan>, state: &Step) -> bool {
+    plan.is_some_and(|p| !has_move(p)) && carries_pick(state)
 }
 
 /// The step over one go-state preview.
@@ -2257,14 +2255,16 @@ pub fn plan(project: &Path) -> Result<Value> {
     if reports.apply.is_some() && state.apply.is_some() {
         state = Step::waiting("go-state", "blocked", AFTER_REPORTS);
     }
+    // SPEC-20261126-go-local-settings-reference: the final go-state command, before any later
+    // reader looks at it.
+    let state = picked_command_only(moves.as_ref().ok(), state);
+    let pick_only = offers_only_the_pick(moves.as_ref().ok(), &state);
     // The read-only go-residue survey (SPEC-20261121-go-residue-detect) runs after the backup
     // previews: it proves the Go files the generation left against the first manifest it
     // finds and applies nothing; it reads `optional` while it only reports, so it never holds
     // `all_unchanged` false.
     let residue = or_blocked("go-residue", go_residue_step(&root, &shown));
     let backup = vec![settings, state, reports, residue];
-    let backup = picked_command_only(moves.as_ref().ok(), backup);
-    let pick_only = offers_only_the_pick(moves.as_ref().ok(), &backup);
     // A move still to make: every install preview would be stale after it.
     let mut install: Vec<Step> = if backup_pending(&backup, pick_only) {
         INSTALL

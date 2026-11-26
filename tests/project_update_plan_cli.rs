@@ -2248,6 +2248,54 @@ fn the_settings_the_install_phase_wrote_are_not_moved_again() {
     );
 }
 
+/// SPEC-20261126-go-local-settings-reference D-8: where only the pick is offered, the same
+/// preview prints it beside `ready` install commands. Run after the pick moved the state, each of
+/// those either refuses without a write or writes nothing into the earlier state folder.
+#[test]
+fn the_other_commands_of_the_preview_stay_safe_after_the_pick() {
+    let fx = Fx::new();
+    fx.go_project_moved(
+        &json!({"permissions": {"deny": ["x"]}}),
+        "{\"statusLine\":{\"type\":\"command\",\"command\":\".moai/status.sh\"}}\n",
+        false,
+    );
+    fx.with_profile(false);
+    let preview = fx.plan();
+    let go = step(&preview, "go-state");
+    assert_eq!(go["state"], "needs_decision", "{go}");
+    let ready: Vec<&Value> = steps(&preview)
+        .into_iter()
+        .filter(|s| s["state"] == "ready")
+        .collect();
+    assert!(!ready.is_empty(), "{preview}");
+    let moved = fx.apply_step(go);
+    assert_eq!(moved["ok"], json!(true), "{moved}");
+    let earlier = fx.root.join(".moai-cli");
+    let in_earlier = || -> Vec<(PathBuf, Node)> {
+        fx.tree()
+            .into_iter()
+            .filter(|(p, _)| p.starts_with(&earlier))
+            .collect()
+    };
+    for s in ready {
+        let (whole, kept) = (fx.tree(), in_earlier());
+        let out = fx.apply_step(s);
+        if out["ok"] == json!(true) {
+            for entry in in_earlier() {
+                assert!(
+                    kept.contains(&entry),
+                    "{}: wrote into the earlier state folder: {:?}",
+                    s["step"],
+                    entry.0
+                );
+            }
+        } else {
+            assert_eq!(fx.tree(), whole, "{}: a refusal writes nothing", s["step"]);
+        }
+        eprintln!("{}: ok={} {}", s["step"], out["ok"], out["error"]);
+    }
+}
+
 /// AC 13 (not committed): only a committed apply's receipt offers the hooks. A receipt that
 /// never reached `committed` (the move may have stopped midway) offers nothing.
 #[test]
