@@ -761,6 +761,30 @@ fn ac5_case_spellings_and_unreadable_shapes_fail_closed() {
             "{tool} {alone}"
         );
     }
+
+    // A session standing in such a folder of its own worktree keeps that worktree as its own, so
+    // the primary is still another checkout.
+    let broken_in_own = w.own.join("broken-sub");
+    fs::create_dir_all(&broken_in_own).unwrap();
+    fs::write(
+        broken_in_own.join(".git"),
+        "garbage without a gitdir line\n",
+    )
+    .unwrap();
+    for tool in TOOLS {
+        for (path, want) in [
+            ("{PRI}/src/a.txt", Some("other-checkout")),
+            ("{OWN}/src/a.txt", None),
+        ] {
+            let input = w.input(tool, path, "hello\n", &broken_in_own, "default");
+            let run = w.raw(S::Own, &input);
+            assert_eq!(
+                parse_verdict(&run, &format!("{tool} {path}")).as_deref(),
+                want,
+                "{tool} {path}"
+            );
+        }
+    }
 }
 
 // ---------------------------------------------------------------------- AC-6
