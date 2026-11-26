@@ -504,7 +504,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         "lane-loop-line",
         &[
             "lane-loop-line --host claude --lane agent-1",
-            "lane-loop-line --host codex --lane agent-1 --repo modu-ai/moai-adk",
         ],
     ),
     (
@@ -514,13 +513,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("lane-resume-check", &["lane-resume-check --file comment.md"]),
     (
         "lane-stop-hook",
-        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk < stop.json"],
+        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk"],
     ),
     (
         "lane-duty-line",
         &[
             "lane-duty-line --lane 1",
-            "lane-duty-line --lane 1 --host codex --first <task>",
+            "lane-duty-line --lane 1 --first <task>",
         ],
     ),
     (
