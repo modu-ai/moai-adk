@@ -27,7 +27,7 @@ When the host runs a session isolated in a worktree, the host itself checks ever
 
 | The host says | Write it as |
 | --- | --- |
-| `names git in a form too complex to verify` (several git calls, a pipe or `>` after git, `$(…)` or a variable in the git line, a shell function that runs git) | One plain `git -C <absolute worktree path> <subcommand>` per command. Several git calls, loops, pipes and output files go into a script file under the worktree's ignored `target/`, run as `zsh <absolute script path>` |
+| `names git in a form too complex to verify` (several git calls, a pipe or `>` after git, `$(…)` or a variable in the git line, a shell function that runs git) | Do what the refusal names: split the line into plain, separate commands, one `git` command per line, run from the worktree. Never put git into a script file: a script runs git where the guard cannot read it. |
 | `gives worktree add a path that can't be verified` | `git -C <absolute worktree path> worktree add … <absolute literal path>` — no variable, `~`, `..` or relative path |
 | `must target its own worktree` (`git -C` at the shared checkout or another worktree) | Fetch the ref into your own worktree and read it there (`git -C <own worktree> show <ref>:<path>`); never write in another worktree |
 | `sets HOME, injecting git configuration` | A temporary HOME belongs in a test or a harness file that creates it and also pins git configuration (`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_SYSTEM=/dev/null`); a command line that sets HOME stays refused, and the real HOME is never the target |
