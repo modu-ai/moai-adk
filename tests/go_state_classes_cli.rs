@@ -834,12 +834,16 @@ fn apply_then_revert_restores_the_tree_links_by_body() {
         fs::read_to_string(area.join("root-files/CLAUDE.md")).unwrap(),
         "# rules\n"
     );
-    // O1: the user's data folder is restored; a Rust-named Go folder is not.
+    // O1: the user's data folder is restored; so is a file the Go manifest does not record in
+    // any other folder (SPEC-20261126-go-state-restore-rule).
     assert_eq!(
         fs::read_to_string(fx.root.join(".moai/plans/p.md")).unwrap(),
         "# plan\n"
     );
-    assert!(!fx.root.join(".moai/decisions/d.md").exists());
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".moai/decisions/d.md")).unwrap(),
+        "# go decision\n"
+    );
     let r = fx.receipt(&backup);
     assert_eq!(moved(&r, ".agents/skills/moai-a")["kind"], json!("link"));
     assert_eq!(
@@ -1075,13 +1079,17 @@ fn user_data_folders_are_restored_and_removed_again_on_revert() {
         .collect();
     assert_eq!(
         froms,
-        [".moai-backup/reports/r.md", ".moai-backup/research/n.md"],
+        [
+            ".moai-backup/reports/r.md",
+            ".moai-backup/research/n.md",
+            ".moai-backup/state/s.json"
+        ],
         "{p}"
     );
     let before = fx.project_tree();
     let (_, backup) = fx.apply_ok();
     assert!(fx.root.join(".moai/reports/r.md").is_file());
-    assert!(!fx.root.join(".moai/state/s.json").exists());
+    assert!(fx.root.join(".moai/state/s.json").is_file());
     let r = fx.receipt(&backup);
     assert!(
         r["restored"].to_string().contains(".moai/research/n.md"),

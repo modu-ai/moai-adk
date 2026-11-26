@@ -2,13 +2,13 @@
 id: SPEC-20261126-go-state-restore-rule
 title: "go-state apply restores the files the Go manifest does not record and leaves the byte-proven Go templates in the backup"
 status: approved
-revision: 1
+revision: 2
 created: 2026-11-26
 approval:
   by: leader
   at: 2026-11-26
-  basis: "LEADER-APPROVAL 노트 10466 (리더 판단이고 사용자 직접 선택은 아님, 사용자 목표 2026-11-26 에 따름, 노트 10464 에 답함: 개정 1 승인, D-1·D-2·D-4 기본값); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
-  digest: "sha256:a5639702976a438d53d57ee5c332aa558a36e6e6ba6cb0f51b654f3ec4a793ae"
+  basis: "LEADER-APPROVAL 노트 10466 (개정 1 승인, 리더 판단이고 사용자 직접 선택은 아님, 사용자 목표 2026-11-26 에 따름, D-1·D-2·D-4 기본값) 과 노트 10519 (AC-4 문구 정정, 결정 10516 A, 개정 2); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:d776b6a0f2765bec8d4fb2f663fcfacf4ba593ecc122b9d96d86a7e41e0a094c"
 ---
 
 # go-state apply restores the files the Go manifest does not record and leaves the byte-proven Go templates in the backup
@@ -51,7 +51,7 @@ approval:
 - AC-1 (REQ-1, REQ-2): in a temporary project shaped like mo.ai.kr, with a Go manifest that records `.moai/policies/core/a.md` with its real hash, `.moai/design/x.md` unrecorded, and an unrecorded `.moai/decisions/user.md`, the preview lists `.moai/design/x.md` and `.moai/decisions/user.md` as `copy` and no row for `.moai/policies/core/a.md`; a recorded file whose bytes differ from the recorded hash gets no row either. · verify: `cargo nextest run --offline --locked --test go_state_cli -E 'test(restore_rule_)'`
 - AC-2 (REQ-3): an unrecorded `.moai/config/config.yaml` and anything under `.moai/backups/` get no restore row. · verify: `cargo nextest run --offline --locked --test go_state_cli -E 'test(restore_rule_)'`
 - AC-3 (REQ-4): an unrecorded secret-named file is listed as `excluded_secret` with an empty hash and was not opened, a link gets `leave_link`, and an existing target gets `conflict`. · verify: `cargo nextest run --offline --locked --test go_state_cli -E 'test(restore_rule_)'`
-- AC-4 (REQ-5): the existing restore tests of the ten folders pass without a change of their assertions. · verify: `cargo nextest run --offline --locked --test go_state_cli --test go_state_classes_cli --test go_state_digest_cli --test go_state_preview_cli --test go_state_blocked_folders_cli`
+- AC-4 (REQ-5): the existing restore tests of the ten folders pass; only the three assertions this SPEC changes are edited: a Go file the manifest does not record is restored in `decisions/` and `state/` (`go_state_classes_cli`), and a new such file after the preview makes the digest stale (`go_state_digest_cli`). · verify: `cargo nextest run --offline --locked --test go_state_cli --test go_state_classes_cli --test go_state_digest_cli --test go_state_preview_cli --test go_state_blocked_folders_cli`
 - AC-5 (REQ-6, REQ-8, REQ-9): the apply copies `.moai/design/x.md` into the new `.moai/design/x.md` with the same bytes, the receipt lists it, a new preview lists no row to copy, the revert gives the Go tree back with the same bytes, and a receipt that names a restored path under `.moai/backups/` or a marker is refused. · verify: `cargo nextest run --offline --locked --test go_state_cli -E 'test(restore_rule_)'`
 - AC-6 (REQ-7): the receipt check unit tests accept a restored path under a folder outside the ten and refuse one under `.moai/backups/` or a marker. · verify: `cargo nextest run --offline --locked --lib -E 'test(restore_rule_)'`
 
