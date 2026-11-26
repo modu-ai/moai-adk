@@ -1,10 +1,19 @@
 ---
 id: SPEC-20261121-go-residue-detect
 title: "A read-only go-residue step finds the files the Go generation left behind, proven against the manifests it can still find"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-21
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9727 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:55d18aba33d3c171ef2468e20cb3f77d8fd53ec934c17134b52e2b75a6305742"
 ---
+
+## Interview
+
+- none: the step only reports what the Go-generation survey of 2026-11-21 measured; no new question went to the user.
 
 # A read-only go-residue step finds the files the Go generation left behind, proven against the manifests it can still find
 

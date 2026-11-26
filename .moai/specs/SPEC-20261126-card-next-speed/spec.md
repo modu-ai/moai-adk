@@ -1,10 +1,19 @@
 ---
 id: SPEC-20261126-card-next-speed
 title: "card next and card list answer a real ledger in 0.1 seconds"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-26
+approval:
+  by: leader
+  at: 2026-11-25
+  basis: "리더 위임 승인 노트 9638 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:afb300b1b06953d91f151ad72c97897b1ca2d7c545a04cfef24a85c910d17c9d"
 ---
+
+## Interview
+
+- none: the speed target came from the leader's measured stage bottleneck of 2026-11-25; no new question went to the user.
 
 # card next and card list answer a real ledger in 0.1 seconds
 
