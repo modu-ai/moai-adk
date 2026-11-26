@@ -1,4 +1,4 @@
-# secret-deny-plan
+# `secret-deny-plan`
 
 `operation secret_deny.plan` · 코드 `src/secret_deny.rs`, `src/ops/secret_deny_plan.rs` · SPEC-20261122-secret-file-deny-rules
 
