@@ -90,4 +90,35 @@ parent: SPEC-20261124-project-detect-monorepo
 
 ## Result
 
-(구현 뒤에 써요.)
+기준 팁 NeXT `5a6aa857d3`(한 번 머지, 머지 커밋 `ecc4b813d4`). SPEC 초안 커밋 `4d30f6fba6`, 의존성 조각 머리 `127009ab31` 를 들여온 머지 `db1610152e`, 계획 점검 뒤 다듬은 커밋 `a2b04e3c08`, RED 커밋 `956c415442`, GREEN 커밋 `9ca3a6425f`. 개정은 1 그대로예요.
+
+- 작업 카드가 옮겨졌어요: 이 조각은 처음 카드의 기준 4 로 시작했고, 그 카드가 `--keep-open` 없이 불린 착지로 닫힌 뒤(리더 정정 노트 9733) 남은 일을 후속 카드의 기준 1 로 이어요. Plan 의 "카드의 기준 4" 는 지금 이 후속 카드의 기준 1 이에요.
+- 승인: 위임 승인이 노트 9612 에 있어요(사용자의 직접 선택이 아니라 위임에 따른 리더 판단). 노트의 `approval_digest` `sha256:96acd8b1…f60d` 는 `ecc4b813d4` 에서 `moai spec show` 가 낸 값과 같아요. frontmatter 는 `status: draft` 이고 `approval` 키가 없어요.
+- 계획 점검 뒤 본문에 더한 것: `plugin` 의 `@` 거절, 한 플러그인 두 실행 파일 거절, AC-7 의 `lsp_plugins` 이웃, 값마다의 경계, `src/project_scale.rs` 의 별개 `PLUGINS` 표를 후속으로 적음.
+- Run 1 (RED, `956c415442` 의 테스트만; `cargo nextest ... --test project_detect_monorepo_cli --lib` 필터 실행; `target/kenan/red.log`): `37 tests run: 30 passed, 7 failed`. 새 테스트 일곱이 옳은 이유로 실패했어요 — 확장 파일의 키 `language_servers` 를 몰라서 `refused`(`the file is not a valid catalog`)이거나, 단위 테스트는 배송 파일에 그 키가 없어서 멈췄어요. 현재 동작을 지키는 `every_shipped_language_server_keeps_its_plugin` 은 통과했어요.
+- Run 2 (GREEN, 한 슬롯의 `nextest`: `project_detect_monorepo_cli`, `project_detect_cli`, `project_lsp_plugins_cli`, `green_test_lock`, `project_scale_detect_lib`, `path_root_direct_sites`, `home_isolation_scan`, `--lib project_detect`; `target/kenan/green.log`): `122 tests run: 122 passed, 2025 skipped`. AC 의 `verify:` 줄에 적힌 `cargo test` 형태 그대로는 돌리지 않았어요. 로그는 GREEN 커밋보다 먼저 쓰였고, 머지 커밋 `ecc4b813d4` 위에서는 다시 돌리지 않았어요(`git diff 9ca3a6425f ecc4b813d4` 에서 `src/project_detect.rs`, 카탈로그 파일, 위 통합 테스트 파일들은 차이가 없어요).
+- `cargo clippy ... --lib --test project_detect_monorepo_cli -- -D warnings`: 종료 0(`target/kenan/clippy.log`). `cargo fmt --all -- --check`: 머지 커밋 `ecc4b813d4` 에서 종료 0.
+- AC-1: met — `every_shipped_language_server_keeps_its_plugin` 과 단위 테스트 `the_shipped_catalog_holds_the_earlier_language_servers` 통과(Run 2).
+- AC-2: met — `a_language_server_row_adds_a_server_without_code` 통과(Run 2; Run 1 에서는 실패).
+- AC-3: met — `a_language_server_row_never_replaces_a_shipped_server` 통과(Run 2; Run 1 에서는 실패).
+- AC-4: met — `a_language_server_row_that_cannot_be_read_refuses_the_whole_file` 통과(Run 2; Run 1 에서는 실패). Run 1 은 대조에서 멈춰서, 나쁜 행의 거절은 Run 2 와 가드 뮤턴트가 근거예요.
+- AC-5: met — `the_language_server_row_limits_hold_at_both_edges` 통과(Run 2; Run 1 에서는 실패).
+- AC-6: met — `one_language_for_two_servers_in_the_extension_file_is_refused` 통과(Run 2; Run 1 에서는 실패).
+- AC-7: met — 이웃 테스트가 Run 2 에서 모두 통과했어요. READY 영수증(`moai check affected --card`)은 이 Result 커밋 뒤에 돌리고, 여기가 아니라 카드의 READY 노트에 인용해요.
+- AC-8: met — `one_plugin_with_two_executables_is_refused` 통과(Run 2; Run 1 에서는 실패).
+- 가드 뮤턴트(tier 1 조각, 디스패치가 줄을 요청했어요; `target/kenan/guard-mutants.txt` 의 여덟 줄 그대로):
+  - guard-mutant: the_shipped_catalog_holds_the_earlier_language_servers | shipped cpp row removed | exit 100
+  - guard-mutant: every_shipped_language_server_keeps_its_plugin | shipped python executable changed | exit 100
+  - guard-mutant: a_language_server_row_adds_a_server_without_code | the project rows are not appended to the catalog | exit 100
+  - guard-mutant: a_language_server_row_never_replaces_a_shipped_server | lookup takes the last row instead of the first | exit 100
+  - guard-mutant: a_language_server_row_that_cannot_be_read_refuses_the_whole_file | deleted deny_unknown_fields from ServerRow (unknown key in a row accepted) | exit 100
+  - guard-mutant: the_language_server_row_limits_hold_at_both_edges | row count limit dropped | exit 100
+  - guard-mutant: one_language_for_two_servers_in_the_extension_file_is_refused | a different server for one language is no conflict | exit 100
+  - guard-mutant: one_plugin_with_two_executables_is_refused | a project plugin clashing with a shipped plugin is accepted | exit 100
+- 뮤턴트 실행 경과: 처음의 29 개짜리 스크립트는 15 개를 처리한 시점에 중단했어요(14 개 죽음, 종료 100; m07 은 패턴이 두 번 나와 건너뜀). bash 3.2 의 큰 문자열 치환이 뮤턴트마다 몇 분씩 걸렸기 때문이에요(`target/kenan/mutants.out`). 줄이 없던 나머지 테스트에는 `sed` 뮤턴트를 하나씩 줬어요(`target/kenan/mutants-rest.out`; m29 는 패턴이 두 줄이라 건너뛰어서 패턴을 좁혀 다시 돌렸어요, `target/kenan/mutants-m29.out`).
+- 이웃 검색(`git grep`): 기준 팁 `5a6aa857d3` 의 `src`, `tests`, `skills`, `docs`, `agents`, `tools` 에서 `LSP_PLUGINS` 는 `src/project_detect.rs` 에만 있었고 `ecc4b813d4` 에는 한 곳도 없어요. `lsp_plugins` 사실의 모양은 `tests/project_lsp_plugins_cli.rs` 가 지켜요(고치지 않았고 통과). `tests/path_root_direct_sites.rs` 의 기준선은 그대로예요(통과). `manifest_catalog` 가 나오는 파일은 `src`, `tests`, `skills`, `docs` 중 `src/project_detect.rs` 와 `tests/project_detect_monorepo_cli.rs` 뿐이에요. 서버 이름은 `skills/moai/workflows/project.md`, `skills/moai/references/languages/python.md` 와 몇몇 테스트·픽스처에도 있고, 이 변경은 그 파일들 가운데 `tests/project_detect_monorepo_cli.rs` 만 고쳤어요.
+- 위험 경로: 읽기 전용 감지라서 해당 없어요.
+- 미충족/한계: `project-scale-plan` 은 확장 파일로 더한 언어를 아직 거절해요(`src/project_scale.rs` 의 `PLUGINS`; 리더 결정 노트 9687 의 (가): 다음 조각의 새 SPEC 으로 표를 하나로 만들어요).
+- 미충족/한계: 프로젝트가 더한 서버는 `skills/moai/workflows/project.md` 의 서버별 설치 표에 행이 없어요. `skills` 와 `README*` 에서 `language_servers` 와 `detect-catalog` 를 찾아도 설명하는 글이 없어요.
+- 미충족/한계: 마켓플레이스 이름은 Non-goals 의 결정대로 엔진에 남아요(`LSP_MARKETPLACE`; Decisions 표에는 이것만의 번호가 없고 D-5 가 고정된 이름을 전제해요).
+- 미충족/한계: Windows·Linux 는 돌리지 않았어요. 전체 `cargo test` 는 돌리지 않았어요. 이전 판 바이너리가 새 키가 든 확장 파일을 거절하는지도 돌려 보지 않았어요.
