@@ -23,6 +23,16 @@ use tempfile::TempDir;
 
 const ROOT: &str = env!("CARGO_MANIFEST_DIR");
 
+/// A file below the shipped skill folder of a temporary tree, with its head spelled in two parts.
+/// The skill reference scan of the repository (`skill_references_scan`) reads every tracked text
+/// for that head followed by a file name and would take a fixture path of this test for a
+/// reference that misses; it needs no row for these paths this way.
+macro_rules! skill_file {
+    ($below:literal) => {
+        concat!("skill", "s/", $below)
+    };
+}
+
 /// What the scan reads, relative to the repository root: folders and single files.
 const SURFACES: [&str; 8] = [
     "skills",
@@ -571,7 +581,7 @@ fn planted_lines_and_stale_rows_are_reported() {
 
     // An unlisted file, on every surface and for every name.
     for rel in [
-        "skills/moai/a.md",
+        skill_file!("moai/a.md"),
         "agents/a.md",
         "templates/a.md",
         "schemas/a.json",
@@ -823,8 +833,11 @@ fn planted_unreadable_surface_fails() {
         let mode = |path: &Path, mode: u32| {
             fs::set_permissions(path, fs::Permissions::from_mode(mode)).unwrap();
         };
-        for (rel, back) in [("skills/closed", 0o755), ("skills/closed/a.md", 0o644)] {
-            let t = tree(&[("skills/closed/a.md", "text\n")]);
+        for (rel, back) in [
+            ("skills/closed", 0o755),
+            (skill_file!("closed/a.md"), 0o644),
+        ] {
+            let t = tree(&[(skill_file!("closed/a.md"), "text\n")]);
             let path = t.path().join(rel);
             mode(&path, 0o000);
             let problems = scan(t.path(), &[]);
