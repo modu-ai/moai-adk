@@ -448,6 +448,28 @@ fn an_idle_lane_is_left_for_a_dispatch_and_named_in_the_round() {
 
 // SPEC-20261123-leader-registration-lease, AC-5 to AC-9: the `registration` part of the round.
 
+/// Claude Code is the only host: an observation whose host is `codex` or `omp` is refused with a
+/// message that names claude, and no action list is built.
+#[test]
+fn a_removed_host_observation_is_refused() {
+    let f = fixture();
+    for host in ["codex", "omp"] {
+        let mut obs = observations(&f);
+        obs["lanes"][0]["host"] = json!(host);
+        let args = inputs(&f, &obs, None);
+        let args: Vec<&str> = args.iter().map(String::as_str).collect();
+        let v = moai(&f, &args);
+        assert_eq!(v["ok"], false, "{host}: {v}");
+        assert!(v.get("result").is_none(), "{host}: {v}");
+        let message = v["error"]["message"].as_str().unwrap();
+        assert!(message.contains(&format!("host `{host}`")), "{message}");
+        assert!(message.contains("claude is the only host"), "{message}");
+    }
+    // The same file with the host claude is read.
+    let r = round(&f, &observations(&f), None);
+    assert_eq!(r["lanes"][0]["lane"], json!(LANE), "{r}");
+}
+
 /// The epoch of `NOW` (2026-11-14T09:21:00Z), so registry entries can name lease ends around
 /// it without re-deriving the calendar in the test.
 const NOW_EPOCH: i64 = 1_794_648_060;

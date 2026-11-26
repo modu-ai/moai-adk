@@ -363,6 +363,94 @@ fn check_fix_prints_a_registry_edit_that_would_not_read_as_growth() {
     assert_eq!(text(root, REGISTRY), before, "nothing was written");
 }
 
+/// An `always` scan without `test_targets` whose check lines all filter by name is not written:
+/// the lines stay and the answer prints what a person adds, and where. A scan with a line that has
+/// no filter still gets the name on that line.
+#[test]
+fn check_fix_leaves_filtered_lines_and_prints_where_to_add() {
+    // The two filtered lines are those of the scans `include-str-release-suite` and
+    // `test-seams-read-only-in-debug-builds` of this repository's table.
+    const MODULE: &str = "cargo test --offline --locked --test card release_suite::";
+    const NAMED: &str = "cargo test --offline --locked --test state_folder_literal_scan the_test_seams_are_read_only_in_debug_builds";
+    const PLAIN: &str = "cargo test --offline --locked --test card_other";
+    const ADDED: &str = "cargo test --offline --locked --test zz_new_cli";
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    init(root);
+    base_tables(
+        root,
+        "[areas]\ncard = [\"card\"]\nrepo = [\"repo\", \"zz\"]\n\n[solo]\nfiles = []\n",
+    );
+    let scan = |id: &str, check: &str| {
+        json!({
+            "id": id,
+            "always": true,
+            "tests": ["tests/zz_new_cli.rs::t"],
+            "checks": [check],
+            "rules": ["tests/zz_new_cli.rs"],
+            "scope": [{"prefix": "src/", "suffixes": [".rs"]}],
+            "rejects": "fixture",
+        })
+    };
+    let mut doc = json!({
+        "about": "fixture",
+        "scans": [
+            scan("zz-module", MODULE),
+            scan("zz-named", NAMED),
+            scan("zz-plain", PLAIN),
+        ],
+    });
+    let old_registry = serde_json::to_string_pretty(&doc).unwrap() + "\n";
+    put(root, REGISTRY, old_registry.as_bytes());
+    let base = commit_all(root, "base");
+    put(root, "tests/zz_new_cli.rs", b"fn t() {}\n");
+    let head = commit_all(root, "change");
+
+    let answer = check_fix::run(root, &format!("{base}..{head}"), &area_opts(&[])).unwrap();
+
+    assert_eq!(answer["result"], "FAIL", "{answer}");
+    assert_eq!(wrote(&answer), vec![REGISTRY], "{answer}");
+    assert_eq!(
+        text(root, REGISTRY),
+        old_registry.replace(PLAIN, &format!("{PLAIN} --test zz_new_cli")),
+        "only the line without a filter gained the name"
+    );
+    let lines = printed(&answer);
+    assert_eq!(
+        lines.len(),
+        2,
+        "one line for each scan left alone: {lines:?}"
+    );
+    for id in ["zz-module", "zz-named"] {
+        let line = lines
+            .iter()
+            .find(|l| l.starts_with(&format!("{id}: ")))
+            .unwrap_or_else(|| panic!("no line for {id}: {lines:?}"));
+        for part in ["wrote nothing", ADDED, REGISTRY] {
+            assert!(line.contains(part), "{part} in {line}");
+        }
+        assert!(!line.contains("test_targets"), "{line}");
+    }
+
+    // A person adds the printed line to both scans: nothing is left to print.
+    for at in [0, 1] {
+        doc["scans"][at]["checks"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!(ADDED));
+    }
+    doc["scans"][2]["checks"][0] = json!(format!("{PLAIN} --test zz_new_cli"));
+    put(
+        root,
+        REGISTRY,
+        (serde_json::to_string_pretty(&doc).unwrap() + "\n").as_bytes(),
+    );
+    let by_hand = commit_all(root, "by hand");
+    let again = check_fix::run(root, &format!("{base}..{by_hand}"), &area_opts(&[])).unwrap();
+    assert_eq!(again["result"], "PASS", "{again}");
+    assert_eq!(again["wrote"], json!([]), "{again}");
+}
+
 #[cfg(unix)]
 fn link(target: &str, at: &Path) {
     std::os::unix::fs::symlink(target, at).unwrap();

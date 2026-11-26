@@ -275,6 +275,7 @@ pub const GROUPS: &[Group] = &[
             ("statusline", false),
             ("hook-receipt", false),
             ("hook-dispatch", false),
+            ("manifest-merge-driver", false),
             ("forge-read", false),
             ("forge-links-probe", false),
             ("forge-report", false),
@@ -508,7 +509,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         "lane-loop-line",
         &[
             "lane-loop-line --host claude --lane agent-1",
-            "lane-loop-line --host codex --lane agent-1 --repo modu-ai/moai-adk",
         ],
     ),
     (
@@ -518,13 +518,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("lane-resume-check", &["lane-resume-check --file comment.md"]),
     (
         "lane-stop-hook",
-        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk < stop.json"],
+        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk"],
     ),
     (
         "lane-duty-line",
         &[
             "lane-duty-line --lane 1",
-            "lane-duty-line --lane 1 --host codex --first <task>",
+            "lane-duty-line --lane 1 --first <task>",
         ],
     ),
     (
@@ -631,6 +631,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("statusline", &["statusline < session.json"]),
     ("hook-receipt", &["hook-receipt --host claude < hook.json"]),
     ("hook-dispatch", &["hook-dispatch --host claude --event <event> < hook.json"]),
+    ("manifest-merge-driver", &["manifest-merge-driver %O %A %B %P"]),
     ("forge-read", &["forge-read . < request.json"]),
     ("forge-links-probe", &["forge-links-probe . < request.json"]),
     ("forge-report", &["forge-report --permission-reference <ref> . < request.json"]),
