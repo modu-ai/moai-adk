@@ -882,11 +882,11 @@ fn known_good_copies(
     Ok(())
 }
 
-/// SPEC-20261125-update-installed-from-link REQ-4 to REQ-8: an apply that writes no file for a
-/// host leaves this build's version in the host's receipt, so the receipt no longer names a build
-/// that is gone. Whether anything is recorded is decided on the baseline receipt the plan used:
-/// only one that is committed or recovered and names another version counts; an absent or pending
-/// one, or one that already names this build, writes nothing.
+/// SPEC-20261125-update-installed-from-link REQ-4 to REQ-8 and REQ-10 to REQ-12: an apply that
+/// writes no file for a host leaves this build's version in the host's receipt, so the receipt no
+/// longer names a build that is gone. Whether anything is recorded is decided on the baseline
+/// receipt the plan used: only one that is committed or recovered and names another version counts;
+/// an absent or pending one, or one that already names this build, writes nothing.
 ///
 /// When this installation has its own receipt, it is updated in place and only its version, finish
 /// time and owned list (the baseline's) change: `recovery-plan` reads this installation's receipt,
