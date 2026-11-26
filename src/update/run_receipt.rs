@@ -8,9 +8,10 @@
 //! from the parts one by one.
 //!
 //! Only the files of the moai skill and of the skill folders beside it carry an expected digest in
-//! the result. The other parts (agents, routing, style, links, hooks, keys) name what they wrote
-//! as `host:file` tags and keep their own committed receipts, so the record lists them as
-//! `not_compared` instead of claiming a comparison it did not make.
+//! the result. Every other part of a run is listed in `not_compared` with a reason and its own
+//! receipt, whatever its state: it either writes files the result gives no digest for, or only
+//! moves and links. A skill part is listed too when a file it planned to change was not compared.
+//! The record claims no comparison it did not make.
 //!
 //! The record is one file in the HOME state folder, `installations/<install id>/update-run.json`,
 //! replaced atomically by every run that wrote something; a confirmed plan that writes nothing
@@ -344,26 +345,83 @@ fn check_files(home: &Path, out: &Value) -> Vec<Value> {
     checks
 }
 
-/// The parts that wrote files this record does not read back, with the receipt each one keeps.
-fn not_compared(out: &Value) -> Vec<Value> {
-    [
-        ("agents", "agents_result"),
-        ("routing", "routing_result"),
-        ("style", "style_result"),
-        ("bin_names", "bin_names_result"),
-        ("hooks", "hooks_result"),
-        ("keys", "keys_result"),
-    ]
-    .iter()
-    .filter(|(_, key)| out[*key]["state"].as_str() == Some("applied"))
-    .map(|(name, key)| {
-        let mut v = json!({"part": name});
-        if let Some(r) = text(&out[*key]["receipt"]) {
-            v["receipt"] = json!(r);
+/// The files a skill part set out to change, published or not: a file left in conflict or kept
+/// for the person counts.
+fn planned_files(out: &Value, part: &str) -> usize {
+    let entries = if part == "skills" {
+        &out["result"]["hosts"]
+    } else {
+        &out["extra_skills_result"]["parts"]
+    };
+    entries
+        .as_array()
+        .into_iter()
+        .flatten()
+        .flat_map(|e| e["files"].as_array().into_iter().flatten())
+        .filter(|f| {
+            f["published"].as_bool() == Some(true) || f["action"].as_str() != Some("unchanged")
+        })
+        .count()
+}
+
+/// Why the record holds no comparison for a part outside the skill files.
+fn why_not_compared(part: &str) -> &'static str {
+    match part {
+        "bin_names" => "no digest to compare: it only links bin/moai and moves a copy aside",
+        "cleanup" => "no digest to compare: it only moves files into an archive",
+        "home" => "no digest to compare: it only moves entries into a dated folder",
+        "switch" => {
+            "no digest to compare: it puts a link in place of the old script, and this record \
+             does not read the kept copy back"
         }
-        v
-    })
-    .collect()
+        _ => "this record does not read back the files of this part",
+    }
+}
+
+/// Every part whose planned files this record did not all compare, whatever its state, with the
+/// reason and the receipt the part keeps: each part outside the skill files, and a skill part
+/// that did not apply or has a planned file without a digest comparison.
+fn not_compared(out: &Value, parts: &[Part], checks: &[Value]) -> Vec<Value> {
+    let mut list: Vec<Value> = Vec::new();
+    for p in parts {
+        if list.iter().any(|v| v["part"] == p.part) {
+            continue;
+        }
+        let same = || parts.iter().filter(|q| q.part == p.part);
+        let mut state = &p.state;
+        let mut v = json!({"part": p.part});
+        if matches!(p.part, "skills" | "extra_skills") {
+            let planned = planned_files(out, p.part);
+            let compared = checks
+                .iter()
+                .filter(|c| {
+                    c["part"] == p.part && matches!(c["check"].as_str(), Some("match" | "mismatch"))
+                })
+                .count();
+            if compared < planned {
+                v["reason"] = json!(format!(
+                    "{} of {planned} planned files were not compared",
+                    planned - compared
+                ));
+            } else if same().any(|q| q.end == End::Open) {
+                v["reason"] = json!("the part did not apply");
+            } else {
+                continue;
+            }
+            if let Some(q) = same().find(|q| q.end != End::Done) {
+                state = &q.state;
+            }
+        } else {
+            v["reason"] = json!(why_not_compared(p.part));
+            let result = &out[format!("{}_result", p.part)];
+            if let Some(r) = text(&result["receipt"]).or_else(|| text(&result["stamp"])) {
+                v["receipt"] = json!(r);
+            }
+        }
+        v["state"] = json!(state);
+        list.push(v);
+    }
+    list
 }
 
 /// The record of a finished run, built from its result. Reads the written skill files; writes
@@ -388,6 +446,7 @@ pub fn build(home: &Path, out: &Value) -> Value {
         }
     }
     let complete = remaining.is_empty() && held.is_empty() && bad_files == 0;
+    let not_compared = not_compared(out, &parts, &checks);
     let mut run = json!({
         "schema_version": SCHEMA_VERSION,
         "status": if complete { "complete" } else { "partial" },
@@ -401,7 +460,7 @@ pub fn build(home: &Path, out: &Value) -> Value {
         "files_checked": checks.len(),
         "files_not_matching": bad_files,
         "files": checks,
-        "not_compared": not_compared(out),
+        "not_compared": not_compared,
     });
     if !remaining.is_empty() {
         run["next"] = json!("moai update");
@@ -539,6 +598,104 @@ mod tests {
         });
         let run = build(Path::new("/nonexistent-home"), &out);
         assert_eq!(run["remaining"], json!(["skills", "agents"]), "{run}");
+    }
+
+    #[test]
+    fn every_part_without_a_full_comparison_is_listed_whatever_its_state() {
+        let out = json!({
+            "applied": true,
+            "result": {"hosts": [{"host": "claude", "status": "applied", "files": [
+                {"path": "mine.md", "action": "conflict", "published": false},
+                {"path": "same.md", "action": "unchanged", "published": false},
+            ]}]},
+            "extra_skills_result": {"parts": [
+                {"host": "claude", "skill": "x", "status": "unchanged",
+                 "files": [{"path": "same.md", "action": "unchanged", "published": false}]},
+            ]},
+            "agents_result": {"state": "partial", "kept": ["x.md"], "written": ["y.md"],
+                "receipt": "agents-1"},
+            "style_result": done("unchanged"),
+            "bin_names_result": done("applied"),
+            "hooks_result": {"state": "partial", "receipt": "hooks-1"},
+            "cleanup_result": {"state": "committed", "stamp": "c-1"},
+            "home_result": {"state": "applied", "journal_state": "committed", "stamp": "h-1"},
+            "switch_result": {"state": "applied", "stamp": "s-1"},
+            "git_hooks_result": {"state": "applied", "stamp": "g-1"},
+            "skipped": [{"part": "routing", "host": "claude", "reason": GATE_REASON}],
+        });
+        let run = build(Path::new("/nonexistent-home"), &out);
+        let entry = |name: &str| {
+            let found: Vec<&Value> = run["not_compared"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|p| p["part"] == name)
+                .collect();
+            assert_eq!(found.len(), 1, "{name}: {run}");
+            found[0].clone()
+        };
+        for (name, state, receipt) in [
+            ("agents", "partial", Some("agents-1")),
+            ("style", "unchanged", None),
+            ("hooks", "partial", Some("hooks-1")),
+            ("git_hooks", "applied", Some("g-1")),
+            ("routing", "not_run", None),
+        ] {
+            let e = entry(name);
+            assert_eq!(e["state"], json!(state), "{e}");
+            assert_eq!(e["reason"], json!(why_not_compared("agents")), "{e}");
+            assert_eq!(e["receipt"].as_str(), receipt, "{e}");
+        }
+        // The parts that write no file to compare say that instead.
+        for name in ["bin_names", "cleanup", "home", "switch"] {
+            let e = entry(name);
+            let reason = e["reason"].as_str().unwrap();
+            assert!(reason.starts_with("no digest to compare"), "{e}");
+        }
+        // The kept skill file was planned and never compared; the unchanged one was not planned.
+        let skills = entry("skills");
+        assert_eq!(
+            skills["reason"],
+            json!("1 of 1 planned files were not compared"),
+            "{skills}"
+        );
+        // A skill folder with nothing planned is not listed.
+        assert!(
+            !run["not_compared"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|p| p["part"] == "extra_skills"),
+            "{run}"
+        );
+    }
+
+    #[test]
+    fn a_skill_file_that_could_not_be_read_or_a_part_that_did_not_apply_is_listed() {
+        let out = json!({
+            "applied": true,
+            "result": {"hosts": [{"host": "claude", "status": "applied", "files": [
+                {"path": "gone.md", "action": "create", "published": true,
+                 "after_sha256": "sha256:00"},
+            ]}]},
+            "extra_skills_result": {"state": "refused", "reason": "no package"},
+        });
+        let run = build(Path::new("/nonexistent-home"), &out);
+        assert_eq!(run["files"][0]["check"], json!("missing"), "{run}");
+        let list: Vec<(&str, &str)> = run["not_compared"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| (p["part"].as_str().unwrap(), p["reason"].as_str().unwrap()))
+            .collect();
+        assert_eq!(
+            list,
+            [
+                ("skills", "1 of 1 planned files were not compared"),
+                ("extra_skills", "the part did not apply"),
+            ],
+            "{run}"
+        );
     }
 
     #[test]

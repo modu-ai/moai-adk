@@ -265,6 +265,52 @@ fn every_written_skill_file_is_read_back_and_its_digest_compared() {
     assert!(names.contains(&"agents"), "{rec}");
 }
 
+/// AC-2: a run that keeps a file of the person's compares the skill files and names the part it
+/// did not compare, with the reason and the part's receipt, although that part ended `partial`.
+#[test]
+fn every_written_skill_file_is_compared_and_a_part_that_kept_a_file_is_not_compared() {
+    let (_t, home, exe) = setup();
+    // A flat agent file under a package name whose bytes are not the package's.
+    let mine = home.join(".claude/agents/moai-audit.md");
+    fs::create_dir_all(mine.parent().unwrap()).unwrap();
+    fs::write(&mine, b"a file of mine\n").unwrap();
+    let top = digest_of(&result(&run(&exe, &home, &["update"])));
+    let r = result(&run(&exe, &home, &["update", "--confirm", &top]));
+    let agents = &r["agents_result"];
+    assert_eq!(agents["state"], json!("partial"), "{agents}");
+    assert!(!agents["kept"].as_array().unwrap().is_empty(), "{agents}");
+    assert!(
+        !agents["written"].as_array().unwrap().is_empty(),
+        "{agents}"
+    );
+    assert!(agents_dir(&home).is_dir());
+    assert_eq!(fs::read(&mine).unwrap(), b"a file of mine\n");
+
+    let rec = &r["run"];
+    assert_eq!(rec["held"], json!(["agents"]), "{rec}");
+    assert_eq!(rec["files_not_matching"], json!(0), "{rec}");
+    assert!(rec["files_checked"].as_u64().unwrap() > 10, "{rec}");
+    let listed: Vec<&Value> = rec["not_compared"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|p| p["part"] == json!("agents"))
+        .collect();
+    assert_eq!(listed.len(), 1, "{rec}");
+    assert_eq!(listed[0]["state"], json!("partial"), "{rec}");
+    assert_eq!(
+        listed[0]["reason"],
+        json!("this record does not read back the files of this part"),
+        "{rec}"
+    );
+    assert!(agents["receipt"].is_string(), "{agents}");
+    assert_eq!(listed[0]["receipt"], agents["receipt"], "{rec}");
+    let path = PathBuf::from(rec["receipt"].as_str().unwrap());
+    assert!(path.starts_with(&home), "{}", path.display());
+    let on_disk: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(on_disk["not_compared"], rec["not_compared"]);
+}
+
 /// A run that writes nothing and leaves nothing open writes no receipt and no other file.
 #[test]
 fn a_run_with_nothing_to_write_leaves_no_receipt() {
