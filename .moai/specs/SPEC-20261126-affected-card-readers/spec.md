@@ -75,4 +75,49 @@ created: 2026-11-26
 
 ## Result
 
-구현 전(2026-11-26, 가지 `spec/affected-card-readers-20261126`).
+2026-11-26, 가지 `spec/affected-card-readers-20261126`, 구현 base `5a6aa857d3`.
+
+커밋: 빨간 테스트 `766f301026`(고치기 전 4개 중 3개 실패, exit 100), 스캔 표 등록 `fd5d8d01a7`(`reads-src` 의 규칙 한 줄과 검사 명령 한 곳, 줄 임대), 구현 `b1e37d8aef`.
+
+구현: `src/check_affected.rs` 에 `source_readers`(REQ-1, REQ-2)와 `names_module`·`names_member`(묶음 `use`; `names_common_sub` 는 `names_member` 를 부르고 동작은 같아요)를 더하고, `select_pick` 과 `select_card_with_registry` 에서 합집합으로만 더해요.
+
+테스트(`b1e37d8aef` 의 소스와 `fd5d8d01a7` 의 표): `cargo nextest run --locked --offline --lib --test check_affected_selection --test check_affected_card_select --test check_affected_card_areas --test repo_scans_table -E 'test(check_affected::) | binary(check_affected_selection) | binary(check_affected_card_select) | binary(check_affected_card_areas) | binary(repo_scans_table)'` → 119 run, 119 passed, exit 0. 등록 전 실행은 86 중 85 통과, 1 실패(`the_repository_tests_pass_the_scan_step_as_added_files`: 새 테스트의 스캔 표 등록이 없다는 알림)였어요.
+
+guard-mutant(`--test check_affected_selection`, 하나씩 지우고 되돌림, 뒤의 작업 트리는 깨끗함):
+
+- guard-mutant: `a_changed_module_selects_the_test_that_reads_its_answer_key` | REQ-2 의 글자 검색 | exit 100 (137행 단언)
+- guard-mutant: `a_grouped_import_of_a_common_module_is_selected` | REQ-1 의 묶음 읽기 | exit 100 (191행)
+- guard-mutant: `a_look_alike_name_or_literal_adds_nothing` | REQ-1 의 이름 낱말 조건 | exit 100 (231행)
+- guard-mutant: `the_two_missed_tests_of_this_repository_are_selected` | 전체 세트의 합집합 줄 | exit 100 (270행)
+- guard-mutant: `a_grouped_import_of_a_common_module_is_selected` | 카드 세트의 합집합 블록 | exit 100 (191행)
+
+AC-5 전후 비교: 바꾸기 전 실행 파일 sha256 `17361363000507076c82a837c93c62686a9e7541a0678b239d87f064bfaab31a`(`5a6aa857d3` 의 소스), 후 `2e6c8bb54f0f4e274b7daa1f85e2dec881e60df412280bf23d3898bd883dde6c`(`b1e37d8aef` 의 소스). 22개 범위 × `--list`·`--list --card` 44번 모두 빠진 대상 `[]`. 앞의 두 줄이 놓친 범위이고 나머지는 최근 착지 20건(NeXT `91dd561a5a`)이에요.
+
+| 범위 | `--list` 전 → 후 | `--list --card` 전 → 후 |
+| --- | --- | --- |
+| `9c8b7fb763..3a6c46fc95` | 80 → 84 | 80 → 84 |
+| `252a6e3be0..ab2d27e1fd` | 269 → 270 | 244 → 245 |
+| `6f874cffa9..de1e2c4e29` | 114 → 114 | 80 → 80 |
+| `372dcd9509..6f874cffa9` | 191 → 191 | 191 → 191 |
+| `7b284c9d21..372dcd9509` | 209 → 209 | 119 → 119 |
+| `5a6aa857d3..7b284c9d21` | 113 → 113 | 2 → 2 |
+| `af3f43ad3a..979c176905` | 114 → 174 | 118 → 183 |
+| `3dd2ecb6cb..af3f43ad3a` | 101 → 101 | 5 → 5 |
+| `016b944397..3dd2ecb6cb` | 56 → 56 | 0 → 0 |
+| `e3450e0ede..016b944397` | 164 → 164 | 164 → 164 |
+| `120876d7b4..be608d5dfd` | 177 → 177 | 156 → 156 |
+| `ded201bde2..120876d7b4` | 82 → 82 | 82 → 82 |
+| `b0b0afaaad..ded201bde2` | 166 → 166 | 166 → 166 |
+| `398b66bda0..b0b0afaaad` | 92 → 92 | 40 → 40 |
+| `3b355d7a64..90ef2cedb9` | 90 → 90 | 90 → 90 |
+| `d77e5a70bc..3b355d7a64` | 86 → 86 | 86 → 86 |
+| `9c8b7fb763..d77e5a70bc` | 498 → 498 | 154 → 154 |
+| `7d79cc6d7d..9c8b7fb763` | 57 → 57 | 1 → 1 |
+| `3c55cc18b7..7d79cc6d7d` | 191 → 191 | 177 → 177 |
+| `0833534d07..807e2014c1` | 266 → 266 | 236 → 236 |
+| `3366e0539e..0833534d07` | 229 → 230 | 164 → 165 |
+| `e946ae8102..3366e0539e` | 89 → 89 | 89 → 89 |
+
+비용(Risks): `af3f43ad3a..979c176905` 의 늘어난 대상은 `src/project_id.rs` 의 `"project_id"` 글자 때문이에요. 밑줄 있는 소스 파일 331개를 그 글자를 가진 테스트 대상 수(`tests/` 의 글자 검색)로 세면 0개 310, 1~5개 17, 6~10개 2, 10개 초과 2(`project_id` 67, `work_flow` 15)예요. `state_root` 는 7이에요. `src/project_id.rs` 를 바꾼 것은 NeXT 최근 first-parent 100 중 1이에요. 리더 결정 9874(위임 판단)는 승인대로 두는 것이에요. 비용이 실제로 문제가 되면 `docs/later.md` 에 한 줄을 남기고 다시 봐요.
+
+아직 안 한 것(not_run): SPEC 의 verify 명령을 적힌 그대로 실행, `cargo fmt --all`, READY 영수증(`check affected --card`), 전체 `cargo test`, Windows·Linux.
