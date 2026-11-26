@@ -91,3 +91,32 @@ parent: SPEC-20261122-home-tidy
 | D-3 | `releases`, `db`, `backups`, `user-assets.json` 은 적용하지 않고 계획에서 유지해요(기본). 대안: 부모 D-2 대로 은퇴 도구로 보고 Go 세션이 없을 때 보관을 허용해요 | `src/update_cleanup.rs` 의 `GO_RUNTIME` 은 이 이름들(`releases`, `db`, `backups`)을 절대 보관하지 않고, `user-assets.json` 은 `cleanup-plan` 이 파일 소유를 증명하는 목록이에요. 더 엄격한 규칙을 따라요. 대신 부모 Intent 가 후보로 센 옛 Go 릴리스(1.84 GiB)는 남아요 | `rules.rs` 의 목록에서 이름을 빼요 |
 | D-4 | 실행 중간에 보관본·원본을 바꾸는 테스트만 라이브러리의 숨은 이음새(`src/archive.rs` 의 `copy_verified_with` 방식)를 임시 HOME 에서 불러요. 나머지는 모두 실제 바이너리예요 | 실제 바이너리만으로는 쓰기와 다시 읽기 사이에 바이트를 바꿀 수 없어요. 바이너리에 환경 변수 우회로를 두는 것보다 안전해요 | 이음새와 그 테스트를 지워요 |
 | D-5 | 복원은 확인 digest 없이 권한 참조만 받고, 보관본을 지우지 않아요 | 복원은 아무것도 덮어쓰거나 지우지 않아요(REQ-9) | 확인 토큰을 더해요 |
+
+## Result
+
+2026-11-26, macOS(Darwin 27.2.0), 레인 `moai-adk-agent-irad`. 승인은 카드 원장의 노트 10214 에 있어요(revision 1). 실제 HOME 에는 실행하지 않았어요.
+
+- 커밋: `a705b4ba53`(열기 호출 관찰 테스트), `437d111435`(RED), `2e674cfd2b`(구현), `696ecf9c84`(테스트 보강), `2bfc6ae1f4`(도움말 표와 골든), 그 뒤의 이 절 커밋.
+- TDD: RED 는 `437d111435` 에서 `test-failure`(51개 중 28개 실패, 23개 통과)로 기록했고, GREEN 은 `2e674cfd2b` 에서 같은 검사가 통과했어요. 지우기 직전의 `in_use` 재확인 테스트가 없어 `tdd reopen` 으로 테스트를 더했어요.
+
+확인 명령은 적힌 그대로 실행했어요.
+
+- AC-1: met — `home_tidy_cli apply_` exit 0, 5개 통과
+- AC-2: met — `home_tidy_cli archive_` exit 0, 6개 통과
+- AC-3: met — `home_tidy_cli protected_` exit 0, 6개 통과
+- AC-4: met — `home_tidy_cli inuse_` exit 0, 3개 통과
+- AC-5: met — `home_tidy_cli kept_` exit 0, 3개 통과
+- AC-6: met — `home_tidy_cli delete_` exit 0, 3개 통과
+- AC-7: met — `home_tidy_cli restore_` exit 0, 7개 통과
+- AC-8: met — `home_tidy_cli receipt_` exit 0, 2개 통과
+- AC-9: met — `home_tidy_cli help_` 2개, `--bin moai-cli help_rules` 16개, `--bin moai-cli operations_doc` 6개 통과(모두 exit 0), `moai spec check` 오류 0
+
+- 추가 확인: `cargo nextest run` 의 `home_tidy_cli`·`ac_command_lint`·`state_folder_literal_scan` 80개 통과. 첫 실행은 `state_folder_literal_scan` 1건 실패(서식 정리가 `fx.moai` 의 `.moai` 를 한 줄에 남김)였고 줄 모양을 바꿔 고쳤어요.
+- 카드 기준 1(열기 호출 직접 관찰): `inventory_and_plan_open_no_protected_entry` exit 0, 1개 통과. macOS `sandbox-exec` 가 막은 경로를 읽으려고 여는 순간 프로세스를 SIGKILL 해요. 막은 경로마다 실제로 여는 프로그램(`cat`, `ls`)이 죽는 것을 먼저 확인하고, 두 읽기 연산은 끝까지 돌아요. 스캔에 열기 호출을 넣은 뮤턴트는 exit 101 이었어요. 적용 쪽은 `protected_files_are_never_opened_by_the_apply` 가 같은 방법으로 봐요. Linux·Windows 에서는 not_run 이에요. 그래서 위 Risks 의 "열기 호출 자체는 관찰하지 않아요"는 이 결과로 바뀌었어요.
+- 위험 경로 실행: 임시 HOME 에서 실제 바이너리와 D-4 이음새를 부르는 Rust 테스트로 링크(절대·형제 폴더), 이름 있는 파이프, mode 000 파일, 목록 뒤에 생긴 파일, 지우기 직전의 파일 변경·링크 바꿔치기·세션 시작, 보관본 훼손을 실행했어요.
+- 가드 뮤턴트 25개(`m01`~`m25`)는 모두 해당 테스트 1개가 exit 101 이었어요. 링크 테스트 넷은 처음에 라이브러리(`cap-std`)가 대신 막는 링크만 써서, 우리 가드가 없으면 따라가는 형제 폴더 링크를 더한 뒤에 돌렸어요.
+- 의존성(D-1): `tar =0.4.45`(`default-features = false`), `flate2 =1.1.10`(`rust_backend`, `miniz_oxide`). `Cargo.lock` 에 함께 들어온 것은 `filetime`·`miniz_oxide`·`adler2`·`crc32fast`·`simd-adler32` 예요. 라이선스는 `cargo metadata` 기준으로 모두 MIT·Apache-2.0·0BSD·Zlib 중에서 고를 수 있어요. 네트워크는 `cargo fetch` 한 번이었고 내려받은 것은 `tar 0.4.45` 하나였어요.
+- SPEC 문장의 해석과 더한 것: Go 세션 확인(REQ-6)은 지우기 직전에 한 번 더 해요. 걸으면 한도를 넘는 은퇴 도구 폴더는 계획이 `keep` 이라 고르면 REQ-2 로 거절해요. 복원에서 이미 있는 폴더도 `existing` 에 이름이 나와요.
+- not_run: 보관본 쓰기 실패(디스크 가득 등)의 직접 재현(같은 버림 경로는 다시 읽기 실패 테스트가 지나가요), 적용 도중의 시간 한도 초과, 전원 끊김, Linux·Windows. `src/tidy` 는 조각 2 부터 `cfg` 없이 unix API 를 써요: Windows 빌드는 확인하지 않았어요.
+- 남은 위험: 마지막 확인과 삭제 사이의 틈은 0 이 아니에요(위 Risks).
+- 카드 기준 3(`moai update` 미리보기)은 이 SPEC 의 범위 밖이고 후속 카드로 남아요.

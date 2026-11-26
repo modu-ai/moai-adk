@@ -1514,12 +1514,8 @@ fn restore_puts_back_the_same_bytes_modes_and_times() {
     assert_eq!((snap(&run), contents(&run)), before);
     assert_eq!((snap(&report), fs::read(&report).unwrap()), report_before);
     // The archive is kept.
-    assert!(fx
-        .moai
-        .join("archive")
-        .join(&stamp)
-        .join("receipt.json")
-        .exists());
+    let archive = fx.moai.join("archive").join(&stamp);
+    assert!(archive.join("receipt.json").exists());
 }
 
 #[test]
