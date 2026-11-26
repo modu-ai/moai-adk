@@ -81,4 +81,17 @@ branch: spec/lane-worktree-command-20261124
 
 ## Result
 
-(구현 뒤에 채워요.)
+구현 커밋 `ba32f145d3`, 거절 분류를 맞춘 커밋 `e7c2453261`, RED 커밋 `7585e0c41f` 위, NeXT `398b66bda0` 에서 갈라졌어요. 아래는 이 실행에서 본 값이에요.
+
+- RED: 구현 전 `cargo test --offline --locked --test worktree_new_cli` 는 7개 모두 실패했어요(명령이 없었어요, `target/wt/red.log`). 첫 GREEN 에서 5개가 실패했어요: 다시 읽기가 `refs/heads/` 접두사가 붙은 브랜치 이름과 비교했는데 파서는 접두사를 떼어 줘요. 고친 뒤 7개 통과, 0개 실패(`target/wt/green4.log`). 이름 단위 시험 1개 통과(`target/wt/green3.log`).
+- AC-1: met — `ac1_the_worktree_is_made_on_a_new_branch_at_the_integration_tip`
+- AC-2: met — `ac2_a_name_that_is_not_one_plain_folder_name_is_refused`
+- AC-3: met — `ac3_a_taken_name_an_unknown_base_and_a_linked_place_are_refused` (거절은 `invalid_input`)
+- AC-4: met — `ac4_run_from_a_linked_worktree_the_new_one_is_in_the_primary_place`
+- AC-5: met — `ac5_a_read_back_that_does_not_match_fails_and_names_the_path`
+- AC-6: met — `ac6_the_help_has_no_option_that_forces_deletes_prunes_or_moves`
+- AC-7: met — `ac7_work_md_names_the_command_in_both_worktree_places`
+- 위험 경로 실행(임시 저장소, 만든 바이너리, `target/wt/throwaway2.log`): 정상 생성, `../escape`·`a/b`·절대 경로·이미 있는 폴더는 거절(exit 1, 아무것도 안 만듦), 워크트리 안에서 불러도 본 체크아웃의 `.claude/worktrees/lane-b` 에 생성, `.claude/worktrees` 가 링크인 저장소는 거절이고 링크 뒤에는 항목 0개·새 브랜치 없음.
+- 같은 날 세션에서 본 증거: 워크트리에 격리된 세션에서 본 체크아웃 아래로 `git worktree add` 를 부르면 호스트가 "gives worktree add a path in the shared checkout … Refusing to run it" 로 거절했고, `ExitWorktree(keep)` 뒤에는 통과했어요. 그래서 work.md 의 순서(먼저 나오기)는 그대로 두었어요.
+- 지우기·강제·가지치기·옮기기 옵션과 코드는 없어요. work.md 는 고정된 다섯 문장을 그대로 두고 명령을 가리키는 문장만 더했고, 도움말 표·골든 파일·스캔 표·매니페스트 해시를 줄 임대로 맞췄어요.
+- 남은 것: 영수증은 READY 노트에 있어요. 독립 감사와 넓은 `check affected` 는 아직이에요. Windows 와 Linux 는 Mac 에서만 돌렸어요.
