@@ -221,18 +221,25 @@ fn scan_entries(text: &str) -> Option<Vec<ScanEntry>> {
 /// Whether `text` names the helper sub-module `common::<sub>`: `common::<sub>…` or `<sub>` as an
 /// item of a `common::{…}` group, with whole identifiers only.
 fn names_common_sub(text: &str, sub: &str) -> bool {
+    names_member(text, "common", sub)
+}
+
+/// Whether `text` names `item` under the path segment `parent`: `<parent>::<item>…` or `<item>`
+/// as an item of a `<parent>::{…}` group, with whole identifiers only.
+fn names_member(text: &str, parent: &str, item_name: &str) -> bool {
     let ident = |c: char| c.is_alphanumeric() || c == '_';
     let lead = |s: &str| -> String { s.trim_start().chars().take_while(|c| ident(*c)).collect() };
+    let head = format!("{parent}::");
     let mut rest = text;
-    while let Some(i) = rest.find("common::") {
+    while let Some(i) = rest.find(&head) {
         let before_ok = !rest[..i].chars().next_back().is_some_and(ident);
-        let after = &rest[i + "common::".len()..];
+        let after = &rest[i + head.len()..];
         rest = after;
         if !before_ok {
             continue;
         }
         let Some(group) = after.strip_prefix('{') else {
-            if lead(after) == sub {
+            if lead(after) == item_name {
                 return true;
             }
             continue;
@@ -251,7 +258,7 @@ fn names_common_sub(text: &str, sub: &str) -> bool {
                     item.push(c);
                 }
                 ',' if depth == 0 => {
-                    if lead(&item) == sub {
+                    if lead(&item) == item_name {
                         return true;
                     }
                     item.clear();
@@ -259,7 +266,7 @@ fn names_common_sub(text: &str, sub: &str) -> bool {
                 _ => item.push(c),
             }
         }
-        if lead(&item) == sub {
+        if lead(&item) == item_name {
             return true;
         }
     }
@@ -302,6 +309,9 @@ pub fn select_pick(
                 rust.insert(t.name.clone());
             }
         }
+        // SPEC-20261126-affected-card-readers REQ-1 to REQ-3: the tests that read a changed
+        // module join the full set and the lane set.
+        rust.extend(source_readers(path, tests).into_iter().map(String::from));
         if let Some(a) = area(path) {
             let word = first_word(&a);
             for t in tests {
@@ -644,6 +654,57 @@ fn name_has_word(name: &str, word: &str) -> bool {
     format!("_{name}_").contains(&format!("_{word}_"))
 }
 
+/// Whether `text` names the module path `key` (`ledger::reservation`): in one piece, or its last
+/// segment as an item of a brace group directly after the one before it
+/// (`ledger::{reservation, workflow}`). `//` comments are cut before a group is read, so a
+/// comment inside it does not hide the item that follows.
+fn names_module(text: &str, key: &str) -> bool {
+    if names_path(text, key) {
+        return true;
+    }
+    key.rsplit_once("::").is_some_and(|(parent, leaf)| {
+        let code: Vec<&str> = text
+            .lines()
+            .map(|l| l.split("//").next().unwrap_or(l))
+            .collect();
+        names_member(&code.join("\n"), parent, leaf)
+    })
+}
+
+/// The test targets that read a changed source module in a way the name and area rules can miss
+/// (SPEC-20261126-affected-card-readers REQ-1, REQ-2): a target whose name carries the file's own
+/// word and whose source names the module path, and a target whose source holds a file word with
+/// an underscore (`state_root`) as a whole string literal, such as the key of a command's answer.
+/// A selection only adds these; `mod.rs`, `lib.rs`, `main.rs` and a path that is no
+/// `src/**/*.rs` file name none.
+fn source_readers<'a>(path: &str, tests: &'a [TestFile]) -> Vec<&'a str> {
+    let Some(rest) = path
+        .strip_prefix("src/")
+        .and_then(|p| p.strip_suffix(".rs"))
+    else {
+        return Vec::new();
+    };
+    let file = rest.rsplit('/').next().unwrap_or(rest);
+    if matches!(file, "mod" | "lib" | "main") {
+        return Vec::new();
+    }
+    let literal = file.contains('_').then(|| format!("\"{file}\""));
+    let word = file.replace('-', "_");
+    let key = module_of(path).and_then(|(_, key)| key);
+    tests
+        .iter()
+        .filter(|t| {
+            literal
+                .as_ref()
+                .is_some_and(|l| t.text.contains(l.as_str()))
+                || key
+                    .as_ref()
+                    .is_some_and(|k| name_has_word(&t.name, &word) && names_module(&t.text, k))
+        })
+        .map(|t| t.name.as_str())
+        .collect()
+}
+
 /// Pick the test targets one card's change reaches (SPEC-20261124-card-select-batch-land REQ-1 to
 /// REQ-3, SPEC-20261125-check-affected-card-areas): the tests the range changes or adds, the tests
 /// whose source names a changed module or whose name carries its word, the targets of each scan a
@@ -826,6 +887,18 @@ pub fn select_card_with_registry(
             if !named.is_empty() && named.len() <= COMMON_WORD_CAP {
                 rust.extend(named.iter().map(|s| s.to_string()));
                 let reason = format!("module:{folder}");
+                if !by.contains(&reason) {
+                    by.push(reason);
+                }
+            }
+        }
+        // The tests that read the module join whatever the cap or the area decided, never
+        // replacing a pick (SPEC-20261126-affected-card-readers REQ-1, REQ-2, REQ-5).
+        let readers = source_readers(path, tests);
+        if !readers.is_empty() {
+            rust.extend(readers.iter().map(|s| s.to_string()));
+            if let Some((word, _)) = &module {
+                let reason = format!("module:{word}");
                 if !by.contains(&reason) {
                     by.push(reason);
                 }
