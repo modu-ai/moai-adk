@@ -254,6 +254,32 @@ fn a_cd_that_does_not_move_the_session_is_allowed() {
     }
 }
 
+/// The dangerous path of the rule (REQ-1, REQ-4): a session folder reached through a link is
+/// judged by the checkout it leads to, and judging a compound command runs nothing of it.
+#[test]
+fn a_linked_session_folder_is_judged_by_where_it_leads() {
+    let w = World::new(true, true);
+    let into_own = w.primary.parent().unwrap().join("link-into-own");
+    std::os::unix::fs::symlink(w.own.join("src"), &into_own).unwrap();
+    let into_primary = w.own.join("link-into-primary");
+    std::os::unix::fs::symlink(w.primary.join("src"), &into_primary).unwrap();
+    for mode in MODES {
+        let got = w.call(&into_own, "ls && cd .. && rm -f src/x", mode, None);
+        assert!(
+            got.as_deref().is_some_and(|r| r.starts_with(PREFIX)),
+            "a link into the worktree, {mode}: {got:?}"
+        );
+        let got = w.call(&into_primary, "cd .. && ls", mode, None);
+        assert!(
+            !got.as_deref().is_some_and(|r| r.starts_with(PREFIX)),
+            "a link into the primary checkout, {mode}: {got:?}"
+        );
+    }
+    for checkout in [&w.own, &w.primary] {
+        assert!(checkout.join("src/x").is_file(), "a judged command ran");
+    }
+}
+
 /// AC-3 (REQ-4): the primary checkout session, a linked worktree of a folder that is no MoAI
 /// project and a command the lexer cannot split keep their `cd`.
 #[test]
