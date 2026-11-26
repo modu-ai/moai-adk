@@ -3,8 +3,9 @@
 //! most `wip_limit` (profile key `work_flow.wip_limit`, default [`DEFAULT_PER_LANE`]) times the
 //! live registered lanes. Only a card whose reservation of the current generation has a lease that
 //! has not ended is counted (SPEC-20261125-wip-limit-live-leases, user decision 2026-11-25); the
-//! others are listed apart in a refusal and in `card next`. At the limit a session helps with a
-//! check or a landing instead of
+//! others are listed apart in a refusal and in `card next`. A `review` card with a live lease
+//! whose current head is passed only waits for its landing, so it is listed apart too. At the
+//! limit a session helps with a check or a landing instead of
 //! taking a card, so `card take` and `card add` refuse and `card next` names the cards that wait
 //! for an audit. `wip_limit` 0 turns the limit off, and so does a project with no registry
 //! folder or no live lane (SPEC D-3). A lane is live while its launcher holds the `<name>.live`
@@ -14,7 +15,7 @@
 //! reached.
 
 use crate::lane_registry;
-use rusqlite::Connection;
+use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
 use std::path::Path;
 
@@ -164,14 +165,28 @@ pub struct InWork {
     pub state: String,
     pub title: String,
     pub lease: Lease,
+    /// The current head of a `review` card with a live lease when that head is passed; such a card
+    /// is not counted.
+    pub passed_head: Option<String>,
 }
 
 impl InWork {
+    /// Why a card is left out of the count: the word of the `card next` answer.
+    fn reason(&self) -> &'static str {
+        match self.passed_head {
+            Some(_) => "pass verdict",
+            None => self.lease.reason(),
+        }
+    }
+
     /// The text of a card left out of the count: its name, state, title and why it is left out.
     fn left_out_text(&self) -> String {
-        let why = match self.lease {
-            Lease::Ended(at) => format!("lease ended {}", crate::forge::policy::format_utc(at)),
-            other => other.reason().to_string(),
+        let why = match (&self.passed_head, self.lease) {
+            (Some(head), _) => format!("PASS on head {}", &head[..12]),
+            (None, Lease::Ended(at)) => {
+                format!("lease ended {}", crate::forge::policy::format_utc(at))
+            }
+            (None, other) => other.reason().to_string(),
         };
         format!(
             "C-{} ({}, {}, {})",
@@ -180,8 +195,89 @@ impl InWork {
     }
 }
 
+/// The head that the newest hand-back note of the card names, only while that note belongs to the
+/// card's present work: its `card.note` event is newer than every event that put the card back
+/// into work. `None` when this cannot be confirmed; an older note is never read instead.
+fn current_head(conn: &Connection, card_id: i64) -> Result<Option<String>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT note_id, kind, author, body FROM card_note \
+             WHERE card_id = ?1 ORDER BY note_id DESC",
+        )
+        .map_err(|e| e.to_string())?;
+    let mut rows = stmt.query([card_id]).map_err(|e| e.to_string())?;
+    let (note_id, line) = loop {
+        let Some(row) = rows.next().map_err(|e| e.to_string())? else {
+            return Ok(None);
+        };
+        let note_id: i64 = row.get(0).map_err(|e| e.to_string())?;
+        let kind: String = row.get(1).map_err(|e| e.to_string())?;
+        let author: String = row.get(2).map_err(|e| e.to_string())?;
+        let body: String = row.get(3).map_err(|e| e.to_string())?;
+        // @cc:careful mirrors the private `bundle::Note::hand_back_marker`: change both together.
+        if author == super::inbox::DEFAULT_LEADER || kind == "decision" {
+            continue;
+        }
+        let line = body.lines().next().unwrap_or("");
+        if super::ready_receipt::marker_of_line(line).is_some() {
+            break (note_id, line.to_string());
+        }
+    };
+    let Some((head, _)) = crate::bundle::parse_ready(&line, &format!("C-{card_id}")) else {
+        return Ok(None);
+    };
+    let current: Option<i64> = conn
+        .query_row(
+            "SELECT 1 FROM event WHERE card_id = ?1 AND kind = 'card.note' \
+               AND json_extract(payload, '$.note_id') = ?2 \
+               AND event_id > (SELECT coalesce(max(event_id), 0) FROM event \
+                               WHERE card_id = ?1 \
+                                 AND kind IN ('card.reopen', 'reserve', 'card.reclaim')) \
+             LIMIT 1",
+            params![card_id, note_id],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+    Ok(current.map(|_| head))
+}
+
+/// The current head of the card when it is passed: a verdict names exactly that head, every
+/// reviewer's newest verdict on it is PASS and so is the card's newest verdict on any head. A
+/// verdict row that cannot be read leaves the card not passed.
+fn passed_head(conn: &Connection, card_id: i64) -> Result<Option<String>, String> {
+    let Some(head) = current_head(conn, card_id)? else {
+        return Ok(None);
+    };
+    let rows: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM event WHERE card_id = ?1 AND kind = 'card.verdict'",
+            [card_id],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    let verdicts =
+        crate::ledger::workflow::verdict_events(conn, card_id).map_err(|e| e.to_string())?;
+    // `verdict_events` leaves unreadable rows out without a word, so the counts must agree.
+    if usize::try_from(rows) != Ok(verdicts.len()) || !verdicts.last().is_some_and(|v| v.pass) {
+        return Ok(None);
+    }
+    let mut reviewers: Vec<&str> = Vec::new();
+    for verdict in verdicts.iter().rev().filter(|v| v.head == head) {
+        let reviewer = verdict.reviewer.as_str();
+        if !reviewers.iter().any(|r| r.eq_ignore_ascii_case(reviewer)) {
+            if !verdict.pass {
+                return Ok(None);
+            }
+            reviewers.push(reviewer);
+        }
+    }
+    Ok((!reviewers.is_empty()).then_some(head))
+}
+
 /// Every `active` and `review` card, oldest first, with the state of its current reservation read
-/// against the ledger's own clock (the clock the other lease checks use).
+/// against the ledger's own clock (the clock the other lease checks use) and, for a `review` card
+/// with a live lease, its passed head.
 pub fn in_work(conn: &Connection) -> Result<Vec<InWork>, String> {
     let mut stmt = conn
         .prepare(
@@ -208,10 +304,17 @@ pub fn in_work(conn: &Connection) -> Result<Vec<InWork>, String> {
                 state: r.get(1)?,
                 title: r.get(2)?,
                 lease,
+                passed_head: None,
             })
         })
         .map_err(|e| e.to_string())?;
-    rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
+    let mut cards: Vec<InWork> = rows.collect::<Result<_, _>>().map_err(|e| e.to_string())?;
+    for card in &mut cards {
+        if card.state == "review" && card.lease == Lease::Live {
+            card.passed_head = passed_head(conn, card.card_id)?;
+        }
+    }
+    Ok(cards)
 }
 
 /// The limit now: the numbers and whether the cards in work reach it.
@@ -221,11 +324,11 @@ pub struct Reading {
     pub lanes: usize,
     /// `per_lane` times `lanes`; 0 when the limit is off.
     pub limit: usize,
-    /// The cards counted: in work or in review with a live lease.
+    /// The cards counted: in work or in review with a live lease, a passed card in review left out.
     pub count: usize,
     pub cards: Vec<InWork>,
-    /// The cards in work or in review that the count leaves out: an ended lease, or no
-    /// reservation (REQ-3).
+    /// The cards in work or in review that the count leaves out: an ended lease, no
+    /// reservation (REQ-3), or a card in review whose current head is passed.
     pub not_counted: Vec<InWork>,
     /// The names whose registry entry or lock could not be read (REQ-5).
     pub unreadable: Vec<String>,
@@ -251,10 +354,14 @@ impl Reading {
                     Lease::Ended(at) => json!(at),
                     _ => Value::Null,
                 };
-                json!({
+                let mut entry = json!({
                     "name": format!("C-{}", c.card_id), "card_id": c.card_id, "state": c.state,
-                    "reason": c.lease.reason(), "lease_until": until,
-                })
+                    "reason": c.reason(), "lease_until": until,
+                });
+                if let Some(head) = &c.passed_head {
+                    entry["head"] = json!(head);
+                }
+                entry
             })
             .collect();
         json!({
@@ -266,14 +373,15 @@ impl Reading {
 }
 
 /// Reads the limit and the cards in work: the cards with a live lease are counted, the others are
-/// listed apart (SPEC-20261125-wip-limit-live-leases REQ-1 and REQ-3).
+/// listed apart (SPEC-20261125-wip-limit-live-leases REQ-1 and REQ-3), as are the cards in review
+/// whose current head is passed.
 pub fn read(project: &Path, conn: &Connection) -> Result<Reading, String> {
     let per_lane = per_lane(project);
     let found = live_lanes(project);
     let lanes = found.live;
     let (cards, not_counted): (Vec<InWork>, Vec<InWork>) = in_work(conn)?
         .into_iter()
-        .partition(|c| c.lease == Lease::Live);
+        .partition(|c| c.lease == Lease::Live && c.passed_head.is_none());
     Ok(Reading {
         per_lane,
         lanes,
@@ -316,7 +424,7 @@ pub fn refusal(project: &Path, conn: &Connection, action: &str) -> Result<Option
             .iter()
             .map(InWork::left_out_text)
             .collect();
-        format!("; not counted (no live lease): {}", texts.join("; "))
+        format!("; not counted: {}", texts.join("; "))
     };
     // The registry names that could not be read and so are left out of the lane count (REQ-5).
     let left_out = if reading.unreadable.is_empty() {
