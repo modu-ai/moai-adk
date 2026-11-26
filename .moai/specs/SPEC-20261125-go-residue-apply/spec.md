@@ -129,4 +129,15 @@ Acceptance:
 
 위험 경로 실행은 `8241bf3c9c`의 빌드로 했어요. 그 뒤 적용 코드의 변화는 clippy 지적(이동 루프의 카운터를 `enumerate`로)뿐이고, 중간 실패 경로는 단위 테스트가 덮어요.
 
+### 감사 FAIL(카드 노트 9890) 수리
+
+감사 head `5304785c10`에서 두 가지가 FAIL이었어요. 수리 커밋은 `41c267f559`예요.
+
+1. `--bundle proven`이 사용자의 파일을 옮겼어요. Go 매니페스트는 자기가 배치하지 않은 파일(`user_created`)에도 디스크의 바이트를 `deployed_hash`로 적어서, 해시 일치는 "Go가 썼다"는 증거가 아니에요. 이제 조사는 `provenance`를 함께 읽고 go-state와 같은 규칙을 써요: `template_managed`이고 해시가 같을 때만 `go_same`, 바뀐 `template_managed`와 `user_modified`는 `go_changed`(경로를 골랐을 때만), 그 밖의 값과 `provenance`가 없는 항목은 `user_data`(`keep`, 보여 주기만)예요. 지시는 `user_created` 제외였고, `user_modified`와 그 밖의 값까지 넓힌 것은 같은 원인이라서예요.
+2. 백업이 없고 원래 자리에 다른 파일이 있어도 `reverted`였어요. 이제 원래 파일의 sha256이 영수증과 다르면 `conflict`이고 영수증은 `reverted`가 되지 않아요. 같은 바이트면 지금처럼 건너뛰어요. 알아 둘 경우: 계획 뒤에 바뀐 파일 때문에 적용이 중간에 멈추면, 옮기지 않은 그 파일도 되돌리기에서 `conflict`로 나와요(파일은 그대로예요).
+
+확인: 수리 전 코드에 새 테스트 두 개를 돌려 2개 실패(`go_same`≠`user_data`, `reverted`≠`conflict`), 수리 뒤 `project_update_go_residue_cli`와 `go_residue` 단위 테스트 19개 통과. 뮤턴트, 위험 경로 실행, 영수증은 REPAIRED 노트가 인용해요.
+
+이 카드에서 고치지 않은 것: `SPEC-20261121-go-residue-detect`의 `go_same` 정의 문장과 `update.md`의 분류 설명(S6의 글)은 아직 해시 일치만 말해요. 위 REQ 문장은 승인 digest를 지키려고 고치지 않았어요.
+
 Not run / 남은 것: 이 Result 커밋 뒤 머리의 `check affected --card 9619fdbc84..HEAD` 결과는 READY 노트가 인용해요(여기에 적으면 머리가 바뀌어요). 되돌리기는 `leftover_folder`와 `go_marker`를 옮기지 않아요(S3, S5의 일). 마무리 커밋 제안은 S6의 일이에요.
