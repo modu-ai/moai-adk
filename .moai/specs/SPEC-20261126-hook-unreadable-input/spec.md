@@ -96,4 +96,21 @@ MoAI 프로젝트에서 `moai hook bash-boundary` 와 `moai hook write-boundary`
 
 ## Result
 
-(아직 없어요. 승인 뒤 구현하면 여기에 적어요.)
+구현 커밋은 `e65f4f588c` 이고 시험을 먼저 쓴 커밋은 `12ee94e800` 이에요(`moai tdd red` 는 exit 100 의 `test-failure`, `moai tdd green` 은 exit 0). 합친 tip 은 `f48ea9d815` 이에요. 구현 커밋 뒤의 커밋은 이 SPEC 파일만 바꿔요. 개정 2 의 승인은 카드 노트 10395 예요. 확인은 2026-11-26(UTC) macOS 에서 `e65f4f588c` 의 코드로 돌렸고, cargo 명령 앞에는 `moai heavy-slot-acquire --name ivan --max 2 --` 를 붙였어요.
+
+- AC-1: met — verify 명령 exit 0, 7개 통과(두 이름의 빈 입력·일반 글·짝 없는 대리 문자·깊은 중첩·배열·스칼라·UTF-8 아님, 원인별 문구, 환경 변수를 비운 실행).
+- AC-2: met — verify 명령 exit 0, 3개 통과(4194305 바이트 거절, 4194304 바이트는 진입점 거절 없음, `write-boundary` 의 한도 초과 문구는 그대로).
+- AC-3: met — verify 명령 exit 0, 4개 통과(영수증 한 줄, 등록 폴더 없음·링크·가득 찬 영수증에서도 거절과 stderr 한 줄).
+- AC-4: met — verify 명령 exit 0, 2개 통과(MoAI 프로젝트가 아닌 폴더와 `CLAUDE_PROJECT_DIR` 이 그런 폴더일 때 두 스트림 모두 비고 파일 변화 없음).
+- AC-5: met — verify 명령 exit 0, 3개 통과(`session-context` 는 거절 대상 입력에 침묵, 정확히 한도인 객체에는 판정 없음, 다른 이벤트와 `tool_input` 없는 객체는 침묵).
+- AC-6: met — verify 명령 exit 0, 다섯 대상 63개 통과.
+- AC-7: met — verify 명령 exit 0, 1개 통과.
+- AC-8: met — `moai spec check SPEC-20261126-hook-unreadable-input` 오류 0, 경고 0.
+
+위험 경로 확인(Plan 6): `env -i` 셸 실행 대신 Rust 통합 시험 `unreadable_ac1_a_cleared_environment_denies_in_a_project_and_is_silent_outside` 로 했어요(결정 10013). 빌드한 바이너리를 환경을 비우고 임시 HOME 으로 실행해, 임시 MoAI 프로젝트에서는 거절하고 일반 폴더에서는 침묵하며 아무것도 쓰지 않아요.
+
+변이 아홉 개(거절 객체 빼기, 한도 비교 바꾸기, 프로젝트 확인 빼기, `CLAUDE_PROJECT_DIR` 무시, `session-context` 도 거절, 다른 이벤트 거절, 판정 없는 객체 거절, 영수증이 없으면 거절하지 않기, 객체 아님 문구를 JSON 아님 문구로 바꾸기)는 모두 `hook_entry_cli` 를 exit 100 으로 실패시켰고, 새 시험 19개가 각각 하나 이상의 변이에 실패했어요.
+
+문서: `docs/later.md` 에서 읽지 못한 입력 줄을 지우고 R-3 줄을 더했어요.
+
+돌리지 않은 것: Windows 와 Linux. 실제 Claude Code 가 이런 입력을 보내는지는 Sources 에 적은 대로 미확인이에요. `moai check affected` 는 이 커밋 뒤의 head 에서 돌리고 결과 줄은 병합 준비 노트에 적어요.
