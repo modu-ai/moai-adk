@@ -4,6 +4,9 @@
 //! `/moai agent`. Every case runs in a temporary git project with a temporary HOME; no real host
 //! is started (a stub `claude` records its arguments). AC-5 (advisor and model defaults of `-a`)
 //! waits for the approval of revision 3 of the SPEC and is not in this file yet.
+//!
+//! SPEC-20261125-agent-names-bible replaces the first-free-name pick of `-a` with a pick at
+//! random among the free names of a list of 48 Biblical names; its tests are the `bible_` ones.
 #![cfg(unix)]
 
 mod common;
@@ -182,10 +185,13 @@ fn ac1_the_project_name_comes_from_the_profile_else_the_folder() {
     assert_eq!(v["name"], "demo-id-leader", "{said}");
     let (code, v, said) = f.dry(&["cc", "-a"]);
     assert_eq!(code, 0, "{said}");
-    assert_eq!(
-        v["name"],
-        format!("demo-id-agent-{}", moai_cli::session::AGENT_NAMES[0]),
-        "{said}"
+    let agent_name = v["name"].as_str().unwrap_or_default().to_string();
+    let tail = agent_name
+        .strip_prefix("demo-id-agent-")
+        .unwrap_or_else(|| panic!("not `demo-id-agent-<name>`: {said}"));
+    assert!(
+        moai_cli::session::AGENT_NAMES.contains(&tail),
+        "{tail} is not a name of the list: {said}"
     );
     // A random-form id names no project to a person: the folder name is used.
     fs::write(
@@ -269,32 +275,70 @@ fn ac2_a_held_leader_lock_refuses_the_launch() {
     assert!(seen.contains(&"lockproj-leader".to_string()), "{seen:?}");
 }
 
-/// AC-2 (REQ-2, REQ-3, REQ-5): `-a` without `--name` takes the first `<project name>-agent-<name>`
-/// of the list that has no held live lock and no live registry entry, and `--name` replaces it.
-#[test]
-fn ac2_agent_takes_the_first_free_english_name() {
-    let names = moai_cli::session::AGENT_NAMES;
-    assert!(names.len() >= 12, "the list holds at least 12 names");
-    assert!(names
-        .iter()
-        .all(|n| moai_cli::lane_registry::valid_name(&format!("agentproj-agent-{n}"))));
-    let unique: std::collections::BTreeSet<_> = names.iter().collect();
-    assert_eq!(unique.len(), names.len(), "no name twice");
-    let f = Fixture::new("agentproj");
-    let (code, v, said) = f.dry(&["cc", "-a"]);
-    assert_eq!(code, 0, "{said}");
-    assert_eq!(v["name"], format!("agentproj-agent-{}", names[0]), "{said}");
-    // A held live lock skips a name.
-    let _first = f.hold(&format!("agentproj-agent-{}", names[0]));
-    let (_, v, said) = f.dry(&["cc", "--agent"]);
-    assert_eq!(v["name"], format!("agentproj-agent-{}", names[1]), "{said}");
-    // So does a live registry entry.
+/// The list of SPEC-20261125-agent-names-bible D-1, written out here on purpose: the test pins the
+/// decided list literally (R-4), so a change of the list changes this test with it.
+const BIBLE_NAMES: [&str; 48] = [
+    "adam",
+    "eve",
+    "noah",
+    "abraham",
+    "sarah",
+    "isaac",
+    "rebekah",
+    "jacob",
+    "rachel",
+    "leah",
+    "joseph",
+    "moses",
+    "aaron",
+    "miriam",
+    "joshua",
+    "deborah",
+    "gideon",
+    "samson",
+    "ruth",
+    "naomi",
+    "boaz",
+    "hannah",
+    "samuel",
+    "david",
+    "saul",
+    "solomon",
+    "elijah",
+    "elisha",
+    "isaiah",
+    "jeremiah",
+    "ezekiel",
+    "daniel",
+    "esther",
+    "jonah",
+    "mary",
+    "martha",
+    "lazarus",
+    "peter",
+    "andrew",
+    "james",
+    "john",
+    "thomas",
+    "matthew",
+    "luke",
+    "paul",
+    "timothy",
+    "lydia",
+    "priscilla",
+];
+
+/// The clock the registry's leases are measured on, in seconds.
+fn now_secs() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64)
+}
+
+/// Gives `name` a registry entry with a running lease, the way a started session does.
+fn register_running(f: &Fixture, name: &str) {
     let registered = Command::new(common::MOAI_BIN)
-        .args([
-            "session-register",
-            "--name",
-            &format!("agentproj-agent-{}", names[1]),
-        ])
+        .args(["session-register", "--name", name])
         .args(["--mode", "agent"])
         .arg(&f.project)
         .clean_env()
@@ -303,22 +347,147 @@ fn ac2_agent_takes_the_first_free_english_name() {
         .output()
         .unwrap();
     assert!(registered.status.success(), "{}", text(&registered));
-    let (_, v, said) = f.dry(&["cc", "-a"]);
-    assert_eq!(v["name"], format!("agentproj-agent-{}", names[2]), "{said}");
-    // `--name` is used as given.
-    let (_, v, said) = f.dry(&["cc", "-a", "--name", "scout"]);
-    assert_eq!(v["name"], "scout", "{said}");
 }
 
-/// AC-2 (REQ-4): a list that is used up refuses the launch with one message that names
-/// `--name` and starts no host; `--name` still works then.
+/// AC-1 (REQ-1, REQ-5): the list is pinned literally (48 names, lowercase ASCII, no duplicate, none
+/// over 9 characters) and the project name keeps room for the longest name, so every
+/// `<project name>-agent-<name>` passes the registry's name check within its 64 characters.
 #[test]
-fn ac2_a_used_up_list_refuses_and_names_the_name_option() {
+fn bible_ac1_the_list_is_pinned_and_every_name_fits_the_registry() {
+    let names = &moai_cli::session::AGENT_NAMES[..];
+    assert_eq!(names, &BIBLE_NAMES[..], "the list of D-1, in this order");
+    assert_eq!(names.len(), 48);
+    for n in names {
+        assert!(
+            !n.is_empty() && n.bytes().all(|b| b.is_ascii_lowercase()),
+            "{n} is not lowercase ASCII letters"
+        );
+        assert!(n.len() <= 9, "{n} is longer than 9 characters");
+    }
+    let unique: std::collections::BTreeSet<_> = names.iter().collect();
+    assert_eq!(unique.len(), names.len(), "no name twice");
+    // The longest project name the launcher allows still leaves room for the longest name.
+    let long = Fixture::new(&"p".repeat(80));
+    let project = moai_cli::session::project_name(&long.project);
+    assert_eq!(
+        project.len(),
+        moai_cli::lane_registry::MAX_NAME_LEN - "-agent-".len() - 9,
+        "{project}"
+    );
+    for n in names {
+        let full = format!("{project}-agent-{n}");
+        assert!(
+            moai_cli::lane_registry::valid_name(&full),
+            "the registry refuses {full}"
+        );
+        assert!(full.len() <= 64, "{full} is {} characters long", full.len());
+    }
+}
+
+/// AC-2 (REQ-2, REQ-3): with an injected seed the pick reaches exactly the free names, in list
+/// order (`seed % free.len()` indexes the free names), and never a name whose live lock is held or
+/// whose registry entry has a running lease.
+#[test]
+fn bible_ac2_the_seeded_pick_reaches_exactly_the_free_names() {
+    let names = moai_cli::session::AGENT_NAMES;
+    let f = Fixture::new("seedproj");
+    let prefix = moai_cli::session::agent_prefix(&f.project);
+    let now = now_secs();
+    // Every name free: seeds 0..48 reach all 48 names, and the seed indexes the list.
+    let mut reached = std::collections::BTreeSet::new();
+    for seed in 0..names.len() as u64 {
+        let got = moai_cli::session::pick_agent_name_seeded(&f.project, now, seed).unwrap();
+        assert_eq!(
+            got,
+            format!("{prefix}{}", names[seed as usize]),
+            "seed {seed}"
+        );
+        reached.insert(got);
+    }
+    let all: std::collections::BTreeSet<String> =
+        names.iter().map(|n| format!("{prefix}{n}")).collect();
+    assert_eq!(reached, all, "the seeds reach every name");
+    let wrapped = moai_cli::session::pick_agent_name_seeded(&f.project, now, 48 + 5).unwrap();
+    assert_eq!(wrapped, format!("{prefix}{}", names[5]), "the seed wraps");
+    // Some names held by a live lock, some by a registry entry with a running lease.
+    let locked = [0usize, 7, 8, 47];
+    let registered = [1usize, 20, 33];
+    let _held: Vec<fs::File> = locked
+        .iter()
+        .map(|&i| f.hold(&format!("{prefix}{}", names[i])))
+        .collect();
+    for &i in &registered {
+        register_running(&f, &format!("{prefix}{}", names[i]));
+    }
+    let free: Vec<String> = (0..names.len())
+        .filter(|i| !locked.contains(i) && !registered.contains(i))
+        .map(|i| format!("{prefix}{}", names[i]))
+        .collect();
+    assert_eq!(free.len(), 48 - 7);
+    let mut seeds: Vec<u64> = (0..2 * free.len() as u64).collect();
+    seeds.extend([u64::MAX, u64::MAX - 1, 1 << 40]);
+    let mut reached = std::collections::BTreeSet::new();
+    for seed in seeds {
+        let got = moai_cli::session::pick_agent_name_seeded(&f.project, now, seed).unwrap();
+        assert_eq!(
+            got,
+            free[(seed % free.len() as u64) as usize],
+            "seed {seed}"
+        );
+        reached.insert(got);
+    }
+    let want: std::collections::BTreeSet<String> = free.iter().cloned().collect();
+    assert_eq!(reached, want, "the seeds reach exactly the free names");
+}
+
+/// AC-2 (REQ-3): with 47 names held, `moai cc -a --dry-run` prints the one free name.
+#[test]
+fn bible_ac2_the_binary_takes_the_one_free_name() {
+    let f = Fixture::new("onefree");
+    let names = moai_cli::session::AGENT_NAMES;
+    let free = 29;
+    let _held: Vec<fs::File> = names
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| *i != free)
+        .map(|(_, n)| f.hold(&format!("onefree-agent-{n}")))
+        .collect();
+    let (code, v, said) = f.dry(&["cc", "-a"]);
+    assert_eq!(code, 0, "{said}");
+    let want = format!("onefree-agent-{}", names[free]);
+    assert_eq!(v["name"], want, "{said}");
+    assert_eq!(value_after(&argv(&v), "--name"), Some(want), "{said}");
+}
+
+/// AC-2 (REQ-2): twenty unseeded picks in one process give at least two different names, so the
+/// pick is not the first free name every time.
+#[test]
+fn bible_ac2_unseeded_picks_vary() {
+    let f = Fixture::new("variedproj");
+    let now = now_secs();
+    let picked: std::collections::BTreeSet<String> = (0..20)
+        .map(|_| moai_cli::session::pick_agent_name(&f.project, now).unwrap())
+        .collect();
+    assert!(picked.len() >= 2, "20 picks gave one name only: {picked:?}");
+    let prefix = moai_cli::session::agent_prefix(&f.project);
+    for name in &picked {
+        let tail = name.strip_prefix(prefix.as_str()).unwrap_or(name.as_str());
+        assert!(moai_cli::session::AGENT_NAMES.contains(&tail), "{name}");
+    }
+}
+
+/// AC-3 (REQ-4): with every name held, `-a` is refused with one message that names `--name` and
+/// starts no host; `--name` still works then.
+#[test]
+fn bible_ac3_a_used_up_list_refuses_and_names_the_name_option() {
     let f = Fixture::new("fullproj");
     let held: Vec<fs::File> = moai_cli::session::AGENT_NAMES
         .iter()
         .map(|n| f.hold(&format!("fullproj-agent-{n}")))
         .collect();
+    let (code, _, said) = f.dry(&["cc", "-a"]);
+    assert_ne!(code, 0, "{said}");
+    assert!(said.contains("--name"), "{said}");
     let (out, seen) = f.run(&["cc", "-a"]);
     assert!(!out.status.success(), "{}", text(&out));
     assert!(text(&out).contains("--name"), "{}", text(&out));
@@ -327,6 +496,16 @@ fn ac2_a_used_up_list_refuses_and_names_the_name_option() {
     assert_eq!(code, 0, "{said}");
     assert_eq!(v["name"], "extra");
     drop(held);
+}
+
+/// AC-4 (REQ-6): `--name` with `-a` is used as given and no name is chosen from the list.
+#[test]
+fn bible_ac4_name_is_used_as_given() {
+    let f = Fixture::new("agentproj");
+    let (code, v, said) = f.dry(&["cc", "-a", "--name", "scout"]);
+    assert_eq!(code, 0, "{said}");
+    assert_eq!(v["name"], "scout", "{said}");
+    assert_eq!(value_after(&argv(&v), "--name").as_deref(), Some("scout"));
 }
 
 /// AC-3 (REQ-6, REQ-11): `-l` and `-a` start in the bypass on both hosts and `--permissions`
@@ -567,13 +746,90 @@ fn ac5_agent_model_and_effort_come_from_the_agent_row() {
     }
 }
 
-/// The list of names lives in code and is checked by the registry's rule (REQ-3).
+/// The text of a repository file with every run of whitespace turned into one space, so a phrase
+/// the help goldens wrap over several lines still matches.
+fn flat_repo_text(path: &str) -> String {
+    let full = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(path);
+    let raw = fs::read_to_string(&full).unwrap_or_else(|e| panic!("{}: {e}", full.display()));
+    raw.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// The first `len` characters of `text` from byte offset `from`.
+fn window(text: &str, from: usize, len: usize) -> String {
+    text[from..].chars().take(len).collect()
+}
+
+/// Phrases of the old first-free-name pick that no live text may keep.
+const OLD_PICK_PHRASES: [&str; 5] = [
+    "first free name",
+    "first free `",
+    "첫 빈 이름",
+    "비어 있는 첫 이름",
+    "첫 이름",
+];
+
+/// AC-5 (REQ-7): each help golden says next to the `-a, --agent` description that the name is
+/// chosen at random, `docs/user-entry-draft.md` says it in every line that tells how `-a` takes
+/// its name (the word `무작위` or `random`), and none of them keeps the first-free-name wording.
 #[test]
-fn the_name_list_is_lowercase_single_words() {
-    for n in moai_cli::session::AGENT_NAMES {
+fn bible_ac5_help_and_docs_say_the_name_is_chosen_at_random() {
+    for golden in ["all.txt", "all-dumb.txt", "all-80.txt", "all-60.txt"] {
+        let path = format!("tests/fixtures/help/{golden}");
+        let flat = flat_repo_text(&path);
+        let at: Vec<usize> = flat.match_indices("-a, --agent").map(|(i, _)| i).collect();
+        assert!(!at.is_empty(), "{path} has no `-a, --agent` entry");
+        for i in at {
+            let near = window(&flat, i, 900);
+            assert!(
+                near.contains("random"),
+                "{path}: the `-a, --agent` entry does not say `random`: {near}"
+            );
+        }
+        for old in OLD_PICK_PHRASES {
+            assert!(!flat.contains(old), "{path} still says `{old}`");
+        }
+    }
+    let path = "docs/user-entry-draft.md";
+    let raw =
+        fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(path)).unwrap();
+    let telling: Vec<&str> = raw
+        .lines()
+        .filter(|l| l.contains("agent-<영어 이름>") && l.contains("목록"))
+        .collect();
+    assert!(
+        !telling.is_empty(),
+        "{path} has no line that tells how `-a` takes its name"
+    );
+    for line in telling {
         assert!(
-            !n.is_empty() && n.bytes().all(|b| b.is_ascii_lowercase()),
-            "{n}"
+            line.contains("무작위") || line.contains("random"),
+            "{path}: a line about the `-a` name does not say it is chosen at random: {line}"
         );
     }
+    let flat = flat_repo_text(path);
+    for old in OLD_PICK_PHRASES {
+        assert!(!flat.contains(old), "{path} still says `{old}`");
+    }
+}
+
+/// AC-6 (REQ-8): the decisions log carries one line that names this SPEC, `D-8` and the SPEC
+/// whose first-name rule it replaces.
+#[test]
+fn bible_ac6_the_decisions_log_carries_the_replacing_line() {
+    let log = fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/decisions-2026-11-08.md"),
+    )
+    .unwrap();
+    let hits = log
+        .lines()
+        .filter(|l| {
+            l.contains("SPEC-20261125-agent-names-bible")
+                && l.contains("D-8")
+                && l.contains("SPEC-20261125-agent-team-session-names")
+        })
+        .count();
+    assert_eq!(
+        hits, 1,
+        "one line must name the SPEC, D-8 and the replaced SPEC"
+    );
 }
