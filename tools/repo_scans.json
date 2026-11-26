@@ -1331,7 +1331,7 @@
           "prefix": "docs/rust-product-path.md"
         },
         {
-          "prefix": "skills/moai/workflows/project.md"
+          "prefix": "skills/moai/workflows/update.md"
         }
       ],
       "rejects": "a change to a file that tests/go_state_classes_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
@@ -2072,6 +2072,7 @@
         "gate_collect",
         "generation_request_record",
         "generic_flow_questions",
+        "go_local_reference_cli",
         "home_routing_cli",
         "home_style_cli",
         "home_style_ownership_cli",
@@ -2100,6 +2101,7 @@
         "project_harness_step",
         "project_interview_minimal",
         "project_lsp_plugins_cli",
+        "project_next_flow_setup",
         "project_preview_order",
         "project_worktree_move_choice",
         "protected_paths_one_list",
@@ -2183,6 +2185,7 @@
         "tests/flow_name_scan.rs",
         "tests/generation_request_record.rs",
         "tests/generic_flow_questions.rs",
+        "tests/go_local_reference_cli.rs",
         "tests/home_routing_cli.rs",
         "tests/home_style_cli.rs",
         "tests/home_style_ownership_cli.rs",
@@ -2210,6 +2213,7 @@
         "tests/project_harness_step.rs",
         "tests/project_interview_minimal.rs",
         "tests/project_lsp_plugins_cli.rs",
+        "tests/project_next_flow_setup.rs",
         "tests/project_preview_order.rs",
         "tests/project_worktree_move_choice.rs",
         "tests/protected_paths_one_list.rs",
@@ -2300,6 +2304,7 @@
         "profile_apply_engine",
         "project_harness_label",
         "project_layer_follow_ups",
+        "project_next_flow_setup",
         "project_preview_order",
         "project_worktree_move_choice",
         "repo_scans_cli",
@@ -2335,6 +2340,7 @@
         "tests/profile_apply_engine.rs",
         "tests/project_harness_label.rs",
         "tests/project_layer_follow_ups.rs",
+        "tests/project_next_flow_setup.rs",
         "tests/project_preview_order.rs",
         "tests/project_worktree_move_choice.rs",
         "tests/repo_scans_cli.rs",
@@ -2554,6 +2560,9 @@
         },
         {
           "prefix": "src/update_tux.rs"
+        },
+        {
+          "prefix": "src/work_flow.rs"
         },
         {
           "prefix": "src/worktree.rs"
