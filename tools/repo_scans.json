@@ -1142,6 +1142,27 @@
       "rejects": "a second shipped text that explains the meaning of the NeXT name, or a shipped text that spells the four technical rules of the flow as the letters of the name (SPEC-20261122-next-flow-skills-agents AC-3)"
     },
     {
+      "id": "worktree-place-shipped-texts",
+      "tests": [
+        "tests/worktree_place_cli.rs::worktree_place_texts_every_skill_and_agent_file"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test worktree_place_cli worktree_place_texts_"
+      ],
+      "rules": [
+        "tests/worktree_place_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/"
+        },
+        {
+          "prefix": "agents/"
+        }
+      ],
+      "rejects": "a skill or agent text that orders the home worktree folder for new worktrees (SPEC-20261122-worktree-place REQ-9)"
+    },
+    {
       "id": "state-folder-literals-in-tests",
       "tests": [
         "tests/state_folder_literal_scan.rs::the_repository_tests_stay_within_the_state_folder_baseline"
@@ -1570,7 +1591,8 @@
         "retired_host_words",
         "rule_history_guard",
         "sdd_guidance",
-        "troubleshooting_doc"
+        "troubleshooting_doc",
+        "worktree_place_cli"
       ],
       "checks": [
         "cargo test --offline --locked --test card card_criterion_add_cli:: -- card_finish_cli:: card_guard_cli:: card_line_lease_cli:: card_ready_leftovers_cli:: card_scope_widen_cli:: card_timeline_cli:: decision_append_cli:: followup_per_spec_rules:: recurring_problems_rule::"
@@ -1611,6 +1633,7 @@
         "tests/rule_history_guard.rs",
         "tests/sdd_guidance.rs",
         "tests/troubleshooting_doc.rs",
+        "tests/worktree_place_cli.rs",
         "tests/repo_scans_table.rs"
       ],
       "scope": [
@@ -2128,7 +2151,8 @@
         "update_user_layer_cli",
         "versioning_release_texts",
         "workflow_size_budget",
-        "worktree_include_guard"
+        "worktree_include_guard",
+        "worktree_place_cli"
       ],
       "checks": [
         "cargo test --offline --locked --test card card_generated_scope:: -- card_ready_leftovers_cli:: card_hold_gate_cli:: card_leader_release_cli:: claim_verify_flags_2838:: followup_per_spec_rules:: trailer_paragraph_guard_cli::"
@@ -2237,6 +2261,7 @@
         "tests/build_number_texts.rs",
         "tests/skill_generalization_scan.rs",
         "tests/versioning_release_texts.rs",
+        "tests/worktree_place_cli.rs",
         "tests/repo_scans_table.rs"
       ],
       "scope": [
@@ -2287,7 +2312,8 @@
         "retired_host_words",
         "retired_hosts_layer",
         "test_weakening",
-        "worktree_cli"
+        "worktree_cli",
+        "worktree_place_cli"
       ],
       "checks": [
         "cargo test --offline --locked --test card board_bundle_link_cli:: -- ledger_recover::"
@@ -2320,6 +2346,7 @@
         "tests/retired_hosts_layer.rs",
         "tests/test_weakening.rs",
         "tests/worktree_cli.rs",
+        "tests/worktree_place_cli.rs",
         "tests/repo_scans_table.rs"
       ],
       "scope": [
@@ -2334,6 +2361,9 @@
         },
         {
           "prefix": "src/archive.rs"
+        },
+        {
+          "prefix": "src/audit_clone.rs"
         },
         {
           "prefix": "src/board/link.rs"
