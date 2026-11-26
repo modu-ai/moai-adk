@@ -599,7 +599,9 @@ fn a_rerun_after_a_later_verdict_keeps_the_hold() {
         assert_eq!(w.integ(), merge, "{case}");
 
         let later = if on_merge { &merge } else { &audited };
-        result(&w.verdict(&card, later, S_AUD, word, &[]));
+        let later = result(&w.verdict(&card, later, S_AUD, word, &[]))["event"]
+            .as_i64()
+            .unwrap();
 
         let again = result(&w.land(&card, &merge, &[]));
         assert_eq!(again["closed"], json!(false), "{case}: {again}");
@@ -611,10 +613,32 @@ fn a_rerun_after_a_later_verdict_keeps_the_hold() {
         assert!(why.contains("criterion 2"), "{case}: {why}");
         assert_eq!(w.events(&card, "card.finish"), 0, "{case}");
 
-        w.pass(&card, &audited, S_AUD, &[]);
+        // The release lets the card close, on a verdict recorded now and never on the PASS that
+        // held: the newest verdict of the head the check reads, so a FAIL on the merge refuses
+        // until the merge is passed again.
+        let release = w.pass(&card, &audited, S_AUD, &[]);
+        let relied = match (on_merge, word) {
+            (true, "fail") => {
+                let why = refusal(&w.land(&card, &merge, &[]));
+                assert!(why.contains("verdict_fail"), "{case}: {why}");
+                assert_ne!(w.state(&card), "done", "{case}");
+                w.pass(&card, &merge, S_AUD, &[])
+            }
+            (true, _) => later,
+            (false, _) => release,
+        };
         let released = result(&w.land(&card, &merge, &[]));
         assert_eq!(released["closed"], json!(true), "{case}: {released}");
         assert!(released.get("held").is_none(), "{case}: {released}");
+        assert_eq!(
+            released["verdict"]["event"],
+            json!(relied),
+            "{case}: {released}"
+        );
+        let cited = format!("verdict event {relied} PASS head ");
+        for (_, evidence) in w.criteria(&card) {
+            assert!(evidence.unwrap().starts_with(&cited), "{case}: {released}");
+        }
         assert_eq!(w.state(&card), "done", "{case}");
     }
 }
@@ -664,6 +688,7 @@ fn a_hold_set_again_after_a_release_applies() {
     assert!(again > release && release > first);
     let repeat = result(&w.verdict(&card, &head, S_AUD, "pass", &[2]));
     assert_eq!(repeat["written"], json!(false), "{repeat}");
+    assert_eq!(repeat["event"], json!(again), "{repeat}");
     let got = result(&w.land(&card, &head, &[]));
     assert_eq!(got["closed"], json!(false), "{got}");
     assert_eq!(
@@ -677,6 +702,7 @@ fn a_hold_set_again_after_a_release_applies() {
     assert_eq!(released["written"], json!(true), "{released}");
     let got = result(&w.land(&card, &head, &[]));
     assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["verdict"]["event"], released["event"], "{got}");
 
     // A FAIL stays the newest verdict when an earlier PASS is repeated.
     let w = World::new();
@@ -740,10 +766,12 @@ fn the_hold_is_the_union_of_each_reviewers_newest_pass() {
     assert_ne!(w.state(&card), "done");
 
     // With both released the same head closes the card, and the answer names no hold.
-    w.pass(&card, &head, S_AUD2, &[]);
+    let release = w.pass(&card, &head, S_AUD2, &[]);
     let got = result(&w.land(&card, &head, &[]));
     assert_eq!(got["closed"], json!(true), "{got}");
     assert!(got.get("held").is_none(), "{got}");
+    // The start row relied on a PASS that held, so the close relies on a release instead.
+    assert_eq!(got["verdict"]["event"], json!(release), "{got}");
     assert_eq!(w.state(&card), "done");
 }
 

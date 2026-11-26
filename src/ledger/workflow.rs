@@ -2264,7 +2264,6 @@ pub fn record_verdict(
                 == Some(&payload)
             {
                 repeated = Some(event_id);
-                break;
             }
         }
         drop(st);

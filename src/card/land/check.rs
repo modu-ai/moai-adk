@@ -152,14 +152,35 @@ pub const CHECK_UNREADABLE: &str = "check_unreadable";
 /// A refusal is an `Err` in enforce mode. In observe mode it is reported in `would_refuse`, and so
 /// is a git or ledger read that failed inside the check, as [`CHECK_UNREADABLE`].
 pub fn read(input: &Input<'_>, mode: Mode) -> Result<Reading> {
+    read_start_row(input, mode, false)
+}
+
+/// [`read`] for a call that closes the card with nothing held: a start row's PASS that held a
+/// criterion never closes it, so the verdicts are judged again once the hold is released
+/// (SPEC-20261126-land-open-criteria).
+pub fn read_for_close(input: &Input<'_>, mode: Mode) -> Result<Reading> {
+    read_start_row(input, mode, true)
+}
+
+/// Whether the verdict `named` by a start row holds a criterion.
+fn named_holds(input: &Input<'_>, named: &Value) -> Result<bool> {
+    let events = workflow::verdict_events(input.conn, input.card_id).map_err(|e| e.to_string())?;
+    Ok(events
+        .iter()
+        .any(|e| named["event"].as_i64() == Some(e.event_id) && !e.open.is_empty()))
+}
+
+fn read_start_row(input: &Input<'_>, mode: Mode, closes: bool) -> Result<Reading> {
     if !input.on_tip {
         if let Some(named) = workflow::land_started_verdict(input.conn, input.card_id, input.head)
             .map_err(|e| e.to_string())?
         {
-            return Ok(Reading {
-                relied: Some(named),
-                would_refuse: None,
-            });
+            if !(closes && named_holds(input, &named)?) {
+                return Ok(Reading {
+                    relied: Some(named),
+                    would_refuse: None,
+                });
+            }
         }
     }
     let refusal = match judge(input) {

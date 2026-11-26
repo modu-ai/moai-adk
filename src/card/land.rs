@@ -533,8 +533,10 @@ fn land_inner(
 
     // The audit verdict (SPEC-20261123-landing-reads-verdict): read before the first write. A head
     // the branch already holds is closed on the verdict its start row names; a head that still
-    // stands on the tip has moved nothing, so its verdicts are judged again (REQ-15, REQ-24). In
-    // observe mode a refusal is only reported, and the landing goes on as it did before the check.
+    // stands on the tip has moved nothing, so its verdicts are judged again (REQ-15, REQ-24). So
+    // are they when a closing call finds nothing held and the start row's PASS held a criterion
+    // (SPEC-20261126-land-open-criteria). In observe mode a refusal is only reported, and the
+    // landing goes on as it did before the check.
     let mode = check::mode(project).map_err(unchanged)?;
     let input = check::Input {
         project,
@@ -546,10 +548,15 @@ fn land_inner(
         on_tip: standing == Standing::OnTip,
         lander: req.session,
     };
+    let reading = if keep_open {
+        check::read(&input, mode)
+    } else {
+        check::read_for_close(&input, mode)
+    };
     let check::Reading {
         relied,
         would_refuse,
-    } = check::read(&input, mode).map_err(unchanged)?;
+    } = reading.map_err(unchanged)?;
 
     // A landing that closes the card needs the PASS the check relies on, in every mode
     // (SPEC-20261124-land-closes-card REQ-4): `no_pass` for a head with no usable verdict, the
