@@ -1,11 +1,20 @@
 ---
 id: SPEC-20261125-detect-language-server-catalog
 title: "project-detect reads the language servers and their official plugins from the catalog, not from a table in the engine"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
 parent: SPEC-20261124-project-detect-monorepo
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9612 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:96acd8b153e84b64dacb17bf94318df14a5dbe8d91c709991127c0ef8965f60d"
 ---
+
+## Interview
+
+- none: the catalog moves an existing engine table into data the engine already reads; the one open pick (option 가) was decided by the leader under the delegation (note 9612).
 
 # project-detect reads the language servers and their official plugins from the catalog, not from a table in the engine
 
