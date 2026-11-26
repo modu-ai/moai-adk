@@ -25,6 +25,7 @@ use super::take_scope;
 use super::wip_limit;
 use crate::forge::connector::{HostConnector, HostKind, PrPhase, ProjectRef};
 use crate::ledger::close;
+use crate::ledger::partial;
 use crate::ledger::reservation;
 use crate::ledger::scope_return;
 use crate::ledger::workflow::{self, CriterionChange, PrTarget, SkipReason, WorkflowError};
@@ -68,7 +69,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
                 "action": "next", "project_id": id, "ledger": "absent", "holder": holder,
                 "next": null, "next_is": null,
                 "mine": [], "ready": [], "skipped": [], "warnings": [], "writes": false,
-                "landing": landed::absent_json(), "stale": [],
+                "landing": landed::absent_json(), "stale": [], "partial_landing": [],
             }));
         }
         Err(e) => return Err(e.to_string()),
@@ -208,12 +209,24 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
         .iter()
         .map(|c| json!({"name": input::card_name(c.card_id), "card_id": c.card_id, "title": c.title}))
         .collect();
+    // The cards that landed and keep open criteria, apart from `ready` and `skipped`: a marked
+    // slice is offered under `ready` too, and a plain landing is skipped as `already_landed`.
+    let partial_landing: Vec<Value> = partial::partial_landings(ledger.conn())
+        .map_err(|e| e.to_string())?
+        .iter()
+        .map(|p| {
+            json!({
+                "name": input::card_name(p.card_id), "card_id": p.card_id, "title": p.title,
+                "open_criteria": p.open_criteria, "head": p.head,
+            })
+        })
+        .collect();
     Ok(json!({
         "action": "next", "project_id": id, "ledger": "ready", "holder": holder,
         "now": found.now, "next": next, "next_is": next_is,
         "mine": mine, "ready": ready, "skipped": skipped, "warnings": warnings,
         "landing": landing.json(), "stale": stale, "writes": false,
-        "wip": wip.json(), "audit_needed": audit_needed,
+        "wip": wip.json(), "audit_needed": audit_needed, "partial_landing": partial_landing,
     }))
 }
 

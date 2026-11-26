@@ -22,6 +22,7 @@ pub mod import;
 pub mod location;
 pub mod migrate;
 pub mod open;
+pub mod partial;
 pub mod recover;
 pub mod reservation;
 pub mod schema;
