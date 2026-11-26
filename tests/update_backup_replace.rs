@@ -1170,19 +1170,6 @@ fn a_no_write_apply_keeps_the_own_backup_that_recovery_restores() {
     assert_eq!(snapshot(&f.home.join(ROOTS[0].1)), original[0]);
 }
 
-fn copy_tree(from: &Path, to: &Path) {
-    fs::create_dir_all(to).unwrap();
-    for entry in fs::read_dir(from).unwrap() {
-        let p = entry.unwrap().path();
-        let dest = to.join(p.file_name().unwrap());
-        if p.is_dir() {
-            copy_tree(&p, &dest);
-        } else {
-            fs::copy(&p, &dest).unwrap();
-        }
-    }
-}
-
 /// `update` from the copy's own folder (its package and agents beside it); the whole envelope.
 fn update_by(exe: &Path, home: &Path, args: &[&str]) -> Value {
     let mut all = vec!["update"];
@@ -1198,10 +1185,10 @@ fn a_no_write_apply_going_back_keeps_the_own_backup_and_refreshes_the_receipt() 
     let original = originals(&f);
     let a = put_build(&f.home, "a");
     let folder = version_dir(&f.home, "a");
-    let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+    // The version folder gets what an installed one has: a package and an agents folder.
     let pkg = folder.join("skills/moai");
-    copy_tree(&repo.join("skills/moai"), &pkg);
-    copy_tree(&repo.join("agents"), &folder.join("agents"));
+    write_pkg(&pkg);
+    fs::create_dir_all(folder.join("agents")).unwrap();
     replace_by(&a, &f.home, &pkg);
     set_receipt_field(&f.home, &id_of(&a), "package_version", EARLIER_VERSION);
 
