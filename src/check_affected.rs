@@ -1834,13 +1834,51 @@ fn table_step(facts: &Facts) -> Option<Step> {
     Some(s)
 }
 
-/// `steps` with the table step, when there is one, placed after the last cheap step and before
-/// the first heavy one.
-fn plan(table: &Option<Step>, mut planned: Vec<Step>) -> Vec<Step> {
-    if let Some(t) = table {
-        let at = planned.iter().take_while(|s| !s.heavy).count();
-        planned.insert(at, t.clone());
+/// The cheap step `trailers` (SPEC-20261126-check-affected-trailers-flaky): the rules of
+/// `moai trailer-check` applied to the range on the checkout's branch. `None` when no finding
+/// fails, so the plan, the log and the summary of every other run stay as they were. A range that
+/// cannot be read fails the step: an unread range is not a clean one.
+fn trailers_step(facts: &Facts) -> Option<Step> {
+    let range = format!("{}..{}", facts.base, facts.head);
+    let lines: Vec<String> = match crate::trailers::check(&facts.root, &range, None, None) {
+        Ok(answer) => answer["findings"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|f| f["fails"] == serde_json::json!(true))
+            .map(|f| {
+                let text = |k: &str| f[k].as_str().unwrap_or_default().to_string();
+                format!("{} {}: {}", text("sha"), text("kind"), text("detail"))
+            })
+            .collect(),
+        Err(e) => vec![format!("the trailers of {range} cannot be checked: {e}")],
+    };
+    if lines.is_empty() {
+        return None;
     }
+    let mut s = step(
+        "trailers",
+        "(in-process)",
+        &["trailers", &format!("{} failing finding(s)", lines.len())],
+        false,
+    );
+    s.report = Some(lines);
+    Some(s)
+}
+
+/// The in-process steps of a run, each present only when it has something to report.
+fn in_process_steps(facts: &Facts) -> Vec<Step> {
+    table_step(facts)
+        .into_iter()
+        .chain(trailers_step(facts))
+        .collect()
+}
+
+/// `steps` with the in-process steps placed after the last cheap step and before the first heavy
+/// one.
+fn plan(in_process: &[Step], mut planned: Vec<Step>) -> Vec<Step> {
+    let at = planned.iter().take_while(|s| !s.heavy).count();
+    planned.splice(at..at, in_process.iter().cloned());
     planned
 }
 
@@ -2464,7 +2502,7 @@ pub fn list(
     let runner = runner_in(&facts.root);
     // `--list` reads nothing from the slot folder, so it names no cap.
     let planned = plan(
-        &table_step(&facts),
+        &in_process_steps(&facts),
         plan_steps(
             &facts,
             &sel,
@@ -2852,10 +2890,10 @@ pub fn run_with(
     let mut shown = threads.to_string();
     // Planned with nextest until the slot is held: the runner is asked only then, so a refused
     // slot starts no cargo at all. The labels do not depend on the runner.
-    let table = table_step(&facts);
+    let in_process = in_process_steps(&facts);
     let rust = facts.stack == Stack::Rust;
     let mut planned = tuned(plan(
-        &table,
+        &in_process,
         plan_steps(
             &facts,
             &sel,
@@ -2900,7 +2938,7 @@ pub fn run_with(
                 Ok(h) => {
                     let r = runner_in(dir);
                     planned = tuned(plan(
-                        &table,
+                        &in_process,
                         plan_steps(&facts, &sel, &range3, r, cap_for(r)),
                     ));
                     if let Some(theirs) = caller_threads(r, env) {
