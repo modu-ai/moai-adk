@@ -2272,6 +2272,23 @@ fn kept_names_in(moai: &Path) -> Vec<String> {
     names
 }
 
+/// Whether the `.moai/` a state move would reuse holds anything beyond the SPECs and the
+/// machine's local folder, so that `.gitignore` is asked about the targets. The local folder is
+/// not counted: a flaky record makes it, and a record changes no answer of the plan. An
+/// unreadable folder is asked.
+fn holds_more_than_specs_and_local(moai: &Path) -> bool {
+    fs::read_dir(moai)
+        .map(|rd| {
+            rd.filter_map(|e| e.ok()).any(|e| {
+                let name = e.file_name();
+                name != ".DS_Store"
+                    && name != crate::state_root::SPECS_DIR
+                    && name != crate::state_root::LOCAL_DIR
+            })
+        })
+        .unwrap_or(true)
+}
+
 /// A first-level name the team keeps in git under `.moai/` ([`crate::state_root::KEPT`]) that is
 /// not a generation marker, or the machine's local folder
 /// ([`crate::state_root::LOCAL_DIR`]): both were there before an apply that reuses the folder.
@@ -3062,7 +3079,7 @@ pub fn plan_with(project: &Path, picks: &[String]) -> Result<GoStatePlan> {
         let moai = project.join(MOAI_DIR);
         let beside_kept =
             crate::state_root::kept_only(&moai) && !crate::state_root::specs_only(&moai);
-        if beside_kept {
+        if beside_kept && holds_more_than_specs_and_local(&moai) {
             let (ignored, note) = kept_git_checks(&project, &mut moves);
             warnings.extend(note);
             if let Some(why) = ignored {
