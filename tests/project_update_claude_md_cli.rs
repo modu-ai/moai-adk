@@ -147,8 +147,27 @@ impl Fx {
         );
     }
 
+    /// A fixture git command in the project that reads the temporary HOME only, so the
+    /// developer's own git ignore file never decides what a case sees.
+    fn git_command(&self) -> Command {
+        let mut command = common::git::command();
+        command
+            .current_dir(&self.root)
+            .env("HOME", &self.home)
+            .env_remove("XDG_CONFIG_HOME");
+        command
+    }
+
     fn git(&self, args: &[&str]) -> String {
-        common::git::git(&self.root, args)
+        let out = self
+            .git_command()
+            .args(args)
+            .stdin(Stdio::null())
+            .output()
+            .expect("spawn git");
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(out.status.success(), "git {args:?} failed: {stderr}");
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
     }
 
     fn git_init(&self) {
@@ -175,9 +194,9 @@ impl Fx {
 
     /// Builds history from a `git fast-import` stream.
     fn fast_import(&self, stream: &str) {
-        let mut child = common::git::command()
+        let mut child = self
+            .git_command()
             .args(["fast-import", "--quiet"])
-            .current_dir(&self.root)
             .stdin(Stdio::piped())
             .stdout(Stdio::null())
             .stderr(Stdio::inherit())
@@ -1789,9 +1808,8 @@ impl Fx {
 
     /// Whether git ignores the path.
     fn ignored(&self, rel: &str) -> bool {
-        common::git::command()
+        self.git_command()
             .args(["check-ignore", "--no-index", "-q", "--", rel])
-            .current_dir(&self.root)
             .status()
             .unwrap()
             .success()
