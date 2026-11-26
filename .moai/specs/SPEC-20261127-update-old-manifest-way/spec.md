@@ -94,3 +94,18 @@ branch: spec/update-old-manifest-way-20261127
 | D-1 | 요청을 복원하지 않고 소유 파일을 지키는 pick 을 둬요 | `SPEC-20261125-generation-request-record` D-4: 파일에서 요청을 만들면 추측이 돼요; 지키는 쪽은 아무 파일도 지우거나 다시 쓰지 않아요 | pick 과 `generation_step` 갈래를 지워요 |
 | D-2 | 선택지 id 는 `keep-project-files`, pick 이름은 `keep-harness` | `harness-only` 와 같이 pick 이름은 요청 파일의 몫이고 사용자에게는 효과를 말하는 id 를 보여 줘요 | 이름 바꾸기는 한 곳이에요 |
 | D-3 | 줄이 모두 같으면 `unchanged` 로 읽어요 | 쓸 것이 없으면 물을 것도 없어요; 영구히 `needs_decision` 에 머무는 것이 이 카드의 증상이에요 | 항상 `needs_decision` 으로 읽어요 |
+
+## Result
+
+코드 head 729721c2f4f4798cebece57f4c969666bfe39005(base 2e97d012e5cf93f48050051013900ce8fbe9b09a)까지 확인했어요. AC 명령은 `verify` 에 쓴 그대로 실행했고(각각 exit 0, `generation_request_record` 는 테스트 수정 뒤 22/22), 코드를 쓰기 전에는 새 테스트 6개가 모두 실패했어요(`keep-project-files` 선택지 없음, `invalid agents request`).
+
+- AC-1: met — `old_manifest_offers_keep_and_plans_the_managed_block` 통과(옛 매니페스트에 관리 블록 기록이 없는 프로젝트: `needs_decision`, `not_rebuilt`, step apply 없음, `keep-project-files` 에 명령과 stdin, `CLAUDE.md` `create` 줄, `remove` 줄 없음)
+- AC-2: met — `keep_apply_writes_the_rest_and_keeps_the_project_files` 통과
+- AC-3: met — `after_keep_the_step_reads_unchanged` 통과(`an_old_manifest_with_every_row_current_reads_unchanged` 도 통과)
+- AC-4: met — `a_conflict_keeps_its_choices_and_the_project_files` 통과(블록 기준선이 낡고 블록이 지워진 `CLAUDE.md` 는 `conflict` 이고, `append-managed` 선택지가 `keep-harness` pick 도 싣고 프로젝트 파일은 그대로)
+- AC-5: met — `the_pick_stops_removals_and_still_plans_the_named_files` 통과
+- AC-6: met — `project_update_plan_cli` 6/6(`unrebuildable_not_removed` 포함), `generation_request_record` 22/22, `project_harness_pick` 1/1, `project_harness_step` 74/74, `cargo fmt --check` 와 `cargo clippy -- -D warnings` exit 0
+
+AC 문구와 테스트 픽스처의 차이: 관리 블록이 지워진 파일은 기준선과 새 렌더가 같으면 "사용자가 지운 것"으로 보존돼 줄이 생기지 않아요(`decide`). 그래서 AC-1·AC-2·AC-3 은 블록 기록이 없는 옛 매니페스트(`CLAUDE.md` 항목과 파일이 없음)로, AC-4 는 기준선이 낡은 매니페스트로 만들었어요. 동작(REQ)은 그대로예요.
+
+범위 변경: REQ-3 이 `generation_request_record` 의 한 어서션(옛 매니페스트에 줄이 모두 같으면 `needs_decision`)을 바꿔서 카드 범위에 `tests/generation_request_record.rs` 를 더했어요. 가드 뮤턴트 6/6 exit 100(반납 노트). 승인은 노트 10473 이에요.
