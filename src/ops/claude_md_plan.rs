@@ -18,9 +18,11 @@ use std::path::PathBuf;
 /// credential-shaped value is counted and never printed. `--keep <id>=shared` puts a hunk into
 /// the new `CLAUDE.md`, which follows the managed block of the profile; `--keep <id>=personal`
 /// puts it into `CLAUDE.local.md`. The answer shows both texts, warnings, one plan digest and
-/// one `claude-md-apply` command. A refused source, an unusable profile or a shared hunk with a
-/// credential-shaped line is named under `apply_blocked`, and then no command is printed.
-/// Writes nothing.
+/// one `claude-md-apply` command. No command is printed while `apply_blocked` names a reason: a
+/// root `CLAUDE.md` that is no Go-generation file, a refused source or one under a name an apply
+/// cannot move, an unusable profile, a shared hunk with a credential-shaped line, a backup folder
+/// that is a link, is no folder or that git would not ignore, or a personal pick no ignore rule
+/// would keep out of git. Writes nothing.
 #[derive(clap::Args)]
 pub struct Args {
     /// The project (default: the current folder).

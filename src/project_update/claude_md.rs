@@ -1,23 +1,36 @@
-//! The instruction files a Go-generation project carries (`claude-md-plan`): whether the root
-//! `CLAUDE.md` is a Go-generation file, the sources in their fixed order with their facts, the
-//! lines of each that are the project's own, those lines as hunks of one heading section each,
-//! the texts the `--keep` picks compose, and the digest and command of that plan. Everything here
-//! reads only: no file is written, a link is never followed and only read-only git commands run.
-//! Hunk text and the composed texts are part of the answer; a line that holds a
-//! credential-shaped value is counted and printed nowhere.
+//! The instruction files a Go-generation project carries (`claude-md-plan`,
+//! `claude-md-apply`): whether the root `CLAUDE.md` is a Go-generation file, the sources in their
+//! fixed order with their facts, the lines of each that are the project's own, those lines as
+//! hunks of one heading section each, the texts the `--keep` picks compose, the digest and
+//! command of that plan, and the apply of it.
+//!
+//! The preview reads only: no file is written, a link is never followed and only read-only git
+//! commands run. The apply composes through the same code, refuses before its first write, saves
+//! a receipt, moves every source into an owner-only backup folder and then writes the new files;
+//! it deletes no file and overwrites none but `.gitignore`, which only gains a line. Hunk text
+//! and the composed texts are part of the preview's answer; a line that holds a credential-shaped
+//! value is counted and printed nowhere, and the receipt holds paths and digests, never text.
 
 use super::PERMISSION_PLACEHOLDER;
+// By name: the crate root also has a function `apply`, which a module import would bring along.
+use crate::apply::{
+    publish_exclusive, publish_exclusive_mode, publish_replace, publish_replace_limited, read_opt,
+};
 use crate::go_residue::{find_manifest, Recorded};
-use crate::go_state::linked_component;
-use crate::{agents, agents_local_merge, claude, identity, state_root};
+use crate::go_state::{
+    linked_component, make_private_dirs, move_exclusive, parent_of, plain_relative, sha256_file,
+    still_as_previewed,
+};
+use crate::{agents, agents_local_merge, claude, contract, identity, state_root};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fs,
     io::{self, BufRead, BufReader, ErrorKind, Read, Write},
-    path::Path,
-    process::{Command, Stdio},
+    path::{Path, PathBuf},
+    process::{Command, Output, Stdio},
 };
 
 /// A source above this many bytes is refused.
@@ -270,9 +283,34 @@ pub fn preview(project: &Path) -> Result<Preview, String> {
 /// no folder or a `--keep` value that names no pick; anything else that stops the apply is listed
 /// under `apply_blocked`, and then no digest and no command are printed.
 pub fn plan(project: &Path, keep: &[String]) -> Result<Value, String> {
+    Ok(compose(project, keep)?.answer)
+}
+
+/// One composition of the project and its picks: the preview's answer, and what an apply of that
+/// answer would move and write. Both commands go through it, so the printed command applies
+/// exactly what was previewed.
+struct Composed {
+    /// The canonical project folder.
+    root: PathBuf,
+    /// The state folder's name.
+    state: &'static str,
+    answer: Value,
+    /// Why no apply may run.
+    blocked: Vec<String>,
+    /// `None` while anything blocks.
+    plan_digest: Option<String>,
+    /// The readable sources: what an apply moves.
+    sources: Vec<Source>,
+    /// The path and the whole text of each file an apply writes, `CLAUDE.md` first.
+    files: Vec<(&'static str, String)>,
+}
+
+/// Reads the project once and composes it with the picks `keep`. Writes nothing.
+fn compose(project: &Path, keep: &[String]) -> Result<Composed, String> {
     let preview = preview(project)?;
-    let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
+    let root = fs::canonicalize(project).map_err(|_| contract::PROJECT_PATH_UNAVAILABLE)?;
     let shown = root.to_str().ok_or("non UTF-8 project path")?;
+    let state = state_root::dir(&root);
     let readings: Vec<Reading> = preview
         .sources
         .iter()
@@ -291,11 +329,19 @@ pub fn plan(project: &Path, keep: &[String]) -> Result<Value, String> {
         .collect();
     words.sort();
 
-    let mut blocked: Vec<String> = preview
-        .refused
-        .iter()
-        .map(|r| format!("a source is refused: {} {}", r.path, r.reason))
-        .collect();
+    let mut blocked: Vec<String> = Vec::new();
+    if preview.go_proof.is_none() {
+        blocked.push(format!(
+            "the root {CLAUDE_MD} is not a Go-generation instruction file, so this step has \
+             nothing to replace"
+        ));
+    }
+    blocked.extend(
+        preview
+            .refused
+            .iter()
+            .map(|r| format!("a source is refused: {} {}", r.path, r.reason)),
+    );
     for (&i, &to) in &picks {
         let hunk = &hunks[i];
         let hidden = &readings[hunk.source].hidden;
@@ -331,6 +377,8 @@ pub fn plan(project: &Path, keep: &[String]) -> Result<Value, String> {
         }
         Err(reason) => blocked.push(reason.clone()),
     }
+    let personal = picks.values().any(|to| *to == Destination::Personal);
+    blocked.extend(ground(&root, state, PROBE_STAMP, &preview.sources, personal).blocked);
 
     let mut warnings: Vec<String> = results
         .iter()
@@ -365,7 +413,7 @@ pub fn plan(project: &Path, keep: &[String]) -> Result<Value, String> {
             });
             digest(bound.to_string().as_bytes())
         });
-    let apply = plan_digest.as_ref().map(|plan_digest| {
+    let command = plan_digest.as_ref().map(|plan_digest| {
         let mut argv = vec!["moai", "claude-md-apply", shown];
         for (word, ..) in &words {
             argv.extend(["--keep", word.as_str()]);
@@ -379,7 +427,7 @@ pub fn plan(project: &Path, keep: &[String]) -> Result<Value, String> {
         json!({"argv": argv, "stdin": null})
     });
 
-    Ok(json!({
+    let answer = json!({
         "read_only": true,
         "go_claude_md": preview.go_proof.map(GoProof::word),
         "go_manifest": preview.manifest,
@@ -401,8 +449,21 @@ pub fn plan(project: &Path, keep: &[String]) -> Result<Value, String> {
         "warnings": warnings,
         "apply_blocked": blocked,
         "plan_digest": plan_digest,
-        "apply": apply,
-    }))
+        "apply": command,
+    });
+    let files = results
+        .iter()
+        .map(|file| (file.path, file.text()))
+        .collect();
+    Ok(Composed {
+        state,
+        answer,
+        blocked,
+        plan_digest,
+        files,
+        sources: preview.sources,
+        root,
+    })
 }
 
 /// The managed block and the personal file's first text, with the profile bytes they came from.
@@ -1202,4 +1263,639 @@ fn compare_blobs(
         }
     }
     Ok(None)
+}
+
+/// The backup folder under the state folder.
+const BACKUPS: &str = "backups";
+/// The folder under one apply's stamp folder that holds the moved sources at their paths.
+const AREA: &str = "claude-md";
+/// The receipt beside it. No other receipt has this name, so no other reader takes it for its own.
+const RECEIPT_FILE: &str = "claude-md-receipt.json";
+/// One size limit for writing the receipt and for replacing it.
+const RECEIPT_MAX: u64 = state_root::GO_STATE_RECEIPT_MAX;
+/// The receipt and the personal file are their owner's alone.
+const PRIVATE_FILE: u32 = 0o600;
+/// How many following seconds a stamp may be moved on when its folder is taken already.
+const STAMP_TRIES: i64 = 120;
+/// A stamp of the real shape, for the preview's git question before any apply has a stamp.
+const PROBE_STAMP: &str = "19700101T000000Z";
+/// The file that gains the one line which keeps the personal file out of git.
+const GITIGNORE: &str = ".gitignore";
+/// What the apply's answer says about when the change takes effect.
+const RESTART_NOTICE: &str = "settings apply at once, while running sessions and lanes read \
+                              changed instructions only after a restart";
+/// The refusal of a digest that is not the fresh composition's (`contract::classify` reads the
+/// first words as `stale_plan`).
+const STALE: &str = "stale or altered plan: the sources, the profile or the picks no longer \
+                     match the preview that was confirmed; run `moai claude-md-plan` again, read \
+                     it and confirm again";
+
+fn backup_folder(state: &str) -> String {
+    format!("{state}/{BACKUPS}")
+}
+
+fn receipt_rel(state: &str, stamp: &str) -> String {
+    format!("{}/{stamp}/{RECEIPT_FILE}", backup_folder(state))
+}
+
+fn area_rel(state: &str, stamp: &str) -> String {
+    format!("{}/{stamp}/{AREA}", backup_folder(state))
+}
+
+/// A refusal that comes before the first write.
+fn refused(why: &str) -> String {
+    format!("claude-md-apply refused: {why}; nothing was written")
+}
+
+/// What this disk and git say about the moves and writes of an apply under one stamp.
+#[derive(Default)]
+struct Ground {
+    /// Why no apply may run.
+    blocked: Vec<String>,
+    /// The project is a git work tree.
+    repository: bool,
+    /// The line `.gitignore` gains so that git ignores the personal file.
+    ignore: Option<IgnoreAdd>,
+}
+
+/// `.gitignore` as it is (`None`: no such file) and with the one line added.
+struct IgnoreAdd {
+    before: Option<Vec<u8>>,
+    after: Vec<u8>,
+}
+
+/// Looks at the places an apply would move into and write, and asks git whether it would offer
+/// any of them: the receipt and every backup file, and the personal file when `personal`. Outside
+/// a git work tree git offers nothing; a git that cannot say counts as one that would. Reads only.
+fn ground(root: &Path, state: &str, stamp: &str, sources: &[Source], personal: bool) -> Ground {
+    let mut ground = Ground::default();
+    for source in sources {
+        let path = &source.path;
+        if !plain_relative(path) {
+            ground
+                .blocked
+                .push(format!("{path} is not a plain relative path"));
+        }
+        if path.rsplit('/').next() == Some(GITIGNORE) {
+            ground.blocked.push(format!(
+                "{path} would change which backup files git ignores once it is moved among \
+                 them; rename it or move it away first"
+            ));
+        }
+    }
+    let backups = backup_folder(state);
+    if linked_component(root, &backups) {
+        ground.blocked.push(format!(
+            "the backup folder {backups} is a link or lies below one"
+        ));
+        return ground;
+    }
+    if fs::symlink_metadata(root.join(&backups)).is_ok_and(|m| !m.is_dir()) {
+        ground
+            .blocked
+            .push(format!("the backup folder {backups} is not a folder"));
+        return ground;
+    }
+    let cannot = |why: String| {
+        format!(
+            "git could not say whether it ignores the backup folder ({why}), so it is taken as \
+             not ignored"
+        )
+    };
+    match in_work_tree(root) {
+        Ok(false) => return ground,
+        Ok(true) => ground.repository = true,
+        Err(why) => {
+            ground.blocked.push(cannot(why));
+            return ground;
+        }
+    }
+    let area = area_rel(state, stamp);
+    let paths = std::iter::once(receipt_rel(state, stamp))
+        .chain(sources.iter().map(|s| format!("{area}/{}", s.path)));
+    for path in paths {
+        match check_ignore(root, "-q", &path) {
+            Ok(true) => continue,
+            Ok(false) => ground.blocked.push(format!(
+                "git would not ignore the backup folder: {path} is not ignored; add the line \
+                 `{backups}/` to {GITIGNORE}"
+            )),
+            Err(why) => ground.blocked.push(cannot(why)),
+        }
+        // One path is enough to name.
+        break;
+    }
+    if personal {
+        match personal_ignore(root) {
+            Ok(add) => ground.ignore = add,
+            Err(reason) => ground.blocked.push(reason),
+        }
+    }
+    ground
+}
+
+/// The line to add so that git ignores the personal file, `None` when a rule ignores it already;
+/// an error says why no rule would keep it out of git.
+fn personal_ignore(root: &Path) -> Result<Option<IgnoreAdd>, String> {
+    let file = CLAUDE_LOCAL_MD;
+    let cannot = |why: String| format!("git could not say whether it keeps {file} out ({why})");
+    let tracked = tracked_paths(root).ok_or_else(|| cannot("its files cannot be listed".into()))?;
+    if tracked.contains(file) {
+        return Err(format!(
+            "git tracks {file}, so no ignore rule keeps a personal pick out of the repository; \
+             keep those lines as shared or leave them in the backup, or run `git rm --cached \
+             {file}` first"
+        ));
+    }
+    if check_ignore(root, "-q", file).map_err(cannot)? {
+        return Ok(None);
+    }
+    // A rule that matches a path git does not ignore is a `!` rule.
+    if check_ignore(root, "-v", file).map_err(cannot)? {
+        return Err(format!(
+            "a rule you wrote un-ignores {file}, and your rule wins: remove it first, or keep \
+             those lines as shared or leave them in the backup"
+        ));
+    }
+    if linked_component(root, GITIGNORE) {
+        return Err(format!(
+            "{GITIGNORE} is a link, so the rule that keeps {file} out cannot be added"
+        ));
+    }
+    let before = read_opt(&root.join(GITIGNORE))
+        .map_err(|e| format!("{GITIGNORE} cannot be changed ({e})"))?;
+    let mut after = before.clone().unwrap_or_default();
+    let eol = if after.windows(2).any(|w| w == b"\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    if !after.is_empty() && !after.ends_with(b"\n") {
+        after.extend_from_slice(eol.as_bytes());
+    }
+    after.extend_from_slice(format!("{file}{eol}").as_bytes());
+    Ok(Some(IgnoreAdd { before, after }))
+}
+
+/// A git command about ignore rules, built apart from [`git`]: `check-ignore` reads its path the
+/// ordinary way, and git takes no optional lock.
+fn ask_git(root: &Path, args: &[&str]) -> Result<Output, String> {
+    let mut command = Command::new("git");
+    identity::scrub_git_env(&mut command);
+    command
+        .arg("--no-optional-locks")
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|_| "git could not be run".into())
+}
+
+/// Whether the project is a git work tree. Git saying there is no repository counts only where
+/// no `.git` entry stands at or above the project: one git rejects is a git that cannot say.
+fn in_work_tree(root: &Path) -> Result<bool, String> {
+    let out = ask_git(root, &["rev-parse", "--is-inside-work-tree"])?;
+    if out.status.success() {
+        return match String::from_utf8_lossy(&out.stdout).trim() {
+            "true" => Ok(true),
+            "false" => Ok(false),
+            _ => Err("git gave an unexpected answer".into()),
+        };
+    }
+    let why = identity::failure_summary(&out.stderr);
+    let marked = root
+        .ancestors()
+        .any(|folder| fs::symlink_metadata(folder.join(".git")).is_ok());
+    if why.starts_with(identity::NOT_A_REPOSITORY) && !marked {
+        Ok(false)
+    } else {
+        Err(why)
+    }
+}
+
+/// `git check-ignore` of one path, which need not exist: with `-q` whether git ignores it, with
+/// `-v` whether any rule matches it, a `!` rule included.
+fn check_ignore(root: &Path, how: &str, path: &str) -> Result<bool, String> {
+    let out = ask_git(root, &["check-ignore", "--no-index", how, "--", path])?;
+    match out.status.code() {
+        Some(0) => Ok(true),
+        Some(1) => Ok(false),
+        _ => Err(identity::failure_summary(&out.stderr)),
+    }
+}
+
+/// A moved source, as the receipt holds it.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MovedFile {
+    /// Where it was, relative to the project.
+    path: String,
+    /// Where it is, relative to the project.
+    backup: String,
+    sha256: String,
+    /// The permission bits; the move keeps them.
+    mode: u32,
+    /// `tracked`, `untracked` or `unknown`.
+    git: String,
+    moved: bool,
+}
+
+/// A file the apply writes where no file is.
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WrittenFile {
+    path: String,
+    sha256: String,
+    mode: u32,
+    written: bool,
+}
+
+/// The line `.gitignore` gains. The earlier bytes are the first `before_len` bytes of the new
+/// ones, so no text is kept here; a file the apply creates has no `before_sha256`.
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct IgnoreRule {
+    path: String,
+    line: String,
+    before_sha256: Option<String>,
+    before_len: u64,
+    after_sha256: String,
+    written: bool,
+}
+
+/// Everything an undo of one apply needs: paths, digests and modes, never file text. It is saved
+/// before the first move with every flag off, and again after each step, so a step that was done
+/// and not saved is possible: a reader checks the disk against the digests, not the flags alone.
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Receipt {
+    schema_version: u32,
+    operation: String,
+    project: String,
+    /// The receipt id: the name of the stamp folder.
+    stamp: String,
+    plan_digest: String,
+    /// The caller's `--permission-reference`, recorded as given (not an authorization).
+    permission_reference: String,
+    /// `pending` until every step is done, then `committed`.
+    state: String,
+    moves: Vec<MovedFile>,
+    writes: Vec<WrittenFile>,
+    ignore: Option<IgnoreRule>,
+}
+
+fn encode(receipt: &Receipt) -> Result<Vec<u8>, String> {
+    let bytes = serde_json::to_vec_pretty(receipt).map_err(|_| "encode failed".to_string())?;
+    if bytes.len() as u64 > RECEIPT_MAX {
+        return Err(format!(
+            "the receipt is larger than {} MiB",
+            RECEIPT_MAX / (1024 * 1024)
+        ));
+    }
+    Ok(bytes)
+}
+
+/// The receipt and its file: every change is saved at once.
+struct Journal {
+    /// Relative to the project.
+    rel: String,
+    path: PathBuf,
+    /// The bytes on disk.
+    saved: Vec<u8>,
+    receipt: Receipt,
+}
+
+impl Journal {
+    /// Saves a new receipt where no file is, its owner's alone, and reads it back.
+    fn create(root: &Path, rel: String, receipt: Receipt) -> Result<Journal, String> {
+        let saved = encode(&receipt)?;
+        let path = root.join(&rel);
+        publish_exclusive_mode(&path, &saved, Some(PRIVATE_FILE))?;
+        if fs::read(&path).ok().as_deref() != Some(saved.as_slice()) {
+            return Err("it does not read back".into());
+        }
+        Ok(Journal {
+            rel,
+            path,
+            saved,
+            receipt,
+        })
+    }
+
+    fn save(&mut self) -> Result<(), String> {
+        let bytes = encode(&self.receipt)?;
+        publish_replace_limited(&self.path, Some(&self.saved), &bytes, RECEIPT_MAX)?;
+        self.saved = bytes;
+        Ok(())
+    }
+
+    /// The paths the receipt marks as written, the `.gitignore` first.
+    fn written(&self) -> Vec<&str> {
+        let ignore = self.receipt.ignore.iter().filter(|rule| rule.written);
+        let files = self.receipt.writes.iter().filter(|file| file.written);
+        ignore
+            .map(|rule| rule.path.as_str())
+            .chain(files.map(|file| file.path.as_str()))
+            .collect()
+    }
+
+    /// The error of a step that failed after the pending receipt was saved.
+    fn stopped(&self, at: &str, why: &str, area: &str) -> String {
+        let rel = &self.rel;
+        let moved = self.receipt.moves.iter().filter(|m| m.moved).count();
+        let written = self.written();
+        if moved == 0 && written.is_empty() {
+            return format!(
+                "claude-md-apply refused: stopped at {at}: {why}; no file was moved or written; \
+                 the receipt {rel} stays pending"
+            );
+        }
+        let total = self.receipt.moves.len();
+        let written = if written.is_empty() {
+            "none".to_string()
+        } else {
+            written.join(", ")
+        };
+        format!(
+            "partial apply: stopped at {at}: {why}; {moved} of {total} files moved; written: \
+             {written}; the receipt {rel} stays pending; every moved file is under {area} at its \
+             own path, and nothing was deleted"
+        )
+    }
+}
+
+/// Test seam: `MOAI_TEST_FAULT=<point>` appends one line to the file at `path`, standing in for
+/// another writer that comes between two steps of the apply. Debug builds only.
+fn test_fault(point: &str, path: &Path) {
+    #[cfg(debug_assertions)]
+    if std::env::var("MOAI_TEST_FAULT").as_deref() == Ok(point) {
+        if let Ok(mut file) = fs::OpenOptions::new().append(true).create(true).open(path) {
+            let _ = file.write_all(b"fault\n");
+        }
+    }
+    #[cfg(not(debug_assertions))]
+    let _ = (point, path);
+}
+
+#[cfg(unix)]
+fn mode_bits(meta: &fs::Metadata) -> u32 {
+    use std::os::unix::fs::PermissionsExt;
+    meta.permissions().mode() & 0o777
+}
+
+#[cfg(not(unix))]
+fn mode_bits(_meta: &fs::Metadata) -> u32 {
+    PRIVATE_FILE
+}
+
+/// Creates a folder that must not exist yet, its owner's alone from the start.
+fn create_private_dir(path: &Path) -> io::Result<()> {
+    let mut builder = fs::DirBuilder::new();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder.create(path)
+}
+
+/// The first stamp, from now on, that names no entry of the backup folder.
+fn free_stamp(root: &Path, state: &str) -> Result<String, String> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    let backups = root.join(backup_folder(state));
+    (0..STAMP_TRIES)
+        .map(|i| crate::baseline::utc_from_epoch(now + i).replace(['-', ':'], ""))
+        .find(|stamp| fs::symlink_metadata(backups.join(stamp)).is_err())
+        .ok_or_else(|| refused("no free backup stamp in the next two minutes"))
+}
+
+/// Moves one source to its backup path: through no link, only with the previewed bytes, and
+/// never onto an existing file. `faulted` marks the move the test seams act on.
+fn move_source(root: &Path, file: &MovedFile, faulted: bool) -> Result<(), String> {
+    let (from, to) = (root.join(&file.path), root.join(&file.backup));
+    make_private_dirs(root, &parent_of(&file.backup)?)?;
+    if faulted {
+        test_fault("claude_md_source_edit", &from);
+        test_fault("claude_md_backup_taken", &to);
+    }
+    if linked_component(root, &file.path) {
+        return Err("a path component is a link".into());
+    }
+    still_as_previewed(&from, &file.path, &file.sha256)?;
+    move_exclusive(&from, &to)
+}
+
+/// Adds the line to `.gitignore`: through no link, and only onto the bytes that were read.
+fn add_ignore_rule(root: &Path, add: &IgnoreAdd) -> Result<(), String> {
+    if linked_component(root, GITIGNORE) {
+        return Err("it is a link".into());
+    }
+    let path = root.join(GITIGNORE);
+    match &add.before {
+        Some(before) => publish_replace(&path, Some(before), &add.after),
+        None => publish_exclusive(&path, &add.after),
+    }
+}
+
+/// Every step after the pending receipt: the moves, the read-back of each, the ignore rule
+/// before any personal text is on disk, the new files, and the committed receipt. An error is
+/// the step it stopped at and why.
+fn perform(
+    root: &Path,
+    journal: &mut Journal,
+    ignore: Option<&IgnoreAdd>,
+    files: &[(&'static str, String)],
+) -> Result<(), (String, String)> {
+    let at = |step: &str| {
+        let step = step.to_string();
+        move |why: String| (step, why)
+    };
+    for i in 0..journal.receipt.moves.len() {
+        let file = journal.receipt.moves[i].clone();
+        move_source(root, &file, i == 1).map_err(at(&file.path))?;
+        journal.receipt.moves[i].moved = true;
+        journal.save().map_err(at("saving the receipt"))?;
+    }
+    for file in &journal.receipt.moves {
+        let kept = sha256_file(&root.join(&file.backup)).is_ok_and(|h| h == file.sha256);
+        if !kept || fs::symlink_metadata(root.join(&file.path)).is_ok() {
+            return Err(at(&file.path)(
+                "it does not read back from the backup".into(),
+            ));
+        }
+    }
+    if let Some(add) = ignore {
+        add_ignore_rule(root, add).map_err(at(GITIGNORE))?;
+        if let Some(rule) = journal.receipt.ignore.as_mut() {
+            rule.written = true;
+        }
+        journal.save().map_err(at("saving the receipt"))?;
+        if !check_ignore(root, "-q", CLAUDE_LOCAL_MD).map_err(at(GITIGNORE))? {
+            return Err(at(GITIGNORE)(format!(
+                "git still does not ignore {CLAUDE_LOCAL_MD}"
+            )));
+        }
+    }
+    for (i, (path, text)) in files.iter().enumerate() {
+        let destination = root.join(path);
+        if *path == CLAUDE_LOCAL_MD {
+            test_fault("claude_md_destination_taken", &destination);
+        }
+        let (mode, sha256) = {
+            let file = &journal.receipt.writes[i];
+            (file.mode, file.sha256.clone())
+        };
+        publish_exclusive_mode(&destination, text.as_bytes(), Some(mode)).map_err(at(path))?;
+        journal.receipt.writes[i].written = true;
+        journal.save().map_err(at("saving the receipt"))?;
+        if !sha256_file(&destination).is_ok_and(|h| h == sha256) {
+            return Err(at(path)("it does not read back".into()));
+        }
+    }
+    journal.receipt.state = "committed".into();
+    journal.save().map_err(at("marking the receipt committed"))
+}
+
+/// A permission reference of the accepted form that is neither the printed placeholder nor
+/// shaped like a credential, since the receipt keeps it.
+fn accepted_reference(reference: &str) -> bool {
+    contract::permission_reference_ok(reference)
+        && reference.trim() != PERMISSION_PLACEHOLDER
+        && agents_local_merge::secret_kind(reference).is_none()
+}
+
+/// Applies the preview whose digest the caller confirmed. Everything that can refuse is asked
+/// before the first write; after it, a step that fails leaves the receipt pending with what was
+/// done and names it. No file is deleted.
+pub fn apply(
+    project: &Path,
+    keep: &[String],
+    plan_digest: &str,
+    permission_reference: &str,
+) -> Result<Value, String> {
+    if !accepted_reference(permission_reference) {
+        return Err(refused(
+            "permission reference required: --permission-reference takes a short line that names \
+             the user's approval, neither the printed placeholder nor a credential",
+        ));
+    }
+    let composed = compose(project, keep).map_err(|e| refused(&e))?;
+    if !composed.blocked.is_empty() {
+        return Err(refused(&composed.blocked.join("; ")));
+    }
+    if composed.plan_digest.as_deref() != Some(plan_digest) {
+        return Err(refused(STALE));
+    }
+    let Composed {
+        root,
+        state,
+        sources,
+        files,
+        ..
+    } = composed;
+    let personal = files.iter().any(|(path, _)| *path == CLAUDE_LOCAL_MD);
+    let stamp = free_stamp(&root, state)?;
+    // Asked again for the paths that are really written.
+    let ground = ground(&root, state, &stamp, &sources, personal);
+    if !ground.blocked.is_empty() {
+        return Err(refused(&ground.blocked.join("; ")));
+    }
+
+    let area = area_rel(state, &stamp);
+    let mut moves = Vec::new();
+    for source in &sources {
+        let meta = fs::symlink_metadata(root.join(&source.path))
+            .map_err(|_| refused(&format!("{} {UNREADABLE}", source.path)))?;
+        moves.push(MovedFile {
+            path: source.path.clone(),
+            backup: format!("{area}/{}", source.path),
+            sha256: source.sha256.clone(),
+            mode: mode_bits(&meta),
+            git: source.git.word().into(),
+            moved: false,
+        });
+    }
+    // `CLAUDE.md` keeps the mode it had; the personal file is its owner's alone.
+    let claude_mode = moves
+        .iter()
+        .find(|m| m.path == CLAUDE_MD)
+        .map_or(PRIVATE_FILE, |m| m.mode);
+    let receipt = Receipt {
+        schema_version: 1,
+        operation: "claude_md.apply".into(),
+        project: root.to_string_lossy().into_owned(),
+        stamp: stamp.clone(),
+        plan_digest: plan_digest.into(),
+        permission_reference: permission_reference.into(),
+        state: "pending".into(),
+        moves,
+        writes: files
+            .iter()
+            .map(|(path, text)| WrittenFile {
+                path: (*path).into(),
+                sha256: digest(text.as_bytes()),
+                mode: if *path == CLAUDE_MD {
+                    claude_mode
+                } else {
+                    PRIVATE_FILE
+                },
+                written: false,
+            })
+            .collect(),
+        ignore: ground.ignore.as_ref().map(|add| IgnoreRule {
+            path: GITIGNORE.into(),
+            line: CLAUDE_LOCAL_MD.into(),
+            before_sha256: add.before.as_deref().map(digest),
+            before_len: add.before.as_ref().map_or(0, |b| b.len() as u64),
+            after_sha256: digest(&add.after),
+            written: false,
+        }),
+    };
+
+    let backups = backup_folder(state);
+    let folder = format!("{backups}/{stamp}");
+    make_private_dirs(&root, &backups)
+        .and_then(|()| create_private_dir(&root.join(&folder)).map_err(|e| e.to_string()))
+        .map_err(|e| {
+            format!(
+                "claude-md-apply refused: the backup folder {folder} cannot be made ({e}); no \
+                 file was moved or written"
+            )
+        })?;
+    let rel = receipt_rel(state, &stamp);
+    let mut journal = Journal::create(&root, rel.clone(), receipt).map_err(|e| {
+        format!(
+            "claude-md-apply refused: the pending receipt {rel} could not be saved ({e}); no \
+             file was moved or written"
+        )
+    })?;
+    perform(&root, &mut journal, ground.ignore.as_ref(), &files)
+        .map_err(|(at, why)| journal.stopped(&at, &why, &area))?;
+
+    let moves = &journal.receipt.moves;
+    Ok(json!({
+        "state": "committed",
+        "receipt": stamp,
+        "receipt_path": rel,
+        "backup": area,
+        "plan_digest": plan_digest,
+        "moved": moves.iter().map(|m| &m.path).collect::<Vec<_>>(),
+        "tracked_moved": moves
+            .iter()
+            .filter(|m| m.git == Tracking::Tracked.word())
+            .map(|m| &m.path)
+            .collect::<Vec<_>>(),
+        "written": journal.written(),
+        "ignore_rule": journal
+            .receipt
+            .ignore
+            .as_ref()
+            .map(|rule| json!({"path": rule.path, "line": rule.line})),
+        "backup_ignore": if ground.repository { "git" } else { "not_a_repository" },
+        "notice": RESTART_NOTICE,
+    }))
 }

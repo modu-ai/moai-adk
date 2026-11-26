@@ -2,7 +2,7 @@
 
 operation `claude_md.plan` · 코드 `src/ops/claude_md_plan.rs`, `src/project_update/claude_md.rs`
 
-`claude-md-plan [PROJECT] [--keep <id>=shared|personal]...` 는 Go 세대에서 올라온 프로젝트의 옛 지침 파일에 무엇이 있고 그 가운데 어느 줄이 이 프로젝트만의 것인지, 고른 묶음으로 새 파일이 어떻게 되는지 보여 준다. 쓰지 않고, 링크를 따라가지 않으며, git 은 읽기 명령(`ls-files`, `log`, `cat-file`)만 부른다. 프로젝트 줄은 묶음의 글로 출력하고, 비밀 모양 값이 있는 줄은 개수만 내며 어느 출력에도 싣지 않는다.
+`claude-md-plan [PROJECT] [--keep <id>=shared|personal]...` 는 Go 세대에서 올라온 프로젝트의 옛 지침 파일에 무엇이 있고 그 가운데 어느 줄이 이 프로젝트만의 것인지, 고른 묶음으로 새 파일이 어떻게 되는지 보여 준다. 쓰지 않고, 링크를 따라가지 않으며, git 은 읽기 명령(`ls-files`, `log`, `cat-file`, `rev-parse`, `check-ignore`)만 부른다. 프로젝트 줄은 묶음의 글로 출력하고, 비밀 모양 값이 있는 줄은 개수만 내며 어느 출력에도 싣지 않는다.
 
 필드:
 
@@ -41,5 +41,5 @@ operation `claude_md.plan` · 코드 `src/ops/claude_md_plan.rs`, `src/project_u
 ## 경고와 적용 명령
 
 - `warnings`: 결과 파일이 200줄을 넘으면 파일 이름과 줄 수. `.claude/CLAUDE.md` 가 있으면 알린다(읽지도 옮기지도 않는다). 경고는 적용 명령을 막지 않는다.
-- `apply_blocked`: 적용 명령을 내지 않는 이유들. 거절한 출처, 없거나 읽지 못하는 프로필, 첫 실행의 자리표시 프로필, 관리 표지 문법이 든 프로필 값, 비밀 모양 줄이 있는 묶음의 `shared` 선택.
+- `apply_blocked`: 적용 명령을 내지 않는 이유들. Go 세대 지침 파일이 아닌 루트 `CLAUDE.md`(`go_claude_md` 가 `null`), 거절한 출처, 보통 상대 경로가 아니거나 이름이 `.gitignore` 인 출처, 없거나 읽지 못하는 프로필, 첫 실행의 자리표시 프로필, 관리 표지 문법이 든 프로필 값, 비밀 모양 줄이 있는 묶음의 `shared` 선택, 링크이거나 폴더가 아닌 백업 폴더, git 작업 트리에서 git 이 무시하지 않는(또는 git 이 대답하지 못하는) 백업 폴더, `personal` 선택인데 `CLAUDE.local.md` 를 git 에서 빼 둘 수 없는 경우(추적 중, 사용자의 `!` 규칙, 규칙이 필요한데 `.gitignore` 가 링크이거나 바꿀 수 없음). 백업 폴더는 형식만 같은 임시 시각 이름으로 git 에 물어보고, 적용은 실제 이름으로 다시 확인한다. 자세한 조건은 [`claude-md-apply`](claude_md_apply.md)에 있다.
 - `plan_digest` 와 `apply`: `apply_blocked` 가 비었을 때만 값이 있다(그 밖은 `null`). digest 는 모든 출처의 경로와 sha256, 프로필 바이트, 정렬한 선택, 결과 글을 묶는다. `apply.argv` 는 `moai claude-md-apply <프로젝트> [--keep ...] --plan-digest <digest> --permission-reference <permission-reference>` 낱말 목록이고 선택이 없어도 낸다.
