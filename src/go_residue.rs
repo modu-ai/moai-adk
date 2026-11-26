@@ -116,7 +116,7 @@ pub(crate) fn secret_path(rel: &str) -> bool {
 /// with its `files` map. The chain: `.moai/manifest.json`, a `manifest.json` under any
 /// `.moai-backup*` folder, a `manifest.json` under `.moai/backups/go-markers-*`, then the
 /// backup manifest the newest committed go-state receipt names.
-fn find_manifest(project: &Path) -> Option<(String, BTreeMap<String, Recorded>)> {
+pub(crate) fn find_manifest(project: &Path) -> Option<(String, BTreeMap<String, Recorded>)> {
     let live = ".moai/manifest.json";
     if let Some(map) = read_manifest(project, live) {
         return Some((live.into(), map));
@@ -167,8 +167,8 @@ fn find_manifest(project: &Path) -> Option<(String, BTreeMap<String, Recorded>)>
 }
 
 /// What one manifest entry records: the bytes of the file and who the Go tool says wrote it.
-struct Recorded {
-    deployed_hash: String,
+pub(crate) struct Recorded {
+    pub(crate) deployed_hash: String,
     provenance: String,
 }
 

@@ -23,6 +23,7 @@ use crate::{
 use serde_json::{json, Map, Value};
 use std::{fs, path::Path};
 
+pub mod claude_md;
 /// The choice steps the user declined (SPEC-20261125-update-declined-steps).
 pub mod declined;
 pub mod guide;
