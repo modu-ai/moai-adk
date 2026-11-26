@@ -270,13 +270,14 @@ Options:
                            `--permissions` is given, and the first input `/moai
                            leader`
   -a, --agent              Start a lane: session `<project name>-agent-<english
-                           name>` (the first free name of the launcher's list),
-                           the permission bypass unless `--permissions` is
-                           given, and the first input `/moai agent`
+                           name>` (a name chosen at random among the free names
+                           of the launcher's list), the permission bypass unless
+                           `--permissions` is given, and the first input `/moai
+                           agent`
       --name <NAME>        Session name (none by default; `-l` names it
-                           `<project name>-leader`, `-a` takes the first free
-                           `<project name>-agent-<english name>`; with a role
-                           flag this name replaces those)
+                           `<project name>-leader`, `-a` takes a name chosen at
+                           random among the free `<project name>-agent-<english
+                           name>`; with a role flag this name replaces those)
       --model <MODEL>      Main model (default `opus`)
       --effort <EFFORT>    Effort (default `medium` on `cc`, `high` on `glm`)
       --advisor <ADVISOR>  Advisor model on Claude hosts (fable|opus|sonnet or a
