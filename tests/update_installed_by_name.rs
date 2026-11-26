@@ -483,6 +483,41 @@ fn a_second_no_write_apply_writes_no_receipt() {
     assert_eq!(receipt(&f.home, &id)["finished_at"], finished);
 }
 
+// AC-4 (REQ-4, REQ-6): the reported case. A new version folder has no receipt of its own and its
+// apply writes no file: the earlier folder's receipt is the baseline, this build's version goes
+// into a receipt under the running build's installation id, and the earlier receipt stays.
+#[test]
+fn a_no_write_apply_over_an_earlier_folders_receipt_writes_this_installations_receipt() {
+    let f = fixture();
+    let earlier_id = id_of(&earlier_folder(&f));
+    let b = running_build(&f);
+    // `moai` beside the same build's `moai-cli` writes under the canonical name's id.
+    let own_id = id_of(&b.with_file_name("moai-cli"));
+    assert!(!receipt_file(&f.home, &own_id).exists());
+    let earlier = receipt(&f.home, &earlier_id);
+    let earlier_bytes = fs::read(receipt_file(&f.home, &earlier_id)).unwrap();
+    let skill = fs::read(skill_file(&f.home)).unwrap();
+
+    let r = apply_unchanged(&b, &f, "unchanged");
+
+    assert_eq!(host(&r)["receipt_status"], json!("committed"), "{r}");
+    let after = receipt(&f.home, &own_id);
+    assert_eq!(after["install_id"], json!(own_id), "{after}");
+    assert_eq!(
+        after["package_version"],
+        json!(moai_cli::BUILD_VERSION),
+        "{after}"
+    );
+    assert_eq!(after["version_before"], json!(EARLIER), "{after}");
+    assert_eq!(after["status"], json!("committed"), "{after}");
+    assert_eq!(after["owned"], earlier["owned"], "{after}");
+    assert_eq!(
+        fs::read(receipt_file(&f.home, &earlier_id)).unwrap(),
+        earlier_bytes
+    );
+    assert_eq!(fs::read(skill_file(&f.home)).unwrap(), skill);
+}
+
 /// Gives a folder its mode back when the test ends, even when an assertion failed first.
 struct ModeBack(PathBuf, u32);
 
