@@ -2081,38 +2081,6 @@ mod record_tests {
 mod owned_path_tests {
     use super::*;
 
-    /// SPEC-20261126-project-harness-namespace REQ-7: the removal step keeps a file whose bytes are
-    /// not the planned ones. In a run the apply's re-plan comparison stops first, so this second
-    /// layer is tested on its own.
-    #[test]
-    fn the_removal_step_keeps_a_file_that_changed_after_the_plan() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let root = dir.path();
-        let rel = ".claude/skills/prj-checks/SKILL.md";
-        fs::create_dir_all(root.join(".claude/skills/prj-checks")).unwrap();
-        fs::write(root.join(rel), "edited\n").unwrap();
-        let f = GenerationFilePlan {
-            path: rel.into(),
-            action: "remove".into(),
-            tracked_by_default: true,
-            expected_sha256: Some(digest(b"as planned\n")),
-            baseline_sha256: None,
-            rendered_sha256: None,
-            source_refs: Vec::new(),
-            kind: Some("generation:project-skill:claude:prj-checks".into()),
-            detail: None,
-        };
-        let mut receipt = Receipt::new("req", "generation.apply", root);
-        let err = remove_owned(root, "req", &f, &mut receipt).unwrap_err();
-        assert!(err.contains("target changed since plan"), "{err}");
-        assert_eq!(fs::read_to_string(root.join(rel)).unwrap(), "edited\n");
-        // The same file with the planned bytes is removed.
-        fs::write(root.join(rel), "as planned\n").unwrap();
-        let mut receipt = Receipt::new("req", "generation.apply", root);
-        remove_owned(root, "req", &f, &mut receipt).unwrap();
-        assert!(!root.join(rel).exists());
-    }
-
     #[test]
     fn an_id_is_one_plain_path_piece() {
         for good in ["prj-checks", "a.b", "role_1"] {

@@ -498,7 +498,12 @@ fn text_step_six_names_the_namespace_folders() {
         .lines()
         .find(|l| l.starts_with("6. **Propose a project harness.**"))
         .expect("step 6 of the project route");
-    for named in [".claude/agents/moai/", ".claude/skills/moai-"] {
+    // A workflow spells no `agents/...` path (a package check refuses it), so the agents
+    // folder is named in words.
+    for named in [
+        "`moai` folder inside the project's `.claude/agents` folder",
+        ".claude/skills/moai-",
+    ] {
         assert!(step.contains(named), "step 6 names {named}");
     }
 }
