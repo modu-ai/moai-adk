@@ -24,6 +24,7 @@ created: 2026-11-26
 - REQ-2 (REQ-1): IF one of those four lines is missing, THEN the repository text test shall fail and name the file that lacks it.
 - REQ-3: The instruction texts shall say in each of `agents/impl.md`, `skills/moai/references/internal/shell-guards.md` and `docs/lane-rules.md` that each mutant is run without a script, by changing the code with Edit, running the test with one command and changing the code back with Edit, never with a script that holds `git apply`, `git checkout` or `sed -i`.
 - REQ-4 (REQ-3): IF one of those three lines is missing, THEN the repository text test shall fail and name the file that lacks it.
+- REQ-5: The compound git rows of the shell guard reference and the git safety reference shall say to split such work into plain, separate commands as the refusal names, one git command per line, and never to put git into a script file.
 
 ## Acceptance
 
@@ -33,8 +34,12 @@ created: 2026-11-26
 - AC-4 (REQ-3): `agents/impl.md`, `skills/moai/references/internal/shell-guards.md`, `docs/lane-rules.md` 에 뮤턴트를 스크립트 없이 돌린다는 같은 문장이 있고 테스트가 통과해요 · verify: `cargo test --locked --offline --test next_flow_skill_scan mutants_without_a_script`
 - AC-5 (REQ-4): 세 줄을 하나씩 지우면 같은 테스트가 매번 실패하고 그 파일 이름을 말해요. 되돌리면 다시 통과해요 · verify: `cargo test --locked --offline --test next_flow_skill_scan mutants_without_a_script`
 
+- AC-6 (REQ-5): `shell-guards.md` 의 그 행은 "Do what the refusal names: split the line into plain, separate commands, one `git` command per line, run from the worktree. Never put git into a script file: a script runs git where the guard cannot read it." 라고 말해요. `git-safety.md` 의 Claude Code 행 끝은 "split such work into plain, separate commands as the refusal names, one git command per line, and never put git into a script file." 이에요. 스크립트 파일을 권하는 옛 문구는 두 글에 없고, `tests/lane_rules_2836.rs` 가 새 문구와 옛 문구 없음을 단언해요 · verify: `cargo test --locked --offline --test lane_rules_2836`
+
 ## Scope
 
+- write: `skills/moai/references/internal/git-safety.md`
+- write: `tests/lane_rules_2836.rs`
 - write: `agents/impl.md`
 - write: `agents/docs.md`
 - write: `skills/moai/references/internal/shell-guards.md`
@@ -63,3 +68,4 @@ created: 2026-11-26
 | D-1 | 네 글에는 처음부터 파일 도구로 쓴다는 문장만 넣고, 거절 뒤 예외는 넣지 않아요. | 리더 결정 노트 10294. 거절 규칙과 부딪히고, 사용자의 허용(노트 10287)은 그 한 건에 대한 것이었어요. | 문장 변경을 되돌려요. |
 | D-2 | 네 줄의 고정 테스트는 이미 그 글들을 읽는 `tests/next_flow_skill_scan.rs` 에 하나로 둬요. | 새 테스트 파일이나 검사 표 변경이 필요 없어요. | 테스트를 옮겨요. |
 | D-3 | 뮤턴트를 스크립트 없이 돌린다는 문장을 이 카드에 더해요(revision 2). `agents/docs.md` 는 뮤턴트를 돌리지 않아 넣지 않아요. | 리더 메시지 2026-11-26(같은 일이 하루에 두 번 났어요), 결정 노트 10314. | REQ-3, REQ-4 와 그 문장을 되돌려요. |
+| D-4 | git 을 스크립트 파일에 넣으라는 두 글의 행을 고쳐요. `shell-guards.md` 의 행은 리더 결정이고, 같은 말을 하는 `git-safety.md` 의 행은 같은 원인이라 함께 넣자는 구현 레인의 제안이에요(이 revision 의 승인이 포함 여부를 정해요). | 리더 결정 노트 10428, 결정 노트 10314. | REQ-5 와 두 행을 되돌려요. |
