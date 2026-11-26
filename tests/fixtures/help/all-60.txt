@@ -68,6 +68,8 @@ Project
                           settings keys
   claude-settings-apply   Write previewed Claude Code
                           settings keys
+  secret-deny-plan        Preview Read deny rules for the
+                          project's key files
   hooks-plan              Preview the MoAI hook set for one
                           host
   hooks-apply             Write a previewed hook set
@@ -147,6 +149,10 @@ Update and move
                           folder with its class
   tidy-plan               Preview the tidy of the home moai
                           folder
+  tidy-apply              Archive or delete the picked items
+                          of the tidy plan
+  tidy-restore            Put the files of a tidy archive
+                          back
   recovery-plan           Preview recovering hosts an update
                           left pending
   recovery-apply          Revert one update's changes on

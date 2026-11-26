@@ -65,6 +65,26 @@ pub fn over_limit() -> Value {
     deny(OVERSIZE)
 }
 
+/// The denial of a call whose input the entry could not read, by the entry's receipt word:
+/// `not_utf8`, `not_json`, else `not_object`. Neither path nor content is known, so the class is
+/// `protected-path`, with a fixed text per cause (SPEC-20261126-hook-unreadable-input REQ-1,
+/// REQ-3).
+pub fn unreadable(word: &str) -> Value {
+    let cause = match word {
+        "not_utf8" => "is not valid UTF-8",
+        "not_json" => "is not valid JSON",
+        _ => "is not a JSON object",
+    };
+    deny_object(
+        PROTECTED,
+        &format!(
+            "the hook input {cause}, so its path and content cannot be checked; send the call \
+             again with plain text, and if every call is refused, tell the user, who can remove \
+             or disable the moai hook entry"
+        ),
+    )
+}
+
 fn classify(target: &str, content: Option<&str>, cwd: &Path, env: &Env) -> Option<&'static str> {
     let written = if Path::new(target).is_absolute() {
         PathBuf::from(target)
@@ -116,6 +136,11 @@ fn deny(found: &str) -> Value {
              and name the variable instead",
         ),
     };
+    deny_object(class, rule)
+}
+
+/// The deny object of one class and its rule text.
+fn deny_object(class: &str, rule: &str) -> Value {
     json!({
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",

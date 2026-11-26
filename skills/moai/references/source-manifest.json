@@ -258,7 +258,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "d3f70c843649b189a9fb21de3f2ae0b5c2d66b2b269539a45c8fe0c24708bdb8",
+      "sha256": "e6221681171736c5aa86c2a2cd02dbe39347e2946f2337caff4772bffbed7e0b",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
@@ -312,7 +312,7 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "c510ceeef9c35f9935e60fa7ead11e34daa30c43f6311948a17772f67678bb56",
+      "sha256": "459e5b8f3c3022ae09c151e49c8ad5f8bf98f66c7a1e269edfd40b3e2e810437",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
@@ -342,7 +342,7 @@
       }
     },
     "references/internal/shell-guards.md": {
-      "sha256": "9423fb72a4f5664adbedac8bb618d68fd4ddde6eeb61ea932525dda7a313bd8c",
+      "sha256": "b734a58e4bc0f902e41dd5a4ce2ad71d34e4b65b8f7d11d3debca6e5ad3dfefc",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-shell-guards",
@@ -507,7 +507,7 @@
       "sha256": "89679771c1bf25d52af53037cf4795465fc88aaa200698f5e603683244848dc3"
     },
     "workflows/plan.md": {
-      "sha256": "690ea42cee7448ee4528f43c0b9137237a0c77a7a56197fb8347839b38891725",
+      "sha256": "10c9373b81fc549fd178f556643af750166fb1850f27d76d8637ab7089138876",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",

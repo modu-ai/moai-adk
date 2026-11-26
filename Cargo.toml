@@ -60,6 +60,11 @@ tempfile = "=3.27.0"
 # it needs a C compiler at build time (the `cc` build dependency). No default features: no
 # statement cache and no extra type conversions. MIT.
 rusqlite = { version = "=0.43.0", default-features = false, features = ["bundled"] }
+# SPEC-20261126-home-tidy-apply D-1: the tidy archives are gzip tar files, written and read in
+# process (no external command). `tar` without default features reads no extended attributes;
+# `flate2` with the pure Rust backend only, so no C zlib is needed. Both MIT OR Apache-2.0.
+tar = { version = "=0.4.45", default-features = false }
+flate2 = { version = "=1.1.10", default-features = false, features = ["rust_backend"] }
 
 [target.'cfg(unix)'.dependencies]
 # Already locked transitively; O_NONBLOCK prevents FIFO opens from waiting.

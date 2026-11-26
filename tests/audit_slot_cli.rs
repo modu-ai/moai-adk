@@ -539,7 +539,6 @@ fn every_writing_action_refuses_a_slot_path_that_is_a_link() {
 #[cfg(target_os = "macos")]
 #[test]
 fn a_slot_prepared_from_the_lane_does_not_compile_the_dependency() {
-    use std::process::Command;
     let dep_dir = tempfile::tempdir().unwrap();
     let dep = fs::canonicalize(dep_dir.path()).unwrap();
     fs::write(
@@ -559,15 +558,12 @@ fn a_slot_prepared_from_the_lane_does_not_compile_the_dependency() {
             "fn main() { println!(\"{}\", auditdep::one()); }\n",
         ),
     ]);
-    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let build = |dir: &Path| {
-        let out = Command::new(&cargo)
+        let out = common::cargo::cargo_at(common::cargo::cargo_path())
             .args(["build", "-v", "--offline"])
             .current_dir(dir)
             .env_remove("CARGO_TARGET_DIR")
             .env_remove("CARGO_BUILD_TARGET_DIR")
-            .env_remove("RUSTC_WRAPPER")
-            .env_remove("CARGO_BUILD_RUSTC_WRAPPER")
             .env_remove("CARGO_INCREMENTAL")
             .output()
             .unwrap();
@@ -997,7 +993,6 @@ fn a_cap_refusal_is_invalid_input_and_adds_nothing() {
 #[cfg(unix)]
 #[test]
 fn an_inherited_mutant_build_is_compiled_again_from_the_head() {
-    use std::process::Command;
     let r = repo(&[
         (
             "Cargo.toml",
@@ -1005,15 +1000,12 @@ fn an_inherited_mutant_build_is_compiled_again_from_the_head() {
         ),
         ("src/main.rs", "fn main() { println!(\"CLEAN\"); }\n"),
     ]);
-    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let run = |dir: &Path| -> String {
-        let out = Command::new(&cargo)
+        let out = common::cargo::cargo_at(common::cargo::cargo_path())
             .args(["run", "-q", "--offline"])
             .current_dir(dir)
             .env_remove("CARGO_TARGET_DIR")
             .env_remove("CARGO_BUILD_TARGET_DIR")
-            .env_remove("RUSTC_WRAPPER")
-            .env_remove("CARGO_BUILD_RUSTC_WRAPPER")
             .output()
             .unwrap();
         assert!(

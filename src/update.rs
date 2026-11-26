@@ -701,7 +701,9 @@ pub struct HostReceipt {
     pub status: String,
     pub started_at: String,
     pub finished_at: Option<String>,
-    /// This apply's file actions (before/after per file).
+    /// This apply's file actions (before/after per file). When a committed ordinary apply keeps
+    /// a `backup`, its writes come first, in write order, followed by one `unchanged` entry at
+    /// the owned digest for every other owned path (SPEC-20261126-keep-restore-backup REQ-2).
     pub entries: Vec<HostReceiptEntry>,
     /// Ownership manifest: every file this host owns and its sha at this receipt's
     /// commit point. The plan's baseline comes from here (REQ-04B-01). A pending
@@ -714,7 +716,9 @@ pub struct HostReceipt {
     /// them. serde-default keeps pre-#2268 receipts readable.
     #[serde(default)]
     pub top_skills_existed_before: bool,
-    /// #2483: set by a backup-then-replace apply; recovery restores from it.
+    /// #2483: set by a backup-then-replace apply; recovery restores from it. A later ordinary
+    /// apply of the same installation that commits keeps it from that installation's committed
+    /// receipt; a failed one does not (SPEC-20261126-keep-restore-backup REQ-1, REQ-6, REQ-7).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backup: Option<ReplaceBackup>,
 }
@@ -3364,6 +3368,17 @@ fn apply_update_in(
         // read, never written; the new receipt goes under this installation's id).
         let previous = resolve_host_receipt(&canonical_home, &install_id, host)?.receipt;
         let pre_owned = owned_map(previous.as_ref());
+        // SPEC-20261126-keep-restore-backup REQ-5, REQ-6: only this installation's own committed
+        // receipt hands its backup on, never `previous`, which may be another installation's. It
+        // is read here because the pending save below overwrites it.
+        let kept_backup = load_host_receipt(&host_receipt_path(
+            &canonical_home,
+            &install_id,
+            host,
+            false,
+        )?)?
+        .filter(|r| r.status == "committed")
+        .and_then(|r| r.backup);
         let top_skills_existed = fs::symlink_metadata(skills_parent(home, host)?).is_ok();
         let mut receipt = HostReceipt {
             schema_version: crate::install::RECEIPT_SCHEMA_VERSION,
@@ -3513,6 +3528,26 @@ fn apply_update_in(
             if now != m.current_sha256 {
                 return Err("a file changed during apply; run recovery-plan".into());
             }
+        }
+        // SPEC-20261126-keep-restore-backup REQ-1, REQ-2: the restore offer stays. Recovery
+        // restores only when every file under the root has an entry with its bytes, so each owned
+        // path this apply did not write gets one after the writes. Only the commit save carries
+        // this; a failed apply keeps the pending receipt without it (REQ-7).
+        if let Some(backup) = kept_backup {
+            for (path, sha) in &owned_now {
+                if writes.iter().any(|w| &w.path == path) {
+                    continue;
+                }
+                receipt.entries.push(HostReceiptEntry {
+                    path: path.clone(),
+                    action: "unchanged".into(),
+                    before_sha256: Some(sha.clone()),
+                    after_sha256: Some(sha.clone()),
+                    published: false,
+                    error: None,
+                });
+            }
+            receipt.backup = Some(backup);
         }
         receipt.owned = owned_vec(host, &owned_now);
         receipt.status = "committed".into();

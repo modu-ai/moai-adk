@@ -121,12 +121,13 @@ impl Run {
             .env_remove("XDG_CACHE_HOME")
             .env_remove("CARGO_TARGET_DIR")
             .env_remove("MOAI_HEAVY_SLOT_FD")
-            .env_remove("RUSTC_WRAPPER")
             .env_remove("RUST_TEST_THREADS")
             .env_remove("NEXTEST_TEST_THREADS")
             .env("MOAI_TEST_MACHINE", ROOMY)
             .env("PATH", &self.path)
             .stdin(Stdio::null());
+        // `check affected` starts cargo with the environment it gets.
+        common::cargo::without_wrapper(&mut cmd);
         cmd
     }
 }
@@ -304,14 +305,13 @@ fn a_restore_with_the_old_file_time_is_rebuilt() {
     // Cargo's own state lives beside the repository, never inside it (a tree that must stay clean).
     let aux = tempfile::tempdir().unwrap();
     let cargo = |args: &[&str]| {
-        let mut cmd = Command::new(bin.join("cargo"));
+        let mut cmd = common::cargo::cargo_at(bin.join("cargo"));
         cmd.args(args)
             .current_dir(p)
             .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
             .env("HOME", aux.path().join("home"))
             .env("CARGO_HOME", aux.path().join("cargo-home"))
             .env_remove("CARGO_TARGET_DIR")
-            .env_remove("RUSTC_WRAPPER")
             .env_remove("RUSTFLAGS")
             .env_remove("CARGO_ENCODED_RUSTFLAGS")
             .stdin(Stdio::null());
@@ -370,4 +370,29 @@ fn a_restore_with_the_old_file_time_is_rebuilt() {
         v["summary"].as_str().unwrap().ends_with(" result=PASS"),
         "{v}"
     );
+}
+
+/// SPEC-20261126-scratch-cargo-wrapper AC-1: the real build above passes while the outer
+/// environment names a compiler wrapper that is not there. This binary runs that test again in
+/// such an environment, which covers both of its cargo starts: the toolchain's own cargo and the
+/// one `check affected` starts.
+#[test]
+fn a_missing_outer_wrapper_does_not_reach_the_touch_build() {
+    let mut again = Command::new(std::env::current_exe().unwrap());
+    again.args([
+        "--exact",
+        "a_restore_with_the_old_file_time_is_rebuilt",
+        "--nocapture",
+    ]);
+    for name in common::cargo::WRAPPER_VARS {
+        again.env(name, "/nonexistent/moai-no-wrapper");
+    }
+    let out = again.output().unwrap();
+    let text = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(out.status.success(), "{text}");
+    assert!(text.contains("test result: ok. 1 passed"), "{text}");
 }

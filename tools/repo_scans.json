@@ -271,6 +271,28 @@
       "rejects": "a git fixture call outside the guarded shared helper"
     },
     {
+      "id": "scratch-cargo-helper",
+      "tests": [
+        "tests/test_scratch_cargo.rs::scratch_cargo_starts_go_through_the_shared_helper"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test test_scratch_cargo scratch_cargo_starts_go_through_the_shared_helper"
+      ],
+      "rules": [
+        "tests/test_scratch_cargo.rs",
+        "tests/common/cargo.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a test that starts cargo without the shared helper"
+    },
+    {
       "id": "test-area-layout",
       "always": true,
       "tests": [
@@ -546,13 +568,13 @@
     {
       "id": "tracked-skill-references",
       "tests": [
-        "tests/skill_references_test.py::test_current_tracked_skill_file_references_resolve"
+        "tests/skill_references_scan.rs::every_current_skill_file_reference_resolves"
       ],
-      "checks": [
-        "python3 -m unittest tests.skill_references_test"
+      "test_targets": [
+        "skill_references_scan"
       ],
       "rules": [
-        "tests/skill_references_test.py"
+        "tests/skill_references_scan.rs"
       ],
       "scope": [
         {
@@ -1557,6 +1579,7 @@
         "hot_file_ops_merge",
         "integration_guard_install",
         "lane_next_rules",
+        "lane_run_cli",
         "launcher_retire_role_flags",
         "launcher_role_flags",
         "launcher_settings_receipt",
@@ -1574,6 +1597,9 @@
         "retired_host_words",
         "rule_history_guard",
         "sdd_guidance",
+        "skill_references_scan",
+        "skill_text_fixtures",
+        "spec_approval_digest",
         "troubleshooting_doc"
       ],
       "checks": [
@@ -1598,6 +1624,7 @@
         "tests/hot_file_ops_merge.rs",
         "tests/integration_guard_install.rs",
         "tests/lane_next_rules.rs",
+        "tests/lane_run_cli.rs",
         "tests/launcher_retire_role_flags.rs",
         "tests/launcher_role_flags.rs",
         "tests/launcher_settings_receipt.rs",
@@ -1615,6 +1642,9 @@
         "tests/retired_host_words.rs",
         "tests/rule_history_guard.rs",
         "tests/sdd_guidance.rs",
+        "tests/skill_references_scan.rs",
+        "tests/skill_text_fixtures.rs",
+        "tests/spec_approval_digest.rs",
         "tests/troubleshooting_doc.rs",
         "tests/repo_scans_table.rs"
       ],
@@ -1639,6 +1669,9 @@
         },
         {
           "prefix": "docs/design-review/appendix/operations"
+        },
+        {
+          "prefix": "docs/design-review/appendix/state-vocabulary-crosswalk.md"
         },
         {
           "prefix": "docs/design-review/autonomy-modes-spec.md"
@@ -1666,6 +1699,9 @@
         },
         {
           "prefix": "docs/llms.txt"
+        },
+        {
+          "prefix": "docs/product-naming-inventory.md"
         },
         {
           "prefix": "docs/protocol-v1.md"
@@ -1939,6 +1975,7 @@
         "repo_scans_table",
         "retired_host_words",
         "sdd_guidance",
+        "skill_references_scan",
         "style_banner_scan",
         "worktree_report"
       ],
@@ -1972,6 +2009,7 @@
         "tests/repo_claude_md.rs",
         "tests/retired_host_words.rs",
         "tests/sdd_guidance.rs",
+        "tests/skill_references_scan.rs",
         "tests/style_banner_scan.rs",
         "tests/card/trailer_check_cli.rs",
         "tests/card/trailer_paragraph_guard_cli.rs",
@@ -1985,6 +2023,9 @@
         },
         {
           "prefix": ".github/moai"
+        },
+        {
+          "prefix": ".github/pull_request_template.md"
         },
         {
           "prefix": ".github/workflows"
@@ -2121,7 +2162,9 @@
         "self_audit_cli",
         "skill_entry_order",
         "skill_generalization_scan",
+        "skill_references_scan",
         "skill_structure",
+        "skill_text_fixtures",
         "source_manifest_facts",
         "spec_approval_digest",
         "spec_branch_name_first",
@@ -2230,6 +2273,8 @@
         "tests/sdd_guidance.rs",
         "tests/self_audit_cli.rs",
         "tests/skill_entry_order.rs",
+        "tests/skill_references_scan.rs",
+        "tests/skill_text_fixtures.rs",
         "tests/skill_structure.rs",
         "tests/source_manifest_facts.rs",
         "tests/spec_approval_digest.rs",
@@ -2956,6 +3001,85 @@
         }
       ],
       "rejects": "a shipped line that names an older instruction file (AGENTS.md, AGENTS.local.md, AGENTS.override.md, AGENTS files, or its format insert in the merge sources) outside a listed line fragment, a listed fragment whose count differs, a row without a reason or with a bare file name, a surface that cannot be read, a sentence the SPEC rewrote that is gone, or an older name in what a temporary setup writes (SPEC-20261122-claude-md-text-and-ignore AC-1 to AC-4)"
+    },
+    {
+      "id": "home-env-readers",
+      "always": true,
+      "tests": [
+        "tests/home_env_readers.rs::the_checked_in_sources_match_the_list"
+      ],
+      "test_targets": [
+        "home_env_readers"
+      ],
+      "rules": [
+        "tests/home_env_readers.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/"
+        }
+      ],
+      "rejects": "Reports, and fails only with MOAI_HOME_READERS=enforce: a product source under src/ whose direct HOME reads or HOME adapter calls differ from the list in tests/home_env_readers.rs (SPEC-20261124-home-env-readers REQ-13, REQ-14)"
+    },
+    {
+      "id": "check-affected-binary-picks",
+      "always": true,
+      "tests": [
+        "tests/check_affected_binary_tests.rs::the_missed_binary_tests_of_this_repository_are_selected",
+        "tests/check_affected_binary_tests.rs::every_command_file_is_named_like_a_listed_command",
+        "tests/check_affected_binary_tests.rs::every_declared_path_names_a_file"
+      ],
+      "test_targets": [
+        "check_affected_binary_tests"
+      ],
+      "rules": [
+        "tests/check_affected_binary_tests.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "Cargo.toml"
+        },
+        {
+          "prefix": "src/card/work.rs"
+        },
+        {
+          "prefix": "src/gate.rs"
+        },
+        {
+          "prefix": "src/launcher_init.rs"
+        },
+        {
+          "prefix": "src/lib.rs"
+        },
+        {
+          "prefix": "src/main.rs"
+        },
+        {
+          "prefix": "src/ops"
+        },
+        {
+          "prefix": "src/state_root.rs"
+        },
+        {
+          "prefix": "src/trailers.rs"
+        },
+        {
+          "prefix": "src/update.rs"
+        },
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        },
+        {
+          "prefix": "tools/repo_scans.json"
+        },
+        {
+          "prefix": "tools/self_check.sh"
+        }
+      ],
+      "rejects": "A change after which check affected misses one of the binary tests this repository is known to need, a src/ops file named after no listed command, or a when-changed line of a test that names no file (SPEC-20261126-affected-binary-tests)"
     }
   ]
 }

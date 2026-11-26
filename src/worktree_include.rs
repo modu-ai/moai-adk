@@ -137,7 +137,7 @@ fn parse(text: &str) -> Vec<Rule> {
 
 /// `.gitignore` glob over a `/`-separated path: `**` crosses folders, `*` and `?` stay inside
 /// one name, `[...]` is a character class.
-fn glob_match(pattern: &[u8], text: &[u8]) -> bool {
+pub(crate) fn glob_match(pattern: &[u8], text: &[u8]) -> bool {
     match pattern.first() {
         None => text.is_empty(),
         Some(b'*') if pattern.get(1) == Some(&b'*') => {
