@@ -2,7 +2,7 @@
 id: SPEC-20261122-claude-md-text-and-ignore
 title: "Shipped and generated text calls the instruction files CLAUDE.md and CLAUDE.local.md"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 parent: SPEC-20261122-claude-md-layout
 ---
@@ -17,7 +17,7 @@ moai 의 지침 파일은 `CLAUDE.md`(팀)와 `CLAUDE.local.md`(개인)예요. �
 
 - 개정 1 의 REQ-1~REQ-4(무시 블록, 업데이트 미리보기 경고, 이 저장소의 `.gitignore` 허용 목록)와 REQ-7(배너)은 이 개정에서 빼요(D-10).
 - 이전 동작은 바꾸지 않아요: 지금도 새로 `AGENTS.md`·`AGENTS.local.md` 를 만드는 코드는 없고, 되돌리기만 예전 파일을 복원해요.
-- 배포되지 않는 글(`docs/`, `.github/`, 저장소 도구 파일, 코드 주석)은 고치지 않아요.
+- 배포되지 않는 글(`docs/`, `.github/`, 저장소 도구 파일, 코드 주석)은 고치지 않아요. 바뀌는 제안 문장을 설명하는 `docs/claude-adapter-contract.md` 의 그 대목만 고쳐요.
 
 ## Interview
 
@@ -29,8 +29,8 @@ moai 의 지침 파일은 `CLAUDE.md`(팀)와 `CLAUDE.local.md`(개인)예요. �
 - REQ-1: The instruction-file label shall name `CLAUDE.md` and `CLAUDE.local.md` in both languages and name no old instruction file.
 - REQ-2: When `generation-apply` answers its next actions, the result shall name the project instructions and no old instruction file as what the new session loads.
 - REQ-3 (REQ-2): IF the apply wrote no `CLAUDE.md` because the user's old file stays, THEN the next action shall claim no newly written instruction file.
-- REQ-4: The update plan shall name `CLAUDE.local.md` in its tracked-or-ignored reason and `CLAUDE.md` in its undo-order note as the file that refuses the harness-step revert.
-- REQ-5: The reason of a not-supported user instruction row shall name no project instruction file.
+- REQ-4: The update preview shall name `CLAUDE.local.md` in its tracked-or-ignored reason, `CLAUDE.md` in its undo-order note and no project instruction file in the reason of a not-supported user instruction row.
+- REQ-5: The suggestions of `claude-doctor` for a suppressed `AGENTS.md` shall advise moving its text into `CLAUDE.md` and never an `@AGENTS.md` import or a setting that reads both files.
 - REQ-6: The command help shall name `CLAUDE.md` for `agents-plan` and `agents-apply` and call the file that `claude-doctor` checks the user's own `AGENTS.md`.
 - REQ-7: The shipped skill texts shall name `CLAUDE.md` as the file the install step writes and name no retired host's instruction file.
 - REQ-8: When the repository text test reads a shipped line that names an old instruction file outside a listed exception, the test shall fail with the path and the line.
@@ -59,16 +59,18 @@ moai 의 지침 파일은 `CLAUDE.md`(팀)와 `CLAUDE.local.md`(개인)예요. �
 - AC-7 (REQ-1, REQ-4): 라벨과 되돌리기 순서의 기존 고정 테스트가 통과해요.
   verify: `cargo test --locked --offline --test language_setting`
   verify: `cargo test --locked --offline --test project_harness_label`
-- AC-8 (REQ-5): 고친 미리보기 픽스처로 업데이트 화면 테스트가 통과해요.
+- AC-8 (REQ-4): 고친 미리보기 픽스처로 업데이트 화면 테스트가 통과해요.
   verify: `cargo test --locked --offline --test update_tux_golden`
 - AC-9 (REQ-8): 새 테스트가 저장소 검사 표에 올라 있고 읽는 곳이 덮여요.
   verify: `cargo test --locked --offline --test repo_scans_table every_`
+- AC-10 (REQ-5): 예전 파일이 가려진 임시 프로젝트에서 `claude-doctor` 가 내용을 `CLAUDE.md` 로 옮기라고 권하고, import 나 두 파일 함께 읽기 설정은 권하지 않아요.
+  verify: `cargo test --locked --offline --test product_cli claude_doctor_agents_loading_combinations`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261122-claude-md-text-and-ignore/**`, `tests/claude_md_layout_scan.rs`(새 파일), `tools/repo_scans.json`(한 행), `src/language.rs`, `src/generation.rs`, `src/project_update.rs`, `src/home_routing.rs`, `tests/fixtures/update_tux/preview-blocked.json`, `tests/fixtures/update_tux/preview-changes.json`, `tests/fixtures/update_tux/preview-latest.json`, `src/ops/agents_apply.rs`, `src/ops/agents_plan.rs`, `src/ops/claude_doctor.rs`, `src/help.rs`, `tests/fixtures/help/all.txt`, `tests/fixtures/help/all-60.txt`, `tests/fixtures/help/all-80.txt`, `tests/fixtures/help/all-dumb.txt`, `tests/fixtures/help/root.txt`, `tests/fixtures/help/root-60.txt`, `tests/fixtures/help/root-80.txt`, `tests/fixtures/help/root-dumb.txt`, `skills/moai/workflows/project.md`, `skills/moai/references/source-manifest.json`
+- write: `.moai/specs/SPEC-20261122-claude-md-text-and-ignore/**`, `tests/claude_md_layout_scan.rs`(새 파일), `tools/repo_scans.json`(한 행), `src/language.rs`, `src/generation.rs`, `src/project_update.rs`, `src/home_routing.rs`, `tests/fixtures/update_tux/preview-blocked.json`, `tests/fixtures/update_tux/preview-changes.json`, `tests/fixtures/update_tux/preview-latest.json`, `src/ops/agents_apply.rs`, `src/ops/agents_plan.rs`, `src/ops/claude_doctor.rs`, `src/help.rs`, `tests/fixtures/help/all.txt`, `tests/fixtures/help/all-60.txt`, `tests/fixtures/help/all-80.txt`, `tests/fixtures/help/all-dumb.txt`, `tests/fixtures/help/root.txt`, `tests/fixtures/help/root-60.txt`, `tests/fixtures/help/root-80.txt`, `tests/fixtures/help/root-dumb.txt`, `skills/moai/workflows/project.md`, `skills/moai/references/source-manifest.json`, `src/claude.rs`(C-336 의 READY 뒤에 범위를 넓혀요), `tests/product_cli.rs`, `docs/claude-adapter-contract.md`
 - 공유 파일(line-lease 로만 씀): `tools/repo_scans.json`, `src/help.rs`, `tests/fixtures/help/*.txt`, `skills/moai/references/source-manifest.json`
-- read-only: `src/claude.rs`, `src/agents.rs`, `src/agents_local_merge.rs`, `src/agents_local_merge/**`
+- read-only: `src/agents.rs`, `src/agents_local_merge.rs`, `src/agents_local_merge/**`
 - forbidden: `.gitignore`, `CLAUDE.md`, `CLAUDE.local.md`, 실제 HOME, 네트워크
 
 ## Plan
@@ -78,7 +80,8 @@ moai 의 지침 파일은 `CLAUDE.md`(팀)와 `CLAUDE.local.md`(개인)예요. �
 3. `src/generation.rs` 다음 할 일: "start a new host session in this project so it loads the project instructions and the generated files". `src/project_update.rs` 의 두 문장.
 4. `src/home_routing.rs` Cursor 이유: "Cursor CLI has no user-level instruction file (rules live in the app); not written", 픽스처 세 개.
 5. 명령 도움말(`src/ops/*`, `src/help.rs`)과 골든 파일 8개(`MOAI_HELP_GOLDEN_WRITE=1` 로 다시 씀), `skills/moai/workflows/project.md:38`("writes a new `CLAUDE.md`"), `source-manifest.json` 의 옛 Codex 이유 문구와 해시(`moai check fix`).
-6. 임시 프로젝트 생성 파일 테스트, 가드 뮤턴트, `moai check affected --card`, READY. 착지하면 리더가 스킬 사본을 맞춰요.
+6. `src/claude.rs` 의 제안 두 문장을 하나로 다시 써요: "move the text of your AGENTS.md into CLAUDE.md (for a file of this project, /moai update offers the pick `move`)". `tests/product_cli.rs` 의 그 테스트가 새 문장을 확인하고, `docs/claude-adapter-contract.md` 의 설명 한 대목을 맞춰요.
+7. 임시 프로젝트 생성 파일 테스트, 가드 뮤턴트, `moai check affected --card`, READY. 착지하면 리더가 스킬 사본을 맞춰요.
 
 ## Decisions
 
@@ -89,18 +92,18 @@ moai 의 지침 파일은 `CLAUDE.md`(팀)와 `CLAUDE.local.md`(개인)예요. �
 | D-1 | 글 테스트는 Rust 테스트예요. | Python 테스트 금지(2026-11-21). | 없음. |
 | D-2 | 예외는 테스트 파일 안의 (경로, 줄 조각, 정확한 개수, 이유) 행이에요. 파일 단위 건너뛰기는 쓰지 않아요. | 예외 파일에 새 문장이 몰래 들어오지 못해요. | 경로 단위 목록. |
 | D-3 | 검사 대상과 주석·테스트 코드 규칙은 Plan 1 이에요. | 배포되는 것과 도움말이 되는 것만 봐요. | 대상 축소. |
-| D-4 | Cursor 이유 문장을 여기서 고쳐요. `src/home` 접두라 이 SPEC 은 tier 2 예요. | 지금 문장은 프로젝트 `AGENTS.md` 가 규칙을 나른다고 말해요. | 별도 카드로 빼고 날짜 있는 예외 행. |
+| D-4 | Cursor 이유 문장을 여기서 고쳐요. `src/home` 접두라 이 SPEC 은 tier 2 예요. | 지금 문장은 프로젝트 `AGENTS.md` 가 규칙을 나른다고 말해요. 리더 결정(노트 10248). | 별도 카드로 빼고 날짜 있는 예외 행. |
 | D-5 | `claude-doctor` 는 동작을 그대로 두고 "your own AGENTS.md" 라고 불러요. | 그 명령은 실제로 그 파일을 확인해요. | 문장을 그대로 두고 예외 행. |
-| D-6 | `src/claude.rs` 의 제안 두 문장(`@AGENTS.md` import 추가, 두 파일 함께 읽기 설정)은 바꾸지 않고 예외 행으로 둬요. | 사용자 파일에 대한 안내이고, 그 파일은 다른 카드(C-336)가 예약 중이에요. | 두 문장을 "내용을 CLAUDE.md 로 옮기기(`/moai update`, move)" 쪽으로 다시 써요. 노트 6484 와 빠진 `import` 선택에 더 가깝고, 그 예약의 협의가 필요해요. |
+| D-6 | `src/claude.rs` 의 제안 두 문장(`@AGENTS.md` import 추가, 두 파일 함께 읽기 설정)은 "내용을 `CLAUDE.md` 로 옮기기" 한 문장으로 다시 써요. | 리더 결정(노트 10248): 사용자 요청(노트 10213)과 노트 6484("@AGENTS.md 줄 없음")에 맞아요. 그 파일은 C-336 이 예약 중이라 그 READY 뒤에 범위를 넓혀요. | 예외 행으로 남기기. |
 | D-7 | 예전 파일을 지키거나 검토하는 줄(`src/scope.rs`, `src/gate.rs`, `src/review.rs`, 감사 글, 프로토콜 스키마 설명)은 "읽기" 예외예요. | 지우면 보호 목록이 줄어요. | 지우기. |
 | D-8 | 다음 할 일 문장은 "the project instructions" 예요. | `CLAUDE.md` 를 쓰지 않은 경우에도 맞아요. | "CLAUDE.md". |
 | D-9 | 라벨은 두 파일 이름을 다 적어요. 이 설정이 있는 프로젝트는 다음 업데이트에서 관리 블록이 한 번 바뀌어요. | 팀·개인 파일이 모두 그 언어 설정의 대상이에요. | `CLAUDE.md` 만. |
-| D-10 | 개정 1 의 REQ-1~4·7 은 빼고, 맡을 곳은 리더가 정해요. 기본값: 새 후속 카드(무시 파일). 배너는 지금 글이 형식을 지켜 새 일이 없어요. | 저장소 `.gitignore` 허용 목록은 `CLAUDE.md` 의 "`.claude/` 는 스테이징하지 않는다" 와 부딪치고, 결정 기록에서 그것을 푸는 행을 찾지 못했어요. layout SPEC 의 조각 4 는 아직 이 SPEC 을 가리켜요. | 이 개정에 남기기(그 결정이 먼저 필요해요). |
+| D-10 | 개정 1 의 REQ-1~4·7 은 빼고, 무시 파일은 리더가 후속 카드로 열어요(노트 10248). 배너는 지금 글이 형식을 지켜 새 일이 없어요. | 저장소 `.gitignore` 허용 목록은 `CLAUDE.md` 의 "`.claude/` 는 스테이징하지 않는다" 와 부딪치고, 결정 기록에서 그것을 푸는 행을 찾지 못했어요. layout SPEC 의 조각 4 는 아직 이 SPEC 을 가리켜요. | 이 개정에 남기기(그 결정이 먼저 필요해요). |
 | D-11 | 저장해 둔 업데이트 미리보기 픽스처 세 개도 새 문장으로 고쳐요. | 제품 문장과 같게 해요. | 그대로 두기. |
 
 ## Risks
 
-- R-1: `src/project_update.rs` 는 C-330·C-569·C-572, `skills/moai/workflows/project.md` 는 C-330·C-569 가 예약 중이에요(2026-11-26 읽음). 구현 전에 그 레인들과 순서를 맞춰요.
+- R-1: `src/project_update.rs` 는 C-330·C-569·C-572, `skills/moai/workflows/project.md` 는 C-330·C-569, `src/claude.rs` 는 C-336 이 예약 중이에요(2026-11-26 읽음). 순서를 따로 세우지 않아요: 먼저 READY 를 받은 카드가 먼저 착지하고, 뒤에 착지하는 쪽이 합쳐요(노트 10248).
 - R-2: 예외 줄의 문장을 바꾸되 조각이 남고 이름이 늘지 않으면 테스트가 잡지 못해요.
 - R-3: Claude Code 와 Cursor 가 어떤 지침 파일을 읽는지는 이 개정에서 새로 확인하지 않았어요.
 
