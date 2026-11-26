@@ -66,4 +66,10 @@ Go 세대 프로젝트의 `.claude/settings.json` 은 훅을 `$CLAUDE_PROJECT_DI
 
 ## Result
 
-개정 2의 구현 전이에요. 개정 1의 결과(head 4e1a134960)는 독립 감사 FAIL(노트 9871)로 무효예요.
+개정 1의 결과(head 4e1a134960)는 독립 감사 FAIL(노트 9871)로 무효예요. 개정 2는 head 3cb54210155ec4246c05f47214ca858a8fd91466(base 9c8b7fb76313f0bd2d90950e3aa52531d3151904)에서 `verify` 명령을 쓴 그대로 실행했어요(2026-11-26T04:05Z 확인). 코드 수정 전에는 새 통합 시험 4개가 모두 단언 실패였어요.
+
+- AC-1: met — `cargo nextest run --lib -E 'test(go_hooks::tests::missing_scripts)'` 4/4 통과
+- AC-2: met — `cargo nextest run --test card -E 'test(the_hook_settings_of_the_worktree)'` 4/4 통과
+- AC-3: met — `rg -n 'go-hooks-plan' skills/moai/workflows/work.md` exit 0(40행)
+
+가드 뮤턴트 8/8 exit 100(마지막 반납 노트). 승인은 노트 9882(리더 위임 판단)이고 승인 블록은 착지 때 리더가 써요.
