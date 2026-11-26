@@ -190,4 +190,29 @@ tier 1 이에요: 지우기, 권한, 게이트, HOME 을 바꾸지 않아요.
 
 ## Result
 
-2번 조각은 착지했어요(머지 `6f4117db80`, head `049c8a7751`). 개정 5, 6 은 글만 바꿨고 AC 는 하나도 다시 실행하지 않았어요: AC-1~AC-7 은 not_run 이에요.
+2번 조각은 착지했어요(머지 `6f4117db80`, head `049c8a7751`).
+
+조각 S1 은 커밋 세 개예요: 테스트 커밋 `41e478a080`, 소스·문서 커밋 `02d82a7246`, 그리고 `goal` help 예시와 operation 문서의 예시·`set` 설명, 새 테스트 두 개를 담은 커밋 `f69362e14c` 예요.
+
+- 소스를 바꾸기 전의 실행은 15개 통과, 10개 실패, exit 101 이었어요(로그 `target/lamech/s1-red.log`). 이때의 테스트 파일은 커밋 `41e478a080` 의 것과 같지 않아요: "With no card to watch, start no watch." 를 보는 확인이 아직 없었어요. `help_of_lane_run_and_its_subcommands_names_no_card_number_and_no_watch_action` 은 이 실행에서도 통과했어요.
+- `f69362e14c` 의 새 테스트 `help_of_goal_shows_an_example_that_runs` 와 `help_operations_document_examples_name_all_four_commands_and_run` 은 바꾼 것과 함께 커밋해서 빨간 실행이 없어요.
+- 아래의 met 은 2026-11-26 에 head `f69362e14c` 에서 verify 명령 여덟 개를 다시 실행한 결과이고, 모두 exit 0 이에요(로그 `target/lamech/s1-ac2.log`).
+
+AC 별 상태예요.
+
+- AC-1: not_run — 조각 S2 의 일이에요.
+- AC-2: not_run — 조각 S2 의 일이에요. `set` 뒤에 project plan·apply 를 거쳐도 값이 남는지 보는 테스트는 아직 쓰지 않았고, 이미 있는 `pick_` 테스트는 여기서 AC 확인으로 실행하지 않았어요.
+- AC-3: met — `cargo test --locked --offline --test lane_run_cli prompt_` exit 0, 11개 통과.
+- AC-4: met — `cargo test --locked --offline --test lane_run_cli prompt_` exit 0, 11개 통과. `cargo test --locked --offline --test card card_wait_cli::` exit 0, 8개 통과.
+- AC-5: met — `cargo test --locked --offline --test lane_run_cli facts_` exit 0, 3개 통과.
+- AC-6: met — `cargo test --locked --offline --test lane_run_cli goal_` exit 0, 3개 통과(이름 필터에 `help_of_goal_shows_an_example_that_runs` 도 걸려요). S1 에서 goal 조건을 만드는 코드는 바뀌지 않았고, `f69362e14c` 가 `goal` 의 help 글에 예시 한 줄을 더했어요.
+- AC-7: met — verify 명령 네 개가 모두 exit 0: `cargo test --locked --offline --bin moai-cli every_command_has_examples` 1개, `cargo test --locked --offline --bin moai-cli help_table_names_every_command_once` 1개, `cargo test --locked --offline --test help_layout` 11개, `cargo test --locked --offline --test lane_run_cli help_` 4개 통과.
+
+그 밖의 기록이에요.
+
+- operation 문서에는 네 동작(`show`, `set`, `prompt`, `goal`)을 모두 부르는 `sh` 예시 묶음이 하나 있고, `lane-run goal --help` 에는 `Example:` 줄이 있어요. `src/help.rs` 의 `lane-run` 예시는 `show`, `set`, `prompt` 세 줄(1~3줄 한도 안)이고, `goal` 의 예시는 그 명령의 help 글에 있어요. 새 테스트 두 개는 문서의 예시 줄과 `goal` 의 예시 줄을 임시 프로젝트에서 실행해요.
+- 가드 테스트의 뮤턴트는 14줄이고 모두 exit 101 이에요(`target/lamech/s1-mutants.txt`). `02d82a7246` 에 든 한 문장("With no card to watch, start no watch.")을 넣기 전의 바이트에서 돌렸고, 그 문장의 뮤턴트는 없어요. 커밋 `f69362e14c` 와 그 테스트 두 개는 뮤턴트를 돌리지 않았어요(tier 1 이라 요구되지 않아요).
+- 코드의 프롬프트가 `## Design` 의 초안과 다른 곳은 그 한 문장이에요. 감시할 카드가 없으면 감시를 시작하지 않는다는 REQ-7 의 failure 절 때문에 넣었어요. 이 비교는 `src/ops/lane_run.rs` 의 `prompt` 와 초안을 읽어서 한 것이에요.
+- 실행하지 않은 것: 명령이 찍은 프롬프트와 초안의 diff(HOME 을 설정하는 추가 확인이어서 워크트리 가드가 거부했어요), Windows, Linux, GLM 호스트의 동작이에요.
+- 영향 범위 확인(`moai check affected`)의 receipt 는 여기가 아니라 READY 노트에 남겨요.
+- 범위 밖이라 남은 일: `src/lane_loop.rs:181`, `docs/design-review/host-session-events-2026-11-09.md` 의 45행과 101행은 아직 루프가 7일 뒤에 만료된다고 적고 있어요.
