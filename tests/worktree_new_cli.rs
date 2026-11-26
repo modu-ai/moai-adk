@@ -240,10 +240,12 @@ fn ac3_a_taken_name_an_unknown_base_and_a_linked_place_are_refused() {
     assert_ne!(out.code, 0, "{}", out.said);
     assert!(out.said.contains("no-such-ref"), "{}", out.said);
     assert_eq!(r.state(), before_branch);
-    // The branch name is not a branch name.
-    let out = r.run(&["lane-d", "--branch", "bad..name"]);
-    assert_ne!(out.code, 0, "{}", out.said);
-    assert_eq!(r.state(), before_branch);
+    // The branch name is not a branch name, or is spelled as a full reference.
+    for bad in ["bad..name", "refs/heads/spec/full-20261124"] {
+        let out = r.run(&["lane-d", "--branch", bad]);
+        assert_ne!(out.code, 0, "{bad}: {}", out.said);
+        assert_eq!(r.state(), before_branch, "{bad}");
+    }
     // No integration branch and no --base: nothing to cut from; with --base it works.
     let plain = repo(PLAIN);
     let out = plain.run(&["lane-a", "--branch", BRANCH]);
