@@ -444,6 +444,7 @@
         "tests/update_switch_cli.rs (package copy)",
         "tests/update_git_hooks_cli.rs (package copy)",
         "tests/host_home_cli.rs (plans hash skills/moai and agents/)",
+        "tests/update_run_receipt_cli.rs (package copy)",
         "tests/update_closing_commit.rs (all 4)"
       ],
       "test_targets": [
@@ -457,6 +458,7 @@
         "update_home_layer_cli",
         "update_hooks_cli",
         "update_keys_cli",
+        "update_run_receipt_cli",
         "update_switch_cli",
         "update_user_layer_cli"
       ],
@@ -473,6 +475,7 @@
         "tests/update_headver.rs",
         "tests/update_switch_cli.rs",
         "tests/update_git_hooks_cli.rs",
+        "tests/update_run_receipt_cli.rs",
         "tests/host_home_cli.rs",
         "tests/update_closing_commit.rs"
       ],
@@ -2129,6 +2132,7 @@
         "update_hooks_cli",
         "update_keys_cli",
         "update_route",
+        "update_run_receipt_cli",
         "update_switch_cli",
         "update_user_layer_cli",
         "versioning_release_texts",
@@ -2238,6 +2242,7 @@
         "tests/update_route.rs",
         "tests/update_switch_cli.rs",
         "tests/update_user_layer_cli.rs",
+        "tests/update_run_receipt_cli.rs",
         "tests/workflow_size_budget.rs",
         "tests/worktree_include_guard.rs",
         "tests/build_number_texts.rs",

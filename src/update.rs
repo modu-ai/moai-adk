@@ -37,6 +37,8 @@ use std::{
 
 /// The skill folders installed beside the moai skill (SPEC-20261122-html-report-install).
 pub mod extra_skill;
+/// The record one confirmed `moai update` leaves, with the written skill files read back (C-513).
+pub mod run_receipt;
 /// The name-switch script part of `moai update` (card C-33 S3, SPEC-20261119-update-switch-layer).
 pub mod switch;
 
@@ -2290,22 +2292,21 @@ fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGat
         style: Vec::new(),
         skipped: Vec::new(),
     };
+    let reason = run_receipt::GATE_REASON;
     for h in &layer.agents.hosts {
         if landed(&h.host) {
             gate.agents.push(h.host.clone());
         } else {
-            gate.skipped.push(
-                json!({"part": "agents", "host": h.host, "reason": "the skill copy did not apply"}),
-            );
+            gate.skipped
+                .push(json!({"part": "agents", "host": h.host, "reason": reason}));
         }
     }
     for h in &layer.routing.hosts {
         if landed(&h.host) {
             gate.routing.push(h.host.clone());
         } else {
-            gate.skipped.push(
-                json!({"part": "routing", "host": h.host, "reason": "the skill copy did not apply"}),
-            );
+            gate.skipped
+                .push(json!({"part": "routing", "host": h.host, "reason": reason}));
         }
     }
     let mut style_hosts: Vec<&str> = layer
@@ -2319,9 +2320,8 @@ fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGat
         if landed(h) {
             gate.style.push(h.to_string());
         } else {
-            gate.skipped.push(
-                json!({"part": "style", "host": h, "reason": "the skill copy did not apply"}),
-            );
+            gate.skipped
+                .push(json!({"part": "style", "host": h, "reason": reason}));
         }
     }
     gate
@@ -2650,6 +2650,9 @@ fn update_command_core(
         r.unwrap_or_else(|e| json!({"state": "error", "message": e}))
     };
     let agents = part((|| {
+        // Test seam: `MOAI_TEST_FAULT=update_part_agents` fails this part after the skills
+        // landed (the run receipt names it as remaining). Debug builds only.
+        test_fault("update_part_agents")?;
         let p = crate::agent_install::plan_for(home, &package, &agents_dir, &agent_hosts)?;
         // Same hosts as confirmed: the plan must be the confirmed one (note 2).
         if agent_hosts.len() == fresh.agents.hosts.len()
@@ -2687,15 +2690,13 @@ fn update_command_core(
             &chosen,
         )
     })());
-    let routing = part(routing_part(
-        home,
-        &package,
-        &routing_hosts,
-        &fresh.routing,
-        PERMISSION,
-    ));
+    let routing =
+        part(test_fault("update_part_routing").and_then(|()| {
+            routing_part(home, &package, &routing_hosts, &fresh.routing, PERMISSION)
+        }));
     // #2875: the style, for the same confirmed hosts whose skill copy applied.
     let style = part((|| {
+        test_fault("update_part_style")?;
         let p = crate::home_style::plan_for(home, &package, &style_hosts)?;
         // The apply of an earlier part may have just changed a file: compare what is written.
         if style_hosts.len() == count_hosts(&fresh.style)
@@ -2833,6 +2834,9 @@ fn update_command_core(
         out["git_hooks_result"] = g;
     }
     out["revert_order"] = json!(revert_order(&out["revert"]));
+    // C-513 S7: one record of the whole run, built from the parts above, with the written skill
+    // files read back; the end screen is drawn from it.
+    out["run"] = run_receipt::finish(home, &out);
     Ok(out)
 }
 
