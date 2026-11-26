@@ -103,3 +103,32 @@ created: 2026-11-26
 | D-7 | 관찰 기간 없이 바로 거절해요. 오늘도 이 단계는 `needs_decision` 으로 기다리고, 가려진 경우에만 명령을 빼요 | 기본값. 카드가 멈춤을 요구해요. 대안: 경고만(파일이 조용히 빠지는 길이 남아요) | D-1 의 대안으로 바꿔요 |
 
 ## Result
+
+확인한 커밋은 `3980416fbb73457c5ae7d3e727bccb3bc6efcd89`(기준 `cb3b046473`), 실패를 먼저 본 커밋은 `41e0495a24` 예요. 아래 명령은 heavy slot 안에서 돌렸고, 뮤턴트는 커밋한 코드에 하나씩 넣고 되돌렸어요(`git diff --quiet HEAD -- src` 로 확인). `cargo clippy --locked --offline --all-targets -- -D warnings` 는 exit 0 이에요.
+
+- AC-1: met — `an_absent_state_folder_names_the_hidden_tracked_files_and_offers_no_command` exit 0(1 통과). 구현 전 실패. 뮤턴트 `go_state.rs:3126`(판정 호출 제거), `project_update.rs:466`(단계 분기 무효화) 모두 exit 101.
+- AC-2: met — `a_local_only_state_folder_names_the_hidden_tracked_files_and_offers_no_command` exit 0. 구현 전 실패. 뮤턴트 `go_state.rs:3123`(`.moai/` 가 없을 때만 판정) exit 101.
+- AC-3: met — `a_flaky_record_and_a_spec_write_leave_the_move_answer_as_it_was` exit 0. 구현 전 실패. 뮤턴트 `go_state.rs:3123`(같은 좁힘) exit 101.
+- AC-4: met — `a_hidden_marker_or_nested_file_stops_the_move` exit 0. 구현 전 실패. 뮤턴트 `go_state.rs:4142`(표지 규칙 버림) exit 101.
+- AC-5: met — `an_apply_into_an_ignored_place_is_refused_and_writes_nothing` exit 0. 구현 전 실패. 뮤턴트 `go_state.rs:4764`(적용 거절 무효화) exit 101.
+- AC-6: met — `a_check_git_cannot_answer_offers_no_command` exit 0. 구현 전 실패. 뮤턴트 `go_state.rs:4043`(`unknown` 을 허용으로 바꿈) exit 101.
+- AC-7: met — `an_allowed_or_untracked_move_is_offered_and_applies` exit 0. 구현 전에도 통과(바뀌면 안 되는 동작). 뮤턴트 `go_state.rs:4109`(추적 파일이 없어도 표지를 물음) exit 101.
+- AC-8: met — `other_kept_names_or_backups_keep_the_move_blocked` exit 0. 구현 전에도 통과. 뮤턴트 `go_state.rs:3117`(기존 막는 확인을 건너뜀) exit 101.
+- AC-9: met — `a_linked_state_folder_refuses_the_flaky_record` exit 0. 구현 전 실패. 뮤턴트 `check_flaky.rs:477`(`make_dirs` 를 `create_dir_all` 로) exit 101.
+- AC-10: met — `a_linked_local_folder_refuses_the_flaky_record` exit 0. 구현 전 실패. 뮤턴트 `check_flaky.rs:477`(같은 교체) exit 101.
+- AC-11: met — `a_linked_ledger_file_refuses_the_flaky_record` exit 0. 구현 전 실패. 뮤턴트 `check_flaky.rs:479`(링크 거절 제거) exit 101(일반 파일 확인이 남아 거절 문구에서 실패), `:479`와 `:484` 를 함께 제거해도 exit 101.
+- AC-12: met — `a_real_local_folder_takes_the_flaky_record` exit 0. 구현 전에도 통과. 뮤턴트 `check_flaky.rs:477`(기록이 늘 거절) exit 101. 추가 테스트 `a_ledger_that_is_no_regular_file_refuses_the_flaky_record` 는 전체 대상 실행에서 통과, 뮤턴트 `check_flaky.rs:484` exit 101(FIFO 에서 30초 안에 답이 없음).
+- AC-13: met — `check_affected_rerun ac5_an_unwritable_ledger_does_not_change_the_result` exit 0, 대상 전체 12 통과.
+- AC-14: met — `check_flaky_verdict a_flaky_record_leaves_the_state_verdict_and_the_update_preview_as_they_were` exit 0, 대상 전체 3 통과.
+- AC-15: met — `check_flaky_verdict a_state_move_and_its_revert_leave_a_local_folder_in_place` exit 0.
+- AC-16: met — `go_state_cli a_target_that_git_ignores_blocks_the_plan_until_the_rule_allows_it` exit 0, 대상 전체 77 통과.
+- AC-17: met — `a_flaky_record_beside_backups_alone_keeps_the_verdict` exit 0. 구현 전 실패. 뮤턴트 `state_root.rs:523`(`local_counts = local`) exit 101.
+- AC-18: met — `a_reverted_receipt_beside_a_local_folder_still_reads_none` exit 0. 구현 전에도 통과. 뮤턴트 `state_root.rs:523`(`local && !backups`) exit 101.
+
+그 밖의 통과: `state_tracked_move_cli` 15, `go_state_preview_cli` 44, `project_update_plan_cli` 73, `update_end_to_end_cli` 8, `state_root_cli` 6, 라이브러리 `go_state::` 16 · `check_flaky::` 5 · `state_root::` 29 · `project_update::` 9.
+
+기존 테스트 코드는 한 줄만 바꿨어요. `src/go_state.rs` 단위 테스트의 `sample()` 에 `ignored_tracked: None,` 을 더했어요(새 필드라 컴파일에 필요, 단언은 그대로).
+
+남은 한계(코드 읽기 기준, 재현하지 않음): 계획이 이미 막힌 경우에는 `ignored_tracked` 를 만들지 않아요(아무것도 옮기지 않아요). 이동하는 폴더 안의 `.gitignore` 가 새 위치에서 가리는 경우는 판정하지 않아요. 인덱스와 디스크의 대소문자가 다른 항목은 판정에서 빠질 수 있어요. git 이 "저장소가 아님" 이라고 답하는 깨진 `.git` 은 작업 트리가 아닌 것으로 봐요.
+
+실행하지 않은 것(not_run): `moai check affected`(상위 세션이 실행), 전체 `cargo test`, 위에 없는 테스트 대상, Windows·Linux 확인, Plan 0 의 `src/project_update.rs` 담당 알림.
