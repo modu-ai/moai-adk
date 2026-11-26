@@ -8,6 +8,7 @@
 //! folder and the real session registry are never read or written.
 #![cfg(unix)]
 
+// check-affected: when-changed src/card/work.rs
 use crate::common;
 
 use common::git::git_in;
