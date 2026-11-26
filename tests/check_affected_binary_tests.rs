@@ -136,8 +136,15 @@ impl Repo {
 
     /// [`Repo::ask`] under the `PATH` given.
     fn ask_on(&self, range: &str, flags: &[&str], path: &str) -> (bool, Value) {
+        let mut listing = vec!["--list"];
+        listing.extend_from_slice(flags);
+        self.call(range, &listing, path)
+    }
+
+    /// `check affected <range>` with exactly the flags given, so a run without `--list` too.
+    fn call(&self, range: &str, flags: &[&str], path: &str) -> (bool, Value) {
         let dir = self.dir.path().to_string_lossy().into_owned();
-        let mut args = vec!["check", "affected", range, "--list", "--dir", dir.as_str()];
+        let mut args = vec!["check", "affected", range, "--dir", dir.as_str()];
         args.extend_from_slice(flags);
         let out = self
             .home
@@ -420,6 +427,12 @@ fn a_command_file_change_selects_the_tests_that_name_the_command() {
                 answer["error"]
             ));
         }
+    }
+    // A run stops the same way, before any step starts.
+    let (_tools, path) = nextest_path();
+    let (ok, answer) = repo.call(&range, &[], &path);
+    if ok || !answer["error"].to_string().contains("gone_helper.rs") {
+        misses.push(format!("REQ-6 run: {answer}"));
     }
 
     // REQ-6: so does a command file that the library rule reads and that is no text.
