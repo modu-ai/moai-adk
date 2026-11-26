@@ -72,7 +72,12 @@ struct Candidate {
 }
 
 fn refused(why: impl std::fmt::Display) -> String {
-    format!("card land-batch refused: {why}; nothing was changed")
+    refusal_of("land-batch", why)
+}
+
+/// The refusal text of the command `what`: `card <what> refused: <why>; nothing was changed`.
+fn refusal_of(what: &str, why: impl std::fmt::Display) -> String {
+    format!("card {what} refused: {why}; nothing was changed")
 }
 
 fn parse_pairs(pairs: &[String]) -> Result<Vec<Item>> {
@@ -137,7 +142,7 @@ fn attach_specs(project: &Path, home: &Path, items: Vec<Item>) -> Result<(Vec<It
     Ok((kept, dropped))
 }
 
-fn short(sha: &str) -> &str {
+pub(super) fn short(sha: &str) -> &str {
     sha.get(..12).unwrap_or(sha)
 }
 
@@ -146,10 +151,29 @@ fn short(sha: &str) -> &str {
 /// its `session` is the session that made this call. The name of a session, its folder or the word
 /// `--by leader` prove nothing; an unreadable registry is a refusal, never an answer of "yes".
 pub(crate) fn confirm_leader(project: &Path, session: Option<&str>, now: i64) -> Result<()> {
+    leader_reason(project, session, now, "land-batch")
+}
+
+/// The one leader gate of the card commands that move the integration branch for more than one
+/// card: [`confirm_leader`] for `land-batch` and `land-sync`. `what` is the command's name
+/// (`land-batch`, `land-sync`); it starts the refusal (`card <what> refused: ...`) and picks what
+/// only the leader may do there. The four causes and their words are the same for both.
+pub(super) fn leader_reason(
+    project: &Path,
+    session: Option<&str>,
+    now: i64,
+    what: &str,
+) -> Result<()> {
+    let refused = |why: String| refusal_of(what, why);
+    let does = match what {
+        "land-batch" => "lands a batch",
+        "land-sync" => "syncs a branch",
+        _ => "runs this command",
+    };
     let Some(me) = session else {
-        return Err(refused(
-            "this call has no session id, and only the registered leader session lands a batch",
-        ));
+        return Err(refused(format!(
+            "this call has no session id, and only the registered leader session {does}"
+        )));
     };
     let entries = crate::lane_registry::session_entries(project)
         .map_err(|why| refused(format!("the lane registry cannot be read ({why})")))?;
@@ -159,11 +183,12 @@ pub(crate) fn confirm_leader(project: &Path, session: Option<&str>, now: i64) ->
     match live {
         None => Err(refused(
             "no live leader entry is registered: the leader window registers itself with \
-             `moai session-register . --name leader --mode leader` (`/moai leader`)",
+             `moai session-register . --name leader --mode leader` (`/moai leader`)"
+                .to_string(),
         )),
         Some(entry) if entry.session.as_deref() == Some(me) => Ok(()),
         Some(_) => Err(refused(
-            "this session is not the session of the registered leader entry",
+            "this session is not the session of the registered leader entry".to_string(),
         )),
     }
 }
@@ -172,7 +197,7 @@ pub(crate) fn confirm_leader(project: &Path, session: Option<&str>, now: i64) ->
 /// the head `last` (12 hex digits), ends in `result=PASS` and carries no `selection=` word (a
 /// `--card` or `--lane` run checked a part). Such a run ran every listed scan on the tree that
 /// lands, so its receipt covers the scans of the heads it holds (SPEC D-11).
-fn receipt_covers(line: &str, last: &str) -> bool {
+pub(super) fn receipt_covers(line: &str, last: &str) -> bool {
     let line = line.strip_suffix('\n').unwrap_or(line);
     if line.contains('\n') {
         return false;
@@ -191,7 +216,7 @@ fn receipt_covers(line: &str, last: &str) -> bool {
 /// after `check_affected::run` returns; a direct call of `run` does not.
 /// The options of the wide check of a batch: the full selection, and no earlier run is read —
 /// the wide check is the safety net (SPEC-20261125-check-affected-rerun REQ-11).
-fn wide_options() -> crate::check_affected::RunOptions {
+pub(super) fn wide_options() -> crate::check_affected::RunOptions {
     crate::check_affected::RunOptions {
         slot_dir: None,
         max: 4,
@@ -203,7 +228,7 @@ fn wide_options() -> crate::check_affected::RunOptions {
     }
 }
 
-fn record_summary(answer: &Value) {
+pub(super) fn record_summary(answer: &Value) {
     if let (Some(out), Some(summary)) = (answer["out"].as_str(), answer["summary"].as_str()) {
         let _ = crate::card::ready_receipt::write_summary(Path::new(out), summary);
     }
@@ -211,7 +236,7 @@ fn record_summary(answer: &Value) {
 
 /// The summary line a wide run left in its private worktree `work` for the join `last`, or
 /// `None` when there is none or it is not a small regular file.
-fn read_run_receipt(work: &Path, last: &str) -> Option<String> {
+pub(super) fn read_run_receipt(work: &Path, last: &str) -> Option<String> {
     let file = work
         .join("target")
         .join(format!("check-affected-{}", short(last)))
@@ -224,7 +249,7 @@ fn read_run_receipt(work: &Path, last: &str) -> Option<String> {
 }
 
 /// The trailers of a join commit: its SPEC, the lander's session and no verification kind.
-fn trailers(project: &Path, session: Option<&str>, spec: &str) -> String {
+pub(super) fn trailers(project: &Path, session: Option<&str>, spec: &str) -> String {
     let mut text = format!("Moai-Spec: {spec}\n");
     if let (Some(id), Some(key)) = (session, crate::trailers::worktree_key(project)) {
         text.push_str(&format!("Moai-Session: {id}:{key}\n"));
@@ -334,16 +359,16 @@ fn join(
 }
 
 /// What one check run gave.
-struct Run {
-    exit: i32,
-    log: PathBuf,
+pub(super) struct Run {
+    pub(super) exit: i32,
+    pub(super) log: PathBuf,
     /// The run passed and left a full-selection PASS summary of the join: its scans are covered.
-    scans_covered: bool,
+    pub(super) scans_covered: bool,
 }
 
 /// Run the check on `last` in a private worktree under `<project>/target/land-batch/`, which the
 /// run removes again. `Err` means the check could not start; an exit code other than 0 is a FAIL.
-fn run_check(
+pub(super) fn run_check(
     project: &Path,
     check: Option<&Path>,
     tip: &str,
@@ -796,5 +821,110 @@ mod tests {
         // No entry, no session id: refused.
         assert!(confirm_leader(project, Some(me), 100).is_err());
         assert!(confirm_leader(project, None, 100).is_err());
+    }
+
+    /// A throwaway repository with a lane registry that holds `entries` (file name and JSON text).
+    fn registry(entries: &[(&str, String)]) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let mut cmd = std::process::Command::new("git");
+        cmd.arg("-C")
+            .arg(dir.path())
+            .args(["init", "-q", "-b", "main"]);
+        crate::identity::scrub_git_env(&mut cmd);
+        assert!(cmd.output().unwrap().status.success());
+        let sessions = crate::clone_root::path(&dir.path().join(".git")).join("sessions");
+        std::fs::create_dir_all(&sessions).unwrap();
+        for (file, text) in entries {
+            std::fs::write(sessions.join(file), text).unwrap();
+        }
+        dir
+    }
+
+    /// The text of a lane registry entry of the session `session` with the lease `lease`.
+    fn entry_text(name: &str, mode: &str, session: &str, lease: i64) -> String {
+        json!({
+            "schema_version": 1, "name": name, "instance": "1".repeat(32),
+            "lease_until": lease, "registered_at": 0, "mode": mode, "session": session,
+        })
+        .to_string()
+    }
+
+    const ME: &str = "dddddddd-0000-4000-8000-00000000000d";
+    const LANE: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
+
+    /// The four causes of the gate, as the text of a refusal of the command `what` (`prefix` is
+    /// what the command's refusals start with, `words` what the leader alone may do).
+    fn four_causes(prefix: &str, words: &str, call: impl Fn(&Path, Option<&str>) -> Result<()>) {
+        let tail = "; nothing was changed";
+        let live = entry_text("leader", "leader", ME, 1_000);
+        let ok = registry(&[("leader.json", live.clone())]);
+        assert!(call(ok.path(), Some(ME)).is_ok(), "the live leader passes");
+        assert_eq!(
+            call(ok.path(), None).unwrap_err(),
+            format!(
+                "{prefix}this call has no session id, and only the registered leader session \
+                 {words}{tail}"
+            )
+        );
+        assert_eq!(
+            call(ok.path(), Some(LANE)).unwrap_err(),
+            format!("{prefix}this session is not the session of the registered leader entry{tail}")
+        );
+        let none_live = "no live leader entry is registered: the leader window registers itself \
+                         with `moai session-register . --name leader --mode leader` \
+                         (`/moai leader`)";
+        let nobody = registry(&[]);
+        assert_eq!(
+            call(nobody.path(), Some(ME)).unwrap_err(),
+            format!("{prefix}{none_live}{tail}")
+        );
+        let ended = registry(&[("leader.json", entry_text("leader", "leader", ME, 100))]);
+        assert_eq!(
+            call(ended.path(), Some(ME)).unwrap_err(),
+            format!("{prefix}{none_live}{tail}")
+        );
+        let lane_mode = registry(&[("leader.json", entry_text("leader", "agent", ME, 1_000))]);
+        assert_eq!(
+            call(lane_mode.path(), Some(ME)).unwrap_err(),
+            format!("{prefix}{none_live}{tail}")
+        );
+        // A registry that is a file, not a folder, cannot be read: a refusal, never a pass.
+        let broken = registry(&[]);
+        let sessions = crate::clone_root::path(&broken.path().join(".git")).join("sessions");
+        std::fs::remove_dir(&sessions).unwrap();
+        std::fs::write(&sessions, "x").unwrap();
+        let text = call(broken.path(), Some(ME)).unwrap_err();
+        let (head, rest) = (
+            format!("{prefix}the lane registry cannot be read ("),
+            format!("){tail}"),
+        );
+        assert!(
+            text.starts_with(&head) && text.ends_with(&rest),
+            "unreadable registry: {text}"
+        );
+    }
+
+    /// The words of `card land-batch` stay as they were, through the wrapper and through the new
+    /// function (SPEC-20261125-land-sync-merge REQ-1: the batch wording is unchanged).
+    #[test]
+    fn the_four_refusals_of_the_batch_keep_their_words() {
+        let prefix = "card land-batch refused: ";
+        four_causes(prefix, "lands a batch", |p, s| confirm_leader(p, s, 500));
+        four_causes(prefix, "lands a batch", |p, s| {
+            leader_reason(p, s, 500, "land-batch")
+        });
+    }
+
+    /// The same four causes name `card land-sync` and what only the leader does there; the text
+    /// never says `land-batch`.
+    #[test]
+    fn the_four_refusals_of_the_sync_name_the_sync_command() {
+        let prefix = "card land-sync refused: ";
+        four_causes(prefix, "syncs a branch", |p, s| {
+            leader_reason(p, s, 500, "land-sync")
+        });
+        let dir = registry(&[]);
+        let text = leader_reason(dir.path(), None, 500, "land-sync").unwrap_err();
+        assert!(!text.contains("land-batch"), "{text}");
     }
 }

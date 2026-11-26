@@ -689,9 +689,11 @@ fn registration_renew_instance_renews_an_ended_lease() {
     assert_eq!(reg["status"], "ok", "{r}");
     assert_eq!(reg["leaders"][0]["session"], LEADER_SESSION, "{r}");
     assert_eq!(reg["leaders"][0]["remaining_secs"], 14_400, "{r}");
-    let stored: Value =
-        serde_json::from_str(&fs::read_to_string(sessions_dir(&f).join("leader.json")).unwrap())
-            .unwrap();
+    let leader_file = moai_cli::lane_registry::entry_file(&sessions_dir(&f), "leader")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| sessions_dir(&f).join("leader.json"));
+    let stored: Value = serde_json::from_str(&fs::read_to_string(leader_file).unwrap()).unwrap();
     assert_eq!(stored["instance"], LEADER_INSTANCE, "{stored}");
     assert_eq!(stored["mode"], "leader", "{stored}");
     assert_eq!(stored["session"], LEADER_SESSION, "{stored}");
