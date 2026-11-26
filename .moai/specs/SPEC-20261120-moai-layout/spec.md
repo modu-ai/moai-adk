@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261120-moai-layout
 title: "One .moai/ layout rule for every project: tracked team files, ignored .moai/local/, project tools in .moai/tools/"
-status: approved
-revision: 5
+status: draft
+revision: 6
 created: 2026-11-20
-approval:
-  by: leader
-  at: 2026-11-24
-  basis: "리더 결정 노트 8189 (2026-11-24T04:25:04Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8188 에 답함): 개정 5 승인(커밋 883e1c0482); 레인은 그 노트를 인용만 해요"
-  digest: "sha256:22e358890ec07618784ede4465b76cfae5e823de37bc681bd295f130ef906844"
 ---
 
 # One .moai/ layout rule for every project
@@ -30,11 +25,11 @@ approval:
 
 이미 있는 프로젝트는 계속 돌아가요: 읽기는 옛 경로까지, 쓰기는 새 경로로.
 
-이 SPEC 은 규칙의 **조각 1** 이에요: 규칙의 정의(코드 한 곳)와 관리되는 `.gitignore` 블록. 규칙의 나머지는 다음 조각의 SPEC 이 맡아요(SPEC 하나는 자기 AC 를 모두 `met` 으로 닫아야 해서 조각마다 SPEC 을 따로 둬요): 쓰는 쪽을 종류별로 `local/` 로 옮기는 SPEC 들. 개정 4(2026-11-24)는 같은 카드의 조각 3 을 이 SPEC 에 더해요: 만들어지는 관리 블록 한 줄과 `agents/impl.md` 한 줄이 `.moai/tools/` 를 말하게 하고(REQ-15, REQ-16), 업데이트 계획의 `now visible` 목록이 상태 폴더 아래 중첩 `.gitignore` 를 따르게 해요(REQ-17). 개정 5(2026-11-24)는 개정 4 감사(FAIL, 카드 노트 8184)의 수리를 더해요: 읽는 중첩 `.gitignore` 의 경계(64 KiB, 100개)와 링크 거절을 못 박고(REQ-17), 읽지 않은 `.gitignore` 아래 파일은 부모 규칙이 숨기더라도 이름을 말하게 하며(REQ-18), 자격 증명 목록에 `credentials.json` 을 더해요(REQ-11).
+이 SPEC 은 규칙의 **조각 1** 이에요: 규칙의 정의(코드 한 곳)와 관리되는 `.gitignore` 블록. 규칙의 나머지는 다음 조각의 SPEC 이 맡아요(SPEC 하나는 자기 AC 를 모두 `met` 으로 닫아야 해서 조각마다 SPEC 을 따로 둬요): 쓰는 쪽을 종류별로 `local/` 로 옮기는 SPEC 들. 개정 4(2026-11-24)는 같은 카드의 조각 3 을 이 SPEC 에 더해요: 만들어지는 관리 블록 한 줄과 `agents/impl.md` 한 줄이 `.moai/tools/` 를 말하게 하고(REQ-15, REQ-16), 업데이트 계획의 `now visible` 목록이 상태 폴더 아래 중첩 `.gitignore` 를 따르게 해요(REQ-17). 개정 5(2026-11-24)는 개정 4 감사(FAIL, 카드 노트 8184)의 수리를 더해요: 읽는 중첩 `.gitignore` 의 경계(64 KiB, 100개)와 링크 거절을 못 박고(REQ-17), 읽지 않은 `.gitignore` 아래 파일은 부모 규칙이 숨기더라도 이름을 말하게 하며(REQ-18), 자격 증명 목록에 `credentials.json` 을 더해요(REQ-11). 개정 6(2026-11-26)은 남은 카드 기준 둘을 더해요: 조사한 비밀 파일 이름을 블록에 더하고(REQ-19, `## Research`), 중첩 `.gitignore` 를 여는 순간에도 링크를 따르지 않는다는 것을 시험으로 못 박아요(D-11).
 
 ## Interview
 
-- none: 사용자에게 묻지 않았어요. 설계는 2026-11-20 사용자 결정(카드 본문)을 따르고, 개정 4 의 선택은 카드 노트 8139, 개정 5 의 선택은 카드 노트 8184 의 리더 결정(사용자 위임 2026-11-23)이에요.
+- none: 사용자에게 묻지 않았어요. 설계는 2026-11-20 사용자 결정(카드 본문)을 따르고, 개정 4 의 선택은 카드 노트 8139, 개정 5 의 선택은 카드 노트 8184 의 리더 결정(사용자 위임 2026-11-23), 개정 6 의 선택(조사해서 이름을 더함)은 카드 노트 10187 의 리더 결정이에요.
 
 ## Non-goals
 
@@ -66,6 +61,7 @@ approval:
 - REQ-16: The `moai-impl` agent definition shall tell the agent to put a development-support script the task creates under `.moai/tools/`.
 - REQ-17 (REQ-12): WHILE a `.gitignore` file under the state folder ignores a file that the project update would lift from the root rules, and that `.gitignore` is a regular file of at most 65536 bytes with no link on its path and is among the first 100 such files in path order, the project update plan shall not name that file as `now visible`.
 - REQ-18 (REQ-17): IF a `.gitignore` file under the state folder is a link, has a link on its path, is larger than 65536 bytes, cannot be read, or is past the first 100, THEN the project update plan shall name every file below its folder as `now visible` even where a rule of a parent folder ignores it, and say once that a `.gitignore` was not read.
+- REQ-19: The managed `.gitignore` block shall also ignore the files `.git-credentials`, `.netrc`, `_netrc`, `.pgpass`, `pgpass.conf`, `.pypirc`, `.credentials.json`, `credentials.tfrc.json`, `application_default_credentials.json`, `credentials.toml`, `.vault-token`, `.mylogin.cnf`, `master.key`, `keystore.properties`, `id_rsa`, `id_dsa`, `id_ecdsa`, `id_ecdsa_sk`, `id_ed25519`, `id_ed25519_sk`, `id_mldsa44_ed25519`, `*.ppk`, `*.tfstate`, `*.tfstate.*`, `.dev.vars`, `.dev.vars.*`, `.aws/credentials`, `.cargo/credentials`, `.gem/credentials` and `.streamlit/secrets.toml` anywhere under the state folder, `tools/` and `evals/` included, with its lines after the allow-list.
 
 ## Acceptance
 
@@ -73,7 +69,7 @@ approval:
   verify: `cargo test --locked --offline --lib state_root::tests::the_layout_names_kept_kinds_and_local_paths`
 - AC-2 (REQ-3): 새 프로젝트의 관리 블록은 `<state>/local/` 줄을 갖고 `tools/`·`evals/` 허용 줄을 `specs/` 뒤에 갖고, git 이 `tools/`·`evals/` 의 파일은 무시하지 않고 `local/` 안은 무시한다고 답해요.
   verify: `cargo test --locked --offline --test gitignore_block_cli the_block_ignores_local_and_keeps_tools_and_evals`
-- AC-3 (REQ-4, REQ-8): 옛 블록이 있는 프로젝트의 업데이트 계획은 새 줄 여덟(`local/`, `tools/`·`evals/` 허용, 자격 증명·`.env` 다섯)이 더해지는 `merge` 로 보여 주고, 적용 전에는 파일이 그대로예요.
+- AC-3 (REQ-4, REQ-8): 옛 블록이 있는 프로젝트의 업데이트 계획은 새 줄 서른여덟(`local/`, `tools/`·`evals/` 허용, 자격 증명·`.env` 서른다섯)이 더해지는 `merge` 로 보여 주고, 적용 전에는 파일이 그대로예요.
   verify: `cargo test --locked --offline --test gitignore_block_cli an_earlier_block_is_shown_as_changed_and_left_until_applied`
 - AC-4 (REQ-5, REQ-6, REQ-9, REQ-10): 읽는 길은 `local/<kind>` 를 먼저, 없으면 옛 경로를, 둘 다 없으면 없음을 돌려주고, 쓰는 길은 새 경로를 주어 옛 폴더를 건드리지 않아요.
   verify: `cargo test --locked --offline --lib state_root::tests::a_reader_falls_back_to_the_earlier_path_and_a_writer_uses_the_new_one`
@@ -109,6 +105,10 @@ approval:
   verify: `cargo test --locked --offline --test gitignore_block_cli an_unreadable_nested_gitignore_is_not_read`
 - AC-20 (REQ-18): 읽지 않은 자식 `.gitignore` 가 부정 규칙(`!keep.tmp`)을 가졌고 읽은 부모 규칙(`*.tmp`)이 그 파일을 숨길 때도 그 파일을 말하고, 적용 뒤 git 이 그 파일을 무시하지 않는다는 답과 같아요.
   verify: `cargo test --locked --offline --test gitignore_block_cli a_file_below_an_unread_gitignore_is_named_even_when_a_parent_rule_hides_it`
+- AC-21 (REQ-19): git 이 `tools/`·`evals/`·상태 폴더 아래에서 REQ-19 의 이름마다 하나씩 만든 파일을 무시하고, 이웃 이름(`id_rsa.pub`, `deploy.pem`, `server.key`, `credentials`, `secrets.yaml`, `.npmrc`, `cert.p12`, `prod.tfvars`, `config.json`)은 무시하지 않으며, 그 줄들이 허용 줄 뒤에 와요.
+  verify: `cargo test --locked --offline --test gitignore_block_cli the_block_ignores_the_researched_secret_names`
+- AC-22 (REQ-17, REQ-18): 중첩 `.gitignore` 를 여는 순간에 파일이나 부모 폴더가 링크(프로젝트 안이나 밖을 가리킴)로 바뀌어 있으면 열지 않고, 그 자리의 파이프는 기다리지도 읽지도 않으며, 보통 파일은 열어 읽어요(시험 `a_file_swapped_for_a_link_inside_the_root_is_not_opened`, `a_file_swapped_for_a_link_to_outside_the_root_is_not_opened`, `a_parent_swapped_for_a_link_inside_the_root_is_not_opened`, `a_parent_swapped_for_a_link_to_outside_the_root_is_not_opened`, `a_pipe_is_neither_waited_on_nor_read`, `a_plain_nested_file_is_opened_and_read`, 유닉스에서만).
+  verify: `cargo test --locked --offline --lib agents::tests::`
 
 ## Scope
 
@@ -130,10 +130,15 @@ approval:
 10. (개정 5) 시험 먼저: `gitignore_block_cli` 에 AC-15 에서 AC-20 의 시험과 `credentials.json` 줄 기대를 더하고 구현 전에 올바른 이유로 실패하는지 봐요.
 11. (개정 5) `nested_ignore_files` 가 경로의 모든 조각이 링크가 아닌지 보고(마지막 조각만이 아니라), 읽지 않은 `.gitignore` 의 폴더 목록을 `newly_visible` 에 돌려줘 그 아래 후보를 규칙 판정과 상관없이 말하게 해요. `STATE_SECRETS` 에 `**/credentials.json` 을 더하고 골든 16·17 은 `MOAI_UPDATE_FIXTURES=1` 로 다시 만들어요.
 12. (개정 5) 변이(상한 제거, 상한 100 → 2, `symlink_metadata` → `metadata`, 마지막 조각만 보기, 읽지 않은 폴더 아래 후보를 규칙에 맡기기, `credentials.json` 줄 빼기)를 시험이 잡는지 보고 `check affected` 를 한 번 돌려요.
+13. (개정 6) 시험 먼저: 여는 단계의 단위 시험(링크로 바뀐 파일·부모 폴더, 파이프, 보통 파일)을 쓰고 이전 여는 방식에서 실패하는지 본 뒤 D-11 로 고쳐요.
+14. (개정 6) 승인 뒤: `the_block_ignores_the_researched_secret_names` 와 줄 수 기대를 먼저 고쳐 실패를 보고, `STATE_SECRETS` 에 REQ-19 의 서른 줄을 더해요. 골든 16·17 은 `MOAI_UPDATE_FIXTURES=1` 로 다시 만들고 `git diff` 가 블록 줄과 해시뿐인지 봐요. `docs/design-review/appendix/state-layout.md` 를 맞춰요.
+15. (개정 6) 변이(새 줄 빼기, 폴더 붙인 줄을 이름만으로 넓히기, 새 줄을 허용 줄 앞으로 옮기기)를 시험이 잡는지 보고 `check affected` 를 한 번 돌려요.
 
 ## Risks
 
-- 업데이트로 `tools/`·`evals/` 의 무시가 풀리면 그 안에 이미 있던 사용자 파일(예: `.moai/tools/.env`)이 git 에 새로 보여요(감사 N1). 계획이 `now visible: <경로>` 로 이름을 말하고, 자격 증명·`.env` 류는 블록의 새 줄이 계속 무시해요. 이름이 스무 개를 넘으면 앞 스무 개와 나머지 수예요. 키 파일(`*.key`, `id_rsa` 등)과 `secrets.*` 는 이 줄들이 막지 않아요: 목록에 더하는 것은 한 줄이에요.
+- 업데이트로 `tools/`·`evals/` 의 무시가 풀리면 그 안에 이미 있던 사용자 파일(예: `.moai/tools/.env`)이 git 에 새로 보여요(감사 N1). 계획이 `now visible: <경로>` 로 이름을 말하고, 자격 증명·`.env` 류는 블록의 새 줄이 계속 무시해요. 이름이 스무 개를 넘으면 앞 스무 개와 나머지 수예요. `*.key`, `*.pem`, `*.p12` 같은 넓은 확장자와 `secrets.*` 는 이 줄들이 막지 않아요(`## Research`): 목록에 더하는 것은 한 줄이에요.
+- (개정 6) `tools/`·`evals/` 에 같은 이름의 가짜 파일(시험 픽스처의 `id_rsa`, `x.tfstate` 등)을 일부러 두는 팀은 그 파일이 git 에 나타나지 않아요. 이미 추적 중인 파일은 그대로예요. 자기 `.gitignore` 의 관리 블록 뒤에 `!` 줄을 더하면 다시 보여요(관리 블록보다 앞의 `!` 줄은 블록이 이겨요).
+- (개정 6) 대소문자가 다른 이름(`ID_RSA`, `X.PPK`)이 macOS·Windows 에서 걸리는지는 확인하지 않았어요.
 - `.env.*` 줄은 `.env.example` 도 무시해요: 예제 파일을 `tools/` 에 두려는 사용자는 자기 `.gitignore` 에 `!.moai/tools/.env.example` 을 더해야 해요(안전한 쪽으로 틀려요).
 
 - 관리 블록의 줄이 바뀌어서 이미 블록이 있는 프로젝트는 다음 업데이트 계획에서 "블록이 바뀐다"를 보게 돼요: 적용은 사용자가 계획을 확인한 뒤에만이에요. 골든 두 개(`16-agents-plan-create`, `17-agents-apply-ok`)와 `gitignore_block_cli` 의 줄 수 기대 둘이 함께 바뀌어요.
@@ -154,10 +159,97 @@ approval:
 | D-3 | 관리 블록의 `tools/`·`evals/` 허용 줄은 `specs/` 뒤에 붙이고 `local/` 줄은 `<state>/*` 줄 바로 뒤에 둔다 | 앞의 아홉 줄 순서가 그대로여야 이미 쓰인 블록과 줄 단위로 비교돼요 | 세 줄 지우기 |
 | D-4 | 쓰는 쪽 이동은 SPEC 을 따로 둔다 (개정 4: 안내 문구 중 블록 한 줄과 `agents/impl.md` 한 줄은 이 SPEC 이 맡는다, D-8) | SPEC 하나는 자기 AC 를 모두 `met` 으로 닫아야 하고, 쓰는 곳이 서른 곳 넘고 각각 되돌림·영수증이 걸려 있어요 | SPEC 합치기 |
 | D-5 | 이 저장소(moai-adk)의 루트 `tools/` 는 옮기지 않는다 | 사용자 결정(설계 D2): 제품 개발 코드이고 CI·검사 보호 경로가 가리켜요 | 해당 없음 |
-| D-6 | 자격 증명·`.env` 줄(`credentials.yaml`, `credentials.json`, `*.credentials`, `.env`, `.env.*`)을 블록에 더하고 허용 줄 뒤에 둔다 | 리더 결정(감사 N2, 개정 5 는 카드 노트 8184 의 N2): 이 저장소의 `.gitignore` 와 Go 세대 템플릿이 이미 갖던 줄이고, `tools/`·`evals/` 허용 줄이 그 안의 `.env` 를 git 에 보이게 하지 않아야 해요. 이름 하나만 더해요: `credentials.json` 밖의 키 파일 이름은 이 개정이 조사하지 않아요 | 다섯 줄 지우기 |
+| D-6 | 자격 증명·`.env` 줄(`credentials.yaml`, `credentials.json`, `*.credentials`, `.env`, `.env.*`)을 블록에 더하고 허용 줄 뒤에 둔다 | 리더 결정(감사 N2, 개정 5 는 카드 노트 8184 의 N2): 이 저장소의 `.gitignore` 와 Go 세대 템플릿이 이미 갖던 줄이고, `tools/`·`evals/` 허용 줄이 그 안의 `.env` 를 git 에 보이게 하지 않아야 해요. 개정 5 는 이름 하나만 더했고, 다른 이름은 개정 6 이 조사해 더해요(D-10) | 다섯 줄 지우기 |
 | D-7 | 새로 보이는 파일은 계획이 `now visible: <경로>` 로 이름을 말한다(스무 개까지) | 리더 결정(감사 N1): 적용 전에 사용자가 어떤 파일이 git 에 나타날지 알아야 해요 | 노트 빼기 |
 | D-8 | 안내 문구는 관리 블록 한 줄과 `agents/impl.md` 한 줄로 최소로 하고, 중첩 `.gitignore` 보강(REQ-17)과 같은 SPEC 에서 닫는다 | 리더 결정(카드 노트 8139, 2026-11-24, 사용자 위임 2026-11-23): 카드 기준 2·3 을 이 카드에서 닫아요. 스킬 본문과 홈 규칙 파일은 건드리는 곳이 많아 따로 둬요. 블록 줄은 사실 한 줄이라 15줄 한도 안이에요 | 두 줄 지우기 |
 | D-9 | 읽지 않은 중첩 `.gitignore` 의 폴더 아래 파일은 `now visible` 에 이름을 말한다(부정 규칙을 따지지 않는다) | 리더 결정(카드 노트 8184, 2026-11-24, 사용자 위임 2026-11-23): 읽지 못한 규칙은 알 수 없고, 말하는 쪽이 안전한 쪽이에요. 부정 규칙을 흉내 내면 읽지 못한 파일의 내용을 짐작하는 일이라 하지 않아요 | 목록 되돌리기 |
+| D-10 | 쓸 수 있는 비밀(평문·되돌릴 수 있는 값·개인 키·토큰)을 담는 것이 용도이고 이름이 좁은 파일만 블록에 더한다. 일반 설정 파일, 암호화·해시된 파일, 여러 용도의 확장자, 정해진 이름이 없는 파일은 더하지 않는다 | 카드 기준 4 와 리더 결정(카드 노트 10187). 넓은 줄은 팀 파일을 조용히 git 밖에 둬요. 조사와 파일별 판단은 `## Research` 예요 | 서른 줄 지우기 |
+| D-11 | 중첩 `.gitignore` 는 프로젝트 폴더 핸들에서 경로 조각마다 링크를 따르지 않고 열고(`cap-std`·`cap-fs-ext`), 열린 파일의 metadata 로 보통 파일·크기를 정한다. 앞서 본 경로 정보는 믿지 않는다 | 감사 N5(확인 뒤 여는 틈). 색인 읽기가 이미 쓰는 방식이에요(`docs/index-generation.md`). 마지막 조각만 `O_NOFOLLOW` 로 열면 부모 폴더 교체를 막지 못해요 | 이전 함수로 되돌리기 |
+
+## Research
+
+2026-11-26(UTC)에 두 번 읽었어요. 첫 번째는 조사 에이전트가 가져오기 도구(WebFetch)로 08:05-08:09 에 읽었고, 그 읽기는 원문 바이트와 체크섬을 남기지 않았어요. 두 번째는 레인이 아래 출처 서른일곱 곳을 08:32 에 다시 받아(모두 HTTP 200) 원문을 저장하고 sha256 을 적은 뒤, 근거로 쓴 짧은 문구가 저장한 원문에 있는지 `grep` 으로 확인했어요(빠진 문구 0). 이 절의 근거는 두 번째 읽기예요. 문구 확인은 글자 일치이고, 뜻의 판단은 첫 번째 읽기의 것이에요. `[번호]` 는 출처 목록의 번호예요.
+
+더하는 이름(REQ-19):
+
+| 이름 | 근거 | 출처 |
+|---|---|---|
+| `.git-credentials` | "stored in plaintext" | [01] |
+| `.netrc`, `_netrc` | 암호가 든 파일 | [02] |
+| `.pgpass`, `pgpass.conf` | 암호 파일 | [03] |
+| `.pypirc` | "password in plain text" | [04] |
+| `.credentials.json` | 로그인 자격 증명(`credentials.json` 줄에 안 걸려요) | [05] |
+| `credentials.tfrc.json` | API 토큰을 "plain text" 로 저장 | [06] |
+| `application_default_credentials.json` | 자격 증명 JSON | [07] |
+| `credentials.toml`, `.cargo/credentials` | Cargo 토큰 파일(둘째는 확장자 없는 옛 이름, 폴더를 붙여 좁혀요) | [08] |
+| `.vault-token` | 토큰 캐시 | [09] |
+| `.mylogin.cnf` | 되돌릴 수 있게 가린 암호 | [10] |
+| `master.key` | "Do not commit your master key" | [11] |
+| `keystore.properties` | 저장소·키 암호 | [12] |
+| `id_rsa`, `id_ecdsa`, `id_ed25519`, `id_ecdsa_sk`, `id_ed25519_sk`, `id_mldsa44_ed25519` | 개인 키 기본 이름(`.pub` 은 안 걸려요) | [13] |
+| `id_dsa` | 옛 개인 키 이름 | [14] |
+| `*.ppk` | PuTTY 개인 키(암호를 비우면 평문) | [15] |
+| `*.tfstate`, `*.tfstate.*` | "plaintext file", 비밀 값 포함 | [16], [17] |
+| `.dev.vars`, `.dev.vars.*` | "should not be committed to git" | [18] |
+| `.aws/credentials` | 평문 자격 증명(폴더를 붙여 좁혀요) | [19] |
+| `.gem/credentials` | API 키 파일 | [20] |
+| `.streamlit/secrets.toml` | 비밀 파일, `.gitignore` 에 더하라고 함 | [21] |
+
+더하지 않는 이름:
+
+| 이름 | 까닭 | 출처 |
+|---|---|---|
+| `*.pem`, `*.key` | 공개 인증서·Keynote 문서도 같은 확장자 | [12], [22] |
+| `*.p12`, `*.pfx`, `*.jks`, `*.keystore` | 인증서만 담기도 해요 | [23], [24] |
+| `.npmrc`, `.yarnrc.yml`, `.envrc`, `.my.cnf`, `.terraformrc`, `terraform.rc`, `local.settings.json` | 일반 설정 파일이고 비밀은 있을 수도 있는 것 | [25], [26], [27], [28], [29], [30] |
+| `.envrc.private` | 문서의 예시 이름일 뿐 | [27] |
+| `.htpasswd` | 보통 해시로 저장해요 | [31] |
+| `credentials`(이름만), `auth.json`, `config.json`, `kubeconfig`, 서비스 계정 키 JSON | 흔한 이름이거나 정해진 이름이 없어요 | [32], [33], [34], [35] |
+| `secrets.yml`, `secrets.yaml`, `credentials.yml`, `*.tfvars` | 암호화·자리표시 파일이나 커밋하는 파일일 수 있고, 출처가 갈려요(`credentials.yml` 은 만드는 도구를 못 찾았어요) | [36], [37] |
+
+확인하지 못한 것: Apple `.p8`, `*.keytab`, `*.publishsettings`, `.dockercfg`, OAuth `client_secret*.json` 은 이름·확장자의 근거를 읽지 못했어요. 대소문자가 다른 이름의 동작은 확인하지 않았어요. 새 줄을 git 이 실제로 무시하는지는 구현 시험(AC-21)이 확인해요.
+
+출처 목록(읽은 시각 UTC 2026-11-26, sha256 은 받은 바이트):
+
+| 번호 | 시각 | sha256 | URL |
+|---|---|---|---|
+| [01] | 08:32:30 | `da5a50fb3cca1ee64164cc56815c5cdecef409047ce59aa3a5a26275b07c6d39` | https://git-scm.com/docs/git-credential-store |
+| [02] | 08:32:31 | `e5ac3761ede396cda32c424ada272a87d27a2a2c9a5fb6e46b5f55f62ed01581` | https://everything.curl.dev/usingcurl/netrc.html |
+| [03] | 08:32:32 | `e289dffea8f87aa8b3d55de0a49d6872cd0b3c2e0815388e6f12b6992bd710a1` | https://www.postgresql.org/docs/current/libpq-pgpass.html |
+| [04] | 08:32:33 | `dfb77e69745f63e44f78d72431f26a0a17c61db23396d58b9fdad142b682ac5e` | https://raw.githubusercontent.com/pypa/packaging.python.org/main/source/specifications/pypirc.rst |
+| [05] | 08:32:33 | `b7f53a69dadcbea9010e802460e34782074fac94a42dbfcd5ce5a70d62be0fc0` | https://code.claude.com/docs/en/authentication.md |
+| [06] | 08:32:33 | `13f16f40d549de43911c813108caeec8cd0f8895efd4bf19e9678ec4f8a6c90b` | https://developer.hashicorp.com/terraform/cli/commands/login |
+| [07] | 08:32:33 | `f505a234bc2ab2ef3b411cb31309025298404badaff29bc2c9242cdf265ba09d` | https://docs.cloud.google.com/docs/authentication/application-default-credentials |
+| [08] | 08:32:34 | `9f97fb6ee7ca9d709bc3e92388b7a1e19f8aab57dc618ee37f978c36cc210c29` | https://doc.rust-lang.org/cargo/reference/config.html |
+| [09] | 08:32:34 | `ff2c5ae72a6f3664d4d663cc6156b8848b7cfc6711e7e10aff8959bd2a9696e7` | https://developer.hashicorp.com/vault/docs/commands/token-helper |
+| [10] | 08:32:34 | `0e360db9d354203c95d13341293dbd47bf6d9fc036703743d4fc20962773a728` | https://dev.mysql.com/doc/refman/8.4/en/mysql-config-editor.html |
+| [11] | 08:32:35 | `51ea8619645c15de9102da45cb54d34f8d4716dd33eab7af6a66ed14c24e6b4e` | https://guides.rubyonrails.org/security.html |
+| [12] | 08:32:36 | `d4f27c6e3d26f81a2669d0646169957a061f49013c8da8ce2fbb0696bd41edeb` | https://developer.android.com/studio/publish/app-signing |
+| [13] | 08:32:37 | `7381696a690d349ab50e6e86d4760838ed0e123a75d04061ad2a4847c27d7805` | https://man.openbsd.org/ssh-keygen |
+| [14] | 08:32:39 | `51595de6f5a3dad74419527a9ee8f65689ec7311024f8b945e72b661765cd7d5` | https://man.openbsd.org/OpenBSD-7.4/ssh-keygen |
+| [15] | 08:32:40 | `bfc2e1925729373bb6238065ac4967e8cbf73aea96782e713673a7e330af47af` | https://the.earth.li/~sgtatham/putty/0.83/htmldoc/Chapter8.html |
+| [16] | 08:32:41 | `d25f382dc4413c188bd0cb82e7236384a515857c59a159e900e8e4e609df100f` | https://developer.hashicorp.com/terraform/language/state/sensitive-data |
+| [17] | 08:32:41 | `4f4ee2ade7ef2653d739316a79c29d0c2a15b8846be364b60d80accf9eaf2763` | https://developer.hashicorp.com/terraform/language/style |
+| [18] | 08:32:41 | `b3c7cbc9307a565f91df25a3017b3d369b63978aba5f3b996116c4b5dbe826a5` | https://developers.cloudflare.com/workers/configuration/secrets/ |
+| [19] | 08:32:41 | `74ea2736ecd086a32ce2f9b2f6cd1b525bcca456ef8edf4cff00cfd6d5590ea8` | https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html |
+| [20] | 08:32:42 | `9bfb188bd8dd37cfc4d3f26c11ee60ceba3386f91f7bb17a2a30d951c75b9c4e` | https://guides.rubygems.org/api-key-scopes/ |
+| [21] | 08:32:42 | `c272bce8b83ea68cb60062852494ac9fe07baeda2243d11be9eba52324c1320c` | https://docs.streamlit.io/develop/concepts/connections/secrets-management |
+| [22] | 08:32:43 | `e5abd2059a14f3e2e993f11da76933e5aa54ef4e7f6a15a4834a2313a269e779` | https://www.iana.org/assignments/media-types/application/vnd.apple.keynote |
+| [23] | 08:32:43 | `21e7a2cdf1f758423db5f11b0d287fccc73a2ef285599de64bae923cdbed8c86` | https://www.rfc-editor.org/rfc/rfc7292 |
+| [24] | 08:32:48 | `a31f29f3910b614080f18ed5fb4c21506a347ee0d35085d9b29ae015c1f9a093` | https://docs.oracle.com/en/java/javase/21/docs/specs/man/keytool.html |
+| [25] | 08:32:48 | `81e06b9efe302a9c029150726fdb31a8119df11f981b43c8ae07096f1ada5a55` | https://docs.npmjs.com/cli/v11/configuring-npm/npmrc |
+| [26] | 08:32:49 | `f323fb905bf175ab6a6f11e339e093bdc143a7948c383ed77eb940e0784dca08` | https://yarnpkg.com/configuration/yarnrc |
+| [27] | 08:32:49 | `c43ac6b7d8ff4da490923094d6447cdaf3827f65d53bf901ae0082a0003b2d55` | https://direnv.net/man/direnv-stdlib.1.html |
+| [28] | 08:32:49 | `565a30ea74a07a961d2dbd3ad44621bcfb75b59ec11584b7fa1a2cd49f48e53e` | https://dev.mysql.com/doc/refman/8.4/en/password-security-user.html |
+| [29] | 08:32:50 | `06ba493b04e74e136d59e968214587bc017f45891f3d9a82c5e3072ce992f5c8` | https://developer.hashicorp.com/terraform/cli/config/config-file |
+| [30] | 08:32:50 | `579576ebde5f232f63e4c3d85cd84852781d2eb3bc82f89afc6cf06f12f378c6` | https://learn.microsoft.com/en-us/azure/azure-functions/functions-develop-local |
+| [31] | 08:32:50 | `c8c5385b4620da004a8e2ff91a14d7389a55897221c888b3f70d0c0a4f7721b3` | https://httpd.apache.org/docs/current/programs/htpasswd.html |
+| [32] | 08:32:51 | `602b4d1011d89fcc3fc3424aff646f8e6eb1e7a0615dbf97437f9186e45593d5` | https://getcomposer.org/doc/articles/authentication-for-private-packages.md |
+| [33] | 08:32:51 | `7ed98a37339f28ede26fdb5a98fac7216fd907d720a53a47786b3c2477082bde` | https://docs.docker.com/reference/cli/docker/login/ |
+| [34] | 08:32:53 | `982236c48e2ab24ad2f7f7e5d8780403d3056fb7e3494173ed1da65b0d550954` | https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/ |
+| [35] | 08:32:53 | `320449fa3b87ba1e2b3a78abb7b37c8c100384bfcdd8b571d95911a63b9ab2bf` | https://docs.cloud.google.com/iam/docs/keys-create-delete |
+| [36] | 08:32:55 | `e37a3fcdad851726bfecb357669293fc4a40b8d91387d9d3923482c405fd961a` | https://docs.ansible.com/ansible/latest/vault_guide/vault.html |
+| [37] | 08:32:55 | `ae754e7ea190151f1d6eb579484e08c24acabb1ca42f2517f44620757abc2cdd` | https://developer.hashicorp.com/terraform/language/values/variables |
 
 ## Result
 
@@ -185,6 +277,7 @@ approval:
 - AC-18: met — `cargo nextest run --test gitignore_block_cli a_nested_gitignore_behind_a_linked_folder_is_not_read` 통과(`tools/lp` 가 프로젝트 밖을 가리키는 링크여도 그 안의 `.gitignore` 를 읽지 않고 안내 줄이 한 번). 변이 "마지막 경로 조각만 링크 검사"와 "`symlink_metadata` → `metadata`"에 실패했어요.
 - AC-19: met — `cargo nextest run --test gitignore_block_cli an_unreadable_nested_gitignore_is_not_read` 통과(mode 000 파일은 읽지 않고 그 폴더 아래 파일을 말하며 안내 줄이 한 번, 유닉스). 변이 "읽을 수 없는 파일을 빈 규칙으로 읽기"에 실패했어요.
 - AC-20: met — `cargo nextest run --test gitignore_block_cli a_file_below_an_unread_gitignore_is_named_even_when_a_parent_rule_hides_it` 통과(65537 바이트라 읽지 않은 자식의 `!keep.tmp` 가 있고 읽은 부모 `*.tmp` 가 숨기는 `keep.tmp` 를 말하며, 읽지 않은 폴더 밖의 `top.tmp` 는 읽은 규칙대로 말하지 않아요. 적용 뒤 git 은 `keep.tmp` 를 무시하지 않고 `top.tmp` 는 무시한다고 답해 계획과 같아요). 변이 "읽지 않은 폴더 아래를 읽은 규칙에 맡기기"에 실패했어요.
+- AC-22: met — 커밋 `2fcd0acc2c` 의 `src/agents.rs` 와 같은 바이트(sha256 `bb3e024255f5bd5b…`)에서 `cargo nextest run --locked --offline --lib agents::` 18개 통과(2026-11-26, macOS). 고치기 전 여는 방식(경로 문자열로 열기)에서는 링크 시험 넷과 파이프 시험이 실패했어요(exit 100, `target/dana/red2.log`). 변이 "마지막 조각이 링크를 따르기", "부모 폴더가 링크를 따르기"(`open_dir_nofollow` → `open_dir`), "`O_NONBLOCK` 빼기", "보통 파일 확인 빼기"가 각각 시험 하나를 실패시켰어요(exit 100). Windows 와 Linux 는 돌리지 않았어요.
 - 확인(개정 5 수리, 2026-11-24): 변이 여덟(`target/c174-repair/mutants/`, 요약 `mutants-summary.txt`)은 모두 시험이 잡았고(상한 제거, 상한 값 올리기, 상한 100 → 2, `symlink_metadata` → `metadata`, 마지막 조각만 보기, 읽지 않은 폴더 아래를 규칙에 맡기기, `credentials.json` 줄 빼기, 읽을 수 없는 파일을 빈 규칙으로 읽기) 각 변이 뒤 원본을 복사본과 `cmp` 로 되돌려 `git diff` 가 깨끗했어요. `gitignore_block_cli` 46개, `agents::` 단위 12개, `state_folder_literal_scan` 10개 통과. 골든 16·17 은 블록 줄(열여덟 → 열아홉)과 해시 셋만 바뀌었어요. 감사 N4(`newly_visible` 의 "안전한 쪽" 주석)는 같은 변경에서 REQ-18 에 맞게 고쳤고, N2(`credentials.json`)는 `STATE_SECRETS` 에 더했어요. 다른 키 파일 이름 조사는 카드 기준으로 남아 있어요. 전체 `moai check affected` 는 병합 준비 노트에 줄째로 적어요.
 - 확인(개정 4, 2026-11-24): 변이 여섯은 모두 시험이 잡았고(`mut174.sum` 의 exit 101 여섯) 원본은 복사본과 `cmp` 로 같게 되돌렸어요. 골든 16·17 은 해시 셋만 바뀌었어요. `gitignore_block_cli` 40개, `product_cli` 74개, `agents::` 단위 12개 통과.
 - 확인(2026-11-20): `moai check affected`(대상 179개) 는 fmt·clippy·ops rustfmt·`git diff --check`·파이썬·build_cli 가 0 이었고, `card::input::tests::secret_screen_time_on_one_long_word_has_a_bound` 와 `tests/home_retire_cli.rs` 의 `retire_keeps_the_go_markers_until_the_entries_in_use_are_free` 두 시험만 부하 때문에 시간 기준으로 실패했어요(단독 실행은 통과: 2.14 s, 61.5 s). 둘 다 시간 기준 시험을 작업량 기준으로 바꾸는 별도 변경의 범위예요.
