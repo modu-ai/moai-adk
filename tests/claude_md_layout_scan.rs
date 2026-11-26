@@ -465,6 +465,11 @@ const NEXT_ACTION: &str = "start a new host session in this project so it loads 
 const CURSOR_REASON: &str =
     "Cursor CLI has no user-level instruction file (rules live in the app); not written";
 const INSTALL_PHRASE: &str = "writes a new `CLAUDE.md`";
+const UNKNOWN_TRACKING: &str =
+    "the generation manifest does not tell whether CLAUDE.local.md is tracked or ignored";
+const UNDO_NOTE: &str = "refused while the project harness step's CLAUDE.md is in place";
+const APPLY_HELP: &str = "Write a previewed CLAUDE.md managed section";
+const PLAN_HELP: &str = "Preview the CLAUDE.md managed section";
 const SUGGESTION: &str = "move the text of your AGENTS.md into CLAUDE.md (for a file of this \
      project, /moai update offers the pick `move`)";
 
@@ -500,6 +505,10 @@ fn shipped_rewritten_sentences_name_the_new_files() {
         ("src/home_routing.rs", CURSOR_REASON),
         (PROJECT_MD, INSTALL_PHRASE),
         (CLAUDE_RS, SUGGESTION),
+        (UPDATE_RS, UNKNOWN_TRACKING),
+        (UPDATE_RS, UNDO_NOTE),
+        ("src/ops/agents_apply.rs", APPLY_HELP),
+        ("src/ops/agents_plan.rs", PLAN_HELP),
     ] {
         if !shipped_text(rel).contains(sentence) {
             problems.push(format!("{rel} lacks: {sentence}"));

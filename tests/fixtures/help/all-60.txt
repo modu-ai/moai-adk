@@ -50,9 +50,9 @@ Project
                           project ledger
   ledger-recover-apply    Recover the previewed project
                           ledger
-  agents-plan             Preview the AGENTS.md managed
+  agents-plan             Preview the CLAUDE.md managed
                           section
-  agents-apply            Write a previewed AGENTS.md
+  agents-apply            Write a previewed CLAUDE.md
                           managed section
   generation-plan         Preview the project's generated
                           agent and skill files
@@ -196,8 +196,8 @@ Keys
   models-revert           Undo the model settings one update
                           saved
 Diagnose
-  claude-doctor           Check that Claude Code reads
-                          AGENTS.md
+  claude-doctor           Check that Claude Code reads your
+                          own AGENTS.md
   install-inspect         Show the installed MoAI binaries
   identity                Show where a path sits in its
                           clone

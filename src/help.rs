@@ -953,7 +953,10 @@ pub const ABOUT_KO: &[(&str, &str)] = &[
     ("key-remove", "금고에서 공급자 키 지우기"),
     ("key-import-plan", "옛 키 파일 가져오기 미리 보기"),
     ("key-import-apply", "미리 본 옛 키 파일 가져오기"),
-    ("claude-doctor", "Claude Code 가 AGENTS.md 를 읽는지 확인"),
+    (
+        "claude-doctor",
+        "Claude Code 가 기존 AGENTS.md 를 읽는지 확인",
+    ),
     ("install-inspect", "설치된 MoAI 실행 파일 보기"),
     ("identity", "경로가 클론 안 어디에 있는지 보기"),
     ("worktree-report", "worktree 가 쓰는 공간 보고"),
@@ -1691,7 +1694,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "claude-doctor",
-        "Claude Code 를 읽기만 하고 확인해요: PROJECT 에서 시작한 세션이 AGENTS.md 를 읽는지.",
+        "Claude Code 를 읽기만 하고 확인해요: PROJECT 에서 시작한 세션이 기존 AGENTS.md 를 읽는지.",
     ),
     (
         "install-inspect",

@@ -1806,7 +1806,7 @@ pub fn generation_apply_in(
             "execution_verified is false: nothing that was generated was run",
         ],
         "next_actions": [
-            "start a new host session in this project so it loads AGENTS.md and the generated files",
+            "start a new host session in this project so it loads the project instructions and the generated files",
             "run project-update-plan to see which steps remain",
         ],
         "receipt": request_id,

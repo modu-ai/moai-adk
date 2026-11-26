@@ -345,8 +345,7 @@ pub fn doctor(project: &Path) -> Result<Value> {
             );
             // Proposals only (REQ-02B-05): nothing is applied.
             out["suggestions"] = json!([
-                "add an `@AGENTS.md` import to the CLAUDE.md you keep",
-                "set Project instructions to claude-md-and-agents-md in /config or user settings",
+                "move the text of your AGENTS.md into CLAUDE.md (for a file of this project, /moai update offers the pick `move`)",
             ]);
         }
         "claude-md" if !importing.is_empty() => {

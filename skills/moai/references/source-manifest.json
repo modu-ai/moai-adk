@@ -137,7 +137,7 @@
         "kind": "design-spec",
         "template_id": "home-output-style",
         "adoption": "new",
-        "reason": "Written for rc.2 #2875 (#2871 I3, user instruction #1975 6872023826): the one MoAI-Easy style source, the same items as the moai-easy block of the user's ~/.claude/CLAUDE.md, in English per the instruction-file language rule. src/home_style.rs renders it per host: ~/.claude/output-styles/MoAI-Easy.md with frontmatter, and a moai:managed block in ~/.codex/AGENTS.md."
+        "reason": "Written for rc.2 #2875 (#2871 I3, user instruction #1975 6872023826): the one MoAI-Easy style source, the same items as the moai-easy block of the user's ~/.claude/CLAUDE.md, in English per the instruction-file language rule. src/home_style.rs renders it per host: ~/.claude/output-styles/MoAI-Easy.md with frontmatter."
       }
     },
     "references/home/routing.md": {
