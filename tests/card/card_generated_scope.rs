@@ -238,7 +238,9 @@ fn the_list_equals_the_gitattributes_merge_lines() {
     let mut attributed: Vec<&str> = text
         .lines()
         .map(str::trim)
-        .filter(|l| !l.starts_with('#') && l.split_whitespace().any(|w| w == "merge=moai-manifest"))
+        .filter(|l| {
+            !l.starts_with('#') && l.split_whitespace().any(|w| w == "merge=moai-manifest-rs")
+        })
         .filter_map(|l| l.split_whitespace().next())
         .collect();
     attributed.sort_unstable();

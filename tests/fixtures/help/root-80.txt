@@ -26,6 +26,8 @@ Commands
     go-state-apply         Move a previewed Go-era .moai folder
     go-state-revert-plan   Preview undoing a Go-era folder move
     go-state-revert        Undo a Go-era folder move
+    go-residue-apply       Move the chosen Go-generation leftovers to a backup
+    go-residue-revert      Put a go-residue move back
     home-state-plan        Preview moving the Go-era ~/.moai folder
     home-state-apply       Move a previewed Go-era ~/.moai folder
     home-state-revert      Undo a ~/.moai folder move

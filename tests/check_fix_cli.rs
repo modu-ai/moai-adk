@@ -4,6 +4,7 @@
 //! used.
 mod common;
 use common::git::{git, git_ok};
+use moai_cli::check_affected::{self, Pick};
 use moai_cli::check_fix::{self, Options};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -247,6 +248,87 @@ fn check_fix_writes_what_is_mechanical_and_prints_the_rest() {
     assert_eq!(again["wrote"], json!([]), "{again}");
     assert_eq!(again["print"], json!([]), "{again}");
     assert_eq!(again["nothing_to_do"], true, "{again}");
+}
+
+/// SPEC-20261125-repo-scans-convert-test-targets: on a `reads-` scan that keeps its targets in
+/// `test_targets` and has a filtered area line, the fix writes the new name into the list. The
+/// check line stays as it was and `check affected --list` selects every target it selected before.
+#[test]
+fn check_fix_adds_to_test_targets_and_the_selection_does_not_shrink() {
+    const LINE: &str = "cargo test --offline --locked --test card mod_a:: -- mod_b::";
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    init(root);
+    put(root, "README.md", b"fixture\n");
+    put(root, "Cargo.toml", b"[package]\nname = \"fixture\"\n");
+    put(root, "src/zz_stub.rs", b"// a\n");
+    put(root, "tests/card/main.rs", b"mod mod_a;\nmod mod_b;\n");
+    for file in ["tests/card/mod_a.rs", "tests/card/mod_b.rs"] {
+        put(root, file, b"#[test]\nfn t() {}\n");
+    }
+    for file in ["tests/zz_base_cli.rs", "tests/zz_zeta_cli.rs"] {
+        put(root, file, b"fn t() {}\n");
+    }
+    let doc = json!({
+        "about": "fixture",
+        "scans": [{
+            "id": "reads-zz",
+            "always": true,
+            "tests": ["tests/zz_new_cli.rs::t"],
+            "test_targets": ["zz_base_cli", "zz_zeta_cli"],
+            "checks": [LINE],
+            "rules": ["tests/zz_new_cli.rs"],
+            "scope": [{"prefix": "src/", "suffixes": [".rs"]}],
+            "rejects": "fixture",
+        }],
+    });
+    let old_registry = serde_json::to_string_pretty(&doc).unwrap() + "\n";
+    put(root, REGISTRY, old_registry.as_bytes());
+    let base = commit_all(root, "base");
+    put(root, "src/zz_stub.rs", b"// b\n");
+    put(root, "tests/zz_new_cli.rs", b"fn t() {}\n");
+    let head = commit_all(root, "change");
+    let selected = |range: &str| -> Vec<String> {
+        let answer = check_affected::list(root, range, Pick::Full, None).unwrap();
+        answer["rust_targets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t.as_str().unwrap().to_string())
+            .collect()
+    };
+    let before = selected(&format!("{base}..{head}"));
+    for want in ["mod_a", "mod_b", "zz_base_cli", "zz_zeta_cli"] {
+        assert!(before.iter().any(|t| t == want), "{want} in {before:?}");
+    }
+
+    let answer = check_fix::run(root, &format!("{base}..{head}"), &area_opts(&[])).unwrap();
+
+    assert_eq!(wrote(&answer), vec![REGISTRY], "{answer}");
+    let new_registry = text(root, REGISTRY);
+    let fixed = commit_all(root, "fix");
+    let after = selected(&format!("{base}..{fixed}"));
+    let lost: Vec<&String> = before.iter().filter(|t| !after.contains(t)).collect();
+    assert!(lost.is_empty(), "lost {lost:?}: {before:?} -> {after:?}");
+    assert!(after.iter().any(|t| t == "zz_new_cli"), "{after:?}");
+    assert!(
+        answer.to_string().contains("to `test_targets` of the scan"),
+        "{answer}"
+    );
+    assert_eq!(
+        new_registry,
+        old_registry.replace(
+            "\"zz_zeta_cli\"",
+            "\"zz_new_cli\",\n        \"zz_zeta_cli\""
+        ),
+        "one new line at its place; the check line is as it was"
+    );
+    assert!(new_registry.contains(LINE), "{new_registry}");
+    assert!(moai_cli::gate::registry_only_grew(
+        REGISTRY,
+        &old_registry,
+        &new_registry
+    ));
 }
 
 /// REQ-13: a registry edit that the registry's own judge would not read as growth is printed and

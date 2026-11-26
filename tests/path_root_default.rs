@@ -133,11 +133,25 @@ fn project_with_go_state_and_no_earlier_folder_stays_on_the_earlier_name() {
         EARLIER,
         "Go's folder is never written"
     );
+}
+
+/// SPEC-20261121-resurrected-marker REQ-9: a valid Rust marker keeps the project Rust-owned
+/// although a Go marker came back beside it. This replaces, for that one case, the earlier
+/// answer of SPEC-20261121-path-root-moai-default REQ-4.
+#[test]
+fn project_with_a_valid_marker_beside_a_go_marker_resolves_to_moai() {
     let mixed = TempHome::new();
     marker(mixed.path());
     write(mixed.path(), ".moai/manifest.json", "{}");
     assert_eq!(verdict(mixed.path()), "mixed");
-    assert_eq!(state_root::dir(mixed.path()), EARLIER);
+    assert_eq!(state_root::dir(mixed.path()), NOW, "no earlier folder");
+    earlier(mixed.path());
+    assert_eq!(verdict(mixed.path()), "mixed");
+    assert_eq!(
+        state_root::dir(mixed.path()),
+        NOW,
+        "beside the earlier folder"
+    );
 }
 
 #[test]

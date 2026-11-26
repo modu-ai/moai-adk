@@ -639,6 +639,13 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
             names.join(", ")
         ));
     }
+    // The worktree's hook settings may point at files it does not have (SPEC-20261125-card-
+    // worktree-hook-config); a read problem never blocks or warns.
+    if let Some(line) = worktree.and_then(|w| {
+        crate::go_hooks::missing_scripts_warning(&input::card_name(card_id), Path::new(w))
+    }) {
+        warnings.push(line);
+    }
     for (entry, hit) in &left_out {
         warnings.push(take_scope::left_out_warning(
             &input::card_name(card_id),
@@ -984,6 +991,13 @@ pub fn reclaim(
     add_scope_fill(&mut answer, out.scope_fill.as_ref());
     if let Some(kept) = kept {
         answer["kept_commits"] = kept;
+    }
+    // The worktree the reservation now records may have hook settings pointing at files it
+    // lacks (SPEC-20261125-card-worktree-hook-config).
+    if let Some(line) = out.reservation.worktree.as_deref().and_then(|w| {
+        crate::go_hooks::missing_scripts_warning(&input::card_name(card_id), Path::new(w))
+    }) {
+        answer["warnings"] = json!([line]);
     }
     Ok(answer)
 }

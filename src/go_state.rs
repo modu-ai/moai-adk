@@ -130,7 +130,7 @@ fn secret_name(name: &str) -> bool {
     crate::home_state::is_secret(name) || crate::worktree_include::secret_name(name)
 }
 
-fn has_secret_component(rel: &str) -> bool {
+pub(crate) fn has_secret_component(rel: &str) -> bool {
     Path::new(rel)
         .components()
         .any(|c| c.as_os_str().to_str().is_some_and(secret_name))
@@ -607,7 +607,7 @@ fn plan_restores(project: &Path, go_backup: &str) -> Vec<Restore> {
     out
 }
 
-fn sha256_file(path: &Path) -> Result<String> {
+pub(crate) fn sha256_file(path: &Path) -> Result<String> {
     let meta = fs::symlink_metadata(path).map_err(|_| "file metadata unavailable")?;
     if !meta.is_file() || meta.len() > FILE_LIMIT {
         return Err("not a bounded regular file".into());
@@ -617,7 +617,7 @@ fn sha256_file(path: &Path) -> Result<String> {
 }
 
 /// A plain relative key: normal components only, no backslash, at least one component.
-fn plain_relative(key: &str) -> bool {
+pub(crate) fn plain_relative(key: &str) -> bool {
     !key.is_empty()
         && !key.contains('\\')
         && Path::new(key)
@@ -626,7 +626,7 @@ fn plain_relative(key: &str) -> bool {
 }
 
 /// Whether any component from the project root down to `rel` is a symlink.
-fn linked_component(project: &Path, rel: &str) -> bool {
+pub(crate) fn linked_component(project: &Path, rel: &str) -> bool {
     let mut cur = project.to_path_buf();
     for part in Path::new(rel).components() {
         cur.push(part);
@@ -1760,7 +1760,7 @@ fn referenced(project: &Path, settings: &str, key: &str) -> Option<Named> {
     named.then_some(Named::StyleName)
 }
 
-fn read_bounded_text(project: &Path, rel: &str, limit: u64) -> Result<Option<String>> {
+pub(crate) fn read_bounded_text(project: &Path, rel: &str, limit: u64) -> Result<Option<String>> {
     if linked_component(project, rel) {
         return Err(format!("{rel}: a path component is a symlink; refused"));
     }
@@ -2256,8 +2256,9 @@ fn ignoring_rule(line: &str) -> Option<String> {
 /// The revert-plan action for `.moai/specs`: set aside with `.moai/`, then moved straight back.
 const KEEP_SPECS: &str = "restored_to_moai_specs";
 
-/// The kept names a `.moai/` holds, sorted: the receipt's `kept_before`. Everything else the
-/// folder may hold (`backups/`, Finder's `.DS_Store`) is no kept name.
+/// The names a `.moai/` the apply did not create already holds and the revert leaves, sorted:
+/// the receipt's `kept_before`. Everything else the folder may hold (`backups/`, Finder's
+/// `.DS_Store`) is no such name.
 fn kept_names_in(moai: &Path) -> Vec<String> {
     let mut names: Vec<String> = fs::read_dir(moai)
         .map(|rd| {
@@ -2271,14 +2272,33 @@ fn kept_names_in(moai: &Path) -> Vec<String> {
     names
 }
 
+/// Whether the `.moai/` a state move would reuse holds anything beyond the SPECs and the
+/// machine's local folder, so that `.gitignore` is asked about the targets. The local folder is
+/// not counted: a flaky record makes it, and a record changes no answer of the plan. An
+/// unreadable folder is asked.
+fn holds_more_than_specs_and_local(moai: &Path) -> bool {
+    fs::read_dir(moai)
+        .map(|rd| {
+            rd.filter_map(|e| e.ok()).any(|e| {
+                let name = e.file_name();
+                name != ".DS_Store"
+                    && name != crate::state_root::SPECS_DIR
+                    && name != crate::state_root::LOCAL_DIR
+            })
+        })
+        .unwrap_or(true)
+}
+
 /// A first-level name the team keeps in git under `.moai/` ([`crate::state_root::KEPT`]) that is
-/// not a generation marker.
+/// not a generation marker, or the machine's local folder
+/// ([`crate::state_root::LOCAL_DIR`]): both were there before an apply that reuses the folder.
 fn kept_name(name: &str) -> bool {
-    name != crate::state_root::RUST_MARKER
-        && name != crate::state_root::LEGACY_MARKER
-        && crate::state_root::KEPT
-            .iter()
-            .any(|k| k.trim_end_matches('/') == name)
+    name == crate::state_root::LOCAL_DIR
+        || (name != crate::state_root::RUST_MARKER
+            && name != crate::state_root::LEGACY_MARKER
+            && crate::state_root::KEPT
+                .iter()
+                .any(|k| k.trim_end_matches('/') == name))
 }
 
 /// `.moai/specs`, the project's tracked SPECs.
@@ -3059,7 +3079,7 @@ pub fn plan_with(project: &Path, picks: &[String]) -> Result<GoStatePlan> {
         let moai = project.join(MOAI_DIR);
         let beside_kept =
             crate::state_root::kept_only(&moai) && !crate::state_root::specs_only(&moai);
-        if beside_kept {
+        if beside_kept && holds_more_than_specs_and_local(&moai) {
             let (ignored, note) = kept_git_checks(&project, &mut moves);
             warnings.extend(note);
             if let Some(why) = ignored {
@@ -3784,12 +3804,12 @@ fn mode_bits(_path: &Path) -> Option<u32> {
 }
 
 /// Create the folders of `rel` (relative to `project`) one by one, refusing a link.
-fn make_dirs(project: &Path, rel: &str) -> Result<()> {
+pub(crate) fn make_dirs(project: &Path, rel: &str) -> Result<()> {
     make_dirs_with(project, rel, false)
 }
 
 /// [`make_dirs`] for a backup area: every folder it creates is 0700.
-fn make_private_dirs(project: &Path, rel: &str) -> Result<()> {
+pub(crate) fn make_private_dirs(project: &Path, rel: &str) -> Result<()> {
     make_dirs_with(project, rel, true)
 }
 
@@ -4031,7 +4051,7 @@ pub(crate) fn ignore_file_failed(e: &str, done: &str, stamp: &str) -> String {
     )
 }
 
-fn parent_of(rel: &str) -> Result<String> {
+pub(crate) fn parent_of(rel: &str) -> Result<String> {
     Path::new(rel)
         .parent()
         .and_then(|p| p.to_str())
@@ -4040,7 +4060,7 @@ fn parent_of(rel: &str) -> Result<String> {
 }
 
 /// Move one file without overwriting: hard link, then remove the source.
-fn move_exclusive(from: &Path, to: &Path) -> Result<()> {
+pub(crate) fn move_exclusive(from: &Path, to: &Path) -> Result<()> {
     fs::hard_link(from, to).map_err(|e| {
         if e.kind() == std::io::ErrorKind::AlreadyExists {
             "move refused: the destination already exists".to_string()
@@ -4058,7 +4078,7 @@ fn move_exclusive(from: &Path, to: &Path) -> Result<()> {
 /// S-DIGEST: a file moves as a hard link plus an unlink, so a write between the hash the
 /// receipt holds and the move would leave a receipt that names bytes the backup does not have.
 /// The file is hashed once more right before it moves; a different hash stops the move.
-fn still_as_previewed(from: &Path, rel: &str, sha256: &str) -> Result<()> {
+pub(crate) fn still_as_previewed(from: &Path, rel: &str, sha256: &str) -> Result<()> {
     if sha256_file(from).is_ok_and(|h| h == sha256) {
         return Ok(());
     }

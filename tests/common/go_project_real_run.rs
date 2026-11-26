@@ -10,6 +10,7 @@
 #![allow(dead_code)]
 
 use crate::common::{CleanEnv, MOAI_BIN};
+use moai_cli::{launcher_init::STATE_STOP, state_root::EARLIER_PROJECT_DIR};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -209,6 +210,44 @@ impl GoFx {
     /// A profile written the way PROJECT writes it: the detected facts, then `project-plan`
     /// and `project-apply`.
     pub fn with_profile(&self) {
+        let (digest, plan) = self.profile_plan();
+        self.call(&self.profile_apply(&digest), &plan);
+    }
+
+    /// [`GoFx::with_profile`] for a Go project that has no earlier state folder yet. The apply
+    /// is refused with nothing written (REQ-1 of the state-write stop), and with the folder
+    /// there the same profile is written as before (REQ-3).
+    pub fn with_go_profile(&self) {
+        let (digest, plan) = self.profile_plan();
+        let before = self.tree();
+        let v = self.run_stdin(&self.profile_apply(&digest), &plan);
+        assert_eq!(v["ok"], json!(false), "{v}");
+        assert_eq!(v["error"]["kind"], json!("invalid_input"), "{v}");
+        let message = v["error"]["message"].as_str().unwrap();
+        assert!(
+            message.starts_with(STATE_STOP) && message.contains("moai go-state-plan"),
+            "{message}"
+        );
+        assert_eq!(self.tree(), before, "a refused apply writes nothing");
+        fs::create_dir(self.root.join(EARLIER_PROJECT_DIR)).unwrap();
+        self.with_profile();
+    }
+
+    /// The `project-apply` words for the plan with this digest.
+    fn profile_apply<'a>(&'a self, digest: &'a str) -> [&'a str; 6] {
+        [
+            "project-apply",
+            self.p(),
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            REF,
+        ]
+    }
+
+    /// The detected facts through `project-plan`: the plan's digest and the bytes
+    /// `project-apply` reads.
+    fn profile_plan(&self) -> (String, Vec<u8>) {
         let detect = self.call(&["project-detect", self.p()], b"");
         let profile = json!({
             "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
@@ -220,17 +259,7 @@ impl GoFx {
             &serde_json::to_vec(&profile).unwrap(),
         );
         let digest = plan["plan_digest"].as_str().unwrap().to_string();
-        self.call(
-            &[
-                "project-apply",
-                self.p(),
-                "--plan-digest",
-                &digest,
-                "--permission-reference",
-                REF,
-            ],
-            &serde_json::to_vec(&plan).unwrap(),
-        );
+        (digest, serde_json::to_vec(&plan).unwrap())
     }
 
     /// Runs the command a step of `project-update-plan` prints, exactly as printed, with the
@@ -359,10 +388,33 @@ impl GoFx {
         referenced
     }
 
-    /// The first `moai cc` launch in this project, with a stub `claude` on PATH: the launcher
-    /// writes the placeholder profile (`tools: ["unspecified"]`) the way a user's first
-    /// launch does. Nothing else of the real HOME is read.
+    /// The first launches of this Go project. With no earlier state folder `moai cc` starts
+    /// the host, says one line and leaves the project as it was (REQ-1 and REQ-2 of the
+    /// state-write stop); with the folder there it writes the placeholder profile
+    /// (`tools: ["unspecified"]`) into it, as before (REQ-3).
     pub fn first_launch(&self) {
+        let project = |fx: &GoFx| -> Vec<(PathBuf, Node)> {
+            let mut all = fx.tree();
+            all.retain(|(p, _)| p.starts_with(&fx.root));
+            all
+        };
+        let before = project(self);
+        let said = self.launch();
+        let stopped: Vec<&str> = said.lines().filter(|l| l.starts_with(STATE_STOP)).collect();
+        assert_eq!(stopped.len(), 1, "{said}");
+        assert!(stopped[0].contains("moai go-state-plan"), "{said}");
+        assert_eq!(project(self), before, "a stopped launch writes nothing");
+        fs::create_dir(self.root.join(EARLIER_PROJECT_DIR)).unwrap();
+        let said = self.launch();
+        assert!(!said.contains(STATE_STOP), "{said}");
+        // A project with Go state keeps the Rust profile in the earlier folder.
+        let profile = fs::read_to_string(self.root.join(".moai-cli/project.yaml")).unwrap();
+        assert!(profile.contains("unspecified"), "{profile}");
+    }
+
+    /// One `moai cc` launch with a stub `claude` on PATH; it must succeed, and its standard
+    /// error is returned. Nothing else of the real HOME is read.
+    fn launch(&self) -> String {
         use std::os::unix::fs::PermissionsExt as _;
         let bin = self.root.parent().unwrap().join("bin");
         fs::create_dir_all(&bin).unwrap();
@@ -389,9 +441,7 @@ impl GoFx {
             String::from_utf8_lossy(&out.stdout),
             String::from_utf8_lossy(&out.stderr)
         );
-        // A project with Go state keeps the Rust profile in the earlier folder.
-        let profile = fs::read_to_string(self.root.join(".moai-cli/project.yaml")).unwrap();
-        assert!(profile.contains("unspecified"), "{profile}");
+        String::from_utf8_lossy(&out.stderr).into_owned()
     }
 
     pub fn apply(&self, digest: &str) -> Value {
