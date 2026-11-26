@@ -271,6 +271,28 @@
       "rejects": "a git fixture call outside the guarded shared helper"
     },
     {
+      "id": "scratch-cargo-helper",
+      "tests": [
+        "tests/test_scratch_cargo.rs::scratch_cargo_starts_go_through_the_shared_helper"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test test_scratch_cargo scratch_cargo_starts_go_through_the_shared_helper"
+      ],
+      "rules": [
+        "tests/test_scratch_cargo.rs",
+        "tests/common/cargo.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a test that starts cargo without the shared helper"
+    },
+    {
       "id": "test-area-layout",
       "always": true,
       "tests": [
@@ -546,13 +568,13 @@
     {
       "id": "tracked-skill-references",
       "tests": [
-        "tests/skill_references_test.py::test_current_tracked_skill_file_references_resolve"
+        "tests/skill_references_scan.rs::every_current_skill_file_reference_resolves"
       ],
-      "checks": [
-        "python3 -m unittest tests.skill_references_test"
+      "test_targets": [
+        "skill_references_scan"
       ],
       "rules": [
-        "tests/skill_references_test.py"
+        "tests/skill_references_scan.rs"
       ],
       "scope": [
         {
@@ -1331,7 +1353,7 @@
           "prefix": "docs/rust-product-path.md"
         },
         {
-          "prefix": "skills/moai/workflows/project.md"
+          "prefix": "skills/moai/workflows/update.md"
         }
       ],
       "rejects": "a change to a file that tests/go_state_classes_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
@@ -1557,6 +1579,7 @@
         "hot_file_ops_merge",
         "integration_guard_install",
         "lane_next_rules",
+        "lane_run_cli",
         "launcher_retire_role_flags",
         "launcher_role_flags",
         "launcher_settings_receipt",
@@ -1574,6 +1597,8 @@
         "retired_host_words",
         "rule_history_guard",
         "sdd_guidance",
+        "skill_references_scan",
+        "skill_text_fixtures",
         "troubleshooting_doc"
       ],
       "checks": [
@@ -1598,6 +1623,7 @@
         "tests/hot_file_ops_merge.rs",
         "tests/integration_guard_install.rs",
         "tests/lane_next_rules.rs",
+        "tests/lane_run_cli.rs",
         "tests/launcher_retire_role_flags.rs",
         "tests/launcher_role_flags.rs",
         "tests/launcher_settings_receipt.rs",
@@ -1615,6 +1641,8 @@
         "tests/retired_host_words.rs",
         "tests/rule_history_guard.rs",
         "tests/sdd_guidance.rs",
+        "tests/skill_references_scan.rs",
+        "tests/skill_text_fixtures.rs",
         "tests/troubleshooting_doc.rs",
         "tests/repo_scans_table.rs"
       ],
@@ -1639,6 +1667,9 @@
         },
         {
           "prefix": "docs/design-review/appendix/operations"
+        },
+        {
+          "prefix": "docs/design-review/appendix/state-vocabulary-crosswalk.md"
         },
         {
           "prefix": "docs/design-review/autonomy-modes-spec.md"
@@ -1666,6 +1697,9 @@
         },
         {
           "prefix": "docs/llms.txt"
+        },
+        {
+          "prefix": "docs/product-naming-inventory.md"
         },
         {
           "prefix": "docs/protocol-v1.md"
@@ -1939,6 +1973,7 @@
         "repo_scans_table",
         "retired_host_words",
         "sdd_guidance",
+        "skill_references_scan",
         "style_banner_scan",
         "worktree_report"
       ],
@@ -1972,6 +2007,7 @@
         "tests/repo_claude_md.rs",
         "tests/retired_host_words.rs",
         "tests/sdd_guidance.rs",
+        "tests/skill_references_scan.rs",
         "tests/style_banner_scan.rs",
         "tests/card/trailer_check_cli.rs",
         "tests/card/trailer_paragraph_guard_cli.rs",
@@ -1985,6 +2021,9 @@
         },
         {
           "prefix": ".github/moai"
+        },
+        {
+          "prefix": ".github/pull_request_template.md"
         },
         {
           "prefix": ".github/workflows"
@@ -2072,6 +2111,7 @@
         "gate_collect",
         "generation_request_record",
         "generic_flow_questions",
+        "go_local_reference_cli",
         "home_routing_cli",
         "home_style_cli",
         "home_style_ownership_cli",
@@ -2100,6 +2140,7 @@
         "project_harness_step",
         "project_interview_minimal",
         "project_lsp_plugins_cli",
+        "project_next_flow_setup",
         "project_preview_order",
         "project_worktree_move_choice",
         "protected_paths_one_list",
@@ -2119,7 +2160,9 @@
         "self_audit_cli",
         "skill_entry_order",
         "skill_generalization_scan",
+        "skill_references_scan",
         "skill_structure",
+        "skill_text_fixtures",
         "source_manifest_facts",
         "spec_approval_digest",
         "spec_branch_name_first",
@@ -2183,6 +2226,7 @@
         "tests/flow_name_scan.rs",
         "tests/generation_request_record.rs",
         "tests/generic_flow_questions.rs",
+        "tests/go_local_reference_cli.rs",
         "tests/home_routing_cli.rs",
         "tests/home_style_cli.rs",
         "tests/home_style_ownership_cli.rs",
@@ -2210,6 +2254,7 @@
         "tests/project_harness_step.rs",
         "tests/project_interview_minimal.rs",
         "tests/project_lsp_plugins_cli.rs",
+        "tests/project_next_flow_setup.rs",
         "tests/project_preview_order.rs",
         "tests/project_worktree_move_choice.rs",
         "tests/protected_paths_one_list.rs",
@@ -2226,6 +2271,8 @@
         "tests/sdd_guidance.rs",
         "tests/self_audit_cli.rs",
         "tests/skill_entry_order.rs",
+        "tests/skill_references_scan.rs",
+        "tests/skill_text_fixtures.rs",
         "tests/skill_structure.rs",
         "tests/source_manifest_facts.rs",
         "tests/spec_approval_digest.rs",
@@ -2300,6 +2347,7 @@
         "profile_apply_engine",
         "project_harness_label",
         "project_layer_follow_ups",
+        "project_next_flow_setup",
         "project_preview_order",
         "project_worktree_move_choice",
         "repo_scans_cli",
@@ -2335,6 +2383,7 @@
         "tests/profile_apply_engine.rs",
         "tests/project_harness_label.rs",
         "tests/project_layer_follow_ups.rs",
+        "tests/project_next_flow_setup.rs",
         "tests/project_preview_order.rs",
         "tests/project_worktree_move_choice.rs",
         "tests/repo_scans_cli.rs",
@@ -2554,6 +2603,9 @@
         },
         {
           "prefix": "src/update_tux.rs"
+        },
+        {
+          "prefix": "src/work_flow.rs"
         },
         {
           "prefix": "src/worktree.rs"

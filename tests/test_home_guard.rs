@@ -5,6 +5,9 @@
 //! The wrapper needs `sh`, so the file is for unix hosts.
 #![cfg(unix)]
 
+#[path = "common/cargo.rs"]
+mod scratch_cargo;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -617,7 +620,7 @@ fn nextest(dir: &Path, mode: Option<&str>) -> (Option<i32>, String) {
 /// [`nextest`] with `MOAI_HOME_GUARD_LOG` set to `log` outside the scratch crate, so the test can
 /// read whether the variable reaches the wrapper through nextest.
 fn nextest_with_log(dir: &Path, mode: Option<&str>, log: Option<&Path>) -> (Option<i32>, String) {
-    let mut cmd = Command::new("cargo");
+    let mut cmd = scratch_cargo::cargo_at("cargo");
     cmd.args([
         "nextest",
         "run",
@@ -698,7 +701,7 @@ fn status(text: &str, name: &str) -> Option<String> {
 }
 
 fn require_nextest() {
-    let ok = Command::new("cargo")
+    let ok = scratch_cargo::cargo_at("cargo")
         .args(["nextest", "--version"])
         .output()
         .map(|o| o.status.success())
@@ -739,6 +742,25 @@ fn nextest_applies_the_repository_configuration_to_a_scratch_crate() {
     );
     assert!(text.contains("HOME-GUARD:"), "{text}");
     assert_eq!(code, Some(100), "{text}");
+}
+
+/// SPEC-20261126-scratch-cargo-wrapper AC-1: the scratch crate builds and runs while the outer
+/// environment names a compiler wrapper that is not there. This binary runs the test above again
+/// in such an environment.
+#[test]
+fn a_missing_outer_wrapper_never_reaches_the_scratch_crate() {
+    let mut again = Command::new(std::env::current_exe().unwrap());
+    again.args([
+        "--exact",
+        "nextest_applies_the_repository_configuration_to_a_scratch_crate",
+    ]);
+    for name in scratch_cargo::WRAPPER_VARS {
+        again.env(name, "/nonexistent/moai-no-wrapper");
+    }
+    let out = again.output().unwrap();
+    let text = format!("{}\n{}", stdout(&out), stderr(&out));
+    assert!(out.status.success(), "{text}");
+    assert!(text.contains("test result: ok. 1 passed"), "{text}");
 }
 
 #[test]

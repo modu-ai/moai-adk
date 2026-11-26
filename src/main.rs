@@ -926,6 +926,10 @@ enum Command {
         /// picks are part of the plan digest.
         #[arg(long = "set-aside", value_name = "ENTRY")]
         set_aside: Vec<String>,
+        /// Local settings that name `.moai/` keep the Go folder: plan to back the file up,
+        /// point those names at the Go backup folder and move the folder.
+        #[arg(long)]
+        rewrite_local_references: bool,
     },
     /// Move a previewed Go-era .moai folder
     ///
@@ -943,6 +947,9 @@ enum Command {
         /// digest stale.
         #[arg(long = "set-aside", value_name = "ENTRY")]
         set_aside: Vec<String>,
+        /// The confirmed preview was made with this pick, which writes the local settings.
+        #[arg(long)]
+        rewrite_local_references: bool,
     },
     /// Preview undoing a Go-era folder move
     ///
@@ -2113,20 +2120,28 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 other => other,
             }
         }
-        Command::GoStatePlan { project, set_aside } => {
-            serde_json::to_value(moai_cli::go_state::plan_with(&project, &set_aside)?)
-                .map_err(|_| "encode failed".into())
-        }
+        Command::GoStatePlan {
+            project,
+            set_aside,
+            rewrite_local_references,
+        } => serde_json::to_value(moai_cli::go_state::plan_picked(
+            &project,
+            &set_aside,
+            rewrite_local_references,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::GoStateApply {
             project,
             plan_digest,
             permission_reference,
             set_aside,
+            rewrite_local_references,
         } => serde_json::to_value(moai_cli::go_state::apply_picked(
             &project,
             &plan_digest,
             &permission_reference,
             &set_aside,
+            rewrite_local_references,
         )?)
         .map_err(|_| "encode failed".into()),
         Command::GoStateRevertPlan { project, backup } => {
