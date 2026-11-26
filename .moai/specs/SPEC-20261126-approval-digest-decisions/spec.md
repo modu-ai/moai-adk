@@ -2,7 +2,7 @@
 id: SPEC-20261126-approval-digest-decisions
 title: "A new SPEC approval also binds the Decisions section, so a decision changed after approval needs a new approval"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-26
 ---
 
@@ -10,7 +10,9 @@ created: 2026-11-26
 
 ## Interview
 
-- Q1: SPEC 승인을 어디에 묶나요? → A: "SPEC 승인은 요구와 기준이 바뀔 때만 다시 받고, 계획이나 테스트 파일 위치가 바뀌는 것은 다시 묻지 않아요"(2026-11-25 사용자 선택, `SPEC-20261125-approval-digest-requirements-only` 의 Interview Q1 에 인용). 이 SPEC 의 D-1 은 이 선택의 범위에 `## Decisions` 를 더하자고 해요. D-1 에 대한 사용자의 새 답은 아직 없어요.
+- Q1: SPEC 승인을 어디에 묶나요? → A: "SPEC 승인은 요구와 기준이 바뀔 때만 다시 받고, 계획이나 테스트 파일 위치가 바뀌는 것은 다시 묻지 않아요"(2026-11-25 사용자 선택, `SPEC-20261125-approval-digest-requirements-only` 의 Interview Q1 에 인용). 이 SPEC 의 D-1 은 이 선택의 범위에 `## Decisions` 를 더해요.
+- Q2: 승인 digest 에 `## Decisions` 칸도 넣을까요? → A: "결정 칸도 넣기 (Recommended)"(2026-11-26 사용자 직접 선택, 리더가 AskUserQuestion 답을 카드 노트 10116 에 옮겨 적음). 11-25 선택 가운데 "Decisions 는 digest 밖"인 부분만 사용자가 바꿨어요.
+- Q3: 이전 승인 기록과 `spec show` 는요? → A: Decisions D-2, D-3 의 기본값 A 예요(같은 노트, 사용자의 직접 선택은 D-1 이에요).
 
 ## Intent
 
@@ -18,7 +20,7 @@ created: 2026-11-26
 
 SPEC 규칙으로 보면 결정 표는 승인받는 글이에요. `workflows/plan` 은 고를 것을 선택지·기본값과 함께 `## Decisions` 에 적고 사용자의 선택을 승인으로 삼으라고 해요. 이 tip(91dd561a5a)에 커밋된 승인 기록의 `basis` 86줄 가운데 38줄이 결정 id(D-n)를 적고, 위험 id(R-n)를 적은 줄은 0줄이에요(`git grep` 으로 셈).
 
-지금 동작은 실수가 아니라 정해진 것이에요. 사용자가 직접 승인한 `SPEC-20261125-approval-digest-requirements-only` 의 REQ-2 와 Non-goals, `internal/sdd` 규칙 6 이 "Decisions 는 digest 밖"이라고 적고, `tests/spec_approval_digest.rs` 가 그것을 시험해요. 이 SPEC 은 그중 Decisions 부분만 뒤집자는 제안이라 D-1 의 선택이 먼저예요.
+지금 동작은 실수가 아니라 정해진 것이에요. 사용자가 직접 승인한 `SPEC-20261125-approval-digest-requirements-only` 의 REQ-2 와 Non-goals, `internal/sdd` 규칙 6 이 "Decisions 는 digest 밖"이라고 적고, `tests/spec_approval_digest.rs` 가 그것을 시험해요. 사용자는 2026-11-26 에 그중 Decisions 부분을 바꾸기로 골랐고(D-1 A), 이 SPEC 은 그 부분만 바꿔요.
 
 ## Non-goals
 
@@ -78,8 +80,8 @@ SPEC 규칙으로 보면 결정 표는 승인받는 글이에요. `workflows/pla
 
 ## Decisions
 
-추천이 맨 앞이고 기본값이에요. D-1 은 사용자가 2026-11-25 에 직접 승인한 선행 SPEC 의 일부를 뒤집는 선택이라, 사용자의 확인을 받는 것을 권해요.
+추천이 맨 앞이에요. D-1 은 사용자가 2026-11-25 에 직접 승인한 선행 SPEC 의 일부를 바꾸는 선택이라 사용자가 직접 골랐어요(A).
 
-- D-1 (승인 digest 가 새로 덮는 것): (A, 기본·권장) `## Decisions` 만 더해요 — 승인의 `basis` 가 결정 id 를 인용하므로 결정 글이 바뀌면 승인한 선택이 바뀐 것이에요. 선행 SPEC 의 REQ-2·Non-goals 와 `internal/sdd` 규칙 6 의 Decisions 부분이 바뀌어요. (B) 바꾸지 않고 카드를 접어요 — 11-25 선택이 그대로이고, 행동을 묶는 결정은 요구(REQ)로 옮겨 적어요; 카드 기준 1 은 못 채워요. (C) `## Decisions` 와 `## Risks` 를 더해요 — 가장 엄격하지만 위험 문장을 다듬거나 새 위험을 더할 때마다 다시 승인해야 해서 11-25 선택과 더 멀어요.
-- D-2 (이미 승인된 SPEC 과 이전 값): (A, 기본·권장) 이전 승인 digest 와 옛 content digest 를 계속 받아요 — 다시 승인할 것이 없고 지금 거절되는 것은 계속 거절돼요. (B) 이전 승인 digest 는 `approval.at` 이 정한 날짜보다 앞선 기록에만 받아요 — 새 기록의 우회를 닫지만, 바뀌는 날 당일의 승인은 날짜로 가를 수 없고 설치본이 옛것일 때 한 승인이 거절돼요. (C) 승인된 SPEC 을 모두 새 값으로 다시 승인해요 — 사용자 승인 86건을 다시 받아야 해서 권하지 않아요.
-- D-3 (`spec show` 의 새 필드): (A, 기본·권장) `approval_covers` 를 더해 어떤 범위로 승인됐는지 보여 줘요. (B) 필드를 더하지 않아요(REQ-8 의 마지막 구절과 AC-4 가 줄어요).
+- D-1 (승인 digest 가 새로 덮는 것): (A, 사용자 선택 2026-11-26) `## Decisions` 만 더해요 — 승인의 `basis` 가 결정 id 를 인용하므로 결정 글이 바뀌면 승인한 선택이 바뀐 것이에요. 선행 SPEC 의 REQ-2·Non-goals 와 `internal/sdd` 규칙 6 의 Decisions 부분이 바뀌어요. (B) 바꾸지 않고 카드를 접어요 — 11-25 선택이 그대로이고, 행동을 묶는 결정은 요구(REQ)로 옮겨 적어요; 카드 기준 1 은 못 채워요. (C) `## Decisions` 와 `## Risks` 를 더해요 — 가장 엄격하지만 위험 문장을 다듬거나 새 위험을 더할 때마다 다시 승인해야 해서 11-25 선택과 더 멀어요.
+- D-2 (이미 승인된 SPEC 과 이전 값): (A, 기본값으로 정함) 이전 승인 digest 와 옛 content digest 를 계속 받아요 — 다시 승인할 것이 없고 지금 거절되는 것은 계속 거절돼요. (B) 이전 승인 digest 는 `approval.at` 이 정한 날짜보다 앞선 기록에만 받아요 — 새 기록의 우회를 닫지만, 바뀌는 날 당일의 승인은 날짜로 가를 수 없고 설치본이 옛것일 때 한 승인이 거절돼요. (C) 승인된 SPEC 을 모두 새 값으로 다시 승인해요 — 사용자 승인 86건을 다시 받아야 해서 권하지 않아요.
+- D-3 (`spec show` 의 새 필드): (A, 기본값으로 정함) `approval_covers` 를 더해 어떤 범위로 승인됐는지 보여 줘요. (B) 필드를 더하지 않아요(REQ-8 의 마지막 구절과 AC-4 가 줄어요).
