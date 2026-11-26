@@ -186,4 +186,20 @@ parent: SPEC-20261121-flow-skeleton
 
 ## Result
 
-(draft)
+조각 A(미리보기, `moai secret-deny-plan`)의 결과예요. 코드 head `b4b985747e`, base `54d2491a5b`. 조각 B(적용)와 C(라우트 글)는 아직이에요. 확인 명령은 2026-11-26 에 적힌 그대로 실행했어요.
+
+- AC-1: met — 종료 0, `preview_lists_rules_and_writes_nothing` 1 통과.
+- AC-2: met — 종료 0, `claudeignore_entries_are_picked_one_by_one` 1 통과. 픽스처는 메인 체크아웃의 `.claudeignore` 와 바이트까지 같아요(`cmp`).
+- AC-3: met — 종료 0, `matched_file_is_never_opened` 1 통과.
+- AC-4: met — 종료 0, `the_walk_is_bounded_and_stays_in_the_project` 1 통과.
+- AC-5: not_run — 조각 B.
+- AC-6: not_run — 조각 B.
+- AC-7: not_run — 조각 B.
+- AC-8: not_run — 조각 B.
+- AC-9: met — 종료 0, `preview_states_rule_forms_and_trust_behavior` 1 통과.
+- AC-10: not_run — 조각 C.
+- AC-11: not_run — 조각 A 의 영수증은 이 커밋 뒤에 받아 카드의 READY 노트에 적어요.
+
+SPEC 에 없던 안전장치 두 가지를 테스트와 함께 넣었어요: 링크로 바뀐 `.claudeignore` 는 읽지 않고(`a_linked_ignore_list_is_not_read`), 추적 파일을 물을 때 저장소가 설정한 `core.fsmonitor` 프로그램은 돌리지 않아요(`the_preview_runs_no_program_the_repository_configures`). 뮤턴트 9개는 모두 해당 테스트가 종료 101 로 잡았어요.
+
+한계: 이름 맞춤은 대소문자를 구분해요(규칙이 대소문자를 어떻게 보는지는 문서에서 확인하지 못했어요). 맞은 파일은 줄이지 않고 모두 내므로 큰 저장소에서는 답이 커져요. 실제 Claude Code 의 맞춤, Windows, Linux 는 not_run 이에요.
