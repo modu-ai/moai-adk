@@ -587,6 +587,22 @@ fn ac4_own_checkout_others_and_places_in_no_checkout() {
     let nested = w.primary.join("vendor/nested");
     fs::create_dir_all(&nested).unwrap();
     git(&nested, &["init", "-q"]);
+    // A session that stepped into that repository while `CLAUDE_PROJECT_DIR` names its own
+    // worktree keeps that worktree's boundary.
+    for tool in TOOLS {
+        for (path, want) in [
+            ("{PRI}/src/a.txt", Some("other-checkout")),
+            ("{OWN}/src/a.txt", None),
+        ] {
+            let input = w.input(tool, path, "hello\n", &nested, "default");
+            let run = w.raw(S::Nowhere, &input);
+            assert_eq!(
+                parse_verdict(&run, &format!("{tool} {path}")).as_deref(),
+                want,
+                "{tool} {path}"
+            );
+        }
+    }
     // A registered worktree that lost its `.git` file stays another checkout.
     fs::rename(w.other.join(".git"), w.other.join("dotgit-moved")).unwrap();
     for (s, path, expected) in [
@@ -681,6 +697,7 @@ fn ac5_case_spellings_and_unreadable_shapes_fail_closed() {
         ".\u{212a}ube/x",
         ".\u{df}h/x",
         "ID_R\u{17f}A",
+        ".con\u{fb01}g/gcloud/x",
     ] {
         for tool in TOOLS {
             let path = format!("{{PLAIN}}/{place}");
@@ -867,6 +884,82 @@ fn ac7_reasons_carry_the_class_and_no_input_byte() {
     seen.sort();
     seen.dedup();
     assert_eq!(seen.len(), 3, "one reason text per class");
+}
+
+// --------------------------------------------------------------------- AC-16
+
+/// AC-16: a call whose input is over 4 MiB cannot be judged and is denied; one of exactly the
+/// limit to an allowed path is judged and passes.
+#[test]
+fn ac16_a_call_over_the_input_limit_is_denied() {
+    const LIMIT: usize = 4 * 1024 * 1024;
+    assert_eq!(LIMIT, 4_194_304);
+    let w = World::new();
+    // A real `Write` call to an allowed path, padded to exactly `len` bytes.
+    let call = |len: usize| -> Vec<u8> {
+        let build = |pad: usize| {
+            let content = format!("CONTENTMARKER{}", "x".repeat(pad));
+            w.input(
+                "Write",
+                "{OWN}/PATHMARKER/big.txt",
+                &content,
+                &w.own,
+                "default",
+            )
+            .to_string()
+            .into_bytes()
+        };
+        let bytes = build(len - build(0).len());
+        assert_eq!(bytes.len(), len);
+        bytes
+    };
+    let at_limit = call(LIMIT);
+    let over = call(LIMIT + 1);
+
+    // Without a project folder under HOME the receipt has no place: still denied, one stderr line.
+    let run = w.spawn(&w.own, &over, None);
+    assert_eq!(run.code, 0, "{}", run.stderr);
+    assert!(
+        run.stdout.contains("\"permissionDecision\":\"deny\""),
+        "{}",
+        run.stdout
+    );
+    assert_eq!(run.stderr.lines().count(), 1, "{:?}", run.stderr);
+    assert!(run.stderr.contains("stdin_too_large"), "{}", run.stderr);
+
+    let state = w
+        .home
+        .join(moai_cli::state_root::MOAI_DIR)
+        .join("projects/demo");
+    fs::create_dir_all(&state).unwrap();
+    let receipts = || fs::read_to_string(state.join("hook-entry.jsonl")).unwrap_or_default();
+
+    let run = w.spawn(&w.own, &at_limit, None);
+    assert_eq!(parse_verdict(&run, "a call of exactly the limit"), None);
+    assert_eq!(receipts(), "");
+
+    let run = w.spawn(&w.own, &over, None);
+    assert_eq!(
+        parse_verdict(&run, "a call one byte over the limit").as_deref(),
+        Some("protected-path")
+    );
+    assert!(run.stdout.contains("4 MiB"), "{}", run.stdout);
+    assert!(!run.stdout.contains("PATHMARKER"), "{}", run.stdout);
+    assert!(!run.stdout.contains("CONTENTMARKER"), "{}", run.stdout);
+    assert!(!run.stdout.contains(&w.root.display().to_string()));
+    let text = receipts();
+    assert_eq!(text.lines().count(), 1, "{text}");
+    let line: Value = serde_json::from_str(text.trim()).unwrap();
+    assert_eq!(line["reason"], "stdin_too_large");
+    assert_eq!(line["name"], "write-boundary");
+    assert!(!text.contains("MARKER"), "{text}");
+
+    // Outside a MoAI project nothing is said.
+    let run = w.spawn(&w.plain, &over, None);
+    assert_eq!(
+        (run.code, run.stdout.as_str(), run.stderr.as_str()),
+        (0, "", "")
+    );
 }
 
 // ---------------------------------------------------------------------- AC-9

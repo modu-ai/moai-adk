@@ -33,6 +33,8 @@ const OTHER: &str = "other-checkout";
 const SECRET: &str = "secret-content";
 /// A path whose links cannot be followed: denied in the class `protected-path` with its own rule.
 const UNFOLLOWED: &str = "unfollowed-link";
+/// An input too large to read: denied in the class `protected-path` with its own rule.
+const OVERSIZE: &str = "over-limit-input";
 
 const CREDENTIAL_DIRS: &[&str] = &[".ssh", ".aws", ".azure", ".kube", ".gnupg"];
 const KEY_FILES: &[&str] = &["id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"];
@@ -55,6 +57,12 @@ pub fn decide(input: &Map<String, Value>, env: &Env) -> Option<Value> {
         .filter(|p| p.is_absolute())
         .unwrap_or_else(|| env.process_cwd.to_path_buf());
     classify(target, content, &cwd, env).map(deny)
+}
+
+/// The denial of a call whose input is over the entry's limit: neither its path nor its content
+/// was read, so no check can judge it (REQ-13).
+pub fn over_limit() -> Value {
+    deny(OVERSIZE)
 }
 
 fn classify(target: &str, content: Option<&str>, cwd: &Path, env: &Env) -> Option<&'static str> {
@@ -91,6 +99,11 @@ fn deny(found: &str) -> Value {
             PROTECTED,
             "the symbolic links of this path cannot be followed, so it cannot be checked; \
              write to the real file by its own path",
+        ),
+        OVERSIZE => (
+            PROTECTED,
+            "this call is over the 4 MiB the check reads, so its path and content cannot be \
+             checked; write the file in calls under 4 MiB",
         ),
         OTHER => (
             OTHER,
@@ -138,10 +151,11 @@ fn session_checkout(cwd: &Path, env: &Env) -> Option<Checkout> {
     }
 }
 
-/// A name as a file system that ignores case sees it: ASCII letters in lower case, and the few
+/// A name as a file system that ignores case sees it: ASCII letters in lower case, and the
 /// non-ASCII letters that Unicode case folding turns into ASCII letters folded the same way (the
-/// long s, the Kelvin sign, the sharp s and the `st` ligatures), so `.GIT`, `.\u{17f}sh` and
-/// `ID_RSA` all spell a protected name. Other non-ASCII letters never fold to an ASCII one.
+/// long s, the Kelvin sign, the sharp s and the Latin ligatures U+FB00 to U+FB06), so `.GIT`,
+/// `.\u{17f}sh` and `.con\u{fb01}g` all spell a protected name. No other letter folds to ASCII
+/// letters alone.
 fn fold_name(name: &str) -> String {
     let mut out = String::with_capacity(name.len());
     for c in name.chars() {
@@ -149,6 +163,11 @@ fn fold_name(name: &str) -> String {
             '\u{17f}' => out.push('s'),
             '\u{212a}' => out.push('k'),
             '\u{df}' | '\u{1e9e}' => out.push_str("ss"),
+            '\u{fb00}' => out.push_str("ff"),
+            '\u{fb01}' => out.push_str("fi"),
+            '\u{fb02}' => out.push_str("fl"),
+            '\u{fb03}' => out.push_str("ffi"),
+            '\u{fb04}' => out.push_str("ffl"),
             '\u{fb05}' | '\u{fb06}' => out.push_str("st"),
             _ => out.push(c.to_ascii_lowercase()),
         }
@@ -481,6 +500,11 @@ mod tests {
         }
         assert!(!is_protected(Path::new("/a/.config/G\u{212a}loud/x")));
         assert_eq!(fold_name("\u{fb06}x"), "stx");
+        assert_eq!(
+            fold_name("\u{fb00}|\u{fb01}|\u{fb02}|\u{fb03}|\u{fb04}|\u{fb05}"),
+            "ff|fi|fl|ffi|ffl|st"
+        );
+        assert!(is_protected(Path::new("/a/.con\u{fb01}g/gcloud/x")));
         assert_eq!(fold_name("\u{e9}"), "\u{e9}");
     }
 

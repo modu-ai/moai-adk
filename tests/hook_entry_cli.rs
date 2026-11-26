@@ -273,6 +273,20 @@ fn ac3_claude_project_dir_wins_over_the_working_folder() {
     assert_eq!(receipt_lines(&fx.receipt()).len(), 1);
 }
 
+/// Bad input leaves stdout empty, with one exception: `write-boundary` denies an input over the
+/// limit (SPEC-20261126-hook-write-boundary REQ-13).
+fn assert_answer(name: &str, reason: &str, stdout: &str) {
+    if (name, reason) != ("write-boundary", "stdin_too_large") {
+        assert_eq!(stdout, "", "{name} {reason}");
+        return;
+    }
+    let v: Value = serde_json::from_str(stdout.trim()).unwrap();
+    assert_eq!(
+        v["hookSpecificOutput"]["permissionDecision"], "deny",
+        "{stdout}"
+    );
+}
+
 /// AC-4: bad input of a registered name in a MoAI project adds exactly one receipt line with the
 /// name, a reason word and a time, and none of the input bytes.
 #[test]
@@ -298,7 +312,7 @@ fn ac4_bad_input_adds_one_receipt_line_without_the_input() {
         for (i, (what, input, reason)) in cases.iter().enumerate() {
             let r = fx.hook(name, input);
             assert_eq!(r.code, 0, "{name} {what}: {}", r.stderr);
-            assert_eq!(r.stdout, "", "{name} {what}");
+            assert_answer(name, reason, &r.stdout);
             assert_eq!(
                 r.stderr, "",
                 "{name} {what}: a recorded failure leaves stderr empty"
@@ -370,10 +384,11 @@ fn ac4_the_stdin_limit_takes_exactly_the_limit_and_refuses_one_more() {
         let before = receipt_lines(&fx.receipt()).len();
         let over = fx.hook(name, &object_of_len(STDIN_CAP + 1));
         assert_eq!(
-            (over.code, over.stdout.as_str(), over.stderr.as_str()),
-            (0, "", ""),
+            (over.code, over.stderr.as_str()),
+            (0, ""),
             "{name} one byte over"
         );
+        assert_answer(name, "stdin_too_large", &over.stdout);
         let lines = receipt_lines(&fx.receipt());
         assert_eq!(
             lines.len(),

@@ -7,9 +7,10 @@
 //!
 //! What the entry does, in order: it reads standard input once (bounded); it looks for
 //! `.moai/project.yaml` in `CLAUDE_PROJECT_DIR`, else in the working folder, and without it
-//! stays silent; with it, bad input is recorded as one receipt line. It never blocks: every path
-//! ends in exit 0. The entry makes no network call, starts no other program and reads no
-//! variable beyond the two named in [`env`]. It does not look at which terminal or
+//! stays silent; with it, bad input is recorded as one receipt line. Every path ends in exit 0;
+//! a call is refused only by a deny object on stdout, from a handler or for an input over the
+//! limit of `write-boundary`. The entry makes no network call, starts no other program and reads
+//! no variable beyond the two named in [`env`]. It does not look at which terminal or
 //! orchestrator started the host.
 
 use serde_json::{json, Map, Value};
@@ -27,6 +28,8 @@ mod session_start;
 pub const NAMES: [&str; 3] = ["session-context", "bash-boundary", "write-boundary"];
 /// Standard input is read up to this many bytes; one more byte means "too large".
 pub const STDIN_LIMIT: usize = 4 * 1024 * 1024;
+/// The receipt reason of an input over [`STDIN_LIMIT`].
+const TOO_LARGE: &str = "stdin_too_large";
 /// The receipt log, inside `<HOME>/.moai/projects/<project_id>/`.
 const RECEIPT_FILE: &str = "hook-entry.jsonl";
 /// A receipt log of this many bytes takes no more lines.
@@ -100,6 +103,14 @@ fn decide(name: &str, input: &[u8], cwd: &Path, env: &Env, now_ms: u128) -> Answ
         return Answer::default();
     };
     let object = match parse(input) {
+        // An input over the limit was never read, so the write boundary cannot judge the call: it
+        // is denied, with the receipt line as before (SPEC-20261126-hook-write-boundary REQ-13).
+        Err(reason @ TOO_LARGE) if name == "write-boundary" => {
+            return Answer {
+                stdout: moai_cli::hook_write_boundary::over_limit().to_string(),
+                ..failure(name, reason, &project, env, now_ms)
+            }
+        }
         Err(reason) => return failure(name, reason, &project, env, now_ms),
         Ok(object) => object,
     };
@@ -155,7 +166,7 @@ fn moai_project(root: &Path) -> Option<Project> {
 
 fn parse(input: &[u8]) -> Result<Map<String, Value>, &'static str> {
     if input.len() > STDIN_LIMIT {
-        return Err("stdin_too_large");
+        return Err(TOO_LARGE);
     }
     let text = std::str::from_utf8(input).map_err(|_| "not_utf8")?;
     match serde_json::from_str::<Value>(text) {
