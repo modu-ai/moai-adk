@@ -1,10 +1,19 @@
 ---
 id: SPEC-20261126-change-claims-and-test-guard
 title: "Audit matches every claim to the diff; implementation reports only facts and keeps others' tests"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-26
+approval:
+  by: leader
+  at: 2026-11-25
+  basis: "리더 위임 승인 노트 9540 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:370a9cdaa4910daa0e8119a9619b5f320bbbb188cf72ef473867b89b51b73667"
 ---
+
+## Interview
+
+- none: no question went to the user; the lane's open decision (card note 9462) was answered by the leader under the overnight delegation (card note 9540).
 
 # Audit matches every claim to the diff; implementation reports only facts and keeps others' tests
 

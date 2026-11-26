@@ -1,10 +1,19 @@
 ---
 id: SPEC-20261125-linked-worktree-profile
 title: "A linked worktree reads the project profile of its primary checkout, and a missing profile names the next step"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: leader
+  at: 2026-11-25
+  basis: "리더 위임 승인 노트 9636 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:001c92e666742fec744855115c59e7789f3e1e877d4943be8a249c9a02e17f44"
 ---
+
+## Interview
+
+- none: the defect came from a field report the user confirmed on 2026-11-21; no new question went to the user.
 
 # A linked worktree reads the project profile of its primary checkout, and a missing profile names the next step
 

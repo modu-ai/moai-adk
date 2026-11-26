@@ -1,11 +1,20 @@
 ---
 id: SPEC-20261125-detect-database-dependency-catalog
 title: "project-detect reads the database dependency names and their kinds from the catalog, not from a table in the engine"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
 parent: SPEC-20261124-project-detect-monorepo
+approval:
+  by: leader
+  at: 2026-11-25
+  basis: "리더 위임 승인 노트 9604 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:11be5eb7e5643c8feb345389282458f1af6b8fbcac0b2a3474a6a11059b77ae1"
 ---
+
+## Interview
+
+- none: the slice follows the user's 2026-11-24 order that language and tool names are data, not code; no new question went to the user.
 
 # project-detect reads the database dependency names and their kinds from the catalog, not from a table in the engine
 
