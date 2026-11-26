@@ -90,6 +90,12 @@ impl Project {
             .to_string()
     }
 
+    /// The layout and the planned rows of the state move preview.
+    fn planned_move(&self) -> Value {
+        let v = self.call(&["go-state-plan", self.arg()]);
+        json!([v["result"]["layout"], v["result"]["state_moves"]])
+    }
+
     fn record_one_flaky_name(&self) {
         let out = self.tmp.path().join("check");
         fs::create_dir_all(&out).unwrap();
@@ -106,7 +112,8 @@ impl Project {
 }
 
 /// AC-6 (REQ-9): in the three layouts a record leaves the verdict `none` and the update preview's
-/// state step as they were; a project without a state folder can still be adopted.
+/// state step as they were; a project without a state folder can still be adopted. The same holds
+/// for a tracked earlier state whose `.gitignore` hides `.moai/`.
 #[test]
 fn a_flaky_record_leaves_the_state_verdict_and_the_update_preview_as_they_were() {
     let mut problems = Vec::new();
@@ -137,6 +144,45 @@ fn a_flaky_record_leaves_the_state_verdict_and_the_update_preview_as_they_were()
                 }
                 other => problems.push(format!("{layout}: adopt_new answered {other:?}")),
             }
+        }
+    }
+    // The same three kinds of project with tracked files and a rule that hides `.moai/`. Beside a
+    // name the team keeps the move stays blocked, before the record and after it.
+    for (layout, allow, beside, step) in [
+        ("hidden, earlier only", "", None, "needs_decision"),
+        (
+            "hidden, earlier and SPECs",
+            "!/.moai/specs/\n",
+            Some("specs/SPEC-20260101-a/spec.md"),
+            "needs_decision",
+        ),
+        (
+            "hidden, earlier and kept names",
+            "!/.moai/project.yaml\n",
+            Some("project.yaml"),
+            "blocked",
+        ),
+    ] {
+        let p = Project::new();
+        git_ok(&p.root, &["init", "-q"]);
+        fs::write(p.root.join(".gitignore"), format!("/.moai/*\n{allow}")).unwrap();
+        p.write(EARLIER_PROJECT_DIR, "project.yaml", "schema_version: 2\n");
+        p.write(EARLIER_PROJECT_DIR, "index/a.json", "{}\n");
+        if let Some(rest) = beside {
+            p.write(MOAI_DIR, rest, "schema_version: 2\n");
+        }
+        git_ok(&p.root, &["add", "-A"]);
+        let who = ["-c", "user.name=t", "-c", "user.email=t@example.invalid"];
+        git_ok(
+            &p.root,
+            &[&who[..], &["commit", "-q", "-m", "one"]].concat(),
+        );
+        let before = (p.generation(), p.state_step(), p.planned_move());
+        assert_eq!((before.0, before.1.as_str()), ("none", step), "{layout}");
+        p.record_one_flaky_name();
+        let after = (p.generation(), p.state_step(), p.planned_move());
+        if after != before {
+            problems.push(format!("{layout}: before {before:?}, after {after:?}"));
         }
     }
     assert!(problems.is_empty(), "{}", problems.join("\n"));
