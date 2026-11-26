@@ -10,9 +10,11 @@
 //! `outputStyle`). The rest is shown and stays in the backup: `hooks` is MoAI's as a whole key
 //! (`hooks-apply` writes it, a user hook there is a conflict, never a merge), and what the Go
 //! generation set up itself (its status line script, its hooks, its styles) is not the user's.
-//! A value that looks like a credential is never shown or carried, only its key.
+//! A value that looks like a credential is never shown or carried, only its key. An `env` entry
+//! that would turn on agent teams or Code Mode, and that the current file does not hold on, stays
+//! in the backup too (SPEC-20261122-settings-write-check REQ-5).
 
-use crate::{apply, claude, go_state};
+use crate::{apply, claude, go_state, settings_write};
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
@@ -157,7 +159,13 @@ fn permissions_row(v: &Value) -> Row {
 const GO_ENV_NAMES: [&str; 2] = ["PATH", "MOAI_CONFIG_SOURCE"];
 const GO_ENV_WHY: &str = "set for the Go generation's moai; it stays in the backup";
 
-fn env_row(v: &Value) -> Row {
+/// Why a feature switch is not carried (SPEC-20261122-settings-write-check REQ-5). A fixed text:
+/// it names no saved value.
+const SWITCH_WHY: &str = "it would turn on agent teams or Code Mode, which the current settings \
+                          file does not hold on; it stays in the backup";
+
+/// `held` is the `env` of the settings file now.
+fn env_row(v: &Value, held: &Map<String, Value>) -> Row {
     let Value::Object(map) = v else {
         return Row::other("env", "kept_in_backup", "env is not an object", json!({}));
     };
@@ -168,7 +176,13 @@ fn env_row(v: &Value) -> Row {
             refused.push(json!({ "name": shown(name), "why": GO_ENV_WHY }));
             continue;
         }
+        let held_on = held
+            .get(name)
+            .is_some_and(|now| settings_write::turns_on_switch(name, now));
         match claude::env_entry_refusal(name, val) {
+            None if settings_write::turns_on_switch(name, val) && !held_on => {
+                refused.push(json!({ "name": shown(name), "why": SWITCH_WHY }))
+            }
             None if carry.len() < claude::ENV_ENTRIES_MAX => {
                 carry.insert(name.clone(), val.clone());
             }
@@ -342,7 +356,14 @@ fn hooks_row(v: &Value) -> Row {
     )
 }
 
+/// [`rows_beside`] a settings file that holds no `env` entry.
+#[cfg(test)]
 fn rows_of(old: &Map<String, Value>) -> Vec<Row> {
+    rows_beside(old, &Map::new())
+}
+
+/// One row per key of the old file; `held` is the `env` of the settings file now.
+fn rows_beside(old: &Map<String, Value>, held: &Map<String, Value>) -> Vec<Row> {
     let mut keys: Vec<&String> = old.keys().collect();
     keys.sort();
     keys.into_iter()
@@ -350,7 +371,7 @@ fn rows_of(old: &Map<String, Value>) -> Vec<Row> {
             let v = &old[k];
             match k.as_str() {
                 "permissions" => permissions_row(v),
-                "env" => env_row(v),
+                "env" => env_row(v, held),
                 "model" => model_row(v, old),
                 "statusLine" => status_line_row(v),
                 "outputStyle" => output_style_row(v),
@@ -364,6 +385,17 @@ fn rows_of(old: &Map<String, Value>) -> Vec<Row> {
             }
         })
         .collect()
+}
+
+/// The `env` entries of the project's settings file now. A file that is absent, linked, over the
+/// size limit or no JSON object holds none, so a switch then stays in the backup.
+fn held_env(root: &Path) -> Map<String, Value> {
+    apply::target(root, ".claude/settings.json")
+        .ok()
+        .and_then(|path| claude::read_existing(&path).ok().flatten())
+        .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
+        .and_then(|settings| settings.get("env")?.as_object().cloned())
+        .unwrap_or_default()
 }
 
 /// The merge candidates from the settings the newest committed `go-state-apply` moved into its
@@ -391,7 +423,7 @@ pub fn candidates(project: &Path) -> Result<Option<Candidates>> {
     };
     let mut carry = Map::new();
     let mut rows = Vec::new();
-    for row in rows_of(&old) {
+    for row in rows_beside(&old, &held_env(&root)) {
         if let Some(v) = &row.carry {
             carry.insert(row.key.clone(), v.clone());
         }
