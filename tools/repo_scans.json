@@ -1966,6 +1966,7 @@
         "tests/project_harness_step.rs",
         "tests/project_interview_minimal.rs",
         "tests/project_lsp_plugins_cli.rs",
+        "tests/project_next_flow_setup.rs",
         "tests/project_preview_order.rs",
         "tests/project_worktree_move_choice.rs",
         "tests/protected_paths_one_list.rs",
@@ -2057,6 +2058,7 @@
         "tests/profile_apply_engine.rs",
         "tests/project_harness_label.rs",
         "tests/project_layer_follow_ups.rs",
+        "tests/project_next_flow_setup.rs",
         "tests/project_preview_order.rs",
         "tests/project_worktree_move_choice.rs",
         "tests/repo_scans_cli.rs",
@@ -2273,6 +2275,9 @@
         },
         {
           "prefix": "src/update_tux.rs"
+        },
+        {
+          "prefix": "src/work_flow.rs"
         },
         {
           "prefix": "src/worktree.rs"
