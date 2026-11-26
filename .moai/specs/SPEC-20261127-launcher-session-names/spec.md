@@ -106,3 +106,20 @@ created: 2026-11-27
 | D-6 | `CLAUDE.md` 의 세션 이름 문장은 사용자 본인의 선택을 받은 뒤에만 고쳐요(기본). 쓸 문장은 SPEC-READY 에 인용해요. 대안: 이번에는 고치지 않고 문서·스킬만. | 동료 세션의 메시지는 승인이 아니에요(선례 C-584 노트 10450·10452). 그 문장은 C-584 도 건드려서 마지막에 합쳐요. | 문장을 되돌려요. |
 | D-7 | 기록 파일 본문은 이름·프로젝트 이름·pid·시각이에요(기본). 경로는 적지 않아요. 대안: 클론 경로 포함. | 거절 문장이 어느 프로젝트가 쥐었는지 말하면 충분하고, HOME 파일에 작업 폴더 경로를 남기지 않아요. | 필드를 줄이거나 늘려요. |
 | D-8 | tier 2 로 봐요(런처가 프로세스를 띄우고 HOME 아래에 쓰며 `CLAUDE.md` 를 고쳐요). 대안: tier 1. | 바닥 경로 목록(`CLAUDE.md`)과 위험 경로 규칙(프로세스를 시작하는 변경)이에요. | 해당 없음. |
+
+## Result
+
+`2e97d012e5` 위의 헤드 `dbb1e73267` 에서 Mac 의 임시 HOME 으로 확인했어요. 체크 결과는 `target/check-affected-dbb1e73267cb/summary.txt` 의 `result=PASS`(테스트 4638개 통과, 실패 0)예요. Windows 와 Linux 는 `not_run` 이에요.
+
+- AC-1: met — `collision_two_projects_never_share_a_name` 통과(`launcher_machine_names_cli` 7개 모두 통과)
+- AC-2: met — `used_up_every_name_held_machine_wide_refuses_a_lane` 통과
+- AC-3: met — `claim_holds_both_locks_while_the_host_runs_and_frees_them_after` 와 `claim_clone_lock_refusal_frees_the_machine_lock` 통과
+- AC-4: met — `refuse_a_link_or_an_unresolved_home_starts_no_host` 와 `dry_run_only_probes_and_creates_nothing` 통과
+- AC-5: met — `named_beside_a_role_flag_is_claimed_and_alone_is_not` 통과
+- AC-6: met — `session_lane_check_cli` 5개 통과(`ac3_names_prints_the_names_of_this_project` 가 `earlier` 를, `ac3_a_held_live_lock_is_a_lane` 이 옛·새 모양 이름을 확인)
+- AC-7: met — `cargo test --locked --offline --test card card_wip_limit::` 36개 통과(`lock_ac7_both_leader_names_are_no_lane_and_both_lane_forms_are_one_lane` 포함)와 `card_read_speed::` 5개 통과
+- AC-8: not_met — 도움말 골든(`help_layout` 11개), 스킬 글(`lane_team_names` 16개), `launcher_role_flags` 19개, 문서는 통과했어요. CLAUDE.md 의 세션 이름 문장만 D-6 의 사용자 직접 선택을 기다려서 아직 고치지 않았어요(`repo_claude_md` 27개는 옛 문장 그대로 통과)
+
+- 뮤턴트(가드 코드를 지우고 해당 테스트를 돌려 모두 exit 101 로 실패를 확인, 파일은 `git restore`): REQ-5 잠금 감지(probe·claim 두 곳) → `collision_`, REQ-7 폴더 링크 검사 → `refuse_`, REQ-8 잠금 블록의 `if !o.dry_run` → `dry_run_`, REQ-4 호스트가 도는 동안 기계 잠금 쥐기 → `claim_holds_`, D-3 역할 플래그 없는 `--name` 은 기계 잠금을 안 잡기 → `named_`, REQ-2 목록이 다 찼을 때 거절 → `used_up_`.
+- 클론 잠금 실패 시 기계 잠금 해제는 뮤턴트로 가를 수 없어요. 런처가 끝나면 OS 가 두 잠금을 모두 풀어서 밖에서는 구분이 안 돼요.
+- 위험 경로(런처가 프로세스를 띄우고 HOME 아래에 잠금 파일을 써요)는 임시 HOME 에서 실제 바이너리와 가짜 호스트를 돌리는 Rust 통합 테스트로만 확인했어요.
