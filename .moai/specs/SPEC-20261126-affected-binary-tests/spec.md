@@ -20,7 +20,9 @@ created: 2026-11-26
 | `9c8b7fb763..3a6c46fc95` | `src/state_root.rs` | 83 / 83(전체 세트) | `go_project_real_run_cli`, `go_state_preview_cli`, `project_update_hooks_cli` |
 | `91dd561a5a..6bb4f8a031` | `src/trailers.rs` | 59 / 2 | `trailer_check_cli` |
 
-까닭: 이 테스트들은 모듈 경로가 아니라 명령 이름(`"project-apply"`, `"trailer-check"`)으로 실행 파일을 돌려요. 일부는 그 글자가 `#[path]` 로 가져오는 도움 파일 `tests/common/go_project_real_run.rs` 에만 있어요. `3a6c46fc95` 에서 `state_root::` 글자를 가진 `src` 파일은 65개인데 그중 `src/ops` 파일은 `leader_run.rs`, `spec.rs` 뿐이라, 명령 파일에서 한 단계만 따라가서는 `go_project_real_run_cli` 에 닿지 않아요.
+네 번째 사례(revision 2, 범위 `98ac09db55..32bd7c9f30`, head 에서 다시 고름): 바뀐 파일에 `tools/repo_scans.json` 과 `src/repo_scans.rs` 가 있어요. 설치본의 넓은 선택과 카드 선택(전체 세트), `b1e37d8aef` 빌드의 두 선택 모두 205개이고 `gate_registry_tier` 가 없어요. head 의 `tests/` 에서 `tools/repo_scans.json` 글자를 가진 Rust 테스트 파일 21개 중 설치본 넓은 선택에 없는 것은 7개예요: `card_land_audited_merge_cli`, `card_land_batch_cli`, `card_land_scans_cli`, `card_land_sync_cli`, `gate_registry_tier`, `statusline_card_flow_icons`, `update_tux_golden`. 바뀐 경로 글자 규칙이 `skills/` 와 `docs/` 만 보기 때문이에요.
+
+까닭: 앞의 세 범위에서 빠진 테스트들은 모듈 경로가 아니라 명령 이름(`"project-apply"`, `"trailer-check"`)으로 실행 파일을 돌려요. 일부는 그 글자가 `#[path]` 로 가져오는 도움 파일 `tests/common/go_project_real_run.rs` 에만 있어요. `3a6c46fc95` 에서 `state_root::` 글자를 가진 `src` 파일은 65개인데 그중 `src/ops` 파일은 `leader_run.rs`, `spec.rs` 뿐이라, 명령 파일에서 한 단계만 따라가서는 `go_project_real_run_cli` 에 닿지 않아요.
 
 읽는 사람: 레인, 이 변경의 감사자, 착지 묶음을 도는 리더.
 
