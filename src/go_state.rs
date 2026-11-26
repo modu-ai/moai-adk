@@ -125,8 +125,9 @@ fn mirror_file_limit() -> u64 {
 }
 
 /// #2936 O6: a name that holds secrets by convention. Such an entry under `.claude/` or
-/// `.agents/` is never read, hashed, copied or moved; the preview only counts it.
-fn secret_name(name: &str) -> bool {
+/// `.agents/` is never read, hashed, copied or moved; the preview only counts it. The home tidy
+/// operations protect by the same rule (`tidy::rules::class_of_name`).
+pub(crate) fn secret_name(name: &str) -> bool {
     crate::home_state::is_secret(name) || crate::worktree_include::secret_name(name)
 }
 

@@ -1399,6 +1399,76 @@ fn protected_items_with_a_secret_name_a_link_or_a_pipe_are_skipped_whole() {
     assert_eq!(snap(&outside), away);
 }
 
+/// AC-3 (REQ-5, leader decision 10422): private key and credential file names are secret-shaped
+/// too. The inventory protects them, and an item that holds one is skipped whole: nothing of it
+/// is archived or removed.
+#[test]
+fn protected_private_key_names_skip_their_item_whole() {
+    let fx = fixture();
+    put(&fx.moai.join("deploy.pem"), 5);
+    put(&fx.moai.join("cache/certs/deploy.pem"), 5);
+    put(&fx.moai.join("run/keys/id_ed25519"), 5);
+    put(&fx.moai.join("scratch/.netrc"), 5);
+    fs::set_permissions(
+        fx.moai.join("scratch/.netrc"),
+        fs::Permissions::from_mode(0o000),
+    )
+    .unwrap();
+    put(&fx.moai.join("reports/projA/server.key"), 5);
+    set_age(&fx.moai.join("reports/projA/server.key"), 300);
+    let inv = inventory(&fx, &[]);
+    let e = entry(&inv, "deploy.pem");
+    assert_eq!(e["class"], "protected", "{e}");
+    assert_eq!(e["reason"], "secret_name", "{e}");
+    let picks = ["cache", "run", "scratch", "reports/projA/server.key"];
+    let kept =
+        |fx: &Fx| -> Vec<Vec<String>> { picks.iter().map(|p| snap(&fx.moai.join(p))).collect() };
+    let before = kept(&fx);
+    let r = applied(&fx, &picks);
+    for path in picks {
+        let i = item(&r, path);
+        assert_eq!(i["state"], "skipped", "{path}: {i}");
+        assert!(text(&i["reason"]).starts_with("secret_name"), "{path}: {i}");
+        assert!(i["archive_item"].is_null(), "{path}: {i}");
+    }
+    assert_eq!(kept(&fx), before);
+    // Nothing was archived: no list and no data file anywhere below the archive folder.
+    let archive = fx.moai.join("archive");
+    if archive.exists() {
+        for (file, _) in contents(&archive) {
+            let name = file.file_name().unwrap().to_str().unwrap();
+            assert!(!["list.json", "data.tar.gz"].contains(&name), "{file:?}");
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn protected_private_keys_are_never_opened_by_the_apply() {
+    let fx = fixture();
+    let keys = [
+        "cache/certs/deploy.pem",
+        "run/keys/id_ed25519",
+        "scratch/.netrc",
+    ];
+    for key in keys {
+        put(&fx.moai.join(key), 5);
+    }
+    let denied: Vec<PathBuf> = keys.iter().map(|k| fx.moai.join(k)).collect();
+    let args = apply_args(&fx, &["cache", "run", "scratch"], &token(&fx), PERMIT);
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let out = killed_on_open(&denied, BIN, &args);
+    assert!(
+        out.status.success(),
+        "signal {:?}: {}",
+        std::os::unix::process::ExitStatusExt::signal(&out.status),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    for key in keys {
+        assert!(fx.moai.join(key).exists(), "{key}");
+    }
+}
+
 #[test]
 fn protected_an_item_the_walk_could_not_finish_cannot_be_picked() {
     let fx = apply_fixture();

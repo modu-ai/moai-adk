@@ -60,7 +60,8 @@ pub enum Class {
 /// The class of a directory entry from its name; `reason` names the table row.
 pub fn class_of_name(name: &str) -> (Class, &'static str) {
     let lower = name.to_ascii_lowercase();
-    if home_state::is_secret(name) {
+    // Private keys and credential files count too, as in the go-state preview.
+    if crate::go_state::secret_name(name) {
         return (Class::Protected, "secret_name");
     }
     let (table, reason) = home_state::table_class(name);
