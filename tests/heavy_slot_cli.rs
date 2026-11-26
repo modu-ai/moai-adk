@@ -1012,10 +1012,6 @@ fn the_earlier_test_machine_name_is_not_read() {
     for (name, read) in [("MOAI_TEST_MACHINE", true), (earlier, false)] {
         let d = tempfile::tempdir().unwrap();
         let slots = d.path().join("slots");
-        // The real machine decides in the second case: switch the CPU rule off, so a busy
-        // machine cannot hold the run in the queue.
-        fs::create_dir_all(&slots).unwrap();
-        fs::write(slots.join("limits.json"), r#"{"min_cpu_free_pct":0}"#).unwrap();
         let mut c = Command::new(EXE);
         c.env_remove("MOAI_TEST_MACHINE")
             .env_remove(earlier)
@@ -2376,14 +2372,14 @@ fn waited_secs(line: &str) -> Option<u64> {
 }
 
 /// AC-1 (REQ-1): the status carries the four keys; given readings come back as given and the
-/// limit is the default 20 when there is no limits file; nothing is held.
+/// limit is the default 0 when there is no limits file; nothing is held.
 #[test]
 fn cpu_ac1_status_reports_the_injected_cpu_reading_and_the_default_limit() {
     let d = tempfile::tempdir().unwrap();
     let v = cpu_status(d.path(), Some(&cpu_machine(37)));
     assert_eq!(v["cpu_free_pct"], 37, "{v}");
     assert_eq!(v["cpu_cores"], 8, "{v}");
-    assert_eq!(v["min_cpu_free_pct"], 20, "{v}");
+    assert_eq!(v["min_cpu_free_pct"], 0, "{v}");
     assert_eq!(v["heavy_runs"], 0, "{v}");
 }
 
@@ -2479,6 +2475,12 @@ fn cpu_ac2_a_low_cpu_reading_holds_the_caller_back_until_it_rises() {
         .find(|l| l.starts_with("heavy-slot: cpu2 exited 0; "))
         .unwrap_or_else(|| panic!("no exit line\n{}", caller.shown()));
     assert!(waited_secs(exit_line).is_some(), "{exit_line}");
+    let slot_line = err.lines().find(|l| l.contains("taken by cpu2"));
+    assert!(
+        slot_line.is_some_and(|l| l.contains("; cpu free 90% (limit 20%)")),
+        "{}",
+        caller.shown()
+    );
 }
 
 /// AC-2 (REQ-3): a caller that did not wait gets no extra text on any stream.
@@ -2509,7 +2511,8 @@ fn cpu_ac2_a_caller_that_did_not_wait_gets_no_cpu_text() {
 
 /// AC-2 (REQ-2): on the real sampler a caller keeps waiting over many looks. macOS hands the
 /// same tick counters to calls that follow each other closely, and a look with no new tick must
-/// not read as headroom. One busy thread keeps the free share under the limit of 100.
+/// not read as headroom. One busy thread keeps the free share under the limit of 100. Ending a
+/// caller that still waits starts nothing, and the next caller clears what it left in `waiting`.
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 #[test]
 fn cpu_ac2_the_real_reading_keeps_a_caller_waiting() {
@@ -2560,15 +2563,98 @@ fn cpu_ac2_the_real_reading_keeps_a_caller_waiting() {
             "the wait ended while the limit was 100\n{}",
             caller.shown()
         );
+        // SAFETY: kill(2) on the wrapper this test started and has not reaped.
+        unsafe { libc::kill(caller.run.id() as i32, libc::SIGTERM) };
+        let status = caller.end();
+        assert_eq!(
+            status.and_then(|s| std::os::unix::process::ExitStatusExt::signal(&s)),
+            Some(libc::SIGTERM),
+            "{}",
+            caller.shown()
+        );
+        assert!(!marker.exists(), "COMMAND ran\n{}", caller.shown());
     });
+    let left = || fs::read_dir(slots.join("waiting")).unwrap().count();
+    assert_eq!(left(), 1, "the ended caller's waiting file");
+    fs::write(slots.join("limits.json"), r#"{"min_cpu_free_pct":0}"#).unwrap();
+    let out = run(acquire(&slots, "1", "next", &["true"]));
+    assert!(out.status.success(), "{}", text(&out));
+    assert_eq!(left(), 0, "{}", text(&out));
 }
 
-/// AC-3 (REQ-5): with no limits file the status says the limit is 20.
+/// AC-3 (REQ-5): with no limits file the limit is 0, so a CPU free of 1 runs at once.
 #[test]
-fn cpu_ac3_a_the_default_limit_is_20() {
+fn cpu_ac3_a_the_default_limit_is_0_and_nothing_waits() {
     let d = tempfile::tempdir().unwrap();
     let v = cpu_status(d.path(), Some(&cpu_machine(90)));
-    assert_eq!(v["min_cpu_free_pct"], 20, "{v}");
+    assert_eq!(v["min_cpu_free_pct"], 0, "{v}");
+
+    let w = tempfile::tempdir().unwrap();
+    let marker = w.path().join("ran");
+    let mut caller = cpu_caller(d.path(), &cpu_machine(1), "dflt", &marker, w.path());
+    let status = caller.end();
+    assert_eq!(status.and_then(|s| s.code()), Some(0), "{}", caller.shown());
+    assert!(marker.exists(), "COMMAND did not run\n{}", caller.shown());
+    assert!(
+        !caller.stdout().contains("waiting for CPU headroom"),
+        "waited\n{}",
+        caller.shown()
+    );
+}
+
+/// The slot line of an ended caller on the injected `machine`, with `body` as the limits file
+/// (`None`: no file).
+fn cpu_slot_line(body: Option<&str>, machine: &str) -> String {
+    let d = tempfile::tempdir().unwrap();
+    if let Some(body) = body {
+        fs::write(d.path().join("limits.json"), body).unwrap();
+    }
+    let w = tempfile::tempdir().unwrap();
+    let marker = w.path().join("ran");
+    let mut caller = cpu_caller(d.path(), machine, "seen", &marker, w.path());
+    let status = caller.end();
+    assert_eq!(status.and_then(|s| s.code()), Some(0), "{}", caller.shown());
+    caller
+        .stderr()
+        .lines()
+        .find(|l| l.contains("taken by seen"))
+        .unwrap_or_else(|| panic!("no slot line\n{}", caller.shown()))
+        .to_owned()
+}
+
+/// AC-8 (REQ-9): the slot line names the measured CPU free share and the limit it was held
+/// against, or `rule off` when there is none; a machine that gives no reading adds nothing.
+#[test]
+fn cpu_ac8_the_slot_line_names_the_measured_cpu_free_share() {
+    let off = cpu_slot_line(None, &cpu_machine(5));
+    assert!(off.ends_with("; cpu free 5% (rule off)"), "{off}");
+    let zero = cpu_slot_line(Some(r#"{"min_cpu_free_pct":0}"#), &cpu_machine(7));
+    assert!(zero.ends_with("; cpu free 7% (rule off)"), "{zero}");
+    let on = cpu_slot_line(Some(r#"{"min_cpu_free_pct":20}"#), &cpu_machine(90));
+    assert!(on.ends_with("; cpu free 90% (limit 20%)"), "{on}");
+    let none = cpu_slot_line(Some(r#"{"min_cpu_free_pct":20}"#), ROOMY);
+    assert!(!none.contains("cpu free"), "{none}");
+}
+
+/// AC-8 (REQ-9): with the rule off the real machine is read once and the slot line shows it.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[test]
+fn cpu_ac8_the_real_reading_is_on_the_slot_line_with_the_rule_off() {
+    let (_d, slots) = limits_dir(r#"{"min_free_gb":0,"max_swap_pct":100,"min_mem_free_pct":0}"#);
+    let mut c = acquire(&slots, "1", "seen", &["true"]);
+    c.env_remove("MOAI_TEST_MACHINE");
+    let out = run(c);
+    assert!(out.status.success(), "{}", text(&out));
+    let err = String::from_utf8_lossy(&out.stderr);
+    let line = err
+        .lines()
+        .find(|l| l.contains("taken by seen"))
+        .unwrap_or_default();
+    assert!(
+        line.contains("; cpu free ") && line.ends_with("% (rule off)"),
+        "{}",
+        text(&out)
+    );
 }
 
 /// AC-3 (REQ-5): a file value wins over the default.
