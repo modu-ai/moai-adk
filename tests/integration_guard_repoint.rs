@@ -989,6 +989,46 @@ fn ac3_a_second_revert_refuses() {
     assert_eq!(fs::read(fx.record()).unwrap(), REWRITTEN);
 }
 
+/// AC-3: a linked worktree cannot revert, as it cannot apply; the record and the receipts stay.
+#[test]
+fn ac3_a_linked_worktree_cannot_revert() {
+    let fx = Fx::stale();
+    let stamp = fx.rewritten();
+    let linked = fx.linked();
+    let before = fx.snapshot();
+    assert_refused(
+        &fx,
+        &before,
+        fx.revert(&linked, &stamp, "user-pick-2"),
+        &["linked"],
+    );
+    assert_eq!(fs::read(fx.record()).unwrap(), REWRITTEN);
+}
+
+/// AC-3: a landing in flight, the file `moai/land-intent`, blocks the revert and the file stays.
+#[test]
+fn ac3_a_land_intent_file_blocks_the_revert() {
+    let fx = Fx::stale();
+    let stamp = fx.rewritten();
+    let intent = json!({
+        "ref": TARGET_REF, "old": fx.a, "new": fx.b, "by": "card land", "at": 0,
+    });
+    fs::write(fx.git_dir().join(guard::INTENT_FILE), intent.to_string()).unwrap();
+    let before = fx.snapshot();
+    assert_refused(
+        &fx,
+        &before,
+        fx.revert(&fx.repo, &stamp, "user-pick-2"),
+        &["intent"],
+    );
+    assert_eq!(fs::read(fx.record()).unwrap(), REWRITTEN);
+    assert_eq!(
+        fs::read_to_string(fx.git_dir().join(guard::INTENT_FILE)).unwrap(),
+        intent.to_string(),
+        "the landing's intent file is left as it was"
+    );
+}
+
 /// AC-3: a receipt that is missing or unreadable refuses the revert and writes nothing; so does a
 /// stamp that climbs out of the receipt folder, and `--apply` together with `--revert`.
 #[test]
