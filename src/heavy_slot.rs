@@ -531,12 +531,20 @@ fn cpu_cores() -> u64 {
 #[cfg(unix)]
 const CPU_SAMPLE_GAP: std::time::Duration = std::time::Duration::from_millis(100);
 
+/// How long the first look reads again while the system hands out the same ticks, before the
+/// reading counts as one the machine does not give.
+#[cfg(unix)]
+const CPU_FIRST_SAMPLE_BOUND: std::time::Duration = std::time::Duration::from_secs(2);
+
 /// Reads the CPU free percentage turn by turn: every reading is the idle share of the ticks
-/// since the reading before it, at least [`CPU_SAMPLE_GAP`] apart. A debug build that was given a
-/// machine reads that machine instead (and takes no tick reading).
+/// since the last reading that differed, at least [`CPU_SAMPLE_GAP`] apart. macOS hands the
+/// same counters to calls that follow each other closely, so an unchanged reading is no new
+/// sample: the last percentage holds. A debug build that was given a machine reads that machine
+/// instead (and takes no tick reading).
 #[cfg(unix)]
 struct CpuGauge {
     last: Option<(Ticks, std::time::Instant)>,
+    pct: Option<u64>,
 }
 
 #[cfg(unix)]
@@ -549,27 +557,47 @@ impl CpuGauge {
         } else {
             sys::cpu_ticks().map(|t| (t, std::time::Instant::now()))
         };
-        CpuGauge { last }
+        CpuGauge { last, pct: None }
     }
 
     /// The CPU free percentage now; `None` when the machine gives no reading (never a reason
     /// to wait). The look waits out the rest of [`CPU_SAMPLE_GAP`] when the reading before it
-    /// is younger.
+    /// is younger. Until there is a first percentage it reads again, for at most
+    /// [`CPU_FIRST_SAMPLE_BOUND`].
     fn read(&mut self) -> Option<u64> {
         if let Some((free, _)) = cpu_injected() {
             return free;
         }
-        let (before, at) = match self.last {
-            Some(l) => l,
-            None => (sys::cpu_ticks()?, std::time::Instant::now()),
-        };
-        let age = at.elapsed();
-        if age < CPU_SAMPLE_GAP {
-            std::thread::sleep(CPU_SAMPLE_GAP - age);
+        if self.last.is_none() {
+            self.take(sys::cpu_ticks()?, std::time::Instant::now());
         }
-        let now = sys::cpu_ticks()?;
-        self.last = Some((now, std::time::Instant::now()));
-        cpu_free_pct(before, now)
+        let start = std::time::Instant::now();
+        loop {
+            let age = self.last.map_or(CPU_SAMPLE_GAP, |(_, at)| at.elapsed());
+            if age < CPU_SAMPLE_GAP {
+                std::thread::sleep(CPU_SAMPLE_GAP - age);
+            }
+            let pct = self.take(sys::cpu_ticks()?, std::time::Instant::now());
+            if pct.is_some() || start.elapsed() >= CPU_FIRST_SAMPLE_BOUND {
+                return pct;
+            }
+            std::thread::sleep(CPU_SAMPLE_GAP);
+        }
+    }
+
+    /// Adds the tick reading `now`, taken at `at`, and answers the percentage that holds after
+    /// it. A reading equal to the one before it leaves the base and the percentage as they are;
+    /// one that gives no usable difference keeps the percentage and becomes the base.
+    fn take(&mut self, now: Ticks, at: std::time::Instant) -> Option<u64> {
+        let Some((before, _)) = self.last else {
+            self.last = Some((now, at));
+            return self.pct;
+        };
+        if now != before {
+            self.last = Some((now, at));
+            self.pct = cpu_free_pct(before, now).or(self.pct);
+        }
+        self.pct
     }
 }
 
@@ -2909,10 +2937,31 @@ mod low_space_tests {
 #[cfg(all(test, unix))]
 mod cpu_tests {
     use super::{
-        cpu_free_pct, cpu_wait_decision, effective, parse_proc_stat, CpuStep, LimitsFile,
+        cpu_free_pct, cpu_wait_decision, effective, parse_proc_stat, CpuGauge, CpuStep, LimitsFile,
         CPU_WAIT_CAP, DEFAULT_LIMITS,
     };
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn a_look_with_no_new_tick_keeps_the_last_percentage() {
+        let at = Instant::now();
+        let mut g = CpuGauge {
+            last: None,
+            pct: None,
+        };
+        assert_eq!(g.take((0, 0), at), None);
+        // The same counters again before any percentage: still none.
+        assert_eq!(g.take((0, 0), at), None);
+        assert_eq!(g.take((50, 100), at), Some(50));
+        // A repeated answer of the system is no new sample.
+        assert_eq!(g.take((50, 100), at), Some(50));
+        // The next difference is measured from the last reading that changed.
+        assert_eq!(g.take((140, 200), at), Some(90));
+        // Counters that went backwards give no difference: the percentage holds, and the next
+        // one is measured from them.
+        assert_eq!(g.take((10, 100), at), Some(90));
+        assert_eq!(g.take((30, 200), at), Some(20));
+    }
 
     #[test]
     fn the_free_percentage_is_the_idle_share_of_the_ticks_between_two_readings() {
