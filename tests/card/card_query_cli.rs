@@ -1,7 +1,7 @@
 //! `moai card query` (SPEC-20261126-card-read-queries): the leader's reads of many cards, the
 //! live reservations and notes by number, in one call that writes nothing.
 //!
-//! Every command runs against a temporary HOME; the real `~/.moai` is not read or written
+//! Every command runs against a temporary HOME; the real home state is not read or written
 //! (SPEC-20261126-card-read-queries AC-8). Cards and reservations are made by the real commands;
 //! notes and verdicts by the ledger's own writers; SQL sets only what no command gives (a
 //! reservation status, an unreadable verdict row, an imported note).
