@@ -260,6 +260,27 @@ fn a_cd_that_does_not_move_the_session_is_allowed() {
     }
 }
 
+/// SPEC-20261126-shell-cd-guard revision 2, REQ-2 and REQ-3, AC-6: these inputs leave the
+/// session folder where it is, yet the rule denies them because the shell reader does not follow
+/// these forms; the test pins the behaviour until the reader does.
+#[test]
+fn a_known_false_denial_stays_denied() {
+    let w = World::new(true, true);
+    for mode in MODES {
+        for command in [
+            "v=$(\n# 1) cd src (\n)",
+            "v=$(\n# 1) a; cd src; echo (\n)",
+            "v=$(cat <<'EOF'\n1) a\ncd src\n(\nEOF\n)",
+            "cat <<EOF$X\nEOF\ncd src\nEOF$X",
+        ] {
+            let reason = w
+                .call(&w.own, command, mode, None)
+                .unwrap_or_else(|| panic!("allowed in {mode}: {command:?}"));
+            assert!(reason.starts_with(PREFIX), "{command:?}: {reason}");
+        }
+    }
+}
+
 /// The dangerous path of the rule (REQ-1, REQ-4): a session folder reached through a link is
 /// judged by the checkout it leads to, and judging a compound command runs nothing of it.
 #[test]

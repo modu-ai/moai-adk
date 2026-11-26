@@ -2,7 +2,7 @@
 id: SPEC-20261126-shell-cd-guard
 title: "A worktree session's shell cd is refused with the other way in one line"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-26
 ---
 
@@ -16,27 +16,30 @@ created: 2026-11-26
 
 - 쓰기 경계(H3)·삭제·git 판정의 범위는 바꾸지 않아요.
 - `moai hook bash-boundary` 입구의 판정 표와 훅 배선, 설정 생성기는 바꾸지 않아요.
+- R-5 의 거짓 거절을 없애는 렉서 수정은 이 SPEC 에 넣지 않아요(후속 작업).
 
 ## Interview
 
 - Q1: 어떤 세션이 대상인가요? -> A: 요청의 "격리된 레인 세션"을 세션 체크아웃이 MoAI 프로젝트의 연결 워크트리인 세션으로 읽었어요(D-2, 위임 승인 때 리더가 바꿀 수 있어요).
 - Q2: 어떤 `cd` 를 막나요? -> A: 세션 셸의 작업 폴더를 옮기는 것만요(요청: 맨 앞, `&&` 뒤, `;` 뒤; 문자열 안의 글자는 제외). 서브셸과 다른 셸의 문자열은 옮기지 않아요(D-3).
+- Q3: 폴더를 옮기지 않는데 거절되는 남은 입력은 어떻게 하나요? -> A: 알려진 거짓 거절로 적고 테스트로 고정해요. 코드는 바꾸지 않아요(리더 결정, 노트 10265; 두 번째 감사 노트 10263). 범위는 D-7 이에요.
 
 ## Requirements
 
 - REQ-1: When a Bash call in a worktree session of a MoAI project would run `cd`, `pushd` or `popd` in the session shell, the tool-preflight hook shall deny the call with a one-line reason that names the other ways.
-- REQ-2 (REQ-1): IF the letters are inside a quoted string, a comment, a here-document body or an argument of another command, THEN the hook shall allow the call under this rule.
-- REQ-3 (REQ-1): IF the `cd` runs in a subshell, a command substitution or a shell string given to another shell, THEN the hook shall allow the call under this rule.
+- REQ-2 (REQ-1): IF the letters are inside a quoted string, a comment, a here-document body or an argument of another command, THEN the hook shall allow the call under this rule, except for the known false denials of R-5.
+- REQ-3 (REQ-1): IF the `cd` runs in a subshell, a command substitution or a shell string given to another shell, THEN the hook shall allow the call under this rule, except for the known false denials of R-5.
 - REQ-4 (REQ-1): IF the session checkout is the primary checkout, the folder is no MoAI project or the command cannot be split into commands, THEN the hook shall allow the call under this rule.
 - REQ-5: The reason of the boundary's `git-state` deny shall leave out the advice to `cd` into a worktree.
 
 ## Acceptance
 
 - AC-1 (REQ-1): 임시 HOME 의 MoAI 프로젝트에 `git worktree add` 로 만든 연결 워크트리에서 `moai hook-dispatch --host claude --event tool-preflight` 가 `cd x`, `ls && cd x`, `ls; cd x`, `{ cd x; }`, `if true; then cd x; fi`, `X=1 cd x`, `builtin cd x`, `eval 'cd x'`, `pushd x`, `popd` 를 `default` 와 `bypassPermissions` 두 모드에서 거절하고, 이유가 한 줄이며 절대 경로·`git -C`·객체 id 읽기·서브셸을 말해요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_worktree_session_cd_is_denied)'`
-- AC-2 (REQ-2, REQ-3): 같은 워크트리 세션에서 `echo "cd x"`, `grep 'cd ' a.txt`, `printf '%s' 'a && cd x'`, `ls # cd x`, here-document 본문의 `cd x`, `ls cd`, `(cd x && ls)`, `v=$(cd x && pwd)`, `bash -c 'cd x'`, `sh -c "cd x"`, `command -v cd`, `/usr/bin/cd x` 는 거절되지 않아요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_cd_that_does_not_move_the_session_is_allowed)'`
+- AC-2 (REQ-2, REQ-3): 같은 워크트리 세션에서 `echo "cd x"`, `grep 'cd ' a.txt`, `printf '%s' 'a && cd x'`, `ls # cd x`, here-document 본문의 `cd x`, `ls cd`, `(cd x && ls)`, `v=$(cd x && pwd)`, `bash -c 'cd x'`, `sh -c "cd x"`, `command -v cd`, `/usr/bin/cd x` 는 거절되지 않아요(R-5 의 입력은 여기에 들지 않아요) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_cd_that_does_not_move_the_session_is_allowed)'`
 - AC-3 (REQ-4): 주 체크아웃 세션, MoAI 프로필이 없는 폴더의 연결 워크트리, 나눌 수 없는 명령은 이 규칙으로 거절되지 않아요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_session_outside_a_worktree_keeps_cd)'`
 - AC-4 (REQ-5): `git-state` 거절 이유에 `cd into it` 이 남지 않아요 · verify: `rg -c 'cd into it' src` (일치 없음, exit 1)
 - AC-5 (REQ-1, REQ-2): 기존 경계 시험(`moai hook bash-boundary` 의 허용·거절 표)은 바뀌지 않고 통과해요 · verify: `cargo nextest run --test hook_bash_boundary_cli`
+- AC-6 (REQ-2, REQ-3): 같은 워크트리 세션에서 R-5 의 대표 입력 네 가지는 `default` 와 `bypassPermissions` 두 모드에서 session-cd 규칙으로 거절돼요(알려진 동작을 고정) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_known_false_denial_stays_denied)'`
 
 ## Scope
 
@@ -59,6 +62,7 @@ created: 2026-11-26
 | D-4 | `pushd`·`popd` 도 `cd` 처럼 다뤄요. | 같은 결과(작업 폴더 이동)예요. | 두 단어를 빼요. |
 | D-5 | 파이프의 각 단계는 세션 셸로 보고 거절해요. | zsh 는 마지막 단계를 현재 셸에서 돌려요; 나머지 단계의 `cd` 는 쓸모가 없어요. | 마지막 단계만 보는 개정. |
 | D-6 | `hook_engine.rs` 의 `capabilities` 가드 목록에는 항목을 더하지 않아요(상태 보고가 새 가드를 적게 말할 뿐 더 말하지 않아요). | `SPEC-20261126-reports-staged-guard` 작업이 같은 배열 두 줄을 고치는 중이에요. | 그 착지 뒤 후속 작업에서 한 줄 더하기. |
+| D-7 | R-5 의 입력은 폴더를 옮기지 않아도 거절될 수 있어요. REQ-2·REQ-3 의 예외예요. | 리더 결정(노트 10265): 막아야 할 것을 놓치지 않는 거절 쪽 빈틈이고, 일부러 만든 입력에서만 나와요. | 렉서가 그 부분을 읽게 고치고 AC-6 의 입력을 허용 목록으로 옮기는 개정. |
 
 ## Risks
 
@@ -66,6 +70,9 @@ created: 2026-11-26
 - R-2: 계산된 명령어(`$C x`), 별칭·함수 안의 `cd`, zsh 의 폴더 이름만 입력(autocd)은 판정하지 않아요.
 - R-3: 세션 폴더가 이미 워크트리 밖이면 이 규칙은 적용되지 않아요(기존 경계 판정은 그대로).
 - R-4: 새 빌드를 리더가 설치한 뒤에야 레인 세션에 적용돼요.
+- R-5: 알려진 거짓 거절(zsh 기준으로 세션 폴더가 안 옮겨지는데 거절될 수 있어요).
+  - 명령 치환 `$( … )` 안의 주석이나 here-document 본문에 `)` 가 있고, 그 뒤에 `cd`·`pushd`·`popd` 와 짝 없는 `(` 가 이어지는 줄. 렉서가 그 `)` 를 치환의 끝으로 읽고, `(` 때문에 괄호 수가 다시 맞아요. macOS bash 3.2 는 here-document 쪽에서 치환을 실제로 일찍 끝내 폴더를 옮기므로 그 셸에서는 맞는 거절이에요.
+  - here-document 끝 표시에 `$` 가 들어 있는 줄(`<<EOF$X`)의 본문. 렉서가 `$X` 를 버려서, 본문에 `EOF` 만 있는 줄이 나오면 그 뒤의 `cd` 를 명령으로 읽어요.
 
 ## Result
 
