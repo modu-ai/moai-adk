@@ -78,3 +78,23 @@ branch: spec/lane-advisor-opt-in-20261126
 | D-1 | 켜는 옵션(기본): 기존 `--advisor` 를 값이 없어도 되는 옵션으로 바꿔 빠지면 `opus` 예요. `cc`·`glm` launch 전체에 같아요. 대안: `-a` 전용 새 옵션을 더해요 | 카드 기준 1 의 예("`-a` 에 advisor 옵션, 기본 모델 opus")이고 새 옵션 이름이 늘지 않아요 | 값을 다시 필수로 해요 |
 | D-2 | 모델 없는 `--advisor` 인데 주 모델이 `opus` 보다 높으면(기본): 직접 청한 것이라 지금처럼 거절해요. 대안: 앞 SPEC 의 D-14 처럼 노트를 남기고 빼요 | 사용자가 청한 advisor 를 말없이 빼지 않아요. D-14 는 청하지 않은 기본값에 대한 규칙이었어요 | 빼는 경로를 되살려요 |
 | D-3 | 사용자 설정 `launcher.advisor`(기본): `-a` 에도 지금처럼 적용돼요. 대안: `-a` 는 설정을 무시하고 옵션만 받아요 | 설정은 사용자가 직접 켠 것이에요. 바꾸면 설정의 뜻이 레인에서만 달라져요 | `-a` 에서 설정을 거르는 줄을 더해요 |
+
+## Result
+
+2026-11-27, macOS(Darwin 27.2.0), 레인 `moai-adk-agent-irad`. 개정 2 의 승인은 카드 원장의 노트 10452 에 있어요(리더 기록, 기본값 D-1~D-3 은 리더 판단). 실제 HOME 에는 실행하지 않았어요.
+
+- 커밋: `27e342a660`·`fd5f626f92`(SPEC), `e915e9d239`(RED), `cfc7a99ddc`(구현·도움말 표·골든·문서).
+- TDD: RED 는 `e915e9d239` 에서 `test-failure` 로 기록했고, GREEN 은 `cfc7a99ddc` 에서 같은 검사가 통과했어요.
+- 바뀐 것: `-a` 의 기본 advisor 필드(`default_advisor`)와 분기를 지웠고, `--advisor` 는 값 없이도 쓰며(`num_args = 0..=1`, 빠지면 `opus`), `-a` 노트·도움말 표·골든 넷·문서 다섯 곳(`docs/host-support-matrix.md` 포함)을 고쳤어요.
+
+확인 명령은 적힌 그대로 실행했어요.
+
+- AC-1: met — `launcher_role_flags advisor_` exit 0, 3개 통과(`advisor_agent_launch_passes_none_unless_asked`)
+- AC-2: met — 같은 명령 exit 0(`advisor_option_without_a_model_means_opus`: 모델 없는 `--advisor` 다섯 꼴이 `opus`, `--model fable` 과 함께면 거절되고 host 시작 없음)
+- AC-3: met — `launcher_advisor_setting` exit 0, 8개 통과(새 테스트 `a_lane_follows_the_setting_and_a_bare_option_keeps_the_rules` 포함)
+- AC-4: met — `launcher_role_flags advisor_` exit 0, `--bin moai-cli help_rules` exit 0 16개 통과, `--test help_layout` exit 0 11개 통과(골든 다시 씀)
+- AC-5: not met — `repo_claude_md` exit 0 27개 통과, 도움말·문서 네 곳과 결정 로그 행은 고쳤어요. `CLAUDE.md` 31행의 "`-a` on `cc` also passes `--advisor opus`" 는 아직 그대로예요. 이 레인은 사용자 본인의 입력을 받기 전에 `CLAUDE.md` 를 고치지 않아요(리더가 사용자의 답을 옮긴 노트 10452 는 이 세션이 직접 받은 사용자 지시가 아니에요).
+
+- 가드 뮤턴트 4개는 모두 해당 테스트 1개가 exit 101 이었어요. 값 없는 `--advisor` 의 기본 모델을 바꾸면, `value_name` 을 지우면, `-a` 기본 advisor 를 되살리면, `--advisor` 와 `--no-advisor` 의 거절을 지우면 각각 새 테스트 하나가 실패해요.
+- not_run: 실제 `claude` 호스트 시작(대역으로만), 요청 한도(429)가 실제로 줄어드는지, Linux·Windows, 승인된 SPEC 밖의 파일.
+- 남은 일: `CLAUDE.md` 한 줄(카드 기준 3). 사용자가 이 창에 직접 입력하면 고치고, 그때 AC-5 와 기준 3 을 닫아요.
