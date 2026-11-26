@@ -61,13 +61,13 @@ fn git_executable() -> PathBuf {
         .expect("a git program on PATH")
 }
 
-/// A program that appends one line to `$GIT_COUNT_LOG` and runs the real git, so a test can count
-/// how many git processes a command starts.
+/// A program that appends one line (the arguments) to `$GIT_COUNT_LOG` and runs the real git, so
+/// a test can count how many git processes a command starts and which questions they ask.
 fn counting_git(dir: &Path) -> PathBuf {
     let script = dir.join("counting-git");
     fs::write(
         &script,
-        "#!/bin/sh\necho x >> \"$GIT_COUNT_LOG\"\nexec \"$GIT_COUNT_REAL\" \"$@\"\n",
+        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$GIT_COUNT_LOG\"\nexec \"$GIT_COUNT_REAL\" \"$@\"\n",
     )
     .unwrap();
     fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
@@ -212,6 +212,35 @@ impl World {
             .unwrap()
     }
 
+    /// One `card next` with the counting program also first on `PATH`, where the identity
+    /// resolver finds git; the arguments of every git process, one per line.
+    fn next_counting_every_git(&self) -> String {
+        let shim = self.home.path().join("shim");
+        fs::create_dir_all(&shim).unwrap();
+        fs::copy(&self.counter, shim.join("git")).unwrap();
+        let rest = std::env::var_os("PATH").expect("PATH");
+        let path = std::env::join_paths(std::iter::once(shim).chain(std::env::split_paths(&rest)))
+            .unwrap();
+        let _ = fs::remove_file(&self.log);
+        let out = self
+            .home
+            .command(&["card", "next", &self.p])
+            .env("PATH", path)
+            .env("MOAI_GIT_BIN", &self.counter)
+            .env("GIT_COUNT_REAL", &self.git_bin)
+            .env("GIT_COUNT_LOG", &self.log)
+            .env(SESSION_VAR, SESSION)
+            .stdin(Stdio::null())
+            .output()
+            .expect("run moai");
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        fs::read_to_string(&self.log).unwrap()
+    }
+
     /// One `moai card <args> <project>` run: the answer and how long it took.
     fn run(&self, args: &[&str]) -> (Value, Duration) {
         self.run_with(args, true)
@@ -306,6 +335,20 @@ fn card_next_and_card_list_answer_a_real_sized_ledger_within_the_cap() {
     );
     let listed = list["cards"].as_array().map(Vec::len).unwrap_or(0);
     assert!(listed > 0, "card list answered no card: {list}");
+}
+
+#[test]
+fn card_next_asks_for_the_repository_identity_once() {
+    let w = World::new();
+    w.seed();
+    // A session registry makes `card next` read the lanes, which names the project too.
+    fs::create_dir_all(moai_cli::session::agent_seq_dir(&w.project).unwrap()).unwrap();
+    let log = w.next_counting_every_git();
+    let asked = log
+        .lines()
+        .filter(|l| l.contains("--is-bare-repository"))
+        .count();
+    assert_eq!(asked, 1, "git processes of one card next:\n{log}");
 }
 
 #[test]
