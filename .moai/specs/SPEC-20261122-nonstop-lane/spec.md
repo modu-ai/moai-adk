@@ -2,7 +2,7 @@
 id: SPEC-20261122-nonstop-lane
 title: "레인을 멈추지 않고 돌리는 선택: 저장한 선택 하나, 만든 루프 프롬프트 하나, 원장 감시는 `moai card wait`"
 status: draft
-revision: 5
+revision: 6
 created: 2026-11-22
 ---
 
@@ -19,6 +19,8 @@ created: 2026-11-22
 3. 호스트의 루프 만료가 7일에서 30일로 바뀌었어요(Claude Code 2.1.330).
 4. 원장 감시 명령 `moai card wait` 가 이미 있어요. 따로 만들 `lane-run watch` 가 필요 없어요.
 5. 2번 조각(`show`, `set`, `prompt`, `goal`)은 착지했고(머지 `6f4117db80`), 3번 조각(자체 `watch`, 개정 4)은 브랜치 `spec/20261122-nonstop-lane-3`(head `5499d32b704e`)에 보류된 채 착지하지 않았어요.
+
+개정 6 은 개정 5 가 열어 둔 선택의 답을 반영해요. 선택은 `/moai project` 와 레인 시작 두 곳에서 물어요(사용자 선택, 노트 10281). 나머지는 개정 5 의 기본값이에요.
 
 ### 읽은 공식 문서
 
@@ -48,7 +50,7 @@ GLM 실행기에서 `ScheduleWakeup` 과 Monitor 가 같게 동작하는지는 �
 
 착지한 뒤 사용자가 읽는 내용이에요.
 
-- `/moai project` 가 Claude Code 프로젝트에서, 저장된 선택이 없으면 한 번 물어요: 레인을 non-stop 으로 돌릴지, 카드 하나씩 돌릴지. `moai lane-run set nonstop|single [--lane <name>]` 은 다시 묻지 않고 바꾸고, `moai lane-run show [--lane <name>]` 은 지금 적용되는 선택과 그 까닭을 알려 줘요.
+- `/moai project` 가 Claude Code 프로젝트에서, 저장된 선택이 없으면 한 번 물어요: 레인을 non-stop 으로 돌릴지, 카드 하나씩 돌릴지. 아직 정한 적이 없고 사람이 창에 있으면 `/moai agent` 를 시작할 때도 카드를 잡기 전에 한 번 물어요. 답은 프로젝트 값으로 저장돼요. `moai lane-run set nonstop|single [--lane <name>]` 은 다시 묻지 않고 바꾸고, `moai lane-run show [--lane <name>]` 은 지금 적용되는 선택과 그 까닭을 알려 줘요.
 - non-stop 이면 `moai lane-run prompt --lane <name>` 이 Claude Code 의 `/loop` 에 넣을 글을 찍어요. 리더가 있으면 레인은 리더의 배정을 기다리고, 없으면 원장에서 다음 카드를 잡아요. 사람이 보지 않는 동안 토큰을 쓰고 도구를 돌리므로, auto mode 나 moai 명령의 allow 규칙이 필요해요. 루프는 30일 뒤에 끝나고(2.1.330 전에는 7일) resume 으로 되살아나지 않아요.
 - `CLAUDE_CODE_DISABLE_CRON=1` 이면 카드 하나씩으로 바뀌고 `show` 가 그렇게 말해요.
 - `moai lane-run goal --card <name>` 은 카드 하나의 `/goal` 조건을 찍어요. `/goal` 은 사용자가 직접 입력해요.
@@ -57,10 +59,11 @@ GLM 실행기에서 `ScheduleWakeup` 과 Monitor 가 같게 동작하는지는 �
 
 - Q1: 무엇을 만드나요? -> A: 레인을 멈추지 않고 돌리는 내장 선택이에요. 추천 항목을 앞에 둔 선택으로 묻고, 프로필에 저장하고, 명령으로 바꾸고, 레인마다 따로 둘 수 있어요. Claude Code 의 `/loop`, Monitor, 선택적 `/goal` 만 써요(2026-11-22 사용자 요청, 카드 본문).
 - Q2: 레인은 어떻게 시작하고 일은 어떻게 받나요? -> A: `/moai agent` 는 모드만 바꾸고 지시 글을 받지 않아요. 일은 교차 세션 메시지로 와요(2026-11-25 사용자 결정).
-- Q3: 카드 글에 남은 `/moai work` 는 어떻게 읽나요? -> A: `/moai agent` 로 읽어요(2026-11-26 사용자 선택, 리더 기록 노트 10152). 카드의 두 기준 글에는 그 말이 없어요.
+- Q3: 카드 글에 남은 `/moai work` 는 어떻게 읽나요? -> A: `/moai agent` 로 읽어요(2026-11-26 사용자 선택, 리더 기록 노트 10152).
 - Q4: 선택은 어디에 저장하나요? -> A: 프로필 최상위 `lane_run` 키예요(2026-11-22 리더 결정, 노트 6574, D-2).
-- Q5: agent 모드에서 선택이 없으면요? -> A: `single` 이에요. 자동 non-stop 기본값은 두지 않아요(2026-11-22 리더 결정, 노트 6069, 되돌릴 수 있어요).
-- Q6: 아직 답이 없는 선택이 있나요? -> A: 네, 여섯 가지예요. Decisions 의 "열린 선택" 에 항목과 기본값을 적었어요. 그중 O-2(선택을 묻는 자리)는 2026-11-22 사용자 요청의 범위를 좁히므로 사용자만 정할 수 있어요.
+- Q5: agent 모드에서 선택이 없으면 자동으로 non-stop 인가요? -> A: 아니에요. 자동 non-stop 기본값은 두지 않고, 답이 없으면 `single` 이에요(2026-11-22 리더 결정, 노트 6069).
+- Q6: 선택은 어디서 묻나요? -> A: `/moai project` 와 레인 시작이에요. `/moai project` 에서 정하고, 아직 정한 적이 없고 사람이 창에 있으면 `/moai agent` 를 시작할 때도 한 번 물어요(2026-11-26 사용자 직접 선택, 리더 기록 노트 10281).
+- Q7: 나머지 선택은요? -> A: 개정 5 의 기본값이에요: 카드 기준 1 은 다시 적고, 사라진 메시지는 리더의 다음 회차가 되살리고, 감시는 `moai card wait`, 리더를 본 레인은 3600초마다 깨고, 리더를 본 세션은 `free` 를 만료로 읽어요(2026-11-26 리더 결정, 노트 10281).
 
 ## Non-goals
 
@@ -75,9 +78,7 @@ GLM 실행기에서 `ScheduleWakeup` 과 Monitor 가 같게 동작하는지는 �
 
 ## Requirements
 
-세 줄은 열린 선택의 기본값이에요: REQ-1 은 O-2(사용자가 고르기 전에는 확정이 아니에요), REQ-14 는 O-6, REQ-6 의 "리더를 본 경우" 는 O-5 예요.
-
-- REQ-1: When `/moai project` finishes applying a profile on the Claude Code host and the profile holds no `lane_run` pick, the skill shall ask once, as a selection with the recommended option first, whether lanes run non-stop or one card at a time and save the answer with `moai lane-run set` · failure: none — a saved pick is not asked again, no answer writes nothing, and neither the agent mode nor an update asks.
+- REQ-1: When `/moai project` finishes applying a profile on the Claude Code host and the profile holds no `lane_run` pick, the skill shall ask once, as a selection with the recommended option first, whether lanes run non-stop or one card at a time and save the answer with `moai lane-run set` · failure: none — a saved pick is not asked again, no answer writes nothing, and an update never asks.
 - REQ-2: When the saved pick is changed with the `lane-run set` command, the lane-run command shall write the new value for the project or for the named lane without asking again and leave every other profile key as it was · failure: none — a value other than `nonstop` or `single` refuses before any write.
 - REQ-3: When the effective pick of a lane is read, the lane-run command shall give the lane's own value before the project's value and report `unset` when neither exists · failure: none — an unreadable profile reports the reason and no pick.
 - REQ-4: When the effective pick of a lane is `nonstop`, the lane-run prompt command shall print one plain-text prompt for the self-paced `/loop` that names the lane, the leader check at every wake, the rule to keep the current card, the wait for a dispatch with a leader, `moai card next` without one, the rule that a verdict or a repair request comes first, the blocked-note rule and the rule never to end a turn with neither a card in progress, a watch nor a scheduled wake · failure: none — a lane name that is not accepted refuses before printing.
@@ -91,10 +92,11 @@ GLM 실행기에서 `ScheduleWakeup` 과 Monitor 가 같게 동작하는지는 �
 - REQ-12: When the generated prompt, the help text or any answer of the lane-run commands is printed, the text shall hold no card number, no key and no path outside the project · failure: none — the card is a placeholder and the lane name comes from the caller.
 - REQ-13: When `/moai project` builds a plan input for a profile that holds `lane_run`, the skill shall carry the saved `lane_run` value in that input unchanged · failure: none — a profile without the key gets none from the input.
 - REQ-14: IF a wake of the generated prompt reads the leader entry as `free` after the session has seen a registered leader or received a dispatch, or reads any answer other than `held` or `free`, THEN the prompt shall make the lane take no new card and continue only the cards it holds · failure: none — one ledger note on the card worked last names the answer.
+- REQ-15: When a session enters the agent mode with a person at the window on the Claude Code host and `moai lane-run show` reads its pick as `unset`, the skill shall ask the selection of REQ-1 once, before it takes any card, and save the answer as the project's pick with `moai lane-run set` · failure: none — with no person at the window or no answer nothing is written and the lane runs as `single`.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-11, REQ-13): the project workflow carries the selection with the recommended option first, the rule that no answer writes nothing and the carried `lane_run` input, the work workflow carries the agent-mode prompt rule, and the source manifest lists the changed files · verify: `cargo test --locked --offline --test lane_run_cli skill_text_` and `cargo test --locked --offline --test source_manifest_facts`
+- AC-1 (REQ-1, REQ-11, REQ-13, REQ-15): the project workflow carries the selection with the recommended option first, the rule that no answer writes nothing and the carried `lane_run` input, the work workflow carries the selection asked at agent-mode start before any card only with a person at the window and an `unset` pick, saved as the project's pick, and the agent-mode prompt rule, and the source manifest lists the changed files · verify: `cargo test --locked --offline --test lane_run_cli skill_text_` and `cargo test --locked --offline --test source_manifest_facts`
 - AC-2 (REQ-2, REQ-3, REQ-13): in a temporary project, `lane-run set nonstop` and `lane-run set single --lane <name>` write the project value and the lane value and no other key changes, the effective pick is the lane's before the project's, `unset` is reported when neither exists, a wrong value or a project without a profile refuses with nothing written, and after a `set` a project plan whose input carries the saved value leaves `lane_run` as it was through apply · verify: `cargo test --locked --offline --test lane_run_cli pick_`
 - AC-3 (REQ-4, REQ-6, REQ-12, REQ-14): in a temporary project and a temporary HOME, with `nonstop` the prompt names the lane, `moai session-register --show --name leader`, the lapsed-entry rule, the wait for a dispatch, `moai card next`, the blocked-note rule, the never-end-a-turn rule and both idle rules with `stop: true` and 3600 seconds, and holds no card number, no key-shaped text and no absolute path; with `single` no prompt is printed · verify: `cargo test --locked --offline --test lane_run_cli prompt_`
 - AC-4 (REQ-7, REQ-8): the prompt names `moai card wait` with `--not-author`, `--timeout 25m`, a Monitor timeout of 30 minutes and `--since`, and names no `lane-run watch`; the tests of the wait command pass · verify: `cargo test --locked --offline --test lane_run_cli prompt_` and `cargo test --locked --offline --test card card_wait_cli::`
@@ -125,7 +127,9 @@ Read and write the ledger only through moai commands. The loop ends 30 days afte
 
 ### 선택을 묻는 자리
 
-- `moai project-apply` 가 끝난 뒤의 별도 선택이에요. 확인 한 번으로 묶는 표의 행이 아니에요.
+- `/moai project`: `moai project-apply` 가 끝난 뒤의 별도 선택이에요. 확인 한 번으로 묶는 표의 행이 아니에요.
+- `/moai agent` 시작: `moai lane-run show --lane <name>` 의 `saved` 가 `unset` 일 때만, 카드를 잡기 전에 한 번 물어요. "사람이 창에 있다" 는 호스트가 선택 창을 주는 대화형 세션이고, 모드 말이 다른 세션의 메시지가 아니라 그 세션 자신의 입력으로 왔다는 뜻이에요. `moai cc -a` 의 첫 입력도 여기에 들어가요. `work.md` 의 "카드를 일하는 세션은 선택 창을 열지 않는다" 는 규칙은 그대로이고, 카드를 잡기 전의 이 한 번만 따로 적어요.
+- `/moai agent` 시작에서 받은 답은 프로젝트 값으로 저장하고, 프로필 파일이 바뀌었고 커밋되지 않았다고 한 줄로 알려요.
 - 추천은 프로필의 흐름이 NeXT-Flow(여러 레인용)이면 non-stop, 아니면 카드 하나씩이에요. 미리 골라 두지 않아요.
 - 질문 한 줄에 무인 턴에는 auto mode 나 allow 규칙이 필요하고, 루프는 30일 뒤나 resume 뒤에 없어진다고 적어요.
 - 레인별 값은 `moai lane-run set --lane` 으로 둬요.
@@ -142,8 +146,8 @@ Read and write the ledger only through moai commands. The loop ends 30 days afte
 
 ## Plan
 
-1. 이 개정을 승인받아요. 열린 선택의 답이 기본값과 다르면 개정을 올려요.
-2. 조각 S1(카드 기준 1): 빨간 테스트 `prompt_`, `facts_`, `help_` 를 먼저 쓰고, 프롬프트, 버전 하한, `prompt` 답의 안내 문장, operation 문서를 바꿔요. clap 요약 줄은 그대로 둬요.
+1. 이 개정을 승인받아요.
+2. 조각 S1(카드 기준 3, 예전 기준 1 을 다시 적은 것): 빨간 테스트 `prompt_`, `facts_`, `help_` 를 먼저 쓰고, 프롬프트, 버전 하한, `prompt` 답의 안내 문장, operation 문서를 바꿔요. clap 요약 줄은 그대로 둬요.
 3. 조각 S2(카드 기준 2): 빨간 테스트 `skill_text_` 와 plan 뒤에도 값이 남는 `pick_` 을 먼저 쓰고, `work.md` 와 `project.md` 를 바꾼 다음 source manifest 를 갱신해요. `tools/repo_scans.json` 의 `reads-skills` 행에 `lane_run_cli` 를 넣어요. 두 workflow 파일을 다른 카드가 예약하고 있으면 기다려요.
 4. 조각마다: 가드 테스트의 뮤턴트, `moai check affected --card` 한 번, READY. 기준이 열려 있는 동안의 착지는 `--keep-open` 이에요.
 
@@ -151,10 +155,12 @@ tier 1 이에요: 지우기, 권한, 게이트, HOME 을 바꾸지 않아요.
 
 ## Risks
 
-- 만료된 리더 등록(실제로 본 일). 2026-11-26T09:09:40Z 에 `moai session-register --show --name leader` 가 `free` 였어요. 등록의 lease 는 06:06:41Z 에 끝났는데, 그 뒤인 08:51Z 무렵에도 리더는 배정 메시지를 보냈어요(등록 세션과 보낸 세션이 같은지는 확인하지 못했어요). `free` 를 곧바로 "리더 없음" 으로 읽으면(O-6 의 (a)) 레인이 리더 모르게 카드를 잡아요. REQ-14 는 리더를 본 세션에서는 막지만, `/clear` 뒤처럼 본 기억이 없는 세션에서는 막지 못해요.
+- 만료된 리더 등록(실제로 본 일). 2026-11-26T09:09:40Z 에 `moai session-register --show --name leader` 가 `free` 였어요. 등록의 lease 는 06:06:41Z 에 끝났는데, 그 뒤인 08:51Z 무렵에도 리더는 배정 메시지를 보냈어요(등록 세션과 보낸 세션이 같은지는 확인하지 못했어요). `free` 를 곧바로 "리더 없음" 으로 읽으면 레인이 리더 모르게 카드를 잡아요. REQ-14 는 리더를 본 세션에서는 막지만, `/clear` 뒤처럼 본 기억이 없는 세션에서는 막지 못해요.
 - `/clear` 뒤에는 세션 id 가 바뀔 수 있어, 예전 세션이 낸 review 카드는 감시 대상에서 빠져요. 그 카드의 수리 요청은 리더의 메시지에 기대요.
-- 교차 세션 메시지는 보류되거나 버려질 수 있어요. 감시는 레인이 잡았거나 낸 카드만 보므로, 새 배정이 사라지면 리더의 다음 회차가 되살려야 해요(O-3).
-- 쉬는 레인이 한 시간에 한 번 깨는 데에도 토큰이 들어요(O-5).
+- 교차 세션 메시지는 보류되거나 버려질 수 있어요. 감시는 레인이 잡았거나 낸 카드만 보므로, 새 배정이 사라지면 리더의 다음 회차가 되살려야 해요(D-23).
+- 쉬는 레인이 한 시간에 한 번 깨는 데에도 토큰이 들어요(D-24).
+- `/moai agent` 시작의 질문은 답할 때까지 그 세션을 붙잡을 수 있고, 그동안 배정 메시지가 처리되지 않을 수 있어요. 창을 띄우고 자리를 뜬 경우를 moai 는 알 수 없어요. 답 없는 선택 창이 호스트에서 어떻게 되는지는 확인하지 못했어요.
+- 레인 시작에서 저장하면 추적되는 프로필 파일에 커밋되지 않은 변경이 남아요.
 - 사람이 보지 않는 루프는 토큰을 쓰고 도구를 돌려요. 질문이 그렇게 알리고, moai 가 선택을 대신하지 않고, 답이 없으면 `single` 이에요.
 - 루프, Monitor, `/goal` 은 몇 주 사이에도 바뀐 호스트 기능이에요. 테스트는 moai 의 글과 명령만 고정해요.
 - 세션이 스스로 `/loop` 를 시작할 수 있는지는 호스트 설정에 달려 있고 실행해 보지 않았어요. REQ-11 은 붙여 넣을 글을 찍는 길을 함께 둬요.
@@ -166,7 +172,7 @@ tier 1 이에요: 지우기, 권한, 게이트, HOME 을 바꾸지 않아요.
 | --- | --- | --- | --- |
 | D-1 | `lane-run` 한 operation 에 `show`, `set`, `prompt`, `goal` 을 둬요. 쓰기는 `set` 뿐이에요. | 착지한 2번 조각. | `watch` 동작 추가(D-18 로 대체). |
 | D-2 | 선택은 프로필 최상위 `lane_run` 의 `default` 와 `lanes` 에 저장해요. `set` 은 임시 파일과 rename 으로 쓰고 다른 키와 순서를 지켜요. | 리더 결정(노트 6574). `work_flow` 는 `flow` 를 요구하고 모르는 필드를 거절해요. | `work_flow.lane_run`. |
-| D-3 | agent 모드는 선택을 묻지 않고, 선택이 없으면 `single` 이에요. | 시작한 루프는 토큰과 권한을 쓰므로 사람의 동의가 필요해요. 노트 6069. | 레인의 자동 non-stop 기본값. |
+| D-3 | 선택이 없으면 `single` 로 동작해요. 자동 non-stop 기본값은 없어요. | 시작한 루프는 토큰과 권한을 쓰므로 사람의 동의가 필요해요. 노트 6069. "agent 모드에서는 묻지 않는다" 는 부분은 D-21 로 대체됐어요. | 레인의 자동 non-stop 기본값. |
 | D-4 | 프롬프트는 slash 명령이 아닌 일반 글이고, 카드 번호와 카드 묶음을 싣지 않아요. | 예약된 실행은 모델이 스스로 부를 수 있는 skill 만 돌려요. REQ-12. | `/moai agent …` 를 루프 입력으로 씀. |
 | D-6 | 사실은 읽은 것만 말해요. 환경 변수는 읽고, 버전은 읽지 않고 하한을 글로 찍어요. | moai 는 호스트 버전을 읽지 않아요. | 버전 추정. |
 | D-7 | `/goal` 은 선택 사항이고 카드마다 사용자가 골라요. 기본값이 아니에요. | 별도 모델의 판단과 토큰이 더 들어요. | 루프에 항상 붙임. |
@@ -176,20 +182,12 @@ tier 1 이에요: 지우기, 권한, 게이트, HOME 을 바꾸지 않아요.
 | D-18 | 감시는 `moai card wait` 를 써요. 보류된 `lane-run watch` 는 버려요. 개정 4 의 D-14~D-17 은 착지하지 않았고 이 개정은 채택하지 않아요. D-5, D-11 은 대체됐어요. | `card wait` 가 설치본에 있어요(help 읽음). 보류본(`5499d32b704e` 코드 읽기)은 시작할 때 이미 있는 노트 뒤에서 출발해 두 실행 사이의 노트를 건너뛰고, 읽기 오류 뒤에는 cursor 를 버리고 새 끝에서 다시 시작하며, 프롬프트가 Monitor 마감(기본 5분)을 지정하지 않아요. | 보류 브랜치를 다시 올려 고침. |
 | D-19 | 리더가 등록돼 있으면 레인은 배정을 기다려요. | `flows/next-flow`, `workflows/work.md` 8단계. | READY 뒤 바로 `card next`. |
 | D-20 | `/goal` 설정 파일 읽기(D-10)와 모양 규칙을 프로필 읽기로 옮기는 일(D-12)은 하지 않아요. | 그 설정이면 호스트에서 `/goal` 을 쓸 수 없어요(goal 문서). D-12 의 규칙은 `lane-run` 안에서 동작해요. | 남은 일로 계속 둠. |
-
-### 열린 선택
-
-기본값으로 요구 사항을 적었어요. 다르게 고르면 개정을 올려요.
-
-| ID | 물음 | 기본값 | 다른 선택 | 정하는 사람 |
-| --- | --- | --- | --- | --- |
-| O-1 | 카드 기준 1 의 "lane's row" 는 무엇인가요? | (a) 카드를 잡은 레인이 기준을 철회하고 다시 적어요: "non-stop 선택이면 생성한 루프 프롬프트가 레인 이름, 리더 확인(일이 오는 곳: 리더의 배정, 리더가 없으면 moai card next), 원장 감시, 멈춤 규칙을 담고, '카드 하나씩' 선택이면 루프를 시작하지 않아요(임시 HOME 테스트)" | (b) row 를 레인 이름으로 읽어요. (c) 프롬프트에 카드 목록을 실어요(REQ-12 와 어긋나요). | 리더 |
-| O-2 | 선택은 어디서 묻나요? 2026-11-22 요청은 레인 시작과 `/moai project` 두 곳이에요. | (a) `/moai project` 에서만 | (b) 선택이 없고 사람이 창에 있을 때 `/moai agent` 에서도 물어요(카드 작업 세션은 선택 창을 열지 않는다는 규칙에 예외가 필요해요). (c) 리더 창이 레인마다 물어요. | 사용자 |
-| O-3 | 사라진 완료·배정 메시지는 어떻게 되살리나요? | (b) 리더의 다음 회차가 원장을 읽어 되살려요. 흐름 글은 안 바꿔요. | (a) 리더가 배정을 카드 노트로도 남겨요. | 리더 |
-| O-4 | 감시 명령은 무엇인가요? | (a) `moai card wait`(D-18) | (b) 보류된 `watch` 를 다시 올려 고쳐요. | 리더 |
-| O-5 | 리더를 본 레인이 할 일이 없으면요? | (a) 3600초마다 한 번 깨요. | (b) 몇 번 쉰 뒤 멈춰요. (c) 바로 멈추고 메시지에 기대요. | 리더 |
-| O-6 | 무인 루프에서 `free` 는 무엇인가요? | (c) 리더를 한 번도 보지 않은 세션만 "리더 없음" 으로 읽고, 본 세션은 만료로 읽어 새 카드를 잡지 않아요(REQ-14). | (a) 언제나 "리더 없음" 으로 읽고 `card next` 를 해요. (b) 언제나 새 카드를 잡지 않아요. 리더 없는 프로젝트에서는 non-stop 이 잡은 카드만 끝내요. | 리더 |
+| D-21 | 선택은 `/moai project` 에서 정하고, 아직 정한 적이 없고 사람이 창에 있으면 `/moai agent` 시작에서도 카드를 잡기 전에 한 번 물어요. | 사용자 직접 선택(노트 10281). 2026-11-22 요청의 두 자리를 지켜요. | `/moai project` 에서만 물음. 리더 창이 레인마다 물음. |
+| D-22 | `/moai agent` 시작에서 받은 답은 프로젝트 값으로 저장해요. 레인별 값은 `set --lane` 이에요. | 이 레인의 결정이고 되돌릴 수 있어요. 레인 이름은 시작마다 달라질 수 있어, 레인 값으로 저장하면 이름마다 다시 묻게 돼요. | 답을 그 레인의 값으로 저장. |
+| D-23 | 사라진 완료·배정 메시지는 리더의 다음 회차가 원장을 읽어 되살려요. 흐름 글은 바꾸지 않아요. | 리더 결정(노트 10281). | 배정을 카드 노트로도 남김. |
+| D-24 | 리더를 본 레인이 할 일이 없으면 3600초마다 한 번 깨요. | 리더 결정(노트 10281). | 몇 번 쉰 뒤 멈춤. 바로 멈추고 메시지에 기댐. |
+| D-25 | 무인 루프의 `free` 는, 리더를 한 번도 보지 않은 세션에서만 "리더 없음" 이에요. 본 세션은 만료로 읽고 새 카드를 잡지 않아요. | 리더 결정(노트 10281), Risks 의 본 일. | 언제나 `card next`. 언제나 새 카드를 잡지 않음. |
 
 ## Result
 
-2번 조각은 착지했어요(머지 `6f4117db80`, head `049c8a7751`). 개정 5 는 글만 바꿨고 AC 는 하나도 다시 실행하지 않았어요: AC-1~AC-7 은 not_run 이에요.
+2번 조각은 착지했어요(머지 `6f4117db80`, head `049c8a7751`). 개정 5, 6 은 글만 바꿨고 AC 는 하나도 다시 실행하지 않았어요: AC-1~AC-7 은 not_run 이에요.
