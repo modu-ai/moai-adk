@@ -2580,8 +2580,8 @@
       "tests": [
         "tests/audit_reads_by_object_id.rs::ac2_the_checked_in_audit_texts_hold_only_the_baseline_cd_and_git_c"
       ],
-      "checks": [
-        "cargo test --offline --locked --test audit_reads_by_object_id"
+      "test_targets": [
+        "audit_reads_by_object_id"
       ],
       "rules": [
         "tests/audit_reads_by_object_id.rs"
