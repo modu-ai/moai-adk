@@ -2,7 +2,7 @@
 id: SPEC-20261126-hook-unreadable-input
 title: "PreToolUse hook entries refuse an input they cannot read"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-26
 ---
 
@@ -55,7 +55,7 @@ MoAI 프로젝트에서 `moai hook bash-boundary` 와 `moai hook write-boundary`
 - AC-2 (REQ-2, REQ-3): `bash-boundary` with an object of 4194305 bytes prints one deny object whose reason names the 4 MiB limit, the same object of 4194304 bytes gets no denial from the entry, and the `write-boundary` over-limit reason is the one it prints today · verify: `cargo nextest run --test hook_entry_cli -E 'test(/^unreadable_ac2_/)'`
 - AC-3 (REQ-4, REQ-5): each denial adds exactly one receipt line with the name and the reason word and no input byte, and with no project folder under HOME, with a receipt path that is a link and with a full receipt log the call is still denied, one stderr line is written and nothing outside is touched · verify: `cargo nextest run --test hook_entry_cli -E 'test(/^unreadable_ac3_/)'`
 - AC-4 (REQ-6): outside a MoAI project (no state folder, `project.yaml` a folder, a link to nothing, and `CLAUDE_PROJECT_DIR` naming such a folder) every input of AC-1 and AC-2 prints nothing on either stream and changes no file · verify: `cargo nextest run --test hook_entry_cli -E 'test(/^unreadable_ac4_/)'`
-- AC-5 (REQ-7): `session-context` prints nothing for every input of AC-1 and AC-2, an object that names another event is silent for all three names, and a readable object without `tool_input` is silent for the two `PreToolUse` names · verify: `cargo nextest run --test hook_entry_cli -E 'test(/^unreadable_ac5_/)'`
+- AC-5 (REQ-7): `session-context` prints nothing for every refused input of AC-1 and AC-2 and denies nothing for the object of exactly 4194304 bytes, an object that names another event is silent for all three names, and a readable object without `tool_input` is silent for the two `PreToolUse` names · verify: `cargo nextest run --test hook_entry_cli -E 'test(/^unreadable_ac5_/)'`
 - AC-6 (REQ-1, REQ-2, REQ-7): the entry, session start, write boundary, conformance and latency targets pass, with the earlier silent expectations changed only for the cases this SPEC denies · verify: `cargo nextest run --test hook_entry_cli --test hook_session_start_cli --test hook_write_boundary_cli --test hook_conformance_cli --test hook_latency_cli`
 - AC-7 (REQ-1, REQ-6): the temp-home regression of the hook entry expects one deny object for bad input of the two `PreToolUse` names in the MoAI project, and silence for `session-context` and the plain folder · verify: `cargo nextest run --test e2e_temp_home_cli -E 'test(/^scenario_hook_entry/)'`
 - AC-8 (REQ-1…REQ-7): the SPEC itself passes the spec check · verify: `moai spec check SPEC-20261126-hook-unreadable-input`
