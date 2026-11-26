@@ -176,11 +176,13 @@ enum Action {
     },
     /// Reads the ledger. Print the tests that passed only on a retry, with their counts
     ///
-    /// Reads `check-flaky.jsonl` in the project's state folder: the test step of `check affected`
-    /// retries a failing test twice (`--retries 2 --flaky-result pass`), lists one that passed on
-    /// a retry as FLAKY in the summary line, in `flaky.txt` of the check folder and in this ledger
-    /// (one line per run). The answer lists each name with its count; a name seen twice has
-    /// `status` `fix`: fix that test. An unreadable ledger answers an error and no counts.
+    /// Reads `check-flaky.jsonl` in the `local` folder of the project's state folder, and adds
+    /// the counts of one an earlier build left in the earlier state folder: the test step of
+    /// `check affected` retries a failing test twice (`--retries 2 --flaky-result pass`), lists
+    /// one that passed on a retry as FLAKY in the summary line, in `flaky.txt` of the check folder
+    /// and in the new ledger (one line per run). The answer lists each name with its count; a name
+    /// seen twice has `status` `fix`: fix that test. An unreadable ledger answers an error and no
+    /// counts.
     Flaky {
         /// The repository (default: the current folder).
         #[arg(long, default_value = ".")]

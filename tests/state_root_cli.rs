@@ -2,6 +2,7 @@
 //! marker says this generation owns it, otherwise the earlier `.moai-cli/` (decision D7:
 //! both are read, one writes). Synthetic projects in temporary folders only.
 mod common;
+use moai_cli::{launcher_init::STATE_STOP, state_root::EARLIER_PROJECT_DIR};
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
@@ -19,6 +20,13 @@ fn profile() -> Value {
 }
 
 fn cli(args: &[&str], input: &Value) -> Value {
+    let v = envelope(args, input);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    v["result"].clone()
+}
+
+/// The whole answer of one command, whether it succeeded or not.
+fn envelope(args: &[&str], input: &Value) -> Value {
     let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
         .stdin(Stdio::piped())
@@ -37,15 +45,13 @@ fn cli(args: &[&str], input: &Value) -> Value {
         Err(e) => panic!("stdin write failed: {e}"),
     }
     let out = child.wait_with_output().unwrap();
-    let v: Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
         panic!(
             "not JSON: {} {}",
             String::from_utf8_lossy(&out.stdout),
             String::from_utf8_lossy(&out.stderr)
         )
-    });
-    assert_eq!(v["ok"], json!(true), "{v}");
-    v["result"].clone()
+    })
 }
 
 /// `project-plan` then `project-apply` with the plan's result, as PROJECT does.
@@ -211,6 +217,39 @@ fn a_mixed_moai_folder_is_left_alone_and_the_earlier_root_is_used() {
     fs::write(root.path().join(".moai/moai-cli.json"), MARKER).unwrap();
     fs::write(root.path().join(".moai/config/config.yaml"), "x: 1\n").unwrap();
     let moai_before = tree(&root.path().join(".moai"));
+
+    // With no earlier folder the apply is refused and nothing is written (REQ-1 of the
+    // state-write stop).
+    let before = tree(root.path());
+    let p = root.path().to_str().unwrap();
+    let plan = cli(&["project-plan", p], &profile());
+    let refused = envelope(
+        &[
+            "project-apply",
+            p,
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &plan,
+    );
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert_eq!(
+        refused["error"]["kind"],
+        json!("invalid_input"),
+        "{refused}"
+    );
+    let message = refused["error"]["message"].as_str().unwrap();
+    assert!(
+        message.starts_with(STATE_STOP) && message.contains("`mixed`"),
+        "{message}"
+    );
+    assert_eq!(tree(root.path()), before, "a refused apply writes nothing");
+    assert!(!root.path().join(EARLIER_PROJECT_DIR).exists());
+
+    // With it, the profile goes there, as before (REQ-3).
+    fs::create_dir(root.path().join(EARLIER_PROJECT_DIR)).unwrap();
     create(root.path());
     assert_eq!(
         tree(&root.path().join(".moai")),
