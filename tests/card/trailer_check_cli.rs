@@ -562,6 +562,9 @@ fn line_of(message: &str, needle: &str) -> usize {
     message.lines().position(|l| l == needle).unwrap() + 1
 }
 
+/// One case: its name, the commit message, and the `(key, line)` pairs expected to be unread.
+type UnreadCase = (&'static str, String, Vec<(&'static str, String)>);
+
 /// SPEC-20261126-check-affected-trailers-flaky REQ-4, AC-3: a line that begins with a `Moai-*` key
 /// in the last paragraph is unread when a foreign line sits in that paragraph (git then reads no
 /// trailer from it), and the range fails with a finding that names the key and the line.
@@ -570,8 +573,7 @@ fn an_attribution_line_in_the_last_paragraph_is_an_unread_trailer_line() {
     let spec = format!("Moai-Spec: {SPEC}");
     let session = format!("Moai-Session: {KEYED_SESSION}");
     let verified = "Moai-Verified: tests";
-    // (case, message, the lines expected to be reported unread)
-    let cases: Vec<(&str, String, Vec<(&str, String)>)> = vec![
+    let cases: Vec<UnreadCase> = vec![
         (
             "a foreign line between the Moai lines",
             format!("fix: demo\n\n{spec}\n{session}\n{FOREIGN}\n{verified}\n{ATTRIBUTION}"),
