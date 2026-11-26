@@ -15,6 +15,7 @@
 #![cfg(unix)]
 
 mod common;
+use common::CleanEnv;
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
@@ -23,12 +24,16 @@ use std::{
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    thread::sleep,
+    time::Duration,
 };
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
 /// The HOME state folder of the new name, where every backup is made.
 const NEWER: &str = ".moai";
+/// The state folder the fixture HOME starts with, so its receipts and version folders sit there.
+const EARLIER_STATE: &str = ".moai-cli";
 const ROOTS: [(&str, &str); 1] = [("claude", ".claude/skills/moai")];
 
 fn write_pkg(dir: &Path) {
@@ -84,7 +89,7 @@ fn fixture() -> Fixture {
     }
     // An earlier-root HOME: its state stays in `~/.moai-cli` (#2696 C4b2 puts a HOME with no
     // state on the new state folder; that layout is pinned by home_root tests and update_cli).
-    fs::create_dir_all(home.join(".moai-cli")).unwrap();
+    fs::create_dir_all(home.join(EARLIER_STATE)).unwrap();
     let home = fs::canonicalize(&home).unwrap();
     Fixture {
         _tmp: tmp,
@@ -966,4 +971,335 @@ fn a_failed_move_into_place_puts_the_original_back() {
     let rb = &host(&rp, "claude")["restore_backup"];
     assert_eq!(rb["original_at"], json!("root"), "{rb}");
     assert_eq!(rb["action"], json!("release"), "{rb}");
+}
+
+// ---- SPEC-20261125-update-installed-from-link: an apply that writes no file ----
+//
+// These cases run copies of the built binary from version folders inside the temporary HOME, so
+// each copy has its own installation id.
+
+/// A version an earlier build would have written into a receipt.
+const EARLIER_VERSION: &str = "2026.11.0-rc.2+local.4";
+
+fn state_dir(home: &Path) -> PathBuf {
+    home.join(EARLIER_STATE)
+}
+
+fn version_dir(home: &Path, version: &str) -> PathBuf {
+    state_dir(home).join("versions").join(version)
+}
+
+/// A copy of the built binary at `versions/<version>/bin/moai-cli`.
+fn put_build(home: &Path, version: &str) -> PathBuf {
+    let bin = version_dir(home, version).join("bin");
+    fs::create_dir_all(&bin).unwrap();
+    let exe = bin.join("moai-cli");
+    common::copy_executable(Path::new(EXE), &exe);
+    exe
+}
+
+/// Runs a copy with a cleared environment; the temporary HOME is also the current folder.
+fn run_build(
+    exe: &Path,
+    home: &Path,
+    args: &[&str],
+    stdin: Option<&Value>,
+) -> std::process::Output {
+    let mut child = Command::new(exe)
+        .args(args)
+        .clean_env()
+        .env("HOME", home)
+        .env("PATH", "/usr/bin:/bin")
+        .env("LC_ALL", "C")
+        .current_dir(home)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut pipe = child.stdin.take().unwrap();
+    if let Some(v) = stdin {
+        let _ = pipe.write_all(v.to_string().as_bytes());
+    }
+    drop(pipe);
+    child.wait_with_output().unwrap()
+}
+
+fn plan_by(exe: &Path, home: &Path, pkg: &Path) -> Value {
+    result_of(&run_build(
+        exe,
+        home,
+        &["update-plan", home.to_str().unwrap(), pkg.to_str().unwrap()],
+        None,
+    ))
+}
+
+/// `update-apply` of `plan` by the copy, with the backup-then-replace token when one is given.
+fn apply_by(exe: &Path, home: &Path, pkg: &Path, plan: &Value, token: Option<&str>) -> Value {
+    let mut args = vec![
+        "update-apply",
+        home.to_str().unwrap(),
+        pkg.to_str().unwrap(),
+        "--plan-digest",
+        plan["plan_digest"].as_str().unwrap(),
+        "--permission-reference",
+        "fixture-approved",
+    ];
+    if let Some(t) = token {
+        args.extend(["--confirm-backup-replace", t]);
+    }
+    result_of(&run_build(exe, home, &args, Some(plan)))
+}
+
+/// Moves the Go-era skill aside and installs `pkg` as the copy.
+fn replace_by(exe: &Path, home: &Path, pkg: &Path) {
+    let p = plan_by(exe, home, pkg);
+    let r = apply_by(exe, home, pkg, &p, Some(&token(&p, "claude")));
+    assert_eq!(host(&r, "claude")["status"], json!("replaced"), "{r}");
+    // Receipts carry second-resolution timestamps; keep the order of applies observable.
+    sleep(Duration::from_millis(1100));
+}
+
+fn recovery_plan_by(exe: &Path, home: &Path) -> Value {
+    result_of(&run_build(
+        exe,
+        home,
+        &["recovery-plan", home.to_str().unwrap()],
+        None,
+    ))
+}
+
+fn recovery_apply_by(exe: &Path, home: &Path, plan: &Value) -> Value {
+    result_of(&run_build(
+        exe,
+        home,
+        &[
+            "recovery-apply",
+            home.to_str().unwrap(),
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        Some(plan),
+    ))
+}
+
+/// The installation id of a copy: the hash of its canonical path.
+fn id_of(exe: &Path) -> String {
+    sha256_hex(fs::canonicalize(exe).unwrap().to_str().unwrap().as_bytes())
+}
+
+fn receipt_file(home: &Path, id: &str) -> PathBuf {
+    state_dir(home)
+        .join("installations")
+        .join(id)
+        .join("hosts/moai/claude.json")
+}
+
+fn read_receipt(home: &Path, id: &str) -> Value {
+    serde_json::from_slice(&fs::read(receipt_file(home, id)).unwrap()).unwrap()
+}
+
+fn set_receipt_field(home: &Path, id: &str, field: &str, value: &str) {
+    let mut r = read_receipt(home, id);
+    r[field] = json!(value);
+    let bytes = serde_json::to_vec_pretty(&r).unwrap();
+    fs::write(receipt_file(home, id), bytes).unwrap();
+}
+
+/// The receipt of a backup-then-replace apply holds what a restore needs, and `recovery-plan`
+/// offers it: the state a case starts from, before its no-write apply.
+fn restorable_receipt(exe: &Path, home: &Path) -> Value {
+    let r = read_receipt(home, &id_of(exe));
+    assert!(r["backup"].is_object(), "{r}");
+    assert!(
+        r["entries"].as_array().is_some_and(|e| !e.is_empty()),
+        "{r}"
+    );
+    let rp = recovery_plan_by(exe, home);
+    assert_eq!(
+        host(&rp, "claude")["restore_backup"]["action"],
+        json!("restore_backup"),
+        "{rp}"
+    );
+    r
+}
+
+/// What a no-write apply must not take from the receipt that made the backup: `recovery-plan`
+/// still offers the restore, and the fields that describe that apply are as they were. Returns
+/// the recovery plan.
+fn assert_own_backup_kept(exe: &Path, home: &Path, before: &Value) -> Value {
+    let rp = recovery_plan_by(exe, home);
+    assert_eq!(
+        host(&rp, "claude")["restore_backup"]["action"],
+        json!("restore_backup"),
+        "the restore of the original folder is still offered: {rp}"
+    );
+    let after = read_receipt(home, &id_of(exe));
+    for field in ["backup", "entries", "operation", "version_before"] {
+        assert_eq!(after[field], before[field], "{field}: {after}");
+    }
+    assert_eq!(
+        after["package_version"],
+        json!(moai_cli::BUILD_VERSION),
+        "{after}"
+    );
+    assert_eq!(after["status"], json!("committed"), "{after}");
+    rp
+}
+
+// REQ-4: the receipt that moved the user's folder aside takes this build's version from a
+// no-write apply and keeps everything a restore reads.
+#[test]
+fn a_no_write_apply_keeps_the_own_backup_that_recovery_restores() {
+    let f = fixture();
+    let original = originals(&f);
+    let a = put_build(&f.home, "a");
+    replace_by(&a, &f.home, &f.stage);
+    set_receipt_field(&f.home, &id_of(&a), "package_version", EARLIER_VERSION);
+    let before = restorable_receipt(&a, &f.home);
+
+    let p = plan_by(&a, &f.home, &f.stage);
+    let r = apply_by(&a, &f.home, &f.stage, &p, None);
+    assert_eq!(host(&r, "claude")["status"], json!("unchanged"), "{r}");
+
+    let rp = assert_own_backup_kept(&a, &f.home, &before);
+    let restored = recovery_apply_by(&a, &f.home, &rp);
+    assert_eq!(restored["status"], json!("success"), "{restored}");
+    assert_eq!(snapshot(&f.home.join(ROOTS[0].1)), original[0]);
+}
+
+/// `update` from the copy's own folder (its package and agents beside it); the whole envelope.
+fn update_by(exe: &Path, home: &Path, args: &[&str]) -> Value {
+    let mut all = vec!["update"];
+    all.extend_from_slice(args);
+    envelope(&run_build(exe, home, &all, None))
+}
+
+// REQ-4 going back: a newer build's no-write receipt is the baseline, and the older build's
+// confirmed `update --allow-older` writes no file. Its own receipt keeps the backup it made.
+#[test]
+fn a_no_write_apply_going_back_keeps_the_own_backup_and_refreshes_the_receipt() {
+    let f = fixture();
+    let original = originals(&f);
+    let a = put_build(&f.home, "a");
+    let folder = version_dir(&f.home, "a");
+    // The version folder gets what an installed one has: a package and an agents folder.
+    let pkg = folder.join("skills/moai");
+    write_pkg(&pkg);
+    fs::create_dir_all(folder.join("agents")).unwrap();
+    replace_by(&a, &f.home, &pkg);
+    set_receipt_field(&f.home, &id_of(&a), "package_version", EARLIER_VERSION);
+
+    // A second build applies the same package: no file moves, and it gets a receipt of its own.
+    let b = put_build(&f.home, "b");
+    let p = plan_by(&b, &f.home, &pkg);
+    let r = apply_by(&b, &f.home, &pkg, &p, None);
+    assert_eq!(host(&r, "claude")["status"], json!("unchanged"), "{r}");
+    // That receipt names a version one head above this build.
+    let head: u32 = moai_cli::BUILD_VERSION
+        .split('.')
+        .next()
+        .unwrap()
+        .parse()
+        .unwrap();
+    let newer = format!("{}.0001.1", head + 1);
+    set_receipt_field(&f.home, &id_of(&b), "package_version", &newer);
+    // Its owned list also gets a file that neither the package nor the disk holds (it sorts
+    // after every package path): the plan has no row for it, so nothing is written, and this
+    // baseline's list differs from the older build's own. Another digest for a package file
+    // would instead be a baseline move, which is not the no-write path.
+    let mut theirs = read_receipt(&f.home, &id_of(&b));
+    theirs["owned"].as_array_mut().unwrap().push(json!({
+        "host": "claude",
+        "path": "zz-retired/note.md",
+        "sha256": format!("sha256:{}", sha256_hex(b"retired")),
+    }));
+    fs::write(
+        receipt_file(&f.home, &id_of(&b)),
+        serde_json::to_vec_pretty(&theirs).unwrap(),
+    )
+    .unwrap();
+    sleep(Duration::from_millis(1100));
+
+    // Without the flag the older build is blocked: the going-back path is the one under test.
+    let preview = update_by(&a, &f.home, &[]);
+    let blocked = host(&preview["result"]["plan"], "claude");
+    assert_eq!(blocked["preflight"], json!("blocked"), "{preview}");
+    assert!(
+        blocked["blocked_reason"]
+            .as_str()
+            .is_some_and(|why| why.contains(&newer)),
+        "{preview}"
+    );
+
+    let before = restorable_receipt(&a, &f.home);
+    assert_ne!(before["owned"], theirs["owned"]);
+    let preview = update_by(&a, &f.home, &["--allow-older"]);
+    let digest = preview["result"]["plan_digest"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{preview}"));
+    let back = update_by(&a, &f.home, &["--allow-older", "--confirm", digest]);
+    assert_eq!(back["ok"], json!(true), "{back}");
+    assert_eq!(
+        host(&back["result"]["result"], "claude")["status"],
+        json!("unchanged"),
+        "{back}"
+    );
+
+    let rp = assert_own_backup_kept(&a, &f.home, &before);
+    let after = read_receipt(&f.home, &id_of(&a));
+    assert_eq!(after["owned"], theirs["owned"], "{after}");
+    assert_ne!(after["package_version"], before["package_version"]);
+    assert_ne!(after["finished_at"], before["finished_at"], "{after}");
+    // The refreshed finish time makes this receipt the baseline again.
+    let p = plan_by(&a, &f.home, &pkg);
+    assert_eq!(host(&p, "claude")["preflight"], json!("ok"), "{p}");
+    let restored = recovery_apply_by(&a, &f.home, &rp);
+    assert_eq!(restored["status"], json!("success"), "{restored}");
+    assert_eq!(snapshot(&f.home.join(ROOTS[0].1)), original[0]);
+}
+
+// REQ-5: an own receipt that is neither committed nor recovered is left byte for byte, even when
+// the baseline is a newer folder's committed receipt of another version.
+#[test]
+fn a_no_write_apply_never_rewrites_an_own_failed_receipt() {
+    let f = fixture();
+    let a = put_build(&f.home, "a");
+    replace_by(&a, &f.home, &f.stage);
+
+    // A second build really writes a changed file, so it commits a receipt of its own.
+    fs::write(f.stage.join("workflows/update.md"), "# UPDATE\nrust v2\n").unwrap();
+    let b = put_build(&f.home, "b");
+    let p = plan_by(&b, &f.home, &f.stage);
+    let r = apply_by(&b, &f.home, &f.stage, &p, None);
+    assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+    set_receipt_field(&f.home, &id_of(&b), "package_version", EARLIER_VERSION);
+    set_receipt_field(&f.home, &id_of(&a), "status", "failed");
+    let mine = read_receipt(&f.home, &id_of(&a));
+    let theirs = read_receipt(&f.home, &id_of(&b));
+    assert_eq!(theirs["status"], json!("committed"), "{theirs}");
+    assert!(
+        mine["finished_at"].as_str().unwrap() < theirs["finished_at"].as_str().unwrap(),
+        "{mine} {theirs}"
+    );
+    let bytes = fs::read(receipt_file(&f.home, &id_of(&a))).unwrap();
+
+    // The baseline is the second build's receipt, and nothing is left to write.
+    let p = plan_by(&a, &f.home, &f.stage);
+    assert_eq!(p["source_version"], json!(EARLIER_VERSION), "{p}");
+    assert!(
+        host(&p, "claude")["receipt_from"]
+            .as_str()
+            .is_some_and(|from| from.contains(&id_of(&b))),
+        "{p}"
+    );
+    let r = apply_by(&a, &f.home, &f.stage, &p, None);
+    assert_eq!(host(&r, "claude")["status"], json!("unchanged"), "{r}");
+    assert_eq!(
+        fs::read(receipt_file(&f.home, &id_of(&a))).unwrap(),
+        bytes,
+        "the failed receipt is not rewritten"
+    );
 }
