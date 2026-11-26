@@ -102,18 +102,18 @@ fn without_leading_color(mut argv: Vec<String>) -> Vec<String> {
 /// Options of `moai cc|glm` (00-F #2028).
 #[derive(Args)]
 struct LaunchOpts {
-    /// Start the coordination window: session `<project name>-leader`, the permission bypass
+    /// Start the coordination window: session `leader-<project name>`, the permission bypass
     /// (`--dangerously-skip-permissions`) unless `--permissions` is given, and the first input
     /// `/moai leader`.
     #[arg(short = 'l', long)]
     leader: bool,
-    /// Start a lane: session `<project name>-agent-<english name>` (a name chosen at random among
-    /// the free names of the launcher's list),
+    /// Start a lane: session `agent-<english name>` (a name chosen at random among the names of
+    /// the launcher's list that no other session on this machine holds),
     /// the permission bypass unless `--permissions` is given, and the first input `/moai agent`.
     #[arg(short = 'a', long)]
     agent: bool,
-    /// Session name (none by default; `-l` names it `<project name>-leader`, `-a` takes a name chosen
-    /// at random among the free `<project name>-agent-<english name>`; with a role flag this name replaces those).
+    /// Session name (none by default; `-l` names it `leader-<project name>`, `-a` takes a name chosen
+    /// at random among the free `agent-<english name>`; with a role flag this name replaces those and is held on this machine the same way).
     #[arg(long)]
     name: Option<String>,
     /// Main model (default `opus`).
@@ -1059,7 +1059,8 @@ enum Command {
     /// Start a Claude Code session
     ///
     /// Claude Code session launcher: `cc`. `-l` starts the coordination window and `-a` a lane,
-    /// named `<project name>-leader` and `<project name>-agent-<english name>`, in the permission bypass with
+    /// named `leader-<project name>` and `agent-<english name>` (no other session on this machine
+    /// holds the name), in the permission bypass with
     /// the first input `/moai leader` or `/moai agent`. Without a role flag the session is plain
     /// and `--name` names it; the role is then entered inside it with `/moai agent` or
     /// `/moai leader`.
@@ -1067,8 +1068,9 @@ enum Command {
     /// Start a Claude Code session on z.ai GLM
     ///
     /// Claude Code on z.ai GLM: `glm` (needs ANTHROPIC_AUTH_TOKEN in the environment or a key file).
-    /// `-l` starts the coordination window and `-a` a lane, named `<project name>-leader` and
-    /// `<project name>-agent-<english name>`, in the permission bypass with the first input `/moai leader` or
+    /// `-l` starts the coordination window and `-a` a lane, named `leader-<project name>` and
+    /// `agent-<english name>` (no other session on this machine holds the name), in the permission
+    /// bypass with the first input `/moai leader` or
     /// `/moai agent`. Without a role flag the session is plain and `--name` names it; the role
     /// is then entered inside it with `/moai agent` or `/moai leader`.
     Glm(HostLaunch),
@@ -1152,17 +1154,29 @@ fn launch(
     if first_input.is_some() && prompt.is_some() {
         return Err("a PROMPT cannot be given with `-l` or `-a`: those hand the host the first input themselves, and instructions arrive as a message".into());
     }
-    if first_input.is_some() && o.name.is_none() {
+    // SPEC-20261127-launcher-session-names: a role flag names the session `leader-<project name>`
+    // or `agent-<name>`, and the name is looked up machine-wide without making anything (REQ-5,
+    // REQ-8); the claim itself is made further down, after every refusal that takes no lock. A
+    // `--name` beside a role flag is looked up the same way (D-3).
+    let mut alternatives: Vec<String> = Vec::new();
+    let machine_wide = first_input.is_some();
+    if machine_wide {
+        use moai_cli::session::machine_names::{plan_fixed, plan_lane};
         let here = std::env::current_dir()
             .map_err(|_| "the current directory is unreadable".to_string())?;
-        o.name = Some(if o.leader {
-            moai_cli::session::leader_session_name(&here)
-        } else {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_secs() as i64);
-            moai_cli::session::pick_agent_name(&here, now)?
-        });
+        let home = moai_cli::home_workdir::home()?;
+        let plan = match o.name.take() {
+            Some(name) => plan_fixed(&home, &name)?,
+            None if o.leader => plan_fixed(&home, &moai_cli::session::leader_session_name(&here))?,
+            None => {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |d| d.as_secs() as i64);
+                plan_lane(&home, moai_cli::session::agent_candidates(&here, now)?)?
+            }
+        };
+        o.name = Some(plan.name);
+        alternatives = plan.alternatives;
     }
     // Validate user configuration even for a CLI override. Resolution precedes host
     // composition. No advisor by default (user decision 2026-11-12, #2476): only `--advisor`
@@ -1178,7 +1192,7 @@ fn launch(
         (true, true) => moai_cli::session::Access::Prompt,
         (false, _) => settings.access,
     };
-    let request = SessionRequest {
+    let mut request = SessionRequest {
         role: None,
         host: host.into(),
         name: o.name,
@@ -1214,6 +1228,8 @@ fn launch(
     // with a name holds `<name>.live` for as long as its host runs, so the read-only liveness
     // lookup can tell a live launcher from an exited one. Outside a git repository there is no
     // sessions folder: the launch goes on without a lock and the lookup answers unknown.
+    // SPEC-20261127-launcher-session-names REQ-4: a role flag's name is claimed machine-wide first
+    // (`<HOME>/.moai/session-names/<name>.live`), then in the clone; both are held with the host.
     let mut live_named = None;
     if !o.dry_run {
         if let Some(name) = request.name.clone() {
@@ -1225,13 +1241,20 @@ fn launch(
             if moai_cli::lane_registry::valid_name(&name) {
                 let here = std::env::current_dir()
                     .map_err(|_| "session live lock: the current directory is unreadable")?;
-                // No sessions folder (not a git repository): no lock, the lookup stays unknown.
-                if let Ok(dir) = moai_cli::session::agent_seq_dir(&here) {
-                    live_named = Some(
-                        moai_cli::session::lock_named_live(&dir, &name)
-                            .map_err(|e| format!("cannot start {name}: {e}"))?,
-                    );
-                }
+                let home = if machine_wide {
+                    Some(moai_cli::home_workdir::home()?)
+                } else {
+                    None
+                };
+                let (claimed, held) = moai_cli::session::machine_names::hold(
+                    &here,
+                    home.as_deref(),
+                    &name,
+                    &alternatives,
+                    machine_wide,
+                )?;
+                request.name = Some(claimed);
+                live_named = Some(held);
             }
         }
     }

@@ -27,6 +27,7 @@
 //! permission flag) or the user setting `launcher.role_access` says `auto`, `full` or `prompt`. Codex and OMP are not hosts
 //! any more (user decision 2026-11-21, SPEC-20261121-codex-launcher-and-models-removed,
 //! SPEC-20261122-remove-omp-launcher).
+pub mod machine_names;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs::{self, OpenOptions};
@@ -103,15 +104,30 @@ pub const AGENT_NAMES: [&str; 48] = [
     "priscilla",
 ];
 
-/// The project name that prefixes the session names `-l` and `-a` give (SPEC-20261125-session-
-/// names-project-prefix D-2, D-3): the `project_id` of the project profile when it is a name a
-/// person chose, else the folder name of the clone's primary checkout (never the folder of a
-/// worktree, whose name changes with every card). A random-form id (`project_id::is_random_form`)
-/// names no project to a person and is not used. The text is reduced to the registry's characters
-/// (`A-Z a-z 0-9 . _ -`, a letter or digit first and last) and cut so that the longest session
-/// name, `<project name>-agent-<longest english name>`, fits the registry's 64 characters. A
-/// folder outside a git repository uses its own name; an empty result is `project`.
+/// The project name that ends the leader session name `-l` gives, `leader-<project name>`
+/// (SPEC-20261127-launcher-session-names REQ-3; earlier it prefixed both names, SPEC-20261125-
+/// session-names-project-prefix D-2, D-3): the `project_id` of the project profile when it is a
+/// name a person chose, else the folder name of the clone's primary checkout (never the folder of
+/// a worktree, whose name changes with every card). A random-form id
+/// (`project_id::is_random_form`) names no project to a person and is not used. The text is
+/// reduced to the registry's characters (`A-Z a-z 0-9 . _ -`, a letter or digit first and last)
+/// and cut so that `leader-<project name>` fits the registry's 64 characters. A folder outside a
+/// git repository uses its own name; an empty result is `project`.
 pub fn project_name(dir: &Path) -> String {
+    project_names(dir).current
+}
+
+/// The project name in the two cuts: the one the launcher uses now and the one the earlier
+/// project-prefixed names (`<project name>-leader`, `<project name>-agent-<name>`) were cut with,
+/// which sessions started before SPEC-20261127-launcher-session-names still carry. One git
+/// identity read gives both.
+pub struct ProjectNames {
+    pub current: String,
+    pub earlier: String,
+}
+
+/// See [`project_name`] and [`ProjectNames`].
+pub fn project_names(dir: &Path) -> ProjectNames {
     let identity = crate::identity::identity_in(dir, None).ok();
     let root = identity
         .as_ref()
@@ -149,41 +165,68 @@ pub fn project_name(dir: &Path) -> String {
         })
         .collect();
     name = name.trim_start_matches(is_edge).to_string();
-    name.truncate(max_project_len());
-    name = name.trim_end_matches(is_edge).to_string();
-    if name.is_empty() {
-        "project".into()
-    } else {
-        name
+    let cut = |max: usize| {
+        let mut cut = name.clone();
+        cut.truncate(max);
+        let cut = cut.trim_end_matches(is_edge).to_string();
+        if cut.is_empty() {
+            "project".to_string()
+        } else {
+            cut
+        }
+    };
+    ProjectNames {
+        current: cut(max_project_len()),
+        earlier: cut(max_earlier_project_len()),
     }
 }
 
-/// The longest project name for which `<project name>-agent-<english name>` still fits the
-/// registry's name length, whichever name of the list is taken.
+/// The longest project name for which `leader-<project name>` still fits the registry's name
+/// length.
 fn max_project_len() -> usize {
+    crate::lane_registry::MAX_NAME_LEN - "leader-".len()
+}
+
+/// The longest project name of the earlier forms: `<project name>-agent-<english name>` fit the
+/// registry's name length whichever name of the list was taken.
+fn max_earlier_project_len() -> usize {
     let longest = AGENT_NAMES.iter().map(|n| n.len()).max().unwrap_or(0);
     crate::lane_registry::MAX_NAME_LEN - "-agent-".len() - longest
 }
 
-/// `<project name>-leader`, the session name `-l` gives the coordination window.
+/// `leader-<project name>`, the session name `-l` gives the coordination window.
 pub fn leader_session_name(dir: &Path) -> String {
-    format!("{}-leader", project_name(dir))
+    format!("leader-{}", project_name(dir))
 }
 
-/// `<project name>-agent-`, the start of every lane name of this project.
-pub fn agent_prefix(dir: &Path) -> String {
-    format!("{}-agent-", project_name(dir))
+/// `<project name>-leader`, the earlier leader name, cut as it was then. Still read by the card
+/// limit and `session-register --names` for a session started before the change.
+pub fn earlier_leader_session_name(dir: &Path) -> String {
+    format!("{}-leader", project_names(dir).earlier)
 }
 
-/// `<project name>-agent-<name>`: a name of [`AGENT_NAMES`] chosen at random, with equal chance,
-/// among the names that are free in both of their forms, `agent-<name>` and
-/// `<project name>-agent-<name>` (SPEC-20261125-session-registry-session-key REQ-8). A form is
-/// taken while its `<form>.live` lock is held or its registry entry `<form>.json` has a running
-/// lease (REQ-2, REQ-3); the answer always carries the project prefix. A folder outside a git
-/// repository has no sessions folder to read, so every name is free. When every name is taken
-/// the answer is one message that names `--name` (REQ-2). The seed comes from the clock, the
-/// process id, `now` and a process-wide counter, so two calls in one nanosecond differ;
-/// [`pick_agent_name_seeded`] takes it from the caller.
+/// `agent-`, the start of every lane name. No project name is part of a lane name any more
+/// (SPEC-20261127-launcher-session-names REQ-1): the machine-wide lock keeps it unique.
+pub fn agent_prefix(_dir: &Path) -> String {
+    "agent-".to_string()
+}
+
+/// `<project name>-agent-`, the earlier start of the lane names of this project, cut as it was
+/// then.
+pub fn earlier_agent_prefix(dir: &Path) -> String {
+    format!("{}-agent-", project_names(dir).earlier)
+}
+
+/// `agent-<name>`: a name of [`AGENT_NAMES`] chosen at random, with equal chance, among the names
+/// that this clone holds in neither form, `agent-<name>` or the earlier `<project name>-agent-
+/// <name>` (SPEC-20261125-session-registry-session-key REQ-8, SPEC-20261127-launcher-session-
+/// names REQ-1). A form is taken while its `<form>.live` lock is held or its registry entry
+/// `<form>.json` has a running lease. A folder outside a git repository has no sessions folder to
+/// read, so every name is free. When every name is taken the answer is one message that names
+/// `--name` (REQ-2). The seed comes from the clock, the process id, `now` and a process-wide
+/// counter, so two calls in one nanosecond differ; [`pick_agent_name_seeded`] takes it from the
+/// caller. This is the clone's view only: the machine-wide claim of the name is the launcher's
+/// ([`machine_names`]), which goes on through [`agent_candidates`].
 pub fn pick_agent_name(dir: &Path, now: i64) -> Result<String, String> {
     pick_agent_name_seeded(dir, now, agent_pick_seed(now))
 }
@@ -191,14 +234,27 @@ pub fn pick_agent_name(dir: &Path, now: i64) -> Result<String, String> {
 /// [`pick_agent_name`] with the seed given: the free names are collected in list order and the
 /// one at `seed % free count` is returned, so a test reaches every free name and no other.
 pub fn pick_agent_name_seeded(dir: &Path, now: i64, seed: u64) -> Result<String, String> {
+    let mut candidates = agent_candidates_seeded(dir, now, seed)?;
+    Ok(candidates.swap_remove(0))
+}
+
+/// Every name this clone holds in neither form, the seeded pick first and then the others in
+/// list order from there on, so a launcher whose first name is held machine-wide goes on to the
+/// next without a new random draw.
+pub fn agent_candidates(dir: &Path, now: i64) -> Result<Vec<String>, String> {
+    agent_candidates_seeded(dir, now, agent_pick_seed(now))
+}
+
+/// [`agent_candidates`] with the seed given.
+pub fn agent_candidates_seeded(dir: &Path, now: i64, seed: u64) -> Result<Vec<String>, String> {
     let sessions = agent_seq_dir(dir).ok();
-    let prefix = agent_prefix(dir);
+    let earlier = earlier_agent_prefix(dir);
     let mut free: Vec<String> = Vec::new();
     for n in AGENT_NAMES {
-        let name = format!("{prefix}{n}");
+        let name = format!("agent-{n}");
         if let Some(sessions) = &sessions {
             let mut taken = false;
-            for form in [format!("agent-{n}"), name.clone()] {
+            for form in [name.clone(), format!("{earlier}{n}")] {
                 if live_lock_held(&sessions.join(format!("{form}.live")))?
                     || crate::lane_registry::is_live(sessions, &form, now)?
                 {
@@ -219,7 +275,8 @@ pub fn pick_agent_name_seeded(dir: &Path, now: i64, seed: u64) -> Result<String,
         ));
     }
     let at = (seed % free.len() as u64) as usize;
-    Ok(free.swap_remove(at))
+    free.rotate_left(at);
+    Ok(free)
 }
 
 /// A seed for [`pick_agent_name_seeded`] from the standard library only: the clock nanoseconds,
@@ -655,17 +712,38 @@ pub(crate) fn live_lock_held(path: &Path) -> Result<bool, String> {
 /// can tell a live launcher from an exited one. A symlink or a non-regular file at the path is
 /// refused; the name must be a safe registry name.
 pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
+    try_lock_named_live(dir, name).map_err(|e| match e {
+        LiveLockError::Held(why) | LiveLockError::Other(why) => why,
+    })
+}
+
+/// Why [`try_lock_named_live`] gave no lock: the name is running (`Held`), or the lock cannot be
+/// taken for another reason (`Other`). The text is the same either way.
+#[derive(Debug)]
+pub(crate) enum LiveLockError {
+    Held(String),
+    Other(String),
+}
+
+/// [`lock_named_live`] with the cause kept apart, so a launcher that has other names to try can go
+/// on after `Held` and stop at `Other`.
+pub(crate) fn try_lock_named_live(dir: &Path, name: &str) -> Result<fs::File, LiveLockError> {
+    use LiveLockError::{Held, Other};
     if !crate::lane_registry::valid_name(name) {
-        return Err(
+        return Err(Other(
             "session live lock name is invalid: use 1 to 64 of A-Z a-z 0-9 . _ -".to_string(),
-        );
+        ));
     }
     // The first named launch in a clone makes the sessions folder.
-    fs::create_dir_all(dir)
-        .map_err(|e| format!("session live lock {} write failed: {e}", dir.display()))?;
+    fs::create_dir_all(dir).map_err(|e| {
+        Other(format!(
+            "session live lock {} write failed: {e}",
+            dir.display()
+        ))
+    })?;
     let path = dir.join(format!("{name}.live"));
-    refuse_unless_regular(&path)?;
-    let unavailable = || format!("session live lock {} unavailable", path.display());
+    refuse_unless_regular(&path).map_err(Other)?;
+    let unavailable = || Other(format!("session live lock {} unavailable", path.display()));
     let file = OpenOptions::new()
         .read(true)
         .write(true)
@@ -677,10 +755,10 @@ pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
     // wait; a named lock's only other holder is a full session.
     match file.try_lock() {
         Ok(()) => Ok(file),
-        Err(fs::TryLockError::WouldBlock) => Err(format!(
+        Err(fs::TryLockError::WouldBlock) => Err(Held(format!(
             "{name} is already running: the session live lock {} is held; stop that session first",
             path.display()
-        )),
+        ))),
         Err(fs::TryLockError::Error(_)) => Err(unavailable()),
     }
 }
