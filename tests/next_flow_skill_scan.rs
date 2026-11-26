@@ -1311,15 +1311,22 @@ fn refs_the_verdict_names_its_auditor_one_way() {
 /// its dot folder by where it sits, once.
 const SECOND_HOST_FOLDER: &str = "the retired second host's dot folder";
 
+/// D-19 again: a shipped text names no repository-only `tools/` script, so the tier 2 list names
+/// the code's prefixes that start with `tools/` by what they are, once.
+const REPO_TOOLS_STAND_IN: &str = "the repository's own check tools";
+
 /// Where the tier 2 list of the audit contract opens and where its sentence ends.
 const TIER2_LIST_OPEN: &str = "sets the floor to tier 2: ";
 const TIER2_LIST_CLOSE: &str = ". This is the list the tier code reads";
 
 /// What is wrong with the tier 2 list of the audit contract's "Audit tiers" section against
 /// `src/gate.rs` `TIER2_PREFIXES`: an entry the code has and the list lacks, an entry the list
-/// has and the code lacks, an entry written twice, or a stand-in for the retired second host's
-/// folder that is not there exactly once. The list's entries are its backticked paths and the
-/// stand-in, which stands for the code's one prefix that names that host.
+/// has and the code lacks, an entry written twice, a stand-in for the retired second host's
+/// folder that is not there exactly once, a stand-in for the repository's `tools/` prefixes that
+/// is not there exactly once, or a backticked `tools/` entry. The list's entries are its
+/// backticked paths and the first stand-in, which stands for the code's one prefix that names
+/// that host; the second stands for every code prefix that starts with `tools/`, so the entries
+/// compared with the code are the code's prefixes without those.
 fn tier2_list_problems(tiers: &str) -> Vec<String> {
     let Some(start) = tiers
         .find(TIER2_LIST_OPEN)
@@ -1335,26 +1342,41 @@ fn tier2_list_problems(tiers: &str) -> Vec<String> {
         .iter()
         .find(|p| p.contains("codex"))
         .expect("the code names the retired second host's folder");
+    let (repo_tools, code_prefixes): (Vec<&str>, Vec<&str>) = moai_cli::gate::TIER2_PREFIXES
+        .iter()
+        .partition(|p| p.starts_with("tools/"));
+    assert!(
+        !repo_tools.is_empty(),
+        "the code has no `tools/` prefix, so {REPO_TOOLS_STAND_IN:?} would stand for nothing"
+    );
     let stand_ins = list.matches(SECOND_HOST_FOLDER).count();
     let mut problems = Vec::new();
     if stand_ins != 1 {
         problems.push(format!("{SECOND_HOST_FOLDER:?} stands {stand_ins} times"));
     }
-    let mut entries: Vec<String> = list
-        .split('`')
-        .skip(1)
-        .step_by(2)
-        .map(str::to_string)
-        .collect();
+    let tools_stand_ins = list.matches(REPO_TOOLS_STAND_IN).count();
+    if tools_stand_ins != 1 {
+        problems.push(format!(
+            "{REPO_TOOLS_STAND_IN:?} stands {tools_stand_ins} times"
+        ));
+    }
+    let mut entries: Vec<String> = Vec::new();
+    for entry in list.split('`').skip(1).step_by(2) {
+        if entry.starts_with("tools/") {
+            problems.push(format!("lists a tools/ entry by name: `{entry}`"));
+        } else {
+            entries.push(entry.to_string());
+        }
+    }
     entries.extend((0..stand_ins).map(|_| host.to_string()));
-    for prefix in moai_cli::gate::TIER2_PREFIXES {
+    for prefix in &code_prefixes {
         if !entries.iter().any(|e| e == prefix) {
             problems.push(format!("lacks `{prefix}`"));
         }
     }
     let mut seen: Vec<&str> = Vec::new();
     for entry in &entries {
-        if !moai_cli::gate::TIER2_PREFIXES.contains(&entry.as_str()) {
+        if !code_prefixes.contains(&entry.as_str()) {
             problems.push(format!("has `{entry}`, which the code lacks"));
         } else if seen.contains(&entry.as_str()) {
             problems.push(format!("has `{entry}` twice"));
@@ -1366,11 +1388,16 @@ fn tier2_list_problems(tiers: &str) -> Vec<String> {
 
 /// Follow-up F4 of the slice C verdict: the tier 2 list check fails on an entry the code lacks
 /// as well as on one the list lacks, and keeps exactly one stand-in for the retired second
-/// host's dot folder.
+/// host's dot folder and exactly one for the repository's `tools/` prefixes, with no `tools/`
+/// entry named.
 #[test]
 fn refs_audit_tier_list_check_fails_on_an_extra_entry() {
     let contract = read(AUDIT_REF);
     let tiers = section(&contract, "Audit tiers");
+    assert!(
+        tier2_list_problems(tiers).is_empty(),
+        "the real list has a problem"
+    );
     let extra = tiers.replacen("`CLAUDE.md`", "`CLAUDE.md`, `src/extra`", 1);
     assert_ne!(extra, tiers, "the planted entry went in");
     assert!(
@@ -1391,6 +1418,28 @@ fn refs_audit_tier_list_check_fails_on_an_extra_entry() {
     assert!(
         !tier2_list_problems(&missing).is_empty(),
         "a missing entry passes"
+    );
+    let tools_twice = tiers.replacen(
+        REPO_TOOLS_STAND_IN,
+        &format!("{REPO_TOOLS_STAND_IN}, {REPO_TOOLS_STAND_IN}"),
+        1,
+    );
+    assert_ne!(tools_twice, tiers, "the second tools stand-in went in");
+    assert!(
+        !tier2_list_problems(&tools_twice).is_empty(),
+        "a second stand-in for the repository's tools passes"
+    );
+    let tools_missing = tiers.replacen(REPO_TOOLS_STAND_IN, "the rest", 1);
+    assert_ne!(tools_missing, tiers, "the tools stand-in was taken out");
+    assert!(
+        !tier2_list_problems(&tools_missing).is_empty(),
+        "a missing stand-in for the repository's tools passes"
+    );
+    let named = tiers.replacen(REPO_TOOLS_STAND_IN, "`tools/local_check.sh`", 1);
+    assert_ne!(named, tiers, "the tools entry went in by name");
+    assert!(
+        !tier2_list_problems(&named).is_empty(),
+        "a tools/ entry named in backticks passes"
     );
 }
 

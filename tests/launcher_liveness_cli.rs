@@ -68,8 +68,17 @@ impl Fixture {
         moai_cli::clone_root::path(&self.repo.join(".git")).join("sessions")
     }
 
+    /// The entry file of the lane `name` in either file form (named by the lane or by its host
+    /// session); the name-keyed path where no entry holds the name yet.
+    fn entry_path(&self, name: &str) -> PathBuf {
+        moai_cli::lane_registry::entry_file(&self.sessions(), name)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| self.sessions().join(format!("{name}.json")))
+    }
+
     fn entry(&self, name: &str) -> Value {
-        let text = fs::read_to_string(self.sessions().join(format!("{name}.json"))).unwrap();
+        let text = fs::read_to_string(self.entry_path(name)).unwrap();
         serde_json::from_str(&text).unwrap()
     }
 }
@@ -163,7 +172,7 @@ fn three_answers_of_the_liveness_lookup() {
 
     // Unknown: the name moved to another session id (the old id has no entry any more).
     fs::write(
-        f.sessions().join("lane-a.json"),
+        f.entry_path("lane-a"),
         format!(
             "{{\"schema_version\":1,\"name\":\"lane-a\",\"instance\":\"{}\",\"lease_until\":{},\"registered_at\":{},\"session\":\"{S_B}\"}}\n",
             "a".repeat(32),

@@ -378,7 +378,12 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             // SPEC-20261122-next-flow-skills-agents slice C: `internal/build-folder` left the
             // package; where builds go is RUN step 1 (`internal/build-slots`), which the body
             // points to.
-            "internal/self-check"
+            "internal/self-check",
+            // SPEC-20261126-change-claims-and-test-guard: the claims of the report and the
+            // tests that read an altered output; the project's own checks and the test-change
+            // finding.
+            "internal/change-claims",
+            "internal/quality"
         ]
     );
     assert_eq!(
@@ -392,7 +397,11 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             "internal/test-design",
             "internal/check-completeness",
             "internal/boundary-checks",
-            "internal/security-checklist"
+            "internal/security-checklist",
+            // SPEC-20261126-change-claims-and-test-guard: each claim of the change against the
+            // diff, and the deleted or weakened test as a finding.
+            "internal/change-claims",
+            "internal/quality"
         ]
     );
     // SPEC-20261117-sdd-guidance: moai-docs is SYNC's writer and keeps the SPEC Result.
@@ -506,6 +515,9 @@ fn internal_references_say_when_to_read_them() {
         "check-rules",
         "shell-guards",
         "web-pages",
+        // SPEC-20261126-change-claims-and-test-guard: how the claims of a change are listed
+        // and matched to the diff, read by `moai-impl` and `moai-audit`.
+        "change-claims",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()
@@ -1184,4 +1196,90 @@ fn the_guard_mutant_line_names_the_restore_rule() {
             "the Guards line lacks {needle}: {line}"
         );
     }
+}
+
+/// True when some line of `text` starts with `- ` and names the `Claims` output section.
+fn has_claims_section(text: &str) -> bool {
+    text.lines()
+        .any(|l| l.starts_with("- `Claims`") && l.contains("claim"))
+}
+
+/// SPEC-20261126-change-claims-and-test-guard AC-1 to AC-6 (REQ-1 to REQ-10): the audit agent
+/// matches every claim of a change to the diff, the implementation agent reports only facts
+/// and keeps the tests it was not told to change, and the reference holds the four labels in
+/// words that fit any project. Every missing line is collected, so one run names them all.
+#[test]
+fn change_claims_rules_are_in_the_shipped_agents_and_reference() {
+    let audit = std::fs::read_to_string(agents().join("audit.md")).unwrap();
+    let imp = std::fs::read_to_string(agents().join("impl.md")).unwrap();
+    let reference = std::fs::read_to_string(package().join("references/internal/change-claims.md"))
+        .unwrap_or_default();
+    let mut missing: Vec<String> = Vec::new();
+    let mut want = |who: &str, text: &str, needle: &str| {
+        if !text.contains(needle) {
+            missing.push(format!("{who} lacks {needle:?}"));
+        }
+    };
+    for needle in [
+        "one by one against the diff and the command output",
+        "`behaviour` when it says a criterion is met",
+        "`non-blocking` otherwise",
+        "git diff --stat --diff-filter=DM",
+        "list every test that reads that output",
+        "the lane's receipt",
+    ] {
+        want("moai-audit", &audit, needle);
+    }
+    for needle in [
+        "handed to <holder>",
+        "never as fixed",
+        "Never delete or weaken a test",
+        "run every test that reads that output",
+    ] {
+        want("moai-impl", &imp, needle);
+    }
+    for needle in [
+        "`matched`",
+        "`no-change`",
+        "`not-run`",
+        "`handed-over`",
+        "a test the receipt did not run is a finding",
+    ] {
+        want("change-claims.md", &reference, needle);
+    }
+    for tool in ["moai card", "moai-cli", "check affected", "local_check"] {
+        if reference.contains(tool) {
+            missing.push(format!(
+                "change-claims.md names the repository-only tool {tool:?}"
+            ));
+        }
+    }
+    if !has_claims_section(&audit) {
+        missing.push("moai-audit lacks a `Claims` output section".to_string());
+    }
+    if !has_claims_section(&imp) {
+        missing.push("moai-impl lacks a `Claims` output section".to_string());
+    }
+    assert!(missing.is_empty(), "{}", missing.join("\n"));
+}
+
+/// SPEC-20261126-change-claims-and-test-guard AC-8 (REQ-12): the work route tells a lane that
+/// a repair's ready note answers each finding with its probe on both heads, and that work the
+/// lane could not do outside its scope is handed over, never put in a commit message.
+#[test]
+fn the_repair_ready_note_names_each_finding_with_its_probe() {
+    let work = std::fs::read_to_string(package().join("workflows/work.md")).unwrap();
+    let mut missing: Vec<String> = Vec::new();
+    for needle in [
+        "each finding it answers",
+        "the audited head",
+        "the repair head",
+        "Not done",
+        "never in a commit message",
+    ] {
+        if !work.contains(needle) {
+            missing.push(format!("work.md lacks {needle:?}"));
+        }
+    }
+    assert!(missing.is_empty(), "{}", missing.join("\n"));
 }

@@ -42,8 +42,9 @@ fn the_shipped_skill_never_runs_the_python_checker() {
 }
 
 /// #2708 3/4 (default A after the 15:00Z deadline of 6854550310): `tools/ci_scope.py` stays
-/// this repository's CI script, so every skill mention of it, or of its test, names the
-/// moai-adk repository within the 300 bytes before it.
+/// this repository's CI script, so the shipped skill names neither it nor its test; a mention
+/// that comes back must name the moai-adk repository within the 300 bytes before it, and the
+/// count below fails it first (SPEC-20261120-shipped-workflows-commands REQ-2).
 #[test]
 fn every_ci_scope_mention_in_the_skill_names_this_repository() {
     let mut files = Vec::new();
@@ -69,16 +70,20 @@ fn every_ci_scope_mention_in_the_skill_names_this_repository() {
             }
         }
     }
-    // The RUN text no longer names the script (the Python scope check is not a shipped step), so
-    // one mention remains; the rule that every mention names this repository is unchanged.
-    assert!(seen >= 1, "the mention moved: {seen}");
+    // No shipped text names the script (the Python scope check is not a shipped step, and the
+    // audit contract lists the repository's check tools without naming them).
+    assert_eq!(
+        seen, 0,
+        "the skill names the repository's CI script: {seen}"
+    );
     assert_eq!(bare, Vec::<String>::new());
 }
 
 /// #2708 AC-1: a user project has no `tools/`, so the shipped skill never tells a session to
-/// run a repository Python tool. No `python3 … tools/…` command, and every `tools/<name>.py`
-/// mention names the moai-adk repository within the 300 bytes before it. The leader's scan
-/// judge is the `moai-cli repo-scans` command (#2708 4/4).
+/// run a repository Python tool. No `python3 … tools/…` command, and no `tools/<name>.py`
+/// mention at all: the shipped skill names none (SPEC-20261120-shipped-workflows-commands
+/// REQ-2), and one that comes back must at least name the moai-adk repository within the 300
+/// bytes before it. The leader's scan judge is the `moai-cli repo-scans` command (#2708 4/4).
 #[test]
 fn the_shipped_skill_runs_no_repository_python_tool() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai");
@@ -120,9 +125,9 @@ fn the_shipped_skill_runs_no_repository_python_tool() {
             }
         }
     }
-    assert!(
-        mentions >= 3,
-        "the moai-adk repository mentions moved: {mentions}"
+    assert_eq!(
+        mentions, 0,
+        "the skill names a repository Python tool: {mentions}"
     );
     assert_eq!(bad, Vec::<String>::new());
     // The MODE-LEADER pin of the `repo-scans` command left with its route

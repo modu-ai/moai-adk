@@ -144,8 +144,13 @@ impl World {
         moai_cli::clone_root::path(&self.project.join(".git")).join("sessions")
     }
 
+    /// The entry file of the lane `name` in either file form (named by the lane or by its host
+    /// session); the name-keyed path where no entry holds the name yet.
     fn entry_path(&self, name: &str) -> PathBuf {
-        self.sessions_dir().join(format!("{name}.json"))
+        moai_cli::lane_registry::entry_file(&self.sessions_dir(), name)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| self.sessions_dir().join(format!("{name}.json")))
     }
 
     fn entry(&self, name: &str) -> Value {

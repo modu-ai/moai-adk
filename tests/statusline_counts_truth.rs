@@ -371,6 +371,79 @@ fn the_0732z_ledger_shape_draws_what_the_ledger_holds() {
     assert_eq!(count(&line, QUESTION), 0, "{line}");
 }
 
+/// A `ready` card a lane handed back and released: taken once (the hour before the note) and its
+/// `body` written at `note_at`. The release moved the card to `ready`, so the note is at or after
+/// the card's last reservation.
+fn handed_back(tx: &Connection, author: &str, body: impl Fn(i64) -> String, note_at: i64) -> i64 {
+    let c = card(tx, "ready", T0, None);
+    reservation(tx, c, 1, "released", note_at - HOUR, note_at - 60);
+    note(tx, c, "report", author, &body(c), note_at);
+    c
+}
+
+/// SPEC-20261126-statusline-stale-submit AC-1: a `ready` card whose newest submit marker is
+/// strictly older than one day at the render's clock counts as ready (📋), not as submitted (👀).
+/// A marker exactly one day old and a younger one stay submitted; an audit PASS keeps its stage
+/// (🚀) whatever its age; `active` and `review` cards are not aged. `DAY` is the limit of the
+/// SPEC (`STALE_SUBMIT_SECS`, D-1): the 86 401st second is the first that is stale.
+#[test]
+fn an_old_submission_on_a_ready_card_counts_as_ready() {
+    let f = fixture();
+    // The cards the flow draws (every open card but the draft and the hold card).
+    let mut counted: Vec<i64> = Vec::new();
+    {
+        let mut l = ledger::open_write(f.home.path(), "demo").unwrap();
+        l.with_write_tx(|tx, _| {
+            let submit = |c| ready_line("LANE-READY-INTEGRATION", c);
+            // 📋: a ready card nobody took, a submission one second past the limit, and a
+            // REPAIRED two days old (it hands a head back like a submission does).
+            counted.push(card(tx, "ready", T0, None));
+            counted.push(handed_back(tx, "lane", submit, T0 - DAY - 1));
+            counted.push(handed_back(
+                tx,
+                "lane",
+                |c| ready_line("REPAIRED", c),
+                T0 - 2 * DAY,
+            ));
+            // 👀: a submission exactly at the limit and one a second younger.
+            counted.push(handed_back(tx, "lane", submit, T0 - DAY));
+            counted.push(handed_back(tx, "lane", submit, T0 - DAY + 1));
+            // 🚀: an audit PASS three days old keeps its stage.
+            counted.push(handed_back(tx, "auditor", audit_pass, T0 - 3 * DAY));
+            // 👀: an `active` card with a live lease and a `review` card with an ended lease,
+            // both with a submit marker two days old, are not aged.
+            let c = card(tx, "active", T0, None);
+            counted.push(c);
+            reservation(tx, c, 1, "held", T0 - 3 * DAY, T0 + HOUR);
+            note(tx, c, "report", "lane", &submit(c), T0 - 2 * DAY);
+            let c = card(tx, "review", T0, None);
+            counted.push(c);
+            reservation(tx, c, 1, "held_for_review", T0 - 3 * DAY, T0 - DAY);
+            note(tx, c, "report", "lane", &submit(c), T0 - 2 * DAY);
+            // Open cards that are on no part of the line but the hold item.
+            card(tx, "draft", T0, None);
+            card(tx, "hold", T0, None);
+            Ok(())
+        })
+        .unwrap();
+    }
+    let line = flow_line(&f, Some("UTC"));
+    assert_eq!(
+        line,
+        format!(
+            "{} | {TODO} 3 → {CHECK} 4 → {READY} 1 | {QUESTION} 1",
+            moai()
+        ),
+        "{line}"
+    );
+    // The drawn items add up to the open cards that are neither draft nor hold.
+    let drawn: i64 = [TODO, WORK, CHECK, READY, BLOCKED]
+        .iter()
+        .map(|i| count(&line, i))
+        .sum();
+    assert_eq!(drawn, counted.len() as i64, "{line}");
+}
+
 /// AC-2: the same ledger for a user in Seoul (`TZ` for the child only): their day began at 15:00Z
 /// the day before, so 103 cards were closed today; in UTC the count is 50.
 #[test]
