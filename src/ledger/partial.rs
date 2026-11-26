@@ -22,12 +22,14 @@ pub struct PartialLanding {
 /// The SQL condition of a partial landing on the table `card`, written once for this module and
 /// for the status line: the card is `ready`, `active` or `review`, it was landed (a
 /// `card.landed` event or an active merged pull request link, the same two proofs `card list`
-/// reports as `landed`) and at least one criterion is `open`.
+/// reports as `landed`) and at least one criterion is `open`. The landed events are read as one
+/// list: `event` has no index on `card_id`, so a subquery per card would scan the whole table
+/// for each of them, on every status line render.
 macro_rules! partial_landing_where {
     () => {
         "card.state IN ('ready', 'active', 'review') \
-         AND (EXISTS (SELECT 1 FROM event e \
-                       WHERE e.card_id = card.card_id AND e.kind = 'card.landed') \
+         AND (card.card_id IN (SELECT e.card_id FROM event e \
+                                WHERE e.kind = 'card.landed' AND e.card_id IS NOT NULL) \
               OR EXISTS (SELECT 1 FROM card_link l \
                           WHERE l.from_card = card.card_id AND l.kind = 'pr' \
                             AND l.state = 'active' AND l.pr_state = 'merged')) \
@@ -41,15 +43,20 @@ pub(crate) use partial_landing_where;
 /// order (see [`partial_landing_where`]). A `draft` and a `hold` card is never listed: the first
 /// is not worked on and the second waits for a person's pick.
 pub fn partial_landings(conn: &Connection) -> Result<Vec<PartialLanding>, LedgerError> {
+    // The heads come from one pass over the landed events: with a single `max()` SQLite takes
+    // the other columns of the group from the row that holds it, here the newest event.
     let mut stmt = conn.prepare(concat!(
         "SELECT card.card_id, card.title, \
                 (SELECT count(*) FROM card_ac a \
                   WHERE a.card_id = card.card_id AND a.status = 'open'), \
-                (SELECT json_extract(e.payload, '$.head') FROM event e \
-                  WHERE e.card_id = card.card_id AND e.kind = 'card.landed' \
-                    AND json_type(e.payload, '$.head') = 'text' \
-                  ORDER BY e.event_id DESC LIMIT 1) \
-           FROM card WHERE ",
+                landed.head \
+           FROM card \
+           LEFT JOIN (SELECT e.card_id, json_extract(e.payload, '$.head') AS head, \
+                             max(e.event_id) \
+                        FROM event e \
+                       WHERE e.kind = 'card.landed' AND json_type(e.payload, '$.head') = 'text' \
+                       GROUP BY e.card_id) AS landed ON landed.card_id = card.card_id \
+          WHERE ",
         partial_landing_where!(),
         " ORDER BY card.card_id"
     ))?;
@@ -234,6 +241,46 @@ mod tests {
             Vec::<i64>::new()
         );
         assert_eq!(named_criteria("기준이 없어요"), Vec::<i64>::new());
+    }
+
+    #[test]
+    fn a_partial_landing_carries_the_newest_head_a_landed_event_names() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE card (card_id INTEGER PRIMARY KEY, title TEXT, state TEXT);
+             CREATE TABLE card_ac (card_id INTEGER, status TEXT);
+             CREATE TABLE card_link (from_card INTEGER, kind TEXT, state TEXT, pr_state TEXT);
+             CREATE TABLE event (event_id INTEGER PRIMARY KEY, card_id INTEGER, kind TEXT,
+                                 payload TEXT);
+             INSERT INTO card VALUES (1, 'two heads', 'ready'), (2, 'merged link', 'review'),
+                                     (3, 'no head', 'active'), (4, 'not landed', 'ready'),
+                                     (5, 'on hold', 'hold');
+             INSERT INTO card_ac VALUES (1, 'open'), (1, 'met'), (2, 'open'), (2, 'open'),
+                                        (3, 'open'), (4, 'open'), (5, 'open');
+             INSERT INTO card_link VALUES (2, 'pr', 'active', 'merged');
+             INSERT INTO event VALUES
+                 (7, 1, 'card.landed', '{\"head\":\"newest\"}'),
+                 (3, 1, 'card.landed', '{\"head\":\"older\"}'),
+                 (9, 1, 'card.landed', '{}'),
+                 (10, 1, 'card.note', '{\"head\":\"other kind\"}'),
+                 (11, 3, 'card.landed', '{\"head\":null}'),
+                 (12, 5, 'card.landed', '{\"head\":\"held\"}'),
+                 (13, NULL, 'card.landed', '{\"head\":\"no card\"}');",
+        )
+        .unwrap();
+        let found: Vec<(i64, i64, Option<String>)> = partial_landings(&conn)
+            .unwrap()
+            .into_iter()
+            .map(|p| (p.card_id, p.open_criteria, p.head))
+            .collect();
+        assert_eq!(
+            found,
+            [
+                (1, 1, Some("newest".to_string())),
+                (2, 2, None),
+                (3, 1, None),
+            ]
+        );
     }
 
     #[test]
