@@ -58,6 +58,7 @@ The tier a ready note states never goes below the floor of its changed paths (`s
 3. A re-audit checks only the listed repairs and classifies anything new by the four kinds.
 4. A Critical or High security finding blocks. Only an exception record the user approved — finding, severity, reason, scope, approver, expiry — lowers one; a missing or stale scan is unverified, never a pass.
 5. Scratch: one folder per audit, named for it; never read or write another audit's folder.
+6. Read another head from your own worktree by object id (`git show <sha>:<path>`, `git diff <base> <head>`, `git merge-tree`); never `cd` or `git -C` into a worktree that is not your own.
 
 ## Side rules
 
