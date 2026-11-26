@@ -1353,17 +1353,17 @@ fn plan_filtered(
 
     // SPEC-20261125-update-same-bytes-no-conflict REQ-4 and REQ-5: `skip-conflicts` leaves every
     // conflicting file of this engine as it is (the agents engine does the same for its own
-    // rows). The nested copy of a role whose earlier flat file is kept is not written either, so
-    // a project never holds two agents of one name.
+    // rows). A requested role or skill that moves to a new path is two rows of one kind, and
+    // neither half happens alone: when one of them is a conflict, the earlier file is not removed
+    // (SPEC-20261126-project-harness-namespace REQ-4) and the new copy is not written, so a
+    // project neither loses a generated file nor holds two of one.
     if request.picks.iter().any(|p| p == SKIP_CONFLICTS) {
-        let kept_roles: Vec<String> = files
+        // Read before the loop turns the conflicts into skips.
+        let held: Vec<String> = files
             .iter()
             .filter(|f| f.action == "conflict")
-            .filter_map(|f| {
-                let kind = f.kind.as_deref()?;
-                let id = kind.strip_prefix("generation:native-role:claude:")?;
-                (f.path == format!(".claude/agents/{id}.md")).then(|| kind.to_string())
-            })
+            .filter_map(|f| f.kind.clone())
+            .filter(|k| requested.contains(k))
             .collect();
         for f in files.iter_mut() {
             let kind = f.kind.as_deref().unwrap_or("");
@@ -1374,13 +1374,14 @@ fn plan_filtered(
                 let why = f.detail.take().unwrap_or_else(|| "conflict".into());
                 f.action = "skip".into();
                 f.detail = Some(format!("{SKIP_PICKED} ({why})"));
-            } else if kept_roles.iter().any(|k| k == kind)
-                && !matches!(f.action.as_str(), "unchanged" | "remove")
-            {
+            } else if f.action != "unchanged" && held.iter().any(|k| k == kind) {
+                let why = if f.action == "remove" {
+                    "its copy at the new path is not written, so this earlier file is kept"
+                } else {
+                    "the earlier file is kept, so its copy at the new path is not written"
+                };
                 f.action = "skip".into();
-                f.detail = Some(format!(
-                    "{SKIP_PICKED} (the earlier flat file of this role is kept, so its nested copy is not written)"
-                ));
+                f.detail = Some(format!("{SKIP_PICKED} ({why})"));
             }
         }
     }
