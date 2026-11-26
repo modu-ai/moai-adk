@@ -3,7 +3,7 @@
 //! profile's integration branch only with the preview's digest and a permission reference; the
 //! receipt of the rewrite is the only way back. Every test runs a real git and the built binary in
 //! a temporary repository and a temporary HOME; nothing here touches a real repository, hook,
-//! ledger or `~/.moai`. The hook that guards the branch is installed only through
+//! ledger or user state folder. The hook that guards the branch is installed only through
 //! `git-hooks-plan` and `git-hooks-apply`, the way a person gets it.
 
 #![cfg(unix)]
