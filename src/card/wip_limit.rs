@@ -80,8 +80,12 @@ pub fn live_lanes(project: &Path) -> Lanes {
         }
     };
     let now = now_secs();
-    let leader_name = crate::session::leader_session_name(project);
-    let project_prefix = crate::session::agent_prefix(project);
+    // One project name for both: each `session::*_name` call reads the git identity again, and a
+    // git process costs far more than the registry scan. The forms mirror
+    // `session::leader_session_name` and `session::agent_prefix`; a unit test pins them.
+    let project_name = crate::session::project_name(project);
+    let leader_name = format!("{project_name}-leader");
+    let project_prefix = format!("{project_name}-agent-");
     let lane_prefixes = ["agent-".to_string(), project_prefix.clone()];
     // The one name of a lane: the project-prefixed form reads as the short form.
     let canon = |name: &str| match name.strip_prefix(project_prefix.as_str()) {
