@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261126-go-state-restore-rule
 title: "go-state apply restores the files the Go manifest does not record and leaves the byte-proven Go templates in the backup"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-26
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "LEADER-APPROVAL 노트 10466 (리더 판단이고 사용자 직접 선택은 아님, 사용자 목표 2026-11-26 에 따름, 노트 10464 에 답함: 개정 1 승인, D-1·D-2·D-4 기본값); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:a5639702976a438d53d57ee5c332aa558a36e6e6ba6cb0f51b654f3ec4a793ae"
 ---
 
 # go-state apply restores the files the Go manifest does not record and leaves the byte-proven Go templates in the backup
