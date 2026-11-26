@@ -113,3 +113,42 @@ created: 2026-11-26
 | D-4 | 착지 확인은 켜는 쪽이 첫 선택지이고 "PASS 없이 착지 안 됨" 문구는 쓰지 않아요 | 닫는 착지는 모든 모드에서 이미 PASS 가 필요(`src/card/land.rs:515-523`); 거짓 약속 금지 | 꺼진 쪽을 첫 선택지로 |
 | D-5 | 원격 사본은 "아니요, 로컬에 둬요"가 첫 선택지이고 미리 고르지 않아요 | 원격 쓰기는 사람이 고를 때만 | 켜는 쪽을 첫 선택지로(사용자 결정) |
 | D-6 | 프로필에 통합 브랜치가 없고 현재 브랜치가 기본 브랜치면 새 전용 통합 브랜치를 첫 선택지로 권해요 | 사용자의 체크아웃이 잠기지 않아요 | 기본 브랜치를 통합 브랜치로 쓰는 것을 첫 선택지로 |
+
+## Result
+
+SPEC 승인 근거는 카드 원장 노트 9696(`DELEGATED-APPROVAL`, revision 1, approval_digest sha256:9ffd6d94…ff4e)이에요. 구현은 `282d3cb825`(9단계, 후속 질문, 새 시험), `c8c1a54881`(`core.hooksPath` 안전 문장, origin 에만 있는 브랜치의 선택지, 마무리 커밋 안내), `5b598f40f0` 과 `affd4c81f0`(공유 파일 두 개)이에요. `src/` 는 바꾸지 않았어요.
+
+이 브랜치는 NeXT `e3450e0ede` 와, 제출만 되고 착지 전인 project interview 작업의 head `0fb1bdcf4e` 위에 있어요. 그 head 는 감사에서 FAIL 이었고 수리 head `a7eeff9e9a` 가 따로 있어요. 리더 결정에 따라 레인은 수리 head 를 합치지 않아요: 이 일은 수리 head 가 PASS 를 받은 뒤에 착지하고, `source-manifest.json` 과 `project.md` 의 merge 는 리더가 해요.
+
+### 실행 기록 (2026-11-26, 이 워크트리, 슬롯 안)
+
+- 시험 먼저: 새 시험 4개가 글을 고치기 전에 "문장이 없다" 단언에서 실패했고 1개(`hook_first_then_branch_create_is_refused`)는 있는 명령만 돌려서 처음부터 통과였어요(`target/jade/red.log`). 추가한 안전 문장도 먼저 실패를 봤어요(6개 중 2개 실패, `red-extra.log`).
+- SPEC 의 `verify:` 줄 12개를 적힌 그대로 head `affd4c81f0` 에서 한 번씩 돌렸어요: 모두 exit 0. 이름 붙인 시험은 각각 1개, 대상 전체는 11, 20, 3, 9, 10, 2, 20개 통과(`target/jade/verify-lines.out`).
+- 위험 경로(임시 HOME 과 임시 저장소): 프로필 적용, 브랜치 만들기, 원장 등록, 훅 설치를 실제 명령으로 한 뒤 `update-ref`, `branch -f`, `branch -D` 가 `moai ref guard` 로 거절됐고, `git status` 는 그대로였고, `moai git-hooks-revert` 가 훅을 뺐어요. 훅을 먼저 설치하면 브랜치 만들기가 거절돼요.
+- 같은 임시 저장소에서 `core.hooksPath` 를 설정하면 적용이 `record: written` 이라고 답해도 `branch -f` 가 통과했어요(실측). 그래서 9단계 글은 그 값을 먼저 읽고 "보호됨"이라고 말하지 않아요.
+
+### 가드 뮤턴트 (`project.md` 에서 한 번만 나오는 글 한 조각을 빼고, 해당 시험 하나를 돌리고, git 으로 복구; 끝난 뒤 트리 깨끗)
+
+- 9단계의 원장 적용 문장 → `setup_makes_record_hook_ledger_and_refuses_hand_moves` exit 101
+- 순서의 이유 중 "만드는 것도 거절" → `hook_first_then_branch_create_is_refused` exit 101
+- "보호됨이라 부르지 않음" → `hooks_path_leaves_the_hook_unused_and_step_9_says_so` exit 101
+- 4단계 필드 목록의 원격 사본 → `follow_up_rows_use_plain_words_and_answers_reach_the_profile` exit 101
+- 다른 워크트리가 쥔 경우의 안내 줄 → `setup_guidance_is_work_flow_plans_answer` exit 101
+- 최종 보고의 시작 방법 줄 → `step_9_order_and_closing_line` exit 101
+
+### 인수 기준
+
+- AC-1: met — `setup_makes_record_hook_ledger_and_refuses_hand_moves`, `hook_first_then_branch_create_is_refused` 통과.
+- AC-2: met — `follow_up_rows_use_plain_words_and_answers_reach_the_profile` 통과.
+- AC-3: met — `setup_guidance_is_work_flow_plans_answer` 통과.
+- AC-4: met — `step_9_order_and_closing_line` 통과.
+- AC-5: met — 기존 대상 일곱 통과. 고친 기존 단언은 없어요(AC-5 의 시험 파일은 하나도 바꾸지 않았어요).
+
+### SPEC 과 다른 점, 알려 둘 것
+
+- `core.hooksPath` 를 쓰는 프로젝트(husky 등)에서는 설치한 훅이 실행되지 않아요. 글에서만 막았고 코드 수리는 별도 작업이에요.
+- `tools/repo_scans.json` 은 한 줄이 아니라 더하기만 한 세 곳(`reads-skills` 와 `reads-src` 의 rules, `reads-src` scope 의 `src/work_flow.rs`)과 `moai check fix` 가 늘린 check 줄 두 개예요. `moai check fix` 가 늘어남으로 받아들였어요. 감사 바닥 판정은 READY 의 `moai bundle check`/감사에서 확인할 몫이에요.
+- SPEC 에 없는 글: origin 에만 브랜치가 있으면 현재 끝에서 만들기와 함께 `origin/<브랜치>` 에서 만들기도 선택지예요; 마무리 커밋을 하지 않았으면 새 브랜치에 설정 파일이 없다고 먼저 말해요; 기본 브랜치는 원격 기본 브랜치, 기록이 없으면 `main` 또는 `master` 예요.
+- 최종 보고 끝의 시작 방법 줄은 REQ-10 의 문장대로 모든 흐름에 나와요.
+- 시험은 글과 명령을 확인해요. 모델이 실행 시점에 글을 어떻게 따르는지는 확인하지 못해요.
+- 이 브랜치를 만드는 merge 에서 저장소의 매니페스트 merge 드라이버가 `python3` 를 실행했어요(파이썬 금지 지시와 어긋나서 리더에게 신고했어요).
