@@ -2,9 +2,9 @@
 id: SPEC-20261124-moai-project-interview
 title: "/moai project 설문을 감지로 알 수 없는 것만 묻는 최소 설문으로 다시 정해요"
 status: approved
-revision: 2
+revision: 3
 created: 2026-11-24
-approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8240 of card C-150 (answers lane note 8239, 2026-11-24T05:34:27Z, under the user's delegation of 2026-11-23T13:57Z, not a direct user pick), approving revision 2 at head 42e490e8fc; revision 1 was approved by note 8167 (head 89231f75e3); recorded by the lane, not approved by it", digest: "sha256:db87bdceca16a98fc142a09dbe3cc5e9c30e73e93c13f0a0fb8e536ab67ca7bb"}
+approval: {by: leader, at: 2026-11-25, basis: "leader DELEGATED-APPROVAL note 9400 of card C-150 (answers lane note 9399, under the user's delegation of 2026-11-25 about 14:50Z, not a direct user pick), approving revision 3 at head 083048e88d; revision 2 was approved by note 8240 (head 42e490e8fc) and revision 1 by note 8167 (head 89231f75e3); recorded by the lane, not approved by it", digest: "sha256:9dcd1dfd677ff43a45d90570d08665f7bac5d37b7a161302bb29f416334d4532"}
 ---
 
 # /moai project 설문을 감지로 알 수 없는 것만 묻는 최소 설문으로 다시 정해요
@@ -53,6 +53,19 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8240 of card
 - REQ-10 (REQ-9): IF a scanned file holds a token of the scan's list (`cargo`, `rustup`, `npm`, `pipx`, `go install`, `moai check`, `local_check`, `check-guard`) outside the named exceptions, THEN the scan test shall fail and name the file and the line.
 - REQ-11: When `moai project-apply` reads the `result` object of `moai project-plan` exactly as printed, including `work_flow_remote`, it shall apply the plan the digest names.
 - REQ-12 (REQ-11): IF the input holds an unknown key other than `work_flow_remote`, THEN `moai project-apply` shall refuse it as invalid typed JSON input.
+- REQ-13: When the project workflow meets earlier-generation state, it shall name `/moai update` in one boundary sentence. · failure: none
+- REQ-14: IF the boundary sentence is missing from `project.md`, THEN the shipped-text test shall fail.
+- REQ-15: The three project-side files shall carry no card number and no Issue number and no dated user decision.
+- REQ-16: The interview reference shall describe the next-flow work flow as `flows/next-flow` does and name no withdrawn host. · failure: none
+- REQ-17: When the interview names the integration branch, it shall give the profile value first and then the remote default branch and then the current branch. · failure: none
+- REQ-18: When step 4 builds the plan, its profile field list shall include `work_flow` and `language`. · failure: none
+- REQ-19: The `method` row shall use the words the profile records. · failure: none
+- REQ-25: The `hosts` row shall offer only a host the project still supports. · failure: none
+- REQ-20: The texts shown to the user shall carry none of the internal words the scan lists (head number, a bare version-format token, a development-leftover sentence). · failure: none
+- REQ-21: The project-side texts shall not contradict each other on editing the profile later, on who runs the worktree base write, or on the receipt step. · failure: none
+- REQ-22: IF a scanned file holds `pytest`, `go test` or `cargo-nextest` outside the named exception, THEN the scan test shall fail and name the file and the line.
+- REQ-23: IF the named install-table cell holds a MoAI-internal token, THEN the scan test shall fail and name the file and the line.
+- REQ-24: When `project-plan` prints a `work_flow_remote` warning, the project workflow shall show that warning. · failure: none
 
 ## Acceptance
 
@@ -66,11 +79,19 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8240 of card
 - AC-8 (REQ-11, REQ-12): in a temporary project with a remote, the `result` of `project-plan` piped to `project-apply` applies when it holds `work_flow_remote`, and a plan with another extra key is refused as `invalid typed JSON input` · verify: `cargo test --locked --offline --test project_apply_plan_result`
 - AC-9 (REQ-7): on the repository's own profile after the change, `moai project-plan .` shows only two changed keys, `language.instruction_files` set to `en` and `done` set to the default sentence, and nothing is applied before the user picks the plan · verify: `moai project-plan .` with the profile of `moai project-detect .` on stdin, read by the leader (not_run in the lane)
 
+- AC-10 (REQ-13, REQ-14): `project.md` carries the one boundary sentence that names `/moai update`, and the test pins it; the removal of the step-2 body waits for `update.md` (D-12) · verify: `cargo test --locked --offline --test project_interview_minimal boundary_sentence_is_pinned`
+- AC-11 (REQ-15): the three project-side files hold no `C-<digits>`, no `#<3 to 5 digits>` and no `user decision <date>` · verify: `cargo test --locked --offline --test project_interview_minimal no_citation_in_project_side_files`
+- AC-12 (REQ-16, REQ-17, REQ-18, REQ-19, REQ-20, REQ-21, REQ-24, REQ-25): the flow text, the integration-branch order, the step-4 field list, the `method` and `hosts` rows, the internal words and the three contradictions are pinned · verify: `cargo test --locked --offline --test project_interview_minimal flow_text_matches_next_flow` and `cargo test --locked --offline --test question_bank_hosts`
+- AC-13 (REQ-22, REQ-23): the scan lists `pytest`, `go test` and `cargo-nextest` and reads the install-table cell for internal tokens · verify: `cargo test --locked --offline --test project_interview_minimal scan_tokens_cover_pytest_go_test_nextest`
+- AC-14 (REQ-12): a duplicate key in a `project-apply` input is pinned as it behaves today (an altered duplicate is refused, an identical one applies) · verify: `cargo test --locked --offline --test project_apply_plan_result duplicate_key_altered_is_refused`
+
 ## Scope
 
 - write: `.moai/specs/SPEC-20261124-moai-project-interview/**`
 - write (after the approval, widened by the leader): `skills/moai/workflows/project.md`, `skills/moai/references/internal/interview.md`, `skills/moai/references/internal/questions.md`, `skills/moai/references/source-manifest.json`, `src/language.rs`, `src/agents.rs`, `src/ops/project_apply.rs`, `tests/project_interview_minimal.rs` (new), `tests/project_apply_plan_result.rs` (new)
 - write by line lease (pinned test files other cards also edit): `tests/language_three_questions.rs`, `tests/agent_defs_package.rs`, `tests/project_detect_cli.rs`, `tests/generic_flow_questions.rs`, `tests/question_bank_hosts.rs`; the plan names each pin it changes after running them
+- write (revision 3, leader-approved scope of card C-150): `tests/project_apply_plan_result.rs`, and one line each in the pins that quote a removed citation: `tests/product_cli.rs`, `tests/project_applied_table.rs`, `tests/project_decide_model.rs`, `tests/project_flow_closing.rs`, `tests/update_route.rs`, `tests/next_flow_skill_scan.rs`
+- revision 3 does not touch `skills/moai/workflows/update.md` (another card holds it), `src/**`, or `skills/moai/references/internal/versioning.md`
 - read-only: `skills/moai/workflows/update.md` (scanned; edited only if the scan finds a token), `skills/moai/references/internal/versioning.md` (scanned), `src/profile.rs`, `src/ops/project_plan.rs`, `src/project_detect.rs`
 - forbidden: `CLAUDE.md`, the repository's `.moai/project.yaml` (Plan step 8 is the leader's), the real HOME, `skills/moai/SKILL.md`
 
@@ -107,6 +128,11 @@ approval: {by: leader, at: 2026-11-24, basis: "leader decision note 8240 of card
 | D-8 | Card criterion 5 (ask `done` only when detection found commands) is replaced by criterion 8 (`done` is never asked); the leader withdraws criterion 5 with that reason. | The two criteria conflict; note 8158 (2) decides the later one. | Reopen criterion 5 and drop REQ-7 for `done`. |
 | D-9 | `project-apply` ignores `work_flow_remote` only and still refuses every other unknown key; the plan digest covers the same bytes as before. | Card criterion 9; refusing unknown keys protects the typed input. | Accept every key (not recommended). |
 | D-10 | The repository's own run plans only the two changed keys and waits for the user's plan approval before it applies. | User decision, note 8159 (6). | Re-run the full interview. |
+| D-11 | Revision 3 supersedes the revision-2 Non-goal lines that keep the versioning and `work_flow` option lists and the flow description unchanged, for REQ-16 to REQ-20 only. | The survey of 2026-11-25 (items B4, B5, B8, B9) found those lines wrong against `flows/next-flow` and `moai work-flow-plan`. Derived, reversible in-repo. | Restore the revision-2 lines. |
+| D-12 | Revision 3 takes over the project half of criteria 1 and 3 of the draft `SPEC-20261120-project-update-boundary`: the boundary sentence and the citation scan. The removal of the step-2 body (the earlier-generation move steps) waits until `update.md` carries that guidance; card criterion 1 stays open until then. | `update.md` is held by another card and does not yet carry the worktree-move, "I closed other sessions" and root-file picks. Deleting first would drop them. | Remove the boundary sentence and its test. |
+| D-13 | Splitting the combined line of `## Result` into one line per AC is not a revision: `## Result` is outside the approval digest. | `moai spec show` hashes requirements, acceptance and `forbidden:` only. | Re-join the lines. |
+| D-14 | `moai language-setup --help` (N6), default-sourced rules in project skills (N7) and the `KNOWN_HOSTS` cleanup need `src/**` and are follow-ups of card C-150, not part of revision 3. | Outside the write scope. | none |
+| D-15 | The final table keeps its state words (`applied`, `default`, `HOLD`, `not applied: <reason>`) and gets one plain sentence that explains them; the worktree base sentence keeps the clause that the user adds `baseRef` themselves for a `conflict`. | Other SPEC pins the words; changing them is a leader decision, not a lane one (plan Q2, Q4). | Rename the words and their pins in a later revision. |
 
 ## Result
 
@@ -120,10 +146,30 @@ Revision 2 repairs audit #150 (head `548822bf0a`, verdict FAIL). Repair head `d5
 - N8, N9: AC-6 verify names `review_section_cli` (where the test lives); this Result is written.
 - Checks, exit codes (repair head `d5450b118b`, unmutated): `cargo test --locked --offline --test project_interview_minimal --test project_apply_plan_result` under `moai heavy-slot-acquire`, exit 0: `project_apply_plan_result` 3 passed, `project_interview_minimal` 8 passed; `python3 -I tools/source_manifest.py check` ok. `moai spec check SPEC-20261124-moai-project-interview --project .` on the revision-2 text reports one error, `approval_digest` (the approval block still names the digest of revision 1; the lane does not record an approval). Logs: `target/c150-repair/`.
 - Guard mutants (one at a time, file restored and `git diff --quiet` confirmed): (m1) `Some('.') => false` exit 101, `the_tool_scan_flags_a_planted_tool_and_spares_only_the_named_exception` failed; (m2) the internal-token boundary disabled exit 101, same test; (m3) the whole row of the exception table exempt exit 101, same test; (m4) `questions.md` out of `SCANNED` exit 101, `the_scan_reads_the_question_rules_too` failed.
-- AC-1, AC-2, AC-4, AC-5: met — the four tests of `project_interview_minimal` passed on the repair head.
+- AC-1: met — `the_bank_asks_only_the_purpose_and_four_languages`, one of the four tests of `project_interview_minimal`, passed on the repair head.
+- AC-2: met — `the_purpose_is_typed_with_no_draft`, one of the four tests of `project_interview_minimal`, passed on the repair head.
+- AC-4: met — `detected_values_are_confirmed_and_defaults_are_generic`, one of the four tests of `project_interview_minimal`, passed on the repair head.
+- AC-5: met — `operating_rules_are_never_asked_and_have_defaults`, one of the four tests of `project_interview_minimal`, passed on the repair head.
 - AC-6: met — `review_section_cli review_md_writes_default_sourced_decisions_but_not_hold` was passed at the first head by the auditor (18/18); this repair does not touch it.
 - AC-7: met — `no_question_option_or_example_names_a_language_tool` passed over the four files with the new rules; the guard test plants the missed shapes.
 - AC-8: met — `project_apply_plan_result` 3 passed.
 - AC-3: unchanged by this repair (`language_three_questions`); the first READY's receipt covers it.
 - AC-9: not_run — the leader's step after landing.
 - Gaps, kept as follow-ups from the audit: N3 (the token list does not cover `pytest` or `go test`; REQ-10 fixes the list), N5 (a duplicate key in a `project-apply` input is merged by the JSON reader; the plan digest catches a changed content, no pinning test), N6 (`moai language-setup --help` still says three questions; `src/ops/language_setup.rs` is outside the scope), N7 (project skills do not carry default-sourced rules; REQ-8 covers REVIEW.md only). Card criterion 2 says three language items while D-2 and REQ-4 say four; the leader reads four as the requirement (audit note).
+
+Revision 3 (project text repair), base 71d819ce8a, head b3cbbc9184. Evidence below is the verification run of the implementation step, `target/zoe/run2.log` in the worktree (`moai heavy-slot-acquire` around `cargo test --locked --offline`, 25 test targets, exit 101 because of three failing targets). `skills/moai/workflows/project.md`, `skills/moai/references/internal/interview.md` and the two new test files were last written before that run; `tests/project_harness_label.rs` and `skills/moai/references/source-manifest.json` were changed after it, by `b3cbbc9184`. The red run at `dd291c323d` is recorded only in that commit message (nine of the new tests fail on purpose): no log of it is readable in `target/zoe/` (`run1.log` stops at `product_cli`, `run2.log` is the run after the rewrite), so it is not_run here. No run on `b3cbbc9184` itself is readable; the receipt of the READY note covers it.
+
+- AC-10: not met (partly) — `boundary_sentence_is_pinned` passed in `run2.log`, so the one boundary sentence naming `/moai update` exists and is pinned. The step-2 body stays in `project.md` until `update.md` carries that guidance (D-12), so card criterion 1 stays open.
+- AC-11: met — `no_citation_in_project_side_files` passed in `run2.log`.
+- AC-12: met — in `run2.log` `project_interview_minimal` passed `flow_text_matches_next_flow`, `integration_branch_order_matches_work_flow_plan`, `step_four_lists_all_profile_fields`, `rows_use_profile_words`, `no_internal_word_in_user_shown_text` and `contradictions_are_gone`, and `question_bank_hosts` passed 1 of 1.
+- AC-13: met — `scan_tokens_cover_pytest_go_test_nextest` and `internal_tokens_scanned_in_exempt_cell` passed in `run2.log`.
+- AC-14: met — `duplicate_key_altered_is_refused` and `duplicate_key_identical_applies` passed in `run2.log` (`project_apply_plan_result` 5 passed). They pin today's behaviour (characterization); no refusal code was added and `src/**` is untouched.
+- Receipt runs of `moai check affected --card` (logs under `target/check-affected-*/` in the worktree): the first run at `e082ce1dc6` stopped at clippy (`unnecessary_map_or` in the sentence-end scan of `project_interview_minimal`, fixed in `066118be9c`); the second run at `066118be9c` passed clippy and failed three tests, `check_affected` `the_repository_tests_pass_the_table_step_as_added_files` and `the_repository_tests_pass_the_scan_step_as_added_files` and `repo_scans_table` `every_file_reader_has_an_always_scan_or_an_exemption`, because the new tests spelled a state folder name and opened the SPEC, `src/ops/work_flow_plan.rs` and a tool script at run time without a `reads-` scan naming them. `7a4b7fc625` drops the SPEC Result line test (`spec check` and `bundle check` read those lines), the source anchor and the tool path literal; no registry file changed. After it `project_interview_minimal` (18 passed) and `repo_scans_table` (33 passed) passed in one slot run. The READY note carries the receipt of the final head.
+- Other results of the implementation run `run2.log` (before those fixes): `project_interview_minimal` 18 passed 1 failed (the dropped Result line test); `product_cli` `source_manifest_covers_every_package_file` (stale `interview.md` hash) and `project_harness_label` `workflow_text_names_the_step_where_it_lists_it` failed, which `b3cbbc9184` fixed. The other targets of the run (`agent_defs_package`, `generic_flow_questions`, `next_flow_skill_scan`, `project_applied_table`, `project_apply_plan_result`, `project_decide_model`, `project_detect_cli`, `project_flow_closing`, `update_route` and the rest) passed. `language_three_questions` and `review_section_cli` were not part of that run (not_run).
+- Gaps, revision 3:
+  - Card criterion 1 (the step-2 body of `project.md` and the pin that `update.md` carries it) stays open until the owner card of `update.md` lands.
+  - Card criterion 3 stays open for `update.md`: it still holds an Issue number and a card number, and the owner card of `update.md` rewrites it.
+  - Card criterion 4 (the hooks conflict text in `update.md`) stays open.
+  - Card criterion 10 N6 (`moai language-setup --help`, `src/ops/language_setup.rs`) and N7 (default-sourced rules in project skills, `src/generation.rs`) are follow-ups that need `src/**` (D-14), as is the `KNOWN_HOSTS` cleanup.
+  - The Rust successor of the `skill_references` test was not found; the old Python test was not run.
+  - The final-table state words and the `baseRef` clause are unchanged (D-15).

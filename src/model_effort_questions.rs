@@ -8,7 +8,7 @@
 //! line or saved text. The update command, the commands that expose the plan and the apply, and
 //! the skill step are slice 2b.
 use crate::model_effort_settings::{
-    default_choice, flat_choice, role_entry_paths, supported, unsupported_entries,
+    flat_choice, launch_default_choice, role_entry_paths, supported, unsupported_entries,
     with_flat_choice, Choice,
 };
 use serde_json::{Map, Value};
@@ -86,11 +86,11 @@ pub fn tool_question(installed: &[&str]) -> Question {
     }
 }
 
-/// The table row the questions offer first when nothing is saved: the `leader` row of
-/// [`default_choice`], the model and effort a launch is closest to (SPEC-20261124-launcher-retire-
-/// role-flags: a launch has no role, so the row is a starting point of the screen, not a role).
+/// What the questions offer first when nothing is saved: [`launch_default_choice`], the model
+/// and effort a plain launch with nothing saved runs (SPEC-20261121-model-defaults-one-table
+/// REQ-10 to REQ-12; a launch has no role, SPEC-20261124-launcher-retire-role-flags).
 fn table_default(tool: &str) -> Option<Choice> {
-    default_choice(tool, "leader")
+    launch_default_choice(tool)
 }
 
 /// The model of a tool: the default first, then the rest of the table in order.

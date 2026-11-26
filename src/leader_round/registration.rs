@@ -12,15 +12,11 @@
 //! non-regular file, an oversized entry or one that is not a well-formed entry is an error
 //! naming the file, never "absent".
 
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde_json::{json, Value};
 
-use crate::lane_registry::{registry_dir_unlinked, valid_instance, valid_name, DEFAULT_LEASE_SECS};
-
-/// Largest entry file read; the lane registry's own bound.
-const MAX_ENTRY_BYTES: u64 = 4_096;
+use crate::lane_registry::{valid_instance, DEFAULT_LEASE_SECS};
 
 /// One registry entry of mode `leader`, as stored.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,86 +36,22 @@ fn own_session_id() -> Option<String> {
         .map(str::to_string)
 }
 
-fn broken(file: &Path) -> String {
-    format!(
-        "session registry entry {} is invalid; remove it after checking that no session uses that name",
-        file.display()
-    )
-}
-
-/// The entry at `file` for `name` when it is of mode `leader`; `None` for another mode.
-fn read_leader(file: &Path, name: &str) -> Result<Option<LeaderEntry>, String> {
-    match fs::symlink_metadata(file) {
-        Err(_) => return Err(broken(file)),
-        Ok(m) if !m.file_type().is_file() || m.len() > MAX_ENTRY_BYTES => return Err(broken(file)),
-        Ok(_) => {}
-    }
-    let text = fs::read_to_string(file).map_err(|_| broken(file))?;
-    let v: Value = serde_json::from_str(&text).map_err(|_| broken(file))?;
-    let instance = v["instance"].as_str().filter(|i| valid_instance(i));
-    match (
-        v["schema_version"].as_u64(),
-        v["name"].as_str(),
-        instance,
-        v["lease_until"].as_i64(),
-    ) {
-        (Some(1), Some(n), Some(i), Some(lease)) if n == name => {
-            if v["mode"].as_str() != Some("leader") {
-                return Ok(None);
-            }
-            Ok(Some(LeaderEntry {
-                name: n.to_string(),
-                instance: i.to_string(),
-                lease_until: lease,
-                session: v["session"].as_str().map(str::to_string),
-            }))
-        }
-        _ => Err(broken(file)),
-    }
-}
-
 /// Every entry of mode `leader` in the clone's registry, ended leases included, sorted by name.
-/// A missing registry folder has none. Reads only; nothing is created.
+/// Both file forms are read (the file named by the lane name and the file named by the host
+/// session id), through the lane registry's own listing, so an entry that cannot be read is an
+/// error naming the file, never "absent". A missing registry folder has none. Reads only;
+/// nothing is created.
 pub fn leader_entries(project: &Path) -> Result<Vec<LeaderEntry>, String> {
-    // A link on any folder below the clone's git dir is an error, never "no entry".
-    let dir = registry_dir_unlinked(project)?;
-    match fs::symlink_metadata(&dir) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(e) => {
-            return Err(format!(
-                "session registry {} cannot be read: {e}",
-                dir.display()
-            ))
-        }
-        Ok(m) if !m.is_dir() => {
-            return Err(format!(
-                "session registry path {} is a symlink or not a folder; refused",
-                dir.display()
-            ))
-        }
-        Ok(_) => {}
-    }
-    let read = fs::read_dir(&dir)
-        .map_err(|e| format!("session registry {} cannot be read: {e}", dir.display()))?;
-    let mut files: Vec<PathBuf> = read
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("json"))
-        .collect();
-    files.sort();
-    let mut out = Vec::new();
-    for path in files {
-        let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
-            continue;
-        };
-        if !valid_name(stem) {
-            continue;
-        }
-        if let Some(entry) = read_leader(&path, stem)? {
-            out.push(entry);
-        }
-    }
-    Ok(out)
+    Ok(crate::lane_registry::session_entries(project)?
+        .into_iter()
+        .filter(|e| e.mode.as_deref() == Some("leader"))
+        .map(|e| LeaderEntry {
+            name: e.name,
+            instance: e.instance,
+            lease_until: e.lease_until,
+            session: e.session,
+        })
+        .collect())
 }
 
 /// The live leader entry that registers `session` and has no launcher lock file (SPEC REQ-6):

@@ -6,6 +6,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
+/// The weakened-test detector (SPEC-20261120-test-weakening-detection). It lives beside the
+/// gate it feeds and is declared here, so the gate files are the only shared ones it touches.
+#[path = "test_weakening.rs"]
+pub mod test_weakening;
+
 /// One pull request comment: its id (ascending ids are posting order) and body.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -134,6 +139,11 @@ pub struct Snapshot {
     /// unknown, and a tier-0 PR stops.
     #[serde(default)]
     pub merge_base: Option<String>,
+    /// The weakened-test findings of the diff from the merge base to the head, one rendered
+    /// line each (`kind path:line detail`). Absent means the diff was not read: unknown, never
+    /// an empty list (SPEC-20261120-test-weakening-detection).
+    #[serde(default)]
+    pub test_weakening: Option<Vec<String>>,
 }
 
 impl Snapshot {
@@ -235,6 +245,7 @@ const MANIFEST: &str = "skills/moai/references/source-manifest.json";
 /// `tests/protected_paths_one_list.rs` fails when an entry of that list is not judged tier 2.
 pub const TIER2_PREFIXES: &[&str] = &[
     "src/gate",
+    "src/test_weakening",
     "src/ops/gate",
     "src/flow.rs",
     "src/hook",
@@ -319,7 +330,46 @@ pub fn parse_body_tier(body: &str) -> Option<u8> {
 /// it declared none (unknown is audited); a [`TIER2_PREFIXES`] path raises it to 2, and any
 /// path that is not [`tier0_safe`] to at least 1. The path rule only raises.
 pub fn effective_tier(s: &Snapshot) -> u8 {
-    tier_of(s.body_tier, &s.pr_files)
+    tier_with_weakening(
+        tier_of(s.body_tier, &s.pr_files),
+        s.test_weakening.as_deref(),
+        TEST_WEAKENING_ENFORCED,
+    )
+}
+
+/// Whether weakened-test findings raise the audit tier (SPEC-20261120-test-weakening-detection
+/// D-6). A new gate starts in observe: the findings and the tier they would give are reported,
+/// and [`effective_tier`] ignores them. Turning this on is the leader's decision; the
+/// `audit-gate` CI job reads file names only, so it must be turned on together with it.
+pub const TEST_WEAKENING_ENFORCED: bool = false;
+
+/// `tier` with the weakened-test findings applied: while `enforced`, findings that are not an
+/// empty list (a list, or `None` for a diff that was not read) make it at least 1; while not,
+/// `tier` is returned as it is.
+pub fn tier_with_weakening(tier: u8, findings: Option<&[String]>, enforced: bool) -> u8 {
+    if enforced && !matches!(findings, Some([])) {
+        tier.max(1)
+    } else {
+        tier
+    }
+}
+
+/// The weakened-test part of a gate result: the findings (or `"unknown"` when the diff was not
+/// read), whether the gate enforces them and the tier they would give.
+pub fn weakening_report(s: &Snapshot) -> serde_json::Value {
+    let would = tier_with_weakening(
+        tier_of(s.body_tier, &s.pr_files),
+        s.test_weakening.as_deref(),
+        true,
+    );
+    serde_json::json!({
+        "findings": match &s.test_weakening {
+            Some(list) => serde_json::json!(list),
+            None => serde_json::json!("unknown"),
+        },
+        "enforced": TEST_WEAKENING_ENFORCED,
+        "tier_with_findings": would,
+    })
 }
 
 /// [`effective_tier`] from its two inputs: the tier the body declares and the PR's files (the
@@ -449,6 +499,9 @@ pub fn tier_of_changes(body_tier: Option<u8>, files: &[ChangedFile]) -> u8 {
 /// - a rule file or a test name added to the `rules` or `tests` list of a scan,
 /// - a `--test <name>` option added to a cargo line of the `checks` list of a scan, before the
 ///   `--` that starts libtest's arguments and with a name that is a target name (`[a-z0-9_]+`),
+/// - a target name inserted at its sorted place in a non-empty `test_targets` list that was
+///   sorted with no name twice, stays so and keeps every old name
+///   (`target_names_only_grew`; SPEC-20261126-gate-test-targets-growth),
 /// - a scan added.
 ///
 /// A line edited, a line removed, a text field changed, a check line of any other change, a
@@ -496,6 +549,7 @@ fn scan_only_grew(
         let ok = match key.as_str() {
             "rules" | "tests" => strings_only_grew(value, grown),
             "checks" => checks_only_gain_tests(value, grown),
+            "test_targets" => grown == value || target_names_only_grew(value, grown),
             _ => grown == value,
         };
         ok.then_some(())?;
@@ -510,6 +564,26 @@ fn strings_only_grew(old: &serde_json::Value, new: &serde_json::Value) -> bool {
     };
     let mut rest = new.iter();
     old.iter().all(|o| rest.any(|n| n == o))
+}
+
+/// `test_targets`: `new` is `old` with one or more target names inserted at their sorted places.
+/// Both are non-empty arrays in strictly ascending byte order (sorted, no name twice: a base that
+/// is not is no list to grow), every name of `new` is a target name
+/// ([`crate::repo_scans::is_target_name`]), and every name of `old` is still in `new`. Two such
+/// lists are the same list or `new` holds a name more, so a reorder or a repeat removed never
+/// passes: its base is not ascending. An empty list on either side, a value that is no list, a
+/// name removed or replaced, a broken order and a repeated name are not growth. An unchanged
+/// list is judged by the caller.
+fn target_names_only_grew(old: &serde_json::Value, new: &serde_json::Value) -> bool {
+    let (Some(old), Some(new)) = (strings(old), strings(new)) else {
+        return false;
+    };
+    let ascending = |list: &[&str]| list.windows(2).all(|pair| pair[0] < pair[1]);
+    !old.is_empty()
+        && ascending(&old)
+        && new.iter().all(|n| crate::repo_scans::is_target_name(n))
+        && ascending(&new)
+        && old.iter().all(|o| new.binary_search(o).is_ok())
 }
 
 fn strings(v: &serde_json::Value) -> Option<Vec<&str>> {
@@ -809,6 +883,41 @@ pub fn accepted_auto_delta(s: &Snapshot) -> Option<&AutoDelta> {
     .then_some(d)
 }
 
+/// The G1 reason when no comment carries a verdict line: it names what was read instead of
+/// stopping silently (the 2026-11-21 mo.ai.kr report — a member comment that starts
+/// `AUDIT PASS …` is the usual cause: a verdict line is `AUDIT #<pr> (<title>) head <40hex>
+/// base <40hex> — verdict: PASS|FAIL`, printed by `moai audit-verdict-line`).
+fn no_verdict_reason(s: &Snapshot) -> String {
+    if s.comments.is_empty() {
+        return "no AUDIT verdict: no member comments were read at all (0); the gate reads a \
+                first line `AUDIT #<pr> (<title>) head <40hex> base <40hex> — verdict: \
+                PASS|FAIL`"
+            .into();
+    }
+    let closest = s
+        .comments
+        .iter()
+        .filter(|c| crate::comment_authority::is_member(&c.author_association))
+        .filter_map(|c| c.body.lines().next())
+        .rfind(|l| l.trim_start().starts_with("AUDIT") && !l.starts_with("AUDIT #"))
+        .map(|l| {
+            // A comment can carry a credential-shaped line: mask it before it is named at all,
+            // then cut — the cut never sees the secret's own characters (audit B1).
+            let masked = crate::redact::redact_secret_shapes(l);
+            let head: String = masked.chars().take(60).collect();
+            format!(
+                "; the member comment that looks closest starts \"{head}\" — a verdict line \
+                 starts \"AUDIT #<pr> (<title>) head <40hex> base <40hex> — verdict: \
+                 PASS|FAIL\" (moai audit-verdict-line prints it)"
+            )
+        })
+        .unwrap_or_default();
+    format!(
+        "no AUDIT verdict: {} member comment(s) read, none carries a verdict line{closest}",
+        s.comments.len()
+    )
+}
+
 /// G1: the last verdict is a PASS on the current head with a 40-hex base, or a PASS on an
 /// earlier head the current one is a mechanical delta of (#2833). Returns the base and the
 /// head the verdict judged.
@@ -819,7 +928,7 @@ fn g1(s: &Snapshot) -> Result<(String, String), Stop> {
         .filter_map(|c| verdict_line(&c.body).map(|l| (c.id, l)))
         .max_by_key(|(id, _)| *id);
     let stop = |reason: String| Stop { rule: "G1", reason };
-    let (_, line) = last.ok_or_else(|| stop("no AUDIT verdict".into()))?;
+    let (_, line) = last.ok_or_else(|| stop(no_verdict_reason(s)))?;
     let (head, base, verdict) = verdict_of(s, line).ok_or_else(|| {
         stop(
             "the last verdict line does not read `head <40hex> base <40hex> — verdict: <V>`".into(),
@@ -1369,6 +1478,56 @@ pub fn ci_info(s: &Snapshot) -> String {
         ("success", Some(n)) => format!("ci={state} attempt={n}"),
         _ => format!("ci={state}"),
     }
+}
+
+/// What the gate could read, named in the answer (the 2026-11-21 mo.ai.kr report: a G1 whose
+/// every input was read but no verdict line existed had to say so — how many comments, with
+/// which associations, and the member first lines that look like a verdict but are not one).
+/// Information only: no rule reads it.
+pub fn reads_summary(s: &Snapshot) -> serde_json::Value {
+    let mut associations: std::collections::BTreeMap<&str, usize> = Default::default();
+    for c in &s.comments {
+        *associations
+            .entry(c.author_association.as_str())
+            .or_default() += 1;
+    }
+    let verdict_lines = s
+        .comments
+        .iter()
+        .filter(|c| verdict_line(&c.body).is_some())
+        .count();
+    let lookalike: Vec<serde_json::Value> = s
+        .comments
+        .iter()
+        .filter(|c| c.body.trim_start().starts_with("AUDIT") && verdict_line(&c.body).is_none())
+        .map(|c| {
+            // A comment can carry a credential-shaped line: mask it before it is named at all,
+            // then cut — the cut never sees the secret's own characters (audit B1).
+            let masked = crate::redact::redact_secret_shapes(c.body.lines().next().unwrap_or(""));
+            let first: String = masked.chars().take(60).collect();
+            serde_json::json!({
+                "comment_id": c.id,
+                "author_association": c.author_association,
+                "first_line": first,
+            })
+        })
+        .collect();
+    let names: std::collections::BTreeSet<&str> =
+        s.checks.iter().map(|c| c.name.as_str()).collect();
+    serde_json::json!({
+        "comments": s.comments.len(),
+        "author_associations": associations,
+        "verdict_lines": verdict_lines,
+        "member_first_lines_that_are_not_verdict_lines": lookalike
+            .iter()
+            .filter(|l| crate::comment_authority::is_member(
+                l["author_association"].as_str().unwrap_or_default(),
+            ))
+            .count(),
+        "lookalike_first_lines": lookalike,
+        "check_runs": s.checks.len(),
+        "check_run_names": names,
+    })
 }
 
 /// G6: a clean merge with the tip; files both the PR and the tip (since the verdict's base)

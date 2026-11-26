@@ -192,6 +192,11 @@ struct World {
 impl World {
     /// The fixture of `card_land_cli`, with `integ` checked out in the project folder.
     fn new() -> Self {
+        Self::with_bulk(0)
+    }
+
+    /// The same fixture with `bulk` more tracked files in `bulk/`, all in the first commit.
+    fn with_bulk(bulk: usize) -> Self {
         let home = TempHome::new();
         let project = home.project("demo");
         ledger::register(home.path(), "demo").unwrap();
@@ -200,6 +205,13 @@ impl World {
         fs::create_dir(project.join("d")).unwrap();
         fs::write(project.join("d/x"), "x\n").unwrap();
         git(&project, &["add", "a.txt", "d/x"]);
+        if bulk > 0 {
+            fs::create_dir(project.join("bulk")).unwrap();
+            for n in 0..bulk {
+                fs::write(project.join(format!("bulk/f{n:05}")), format!("{n}\n")).unwrap();
+            }
+            git(&project, &["add", "bulk"]);
+        }
         git(&project, &["commit", "-q", "-m", "init"]);
         fs::write(project.join("b.txt"), "b\n").unwrap();
         git(&project, &["add", "b.txt"]);
@@ -687,41 +699,210 @@ fn a_clean_checkout_follows_the_branch_and_the_card_closes() {
     );
 }
 
-// ---- AC-2: a tracked change refuses -------------------------------------------------------------
+// ---- AC-1..AC-4 of SPEC-20261125-land-unrelated-tracked-changes ---------------------------------
 
-/// AC-2 (REQ-3, REQ-7): a staged change, an unstaged change and a deleted tracked file each
-/// refuse before the first write and name the path and the way out.
+/// REQ-1, REQ-6, REQ-7, REQ-12: a staged change, an unstaged change and a deleted tracked file at
+/// paths the candidate leaves alone do not stop the landing, and they are as they were afterwards.
 #[test]
-fn a_tracked_change_refuses_and_changes_nothing() {
+fn unrelated_tracked_changes_are_kept_and_the_landing_follows() {
+    let w = World::new();
+    let (card, cand) = w.ready_to_land();
+    fs::write(w.project.join("b.txt"), "staged\n").unwrap();
+    git(&w.project, &["add", "b.txt"]);
+    fs::write(w.project.join("a.txt"), "edited\n").unwrap();
+    fs::remove_file(w.project.join("d/x")).unwrap();
+    let status = w.tracked_changes();
+    let staged_blob = git(&w.project, &["ls-files", "-s", "b.txt"]);
+    assert_eq!(status.lines().count(), 3, "{status}");
+
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(w.integ(), cand);
+    assert_eq!(w.state(&card), "done");
+    let follow = &got["worktree_follow"];
+    assert_eq!(follow["status"], json!("followed"), "{got}");
+    assert_eq!(follow["kept_changes"], json!(3), "{got}");
+    assert_eq!(
+        fs::read_to_string(w.project.join("notes/x.md")).unwrap(),
+        "lane\n",
+        "the candidate's own path follows"
+    );
+    assert_eq!(
+        w.tracked_changes(),
+        status,
+        "the three changes are as they were"
+    );
+    assert_eq!(
+        git(&w.project, &["ls-files", "-s", "b.txt"]),
+        staged_blob,
+        "the staged change is still staged"
+    );
+    assert_eq!(
+        fs::read_to_string(w.project.join("b.txt")).unwrap(),
+        "staged\n"
+    );
+    assert_eq!(
+        fs::read_to_string(w.project.join("a.txt")).unwrap(),
+        "edited\n"
+    );
+    assert!(!w.project.join("d/x").exists());
+}
+
+/// A candidate that edits `a.txt` and a checkout with two unrelated edits besides one change of
+/// `a.txt` itself (staged, unstaged or deleted): each refuses, counts, and changes nothing. A
+/// deleted file at a changed path matters most: git itself restores it without a word.
+#[test]
+fn overlapping_tracked_changes_still_refuse_with_the_counts() {
     type Mutate = fn(&World);
-    let cases: [(&str, Mutate, &str); 3] = [
-        (
-            "a staged change",
-            |w| {
-                fs::write(w.project.join("b.txt"), "staged\n").unwrap();
-                git(&w.project, &["add", "b.txt"]);
-            },
-            "b.txt",
-        ),
-        (
-            "an unstaged change",
-            |w| fs::write(w.project.join("a.txt"), "edited\n").unwrap(),
-            "a.txt",
-        ),
-        (
-            "a deleted tracked file",
-            |w| fs::remove_file(w.project.join("b.txt")).unwrap(),
-            "b.txt",
-        ),
+    let cases: [(&str, Mutate); 3] = [
+        ("a staged change", |w| {
+            fs::write(w.project.join("a.txt"), "staged\n").unwrap();
+            git(&w.project, &["add", "a.txt"]);
+        }),
+        ("an unstaged change", |w| {
+            fs::write(w.project.join("a.txt"), "edited\n").unwrap()
+        }),
+        ("a deleted tracked file", |w| {
+            fs::remove_file(w.project.join("a.txt")).unwrap()
+        }),
     ];
-    for (what, mutate, path) in cases {
+    for (what, mutate) in cases {
         let w = World::new();
-        let (card, cand) = w.ready_to_land();
+        let (card, cand) = w.ready_editing(&[], &[("a.txt", "lane edit\n")]);
+        fs::write(w.project.join("b.txt"), "other\n").unwrap();
+        fs::write(w.project.join("d/x"), "other\n").unwrap();
         mutate(&w);
         let before = w.before();
         let out = w.land(&card, &cand);
-        w.refuses(&out, &["tracked change", path], &before, what);
+        w.refuses(
+            &out,
+            &["1 of its 3 tracked change(s)", "a.txt"],
+            &before,
+            what,
+        );
     }
+}
+
+/// REQ-4, REQ-5: the way out names the owner and a worktree of the lander's own, and never tells
+/// anyone to stash, reset or commit work that is not theirs.
+#[test]
+fn the_overlap_refusal_follows_the_shared_checkout_contract() {
+    let w = World::new();
+    let (card, cand) = w.ready_editing(&[], &[("a.txt", "lane edit\n")]);
+    fs::write(w.project.join("a.txt"), "edited\n").unwrap();
+    let before = w.before();
+    let out = w.land(&card, &cand);
+    let message = w.refuses(&out, &["a.txt"], &before, "an overlapping edit");
+    assert!(
+        message.contains("owner") && message.contains("worktree of your own"),
+        "{message}"
+    );
+    assert!(
+        message.contains("never touches work it does not own"),
+        "{message}"
+    );
+    for forbidden in ["stash", "reset", "commit them there"] {
+        assert!(
+            !message.contains(forbidden),
+            "the refusal tells the lander to {forbidden:?}: {message}"
+        );
+    }
+}
+
+/// REQ-6, REQ-7: the case that stopped a landing in another repository: thousands of tracked files
+/// deleted in the checkout by someone else, none of them a path the landing changes.
+#[test]
+fn a_thousand_unrelated_deletions_follow() {
+    let w = World::with_bulk(1200);
+    let (card, cand) = w.ready_to_land();
+    fs::remove_dir_all(w.project.join("bulk")).unwrap();
+    assert_eq!(w.tracked_changes().lines().count(), 1200);
+
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["worktree_follow"]["status"], json!("followed"), "{got}");
+    assert_eq!(got["worktree_follow"]["kept_changes"], json!(1200), "{got}");
+    assert_eq!(w.state(&card), "done");
+    assert_eq!(w.integ(), cand);
+    assert_eq!(w.tracked_changes().lines().count(), 1200);
+    assert!(
+        !w.project.join("bulk").exists(),
+        "a deletion of someone else was undone"
+    );
+    assert_eq!(
+        fs::read_to_string(w.project.join("notes/x.md")).unwrap(),
+        "lane\n"
+    );
+}
+
+/// REQ-10, REQ-11: a stopped run is finished by the same call past an edit and a deletion at
+/// paths the candidate leaves alone, and the same call refuses an edit at a path it changes.
+#[test]
+fn a_rerun_follows_past_unrelated_tracked_changes_and_refuses_overlapping_ones() {
+    // Unrelated: finished, the changes stay.
+    let w = World::new();
+    let (card, cand) = w.ready_to_land();
+    w.wrap_update_ref("git-kills-the-lander", "kill -9 $PPID");
+    let out = w.land(&card, &cand);
+    assert_ne!(out.status.code(), Some(0), "the lander was not killed");
+    w.plain_git();
+    fs::write(w.project.join("a.txt"), "edited\n").unwrap();
+    fs::remove_file(w.project.join("d/x")).unwrap();
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["worktree_follow"]["status"], json!("finished"), "{got}");
+    assert_eq!(got["worktree_follow"]["kept_changes"], json!(2), "{got}");
+    assert_eq!(w.state(&card), "done");
+    assert_eq!(
+        fs::read_to_string(w.project.join("a.txt")).unwrap(),
+        "edited\n"
+    );
+    assert!(!w.project.join("d/x").exists());
+    assert_eq!(
+        fs::read_to_string(w.project.join("notes/x.md")).unwrap(),
+        "lane\n"
+    );
+
+    // Overlapping: refused with the counts, then finished once the edit is gone.
+    let w = World::new();
+    let (card, cand) = w.ready_editing(&[], &[("a.txt", "lane edit\n")]);
+    w.wrap_update_ref("git-kills-the-lander", "kill -9 $PPID");
+    let out = w.land(&card, &cand);
+    assert_ne!(out.status.code(), Some(0), "the lander was not killed");
+    w.plain_git();
+    fs::write(w.project.join("a.txt"), "edited\n").unwrap();
+    fs::write(w.project.join("b.txt"), "other\n").unwrap();
+    let before = w.checkout();
+    let out = w.land(&card, &cand);
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let message = envelope(&out)["error"]["message"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        message.contains("1 of its 2 tracked change(s)")
+            && message.contains("a.txt")
+            && message.contains("run the same call again"),
+        "{message}"
+    );
+    assert_eq!(
+        w.checkout(),
+        before,
+        "the refused rerun touched the worktree"
+    );
+    assert_eq!(w.state(&card), "review");
+    fs::write(w.project.join("a.txt"), "a\n").unwrap();
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["worktree_follow"]["status"], json!("finished"), "{got}");
+    assert_eq!(w.state(&card), "done");
+    assert_eq!(
+        fs::read_to_string(w.project.join("b.txt")).unwrap(),
+        "other\n"
+    );
 }
 
 // ---- AC-3: a moved HEAD or an operation in progress ---------------------------------------------
@@ -1262,7 +1443,7 @@ fn a_run_killed_after_the_follow_closes_on_the_rerun_without_following_again() {
 }
 
 /// A rerun refuses what a first run would refuse: a file that no commit tracks now stands at a
-/// path the candidate adds, or a tracked file was edited while the index lags.
+/// path the candidate adds.
 #[test]
 fn a_rerun_refuses_what_a_first_run_would_refuse() {
     let w = World::new();
@@ -1327,28 +1508,9 @@ fn a_rerun_refuses_what_a_first_run_would_refuse() {
     fs::remove_file(w.project.join("notes/x.md")).unwrap();
     fs::remove_dir(w.project.join("notes")).unwrap();
 
-    // A tracked file edited while the index lags.
-    fs::write(w.project.join("a.txt"), "edited\n").unwrap();
-    let before = w.checkout();
-    let out = w.land(&card, &cand);
-    assert_eq!(
-        out.status.code(),
-        Some(1),
-        "{}",
-        String::from_utf8_lossy(&out.stdout)
-    );
-    let message = envelope(&out)["error"]["message"]
-        .as_str()
-        .unwrap()
-        .to_string();
-    assert!(
-        message.contains("edited tracked files") && message.contains("git restore ."),
-        "{message}"
-    );
-    assert_eq!(w.checkout(), before);
-    fs::write(w.project.join("a.txt"), "a\n").unwrap();
-
-    // Nothing in the way any more: the same call finishes it.
+    // Nothing in the way any more: the same call finishes it. (A tracked file edited at a path
+    // the candidate leaves alone is no obstacle since SPEC-20261125-land-unrelated-tracked-changes;
+    // `a_rerun_follows_past_unrelated_tracked_changes_and_refuses_overlapping_ones` holds it.)
     let got = result(&w.land(&card, &cand));
     assert_eq!(got["worktree_follow"]["status"], json!("finished"), "{got}");
     assert_eq!(w.state(&card), "done");

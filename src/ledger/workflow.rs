@@ -73,6 +73,13 @@ pub enum WorkflowError {
         needs: &'static str,
         action: &'static str,
     },
+    /// `card landed` was refused for the card's state or, on a `ready` card, for the PASS the
+    /// record needs (SPEC-20261125-card-ready-pass-landing-path); `code` is `wrong_state` or
+    /// `landing_refused` and `why` is the sentence after "card conflict in state:".
+    LandingRefused {
+        code: &'static str,
+        why: String,
+    },
     /// `done` was refused by one of the three closing rules; the text is the schema's own.
     NotClosable(String),
     /// The card is `done`: a closed card keeps the criteria it had.
@@ -107,6 +114,7 @@ impl WorkflowError {
             WorkflowError::CriterionNotFound { .. } => "criterion_not_found",
             WorkflowError::DuplicateRef { .. } => "duplicate_ref",
             WorkflowError::WrongState { .. } => "wrong_state",
+            WorkflowError::LandingRefused { code, .. } => code,
             WorkflowError::NotClosable(_) => "not_closable",
             WorkflowError::Closed { .. } => "closed",
             WorkflowError::LinkRetired { .. } => "link_retired",
@@ -139,6 +147,9 @@ impl std::fmt::Display for WorkflowError {
                 f,
                 "card conflict in state: C-{card_id} is `{state}`; only a `{needs}` card can be {action}"
             ),
+            WorkflowError::LandingRefused { why, .. } => {
+                write!(f, "card conflict in state: {why}; nothing was written")
+            }
             WorkflowError::NotClosable(why) => write!(f, "card done refused: {why}"),
             WorkflowError::Closed { card_id } => write!(
                 f,
@@ -1504,8 +1515,9 @@ pub struct Landing {
 }
 
 /// `card landed`: record that this card's head landed on the local integration branch
-/// (M-Flow). The card must be in `review`; one free-form `card.landed` event carries the head
-/// and the by, with the writing session as the actor.
+/// (M-Flow). The card must be in `review`, or in `ready` with a PASS of the head
+/// ([`ready_landing_refusal`]); one free-form `card.landed` event carries the head and the by
+/// (and `from_state` `ready` for a `ready` card), with the writing session as the actor.
 pub fn land(
     w: &mut WriteLedger,
     card_id: i64,
@@ -1531,13 +1543,30 @@ pub fn land(
             Some(state) => state,
             None => return Ok(Err(WorkflowError::CardNotFound(card_id))),
         };
-        if from != "review" {
-            return Ok(Err(WorkflowError::WrongState {
-                card_id,
-                state: from,
-                needs: "review",
-                action: "landed",
-            }));
+        // A `review` card is recorded as it always was; a `ready` card (sent back after its
+        // audit) only on the PASS the leader's record needs (SPEC-20261125-card-ready-pass-
+        // landing-path); any other state is refused naming both.
+        let mut payload = json!({"head": head, "by": by});
+        match from.as_str() {
+            "review" => {}
+            "ready" => {
+                if let Some(why) = ready_landing_refusal(tx, card_id, head, by)? {
+                    return Ok(Err(WorkflowError::LandingRefused {
+                        code: "landing_refused",
+                        why,
+                    }));
+                }
+                payload["from_state"] = json!("ready");
+            }
+            _ => {
+                return Ok(Err(WorkflowError::LandingRefused {
+                    code: "wrong_state",
+                    why: format!(
+                        "C-{card_id} is `{from}`; only a `review` card, or a `ready` card with a \
+                         PASS verdict of the head, can be landed"
+                    ),
+                }));
+            }
         }
         reservation::add_event(
             tx,
@@ -1545,10 +1574,65 @@ pub fn land(
             session.unwrap_or("user"),
             card_id,
             "card.landed",
-            &json!({"head": head, "by": by}),
+            &payload,
         )?;
         Ok(Ok(()))
     })?
+}
+
+/// Why a `ready` card may not take the landing record of `head`, or `None` when it may
+/// (SPEC-20261125-card-ready-pass-landing-path): the caller is the leader, a verdict of the
+/// card names exactly `head`, the newest verdict of every reviewer on it is a PASS, and no
+/// reviewer held a reservation of the card. It reads the ledger only; the landing gate of
+/// `card land` (authors, tier, receipt) is not repeated here.
+fn ready_landing_refusal(
+    conn: &Connection,
+    card_id: i64,
+    head: &str,
+    by: &str,
+) -> Result<Option<String>, LedgerError> {
+    if by != LEADER_BY {
+        return Ok(Some(format!(
+            "C-{card_id} is `ready`; a `ready` card is recorded as landed only by the leader: \
+             give --by {LEADER_BY}"
+        )));
+    }
+    let events = verdict_events(conn, card_id)?;
+    let on_head: Vec<&VerdictEvent> = events.iter().filter(|e| e.head == head).collect();
+    if on_head.is_empty() {
+        return Ok(Some(format!(
+            "C-{card_id} is `ready`; a `ready` card is recorded as landed only on a PASS verdict \
+             of the exact head, and no verdict of the card names {head}"
+        )));
+    }
+    // Each reviewer's newest verdict on the head, newest first.
+    let mut newest: Vec<&VerdictEvent> = Vec::new();
+    for event in on_head.iter().rev() {
+        if !newest
+            .iter()
+            .any(|n| n.reviewer.eq_ignore_ascii_case(&event.reviewer))
+        {
+            newest.push(event);
+        }
+    }
+    if let Some(fail) = newest.iter().find(|e| !e.pass) {
+        return Ok(Some(format!(
+            "C-{card_id} is `ready`; the newest verdict of {} on {head} is a FAIL (event {})",
+            fail.reviewer, fail.event_id
+        )));
+    }
+    let holders = reservation_holders(conn, card_id)?;
+    if let Some(reviewer) = newest
+        .iter()
+        .map(|e| &e.reviewer)
+        .find(|r| holders.iter().any(|h| crate::trailers::same_identity(h, r)))
+    {
+        return Ok(Some(format!(
+            "C-{card_id} is `ready`; the PASS of {reviewer} comes from a session that held a \
+             reservation of the card, and the agent that implemented a change never audits it"
+        )));
+    }
+    Ok(None)
 }
 
 /// `review -> done`, as the current holder at `generation` (a live lease is not needed). Needs

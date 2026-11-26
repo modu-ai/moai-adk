@@ -132,8 +132,9 @@ fn session_identity_ok(word: &str) -> bool {
     crate::trailers::value_shape(&word.to_ascii_lowercase()) != crate::trailers::Shape::Bad
 }
 
-/// `card assign C-n --auditor ID --by leader`: one `card.audit_assigned` row for a card in review.
-/// Only the leader word assigns, and never an identity that holds or held the card.
+/// `card assign C-n --auditor ID --by leader`: one `card.audit_assigned` row for a card in review,
+/// or for a `ready` card whose PASS verdict the auditor wrote. Only the leader word assigns, and
+/// never an identity that holds or held the card.
 pub fn assign(
     project: &Path,
     home: &Path,
@@ -173,11 +174,32 @@ pub fn assign(
                 Ok(s) => s,
                 Err(e) => return Ok(Err(e)),
             };
-            if state != "review" {
-                return Ok(Err(format!(
-                    "card conflict in assign: {name} is {state}, and an auditor is assigned to a \
-                     card in review; nothing was written"
-                )));
+            // A `review` card takes an assignment as it always did. A `ready` card (sent back
+            // after its audit) takes it only for a reviewer of a PASS verdict of the card
+            // (SPEC-20261125-card-ready-pass-landing-path), so the record names who audited.
+            match state.as_str() {
+                "review" => {}
+                "ready" => {
+                    let passed = match ledger::workflow::verdict_events(tx, card_id) {
+                        Ok(events) => events.iter().any(|e| {
+                            e.pass && crate::trailers::same_identity(&e.reviewer, auditor)
+                        }),
+                        Err(e) => return Ok(Err(e.to_string())),
+                    };
+                    if !passed {
+                        return Ok(Err(format!(
+                            "card conflict in assign: {name} is `ready`, and no PASS verdict of it \
+                             names {auditor} as its reviewer; nothing was written"
+                        )));
+                    }
+                }
+                _ => {
+                    return Ok(Err(format!(
+                        "card conflict in assign: {name} is {state}; an auditor is assigned to a \
+                         card in `review`, or in `ready` with a PASS verdict of its own; nothing \
+                         was written"
+                    )));
+                }
             }
             let held = match authors(tx, card_id) {
                 Ok(h) => h,

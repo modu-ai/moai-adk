@@ -5,8 +5,9 @@ use std::path::PathBuf;
 
 /// Register this session's lane name
 ///
-/// Register this session's lane name in the clone's registry (`<clone common dir>/
-/// .moai-cli/sessions/<name>.json`) before claiming (#2592 S-C). A name another instance holds
+/// Register this session's lane name in the clone's registry (one entry file per session under
+/// `<clone common dir>/.moai-cli/sessions/`, named by the host session id, or `<name>.json` for
+/// a session without a usable id) before claiming (#2592 S-C). A name another instance holds
 /// under a live lease is refused (`conflict`); the first call returns a fresh `instance`, and
 /// later calls with `--instance` renew the lease. `--release` frees the name before the
 /// session is cleared. `--show` reads the holder without writing and may leave PROJECT out (the
