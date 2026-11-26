@@ -120,7 +120,6 @@ const ADAPTER_CALLS: &[Call] = &[
     ),
     ("hooks::env_home", "src/hooks.rs", "append_receipt_line", 1),
     ("hooks::env_home", "src/hooks.rs", "receipt_lines", 1),
-    ("hooks::env_home", "src/lane_loop.rs", "stop_hook", 1),
     ("key_vault::home", "src/host_home.rs", "resolve", 1),
     (
         "key_vault::home",
