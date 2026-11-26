@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261126-card-next-speed
 title: "card next and card list answer a real ledger in 0.1 seconds"
-status: approved
-revision: 1
+status: draft
+revision: 2
 created: 2026-11-26
-approval:
-  by: leader
-  at: 2026-11-25
-  basis: "리더 위임 승인 노트 9638 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
-  digest: "sha256:afb300b1b06953d91f151ad72c97897b1ca2d7c545a04cfef24a85c910d17c9d"
 ---
 
 ## Interview
@@ -32,6 +27,8 @@ On the real ledger (about 500 cards, 15,000 events) `moai card next` took 6.5 s 
 - REQ-6 (REQ-3): IF the page cache is smaller than the database, THEN the ledger shall still answer correctly and only more slowly.
 - REQ-7: When `card next` and `card list` run on the same ledger before and after this change, their answers shall be equal except for the time-dependent fields.
 - REQ-8 (REQ-7): IF the ledger has no `event_card_kind`, THEN the command shall give the same answer as with the index.
+- REQ-10: When `card next` runs, the command shall ask git for the repository identity of one path and HOME once and reuse an `ok` answer until it returns.
+- REQ-11 (REQ-10): IF the identity answer is refused or not `ok`, THEN the command shall keep nothing and ask again, so that every refusal and failure answers as before.
 
 ## Acceptance
 
@@ -39,12 +36,16 @@ On the real ledger (about 500 cards, 15,000 events) `moai card next` took 6.5 s 
 - AC-2 (REQ-3, REQ-4): on a temporary ledger of 500 cards, 15,000 events and 9,000 notes, `card next` and `card list` each answer within 0.3 s and the number of git processes of `card next` does not grow with the number of cards · verify: `cargo test --test card card_read_speed`
 - AC-3 (REQ-4, REQ-5): the batched head check gives the same verdict as the per-head check for a head inside the tip, outside it, one that is no commit and a repeated head · verify: `cargo test --test card card_read_speed`
 - AC-4 (REQ-6, REQ-7, REQ-8): the answer of `card next` and `card list` on a frozen copy of the real ledger is equal before and after, with `now` and lease fields removed · verify: the golden comparison recorded in the card's READY note
+- AC-5 (REQ-10): one `card next` run asks git for the repository identity once · verify: `cargo test --test card card_next_asks_for_the_repository_identity_once`
+- AC-6 (REQ-10, REQ-11): an `ok` answer is reused only for the same path and HOME and only until the reuse scope ends; a refusal and an answer that is not `ok` are asked again · verify: `cargo test --lib identity::tests::reuse`
 
 ## Scope
 
 - write: `src/ledger/**`
 - write: `src/card/landed.rs`
 - write: `src/card/wip_limit.rs` (one project name instead of two identity reads)
+- write: `src/card/work.rs` (the `card next` entry reuses one identity answer)
+- write: `src/identity.rs` (reuse of an `ok` answer for the length of one command)
 - write: `tests/card/card_read_speed.rs`
 - write: `tests/card/main.rs` (one `mod` line, by line lease)
 
@@ -55,3 +56,4 @@ On the real ledger (about 500 cards, 15,000 events) `moai card next` took 6.5 s 
 3. Raise the read connection's page cache.
 4. Check the heads of all cards with two git commands.
 5. Time the new build on the same copy and compare the answers.
+6. Ask for the repository identity once in `card next` and time it again on the same copy.
