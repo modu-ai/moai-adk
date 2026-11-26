@@ -405,6 +405,28 @@ fn a_command_file_change_selects_the_tests_that_name_the_command() {
             ));
         }
     }
+
+    // REQ-6: so does a command file that the library rule reads and that is no text.
+    let repo = Repo::init();
+    repo.put("src/trailers.rs", "// a\n");
+    repo.put("src/ops/trailer_check.rs", "// a\n");
+    let unreadable = repo.dir.path().join("src/ops/trailer_check.rs");
+    fs::write(unreadable, [0xff, 0xfe, b'\n']).unwrap();
+    repo.commit();
+    let range = repo.change(&["src/trailers.rs"]);
+    for (pick, flags) in PICKS {
+        let (ok, answer) = repo.ask(&range, flags);
+        if ok {
+            misses.push(format!(
+                "REQ-6 {pick}: ok=true for an unreadable command file"
+            ));
+        } else if !answer["error"].to_string().contains("trailer_check.rs") {
+            misses.push(format!(
+                "REQ-6 {pick}: the error names no command file: {}",
+                answer["error"]
+            ));
+        }
+    }
     assert!(misses.is_empty(), "{misses:#?}");
 }
 
