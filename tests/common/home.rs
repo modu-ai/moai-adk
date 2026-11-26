@@ -70,8 +70,8 @@ impl TempHome {
     }
 
     /// A project folder under this HOME's own scratch area with the profile a project has:
-    /// `<project>/.moai-cli/project.yaml` holding `project_id`. Returns the project folder,
-    /// which is not inside `~/.moai`.
+    /// `<project>/<moai_cli::PROJECT_STATE_DIR>/project.yaml` holding `project_id`. Returns the
+    /// project folder, which is not inside `~/.moai`.
     pub fn project(&self, project_id: &str) -> PathBuf {
         let project = self.path().join("work").join(project_id);
         let state = project.join(moai_cli::PROJECT_STATE_DIR);
@@ -82,6 +82,23 @@ impl TempHome {
         )
         .unwrap();
         project
+    }
+
+    /// The state folder this generation uses in this HOME, found through the resolver, so a test
+    /// never spells the folder name. It is created if it is not there yet; the path is resolved
+    /// before the folder is made.
+    pub fn state_dir(&self) -> PathBuf {
+        let dir = moai_cli::home_root::path(self.path());
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// An earlier layout built on purpose: the earlier state folder, made under this HOME and
+    /// returned. After it `moai_cli::home_root::dir(home)` names this folder.
+    pub fn make_earlier_state_dir(&self) -> PathBuf {
+        let dir = self.path().join(moai_cli::HOME_STATE_DIR);
+        fs::create_dir_all(&dir).unwrap();
+        dir
     }
 
     /// Makes `~/.moai` look like the Go generation's (a Go session registry), the HOME the

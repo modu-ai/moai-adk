@@ -1560,7 +1560,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     (
         "card",
         "프로젝트의 로컬 카드를 읽고 써요: `list`(목록), `show C-n`(카드 하나와 기준·메모·링크), \
-         `add`(draft 카드 하나와 기준을 한 트랜잭션으로), `ready`(draft 를 ready 로), `take`·`release`·`handoff`(예약을 잡고, 돌려주고, 넘겨요), `adopt`(`/clear` 뒤 같은 레인이 자기 카드를 다음 세대로 이어받아요). `list`·`show` 는 읽기만 하고, 원장 파일과 \
+         `add`(draft 카드 하나와 기준을 한 트랜잭션으로), `ready`(draft 를 ready 로), `take`·`release`·`handoff`(예약을 잡고, 돌려주고, 넘겨요), `adopt`(`/clear` 뒤 같은 레인이 자기 카드를 다음 세대로 이어받아요), `offer`·`accept`(담당이 한 세션에 제안하고 그 세션이 수락해야 넘어가요). `list`·`show` 는 읽기만 하고, 원장 파일과 \
          폴더는 어떤 동작도 만들지 않아요(`ledger-register-apply` 만 만들어요). 원장이 없으면 \
          `list` 는 빈 목록, 나머지는 `ledger not found` 오류와 안내를 줘요.",
     ),
@@ -1745,7 +1745,7 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "cc|glm",
         "agent",
-        "레인으로 시작해요: 세션 이름 `<프로젝트 이름>-agent-<영어 이름>`(목록에서 비어 있는 첫 이름), 권한 우회, 첫 입력 `/moai agent`",
+        "레인으로 시작해요: 세션 이름 `<프로젝트 이름>-agent-<영어 이름>`(목록에서 비어 있는 이름 가운데 무작위), 권한 우회, 첫 입력 `/moai agent`",
     ),
     (
         "cc|glm",

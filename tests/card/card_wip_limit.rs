@@ -727,3 +727,98 @@ fn lock_ac6_the_off_switches_stay_off() {
     assert_eq!(got["wip"]["registry_error"], Value::Null, "{got}");
     assert_eq!(got["wip"]["unreadable"], json!([]), "{got}");
 }
+
+// SPEC-20261126-wip-limit-all-unreadable: a registry that holds items but none that can be read
+// does not switch the limit off.
+
+/// REQ-1 (AC-1): a registry whose only items are malformed entries does not switch the limit off:
+/// `card take` and `card add` refuse with the registry text that names each entry, and `card next`
+/// answers `registry_error` as a string, `at_limit` true, `unreadable` with the names and no card.
+#[test]
+fn all_unreadable_ac1_a_registry_with_only_unreadable_items_stops_the_take() {
+    let w = world(None);
+    fs::create_dir_all(sessions_dir(&w)).unwrap();
+    fs::write(sessions_dir(&w).join("agent-9.json"), "{not json").unwrap();
+    let card = w.ready_card("src/waiting/");
+
+    let (kind, message) = refusal(&w.take(&sid(1), &card));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("session registry"), "{message}");
+    assert!(message.contains("agent-9"), "{message}");
+    let (kind, message) = refusal(&add_by(&w, "leader", "more"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("session registry"), "{message}");
+    assert!(message.contains("agent-9"), "{message}");
+
+    let got = result(&w.next(&sid(1)));
+    assert!(got["wip"]["registry_error"].is_string(), "{got}");
+    assert_eq!(got["wip"]["at_limit"], json!(true), "{got}");
+    assert_eq!(got["wip"]["unreadable"], json!(["agent-9"]), "{got}");
+    assert_eq!(got["next_is"], json!("limit"), "{got}");
+    assert_eq!(got["next"], Value::Null, "{got}");
+
+    // Two unreadable items: the refusal names both.
+    let w = world(None);
+    fs::create_dir_all(sessions_dir(&w)).unwrap();
+    fs::write(sessions_dir(&w).join("agent-8.json"), "{not json").unwrap();
+    fs::write(sessions_dir(&w).join("agent-9.json"), "{not json").unwrap();
+    let card = w.ready_card("src/waiting/");
+    let (kind, message) = refusal(&w.take(&sid(1), &card));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("session registry"), "{message}");
+    assert!(message.contains("agent-8"), "{message}");
+    assert!(message.contains("agent-9"), "{message}");
+}
+
+/// REQ-2 (AC-2): an empty registry folder, a readable entry whose lease ended beside a malformed
+/// entry, and a live lane beside a malformed entry each keep the answer they had before.
+#[test]
+fn all_unreadable_ac2_a_readable_item_or_no_item_keeps_the_earlier_answer() {
+    // (a) The sessions folder exists and holds nothing: the limit is off, no registry error.
+    let w = world(None);
+    fs::create_dir_all(sessions_dir(&w)).unwrap();
+    w.working(&sid(1), 3);
+    let got = result(&w.next(&sid(3)));
+    assert_eq!(got["wip"]["registry_error"], Value::Null, "{got}");
+    assert_eq!(got["wip"]["lanes"], json!(0), "{got}");
+
+    // (b) One readable entry whose lease ended (no lock) beside a malformed entry: no live lane,
+    // so the limit stays off; the malformed entry is only named.
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    w.expire("agent-1");
+    fs::write(sessions_dir(&w).join("agent-9.json"), "{not json").unwrap();
+    w.working(&sid(1), 3);
+    let got = result(&w.next(&sid(3)));
+    assert_eq!(got["wip"]["registry_error"], Value::Null, "{got}");
+    assert_eq!(got["wip"]["unreadable"], json!(["agent-9"]), "{got}");
+    assert_eq!(got["wip"]["lanes"], json!(0), "{got}");
+
+    // (c) One live lane beside a malformed entry: the limit is two and the third take refuses
+    // with the ordinary limit text that also lists the unreadable entry.
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    fs::write(sessions_dir(&w).join("agent-9.json"), "{not json").unwrap();
+    w.working(&sid(1), 2);
+    let third = w.ready_card("src/third/");
+    let (kind, message) = refusal(&w.take(&sid(1), &third));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("limit is 2"), "{message}");
+    assert!(message.contains("agent-9"), "{message}");
+    let got = result(&w.next(&sid(3)));
+    assert_eq!(got["wip"]["registry_error"], Value::Null, "{got}");
+}
+
+/// REQ-3 (AC-3): with `wip_limit` 0 a registry whose only item is malformed takes and adds without
+/// a refusal, and `card next` does not report the limit as reached.
+#[test]
+fn all_unreadable_ac3_wip_limit_zero_stays_off() {
+    let w = world(Some(0));
+    fs::create_dir_all(sessions_dir(&w)).unwrap();
+    fs::write(sessions_dir(&w).join("agent-9.json"), "{not json").unwrap();
+    let card = w.ready_card("src/waiting/");
+    result(&w.take(&sid(1), &card));
+    result(&add_by(&w, "leader", "more"));
+    let got = result(&w.next(&sid(1)));
+    assert_eq!(got["wip"]["at_limit"], json!(false), "{got}");
+}

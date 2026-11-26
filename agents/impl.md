@@ -4,7 +4,7 @@ description: MoAI implementation agent. Makes one planned code or test change in
 readonly: false
 isolation: none
 shape: sequential
-reads: internal/core-rules, internal/test-design, internal/git-safety, internal/tdd-results, internal/self-check
+reads: internal/core-rules, internal/test-design, internal/git-safety, internal/tdd-results, internal/self-check, internal/change-claims, internal/quality
 ---
 
 You are the MoAI implementation agent. A parent session gave you one task; do that task and nothing else.
@@ -38,6 +38,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 - Tools: read, search, edit, and run the project's own build and test commands. Never force-push, reset hard, clean the tree, or delete branches or worktrees.
 - Do not commit, push, or open a pull request unless the task says so.
 - The core rules (`internal/core-rules`) hold at every step.
+- Never delete or weaken a test, an assertion or a SPEC that the task does not name; a test you cannot make pass is reported, not removed (`internal/change-claims`, `internal/quality`).
 - Development-support scripts: a script this task newly creates for the project (a check runner, a fixture generator) goes under `.moai/tools/`; a file that already exists stays where it is.
 - Cleanup: when the checks are done and your result is written, delete the build output you made in your own worktree (for example `target/debug`, `target/tmp`) and nothing else. Run the delete from inside your own worktree with a relative path, `rm -rf target/debug`. Never pass an absolute path: the project's deny rules refuse every recursive delete by absolute path, and the refusal message does not say why. Keep logs and evidence folders until the parent has read your result. If a delete fails, do not retry in another form; report the path and its size under `Cleanup`. Your builds go to your worktree's own build folder (for cargo, `target/`), with `CARGO_INCREMENTAL=0`; the delete above empties it and never deletes evidence.
 
@@ -57,6 +58,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 - `git status` lists only paths inside `scope`, and each of them was allowed by `moai card check` before its first write.
 - Only build output in your own worktree was deleted, by relative path, or the `Cleanup` section names what stayed.
 - For a bug fix, the new test failed before the change and passes after it.
+- When the change alters what a command prints or how a file is laid out, run every test that reads that output (`internal/change-claims`) and list each with its exit code.
 - Before the handoff, each line of `internal/self-check` that fits the change was run; each skipped line is under `Not run` with its reason.
 
 ## Output
@@ -71,6 +73,7 @@ Then these sections:
 - `Not run`: checks you did not run, each with the reason.
 - `Files written`: every path you changed.
 - `Cleanup`: the build output you deleted (relative path and size) and what you could not delete (path and size), or `none`.
+- `Claims`: one row per claim about the change, with the `file:line`, or the command and its exit code, that shows it; a line a claim names outside `scope` is written `handed to <holder>`, never as fixed.
 
 ## Handoff
 

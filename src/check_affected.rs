@@ -1272,14 +1272,14 @@ pub fn table_violations(
             let row = format!("{path}\t{}\t{}", have.0, have.1);
             match rows.iter().find(|(p, _, _)| p == path) {
                 None => out.push(format!(
-                    "{path}: spells a state folder name ({earlier} x{}, {new} x{}) and is not in tests/fixtures/state_folder_literals/allow.tsv; use the resolvers, or for a fixture that builds an earlier layout on purpose add the row `{row}`",
+                    "{path}: spells a state folder name ({earlier} x{}, {new} x{}) and is not in tests/fixtures/state_folder_literals/allow.tsv; use TempHome::state_dir or TempHome::make_earlier_state_dir (tests/common/home.rs), or the resolvers, or for a fixture that builds an earlier layout on purpose add the row `{row}`",
                     have.0, have.1
                 )),
                 Some((_, ae, an)) => {
                     for (name, count, allowed) in [(&earlier, have.0, *ae), (&new, have.1, *an)] {
                         if count > allowed {
                             out.push(format!(
-                                "{path}: spells {name} {count} times, the baseline in tests/fixtures/state_folder_literals/allow.tsv allows {allowed}; the row would be `{row}`"
+                                "{path}: spells {name} {count} times, the baseline in tests/fixtures/state_folder_literals/allow.tsv allows {allowed}; use TempHome::state_dir or TempHome::make_earlier_state_dir (tests/common/home.rs) instead of a literal; for a fixture the row would be `{row}`"
                             ));
                         }
                     }
@@ -3337,6 +3337,23 @@ mod tests {
         let text = format!("{}-v1 moai-cli x{}", earlier_state_name(), new_state_name());
         assert_eq!(count_state_name(&text, &new_state_name()), 0);
         assert_eq!(count_state_name(&text, &earlier_state_name()), 0);
+    }
+
+    /// SPEC-20261125-state-folder-test-helpers REQ-4: the rejection of a new test file that spells
+    /// a state folder name names the two `TempHome` helpers.
+    #[test]
+    fn a_new_test_file_with_a_state_folder_literal_is_told_the_helpers() {
+        let text = format!("let p = \"{}/x\";", earlier_state_name());
+        let tests = [file("check_helpers", &text)];
+        let names = added(&["check_helpers"]);
+        let got = table_violations(&names, &tests, None, Some("# none\n"), &[]);
+        assert_eq!(got.len(), 1, "{got:?}");
+        assert!(
+            got[0].contains("TempHome::state_dir")
+                && got[0].contains("TempHome::make_earlier_state_dir"),
+            "{got:?}"
+        );
+        assert!(got[0].contains("`tests/check_helpers.rs\t1\t0`"), "{got:?}");
     }
 
     /// Audit N1 of SPEC-20261123-test-area-crates: a module added to a moved area is a test file
