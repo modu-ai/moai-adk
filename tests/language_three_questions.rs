@@ -242,6 +242,41 @@ fn questions_list_four_items_with_their_values() {
     assert_eq!(item(&q, "commit_messages")["suggested"], json!("en"));
 }
 
+/// AC-17 (REQ-29, SPEC-20261124-moai-project-interview): `moai language-setup --help` describes
+/// the four items the command asks, the conversation language among them, and no longer says it
+/// asks three questions or that the conversation language is not asked. Each item is named by its
+/// id or by the words of its label.
+#[test]
+fn help_describes_the_four_items() {
+    let out = run(&["language-setup", "--help"], b"");
+    assert!(
+        out.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let help = String::from_utf8_lossy(&out.stdout)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase();
+    for (id, words) in [
+        ("user_chat", "conversation"),
+        ("documents", "documents"),
+        ("commit_messages", "commit messages"),
+        ("instruction_files", "instruction files"),
+    ] {
+        assert!(
+            help.contains(id) || help.contains(words),
+            "the help does not name the item `{id}` ({words}): {help}"
+        );
+    }
+    assert!(help.contains("four"), "the help does not say four: {help}");
+    for gone in ["three questions", "is not asked"] {
+        assert!(!help.contains(gone), "the help still says `{gone}`: {help}");
+    }
+}
+
 /// AC-2 (REQ-2): the language the installer saved is the conversation value with its source,
 /// and is not asked again from scratch. A profile's earlier `user_chat` is not a source any
 /// more: with nothing in HOME the conversation resolves to English, and the profile's value

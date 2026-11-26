@@ -540,3 +540,188 @@ fn allowed_shapes_in_a_subject_pass() {
     assert_eq!(code, Some(0), "{v}");
     assert!(card_findings(&v).is_empty(), "{v}");
 }
+
+/// The host's attribution line, and a line a launcher puts into the trailer paragraph.
+const ATTRIBUTION: &str = "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>";
+const FOREIGN: &str = "\u{1f5ff} MoAI";
+const KEYED_SESSION: &str = "abc12345:123456789012";
+
+/// The `unread_trailer_line` findings of one `trailer-check` answer.
+fn unread_findings(v: &Value) -> Vec<&Value> {
+    v["result"]["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["kind"] == json!("unread_trailer_line"))
+        .collect()
+}
+
+/// The 1-based line of `needle` in `message`, counted as a person reads the message (the subject
+/// is line 1).
+fn line_of(message: &str, needle: &str) -> usize {
+    message.lines().position(|l| l == needle).unwrap() + 1
+}
+
+/// One case: its name, the commit message, and the `(key, line)` pairs expected to be unread.
+type UnreadCase = (&'static str, String, Vec<(&'static str, String)>);
+
+/// SPEC-20261126-check-affected-trailers-flaky REQ-4, AC-3: a line that begins with a `Moai-*` key
+/// in the last paragraph is unread when a foreign line sits in that paragraph (git then reads no
+/// trailer from it), and the range fails with a finding that names the key and the line.
+#[test]
+fn an_attribution_line_in_the_last_paragraph_is_an_unread_trailer_line() {
+    let spec = format!("Moai-Spec: {SPEC}");
+    let session = format!("Moai-Session: {KEYED_SESSION}");
+    let verified = "Moai-Verified: tests";
+    let cases: Vec<UnreadCase> = vec![
+        (
+            "a foreign line between the Moai lines",
+            format!("fix: demo\n\n{spec}\n{session}\n{FOREIGN}\n{verified}\n{ATTRIBUTION}"),
+            vec![
+                ("Moai-Spec", spec.clone()),
+                ("Moai-Session", session.clone()),
+                ("Moai-Verified", verified.to_string()),
+            ],
+        ),
+        (
+            "the foreign line as the last line of the block",
+            format!("fix: demo\n\n{spec}\n{session}\n{verified}\n{ATTRIBUTION}\n{FOREIGN}"),
+            vec![
+                ("Moai-Spec", spec.clone()),
+                ("Moai-Session", session.clone()),
+                ("Moai-Verified", verified.to_string()),
+            ],
+        ),
+        (
+            // Moai-Spec stands in a paragraph before the last one (a split block, named by its own
+            // finding); only the session line is in the last paragraph and unread.
+            "only the session line is in the unread last paragraph",
+            format!("fix: demo\n\n{spec}\n\n{session}\n{FOREIGN}"),
+            vec![("Moai-Session", session.clone())],
+        ),
+    ];
+    for (case, message, expected) in cases {
+        let (tmp, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let dir = tmp.path();
+        // `main`: a missing SPEC or session never fails there, so only the new finding can.
+        common::git::git_ok(dir, &["init", "-q", "-b", "main"]);
+        commit(dir, "base");
+        let base = common::git::git(dir, &["rev-parse", "HEAD"]);
+        commit(dir, &message);
+        // The premise: git itself reads no session value from this message.
+        let read = common::git::git(
+            dir,
+            &[
+                "log",
+                "-1",
+                "--format=%(trailers:key=Moai-Session,valueonly)",
+            ],
+        );
+        assert!(read.is_empty(), "{case}: git reads {read:?}");
+        let (code, v) = moai(
+            dir,
+            home.path(),
+            &["trailer-check", &format!("{base}..HEAD")],
+            &[],
+        );
+        let found = unread_findings(&v);
+        assert_eq!(found.len(), expected.len(), "{case}: {v}");
+        for (key, line) in &expected {
+            let hit = found
+                .iter()
+                .find(|f| f["detail"].as_str().unwrap().contains(key))
+                .unwrap_or_else(|| panic!("{case}: no finding names {key}: {v}"));
+            assert_eq!(hit["fails"], json!(true), "{case}: {v}");
+            let detail = hit["detail"].as_str().unwrap();
+            let n = line_of(&message, line);
+            assert!(
+                detail.contains(line.as_str()) || detail.contains(&format!("line {n}")),
+                "{case}: the finding names neither the line text nor `line {n}`: {detail}"
+            );
+        }
+        assert_eq!(code, Some(1), "{case}: {v}");
+        assert!(v["result"]["failing"].as_u64().unwrap() >= 1, "{case}: {v}");
+        assert_eq!(v["result"]["ok"], json!(false), "{case}: {v}");
+    }
+}
+
+/// A commit of `file` (not `f.txt`, so two branches do not conflict) with this message.
+fn commit_file(dir: &Path, file: &str, message: &str) {
+    std::fs::write(dir.join(file), message).unwrap();
+    common::git::git_ok(dir, &["add", file]);
+    common::git::git_ok(
+        dir,
+        &[
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-q",
+            "-m",
+            message,
+        ],
+    );
+}
+
+/// SPEC-20261126-check-affected-trailers-flaky REQ-4, AC-3 (the miss direction): a clean block,
+/// a block git accepts with a `Signed-off-by` line in it, and a merge commit whose message ends in
+/// a `# Conflicts:` comment paragraph after the trailers raise no `unread_trailer_line`.
+#[test]
+fn a_clean_block_and_a_signed_off_by_block_raise_no_unread_finding() {
+    let (tmp, home) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let dir = tmp.path();
+    let block = format!("Moai-Spec: {SPEC}\nMoai-Session: {KEYED_SESSION}\nMoai-Verified: tests");
+    common::git::git_ok(dir, &["init", "-q", "-b", "main"]);
+    commit(dir, "base");
+    let base = common::git::git(dir, &["rev-parse", "HEAD"]);
+    // A commit on a side branch, so the merge below has two parents and nothing to conflict on.
+    common::git::git_ok(dir, &["switch", "-q", "-c", "side"]);
+    commit_file(
+        dir,
+        "side.txt",
+        &format!("side: clean\n\n{block}\n{ATTRIBUTION}"),
+    );
+    common::git::git_ok(dir, &["switch", "-q", "main"]);
+    commit_file(
+        dir,
+        "clean.txt",
+        &format!("fix: clean\n\n{block}\n{ATTRIBUTION}"),
+    );
+    commit_file(
+        dir,
+        "signed.txt",
+        &format!("fix: signed\n\n{block}\nSigned-off-by: A <a@example.com>\n{ATTRIBUTION}"),
+    );
+    let merge = format!("merge: side\n\n{block}\n\n# Conflicts:\n#\tf.txt");
+    common::git::git_ok(
+        dir,
+        &[
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "merge",
+            "-q",
+            "--no-ff",
+            "--cleanup=verbatim",
+            "-m",
+            &merge,
+            "side",
+        ],
+    );
+    // The premise: the merge message really ends in the comment paragraph.
+    let body = common::git::git(dir, &["log", "-1", "--format=%B"]);
+    assert!(body.contains("# Conflicts:"), "{body}");
+    let range = format!("{base}..HEAD");
+    let (code, v) = moai(dir, home.path(), &["trailer-check", &range], &[]);
+    assert!(unread_findings(&v).is_empty(), "{v}");
+    assert_eq!(code, Some(0), "{v}");
+    assert_eq!(v["result"]["failing"], json!(0), "{v}");
+    // Every commit the range reads is judged (the merge is skipped).
+    assert_eq!(v["result"]["commits"], json!(3), "{v}");
+}

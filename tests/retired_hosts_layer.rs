@@ -517,9 +517,9 @@ mod generation_manifest {
 
     const AFTER: [&str; 1] = ["claude"];
     const PERM: &str = "fixture-approved";
-    const CLAUDE_CHECKS: &str = ".claude/skills/prj-checks/SKILL.md";
+    const CLAUDE_CHECKS: &str = ".claude/skills/moai-prj-checks/SKILL.md";
     const CODEX_CHECKS: &str = ".agents/skills/prj-checks/SKILL.md";
-    const CLAUDE_EXTRA: &str = ".claude/skills/prj-extra/SKILL.md";
+    const CLAUDE_EXTRA: &str = ".claude/skills/moai-prj-extra/SKILL.md";
     const CODEX_EXTRA: &str = ".agents/skills/prj-extra/SKILL.md";
     const CODEX_ROLE: &str = ".codex/agents/prj-reviewer.toml";
     const PROJECTION: &str = ".agents/skills/prj-proj/SKILL.md";

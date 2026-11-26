@@ -37,6 +37,8 @@ use std::{
 
 /// The skill folders installed beside the moai skill (SPEC-20261122-html-report-install).
 pub mod extra_skill;
+/// The record one confirmed `moai update` leaves, with the written skill files read back (C-513).
+pub mod run_receipt;
 /// The name-switch script part of `moai update` (card C-33 S3, SPEC-20261119-update-switch-layer).
 pub mod switch;
 
@@ -882,6 +884,72 @@ fn known_good_copies(
     Ok(())
 }
 
+/// SPEC-20261125-update-installed-from-link REQ-4 to REQ-8 and REQ-10 to REQ-12: an apply that
+/// writes no file for a host leaves this build's version in the host's receipt, so the receipt no
+/// longer names a build that is gone. Whether anything is recorded is decided on the baseline
+/// receipt the plan used: only one that is committed or recovered and names another version counts;
+/// an absent or pending one, or one that already names this build, writes nothing.
+///
+/// When this installation has its own receipt, it is updated in place and only its version, finish
+/// time and owned list (the baseline's) change: `recovery-plan` reads this installation's receipt,
+/// its `backup` and `entries` included, and a receipt built anew would drop the way back to the
+/// folder a backup-then-replace moved aside. An own receipt that is neither committed nor
+/// recovered is left as it is. Without an own receipt a new one is written, with the baseline's
+/// owned list, no entries and no backup.
+///
+/// Every write goes through [`save_host_receipt`] (under this installation's id, like every
+/// apply); a failing save is an error. A blocked or pending host never gets here: the apply skips
+/// it before. Returns the saved receipt's status, or `None` when nothing was written.
+fn record_version_only(
+    home: &Path,
+    canonical_home: &Path,
+    install_id: &str,
+    host: &str,
+    target_version: &str,
+    plan_digest: &str,
+    package_digest: &str,
+) -> Result<Option<String>> {
+    let Some(previous) = resolve_host_receipt(canonical_home, install_id, host)?.receipt else {
+        return Ok(None);
+    };
+    if !matches!(previous.status.as_str(), "committed" | "recovered")
+        || previous.package_version == target_version
+    {
+        return Ok(None);
+    }
+    let now = now_rfc3339();
+    let owned = owned_vec(host, &owned_map(Some(&previous)));
+    let own = load_host_receipt(&host_receipt_path(canonical_home, install_id, host, false)?)?;
+    let receipt = match own {
+        Some(own) if !matches!(own.status.as_str(), "committed" | "recovered") => return Ok(None),
+        Some(mut own) => {
+            own.package_version = target_version.to_string();
+            own.finished_at = Some(now);
+            own.owned = owned;
+            own
+        }
+        None => HostReceipt {
+            schema_version: crate::install::RECEIPT_SCHEMA_VERSION,
+            install_id: install_id.to_string(),
+            host: host.to_string(),
+            operation: "update.apply".into(),
+            plan_digest: plan_digest.to_string(),
+            package_digest: package_digest.to_string(),
+            package_version: target_version.to_string(),
+            version_before: Some(previous.package_version.clone()),
+            top_skills_existed_before: fs::symlink_metadata(skills_parent(home, host)?).is_ok(),
+            status: "committed".into(),
+            started_at: now.clone(),
+            finished_at: Some(now),
+            entries: Vec::new(),
+            owned,
+            backup: None,
+        },
+    };
+    save_host_receipt(canonical_home, install_id, &receipt)?;
+    Ok(Some(receipt.status))
+}
+
 pub(crate) fn owned_map(receipt: Option<&HostReceipt>) -> BTreeMap<String, String> {
     let mut map = BTreeMap::new();
     if let Some(r) = receipt {
@@ -1131,6 +1199,37 @@ fn layout_folder(canonical_home: &Path, canonical_exe: &Path) -> Option<(PathBuf
     let versions = crate::bin_names::versions_dir_of(canonical_home, bin)?;
     let folder = bin.parent()?;
     Some((versions, PathBuf::from(folder.file_name()?)))
+}
+
+/// The version the execution link under `home` points to: the name of the version folder
+/// (`<state>/versions/<v>`) that the link's target sits in. Reads only under the `home` argument;
+/// it never reads the process HOME or PATH and never runs a `--version`.
+///
+/// The candidates are read in a fixed order, `<state>/path/moai`, `<state>/path/moai-cli`,
+/// `<state>/bin/moai`, and the first that counts wins. A candidate counts only when it is a
+/// symlink, its canonical target is a regular file, that file sits exactly in the layout
+/// ([`layout_folder`]) and the folder name is UTF-8 and version-shaped. A missing or dangling
+/// link, a plain file, a target outside `versions/` and a name such as `a` all give `None`
+/// for that candidate, and an unreadable one is skipped the same way.
+pub(crate) fn execution_link_version(home: &Path) -> Option<String> {
+    let canonical_home = fs::canonicalize(home).ok()?;
+    let state = crate::home_root::path(&canonical_home);
+    [("path", "moai"), ("path", "moai-cli"), ("bin", "moai")]
+        .iter()
+        .find_map(|(folder, name)| {
+            let link = state.join(folder).join(name);
+            if !fs::symlink_metadata(&link).ok()?.file_type().is_symlink() {
+                return None;
+            }
+            let target = fs::canonicalize(&link).ok()?;
+            if !fs::metadata(&target).ok()?.is_file() {
+                return None;
+            }
+            let (_, folder) = layout_folder(&canonical_home, &target)?;
+            let version = folder.to_str()?;
+            crate::headver::compare(version, version)?;
+            Some(version.to_string())
+        })
 }
 
 /// The install ids the builds in the earlier version folders `folders` (names under
@@ -2193,22 +2292,21 @@ fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGat
         style: Vec::new(),
         skipped: Vec::new(),
     };
+    let reason = run_receipt::GATE_REASON;
     for h in &layer.agents.hosts {
         if landed(&h.host) {
             gate.agents.push(h.host.clone());
         } else {
-            gate.skipped.push(
-                json!({"part": "agents", "host": h.host, "reason": "the skill copy did not apply"}),
-            );
+            gate.skipped
+                .push(json!({"part": "agents", "host": h.host, "reason": reason}));
         }
     }
     for h in &layer.routing.hosts {
         if landed(&h.host) {
             gate.routing.push(h.host.clone());
         } else {
-            gate.skipped.push(
-                json!({"part": "routing", "host": h.host, "reason": "the skill copy did not apply"}),
-            );
+            gate.skipped
+                .push(json!({"part": "routing", "host": h.host, "reason": reason}));
         }
     }
     let mut style_hosts: Vec<&str> = layer
@@ -2222,9 +2320,8 @@ fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGat
         if landed(h) {
             gate.style.push(h.to_string());
         } else {
-            gate.skipped.push(
-                json!({"part": "style", "host": h, "reason": "the skill copy did not apply"}),
-            );
+            gate.skipped
+                .push(json!({"part": "style", "host": h, "reason": reason}));
         }
     }
     gate
@@ -2455,6 +2552,11 @@ fn update_command_core(
                 layer.plan_digest
             ),
         });
+        // SPEC-20261125-update-installed-from-link: only a HOME whose execution link names a
+        // version folder shows `installed_version`; it sits outside the plan and its digest.
+        if let Some(v) = execution_link_version(home) {
+            out["installed_version"] = json!(v);
+        }
         // SPEC-20261122-html-report-install: only a release with another skill folder shows it.
         if let Some(x) = layer.extra_skills.to_json() {
             out["extra_skills"] = x;
@@ -2548,6 +2650,9 @@ fn update_command_core(
         r.unwrap_or_else(|e| json!({"state": "error", "message": e}))
     };
     let agents = part((|| {
+        // Test seam: `MOAI_TEST_FAULT=update_part_agents` fails this part after the skills
+        // landed (the run receipt names it as remaining). Debug builds only.
+        test_fault("update_part_agents")?;
         let p = crate::agent_install::plan_for(home, &package, &agents_dir, &agent_hosts)?;
         // Same hosts as confirmed: the plan must be the confirmed one (note 2).
         if agent_hosts.len() == fresh.agents.hosts.len()
@@ -2585,15 +2690,13 @@ fn update_command_core(
             &chosen,
         )
     })());
-    let routing = part(routing_part(
-        home,
-        &package,
-        &routing_hosts,
-        &fresh.routing,
-        PERMISSION,
-    ));
+    let routing =
+        part(test_fault("update_part_routing").and_then(|()| {
+            routing_part(home, &package, &routing_hosts, &fresh.routing, PERMISSION)
+        }));
     // #2875: the style, for the same confirmed hosts whose skill copy applied.
     let style = part((|| {
+        test_fault("update_part_style")?;
         let p = crate::home_style::plan_for(home, &package, &style_hosts)?;
         // The apply of an earlier part may have just changed a file: compare what is written.
         if style_hosts.len() == count_hosts(&fresh.style)
@@ -2731,6 +2834,9 @@ fn update_command_core(
         out["git_hooks_result"] = g;
     }
     out["revert_order"] = json!(revert_order(&out["revert"]));
+    // C-513 S7: one record of the whole run, built from the parts above, with the written skill
+    // files read back; the end screen is drawn from it.
+    out["run"] = run_receipt::finish(home, &out);
     Ok(out)
 }
 
@@ -3179,11 +3285,22 @@ fn apply_update_in(
                 .iter()
                 .map(|f| file_result(f, false, None))
                 .collect();
+            // SPEC-20261125-update-installed-from-link REQ-4: no file moves, but the receipt keeps
+            // the version of the build that checked the host.
+            let recorded = record_version_only(
+                home,
+                &canonical_home,
+                &install_id,
+                host,
+                &fresh.target_version,
+                plan_digest,
+                &staged.digest,
+            )?;
             outcomes.push(HostOutcome {
                 host: host.to_string(),
                 status: status.into(),
                 files,
-                receipt_status: None,
+                receipt_status: recorded,
                 reload_required: "no".into(),
                 reload_basis: "no files written".into(),
                 blocked_reason: None,
@@ -3927,6 +4044,151 @@ mod version_folder_tests {
             ids[0].1,
             crate::install::install_id(&versions.join(&good).join("bin").join("moai-cli")).unwrap()
         );
+    }
+
+    /// A temporary HOME (canonical, so the paths a test builds equal the ones the function reads)
+    /// with this generation's marker, so [`crate::home_root::path`] keeps naming the same state
+    /// folder while the test adds `versions/`, `path/` and `bin/` under it (without a marker a
+    /// state folder holding those names reads as unknown and the state folder moves).
+    #[cfg(unix)]
+    fn link_home() -> (tempfile::TempDir, PathBuf) {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = fs::canonicalize(tmp.path()).unwrap();
+        let state = home.join(crate::home_root::MOAI_DIR);
+        fs::create_dir_all(&state).unwrap();
+        fs::write(
+            state.join(crate::state_root::NEW_MARKER),
+            crate::state_root::marker_bytes("version_folder_tests", &[]),
+        )
+        .unwrap();
+        assert_eq!(
+            crate::home_root::path(&home),
+            state,
+            "the marked state folder"
+        );
+        (tmp, home)
+    }
+
+    /// A regular file at `<state>/versions/<version>/bin/moai`, the way an installed build sits.
+    #[cfg(unix)]
+    fn version_binary(home: &Path, version: &str) -> PathBuf {
+        let bin = crate::home_root::path(home)
+            .join("versions")
+            .join(version)
+            .join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        let exe = bin.join("moai");
+        fs::write(&exe, b"fixture build\n").unwrap();
+        exe
+    }
+
+    /// A symlink at `<state>/<rel>` (`path/moai`, `bin/moai`, ...) pointing at `target`.
+    #[cfg(unix)]
+    fn link_at(home: &Path, rel: &str, target: &Path) -> PathBuf {
+        let link = crate::home_root::path(home).join(rel);
+        fs::create_dir_all(link.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(target, &link).unwrap();
+        link
+    }
+
+    /// A plain file at `<state>/<rel>`, copied from `source`, where a link would sit. The product
+    /// only reads this place (`bin/moai`) and never writes it.
+    // @cc:careful keep `rel` an argument: a literal join after `home_root::path` counts as a
+    // product write in `home_layout`'s source scan.
+    #[cfg(unix)]
+    fn plain_file_at(home: &Path, rel: &str, source: &Path) {
+        let plain = crate::home_root::path(home).join(rel);
+        fs::create_dir_all(plain.parent().unwrap()).unwrap();
+        fs::copy(source, &plain).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_execution_link_version_is_the_folder_the_link_points_to() {
+        for rel in ["bin/moai", "path/moai-cli", "path/moai"] {
+            let (_tmp, home) = link_home();
+            let exe = version_binary(&home, "4.2648.26");
+            link_at(&home, rel, &exe);
+            assert_eq!(
+                execution_link_version(&home),
+                Some("4.2648.26".to_string()),
+                "link at {rel}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_missing_dangling_plain_file_outside_layout_or_non_version_link_reads_none() {
+        // No link at all.
+        let (_tmp, home) = link_home();
+        version_binary(&home, "4.2648.26");
+        assert_eq!(execution_link_version(&home), None, "no link");
+
+        // A link whose target is gone.
+        let (_tmp, home) = link_home();
+        let gone = version_binary(&home, "4.2648.26");
+        link_at(&home, "bin/moai", &gone);
+        fs::remove_file(&gone).unwrap();
+        assert_eq!(execution_link_version(&home), None, "dangling link");
+
+        // A plain file where the link should be, even one that sits in a version folder.
+        let (_tmp, home) = link_home();
+        let exe = version_binary(&home, "4.2648.26");
+        plain_file_at(&home, "bin/moai", &exe);
+        assert_eq!(execution_link_version(&home), None, "plain file");
+
+        // A link into a build that is not under versions/.
+        let (_tmp, home) = link_home();
+        let outside = home.join("elsewhere").join("4.2648.26").join("bin");
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("moai"), b"fixture build\n").unwrap();
+        link_at(&home, "bin/moai", &outside.join("moai"));
+        assert_eq!(
+            execution_link_version(&home),
+            None,
+            "target outside versions"
+        );
+
+        // A link into a folder whose name is not a version.
+        let (_tmp, home) = link_home();
+        let exe = version_binary(&home, "a");
+        link_at(&home, "bin/moai", &exe);
+        assert_eq!(
+            execution_link_version(&home),
+            None,
+            "non-version folder name"
+        );
+
+        // A link to a folder, not to a regular file.
+        let (_tmp, home) = link_home();
+        let exe = version_binary(&home, "4.2648.26");
+        link_at(&home, "bin/moai", exe.parent().unwrap());
+        assert_eq!(execution_link_version(&home), None, "link to a folder");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_first_candidate_in_order_wins() {
+        let (_tmp, home) = link_home();
+        let first = link_at(&home, "path/moai", &version_binary(&home, "4.2648.26"));
+        let second = link_at(&home, "path/moai-cli", &version_binary(&home, "4.2648.24"));
+        let third = link_at(&home, "bin/moai", &version_binary(&home, "4.2648.20"));
+        assert_eq!(execution_link_version(&home).as_deref(), Some("4.2648.26"));
+
+        fs::remove_file(&first).unwrap();
+        assert_eq!(execution_link_version(&home).as_deref(), Some("4.2648.24"));
+
+        fs::remove_file(&second).unwrap();
+        assert_eq!(execution_link_version(&home).as_deref(), Some("4.2648.20"));
+
+        // An earlier candidate that does not count is skipped, not returned as None.
+        let bad = link_at(&home, "path/moai", &version_binary(&home, "a"));
+        assert_eq!(execution_link_version(&home).as_deref(), Some("4.2648.20"));
+
+        fs::remove_file(&bad).unwrap();
+        fs::remove_file(&third).unwrap();
+        assert_eq!(execution_link_version(&home), None);
     }
 }
 

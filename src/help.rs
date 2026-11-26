@@ -509,7 +509,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         "lane-loop-line",
         &[
             "lane-loop-line --host claude --lane agent-1",
-            "lane-loop-line --host codex --lane agent-1 --repo modu-ai/moai-adk",
         ],
     ),
     (
@@ -519,13 +518,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("lane-resume-check", &["lane-resume-check --file comment.md"]),
     (
         "lane-stop-hook",
-        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk < stop.json"],
+        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk"],
     ),
     (
         "lane-duty-line",
         &[
             "lane-duty-line --lane 1",
-            "lane-duty-line --lane 1 --host codex --first <task>",
+            "lane-duty-line --lane 1 --first <task>",
         ],
     ),
     (
@@ -2225,6 +2224,17 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "go-state-apply",
         "set_aside",
         "확인한 미리 보기를 만들 때 쓴 `--set-aside` 와 같게 넘기기(다르면 digest 가 달라 거절해요)",
+    ),
+    (
+        "go-state-plan",
+        "rewrite_local_references",
+        "로컬 설정이 `.moai/` 를 가리켜 Go 폴더가 남을 때, 그 파일을 백업하고 참조를 Go 백업 \
+         폴더 이름으로 바꾼 뒤 폴더를 옮기는 계획 세우기",
+    ),
+    (
+        "go-state-apply",
+        "rewrite_local_references",
+        "확인한 미리 보기를 이 선택으로 만들었을 때 넘기기(로컬 설정 파일을 바꿔 써요)",
     ),
     (
         "go-residue-apply",

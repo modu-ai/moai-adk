@@ -621,10 +621,28 @@ fn the_state_root_generation_is_reported_and_nothing_is_written() {
     // The PROJECT workflow moves nothing on the verdicts that leave the choice to the user.
     let workflow = include_str!("../skills/moai/workflows/project.md");
     assert!(workflow.contains(
-        "When `generation` is `mixed`, `unknown`, `empty` or `refuse`, move nothing in step 2: show its `reason` and ask as a selection whether to go on with the interview (recommended) or stop here. `interrupted` is handled in step 2."
+        "When `generation` is `mixed`, `unknown`, `empty` or `refuse`, move nothing in step 2: show its `reason` and ask as a selection whether to go on with the interview (recommended) or stop here."
     ));
     assert!(workflow
         .contains("2. **Earlier-generation state (when `state_root.generation` is `go`, or `none` with `legacy_root`).**"));
+    // A half-finished move stops the PROJECT route before the interview and before any apply.
+    let stop = "When `generation` is `interrupted`, a move stopped midway: stop this route here, before the interview and before any apply, show its `reason`, say in one line that `/moai update` finishes or takes back that move, and write nothing.";
+    assert_eq!(
+        workflow.matches(stop).count(),
+        1,
+        "project.md must stop on an interrupted move, in one sentence said once"
+    );
+    let apply = workflow
+        .find("\n4. **Plan and apply.**")
+        .expect("project.md has the plan and apply step");
+    assert!(
+        workflow.find(stop).expect("the stop sentence") < apply,
+        "the interrupted stop comes before the plan and apply step"
+    );
+    assert!(
+        !workflow.contains("`interrupted` is handled in step 2"),
+        "step 2 handles no interrupted move any more"
+    );
 }
 
 /// #2561: a linked `.moai` is reported as a link and never followed (its target's manifest is

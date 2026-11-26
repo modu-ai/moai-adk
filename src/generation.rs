@@ -9,8 +9,8 @@
 //! generation state joins the one manifest publish (#2114). `src/agents.rs` is 01-B
 //! #1989's; its public API and behavior are unchanged; the
 //! generation-specific files — portable project workflows under
-//! `.moai-cli/workflows/<id>/`, native role files `.claude/agents/<role>.md`, and skill
-//! projections and project skills `.claude/skills/<id>/SKILL.md` — are planned and published in
+//! `.moai-cli/workflows/<id>/`, native role files `.claude/agents/moai/<role>.md`, and skill
+//! projections and project skills `.claude/skills/moai-<id>/SKILL.md` — are planned and published in
 //! this module through the public
 //! 01-B apply engine (`decide`, `publish_exclusive`/`publish_replace`,
 //! `save_before_bytes`, `Receipt`). Baselines of generation files live in the same
@@ -59,6 +59,27 @@ const MAX_ROLES: usize = 16;
 const MAX_PROJECTIONS: usize = 16;
 /// Generated text stays short: the managed section must leave room for user content.
 const PURPOSE_LIMIT: usize = 500;
+
+/// The folder of a generated skill is its id behind this prefix, so that the skills of the user
+/// and the skills of MoAI are told apart by folder name (SPEC-20261126-project-harness-namespace).
+const SKILL_FOLDER_PREFIX: &str = "moai-";
+/// The longest skill name the platform documents; the folder name is the skill's `name`.
+const SKILL_FOLDER_LIMIT: usize = 64;
+
+/// The folder name, and the front matter `name`, of the generated skill `id`.
+fn skill_folder_name(id: &str) -> String {
+    format!("{SKILL_FOLDER_PREFIX}{id}")
+}
+
+/// Where the generated skill `id` is planned.
+fn skill_path(id: &str) -> String {
+    format!(".claude/skills/{}/SKILL.md", skill_folder_name(id))
+}
+
+/// Where an earlier version wrote the skill `id`, before the folder name had the prefix.
+fn former_skill_path(id: &str) -> String {
+    format!(".claude/skills/{id}/SKILL.md")
+}
 
 /// Skill names follow the Agent Skills specification (same rule as 03-B).
 fn valid_skill_name(s: &str) -> bool {
@@ -305,6 +326,11 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         }
     }
     for p in &r.skill_projections {
+        if valid_skill_name(&p.id) && skill_folder_name(&p.id).len() > SKILL_FOLDER_LIMIT {
+            return Err(format!(
+                "invalid generation request: skill_projections id is longer than the {SKILL_FOLDER_LIMIT}-character skill folder limit; no values were logged"
+            ));
+        }
         if !valid_skill_name(&p.id)
             || p.source_url.trim().is_empty()
             || p.source_url.len() > 2048
@@ -327,6 +353,14 @@ fn validate(r: &GenerationRequest) -> Result<()> {
                 != ps.hosts.len()
         {
             return Err("invalid generation request: a project skill id or host repeats".into());
+        }
+        if valid_skill_name(&ps.id)
+            && ps.id.starts_with("prj-")
+            && skill_folder_name(&ps.id).len() > SKILL_FOLDER_LIMIT
+        {
+            return Err(format!(
+                "invalid generation request: project_skills[{i}].id is longer than the {SKILL_FOLDER_LIMIT}-character skill folder limit; no values were logged"
+            ));
         }
         let bad = if !valid_skill_name(&ps.id) || !ps.id.starts_with("prj-") {
             Some("id")
@@ -598,16 +632,18 @@ fn kind_names_path(kind: &str, path: &str) -> bool {
 
 /// The paths a manifest `kind` names: a recorded path is trusted only when it is one of these.
 /// A Claude Code role also keeps the flat path an earlier version wrote
-/// (SPEC-20261121-base-agents-user-folder); a projection lives at the skill folder of its id.
+/// (SPEC-20261121-base-agents-user-folder); a skill and a projection also keep the path an
+/// earlier version wrote without the folder prefix (SPEC-20261126-project-harness-namespace).
 /// An id that is not one plain path piece names no path.
 fn named_paths(kind: &str) -> Vec<String> {
     if let Some(rest) = kind.strip_prefix("generation:project-skill:") {
         return rest
             .split_once(':')
             .filter(|(_, id)| one_path_piece(id))
-            .and_then(|(host, id)| project_skill_path(host, id))
-            .into_iter()
-            .collect();
+            .and_then(|(host, id)| {
+                project_skill_path(host, id).map(|now| vec![now, former_skill_path(id)])
+            })
+            .unwrap_or_default();
     }
     if let Some(rest) = kind.strip_prefix("generation:native-role:") {
         return match rest.split_once(':') {
@@ -622,9 +658,8 @@ fn named_paths(kind: &str) -> Vec<String> {
         return rest
             .split_once(':')
             .filter(|(_, id)| one_path_piece(id))
-            .map(|(_, id)| format!(".claude/skills/{id}/SKILL.md"))
-            .into_iter()
-            .collect();
+            .map(|(_, id)| vec![skill_path(id), former_skill_path(id)])
+            .unwrap_or_default();
     }
     Vec::new()
 }
@@ -643,7 +678,7 @@ fn kind_noun(kind: &str) -> &'static str {
 /// Where a project skill of `host` lives; `None` for a host this tool does not write.
 fn project_skill_path(host: &str, id: &str) -> Option<String> {
     match host {
-        "claude" => Some(format!(".claude/skills/{id}/SKILL.md")),
+        "claude" => Some(skill_path(id)),
         _ => None,
     }
 }
@@ -698,8 +733,8 @@ fn render_project_skill(
     }
     body.push('\n');
     Ok(format!(
-        "---\nname: {id}\ndescription: {desc}\n---\n\n{body}",
-        id = skill.id,
+        "---\nname: {name}\ndescription: {desc}\n---\n\n{body}",
+        name = skill_folder_name(&skill.id),
         desc = yaml_quoted(&skill.purpose),
     ))
 }
@@ -722,8 +757,8 @@ fn render_projection_skill(
             id = projection.id)
     };
     Ok(format!(
-        "---\nname: {id}\ndescription: {desc}\n---\n\n{body}",
-        id = projection.id,
+        "---\nname: {name}\ndescription: {desc}\n---\n\n{body}",
+        name = skill_folder_name(&projection.id),
         desc = if language == "ko" {
             "외부 skill 참조 기록"
         } else {
@@ -976,7 +1011,7 @@ fn plan_filtered(
         let rendered = render_projection_skill(p, &request.language, &source)?;
         let rendered_digest = digest(rendered.as_bytes());
         for host in &hosts {
-            let rel = format!(".claude/skills/{}/SKILL.md", p.id);
+            let rel = skill_path(&p.id);
             let dest_dir = root
                 .join(&rel)
                 .parent()
@@ -1225,19 +1260,110 @@ fn plan_filtered(
         });
     }
 
+    // Skills and skill projections an earlier version wrote at `.claude/skills/<id>/SKILL.md`: the
+    // prefixed copy replaces them (SPEC-20261126-project-harness-namespace). Only a file the
+    // generation record owns at that path is planned: `remove` after the new copy when its bytes
+    // are the recorded ones, `conflict` for it and for the new copy when it was edited. A skill
+    // folder the record does not own is never touched and has no row. An entry whose kind the
+    // request no longer names is the block above's.
+    for kind in requested.iter().filter(|k| {
+        k.starts_with("generation:project-skill:claude:")
+            || k.starts_with("generation:skill-projection:claude:")
+    }) {
+        let Some(id) = [
+            "generation:project-skill:claude:",
+            "generation:skill-projection:claude:",
+        ]
+        .iter()
+        .find_map(|p| kind.strip_prefix(p)) else {
+            continue;
+        };
+        let former = former_skill_path(id);
+        if files.iter().any(|f| f.path == former) {
+            continue;
+        }
+        let baseline = manifest
+            .get("owned_files")
+            .and_then(Value::as_array)
+            .and_then(|list| {
+                list.iter().find(|f| {
+                    f.get("path").and_then(Value::as_str) == Some(former.as_str())
+                        && f.get("section_id").and_then(Value::as_str) == Some(kind.as_str())
+                })
+            })
+            .and_then(|f| f.get("baseline_sha256")?.as_str().map(str::to_string));
+        let Some(baseline) = baseline else {
+            continue;
+        };
+        let new = skill_path(id);
+        let Some(new_row) = files
+            .iter()
+            .position(|f| f.path == new && f.kind.as_deref() == Some(kind.as_str()))
+        else {
+            continue;
+        };
+        let refused = link_on_path(&root, &former)
+            .map(|l| format!("{l} is a symbolic link; nothing removed through it"));
+        let current = if refused.is_some() {
+            None
+        } else {
+            fs::read(root.join(&former)).ok()
+        };
+        // Bytes equal to the rendered new copy are a move, whatever older render the manifest
+        // recorded; only a file that differs from both was edited.
+        let renders_same = current
+            .as_deref()
+            .is_some_and(|c| files[new_row].rendered_sha256.as_deref() == Some(digest(c).as_str()));
+        let edited = !renders_same && current.as_deref().is_some_and(|c| digest(c) != baseline);
+        let detail = refused.or_else(|| {
+            edited.then_some(
+                "earlier skill file was edited after generation; kept, and its prefixed copy is not written"
+                    .to_string(),
+            )
+        });
+        if edited && files[new_row].action != "conflict" {
+            files[new_row].action = "conflict".into();
+            files[new_row].detail = Some(
+                "the earlier skill file at the former path was edited; kept, so the new copy is not written"
+                    .to_string(),
+            );
+        }
+        let project_skill = kind.starts_with("generation:project-skill:");
+        files.push(GenerationFilePlan {
+            path: former,
+            action: if detail.is_some() {
+                "conflict"
+            } else {
+                "remove"
+            }
+            .into(),
+            tracked_by_default: project_skill,
+            expected_sha256: current.as_deref().map(digest),
+            baseline_sha256: Some(baseline),
+            rendered_sha256: None,
+            source_refs: if project_skill {
+                vec![project_profile_rel(&root)]
+            } else {
+                Vec::new()
+            },
+            kind: Some(kind.clone()),
+            detail,
+        });
+    }
+
     // SPEC-20261125-update-same-bytes-no-conflict REQ-4 and REQ-5: `skip-conflicts` leaves every
     // conflicting file of this engine as it is (the agents engine does the same for its own
-    // rows). The nested copy of a role whose earlier flat file is kept is not written either, so
-    // a project never holds two agents of one name.
+    // rows). A requested role or skill that moves to a new path is two rows of one kind, and
+    // neither half happens alone: when one of them is a conflict, the earlier file is not removed
+    // (SPEC-20261126-project-harness-namespace REQ-4) and the new copy is not written, so a
+    // project neither loses a generated file nor holds two of one.
     if request.picks.iter().any(|p| p == SKIP_CONFLICTS) {
-        let kept_roles: Vec<String> = files
+        // Read before the loop turns the conflicts into skips.
+        let held: Vec<String> = files
             .iter()
             .filter(|f| f.action == "conflict")
-            .filter_map(|f| {
-                let kind = f.kind.as_deref()?;
-                let id = kind.strip_prefix("generation:native-role:claude:")?;
-                (f.path == format!(".claude/agents/{id}.md")).then(|| kind.to_string())
-            })
+            .filter_map(|f| f.kind.clone())
+            .filter(|k| requested.contains(k))
             .collect();
         for f in files.iter_mut() {
             let kind = f.kind.as_deref().unwrap_or("");
@@ -1248,13 +1374,14 @@ fn plan_filtered(
                 let why = f.detail.take().unwrap_or_else(|| "conflict".into());
                 f.action = "skip".into();
                 f.detail = Some(format!("{SKIP_PICKED} ({why})"));
-            } else if kept_roles.iter().any(|k| k == kind)
-                && !matches!(f.action.as_str(), "unchanged" | "remove")
-            {
+            } else if f.action != "unchanged" && held.iter().any(|k| k == kind) {
+                let why = if f.action == "remove" {
+                    "its copy at the new path is not written, so this earlier file is kept"
+                } else {
+                    "the earlier file is kept, so its copy at the new path is not written"
+                };
                 f.action = "skip".into();
-                f.detail = Some(format!(
-                    "{SKIP_PICKED} (the earlier flat file of this role is kept, so its nested copy is not written)"
-                ));
+                f.detail = Some(format!("{SKIP_PICKED} ({why})"));
             }
         }
     }
@@ -1827,11 +1954,11 @@ mod tests {
         ),
         (
             "generation:skill-projection:claude:ref-b",
-            ".claude/skills/ref-b/SKILL.md",
+            ".claude/skills/moai-ref-b/SKILL.md",
         ),
         (
             "generation:project-skill:claude:prj-checks",
-            ".claude/skills/prj-checks/SKILL.md",
+            ".claude/skills/moai-prj-checks/SKILL.md",
         ),
     ];
 
@@ -1994,9 +2121,27 @@ mod owned_path_tests {
         assert!(kind_names_path(role, ".claude/agents/prj-fixer.md"));
         assert!(!kind_names_path(role, ".claude/agents/moai/other.md"));
         let skill = "generation:project-skill:claude:prj-checks";
+        // A skill and a projection name both the prefixed path and the one an earlier version
+        // wrote, and no other skill's path.
+        assert!(kind_names_path(
+            skill,
+            ".claude/skills/moai-prj-checks/SKILL.md"
+        ));
         assert!(kind_names_path(skill, ".claude/skills/prj-checks/SKILL.md"));
+        assert!(!kind_names_path(
+            skill,
+            ".claude/skills/moai-other/SKILL.md"
+        ));
         let projection = "generation:skill-projection:claude:ref-b";
+        assert!(kind_names_path(
+            projection,
+            ".claude/skills/moai-ref-b/SKILL.md"
+        ));
         assert!(kind_names_path(projection, ".claude/skills/ref-b/SKILL.md"));
+        assert!(!kind_names_path(
+            projection,
+            ".claude/skills/other/SKILL.md"
+        ));
         // An id that climbs out names no path, whatever path the entry records.
         for (kind, path) in [
             (

@@ -2,8 +2,9 @@
 //! window's round as one read-only plan. It reads the ledger, the lane registry and, when a file
 //! is given, the host state in the shape of `claude agents --json`, and prints what a round would
 //! do: the lanes and whether each is free, the dispatches, the clears, the audit requests, the
-//! landing queue and what waits for the user. It never sends, starts, audits or lands anything,
-//! and it starts no host program.
+//! landing queue, apart from it the passed heads that are no longer their card's current head
+//! (`superseded`, SPEC-20261126-orchestrate-superseded-heads) and what waits for the user. It
+//! never sends, starts, audits or lands anything, and it starts no host program.
 //!
 //! Every part is a function of rows the ledger and the registry already hold, and of one question
 //! to git (is a handed-back head inside the integration tip), asked with read-only commands.
@@ -455,7 +456,7 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
             return Ok(json!({
                 "action": "orchestrate", "project_id": id, "ledger": "absent", "writes": false,
                 "window": {"status": "none"}, "lanes": [], "actions": [], "land_queue": [],
-                "attention": [], "host": {"status": "not_read"},
+                "superseded": [], "attention": [], "host": {"status": "not_read"},
             }));
         }
         Err(e) => return Err(e.to_string()),
@@ -641,7 +642,7 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
         }));
     }
 
-    // ---- landing queue ----------------------------------------------------------------------
+    // ---- landing queue and superseded heads --------------------------------------------------
     let mut queue: Vec<(String, i64, i64, Value)> = Vec::new();
     let judged_cards: BTreeSet<i64> = verdicts.keys().chain(notes.keys()).copied().collect();
     for card_id in &judged_cards {
@@ -686,21 +687,30 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
             }
             let name = input::card_name(*card_id);
             let current = ready_head.map_or(newest_head == Some(head), |h| h == head);
+            let mut entry = json!({
+                "card": name, "head": head, "reviewer": j.reviewer, "source": j.source,
+                "tier": j.tier, "event": j.event, "note": j.note, "current": current,
+            });
+            // Only the current head of a card carries a line that lands it.
+            if current {
+                entry["command"] =
+                    json!(format!("moai card land {name} --head {head} --by leader"));
+            }
+            let list = if current { "land" } else { "superseded" };
+            entry["key"] = json!(format!("{list}:{name}:{head}"));
             queue.push((
                 card.priority.clone(),
                 *card_id,
                 j.event.or(j.note).unwrap_or_default(),
-                json!({
-                    "card": name, "head": head, "reviewer": j.reviewer, "source": j.source,
-                    "tier": j.tier, "event": j.event, "note": j.note, "current": current,
-                    "command": format!("moai card land {name} --head {head} --by leader"),
-                    "key": format!("land:{name}:{head}"),
-                }),
+                entry,
             ));
         }
     }
     queue.sort_by(|a, b| (&a.0, a.1, a.2).cmp(&(&b.0, b.1, b.2)));
-    let land_queue: Vec<Value> = queue.into_iter().map(|q| q.3).collect();
+    let (land_queue, superseded): (Vec<Value>, Vec<Value>) = queue
+        .into_iter()
+        .map(|q| q.3)
+        .partition(|entry| entry["current"] == json!(true));
     if let Some(reason) = &landing.unread {
         attention.push(json!({
             "kind": "integration", "status": "unread", "reason": reason, "answer": null,
@@ -758,6 +768,7 @@ pub fn plan(project: &Path, home: &Path, agents_json: Option<&Path>) -> Result<V
     Ok(json!({
         "action": "orchestrate", "project_id": id, "ledger": "ready", "writes": false,
         "window": window(&entries, now), "lanes": lane_json, "actions": actions,
-        "land_queue": land_queue, "attention": attention, "host": host_json,
+        "land_queue": land_queue, "superseded": superseded, "attention": attention,
+        "host": host_json,
     }))
 }

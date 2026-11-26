@@ -1,7 +1,7 @@
-//! #2904 (O5, #2899 B): `lane-loop-line` prints each host's wake line and reads the Codex lane's
-//! Stop hook from the project; `lane-resume-note` writes a card's resume note and
-//! `lane-resume-check` reads it back. The binary runs in a clean environment with a temporary
-//! project; nothing here reads GitHub or runs git.
+//! #2904 (O5, #2899 B): `lane-loop-line` prints the Claude Code wake line;
+//! `lane-resume-note` writes a card's resume note and `lane-resume-check` reads it back. The
+//! binary runs in a clean environment with a temporary project; nothing here reads GitHub or
+//! runs git.
 mod common;
 
 use common::CleanEnv;
@@ -54,131 +54,99 @@ fn a_body_over_one_mib_is_refused_not_cut() {
     assert!(v.to_string().contains("over 1048576 bytes"), "{v}");
 }
 
-/// AC-1: the three hosts' lines, byte for byte.
+/// The whole Claude answer, byte for byte: running lanes read this line, so it does not move
+/// when other parts of the command go.
 #[test]
-fn host_lines_match_goldens() {
+fn the_claude_answer_is_pinned_whole() {
     let dir = tempfile::tempdir().unwrap();
-    let (code, claude) = run(
-        &["lane-loop-line", "--host", "claude", "--lane", "agent-1"],
-        dir.path(),
-    );
-    assert_eq!(code, 0, "{claude}");
-    assert_eq!(claude["operation"], json!("lane.loop_line"));
-    assert_eq!(
-        claude["result"]["lines"],
-        json!([{"kind": "prompt", "text": "/loop 5m 레인 agent-1 — 순환 계속, self-pick (1)부터. compact·clear 뒤 첫 행동은 내 카드 Issue 의 moai-resume 메모 읽기"}])
-    );
-    let (_, codex) = run(
+    for (duty, text) in [
+        (
+            None,
+            "/loop 5m 레인 agent-1 — 순환 계속, self-pick (1)부터. compact·clear 뒤 첫 행동은 내 카드 Issue 의 moai-resume 메모 읽기",
+        ),
+        (Some("x"), "/loop 5m 레인 agent-1 — x"),
+    ] {
+        let mut cmd = Command::new(common::MOAI_BIN);
+        cmd.clean_env()
+            .env("HOME", dir.path())
+            .current_dir(dir.path())
+            .args(["lane-loop-line", "--host", "claude", "--lane", "agent-1"]);
+        if let Some(duty) = duty {
+            cmd.args(["--duty", duty]);
+        }
+        let out = cmd.output().unwrap();
+        assert_eq!(out.status.code(), Some(0));
+        assert_eq!(
+            String::from_utf8(out.stdout).unwrap(),
+            format!(
+                "{{\"protocol_version\":1,\"operation\":\"lane.loop_line\",\"ok\":true,\"result\":{{\"host\":\"claude\",\"lane\":\"agent-1\",\"writes\":false,\"lines\":[{{\"kind\":\"prompt\",\"text\":\"{text}\"}}],\"verified\":\"documented\",\"note\":\"/loop 5m fires only while the session is idle and expires after seven days\"}}}}\n"
+            )
+        );
+    }
+}
+
+/// Claude Code is the only host: another `--host` word, the removed ones included, is a usage
+/// error that points at `--help`, no line is printed, and that help lists `claude`
+/// alone. The removed `--project` flag went with the hook file it read.
+#[test]
+fn a_removed_host_is_a_usage_error() {
+    let dir = tempfile::tempdir().unwrap();
+    for host in ["codex", "omp", "cursor"] {
+        let (code, v) = run(
+            &[
+                "lane-loop-line",
+                "--host",
+                host,
+                "--lane",
+                "agent-1",
+                "--repo",
+                "o/r",
+            ],
+            dir.path(),
+        );
+        assert_eq!(code, 2, "{host}: {v}");
+        assert_eq!(v["error"]["kind"], json!("usage"), "{host}: {v}");
+        assert!(v.get("result").is_none(), "{host}: {v}");
+        let message = v["error"]["message"].as_str().unwrap();
+        assert!(message.contains("see --help"), "{host}: {message}");
+    }
+    let help = Command::new(common::MOAI_BIN)
+        .clean_env()
+        .env("HOME", dir.path())
+        .current_dir(dir.path())
+        .args(["lane-loop-line", "--help"])
+        .output()
+        .unwrap();
+    assert_eq!(help.status.code(), Some(0));
+    let text = String::from_utf8_lossy(&help.stdout);
+    assert!(text.contains("[possible values: claude]"), "{text}");
+    let (code, v) = run(
         &[
             "lane-loop-line",
             "--host",
-            "codex",
+            "claude",
             "--lane",
             "agent-1",
-            "--repo",
-            "modu-ai/moai-adk",
+            "--project",
+            ".",
         ],
         dir.path(),
     );
-    assert_eq!(
-        codex["result"]["lines"],
-        json!([
-            {"kind": "shell", "text": "codex features enable goals"},
-            {"kind": "prompt", "text": "/goal 저장소에 열린 PR이 0이고 시작할 수 있는 Issue가 0임(HOLD·needs:decision 제외) — 레인 agent-1: 매 회차 $moai work 로 self-pick (1)부터. compact·clear 뒤 첫 행동은 내 카드 Issue 의 moai-resume 메모 읽기"},
-        ])
-    );
-    assert_eq!(codex["result"]["verified"], json!("not_run"));
-    let (_, third) = run(
-        &["lane-loop-line", "--host", "omp", "--lane", "agent-1"],
+    assert_eq!(code, 2, "{v}");
+    // A repository, when given, is still checked.
+    let (code, v) = run(
+        &[
+            "lane-loop-line",
+            "--host",
+            "claude",
+            "--lane",
+            "agent-1",
+            "--repo",
+            "no-slash",
+        ],
         dir.path(),
     );
-    assert_eq!(
-        third["result"]["lines"],
-        json!([{"kind": "flag", "text": "--goal \"저장소에 열린 PR이 0이고 시작할 수 있는 Issue가 0임(HOLD·needs:decision 제외)\""}])
-    );
-    for v in [&claude, &codex, &third] {
-        assert_eq!(v["result"]["writes"], json!(false));
-    }
-    // A bad host or a codex line without its repository is a refusal, not a line.
-    let (code, bad) = run(
-        &["lane-loop-line", "--host", "cursor", "--lane", "agent-1"],
-        dir.path(),
-    );
-    assert_ne!(code, 0, "{bad}");
-    let (code, bad) = run(
-        &["lane-loop-line", "--host", "codex", "--lane", "agent-1"],
-        dir.path(),
-    );
-    assert_ne!(code, 0, "{bad}");
-}
-
-/// AC-4: no lane Stop hook in the project's `.codex/hooks.json` → a `LANE-BLOCKED … wake` line;
-/// the lane's own hook → none, with trust left `unknown`.
-#[test]
-fn missing_hook_reports_lane_blocked_wake() {
-    let dir = tempfile::tempdir().unwrap();
-    let args = [
-        "lane-loop-line",
-        "--host",
-        "codex",
-        "--lane",
-        "agent-1",
-        "--repo",
-        "o/r",
-    ];
-    let (_, v) = run(&args, dir.path());
-    assert_eq!(v["result"]["stop_hook"]["state"], json!("missing"));
-    let line = v["result"]["blocked_line"].as_str().unwrap();
-    assert!(
-        line.starts_with(
-            "LANE-BLOCKED agent-1 wake codex Stop hook missing · kind=outside owner=user next="
-        ),
-        "{line}"
-    );
-    fs::create_dir(dir.path().join(".codex")).unwrap();
-    let hooks = json!({"hooks": {"Stop": [{"hooks": [{"type": "command",
-        "command": "moai lane-stop-hook --lane agent-1 --repo o/r", "timeout": 120}]}]}});
-    fs::write(dir.path().join(".codex/hooks.json"), hooks.to_string()).unwrap();
-    let (_, v) = run(&args, dir.path());
-    assert_eq!(v["result"]["stop_hook"]["state"], json!("installed"));
-    assert_eq!(v["result"]["stop_hook"]["trust"], json!("unknown"));
-    assert_eq!(v["result"]["blocked_line"], Value::Null);
-    // #3004 P4-2: the file the releases before it wrote (`moai-cli`) still runs: its own state
-    // and no blocked line; another lane's hook, in either spelling, is `other_lane`.
-    let old = hooks.to_string().replace("\"moai lane", "\"moai-cli lane");
-    assert!(
-        old.contains("moai-cli lane-stop-hook --lane agent-1"),
-        "{old}"
-    );
-    fs::write(dir.path().join(".codex/hooks.json"), &old).unwrap();
-    let (_, v) = run(&args, dir.path());
-    assert_eq!(
-        v["result"]["stop_hook"]["state"],
-        json!("installed_legacy"),
-        "{v}"
-    );
-    assert_eq!(v["result"]["blocked_line"], Value::Null, "{v}");
-    for other in [
-        old.replace("agent-1", "agent-2"),
-        hooks.to_string().replace("agent-1", "agent-2"),
-    ] {
-        fs::write(dir.path().join(".codex/hooks.json"), other).unwrap();
-        let (_, v) = run(&args, dir.path());
-        assert_eq!(
-            v["result"]["stop_hook"]["state"],
-            json!("other_lane"),
-            "{v}"
-        );
-        assert!(v["result"]["blocked_line"].is_string(), "{v}");
-    }
-    fs::write(dir.path().join(".codex/hooks.json"), hooks.to_string()).unwrap();
-    // Another project folder is read with --project.
-    let other = tempfile::tempdir().unwrap();
-    let mut with_project = args.to_vec();
-    let p = dir.path().to_str().unwrap();
-    with_project.extend(["--project", p]);
-    let (_, v) = run(&with_project, other.path());
-    assert_eq!(v["result"]["stop_hook"]["state"], json!("installed"));
+    assert_eq!(code, 1, "{v}");
 }
 
 /// AC-3: a note written by `lane-resume-note` is read back by `lane-resume-check`; a note with

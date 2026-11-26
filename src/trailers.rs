@@ -253,9 +253,10 @@ pub struct CommitTrailers {
 }
 
 /// One finding of [`check`]: `missing_spec`, `malformed_spec`, `missing_session`,
-/// `malformed_session`, `missing_verified`, `malformed_verified`, or `malformed_trailers` for a
-/// value holding the log's separator. `under_rule` says the commit sits after the `Moai-Verified`
-/// rule's start, where a missing line is no longer read as `none`.
+/// `malformed_session`, `missing_verified`, `malformed_verified`, `unread_trailer_line` for a
+/// `Moai-*` line of the last paragraph that git does not read, or `malformed_trailers` for a value
+/// holding the log's separator. `under_rule` says the commit sits after the `Moai-Verified` rule's
+/// start, where a missing line is no longer read as `none`.
 fn findings(c: &CommitTrailers, spec_branch: bool, under_rule: bool) -> Vec<Value> {
     let mut out = Vec::new();
     let mut add = |kind: &str, fails: bool, detail: String| {
@@ -370,7 +371,54 @@ fn findings(c: &CommitTrailers, spec_branch: bool, under_rule: bool) -> Vec<Valu
             split_trailer_detail(&key, line),
         );
     }
+    // The opposite miss: the line sits in the last paragraph, where the audit gate reads it, but
+    // git reads nothing from it (SPEC-20261126-check-affected-trailers-flaky REQ-4).
+    let unread: Vec<&str> = [
+        (SPEC_KEY, &c.specs),
+        (SESSION_KEY, &c.sessions),
+        (VERIFIED_KEY, &c.verified),
+    ]
+    .into_iter()
+    .filter(|(_, values)| values.is_empty())
+    .map(|(key, _)| key)
+    .collect();
+    for (key, line) in last_paragraph_lines(&message, &unread) {
+        add(
+            "unread_trailer_line",
+            true,
+            unread_trailer_detail(key, line),
+        );
+    }
     out
+}
+
+/// The `(key, 1-based line)` of each line of the message's last paragraph that begins with one of
+/// `keys` and a colon. The last paragraph is the text after the last blank line, which is what the
+/// audit gate takes the session lines from.
+fn last_paragraph_lines<'a>(message: &str, keys: &[&'a str]) -> Vec<(&'a str, usize)> {
+    let text = message.replace("\r\n", "\n");
+    let text = text.trim_end();
+    let start = text.rfind("\n\n").map_or(0, |at| at + 2);
+    let first = text[..start].matches('\n').count() + 1;
+    text[start..]
+        .lines()
+        .enumerate()
+        .filter_map(|(i, line)| {
+            let key = keys
+                .iter()
+                .find(|k| line.strip_prefix(**k).is_some_and(|r| r.starts_with(':')))?;
+            Some((*key, first + i))
+        })
+        .collect()
+}
+
+/// The one-line reading of a trailer line git does not read: which key, where, and the fix.
+fn unread_trailer_detail(key: &str, line: usize) -> String {
+    format!(
+        "{key} on line {line} is not read: git reads no trailer from a last paragraph that holds \
+         other lines than trailers, while the audit gate still reads the line; move or remove those \
+         lines so the last paragraph holds only trailers"
+    )
 }
 
 /// Parses `git log --format=%x1e%H%x1f<specs>%x1f<sessions>%x1f<verified>%x1f<subject>%x1f<body>`
