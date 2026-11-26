@@ -85,3 +85,13 @@ The lines after the dated ones came from the leader's carry-over of closed cards
 - 워크트리 격리 가드는 HOME 을 정하는 한 줄 명령(env -i HOME=<임시> moai …)은 거절하고 같은 일을 하는 스크립트(env -i /bin/sh target/…/danger.sh)는 받아들여요(2026-11-26 C-554 jabez 노트 9995, 결정 9996 가 규칙 위반으로 기록): CLAUDE.md 의 위험 경로 실행 규칙과 가드가 부딪혀 레인이 스크립트로 비켜 가요. 고칠 곳은 위험 경로를 돌리는 허가된 moai 명령(임시 HOME 을 직접 만들고 지우는) 하나를 두는 것이고, 사용자 결정 뒤 카드로 열어요.
 - C-297 뒤(kenan 다시 감사 9998 비차단): skills/moai/workflows/update.md:40 과 detect SPEC:27 의 분류 설명이 옛 규칙(user_created 만 빼던)을 적고 있고, 적용이 중간에 멈춘 파일은 되돌리기에서 계속 conflict 로 남아요: 고칠 곳은 두 글을 지금 규칙(user_created·user_modified·그 밖 provenance 는 옮기지 않음)에 맞추고 멈춘 적용의 되돌리기 길을 정하는 것이고, 상한이 풀리면 카드로 열어요.
 - C-489 뒤(uma 다시 감사 10000 비차단): 훅 설정 파일이 기본 체크아웃에는 다 있고 워크트리에는 없으면 경고가 조용해서, 워크트리에서 시작한 세션은 경고 없이 훅 오류가 날 수 있어요(승인된 D-2 대로의 동작): 워크트리 시작 세션도 보게 할지는 상한이 풀리면 카드로 열어 정해요.
+- 같은 꼴 두 번째(2026-11-26 wren 감사 스크립트 10개, 노트 10012, 결정 10013): 위 가드 줄의 "위험 경로는 Rust 통합 테스트로" 를 skills/moai/references/audit.md 와 docs/lane-rules.md 에 한 줄로 넣어 레인과 감사자가 HOME 을 정하는 셸 스크립트를 쓰지 않게 해요. 상한이 풀리면 위 가드 줄과 한 카드로 열어요.
+- update 의 backup-then-replace 뒤 보통 적용(2026-11-26 enos C-512 수리 10033 의 보고, 코드 읽기만, 테스트 안 함): 스킬 폴더를 백업하고 바꾼 뒤 파일을 쓰는 보통 적용이 backup 없는 영수증을 새로 만들어 restore_backup 이 사라져요(되돌리기 길을 잃는 데이터 손실 위험, C-512 전부터 있던 것): 고칠 곳은 보통 적용이 앞 영수증의 backup 항목을 이어 받게 하는 것이고, 상한이 풀리면 p1 카드로 먼저 열어 실패하는 테스트로 재현부터 해요.
+- 릴리스 감사 요약 댓글이 범위 6a8fa9cacf..c62f942eea(497 커밋)에서 63067 바이트로 60000 상한을 넘어 미리보기가 거절돼요(2026-11-26 enos, 설치본 4.2648.54-dev, --post 없이 읽기만; 둘로 나누면 PASS 31·ABS 89·NONE 377·FAIL 0): 릴리스 전에 고칠 일이라 C-563 계획에서 관문이 한 댓글만 받는지 확인하고 나눠 올리기나 요약만 올리기를 정해요.
+- C-564 뒤(eli 가벼운 감사 10039 비차단): src/card/guard.rs:234 의 not_written 답은 core.hooksPath 가 다른 폴더여도 그 말을 하지 않아요(not_active 처럼 hooks_path 를 같이 알려야 함): 상한이 풀리면 C-564 후속 카드로 열어요.
+- C-313 뒤(dana 결과 노트 10092): 세션 ID 소스에 아직 CODEX_THREAD_ID 가 있고 leader 등록 거절 문구도 그 이름을 대요. Codex 는 철회된 호스트(SPEC-20261121-remove-codex-support)라 그 소스와 문구를 빼요. src/go_state.rs 의 낡은 주석 한 줄도 함께 고쳐요. 상한이 풀리면 카드로.
+- C-313 뒤(dana 노트 10105): SPEC 을 영어로 썼어요(규칙은 SPEC 한국어). head 는 그대로 착지하고, 한국어로 옮기는 일은 상한이 풀리면 작은 docs 카드로.
+- C-560 영수증(jared 10120): update_user_layer_cli 의 html_report 테스트 5개가 첫 시도에서 HOME-GUARD 로 실패하고 재시도에서 통과해요(flaky=5). 테스트가 HOME 아래 html-report 폴더를 읽는지 찾아 임시 HOME 으로 옮겨요.
+- C-224 감사(uma 10129) 비차단 줄 3개: skip-conflicts 선택지 문장이 보류되는 짝 행을 말하지 않아요. requested 필터에 테스트가 없어요. SPEC AC-3 이 아직 danger2.sh 를 인용해요. 이 셋은 C-224 다음 카드가 고쳐요.
+- C-507 영수증(quin 10118, 감사 kai 10131): card set 이 card_wip_limit, orchestrate_cli, leader_brief_cli, card_submit_cli 를 고르지 않았어요(not_run). C-206, C-512 에 이은 세 번째 선택 틈이라 C-568 에 묶어요. C-507 SPEC 의 REQ·AC 가 영어라 한국어로 옮겨요.
+- C-558 요청(keziah 10135): `card finish` 가 열린 보류(HOLD)가 있어도 카드를 닫아요. card finish 가 보류를 읽고 거절하거나 경고하게 고쳐요(src/ledger card finish).
