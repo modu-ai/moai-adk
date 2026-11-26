@@ -4,6 +4,7 @@ title: "Python tools and tests removed, slice A1: the drop verdicts"
 status: draft
 revision: 1
 created: 2026-11-25
+branch: spec/rust-only-finish-six-20261125
 ---
 
 # Python tools and tests removed, slice A1: the drop verdicts
@@ -71,3 +72,26 @@ created: 2026-11-25
 ## Result
 
 초안이에요. 구현 뒤 이 자리에 조각 A1 의 변경한 파일, 실행한 검사, AC 별 met 와 남은 불일치를 적어요.
+
+### 조각: 문서를 검사하던 Python 시험 3개 (2026-11-26)
+
+승인 근거는 카드의 DELEGATED-APPROVAL 노트(리더, approval_digest `sha256:ec482d0e…d4b9`)예요. 앞의 Requirements·Acceptance·Scope 는 조각 A1 의 것이고, 이 조각은 그 Scope 의 forbidden 에 적힌 `tools/repo_scans.json` 을 바꿔요(지운 시험이 그 표의 규칙 파일이라서예요. 승인 노트도 이 줄 변경을 tier 2 감사 대상으로 적었어요).
+
+| 지운 파일 | 지키던 것 | 대신 지키는 Rust 시험·스캔 |
+| --- | --- | --- |
+| `tests/skill_references_test.py` | PR 템플릿이 있는 워크플로를 가리켜요 | `skill_references_scan::the_pr_template_names_a_workflow_that_exists` |
+| 같은 파일 | 추적 파일의 현재 스킬 파일 참조가 모두 있어요 | `skill_references_scan::every_current_skill_file_reference_resolves`, 스캔 `tracked-skill-references`(검사를 이 Rust 시험으로 바꿈, 조건은 그대로) 와 새 시험을 올린 읽기 스캔(`reads-skills`, `reads-docs`, `reads-shipped-files`) |
+| 같은 파일 | 배포 파일이 있는 워크플로만 이름으로 불러요 | `skill_references_scan::shipped_files_name_only_existing_workflows` |
+| 같은 파일 | 감지 언어마다 품질 안내 한 줄과 파일 하나, 안내 파일의 길이와 머리말 | `skill_references_scan::every_detected_language_has_a_guide_row`, `every_named_guide_exists_and_every_guide_is_named`, `guides_are_short_and_point_back_to_quality` |
+| `tests/skill_web_pages_test.py` | 웹 페이지 규칙 12문장, 두 사본이 같음, 패키지 파일을 부르지 않음 | `skill_text_fixtures::both_web_pages_copies_keep_every_rule_sentence`, `the_two_web_pages_copies_say_the_same`, `neither_web_pages_copy_names_a_package_file` |
+| `tests/sync_drift_fixture_test.py` | sync 3단계의 갈래 이름·근거·제안 행동, 대응표의 이름 | `skill_text_fixtures::step_3_names_its_first_three_kinds`, `step_3_documents_the_four_further_kinds_with_ground_and_action`, `the_crosswalk_names_every_further_kind` |
+
+옮기지 않은 것과 달라진 것:
+
+- `sync_drift_fixture_test.py` 의 `classify()` 사례 5개는 버렸어요. 시험 파일 안에서만 정의한 함수를 시험해서 제품 코드를 지키지 않아요. 그 사례가 문서의 제안 행동과 맞춰 보던 것은 3단계 시험의 갈래별 행동 문구 확인이 받아요.
+- 같은 파일의 "일곱 갈래" 문장과 3단계의 부록 경로 확인은 옮기지 않았어요. 그 두 문장은 앞선 글 줄이기에서 이미 본문에서 빠졌어요.
+- 웹 페이지의 RUN 쪽 사본은 `references/internal/web-pages.md` 로 옮겨져 있어서 그 파일을 읽어요.
+- `lua` 는 감지 언어인데 품질 안내가 없어요. `NO_GUIDE_YET` 한 줄로 예외를 두고, 안내가 생기면 시험이 실패해서 목록에서 빼게 했어요.
+- 다른 Rust 시험이 임시 프로젝트에 쓰는 경로 8개가 "깨진 참조"로 잡혀요. 지운 시험의 규칙에도 예외가 없었어요. (파일, 경로) 짝 8개만 `FIXTURE_PATHS` 로 허용하고, 짝이 사라지면 시험이 실패해요.
+
+남은 Python: 이 카드의 `check_pr_self_audit_test.py`, `self_check_test.py`, `smoke_harness_test.py`(smoke.py 를 옮긴 뒤)와 기준 2·3 의 나머지예요.
