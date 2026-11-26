@@ -109,4 +109,40 @@ moai 의 지침 파일은 `CLAUDE.md`(팀)와 `CLAUDE.local.md`(개인)예요. �
 
 ## Result
 
-(Filled when the work is done.)
+구현했어요(브랜치 `spec/claude-md-text-and-ignore-20261122`, 기반 `0aa62fd249`, 코드 head `33051a6bf53638a75a5fc3b62af4597385b4d0de`). 커밋은 red 테스트 `fcca95a7b6`, 글 수정 `6f8dc9f879`, 소스 매니페스트 해시 `33051a6bf5` 예요. AC 명령은 적힌 그대로, `6f8dc9f879` 를 커밋하기 직전에 제품 수정이 커밋되지 않은 작업 트리에서 돌렸어요. AC-6 의 두 명령만 해시를 고친 `33051a6bf5` 내용에서 다시 돌렸어요.
+
+- RED: 제품 수정 전의 `fcca95a7b6` 내용에서 새 테스트 6개 가운데 심어 둔 줄 테스트(`planted_`) 2개는 통과했고 4개(`shipped_` 2개, `generated_` 2개)는 실패했어요.
+- 관련 테스트 대상 26개의 nextest 실행: 324개 실행, 323개 통과, 1개 실패(옛 `project.md` 해시).
+- 바뀐 것: 지침 파일 라벨(영어, 한국어), `generation-apply` 의 다음 할 일 문장, 업데이트 미리보기의 두 문장과 저장해 둔 픽스처 3개, Cursor 이유 문장, `agents-plan`·`agents-apply`·`claude-doctor` 도움말과 골든 파일, `claude-doctor` 제안(한 문장), `skills/moai/workflows/project.md` 와 `source-manifest.json`(이유 문구, 해시), `docs/claude-adapter-contract.md` 의 해당 대목, 새 테스트 `tests/claude_md_layout_scan.rs`, `tests/product_cli.rs` 의 단언.
+
+- AC-1: met — `cargo test --locked --offline --test claude_md_layout_scan generated_project` 1 passed
+- AC-2: met — `cargo test --locked --offline --test claude_md_layout_scan generated_next_action` 1 passed
+- AC-3: met — `cargo test --locked --offline --test claude_md_layout_scan shipped_` 2 passed
+- AC-4: met — `cargo test --locked --offline --test claude_md_layout_scan planted_` 2 passed
+- AC-5: met — `cargo test --locked --offline --test help_layout` 11 passed
+- AC-6: met — `33051a6bf5` 내용에서 `cargo test --locked --offline --test source_manifest_facts` 8 passed, `cargo test --locked --offline --test go_state_classes_cli` 71 passed(`source_manifest_facts` 는 해시를 고치기 전에 옛 `project.md` 해시로 한 번 실패했어요)
+- AC-7: met — `cargo test --locked --offline --test language_setting` 9 passed, `cargo test --locked --offline --test project_harness_label` 6 passed
+- AC-8: met — `cargo test --locked --offline --test update_tux_golden` 17 passed
+- AC-9: met — `cargo test --locked --offline --test repo_scans_table every_` 8 passed
+- AC-10: met — `cargo test --locked --offline --test product_cli claude_doctor_agents_loading_combinations` 1 passed
+
+가드 뮤턴트: `33051a6bf5` 에서 7개 가운데 7개가 exit 100 이고 각각 지목한 테스트에서 실패했어요(새 테스트마다 하나와 `claude-doctor` 단언 하나). 줄은 READY 노트에 있어요.
+
+계획에 더한 것:
+
+- `tools/repo_scans.json` 의 새 행은 scope prefix 에 `CLAUDE.md` 와 `REVIEW.md` 도 적어요. 테스트가 그 이름들을 읽기 때문에 `repo_scans_table` 이 요구했어요. 그 읽기는 임시 프로젝트의 파일이고, 이 테스트는 이 저장소의 `CLAUDE.md` 나 `REVIEW.md` 를 검사하지 않아요.
+
+알려 둘 것:
+
+- `src/project_update.rs` 와 `src/ops` 의 두 파일에 더한 존재 단언은 제품 수정 뒤에 썼어요. 실패를 본 것은 `src/project_update.rs` 쪽(`shipped_rewritten_sentences_name_the_new_files` 의 위 뮤턴트)뿐이에요.
+- 설정의 대화형 터미널 출력이 새 라벨을 찍는지는 확인하지 않았어요. 생성 파일 테스트가 라벨을 확인하는 곳은 설정 질문 글과 쓰인 파일이에요.
+- 공유 파일(`src/help.rs`, 도움말 골든 파일, `source-manifest.json`, `tools/repo_scans.json`)은 카드 line-lease 로 썼어요.
+- `src/claude.rs` 는 아직 착지하지 않은 다른 카드도 바꿔요. 뒤에 착지하는 쪽이 합쳐요(R-1).
+- SPEC front matter 는 `status: draft` 이고 `approval` 블록이 없어요. 승인은 노트 10251 이고, 블록은 착지 때 리더가 써요.
+- `moai check affected` 영수증은 이 Result 가 아니라 카드 노트에 적어요.
+- 스킬 사본은 착지 뒤에 리더가 맞춰요.
+
+not_run:
+
+- 전체 `cargo test`, Windows, Linux.
+- 실제 Claude Code 세션이 이 파일들을 읽는지(R-3).
