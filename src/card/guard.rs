@@ -224,9 +224,42 @@ pub fn apply_hooks(cwd: &Path, token: &str, now: &str) -> Result<Value, String> 
 
 /// The record after an install, for the installer's answer (SPEC-20261125-integration-guard-install
 /// REQ-2): the record is written when it is absent, from the profile, in the primary worktree
-/// only. `{record: "written" | "present" | "not_written", why?}`; it never fails, a read that does
-/// not work is a `not_written` with its reason.
+/// only. `{record: "written" | "present" | "not_written" | "not_active", why?}`; it never fails, a
+/// read that does not work is a `not_written` with its reason. Where `core.hooksPath` makes git
+/// read another folder than the one the installer writes, a written or present record answers
+/// `not_active` with that folder as `hooks_path`: no installed hook runs there, and nothing is
+/// written into it.
 pub fn seed_record(project: &Path) -> Value {
+    let step = record_step(project);
+    if step["record"] == "not_written" {
+        return step;
+    }
+    match hooks_read_elsewhere(project) {
+        None => step,
+        Some(folder) => json!({
+            "record": "not_active",
+            "branch": step["branch"],
+            "hooks_path": folder.display().to_string(),
+            "why": "core.hooksPath points git at that folder, so the hooks in .git/hooks do not run",
+        }),
+    }
+}
+
+/// The folder git reads hooks from, when it is not the hooks folder of the common git folder.
+fn hooks_read_elsewhere(project: &Path) -> Option<PathBuf> {
+    let env = Env::Project(project);
+    let out = git(env, &["rev-parse", "--git-path", "hooks"]).ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    // A relative answer is relative to the project folder; an absolute one replaces it.
+    let read = project.join(text_of(&out));
+    let real = |p: &Path| fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+    let installed = common_dir(env).ok()?.join("hooks");
+    (real(&read) != real(&installed)).then(|| real(&read))
+}
+
+fn record_step(project: &Path) -> Value {
     if let Some(name) = recorded_branch(project) {
         return json!({"record": "present", "branch": name});
     }
