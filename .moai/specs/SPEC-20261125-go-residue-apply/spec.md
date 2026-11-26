@@ -2,7 +2,7 @@
 id: SPEC-20261125-go-residue-apply
 title: "Go-residue apply moves the byte-proven Go files into a receipted backup and revert puts them back, refusing every path outside the project"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-25
 ---
 
@@ -34,13 +34,13 @@ created: 2026-11-25
 - REQ-7 (REQ-6): IF a move or a read-back fails, THEN `go-residue-apply` shall stop at that file, keep the receipt that lists every planned move and leave the files already moved revertible.
 - REQ-8: When the user reverts a receipt, `go-residue-revert` shall put a backup file back at its original path only when that place is empty and the backup file's sha256 equals the receipt entry's.
 - REQ-9 (REQ-8): IF the original place holds a file or the backup file differs from the receipt, THEN `go-residue-revert` shall leave both untouched and report that item as `conflict`.
-- REQ-10: The go-residue step shall read `needs_decision` only while a `go_same` or `go_changed` file is left, whatever other classes it still lists.
+- REQ-10: The go-residue step shall read `optional` while a `go_same` or `go_changed` file is left to move and `unchanged` otherwise, whatever other classes it still lists, and never `needs_decision`.
 - REQ-11: `go-residue-apply` shall move no file of the classes `user_data`, `go_marker` or `leftover_folder` and no secret-shaped name.
 - REQ-12: When a moved file is tracked by git, `go-residue-apply` shall report how many tracked files moved and that a checkout brings them back unless the deletions are committed. · failure: none — the report is text on an apply that already finished and leaves nothing to retry
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-10, REQ-11): on the survey's temp frame, applying the proven bundle moves `a.md`, `gtd.md` and `moai-easy.md` into the backup folder and leaves `user.yaml`, `x.md` and every secret-shaped file byte for byte where they were; a second preview lists only the changed file and asks about it; applying it with its explicit pick makes the next preview read `unchanged` · verify: `cargo test --test project_update_go_residue_cli`
+- AC-1 (REQ-1, REQ-10, REQ-11): on the survey's temp frame, applying the proven bundle moves `a.md` and `gtd.md` into the backup folder and leaves `moai-easy.md` (a settings file names it, so it is listed as in use), `user.yaml`, `x.md` and every secret-shaped file byte for byte where they were; a second preview reads `optional`, lists the changed file as the only candidate and prints no command for it; applying it with its explicit pick makes the next preview read `unchanged` · verify: `cargo test --test project_update_go_residue_cli`
 - AC-2 (REQ-2): a plan digest from before a file changed, a made-up digest and a malformed permission reference each leave the whole tree identical before and after the apply · verify: `cargo test --test project_update_go_residue_cli`
 - AC-3 (REQ-3): a manifest that names `../outside/x.md`, an absolute path to a file outside the project, a path through a linked folder and a linked file never makes the survey or the apply read, move or write that outside file (its sha256 is the same before and after), and a forged receipt that names a path outside the project is refused by the revert before it moves anything · verify: `cargo test --test project_update_go_residue_cli`
 - AC-4 (REQ-4, REQ-5): a project with enough proven files for a receipt above 256 KiB applies to `committed` and reverts, and with the backup area made unwritable the apply moves no file (the tree is identical before and after) · verify: `cargo test --test project_update_go_residue_cli`
@@ -82,6 +82,8 @@ created: 2026-11-25
 | D-4 | 새 영수증은 `go-residue-receipt.json`이에요 | `state_root`가 `go-state-receipt.json`만 읽어서 이 영수증이 분류기와 go-state 되돌리기에 닿지 않아요 | 이름만 바꾸면 돼요 |
 
 ## Result
+
+개정 2(2026-11-26, `SPEC-20261126-go-residue-in-use`): REQ-10 과 AC-1 을 고쳤어요. 판 1 의 위임 승인(노트 9548)은 판 2 에 미치지 않아요. 아래 기록은 판 1 구현의 것이고, AC-1 의 "쓰는 중" 부분은 아직 구현 전이에요.
 
 `status: draft`예요. 승인은 이 파일에 기록하지 않았어요(리더의 위임 승인은 카드 노트에 있어요). 구현 head는 머지 커밋 `e851b250edc6fce840a3316a0b8ff6040cc37a3f`이고, 그 뒤의 문서 커밋 하나가 이 Result예요. 그 머지는 S1 수리 head `9619fdbc84`(착지 대기, NeXT 합친 것 포함)를 들여왔어요. 이 작업의 범위는 `9619fdbc84..HEAD`예요.
 
