@@ -2,9 +2,9 @@
 id: SPEC-20261124-moai-project-interview
 title: "/moai project 설문을 감지로 알 수 없는 것만 묻는 최소 설문으로 다시 정해요"
 status: approved
-revision: 3
+revision: 4
 created: 2026-11-24
-approval: {by: leader, at: 2026-11-25, basis: "leader DELEGATED-APPROVAL note 9400 of card C-150 (answers lane note 9399, under the user's delegation of 2026-11-25 about 14:50Z, not a direct user pick), approving revision 3 at head 083048e88d; revision 2 was approved by note 8240 (head 42e490e8fc) and revision 1 by note 8167 (head 89231f75e3); recorded by the lane, not approved by it", digest: "sha256:9dcd1dfd677ff43a45d90570d08665f7bac5d37b7a161302bb29f416334d4532"}
+approval: {by: leader, at: 2026-11-26, basis: "leader DELEGATED-APPROVAL note 9614 of the card that takes over the update.md half (answers lane note 9613, under the user's delegation of 2026-11-25 about 14:50Z, not a direct user pick), approving revision 4 at head 6ab400f830 and answering decision 1 (withdraw the hooks-conflict criterion) and decision 2 (the N7 follow-up goes to a later line, no new card); revisions 1 to 3 were approved by notes 8167, 8240 and 9400; recorded by the lane, not approved by it", digest: "sha256:98bf72be0b70fe1bc5ca6f9d49aeba26d6d27757092267ed35f368ad0585233f"}
 ---
 
 # /moai project 설문을 감지로 알 수 없는 것만 묻는 최소 설문으로 다시 정해요
@@ -54,8 +54,8 @@ approval: {by: leader, at: 2026-11-25, basis: "leader DELEGATED-APPROVAL note 94
 - REQ-11: When `moai project-apply` reads the `result` object of `moai project-plan` exactly as printed, including `work_flow_remote`, it shall apply the plan the digest names.
 - REQ-12 (REQ-11): IF the input holds an unknown key other than `work_flow_remote`, THEN `moai project-apply` shall refuse it as invalid typed JSON input.
 - REQ-13: When the project workflow meets earlier-generation state, it shall name `/moai update` in one boundary sentence. · failure: none
-- REQ-14: IF the boundary sentence is missing from `project.md`, THEN the shipped-text test shall fail.
-- REQ-15: The three project-side files shall carry no card number and no Issue number and no dated user decision.
+- REQ-14: IF the boundary sentence is missing from `project.md` or the matching boundary sentence is missing from `update.md`, THEN the shipped-text test shall fail.
+- REQ-15: The three project-side files and `update.md` shall carry no card number and no Issue number and no dated user decision.
 - REQ-16: The interview reference shall describe the next-flow work flow as `flows/next-flow` does and name no withdrawn host. · failure: none
 - REQ-17: When the interview names the integration branch, it shall give the profile value first and then the remote default branch and then the current branch. · failure: none
 - REQ-18: When step 4 builds the plan, its profile field list shall include `work_flow` and `language`. · failure: none
@@ -66,6 +66,11 @@ approval: {by: leader, at: 2026-11-25, basis: "leader DELEGATED-APPROVAL note 94
 - REQ-22: IF a scanned file holds `pytest`, `go test` or `cargo-nextest` outside the named exception, THEN the scan test shall fail and name the file and the line.
 - REQ-23: IF the named install-table cell holds a MoAI-internal token, THEN the scan test shall fail and name the file and the line.
 - REQ-24: When `project-plan` prints a `work_flow_remote` warning, the project workflow shall show that warning. · failure: none
+- REQ-26: The project workflow shall carry no step that moves, backs up or merges earlier-generation state. · failure: none
+- REQ-27: When `/moai update` meets earlier-generation state, the update workflow shall carry the go-state move steps that the project workflow no longer carries. · failure: none
+- REQ-28: When the project workflow's Completion Check offers a follow-up for earlier-generation state, it shall offer the install steps only and name `/moai update` for the rest. · failure: none
+- REQ-29: When `moai language-setup --help` runs, it shall describe the four items the command asks. · failure: none
+- REQ-30: The scan table entry that reads the go-state text shall name `update.md`, where that text now lives. · failure: none
 
 ## Acceptance
 
@@ -79,8 +84,12 @@ approval: {by: leader, at: 2026-11-25, basis: "leader DELEGATED-APPROVAL note 94
 - AC-8 (REQ-11, REQ-12): in a temporary project with a remote, the `result` of `project-plan` piped to `project-apply` applies when it holds `work_flow_remote`, and a plan with another extra key is refused as `invalid typed JSON input` · verify: `cargo test --locked --offline --test project_apply_plan_result`
 - AC-9 (REQ-7): on the repository's own profile after the change, `moai project-plan .` shows only two changed keys, `language.instruction_files` set to `en` and `done` set to the default sentence, and nothing is applied before the user picks the plan · verify: `moai project-plan .` with the profile of `moai project-detect .` on stdin, read by the leader (not_run in the lane)
 
-- AC-10 (REQ-13, REQ-14): `project.md` carries the one boundary sentence that names `/moai update`, and the test pins it; the removal of the step-2 body waits for `update.md` (D-12) · verify: `cargo test --locked --offline --test project_interview_minimal boundary_sentence_is_pinned`
-- AC-11 (REQ-15): the three project-side files hold no `C-<digits>`, no `#<3 to 5 digits>` and no `user decision <date>` · verify: `cargo test --locked --offline --test project_interview_minimal no_citation_in_project_side_files`
+- AC-10 (REQ-13, REQ-14): `project.md` carries the one boundary sentence that names `/moai update`, `update.md` carries the matching boundary sentence that names the project workflow, and the test pins both · verify: `cargo test --locked --offline --test project_interview_minimal boundary_sentence_is_pinned_in_both`
+- AC-11 (REQ-15): the three project-side files and `update.md` hold no `C-<digits>`, no `#<3 to 5 digits>` and no `user decision <date>` · verify: `cargo test --locked --offline --test project_interview_minimal no_citation_in_project_side_files`
+- AC-15 (REQ-26, REQ-27): `project.md` names none of `go-state-apply`, `go-settings-apply`, `worktree-move-plan`, `worktree-move-apply`, `go-state-revert` and `root-files`, `update.md` carries the go-state move steps, and the pins that read those steps now read `update.md` · verify: `cargo test --locked --offline --test project_interview_minimal the_move_steps_live_in_update_md` and `cargo test --locked --offline --test project_worktree_move_choice` and `cargo test --locked --offline --test update_route`
+- AC-16 (REQ-28): the Completion Check of `project.md` offers the install steps only and names `/moai update` for the rest · verify: `cargo test --locked --offline --test project_preview_order` and `cargo test --locked --offline --test project_flow_closing`
+- AC-17 (REQ-29): `moai language-setup --help` describes the four items · verify: `cargo test --locked --offline --test language_three_questions help_describes_the_four_items`
+- AC-18 (REQ-30): the `include-str-go-state-classes-cli` entry of `tools/repo_scans.json` names `update.md` and the table test passes · verify: `cargo test --locked --offline --test repo_scans_table every_include_str_reader_of_a_repository_file_has_an_always_scan`
 - AC-12 (REQ-16, REQ-17, REQ-18, REQ-19, REQ-20, REQ-21, REQ-24, REQ-25): the flow text, the integration-branch order, the step-4 field list, the `method` and `hosts` rows, the internal words and the three contradictions are pinned · verify: `cargo test --locked --offline --test project_interview_minimal flow_text_matches_next_flow` and `cargo test --locked --offline --test question_bank_hosts`
 - AC-13 (REQ-22, REQ-23): the scan lists `pytest`, `go test` and `cargo-nextest` and reads the install-table cell for internal tokens · verify: `cargo test --locked --offline --test project_interview_minimal scan_tokens_cover_pytest_go_test_nextest`
 - AC-14 (REQ-12): a duplicate key in a `project-apply` input is pinned as it behaves today (an altered duplicate is refused, an identical one applies) · verify: `cargo test --locked --offline --test project_apply_plan_result duplicate_key_altered_is_refused`
@@ -92,6 +101,8 @@ approval: {by: leader, at: 2026-11-25, basis: "leader DELEGATED-APPROVAL note 94
 - write by line lease (pinned test files other cards also edit): `tests/language_three_questions.rs`, `tests/agent_defs_package.rs`, `tests/project_detect_cli.rs`, `tests/generic_flow_questions.rs`, `tests/question_bank_hosts.rs`; the plan names each pin it changes after running them
 - write (revision 3, leader-approved scope of card C-150): `tests/project_apply_plan_result.rs`, and one line each in the pins that quote a removed citation: `tests/product_cli.rs`, `tests/project_applied_table.rs`, `tests/project_decide_model.rs`, `tests/project_flow_closing.rs`, `tests/update_route.rs`, `tests/next_flow_skill_scan.rs`
 - revision 3 does not touch `skills/moai/workflows/update.md` (another card holds it), `src/**`, or `skills/moai/references/internal/versioning.md`
+- write (revision 4, the card that takes over the update.md half): `skills/moai/workflows/update.md`, `skills/moai/workflows/project.md`, `src/ops/language_setup.rs`, the pins that read the moved steps (`tests/project_worktree_move_choice.rs`, `tests/go_state_classes_cli.rs`, `tests/update_route.rs`, `tests/project_preview_order.rs`, `tests/project_flow_closing.rs`, `tests/project_detect_cli.rs`), and by line lease `tools/repo_scans.json` (one prefix), `skills/moai/references/source-manifest.json` (the two sha256 values, through `moai check fix`), `src/help.rs` (the language-setup entry), `tests/language_three_questions.rs`
+- revision 4 does not touch `src/generation.rs` or `tests/project_skills_generation.rs` (another card holds them; D-18)
 - read-only: `skills/moai/workflows/update.md` (scanned; edited only if the scan finds a token), `skills/moai/references/internal/versioning.md` (scanned), `src/profile.rs`, `src/ops/project_plan.rs`, `src/project_detect.rs`
 - forbidden: `CLAUDE.md`, the repository's `.moai/project.yaml` (Plan step 8 is the leader's), the real HOME, `skills/moai/SKILL.md`
 
@@ -105,6 +116,14 @@ approval: {by: leader, at: 2026-11-25, basis: "leader DELEGATED-APPROVAL note 94
 6. Dangerous path: not applicable (no delete, reset, process start or permission rule); the apply change is exercised in a throwaway project with a bare-repository remote.
 7. `moai check affected` once at READY, unwrapped, on the head.
 8. After the landing, the leader runs the repository's own profile update (AC-9): plan shown, approval, apply; this step is outside the lane worktree.
+
+Revision 4 (the update.md half):
+
+9. RED: add `boundary_sentence_is_pinned_in_both` and `the_move_steps_live_in_update_md` to `tests/project_interview_minimal.rs`, widen `no_citation_in_project_side_files` to `update.md`, add `help_describes_the_four_items`; each fails on this tree. Repoint the pins named in the Scope to `update.md` in the same commit so the old text and the new text are never both unpinned.
+10. GREEN, text: move the go-state move steps (project step 2, the snapshot preamble, the backup waits, step 8's apply names) into `update.md` as one paragraph, leave a one-line stub in `project.md` that keeps the step numbers the tests pin, trim the Completion Check to the install steps, strip every citation from `update.md`; refresh `source-manifest.json` with `moai check fix <base>..<head>` on a committed head.
+11. GREEN, code and table: `src/ops/language_setup.rs` and `src/help.rs` say four items; the `include-str-go-state-classes-cli` prefix becomes `update.md` (a change, not a growth, so tier 2).
+12. Guard mutants, one line per new guard test: delete the `update.md` boundary sentence, restore one citation in `update.md`, restore "three questions" in the help, put the scan prefix back to `project.md`; each must fail a test.
+13. Dangerous path: not applicable (text, scan table and help text; no delete, reset, process start or permission rule).
 
 ## Risks
 
@@ -132,6 +151,10 @@ approval: {by: leader, at: 2026-11-25, basis: "leader DELEGATED-APPROVAL note 94
 | D-12 | Revision 3 takes over the project half of criteria 1 and 3 of the draft `SPEC-20261120-project-update-boundary`: the boundary sentence and the citation scan. The removal of the step-2 body (the earlier-generation move steps) waits until `update.md` carries that guidance; card criterion 1 stays open until then. | `update.md` is held by another card and does not yet carry the worktree-move, "I closed other sessions" and root-file picks. Deleting first would drop them. | Remove the boundary sentence and its test. |
 | D-13 | Splitting the combined line of `## Result` into one line per AC is not a revision: `## Result` is outside the approval digest. | `moai spec show` hashes requirements, acceptance and `forbidden:` only. | Re-join the lines. |
 | D-14 | `moai language-setup --help` (N6), default-sourced rules in project skills (N7) and the `KNOWN_HOSTS` cleanup need `src/**` and are follow-ups of card C-150, not part of revision 3. | Outside the write scope. | none |
+| D-16 | Revision 4 supersedes the wait in D-12: the earlier-generation move steps move from `project.md` to `update.md` now that the card that held `update.md` has landed. Card criterion 1 closes with this revision. | The leader moved criteria 1, 3, 4 and 10 of the earlier card here (its notes 9448 and 9450). Revisions 1 to 3 were approved by notes 8167, 8240 and 9400. | Put the step-2 body back into `project.md`. |
+| D-17 | Card criterion 3 (the hooks conflict choices text for `update.md`) is withdrawn with a reason: the draft SPEC `SPEC-20261120-hooks-conflict-choices` covers only the withdrawn Codex and OMP hooks and none of its code is on the tip; for Claude the `hooks` conflict is reported with nothing written, so a choices text would promise what the product does not do. | Leader decision, approval note 9614 (delegated, not a direct user pick). | Reopen the criterion and write a SPEC with code. |
+| D-18 | The N7 follow-up (default-sourced review rules in the generated project skills) needs `src/generation.rs` and `tests/project_skills_generation.rs`, which another active card holds; it waits for that card and is recorded as one line of `docs/later.md` by the leader, with no new card now. Card criterion 4 closes on N3, N5 and N6: N3 and N5 are already met on this tree (`scan_tokens_cover_pytest_go_test_nextest`, `duplicate_key_altered_is_refused`); N6 is REQ-29. | Scope held by another card; a lane never widens into a held path. Leader decision, approval note 9614. | Do N7 in a card after that card lands. |
+| D-19 | The Completion Check keeps the install steps and names `/moai update` for backup and merge steps; the three move-apply operation names leave `project.md`. | Plan recommendation; the boundary sentence already sends earlier-generation state to `/moai update` (REQ-13). | Keep the names in `project.md`. |
 | D-15 | The final table keeps its state words (`applied`, `default`, `HOLD`, `not applied: <reason>`) and gets one plain sentence that explains them; the worktree base sentence keeps the clause that the user adds `baseRef` themselves for a `conflict`. | Other SPEC pins the words; changing them is a leader decision, not a lane one (plan Q2, Q4). | Rename the words and their pins in a later revision. |
 
 ## Result
@@ -159,6 +182,8 @@ Revision 2 repairs audit #150 (head `548822bf0a`, verdict FAIL). Repair head `d5
 
 Revision 3 (project text repair), base 71d819ce8a, head b3cbbc9184. Evidence below is the verification run of the implementation step, `target/zoe/run2.log` in the worktree (`moai heavy-slot-acquire` around `cargo test --locked --offline`, 25 test targets, exit 101 because of three failing targets). `skills/moai/workflows/project.md`, `skills/moai/references/internal/interview.md` and the two new test files were last written before that run; `tests/project_harness_label.rs` and `skills/moai/references/source-manifest.json` were changed after it, by `b3cbbc9184`. The red run at `dd291c323d` is recorded only in that commit message (nine of the new tests fail on purpose): no log of it is readable in `target/zoe/` (`run1.log` stops at `product_cli`, `run2.log` is the run after the rewrite), so it is not_run here. No run on `b3cbbc9184` itself is readable; the receipt of the READY note covers it.
 
+Revision 3 AC lines (history, kept as written; revision 4 gives its own AC-10 and AC-11 lines below):
+
 - AC-10: not met (partly) — `boundary_sentence_is_pinned` passed in `run2.log`, so the one boundary sentence naming `/moai update` exists and is pinned. The step-2 body stays in `project.md` until `update.md` carries that guidance (D-12), so card criterion 1 stays open.
 - AC-11: met — `no_citation_in_project_side_files` passed in `run2.log`.
 - AC-12: met — in `run2.log` `project_interview_minimal` passed `flow_text_matches_next_flow`, `integration_branch_order_matches_work_flow_plan`, `step_four_lists_all_profile_fields`, `rows_use_profile_words`, `no_internal_word_in_user_shown_text` and `contradictions_are_gone`, and `question_bank_hosts` passed 1 of 1.
@@ -173,3 +198,34 @@ Revision 3 (project text repair), base 71d819ce8a, head b3cbbc9184. Evidence bel
   - Card criterion 10 N6 (`moai language-setup --help`, `src/ops/language_setup.rs`) and N7 (default-sourced rules in project skills, `src/generation.rs`) are follow-ups that need `src/**` (D-14), as is the `KNOWN_HOSTS` cleanup.
   - The Rust successor of the `skill_references` test was not found; the old Python test was not run.
   - The final-table state words and the `baseRef` clause are unchanged (D-15).
+
+Revision 4 (the update.md half), base `9c8b7fb763` (the NeXT tip), commits on this branch `018baf39c4` (red tests), `8d3f75eb16` (green text and the scan prefix) and `c45fbb4a4f` (the two source-manifest hashes, refreshed by `moai check fix`). Evidence below is read from the logs in `target/c549/` of the worktree (`red.log`, `green.log`, `mutants.out`, `mutant4.out`, `mutants.txt`). No run on the final head `c45fbb4a4f` is readable there; the receipt of the READY note covers it.
+
+- The change: `update.md` carries the update boundary sentence once and the go-state move section (the worktree move preview, ask and apply, the root files, the restore-check reads, the settings keep rule and the phase order). `project.md` keeps a stub for step 2, an install-only Completion Check that names `/moai update` for the backup and merge steps, and no longer names `go-state-apply`, `go-settings-apply`, `worktree-move-plan`, `worktree-move-apply`, `go-state-revert` or `root-files`. `update.md` carries no citation. `update.md` grew from 35259 to 43456 bytes (under the 65536 bound) and `project.md` shrank from 46915 to 38079 bytes (`wc -c` on this tree). The doc comment of `src/ops/language_setup.rs` now says "asks four questions", and the scan prefix of `include-str-go-state-classes-cli` in `tools/repo_scans.json` changed from `project.md` to `update.md`.
+- Red run, `018baf39c4` (`red.log`): `cargo nextest run --locked --offline --no-fail-fast` over 11 targets (`project_interview_minimal`, `project_worktree_move_choice`, `go_state_classes_cli`, `update_route`, `project_preview_order`, `project_flow_closing`, `project_detect_cli`, `language_three_questions`, `repo_scans_table`, `update_always_asks`, `workflow_size_budget`) ran 206 tests: 191 passed, 15 failed, wrapper exit 100. All 15 failures are the expected ones: the moved text missing from `update.md`, citations in `update.md`, the help text, and the scan entry. The REQ-30 failure text: `tests/go_state_classes_cli.rs reads skills/moai/workflows/update.md` has no always-scan entry.
+- Green run, text only (`green.log`): the same targets plus `source_manifest_facts` ran 214 tests: 212 passed, 2 failed, wrapper exit 100. It was made before the scan prefix and the manifest hashes were edited, and the two failures are exactly `repo_scans_table every_include_str_reader_of_a_repository_file_has_an_always_scan` and `source_manifest_facts this_repository_manifest_is_what_the_tool_writes`; the commits `8d3f75eb16` (scan prefix) and `c45fbb4a4f` (manifest hashes) are the edits for those two.
+- AC-10: met — `boundary_sentence_is_pinned_in_both` failed at `018baf39c4` and passed in the text-only green run: `project.md` and `update.md` each carry their boundary sentence and the step-2 body now lives in `update.md` (D-16). Revision 3's line above is the record of that revision and stays as written.
+- AC-11: met — `no_citation_in_project_side_files`, widened to `update.md`, failed at `018baf39c4` and passed in the text-only green run.
+- AC-15: met — `the_move_steps_live_in_update_md` failed at `018baf39c4` and passed in the text-only green run. The repointed pins failed at `018baf39c4` and passed in the same run: `project_worktree_move_choice` (all 3 of its failing tests), `go_state_classes_cli` (2 tests) and `update_route the_ledger_is_local_cards_and_previews_run_without_asking`.
+- AC-16: met — `project_preview_order completion_check_offers_steps_in_the_printed_phase_order` and `quoted_waiting_reasons_are_the_ones_the_code_prints`, and the two `project_flow_closing` tests of the apply stages, failed at `018baf39c4` and passed in the text-only green run. `update_route the_route_end_offer_leaves_out_what_cannot_run` passed before (`red.log`) and after (`green.log`).
+- AC-17: met — `language_three_questions help_describes_the_four_items` failed at `018baf39c4` and passed in the text-only green run.
+- AC-18: met — the entry `include-str-go-state-classes-cli` names `skills/moai/workflows/update.md` in `tools/repo_scans.json` at `c45fbb4a4f`. `every_include_str_reader_of_a_repository_file_has_an_always_scan` failed at `018baf39c4` with the REQ-30 text above, failed again in the text-only green run because the prefix still named `project.md` then, and fails once more with the prefix put back (guard mutant 4). It passes at `c45fbb4a4f`: one nextest run of `repo_scans_table`, `source_manifest_facts`, `project_interview_minimal` and `language_three_questions`, 74 run, 74 passed, wrapper exit 0 (`target/c549/final-targeted.log`).
+- REQ-30 evidence: the red run shows the table test failing because the reader `tests/go_state_classes_cli.rs` of `update.md` had no always-scan entry, the prefix change names `update.md`, and guard mutant 4 shows the test failing again when the prefix names `project.md`, so the scan still catches the same target.
+- Guard mutants (tier 2, `mutants.txt`; one edit at a time, each file restored with `git checkout` and the tree clean afterwards, `mutants.out` and `mutant4.out`):
+  - guard-mutant: `boundary_sentence_is_pinned_in_both` | the update boundary sentence changed in `update.md` | exit 100
+  - guard-mutant: `no_citation_in_project_side_files` | an Issue number added to the go-state move paragraph of `update.md` | exit 100
+  - guard-mutant: `help_describes_the_four_items` | "asks four questions" changed to "asks three questions" in `src/ops/language_setup.rs` | exit 100
+  - guard-mutant: `every_include_str_reader_of_a_repository_file_has_an_always_scan` | the scan prefix of `include-str-go-state-classes-cli` put back to `project.md` | exit 100
+- Dangerous path: not applicable (text, scan table and help text; no delete, reset, process start or permission rule).
+- Deviations and notes:
+  - `tests/project_detect_cli.rs` was left unchanged, because the `project.md` stub keeps the two strings it pins.
+  - The earlier text about Go-generation state in the Completion Check of `project.md` was reworded: earlier-generation state is left for `/moai update`.
+  - `update.md` step 8 still says "the snapshots of steps 1 to 5", because the snapshot paragraph stays in `project.md`.
+  - The first line of `src/ops/language_setup.rs` still cites an old issue number; it is outside the doc comment this revision changes.
+  - The `docs/later.md` line for the N7 follow-up (default-sourced review rules in the generated project skills, D-18) is the leader's.
+  - Card criterion 3 (hooks conflict choices, D-17) is withdrawn and card criterion 4 closes on N3, N5 and N6 (D-18); card criterion 1 closes with D-16.
+- Gaps, revision 4 (not_run):
+  - The `check affected --card` receipt and the light checks at the READY head; they go in the READY note.
+  - Targets that read `project.md` or `update.md` and were not in these runs: `agent_defs_package`, `next_flow_skill_scan`, `product_cli`, `update_closing_commit` and `project_applied_table`, unless the receipt covers them.
+  - A real `/moai update` session on earlier-generation state.
+  - The independent audit.

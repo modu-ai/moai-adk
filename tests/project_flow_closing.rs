@@ -41,6 +41,17 @@ fn profile_tracking_step() -> String {
     out
 }
 
+/// The numbered step `8. **Offer the closing commit` of `update.md` (one paragraph, up to the next
+/// blank line).
+fn update_closing_commit_step() -> String {
+    let text = skill_text("workflows/update.md");
+    let start = text
+        .find("8. **Offer the closing commit")
+        .expect("update.md has no step 8");
+    let tail = &text[start..];
+    tail[..tail.find("\n\n").unwrap_or(tail.len())].to_string()
+}
+
 /// The numbered step `8. **Offer the closing commit` up to the next `## ` heading.
 fn closing_commit_step() -> String {
     let text = skill_text("workflows/project.md");
@@ -159,12 +170,9 @@ fn closing_commit_step_lists_by_apply_stages_only_those_paths_and_never_pushes()
     for text in [
         "`git status --porcelain=v1 -z --untracked-files=all`",
         "one entry",
-        "`go-settings-apply`",
-        "`go-state-apply`",
         "`project-apply`",
         "the `generation` apply",
         "`claude-settings-apply`",
-        "`worktree-move-apply`",
         "not from this route",
         "kept local",
         "`.moai-backup/`",
@@ -199,6 +207,29 @@ fn closing_commit_step_lists_by_apply_stages_only_those_paths_and_never_pushes()
         "name every path already staged",
     ] {
         assert!(step.contains(text), "{text:?} is missing from: {step}");
+    }
+    // The apply names of the earlier-generation move belong to `/moai update`: its closing-commit
+    // step lists them, and the project workflow's step names none of them (REQ-26, REQ-28).
+    for moved in [
+        "`go-settings-apply`",
+        "`go-state-apply`",
+        "`worktree-move-apply`",
+    ] {
+        assert!(
+            !step.contains(moved),
+            "{moved} still stands in the project step; it belongs to update.md: {step}"
+        );
+    }
+    let update_step = update_closing_commit_step();
+    for moved in [
+        "`go-settings-apply`",
+        "`go-state-apply`",
+        "`worktree-move-apply`",
+    ] {
+        assert!(
+            update_step.contains(moved),
+            "{moved} is missing from step 8 of update.md: {update_step}"
+        );
     }
     assert!(
         position(&step, "Commit these changes (recommended)")
@@ -240,7 +271,9 @@ fn procedure_snapshots_the_status_around_every_apply() {
     for text in [
         "`git status --porcelain=v1 -z --untracked-files=all`",
         "before the first apply of any kind",
-        "`go-settings-apply`",
+        // The first apply the project workflow runs is `project-apply`; `go-settings-apply` moved
+        // to `update.md` with the earlier-generation move.
+        "`project-apply`",
         "`git hash-object -- <path>`",
         "content digest",
         "After each apply",
@@ -258,6 +291,12 @@ fn procedure_snapshots_the_status_around_every_apply() {
         "as one argument",
     ] {
         assert!(para.contains(text), "{text:?} is missing from: {para}");
+    }
+    for moved in ["`go-settings-apply`", "`go-state-apply`"] {
+        assert!(
+            !para.contains(moved),
+            "{moved} still stands in the project snapshot paragraph; it belongs to update.md: {para}"
+        );
     }
 }
 
