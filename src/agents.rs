@@ -521,15 +521,49 @@ pub fn is_generated_local(bytes: &[u8]) -> bool {
 const STATE_KEPT: [&str; 11] = crate::state_root::KEPT;
 
 /// File names that never go to git anywhere under the state folder, `tools/` and `evals/`
-/// included (SPEC-20261120-moai-layout REQ-11): the credential files of an earlier generation's
-/// template, `credentials.json` and the `.env` family. The lines come after the allow-list, so an
-/// allow line cannot lift them.
-const STATE_SECRETS: [&str; 5] = [
+/// included (SPEC-20261120-moai-layout REQ-11, REQ-19): first the credential files of an earlier
+/// generation's template, `credentials.json` and the `.env` family, then the researched credential
+/// and key files. A name is added only when the file is there to hold a usable secret (plain text,
+/// a value that can be turned back, a private key or a token) and the name is narrow. General
+/// settings files, encrypted or hashed files, extensions with several uses and files with no fixed
+/// name stay off the list (D-10). The lines come after the allow-list, so an allow line cannot
+/// lift them.
+const STATE_SECRETS: [&str; 35] = [
     "**/credentials.yaml",
     "**/credentials.json",
     "**/*.credentials",
     "**/.env",
     "**/.env.*",
+    "**/.git-credentials",
+    "**/.netrc",
+    "**/_netrc",
+    "**/.pgpass",
+    "**/pgpass.conf",
+    "**/.pypirc",
+    "**/.credentials.json",
+    "**/credentials.tfrc.json",
+    "**/application_default_credentials.json",
+    "**/credentials.toml",
+    "**/.vault-token",
+    "**/.mylogin.cnf",
+    "**/master.key",
+    "**/keystore.properties",
+    "**/id_rsa",
+    "**/id_dsa",
+    "**/id_ecdsa",
+    "**/id_ecdsa_sk",
+    "**/id_ed25519",
+    "**/id_ed25519_sk",
+    "**/id_mldsa44_ed25519",
+    "**/*.ppk",
+    "**/*.tfstate",
+    "**/*.tfstate.*",
+    "**/.dev.vars",
+    "**/.dev.vars.*",
+    "**/.aws/credentials",
+    "**/.cargo/credentials",
+    "**/.gem/credentials",
+    "**/.streamlit/secrets.toml",
 ];
 
 /// How many `now visible:` lines the plan shows before it counts the rest.
