@@ -62,7 +62,6 @@ fn repo(profile: &str) -> Repo {
     fs::create_dir_all(&state).unwrap();
     git_ok(&root, &["init", "-q", "-b", "main"]);
     fs::write(state.join("project.yaml"), profile).unwrap();
-    fs::write(root.join(".gitignore"), "/target/\n/.claude/\n").unwrap();
     fs::write(root.join("one.txt"), "one\n").unwrap();
     commit(&root, "one");
     let tip = git(&root, &["rev-parse", "main"]);
@@ -164,6 +163,8 @@ fn ac1_the_worktree_is_made_on_a_new_branch_at_the_integration_tip() {
         listed.contains(&format!("branch refs/heads/{BRANCH}")),
         "{listed}"
     );
+    // The new folder does not show in the primary checkout's status.
+    assert_eq!(git(&r.root, &["status", "--porcelain"]), "");
     // The base can be named: a commit other than the integration tip.
     let head = git(&r.root, &["rev-parse", "HEAD"]);
     let second = r.run(&["lane-b", "--branch", "spec/y-20261124", "--base", "side"]);
