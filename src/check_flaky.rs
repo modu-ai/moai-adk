@@ -465,6 +465,32 @@ pub fn flaky_of(out: &Path) -> Vec<TestName> {
     read_log(&text).1.into_iter().collect()
 }
 
+/// The ledger of the project at `root`, open to append. Only real folders below `root` lead to
+/// it and only a regular file takes a row; a link or anything else is refused with its path
+/// (SPEC-20261126-tracked-state-move REQ-9, REQ-10).
+fn open_ledger(root: &Path) -> Result<std::fs::File, String> {
+    let folder = format!(
+        "{}/{}",
+        crate::state_root::MOAI_DIR,
+        crate::state_root::LOCAL_DIR
+    );
+    crate::go_state::make_dirs(root, &folder)?;
+    let rel = format!("{folder}/{LEDGER_FILE}");
+    if crate::go_state::linked_component(root, &rel) {
+        return Err(format!("{rel}: a path component is a symlink; refused"));
+    }
+    let ledger = ledger_path(root);
+    // A FIFO there would hold the writer until someone reads it.
+    if std::fs::symlink_metadata(&ledger).is_ok_and(|m| !m.is_file()) {
+        return Err(format!("{rel}: not a regular file; refused"));
+    }
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&ledger)
+        .map_err(|e| format!("{rel}: {e}"))
+}
+
 /// Write `flaky.txt` in `out` and append each name to the ledger of the project at `root`
 /// (REQ-7, REQ-9). A failure is returned as text for the caller to put on stderr; it never changes
 /// the result of the run.
@@ -478,15 +504,9 @@ pub fn record(root: &Path, out: &Path, head: &str, names: &[TestName]) -> Result
         problems.push(format!("cannot write flaky.txt: {e}"));
     }
     let ledger = ledger_path(root);
-    let append = || -> std::io::Result<()> {
+    let append = || -> Result<(), String> {
         use std::io::Write;
-        if let Some(parent) = ledger.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        let mut file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&ledger)?;
+        let mut file = open_ledger(root)?;
         let at = crate::audit::utc_now();
         let mut text = String::new();
         for name in &list {
@@ -498,7 +518,7 @@ pub fn record(root: &Path, out: &Path, head: &str, names: &[TestName]) -> Result
             });
             text.push_str(&format!("{row}\n"));
         }
-        file.write_all(text.as_bytes())
+        file.write_all(text.as_bytes()).map_err(|e| e.to_string())
     };
     if let Err(e) = append() {
         problems.push(format!("cannot append to {}: {e}", ledger.display()));

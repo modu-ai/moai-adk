@@ -533,6 +533,20 @@ fn go_state_preview_step(
             plan_digest: Some(plan.plan_digest.clone()),
         });
     }
+    // SPEC-20261126-tracked-state-move REQ-2, REQ-3: the move would hide tracked state, or git
+    // cannot say. The apply would refuse before writing, so no command is offered: the user
+    // changes the rules or stops tracking the files, then previews again.
+    if let Some(found) = &plan.ignored_tracked {
+        preview["ignored_tracked"] = encode(found)?;
+        return Ok(Step {
+            name: "go-state",
+            state: "needs_decision",
+            reason: found.reason.clone(),
+            preview,
+            apply: None,
+            plan_digest: Some(plan.plan_digest.clone()),
+        });
+    }
     Ok(if pending {
         Step {
             name: "go-state",
