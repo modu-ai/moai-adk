@@ -390,10 +390,20 @@ fn hook_settings(worktree: &Path, pointed: &[&str], present: &[&str]) {
         .collect();
     let settings = json!({"hooks": {"Stop": [{"hooks": handlers}]}});
     fs::write(claude.join("settings.json"), settings.to_string()).unwrap();
+    hook_files(worktree, present);
+}
+
+/// Puts the hook scripts `present` into the hook folder of `folder`.
+fn hook_files(folder: &Path, present: &[&str]) {
+    let hooks = folder.join(".claude/hooks/moai");
+    fs::create_dir_all(&hooks).unwrap();
     for name in present {
-        fs::write(claude.join("hooks/moai").join(name), "#!/bin/sh\n").unwrap();
+        fs::write(hooks.join(name), "#!/bin/sh\n").unwrap();
     }
 }
+
+/// The words of the step that is only said when starting in the worktree finds every script.
+const START_IN_WORKTREE: &str = "start the lane session in the worktree folder";
 
 /// The lines of an answer's `warnings` that name the hook settings, one per line.
 fn hook_warnings(answer: &Value) -> String {
@@ -407,18 +417,19 @@ fn hook_warnings(answer: &Value) -> String {
         .join("\n")
 }
 
-/// SPEC-20261125-card-worktree-hook-config AC-2 (REQ-1, REQ-2, REQ-3): a take names the hook
-/// scripts the worktree's settings point at and the worktree lacks, in one warning line; with
-/// every file there, with no settings file or with settings it cannot read, there is no such line
-/// and the take still succeeds.
+/// SPEC-20261125-card-worktree-hook-config AC-2 (a) (REQ-1, REQ-5): the measured case. The
+/// primary checkout, where a lane session starts, lacks the scripts the worktree's settings point
+/// at and the worktree has them: the take says so in one line and names the step that finds them.
 #[test]
 fn the_hook_settings_of_the_worktree_are_checked_by_a_take() {
     let w = world();
+    let primary = fs::canonicalize(&w.project).unwrap();
     hook_settings(
         &w.wt_a,
         &["handle-stop.sh", "handle-pre-tool.sh", "ok.sh"],
-        &["ok.sh"],
+        &["handle-stop.sh", "handle-pre-tool.sh", "ok.sh"],
     );
+    hook_files(&primary, &["ok.sh"]);
     let card = w.ready_card("src/one/");
     let got = w.take(&w.wt_a, &sid(1), &card, &["--branch", "lane-a"]);
     assert_eq!(got["state"], json!("active"), "{got}");
@@ -430,30 +441,71 @@ fn the_hook_settings_of_the_worktree_are_checked_by_a_take() {
     );
     assert!(
         !line.contains("ok.sh"),
-        "a script that is there is not named: {line}"
+        "a script the start folder has is not named: {line}"
+    );
+    assert!(
+        line.contains(text(&primary)),
+        "names the start folder: {line}"
     );
     assert!(line.contains(text(&w.wt_a)), "names the worktree: {line}");
-    assert!(
-        line.contains("start the lane session in this worktree folder"),
-        "{line}"
-    );
-    // nothing was written into the worktree's hook folder
-    assert!(!w.wt_a.join(".claude/hooks/moai/handle-stop.sh").exists());
+    assert!(line.contains(START_IN_WORKTREE), "{line}");
+    // following the step finds every named script; nothing was written for it
+    for name in ["handle-stop.sh", "handle-pre-tool.sh"] {
+        assert!(w.wt_a.join(".claude/hooks/moai").join(name).is_file());
+        assert!(!primary.join(".claude/hooks/moai").join(name).exists());
+    }
+}
 
-    // every file is there: no line
-    hook_settings(&w.wt_b, &["a.sh", "b.sh"], &["a.sh", "b.sh"]);
-    let other = w.ready_card("src/two/");
-    let got = w.take(&w.wt_b, &sid(2), &other, &["--branch", "lane-b"]);
+/// AC-2 (b) (REQ-1, REQ-5): when neither folder has every pointed script, the take does not tell
+/// anyone where to start the session; it names the read-only plan and leaves the settings to the
+/// user.
+#[test]
+fn the_hook_settings_of_the_worktree_with_no_complete_start_folder_name_the_plan() {
+    for (in_primary, in_worktree) in [(vec!["a.sh"], vec!["b.sh"]), (vec![], vec![])] {
+        let w = world();
+        let primary = fs::canonicalize(&w.project).unwrap();
+        hook_settings(&w.wt_a, &["a.sh", "b.sh"], &in_worktree);
+        hook_files(&primary, &in_primary);
+        let card = w.ready_card("src/one/");
+        let got = w.take(&w.wt_a, &sid(1), &card, &["--branch", "lane-a"]);
+        assert_eq!(got["state"], json!("active"), "{got}");
+        let line = hook_warnings(&got);
+        assert_eq!(line.lines().count(), 1, "one line: {got}");
+        assert!(line.contains("b.sh"), "{line}");
+        assert!(!line.contains(START_IN_WORKTREE), "{line}");
+        assert!(line.contains("no start folder has them all"), "{line}");
+        assert!(
+            line.contains(&format!("moai go-hooks-plan {}", text(&w.wt_a))),
+            "{line}"
+        );
+    }
+}
+
+/// AC-2 (c), (d) (REQ-2, REQ-3): no line when the start folder has every pointed script, even if
+/// the worktree lacks them, when there is no settings file, or when it cannot be read; the take
+/// still succeeds.
+#[test]
+fn the_hook_settings_of_the_worktree_stay_quiet_when_the_start_folder_has_them() {
+    let w = world();
+    hook_settings(&w.wt_a, &["a.sh", "b.sh"], &[]);
+    hook_files(&w.project, &["a.sh", "b.sh"]);
+    let card = w.ready_card("src/one/");
+    let got = w.take(&w.wt_a, &sid(1), &card, &["--branch", "lane-a"]);
     assert_eq!(got["state"], json!("active"), "{got}");
     assert_eq!(hook_warnings(&got), "", "{got}");
 
-    // no settings file: no line
+    // no settings file in the worktree: no line
+    let second = w.ready_card("src/two/");
+    let got = w.take(&w.wt_b, &sid(2), &second, &["--branch", "lane-b"]);
+    assert_eq!(hook_warnings(&got), "", "{got}");
+
+    // a folder that is no git worktree is judged as its own start folder
     let third = w.ready_card("src/three/");
+    hook_settings(&w.plain, &["a.sh"], &["a.sh"]);
     let got = w.take(&w.plain, &sid(3), &third, &["--worktree", text(&w.plain)]);
     assert_eq!(hook_warnings(&got), "", "{got}");
 
     // settings that cannot be read: no line, the take succeeds
-    fs::create_dir_all(w.plain.join(".claude")).unwrap();
     fs::write(w.plain.join(".claude/settings.json"), "not json").unwrap();
     let fourth = w.ready_card("src/four/");
     let got = w.take(&w.plain, &sid(4), &fourth, &["--worktree", text(&w.plain)]);
@@ -462,12 +514,12 @@ fn the_hook_settings_of_the_worktree_are_checked_by_a_take() {
     let _ = &w.host;
 }
 
-/// SPEC-20261125-card-worktree-hook-config AC-2 (REQ-1, REQ-2): a reclaim into a worktree names
-/// the missing hook scripts too, and says nothing when none is missing.
+/// SPEC-20261125-card-worktree-hook-config AC-2 (REQ-1, REQ-2, REQ-5): a reclaim into a worktree
+/// judges the start folder the same way, and says nothing when it has every script.
 #[test]
 fn the_hook_settings_of_the_worktree_are_checked_by_a_reclaim() {
     let w = world();
-    hook_settings(&w.wt_a, &["handle-stop.sh"], &[]);
+    hook_settings(&w.wt_a, &["handle-stop.sh"], &["handle-stop.sh"]);
     let card = w.ready_card("src/one/");
     w.take(&w.plain, &sid(1), &card, &[]);
     w.end_lease();
@@ -475,9 +527,11 @@ fn the_hook_settings_of_the_worktree_are_checked_by_a_reclaim() {
     let line = hook_warnings(&got);
     assert_eq!(line.lines().count(), 1, "one line: {got}");
     assert!(line.contains("handle-stop.sh"), "{line}");
+    assert!(line.contains(START_IN_WORKTREE), "{line}");
 
     let w = world();
-    hook_settings(&w.wt_a, &["handle-stop.sh"], &["handle-stop.sh"]);
+    hook_settings(&w.wt_a, &["handle-stop.sh"], &[]);
+    hook_files(&w.project, &["handle-stop.sh"]);
     let card = w.ready_card("src/one/");
     w.take(&w.plain, &sid(1), &card, &[]);
     w.end_lease();
