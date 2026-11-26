@@ -1,16 +1,20 @@
-//! SPEC-20261126-claude-md-fresh-merge AC-2 (REQ-3, REQ-4, D-2, D-4): `moai claude-md-plan`
-//! lists a project's old instruction files in the fixed order with their facts, says which lines
-//! of each are the project's own against the Go manifest and git history, refuses a source it
-//! must not read, and writes nothing. Every case runs the real binary on a temporary project
-//! with a temporary HOME; line text is never printed.
+//! SPEC-20261126-claude-md-fresh-merge `moai claude-md-plan`. The `base_` cases (AC-2: REQ-3,
+//! REQ-4, D-2, D-4): the command lists a project's old instruction files in the fixed order with
+//! their facts, says which lines of each are the project's own against the Go manifest and git
+//! history, refuses a source it must not read, and writes nothing. The `hunk_` cases (AC-3: REQ-5,
+//! with the preview half of REQ-6, REQ-7 and REQ-9, D-6, D-8): the project lines as hunks, the
+//! `--keep` picks, the texts they compose, the warnings, the plan digest and the apply command.
+//! Every case runs the real binary on a temporary project with a temporary HOME; a
+//! credential-shaped value is built at run time and appears in no output.
 
 #![cfg(unix)]
 
 mod common;
 use common::{CleanEnv, MOAI_BIN};
 use moai_cli::agents::{is_generated_local, AGENTS_SECTION};
-use moai_cli::project_update::claude_md::{HISTORY_LIMIT, SOURCE_LIMIT};
-use moai_cli::state_root::{GO_BACKUP, MOAI_DIR};
+use moai_cli::project_update::claude_md::{HISTORY_LIMIT, RESULT_LINE_LIMIT, SOURCE_LIMIT};
+use moai_cli::project_update::PERMISSION_PLACEHOLDER;
+use moai_cli::state_root::{marker_bytes, GO_BACKUP, MOAI_DIR, RUST_MARKER};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -21,9 +25,6 @@ use std::{
     process::{Command, Stdio},
 };
 use tempfile::TempDir;
-
-/// Every line of every fixture body starts with this, so one check proves no text is printed.
-const TEXT: &str = "zq-";
 
 fn sha(body: &[u8]) -> String {
     format!("sha256:{:x}", Sha256::digest(body))
@@ -44,6 +45,8 @@ struct Fx {
     home: PathBuf,
     root: PathBuf,
     recorded: serde_json::Map<String, Value>,
+    /// Values no output of any run may hold.
+    secrets: Vec<String>,
 }
 
 struct Out {
@@ -65,7 +68,33 @@ impl Fx {
             home,
             root,
             recorded: serde_json::Map::new(),
+            secrets: Vec::new(),
         }
+    }
+
+    /// A value built at run time that no output may hold: `fill` repeated.
+    fn secret(&mut self, fill: &str) -> String {
+        let value = fill.repeat(24);
+        self.secrets.push(value.clone());
+        value
+    }
+
+    /// A usable project profile with the writing languages `language`, in a state folder marked
+    /// as this generation's, as a project that has moved its Go state has it: without the marker
+    /// a Go backup beside the folder reads as a migration stopped midway.
+    fn profile(&self, language: Value) {
+        self.write(
+            &format!("{MOAI_DIR}/{RUST_MARKER}"),
+            marker_bytes("fixture", &[]),
+        );
+        let mut profile = json!({
+            "schema_version": 2, "project_id": "zq-demo", "purpose": "zq purpose",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
+        });
+        if !language.is_null() {
+            profile["language"] = language;
+        }
+        self.write(&profile_rel(), profile.to_string());
     }
 
     fn write(&self, rel: &str, body: impl AsRef<[u8]>) {
@@ -183,28 +212,45 @@ impl Fx {
             .stdin(Stdio::null())
             .output()
             .expect("spawn the binary");
-        Out {
+        let out = Out {
             code: out.status.code(),
             stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
             stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+        };
+        for secret in &self.secrets {
+            assert!(
+                !out.stdout.contains(secret) && !out.stderr.contains(secret),
+                "a credential-shaped value was printed by {args:?}: {}{}",
+                out.stdout,
+                out.stderr
+            );
         }
+        out
     }
 
-    /// `claude-md-plan`: it succeeds, prints no line text and leaves every byte as it was.
-    fn plan(&self) -> Value {
+    /// `claude-md-plan` with these `--keep` values, leaving every byte as it was.
+    fn run_plan(&self, keep: &[&str]) -> Out {
+        let mut args = vec!["claude-md-plan", self.root.to_str().unwrap()];
+        for value in keep {
+            args.extend(["--keep", value]);
+        }
         let before = self.snapshot();
-        let out = self.run(&["claude-md-plan", self.root.to_str().unwrap()]);
+        let out = self.run(&args);
         assert_eq!(self.snapshot(), before, "claude-md-plan wrote something");
+        out
+    }
+
+    /// `claude-md-plan`: it succeeds and leaves every byte as it was.
+    fn plan(&self) -> Value {
+        self.plan_with(&[])
+    }
+
+    fn plan_with(&self, keep: &[&str]) -> Value {
+        let out = self.run_plan(keep);
         assert_eq!(
             out.code,
             Some(0),
             "claude-md-plan failed: stdout {} stderr {}",
-            out.stdout,
-            out.stderr
-        );
-        assert!(
-            !out.stdout.contains(TEXT) && !out.stderr.contains(TEXT),
-            "line text was printed: {}{}",
             out.stdout,
             out.stderr
         );
@@ -260,6 +306,110 @@ fn refused(result: &Value) -> Vec<(String, String)> {
             )
         })
         .collect()
+}
+
+fn profile_rel() -> String {
+    format!("{MOAI_DIR}/project.yaml")
+}
+
+fn list<'v>(result: &'v Value, key: &str) -> &'v Vec<Value> {
+    result[key]
+        .as_array()
+        .unwrap_or_else(|| panic!("no list {key}: {result}"))
+}
+
+fn words(values: &[Value]) -> Vec<String> {
+    values
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect()
+}
+
+fn ids(result: &Value) -> Vec<String> {
+    list(result, "hunks")
+        .iter()
+        .map(|h| h["id"].as_str().unwrap().to_string())
+        .collect()
+}
+
+fn hunk<'v>(result: &'v Value, id: &str) -> &'v Value {
+    list(result, "hunks")
+        .iter()
+        .find(|h| h["id"] == json!(id))
+        .unwrap_or_else(|| panic!("no hunk {id}: {result}"))
+}
+
+/// The hunk's heading, text and hidden line count.
+fn assert_hunk(result: &Value, id: &str, heading: Option<&str>, text: &str, hidden: usize) {
+    let h = hunk(result, id);
+    assert_eq!(h["heading"], json!(heading), "{id}: {h}");
+    assert_eq!(h["text"], json!(text), "{id}: {h}");
+    assert_eq!(h["same_as"], json!(null), "{id}: {h}");
+    assert_eq!(h["hidden_lines"], json!(hidden), "{id}: {h}");
+    let shown = if text.is_empty() {
+        0
+    } else {
+        text.split('\n').count()
+    };
+    assert_eq!(h["line_count"], json!(shown + hidden), "{id}: {h}");
+}
+
+fn composed<'v>(result: &'v Value, path: &str) -> Option<&'v Value> {
+    list(result, "results")
+        .iter()
+        .find(|r| r["path"] == json!(path))
+}
+
+/// The text of a resulting file, checked against its line count and (with no hidden line) its
+/// digest.
+fn composed_text(result: &Value, path: &str) -> String {
+    let file = composed(result, path).unwrap_or_else(|| panic!("no result {path}: {result}"));
+    let text = file["text"].as_str().expect("text").to_string();
+    if file["hidden_lines"] == json!(0) {
+        assert_eq!(file["sha256"], json!(sha(text.as_bytes())), "{file}");
+        assert_eq!(file["line_count"], json!(text.lines().count()), "{file}");
+    }
+    text
+}
+
+/// The `<path>:<line>` and reason of every line a resulting file leaves out.
+fn left_out(result: &Value, path: &str) -> Vec<(String, String)> {
+    let file = composed(result, path).unwrap_or_else(|| panic!("no result {path}: {result}"));
+    list(file, "left_out")
+        .iter()
+        .map(|l| {
+            (
+                l["line"].as_str().unwrap().to_string(),
+                l["reason"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+/// The answer carries no digest and no command, and one of its reasons holds every needle.
+fn assert_no_apply(result: &Value, needles: &[&str]) {
+    assert_eq!(result["apply"], json!(null), "{result}");
+    assert_eq!(result["plan_digest"], json!(null), "{result}");
+    let reasons = words(list(result, "apply_blocked"));
+    assert!(
+        reasons
+            .iter()
+            .any(|r| needles.iter().all(|needle| r.contains(needle))),
+        "no reason holds {needles:?}: {reasons:?}"
+    );
+}
+
+/// The digest of an answer that prints a command, with that command's words.
+fn assert_apply(result: &Value) -> (String, Vec<String>) {
+    assert_eq!(result["apply_blocked"], json!([]), "{result}");
+    let digest = result["plan_digest"].as_str().expect("a digest");
+    assert!(
+        digest.starts_with("sha256:") && digest.len() == 71,
+        "{digest}"
+    );
+    assert_eq!(result["apply"]["stdin"], json!(null), "{result}");
+    let argv = words(result["apply"]["argv"].as_array().expect("argv"));
+    (digest.to_string(), argv)
 }
 
 fn block(id: &str) -> (String, String) {
@@ -572,11 +722,14 @@ fn base_a_personal_file_that_is_a_moai_first_text_has_no_project_line() {
     // The same bytes anywhere else are not a personal file.
     fx.write("AGENTS.md", en);
     fx.write(&rules("copy.md"), en);
-    // The fixture text itself has no `zq-` prefix, so the answer is read for its title instead.
     let result = fx.plan();
-    assert!(!result.to_string().contains("Personal supplement"));
     for path in ["CLAUDE.local.md", "AGENTS.local.md"] {
         assert_lines(&result, path, json!({"used": "moai_first_text"}), &[]);
+        // Such a file has no hunk, so its text is shown nowhere under its name.
+        assert!(
+            ids(&result).iter().all(|id| !id.starts_with(path)),
+            "{path}: {result}"
+        );
     }
     for path in ["AGENTS.md".to_string(), rules("copy.md")] {
         assert_lines(&result, &path, all_lines("no_record"), &[1, 2, 3, 4, 5]);
@@ -706,7 +859,8 @@ fn base_an_unsafe_source_is_refused_and_named() {
     assert_eq!(source(&result, &rules("empty.md"))["line_count"], json!(0));
     assert_eq!(source(&result, &rules("limit.md"))["line_count"], json!(1));
     assert!(
-        !result.to_string().contains(&sha(b"zq-outside\n")),
+        !result.to_string().contains(&sha(b"zq-outside\n"))
+            && !result.to_string().contains("zq-outside"),
         "the link's target was read: {result}"
     );
 }
@@ -723,6 +877,7 @@ fn base_a_linked_folder_refuses_what_lies_below_it() {
         }
         fx.link(&rules_dir(), &outside);
         let result = fx.plan();
+        assert!(!result.to_string().contains("zq-outside"), "{result}");
         assert_eq!(
             refused(&result),
             vec![(rules_dir(), "is a link".to_string())],
@@ -741,6 +896,7 @@ fn base_a_linked_folder_refuses_what_lies_below_it() {
         fs::write(outside.join(below), "zq-outside\n").unwrap();
         fx.link(&linked, &outside);
         let result = fx.plan();
+        assert!(!result.to_string().contains("zq-outside"), "{result}");
         assert_eq!(
             refused(&result),
             vec![(rules_dir(), "lies below a link folder".to_string())],
@@ -748,6 +904,687 @@ fn base_a_linked_folder_refuses_what_lies_below_it() {
         );
         assert_eq!(paths(&result), Vec::<String>::new(), "{linked}");
     }
+}
+
+#[test]
+fn hunk_one_hunk_per_heading_section_holds_its_lines_verbatim() {
+    let fx = Fx::new();
+    let body = [
+        "",                 // 1
+        "",                 // 2: a preamble of blank lines is no hunk
+        "# zq-one",         // 3
+        "zq-a  ",           // 4
+        "####### zq-seven", // 5
+        "#zq-nospace",      // 6
+        "  ```text",        // 7
+        "# zq-in-fence",    // 8
+        "```",              // 9
+        "~~~~",             // 10
+        "```",              // 11: another character does not close
+        "## zq-in-tilde",   // 12
+        "~~~",              // 13: a shorter run does not close
+        "~~~~~",            // 14
+        "   ### zq-three",  // 15
+        "\tzq-b",           // 16
+        "    # zq-code",    // 17: four spaces make no heading
+        "```zq```",         // 18: a backtick in the info text opens no fence
+        "###### zq-six",    // 19
+        "#",                // 20
+        "zq-c",             // 21
+    ];
+    fx.write("AGENTS.md", body.join("\n"));
+    fx.write("CLAUDE.md", "zq-before any heading\n# zq-h\n");
+    fx.write("AGENTS.local.md", "");
+    let result = fx.plan();
+    assert_eq!(
+        ids(&result),
+        [
+            "CLAUDE.md:1",
+            "CLAUDE.md:2",
+            "AGENTS.md:3",
+            "AGENTS.md:15",
+            "AGENTS.md:19",
+            "AGENTS.md:20"
+        ],
+        "{result}"
+    );
+    assert_hunk(&result, "CLAUDE.md:1", None, "zq-before any heading", 0);
+    assert_hunk(&result, "CLAUDE.md:2", Some("# zq-h"), "# zq-h", 0);
+    for (id, heading, from, to) in [
+        ("AGENTS.md:3", "# zq-one", 3, 14),
+        ("AGENTS.md:15", "   ### zq-three", 15, 18),
+        ("AGENTS.md:19", "###### zq-six", 19, 19),
+        ("AGENTS.md:20", "#", 20, 21),
+    ] {
+        assert_hunk(
+            &result,
+            id,
+            Some(heading),
+            &body[from - 1..to].join("\n"),
+            0,
+        );
+        assert_eq!(hunk(&result, id)["path"], json!("AGENTS.md"));
+    }
+}
+
+#[test]
+fn hunk_holds_only_the_project_lines_of_its_section() {
+    let mut fx = Fx::new();
+    let base = "# zq-base\nzq-one\n\n## zq-two\nzq-two body\n## zq-three\nzq-three body\n";
+    fx.record("AGENTS.md", base);
+    fx.manifest();
+    fx.git_init();
+    fx.write("AGENTS.md", base);
+    fx.commit(&["AGENTS.md"]);
+    // The second section gains only a blank line the original lacks.
+    fx.write(
+        "AGENTS.md",
+        "# zq-base\nzq-one\n\nzq-added\n## zq-two\n   \nzq-two body\n## zq-three\nzq-new\n\
+         zq-three body\nzq-newer\n",
+    );
+    let result = fx.plan();
+    assert_eq!(ids(&result), ["AGENTS.md:4", "AGENTS.md:9"], "{result}");
+    assert_hunk(&result, "AGENTS.md:4", Some("# zq-base"), "zq-added", 0);
+    assert_hunk(
+        &result,
+        "AGENTS.md:9",
+        Some("## zq-three"),
+        "zq-new\nzq-newer",
+        0,
+    );
+}
+
+#[test]
+fn hunk_an_equal_section_shows_its_text_once() {
+    let fx = Fx::new();
+    fx.profile(json!(null));
+    let same = "## zq-same\nzq-twice-only\n";
+    fx.write("AGENTS.local.md", same);
+    fx.write("CLAUDE.local.md", format!("{same}## zq-own\nzq-own line\n"));
+    let out = fx.run_plan(&[]);
+    assert_eq!(
+        out.stdout.matches("zq-twice-only").count(),
+        1,
+        "{}",
+        out.stdout
+    );
+    let result = fx.plan();
+    assert_eq!(
+        ids(&result),
+        [
+            "AGENTS.local.md:1",
+            "CLAUDE.local.md:1",
+            "CLAUDE.local.md:3"
+        ],
+        "{result}"
+    );
+    assert_hunk(
+        &result,
+        "AGENTS.local.md:1",
+        Some("## zq-same"),
+        "## zq-same\nzq-twice-only",
+        0,
+    );
+    let second = hunk(&result, "CLAUDE.local.md:1");
+    assert_eq!(second["same_as"], json!("AGENTS.local.md:1"), "{second}");
+    assert_eq!(second["text"], json!(null), "{second}");
+    assert_eq!(second["heading"], json!(null), "{second}");
+    assert_eq!(second["line_count"], json!(2), "{second}");
+    assert_eq!(
+        hunk(&result, "CLAUDE.local.md:3")["same_as"],
+        json!(null),
+        "{result}"
+    );
+    // A hunk that shows no text can still be picked.
+    let result = fx.plan_with(&["CLAUDE.local.md:1=shared"]);
+    assert!(
+        composed_text(&result, "CLAUDE.md").ends_with("\n## zq-same\nzq-twice-only\n"),
+        "{result}"
+    );
+}
+
+/// A private key marker line, built at run time.
+fn key_line(edge: &str, kind: &str) -> String {
+    format!("-----{edge} {kind}PRIVATE KEY-----")
+}
+
+#[test]
+fn hunk_credential_shaped_lines_are_counted_and_never_printed() {
+    let mut fx = Fx::new();
+    fx.profile(json!(null));
+    let token = format!("ghp_{}", fx.secret("Q"));
+    let split = format!("gh\u{200B}p_{}", fx.secret("W"));
+    let opaque = fx.secret("Z");
+    let password = format!("X1{}", fx.secret("X"));
+    let key = [fx.secret("V"), fx.secret("K"), fx.secret("J")];
+    let heading = format!("ghp_{}", fx.secret("G"));
+    let body = [
+        "# zq-secrets".to_string(),                                      // 1
+        "zq-before".to_string(),                                         // 2
+        format!("zq-key {token}"),                                       // 3
+        format!("zq-split {split}"),                                     // 4
+        format!("zq-url https://{opaque}@example.invalid/x"),            // 5
+        format!("zq-pass password = {password}"),                        // 6
+        "zq-ask @zq-someone, see https://example.invalid/p".to_string(), // 7
+        "zq-user https://example.invalid/@zq-someone".to_string(),       // 8
+        "zq-form https://${ZQ_TOKEN}@example.invalid/".to_string(),      // 9
+        key_line("BEGIN", ""),                                           // 10
+        key[0].clone(),                                                  // 11
+        key_line("END", ""),                                             // 12
+        "zq-after".to_string(),                                          // 13
+        format!("## {heading}"),                                         // 14
+        "zq-under".to_string(),                                          // 15
+        "## zq-open".to_string(),                                        // 16
+        key_line("BEGIN", "RSA "),                                       // 17
+        key[1].clone(),                                                  // 18
+        "## zq-inside-the-key".to_string(),                              // 19
+        key[2].clone(),                                                  // 20: never ended
+    ];
+    fx.write("AGENTS.md", body.join("\n"));
+    fx.write("CLAUDE.local.md", "## zq-clean\nzq-clean line\n");
+    let result = fx.plan();
+    let visible = [&body[0..2], &body[6..9], &body[12..13]].concat();
+    assert_hunk(
+        &result,
+        "AGENTS.md:1",
+        Some("# zq-secrets"),
+        &visible.join("\n"),
+        7,
+    );
+    assert_hunk(&result, "AGENTS.md:14", None, "zq-under", 1);
+    assert_hunk(&result, "AGENTS.md:16", Some("## zq-open"), "## zq-open", 2);
+    assert_hunk(&result, "AGENTS.md:19", None, "", 2);
+
+    // Kept as personal, the values are composed and still not printed.
+    let all = [
+        "AGENTS.md:1=personal",
+        "AGENTS.md:14=personal",
+        "AGENTS.md:16=personal",
+        "AGENTS.md:19=personal",
+    ];
+    let result = fx.plan_with(&all);
+    assert_apply(&result);
+    let local = composed(&result, "CLAUDE.local.md").expect("the personal file");
+    assert_eq!(local["hidden_lines"], json!(12), "{local}");
+    let shown = composed_text(&result, "CLAUDE.local.md");
+    assert!(shown.contains("zq-after") && shown.contains("zq-under"));
+    assert_eq!(
+        local["line_count"],
+        json!(shown.lines().count() + 12),
+        "{local}"
+    );
+
+    // Kept as shared, every such hunk is named and no command is printed.
+    for id in [
+        "AGENTS.md:1",
+        "AGENTS.md:14",
+        "AGENTS.md:16",
+        "AGENTS.md:19",
+    ] {
+        let result = fx.plan_with(&[&format!("{id}=shared")]);
+        assert_no_apply(&result, &[id, "credential"]);
+    }
+    // A hunk without such a line may be shared while others hold one.
+    assert_apply(&fx.plan_with(&["CLAUDE.local.md:1=shared"]));
+
+    // A refused pick value does not echo a credential.
+    for keep in [
+        format!("{token}=shared"),
+        format!("AGENTS.md:1={token}"),
+        token.clone(),
+    ] {
+        let out = fx.run_plan(&[&keep]);
+        assert_ne!(out.code, Some(0), "{}{}", out.stdout, out.stderr);
+    }
+}
+
+#[test]
+fn hunk_a_private_key_that_begins_in_the_original_hides_the_added_lines() {
+    let mut fx = Fx::new();
+    let begin = key_line("BEGIN", "");
+    let end = key_line("END", "");
+    let base = format!("# zq-k\n{begin}\n{end}\n");
+    fx.record("AGENTS.md", &base);
+    fx.manifest();
+    fx.git_init();
+    fx.write("AGENTS.md", &base);
+    fx.commit(&["AGENTS.md"]);
+    let added = fx.secret("V");
+    fx.write("AGENTS.md", format!("# zq-k\n{begin}\n{added}\n{end}\n"));
+    let result = fx.plan();
+    assert_eq!(ids(&result), ["AGENTS.md:3"], "{result}");
+    assert_hunk(&result, "AGENTS.md:3", Some("# zq-k"), "", 1);
+}
+
+#[test]
+fn hunk_a_hunk_names_the_moved_paths_its_text_names() {
+    let fx = Fx::new();
+    let dir = rules_dir();
+    let kanban = rules("kanban.md");
+    fx.write("CLAUDE.md", "zq-claude\n");
+    fx.write(&kanban, "zq-kanban\n");
+    fx.write(
+        "AGENTS.md",
+        format!(
+            "## zq-plain\nzq read AGENTS.md first.\n\
+             ## zq-forms\nzq `./CLAUDE.md` and @./AGENTS.md를 zq\n\
+             ## zq-folder\nzq see {dir}/ for more\n\
+             ## zq-file\nzq ({kanban})\n\
+             ## zq-miss\nzq .claude/CLAUDE.md xAGENTS.md AGENTS.md.bak sub/AGENTS.md\n\
+             zq AGENTS.md-old CLAUDE.local.md {dir}-old\n"
+        ),
+    );
+    let result = fx.plan();
+    for (id, want) in [
+        ("AGENTS.md:1", vec!["AGENTS.md".to_string()]),
+        (
+            "AGENTS.md:3",
+            vec!["CLAUDE.md".to_string(), "AGENTS.md".to_string()],
+        ),
+        ("AGENTS.md:5", vec![dir.clone()]),
+        ("AGENTS.md:7", vec![kanban.clone(), dir.clone()]),
+        // Other files, and a source that does not exist.
+        ("AGENTS.md:9", vec![]),
+    ] {
+        assert_eq!(
+            hunk(&result, id)["moved_paths"],
+            json!(want),
+            "{id}: {result}"
+        );
+    }
+}
+
+#[test]
+fn hunk_picks_refuse_an_unknown_id_a_duplicate_and_a_bad_destination() {
+    let fx = Fx::new();
+    fx.profile(json!(null));
+    fx.write("AGENTS.md", "## zq-a\nzq-a line\n");
+    let cases: [(&[&str], &str, &str); 7] = [
+        (&["AGENTS.md:2=shared"], "AGENTS.md:2", "no hunk"),
+        (&["zq.md:1=personal"], "zq.md:1", "no hunk"),
+        (
+            &["AGENTS.md:1=shared", "AGENTS.md:1=personal"],
+            "AGENTS.md:1",
+            "twice",
+        ),
+        (
+            &["AGENTS.md:1=shared", "AGENTS.md:1=shared"],
+            "AGENTS.md:1",
+            "twice",
+        ),
+        (&["AGENTS.md:1=team"], "AGENTS.md:1=team", "destination"),
+        (&["AGENTS.md:1="], "AGENTS.md:1=", "destination"),
+        (&["AGENTS.md:1"], "AGENTS.md:1", "destination"),
+    ];
+    for (keep, named, why) in cases {
+        let out = fx.run_plan(keep);
+        assert_ne!(out.code, Some(0), "{keep:?}: {}{}", out.stdout, out.stderr);
+        assert!(
+            out.stdout.contains(named) && out.stdout.contains(why),
+            "{keep:?}: {}{}",
+            out.stdout,
+            out.stderr
+        );
+    }
+}
+
+#[test]
+fn hunk_composition_keeps_the_picked_hunks_in_source_order() {
+    let fx = Fx::new();
+    fx.profile(json!(null));
+    let kanban = rules("kanban.md");
+    let kept = [
+        "## zq-a",
+        "zq-a rule",
+        "zq `@AGENTS.md` quoted",
+        "zq ``x @AGENTS.md y`` span",
+        "@docs/zq-other.md",
+        "```sh",
+        "@AGENTS.md",
+        "# zq-not-a-heading",
+        "```",
+    ];
+    let mut agents: Vec<&str> = vec![
+        "## zq-a",                       // 1
+        "zq-a rule",                     // 2
+        "@AGENTS.md",                    // 3
+        "zq see @./CLAUDE.local.md now", // 4
+    ];
+    agents.extend(&kept[2..]); // 5..=11
+    agents.extend([
+        "<!-- moai:learned-start id=\"zq\" -->", // 12: never a project line
+        "zq mid <!-- moai:harness-start --> text", // 13
+        "",                                      // 14
+        "## zq-b",                               // 15
+        "zq-b rule",                             // 16
+        "## zq-unpicked",                        // 17
+        "zq-unpicked rule",                      // 18
+    ]);
+    fx.write("AGENTS.md", agents.join("\n"));
+    fx.write(
+        "CLAUDE.local.md",
+        "## zq-local\nzq-mine\n`x` @AGENTS.md\nzq <!-- moai:learned-end --> tail\n",
+    );
+    fx.write(
+        &kanban,
+        format!(
+            "## zq-rules\n@sub/deep.md\n@./gitflow.md\n@{kanban}\n@sub/zq-none.md\n\
+             zq-rules end\n"
+        ),
+    );
+    fx.write(&rules("gitflow.md"), "zq-gitflow\n");
+    fx.write(&rules("sub/deep.md"), "zq-deep\n");
+
+    // With no pick, `CLAUDE.md` is the managed block alone and there is no personal file.
+    let result = fx.plan();
+    let block_text = composed_text(&result, "CLAUDE.md");
+    let (begin, end) = block(AGENTS_SECTION);
+    assert!(
+        block_text.starts_with(&format!("{begin}\n"))
+            && block_text.ends_with(&format!("{end}\n"))
+            && block_text.contains("zq-demo"),
+        "{block_text}"
+    );
+    assert_eq!(list(&result, "results").len(), 1, "{result}");
+    assert_eq!(result["picks"], json!([]));
+
+    // Shared picks alone make no personal file; the order of the picks does not matter.
+    let kanban_pick = format!("{kanban}:1=shared");
+    let shared = [
+        kanban_pick.as_str(),
+        "AGENTS.md:15=shared",
+        "AGENTS.md:1=shared",
+    ];
+    let result = fx.plan_with(&shared);
+    let want = format!(
+        "{block_text}\n{}\n\n## zq-b\nzq-b rule\n\n## zq-rules\n@sub/zq-none.md\nzq-rules end\n",
+        kept.join("\n")
+    );
+    assert_eq!(composed_text(&result, "CLAUDE.md"), want, "{result}");
+    assert_eq!(list(&result, "results").len(), 1, "{result}");
+    assert_eq!(
+        composed(&result, "CLAUDE.md").unwrap()["hunks"],
+        json!(["AGENTS.md:1", "AGENTS.md:15", format!("{kanban}:1")])
+    );
+    let import = "imports_a_moved_file".to_string();
+    let mut out: Vec<(String, String)> = vec![
+        ("AGENTS.md:3".into(), import.clone()),
+        ("AGENTS.md:4".into(), import.clone()),
+        ("AGENTS.md:13".into(), "go_curator_marker".into()),
+    ];
+    out.extend((2..=4).map(|n| (format!("{kanban}:{n}"), import.clone())));
+    assert_eq!(left_out(&result, "CLAUDE.md"), out, "{result}");
+
+    // A personal pick makes the personal file: moai's first text, then the hunk.
+    let result = fx.plan_with(&["CLAUDE.local.md:1=personal"]);
+    assert_eq!(composed_text(&result, "CLAUDE.md"), block_text);
+    let local = composed_text(&result, "CLAUDE.local.md");
+    let first = local
+        .strip_suffix("\n## zq-local\nzq-mine\n")
+        .unwrap_or_else(|| panic!("the hunk does not close the file: {local}"));
+    assert!(is_generated_local(first.as_bytes()), "{first}");
+    assert_eq!(
+        left_out(&result, "CLAUDE.local.md"),
+        vec![
+            ("CLAUDE.local.md:3".to_string(), import),
+            (
+                "CLAUDE.local.md:4".to_string(),
+                "go_curator_marker".to_string()
+            ),
+        ]
+    );
+    assert_eq!(
+        result["picks"],
+        json!([{"id": "CLAUDE.local.md:1", "destination": "personal"}])
+    );
+}
+
+#[test]
+fn hunk_a_byte_order_mark_is_no_text_of_a_line() {
+    let fx = Fx::new();
+    // A file of the mark alone, as some editors save an empty file.
+    fx.write(&rules("bom.md"), "\u{FEFF}");
+    fx.write("AGENTS.md", "\u{FEFF}# zq-marked\nzq line\n");
+    let result = fx.plan();
+    assert_eq!(ids(&result), ["AGENTS.md:1"], "{result}");
+    assert_hunk(
+        &result,
+        "AGENTS.md:1",
+        Some("# zq-marked"),
+        "# zq-marked\nzq line",
+        0,
+    );
+}
+
+#[test]
+fn hunk_a_url_user_name_is_not_a_credential() {
+    let fx = Fx::new();
+    fx.profile(json!(null));
+    let lines = "## zq-url\nzq ssh://git@example.invalid/org/repo.git\n\
+                 zq https://deploy@example.invalid/x";
+    fx.write("AGENTS.md", lines);
+    let result = fx.plan_with(&["AGENTS.md:1=shared"]);
+    assert_hunk(&result, "AGENTS.md:1", Some("## zq-url"), lines, 0);
+    assert_apply(&result);
+}
+
+#[test]
+fn hunk_an_import_that_loses_its_fence_is_left_out() {
+    let mut fx = Fx::new();
+    fx.profile(json!(null));
+    let base = "# zq\n```\n```\n";
+    fx.record("AGENTS.md", base);
+    fx.manifest();
+    fx.git_init();
+    fx.write("AGENTS.md", base);
+    fx.commit(&["AGENTS.md"]);
+    // Both added lines are code here; the fence lines are the original's, so the new file would
+    // hold them outside a fence.
+    fx.write("AGENTS.md", "# zq\n```\n@AGENTS.md\nzq-example\n```\n");
+    let block_text = composed_text(&fx.plan(), "CLAUDE.md");
+    let result = fx.plan_with(&["AGENTS.md:3=shared"]);
+    assert_eq!(
+        composed_text(&result, "CLAUDE.md"),
+        format!("{block_text}\nzq-example\n"),
+        "{result}"
+    );
+}
+
+#[test]
+fn hunk_the_composed_language_follows_the_profile() {
+    for (language, korean) in [
+        (json!(null), false),
+        (json!({"instruction_files": "ko"}), true),
+        (json!({"user_chat": "ko"}), true),
+        (json!({"instruction_files": "en", "user_chat": "ko"}), false),
+    ] {
+        let fx = Fx::new();
+        fx.profile(language.clone());
+        fx.write("AGENTS.md", "## zq-a\nzq-a line\n");
+        let result = fx.plan_with(&["AGENTS.md:1=personal"]);
+        let shared = composed_text(&result, "CLAUDE.md");
+        let personal = composed_text(&result, "CLAUDE.local.md");
+        assert_eq!(
+            (
+                shared.contains("## MoAI 프로젝트 사실"),
+                shared.contains("## MoAI project facts"),
+                personal.starts_with("# 개인 작업 보충\n"),
+                personal.starts_with("# Personal supplement\n"),
+            ),
+            (korean, !korean, korean, !korean),
+            "{language}: {shared}{personal}"
+        );
+    }
+}
+
+#[test]
+fn hunk_a_result_over_the_line_limit_is_warned() {
+    let fx = Fx::new();
+    fx.profile(json!(null));
+    let section = |lines: usize| format!("## zq-big\n{}", "zq-line\n".repeat(lines - 1));
+    for (path, keep) in [
+        ("CLAUDE.md", "AGENTS.md:1=shared"),
+        ("CLAUDE.local.md", "AGENTS.md:1=personal"),
+    ] {
+        fx.write("AGENTS.md", section(10));
+        let small = fx.plan_with(&[keep]);
+        let around = composed(&small, path).unwrap()["line_count"]
+            .as_u64()
+            .unwrap() as usize
+            - 10;
+        for (total, warned) in [(RESULT_LINE_LIMIT, false), (RESULT_LINE_LIMIT + 1, true)] {
+            fx.write("AGENTS.md", section(total - around));
+            let result = fx.plan_with(&[keep]);
+            assert_eq!(
+                composed(&result, path).unwrap()["line_count"],
+                json!(total),
+                "{result}"
+            );
+            let warnings = words(list(&result, "warnings"));
+            if warned {
+                assert!(
+                    warnings.len() == 1
+                        && warnings[0].starts_with(&format!("{path} "))
+                        && warnings[0].contains(&total.to_string()),
+                    "{warnings:?}"
+                );
+            } else {
+                assert!(warnings.is_empty(), "{path}: {warnings:?}");
+            }
+            // A warning never withholds the command.
+            assert_apply(&result);
+        }
+    }
+}
+
+#[test]
+fn hunk_a_claude_md_in_the_claude_folder_is_warned_and_never_read() {
+    let rel = ".claude/CLAUDE.md";
+    for pipe in [false, true] {
+        let fx = Fx::new();
+        fx.profile(json!(null));
+        assert_eq!(fx.plan()["warnings"], json!([]));
+        if pipe {
+            fs::create_dir_all(fx.root.join(".claude")).unwrap();
+            let made = Command::new("/usr/bin/mkfifo")
+                .arg(fx.root.join(rel))
+                .status()
+                .unwrap();
+            assert!(made.success(), "mkfifo");
+        } else {
+            fx.write(rel, "## zq-dot\nzq-dot-claude\n");
+        }
+        let result = fx.plan();
+        let warnings = words(list(&result, "warnings"));
+        assert!(
+            warnings.len() == 1 && warnings[0].contains(rel),
+            "{warnings:?}"
+        );
+        assert!(!result.to_string().contains("zq-dot"), "{result}");
+        assert_eq!(paths(&result), Vec::<String>::new(), "{result}");
+        assert_apply(&result);
+    }
+}
+
+#[test]
+fn hunk_the_digest_binds_the_sources_the_profile_and_the_picks() {
+    let fx = Fx::new();
+    fx.profile(json!(null));
+    let agents = "## zq-a\nzq-a line\n## zq-b\nzq-b line\n";
+    fx.write("AGENTS.md", agents);
+    let (zero, argv) = assert_apply(&fx.plan());
+    let root = fx.root.to_str().unwrap();
+    let command = |keep: &[&str], digest: &str| {
+        let mut want = vec!["moai", "claude-md-apply", root];
+        for word in keep {
+            want.extend(["--keep", word]);
+        }
+        want.extend([
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            PERMISSION_PLACEHOLDER,
+        ]);
+        want.into_iter().map(String::from).collect::<Vec<_>>()
+    };
+    assert_eq!(argv, command(&[], &zero));
+    assert_eq!(assert_apply(&fx.plan()).0, zero, "the digest is stable");
+
+    // The picks: which, and where to; not their order.
+    let (a, b) = ("AGENTS.md:1=shared", "AGENTS.md:3=personal");
+    let (both, argv) = assert_apply(&fx.plan_with(&[b, a]));
+    assert_eq!(argv, command(&[a, b], &both));
+    assert_eq!(assert_apply(&fx.plan_with(&[a, b])).0, both);
+    let mut seen = vec![zero.clone(), both];
+    for keep in [a, "AGENTS.md:1=personal", "AGENTS.md:3=shared"] {
+        seen.push(assert_apply(&fx.plan_with(&[keep])).0);
+    }
+
+    // A source byte that changes no resulting text.
+    fx.write("AGENTS.md", agents.replace("zq-b line", "zq-B line"));
+    seen.push(assert_apply(&fx.plan()).0);
+    fx.write("AGENTS.md", agents);
+    assert_eq!(assert_apply(&fx.plan()).0, zero);
+    // A new source.
+    fx.write(&rules("new.md"), "");
+    seen.push(assert_apply(&fx.plan()).0);
+    fs::remove_file(fx.root.join(rules("new.md"))).unwrap();
+    // A profile byte that changes no resulting text.
+    let profile = fs::read_to_string(fx.root.join(profile_rel())).unwrap();
+    fx.write(&profile_rel(), format!("{profile}\n"));
+    seen.push(assert_apply(&fx.plan()).0);
+
+    let distinct: std::collections::BTreeSet<&String> = seen.iter().collect();
+    assert_eq!(distinct.len(), seen.len(), "{seen:?}");
+}
+
+#[test]
+fn hunk_no_command_without_a_usable_profile_or_with_a_refused_source() {
+    let fx = Fx::new();
+    fx.write("AGENTS.md", "## zq-a\nzq-a line\n");
+    let keep = ["AGENTS.md:1=shared"];
+
+    // No profile: the hunks are listed, nothing is composed.
+    let result = fx.plan_with(&keep);
+    assert_no_apply(&result, &["project profile missing", "/moai project"]);
+    assert_eq!(ids(&result), ["AGENTS.md:1"]);
+    assert_eq!(result["results"], json!([]));
+
+    fx.write(&profile_rel(), "zq: not json\n");
+    assert_no_apply(&fx.plan_with(&keep), &["/moai project"]);
+
+    // The placeholder a first launch writes.
+    fx.write(
+        &profile_rel(),
+        json!({"schema_version": 2, "project_id": "zq-demo", "purpose": "zq",
+               "tools": ["unspecified"], "development_methods": ["unspecified"],
+               "hosts": ["claude"]})
+        .to_string(),
+    );
+    let result = fx.plan_with(&keep);
+    assert_no_apply(&result, &["placeholder", "/moai project"]);
+    assert_eq!(result["results"], json!([]));
+
+    // A value that would open or close a managed block.
+    fx.profile(json!(null));
+    let profile = fs::read_to_string(fx.root.join(profile_rel())).unwrap();
+    fx.write(
+        &profile_rel(),
+        profile.replace("zq purpose", "zq <!-- purpose"),
+    );
+    let result = fx.plan_with(&keep);
+    assert_no_apply(&result, &["managed-marker"]);
+    assert_eq!(result["results"], json!([]));
+
+    // A usable profile prints the command; one refused source withholds it.
+    fx.profile(json!(null));
+    assert_apply(&fx.plan_with(&keep));
+    let outside = fx.base.join("outside.md");
+    fs::write(&outside, "zq-outside\n").unwrap();
+    fx.link("CLAUDE.local.md", &outside);
+    let result = fx.plan_with(&keep);
+    assert_no_apply(&result, &["CLAUDE.local.md", "is a link"]);
+    assert!(!result.to_string().contains("zq-outside"), "{result}");
 }
 
 #[test]

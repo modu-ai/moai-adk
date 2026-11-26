@@ -298,6 +298,9 @@ fn find_block(text: &str, begin: &str, end: &str) -> Result<Option<(usize, usize
     Ok(Some((start, block_end, body)))
 }
 
+/// The refusal of [`injects_markers`].
+const MARKER_SYNTAX_REFUSAL: &str = "profile value contains managed-marker syntax; refused";
+
 /// Values rendered into a managed block must not be able to open or close a block.
 fn injects_markers(p: &Profile, r: &AgentsRequest) -> bool {
     let tokens = ["<!--", "-->", "moai:managed:"];
@@ -515,6 +518,26 @@ pub fn is_generated_local(bytes: &[u8]) -> bool {
         .iter()
         .any(|language| current(language).as_bytes() == bytes)
         || EARLIER_LOCAL_TEXTS.iter().any(|t| t.as_bytes() == bytes)
+}
+
+/// The managed block of `CLAUDE.md` and the first-creation text of the personal file, for a
+/// caller that writes both anew from the profile alone: in the profile's writing language
+/// ([`instruction_language`]), `en` where the profile names none, because a generation records no
+/// request language. A profile value that could open or close a block is refused.
+pub(crate) fn fresh_texts(p: &Profile, root: &Path) -> Result<(String, String)> {
+    let mut r = AgentsRequest {
+        protocol_version: 1,
+        language: "en".into(),
+        workflow_reference: String::new(),
+        local_file: "ignored".into(),
+        picks: Vec::new(),
+    };
+    if injects_markers(p, &r) {
+        return Err(MARKER_SYNTAX_REFUSAL.into());
+    }
+    let language = instruction_language(p, &r).to_string();
+    r.language = language;
+    Ok((render_agents(p, &r, root), render_local(&r)))
 }
 
 /// What the project's state folder keeps in git (#3009 S3b, design §2): the profile, the
@@ -1720,7 +1743,7 @@ pub(crate) fn agents_plan_for(
         return Err("workflow reference directory missing; generate it first".into());
     }
     if injects_markers(&profile, &request) {
-        return Err("profile value contains managed-marker syntax; refused".into());
+        return Err(MARKER_SYNTAX_REFUSAL.into());
     }
     // The files that used to be listed here (`CLAUDE.md`, `CLAUDE.local.md`) are this tool's own
     // targets now, and `AGENTS.override.md` belonged to a host this tool no longer writes for.

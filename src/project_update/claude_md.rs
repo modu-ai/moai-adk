@@ -1,16 +1,19 @@
 //! The instruction files a Go-generation project carries (`claude-md-plan`): whether the root
-//! `CLAUDE.md` is a Go-generation file, the sources in their fixed order with their facts, and
-//! the lines of each that are the project's own. Everything here reads only: no file is
-//! written, a link is never followed and only read-only git commands run. Line text stays in
-//! [`Source::text`] and is never part of the answer.
+//! `CLAUDE.md` is a Go-generation file, the sources in their fixed order with their facts, the
+//! lines of each that are the project's own, those lines as hunks of one heading section each,
+//! the texts the `--keep` picks compose, and the digest and command of that plan. Everything here
+//! reads only: no file is written, a link is never followed and only read-only git commands run.
+//! Hunk text and the composed texts are part of the answer; a line that holds a
+//! credential-shaped value is counted and printed nowhere.
 
+use super::PERMISSION_PLACEHOLDER;
 use crate::go_residue::{find_manifest, Recorded};
 use crate::go_state::linked_component;
-use crate::{agents, identity, state_root};
+use crate::{agents, agents_local_merge, claude, identity, state_root};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fs,
     io::{self, BufRead, BufReader, ErrorKind, Read, Write},
     path::Path,
@@ -21,12 +24,16 @@ use std::{
 pub const SOURCE_LIMIT: u64 = 1024 * 1024;
 /// The history search compares at most this many versions of one path, newest first.
 pub const HISTORY_LIMIT: usize = 200;
+/// A resulting file with more lines than this is warned about.
+pub const RESULT_LINE_LIMIT: usize = 200;
 /// The root instruction file Claude Code loads.
 const CLAUDE_MD: &str = "CLAUDE.md";
+/// The personal file Claude Code loads.
+const CLAUDE_LOCAL_MD: &str = "CLAUDE.local.md";
 /// The root sources in the order they are listed; the local rules files follow them.
-const ROOT_SOURCES: [&str; 4] = [CLAUDE_MD, "AGENTS.md", "AGENTS.local.md", "CLAUDE.local.md"];
+const ROOT_SOURCES: [&str; 4] = [CLAUDE_MD, "AGENTS.md", "AGENTS.local.md", CLAUDE_LOCAL_MD];
 /// The personal files: one that is exactly a first text of moai holds nothing the user wrote.
-const PERSONAL: [&str; 2] = ["AGENTS.local.md", "CLAUDE.local.md"];
+const PERSONAL: [&str; 2] = ["AGENTS.local.md", CLAUDE_LOCAL_MD];
 /// The local rules folder, under the state folder.
 const LOCAL_RULES: &str = "docs/local-rules";
 /// Every managed block of this generation starts with this text.
@@ -43,6 +50,12 @@ const CURATOR_ENDS: [&str; 3] = [
     "<!-- moai:harness-end -->",
     "<!-- moai:learned-local-end -->",
 ];
+
+/// The other instruction file Claude Code may find; this step neither reads nor moves it.
+const CONFIG_CLAUDE_MD: &str = ".claude/CLAUDE.md";
+/// Why a picked line is in no resulting file.
+const IMPORTS_MOVED: &str = "imports_a_moved_file";
+const CURATOR_MARKER: &str = "go_curator_marker";
 
 const IS_LINK: &str = "is a link";
 const BELOW_LINK: &str = "lies below a link folder";
@@ -148,7 +161,7 @@ pub struct Source {
 }
 
 impl Source {
-    /// The row of the answer: facts and line numbers, never line text.
+    /// The source's row of the answer: facts and line numbers; its text appears in the hunks.
     fn to_json(&self) -> Value {
         json!({
             "path": self.path,
@@ -253,9 +266,119 @@ pub fn preview(project: &Path) -> Result<Preview, String> {
     })
 }
 
-/// The answer of `claude-md-plan`.
-pub fn plan(project: &Path) -> Result<Value, String> {
+/// The answer of `claude-md-plan` for the `--keep` values `keep`. An error is a project that is
+/// no folder or a `--keep` value that names no pick; anything else that stops the apply is listed
+/// under `apply_blocked`, and then no digest and no command are printed.
+pub fn plan(project: &Path, keep: &[String]) -> Result<Value, String> {
     let preview = preview(project)?;
+    let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
+    let shown = root.to_str().ok_or("non UTF-8 project path")?;
+    let readings: Vec<Reading> = preview
+        .sources
+        .iter()
+        .map(|s| read_lines(&s.text))
+        .collect();
+    let moved = moved_paths(&preview.sources);
+    let hunks = hunks(&preview.sources, &readings);
+    let picks = parse_picks(keep, &hunks)?;
+    // The picks as the command repeats them and the digest binds them: in one order.
+    let mut words: Vec<(String, &str, Destination)> = picks
+        .iter()
+        .map(|(&i, &to)| {
+            let id = hunks[i].id.as_str();
+            (format!("{id}={}", to.word()), id, to)
+        })
+        .collect();
+    words.sort();
+
+    let mut blocked: Vec<String> = preview
+        .refused
+        .iter()
+        .map(|r| format!("a source is refused: {} {}", r.path, r.reason))
+        .collect();
+    for (&i, &to) in &picks {
+        let hunk = &hunks[i];
+        let hidden = &readings[hunk.source].hidden;
+        if to == Destination::Shared && hunk.lines.iter().any(|n| hidden[n - 1]) {
+            blocked.push(format!(
+                "{} holds a credential-shaped line and cannot be kept as shared, because \
+                 {CLAUDE_MD} is shared through git; keep it as personal or leave it in the backup",
+                hunk.id
+            ));
+        }
+    }
+    let fresh = fresh_texts(&root);
+    let mut results = Vec::new();
+    let mut profile_digest = None;
+    match &fresh {
+        Ok(fresh) => {
+            let composer = Composer {
+                sources: &preview.sources,
+                readings: &readings,
+                moved: &moved,
+                hunks: &hunks,
+                picks: &picks,
+            };
+            results.push(composer.file(CLAUDE_MD, &fresh.block, Destination::Shared));
+            if picks.values().any(|to| *to == Destination::Personal) {
+                results.push(composer.file(
+                    CLAUDE_LOCAL_MD,
+                    &fresh.personal,
+                    Destination::Personal,
+                ));
+            }
+            profile_digest = Some(digest(&fresh.profile));
+        }
+        Err(reason) => blocked.push(reason.clone()),
+    }
+
+    let mut warnings: Vec<String> = results
+        .iter()
+        .filter(|file| file.lines.len() > RESULT_LINE_LIMIT)
+        .map(|file| {
+            format!(
+                "{} would have {} lines, more than {RESULT_LINE_LIMIT}",
+                file.path,
+                file.lines.len()
+            )
+        })
+        .collect();
+    // Only the entry is looked at: its text is no part of this step.
+    if fs::symlink_metadata(root.join(CONFIG_CLAUDE_MD)).is_ok() {
+        warnings.push(format!(
+            "{CONFIG_CLAUDE_MD} exists; this step neither reads nor moves it"
+        ));
+    }
+
+    let plan_digest = profile_digest
+        .filter(|_| blocked.is_empty())
+        .map(|profile| {
+            let bound = json!({
+                "operation": "claude_md.apply",
+                "sources": preview.sources.iter().map(|s| [&s.path, &s.sha256]).collect::<Vec<_>>(),
+                "profile": profile,
+                "picks": words.iter().map(|(word, ..)| word).collect::<Vec<_>>(),
+                "results": results
+                    .iter()
+                    .map(|file| [file.path.to_string(), digest(file.text().as_bytes())])
+                    .collect::<Vec<_>>(),
+            });
+            digest(bound.to_string().as_bytes())
+        });
+    let apply = plan_digest.as_ref().map(|plan_digest| {
+        let mut argv = vec!["moai", "claude-md-apply", shown];
+        for (word, ..) in &words {
+            argv.extend(["--keep", word.as_str()]);
+        }
+        argv.extend([
+            "--plan-digest",
+            plan_digest.as_str(),
+            "--permission-reference",
+            PERMISSION_PLACEHOLDER,
+        ]);
+        json!({"argv": argv, "stdin": null})
+    });
+
     Ok(json!({
         "read_only": true,
         "go_claude_md": preview.go_proof.map(GoProof::word),
@@ -266,7 +389,522 @@ pub fn plan(project: &Path) -> Result<Value, String> {
             .iter()
             .map(|r| json!({"path": r.path, "reason": r.reason}))
             .collect::<Vec<_>>(),
+        "hunks": hunks
+            .iter()
+            .map(|h| h.to_json(&readings[h.source], &moved))
+            .collect::<Vec<_>>(),
+        "picks": words
+            .iter()
+            .map(|(_, id, to)| json!({"id": id, "destination": to.word()}))
+            .collect::<Vec<_>>(),
+        "results": results.iter().map(Resulting::to_json).collect::<Vec<_>>(),
+        "warnings": warnings,
+        "apply_blocked": blocked,
+        "plan_digest": plan_digest,
+        "apply": apply,
     }))
+}
+
+/// The managed block and the personal file's first text, with the profile bytes they came from.
+struct Fresh {
+    block: String,
+    personal: String,
+    profile: Vec<u8>,
+}
+
+/// [`Fresh`] for the project, or why its profile composes nothing.
+fn fresh_texts(root: &Path) -> Result<Fresh, String> {
+    let (profile, bytes) = crate::read_profile(root)
+        .map_err(|e| format!("the project profile cannot be used ({e}); run /moai project"))?;
+    if profile.is_placeholder() {
+        return Err(
+            "the project profile is still the placeholder a first launch writes; run \
+             /moai project"
+                .into(),
+        );
+    }
+    let (block, personal) = agents::fresh_texts(&profile, root)?;
+    Ok(Fresh {
+        block,
+        personal,
+        profile: bytes,
+    })
+}
+
+/// The fenced code block a reading of lines is inside: its mark and the length of its opening.
+#[derive(Clone, Copy, Default)]
+struct Fence(Option<(char, usize)>);
+
+impl Fence {
+    /// Reads the next line; `true` when it is code: a fence line, or a line inside a block.
+    fn read(&mut self, line: &str) -> bool {
+        let line = line.trim_start();
+        let mark = line.chars().next().filter(|c| matches!(c, '`' | '~'));
+        // Both marks are one byte, so the run's length is also where the rest begins.
+        let run = mark.map_or(0, |mark| line.chars().take_while(|c| *c == mark).count());
+        match (self.0, mark) {
+            (Some((open, length)), _) => {
+                if mark == Some(open) && run >= length && line[run..].trim().is_empty() {
+                    self.0 = None;
+                }
+                true
+            }
+            // A backtick in what follows makes the run an inline code span, not a fence.
+            (None, Some(mark)) if run >= 3 && !(mark == '`' && line[run..].contains('`')) => {
+                self.0 = Some((mark, run));
+                true
+            }
+            (None, _) => false,
+        }
+    }
+}
+
+/// A markdown heading line: at most three spaces, one to six `#`, then a blank or the end.
+fn is_heading(line: &str) -> bool {
+    let text = line.trim_start_matches(' ');
+    let level = text.bytes().take_while(|b| *b == b'#').count();
+    line.len() - text.len() <= 3
+        && (1..=6).contains(&level)
+        && matches!(text.as_bytes().get(level), None | Some(b' ' | b'\t'))
+}
+
+/// A URL whose user part before the host is shaped like a token and is no placeholder:
+/// `scheme://<token>@host` holds the token even without the `:` a password follows.
+fn url_user_part(line: &str) -> bool {
+    line.match_indices("://").any(|(i, _)| {
+        // The host part ends at the next `/`, which the next `://` also holds, so the parts of
+        // one line never overlap and the scan stays linear.
+        let authority = line[i + 3..]
+            .split(|c: char| matches!(c, '/' | '?' | '#') || c.is_whitespace())
+            .next()
+            .unwrap_or_default();
+        authority.rsplit_once('@').is_some_and(|(user, _)| {
+            let secret = user.split_once(':').map_or(user, |(_, password)| password);
+            // The shape the credential scan asks of an assigned value, so that the login name
+            // of `ssh://git@host` is no secret.
+            secret.len() >= 8
+                && !secret.starts_with(['<', '$', '{', '*', '[', '('])
+                && secret
+                    .bytes()
+                    .any(|b| b.is_ascii_digit() || b.is_ascii_uppercase())
+        })
+    })
+}
+
+/// For each line, whether its text must not be printed: a credential-shaped line, also when
+/// invisible characters split the value, and every line of a private key from its begin line
+/// through its end line, or through the last line.
+fn hidden_lines(lines: &[&str]) -> Vec<bool> {
+    let mut in_key = false;
+    lines
+        .iter()
+        .map(|line| {
+            let visible: String = line
+                .chars()
+                .filter(|c| !claude::invisible_char(*c))
+                .collect();
+            let shaped = [line, visible.as_str()]
+                .into_iter()
+                .any(|text| agents_local_merge::secret_kind(text).is_some() || url_user_part(text));
+            let hidden = in_key || shaped;
+            let lower = visible.to_ascii_lowercase();
+            if lower.contains("private key") {
+                match lower.rfind("-----begin") {
+                    // A key may also end on the line it begins on.
+                    Some(at) => in_key = !lower[at..].contains("-----end"),
+                    None if lower.contains("-----end") => in_key = false,
+                    None => {}
+                }
+            }
+            hidden
+        })
+        .collect()
+}
+
+/// One source read line by line, over its whole text: what a line is can depend on lines that are
+/// not the project's own.
+struct Reading<'a> {
+    /// The lines without their line ends, the first without a byte order mark.
+    lines: Vec<&'a str>,
+    /// A fence line or a line inside a fenced code block.
+    code: Vec<bool>,
+    hidden: Vec<bool>,
+    /// The index of the heading line that opens the line's section; `None` before the first.
+    section: Vec<Option<usize>>,
+}
+
+fn read_lines(text: &str) -> Reading<'_> {
+    // Split first, as the line numbers of `compare` are: a file of the mark alone has one line.
+    let mut lines: Vec<&str> = text.lines().collect();
+    if let Some(first) = lines.first_mut() {
+        *first = first.strip_prefix('\u{FEFF}').unwrap_or(first);
+    }
+    let mut fence = Fence::default();
+    let mut open = None;
+    let (mut code, mut section) = (Vec::new(), Vec::new());
+    for (i, line) in lines.iter().enumerate() {
+        let is_code = fence.read(line);
+        if !is_code && is_heading(line) {
+            open = Some(i);
+        }
+        code.push(is_code);
+        section.push(open);
+    }
+    Reading {
+        hidden: hidden_lines(&lines),
+        lines,
+        code,
+        section,
+    }
+}
+
+/// The paths the step moves, as text may name them: every readable source in its order, then the
+/// local rules folder.
+fn moved_paths(sources: &[Source]) -> Vec<String> {
+    sources
+        .iter()
+        .map(|s| s.path.clone())
+        .chain([format!("{}/{LOCAL_RULES}", state_root::MOAI_DIR)])
+        .collect()
+}
+
+/// Whether `line` names `path` itself, written from the project root: not as the end of a longer
+/// path or name, nor the start of one. A folder is also named by a path below it.
+fn names_path(line: &str, path: &str, folder: bool) -> bool {
+    // Only ASCII continues a name, so a word attached in another script ends it.
+    let part = |c: char| c.is_ascii_alphanumeric() || matches!(c, '_' | '-');
+    line.match_indices(path).any(|(i, _)| {
+        let before = &line[..i];
+        let before = before.strip_suffix("./").unwrap_or(before);
+        let starts = !before
+            .chars()
+            .next_back()
+            .is_some_and(|c| part(c) || matches!(c, '.' | '/'));
+        let mut after = line[i + path.len()..].chars();
+        let ends = match after.next() {
+            Some('/') => folder,
+            Some('.') => !after.next().is_some_and(part),
+            next => !next.is_some_and(part),
+        };
+        starts && ends
+    })
+}
+
+/// The project lines of one heading section of one source.
+struct Hunk {
+    /// `<path>:<first project line>`.
+    id: String,
+    path: String,
+    /// The index of its source.
+    source: usize,
+    /// The index of the section's heading line; `None` before the first heading.
+    heading: Option<usize>,
+    /// The 1-based numbers of the lines, ascending.
+    lines: Vec<usize>,
+    /// The earlier hunk with the same lines.
+    same_as: Option<String>,
+}
+
+impl Hunk {
+    /// The row of the answer. A hunk equal to an earlier one shows neither text nor heading.
+    fn to_json(&self, reading: &Reading, moved: &[String]) -> Value {
+        let first_text = self.same_as.is_none();
+        let heading = self
+            .heading
+            .filter(|&i| first_text && !reading.hidden[i])
+            .map(|i| reading.lines[i]);
+        let text = first_text.then(|| {
+            self.lines
+                .iter()
+                .filter(|&&n| !reading.hidden[n - 1])
+                .map(|&n| reading.lines[n - 1])
+                .collect::<Vec<_>>()
+                .join("\n")
+        });
+        // The last of the moved paths is the folder.
+        let named: Vec<&String> = moved
+            .iter()
+            .enumerate()
+            .filter(|(i, path)| {
+                let folder = i + 1 == moved.len();
+                self.lines
+                    .iter()
+                    .any(|&n| names_path(reading.lines[n - 1], path, folder))
+            })
+            .map(|(_, path)| path)
+            .collect();
+        json!({
+            "id": self.id,
+            "path": self.path,
+            "heading": heading,
+            "line_count": self.lines.len(),
+            "text": text,
+            "same_as": self.same_as,
+            "hidden_lines": self.lines.iter().filter(|&&n| reading.hidden[n - 1]).count(),
+            "moved_paths": named,
+        })
+    }
+}
+
+/// One hunk per section that holds a project line that is not blank, in source order.
+fn hunks(sources: &[Source], readings: &[Reading]) -> Vec<Hunk> {
+    let mut found: Vec<Hunk> = Vec::new();
+    let mut first_with: HashMap<Vec<&str>, String> = HashMap::new();
+    for (index, (source, reading)) in sources.iter().zip(readings).enumerate() {
+        let sections = source
+            .project_lines
+            .chunk_by(|a, b| reading.section[a - 1] == reading.section[b - 1]);
+        for lines in sections {
+            let text: Vec<&str> = lines.iter().map(|&n| reading.lines[n - 1]).collect();
+            if text.iter().all(|line| line.trim().is_empty()) {
+                continue;
+            }
+            let id = format!("{}:{}", source.path, lines[0]);
+            let same_as = first_with.get(&text).cloned();
+            if same_as.is_none() {
+                first_with.insert(text, id.clone());
+            }
+            found.push(Hunk {
+                id,
+                path: source.path.clone(),
+                source: index,
+                heading: reading.section[lines[0] - 1],
+                lines: lines.to_vec(),
+                same_as,
+            });
+        }
+    }
+    found
+}
+
+/// Where a picked hunk goes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Destination {
+    /// The new `CLAUDE.md`.
+    Shared,
+    /// The personal file `CLAUDE.local.md`.
+    Personal,
+}
+
+impl Destination {
+    fn word(self) -> &'static str {
+        match self {
+            Destination::Shared => "shared",
+            Destination::Personal => "personal",
+        }
+    }
+}
+
+/// The `--keep <id>=shared|personal` values as hunk index and destination, so in source order. A
+/// refused value is named through [`claude::shown_value`], so no message carries a credential.
+fn parse_picks(keep: &[String], hunks: &[Hunk]) -> Result<BTreeMap<usize, Destination>, String> {
+    let by_id: HashMap<&str, usize> = hunks
+        .iter()
+        .enumerate()
+        .map(|(i, hunk)| (hunk.id.as_str(), i))
+        .collect();
+    let mut picks = BTreeMap::new();
+    for value in keep {
+        let parsed = value.rsplit_once('=').and_then(|(id, word)| {
+            [Destination::Shared, Destination::Personal]
+                .into_iter()
+                .find(|to| to.word() == word)
+                .map(|to| (id, to))
+        });
+        let Some((id, to)) = parsed else {
+            return Err(format!(
+                "--keep {}: the destination must be shared or personal \
+                 (--keep <id>=shared|personal)",
+                claude::shown_value(value)
+            ));
+        };
+        let Some(&hunk) = by_id.get(id) else {
+            return Err(format!(
+                "--keep {}: no hunk has this id",
+                claude::shown_value(id)
+            ));
+        };
+        if picks.insert(hunk, to).is_some() {
+            return Err(format!(
+                "--keep {}: the id is given twice",
+                claude::shown_value(id)
+            ));
+        }
+    }
+    Ok(picks)
+}
+
+/// `line` with every inline code span replaced by one backtick: a run of backticks through the
+/// next run of the same length. A run with no such partner is text.
+fn without_code_spans(line: &str) -> String {
+    // (start, length) of each run of backticks.
+    let mut runs: Vec<(usize, usize)> = Vec::new();
+    for (i, _) in line.match_indices('`') {
+        match runs.last_mut() {
+            Some((start, length)) if *start + *length == i => *length += 1,
+            _ => runs.push((i, 1)),
+        }
+    }
+    let mut later: HashMap<usize, usize> = HashMap::new();
+    let mut partner = vec![None; runs.len()];
+    for (k, &(_, length)) in runs.iter().enumerate().rev() {
+        partner[k] = later.insert(length, k);
+    }
+    let (mut out, mut from, mut k) = (String::new(), 0, 0);
+    while k < runs.len() {
+        if let Some(close) = partner[k] {
+            out.push_str(&line[from..runs[k].0]);
+            out.push('`');
+            from = runs[close].0 + runs[close].1;
+            k = close;
+        }
+        k += 1;
+    }
+    out.push_str(&line[from..]);
+    out
+}
+
+/// The path `target` names from the folder `base`, both relative to the project; `None` for an
+/// absolute or home path and for one that leaves the project.
+fn resolve(base: &str, target: &str) -> Option<String> {
+    if target.starts_with(['/', '~']) {
+        return None;
+    }
+    let mut parts = Vec::new();
+    for part in base.split('/').chain(target.split('/')) {
+        match part {
+            "" | "." => {}
+            ".." => {
+                parts.pop()?;
+            }
+            part => parts.push(part),
+        }
+    }
+    Some(parts.join("/"))
+}
+
+/// Whether a line of the source `source` holds a word `@<path>` outside inline code that names a
+/// moved path, read from the source's folder (what it imports now) or from the project root (what
+/// it would import in a resulting file).
+fn imports_moved(line: &str, source: &str, moved: &[String]) -> bool {
+    let folder = source.rsplit_once('/').map_or("", |(folder, _)| folder);
+    without_code_spans(line)
+        .split_whitespace()
+        .filter_map(|word| word.strip_prefix('@'))
+        .any(|target| {
+            ["", folder]
+                .into_iter()
+                .filter_map(|base| resolve(base, target))
+                .any(|path| moved.contains(&path))
+        })
+}
+
+/// A file the apply would write: its lines, each with whether it must not be printed.
+struct Resulting<'a> {
+    path: &'static str,
+    lines: Vec<(&'a str, bool)>,
+    /// The ids of the hunks picked for it, in source order.
+    hunks: Vec<&'a str>,
+    /// The `<path>:<line>` of each picked line it leaves out, and why.
+    left_out: Vec<(String, &'static str)>,
+}
+
+impl Resulting<'_> {
+    /// The text as it would be written.
+    fn text(&self) -> String {
+        self.lines
+            .iter()
+            .flat_map(|(line, _)| [line, "\n"])
+            .collect()
+    }
+
+    /// The row of the answer: `text` is the file without its hidden lines; the line count and
+    /// the digest are the whole file's.
+    fn to_json(&self) -> Value {
+        json!({
+            "path": self.path,
+            "line_count": self.lines.len(),
+            "sha256": digest(self.text().as_bytes()),
+            "text": self
+                .lines
+                .iter()
+                .filter(|(_, hidden)| !hidden)
+                .flat_map(|(line, _)| [line, "\n"])
+                .collect::<String>(),
+            "hidden_lines": self.lines.iter().filter(|(_, hidden)| *hidden).count(),
+            "hunks": self.hunks,
+            "left_out": self
+                .left_out
+                .iter()
+                .map(|(line, reason)| json!({"line": line, "reason": reason}))
+                .collect::<Vec<_>>(),
+        })
+    }
+}
+
+struct Composer<'a> {
+    sources: &'a [Source],
+    readings: &'a [Reading<'a>],
+    moved: &'a [String],
+    hunks: &'a [Hunk],
+    picks: &'a BTreeMap<usize, Destination>,
+}
+
+impl<'a> Composer<'a> {
+    /// `head` followed by the hunks picked for `to` in source order, one blank line before each.
+    /// A line that imports a moved file (in its source, or where it would now stand) and a line
+    /// that holds a Go curator start or end marker are left out; blank lines at a hunk's ends
+    /// are dropped.
+    fn file(&self, path: &'static str, head: &'a str, to: Destination) -> Resulting<'a> {
+        let head: Vec<&str> = head.lines().collect();
+        let mut fence = Fence::default();
+        for line in &head {
+            fence.read(line);
+        }
+        let hidden = hidden_lines(&head);
+        let mut file = Resulting {
+            path,
+            lines: head.into_iter().zip(hidden).collect(),
+            hunks: Vec::new(),
+            left_out: Vec::new(),
+        };
+        let picked = self.picks.iter().filter(|(_, picked)| **picked == to);
+        for hunk in picked.map(|(&i, _)| &self.hunks[i]) {
+            let reading = &self.readings[hunk.source];
+            let source = &self.sources[hunk.source].path;
+            let mut kept: Vec<(&str, bool)> = Vec::new();
+            for &n in &hunk.lines {
+                let line = reading.lines[n - 1];
+                let mut next = fence;
+                let code_here = next.read(line);
+                let mut markers = CURATOR_STARTS.iter().chain(&CURATOR_ENDS);
+                let reason = if markers.any(|marker| line.contains(marker)) {
+                    Some(CURATOR_MARKER)
+                } else if !(reading.code[n - 1] && code_here)
+                    && imports_moved(line, source, self.moved)
+                {
+                    Some(IMPORTS_MOVED)
+                } else {
+                    None
+                };
+                match reason {
+                    Some(reason) => file.left_out.push((format!("{source}:{n}"), reason)),
+                    None => {
+                        fence = next;
+                        kept.push((line, reading.hidden[n - 1]));
+                    }
+                }
+            }
+            file.hunks.push(&hunk.id);
+            let blank = |(line, _): &(&str, bool)| line.trim().is_empty();
+            if let Some(from) = kept.iter().position(|line| !blank(line)) {
+                let end = kept.iter().rposition(|line| !blank(line)).unwrap_or(from);
+                file.lines.push(("", false));
+                file.lines.extend_from_slice(&kept[from..=end]);
+            }
+        }
+        file
+    }
 }
 
 fn digest(bytes: &[u8]) -> String {
