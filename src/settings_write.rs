@@ -179,9 +179,7 @@ fn status_line(current: &Map<String, Value>, next: &Map<String, Value>, out: &mu
 }
 
 fn output_style(current: &Map<String, Value>, next: &Map<String, Value>, out: &mut Vec<Value>) {
-    if changed(current, next, "outputStyle")
-        .is_some_and(|v| !v.as_str().is_some_and(|s| !s.is_empty()))
-    {
+    if changed(current, next, "outputStyle").is_some_and(|v| v.as_str().is_none_or(str::is_empty)) {
         out.push(entry(rule::OUTPUT_STYLE_SHAPE, "outputStyle"));
     }
 }
