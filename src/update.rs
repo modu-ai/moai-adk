@@ -4087,6 +4087,17 @@ mod version_folder_tests {
         link
     }
 
+    /// A plain file at `<state>/<rel>`, copied from `source`, where a link would sit. The product
+    /// only reads this place (`bin/moai`) and never writes it.
+    // @cc:careful keep `rel` an argument: a literal join after `home_root::path` counts as a
+    // product write in `home_layout`'s source scan.
+    #[cfg(unix)]
+    fn plain_file_at(home: &Path, rel: &str, source: &Path) {
+        let plain = crate::home_root::path(home).join(rel);
+        fs::create_dir_all(plain.parent().unwrap()).unwrap();
+        fs::copy(source, &plain).unwrap();
+    }
+
     #[cfg(unix)]
     #[test]
     fn the_execution_link_version_is_the_folder_the_link_points_to() {
@@ -4120,9 +4131,7 @@ mod version_folder_tests {
         // A plain file where the link should be, even one that sits in a version folder.
         let (_tmp, home) = link_home();
         let exe = version_binary(&home, "4.2648.26");
-        let plain = crate::home_root::path(&home).join("bin").join("moai");
-        fs::create_dir_all(plain.parent().unwrap()).unwrap();
-        fs::copy(&exe, &plain).unwrap();
+        plain_file_at(&home, "bin/moai", &exe);
         assert_eq!(execution_link_version(&home), None, "plain file");
 
         // A link into a build that is not under versions/.
