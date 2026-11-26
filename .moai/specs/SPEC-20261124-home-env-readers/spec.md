@@ -235,3 +235,35 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - 뮤턴트(적용을 `git diff --stat` 으로 확인하고 되돌린 뒤 `git status --short` 가 비어 있음을 확인; 모두 위 `-E` 필터, exit 100): ① `GIT_CONFIG_GLOBAL` 을 `/dev/null` 로 고정하는 판 2 모양으로 되돌림 → 2개 실패(XDG 테스트와 `identity_in_git_config_follows_the_home_it_is_given`) ② 같은 HOME 판정 삭제(항상 대체) → 1개 실패(`identity_keeps_the_git_config_of_the_environment`) ③ `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 지우지 않음 → 1개 실패(`identity_in_leaves_the_environment_git_config_out_for_another_home`).
 - N2·N3: 고쳤어요. `moai spec show` 가 이제 write 10개·read_only 5개·forbidden 1개(`CLAUDE.md`)로 읽고(옛 판은 write 2개, forbidden 에 `src/` 포함) `moai spec check` 가 오류 0·경고 0 이에요. N1(`journal_root_in` 의 git 자식이 환경 HOME 설정을 읽음)은 D-5·D-8 대로 후속 조각이고, N4(Windows)는 not_run 이에요.
 - not_run: 전체 `cargo test --locked`(리더 몫), Windows·Linux, 명령줄 git 실험(훅 거절, Rust 자식 프로세스 테스트로 대신), 실제 HOME 읽기 전후 비교.
+
+**조각 3 첫 묶음 결과** (판 6; 브랜치 `spec/home-env-readers-20261124-r2`, 기준 `b3048a821a`, 구현 커밋 `dada13ba6b`; 승인은 리더 노트 10234 이고 사용자 목표 아래의 리더 판단이며 사용자 직접 선택은 아니에요; 로그는 `target/c410s3/` 에 있고 카드가 열려 있는 동안만 둬요)
+
+- 특성 테스트(옛 코드): `baseline_inventory_reports_home_entries`, `host_wake_default_config_dir` 2/2 통과.
+- 목록(옛 소스): `MOAI_HOME_READERS=enforce` 5/5 통과. 직접 읽기는 가장자리 28, 안쪽 19, 가장자리 밖 어댑터 호출 40줄이에요.
+- RED: 두 줄만 가장자리로 옮기고 enforce → exit 100. 보인 줄: `unlisted inner HOME read in src/baseline.rs fn inventory`, `unlisted inner HOME read in src/ops/host_wake.rs fn default_config_dir`, `listed edge HOME read not found in src/ops/baseline_inventory.rs fn run`, `listed edge HOME read not found in src/ops/host_wake.rs fn run`.
+- GREEN: `baseline::inventory` 가 HOME 을 인자로 받고 `default_config_dir` 는 `host_wake::run` 이 읽은 HOME 을 받아요. enforce 5/5, `--test baseline_git_env --test host_wake_cli` 14/14.
+- AC-17: 충족. `cargo nextest run --offline --locked --test home_env_readers` exit 0, 5/5.
+- AC-18: 충족. 위 명령 exit 0(5/5)과 `--test repo_scans_table` exit 0(34/34). 스캔 표 항목 `home-env-readers` 는 `"always": true` 예요(line-lease 로 쓰고 돌려줬어요).
+- AC-19: 충족. 적힌 명령 exit 0, 1개 선택·통과.
+- AC-20: 충족. 적힌 명령 exit 0, 1개 선택·통과.
+- AC-21: 충족(이 head 와 기준에서). 가장자리 30, 안쪽 17 이고 `MOAI_HOME_READERS=enforce` 명령 exit 0, 5/5. 착지 tip 의 차이는 아래 "착지 tip" 줄을 보세요.
+- AC-22: 충족. 적힌 명령 exit 0, 1개 선택·통과.
+- AC-23: 충족. 적힌 명령 exit 0, 1개 선택·통과.
+- AC-24: 충족(수동). `("src/update_tux.rs", "view_for", 1)` 을 2 로 어긋낸 채 `cargo nextest run --offline --locked --test home_env_readers` exit 0(5/5)과 `cargo test --offline --locked --test home_env_readers` exit 0(5 통과)이 모두 `home-env-readers observe: listed inner HOME read not found in src/update_tux.rs fn view_for` 를 보였어요. 줄은 1 로 되돌렸어요. `tests/spawn_cap_test.rs` 는 아래 읽는 테스트 실행에서 통과했어요.
+- 읽는 테스트: `--test spawn_cap_test --test test_home_guard --test repo_scans_table --test state_folder_literal_scan --test ac_command_lint` 세 번째 실행 122/122 통과. 앞 두 번은 실패했어요: ① `every_file_reader_has_an_always_scan_or_an_exemption`(`tests/home_env_readers.rs reads src/ops` 가 `.rs` 접미사 범위 밖) ② `test_home_guard` 6개(새 override 블록의 위치).
+- 새 테스트 파일 검사: `--test test_area_layout --test source_manifest_facts` 27/27 통과, `cargo clippy ... -- -D warnings`(lib, bin, 바뀐 테스트 셋) exit 0, `cargo fmt --all -- --check` 통과.
+- 계획과 다른 점 ① nextest override 는 파일 맨 끝에 있어요(첫 override 뒤라는 조건은 지켜요). `tests/test_home_guard.rs` 의 `config_without_overrides` 가 override 블록을 `test-group` 줄까지 지워서, 그 줄이 없는 블록이 앞에 있으면 홈 가드 설정까지 지워져요. 그 파일은 이 카드의 범위 밖이라 고치지 않았고 설정 파일에 이유를 주석으로 남겼어요.
+- 계획과 다른 점 ② 검출기는 첫 칸의 `#[cfg(test)]` 뿐 아니라 `#[cfg(all(test, …))]` 모듈도 세지 않아요(D-13 의 "테스트 코드는 세지 않아요"). 관찰 실행에서 `src/identity.rs` 의 테스트 읽기 2개가 잡혀서 고쳤고, `all(not(test), …)` 모듈은 그대로 센다는 가짜 소스 단언을 넣었어요.
+- 계획과 다른 점 ③ 스캔 항목 범위는 접미사 없는 `src/` 예요(`src/` 의 `.rs` 가 아닌 파일 두 개를 바꿔도 이 항목이 골라져요).
+- 뮤턴트(한 줄 바꾸고 그 테스트만 실행, 저장해 둔 파일로 되돌린 뒤 `git status --short` 0줄; 뮤턴트가 먹었는지는 `git diff --numstat` +1 -1):
+  - guard-mutant: baseline_inventory_reports_home_entries | 빈 HOME 거르기를 더함 | exit 100
+  - guard-mutant: host_wake_default_config_dir | `CLAUDE_CONFIG_DIR` 우선 가지를 못 타게 함 | exit 100
+  - guard-mutant: the_checked_in_sources_match_the_list | `baseline::inventory` 에 HOME 읽기를 되살림(enforce) | exit 100 (같은 뮤턴트를 기본 모드로 돌리면 설계대로 exit 0 이고 알림 줄이 보여요)
+  - guard-mutant: an_added_read_is_reported_with_its_file_and_function | `all(…)` 테스트 모듈 건너뛰기를 지움 | exit 100
+  - guard-mutant: a_changed_adapter_call_is_reported | 옮긴 호출의 짝짓기를 지움 | exit 100
+  - guard-mutant: enforce_mode_fails_on_a_difference | enforce 가 늘 통과 | exit 100
+  - guard-mutant: observe_mode_reports_and_passes | 알림 줄을 버림 | exit 100
+- 착지 tip: NeXT `f48ea9d815` 의 `src/` 를 임시 폴더에 풀어 이 목록으로 관찰 실행했어요(병합 없음). 이 묶음의 이동 네 줄 밖의 차이는 `listed call of hooks::env_home not found in src/lane_loop.rs fn stop_hook` 한 줄이에요(먼저 착지한 카드가 그 호출을 없앴어요). 직접 읽기 수는 같아요. 처리는 리더 결정 노트 10347 의 답을 따라요.
+- 카드 기준 1: 충족하지 않았어요(not met). 안쪽 직접 읽기 17곳과 가장자리 밖 어댑터 호출이 남아요(Plan 의 다음 묶음).
+- 카드 기준 2: 조각 2 에서 충족했고 이 묶음은 기준선 줄을 바꾸지 않았어요.
+- not_run: 전체 `cargo test --locked`(리더 몫), Windows·Linux, 실제 HOME 읽기 전후 비교.
