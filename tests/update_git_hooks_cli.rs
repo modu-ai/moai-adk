@@ -266,13 +266,14 @@ fn copy_tree(from: &Path, to: &Path) {
 
 /// Stages the installed package into a temporary HOME the way `tests/update_switch_cli.rs`
 /// does, so `moai update` has a version folder to plan from.
-fn stage_home(home: &Path) {
+fn stage_home(home: &Path) -> PathBuf {
     let folder = home.join(".moai-cli/versions/a");
     fs::create_dir_all(folder.join("bin")).expect("versions folder");
     common::copy_executable(Path::new(common::MOAI_BIN), &folder.join("bin/moai-cli"));
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     copy_tree(&manifest.join("skills/moai"), &folder.join("skills/moai"));
     copy_tree(&manifest.join("agents"), &folder.join("agents"));
+    folder.join("bin/moai-cli")
 }
 
 #[test]
@@ -454,8 +455,7 @@ impl GuardUpdate {
         let tmp = TempDir::new().expect("home");
         let home = tmp.path().join("home");
         fs::create_dir_all(&home).expect("home folder");
-        stage_home(&home);
-        let exe = home.join(".moai-cli/versions/a/bin/moai-cli");
+        let exe = stage_home(&home);
         GuardUpdate {
             _tmp: tmp,
             exe,
