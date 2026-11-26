@@ -130,6 +130,9 @@ moai 의 지침 파일은 `CLAUDE.md`(팀)와 `CLAUDE.local.md`(개인)예요. �
 - AC-8: met — `cargo test --locked --offline --test update_tux_golden` 17 passed
 - AC-9: met — `cargo test --locked --offline --test repo_scans_table every_` 8 passed
 - AC-10: met — `cargo test --locked --offline --test product_cli claude_doctor_agents_loading_combinations` 1 passed
+- AC-11: met — `cargo test --locked --offline --test claude_md_layout_scan a_moved_older_file_reason` 1 passed(수리 전 같은 명령은 12건 실패였어요, `4f69cdb201`)
+
+개정 4 수리(감사 노트 10424 의 FAIL, 리더 결정 10426): 기반은 착지한 tip `2e97d012e5`(합침 `4f33bb9c06`), 수리 head `0e412b5c0a`. 이동 사유를 `moved_reason`(`src/go_state.rs`)으로 옮겨 `AGENTS.md`·`AGENTS.local.md` 행은 "CLAUDE 파일이 대신하고, 다시 쓰지 않으며, 옮긴 복사본은 백업에 있어요"라고 말해요. `CLAUDE.md` 행의 사유는 그대로예요(`tests/go_state_cli.rs` 가 고정). tip 이 `project.md` 의 루트 파일 대목을 `update.md` 로 옮겨서 그 문장과 검사 행도 `update.md` 쪽으로 따라갔어요. 이 수리의 가드 뮤턴트: `moved_reason` 의 `AGENTS.md` 갈래를 지우면 `a_moved_older_file_reason_says_the_claude_file_takes_its_place` 가 exit 101 로 실패했어요(되돌린 뒤 `git diff --quiet HEAD -- src` 로 확인). `moai check fix` PASS, 영수증 `target/check-affected-0e412b5c0a79`: 5705개 실행 5705 통과, `result=PASS`. 읽는 쪽의 승인 digest 는 REQ-13·AC-11 때문에 바뀌어 새 승인이 필요해요. `spec check` 는 오류 0, 경고 1(요구 13개, 12개 초과 경고).
 
 가드 뮤턴트: `33051a6bf5` 에서 7개 가운데 7개가 exit 100 이고 각각 지목한 테스트에서 실패했어요(새 테스트마다 하나와 `claude-doctor` 단언 하나). 줄은 READY 노트에 있어요.
 
