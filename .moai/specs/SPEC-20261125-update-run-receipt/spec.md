@@ -99,3 +99,12 @@ parent: SPEC-20261125-update-screen-facts
 - 가드 뮤턴트(코드 d60d5bf7d66c, 각각 exit 100): 화면의 머리가 `run.status` 를 읽는 블록을 빼면 화면 시험이, `leaves_record` 를 늘 참으로 하면 시험 3개가, 해시 비교를 비어 있지 않음으로 바꾸면 단위 시험이 죽어요.
 - 알려진 틈: 스킬 밖 부분의 파일은 해시를 대조하지 않고 `not_compared` 로만 드러내요(Non-goals). `skills/moai/workflows/update.md` 는 아직 `run` 키를 말하지 않아요.
 - not_run: 전체 `cargo test`, Windows 와 Linux 확인, 설치된 사용자 상태에서의 실행.
+
+수리(첫 독립 감사 FAIL, 리더 결정): `not_compared` 가 상태가 `applied` 인 부분만 적어서, 사용자 파일을 남기고 `partial` 로 끝난 agents 부분이 대조도 없고 목록에도 없었어요. 커밋 `e341ac228b`.
+
+- REQ-10: 스킬 파일 밖의 모든 부분을 상태와 상관없이 `not_compared` 에 부분, 상태, 이유, 그 부분의 영수증(`receipt` 또는 `stamp`)과 함께 적어요. 옮기거나 링크만 하는 부분(bin_names, cleanup, home, switch)의 이유는 "대조할 해시 없음"으로 시작해요. 스킬 부분(`skills`, `extra_skills`)은 적용되지 않았거나 바꾸려던 파일 가운데 대조하지 못한 것이 있을 때 적어요.
+- AC-2 met: `cargo test --locked --offline --test update_run_receipt_cli every_written_skill_file` 의 두 시험(깨끗한 새 설치, 사용자 파일을 남겨 agents 가 `partial` 인 실행)이 통과해요.
+- AC-5 met: `cargo test --locked --offline --lib update::run_receipt` 9 passed. `update_run_receipt_cli` 전체 5 passed.
+- 가드 뮤턴트(코드 `e341ac228b`, 각각 exit 101): 상태가 `applied` 인 부분만 다시 적게 하면 새 명령 시험과 단위 시험이 죽고, 대조하지 못한 스킬 파일의 목록을 빼면 단위 시험 2개가 죽어요.
+- 알려진 틈(이 수리에서 고치지 않음): 따로 토큰을 받는 부분(cleanup, home, switch, git_hooks)만 쓴 실행은 `wrote` 가 false 라 파일 영수증이 남지 않아요. `--confirm` 없이 그 토큰만 쓴 실행은 `run` 을 만들기 전에 끝나요. `blocked` 인 bin_names 는 `held` 가 아니라 `remaining` 이에요.
+- 수리한 head 의 카드 영수증은 카드의 REPAIRED 노트에 있어요.
