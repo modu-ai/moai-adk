@@ -701,6 +701,11 @@ fn only_rust_names(moai: &Path) -> bool {
 /// | `none`, `empty`, `unknown` | yes | `.moai-cli` (a legacy tree keeps every path it had) |
 /// | `go`, `mixed`, `interrupted`, `refuse` | either | `.moai-cli` (Go's folder is never written) |
 ///
+/// One exception, made by the caller and not by this rule: the project resolver [`dir`] passes a
+/// `mixed` verdict whose marker is a valid `moai.json` as `rust`, so that case answers `.moai`
+/// with or without the earlier folder (SPEC-20261121-resurrected-marker REQ-9). The HOME and
+/// clone resolvers pass the verdict as it is.
+///
 /// The earlier folder is present when `root/<earlier>` exists in any form; a link counts and
 /// is never followed. A tree that a writer started on `.moai` before any marker (its entries make
 /// the verdict `unknown`) must keep resolving to `.moai`, or the state it just wrote would be

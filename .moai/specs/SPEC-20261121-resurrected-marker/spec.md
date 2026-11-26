@@ -2,7 +2,7 @@
 id: SPEC-20261121-resurrected-marker
 title: "A valid Rust marker keeps the project Rust-owned when git brings the Go markers back, and the update plan offers to keep them instead of stopping"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-21
 branch: spec/resurrected-marker-front-20261121
 ---
@@ -38,11 +38,12 @@ Rust 표식이 유효한 프로젝트는 Rust 세대가 주인이에요. git 이
 - REQ-6: When the plan is made, the project shall stay byte for byte as it was, with no file, folder or time changed · failure: none
 - REQ-7 (REQ-4): IF Go markers are present and no valid `moai.json` exists, THEN the classification shall stay `go`, with no `go-residue` step in the plan.
 - REQ-8: While a resurrected marker is listed in `go-residue`, the plan's `all_unchanged` shall be false · failure: none
+- REQ-9 (REQ-1): When the project's verdict is `mixed`, its `moai.json` is a valid marker and it has no earlier `.moai-cli` folder, `state_root::dir` shall name `.moai`, which replaces for that case only REQ-4 of SPEC-20261121-path-root-moai-default; a Go-only, a stopped, a refused and a `mixed` project without a valid `moai.json` stay as that requirement says · failure: none
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2): unit tests in `src/state_root.rs`: a project with a valid `moai.json` and each Go marker (`manifest.json`, `config/config.yaml`, `config/sections/system.yaml` with a version) has `dir` = `.moai`; without `moai.json`, with the older `moai-cli.json`, with an unreadable or newer `moai.json`, `dir` is as before; the verdict names (`mixed`, `go`, `refuse`) are unchanged.
-  verify: `cargo test --offline --locked --lib state_root`
+- AC-1 (REQ-1, REQ-2, REQ-9): unit tests in `src/state_root.rs`: a project with a valid `moai.json` and each Go marker (`manifest.json`, `config/config.yaml`, `config/sections/system.yaml` with a version) has `dir` = `.moai`; without `moai.json`, with the older `moai-cli.json`, with an unreadable or newer `moai.json`, `dir` is as before; the verdict names (`mixed`, `go`, `refuse`) are unchanged. `tests/path_root_default.rs` states the same: the mixed tree with a valid marker resolves to `.moai` and the Go-only tree stays on the earlier folder.
+  verify: `cargo test --offline --locked --lib state_root` and `cargo test --offline --locked --test path_root_default project_`
 - AC-2 (REQ-3): `tests/state_root_resurrected_cli.rs` builds a temp project shaped like the field case (git repo, every file committed, `.moai/moai.json` valid, `.moai/project.yaml`, then `manifest.json` and `system.yaml` brought back by `git checkout`, no earlier state folder): `card list` and `card show` succeed, and the same project with the Go markers and no `moai.json` still fails the way it does now.
   verify: `cargo test --offline --locked --test state_root_resurrected_cli`
 - AC-3 (REQ-4, REQ-5, REQ-8): the same file: `project-update-plan` reports state_root `mixed`, a `go-residue` step in `needs_decision` with the two markers, `tracked` true for both, and the keep folder; the `go-state` step is not `blocked`; `all_unchanged` is false.
@@ -54,7 +55,7 @@ Rust 표식이 유효한 프로젝트는 Rust 세대가 주인이에요. git 이
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261121-resurrected-marker/**`, `src/state_root.rs`, `src/project_update.rs`, `tests/state_root_resurrected_cli.rs`
+- write: `.moai/specs/SPEC-20261121-resurrected-marker/**`, `src/state_root.rs`, `src/project_update.rs`, `tests/state_root_resurrected_cli.rs`, `tests/path_root_default.rs`
 - read-only: `src/go_state.rs`, `src/profile.rs`, `src/ledger/open.rs`, `tests/common/home.rs`
 - forbidden: the real HOME, the project the field check came from, any move or delete of a marker
 - 읽은 사실(2026-11-21, tip `53cce6c580`): `classify` 는 `("valid", false)` 를 `mixed`(`src/state_root.rs`)로 돌려주고, `dir` 는 `generation == "rust"` 일 때만 `.moai` 를 골라요. `project_update` 는 `mixed|unknown|refuse` 를 go-state 단계에서 `blocked` 로 바꿔요(`src/project_update.rs`, `go_state_step` 앞부분). `go-residue` 단계는 코드에 아직 없어요(`grep -rn go-residue src` 결과 없음). 홈 쪽 `classify_home` 과 `ledger::open::check_home_ready` 는 HOME 의 `.moai` 를 보는 별개의 판정이에요.
@@ -84,7 +85,7 @@ Rust 표식이 유효한 프로젝트는 Rust 세대가 주인이에요. git 이
 
 전반(상태 폴더)은 끝났고, 후반(`go-residue` 단계)은 그 단계를 만드는 다른 조각이 착지한 뒤에 같은 카드에서 이어요. 아래는 NeXT 끝 `9c8b7fb763` 위에서 이 레인이 직접 돌려 읽은 결과예요(2026-11-26, `heavy-slot --max 3`, nextest). 전반은 옛 가지의 변경을 새 끝으로 옮긴 것이고, `state_root::dir` 가 그 사이 `resolves_to_moai` 를 거치도록 바뀌어서 `rust_owned` 일 때 `rust` 로 그 규칙에 넘겨요.
 
-- AC-1 met: `cargo nextest run --lib state_root` → 32 passed (단위 시험 `a_valid_rust_marker_owns_the_state_folder_when_go_markers_come_back` 포함, exit 0).
+- AC-1 met: `cargo test --offline --locked --lib state_root` → 32 passed (단위 시험 `a_valid_rust_marker_owns_the_state_folder_when_go_markers_come_back` 포함, exit 0), `cargo test --offline --locked --test path_root_default project_` → 12 passed (exit 0). revision 2 (REQ-9): 감사 9771 이 앞 head 에서 `path_root_default` 의 옛 단언(`mixed` + 유효한 `moai.json` → 옛 폴더) 1건이 빨개지는 것을 찾아, 그 단언을 새 테스트 `project_with_a_valid_marker_beside_a_go_marker_resolves_to_moai` 로 바꿨어요. 가드 뮤턴트: `dir` 가 `rust_owned` 를 쓰지 않게 하면 이 테스트가 실패해요(exit 100, 32개 중 1개).
 - AC-2 met: `cargo nextest run --test state_root_resurrected_cli` → 3 passed, 1 skipped(`#[ignore]`) (`card_commands_work_when_go_markers_came_back_beside_a_valid_marker`, `go_markers_without_a_valid_marker_keep_failing_the_way_they_do`, `the_plan_writes_nothing`, exit 0).
 - AC-3 not met yet: `the_plan_offers_to_keep_the_resurrected_markers_instead_of_stopping` 는 일부러 빨강이라 이유와 함께 `#[ignore]` 예요. 이름으로 돌린 결과(`-- --ignored`): `no go-residue` 로 실패해요. `go-residue` 단계가 계획에 생기면 이 표시를 지우고 이 줄을 met 로 바꿔요.
 - AC-4 met for what exists: 계획 앞뒤 스냅샷이 같고(`the_plan_writes_nothing`), `moai.json` 없이 Go 표식만 있으면 지금처럼 실패해요(`go_markers_without_a_valid_marker_keep_failing_the_way_they_do`). `go-residue` 단계가 없다는 부분은 후반이 오면 같은 파일이 다시 확인해요.
