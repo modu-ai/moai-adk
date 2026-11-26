@@ -1,8 +1,8 @@
-//! SPEC-20261126-no-state-folder-writes: a project with no earlier state folder whose `.moai`
+//! SPEC-20261126-no-state-folder-writes: a project with no earlier state folder whose state
 //! verdict is `go`, `mixed`, `interrupted` or `refuse` gets nothing written by `project-apply`
 //! or by a first `cc` launch; both say the next step in one line, and the launch still starts
 //! the host. Every run uses a temporary project, a temporary HOME and a stub `claude` on PATH;
-//! no real host starts.
+//! no real host starts. The state folder names come from the resolver's own constants.
 #![cfg(unix)]
 mod common;
 use moai_cli::state_root;
@@ -17,7 +17,8 @@ use std::{
 };
 
 const STOP: &str = "moai: no MoAI state is created here";
-const EARLIER: &str = ".moai-cli";
+const MOAI: &str = state_root::MOAI_DIR;
+const EARLIER: &str = state_root::EARLIER_PROJECT_DIR;
 
 /// The four verdicts that stop a writer, each with the words its next step must hold.
 const STOPPED: [(&str, &str); 4] = [
@@ -26,6 +27,16 @@ const STOPPED: [(&str, &str); 4] = [
     ("mixed", "you decide"),
     ("refuse", "you decide"),
 ];
+
+/// `rel` inside this generation's state folder, as a project-relative path.
+fn state(rel: &str) -> String {
+    format!("{MOAI}/{rel}")
+}
+
+/// The profile's project-relative path inside the earlier state folder.
+fn earlier_profile() -> String {
+    format!("{EARLIER}/project.yaml")
+}
 
 struct Fixture {
     bin: tempfile::TempDir,
@@ -95,7 +106,7 @@ impl Fixture {
         let out = self.run(fresh.path(), &["cc"]);
         assert!(out.status.success(), "{}", text(&out));
         fs::remove_file(self.home.path().join("started")).unwrap();
-        fs::read(fresh.path().join(".moai/project.yaml")).unwrap()
+        fs::read(fresh.path().join(state("project.yaml"))).unwrap()
     }
 
     /// `project-plan` then `project-apply` of the plan it printed.
@@ -145,7 +156,7 @@ fn put(root: &Path, rel: &str, body: &str) {
     fs::write(path, body).unwrap();
 }
 
-/// A temporary project whose `.moai` verdict is `verdict`, with no earlier state folder. The
+/// A temporary project whose state verdict is `verdict`, with no earlier state folder. The
 /// second folder is the target of the `refuse` link, kept alive and checked for writes.
 fn stopped_project(verdict: &str) -> (tempfile::TempDir, tempfile::TempDir) {
     let project = tempfile::tempdir().unwrap();
@@ -153,18 +164,22 @@ fn stopped_project(verdict: &str) -> (tempfile::TempDir, tempfile::TempDir) {
     let root = project.path();
     put(root, "README.md", "practice\n");
     match verdict {
-        "interrupted" => put(root, ".moai-backup/manifest.json", "{}"),
-        "go" => put(root, ".moai/manifest.json", "{}"),
+        "interrupted" => put(
+            root,
+            &format!("{}/manifest.json", state_root::GO_BACKUP),
+            "{}",
+        ),
+        "go" => put(root, &state("manifest.json"), "{}"),
         // The earlier marker name beside a Go marker owns nothing.
         "mixed" => {
-            put(root, ".moai/manifest.json", "{}");
+            put(root, &state("manifest.json"), "{}");
             put(
                 root,
-                ".moai/moai-cli.json",
+                &state(state_root::LEGACY_MARKER),
                 "{\"schema_version\": 1, \"generation\": \"moai-cli\"}",
             );
         }
-        "refuse" => symlink(elsewhere.path(), root.join(".moai")).unwrap(),
+        "refuse" => symlink(elsewhere.path(), root.join(MOAI)).unwrap(),
         other => panic!("no fixture for {other}"),
     }
     assert_eq!(state_root::classify(root).generation, verdict);
@@ -295,51 +310,48 @@ fn launch_dry_run_reports_the_same_line_and_writes_nothing() {
 fn control_apply_writes_where_it_wrote_before() {
     let f = fixture();
     let profile = f.profile();
-    // A new project, an empty `.moai/` and a `.moai/` of unmarked files are this generation's.
+    // A new project, an empty state folder and one holding unmarked files are this generation's.
     for kind in ["new", "empty", "unknown"] {
         let project = tempfile::tempdir().unwrap();
         match kind {
-            "empty" => fs::create_dir(project.path().join(".moai")).unwrap(),
-            "unknown" => put(project.path(), ".moai/notes.txt", "kept\n"),
+            "empty" => fs::create_dir(project.path().join(MOAI)).unwrap(),
+            "unknown" => put(project.path(), &state("notes.txt"), "kept\n"),
             _ => {}
         }
         let out = f.plan_and_apply(project.path(), &profile);
         assert!(out.status.success(), "{kind}: {}", text(&out));
         assert!(
-            project.path().join(".moai/project.yaml").is_file(),
+            project.path().join(state("project.yaml")).is_file(),
             "{kind}"
         );
         assert!(!project.path().join(EARLIER).exists(), "{kind}");
     }
     // An earlier folder that is already there keeps being written, and Go's folder is not.
     let project = tempfile::tempdir().unwrap();
-    put(project.path(), ".moai/manifest.json", "{}");
+    put(project.path(), &state("manifest.json"), "{}");
     fs::create_dir(project.path().join(EARLIER)).unwrap();
-    let go_before = tree(&project.path().join(".moai"));
+    let go_before = tree(&project.path().join(MOAI));
     let out = f.plan_and_apply(project.path(), &profile);
     assert!(out.status.success(), "{}", text(&out));
-    assert!(project.path().join(".moai-cli/project.yaml").is_file());
-    assert_eq!(tree(&project.path().join(".moai")), go_before);
+    assert!(project.path().join(earlier_profile()).is_file());
+    assert_eq!(tree(&project.path().join(MOAI)), go_before);
 }
 
 #[test]
 fn control_launch_initializes_a_new_project_and_one_with_the_earlier_folder() {
-    for (earlier, profile) in [
-        (false, ".moai/project.yaml"),
-        (true, ".moai-cli/project.yaml"),
-    ] {
+    for (earlier, profile) in [(false, state("project.yaml")), (true, earlier_profile())] {
         let f = fixture();
         let project = tempfile::tempdir().unwrap();
         git_init(project.path());
         if earlier {
-            put(project.path(), ".moai/manifest.json", "{}");
+            put(project.path(), &state("manifest.json"), "{}");
             fs::create_dir(project.path().join(EARLIER)).unwrap();
         }
         let out = f.run(project.path(), &["cc"]);
         assert!(out.status.success(), "{earlier}: {}", text(&out));
         assert!(f.host_started(), "{earlier}");
         assert!(
-            project.path().join(profile).is_file(),
+            project.path().join(&profile).is_file(),
             "{earlier}: {}",
             text(&out)
         );
@@ -347,14 +359,14 @@ fn control_launch_initializes_a_new_project_and_one_with_the_earlier_folder() {
     }
 }
 
-/// A valid `moai.json` beside a Go marker (git brought the marker back). Which folder the
+/// A valid current marker beside a Go marker (git brought the Go marker back). Which folder the
 /// resolver answers for this tree is the resolver's business; both writers follow its answer.
 fn returned_marker_project() -> tempfile::TempDir {
     let project = tempfile::tempdir().unwrap();
-    put(project.path(), ".moai/manifest.json", "{}");
+    put(project.path(), &state("manifest.json"), "{}");
     put(
         project.path(),
-        ".moai/moai.json",
+        &state(state_root::RUST_MARKER),
         "{\"schema_version\": 1, \"generation\": \"moai\"}",
     );
     assert_eq!(state_root::classify(project.path()).generation, "mixed");
@@ -366,12 +378,12 @@ fn follow_apply_writes_exactly_when_the_resolver_answers_moai() {
     let f = fixture();
     let profile = f.profile();
     let project = returned_marker_project();
-    let writes = state_root::dir(project.path()) == state_root::MOAI_DIR;
+    let writes = state_root::dir(project.path()) == MOAI;
     let before = tree(project.path());
     let out = f.plan_and_apply(project.path(), &profile);
     if writes {
         assert!(out.status.success(), "{}", text(&out));
-        assert!(project.path().join(".moai/project.yaml").is_file());
+        assert!(project.path().join(state("project.yaml")).is_file());
     } else {
         assert!(!out.status.success(), "{}", text(&out));
         assert!(text(&out).contains(STOP), "{}", text(&out));
@@ -385,14 +397,14 @@ fn follow_launch_initializes_exactly_when_the_resolver_answers_moai() {
     let f = fixture();
     let project = returned_marker_project();
     git_init(project.path());
-    let writes = state_root::dir(project.path()) == state_root::MOAI_DIR;
+    let writes = state_root::dir(project.path()) == MOAI;
     let before = tree(project.path());
     let out = f.run(project.path(), &["cc"]);
     assert!(out.status.success(), "{}", text(&out));
     assert!(f.host_started(), "{}", text(&out));
     if writes {
         assert!(
-            project.path().join(".moai/project.yaml").is_file(),
+            project.path().join(state("project.yaml")).is_file(),
             "{}",
             text(&out)
         );
