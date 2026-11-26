@@ -16,44 +16,23 @@ use tempfile::TempDir;
 /// A value planted in a key file; deliberately not shaped like any credential.
 const PLANTED: &str = "planted-value-not-a-secret-7f3a";
 
-/// This repository's `.claudeignore` entries with the rule each one converts to, as the table
-/// under the SPEC's Plan lists them; `true` marks a recommended entry.
-const TABLE: [(&str, &str, bool); 34] = [
-    (".env", "Read(.env)", true),
-    (".env.local", "Read(.env.local)", true),
-    (".env.*.local", "Read(.env.*.local)", true),
-    (".env.production", "Read(.env.production)", true),
-    (".env.test", "Read(.env.test)", true),
-    ("node_modules/", "Read(**/node_modules/**/*)", false),
-    ("vendor/", "Read(**/vendor/**/*)", false),
-    (".venv/", "Read(**/.venv/**/*)", false),
-    ("__pycache__/", "Read(**/__pycache__/**/*)", false),
-    ("target/", "Read(**/target/**/*)", false),
-    ("dist/", "Read(**/dist/**/*)", false),
-    ("build/", "Read(**/build/**/*)", false),
-    ("out/", "Read(**/out/**/*)", false),
-    (".next/", "Read(**/.next/**/*)", false),
-    (".git/", "Read(**/.git/**/*)", false),
-    (".vscode/", "Read(**/.vscode/**/*)", false),
-    (".idea/", "Read(**/.idea/**/*)", false),
-    (".cache/", "Read(**/.cache/**/*)", false),
-    ("tmp/", "Read(**/tmp/**/*)", false),
-    ("temp/", "Read(**/temp/**/*)", false),
-    ("logs/", "Read(**/logs/**/*)", false),
-    (".moai/cache/", "Read(.moai/cache/**/*)", false),
-    (".moai/archive/", "Read(.moai/archive/**/*)", false),
-    ("docs-site/public/", "Read(docs-site/public/**/*)", false),
-    (".claude/worktrees/", "Read(.claude/worktrees/**/*)", false),
-    ("*.pyc", "Read(*.pyc)", false),
-    (".gitignore", "Read(.gitignore)", false),
-    (".gitattributes", "Read(.gitattributes)", false),
-    ("*.swp", "Read(*.swp)", false),
-    ("*.swo", "Read(*.swo)", false),
-    ("*~", "Read(*~)", false),
-    (".DS_Store", "Read(.DS_Store)", false),
-    ("*.tmp", "Read(*.tmp)", false),
-    ("*.log", "Read(*.log)", false),
-];
+/// This repository's `.claudeignore` as read on 2026-11-26, comments and order kept.
+const REPOSITORY_LIST: &str = include_str!("fixtures/secret_deny/claudeignore");
+
+/// Its entries in file order with the rule each one converts to (the table under the SPEC's
+/// Plan) and `yes` for a recommended entry: `entry<TAB>rule<TAB>yes|no`.
+const EXPECTED_RULES: &str = include_str!("fixtures/secret_deny/rules.tsv");
+
+fn expected_rules() -> Vec<(&'static str, &'static str, bool)> {
+    EXPECTED_RULES
+        .lines()
+        .map(|line| {
+            let mut cells = line.split('\t');
+            let mut cell = || cells.next().expect("three cells in rules.tsv");
+            (cell(), cell(), cell() == "yes")
+        })
+        .collect()
+}
 
 fn project() -> (TempDir, PathBuf) {
     let dir = TempDir::new().expect("temp dir");
@@ -84,7 +63,11 @@ fn preview(root: &Path) -> (String, String, Value) {
         .expect("run secret-deny-plan");
     let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
     let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
-    assert_eq!(out.status.code(), Some(0), "preview exits 0: {stdout}{stderr}");
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "preview exits 0: {stdout}{stderr}"
+    );
     let envelope: Value = serde_json::from_slice(&out.stdout).expect("envelope");
     assert_eq!(envelope["operation"], "secret_deny.plan");
     assert_eq!(
@@ -202,13 +185,10 @@ fn preview_lists_rules_and_writes_nothing() {
 #[test]
 fn claudeignore_entries_are_picked_one_by_one() {
     let (_dir, root) = project();
-    let mut list = String::from("# secrets\n\n");
-    for (entry, _, _) in TABLE {
-        list.push_str(entry);
-        list.push('\n');
-    }
-    // Forms the table does not hold: a negation and a root-anchored folder.
-    list.push_str("!.env.example\n/generated/\n");
+    let table = expected_rules();
+    assert_eq!(table.len(), 34, "the SPEC table holds 34 entries");
+    // Forms the repository's list does not hold: a negation and a root-anchored folder.
+    let list = format!("{REPOSITORY_LIST}!.env.example\n/generated/\n");
     put(&root, ".claudeignore", &list);
     put(&root, ".env.production", "x\n");
     put(&root, ".env.example", "x\n");
@@ -224,15 +204,16 @@ fn claudeignore_entries_are_picked_one_by_one() {
     let ignore = &envelope["result"]["claudeignore"];
     assert_eq!(ignore["state"], "present");
     let entries = ignore["entries"].as_array().expect("entries");
-    assert_eq!(entries.len(), TABLE.len() + 2, "no blank or comment line");
-    for (entry, expected) in entries.iter().zip(TABLE) {
+    assert_eq!(entries.len(), table.len() + 2, "no blank or comment line");
+    for (entry, expected) in entries.iter().zip(table) {
         assert_eq!(entry["entry"], expected.0);
         assert_eq!(entry["rule"], expected.1, "{}", expected.0);
         assert_eq!(entry["recommended"], expected.2, "{}", expected.0);
         let warning = entry["warning"].as_str().expect("warning");
         assert!(warning.contains("blocks editing"), "{warning}");
     }
-    assert_eq!(entries[0]["line"], 3);
+    // Line numbers are those of the file, comments and blank lines counted.
+    assert_eq!(entries[0]["line"], 5);
 
     let list = &ignore["entries"];
     let negation = find(list, "Read(!.env.example)");
@@ -284,12 +265,50 @@ fn matched_file_is_never_opened() {
         ["locked/server.key"]
     );
     let all = format!("{stdout}{stderr}");
-    assert!(!all.contains(PLANTED), "a matched file's content is printed");
+    assert!(
+        !all.contains(PLANTED),
+        "a matched file's content is printed"
+    );
     assert!(
         !all.to_ascii_lowercase().contains("permission denied"),
         "a matched file was opened: {all}"
     );
     fs::set_permissions(&locked, fs::Permissions::from_mode(0o600)).expect("chmod back");
+}
+
+#[test]
+fn a_linked_ignore_list_is_not_read() {
+    let (_dir, root) = project();
+    put(&root, ".env", &format!("{PLANTED}\n"));
+    symlink(root.join(".env"), root.join(".claudeignore")).expect("list link");
+
+    let (stdout, stderr, envelope) = preview(&root);
+    let ignore = &envelope["result"]["claudeignore"];
+    assert_eq!(ignore["state"], "not_read", "{ignore}");
+    assert!(ignore["entries"].as_array().expect("entries").is_empty());
+    assert!(
+        !format!("{stdout}{stderr}").contains(PLANTED),
+        "the link's target was read as the list"
+    );
+}
+
+#[test]
+fn the_preview_runs_no_program_the_repository_configures() {
+    let (dir, root) = project();
+    put(&root, "README.md", "x\n");
+    common::git::git_ok(&root, &["add", "README.md"]);
+    let marker = dir.path().join("fsmonitor-ran");
+    let program = dir.path().join("fsmonitor.sh");
+    fs::write(&program, format!("#!/bin/sh\n: > '{}'\n", marker.display())).expect("write program");
+    fs::set_permissions(&program, fs::Permissions::from_mode(0o755)).expect("chmod");
+    common::git::git_ok(
+        &root,
+        &["config", "core.fsmonitor", program.to_str().expect("utf-8")],
+    );
+
+    let (_, _, envelope) = preview(&root);
+    assert_eq!(envelope["result"]["tracked_files"], "known");
+    assert!(!marker.exists(), "the preview ran the repository's program");
 }
 
 #[test]

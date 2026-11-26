@@ -14,7 +14,7 @@ parent: SPEC-20261121-flow-skeleton
 - Q1: 설정 문서 조사 보고서의 항목들을 어떻게 다루나요? → A: 모든 항목을 카드로 만들어요(2026-11-22 사용자 선택, 이 작업의 카드 본문에 기록). 비밀 파일 거절 규칙은 그중 한 항목이고, 가드 파일이라 미리보기 뒤 사용자의 선택으로만 써요.
 - Q2: 루트 설정 파일이 git 에 무시되면 어떻게 하나요? → A: 쓰기를 거부하고, 메시지는 고치는 법(`.claude/settings.json` 추적)만 안내해요(리더 결정 카드 노트 6132, 2026-11-22. 사용자의 직접 선택은 아니에요).
 - Q3: 이 작업이 쓰는 설정은 어디까지인가요? → A: 사용자 설정 폴더는 쓰지 않고 프로젝트 설정과 템플릿만이에요(리더 지시, 2026-11-26).
-- Q4: Decisions 의 D-1, D-2, D-4, D-10 은? → A: 아직 답이 없어요. 기본값 A 로 적었고, 승인 전에 리더가 바꿀 수 있어요.
+- Q4: Decisions 의 D-1, D-2, D-4, D-10 은? → A: 모두 기본값 A 로 개정 3 이 승인됐어요(리더의 승인 기록, 카드 노트 10189, 2026-11-26).
 
 ## Intent
 
@@ -104,8 +104,8 @@ parent: SPEC-20261121-flow-skeleton
 ## Scope
 
 - write (지금): `.moai/specs/SPEC-20261122-secret-file-deny-rules/**`
-- write (코드 조각, 차례가 오면 `card scope` 로 넓혀요): `src/secret_deny.rs`(새 모듈), `tests/secret_deny_cli.rs`, `src/claude.rs`(`SPEC-20261122-settings-write-check` 착지 뒤), `skills/moai/workflows/project.md`, `skills/moai/workflows/update.md`
-- write (공유 파일은 줄 임대): `src/lib.rs`, `src/main.rs`(명령 `moai secret-deny-plan`·`moai secret-deny-apply`), `tests/areas.toml`
+- write (코드 조각, 차례가 오면 `card scope` 로 넓혀요): `src/secret_deny.rs`(새 모듈), `tests/secret_deny_cli.rs`, `tests/fixtures/secret_deny/`(이 저장소 `.claudeignore` 사본과 기대 규칙), `src/ops/secret_deny_plan.rs`·`src/ops/secret_deny_apply.rs`(명령 `moai secret-deny-plan`·`moai secret-deny-apply`; `src/main.rs` 는 고치지 않아요)와 `docs/design-review/appendix/operations/` 의 두 명령 문서, `src/worktree_include.rs`(이름 맞춤 함수를 같이 써요), `src/claude.rs`(`SPEC-20261122-settings-write-check` 착지 뒤), `skills/moai/workflows/project.md`, `skills/moai/workflows/update.md`
+- write (공유 파일은 줄 임대): `src/lib.rs`, `src/help.rs`, `tests/fixtures/help/*.txt`
 - read-only: `.moai/specs/SPEC-20261122-settings-write-check/**`, `src/project_scale.rs`, `.gitignore`
 - forbidden: 실제 사용자 설정이나 메인 체크아웃의 `.claudeignore` 를 테스트·명령이 쓰는 일, 맞은 키 파일을 열거나 해시하는 일, 실제 `claude` 실행, 기존 설정 쓰기의 거절을 약하게 하는 변경, Python
 
