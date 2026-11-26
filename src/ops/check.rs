@@ -51,9 +51,12 @@ enum Action {
     /// `module:<word>` and `units:<module path>` reasons why the set is narrow, or `none`),
     /// `test-threads=<n>` (the cap the
     /// `test` step ran with), the exit status of each step in the order they ran, then
-    /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. A repository with no
-    /// `Cargo.toml` at its top folder and no `.rs` file at the head gets no cargo step: it runs
-    /// `git diff --check`, `bash -n` and one `sh -c` step per entry of `checks` in
+    /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. A run whose slot waited
+    /// for CPU headroom (`min_cpu_free_pct` in the slot folder's `limits.json`) also writes
+    /// `slot_wait=<seconds>` before `result=`; a run that did not wait writes no such word.
+    /// A repository with no `Cargo.toml` at its top folder and no `.rs` file at the head gets no
+    /// cargo step: it runs `git diff --check`, `bash -n` and one `sh -c` step per entry of
+    /// `checks` in
     /// `.moai/project.yaml` (a heavy step each, in the declared order). When it declares none (no
     /// profile, one that cannot be read, or no `checks`) and no step failed, the result is
     /// `not_run`, never `PASS`: the line ends in `result=not_run`, the answer's `not_run.next`
