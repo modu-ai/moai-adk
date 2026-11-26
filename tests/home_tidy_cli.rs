@@ -246,6 +246,85 @@ fn text(v: &Value) -> &str {
 
 // ---------------------------------------------------------------- inventory_
 
+/// Runs `program ARGS` in a macOS sandbox that kills the process the moment it opens one of
+/// `denied` (a folder with everything below it) to read its data. Listing a name and reading
+/// its own directory data stay allowed, so the signal tells an open call from a listing.
+#[cfg(target_os = "macos")]
+fn killed_on_open(denied: &[PathBuf], program: &str, args: &[&str]) -> std::process::Output {
+    let mut profile = String::from("(version 1)(allow default)");
+    for p in denied {
+        profile.push_str(&format!(
+            "(deny file-read-data (subpath \"{}\") (with send-signal SIGKILL))",
+            p.display()
+        ));
+    }
+    let own_home = TempDir::new().unwrap();
+    Command::new("/usr/bin/sandbox-exec")
+        .clean_env()
+        .env("HOME", own_home.path())
+        .arg("-p")
+        .arg(profile)
+        .arg(program)
+        .args(args)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap()
+}
+
+/// The open calls of both operations, observed: no protected entry, no key of another product
+/// and nothing a link points at is ever opened. The stand-ins are readable here, so an open
+/// would reach the sandbox rule and not stop at the file mode.
+#[cfg(target_os = "macos")]
+#[test]
+fn inventory_and_plan_open_no_protected_entry() {
+    use std::os::unix::process::ExitStatusExt;
+    let fx = fixture();
+    let outside = fx.home.join("outside");
+    put(&outside.join("key.txt"), 16);
+    put(&outside.join("dir/key.txt"), 16);
+    symlink(outside.join("key.txt"), fx.moai.join("link-outside")).unwrap();
+    symlink(outside.join("dir"), fx.moai.join("reports/projA/link-dir")).unwrap();
+    for (name, mode) in [
+        (".env.glm", 0o644),
+        ("credentials.yaml", 0o644),
+        ("secrets", 0o755),
+        ("claude-profiles/p1/auth.json", 0o644),
+    ] {
+        fs::set_permissions(fx.moai.join(name), fs::Permissions::from_mode(mode)).unwrap();
+    }
+    put(&fx.moai.join("secrets/token"), 8);
+    put(&fx.moai.join("releases/v1/.env"), 8);
+    let denied: Vec<PathBuf> = [
+        ".env.glm",
+        "credentials.yaml",
+        "secrets",
+        "claude-profiles/p1/auth.json",
+        "pipe",
+        "releases/v1/.env",
+    ]
+    .iter()
+    .map(|n| fx.moai.join(n))
+    .chain([outside.clone()])
+    .collect();
+    // The probe itself: each denied path kills a program that does open it.
+    for p in &denied {
+        let program = if p.is_dir() { "/bin/ls" } else { "/bin/cat" };
+        let out = killed_on_open(&denied, program, &[p.to_str().unwrap()]);
+        assert_eq!(out.status.signal(), Some(9), "{}: {out:?}", p.display());
+    }
+    for op in ["tidy-inventory", "tidy-plan"] {
+        let out = killed_on_open(&denied, BIN, &[op, fx.home.to_str().unwrap()]);
+        assert!(
+            out.status.success(),
+            "{op} was stopped (signal {:?}): {}",
+            out.status.signal(),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(v["ok"], Value::Bool(true), "{op}: {v}");
+    }
+}
+
 #[test]
 fn inventory_lists_every_entry_with_class_size_newest_and_reason() {
     let fx = fixture();
