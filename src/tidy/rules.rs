@@ -43,6 +43,10 @@ pub const UNKNOWN_WRITER_PREFIX: &[&str] = &["thread-media"];
 /// Go-era names that `home_state::SELECTIVE_TABLE` lacks (the leader's inventory, note 5902).
 pub const RETIRED_EXTRA: &[&str] = &["db"];
 
+/// Go-era names the tidy keeps (SPEC-20261126-home-tidy-apply D-3): `cleanup-apply` never
+/// archives the first three, and `user-assets.json` is what proves which files it owns.
+pub const KEPT_GO_DATA: &[&str] = &["releases", "db", "backups", "user-assets.json"];
+
 /// What a top-level entry is, before its age is read.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Class {

@@ -1,11 +1,11 @@
 //! The read-only tidy plan (SPEC-20261124-home-tidy-slice2, REQ-5 to REQ-8). It names each
 //! candidate with an action, the rule that made it one and the reason, offers only what the
-//! rules of this slice reach, and gives the digest of its candidate list for slice 3.
+//! rules reach, and gives the digest of its candidate list, which `tidy-apply` confirms.
 //!
 //! What needs git proof (worktrees, build folders, evidence landed, receipt trees) is kept with
 //! `proof_pending`; what no one is known to write (`logs`) is kept as unknown; another product
-//! and every protected entry are kept as listed. The only `delete` is an empty folder of the
-//! retired-tool class.
+//! and every protected entry are kept as listed; the Go-era names of `rules::KEPT_GO_DATA` are
+//! kept. The only `delete` is an empty folder of the retired-tool class.
 
 use super::inventory::{Entry, Item, KindRow, Scan};
 use super::rules::Thresholds;
@@ -94,6 +94,17 @@ fn kind_order(kind: &str) -> usize {
 /// A top-level entry that is not a kind folder with items of its own.
 fn entry_item(e: &Entry) -> Planned {
     let (bytes, newest) = (e.stats.bytes, e.stats.newest);
+    let name = e.name.to_ascii_lowercase();
+    if e.class != "protected" && super::rules::KEPT_GO_DATA.contains(&name.as_str()) {
+        return keep(
+            &e.name,
+            &e.class,
+            "keep_go_run_data",
+            "go_run_data_kept: the update cleanup never archives this Go-era data either".into(),
+            bytes,
+            newest,
+        );
+    }
     match e.class.as_str() {
         "retired_tool" if e.empty_dir => Planned {
             path: e.name.clone(),
