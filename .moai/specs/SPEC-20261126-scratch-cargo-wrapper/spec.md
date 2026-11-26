@@ -59,4 +59,17 @@ created: 2026-11-26
 
 ## Result
 
-아직 없어요.
+코드 head 는 `aa78987a6f`(base `91dd561a5a`)예요. 아래는 같은 내용의 작업 트리에서 2026-11-26 에 macOS, debug 빌드로 heavy slot 안에서 실행한 결과예요.
+
+재현(고치기 전 바이너리, `RUSTC_WRAPPER` 와 `CARGO_BUILD_RUSTC_WRAPPER` 를 없는 프로그램으로 둠): `test_home_guard` 48 통과·6 실패, `run_verify` 12 통과·1 실패(`real_runner_receipt`). 같은 바이너리를 wrapper 없이 돌리면 54·13 모두 통과였어요. 실패 수는 사고 때(6개와 1개)와 같아요.
+
+- AC-1: met — `cargo nextest run --test test_home_guard --test run_verify -E 'test(/missing_outer_wrapper/)'` 2 통과, exit 0.
+- AC-2: met — `cargo nextest run --test test_scratch_cargo` 3 통과, exit 0.
+- AC-3: met — `cargo nextest run --test test_home_guard --test run_verify --test audit_prep_cli --test audit_slot_cli --test worktree_slot_cli --test repo_scans_table` 153 통과, exit 0.
+- AC-4: met — `moai spec check SPEC-20261126-scratch-cargo-wrapper` errors 0, warnings 0.
+
+고친 뒤의 바이너리를 없는 wrapper 환경에서 직접 실행: `test_home_guard` 55, `run_verify` 14, `audit_slot_cli` 19, `worktree_slot_cli` 19 모두 통과. `audit_prep_cli` 는 이 직접 실행에서 10개가 실패했는데, 임시 HOME 에서 rustup 프록시가 toolchain 을 못 고른 오류이고(`rustup could not choose a version of cargo to run`) 출력에 없는 wrapper 경로는 0건이에요. nextest 에서는 AC-3 에 포함돼 통과했어요.
+
+남은 틈: `tests/check_affected_touch.rs` 는 `RUSTC_WRAPPER` 만 지워요. `CARGO_BUILD_RUSTC_WRAPPER` 까지 없는 프로그램이면 `a_restore_with_the_old_file_time_is_rebuilt` 1개가 실패하고, `RUSTC_WRAPPER` 만 두면(사고 때의 환경) 4개 모두 통과해요. 그 파일은 다른 카드가 잡고 있어서 스캔의 예외로 두었어요.
+
+not_run: Windows·Linux, `~/.cargo/config.toml` 의 wrapper, 전체 `cargo test`, sccache 서버를 실제로 끄고 긴 `TMPDIR` 에서 재현하는 일(없는 wrapper 로 대신했어요).
