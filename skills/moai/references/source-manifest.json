@@ -170,6 +170,15 @@
         "reason": "Moved out of the RUN workflow by the RUN and SYNC procedure SPEC: heavy slots, one build folder per worktree, cleanup and the build cache facts, with the Python slot and tool paths removed. Read from RUN step 1."
       }
     },
+    "references/internal/change-claims.md": {
+      "sha256": "136b2558a9b9dd9e29e21f2d69bdbaf758200a6c6becd77c398b905139243ae5",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-change-claims",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261126-change-claims-and-test-guard (REQ-9): how to list the claims of a change and match each to the diff, the four labels, how to check deleted or altered tests and the tests that read an altered output, and the repair ready note. Read by moai-impl and moai-audit through their reads: lists."
+      }
+    },
     "references/internal/check-completeness.md": {
       "sha256": "7b32a82dc07e67b439a3f97602d8a2db198af18c196de24c8150e321fc10d955",
       "origin": {
@@ -549,7 +558,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai agent` takes one card at a time, hands its plan, implementation and documents to the base agents in turn, submits it with `moai card submit` and waits for the leader (user decision 2026-11-25); a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "d04816328bc143b0d35de074589468db7c1804797d75e4d9752baaa09619b77b"
+      "sha256": "d0c0bf12b102d64cdc1966229023136560e3aff7af35d496a1cfd0a43896f67e"
     }
   }
 }
