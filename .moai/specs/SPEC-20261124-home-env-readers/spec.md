@@ -119,7 +119,7 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 
 기준선(`tests/fixtures/test_home_guard/baseline.tsv`) 줄은 관찰 실행으로 확인한 묶음에서만 지워요(D-9). 첫 묶음은 그 파일을 쓰지 않아요.
 
-조각 3 첫 묶음 순서: 1) 승인 노트를 받아요. 2) 특성 테스트(AC-19, AC-20)를 옛 코드에서 통과시켜요. 3) 목록 검사를 옛 소스에 맞춰 통과시키고, 목록의 두 줄을 가장자리로 먼저 옮겨 실패(RED)를 봐요. 4) `inventory` 가 HOME 을 인자로 받고 `host_wake::run` 이 읽어 넘기게 바꿔요(GREEN). 5) 스캔 표 한 줄을 line-lease 로 더해요. 6) 새 테스트마다 뮤턴트, fmt, clippy, `check affected --card` 한 번.
+조각 3 첫 묶음 순서: 1) 승인 노트를 받아요. 2) 특성 테스트(AC-19, AC-20)를 옛 코드에서 통과시켜요. 3) 목록 검사를 옛 소스에 맞춰 통과시키고, 목록의 두 줄을 가장자리로 먼저 옮겨 실패(RED)를 봐요. 4) `inventory` 가 HOME 을 인자로 받고 `host_wake::run` 이 읽어 넘기게 바꿔요(GREEN). 5) 스캔 표 한 줄을 line-lease 로 더해요. 그 항목은 `"always": true` 와 `src/` 범위여야 해요: 목록이 `src/` 파일 경로를 글자로 적어서, 항상 스캔이 아니면 `every_file_reader_has_an_always_scan_or_an_exemption`(`tests/repo_scans_table.rs`)이 실패해요. 그래서 `src/` 의 `.rs` 를 바꾼 착지는 모두 이 검사를 돌려요(D-13). `tests/repo_scans_table.rs` 는 고치지 않아요(다른 카드가 예약 중). 6) 새 테스트마다 뮤턴트, fmt, clippy, `check affected --card` 한 번.
 
 1조각 순서: 1) 승인 노트를 받아요. 2) RED: 위 테스트 이름으로 `default_home_root_in`·`switched_dir_in` 이 없어 컴파일이 실패하는 것을 봐요. 3) GREEN: `default_home_root_in`·`switched_dir_in` 을 더하고 `default_home_root`·`switched_dir` 는 어댑터로, `claims_legacy_dir` 는 `identity_in(project, None)` 으로 바꿔요. 4) 이웃: `layout` 모듈 기존 테스트와 `claim` 의 `journal_root` 테스트, fmt, clippy.
 
@@ -170,7 +170,7 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 
 ## Interview
 
-- Q1: 서명을 바로 바꾸나요? → A: 아니요(D-1). `switched_dir` 호출부 세 곳이 범위 밖이에요.
+- Q1: 서명을 바로 바꾸나요? → A: 아니요(D-1). `switched_dir` 호출부 세 곳이 범위 밖이에요. 판 5 는 호출자가 모두 그 묶음 안에 있는 함수만 서명을 바로 바꿔요(D-12).
 - Q2: 환경 HOME 읽기를 전부 이 카드 하나로 끝내나요? → A: 아니요. 인벤토리를 조각으로 나눠요; 조각 2 이후는 시작할 때 리더 노트로 범위를 받아요.
 - Q3: 조각 2 가 C-409 조각 2a 와 같은 파일(`src/claim.rs`, `src/identity.rs`)을 만지는데 어떻게 하나요? → A: C-409 가 먼저예요(카드 본문의 순서). 이 카드는 겹치지 않는 부분(`src/layout.rs`)을 먼저 하고, 겹치는 파일은 C-409 착지 뒤 `moai card scope` 로 예약을 넓혀 해요.
 - Q4: `journal_root` 호출부(서른 곳 넘음)를 모두 `journal_root_in` 으로 옮기나요? → A: 아니요. 어댑터를 남기고 기준선 테스트가 부르는 곳과 `apply_at` 만 옮겨요. 나머지 호출부는 가장자리에서 HOME 을 받아 내려오는 조각에서 옮겨요.
