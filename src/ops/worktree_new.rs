@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-/// Make a lane's worktree in the primary checkout and read it back
+/// Make a lane worktree in the primary checkout and verify it
 ///
 /// Adds `<primary checkout>/.claude/worktrees/<name>` on the new branch `--branch`, cut from the
 /// integration branch (or from `--base`), then reads `git worktree list --porcelain` again and

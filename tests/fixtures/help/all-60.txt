@@ -410,8 +410,8 @@ Internal
                           branches
   worktree-slot           Fixed worktree slots, warmed from
                           the seed
-  worktree-new            Make a lane's worktree in the
-                          primary checkout and read it back
+  worktree-new            Make a lane worktree in the
+                          primary checkout and verify it
   worktree-install-plan   Preview a scoped package install
   hygiene-plan            Preview what may move to the
                           holding folder
