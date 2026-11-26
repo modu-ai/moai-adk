@@ -1140,14 +1140,17 @@ fn refused_a_side_that_is_not_utf8() {
     r.diverge(ours_first_line, theirs_last_line);
     let mut sides = r.sides();
     sides[2].extend_from_slice(b"\xff\xfe\n");
-    assert_direct_refusal(&r, &r.root, &sides, MANIFEST, &[]);
+    // The reason is asked for: bytes read lossily would be refused as broken JSON instead.
+    assert_direct_refusal(&r, &r.root, &sides, MANIFEST, &["their side", "UTF-8"]);
 }
 
 #[test]
 fn refused_a_path_that_is_not_a_package_manifest() {
     let r = Repo::new();
     r.diverge(ours_first_line, theirs_last_line);
-    assert_direct_refusal(&r, &r.root, &r.sides(), "docs/other.json", &[]);
+    // The reason is asked for: another path would also fail later, on versions not found.
+    let reason = ["docs/other.json is not a package manifest"];
+    assert_direct_refusal(&r, &r.root, &r.sides(), "docs/other.json", &reason);
 }
 
 #[test]
