@@ -1,16 +1,16 @@
 //! SPEC-20261126-affected-binary-tests: `check affected` also picks the integration tests that
 //! drive the built binary. A marker line joins every source change, a changed command file reaches
 //! the tests that name its command, a changed library file reaches the tests of its own command
-//! files, and a changed file under `tools/` reaches the tests that hold its path. The selection is
-//! read from the built binary (`--list`) in temporary git repositories with a temporary HOME; the
-//! real repository is only read.
+//! files, a changed file under `tools/` reaches the tests that hold its path, and a test file may
+//! declare a path whose change selects it. The selection is read from the built binary (`--list`)
+//! in temporary git repositories with a temporary HOME; the real repository is only read.
 mod common;
 use common::git::{git, git_ok};
 use common::home::TempHome;
 use serde_json::Value;
 use std::collections::BTreeSet;
 use std::fs;
-use std::path::Path;
+use std::path::{Component, Path};
 use std::process::Stdio;
 
 /// The whole line that joins a test to every source change (REQ-1).
@@ -35,6 +35,22 @@ const MARKED: [&str; 5] = [
     "project_update_hooks_cli",
     "update_end_to_end_cli",
 ];
+
+/// The start of the whole line by which a test file names a path it depends on (REQ-10); the path
+/// follows it. It is only ever joined to a path inside a string, so no line of this file declares
+/// one.
+const DECLARATION: &str = "// check-affected: when-changed ";
+
+/// The test files of this repository that must declare [`DECLARED_PATH`] (REQ-11).
+const DECLARING: [&str; 4] = [
+    "tests/card/card_submit_cli.rs",
+    "tests/card/card_wip_limit.rs",
+    "tests/card/orchestrate_cli.rs",
+    "tests/leader_brief_cli.rs",
+];
+
+/// The source file those tests drive from the commands above it.
+const DECLARED_PATH: &str = "src/card/work.rs";
 
 /// A temporary git repository and the temporary HOME its `check affected` runs under.
 struct Repo {
@@ -711,4 +727,186 @@ fn every_command_file_is_named_like_a_listed_command() {
     // The check does name a file that no command is listed for.
     let look_alike = BTreeSet::from(["project_applied".to_string()]);
     assert_eq!(unlisted(&look_alike), ["project_applied"]);
+}
+
+// SPEC-20261126-affected-binary-tests AC-11
+#[test]
+fn a_declared_path_change_selects_the_test_that_names_it() {
+    let repo = Repo::init();
+    let shared = format!("{DECLARATION}data/shared.txt");
+    // A target of its own with two declarations.
+    repo.put(
+        "tests/update_declared_cli.rs",
+        &format!("//! A test.\n{shared}\n{DECLARATION}src/part.rs\nfn main() {{}}\n"),
+    );
+    // A module of an area test binary beside a module that declares nothing; the binary's
+    // `main.rs` and a helper file are no test files.
+    repo.put(
+        "tests/card/main.rs",
+        &format!("{DECLARATION}data/main.txt\nmod card_declared_cli;\nmod card_quiet_cli;\n"),
+    );
+    repo.put(
+        "tests/card/card_declared_cli.rs",
+        &format!("{DECLARATION}data/module.txt\n"),
+    );
+    repo.put("tests/card/card_quiet_cli.rs", "// a\n");
+    repo.put(
+        "tests/common/declares.rs",
+        &format!("{DECLARATION}data/helper.txt\n"),
+    );
+    repo.put(
+        "tests/update_declare_helper_cli.rs",
+        &loads("common/declares.rs"),
+    );
+    // Lines that are not the declaration of a changed path.
+    let look_alikes = [
+        (
+            "update_declare_trailing_cli",
+            format!("{shared} (not the line)"),
+        ),
+        ("update_declare_longer_cli", format!("{shared}.bak")),
+        (
+            "update_declare_prefix_cli",
+            format!("{DECLARATION}data\n{DECLARATION}src/part"),
+        ),
+        ("update_declare_doc_cli", format!("//! {shared}")),
+        (
+            "update_declare_inline_cli",
+            format!("fn quiet() {{}} {shared}"),
+        ),
+        (
+            "update_declare_literal_cli",
+            format!("const LINE: &str = \"{shared}\";"),
+        ),
+    ];
+    for (name, lines) in &look_alikes {
+        repo.put(
+            &format!("tests/{name}.rs"),
+            &format!("{lines}\nfn main() {{}}\n"),
+        );
+    }
+    let changes: [(&str, &[&str]); 6] = [
+        ("data/shared.txt", &["update_declared_cli"]),
+        ("src/part.rs", &["update_declared_cli"]),
+        ("data/module.txt", &["card_declared_cli"]),
+        ("data/unnamed.txt", &[]),
+        ("data/main.txt", &[]),
+        ("data/helper.txt", &[]),
+    ];
+    for (path, _) in changes {
+        repo.put(path, "// a\n");
+    }
+    repo.commit();
+
+    let mut misses: Vec<String> = Vec::new();
+    for (path, wanted) in changes {
+        let range = repo.change(&[path]);
+        for (pick, flags) in PICKS {
+            let got = repo.listed(&range, flags);
+            assert_eq!(got.selection, pick, "{path}");
+            for target in &got.targets {
+                assert!(wanted.contains(&target.as_str()), "{path} {pick}: {target}");
+            }
+            for want in wanted {
+                if !got.targets.contains(*want) {
+                    misses.push(format!("{path} {pick}: missing {want}"));
+                }
+            }
+            // A module of an area binary is selected as that module alone.
+            if got.targets.contains("card_declared_cli") {
+                let filter = test_filter(&repo.planned(&range, flags)).unwrap_or_default();
+                let narrowed = "(binary(=card) & (test(/^card_declared_cli::/)))";
+                assert!(filter.contains(narrowed), "{path} {pick}: {filter}");
+                assert!(!filter.contains("card_quiet_cli"), "{pick}: {filter}");
+                assert!(
+                    !filter.split(" | ").any(|term| term == "binary(=card)"),
+                    "{pick}: {filter}"
+                );
+            }
+        }
+    }
+
+    // REQ-11 and the repository's present files.
+    let real = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let line = format!("{DECLARATION}{DECLARED_PATH}");
+    for rel in DECLARING {
+        let text = fs::read_to_string(real.join(rel)).unwrap();
+        if !text.lines().any(|l| l == line) {
+            misses.push(format!("{rel}: no declaration line"));
+        }
+    }
+    assert!(real.join(DECLARED_PATH).is_file());
+    let repo = Repo::of_this_repository();
+    let range = repo.change(&[DECLARED_PATH]);
+    for (pick, flags) in PICKS {
+        let got = repo.listed(&range, flags);
+        for rel in DECLARING {
+            let name = rel.rsplit('/').next().unwrap().trim_end_matches(".rs");
+            if !got.targets.contains(name) {
+                misses.push(format!(
+                    "{DECLARED_PATH} {pick} (answered {}): missing {name}",
+                    got.selection
+                ));
+            }
+        }
+    }
+    assert!(misses.is_empty(), "{misses:#?}");
+}
+
+/// How many declarations the Rust files under `tests/` of `root` hold, and those that name no
+/// file inside `root`, as `<file>: <path>`.
+fn declarations(root: &Path) -> (usize, Vec<String>) {
+    let mut files = Vec::new();
+    rust_files(root, "tests", &mut files);
+    let mut read = 0;
+    let mut wrong = Vec::new();
+    for file in &files {
+        let text = fs::read_to_string(root.join(file)).unwrap();
+        for path in text.lines().filter_map(|l| l.strip_prefix(DECLARATION)) {
+            read += 1;
+            let inside = Path::new(path)
+                .components()
+                .all(|c| matches!(c, Component::Normal(_)));
+            if !inside || !root.join(path).is_file() {
+                wrong.push(format!("{file}: {path}"));
+            }
+        }
+    }
+    wrong.sort();
+    (read, wrong)
+}
+
+// SPEC-20261126-affected-binary-tests AC-12
+#[test]
+fn every_declared_path_names_a_file() {
+    // The check does name a declaration whose path is no file of the repository.
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("repo");
+    for folder in ["src", "tests"] {
+        fs::create_dir_all(root.join(folder)).unwrap();
+    }
+    fs::write(root.join("src/there.rs"), "// a\n").unwrap();
+    fs::write(dir.path().join("outside.rs"), "// a\n").unwrap();
+    let paths = [
+        "src/there.rs",
+        "src/gone.rs",
+        "src",
+        "src/there.rs (note)",
+        "../outside.rs",
+    ];
+    let lines: String = paths
+        .iter()
+        .map(|p| format!("{DECLARATION}{p}\n"))
+        .collect();
+    fs::write(root.join("tests/some_cli.rs"), lines).unwrap();
+    let named = ["../outside.rs", "src", "src/gone.rs", "src/there.rs (note)"]
+        .map(|p| format!("tests/some_cli.rs: {p}"));
+    assert_eq!(declarations(&root), (paths.len(), named.to_vec()));
+
+    let (read, wrong) = declarations(Path::new(env!("CARGO_MANIFEST_DIR")));
+    assert!(wrong.is_empty(), "no such file: {wrong:#?}");
+    assert!(
+        read >= DECLARING.len(),
+        "this repository holds {read} declarations"
+    );
 }
