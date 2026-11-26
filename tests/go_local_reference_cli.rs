@@ -830,3 +830,134 @@ fn next_step_is_named_by_the_update_plan_and_the_project_workflow() {
         .expect("project.md names the pick");
     assert!(line.contains("never edit"), "{line}");
 }
+
+// ---- AC-7: the update route prints only the picked command ----
+
+/// A fixture whose local settings hold the Go folder through `env` and a status line, with or
+/// without a proven file outside the folder.
+fn held_by_local(others_move: bool, env_path: Option<&str>) -> Fx {
+    let fx = Fx::new();
+    if !others_move {
+        fs::remove_file(fx.root.join(FREE)).unwrap();
+    }
+    let mut local = json!({
+        "env": {"TOKEN": KEPT_VALUE},
+        "statusLine": {"type": "command", "command": format!("bash {}", go("status_line.sh"))},
+    });
+    if let Some(path) = env_path {
+        local["env"]["PATH"] = json!(path);
+    }
+    fx.local(&local.to_string());
+    fx
+}
+
+/// The `go-state` step of the update plan; the preview writes nothing and prints no value.
+fn update_go_state(fx: &Fx) -> Value {
+    let before = fx.tree();
+    let (v, text) = fx.run(&["project-update-plan", fx.shown()], b"", &[]);
+    assert_eq!(v["ok"], json!(true), "{text}");
+    assert_eq!(fx.tree(), before, "a preview writes nothing");
+    assert!(!text.contains(KEPT_VALUE), "{text}");
+    step(&v["result"], "go-state").clone()
+}
+
+#[test]
+fn update_prints_the_picked_command_and_running_it_moves_the_folder() {
+    for others_move in [true, false] {
+        let fx = held_by_local(others_move, None);
+        let state = update_go_state(&fx);
+        assert_eq!(state["state"], json!("needs_decision"), "{state}");
+        assert_eq!(state["preview"]["layout"], json!("folder_moves"), "{state}");
+        assert_eq!(
+            state["preview"]["local_references"]["picked"],
+            json!(true),
+            "{state}"
+        );
+        let words: Vec<&str> = state["apply"]["argv"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{others_move}: no command: {state}"))
+            .iter()
+            .map(|w| w.as_str().unwrap())
+            .collect();
+        assert_eq!(words[..2], ["moai", "go-state-apply"], "{state}");
+        assert!(words.contains(&PICK), "{words:?}");
+        // As printed, with the one placeholder filled in.
+        let args: Vec<&str> = words[1..]
+            .iter()
+            .map(|w| {
+                if *w == "<permission-reference>" {
+                    REF
+                } else {
+                    w
+                }
+            })
+            .collect();
+        let receipt = fx.ok(&args, b"");
+        assert_eq!(receipt["state"], json!("committed"), "{receipt}");
+        let moved = under(GO_BACKUP, "status_line.sh");
+        assert!(fx.root.join(&moved).is_file(), "{others_move}");
+        assert!(fx.read(LOCAL).contains(&moved), "{}", fx.read(LOCAL));
+        assert!(
+            !fx.root.join(moai_cli::PROJECT_STATE_DIR).exists(),
+            "{others_move}: no earlier state folder"
+        );
+    }
+}
+
+#[test]
+fn update_holds_the_later_steps_for_a_move_but_not_for_the_pick_alone() {
+    const WAIT: &str = "re-run after the backup phase";
+    for others_move in [true, false] {
+        let fx = held_by_local(others_move, None);
+        let update = fx.ok(&["project-update-plan", fx.shown()], b"");
+        assert_eq!(
+            step(&update, "go-state")["state"],
+            json!("needs_decision"),
+            "{update}"
+        );
+        // Where files moved before this pick existed, the later steps waited and still do;
+        // where nothing moved they did not wait, and the offered pick does not hold them.
+        for name in ["generation", "hooks", "claude-settings-merge"] {
+            let later = step(&update, name);
+            assert_eq!(
+                later["reason"] == json!(WAIT),
+                others_move,
+                "{others_move} {name}: {later}"
+            );
+        }
+    }
+}
+
+#[test]
+fn update_with_a_value_the_pick_cannot_rewrite_prints_no_command_and_names_it() {
+    // The state is the one the step had before: a decision while files move, else blocked.
+    for (others_move, expected) in [(true, "needs_decision"), (false, "blocked")] {
+        let path = format!("/usr/bin:$HOME/{}", go("bin"));
+        let fx = held_by_local(others_move, Some(&path));
+        let state = update_go_state(&fx);
+        assert_eq!(state["state"], json!(expected), "{state}");
+        assert_eq!(state["apply"], Value::Null, "{state}");
+        let why = state["reason"].as_str().unwrap();
+        for needle in [PICK, "/env/PATH", "a session never edits"] {
+            assert!(why.contains(needle), "{needle:?}: {why}");
+        }
+        assert!(!why.contains("edit or remove these keys yourself"), "{why}");
+    }
+}
+
+#[test]
+fn update_with_another_hold_prints_no_command_and_says_why_the_folder_stays() {
+    for others_move in [true, false] {
+        let fx = held_by_local(others_move, None);
+        fx.write(&go("vendor/.git/HEAD"), "ref: refs/heads/main\n");
+        let picked = fx.plan(true);
+        let folder = item(&picked, MOAI_DIR);
+        assert_eq!(folder["action"], json!("leave"), "{picked}");
+        let stays = folder["reason"].as_str().unwrap();
+        let state = update_go_state(&fx);
+        assert_eq!(state["apply"], Value::Null, "{state}");
+        let why = state["reason"].as_str().unwrap();
+        assert!(why.contains(stays), "{stays:?}: {why}");
+        assert!(why.contains("a session never edits"), "{why}");
+    }
+}

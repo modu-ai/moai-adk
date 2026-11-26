@@ -57,7 +57,7 @@ base `41c16e60ac` 의 동작을 일회용 프로젝트(임시 HOME, `env -i`)에
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261126-go-local-settings-reference/`, `src/go_state.rs`, `src/main.rs`(go-state 두 명령의 플래그), `src/project_update.rs`(D-7), `skills/moai/workflows/project.md`, `skills/moai/references/source-manifest.json`(line-lease), `docs/design-review/appendix/` 의 go-state 설명(있으면), 도움말 골든(바뀌면, line-lease), `tests/go_local_reference_cli.rs`(새; 다른 `go_*_cli` 처럼 단독 대상이고, 첫 낱말 `go` 는 `tests/areas.toml` 에 이미 있어요. 상태 폴더 이름은 resolver 상수로 써요), `docs/later.md`(D-5 한 줄)
+- write: `.moai/specs/SPEC-20261126-go-local-settings-reference/`, `src/go_state.rs`, `src/main.rs`(go-state 두 명령의 플래그), `src/project_update.rs`(D-7), `skills/moai/workflows/project.md`, `skills/moai/references/source-manifest.json`(line-lease), `docs/design-review/appendix/` 의 go-state 설명(있으면), 도움말 골든(바뀌면, line-lease), `tests/go_state_cli.rs`·`tests/go_settings_cli.rs`·`tests/project_update_plan_cli.rs`·`tests/update_end_to_end_cli.rs`(바뀐 이유 문장과 단계를 고정한 단언), `tests/go_local_reference_cli.rs`(새; 다른 `go_*_cli` 처럼 단독 대상이고, 첫 낱말 `go` 는 `tests/areas.toml` 에 이미 있어요. 상태 폴더 이름은 resolver 상수로 써요), `docs/later.md`(D-5 한 줄)
 - read-only: `src/go_settings_clean.rs`, `src/state_root.rs`, `src/ops/project_apply.rs`, `src/launcher_init.rs`, `skills/moai/workflows/update.md`
 - forbidden: 설치된 HOME 과 실제 사용자 설정, `moai-adk-go` 쓰기, `state_root::dir` 판정 변경, 선택 없는 사용자 설정 쓰기
 
@@ -76,7 +76,8 @@ base `41c16e60ac` 의 동작을 일회용 프로젝트(임시 HOME, `env -i`)에
 - HOME 의 `.moai` 를 담은 값(Go 도구가 베낀 `env.PATH` 포함)이 있으면 선택으로도 풀리지 않아요 → 미리보기가 그 pointer 를 이름 부르고(AC-2), 판정을 좁힐지는 사용자에게 물어요(D-5).
 - 바꿔 쓴 hook 은 백업 폴더의 스크립트를 실행해요. 사용자가 그 폴더를 지우면 참조가 끊겨요 → 미리보기와 `project.md` 가 말해요.
 - 다시 직렬화하면 키 순서·들여쓰기가 달라질 수 있어요 → 원본 바이트는 백업에 있고 revert 가 그대로 돌려요.
-- update 길에서 선택을 거절하면, 옮길 파일이 없던 갈래는 지금과 달리 설치 단계가 그 단계 뒤에서 기다려요(D-8). 사용자는 선택하거나 값을 직접 고친 뒤 다시 미리보기를 해요.
+- update 길에서 옮길 파일이 없던 갈래의 선택은 설치·merge 단계를 막지 않아요(D-8, 지금과 같아요). 선택을 거절해도 그 단계들은 그대로 나와요.
+- 옮길 파일이 있는 갈래에서 선택이 폴더를 옮기지 못하면(HOME 경로 값, worktree 등) 명령이 없는 `needs_decision` 이라 설치·merge 단계가 계속 기다려요. 지금은 선택 없는 apply 를 하면 풀렸어요. 사용자가 이유에 적힌 것을 고쳐야 풀려요.
 
 ## Decisions
 
@@ -89,6 +90,6 @@ base `41c16e60ac` 의 동작을 일회용 프로젝트(임시 HOME, `env -i`)에
 | D-5 | HOME 의 `.moai` 를 가리키는 값도 지금처럼 폴더를 묶어요. 선택은 그 값을 바꾸지 않고 거절하며 이름 불러요. 판정을 좁히는 일은 `docs/later.md` 한 줄로 남겨요 | 리더 결정(원장 노트 9939): fail-closed 판정을 좁히는 일은 위임으로 정하지 않고 사용자에게 물어요. 알려진 거짓 묶음: Rust launcher 자체가 HOME 의 `.moai/path/moai-cli` 에 있고(`go_settings_clean::launcher_shown`) Go 도구는 상속한 `PATH` 를 `env.PATH` 에 베껴요(HOME `PATH` 값만으로 묶이는 것은 위 재현에서 읽음) | 사용자가 고르면 새 revision |
 | D-6 | 기준 1 의 "one user pick" 은 이 막힘을 푸는 선택 하나(바꿔 쓰고 옮기기)로 읽어요. 그 뒤 프로필 계획의 기존 승인은 그대로예요 | `project.md` 4단계의 기존 승인 | — |
 | D-7 | `src/project_update.rs` 는 지금 다른 작업(update 이행의 go-residue 후속)이 예약해 두었어요. `go_state` 의 `.moai` 항목 이유는 `go-state` 단계 이유에 그대로 실리므로 선택 이름은 이 파일 없이도 보여요. 그 파일의 "edit or remove these keys yourself" 문장과 같은 `contains(".moai/")` 판정(`moai_dir_references`, 풀리기 전에는 "held by" 문장이 go-state 와 다를 수 있어요)은 예약이 풀린 뒤 이 작업의 마지막 조각으로 고쳐요(리더 결정, 원장 노트 9939). 나머지 코드는 NeXT 에서 바로 시작할 수 있어요(SPEC-20261126-no-state-folder-writes 의 착지를 기다리지 않음: 테스트는 `.moai/project.yaml` 이 생기고 `.moai-cli` 가 없는 것을 봐요) | 원장의 예약을 읽음(2026-11-26) | — |
-| D-8 | 로컬 설정이 폴더를 묶으면 update 길의 `go-state` 단계는 선택 없는 apply 명령을 내지 않아요. 선택을 넣은 미리보기가 폴더를 옮길 때만 그 명령을 내고(단계별 yes 가 그 선택), 아니면 명령 없이 상태를 그대로 둬요 | 리더 결정(원장 노트 10074, 질문 10073 의 (가)). 선택 없는 apply 는 사용자에게 두 번 묻고, 옮길 파일이 있으면 백업 자리가 옛 상태 폴더라서(`src/go_state.rs` `layout_and_backup`, 코드에서 읽음) 그 폴더를 새로 만들 수 있어요(결정 9717 과 반대) | 그 갈래를 지워요 |
+| D-8 | 로컬 설정이 폴더를 묶으면 update 길의 `go-state` 단계는 선택 없는 apply 명령을 내지 않아요. 선택을 넣은 미리보기가 폴더를 옮길 때만 그 명령을 내고(단계별 yes 가 그 선택), 아니면 명령 없이 상태를 그대로 둬요. 옮길 것이 없던 갈래에서 선택만 낸 단계 뒤에는 설치·merge 단계가 기다리지 않아요 | 리더 결정(원장 노트 10074 = 질문 10073 의 (가), 노트 10109 = 질문 10107 의 (가): 새 막는 기다림은 관찰부터라는 사용자 규칙). 선택 없는 apply 는 사용자에게 두 번 묻고, 옮길 파일이 있으면 백업 자리가 옛 상태 폴더라서(`src/go_state.rs` `layout_and_backup`, 코드에서 읽음) 그 폴더를 새로 만들 수 있어요(결정 9717 과 반대) | 그 갈래를 지워요 |
 
 ## Result

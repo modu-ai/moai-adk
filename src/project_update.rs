@@ -401,16 +401,87 @@ fn go_setting_names(step: &Step) -> String {
         .unwrap_or_default()
 }
 
+/// The go-state step. While the local settings hold the Go folder
+/// (SPEC-20261126-go-local-settings-reference REQ-9) it is the picked preview when that one moves
+/// the folder; otherwise it is the plain step, whose reason says why the folder stays and whose
+/// command [`plan`] withholds.
 fn go_state_step(
     root: &Path,
     shown: &str,
     plan: &go_state::GoStatePlan,
     settings: &Step,
 ) -> Result<Step> {
-    let pending = plan.items.iter().any(|i| i.action == "move")
+    if plan.local_references.is_none() {
+        return go_state_preview_step(root, shown, plan, settings);
+    }
+    let picked = go_state::plan_picked(root, &[], true)?;
+    let moves = picked
+        .items
+        .iter()
+        .any(|i| i.path == state_root::MOAI_DIR && i.action == "move");
+    if moves {
+        let mut step = go_state_preview_step(root, shown, &picked, settings)?;
+        if let Some((words, _)) = &mut step.apply {
+            words.push(go_state::REWRITE_PICK.into());
+            step.reason = format!(
+                "{}; {LOCAL_SETTINGS} holds the Go folder, so this command carries `{}`: it backs \
+                 that file up, points its project references at the Go backup folder and moves the \
+                 folder (preview.local_references, preview.warnings); a session never edits that \
+                 file by hand",
+                step.reason,
+                go_state::REWRITE_PICK
+            );
+        }
+        return Ok(step);
+    }
+    let mut step = go_state_preview_step(root, shown, plan, settings)?;
+    if let Some((_, reason)) = tied(root, plan, settings, Some(&picked)) {
+        step.reason = reason;
+    }
+    Ok(step)
+}
+
+/// REQ-9: while the local settings hold the Go folder, no go-state command without the pick is
+/// printed. The step keeps its state, and the steps built before this waited for it as before.
+fn picked_command_only(plan: Option<&go_state::GoStatePlan>, mut backup: Vec<Step>) -> Vec<Step> {
+    if plan.is_some_and(|p| p.local_references.is_some()) {
+        for step in backup.iter_mut().filter(|s| s.name == "go-state") {
+            step.apply = step
+                .apply
+                .take()
+                .filter(|(words, _)| words.iter().any(|w| w.as_str() == go_state::REWRITE_PICK));
+        }
+    }
+    backup
+}
+
+/// Whether the plain preview moves or copies anything.
+fn has_move(plan: &go_state::GoStatePlan) -> bool {
+    plan.items.iter().any(|i| i.action == "move")
         || plan.state_moves.iter().any(|m| m.action == "move")
         || plan.root_files.iter().any(|f| f.action != "leave")
-        || plan.restores.iter().any(|r| r.action == "copy");
+        || plan.restores.iter().any(|r| r.action == "copy")
+}
+
+/// SPEC-20261126-go-local-settings-reference D-8: the go-state step offers the pick where the
+/// plain preview moves nothing. The later steps did not wait there, so they still do not.
+fn offers_only_the_pick(plan: Option<&go_state::GoStatePlan>, backup: &[Step]) -> bool {
+    plan.is_some_and(|p| !has_move(p))
+        && backup
+            .iter()
+            .filter(|s| s.name == "go-state")
+            .filter_map(|s| s.apply.as_ref())
+            .any(|(words, _)| words.iter().any(|w| w.as_str() == go_state::REWRITE_PICK))
+}
+
+/// The step over one go-state preview.
+fn go_state_preview_step(
+    root: &Path,
+    shown: &str,
+    plan: &go_state::GoStatePlan,
+    settings: &Step,
+) -> Result<Step> {
+    let pending = has_move(plan);
     // #2936 S1b: how many items fall in each class, so the user sees the shape at a glance.
     let mut classes = std::collections::BTreeMap::<&str, u64>::new();
     for i in &plan.items {
@@ -435,6 +506,10 @@ fn go_state_step(
     // #2936 S-CYCLE: which settings move and what that frees; absent when the rule does not fire.
     if let Some(sm) = &plan.settings_move {
         preview["settings_move"] = encode(sm)?;
+    }
+    // The local settings references that hold the folder, and the values the pick cannot rewrite.
+    if let Some(local) = &plan.local_references {
+        preview["local_references"] = encode(local)?;
     }
     // #2936 S-AGENTS-STAY U1: the backup area's own `.gitignore` leaves the copies to git (or git
     // cannot tell). The apply would refuse before writing, so no command is offered: the user
@@ -473,7 +548,7 @@ fn go_state_step(
             )),
             plan_digest: Some(plan.plan_digest.clone()),
         }
-    } else if let Some((state, reason)) = tied(root, plan, settings) {
+    } else if let Some((state, reason)) = tied(root, plan, settings, None) {
         Step {
             name: "go-state",
             state,
@@ -502,6 +577,7 @@ fn tied(
     root: &Path,
     plan: &go_state::GoStatePlan,
     settings: &Step,
+    picked: Option<&go_state::GoStatePlan>,
 ) -> Option<(&'static str, String)> {
     let state = state_root::classify(root);
     let held = |path: &str| {
@@ -533,10 +609,11 @@ fn tied(
             // #2936 L2a: the go-settings step above cleans the values the Go tool wrote.
             if why.starts_with("settings reference .moai/") {
                 let refs = moai_dir_references(root);
-                if !refs.is_empty() {
-                    // Values the step leaves: the ones it lists as kept. The local file is never
-                    // written (#2936 L2a, D1 condition 3); its keys get a sentence of their own
-                    // (#2936 L2b).
+                let local_pick = picked.map(local_pick_next);
+                if !refs.is_empty() || local_pick.is_some() {
+                    // Values the step leaves: the ones it lists as kept. The local file is only
+                    // written by the go-state pick (#2936 L2a, D1 condition 3, with that one
+                    // exception); it gets a sentence of its own (#2936 L2b).
                     let yours = settings.preview["kept"]
                         .as_array()
                         .is_some_and(|k| !k.is_empty());
@@ -566,13 +643,19 @@ fn tied(
                             .to_string(),
                         _ => String::new(),
                     };
-                    if let Some(keys) = &local_keys {
+                    if let Some(sentence) =
+                        local_pick.or_else(|| local_keys.as_deref().map(local_settings_next))
+                    {
                         if !next.is_empty() {
                             next.push_str("; ");
                         }
-                        next.push_str(&local_settings_next(keys));
+                        next.push_str(&sentence);
                     }
-                    why = format!("{why}; held by {}; {next}", moai_dir_reference_note(&refs));
+                    let held_by = match moai_dir_reference_note(&refs) {
+                        note if note.is_empty() => String::new(),
+                        note => format!("; held by {note}"),
+                    };
+                    why = format!("{why}{held_by}; {next}");
                 }
             }
             Some(("blocked", format!("the Go-generation .moai/ stays: {why}")))
@@ -588,11 +671,39 @@ fn tied(
     }
 }
 
-/// The local settings file, which this update never writes (#2936 L2a, D1 condition 3).
+/// The local settings file, which this update writes only through the go-state pick (#2936 L2a,
+/// D1 condition 3; SPEC-20261126-go-local-settings-reference D-3).
 const LOCAL_SETTINGS: &str = ".claude/settings.local.json";
 
-/// #2936 L2b: what to do about Go references in the local settings file: which file, which keys
-/// (names only), that this update does not edit it, and the command that follows the user's edit.
+/// Why the pick cannot move the folder now: each value the user has to edit, or what else keeps
+/// the folder once those references are rewritten.
+fn local_pick_next(picked: &go_state::GoStatePlan) -> String {
+    let pick = go_state::REWRITE_PICK;
+    let blocked = picked
+        .local_references
+        .as_ref()
+        .map(|l| l.blocked.join("; "))
+        .unwrap_or_default();
+    if !blocked.is_empty() {
+        return format!(
+            "`{pick}` cannot move the folder yet: {blocked}; then run `moai project-update-plan` \
+             again; a session never edits {LOCAL_SETTINGS} by hand"
+        );
+    }
+    let why = picked
+        .items
+        .iter()
+        .find(|i| i.path == state_root::MOAI_DIR)
+        .map_or("", |i| i.reason.as_str());
+    format!(
+        "`{pick}` rewrites {LOCAL_SETTINGS}, but the folder still stays: {why}; a session never \
+         edits that file by hand"
+    )
+}
+
+/// #2936 L2b: Go references in the local settings file that do not hold the folder (a name
+/// spelled with an escape): which keys (names only), that this update does not edit the file, and
+/// the command that follows the user's edit.
 fn local_settings_next(keys: &str) -> String {
     format!(
         "this update does not edit {LOCAL_SETTINGS}; edit or remove these keys yourself ({keys}), \
@@ -1502,10 +1613,11 @@ fn hooks_after_settings(steps: &mut [Step]) {
 /// Whether the backup phase still has something to do that makes the later previews stale: the
 /// go-state step wants a decision (a move, or a user fix it cannot print), or the go-settings
 /// step has a command to run (#2936 L2a). A held go-settings step (`needs_decision` without a
-/// command) changes nothing, so it does not count.
-fn backup_pending(backup: &[Step]) -> bool {
+/// command) changes nothing, so it does not count, and neither does a go-state step that only
+/// offers the local settings pick (`pick_only`, see [`offers_only_the_pick`]).
+fn backup_pending(backup: &[Step], pick_only: bool) -> bool {
     backup.iter().any(|s| match s.name {
-        "go-state" => s.state == "needs_decision",
+        "go-state" => s.state == "needs_decision" && !pick_only,
         "go-settings" => s.apply.is_some(),
         _ => false,
     })
@@ -1513,13 +1625,19 @@ fn backup_pending(backup: &[Step]) -> bool {
 
 /// The merge phase (#2936 R10): `AGENTS.local.md` into `AGENTS.md`. It waits while the backup
 /// phase has a move to make, and while the generation step has files to write.
-fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> Vec<Step> {
+fn merge_steps(
+    root: &Path,
+    shown: &str,
+    backup: &[Step],
+    pick_only: bool,
+    install: &[Step],
+) -> Vec<Step> {
     const NAME: &str = "agents-local-merge";
     const SETTINGS: &str = "claude-settings-merge";
     // A project without `AGENTS.md` and `AGENTS.local.md` has no pick to wait for.
     let holds_agents = fs::symlink_metadata(root.join("AGENTS.md")).is_ok()
         || fs::symlink_metadata(root.join("AGENTS.local.md")).is_ok();
-    if backup_pending(backup) {
+    if backup_pending(backup, pick_only) {
         let mut steps = Vec::new();
         if holds_agents {
             steps.push(Step::waiting(PICKS, "blocked", AFTER_BACKUP));
@@ -2145,8 +2263,10 @@ pub fn plan(project: &Path) -> Result<Value> {
     // `all_unchanged` false.
     let residue = or_blocked("go-residue", go_residue_step(&root, &shown));
     let backup = vec![settings, state, reports, residue];
+    let backup = picked_command_only(moves.as_ref().ok(), backup);
+    let pick_only = offers_only_the_pick(moves.as_ref().ok(), &backup);
     // A move still to make: every install preview would be stale after it.
-    let mut install: Vec<Step> = if backup_pending(&backup) {
+    let mut install: Vec<Step> = if backup_pending(&backup, pick_only) {
         INSTALL
             .map(|n| Step::waiting(n, "blocked", AFTER_BACKUP))
             .into_iter()
@@ -2156,7 +2276,7 @@ pub fn plan(project: &Path) -> Result<Value> {
     };
     // The retired hosts are always in the preview, whatever the profile or the backup phase says.
     install.extend(host_steps(&root));
-    let merge = merge_steps(&root, &shown, &backup, &install);
+    let merge = merge_steps(&root, &shown, &backup, pick_only, &install);
     let all_unchanged = backup
         .iter()
         .chain(&install)

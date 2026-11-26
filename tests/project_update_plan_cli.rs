@@ -640,9 +640,10 @@ fn the_settings_hold_names_the_keys_and_the_settings_step_does_not_say_current()
         "blocked",
         "held by .claude/settings.json (plansDirectory, statusLine); \
          .claude/settings.local.json (env); this update does not change those keys, so change \
-         or remove them yourself and run the update again; this update does not edit \
-         .claude/settings.local.json; edit or remove these keys yourself (env), then run \
-         `moai project-update-plan` again",
+         or remove them yourself and run the update again; `--rewrite-local-references` cannot \
+         move the folder yet: .claude/settings.json also names the folder and keeps it; then run \
+         `moai project-update-plan` again; a session never edits .claude/settings.local.json by \
+         hand",
     );
     assert!(
         !plan.to_string().contains("secret-name"),
@@ -2222,9 +2223,15 @@ fn the_settings_the_install_phase_wrote_are_not_moved_again() {
     assert!(fx.root.join(".claude/settings.json").is_file());
     let after = fx.plan();
     let go = step(&after, "go-state");
-    // The local settings still hold the Go folder (`blocked`, as before this change); what the
-    // install phase wrote is not offered for a second move.
-    assert_ne!(go["state"], "needs_decision", "{go}");
+    // The local settings still hold the Go folder: the only command offered carries the pick,
+    // and what the install phase wrote is not offered for a second move.
+    assert!(
+        go["apply"]["argv"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("--rewrite-local-references")),
+        "{go}"
+    );
     let settings = go["preview"]["items"]
         .as_array()
         .unwrap()
