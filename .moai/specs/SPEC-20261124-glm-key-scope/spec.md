@@ -79,3 +79,71 @@ approval:
 | D-1 | Outside a git work tree the glm key is stored in the Shared scope. | card C-457 body, the leader's dispatch of 2026-11-24 | delete the Shared entry with `moai key-remove glm --shared` |
 | D-2 | An identity that cannot be resolved still skips the question (no Shared fallback). | the launcher's `read_here` refuses that case, so a Shared key would not be found | a later SPEC |
 | D-3 | The four held files are added to the reservation after C-449 gives them back, or the edits go through `card line-lease`. | `CLAUDE.md` scope rules; C-449 holds them with no change to them on its branch (read 2026-11-24) | none needed |
+
+## Result
+
+구현 커밋은 `1168e7f047` 이에요(브랜치 `spec/glm-key-scope-kz-20261124`). AC-3 은 충족이 아니고, AC-4·AC-5 는 `verify:` 줄 그대로의 실행 기록이 아직 없어요.
+
+### 커밋
+
+- 브랜치는 NeXT `75b6920066` 에서 잘랐어요.
+- `dcd19942d1`(SPEC 초안)과 `a9b18ae81f`(`project_scope_in`, 승인 기록, 결정 노트 8521)는 브랜치 `spec/glm-key-scope-20261124` 에 있던 앞선 두 커밋을 옮긴 것이에요.
+- `fc226b26c6` 은 중간 단계예요(터미널 테스트와 폴더 seam, 그 시점에는 컴파일하지 않았어요).
+- `1168e7f047` 이 구현이에요.
+
+### 막혔던 단계
+
+호스트의 워크트리 격리 가드가 AC-6 단위 테스트 모듈을 셸 heredoc 으로 덧붙이는 명령을 두 번 거절했어요("too complex to verify"). 거절 문구는 blocked 노트 10285 에 있고, Edit/Write 도구로 그 파일을 써도 된다는 사용자 답은 결정 노트 10287 에 기록돼 있어요.
+
+### 동작
+
+- glm 키 단계는 범위를 `key_vault::project_scope_in(dir, Some(home))` 으로 정해요.
+- git 작업 트리 안에서는 지금까지의 동작 그대로예요.
+- 작업 트리 밖에서는 질문을 하고, 두 질문 모두 모든 프로젝트가 같이 쓰는 키라고 알려요. 조회와 저장에는 Shared 범위를 써요.
+- identity 를 풀지 못하거나 현재 디렉터리를 읽지 못하면 `moai key-set glm --prompt` 를 알려 주는 건너뛰기 한 줄만 출력해요. 답을 읽지 않고 아무것도 쓰지 않아요.
+- `glm_key_scope` 는 삭제했어요. `1168e7f047` 에서 `grep -rn glm_key_scope src tests` 는 아무것도 출력하지 않고 exit 1 이에요.
+
+### 인수 기준
+
+테스트 결과는 나중에 `1168e7f047` 로 커밋한 미커밋 변경에서 얻은 것이에요(`target/keziah/green-457.log`).
+
+- AC-1: met — 2 passed
+- AC-2: met — 세 테스트 타깃 30 passed
+- AC-3: not met — 세 테스트 타깃 56 passed, grep exit 1 이에요. 하지만 "C-248 키 테스트는 단언 그대로"에 예외가 있어요. 예전 테스트 `a_glm_pick_outside_a_project_skips_the_key_and_saves_the_pick` 은 REQ-4 가 바꾸는 동작을 단언해서 `a_glm_pick_outside_a_project_asks_and_stores_a_shared_key`, `a_glm_pick_outside_a_project_keeps_the_shared_key_on_enter`, `a_glm_pick_outside_a_project_replaces_the_shared_key_on_n` 으로 대체했어요. 다른 예전 테스트에서 바뀐 것은 기대 범위를 계산하는 호출뿐이에요. 이 예외를 받아들이는 결정은 이 SPEC 에 아직 없어요.
+- AC-4: pending — 같은 필터의 테스트 3 passed 예요. 다만 플래그 순서가 SPEC 줄과 다르고 `--no-fail-fast` 를 더한 명령이라, `verify:` 줄 그대로의 실행은 남아 있어요.
+- AC-5: pending — AC-4 와 같은 한 번의 실행(3 passed)이고, `verify:` 줄 그대로의 실행은 남아 있어요.
+- AC-6: met — 2 passed
+
+그 밖에 lib 와 세 테스트 타깃, lib 테스트 프로필의 `clippy -D warnings` 는 exit 0 이었고, `state_folder_literal_scan` 과 `ac_command_lint` 는 28 passed 였어요.
+
+### RED
+
+프로덕션 코드를 바꾸기 전 결과예요(`target/keziah/red-457.log`).
+
+- `glm_key_step_skips` 테스트 두 개는 새 문구에서 실패했어요. 이전 코드도 이미 건너뛰었기 때문에 그 뒤의 단언까지는 가지 않았어요.
+- 새 터미널 테스트 세 개는 테스트 자체의 90초 대기 한도에서 실패했어요.
+
+### 위험 경로
+
+보관소에 키를 쓰거나 바꾸는 경로는 임시 HOME 에서 가짜 키로, 실제 바이너리의 터미널 테스트를 통해서만 실행했어요. 실제 보관소와 실제 HOME 은 열지 않았어요.
+
+### 뮤턴트
+
+`1168e7f047` 에서 하나씩 적용하고 되돌렸어요(끝난 뒤 트리는 HEAD 와 같아요). 모두 exit 100 이에요(`target/keziah/mutant-457-<n>.log`).
+
+| 뮤턴트 | 바꾼 것 | 실패한 테스트 |
+| --- | --- | --- |
+| M1 | identity 를 풀지 못하거나 폴더를 읽지 못하는 경우를 작업 트리 밖으로 처리 | `glm_key_step_skips` 두 개 |
+| M2 | 모든 프로젝트가 같이 쓴다는 문구 삭제 | `a_glm_pick_outside_a_project` 세 개 |
+| M3 | 작업 트리 밖에서 `n` 을 입력해도 교체하지 않음 | `a_glm_pick_outside_a_project_replaces_the_shared_key_on_n`(90초 대기 한도) |
+| M4 | `project_scope_in` 이 항상 `None` 을 답함 | `project_scope_in_names_the_project_of_a_work_tree_from_the_given_home` |
+| M5 | `scope_of_identity` 의 `no_git` 분기 삭제 | `project_scope_in_is_none_outside_a_work_tree` |
+
+### 이 시점에 실행하지 않은 것
+
+- `moai check affected`: READY 때 한 번 실행해서 READY 노트에 기록해요.
+- 전체 테스트, Windows 와 Linux 확인, 현재 NeXT 와의 머지.
+
+### 남은 겹침
+
+다른 카드가 `src/key_vault.rs` 도 잡고 있어요. 뒤에 랜딩하는 쪽에서 해결해요.
