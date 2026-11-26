@@ -7,6 +7,7 @@
 //! started: the host state is a fixture file in the shape of `claude agents --json`.
 #![cfg(unix)]
 
+// check-affected: when-changed src/card/work.rs
 use crate::common;
 
 use common::git::git;

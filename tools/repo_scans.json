@@ -2854,6 +2854,66 @@
         }
       ],
       "rejects": "A file under skills/ or agents/ that names a tools/ script of this repository (.sh, .py or .json); a user project has none"
+    },
+    {
+      "id": "check-affected-binary-picks",
+      "always": true,
+      "tests": [
+        "tests/check_affected_binary_tests.rs::the_missed_binary_tests_of_this_repository_are_selected",
+        "tests/check_affected_binary_tests.rs::every_command_file_is_named_like_a_listed_command",
+        "tests/check_affected_binary_tests.rs::every_declared_path_names_a_file"
+      ],
+      "test_targets": [
+        "check_affected_binary_tests"
+      ],
+      "rules": [
+        "tests/check_affected_binary_tests.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "Cargo.toml"
+        },
+        {
+          "prefix": "src/card/work.rs"
+        },
+        {
+          "prefix": "src/gate.rs"
+        },
+        {
+          "prefix": "src/launcher_init.rs"
+        },
+        {
+          "prefix": "src/lib.rs"
+        },
+        {
+          "prefix": "src/main.rs"
+        },
+        {
+          "prefix": "src/ops"
+        },
+        {
+          "prefix": "src/state_root.rs"
+        },
+        {
+          "prefix": "src/trailers.rs"
+        },
+        {
+          "prefix": "src/update.rs"
+        },
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        },
+        {
+          "prefix": "tools/repo_scans.json"
+        },
+        {
+          "prefix": "tools/self_check.sh"
+        }
+      ],
+      "rejects": "A change after which check affected misses one of the binary tests this repository is known to need, a src/ops file named after no listed command, or a when-changed line of a test that names no file (SPEC-20261126-affected-binary-tests)"
     }
   ]
 }
