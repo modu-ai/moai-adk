@@ -22,6 +22,7 @@ The detail behind the "Lane rules" section of `CLAUDE.md`. A lane is one session
 - Cleanup removes cargo output only: profile folders (`debug/`, `release/`, with `.cargo-lock`), target-triple folders (with their own `CACHEDIR.TAG`), `CACHEDIR.TAG`, `.rustc_info.json` and `tmp/`, never the whole `target/`. `moai worktree-gc-plan` lists exactly those paths as `trim_paths` and everything else as `preserved_in_target`.
 - Keep notes, bodies and audit logs under an ignored `target/<name>/` only while the card is open; copy anything that must survive into the card or the SPEC.
 - Make a throwaway copy of the repository (a mutant copy), a temporary HOME and a `mktemp` folder only under `<worktree>/target/<name>/`, and point `TMPDIR` there for a run that makes its own temporary folders (`TMPDIR=<worktree>/target/<name> mktemp -d`). Remove each by a relative path before READY: a path inside your own worktree is the one place a lane deletes, the rule against absolute and home paths is unchanged, and the cleanup above does not remove `target/<name>/` for you. Never make them in the shared checkout, the system temporary folder or the session scratchpad. Whatever you could not remove goes in the READY note's `leftovers:` line.
+- Lanes and their sub-agents write tracked files and in-scope files with the host's file tools (Write, Edit) from the first write, never with a shell heredoc, `sed -i` or a redirect.
 
 ## Hand-off
 

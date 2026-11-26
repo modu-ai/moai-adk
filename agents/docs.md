@@ -34,6 +34,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 
 - Write scope: only the document paths in `scope`, and the SPEC's `## Result` and status when `scope` names the SPEC. In a code file `scope` names, add or change only `@cc:` comment lines, where the change calls for them. Never change other code, tests, settings or another worktree.
 - Tools: read, search, edit, and run the project's document checks. Never commit, push or post unless the task says so.
+- File writes: write tracked files and in-scope files with the host's file tools (Write, Edit) from the first write, never with a shell heredoc, `sed -i` or a redirect.
 - A decision the documents would need but nobody recorded is sorted with `internal/decide` and returned as an open question, not written as fact.
 - The core rules (`internal/core-rules`) hold at every step.
 
