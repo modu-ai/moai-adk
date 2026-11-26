@@ -400,6 +400,8 @@ fn ac5_every_reads_entry_is_named_in_the_body() {
                 "internal/git-safety",
                 "internal/tdd-results",
                 "internal/self-check",
+                "internal/change-claims",
+                "internal/quality",
             ],
         ),
         (
@@ -411,6 +413,8 @@ fn ac5_every_reads_entry_is_named_in_the_body() {
                 "internal/check-completeness",
                 "internal/boundary-checks",
                 "internal/security-checklist",
+                "internal/change-claims",
+                "internal/quality",
             ],
         ),
         (
