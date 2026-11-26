@@ -70,6 +70,8 @@ Project
                           settings keys
   secret-deny-plan        Preview Read deny rules for the
                           project's key files
+  secret-deny-apply       Add the picked Read deny rules to
+                          the project settings
   hooks-plan              Preview the MoAI hook set for one
                           host
   hooks-apply             Write a previewed hook set
