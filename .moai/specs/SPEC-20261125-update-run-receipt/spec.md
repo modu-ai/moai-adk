@@ -82,3 +82,20 @@ parent: SPEC-20261125-update-screen-facts
 | D-2 | 일부러 남긴 부분(충돌, 보존된 사용자 파일, 레이아웃 밖 링크)은 `held` 로 나누고 `remaining` 에 넣지 않아요(REQ-2). | 다시 실행해도 같은 결과여서 `next` 를 주면 거짓이 돼요. 승인 전. | `End::Held` 를 `Open` 으로 바꿔요. |
 | D-3 | 해시 대조는 쓴 스킬 파일(moai 스킬과 옆 스킬 폴더)만 하고 나머지는 `not_compared` 로 드러내요(REQ-8, REQ-10). 대안: 모든 부분의 파일을 대조. | 다른 부분은 결과에 기대 해시를 주지 않고 각자 영수증을 가져요. 대조 없이 대조했다고 말하지 않는 쪽을 골랐어요. 승인 전. | 해당 부분이 기대 해시를 주면 `check_files` 에 더해요. |
 | D-4 | 쓰기 실패는 `receipt_error` 로만 알리고 적용 결과를 바꾸지 않아요(REQ-7). | 스킬은 이미 적용됐으므로 영수증 실패로 실행 전체를 실패로 말하면 거짓이에요. 승인 전. | `finish` 가 오류를 위로 올려요. |
+
+## Result
+
+구현 head d60d5bf7d66c(base e946ae8102bc), SPEC head 793d9d23a82c, 그 위에 통합 tip e3450e0ede5d 를 한 번 합쳤어요. 아래는 합치기 전의 head 에서 본 값이에요. 합친 head 의 영수증은 카드의 REPAIRED 노트에 있어요.
+
+- 바뀐 코드: `src/update/run_receipt.rs`(새 모듈), `src/update.rs`(`out["run"]`, 게이트 이유 상수, 시험 지점 셋), `src/update_tux.rs`(머리·남은 부분·해시 줄), 시험 `tests/update_run_receipt_cli.rs`, 스캔 등록 `tools/repo_scans.json`.
+- 합치기: 충돌은 `tools/repo_scans.json` 의 `reads-skills` 검사 줄 하나였고 tip 의 시험 이름을 모두 두고 새 시험을 더했어요. tip 은 이 SPEC 의 코드와 시험 파일을 바꾸지 않았어요.
+- AC-1 met: `a_failure_behind_the_skills_ends_partial_names_what_is_left_and_a_rerun_finishes` 통과(verify 줄 그대로, 1 passed).
+- AC-2 met: `every_written_skill_file_is_read_back_and_its_digest_compared` 통과(verify 줄 그대로, 1 passed).
+- AC-3 met: `a_run_with_nothing_to_write_leaves_no_receipt` 통과(verify 줄 그대로, 1 passed).
+- AC-4 met: `the_end_screen_is_drawn_from_the_run_receipt` 통과(verify 줄 그대로, 1 passed).
+- AC-5 met: `cargo test --locked --offline --lib update::run_receipt` 7 passed.
+- AC-6 met: `update_user_layer_cli` 23 passed, `update_tux_golden` 17 passed.
+- 카드 영수증(793d9d23a82c): `check affected --card` targets=168, 모든 단계 0, `result=PASS`. 바뀐 경로가 audit 바닥이라 넓은 세트였어요.
+- 가드 뮤턴트(코드 d60d5bf7d66c, 각각 exit 100): 화면의 머리가 `run.status` 를 읽는 블록을 빼면 화면 시험이, `leaves_record` 를 늘 참으로 하면 시험 3개가, 해시 비교를 비어 있지 않음으로 바꾸면 단위 시험이 죽어요.
+- 알려진 틈: 스킬 밖 부분의 파일은 해시를 대조하지 않고 `not_compared` 로만 드러내요(Non-goals). `skills/moai/workflows/update.md` 는 아직 `run` 키를 말하지 않아요.
+- not_run: 전체 `cargo test`, Windows 와 Linux 확인, 설치된 사용자 상태에서의 실행.
