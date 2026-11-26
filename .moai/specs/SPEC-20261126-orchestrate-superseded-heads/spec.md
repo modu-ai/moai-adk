@@ -44,7 +44,7 @@ parent: SPEC-20261124-orchestrate-plan
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261126-orchestrate-superseded-heads/**`, `src/card/orchestrate.rs`, `tests/card/orchestrate_cli.rs`, `src/leader_brief.rs`, `tests/leader_brief_cli.rs`
+- write: `.moai/specs/SPEC-20261126-orchestrate-superseded-heads/**`, `src/card/orchestrate.rs`, `tests/card/orchestrate_cli.rs`, `src/leader_brief.rs`, `tests/leader_brief_cli.rs`, `docs/design-review/appendix/operations/leader.md`
 - shared files, by line lease only: `src/ops/card.rs` (help text), `docs/design-review/appendix/operations/card.md` (the row of the command)
 - read-only: `src/card/landed.rs`, `src/gate.rs`, `src/ledger/**`
 - forbidden: a real `claude` or `orca` process, any model call, any network, the real HOME, any ledger write by the plan
@@ -70,4 +70,12 @@ parent: SPEC-20261124-orchestrate-plan
 
 ## Result
 
-아직 없어요.
+2026-11-26 에 레인이 잰 값이에요. 구현 커밋은 `c9202b96e6`, 문구 커밋은 `455cc3605d` 와 그 뒤의 문서 커밋이에요.
+
+- 빨간 테스트(`a37e9ae36c`): `--test card orchestrate_cli::` 는 33 통과·8 실패, `--test leader_brief_cli` 는 4 통과·5 실패였어요. 대소문자 테스트는 처음부터 통과해요(지금 동작을 고정하는 테스트예요).
+- AC-1 met (REQ-1, REQ-2, REQ-3): 적힌 확인 명령이 종료 코드 0, 5 통과.
+- AC-2 met (REQ-4): 적힌 확인 명령이 종료 코드 0, 1 통과. 코드는 바꾸지 않았고, 첫 줄 검사를 지운 뮤턴트가 이 테스트에서 죽어요(앞 감사의 S2).
+- AC-3 met (REQ-5): 적힌 확인 명령이 종료 코드 0, 2 통과.
+- AC-4 not_run here: 이웃 검사는 READY 노트의 `check affected` 영수증이에요.
+- 가드 뮤턴트 4개(나누기 제거, 낡은 항목에 `command` 남기기, `AUDIT ` 검사 제거, 개수 0 고정)가 모두 종료 코드 101 이에요.
+- 남은 글: `src/card/mod.rs` 의 모듈 설명과 `moai leader brief` 도움말은 `superseded` 를 따로 말하지 않아요. 틀린 문장은 아니고 이번 범위 밖이에요.
