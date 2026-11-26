@@ -2,7 +2,7 @@
 id: SPEC-20261126-file-tools-first
 title: "Lanes and sub-agents write tracked and in-scope files with the host file tools"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-26
 ---
 
@@ -22,12 +22,16 @@ created: 2026-11-26
 
 - REQ-1: The instruction texts shall say in each of `agents/impl.md`, `agents/docs.md`, `skills/moai/references/internal/shell-guards.md` and `docs/lane-rules.md` that tracked files and in-scope files are written with the host's file tools (Write, Edit) from the first write, never with a shell heredoc, `sed -i` or a redirect.
 - REQ-2 (REQ-1): IF one of those four lines is missing, THEN the repository text test shall fail and name the file that lacks it.
+- REQ-3: The instruction texts shall say in each of `agents/impl.md`, `skills/moai/references/internal/shell-guards.md` and `docs/lane-rules.md` that each mutant is run without a script, by changing the code with Edit, running the test with one command and changing the code back with Edit, never with a script that holds `git apply`, `git checkout` or `sed -i`.
+- REQ-4 (REQ-3): IF one of those three lines is missing, THEN the repository text test shall fail and name the file that lacks it.
 
 ## Acceptance
 
 - AC-1 (REQ-1): `agents/impl.md`, `agents/docs.md`, `skills/moai/references/internal/shell-guards.md`, `docs/lane-rules.md` 에 같은 문장이 있고 테스트가 통과해요 · verify: `cargo test --locked --offline --test next_flow_skill_scan file_tools_first`
 - AC-2 (REQ-2): 네 줄을 하나씩 지우면 같은 테스트가 매번 실패하고 그 파일 이름을 말해요. 되돌리면 다시 통과해요 · verify: `cargo test --locked --offline --test next_flow_skill_scan file_tools_first`
 - AC-3 (REQ-1): 네 글을 읽는 이웃 테스트와 패키지 manifest 검사가 통과해요 · verify: `cargo test --locked --offline --test next_flow_skill_scan --test base_agent_contract --test lane_rules_2836 --test source_manifest_facts`
+- AC-4 (REQ-3): `agents/impl.md`, `skills/moai/references/internal/shell-guards.md`, `docs/lane-rules.md` 에 뮤턴트를 스크립트 없이 돌린다는 같은 문장이 있고 테스트가 통과해요 · verify: `cargo test --locked --offline --test next_flow_skill_scan mutants_without_a_script`
+- AC-5 (REQ-4): 세 줄을 하나씩 지우면 같은 테스트가 매번 실패하고 그 파일 이름을 말해요. 되돌리면 다시 통과해요 · verify: `cargo test --locked --offline --test next_flow_skill_scan mutants_without_a_script`
 
 ## Scope
 
@@ -58,3 +62,4 @@ created: 2026-11-26
 | --- | --- | --- | --- |
 | D-1 | 네 글에는 처음부터 파일 도구로 쓴다는 문장만 넣고, 거절 뒤 예외는 넣지 않아요. | 리더 결정 노트 10294. 거절 규칙과 부딪히고, 사용자의 허용(노트 10287)은 그 한 건에 대한 것이었어요. | 문장 변경을 되돌려요. |
 | D-2 | 네 줄의 고정 테스트는 이미 그 글들을 읽는 `tests/next_flow_skill_scan.rs` 에 하나로 둬요. | 새 테스트 파일이나 검사 표 변경이 필요 없어요. | 테스트를 옮겨요. |
+| D-3 | 뮤턴트를 스크립트 없이 돌린다는 문장을 이 카드에 더해요(revision 2). `agents/docs.md` 는 뮤턴트를 돌리지 않아 넣지 않아요. | 리더 메시지 2026-11-26(같은 일이 하루에 두 번 났어요), 결정 노트 10314. | REQ-3, REQ-4 와 그 문장을 되돌려요. |
