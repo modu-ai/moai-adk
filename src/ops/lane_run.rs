@@ -42,6 +42,8 @@ enum Action {
         lane: String,
     },
     /// A `/goal` condition for one card, with a turn limit.
+    ///
+    /// Example: moai lane-run goal --card <card>
     Goal {
         #[arg(long)]
         card: String,

@@ -673,14 +673,61 @@ fn help_of_lane_run_and_its_subcommands_names_no_card_number_and_no_watch_action
     }
 }
 
+fn operations_document() -> String {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("docs/design-review/appendix/operations/lane_run.md");
+    fs::read_to_string(path).unwrap()
+}
+
 /// SPEC-20261122-nonstop-lane AC-7.
 #[test]
 fn help_operations_document_names_no_card_number_and_no_watch_action() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("docs/design-review/appendix/operations/lane_run.md");
-    let text = fs::read_to_string(path).unwrap();
+    let text = operations_document();
     assert!(text.starts_with("# `lane-run`"), "{text}");
     assert_no_card_number_and_no_watch_action(&text, "the operations document");
+}
+
+/// Runs one example line in the temporary project, with `<card>` replaced by a card name built
+/// here, and returns the action the line names. An example holds no `[` or `]`.
+fn run_example<'a>(p: &Project, line: &'a str) -> &'a str {
+    assert!(!line.contains('[') && !line.contains(']'), "{line}");
+    let rest = line
+        .strip_prefix("moai lane-run ")
+        .unwrap_or_else(|| panic!("not a lane-run example: {line:?}"));
+    let card = format!("C-{}", 7);
+    let args: Vec<&str> = rest
+        .split_whitespace()
+        .map(|w| if w == "<card>" { card.as_str() } else { w })
+        .collect();
+    p.ok(&args);
+    rest.split_whitespace().next().unwrap()
+}
+
+/// SPEC-20261122-nonstop-lane AC-7: `goal --help` gives an example that runs.
+#[test]
+fn help_of_goal_shows_an_example_that_runs() {
+    let text = help(Some("goal"));
+    let examples: Vec<&str> = text
+        .lines()
+        .filter_map(|l| l.trim().strip_prefix("Example: "))
+        .collect();
+    assert_eq!(examples, ["moai lane-run goal --card <card>"], "{text}");
+    assert_eq!(run_example(&project(), examples[0]), "goal");
+}
+
+/// SPEC-20261122-nonstop-lane AC-7: the one examples block of the operations document names all
+/// four commands, and each of its lines runs.
+#[test]
+fn help_operations_document_examples_name_all_four_commands_and_run() {
+    let text = operations_document();
+    let parts: Vec<&str> = text.split("```").collect();
+    assert_eq!(parts.len(), 3, "one examples block: {text}");
+    let block = parts[1]
+        .strip_prefix("sh\n")
+        .unwrap_or_else(|| panic!("not a shell block: {text}"));
+    let p = project();
+    let actions: Vec<&str> = block.lines().map(|l| run_example(&p, l)).collect();
+    assert_eq!(actions, ["show", "set", "prompt", "goal"], "{text}");
 }
 
 // ---- goal_ (AC-6: REQ-10)
