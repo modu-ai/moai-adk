@@ -101,4 +101,19 @@ created: 2026-11-26
 
 ## Result
 
-아직 구현 전이에요.
+`status: draft`예요. 승인은 이 파일에 기록하지 않았어요(리더 노트 10375 가 사용자 승인을 전해요: D-1=A, D-2=A, D-6=A, D-7 tier 2). 빨간 테스트 커밋은 `386086932e` 예요.
+
+한 일: `src/go_residue/readers.rs`(새 파일)가 읽는 곳을 모아요: 지시 파일과 `@` 가져오기, `.claude/rules/**/*.md`, 두 설정 파일의 글자와 `outputStyle`, 설정이 이름 부른 스크립트, 상태줄 yaml. `src/go_residue.rs` 의 `survey` 가 `go_same`/`go_changed` 후보에 적용해 `go_in_use` 와 `used_by`(경로와 종류만, 값 없음)를 붙이고, 못 읽은 곳이 있으면 모든 후보를 `keep` 으로 두며 `unread_readers` 에 파일과 까닭을 대요. 보여 주기 전용 목록(REQ-5)은 `keep` 이에요. `src/go_residue_apply.rs` 는 `--pick` 이 쓰는 중이거나 못 읽는 곳 때문에 남긴 파일이면 읽는 곳을 대고 거절해요. `go_residue_step` 의 이유 글에 두 수를 더하고 주석을 코드에 맞췄어요.
+
+기존 테스트를 고친 곳: `tests/project_update_go_residue_cli.rs` 는 출력 스타일 파일이 쓰는 중이라 옮긴 수가 3 에서 2 가 되고, 한 테스트에는 진짜 세 번째 증명 파일을 만들어 줬어요(`tdd reopen` 한 번). `tests/update_end_to_end_cli.rs` 는 단계 순서에서 `go-residue` 가 빠지고(Risks 의 예상 그대로) 되돌리기 순서 테스트의 명령 수가 7 에서 6 이 돼요.
+
+고른 것(SPEC 이 정하지 않은 곳): 출력 스타일은 대소문자 없이 파일 이름, frontmatter `name`, `dir/name` 끝 경로로 맞춰요. 폴더 안 규칙 파일의 `@` 가져오기는 그 파일 기준과 프로젝트 루트 기준을 모두 세요(과보존). 읽는 파일은 1000개, `.claude/rules` 목록은 1000개와 깊이 8 에서 끊고, 끊으면 못 읽은 곳이에요. 보여 주기 전용 목록은 1000개까지예요.
+
+- AC-1 met: `a_go_file_still_read_is_in_use_and_names_its_reader` 가 통과했어요.
+- AC-2 met: `a_reader_that_cannot_be_read_keeps_every_go_file` 이 통과했어요.
+- AC-3 met: `an_in_use_file_is_never_moved_and_a_new_reference_makes_the_plan_stale` 가 통과했어요.
+- AC-4 met: `the_survey_lists_local_rules_and_harness_files_and_moves_none` 이 통과했어요.
+- AC-5 met: `the_step_is_optional_with_a_candidate_and_never_needs_decision` 이 통과했어요.
+- AC-6 met: `the_mo_ai_kr_shape_moves_only_unread_proven_files` 가 통과했어요.
+- AC-7 met: `moai spec show SPEC-20261125-go-residue-apply` 가 `revision: 2` 를 읽고, REQ-10 과 AC-1 이 REQ-6 과 같은 말을 해요(AC-1 은 출력 스타일이 제자리에 남는 것도 말해요). 리뷰어가 두 문장을 REQ-6 과 대조해 주세요(manual).
+- AC-8 met: `update_end_to_end_cli` 9개가 통과했어요.

@@ -83,7 +83,7 @@ created: 2026-11-25
 
 ## Result
 
-개정 2(2026-11-26, `SPEC-20261126-go-residue-in-use`): REQ-10 과 AC-1 을 고쳤어요. 판 1 의 위임 승인(노트 9548)은 판 2 에 미치지 않아요. 아래 기록은 판 1 구현의 것이고, AC-1 의 "쓰는 중" 부분은 아직 구현 전이에요.
+개정 2(2026-11-26, `SPEC-20261126-go-residue-in-use`): REQ-10 과 AC-1 을 고쳤어요. 판 1 의 위임 승인(노트 9548)은 판 2 에 미치지 않아요. 아래 기록은 판 1 구현의 것이고, AC-1 의 "쓰는 중" 부분은 `SPEC-20261126-go-residue-in-use` 가 구현해요(그 SPEC 의 AC-1, AC-5, AC-8). 그래서 증명 묶음이 옮기는 수는 3 에서 2 가 되고 `tracked_moved` 도 2 예요.
 
 `status: draft`예요. 승인은 이 파일에 기록하지 않았어요(리더의 위임 승인은 카드 노트에 있어요). 구현 head는 머지 커밋 `e851b250edc6fce840a3316a0b8ff6040cc37a3f`이고, 그 뒤의 문서 커밋 하나가 이 Result예요. 그 머지는 S1 수리 head `9619fdbc84`(착지 대기, NeXT 합친 것 포함)를 들여왔어요. 이 작업의 범위는 `9619fdbc84..HEAD`예요.
 
@@ -127,7 +127,7 @@ Acceptance:
 - AC-4 met: `a_receipt_above_256_kib_applies_and_reverts`(영수증 256 KiB 초과, `committed`와 `reverted`)와 `an_unwritable_backup_area_moves_no_file`이 통과했어요.
 - AC-5 met: 단위 테스트 `a_taken_destination_stops_the_apply_and_the_revert_restores_what_moved`가 통과했어요(모듈 안 테스트라서 이 AC의 `verify:` 줄을 `cargo test --lib go_residue_apply`로 고쳤어요; 승인 digest는 `verify:`를 읽지 않아요).
 - AC-6 met: `the_revert_restores_every_byte`와 `a_new_file_or_a_changed_backup_leaves_only_that_item_as_a_conflict`가 통과했어요.
-- AC-7 met: `applying_the_proven_bundle_moves_only_the_go_same_files`가 `tracked_moved: 3`과 checkout 경고 문구를 확인해요.
+- AC-7 met: `applying_the_proven_bundle_moves_only_the_go_same_files`가 `tracked_moved` 와 checkout 경고 문구를 확인해요(판 1 에서는 3, 판 2 에서는 쓰는 중인 출력 스타일 파일이 빠져 2 예요).
 
 위험 경로 실행은 `8241bf3c9c`의 빌드로 했어요. 그 뒤 적용 코드의 변화는 clippy 지적(이동 루프의 카운터를 `enumerate`로)뿐이고, 중간 실패 경로는 단위 테스트가 덮어요.
 

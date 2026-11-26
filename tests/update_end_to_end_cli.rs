@@ -313,17 +313,13 @@ fn assert_walks_to_the_end(fx: &GoFx, expected: &[&str]) -> Walk {
     w
 }
 
-/// The order every shape runs: the settings clean-up, the move of the Go folder, the move of
-/// the byte-proven Go files into a backup, then the install steps that have something to write
-/// (the MoAI files and the hook set). The walk runs every printed command, the optional
-/// residue one included.
-const ORDER: [&str; 5] = [
-    "go-settings",
-    "go-state",
-    "go-residue",
-    "generation",
-    "hooks",
-];
+/// The order every shape runs: the settings clean-up, the move of the Go folder, then the install
+/// steps that have something to write (the MoAI files and the hook set). The walk runs every
+/// printed command. The go-residue step prints none here: the go-state step moves the Go folder
+/// and the rule file, and the two hook scripts are named by the settings when the step looks, so
+/// they are in use and stay (SPEC-20261126-go-residue-in-use, AC-8); a later update shows what
+/// is left once the hooks step has rewritten the settings.
+const ORDER: [&str; 4] = ["go-settings", "go-state", "generation", "hooks"];
 
 #[test]
 fn shape_g_reaches_all_unchanged() {
@@ -468,7 +464,8 @@ fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
             && why.contains("a session never edits that file by hand"),
         "{why}"
     );
-    // The picked command moves the Go folder, so the residue command waits behind it.
+    // The picked command moves the Go folder, so the residue command waits behind it (and the
+    // scripts the settings name are in use, so none is printed after it either).
     let residue = step_in(&held, 0, "go-residue");
     assert_eq!(residue["apply"], Value::Null, "{residue}");
     // The values are never printed.
@@ -481,13 +478,13 @@ fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
     assert!(fx.root.join(".moai/manifest.json").is_file());
 
     // The user edits the file instead of taking the pick; the same loop now reaches the end.
-    // The residue command waited while the picked command was offered, so it runs in this loop.
+    // The residue step prints no command in this loop: the settings name the scripts it would move.
     fx.write(LOCAL, LOCAL_BODY);
     let rest = walk(&fx);
     assert_eq!(rest.last["all_unchanged"], json!(true), "{}", rest.last);
     assert_eq!(
         rest.order,
-        ["go-state", "go-residue", "generation", "hooks"],
+        ["go-state", "generation", "hooks"],
         "{:?}",
         open_steps(&rest.last)
     );
@@ -564,7 +561,9 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
     assert_eq!(w.order, ORDER, "{:?}", open_steps(&w.last));
     let steps = w.last["undo_order"]["steps"].as_array().unwrap();
     let printed: Vec<&str> = steps.iter().map(|s| s["step"].as_str().unwrap()).collect();
+    // The printed order always lists the go-residue revert, for an apply that ran; none ran here.
     let mut reverse = ORDER.to_vec();
+    reverse.insert(2, "go-residue");
     reverse.reverse();
     assert_eq!(printed, reverse, "{}", w.last["undo_order"]);
     let commands = |step: &str| -> Vec<String> {
@@ -591,10 +590,6 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
         (
             "<receipt of the project harness step>",
             id("generation", "receipt"),
-        ),
-        (
-            "<receipt of the go-residue step>",
-            id("go-residue", "receipt"),
         ),
         ("<backup of the go-state step>", id("go-state", "backup")),
         (
@@ -645,16 +640,17 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
     // The printed order: every printed command of every step, one after the other.
     let mut ran = 0;
     for step in steps {
+        // No go-residue apply ran, so there is no receipt for its printed revert to name.
+        if step["step"] == "go-residue" {
+            continue;
+        }
         for cmd in step["commands"].as_array().unwrap() {
             let out = run_printed(cmd.as_str().unwrap());
             assert_eq!(out["ok"], json!(true), "{}: {cmd}: {out}", step["step"]);
             ran += 1;
         }
     }
-    assert_eq!(
-        ran, 7,
-        "hooks 1, generation 2, go-residue 1, go-state 2, go-settings 1"
-    );
+    assert_eq!(ran, 6, "hooks 1, generation 2, go-state 2, go-settings 1");
 
     let end = project_nodes(&fx);
     for (path, node) in &start {

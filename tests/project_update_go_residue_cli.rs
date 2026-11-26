@@ -344,24 +344,26 @@ fn survey_frame() -> Fx {
     fx
 }
 
-/// AC-1 (REQ-1, REQ-7): the step sorts the frame — `go_same` for the byte-identical files,
-/// `go_changed` for the rewritten one, `user_data` for the unmanifested one — counts the one
-/// secret-shaped name without opening it, marks tracked files, carries the item fields, and a
-/// second plan run reads the same.
+/// AC-1 (REQ-1, REQ-7): the step sorts the frame — `go_same` for the byte-identical files that
+/// nothing reads, `go_in_use` for the output style the settings name, `go_changed` for the
+/// rewritten one, `user_data` for the unmanifested one — counts the one secret-shaped name
+/// without opening it, marks tracked files, carries the item fields, and a second plan run reads
+/// the same.
 #[test]
 fn the_go_residue_step_classifies_the_survey_frame() {
     let fx = survey_frame();
     let first = fx.update_plan();
     let found = step(&first, "go-residue");
-    for name in [
-        "policies/core/a.md",
-        "workflows/gtd.md",
-        "output-styles/moai/moai-easy.md",
-    ] {
+    for name in ["policies/core/a.md", "workflows/gtd.md"] {
         let item = Fx::residue_item(&first, name.split('/').next_back().unwrap());
         assert_eq!(item["class"], json!("go_same"), "{name}");
         assert_eq!(item["tracked"], json!(true), "{name}");
     }
+    // SPEC-20261126-go-residue-in-use: the settings name the output style, so it stays in place.
+    let style = Fx::residue_item(&first, "moai-easy.md");
+    assert_eq!(style["class"], json!("go_in_use"), "{style}");
+    assert_eq!(style["suggested_action"], json!("keep"), "{style}");
+    assert_eq!(style["tracked"], json!(true), "{style}");
     let changed = Fx::residue_item(&first, "user.yaml");
     assert_eq!(changed["class"], json!("go_changed"), "the rewritten file");
     assert_eq!(changed["tracked"], json!(true));
@@ -590,11 +592,21 @@ fn the_go_residue_step_reports_no_proof_when_no_manifest_exists() {
 
 // ---- SPEC-20261125-go-residue-apply: apply and revert ----
 
-const PROVEN: [&str; 3] = [
-    st!("policies/core/a.md"),
-    st!("workflows/gtd.md"),
-    st!("output-styles/moai/moai-easy.md"),
-];
+/// The proven files of the survey frame that nothing reads: the bundle moves exactly these.
+const PROVEN: [&str; 2] = [st!("policies/core/a.md"), st!("workflows/gtd.md")];
+/// The frame's output style: the settings name it, so the bundle leaves it in place
+/// (SPEC-20261126-go-residue-in-use).
+const STYLE_IN_USE: &str = st!("output-styles/moai/moai-easy.md");
+
+/// The survey frame with one more proven file nothing reads, for the tests that need a file the
+/// revert restores beside the files they break.
+fn survey_frame_with_a_third_proven_file() -> (Fx, &'static str) {
+    let third = st!("policies/core/b.md");
+    let mut fx = survey_frame();
+    fx.deployed(third, "# core policy b\n");
+    fx.manifest_at(st!("manifest.json"));
+    (fx, third)
+}
 
 /// Where the apply put `rel`: `.moai/backups/<stamp>/go-residue/<same path>`.
 fn backup_of(fx: &Fx, stamp: &str, rel: &str) -> PathBuf {
@@ -614,9 +626,10 @@ fn revert_args<'a>(fx: &'a Fx, stamp: &'a str) -> Vec<&'a str> {
 }
 
 /// AC-1 (REQ-1, REQ-10, REQ-11) and AC-7 (REQ-12): applying the proven bundle moves exactly
-/// the three byte-identical files into the backup area and nothing else; the changed file is
-/// asked about and moves only with an explicit pick; once nothing proven or changed is left
-/// the step reads `unchanged` although an earlier-generation folder is still listed.
+/// the two byte-identical files nothing reads into the backup area and nothing else (the output
+/// style the settings name stays in place); the changed file is asked about and moves only with
+/// an explicit pick; once nothing proven or changed is left the step reads `unchanged` although
+/// an earlier-generation folder is still listed.
 #[test]
 fn applying_the_proven_bundle_moves_only_the_go_same_files() {
     let fx = survey_frame();
@@ -662,9 +675,13 @@ fn applying_the_proven_bundle_moves_only_the_go_same_files() {
     )
     .unwrap();
     assert_eq!(receipt["state"], json!("committed"));
-    assert_eq!(receipt["moves"].as_array().unwrap().len(), 3);
-    // REQ-12: the three moved files are tracked; the result says so and warns.
-    assert_eq!(r["tracked_moved"], json!(3), "{r}");
+    assert_eq!(receipt["moves"].as_array().unwrap().len(), 2);
+    assert!(
+        fx.root.join(STYLE_IN_USE).is_file(),
+        "the output style the settings name left its place"
+    );
+    // REQ-12: the two moved files are tracked; the result says so and warns.
+    assert_eq!(r["tracked_moved"], json!(2), "{r}");
     assert!(
         r["warning"]
             .as_str()
@@ -1068,7 +1085,7 @@ fn the_revert_restores_every_byte() {
 /// that item a conflict; neither side is touched and the rest is restored.
 #[test]
 fn a_new_file_or_a_changed_backup_leaves_only_that_item_as_a_conflict() {
-    let fx = survey_frame();
+    let (fx, third) = survey_frame_with_a_third_proven_file();
     let plan = fx.update_plan();
     let done = fx.apply_printed(&plan, &[]);
     let stamp = done["result"]["receipt"].as_str().unwrap().to_string();
@@ -1099,8 +1116,8 @@ fn a_new_file_or_a_changed_backup_leaves_only_that_item_as_a_conflict() {
     );
     assert!(fs::symlink_metadata(fx.root.join(PROVEN[1])).is_err());
     assert_eq!(
-        fs::read_to_string(fx.root.join(PROVEN[2])).unwrap(),
-        "# moai easy style\n",
+        fs::read_to_string(fx.root.join(third)).unwrap(),
+        "# core policy b\n",
         "the third file is restored"
     );
 }
@@ -1182,7 +1199,7 @@ fn the_proven_bundle_leaves_the_users_own_files() {
 /// receipt is not marked reverted; the original bytes back at their place are none.
 #[test]
 fn a_lost_backup_with_another_file_at_the_original_is_a_conflict() {
-    let fx = survey_frame();
+    let (fx, third) = survey_frame_with_a_third_proven_file();
     let plan = fx.update_plan();
     let done = fx.apply_printed(&plan, &[]);
     let stamp = done["result"]["receipt"].as_str().unwrap().to_string();
@@ -1198,7 +1215,7 @@ fn a_lost_backup_with_another_file_at_the_original_is_a_conflict() {
     assert_eq!(back["result"]["state"], json!("conflict"), "{back}");
     assert_eq!(back["result"]["conflicts"], json!([PROVEN[0]]), "{back}");
     assert_eq!(back["result"]["missing"], json!([]), "{back}");
-    assert_eq!(back["result"]["restored"], json!([PROVEN[2]]), "{back}");
+    assert_eq!(back["result"]["restored"], json!([third]), "{back}");
     assert_eq!(
         fs::read_to_string(fx.root.join(PROVEN[0])).unwrap(),
         "# another file\n"
