@@ -31,6 +31,8 @@ pub struct Env<'a> {
 const PROTECTED: &str = "protected-path";
 const OTHER: &str = "other-checkout";
 const SECRET: &str = "secret-content";
+/// A path whose links cannot be followed: denied in the class `protected-path` with its own rule.
+const UNFOLLOWED: &str = "unfollowed-link";
 
 const CREDENTIAL_DIRS: &[&str] = &[".ssh", ".aws", ".azure", ".kube", ".gnupg"];
 const KEY_FILES: &[&str] = &["id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"];
@@ -61,18 +63,16 @@ fn classify(target: &str, content: Option<&str>, cwd: &Path, env: &Env) -> Optio
     } else {
         cwd.join(target)
     };
-    // A path whose links cannot be followed (more than 32, or one that cannot be read) is judged
-    // by nothing else, so it is refused: the tool could not write through it either.
+    // A path whose links cannot be followed (more than 32, or one that cannot be read) cannot be
+    // judged, so it is refused rather than skipped.
     let Some(resolved) = resolve(&written).map(|p| on_disk(&p)) else {
-        return Some(PROTECTED);
+        return Some(UNFOLLOWED);
     };
     if is_protected(&written) || is_protected(&resolved) {
         return Some(PROTECTED);
     }
-    if let (Some(own), Some(there)) = (session_checkout(cwd, env), checkout_of(&resolved)) {
-        if own.common == there.common && own.root != there.root {
-            return Some(OTHER);
-        }
+    if session_checkout(cwd, env).is_some_and(|own| in_other_checkout(&own, &resolved)) {
+        return Some(OTHER);
     }
     if content.is_some_and(carries_secret) {
         return Some(SECRET);
@@ -80,20 +80,28 @@ fn classify(target: &str, content: Option<&str>, cwd: &Path, env: &Env) -> Optio
     None
 }
 
-fn deny(class: &str) -> Value {
-    let rule = match class {
-        PROTECTED => {
+fn deny(found: &str) -> Value {
+    let (class, rule) = match found {
+        PROTECTED => (
+            PROTECTED,
             "a write into a .git folder, a credential folder or a private-key file is refused; \
-             change files of your own checkout instead"
-        }
-        OTHER => {
+             change files of your own checkout instead",
+        ),
+        UNFOLLOWED => (
+            PROTECTED,
+            "the symbolic links of this path cannot be followed, so it cannot be checked; \
+             write to the real file by its own path",
+        ),
+        OTHER => (
+            OTHER,
             "this file lies in another checkout of the repository; write in your own worktree \
-             and let the leader land the change"
-        }
-        _ => {
+             and let the leader land the change",
+        ),
+        _ => (
+            SECRET,
             "the content carries a private key or an access token; keep secrets out of files \
-             and name the variable instead"
-        }
+             and name the variable instead",
+        ),
     };
     json!({
         "hookSpecificOutput": {
@@ -212,6 +220,49 @@ fn resolve_inner(path: &Path, links: &mut u32) -> Option<PathBuf> {
         }
     }
     Some(cur)
+}
+
+/// True when `path` lies in a checkout of the session's repository other than its own. The deepest
+/// of two answers decides: the checkout found by walking up from the path, and the registered
+/// worktrees of the common folder. So a registered worktree folder that lost its `.git` file is
+/// still another checkout, and another repository nested inside one is not.
+fn in_other_checkout(own: &Checkout, path: &Path) -> bool {
+    let depth = |p: &Path| p.components().count();
+    let listed = registered_roots(&own.common)
+        .into_iter()
+        .filter(|root| path.starts_with(root))
+        .max_by_key(|root| depth(root));
+    match checkout_of(path) {
+        Some(f) if listed.as_ref().is_none_or(|r| depth(&f.root) >= depth(r)) => {
+            f.common == own.common && f.root != own.root
+        }
+        _ => listed.is_some_and(|root| root != own.root),
+    }
+}
+
+/// The checkout roots a common folder knows: the folder holding it when it is named `.git`, and
+/// the folder of the `.git` file that each `worktrees/*/gitdir` names.
+fn registered_roots(common: &Path) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    if common.ends_with(".git") {
+        roots.extend(common.parent().map(Path::to_path_buf));
+    }
+    if let Ok(entries) = fs::read_dir(common.join("worktrees")) {
+        for entry in entries.flatten() {
+            let Ok(text) = fs::read_to_string(entry.path().join("gitdir")) else {
+                continue;
+            };
+            if text.trim().is_empty() {
+                continue;
+            }
+            // Absolute, or relative to the folder of this registry entry.
+            let named = entry.path().join(text.trim());
+            if let Some(root) = named.parent().and_then(resolve) {
+                roots.push(on_disk(&root));
+            }
+        }
+    }
+    roots
 }
 
 /// The spelling the disk holds for `path`: the deepest ancestor that exists is canonicalized (on a

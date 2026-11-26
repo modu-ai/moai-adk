@@ -29,6 +29,8 @@ enum S {
     Pri,
     /// A session whose `cwd` lies in no checkout (the project folder is set by the variable).
     Nowhere,
+    /// A session in the linked worktree nested inside the primary checkout.
+    Inner,
 }
 
 struct World {
@@ -161,6 +163,7 @@ impl World {
             S::Sub => (self.own.clone(), self.own.join("src"), None),
             S::Pri => (self.primary.clone(), self.primary.clone(), None),
             S::Nowhere => (self.own.clone(), self.plain.clone(), Some(self.own.clone())),
+            S::Inner => (self.inner.clone(), self.inner.clone(), None),
         }
     }
 
@@ -578,6 +581,28 @@ fn ac4_own_checkout_others_and_places_in_no_checkout() {
             assert_eq!(got.as_deref(), expected, "{tool} {path}");
         }
     }
+
+    // A session in the worktree nested inside the primary checkout writes its own files, and the
+    // primary around it is another checkout. A repository of its own nested inside the primary is not a checkout of the session's one.
+    let nested = w.primary.join("vendor/nested");
+    fs::create_dir_all(&nested).unwrap();
+    git(&nested, &["init", "-q"]);
+    // A registered worktree that lost its `.git` file stays another checkout.
+    fs::rename(w.other.join(".git"), w.other.join("dotgit-moved")).unwrap();
+    for (s, path, expected) in [
+        (S::Inner, "{INNER}/src/a.txt", None),
+        (S::Inner, "{INNER}/new/x", None),
+        (S::Inner, "{PRI}/src/a.txt", Some("other-checkout")),
+        (S::Own, "{PRI}/vendor/nested/x", None),
+        (S::Own, "{OTH}/src/a.txt", Some("other-checkout")),
+        (S::Own, "{OTH}/new/deep/x", Some("other-checkout")),
+        (S::Pri, "{OTH}/src/a.txt", Some("other-checkout")),
+    ] {
+        for tool in TOOLS {
+            let got = w.verdict(s, tool, path, "hello\n");
+            assert_eq!(got.as_deref(), expected, "{tool} {path}");
+        }
+    }
 }
 
 // ---------------------------------------------------------------------- AC-5
@@ -908,6 +933,7 @@ fn ac9_the_handler_is_read_only_and_mode_independent() {
         calls,
         [
             "canonicalize",
+            "read_dir",
             "read_link",
             "read_to_string",
             "symlink_metadata"
