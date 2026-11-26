@@ -1704,6 +1704,7 @@
         "product_cli",
         "profile_apply_engine",
         "project_flow_closing",
+        "project_harness_namespace",
         "project_layer_follow_ups",
         "repo_claude_md",
         "repo_scans_table",
@@ -1737,6 +1738,7 @@
         "tests/update_switch_cli.rs",
         "tests/update_switch_layer.rs",
         "tests/worktree_cli.rs",
+        "tests/project_harness_namespace.rs",
         "tests/repo_scans_table.rs"
       ],
       "scope": [
@@ -1772,6 +1774,9 @@
         },
         {
           "prefix": ".moai/specs/SPEC-20261125-skill-entry-order/spec.md"
+        },
+        {
+          "prefix": ".moai/specs/SPEC-20261126-project-harness-namespace/research.md"
         }
       ],
       "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
@@ -2091,6 +2096,7 @@
         "project_decide_model",
         "project_flow_closing",
         "project_harness_label",
+        "project_harness_namespace",
         "project_harness_step",
         "project_interview_minimal",
         "project_lsp_plugins_cli",
@@ -2248,6 +2254,7 @@
         "tests/build_number_texts.rs",
         "tests/skill_generalization_scan.rs",
         "tests/versioning_release_texts.rs",
+        "tests/project_harness_namespace.rs",
         "tests/repo_scans_table.rs"
       ],
       "scope": [

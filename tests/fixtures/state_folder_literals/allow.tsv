@@ -191,6 +191,7 @@ tests/project_ci_plan_lib.rs	1	0
 tests/project_ci_profile_cli.rs	2	3
 tests/project_detect_cli.rs	10	21
 tests/project_flow_closing.rs	4	38
+tests/project_harness_namespace.rs	0	1
 tests/project_id_cli.rs	5	2
 tests/project_layer_follow_ups.rs	0	1
 tests/project_scale_detect_lib.rs	2	3

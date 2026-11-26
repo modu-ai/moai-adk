@@ -13,7 +13,7 @@ use std::process::Stdio;
 use tempfile::TempDir;
 
 const ROLE: &str = ".claude/agents/moai/prj-fixer.md";
-const PROJECTION: &str = ".claude/skills/ref-b/SKILL.md";
+const PROJECTION: &str = ".claude/skills/moai-ref-b/SKILL.md";
 
 /// Runs `moai` with a clean environment and a HOME of its own, so the run never reads the HOME of
 /// the test harness (the decoy files of `tools/test_home_guard.sh`).
@@ -222,7 +222,7 @@ fn a_linked_skills_path_is_a_conflict_for_a_projection() {
         PROJECTION,
         false,
         true,
-        &[".claude", ".claude/skills", ".claude/skills/ref-b"],
+        &[".claude", ".claude/skills", ".claude/skills/moai-ref-b"],
     );
 }
 
