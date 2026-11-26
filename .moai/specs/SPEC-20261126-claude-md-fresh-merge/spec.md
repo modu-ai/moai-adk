@@ -2,7 +2,7 @@
 id: SPEC-20261126-claude-md-fresh-merge
 title: "Go-generation update: new managed CLAUDE.md, then merge the project lines the user picks"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-26
 ---
 
@@ -40,7 +40,7 @@ Go 세대에서 올라온 프로젝트는 업데이트 뒤에도 옛 지침이 �
 
 ## Requirements
 
-- REQ-1: `project-update-plan` shall list a `claude-md` step, computed whatever state the generation step reads, that reads `needs_decision` and offers `replace` (recommended) and `leave` while the root `CLAUDE.md` is a Go-generation instruction file as D-2 defines it, `skip` once the user declined it with the existing `project-update-decline` record (the only file `leave` writes), and `unchanged` otherwise. · failure: none — the preview writes nothing; while a backup step still has a command the step reads `blocked`, and while the profile is missing or the first-launch placeholder it reads `needs_decision` with no apply command and says why
+- REQ-1: `project-update-plan` shall list a `claude-md` step, computed whatever state the generation step reads, that reads `needs_decision` and offers `replace` (recommended) and `leave` while the root `CLAUDE.md` is a Go-generation instruction file as D-2 defines it, `skip` once the user declined it with the existing `project-update-decline` record (the only file `leave` writes), and `unchanged` otherwise. · failure: none — the preview writes nothing; while the `go-settings` step still has a command or the `go-state` step still has a move to make (also while that move waits behind the `go-settings` or `reports` apply) the step reads `blocked`, no other command of a backup step blocks it, and while the profile is missing or the first-launch placeholder it reads `needs_decision` with no apply command and says why
 - REQ-2 (REQ-1): While the root `CLAUDE.md` is a Go-generation instruction file as D-2 defines it, every other update writer shall keep away from it: in `project-update-plan` the `agents-picks` and `agents-local-merge` steps read `skip` and the generation step offers no `append-managed`, and the direct `agents-merge-plan` and `agents-merge-apply` commands offer and apply no pick and no merge, in each case naming the `claude-md` step and never counting an `@AGENTS.md` line of that file as a finished merge. · failure: none — a refused direct apply writes nothing
 - REQ-3: The `claude-md-plan` preview shall list, in this order, `CLAUDE.md`, `AGENTS.md`, `AGENTS.local.md`, `CLAUDE.local.md` and every file under `.moai/docs/local-rules/` that exists, each with its sha256, line count, git tracking and the comparison used, then print for the `--keep` picks it was given one plan digest and one apply command, and write nothing. · failure: a source that is a link, lies below a link folder, is not UTF-8 text or is larger than 1 MiB is named and no apply command is printed
 - REQ-4: The preview shall count as the project lines of a source no line when its bytes equal the sha256 a found Go manifest records for that path, only the lines absent from the version of that path in git history whose sha256 equals that record when such a version is found, and every line otherwise, in each case leaving out the lines of moai's `moai-workflow` block, the Go curator marker lines and a personal file that is exactly a first-creation text of moai. · failure: none — no git repository, a failed git read or no matching version within the search limit counts every line, and the preview names the comparison it used
