@@ -2,7 +2,7 @@
 id: SPEC-20261122-claude-md-text-and-ignore
 title: "Shipped and generated text calls the instruction files CLAUDE.md and CLAUDE.local.md"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-22
 parent: SPEC-20261122-claude-md-layout
 ---
@@ -69,6 +69,7 @@ moai 의 지침 파일은 `CLAUDE.md`(팀)와 `CLAUDE.local.md`(개인)예요. �
 ## Scope
 
 - write: `.moai/specs/SPEC-20261122-claude-md-text-and-ignore/**`, `tests/claude_md_layout_scan.rs`(새 파일), `tools/repo_scans.json`(한 행), `src/language.rs`, `src/generation.rs`, `src/project_update.rs`, `src/home_routing.rs`, `tests/fixtures/update_tux/preview-blocked.json`, `tests/fixtures/update_tux/preview-changes.json`, `tests/fixtures/update_tux/preview-latest.json`, `src/ops/agents_apply.rs`, `src/ops/agents_plan.rs`, `src/ops/claude_doctor.rs`, `src/help.rs`, `tests/fixtures/help/all.txt`, `tests/fixtures/help/all-60.txt`, `tests/fixtures/help/all-80.txt`, `tests/fixtures/help/all-dumb.txt`, `tests/fixtures/help/root.txt`, `tests/fixtures/help/root-60.txt`, `tests/fixtures/help/root-80.txt`, `tests/fixtures/help/root-dumb.txt`, `skills/moai/workflows/project.md`, `skills/moai/references/source-manifest.json`, `src/claude.rs`(C-336 의 READY 뒤에 범위를 넓혀요), `tests/product_cli.rs`, `docs/claude-adapter-contract.md`
+- write(개정 4, 감사 노트 10424, 리더 결정 10426): `src/go_state.rs`(옛 지침 파일 행의 이동 사유와 그 주석), `skills/moai/workflows/update.md`(통합 브랜치에서 옮겨 간 `root_files` 항목의 같은 문장)
 - 공유 파일(line-lease 로만 씀): `tools/repo_scans.json`, `src/help.rs`, `tests/fixtures/help/*.txt`, `skills/moai/references/source-manifest.json`
 - read-only: `src/agents.rs`, `src/agents_local_merge.rs`, `src/agents_local_merge/**`
 - forbidden: `.gitignore`, `CLAUDE.md`, `CLAUDE.local.md`, 실제 HOME, 네트워크
