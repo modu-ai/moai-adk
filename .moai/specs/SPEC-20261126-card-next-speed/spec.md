@@ -57,3 +57,15 @@ On the real ledger (about 500 cards, 15,000 events) `moai card next` took 6.5 s 
 4. Check the heads of all cards with two git commands.
 5. Time the new build on the same copy and compare the answers.
 6. Ask for the repository identity once in `card next` and time it again on the same copy.
+
+## Result
+
+앞 조각은 head `acb4bd1c4b31` 로 착지했어요. 이번 조각(identity 를 한 번만 묻기)의 구현 head 는 `4d91495d9a089437849ebe5d7831896e6de0df53`, base 는 `91dd561a5aa2740aad0fae713a2e51a74525e7fc` 예요.
+
+- AC-1 met: `ledger::migrate` 테스트 12개 통과.
+- AC-2 not_met: `card_read_speed` 테스트는 통과하고 git 프로세스 수 상한(24)도 지키지만, 테스트의 시간 상한은 0.3초가 아니라 1.0초예요(최적화하지 않은 테스트 빌드와 부하가 큰 러너 때문).
+- AC-3 met: `card_read_speed` 의 묶음 head 확인 테스트 통과.
+- AC-4 met: 실제 장부의 같은 복사본에서 앞 head 빌드와 새 빌드의 `card next`·`card list` 답이 시간 필드를 빼고 같아요. 이 SPEC 이전 빌드(`882cba7497`)와는 `card next` 의 wip `unreadable` 목록만 달라요. 앞 head 빌드도 새 빌드와 같고, 그 사이에 세션 등록부를 읽는 방식을 바꾼 착지가 있었어요.
+- AC-5 met: 고치기 전에는 저장소 identity 질문이 3번이라 실패했고, 고친 뒤 1번이에요.
+- AC-6 met: `identity::tests::reuse` 5개 통과. 성공이 아닌 답도 남기기, 키에서 HOME 빼기, 범위가 끝나도 지우지 않기의 세 guard-mutant 를 각각 테스트가 잡았어요(exit 100).
+- 측정(release 빌드, 색인 있는 장부 복사본, 부하 85~96, 앞 head 와 번갈아 11번): `card next` 중앙값 0.82초 → 0.66초, 가장 빠른 값 0.63초 → 0.51초, git 프로세스 11개 → 7개. `card list` 는 0.02초. 남은 시간에서 가장 큰 것은 trailer 를 읽는 `git log` 한 번(같은 부하에서 약 0.24초)이에요. 이 부하에서 `card next` 0.3초는 관찰하지 못했고, 부하가 낮을 때의 값은 재지 못했어요.
