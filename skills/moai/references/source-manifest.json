@@ -78,7 +78,7 @@
       }
     },
     "references/audit.md": {
-      "sha256": "b5f1dc23450d9f4f3fb2d3659958758e1e4654d35d2d47e7d57a3254fbe072b2",
+      "sha256": "da88084bd0b7915566a163dfa04753009d8823645ec9475d57715a45645a59cc",
       "origin": {
         "kind": "design-spec",
         "template_id": "audit-contract",
