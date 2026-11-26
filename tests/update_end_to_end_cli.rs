@@ -84,7 +84,7 @@ fn shape_g() -> GoFx {
     let fx = base_fx();
     fx.manifest();
     fx.write(SETTINGS, &go_settings().to_string());
-    fx.with_profile();
+    fx.with_go_profile();
     fx
 }
 
@@ -313,9 +313,17 @@ fn assert_walks_to_the_end(fx: &GoFx, expected: &[&str]) -> Walk {
     w
 }
 
-/// The order every shape runs: the settings clean-up, the move of the Go folder, then the
-/// install steps that have something to write (the MoAI files and the hook set).
-const ORDER: [&str; 4] = ["go-settings", "go-state", "generation", "hooks"];
+/// The order every shape runs: the settings clean-up, the move of the Go folder, the move of
+/// the byte-proven Go files into a backup, then the install steps that have something to write
+/// (the MoAI files and the hook set). The walk runs every printed command, the optional
+/// residue one included.
+const ORDER: [&str; 5] = [
+    "go-settings",
+    "go-state",
+    "go-residue",
+    "generation",
+    "hooks",
+];
 
 #[test]
 fn shape_g_reaches_all_unchanged() {
@@ -460,6 +468,9 @@ fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
             && why.contains("a session never edits that file by hand"),
         "{why}"
     );
+    // The picked command moves the Go folder, so the residue command waits behind it.
+    let residue = step_in(&held, 0, "go-residue");
+    assert_eq!(residue["apply"], Value::Null, "{residue}");
     // The values are never printed.
     assert!(!held.to_string().contains("CLAUDE_PROJECT_DIR"), "{held}");
     // The file is byte for byte the user's, and the Go folder is where it was.
@@ -470,12 +481,13 @@ fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
     assert!(fx.root.join(".moai/manifest.json").is_file());
 
     // The user edits the file instead of taking the pick; the same loop now reaches the end.
+    // The residue command waited while the picked command was offered, so it runs in this loop.
     fx.write(LOCAL, LOCAL_BODY);
     let rest = walk(&fx);
     assert_eq!(rest.last["all_unchanged"], json!(true), "{}", rest.last);
     assert_eq!(
         rest.order,
-        ["go-state", "generation", "hooks"],
+        ["go-state", "go-residue", "generation", "hooks"],
         "{:?}",
         open_steps(&rest.last)
     );
@@ -580,6 +592,10 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
             "<receipt of the project harness step>",
             id("generation", "receipt"),
         ),
+        (
+            "<receipt of the go-residue step>",
+            id("go-residue", "receipt"),
+        ),
         ("<backup of the go-state step>", id("go-state", "backup")),
         (
             "<receipt of the go-settings step>",
@@ -635,7 +651,10 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
             ran += 1;
         }
     }
-    assert_eq!(ran, 6, "hooks 1, generation 2, go-state 2, go-settings 1");
+    assert_eq!(
+        ran, 7,
+        "hooks 1, generation 2, go-residue 1, go-state 2, go-settings 1"
+    );
 
     let end = project_nodes(&fx);
     for (path, node) in &start {

@@ -6,9 +6,11 @@
 //! Beside them a commit says how it was verified (SPEC-20261119-verified-trailer, card C-98):
 //! `Moai-Verified: <tests|mutants|e2e|smoke|none>[, …]`, `none` an honest value. `trailers
 //! --verified` prints the line; `trailer-check` fails an unknown kind anywhere and a missing
-//! line only after the rule's start commit — the first commit of the checked range that carries
-//! the line, or `--verified-since <rev>` (that commit itself stays exempt: what is "after the
-//! start" needs the line). Before the start a missing line reads as `none`. `trailers --list`
+//! line only on a descendant of the rule's start commit — a commit of the checked range that
+//! carries the line, or `--verified-since <rev>` (that commit itself stays exempt: what is
+//! "after the start" needs the line; SPEC-20261120-trailer-verified-ancestry: a commit listed
+//! later but not descended from the start, such as one of an old merged side branch, is not
+//! after it). Anywhere else a missing line reads as `none`. `trailers --list`
 //! groups a range's commits by kind and marks the ones a later standard revert message names, so
 //! `none` and reverted commits can be counted together.
 //!
@@ -25,6 +27,7 @@
 use crate::session_current;
 use crate::spec_doc::{self, IdForm};
 use serde_json::{json, Value};
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 type Result<T> = std::result::Result<T, String>;
@@ -141,11 +144,39 @@ pub fn format_verified(
     get: impl Fn(&str) -> Option<String>,
     key: Option<&str>,
 ) -> Result<Value> {
-    if spec_doc::id_form(spec) != Some(IdForm::New) {
-        return Err(
-            "the SPEC id must be SPEC-<yyyymmdd>-<slug>; a card number is never a trailer".into(),
-        );
+    build(Some(spec), verified, get, key)
+}
+
+/// [`format_verified`] for a card with no SPEC: the `Moai-Session` line (and the `Moai-Verified`
+/// line when `verified` names kinds) and no `Moai-Spec` line. The caller asks for it by name, so a
+/// forgotten SPEC is never printed away silently.
+pub fn format_session_only(
+    verified: &[String],
+    get: impl Fn(&str) -> Option<String>,
+    key: Option<&str>,
+) -> Result<Value> {
+    build(None, verified, get, key)
+}
+
+fn build(
+    spec: Option<&str>,
+    verified: &[String],
+    get: impl Fn(&str) -> Option<String>,
+    key: Option<&str>,
+) -> Result<Value> {
+    if let Some(spec) = spec {
+        if spec_doc::id_form(spec) != Some(IdForm::New) {
+            return Err(
+                "the SPEC id must be SPEC-<yyyymmdd>-<slug>; a card number is never a trailer"
+                    .into(),
+            );
+        }
     }
+    let carries = if spec.is_some() {
+        format!("the commit carries {SPEC_KEY} only")
+    } else {
+        "the commit carries no trailer line from this command".to_string()
+    };
     let kinds = verified_kinds(verified);
     if !verified.is_empty() && !kinds_accepted(&kinds) {
         return Err(format!(
@@ -154,7 +185,10 @@ pub fn format_verified(
         ));
     }
     let found = session_current::resolve(get);
-    let mut text = format!("{SPEC_KEY}: {spec}\n");
+    let mut text = match spec {
+        Some(spec) => format!("{SPEC_KEY}: {spec}\n"),
+        None => String::new(),
+    };
     let mut out = json!({"spec": spec});
     match (found["source_session_id"].as_str(), key) {
         (Some(id), Some(key)) => {
@@ -167,13 +201,13 @@ pub fn format_verified(
         (Some(_), None) => {
             out["session_missing"] = json!(true);
             out["reason"] = json!(format!(
-                "this folder is not in a git worktree, so no worktree key can be read; the commit carries {SPEC_KEY} only"
+                "this folder is not in a git worktree, so no worktree key can be read; {carries}"
             ));
         }
         (None, _) => {
             out["session_missing"] = json!(true);
             out["reason"] = json!(format!(
-                "no host variable gives this session's id ({}); the commit carries {SPEC_KEY} only and the audit gate reads its authors as unknown",
+                "no host variable gives this session's id ({}); {carries} and the audit gate reads its authors as unknown",
                 session_current::SOURCES.join(", ")
             ));
         }
@@ -408,10 +442,12 @@ fn log_trailers(git: &impl Fn(&[&str]) -> Result<String>, range: &str) -> Result
     ])
 }
 
-/// Where the `Moai-Verified` rule starts among `commits`: the index of the first commit the rule
-/// covers. `--verified-since` resolves to a commit — itself exempt, everything after it covered,
-/// and a start outside the range covers the whole range; without it the range's first commit
-/// carrying the line is the start (that commit carries, so covering it changes nothing).
+/// The index reported as `verified_from` in the oldest-first list of `commits`: the position of
+/// the rule's start. `--verified-since` resolves to a commit — the index just after it, or 0 when
+/// that commit is outside the list (a start outside the range, or a merge commit, which the list
+/// leaves out); without it the first commit carrying the line is the start. The index only
+/// reports the start: which commits the rule requires the line on is decided by ancestry in
+/// `verified_cover`, not by this index.
 fn verified_from(commits: &[CommitTrailers], since: Option<&str>, sha: &str) -> Option<usize> {
     if since.is_some() {
         return Some(match commits.iter().position(|c| c.sha == sha) {
@@ -494,11 +530,77 @@ pub fn check_rules(
     };
     let commits = parse_log(&log);
     let from = verified_from(&commits, verified_since, since_sha.as_deref().unwrap_or(""));
+    let covered = verified_cover(&git, range, &commits, since_sha.as_deref(), from)?;
     let cards_from = match cards_sha.as_deref() {
         Some(sha) => card_numbers_from(&commits, sha),
         None => None,
     };
-    Ok(judge_rules(&commits, &branch, from, cards_from))
+    Ok(judge_covered(&commits, &branch, from, &covered, cards_from))
+}
+
+/// Which of `commits` the `Moai-Verified` rule covers: those that descend from the rule's start,
+/// not those listed after it (the listing mixes the commits of merged side branches in by date).
+/// The start is every commit of the range that carries the line, or the one commit
+/// `--verified-since` names (`since_sha`); a commit is covered when one of its ancestors inside the
+/// range is a start or is itself covered, and merge commits pass the mark on without being
+/// judged. A `--verified-since` commit outside the range covers the whole range. A commit the
+/// ancestry listing does not show falls back to the listing index `from`.
+fn verified_cover(
+    git: &impl Fn(&[&str]) -> Result<String>,
+    range: &str,
+    commits: &[CommitTrailers],
+    since_sha: Option<&str>,
+    from: Option<usize>,
+) -> Result<Vec<bool>> {
+    let listing = git(&[
+        "rev-list",
+        "--parents",
+        "--reverse",
+        "--topo-order",
+        range,
+        "--",
+    ])?;
+    let mut order: Vec<&str> = Vec::new();
+    let mut parents: HashMap<&str, Vec<&str>> = HashMap::new();
+    for line in listing.lines() {
+        let mut shas = line.split_whitespace();
+        if let Some(sha) = shas.next() {
+            order.push(sha);
+            parents.insert(sha, shas.collect());
+        }
+    }
+    if since_sha.is_some_and(|s| !parents.contains_key(s)) {
+        return Ok(vec![true; commits.len()]);
+    }
+    let carrying: HashSet<&str> = commits
+        .iter()
+        .filter(|c| !c.verified.is_empty())
+        .map(|c| c.sha.as_str())
+        .collect();
+    let is_start = |sha: &str| match since_sha {
+        Some(s) => sha == s,
+        None => carrying.contains(sha),
+    };
+    let mut under: HashSet<&str> = HashSet::new();
+    for sha in &order {
+        let below_start = parents[sha]
+            .iter()
+            .any(|p| parents.contains_key(p) && (is_start(p) || under.contains(p)));
+        if below_start {
+            under.insert(sha);
+        }
+    }
+    Ok(commits
+        .iter()
+        .enumerate()
+        .map(|(i, c)| {
+            if parents.contains_key(c.sha.as_str()) {
+                under.contains(c.sha.as_str())
+            } else {
+                from.is_some_and(|f| i >= f)
+            }
+        })
+        .collect())
 }
 
 /// Judges the commits with both rules: the `Moai-Verified` start index and the card-number
@@ -509,12 +611,29 @@ pub fn judge_rules(
     verified_from: Option<usize>,
     card_numbers_from: Option<usize>,
 ) -> Value {
-    let spec_branch = branch.starts_with("spec/");
     let from = verified_from.unwrap_or(usize::MAX);
+    let covered: Vec<bool> = (0..commits.len()).map(|i| i >= from).collect();
+    judge_covered(commits, branch, verified_from, &covered, card_numbers_from)
+}
+
+/// [`judge_rules`] with the `Moai-Verified` coverage given per commit (`covered[i]` for
+/// `commits[i]`, see [`verified_cover`]); `verified_from` is only reported.
+pub fn judge_covered(
+    commits: &[CommitTrailers],
+    branch: &str,
+    verified_from: Option<usize>,
+    covered: &[bool],
+    card_numbers_from: Option<usize>,
+) -> Value {
+    let spec_branch = branch.starts_with("spec/");
     let card_at = card_numbers_from.unwrap_or(usize::MAX);
     let mut all: Vec<Value> = Vec::new();
     for (i, c) in commits.iter().enumerate() {
-        all.extend(findings(c, spec_branch, i >= from));
+        all.extend(findings(
+            c,
+            spec_branch,
+            covered.get(i).copied().unwrap_or(false),
+        ));
         if i >= card_at {
             all.extend(card_number_findings(c));
         }

@@ -7,6 +7,7 @@
 
 mod common;
 use common::CleanEnv;
+use moai_cli::{launcher_init::STATE_STOP, state_root::EARLIER_PROJECT_DIR};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -145,6 +146,44 @@ impl Fx {
 
     /// [`Fx::with_profile`] with `extra` keys merged into the profile.
     fn with_profile_extra(&self, extra: Value) {
+        let (digest, plan) = self.profile_plan(extra);
+        self.call(&self.profile_apply(&digest), &plan);
+    }
+
+    /// [`Fx::with_profile`] for a Go project that has no earlier state folder yet. The apply
+    /// is refused with nothing written (REQ-1 of the state-write stop), and with the folder
+    /// there the same profile is written as before (REQ-3).
+    fn with_go_profile(&self) {
+        let (digest, plan) = self.profile_plan(json!({}));
+        let before = self.tree();
+        let v = self.run(&self.profile_apply(&digest), &plan);
+        assert_eq!(v["ok"], json!(false), "{v}");
+        assert_eq!(v["error"]["kind"], json!("invalid_input"), "{v}");
+        let message = v["error"]["message"].as_str().unwrap();
+        assert!(
+            message.starts_with(STATE_STOP) && message.contains("moai go-state-plan"),
+            "{message}"
+        );
+        assert_eq!(self.tree(), before, "a refused apply writes nothing");
+        fs::create_dir(self.root.join(EARLIER_PROJECT_DIR)).unwrap();
+        self.with_profile(false);
+    }
+
+    /// The `project-apply` words for the plan with this digest.
+    fn profile_apply<'a>(&'a self, digest: &'a str) -> [&'a str; 6] {
+        [
+            "project-apply",
+            self.p(),
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            REF,
+        ]
+    }
+
+    /// The detected facts, with `extra` keys merged, through `project-plan`: the plan's
+    /// digest and the bytes `project-apply` reads.
+    fn profile_plan(&self, extra: Value) -> (String, Vec<u8>) {
         let detect = self.call(&["project-detect", self.p()], b"");
         let mut profile = json!({
             "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
@@ -159,17 +198,7 @@ impl Fx {
             &serde_json::to_vec(&profile).unwrap(),
         );
         let digest = plan["plan_digest"].as_str().unwrap().to_string();
-        self.call(
-            &[
-                "project-apply",
-                self.p(),
-                "--plan-digest",
-                &digest,
-                "--permission-reference",
-                REF,
-            ],
-            &serde_json::to_vec(&plan).unwrap(),
-        );
+        (digest, serde_json::to_vec(&plan).unwrap())
     }
 
     /// A Go-generation project (the `tests/update_route.rs` fixture): recorded files the
@@ -2141,7 +2170,7 @@ fn the_hooks_step_needs_a_settings_move_receipt() {
         b"",
     );
     assert!(fx.root.join(".claude/settings.json").is_file());
-    fx.with_profile(false);
+    fx.with_go_profile();
     let plan = fx.plan();
     let hooks = step(&plan, "hooks");
     assert_eq!(hooks["state"], "blocked", "{hooks}");
@@ -2254,9 +2283,13 @@ fn the_settings_the_install_phase_wrote_are_not_moved_again() {
 #[test]
 fn the_other_commands_of_the_preview_stay_safe_after_the_pick() {
     let fx = Fx::new();
+    let status = json!({"statusLine": {
+        "type": "command",
+        "command": format!("{}/status.sh", moai_cli::state_root::MOAI_DIR),
+    }});
     fx.go_project_moved(
         &json!({"permissions": {"deny": ["x"]}}),
-        "{\"statusLine\":{\"type\":\"command\",\"command\":\".moai/status.sh\"}}\n",
+        &format!("{status}\n"),
         false,
     );
     fx.with_profile(false);
@@ -2270,7 +2303,7 @@ fn the_other_commands_of_the_preview_stay_safe_after_the_pick() {
     assert!(!ready.is_empty(), "{preview}");
     let moved = fx.apply_step(go);
     assert_eq!(moved["ok"], json!(true), "{moved}");
-    let earlier = fx.root.join(".moai-cli");
+    let earlier = fx.root.join(EARLIER_PROJECT_DIR);
     let in_earlier = || -> Vec<(PathBuf, Node)> {
         fx.tree()
             .into_iter()
