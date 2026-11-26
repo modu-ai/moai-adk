@@ -9,7 +9,12 @@
 # runs linux-x86_64 only — until C-76 (SPEC-20261119-macos-on-pr): a PR whose merged diff
 # touches a platform-sensitive path also runs macos-arm64 before merge; the push that merges
 # into v2026.11.0 (and workflow_dispatch) always runs linux-x86_64 and macos-arm64 plus
-# windows-build with the same check set. The `ci` job
+# windows-build with the same check set. A release pull request — head branch
+# `release/v{head}.{yearweek}.{n}` or `release/rc/v{head}.{yearweek}.{n}`, the names the release
+# workflow numbers (SPEC-20261125-headver-weekly-release) — also runs the check set on
+# windows-x86_64 before merge (user decision 2026-11-20, SPEC-20261120-release-pr-three-os): the
+# `windows-check` job calls `.github/workflows/candidate-target.yml`, and `ci` fails unless it
+# succeeded. The `ci` job
 # aggregates the targets of its run so one `ci` check reports the result: the integration
 # ruleset 26791615 requires both `moai/audit` and `ci`, the latter from the GitHub Actions app
 # (`gh api repos/modu-ai/moai-adk/rules/branches/v2026.11.0`, read 2026-11-17 10:11Z).
@@ -47,7 +52,8 @@ jobs:
   # `check` matrix entry, like on a push). push and workflow_dispatch keep the
   # full matrix whatever the paths say. Fail-safe: a diff, classifier or parse
   # failure keeps the full matrix; if this job itself fails, `check` is skipped
-  # and `ci` goes red — never silently linux-only.
+  # and `ci` goes red — never silently linux-only. A release pull request never
+  # reaches the classifier: the release block of the decide script answers first.
   targets:
     name: targets
     runs-on: ubuntu-24.04
@@ -57,6 +63,7 @@ jobs:
       pull-requests: read
     outputs:
       matrix: ${{ steps.decide.outputs.matrix }}
+      release: ${{ steps.decide.outputs.release }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -69,6 +76,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           set -u
           # C-20 (SPEC-20261119-ci-check-set-legs): every target entry is multiplied by the
@@ -82,7 +90,18 @@ jobs:
           full='[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"nextest"},{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"rest"},{"target":"macos-arm64","runner":"macos-15","timeout":45,"leg":"nextest"},{"target":"macos-arm64","runner":"macos-15","timeout":45,"leg":"rest"}]'
           linux='[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"nextest"},{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"rest"}]'
           matrix="$full"
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          # A release pull request (SPEC-20261120-release-pr-three-os): the head branch is
+          # `release/v{head}.{yearweek}.{n}` or `release/rc/v{head}.{yearweek}.{n}`, the two
+          # names the release workflow numbers, so this pull request is the release unit. It runs the full matrix, and the
+          # `windows-check` job below runs the check set on Windows. The classifier is not
+          # asked and the files API is not read. The head branch name is the pull request
+          # author's text: it reaches this script through env only.
+          release=false
+          if [ "${{ github.event_name }}" = "pull_request" ] \
+            && [[ "${HEAD_REF:-}" =~ ^release/(rc/)?v(0|[1-9][0-9]{0,3})\.[0-9]{4}\.(0|[1-9][0-9]{0,9})$ ]]; then
+            release=true
+            echo "release pull request: full matrix and the Windows check set"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
             ok=0
             # The scope tool is the base checkout's copy (the job checks out the base
             # commit), so a PR never executes its own copy of the rule — the check-guard
@@ -117,7 +136,9 @@ jobs:
             # or macos=True: full matrix.
           fi
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
           echo "matrix: $matrix"
+          echo "release: $release"
 
   check:
     name: ci / ${{ matrix.target }} / ${{ matrix.leg }}
@@ -431,6 +452,29 @@ jobs:
           python3 -I tools/ci_superseded.py | tee -a "$GITHUB_STEP_SUMMARY"
           exit "${PIPESTATUS[0]}"
 
+  # A release pull request runs the full check set on Windows x86_64 before merge (user
+  # decision 2026-11-20, SPEC-20261120-release-pr-three-os): the same reusable target workflow
+  # the candidate verification calls, with its Windows inputs, on the pull request's head commit
+  # — the commit the release workflow builds and the tag names. Every other run reports no
+  # release pull request and skips this job; the `ci` aggregate accepts a skipped job only then.
+  # The name keeps clear of `ci / …`: the merge gate (src/gate.rs `watched_check`) and the
+  # superseded verdict (tools/ci_superseded.py) read every check run of that shape as a job of
+  # the matrix and count a skipped one as failed, and this job is skipped on every ordinary run.
+  windows-x86_64:
+    name: windows-check
+    needs: [targets]
+    if: ${{ needs.targets.outputs.release == 'true' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/candidate-target.yml
+    with:
+      sha: ${{ github.event.pull_request.head.sha }}
+      target: windows-x86_64
+      runner: windows-2025
+      timeout: 60
+      nextest_asset: x86_64-pc-windows-msvc
+      nextest_sha256: e51bdb4b5883df48f335381b287378edb244318fac65ae0adaf6b9e69298246b
+
   ci:
     name: ci
     # !cancelled() (#2312): a failed target must fail this check, not skip it (a job without
@@ -441,17 +485,33 @@ jobs:
     # C-83: skipped only when ci-verdict found the run superseded; ci-verdict skipped or failed
     # leaves the condition true, so the step below decides as before.
     if: ${{ !cancelled() && needs.ci-verdict.outputs.state != 'superseded' }}
-    needs: [check, ci-verdict]
+    needs: [check, ci-verdict, windows-x86_64, targets]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
     steps:
       - name: All targets passed
+        id: aggregate
+        env:
+          # `targets` is a direct dependency of this job: the `needs` context holds the
+          # outputs of direct dependencies only.
+          RELEASE: ${{ needs.targets.outputs.release }}
+          WINDOWS: ${{ needs.windows-x86_64.result }}
         shell: bash
         run: |
           echo "check: ${{ needs.check.result }}"
           echo "## ci: all targets ${{ needs.check.result }}" >> "$GITHUB_STEP_SUMMARY"
           [ "${{ needs.check.result }}" = "success" ]
+          # A release pull request passes only when the Windows check set succeeded too. Any
+          # other run has no Windows job, so its skipped result is not a failure there
+          # (SPEC-20261120-release-pr-three-os).
+          case "$RELEASE:$WINDOWS" in
+            false:skipped | false:success | true:success) ;;
+            *)
+              echo "ci: the Windows check set did not succeed on a release pull request (release=$RELEASE, windows=$WINDOWS)" >&2
+              exit 1
+              ;;
+          esac
 
   # E3 #2195 (decision 01:1x(11-09): Windows is build + self-replace only, support table
   # not_run). Windows x86_64 is a supported platform since 2026-11-17
@@ -460,10 +520,14 @@ jobs:
   # Unix-only test setup is cfg(unix)-gated; Windows runtime replacement and host loading
   # remain not_run.
   # Standard GitHub-hosted runner, no secrets. Not part of the required `ci` check.
-  # #2554 (U10): runs after merge (push to v2026.11.0) and on workflow_dispatch, not on PRs.
+  # #2554 (U10): runs after merge (push to v2026.11.0) and on workflow_dispatch, not on PRs —
+  # except a pull request whose head branch begins with `release/` (a release pull request,
+  # SPEC-20261120-release-pr-three-os). The prefix is wider than the exact release names
+  # because an expression cannot count characters; a build job that runs for a look-alike
+  # branch costs a build and changes no verdict.
   windows-build:
     name: windows-build
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'release/') }}
     runs-on: windows-2025
     timeout-minutes: 30
     permissions:

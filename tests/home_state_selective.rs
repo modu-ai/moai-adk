@@ -47,6 +47,9 @@ fn plan_raw(home: &Path, extra: &[&str]) -> Value {
 
 fn plan_env(home: &Path, extra: &[&str], envs: &[(&str, &str)]) -> Value {
     let mut c = Command::new(BIN);
+    // The empty process table unless the test called `use_real_process_table`: a plan that is
+    // not about a program using a folder must not run `lsof` over the whole machine.
+    c.envs([crate::common::process_table()]);
     c.envs(envs.iter().copied());
     c.args([
         "home-state-plan",
@@ -116,11 +119,13 @@ fn git(dir: &Path, home: &Path, args: &[&str]) {
     assert!(st.success(), "git {args:?}");
 }
 
+/// A program the test started as the leader of a process group of its own (`spawn_group`).
+/// Dropping it stops the whole group, so the `sleep` of a shell holder never outlives the test
+/// holding the harness's output pipes (that wait was the 56 s of the open-file test).
 struct Kill(Child);
 impl Drop for Kill {
     fn drop(&mut self) {
-        let _ = self.0.kill();
-        let _ = self.0.wait();
+        crate::common::kill_group(&mut self.0);
     }
 }
 
@@ -186,35 +191,30 @@ fn each_entry_gets_a_class_and_a_reason() {
 /// whatever the table says — through its working folder or its command line.
 #[test]
 fn worktrees_and_entries_in_use_stay_in_place() {
+    crate::common::use_real_process_table();
     let (_d, home) = go_home();
     let p = selective(&home);
     assert_eq!(class_of(&p, "worktrees").0, "keep-in-place");
     assert_eq!(class_of(&p, "logs").0, "move-to-backup");
     assert_eq!(class_of(&p, "run").0, "move-to-backup");
 
-    let _cwd = Kill(
+    let _cwd = Kill(crate::common::spawn_group(
         Command::new("sleep")
             .arg("60")
-            .current_dir(home.join(".moai/logs"))
-            .spawn()
-            .unwrap(),
-    );
+            .current_dir(home.join(".moai/logs")),
+    ));
     let pidfile = home.join(".moai/run/x.pid");
-    let _line = Kill(
+    let _line = Kill(crate::common::spawn_group(
         Command::new("sh")
             // Two commands, so the shell stays (a lone command is exec'd and loses the path).
             .args(["-c", "sleep 60; :", "watcher", pidfile.to_str().unwrap()])
-            .current_dir(&home)
-            .spawn()
-            .unwrap(),
-    );
-    let _wt = Kill(
+            .current_dir(&home),
+    ));
+    let _wt = Kill(crate::common::spawn_group(
         Command::new("sleep")
             .arg("60")
-            .current_dir(home.join(".moai/worktrees/projects/other/wt1"))
-            .spawn()
-            .unwrap(),
-    );
+            .current_dir(home.join(".moai/worktrees/projects/other/wt1")),
+    ));
     // `spawn` returns after the exec, so the processes are already in the process table.
     let p = selective(&home);
     assert_eq!(
@@ -388,16 +388,17 @@ fn taken_backup_names_move_to_the_stamp_then_block() {
 /// no path on its command line) keeps that entry in place.
 #[test]
 fn an_open_file_keeps_its_entry_in_place() {
+    crate::common::use_real_process_table();
     let (_d, home) = go_home();
     let held = fs::File::open(home.join(".moai/cache/a.bin")).unwrap();
-    let _open = Kill(
-        Command::new("sh")
+    let _open = Kill(crate::common::spawn_group(
+        // `/bin/sh` by its full name: the named-file scan (`tests/process_table_default.rs`) knows
+        // this spelling as a holder program and then asks the test to read the real table.
+        Command::new("/bin/sh")
             .args(["-c", "sleep 60; :"])
             .current_dir(&home)
-            .stdin(Stdio::from(held))
-            .spawn()
-            .unwrap(),
-    );
+            .stdin(Stdio::from(held)),
+    ));
     let p = selective(&home);
     assert_eq!(
         class_of(&p, "cache"),
@@ -433,7 +434,7 @@ fn an_unreadable_process_table_keeps_run_data_in_place() {
     let p = plan_env(
         &home,
         &["--selective"],
-        &[("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")],
+        &[("MOAI_TEST_PROCESS_CHECK", "unavailable")],
     );
     for name in [
         "cache",

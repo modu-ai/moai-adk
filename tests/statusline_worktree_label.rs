@@ -1,8 +1,8 @@
-//! User instruction 2026-11-19: the status line opens line 3 (the bars line) with the worktree,
-//! written `🌳 WT-c<card>-<name>`: `<card>` is the number of the card whose held reservation names
-//! the session's worktree folder, `<name>` comes from that reservation's branch
-//! (`spec/20260101-demo-work` gives `demo-work`). Without such a reservation the segment is the
-//! worktree name the host gave, alone, at the same place. The main checkout has no segment.
+//! The `🌳 <branch>` item of the first line (SPEC-20261123-statusline-order-bars REQ-10). It is
+//! the branch the checked-out `HEAD` file names, never the name of the working folder the host gave
+//! the worktree (the item of SPEC-20261122-statusline-where D-4 showed that name, and is replaced);
+//! the card number is not part of it (the held card shows as `🎯` on the flow line). The main
+//! checkout shows its own branch the same way.
 //!
 //! Every case runs the real binary through `TempHome` (a temporary HOME, nothing of the real
 //! environment but a PATH for git) against a ledger built in that HOME and a real linked
@@ -13,6 +13,7 @@ mod common;
 
 use common::home::TempHome;
 use moai_cli::ledger;
+use moai_cli::statusline::icons::WORK;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -112,11 +113,15 @@ impl Fixture {
             stdin["worktree"] = serde_json::json!({"name": w.name});
             stdin["workspace"]["git_worktree"] = serde_json::json!(w.name);
         }
+        // The render may keep a session cache under `$TMPDIR`: a folder of its own outside the
+        // HOME, so the HOME snapshot stays equal and nothing reaches the real temporary folder.
+        let tmp = tempfile::tempdir().unwrap();
         let mut cmd = self
             .home
             .command(&["statusline", "--render-budget-ms", "3600000"]);
         cmd.current_dir(&dir)
             .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("TMPDIR", tmp.path())
             .env("NO_COLOR", "1")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -143,62 +148,77 @@ fn line(out: &str, n: usize) -> String {
     out.lines().nth(n).unwrap_or_default().to_string()
 }
 
-/// The rest of line 3 after the worktree segment: the bars, unchanged by the label.
-const BARS: &str = "CTX: ░░░░░░░░░░ n/a";
+/// The MoAI version item of this build: the render's input carries no Claude Code version, so
+/// this item alone opens the second line (SPEC-20261123-statusline-order-bars REQ-1).
+fn moai() -> String {
+    format!("🗿 {}", moai_cli::BUILD_VERSION)
+}
+
+/// The usage windows line: it starts with the context window (the version is on the second line
+/// since SPEC-20261123-statusline-order-bars).
+fn is_windows(line: &str) -> bool {
+    line.starts_with("CW n/a")
+}
+
+/// The second line when the one card of the ledger is held by a live lease in the session's
+/// worktree: the version, the one working card of the flow, then my card, working.
+fn flow_held() -> String {
+    format!("{} | {WORK} 1 | 🎯 C-1 {WORK}", moai())
+}
+
+/// The first line of the worktree session: the branch of the worktree, not the folder name
+/// `demo-1-work` the host gave it. The project names no integration branch, so no `🅱️` item.
+const LINE_WORKTREE: &str = "🧠 Opus | 🌳 spec/20260101-demo-work";
 
 #[test]
-fn a_held_card_opens_line_3_as_wt_c_card_name() {
+fn a_held_card_does_not_name_the_worktree_item() {
     let f = fixture();
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     let card = f.reserve("active", "held", &wt.dir, "spec/20260101-demo-work");
     assert_eq!(card, 1);
     let out = f.plain(Some(&wt));
-    assert_eq!(
-        line(&out, 2),
-        format!("🌳 WT-c1-demo-work | {BARS}"),
-        "{out}"
-    );
-    assert!(
-        !line(&out, 1).contains('🌳'),
-        "line 2 keeps no worktree: {out}"
-    );
+    // The checked-out item is the branch; the card shows on the flow line, which stands under
+    // line 1, and the usage windows close the output.
+    assert_eq!(line(&out, 0), LINE_WORKTREE, "{out}");
+    assert!(!out.contains("WT-c"), "{out}");
+    assert_eq!(line(&out, 1), flow_held(), "{out}");
+    assert!(is_windows(&line(&out, 2)), "{out}");
     assert_eq!(out.lines().count(), 3, "{out}");
 }
 
 #[test]
-fn only_the_segment_moves_line_1_and_the_bars_stay() {
+fn only_the_flow_line_moves_when_a_card_is_held() {
     let f = fixture();
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     let without = f.plain(Some(&wt));
     f.reserve("active", "held", &wt.dir, "spec/20260101-demo-work");
     let with = f.plain(Some(&wt));
+    // The flow line stands under line 1 once a card exists (a ledger with no card has nothing to
+    // show) and the usage windows close the output; line 1 is the same bytes in both renders.
+    assert_eq!(line(&without, 0), LINE_WORKTREE, "{without}");
     assert_eq!(line(&with, 0), line(&without, 0));
-    assert!(line(&with, 2).ends_with(&format!(" | {BARS}")), "{with}");
-    assert!(
-        line(&without, 2).ends_with(&format!(" | {BARS}")),
-        "{without}"
+    assert_eq!(line(&with, 1), flow_held(), "{with}");
+    assert_eq!(
+        line(&without, 1),
+        moai(),
+        "no card: the version alone on the second line: {without}"
     );
-    // Line 2 holds no worktree in either render, and apart from the card counts (a card now
-    // exists) it is the same.
-    let after_cards = |out: &str| {
-        line(out, 1)
-            .split(" | ")
-            .skip(1)
-            .collect::<Vec<_>>()
-            .join(" | ")
-    };
-    assert_eq!(after_cards(&with), after_cards(&without));
-    assert!(!line(&with, 1).contains('🌳'), "{with}");
-    assert!(!line(&without, 1).contains('🌳'), "{without}");
+    assert!(is_windows(&line(&without, 2)), "{without}");
+    assert_eq!(line(&with, 2), line(&without, 2), "{with}");
+    assert_eq!(without.lines().count(), 3, "{without}");
+    assert_eq!(with.lines().count(), 3, "{with}");
 }
 
 #[test]
-fn no_reservation_shows_the_host_name_alone_on_line_3() {
+fn no_reservation_shows_the_branch_and_never_the_host_name() {
     let f = fixture();
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     let out = f.plain(Some(&wt));
-    assert_eq!(line(&out, 2), format!("🌳 demo-1-work | {BARS}"), "{out}");
-    assert!(!line(&out, 1).contains('🌳'), "{out}");
+    assert!(
+        line(&out, 0).ends_with(" | 🌳 spec/20260101-demo-work"),
+        "{out}"
+    );
+    assert!(!line(&out, 0).contains("demo-1-work"), "{out}");
 }
 
 #[test]
@@ -207,52 +227,36 @@ fn a_released_reservation_is_not_a_holder() {
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     f.reserve("ready", "released", &wt.dir, "spec/20260101-demo-work");
     let out = f.plain(Some(&wt));
-    assert_eq!(line(&out, 2), format!("🌳 demo-1-work | {BARS}"), "{out}");
+    assert_eq!(line(&out, 0), LINE_WORKTREE, "{out}");
+    assert!(!out.contains('🎯'), "{out}");
 }
 
+/// The branch and the worktree have one name: the one `🌳` item shows it.
 #[test]
-fn two_cards_holding_one_folder_show_the_lowest_number() {
+fn a_branch_named_like_the_worktree_shows_the_branch_item_alone() {
     let f = fixture();
-    let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
-    let first = f.reserve("active", "held", &wt.dir, "spec/20260101-demo-work");
-    let second = f.reserve("active", "held", &wt.dir, "spec/20260102-other-work");
-    assert!(first < second);
+    let wt = f.worktree("demo-work", "demo-work");
     let out = f.plain(Some(&wt));
-    assert_eq!(
-        line(&out, 2),
-        format!("🌳 WT-c1-demo-work | {BARS}"),
-        "{out}"
-    );
+    assert_eq!(line(&out, 0), "🧠 Opus | 🌳 demo-work", "{out}");
 }
 
 #[test]
-fn a_branch_of_another_shape_takes_the_rest_of_the_folder_name() {
-    let f = fixture();
-    let wt = f.worktree("demo-1-hooks", "m-flow/bundle-20260101-6");
-    f.reserve("active", "held", &wt.dir, "m-flow/bundle-20260101-6");
-    let out = f.plain(Some(&wt));
-    assert_eq!(line(&out, 2), format!("🌳 WT-c1-hooks | {BARS}"), "{out}");
-}
-
-#[test]
-fn a_folder_that_keeps_no_rest_gives_the_card_alone() {
-    let f = fixture();
-    let wt = f.worktree("demo-1", "work-branch");
-    f.reserve("active", "held", &wt.dir, "work-branch");
-    let out = f.plain(Some(&wt));
-    assert_eq!(line(&out, 2), format!("🌳 WT-c1 | {BARS}"), "{out}");
-}
-
-#[test]
-fn the_main_checkout_has_no_worktree_segment() {
+fn the_main_checkout_shows_its_own_branch_without_marks() {
     let f = fixture();
     let out = f.plain(None);
-    assert_eq!(line(&out, 2), BARS, "{out}");
-    assert!(!out.contains('🌳'), "{out}");
+    // The project's untracked state folder is a change, and it is no mark on the line.
+    assert_eq!(line(&out, 0), "🧠 Opus | 🌳 main", "{out}");
+    assert_eq!(
+        line(&out, 1),
+        moai(),
+        "an empty ledger shows no flow: {out}"
+    );
+    assert!(is_windows(&line(&out, 2)), "{out}");
+    assert!(!line(&out, 0).contains('+'), "{out}");
 }
 
 #[test]
-fn the_worktree_option_off_hides_the_segment_on_every_line() {
+fn the_worktree_option_off_hides_the_item_on_every_line() {
     let f = fixture();
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     f.reserve("active", "held", &wt.dir, "spec/20260101-demo-work");
@@ -260,6 +264,8 @@ fn the_worktree_option_off_hides_the_segment_on_every_line() {
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(&config, "statusline:\n  segments:\n    worktree: false\n").unwrap();
     let out = f.plain(Some(&wt));
-    assert_eq!(line(&out, 2), BARS, "{out}");
+    assert_eq!(line(&out, 0), "🧠 Opus", "{out}");
+    assert_eq!(line(&out, 1), flow_held(), "{out}");
+    assert!(is_windows(&line(&out, 2)), "{out}");
     assert!(!out.contains('🌳'), "{out}");
 }

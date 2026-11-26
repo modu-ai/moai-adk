@@ -6,27 +6,33 @@ A chain is the order in which the parent session uses agents for one kind of req
 
 | Request | Route | Agents in order | Parent reads first |
 | --- | --- | --- | --- |
-| Build something new | PLAN, RUN, VERIFY, SYNC, AUDIT | moai-plan, moai-impl, moai-docs, moai-audit | internal/decide, internal/sdd |
-| Fix a bug | PLAN, RUN, VERIFY, SYNC, AUDIT | moai-research, moai-plan, moai-impl, moai-docs, moai-audit | internal/decide, internal/sdd |
-| Review a pull request | AUDIT | moai-audit | internal/review |
+| Build something new | PLAN, RUN, SYNC, AUDIT | moai-plan, moai-impl, moai-docs, moai-audit | internal/decide, internal/sdd |
+| Fix a bug | PLAN, RUN, SYNC, AUDIT | moai-research, moai-plan, moai-impl, moai-docs, moai-audit | internal/decide, internal/sdd |
+| Review a pull request | AUDIT | moai-audit | audit |
 | Research or compare | READ | moai-research | none |
-| Check a page or do a web task | VERIFY | none | none |
+| Check a page or do a web task | RUN | none | none |
 | Set up a project | PROJECT | none | internal/interview, internal/questions |
-| Update documents and Issues after a merge | SYNC | moai-docs | internal/decide |
-| Keep working toward a goal | MODE-AGENT | none | internal/git-safety |
+| Update documents and the work card after a merge | SYNC | moai-docs | internal/decide |
+| Work through the cards | WORK | moai-plan, moai-impl, moai-docs | internal/git-safety, flows/next-flow |
+| Coordinate the lanes | LEADER | none | flows/next-flow |
+| A test fails once and passes on a rerun of the same head (flaky) | RUN | none | internal/check-rules |
+| Repair after a FAIL verdict | RUN, SYNC, AUDIT | moai-impl, moai-docs, moai-audit | audit |
 
 Rules for every chain:
 
-- Every change that modifies the repository has a SPEC, and its order is PLAN → RUN → VERIFY → SYNC → AUDIT → merge (`internal/sdd`): SYNC writes the SPEC Result, documents and `@cc:` comments on the same branch, and AUDIT only checks them.
-- The agent that implemented a change never audits it. `moai-audit` runs in a separate context on the exact head, and the parent session, not the agent, writes the verdict.
+- Every change that modifies the repository has a SPEC, and the order of the stages is the one `internal/sdd` gives: SYNC writes the SPEC Result, documents and `@cc:` comments (agents and tools add and link them automatically) on the same branch, and AUDIT only checks them.
+- The agent that implemented a change never audits it. `moai-audit` runs in a separate context on the exact head, and the agent never writes the verdict; who records it is the audit contract's rule (`references/audit.md`, "Who records the verdict").
 - A bug fix starts with a test that fails for the reported reason (`moai-impl` reads `internal/test-design`).
-- Whoever wrote a change runs `internal/self-check` before asking for an audit or opening a pull request.
+- A flaky test is classified from evidence only (the same head, the same job, the failing and the passing run) and recorded once per test until a change repairs it; a rerun that turns green is not a fix (`internal/check-rules`).
+- The re-audit after a FAIL goes to the first auditor, who judges the repair again and every changed criterion.
+- Whoever wrote a change runs `internal/self-check` before asking for an audit or opening a pull request. RUN reads `internal/build-slots` for builds, slots and cleanup, `internal/shell-guards` when a shell guard or a hook refuses a command, and `internal/web-pages` before it reads a web page.
 - Every commit for a SPEC carries the identity trailers of `internal/commit-trailers`, and every audit verdict names its auditor's session the same way.
-- In a user project, RUN and VERIFY take the check commands, the AC-to-test tracing and the dependency existence check from `internal/quality`.
+- In a user project, RUN takes the check commands, the AC-to-test tracing and the dependency existence check from `internal/quality`.
 - `moai-research` fans out: the parent may start several at once, each on one question, and merges their answers with the sources and read times they report.
 - A choice the request did not make is sorted with `internal/decide` before anyone is asked.
 - A question about how a stateful part behaves, why a pipeline is slow, what of an old part to keep or what a refactor could break is looked at with `internal/lenses`, which reports and changes no code.
 - The `versioning` rows of the PROJECT interview are asked with `internal/versioning`, read only when those rows are asked or a release version is computed.
 - Any route that prepares, tags or publishes a release or release candidate runs `internal/versioning` `## At every release` first.
-- MODE-AGENT picks one card at a time and runs the chain of that card's request; its own rules are in `workflows/mode-agent.md`.
+- WORK takes one card at a time, hands its plan, implementation and documents to `moai-plan`, `moai-impl` and `moai-docs` in turn, and hands the card back for audit; its own steps are in `workflows/work.md`. It audits and lands nothing.
+- A timer that repeats the leader round (`/loop`, a cron task or a wakeup) is armed only as `internal/loop` says.
 - When the host cannot start agents, the parent session follows the same order itself and keeps the implementing and auditing contexts apart.

@@ -1,8 +1,8 @@
 # `leader-round`
 
-operation `leader.round` · 코드 `src/ops/leader_round.rs`, `src/leader_round.rs`, `src/lane_next.rs`(`collect_fleet`) · Issue #2902 O3b
+operation `leader.round` · 코드 `src/ops/leader_round.rs`, `src/leader_round.rs`, `src/leader_round/registration.rs`, `src/lane_next.rs`(`collect_fleet`) · Issue #2902 O3b
 
-`leader-round PROJECT --observations FILE [--snapshot FILE | --repo OWNER/REPO] [--now UTC]` 는 리더의 한 회차에서 레인마다 할 일 하나와 회차 공통 후보를 만든다. 읽기만 한다.
+`leader-round PROJECT --observations FILE [--snapshot FILE | --repo OWNER/REPO] [--now UTC] [--renew-instance INSTANCE]` 는 리더의 한 회차에서 레인마다 할 일 하나와 회차 공통 후보를 만든다. 회차는 답을 만들기 전에 `card sweep` 을 한 번 부르고(`lease_sweep`), `--renew-instance` 를 주면 리더 등록을 갱신한다. 그 둘 말고는 읽기만 한다.
 
 - 관측 파일(`schema_version` 1, 모르는 키 거부, 레인 50개까지): 레인마다 `lane`·`host`·`read_at`·`source`·`terminal`(Orca `terminal read --screen --json` 그대로)·`pane`·`turn`·`input_box`·`context_used_pct`(0–100)·`wake_armed`·`background_jobs`·`reset`(claims·session_cwd). 턴·입력창·문맥 % 는 관측자가 적고 기계는 화면에서 추측하지 않는다.
 - `LANE-*` 줄: 앞뒤 공백과 글머리(`⏺`·`•`) 하나를 뗀 줄이 표지 낱말로 시작할 때만 센다. `>` 인용 줄과 코드 울타리 안은 빼고, 둘째 낱말이 다른 레인이면 `ignored`.
@@ -10,4 +10,7 @@ operation `leader.round` · 코드 `src/ops/leader_round.rs`, `src/leader_round.
 - `lane-safe-to-reset` 은 레인마다 `lane_reset::check` 를 부른다(git `--no-optional-locks` 읽기, fetch 없음). 화면 관측은 `read_at`·`background_jobs` 로 채운다. 해제할 instance 는 `session-register --show` 와 같은 `lane_registry::show` 로 읽는다(쓰지 않음).
 - 회차 공통(`round`): `CLOSE-TABLE` 댓글이 달린 열린 Issue(`close_candidates`), 해제·인계되지 않고 리스가 끝난 claim(`handoff_candidates` — 리스 끝 초는 끝난 것, D2 의 나머지 두 조건은 리더 확인), `moai gate-loop --once …` 명령 한 줄(`gate`, 실행하지 않음), `startable::end_condition`. GitHub 상태가 없으면 넷 모두 `not_run` 과 이유.
 - GitHub 읽기: `--snapshot` 은 저장한 `lane-next` 스냅숏, `--repo` 만 있으면 `lane_next::collect_fleet` 가 한 번에 읽는다 — 열린 PR 과 댓글, 열린 Issue 전부와 최신 댓글 100개(50개씩 GraphQL `query`). 요청은 30개까지, 못 읽은 것은 `partial` 에 적는다. REST 쓰기·GraphQL mutation 은 없다.
-- 출력: `lanes`(레인마다 `action`·`reason`·`send`·`release`·`data`·`findings`·`notes`·`ignored`), `round`, `partial`, `api_calls`, `writes: false`.
+- 등록(`round.registration`, SPEC-20261123-leader-registration-lease): GitHub 상태 없이도 늘 나온다. 클론 세션 등록부의 mode `leader` 항목마다 `name`·`lease_until`·`session`(있으면)과 남은 초(`remaining_secs`) 또는 끝난 지 흐른 초(`expired_for_secs`)를 보이고, `status` 는 `absent`(항목 없음)·`duplicate`(임대가 살아 있는 항목이 둘 이상, 조정 창은 하나여야 해서 `ok` 가 아님)·`expired`(임대가 끝난 항목이 있음, 끝난 시각이 `now` 와 같으면 끝난 것)·`no_session`(임대는 살아 있으나 세션 id 없음)·`ok`·`error`(읽을 수 없는 항목, 메시지만) 중 하나이고, 앞에 적은 것이 먼저 적용된다. `note` 는 갱신 명령 낱말(`leader-round --renew-instance`, `session-register … --instance`)을 적는다. 등록부 임대는 창이 살아 있다는 증명이 아니라 갱신이 빠졌는지 보이는 표시다.
+- 갱신: `--renew-instance <instance>` 를 주면 그 instance 가 쥔 leader 항목을 이 세션에서 기본 임대(4시간)로 갱신한 뒤 등록 부분을 만든다(`registration.renewal` 이 `renewed` 또는 `refused` 와 이유). 항목이 다른 호스트 세션 id 를 적고 있거나 이 세션에 id 가 없으면 거절하고 쓰지 않는다. 이것과 아래 `lease_sweep` 이 이 명령의 쓰기다.
+- 임대 정리(`lease_sweep`, SPEC-20261124-leader-round-lease-sweep): 회차는 `round` 를 만들기 전에 `card::sweep::sweep` 를 `--by leader` 로 한 번 부른다(dry-run 아님). 리스가 `lease_sweep_hours`(없으면 24시간) 넘게 끝난 `active` 카드가 `ready` 로 돌아가고, `lease_sweep.cards` 가 카드마다 `name`·`holder`·`generation`·`lease_until`·`worktree`·`branch` 를 적고 `skipped` 가 건너뛴 카드와 이유를 적는다. `status` 는 `swept`(정리함)·`listed`(프로필 키 `lease_sweep_in_round` 가 `false` 이거나 프로필을 읽을 수 없어 목록만 보임, 원장에 쓰지 않음, `switch_source` 가 `profile` 또는 `unreadable_profile`)·`not_run`(프로필 없음, 원장 없음, HOME 없음, `reason`)·`error`(`reason`) 중 하나이고, 어느 것도 회차를 실패시키지 않는다. sweep 안쪽 규칙은 `card.md` 의 sweep 항목을 따른다.
+- 출력: `lanes`(레인마다 `action`·`reason`·`send`·`release`·`data`·`findings`·`notes`·`ignored`), `round`, `partial`, `api_calls`, `lease_sweep`, `writes`(`--renew-instance` 가 갱신했거나 sweep 이 카드를 돌려보냈을 때만 `true`).

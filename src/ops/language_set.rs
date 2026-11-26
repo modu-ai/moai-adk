@@ -1,6 +1,6 @@
-//! `language-set` (#2935 L1): the installer records the conversation language the user chose.
-//! Writes at most one small file in HOME and never over an existing one; the logic is
-//! `moai_cli::language::set_home`.
+//! `language-set` (#2935 L1): the installer records the conversation language the user chose,
+//! and a later call replaces it with a valid code. Writes at most one small file in HOME; the
+//! logic is `moai_cli::language::set_home` (or `set_home_if_absent` with `--if-absent`).
 
 use clap::builder::PossibleValue;
 use std::ffi::OsStr;
@@ -8,19 +8,25 @@ use std::ffi::OsStr;
 /// Record the conversation language in HOME
 ///
 /// Record the language of the conversation with the model (#2935): writes
-/// `config/language.yaml` in the HOME state folder, once. The code is written as given. An
-/// existing file is never overwritten (`written: false`, `reason: exists`), and a HOME with no
-/// MoAI state folder is not written (`reason: no_home_state`; nothing is created). A `config`
-/// folder or file that is a link or the wrong type is refused. `moai language-setup` offers the
-/// value as the conversation default when it is en, ko, ja or zh. The text MoAI prints stays
-/// English whatever the code.
+/// `config/language.yaml` in the HOME state folder. The code is one of the accepted
+/// conversation codes (en, ko, ja, zh — the same list everywhere). A later call with a valid
+/// code replaces the value (`written: true`, `reason: replaced`); a HOME with no MoAI state
+/// folder is not written (`reason: no_home_state`; nothing is created). A `config` folder or
+/// file that is a link or the wrong type is refused. `moai language-setup` offers the value as
+/// the conversation default. The text MoAI prints stays English for a code the screens do not
+/// translate (ja, zh).
 #[derive(clap::Args)]
 pub struct Args {
     /// Scope: the user's HOME (`$HOME`). Without it the command refuses (exit 1), so a later
     /// scope can be added.
     #[arg(long)]
     home: bool,
-    /// Language code: 2-3 letters and optional `-` groups, at most 35 characters (en, pt-BR)
+    /// Only write when no value is recorded yet: the installer's mode, so a reinstall keeps
+    /// the recorded language (`written: false`, `reason: exists`). Without it a valid code
+    /// replaces the value.
+    #[arg(long)]
+    if_absent: bool,
+    /// Language code: one of en, ko, ja, zh
     #[arg(value_parser = Code, hide_possible_values = true)]
     code: String,
 }
@@ -44,10 +50,10 @@ impl clap::builder::TypedValueParser for Code {
         value: &OsStr,
     ) -> Result<String, clap::Error> {
         match value.to_str() {
-            Some(code) if moai_cli::language::is_language_tag(code) => Ok(code.to_owned()),
+            Some(code) if moai_cli::language::is_code(code) => Ok(code.to_owned()),
             _ => Err(clap::Error::raw(
                 clap::error::ErrorKind::ValueValidation,
-                "not a language code: use 2-3 letters and optional `-` groups of 2-8 letters or digits, at most 35 characters (en, ko, pt-BR)\n",
+                "not a conversation language code: use en, ko, ja or zh\n",
             )
             .with_cmd(cmd)),
         }
@@ -70,5 +76,9 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     }
     let home = moai_cli::key_vault::home()
         .map_err(|_| "home directory missing; language-set requires HOME".to_string())?;
-    moai_cli::language::set_home(&home, &args.code)
+    if args.if_absent {
+        moai_cli::language::set_home_if_absent(&home, &args.code)
+    } else {
+        moai_cli::language::set_home(&home, &args.code)
+    }
 }

@@ -6,21 +6,23 @@
 #![cfg(unix)]
 
 mod common;
+use common::pty::{output_within, Terminal, END_OF_INPUT};
 use common::CleanEnv;
 
+use moai_cli::model_effort_settings::{default_choice, launcher_default};
 use serde_json::{json, Value};
 use std::{
     fs,
     io::Write as _,
     path::{Path, PathBuf},
-    process::{Command, Output, Stdio},
+    process::{Command, Output},
     thread::sleep,
     time::Duration,
 };
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
-const HOSTS: [&str; 2] = ["claude", "codex"];
+const HOSTS: [&str; 1] = ["claude"];
 
 fn skill_md(body: &str) -> String {
     format!("---\nname: moai\ndescription: fixture package\n---\n# MoAI\n{body}\n")
@@ -82,20 +84,14 @@ fn install_version(home: &Path, version: &str, pkg: &[(&str, String)]) -> PathBu
 }
 
 fn run(exe: &Path, home: &Path, args: &[&str]) -> Output {
-    let mut child = Command::new(exe)
-        .args(args)
+    let mut cmd = Command::new(exe);
+    cmd.args(args)
         .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", home)
         .env("LC_ALL", "C")
-        .current_dir(home)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let _ = child.stdin.take();
-    child.wait_with_output().unwrap()
+        .current_dir(home);
+    output_within(&mut cmd, None)
 }
 
 fn envelope(out: &Output) -> Value {
@@ -212,10 +208,7 @@ fn update_previews_then_applies_on_confirmation_then_is_unchanged() {
         let o = host(&r["result"]["hosts"], h);
         assert_eq!(o["status"], json!("applied"), "{r}");
         assert_eq!(o["receipt_status"], json!("committed"), "{r}");
-        let skill = f.home.join(match h {
-            "claude" => ".claude/skills/moai/SKILL.md",
-            _ => ".agents/skills/moai/SKILL.md",
-        });
+        let skill = f.home.join(".claude/skills/moai/SKILL.md");
         assert_eq!(fs::read_to_string(skill).unwrap(), skill_md("body v1"));
     }
     let again = preview(&a, &f.home);
@@ -328,43 +321,41 @@ fn no_package_beside_the_binary_is_an_error() {
     assert_eq!(state(&f.home), before);
 }
 
-/// Terminal confirmation through a pseudo terminal (BSD `script`, macOS only here). The
-/// answer is typed only after the question is on screen, as a person would.
-#[cfg(target_os = "macos")]
-fn run_in_terminal(exe: &Path, home: &Path, answer: &str) -> String {
-    use std::io::Read as _;
-    let mut child = Command::new("/usr/bin/script")
-        .args(["-q", "/dev/null"])
-        .arg(exe)
-        .arg("update")
-        .clean_env()
+/// `moai-cli <args>` at a terminal: one pseudo terminal as stdin, stdout and stderr (the shared
+/// helper makes it with `openpty`, so Linux and macOS run the same cases), a clean environment, the
+/// temporary HOME, English screens and no colour. Add the answer, a hook or an `env` on the result.
+fn at_terminal(exe: &Path, home: &Path, args: &[&str]) -> Terminal {
+    Terminal::new(exe)
+        .args(args)
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", home)
         .env("LC_ALL", "C")
-        .current_dir(home)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    let mut stdout = child.stdout.take().unwrap();
-    let mut seen = Vec::new();
-    let mut buf = [0u8; 4096];
-    while !String::from_utf8_lossy(&seen).contains("[y/N]") {
-        let n = stdout.read(&mut buf).unwrap();
-        assert!(n > 0, "no question: {}", String::from_utf8_lossy(&seen));
-        seen.extend_from_slice(&buf[..n]);
-    }
-    let mut stdin = child.stdin.take().unwrap();
-    stdin.write_all(answer.as_bytes()).unwrap();
-    stdout.read_to_end(&mut seen).unwrap();
-    drop(stdin);
-    child.wait().unwrap();
-    String::from_utf8_lossy(&seen).to_string()
+        .env("TERM", "xterm-256color")
+        .env("NO_COLOR", "1")
+        .env("COLUMNS", "80")
+        .env("MOAI_LANG", "en")
+        .cwd(home)
+}
+
+/// Terminal confirmation: `update` at a terminal. The answer is typed only after the question
+/// is on screen, as a person would.
+fn run_in_terminal(exe: &Path, home: &Path, answer: &str) -> String {
+    let s = at_terminal(exe, home, &["update"]).answer(answer).run();
+    // Every terminal path of `update` that is asked or told something ends with exit 0.
+    assert_eq!(s.code, Some(0), "{}", s.text);
+    s.text
+}
+
+/// The saved settings files under the home, by path (the Python case looked at the whole tree).
+fn launcher_files(home: &Path) -> Vec<PathBuf> {
+    state(home)
+        .into_iter()
+        .map(|(p, _)| p)
+        .filter(|p| p.ends_with("launcher.yaml"))
+        .collect()
 }
 
 // In a terminal `update` asks once: anything but yes writes nothing, yes applies.
-#[cfg(target_os = "macos")]
 #[test]
 fn in_a_terminal_update_asks_and_applies_only_on_yes() {
     let f = fx();
@@ -374,6 +365,12 @@ fn in_a_terminal_update_asks_and_applies_only_on_yes() {
     let text = run_in_terminal(&a, &f.home, "n\n");
     assert!(text.contains("Apply this update? [y/N]"), "{text}");
     assert!(text.contains("Nothing was written."), "{text}");
+    assert!(text.contains("MoAI update"), "{text}");
+    assert!(text.contains("Checking"), "{text}");
+    assert!(
+        !text.contains("sha256:"),
+        "a screen shows no digest: {text}"
+    );
     assert!(
         !text.contains("\"mode\""),
         "no envelope on a terminal: {text}"
@@ -381,7 +378,7 @@ fn in_a_terminal_update_asks_and_applies_only_on_yes() {
     assert_eq!(state(&f.home), before);
     // Card C-47: an update that wrote files goes on to the model stage; the tool pick, the four
     // model questions of the one installed tool and the save question are answered by Enter and a no.
-    let text = run_in_terminal(&a, &f.home, "y\n\n\n\n\n\nn\n");
+    let text = run_in_terminal(&a, &f.home, "y\n\n\n\nn\n");
     assert!(text.contains("Applied") && text.contains("Done"), "{text}");
     assert!(text.contains("Save these model settings? [y/N]"), "{text}");
     assert!(
@@ -393,45 +390,64 @@ fn in_a_terminal_update_asks_and_applies_only_on_yes() {
 
 // A terminal run that applies the update goes on to the model stage and saves the choice after
 // a yes (card C-47, SPEC-20261118-update-model-pick).
-#[cfg(target_os = "macos")]
 #[test]
 fn in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
-    let text = run_in_terminal(&a, &f.home, "y\n\n\n\n\n\ny\n");
+    let text = run_in_terminal(&a, &f.home, "y\n\n\n\ny\n");
     assert!(text.contains("Save these model settings? [y/N]"), "{text}");
+    // Exactly one settings file was written, and it is the one the command reads.
+    let files = launcher_files(&f.home);
+    assert_eq!(files.len(), 1, "{files:?}\n{text}");
     let saved = fs::read_to_string(moai_cli::update_models::settings_path(&f.home)).unwrap();
     let saved: Value = serde_json::from_str(&saved).unwrap();
+    // The answers were Enter, so the saved choice is the launch default of the source, not a copied
+    // literal (SPEC-20261121-model-defaults-one-table D-6): the table id that the launch alias
+    // names, and the effort a plain launch runs with.
+    let table = default_choice("claude", "leader").expect("claude has a leader default");
+    let want = moai_cli::model_effort_settings::Choice {
+        model: table.model,
+        effort: launcher_default("claude").effort,
+    };
     assert_eq!(
-        saved["launcher"]["models"]["claude"]["leader"],
-        json!({"model": "claude-opus-5-5", "effort": "high"}),
+        saved["launcher"]["models"]["claude"],
+        json!({"model": want.model, "effort": want.effort}),
         "{text}"
+    );
+    // The model stage opened with the tool question, and the end screen sends each project to
+    // its own session's update (the sentence wraps and uses no-break spaces).
+    assert!(
+        text.contains(&moai_cli::model_effort_questions::tool_question(&[]).prompt),
+        "{text}"
+    );
+    assert!(text.contains("Done"), "{text}");
+    let flat = flat_of(&text);
+    assert!(
+        flat.contains("run /moai update in a session there"),
+        "{flat}"
+    );
+    assert!(!text.contains("\"protocol_version\""), "{text}");
+    // A second run has nothing left to apply and points to the same step.
+    let again = run_in_terminal_unanswered(&a, &f.home);
+    assert!(again.contains("Everything is up to date"), "{again}");
+    assert!(!again.contains("[y/N]"), "{again}");
+    assert!(
+        !flat_of(&again).contains("$moai"),
+        "no Codex command: {again}"
     );
 }
 
 // A scripted run (`--confirm`) asks nothing, also on a terminal: the model stage is for the
 // person who answered the update question (card C-47, SPEC-20261118-update-model-pick).
-#[cfg(target_os = "macos")]
 #[test]
 fn in_a_terminal_a_confirmed_update_asks_no_model_question() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
     let p = preview(&a, &f.home);
-    let out = Command::new("/usr/bin/script")
-        .args(["-q", "/dev/null"])
-        .arg(&a)
-        .args(["update", "--confirm", &digest(&p)])
-        .clean_env()
-        .env("PATH", "/usr/bin:/bin")
-        .env("HOME", &f.home)
-        .env("LC_ALL", "C")
-        .current_dir(&f.home)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .output()
-        .unwrap();
-    let text = String::from_utf8_lossy(&out.stdout).to_string();
+    // Typed nothing: a question here would end with the question in the text, not hang.
+    let text = at_terminal(&a, &f.home, &["update", "--confirm", &digest(&p)])
+        .run()
+        .text;
     assert!(
         f.home.join(".claude/skills/moai/SKILL.md").is_file(),
         "{text}"
@@ -443,6 +459,167 @@ fn in_a_terminal_a_confirmed_update_asks_no_model_question() {
     assert!(!text.contains("Save these model settings"), "{text}");
 }
 
+/// A screen with its line wraps and no-break spaces read as single spaces.
+fn flat_of(text: &str) -> String {
+    text.replace("\n  ", " ").replace('\u{a0}', " ")
+}
+
+fn skill_file(home: &Path) -> PathBuf {
+    home.join(".claude/skills/moai/SKILL.md")
+}
+
+// The cases below moved here from the Python terminal test of `update`
+// (SPEC-20261120-python-binary-tests-to-rust); the Python module is gone.
+
+// A pipe keeps the envelope, and `--json` on a pipe is the same bytes.
+#[test]
+fn a_pipe_keeps_the_envelope_and_json_is_the_same_bytes() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let plain = run(&a, &f.home, &["update"]);
+    let json_flag = run(&a, &f.home, &["update", "--json"]);
+    let v = envelope(&plain);
+    assert_eq!(v["operation"], json!("update.run"), "{v}");
+    assert_eq!(v["result"]["mode"], json!("preview"), "{v}");
+    assert_eq!(plain.stdout, json_flag.stdout);
+}
+
+// `--json` keeps the envelope on a terminal too.
+#[test]
+fn json_on_a_terminal_prints_the_envelope() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let before = state(&f.home);
+    let s = at_terminal(&a, &f.home, &["update", "--json"]).run();
+    assert_eq!(s.code, Some(0), "{}", s.text);
+    assert!(s.text.contains("\"protocol_version\""), "{}", s.text);
+    assert!(
+        s.text.contains("\"operation\":\"update.run\""),
+        "{}",
+        s.text
+    );
+    assert_eq!(state(&f.home), before);
+}
+
+// End of input (Ctrl-D) at the question is a no.
+#[test]
+fn end_of_input_at_the_question_writes_nothing() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let before = state(&f.home);
+    let s = at_terminal(&a, &f.home, &["update"])
+        .answer([END_OF_INPUT])
+        .run();
+    assert_eq!(s.code, Some(0), "{}", s.text);
+    assert_eq!(state(&f.home), before);
+    assert!(!skill_file(&f.home).exists(), "{}", s.text);
+}
+
+// End of input at the tool pick ends the model stage as cancelled: the update stays applied
+// and no settings file is written.
+#[test]
+fn end_of_input_at_the_model_stage_keeps_the_applied_update() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let s = at_terminal(&a, &f.home, &["update"])
+        .answer(b"y\n\x04")
+        .run();
+    assert_eq!(s.code, Some(0), "{}", s.text);
+    assert!(skill_file(&f.home).is_file(), "{}", s.text);
+    assert!(
+        s.text
+            .contains(&moai_cli::model_effort_questions::tool_question(&[]).prompt),
+        "{}",
+        s.text
+    );
+    assert!(!s.text.contains("Save these model settings?"), "{}", s.text);
+    assert!(s.text.contains("Done"), "{}", s.text);
+    assert!(
+        !moai_cli::update_models::settings_path(&f.home).exists(),
+        "{}",
+        s.text
+    );
+    assert_eq!(launcher_files(&f.home), Vec::<PathBuf>::new(), "{}", s.text);
+}
+
+// The package changes after the preview, then `y`: nothing is written and the new preview shows.
+#[test]
+fn a_plan_that_changes_before_the_write_is_refused() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let changed = a
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("skills/moai/workflows/update.md");
+    let s = at_terminal(&a, &f.home, &["update"])
+        .answer("y\n")
+        .before_answer(move || {
+            let mut file = fs::OpenOptions::new().append(true).open(&changed).unwrap();
+            file.write_all(b"\nchanged after the preview\n").unwrap();
+        })
+        .run();
+    assert_eq!(s.code, Some(0), "{}", s.text);
+    assert!(
+        s.text.contains("The plan changed after the preview"),
+        "{}",
+        s.text
+    );
+    assert!(!skill_file(&f.home).exists(), "{}", s.text);
+}
+
+// stdout on a terminal but stdin not: the screen and the confirming command, no question, no wait.
+#[test]
+fn stdin_that_is_not_a_terminal_is_never_asked() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let before = state(&f.home);
+    let started = std::time::Instant::now();
+    let s = at_terminal(&a, &f.home, &["update"])
+        .stdin_not_a_terminal()
+        .run();
+    assert_eq!(s.code, Some(0), "{}", s.text);
+    assert!(!s.text.contains("[y/N]"), "{}", s.text);
+    assert!(
+        s.text.contains("moai update --confirm sha256:"),
+        "{}",
+        s.text
+    );
+    assert!(started.elapsed() < Duration::from_secs(30));
+    assert_eq!(state(&f.home), before);
+}
+
+// A failed run on a terminal shows the error frame only; a pipe still gets the failure envelope.
+#[test]
+fn an_error_on_a_terminal_is_the_frame_not_json() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    fs::remove_dir_all(a.parent().unwrap().parent().unwrap().join("skills/moai")).unwrap();
+    let s = at_terminal(&a, &f.home, &["update"]).run();
+    assert_eq!(s.code, Some(1), "{}", s.text);
+    assert!(s.text.contains("no skill package installed"), "{}", s.text);
+    assert!(!s.text.contains("\"protocol_version\""), "{}", s.text);
+    let piped = run(&a, &f.home, &["update"]);
+    assert_eq!(piped.status.code(), Some(1));
+    assert_eq!(envelope(&piped)["ok"], json!(false));
+}
+
+// The CLI's screens are English whatever the language settings say (#2825 R1).
+#[test]
+fn a_korean_setting_keeps_the_english_screens() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let s = at_terminal(&a, &f.home, &["update"])
+        .env("MOAI_LANG", "ko")
+        .answer("n\n")
+        .run();
+    assert_eq!(s.code, Some(0), "{}", s.text);
+    assert!(s.text.contains("Checking"), "{}", s.text);
+    assert!(s.text.contains("Nothing was written."), "{}", s.text);
+    assert!(!s.text.contains("검사"), "{}", s.text);
+}
+
 // A confirmation piped in without a terminal is not a confirmation: only `--confirm`
 // applies outside a terminal.
 #[test]
@@ -450,22 +627,14 @@ fn a_yes_piped_without_a_terminal_writes_nothing() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
     let before = state(&f.home);
-    let mut child = Command::new(&a)
-        .arg("update")
+    let mut cmd = Command::new(&a);
+    cmd.arg("update")
         .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", &f.home)
         .env("LC_ALL", "C")
-        .current_dir(&f.home)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut stdin = child.stdin.take().unwrap();
-    let _ = stdin.write_all(b"y\nyes\n");
-    drop(stdin);
-    let r = ok(&child.wait_with_output().unwrap());
+        .current_dir(&f.home);
+    let r = ok(&output_within(&mut cmd, Some(b"y\nyes\n")));
     assert_eq!(r["mode"], json!("preview"), "{r}");
     assert_eq!(state(&f.home), before);
 }
@@ -489,14 +658,12 @@ fn a_linked_package_folder_is_refused() {
 
 // ---- #2540: report what was actually applied; ask only when something would be written ----
 
-/// A `skills/moai` folder this tool did not install, in both hosts' projection roots, so
+/// A `skills/moai` folder this tool did not install, in the Claude projection root, so
 /// every host of the plan is `blocked`.
-fn foreign_skill_in_both_hosts(home: &Path) {
-    for root in [".claude/skills/moai", ".agents/skills/moai"] {
-        let dir = home.join(root);
-        fs::create_dir_all(&dir).unwrap();
-        fs::write(dir.join("SKILL.md"), skill_md("someone else's skill")).unwrap();
-    }
+fn foreign_skill_in_the_host(home: &Path) {
+    let dir = home.join(".claude/skills/moai");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("SKILL.md"), skill_md("someone else's skill")).unwrap();
 }
 
 // #2540 AC-1: a confirmed plan whose hosts are all blocked writes nothing and is not
@@ -505,7 +672,7 @@ fn foreign_skill_in_both_hosts(home: &Path) {
 fn a_confirmed_plan_with_every_host_blocked_is_not_reported_as_applied() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
-    foreign_skill_in_both_hosts(&f.home);
+    foreign_skill_in_the_host(&f.home);
     let p = preview(&a, &f.home);
     for h in HOSTS {
         assert_eq!(
@@ -540,7 +707,7 @@ fn a_confirmed_plan_with_nothing_to_write_is_not_reported_as_applied() {
 fn a_preview_with_nothing_to_write_says_so() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
-    foreign_skill_in_both_hosts(&f.home);
+    foreign_skill_in_the_host(&f.home);
     let p = preview(&a, &f.home);
     assert_eq!(p["nothing_to_apply"], json!(true), "{p}");
     let g = fx();
@@ -605,50 +772,42 @@ fn a_preview_with_only_a_conflict_has_nothing_to_apply() {
             .any(|(_, a)| a == "create" || a == "update"),
         "{p}"
     );
-    // codex has no user edit, so it would update; only claude is conflict-only.
-    assert_eq!(p["nothing_to_apply"], json!(false), "{p}");
-    fs::write(
-        f.home.join(".agents/skills/moai/workflows/update.md"),
-        "# UPDATE\nmy own notes too\n",
-    )
-    .unwrap();
-    let p = preview(&a, &f.home);
     assert_eq!(p["nothing_to_apply"], json!(true), "{p}");
 }
 
-/// Runs `update` in a pseudo terminal with nothing typed, and returns everything shown.
-#[cfg(target_os = "macos")]
+/// Runs `update` at a terminal with nothing typed, and returns everything shown.
 fn run_in_terminal_unanswered(exe: &Path, home: &Path) -> String {
-    let out = Command::new("/usr/bin/script")
-        .args(["-q", "/dev/null"])
-        .arg(exe)
-        .arg("update")
-        .clean_env()
-        .env("PATH", "/usr/bin:/bin")
-        .env("HOME", home)
-        .env("LC_ALL", "C")
-        .current_dir(home)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .output()
-        .unwrap();
-    String::from_utf8_lossy(&out.stdout).to_string()
+    let s = at_terminal(exe, home, &["update"]).run();
+    assert_eq!(s.code, Some(0), "{}", s.text);
+    s.text
+}
+
+/// A model setting saved the way the model step saves one. The model questions open on a terminal
+/// when none is saved (SPEC-20261121-model-step-reachable), so a terminal case that is about
+/// something else saves one first.
+fn with_a_saved_model_setting(home: &Path) {
+    let path = moai_cli::update_models::settings_path(home);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(
+        path,
+        r#"{"launcher":{"models":{"claude":{"leader":{"model":"claude-opus-5-5","effort":"high"}}}}}"#,
+    )
+    .unwrap();
 }
 
 // #2540 AC-3: in a terminal, a plan with every host blocked is shown without the question.
-#[cfg(target_os = "macos")]
 #[test]
 fn in_a_terminal_nothing_to_write_asks_nothing() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
-    foreign_skill_in_both_hosts(&f.home);
+    foreign_skill_in_the_host(&f.home);
+    with_a_saved_model_setting(&f.home);
     let before = state(&f.home);
     let text = run_in_terminal_unanswered(&a, &f.home);
     assert!(!text.contains("[y/N]"), "{text}");
     // #2894 U1: the blocked screen instead of the preview envelope.
     assert!(
-        text.contains("Nothing can be applied — clear the blocked part first"),
+        text.contains("Nothing left to apply — the rest is up to date"),
         "{text}"
     );
     assert_eq!(state(&f.home), before);
@@ -656,10 +815,10 @@ fn in_a_terminal_nothing_to_write_asks_nothing() {
 
 // #2540 AC-3 (pre-audit 6824540371 F1): in a terminal, rerunning `update` on an already
 // applied package asks nothing.
-#[cfg(target_os = "macos")]
 #[test]
 fn in_a_terminal_an_already_applied_package_asks_nothing() {
     let (f, a) = applied_once();
+    with_a_saved_model_setting(&f.home);
     let before = state(&f.home);
     let text = run_in_terminal_unanswered(&a, &f.home);
     assert!(!text.contains("[y/N]"), "{text}");
@@ -671,34 +830,25 @@ fn in_a_terminal_an_already_applied_package_asks_nothing() {
 // #2545 (audit note U5 on #2530): the question goes to stderr, so `update` asks only when both
 // stdin and stderr are terminals. With stdin on a terminal but stderr sent to a file, a person
 // would wait on a question they cannot see: `update` must not ask and must write nothing.
-#[cfg(target_os = "macos")]
 #[test]
 fn with_stderr_away_from_the_terminal_update_does_not_ask() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
     let err_file = f.root.join("stderr.txt");
     let before = state(&f.home);
-    let out = Command::new("/usr/bin/script")
-        .args([
-            "-q",
-            "/dev/null",
-            "/bin/sh",
+    // stdin and stdout on the terminal, stderr sent to a file by the shell that starts `update`.
+    let shown = at_terminal(
+        Path::new("/bin/sh"),
+        &f.home,
+        &[
             "-c",
             "exec \"$0\" update 2>\"$1\"",
-        ])
-        .arg(&a)
-        .arg(&err_file)
-        .clean_env()
-        .env("PATH", "/usr/bin:/bin")
-        .env("HOME", &f.home)
-        .env("LC_ALL", "C")
-        .current_dir(&f.home)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .output()
-        .unwrap();
-    let shown = String::from_utf8_lossy(&out.stdout);
+            a.to_str().unwrap(),
+            err_file.to_str().unwrap(),
+        ],
+    )
+    .run()
+    .text;
     let err = fs::read_to_string(&err_file).unwrap_or_default();
     assert!(
         !err.contains("[y/N]"),

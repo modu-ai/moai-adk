@@ -3,8 +3,15 @@
 //! in host-neutral words, under a size cap so loading the skill stays cheap.
 use std::{fs, path::Path};
 
-/// The cap the author proposed for the leader's record (load cost of the skill).
-const CORE_RULES_MAX_BYTES: usize = 4096;
+/// The cap the author proposed for the leader's record (load cost of the skill), raised from
+/// 4096 to 4608 bytes by SPEC-20261120-guidance-sweep-core for the Korean developer-words
+/// sentence of rule 7 and the recurring-problem rule 22, and to 5120 bytes by
+/// SPEC-20261121-report-rules-in-core-rules for the two report rules that moved out of the
+/// skill entry (the same bytes leave `SKILL.md`, so the two files load as many bytes as before),
+/// and to 5632 bytes by SPEC-20261123-lsp-official-plugins for rule 25 (official LSP plugins),
+/// and to 6016 bytes for the own text of the eleven rules that were history pointers (a rule a
+/// session cannot read in the skill is no rule for a user project, which has no history file).
+const CORE_RULES_MAX_BYTES: usize = 6016;
 
 fn package(rel: &str) -> String {
     fs::read_to_string(
@@ -160,11 +167,11 @@ fn merged_rules_live_in_their_workflow_files() {
             "never switch, create, reset, stash, rebase or merge branches in the shared primary checkout",
         ),
         (
-            "references/internal/review.md",
+            "references/audit.md",
             "A Critical or High security finding blocks",
         ),
         (
-            "references/internal/review.md",
+            "references/audit.md",
             "a missing or stale scan is unverified, never a pass",
         ),
         (
@@ -188,16 +195,12 @@ fn merged_rules_live_in_their_workflow_files() {
 fn release_tags_wait_for_the_user_at_every_level() {
     for (file, phrase) in [
         (
-            "SKILL.md",
-            "pushing a tag or publishing a release is case (2) at every autonomy level, `full` included",
-        ),
-        (
             "references/internal/decide.md",
-            "goes to the user and waits, and so does pushing a tag or publishing a release at every autonomy level;",
+            "Pushing a tag or publishing a release is case (2) at every autonomy level, `full` included",
         ),
         (
             "references/internal/versioning.md",
-            "pushing a tag or publishing a release is `SKILL.md` case (2) at every autonomy level, `full` included: the user picks it and it waits, with no deadline default",
+            "pushing a tag or publishing a release is `internal/decide` case (2) at every autonomy level, `full` included: the user picks it and it waits, with no deadline default",
         ),
     ] {
         assert!(package(file).contains(phrase), "{file} must say `{phrase}`");

@@ -148,7 +148,7 @@ fn the_keys_rows_are_one_plain_line_each() {
             "keys": "moai keys-revert <HOME> --receipt keys-1-2 --permission-reference <reference>"});
         let text = screen(&done, Asked::Yes, &v);
         assert!(
-            text.contains("moai keys-revert <HOME> --receipt keys-1-2"),
+            text.contains("moai keys-revert /home/u --receipt keys-1-2"),
             "{text}"
         );
     }
@@ -185,7 +185,9 @@ fn the_screen_prints_the_revert_commands_in_the_one_order_of_the_result() {
         let text = screen(&done, Asked::Yes, &v);
         let mut at = Vec::new();
         for key in &order {
-            let command = revert[*key].as_str().unwrap();
+            // The screen shows the real home where the result's sentence has the placeholder.
+            let command = revert[*key].as_str().unwrap().replace("<HOME>", "/home/u");
+            let command = command.as_str();
             assert_eq!(text.matches(command).count(), 1, "{key} once: {text}");
             at.push(text.find(command).unwrap());
         }
@@ -215,17 +217,9 @@ fn the_project_update_block_ends_finished_and_up_to_date_screens_only() {
     let mut partial = applied.clone();
     partial["routing_result"] =
         serde_json::json!({"state": "error", "message": "routing file changed during apply"});
-    for (lang, block, codex) in [
-        (
-            Lang::Ko,
-            "각 프로젝트의 세션에서 /moai update",
-            "$moai update",
-        ),
-        (
-            Lang::En,
-            "run /moai update in a session there",
-            "$moai update",
-        ),
+    for (lang, block) in [
+        (Lang::Ko, "각 프로젝트의 세션에서 /moai update"),
+        (Lang::En, "run /moai update in a session there"),
     ] {
         for project in [None, go_project(), moai_project()] {
             let v = view(lang, Look::Plain, 80, project.clone());
@@ -236,10 +230,11 @@ fn the_project_update_block_ends_finished_and_up_to_date_screens_only() {
                 // The sentence wraps to the width; read it with its lines joined (a no-break
                 // space holds each command together).
                 let joined = flat(&text);
-                assert!(joined.contains(block) && joined.contains(codex), "{text}");
+                assert!(joined.contains(block), "{text}");
+                assert!(!joined.contains("$moai"), "no Codex command: {text}");
                 // The block is the end of the screen: the last paragraph is the block.
                 let end = flat(text.trim_end().rsplit("\n\n").next().unwrap_or(""));
-                assert!(end.contains(block) && end.contains(codex), "{text}");
+                assert!(end.contains(block), "{text}");
                 match &project {
                     Some(p) if p.go_items.is_some() => assert!(text.contains("site —"), "{text}"),
                     Some(_) => assert!(text.contains("app —"), "{text}"),
@@ -255,7 +250,7 @@ fn the_project_update_block_ends_finished_and_up_to_date_screens_only() {
                 screen(&partial, Asked::Yes, &v),
             ] {
                 let flat = flat(&text);
-                assert!(!flat.contains(block) && !flat.contains(codex), "{text}");
+                assert!(!flat.contains(block) && !flat.contains("$moai"), "{text}");
             }
         }
     }
@@ -285,9 +280,11 @@ fn check(name: &str, lang: Lang, text: &str, width: usize) {
     );
     // Every line fits the width it was drawn for (escape codes take no cells) — except the
     // confirming and revert commands, which stay whole so they can be copied.
-    for line in text.lines().filter(|l| {
-        !l.contains("moai update --confirm sha256:") && !l.contains("-revert <HOME> --receipt")
-    }) {
+    let whole = |l: &str| {
+        l.contains("moai update --confirm sha256:")
+            || (l.contains("-revert ") && l.contains(" --receipt"))
+    };
+    for line in text.lines().filter(|l| !whole(l)) {
         let shown = strip_ansi(line);
         assert!(
             UnicodeWidthStr::width(shown.as_str()) <= width,
@@ -420,15 +417,32 @@ fn no_screen_prints_json_or_asks_to_copy_a_digest_when_it_asks() {
 /// the files it published, not every file the result lists.
 #[test]
 fn the_applied_screen_counts_published_files_and_keeps_healthy_hosts_ok() {
-    let mut applied = fixture("applied");
-    let hosts = applied["result"]["hosts"].as_array_mut().unwrap();
-    // claude: nothing to write. codex: one file of 31 published by a backup-then-replace.
+    let v = view(Lang::En, Look::Plain, 80, None);
+    // The skill host: nothing to write.
+    let mut unchanged = fixture("applied");
+    let hosts = unchanged["result"]["hosts"].as_array_mut().unwrap();
     hosts[0]["status"] = "unchanged".into();
     for f in hosts[0]["files"].as_array_mut().unwrap() {
         f["published"] = false.into();
     }
-    hosts[1]["status"] = "replaced".into();
-    for (i, f) in hosts[1]["files"]
+    let text = screen(&unchanged, Asked::Yes, &v);
+    assert!(
+        !text.contains("Partly applied") && !text.contains("blocked"),
+        "{text}"
+    );
+    // 5 agents + 1 routing + 2 style + 1 command name.
+    assert!(text.contains("✓ Done — 9 changed"), "{text}");
+    assert!(
+        !text
+            .lines()
+            .any(|l| l.contains("skills claude") && l.contains("changed")),
+        "{text}"
+    );
+    // The skill host: one file of 31 published by a backup-then-replace.
+    let mut applied = fixture("applied");
+    let hosts = applied["result"]["hosts"].as_array_mut().unwrap();
+    hosts[0]["status"] = "replaced".into();
+    for (i, f) in hosts[0]["files"]
         .as_array_mut()
         .unwrap()
         .iter_mut()
@@ -436,23 +450,16 @@ fn the_applied_screen_counts_published_files_and_keeps_healthy_hosts_ok() {
     {
         f["published"] = (i == 0).into();
     }
-    let v = view(Lang::En, Look::Plain, 80, None);
     let text = screen(&applied, Asked::Yes, &v);
     assert!(
         !text.contains("Partly applied") && !text.contains("blocked"),
         "{text}"
     );
-    // 1 skill file + 15 agents + 2 routing + 3 style + 1 command name.
-    assert!(text.contains("✓ Done — 22 changed"), "{text}");
+    // 1 skill file + 5 agents + 1 routing + 2 style + 1 command name.
+    assert!(text.contains("✓ Done — 10 changed"), "{text}");
     assert!(
         text.lines()
-            .any(|l| l.contains("skills codex") && l.contains(" 1 changed")),
-        "{text}"
-    );
-    assert!(
-        !text
-            .lines()
-            .any(|l| l.contains("skills claude") && l.contains("changed")),
+            .any(|l| l.contains("skills claude") && l.contains(" 1 changed")),
         "{text}"
     );
     // The project step still ends a run whose every change succeeded.
@@ -686,7 +693,148 @@ fn the_preview_shows_routing_appends_and_blocked_style_targets() {
         flat_text.contains("blocked: is a symlink; refusing"),
         "{text}"
     );
-    assert!(text.contains("Nothing can be applied"), "{text}");
+    assert!(text.contains("Nothing left to apply"), "{text}");
     let name = path.rsplit('/').next().unwrap();
     assert!(flat_text.contains(name), "{text}");
+}
+
+/// SPEC-20261122-output-style-install-checks: the `notices` list (a project setting that hides
+/// the style, the `/status` pointer) is a row of its own word on the question and on the result
+/// screen, never a skipped write.
+#[test]
+fn a_notice_is_its_own_row_never_a_skipped_one() {
+    let notice = serde_json::json!([{"part": "style", "host": "claude",
+        "reason": "if the style does not show up, open /status"}]);
+    let mut changes = fixture("preview-changes");
+    changes["notices"] = notice.clone();
+    let mut done = fixture("applied");
+    done["notices"] = notice;
+    for lang in [Lang::En, Lang::Ko] {
+        let v = view(lang, Look::Plain, 100, None);
+        let (word, skipped) = if lang == Lang::Ko {
+            ("알림", "건너뜀")
+        } else {
+            ("notice", "skipped")
+        };
+        for text in [question(&changes, &v), screen(&done, Asked::Yes, &v)] {
+            let lines: Vec<&str> = text
+                .lines()
+                .filter(|l| l.contains("open /status"))
+                .collect();
+            assert_eq!(lines.len(), 1, "{text}");
+            assert!(lines[0].contains("style claude"), "{text}");
+            assert!(
+                lines[0].contains(&format!("{word}: if the style")),
+                "{text}"
+            );
+            assert!(!lines[0].contains(skipped), "{text}");
+        }
+    }
+    // A narrow screen wraps the row and a dumb terminal draws it in ASCII; both keep the
+    // notice word and never the skipped one (goldens: a dumb terminal at 40 columns, and the
+    // Korean result screen at 40 columns).
+    let dumb = view(Lang::En, Look::Ascii, 40, None);
+    let narrow = view(Lang::Ko, Look::Plain, 40, None);
+    for (name, lang, text) in [
+        (
+            "question-notice-ascii-40",
+            Lang::En,
+            question(&changes, &dumb),
+        ),
+        (
+            "applied-notice-40",
+            Lang::Ko,
+            screen(&done, Asked::Yes, &narrow),
+        ),
+    ] {
+        let (word, skipped) = if lang == Lang::Ko {
+            ("알림", "건너뜀")
+        } else {
+            ("notice", "skipped")
+        };
+        let joined = flat(&text);
+        assert!(joined.contains(&format!("{word}: if the style")), "{text}");
+        assert!(
+            !joined.contains(&format!("{skipped}: if the style")),
+            "{text}"
+        );
+        check(name, lang, &text, 40);
+    }
+}
+
+/// SPEC-20261124-desktop-install-agents REQ-9: a notice that carries `"warning": false` (the
+/// `claude_folders` notice of a plain setup) is drawn without the warning mark; a notice with a
+/// warning, or with no such key (every earlier notice), keeps it.
+#[test]
+fn a_notice_without_a_warning_has_no_warning_mark() {
+    let prefix = |warning: Option<bool>| {
+        let mut n = serde_json::json!({"part": "folders", "host": "claude",
+            "reason": "this update writes skills /h/.claude"});
+        if let Some(w) = warning {
+            n["warning"] = serde_json::json!(w);
+        }
+        let mut v = fixture("preview-changes");
+        v["notices"] = serde_json::json!([n]);
+        let text = question(&v, &view(Lang::En, Look::Ascii, 100, None));
+        let line = text
+            .lines()
+            .find(|l| l.contains("this update writes"))
+            .unwrap_or_else(|| panic!("no notice row: {text}"))
+            .to_string();
+        line.split("folders claude").next().unwrap().to_string()
+    };
+    assert_ne!(prefix(Some(false)), prefix(Some(true)));
+    assert_eq!(prefix(None), prefix(Some(true)));
+}
+
+/// SPEC-20261124-update-flat-agent-ownership REQ-10: an agents result that is `partial` (a flat
+/// file of the person's was kept) shows an agents row with the number kept and ends on Partly
+/// applied; the same run with nothing kept still ends on Done.
+#[test]
+fn the_applied_screen_shows_a_kept_agent_file_as_partial() {
+    let mut partial = fixture("applied");
+    partial["agents_result"] = serde_json::json!({
+        "state": "partial",
+        "written": ["claude:moai-audit.md"],
+        "kept": ["claude:moai-impl.md", "claude:moai-plan.md"],
+    });
+    let en = screen(&partial, Asked::Yes, &view(Lang::En, Look::Plain, 80, None));
+    assert!(en.contains("Partly applied"), "{en}");
+    assert!(!en.contains("Done"), "{en}");
+    assert!(
+        en.lines()
+            .any(|l| l.contains("agents") && l.contains("1 changed") && l.contains("2 kept")),
+        "{en}"
+    );
+    let ko = screen(&partial, Asked::Yes, &view(Lang::Ko, Look::Plain, 80, None));
+    assert!(ko.contains("일부만 바꿨어요"), "{ko}");
+    assert!(
+        ko.lines()
+            .any(|l| l.contains("에이전트") && l.contains("유지") && l.contains('2')),
+        "{ko}"
+    );
+    // Only a kept file: nothing written, still a row and still partial.
+    let mut alone = fixture("applied");
+    alone["agents_result"] = serde_json::json!({
+        "state": "partial",
+        "written": [],
+        "kept": ["claude:moai-impl.md"],
+    });
+    let text = screen(&alone, Asked::Yes, &view(Lang::En, Look::Plain, 80, None));
+    assert!(text.contains("Partly applied"), "{text}");
+    assert!(
+        text.lines()
+            .any(|l| l.contains("agents") && l.contains("1 kept")),
+        "{text}"
+    );
+    // The run that kept nothing is as before.
+    let done = screen(
+        &fixture("applied"),
+        Asked::Yes,
+        &view(Lang::En, Look::Plain, 80, None),
+    );
+    assert!(
+        done.contains("Done") && !done.contains("Partly applied"),
+        "{done}"
+    );
 }

@@ -748,8 +748,8 @@ impl SyntheticHome {
 /// File that marks a directory as a prepared synthetic home. The temporary-directory
 /// test alone trusts `TMPDIR`; this marker is the positive proof that the caller set
 /// the directory up for a rehearsal, so a redirected `TMPDIR` cannot admit a real home.
-pub const SYNTHETIC_MARKER: &str = ".moai-cli-synthetic-home";
-pub const SYNTHETIC_MARKER_TEXT: &[u8] = b"moai-cli synthetic home v1\n";
+pub const SYNTHETIC_MARKER: &str = ".moai-synthetic-home";
+pub const SYNTHETIC_MARKER_TEXT: &[u8] = b"moai synthetic home v1\n";
 
 /// Typed `migrate-plan` request (stdin). The release list is required here.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

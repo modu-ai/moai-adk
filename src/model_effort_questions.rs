@@ -8,7 +8,8 @@
 //! line or saved text. The update command, the commands that expose the plan and the apply, and
 //! the skill step are slice 2b.
 use crate::model_effort_settings::{
-    default_choice, saved_choice, supported, unsupported_entries, with_choice, Choice, ROLES,
+    flat_choice, launch_default_choice, role_entry_paths, supported, unsupported_entries,
+    with_flat_choice, Choice,
 };
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
@@ -16,9 +17,9 @@ use std::fs;
 use std::io::{self, BufRead, Read, Write};
 use std::path::Path;
 
-/// The tools a person can pick, in question order (user decision 2026-11-19: three tools only —
-/// claude, gpt, glm; the gpt tool is the codex key). A pick writes its own tool alone.
-pub const TOOL_CHOICES: [&str; 3] = ["claude", "codex", "glm"];
+/// The tools a person can pick, in question order (user decision 2026-11-21: Claude Code and GLM
+/// only; Codex support is withdrawn). A pick writes its own tool alone.
+pub const TOOL_CHOICES: [&str; 2] = ["claude", "glm"];
 /// Bad answers to one question before the loop gives up.
 const MAX_TRIES: usize = 3;
 /// The launcher settings file is small; a larger one is not read.
@@ -54,8 +55,6 @@ pub struct Question {
 fn tool_label(tool: &str) -> &'static str {
     match tool {
         "claude" => "Claude",
-        "codex" => "GPT (Codex)",
-        "omp" => "OMP",
         "glm" => "GLM",
         _ => "",
     }
@@ -87,17 +86,24 @@ pub fn tool_question(installed: &[&str]) -> Question {
     }
 }
 
-/// The model of a tool and role: the default first, then the rest of the table in order.
-pub fn model_question(tool: &str, role: &str) -> Option<Question> {
-    model_question_with(tool, role, None)
+/// What the questions offer first when nothing is saved: [`launch_default_choice`], the model
+/// and effort a plain launch with nothing saved runs (SPEC-20261121-model-defaults-one-table
+/// REQ-10 to REQ-12; a launch has no role, SPEC-20261124-launcher-retire-role-flags).
+fn table_default(tool: &str) -> Option<Choice> {
+    launch_default_choice(tool)
+}
+
+/// The model of a tool: the default first, then the rest of the table in order.
+pub fn model_question(tool: &str) -> Option<Question> {
+    model_question_with(tool, None)
 }
 
 /// [`model_question`] where a saved supported choice is the default instead of the table default,
 /// so that Enter keeps what the person saved earlier.
-pub fn model_question_with(tool: &str, role: &str, saved: Option<&Choice>) -> Option<Question> {
+pub fn model_question_with(tool: &str, saved: Option<&Choice>) -> Option<Question> {
     let default = match saved {
         Some(choice) => choice.clone(),
-        None => default_choice(tool, role)?,
+        None => table_default(tool)?,
     };
     let rows = supported(tool)?;
     let mut options = vec![option(&default.model, &default.model)];
@@ -107,31 +113,26 @@ pub fn model_question_with(tool: &str, role: &str, saved: Option<&Choice>) -> Op
             .map(|row| option(row.id, row.id)),
     );
     Some(Question {
-        id: format!("{tool}.{role}.model"),
-        prompt: format!("{} {role}: which model?", tool_label(tool)),
+        id: format!("{tool}.model"),
+        prompt: format!("{}: which model?", tool_label(tool)),
         kind: Kind::One,
         options,
         defaults: vec![0],
     })
 }
 
-/// The effort of a model for a tool and role: the efforts that model offers in table order. The
-/// default is the tool and role default when the model offers it, else `high`, else the first.
-pub fn effort_question(tool: &str, role: &str, model: &str) -> Option<Question> {
-    effort_question_with(tool, role, model, None)
+/// The effort of a model for a tool: the efforts that model offers in table order. The default is
+/// the table default when the model offers it, else `high`, else the first.
+pub fn effort_question(tool: &str, model: &str) -> Option<Question> {
+    effort_question_with(tool, model, None)
 }
 
 /// [`effort_question`] where the saved effort is the default when the saved model is the model
 /// asked about and still offers it.
-pub fn effort_question_with(
-    tool: &str,
-    role: &str,
-    model: &str,
-    saved: Option<&Choice>,
-) -> Option<Question> {
+pub fn effort_question_with(tool: &str, model: &str, saved: Option<&Choice>) -> Option<Question> {
     let preferred = match saved {
         Some(choice) if choice.model == model => choice.effort.clone(),
-        _ => default_choice(tool, role)?.effort,
+        _ => table_default(tool)?.effort,
     };
     let row = supported(tool)?.iter().find(|row| row.id == model)?;
     let position = |name: &str| row.efforts.iter().position(|e| *e == name);
@@ -139,8 +140,8 @@ pub fn effort_question_with(
         .or_else(|| position("high"))
         .unwrap_or(0);
     Some(Question {
-        id: format!("{tool}.{role}.effort"),
-        prompt: format!("{} {role}: which effort for that model?", tool_label(tool)),
+        id: format!("{tool}.effort"),
+        prompt: format!("{}: which effort for that model?", tool_label(tool)),
         kind: Kind::One,
         options: row.efforts.iter().map(|e| option(e, e)).collect(),
         defaults: vec![default],
@@ -197,11 +198,10 @@ pub fn read_answer(question: &Question, line: Option<&str>) -> Answer {
     )
 }
 
-/// One pick: the model and effort of a tool and role.
+/// One pick: the model and effort of a tool (one pick per host, no role).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pick {
     pub tool: String,
-    pub role: String,
     pub model: String,
     pub effort: String,
 }
@@ -275,8 +275,8 @@ fn ask<R: BufRead, W: Write>(
     Ok(None)
 }
 
-/// Runs the questions: the tool pick first, then for each picked tool (in option order) the model
-/// and the effort of the leader and of the agent. An empty tool pick asks nothing more.
+/// Runs the questions: the tool pick first, then for each picked tool (in option order) one model
+/// and one effort. An empty tool pick asks nothing more.
 pub fn run<R: BufRead, W: Write>(
     input: &mut R,
     out: &mut W,
@@ -302,37 +302,33 @@ pub fn run_with<R: BufRead, W: Write>(
         .iter()
         .filter(|t| tools.iter().any(|p| p.as_str() == **t))
     {
-        for role in ROLES {
-            let saved = saved_choice(launcher, tool, role);
-            let Some(models) = model_question_with(tool, role, saved.as_ref()) else {
-                continue;
-            };
-            let Some(model) = ask(input, out, &models)? else {
-                return Ok(Outcome::Cancelled);
-            };
-            let model = model[0].clone();
-            let Some(efforts) = effort_question_with(tool, role, &model, saved.as_ref()) else {
-                continue;
-            };
-            let Some(effort) = ask(input, out, &efforts)? else {
-                return Ok(Outcome::Cancelled);
-            };
-            picks.push(Pick {
-                tool: (*tool).to_string(),
-                role: role.to_string(),
-                model,
-                effort: effort[0].clone(),
-            });
-        }
+        let saved = flat_choice(launcher, tool);
+        let Some(models) = model_question_with(tool, saved.as_ref()) else {
+            continue;
+        };
+        let Some(model) = ask(input, out, &models)? else {
+            return Ok(Outcome::Cancelled);
+        };
+        let model = model[0].clone();
+        let Some(efforts) = effort_question_with(tool, &model, saved.as_ref()) else {
+            continue;
+        };
+        let Some(effort) = ask(input, out, &efforts)? else {
+            return Ok(Outcome::Cancelled);
+        };
+        picks.push(Pick {
+            tool: (*tool).to_string(),
+            model,
+            effort: effort[0].clone(),
+        });
     }
     Ok(Outcome::Picks(picks))
 }
 
-/// A saved or new value of one tool and role in a plan.
+/// A saved or new value of one tool in a plan.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Change {
     pub tool: String,
-    pub role: String,
     /// The supported value saved before; `None` when nothing or an unsupported value was saved.
     pub from: Option<Choice>,
     pub to: Choice,
@@ -342,6 +338,9 @@ pub struct Change {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Plan {
     pub changes: Vec<Change>,
+    /// Key paths of the saved `leader` and `agent` entries the write replaces (the launcher no
+    /// longer reads them; SPEC-20261124-launcher-retire-role-flags REQ-6).
+    pub replaced: Vec<String>,
     /// Key paths of saved entries outside the support table that the picks leave unchanged.
     pub kept_unsupported: Vec<String>,
     pub after: Map<String, Value>,
@@ -370,8 +369,8 @@ fn canon(value: &Value) -> String {
 }
 
 fn targets(tool: &str) -> Vec<&str> {
-    // A pick writes its own tool alone (the earlier OMP pick also set glm; OMP is no longer
-    // offered, and a saved OMP entry stays supported through the table).
+    // A pick writes its own tool alone (the earlier OMP pick also set glm; OMP is not a tool
+    // any more, and a saved OMP entry is ignored like a saved Codex entry).
     vec![tool]
 }
 
@@ -382,28 +381,37 @@ pub fn plan(launcher: &Map<String, Value>, picks: &[Pick]) -> Result<Plan, Strin
     let mut after = launcher.clone();
     let mut changes = Vec::new();
     let mut replaced = Vec::new();
+    let mut role_entries = Vec::new();
     for pick in picks {
         for tool in targets(&pick.tool) {
-            after = with_choice(&after, tool, &pick.role, &pick.model, &pick.effort)?;
+            after = with_flat_choice(&after, tool, &pick.model, &pick.effort)?;
             changes.push(Change {
                 tool: tool.to_string(),
-                role: pick.role.clone(),
-                from: saved_choice(launcher, tool, &pick.role),
+                from: flat_choice(launcher, tool),
                 to: Choice {
                     model: pick.model.clone(),
                     effort: pick.effort.clone(),
                 },
             });
-            replaced.push(format!("launcher.models.{tool}.{}", pick.role));
+            // The write replaces the whole `launcher.models.<tool>` object: its own path and
+            // every path under it, whatever the support table said about them.
+            replaced.push(format!("launcher.models.{tool}"));
+            role_entries.extend(role_entry_paths(launcher, tool));
         }
     }
+    let under = |path: &str, tool_path: &String| {
+        path == tool_path
+            || path
+                .strip_prefix(tool_path.as_str())
+                .is_some_and(|r| r.starts_with('.'))
+    };
     let kept_unsupported = unsupported
         .into_iter()
-        .filter(|path| !replaced.contains(path))
+        .filter(|path| !replaced.iter().any(|tool_path| under(path, tool_path)))
         .collect();
-    let mut sorted: Vec<[&str; 4]> = picks
+    let mut sorted: Vec<[&str; 3]> = picks
         .iter()
-        .map(|p| [&*p.tool, &*p.role, &*p.model, &*p.effort])
+        .map(|p| [&*p.tool, &*p.model, &*p.effort])
         .collect();
     sorted.sort_unstable();
     let text = format!(
@@ -414,6 +422,7 @@ pub fn plan(launcher: &Map<String, Value>, picks: &[Pick]) -> Result<Plan, Strin
     );
     Ok(Plan {
         changes,
+        replaced: role_entries,
         kept_unsupported,
         after,
         digest: format!("{:x}", Sha256::digest(text.as_bytes())),
@@ -611,4 +620,123 @@ pub fn apply(path: &Path, picks: &[Pick], digest: &str) -> Result<Plan, String> 
         );
     }
     Ok(planned)
+}
+
+/// The key vault scope of the project `dir` belongs to, resolved with `home` as the HOME: the
+/// workspace identity then reads the home state of `home` and never the process environment's
+/// HOME, so a run under a temporary home leaves the real one unread. `None` outside a git work
+/// tree or when the identity does not resolve. The folder name is the one
+/// `key_vault::project_scope` makes (same identity fields, same `folder_name`); that function
+/// reads the environment HOME and is not changed here.
+pub fn glm_key_scope(dir: &Path, home: &Path) -> Option<crate::key_vault::Scope> {
+    let id = crate::identity::identity_in(dir, Some(home)).ok()?;
+    if id["identity_status"] != "ok" || id["work_tree"].is_null() {
+        return None;
+    }
+    let clone = id["clone_id"].as_str().unwrap_or("");
+    let clone_hex = clone.strip_prefix("sha256:").unwrap_or(clone);
+    if clone_hex.len() < 8 {
+        return None;
+    }
+    // The primary worktree is the folder that holds the common git directory.
+    let anchor = Path::new(id["clone_anchor"].as_str().unwrap_or(""));
+    let primary = if anchor.file_name().is_some_and(|n| n == ".git") {
+        anchor.parent().unwrap_or(anchor)
+    } else {
+        anchor
+    };
+    let primary_name = primary
+        .file_name()
+        .map(|n| n.to_string_lossy().trim_end_matches(".git").to_string())
+        .unwrap_or_default();
+    Some(crate::key_vault::Scope::Project(
+        crate::key_vault::folder_name(id["project_id"].as_str(), &primary_name, clone_hex),
+    ))
+}
+
+/// The model step's glm key question (SPEC-20261121-glm-key-at-pick): when the picks name glm,
+/// the key is asked right here, before the launcher record. With `hidden` (the caller checked
+/// that stdin and stderr are terminals) the value is read through the hidden prompt and never
+/// echoed; otherwise it is one line of `input`, and nothing here touches a terminal. The value
+/// goes to the key vault under `home` the way the key set command stores it and appears in no
+/// output. An empty answer skips — the pick stays, and the first glm run keeps asking for the
+/// key. A key the launcher would already find (this project's, then the shared one) is kept
+/// unless the answer names a new one. The key is stored when it is answered, so a later no at
+/// the launcher save question leaves it in the vault. Outside a git work tree the project has
+/// no key folder: the question is skipped with one line saying how to store the key.
+pub fn glm_key_step<R: BufRead, W: Write>(
+    input: &mut R,
+    out: &mut W,
+    home: &Path,
+    picks: &[Pick],
+    hidden: bool,
+) -> io::Result<()> {
+    if !picks.iter().any(|p| p.tool == "glm") {
+        return Ok(());
+    }
+    let cwd = std::env::current_dir().ok();
+    let Some(scope) = cwd.as_deref().and_then(|dir| glm_key_scope(dir, home)) else {
+        writeln!(
+            out,
+            "The glm key is kept per project and this folder is not inside one; the key entry was skipped (run `moai key-set glm --prompt` inside a project, or add --shared)."
+        )?;
+        return Ok(());
+    };
+    // The launcher's order (`key_vault::read`): the project's entry, then the shared one. A
+    // project entry that exists but cannot be read (a broken file) ends the search there, as it
+    // does for the launcher, and counts as no usable key: the answer then replaces it.
+    let stored = match crate::key_vault::read_entry(home, &scope, "glm") {
+        Ok(Some(value)) => crate::key_vault::usable_value(&value),
+        Ok(None) => crate::key_vault::read_entry(home, &crate::key_vault::Scope::Shared, "glm")
+            .ok()
+            .flatten()
+            .and_then(|value| crate::key_vault::usable_value(&value)),
+        Err(_) => None,
+    };
+    if stored.is_some() {
+        writeln!(
+            out,
+            "A GLM key is already in the key vault. Press Enter to keep it, or type n to enter a new one."
+        )?;
+        let answer = read_line_bounded(input)?;
+        let wants_new = answer.as_deref().is_some_and(|a| {
+            let word = a.trim();
+            word.eq_ignore_ascii_case("n") || word.eq_ignore_ascii_case("new")
+        });
+        if !wants_new {
+            return Ok(());
+        }
+    } else {
+        writeln!(
+            out,
+            "The glm pick needs a GLM API key. The input is hidden on a terminal and is stored only in the key vault; press Enter to skip."
+        )?;
+    }
+    let value = if hidden {
+        // The hidden prompt reads the terminal itself; `input` is not read here, because a
+        // read of an empty line buffer would wait for one more line.
+        match crate::key_prompt::read_hidden("glm") {
+            Ok(value) => Some(value),
+            Err(reason) => {
+                // An empty answer is the skip the question offers, not a failure to report.
+                if reason.starts_with("no usable value") {
+                    writeln!(out, "No key was entered; the key entry was skipped.")?;
+                } else {
+                    writeln!(out, "The key entry was skipped: {reason}")?;
+                }
+                None
+            }
+        }
+    } else {
+        read_line_bounded(input)?.and_then(|line| crate::key_vault::usable_value(line.trim()))
+    };
+    let Some(value) = value else {
+        return Ok(());
+    };
+    // A refused write is told on the screen and the step goes on, so the model pick and the
+    // save question after it are not lost; the first glm run keeps asking for the key.
+    if let Err(reason) = crate::key_vault::set(home, &scope, "glm", &value) {
+        writeln!(out, "The key could not be stored: {reason}")?;
+    }
+    Ok(())
 }

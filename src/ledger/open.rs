@@ -48,6 +48,7 @@ pub struct ReadLedger {
 pub struct WriteLedger {
     conn: Connection,
     project_id: String,
+    done_guard_upgrade: Option<std::path::PathBuf>,
 }
 
 impl ReadLedger {
@@ -71,6 +72,12 @@ impl WriteLedger {
     }
     pub fn project_id(&self) -> &str {
         &self.project_id
+    }
+
+    /// The backup file made when this open gave an older ledger the current `card_done_guard`
+    /// trigger ([`migrate::upgrade_done_guard`]); `None` when the ledger already had it.
+    pub fn done_guard_upgrade(&self) -> Option<&Path> {
+        self.done_guard_upgrade.as_deref()
     }
 
     /// Runs `f` in one `BEGIN IMMEDIATE` transaction and commits it when `f` returns `Ok`; an
@@ -132,14 +139,31 @@ pub fn open_read_only_within(
     })
 }
 
-/// Opens an existing ledger for writing. Never creates a folder or a file.
+/// Opens an existing ledger for writing. Creates no folder and no ledger file. A ledger made
+/// before the `card.landed` exception of the done guard is first given the current trigger, with
+/// a backup copy beside it ([`migrate::upgrade_done_guard`]); the open fails, and the ledger is
+/// left as it was, when that cannot be done.
 pub fn open_write(home: &Path, project_id: &str) -> Result<WriteLedger, LedgerError> {
     let path = location::ledger_path(home, project_id)?;
     super::folders::refuse_links(home, project_id)?;
-    let (conn, _) = open_at(&path, project_id, true)?;
+    let (mut conn, _) = open_at(&path, project_id, true)?;
+    let done_guard_upgrade =
+        migrate::upgrade_done_guard(&mut conn, &path)?.map(|upgraded| upgraded.backup);
+    // The index of events by card and kind (SPEC-20261126-card-next-speed): a ledger made before
+    // it gets it on the first writable open; nothing else is touched and no word is printed.
+    migrate::ensure_event_index(&conn)?;
+    // One line, only when the upgrade really ran (a later open finds nothing to do): the person
+    // learns that the ledger changed and where its backup is.
+    if let Some(backup) = &done_guard_upgrade {
+        eprintln!(
+            "moai: the ledger's close guard now accepts a card that landed on the local branch; the old ledger is kept at {}",
+            backup.display()
+        );
+    }
     Ok(WriteLedger {
         conn,
         project_id: project_id.to_string(),
+        done_guard_upgrade,
     })
 }
 
@@ -360,6 +384,12 @@ pub(crate) fn open_at_timeout(
         ),
         other => other,
     })?;
+    // A page cache that holds the whole `event` table of a long-lived ledger (about 7 MB at 18,000
+    // events): SQLite's default of 2 MB made every scan read the same pages again from the file
+    // (SPEC-20261126-card-next-speed REQ-3). The memory is taken page by page as pages are read.
+    // It is set after the identity check on purpose: the pragma reads the schema, and on a file
+    // with a leftover journal that read is what the check above has to meet first.
+    conn.pragma_update(None, "cache_size", -65536)?;
     Ok((conn, version))
 }
 

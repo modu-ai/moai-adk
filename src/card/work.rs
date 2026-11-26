@@ -16,15 +16,22 @@
 //! checked before the host is asked, so a refused caller causes no request.
 
 use super::command::{actor, open_for_write, ABSENT_HINT};
-use super::dispatch::{reservation_json, DEFAULT_LEASE_SECS};
+use super::dispatch::{checked_scope, reservation_json, DEFAULT_LEASE_SECS};
 use super::input::{self, CardRef};
+use super::landed;
 use super::spec_link;
+use super::stale;
+use super::take_scope;
+use super::wip_limit;
 use crate::forge::connector::{HostConnector, HostKind, PrPhase, ProjectRef};
+use crate::ledger::close;
 use crate::ledger::reservation;
+use crate::ledger::scope_return;
 use crate::ledger::workflow::{self, CriterionChange, PrTarget, SkipReason, WorkflowError};
 use crate::ledger::{self, LedgerError};
 use serde_json::{json, Value};
 use std::path::Path;
+use std::process::Command;
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -61,14 +68,52 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
                 "action": "next", "project_id": id, "ledger": "absent", "holder": holder,
                 "next": null, "next_is": null,
                 "mine": [], "ready": [], "skipped": [], "warnings": [], "writes": false,
+                "landing": landed::absent_json(), "stale": [],
             }));
         }
         Err(e) => return Err(e.to_string()),
     };
-    let found = workflow::next(ledger.conn(), holder).map_err(|e| e.to_string())?;
+    // A `ready` card with an empty scope is offered with the scope a take would fill it with
+    // (SPEC-20261123-take-scope-stored): the same choice as `take`, so `next` never offers what
+    // `take` would refuse for want of a source. A source over a limit is no fill.
+    let fill = |card_id: i64| -> Option<(Vec<String>, &'static str)> {
+        let (_, spec) = spec_link::kind_and_spec(ledger.conn(), card_id).ok()??;
+        let fill = take_scope::choose(project, ledger.conn(), card_id, spec.as_deref()).ok()??;
+        Some((fill.scope, fill.source.word()))
+    };
+    let mut found =
+        workflow::next_filled(ledger.conn(), holder, &fill).map_err(|e| e.to_string())?;
+    // A `ready` card whose landing is proven is not offered again: it leaves `ready` for
+    // `skipped` with `reason: "already_landed"` and the proof. `card finish` closes it once a
+    // criterion is met; a card with no counted criterion needs `card criterion-add` and `--met`
+    // first, because `card finish` refuses a card with no met criterion.
+    //
+    // The same lookup also asks for the `active` and `review` cards, whose proof the `stale` list
+    // needs (SPEC-20261124-card-fold-stale); `take_landed` only reads the proofs of `ready` cards,
+    // and a SPEC trailer hint of an open card is not part of the `landing` answer.
+    let stale_facts = close::stale_facts(ledger.conn(), found.now).map_err(|e| e.to_string())?;
+    let mut wanted = landed::candidates(&found);
+    wanted.extend(stale_facts.open.iter().map(|c| c.card_id));
+    let mut landing = landed::find(project, ledger.conn(), &wanted)?;
+    landing
+        .spec_trailer_hints
+        .retain(|card_id, _| !stale_facts.open.iter().any(|c| c.card_id == *card_id));
+    let landed_skips = landed::take_landed(&mut found, &landing);
+    let mut warnings: Vec<String> = Vec::new();
+    // A profile that cannot be read gives the default and no warning: `warnings` is for the SPEC
+    // of a card, and the project's fixtures hold unreadable profiles; the row names the days it
+    // used (`threshold_days`).
+    let draft_days = stale::draft_days(project).unwrap_or(stale::DEFAULT_DRAFT_DAYS);
+    let grace_secs = super::sweep::grace_secs_or_default(project);
+    let stale = stale::rows(
+        &stale_facts,
+        &landing.proofs,
+        found.now,
+        draft_days,
+        grace_secs,
+    );
     // The SPEC each card names and its status, with a warning for a card that changes the
     // repository without an approved SPEC (SDD-4), in the order the cards are listed.
-    let mut warnings: Vec<String> = Vec::new();
     let mut spec_of = |card_id: i64| -> Result<Value> {
         let (kind, spec) = spec_link::kind_and_spec(ledger.conn(), card_id)
             .map_err(|e| LedgerError::from(e).to_string())?
@@ -90,13 +135,17 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
     }
     let mut ready: Vec<Value> = Vec::new();
     for c in &found.ready {
-        ready.push(json!({
+        let mut v = json!({
             "name": input::card_name(c.card_id), "card_id": c.card_id, "title": c.title,
             "kind": c.kind, "priority": c.priority, "write_scope": c.write_scope,
             "spec": spec_of(c.card_id)?,
-        }));
+        });
+        if let Some(source) = c.scope_source {
+            v["scope_source"] = json!(source);
+        }
+        ready.push(v);
     }
-    let skipped: Vec<Value> = found
+    let mut skipped: Vec<Value> = found
         .skipped
         .iter()
         .map(|s| {
@@ -114,34 +163,57 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
                     v["generation"] = json!(generation);
                     v["lease_until"] = json!(lease_until);
                 }
-                SkipReason::ScopeOverlap {
-                    other_card,
-                    mine,
-                    theirs,
-                } => {
-                    v["other"] = json!(input::card_name(*other_card));
-                    v["mine"] = json!(mine);
-                    v["theirs"] = json!(theirs);
+                SkipReason::Hold { category, reason } => {
+                    v["category"] = json!(category);
+                    v["hold_reason"] = json!(reason);
                 }
-                SkipReason::EmptyScope | SkipReason::ReviewNoHolder => {}
+                SkipReason::Prerequisite { cards } => {
+                    v["needs"] = json!(cards
+                        .iter()
+                        .map(|c| input::card_name(*c))
+                        .collect::<Vec<_>>());
+                }
+                SkipReason::EmptyScope | SkipReason::ReviewNoHolder | SkipReason::NoCriteria => {}
             }
             v
         })
         .collect();
-    // The card to work on now: one this session already holds, else the first it could take.
+    skipped.extend(landed_skips);
+    // The limit of cards in work and in review (SPEC-20261125-landing-moves-checkout REQ-4): at
+    // it no card is offered to take; the cards that wait for an audit are named instead.
+    let wip = wip_limit::read(project, ledger.conn())?;
+    // A registry that cannot be read means the limit cannot be checked: `card take` refuses and
+    // `card next` names no card either, a card waiting for an audit included
+    // (SPEC-20261125-wip-limit-next-registry-error REQ-1).
+    let audit = if wip.registry_error.is_some() {
+        Vec::new()
+    } else {
+        wip_limit::audit_needed(ledger.conn(), holder)?
+    };
+    // The card to work on now: one this session already holds, else the first it could take, at
+    // the limit the first card that waits for an audit.
     let (next, next_is) = match (found.mine.first(), found.ready.first()) {
         (Some(m), _) => (
             json!(input::card_name(m.reservation.card_id)),
             json!("mine"),
         ),
+        (None, _) if wip.at_limit() => match audit.first() {
+            Some(c) => (json!(input::card_name(c.card_id)), json!("audit")),
+            None => (Value::Null, json!("limit")),
+        },
         (None, Some(c)) => (json!(input::card_name(c.card_id)), json!("ready")),
         (None, None) => (Value::Null, Value::Null),
     };
+    let audit_needed: Vec<Value> = audit
+        .iter()
+        .map(|c| json!({"name": input::card_name(c.card_id), "card_id": c.card_id, "title": c.title}))
+        .collect();
     Ok(json!({
         "action": "next", "project_id": id, "ledger": "ready", "holder": holder,
         "now": found.now, "next": next, "next_is": next_is,
         "mine": mine, "ready": ready, "skipped": skipped, "warnings": warnings,
-        "writes": false,
+        "landing": landing.json(), "stale": stale, "writes": false,
+        "wip": wip.json(), "audit_needed": audit_needed,
     }))
 }
 
@@ -226,6 +298,16 @@ pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>)
             ));
         }
     }
+    // SPEC-20261124-ready-receipt-gate: a READY or REPAIRED note needs the PASS receipt of its
+    // head, and nothing is written without it.
+    super::ready_receipt::check_note(project, &input::card_name(card_id), text)?;
+    // SPEC-20261124-lane-leftovers: the same notes carry one `leftovers:` line.
+    super::ready_leftovers::check_note(&input::card_name(card_id), text)?;
+    let hand_back_head = match super::ready_receipt::marker_head(text, &input::card_name(card_id)) {
+        Ok(Some(head)) => Some(head),
+        _ => None,
+    };
+    let hand_back = hand_back_head.is_some();
     let author = match (req.by, req.session) {
         (Some(by), _) => actor(Some(by), "note")?,
         (None, Some(session)) => session.to_string(),
@@ -242,14 +324,50 @@ pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>)
         req.reference,
     )
     .map_err(|e| refusal("note", e))?;
-    Ok(json!({
+    let mut answer = json!({
         "action": "note", "project_id": id,
         "name": input::card_name(card_id), "card_id": card_id,
         "note_id": note.note_id, "kind": note.kind, "author": note.author,
         "session": req.session,
         "ref": note.reference, "bytes": note.bytes, "created_at": note.created_at,
         "events": 1, "writes": true,
-    }))
+    });
+    if let Some(head) = &hand_back_head {
+        // SPEC-20261125-card-no-file-locks: the files the integration branch changed since the
+        // lane's base that the lane changed too; the note is kept whatever it finds.
+        match super::landed::tip_overlap(project, head) {
+            super::landed::TipOverlap::Checked(paths) => answer["tip_overlap"] = json!(paths),
+            super::landed::TipOverlap::NotChecked(why) => {
+                answer["tip_overlap"] = json!("not_checked");
+                answer["tip_overlap_reason"] = json!(why);
+            }
+        }
+    }
+    if hand_back {
+        // SPEC-20261124-lane-leftovers (observe): what appeared in the primary checkout since the
+        // card was reserved goes in the answer; the note is kept whatever it finds.
+        use super::ready_leftovers::{shared_checkout_new, Shared};
+        let since = reservation::current(ledger.conn(), card_id);
+        // The scan reads the file system; the ledger is not held while it runs.
+        drop(ledger);
+        let shared = match since {
+            Ok(Some(held)) => shared_checkout_new(project, held.acquired_at),
+            Ok(None) => Shared::NotChecked("the card holds no reservation".to_string()),
+            Err(e) => Shared::NotChecked(e.to_string()),
+        };
+        match shared {
+            Shared::Checked(paths) => {
+                answer["shared_checkout"] = json!("checked");
+                answer["shared_checkout_new"] = json!(paths);
+            }
+            Shared::NotChecked(why) => {
+                answer["shared_checkout"] = json!("not_checked");
+                answer["shared_checkout_reason"] = json!(why);
+                answer["shared_checkout_new"] = json!([]);
+            }
+        }
+    }
+    Ok(answer)
 }
 
 /// `card criterion C-n N --met --evidence REF | --withdraw --reason TEXT`.
@@ -427,7 +545,8 @@ fn moved_json(action: &str, id: &str, moved: &workflow::Moved) -> Value {
     })
 }
 
-/// `card review C-n`: `active` becomes `review`; the reservation stays.
+/// `card review C-n`: `active` becomes `review`; the reservation stays, and every path of its
+/// scope is given back (no `--keep`, SPEC-20261120-card-shared-line-lease).
 pub fn review(
     project: &Path,
     home: &Path,
@@ -435,11 +554,228 @@ pub fn review(
     holder: &str,
     generation: i64,
 ) -> Result<Value> {
+    review_keeping(project, home, reference, holder, generation, &[])
+}
+
+/// `card review C-n [--keep PATH]…`: `active` becomes `review` and every path of the reservation
+/// that no `--keep` names is given back in the same transaction, so another card can take it
+/// the moment the review is recorded. A `--keep` path the reservation does not hold refuses the
+/// call and writes nothing. The answer lists `given_back` and `kept`; the `card.review` event
+/// names both. A card sent back with `card reopen` widens its scope again with `card scope`.
+pub fn review_keeping(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    holder: &str,
+    generation: i64,
+    keep: &[String],
+) -> Result<Value> {
+    review_keeping_with_hold(
+        project,
+        home,
+        reference,
+        holder,
+        generation,
+        keep,
+        &reservation::hold_for_review,
+    )
+}
+
+/// The step after the review that keeps the lease for the audit: what `card review` runs, and
+/// what a test replaces with a step that fails.
+pub type HoldFn<'a> = dyn Fn(
+        &mut ledger::WriteLedger,
+        i64,
+        &str,
+        i64,
+    ) -> std::result::Result<reservation::Reservation, reservation::FenceError>
+    + 'a;
+
+/// [`review_keeping`] with the step that holds the lease given.
+pub fn review_keeping_with_hold(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    holder: &str,
+    generation: i64,
+    keep: &[String],
+    hold: &HoldFn<'_>,
+) -> Result<Value> {
     let card_id = card_id("review", reference)?;
+    let keep = checked_scope("review", keep)?;
     let (id, mut ledger) = open_for_write(project, home)?;
-    let moved = workflow::review(&mut ledger, card_id, holder, generation)
-        .map_err(|e| refusal("review", e))?;
-    Ok(moved_json("review", &id, &moved))
+    let (moved, given_back, kept) =
+        scope_return::review_keeping(&mut ledger, card_id, holder, generation, &keep).map_err(
+            |e| match e {
+                scope_return::ReviewKeepError::Workflow(w) => refusal("review", w),
+                scope_return::ReviewKeepError::Scope(s) => s.to_string(),
+            },
+        )?;
+    let mut answer = moved_json("review", &id, &moved);
+    answer["given_back"] = json!(given_back);
+    answer["kept"] = json!(kept);
+    // The card now waits for its audit: its lease runs for a day, so the lane can still close or
+    // reopen it when the verdict comes (SPEC-20261125-review-lease-hold REQ-1). This is a second
+    // step after the review is recorded, not part of its transaction: when it fails the review
+    // stands, and the answer says that the lease was not held instead of hiding it.
+    match hold(&mut ledger, card_id, holder, generation) {
+        Ok(held) => answer["reservation"] = reservation_json(&held),
+        Err(e) => {
+            answer["warnings"] = json!([format!(
+                "{}: the review is recorded but the lease could not be held for the audit ({e}); \
+                 the lease keeps the end it had, so renew it with `card renew {} --generation \
+                 {generation}` before it ends",
+                input::card_name(card_id),
+                input::card_name(card_id)
+            )]);
+        }
+    }
+    Ok(answer)
+}
+
+/// `card give-back C-n --path P…`: the holder gives paths of its reservation back; they are free
+/// for any card at once. A path the reservation does not hold, a stale generation or another
+/// session is refused and nothing is written. One `card.scope` event names the paths.
+pub fn give_back(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    holder: &str,
+    generation: i64,
+    paths: &[String],
+) -> Result<Value> {
+    let card_id = card_id("give-back", reference)?;
+    let paths = checked_scope("give-back", paths)?;
+    if paths.is_empty() {
+        return Err("card give-back refused: give at least one --path".to_string());
+    }
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let given = scope_return::give_back(
+        &mut ledger,
+        card_id,
+        holder,
+        generation,
+        &paths,
+        "give-back",
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(json!({
+        "action": "give-back", "project_id": id,
+        "name": input::card_name(card_id), "card_id": card_id,
+        "generation": generation, "holder": holder,
+        "given_back": given.given_back, "from": given.from,
+        "write_scope": given.reservation.write_scope,
+        "reservation": reservation_json(&given.reservation),
+        "events": 1, "writes": true,
+    }))
+}
+
+/// The largest `--wait-secs` `card line-lease` accepts, in seconds. The wait is no longer used
+/// (SPEC-20261125-card-no-file-locks): the option stays accepted so a caller keeps working.
+pub const MAX_LEASE_WAIT_SECS: u64 = 600;
+/// The `--wait-secs` `card line-lease` assumes without the option, in seconds (not used).
+pub const DEFAULT_LEASE_WAIT_SECS: u64 = 60;
+
+/// `card line-lease C-n --path P… [--wait-secs N] -- COMMAND…`: a short lease of a shared file in
+/// which a card needs one line. The paths the reservation does not hold are added at once (another
+/// card's reservation of them is no reason to wait or refuse), `command` runs with its standard output sent
+/// to standard error (the answer stays one JSON envelope), and the added paths are given back
+/// whatever the command's status was. A command that exits non-zero or cannot start is refused
+/// with its status named, after the paths were given back.
+#[allow(clippy::too_many_arguments)]
+pub fn line_lease(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    holder: &str,
+    generation: i64,
+    paths: &[String],
+    wait_secs: Option<u64>,
+    command: &[String],
+) -> Result<Value> {
+    use std::process::{Command, Stdio};
+    use std::time::Instant;
+    let card_id = card_id("line-lease", reference)?;
+    let paths = checked_scope("line-lease", paths)?;
+    if paths.is_empty() {
+        return Err("card line-lease refused: give at least one --path".to_string());
+    }
+    let Some((program, args)) = command.split_first() else {
+        return Err("card line-lease refused: give the command to run after `--`".to_string());
+    };
+    let wait = wait_secs.unwrap_or(DEFAULT_LEASE_WAIT_SECS);
+    if wait > MAX_LEASE_WAIT_SECS {
+        return Err(format!(
+            "card line-lease refused: --wait-secs is 0 to {MAX_LEASE_WAIT_SECS}, not {wait}"
+        ));
+    }
+    let started = Instant::now();
+    let (id, mut ledger) = open_for_write(project, home)?;
+    // Another card's reservation of the same path no longer makes a lease wait or refuse
+    // (SPEC-20261125-card-no-file-locks); `--wait-secs` stays accepted and is not needed.
+    let leased = scope_return::lease_take(&mut ledger, card_id, holder, generation, &paths)
+        .map_err(|e| e.to_string())?;
+    let waited_ms = started.elapsed().as_millis() as i64;
+    // No handle is kept while the command runs: it may take a while and others write the ledger.
+    drop(ledger);
+    let outcome = Command::new(program)
+        .args(args)
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .and_then(|child| child.wait_with_output());
+    let status = match &outcome {
+        Ok(out) => {
+            use std::io::Write;
+            let _ = std::io::stderr().write_all(&out.stdout);
+            Ok(out.status)
+        }
+        Err(e) => Err(e.to_string()),
+    };
+    let mut ledger = open_for_write(project, home)
+        .map_err(|e| {
+            format!(
+                "{e}; the command has already run, so do not run it again, and the lease of {} may still be in the reservation: `card give-back` frees it",
+                leased.added.join(", ")
+            )
+        })?
+        .1;
+    let released =
+        scope_return::lease_release(&mut ledger, card_id, holder, generation, &leased.added)
+            .map_err(|e| {
+                format!(
+                "{e}; the lease of {} may still be in the reservation: `card give-back` frees it",
+                leased.added.join(", ")
+            )
+            })?;
+    match status {
+        Err(why) => Err(format!(
+            "card line-lease refused: could not start `{program}`: {why}; the paths were given back"
+        )),
+        Ok(status) if !status.success() => Err(format!(
+            "card line-lease refused: the command ended with status {}; the paths were given back",
+            status
+                .code()
+                .map_or_else(|| "none (a signal ended it)".to_string(), |c| c.to_string())
+        )),
+        Ok(_) => {
+            let reservation = released
+                .as_ref()
+                .map(|g| g.reservation.clone())
+                .unwrap_or(leased.reservation);
+            Ok(json!({
+                "action": "line-lease", "project_id": id,
+                "name": input::card_name(card_id), "card_id": card_id,
+                "generation": generation, "holder": holder,
+                "paths": paths, "added": leased.added,
+                "given_back": released.map(|g| g.given_back).unwrap_or_default(),
+                "exit_code": 0, "waited_ms": waited_ms,
+                "reservation": reservation_json(&reservation),
+                "writes": !leased.added.is_empty(),
+            }))
+        }
+    }
 }
 
 /// `card reopen C-n`: `review` becomes `active` again; the reservation stays.
@@ -452,9 +788,14 @@ pub fn reopen(
 ) -> Result<Value> {
     let card_id = card_id("reopen", reference)?;
     let (id, mut ledger) = open_for_write(project, home)?;
-    let moved = workflow::reopen(&mut ledger, card_id, holder, generation)
+    // A review without `--keep` gave every path back; the reopen brings the card's own scope
+    // back, leaving out the shared files of the profile (SPEC-20261125-review-lease-hold REQ-5).
+    let shared = take_scope::shared_files(project);
+    let (moved, fill) = workflow::reopen_filling(&mut ledger, card_id, holder, generation, &shared)
         .map_err(|e| refusal("reopen", e))?;
-    Ok(moved_json("reopen", &id, &moved))
+    let mut answer = moved_json("reopen", &id, &moved);
+    super::dispatch::add_scope_fill(&mut answer, fill.as_ref());
+    Ok(answer)
 }
 
 /// `card done C-n`: `review` becomes `done` when a criterion is met, none is open and a merged
@@ -477,9 +818,335 @@ pub fn done(
     {
         return Err(format!("card done refused: {why}; nothing was changed"));
     }
-    let moved =
-        workflow::done(&mut ledger, card_id, holder, generation).map_err(|e| refusal("done", e))?;
-    Ok(moved_json("done", &id, &moved))
+    let (landing, hint) = mflow_landing(&mut ledger, project, card_id)?;
+    let moved = workflow::done(&mut ledger, card_id, holder, generation, landing).map_err(|e| {
+        let refused = refusal("done", e);
+        // The hint explains the landing: it belongs on the landing-related refusal only
+        // (the delta audit's N1) — a card refused for an open criterion or a missing
+        // reservation reads its own reason, not the profile's.
+        match (&hint, refused.contains("no merged pull request is linked")) {
+            (Some(h), true) => format!("{refused}; {h}"),
+            _ => refused,
+        }
+    })?;
+    // The close wrote this card's cleanup request; the executor takes it, and every older pending
+    // one, after the close and never undoes it (SPEC-20261123-cleanup-outbox REQ-12).
+    let outbox =
+        super::cleanup::run_pending(project, home, holder, &super::cleanup::Options::default());
+    let mut answer = moved_json("done", &id, &moved);
+    answer["cleanup_outbox"] = outbox;
+    Ok(answer)
+}
+
+/// The NeXT-Flow landing evidence for `card done` (SPEC-20261120-card-done-mflow): when the
+/// project's profile names the NeXT-Flow work_flow with an integration branch, the newest
+/// `card.landed` event's head must be an ancestor of that branch's tip — checked here with
+/// git, because the ledger never spawns commands. `None` for any other flow, which keeps the
+/// merged-pull-request rule. The profile problem is never swallowed silently
+/// (SPEC-20261121-mixed-profile-read): the second value is a hint for the merged-pull-request
+/// refusal of a card with a landing on record whose profile could not be read, or was read but
+/// does not name the NeXT-Flow work_flow with an integration branch: which profile, and why. A
+/// project whose profile is only a stub (the card commands write one) keeps the old rule and
+/// closes through a merged pull request.
+fn mflow_landing(
+    ledger: &mut ledger::WriteLedger,
+    project: &Path,
+    card_id: i64,
+) -> Result<(Option<workflow::Landing>, Option<String>)> {
+    let newest_head = |ledger: &mut ledger::WriteLedger| -> Option<String> {
+        ledger
+            .conn()
+            .query_row(
+                "SELECT json_extract(payload, '$.head') FROM event \
+                 WHERE card_id = ?1 AND kind = 'card.landed' \
+                 ORDER BY event_id DESC LIMIT 1",
+                [card_id],
+                |r| r.get(0),
+            )
+            .ok()
+    };
+    let profile_rel = crate::profile::read_rel(project);
+    let recorded = |detail: String, ledger: &mut ledger::WriteLedger| -> Option<String> {
+        newest_head(ledger).map(|_| {
+            format!(
+                "a local landing is recorded for this card, but {detail}, so the landing was not \
+                 used"
+            )
+        })
+    };
+    let profile = match crate::profile::read_profile(project) {
+        Ok((p, _)) => p,
+        Err(e) if e == crate::profile::PROFILE_MISSING => return Ok((None, None)),
+        Err(e) => {
+            let hint = recorded(
+                format!("the project profile {profile_rel} could not be read ({e})"),
+                ledger,
+            );
+            return Ok((None, hint));
+        }
+    };
+    let not_used = |why: String, ledger: &mut ledger::WriteLedger| -> Option<String> {
+        recorded(
+            format!(
+                "the project profile {profile_rel} does not name the NeXT-Flow work_flow with an \
+                 integration branch ({why})"
+            ),
+            ledger,
+        )
+    };
+    let wf = match profile.work_flow {
+        Some(w) if crate::profile::is_local_flow(&w.flow) => w,
+        Some(w) => {
+            let hint = not_used(format!("its work_flow is {}", w.flow), ledger);
+            return Ok((None, hint));
+        }
+        None => {
+            let hint = not_used("it has no work_flow".to_string(), ledger);
+            return Ok((None, hint));
+        }
+    };
+    let Some(branch) = wf.integration_branch else {
+        let hint = not_used(
+            "its NeXT-Flow work_flow has no integration_branch".to_string(),
+            ledger,
+        );
+        return Ok((None, hint));
+    };
+    let head: Option<String> = newest_head(ledger);
+    let Some(head) = head else {
+        return Err(
+            "card done refused: cannot close: no local landing is linked (`card landed` after \
+             the merge); nothing was changed"
+                .to_string(),
+        );
+    };
+    let git_out = |args: &[&str]| -> Result<String> {
+        let mut cmd = Command::new("git");
+        cmd.arg("-C").arg(project).args(args);
+        crate::identity::scrub_git_env(&mut cmd);
+        let o = cmd
+            .output()
+            .map_err(|e| format!("card done refused: git could not run: {e}"))?;
+        if !o.status.success() {
+            return Err(format!(
+                "card done refused: git {} failed: {}",
+                args.first().unwrap_or(&"git"),
+                String::from_utf8_lossy(&o.stderr).trim()
+            ));
+        }
+        Ok(String::from_utf8_lossy(&o.stdout).trim().to_string())
+    };
+    let tip = git_out(&["rev-parse", "--verify", &branch])?;
+    let mut cmd = Command::new("git");
+    cmd.arg("-C")
+        .arg(project)
+        .args(["merge-base", "--is-ancestor", &head, &tip]);
+    crate::identity::scrub_git_env(&mut cmd);
+    let o = cmd
+        .output()
+        .map_err(|e| format!("card done refused: git could not run: {e}"))?;
+    if !o.status.success() {
+        return Err(format!(
+            "card done refused: cannot close: the landed head is not contained in the \
+             integration branch {branch}; nothing was changed"
+        ));
+    }
+    Ok((Some(workflow::Landing { head, tip }), None))
+}
+
+/// `card landed C-n --head <sha>`: record that this card's head landed on the local
+/// integration branch (NeXT-Flow, SPEC-20261120-card-done-mflow). The card must be in `review`;
+/// one `card.landed` event names the head and the by, with the writing session as the actor.
+pub fn landed(project: &Path, home: &Path, reference: &str, head: &str, by: &str) -> Result<Value> {
+    let card_id = card_id("landed", reference)?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let session = std::env::var("CLAUDE_CODE_SESSION_ID")
+        .or_else(|_| std::env::var("CODEX_THREAD_ID"))
+        .ok();
+    workflow::land(&mut ledger, card_id, head, by, session.as_deref())
+        .map_err(|e| format!("card landed refused: {e}"))?;
+    Ok(json!({
+        "action": "landed", "project_id": id,
+        "card": input::card_name(card_id), "writes": true,
+    }))
+}
+
+/// The card number of `reference` (`C-12`, or `#3066` as the source number the card was imported
+/// with). A source number that names no card or several is refused naming the card instead.
+fn card_or_source(ledger: &ledger::WriteLedger, action: &str, reference: &str) -> Result<i64> {
+    match input::parse_ref(reference).map_err(|e| format!("card {action} refused: {e}"))? {
+        CardRef::Id(n) => Ok(n),
+        CardRef::SourceNumber(n) => {
+            let sql_err = |e: rusqlite::Error| LedgerError::from(e).to_string();
+            let mut stmt = ledger
+                .conn()
+                .prepare("SELECT card_id FROM card WHERE source_number = ?1 ORDER BY card_id")
+                .map_err(sql_err)?;
+            let ids: Vec<i64> = stmt
+                .query_map([n], |r| r.get(0))
+                .map_err(sql_err)?
+                .collect::<std::result::Result<Vec<_>, _>>()
+                .map_err(sql_err)?;
+            match ids.as_slice() {
+                [one] => Ok(*one),
+                _ => Err(format!(
+                    "card {action} refused: #{n} names {} cards; name the card instead",
+                    ids.len()
+                )),
+            }
+        }
+    }
+}
+
+/// The session id of the caller, when the host gives one.
+fn caller_session() -> Option<String> {
+    std::env::var("CLAUDE_CODE_SESSION_ID")
+        .or_else(|_| std::env::var("CODEX_THREAD_ID"))
+        .ok()
+}
+
+/// `card withdraw C-n`: the card moves to `hold` and one `card.withdraw` event records the reason
+/// and the by. A `draft` or `ready` card nobody holds, or an `active` or `review` card nobody
+/// holds, is withdrawn by anyone; a card whose `held` lease ended is withdrawn only `--by
+/// leader`, which ends that reservation (SPEC-20261124-card-fold-stale). A live lease is refused.
+pub fn withdraw(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    reason: &str,
+    by: &str,
+) -> Result<Value> {
+    input::parse_ref(reference).map_err(|e| format!("card withdraw refused: {e}"))?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let card_id = card_or_source(&ledger, "withdraw", reference)?;
+    close::withdraw(
+        &mut ledger,
+        card_id,
+        reason,
+        by,
+        caller_session().as_deref(),
+    )
+    .map_err(|e| format!("card withdraw refused: {e}"))?;
+    Ok(json!({
+        "action": "withdraw", "project_id": id,
+        "card": input::card_name(card_id), "state": "hold",
+        "writes": true,
+    }))
+}
+
+/// `card hold C-n --category <c> --reason <t> --by <name>`: one `card.hold` event on a `draft`
+/// or `ready` card nobody holds (SPEC-20261121-card-hold-gate). `card next` then skips the card
+/// and `card take` refuses it until a person runs `card unhold`.
+pub fn hold(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    category: &str,
+    reason: &str,
+    by: &str,
+) -> Result<Value> {
+    input::parse_ref(reference).map_err(|e| format!("card hold refused: {e}"))?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let card_id = card_or_source(&ledger, "hold", reference)?;
+    workflow::hold(
+        &mut ledger,
+        card_id,
+        category,
+        reason,
+        by,
+        caller_session().as_deref(),
+    )
+    .map_err(|e| format!("card hold refused: {e}"))?;
+    Ok(json!({
+        "action": "hold", "project_id": id, "card": input::card_name(card_id),
+        "category": category, "events": 1, "writes": true,
+    }))
+}
+
+/// `card unhold C-n --reason <t> --by <name>`: one `card.unhold` event that lifts the HOLD in
+/// force. This command is the only writer of that event.
+pub fn unhold(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    reason: &str,
+    by: &str,
+) -> Result<Value> {
+    input::parse_ref(reference).map_err(|e| format!("card unhold refused: {e}"))?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let card_id = card_or_source(&ledger, "unhold", reference)?;
+    workflow::unhold(
+        &mut ledger,
+        card_id,
+        reason,
+        by,
+        caller_session().as_deref(),
+    )
+    .map_err(|e| format!("card unhold refused: {e}"))?;
+    Ok(json!({
+        "action": "unhold", "project_id": id, "card": input::card_name(card_id),
+        "events": 1, "writes": true,
+    }))
+}
+
+/// `card prereq C-n --needs C-m --by <name>`: C-n waits for C-m, one active `blocks` link from
+/// C-m to C-n. A second call changes nothing (`created: false`).
+pub fn prereq(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    needs: &str,
+    by: &str,
+) -> Result<Value> {
+    input::parse_ref(reference).map_err(|e| format!("card prereq refused: {e}"))?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let card_id = card_or_source(&ledger, "prereq", reference)?;
+    let needs_id = card_or_source(&ledger, "prereq", needs)?;
+    let created = workflow::add_prerequisite(
+        &mut ledger,
+        card_id,
+        needs_id,
+        by,
+        caller_session().as_deref(),
+    )
+    .map_err(|e| format!("card prereq refused: {e}"))?;
+    Ok(json!({
+        "action": "prereq", "project_id": id, "card": input::card_name(card_id),
+        "needs": input::card_name(needs_id), "created": created,
+        "events": u8::from(created), "writes": created,
+    }))
+}
+
+/// `card fold C-n --into C-m`: the card moves to `hold` with one `card.fold` event and one
+/// `relates` link to C-m; its notes, criteria and links stay readable, `card next` never offers
+/// it and `card take` refuses it naming C-m. The same cards may be folded as withdrawn, under
+/// the same leader rule for a lapsed lease.
+pub fn fold(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    into: &str,
+    reason: &str,
+    by: &str,
+) -> Result<Value> {
+    input::parse_ref(reference).map_err(|e| format!("card fold refused: {e}"))?;
+    let target = card_id("fold", into)?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let card_id = card_or_source(&ledger, "fold", reference)?;
+    close::fold(
+        &mut ledger,
+        card_id,
+        target,
+        reason,
+        by,
+        caller_session().as_deref(),
+    )
+    .map_err(|e| format!("card fold refused: {e}"))?;
+    Ok(json!({
+        "action": "fold", "project_id": id,
+        "card": input::card_name(card_id), "into": input::card_name(target),
+        "state": "hold", "writes": true,
+    }))
 }
 
 /// `card renew C-n`: the lease ends `lease_secs` from now, never earlier than it already did.
@@ -560,15 +1227,43 @@ pub fn check(
         .map_err(|e| e.to_string())?
         .ok_or("reservation conflict in card: the card has no reservation")?;
     let mut covered = Vec::with_capacity(paths.len());
+    let mut overlaps: Vec<Value> = Vec::new();
+    let now: i64 = ledger
+        .conn()
+        .query_row("SELECT unixepoch()", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
     for path in paths {
         match workflow::covering_pattern(&held, path) {
-            Some(pattern) => covered.push(json!({"path": path, "pattern": pattern})),
+            Some(pattern) => {
+                covered.push(json!({"path": path, "pattern": pattern}));
+                // Another card's reservation of the same path allows nothing less
+                // (SPEC-20261125-card-no-file-locks): it is named so the writer can plan the merge.
+                for (other, theirs, holder) in
+                    reservation::overlaps_on_path(ledger.conn(), now, card_id, path)
+                        .map_err(|e| e.to_string())?
+                {
+                    overlaps.push(json!({
+                        "path": path, "card": input::card_name(other),
+                        "pattern": theirs, "holder": holder,
+                    }));
+                }
+            }
             None => {
-                return Err(format!(
+                let mut refusal = format!(
                     "reservation conflict in write scope: `{}` is not under what C-{card_id} reserved ({})",
                     input::echo(path),
                     held.write_scope.join(", ")
-                ))
+                );
+                // A shared file of the profile is written in short, never reserved whole
+                // (SPEC-20261124-shared-files-profile): the refusal ends with the way to write it.
+                let shared = take_scope::shared_files(project);
+                if take_scope::shared_overlap(&shared, path).is_some() {
+                    refusal.push_str(&format!(
+                        "; a shared file is written in short with: card line-lease C-{card_id} \
+                         --generation {generation} --path {path}"
+                    ));
+                }
+                return Err(refusal);
             }
         }
     }
@@ -577,7 +1272,7 @@ pub fn check(
         "name": input::card_name(card_id), "card_id": card_id,
         "holder": held.holder, "generation": held.generation,
         "lease_until": held.lease_until, "write_scope": held.write_scope,
-        "allowed": true, "paths": covered, "writes": false,
+        "allowed": true, "paths": covered, "overlaps": overlaps, "writes": false,
     }))
 }
 

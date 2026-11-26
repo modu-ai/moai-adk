@@ -21,6 +21,7 @@ use super::export_db;
 use super::export_dir::{self, DirError};
 use super::export_format;
 use super::input::{self, AddInput, CardRef};
+use super::spec_link;
 use crate::ledger::{self, LedgerError};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
@@ -95,7 +96,7 @@ fn card_json(conn: &Connection, card_id: i64) -> std::result::Result<Option<Valu
 
 /// `card list [--state S]`: every card, oldest first. An absent ledger is "no cards" (exit 0).
 pub fn list(project: &Path, home: &Path, state: Option<&str>) -> Result<Value> {
-    list_filtered(project, home, state, None)
+    list_filtered(project, home, state, None, false)
 }
 
 /// A `--title-prefix` typed for `card list` (card C-99, SPEC-20261119-flaky-followups): not
@@ -119,6 +120,7 @@ pub fn list_filtered(
     home: &Path,
     state: Option<&str>,
     title_prefix_given: Option<&str>,
+    all: bool,
 ) -> Result<Value> {
     let state = state
         .map(|s| input::state(s).map_err(|e| format!("card list refused: {e}")))
@@ -141,15 +143,25 @@ pub fn list_filtered(
     let mut stmt = conn
         .prepare(&format!(
             "SELECT card_id, title, kind, state, priority, rev, updated_at, \
-                    source_host, source_project, source_number, {} \
+                    source_host, source_project, source_number, {}, \
+                    (EXISTS (SELECT 1 FROM event \
+                              WHERE event.card_id = card.card_id AND event.kind = 'card.landed') \
+                     OR EXISTS (SELECT 1 FROM card_link \
+                                 WHERE card_link.from_card = card.card_id \
+                                   AND card_link.kind = 'pr' AND card_link.state = 'active' \
+                                   AND card_link.pr_state = 'merged')) \
                FROM card WHERE (?1 IS NULL OR state = ?1) \
                            AND (?2 IS NULL OR substr(title, 1, length(?2)) = ?2) \
+                           AND (?3 OR ?1 IS NOT NULL OR card.state <> 'hold' \
+                               OR NOT EXISTS (SELECT 1 FROM event \
+                             WHERE event.card_id = card.card_id \
+                               AND event.kind IN ('card.withdraw', 'card.fold'))) \
               ORDER BY card_id",
             super::spec_link::LINKED_COLUMN
         ))
         .map_err(|e| LedgerError::from(e).to_string())?;
     let rows = stmt
-        .query_map(params![state, prefix], |r| {
+        .query_map(params![state, prefix, all], |r| {
             let host: Option<String> = r.get(7)?;
             let proj: Option<String> = r.get(8)?;
             let number: Option<i64> = r.get(9)?;
@@ -168,6 +180,7 @@ pub fn list_filtered(
                     _ => Value::Null,
                 },
                 "spec": r.get::<_, Option<String>>(10)?,
+                "landed": r.get::<_, bool>(11)?,
             }))
         })
         .map_err(|e| LedgerError::from(e).to_string())?;
@@ -337,9 +350,23 @@ pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
     card["spec"] = json!(super::spec_link::kind_and_spec(conn, card_id)
         .map_err(sql_err)?
         .and_then(|(_, spec)| spec));
+    card["spec_link"] = super::spec_link::link_json(conn, card_id).map_err(sql_err)?;
     card["reservation"] = ledger::reservation::current(conn, card_id)
         .map_err(|e| e.to_string())?
         .map_or(Value::Null, |r| super::dispatch::reservation_json(&r));
+    // The structured HOLD in force and the cards this one waits for (SPEC-20261121-card-hold-gate);
+    // free text in a note or the body is never read here.
+    card["hold"] = ledger::workflow::current_hold(conn, card_id)
+        .map_err(sql_err)?
+        .map_or(
+            Value::Null,
+            |h| json!({"category": h.category, "reason": h.reason, "by": h.by, "at": h.at}),
+        );
+    card["prerequisites"] = json!(ledger::workflow::unfinished_prerequisites(conn, card_id)
+        .map_err(sql_err)?
+        .into_iter()
+        .map(input::card_name)
+        .collect::<Vec<_>>());
     card["writes"] = json!(false);
     Ok(card)
 }
@@ -369,6 +396,48 @@ pub fn actor(given: Option<&str>, action: &str) -> Result<String> {
 
 /// `card add`: a new `draft` card with its criteria and one `card.add` event, in one transaction.
 pub fn add(project: &Path, home: &Path, req: &AddRequest<'_>) -> Result<Value> {
+    insert_card(project, home, req, None)
+}
+
+/// `card add --spec <SPEC-ID> [--follow-up | --follow-up-of <card> | --split-of <card>]`
+/// (SPEC-20261124-followup-per-spec): [`add`] plus the card's link to its SPEC, as a `card.spec`
+/// event in the same transaction. A SPEC that cannot be read, has an error finding or is not of
+/// this generation refuses the add before the ledger is opened; a plain second open card on the
+/// SPEC and a `--split-of` or `--follow-up-of` card whose origin does not name the SPEC are
+/// refused inside the transaction, so nothing is written (`spec_link::add_conflict`). Follow-up
+/// cards are never refused for open cards: a SPEC may have several at once.
+pub fn add_with_spec(
+    project: &Path,
+    home: &Path,
+    req: &AddRequest<'_>,
+    spec: &str,
+    relation: spec_link::Relation<'_>,
+) -> Result<Value> {
+    if crate::spec_doc::id_form(spec).is_none() {
+        return Err(
+            "card add refused: the SPEC id is not SPEC-<yyyymmdd>-<slug> (or a \
+                    Go-generation SPEC-…-NNN id)"
+                .to_string(),
+        );
+    }
+    let doc = crate::spec_doc::find(project, spec)
+        .map_err(|e| format!("card add refused: SPEC {spec} cannot be read: {e}"))?;
+    if doc.errors() > 0 {
+        return Err(format!(
+            "card add refused: {spec} has {} error(s); `moai spec check {spec}` lists them; \
+             nothing was written",
+            doc.errors()
+        ));
+    }
+    insert_card(project, home, req, Some((spec, relation)))
+}
+
+fn insert_card(
+    project: &Path,
+    home: &Path,
+    req: &AddRequest<'_>,
+    link: Option<(&str, spec_link::Relation<'_>)>,
+) -> Result<Value> {
     let card = input::validate_add(&AddInput {
         title: req.title,
         body: req.body,
@@ -383,8 +452,31 @@ pub fn add(project: &Path, home: &Path, req: &AddRequest<'_>) -> Result<Value> {
     super::dispatch::checked_scope("add", req.scope)?;
     let by = actor(req.by, "add")?;
     let (id, mut ledger) = open_for_write(project, home)?;
-    let (card_id, rev) = ledger
+    // At the limit of cards in work and in review only the user's own add goes on
+    // (SPEC-20261125-landing-moves-checkout REQ-2).
+    if by != super::wip_limit::USER {
+        if let Some(why) = super::wip_limit::refusal(project, ledger.conn(), "add")? {
+            return Err(why);
+        }
+    }
+    let written = ledger
         .with_write_tx(|tx, now| {
+            if let Some((spec, relation)) = link {
+                let origin_flag = match relation {
+                    spec_link::Relation::SplitOf(origin) => Some(("--split-of", origin)),
+                    spec_link::Relation::FollowUpOf(origin) => Some(("--follow-up-of", origin)),
+                    spec_link::Relation::Plain | spec_link::Relation::FollowUp => None,
+                };
+                if let Some((flag, origin)) = origin_flag {
+                    if let Some(why) = origin_refusal(tx, spec, flag, origin)? {
+                        return Ok(Err(why));
+                    }
+                }
+                let open = spec_link::open_cards_of(tx, spec)?;
+                if let Some(why) = spec_link::add_conflict(spec, relation, &open) {
+                    return Ok(Err(why));
+                }
+            }
             tx.execute(
                 "INSERT INTO card (title, body, kind, priority, write_scope, created_by, \
                                    created_at, updated_at) \
@@ -413,20 +505,81 @@ pub fn add(project: &Path, home: &Path, req: &AddRequest<'_>) -> Result<Value> {
                  VALUES (?1, ?2, ?3, ?4, 'card.add', ?5)",
                 params![key, now, by, card_id, payload.to_string()],
             )?;
+            if let Some((spec, relation)) = link {
+                let mut link_payload = json!({"from": Value::Null, "to": spec});
+                if let Some(name) = relation.name() {
+                    link_payload["relation"] = json!(name);
+                }
+                if let Some(origin) = relation.origin() {
+                    link_payload["of"] = json!(origin);
+                }
+                let key = ledger::new_event_key(tx, spec_link::EVENT, Some(card_id))?;
+                tx.execute(
+                    "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                    params![
+                        key,
+                        now,
+                        by,
+                        card_id,
+                        spec_link::EVENT,
+                        link_payload.to_string()
+                    ],
+                )?;
+            }
             let rev: i64 =
                 tx.query_row("SELECT rev FROM card WHERE card_id = ?1", [card_id], |r| {
                     r.get(0)
                 })?;
-            Ok((card_id, rev))
+            Ok(Ok((card_id, rev)))
         })
         .map_err(|e| e.to_string())?;
-    Ok(json!({
+    let (card_id, rev) = written?;
+    let mut answer = json!({
         "action": "add", "project_id": id,
         "name": input::card_name(card_id), "card_id": card_id,
         "state": "draft", "kind": card.kind, "priority": card.priority,
         "criteria": card.criteria.len(), "rev": rev, "created_by": by,
         "events": 1, "writes": true,
-    }))
+    });
+    if let Some((spec, relation)) = link {
+        answer["events"] = json!(2);
+        answer["spec"] = json!(spec);
+        answer["relation"] = relation.name().map_or(Value::Null, |n| json!(n));
+        if let Some(origin) = relation.origin() {
+            answer["of"] = json!(origin);
+        }
+    }
+    Ok(answer)
+}
+
+/// Why `<flag> <origin>` (`--split-of` or `--follow-up-of`) cannot be taken for a card of SPEC
+/// `spec`: the origin is not a card reference, does not exist or names another SPEC or none.
+/// `None` when it names `spec`.
+fn origin_refusal(
+    tx: &Connection,
+    spec: &str,
+    flag: &str,
+    origin: &str,
+) -> rusqlite::Result<Option<String>> {
+    let n = match input::parse_ref(origin) {
+        Ok(CardRef::Id(n)) => n,
+        _ => {
+            return Ok(Some(format!(
+                "card add refused: {flag} {origin} is not a card name (`C-1`)"
+            )))
+        }
+    };
+    Ok(match spec_link::kind_and_spec(tx, n)? {
+        None => Some(format!(
+            "card not found: {flag} {origin}: there is no {origin}"
+        )),
+        Some((_, named)) if named.as_deref() != Some(spec) => Some(format!(
+            "card add refused: {flag} {origin} names {}, not {spec}",
+            named.as_deref().unwrap_or("no SPEC")
+        )),
+        Some(_) => None,
+    })
 }
 
 /// `card export --out DIR` (#3070 K2a): the five exported tables of the ledger as an export

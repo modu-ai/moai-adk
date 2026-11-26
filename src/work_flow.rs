@@ -89,9 +89,15 @@ pub fn plan(project: &Path) -> Result<Value, String> {
     let project = project
         .canonicalize()
         .map_err(|e| format!("cannot read {project:?}: {e}"))?;
-    let work_flow = crate::profile::read_profile(&project)
-        .ok()
-        .and_then(|(p, _)| p.work_flow);
+    // A profile that is present but cannot be read is its own state; a missing profile is
+    // just an unrecorded one, and the discovery fallbacks carry on (leader decision on the
+    // slice-1 audit: profile-unreadable, note 4115).
+    let profile_read = crate::profile::read_profile(&project);
+    let profile_unreadable = match &profile_read {
+        Err(e) if e != "project profile missing" => Some(e.to_string()),
+        _ => None,
+    };
+    let work_flow = profile_read.ok().and_then(|(p, _)| p.work_flow);
     let recorded: Option<String> = work_flow
         .as_ref()
         .and_then(|w| w.integration_branch.clone())
@@ -114,23 +120,43 @@ pub fn plan(project: &Path) -> Result<Value, String> {
     };
     let current = git_out(&project, &["branch", "--show-current"]).unwrap_or_default();
 
+    // A release-prefixed branch is for release pull requests (user decision: remote pull
+    // requests only at a formal release), so the discovery rules never name one; the
+    // recorded value stays the user's own answer (leader decision, note 4115).
+    let usable_remote_default = if let Ok(head) = git_out(
+        &project,
+        &["symbolic-ref", "-q", "refs/remotes/origin/HEAD"],
+    ) {
+        let named = head
+            .strip_prefix("refs/remotes/origin/")
+            .unwrap_or(&head)
+            .to_string();
+        // origin/HEAD that was set by something else — a pull-request candidate namespace,
+        // or a ref no fetch ever brought — names no integration target: skipped.
+        let namespaced = named
+            .split('/')
+            .next()
+            .is_some_and(|first| CANDIDATE_NAMESPACES.contains(&first));
+        let exists = refs.lines().any(|l| l == head);
+        (!namespaced && exists && !named.starts_with("release/")).then_some((
+            named.clone(),
+            format!("the remote's default branch (origin/HEAD names {named})"),
+        ))
+    } else {
+        None
+    };
+    let current_pick = (!current.is_empty() && !current.starts_with("release/"))
+        .then(|| (current.clone(), "the current branch".to_string()));
+
     let (branch, reason) = if let Some(b) = recorded.as_ref() {
         (
             b.clone(),
             "the value recorded in the project profile (work_flow.integration_branch)".to_string(),
         )
-    } else if let Ok(head) = git_out(
-        &project,
-        &["symbolic-ref", "-q", "refs/remotes/origin/HEAD"],
-    ) {
-        let b = head
-            .strip_prefix("refs/remotes/origin/")
-            .unwrap_or(&head)
-            .to_string();
-        let reason = format!("the remote's default branch (origin/HEAD names {b})");
-        (b, reason)
-    } else if !current.is_empty() {
-        (current.clone(), "the current branch".to_string())
+    } else if let Some((b, r)) = usable_remote_default {
+        (b, r)
+    } else if let Some((b, r)) = current_pick {
+        (b, r)
     } else {
         (
             String::new(),
@@ -147,33 +173,42 @@ pub fn plan(project: &Path) -> Result<Value, String> {
     let occupied = recorded
         .as_deref()
         .and_then(|b| occupied_worktree(&project, b));
-    let state = match recorded.as_deref() {
-        None => json!({"kind": "ok"}),
-        Some(b) => {
-            if let Some(wt) = occupied.as_deref() {
-                json!({
-                    "kind": "occupied-worktree",
-                    "worktree": wt,
-                    "message": format!(
-                        "the recorded integration branch {b} is checked out in another worktree ({wt}); close it or pick another branch — this tool creates nothing on its own"
-                    ),
-                })
-            } else if !has_local(b) && !has_origin(b) {
-                json!({
-                    "kind": "missing-target",
-                    "message": format!(
-                        "the recorded integration branch {b} is missing; pick an existing branch from the candidates or confirm creating one with the user — this tool creates nothing on its own"
-                    ),
-                })
-            } else if !has_local(b) {
-                json!({
-                    "kind": "missing-target",
-                    "message": format!(
-                        "the recorded integration branch {b} is missing locally (it exists on origin); fetch and create an existing branch from it or pick another existing branch — this tool creates nothing on its own"
-                    ),
-                })
-            } else {
-                json!({"kind": "ok"})
+    let state = if let Some(e) = profile_unreadable {
+        json!({
+            "kind": "profile-unreadable",
+            "message": format!(
+                "the project profile cannot be read ({e}); the recommendation comes from the repository instead — this tool creates nothing on its own"
+            ),
+        })
+    } else {
+        match recorded.as_deref() {
+            None => json!({"kind": "ok"}),
+            Some(b) => {
+                if let Some(wt) = occupied.as_deref() {
+                    json!({
+                        "kind": "occupied-worktree",
+                        "worktree": wt,
+                        "message": format!(
+                            "the recorded integration branch {b} is checked out in another worktree ({wt}); close it or pick another branch — this tool creates nothing on its own"
+                        ),
+                    })
+                } else if !has_local(b) && !has_origin(b) {
+                    json!({
+                        "kind": "missing-target",
+                        "message": format!(
+                            "the recorded integration branch {b} is missing; pick an existing branch from the candidates or confirm creating one with the user — this tool creates nothing on its own"
+                        ),
+                    })
+                } else if !has_local(b) {
+                    json!({
+                        "kind": "missing-target",
+                        "message": format!(
+                            "the recorded integration branch {b} is missing locally (it exists on origin); fetch and create an existing branch from it or pick another existing branch — this tool creates nothing on its own"
+                        ),
+                    })
+                } else {
+                    json!({"kind": "ok"})
+                }
             }
         }
     };

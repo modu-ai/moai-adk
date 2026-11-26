@@ -8,6 +8,11 @@
 //!   `0001`: the two-digit year wraps in 2100, so `head` must rise before then to keep order).
 //! - `build`: the build number; `MOAI_LOCAL_BUILD` for a local build, 0 for an unnumbered build.
 //!
+//! A build that is not a release ends in `-dev` (`4.2648.26-dev`, [`dev_version`]). A release
+//! build (`MOAI_RELEASE_VERSION`, [`release_build`]) is `{head}.{release week}.{serial}` with the
+//! serial counting from 0 inside its week and no suffix (`4.2649.0`), made on the branch
+//! `release/v{head}.{yearweek}.{n}` (SPEC-20261125-headver-weekly-release).
+//!
 //! `build.rs` includes this file with `#[path]` to compute the build's version, so it uses
 //! the standard library only. The library uses [`compare`] to order versions: every HeadVer
 //! version is newer than every version of the earlier `YYYY.M.P[-rc.N]` scheme.
@@ -86,6 +91,15 @@ pub fn version(head: u32, yearweek: u32, build: u32) -> String {
     format!("{head}.{yearweek:04}.{build}")
 }
 
+/// The suffix every build that is not a release carries (SPEC-20261125-headver-weekly-release):
+/// `4.2648.26-dev`. A release has none.
+pub const DEV_SUFFIX: &str = "-dev";
+
+/// The development build version: [`version`] with [`DEV_SUFFIX`].
+pub fn dev_version(head: u32, yearweek: u32, build: u32) -> String {
+    format!("{}{DEV_SUFFIX}", version(head, yearweek, build))
+}
+
 /// What one build is: its version and the second line `--version` prints.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Build {
@@ -140,7 +154,7 @@ pub fn build_numbered(
         ),
     };
     Ok(Build {
-        version: version(head, yearweek(y, m, d), number),
+        version: dev_version(head, yearweek(y, m, d), number),
         note: format!(
             "{kind}, built {y:04}-{m:02}-{d:02} UTC (ISO week {week_year}-W{week:02}), \
              package {package}"
@@ -148,11 +162,85 @@ pub fn build_numbered(
     })
 }
 
+/// The release version `release` (`MOAI_RELEASE_VERSION`, SPEC-20261125-headver-weekly-release)
+/// split into its numbers: `{head}.{yearweek}.{serial}` with the head of [`HEAD_FILE`], a
+/// four-digit yearweek whose week is 01 to 53, and a serial from 0 in decimal digits without a
+/// leading zero that fits `u32`. No prefix, no suffix, no metadata and no blank.
+fn parse_release(release: &str, head: u32) -> Result<u32, String> {
+    let refuse = |why: &str| {
+        Err(format!(
+            "MOAI_RELEASE_VERSION={release:?} refused: {why}; a release version is \
+             {{head}}.{{yearweek}}.{{serial}} with no prefix or suffix"
+        ))
+    };
+    let parts: Vec<&str> = release.split('.').collect();
+    let digits = |p: &str| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit());
+    if parts.len() != 3 || !parts.iter().all(|p| digits(p)) {
+        return refuse("it is not three numbers joined by dots");
+    }
+    if parts[0] != head.to_string() {
+        return refuse(&format!("its head is not the {HEAD_FILE} head {head}"));
+    }
+    let week = parts[1].parse::<u32>().unwrap_or(0) % 100;
+    if parts[1].len() != 4 || !(1..=53).contains(&week) {
+        return refuse("the yearweek must be four digits with an ISO week from 01 to 53");
+    }
+    if parts[2] != "0" && parts[2].starts_with('0') {
+        return refuse("the serial has a leading zero");
+    }
+    match parts[2].parse::<u32>() {
+        Ok(serial) => Ok(serial),
+        Err(_) => refuse("the serial is over 4294967295"),
+    }
+}
+
+/// A release build (SPEC-20261125-headver-weekly-release): its version is `release`, taken from
+/// `MOAI_RELEASE_VERSION` without a suffix, and its note says
+/// `release build <serial> (MOAI_RELEASE_VERSION), built <date> UTC (ISO week …), package …`.
+/// The date is the build's own, the week of the version is the release week. A release build is
+/// refused when `release` is not shaped as [`parse_release`] says or does not carry the
+/// `HEADVER` head, and when `MOAI_LOCAL_BUILD` or `MOAI_BUILD_NUMBER` is set too.
+pub fn release_build(
+    head_text: Option<&str>,
+    epoch_secs: i64,
+    release: &str,
+    local: Option<u32>,
+    ci: Option<u32>,
+    package: &str,
+) -> Result<Build, String> {
+    let head_text = head_text.ok_or_else(|| {
+        format!("{HEAD_FILE} missing: the repository root must hold the HeadVer head (one line)")
+    })?;
+    let head = parse_head(head_text)?;
+    for (set, name) in [
+        (local.is_some(), "MOAI_LOCAL_BUILD"),
+        (ci.is_some(), "MOAI_BUILD_NUMBER"),
+    ] {
+        if set {
+            return Err(format!(
+                "MOAI_RELEASE_VERSION and {name} are both set: a release build has no other \
+                 number source; unset {name}"
+            ));
+        }
+    }
+    let serial = parse_release(release, head)?;
+    let (y, m, d) = civil_from_days(epoch_secs.div_euclid(86_400));
+    let (week_year, week) = iso_week(y, m, d);
+    Ok(Build {
+        version: release.to_string(),
+        note: format!(
+            "release build {serial} (MOAI_RELEASE_VERSION), built {y:04}-{m:02}-{d:02} UTC \
+             (ISO week {week_year}-W{week:02}), package {package}"
+        ),
+    })
+}
+
 /// How [`compare`] reads one version.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Shape {
-    /// `head.yearweek.build` (a `-suffix` names the same build and is ignored).
-    HeadVer(u64, u64, u64),
+    /// `head.yearweek.build`; the flag is true for a `-dev` suffix, which ranks below the
+    /// release of the same numbers. Any other `-suffix` names the same build and is ignored.
+    HeadVer(u64, u64, u64, bool),
     /// The earlier `YYYY.M.P` scheme with an optional `-rc.N`.
     Earlier(u64, u64, u64, Option<u64>),
 }
@@ -186,7 +274,8 @@ fn shape(v: &str) -> Option<Shape> {
         return Some(Shape::Earlier(a, b, c, rc));
     }
     let week = b % 100;
-    (parts[1].len() == 4 && (1..=53).contains(&week)).then_some(Shape::HeadVer(a, b, c))
+    let dev = pre == Some("dev");
+    (parts[1].len() == 4 && (1..=53).contains(&week)).then_some(Shape::HeadVer(a, b, c, dev))
 }
 
 /// The order of two versions, or `None` when either is a shape this build does not read
@@ -198,7 +287,10 @@ pub fn compare(a: &str, b: &str) -> Option<Ordering> {
     Some(match (shape(a)?, shape(b)?) {
         (HeadVer(..), Earlier(..)) => Ordering::Greater,
         (Earlier(..), HeadVer(..)) => Ordering::Less,
-        (HeadVer(h1, y1, b1), HeadVer(h2, y2, b2)) => (h1, y1, b1).cmp(&(h2, y2, b2)),
+        // Numbers decide; at the same numbers the release (no `-dev`) is above its `-dev`.
+        (HeadVer(h1, y1, b1, d1), HeadVer(h2, y2, b2, d2)) => {
+            (h1, y1, b1, !d1).cmp(&(h2, y2, b2, !d2))
+        }
         (Earlier(y1, m1, p1, r1), Earlier(y2, m2, p2, r2)) => {
             (y1, m1, p1).cmp(&(y2, m2, p2)).then(match (r1, r2) {
                 (None, None) => Ordering::Equal,
@@ -290,14 +382,14 @@ mod tests {
     fn a_build_names_its_kind_date_and_week() {
         let t = 1_794_873_600 + 8 * 3600;
         let local = build(Some("4\n"), t, Some(5), "2026.11.0-rc.1").unwrap();
-        assert_eq!(local.version, "4.2647.5");
+        assert_eq!(local.version, "4.2647.5-dev");
         assert_eq!(
             local.note,
             "local build 5 (MOAI_LOCAL_BUILD), built 2026-11-17 UTC (ISO week 2026-W47), \
              package 2026.11.0-rc.1"
         );
         let unnumbered = build(Some("4\n"), t, None, "2026.11.0-rc.1").unwrap();
-        assert_eq!(unnumbered.version, "4.2647.0");
+        assert_eq!(unnumbered.version, "4.2647.0-dev");
         assert!(unnumbered
             .note
             .starts_with("unnumbered build (no MOAI_LOCAL_BUILD or MOAI_BUILD_NUMBER), built"));
@@ -305,11 +397,11 @@ mod tests {
         let sunday = 1_799_020_800 - 1;
         assert_eq!(
             build(Some("4"), sunday, Some(1), "p").unwrap().version,
-            "4.2653.1"
+            "4.2653.1-dev"
         );
         assert_eq!(
             build(Some("4"), sunday + 1, Some(1), "p").unwrap().version,
-            "4.2701.1"
+            "4.2701.1-dev"
         );
         let missing = build(None, t, Some(5), "p").unwrap_err();
         assert!(missing.starts_with("HEADVER missing"), "{missing}");
@@ -323,7 +415,7 @@ mod tests {
     fn a_ci_build_names_its_number_and_two_sources_are_refused() {
         let t = 1_794_873_600 + 8 * 3600;
         let ci = build_numbered(Some("4\n"), t, None, Some(812), "2026.11.0-rc.1").unwrap();
-        assert_eq!(ci.version, "4.2647.812");
+        assert_eq!(ci.version, "4.2647.812-dev");
         assert_eq!(
             ci.note,
             "CI build 812 (MOAI_BUILD_NUMBER), built 2026-11-17 UTC (ISO week 2026-W47), \
@@ -336,6 +428,118 @@ mod tests {
             both.contains("MOAI_LOCAL_BUILD") && both.contains("MOAI_BUILD_NUMBER"),
             "{both}"
         );
+    }
+
+    /// SPEC-20261125-headver-weekly-release REQ-1: every build that is not a release ends in
+    /// `-dev`, whichever source numbers it.
+    #[test]
+    fn a_development_build_ends_in_dev() {
+        let t = 1_794_873_600 + 8 * 3600;
+        for (local, ci, want) in [
+            (Some(26), None, "4.2647.26-dev"),
+            (None, Some(7), "4.2647.7-dev"),
+            (None, None, "4.2647.0-dev"),
+        ] {
+            let b = build_numbered(Some("4"), t, local, ci, "p").unwrap();
+            assert_eq!(b.version, want);
+            assert!(b.version.ends_with("-dev"), "{}", b.version);
+            assert!(!b.note.starts_with("release build"), "{}", b.note);
+        }
+        assert_eq!(dev_version(4, 2648, 26), "4.2648.26-dev");
+    }
+
+    /// REQ-2: a release build reports the given version with no suffix, and its note says
+    /// `release build <serial> (MOAI_RELEASE_VERSION)`; the week is the release week, not the
+    /// build date's week.
+    #[test]
+    fn a_release_build_reports_its_version_without_a_suffix() {
+        let t = 1_794_873_600 + 8 * 3600; // 2026-11-17, ISO week 2026-W47
+        let r = release_build(Some("4\n"), t, "4.2649.0", None, None, "2026.11.0-rc.1").unwrap();
+        assert_eq!(r.version, "4.2649.0");
+        assert_eq!(
+            r.note,
+            "release build 0 (MOAI_RELEASE_VERSION), built 2026-11-17 UTC (ISO week 2026-W47), \
+             package 2026.11.0-rc.1"
+        );
+        let second = release_build(Some("4"), t, "4.2653.12", None, None, "p").unwrap();
+        assert_eq!(second.version, "4.2653.12");
+        assert!(second
+            .note
+            .starts_with("release build 12 (MOAI_RELEASE_VERSION), built "));
+        let last = release_build(Some("4"), t, "4.2649.4294967295", None, None, "p").unwrap();
+        assert_eq!(last.version, "4.2649.4294967295");
+    }
+
+    /// REQ-3: each way the release version can be wrong stops the build, and the reason names
+    /// the variable. Boundaries are literals: N accepted above, N+1 refused here.
+    #[test]
+    fn a_wrong_release_version_stops_the_build() {
+        let t = 1_794_873_600;
+        for bad in [
+            "5.2649.0",          // head differs from HEADVER (4)
+            "04.2649.0",         // head with a leading zero
+            "4.649.0",           // yearweek not four digits
+            "4.26490.0",         // yearweek over four digits
+            "4.2600.0",          // week 00
+            "4.2654.0",          // week 54
+            "4.2649.00",         // serial with a leading zero
+            "4.2649.01",         // serial with a leading zero
+            "4.2649.4294967296", // serial over u32
+            "4.2649.-1",         // sign
+            "4.2649.x",          // not a number
+            "4.2649",            // two parts
+            "4.2649.0.1",        // four parts
+            "4.2649.0-dev",      // a release has no suffix
+            "4.2649.0+meta",     // nor metadata
+            "v4.2649.0",         // nor a prefix
+            " 4.2649.0",         // nor a blank
+            "",
+        ] {
+            let err = release_build(Some("4"), t, bad, None, None, "p").unwrap_err();
+            assert!(err.starts_with("MOAI_RELEASE_VERSION="), "{bad:?}: {err}");
+        }
+        let missing = release_build(None, t, "4.2649.0", None, None, "p").unwrap_err();
+        assert!(missing.starts_with("HEADVER missing"), "{missing}");
+        let local = release_build(Some("4"), t, "4.2649.0", Some(5), None, "p").unwrap_err();
+        assert!(
+            local.contains("MOAI_RELEASE_VERSION") && local.contains("MOAI_LOCAL_BUILD"),
+            "{local}"
+        );
+        let ci = release_build(Some("4"), t, "4.2649.0", None, Some(5), "p").unwrap_err();
+        assert!(
+            ci.contains("MOAI_RELEASE_VERSION") && ci.contains("MOAI_BUILD_NUMBER"),
+            "{ci}"
+        );
+    }
+
+    /// REQ-4: at the same three numbers the release is above its `-dev`; every other pair keeps
+    /// the numeric order, so a development build of a later number or week is newer, and an
+    /// installed folder named without `-dev` reads as a release.
+    #[test]
+    fn a_release_ranks_above_the_dev_build_of_the_same_numbers() {
+        assert_eq!(compare("4.2649.0", "4.2649.0-dev"), Some(Ordering::Greater));
+        assert_eq!(compare("4.2649.0-dev", "4.2649.0"), Some(Ordering::Less));
+        assert_eq!(
+            compare("4.2649.0-dev", "4.2649.0-dev"),
+            Some(Ordering::Equal)
+        );
+        assert_eq!(compare("4.2649.0", "4.2649.0"), Some(Ordering::Equal));
+        // Numbers decide first.
+        assert_eq!(compare("4.2649.5-dev", "4.2649.0"), Some(Ordering::Greater));
+        assert_eq!(
+            compare("4.2649.0", "4.2648.99-dev"),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(
+            compare("4.2648.27-dev", "4.2648.26"),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(compare("5.0001.0-dev", "4.2649.9"), Some(Ordering::Greater));
+        // A folder written before the suffix existed has no `-dev`: it is a release shape.
+        assert!(is_newer("4.2648.26", "4.2648.26-dev"));
+        assert!(!is_newer("4.2648.26-dev", "4.2648.26"));
+        // Only `-dev` is read; another suffix keeps naming the same build.
+        assert_eq!(compare("4.2647.5-x", "4.2647.5"), Some(Ordering::Equal));
     }
 
     #[test]
@@ -376,9 +580,9 @@ mod tests {
         }
         // Numbers, not text: build 10 is after build 9.
         assert_eq!(compare("4.2647.10", "4.2647.9"), Some(Ordering::Greater));
-        // Metadata and a `-dev` suffix name the same build.
+        // Metadata names the same build; a `-dev` suffix ranks below the release of the same numbers.
         assert_eq!(compare("4.2647.5+local", "4.2647.5"), Some(Ordering::Equal));
-        assert_eq!(compare("4.2647.5-dev", "4.2647.5"), Some(Ordering::Equal));
+        assert_eq!(compare("4.2647.5-dev", "4.2647.5"), Some(Ordering::Less));
     }
 
     #[test]

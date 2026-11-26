@@ -382,6 +382,8 @@ pub const MANAGED_SETTINGS: &[&str] = &[
     "env",
     "model",
     "worktree",
+    "claudeMdExcludes",
+    "enabledPlugins",
 ];
 
 /// The managed keys a caller may set through `claude-settings-plan` / `-apply` (#2239, #2244):
@@ -393,6 +395,8 @@ pub const USER_SETTINGS: &[&str] = &[
     "env",
     "model",
     "worktree",
+    "claudeMdExcludes",
+    "enabledPlugins",
 ];
 
 /// Bounds for the `env` and `model` values a caller may set (#2936 R8).
@@ -430,7 +434,10 @@ pub(crate) fn env_entry_refusal(name: &str, value: &Value) -> Option<&'static st
         return Some("the value is not a one-line string within the size limit");
     }
     let upper = name.to_ascii_uppercase();
-    if SECRET_ENV_NAMES.iter().any(|s| upper.contains(s)) || credential_like(text) {
+    if SECRET_ENV_NAMES.iter().any(|s| upper.contains(s))
+        || credential_like(name)
+        || credential_like(text)
+    {
         return Some("the name or the value looks like a credential");
     }
     None
@@ -438,9 +445,76 @@ pub(crate) fn env_entry_refusal(name: &str, value: &Value) -> Option<&'static st
 
 /// Whether a string looks like it holds a credential: a known token shape or a URL with
 /// `user:password@host`. The same rule for every settings value a file may get (audit 6888156222).
+/// The text is judged as given and with its [`invisible_char`]s removed, so a token split by a
+/// zero-width or direction character is still one: it is refused as a value and hidden in a
+/// message (SPEC-20261122-project-scale-settings D-6).
 pub(crate) fn credential_like(text: &str) -> bool {
-    crate::agents_local_merge::secret_kind(text).is_some()
-        || (text.contains("://") && text.contains('@'))
+    let shaped = |t: &str| {
+        crate::agents_local_merge::secret_kind(t).is_some()
+            || (t.contains("://") && t.contains('@'))
+    };
+    shaped(text) || (text.chars().any(invisible_char) && shaped(&visible_text(text)))
+}
+
+/// `text` without its [`invisible_char`]s.
+fn visible_text(text: &str) -> String {
+    text.chars().filter(|c| !invisible_char(*c)).collect()
+}
+
+/// Whether a character prints as nothing or moves other text: a control character, or a format,
+/// line or paragraph separator character (soft hyphen, zero-width and joiner characters, the
+/// direction marks, embeddings, overrides and isolates, word joiner and invisible operators,
+/// the byte order mark, interlinear annotation marks and tag characters), or a character that
+/// prints as a blank in a value no setting needs it in (the braille blank, the unassigned
+/// specials, the musical null notehead, the Khitan filler and the Egyptian hieroglyph format
+/// controls). Spaces, combining marks and look-alike letters stay out: they print
+/// (SPEC-20261122-project-scale-settings D-7).
+pub(crate) fn invisible_char(c: char) -> bool {
+    c.is_control()
+        || matches!(
+            c,
+            '\u{00AD}'
+                | '\u{034F}'
+                | '\u{061C}'
+                | '\u{115F}'
+                | '\u{1160}'
+                | '\u{17B4}'
+                | '\u{17B5}'
+                | '\u{180B}'..='\u{180F}'
+                | '\u{200B}'..='\u{200F}'
+                | '\u{2028}'..='\u{202E}'
+                | '\u{2060}'..='\u{206F}'
+                | '\u{2800}'
+                | '\u{3164}'
+                | '\u{FE00}'..='\u{FE0F}'
+                | '\u{FEFF}'
+                | '\u{FFA0}'
+                | '\u{FFF0}'..='\u{FFFB}'
+                | '\u{13430}'..='\u{1343F}'
+                | '\u{16FE4}'
+                | '\u{1BCA0}'..='\u{1BCA3}'
+                | '\u{1D159}'
+                | '\u{1D173}'..='\u{1D17A}'
+                | '\u{E0000}'..='\u{E0FFF}'
+        )
+}
+
+/// A picked or requested value as a refusal message may show it: at most 64 characters without
+/// [`invisible_char`]s, or a placeholder when [`credential_like`] flags the value either as given
+/// or with those characters stripped (a control, zero-width or direction character inside a
+/// token would otherwise hide its shape and the stripped token would be printed looking whole),
+/// so no message carries a secret back. A value that lost characters says so, so a stripped
+/// name is not read as the allowed name it now looks like.
+pub(crate) fn shown_value(text: &str) -> String {
+    if credential_like(text) {
+        return "<value hidden: looks like a credential>".into();
+    }
+    let clean: String = visible_text(text).chars().take(64).collect();
+    if text.chars().any(invisible_char) {
+        format!("{clean} (invisible characters removed)")
+    } else {
+        clean
+    }
 }
 
 /// Whether any string inside `value` (a leaf or an object key) looks like a credential.
@@ -456,8 +530,15 @@ pub(crate) fn holds_credential(value: &Value) -> bool {
 }
 
 /// The settings keys, other than `env` (which has its own per-entry rule), whose value must not
-/// look like a credential: they go to a file that is usually committed.
-const CREDENTIAL_FREE_KEYS: [&str; 4] = ["permissions", "model", "statusLine", "outputStyle"];
+/// look like a credential: they go to a file that is usually committed. `enabledPlugins` is
+/// screened by its keys too, which its own check would accept in a token's shape.
+const CREDENTIAL_FREE_KEYS: [&str; 5] = [
+    "permissions",
+    "model",
+    "statusLine",
+    "outputStyle",
+    "enabledPlugins",
+];
 
 /// Validates a desired `env` value: an object of at most [`ENV_ENTRIES_MAX`] plain entries.
 fn check_env(value: &Value) -> Result<()> {
@@ -469,30 +550,165 @@ fn check_env(value: &Value) -> Result<()> {
     }
     for (name, v) in map {
         if let Some(why) = env_entry_refusal(name, v) {
-            let shown: String = name.chars().filter(|c| !c.is_control()).take(64).collect();
-            return Err(format!("env entry {shown} refused: {why}"));
+            return Err(format!("env entry {} refused: {why}", shown_value(name)));
         }
     }
     Ok(())
 }
 
-/// Validates a desired `worktree` value (card C-70): exactly `{"baseRef": "head"}` or
-/// `{"baseRef": "fresh"}`, the two values Claude Code documents (`fresh` the remote default
-/// branch, `head` the local HEAD; https://code.claude.com/docs/en/worktrees, as read in
-/// `docs/worktree-strategy-2026-11-10.md` row H1). Other worktree keys are left to the user.
+/// Validates a desired `worktree` value: a non-empty object of `baseRef` (card C-70: `head` or
+/// `fresh`, the two values Claude Code documents; https://code.claude.com/docs/en/worktrees, as
+/// read in `docs/worktree-strategy-2026-11-10.md` row H1) and the large-codebase keys
+/// `sparsePaths` and `symlinkDirectories` (SPEC-20261122-project-scale-settings: arrays of
+/// repository-relative folder paths). Other worktree keys (`bgIsolation`, `location`) are left
+/// to the user.
 fn check_worktree(value: &Value) -> Result<()> {
-    let ok = value.as_object().is_some_and(|m| {
-        m.len() == 1
-            && matches!(
-                m.get("baseRef").and_then(Value::as_str),
-                Some("head" | "fresh")
-            )
-    });
-    if ok {
-        Ok(())
-    } else {
-        Err("worktree must be {\"baseRef\": \"head\"} or {\"baseRef\": \"fresh\"}".into())
+    let refuse = || -> Result<()> {
+        Err("worktree must be a non-empty object of baseRef (\"head\" or \"fresh\"), sparsePaths and symlinkDirectories".into())
+    };
+    let Some(map) = value.as_object().filter(|m| !m.is_empty()) else {
+        return refuse();
+    };
+    for (key, v) in map {
+        match key.as_str() {
+            "baseRef" if matches!(v.as_str(), Some("head" | "fresh")) => {}
+            "sparsePaths" | "symlinkDirectories" => {
+                check_scale_list(&format!("worktree.{key}"), v, |s| {
+                    relative_path_refusal(s, false)
+                })?
+            }
+            _ => return refuse(),
+        }
     }
+    Ok(())
+}
+
+/// Bounds for the large-codebase keys (SPEC-20261122-project-scale-settings REQ-9).
+pub const SCALE_LIST_MAX: usize = 256;
+pub const SCALE_VALUE_CHARS_MAX: usize = 256;
+pub const ENABLED_PLUGINS_MAX: usize = 64;
+
+/// One non-empty line within [`SCALE_VALUE_CHARS_MAX`] that does not look like a credential.
+fn scale_value_ok(s: &str) -> bool {
+    !s.trim().is_empty()
+        && s.chars().count() <= SCALE_VALUE_CHARS_MAX
+        && !s.chars().any(char::is_control)
+        && !credential_like(s)
+}
+
+/// Why a path is not a repository-relative path, or `None`: no root, no drive, no home, no
+/// network share, and `..` segments only at its start when `leading_up` allows them (REQ-10).
+fn relative_path_refusal(s: &str, leading_up: bool) -> Option<&'static str> {
+    if !scale_value_ok(s) {
+        return Some("not a one-line value within the size limit, or it looks like a credential");
+    }
+    let b = s.as_bytes();
+    if s.starts_with(['/', '\\', '~'])
+        || (b.len() >= 2 && b[1] == b':' && b[0].is_ascii_alphabetic())
+    {
+        return Some("not a relative path");
+    }
+    let mut named = false;
+    for part in s.split(['/', '\\']) {
+        if part == ".." {
+            if !leading_up || named {
+                return Some("a `..` leaves the repository");
+            }
+        } else if !part.is_empty() && part != "." {
+            named = true;
+        }
+    }
+    None
+}
+
+/// An array of at most [`SCALE_LIST_MAX`] strings, each passing `refusal`.
+fn check_scale_list(
+    name: &str,
+    value: &Value,
+    refusal: impl Fn(&str) -> Option<&'static str>,
+) -> Result<()> {
+    let Value::Array(items) = value else {
+        return Err(format!("{name} must be an array of strings"));
+    };
+    if items.len() > SCALE_LIST_MAX {
+        return Err(format!("{name} must have at most {SCALE_LIST_MAX} entries"));
+    }
+    for item in items {
+        let Some(s) = item.as_str() else {
+            return Err(format!("{name} entries must be strings"));
+        };
+        if let Some(why) = refusal(s) {
+            return Err(format!("{name} entry refused: {why}"));
+        }
+    }
+    Ok(())
+}
+
+/// `claudeMdExcludes`: glob patterns Claude Code matches against absolute paths; no `..`.
+fn check_claude_md_excludes(value: &Value) -> Result<()> {
+    check_scale_list("claudeMdExcludes", value, |s| {
+        if !scale_value_ok(s) {
+            Some("not a one-line value within the size limit, or it looks like a credential")
+        } else if s.split(['/', '\\']).any(|p| p == "..") {
+            Some("a `..` leaves the repository")
+        } else {
+            None
+        }
+    })
+}
+
+/// `enabledPlugins`: at most [`ENABLED_PLUGINS_MAX`] `name@marketplace` keys, each turned on.
+fn check_enabled_plugins(value: &Value) -> Result<()> {
+    let Value::Object(map) = value else {
+        return Err("enabledPlugins must be an object of name@marketplace keys".into());
+    };
+    if map.len() > ENABLED_PLUGINS_MAX {
+        return Err(format!(
+            "enabledPlugins must have at most {ENABLED_PLUGINS_MAX} entries"
+        ));
+    }
+    let part_ok = |p: &str| {
+        !p.is_empty()
+            && p.len() <= 128
+            && p.chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+    };
+    for (key, v) in map {
+        let named = key
+            .split_once('@')
+            .is_some_and(|(name, market)| part_ok(name) && part_ok(market));
+        if !named || v != &Value::Bool(true) {
+            return Err("enabledPlugins entries must be name@marketplace keys set to true".into());
+        }
+    }
+    Ok(())
+}
+
+/// REQ-10: every `permissions.additionalDirectories` entry, read from PROJECT, stays inside the
+/// repository that holds PROJECT (the nearest folder at or above it with a `.git` entry);
+/// without one, no entry may go up.
+fn check_additional_directories_inside(project: &Path, desired: &Map<String, Value>) -> Result<()> {
+    let Some(dirs) = desired
+        .get("permissions")
+        .and_then(|p| p.get("additionalDirectories"))
+        .and_then(Value::as_array)
+    else {
+        return Ok(());
+    };
+    let abs = fs::canonicalize(project).unwrap_or_else(|_| project.to_path_buf());
+    let depth = abs
+        .ancestors()
+        .position(|a| fs::symlink_metadata(a.join(".git")).is_ok())
+        .unwrap_or(0);
+    for dir in dirs.iter().filter_map(Value::as_str) {
+        let ups = dir.split(['/', '\\']).filter(|p| *p == "..").count();
+        if ups > depth {
+            return Err(
+                "permissions.additionalDirectories entry refused: it leaves the repository".into(),
+            );
+        }
+    }
+    Ok(())
 }
 
 /// Validates a desired `model` value: one non-empty line of at most [`MODEL_CHARS_MAX`] characters.
@@ -519,11 +735,7 @@ fn refuse_unlisted<'a>(keys: impl Iterator<Item = &'a str>, allowed: &[&str]) ->
     }
     refused.sort_unstable();
     refused.dedup();
-    let shown: Vec<String> = refused
-        .iter()
-        .take(8)
-        .map(|k| k.chars().filter(|c| !c.is_control()).take(64).collect())
-        .collect();
+    let shown: Vec<String> = refused.iter().take(8).map(|k| shown_value(k)).collect();
     Err(format!(
         "unmanaged claude settings key refused: {}{}; allowed: {}",
         shown.join(", "),
@@ -551,6 +763,7 @@ pub fn user_settings_desired_in(
     scope: SettingsScope,
 ) -> Result<Map<String, Value>> {
     refuse_unlisted(desired.keys().map(String::as_str), USER_SETTINGS)?;
+    check_additional_directories_inside(project, desired)?;
     let mut out = desired.clone();
     if scope == SettingsScope::Project {
         if let Some(hooks) = owned_settings(project)?.get("hooks") {
@@ -652,9 +865,10 @@ const PERMISSION_RULES_MAX: usize = 256;
 const PERMISSION_RULE_CHARS_MAX: usize = 256;
 
 /// Validates a desired `permissions` value: an object with only `allow`, `deny`, `ask`
-/// (arrays of non-empty one-line rules) and `defaultMode` (a narrowing mode). Any other
-/// sub-key (`additionalDirectories`, `disableBypassPermissionsMode`, ...) is undecided and
-/// refused.
+/// (arrays of non-empty one-line rules), `defaultMode` (a narrowing mode) and
+/// `additionalDirectories` (relative paths, SPEC-20261122-project-scale-settings; the file
+/// access applies only after the user trusts the folder). Any other sub-key
+/// (`disableBypassPermissionsMode`, ...) is undecided and refused.
 pub(crate) fn check_permissions(value: &Value) -> Result<()> {
     let Value::Object(map) = value else {
         return Err("permissions must be an object".into());
@@ -691,7 +905,17 @@ pub(crate) fn check_permissions(value: &Value) -> Result<()> {
                     );
                 }
             }
-            _ => return Err(format!("unknown permissions key {key} refused")),
+            "additionalDirectories" => {
+                check_scale_list("permissions.additionalDirectories", v, |s| {
+                    relative_path_refusal(s, true)
+                })?
+            }
+            _ => {
+                return Err(format!(
+                    "unknown permissions key {} refused",
+                    shown_value(key)
+                ))
+            }
         }
     }
     Ok(())
@@ -734,6 +958,12 @@ pub fn plan_settings(
     }
     if let Some(w) = desired.get("worktree") {
         check_worktree(w)?;
+    }
+    if let Some(c) = desired.get("claudeMdExcludes") {
+        check_claude_md_excludes(c)?;
+    }
+    if let Some(p) = desired.get("enabledPlugins") {
+        check_enabled_plugins(p)?;
     }
     let mut keys: Vec<&String> = baseline.keys().chain(desired.keys()).collect();
     keys.sort();
@@ -991,6 +1221,9 @@ fn settings_state_with(
     if hooks_on_disk && !current.contains_key("hooks") {
         baseline.remove("hooks");
     }
+    // REQ-10: the plan itself refuses an additional directory that leaves the repository,
+    // whichever caller built the desired map.
+    check_additional_directories_inside(&root, desired)?;
     let (candidate, conflicts) = plan_settings(&baseline, &current, desired)?;
     let after = candidate.as_ref().filter(|c| **c != current).map(|c| {
         let mut b = serde_json::to_vec_pretty(c).expect("JSON object");
@@ -1432,7 +1665,7 @@ fn keep_out_of_git(backups: &Path) -> Result<()> {
         .open(&ignore)
         .and_then(|mut f| {
             use std::io::Write;
-            f.write_all(b"# moai-cli settings backups (#2383): never committed\n*\n")
+            f.write_all(b"# moai settings backups (#2383): never committed\n*\n")
         });
     match made {
         Ok(()) => Ok(()),
@@ -1784,9 +2017,10 @@ mod tests {
     fn claude_settings_refuses_unmanaged_keys_and_keeps_order() {
         for (b, d) in [
             // `permissions` (#2244), `hooks` (#2238), `env` and `model` (#2936 R8) are managed;
-            // `enabledPlugins` stays unmanaged.
-            (json!({}), json!({"enabledPlugins": {}})),
-            (json!({"enabledPlugins": {}}), json!({})),
+            // `enabledPlugins` is managed since SPEC-20261122-project-scale-settings;
+            // `cleanupPeriodDays` stays unmanaged.
+            (json!({}), json!({"cleanupPeriodDays": 30})),
+            (json!({"cleanupPeriodDays": 30}), json!({})),
         ] {
             let err = plan_settings(&obj(b), &Map::new(), &obj(d)).unwrap_err();
             assert_eq!(
@@ -1866,6 +2100,20 @@ mod tests {
         ] {
             assert!(plan_settings(&Map::new(), &Map::new(), &obj(d)).is_ok());
         }
+    }
+
+    #[test]
+    fn an_unknown_permissions_key_is_shown_without_a_split_token() {
+        // an obviously fake token, split by a zero-width space; the permissions check itself
+        // prints the key the way every refusal does, whoever calls it.
+        let token = format!("ghp_{}", "x".repeat(36));
+        let split = format!("ghp_{}\u{200B}{}", "x".repeat(18), "x".repeat(18));
+        let mut map = Map::new();
+        map.insert(split, json!(["Read"]));
+        let err = check_permissions(&Value::Object(map)).unwrap_err();
+        assert!(err.contains("unknown permissions key"), "{err}");
+        assert!(err.contains("looks like a credential"), "{err}");
+        assert!(!err.contains(&token) && !err.contains("ghp_"), "{err:?}");
     }
 
     // SETTINGS-PRESERVE: every case runs in a temporary project; no real settings are touched.

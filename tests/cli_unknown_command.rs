@@ -69,7 +69,7 @@ fn an_unknown_first_word_prints_the_usage_envelope_and_keeps_clap_stderr() {
 fn other_command_line_errors_keep_their_output() {
     for args in [
         vec!["help", "nosuch"],
-        vec!["-l", "nosuch"],
+        vec!["-z", "nosuch"],
         vec!["--bogus"],
         vec!["no-such-command", "--hook"],
     ] {
@@ -89,7 +89,7 @@ fn other_command_line_errors_keep_their_output() {
 }
 
 /// #2935 L3 (user instruction 2026-11-14T12:05Z): `moai init` is gone — a project starts by
-/// making a folder and running `moai cc`, `moai glm` or `moai codex` in it. `init` is still not
+/// making a folder and running `moai cc` or `moai glm` in it. `init` is still not
 /// a command (exit 2, `usage` envelope), but instead of clap's "unrecognized" line it names the
 /// new flow. Only the exact word `init`: a near miss keeps the general unknown-command output.
 #[test]
@@ -104,7 +104,7 @@ fn init_names_the_launcher_flow_instead_of_an_unknown_command() {
             "operation": "cli",
             "ok": false,
             "error": {"kind": "usage",
-                "message": "moai init was removed; in a project folder run moai cc, moai glm or moai codex",
+                "message": "moai init was removed; in a project folder run moai cc or moai glm",
                 "retryable": false}
         })
     );
@@ -113,14 +113,13 @@ fn init_names_the_launcher_flow_instead_of_an_unknown_command() {
         "moai init",
         "moai cc",
         "moai glm",
-        "moai codex",
-        "-l",
-        "-a",
+        "--name",
         "/moai project",
     ] {
         assert!(stderr.contains(p), "stderr must name `{p}`: {stderr}");
     }
     assert!(!stderr.contains("unrecognized subcommand"), "{stderr}");
+    assert!(!stderr.contains("codex"), "{stderr}");
     // Arguments after it change nothing, and the near miss stays a plain unknown command.
     let with_args = run(&["init", "--force", "x"]);
     assert_eq!(with_args.status.code(), Some(2));

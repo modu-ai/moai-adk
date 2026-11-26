@@ -1,5 +1,5 @@
 //! #2936 R3 (live run 6879901297): a profile that is still the placeholder a first launch
-//! writes must not generate a managed AGENTS.md section. `agents-plan`, `agents-apply`,
+//! writes must not generate a managed CLAUDE.md block. `agents-plan`, `agents-apply`,
 //! `generation-plan` and `generation-apply` refuse it and name `/moai project`, and
 //! `project-update-plan` shows its generation step as waiting for the interview instead of a
 //! step whose apply would refuse. Temporary HOME and project only.
@@ -110,8 +110,8 @@ impl Fx {
         self.set_profile(&profile);
     }
 
-    fn agents_md(&self) -> Option<Vec<u8>> {
-        fs::read(self.root.join("AGENTS.md")).ok()
+    fn claude_md(&self) -> Option<Vec<u8>> {
+        fs::read(self.root.join("CLAUDE.md")).ok()
     }
 }
 
@@ -119,7 +119,7 @@ impl Fx {
 fn placeholder() -> Value {
     json!({
         "schema_version": 2, "project_id": "demo",
-        "purpose": "Created by moai-cli on first launch; refine it in the project interview",
+        "purpose": "Created by moai on first launch; refine it in the project interview",
         "tools": ["unspecified"], "development_methods": ["unspecified"], "hosts": ["claude"],
         "decisions": [
             {"id": "auto-init-tools", "topic": "tools", "value": "unspecified", "source": "default", "scope": "project"},
@@ -167,8 +167,8 @@ fn a_placeholder_profile_blocks_agents_and_generation_plan_and_apply() {
     let agents_plan = fx.call(&["agents-plan", fx.p()], &agents());
     let generation_plan = fx.call(&["generation-plan", fx.p()], &generation());
     fx.set_profile(&placeholder());
-    let before = fx.agents_md();
-    assert!(before.is_some(), "the interviewed run wrote AGENTS.md");
+    let before = fx.claude_md();
+    assert!(before.is_some(), "the interviewed run wrote CLAUDE.md");
 
     assert_blocked(&fx.run(&["agents-plan", fx.p()], &agents()), "agents-plan");
     assert_blocked(
@@ -205,7 +205,7 @@ fn a_placeholder_profile_blocks_agents_and_generation_plan_and_apply() {
         ),
         "generation-apply",
     );
-    assert_eq!(fx.agents_md(), before, "AGENTS.md changed");
+    assert_eq!(fx.claude_md(), before, "CLAUDE.md changed");
 }
 
 /// N/N+1: one answered axis makes the profile an interviewed one. Tools or methods that are

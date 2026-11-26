@@ -112,6 +112,25 @@ fn each_tier_reads_the_verdicts_it_needs() {
 }
 
 #[test]
+fn a_rename_of_a_tier_2_path_is_judged_by_its_old_name() {
+    // The collector folds previous_filename into files (the recorded-transport fixture in
+    // src/audit_gate.rs proves the folding); this pins the judgment the CLI then makes:
+    // a tier 2 rule file renamed under docs/ stays tier 2 whatever the body declares.
+    // Built at run time so the CI scope's docs-path scan does not read the fixture's new
+    // name as a reference to a repository document (the file does not exist).
+    let new_name = format!("{}/local-check.md", "docs");
+    let files = vec![new_name, "tools/local_check.sh".to_string()];
+    let r = decide(&input(
+        0,
+        &files,
+        &["agent-1"],
+        vec![verdict(5, H, "PASS", "agent-7")],
+    ));
+    assert_eq!(r["tier"], json!(2), "{r}");
+    assert_eq!(r["state"], "pass", "{r}");
+}
+
+#[test]
 fn a_comment_by_a_non_member_is_not_read() {
     let mut forged = verdict(5, H, "PASS", "agent-7");
     forged["author_association"] = json!("NONE");
@@ -189,6 +208,28 @@ fn the_result_names_the_comment_and_the_workflow_posts_the_status() {
     ] {
         assert!(yaml.contains(pin), "audit-gate.yml lacks {pin:?}");
     }
+}
+
+/// The interpreter the step would reach when the test's own stand-in is not first on PATH: the
+/// first `python3` along the caller's PATH, asked for its own executable so that a version
+/// manager's shim (which reads HOME) is not needed once the step's HOME is the test's.
+fn real_python3() -> std::path::PathBuf {
+    let first = std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
+        .map(|d| d.join("python3"))
+        .find(|p| p.is_file())
+        .expect("a python3 on PATH: the step parses the gate's envelope with it");
+    let out = std::process::Command::new(&first)
+        .args(["-c", "import sys; print(sys.executable)"])
+        // This question runs in the test's own HOME too: no bytecode cache there either.
+        .env("PYTHONDONTWRITEBYTECODE", "1")
+        .output()
+        .expect("ask python3 for its executable");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    std::path::PathBuf::from(String::from_utf8_lossy(&out.stdout).trim())
 }
 
 /// Card C-95 audit B2 (tier 2): the status-posting step is executed, not grepped. The literal
@@ -270,6 +311,21 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
         let tmpdir = tmp.path().join("tmpdir");
         fs::create_dir_all(&runner_temp).unwrap();
         fs::create_dir_all(&tmpdir).unwrap();
+        // SPEC-20261124-cleanup-leftovers REQ-16: the step's shell runs in a HOME of its own that
+        // must stay empty, whichever `python3` is first on PATH. The Xcode `python3` of macOS
+        // keeps a bytecode cache under `$HOME/Library/Caches` unless it is told not to; the
+        // stand-in does the same on every machine, then runs the real `python3` that parses the
+        // envelope.
+        let step_home = tmp.path().join("home");
+        fs::create_dir_all(&step_home).unwrap();
+        fs::write(
+            bin.join("python3"),
+            format!(
+                "#!/bin/sh\nif [ -z \"$PYTHONDONTWRITEBYTECODE\" ]; then mkdir -p \"$HOME/Library/Caches/com.apple.python\" && : > \"$HOME/Library/Caches/com.apple.python/step.pyc\"; fi\nexec '{}' \"$@\"\n",
+                real_python3().display()
+            ),
+        )
+        .unwrap();
         fs::write(
             bin.join("gh"),
             format!(
@@ -291,7 +347,7 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
             ),
         )
         .unwrap();
-        for exe in [bin.join("gh"), target.join("moai")] {
+        for exe in [bin.join("gh"), bin.join("python3"), target.join("moai")] {
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
@@ -321,6 +377,10 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
             .env("REPO", "o/r")
             .env("RUNNER_TEMP", &runner_temp)
             .env("TMPDIR", &tmpdir)
+            .env("HOME", &step_home)
+            // Whichever `python3` the step reaches keeps its bytecode cache out of the step's HOME
+            // (the Xcode one of macOS would write under `$HOME/Library/Caches`).
+            .env("PYTHONDONTWRITEBYTECODE", "1")
             .current_dir(tmp.path())
             .output()
             .expect("run the step block");
@@ -330,8 +390,8 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
             "{name}: the envelope was not made in RUNNER_TEMP: {at_post:?}"
         );
         // Listed with `ls -A`, as the stub gh lists RUNNER_TEMP: this test walks only its own
-        // two temporary folders, and the repository-scan table is for tests that walk the tree.
-        for dir in [&runner_temp, &tmpdir] {
+        // temporary folders, and the repository-scan table is for tests that walk the tree.
+        for dir in [&runner_temp, &tmpdir, &step_home] {
             let listing = std::process::Command::new("ls")
                 .arg("-A")
                 .arg(dir)

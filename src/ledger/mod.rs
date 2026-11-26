@@ -13,16 +13,22 @@
 //!
 //! Nothing here calls a model, the network or `git`.
 
+pub mod adopt;
+pub mod cleanup_outbox;
+pub mod close;
 pub mod command;
 pub mod folders;
 pub mod import;
 pub mod location;
 pub mod migrate;
+pub mod offer;
 pub mod open;
 pub mod recover;
 pub mod reservation;
 pub mod schema;
+pub mod scope_return;
 pub mod summary;
+pub mod sweep;
 pub mod workflow;
 
 pub use location::ledger_path;

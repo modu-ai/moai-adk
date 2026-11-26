@@ -9,6 +9,8 @@ parent: SPEC-20261119-lane-screen-guard
 
 # A scan lists every open terminal's state and the UTC reset time of each lane stopped by a usage limit
 
+> 2026-11-23 덧붙임: 아래의 `usage-limits.json`(HOME 의 상태 폴더)은 SPEC-20261122-statusline-limits(REQ-7, D-5)로 상태줄 캐시 폴더의 `usage-<HOME 해시 12자리>.record` 로 옮겨졌어요. 읽는 쪽(`usage_limit::evaluate`)은 같고 자리만 바뀌었어요.
+
 ## Intent
 
 카드 C-120 의 셋째 조각이에요. 2026-11-19 에 레인 여덟 개가 사용 한도로 멈췄는데 사용자가 말해서야 알았고, 화면에 적힌 해제 시각을 한국 시각으로 읽었지만 실제로는 UTC+8 이라 해제 요청이 한 시간 일찍 나갔어요. 이 SPEC 은 `moai lane-screen --scan` 을 만들어요: 열려 있는 터미널을 `orca terminal list --json` 으로 모아 터미널마다 바탕 SPEC(`SPEC-20261119-lane-screen-guard`)의 분류기를 돌려, 상태 표와 한도로 멈춘 레인의 해제 시각(UTC)을 한 번에 보여 줘요.

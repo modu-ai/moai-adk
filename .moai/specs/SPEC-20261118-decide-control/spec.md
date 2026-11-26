@@ -1,12 +1,15 @@
 ---
 id: SPEC-20261118-decide-control
 title: "The decision library is off by default and stops at a daily call limit"
-status: draft
+status: superseded
 revision: 1
 created: 2026-11-18
+approval: {by: user, at: 2026-11-21, basis: "superseded by SPEC-20261120-retire-decide — AskUserQuestion selection: 승인 (Recommended)", digest: "sha256:6d5f560cb946ad38a5440b98d1e7de0ebaaf1b3ba21f777384bba94418325afc"}
 ---
 
 # The decision library is off by default and stops at a daily call limit
+
+> Superseded by SPEC-20261120-retire-decide (2026-11-21): the decision model library was removed.
 
 ## Intent
 

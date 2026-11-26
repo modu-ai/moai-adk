@@ -4,16 +4,19 @@
 //! A card is worked by one holder at a time. [`reserve`] takes a `ready` card, issues the next
 //! generation (`card.generation + 1`), records the holder, the lease and the write scope, and
 //! moves the card `ready -> active`, all in one `BEGIN IMMEDIATE` transaction. The unique index
-//! `reservation_one_active` makes a second holder of the same card impossible, and the scope
-//! check runs in the same transaction against every other card's active reservation. It asks
-//! [`crate::scope::card_overlap`]: [`crate::scope::overlap`] ("could both write this path",
-//! case folded) minus a pair in which one side is exactly a generated shared path (case kept),
-//! which two cards may both list.
+//! `reservation_one_active` makes a second holder of the same card impossible. There is no
+//! file-level write lock between cards (SPEC-20261125-card-no-file-locks): a take or a widening
+//! whose scope overlaps another card's reservation is made, and [`overlaps`] lists the pairs for
+//! the answer. [`overlaps`] asks [`crate::scope::card_overlap`]: [`crate::scope::overlap`]
+//! ("could both write this path", case folded) minus a pair in which one side is exactly a
+//! generated shared path (case kept), which two cards may both list.
 //!
 //! The generation is the fence: [`renew`], [`release`], [`handoff`] and [`fence`] accept only
 //! the current generation, held by the offered holder, with a lease that has not ended (a
-//! release does not need a live lease). A lower generation, another holder, a reservation that
-//! is no longer `held` or an ended lease is rejected with a [`FenceError`], and the rejection is
+//! release and a renew do not need a live lease: the holder of an ended lease that nobody
+//! reclaimed renews it at the same generation). A lower generation, another holder, a
+//! reservation that is no longer `held` or, for [`handoff`] and [`fence`], an ended lease is
+//! rejected with a [`FenceError`], and the rejection is
 //! written to `event` (kind `fence_reject`) in the same transaction that finds it, which then
 //! commits: the record survives the rejection.
 //!
@@ -91,18 +94,15 @@ pub enum ReserveError {
     /// The card is not `ready`.
     CardNotReady {
         state: String,
+        /// Why the card is on hold, as the phrase the refusal ends with, from its latest
+        /// `card.withdraw` or `card.fold` event: `withdrawn: <reason>` or `folded into C-<n>:
+        /// <reason>` (`None` on a plain hold card, or whenever the card's state is not `hold`).
+        withdraw_reason: Option<String>,
     },
     /// The card already has an active reservation (another holder, or this one again).
     AlreadyHeld {
         holder: String,
         generation: i64,
-    },
-    /// A pattern of the scope could be written under a pattern of another card's active
-    /// reservation.
-    ScopeOverlap {
-        other_card: i64,
-        mine: String,
-        theirs: String,
     },
     /// The ledger itself failed (busy, unavailable, constraint ...).
     Ledger(LedgerError),
@@ -116,7 +116,6 @@ impl ReserveError {
             ReserveError::CardNotFound(_) => "card_not_found",
             ReserveError::CardNotReady { .. } => "card_not_ready",
             ReserveError::AlreadyHeld { .. } => "already_held",
-            ReserveError::ScopeOverlap { .. } => "scope_overlap",
             ReserveError::Ledger(e) => e.code(),
         }
     }
@@ -130,21 +129,20 @@ impl std::fmt::Display for ReserveError {
                 "invalid reservation input: the write scope is empty; name at least one path",
             ),
             ReserveError::CardNotFound(id) => write!(f, "card not found: C-{id}"),
-            ReserveError::CardNotReady { state } => write!(
+            ReserveError::CardNotReady {
+                state,
+                withdraw_reason: Some(reason),
+            } => write!(
+                f,
+                "reservation conflict in card: the card is `{state}` and {reason}"
+            ),
+            ReserveError::CardNotReady { state, .. } => write!(
                 f,
                 "reservation conflict in card: the card is `{state}`, only a `ready` card can be reserved"
             ),
             ReserveError::AlreadyHeld { holder, generation } => write!(
                 f,
                 "reservation conflict in card: already held by {holder:?} at generation {generation}"
-            ),
-            ReserveError::ScopeOverlap {
-                other_card,
-                mine,
-                theirs,
-            } => write!(
-                f,
-                "reservation conflict in write scope: {mine:?} could be written under {theirs:?} reserved for card C-{other_card}"
             ),
             ReserveError::Ledger(e) => e.fmt(f),
         }
@@ -434,6 +432,65 @@ pub fn current(conn: &Connection, card_id: i64) -> Result<Option<Reservation>, L
     )
 }
 
+/// The heartbeat of the reservation of `holder` on a card (SPEC-20261119-live-lease-takeover
+/// REQ-1): the later of the reservation's `updated_at` (a take, a renew, a widening) and the `at`
+/// of the latest event of the card that `holder` wrote (a note, a criterion, a rejected write).
+/// An event written by another session is no sign that the holder works. Read-only.
+pub fn heartbeat_at(
+    conn: &Connection,
+    card_id: i64,
+    holder: &str,
+    updated_at: i64,
+) -> Result<i64, LedgerError> {
+    let latest: Option<i64> = conn.query_row(
+        "SELECT MAX(at) FROM event WHERE card_id = ?1 AND actor = ?2",
+        params![card_id, holder],
+        |r| r.get(0),
+    )?;
+    Ok(latest.map_or(updated_at, |at| at.max(updated_at)))
+}
+
+/// The worktrees that active reservations name (`held`, `expired_candidate` or
+/// `held_for_review`), each with its card, ordered by card. A `held` reservation whose lease has
+/// ended still names its worktree here: a lane's lease can end during a long run, and the
+/// cleanup that reads this (SPEC-20261123-worktree-slots REQ-8) keeps the worktree rather than
+/// guess. Read-only: it works on a [`ReadLedger::conn`] too.
+pub fn active_worktrees(conn: &Connection) -> Result<Vec<(i64, String)>, LedgerError> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT card_id, worktree FROM reservation \
+         WHERE status IN {ACTIVE_STATUSES} AND worktree IS NOT NULL ORDER BY card_id"
+    ))?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))?
+        .collect::<Result<_, _>>()?;
+    Ok(rows)
+}
+
+/// Every worktree a reservation of the card named, in any generation and status, each once and
+/// sorted. A released reservation still names the worktree the card was worked in, which is what
+/// the cleanup after a landing needs (SPEC-20261123-worktree-slots REQ-12). Read-only.
+pub fn worktrees_of_card(conn: &Connection, card_id: i64) -> Result<Vec<String>, LedgerError> {
+    let mut stmt = conn.prepare(
+        "SELECT DISTINCT worktree FROM reservation \
+         WHERE card_id = ?1 AND worktree IS NOT NULL ORDER BY worktree",
+    )?;
+    let rows = stmt
+        .query_map([card_id], |r| r.get::<_, String>(0))?
+        .collect::<Result<_, _>>()?;
+    Ok(rows)
+}
+
+/// The cards that ever held a reservation on the branch `branch` (a short name, as `card take
+/// --branch` stored it), by card number. Read-only.
+pub fn cards_of_branch(conn: &Connection, branch: &str) -> Result<Vec<i64>, LedgerError> {
+    let mut stmt = conn
+        .prepare("SELECT DISTINCT card_id FROM reservation WHERE branch = ?1 ORDER BY card_id")?;
+    let rows = stmt
+        .query_map([branch], |r| r.get::<_, i64>(0))?
+        .collect::<Result<_, _>>()?;
+    Ok(rows)
+}
+
 /// Every reservation of the card, oldest generation first. Read-only.
 pub fn history(conn: &Connection, card_id: i64) -> Result<Vec<Reservation>, LedgerError> {
     let mut stmt =
@@ -467,31 +524,87 @@ pub(super) fn add_event(
     Ok(())
 }
 
-/// The first pair of a pattern in `mine` and a pattern of another card's active reservation
-/// that [`crate::scope::card_overlap`] says could be written under both, in card and pattern
-/// order: [`crate::scope::overlap`] without the pairs that name a generated shared file (C-118).
-pub(super) fn find_overlap(
+/// One pair of a pattern of a take or a widening and a pattern of another card's active
+/// reservation that could be written under both, and who holds that other reservation.
+/// Informational: nothing refuses on it (SPEC-20261125-card-no-file-locks).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Overlap {
+    pub other_card: i64,
+    pub mine: String,
+    pub theirs: String,
+    pub holder: String,
+    pub lease_until: i64,
+    pub status: String,
+}
+
+/// One pattern of another card's reservation: card, pattern, holder, lease end and status.
+type OtherPattern = (i64, String, String, i64, String);
+
+/// The active reservations of every card but `card_id` that still keep other cards off their
+/// paths at `now` ([`blocks_new_claims`]): card, pattern, holder, lease end and status of each
+/// pattern, in card and pattern order. A `held` reservation whose lease has ended is not listed.
+fn other_patterns(
     conn: &Connection,
+    now: i64,
     card_id: i64,
-    mine: &[String],
-) -> Result<Option<(i64, String, String)>, LedgerError> {
+) -> Result<Vec<OtherPattern>, LedgerError> {
     let mut stmt = conn.prepare(&format!(
-        "SELECT r.card_id, s.pattern FROM reservation r \
+        "SELECT r.card_id, s.pattern, r.holder, r.lease_until, r.status FROM reservation r \
          JOIN reservation_scope s ON s.reservation_id = r.reservation_id \
          WHERE r.status IN {ACTIVE_STATUSES} AND r.card_id <> ?1 \
          ORDER BY r.card_id, s.pattern"
     ))?;
-    let theirs: Vec<(i64, String)> = stmt
-        .query_map([card_id], |r| Ok((r.get(0)?, r.get(1)?)))?
+    let rows: Vec<OtherPattern> = stmt
+        .query_map([card_id], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+        })?
         .collect::<Result<_, _>>()?;
-    for (other, pattern) in theirs {
+    Ok(rows
+        .into_iter()
+        .filter(|(_, _, _, lease_until, status)| blocks_new_claims(status, *lease_until, now))
+        .collect())
+}
+
+/// Every pair of a pattern in `mine` and a pattern of another card's active reservation that
+/// [`crate::scope::card_overlap`] says could be written under both, in card and pattern order:
+/// [`crate::scope::overlap`] without the pairs that name a generated shared file (C-118).
+pub fn overlaps(
+    conn: &Connection,
+    now: i64,
+    card_id: i64,
+    mine: &[String],
+) -> Result<Vec<Overlap>, LedgerError> {
+    let mut found = Vec::new();
+    for (other_card, theirs, holder, lease_until, status) in other_patterns(conn, now, card_id)? {
         for m in mine {
-            if crate::scope::card_overlap(m, &pattern) {
-                return Ok(Some((other, m.clone(), pattern)));
+            if crate::scope::card_overlap(m, &theirs) {
+                found.push(Overlap {
+                    other_card,
+                    mine: m.clone(),
+                    theirs: theirs.clone(),
+                    holder: holder.clone(),
+                    lease_until,
+                    status: status.clone(),
+                });
             }
         }
     }
-    Ok(None)
+    Ok(found)
+}
+
+/// The patterns of other cards' active reservations that cover `path` ([`super::workflow::covers`]),
+/// as (card, pattern, holder): what `card check` reports next to an allowed path.
+pub fn overlaps_on_path(
+    conn: &Connection,
+    now: i64,
+    card_id: i64,
+    path: &str,
+) -> Result<Vec<(i64, String, String)>, LedgerError> {
+    Ok(other_patterns(conn, now, card_id)?
+        .into_iter()
+        .filter(|(_, pattern, _, _, _)| super::workflow::covers(pattern, path))
+        .map(|(other, pattern, holder, _, _)| (other, pattern, holder))
+        .collect())
 }
 
 /// Takes a `ready` card: next generation, a `held` reservation for `holder` with a lease of
@@ -500,8 +613,8 @@ pub(super) fn find_overlap(
 ///
 /// Rejected, with nothing written: bad input, an empty scope, an unknown card, a card that is
 /// not `ready`, a card that already has an active reservation (checked first, so the losers of
-/// a race see [`ReserveError::AlreadyHeld`]) and a scope that overlaps another card's active
-/// reservation. The generation a rolled-back call would have used is issued again.
+/// a race see [`ReserveError::AlreadyHeld`]). A scope that overlaps another card's active
+/// reservation is no reason to refuse: [`overlaps`] lists it. The generation a rolled-back call would have used is issued again.
 pub fn reserve(
     w: &mut WriteLedger,
     card_id: i64,
@@ -524,6 +637,40 @@ pub fn reserve(
         lease_secs,
         worktree,
         branch,
+        None,
+    )
+}
+
+/// [`reserve`] that first sweeps the card when it is `active` and its `held` lease ended at least
+/// `grace_secs` ago (SPEC-20261124-ended-lease-sweep REQ-12): the sweep and the take are one
+/// transaction. A card whose lease is inside the grace period, or that is not `active`, is judged
+/// as [`reserve`] judges it. A take that the scope check refuses after a sweep leaves the card
+/// swept: it is `ready`, which is what it is.
+#[allow(clippy::too_many_arguments)]
+pub fn reserve_sweeping(
+    w: &mut WriteLedger,
+    card_id: i64,
+    holder: &str,
+    write_scope: &[String],
+    lease_secs: i64,
+    worktree: Option<&str>,
+    branch: Option<&str>,
+    grace_secs: i64,
+) -> Result<Reservation, ReserveError> {
+    check_holder(holder).map_err(ReserveError::InvalidInput)?;
+    check_lease(lease_secs).map_err(ReserveError::InvalidInput)?;
+    check_optional("worktree", worktree).map_err(ReserveError::InvalidInput)?;
+    check_optional("branch", branch).map_err(ReserveError::InvalidInput)?;
+    let scope = check_scope(write_scope)?;
+    reserve_in_tx(
+        w,
+        card_id,
+        holder,
+        Some(scope),
+        lease_secs,
+        worktree,
+        branch,
+        Some(grace_secs),
     )
 }
 
@@ -544,11 +691,39 @@ pub fn reserve_own_scope(
     check_lease(lease_secs).map_err(ReserveError::InvalidInput)?;
     check_optional("worktree", worktree).map_err(ReserveError::InvalidInput)?;
     check_optional("branch", branch).map_err(ReserveError::InvalidInput)?;
-    reserve_in_tx(w, card_id, holder, None, lease_secs, worktree, branch)
+    reserve_in_tx(w, card_id, holder, None, lease_secs, worktree, branch, None)
+}
+
+/// [`reserve_own_scope`] that sweeps first, as [`reserve_sweeping`] does.
+pub fn reserve_own_scope_sweeping(
+    w: &mut WriteLedger,
+    card_id: i64,
+    holder: &str,
+    lease_secs: i64,
+    worktree: Option<&str>,
+    branch: Option<&str>,
+    grace_secs: i64,
+) -> Result<Reservation, ReserveError> {
+    check_holder(holder).map_err(ReserveError::InvalidInput)?;
+    check_lease(lease_secs).map_err(ReserveError::InvalidInput)?;
+    check_optional("worktree", worktree).map_err(ReserveError::InvalidInput)?;
+    check_optional("branch", branch).map_err(ReserveError::InvalidInput)?;
+    reserve_in_tx(
+        w,
+        card_id,
+        holder,
+        None,
+        lease_secs,
+        worktree,
+        branch,
+        Some(grace_secs),
+    )
 }
 
 /// The transaction of [`reserve`] and [`reserve_own_scope`]: `scope` is the checked scope the
-/// caller gave, or `None` for the card's own, read here.
+/// caller gave, or `None` for the card's own, read here. With `sweep_grace_secs` an `active`
+/// card whose `held` lease ended at least that long ago is swept first, in this transaction.
+#[allow(clippy::too_many_arguments)]
 fn reserve_in_tx(
     w: &mut WriteLedger,
     card_id: i64,
@@ -557,11 +732,24 @@ fn reserve_in_tx(
     lease_secs: i64,
     worktree: Option<&str>,
     branch: Option<&str>,
+    sweep_grace_secs: Option<i64>,
 ) -> Result<Reservation, ReserveError> {
     w.with_write_tx(|tx, now| {
-        let Some((state, generation)) = card_row(tx, card_id)? else {
+        let Some((mut state, generation)) = card_row(tx, card_id)? else {
             return Ok(Err(ReserveError::CardNotFound(card_id)));
         };
+        if let (Some(grace), "active") = (sweep_grace_secs, state.as_str()) {
+            let signed = super::sweep::Signed {
+                by: "take",
+                actor: holder,
+                note_author: holder,
+            };
+            // A card left as it is (inside the grace period, renewed, in another state) falls
+            // through to the refusals below.
+            if super::sweep::sweep_in_tx(tx, now, card_id, None, grace, &signed)?.is_ok() {
+                state = "ready".to_string();
+            }
+        }
         let scope = match scope {
             Some(scope) => scope,
             None => {
@@ -585,13 +773,28 @@ fn reserve_in_tx(
             }));
         }
         if state != "ready" {
-            return Ok(Err(ReserveError::CardNotReady { state }));
-        }
-        if let Some((other_card, mine, theirs)) = find_overlap(tx, card_id, &scope)? {
-            return Ok(Err(ReserveError::ScopeOverlap {
-                other_card,
-                mine,
-                theirs,
+            // The withdrawal reason names the current hold only: a card that left hold again
+            // (or sits in another state) keeps the plain refusal (audit N-2).
+            let withdraw_reason: Option<String> = if state == "hold" {
+                tx.query_row(
+                    // A fold names the card it went into (SPEC-20261124-card-fold-stale).
+                    "SELECT CASE kind \
+                              WHEN 'card.fold' THEN 'folded into ' || json_extract(payload, '$.into') \
+                                   || ': ' || json_extract(payload, '$.reason') \
+                              ELSE 'withdrawn: ' || json_extract(payload, '$.reason') END \
+                     FROM event \
+                     WHERE card_id = ?1 AND kind IN ('card.withdraw', 'card.fold') \
+                     ORDER BY event_id DESC LIMIT 1",
+                    [card_id],
+                    |r| r.get(0),
+                )
+                .optional()?
+            } else {
+                None
+            };
+            return Ok(Err(ReserveError::CardNotReady {
+                state,
+                withdraw_reason,
             }));
         }
         let next = generation + 1;
@@ -648,6 +851,14 @@ fn reserve_in_tx(
 /// report as not live.
 pub fn lease_ended(lease_until: i64, now: i64) -> bool {
     lease_until <= now
+}
+
+/// Whether a reservation keeps other cards off its paths at ledger-clock second `now`: a `held`
+/// reservation whose lease has ended does not (a take or a widening yields its paths; a card in
+/// the `review` state has such a reservation too), and a `held_for_review` one (what `recover`
+/// leaves for a row it could not confirm) or an expired candidate always does.
+pub fn blocks_new_claims(status: &str, lease_until: i64, now: i64) -> bool {
+    status != "held" || !lease_ended(lease_until, now)
 }
 
 /// The shared check of renew, release, handoff and fence: the offered `(holder, generation)`
@@ -747,7 +958,9 @@ pub(super) fn fenced<T>(
 
 /// Extends the lease of the current `held` reservation of `holder` at `generation`: the new
 /// `lease_until` is the DB clock plus `lease_secs`, but never earlier than the lease it
-/// already has. Needs a live lease.
+/// already has. The lease may have ended as long as nobody reclaimed the reservation (the
+/// generation is still the current one and the status `held`): the holder then keeps its card
+/// at the same generation instead of reclaiming it from itself.
 pub fn renew(
     w: &mut WriteLedger,
     card_id: i64,
@@ -763,8 +976,9 @@ pub fn renew(
         card_id,
         holder,
         generation,
-        true,
+        false,
         |tx, now, row| {
+            let was_ended = lease_ended(row.lease_until, now);
             let until = row.lease_until.max(now + lease_secs);
             tx.execute(
             "UPDATE reservation SET lease_until = ?1, updated_at = ?2 WHERE reservation_id = ?3",
@@ -776,10 +990,88 @@ pub fn renew(
                 holder,
                 card_id,
                 "renew",
-                &json!({"generation": generation, "holder": holder, "lease_until": until}),
+                &json!({"generation": generation, "holder": holder, "lease_until": until, "was_ended": was_ended}),
             )?;
             load_reservation(tx, card_id, generation)?
                 .ok_or_else(|| LedgerError::Sql("the renewed reservation cannot be read".into()))
+        },
+    )
+}
+
+/// How long a card in `review` keeps its lease from the moment it is sent there, in seconds: the
+/// longest lease a reservation can have (SPEC-20261125-review-lease-hold REQ-1, D-4).
+pub const REVIEW_HOLD_SECS: i64 = MAX_LEASE_SECS;
+
+/// How long the lease of a card in `review` runs from the moment a verdict is recorded on it, in
+/// seconds (SPEC-20261125-review-lease-hold REQ-2).
+pub const VERDICT_HOLD_SECS: i64 = 14_400;
+
+/// The one place that holds a lease for an audit: when the card is in `review` and its current
+/// reservation is `held`, the lease ends no earlier than `now + secs` (a lease that already ends
+/// later is left as it is). One `renew` event, signed by `actor` and carrying `reason`, records a
+/// lease that moved; the answer is the lease end after the call, or `None` when the card is not
+/// in `review` or holds no `held` reservation (SPEC-20261125-review-lease-hold REQ-1, REQ-2).
+pub fn hold_in_tx(
+    tx: &Connection,
+    now: i64,
+    card_id: i64,
+    secs: i64,
+    actor: &str,
+    reason: &str,
+) -> Result<Option<i64>, LedgerError> {
+    let Some((state, _)) = card_row(tx, card_id)? else {
+        return Ok(None);
+    };
+    if state != "review" {
+        return Ok(None);
+    }
+    let Some(row) = current(tx, card_id)?.filter(|r| r.status == "held") else {
+        return Ok(None);
+    };
+    let until = row.lease_until.max(now + secs);
+    if until != row.lease_until {
+        tx.execute(
+            "UPDATE reservation SET lease_until = ?1, updated_at = ?2 WHERE reservation_id = ?3",
+            params![until, now, row.reservation_id],
+        )?;
+        add_event(
+            tx,
+            now,
+            actor,
+            card_id,
+            "renew",
+            &json!({
+                "generation": row.generation,
+                "holder": row.holder,
+                "lease_until": until,
+                "was_ended": lease_ended(row.lease_until, now),
+                "reason": reason,
+            }),
+        )?;
+    }
+    Ok(Some(until))
+}
+
+/// Extends the lease of a card that was just sent to `review` to a day, at the generation the
+/// sender holds (REQ-1). The answer is the reservation as it is now.
+pub fn hold_for_review(
+    w: &mut WriteLedger,
+    card_id: i64,
+    holder: &str,
+    generation: i64,
+) -> Result<Reservation, FenceError> {
+    check_holder(holder).map_err(FenceError::InvalidInput)?;
+    fenced(
+        w,
+        "review",
+        card_id,
+        holder,
+        generation,
+        true,
+        |tx, now, _row| {
+            hold_in_tx(tx, now, card_id, REVIEW_HOLD_SECS, holder, "review")?;
+            current(tx, card_id)?
+                .ok_or_else(|| LedgerError::Sql("the held reservation cannot be read".into()))
         },
     )
 }
@@ -801,12 +1093,6 @@ pub enum WidenError {
     Narrowing { left_out: Vec<String> },
     /// Every entry of the new list is already in the reservation.
     NothingNew,
-    /// An added pattern could be written under a pattern of another card's active reservation.
-    ScopeOverlap {
-        other_card: i64,
-        mine: String,
-        theirs: String,
-    },
     /// A pattern is malformed or the list is over its limits.
     InvalidInput(String),
 }
@@ -833,15 +1119,6 @@ impl std::fmt::Display for WidenError {
                 "card scope refused: every entry is already in the reservation's scope; there \
                  is nothing to add",
             ),
-            WidenError::ScopeOverlap {
-                other_card,
-                mine,
-                theirs,
-            } => write!(
-                f,
-                "reservation conflict in write scope: {mine:?} could be written under \
-                 {theirs:?} reserved for card C-{other_card}"
-            ),
             WidenError::InvalidInput(why) => write!(f, "invalid reservation input: {why}"),
         }
     }
@@ -851,8 +1128,8 @@ impl std::error::Error for WidenError {}
 
 /// Widens the active reservation of `card_id` inside the caller's write transaction: the new
 /// list (the whole scope the caller wants, so it must keep every pattern the reservation has)
-/// gives the added patterns, which are checked against every other card's active reservation
-/// with [`find_overlap`] and inserted as new `reservation_scope` rows of the same reservation.
+/// gives the added patterns, which are inserted as new `reservation_scope` rows of the same
+/// reservation (an overlap with another card's reservation is no reason to refuse).
 /// Generation, holder, lease, worktree, branch and status stay; rows are never deleted, so a
 /// scope only grows. One `card.scope` event records `by`, `reason`, the generation, the holder
 /// and both scopes. A refusal returns before the first write.
@@ -895,13 +1172,6 @@ pub fn widen_in_tx(
             ))));
         }
         seen.push((key, pattern));
-    }
-    if let Some((other_card, mine, theirs)) = find_overlap(tx, card_id, &added)? {
-        return Ok(Err(WidenError::ScopeOverlap {
-            other_card,
-            mine,
-            theirs,
-        }));
     }
     for pattern in &added {
         tx.execute(
@@ -1091,6 +1361,96 @@ pub struct Reclaimed {
     pub reservation: Reservation,
     /// The card's state, which a reclaim does not change.
     pub card_state: String,
+    /// Whether this reclaim is one of the card's three (SPEC-20261125-review-lease-hold REQ-7:
+    /// the first reclaim after a FAIL verdict is not).
+    pub counted: bool,
+    /// The reclaims the allowance has counted so far, this one included when it counted.
+    pub reclaims_counted: i64,
+    /// What the new reservation was filled with when it came without paths (REQ-5, REQ-6).
+    pub scope_fill: Option<ScopeFill>,
+}
+
+/// The lifetime allowance of reclaims of one card (SPEC-20261119-card-reclaim-guard REQ-5).
+pub const RECLAIM_ALLOWANCE: i64 = 3;
+
+/// A path of the card's own scope that a fill did not reserve, and why.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LeftOutPath {
+    pub path: String,
+    pub reason: String,
+}
+
+/// What a reclaim or a reopen put into a reservation that came back without paths: the paths of
+/// the card's own scope it reserved and the ones it left out
+/// (SPEC-20261125-review-lease-hold REQ-5, REQ-6).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScopeFill {
+    pub filled: Vec<String>,
+    pub left_out: Vec<LeftOutPath>,
+}
+
+/// Fills the reservation `reservation_id` of the card from the card's own scope when it holds no
+/// path, as a take does: a path that overlaps a shared file (`shared`, the profile's list) or a
+/// path another card's live reservation holds is left out and named, the rest is reserved. The
+/// answer is `None` when the reservation already has paths or the card has no scope of its own:
+/// nothing is changed then.
+pub fn fill_empty_scope(
+    tx: &Connection,
+    now: i64,
+    card_id: i64,
+    reservation_id: i64,
+    shared: &[String],
+) -> Result<Option<ScopeFill>, LedgerError> {
+    let held: i64 = tx.query_row(
+        "SELECT COUNT(*) FROM reservation_scope WHERE reservation_id = ?1",
+        [reservation_id],
+        |r| r.get(0),
+    )?;
+    if held > 0 {
+        return Ok(None);
+    }
+    let own_text: String = tx.query_row(
+        "SELECT write_scope FROM card WHERE card_id = ?1",
+        [card_id],
+        |r| r.get(0),
+    )?;
+    // The column is a JSON array (schema CHECK); anything but strings is no scope.
+    let own: Vec<String> = serde_json::from_str(&own_text).unwrap_or_default();
+    if own.is_empty() {
+        return Ok(None);
+    }
+    let mut fill = ScopeFill {
+        filled: Vec::new(),
+        left_out: Vec::new(),
+    };
+    for path in own {
+        if let Some(hit) = shared.iter().find(|s| crate::scope::overlap(&path, s)) {
+            fill.left_out.push(LeftOutPath {
+                reason: format!(
+                    "`{path}` overlaps the shared file `{hit}` (`shared_files` of the project \
+                     profile); write it in short with `card line-lease`"
+                ),
+                path,
+            });
+            continue;
+        }
+        if let Some(other) = overlaps(tx, now, card_id, std::slice::from_ref(&path))?.first() {
+            fill.left_out.push(LeftOutPath {
+                reason: format!(
+                    "C-{} holds `{}` with a live reservation",
+                    other.other_card, other.theirs
+                ),
+                path,
+            });
+            continue;
+        }
+        tx.execute(
+            "INSERT INTO reservation_scope (reservation_id, pattern) VALUES (?1, ?2)",
+            params![reservation_id, path],
+        )?;
+        fill.filled.push(path);
+    }
+    Ok(Some(fill))
 }
 
 /// Why [`reclaim`] refused. Every refusal leaves the ledger as it was: no `fence_reject`
@@ -1123,11 +1483,28 @@ pub enum ReclaimError {
         lease_until: i64,
         now: i64,
     },
-    /// The card already carries three `card.reclaim` events; a fourth would exceed the
+    /// The lease has not ended and the card is in `review`: the lease is held for the audit
+    /// (SPEC-20261125-review-lease-hold REQ-4). Its code is `lease_live`, like [`LeaseLive`].
+    LeaseHeldForAudit {
+        lease_until: i64,
+        now: i64,
+    },
+    /// The card already carries three counted `card.reclaim` events; a fourth would exceed the
     /// lifetime allowance (SPEC-20261119-card-reclaim-guard REQ-5).
     ReclaimLimit {
         card_id: i64,
         reclaims: i64,
+    },
+    /// An early reclaim was proven for one holder and the reservation is now held by another
+    /// (SPEC-20261120-reclaim-dead-holder REQ-6).
+    HolderChanged {
+        proven: String,
+        current: String,
+    },
+    /// The card is in `review` and its newest verdict is `pass`: the audited head is landed, so
+    /// the leader's release refuses it (SPEC-20261125-card-take-records-worktree REQ-13).
+    VerdictPass {
+        card_id: i64,
     },
     /// The ledger itself failed (busy, unavailable, constraint ...).
     Ledger(LedgerError),
@@ -1143,8 +1520,10 @@ impl ReclaimError {
             ReclaimError::StaleGeneration { .. } => "stale_generation",
             ReclaimError::UnknownGeneration { .. } => "unknown_generation",
             ReclaimError::NotHeld { .. } => "not_held",
-            ReclaimError::LeaseLive { .. } => "lease_live",
+            ReclaimError::LeaseLive { .. } | ReclaimError::LeaseHeldForAudit { .. } => "lease_live",
             ReclaimError::ReclaimLimit { .. } => "reclaim_limit",
+            ReclaimError::HolderChanged { .. } => "holder_changed",
+            ReclaimError::VerdictPass { .. } => "verdict_pass",
             ReclaimError::Ledger(e) => e.code(),
         }
     }
@@ -1180,10 +1559,27 @@ impl std::fmt::Display for ReclaimError {
                 "reservation conflict in card: the lease runs until {lease_until} (now {now}); \
                  only an ended lease is reclaimed"
             ),
+            ReclaimError::LeaseHeldForAudit { lease_until, now } => write!(
+                f,
+                "reservation conflict in card: the lease is held for the audit of this card in \
+                 review and runs until {lease_until} (now {now}); it is reclaimed once it ends, \
+                 which a recorded verdict pushes back"
+            ),
             ReclaimError::ReclaimLimit { card_id, reclaims } => write!(
                 f,
                 "card conflict in reclaim limit: C-{card_id} was already reclaimed {reclaims} time(s); \
                  a card is reclaimed three times at most (SPEC-20261119-card-reclaim-guard)"
+            ),
+            ReclaimError::HolderChanged { proven, current } => write!(
+                f,
+                "reservation conflict in holder: the proof that the holder is gone was made for \
+                 session {proven}, but the reservation is now held by session {current}"
+            ),
+            ReclaimError::VerdictPass { card_id } => write!(
+                f,
+                "card conflict in verdict: verdict_pass: C-{card_id} is in `review` and its newest \
+                 verdict is `pass`; the audited head is landed with `card land`, its reservation \
+                 is not released"
             ),
             ReclaimError::Ledger(e) => e.fmt(f),
         }
@@ -1230,6 +1626,153 @@ pub fn reclaim(
     reason: &str,
     lease_secs: i64,
 ) -> Result<Reclaimed, ReclaimError> {
+    reclaim_with(
+        w,
+        card_id,
+        to_holder,
+        generation,
+        by,
+        reason,
+        lease_secs,
+        ReclaimOptions::default(),
+    )
+}
+
+/// [`reclaim`] or [`reclaim_early`] (`early`) that also records what the takeover keeps: the
+/// caller measured the commits of the recorded worktree that no remote-tracking ref holds, and
+/// `kept` goes into the `card.reclaim` event as `kept_commits`
+/// (SPEC-20261124-reclaim-keeps-worktree REQ-3). The reservation moves on with the same
+/// worktree and branch, so nothing is dropped; the ledger only writes down what it was told.
+#[allow(clippy::too_many_arguments)]
+pub fn reclaim_keeping(
+    w: &mut WriteLedger,
+    card_id: i64,
+    to_holder: &str,
+    generation: i64,
+    by: &str,
+    reason: &str,
+    lease_secs: i64,
+    early: Option<&EarlyProof<'_>>,
+    kept: &Value,
+) -> Result<Reclaimed, ReclaimError> {
+    reclaim_with(
+        w,
+        card_id,
+        to_holder,
+        generation,
+        by,
+        reason,
+        lease_secs,
+        ReclaimOptions {
+            early,
+            kept: Some(kept),
+            ..ReclaimOptions::default()
+        },
+    )
+}
+
+/// What an early reclaim carries: the holder session the proof was made for and the proof as it
+/// goes into the event payload (`early_proof`).
+pub struct EarlyProof<'a> {
+    pub holder: &'a str,
+    pub detail: &'a Value,
+}
+
+/// [`reclaim`] for a reservation whose lease has NOT ended, when the caller holds proof that
+/// the holder session is gone (SPEC-20261120-reclaim-dead-holder). The lease check is replaced
+/// by a check that the reservation is still held by the holder the proof names; everything
+/// else is the same transaction: the generation rules, the lifetime limit of three reclaims
+/// (an early reclaim counts), the new lease, the one `card.reclaim` event. The proof itself is
+/// gathered by the caller (`card::early_reclaim`); the ledger only keeps it in the event.
+#[allow(clippy::too_many_arguments)]
+pub fn reclaim_early(
+    w: &mut WriteLedger,
+    card_id: i64,
+    to_holder: &str,
+    generation: i64,
+    by: &str,
+    reason: &str,
+    lease_secs: i64,
+    proof: &EarlyProof<'_>,
+) -> Result<Reclaimed, ReclaimError> {
+    reclaim_with(
+        w,
+        card_id,
+        to_holder,
+        generation,
+        by,
+        reason,
+        lease_secs,
+        ReclaimOptions {
+            early: Some(proof),
+            ..ReclaimOptions::default()
+        },
+    )
+}
+
+/// [`reclaim`], [`reclaim_early`] and [`reclaim_keeping`] in one call, for a caller that also
+/// knows the git worktree of the folder it runs in: when the reservation it takes over records no
+/// worktree, the new one records `worktree_if_missing` and the `card.reclaim` event says
+/// `worktree_filled`; a recorded worktree is never replaced
+/// (SPEC-20261125-card-take-records-worktree REQ-3, REQ-4, REQ-5).
+#[allow(clippy::too_many_arguments)]
+pub fn reclaim_recording(
+    w: &mut WriteLedger,
+    card_id: i64,
+    to_holder: &str,
+    generation: i64,
+    by: &str,
+    reason: &str,
+    lease_secs: i64,
+    early: Option<&EarlyProof<'_>>,
+    kept: Option<&Value>,
+    worktree_if_missing: Option<&str>,
+    shared: &[String],
+) -> Result<Reclaimed, ReclaimError> {
+    reclaim_with(
+        w,
+        card_id,
+        to_holder,
+        generation,
+        by,
+        reason,
+        lease_secs,
+        ReclaimOptions {
+            early,
+            kept,
+            worktree_if_missing,
+            shared,
+        },
+    )
+}
+
+/// What a caller may add to a reclaim: the early proof, the kept commits, the worktree to record
+/// when the old reservation has none, and the shared files of the profile a scope fill leaves out.
+#[derive(Default)]
+struct ReclaimOptions<'a> {
+    early: Option<&'a EarlyProof<'a>>,
+    kept: Option<&'a Value>,
+    worktree_if_missing: Option<&'a str>,
+    shared: &'a [String],
+}
+
+#[allow(clippy::too_many_arguments)]
+fn reclaim_with(
+    w: &mut WriteLedger,
+    card_id: i64,
+    to_holder: &str,
+    generation: i64,
+    by: &str,
+    reason: &str,
+    lease_secs: i64,
+    options: ReclaimOptions<'_>,
+) -> Result<Reclaimed, ReclaimError> {
+    let ReclaimOptions {
+        early,
+        kept,
+        worktree_if_missing,
+        shared,
+    } = options;
     check_holder(to_holder)
         .map_err(|why| ReclaimError::InvalidInput(format!("to_holder: {why}")))?;
     check_label("by", by, MAX_BY_LEN)?;
@@ -1263,23 +1806,62 @@ pub fn reclaim(
         if old.status != "held" {
             return Ok(Err(ReclaimError::NotHeld { status: old.status }));
         }
-        if !lease_ended(old.lease_until, now) {
-            return Ok(Err(ReclaimError::LeaseLive {
-                lease_until: old.lease_until,
-                now,
-            }));
+        match early {
+            // The ordinary rule: only an ended lease is reclaimed.
+            // A card in `review` keeps its lease for the audit and says so
+            // (SPEC-20261125-review-lease-hold REQ-4).
+            None if !lease_ended(old.lease_until, now) && state == "review" => {
+                return Ok(Err(ReclaimError::LeaseHeldForAudit {
+                    lease_until: old.lease_until,
+                    now,
+                }));
+            }
+            None if !lease_ended(old.lease_until, now) => {
+                return Ok(Err(ReclaimError::LeaseLive {
+                    lease_until: old.lease_until,
+                    now,
+                }));
+            }
+            // The early rule: the proof was made for this holder or it is worth nothing.
+            Some(p) if old.holder != p.holder => {
+                return Ok(Err(ReclaimError::HolderChanged {
+                    proven: p.holder.to_string(),
+                    current: old.holder,
+                }));
+            }
+            _ => {}
         }
         // REQ-5 (SPEC-20261119-card-reclaim-guard): three reclaims are a card's lifetime
         // allowance, counted from its own events so the cap survives any caller; the fourth
         // is refused in this transaction and nothing is written.
+        //
+        // SPEC-20261125-review-lease-hold REQ-7, REQ-8: a reclaim whose event says
+        // `counted: false` is not one of the three, and the first reclaim after a FAIL verdict
+        // is such a reclaim: the verdict means a repair is coming, and the allowance must not
+        // stand in its way. The event of that reclaim is newer than the verdict, so one verdict
+        // frees one reclaim.
         let reclaims: i64 = tx
             .query_row(
-                "SELECT COUNT(*) FROM event WHERE card_id = ?1 AND kind = 'card.reclaim'",
+                "SELECT COUNT(*) FROM event WHERE card_id = ?1 AND kind = 'card.reclaim' \
+                 AND COALESCE(json_extract(payload, '$.counted'), 1) <> 0",
                 [card_id],
                 |r| r.get(0),
             )
             .map_err(LedgerError::from)?;
-        if reclaims >= 3 {
+        let after_fail: bool = tx
+            .query_row(
+                "SELECT EXISTS ( \
+                   SELECT 1 FROM event v WHERE v.card_id = ?1 AND v.kind = ?2 \
+                     AND json_extract(v.payload, '$.verdict') = 'fail' \
+                     AND NOT EXISTS ( \
+                       SELECT 1 FROM event r WHERE r.card_id = ?1 AND r.kind = 'card.reclaim' \
+                         AND r.event_id > v.event_id))",
+                params![card_id, super::workflow::VERDICT_KIND],
+                |r| r.get(0),
+            )
+            .map_err(LedgerError::from)?;
+        let counted = !after_fail;
+        if counted && reclaims >= RECLAIM_ALLOWANCE {
             return Ok(Err(ReclaimError::ReclaimLimit { card_id, reclaims }));
         }
         tx.execute(
@@ -1287,6 +1869,14 @@ pub fn reclaim(
             params![now, old.reservation_id],
         )?;
         let next = current + 1;
+        // A recorded worktree goes on as it is; only a missing one is filled.
+        let recorded = old.worktree.clone().filter(|w| !w.is_empty());
+        let filled = recorded.is_none() && worktree_if_missing.is_some_and(|w| !w.is_empty());
+        let worktree = if filled {
+            worktree_if_missing.map(str::to_string)
+        } else {
+            old.worktree.clone()
+        };
         tx.execute(
             "UPDATE card SET generation = ?1 WHERE card_id = ?2",
             params![next, card_id],
@@ -1301,7 +1891,7 @@ pub fn reclaim(
                 to_holder,
                 now,
                 now + lease_secs,
-                old.worktree,
+                worktree,
                 old.branch
             ],
         )?;
@@ -1311,26 +1901,41 @@ pub fn reclaim(
              SELECT ?1, pattern FROM reservation_scope WHERE reservation_id = ?2",
             params![new_id, old.reservation_id],
         )?;
-        add_event(
-            tx,
-            now,
-            by,
-            card_id,
-            "card.reclaim",
-            &json!({
-                "from_holder": old.holder,
-                "from_generation": current,
-                "from_lease_until": old.lease_until,
-                "holder": to_holder,
-                "generation": next,
-                "lease_until": now + lease_secs,
-                "by": by,
-                "reason": reason,
-                "card_state": state,
-                "worktree": old.worktree,
-                "branch": old.branch,
-            }),
-        )?;
+        // A review without `--keep` gave every path back, so the copy above can be empty: the
+        // card's own scope comes back, as a take fills it (REQ-5, REQ-6).
+        let scope_fill = fill_empty_scope(tx, now, card_id, new_id, shared)?;
+        let mut payload = json!({
+            "from_holder": old.holder,
+            "from_generation": current,
+            "from_lease_until": old.lease_until,
+            "holder": to_holder,
+            "generation": next,
+            "lease_until": now + lease_secs,
+            "by": by,
+            "reason": reason,
+            "card_state": state,
+            "worktree": worktree,
+            "branch": old.branch,
+            "counted": counted,
+        });
+        if filled {
+            payload["worktree_filled"] = json!(true);
+        }
+        if let Some(fill) = &scope_fill {
+            payload["scope_filled"] = json!(fill.filled);
+            payload["scope_left_out"] = json!(fill
+                .left_out
+                .iter()
+                .map(|l| json!({"path": l.path, "reason": l.reason}))
+                .collect::<Vec<_>>());
+        }
+        if let Some(p) = early {
+            payload["early_proof"] = p.detail.clone();
+        }
+        if let Some(k) = kept {
+            payload["kept_commits"] = k.clone();
+        }
+        add_event(tx, now, by, card_id, "card.reclaim", &payload)?;
         let previous = load_reservation(tx, card_id, current)?
             .ok_or_else(|| LedgerError::Sql("the reclaimed reservation cannot be read".into()))?;
         let reservation = load_reservation(tx, card_id, next)?
@@ -1339,6 +1944,160 @@ pub fn reclaim(
             previous,
             reservation,
             card_state: state,
+            counted,
+            reclaims_counted: reclaims + i64::from(counted),
+            scope_fill,
+        }))
+    })?
+}
+
+/// What [`release_by_leader`] did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LeaderReleased {
+    /// The reservation that ended, as it is now (`status: released`).
+    pub previous: Reservation,
+    /// The card's state before the release.
+    pub card_state_before: String,
+    /// The card's state after it: `ready` for an `active` or `review` card, otherwise unchanged.
+    pub card_state_after: String,
+}
+
+/// Ends the current reservation of another session at the confirmed leader's word
+/// (SPEC-20261125-card-take-records-worktree REQ-8 to REQ-14). The caller has already shown that
+/// it is the registered leader session; this function judges the ledger side.
+///
+/// The reservation at `generation` must be the current one and `held`. A card in `review` whose
+/// newest verdict is `pass` is refused ([`ReclaimError::VerdictPass`]): its audited head is landed,
+/// not released. Without `early` the lease must have ended; with `early` (the proof that the
+/// holder is gone, [`EarlyProof`]) a live lease is released too, as long as the reservation is
+/// still held by the holder the proof names. The reservation becomes `released` and keeps its
+/// holder, generation, lease end, worktree and branch as the record; the card returns to `ready`
+/// (`review` goes through `active`, both transitions are in the table). One `card.release` event
+/// names the old holder, generation and lease end, `by`, `reason` and the card's states.
+///
+/// This is no reclaim: no `card.reclaim` event is written and the allowance of three reclaims is
+/// not read or used. Every refusal writes nothing, not even a `fence_reject` event: the caller is
+/// not the holder the fence checks, so this does not go through [`fenced`].
+pub fn release_by_leader(
+    w: &mut WriteLedger,
+    card_id: i64,
+    generation: i64,
+    by: &str,
+    reason: &str,
+    early: Option<&EarlyProof<'_>>,
+) -> Result<LeaderReleased, ReclaimError> {
+    check_label("by", by, MAX_BY_LEN)?;
+    check_label("reason", reason, MAX_REASON_LEN)?;
+    w.with_write_tx(|tx, now| {
+        let Some((state, current)) = card_row(tx, card_id)? else {
+            return Ok(Err(ReclaimError::CardNotFound(card_id)));
+        };
+        if state == "done" {
+            return Ok(Err(ReclaimError::CardDone(card_id)));
+        }
+        if current == 0 {
+            return Ok(Err(ReclaimError::NoReservation));
+        }
+        if generation < current {
+            return Ok(Err(ReclaimError::StaleGeneration {
+                offered: generation,
+                current,
+            }));
+        }
+        if generation > current {
+            return Ok(Err(ReclaimError::UnknownGeneration {
+                offered: generation,
+                current,
+            }));
+        }
+        let Some(old) = load_reservation(tx, card_id, current)? else {
+            return Ok(Err(ReclaimError::NoReservation));
+        };
+        if old.status != "held" {
+            return Ok(Err(ReclaimError::NotHeld { status: old.status }));
+        }
+        if state == "review" {
+            // The newest verdict of the card decides: a `fail` after a `pass` frees the release.
+            let newest: Option<String> = tx
+                .query_row(
+                    "SELECT json_extract(payload, '$.verdict') FROM event \
+                     WHERE card_id = ?1 AND kind = ?2 ORDER BY event_id DESC LIMIT 1",
+                    params![card_id, super::workflow::VERDICT_KIND],
+                    |r| r.get(0),
+                )
+                .optional()
+                .map_err(LedgerError::from)?
+                .flatten();
+            if newest.as_deref() == Some("pass") {
+                return Ok(Err(ReclaimError::VerdictPass { card_id }));
+            }
+        }
+        match early {
+            None if !lease_ended(old.lease_until, now) && state == "review" => {
+                return Ok(Err(ReclaimError::LeaseHeldForAudit {
+                    lease_until: old.lease_until,
+                    now,
+                }));
+            }
+            None if !lease_ended(old.lease_until, now) => {
+                return Ok(Err(ReclaimError::LeaseLive {
+                    lease_until: old.lease_until,
+                    now,
+                }));
+            }
+            Some(p) if old.holder != p.holder => {
+                return Ok(Err(ReclaimError::HolderChanged {
+                    proven: p.holder.to_string(),
+                    current: old.holder,
+                }));
+            }
+            _ => {}
+        }
+        tx.execute(
+            "UPDATE reservation SET status = 'released', updated_at = ?1 WHERE reservation_id = ?2",
+            params![now, old.reservation_id],
+        )?;
+        let state_after = match state.as_str() {
+            "active" => {
+                tx.execute(
+                    "UPDATE card SET state = 'ready' WHERE card_id = ?1",
+                    [card_id],
+                )?;
+                "ready".to_string()
+            }
+            // `review -> ready` is no transition: the card goes back to `active` first.
+            "review" => {
+                tx.execute(
+                    "UPDATE card SET state = 'active' WHERE card_id = ?1",
+                    [card_id],
+                )?;
+                tx.execute(
+                    "UPDATE card SET state = 'ready' WHERE card_id = ?1",
+                    [card_id],
+                )?;
+                "ready".to_string()
+            }
+            _ => state.clone(),
+        };
+        let mut payload = json!({
+            "from_holder": old.holder,
+            "from_generation": current,
+            "from_lease_until": old.lease_until,
+            "by": by,
+            "reason": reason,
+            "card_state": state,
+            "card_state_after": state_after,
+        });
+        if let Some(p) = early {
+            payload["early_proof"] = p.detail.clone();
+        }
+        add_event(tx, now, by, card_id, "card.release", &payload)?;
+        let previous = load_reservation(tx, card_id, current)?
+            .ok_or_else(|| LedgerError::Sql("the released reservation cannot be read".into()))?;
+        Ok(Ok(LeaderReleased {
+            previous,
+            card_state_before: state,
+            card_state_after: state_after,
         }))
     })?
 }
@@ -1497,6 +2256,7 @@ mod tests {
             (
                 ReserveError::CardNotReady {
                     state: "draft".into(),
+                    withdraw_reason: None,
                 },
                 "card_not_ready",
                 Kind::Conflict,
@@ -1507,15 +2267,6 @@ mod tests {
                     generation: 1,
                 },
                 "already_held",
-                Kind::Conflict,
-            ),
-            (
-                ReserveError::ScopeOverlap {
-                    other_card: 2,
-                    mine: "src/".into(),
-                    theirs: "src/a".into(),
-                },
-                "scope_overlap",
                 Kind::Conflict,
             ),
             (ReserveError::Ledger(LedgerError::Busy), "busy", Kind::Io),

@@ -271,7 +271,7 @@ pub fn probe_target(project: &Path, target: &Path, base: &str) -> Result<Probe> 
     // answers "not a git repository" (a typed status below); newer git answers that the
     // gitfile "does not point to a valid repository", which the identity reader reports as a
     // git failure. Both mean the folder is no longer a registered worktree.
-    let ident = match crate::identity::identity(target) {
+    let ident = match crate::identity::identity_in(target, None) {
         Err(e) if names_no_git_directory(&e) => {
             return Err(refuse(
                 "not_a_worktree",
@@ -296,7 +296,7 @@ pub fn probe_target(project: &Path, target: &Path, base: &str) -> Result<Probe> 
             format!("{shown} is a bare repository or a git directory, not a work tree"),
         ));
     }
-    let mine = crate::identity::identity(project)?;
+    let mine = crate::identity::identity_in(project, None)?;
     if mine["clone_anchor"].is_null() || mine["clone_anchor"] != ident["clone_anchor"] {
         return Err(refuse(
             "common_dir_differs",
@@ -437,7 +437,7 @@ pub fn mismatch_hint(project: &Path, req: &crate::claim_verify::VerifyRequest) -
                 && r.comment_id == Some(comment)
                 && r.owner.id == req.session
         })?;
-    let ident = crate::identity::identity(project).ok()?;
+    let ident = crate::identity::identity_in(project, None).ok()?;
     let this = ident["work_tree"].as_str()?.to_string();
     let contains = std::fs::canonicalize(&rec.worktree.path)
         .is_ok_and(|recorded| Path::new(&this).starts_with(recorded));
@@ -1199,7 +1199,8 @@ mod link_tests {
     fn seed(root: &Path) -> ClaimRecord {
         let mut r = record(KEY, 7, 100, "lane-a", "assigned");
         r.base_revision = git(root, &["rev-parse", "HEAD"]);
-        r.worktree = crate::claim::worktree_id(&crate::identity::identity(root).unwrap()).unwrap();
+        r.worktree =
+            crate::claim::worktree_id(&crate::identity::identity_in(root, None).unwrap()).unwrap();
         commit(root, "acquire", &r);
         r
     }
@@ -1241,6 +1242,47 @@ mod link_tests {
 
     fn link(root: &Path, worktree: &Path, t: &RecordedTransport) -> Result<Value> {
         link_cli(&req(root, worktree), t, &clock()).map_err(|e| e.message)
+    }
+
+    /// SPEC-20261124-identity-home-arg REQ-7: with a symlinked home state folder in the
+    /// environment HOME, the worktree probe of `claim-link` answers as it does with a sound HOME.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_claim_link_links_a_worktree() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_claim_link_links_a_worktree",
+            |f| {
+                seed(&f.project);
+                let out = link(&f.project, &f.linked, &owner_only()).unwrap();
+                assert!(out["linked"].as_bool().unwrap_or(true), "{out}");
+            },
+        );
+    }
+
+    /// REQ-7 for `mismatch_hint`: the record names the clone's primary folder, so a verdict asked
+    /// from the linked worktree carries the mismatch hint even with the linked home state folder.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_claim_link_mismatch_hint() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_claim_link_mismatch_hint",
+            |f| {
+                seed(&f.project);
+                let req = crate::claim_verify::VerifyRequest {
+                    schema_version: 1,
+                    owner: "acme".into(),
+                    repo: "widgets".into(),
+                    issue_number: 7,
+                    session: "lane-a".into(),
+                    comment_id: Some(100),
+                    allowed_authors: vec![],
+                };
+                let hint = mismatch_hint(&f.linked, &req).expect("a mismatch hint");
+                assert_eq!(hint["status"], "mismatch", "{hint}");
+            },
+        );
     }
 
     /// L1: a worktree made after the claim is linked; the record then names it.

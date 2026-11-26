@@ -48,6 +48,13 @@ const MAX_SCOPE_ENTRY_BYTES: usize = 512;
 /// A refusal over the file limit names this many folders.
 const NAMED_FOLDERS: usize = 10;
 const GIT_OUTPUT_LIMIT: usize = 4 * 1024 * 1024;
+/// MoAI's own state folders at the project root, whichever generation's name the project uses.
+/// The code map leaves them out unless a scope names a place inside one: reports and records
+/// there are not code, and they fill the file limit first (SPEC-20261120-index-state-folders).
+const STATE_FOLDERS: [&str; 2] = [
+    crate::state_root::MOAI_DIR,
+    crate::state_root::EARLIER_PROJECT_DIR,
+];
 /// A manifest file-count cap on read (a hand-edited generation must not blow memory).
 const MAX_MANIFEST_FILES: usize = MAX_FILES;
 // Covers the maximum Git path table even after JSON's six-byte control escaping.
@@ -269,9 +276,18 @@ pub struct BuildFailure {
     pub at: String,
 }
 
+#[cfg(test)]
 fn git(dir: &Path) -> Command {
+    git_with(dir, true)
+}
+
+/// `literal: false` lets a pathspec carry magic (`:(exclude)`); only fixed strings of this
+/// module may be passed that way, never a caller's text.
+fn git_with(dir: &Path, literal: bool) -> Command {
     let mut cmd = Command::new("git");
-    cmd.arg("--literal-pathspecs");
+    if literal {
+        cmd.arg("--literal-pathspecs");
+    }
     cmd.arg("--no-optional-locks").arg("-C").arg(dir);
     crate::identity::scrub_git_env(&mut cmd);
     cmd.env("GIT_OPTIONAL_LOCKS", "0").stdin(Stdio::null());
@@ -279,7 +295,11 @@ fn git(dir: &Path) -> Command {
 }
 
 fn git_out(dir: &Path, args: &[&str]) -> Result<Vec<u8>> {
-    let out = git(dir)
+    git_out_with(dir, args, true)
+}
+
+fn git_out_with(dir: &Path, args: &[&str], literal: bool) -> Result<Vec<u8>> {
+    let out = git_with(dir, literal)
         .args(args)
         .stderr(Stdio::null())
         .output()
@@ -384,6 +404,28 @@ fn in_scope(path: &str, scope: &[String]) -> bool {
         })
 }
 
+/// Whether `path` lies in a state folder, matched on its first path component only
+/// (`.moai-notes/a.txt` and `docs/.moai/x` are not).
+fn in_state_folder(path: &str) -> bool {
+    path.split('/')
+        .next()
+        .is_some_and(|first| STATE_FOLDERS.contains(&first))
+}
+
+/// The state folders are left out unless a scope entry names a place inside one.
+fn skips_state(scope: &[String]) -> bool {
+    !scope.iter().any(|entry| in_state_folder(entry))
+}
+
+/// The pathspecs that hand git the same exclusion, so that a folder of reports never reaches
+/// git's output (and its 4 MiB cap): `.` and one `:(exclude)` per state folder. Used without
+/// `--literal-pathspecs`.
+fn state_exclusions() -> Vec<String> {
+    let mut specs = vec!["--".to_string(), ".".to_string()];
+    specs.extend(STATE_FOLDERS.iter().map(|f| format!(":(exclude){f}")));
+    specs
+}
+
 /// The folders a refusal names: files grouped by their first two path components (`apps/bo`),
 /// a file directly in a top folder by that folder, a root file as `.`; largest first, equal
 /// counts by path, at most [`NAMED_FOLDERS`].
@@ -443,22 +485,33 @@ fn too_many_files(count: usize, limit: usize, paths: &[String], scoped: bool) ->
 }
 
 /// The tracked paths of the project (sorted, without duplicates) less the index's own folder,
-/// limited to the scope. A scope is handed to git as literal pathspecs, so the output stays
-/// small for a repository whose full list would pass the output limit.
+/// limited to the scope and, unless the scope names a place inside one, less the state folders.
+/// A scope is handed to git as literal pathspecs, and the state folders as exclusions, so the
+/// output stays small for a repository whose full list would pass the output limit.
 fn tracked_paths(project: &Path, state: &str, scope: &[String]) -> Result<Vec<String>> {
-    let mut args = vec!["ls-files", "-z"];
+    let skip_state = skips_state(scope);
+    let mut args = vec!["ls-files".to_string(), "-z".to_string()];
+    let literal = !(scope.is_empty() && skip_state);
     if !scope.is_empty() {
-        args.push("--");
-        args.extend(scope.iter().map(String::as_str));
+        args.push("--".to_string());
+        args.extend(scope.iter().cloned());
+    } else if skip_state {
+        args.extend(state_exclusions());
     }
-    let raw = git_out(project, &args)?;
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let raw = git_out_with(project, &args, literal)?;
     let index_dir = format!("{state}/index");
     let index_prefix = format!("{index_dir}/");
     let mut paths: Vec<String> = raw
         .split(|b| *b == 0)
         .filter(|e| !e.is_empty())
         .map(|e| String::from_utf8_lossy(e).into_owned())
-        .filter(|p| !p.starts_with(&index_prefix) && *p != index_dir && in_scope(p, scope))
+        .filter(|p| {
+            !p.starts_with(&index_prefix)
+                && *p != index_dir
+                && in_scope(p, scope)
+                && !(skip_state && in_state_folder(p))
+        })
         .collect();
     paths.sort();
     paths.dedup();
@@ -568,16 +621,22 @@ fn scan_scoped_with_hook(
 /// Untracked files (`??` in `git status --porcelain=v1 -z --untracked-files=all
 /// --no-renames`), capped, sorted — the "new file" detection input.
 fn untracked(project: &Path, scope: &[String]) -> Result<Vec<String>> {
-    let raw = git_out(
-        project,
-        &[
-            "status",
-            "--porcelain=v1",
-            "-z",
-            "--untracked-files=all",
-            "--no-renames",
-        ],
-    )?;
+    let skip_state = skips_state(scope);
+    let mut args: Vec<String> = [
+        "status",
+        "--porcelain=v1",
+        "-z",
+        "--untracked-files=all",
+        "--no-renames",
+    ]
+    .iter()
+    .map(|a| a.to_string())
+    .collect();
+    if skip_state {
+        args.extend(state_exclusions());
+    }
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let raw = git_out_with(project, &args, !skip_state)?;
     let mut out = Vec::new();
     let own = format!("{}/", crate::state_root::dir(project));
     for e in raw.split(|b| *b == 0) {
@@ -585,8 +644,11 @@ fn untracked(project: &Path, scope: &[String]) -> Result<Vec<String>> {
             let path = String::from_utf8_lossy(&e[3..]).into_owned();
             // The tool's own state directory (this index, receipts, claims) is never a
             // project change: the index writes there itself, so counting it would make
-            // `fresh` unreachable.
-            if path.starts_with(&own) || !in_scope(&path, scope) {
+            // `fresh` unreachable. The state folders are left out like the tracked scan does.
+            if path.starts_with(&own)
+                || (skip_state && in_state_folder(&path))
+                || !in_scope(&path, scope)
+            {
                 continue;
             }
             out.push(path);

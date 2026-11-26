@@ -66,7 +66,7 @@ fn envelope(out: &Output, secret: &str) -> Value {
 }
 
 fn vault(home: &Path) -> PathBuf {
-    home.join(".moai-cli/vault")
+    moai_cli::home_root::path(home).join("vault")
 }
 
 fn entry(home: &Path) -> PathBuf {
@@ -337,7 +337,7 @@ fn every_value_key_set_accepts_reads_back() {
 /// C-54 S1: `--prompt` asks at a terminal only. With stdin a pipe (a value on it, or nothing)
 /// it is refused before stdin is read, nothing is written, and the piped value is not
 /// echoed; the same pipe without `--prompt` stores the value as before. The terminal side is
-/// `tests/key_set_prompt_tty_test.py`.
+/// `tests/key_set_prompt_terminal_cli.rs`.
 #[test]
 fn prompt_without_a_terminal_is_refused_and_nothing_is_written() {
     let (_d, home) = home();
@@ -375,7 +375,7 @@ fn provider_names_cannot_leave_the_vault() {
         let env = envelope(&out, "v-never");
         assert_eq!(env["ok"], false, "{bad}");
     }
-    assert!(!home.join(".moai-cli").exists());
+    assert!(!moai_cli::home_root::path(&home).exists());
 }
 
 #[test]

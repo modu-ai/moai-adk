@@ -1,12 +1,12 @@
-//! #2481 (user decisions 6810797000 and 6810818827, 2026-11-12): the first `cc|glm|codex`
+//! #2481 (user decisions 6810797000 and 6810818827, 2026-11-12): the first `cc|glm`
 //! launch in a folder that is not a git repository initializes it without asking — `git init`,
-//! then the MoAI project settings (`.moai/project.yaml` with its marker, #2696 C2b) and `AGENTS.md` through the
+//! then the MoAI project settings (`.moai/project.yaml` with its marker, #2696 C2b) and `CLAUDE.md` through the
 //! existing `project-apply` and `generation-apply` code — and says so on one stderr line. Files
 //! that already exist are never touched. HOME itself and the file-system root are never
 //! initialized (guidance, exit 1). Without git on PATH the launcher prints the install guidance
 //! for this OS (exit 1). `--dry-run` creates nothing and reports what it would initialize.
-//! Every launch runs in a temporary folder with a temporary HOME and stub `claude` / `codex`
-//! executables on PATH; no real host starts.
+//! Every launch runs in a temporary folder with a temporary HOME and a stub `claude`
+//! executable on PATH; no real host starts.
 #![cfg(unix)]
 mod common;
 use serde_json::Value;
@@ -27,11 +27,9 @@ struct Fixture {
 
 fn fixture() -> Fixture {
     let bin = tempfile::tempdir().unwrap();
-    for host in ["claude", "codex", "omp"] {
-        let path = bin.path().join(host);
-        fs::write(&path, STUB).unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    let path = bin.path().join("claude");
+    fs::write(&path, STUB).unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
     Fixture {
         bin,
         home: tempfile::tempdir().unwrap(),
@@ -40,12 +38,19 @@ fn fixture() -> Fixture {
 
 /// A host stub that exits at once, or, when `MOAI_TEST_HOLD_UNTIL` is set, writes its pid to
 /// `MOAI_TEST_READY` and stays alive until the `MOAI_TEST_HOLD_UNTIL` file exists (#2971: a
-/// launcher keeps its `agent-N` number live while its host runs).
+/// launcher keeps its named session live while its host runs). It also ends when the process that
+/// started it has ended and after 300 seconds, so a test that dies or times out leaves no stub
+/// behind that keeps a descriptor (the heavy slot lock) open for hours.
 const STUB: &str = "#!/bin/sh
 printf started > \"$MOAI_TEST_HOST_MARKER\"
 if [ -n \"$MOAI_TEST_HOLD_UNTIL\" ]; then
   echo $$ > \"$MOAI_TEST_READY.tmp\" && mv \"$MOAI_TEST_READY.tmp\" \"$MOAI_TEST_READY\"
-  while [ ! -e \"$MOAI_TEST_HOLD_UNTIL\" ]; do sleep 0.05; done
+  end=$(( $(date +%s) + 300 ))
+  while [ ! -e \"$MOAI_TEST_HOLD_UNTIL\" ]; do
+    kill -0 \"$PPID\" 2>/dev/null || exit 0
+    [ \"$(date +%s)\" -lt \"$end\" ] || exit 0
+    sleep 0.05
+  done
 fi
 exit 0
 ";
@@ -120,7 +125,6 @@ fn command(f: &Fixture, dir: &Path, path_var: &str, args: &[&str]) -> Command {
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL")
-        .env_remove(moai_cli::session::AGENT_SEQ_TEST_HOLD_VAR)
         .stdin(Stdio::null());
     c
 }
@@ -188,30 +192,25 @@ fn profile(dir: &Path) -> Value {
 
 #[test]
 fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
-    for (host, profile_host) in [
-        ("cc", "claude"),
-        ("glm", "claude"),
-        ("codex", "codex"),
-        ("omp", "omp"),
-    ] {
+    for (host, profile_host) in [("cc", "claude"), ("glm", "claude")] {
         let f = fixture();
         let plain = tempfile::tempdir().unwrap();
         let dir = plain.path().join("My Project");
         fs::create_dir(&dir).unwrap();
-        let out = run_in(&f, &dir, &[host, "-a"]);
+        let out = run_in(&f, &dir, &[host, "--name", "lane-1"]);
         let v = json(&out);
-        assert_eq!(v["name"], "agent-1", "{host}");
+        assert_eq!(v["name"], "lane-1", "{host}");
         assert_eq!(init_lines(&out), 1, "{host}: {}", text(&out));
         assert!(dir.join(".git").is_dir(), "{host}");
         assert!(
-            dir.join(".git/.moai-cli/sessions/agent-1.live").is_file(),
+            dir.join(".git/.moai/sessions/lane-1.live").is_file(),
             "{host}"
         );
         let p = profile(&dir);
         assert_eq!(p["schema_version"], 2, "{host}");
         assert_eq!(p["project_id"], "my-project", "{host}");
         assert_eq!(p["hosts"], serde_json::json!([profile_host]), "{host}");
-        let agents = fs::read_to_string(dir.join("AGENTS.md")).unwrap();
+        let agents = fs::read_to_string(dir.join("CLAUDE.md")).unwrap();
         assert!(
             agents.contains("<!-- moai:managed:begin id=moai-workflow -->"),
             "{host}: {agents}"
@@ -220,19 +219,20 @@ fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
 
         // The second launch does not initialize again and keeps every file byte for byte.
         let yaml = fs::read(dir.join(".moai/project.yaml")).unwrap();
-        let agents = fs::read(dir.join("AGENTS.md")).unwrap();
-        let out = run_in(&f, &dir, &[host, "-a"]);
-        // The first session has ended, so no `agent-*` is alive: the number starts over (#2971).
-        assert_eq!(json(&out)["name"], "agent-1", "{host}");
+        let agents = fs::read(dir.join("CLAUDE.md")).unwrap();
+        assert!(!dir.join("AGENTS.md").exists(), "{host}");
+        let out = run_in(&f, &dir, &[host, "--name", "lane-1"]);
+        // The first session has ended, so its name is free again.
+        assert_eq!(json(&out)["name"], "lane-1", "{host}");
         assert_eq!(init_lines(&out), 0, "{host}: {}", text(&out));
         assert_eq!(fs::read(dir.join(".moai/project.yaml")).unwrap(), yaml);
-        assert_eq!(fs::read(dir.join("AGENTS.md")).unwrap(), agents);
+        assert_eq!(fs::read(dir.join("CLAUDE.md")).unwrap(), agents);
     }
 }
 
 #[test]
-fn leader_and_roleless_launches_initialize_too() {
-    for args in [&["cc", "-l"][..], &["codex"][..]] {
+fn named_and_unnamed_launches_initialize_too() {
+    for args in [&["cc", "--name", "lane-2"][..], &["cc"][..]] {
         let f = fixture();
         let plain = tempfile::tempdir().unwrap();
         let out = run_in(&f, plain.path(), args);
@@ -252,11 +252,57 @@ fn a_repository_without_settings_gets_the_settings_only_and_keeps_its_agents_md(
     let p = tempfile::tempdir().unwrap();
     git_init(p.path());
     fs::write(p.path().join("AGENTS.md"), "mine\n").unwrap();
-    let out = run_in(&f, p.path(), &["cc", "-a"]);
-    assert_eq!(json(&out)["name"], "agent-1");
+    let out = run_in(&f, p.path(), &["cc", "--name", "lane-1"]);
+    assert_eq!(json(&out)["name"], "lane-1");
     assert_eq!(init_lines(&out), 1, "{}", text(&out));
     assert!(p.path().join(".moai/project.yaml").is_file());
     assert_eq!(fs::read(p.path().join("AGENTS.md")).unwrap(), b"mine\n");
+    // The user's AGENTS.md needs a pick (move, import or leave) before moai writes a CLAUDE.md.
+    assert!(!p.path().join("CLAUDE.md").exists());
+}
+
+/// A first launch leaves the instruction file a project already holds as it is and says so: a
+/// user `CLAUDE.md` gets no managed block, and a project that only holds `AGENTS.md` gets no
+/// `CLAUDE.md` (the pick of `moai update` writes one).
+#[test]
+fn a_first_launch_leaves_an_existing_instruction_file_byte_identical_and_says_so() {
+    let cases = [
+        ("CLAUDE.md", "# My rules\n\nAlways run the linter.\n", None),
+        (
+            "AGENTS.md",
+            "# Team rules\n\nRun tests first.\n",
+            Some("CLAUDE.md"),
+        ),
+    ];
+    for (name, body, absent) in cases {
+        let f = fixture();
+        let p = tempfile::tempdir().unwrap();
+        git_init(p.path());
+        fs::write(p.path().join(name), body).unwrap();
+        let out = run_in(&f, p.path(), &["cc", "--name", "lane-1"]);
+        assert_eq!(json(&out)["name"], "lane-1", "{name}");
+        assert_eq!(init_lines(&out), 1, "{name}: {}", text(&out));
+        let said = format!("{name} present, unchanged");
+        assert!(
+            String::from_utf8_lossy(&out.stderr).contains(&said),
+            "{name}: {}",
+            text(&out)
+        );
+        assert_eq!(
+            fs::read(p.path().join(name)).unwrap(),
+            body.as_bytes(),
+            "{name} changed"
+        );
+        if let Some(other) = absent {
+            assert!(
+                !p.path().join(other).exists(),
+                "{name}: {other} was written"
+            );
+        }
+        // The settings are the only thing the first launch wrote.
+        assert!(p.path().join(".moai/project.yaml").is_file(), "{name}");
+        assert!(!p.path().join(".moai/workflows").exists(), "{name}");
+    }
 }
 
 #[test]
@@ -266,8 +312,8 @@ fn a_project_that_has_settings_is_left_exactly_as_it_was() {
     git_init(p.path());
     fs::create_dir(p.path().join(".moai-cli")).unwrap();
     fs::write(p.path().join(".moai-cli/project.yaml"), "kept\n").unwrap();
-    let out = run_in(&f, p.path(), &["cc", "-a"]);
-    assert_eq!(json(&out)["name"], "agent-1");
+    let out = run_in(&f, p.path(), &["cc", "--name", "lane-1"]);
+    assert_eq!(json(&out)["name"], "lane-1");
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
     assert!(!String::from_utf8_lossy(&out.stderr).contains("moai-cli:"));
     assert_eq!(
@@ -279,7 +325,11 @@ fn a_project_that_has_settings_is_left_exactly_as_it_was() {
 
 #[test]
 fn home_itself_is_never_initialized_also_through_a_symlinked_home() {
-    for args in [&["cc", "-a"][..], &["cc"][..], &["codex", "-l"][..]] {
+    for args in [
+        &["cc", "--name", "lane-1"][..],
+        &["cc"][..],
+        &["glm", "--name", "lane-2"][..],
+    ] {
         let f = fixture();
         let home = f.home.path().to_path_buf();
         let before = entries(&home);
@@ -293,10 +343,15 @@ fn home_itself_is_never_initialized_also_through_a_symlinked_home() {
     let link = links.path().join("home-link");
     std::os::unix::fs::symlink(f.home.path(), &link).unwrap();
     let before = entries(f.home.path());
-    let out = command(&f, f.home.path(), &with_git(&f), &["cc", "-a"])
-        .env("HOME", &link)
-        .output()
-        .unwrap();
+    let out = command(
+        &f,
+        f.home.path(),
+        &with_git(&f),
+        &["cc", "--name", "lane-1"],
+    )
+    .env("HOME", &link)
+    .output()
+    .unwrap();
     let err = refused_without_writes(&f, &out, f.home.path(), &before);
     assert!(err.contains("HOME"), "{err}");
 }
@@ -320,8 +375,8 @@ fn the_file_system_root_is_never_initialized_through_the_cli() {
         "precondition: / must not be a git work tree"
     );
     for args in [
-        &["cc", "-a", "--dry-run"][..],
-        &["codex", "-l", "--dry-run"][..],
+        &["cc", "--name", "lane-1", "--dry-run"][..],
+        &["glm", "--name", "lane-2", "--dry-run"][..],
     ] {
         let f = fixture();
         let home_before = entries(f.home.path());
@@ -340,7 +395,11 @@ fn the_file_system_root_is_never_initialized_through_the_cli() {
 
 #[test]
 fn without_git_on_path_the_launcher_prints_install_guidance_for_this_os() {
-    for args in [&["cc", "-a"][..], &["cc"][..], &["codex", "-l"][..]] {
+    for args in [
+        &["cc", "--name", "lane-1"][..],
+        &["cc"][..],
+        &["glm", "--name", "lane-2"][..],
+    ] {
         let f = fixture();
         let plain = tempfile::tempdir().unwrap();
         let only_stubs = f.bin.path().display().to_string();
@@ -362,11 +421,11 @@ fn without_git_on_path_the_launcher_prints_install_guidance_for_this_os() {
 fn dry_run_creates_nothing_and_reports_what_it_would_initialize() {
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
-    let out = run_in(&f, plain.path(), &["cc", "-a", "--dry-run"]);
+    let out = run_in(&f, plain.path(), &["cc", "--name", "lane-1", "--dry-run"]);
     let v = json(&out);
-    assert_eq!(v["name"], "agent-1");
+    assert_eq!(v["name"], "lane-1");
     let notes = v["notes"].to_string();
-    for item in ["git init", ".moai/project.yaml", "AGENTS.md"] {
+    for item in ["git init", ".moai/project.yaml", "CLAUDE.md"] {
         assert!(notes.contains(item), "{item}: {notes}");
     }
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
@@ -381,22 +440,26 @@ fn dry_run_creates_nothing_and_reports_what_it_would_initialize() {
     git_init(p.path());
     fs::create_dir(p.path().join(".moai-cli")).unwrap();
     fs::write(p.path().join(".moai-cli/project.yaml"), "kept\n").unwrap();
-    let v = json(&run_in(&f, p.path(), &["cc", "-a", "--dry-run"]));
+    let v = json(&run_in(
+        &f,
+        p.path(),
+        &["cc", "--name", "lane-1", "--dry-run"],
+    ));
     assert!(!v["notes"].to_string().contains("would initialize"), "{v}");
 }
 
 #[test]
-fn concurrent_first_launches_initialize_once_and_never_share_a_number() {
+fn concurrent_first_launches_initialize_once_and_keep_their_names() {
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
-    // The stubs stay alive, so every number stays live and the four numbers must differ.
+    // The stubs stay alive, so every name stays live and the four launches run side by side.
     let held: Vec<Held> = (0..4)
         .map(|i| {
             Held::spawn(
                 &f,
                 plain.path(),
                 &with_git(&f),
-                &["cc", "-a"],
+                &["cc", "--name", &format!("lane-{i}")],
                 &format!("c{i}"),
             )
         })
@@ -409,19 +472,81 @@ fn concurrent_first_launches_initialize_once_and_never_share_a_number() {
         .map(|h| json(&h.finish())["name"].as_str().unwrap().to_string())
         .collect();
     names.sort();
-    assert_eq!(names, ["agent-1", "agent-2", "agent-3", "agent-4"]);
+    assert_eq!(names, ["lane-0", "lane-1", "lane-2", "lane-3"]);
     assert!(plain.path().join(".moai/project.yaml").is_file());
-    assert!(plain.path().join("AGENTS.md").is_file());
+    assert!(plain.path().join("CLAUDE.md").is_file());
+}
+
+/// Kills one process on drop, so a failed case leaves no stub host behind.
+struct KillStub(i32);
+
+impl Drop for KillStub {
+    fn drop(&mut self) {
+        // SAFETY: kill(2) on a pid this test started; ESRCH when it already ended.
+        unsafe { libc::kill(self.0, libc::SIGKILL) };
+    }
+}
+
+fn pid_alive(pid: i32) -> bool {
+    // SAFETY: signal 0 only checks that the process exists.
+    unsafe { libc::kill(pid, 0) == 0 }
+}
+
+/// SPEC-20261125-heavy-slot-release-on-exit AC-5: a stub host whose launcher died (a test that
+/// panics or times out) ends by itself instead of looping for hours with the descriptors it
+/// inherited; the release file is never written.
+#[test]
+fn stub_host_ends_when_its_launcher_is_killed() {
+    let f = fixture();
+    let plain = tempfile::tempdir().unwrap();
+    let mut held = Held::spawn(
+        &f,
+        plain.path(),
+        &with_git(&f),
+        &["cc", "--name", "lane-9"],
+        "killed",
+    );
+    held.wait_ready();
+    let stub: i32 = fs::read_to_string(&held.ready)
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    let _guard = KillStub(stub);
+    let launcher = held.child.as_ref().unwrap().id();
+    // The stub is a child of the launcher, so killing the launcher leaves it behind.
+    let parent = Command::new("ps")
+        .args(["-o", "ppid=", "-p", &stub.to_string()])
+        .output()
+        .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&parent.stdout).trim(),
+        launcher.to_string(),
+        "the stub is not a child of the launcher"
+    );
+    // The launcher is reaped, so it is gone for the stub's liveness check (a zombie parent
+    // would still answer `kill -0`), as a launcher that died in a real run is.
+    held.child.as_mut().unwrap().kill().unwrap();
+    held.child.as_mut().unwrap().wait().unwrap();
+    let start = Instant::now();
+    while pid_alive(stub) {
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "the stub host outlived its launcher"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    assert!(!held.release.exists(), "the release file was written");
 }
 
 #[test]
 fn a_home_that_already_is_a_repository_starts_the_host_but_gets_no_settings() {
     // Design 6810918398 §2: a dotfiles-repository HOME is launched as before; no settings and
-    // no AGENTS.md are written into HOME, and a note says why.
+    // no CLAUDE.md are written into HOME, and a note says why.
     let f = fixture();
     git_init(f.home.path());
-    let out = run_in(&f, f.home.path(), &["cc", "-a"]);
-    assert_eq!(json(&out)["name"], "agent-1");
+    let out = run_in(&f, f.home.path(), &["cc", "--name", "lane-1"]);
+    assert_eq!(json(&out)["name"], "lane-1");
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
     assert!(
         String::from_utf8_lossy(&out.stderr).contains("MoAI project settings are not created"),
@@ -431,6 +556,7 @@ fn a_home_that_already_is_a_repository_starts_the_host_but_gets_no_settings() {
     assert!(!f.home.path().join(".moai-cli/project.yaml").exists());
     assert!(!f.home.path().join(".moai").exists());
     assert!(!f.home.path().join("AGENTS.md").exists());
+    assert!(!f.home.path().join("CLAUDE.md").exists());
 }
 
 #[test]
@@ -440,7 +566,11 @@ fn dry_run_in_a_repository_without_settings_writes_nothing() {
     git_init(p.path());
     let before = entries(p.path());
     let git_before = entries(&p.path().join(".git"));
-    let v = json(&run_in(&f, p.path(), &["cc", "-a", "--dry-run"]));
+    let v = json(&run_in(
+        &f,
+        p.path(),
+        &["cc", "--name", "lane-1", "--dry-run"],
+    ));
     let notes = v["notes"].to_string();
     assert!(notes.contains("would initialize"), "{notes}");
     assert!(notes.contains(".moai/project.yaml"), "{notes}");
@@ -456,7 +586,7 @@ fn a_folder_named_like_a_bare_repository_keeps_the_key_vault_name() {
     let plain = tempfile::tempdir().unwrap();
     let dir = plain.path().join("example.git");
     fs::create_dir(&dir).unwrap();
-    json(&run_in(&f, &dir, &["cc", "-a"]));
+    json(&run_in(&f, &dir, &["cc", "--name", "lane-1"]));
     assert_eq!(profile(&dir)["project_id"], "example");
 }
 
@@ -464,7 +594,7 @@ fn a_folder_named_like_a_bare_repository_keeps_the_key_vault_name() {
 fn a_launch_waits_for_a_first_launch_that_is_still_initializing() {
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
-    let first = command(&f, plain.path(), &with_git(&f), &["cc", "-a"])
+    let first = command(&f, plain.path(), &with_git(&f), &["cc", "--name", "lane-1"])
         .env(moai_cli::launcher_init::INIT_TEST_HOLD_VAR, "3000")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -479,82 +609,112 @@ fn a_launch_waits_for_a_first_launch_that_is_still_initializing() {
         );
         std::thread::sleep(std::time::Duration::from_millis(20));
     }
-    // The settings exist but AGENTS.md is still being generated: the second launch waits.
-    let second = run_in(&f, plain.path(), &["cc", "-l"]);
+    // The settings exist but CLAUDE.md is still being generated: the second launch waits.
+    let second = run_in(&f, plain.path(), &["cc", "--name", "lane-2"]);
     json(&second);
     assert!(
-        plain.path().join("AGENTS.md").is_file(),
+        plain.path().join("CLAUDE.md").is_file(),
         "second launch started before the first finished initializing"
     );
     let first = first.wait_with_output().unwrap();
-    assert_eq!(json(&first)["name"], "agent-1");
+    assert_eq!(json(&first)["name"], "lane-1");
 }
 
-/// #2504: a first launch that stops between the settings and AGENTS.md leaves its marker in the
-/// clone's common dir; the next launch finishes the AGENTS.md step and removes the marker. A dry
+/// #2504: a first launch that stops between the settings and CLAUDE.md leaves its marker in the
+/// clone's common dir; the next launch finishes the CLAUDE.md step and removes the marker. A dry
 /// run in between only reports what it would finish.
 #[test]
 fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
+    if !cfg!(debug_assertions) {
+        // The failure seam is debug-only (SPEC-20261124-test-seams-release); a release build
+        // never stops after the settings, which the test below pins.
+        return;
+    }
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
     let dir = plain.path();
-    let marker_file = dir.join(".git/.moai-cli/sessions/.init-pending");
-    let out = command(&f, dir, &with_git(&f), &["cc", "-a"])
+    let marker_file = dir.join(".git/.moai/sessions/.init-pending");
+    let out = command(&f, dir, &with_git(&f), &["cc", "--name", "lane-1"])
         .env(moai_cli::launcher_init::INIT_TEST_FAIL_VAR, "1")
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert!(!marker(&f).exists(), "the host must not start");
     assert!(dir.join(".moai/project.yaml").is_file());
-    assert!(!dir.join("AGENTS.md").exists());
+    assert!(!dir.join("CLAUDE.md").exists());
     assert!(
         marker_file.is_file(),
         "the interrupted launch leaves its marker"
     );
 
-    let v = json(&run_in(&f, dir, &["cc", "-a", "--dry-run"]));
+    let v = json(&run_in(&f, dir, &["cc", "--name", "lane-1", "--dry-run"]));
     assert!(
         v["notes"]
             .to_string()
             .contains("would finish the interrupted initialization"),
         "{v}"
     );
-    assert!(!dir.join("AGENTS.md").exists());
+    assert!(!dir.join("CLAUDE.md").exists());
 
-    let out = run_in(&f, dir, &["cc", "-a"]);
-    assert_eq!(json(&out)["name"], "agent-1");
+    let out = run_in(&f, dir, &["cc", "--name", "lane-1"]);
+    assert_eq!(json(&out)["name"], "lane-1");
     assert_eq!(init_lines(&out), 1, "{}", text(&out));
     assert!(
         String::from_utf8_lossy(&out.stderr).contains("interrupted initialization finished"),
         "{}",
         text(&out)
     );
-    let agents = fs::read(dir.join("AGENTS.md")).unwrap();
+    let agents = fs::read(dir.join("CLAUDE.md")).unwrap();
     assert!(
         String::from_utf8_lossy(&agents).contains("<!-- moai:managed:begin id=moai-workflow -->")
     );
     assert!(!marker_file.exists(), "the marker is removed once finished");
 
-    let out = run_in(&f, dir, &["cc", "-a"]);
-    assert_eq!(json(&out)["name"], "agent-1");
+    let out = run_in(&f, dir, &["cc", "--name", "lane-1"]);
+    assert_eq!(json(&out)["name"], "lane-1");
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
-    assert_eq!(fs::read(dir.join("AGENTS.md")).unwrap(), agents);
+    assert_eq!(fs::read(dir.join("CLAUDE.md")).unwrap(), agents);
 }
 
-/// #2504: only an interrupted first launch is finished. After a complete one the marker is gone,
-/// so an AGENTS.md the user deleted is not brought back (the agents engine's rule as well).
+/// SPEC-20261124-test-seams-release REQ-1 and REQ-2: `MOAI_TEST_INIT_FAIL_AFTER_PROFILE` stops a
+/// first launch after the settings in a debug build and is not read by a release build, which
+/// finishes the launch as if the variable were unset. The test runs the binary of its own
+/// profile, so `cargo test --release` shows the release side.
 #[test]
-fn an_agents_md_deleted_after_a_finished_first_launch_stays_deleted() {
+fn the_init_fail_seam_is_honoured_only_by_a_debug_build() {
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
     let dir = plain.path();
-    json(&run_in(&f, dir, &["cc", "-a"]));
-    assert!(!dir.join(".git/.moai-cli/sessions/.init-pending").exists());
-    fs::remove_file(dir.join("AGENTS.md")).unwrap();
-    let out = run_in(&f, dir, &["cc", "-a"]);
-    assert_eq!(json(&out)["name"], "agent-1");
+    let out = command(&f, dir, &with_git(&f), &["cc", "--name", "lane-1"])
+        .env(moai_cli::launcher_init::INIT_TEST_FAIL_VAR, "1")
+        .output()
+        .unwrap();
+    if cfg!(debug_assertions) {
+        assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+        assert!(!marker(&f).exists(), "the host must not start");
+        assert!(!dir.join("CLAUDE.md").exists());
+    } else {
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+        assert_eq!(json(&out)["name"], "lane-1");
+        assert!(marker(&f).exists(), "the host starts");
+        assert!(dir.join("CLAUDE.md").is_file());
+    }
+}
+
+/// #2504: only an interrupted first launch is finished. After a complete one the marker is gone,
+/// so a CLAUDE.md the user deleted is not brought back (the agents engine's rule as well).
+#[test]
+fn a_claude_md_deleted_after_a_finished_first_launch_stays_deleted() {
+    let f = fixture();
+    let plain = tempfile::tempdir().unwrap();
+    let dir = plain.path();
+    json(&run_in(&f, dir, &["cc", "--name", "lane-1"]));
+    assert!(!dir.join(".git/.moai/sessions/.init-pending").exists());
+    fs::remove_file(dir.join("CLAUDE.md")).unwrap();
+    let out = run_in(&f, dir, &["cc", "--name", "lane-1"]);
+    assert_eq!(json(&out)["name"], "lane-1");
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
-    assert!(!dir.join("AGENTS.md").exists());
+    assert!(!dir.join("CLAUDE.md").exists());
 }
 
 /// #2489: two first launches race on `git init` (CI run 43146819966: "git init failed" while
@@ -589,7 +749,13 @@ fn a_launch_that_meets_a_running_git_init_waits_instead_of_failing() {
     fs::set_permissions(&shim, fs::Permissions::from_mode(0o755)).unwrap();
     let path_var = format!("{}:{}", shims.path().display(), with_git(&f));
     let plain = tempfile::tempdir().unwrap();
-    let first = Held::spawn(&f, plain.path(), &path_var, &["cc", "-a"], "first");
+    let first = Held::spawn(
+        &f,
+        plain.path(),
+        &path_var,
+        &["cc", "--name", "lane-1"],
+        "first",
+    );
     let start = std::time::Instant::now();
     while !plain.path().join(".init-race").exists() {
         assert!(
@@ -598,8 +764,14 @@ fn a_launch_that_meets_a_running_git_init_waits_instead_of_failing() {
         );
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
-    let second = Held::spawn(&f, plain.path(), &path_var, &["cc", "-a"], "second");
-    // Both stubs stay alive, so both numbers are live and must differ.
+    let second = Held::spawn(
+        &f,
+        plain.path(),
+        &path_var,
+        &["cc", "--name", "lane-2"],
+        "second",
+    );
+    // Both stubs stay alive, so both names are live.
     first.wait_ready();
     second.wait_ready();
     let second = second.finish();
@@ -609,7 +781,7 @@ fn a_launch_that_meets_a_running_git_init_waits_instead_of_failing() {
         json(&second)["name"].as_str().unwrap().to_string(),
     ];
     names.sort();
-    assert_eq!(names, ["agent-1", "agent-2"]);
+    assert_eq!(names, ["lane-1", "lane-2"]);
     // The launch that waited found the repository and ran no `git init` of its own.
     assert_eq!(fs::read_to_string(&calls).unwrap(), "init\n");
 }
@@ -625,16 +797,16 @@ fn a_symlink_planted_at_the_git_init_lock_is_not_followed() {
     let canonical = plain.path().canonicalize().unwrap();
     let id = moai_cli::digest(canonical.as_os_str().as_encoded_bytes());
     let lock = tmp.path().join(format!(
-        "moai-cli-git-init-{}.lock",
+        "moai-git-init-{}.lock",
         &id.strip_prefix("sha256:").unwrap()[..16]
     ));
     let target = tmp.path().join("planted-target");
     std::os::unix::fs::symlink(&target, &lock).unwrap();
-    let out = command(&f, plain.path(), &with_git(&f), &["cc", "-a"])
+    let out = command(&f, plain.path(), &with_git(&f), &["cc", "--name", "lane-1"])
         .env("TMPDIR", tmp.path())
         .output()
         .unwrap();
-    assert_eq!(json(&out)["name"], "agent-1");
+    assert_eq!(json(&out)["name"], "lane-1");
     assert!(plain.path().join(".git").is_dir());
     assert!(!target.exists(), "the symlink target must not be created");
     assert!(fs::symlink_metadata(&lock)
@@ -655,7 +827,7 @@ fn a_git_init_lock_not_owned_by_the_home_owner_is_never_waited_on() {
     let canonical = plain.path().canonicalize().unwrap();
     let id = moai_cli::digest(canonical.as_os_str().as_encoded_bytes());
     let lock = tmp.path().join(format!(
-        "moai-cli-git-init-{}.lock",
+        "moai-git-init-{}.lock",
         &id.strip_prefix("sha256:").unwrap()[..16]
     ));
     let held = fs::File::create(&lock).unwrap();
@@ -668,7 +840,7 @@ fn a_git_init_lock_not_owned_by_the_home_owner_is_never_waited_on() {
             "the test needs a HOME owned by another account"
         );
     }
-    let mut child = command(&f, plain.path(), &with_git(&f), &["cc", "-a"])
+    let mut child = command(&f, plain.path(), &with_git(&f), &["cc", "--name", "lane-1"])
         .env("TMPDIR", tmp.path())
         .env("HOME", "/usr")
         .stdout(Stdio::piped())
@@ -684,7 +856,43 @@ fn a_git_init_lock_not_owned_by_the_home_owner_is_never_waited_on() {
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
     let out = child.wait_with_output().unwrap();
-    assert_eq!(json(&out)["name"], "agent-1");
+    assert_eq!(json(&out)["name"], "lane-1");
     assert!(plain.path().join(".git").is_dir());
     drop(held);
+}
+
+/// The lock is named `moai-git-init-<16 hex>.lock`, and a lock file an earlier build left under
+/// its old name is neither read, locked, changed nor deleted: the new launcher keeps its own
+/// file next to it.
+#[test]
+fn the_git_init_lock_is_named_moai_and_an_earlier_one_is_left_alone() {
+    use std::os::unix::fs::MetadataExt;
+    let f = fixture();
+    let tmp = tempfile::tempdir().unwrap();
+    let plain = tempfile::tempdir().unwrap();
+    let canonical = plain.path().canonicalize().unwrap();
+    let id = moai_cli::digest(canonical.as_os_str().as_encoded_bytes());
+    let hex = &id.strip_prefix("sha256:").unwrap()[..16];
+    let earlier = tmp.path().join(format!("moai-cli-git-init-{hex}.lock"));
+    let current = tmp.path().join(format!("moai-git-init-{hex}.lock"));
+    fs::write(&earlier, b"left by an earlier build\n").unwrap();
+    let before = fs::metadata(&earlier).unwrap();
+    let out = command(&f, plain.path(), &with_git(&f), &["cc", "--name", "lane-1"])
+        .env("TMPDIR", tmp.path())
+        .output()
+        .unwrap();
+    assert_eq!(json(&out)["name"], "lane-1", "{}", text(&out));
+    assert!(plain.path().join(".git").is_dir());
+    assert!(
+        fs::symlink_metadata(&current).is_ok_and(|m| m.file_type().is_file()),
+        "no lock file named moai-git-init-<hex>.lock: {:?}",
+        entries(tmp.path())
+    );
+    let after = fs::metadata(&earlier).expect("the earlier lock file was deleted");
+    assert_eq!(fs::read(&earlier).unwrap(), b"left by an earlier build\n");
+    assert_eq!(
+        (before.len(), before.mtime(), before.mtime_nsec()),
+        (after.len(), after.mtime(), after.mtime_nsec()),
+        "the earlier lock file was written"
+    );
 }

@@ -4,16 +4,16 @@
 
 use std::path::PathBuf;
 
-/// Assemble the M-Flow bundle from READY heads
+/// Assemble the NeXT-Flow bundle from READY heads
 ///
 /// `moai bundle <action>` reads the READY heads, judges them, writes the bundle pull request
-/// body and builds the branch; it helps the leader assemble one M-Flow bundle pull request from the
+/// body and builds the branch; it helps the leader assemble one NeXT-Flow bundle pull request from the
 /// heads that lanes marked `LANE-READY-INTEGRATION`. Every action's help starts with what it
 /// does: `Reads only.` (no ledger row, ref, branch, card note or remote is written) or, for
 /// `body --out`, `Reads only. Writes one new file.` None of them fetches, pushes or opens a pull
 /// request: fetch first, and the leader chooses the heads, pushes and opens the pull request.
 /// `build` is the one action that writes: `Writes a new branch and worktree.` It creates
-/// `m-flow/bundle-<date>-<n>` and a worktree under `<HOME>/.moai/worktrees/`, merges the heads one
+/// `m-flow/bundle-<date>-<n>` and a worktree under `<project>/.claude/worktrees/`, merges the heads one
 /// merge commit each, drops a head that conflicts and names it; it never moves or deletes an
 /// existing branch or worktree.
 /// `verify` is the one action that runs commands: `Runs commands.` It runs the check list in the
@@ -31,12 +31,14 @@ pub struct Args {
 enum Action {
     /// Reads only. List the READY heads: the newest readable line of each card
     ///
-    /// Reads only. For each card whose newest note starts with `LANE-READY-INTEGRATION` and reads
-    /// as `LANE-READY-INTEGRATION C-<n> head=<40 hex>` (then the end of the line or a space, with
-    /// an optional ` spec=<SPEC id>` right after the head), prints the card, the note number, the
-    /// head, the SPEC ids of the `Moai-Spec` trailers of `<tip>..<head>`, whether the head is
-    /// present here and on `origin`, and the tip's SHA and commit time. A card whose newest marker
-    /// note does not read is listed under `unreadable` and gives no head. Never fetches.
+    /// Reads only. For each card whose newest hand-back note (a note not written by the leader and
+    /// not a decision note, whose first line starts with `LANE-READY-INTEGRATION`, `REPAIRED` or
+    /// `READY `) reads as `<marker> C-<n> head=<40 hex>` (then the end of the line or a space,
+    /// with an optional ` spec=<SPEC id>` right after the head), prints the card, the note
+    /// number and its marker, the head, the SPEC ids of the `Moai-Spec` trailers of
+    /// `<tip>..<head>`, whether the head is present here and on `origin`, and the tip's SHA and
+    /// commit time. A card whose newest hand-back note does not read is listed under `unreadable`
+    /// and gives no head. Never fetches.
     Ready {
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
@@ -47,20 +49,29 @@ enum Action {
         /// The repository to read.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into.
-        #[arg(long, default_value = "origin/v2026.11.0")]
-        tip: String,
+        /// The branch bundles are merged into; without it the profile's NeXT-Flow
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
+        #[arg(long)]
+        tip: Option<String>,
     },
     /// Reads only. Judge heads: every check, all findings in one answer
     ///
-    /// Reads only. HEADS are `C-<n>` (the card's newest readable READY head) or `C-<n>=<40 hex>`.
+    /// Reads only. HEADS are `C-<n>` (the head of the card's newest hand-back note, a `REPAIRED`
+    /// note included) or `C-<n>=<40 hex>`. Each head's entry in `heads` names the note it was read
+    /// from in `read_note` (`note_id` and `marker`), and the `guard-mutant:` lines are read from
+    /// that note alone, never filled from an older one.
     /// Every head gets every check: `no_ready_line`, `head_missing` (fetch first),
     /// `no_merge_base` (an unrelated history; the other heads are still judged), `not_on_origin`,
     /// `already_merged`, `audit_missing` (the changed paths `<tip>...<head>` set an
     /// audit floor of 1 or more and no note of the card is a `PASS` verdict naming exactly the
     /// head; the nearest `PASS` on an ancestor is shown), `trailers`, `spec`, `result_missing`
     /// and `conflict` (each head with the tip and with every earlier head, by the text merge
-    /// GitHub runs). `ok` is false when anything was found. Never fetches.
+    /// GitHub runs). `ok` is false when anything was found. `warnings` lists, without changing
+    /// `ok`, `findings` or the exit status, a READY note that has no `guard-mutant:` line
+    /// (`mutant_line_missing`, also when no note names the head), a line that fits neither form
+    /// (`mutant_line_unreadable`) and a mutant the test passed on (`mutant_survived`). Never
+    /// fetches.
     Check {
         /// `C-<n>` or `C-<n>=<40 hex>`, in the order they would be merged.
         #[arg(required = true)]
@@ -74,9 +85,11 @@ enum Action {
         /// The repository to read.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into.
-        #[arg(long, default_value = "origin/v2026.11.0")]
-        tip: String,
+        /// The branch bundles are merged into; without it the profile's NeXT-Flow
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
+        #[arg(long)]
+        tip: Option<String>,
     },
     /// Reads only. Writes one new file with --out. Write the bundle pull request body
     ///
@@ -111,14 +124,16 @@ enum Action {
         /// The repository to read.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into.
-        #[arg(long, default_value = "origin/v2026.11.0")]
-        tip: String,
+        /// The branch bundles are merged into; without it the profile's NeXT-Flow
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
+        #[arg(long)]
+        tip: Option<String>,
     },
     /// Writes a new branch and worktree. Merge heads, one merge commit each
     ///
     /// Writes a new branch and worktree. Creates `m-flow/bundle-<date>-<n>` (the lowest unused
-    /// `n`) and the worktree `<HOME>/.moai/worktrees/<project>-bundle-<n>` at the tip, merges each
+    /// `n`) and the worktree `<project>/.claude/worktrees/<project>-bundle-<n>` at the tip, merges each
     /// head in the order given with one merge commit under the text merge GitHub runs, and prints
     /// the pinned SHA. HEADS are `C-<n>` (the card's newest readable READY head) or
     /// `C-<n>=<40 hex>`. A head whose merge conflicts is aborted, left out and named with its
@@ -141,9 +156,11 @@ enum Action {
         /// The repository to build in.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into.
-        #[arg(long, default_value = "origin/v2026.11.0")]
-        tip: String,
+        /// The branch bundles are merged into; without it the profile's NeXT-Flow
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
+        #[arg(long)]
+        tip: Option<String>,
     },
     /// Runs commands. Run the check list on a bundle branch
     ///
@@ -200,9 +217,11 @@ enum Action {
         /// The repository to read.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into.
-        #[arg(long, default_value = "origin/v2026.11.0")]
-        tip: String,
+        /// The branch bundles are merged into; without it the profile's NeXT-Flow
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
+        #[arg(long)]
+        tip: Option<String>,
     },
     /// Writes the user HOME. Install an opt-in pack's entries into the user folders and record
     /// the selection in the user-assets manifest (the Go output contract rides in `result.text`)
@@ -224,22 +243,70 @@ enum Action {
 
 pub const OPERATION: &str = "bundle";
 
+const DEFAULT_TIP: &str = "origin/v2026.11.0";
+
+/// The tip an action judges: an explicit `--tip` wins; without one, the project
+/// profile's NeXT-Flow integration branch becomes the local `refs/heads/<branch>` of the
+/// repository `dir` (`origin/<branch>` only when that branch does not exist; the stored
+/// value drives the integration ref), and without a recorded branch today's default stays,
+/// so every other repository keeps its answer.
+fn resolve_tip(
+    project: &std::path::Path,
+    dir: &std::path::Path,
+    tip: Option<&str>,
+) -> Result<String, String> {
+    if let Some(t) = tip {
+        return Ok(t.to_string());
+    }
+    let work_flow = moai_cli::profile::read_profile(project)
+        .ok()
+        .and_then(|(p, _)| p.work_flow);
+    if work_flow
+        .as_ref()
+        .is_some_and(|w| moai_cli::profile::is_local_flow(&w.flow))
+    {
+        if let Some(branch) = work_flow
+            .and_then(|w| w.integration_branch)
+            .filter(|b| !b.trim().is_empty())
+        {
+            return Ok(moai_cli::bundle::integration_tip(dir, &branch));
+        }
+    }
+    Ok(DEFAULT_TIP.to_string())
+}
+
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     use moai_cli::bundle as b;
     use moai_cli::ledger::command::resolve_home;
+    let tip = match &args.action {
+        Action::Ready {
+            project, dir, tip, ..
+        }
+        | Action::Check {
+            project, dir, tip, ..
+        }
+        | Action::Body {
+            project, dir, tip, ..
+        }
+        | Action::Build {
+            project, dir, tip, ..
+        }
+        | Action::Verify {
+            project, dir, tip, ..
+        } => resolve_tip(project, dir, tip.as_deref())?,
+        // The user-assets actions name no tip: they never judge a ref.
+        Action::Add { .. } | Action::Remove { .. } | Action::List => String::new(),
+    };
     match args.action {
         Action::Ready {
-            project,
-            home,
-            dir,
-            tip,
+            project, home, dir, ..
         } => b::ready(&project, &resolve_home(home)?, &dir, &tip),
         Action::Check {
             heads,
             project,
             home,
             dir,
-            tip,
+            ..
         } => b::check(&project, &resolve_home(home)?, &dir, &tip, &heads),
         Action::Body {
             heads,
@@ -249,7 +316,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
             dir,
-            tip,
+            ..
         } => b::body(
             &project,
             &resolve_home(home)?,
@@ -266,7 +333,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
             dir,
-            tip,
+            ..
         } => b::build::build(
             &project,
             &resolve_home(home)?,
@@ -288,7 +355,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
             dir,
-            tip,
+            ..
         } => b::verify::verify(
             &project,
             &resolve_home(home)?,

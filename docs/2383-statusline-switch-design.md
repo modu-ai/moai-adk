@@ -142,17 +142,11 @@ for MOAI_CLI in "$HOME/.moai/path/moai" "$HOME/.moai-cli/path/moai" "$HOME/.moai
 	fi
 done
 
-# Fallback while the Go build is still installed: the same Go render as today.
-MOAI_GO="$HOME/go/bin/moai.old"
-if [ -f "$MOAI_GO" ] && [ -x "$MOAI_GO" ]; then
-	exec "$MOAI_GO" statusline
-fi
-
 # Nothing installed - exit silently (Claude Code handles a missing statusline).
 exit 0
 ```
 
-저장소 원본: `tools/claude-statusline.sh`(mode 755). 위 블록과 바이트 단위로 같아야 하며 `tests/claude_statusline_wrapper_test.py`가 그 일치와 동작(임시 HOME·가짜 실행체로 stdin·argv·cwd·exit 보존, Rust 우선, 폴백, PATH의 `moai` 미호출, `~/.moai`·`~/.moai-cli` 이동 전·후 배치, `.env.glm` 미source)을 확인한다. §5-5의 교체는 이 파일을 쓴다. 실제 설치본·실제 Go로 한 실행은 이 시험의 범위가 아니다.
+저장소 원본: `tools/claude-statusline.sh`(mode 755). 위 블록과 바이트 단위로 같아야 하며 `tests/claude_statusline_wrapper_test.py`가 그 일치와 동작(임시 HOME·가짜 실행체로 stdin·argv·cwd·exit 보존, Rust 우선, Go 폴백 없이 조용히 끝남, PATH의 `moai` 미호출, `~/.moai`·`~/.moai-cli` 이동 전·후 배치, `.env.glm` 미source)을 확인한다. §5-5의 교체는 이 파일을 쓴다. 실제 설치본·실제 Go로 한 실행은 이 시험의 범위가 아니다. 2026-11-24(SPEC-20261121-go-path-removal 판 6)에 Go 폴백(`go/bin/moai.old`) 다섯 줄을 뺐다: 트리에서 `moai.old` 를 시작하는 마지막 글이었다. 아래 §4.1·§5의 폴백 글은 그때까지의 설계 기록이다.
 
 현행(§1.3)과 다른 점과 그 근거:
 - `command -v moai`와 `~/go/bin/moai`·`~/.local/bin/moai` 폴백을 없앴다. PATH 이름에 기대지 않는 것이 이 카드의 목적이다.

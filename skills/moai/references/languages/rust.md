@@ -1,6 +1,6 @@
 # Language: Rust
 
-When to read: `internal/quality` sent you here because the project's detected languages include `rust`. The project's own declarations (CI steps, `Makefile`, `justfile`, `AGENTS.md`) win over every default below.
+When to read: `internal/quality` sent you here because the project's detected languages include `rust`. The project's own declarations (CI steps, `Makefile`, `justfile`, `CLAUDE.md`) win over every default below.
 
 ## Evidence and defaults
 
@@ -16,7 +16,7 @@ In a workspace, `-p <crate>` narrows a run to one member; say so when you narrow
 
 ## Dependency existence
 
-- `cargo info <crate>` (cargo 1.82 or later) or `cargo search <crate> --limit 1`; keep the line that shows the exact name and version.
+- `cargo info <crate>` (cargo 1.82 or later; it queries the registry, so it needs the network unless `--offline` is given, and it creates `Cargo.lock` when none exists, so a VERIFY run uses it only where `Cargo.lock` is tracked) or `cargo search <crate> --limit 1` (a text search: the first hit may be a different crate); keep the line that shows the exact name and version.
 - Add with `cargo add <crate>`; show the new `Cargo.lock` entry.
 
 ## Traps

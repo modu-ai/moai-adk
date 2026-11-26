@@ -585,7 +585,8 @@ class UsageTest(unittest.TestCase):
         decoy.assert_untouched(self)
 
 
-VERIFY_FILE = REPO_ROOT / "skills" / "moai" / "workflows" / "verify.md"
+# RUN carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
+VERIFY_FILE = REPO_ROOT / "skills" / "moai" / "workflows" / "run.md"
 
 
 class VerifyStepTest(unittest.TestCase):

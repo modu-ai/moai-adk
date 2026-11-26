@@ -30,19 +30,15 @@ in the tuning file. Keep the files balanced (the split today is 6 and 6).
 
 ## Running and scoring
 
-```sh
-# Build the audit prompts for a set (dry-run: no model, no network; answer keys stay out).
-python3 tools/audit_eval.py run --set tuning --out target/audit-eval/prompts
+The Python tool that built the audit prompts and scored findings (`tools/audit_eval.py`) was
+removed with the repository's Python tools (user instruction of 2026-11-24, one tool of
+`SPEC-20261125-rust-only-finish`). Until a `moai` command replaces it, score by hand: give each
+case's audit prompt to an auditor without the answer key, then compare its findings with the
+`answer_key` sentences and count the controls it flagged.
 
-# Score a findings file against a set: recall of raw findings, recall of the final verdict,
-# and the over-flagging rate on the controls.
-python3 tools/audit_eval.py score --set heldout --findings findings.json
-```
-
-A findings file is a JSON list of `{ "case_id", "findings": ["…"], "verdict": "PASS"|"FAIL" }`
-rows, one per case (controls included as case ids `ctl-…`). A finding counts as describing the
-bug only when at least half of the answer key's distinctive tokens appear in it — the threshold
-is a constant in the tool (`TOKEN_FRACTION`); it is a ruler for comparing runs, not a truth.
+A findings list is `{ "case_id", "findings": ["…"], "verdict": "PASS"|"FAIL" }` rows, one per
+case (controls included as case ids `ctl-…`). A finding counts as describing the bug when it
+names what the answer key names; the count is a ruler for comparing runs, not a truth.
 
 ## When to stop tuning
 

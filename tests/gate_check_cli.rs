@@ -765,10 +765,13 @@ fn ci_info_names_the_attempt_of_a_re_run_that_succeeded_and_the_verdict_does_not
     ] {
         let v = with_attempt(name, attempt.clone());
         assert_eq!(v["result"]["ci_info"], json!(info), "{name} {attempt}: {v}");
-        // Everything but the info line is what the plain snapshot answered.
+        // Everything but the info line is what the plain snapshot answered — the `reads`
+        // summary excepted, for this case swaps the check runs the summary names.
         let (mut got, mut want) = (v.clone(), plain.clone());
         got["result"]["ci_info"] = Value::Null;
         want["result"]["ci_info"] = Value::Null;
+        got["result"]["reads"] = Value::Null;
+        want["result"]["reads"] = Value::Null;
         assert_eq!(got, want, "{name} {attempt}");
     }
     // A `ci` that succeeded on its attempt two while another job failed: the state is failure, and
@@ -1484,7 +1487,7 @@ fn tier0_with_code_or_skill_text_is_tier1_and_needs_a_pass() {
         p(&["src", "foo.rs"]),
         p(&["skills", "x.md"]),
         p(&["skills", "moai", "workflows", "a.md"]),
-        "CLAUDE.md".to_string(),
+        p(&["sub", "CLAUDE.md"]),
         p(&["sub", "AGENTS.md"]),
         p(&["tools", "x.py"]),
     ] {
@@ -1789,4 +1792,353 @@ fn a_posted_fail_stops_a_tier_0_merge_until_the_same_auditor_passes() {
         verdict(300, "agent-10", OTHER, "FAIL")
     ]);
     assert_eq!(stopped(&gate(&s)), (false, "G3".into()), "{}", gate(&s));
+}
+
+/// SPEC-20261120-test-weakening-detection AC-8, REQ-8, REQ-9: the gate result lists the
+/// weakened-test findings of the snapshot, says `unknown` when the diff was not read (the key is
+/// absent), and, while the check only observes, leaves the effective tier where the paths put
+/// it.
+#[test]
+fn the_gate_lists_the_findings_and_says_unknown_when_unread() {
+    let mut s = passing();
+    s["body_tier"] = json!(0);
+    s["pr_files"] = json!(["tests/a.rs"]);
+
+    // Not read: unknown, never an empty list.
+    let v = gate(&s)["result"].clone();
+    assert_eq!(v["test_weakening"]["findings"], json!("unknown"), "{v}");
+    assert_eq!(v["test_weakening"]["enforced"], json!(false), "{v}");
+
+    // Read, and nothing found.
+    s["test_weakening"] = json!([]);
+    let v = gate(&s)["result"].clone();
+    assert_eq!(v["test_weakening"]["findings"], json!([]), "{v}");
+    assert_eq!(v["effective_tier"], json!(0), "{v}");
+    assert_eq!(v["test_weakening"]["tier_with_findings"], json!(0), "{v}");
+
+    // Read, and found: listed, the tier it would give is named, the tier in force is not raised.
+    let line = "skip_added tests/a.rs:3 `skip` skips a test";
+    s["test_weakening"] = json!([line]);
+    let v = gate(&s)["result"].clone();
+    assert_eq!(v["test_weakening"]["findings"], json!([line]), "{v}");
+    assert_eq!(v["test_weakening"]["tier_with_findings"], json!(1), "{v}");
+    assert_eq!(v["effective_tier"], json!(0), "{v}");
+
+    // A stop carries the findings too.
+    s["body_check_ok"] = json!(false);
+    let v = gate(&s)["result"].clone();
+    assert_eq!(v["pass"], json!(false), "{v}");
+    assert_eq!(v["test_weakening"]["findings"], json!([line]), "{v}");
+}
+
+/// The 2026-11-21 mo.ai.kr report: every input was read, yet G1 stopped silently — the gate
+/// must name what it read (the comments, their associations, the member line that looks like
+/// a verdict but is not one) and the verdict line's real shape.
+#[test]
+fn g1_names_what_it_read_when_a_member_line_is_not_a_verdict() {
+    let mut s = passing();
+    s["comments"] = json!([
+        {"id": 1, "author_association": "NONE", "body": "[vc]: preview comment\n"},
+        {"id": 2, "author_association": "MEMBER", "body": "AUDIT PASS 72225828140168a0560d988694c7fac7430f3f7f ci-run=44831965524 conclusion=success\n"},
+    ]);
+    s["checks"] = json!([{"name": "build", "conclusion": "success", "head_sha": H}]);
+    let v = gate(&s);
+    let r = &v["result"];
+    assert_eq!(r["pass"], json!(false), "{r}");
+    assert_eq!(r["rule"], json!("G1"));
+    let reason = r["reason"].as_str().unwrap();
+    assert!(reason.contains("1 member comment(s) read"), "{reason}");
+    assert!(reason.contains("none carries a verdict line"), "{reason}");
+    assert!(
+        reason.contains("AUDIT PASS 72225828"),
+        "the member line that is not a verdict is named: {reason}"
+    );
+    assert!(
+        reason.contains("AUDIT #"),
+        "the verdict line's real shape is named: {reason}"
+    );
+    // The answer names every input it read, so ci=none and an empty comment list are
+    // distinguishable from a read failure. The non-member comment is already counted on the
+    // `ignored_control_lines` side: the deciding snapshot carries members only.
+    assert_eq!(r["reads"]["comments"], json!(1));
+    assert_eq!(r["reads"]["verdict_lines"], json!(0));
+    assert_eq!(
+        r["reads"]["lookalike_first_lines"][0]["comment_id"],
+        json!(2)
+    );
+    assert_eq!(r["reads"]["check_runs"], json!(1));
+    assert_eq!(r["reads"]["check_run_names"], json!(["build"]));
+    assert_eq!(r["ci_info"], json!("ci=none"));
+}
+
+#[test]
+fn g1_names_an_empty_comment_list_as_the_missing_input() {
+    let mut s = passing();
+    s["comments"] = json!([]);
+    let v = gate(&s);
+    let r = &v["result"];
+    assert_eq!(r["rule"], json!("G1"), "{}", gate(&s));
+    let reason = r["reason"].as_str().unwrap();
+    assert!(
+        reason.contains("no member comments were read at all"),
+        "{reason}"
+    );
+    assert_eq!(r["reads"]["comments"], json!(0));
+}
+
+/// Audit B1: a member comment can carry a credential-shaped line — the reason and the `reads`
+/// summary mask it before anything is named, and the 60-character cut happens after the mask
+/// (the cut never sees the secret's own characters).
+#[test]
+fn g1_masks_a_secret_shaped_member_line_before_naming_it() {
+    let mut s = passing();
+    let line = "AUDIT PASS ghp_abcdefghijklmnopqrstuvwxyz123456789012345 token=supersecretvalue1234567890abcdef conclusion=success";
+    s["comments"] = json!([{"id": 2, "author_association": "MEMBER", "body": format!("{line}\n")}]);
+    let v = gate(&s);
+    let r = &v["result"];
+    assert_eq!(r["rule"], json!("G1"));
+    let reason = r["reason"].as_str().unwrap();
+    assert!(
+        reason.contains("[redacted]"),
+        "the reason is masked: {reason}"
+    );
+    assert!(
+        !reason.contains("ghp_abcdefghijklmnopqrstuvwxyz"),
+        "{reason}"
+    );
+    assert!(!reason.contains("supersecretvalue"), "{reason}");
+    let first = &r["reads"]["lookalike_first_lines"][0]["first_line"];
+    assert!(
+        first.as_str().unwrap().contains("[redacted]"),
+        "the summary line is masked: {first}"
+    );
+    assert!(
+        !first.as_str().unwrap().contains("supersecretvalue"),
+        "{first}"
+    );
+}
+
+/// Audit N2 (M3): the reason's 60-character cut is pinned at its boundary — a line of exactly
+/// 60 characters is named in full, its 61st character is not; and the associations the answer
+/// names are the deciding snapshot's own (members only), with the lookalike count. The
+/// summary's own cut is pinned separately (M4 — `the_reads_summary_cuts_…` below).
+#[test]
+fn g1_cuts_the_named_line_at_sixty_characters_and_counts_the_lookalike() {
+    let mut s = passing();
+    let long_line = format!(
+        "AUDIT PASS {} and the wording goes on and on beyond the cut",
+        "a".repeat(16)
+    );
+    s["comments"] = json!([
+        {"id": 1, "author_association": "NONE", "body": "a bot comment\n"},
+        {"id": 2, "author_association": "MEMBER", "body": format!("{long_line}\n")},
+    ]);
+    let v = gate(&s);
+    let r = &v["result"];
+    let reason = r["reason"].as_str().unwrap();
+    // The 60 characters are there and the 61st is not: the quoted part of the reason is the
+    // line's first 60 characters exactly.
+    let quoted = reason
+        .split("looks closest starts \"")
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .unwrap_or_default();
+    assert_eq!(quoted, &long_line[..60], "{reason}");
+    assert_eq!(quoted.chars().count(), 60, "{reason}");
+    assert_eq!(r["reads"]["comments"], json!(1), "members only");
+    assert_eq!(
+        r["reads"]["author_associations"],
+        json!({"MEMBER": 1}),
+        "{r}"
+    );
+    assert_eq!(
+        r["reads"]["member_first_lines_that_are_not_verdict_lines"],
+        json!(1)
+    );
+}
+
+/// Audit N2 (M6): a passing answer carries the same `reads` summary — verdict lines counted,
+/// check names named — so a pass and a stop answer the same question about their inputs.
+#[test]
+fn a_passing_answer_names_what_it_read_too() {
+    let v = gate(&passing());
+    let r = &v["result"];
+    assert_eq!(r["pass"], json!(true));
+    let reads = &r["reads"];
+    assert_eq!(reads["comments"], json!(3), "{reads}");
+    assert_eq!(reads["verdict_lines"], json!(1));
+    assert_eq!(
+        reads["member_first_lines_that_are_not_verdict_lines"],
+        json!(0)
+    );
+    assert_eq!(reads["check_runs"], json!(4));
+    assert_eq!(
+        reads["check_run_names"],
+        json!([
+            "Vercel Preview Comments",
+            "ci",
+            "ci / linux-x86_64",
+            "windows-build"
+        ])
+    );
+}
+
+/// Audit follow-ups (merge-train note 4830): the member treatment is `comment_authority::
+/// is_member`, so an OWNER and a COLLABORATOR comment that looks like a verdict gets the same
+/// naming — and the answer's associations keep who was who.
+#[test]
+fn an_owner_comment_lookalike_is_named_and_counted() {
+    let mut s = passing();
+    s["comments"] = json!([
+        {"id": 7, "author_association": "OWNER", "body": "AUDIT PASS 72225828140168a0560d988694c7fac7430f3f7f merged by hand\n"},
+    ]);
+    let v = gate(&s);
+    let r = &v["result"];
+    assert_eq!(r["rule"], json!("G1"), "{r}");
+    let reason = r["reason"].as_str().unwrap();
+    assert!(reason.contains("1 member comment(s) read"), "{reason}");
+    assert!(reason.contains("AUDIT PASS 72225828"), "{reason}");
+    let reads = &r["reads"];
+    assert_eq!(reads["comments"], json!(1));
+    assert_eq!(
+        reads["lookalike_first_lines"][0]["author_association"],
+        json!("OWNER")
+    );
+    assert_eq!(
+        reads["member_first_lines_that_are_not_verdict_lines"],
+        json!(1)
+    );
+}
+
+#[test]
+fn a_collaborator_comment_lookalike_is_named_and_counted() {
+    let mut s = passing();
+    s["comments"] = json!([
+        {"id": 8, "author_association": "COLLABORATOR", "body": "AUDIT PASS 5ea8173a899a2f7ea81a254d3880bb835f7a180e merged by hand\n"},
+    ]);
+    let v = gate(&s);
+    let r = &v["result"];
+    assert_eq!(r["rule"], json!("G1"), "{r}");
+    let reason = r["reason"].as_str().unwrap();
+    assert!(reason.contains("AUDIT PASS 5ea8173a"), "{reason}");
+    let reads = &r["reads"];
+    assert_eq!(
+        reads["lookalike_first_lines"][0]["author_association"],
+        json!("COLLABORATOR")
+    );
+    assert_eq!(
+        reads["member_first_lines_that_are_not_verdict_lines"],
+        json!(1)
+    );
+}
+
+/// Audit follow-up M4: the `reads` summary cuts its named line at the same 60 characters the
+/// reason does — the 61st character of the comment's first line is not in the answer.
+#[test]
+fn the_reads_summary_cuts_its_named_line_at_sixty_characters() {
+    let mut s = passing();
+    let long_line = format!(
+        "AUDIT PASS {} beyond sixty the wording continues here",
+        "a".repeat(16)
+    );
+    s["comments"] = json!([
+        {"id": 9, "author_association": "MEMBER", "body": format!("{long_line}\n")},
+    ]);
+    let v = gate(&s);
+    let first = &v["result"]["reads"]["lookalike_first_lines"][0]["first_line"];
+    assert_eq!(first.as_str().unwrap(), &long_line[..60], "{first}");
+    assert_eq!(first.as_str().unwrap().chars().count(), 60);
+}
+
+/// Audit follow-up M11: the summary masks before it cuts — the named line is the masked line
+/// cut to sixty characters, exactly (a cut-first order would leave the tail's own characters
+/// in the named line).
+#[test]
+fn the_reads_summary_masks_before_it_cuts() {
+    let mut s = passing();
+    let line = "AUDIT PASS ghp_abcdefghijklmnopqrstuvwxyz123456789012345 token=supersecretvalue1234567890abcdef conclusion=success";
+    s["comments"] =
+        json!([{"id": 10, "author_association": "MEMBER", "body": format!("{line}\n")}]);
+    let v = gate(&s);
+    let first = &v["result"]["reads"]["lookalike_first_lines"][0]["first_line"];
+    // Masked first: both credentials are `[redacted]`, and the whole tail survives the cut —
+    // cutting first would name `conclusion=` without its value instead.
+    assert_eq!(
+        first.as_str().unwrap(),
+        "AUDIT PASS [redacted] [redacted] conclusion=success"
+    );
+}
+
+/// The decision runs with the working folder `dir`, so a state folder under it is the only
+/// thing the layout can change.
+fn gate_in(dir: &std::path::Path, snapshot: &Value) -> Value {
+    let mut child = Command::new(crate::common::MOAI_BIN)
+        .arg("gate-check")
+        .current_dir(dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, snapshot.to_string().as_bytes());
+    let out = child.wait_with_output().unwrap();
+    serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&out.stderr)))
+}
+
+/// A project folder in one of the two state layouts of the mo.ai.kr report: `mixed` keeps the
+/// Go-generation markers (`manifest.json` and `config/sections/system.yaml` in the state folder)
+/// beside the Rust profile; `rust` has them moved to a `backups/go-markers-<stamp>/` folder
+/// inside it. The state folder name comes from the resolver constant, not a literal.
+fn project_layout(root: &std::path::Path, layout: &str) {
+    let state = root.join(moai_cli::state_root::MOAI_DIR);
+    std::fs::create_dir_all(state.join("config/sections")).unwrap();
+    std::fs::write(state.join("project.yaml"), "project:\n  name: fixture\n").unwrap();
+    let markers = [
+        ("manifest.json", "{}\n"),
+        ("config/sections/system.yaml", "moai:\n  version: 2\n"),
+    ];
+    let home = if layout == "mixed" {
+        state.clone()
+    } else {
+        state.join("backups/go-markers-20261120T234501Z")
+    };
+    for (name, text) in markers {
+        let path = home.join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    }
+}
+
+/// Card criterion 1: a member's verdict line with a successful head CI passes G1, and a member
+/// line in the wrong shape stops at G1 naming what was read — in both state layouts, with the
+/// same answer. The gate reads the snapshot only, so the layout cannot reach it; the test pins
+/// that (the mo.ai.kr report blamed the move of the Go markers).
+#[test]
+fn the_state_layout_does_not_change_what_the_gate_reads_or_says() {
+    let mut wrong_shape = passing();
+    wrong_shape["comments"] = json!([
+        {"id": 2, "author_association": "MEMBER", "body": "AUDIT PASS 72225828140168a0560d988694c7fac7430f3f7f ci-run=44831965524 conclusion=success\n"},
+    ]);
+    wrong_shape["checks"] = json!([{"name": "build", "conclusion": "success", "head_sha": H}]);
+
+    let mut answers = Vec::new();
+    for layout in ["mixed", "rust"] {
+        let dir = tempfile::tempdir().unwrap();
+        project_layout(dir.path(), layout);
+        let good = gate_in(dir.path(), &passing());
+        let bad = gate_in(dir.path(), &wrong_shape);
+        assert_eq!(good["result"]["pass"], json!(true), "{layout}: {good}");
+        assert_eq!(good["result"]["reads"]["verdict_lines"], json!(1), "{good}");
+        assert_eq!(stopped(&bad), (false, "G1".to_string()), "{layout}: {bad}");
+        let reason = bad["result"]["reason"].as_str().unwrap();
+        assert!(reason.contains("1 member comment(s) read"), "{reason}");
+        assert!(reason.contains("AUDIT PASS 72225828"), "{reason}");
+        assert_eq!(bad["result"]["reads"]["check_run_names"], json!(["build"]));
+        answers.push((good, bad));
+    }
+    assert_eq!(
+        answers[0], answers[1],
+        "the answers of the two state layouts must be identical"
+    );
 }

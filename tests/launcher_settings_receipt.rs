@@ -51,11 +51,7 @@ fn sha(text: &str) -> String {
 /// Saves the claude defaults (tool pick `1`, four Enters, a yes).
 fn save(home: &Path) -> (Value, String) {
     let mut out = Vec::new();
-    let result = stage(
-        home,
-        &mut Cursor::new("1\n\n\n\n\ny\n".to_string()),
-        &mut out,
-    );
+    let result = stage(home, &mut Cursor::new("1\n\n\ny\n".to_string()), &mut out);
     (result, String::from_utf8(out).unwrap())
 }
 
@@ -281,7 +277,7 @@ fn a_no_and_an_unchanged_run_leave_no_receipt() {
     let mut out = Vec::new();
     let no = stage(
         &h.path,
-        &mut Cursor::new("1\n\n\n\n\nn\n".to_string()),
+        &mut Cursor::new("1\n\n\nn\n".to_string()),
         &mut out,
     );
     assert_eq!(no["state"], json!("declined"), "{no}");

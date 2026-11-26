@@ -26,8 +26,8 @@ fn home(files: &[(&str, &[u8])]) -> tempfile::TempDir {
     home
 }
 
-/// A git project under cargo's test scratch dir, outside HOME: `glm -a` reads and takes its
-/// `agent-N` number there (#2359), never in this repository's own counter. #2655: one fresh
+/// A git project under cargo's test scratch dir, outside HOME: `glm` reads its key and takes its
+/// session lock there (#2359), never in this repository's own folder. #2655: one fresh
 /// folder per test process — cargo-nextest runs every test as its own process, and a shared
 /// fixed folder made their `git init` runs collide on `.git/config`'s lock. A `static` is never
 /// dropped, so the folder stays; it is made under `CARGO_TARGET_TMPDIR` so what stays is inside
@@ -66,7 +66,7 @@ fn launcher(home: &Path, env_token: Option<&str>) -> Command {
 /// `(exit code, stdout JSON, stdout + stderr)` of `glm -a --dry-run`.
 fn dry(home: &Path, env_token: Option<&str>) -> (i32, Value, String) {
     let out = launcher(home, env_token)
-        .args(["glm", "-a", "--dry-run"])
+        .args(["glm", "--dry-run"])
         .output()
         .unwrap();
     let stdout = String::from_utf8_lossy(&out.stdout).to_string();
@@ -159,7 +159,7 @@ fn an_unreadable_entry_at_the_legacy_path_is_named_without_opening_it() {
         .unwrap();
     assert!(made.success());
     let mut child = launcher(h.path(), None)
-        .args(["glm", "-a", "--dry-run"])
+        .args(["glm", "--dry-run"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()
@@ -249,7 +249,7 @@ fn host_token(home: &Path, env_token: Option<&str>) -> String {
     fs::set_permissions(&fake, fs::Permissions::from_mode(0o755)).unwrap();
     let out = launcher(home, env_token)
         .env("PATH", format!("{}:/usr/bin:/bin", bin.path().display()))
-        .args(["glm", "-a"])
+        .args(["glm"])
         .output()
         .unwrap();
     let text = format!(
@@ -260,12 +260,13 @@ fn host_token(home: &Path, env_token: Option<&str>) -> String {
     assert!(out.status.success(), "{text}");
     let record = fs::read_to_string(&seen).unwrap();
     let (token, rest) = record.split_once('|').unwrap();
-    // The connection set of the Go tool, pinned by literal value; the last field is the
-    // same key under the name the z.ai MCP server reads.
+    // The connection set, pinned by literal value: opus, sonnet and fable map to glm-5.4[1m]
+    // (user decision 2026-11-23), haiku stays glm-5.3-flash; the last field is the same key
+    // under the name the z.ai MCP server reads.
     assert_eq!(
         rest,
         format!(
-            "https://api.z.ai/api/anthropic|3000000|glm-5.3|glm-5.3|glm-5.3-flash|glm-5.3|1000000|1000000|1|{token}"
+            "https://api.z.ai/api/anthropic|3000000|glm-5.4[1m]|glm-5.4[1m]|glm-5.3-flash|glm-5.4[1m]|1000000|1000000|1|{token}"
         )
     );
     if token.len() >= 8 {

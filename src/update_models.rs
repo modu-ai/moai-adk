@@ -1,18 +1,19 @@
 //! The model stage of `moai update` (SPEC-20261118-update-model-pick, card C-47 slice 3).
 //!
-//! On a person's terminal the stage asks the tool pick and the leader and agent model and effort
-//! of each picked tool (`model_effort_questions`), shows what would change and writes the choice
-//! to the user launcher settings file through the digest-bound apply. In every other run
-//! [`report`] lists the model and effort each tool and role would use. Neither function quotes
+//! On a person's terminal the stage asks the tool pick and one model and effort
+//! for each picked tool (`model_effort_questions`), shows what would change and writes the choice
+//! as the flat `launcher.models.<tool>` entry to the user launcher settings file through the
+//! digest-bound apply. In every other run
+//! [`report`] lists the model and effort each tool would use. Neither function quotes
 //! saved text: a message names a key path or a fixed reason.
 
 use crate::key_vault;
 use crate::model_effort_questions::{self as questions, Change, Outcome, Plan};
-use crate::model_effort_settings::{self as settings, Choice, ROLES, TOOLS};
+use crate::model_effort_settings::{self as settings, Choice, TOOLS};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::io::{BufRead, Write};
+use std::io::{BufRead, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
 /// The permission reference of the receipt: the person answered yes to the save question.
@@ -32,10 +33,10 @@ pub fn settings_path(home: &Path) -> PathBuf {
     crate::home_root::path(home).join("config/launcher.yaml")
 }
 
-/// The tools whose folder exists under the home: `claude` for `~/.claude`, `codex` for `~/.codex`.
-/// A link or a file of that name is not a folder.
+/// The tools whose folder exists under the home: `claude` for `~/.claude`. A link or a file of
+/// that name is not a folder.
 pub fn installed_tools(home: &Path) -> Vec<&'static str> {
-    [("claude", ".claude"), ("codex", ".codex")]
+    [("claude", ".claude")]
         .into_iter()
         .filter(|(_, folder)| {
             fs::symlink_metadata(home.join(folder)).is_ok_and(|m| m.file_type().is_dir())
@@ -61,24 +62,32 @@ pub fn report(home: &Path) -> Value {
         Err(message) => return error(&message),
     };
     let mut values = Vec::new();
+    let mut role_entries = Vec::new();
     for tool in TOOLS {
-        for role in ROLES {
-            // `saved_choice` answers only a supported entry.
-            let saved = settings::saved_choice(&launcher, tool, role);
-            let source = if saved.is_some() { "saved" } else { "default" };
-            let Some(choice) = saved.or_else(|| settings::default_choice(tool, role)) else {
-                continue;
-            };
-            values.push(json!({
-                "tool": tool,
-                "role": role,
-                "model": choice.model,
-                "effort": choice.effort,
-                "source": source,
-            }));
-        }
+        // `flat_choice` answers only a supported entry; a launch with none saved starts with the
+        // launcher default of its host.
+        let saved = settings::flat_choice(&launcher, tool);
+        let source = if saved.is_some() { "saved" } else { "default" };
+        let choice = saved.unwrap_or_else(|| settings::launcher_default(host_of(tool)));
+        values.push(json!({
+            "tool": tool,
+            "model": choice.model,
+            "effort": choice.effort,
+            "source": source,
+        }));
+        role_entries.extend(settings::role_entry_paths(&launcher, tool));
     }
-    json!({"state": "ok", "values": values, "unsupported": unsupported})
+    json!({
+        "state": "ok",
+        "values": values,
+        "unsupported": unsupported,
+        "role_entries": role_entries,
+    })
+}
+
+/// The launcher host of a settings tool: `claude` is the host `claude`, `glm` is `glm`.
+fn host_of(tool: &str) -> &str {
+    tool
 }
 
 fn choice_json(choice: &Choice) -> Value {
@@ -91,7 +100,6 @@ fn changes_json(changes: &[Change]) -> Vec<Value> {
         .map(|c| {
             json!({
                 "tool": c.tool,
-                "role": c.role,
                 "from": c.from.as_ref().map(choice_json),
                 "to": choice_json(&c.to),
             })
@@ -99,8 +107,9 @@ fn changes_json(changes: &[Change]) -> Vec<Value> {
         .collect()
 }
 
+/// A pick that saves what is saved and replaces no old role entry writes nothing.
 fn unchanged(plan: &Plan) -> bool {
-    plan.changes.iter().all(|c| c.from.as_ref() == Some(&c.to))
+    plan.replaced.is_empty() && plan.changes.iter().all(|c| c.from.as_ref() == Some(&c.to))
 }
 
 fn preview<W: Write>(out: &mut W, plan: &Plan) -> std::io::Result<()> {
@@ -111,8 +120,14 @@ fn preview<W: Write>(out: &mut W, plan: &Plan) -> std::io::Result<()> {
         });
         writeln!(
             out,
-            "  {} {}: {from} -> {} {}",
-            c.tool, c.role, c.to.model, c.to.effort
+            "  {}: {from} -> {} {}",
+            c.tool, c.to.model, c.to.effort
+        )?;
+    }
+    for path in &plan.replaced {
+        writeln!(
+            out,
+            "  an older role entry the launcher no longer reads, replaced: {path}"
         )?;
     }
     for path in &plan.kept_unsupported {
@@ -122,11 +137,27 @@ fn preview<W: Write>(out: &mut W, plan: &Plan) -> std::io::Result<()> {
     out.flush()
 }
 
-/// Asks the tool pick and the model questions on `input` and `out`, previews the change and
-/// asks once whether to save it. The state is `nothing_picked`, `cancelled`, `unchanged`,
-/// `declined`, `applied` (with `changes`) or `error` (with `message`). Nothing is written before
-/// a yes, and a refusal of the apply leaves the file as it was.
+/// Asks the tool pick and the model questions on `input` and `out`, asks the glm key for a glm
+/// pick right there (hidden on a terminal, stored in the key vault, skippable), previews the
+/// change and asks once whether to save it. The state is `nothing_picked`, `cancelled`,
+/// `unchanged`, `declined`, `applied` (with `changes`) or `error` (with `message`). The launcher
+/// settings are not written before a yes, and a refusal of the apply leaves the file as it was;
+/// the glm key is stored when it is answered, so a no at the save question keeps it.
 pub fn stage<R: BufRead, W: Write>(home: &Path, input: &mut R, out: &mut W) -> Value {
+    // The hidden prompt needs the person's terminal on stdin and on stderr, where it asks.
+    let hidden = std::io::stdin().is_terminal() && std::io::stderr().is_terminal();
+    stage_with(home, input, out, hidden)
+}
+
+/// [`stage`] with the hidden key prompt chosen by the caller: `false` reads the glm key as one
+/// line of `input` and never touches a terminal, which is what a test that drives the stage
+/// needs.
+pub fn stage_with<R: BufRead, W: Write>(
+    home: &Path,
+    input: &mut R,
+    out: &mut W,
+    hidden: bool,
+) -> Value {
     let path = settings_path(home);
     // The saved choices are the defaults of the questions; an unusable file ends the stage here.
     let launcher = match questions::read_launcher(&path) {
@@ -139,6 +170,9 @@ pub fn stage<R: BufRead, W: Write>(home: &Path, input: &mut R, out: &mut W) -> V
         Ok(Outcome::Cancelled) => return json!({"state": "cancelled"}),
         Err(_) => return error("the answers could not be read"),
     };
+    if let Err(message) = questions::glm_key_step(input, out, home, &picks, hidden) {
+        return error(&message.to_string());
+    }
     let plan = match questions::plan_file(&path, &picks) {
         Ok(plan) => plan,
         Err(message) => return error(&message),
@@ -156,7 +190,7 @@ pub fn stage<R: BufRead, W: Write>(home: &Path, input: &mut R, out: &mut W) -> V
     };
     let _ = writeln!(out);
     if !matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes") {
-        return json!({"state": "declined", "changes": changes_json(&plan.changes), "unsupported": plan.kept_unsupported});
+        return json!({"state": "declined", "changes": changes_json(&plan.changes), "replaced": plan.replaced, "unsupported": plan.kept_unsupported});
     }
     save(home, &path, &picks, &plan)
 }
@@ -208,6 +242,7 @@ fn save(home: &Path, path: &Path, picks: &[questions::Pick], plan: &Plan) -> Val
             "state": "applied",
             "receipt": id,
             "changes": changes_json(&done.changes),
+            "replaced": done.replaced,
             "unsupported": done.kept_unsupported,
         })
     } else {

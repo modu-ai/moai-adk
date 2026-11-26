@@ -4,6 +4,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/spawn_cap.rs"]
+mod spawn_cap;
 use serde_json::{json, Value};
 use std::fs;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -34,7 +36,7 @@ fn go_home() -> (tempfile::TempDir, PathBuf) {
     write(&home, ".moai/state/active-sessions.json", "[]");
     write(&home, ".moai/credentials.yaml", "token: PLACEHOLDER\n");
     write(&home, ".moai/.env.glm", "GLM_API_KEY=PLACEHOLDER\n");
-    write(&home, ".moai/.env.typesafe", "KEY=PLACEHOLDER\n");
+    write(&home, ".moai/.env.legacy", "KEY=PLACEHOLDER\n");
     write(&home, ".moai/cache/a.bin", "x");
     write(&home, ".moai/Logs/go.log", "x\n");
     write(&home, ".moai/run/x.pid", "1\n");
@@ -51,9 +53,12 @@ fn go_home() -> (tempfile::TempDir, PathBuf) {
 }
 
 fn call(args: &[&str], envs: &[(&str, &str)]) -> Value {
+    // REQ-3: one spawn permit per running child, so the binary's child count stays bounded.
+    let _permit = spawn_cap::acquire();
     let out = Command::new(BIN)
         .args(args)
         .env_remove("MOAI_HOME")
+        .envs([crate::common::process_table()])
         .envs(envs.iter().copied())
         .stdin(Stdio::null())
         .output()
@@ -174,6 +179,25 @@ impl Drop for Kill {
     }
 }
 
+/// A program that keeps `dir` in use for as long as the test needs it: `cat` started in `dir`,
+/// waiting on a pipe nobody writes to. It lives until the test drops it (`Kill` stops it) or the
+/// test process ends (the pipe closes and `cat` reads end of file), so no clock decides how long
+/// it lasts — a stand-in that sleeps for a fixed time ended first when a loaded machine ran the
+/// test past it (SPEC-20261120-card-screen-work-count). The test's later commands read the real
+/// process table (SPEC-20261122-test-process-table-default).
+fn in_use(dir: PathBuf) -> Kill {
+    crate::common::use_real_process_table();
+    Kill(
+        Command::new("cat")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .current_dir(dir)
+            .spawn()
+            .unwrap(),
+    )
+}
+
 fn retired(home: &Path) -> PathBuf {
     home.join(".moai-go-retired")
 }
@@ -196,7 +220,7 @@ fn retire_preview_classifies_every_entry_by_the_table_and_writes_nothing() {
         "run",
         "config",
         "credentials.yaml",
-        ".env.typesafe",
+        ".env.legacy",
     ] {
         assert_eq!(act(&p, name).0, "retire", "{name}: {p}");
     }
@@ -209,7 +233,7 @@ fn retire_preview_classifies_every_entry_by_the_table_and_writes_nothing() {
     // User data, unknown owners, the unknown name and the merge-candidate key stay.
     assert_eq!(act(&p, "specs"), ("keep".into(), "user_data".into()));
     assert_eq!(act(&p, "worktrees"), ("keep".into(), "user_data".into()));
-    assert_eq!(act(&p, "reports"), ("keep".into(), "owner_unknown".into()));
+    assert_eq!(act(&p, "reports"), ("keep".into(), "user_data".into()));
     assert_eq!(act(&p, "my notes"), ("keep".into(), "not_in_table".into()));
     assert_eq!(
         act(&p, ".env.glm"),
@@ -252,7 +276,7 @@ fn retire_apply_moves_only_the_retire_entries_and_changes_no_byte() {
     assert_eq!(
         moved,
         [
-            ".env.typesafe",
+            ".env.legacy",
             "Logs",
             "cache",
             "config",
@@ -347,13 +371,7 @@ fn retire_apply_refuses_a_stale_digest_a_missing_reference_and_another_clock() {
 #[test]
 fn retire_in_use_entries_stay_and_an_unreadable_process_table_moves_nothing() {
     let (_d, home) = go_home();
-    let _cwd = Kill(
-        Command::new("sleep")
-            .arg("60")
-            .current_dir(home.join(".moai/Logs"))
-            .spawn()
-            .unwrap(),
-    );
+    let _cwd = in_use(home.join(".moai/Logs"));
     let p = plan(&home);
     assert_eq!(
         act(&p, "Logs"),
@@ -369,11 +387,7 @@ fn retire_in_use_entries_stay_and_an_unreadable_process_table_moves_nothing() {
     assert!(!retired(&home).join(STAMP).join("Logs").exists());
     // A machine whose process table cannot be read moves nothing (fail-closed).
     let (_d2, home2) = go_home();
-    let p2 = plan_with(
-        &home2,
-        NOW,
-        &[("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")],
-    );
+    let p2 = plan_with(&home2, NOW, &[("MOAI_TEST_PROCESS_CHECK", "unavailable")]);
     assert_eq!(p2["counts"]["retire"], json!(0), "{p2}");
     assert_eq!(act(&p2, "cache").0, "skip-in-use");
 }
@@ -648,13 +662,7 @@ const MARKER_HOLDERS: [&str; 3] = ["user-assets.json", "state", "credentials.yam
 #[test]
 fn retire_keeps_the_go_markers_until_the_entries_in_use_are_free() {
     let (_d, home) = go_home();
-    let busy = Kill(
-        Command::new("sleep")
-            .arg("60")
-            .current_dir(home.join(".moai/Logs"))
-            .spawn()
-            .unwrap(),
-    );
+    let busy = in_use(home.join(".moai/Logs"));
     let p = plan(&home);
     assert_eq!(act(&p, "Logs").0, "skip-in-use", "{p}");
     for n in MARKER_HOLDERS {
@@ -713,13 +721,7 @@ fn retire_keeps_the_go_markers_on_a_mixed_home_while_an_entry_is_in_use() {
         ".moai/moai-cli.json",
         r#"{"schema_version":1,"generation":"moai-cli"}"#,
     );
-    let _busy = Kill(
-        Command::new("sleep")
-            .arg("60")
-            .current_dir(home.join(".moai/run"))
-            .spawn()
-            .unwrap(),
-    );
+    let _busy = in_use(home.join(".moai/run"));
     let p = plan(&home);
     assert_eq!(p["state"]["generation"], json!("mixed"), "{p}");
     assert_eq!(act(&p, "run").0, "skip-in-use", "{p}");
@@ -806,13 +808,7 @@ fn retire_apply_refuses_a_stale_plan_when_an_entry_became_busy_after_the_preview
     let (_d, home) = go_home();
     let p = plan(&home);
     assert_eq!(act(&p, "Logs").0, "retire", "{p}");
-    let _busy = Kill(
-        Command::new("sleep")
-            .arg("60")
-            .current_dir(home.join(".moai/Logs"))
-            .spawn()
-            .unwrap(),
-    );
+    let _busy = in_use(home.join(".moai/Logs"));
     let a = apply(&home, p["plan_digest"].as_str().unwrap());
     assert_eq!(a["ok"], json!(false), "{a}");
     assert_eq!(a["error"]["kind"], json!("stale_plan"), "{a}");
@@ -850,13 +846,7 @@ fn retire_preview_warns_that_the_markers_wait_only_while_an_entry_is_in_use() {
             .contains("hold a Go marker wait"),
         "{calm}"
     );
-    let _busy = Kill(
-        Command::new("sleep")
-            .arg("60")
-            .current_dir(home.join(".moai/Logs"))
-            .spawn()
-            .unwrap(),
-    );
+    let _busy = in_use(home.join(".moai/Logs"));
     let busy = plan(&home);
     let warnings = busy["warnings"].as_array().unwrap();
     assert_eq!(

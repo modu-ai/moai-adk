@@ -121,12 +121,12 @@ enum W {
     New,
     Conflict,
     Skipped,
+    Notice,
     Blocked,
     OutsideLayout,
     NoHookSet,
     NotGitTree,
     AllUpToDate,
-    NothingApplied,
     NotWritten,
     NextConfirm,
     StaleRefused,
@@ -142,7 +142,10 @@ enum W {
     GoWaiting,
     SessionChecks,
     Changed,
+    KeptMine,
     Linked,
+    LinkedFile,
+    ReferenceNote,
     Cleanup,
     Archive,
     Keep,
@@ -152,15 +155,34 @@ enum W {
     Home,
     Retire,
     HomeNext,
+    ConflictNext,
+    FlowRuleBackup,
+    FlowRuleFolder,
+    BackupBlocked,
+    HostBackup,
+    ToAdopt,
+    Adopted,
+    NothingLeft,
+    StillOpen,
+    ModelSaved,
+    ModelLeft,
+    ModelDeclined,
+    ModelCancelled,
+    ModelProblem,
     Retired,
     HomeFailed,
     Switch,
     SwitchReplace,
     SwitchLeft,
+    SwitchHeld,
     SwitchNext,
     SwitchDone,
     SwitchReverted,
     SwitchFailed,
+    GitHooks,
+    GitHooksNext,
+    GitHooksDone,
+    GitHooksFailed,
     Keys,
     KeyImport,
     KeyInVault,
@@ -182,6 +204,12 @@ fn home_ok(v: &Value) -> bool {
 /// Whether a confirmed switch part (C-33 S3), when there is one, ended applied.
 fn switch_ok(v: &Value) -> bool {
     let r = &v["switch_result"];
+    r.is_null() || r["state"].as_str() == Some("applied")
+}
+
+/// A git-hook step that ran must have applied; one that did not finish makes the run partial.
+fn git_hooks_ok(v: &Value) -> bool {
+    let r = &v["git_hooks_result"];
     r.is_null() || r["state"].as_str() == Some("applied")
 }
 
@@ -337,6 +365,13 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "skipped"
             }
         }
+        Notice => {
+            if ko {
+                "알림"
+            } else {
+                "notice"
+            }
+        }
         Blocked => {
             if ko {
                 "막힘"
@@ -370,13 +405,6 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "모두 최신이에요"
             } else {
                 "Everything is up to date"
-            }
-        }
-        NothingApplied => {
-            if ko {
-                "적용할 수 있는 것이 없어요 — 막힌 곳을 먼저 풀어 주세요"
-            } else {
-                "Nothing can be applied — clear the blocked part first"
             }
         }
         NotWritten => {
@@ -452,9 +480,9 @@ fn w(lang: Lang, word: W) -> &'static str {
         ProjectNext => {
             if ko {
                 // A no-break space keeps each command on one line when the sentence wraps.
-                "다음: 기존 프로젝트는 각 프로젝트의 세션에서 /moai\u{a0}update (Codex CLI 는 $moai\u{a0}update)를 실행해 프로젝트 설정을 꼭 업데이트하세요."
+                "다음: 기존 프로젝트는 각 프로젝트의 세션에서 /moai\u{a0}update 를 실행해 프로젝트 설정을 꼭 업데이트하세요."
             } else {
-                "Next: in each existing project, run /moai\u{a0}update in a session there ($moai\u{a0}update in Codex CLI) to update the project's settings."
+                "Next: in each existing project, run /moai\u{a0}update in a session there to update the project's settings."
             }
         }
         ThisFolder => {
@@ -485,11 +513,32 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "changed"
             }
         }
+        KeptMine => {
+            if ko {
+                "내 것 유지"
+            } else {
+                "kept"
+            }
+        }
         Linked => {
             if ko {
                 "연결"
             } else {
                 "link"
+            }
+        }
+        LinkedFile => {
+            if ko {
+                "링크로 이어짐(같은 파일)"
+            } else {
+                "linked"
+            }
+        }
+        ReferenceNote => {
+            if ko {
+                "<reference> 자리에는 되돌리기를 허락한 근거를 적어요"
+            } else {
+                "<reference> is the note that records who allowed the revert"
             }
         }
         Cleanup => {
@@ -555,6 +604,104 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "the Go items are retired on their own:"
             }
         }
+        ConflictNext => {
+            if ko {
+                "충돌한 파일은 백업을 만든 뒤 패키지 파일로 바꿀 수 있어요(선택):"
+            } else {
+                "the conflicting files can be replaced after a backup (optional):"
+            }
+        }
+        FlowRuleBackup => {
+            if ko {
+                "옛 flow 규칙 파일을 지웠어요 — 백업:"
+            } else {
+                "Removed the earlier flow rule file — backup:"
+            }
+        }
+        FlowRuleFolder => {
+            if ko {
+                "남은 빈 폴더도 치웠어요:"
+            } else {
+                "Removed the empty folder it left:"
+            }
+        }
+        BackupBlocked => {
+            if ko {
+                "백업 폴더를 쓸 수 없어요 — 하지 않은 일:"
+            } else {
+                "Backup folder unusable — left undone:"
+            }
+        }
+        HostBackup => {
+            if ko {
+                "바꾸기 전에 만든 백업 폴더:"
+            } else {
+                "Backup folder made before the update wrote:"
+            }
+        }
+        ToAdopt => {
+            if ko {
+                "기록 예정"
+            } else {
+                "to adopt"
+            }
+        }
+        Adopted => {
+            if ko {
+                "기록함"
+            } else {
+                "adopted"
+            }
+        }
+        NothingLeft => {
+            if ko {
+                "적용할 것이 더 없어요 — 나머지는 최신이에요"
+            } else {
+                "Nothing left to apply — the rest is up to date"
+            }
+        }
+        StillOpen => {
+            if ko {
+                "아직 열린 줄"
+            } else {
+                "Still open"
+            }
+        }
+        ModelSaved => {
+            if ko {
+                "모델 설정을 저장했어요"
+            } else {
+                "Model settings saved"
+            }
+        }
+        ModelLeft => {
+            if ko {
+                "모델 설정은 그대로예요"
+            } else {
+                "Model settings left as they were"
+            }
+        }
+        ModelDeclined => {
+            if ko {
+                "모델 설정을 저장하지 않았어요"
+            } else {
+                "Model settings not saved"
+            }
+        }
+        ModelCancelled => {
+            if ko {
+                "모델 질문을 취소했어요 — 저장한 것은 없어요"
+            } else {
+                "Model questions cancelled — nothing saved"
+            }
+        }
+        ModelProblem => {
+            if ko {
+                "모델 설정 문제"
+            } else {
+                "Model settings problem"
+            }
+        }
         Retired => {
             if ko {
                 "옮겼어요 — 날짜 백업으로"
@@ -578,9 +725,9 @@ fn w(lang: Lang, word: W) -> &'static str {
         }
         SwitchReplace => {
             if ko {
-                "v1 → v2 · 옛 파일은 moai.before-<UTC> 로 남겨요"
+                "Rust 런처 링크로 바꿔요 · 옛 파일은 moai.before-<UTC> 로 남겨요"
             } else {
-                "v1 → v2 · the old file is kept as moai.before-<UTC>"
+                "→ a link to the Rust launcher · the old script is kept as moai.before-<UTC>"
             }
         }
         SwitchLeft => {
@@ -590,25 +737,32 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "left as it is — not a script this update knows"
             }
         }
+        SwitchHeld => {
+            if ko {
+                "기다려요 — 옆의 moai-cli 가 Rust 빌드인지 보이지 않아요"
+            } else {
+                "waits — the launcher moai-cli beside it is not shown to be the Rust build"
+            }
+        }
         SwitchNext => {
             if ko {
                 "전환 스크립트는 따로 확인해요:"
             } else {
-                "the switch script is replaced on its own:"
+                "the switch script is replaced by a link on its own:"
             }
         }
         SwitchDone => {
             if ko {
-                "전환 스크립트를 v2 로 바꿨어요 — 옛 파일:"
+                "전환 스크립트를 Rust 런처 링크로 바꿨어요 — 옛 파일:"
             } else {
-                "Switch script replaced by v2 — the old file:"
+                "Switch script replaced by a link to the Rust launcher — the old file:"
             }
         }
         SwitchReverted => {
             if ko {
-                "전환 스크립트를 저장해 둔 옛 파일(v1)로 되돌렸어요"
+                "전환 스크립트를 저장해 둔 옛 파일로 되돌렸어요"
             } else {
-                "Switch script put back to the saved old file (v1)"
+                "Switch script put back from the saved old file"
             }
         }
         SwitchFailed => {
@@ -616,6 +770,34 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "전환 스크립트 바꾸기가 끝나지 않았어요"
             } else {
                 "Replacing the switch script did not finish"
+            }
+        }
+        GitHooks => {
+            if ko {
+                "git 훅"
+            } else {
+                "git hooks"
+            }
+        }
+        GitHooksNext => {
+            if ko {
+                "git 훅은 따로 확인해요:"
+            } else {
+                "the git hooks are confirmed on their own:"
+            }
+        }
+        GitHooksDone => {
+            if ko {
+                "git 훅을 바꿨어요 — 은퇴 보관:"
+            } else {
+                "Git hooks applied — the retire record:"
+            }
+        }
+        GitHooksFailed => {
+            if ko {
+                "git 훅 바꾸기가 끝나지 않았어요"
+            } else {
+                "Applying the git hooks did not finish"
             }
         }
     }
@@ -667,6 +849,46 @@ struct Row {
     text: String,
 }
 
+/// The row label and reason of one `skipped` entry. The label is the part and the host, on the
+/// preview and the apply screens alike; the reason is printed as the command gave it.
+fn skipped_row(lang: Lang, s: &Value) -> (String, String) {
+    let part = s["part"].as_str().unwrap_or("");
+    let host = s["host"].as_str().unwrap_or("");
+    let label = format!("{part} {host}").trim().to_string();
+    let reason = s["reason"].as_str().unwrap_or("");
+    (label, format!("{}: {reason}", w(lang, W::Skipped)))
+}
+
+/// One row of the `notices` list (SPEC-20261122-output-style-install-checks): something to
+/// know that is no skipped write, with its own word and a warning mark.
+fn notice_rows(lang: Lang, v: &Value) -> Vec<Row> {
+    v["notices"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|n| {
+            let part = n["part"].as_str().unwrap_or("");
+            let host = n["host"].as_str().unwrap_or("");
+            // A notice that says it carries no warning (the `claude_folders` notice of a plain
+            // setup) is information, not a warning mark.
+            let mark = if n["warning"] == serde_json::json!(false) {
+                Mark::Ok
+            } else {
+                Mark::Warn
+            };
+            row(
+                mark,
+                format!("{part} {host}").trim().to_string(),
+                format!(
+                    "{}: {}",
+                    w(lang, W::Notice),
+                    n["reason"].as_str().unwrap_or("")
+                ),
+            )
+        })
+        .collect()
+}
+
 fn row(mark: Mark, label: String, text: String) -> Row {
     Row { mark, label, text }
 }
@@ -713,6 +935,21 @@ fn tally_text(lang: Lang, t: (usize, usize, usize, usize, usize)) -> (Mark, Stri
     (mark, parts.join(" · "))
 }
 
+/// The labels of the rows still open — in conflict, skipped for a reason that is not a plain note,
+/// or blocked — once each, in the order the rows are shown.
+fn open_labels(rows: &[Row]) -> Vec<String> {
+    let mut labels: Vec<String> = Vec::new();
+    for r in rows
+        .iter()
+        .filter(|r| matches!(r.mark, Mark::Warn | Mark::Error))
+    {
+        if !labels.contains(&r.label) {
+            labels.push(r.label.clone());
+        }
+    }
+    labels
+}
+
 fn blocked_row(lang: Lang, label: String, reason: &Value) -> Row {
     let reason = reason.as_str().unwrap_or("");
     row(
@@ -720,6 +957,95 @@ fn blocked_row(lang: Lang, label: String, reason: &Value) -> Row {
         label,
         format!("{}: {}", w(lang, W::Blocked), reason),
     )
+}
+
+/// The label of a skill folder installed beside the moai skill
+/// (SPEC-20261122-html-report-install): `skills claude moai-html-report`.
+fn extra_label(lang: Lang, p: &Value) -> String {
+    format!(
+        "{} {} {}",
+        w(lang, W::Skills),
+        p["host"].as_str().unwrap_or(""),
+        p["skill"].as_str().unwrap_or("")
+    )
+}
+
+/// One preview row per skill folder beside the moai skill, like the moai skill's row.
+fn extra_preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
+    let mut rows = Vec::new();
+    for p in v["extra_skills"]["parts"].as_array().into_iter().flatten() {
+        let label = extra_label(lang, p);
+        if p["preflight"].as_str() != Some("ok") {
+            rows.push(blocked_row(lang, label, &p["blocked_reason"]));
+            continue;
+        }
+        let (m, text) = tally_text(lang, tally(p["files"].as_array().map_or(&[], |a| a)));
+        rows.push(row(m, label.clone(), text));
+        if let Some(g) = p["going_back"].as_str() {
+            rows.push(row(Mark::Warn, label, g.to_string()));
+        }
+    }
+    rows
+}
+
+/// The applied rows of the skill folders beside the moai skill, the files they wrote and whether
+/// one did not land.
+fn extra_applied_rows(v: &Value, lang: Lang) -> (Vec<Row>, usize, bool) {
+    let r = &v["extra_skills_result"];
+    let (mut rows, mut total, mut bad) = (Vec::new(), 0usize, false);
+    if r.is_null() {
+        return (rows, total, bad);
+    }
+    if !r["parts"].is_array() {
+        // `update` reports a refused or failed step as `state` with a reason or message.
+        let msg = r["reason"]
+            .as_str()
+            .or(r["message"].as_str())
+            .unwrap_or(r["state"].as_str().unwrap_or(""));
+        rows.push(row(Mark::Warn, w(lang, W::Skills).into(), msg.to_string()));
+        return (rows, total, true);
+    }
+    for p in r["parts"].as_array().into_iter().flatten() {
+        let label = extra_label(lang, p);
+        let files = p["files"].as_array().map_or(&[][..], |a| a);
+        let n = files
+            .iter()
+            .filter(|f| f["published"].as_bool() == Some(true))
+            .count();
+        match p["status"].as_str().unwrap_or("") {
+            "applied" => {
+                total += n;
+                rows.push(row(
+                    Mark::Ok,
+                    label,
+                    format!("{} {}", count(lang, n), w(lang, W::Changed)),
+                ));
+            }
+            "unchanged" => {}
+            "conflict" => {
+                bad = true;
+                let c = files
+                    .iter()
+                    .filter(|f| f["action"].as_str() == Some("conflict"))
+                    .count();
+                rows.push(row(Mark::Warn, label, counted(lang, W::Conflict, c)));
+            }
+            _ => {
+                bad = true;
+                let reason = p["blocked_reason"]
+                    .as_str()
+                    .map(str::to_string)
+                    .or_else(|| {
+                        files
+                            .iter()
+                            .find_map(|f| f["error"].as_str().map(str::to_string))
+                    })
+                    .unwrap_or_default();
+                rows.push(blocked_row(lang, label, &Value::String(reason)));
+            }
+        }
+    }
+    (rows, total, bad)
 }
 
 /// The `검사` rows of a preview, one per layer (skills per host).
@@ -736,12 +1062,24 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             continue;
         }
         let (m, text) = tally_text(lang, tally(h["files"].as_array().map_or(&[], |a| a)));
+        // SPEC-20261125-update-screen-facts REQ-3: the files the update will adopt are counted.
+        let adopt_n = h["adopt"]["files"].as_array().map_or(0, Vec::len);
+        let (m, text) = if adopt_n > 0 {
+            (
+                m.max(Mark::Update),
+                format!("{text} · {}", counted(lang, W::ToAdopt, adopt_n)),
+            )
+        } else {
+            (m, text)
+        };
         rows.push(row(m, label.clone(), text));
         // Card C-67 (audit N1): `--allow-older` goes back to an older build; say so per host.
         if let Some(w) = h["going_back"].as_str() {
             rows.push(row(Mark::Warn, label, w.to_string()));
         }
     }
+    // SPEC-20261122-html-report-install: each skill folder beside the moai skill, its own row.
+    rows.extend(extra_preview_rows(v, lang));
     // Agents: one row over the hosts.
     let hosts: Vec<&Value> = v["agents"]["hosts"]
         .as_array()
@@ -783,6 +1121,7 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
     }
     // Routing: the files and their state.
     let mut parts = Vec::new();
+    let mut flow_notes: Vec<String> = Vec::new();
     let mut worst = Mark::Ok;
     for h in v["routing"]["hosts"].as_array().into_iter().flatten() {
         let file = short(h["file"].as_str().unwrap_or(""));
@@ -802,13 +1141,23 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             "create" | "append" => (Mark::Update, w(lang, W::New)),
             "merge" | "update" => (Mark::Update, w(lang, W::ToUpdate)),
             "conflict" => (Mark::Warn, w(lang, W::Conflict)),
+            // A link to the file moai keeps in the default folder: no second copy is written.
+            "linked" => (Mark::Ok, w(lang, W::LinkedFile)),
             _ => (Mark::Warn, w(lang, W::Skipped)),
         };
         worst = worst.max(m);
         parts.push(format!("{file} {word}"));
+        // The flow rule's own detail, such as an earlier build's file left in place for the user
+        // to delete, is a line of its own.
+        if let Some(detail) = h["flow"]["detail"].as_str() {
+            flow_notes.push(detail.to_string());
+        }
     }
     if !parts.is_empty() {
         rows.push(row(worst, w(lang, W::Routing).into(), parts.join(" · ")));
+    }
+    for note in flow_notes {
+        rows.push(row(Mark::Skip, w(lang, W::Routing).into(), note));
     }
     // Output style.
     // A blocked target (`home_style`: a symlink, an unreadable file) is an error row with its
@@ -875,22 +1224,10 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
     }
     rows.extend(key_rows(v, lang));
     for s in v["skipped"].as_array().into_iter().flatten() {
-        rows.push(row(
-            Mark::Skip,
-            format!(
-                "{} {}",
-                s["part"].as_str().unwrap_or(""),
-                s["host"].as_str().unwrap_or("")
-            )
-            .trim()
-            .to_string(),
-            format!(
-                "{}: {}",
-                w(lang, W::Skipped),
-                s["reason"].as_str().unwrap_or("")
-            ),
-        ));
+        let (label, text) = skipped_row(lang, s);
+        rows.push(row(Mark::Skip, label, text));
     }
+    rows.extend(notice_rows(lang, v));
     // #2872 stage 2: Go leftovers the cleanup would archive (confirmed apart, never by the y).
     let c = &v["cleanup"];
     if c["confirm_token"].is_string() && v["cleanup_result"].is_null() {
@@ -928,16 +1265,34 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
         };
         rows.push(row(Mark::Warn, w(lang, W::Home).into(), text));
     }
-    // C-33 S3: the switch script a `--confirm-switch` run would replace (confirmed apart, never
-    // by the y); an unknown file is shown as left alone.
+    // The switch script a `--confirm-switch` run would replace by a link to the Rust launcher
+    // (confirmed apart, never by the y); an unknown file is shown as left alone, and a known one
+    // without a launcher shown to be Rust as waiting.
     let s = &v["switch"];
     if s.is_object() && v["switch_result"].is_null() {
         let (mark, word) = if s["confirm_token"].is_string() {
             (Mark::Update, W::SwitchReplace)
+        } else if s["action"].as_str() == Some("held") {
+            (Mark::Warn, W::SwitchHeld)
         } else {
             (Mark::Skip, W::SwitchLeft)
         };
         rows.push(row(mark, w(lang, W::Switch).into(), w(lang, word).into()));
+    }
+    // SPEC-20261121-go-path-removal: the git hooks a `--confirm-git-hooks` run would retire and
+    // install (confirmed apart, never by the y); shown only when something changes.
+    let g = &v["git_hooks"];
+    if g.is_object() && v["git_hooks_result"].is_null() {
+        let go = g["go_hooks"].as_array().map(Vec::len).unwrap_or(0);
+        let install = g["install"].as_array().map(Vec::len).unwrap_or(0);
+        let kept = g["kept"].as_array().map(Vec::len).unwrap_or(0);
+        let text = format!(
+            "{} · {} · {}",
+            counted(lang, W::Retire, go),
+            counted(lang, W::Installed, install),
+            counted(lang, W::Keep, kept)
+        );
+        rows.push(row(Mark::Update, w(lang, W::GitHooks).into(), text));
     }
     rows
 }
@@ -1288,6 +1643,224 @@ impl Out<'_> {
         );
         self.buf.push_str(&line);
     }
+    /// SPEC-20261121-go-path-removal: the git hooks are confirmed with their own token too; the
+    /// command is shown whole so it can be copied.
+    fn git_hooks_next(&mut self, v: &Value) {
+        let Some(flag) = v["git_hooks"]["apply_flag"].as_str() else {
+            return;
+        };
+        if !v["git_hooks_result"].is_null() {
+            return;
+        }
+        self.blank();
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Info),
+            visible(w(self.lang(), W::GitHooksNext))
+        );
+        self.buf.push_str(&line);
+        let line = format!(
+            "  {}\n",
+            self.p()
+                .paint(Token::Code, &visible(&format!("moai update {flag}")))
+        );
+        self.buf.push_str(&line);
+    }
+    /// SPEC-20261125-update-conflict-baseline revision 2 (REQ-13): a preview whose host has files
+    /// in conflict shows the whole command that replaces them after a backup, one line per host,
+    /// so it can be copied. An applied result shows none.
+    fn conflict_next(&mut self, v: &Value) {
+        if v["mode"].as_str() != Some("preview") {
+            return;
+        }
+        let Some(digest) = v["plan_digest"].as_str() else {
+            return;
+        };
+        let flags: Vec<&str> = v["plan"]["hosts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|h| h["conflict_replace"]["apply_flag"].as_str())
+            .collect();
+        if flags.is_empty() {
+            return;
+        }
+        self.blank();
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Info),
+            visible(w(self.lang(), W::ConflictNext))
+        );
+        self.buf.push_str(&line);
+        for flag in flags {
+            let line = format!(
+                "  {}\n",
+                self.p().paint(
+                    Token::Code,
+                    &visible(&format!("moai update --confirm {digest} {flag}"))
+                )
+            );
+            self.buf.push_str(&line);
+        }
+    }
+    /// Revision 2 (REQ-16): the earlier flow rule files an update removed after a backup, with the
+    /// backup folder of each.
+    fn flow_rule_done(&mut self, v: &Value) {
+        let removed = v["routing_result"]["legacy_flow_removed"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        if removed.is_empty() {
+            return;
+        }
+        self.blank();
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Ok),
+            visible(w(self.lang(), W::FlowRuleBackup))
+        );
+        self.buf.push_str(&line);
+        for r in &removed {
+            let backup = r["backup"].as_str().unwrap_or("");
+            let line = format!("  {}\n", self.home(backup));
+            self.buf.push_str(&line);
+        }
+        // Revision 3 (REQ-23): the folder that held the file and was empty afterwards.
+        let folders: Vec<&str> = removed
+            .iter()
+            .filter_map(|r| r["folder_removed"].as_str())
+            .collect();
+        if folders.is_empty() {
+            return;
+        }
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Ok),
+            visible(w(self.lang(), W::FlowRuleFolder))
+        );
+        self.buf.push_str(&line);
+        for f in folders {
+            let line = format!("  {}\n", self.home(f));
+            self.buf.push_str(&line);
+        }
+    }
+    /// Revision 3 (REQ-20): the steps left undone because the HOME's `.moai` cannot take a backup,
+    /// each with the reason, from the skill hosts' plan and the routing plan.
+    fn backup_blocked_note(&mut self, v: &Value) {
+        let ko = self.lang() == Lang::Ko;
+        let step_words = |step: &str| -> String {
+            match (step, ko) {
+                ("conflict-replace", true) => "충돌한 파일 바꾸기",
+                ("conflict-replace", false) => "replacing the conflicting files",
+                ("adopt", true) => "임자 없는 파일 넘겨받기",
+                ("adopt", false) => "adopting the unowned files",
+                ("backup-replace", true) => "백업한 뒤 폴더 바꾸기",
+                ("backup-replace", false) => "backing up and replacing the folder",
+                ("flow-rule-removal", true) => "옛 flow 규칙 파일 지우기",
+                ("flow-rule-removal", false) => "removing the earlier flow rule file",
+                (other, _) => other,
+            }
+            .to_string()
+        };
+        let mut lines: Vec<String> = Vec::new();
+        for list in [&v["plan"]["hosts"], &v["routing"]["hosts"]] {
+            for h in list.as_array().into_iter().flatten() {
+                for b in h["backup_blocked"].as_array().into_iter().flatten() {
+                    let line = format!(
+                        "{}: {}",
+                        step_words(b["step"].as_str().unwrap_or("")),
+                        b["reason"].as_str().unwrap_or("")
+                    );
+                    if !lines.contains(&line) {
+                        lines.push(line);
+                    }
+                }
+            }
+        }
+        if lines.is_empty() {
+            return;
+        }
+        self.blank();
+        let head = format!(
+            "{} {}\n",
+            self.p().mark(Token::Warn),
+            visible(w(self.lang(), W::BackupBlocked))
+        );
+        self.buf.push_str(&head);
+        for l in lines {
+            let line = format!("  {}\n", visible(&l));
+            self.buf.push_str(&line);
+        }
+    }
+    /// SPEC-20261125-update-screen-facts REQ-5: nothing is left to apply, the rest is up to date,
+    /// and these rows are still open.
+    fn nothing_left(&mut self, mark: Mark, open: &[String]) {
+        let lang = self.lang();
+        self.status(mark, w(lang, W::NothingLeft));
+        let line = format!("{}: {}", w(lang, W::StillOpen), open.join(" · "));
+        self.muted(&line);
+    }
+    /// REQ-2: one line for how the model step ended. A report that asked nothing (`ok`) has none.
+    fn models_done(&mut self, v: &Value) {
+        let lang = self.lang();
+        let m = &v["models"];
+        let (mark, text) = match m["state"].as_str() {
+            Some("applied") => {
+                let path = crate::update_models::settings_path(std::path::Path::new(&self.v.home));
+                (
+                    Mark::Ok,
+                    format!(
+                        "{}: {}",
+                        w(lang, W::ModelSaved),
+                        visible(&self.home(&path.to_string_lossy()))
+                    ),
+                )
+            }
+            Some("unchanged" | "nothing_picked") => (Mark::Ok, w(lang, W::ModelLeft).to_string()),
+            Some("declined") => (Mark::Skip, w(lang, W::ModelDeclined).to_string()),
+            Some("cancelled") => (Mark::Skip, w(lang, W::ModelCancelled).to_string()),
+            Some("error") => (
+                Mark::Error,
+                format!(
+                    "{}: {}",
+                    w(lang, W::ModelProblem),
+                    visible(m["message"].as_str().unwrap_or(""))
+                ),
+            ),
+            _ => return,
+        };
+        self.blank();
+        self.status(mark, &text);
+    }
+    /// Revision 2 (REQ-16): the backup folder a host's update made before it wrote (conflicting
+    /// files replaced on request, adopted files), one line per host that made one.
+    fn host_backup_done(&mut self, v: &Value) {
+        let backups: Vec<(String, String)> = v["result"]["hosts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|h| {
+                Some((
+                    h["host"].as_str()?.to_string(),
+                    h["backup_dir"].as_str()?.to_string(),
+                ))
+            })
+            .collect();
+        if backups.is_empty() {
+            return;
+        }
+        self.blank();
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Ok),
+            visible(w(self.lang(), W::HostBackup))
+        );
+        self.buf.push_str(&line);
+        for (host, dir) in &backups {
+            let line = format!("  {host}: {}\n", visible(&self.home(dir)));
+            self.buf.push_str(&line);
+        }
+    }
     /// A switch part that ran (`--confirm-switch`): where the old file is kept and the revert.
     fn switch_done(&mut self, v: &Value, with_revert: bool) {
         let r = &v["switch_result"];
@@ -1313,6 +1886,41 @@ impl Out<'_> {
             &format!("{} {}", w(lang, W::SwitchDone), visible(&saved)),
         );
         if let Some(c) = v["revert"]["switch"].as_str().filter(|_| with_revert) {
+            let line = format!(
+                "  {} {}\n",
+                self.p()
+                    .paint(Token::Muted, &format!("{}:", w(lang, W::Revert))),
+                self.p().paint(Token::Code, &visible(c))
+            );
+            self.buf.push_str(&line);
+        }
+    }
+    /// A git-hook part that ran (`--confirm-git-hooks`): the retire record folder and the
+    /// revert command for the project the update ran in.
+    fn git_hooks_done(&mut self, v: &Value, with_revert: bool) {
+        let r = &v["git_hooks_result"];
+        if r.is_null() {
+            return;
+        }
+        let lang = self.lang();
+        self.blank();
+        if r["state"].as_str() != Some("applied") {
+            let msg = r["message"]
+                .as_str()
+                .or(r["reason"].as_str())
+                .unwrap_or(r["state"].as_str().unwrap_or(""));
+            self.status(
+                Mark::Error,
+                &format!("{}: {}", w(lang, W::GitHooksFailed), visible(msg)),
+            );
+            return;
+        }
+        let folder = self.home(r["folder"].as_str().unwrap_or(""));
+        self.status(
+            Mark::Ok,
+            &format!("{} {}", w(lang, W::GitHooksDone), visible(&folder)),
+        );
+        if let Some(c) = v["revert"]["git_hooks"].as_str().filter(|_| with_revert) {
             let line = format!(
                 "  {} {}\n",
                 self.p()
@@ -1412,6 +2020,20 @@ impl Out<'_> {
                     ),
                     items,
                 ));
+            }
+        }
+        for p in v["extra_skills"]["parts"].as_array().into_iter().flatten() {
+            if p["preflight"].as_str() != Some("ok") {
+                continue;
+            }
+            let items: Vec<(Mark, String)> = p["files"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|f| file_change(f, "path"))
+                .collect();
+            if !items.is_empty() {
+                groups.push((extra_label(lang, p), items));
             }
         }
         let mut agent_items = Vec::new();
@@ -1599,6 +2221,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     let lang = o.lang();
     let rows = preview_rows(result, lang);
     let blocked = rows.iter().any(|r| r.mark == Mark::Error);
+    let open = open_labels(&rows);
     match asked {
         // The question already showed the head, rows and changes: one line now.
         Asked::No => {
@@ -1606,6 +2229,10 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
             o.cleanup_next(result);
             o.home_next(result);
             o.switch_next(result);
+            o.git_hooks_next(result);
+            o.conflict_next(result);
+            o.models_done(result);
+            o.backup_blocked_note(result);
             return o.buf;
         }
         Asked::Stale => {
@@ -1617,7 +2244,13 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     o.header(result);
     o.blank();
     if !writes(result) && !blocked {
-        o.status(Mark::Ok, w(lang, W::AllUpToDate));
+        // REQ-5, REQ-6: a row in conflict or skipped is open, so the screen never calls the run
+        // up to date above it.
+        if open.is_empty() {
+            o.status(Mark::Ok, w(lang, W::AllUpToDate));
+        } else {
+            o.nothing_left(Mark::Warn, &open);
+        }
         let mut totals = Vec::new();
         for h in result["plan"]["hosts"].as_array().into_iter().flatten() {
             totals.push(format!(
@@ -1625,6 +2258,17 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
                 w(lang, W::Skills),
                 h["host"].as_str().unwrap_or(""),
                 h["files"].as_array().map_or(0, Vec::len)
+            ));
+        }
+        for p in result["extra_skills"]["parts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+        {
+            totals.push(format!(
+                "{} {}",
+                extra_label(lang, p),
+                p["files"].as_array().map_or(0, Vec::len)
             ));
         }
         let agents: usize = result["agents"]["hosts"]
@@ -1651,6 +2295,11 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
         o.home_next(result);
         o.switch_done(result, true);
         o.switch_next(result);
+        o.git_hooks_done(result, true);
+        o.git_hooks_next(result);
+        o.conflict_next(result);
+        o.models_done(result);
+        o.backup_blocked_note(result);
         o.project_next();
         return o.buf;
     }
@@ -1662,7 +2311,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     }
     o.blank();
     if blocked && !writes(result) {
-        o.status(Mark::Error, w(lang, W::NothingApplied));
+        o.nothing_left(Mark::Error, &open);
     } else if let Some(cmd) = result["confirm_with"].as_str() {
         let line = format!(
             "{} {}\n",
@@ -1679,6 +2328,11 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     o.home_next(result);
     o.switch_done(result, true);
     o.switch_next(result);
+    o.git_hooks_done(result, true);
+    o.git_hooks_next(result);
+    o.conflict_next(result);
+    o.models_done(result);
+    o.backup_blocked_note(result);
     o.buf
 }
 
@@ -1729,11 +2383,34 @@ fn applied(v: &Value, view: &View) -> String {
         match h["status"].as_str().unwrap_or("") {
             "applied" | "replaced" => {
                 total += n;
-                rows.push(row(
-                    Mark::Ok,
-                    label,
-                    format!("{} {}", count(lang, n), w(lang, W::Changed)),
-                ));
+                let mut text = format!("{} {}", count(lang, n), w(lang, W::Changed));
+                // REQ-7: the files the run adopted.
+                if let Some(a) = h["adopted"].as_u64().filter(|a| *a > 0) {
+                    text = format!("{text} · {}", counted(lang, W::Adopted, a as usize));
+                }
+                rows.push(row(Mark::Ok, label.clone(), text));
+                // Files of the host that stayed in conflict while others were written are named,
+                // so the run does not end as if everything were done.
+                let left: Vec<&str> = files
+                    .iter()
+                    .filter(|f| f["action"].as_str() == Some("conflict"))
+                    .filter_map(|f| f["path"].as_str())
+                    .collect();
+                if !left.is_empty() {
+                    bad = true;
+                    let shown = left.iter().take(4).copied().collect::<Vec<_>>().join(", ");
+                    let more = left.len().saturating_sub(4);
+                    let tail = if more > 0 {
+                        format!(" +{more}")
+                    } else {
+                        String::new()
+                    };
+                    rows.push(row(
+                        Mark::Warn,
+                        label,
+                        format!("{}: {shown}{tail}", counted(lang, W::Conflict, left.len())),
+                    ));
+                }
             }
             "unchanged" => {}
             "conflict" => {
@@ -1760,6 +2437,10 @@ fn applied(v: &Value, view: &View) -> String {
             }
         }
     }
+    let (extra_rows, extra_total, extra_bad) = extra_applied_rows(v, lang);
+    rows.extend(extra_rows);
+    total += extra_total;
+    bad |= extra_bad;
     let mut part = |label: W, r: &Value, rows: &mut Vec<Row>| {
         let label = w(lang, label).to_string();
         match r["state"].as_str() {
@@ -1770,6 +2451,25 @@ fn applied(v: &Value, view: &View) -> String {
                     Mark::Ok,
                     label,
                     format!("{} {}", count(lang, n), w(lang, W::Changed)),
+                ));
+            }
+            // SPEC-20261124-update-flat-agent-ownership REQ-10: a file of the person's was kept
+            // (a flat agent file that is not ours): what was written, what was kept, and the run
+            // ends partly applied.
+            Some("partial") => {
+                bad = true;
+                let n = r["written"].as_array().map_or(0, Vec::len);
+                let kept = r["kept"].as_array().map_or(0, Vec::len);
+                total += n;
+                rows.push(row(
+                    Mark::Warn,
+                    label,
+                    format!(
+                        "{} {} · {}",
+                        count(lang, n),
+                        w(lang, W::Changed),
+                        counted(lang, W::KeptMine, kept)
+                    ),
                 ));
             }
             Some("unchanged") | None => {}
@@ -1791,16 +2491,10 @@ fn applied(v: &Value, view: &View) -> String {
     part(W::Hooks, &v["hooks_result"], &mut rows);
     part(W::Keys, &v["keys_result"], &mut rows);
     for s in v["skipped"].as_array().into_iter().flatten() {
-        rows.push(row(
-            Mark::Skip,
-            s["part"].as_str().unwrap_or("").to_string(),
-            format!(
-                "{}: {}",
-                w(lang, W::Skipped),
-                s["reason"].as_str().unwrap_or("")
-            ),
-        ));
+        let (label, text) = skipped_row(lang, s);
+        rows.push(row(Mark::Skip, label, text));
     }
+    rows.extend(notice_rows(lang, v));
     // A blank line after the answer typed at the question.
     o.blank();
     o.heading(W::Applying);
@@ -1810,6 +2504,7 @@ fn applied(v: &Value, view: &View) -> String {
     bad |= !cleanup_ok(v);
     bad |= !home_ok(v);
     bad |= !switch_ok(v);
+    bad |= !git_hooks_ok(v);
     let head = if bad { W::Partial } else { W::Done };
     let m = if bad { Mark::Warn } else { Mark::Ok };
     let total = if lang == Lang::Ko {
@@ -1823,7 +2518,8 @@ fn applied(v: &Value, view: &View) -> String {
     let reverts: Vec<String> = crate::update::revert_order(&v["revert"])
         .into_iter()
         .filter_map(|k| v["revert"][k].as_str())
-        .map(|c| o.home(c))
+        // The result's own sentence keeps `<HOME>` for machines; the person sees the real folder.
+        .map(|c| o.home(&c.replace("<HOME>", &o.v.home)))
         .collect();
     // Revert commands stay whole (never cut) so they can be copied.
     for c in &reverts {
@@ -1835,17 +2531,32 @@ fn applied(v: &Value, view: &View) -> String {
         );
         o.buf.push_str(&line);
     }
+    if reverts.iter().any(|c| c.contains("<reference>")) {
+        o.muted(w(lang, W::ReferenceNote));
+    }
     let reload = v["result"]["hosts"]
         .as_array()
         .into_iter()
         .flatten()
         .any(|h| h["reload_required"].as_str() == Some("yes"));
+    let reload = reload
+        || v["extra_skills_result"]["parts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|p| p["reload_required"].as_str() == Some("yes"));
     if reload {
         o.muted(w(lang, W::Reload));
     }
     o.cleanup_done(v, false);
     o.home_done(v, false);
     o.switch_done(v, false);
+    // A switch the update did not confirm still waits for its own token.
+    o.switch_next(v);
+    o.git_hooks_done(v, false);
+    o.flow_rule_done(v);
+    o.host_backup_done(v);
+    o.models_done(v);
     // A partly applied run ends with what failed, not the next step (#2894 7b).
     if !bad {
         o.project_next();

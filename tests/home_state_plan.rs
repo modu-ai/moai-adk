@@ -6,7 +6,7 @@ mod common;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 const BIN: &str = crate::common::MOAI_BIN;
 const NOW: &str = "2026-11-13T18:05:09Z";
@@ -42,7 +42,8 @@ fn plan_with(home: &Path, moai_home: Option<&str>) -> Value {
         "--now",
         NOW,
     ])
-    .env_remove("MOAI_HOME");
+    .env_remove("MOAI_HOME")
+    .envs([crate::common::process_table()]);
     if let Some(m) = moai_home {
         c.env("MOAI_HOME", m);
     }
@@ -183,28 +184,19 @@ fn verdicts_other_than_go_never_offer_the_move() {
 
 #[test]
 fn a_live_go_session_blocks_the_move() {
+    // process table not read: the held lock file decides `go_session_live`.
     let (_d, home) = go_home();
     let lock = home.join(".moai/state/active-sessions.json.lock");
     fs::write(&lock, "").unwrap();
-    let ready = home.join("locked");
-    let script = format!(
-        "import fcntl,time,pathlib\nf=open({:?},'a')\nfcntl.flock(f,fcntl.LOCK_EX)\npathlib.Path({:?}).write_text('1')\ntime.sleep(30)\n",
-        lock.display().to_string(),
-        ready.display().to_string()
-    );
-    let mut child = Command::new("python3")
-        .args(["-I", "-c", &script])
-        .current_dir(std::env::temp_dir())
-        .stdout(Stdio::null())
-        .spawn()
-        .unwrap();
-    let start = std::time::Instant::now();
-    while !ready.exists() && start.elapsed().as_secs() < 20 {
-        std::thread::sleep(std::time::Duration::from_millis(50));
-    }
+    // This process takes the exclusive lock itself, on its own open file; the plan runs in
+    // another process and finds the lock held.
+    let holder = fs::OpenOptions::new().append(true).open(&lock).unwrap();
+    // SAFETY: flock(2) on a descriptor this test owns; nothing else uses it.
+    let locked = unsafe { libc::flock(std::os::fd::AsRawFd::as_raw_fd(&holder), libc::LOCK_EX) };
+    assert_eq!(locked, 0, "flock on the lock file");
     let p = plan(&home);
-    let _ = child.kill();
-    let _ = child.wait();
+    // Closing the file releases the lock.
+    drop(holder);
     assert_eq!(p["action"], json!("blocked"), "{p}");
     // The holder also keeps the lock file open, so the open-file check may name it too.
     let blocks = p["blocks"].as_array().unwrap();
@@ -222,6 +214,7 @@ fn a_live_go_session_blocks_the_move() {
 #[test]
 fn a_process_inside_or_a_nested_checkout_blocks_the_move() {
     let (_d, home) = go_home();
+    crate::common::use_real_process_table();
     let mut child = Command::new("sleep")
         .arg("30")
         .current_dir(home.join(".moai/config"))
@@ -290,6 +283,7 @@ fn a_relative_home_or_a_bad_clock_is_refused() {
 fn a_registered_live_pid_blocks_and_a_dead_one_does_not() {
     let (_d, home) = go_home();
     let reg = home.join(".moai/state/active-sessions.json");
+    crate::common::use_real_process_table();
     let mut child = Command::new("sleep")
         .arg("30")
         .current_dir(&home)
@@ -326,6 +320,7 @@ fn a_file_held_open_inside_blocks_the_move() {
     let (_d, home) = go_home();
     write(&home, ".moai/logs/run.log", "x\n");
     let held = fs::File::open(home.join(".moai/logs/run.log")).unwrap();
+    crate::common::use_real_process_table();
     let mut child = Command::new("sleep")
         .arg("30")
         .current_dir(std::env::temp_dir())

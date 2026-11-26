@@ -64,7 +64,7 @@ cargo build --release --locked
 ./target/release/moai --version
 ```
 
-마지막 명령은 `moai-cli 2026.11.0-rc.1 (rust)`를 출력합니다. `./target/release/moai-cli --version`도 같은 줄을 출력합니다. 이 명령들은 2026-11-14에 macOS 27.0.1(arm64)에서 빈 Cargo home으로, 가지 커밋 `0e9ad36fc4`에서 실행해 확인했습니다. crate를 받은 뒤 빈 빌드 폴더에서 release 빌드는 부하가 큰 기계에서 약 1분 26초 걸렸습니다. 다른 플랫폼에서는 이 절차를 그대로 시험하지 않았습니다.
+마지막 명령은 `moai 2026.11.0-rc.1 (rust)`를 출력합니다. `./target/release/moai-cli --version`도 같은 줄을 출력합니다. 이 명령들은 2026-11-14에 macOS 27.0.1(arm64)에서 빈 Cargo home으로, 가지 커밋 `0e9ad36fc4`에서 실행해 확인했습니다. crate를 받은 뒤 빈 빌드 폴더에서 release 빌드는 부하가 큰 기계에서 약 1분 26초 걸렸습니다. 다른 플랫폼에서는 이 절차를 그대로 시험하지 않았습니다.
 
 ## 첫 실행
 
@@ -112,6 +112,14 @@ RC1은 자기 사용자 상태를 `~/.moai-cli/`에 두고 Go 세대의 `~/.moai
 - 질문과 도움: [SUPPORT.md](SUPPORT.md)
 - 취약점 비공개 신고: [SECURITY.md](SECURITY.md)
 - 행동 강령: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) ([한국어 번역](https://www.contributor-covenant.org/ko/version/3/0/code_of_conduct/))
+
+## Anthropic·Claude Code와의 관계
+
+- MoAI ADK는 사용자가 직접 설치하고 로그인한 Claude Code를 실행합니다.
+- MoAI ADK는 Anthropic 제품이 아닙니다. Anthropic이 만들거나 보증하거나 제휴한 도구가 아닙니다.
+- Claude Code나 Anthropic의 이름과 로고를 자기 이름이나 로고로 쓰지 않습니다.
+- Claude Code 실행 파일을 바꾸지 않고, Anthropic이 배포한 그대로 실행합니다.
+- Claude 계정 자격 증명이나 세션 토큰을 묻거나 저장하거나 전달하지 않습니다. 로그인은 Claude Code가 맡습니다.
 
 ## 라이선스
 

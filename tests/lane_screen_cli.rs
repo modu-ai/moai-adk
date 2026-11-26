@@ -39,13 +39,15 @@ impl Run {
     }
 }
 
-/// `moai lane-screen ARGS` in `cwd` with HOME `home`, `input` on standard input.
+/// `moai lane-screen ARGS` in `cwd` with HOME `home` and `TMPDIR` `home` (where a lane's usage
+/// record is looked for), `input` on standard input.
 fn run_in(cwd: &Path, home: &Path, input: &str, args: &[&str]) -> Run {
     let mut child = Command::new(BIN)
         .arg("lane-screen")
         .args(args)
         .current_dir(cwd)
         .env("HOME", home)
+        .env("TMPDIR", home)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .stdin(Stdio::piped())
@@ -563,7 +565,9 @@ fn lane_screen_reset_a_time_outside_the_years_1970_to_9999_in_utc_is_unknown() {
     }
 }
 
-fn home_with(windows: &[(&str, f64, i64)]) -> tempfile::TempDir {
+/// A lane HOME whose usage record holds `windows`, kept in the cache folder of the `TMPDIR`
+/// `tmpdir` (the reader's `TMPDIR`: [`run_in`] gives it its `home` argument).
+fn home_with(tmpdir: &Path, windows: &[(&str, f64, i64)]) -> tempfile::TempDir {
     let home = tempfile::tempdir().unwrap();
     let map: BTreeMap<String, Window> = windows
         .iter()
@@ -577,18 +581,21 @@ fn home_with(windows: &[(&str, f64, i64)]) -> tempfile::TempDir {
             )
         })
         .collect();
-    record(home.path(), map, NOW).unwrap();
+    record(home.path(), tmpdir.to_str(), map, NOW).unwrap();
     home
 }
 
 #[test]
 fn lane_screen_reset_the_lane_home_record_beats_the_screen_text() {
     let resets_at = NOW + 5 * 3600 + 7;
-    let home = home_with(&[
-        ("five_hour", 100.0, resets_at),
-        ("seven_day", 40.0, NOW + 86_400 * 3),
-    ]);
     let cwd = tempfile::tempdir().unwrap();
+    let home = home_with(
+        cwd.path(),
+        &[
+            ("five_hour", 100.0, resets_at),
+            ("seven_day", 40.0, NOW + 86_400 * 3),
+        ],
+    );
     let r = run_in(
         cwd.path(),
         cwd.path(),
@@ -609,8 +616,8 @@ fn lane_screen_reset_the_lane_home_record_beats_the_screen_text() {
 
 #[test]
 fn lane_screen_reset_a_window_that_is_not_at_its_limit_is_not_the_reset() {
-    let home = home_with(&[("five_hour", 90.0, NOW + 3600)]);
     let cwd = tempfile::tempdir().unwrap();
+    let home = home_with(cwd.path(), &[("five_hour", 90.0, NOW + 3600)]);
     let r = run_in(
         cwd.path(),
         cwd.path(),
@@ -1475,7 +1482,24 @@ esac
     #[test]
     fn lane_screen_scan_an_orca_child_holding_the_output_does_not_hold_the_scan() {
         let dir = tempfile::tempdir().unwrap();
-        let bin = dir.path().join("orca");
+        scan_with_a_child_holding_the_output(dir.path());
+    }
+
+    /// Four nested folders of 60 characters each inside `root`: a place whose path is far over
+    /// 200 characters, as the temporary folder of `moai check affected` makes it. The folder
+    /// names hold no credential shape, so the redaction of an error text leaves them whole.
+    fn deep_dir(root: &Path) -> PathBuf {
+        let mut deep = root.to_path_buf();
+        for i in 0..4 {
+            deep.push(format!("deep_folder_{i}{}", "_".repeat(47)));
+        }
+        fs::create_dir_all(&deep).unwrap();
+        deep
+    }
+
+    /// The body of the held-output test, run with the fake `orca` and its files in `dir`.
+    fn scan_with_a_child_holding_the_output(dir: &Path) {
+        let bin = dir.join("orca");
         common::write_executable(
             &bin,
             r#"#!/bin/sh
@@ -1491,7 +1515,7 @@ esac
 "#,
         );
         fs::write(
-            dir.path().join("list.json"),
+            dir.join("list.json"),
             list(
                 &[term("t_hold", "hold", "b"), term("t_ok", "ok", "b")],
                 2,
@@ -1501,18 +1525,18 @@ esac
         .unwrap();
         let screen = fixture("synthetic-working.txt");
         let rows: Vec<&str> = screen.lines().collect();
-        fs::write(dir.path().join("read-t_hold.json"), orca(&rows, "screen")).unwrap();
-        fs::write(dir.path().join("read-t_ok.json"), orca(&rows, "screen")).unwrap();
+        fs::write(dir.join("read-t_hold.json"), orca(&rows, "screen")).unwrap();
+        fs::write(dir.join("read-t_ok.json"), orca(&rows, "screen")).unwrap();
         let started = std::time::Instant::now();
         let out = Command::new(BIN)
             .args(["lane-screen", "--scan", "--now", NOW_TEXT])
-            .current_dir(dir.path())
-            .env("HOME", dir.path())
+            .current_dir(dir)
+            .env("HOME", dir)
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
             .env("GIT_CONFIG_SYSTEM", "/dev/null")
             .env("MOAI_ORCA_BIN", &bin)
             .env("MOAI_ORCA_TIMEOUT_SECS", "1")
-            .env("FAKE_ORCA_DIR", dir.path())
+            .env("FAKE_ORCA_DIR", dir)
             .stdin(Stdio::null())
             .output()
             .unwrap();
@@ -1530,5 +1554,97 @@ esac
             rows[0]
         );
         assert_eq!(rows[1]["state"], json!("working"), "{}", rows[1]);
+    }
+
+    /// The reason of an `unreachable` row keeps only 160 characters of the error text. The error
+    /// text of a call named the program path first, so a path over 200 characters cut the time
+    /// limit away (the temporary folder of `moai check affected` is that deep). The meaning
+    /// comes first now and only the path is cut.
+    #[test]
+    fn lane_screen_scan_a_held_output_under_a_path_over_200_characters_keeps_its_time_limit() {
+        let root = tempfile::tempdir().unwrap();
+        let deep = deep_dir(root.path());
+        assert!(deep.join("orca").as_os_str().len() > 200, "{deep:?}");
+        scan_with_a_child_holding_the_output(&deep);
+    }
+
+    /// A `terminal read` that never answers, under a path over 200 characters: the row says
+    /// `did not answer within 1 seconds`, the other terminal is read, and the scan ends early.
+    #[test]
+    fn lane_screen_scan_a_hanging_read_under_a_path_over_200_characters_keeps_its_time_limit() {
+        let root = tempfile::tempdir().unwrap();
+        let dir = deep_dir(root.path());
+        let bin = dir.join("orca");
+        assert!(bin.as_os_str().len() > 200, "{bin:?}");
+        common::write_executable(
+            &bin,
+            r#"#!/bin/sh
+d="$FAKE_ORCA_DIR"
+case "$2" in
+list) cat "$d/list.json" ;;
+read)
+  if [ "$4" = t_hang ]; then exec sleep 10; fi
+  cat "$d/read-$4.json"
+  ;;
+*) exit 9 ;;
+esac
+"#,
+        );
+        fs::write(
+            dir.join("list.json"),
+            list(
+                &[term("t_hang", "hang", "b"), term("t_ok", "ok", "b")],
+                2,
+                false,
+            ),
+        )
+        .unwrap();
+        let screen = fixture("synthetic-working.txt");
+        let rows: Vec<&str> = screen.lines().collect();
+        fs::write(dir.join("read-t_hang.json"), orca(&rows, "screen")).unwrap();
+        fs::write(dir.join("read-t_ok.json"), orca(&rows, "screen")).unwrap();
+        let started = std::time::Instant::now();
+        let out = Command::new(BIN)
+            .args(["lane-screen", "--scan", "--now", NOW_TEXT])
+            .current_dir(&dir)
+            .env("HOME", &dir)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .env("MOAI_ORCA_BIN", &bin)
+            .env("MOAI_ORCA_TIMEOUT_SECS", "1")
+            .env("FAKE_ORCA_DIR", &dir)
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        let elapsed = started.elapsed();
+        assert!(elapsed.as_secs() < 6, "the scan waited {elapsed:?}");
+        let envelope: Value = serde_json::from_slice(&out.stdout).unwrap();
+        let rows = envelope["result"]["terminals"].as_array().unwrap();
+        assert_eq!(rows[0]["state"], json!("unreachable"), "{}", rows[0]);
+        let reason = rows[0]["reason"].as_str().unwrap();
+        assert!(
+            reason.contains("did not answer within 1 seconds"),
+            "{reason}"
+        );
+        assert_eq!(rows[1]["state"], json!("working"), "{}", rows[1]);
+    }
+
+    /// An absent Orca program under a path over 200 characters: the failure of the list says why
+    /// the program cannot run (the error kind), not only where it was looked for.
+    #[test]
+    fn lane_screen_scan_an_absent_orca_under_a_path_over_200_characters_says_why_it_cannot_run() {
+        let root = tempfile::tempdir().unwrap();
+        let deep = deep_dir(root.path());
+        let missing = deep.join("no-such-orca");
+        assert!(missing.as_os_str().len() > 200, "{missing:?}");
+        let fake = Fake::new("{}");
+        let r = run_scan(&missing, fake.dir.path(), &deep, &deep, &[]);
+        let message = failure(&r);
+        assert!(message.contains("list could not be read"), "{message}");
+        assert!(message.contains("cannot run"), "{message}");
+        let kind = std::io::ErrorKind::NotFound.to_string();
+        assert!(message.contains(&kind), "{kind:?} not in {message}");
+        assert!(fake.calls().is_empty());
+        assert!(!fake.sent());
     }
 }

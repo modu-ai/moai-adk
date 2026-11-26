@@ -9,6 +9,9 @@
 //!
 //! The turn, the input box and the context percentage are what the observer wrote; nothing
 //! here guesses them from the screen (the `lane_status` principle).
+//!
+//! The one write of this module is [`lease_sweep`]: it calls `card sweep` once for the project
+//! and is the only function here that opens the card ledger.
 
 use crate::lane_next::Snapshot;
 use crate::lane_reset::{ClaimsObservation, CwdObservation};
@@ -16,6 +19,9 @@ use crate::lane_status::{PaneState, MAX_LANES};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::Path;
+
+/// The leader registration lease the round shares and renews (SPEC-20261123-leader-registration-lease).
+pub mod registration;
 
 /// The observations file version this module reads.
 pub const SCHEMA_VERSION: u32 = 1;
@@ -572,6 +578,9 @@ pub fn handoff_candidates(snap: &Snapshot, now: i64) -> Vec<Value> {
 /// without `repo` the gate line is. The parts read from a snapshot whose `partial` names a
 /// gap are `partial`, never `ok` (#2948 audit I2).
 pub fn round(snap: Option<&Snapshot>, repo: Option<&str>, project: &Path, now: i64) -> Value {
+    // The registration part reads only the clone's local registry, so it is there with or
+    // without a GitHub snapshot (SPEC REQ-13).
+    let registration = registration::registration(project, now);
     let Some(snap) = snap else {
         let why = "no GitHub snapshot: pass --repo OWNER/REPO or --snapshot FILE";
         return json!({
@@ -579,6 +588,7 @@ pub fn round(snap: Option<&Snapshot>, repo: Option<&str>, project: &Path, now: i
             "handoff_candidates": not_run(why),
             "gate": not_run(why),
             "end_condition": not_run(why),
+            "registration": registration,
         });
     };
     let status = if snap.partial.is_empty() {
@@ -600,7 +610,78 @@ pub fn round(snap: Option<&Snapshot>, repo: Option<&str>, project: &Path, now: i
             None => not_run("no --repo: the gate line names the repository"),
         },
         "end_condition": end,
+        "registration": registration,
     })
+}
+
+fn sweep_not_run(reason: &str) -> Value {
+    json!({"status": "not_run", "reason": reason, "cards": [], "writes": false})
+}
+
+/// Whether the round sweeps or only lists, and where that came from: the profile key
+/// `lease_sweep_in_round` (absent means on). A profile that cannot be read cannot say "on", so the
+/// round only lists then and names the reason.
+fn sweep_switch(project: &Path) -> (bool, &'static str) {
+    match crate::profile::read_profile(project) {
+        Ok((profile, _)) => match profile.lease_sweep_in_round {
+            Some(on) => (on, "profile"),
+            None => (true, "default"),
+        },
+        Err(_) => (false, "unreadable_profile"),
+    }
+}
+
+/// The round's lease sweep (SPEC-20261124-leader-round-lease-sweep): one call of
+/// `card::sweep::sweep` for the whole project, made before the round builds its answer. With the
+/// profile key `lease_sweep_in_round` false (or a profile that cannot be read) the sweep runs as a
+/// dry run: the cards come back as a list and nothing is written. A project with no profile, a
+/// HOME that is not set and a ledger that is not registered are `not_run`; a sweep that fails is
+/// `error`; neither fails the round. The sweep's own rules (grace, skips, notes) are not repeated
+/// here. `home` is the HOME that holds the ledger, `None` when it is not set.
+pub fn lease_sweep(project: &Path, home: Option<&Path>) -> Value {
+    use crate::ledger::{self, LedgerError};
+    let Some(home) = home else {
+        return sweep_not_run("HOME is not set, so the ledger cannot be found");
+    };
+    let id = match ledger::command::project_id_of(project) {
+        Ok(id) => id,
+        Err(e) => return sweep_not_run(&e),
+    };
+    match ledger::open_read_only(home, &id) {
+        Ok(_) => {}
+        Err(LedgerError::Absent) => {
+            return sweep_not_run("no ledger is registered for this project");
+        }
+        Err(e) => {
+            return json!({"status": "error", "reason": e.to_string(), "cards": [], "writes": false})
+        }
+    }
+    let (enabled, source) = sweep_switch(project);
+    match crate::card::sweep::sweep(project, home, None, "leader", !enabled) {
+        Ok(done) => {
+            let cards: Vec<Value> = done["swept"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|c| {
+                    json!({
+                        "name": c["name"], "holder": c["holder"], "generation": c["generation"],
+                        "lease_until": c["lease_until"],
+                        "worktree": c["worktree"], "branch": c["branch"],
+                    })
+                })
+                .collect();
+            json!({
+                "status": if enabled { "swept" } else { "listed" },
+                "switch_source": source,
+                "grace_hours": done["grace_hours"],
+                "cards": cards,
+                "skipped": done["skipped"],
+                "writes": done["writes"],
+            })
+        }
+        Err(e) => json!({"status": "error", "reason": e, "cards": [], "writes": false}),
+    }
 }
 
 #[cfg(test)]
@@ -845,7 +926,7 @@ mod tests {
     // #3005 P9: a lane that stopped itself with `LANE-IDLE` (the `lane-next` `idle_limit` line)
     // is an idle lane, a card the leader can hand it, not a loop to restart.
 
-    const IDLE_LINE: &str = "LANE-IDLE lane=agent-29 checks=6 last=2026-11-14T09:19:00Z restart=enter MODE-AGENT again as lane agent-29 (`/moai --mode-agent` in Claude Code, `$moai --mode-agent` in Codex CLI)";
+    const IDLE_LINE: &str = "LANE-IDLE lane=agent-29 checks=6 last=2026-11-14T09:19:00Z restart=enter MODE-AGENT again as lane agent-29 (`/moai agent` in Claude Code)";
 
     #[test]
     fn a_lane_idle_line_is_a_marker_of_its_own_lane_only() {

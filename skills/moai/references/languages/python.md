@@ -1,6 +1,6 @@
 # Language: Python
 
-When to read: `internal/quality` sent you here because the project's detected languages include `python`. The project's own declarations (CI steps, `Makefile`, `tox.ini`, `noxfile.py`, `AGENTS.md`) win over every default below.
+When to read: `internal/quality` sent you here because the project's detected languages include `python`. The project's own declarations (CI steps, `Makefile`, `tox.ini`, `noxfile.py`, `CLAUDE.md`) win over every default below.
 
 ## Which runner
 

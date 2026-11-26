@@ -24,7 +24,9 @@ pub const OPERATION: &str = "worktree.report";
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     moai_cli::worktree_report::report(
         &args.project,
-        &args.tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
+        &args
+            .tmp_root
+            .unwrap_or_else(|| PathBuf::from(moai_cli::worktree_report::DEFAULT_TMP_ROOT)),
         std::time::Duration::from_millis(args.budget_ms),
     )
 }

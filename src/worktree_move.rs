@@ -20,6 +20,10 @@
 //! observations list as held (HOLD, unconfirmed handoff) and, without those observations, the
 //! hold check itself (`hold_check_not_run`). A fact that cannot be read blocks with its name.
 //!
+//! A root below `<HOME>/.moai` is refused when `.moai` or a folder between it and the root is a
+//! symbolic link (SPEC-20261124-home-state-link-refusal); the apply recomputes the plan first,
+//! so it is refused the same way before it writes anything.
+//!
 //! The plan writes nothing (git runs with `--no-optional-locks` and a scrubbed environment).
 //! The apply recomputes the plan, refuses before any write unless the digest is the same,
 //! re-checks each candidate for processes and open files right before moving it, and moves it
@@ -142,6 +146,19 @@ fn check_root(root: &Path) -> Result<()> {
     Ok(())
 }
 
+/// SPEC-20261124-home-state-link-refusal REQ-6, REQ-7: a root below the HOME state folder
+/// `<HOME>/.moai` is refused when `.moai` or a folder between it and the root is a symbolic link,
+/// because the apply creates the root and moves worktrees into it. A root outside `<HOME>/.moai`
+/// is the caller's own choice and is not read for links (a temporary folder on macOS is one).
+fn refuse_linked_move_root(root: &Path) -> Result<()> {
+    match crate::home_workdir::home() {
+        Ok(home) if home.is_absolute() => {
+            crate::layout::refuse_linked_home_path(&crate::home_workdir::root(&home), root)
+        }
+        _ => Ok(()),
+    }
+}
+
 fn has_submodules(wt: &Path) -> Option<bool> {
     if wt.join(".gitmodules").exists() {
         return Some(true);
@@ -200,6 +217,7 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
         }
     }
     check_root(root)?;
+    refuse_linked_move_root(root)?;
     crate::worktree::refuse_in_build_folder(root, "--root")?;
     let top = git(
         project,
@@ -214,7 +232,7 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
         .first()
         .map(|e| fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()))
         .ok_or("no worktree listed")?;
-    let id = crate::identity::identity(&primary)?;
+    let id = crate::identity::identity_in(&primary, None)?;
     let clone_id = id["clone_id"].as_str().ok_or("clone id unavailable")?;
     let name = primary
         .file_name()
@@ -562,6 +580,26 @@ pub fn apply(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// SPEC-20261124-identity-home-arg REQ-7: with a symlinked home state folder in the
+    /// environment HOME the move plan answers as it does with a sound HOME.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_worktree_move_plan() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_worktree_move_plan",
+            |f| {
+                let obs = Observations {
+                    schema_version: 1,
+                    holds: None,
+                };
+                let plan = plan(&f.project, Some(&f.scratch.join("moved")), &obs).unwrap();
+                assert_eq!(plan["items"].as_array().map(Vec::len), Some(2), "{plan}");
+                assert!(plan["project_key"].is_string(), "{plan}");
+            },
+        );
+    }
 
     #[test]
     fn project_key_is_name_and_twelve_hex() {

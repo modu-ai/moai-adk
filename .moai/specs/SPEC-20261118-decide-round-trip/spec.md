@@ -1,12 +1,15 @@
 ---
 id: SPEC-20261118-decide-round-trip
 title: "The decision library sends a prepared request to a loopback server and reads the answer"
-status: draft
+status: superseded
 revision: 1
 created: 2026-11-18
+approval: {by: user, at: 2026-11-21, basis: "superseded by SPEC-20261120-retire-decide — AskUserQuestion selection: 승인 (Recommended)", digest: "sha256:85be98a4a46086f13323df153a956838db72aabeb4632b82fc80431c97197c4f"}
 ---
 
 # The decision library sends a prepared request to a loopback server and reads the answer
+
+> Superseded by SPEC-20261120-retire-decide (2026-11-21): the decision model library was removed.
 
 ## Intent
 

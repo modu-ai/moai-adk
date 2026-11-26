@@ -1,12 +1,15 @@
 ---
 id: SPEC-20261118-project-decide-model
 title: "The project interview asks for the decision model and the key without the key reaching the session"
-status: draft
+status: superseded
 revision: 1
 created: 2026-11-18
+approval: {by: user, at: 2026-11-21, basis: "superseded by SPEC-20261120-retire-decide — AskUserQuestion selection: 승인 (Recommended)", digest: "sha256:7d15026889ab7c0561a84de9f888c543e770468e9bc0ca624962d6e392f2232e"}
 ---
 
 # The project interview asks for the decision model and the key without the key reaching the session
+
+> Superseded by SPEC-20261120-retire-decide (2026-11-21): the decision model library was removed.
 
 ## Intent
 

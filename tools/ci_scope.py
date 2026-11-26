@@ -35,6 +35,7 @@ EXACT_DENY = frozenset(
         "docs/release-attestation.md",
         "docs/2383-statusline-switch-design.md",
         "docs/rust-product-path.md",
+        "docs/rule-history.md",
         "docs/llms.txt",
         "docs/user-entry-draft.md",
         "docs/product-naming-inventory.md",
@@ -49,6 +50,10 @@ EXACT_DENY = frozenset(
         "docs/protocol-v1.md",
         "docs/message-test-isolation.md",
         "docs/e2e-matrix.md",
+        "docs/troubleshooting.md",
+        "docs/host-live-session-checklist.md",
+        "docs/agent-model-effort-inheritance.md",
+        "docs/agents-md-maintenance.md",
     }
 )
 # Directory prefixes that are never docs-only even under docs/.
@@ -76,6 +81,8 @@ REPORTS_PREFIX = ".moai-cli/reports/"
 PLATFORM_EXACT = {
     "src/launcher_terminal.rs": "pty/terminal",
     "tests/help_layout.rs": "pty/terminal",
+    "tests/common/pty.rs": "pty/terminal",
+    "tests/pty_helper.rs": "pty/terminal",
     "src/heavy_slot.rs": "process/signal",
     "tools/heavy_check_slot.py": "process/signal",
     "tests/heavy_slot_cli.rs": "process/signal",
@@ -125,6 +132,8 @@ PLATFORM_PREFIX = (
 )
 PLATFORM_SUFFIX = (
     ("_tty_test.py", "pty/terminal"),
+    # The Rust tests that run the binary on a pseudo terminal (SPEC-20261120-python-binary-tests-to-rust).
+    ("_terminal_cli.rs", "pty/terminal"),
 )
 
 
@@ -158,6 +167,33 @@ def classify(paths):
     return "full", reasons
 
 
+# SPEC-20261123-test-area-crates: a test file moved into an area crate lives at
+# tests/<area>/<name>.rs. The platform tables above are keyed by the old tests/<name>.rs path,
+# so a moved file is looked up under its old path; without this a moved platform-sensitive test
+# would stop selecting the macOS leg without any failure. The names are the eight areas of
+# tests/areas.toml (tests/test_area_layout.rs keeps both in step).
+AREA_DIRS = ("card", "update", "home", "project", "lane", "screen", "spec", "repo")
+
+
+def old_test_path(path):
+    """`tests/<area>/<name>.rs` as `tests/<name>.rs`; any other path unchanged."""
+    parts = path.split("/")
+    if (
+        len(parts) == 3
+        and parts[0] == "tests"
+        and parts[1] in AREA_DIRS
+        and parts[2].endswith(".rs")
+        and parts[2] != "main.rs"
+    ):
+        return f"tests/{parts[2]}"
+    return path
+
+
+def is_area_crate_root(path):
+    parts = path.split("/")
+    return len(parts) == 3 and parts[0] == "tests" and parts[1] in AREA_DIRS and parts[2] == "main.rs"
+
+
 def macos_needed(paths):
     """Return (needed, reasons) for an iterable of changed path strings (C-76).
 
@@ -172,17 +208,22 @@ def macos_needed(paths):
     for path in usable:
         if any(ord(ch) < 32 or ord(ch) == 127 for ch in path):
             return True, ["a changed path is not readable text; failing safe"]
-        category = PLATFORM_EXACT.get(path)
+        if is_area_crate_root(path):
+            # The root declares the area's modules; any of them may be platform-sensitive.
+            reasons.append(f"platform-sensitive [area crate root]: {path}")
+            continue
+        key = old_test_path(path)
+        category = PLATFORM_EXACT.get(key)
         if category is not None:
             reasons.append(f"platform-sensitive [{category}]: {path}")
             continue
         for prefix, cat in PLATFORM_PREFIX:
-            if path.startswith(prefix):
+            if key.startswith(prefix):
                 reasons.append(f"platform-sensitive [{cat}]: {path}")
                 break
         else:
             for suffix, cat in PLATFORM_SUFFIX:
-                if path.startswith("tests/") and path.endswith(suffix):
+                if key.startswith("tests/") and key.endswith(suffix):
                     reasons.append(f"platform-sensitive [{cat}]: {path}")
                     break
     return bool(reasons), reasons

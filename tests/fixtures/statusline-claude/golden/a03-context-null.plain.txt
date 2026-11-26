@@ -1,2 +1,3 @@
-🏷️ agent | 🧠 Sonnet | 🗿 v2026.11.0-rc.1
-CTX: ░░░░░░░░░░ n/a
+🧠 Sonnet
+🗿 4.2648.0
+CW n/a

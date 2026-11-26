@@ -1,0 +1,6 @@
+#!/bin/sh
+# MoAI pre-commit hook (Rust generation): one fast check with git itself — whitespace errors and
+# leftover conflict markers in the staged change. No Go tool, no heavy gate: heavier checks run
+# through `moai check affected` before READY. Installed by the MoAI git-hook feature
+# (`moai update --confirm-git-hooks <token>`).
+exec git diff --cached --check

@@ -1,6 +1,6 @@
 # Language: C#
 
-When to read: `internal/quality` sent you here because the project's detected languages include `csharp`. The project's own declarations (CI steps, `AGENTS.md`) win over every default below.
+When to read: `internal/quality` sent you here because the project's detected languages include `csharp`. The project's own declarations (CI steps, `CLAUDE.md`) win over every default below.
 
 ## Evidence and defaults
 
@@ -10,7 +10,7 @@ Run each command on the solution (`*.sln`, `*.slnx`) when there is one, otherwis
 | --- | --- | --- |
 | format | `dotnet format --verify-no-changes` | a solution or project file exists (it reads `.editorconfig`) |
 | lint | the analyzers run inside the build | `<EnableNETAnalyzers>` or analyzer packages are set; `-warnaserror` only when CI uses it |
-| type check | covered by `dotnet build` | |
+| type check | covered by `dotnet build` | n/a: no separate step exists |
 | test | `dotnet test` | a test project exists (a reference to `Microsoft.NET.Test.Sdk`) |
 | build | `dotnet build` | a solution or project file exists |
 
@@ -18,7 +18,7 @@ The SDK version comes from `global.json` when present; another SDK is `blocked`,
 
 ## Dependency existence
 
-- `https://api.nuget.org/v3-flatcontainer/<id in lower case>/index.json` answers 404 for a package that does not exist; recent SDKs also have `dotnet package search <id> --exact-match`.
+- `https://api.nuget.org/v3-flatcontainer/<id in lower case>/index.json` answers 404 for a package that does not exist; the .NET 8.0.2xx SDK and later also have `dotnet package search <id> --exact-match`, which lists the versions of that exact id.
 - Add with `dotnet add <project> package <id>`; show the new `PackageReference` and, when the project locks, the `packages.lock.json` entry.
 
 ## Traps

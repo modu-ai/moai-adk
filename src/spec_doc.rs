@@ -21,10 +21,15 @@
 //!   `forbidden:` relative paths; an untagged path is `write`) and `## Plan` always;
 //!   `## Non-goals` and `## Risks` make a full SPEC, which then needs both; `## Decisions` and
 //!   `## Result` are optional. Headings inside fenced code are text.
-//! - digest: [`crate::spec::content_digest`] over the requirements, acceptance and scope; an
-//!   approved SPEC records it as `approval.digest`, and a body that no longer matches it is an
-//!   error (a change needs the next revision and a new approval). No `cards:` key: personal card
-//!   numbers stay out of shared files.
+//! - digests: `approval_digest` covers the requirement sentences with their links, the criteria
+//!   (id, links, result text, verification kind) and the `forbidden:` entries, and nothing else
+//!   (no front matter, no other section, no `write:` or `read-only:` entry, no `verify:`
+//!   command). `digest` is the earlier [`crate::spec::content_digest`] over the requirements,
+//!   acceptance (with the `verify:` commands) and all scope entries. An approved SPEC records
+//!   one of them as `approval.digest`; the record is read as valid when it equals either, and a
+//!   body that matches neither is an error (a change needs the next revision and a new
+//!   approval). A record of the earlier `digest` keeps that stricter coverage. No `cards:` key:
+//!   personal card numbers stay out of shared files.
 
 use serde::Serialize;
 use std::fs;
@@ -62,8 +67,8 @@ const LEGACY_STATUSES: [(&str, &str); 9] = [
     ("backfilled", "completed"),
     ("retired", "archived"),
 ];
-const KNOWN_KEYS: [&str; 7] = [
-    "id", "title", "status", "revision", "created", "parent", "approval",
+const KNOWN_KEYS: [&str; 8] = [
+    "id", "title", "status", "revision", "created", "parent", "approval", "branch",
 ];
 const APPROVAL_KEYS: [&str; 4] = ["by", "at", "basis", "digest"];
 const SECTIONS: [&str; 10] = [
@@ -146,7 +151,8 @@ pub struct Approval {
     pub by: Option<String>,
     pub at: Option<String>,
     pub basis: Option<String>,
-    /// [`SpecDoc::digest`] at approval.
+    /// [`SpecDoc::approval_digest`] or the earlier [`SpecDoc::digest`] at approval; either one
+    /// keeps the approval valid, and an earlier one keeps its earlier, stricter coverage.
     pub digest: Option<String>,
 }
 
@@ -233,9 +239,14 @@ pub struct SpecDoc {
     pub acceptance: Vec<Criterion>,
     pub scope: Scope,
     pub result: Vec<Outcome>,
-    /// `spec::content_digest` over requirements, acceptance and scope; `None` while a
-    /// requirement is not a GEARS sentence.
+    /// The earlier content digest, `spec::content_digest` over requirements, acceptance
+    /// (including each `verify:` command) and every `## Scope` entry; `None` while a
+    /// requirement is not a GEARS sentence. An approval made before `approval_digest` records it.
     pub digest: Option<String>,
+    /// The approval digest, over the requirements with their links, the criteria (id, links,
+    /// result text, verification kind) and the `forbidden:` entries only; `None` while a
+    /// requirement is not a GEARS sentence. A new approval records it.
+    pub approval_digest: Option<String>,
     pub findings: Vec<Finding>,
     #[serde(skip)]
     gears: Vec<crate::spec::Requirement>,
@@ -687,6 +698,7 @@ pub fn parse(text: &str, opts: &Options) -> SpecDoc {
     digest(&mut doc, approval_line);
     unfinished(&lines, &mut doc);
     budget(text.lines().count(), &mut doc);
+    card_number_observe(&lines, &mut doc);
     if opts.closure {
         closure(&mut doc);
     }
@@ -701,6 +713,69 @@ pub fn parse(text: &str, opts: &Options) -> SpecDoc {
         }
     }
     doc
+}
+
+/// A new-form SPEC whose `created` date or `approval.at` date is on or after this date gets the
+/// card-number observe notice (SPEC-20261123-card-number-observe REQ-1): a new SPEC by its
+/// `created`, a revised one by the date of the approval it gets again. Older SPECs are not asked.
+const CARD_NUMBERS_FROM: &str = "2026-11-25";
+
+/// The number of card numbers in `line`: `C-` or `c-` and one or more digits, the letter not
+/// inside a longer word (`AC-1` and `SPEC-2026…` are not card numbers).
+fn card_numbers_in(line: &str) -> usize {
+    let b = line.as_bytes();
+    let (mut count, mut i) = (0, 0);
+    while i + 2 < b.len() {
+        let word_start = i == 0 || !b[i - 1].is_ascii_alphanumeric();
+        if word_start
+            && matches!(b[i], b'C' | b'c')
+            && b[i + 1] == b'-'
+            && b[i + 2].is_ascii_digit()
+        {
+            count += 1;
+            i += 2;
+            while i < b.len() && b[i].is_ascii_digit() {
+                i += 1;
+            }
+        } else {
+            i += 1;
+        }
+    }
+    count
+}
+
+/// Observe notice (sdd rule 11): a warning, never an error, that counts the card numbers of a
+/// new-form SPEC created or approved on or after [`CARD_NUMBERS_FROM`]. It names the count and
+/// the first line, never the author's text.
+fn card_number_observe(lines: &[&str], doc: &mut SpecDoc) {
+    if doc.id_form != Some(IdForm::New) {
+        return;
+    }
+    let late =
+        |d: Option<&String>| d.is_some_and(|d| valid_date(d) && d.as_str() >= CARD_NUMBERS_FROM);
+    let due = late(doc.created.as_ref()) || late(doc.approval.as_ref().and_then(|a| a.at.as_ref()));
+    if !due {
+        return;
+    }
+    let mut count = 0;
+    let mut first = None;
+    for (i, line) in lines.iter().enumerate() {
+        let n = card_numbers_in(line);
+        if n > 0 {
+            first.get_or_insert(i + 1);
+            count += n;
+        }
+    }
+    if let Some(first) = first {
+        doc.warn(
+            "card_number_observe",
+            Some(first),
+            format!(
+                "{count} card number(s) in this SPEC, the first on line {first}; observe notice \
+                 only, a card is personal (internal/sdd.md rule 10)"
+            ),
+        );
+    }
 }
 
 /// The marker of an open question an author left in a SPEC.
@@ -1146,6 +1221,82 @@ fn item(line: &str, prefix: &str) -> Option<(u32, String)> {
     Some((n, text))
 }
 
+/// The id prefixes of the list items of the item sections.
+const ITEM_PREFIXES: [&str; 3] = ["REQ-", "AC-", "D-"];
+
+/// Whether `before` ends in an id (`AC-3`) that starts a word: the prefix is not the tail of
+/// a longer word (`CD-1` is not a `D-1`).
+fn ends_in_id(before: &str) -> bool {
+    if !before.ends_with(|c: char| c.is_ascii_digit()) {
+        return false;
+    }
+    let head = before.trim_end_matches(|c: char| c.is_ascii_digit());
+    ITEM_PREFIXES.iter().any(|p| {
+        head.strip_suffix(p)
+            .is_some_and(|w| !w.ends_with(|c: char| c.is_alphanumeric() || c == '_'))
+    })
+}
+
+/// The ids of the items that start inside a line that already starts one: the `- <id>` items
+/// after the first. The next item follows a space (` - AC-2`) or the closing backtick of a
+/// span (`` `a`- AC-2 ``). A dash inside a paired backtick span, or right after an id that
+/// starts a word (`AC-3 - AC-5`), is text; so is a line that is not itself a list item of one
+/// of the [`ITEM_PREFIXES`]. A last backtick with no partner is a letter, not a span.
+fn glued_ids(line: &str) -> Vec<String> {
+    let (listed, t) = unlisted(line);
+    if !listed || !ITEM_PREFIXES.iter().any(|p| item(t, p).is_some()) {
+        return Vec::new();
+    }
+    let total = t.matches('`').count();
+    let mut ids = Vec::new();
+    for (dash, _) in t.match_indices("- ") {
+        let ticks = t[..dash].matches('`').count();
+        let in_span = ticks % 2 == 1 && ticks < total;
+        let separated = match t[..dash].chars().next_back() {
+            Some(' ') => !in_span && !ends_in_id(t[..dash].trim_end()),
+            Some('`') => ticks % 2 == 0,
+            _ => false,
+        };
+        if !separated {
+            continue;
+        }
+        let rest = t[dash + 2..].trim_start();
+        if let Some((p, n)) = ITEM_PREFIXES
+            .iter()
+            .find_map(|p| item(rest, p).map(|(n, _)| (*p, n)))
+        {
+            ids.push(format!("{p}{n}"));
+        }
+    }
+    ids
+}
+
+/// Reports every item that starts inside the line of another item (`item_glued`), outside
+/// fenced code.
+fn glued_items(doc: &mut SpecDoc, content: &[(usize, &str)]) {
+    let mut fence: Option<&str> = None;
+    for (n, line) in content {
+        let t = line.trim_start();
+        if let Some(mark) = fence {
+            if t.starts_with(mark) {
+                fence = None;
+            }
+            continue;
+        }
+        if t.starts_with("```") || t.starts_with("~~~") {
+            fence = Some(&t[..3]);
+            continue;
+        }
+        for id in glued_ids(line) {
+            doc.error(
+                "item_glued",
+                Some(*n),
+                format!("{id} starts on the same line as another item; put each list item on its own line"),
+            );
+        }
+    }
+}
+
 /// A line without its list marker (`- `, `* `, `+ `), if it has one.
 fn unlisted(line: &str) -> (bool, &str) {
     let t = line.trim_start();
@@ -1288,6 +1439,12 @@ fn body(lines: &[&str], start: usize, doc: &mut SpecDoc) {
     }
     for (name, at, content) in &sections {
         let blank = content.iter().all(|(_, l)| l.trim().is_empty());
+        if matches!(
+            name.as_str(),
+            "Requirements" | "Acceptance" | "Decisions" | "Result"
+        ) {
+            glued_items(doc, content);
+        }
         match name.as_str() {
             "Intent" | "Plan" | "Non-goals" | "Risks" if blank => doc.error(
                 "section_empty",
@@ -1833,6 +1990,7 @@ fn digest(doc: &mut SpecDoc, approval_line: Option<usize>) {
             }
         })
         .collect();
+    let approval_digest = approval_digest(doc, &requirements);
     let s = &doc.scope;
     let scope = [
         ("write", &s.write),
@@ -1863,16 +2021,55 @@ fn digest(doc: &mut SpecDoc, approval_line: Option<usize>) {
     let digest = crate::spec::content_digest(&content, &crate::spec::SortedKeys);
     let recorded = doc.approval.as_ref().and_then(|a| a.digest.clone());
     if let Some(recorded) = recorded.filter(|r| !r.trim().is_empty()) {
-        if recorded != digest {
+        if recorded != approval_digest && recorded != digest {
             doc.error(
                 "approval_digest",
                 approval_line,
-                "the requirements, acceptance or scope changed after approval (`approval.digest` \
-                 differs); raise `revision` and approve again",
+                "the requirements, acceptance or `forbidden:` entries changed after approval \
+                 (`approval.digest` matches neither `approval_digest` nor the earlier `digest`); \
+                 raise `revision` and approve again",
             );
         }
     }
     doc.digest = Some(digest);
+    doc.approval_digest = Some(approval_digest);
+}
+
+/// The approval digest: the requirement records (sentence, GEARS parts, linked criterion ids),
+/// the criteria (id, links, result text, verification kind; the text of `manual:` and
+/// `unknown:`, never the command after `verify:`) and the `forbidden:` entries, under the
+/// domain tag `approval@1`. Nothing else is hashed: no front matter, no other section, no
+/// `write:` or `read-only:` entry.
+fn approval_digest(doc: &SpecDoc, requirements: &[crate::spec::Requirement]) -> String {
+    let acceptance: Vec<_> = doc
+        .acceptance
+        .iter()
+        .map(|c| {
+            let (kind, detail) = match (&c.verify, &c.manual, &c.unknown) {
+                (Some(_), _, _) => ("verify", ""),
+                (_, Some(m), _) => ("manual", m.as_str()),
+                (_, _, Some(u)) => ("unknown", u.as_str()),
+                _ => ("none", ""),
+            };
+            serde_json::json!({
+                "id": c.id,
+                "refs": c.refs,
+                "observable_result": c.text,
+                "kind": kind,
+                "detail": detail,
+            })
+        })
+        .collect();
+    let approved = serde_json::json!({
+        "kind": "approval@1",
+        "requirements": requirements,
+        "acceptance": acceptance,
+        "forbidden": doc.scope.forbidden,
+    });
+    crate::digest(&crate::spec::Canonical::bytes(
+        &crate::spec::SortedKeys,
+        &approved,
+    ))
 }
 
 fn result(doc: &mut SpecDoc, content: &[(usize, &str)]) {

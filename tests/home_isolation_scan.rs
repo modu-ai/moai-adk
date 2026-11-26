@@ -12,13 +12,12 @@
 //!
 //! Scan B. Nothing under `src/ledger/` spawns a process (`Command::new(`), opens a socket
 //! (`std::net`), names a program (`"gh"`, `"git"`, `"curl"`, `"ssh"`), holds an `http(s)://`
-//! endpoint or reaches into `crate::forge`. Comments are not code and are ignored. The same
-//! holds for `src/decide/` (cards C-37 and C-54), except the two provider endpoint constants.
-//! The one file that sends (`src/decide/transport.rs`) may also hold four socket names.
+//! endpoint or reaches into `crate::forge`. Comments are not code and are ignored.
 //!
 //! Both scans are text matches: they show a name is absent, not that a path is never reached.
-//! The entry-count tool `tools/home_entry_count.py` measures the real `~/.moai` before and
-//! after a verification run, which is the dynamic half of AC8 and is not run by any test.
+//! The dynamic half of AC8 (the real `~/.moai` entry count before and after a verification
+//! run) had a measuring tool that was removed with the repository's Python tools; every test
+//! here uses a temporary HOME instead, so the real one is never touched.
 
 mod common;
 
@@ -312,8 +311,47 @@ fn ledger_area_files(root: &Path) -> Vec<PathBuf> {
             out.push(path);
         }
     }
+    // A moved area crate (`tests/<area>/main.rs`, SPEC-20261123-test-area-crates) keeps the
+    // ledger files as modules: the ledger area is the files named `ledger*` inside it too.
+    for area in area_crate_dirs(&tests) {
+        for entry in fs::read_dir(&area).unwrap() {
+            let path = entry.unwrap().path();
+            let stem = path.file_stem().and_then(|n| n.to_str()).unwrap_or("");
+            if path.is_file()
+                && stem.starts_with("ledger")
+                && path.extension().is_some_and(|e| e == "rs")
+            {
+                out.push(path);
+            }
+        }
+    }
     out.sort();
     out
+}
+
+/// The folders of `tests` that hold a `main.rs`: moved area crates.
+fn area_crate_dirs(tests: &Path) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = fs::read_dir(tests)
+        .unwrap()
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.is_dir() && p.join("main.rs").is_file())
+        .collect();
+    out.sort();
+    out
+}
+
+/// A test file by its file name: `tests/<name>` or, once its area moved, `tests/<area>/<name>`.
+fn test_file(root: &Path, name: &str) -> PathBuf {
+    let tests = root.join("tests");
+    let top = tests.join(name);
+    if top.is_file() {
+        return top;
+    }
+    area_crate_dirs(&tests)
+        .into_iter()
+        .map(|area| area.join(name))
+        .find(|p| p.is_file())
+        .unwrap_or(top)
 }
 
 /// Scan A, ledger area: the number of files read and one `path:line name` per direct way to the
@@ -323,7 +361,12 @@ fn ledger_area_problems(root: &Path) -> (usize, Vec<String>) {
     let mut found = Vec::new();
     for path in &files {
         let name = rel(root, path);
-        if LEGACY_LEDGER_NAMED.contains(&name.as_str()) {
+        // The legacy pair is skipped by file name, so it stays skipped inside an area crate.
+        let file = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if LEGACY_LEDGER_NAMED
+            .iter()
+            .any(|legacy| legacy.rsplit('/').next() == Some(file))
+        {
             continue;
         }
         let text = fs::read_to_string(path).unwrap();
@@ -385,15 +428,16 @@ fn ledger_tests_run_the_binary_only_through_temp_home() {
 fn the_ledger_area_still_uses_temp_home() {
     // A scan that finds no direct binary use is empty also when the tests stopped using the
     // helper altogether: at least the CLI test of P1 must go through it.
-    let text = fs::read_to_string(Path::new(ROOT).join("tests/ledger_cli.rs")).unwrap();
-    assert!(text.contains("home.command("), "tests/ledger_cli.rs");
+    let text = fs::read_to_string(test_file(Path::new(ROOT), "ledger_cli.rs")).unwrap();
+    assert!(text.contains("home.command("), "ledger_cli.rs");
 }
 
 #[test]
 fn the_legacy_ledger_named_list_does_not_grow() {
     assert_eq!(LEGACY_LEDGER_NAMED.len(), 2);
     for name in LEGACY_LEDGER_NAMED {
-        let text = fs::read_to_string(Path::new(ROOT).join(name)).unwrap();
+        let file = name.rsplit('/').next().unwrap();
+        let text = fs::read_to_string(test_file(Path::new(ROOT), file)).unwrap();
         // they still carry their reason: a plain temporary HOME of their own
         assert!(text.contains("\"HOME\""), "{name}");
     }
@@ -477,199 +521,6 @@ fn the_ledger_library_has_no_external_call_names() {
     assert!(found.is_empty(), "{}", found.join("\n"));
 }
 
-/// The two provider endpoints of `moai decide` (cards C-37 and C-54): the only URLs the code
-/// under `src/decide/` may hold, each as a whole string literal.
-const DECIDE_ENDPOINTS: [&str; 2] = [
-    "\"https://api.typesafe.ai/v1/systemone\"",
-    "\"https://api.openai.com/v1/decisions\"",
-];
-
-/// The one file under `src/decide/` that sends (slice S4, SPEC-20261118-decide-round-trip)
-/// and the four names it may hold; it may hold no other name of the scan, and no other file
-/// may hold these.
-const DECIDE_SENDER: &str = "src/decide/transport.rs";
-const DECIDE_SENDER_NAMES: [&str; 4] = ["std::net", "net::", "TcpStream", "TcpListener"];
-
-/// Scan B over the decide library at `dir`, with two exceptions: a URL hit on a line whose
-/// every URL is one of [`DECIDE_ENDPOINTS`], and the four socket names of
-/// [`DECIDE_SENDER_NAMES`] in [`DECIDE_SENDER`]. The line is read as written, so a URL in a
-/// comment beside an endpoint is a hit too. Returns the number of files read and one
-/// `path:line name` per hit.
-fn decide_external_hits(root: &Path, dir: &Path) -> (usize, Vec<String>) {
-    let files = rust_files(dir, &[]);
-    let mut found = Vec::new();
-    for path in &files {
-        let text = fs::read_to_string(path).unwrap();
-        let lines: Vec<&str> = text.lines().collect();
-        let is_sender = rel(root, path) == DECIDE_SENDER;
-        for (line, name) in find(&text, &EXTERNAL_TOKENS) {
-            if is_sender && DECIDE_SENDER_NAMES.contains(&name) {
-                continue;
-            }
-            if name.ends_with("://") {
-                let mut rest = lines[line - 1].to_string();
-                for endpoint in DECIDE_ENDPOINTS {
-                    rest = rest.replace(endpoint, "");
-                }
-                if !rest.contains("http://") && !rest.contains("https://") {
-                    continue;
-                }
-            }
-            found.push(format!("{}:{line} {name}", rel(root, path)));
-        }
-    }
-    found.dedup();
-    (files.len(), found)
-}
-
-/// Second audit of card C-37 S2, N11: the decide library builds bytes and reads bytes. It
-/// opens no socket, starts no process and names no URL but the two endpoint constants.
-/// The one place that sends (slice S4) has its own exception: [`DECIDE_SENDER`].
-#[test]
-fn the_decide_library_has_no_external_call_names() {
-    let root = Path::new(ROOT);
-    let (files, found) = decide_external_hits(root, &root.join("src/decide"));
-    assert!(files >= 5, "src/decide has {files} files; moved?");
-    assert!(found.is_empty(), "{}", found.join("\n"));
-}
-
-#[test]
-fn the_decide_scan_allows_the_two_endpoints_and_nothing_else() {
-    let dir = tempfile::tempdir().unwrap();
-    let decide = dir.path().join("src/decide");
-    fs::create_dir_all(&decide).unwrap();
-    let allowed = [
-        "pub const A: &str = \"https://api.typesafe.ai/v1/systemone\";",
-        "pub const B: &str = \"https://api.openai.com/v1/decisions\";",
-        "assert_eq!((a, b), (\"https://api.typesafe.ai/v1/systemone\", \"https://api.openai.com/v1/decisions\"));",
-        "// see https://example.com/docs",
-    ];
-    let refused = [
-        (
-            "let u = \"https://api.openai.com/v1/decisions/x\";",
-            "https://",
-        ),
-        (
-            "let u = \"https://api.openai.com/v1/decision\";",
-            "https://",
-        ),
-        ("let u = \"http://api.openai.com/v1/decisions\";", "http://"),
-        (
-            "let u = \"https://api.typesafe.ai.example.com/v1/systemone\";",
-            "https://",
-        ),
-        (
-            "let u = format!(\"https://{host}/v1/decisions\");",
-            "https://",
-        ),
-        (
-            "let p = (\"https://api.openai.com/v1/decisions\", \"https://example.com\");",
-            "https://",
-        ),
-        ("let c = std::process::Command::new(x);", "Command::new("),
-        ("let s = std::net::TcpStream::connect(a);", "TcpStream"),
-        ("let p = \"curl\";", "\"curl\""),
-    ];
-    fs::write(decide.join("ok.rs"), allowed.join("\n")).unwrap();
-    assert_eq!(decide_external_hits(dir.path(), &decide), (1, vec![]));
-    for (at, (sample, name)) in refused.iter().enumerate() {
-        let text = format!("{}\n{sample}\n", allowed[0]);
-        fs::write(decide.join("bad.rs"), text).unwrap();
-        let (files, found) = decide_external_hits(dir.path(), &decide);
-        assert_eq!(files, 2);
-        let want = format!("src/decide/bad.rs:2 {name}");
-        assert!(found.contains(&want), "sample {at}: {found:?}");
-        assert!(
-            found
-                .iter()
-                .all(|hit| hit.starts_with("src/decide/bad.rs:2 ")),
-            "sample {at}: {found:?}"
-        );
-    }
-}
-
-/// Slice S4 (SPEC-20261118-decide-round-trip): the one file that sends may hold
-/// the four socket names; nothing else is allowed there or anywhere else under `src/decide/`.
-#[test]
-fn the_decide_scan_allows_the_four_socket_names_in_the_sending_file_only() {
-    let dir = tempfile::tempdir().unwrap();
-    let decide = dir.path().join("src/decide");
-    fs::create_dir_all(&decide).unwrap();
-    let sockets = [
-        "use std::net::{SocketAddr, TcpStream};",
-        "let l = TcpListener::bind(a);",
-        "let s = TcpStream::connect(a);",
-        "let a: net::SocketAddr = x;",
-    ]
-    .join("\n");
-    // Allowed: those four names, in the sending file, and nowhere else.
-    fs::write(decide.join("transport.rs"), &sockets).unwrap();
-    assert_eq!(decide_external_hits(dir.path(), &decide), (1, vec![]));
-    fs::write(decide.join("other.rs"), &sockets).unwrap();
-    let (files, found) = decide_external_hits(dir.path(), &decide);
-    assert_eq!(files, 2);
-    assert!(
-        !found.is_empty(),
-        "the same text in another file must be a hit"
-    );
-    assert!(
-        found
-            .iter()
-            .all(|hit| hit.starts_with("src/decide/other.rs:")),
-        "{found:?}"
-    );
-    fs::remove_file(decide.join("other.rs")).unwrap();
-    // Still a hit in the sending file: any other name of the scan, and a name of the same
-    // family that is not one of the four.
-    for (sample, name) in [
-        ("let c = std::process::Command::new(x);", "Command::new("),
-        ("let u = \"https://example.com\";", "https://"),
-        ("let u = \"http://example.com\";", "http://"),
-        ("let p = \"curl\";", "\"curl\""),
-        ("let p = \"git\";", "\"git\""),
-        ("let s = UdpSocket::bind(a);", "UdpSocket"),
-        ("use crate::forge;", "crate::forge"),
-    ] {
-        fs::write(
-            decide.join("transport.rs"),
-            format!("{sockets}\n{sample}\n"),
-        )
-        .unwrap();
-        let (_, found) = decide_external_hits(dir.path(), &decide);
-        let want = format!("src/decide/transport.rs:5 {name}");
-        assert!(found.contains(&want), "{sample}: {found:?}");
-        assert!(
-            found
-                .iter()
-                .all(|hit| hit.starts_with("src/decide/transport.rs:5 ")),
-            "{sample}: {found:?}"
-        );
-    }
-}
-
-/// The exception above is only as good as the sending file's guard: the real file checks that
-/// the address is a loopback address before it opens a connection, and it keeps the key in a
-/// type with no value in its `Debug`.
-#[test]
-fn the_sending_file_checks_the_address_before_it_connects() {
-    let text = fs::read_to_string(Path::new(ROOT).join("src/decide/transport.rs")).unwrap();
-    let code = blank_comments(&text);
-    let guard = code
-        .find("is_loopback()")
-        .expect("the loopback guard is gone");
-    let connect = code
-        .find("connect_timeout(")
-        .expect("no connection is made?");
-    assert!(
-        guard < connect,
-        "the loopback check must come before the connection"
-    );
-    assert!(
-        code.contains("f.write_str(\"ApiKey(..)\")"),
-        "the key type must print nothing of its value"
-    );
-}
-
 #[test]
 fn a_temp_home_child_sees_only_the_temp_home() {
     let home = TempHome::new();
@@ -689,10 +540,19 @@ fn a_temp_home_child_sees_only_the_temp_home() {
     let path = home.path().to_str().unwrap();
     assert_eq!(vars.get("HOME"), Some(&path), "{text}");
     assert_eq!(vars.get("USERPROFILE"), Some(&path), "{text}");
-    // nothing else of the caller's environment is passed on (the developer folder excepted)
+    // nothing else of the caller's environment is passed on (the developer folder and the test
+    // process table switch excepted)
     let extra: Vec<&&str> = vars
         .keys()
-        .filter(|k| !["HOME", "USERPROFILE", "DEVELOPER_DIR"].contains(*k))
+        .filter(|k| {
+            ![
+                "HOME",
+                "USERPROFILE",
+                "DEVELOPER_DIR",
+                common::PROCESS_TABLE_SWITCH,
+            ]
+            .contains(*k)
+        })
         .collect();
     assert!(extra.is_empty(), "{extra:?}");
 }
@@ -835,6 +695,41 @@ fn scan_a_names_the_file_and_line_of_a_direct_binary_use() {
             "tests/ledger_bad.rs:4 runs the binary through MOAI_BIN; use TempHome::command",
             "tests/ledger_more/deep.rs:1 runs the binary through CARGO_BIN_EXE_; use TempHome::command",
         ]
+    );
+}
+
+/// After the card area moves, its ledger files are modules of `tests/card/`: the scan still
+/// reads them by their `ledger*` name, skips the legacy pair by file name and ignores the rest.
+#[test]
+fn scan_a_reads_ledger_modules_inside_a_moved_area_crate() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let area = dir.path().join("tests/card");
+    fs::create_dir_all(&area).unwrap();
+    fs::write(area.join("main.rs"), "mod ledger_bad;\n").unwrap();
+    fs::write(
+        area.join("ledger_bad.rs"),
+        "fn t() { Command::new(common::MOAI_BIN); }\n",
+    )
+    .unwrap();
+    fs::write(
+        area.join("ledger_forge_only_cli.rs"),
+        "fn t() { Command::new(common::MOAI_BIN); }\n",
+    )
+    .unwrap();
+    fs::write(
+        area.join("card_free.rs"),
+        "fn t() { Command::new(common::MOAI_BIN); }\n",
+    )
+    .unwrap();
+    let (files, problems) = ledger_area_problems(dir.path());
+    assert_eq!(files, 2, "{problems:?}");
+    assert_eq!(
+        problems,
+        vec!["tests/card/ledger_bad.rs:1 runs the binary through MOAI_BIN; use TempHome::command"]
+    );
+    assert_eq!(
+        test_file(dir.path(), "ledger_bad.rs"),
+        area.join("ledger_bad.rs")
     );
 }
 

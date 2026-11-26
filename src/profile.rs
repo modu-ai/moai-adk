@@ -53,12 +53,20 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("leader", true),
     ("context_max_bytes", true),
     ("archive_grace_days", true),
+    ("stale_draft_days", true),
+    ("lease_sweep_hours", true),
+    ("lease_sweep_in_round", true),
     ("language", true),
     ("detected", true),
     ("scopes", true),
     ("versioning", true),
     ("work_flow", true),
+    ("lane_run", true),
+    ("remote_copy", true),
     ("test_paths", true),
+    ("ci", true),
+    ("checks", true),
+    ("shared_files", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -131,6 +139,21 @@ pub struct Profile {
     /// before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub archive_grace_days: Option<u64>,
+    /// How many days a `draft` card may sit before `moai card next` lists it as stale
+    /// (SPEC-20261124-card-fold-stale). Absent means 14; 0 is refused. A profile written before
+    /// this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stale_draft_days: Option<u64>,
+    /// How many hours a lease may be over before `moai card sweep` returns its card to
+    /// `ready` (SPEC-20261124-ended-lease-sweep). Absent means 24; 0 is refused. A profile
+    /// written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lease_sweep_hours: Option<u64>,
+    /// Whether `moai leader-round` sweeps ended leases each round (SPEC-20261124-leader-round-lease-sweep).
+    /// Absent means true; `false` makes the round list the cards a sweep would return and write
+    /// nothing. A profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lease_sweep_in_round: Option<bool>,
     /// Writing language per item (#2293): item id → language code, both checked against the
     /// tables in `crate::language`. Absent means no choice was recorded; a profile written
     /// before this key reads unchanged and the managed section renders as before.
@@ -159,16 +182,104 @@ pub struct Profile {
     /// written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub work_flow: Option<WorkFlowSettings>,
+    /// The pick of running a lane non-stop or one card at a time (SPEC-20261122-nonstop-lane
+    /// D-2): the project's `default` and a value per lane. Absent means nobody picked; a
+    /// profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lane_run: Option<LaneRunSettings>,
+    /// Whether the landing's remote copy is on: the leader turns it on only after a preview
+    /// and the user's yes (decision of 2026-11-22); absent or false means the copy pushes
+    /// nothing. A bool needs no validator beyond its type: a non-boolean value fails the
+    /// read, and the key is listed in [`PROFILE_KEYS`] so it is a managed key.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_copy: Option<bool>,
     /// The project's own test paths beside the per-language table of `crate::tdd`
     /// (SPEC-20261117-green-test-lock D-4): relative folders or files, at most
     /// [`crate::tdd::MAX_DECLARED`]. Absent means none were declared; a profile written before
     /// this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub test_paths: Option<Vec<String>>,
+    /// The saved answers of the plain CI questions (SPEC-20261122-project-ci-design): what the
+    /// project is, which systems its users run, whether and where it deploys, public or
+    /// private with the monthly budget, and how strict the checks are. Absent means the
+    /// interview recorded none; a profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ci: Option<crate::project_ci::CiAnswers>,
+    /// The check commands the project declares, in the order they run: the one list the
+    /// generated workflow and the project's local check both read. Absent means none were
+    /// declared; a profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checks: Option<Vec<crate::project_ci::CheckEntry>>,
+    /// Files many cards edit by a line (SPEC-20261124-shared-files-profile): relative paths or
+    /// globs, at most [`SHARED_FILES_MAX`]. `card take` and `card scope` do not reserve them
+    /// whole and point at `card line-lease` instead. Absent means none were declared; a profile
+    /// written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shared_files: Option<Vec<String>>,
 }
 
-/// The flows the `work_flow` key names (card C-70), m-flow first.
-pub const WORK_FLOWS: &[&str] = &["m-flow", "github-flow", "trunk-based", "git-flow"];
+/// The most entries `shared_files` may list: the limit of one reservation's scope.
+pub const SHARED_FILES_MAX: usize = 64;
+
+/// The longest `shared_files` entry, in characters: the limit of one scope pattern.
+const SHARED_FILES_ENTRY_MAX: usize = 512;
+
+/// `shared_files` as `card add --scope` reads a scope entry, plus what a stored list needs: no
+/// padding (the reader does not trim), no comma and no line or bidi separator. A failure names
+/// no value.
+fn validate_shared_files(files: &[String]) -> Result<()> {
+    let bad = || -> String { "invalid or nonportable profile; no values were logged".into() };
+    if files.len() > SHARED_FILES_MAX {
+        return Err(bad());
+    }
+    let clean = crate::card::input::validate_scope(files).map_err(|_| bad())?;
+    let is_separator = |c: char| matches!(c, '\u{2028}'..='\u{202e}' | '\u{2066}'..='\u{2069}');
+    let ok = clean.iter().zip(files).all(|(clean, raw)| {
+        clean == raw
+            && raw.chars().count() <= SHARED_FILES_ENTRY_MAX
+            && !raw.contains(',')
+            && !raw.chars().any(is_separator)
+    });
+    if ok {
+        Ok(())
+    } else {
+        Err(bad())
+    }
+}
+
+/// The flows the `work_flow` key names (card C-70), next-flow first: the local flow's
+/// name is NeXT-Flow (SPEC-20261122-next-flow) and `m-flow` is its old value, still read.
+pub const WORK_FLOWS: &[&str] = &[
+    "next-flow",
+    "m-flow",
+    "github-flow",
+    "trunk-based",
+    "git-flow",
+];
+
+/// Whether a `work_flow` value names the local flow (NeXT-Flow), under its current or its
+/// old value (SPEC-20261122-next-flow): both select the same flow.
+pub fn is_local_flow(name: &str) -> bool {
+    matches!(name, "next-flow" | "m-flow")
+}
+
+/// The one old-name line of the flow rename (SPEC-20261122-next-flow REQ-2): a profile whose
+/// value is still `m-flow` is read as the same flow and named once, nowhere rewritten.
+pub fn old_flow_notice(flow: &str) -> Option<&'static str> {
+    (flow == "m-flow")
+        .then_some("m-flow is the old name of the NeXT-Flow flow; both values select the same flow")
+}
+
+/// The name a person reads for a `work_flow` value: the local flow is NeXT-Flow under its
+/// current and its old value, and every other value is shown as it is. Texts that name the
+/// flow call this instead of printing the stored value.
+pub fn flow_display_name(flow: &str) -> &str {
+    if is_local_flow(flow) {
+        "NeXT-Flow"
+    } else {
+        flow
+    }
+}
 
 /// The `work_flow` key: one of [`WORK_FLOWS`] and, when named, the integration branch every
 /// card branch starts from.
@@ -178,12 +289,81 @@ pub struct WorkFlowSettings {
     pub flow: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub integration_branch: Option<String>,
+    /// How `card land` treats the audit verdict (SPEC-20261123-landing-reads-verdict, REQ-22):
+    /// one of [`LAND_VERDICT_MODES`]; no key means `observe`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub land_verdict: Option<String>,
+    /// The cards a live lane may have in work and in review
+    /// (SPEC-20261125-landing-moves-checkout REQ-3): the limit is this number times the live
+    /// registered lanes; no key means 2 and 0 turns the limit off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wip_limit: Option<u32>,
+    /// The local branches `card land-sync` may merge into the integration branch
+    /// (SPEC-20261125-land-sync-merge REQ-2): at most [`SYNC_SOURCES_LIMIT`] valid branch names,
+    /// no duplicate and not the integration branch; no key means an empty list, which refuses
+    /// every source. `WorkFlowSettings` refuses unknown fields (`deny_unknown_fields`), so an
+    /// installed moai older than this field refuses a profile that holds the key: set the value
+    /// only after the installed binary is updated.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sync_sources: Option<Vec<String>>,
+}
+
+impl WorkFlowSettings {
+    /// The branches of `sync_sources`; empty when the key is absent.
+    pub fn sync_sources(&self) -> &[String] {
+        self.sync_sources.as_deref().unwrap_or(&[])
+    }
+}
+
+/// The most branches `work_flow.sync_sources` may list.
+pub const SYNC_SOURCES_LIMIT: usize = 8;
+
+/// What is wrong with `work_flow.sync_sources`, as words that follow the key name, or `None`
+/// when the list is acceptable. The words never carry a value that was read.
+fn sync_sources_problem(w: &WorkFlowSettings) -> Option<String> {
+    let list = w.sync_sources();
+    if list.len() > SYNC_SOURCES_LIMIT {
+        return Some(format!("must list at most {SYNC_SOURCES_LIMIT} branches"));
+    }
+    if !list.iter().all(|b| branch_name(b)) {
+        return Some("must list only valid branch names".into());
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    if !list.iter().all(|b| seen.insert(b.as_str())) {
+        return Some("must not list a branch twice".into());
+    }
+    if list
+        .iter()
+        .any(|b| w.integration_branch.as_deref() == Some(b.as_str()))
+    {
+        return Some("must not list the integration branch".into());
+    }
+    None
+}
+
+/// The two words of `work_flow.land_verdict`: `observe` reports the refusal a landing would get
+/// and lands, `enforce` refuses.
+pub const LAND_VERDICT_MODES: &[&str] = &["observe", "enforce"];
+
+/// The two values of a lane-run pick (SPEC-20261122-nonstop-lane).
+pub const LANE_RUNS: &[&str] = &["nonstop", "single"];
+
+/// The `lane_run` key: the project's pick and the picks of named lanes, each one of
+/// [`LANE_RUNS`], lanes named by the rule of `session-register`
+/// ([`crate::lane_registry::valid_name`]); a lane's own value comes before the project's.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct LaneRunSettings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<String>,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub lanes: std::collections::BTreeMap<String, String>,
 }
 
 /// A branch name git takes, kept to a portable subset: 1 to 100 bytes of ASCII letters, digits
 /// and `. - _ /`; no leading `-`, `.` or `/`; no trailing `/` or `.`; no `..`, `//` or `/.`;
 /// no `/` component ending in `.lock`; not `HEAD` (as `git check-ref-format --branch` rules).
-fn branch_name(s: &str) -> bool {
+pub(crate) fn branch_name(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= 100
         && s != "HEAD"
@@ -266,6 +446,12 @@ pub struct Plan {
     /// file, or when the file still matches the baseline.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub drift: Vec<String>,
+    /// The recorded `detected.manifests` entries that applying this plan's `detected` key
+    /// would leave out, sorted (SPEC-20261124-project-detect-monorepo REQ-9). Empty — and left
+    /// out of the JSON and of the digest — when nothing recorded drops, so a plan that drops
+    /// nothing keeps the bytes and the digest it had before this field.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dropped_manifests: Vec<String>,
     pub plan_digest: String,
 }
 
@@ -336,6 +522,32 @@ fn validate(p: &Profile) -> Result<()> {
         {
             return Err("invalid work_flow setting; no values were logged".into());
         }
+        // The reason names the key and the two words, never the value that was read.
+        if w.land_verdict
+            .as_deref()
+            .is_some_and(|m| !LAND_VERDICT_MODES.contains(&m))
+        {
+            return Err(format!(
+                "invalid work_flow setting: land_verdict must be {}; no values were logged",
+                LAND_VERDICT_MODES.join(" or ")
+            ));
+        }
+        if let Some(why) = sync_sources_problem(w) {
+            return Err(format!(
+                "invalid work_flow setting: sync_sources {why}; no values were logged"
+            ));
+        }
+    }
+    if let Some(r) = &p.lane_run {
+        let pick = |v: &String| LANE_RUNS.contains(&v.as_str());
+        if !r.default.as_ref().is_none_or(pick)
+            || !r
+                .lanes
+                .iter()
+                .all(|(lane, v)| crate::lane_registry::valid_name(lane) && pick(v))
+        {
+            return Err("invalid lane_run setting; no values were logged".into());
+        }
     }
     if let Some(versioning) = &p.versioning {
         crate::versioning::validate(versioning)?;
@@ -346,6 +558,15 @@ fn validate(p: &Profile) -> Result<()> {
     }
     if let Some(paths) = &p.test_paths {
         crate::tdd::validate_declared(paths)?;
+    }
+    if let Some(answers) = &p.ci {
+        crate::project_ci::validate_answers(answers)?;
+    }
+    if let Some(checks) = &p.checks {
+        crate::project_ci::validate_checks(checks)?;
+    }
+    if let Some(files) = &p.shared_files {
+        validate_shared_files(files)?;
     }
     let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
         && p.decisions.iter().all(|d| {
@@ -377,6 +598,8 @@ fn validate(p: &Profile) -> Result<()> {
         || !decisions_ok
         || p.context_max_bytes == Some(0)
         || p.archive_grace_days == Some(0)
+        || p.stale_draft_days == Some(0)
+        || p.lease_sweep_hours == Some(0)
     {
         return Err("invalid or nonportable profile; no values were logged".into());
     }
@@ -408,6 +631,127 @@ fn state_path(root: &Path, rel: &str) -> Result<PathBuf> {
 }
 fn target(root: &Path) -> Result<PathBuf> {
     state_path(root, "project.yaml")
+}
+
+/// The words `read_profile` fails with when the project has no profile file at all.
+pub const PROFILE_MISSING: &str = "project profile missing";
+
+/// The folder (`.moai` or `.moai-cli`) whose `project.yaml` a READER opens
+/// (SPEC-20261121-mixed-profile-read). A writer follows the read in a mixed layout (the delta
+/// audit's B4): `project-apply` updates the newer profile and the older one is left untouched,
+/// so what a write changes is what every reader then sees. A reader takes the newer layout's
+/// profile when both `.moai/project.yaml` and `.moai-cli/project.yaml` are regular files
+/// (neither the file nor the `.moai` folder a link) and the layout is not yet `rust` (its
+/// marker may be missing, e.g. a worktree where the marker is ignored by git); otherwise the
+/// layout's own folder, exactly as before.
+fn read_dir(root: &Path) -> Result<&'static str> {
+    let root = root
+        .canonicalize()
+        .map_err(|_| "project directory unavailable")?;
+    let own = crate::state_root::dir(&root);
+    let regular = |dir: &str| {
+        let folder = root.join(dir);
+        fs::symlink_metadata(&folder).is_ok_and(|m| m.file_type().is_dir())
+            && fs::symlink_metadata(folder.join("project.yaml"))
+                .is_ok_and(|m| m.file_type().is_file())
+    };
+    if own != crate::state_root::MOAI_DIR
+        && regular(crate::state_root::MOAI_DIR)
+        && regular(crate::state_root::EARLIER_PROJECT_DIR)
+    {
+        Ok(crate::state_root::MOAI_DIR)
+    } else {
+        Ok(own)
+    }
+}
+
+/// The project-relative path of the profile a reader opens, for messages (`.moai/project.yaml`).
+pub fn read_rel(root: &Path) -> String {
+    format!(
+        "{}/project.yaml",
+        read_dir(root).unwrap_or(crate::state_root::EARLIER_PROJECT_DIR)
+    )
+}
+
+fn read_target(root: &Path) -> Result<PathBuf> {
+    // `target` keeps the symlink and directory refusals of the layout's own folder.
+    let own = target(root)?;
+    let dir = read_dir(root)?;
+    if dir == crate::state_root::MOAI_DIR && crate::state_root::dir(root) != dir {
+        Ok(root
+            .canonicalize()
+            .map_err(|_| "project directory unavailable")?
+            .join(dir)
+            .join("project.yaml"))
+    } else {
+        Ok(own)
+    }
+}
+
+/// Whether a reader — and, since the delta audit's B4, a writer — picks the newer `.moai`
+/// profile: both profiles are regular files and the layout is not `rust` (the mixed branch of
+/// [`read_dir`]). Recovery uses it to keep exactly the profile path a mixed-layout apply wrote
+/// (src/apply.rs).
+pub fn reads_newer_profile(root: &Path) -> bool {
+    crate::state_root::dir(root) != crate::state_root::MOAI_DIR
+        && read_dir(root).is_ok_and(|d| d == crate::state_root::MOAI_DIR)
+}
+
+/// The bytes of the profile a reader opens ([`read_target`]): `Ok(None)` when the chosen file
+/// is not there. The existence checks of readers that only want to know whether a profile is
+/// there use this, so they look at the folder that is actually read (the delta audit's N2).
+pub fn chosen_profile(root: &Path) -> Result<Option<Vec<u8>>> {
+    profile_bytes(root)
+}
+
+/// The bytes at [`read_target`], with the read's own errors named by the file (`target read
+/// failed` and `target metadata unavailable` said neither before — the delta audit's R2).
+fn profile_bytes(root: &Path) -> Result<Option<Vec<u8>>> {
+    read(&read_target(root)?).map_err(|e| format!("{}: {e}", read_rel(root)))
+}
+
+/// In a mixed layout both profiles belong to one check: each must read and parse (a failure is
+/// named `{folder}/project.yaml: reason`) and both must name the same `project_id` — anything
+/// else refuses the read, naming both files and both ids (the delta audit's N3). One profile,
+/// or two that agree, is fine; a rust layout owns `.moai` outright and has no twin to check.
+fn mixed_layout_ids(root: &Path) -> Result<()> {
+    let root = root
+        .canonicalize()
+        .map_err(|_| "project directory unavailable")?;
+    // A rust layout owns `.moai` outright: the earlier folder is legacy data, not a twin, and
+    // the check lives only where both files exist (the mixed branch of `read_dir`).
+    if crate::state_root::dir(&root) == crate::state_root::MOAI_DIR {
+        return Ok(());
+    }
+    let regular = |dir: &str| {
+        let folder = root.join(dir);
+        fs::symlink_metadata(&folder).is_ok_and(|m| m.file_type().is_dir())
+            && fs::symlink_metadata(folder.join("project.yaml"))
+                .is_ok_and(|m| m.file_type().is_file())
+    };
+    if !(regular(crate::state_root::MOAI_DIR) && regular(crate::state_root::EARLIER_PROJECT_DIR)) {
+        return Ok(());
+    }
+    let mut ids: Vec<(&'static str, String)> = Vec::new();
+    for name in [
+        crate::state_root::MOAI_DIR,
+        crate::state_root::EARLIER_PROJECT_DIR,
+    ] {
+        let path = root.join(name).join("project.yaml");
+        let bytes = read(&path)
+            .map_err(|e| format!("{name}/project.yaml: {e}"))?
+            .ok_or_else(|| format!("{name}/project.yaml: {PROFILE_MISSING}"))?;
+        let id = crate::project_id::of_profile_bytes(&bytes)
+            .map_err(|e| format!("{name}/project.yaml: {e}"))?;
+        ids.push((name, id));
+    }
+    match ids.as_slice() {
+        [(a_name, a), (b_name, b)] if a != b => Err(format!(
+            "the two profiles name different projects: {a_name}/project.yaml has `{a}`, \
+             {b_name}/project.yaml has `{b}`"
+        )),
+        _ => Ok(()),
+    }
 }
 fn baseline_path(root: &Path) -> Result<PathBuf> {
     state_path(root, "manifests/profile-baseline.json")
@@ -466,7 +810,29 @@ fn decide(
     }
 }
 
-fn compute_delta(baseline: Option<&Value>, current: Option<&Value>, desired: &Value) -> Delta {
+/// Whether the saved `hosts` still hold a retired host and the desired list is exactly the saved
+/// one without it: such a key is MoAI-owned state moving off a retired host, never a user edit.
+fn retired_hosts_update(active: &[&str], current: Option<&Value>, desired: Option<&Value>) -> bool {
+    let names = |v: Option<&Value>| -> Option<Vec<String>> {
+        v?.as_array()?
+            .iter()
+            .map(|h| h.as_str().map(str::to_string))
+            .collect()
+    };
+    let (Some(saved), Some(wanted)) = (names(current), names(desired)) else {
+        return false;
+    };
+    let mut filtered = saved.clone();
+    crate::retired_hosts::retire_hosts(&mut filtered, active);
+    filtered != saved && filtered == wanted
+}
+
+fn compute_delta(
+    active: &[&str],
+    baseline: Option<&Value>,
+    current: Option<&Value>,
+    desired: &Value,
+) -> Delta {
     let empty = Map::new();
     let desired_map = desired.as_object().unwrap_or(&empty);
     let current_map = current.and_then(Value::as_object);
@@ -489,6 +855,8 @@ fn compute_delta(baseline: Option<&Value>, current: Option<&Value>, desired: &Va
             } else {
                 KeyDecision::Apply
             }
+        } else if key == "hosts" && retired_hosts_update(active, c, d) {
+            KeyDecision::Apply
         } else {
             decide(b, c, d)
         };
@@ -533,20 +901,63 @@ fn compute_drift(baseline: Option<&Value>, current: Option<&Value>) -> Vec<Strin
 }
 
 fn plan_digest(p: &Plan) -> String {
-    digest(
-        &serde_json::to_vec(&(
-            p.protocol_version,
-            &p.profile,
-            &p.expected_sha256,
-            &p.target_binding,
-            &p.action,
-            &p.delta,
-            &p.drift,
-        ))
-        .expect("typed plan"),
-    )
+    let base = (
+        p.protocol_version,
+        &p.profile,
+        &p.expected_sha256,
+        &p.target_binding,
+        &p.action,
+        &p.delta,
+        &p.drift,
+    );
+    // The dropped list joins the digest only when it is not empty (REQ-10): a plan that drops
+    // nothing keeps its earlier digest, and one that drops something cannot lose the list.
+    let bytes = if p.dropped_manifests.is_empty() {
+        serde_json::to_vec(&base)
+    } else {
+        serde_json::to_vec(&(base, &p.dropped_manifests))
+    };
+    digest(&bytes.expect("typed plan"))
 }
-pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
+
+/// The recorded `detected.manifests` entries that applying the plan's `detected` key leaves
+/// out, sorted (REQ-9). Only a key the plan applies (`changed` or `removed`) can drop anything:
+/// a hand-edited key is a conflict that is kept, and an unchanged key keeps its list.
+fn dropped_manifests(delta: &Delta, current: Option<&Value>, desired: &Value) -> Vec<String> {
+    if !delta
+        .changed
+        .iter()
+        .chain(&delta.removed)
+        .any(|key| key == "detected")
+    {
+        return Vec::new();
+    }
+    let listed = |v: Option<&Value>| -> Vec<String> {
+        v.and_then(|v| v.get("detected"))
+            .and_then(|d| d.get("manifests"))
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|m| m.as_str().map(String::from))
+            .collect()
+    };
+    let kept = listed(Some(desired));
+    let mut dropped: Vec<String> = listed(current)
+        .into_iter()
+        .filter(|m| !kept.contains(m))
+        .collect();
+    dropped.sort();
+    dropped.dedup();
+    dropped
+}
+pub fn plan(root: &Path, profile: Profile) -> Result<Plan> {
+    plan_in(&KNOWN_HOSTS, root, profile)
+}
+
+/// [`plan`] for a place whose active hosts are `active`: retired hosts in the input are filtered
+/// like a read, and a saved profile that still holds one gets the filtered `hosts` as an update.
+pub fn plan_in(active: &[&str], root: &Path, mut profile: Profile) -> Result<Plan> {
+    crate::retired_hosts::retire_hosts(&mut profile.hosts, active);
     if profile.project_id.is_empty() {
         profile.project_id = match existing_project_id(root)? {
             Some(id) => id,
@@ -557,7 +968,7 @@ pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
     if profile.schema_version != 2 {
         return Err("invalid or nonportable profile; no values were logged".into());
     }
-    let old = read(&target(root)?)?;
+    let old = profile_bytes(root)?;
     let current = match &old {
         None => None,
         Some(bytes) => {
@@ -572,8 +983,9 @@ pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
     };
     let baseline = read_baseline(root)?;
     let desired = serde_json::to_value(&profile).expect("typed profile");
-    let delta = compute_delta(baseline.as_ref(), current.as_ref(), &desired);
+    let delta = compute_delta(active, baseline.as_ref(), current.as_ref(), &desired);
     let drift = compute_drift(baseline.as_ref(), current.as_ref());
+    let dropped_manifests = dropped_manifests(&delta, current.as_ref(), &desired);
     let action = if !delta.conflict.is_empty() {
         "conflict"
     } else if old.is_none() {
@@ -584,7 +996,7 @@ pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
         "update"
     };
     let binding = digest(
-        target(root)?
+        read_target(root)?
             .to_str()
             .ok_or("non UTF-8 project path")?
             .as_bytes(),
@@ -597,6 +1009,7 @@ pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
         action: action.into(),
         delta,
         drift,
+        dropped_manifests,
         plan_digest: String::new(),
     };
     p.plan_digest = plan_digest(&p);
@@ -834,11 +1247,22 @@ fn write_baseline(
 }
 
 pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<Value> {
+    apply_in(&KNOWN_HOSTS, root, p, confirmed, permission)
+}
+
+/// [`apply`] for a place whose active hosts are `active`.
+pub fn apply_in(
+    active: &[&str],
+    root: &Path,
+    p: Plan,
+    confirmed: &str,
+    permission: &str,
+) -> Result<Value> {
     // Caller authorization remains host-owned; this reference is not an authorization verifier.
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
-    let current_plan = plan(root, p.profile.clone())?;
+    let current_plan = plan_in(active, root, p.profile.clone())?;
     if p.protocol_version != 1
         || confirmed != p.plan_digest
         || plan_digest(&p) != p.plan_digest
@@ -851,7 +1275,9 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
     if p.action == "create" {
         crate::state_root::adopt_new(root, "project-apply")?;
     }
-    let target_rel = crate::state_root::rel(root, "project.yaml");
+    // Writes follow reads in a mixed layout (the delta audit's B4): the receipt names the
+    // profile that was actually written.
+    let target_rel = read_rel(root);
     let baseline_rel = crate::state_root::rel(root, "manifests/profile-baseline.json");
     if p.action == "conflict" {
         // REQ-03A-03: the user-edited keys are named, never their values; nothing is
@@ -884,7 +1310,7 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
     let mut receipt = crate::apply::Receipt::new(&request_id, "project.apply", root);
     if p.action == "unchanged" {
         // REQ-01B-10: a re-run writes nothing; the receipt records zero publishes.
-        let bytes = read(&target(root)?)?.unwrap_or_default();
+        let bytes = profile_bytes(root)?.unwrap_or_default();
         receipt.entry(
             &target_rel,
             "unchanged",
@@ -915,7 +1341,7 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
         "update" => {
             // REQ-03A-05: replace only when the file still hashes to the plan's expectation.
             let current =
-                read(&target(root)?)?.ok_or("stale or altered plan; re-preview required")?;
+                profile_bytes(root)?.ok_or("stale or altered plan; re-preview required")?;
             if Some(digest(&current)) != p.expected_sha256 {
                 return Err("stale or altered plan; re-preview required".into());
             }
@@ -923,11 +1349,11 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
         }
         _ => return Err("unknown plan action; re-preview required".into()),
     };
-    let path = target(root)?;
+    let path = read_target(root)?;
     fs::create_dir_all(path.parent().expect("target parent"))
         .map_err(|_| "project state directory unavailable")?;
-    let path = target(root)?;
-    let before = read(&path)?;
+    let path = read_target(root)?;
+    let before = read(&path).map_err(|e| format!("{}: {e}", read_rel(root)))?;
     let before_digest = before.as_deref().map(digest);
     // REQ-01B-08: keep the before bytes before publishing so recovery can restore
     // content; a created file needs no backup (recovery removes it).
@@ -1039,19 +1465,35 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
 /// has no profile, an error when it has one that is not a JSON object with a usable
 /// `project_id` (the file is left alone). Reads only.
 pub(crate) fn existing_project_id(root: &Path) -> Result<Option<String>> {
-    match read(&target(root)?)? {
+    mixed_layout_ids(root)?;
+    match profile_bytes(root)? {
         None => Ok(None),
-        Some(bytes) => crate::project_id::of_profile_bytes(&bytes).map(Some),
+        Some(bytes) => crate::project_id::of_profile_bytes(&bytes)
+            .map(Some)
+            .map_err(|e| format!("{}: {e}", read_rel(root))),
     }
 }
 
 /// Reads the existing profile, keeping only known keys. Unknown user keys are left in the
 /// file untouched; the raw bytes are returned so callers can bind to the exact revision.
 pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
-    let bytes = read(&target(root)?)?.ok_or("project profile missing")?;
-    let value: Value =
-        serde_json::from_slice(&bytes).map_err(|_| "existing YAML requires preservation review")?;
-    let map = value.as_object().ok_or("invalid profile object")?;
+    read_profile_in(&KNOWN_HOSTS, root)
+}
+
+/// [`read_profile`] for a place whose active hosts are `active`: retired hosts leave `hosts`, and
+/// a list they emptied reads as `["claude"]` (the file is not changed by a read).
+pub fn read_profile_in(active: &[&str], root: &Path) -> Result<(Profile, Vec<u8>)> {
+    mixed_layout_ids(root)?;
+    let bytes = profile_bytes(root)?.ok_or(PROFILE_MISSING)?;
+    let value: Value = serde_json::from_slice(&bytes).map_err(|_| {
+        format!(
+            "{}: existing YAML requires preservation review",
+            read_rel(root)
+        )
+    })?;
+    let map = value
+        .as_object()
+        .ok_or_else(|| format!("{}: invalid profile object", read_rel(root)))?;
     if map.get("package_pin").is_some_and(Value::is_null) {
         return Err("explicit null pin is invalid".into());
     }
@@ -1060,8 +1502,9 @@ pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
         .filter(|(k, _)| managed_keys().any(|m| m == k.as_str()))
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
-    let profile: Profile =
+    let mut profile: Profile =
         serde_json::from_value(Value::Object(filtered)).map_err(|_| "invalid profile")?;
+    crate::retired_hosts::retire_hosts(&mut profile.hosts, active);
     validate(&profile)?;
     Ok((profile, bytes))
 }
@@ -1095,12 +1538,20 @@ mod tests {
             leader: None,
             context_max_bytes: None,
             archive_grace_days: None,
+            stale_draft_days: None,
+            lease_sweep_hours: None,
+            lease_sweep_in_round: None,
             language: None,
             detected: None,
             scopes: None,
             versioning: None,
             work_flow: None,
+            lane_run: None,
+            remote_copy: None,
             test_paths: None,
+            ci: None,
+            checks: None,
+            shared_files: None,
         }
     }
 
@@ -1155,6 +1606,9 @@ mod tests {
             }),
             context_max_bytes: Some(1),
             archive_grace_days: Some(7),
+            stale_draft_days: Some(14),
+            lease_sweep_hours: Some(24),
+            lease_sweep_in_round: Some(false),
             language: Some([("code_comments".to_string(), "en".to_string())].into()),
             detected: Some(crate::project_detect::Detected {
                 project_kind: "new".into(),
@@ -1172,8 +1626,34 @@ mod tests {
             work_flow: Some(WorkFlowSettings {
                 flow: "m-flow".into(),
                 integration_branch: Some("main".into()),
+                land_verdict: None,
+                wip_limit: None,
+                sync_sources: None,
             }),
+            lane_run: Some(LaneRunSettings {
+                default: Some("nonstop".into()),
+                lanes: [("agent-1".to_string(), "single".to_string())].into(),
+            }),
+            remote_copy: Some(true),
             test_paths: Some(vec!["qa/".into()]),
+            ci: Some(crate::project_ci::CiAnswers {
+                kind: "cli".into(),
+                systems: vec!["linux".into()],
+                deploy: crate::project_ci::CiDeploy {
+                    enabled: false,
+                    target: None,
+                },
+                visibility: "public".into(),
+                monthly_budget_usd: None,
+                macos_price_ack: None,
+                dependabot: None,
+                strict: "report".into(),
+            }),
+            checks: Some(vec![crate::project_ci::CheckEntry {
+                id: "test".into(),
+                command: "cargo test".into(),
+            }]),
+            shared_files: Some(vec!["src/lib.rs".into()]),
             ..v2()
         };
         let fields: Vec<String> = serde_json::to_value(&full)
@@ -1200,12 +1680,20 @@ mod tests {
                 "leader",
                 "context_max_bytes",
                 "archive_grace_days",
+                "stale_draft_days",
+                "lease_sweep_hours",
+                "lease_sweep_in_round",
                 "language",
                 "detected",
                 "scopes",
                 "versioning",
                 "work_flow",
-                "test_paths"
+                "lane_run",
+                "remote_copy",
+                "test_paths",
+                "ci",
+                "checks",
+                "shared_files"
             ]
         );
     }
@@ -1223,11 +1711,16 @@ mod tests {
                 .iter()
                 .any(|l| l.contains(&"scopes".to_string()))
         };
-        assert!(!listed(&compute_delta(Some(&base), Some(&base), &base)));
+        assert!(!listed(&compute_delta(
+            &KNOWN_HOSTS,
+            Some(&base),
+            Some(&base),
+            &base
+        )));
         let mut desired = base.clone();
         desired["scopes"] = serde_json::json!([{"name": "web", "paths": ["apps/web"]}]);
         assert_eq!(
-            compute_delta(Some(&base), Some(&base), &desired).added,
+            compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired).added,
             vec!["scopes"]
         );
         let with = |name: &str, paths: &[&str]| Profile {
@@ -1274,6 +1767,81 @@ mod tests {
         assert_eq!(profile.scopes.unwrap()[0].paths, ["apps/web"]);
     }
 
+    /// AC-1 (SPEC-20261124-shared-files-profile REQ-1, REQ-2): `shared_files` is additive and
+    /// validated by `read_profile` on a hand-edited file; an absent key plans exactly as before
+    /// and reads as no key.
+    #[test]
+    fn shared_files_key_is_additive_and_validated() {
+        let base = serde_json::json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "p",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+        });
+        let listed = |d: &Delta| {
+            [&d.added, &d.changed, &d.removed, &d.unchanged, &d.conflict]
+                .iter()
+                .any(|l| l.contains(&"shared_files".to_string()))
+        };
+        assert!(!listed(&compute_delta(
+            &KNOWN_HOSTS,
+            Some(&base),
+            Some(&base),
+            &base
+        )));
+        let mut desired = base.clone();
+        desired["shared_files"] = serde_json::json!(["src/lib.rs"]);
+        assert_eq!(
+            compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired).added,
+            vec!["shared_files"]
+        );
+
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let many = |n: usize| -> Vec<String> { (0..n).map(|i| format!("src/f{i}.rs")).collect() };
+        let read_with = |list: Value| {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["shared_files"] = list;
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            read_profile(tmp.path())
+        };
+        for (bad, why) in [
+            (json!("src/lib.rs"), "a string, not a list"),
+            (json!(["/abs"]), "absolute path"),
+            (json!(["../up"]), "leaves the project"),
+            (json!(["a,b"]), "a comma"),
+            (json!(["a\u{2028}b"]), "a line separator"),
+            (json!([" src/lib.rs"]), "a padded entry"),
+            (json!(["a", "a"]), "a repeated entry"),
+            (json!([""]), "an empty entry"),
+            (json!([1]), "not a string"),
+            (json!(many(65)), "65 entries"),
+            (json!(["x".repeat(513)]), "an entry of 513 characters"),
+        ] {
+            assert!(read_with(bad).is_err(), "{why}");
+        }
+        for good in [
+            json!(["src/lib.rs", "tests/fixtures/help/*.txt"]),
+            json!(many(64)),
+            json!([]),
+        ] {
+            let (profile, _) = read_with(good.clone()).unwrap();
+            assert_eq!(
+                serde_json::to_value(&profile).unwrap()["shared_files"],
+                good
+            );
+        }
+        // A profile written before the key reads unchanged.
+        fs::write(&path, serde_json::to_vec(&v2()).unwrap()).unwrap();
+        let (profile, _) = read_profile(tmp.path()).unwrap();
+        assert!(serde_json::to_value(&profile)
+            .unwrap()
+            .get("shared_files")
+            .is_none());
+    }
+
     /// C-69: `versioning` is additive and validated by `read_profile` on a hand-edited file; an
     /// absent key plans exactly as before the key existed and an older profile still loads.
     #[test]
@@ -1287,11 +1855,16 @@ mod tests {
                 .iter()
                 .any(|l| l.contains(&"versioning".to_string()))
         };
-        assert!(!listed(&compute_delta(Some(&base), Some(&base), &base)));
+        assert!(!listed(&compute_delta(
+            &KNOWN_HOSTS,
+            Some(&base),
+            Some(&base),
+            &base
+        )));
         let mut desired = base.clone();
         desired["versioning"] = serde_json::json!({"scheme": "calver", "format": "YYYY.0M.MICRO"});
         assert_eq!(
-            compute_delta(Some(&base), Some(&base), &desired).added,
+            compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired).added,
             vec!["versioning"]
         );
 
@@ -1387,7 +1960,7 @@ mod tests {
         let mut desired = base.clone();
         desired["work_flow"] = json!({"flow": "m-flow", "integration_branch": "main"});
         assert_eq!(
-            compute_delta(Some(&base), Some(&base), &desired).added,
+            compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired).added,
             vec!["work_flow"]
         );
         let tmp = tempfile::tempdir().unwrap();
@@ -1477,6 +2050,210 @@ mod tests {
             .is_none());
     }
 
+    /// SPEC-20261123-landing-reads-verdict REQ-22 and REQ-23: `work_flow.land_verdict` is
+    /// `observe` or `enforce`, loads from a hand-edited file and is kept when the profile is
+    /// written back; another word is refused as an invalid work_flow setting.
+    #[test]
+    fn land_verdict_key_is_validated() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        for word in ["observe", "enforce"] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["work_flow"] =
+                json!({"flow": "m-flow", "integration_branch": "main", "land_verdict": word});
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            let (profile, _) = read_profile(tmp.path()).unwrap();
+            let kept = serde_json::to_value(&profile).unwrap();
+            assert_eq!(kept["work_flow"]["land_verdict"], json!(word));
+            assert_eq!(
+                profile.work_flow.unwrap().land_verdict.as_deref(),
+                Some(word)
+            );
+        }
+        for bad in [
+            json!("Enforce"),
+            json!("block"),
+            json!(""),
+            json!(true),
+            json!(1),
+        ] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["work_flow"] =
+                json!({"flow": "m-flow", "integration_branch": "main", "land_verdict": bad});
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            let why = read_profile(tmp.path()).err().map(|e| e.to_string());
+            let why = why.unwrap_or_else(|| panic!("{bad} must be refused"));
+            // A wrong word names the key and both words and never echoes the value; a value of
+            // another type fails in the reader's own type check, whose reason is generic.
+            if bad.is_string() {
+                assert!(
+                    why.contains("work_flow")
+                        && why.contains("land_verdict")
+                        && why.contains("observe or enforce"),
+                    "the reason must name the key and the words: {why}"
+                );
+            }
+        }
+        let mut file = serde_json::to_value(v2()).unwrap();
+        file["work_flow"] = json!({
+            "flow": "m-flow", "integration_branch": "main",
+            "land_verdict": "sentinel-word-not-echoed"
+        });
+        fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+        let why = read_profile(tmp.path()).err().map(|e| e.to_string());
+        assert!(
+            why.is_some_and(|w| !w.contains("sentinel-word-not-echoed")),
+            "the refused value must not appear in the reason"
+        );
+        let mut file = serde_json::to_value(v2()).unwrap();
+        file["work_flow"] = json!({"flow": "m-flow", "integration_branch": "main"});
+        fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+        let (profile, _) = read_profile(tmp.path()).unwrap();
+        assert_eq!(profile.work_flow.as_ref().unwrap().land_verdict, None);
+        assert!(serde_json::to_value(&profile).unwrap()["work_flow"]
+            .get("land_verdict")
+            .is_none());
+    }
+
+    /// A temporary project whose profile holds `work_flow`, read back by `read_profile`.
+    fn read_with_work_flow(work_flow: Value) -> Result<(Profile, Vec<u8>)> {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut file = serde_json::to_value(v2()).unwrap();
+        file["work_flow"] = work_flow;
+        fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+        read_profile(tmp.path())
+    }
+
+    /// SPEC-20261125-land-sync-merge REQ-2 and AC-7: a missing `sync_sources` key is an empty
+    /// list, whether or not the integration branch is set, and the key is not written back.
+    #[test]
+    fn sync_sources_absent_is_an_empty_list() {
+        for work_flow in [
+            json!({"flow": "m-flow", "integration_branch": "main"}),
+            json!({"flow": "m-flow"}),
+        ] {
+            let (profile, _) = read_with_work_flow(work_flow).unwrap();
+            let w = profile.work_flow.as_ref().unwrap();
+            assert_eq!(w.sync_sources, None);
+            assert!(w.sync_sources().is_empty());
+            assert!(serde_json::to_value(&profile).unwrap()["work_flow"]
+                .get("sync_sources")
+                .is_none());
+        }
+        let parsed: WorkFlowSettings = serde_json::from_value(json!({"flow": "m-flow"})).unwrap();
+        assert_eq!(parsed.sync_sources(), &[] as &[String]);
+    }
+
+    /// SPEC-20261125-land-sync-merge REQ-2 and AC-7: a valid list is accepted by the parser and
+    /// the validator, read back in order through the accessor and kept when the profile is
+    /// written back; the limit is 8 (N passes, N+1 is refused below), and an empty list passes.
+    #[test]
+    fn sync_sources_valid_list_round_trips() {
+        let eight: Vec<String> = (1..=SYNC_SOURCES_LIMIT)
+            .map(|n| format!("spec/sync-{n}"))
+            .collect();
+        for (work_flow, expected) in [
+            (
+                json!({"flow": "m-flow", "integration_branch": "main",
+                       "sync_sources": ["sync-a", "release/next", "v2026.11.0"]}),
+                vec!["sync-a", "release/next", "v2026.11.0"],
+            ),
+            // The key does not need the integration branch.
+            (
+                json!({"flow": "m-flow", "sync_sources": ["sync-a"]}),
+                vec!["sync-a"],
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "main", "sync_sources": []}),
+                vec![],
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "main", "sync_sources": eight}),
+                eight.iter().map(String::as_str).collect(),
+            ),
+        ] {
+            let (profile, _) = read_with_work_flow(work_flow.clone()).unwrap();
+            let w = profile.work_flow.as_ref().unwrap();
+            assert_eq!(w.sync_sources(), expected.as_slice());
+            assert_eq!(
+                serde_json::to_value(&profile).unwrap()["work_flow"]["sync_sources"],
+                work_flow["sync_sources"]
+            );
+            let parsed: WorkFlowSettings = serde_json::from_value(work_flow).unwrap();
+            assert_eq!(&parsed, w);
+        }
+    }
+
+    /// SPEC-20261125-land-sync-merge REQ-2 and AC-7: more than 8 entries, a duplicate, an
+    /// invalid branch name and the integration branch itself are each refused, with a reason
+    /// that names `sync_sources` and never echoes the value that was read.
+    #[test]
+    fn sync_sources_refusals_name_the_key() {
+        let nine: Vec<String> = (1..=SYNC_SOURCES_LIMIT + 1)
+            .map(|n| format!("sync-{n}"))
+            .collect();
+        let mut refused = vec![
+            (
+                json!({"flow": "m-flow", "integration_branch": "main", "sync_sources": nine}),
+                "nine entries",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "main",
+                       "sync_sources": ["sync-a", "sync-b", "sync-a"]}),
+                "a duplicate",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "main",
+                       "sync_sources": ["main"]}),
+                "the integration branch",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "main",
+                       "sync_sources": ["sync-a", "main"]}),
+                "the integration branch among others",
+            ),
+        ];
+        for bad in [
+            "",
+            "a..b",
+            "-x",
+            "a b",
+            "x.lock",
+            "a/",
+            "HEAD",
+            "refs/tags/v1 ",
+            "sentinel-name-not-echoed~1",
+        ] {
+            refused.push((
+                json!({"flow": "m-flow", "integration_branch": "main",
+                       "sync_sources": ["sync-a", bad]}),
+                "an invalid name",
+            ));
+        }
+        for (work_flow, why_case) in refused {
+            let why = read_with_work_flow(work_flow)
+                .err()
+                .unwrap_or_else(|| panic!("{why_case} must be refused"));
+            assert!(
+                why.contains("sync_sources"),
+                "{why_case}: the reason must name the key: {why}"
+            );
+            assert!(
+                !why.contains("sentinel-name-not-echoed"),
+                "{why_case}: the reason must not echo a value: {why}"
+            );
+        }
+    }
+
     /// AC-1 (#2293): `language` is additive, and an unknown item or an unsupported code is
     /// refused by `validate` and by `read_profile` on a hand-edited file.
     #[test]
@@ -1490,11 +2267,16 @@ mod tests {
                 .iter()
                 .any(|l| l.contains(&"language".to_string()))
         };
-        assert!(!all(&compute_delta(Some(&base), Some(&base), &base)));
+        assert!(!all(&compute_delta(
+            &KNOWN_HOSTS,
+            Some(&base),
+            Some(&base),
+            &base
+        )));
         let mut desired = base.clone();
         desired["language"] = serde_json::json!({"code_comments": "en"});
         assert_eq!(
-            compute_delta(Some(&base), Some(&base), &desired).added,
+            compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired).added,
             vec!["language"]
         );
         let with = |pairs: &[(&str, &str)]| Profile {
@@ -1661,7 +2443,7 @@ mod tests {
         let mut desired = baseline.clone();
         desired["tools"] = serde_json::json!(["Python"]);
         desired["interview_revision"] = serde_json::json!("r1");
-        let delta = compute_delta(Some(&baseline), Some(&current), &desired);
+        let delta = compute_delta(&KNOWN_HOSTS, Some(&baseline), Some(&current), &desired);
         assert!(delta.added.is_empty() && delta.removed.is_empty() && delta.conflict.is_empty());
         assert_eq!(delta.changed, vec!["interview_revision", "tools"]);
         // purpose keeps the user value (desired == baseline), the unknown key is not managed.
@@ -1684,10 +2466,15 @@ mod tests {
                 .any(|l| l.contains(&"leader".to_string()))
         };
         // Absent everywhere: in no list, so an old profile plans exactly as before.
-        assert!(!all(&compute_delta(Some(&base), Some(&base), &base)));
+        assert!(!all(&compute_delta(
+            &KNOWN_HOSTS,
+            Some(&base),
+            Some(&base),
+            &base
+        )));
         let mut desired = base.clone();
         desired["leader"] = serde_json::json!({"pr_check_interval_secs": 60});
-        let delta = compute_delta(Some(&base), Some(&base), &desired);
+        let delta = compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired);
         assert_eq!(delta.added, vec!["leader"]);
         let mut p = v2();
         p.leader = Some(LeaderSettings {
@@ -1701,5 +2488,98 @@ mod tests {
             validate(&p).unwrap_err(),
             "leader pr_check_interval_secs must be a positive number"
         );
+    }
+
+    // ---- SPEC-20261121-mixed-profile-read: which profile file a reader opens. ----------------
+
+    const EARLIER: &str = crate::state_root::EARLIER_PROJECT_DIR;
+    const MIXED_PLAIN: &str = r#"{"schema_version": 1, "project_id": "demo", "purpose": "fixture", "tools": ["rust"], "development_methods": ["sdd"], "hosts": ["claude"]}"#;
+    const MIXED_MFLOW: &str = r#"{"schema_version": 1, "project_id": "demo", "purpose": "fixture", "tools": ["rust"], "development_methods": ["sdd"], "hosts": ["claude"], "work_flow": {"flow": "m-flow", "integration_branch": "integ"}}"#;
+    const MIXED_BROKEN: &str = r#"{"schema_version": 1, "project_id": "demo", "purpose": "fixture", "tools": ["rust"], "development_methods": ["sdd"], "hosts": ["claude"], "work_flow": {"flow": "bogus-flow"}}"#;
+
+    fn mixed_put(root: &Path, dir: &str, bytes: &str) {
+        fs::create_dir_all(root.join(dir)).unwrap();
+        fs::write(root.join(dir).join("project.yaml"), bytes).unwrap();
+    }
+
+    fn mixed_flow(root: &Path) -> Option<String> {
+        read_profile(root).unwrap().0.work_flow.map(|w| w.flow)
+    }
+
+    #[test]
+    fn mixed_layout_reads_the_newer_profile_when_both_exist() {
+        let t = tempfile::tempdir().unwrap();
+        mixed_put(t.path(), EARLIER, MIXED_PLAIN);
+        mixed_put(t.path(), ".moai", MIXED_MFLOW);
+        assert_eq!(mixed_flow(t.path()).as_deref(), Some("m-flow"));
+        assert_eq!(read_rel(t.path()), ".moai/project.yaml");
+        assert_eq!(
+            existing_project_id(t.path()).unwrap().as_deref(),
+            Some("demo")
+        );
+    }
+
+    #[test]
+    fn mixed_layout_keeps_the_layouts_own_folder_when_only_one_profile_exists() {
+        let earlier = tempfile::tempdir().unwrap();
+        mixed_put(earlier.path(), EARLIER, MIXED_MFLOW);
+        assert_eq!(mixed_flow(earlier.path()).as_deref(), Some("m-flow"));
+        assert_eq!(read_rel(earlier.path()), format!("{EARLIER}/project.yaml"));
+
+        // Only the newer file, no marker and an earlier folder with no profile: the layout is not
+        // `rust`, so the reader still looks where it always did and finds none.
+        let newer = tempfile::tempdir().unwrap();
+        mixed_put(newer.path(), ".moai", MIXED_MFLOW);
+        fs::create_dir(newer.path().join(EARLIER)).unwrap();
+        assert_eq!(
+            read_profile(newer.path()).unwrap_err(),
+            PROFILE_MISSING.to_string()
+        );
+        assert_eq!(read_rel(newer.path()), format!("{EARLIER}/project.yaml"));
+
+        // The same newer file with no earlier folder at all is a new tree: it resolves to
+        // `.moai` and the profile is read there.
+        let fresh = tempfile::tempdir().unwrap();
+        mixed_put(fresh.path(), ".moai", MIXED_MFLOW);
+        assert_eq!(read_rel(fresh.path()), ".moai/project.yaml");
+        assert!(read_profile(fresh.path()).is_ok());
+
+        // A `rust` layout (valid marker) reads `.moai`, with or without the earlier file.
+        for with_earlier in [false, true] {
+            let t = tempfile::tempdir().unwrap();
+            mixed_put(t.path(), ".moai", MIXED_MFLOW);
+            fs::write(
+                t.path().join(".moai").join(crate::state_root::RUST_MARKER),
+                crate::state_root::marker_bytes("test", &[]),
+            )
+            .unwrap();
+            if with_earlier {
+                mixed_put(t.path(), EARLIER, MIXED_PLAIN);
+            }
+            assert_eq!(mixed_flow(t.path()).as_deref(), Some("m-flow"));
+            assert_eq!(read_rel(t.path()), ".moai/project.yaml");
+        }
+    }
+
+    #[test]
+    fn mixed_layout_newer_profile_that_cannot_be_read_is_no_reason_to_fall_back() {
+        let t = tempfile::tempdir().unwrap();
+        mixed_put(t.path(), EARLIER, MIXED_MFLOW);
+        mixed_put(t.path(), ".moai", MIXED_BROKEN);
+        assert!(read_profile(t.path()).is_err());
+        assert_eq!(read_rel(t.path()), ".moai/project.yaml");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn mixed_layout_a_linked_newer_profile_is_not_chosen() {
+        let t = tempfile::tempdir().unwrap();
+        mixed_put(t.path(), EARLIER, MIXED_PLAIN);
+        fs::create_dir_all(t.path().join(".moai")).unwrap();
+        let real = t.path().join("elsewhere.yaml");
+        fs::write(&real, MIXED_MFLOW).unwrap();
+        std::os::unix::fs::symlink(&real, t.path().join(".moai").join("project.yaml")).unwrap();
+        assert_eq!(read_rel(t.path()), format!("{EARLIER}/project.yaml"));
+        assert_eq!(mixed_flow(t.path()), None);
     }
 }

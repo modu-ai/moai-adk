@@ -8,6 +8,8 @@ created: 2026-11-19
 
 # C-68 remainder: the timeout pin and the note screen
 
+> 안내(2026-11-21): src/decide/ 는 SPEC-20261120-retire-decide 에서 삭제됐어요. 아래 읽기 전용 참조는 기록이에요.
+
 ## Intent
 
 카드 C-68 (p2) 의 네 기준 중 tip(`9bd09c2eff`) 에 이미 있는 것(AC-1 release 경쟁 검사, AC-4 help 예문 그대로 실행)은 남기고, 없는 것만 구현해요: 상태줄 원장 대기의 상한 단언(AC-2)과 노트 화면의 네 항목(AC-3) — bidi 서식 문자 거부, 감사가 나열한 가양성 통과(`sk-learn-pipeline`, 산문 `--token=VALUE`), `--ref`·`--evidence`·`--reason` 에 같은 화면 적용, CRLF 정규화.

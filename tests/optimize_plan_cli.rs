@@ -166,6 +166,7 @@ fn run(fx: &Fixture, args: &[&str]) -> Output {
         .env("HOME", &fx.home)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .envs([crate::common::process_table()])
         .output()
         .unwrap()
 }
@@ -478,6 +479,46 @@ fn a_migrated_project_keeps_the_reports_of_both_roots() {
             assert_eq!(x["trim_paths"], json!([]), "{x}");
         }
     }
+}
+
+/// C-126: reports are saved under `<HOME>/.moai/reports/<project>` (outside the repository), so
+/// the plan lists that folder as a kept row beside the earlier in-repository one, never trimmed.
+/// With no such folder (every test above) no row appears.
+#[test]
+fn the_home_reports_folder_of_the_project_is_listed_and_kept() {
+    let fx = fixture();
+    let before = optimize(&fx, None, now_plus_days(8), &[]);
+    let rows_of = |r: &Value| -> Vec<String> {
+        r["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|x| x["kind"] == "report")
+            .map(|x| x["path"].as_str().unwrap().to_string())
+            .collect()
+    };
+    assert_eq!(rows_of(&before), [".moai-cli/reports"], "{before}");
+
+    // The fixture's project folder is `repo`; the new place is `<HOME>/.moai/reports/repo`.
+    let home_reports = fx.home.join(".moai/reports/repo");
+    fs::create_dir_all(home_reports.join("sub")).unwrap();
+    fs::write(home_reports.join("sub/a.md"), "report\n").unwrap();
+    let r = optimize(&fx, None, now_plus_days(8), &[]);
+    let paths = rows_of(&r);
+    assert_eq!(paths.len(), 2, "{r}");
+    assert_eq!(paths[0], ".moai-cli/reports", "{r}");
+    assert_eq!(paths[1], home_reports.display().to_string(), "{r}");
+    let home_row = r["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|x| x["kind"] == "report" && x["path"] == paths[1].as_str())
+        .unwrap();
+    assert_eq!(home_row["action"], "keep", "{home_row}");
+    assert_eq!(home_row["trim_paths"], json!([]), "{home_row}");
+    assert_eq!(home_row["reasons"], json!(["reports_kept"]), "{home_row}");
+    // `bytes` counts what the folder holds on disk (blocks), so only "more than nothing" is stable.
+    assert!(home_row["bytes"].as_u64().unwrap() > 0, "{home_row}");
 }
 
 fn snapshot(dir: &Path) -> Vec<(String, u64, std::time::SystemTime)> {
@@ -809,10 +850,15 @@ fn a_link_in_the_place_of_the_log_is_listed_and_not_read_through() {
 
 // ---- C-82: agent build folders under `<HOME>/.moai/build/` (read-only preview) ----
 
+/// The agent build folder `name` under the fixture HOME (made by nothing in this helper).
+fn agent_dir(fx: &Fixture, name: &str) -> PathBuf {
+    fx.home.join(".moai/build").join(name)
+}
+
 /// One agent build folder under the fixture HOME: cargo output and, when `owner` is given, the
 /// owner record `tools/build_folder.py env` writes (`.moai-build.json`).
 fn agent_build(fx: &Fixture, name: &str, owner: Option<(&Path, &Path)>) -> PathBuf {
-    let dir = fx.home.join(".moai/build").join(name);
+    let dir = agent_dir(fx, name);
     cargo_output(&dir);
     if let Some((common, worktree)) = owner {
         fs::write(
@@ -960,4 +1006,118 @@ fn a_fresh_worktree_without_commits_keeps_its_build_folder() {
     let f = row(&r, "agent_build_folder", "/repo-f");
     assert_eq!(f["action"], "skip", "{f}");
     assert!(reasons(f).contains(&"worktree_live".to_string()), "{f}");
+}
+
+/// An agent build folder that holds nothing but its owner record: what the retired `lane-env`
+/// left behind once the build moved into the worktree's own `target/`.
+fn marker_only(fx: &Fixture, name: &str, owner: (&Path, &Path)) -> PathBuf {
+    let dir = agent_dir(fx, name);
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(
+        dir.join(".moai-build.json"),
+        serde_json::to_vec(&json!({
+            "schema_version": 1,
+            "git_common_dir": owner.0.to_str().unwrap(),
+            "worktree": owner.1.to_str().unwrap(),
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    dir
+}
+
+/// A folder that holds only its owner record is marked `marker_only` and offered as a `trim`
+/// row, the record being the one path to trim, once its worktree is gone or its branch merged.
+/// A live worktree, another repository's record or any other file keeps it as `skip` with its
+/// reason, a cargo folder is no marker-only folder, and the preview writes and deletes nothing.
+#[test]
+fn a_folder_holding_only_the_owner_record_is_a_marker_only_trim_row() {
+    let fx = fixture();
+    let common = fs::canonicalize(fx.root.join(".git")).unwrap();
+    let gone = wt(&fx, "gone");
+    marker_only(&fx, "repo-m-gone", (&common, &gone));
+    marker_only(&fx, "repo-m-merged", (&common, &wt(&fx, "a")));
+    marker_only(&fx, "repo-m-live", (&common, &wt(&fx, "p")));
+    let other = fx.home.join("other.git");
+    fs::create_dir_all(&other).unwrap();
+    marker_only(&fx, "repo-m-other", (&other, &other.join("w")));
+    let extra = marker_only(&fx, "repo-m-extra", (&common, &gone));
+    fs::write(extra.join("notes.md"), "evidence\n").unwrap();
+    agent_build(&fx, "repo-cargo", Some((&common, &gone)));
+    fs::create_dir_all(agent_dir(&fx, "repo-empty")).unwrap();
+
+    let build = agent_dir(&fx, "x").parent().unwrap().to_path_buf();
+    let before = snapshot(&build);
+    let r = optimize(&fx, Some(&observations(&fx)), now_plus_days(1), &[]);
+    for (end, why) in [
+        ("/repo-m-gone", "worktree_gone"),
+        ("/repo-m-merged", "branch_merged"),
+    ] {
+        let x = row(&r, "agent_build_folder", end);
+        assert_eq!(
+            (x["action"].as_str(), x["why"].as_str()),
+            (Some("trim"), Some(why)),
+            "{x}"
+        );
+        assert_eq!(x["marker_only"], true, "{x}");
+        assert_eq!(x["trim_paths"], json!([".moai-build.json"]), "{x}");
+        assert!(reasons(x).is_empty(), "{x}");
+    }
+    for (end, why) in [
+        ("/repo-m-live", "worktree_live"),
+        ("/repo-m-other", "other_repository"),
+        ("/repo-m-extra", "other_files_in_folder"),
+    ] {
+        let x = row(&r, "agent_build_folder", end);
+        assert_eq!(x["action"], "skip", "{x}");
+        assert!(reasons(x).contains(&why.to_string()), "{end}: {x}");
+        assert_eq!(x["marker_only"], end != "/repo-m-extra", "{end}: {x}");
+        // A marker-only folder is not "no cargo output" for want of anything to trim: its one
+        // trim path is the record. A folder with another file keeps both reasons.
+        assert_eq!(
+            reasons(x).contains(&"not_cargo_output".to_string()),
+            end == "/repo-m-extra",
+            "{end}: {x}"
+        );
+    }
+    // A folder with cargo output, or with no record at all, is no marker-only folder.
+    assert_eq!(
+        row(&r, "agent_build_folder", "/repo-cargo")["marker_only"],
+        false
+    );
+    let e = row(&r, "agent_build_folder", "/repo-empty");
+    assert_eq!(
+        (e["marker_only"].clone(), e["action"].clone()),
+        (json!(false), json!("skip")),
+        "{e}"
+    );
+    // The preview wrote nothing and deleted nothing.
+    assert_eq!(r["writes"], false);
+    assert_eq!(snapshot(&build), before);
+}
+
+/// Nothing needs a build folder under HOME any more: every `agent_build_folder` row says so in
+/// `restore` and names the worktree's own `target/`, not the folder as a `CARGO_TARGET_DIR`.
+#[test]
+fn agent_build_folder_rows_say_nothing_needs_the_folder() {
+    let fx = fixture();
+    let common = fs::canonicalize(fx.root.join(".git")).unwrap();
+    let gone = wt(&fx, "gone");
+    agent_build(&fx, "repo-gone", Some((&common, &gone)));
+    marker_only(&fx, "repo-m-gone", (&common, &gone));
+    agent_build(&fx, "repo-nomark", None);
+    let r = optimize(&fx, Some(&observations(&fx)), now_plus_days(1), &[]);
+    let rows: Vec<&Value> = r["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|x| x["kind"] == "agent_build_folder")
+        .collect();
+    assert!(rows.len() >= 3, "{r}");
+    for x in rows {
+        let restore = x["restore"].as_str().unwrap();
+        assert!(restore.contains("nothing needs this folder"), "{x}");
+        assert!(restore.contains("own target/"), "{x}");
+        assert!(!restore.contains("CARGO_TARGET_DIR"), "{x}");
+    }
 }

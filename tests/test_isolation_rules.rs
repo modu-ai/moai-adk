@@ -111,17 +111,28 @@ fn the_scan_finds_both_forms_and_every_occurrence() {
 
 #[test]
 fn verify_workflow_states_the_flaky_rules() {
-    let text = fs::read_to_string(Path::new(ROOT).join("skills/moai/workflows/verify.md")).unwrap();
+    // The flaky and isolation rules moved from RUN (the retired VERIFY route,
+    // SPEC-20261122-next-flow-skills-agents) to `references/internal/check-rules.md`, "Tests"
+    // (SPEC-20261125-run-sync-procedure-receipt). Retired there, with the decision that the
+    // card ledger is the work ledger and GitHub is none: "one open Issue per test whose title
+    // starts with `[flake]`" and "as a comment on that Issue instead of opening another"; the
+    // flaky card and its note (`moai card add`, `moai card note <card> --kind report`) replace them.
+    let text =
+        fs::read_to_string(Path::new(ROOT).join("skills/moai/references/internal/check-rules.md"))
+            .unwrap();
     for rule in [
-        "passes when the same head is run again is flaky, not fixed (Issue #2666)",
+        "passes when the same head is run again is flaky, not fixed",
         "the same `head_sha`, the same job, one failure and one later success",
-        "one open Issue per test whose title starts with `[flake]`",
-        "as a comment on that Issue instead of opening another",
-        "A rerun that passes is never cited as the pass of a change that touches the failing test",
+        "when one is open, add a `moai card note <card> --kind report` note instead",
+        "A re-run's pass is never cited as the verification of a change that touches that test or its fixtures",
         "a test never shares a fixed path with another process",
         "with `no-such` in the name",
         "such a test runs alone under cargo-nextest",
     ] {
-        assert!(text.contains(rule), "verify.md lacks: {rule}");
+        assert!(text.contains(rule), "check-rules.md lacks: {rule}");
     }
+    assert!(
+        !text.contains("`[flake]`"),
+        "check-rules.md names the retired `[flake]` Issue"
+    );
 }

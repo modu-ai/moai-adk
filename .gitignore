@@ -349,9 +349,10 @@ dist-ssr/
 # RC1 development repository policy (user decision, 2026-11-08)
 # .claude/ and .moai/ are local installed copies, not product source, except
 # .moai/specs/: the SPECs are shared project files (user decision 2026-11-17, below).
-# AGENTS.md and AGENTS.local.md are tracked: hosts read AGENTS.md only inside the
-# session's own working tree, so a lane worktree needs the tracked copy (user
-# decision 2026-11-13, Issue #2667; replaces the per-machine rule of 2026-11-08).
+# CLAUDE.md is tracked: Claude Code loads it from the session's own working tree,
+# so a lane worktree needs the tracked copy; CLAUDE.local.md is personal and
+# ignored (user decision 2026-11-22, which replaced AGENTS.md and AGENTS.local.md;
+# the earlier rule was the user decision 2026-11-13, Issue #2667).
 # ===========================================
 /.claude/
 # SPECs are shared project files and stay in git (user decision 2026-11-17, SDD always;
@@ -360,7 +361,7 @@ dist-ssr/
 /.moai/*
 !/.moai/specs/
 # The audit eval set is shared project files too (card C-102, leader decision note 2415):
-# replayed incidents and controls, graded by tools/audit_eval.py.
+# replayed incidents and controls (the grading tool was removed with the Python tools).
 !/.moai/evals/
 # The same secret shapes as the specs folder above, for the eval records (card C-107:
 # replayed incidents may embed private fixtures by accident).
@@ -381,7 +382,19 @@ dist-ssr/
 # Apply receipts and their before-bytes stay local (#2590, docs/rust-product-path.md "Per-file receipts
 # and recovery"); the profile baseline .moai-cli/manifests/profile-baseline.json is tracked with project.yaml
 /.moai-cli/receipts/
+# Reports are never committed (user order 2026-11-25): they live in the user-level reports folder of the
+# project. `.moai/reports/*` above already covers the current spelling; this is the earlier state folder's.
+/.moai-cli/reports/
+# Browser-automation trace folder that the Playwright MCP server leaves in the project root (user decision 2026-11-25).
+.playwright-mcp/
+# The status line of every session writes its forge counts cache and refresh lock under the state
+# folder of the checkout it renders in (src/statusline/counts.rs), so each worktree would list them
+# as untracked (SPEC-20261124-statusline-cache-untracked). `/.moai/state/` is the same folder after
+# the state move (#2725 S2); the `/.moai/*` rule below already covers it today.
+/.moai-cli/state/
+/.moai/state/
 # Go-generation MoAI state at any depth (user instruction 2026-11-08; the root entries above cover the primary).
 # The `.moai/` line matches below the root only (`*/**/`), so it does not undo `!/.moai/specs/` above.
 .claude/
 */**/.moai/
+!.moai/project.yaml

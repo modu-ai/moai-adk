@@ -6,7 +6,7 @@
 //! - Rows of `card`, `card_ac`, `card_note`, `card_link`, `reservation` and `event` are never
 //!   deleted (`*_no_delete`); notes and events are never changed.
 //! - `card.state` moves only along `card_transition`; `done` needs criteria, no open one, and a
-//!   merged pull request link (`card_done_guard`).
+//!   merged pull request link — or, under M-Flow, a `card.landed` event (`card_done_guard`).
 //! - There is no state check on `INSERT`: a recovery inserts a card with an explicit id, `rev`
 //!   and state, then its criteria and links.
 //! - `card_touch` and the criterion triggers keep `rev` and `updated_at` current.
@@ -139,10 +139,21 @@ CREATE TABLE event (
   kind           TEXT    NOT NULL,
   payload        TEXT    NOT NULL DEFAULT '{}' CHECK (json_valid(payload))
 ) STRICT;
+CREATE INDEX event_card_kind ON event(card_id, kind, event_id);
 ";
 
-/// The triggers (contract section 2 and amendment 1 section A-4).
-const TRIGGERS: &str = r"
+/// The index of the events of one card by kind, newest last. Every read of `next`, `list` and the
+/// card checks asks `event WHERE card_id = ? AND kind = ?` once per card; without it each ask reads
+/// the whole table. A ledger made before the index existed is given the same index by
+/// [`super::migrate::ensure_event_index`] when a writer opens it; the schema version stays 1, so
+/// an earlier build opens the file as before.
+pub const EVENT_CARD_KIND_INDEX: &str =
+    "CREATE INDEX IF NOT EXISTS event_card_kind ON event(card_id, kind, event_id)";
+
+/// The triggers up to the done guard (contract section 2 and amendment 1 section A-4). The guard
+/// is its own constant so a ledger made before its `card.landed` exception can be given the same
+/// text ([`super::migrate::upgrade_done_guard`]).
+const TRIGGERS_BEFORE_GUARD: &str = r"
 CREATE TRIGGER card_no_delete BEFORE DELETE ON card
 BEGIN SELECT RAISE(ABORT, 'rows are never deleted'); END;
 CREATE TRIGGER card_ac_no_delete BEFORE DELETE ON card_ac
@@ -169,7 +180,12 @@ CREATE TRIGGER card_state_transition BEFORE UPDATE OF state ON card
 WHEN NEW.state <> OLD.state
  AND NOT EXISTS (SELECT 1 FROM card_transition WHERE from_state = OLD.state AND to_state = NEW.state)
 BEGIN SELECT RAISE(ABORT, 'illegal card state transition'); END;
+";
 
+/// The one trigger of the done rule. A card closes only with a met criterion, no open one, and a
+/// merged pull request link or a `card.landed` event. Ledgers made before the event existed hold
+/// the text without its last `NOT EXISTS`; the migration replaces it with this one.
+pub(crate) const CARD_DONE_GUARD: &str = r"
 CREATE TRIGGER card_done_guard BEFORE UPDATE OF state ON card
 WHEN NEW.state = 'done' AND OLD.state <> 'done'
 BEGIN
@@ -180,9 +196,14 @@ BEGIN
   SELECT RAISE(ABORT, 'cannot close: no merged pull request is linked')
    WHERE NOT EXISTS (SELECT 1 FROM card_link
                       WHERE from_card = NEW.card_id AND kind = 'pr'
-                        AND state = 'active' AND pr_state = 'merged');
+                        AND state = 'active' AND pr_state = 'merged')
+     AND NOT EXISTS (SELECT 1 FROM event
+                      WHERE card_id = NEW.card_id AND kind = 'card.landed');
 END;
+";
 
+/// The triggers after the done guard.
+const TRIGGERS_AFTER_GUARD: &str = r"
 CREATE TRIGGER card_touch AFTER UPDATE ON card
 WHEN NEW.rev = OLD.rev
 BEGIN UPDATE card SET rev = OLD.rev + 1, updated_at = unixepoch() WHERE card_id = NEW.card_id; END;
@@ -192,9 +213,14 @@ CREATE TRIGGER card_touch_ac_update AFTER UPDATE ON card_ac
 BEGIN UPDATE card SET rev = rev + 1, updated_at = unixepoch() WHERE card_id = NEW.card_id; END;
 ";
 
+/// All triggers, in the order they are created.
+fn triggers() -> String {
+    format!("{TRIGGERS_BEFORE_GUARD}{CARD_DONE_GUARD}{TRIGGERS_AFTER_GUARD}")
+}
+
 /// Everything version 1 holds, in the order it is created.
 pub fn ddl_v1() -> String {
-    format!("{TABLES}{TRIGGERS}")
+    format!("{TABLES}{}", triggers())
 }
 
 /// Writes the identity pragmas, the schema and the `meta` rows into an empty database, in one
@@ -237,7 +263,7 @@ pub fn create_v1_with<T>(
         [],
     )?;
     let out = populate(&tx)?;
-    tx.execute_batch(TRIGGERS)?;
+    tx.execute_batch(&triggers())?;
     tx.commit()?;
     Ok(out)
 }

@@ -30,7 +30,7 @@ const SHOWN: &str = "$HOME/.moai-cli/path/moai-cli";
 const PLACEHOLDER: &str = "<permission-reference>";
 
 /// The probe limit the hanging launcher is cut at (debug builds only).
-const SHORT_PROBE: [(&str, &str); 1] = [("MOAI_CLI_TEST_PROBE_TIMEOUT_MS", "500")];
+const SHORT_PROBE: [(&str, &str); 1] = [("MOAI_TEST_PROBE_TIMEOUT_MS", "500")];
 
 /// A launcher that answers `statusline --help` the way the Rust build does.
 fn rust_launcher() -> String {
@@ -249,7 +249,12 @@ fn plan_apply_replan(fx: GoFx) {
         .iter()
         .map(|s| s["step"].as_str().unwrap())
         .collect();
-    assert_eq!(backup, ["go-settings", "go-state"], "{up}");
+    // The read-only go-residue survey reads after the three moving steps and applies nothing.
+    assert_eq!(
+        backup,
+        ["go-settings", "go-state", "reports", "go-residue"],
+        "{up}"
+    );
     let step = step_in(&up, 0, "go-settings");
     assert_eq!(step["state"], "ready", "{step}");
     assert_eq!(step["plan_digest"], p["plan_digest"], "{step}");

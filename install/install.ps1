@@ -16,13 +16,14 @@
 #
 # The language of the conversation with the model (#2935 L1) comes from --language, else
 # MOAI_LANGUAGE, else (at a terminal) a numbered menu, else the locale, else English. After the
-# commands are linked the script runs `moai-cli language-set --home <code>` once; that never
-# overwrites an earlier choice, and a moai-cli without it only costs a warning. Everything this
-# script prints stays English whatever the language.
+# commands are linked the script runs `moai-cli language-set --home --if-absent <code>` once;
+# that records only when nothing is recorded yet, so a reinstall never overwrites an earlier
+# choice, and a moai-cli without it only costs a warning. Everything this script prints stays
+# English whatever the language.
 #
 # A release archive carries the skill package and the base agents beside the binary (`skills\`,
 # `agents\`); they go into the version folder next to `bin\`, where `moai update` reads them
-# (SPEC-20261117-installer-skill-agents). Into the hosts (Claude Code, Codex, OMP) they go only
+# (SPEC-20261117-installer-skill-agents). Into the host (Claude Code) they go only
 # through the product's own preview and confirmed apply, `moai-cli update --json` and then
 # `moai-cli update --confirm <plan_digest> --json`: this script copies nothing into a host
 # folder. It shows the folders the preview names, asks once at a terminal (--yes answers for a
@@ -34,7 +35,7 @@ $RepoUrl = "https://github.com/modu-ai/moai-adk"
 $ReleaseBase = if ($env:MOAI_RELEASE_BASE) { $env:MOAI_RELEASE_BASE } else { "$RepoUrl/releases/download" }
 $ReleaseFeed = if ($env:MOAI_RELEASE_FEED) { $env:MOAI_RELEASE_FEED } else { "$RepoUrl/releases.atom" }
 $ReleaseApi = if ($env:MOAI_RELEASE_API) { $env:MOAI_RELEASE_API } else { "https://api.github.com/repos/modu-ai/moai-adk/releases?per_page=100" }
-$TagPrefix = "moai-cli-v"
+$TagPrefix = "moai-adk-v"
 $IsWin = ($IsWindows -or ($null -eq $IsWindows -and $env:OS -eq "Windows_NT"))
 $Exe = if ($IsWin) { ".exe" } else { "" }
 
@@ -86,11 +87,12 @@ function Test-Version([string]$V) {
     return ($V -match '^[0-9][0-9A-Za-z.+-]*$') -and ($V -notmatch '\.\.')
 }
 
-# A language code is BCP-47-shaped text only: 2-3 letters, then groups of 2-8 letters or digits
-# after a `-`, at most 35 characters (#2935 L1). `\z`, not `$`: a trailing newline must not slip
-# through. The code is passed to moai-cli as written.
+# The conversation language is one of the four codes the language module holds (#2935 L1, G6):
+# en, ko, ja and zh, the same list the install menu offers and moai-cli accepts. Anything else —
+# a well-shaped code like fr or pt-BR included — is refused here, so nothing outside the list
+# reaches the binary or the recorded file.
 function Test-Language([string]$V) {
-    return ($V.Length -le 35) -and ($V -match '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*\z')
+    return (($V -ceq "en") -or ($V -ceq "ko") -or ($V -ceq "ja") -or ($V -ceq "zh"))
 }
 
 # The language of the first of LC_ALL, LC_MESSAGES, LANG that is set (`ko_KR.UTF-8` -> ko), else
@@ -128,22 +130,14 @@ function Read-LanguageChoice([string]$Default) {
     Write-Host ([string]::Concat("  2) ", [char]0xD55C, [char]0xAD6D, [char]0xC5B4))
     Write-Host ([string]::Concat("  3) ", [char]0x65E5, [char]0x672C, [char]0x8A9E))
     Write-Host ([string]::Concat("  4) ", [char]0x4E2D, [char]0x6587))
-    Write-Host "  5) Other (type a language code, for example fr or pt-BR)"
     $known = @{ "1" = "en"; "2" = "ko"; "3" = "ja"; "4" = "zh" }
     for ($try = 0; $try -lt 3; $try++) {
-        $answer = Read-Answer "Choose 1-5 [default: $Default]"
+        $answer = Read-Answer "Choose 1-4 [default: $Default]"
         if ($null -eq $answer) { break }
         $answer = $answer.Trim()
         if ($answer -eq "") { return $Default }
         if ($known.ContainsKey($answer)) { return $known[$answer] }
-        if ($answer -eq "5") {
-            $code = Read-Answer "Language code"
-            if ($null -eq $code) { break }
-            $code = $code.Trim()
-            if (Test-Language $code) { return $code }
-            Print-Warning "That is not a language code (for example en, ko, fr, pt-BR)."
-        }
-        else { Print-Warning "Please type a number from 1 to 5." }
+        Print-Warning "Please type a number from 1 to 4."
     }
     Print-Info "Using $Default."
     return $Default
@@ -214,7 +208,7 @@ function Get-Url([string]$Url, [string]$OutFile) {
     }
 }
 
-# The first candidate (newest first) that is a moai-cli-v<version> release for the channel. A
+# The first candidate (newest first) that is a moai-adk-v<version> release for the channel. A
 # pre-release is told by the release's own mark; a `-` in the version marks one of the earlier
 # scheme only, because a HeadVer version has no suffix. The feed has no mark, so a HeadVer
 # pre-release cannot be told there and the newest tag is taken (docs/release-checklist.md).
@@ -230,7 +224,7 @@ function Select-Version($Candidates, [string]$Channel) {
     return $null
 }
 
-# The newest moai-cli-v<version> release. /releases/latest is the Go edition's (Rust final
+# The newest moai-adk-v<version> release. /releases/latest is the Go edition's (Rust final
 # releases are published with --latest=false). First the REST list (100 newest, with the draft
 # and prerelease fields); when it cannot be read (no network to the API, or the
 # unauthenticated limit is spent), the releases feed, which holds only the 10 newest entries
@@ -291,7 +285,7 @@ function Add-ReleaseParts([string]$ArchiveRoot, [string]$Folder) {
 # The hosts this machine has: the host's command on PATH, or its folder in HOME.
 function Get-Hosts {
     $found = @()
-    foreach ($h in @("claude", "codex", "omp")) {
+    foreach ($h in @("claude")) {
         if ((Get-Command $h -CommandType Application -ErrorAction SilentlyContinue) -or
             (Test-Path -LiteralPath (Join-Path $env:HOME ".$h") -PathType Container)) { $found += $h }
     }
@@ -331,8 +325,8 @@ function Write-UpdateFailed($Answer) {
 function Install-Skill([string]$Cli, [string]$Folder, $Hosts, [bool]$Yes) {
     Write-Host ""
     if (-not $Hosts) {
-        Print-Warning "No Claude Code, Codex or OMP found (no claude, codex or omp command, no ~/.claude, ~/.codex or ~/.omp)."
-        Print-Info "Install one of them, then install the MoAI skill and agents with: moai update"
+        Print-Warning "No Claude Code found (no claude command, no ~/.claude)."
+        Print-Info "Install it, then install the MoAI skill and agents with: moai update"
         return $false
     }
     Print-Info "Previewing the MoAI skill and agents for your hosts (writes nothing):"
@@ -385,7 +379,7 @@ function Main {
         if ($arg -in "--version", "-version") {
             if ($i + 1 -ge $Arguments.Count) { Fail "--version needs a value" }
             $given = [string]$Arguments[++$i]
-            # `v2026.11.0` and the tag `moai-cli-v2026.11.0` name the same version.
+            # `v2026.11.0` and the tag `moai-adk-v2026.11.0` name the same version.
             $Version = $given
             if ($Version.StartsWith($TagPrefix)) { $Version = $Version.Substring($TagPrefix.Length) }
             if ($Version.StartsWith("v")) { $Version = $Version.Substring(1) }
@@ -565,13 +559,14 @@ function Main {
         Print-Success "Linked: $link -> $src"
     }
 
-    # Record the language once, with the installed moai-cli. It never overwrites a value that is
-    # already there, and a moai-cli that has no language-set (an older pinned version) or refuses
-    # the code costs a warning, not the install.
+    # Record the language once, with the installed moai-cli. It passes the record-once mode
+    # (--if-absent), so a value that is already recorded is never overwritten: only an explicit
+    # `moai language-set --home <code>` replaces it. A moai-cli that has no language-set (an
+    # older pinned version) or refuses the code costs a warning, not the install.
     $cli = Join-Path (Join-Path $dest "bin") "moai-cli$Exe"
     $recorded = $null
     try {
-        $answer = (& $cli language-set --home $Language 2>$null | Out-String)
+        $answer = (& $cli language-set --home --if-absent $Language 2>$null | Out-String)
         if ($LASTEXITCODE -eq 0) { $recorded = $answer | ConvertFrom-Json }
     }
     catch { $recorded = $null }
@@ -613,12 +608,10 @@ function Main {
     Write-Host "  $n. Make a project folder and enter it: New-Item -ItemType Directory my-project; Set-Location my-project"
     $n++
     Write-Host "  $n. Start a session there, then set the project up inside it:"
-    $entries = if ($hosts.Count -gt 0) { $hosts } else { @("claude", "codex", "omp") }
+    $entries = if ($hosts.Count -gt 0) { $hosts } else { @("claude") }
     foreach ($h in $entries) {
         switch ($h) {
             "claude" { Write-Host "     Claude Code: moai cc (or moai glm; -l leader, -a agent), then /moai project" }
-            "codex" { Write-Host '     Codex: moai codex, then $moai project' }
-            "omp" { Write-Host "     OMP: omp, then /skill:moai project" }
         }
     }
     Write-Host ""

@@ -12,11 +12,13 @@
 pub mod color;
 pub mod config;
 pub mod counts;
-pub mod godecode;
+pub mod icons;
 pub mod input;
+pub mod orca;
 pub mod render;
 pub mod segments;
 pub mod state;
+pub mod width;
 
 use std::time::Duration;
 
@@ -25,26 +27,46 @@ pub const RENDER_BUDGET: Duration = Duration::from_millis(800);
 
 /// The complete stdout for one render of `stdin`, final newline included.
 pub fn render(stdin: &[u8], ctx: &state::Context) -> String {
-    let input = (stdin.len() <= STDIN_CAP as usize)
-        .then(|| input::parse(stdin))
-        .flatten();
+    let input = read_input(stdin);
     // Subagent rows (Claude Code v2.1.293+): a present `tasks` array switches the output
     // to one JSON line per row and skips every collector.
-    if let Some(tasks) = input.as_ref().and_then(|i| i.tasks.as_ref()) {
+    if let Some(tasks) = input.tasks.as_ref() {
         return segments::subagent_rows(tasks) + "\n";
     }
-    let config = state::display_config(input.as_ref(), ctx);
+    // REQ-8: Orca's own wrapper gets the stdin too; started detached, never waited for.
+    orca::pass_through(stdin, input.rate_limits.is_some(), ctx);
+    let config = state::display_config(Some(&input), ctx);
     // #2559: Claude Code reads stdout through a pipe, so color never depends on a TTY
     // (the regression PR #2552 introduced); only NO_COLOR / MOAI_NO_COLOR turn it off.
     let profile = (!ctx.no_color())
         .then(|| color::Profile::from_colorterm(ctx.var("COLORTERM").unwrap_or("")));
-    let status = state::collect(input.as_ref(), ctx);
-    render::Renderer::new(&config, profile).render(&status) + "\n"
+    let status = state::collect(Some(&input), ctx);
+    // The weekly reset countdown measures against the render's clock (the --now-unix seam,
+    // SPEC-20261121-statusline-detached REQ-6): without it the renderer would count from
+    // epoch 0 (audit B1 on the slice head).
+    // Each line picks the widest of its forms that fits `COLUMNS` − 2 − padding
+    // (SPEC-20261122-statusline-flow REQ-9); without a usable `COLUMNS` the widest form is written.
+    let budget = width::budget(ctx.var("COLUMNS"), config.padding);
+    render::Renderer::new(&config, profile)
+        .with_now(ctx.now)
+        .with_budget(budget)
+        .render(&status)
+        + "\n"
 }
 
 /// Largest accepted stdin payload. One extra byte is read so an oversized stream
 /// degrades to no input even when its prefix is valid JSON.
 pub const STDIN_CAP: u64 = 4 * 1024 * 1024;
+
+/// The payload of `stdin` (SPEC-20261122-statusline-limits REQ-10); a stream above
+/// [`STDIN_CAP`] reads as empty, like any payload that is not a JSON object.
+fn read_input(stdin: &[u8]) -> input::Input {
+    if stdin.len() <= STDIN_CAP as usize {
+        input::parse(stdin)
+    } else {
+        input::Input::default()
+    }
+}
 
 fn read_capped(reader: impl std::io::Read) -> Vec<u8> {
     use std::io::Read;
@@ -70,7 +92,8 @@ pub fn run(budget: Duration, now: Option<i64>) -> String {
     let out = render(&stdin, &ctx);
     refresh_counts_after_render(&stdin);
     if let Some(home) = std::env::var_os("HOME").filter(|h| !h.is_empty()) {
-        record_usage_after_render(&stdin, std::path::Path::new(&home), unix_now());
+        let home = std::path::Path::new(&home);
+        record_usage_after_render(&stdin, home, ctx.var("TMPDIR"), unix_now());
     }
     out
 }
@@ -82,18 +105,21 @@ fn unix_now() -> i64 {
         .unwrap_or(0)
 }
 
-/// #2668 S1: keep the usage windows Claude Code gave this render in
-/// `$HOME/.moai-cli/state/usage-limits.json`, so a lane can renew its leases before a limit
-/// stops it. Subagent rows and inputs without `rate_limits` write nothing; a failed write
-/// never changes the rendered line.
-fn record_usage_after_render(stdin: &[u8], home: &std::path::Path, now: i64) -> bool {
-    let Some(input) = (stdin.len() <= STDIN_CAP as usize)
-        .then(|| input::parse(stdin))
-        .flatten()
-        .filter(|i| i.tasks.is_none())
-    else {
+/// #2668 S1: keep the usage windows Claude Code gave this render in the record of `home` in the
+/// cache folder for `tmpdir` (SPEC-20261122-statusline-limits REQ-7, [`crate::usage_limit`]), so
+/// a lane can renew its leases before a limit stops it; written only when a window changed.
+/// Subagent rows and inputs without `rate_limits` write nothing; a failed write never changes
+/// the rendered line.
+fn record_usage_after_render(
+    stdin: &[u8],
+    home: &std::path::Path,
+    tmpdir: Option<&str>,
+    now: i64,
+) -> bool {
+    let input = read_input(stdin);
+    if input.tasks.is_some() {
         return false;
-    };
+    }
     let Some(limits) = input.rate_limits.as_ref() else {
         return false;
     };
@@ -111,19 +137,17 @@ fn record_usage_after_render(stdin: &[u8], home: &std::path::Path, now: i64) -> 
         ],
         now,
     );
-    crate::usage_limit::record(home, windows, now).unwrap_or(false)
+    crate::usage_limit::record(home, tmpdir, windows, now).unwrap_or(false)
 }
 
 /// #2588: after a render, start the detached counts refresh when the cache needs one.
 /// The render itself stays read-only and never waits for it.
 fn refresh_counts_after_render(stdin: &[u8]) {
-    let Some(anchor) = (stdin.len() <= STDIN_CAP as usize)
-        .then(|| input::parse(stdin))
-        .flatten()
-        .filter(|i| i.tasks.is_none())
-        .as_ref()
-        .and_then(state::resolve_anchor)
-    else {
+    let input = read_input(stdin);
+    if input.tasks.is_some() {
+        return;
+    }
+    let Some(anchor) = state::resolve_anchor(&input) else {
         return;
     };
     if let Ok(exe) = std::env::current_exe() {
@@ -141,18 +165,30 @@ mod tests {
     fn render_input_with_rate_limits_records_the_usage_windows() {
         let now = 1_800_000_000;
         let home = tempfile::TempDir::new().unwrap();
+        let tmp = tempfile::TempDir::new().unwrap();
+        let tmpdir = tmp.path().to_str();
         let none: [&[u8]; 3] = [
             br#"{"model":{"display_name":"Opus"}}"#,
             br#"{"tasks":[],"rate_limits":{"five_hour":{"used_percentage":95,"resets_at":1800003600}}}"#,
             b"not json",
         ];
         for stdin in none {
-            assert!(!record_usage_after_render(stdin, home.path(), now));
+            assert!(!record_usage_after_render(stdin, home.path(), tmpdir, now));
         }
-        assert!(!crate::usage_limit::record_path(home.path()).exists());
+        assert!(!crate::usage_limit::record_path(home.path(), tmpdir)
+            .unwrap()
+            .exists());
         let stdin = br#"{"rate_limits":{"five_hour":{"used_percentage":95,"resets_at":1800003600},"seven_day":{"used_percentage":40,"resets_at":1800600000}}}"#;
-        assert!(record_usage_after_render(stdin, home.path(), now));
-        let v = crate::usage_limit::evaluate(home.path(), now);
+        assert!(record_usage_after_render(stdin, home.path(), tmpdir, now));
+        // The same windows again: nothing to write (REQ-7).
+        assert!(!record_usage_after_render(
+            stdin,
+            home.path(),
+            tmpdir,
+            now + 1
+        ));
+        assert_eq!(std::fs::read_dir(home.path()).unwrap().count(), 0);
+        let v = crate::usage_limit::evaluate(home.path(), tmpdir, now);
         assert_eq!(v["state"], "near");
         assert_eq!(v["window"], "five_hour");
         assert_eq!(
@@ -248,14 +284,18 @@ mod tests {
         );
     }
 
+    /// SPEC-20261122-statusline-limits REQ-10: a mistyped field, shown or not, changes only
+    /// itself; the model of the same payload stays (the Go decoder blanked the whole line).
     #[test]
-    fn hidden_main_fields_still_receive_typed_input_validation() {
-        let ctx = state::Context::for_test(&[], None);
+    fn a_mistyped_field_keeps_the_rest_of_the_payload() {
+        let ctx = state::Context::for_test(&[("NO_COLOR", "1")], None);
+        let model_only = render(br#"{"model":"MODEL_SENTINEL"}"#, &ctx);
+        assert!(model_only.contains("🧠 MODEL_SENTINEL"), "{model_only}");
         for stdin in [
-            br#"{"model":"INVALID_SENTINEL","agent":{"name":123}}"#.as_slice(),
-            br#"{"model":"INVALID_SENTINEL","pr":{"number":"wrong"}}"#.as_slice(),
+            br#"{"model":"MODEL_SENTINEL","agent":{"name":123}}"#.as_slice(),
+            br#"{"model":"MODEL_SENTINEL","pr":{"number":"wrong"}}"#.as_slice(),
         ] {
-            assert_eq!(render(stdin, &ctx), render(&[], &ctx));
+            assert_eq!(render(stdin, &ctx), model_only);
         }
     }
 }

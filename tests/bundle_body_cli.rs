@@ -5,6 +5,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/ready_receipt.rs"]
+mod ready_receipt;
 
 use common::home::TempHome;
 use moai_cli::ledger;
@@ -232,18 +234,9 @@ impl World {
 
     /// Adds a note and returns its number.
     fn note(&self, card: &str, text: &str) -> i64 {
-        self.card(
-            &["note", card, "--kind", "report", "--by", "lane"],
-            Some(text),
-        );
-        let shown = self.card(&["show", card], None);
-        shown["notes"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|n| n["note_id"].as_i64().unwrap())
-            .max()
-            .unwrap()
+        // Not through `card note`: its READY receipt gate (SPEC-20261124-ready-receipt-gate)
+        // is not what this file judges, and the project folder is not the repository.
+        ready_receipt::add_note_unchecked(self.home.path(), "demo", card, text)
     }
 
     fn ready_note(&self, card: &str, head: &str) -> i64 {
@@ -1009,4 +1002,193 @@ fn a_lower_case_card_number_is_replaced_in_a_command_and_refused_anywhere_else()
     assert!(m.contains("the integration line (the branch name)"), "{m}");
     assert!(!m.contains("c-12"), "{m}");
     assert!(!out.exists(), "a refused body writes no file");
+}
+
+// ---- SPEC-20261120-verified-trailer-in-use: the Moai-Verified summary line of the body ----
+
+/// A commit on the checked-out branch with this `Moai-Verified` value (no line when `None`).
+fn verified_commit(w: &World, file: &str, verified: Option<&str>) -> String {
+    w.put(file, "x\n");
+    w.git(&["add", "-A"]);
+    let msg = match verified {
+        Some(v) => format!("feat: {file}\n\nMoai-Verified: {v}"),
+        None => format!("feat: {file}"),
+    };
+    w.git(&["commit", "-q", "-m", &msg]);
+    w.git(&["rev-parse", "HEAD"])
+}
+
+/// REQ-5, REQ-7 (AC-4): the body carries one line with the commit count per `Moai-Verified`
+/// kind (a commit without the line counts under `none`) and the count of reverted commits, for
+/// the commits from the merge base of the tip and the branch up to the pinned head.
+#[test]
+fn verified_summary_counts_the_kinds_and_the_reverted_commit() {
+    let b = bundle_world(true);
+    // The branch holds the two lane commits (no line) and then: tests, mutants + e2e, none given
+    // explicitly, and a standard revert of the first of them (which has no line either).
+    b.w.git(&["checkout", "-q", "bundle"]);
+    let first = verified_commit(&b.w, "notes/v1.md", Some("tests"));
+    verified_commit(&b.w, "notes/v2.md", Some("mutants, e2e"));
+    verified_commit(&b.w, "notes/v3.md", Some("none"));
+    b.w.git(&["revert", "--no-edit", &first]);
+    let pinned = b.w.git(&["rev-parse", "bundle"]);
+    let (v, code) = b.body(&[]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["pinned"], pinned.as_str());
+    let body = v["result"]["body"].as_str().unwrap();
+    let lines: Vec<&str> = body
+        .lines()
+        .filter(|l| l.contains("Verification kinds"))
+        .collect();
+    assert_eq!(lines.len(), 1, "exactly one summary line: {body}");
+    // 6 commits (merges are skipped): 2 lane commits and the revert have no line, 1 explicit none;
+    // the commit with two kinds counts under each.
+    assert_eq!(
+        lines[0],
+        "Verification kinds (`Moai-Verified`, 6 commits): tests 1, mutants 1, e2e 1, smoke 0, \
+         none 4 (a commit without the line counts as none); reverted 1.",
+        "{body}"
+    );
+    // The line sits after the integration paragraph and before the Self-Audit section.
+    let at = |needle: &str| {
+        body.find(needle)
+            .unwrap_or_else(|| panic!("{needle}: {body}"))
+    };
+    assert!(at("Integration: `bundle`") < at("Verification kinds"));
+    assert!(at("Verification kinds") < at("\n## Self-Audit\n"));
+    // REQ-7: counts and fixed words only.
+    assert!(card_numbers(lines[0]).is_empty() && session_ids(lines[0]) == 0);
+    assert!(
+        !lines[0].starts_with("Moai-"),
+        "the line must not read as a trailer"
+    );
+}
+
+/// AC-6: a bundle whose commits carry no `Moai-Verified` line gets the same one line, all `none`.
+#[test]
+fn verified_summary_reads_a_missing_line_as_none() {
+    let b = bundle_world(true);
+    let (v, code) = b.body(&[]);
+    assert_eq!(code, 0, "{v}");
+    let body = v["result"]["body"].as_str().unwrap();
+    assert!(
+        body.contains(
+            "Verification kinds (`Moai-Verified`, 2 commits): tests 0, mutants 0, e2e 0, smoke 0, \
+             none 2 (a commit without the line counts as none); reverted 0.\n"
+        ),
+        "{body}"
+    );
+}
+
+// ---- the audit floor of a registry change (SPEC-20261124-registry-line-add-tier) ---------------
+
+/// The product's own name of the registry, so this file spells no checked-in path.
+const REGISTRY: &str = moai_cli::gate::SCAN_REGISTRY;
+
+/// A one-scan scan registry with these rule files and this `rejects` text.
+fn registry_text(rules: &[&str], rejects: &str) -> String {
+    serde_json::to_string_pretty(&serde_json::json!({
+        "about": "fixture",
+        "scans": [{
+            "id": "reads-src",
+            "tests": ["tests/alpha.rs::t"],
+            "checks": ["cargo test --offline --locked --test alpha"],
+            "rules": rules,
+            "scope": [{"prefix": "src/", "suffixes": [".rs"]}],
+            "rejects": rejects,
+        }],
+    }))
+    .unwrap()
+}
+
+/// The first line of the body `bundle body` writes for one head that `change` makes on a tip that
+/// holds the registry: the head is passed and merged into `bundle`.
+fn audit_tier_line(change: impl Fn(&World) -> String) -> String {
+    let w = World::new();
+    w.put(REGISTRY, &registry_text(&["tests/alpha.rs"], "a text"));
+    w.git(&["add", "-A"]);
+    w.git(&["commit", "-q", "-m", "chore: the registry"]);
+    w.git(&["push", "-q", "origin", "trunk"]);
+    w.git(&["fetch", "-q", "origin"]);
+    let head = change(&w);
+    let card = w.new_card();
+    w.ready_note(&card, &head);
+    w.pass_note(&card, &head);
+    w.git(&["checkout", "-q", "-B", "bundle", TIP]);
+    w.git(&["merge", "-q", "--no-ff", "-m", "Merge h1", &head]);
+    let record = w.home.path().join("run-record.json");
+    fs::write(&record, record_json(false, false, false).to_string()).unwrap();
+    let (v, code) = w.bundle(&[
+        "body",
+        &card,
+        "--branch",
+        "bundle",
+        "--run",
+        record.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "{v}");
+    v["result"]["body"]
+        .as_str()
+        .unwrap()
+        .lines()
+        .next()
+        .unwrap()
+        .to_string()
+}
+
+/// The registry changed by one head of one commit, with the SPEC file the body needs.
+fn registry_head(w: &World, rules: &[&str], rejects: &str, extra: &[(&str, &str)]) -> String {
+    let text = registry_text(rules, rejects);
+    let mut files = vec![(REGISTRY, text.as_str())];
+    files.extend_from_slice(extra);
+    w.head("spec/h1", TIP, &files, "SPEC-20261119-demo1", &[1, 2], true)
+}
+
+/// AC-12: the `audit-tier:` line of the body follows the same growth rule as `bundle check`.
+#[test]
+fn the_body_reads_a_registration_as_tier_1_and_an_edit_as_tier_2() {
+    let registered = audit_tier_line(|w| {
+        registry_head(
+            w,
+            &["tests/alpha.rs", "tests/beta.rs"],
+            "a text",
+            &[("tests/beta.rs", "// t\n")],
+        )
+    });
+    assert!(registered.starts_with("audit-tier: 1 "), "{registered}");
+    assert!(registered.contains(REGISTRY), "{registered}");
+    let edited = audit_tier_line(|w| registry_head(w, &["tests/alpha.rs"], "another text", &[]));
+    assert!(edited.starts_with("audit-tier: 2 "), "{edited}");
+    let removed = audit_tier_line(|w| registry_head(w, &[], "a text", &[]));
+    assert!(removed.starts_with("audit-tier: 2 "), "{removed}");
+}
+
+/// AC-12 (REQ-10): a head that renames the registry registered nothing, and the path list names
+/// both the old and the new file.
+#[test]
+fn the_body_reads_a_renamed_registry_as_tier_2() {
+    let line = audit_tier_line(|w| {
+        // One commit that renames the registry, then the commit that carries the SPEC file.
+        w.git(&["checkout", "-q", "-B", "spec/h1", TIP]);
+        w.git(&["mv", REGISTRY, "tools/other.json"]);
+        w.git(&[
+            "commit",
+            "-q",
+            "-m",
+            "feat: rename the registry\n\nMoai-Spec: SPEC-20261119-demo1",
+        ]);
+        w.head(
+            "spec/h1",
+            "spec/h1",
+            &[],
+            "SPEC-20261119-demo1",
+            &[1, 2],
+            true,
+        )
+    });
+    assert!(line.starts_with("audit-tier: 2 "), "{line}");
+    assert!(
+        line.contains(REGISTRY) && line.contains("tools/other.json"),
+        "{line}"
+    );
 }

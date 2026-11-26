@@ -189,6 +189,18 @@ pub fn format_verified(
     Ok(out)
 }
 
+/// The trailer a cloud session adds to the commits it makes (cloud-environments.md).
+pub const CLOUD_SESSION_KEY: &str = "Claude-Session";
+/// The start of the link a cloud session's trailer holds; the session id follows it.
+pub const CLOUD_SESSION_LINK: &str = "https://claude.ai/code/session_";
+
+/// True when `v` is a claude.ai session link: the start above and a non-empty id of ASCII
+/// letters and digits.
+pub fn is_cloud_session_link(v: &str) -> bool {
+    v.strip_prefix(CLOUD_SESSION_LINK)
+        .is_some_and(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_alphanumeric()))
+}
+
 /// One commit's identity trailers as `git log` reads its trailer block.
 #[derive(Debug, PartialEq)]
 pub struct CommitTrailers {
@@ -201,6 +213,9 @@ pub struct CommitTrailers {
     /// of either).
     pub subject: String,
     pub body: String,
+    /// The `Claude-Session` values a cloud session adds (SPEC-20261122-host-small-fixes): the
+    /// host's trailer, read to name a cloud commit's session, never to fail one.
+    pub cloud_sessions: Vec<String>,
     /// The log line had more fields than it should: a trailer value held the log's own field
     /// separator (audit N3), so its values cannot be read apart.
     pub garbled: bool,
@@ -238,12 +253,37 @@ fn findings(c: &CommitTrailers, spec_branch: bool, under_rule: bool) -> Vec<Valu
             format!("{SPEC_KEY} must be one SPEC id (SPEC-<yyyymmdd>-<slug>)"),
         ),
     }
-    match c.sessions.as_slice() {
-        [] => add(
-            "missing_session",
+    // A cloud session's own trailer names the session of a commit that has no moai one; any
+    // other shape, or more than one, is named; neither ever fails (D-1).
+    let cloud = match c.cloud_sessions.as_slice() {
+        [] => None,
+        [one] if is_cloud_session_link(one) => Some(Ok(one.as_str())),
+        _ => Some(Err(())),
+    };
+    if cloud == Some(Err(())) {
+        add(
+            "malformed_cloud_session",
             false,
-            format!("no {SESSION_KEY} trailer; the audit gate reads the authors as unknown"),
-        ),
+            format!(
+                "{CLOUD_SESSION_KEY} must appear once as {CLOUD_SESSION_LINK}<id>; it is the host's trailer and never fails a check"
+            ),
+        );
+    }
+    match c.sessions.as_slice() {
+        [] => match cloud {
+            Some(Ok(link)) => add(
+                "cloud_session",
+                false,
+                format!(
+                    "no {SESSION_KEY} trailer; the commit names its cloud session {link}, which the audit gate does not read as an author"
+                ),
+            ),
+            _ => add(
+                "missing_session",
+                false,
+                format!("no {SESSION_KEY} trailer; the audit gate reads the authors as unknown"),
+            ),
+        },
         [one] => match value_shape(one) {
             Shape::Full => {}
             Shape::Legacy => add(
@@ -288,6 +328,17 @@ fn findings(c: &CommitTrailers, spec_branch: bool, under_rule: bool) -> Vec<Valu
             ),
         );
     }
+    // A `Moai-*` block split from the last paragraph is why the lines above read as missing;
+    // it is named for the commit and never fails on its own, so a landed commit stays judged
+    // as before (SPEC-20261125-trailer-paragraph-guard REQ-3).
+    let message = format!("{}\n\n{}", c.subject, c.body);
+    for (key, line) in split_trailer_lines(&message) {
+        add(
+            "split_trailer_block",
+            false,
+            split_trailer_detail(&key, line),
+        );
+    }
     out
 }
 
@@ -318,7 +369,8 @@ pub fn parse_log(text: &str) -> Vec<CommitTrailers> {
                 verified: split(parts.get(3).copied().unwrap_or("")),
                 subject: parts.get(4).copied().unwrap_or("").trim().to_string(),
                 body: parts.get(5).copied().unwrap_or("").trim().to_string(),
-                garbled: parts.len() > 6 || !real_sha,
+                cloud_sessions: split(parts.get(6).copied().unwrap_or("")),
+                garbled: parts.len() > 7 || !real_sha,
             })
         })
         .collect()
@@ -353,7 +405,7 @@ fn log_trailers(git: &impl Fn(&[&str]) -> Result<String>, range: &str) -> Result
         "log",
         "--no-merges",
         "--reverse",
-        "--format=%x1e%H%x1f%(trailers:key=Moai-Spec,valueonly,separator=%x03)%x1f%(trailers:key=Moai-Session,valueonly,separator=%x03)%x1f%(trailers:key=Moai-Verified,valueonly,separator=%x03)%x1f%s%x1f%b",
+        "--format=%x1e%H%x1f%(trailers:key=Moai-Spec,valueonly,separator=%x03)%x1f%(trailers:key=Moai-Session,valueonly,separator=%x03)%x1f%(trailers:key=Moai-Verified,valueonly,separator=%x03)%x1f%s%x1f%b%x1f%(trailers:key=Claude-Session,valueonly,separator=%x03)",
         range,
         "--",
     ])
@@ -627,13 +679,94 @@ fn card_number_findings(c: &CommitTrailers) -> Vec<Value> {
     out
 }
 
-/// Judges one draft commit message (the commit-msg hook's input) with the card-number scan
-/// always on. Reads the file only.
+/// The `Moai-*` trailer lines of `text` that sit in a paragraph before the last one, as
+/// `(key, 1-based line)` (SPEC-20261125-trailer-paragraph-guard). Git reads a message's trailers
+/// from its last paragraph only, so such a line is never read: `Moai-Spec` split from
+/// `Co-Authored-By` by a blank line reads as no SPEC. Only a paragraph made of trailer-shaped
+/// lines alone counts (`Key: value`, folded continuation lines allowed) and holding a `Moai-*` key,
+/// so a sentence in the body that quotes a key never matches. Comment lines of a draft message and
+/// everything after a verbose-commit scissors line are not part of the message.
+pub fn split_trailer_lines(text: &str) -> Vec<(String, usize)> {
+    let mut paragraphs: Vec<Vec<(usize, &str)>> = Vec::new();
+    let mut current: Vec<(usize, &str)> = Vec::new();
+    for (i, line) in text.lines().enumerate() {
+        if line.starts_with("# ------------------------ >8") {
+            break;
+        }
+        if line.starts_with('#') {
+            continue;
+        }
+        if line.trim().is_empty() {
+            if !current.is_empty() {
+                paragraphs.push(std::mem::take(&mut current));
+            }
+            continue;
+        }
+        current.push((i + 1, line));
+    }
+    if !current.is_empty() {
+        paragraphs.push(current);
+    }
+    // The last paragraph is the trailer block git reads; only the ones before it can be split.
+    paragraphs.pop();
+    let mut out = Vec::new();
+    for paragraph in paragraphs {
+        let keys: Vec<Option<&str>> = paragraph
+            .iter()
+            .map(|(_, l)| {
+                if l.starts_with([' ', '\t']) {
+                    Some("")
+                } else {
+                    trailer_key(l)
+                }
+            })
+            .collect();
+        let pure = keys.iter().all(Option::is_some);
+        if pure {
+            for ((n, _), key) in paragraph.iter().zip(&keys) {
+                if let Some(k) = key.filter(|k| MOAI_KEYS.contains(k)) {
+                    out.push((k.to_string(), *n));
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The `Moai-*` keys a split block is judged by.
+const MOAI_KEYS: [&str; 3] = [SPEC_KEY, SESSION_KEY, VERIFIED_KEY];
+
+/// The key of a trailer-shaped line (`Key: value`, a token of letters, digits and `-` that starts
+/// with a letter, then a colon), or `None`.
+fn trailer_key(line: &str) -> Option<&str> {
+    let key = line.split_once(':')?.0;
+    let shaped = key.starts_with(|c: char| c.is_ascii_alphabetic())
+        && key.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-');
+    shaped.then_some(key)
+}
+
+/// The one-line reading of a split trailer: which key, where, and the fix.
+fn split_trailer_detail(key: &str, line: usize) -> String {
+    format!(
+        "{key} on line {line} sits in a paragraph before the last one; git and the audit gate read \
+         trailers from the last paragraph only, so it is not read: remove the blank line so the \
+         Moai-* lines and any Co-Authored-By line are one last paragraph"
+    )
+}
+
+/// Judges one draft commit message (the commit-msg hook's input) with the card-number scan and
+/// the split-trailer scan always on. Reads the file only.
 pub fn message_file_check(path: &Path) -> Result<Value> {
     let bytes = std::fs::read(path)
         .map_err(|e| format!("cannot read the message file {}: {e}", path.display()))?;
     let text = String::from_utf8_lossy(&bytes);
     let mut findings = Vec::new();
+    for (key, line) in split_trailer_lines(&text) {
+        findings.push(json!({
+            "kind": "split_trailer_block", "fails": true,
+            "detail": split_trailer_detail(&key, line),
+        }));
+    }
     for (n, line) in text.lines().enumerate() {
         for shape in card_numbers_in_line(line) {
             findings.push(json!({
@@ -912,7 +1045,7 @@ mod tests {
     /// cannot be told apart from two values; the commit is malformed and fails, never misread.
     #[test]
     fn a_value_with_a_separator_or_control_character_is_malformed() {
-        let garbled = format!("a\x1fSPEC-20261117-x\x1fextra\x1f{S}\x1f{S}\x1f\x1f");
+        let garbled = format!("a\x1fSPEC-20261117-x\x1fextra\x1f{S}\x1f{S}\x1f\x1f\x1f");
         let c = parse_log(&garbled);
         assert_eq!(c.len(), 1);
         let v = judge(&c, "main");
@@ -968,5 +1101,100 @@ mod tests {
         assert_eq!(a["ok"], true);
         assert_eq!(a["findings"][0]["kind"], "legacy_session", "{a}");
         assert_eq!(a["findings"][0]["fails"], false, "{a}");
+    }
+
+    const SPLIT: &str = "fix(x): subject\n\nBody sentence.\n\nMoai-Spec: SPEC-20261125-x\nMoai-Session: 0123456789ab\nMoai-Verified: tests\n\nCo-Authored-By: A <a@example.invalid>\n";
+
+    /// SPEC-20261125-trailer-paragraph-guard REQ-1/REQ-2: a pure `Moai-*` paragraph before the
+    /// last one is found with its key and its line.
+    #[test]
+    fn a_moai_paragraph_before_the_last_one_is_found_with_key_and_line() {
+        assert_eq!(
+            split_trailer_lines(SPLIT),
+            vec![
+                ("Moai-Spec".to_string(), 5),
+                ("Moai-Session".to_string(), 6),
+                ("Moai-Verified".to_string(), 7),
+            ]
+        );
+        // Windows line endings read the same.
+        assert_eq!(split_trailer_lines(&SPLIT.replace('\n', "\r\n")).len(), 3);
+    }
+
+    /// REQ-4: one last paragraph, no `Co-Authored-By`, prose that quotes a key, and an earlier
+    /// trailer paragraph without a `Moai-*` key are all fine.
+    #[test]
+    fn a_whole_last_paragraph_and_quoted_keys_are_not_split() {
+        let one = "s\n\nbody\n\nMoai-Spec: S\nMoai-Session: x\nMoai-Verified: none\nCo-Authored-By: A <a@example.invalid>\n";
+        assert!(split_trailer_lines(one).is_empty());
+        let alone = "s\n\nbody\n\nMoai-Spec: S\nMoai-Verified: none\n";
+        assert!(split_trailer_lines(alone).is_empty());
+        let quoted = "s\n\nThe line Moai-Spec: S is read from the last paragraph only.\nA second sentence: with a colon.\n\nMoai-Spec: S\nMoai-Session: x\n";
+        assert!(split_trailer_lines(quoted).is_empty());
+        let other = "s\n\nReviewed-by: B <b@example.invalid>\n\nMoai-Spec: S\n";
+        assert!(split_trailer_lines(other).is_empty());
+        // A paragraph that mixes a `Moai-*` line with a prose line is not a trailer block.
+        let mixed = "s\n\nMoai-Spec: S\nThis line explains the one above.\n\nCo-Authored-By: A <a@example.invalid>\n";
+        assert!(split_trailer_lines(mixed).is_empty());
+        // A subject alone, or an empty message, has no earlier paragraph.
+        assert!(split_trailer_lines("Moai-Spec: S").is_empty());
+        assert!(split_trailer_lines("").is_empty());
+    }
+
+    /// Draft-message comment lines never count as a paragraph, and nothing after a verbose
+    /// commit's scissors line is part of the message.
+    #[test]
+    fn comment_lines_and_the_scissors_tail_are_not_the_message() {
+        let drafted = "s\n\nMoai-Spec: S\nMoai-Session: x\n# a comment\n\nCo-Authored-By: A <a@example.invalid>\n";
+        assert_eq!(split_trailer_lines(drafted).len(), 2);
+        let verbose = "s\n\nMoai-Spec: S\nMoai-Session: x\nMoai-Verified: none\n# ------------------------ >8 ------------------------\n\ndiff --git a/f b/f\nCo-Authored-By: A <a@example.invalid>\n";
+        assert!(split_trailer_lines(verbose).is_empty());
+    }
+
+    /// REQ-1/REQ-2: the commit-msg hook's mode fails on a split block and names the key, the
+    /// line and the fix; the same message with the blank line removed passes.
+    #[test]
+    fn the_message_file_check_fails_on_a_split_block_and_names_the_fix() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("MSG");
+        std::fs::write(&path, SPLIT).unwrap();
+        let v = message_file_check(&path).unwrap();
+        assert_eq!(v["ok"], false, "{v}");
+        assert_eq!(v["failing"], 3, "{v}");
+        let first = &v["findings"][0];
+        assert_eq!(first["kind"], "split_trailer_block", "{v}");
+        let detail = first["detail"].as_str().unwrap();
+        assert!(detail.contains("Moai-Spec on line 5"), "{detail}");
+        assert!(detail.contains("remove the blank line"), "{detail}");
+        std::fs::write(&path, SPLIT.replace("tests\n\nCo-", "tests\nCo-")).unwrap();
+        let v = message_file_check(&path).unwrap();
+        assert_eq!(v["ok"], true, "{v}");
+    }
+
+    /// REQ-3: a range reads the same shape from a commit's body as a finding that never fails,
+    /// so a landed commit is judged as before and its `missing_spec` gets a named cause.
+    #[test]
+    fn a_range_names_a_split_block_without_failing_it() {
+        let body = "Body sentence.\n\nMoai-Spec: SPEC-20261125-x\nMoai-Session: 0123456789ab\nMoai-Verified: tests\n\nCo-Authored-By: A <a@example.invalid>";
+        let log = format!("\x1eabc123\x1f\x1f\x1f\x1ffix(x): subject\x1f{body}\x1f");
+        let c = parse_log(&log);
+        assert_eq!(c.len(), 1);
+        let v = judge(&c, "main");
+        let split: Vec<&Value> = v["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|f| f["kind"] == "split_trailer_block")
+            .collect();
+        assert_eq!(split.len(), 3, "{v}");
+        assert!(split.iter().all(|f| f["fails"] == json!(false)), "{v}");
+        assert!(
+            split[0]["detail"].as_str().unwrap().contains("line 5"),
+            "{v}"
+        );
+        // On a `spec/` branch the unread `Moai-Spec` still fails as before; the new finding adds
+        // nothing to `failing`.
+        let spec = judge(&c, "spec/x");
+        assert_eq!(spec["failing"], 1, "{spec}");
     }
 }

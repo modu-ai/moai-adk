@@ -9,7 +9,8 @@
 //! backup MANIFEST and the moved tree equal the original bytes and modes, the projection
 //! equals the package; AC-3 recovery restores the original bytes and modes and records
 //! the restore; AC-4 injected failures (after the backup, mid replace) keep the original
-//! or the backup intact and surface as pending; AC-6 both host locations.
+//! or the backup intact and surface as pending; AC-6 the Claude host location, with the shared
+//! agents folder left alone.
 
 #![cfg(unix)]
 
@@ -26,10 +27,9 @@ use std::{
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
-const ROOTS: [(&str, &str); 2] = [
-    ("claude", ".claude/skills/moai"),
-    ("codex", ".agents/skills/moai"),
-];
+/// The HOME state folder of the new name, where every backup is made.
+const NEWER: &str = ".moai";
+const ROOTS: [(&str, &str); 1] = [("claude", ".claude/skills/moai")];
 
 fn write_pkg(dir: &Path) {
     let files = [
@@ -82,8 +82,8 @@ fn fixture() -> Fixture {
     for (host, rel) in ROOTS {
         write_go_skill(&home.join(rel), host);
     }
-    // An earlier-root HOME: its state stays in `~/.moai-cli` (#2696 C4b2 gives a HOME with no
-    // state `~/.moai`; that layout is pinned by home_root tests and update_cli).
+    // An earlier-root HOME: its state stays in `~/.moai-cli` (#2696 C4b2 puts a HOME with no
+    // state on the new state folder; that layout is pinned by home_root tests and update_cli).
     fs::create_dir_all(home.join(".moai-cli")).unwrap();
     let home = fs::canonicalize(&home).unwrap();
     Fixture {
@@ -126,12 +126,12 @@ fn run_cli(
     let mut cmd = Command::new(EXE);
     cmd.args(args)
         .env("HOME", home)
-        .env_remove("MOAI_CLI_TEST_FAULT")
+        .env_remove("MOAI_TEST_FAULT")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     if let Some(f) = fault {
-        cmd.env("MOAI_CLI_TEST_FAULT", f);
+        cmd.env("MOAI_TEST_FAULT", f);
     }
     let mut child = cmd.spawn().unwrap();
     let mut pipe = child.stdin.take().unwrap();
@@ -233,7 +233,7 @@ fn token(plan: &Value, name: &str) -> String {
 }
 
 fn backups(home: &Path) -> Vec<PathBuf> {
-    let dir = home.join(".moai-cli/backups");
+    let dir = home.join(NEWER).join("backups");
     if !dir.exists() {
         return Vec::new();
     }
@@ -282,7 +282,7 @@ fn assert_package_installed(root: &Path, stage: &Path) {
     );
 }
 
-/// AC-1 (+AC-6): the plan previews backup-then-replace for both hosts — what, where,
+/// AC-1 (+AC-6): the plan previews backup-then-replace for the Claude host — what, where,
 /// how many files, which hashes — and writes nothing.
 #[test]
 fn plan_previews_backup_then_replace_and_writes_nothing() {
@@ -313,7 +313,7 @@ fn plan_previews_backup_then_replace_and_writes_nothing() {
             .starts_with("sha256:"));
         assert_eq!(
             b["backup_root"],
-            json!(f.home.join(".moai-cli/backups").to_str().unwrap())
+            json!(f.home.join(NEWER).join("backups").to_str().unwrap())
         );
         assert_eq!(b["replace_with"]["file_count"], json!(3));
         assert_eq!(b["replace_with"]["package_digest"], p["package_digest"]);
@@ -322,7 +322,7 @@ fn plan_previews_backup_then_replace_and_writes_nothing() {
     }
     assert_eq!(originals(&f), before, "plan wrote nothing");
     assert!(
-        !f.home.join(".moai-cli/backups").exists(),
+        !f.home.join(NEWER).join("backups").exists(),
         "no backup folder from a plan"
     );
 }
@@ -371,15 +371,15 @@ fn apply_without_token_or_with_a_wrong_token_changes_nothing() {
     assert!(backups(&f.home).is_empty());
 }
 
-/// AC-2 (second half) + AC-6: with the tokens, each host's original folder moves into
+/// AC-2 (second half) + AC-6: with the token, the host's original folder moves into
 /// a backup whose MANIFEST and tree equal the original bytes and modes, and the
 /// projection holds exactly the package.
 #[test]
-fn confirmed_apply_backs_up_and_replaces_both_hosts() {
+fn confirmed_apply_backs_up_and_replaces_the_host() {
     let f = fixture();
     let before = originals(&f);
     let p = plan(&f);
-    let toks = [token(&p, "claude"), token(&p, "codex")];
+    let toks = [token(&p, "claude")];
     let refs: Vec<&str> = toks.iter().map(String::as_str).collect();
     let r = result_of(&apply(&f, &p, &refs, None));
     assert_eq!(r["status"], json!("applied"), "{r}");
@@ -427,20 +427,25 @@ fn confirmed_apply_backs_up_and_replaces_both_hosts() {
     }
 }
 
-/// Only the confirmed host is replaced; the other stays blocked and untouched.
+/// A Go-type folder in the shared agents folder is not planned, backed up or replaced: moai no
+/// longer manages it, so the plan has no row for it and the apply leaves it byte for byte.
 #[test]
-fn a_token_replaces_only_its_host() {
+fn the_shared_agents_folder_is_not_planned_or_replaced() {
     let f = fixture();
-    let before = originals(&f);
+    let shared = f.home.join(".agents/skills/moai");
+    write_go_skill(&shared, "shared");
+    let shared_before = snapshot(&shared);
     let p = plan(&f);
-    let r = result_of(&apply(&f, &p, &[&token(&p, "codex")], None));
-    assert_eq!(host(&r, "claude")["status"], json!("blocked"));
-    assert_eq!(host(&r, "codex")["status"], json!("replaced"));
-    assert_eq!(
-        snapshot(&f.home.join(ROOTS[0].1)),
-        before[0],
-        "claude untouched"
-    );
+    let hosts: Vec<&str> = p["hosts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["host"].as_str().unwrap())
+        .collect();
+    assert_eq!(hosts, ["claude"], "{p}");
+    let r = result_of(&apply(&f, &p, &[&token(&p, "claude")], None));
+    assert_eq!(host(&r, "claude")["status"], json!("replaced"), "{r}");
+    assert_eq!(snapshot(&shared), shared_before, "shared folder untouched");
     assert_eq!(backups(&f.home).len(), 1);
 }
 
@@ -451,7 +456,7 @@ fn recovery_restores_the_original_folder() {
     let f = fixture();
     let before = originals(&f);
     let p = plan(&f);
-    let toks = [token(&p, "claude"), token(&p, "codex")];
+    let toks = [token(&p, "claude")];
     let refs: Vec<&str> = toks.iter().map(String::as_str).collect();
     result_of(&apply(&f, &p, &refs, None));
 
@@ -663,10 +668,11 @@ fn assert_symlinked_state_path_is_refused(link_rel: &str) {
     );
 }
 
-/// B1 (audit 6812528075): `~/.moai-cli/backups` is a symlink leading out of HOME.
+/// B1 (audit 6812528075): the backups folder (now under the new state folder, revision 3 of the update
+/// baseline SPEC) is a symlink leading out of HOME.
 #[test]
 fn a_symlinked_backups_directory_is_refused() {
-    assert_symlinked_state_path_is_refused(".moai-cli/backups");
+    assert_symlinked_state_path_is_refused(&format!("{NEWER}/backups"));
 }
 
 /// B1 (audit 6812528075): `~/.moai-cli` itself is a symlink leading out of HOME.
@@ -698,7 +704,7 @@ fn sha256_hex(bytes: &[u8]) -> String {
 
 /// Test seam (#2505): debug builds take the backup folder's time stamp from this variable,
 /// so two runs "in the same second" are reproducible.
-const STAMP_VAR: &str = "MOAI_CLI_TEST_BACKUP_STAMP";
+const STAMP_VAR: &str = "MOAI_TEST_BACKUP_STAMP";
 const STAMP: &str = "20260101T000000Z";
 
 fn run_cli_env(
@@ -710,7 +716,7 @@ fn run_cli_env(
     let mut cmd = Command::new(EXE);
     cmd.args(args)
         .env("HOME", home)
-        .env_remove("MOAI_CLI_TEST_FAULT")
+        .env_remove("MOAI_TEST_FAULT")
         .env_remove(STAMP_VAR)
         .envs(envs.iter().copied())
         .stdin(Stdio::piped())
@@ -750,7 +756,7 @@ fn apply_env(
 }
 
 fn backups_dir(f: &Fixture) -> PathBuf {
-    f.home.join(".moai-cli/backups")
+    f.home.join(NEWER).join("backups")
 }
 
 /// AC-1: replace, restore, replace again within the same (pinned) second. The second run

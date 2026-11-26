@@ -14,8 +14,13 @@ use std::path::{Path, PathBuf};
 /// `clear_redispatch` at a card boundary that `lane-safe-to-reset` finds safe, `answer` for a
 /// `LANE-BLOCKED` line, `restart` with the loop line, or `leave` with the reason — and, from
 /// GitHub, the open Issues with a close table, the claims whose lease ended, the merge-gate
-/// command and the end condition. Reads only: git with `--no-optional-locks`, the session
-/// registry without writing, GitHub with GraphQL queries (at most 30 requests).
+/// command and the end condition, and the `registration` part: every leader entry of the
+/// session registry with its lease, ended ones included. Reads only: git with
+/// `--no-optional-locks`, the session registry without writing, GitHub with GraphQL queries
+/// (at most 30 requests) — except that `--renew-instance` renews the leader registration and
+/// that the round calls `moai card sweep` once before it builds its answer: a card whose lease
+/// ended long ago goes back to `ready` and the answer names it under `lease_sweep`. The profile
+/// key `lease_sweep_in_round` set to false makes the round list those cards and write nothing.
 #[derive(clap::Args)]
 pub struct Args {
     /// Any checkout of the repository (the primary one or a worktree).
@@ -36,6 +41,12 @@ pub struct Args {
     /// when absent.
     #[arg(long)]
     now: Option<String>,
+    /// The `instance` of the leader registration (`session-register --mode leader` returned
+    /// it): the round renews that entry for the default lease from this session before it
+    /// lists the registration, so a round never lets the lease lapse. Without it the round
+    /// writes nothing.
+    #[arg(long)]
+    renew_instance: Option<String>,
 }
 
 pub const OPERATION: &str = "leader.round";
@@ -115,7 +126,26 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         }
         (None, None) => None,
     };
-    let round = leader_round::round(snap.as_ref(), args.repo.as_deref(), &args.project, now);
+    // SPEC-20261123-leader-registration-lease REQ-10, REQ-14: the one write of this command,
+    // only when `--renew-instance` is given; a refusal is reported and the round goes on.
+    let renewal = args
+        .renew_instance
+        .as_deref()
+        .map(|instance| leader_round::registration::renew(&args.project, instance, now));
+    // SPEC-20261124-leader-round-lease-sweep: one `card sweep` before the round builds its answer;
+    // a project with no ledger or no HOME is `not_run` and never fails the round.
+    let home = moai_cli::ledger::command::resolve_home(None).ok();
+    let lease_sweep = leader_round::lease_sweep(&args.project, home.as_deref());
+    let swept = lease_sweep["writes"] == true;
+    let mut round = leader_round::round(snap.as_ref(), args.repo.as_deref(), &args.project, now);
+    let renewed = matches!(renewal, Some(Ok(_)));
+    match renewal {
+        Some(Ok(done)) => round["registration"]["renewal"] = done,
+        Some(Err(message)) => {
+            round["registration"]["renewal"] = json!({"status": "refused", "message": message})
+        }
+        None => {}
+    }
     let end_met = round["end_condition"]["met"].as_bool();
     let mut lanes = Vec::new();
     for lane in &file.lanes {
@@ -151,10 +181,11 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         "now": moai_cli::forge::policy::format_utc(now),
         "lanes": lanes,
         "idle_lanes": idle_lanes,
+        "lease_sweep": lease_sweep,
         "round": round,
         "partial": snap.as_ref().map(|s| s.partial.clone()).unwrap_or_default(),
         "api_calls": snap.as_ref().map_or(0, |s| s.api_calls),
-        "writes": false,
+        "writes": renewed || swept,
     });
     // Issue #3052: say which comments the fleet read left out because no member wrote them.
     if let Some(s) = snap.as_ref().filter(|s| !s.ignored.is_empty()) {

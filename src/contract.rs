@@ -5,7 +5,7 @@
 //! failure `{protocol_version, operation, ok: false, error{kind, message, retryable, next_actions?}}`.
 //! stderr carries one human line. Exit codes stay 0 (ok), 1 (failure) and 2 (usage); the
 //! failure is told apart by `kind`, from the 00-D vocabulary. The developer launchers
-//! (`-l`, `-a`, `cc`, `glm`, `codex`, `session`) are outside this contract.
+//! (`cc`, `glm`, `codex`, `session`) are outside this contract.
 
 use serde_json::{json, Value};
 
@@ -492,6 +492,11 @@ mod tests {
             ("unknown planned path", InvalidInput),
             ("manifest missing from plan", InvalidInput),
             ("target is not a bounded regular file", InvalidInput),
+            // a replace refused for the size of the file it would replace, and a receipt above
+            // its writer's limit: input refusals, never a stale plan (a size is not a changed
+            // target).
+            ("target larger than 262144 bytes; refused", InvalidInput),
+            ("receipt larger than 16 MiB; refused; nothing was written", InvalidInput),
             ("HEAD is not a 40 hex commit", InvalidInput),
             ("package path invalid", InvalidInput),
             // queue-free (#2675; the open-Issue read queue-next used, #2161)
@@ -689,13 +694,13 @@ mod tests {
             ("archived copy removal write failed", Io),
             ("search query must be 1 to 256 characters", InvalidInput),
             // hooks-plan / hooks-apply (rc.2 I1 #2238)
-            ("unknown hook host; must be claude, codex or omp", InvalidInput),
+            ("unknown hook host; must be claude", InvalidInput),
             (
                 "home directory refused; hooks are written to a project tree only",
                 InvalidInput,
             ),
-            ("existing .codex/hooks.json requires preservation review", Conflict),
-            (".codex/hooks.json receipt requires preservation review", Conflict),
+            ("existing .claude/settings.json requires preservation review", Conflict),
+            ("claude settings receipt requires preservation review", Conflict),
             // incremental index (rc.2 C6 #2182); every current message of the module
             ("index build failed; previous generation kept: a.txt read failed", Io),
             ("index source unavailable: no HEAD commit", Io),

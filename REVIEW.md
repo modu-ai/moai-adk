@@ -42,3 +42,12 @@ suggestion. It never blocks this pull request.
 Items that depend on which paths the diff touches (tests, `skills/moai/**`, golden files,
 `Cargo.lock`) arrive in the package's `checklist` key, from `tools/review_checklist.json`
 at the base commit; they are not repeated here.
+
+<!-- moai:managed:begin id=moai-review -->
+## 프로젝트 리뷰 규칙 (관리 구간)
+
+`/moai project` 인터뷰 답이다. 이 구간 밖에 적은 규칙은 MoAI가 건드리지 않는다.
+
+- 리뷰에서 항상 막는다: a secret in code or logs; a change without a test; a change outside the task's scope
+- 먼저 묻지 않고 바꾸지 않는다: secret and key files; CI and release settings in the .github folder; migrations and data folders
+<!-- moai:managed:end id=moai-review -->

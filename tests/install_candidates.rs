@@ -132,10 +132,14 @@ fn every_moai_is_listed_in_order_and_told_apart_without_writing() {
         ]
     );
     assert_eq!(items[0]["version_line"], json!("moai-adk 3.2.0"));
-    assert!(items[1]["version_line"]
-        .as_str()
-        .unwrap()
-        .starts_with("moai-cli "));
+    // The built binary prints `moai <ver> (rust)`; a copy of the earlier build prints
+    // `moai-cli <ver> (rust)`. The reader accepts both names, so this test does too.
+    let rust_line = items[1]["version_line"].as_str().unwrap();
+    assert!(
+        (rust_line.starts_with("moai ") || rust_line.starts_with("moai-cli "))
+            && rust_line.ends_with(" (rust)"),
+        "{rust_line}"
+    );
     assert_eq!(items[3]["version_line"], json!(null), "no output");
     assert!(items[0]["sha256"].as_str().unwrap().starts_with("sha256:"));
     assert_eq!(c["more"], json!(0));
@@ -319,7 +323,7 @@ fn a_probe_gets_no_token_variable_and_runs_outside_the_project() {
 /// #2791 pre-audit 6865400825 B1, #2808 audit B1: the probe limit holds even when a shell
 /// wrapper's own child keeps stdout open — a wrapper waiting on a background `sleep 60`, and
 /// one that prints its line and exits while a background child still holds the pipe. The
-/// limit is injected (`MOAI_CLI_TEST_PROBE_TIMEOUT_MS`, debug builds only), so the test reads
+/// limit is injected (`MOAI_TEST_PROBE_TIMEOUT_MS`, debug builds only), so the test reads
 /// the results, not the clock: the first reports nothing, the second keeps the line printed
 /// before the limit, and both left-over children are gone (the process group was killed).
 /// The real 5 s value is pinned by the lib test `the_probe_limits_are_pinned`.
@@ -352,7 +356,7 @@ fn the_probe_limit_holds_when_a_wrapper_child_keeps_stdout_open() {
         .env("PATH", join(&[&stuck, &left]))
         // 2 s, not less: a loaded machine (load 27–39 seen, #2843) may need well over 300 ms
         // before the wrapper prints its line; the children still hold the pipe for 60 s.
-        .env("MOAI_CLI_TEST_PROBE_TIMEOUT_MS", "2000")
+        .env("MOAI_TEST_PROBE_TIMEOUT_MS", "2000")
         .env_remove("CLAUDE_PROJECT_DIR")
         .env_remove("GOBIN")
         .current_dir(&home)

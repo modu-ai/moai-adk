@@ -1,6 +1,6 @@
 # Language: Java and Kotlin
 
-When to read: `internal/quality` sent you here because the project's detected languages include `java` or `kotlin`. The project's own declarations (CI steps, `AGENTS.md`) win over every default below.
+When to read: `internal/quality` sent you here because the project's detected languages include `java` or `kotlin`. The project's own declarations (CI steps, `CLAUDE.md`) win over every default below.
 
 ## Which build tool
 

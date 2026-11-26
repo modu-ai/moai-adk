@@ -2,20 +2,19 @@
 
 이 표의 유일한 입력은 08-C E2E receipt(`docs/e2e-receipts/receipts.jsonl`, `schemas/e2e-receipt.schema.json`)다. RL-10: receipt가 없는 조합은 지원으로 표기하지 않고, 지원 행 수 == passed receipt 수. 검증은 `python3 -I tools/check_support_matrix.py docs/support-matrix.md docs/e2e-receipts/`(exit 0 = 일치).
 
-**상태 한계(숨기지 않음)**: 이 표의 passed 행은 T1 결정적 fixture(호스트 `none`) 5건과 T2 정적 검증 1건이다. 실제 호스트 로딩(certified) — Claude/Codex가 `/moai`·`$moai`로 skill을 로딩하는 E2E — 는 운영자 실측(T2, 자격증명 필요) 전까지 전부 `not_run`이며, "지원" 행이 곧 실사용 보증이 아님을 이 문서 머리에 명시한다. RC1은 게시 전 단계다.
+**상태 한계(숨기지 않음)**: 이 표의 passed 행은 T1 결정적 fixture(호스트 `none`) 5건과 T2 정적 검증 1건이다. 실제 호스트 로딩(certified) — Claude Code가 `/moai`로 skill을 로딩하는 E2E — 는 운영자 실측(T2, 자격증명 필요) 전까지 전부 `not_run`이며, "지원" 행이 곧 실사용 보증이 아님을 이 문서 머리에 명시한다. RC1은 게시 전 단계다.
 
 ## 지원 대상 조합 (P04)
 
-rc.1의 지원 대상은 **Darwin/arm64(`aarch64-apple-darwin`) × Claude Code, Darwin/arm64 × Codex** 두 조합뿐이다(사용자 결정 P04, #2262). 아래 표에서 "지원 대상"은 범위를 정한 것이지 지원 보증이 아니다. 보증은 passed receipt가 있는 행만 하고(RL-10), 두 조합의 host 로딩 E2E(T2)는 receipt가 오기 전까지 `not_run`이다.
+rc.1의 지원 대상은 **Darwin/arm64(`aarch64-apple-darwin`) × Claude Code** 조합이다(사용자 결정 P04, #2262). 2026-11-21 사용자 결정으로 지원 host는 Claude Code와 GLM뿐이고, GLM은 같은 Claude Code를 z.ai 모델로 띄우는 `moai glm` 실행이다. 아래 표에서 "지원 대상"은 범위를 정한 것이지 지원 보증이 아니다. 보증은 passed receipt가 있는 행만 하고(RL-10), 이 조합의 host 로딩 E2E(T2)는 receipt가 오기 전까지 `not_run`이다.
 
 **지원 플랫폼(사용자 결정 2026-11-17, `SPEC-20261117-supported-platforms`)**: "windows, macOS 실리콘, linux_x86_64 이렇게 제공하자. claude code, codex에서 지원하는 환경으로 동일하게 지원하자." 지원 플랫폼은 macOS arm64(`aarch64-apple-darwin`), Linux x86_64(`x86_64-unknown-linux-gnu`), Windows x86_64(`x86_64-pc-windows-msvc`) 세 개다. Intel macOS와 Linux arm64는 지원하지 않는다: CI target에서 빠졌고, 설치 스크립트(`install/install.sh`, `install/install.ps1`)는 "Unsupported platform"을 출력하고 0이 아닌 코드로 끝난다. 릴리스(dist) target 목록은 별도 사용자 선택이라 이 변경에서 바꾸지 않았다(`dist-workspace.toml`은 아직 `aarch64-apple-darwin`만). 지원 플랫폼도 host 지원 판정은 아래 receipt 규칙(RL-10)을 따른다.
 
 | 조합 | 범위 | 현재 결과 |
 | --- | --- | --- |
 | Darwin/arm64 × Claude Code | 지원 대상 | T2 not_run(AC-08C-3·6·8 절반), 정적 검증 AC-08C-5만 passed |
-| Darwin/arm64 × Codex | 지원 대상 | T2 not_run(AC-08C-4) |
 | Linux x86_64(ubuntu-24.04) | 지원 플랫폼(2026-11-17), host 측정 전 | host 측정 없음. CI check set만 측정(아래 "CI OS matrix") |
-| Windows x86_64(windows-2025) | 지원 플랫폼(2026-11-17), host 측정 전. CI는 빌드만(결정 01:1x(11-09), E3 #2195) | **not_run** — CI `windows-build` job은 `--all-targets`로 라이브러리·`moai-cli` binary·portable 시험 target을 컴파일한다. 시험 실행·실행 중 교체·host 로딩은 측정하지 않음(Windows 시험 실행은 후속 조각) |
+| Windows x86_64(windows-2025) | 지원 플랫폼(2026-11-17), host 측정 전. CI는 빌드만(결정 01:1x(11-09), E3 #2195); 릴리스 PR 에서는 검사 세트도 돈다(`SPEC-20261120-release-pr-three-os`, 첫 실행은 아직 not_run) | **not_run** — CI `windows-build` job은 `--all-targets`로 라이브러리·`moai-cli` binary·portable 시험 target을 컴파일한다. 시험 실행·실행 중 교체·host 로딩은 측정하지 않음(Windows 시험 실행은 후속 조각) |
 | Darwin/x86_64(`x86_64-apple-darwin`, Intel Mac) | 미지원(2026-11-17 결정) | CI target에서 빠짐. 설치 스크립트가 거절 |
 | Linux arm64(`aarch64-unknown-linux-gnu`) | 미지원(2026-11-17 결정) | CI target에서 빠짐. 설치 스크립트가 거절 |
 | ZCode·그 밖의 host | 미지원(후속) | 측정하지 않음 |
@@ -41,7 +40,6 @@ RC1의 host 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust tripl
 | --- | --- | --- | --- | --- | --- |
 | Darwin/arm64 | Claude Code | local | 명시 호출이 SETUP route 도달 (AC-08C-3) | not_run | 운영자 실측 대기 — `ANTHROPIC_API_KEY` 필요(체크아웃 밖 1회) |
 | Darwin/arm64 | Claude Code | local | 권한 거부 시 apply 차단·트리 불변 (AC-08C-6) | not_run | 동일(운영자 실측 대기) |
-| Darwin/arm64 | Codex | local | 명시 호출이 SETUP route 도달 (AC-08C-4) | not_run | `CODEX_API_KEY` 필요(운영자 실측 대기) |
 | Darwin/arm64 | Claude Code | local | clean clone READ (AC-08C-8 T2 절반) | not_run | 운영자 실측 대기 |
 | ubuntu-24.04 | — | local | host 항목 전체 | not_run | 지원 플랫폼(2026-11-17)이지만 host E2E receipt 없음 — P04로 rc.1 범위 밖(CI check set은 아래 "CI OS matrix" 절, host 판정 아님) |
 | ubuntu-24.04-arm / Darwin x86_64 | — | local | host 항목 전체 | not_run | 미지원(2026-11-17 결정, `SPEC-20261117-supported-platforms`) — 측정하지 않음 |
@@ -67,10 +65,10 @@ run `42619829090`(PR #2309, `pull_request`, head `15d8178bc2d9a8dd1ba16bfaae5424
 | macOS x86_64 | `macos-15-intel` | `x86_64-apple-darwin` | 517 / 0 실패 / 0 ignored(59 binary) | Ran 118, OK(skipped=1) | 2 실행 ok | 6 실행 · 1 skip | success | 129168786658 | 4s / 7m12s |
 
 - cargo 시험 수 차이: 공통 515개에 Linux는 `tests/script_write_race.rs`(`#![cfg(target_os = "linux")]`, 3개)를 더하고, macOS는 위 macOS 전용 2개를 더한다.
-- macOS에서 skip된 Python 1개는 `claude` 바이너리가 필요한 시험이다(hosted runner에 없음). Claude·Codex 실세션은 어느 target에서도 돌리지 않았다.
+- macOS에서 skip된 Python 1개는 `claude` 바이너리가 필요한 시험이다(hosted runner에 없음). Claude Code 실세션은 어느 target에서도 돌리지 않았다.
 - AC-08C-7(사용자 HOME 쓰기 차단)은 macOS 두 target의 `e2e_never_writes_outside_temp_home`이 hosted runner에서도 ok였다. Linux에는 대체 차단 수단이 없어 위 not_run 행이 그대로 유효하다.
 - 첫 run `42618040618`(head `f557b035a`)은 macOS 두 target만 success였다. Linux 두 target은 check set은 초록이었는데, workflow의 macOS 전용 요약 블록 결함(grep 일치 없음 + `pipefail`)으로 job이 failure가 됐다. 그 결함을 고친 뒤 위 run에서 측정했다.
-- windows-2025는 위 matrix에 없다. 별도 job `windows-build`(E3 #2195)가 `--all-targets`로 라이브러리·binary·portable 시험 target을 컴파일하되 시험은 실행하지 않는다. Unix 권한 시험과 Unix symlink 구간만 조건부 컴파일한다. `ci` 집계(`needs: [check]`)에 들어가지 않으므로 `ci` 결론에 영향이 없다. 결과는 위 not_run 절의 windows-2025 행에 적는다.
+- windows-2025는 위 matrix에 없다. 별도 job `windows-build`(E3 #2195)가 `--all-targets`로 라이브러리·binary·portable 시험 target을 컴파일하되 시험은 실행하지 않는다. Unix 권한 시험과 Unix symlink 구간만 조건부 컴파일한다. `ci` 집계(`needs: [check]`)에 들어가지 않으므로 `ci` 결론에 영향이 없다. 결과는 위 not_run 절의 windows-2025 행에 적는다. 릴리스 PR(head 가지가 `release/<40자 hex>` 또는 `release/rc/<40자 hex>`)에서는 `ci` 워크플로의 `windows-check` 잡이 후보 검증과 같은 검사 세트를 Windows 에서 돌리고, 그 잡이 성공해야 `ci` 집계가 통과한다(`SPEC-20261120-release-pr-three-os`). 그 첫 실행 결과는 아직 없다(not_run).
 
 ## RELEASE 시험군 (rc.2 E6 #2198) — fixture 결과, host 지원 판정 아님
 
@@ -110,9 +108,9 @@ run `42619829090`(PR #2309, `pull_request`, head `15d8178bc2d9a8dd1ba16bfaae5424
 
 ### update 중단 복구 (known-good)
 
-실제 v1→v2 update(파일 3개)를 끝낸 뒤 codex host를 중단 지점 k로 되돌려 `recovery-plan`·`recovery-apply`를 돌린 결과다. 복구에는 실제 v2 apply가 저장한 known-good 사본을 쓴다.
+실제 v1→v2 update(파일 3개)를 끝낸 뒤 `tests/release_suite.rs` fixture의 Claude 투영(`.claude/skills/moai`)을 중단 지점 k로 되돌려 `recovery-plan`·`recovery-apply`를 돌린 결과다. 복구에는 실제 v2 apply가 저장한 known-good 사본을 쓴다.
 
-| 중단 지점 k | 게시된 entry | 분류(SKILL.md · new.md · update.md) | 복구된 파일 | codex 트리 = v1 digest | claude host · 가짜 Go 상태 |
+| 중단 지점 k | 게시된 entry | 분류(SKILL.md · new.md · update.md) | 복구된 파일 | 그 투영 트리 = v1 digest | 사용자 skill 폴더(`.claude/skills/my-skill`) · 가짜 Go 상태 |
 | --- | --- | --- | --- | --- | --- |
 | 0 | 없음 | before · before · before | 없음 | 예 | 그대로 |
 | 1 | SKILL.md | after · before · before | SKILL.md | 예 | 그대로 |

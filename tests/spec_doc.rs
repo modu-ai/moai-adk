@@ -330,6 +330,22 @@ fn approval_fields_and_digest_are_checked() {
     );
 }
 
+/// SPEC-20261124-lane-branch-after-spec AC-6 (REQ-6): `branch` is a SPEC key, so it draws no
+/// `fm_unknown_key` warning; another key still does.
+#[test]
+fn branch_is_a_known_spec_key() {
+    let body = minimal_body();
+    let linked = doc(&format!(
+        "{}{body}",
+        front("draft", "branch: spec/lane-x-20261124\n")
+    ));
+    assert!(errors(&linked).is_empty(), "{:?}", linked.findings);
+    assert!(warnings(&linked).is_empty(), "{:?}", linked.findings);
+    assert!(linked.unknown_keys.is_empty(), "{:?}", linked.unknown_keys);
+    let unknown = doc(&format!("{}{body}", front("draft", "owner: someone\n")));
+    assert_eq!(warnings(&unknown), vec!["fm_unknown_key"]);
+}
+
 #[test]
 fn frontmatter_keys_shape_and_values() {
     let body = minimal_body();
@@ -1106,4 +1122,240 @@ fn interview_section() {
     // A SPEC of the older generation without the section reads as before.
     let plain = doc(&approved_on("2026-11-17", "approved", ""));
     assert!(plain.findings.is_empty(), "{:?}", plain.findings);
+}
+
+/// SPEC-20261123-spec-check-glued-items: the `item_glued` findings of a document, as
+/// `(line, severity, message)`.
+fn glued(d: &SpecDoc) -> Vec<(usize, Severity, String)> {
+    d.findings
+        .iter()
+        .filter(|f| f.code == "item_glued")
+        .map(|f| (f.line.unwrap_or(0), f.severity, f.message.clone()))
+        .collect()
+}
+
+/// The 1-based line of the first line of `text` that holds `needle`.
+fn line_of(text: &str, needle: &str) -> usize {
+    text.lines()
+        .position(|l| l.contains(needle))
+        .unwrap_or_else(|| panic!("no line holds {needle}"))
+        + 1
+}
+
+/// The minimal SPEC with `from` replaced by `to`.
+fn changed(from: &str, to: &str) -> String {
+    format!(
+        "{}{}",
+        front("draft", ""),
+        minimal_body().replacen(from, to, 1)
+    )
+}
+
+/// REQ-1: two items on one line are an error that names the line and the second id.
+#[test]
+fn a_glued_item_is_an_error_with_its_line_and_id() {
+    let text = changed(
+        ACS,
+        "## Acceptance\n\n- AC-1 (REQ-1): A valid password logs in · verify: `cargo test \
+         --test login` - AC-2 (REQ-1): A bad one is refused · verify: `cargo test`\n\n",
+    );
+    let d = doc(&text);
+    let found = glued(&d);
+    assert_eq!(found.len(), 1, "{:?}", d.findings);
+    assert_eq!(found[0].0, line_of(&text, "- AC-2"));
+    assert_eq!(found[0].1, Severity::Error);
+    assert!(found[0].2.contains("AC-2"), "{}", found[0].2);
+    assert!(
+        !found[0].2.contains("cargo test"),
+        "the message never quotes the text"
+    );
+    // Three items on one line give one error for each later item.
+    let three = changed(
+        ACS,
+        "## Acceptance\n\n- AC-1 (REQ-1): one · verify: `a` - AC-2 (REQ-1): two - AC-3 (REQ-1): \
+         three\n\n",
+    );
+    let found = glued(&doc(&three));
+    assert_eq!(found.len(), 2, "{found:?}");
+    assert!(found[0].2.contains("AC-2") && found[1].2.contains("AC-3"));
+    assert!(found.iter().all(|f| f.0 == line_of(&three, "- AC-2")));
+    // A SPEC that keeps each item on its own line has none.
+    assert!(glued(&doc(&format!("{}{}", front("draft", ""), minimal_body()))).is_empty());
+}
+
+/// REQ-1: the four item sections and the three id kinds, mixed pairs included.
+#[test]
+fn glued_items_are_found_in_every_item_section() {
+    let reqs = changed(
+        REQS,
+        "## Requirements\n\n- REQ-1: When a user sends a valid password, the server shall accept \
+         the login. - REQ-3: The server shall log it.\n- REQ-2 (REQ-1): IF the password check \
+         fails, THEN the server shall refuse the login.\n\n",
+    );
+    let found = glued(&doc(&reqs));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].0, line_of(&reqs, "- REQ-3"));
+    assert!(found[0].2.contains("REQ-3"));
+    let tail = |section: &str| format!("{}{}{section}", front("draft", ""), minimal_body());
+    let decisions = tail("## Decisions\n\n- D-1: keep it small - D-2: no new crate\n\n");
+    let found = glued(&doc(&decisions));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].0, line_of(&decisions, "- D-2"));
+    assert!(found[0].2.contains("D-2"));
+    let result = tail("## Result\n\n- AC-1 met - AC-2 met\n\n");
+    let found = glued(&doc(&result));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].0, line_of(&result, "- AC-2"));
+    assert!(found[0].2.contains("AC-2"));
+    // A pair of different kinds is glued as well.
+    let mixed = tail("## Decisions\n\n- D-1: keep it small - REQ-3: and say so\n\n");
+    let found = glued(&doc(&mixed));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(found[0].2.contains("REQ-3"));
+    // A section that holds no items is not read: the same words in `## Plan` are prose.
+    let plan = changed(
+        PLAN,
+        "## Plan\n\n1. Fix the comparison. - AC-2 says how to check it.\n\n",
+    );
+    assert!(glued(&doc(&plan)).is_empty());
+}
+
+/// REQ-2: a ` - ` that is text, not a second item.
+#[test]
+fn text_that_only_looks_glued_is_not_an_error() {
+    let looks = [
+        // Inside a backtick span.
+        "- AC-1 (REQ-1): A valid password logs in · verify: `grep -c - AC-2 spec.md`\n",
+        // Right after an id: a range written with a dash.
+        "- AC-1 (REQ-1): A valid password logs in, as AC-3 - AC-5 name · verify: `cargo test`\n",
+        // `*` and `+` are not the marker of a second item.
+        "- AC-1 (REQ-1): A valid password logs in * AC-2 and + AC-3 · verify: `cargo test`\n",
+        // The line starts no item.
+        "Notes - AC-2 is checked below\n- AC-1 (REQ-1): A valid password logs in · verify: \
+         `cargo test`\n",
+    ];
+    for body in looks {
+        let d = doc(&changed(ACS, &format!("## Acceptance\n\n{body}\n")));
+        assert!(glued(&d).is_empty(), "{body}: {:?}", d.findings);
+    }
+    // Inside a fenced block, in `~~~` fences too.
+    for fence in ["```", "~~~"] {
+        let d = doc(&changed(
+            ACS,
+            &format!(
+                "## Acceptance\n\n- AC-1 (REQ-1): A valid password logs in · verify: `cargo \
+                 test`\n\n{fence}\n- AC-2 (REQ-1): x - AC-3 (REQ-1): y\n{fence}\n\n"
+            ),
+        ));
+        assert!(glued(&d).is_empty(), "{fence}: {:?}", d.findings);
+    }
+    // After the fence closes the check reads lines again.
+    let after = changed(
+        ACS,
+        "## Acceptance\n\n```\n- AC-2: x - AC-3: y\n```\n- AC-1 (REQ-1): one · verify: `a` - \
+         AC-4 (REQ-1): two\n\n",
+    );
+    let found = glued(&doc(&after));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(found[0].2.contains("AC-4"));
+}
+
+/// REQ-1 (audit 402 B1): the next item written right after the closing backtick of a span,
+/// with no space before the dash, is glued too. This is the line that gave the card its
+/// name (`SPEC-20261122-test-defects-session-reclaim` spec.md:47 at 267614fd4f).
+#[test]
+fn a_glued_item_right_after_a_closing_backtick_is_an_error() {
+    let text = changed(
+        ACS,
+        "## Acceptance\n\n- AC-9 (REQ-1): a name with a space is compared as written · verify: \
+         `cargo test --offline --locked --test card_reclaim_early_cli a_name`- AC-10 (REQ-1): \
+         the name test removes every documented trace variable · verify: `cargo nextest run \
+         --lib -E 'test(git_trace_variables)'`\n\n",
+    );
+    let d = doc(&text);
+    let found = glued(&d);
+    assert_eq!(found.len(), 1, "{:?}", d.findings);
+    assert_eq!(found[0].0, line_of(&text, "- AC-10"));
+    assert_eq!(found[0].1, Severity::Error);
+    assert!(found[0].2.contains("AC-10"), "{}", found[0].2);
+    // The dash right after an opening backtick, or with no space after it, is text.
+    for body in [
+        "- AC-1 (REQ-1): one · verify: `- AC-2 (REQ-1): two`\n",
+        "- AC-1 (REQ-1): one · verify: `a`-AC-2 (REQ-1): two\n",
+        "- AC-1 (REQ-1): one · verify: `a`- not an item\n",
+    ] {
+        let d = doc(&changed(ACS, &format!("## Acceptance\n\n{body}\n")));
+        assert!(glued(&d).is_empty(), "{body}: {:?}", d.findings);
+    }
+}
+
+/// REQ-1 (audit 402 N1): a list line that starts no `REQ-`, `AC-` or `D-` item is not read,
+/// whatever it holds after a ` - `.
+#[test]
+fn a_list_line_that_starts_no_item_is_not_read() {
+    let d = doc(&changed(
+        ACS,
+        "## Acceptance\n\n- Notes on how to check - AC-2 (REQ-1): two\n- AC-1 (REQ-1): one · \
+         verify: `cargo test`\n\n",
+    ));
+    assert!(glued(&d).is_empty(), "{:?}", d.findings);
+}
+
+/// REQ-2 (audit 402 N2): a backtick with no partner is a letter; a ` - ` after it is still
+/// checked.
+#[test]
+fn a_stray_last_backtick_is_text() {
+    let lone = changed(
+        ACS,
+        "## Acceptance\n\n- AC-1 (REQ-1): the quote ` is a letter - AC-2 (REQ-1): two\n\n",
+    );
+    let found = glued(&doc(&lone));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].0, line_of(&lone, "- AC-2"));
+    assert!(found[0].2.contains("AC-2"));
+    // A paired span still hides its own ` - `; only the last, unpaired backtick is a letter.
+    let mixed = changed(
+        ACS,
+        "## Acceptance\n\n- AC-1 (REQ-1): `a - AC-9` and a stray ` then - AC-2 (REQ-1): two\n\n",
+    );
+    let found = glued(&doc(&mixed));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(found[0].2.contains("AC-2"));
+}
+
+/// REQ-2 (audit 402 N4): a ` - ` after an id is a range only when the id starts a word.
+#[test]
+fn a_dash_after_a_word_that_ends_in_an_id_is_not_a_range() {
+    let text = changed(
+        ACS,
+        "## Acceptance\n\n- AC-1 (REQ-1): one, see CD-1 - AC-2 (REQ-1): two\n\n",
+    );
+    let found = glued(&doc(&text));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(found[0].2.contains("AC-2"));
+    // An id after a bracket or a comma still starts a word.
+    for body in [
+        "- AC-1 (REQ-1): one, see (AC-3 - AC-5) · verify: `cargo test`\n",
+        "- AC-1 (REQ-1): one, see AC-3, D-1 - D-2 · verify: `cargo test`\n",
+    ] {
+        let d = doc(&changed(ACS, &format!("## Acceptance\n\n{body}\n")));
+        assert!(glued(&d).is_empty(), "{body}: {:?}", d.findings);
+    }
+}
+
+/// REQ-3: the same line in a Go-generation SPEC is a warning, like the other format codes.
+#[test]
+fn a_glued_item_is_a_warning_in_a_go_generation_spec() {
+    let text = changed(
+        ACS,
+        "## Acceptance\n\n- AC-1 (REQ-1): one · verify: `a` - AC-2 (REQ-1): two · verify: `b`\n\n",
+    );
+    let new_form = glued(&doc(&text));
+    assert_eq!(new_form.len(), 1);
+    assert_eq!(new_form[0].1, Severity::Error);
+    let legacy = doc(&text.replace(ID, "SPEC-AUTH-001"));
+    let found = glued(&legacy);
+    assert_eq!(found.len(), 1, "{:?}", legacy.findings);
+    assert_eq!(found[0].1, Severity::Warning);
+    assert!(!errors(&legacy).contains(&"item_glued"));
 }

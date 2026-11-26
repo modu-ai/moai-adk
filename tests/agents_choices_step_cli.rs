@@ -1,5 +1,5 @@
 //! SPEC-20261119-agents-choices-step (card C-57, slice 2b): the `generation` step of
-//! `project-update-plan` offers the append, skip and CLAUDE.md import choices of slice 2a, and
+//! `project-update-plan` offers the append and skip choices of slice 2a, and
 //! `generation-plan`/`generation-apply` carry the pick in the request's `picks`.
 //!
 //! Every case runs the built binary in a temporary project with an empty temporary HOME; the
@@ -164,7 +164,7 @@ impl Fx {
         let mut request = generation["apply"]["stdin"]["request"].clone();
         request["language"] = json!("ko");
         assert_eq!(fx.apply(generation)["ok"], json!(true));
-        fx.write("AGENTS.md", HUMAN);
+        fx.write("CLAUDE.md", HUMAN);
         fx.with_language(hosts, Some("ko"));
         (fx, request)
     }
@@ -179,7 +179,7 @@ impl Fx {
         let plan = fx.update_plan();
         assert_eq!(fx.apply(step(&plan, "generation"))["ok"], json!(true));
         assert!(!fx.root.join("REVIEW.md").exists(), "no review answer yet");
-        fx.write("AGENTS.md", HUMAN);
+        fx.write("CLAUDE.md", HUMAN);
         fx.with_answers(hosts, Some("ko"), true);
         fx
     }
@@ -294,7 +294,7 @@ fn generation_picks_absent_or_empty_leave_the_request_json_and_the_digest_as_bef
     assert_eq!(plain_digest, empty_digest);
     assert!(plain["request"].get("picks").is_none(), "{plain}");
     assert!(empty["request"].get("picks").is_none(), "{empty}");
-    assert_eq!(action(&plain, "AGENTS.md"), "conflict", "{plain}");
+    assert_eq!(action(&plain, "CLAUDE.md"), "conflict", "{plain}");
 }
 
 #[test]
@@ -302,11 +302,11 @@ fn generation_plan_with_the_append_pick_plans_agents_md_as_append_and_writes_not
     let (fx, request) = Fx::conflict(&["claude", "codex"]);
     let (plain, plain_digest) = plan_digest(&fx, &request);
     let (picked, picked_digest) = plan_digest(&fx, &with_picks(&request, &["append-managed"]));
-    assert_eq!(action(&picked, "AGENTS.md"), "append", "{picked}");
+    assert_eq!(action(&picked, "CLAUDE.md"), "append", "{picked}");
     assert_eq!(picked["request"]["picks"], json!(["append-managed"]));
     assert_ne!(plain_digest, picked_digest);
-    assert_eq!(action(&plain, "AGENTS.md"), "conflict");
-    assert_eq!(fx.read("AGENTS.md"), HUMAN, "a plan writes nothing");
+    assert_eq!(action(&plain, "CLAUDE.md"), "conflict");
+    assert_eq!(fx.read("CLAUDE.md"), HUMAN, "a plan writes nothing");
 }
 
 // REQ-3: the apply re-plans and applies with the picks of the plan it is given.
@@ -326,7 +326,7 @@ fn generation_apply_applies_the_pick_the_plan_carries() {
         &serde_json::to_vec(&plan).unwrap(),
     );
     assert_eq!(out["ok"], json!(true), "{out}");
-    let text = fx.read("AGENTS.md");
+    let text = fx.read("CLAUDE.md");
     assert!(text.starts_with(HUMAN), "{text:?}");
     assert_eq!(text.matches("moai:managed:begin").count(), 1, "{text:?}");
 }
@@ -335,29 +335,27 @@ fn generation_apply_applies_the_pick_the_plan_carries() {
 #[test]
 fn generation_an_unknown_pick_is_refused_as_invalid_input_and_writes_nothing() {
     let (fx, request) = Fx::conflict(&["claude", "codex"]);
-    let before = fx.read("AGENTS.md");
+    let before = fx.read("CLAUDE.md");
     let out = fx.run(
         &["generation-plan", fx.p()],
         &serde_json::to_vec(&with_picks(&request, &["no-such-pick"])).unwrap(),
     );
     assert_eq!(out["ok"], json!(false), "{out}");
     assert_eq!(out["error"]["kind"], "invalid_input", "{out}");
-    assert_eq!(fx.read("AGENTS.md"), before);
+    assert_eq!(fx.read("CLAUDE.md"), before);
 }
 
-// REQ-5: the shadow rides the plan and stays out of the digest.
+// REQ-5 of the earlier slice, replaced: CLAUDE.md is moai's file, so it shadows nothing and the
+// plan never carries a `claude_shadow`, whatever the file holds.
 #[test]
-fn generation_plan_carries_the_claude_shadow_outside_the_digest() {
-    // A CLAUDE.md is already named in `host_notes` (and so in the digest) whatever it holds;
-    // what the shadow adds is only whether it imports AGENTS.md, and that must not move it.
+fn generation_plan_carries_no_claude_shadow_whatever_claude_md_holds() {
     let (fx, request) = Fx::settled_with_request(&["claude", "codex"]);
-    fx.write("CLAUDE.md", "@AGENTS.md\n# mine\n");
-    let (without, without_digest) = plan_digest(&fx, &request);
-    assert!(without.get("claude_shadow").is_none(), "{without}");
-    fx.write("CLAUDE.md", "# mine\n");
-    let (with, with_digest) = plan_digest(&fx, &request);
-    assert_eq!(with["claude_shadow"]["path"], json!("CLAUDE.md"), "{with}");
-    assert_eq!(without_digest, with_digest);
+    for text in ["@AGENTS.md\n# mine\n", "# mine\n"] {
+        // Only the absence of `claude_shadow` is under test, not the block.
+        fx.write("CLAUDE.md", text);
+        let (plan, _) = plan_digest(&fx, &request);
+        assert!(plan.get("claude_shadow").is_none(), "{text:?}: {plan}");
+    }
 }
 
 // REQ-6, REQ-7, REQ-10: the conflict step lists the choices and each command works.
@@ -388,7 +386,7 @@ fn choices_a_missing_block_conflict_lists_append_then_skip_and_keeps_its_state()
         assert_eq!(c["apply"]["stdin"]["request"]["picks"], picks, "{c}");
         assert_eq!(c["apply"]["stdin"]["plan_digest"], json!(digest), "{c}");
     }
-    assert_eq!(fx.read("AGENTS.md"), HUMAN, "a preview writes nothing");
+    assert_eq!(fx.read("CLAUDE.md"), HUMAN, "a preview writes nothing");
 }
 
 #[test]
@@ -397,7 +395,7 @@ fn choices_the_append_command_keeps_every_byte_and_settles_the_next_plan() {
     let generation = step(&fx.update_plan(), "generation").clone();
     let out = fx.apply(choice(&generation, "append-managed"));
     assert_eq!(out["ok"], json!(true), "{out}");
-    let text = fx.read("AGENTS.md");
+    let text = fx.read("CLAUDE.md");
     assert!(text.starts_with(HUMAN), "{text:?}");
     assert_eq!(text.matches("moai:managed:begin").count(), 1, "{text:?}");
     let after = fx.update_plan();
@@ -423,7 +421,7 @@ fn choices_the_skip_command_keeps_agents_md_and_applies_the_rest() {
     let before = fx.read(&workflow);
     let out = fx.apply(choice(&generation, "skip-conflicts"));
     assert_eq!(out["ok"], json!(true), "{out}");
-    assert_eq!(fx.read("AGENTS.md"), HUMAN);
+    assert_eq!(fx.read("CLAUDE.md"), HUMAN);
     assert_ne!(
         fx.read(&workflow),
         before,
@@ -458,7 +456,7 @@ fn choices_review_md_is_written_whichever_pick_settles_the_agents_md_conflict() 
         assert_eq!(out["ok"], json!(true), "{pick}: {out}");
         let review = fx.read("REVIEW.md");
         assert!(review.contains(REVIEW_RULE), "{pick}: {review}");
-        let agents = fx.read("AGENTS.md");
+        let agents = fx.read("CLAUDE.md");
         if pick == "skip-conflicts" {
             assert_eq!(agents, HUMAN, "the skip keeps the hand-written file");
         } else {
@@ -481,19 +479,21 @@ fn choices_review_md_is_written_whichever_pick_settles_the_agents_md_conflict() 
     }
 }
 
-// REQ-6: only a missing block is offered the append and the skip; an edited block is not.
+// SPEC-20261125-update-same-bytes-no-conflict REQ-7, REQ-8 and REQ-9: an edited block is a
+// conflict too, so the skip is offered and names the file it keeps; the append stays for a
+// missing block only.
 #[test]
-fn choices_an_edited_block_conflict_offers_no_append_or_skip() {
+fn ac3_an_edited_block_conflict_offers_the_skip_and_no_append() {
     let fx = Fx::new();
     fx.with_language(&["claude", "codex"], Some("en"));
     let plan = fx.update_plan();
     assert_eq!(fx.apply(step(&plan, "generation"))["ok"], json!(true));
     // A line typed inside the managed block, then a profile that renders it differently.
-    let text = fx.read("AGENTS.md");
+    let text = fx.read("CLAUDE.md");
     let end = "<!-- moai:managed:end";
     assert_eq!(text.matches(end).count(), 1, "{text}");
     fx.write(
-        "AGENTS.md",
+        "CLAUDE.md",
         &text.replacen(end, &format!("hand edit\n{end}"), 1),
     );
     fx.with_language(&["claude", "codex"], Some("ko"));
@@ -504,21 +504,27 @@ fn choices_an_edited_block_conflict_offers_no_append_or_skip() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|f| f["path"] == "AGENTS.md")
+        .find(|f| f["path"] == "CLAUDE.md")
         .unwrap()["detail"]
         .as_str()
         .unwrap_or_default()
         .to_string();
     assert!(!detail.contains("missing"), "{detail}");
+    assert_eq!(choice_ids(generation), ["skip-conflicts"], "{generation}");
+    let skip = choice(generation, "skip-conflicts");
     assert!(
-        generation["preview"].get("choices").is_none(),
-        "{generation}"
+        skip["effect"].as_str().unwrap().contains("CLAUDE.md"),
+        "the effect does not name the file it keeps: {skip}"
     );
+    let applied = fx.apply(skip);
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert!(fx.read("CLAUDE.md").contains("hand edit"));
 }
 
-// REQ-12: a choice that could not be applied is not offered.
+// REQ-10: a choice that could not be applied is not offered. The append still conflicts on the
+// edited workflow file, so it is left out; the skip keeps both edits and stays.
 #[test]
-fn choices_a_choice_whose_own_plan_still_conflicts_is_left_out() {
+fn ac3_a_choice_whose_own_plan_still_conflicts_is_left_out_and_the_skip_stays() {
     let (fx, _) = Fx::conflict(&["claude", "codex"]);
     // A hand edit of a generated workflow file: its own conflict stays whatever is picked for
     // AGENTS.md, so no command printed here could be applied.
@@ -535,12 +541,75 @@ fn choices_a_choice_whose_own_plan_still_conflicts_is_left_out() {
         .filter(|f| f["action"] == "conflict")
         .map(|f| f["path"].as_str().unwrap())
         .collect();
-    assert_eq!(conflicts, ["AGENTS.md", workflow], "{generation}");
-    assert!(
-        generation["preview"].get("choices").is_none(),
-        "{generation}"
-    );
+    assert_eq!(conflicts, ["CLAUDE.md", workflow], "{generation}");
+    assert_eq!(choice_ids(generation), ["skip-conflicts"], "{generation}");
     assert_eq!(fx.read(workflow), edited, "a preview writes nothing");
+    let applied = fx.apply(choice(generation, "skip-conflicts"));
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert_eq!(fx.read(workflow), edited, "the skip keeps the edited file");
+    assert_eq!(fx.read("CLAUDE.md"), HUMAN, "the skip keeps CLAUDE.md");
+}
+
+// REQ-7 and REQ-9: an edited flat role file of an earlier layout is a conflict of the generation
+// step; the skip is offered, keeps that file and the nested copy of its role out, and nothing
+// else is stopped.
+#[test]
+fn ac3_an_edited_flat_role_conflict_offers_the_skip() {
+    let fx = Fx::new();
+    fx.with_profile(&["claude"]);
+    let plan = fx.update_plan();
+    let mut request = step(&plan, "generation")["apply"]["stdin"]["request"].clone();
+    request["native_roles"] = json!([{
+        "role_id": "prj-fixer", "host": "claude",
+        "purpose": "Fix lint and test failures", "tools": ["Bash", "Edit"]
+    }]);
+    let (planned, digest) = plan_digest(&fx, &request);
+    fx.call(
+        &[
+            "generation-apply",
+            fx.p(),
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            REF,
+        ],
+        &serde_json::to_vec(&planned).unwrap(),
+    );
+    // The earlier layout: the role file flat, and the manifest naming that path.
+    let (nested, flat) = (
+        ".claude/agents/moai/prj-fixer.md",
+        ".claude/agents/prj-fixer.md",
+    );
+    fs::rename(fx.root.join(nested), fx.root.join(flat)).unwrap();
+    let manifest = moai_cli::state_root::path(&fx.root, "manifests/generation.json");
+    let mut value: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
+    for entry in value["owned_files"].as_array_mut().unwrap() {
+        if entry["path"] == json!(nested) {
+            entry["path"] = json!(flat);
+        }
+    }
+    fs::write(&manifest, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+    fx.write(
+        flat,
+        "---\nname: prj-fixer\ndescription: mine\n---\n\nmine\n",
+    );
+
+    let plan = fx.update_plan();
+    let generation = step(&plan, "generation");
+    assert_eq!(generation["state"], "conflict", "{generation}");
+    assert_eq!(choice_ids(generation), ["skip-conflicts"], "{generation}");
+    let skip = choice(generation, "skip-conflicts");
+    assert!(
+        skip["effect"].as_str().unwrap().contains(flat),
+        "the effect does not name the file it keeps: {skip}"
+    );
+    let applied = fx.apply(skip);
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert!(fx.read(flat).contains("mine"), "the edited file stays");
+    assert!(
+        !fx.root.join(nested).exists(),
+        "the nested copy is skipped too"
+    );
 }
 
 // REQ-9: nothing to choose, no key.
@@ -566,50 +635,33 @@ fn choices_are_absent_without_a_conflict_and_without_a_shadow() {
     );
 }
 
-// REQ-8: the CLAUDE.md import.
+// The CLAUDE.md import choice left with the shadow: the writer owns CLAUDE.md, so a settled
+// project whose CLAUDE.md a user rewrote offers no import, and the conflict keeps its two choices.
 #[test]
-fn claude_the_import_choice_stands_alone_while_agents_md_has_no_conflict() {
+fn claude_the_import_choice_is_gone_while_claude_md_has_no_conflict() {
     let fx = Fx::settled(&["claude", "codex"]);
-    fx.write("CLAUDE.md", "# mine\n");
+    let before = fx.read("CLAUDE.md");
+    fx.write("CLAUDE.md", &format!("# mine\n{before}"));
     let plan = fx.update_plan();
     let generation = step(&plan, "generation");
-    assert_eq!(generation["state"], "unchanged", "{generation}");
-    assert_eq!(choice_ids(generation), ["claude-import"]);
-    assert_eq!(
-        generation["preview"]["claude_shadow"]["path"],
-        json!("CLAUDE.md")
+    assert!(
+        generation["preview"].get("choices").is_none(),
+        "{generation}"
     );
-    let out = fx.apply(choice(generation, "claude-import"));
-    assert_eq!(out["ok"], json!(true), "{out}");
-    assert_eq!(fx.read("CLAUDE.md"), "# mine\n@AGENTS.md\n");
-    // Imported: the next preview has nothing to offer.
-    let after = fx.update_plan();
-    let after = step(&after, "generation");
-    assert!(after["preview"].get("choices").is_none(), "{after}");
+    assert!(
+        generation["preview"].get("claude_shadow").is_none(),
+        "{generation}"
+    );
 }
 
 #[test]
-fn claude_the_import_is_combined_with_the_append_while_agents_md_conflicts() {
+fn claude_the_conflict_lists_no_import_combination() {
     let (fx, _) = Fx::conflict(&["claude", "codex"]);
-    fx.write("CLAUDE.md", "# mine\n");
     let generation = step(&fx.update_plan(), "generation").clone();
     assert_eq!(
         choice_ids(&generation),
-        [
-            "append-managed",
-            "skip-conflicts",
-            "append-managed+claude-import"
-        ]
+        ["append-managed", "skip-conflicts"]
     );
-    let combined = choice(&generation, "append-managed+claude-import");
-    assert_eq!(
-        combined["picks"],
-        json!(["append-managed", "claude-import"])
-    );
-    let out = fx.apply(combined);
-    assert_eq!(out["ok"], json!(true), "{out}");
-    assert!(fx.read("AGENTS.md").starts_with(HUMAN));
-    assert_eq!(fx.read("CLAUDE.md"), "# mine\n@AGENTS.md\n");
 }
 
 // REQ-11: the schemas say what the code accepts and prints.
@@ -621,7 +673,7 @@ fn schema(name: &str) -> Value {
 }
 
 #[test]
-fn schema_describes_picks_claude_shadow_and_the_skip_action() {
+fn schema_describes_picks_and_the_skip_action() {
     let request = schema("agents-request.schema.json");
     let ids: Vec<&str> = request["properties"]["picks"]["items"]["enum"]
         .as_array()
@@ -629,7 +681,10 @@ fn schema_describes_picks_claude_shadow_and_the_skip_action() {
         .iter()
         .map(|v| v.as_str().unwrap())
         .collect();
-    assert_eq!(ids, ["append-managed", "skip-conflicts", "claude-import"]);
+    assert_eq!(
+        ids,
+        ["append-managed", "skip-conflicts", "move", "personal-file"]
+    );
     let plan = schema("agents-plan.schema.json");
     assert!(
         plan["properties"].get("claude_shadow").is_some(),
@@ -642,9 +697,8 @@ fn schema_describes_picks_claude_shadow_and_the_skip_action() {
 }
 
 #[test]
-fn schema_lists_every_key_of_a_real_plan_made_with_picks_and_a_shadow() {
+fn schema_lists_every_key_of_a_real_plan_made_with_picks() {
     let (fx, request) = Fx::conflict(&["claude", "codex"]);
-    fx.write("CLAUDE.md", "# mine\n");
     fs::create_dir_all(
         fx.root
             .join(request["workflow_reference"].as_str().unwrap()),
@@ -653,7 +707,7 @@ fn schema_lists_every_key_of_a_real_plan_made_with_picks_and_a_shadow() {
     let agents_request = json!({
         "protocol_version": 1, "language": request["language"],
         "workflow_reference": request["workflow_reference"], "local_file": request["local_file"],
-        "picks": ["skip-conflicts", "claude-import"],
+        "picks": ["skip-conflicts", "personal-file"],
     });
     let plan = fx.call(
         &["agents-plan", fx.p()],

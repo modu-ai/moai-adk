@@ -13,8 +13,7 @@ use std::{
 };
 
 /// Source files that still carry citations, sorted. Remove an entry when its file is cleaned.
-const PENDING: [&str; 14] = [
-    "src/bundle.rs",
+const PENDING: [&str; 12] = [
     "src/claim_timeout.rs",
     "src/claude.rs",
     "src/code_refs.rs",
@@ -23,7 +22,6 @@ const PENDING: [&str; 14] = [
     "src/gate_merge.rs",
     "src/go_state.rs",
     "src/home_layout.rs",
-    "src/hooks.rs",
     "src/lane_env.rs",
     "src/optimize.rs",
     "src/project_update.rs",
@@ -31,7 +29,7 @@ const PENDING: [&str; 14] = [
 ];
 
 /// The files this change cleaned; each has a section in the rationale document.
-const CLEANED: [&str; 17] = [
+const CLEANED: [&str; 16] = [
     "src/claim.rs",
     "src/claim_verify.rs",
     "src/gate_schedule.rs",
@@ -39,7 +37,6 @@ const CLEANED: [&str; 17] = [
     "src/heavy_slot.rs",
     "src/help.rs",
     "src/home_state.rs",
-    "src/hosts/codex.rs",
     "src/launcher_init.rs",
     "src/ledger/open.rs",
     "src/project_hosts.rs",

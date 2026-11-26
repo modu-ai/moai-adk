@@ -341,9 +341,11 @@ fn build_folder_rows(
     Ok(rows)
 }
 
-/// C-82: the owner record `tools/build_folder.py env` writes into an agent build folder
-/// (`<HOME>/.moai/build/<project>-<worktree>/`): `schema_version` 1, the repository's
-/// `git_common_dir` and the `worktree` the folder builds, both absolute.
+/// C-82: the owner record that `tools/build_folder.py env` (and, until 2026-11-23, `lane-env`)
+/// wrote into an agent build folder (`<HOME>/.moai/build/<project>-<worktree>/`):
+/// `schema_version` 1, the repository's `git_common_dir` and the `worktree` the folder builds,
+/// both absolute. Only read now: builds run in each worktree's own `target/`, and the folders
+/// that remain are listed here for the user to pick from.
 pub const AGENT_BUILD_RECORD: &str = ".moai-build.json";
 
 /// The longest owner record read; a longer file counts as no record.
@@ -473,8 +475,14 @@ fn agent_build_rows(
                 .collect();
             (cargo, other)
         };
+        // A folder that holds only its owner record is what the retired `lane-env` left once
+        // builds moved into each worktree's own `target/`: its one trim path is the record.
+        let marker_only = why != "symlink"
+            && cargo.is_empty()
+            && other.is_empty()
+            && !reasons.contains(&"no_owner_record");
         if why != "symlink" {
-            if cargo.is_empty() {
+            if cargo.is_empty() && !marker_only {
                 reasons.push("not_cargo_output");
             }
             if !other.is_empty() {
@@ -503,15 +511,20 @@ fn agent_build_rows(
             "why": why,
             "reasons": reasons,
             "worktree": worktree,
-            "trim_paths": cargo.iter().map(|c| c.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()).collect::<Vec<_>>(),
+            "marker_only": marker_only,
+            "trim_paths": if marker_only {
+                vec![AGENT_BUILD_RECORD.to_string()]
+            } else {
+                cargo.iter().map(|c| c.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()).collect::<Vec<_>>()
+            },
             "preserved": other,
             "bytes": bytes,
             "bytes_partial": partial,
             "modified_unix": modified,
             "age_secs": modified.map(|t| now.saturating_sub(t)),
             "retention_until_unix": Value::Null,
-            "restore": "cargo rebuilds it on the next build with CARGO_TARGET_DIR set to this folder",
-            "apply": "only after the user picks this row: delete its cargo output (internal/build-folder; in the moai-adk repository `tools/build_folder.py remove`)",
+            "restore": "nothing needs this folder: builds run in each worktree's own target/, so a rebuild there is an ordinary cargo build",
+            "apply": "only after the user picks this row: delete its trim paths (its cargo output, or the owner record of a marker-only folder); this preview deletes nothing",
         }));
     }
     (rows, warnings)
@@ -594,6 +607,153 @@ fn hook_log_row(side: &str, shown: &str, path: &Path, now: u64) -> Option<Value>
         "restore": "not regenerable — the hook log is evidence and is kept",
         "apply": "none — the design's retention is shown, not applied; nothing is rotated, trimmed or deleted",
     }))
+}
+
+/// What one card's evidence folder may hold before the guard flags it: 100 MiB. A file over it
+/// is recorded by path in the report, not copied into the evidence folder.
+pub const EVIDENCE_CAP_BYTES: u64 = 100 * 1024 * 1024;
+
+/// Folder names that mark a copied repository or its dependencies. Exact names only: a folder
+/// called `target-notes` or `my.git` is not one of them.
+const COPY_MARKERS: &[&str] = &["node_modules", ".venv", "target", ".next", ".git"];
+
+/// The guard on a reports (evidence) folder: a folder named like a repository copy or a
+/// dependency folder anywhere below `reports`, and a folder directly below it (one card's
+/// evidence) that holds more than [`EVIDENCE_CAP_BYTES`]. `rel` is the folder's path in the
+/// project, the prefix of every finding's `path`. Read only: no link is followed, a flagged
+/// folder is not entered (so its size is never counted) and nothing is written. The second
+/// value is `true` when the guard could not see everything: the deadline cut the walk short, or
+/// a folder or an entry could not be read (then the rest is still checked).
+fn evidence_findings(reports: &Path, rel: &str, deadline: Instant) -> (Vec<Value>, bool) {
+    let mut findings = Vec::new();
+    let mut partial = false;
+    for card in sorted_entries(reports, &mut partial) {
+        let card_rel = format!("{rel}/{}", card.name);
+        if card.is_marker() {
+            findings.push(marker_finding(&card_rel, &card.name));
+            continue;
+        }
+        let mut size = 0u64;
+        match card.kind {
+            Kind::Dir => guard_walk(
+                &card.path,
+                &card_rel,
+                &mut size,
+                &mut findings,
+                &mut partial,
+                deadline,
+            ),
+            Kind::File | Kind::Other => continue,
+        }
+        if size > EVIDENCE_CAP_BYTES {
+            findings.push(json!({
+                "kind": "over_cap",
+                "path": card_rel,
+                "bytes_at_least": size,
+                "cap_bytes": EVIDENCE_CAP_BYTES,
+            }));
+        }
+        if Instant::now() > deadline {
+            partial = true;
+            break;
+        }
+    }
+    (findings, partial)
+}
+
+enum Kind {
+    Dir,
+    File,
+    /// A link or another entry that is never entered.
+    Other,
+}
+
+struct Entry {
+    name: String,
+    path: PathBuf,
+    kind: Kind,
+}
+
+impl Entry {
+    /// Only folders and links count as a copy marker, except `.git`: in a worktree it is a
+    /// file, and it still marks a checkout.
+    fn is_marker(&self) -> bool {
+        COPY_MARKERS.contains(&self.name.as_str())
+            && (!matches!(self.kind, Kind::File) || self.name == ".git")
+    }
+}
+
+/// The entries of `dir` by name. A folder that cannot be read, or an entry whose type cannot be
+/// read, sets `partial`: an empty answer must not look like a clean one.
+fn sorted_entries(dir: &Path, partial: &mut bool) -> Vec<Entry> {
+    let Ok(read) = fs::read_dir(dir) else {
+        *partial = true;
+        return Vec::new();
+    };
+    let mut unreadable = false;
+    let mut out: Vec<Entry> = read
+        .flatten()
+        .filter_map(|e| {
+            let Ok(file_type) = e.file_type() else {
+                unreadable = true;
+                return None;
+            };
+            let kind = match file_type {
+                t if t.is_symlink() => Kind::Other,
+                t if t.is_dir() => Kind::Dir,
+                t if t.is_file() => Kind::File,
+                _ => Kind::Other,
+            };
+            Some(Entry {
+                name: e.file_name().to_string_lossy().into_owned(),
+                path: e.path(),
+                kind,
+            })
+        })
+        .collect();
+    *partial |= unreadable;
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    out
+}
+
+fn marker_finding(path: &str, name: &str) -> Value {
+    json!({"kind": "forbidden_folder", "path": path, "name": name})
+}
+
+/// Walks `dir` (already known to be a real folder): adds the bytes of its files to `size` until
+/// the cap is passed (counting stops there) and records every marker folder it meets.
+fn guard_walk(
+    dir: &Path,
+    rel: &str,
+    size: &mut u64,
+    findings: &mut Vec<Value>,
+    partial: &mut bool,
+    deadline: Instant,
+) {
+    if Instant::now() > deadline {
+        *partial = true;
+        return;
+    }
+    for entry in sorted_entries(dir, partial) {
+        let entry_rel = format!("{rel}/{}", entry.name);
+        if entry.is_marker() {
+            findings.push(marker_finding(&entry_rel, &entry.name));
+            continue;
+        }
+        match entry.kind {
+            Kind::Dir => guard_walk(&entry.path, &entry_rel, size, findings, partial, deadline),
+            Kind::File => {
+                if *size <= EVIDENCE_CAP_BYTES {
+                    *size += fs::symlink_metadata(&entry.path).map_or(0, |m| m.len());
+                }
+            }
+            Kind::Other => {}
+        }
+        if Instant::now() > deadline {
+            *partial = true;
+            return;
+        }
+    }
 }
 
 /// The hook log rows of the project at `primary`: the project's own log, then the one in the
@@ -752,18 +912,40 @@ pub fn plan(req: &Request) -> Result<Value> {
     {
         report_dirs.push(crate::fixed_state!("reports").to_string());
     }
-    for rel in report_dirs {
-        let reports = primary.join(&rel);
+    // C-126: reports are saved outside the repository, in `<HOME>/.moai/reports/<project>`
+    // (the resolver `home_workdir::reports_dir`). That folder holds space too, so it is listed
+    // beside the in-repository ones (an absolute path), kept the same way.
+    let mut report_dirs: Vec<(String, PathBuf)> = report_dirs
+        .into_iter()
+        .map(|rel| {
+            let abs = primary.join(&rel);
+            (rel, abs)
+        })
+        .collect();
+    if let Some(dir) = req
+        .home
+        .and_then(|h| crate::home_workdir::reports_dir(h, &primary).ok())
+    {
+        report_dirs.push((dir.display().to_string(), dir));
+    }
+    for (rel, reports) in report_dirs {
         if !fs::symlink_metadata(&reports).is_ok_and(|m| m.is_dir()) {
             continue;
         }
         let (bytes, partial) = bytes_under(std::slice::from_ref(&reports), deadline);
         let modified = mtime(&reports);
+        let (findings, findings_partial) = evidence_findings(&reports, &rel, deadline);
+        let mut reasons = vec!["reports_kept"];
+        if !findings.is_empty() {
+            reasons.push("evidence_guard");
+        }
         rows.push(json!({
             "kind": "report",
             "path": rel,
             "action": "keep",
-            "reasons": ["reports_kept"],
+            "reasons": reasons,
+            "findings": findings,
+            "findings_partial": findings_partial,
             "trim_paths": [],
             "bytes": bytes,
             "bytes_partial": partial,

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 /// Print a lane's wake line for its host
 ///
 /// Print the line a lane pastes to keep running without a leader (#2899 section B): Claude Code
-/// `/loop 5m /moai --mode-agent <duty>`; Codex CLI `codex features enable goals`, then
+/// `/loop 5m <duty>`; Codex CLI `codex features enable goals`, then
 /// `/goal <end condition>`, with the Stop hook the lane needs in `.codex/hooks.json` and its
 /// state read from the project (`LANE-BLOCKED <lane> wake …` when it is not installed); the
 /// third host `--goal "<end condition>"`. Reads the project's hook file only; writes nothing.

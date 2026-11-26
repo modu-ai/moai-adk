@@ -43,7 +43,7 @@ fn saved(h: &Home) -> (String, String) {
     let mut out = Vec::new();
     let result = stage(
         &h.path,
-        &mut Cursor::new("1\n\n\n\n\ny\n".to_string()),
+        &mut Cursor::new("1\n\n\ny\n".to_string()),
         &mut out,
     );
     assert_eq!(result["state"], json!("applied"), "{result}");

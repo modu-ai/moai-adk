@@ -56,9 +56,14 @@ fn committed_repo(dir: &std::path::Path) {
     git_in(dir, &["add", "a.txt"]);
     git_in(dir, &["commit", "-q", "-m", "fixture"]);
 }
-/// REQ-01A-05: no returned string may point at the Go generation's state.
+/// REQ-01A-05: no returned string may point at the Go generation's state. The two state
+/// roots are this generation's own `.moai` now (SPEC-20261121-path-root-moai-default); each
+/// call site asserts them equal to the resolvers' answer first, so they are skipped here.
 fn assert_no_go_state(v: &Value) {
     for (k, x) in v.as_object().unwrap() {
+        if k == "project_state_root" || k == "home_state_root" {
+            continue;
+        }
         if let Some(s) = x.as_str() {
             assert!(
                 !s.ends_with("/.moai") && !s.contains("/.moai/") && !s.contains("MOAI_HOME"),
@@ -92,11 +97,15 @@ fn identity_primary_checkout() {
     assert_eq!(v["work_tree"], json!(canon(repo.path())));
     assert_eq!(
         v["project_state_root"],
-        json!(format!("{}/.moai-cli", canon(repo.path())))
+        json!(format!(
+            "{}/{}",
+            canon(repo.path()),
+            moai_cli::state_root::dir(repo.path())
+        ))
     );
     assert_eq!(
         v["home_state_root"],
-        json!(home.path().join(".moai-cli").to_str().unwrap())
+        json!(moai_cli::home_root::path(home.path()).to_str().unwrap())
     );
     assert_eq!(v["profile_status"], json!("missing"));
     assert_eq!(v["project_id"], Value::Null);
@@ -111,7 +120,7 @@ fn identity_primary_checkout() {
         (tree_state(repo.path()), tree_state(home.path())),
         "identity wrote to the repository or HOME"
     );
-    assert!(!home.path().join(".moai-cli").exists());
+    assert!(!moai_cli::home_root::path(home.path()).exists());
     // The profile's project_id is reported separately from the path-derived ids.
     create(&repo, &profile(None));
     let (_, v) = ident(repo.path(), home.path(), None);
@@ -142,7 +151,7 @@ fn identity_linked_worktree_shares_clone_id() {
     assert_eq!(linked["work_tree"], json!(canon(&wt)));
     assert_eq!(
         linked["project_state_root"],
-        json!(format!("{}/.moai-cli", canon(&wt)))
+        json!(format!("{}/{}", canon(&wt), moai_cli::state_root::dir(&wt)))
     );
     assert_no_go_state(&linked);
 }

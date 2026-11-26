@@ -40,7 +40,7 @@ use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
 const REF: &str = "test-permission-ref";
-/// `hosts::codex_config::CONFIG_LIMIT`.
+/// `hosts::config_backup::CONFIG_LIMIT`.
 const CONFIG_LIMIT: usize = 262_144;
 /// A command that opened a FIFO would wait for a writer forever; this ends the test instead.
 const DEADLINE: Duration = Duration::from_secs(120);
@@ -1420,7 +1420,7 @@ fn ac13_unrecorded_codex_files_are_counted_and_the_limit_has_an_edge() {
     // .moai/manifest.json, .moai/config, .moai/config/a.yaml, .codex/agents,
     // .codex/agents/note.md: five entries.
     let stopped = |n: &str| {
-        let p = fx.plan_env(&[("MOAI_CLI_TEST_UNRECORDED_LIMIT", n)]);
+        let p = fx.plan_env(&[("MOAI_TEST_UNRECORDED_LIMIT", n)]);
         p["warnings"].to_string().contains("stopped after")
     };
     assert!(!stopped("5"), "five entries fit a limit of five");

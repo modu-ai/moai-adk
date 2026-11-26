@@ -53,6 +53,23 @@ pub fn kind_and_spec(
     .optional()
 }
 
+/// The SPEC id each card that is not `done` names now, as (card number, SPEC id) in card order;
+/// a card that names none is left out.
+pub fn linked_specs(conn: &Connection) -> rusqlite::Result<Vec<(i64, String)>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT card_id, {LINKED_COLUMN} FROM card WHERE state <> 'done' ORDER BY card_id"
+    ))?;
+    let rows = stmt.query_map([], |r| {
+        Ok((r.get::<_, i64>(0)?, r.get::<_, Option<String>>(1)?))
+    })?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (card_id, spec) = row?;
+        out.extend(spec.map(|s| (card_id, s)));
+    }
+    Ok(out)
+}
+
 /// The cards that name `spec_id` now, by number: name, title, kind and state.
 pub fn cards_of(conn: &Connection, spec_id: &str) -> rusqlite::Result<Vec<Value>> {
     let mut stmt = conn.prepare(&format!(
@@ -78,20 +95,58 @@ pub fn done_refusal(project: &Path, card: &str, spec: Option<&str>) -> Option<St
     let id = spec?;
     match spec_doc::find(project, id) {
         Err(e) => Some(format!("{card}: its SPEC {id} cannot be read: {e}")),
-        Ok(doc) if doc.errors() > 0 => Some(format!(
-            "{card}: its SPEC {id} has {} error(s); `moai spec check {id}` lists them",
-            doc.errors()
+        Ok(doc) => judge(card, id, &doc),
+    }
+}
+
+/// [`done_refusal`] for a card whose landing git proved: the SPEC is read from the integration
+/// branch tip, not from the working tree, which a checkout that was not moved after the
+/// fast-forward leaves stale. A SPEC the tip does not hold is refused.
+pub fn done_refusal_at_tip(
+    project: &Path,
+    card: &str,
+    spec: Option<&str>,
+    tip: &str,
+) -> Option<String> {
+    let id = spec?;
+    if spec_doc::id_form(id).is_none() {
+        return Some(format!("{card}: its SPEC {id} is not a SPEC id"));
+    }
+    let path = format!("{}/{id}/spec.md", spec_doc::SPECS_DIR);
+    match super::landed::show_at(project, tip, &path) {
+        Err(e) => Some(format!(
+            "{card}: its SPEC {id} cannot be read from the tip: {e}"
         )),
-        Ok(doc) => {
-            let open = spec_doc::unverified(&doc);
-            (!open.is_empty()).then(|| {
-                format!(
-                    "{card}: its SPEC {id} has no `verify:` command or `manual:` check for {}",
-                    open.join(", ")
-                )
-            })
+        Ok(None) => Some(format!(
+            "{card}: its SPEC {id} is not in the integration branch tip {tip} ({path} is absent \
+             there)"
+        )),
+        Ok(Some(text)) => {
+            let opts = spec_doc::Options {
+                folder: Some(id.to_string()),
+                closure: false,
+            };
+            judge(card, id, &spec_doc::parse(&text, &opts))
         }
     }
+}
+
+/// What `card done` asks of a SPEC that was read: no error finding and a check for every
+/// acceptance criterion.
+fn judge(card: &str, id: &str, doc: &spec_doc::SpecDoc) -> Option<String> {
+    if doc.errors() > 0 {
+        return Some(format!(
+            "{card}: its SPEC {id} has {} error(s); `moai spec check {id}` lists them",
+            doc.errors()
+        ));
+    }
+    let open = spec_doc::unverified(doc);
+    (!open.is_empty()).then(|| {
+        format!(
+            "{card}: its SPEC {id} has no `verify:` command or `manual:` check for {}",
+            open.join(", ")
+        )
+    })
 }
 
 /// What `next` and `take` say about the SPEC of card `card` (`C-n`) of `kind`: the SPEC's state
@@ -241,9 +296,203 @@ pub fn link(
     }))
 }
 
+/// The `relation` a `card.spec` event payload carries for a follow-up card
+/// (SPEC-20261124-followup-per-spec).
+pub const RELATION_FOLLOW_UP: &str = "follow-up";
+/// The `relation` a `card.spec` event payload carries for a card split from another card; the
+/// payload's `of` names that card.
+pub const RELATION_SPLIT_OF: &str = "split-of";
+
+/// How a card added with `--spec` stands to the other cards of its SPEC.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Relation<'a> {
+    /// No relation flag: the SPEC may have no other open card.
+    Plain,
+    /// `--follow-up`: a follow-up card; a SPEC may have any number of them open at once.
+    FollowUp,
+    /// `--follow-up-of <card>`: a follow-up card that names the card it follows; that card names
+    /// the same SPEC. Never refused for open cards, like `--follow-up`.
+    FollowUpOf(&'a str),
+    /// `--split-of <card>`: that card names the same SPEC.
+    SplitOf(&'a str),
+}
+
+impl Relation<'_> {
+    /// The `relation` string the `card.spec` payload carries, `None` for a plain add.
+    pub fn name(&self) -> Option<&'static str> {
+        match self {
+            Relation::Plain => None,
+            Relation::FollowUp | Relation::FollowUpOf(_) => Some(RELATION_FOLLOW_UP),
+            Relation::SplitOf(_) => Some(RELATION_SPLIT_OF),
+        }
+    }
+
+    /// The card the payload's `of` names, `None` when the relation names none.
+    pub fn origin(&self) -> Option<&str> {
+        match self {
+            Relation::FollowUpOf(o) | Relation::SplitOf(o) => Some(o),
+            Relation::Plain | Relation::FollowUp => None,
+        }
+    }
+}
+
+/// What `card show` prints as `spec_link`: the `relation` and `of` of the card's newest
+/// `card.spec` event, as `{"relation": <string|null>, "of": <string|null>}`; `null` when the card
+/// names no SPEC (no such event, or the newest one unlinked it). A link made by `card spec` has
+/// no relation, so both fields are `null`.
+pub fn link_json(conn: &Connection, card_id: i64) -> rusqlite::Result<Value> {
+    let newest: Option<String> = conn
+        .query_row(
+            "SELECT payload FROM event WHERE card_id = ?1 AND kind = 'card.spec' \
+             ORDER BY event_id DESC LIMIT 1",
+            [card_id],
+            |r| r.get(0),
+        )
+        .optional()?;
+    let Some(text) = newest else {
+        return Ok(Value::Null);
+    };
+    let payload: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
+    if payload["to"].is_null() {
+        return Ok(Value::Null);
+    }
+    let text = |key: &str| payload[key].as_str().map_or(Value::Null, |s| json!(s));
+    Ok(json!({"relation": text("relation"), "of": text("of")}))
+}
+
+/// A card that names a SPEC and is not `done`, with the relation its newest link carries.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OpenCard {
+    pub card_id: i64,
+    pub relation: Option<String>,
+}
+
+/// The cards that name `spec_id` now and are open: not `done` and not `hold` (a withdrawn or a
+/// folded card is on hold and leaves its SPEC room; draft, ready, active and review count), by
+/// number.
+pub fn open_cards_of(conn: &Connection, spec_id: &str) -> rusqlite::Result<Vec<OpenCard>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT card_id, (SELECT json_extract(e.payload, '$.relation') FROM event e \
+         WHERE e.card_id = card.card_id AND e.kind = 'card.spec' \
+         ORDER BY e.event_id DESC LIMIT 1) \
+         FROM card WHERE state NOT IN ('done', 'hold') AND {LINKED_COLUMN} = ?1 ORDER BY card_id"
+    ))?;
+    let rows = stmt.query_map([spec_id], |r| {
+        Ok(OpenCard {
+            card_id: r.get(0)?,
+            relation: r.get(1)?,
+        })
+    })?;
+    rows.collect()
+}
+
+/// Why `card add --spec` must refuse a card of `relation` on SPEC `spec_id` when `open` are the
+/// SPEC's cards that are not `done`, or `None`. The message names each open card and the way out;
+/// its `conflict in ` prefix gives it the `conflict` kind (`contract::classify`).
+pub fn add_conflict(spec_id: &str, relation: Relation<'_>, open: &[OpenCard]) -> Option<String> {
+    let name = |c: &OpenCard| input::card_name(c.card_id);
+    match relation {
+        Relation::SplitOf(_) | Relation::FollowUp | Relation::FollowUpOf(_) => None,
+        Relation::Plain if open.is_empty() => None,
+        Relation::Plain => {
+            let names: Vec<String> = open.iter().map(name).collect();
+            Some(format!(
+                "card add conflict in spec: {spec_id} already has an open card ({}); a plain add \
+                 needs a SPEC with none. Add `--split-of <card>` for a card split from it, \
+                 `--follow-up` or `--follow-up-of <card>` for a follow-up card, or add the work \
+                 as a criterion of {} with `moai card criterion-add {} --ac <text>`",
+                names.join(", "),
+                names[0],
+                names[0],
+            ))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn open(card_id: i64, relation: Option<&str>) -> OpenCard {
+        OpenCard {
+            card_id,
+            relation: relation.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn a_plain_add_needs_a_spec_with_no_open_card() {
+        let id = "SPEC-20261124-x";
+        assert_eq!(add_conflict(id, Relation::Plain, &[]), None);
+        let m = add_conflict(
+            id,
+            Relation::Plain,
+            &[open(3, None), open(5, Some("follow-up"))],
+        )
+        .unwrap();
+        for word in [
+            "C-3, C-5",
+            "--follow-up",
+            "--split-of",
+            "criterion-add C-3 --ac",
+        ] {
+            assert!(m.contains(word), "{word}: {m}");
+        }
+    }
+
+    #[test]
+    fn a_follow_up_is_never_blocked_by_open_cards() {
+        let id = "SPEC-20261124-x";
+        assert_eq!(add_conflict(id, Relation::FollowUp, &[]), None);
+        let all = [
+            open(3, None),
+            open(4, Some("split-of")),
+            open(5, Some("follow-up")),
+            open(6, Some("follow-up")),
+        ];
+        for relation in [Relation::FollowUp, Relation::FollowUpOf("C-5")] {
+            assert_eq!(add_conflict(id, relation, &all), None, "{relation:?}");
+        }
+    }
+
+    #[test]
+    fn a_plain_add_names_every_open_follow_up_and_the_ways_out() {
+        let id = "SPEC-20261124-x";
+        let all = [
+            open(5, Some("follow-up")),
+            open(6, Some("follow-up")),
+            open(7, Some("follow-up")),
+        ];
+        let m = add_conflict(id, Relation::Plain, &all).unwrap();
+        for word in [
+            "C-5, C-6, C-7",
+            "--follow-up-of <card>",
+            "--split-of",
+            "criterion-add C-5 --ac",
+        ] {
+            assert!(m.contains(word), "{word}: {m}");
+        }
+        assert!(!m.contains("one follow-up"), "{m}");
+    }
+
+    #[test]
+    fn a_split_is_never_blocked_by_open_cards() {
+        let id = "SPEC-20261124-x";
+        let all = [open(3, None), open(4, Some("follow-up"))];
+        assert_eq!(add_conflict(id, Relation::SplitOf("C-3"), &all), None);
+    }
+
+    #[test]
+    fn a_relation_names_its_payload_fields() {
+        assert_eq!(Relation::Plain.name(), None);
+        assert_eq!(Relation::FollowUp.name(), Some(RELATION_FOLLOW_UP));
+        assert_eq!(Relation::FollowUpOf("C-2").name(), Some(RELATION_FOLLOW_UP));
+        assert_eq!(Relation::SplitOf("C-2").name(), Some(RELATION_SPLIT_OF));
+        assert_eq!(Relation::Plain.origin(), None);
+        assert_eq!(Relation::FollowUp.origin(), None);
+        assert_eq!(Relation::FollowUpOf("C-2").origin(), Some("C-2"));
+        assert_eq!(Relation::SplitOf("C-3").origin(), Some("C-3"));
+    }
 
     #[test]
     fn only_research_and_audit_cards_leave_the_repository_alone() {

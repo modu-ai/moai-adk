@@ -56,17 +56,17 @@ fn refused(args: &[&str]) -> String {
 
 #[test]
 fn the_line_is_the_fixed_wording_for_each_host() {
-    let slash = format!("/moai --mode-agent 레인 3 — {BODY}");
+    let slash = format!("레인 3 — {BODY}");
     assert_eq!(line(&["--lane", "3"]), slash, "claude is the default host");
     assert_eq!(line(&["--lane", "3", "--host", "claude"]), slash);
     // OMP takes the skill only as `/skill:moai` (SPEC-20261118-omp-launcher REQ-22; audit #3203 B1).
     assert_eq!(
         line(&["--lane", "3", "--host", "omp"]),
-        format!("/skill:moai --mode-agent 레인 3 — {BODY}")
+        format!("레인 3 — {BODY}")
     );
     assert_eq!(
         line(&["--lane", "3", "--host", "codex"]),
-        format!("$moai --mode-agent 레인 3 — {BODY}")
+        format!("$moai work 레인 3 — {BODY}")
     );
 }
 
@@ -74,11 +74,11 @@ fn the_line_is_the_fixed_wording_for_each_host() {
 fn first_task_is_appended_after_the_body() {
     assert_eq!(
         line(&["--lane", "agent-1", "--first", "#2902 O3a 구현"]),
-        format!("/moai --mode-agent 레인 agent-1 — {BODY} 먼저: #2902 O3a 구현")
+        format!("레인 agent-1 — {BODY} 먼저: #2902 O3a 구현")
     );
     assert_eq!(
         line(&["--lane", "3", "--host", "codex", "--first", "PR #2824 감사"]),
-        format!("$moai --mode-agent 레인 3 — {BODY} 먼저: PR #2824 감사")
+        format!("$moai work 레인 3 — {BODY} 먼저: PR #2824 감사")
     );
 }
 

@@ -17,13 +17,14 @@
 #
 # The language of the conversation with the model (#2935 L1) comes from --language, else
 # MOAI_LANGUAGE, else (at a terminal) a numbered menu, else the locale, else English. After the
-# commands are linked the script runs `moai-cli language-set --home <code>` once; that never
-# overwrites an earlier choice, and a moai-cli without it only costs a warning. Everything this
-# script prints stays English whatever the language.
+# commands are linked the script runs `moai-cli language-set --home --if-absent <code>` once;
+# that records only when nothing is recorded yet, so a reinstall never overwrites an earlier
+# choice, and a moai-cli without it only costs a warning. Everything this script prints stays
+# English whatever the language.
 #
 # A release archive carries the skill package and the base agents beside the binary (`skills/`,
 # `agents/`); they go into the version folder next to `bin/`, where `moai update` reads them
-# (SPEC-20261117-installer-skill-agents). Into the hosts (Claude Code, Codex, OMP) they go only
+# (SPEC-20261117-installer-skill-agents). Into the host (Claude Code) they go only
 # through the product's own preview and confirmed apply, `moai-cli update --json` and then
 # `moai-cli update --confirm <plan_digest> --json`: this script copies nothing into a host
 # folder. It shows the folders the preview names, asks once at a terminal (--yes answers for a
@@ -35,7 +36,7 @@ REPO_URL="https://github.com/modu-ai/moai-adk"
 RELEASE_BASE="${MOAI_RELEASE_BASE:-$REPO_URL/releases/download}"
 RELEASE_FEED="${MOAI_RELEASE_FEED:-$REPO_URL/releases.atom}"
 RELEASE_API="${MOAI_RELEASE_API:-https://api.github.com/repos/modu-ai/moai-adk/releases?per_page=100}"
-TAG_PREFIX="moai-cli-v"
+TAG_PREFIX="moai-adk-v"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
     RED=$(printf '\033[0;31m'); GREEN=$(printf '\033[0;32m'); YELLOW=$(printf '\033[1;33m')
@@ -89,16 +90,15 @@ Examples:
 EOF
 }
 
-# A language code is BCP-47-shaped text only: 2-3 letters, then groups of 2-8 letters or digits
-# after a `-`, at most 35 characters (#2935 L1). It is passed to moai-cli as written, so nothing
-# else gets through (a newline would let a multi-line value slip past the one-line match, so it
-# is refused first).
+# The conversation language is one of the four codes the language module holds (#2935 L1, G6):
+# en, ko, ja and zh, the same list the install menu offers and moai-cli accepts. Anything else —
+# a well-shaped code like fr or pt-BR included — is refused here, so nothing outside the list
+# reaches the binary or the recorded file, and no multi-line value can slip through.
 valid_language() {
     case "$1" in
-        "" | *[!A-Za-z0-9-]*) return 1 ;;
+        en | ko | ja | zh) return 0 ;;
     esac
-    [ "${#1}" -le 35 ] || return 1
-    printf '%s\n' "$1" | grep -Eq '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$'
+    return 1
 }
 
 # The language part of the first of LC_ALL, LC_MESSAGES, LANG that is set (`ko_KR.UTF-8` -> ko),
@@ -150,11 +150,10 @@ choose_language() {
     echo "  2) 한국어"
     echo "  3) 日本語"
     echo "  4) 中文"
-    echo "  5) Other (type a language code, for example fr or pt-BR)"
     tries=0
     while [ "$tries" -lt 3 ]; do
         tries=$((tries + 1))
-        printf 'Choose 1-5 [default: %s]: ' "$default"
+        printf 'Choose 1-4 [default: %s]: ' "$default"
         if ! ask_line; then
             echo ""
             break
@@ -165,19 +164,7 @@ choose_language() {
             2) LANGUAGE_CODE="ko"; return 0 ;;
             3) LANGUAGE_CODE="ja"; return 0 ;;
             4) LANGUAGE_CODE="zh"; return 0 ;;
-            5)
-                printf 'Language code: '
-                if ! ask_line; then
-                    echo ""
-                    break
-                fi
-                if valid_language "$answer"; then
-                    LANGUAGE_CODE="$answer"
-                    return 0
-                fi
-                print_warning "That is not a language code (for example en, ko, fr, pt-BR)."
-                ;;
-            *) print_warning "Please type a number from 1 to 5." ;;
+            *) print_warning "Please type a number from 1 to 4." ;;
         esac
     done
     LANGUAGE_CODE="$default"
@@ -193,7 +180,9 @@ resolve_language() {
     fi
     [ -z "$LANGUAGE_CODE" ] || return 0
     default=$(locale_language)
-    [ -n "$default" ] || default="en"
+    # A locale outside the four codes falls back to English: fr_FR does not become a default fr
+    # that the menu would offer and the binary would refuse later.
+    valid_language "$default" || default="en"
     answer_source
     if [ -n "$ANSWER_FROM" ]; then
         choose_language "$default"
@@ -202,11 +191,12 @@ resolve_language() {
     fi
 }
 
-# Records the language once, with the installed moai-cli. It never overwrites a value that is
-# already there, and a moai-cli that has no language-set (an older pinned version) or refuses
-# the code costs a warning, not the install.
+# Records the language once, with the installed moai-cli. It passes the record-once mode
+# (--if-absent), so a value that is already recorded is never overwritten: only an explicit
+# `moai language-set --home <code>` replaces it. A moai-cli that has no language-set (an older
+# pinned version) or refuses the code costs a warning, not the install.
 record_language() {
-    if ! out=$("$DEST/bin/moai-cli" language-set --home "$LANGUAGE_CODE" </dev/null 2>/dev/null); then
+    if ! out=$("$DEST/bin/moai-cli" language-set --home --if-absent "$LANGUAGE_CODE" </dev/null 2>/dev/null); then
         print_warning "Could not record the conversation language ($LANGUAGE_CODE): this moai-cli has no language-set or does not accept the code. The install is complete."
         return 0
     fi
@@ -273,7 +263,7 @@ fetch() {
 }
 
 # Takes the first candidate line `<tag> <draft> <prerelease>` (newest first) that is a
-# `moai-cli-v<version>` release for the channel. Sets VERSION, or leaves it empty.
+# `moai-adk-v<version>` release for the channel. Sets VERSION, or leaves it empty.
 pick_version() {
     while read -r tag draft pre; do
         case "$tag" in "$TAG_PREFIX"*) ;; *) continue ;; esac
@@ -292,7 +282,7 @@ pick_version() {
     return 0
 }
 
-# The newest `moai-cli-v<version>` release. `/releases/latest` cannot be used: the Rust
+# The newest `moai-adk-v<version>` release. `/releases/latest` cannot be used: the Rust
 # edition's final releases are published with `--latest=false` so the Go edition's updater
 # keeps its latest (docs/release-checklist.md). First the REST list (100 newest, with the
 # draft and prerelease fields); when it cannot be read (no network to the API, or the
@@ -318,7 +308,7 @@ EOF
         fi
         # The feed lists published releases only and has no prerelease field: a `-` in the
         # version marks a release candidate of the earlier scheme, and a HeadVer pre-release
-        # (no suffix) cannot be told here, so the newest `moai-cli-v*` is taken. Pin a version
+        # (no suffix) cannot be told here, so the newest `moai-adk-v*` is taken. Pin a version
         # with --version when the REST list is out of reach (docs/release-checklist.md).
         pick_version <<EOF
 $(tr '<' '\n' <"$feed_file" | tr '>' '\n' | tr '"' '\n' | sed -n "s|^.*/releases/tag/\\(${TAG_PREFIX}[^/?#]*\\)\$|\\1 false false|p")
@@ -444,7 +434,7 @@ place() {
 # The hosts this machine has: the host's command on PATH, or its folder in HOME.
 detect_hosts() {
     HOSTS=""
-    for host in claude codex omp; do
+    for host in claude; do
         if command -v "$host" >/dev/null 2>&1 || [ -d "$HOME/.$host" ]; then
             HOSTS="$HOSTS $host"
         fi
@@ -466,8 +456,8 @@ install_skill() {
     detect_hosts
     echo ""
     if [ -z "$HOSTS" ]; then
-        print_warning "No Claude Code, Codex or OMP found (no claude, codex or omp command, no ~/.claude, ~/.codex or ~/.omp)."
-        print_info "Install one of them, then install the MoAI skill and agents with: moai update"
+        print_warning "No Claude Code found (no claude command, no ~/.claude)."
+        print_info "Install it, then install the MoAI skill and agents with: moai update"
         return 0
     fi
     print_info "Previewing the MoAI skill and agents for your hosts (writes nothing):"
@@ -587,13 +577,11 @@ finish() {
     echo "  $n. Make a project folder and enter it: mkdir my-project && cd my-project"
     n=$((n + 1))
     echo "  $n. Start a session there, then set the project up inside it:"
-    # One entry per host found, or all three when none was: the list is split on purpose.
+    # One entry per host found, or Claude Code when none was: the list is split on purpose.
     # shellcheck disable=SC2086
-    for host in ${HOSTS:-claude codex omp}; do
+    for host in ${HOSTS:-claude}; do
         case "$host" in
             claude) echo "     Claude Code: moai cc (or moai glm; -l leader, -a agent), then /moai project" ;;
-            codex) echo "     Codex: moai codex, then \$moai project" ;;
-            omp) echo "     OMP: omp, then /skill:moai project" ;;
         esac
     done
     echo ""
@@ -612,7 +600,7 @@ main() {
         case "$1" in
             --version)
                 [ $# -ge 2 ] || die "--version needs a value"
-                # `v2026.11.0` and the tag `moai-cli-v2026.11.0` name the same version.
+                # `v2026.11.0` and the tag `moai-adk-v2026.11.0` name the same version.
                 VERSION="${2#"$TAG_PREFIX"}"
                 VERSION="${VERSION#v}"
                 valid_version "$VERSION" || die "Not a version: '$2'"

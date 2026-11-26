@@ -32,12 +32,19 @@ pub struct Entry {
 impl TempHome {
     /// An empty HOME.
     pub fn new() -> Self {
-        Self {
-            dir: tempfile::Builder::new()
-                .prefix("moai-test-home-")
-                .tempdir()
-                .expect("create a temporary HOME"),
-        }
+        let dir = tempfile::Builder::new()
+            .prefix("moai-test-home-")
+            .tempdir()
+            .expect("create a temporary HOME");
+        // REQ-4 of SPEC-20261120-test-parallelism-cap: mark the folder for macOS Spotlight
+        // so a whole test run stops being indexed. Best-effort: the HOME is correct for its
+        // purpose without the marker, so a failure to write it never fails the test.
+        // Exclusive creation, like the lane build folder's marker: never through a link.
+        let _ = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(dir.path().join(".metadata_never_index"));
+        Self { dir }
     }
 
     pub fn path(&self) -> &Path {
@@ -63,8 +70,8 @@ impl TempHome {
     }
 
     /// A project folder under this HOME's own scratch area with the profile a project has:
-    /// `<project>/.moai-cli/project.yaml` holding `project_id`. Returns the project folder,
-    /// which is not inside `~/.moai`.
+    /// `<project>/<moai_cli::PROJECT_STATE_DIR>/project.yaml` holding `project_id`. Returns the
+    /// project folder, which is not inside `~/.moai`.
     pub fn project(&self, project_id: &str) -> PathBuf {
         let project = self.path().join("work").join(project_id);
         let state = project.join(moai_cli::PROJECT_STATE_DIR);
@@ -75,6 +82,23 @@ impl TempHome {
         )
         .unwrap();
         project
+    }
+
+    /// The state folder this generation uses in this HOME, found through the resolver, so a test
+    /// never spells the folder name. It is created if it is not there yet; the path is resolved
+    /// before the folder is made.
+    pub fn state_dir(&self) -> PathBuf {
+        let dir = moai_cli::home_root::path(self.path());
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// An earlier layout built on purpose: the earlier state folder, made under this HOME and
+    /// returned. After it `moai_cli::home_root::dir(home)` names this folder.
+    pub fn make_earlier_state_dir(&self) -> PathBuf {
+        let dir = self.path().join(moai_cli::HOME_STATE_DIR);
+        fs::create_dir_all(&dir).unwrap();
+        dir
     }
 
     /// Makes `~/.moai` look like the Go generation's (a Go session registry), the HOME the
@@ -131,6 +155,11 @@ impl TempHome {
         fn walk(root: &Path, dir: &Path, out: &mut Vec<Entry>) {
             for e in fs::read_dir(dir).unwrap() {
                 let p = e.unwrap().path();
+                // The Spotlight marker `TempHome::new` writes at the HOME root is the helper's
+                // own file, not an entry the command under test made.
+                if dir == root && p.file_name().is_some_and(|n| n == ".metadata_never_index") {
+                    continue;
+                }
                 let m = fs::symlink_metadata(&p).unwrap();
                 let mtime_ns = m
                     .modified()
@@ -172,6 +201,9 @@ impl TempHome {
         let mut names: Vec<String> = fs::read_dir(dir)
             .unwrap()
             .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            // The Spotlight marker `TempHome::new` writes is the helper's own, not something the
+            // command under test wrote into the HOME.
+            .filter(|n| n != ".metadata_never_index")
             .collect();
         names.sort();
         names

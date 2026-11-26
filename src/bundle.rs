@@ -9,9 +9,12 @@
 //! folder and runs commands.
 
 pub mod build;
+pub mod mutant_line;
 pub mod verify;
 
-use crate::card::{command as card_command, input as card_input};
+use crate::card::{
+    command as card_command, inbox as card_inbox, input as card_input, ready_receipt,
+};
 use crate::{gate, self_audit, spec_doc, trailers};
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
@@ -71,6 +74,9 @@ fn driver_names(config_output: &str) -> Vec<String> {
         .map(String::from)
         .collect()
 }
+
+/// What `check` says about its `warnings` (SPEC-20261123-ready-mutant-line, D-2 and D-3).
+const WARNING_NOTE: &str = "warnings are in observe: a missing, unreadable or surviving `guard-mutant:` line of the READY note is listed and never changes `ok`, `findings` or the exit status; the tool cannot tell whether a line is true";
 
 const AUDIT_NOTE: &str = "a `PASS` note naming the head counts; a stated `tier <N>` before ` head ` is read (a head whose floor is above it has `audit_tier_low`); the tool cannot tell who wrote it";
 
@@ -305,9 +311,34 @@ impl Git<'_> {
     }
 
     /// Paths changed since the merge base of `a` and `b` (three dots: a head behind the tip does
-    /// not count the tip's own changes).
+    /// not count the tip's own changes). Without rename detection, so a renamed file is listed by
+    /// its old and its new name and a renamed registry cannot pass for a registration
+    /// (SPEC-20261124-registry-line-add-tier REQ-10).
     fn changed_paths(&self, a: &str, b: &str) -> Result<Vec<String>> {
-        self.lines(&["diff", "--name-only", &format!("{a}...{b}")])
+        self.lines(&["diff", "--name-only", "--no-renames", &format!("{a}...{b}")])
+    }
+
+    /// The audit floor of what `b` adds to `a` and the paths it is judged from. A path of the
+    /// scan registry carries its text on both sides, because the floor reads whether the change
+    /// only grew it (`gate::tier_of_changes`); a side that cannot be read stays `None`.
+    fn audit_floor(&self, a: &str, b: &str) -> Result<(u8, Vec<String>)> {
+        let files = self.changed_files(a, b)?;
+        let tier = gate::tier_of_changes(Some(0), &files);
+        Ok((tier, files.into_iter().map(|f| f.path).collect()))
+    }
+
+    fn changed_files(&self, a: &str, b: &str) -> Result<Vec<gate::ChangedFile>> {
+        let paths = self.changed_paths(a, b)?;
+        let base = self
+            .ok(&["merge-base", a, b])
+            .map(|s| s.trim().to_string())
+            .filter(|s| gate::is_full_sha(s));
+        Ok(gate::changed_files_with_text(
+            paths,
+            base.as_deref(),
+            b,
+            |rev, path| gate::regular_file_text(|args| self.ok(args), rev, path),
+        ))
     }
 
     /// The merge drivers the clone's configuration names (this wrapper runs with the global
@@ -356,12 +387,25 @@ impl Git<'_> {
 
 struct Note {
     id: i64,
+    kind: String,
+    author: String,
     body: String,
 }
 
 impl Note {
     fn first_line(&self) -> &str {
         self.body.lines().next().unwrap_or("")
+    }
+
+    /// The marker word of a hand-back note (SPEC-20261125-bundle-reads-repaired-note): the one
+    /// judge of the `card note` gate, `marker_of_line`, decides which first lines hand a head
+    /// back. A note by the leader or a `decision` note is never one, whatever its first line
+    /// says: the leader quotes the lane's lines and a decision note states a pick.
+    fn hand_back_marker(&self) -> Option<&'static str> {
+        if self.author == card_inbox::DEFAULT_LEADER || self.kind == "decision" {
+            return None;
+        }
+        ready_receipt::marker_of_line(self.first_line())
     }
 }
 
@@ -374,6 +418,8 @@ fn card_notes(project: &Path, home: &Path, name: &str) -> Result<Vec<Note>> {
                 .filter_map(|n| {
                     Some(Note {
                         id: n["note_id"].as_i64()?,
+                        kind: n["kind"].as_str().unwrap_or("").to_string(),
+                        author: n["author"].as_str().unwrap_or("").to_string(),
                         body: n["body"].as_str()?.to_string(),
                     })
                 })
@@ -382,32 +428,50 @@ fn card_notes(project: &Path, home: &Path, name: &str) -> Result<Vec<Note>> {
         .unwrap_or_default())
 }
 
-/// One card's newest marker note and what it says.
+/// One card's newest hand-back note and what it says.
 struct Ready {
     card: String,
     note_id: i64,
+    /// The marker word the note starts with (`LANE-READY-INTEGRATION`, `REPAIRED` or `READY`).
+    marker: &'static str,
     /// `None`: the note does not read under the grammar (`unreadable`).
     head: Option<String>,
     spec: Option<String>,
     lines: usize,
 }
 
-/// The newest note of the card whose first line starts with the marker; the newest wins even
-/// when it is the one that does not read (an older head would be stale).
+/// The newest hand-back note of the card; the newest wins even when it is the one that does not
+/// read (an older head would be stale).
 fn newest_marker(card: &str, notes: &[Note]) -> Option<Ready> {
-    let marked: Vec<&Note> = notes
+    let marked: Vec<(&Note, &'static str)> = notes
         .iter()
-        .filter(|n| n.first_line().starts_with(MARKER))
+        .filter_map(|n| n.hand_back_marker().map(|m| (n, m)))
         .collect();
-    let newest = marked.iter().max_by_key(|n| n.id)?;
+    let (newest, marker) = *marked.iter().max_by_key(|(n, _)| n.id)?;
     let parsed = parse_ready(newest.first_line(), card);
     Some(Ready {
         card: card.to_string(),
         note_id: newest.id,
+        marker,
         head: parsed.as_ref().map(|p| p.0.clone()),
         spec: parsed.and_then(|p| p.1),
         lines: marked.len(),
     })
+}
+
+/// The whole text of the newest hand-back note of the card whose first line names `head` (the
+/// note a `guard-mutant:` line is read from); `None` when no hand-back note names it.
+fn ready_body_naming<'a>(card: &str, notes: &'a [Note], head: &str) -> Option<&'a str> {
+    note_naming(card, notes, head).map(|n| n.body.as_str())
+}
+
+/// The newest hand-back note of the card whose first line names `head`.
+fn note_naming<'a>(card: &str, notes: &'a [Note], head: &str) -> Option<&'a Note> {
+    notes
+        .iter()
+        .filter(|n| n.hand_back_marker().is_some())
+        .filter(|n| parse_ready(n.first_line(), card).is_some_and(|p| p.0 == head))
+        .max_by_key(|n| n.id)
 }
 
 fn spec_id_shaped(s: &str) -> bool {
@@ -428,9 +492,12 @@ fn spec_id_shaped(s: &str) -> bool {
 
 /// D-6 of SPEC-20261119-bundle-tool: `LANE-READY-INTEGRATION C-<n> head=<40 hex>` then the end
 /// of the line or a space, with an optional ` spec=<SPEC id>` right after the head; the card
-/// must be the card the note is on. Returns the head and the optional `spec=` value.
+/// must be the card the note is on. The marker word is any of the three the `card note` gate
+/// takes (`ready_receipt::marker_of_line`), so `REPAIRED C-<n> head=<40 hex>` reads the same way
+/// (SPEC-20261125-bundle-reads-repaired-note). Returns the head and the optional `spec=` value.
 pub fn parse_ready(line: &str, card: &str) -> Option<(String, Option<String>)> {
-    let rest = line.strip_prefix(MARKER)?.strip_prefix(' ')?;
+    let marker = ready_receipt::marker_of_line(line)?;
+    let rest = line.strip_prefix(marker)?.strip_prefix(' ')?;
     let (named, rest) = rest.split_once(' ')?;
     if named != card {
         return None;
@@ -478,7 +545,19 @@ struct Tip {
 
 fn tip_of(git: &Git, tip: &str) -> Result<Tip> {
     let sha = git.commit(tip).ok_or_else(|| {
-        format!("bundle refused: the tip `{tip}` is not a commit here (fetch first)")
+        // SPEC-20261124-bundle-tip-doc-refusal: a missing `origin/<name>` whose local
+        // `refs/heads/<name>` is no commit either names both, so a reader sees the local
+        // integration branch is missing too.
+        let local = tip
+            .strip_prefix("origin/")
+            .map(|name| format!("refs/heads/{name}"))
+            .filter(|local| git.commit(local).is_none());
+        match local {
+            Some(local) => format!(
+                "bundle refused: the tip `{tip}` is not a commit here, and `{local}` is not either (fetch first)"
+            ),
+            None => format!("bundle refused: the tip `{tip}` is not a commit here (fetch first)"),
+        }
     })?;
     let committed = git
         .ok(&["log", "-1", "--format=%cI", &sha])
@@ -490,6 +569,18 @@ fn tip_of(git: &Git, tip: &str) -> Result<Tip> {
         sha,
         committed,
     })
+}
+
+/// The default tip of an integration branch (SPEC-20261124-bundle-local-tip): the local
+/// `refs/heads/<branch>` when it is a commit in `dir`, else `origin/<branch>`. The integration
+/// branch is the local one and `origin` is behind it; the tool never fetches.
+pub fn integration_tip(dir: &Path, branch: &str) -> String {
+    let local = format!("refs/heads/{branch}");
+    if (Git { dir }).commit(&local).is_some() {
+        local
+    } else {
+        format!("origin/{branch}")
+    }
 }
 
 fn tip_json(t: &Tip) -> Value {
@@ -522,7 +613,8 @@ pub fn ready(project: &Path, home: &Path, dir: &Path, tip: &str) -> Result<Value
                 };
                 let on_origin = present && !git.origin_branches(h, false).is_empty();
                 heads.push(json!({
-                    "card": r.card, "note_id": r.note_id, "head": h, "spec": r.spec,
+                    "card": r.card, "note_id": r.note_id, "marker": r.marker,
+                    "head": h, "spec": r.spec,
                     "specs": specs, "present": present, "on_origin": on_origin,
                     "already_in_tip": present && git.is_ancestor(h, &tip.sha),
                     "ready_lines": r.lines,
@@ -588,7 +680,13 @@ fn finding(code: &str, card: &str, head: &str, detail: Value) -> Value {
 struct Judged {
     card: String,
     head: Option<String>,
+    /// The hand-back note the head and the `guard-mutant:` lines were read from, as
+    /// `{"note_id", "marker"}` (SPEC-20261125-bundle-reads-repaired-note); `None` when no
+    /// hand-back note names the head.
+    read_note: Option<Value>,
     findings: Vec<Value>,
+    /// The `guard-mutant:` warnings (SPEC-20261123-ready-mutant-line): listed, never blocking.
+    warnings: Vec<Value>,
     floor: u8,
     pass_note: Option<i64>,
     pass_line: Option<String>,
@@ -612,7 +710,9 @@ fn judge(
     let mut j = Judged {
         card: arg.card.clone(),
         head: None,
+        read_note: None,
         findings: vec![],
+        warnings: vec![],
         floor: 0,
         pass_note: None,
         pass_line: None,
@@ -651,6 +751,14 @@ fn judge(
         },
     };
     j.head = Some(head.clone());
+    j.read_note = note_naming(&arg.card, &notes, &head).and_then(|n| {
+        n.hand_back_marker()
+            .map(|marker| json!({"note_id": n.id, "marker": marker}))
+    });
+    j.warnings = mutant_line::warnings(ready_body_naming(&arg.card, &notes, &head))
+        .into_iter()
+        .map(|(code, detail)| finding(code, &arg.card, &head, detail))
+        .collect();
     if git.commit(&head).is_none() {
         j.findings.push(finding(
             "head_missing",
@@ -686,15 +794,14 @@ fn judge(
     // audit evidence
     // A head with no merge base with the tip (an unrelated history) is one finding, not an abort:
     // the other heads are still judged (REQ-3).
-    let paths = match git.changed_paths(&tip.sha, &head) {
-        Ok(p) => p,
+    j.floor = match git.audit_floor(&tip.sha, &head) {
+        Ok((floor, _)) => floor,
         Err(e) => {
             j.findings
                 .push(finding("no_merge_base", &arg.card, &head, json!(e)));
             return Ok(j);
         }
     };
-    j.floor = gate::tier_of(Some(0), &paths);
     let mut passes: Vec<(i64, String, String)> = Vec::new(); // (note, head, line)
     for n in &notes {
         let first = n.first_line();
@@ -922,6 +1029,7 @@ pub fn check(
     let tip = tip_of(&git, tip)?;
     let judged = judge_all(&git, project, home, &tip, &args)?;
     let findings: Vec<Value> = judged.iter().flat_map(|j| j.findings.clone()).collect();
+    let warnings: Vec<Value> = judged.iter().flat_map(|j| j.warnings.clone()).collect();
     let unreadable: Vec<Value> = judged
         .iter()
         .flat_map(|j| j.unreadable_verdicts.clone())
@@ -929,14 +1037,16 @@ pub fn check(
     let heads_json: Vec<Value> = judged
         .iter()
         .map(|j| {
-            json!({"card": j.card, "head": j.head, "audit_floor": j.floor,
+            json!({"card": j.card, "head": j.head, "read_note": j.read_note,
+                   "audit_floor": j.floor,
                    "pass_note": j.pass_note, "pass_tier": j.pass_tier, "specs": j.specs,
-                   "findings": j.findings.len()})
+                   "findings": j.findings.len(), "warnings": j.warnings.len()})
         })
         .collect();
     Ok(json!({
         "action": "check", "ok": findings.is_empty(), "tip": tip_json(&tip),
-        "heads": heads_json, "findings": findings,
+        "heads": heads_json, "findings": findings, "warnings": warnings,
+        "warning_note": WARNING_NOTE,
         "unreadable_verdict": unreadable,
         "audit_note": AUDIT_NOTE,
         "conflict_note": "each head is merged with the tip and with every earlier head, two at a time; `build` is the exact three-way check",
@@ -1037,6 +1147,36 @@ fn read_record(path: &Path, gaps: &mut Vec<String>) -> Result<Record> {
     Ok(rec)
 }
 
+/// The one body line that counts the commits of the branch per `Moai-Verified` kind and the
+/// reverted ones, read from the answer of `trailers::list` (SPEC-20261120-verified-trailer-in-use
+/// REQ-5…REQ-7). A commit without the line counts under `none`, as the listing reads it. The line
+/// holds counts and fixed words only, and it does not begin with a trailer key. An answer that is
+/// an error or lacks a count refuses the body (REQ-6): a body states no figure it did not read.
+fn verified_summary(listing: &Result<Value>) -> Result<String> {
+    let list = listing.as_ref().map_err(|e| {
+        format!("bundle body refused: the Moai-Verified listing of the branch cannot be read: {e}")
+    })?;
+    let lacks =
+        || "bundle body refused: the Moai-Verified listing of the branch lacks a count".to_string();
+    let commits = list["commits"].as_array().ok_or_else(lacks)?;
+    let mut by_kind = Vec::new();
+    for kind in trailers::VERIFIED_KINDS {
+        let n = list["counts"][kind].as_u64().ok_or_else(lacks)?;
+        by_kind.push(format!("{kind} {n}"));
+    }
+    let reverted = commits
+        .iter()
+        .filter(|c| c["reverted"].as_bool() == Some(true))
+        .count();
+    let n = commits.len();
+    Ok(format!(
+        "Verification kinds (`Moai-Verified`, {n} commit{}): {} (a commit without the line counts \
+         as none); reverted {reverted}.",
+        if n == 1 { "" } else { "s" },
+        by_kind.join(", ")
+    ))
+}
+
 /// `bundle body`: the pull request body, from the heads, the branch and the run record.
 #[allow(clippy::too_many_arguments)]
 pub fn body(
@@ -1098,8 +1238,10 @@ pub fn body(
         .ok_or_else(|| {
             format!("bundle body refused: the branch `{branch}` has no merge base with the tip")
         })?;
-    let paths = git.changed_paths(&tip.sha, &pinned)?;
-    let tier = gate::tier_of(Some(0), &paths);
+    // The commits the branch adds beyond the tip, by `Moai-Verified` kind; an unreadable listing
+    // refuses the body before anything is written.
+    let summary = verified_summary(&trailers::list(dir, &format!("{base}..{pinned}")))?;
+    let (tier, paths) = git.audit_floor(&tip.sha, &pinned)?;
     let merges = git
         .ok(&[
             "rev-list",
@@ -1132,7 +1274,7 @@ pub fn body(
         b.push_str(&format!("Moai-Spec: {s}\n"));
     }
     b.push_str(
-        "\nM-Flow bundle (lanes push only, the leader integrates audited heads locally, verifies the \
+        "\nNeXT-Flow bundle (lanes push only, the leader integrates audited heads locally, verifies the \
          pinned SHA locally, then opens one pull request; CI, independent audit and the ruleset are unchanged).\n\n\
          | SPEC | Branch head | Audit before integration |\n| --- | --- | --- |\n",
     );
@@ -1170,7 +1312,7 @@ pub fn body(
     let s = |n: u64| if n == 1 { "" } else { "s" };
     b.push_str(&format!(
         "\nIntegration: `{branch}` {built} with {merges} merge commits → pinned SHA `{pinned}`. \
-         {files} file{} changed, {ins} insertion{}(+), {del} deletion{}(-).\n\n## Self-Audit\n\n",
+         {files} file{} changed, {ins} insertion{}(+), {del} deletion{}(-).\n\n{summary}\n\n## Self-Audit\n\n",
         s(files),
         s(ins),
         s(del)
@@ -1423,6 +1565,26 @@ mod tests {
         assert_eq!(parse_ready(&bare, "C-12"), Some((H.into(), None)));
     }
 
+    /// SPEC-20261125-bundle-reads-repaired-note REQ-1: the three markers the `card note` gate
+    /// takes read the same way, and a word that only starts like one does not.
+    #[test]
+    fn the_grammar_reads_every_marker_the_gate_takes() {
+        assert_eq!(
+            parse_ready(&format!("REPAIRED C-12 head={H}"), "C-12"),
+            Some((H.into(), None))
+        );
+        assert_eq!(
+            parse_ready(
+                &format!("READY C-12 head={H} spec=SPEC-20261119-x-y"),
+                "C-12"
+            ),
+            Some((H.into(), Some("SPEC-20261119-x-y".into())))
+        );
+        assert!(parse_ready(&format!("REPAIRED C-13 head={H}"), "C-12").is_none());
+        assert!(parse_ready(&format!("REPAIREDC-12 head={H}"), "C-12").is_none());
+        assert!(parse_ready(&format!("MERGE-READY C-12 head={H}"), "C-12").is_none());
+    }
+
     #[test]
     fn the_ready_grammar_refuses_the_lines_it_cannot_read() {
         // another card, a short head, a head glued to text, upper-case hex, the old free form
@@ -1438,6 +1600,52 @@ mod tests {
     fn a_malformed_spec_value_leaves_the_line_readable_without_a_spec() {
         let line = format!("{MARKER} C-12 head={H} spec=nope");
         assert_eq!(parse_ready(&line, "C-12"), Some((H.into(), None)));
+    }
+
+    /// SPEC-20261120-verified-trailer-in-use REQ-5, REQ-7: the line from a listing answer.
+    #[test]
+    fn verified_summary_names_the_counts_in_the_pinned_order() {
+        let listing = json!({
+            "commits": [
+                {"sha": "a", "kinds": ["tests"], "reverted": true},
+                {"sha": "b", "kinds": ["none"], "reverted": false},
+            ],
+            "counts": {"tests": 1, "mutants": 0, "e2e": 0, "smoke": 0, "none": 1},
+        });
+        assert_eq!(
+            verified_summary(&Ok(listing)).unwrap(),
+            "Verification kinds (`Moai-Verified`, 2 commits): tests 1, mutants 0, e2e 0, smoke 0, \
+             none 1 (a commit without the line counts as none); reverted 1."
+        );
+        let one = json!({
+            "commits": [{"sha": "a", "kinds": ["smoke"], "reverted": false}],
+            "counts": {"tests": 0, "mutants": 0, "e2e": 0, "smoke": 1, "none": 0},
+        });
+        let line = verified_summary(&Ok(one)).unwrap();
+        assert!(line.contains("1 commit)"), "{line}");
+        assert!(!line.starts_with("Moai-"), "{line}");
+    }
+
+    /// REQ-6: an error from the listing, or a listing without a count, refuses the body.
+    #[test]
+    fn verified_summary_refuses_an_unreadable_or_incomplete_listing() {
+        let err = verified_summary(&Err("git log failed: bad range".into())).unwrap_err();
+        assert!(
+            err.starts_with("bundle body refused:") && err.contains("cannot be read"),
+            "{err}"
+        );
+        assert!(err.contains("git log failed: bad range"), "{err}");
+        let full = |counts: Value| json!({"commits": [], "counts": counts});
+        for broken in [
+            json!({"counts": {"tests": 0, "mutants": 0, "e2e": 0, "smoke": 0, "none": 0}}),
+            full(json!({"tests": 0, "mutants": 0, "e2e": 0, "smoke": 0})),
+            full(json!({"tests": 0, "mutants": 0, "e2e": 0, "smoke": 0, "none": -1})),
+            full(json!({"tests": "0", "mutants": 0, "e2e": 0, "smoke": 0, "none": 0})),
+            json!({}),
+        ] {
+            let err = verified_summary(&Ok(broken.clone())).unwrap_err();
+            assert!(err.contains("lacks a count"), "{broken}: {err}");
+        }
     }
 
     #[test]

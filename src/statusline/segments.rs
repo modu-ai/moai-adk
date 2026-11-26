@@ -4,7 +4,7 @@
 
 use super::input::SubagentTask;
 
-/// Auto-compact trigger used to scale the context bar (memory.go `defaultAutoCompactPct`).
+/// Auto-compact trigger used to scale the context percentage (memory.go `defaultAutoCompactPct`).
 pub const DEFAULT_AUTO_COMPACT_PCT: i64 = 85;
 const DEFAULT_CONTEXT_WINDOW: i64 = 200_000;
 // internal/config handoff band constants.
@@ -63,7 +63,7 @@ pub fn shorten_model_name(model: &str) -> String {
     }
 }
 
-/// The context-window reading behind the CTX bar (`MemoryData`).
+/// A context-window reading in tokens (`MemoryData`), as [`handoff_stage`] measures it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Memory {
     pub tokens_used: i64,
@@ -72,7 +72,7 @@ pub struct Memory {
     pub available: bool,
 }
 
-/// What `CollectMemory` reads from `context_window`; `None` when the object is absent.
+/// What [`context_percent`] reads from `context_window`; `None` when the object is absent.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ContextReading {
     pub used_percentage: Option<f64>,
@@ -83,12 +83,16 @@ pub struct ContextReading {
     pub current_usage_tokens: Option<i64>,
 }
 
-/// `CollectMemory` (memory.go). `size_override` is the GLM / env override (0 = none);
-/// `auto_compact` scales the budget so the bar reaches 100% where auto-compact fires.
-pub fn collect_memory(cw: Option<ContextReading>, size_override: i64, auto_compact: i64) -> Memory {
-    let Some(cw) = cw else {
-        return Memory::default();
-    };
+/// The `CW` percentage (SPEC-20261122-statusline-limits REQ-2, D-1): `used_percentage` as the
+/// host gives it; when it is null, the input tokens of `current_usage` over the window size, else
+/// `used` over `total` of an older host — rescaled by nothing. `size_override` is the GLM / env
+/// override of the window size (0 = none). `None` when the window names none of them, so the
+/// line says `CW n/a`, never a guessed zero.
+pub fn context_percent(cw: Option<ContextReading>, size_override: i64) -> Option<f64> {
+    let cw = cw?;
+    if let Some(pct) = cw.used_percentage {
+        return Some(pct);
+    }
     let mut size = cw.context_window_size;
     if size <= 0 {
         size = cw.total;
@@ -99,28 +103,10 @@ pub fn collect_memory(cw: Option<ContextReading>, size_override: i64, auto_compa
     if size_override > 0 {
         size = size_override;
     }
-    let budget = size * auto_compact / 100;
-    let full = |tokens_used| Memory {
-        tokens_used,
-        token_budget: budget,
-        context_window_size: size,
-        available: true,
-    };
-    if let Some(pct) = cw.used_percentage {
-        return full((size as f64 * pct / 100.0) as i64);
-    }
     if let Some(tokens) = cw.current_usage_tokens {
-        return full(tokens);
+        return Some(tokens as f64 * 100.0 / size as f64);
     }
-    if cw.used > 0 || cw.total > 0 {
-        return Memory {
-            tokens_used: cw.used,
-            token_budget: cw.total * auto_compact / 100,
-            context_window_size: size,
-            available: true,
-        };
-    }
-    full(0)
+    (cw.total > 0).then(|| cw.used as f64 * 100.0 / cw.total as f64)
 }
 
 /// `usagePercent`: truncated, capped at 100, 0 for an empty budget.
@@ -128,7 +114,7 @@ pub fn usage_percent(used: i64, total: i64) -> i64 {
     if total <= 0 {
         return 0;
     }
-    (used * 100 / total).min(100)
+    (used.saturating_mul(100) / total).min(100)
 }
 
 /// `cacheHitPercent`: read / (read + creation), omitted when creation ≤ 0.
@@ -136,11 +122,11 @@ pub fn cache_hit_percent(read: i64, creation: i64) -> Option<i64> {
     if creation <= 0 {
         return None;
     }
-    let denom = read + creation;
+    let denom = read.saturating_add(creation);
     if denom <= 0 {
         return None;
     }
-    Some(read * 100 / denom)
+    Some((read.saturating_mul(100) / denom).min(100))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -205,10 +191,14 @@ pub fn session_time(ms: i64) -> String {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GitStatus {
     pub branch: String,
+    /// The short HEAD SHA when the branch name is empty (detached HEAD,
+    /// SPEC-20261121-statusline-detached); empty otherwise.
+    pub head_sha: String,
     pub staged: i64,
     pub modified: i64,
     pub untracked: i64,
     pub behind: i64,
+    pub ahead: i64,
 }
 
 /// `Status` line parsing plus `parseStatusBranchHeader` (manager.go).
@@ -216,8 +206,9 @@ pub fn parse_porcelain(out: &str) -> GitStatus {
     let mut status = GitStatus::default();
     for line in out.split('\n') {
         if let Some(header) = line.strip_prefix("## ") {
-            let (branch, behind) = parse_branch_header(header);
+            let (branch, ahead, behind) = parse_branch_header(header);
             status.branch = branch;
+            status.ahead = ahead;
             status.behind = behind;
             continue;
         }
@@ -240,12 +231,18 @@ pub fn parse_porcelain(out: &str) -> GitStatus {
     status
 }
 
-fn parse_branch_header(header: &str) -> (String, i64) {
+fn parse_branch_header(header: &str) -> (String, i64, i64) {
     let mut rest = header.strip_prefix("No commits yet on ").unwrap_or(header);
+    let mut ahead = 0;
     let mut behind = 0;
     if let Some(idx) = rest.rfind(" [") {
         if rest.ends_with(']') {
             for part in rest[idx + 2..rest.len() - 1].split(", ") {
+                if let Some(value) = part.strip_prefix("ahead ") {
+                    if let Ok(n) = value.parse::<i64>() {
+                        ahead = n;
+                    }
+                }
                 if let Some(value) = part.strip_prefix("behind ") {
                     if let Ok(n) = value.parse::<i64>() {
                         behind = n;
@@ -259,9 +256,9 @@ fn parse_branch_header(header: &str) -> (String, i64) {
         rest = &rest[..idx];
     }
     if rest.contains([' ', '\t']) {
-        return (String::new(), behind);
+        return (String::new(), ahead, behind);
     }
-    (rest.to_string(), behind)
+    (rest.to_string(), ahead, behind)
 }
 
 /// `renderSubagentOutput`: one `{"id","content"}` line per row with a non-empty id.
@@ -353,30 +350,97 @@ mod tests {
         assert_eq!(shorten_model_name("claude-sonnet-5-5"), "Sonnet 5.5");
         assert_eq!(shorten_model_name("claude-3-5-haiku-20241022"), "Haiku 3.5");
         assert_eq!(shorten_model_name("glm-5.3[1m]"), "glm-5.3");
+        assert_eq!(shorten_model_name("glm-5.4[1m]"), "glm-5.4");
         assert_eq!(shorten_model_name("claude-fable-5-1"), "Fable 5.1");
     }
 
+    /// SPEC-20261122-statusline-limits D-1 (it replaces the 85 percent auto-compact rescale): the
+    /// host's percentage unchanged, and without it the input tokens over the window size, the
+    /// size override first, or `used` over `total` of an older host.
     #[test]
-    fn memory_scales_to_the_auto_compact_budget() {
-        let cw = |pct, size| ContextReading {
+    fn the_context_percentage_is_the_hosts_without_a_rescale() {
+        let cw = |pct| ContextReading {
             used_percentage: Some(pct),
-            context_window_size: size,
+            context_window_size: 200_000,
             ..Default::default()
         };
-        let m = collect_memory(Some(cw(8.0, 200_000)), 0, 85);
-        assert_eq!((m.tokens_used, m.token_budget), (16_000, 170_000));
-        assert_eq!(usage_percent(m.tokens_used, m.token_budget), 9);
-        let m = collect_memory(Some(cw(93.0, 200_000)), 0, 85);
-        assert_eq!(usage_percent(m.tokens_used, m.token_budget), 100);
-        assert_eq!(handoff_stage(&m, 85), HandoffStage::Soft);
+        for pct in [8.0, 25.0, 85.0, 93.0, 100.0] {
+            assert_eq!(context_percent(Some(cw(pct)), 0), Some(pct));
+            assert_eq!(context_percent(Some(cw(pct)), 1_000_000), Some(pct));
+        }
         let usage = ContextReading {
             context_window_size: 200_000,
             current_usage_tokens: Some(50_000),
             ..Default::default()
         };
-        let m = collect_memory(Some(usage), 0, 85);
-        assert_eq!(usage_percent(m.tokens_used, m.token_budget), 29);
-        assert!(!collect_memory(None, 0, 85).available);
+        assert_eq!(context_percent(Some(usage), 0), Some(25.0));
+        assert_eq!(context_percent(Some(usage), 1_000_000), Some(5.0));
+        let no_size = ContextReading {
+            current_usage_tokens: Some(50_000),
+            ..Default::default()
+        };
+        assert_eq!(
+            context_percent(Some(no_size), 0),
+            Some(25.0),
+            "200k by default"
+        );
+        let older = ContextReading {
+            used: 30,
+            total: 120,
+            ..Default::default()
+        };
+        assert_eq!(context_percent(Some(older), 0), Some(25.0));
+        assert_eq!(context_percent(None, 0), None);
+    }
+
+    /// A context window that names a size but gives no percentage and no usage is unknown,
+    /// never a reading of zero (REQ-9 of SPEC-20261121-statusline-detached); a real zero stays
+    /// a reading.
+    #[test]
+    fn a_context_window_with_no_percentage_and_no_usage_is_unavailable() {
+        let sized = ContextReading {
+            context_window_size: 200_000,
+            ..Default::default()
+        };
+        assert_eq!(context_percent(Some(sized), 0), None);
+        assert_eq!(context_percent(Some(ContextReading::default()), 0), None);
+        let used_without_total = ContextReading {
+            used: 5,
+            ..Default::default()
+        };
+        assert_eq!(context_percent(Some(used_without_total), 0), None);
+        let zero_percentage = ContextReading {
+            used_percentage: Some(0.0),
+            context_window_size: 200_000,
+            ..Default::default()
+        };
+        assert_eq!(context_percent(Some(zero_percentage), 0), Some(0.0));
+        let zero_usage = ContextReading {
+            context_window_size: 200_000,
+            current_usage_tokens: Some(0),
+            ..Default::default()
+        };
+        assert_eq!(context_percent(Some(zero_usage), 0), Some(0.0));
+    }
+
+    /// Numbers far beyond any real window must not overflow a debug build (REQ-10).
+    #[test]
+    fn huge_context_numbers_do_not_overflow() {
+        let by_usage = ContextReading {
+            current_usage_tokens: Some(i64::MAX),
+            context_window_size: 1,
+            ..Default::default()
+        };
+        assert!(context_percent(Some(by_usage), 0).is_some_and(f64::is_finite));
+        let by_total = ContextReading {
+            used: i64::MAX,
+            total: i64::MAX,
+            ..Default::default()
+        };
+        assert_eq!(context_percent(Some(by_total), 0), Some(100.0));
+        assert_eq!(usage_percent(i64::MAX, 1), 100);
+        let hit = cache_hit_percent(i64::MAX, i64::MAX);
+        assert!(hit.is_some_and(|p| (0..=100).contains(&p)));
     }
 
     #[test]
@@ -468,6 +532,40 @@ mod tests {
             parse_porcelain("## feat/x...origin/feat/x\n").branch,
             "feat/x"
         );
+    }
+
+    /// The ahead count rides the same header the behind count already came from
+    /// (SPEC-20261120-statusline-ahead): no new git call, one more field.
+    #[test]
+    fn ahead_and_behind_parse_together() {
+        let s = parse_porcelain("## main...origin/main [ahead 5, behind 2]\n");
+        assert_eq!(s.ahead, 5);
+        assert_eq!(s.behind, 2);
+        assert_eq!(s.branch, "main");
+    }
+
+    #[test]
+    fn ahead_only_parses_and_behind_stays_zero() {
+        let s = parse_porcelain("## feat/x...origin/feat/x [ahead 7]\n");
+        assert_eq!(s.ahead, 7);
+        assert_eq!(s.behind, 0);
+        assert_eq!(s.branch, "feat/x");
+    }
+
+    #[test]
+    fn behind_only_leaves_ahead_zero() {
+        let s = parse_porcelain("## main...origin/main [behind 3]\n");
+        assert_eq!(s.ahead, 0);
+        assert_eq!(s.behind, 3);
+    }
+
+    #[test]
+    fn gone_and_missing_upstream_leave_both_zero() {
+        let s = parse_porcelain("## main...origin/main [gone]\n");
+        assert_eq!((s.ahead, s.behind), (0, 0));
+        assert_eq!(s.branch, "main");
+        let s = parse_porcelain("## main\n");
+        assert_eq!((s.ahead, s.behind), (0, 0));
     }
 
     #[test]

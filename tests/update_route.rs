@@ -38,13 +38,16 @@ fn the_update_route_is_the_project_layer() {
     );
     let update = skill("workflows/update.md");
     for text in [
-        "`/moai update` (`$moai update` in Codex CLI, `/skill:moai update` in OMP) updates the current project",
+        // SPEC-20261122-next-flow-skills-agents REQ-8: the Codex and OMP entry spellings left.
+        "`/moai update` updates the current project",
         // #2936 S1: one read-only preview of every phase, then the printed commands.
         "Run `moai project-update-plan <project>`. It writes nothing",
         "Show the user every phase and every step in one view",
         "Ask once for the `ready` steps as a whole, then a separate yes for each `needs_decision` step",
         // C-51 (user decision 2026-11-16): the session composes the reference from the pick.
-        "the words of `apply.argv` (the first is the `moai` command) with `<permission-reference>` replaced by a permission reference this session composes from the user's pick",
+        // The warning-confirmation clause sits between the two halves since the AGENTS.md picks.
+        "the words of `apply.argv` (the first is the `moai` command) with ",
+        "`<permission-reference>` replaced by a permission reference this session composes from the user's pick",
         "and `apply.stdin` on stdin (nothing when it is `null`)",
         "After a go-state apply, run `moai project-update-plan <project>` again before anything else",
         "The project is up to date only when `all_unchanged` is `true`",
@@ -89,6 +92,19 @@ fn the_update_route_is_the_project_layer() {
     ] {
         assert!(update.contains(text), "update.md lacks {text:?}");
     }
+    // The two halves of the apply sentence sit in one sentence, with the warning-confirmation
+    // clause between them (the halves alone would pass if they drifted apart).
+    let first = "the words of `apply.argv` (the first is the `moai` command) with ";
+    let start = update.find(first).expect("the apply sentence");
+    let rest = &update[start + first.len()..];
+    let second = rest
+        .find("`<permission-reference>` replaced by a permission reference")
+        .expect("the permission-reference half");
+    let between = &rest[..second];
+    assert!(
+        between.contains("`<warning-confirmation>`") && !between.contains(". "),
+        "one sentence with the warning-confirmation clause between: {between:?}"
+    );
     // The host-install procedure is no longer this route's own steps.
     assert!(
         !update.contains("Identify the MoAI skill, settings, and owner on every installed host"),
@@ -159,7 +175,7 @@ fn the_update_route_runs_the_commands_itself_after_the_pick() {
 fn every_question_is_a_selection_through_the_hosts_question_tool() {
     let q = skill("references/internal/questions.md");
     for text in [
-        "(user decision 2026-11-16, cards C-51 and C-52)",
+        "How a question reaches the user. It holds for every question of those routes",
         "Never tell the user to run a command in a terminal when this session can run it",
         "Every question is a selection",
         "put the recommended one first and mark it",
@@ -193,48 +209,22 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
             .unwrap_or_else(|| panic!("no row for {host}"))
             .to_string()
     };
+    // SPEC-20261122-next-flow-skills-agents REQ-8 retired the Codex CLI and OMP rows with their
+    // hosts. What they pinned for every host stays in rule 3 above: no answer is not a pick, and
+    // nothing is preselected for a case-(2) question.
+    for host in ["Codex CLI", "OMP"] {
+        assert!(
+            !q.lines().any(|l| l.starts_with(&format!("| {host} |"))),
+            "questions.md still has a {host} row"
+        );
+    }
     for (host, texts) in [
         ("Claude Code", &["`AskUserQuestion`", "(Recommended)"][..]),
         (
-            "Codex CLI",
+            "Any other host",
             &[
-                "`request_user_input`",
-                "At most 3 questions per call, 2 or 3 options each",
-                "`features.default_mode_request_user_input`",
-                // N1: true at this head — the launcher does not turn the feature on yet.
-                "(under development, off by default; the `moai codex` launcher is to turn it on — card C-52, not in this version): go by the tool list",
-                // B1: Codex's own Default-mode instruction must not decide a case-(2) question.
-                "continue with best judgment",
-                "for a case-(2) question never do that: no answer is not a pick (rule 3)",
-                // N10: Default mode's own ban on permission requests through the tool, quoted
-                // from the installed Codex 0.170.0, and how the pick is asked instead.
-                "In Default mode a case-(2) pick is not asked through `request_user_input` at all",
-                "Never use the `request_user_input` tool for permission requests or permission-related escalations",
-                "ask it as plain text with numbered choices, the recommended one first, say that it is the fallback, and wait for the reply",
-                "Ordinary picks and Plan mode keep the tool",
-                // N2: Plan mode previews and picks; the applies run after it.
-                "In Plan mode only previews and picks happen",
-                "the applies run after the user leaves Plan mode; say so once",
-                "Never `request_user_input_async` for a question a step waits on",
-                "say once that `/plan` enables the dialog",
+                "Use the host's own question tool the same way when it lists one",
                 "one question per message with numbered choices",
-            ][..],
-        ),
-        (
-            "OMP",
-            &[
-                "`ask`",
-                "one HTML form",
-                "`<select>`",
-                "`checked`",
-                // B1: OMP submits the form's values on a timeout, so case (2) presets none.
-                "for a case-(2) question (rule 3) nothing is preselected: no `checked`, no `selected` and no `value`",
-                // N8: the form is submitted on a timeout, so an empty submission is no pick.
-                "the recommendation is named in the label text only",
-                "a submission without a choice is not a pick",
-                "`ask.timeout`",
-                "print mode or a subagent",
-                "in the final answer",
             ][..],
         ),
     ] {
@@ -244,11 +234,11 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
             assert!(r.contains(t), "questions.md {host} row lacks {t:?}: {r}");
         }
     }
-    // The routes that ask, and the question bank, name the reference.
+    // The routes that ask, and the question bank, name the reference. PROJECT carries the
+    // retired SETUP route (SPEC-20261122-next-flow-skills-agents).
     for file in [
         "workflows/update.md",
         "workflows/project.md",
-        "workflows/setup.md",
         "references/internal/interview.md",
     ] {
         assert!(
@@ -256,17 +246,13 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
             "{file} does not name `internal/questions`"
         );
     }
-    // The case-(2) sentence of SKILL.md keeps the wait and says it is still a selection.
-    let skill_md = skill("SKILL.md");
-    assert!(skill_md.contains(
-        "goes to the user and waits — no deadline applies it by default; it is still asked as a selection with the recommended option first, and once the user has picked, the session runs it (user decision 2026-11-16, card C-51)"
+    // The case-(2) row of `internal/decide` keeps the wait and says it is still a selection.
+    let decide = skill("references/internal/decide.md");
+    assert!(decide.contains(
+        "goes to the user and waits — no deadline applies it by default; it is still asked as a selection with the recommended option first, and once the user has picked, the session runs it."
     ));
     // No route asks three or four at a time any more (the Codex CLI limit is three).
-    for file in [
-        "workflows/project.md",
-        "workflows/setup.md",
-        "references/internal/interview.md",
-    ] {
+    for file in ["workflows/project.md", "references/internal/interview.md"] {
         assert!(
             !skill(file).contains("three or four"),
             "{file} still asks three or four at a time"
@@ -280,7 +266,7 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
 fn the_ledger_is_local_cards_and_previews_run_without_asking() {
     let project = skill("workflows/project.md");
     for text in [
-        "the previews are read-only and run without asking (user decision 2026-11-16, card C-51)",
+        "the previews are read-only and run without asking, and the one ask comes after the preview is shown",
         "`go-settings` comes before `go-state`",
         "never ask about a step that reads `blocked` or `re-run after …` behind an earlier step",
         "ask once, after the preview is shown",
@@ -313,7 +299,8 @@ fn the_ledger_is_local_cards_and_previews_run_without_asking() {
     ] {
         assert!(interview.contains(text), "interview.md lacks {text:?}");
     }
-    let setup = skill("workflows/setup.md");
+    // PROJECT carries the retired SETUP route (SPEC-20261122-next-flow-skills-agents).
+    let setup = skill("workflows/project.md");
     for text in [
         "record the first work item with `moai card add`",
         "do not offer GitHub Issues as the ledger",
@@ -326,11 +313,11 @@ fn the_ledger_is_local_cards_and_previews_run_without_asking() {
         "run `moai ledger-register-apply` only after its own pick in a selection",
         "never that the ledger is created unasked",
     ] {
-        assert!(setup.contains(text), "setup.md lacks {text:?}");
+        assert!(setup.contains(text), "project.md lacks {text:?}");
     }
     assert!(
         !setup.contains("to answer on the terminal"),
-        "setup.md still sends the language questions to the terminal"
+        "project.md still sends the language questions to the terminal"
     );
     let skill_md = skill("SKILL.md");
     assert!(

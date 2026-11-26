@@ -7,6 +7,8 @@ created: 2026-11-17
 parent: null
 ---
 
+> 안내(2026-11-21): src/decide/ 는 SPEC-20261120-retire-decide 에서 삭제됐어요. 아래 읽기 전용 참조는 기록이에요.
+
 ## Intent
 
 카드 C-90. 프로필 글 검사 `profile::portable()`은 공유 목록 `SECRET_SHAPES`의 OpenAI식 키 앞부분(s, k, 하이픈)을
