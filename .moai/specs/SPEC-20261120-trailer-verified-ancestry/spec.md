@@ -30,16 +30,16 @@ created: 2026-11-20
 ## Acceptance
 
 - AC-1 (REQ-1): 병합된 옛 브랜치(줄 없음)의 커밋은 `missing_verified` 를 받지 않아요.
-  verify: `cargo test --locked --offline --test trailer_verified_cli trailer_check_old_side_branch`
+  verify: `cargo test --locked --offline --test card trailer_verified_cli::trailer_check_old_side_branch`
 - AC-2 (REQ-2): 줄을 가진 커밋의 자손이 줄이 없으면 본선에서도, 그 뒤에 갈라진 브랜치에서도 실패해요.
-  verify: `cargo test --locked --offline --test trailer_verified_cli trailer_check_descendants_still_fail`
+  verify: `cargo test --locked --offline --test card trailer_verified_cli::trailer_check_descendants_still_fail`
 - AC-3 (REQ-3, REQ-4, REQ-5): `--verified-since` 가 범위 안이면 자손에만 요구하고, 범위 밖이면 범위 전체를 덮고, 기존 시작 판정 테스트가 그대로 통과해요.
-  verify: `cargo test --locked --offline --test trailer_verified_cli`
+  verify: `cargo test --locked --offline --test card trailer_verified_cli::`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261120-trailer-verified-ancestry/spec.md`, `src/trailers.rs`, `tests/trailer_verified_cli.rs`
-- read-only: `src/ops/trailer_check.rs`, `src/bundle.rs`, `tests/trailer_check_cli.rs`
+- write: `.moai/specs/SPEC-20261120-trailer-verified-ancestry/spec.md`, `src/trailers.rs`, `tests/card/trailer_verified_cli.rs`
+- read-only: `src/ops/trailer_check.rs`, `src/bundle.rs`, `tests/card/trailer_check_cli.rs`
 - forbidden: 실제 HOME, 사용자의 전역 git 설정, 네트워크
 
 ## Plan
@@ -74,6 +74,8 @@ RED: 테스트 커밋 `d939b150db` 에서 `cargo test --test trailer_verified_cl
 이웃과 READY 체인(head `8b54dea972` 기준, 모두 READY 체인 스크립트가 이 실행에서 남긴 종료 코드와 로그에서 읽었어요): 여섯 가지 가벼운 검사 `git diff --check` 0, `cargo fmt --check` 0, ops `rustfmt --edition 2021` 0, `cargo clippy` 0, `build-moai-cli` 0, `cargo-tests` 0, 파이썬 `unittest` 0, `trailer-check` 0. `tools/repo_scans.json` 41개 명령 모두 exit 0(`failed=0`). 영역 대상 11개(`trailer_*`, `bundle_*`, 그리고 `trailer-check`·`trailers::`·`Moai-Verified` 를 읽는 테스트 파일: bundle_body_cli, bundle_build_cli, bundle_check_cli, bundle_ready_cli, bundle_user_assets_cli, bundle_verify_cli, claim_verify_cli, sdd_guidance, spec_branch_name_first, trailer_check_cli, trailer_verified_cli) 128개 통과, exit 0. `--lib` 1641개 통과 exit 0, `--bins` 2개 대상 56개 통과 exit 0, `python3 -m unittest tests.local_check_test` 54개 OK exit 0. 병합 뒤 커밋은 이 SPEC 문서만 바꿔요.
 
 Not run: 전체 `--test` 한 번에, 다른 카드가 쥔 파일을 읽는 테스트의 새 tip 위 재실행, CI macOS·Windows 시간. 이 변경은 새 프로세스 호출 방식을 더하지 않아요: `verified_cover` 는 `check_rules` 가 이미 쓰는 `git` 클로저(`crate::audit_delta::command`)를 받아 써요(`src/trailers.rs:402`, `src/trailers.rs:463`).
+
+NeXT 병합(2026-11-26): 감사받은 head `f9bf3d3e65` 에 NeXT 끝 `91dd561a5a` 를 한 번 합친 `3a5966b5b3` 은 충돌이 없었어요. 그 사이 NeXT 가 테스트를 `card` 통합 대상의 모듈(`tests/card/`)로 옮겨서 이 브랜치가 더한 테스트도 `tests/card/trailer_verified_cli.rs` 에 합쳐졌고, 위 Acceptance 의 `verify` 줄과 Scope 의 두 테스트 경로를 그 자리로 고쳤어요. Plan 과 위 Result 의 `--test trailer_verified_cli` 는 옮기기 전에 돌린 기록 그대로예요. `3a5966b5b3` 의 `check affected --card 91dd561a5a..` 는 `result=PASS` 였고 AC-1, AC-2 의 테스트가 그 안에서 통과했어요.
 
 - AC-1: met — `trailer_check_old_side_branch` 가 RED(`d939b150db`)에서 실패하고 GREEN(`3507b5302f` 뒤)에서 통과해요. M3, M4, M8 이 이 테스트나 같은 줄의 시작 판정 테스트에서 killed 예요.
 - AC-2: met — `trailer_check_descendants_still_fail` 이 RED 에서 실패하고 GREEN 에서 통과해요(본선과 갈라진 브랜치, 병합을 지난 자손). M2, M5, M9 가 이 테스트에서 killed 예요.
