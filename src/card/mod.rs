@@ -39,6 +39,7 @@ pub mod inbox;
 pub mod input;
 pub mod land;
 pub mod landed;
+pub mod offer;
 pub mod orchestrate;
 pub mod precheck;
 pub mod ready_leftovers;

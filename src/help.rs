@@ -223,6 +223,7 @@ pub const GROUPS: &[Group] = &[
             ("audit-claim", false),
             ("audit-verdict-line", false),
             ("audit-gate", false),
+            ("release-audit-summary", false),
             ("trailers", false),
             ("trailer-check", false),
             ("bundle", false),
@@ -585,6 +586,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     (
         "audit-gate",
         &["audit-gate < input.json", "audit-gate --require-pass < input.json"],
+    ),
+    (
+        "release-audit-summary",
+        &[
+            "release-audit-summary . --base <base-sha> --head <head-sha>",
+            "release-audit-summary . --base <base-sha> --head <head-sha> --post --pr 3300 --repo modu-ai/moai-adk --plan-digest <digest> --permission-reference <ref>",
+        ],
     ),
     ("audit-clone-plan", &["audit-clone-plan --pr 2824 --head <sha> --head-branch <head-branch> --base-branch <base-branch> ."]),
     ("audit-slot", &["audit-slot prep auto --head <sha> --holder agent-2 --lane .claude/worktrees/lane-01", "audit-slot done audit-1 --discard --holder agent-2"]),
@@ -1560,7 +1568,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     (
         "card",
         "프로젝트의 로컬 카드를 읽고 써요: `list`(목록), `show C-n`(카드 하나와 기준·메모·링크), \
-         `add`(draft 카드 하나와 기준을 한 트랜잭션으로), `ready`(draft 를 ready 로), `take`·`release`·`handoff`(예약을 잡고, 돌려주고, 넘겨요), `adopt`(`/clear` 뒤 같은 레인이 자기 카드를 다음 세대로 이어받아요). `list`·`show` 는 읽기만 하고, 원장 파일과 \
+         `add`(draft 카드 하나와 기준을 한 트랜잭션으로), `ready`(draft 를 ready 로), `take`·`release`·`handoff`(예약을 잡고, 돌려주고, 넘겨요), `adopt`(`/clear` 뒤 같은 레인이 자기 카드를 다음 세대로 이어받아요), `offer`·`accept`(담당이 한 세션에 제안하고 그 세션이 수락해야 넘어가요). `list`·`show` 는 읽기만 하고, 원장 파일과 \
          폴더는 어떤 동작도 만들지 않아요(`ledger-register-apply` 만 만들어요). 원장이 없으면 \
          `list` 는 빈 목록, 나머지는 `ledger not found` 오류와 안내를 줘요.",
     ),

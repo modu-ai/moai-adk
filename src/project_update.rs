@@ -2064,6 +2064,55 @@ fn undo_order() -> Value {
     })
 }
 
+/// The read-only `go-residue` step (SPEC-20261121-go-residue-detect): the files the Go
+/// generation left behind, proven against the first manifest the survey still finds. Every
+/// surveyed item is listed. The step returns one of two states: `unchanged` when nothing is
+/// surveyed or every item is `keep` (the user's own files), and `optional` when at least one
+/// item has an action other than `keep`. It never returns `needs_decision`: the step applies
+/// nothing and offers no command, so no answer to a decision could ever reach it, and
+/// `needs_decision` would hold `all_unchanged` false for good. `optional` is the state for a
+/// report nobody has to act on and counts as nothing to do. The apply and the revert are the
+/// next slice.
+fn go_residue_step(root: &Path, _shown: &str) -> Result<Step> {
+    let survey = crate::go_residue::survey(root);
+    let to_act = survey
+        .items
+        .iter()
+        .filter(|i| i.suggested_action != "keep")
+        .count();
+    let (state, reason) = if survey.items.is_empty() {
+        (
+            "unchanged",
+            "no Go residue is proven by any manifest this survey can find".into(),
+        )
+    } else if to_act == 0 {
+        (
+            "unchanged",
+            format!(
+                "{} surveyed files are the user's own and are kept; no Go residue needs a decision",
+                survey.items.len(),
+            ),
+        )
+    } else {
+        (
+            "optional",
+            format!(
+                "{to_act} of {} surveyed files the Go generation left behind are proven by {}; this update changes none of these files, and moving or restoring them is a later step",
+                survey.items.len(),
+                survey.proof.as_deref().unwrap_or("no manifest"),
+            ),
+        )
+    };
+    Ok(Step {
+        name: "go-residue",
+        state,
+        reason,
+        preview: crate::go_residue::preview(&survey),
+        plan_digest: None,
+        apply: None,
+    })
+}
+
 /// The whole preview. Writes nothing.
 pub fn plan(project: &Path) -> Result<Value> {
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
@@ -2090,7 +2139,12 @@ pub fn plan(project: &Path) -> Result<Value> {
     if reports.apply.is_some() && state.apply.is_some() {
         state = Step::waiting("go-state", "blocked", AFTER_REPORTS);
     }
-    let backup = vec![settings, state, reports];
+    // The read-only go-residue survey (SPEC-20261121-go-residue-detect) runs after the backup
+    // previews: it proves the Go files the generation left against the first manifest it
+    // finds and applies nothing; it reads `optional` while it only reports, so it never holds
+    // `all_unchanged` false.
+    let residue = or_blocked("go-residue", go_residue_step(&root, &shown));
+    let backup = vec![settings, state, reports, residue];
     // A move still to make: every install preview would be stale after it.
     let mut install: Vec<Step> = if backup_pending(&backup) {
         INSTALL

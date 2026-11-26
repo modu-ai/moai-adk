@@ -6,6 +6,9 @@
 //! - [`upgrade_done_guard`] gives a version 1 ledger made before the M-Flow `card.landed`
 //!   exception the current `card_done_guard` trigger. `open_write` runs it on every writable
 //!   open; a ledger that already has the exception is not touched.
+//! - [`ensure_event_index`] gives a ledger made before the `event_card_kind` index the index
+//!   (SPEC-20261126-card-next-speed). `open_write` runs it too; it needs no backup because no row
+//!   is touched.
 //!
 //! The upgrade runs in one `BEGIN IMMEDIATE` transaction, and the lock that statement takes is
 //! held until the commit. Inside it, after the trigger was read again under the lock, SQLite
@@ -95,6 +98,31 @@ pub fn done_guard_status(conn: &Connection) -> Result<DoneGuard, LedgerError> {
         Some(sql) if sql.contains("'card.landed'") => DoneGuard::Current,
         _ => DoneGuard::NeedsMigration,
     })
+}
+
+/// Whether the ledger has the `event_card_kind` index. Reads only, so it works on a read-only
+/// connection too.
+pub fn has_event_index(conn: &Connection) -> Result<bool, LedgerError> {
+    Ok(conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'event_card_kind')",
+        [],
+        |r| r.get(0),
+    )?)
+}
+
+/// Gives a ledger made before the index existed the `event_card_kind` index
+/// (SPEC-20261126-card-next-speed REQ-2). `Ok(true)` means it was created now, `Ok(false)` that
+/// it was there and nothing was written. The index holds no data of its own: no row is touched and
+/// `user_version` stays 1, so an earlier build opens the file and keeps it up to date as it
+/// appends events. The common case reads once and returns; the creation is one statement, which
+/// SQLite runs in its own transaction under the write lock, and `IF NOT EXISTS` makes two
+/// writers that race both succeed.
+pub fn ensure_event_index(conn: &Connection) -> Result<bool, LedgerError> {
+    if has_event_index(conn)? {
+        return Ok(false);
+    }
+    conn.execute_batch(schema::EVENT_CARD_KIND_INDEX)?;
+    Ok(true)
 }
 
 /// [`upgrade_done_guard_with`] with nothing in the middle.
@@ -514,5 +542,149 @@ mod tests {
                 supported: 1
             })
         );
+    }
+
+    /// A ledger file as an earlier build made it: this build's tables and triggers without the
+    /// `event_card_kind` index, with three events.
+    fn ledger_without_event_index(path: &Path) {
+        let mut conn = Connection::open(path).unwrap();
+        schema::create_v1(&mut conn, "p", "test").unwrap();
+        conn.execute_batch(
+            "DROP INDEX event_card_kind; \
+             INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+               VALUES ('k1', 1, 'a', NULL, 'card.spec', '{\"to\":\"SPEC-1\"}'), \
+                      ('k2', 2, 'a', NULL, 'card.note', '{}'), \
+                      ('k3', 3, 'a', NULL, 'card.spec', '{\"to\":\"SPEC-2\"}');",
+        )
+        .unwrap();
+    }
+
+    fn event_rows(conn: &Connection) -> Vec<(i64, String, String)> {
+        let mut stmt = conn
+            .prepare("SELECT event_id, event_key, payload FROM event ORDER BY event_id")
+            .unwrap();
+        stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap()
+    }
+
+    /// The plan text of the per-card lookup that `next`, `list` and the card checks run.
+    fn lookup_plan(conn: &Connection) -> String {
+        let mut stmt = conn
+            .prepare(
+                "EXPLAIN QUERY PLAN SELECT json_extract(payload, '$.to') FROM event \
+                 WHERE card_id = 1 AND kind = 'card.spec' ORDER BY event_id DESC LIMIT 1",
+            )
+            .unwrap();
+        let details: Vec<String> = stmt
+            .query_map([], |r| r.get::<_, String>(3))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        details.join(" | ")
+    }
+
+    #[test]
+    fn a_new_ledger_has_the_event_index_and_the_lookup_uses_it() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        schema::create_v1(&mut conn, "p", "test").unwrap();
+        assert!(has_event_index(&conn).unwrap());
+        assert_eq!(ensure_event_index(&conn), Ok(false), "nothing to make");
+        let plan = lookup_plan(&conn);
+        assert!(plan.contains("event_card_kind"), "{plan}");
+    }
+
+    #[test]
+    fn an_earlier_ledger_gets_the_event_index_and_no_row_or_version_changes() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("earlier-shape.sqlite");
+        ledger_without_event_index(&path);
+        let conn = Connection::open(&path).unwrap();
+        assert!(!has_event_index(&conn).unwrap());
+        let before = event_rows(&conn);
+        assert_eq!(before.len(), 3);
+        let plan = lookup_plan(&conn);
+        assert!(
+            !plan.contains("event_card_kind"),
+            "the earlier shape reads the whole table: {plan}"
+        );
+        let version_before: i64 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(ensure_event_index(&conn), Ok(true), "made now");
+        assert!(has_event_index(&conn).unwrap());
+        assert_eq!(
+            ensure_event_index(&conn),
+            Ok(false),
+            "the second call writes nothing"
+        );
+        assert_eq!(event_rows(&conn), before, "no event row is touched");
+        let version_after: i64 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(version_after, version_before);
+        assert_eq!(
+            version_after, SCHEMA_VERSION,
+            "an earlier build still opens it"
+        );
+        assert!(check_version(version_after).is_ok());
+        let plan = lookup_plan(&conn);
+        assert!(plan.contains("event_card_kind"), "{plan}");
+        // The index keeps up with a new event, as an earlier build appends one.
+        conn.execute(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES ('k4', 4, 'a', NULL, 'card.spec', '{}')",
+            [],
+        )
+        .unwrap();
+        let ok: String = conn
+            .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(ok, "ok");
+    }
+
+    #[test]
+    fn a_read_only_connection_tells_the_index_state_and_writes_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("earlier-shape.sqlite");
+        ledger_without_event_index(&path);
+        let before = std::fs::read(&path).unwrap();
+        let conn = Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
+        assert!(!has_event_index(&conn).unwrap());
+        assert!(
+            ensure_event_index(&conn).is_err(),
+            "a read-only connection cannot make the index and says so"
+        );
+        drop(conn);
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            before,
+            "the file is as it was"
+        );
+    }
+
+    #[test]
+    fn the_write_open_of_an_earlier_ledger_makes_the_index_and_the_read_open_does_not() {
+        let home = tempfile::tempdir().unwrap();
+        crate::ledger::register(home.path(), "proj").unwrap();
+        let path = crate::ledger::location::ledger_path(home.path(), "proj").unwrap();
+        Connection::open(&path)
+            .unwrap()
+            .execute_batch("DROP INDEX event_card_kind;")
+            .unwrap();
+        {
+            let reader = crate::ledger::open_read_only(home.path(), "proj").unwrap();
+            assert!(
+                !has_event_index(reader.conn()).unwrap(),
+                "a read never writes"
+            );
+        }
+        {
+            let writer = crate::ledger::open_write(home.path(), "proj").unwrap();
+            assert!(has_event_index(writer.conn()).unwrap());
+        }
+        let reader = crate::ledger::open_read_only(home.path(), "proj").unwrap();
+        assert!(has_event_index(reader.conn()).unwrap());
     }
 }

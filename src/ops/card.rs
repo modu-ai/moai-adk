@@ -712,6 +712,70 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Offer a taken card to one named session
+    ///
+    /// Writes the ledger. The holder offers the card to the session `--to`: one `card.offer` event
+    /// names the holder, the generation, the target, the end of the offer's validity
+    /// (`--valid-secs`, 60 to 86400, default 1800) and the optional `--handover` line. The
+    /// reservation, the generation and the card's state stay as they are, so the holder owns the
+    /// card until the target accepts. A new offer replaces the older one, and `--cancel` voids the
+    /// newest offer (`no_offer` when there is none). Fenced like `handoff`: only the holder at the
+    /// current generation with a live lease offers, and a refused holder call is recorded as one
+    /// `fence_reject`. The reclaim count of the card is untouched.
+    Offer {
+        /// `C-12`.
+        card: String,
+        /// The generation this session holds.
+        #[arg(long)]
+        generation: i64,
+        /// The session id of the session offered the card (hex digits and `-`, 8 to 64
+        /// characters).
+        #[arg(long, required_unless_present = "cancel", conflicts_with = "cancel")]
+        to: Option<String>,
+        /// Void the newest offer instead of making one.
+        #[arg(long)]
+        cancel: bool,
+        /// Seconds the offer stays valid, 60 to 86400 (default 1800).
+        #[arg(long, conflicts_with = "cancel")]
+        valid_secs: Option<i64>,
+        /// One line for the receiver: the work that is kept, the next step, open approvals and
+        /// remote requests (1 to 500 characters, kept in the ledger for good).
+        #[arg(long, conflicts_with = "cancel")]
+        handover: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Accept a card another session offered you
+    ///
+    /// Writes the ledger. Run by the session the newest offer of the card names, at the offered
+    /// `--generation`: one transaction ends the old reservation as `released` and gives this
+    /// session the next generation with the same scope, worktree and branch and a new lease, and
+    /// writes one `card.accept` event. Refusals write nothing and each names its code in the
+    /// answer: the state of the card in the words `card reclaim` uses, `no_offer` (no offer at
+    /// that generation), `offer_cancelled`, `not_target` (another session was named),
+    /// `offer_expired` and `lease_expired` (the holder's lease ended: the card goes the reclaim
+    /// way). A session that is not named can never take a card this way. The new holder is this
+    /// session's own id, never typed.
+    Accept {
+        /// `C-12`.
+        card: String,
+        /// The generation the offer was made at (the card's current one).
+        #[arg(long)]
+        generation: i64,
+        /// Lease length of the new reservation in seconds, 60 to 86400 (default 14400).
+        #[arg(long)]
+        lease_secs: Option<i64>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Reads the ledger only. Show the card to work on next
     ///
     /// Reads the ledger only. Prints the cards this session holds (`mine`: generation, lease
@@ -1775,6 +1839,44 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 },
             )
         }
+        Action::Offer {
+            card,
+            generation,
+            to,
+            cancel,
+            valid_secs,
+            handover,
+            project,
+            home,
+        } => moai_cli::card::offer::offer(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &moai_cli::card::offer::OfferRequest {
+                holder: &d::session_holder("offer", env)?,
+                generation,
+                to: to.as_deref(),
+                cancel,
+                valid_secs,
+                handover: handover.as_deref(),
+            },
+        ),
+        Action::Accept {
+            card,
+            generation,
+            lease_secs,
+            project,
+            home,
+        } => moai_cli::card::offer::accept(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &moai_cli::card::offer::AcceptRequest {
+                accepter: &d::session_holder("accept", env)?,
+                generation,
+                lease_secs,
+            },
+        ),
         Action::Next { project, home } => w::next(
             &project,
             &resolve_home(home)?,
