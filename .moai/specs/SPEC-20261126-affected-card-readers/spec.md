@@ -120,4 +120,12 @@ AC-5 전후 비교: 바꾸기 전 실행 파일 sha256 `17361363000507076c82a837
 
 비용(Risks): `af3f43ad3a..979c176905` 의 늘어난 대상은 `src/project_id.rs` 의 `"project_id"` 글자 때문이에요. 밑줄 있는 소스 파일 331개를 그 글자를 가진 테스트 대상 수(`tests/` 의 글자 검색)로 세면 0개 310, 1~5개 17, 6~10개 2, 10개 초과 2(`project_id` 67, `work_flow` 15)예요. `state_root` 는 7이에요. `src/project_id.rs` 를 바꾼 것은 NeXT 최근 first-parent 100 중 1이에요. 리더 결정 9874(위임 판단)는 승인대로 두는 것이에요. 비용이 실제로 문제가 되면 `docs/later.md` 에 한 줄을 남기고 다시 봐요.
 
-아직 안 한 것(not_run): SPEC 의 verify 명령을 적힌 그대로 실행, `cargo fmt --all`, READY 영수증(`check affected --card`), 전체 `cargo test`, Windows·Linux.
+통합 tip 합치기: `c62f942eea`(열한째 묶음)를 `8e7f4c765b827d96649f46deb43f9f22f0761243` 에 합쳤어요. 충돌은 `tools/repo_scans.json` 한 파일이고, tip 의 `test_targets` 형식에 `reads-src` 의 대상 한 줄과 규칙 경로 한 줄을 줄 임대로 다시 넣었어요. `src/check_affected.rs` 는 충돌 없이 합쳐졌고 tip 과의 차이는 이 SPEC 의 추가분뿐이에요.
+
+SPEC verify(head `8e7f4c765b`, 적힌 그대로, 무거운 작업 칸): AC-1 1 passed, AC-2 1 passed, AC-3 22 passed, AC-4 1 passed, 모두 exit 0. `cargo fmt --all` 뒤 바뀐 파일 없음.
+
+AC-5 재확인(합친 head 로 지은 실행 파일 sha256 `4b1caa49e6fd2834af0ab47ecb2431cba94bb8197aae88f55f3a6759b44d6a41`, 놓쳤던 두 범위만): 처음의 "전" 목록에서 빠진 대상 `[]`. `9c8b7fb763..3a6c46fc95` 는 `--list` 80 → 84, `--list --card` 80 → 84 이고 `update_end_to_end_cli` 가 있어요. `252a6e3be0..ab2d27e1fd` 는 269 → 276, 244 → 251 이고 `prop_reservation` 이 있어요. 위 표의 후 값보다 7개 많은 까닭은 확인하지 않았어요. 최근 착지 20건은 합친 head 로 다시 재지 않았어요.
+
+guard-mutant 는 `b1e37d8aef` 에서 잰 값이고 합친 head 에서 다시 돌리지 않았어요.
+
+아직 안 한 것(not_run): 전체 `cargo test`, Windows·Linux. READY 영수증(`check affected --card`)의 결과는 READY 노트에 적어요.
