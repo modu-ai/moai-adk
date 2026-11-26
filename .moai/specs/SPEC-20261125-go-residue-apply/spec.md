@@ -83,9 +83,11 @@ created: 2026-11-25
 
 ## Result
 
-`status: draft`예요. 승인은 이 파일에 기록하지 않았어요(리더의 위임 승인은 카드 노트에 있어요). 구현 head는 `12f50d2d981e79bb556f88331513be66844729b0`이고, 그 뒤의 문서 커밋 하나가 이 Result예요. base는 NeXT의 `e946ae8102`에 S1 수리 head `1aaccb74e1`을 한 번 합친 `70aa4a907d`예요.
+`status: draft`예요. 승인은 이 파일에 기록하지 않았어요(리더의 위임 승인은 카드 노트에 있어요). 구현 head는 머지 커밋 `e851b250edc6fce840a3316a0b8ff6040cc37a3f`이고, 그 뒤의 문서 커밋 하나가 이 Result예요. 그 머지는 S1 수리 head `9619fdbc84`(착지 대기, NeXT 합친 것 포함)를 들여왔어요. 이 작업의 범위는 `9619fdbc84..HEAD`예요.
 
-한 일: `src/go_residue_apply.rs`(새 파일)에 후보 선별, 계획 digest, 적용, 되돌리기, 영수증을 넣었어요. 하나뿐인 경로 검사 `go_residue::contained`와 `secret_path`를 조사, 적용, 되돌리기가 같이 써요. `go_state.rs`는 helper 가시성만 `pub(crate)`로 바꿨어요(동작 그대로). `go-residue` 단계는 `go_same`/`go_changed`가 남았을 때만 `needs_decision`이고 `plan_digest`와 `--bundle proven` 적용 명령을 내요. 앞선 백업 단계(go-settings, go-state, reports)에 적용이 남아 있으면 명령을 내지 않아요(그 이동이 이 digest를 낡게 만들어요). `src/main.rs`, `src/lib.rs`, `src/help.rs`와 도움말 골든 8개에는 명령 행만 더했어요.
+한 일: `src/go_residue_apply.rs`(새 파일)에 후보 선별, 계획 digest, 적용, 되돌리기, 영수증을 넣었어요. 하나뿐인 경로 검사 `go_residue::contained`와 `secret_path`를 조사, 적용, 되돌리기가 같이 써요. `go_state.rs`는 helper 가시성만 `pub(crate)`로 바꿨어요(동작 그대로). `go-residue` 단계는 `go_same`/`go_changed`가 남아 있으면 `optional`(없으면 `unchanged`)이고, 증명 묶음이 있을 때만 `--bundle proven` 적용 명령과 `plan_digest`를 내요. 앞선 백업 단계(go-settings, go-state, reports)에 적용이 남아 있으면 명령을 내지 않아요(그 이동이 이 digest를 낡게 만들어요). 인쇄되는 `undo_order`에는 go-residue 되돌리기 항목(generation과 go-state 사이)을 더했어요. `src/main.rs`, `src/lib.rs`, `src/help.rs`, 도움말 골든 8개, `docs/design-review/appendix/interfaces.md`의 명령 목록에는 명령 행만 더했어요.
+
+상태 선택에 대해: REQ-10의 처음 의도는 남은 파일이 있으면 `needs_decision`으로 묻는 것이었어요. S1 수리가 단계를 `optional`로 바꾸면서(그대로 두는 것도 답이라서 `needs_decision`은 `all_unchanged`를 영영 막아요) 리더가 이 슬라이스가 그 상태를 이어받으라고 지시했어요. REQ-10과 AC 문구는 승인 digest를 지키려고 고치지 않았어요. 지금 구현은 `needs_decision`을 내지 않으므로 REQ-10("남은 파일이 있을 때만 `needs_decision`")과 어긋나지 않고, AC-1의 "asks about it"은 update 흐름이 `unchanged`가 아닌 단계를 마지막에 한 번 제안하는 것으로 충족해요. 감사자는 이 해석을 확인해 주세요.
 
 보안 검토가 짚은 것: 매니페스트가 이름 붙인 전체 경로를 파일 이름용 비밀 검사에 넘겨서 `.moai/.env`, `.npmrc`, `credentials*`가 걸러지지 않았어요(S1부터 있던 결함이고 REQ-11을 깼어요). 경로의 모든 성분을 검사하도록 고쳤고, 조사, 후보, 적용 가드, 되돌리기가 모두 같은 `secret_path`를 써요. 테스트 `a_manifest_that_names_a_secret_shaped_path_never_moves_it`가 덮어요.
 
@@ -97,7 +99,15 @@ Verification (이 세션에서 관찰한 실행):
 - 첫 `check affected --card` 시도는 `ledger` 단계에서 FAIL: 상태 폴더 리터럴 스캔이 테스트 파일의 `.moai` 철자 58곳(기준 18)을 짚었어요. 허용표를 올리지 않고 매크로 한 곳으로 모아 고쳤고(커밋 `12f50d2d98`), 같은 스캔 2개와 CLI 테스트 14개가 통과했어요.
 - 위험 경로 실제 실행(`target/keziah/danger.sh`, 격리 폴더, 진짜 빌드): 매니페스트가 `../outside/x.md`, 절대 경로, 링크 폴더, 링크 파일, `.moai/.env`를 이름 붙인 프로젝트에서 계획이 `refused_paths: 4`를 내고 바깥 파일과 `.env`를 목록에 올리지 않았어요. 인쇄된 적용 명령이 `a.md` 하나만 옮겼고(`committed`), 바깥 파일 3개와 `.env`의 sha256은 적용 전후 같았어요. 위조 영수증(`../outside/x.md`, 절대 경로, 링크 경로, `.moai/.env`)은 각각 `invalid_input`으로 거절됐고 아무것도 쓰지 않았어요. 진짜 되돌리기는 `a.md`를 바이트 그대로 되살렸어요(`reverted`).
 
-Guard mutants (한 슬롯에서 정확히 한 번씩 편집, 지정 테스트, git으로 복원, 끝난 뒤 트리 깨끗함):
+- 합친 머리(`e851b250ed`, 커밋 전 같은 내용)에서: 여섯 대상 `project_update_go_residue_cli`, `update_end_to_end_cli`, `update_closing_commit`, `project_update_plan_cli`, `go_settings_cli`, `reports_move_cli`와 `help_layout` → 160 passed; `--bin moai-cli help_rules operations_doc` → 22 passed; `--lib go_residue` → 2 passed; clippy `-D warnings` → exit 0.
+- 그 전 실행에서 본 실패와 고친 것: `check affected --card`가 `ef37476d96`에서 test 단계에 3건 실패(도움말 표의 불필요한 영어 행, 한국어 옵션 설명 없음, `interfaces.md` 명령 목록 누락) → 고침. 합친 첫 실행에서 `update_end_to_end_cli` 5건 실패(적용 명령이 인쇄돼 walk가 go-residue를 실행했고 `undo_order`에 그 단계가 없었어요) → 제품에 `undo_order` 항목을 더하고 테스트를 맞춤.
+
+다른 카드의 테스트를 바꾼 것 (감사자가 약화 여부를 볼 곳):
+
+- `project_update_go_residue_cli::residue_to_act_on_is_reported_and_does_not_hold_the_update`(S1 수리의 테스트): 단언 `apply == null`을 대체했어요. 이유: SPEC REQ-10과 이 슬라이스의 적용 명령이 S1 REQ-9의 "apply 명령 없음"을 대체해요. 새 단언은 더 좁아요 — 증명 묶음이 있으면 `--bundle proven` 명령이 있고 `--pick`은 없어요; 바뀐 파일만 있으면 `optional`이면서 명령이 없고, manifest가 없으면 `unchanged`이면서 명령이 없어요; 세 경우 모두 `all_unchanged`가 다른 단계들의 AND와 같아요.
+- `update_end_to_end_cli`: `ORDER`를 4개에서 5개(`go-residue` 추가)로, 되돌리기 채움에 go-residue 영수증 한 줄, 실행 명령 수 6에서 7로. 다른 단언은 그대로이고, 적용과 되돌리기가 시작 바이트로 돌아오는지까지 검사 범위가 넓어졌어요.
+
+Guard mutants (한 슬롯에서 정확히 한 번씩 편집, 지정 테스트, git으로 복원, 끝난 뒤 트리 깨끗함; M1–M5는 `2b23f4dd10`, 비밀 경로 변이는 `8241bf3c9c`에서 실행. 그 뒤 가드 코드는 바뀌지 않았어요):
 
 - `guard-mutant: paths_that_leave_the_project_are_never_read_or_moved | go_residue::survey의 contained 검사 | exit 100`
 - `guard-mutant: the_apply_refuses_a_candidate_that_leaves_the_project | apply_chosen의 경로 가드 | exit 100`
@@ -117,4 +127,6 @@ Acceptance:
 - AC-6 met: `the_revert_restores_every_byte`와 `a_new_file_or_a_changed_backup_leaves_only_that_item_as_a_conflict`가 통과했어요.
 - AC-7 met: `applying_the_proven_bundle_moves_only_the_go_same_files`가 `tracked_moved: 3`과 checkout 경고 문구를 확인해요.
 
-Not run / 남은 것: clippy와 넓은 테스트 집합은 이 Result의 범위 밖이고 READY 영수증(`check affected --card`)이 맡아요. 되돌리기는 `leftover_folder`와 `go_marker`를 옮기지 않아요(S3, S5의 일). 마무리 커밋 제안은 S6의 일이에요.
+위험 경로 실행은 `8241bf3c9c`의 빌드로 했어요. 그 뒤 적용 코드의 변화는 clippy 지적(이동 루프의 카운터를 `enumerate`로)뿐이고, 중간 실패 경로는 단위 테스트가 덮어요.
+
+Not run / 남은 것: 이 Result 커밋 뒤 머리의 `check affected --card 9619fdbc84..HEAD` 결과는 READY 노트가 인용해요(여기에 적으면 머리가 바뀌어요). 되돌리기는 `leftover_folder`와 `go_marker`를 옮기지 않아요(S3, S5의 일). 마무리 커밋 제안은 S6의 일이에요.
