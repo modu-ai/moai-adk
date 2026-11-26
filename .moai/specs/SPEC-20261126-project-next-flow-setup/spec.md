@@ -19,7 +19,7 @@ created: 2026-11-26
 - Q3: 원장 등록은 어디에서? → A: NeXT-Flow 설정 단계에서 등록하고, 끝의 점검 항목은 NeXT-Flow 가 아닌 프로젝트용으로 남겨요(D-3).
 - Q4: 착지 확인(독립 감사 확인)의 기본값과 말은? → A: 켜는 쪽을 첫 선택지로 두되 "PASS 없이 착지 안 됨"이라고 쓰지 않아요. 닫는 착지는 모든 모드에서 이미 독립 PASS 가 필요하고, 켜면 더해지는 것은 부분 착지(`--keep-open`), 읽을 수 없는 검사, 빠진 스캔 영수증의 거절이에요(D-4).
 - Q5: 원격 사본의 기본값은? → A: "아니요, 로컬에 둬요"를 첫 선택지로 두고 아무것도 미리 고르지 않아요. 원격 쓰기는 사람이 고를 때만이에요(D-5).
-- Q6: 현재 브랜치가 기본 브랜치인 프로젝트는? → A: 사용자의 체크아웃이 잠기지 않도록 새 전용 통합 브랜치를 첫 선택지로 권해요. 기본 브랜치를 통합 브랜치로 쓰는 선택지는 남겨요(D-6).
+- Q6: 현재 브랜치가 기본 브랜치인 프로젝트는? → A: 사용자의 체크아웃이 잠기지 않도록 새 전용 통합 브랜치를 첫 선택지로 권해요. 기본 브랜치를 통합 브랜치로 쓰는 선택지는 남겨요(D-6). D-6 은 처음 설정하는 경우라서, 프로필에 통합 브랜치가 이미 있으면 그 값이 첫 항목이에요(질문 은행의 "프로필 값 먼저" 와 "다시 실행하면 unchanged" 규칙).
 
 ## Non-goals
 
@@ -34,11 +34,11 @@ created: 2026-11-26
 - REQ-1: When the user picks NeXT-Flow in the project setup, the project flow shall run a NeXT-Flow setup step after the profile is applied, in the order integration branch, card ledger, protection hook. · failure: none — a project that picks another flow runs no such step.
 - REQ-2: When the integration branch the profile names does not exist, the setup step shall offer to create it from the current tip with no creation before the user picks it. · failure: none — without the pick nothing is created.
 - REQ-3: IF the integration branch is held by another worktree, THEN the setup step shall create nothing while relaying the answer of `work-flow-plan` as printed.
-- REQ-4: When the integration branch exists and the user picks the hook, the setup step shall install the protection hook through `git-hooks-plan` and `git-hooks-apply` followed by reading the guard record back with the way back. · failure: none — without the pick no hook is installed.
+- REQ-4: When `work-flow-plan` answers `ok` and the user picks the hook, the setup step shall install the protection hook through `git-hooks-plan` and `git-hooks-apply` followed by reading the guard record back with the way back. · failure: none — without the pick no hook is installed.
 - REQ-5: When the user picked NeXT-Flow, the project flow shall ask in one follow-up call whether landed work is copied to the remote and whether the landing check is turned on, in plain words with no internal key name. · failure: none — another flow asks neither question.
 - REQ-6: The remote copy question shall list "No, keep it local" first with no option preselected.
 - REQ-7: The landing check question shall list turning it on first without saying that only that mode needs an audit PASS to land.
-- REQ-8: While the current branch is the default branch, the integration branch follow-up of NeXT-Flow shall list a new dedicated branch first.
+- REQ-8: While the profile names no integration branch and the current branch is the default branch, the integration branch follow-up of NeXT-Flow shall list a new dedicated branch first.
 - REQ-9: When the user answers both follow-up questions, the project flow shall record the answers in the profile through `project-plan` and `project-apply`. · failure: none — an unanswered question records nothing.
 - REQ-10: The final report of the project flow shall end with one line that says how to start the leader and the lanes.
 - REQ-11: The question bank shall keep the purpose as the only row of its asked table while the follow-up questions stand outside that table.
@@ -50,7 +50,7 @@ created: 2026-11-26
   verify: `cargo test --locked --offline --test project_next_flow_setup hook_first_then_branch_create_is_refused`
 - AC-2 (REQ-5, REQ-6, REQ-7, REQ-9, REQ-11): 두 후속 질문의 질문과 선택지 칸에 내부 키 이름과 금지어가 없고, 추천 선택지가 첫째이고, 아무것도 미리 고르지 않고, 질문 은행의 물음 표는 `purpose` 하나로 그대로이고, 두 답이 프로필에 읽혀요 · verify: `cargo test --locked --offline --test project_next_flow_setup follow_up_rows_use_plain_words_and_answers_reach_the_profile`
 - AC-3 (REQ-2, REQ-3): 통합 브랜치가 없거나 다른 워크트리가 쥔 임시 저장소에서 글이 `work-flow-plan` 의 `kind` 를 모두 다루고, 안내는 `state.message` 를 찍힌 대로 사용자의 말로 옮기고, 만들기는 `missing-target` 에서 고른 뒤에만 권하고 `occupied-worktree` 는 아무것도 만들지 않아요 · verify: `cargo test --locked --offline --test project_next_flow_setup setup_guidance_is_work_flow_plans_answer`
-- AC-4 (REQ-1, REQ-8, REQ-10, REQ-12): 9단계가 8단계 뒤 최종 보고 앞에 있고, 훅이 프로필 적용과 통합 브랜치 뒤에 오고, 훅과 원격 사본과 원장 선택에 미리 고른 것이 없고, 보고 끝 줄이 `moai cc -l` 과 `moai cc -a` 를 말하고 `/moai -l ` 이나 `/moai -a ` 는 말하지 않고, 8단계부터 `## Procedure` 끝까지 `git push` 가 없어요; 기본 브랜치에서는 새 전용 통합 브랜치가 첫 권유예요 · verify: `cargo test --locked --offline --test project_next_flow_setup step_9_order_and_closing_line`
+- AC-4 (REQ-1, REQ-8, REQ-10, REQ-12): 9단계가 8단계 뒤 최종 보고 앞에 있고, 훅이 프로필 적용과 통합 브랜치 뒤에 오고, 훅과 원격 사본과 원장 선택에 미리 고른 것이 없고, 보고 끝 줄이 `moai cc -l` 과 `moai cc -a` 를 말하고 `/moai -l ` 이나 `/moai -a ` 는 말하지 않고, 8단계부터 `## Procedure` 끝까지 `git push` 가 없어요; 프로필에 통합 브랜치가 없고 현재가 기본 브랜치일 때만 새 전용 통합 브랜치가 첫 권유예요 · verify: `cargo test --locked --offline --test project_next_flow_setup step_9_order_and_closing_line`
 - AC-5 (REQ-1, REQ-5, REQ-12): 글이 바뀌어도 고정돼 있던 기존 시험이 같은 뜻으로 통과해요 · verify: `cargo test --locked --offline --test project_flow_closing`
   verify: `cargo test --locked --offline --test project_interview_minimal`
   verify: `cargo test --locked --offline --test project_preview_order`
@@ -73,11 +73,11 @@ created: 2026-11-26
 
 ## Design
 
-글은 `skills/moai/workflows/project.md` 의 단계 구조를 따라요. 통합 브랜치 이름은 지금처럼 3단계의 후속 선택에서 물어요. NeXT-Flow 이고 현재 브랜치가 기본 브랜치면 그 선택의 첫 항목이 새 전용 통합 브랜치이고, 지금의 첫 항목들(프로필 값, 원격 기본 브랜치, 현재 브랜치)은 그 뒤에 남아요. 3단계(질문)에는 NeXT-Flow 를 고른 사용자용 후속 질문 한 줄(한 번의 후속 호출, 세 질문 이하)을 더하고, 4단계(프로필 계획)의 필드 목록에 원격 사본 답을 더하고, 8단계 뒤에 9단계 "NeXT-Flow 설정"을 더해요.
+글은 `skills/moai/workflows/project.md` 의 단계 구조를 따라요. 통합 브랜치 이름은 지금처럼 3단계의 후속 선택에서 물어요. NeXT-Flow 이고 프로필에 통합 브랜치가 아직 없고 현재 브랜치가 기본 브랜치면 그 선택의 첫 항목이 새 전용 통합 브랜치이고, 원격 기본 브랜치와 현재 브랜치는 그 뒤에 남아요. 프로필에 통합 브랜치가 이미 있으면 지금처럼 프로필 값이 첫 항목이라서 다시 실행해도 값이 바뀌지 않아요(같은 답이면 `unchanged`). 3단계(질문)에는 NeXT-Flow 를 고른 사용자용 후속 질문 한 줄(한 번의 후속 호출, 세 질문 이하)을 더하고, 4단계(프로필 계획)의 필드 목록에 원격 사본 답을 더하고, 8단계 뒤에 9단계 "NeXT-Flow 설정"을 더해요.
 
 9단계(기본 작업 폴더에서, git 저장소 밖이면 건너뛰어요) 순서:
 
-1. `work-flow-plan` 으로 통합 브랜치 상태를 읽어요. `ok` 면 다음으로. `missing-target` 이면 현재 끝에서 `git branch <이름> <끝>` 을 만들지 사용자에게 묻고 고른 뒤에만 만들어요. `occupied-worktree` 이면 아무것도 만들지 않고 `state.message` 를 찍힌 대로 사용자의 말로 옮겨요.
+1. `work-flow-plan` 으로 통합 브랜치 상태를 읽어요. `ok` 면 다음으로. `missing-target` 이면 현재 끝에서 `git branch <이름> <끝>` 을 만들지 사용자에게 묻고 고른 뒤에만 만들어요. 만든 뒤에는 `work-flow-plan` 을 다시 읽어요. `occupied-worktree` 이면 아무것도 만들지 않고 `state.message` 를 찍힌 대로 사용자의 말로 옮겨요(`profile-unreadable` 도 같아요). 다음 두 단계(원장, 훅)는 답이 `ok` 일 때만 하고, 아니면 최종 보고에 하지 않은 것으로 적어요.
 2. 원장 등록을 미리 보여 주고 사용자가 고르면 `ledger-register-apply` 를 해요(끝 점검 항목은 NeXT-Flow 가 아닌 프로젝트용 대안으로 그대로 남아요).
 3. `git-hooks-plan` 으로 훅 설치를 미리 보여 주고 사용자가 고르면 `git-hooks-apply` 를 하고, 보호 기록(`guard.record`)을 읽어 알리고 되돌리는 길 `moai git-hooks-revert <stamp>` 를 말해요. 훅이 설치되면 통합 브랜치의 손 이동은 모두 거절되고 착지 명령만 그 브랜치를 옮겨요.
 
@@ -112,4 +112,4 @@ created: 2026-11-26
 | D-3 | 원장은 NeXT-Flow 설정 단계에서 등록하고 끝 점검은 그 밖의 프로젝트용으로 남겨요 | 흐름 설정의 일부; 고정된 시험 문장 유지 | 끝 점검으로 완전히 옮기고 시험 문장을 다시 쓰기 |
 | D-4 | 착지 확인은 켜는 쪽이 첫 선택지이고 "PASS 없이 착지 안 됨" 문구는 쓰지 않아요 | 닫는 착지는 모든 모드에서 이미 PASS 가 필요(`src/card/land.rs:515-523`); 거짓 약속 금지 | 꺼진 쪽을 첫 선택지로 |
 | D-5 | 원격 사본은 "아니요, 로컬에 둬요"가 첫 선택지이고 미리 고르지 않아요 | 원격 쓰기는 사람이 고를 때만 | 켜는 쪽을 첫 선택지로(사용자 결정) |
-| D-6 | 현재 브랜치가 기본 브랜치면 새 전용 통합 브랜치를 첫 선택지로 권해요 | 사용자의 체크아웃이 잠기지 않아요 | 기본 브랜치를 통합 브랜치로 쓰는 것을 첫 선택지로 |
+| D-6 | 프로필에 통합 브랜치가 없고 현재 브랜치가 기본 브랜치면 새 전용 통합 브랜치를 첫 선택지로 권해요 | 사용자의 체크아웃이 잠기지 않아요 | 기본 브랜치를 통합 브랜치로 쓰는 것을 첫 선택지로 |
