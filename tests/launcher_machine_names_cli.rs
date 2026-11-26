@@ -1,6 +1,6 @@
 //! SPEC-20261127-launcher-session-names: the launcher names a lane `agent-<name>` and the
 //! coordination window `leader-<project name>`, and no other session on the machine holds the
-//! same name. A name is claimed first in `<HOME>/.moai/session-names/<name>.live` (an exclusive
+//! same name. A name is claimed first in `<name>.live` of the `session-names` folder of the home state folder (an exclusive
 //! lock the OS drops when the launcher or its host ends), then in the clone's own `.live` lock.
 //! Real launches run a stub `claude` executable from a temporary PATH in temporary git projects
 //! that share one temporary HOME; no real host starts and the real HOME is never touched.
@@ -300,7 +300,7 @@ fn claim_clone_lock_refusal_frees_the_machine_lock() {
 /// through the link.
 #[test]
 fn refuse_a_link_or_an_unresolved_home_starts_no_host() {
-    // The folder `<HOME>/.moai/session-names` is a link.
+    // The `session-names` folder of the home state folder is a link.
     let e = env();
     let p = project();
     let elsewhere = e.home.path().join("elsewhere");
