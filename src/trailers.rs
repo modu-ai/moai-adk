@@ -141,11 +141,39 @@ pub fn format_verified(
     get: impl Fn(&str) -> Option<String>,
     key: Option<&str>,
 ) -> Result<Value> {
-    if spec_doc::id_form(spec) != Some(IdForm::New) {
-        return Err(
-            "the SPEC id must be SPEC-<yyyymmdd>-<slug>; a card number is never a trailer".into(),
-        );
+    build(Some(spec), verified, get, key)
+}
+
+/// [`format_verified`] for a card with no SPEC: the `Moai-Session` line (and the `Moai-Verified`
+/// line when `verified` names kinds) and no `Moai-Spec` line. The caller asks for it by name, so a
+/// forgotten SPEC is never printed away silently.
+pub fn format_session_only(
+    verified: &[String],
+    get: impl Fn(&str) -> Option<String>,
+    key: Option<&str>,
+) -> Result<Value> {
+    build(None, verified, get, key)
+}
+
+fn build(
+    spec: Option<&str>,
+    verified: &[String],
+    get: impl Fn(&str) -> Option<String>,
+    key: Option<&str>,
+) -> Result<Value> {
+    if let Some(spec) = spec {
+        if spec_doc::id_form(spec) != Some(IdForm::New) {
+            return Err(
+                "the SPEC id must be SPEC-<yyyymmdd>-<slug>; a card number is never a trailer"
+                    .into(),
+            );
+        }
     }
+    let carries = if spec.is_some() {
+        format!("the commit carries {SPEC_KEY} only")
+    } else {
+        "the commit carries no trailer line from this command".to_string()
+    };
     let kinds = verified_kinds(verified);
     if !verified.is_empty() && !kinds_accepted(&kinds) {
         return Err(format!(
@@ -154,7 +182,10 @@ pub fn format_verified(
         ));
     }
     let found = session_current::resolve(get);
-    let mut text = format!("{SPEC_KEY}: {spec}\n");
+    let mut text = match spec {
+        Some(spec) => format!("{SPEC_KEY}: {spec}\n"),
+        None => String::new(),
+    };
     let mut out = json!({"spec": spec});
     match (found["source_session_id"].as_str(), key) {
         (Some(id), Some(key)) => {
@@ -167,13 +198,13 @@ pub fn format_verified(
         (Some(_), None) => {
             out["session_missing"] = json!(true);
             out["reason"] = json!(format!(
-                "this folder is not in a git worktree, so no worktree key can be read; the commit carries {SPEC_KEY} only"
+                "this folder is not in a git worktree, so no worktree key can be read; {carries}"
             ));
         }
         (None, _) => {
             out["session_missing"] = json!(true);
             out["reason"] = json!(format!(
-                "no host variable gives this session's id ({}); the commit carries {SPEC_KEY} only and the audit gate reads its authors as unknown",
+                "no host variable gives this session's id ({}); {carries} and the audit gate reads its authors as unknown",
                 session_current::SOURCES.join(", ")
             ));
         }
