@@ -2,7 +2,7 @@
 id: SPEC-20261126-lane-advisor-opt-in
 title: "moai cc -a 는 advisor 를 기본으로 켜지 않고, --advisor 를 준 레인에만 켜요"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-26
 branch: spec/lane-advisor-opt-in-20261126
 ---
@@ -14,6 +14,7 @@ branch: spec/lane-advisor-opt-in-20261126
 - Q1: 문제가 무엇이었나요? -> A: 2026-11-26 리더 대화에서 사용자가 "moai cc -a 사용할 때 Advisor unavailable (too_many_requests) 메시지가 자주 나온 원인은?" 이라고 물었어요. 코드를 읽으면 `-a` 가 모든 `cc` 레인에 `--advisor opus` 를 붙여요. 한도 숫자 자체는 확인하지 않았어요.
 - Q2: 사용자가 고른 것은요? -> A: 사용자 말 그대로 "2번으로 가자"(카드 원장의 결정 노트 10315). 2번은 "자문(advisor)을 일부 레인에만 켜기: 감사처럼 판단이 많은 레인만 켜서 요청을 줄임"이에요.
 - Q3: 이 SPEC 을 쓰면서 사용자에게 새로 물은 것은요? -> A: 없어요. Decisions 의 D-1~D-3 은 승인할 때 고르는 선택지예요.
+- Q4: 개정 2 는 왜 있나요? -> A: 구현 중에 `docs/host-support-matrix.md` 의 호스트 세션 설명에도 "`-a`는 `cc`에서 `--advisor opus`도 붙입니다"라는 문장이 남아 있는 것을 확인했어요. 개정 1 의 Scope 에 이 파일이 빠져 있어서 AC-5 와 Scope 에 더했어요. 요구와 결정은 바뀌지 않았어요.
 
 ## Intent
 
@@ -44,12 +45,12 @@ branch: spec/lane-advisor-opt-in-20261126
 - AC-2 (REQ-2, REQ-7): `cc -a --advisor` 와 `cc -a --advisor --name x` 처럼 모델을 빼면 `--advisor opus` 가 붙고, `--model fable` 과 함께 모델 없는 `--advisor` 를 주면 거절되고 host 가 시작하지 않아요 · verify: `cargo test --locked --offline --test launcher_role_flags advisor_`
 - AC-3 (REQ-3, REQ-4, REQ-8): `--advisor fable` 과 설정 `launcher.advisor` 는 지금처럼 켜고, `--no-advisor` 는 설정을 끄고, 두 옵션을 같이 주면 거절되며, `glm` 은 `--advisor` 를 넘기지 않고 지금의 노트를 보여요 · verify: `cargo test --locked --offline --test launcher_advisor_setting`
 - AC-4 (REQ-5): `--dry-run` 의 argv 와 notes 가 advisor 없는 `-a` 와 `-a --advisor` 두 꼴을 보이고, `-a` 노트에 `--advisor [model]` 이 적혀요. 도움말 표의 `--advisor` 설명이 모델을 뺄 수 있다고 말해요 · verify: `cargo test --locked --offline --test launcher_role_flags advisor_`, `cargo test --locked --offline --bin moai-cli help_rules`
-- AC-5 (REQ-6): `CLAUDE.md` 의 Scope and sessions 줄, `docs/decisions-2026-11-08.md` 의 새 행, `docs/rust-product-path.md` 와 `docs/user-entry-draft.md` 의 런처 설명이 새 규칙을 말하고 "`-a` 가 `--advisor opus` 를 붙인다"는 문장이 남지 않아요. SPEC 검사를 통과해요 · verify: `cargo test --locked --offline --test repo_claude_md`, `moai spec check SPEC-20261126-lane-advisor-opt-in --project .`
+- AC-5 (REQ-6): `CLAUDE.md` 의 Scope and sessions 줄, `docs/decisions-2026-11-08.md` 의 새 행, `docs/rust-product-path.md`, `docs/user-entry-draft.md`, `docs/host-support-matrix.md` 의 런처 설명이 새 규칙을 말하고 "`-a` 가 `--advisor opus` 를 붙인다"는 문장이 남지 않아요. SPEC 검사를 통과해요 · verify: `cargo test --locked --offline --test repo_claude_md`, `moai spec check SPEC-20261126-lane-advisor-opt-in --project .`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261126-lane-advisor-opt-in/**`
-- write (승인 뒤): `src/main.rs`, `src/session.rs`, `tests/launcher_role_flags.rs`, `tests/launcher_advisor_setting.rs`, `CLAUDE.md`, `docs/decisions-2026-11-08.md`, `docs/rust-product-path.md`, `docs/user-entry-draft.md`
+- write (승인 뒤): `src/main.rs`, `src/session.rs`, `tests/launcher_role_flags.rs`, `tests/launcher_advisor_setting.rs`, `CLAUDE.md`, `docs/decisions-2026-11-08.md`, `docs/rust-product-path.md`, `docs/user-entry-draft.md`, `docs/host-support-matrix.md`
 - shared (line lease): `src/help.rs`(`advisor` 설명), `tests/fixtures/help/*.txt`(골든이 바뀔 때)
 - read-only: `src/launcher_terminal.rs`(`--advisor` 가 나오는 곳은 줄바꿈 테스트의 예시값이라 바꾸지 않아요), 앞의 두 런처 SPEC
 - forbidden: 사용자의 설정 파일, `skills/**`, 이 목록 밖의 파일
@@ -59,7 +60,7 @@ branch: spec/lane-advisor-opt-in-20261126
 1. 이 SPEC 초안을 커밋하고 `SPEC-READY` 로 리더에게 알려요. 승인은 리더가 사용자 결정 노트를 근거로 기록해요. 레인은 승인을 기록하지 않아요.
 2. 범위를 넓히고 RED: `tests/launcher_role_flags.rs` 의 `-a` 기본 advisor 테스트 두 개를 `advisor_` 로 시작하는 새 기대값 테스트로 바꿔요.
 3. GREEN: `--advisor` 를 값이 없어도 되는 옵션(빠지면 `opus`)으로 바꾸고, `-a` 의 기본 advisor(`default_advisor`)와 그 노트를 지우고, `-a` 노트와 도움말 글을 고쳐요.
-4. 문서 네 곳을 고치고, 새 가드 테스트마다 뮤턴트 한 줄, `cargo fmt --all`, clippy, `moai check affected --card` 한 번, READY 노트. `CLAUDE.md` 를 고치므로 감사는 tier 2 전체 감사예요.
+4. 문서 다섯 곳을 고치고, 새 가드 테스트마다 뮤턴트 한 줄, `cargo fmt --all`, clippy, `moai check affected --card` 한 번, READY 노트. `CLAUDE.md` 를 고치므로 감사는 tier 2 전체 감사예요.
 
 ## Risks
 
