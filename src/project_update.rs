@@ -1419,15 +1419,22 @@ fn github_step(root: &Path, shown: &str) -> Result<Step> {
 /// MoAI wrote that the answers no longer produce is listed (`stale`) and kept; it never makes
 /// the step `ready` by itself, since only the user's pick removes it.
 fn ci_step(root: &Path, shown: &str) -> Result<Step> {
-    let plan = project_ci_plan::ci_plan(
-        root,
-        CiRequest {
-            protocol_version: 1,
-            runs_per_month: None,
-            language: None,
-            remove: Vec::new(),
-        },
-    )?;
+    let request = |language: Option<&str>| CiRequest {
+        protocol_version: 1,
+        runs_per_month: None,
+        language: language.map(String::from),
+        remove: Vec::new(),
+    };
+    let mut plan = project_ci_plan::ci_plan(root, request(None))?;
+    // The update asks nothing, so it keeps the language the files were written in: a file that
+    // differs from the English rendering and carries Korean comments is planned again in Korean.
+    if plan
+        .files
+        .iter()
+        .any(|f| f.action == "merge" && has_korean_text(&root.join(&f.path)))
+    {
+        plan = project_ci_plan::ci_plan(root, request(Some("ko")))?;
+    }
     let files: Vec<Value> = plan
         .files
         .iter()
@@ -1473,6 +1480,19 @@ fn ci_step(root: &Path, shown: &str) -> Result<Step> {
         plan_digest: Some(plan.plan_digest),
         apply,
     })
+}
+
+/// Whether the regular file at `path` (never a link, at most 256 KiB) holds a Hangul syllable.
+fn has_korean_text(path: &Path) -> bool {
+    use std::io::Read;
+    let regular = std::fs::symlink_metadata(path)
+        .is_ok_and(|m| m.file_type().is_file() && m.len() <= 256 * 1024);
+    let mut text = String::new();
+    regular
+        && std::fs::File::open(path)
+            .and_then(|f| f.take(256 * 1024).read_to_string(&mut text))
+            .is_ok()
+        && text.chars().any(|c| ('\u{ac00}'..='\u{d7a3}').contains(&c))
 }
 
 /// The install steps that wait for the profile or for the backup phase, in the order they are

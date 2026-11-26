@@ -312,3 +312,80 @@ fn an_edited_file_of_a_changed_project_stays_a_conflict_and_nothing_is_asked() {
     assert_eq!(tree(root.path()), before, "the plan wrote something");
     assert_eq!(fs::read_to_string(&file).unwrap(), edited);
 }
+
+/// Applies the CI files with comments in Korean, through `project-ci-plan` and
+/// `project-ci-apply` as the interview does.
+fn apply_in_korean(root: &TempDir) {
+    let p = root.path().to_str().unwrap();
+    let korean = envelope(&call(
+        &["project-ci-plan", p],
+        br#"{"protocol_version":1,"language":"ko"}"#,
+    ));
+    envelope(&call(
+        &[
+            "project-ci-apply",
+            p,
+            "--plan-digest",
+            korean["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &serde_json::to_vec(&korean).unwrap(),
+    ));
+    assert!(
+        fs::read_to_string(root.path().join(CHECK))
+            .unwrap()
+            .chars()
+            .any(|c| ('\u{ac00}'..='\u{d7a3}').contains(&c)),
+        "the fixture file has no Korean comment"
+    );
+}
+
+/// REQ-9: files written with Korean comments are current for an unchanged project; the update
+/// does not propose to merge the comments back to English.
+#[test]
+fn files_written_with_korean_comments_are_unchanged_for_the_update() {
+    let root = project(true);
+    apply_in_korean(&root);
+    let p = plan(&root);
+    let step = ci(&p).unwrap();
+    assert_eq!(step["state"], "unchanged", "{step}");
+    assert_eq!(step["preview"]["files"][0]["action"], "unchanged", "{step}");
+    assert!(step["apply"].is_null(), "{step}");
+    assert_eq!(step["next"], "none", "{step}");
+}
+
+/// REQ-9: when the project changed, the update proposes the new check in the language the files
+/// were written with: applying its printed command keeps the Korean comments.
+#[test]
+fn a_changed_project_is_planned_again_in_the_language_of_the_files() {
+    let root = project(true);
+    apply_in_korean(&root);
+    let mut changed = profile(detected(&root), true);
+    changed["checks"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"id": "lint", "command": "cargo clippy"}));
+    save(&root, &changed);
+
+    let step = ci(&plan(&root)).unwrap();
+    assert_eq!(step["state"], "ready", "{step}");
+    assert_eq!(step["preview"]["files"][0]["action"], "merge", "{step}");
+    let argv: Vec<String> = step["apply"]["argv"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|w| w.as_str().unwrap().replace(PLACEHOLDER, "fixture-approved"))
+        .collect();
+    let args: Vec<&str> = argv[1..].iter().map(String::as_str).collect();
+    envelope(&call(
+        &args,
+        &serde_json::to_vec(&step["apply"]["stdin"]).unwrap(),
+    ));
+    let text = fs::read_to_string(root.path().join(CHECK)).unwrap();
+    assert!(text.contains("cargo clippy"), "{text}");
+    assert!(
+        text.chars().any(|c| ('\u{ac00}'..='\u{d7a3}').contains(&c)),
+        "the comments went back to English: {text}"
+    );
+}
