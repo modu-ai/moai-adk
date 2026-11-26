@@ -2,7 +2,7 @@
 id: SPEC-20261121-resurrected-marker
 title: "A valid Rust marker keeps the project Rust-owned when git brings the Go markers back, and the update plan offers to keep them instead of stopping"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-21
 branch: spec/resurrected-marker-front-20261121
 ---
@@ -36,7 +36,7 @@ Rust 표식이 유효한 프로젝트는 Rust 세대가 주인이에요. git 이
 - REQ-4: When `project-update-plan` runs in a project whose Rust marker is valid and whose Go markers came back, the plan shall hold a step named `go-residue` in the state `needs_decision` that lists each Go marker with whether git tracks it and names the folder that would keep them · failure: none
 - REQ-5 (REQ-4): IF the Rust marker is valid and Go markers came back, THEN the `go-state` step of the plan shall be `skip` with a reason that names `go-residue`.
 - REQ-6: When the plan is made, the project shall stay byte for byte as it was, with no file, folder or time changed · failure: none
-- REQ-7 (REQ-4): IF Go markers are present and no valid `moai.json` exists, THEN the classification shall stay `go`, with no `go-residue` step in the plan.
+- REQ-7 (REQ-4): IF Go markers are present and no valid `moai.json` exists, THEN the plan shall keep the classification `go` and offer no keeping of a marker in its `go-residue` step.
 - REQ-8: While a resurrected marker is listed in `go-residue`, the plan's `all_unchanged` shall be false · failure: none
 - REQ-9 (REQ-1): When the project's verdict is `mixed`, its `moai.json` is a valid marker and it has no earlier `.moai-cli` folder, `state_root::dir` shall name `.moai`, which replaces for that case only REQ-4 of SPEC-20261121-path-root-moai-default; a Go-only, a stopped, a refused and a `mixed` project without a valid `moai.json` stay as that requirement says · failure: none
 
@@ -48,7 +48,7 @@ Rust 표식이 유효한 프로젝트는 Rust 세대가 주인이에요. git 이
   verify: `cargo test --offline --locked --test state_root_resurrected_cli`
 - AC-3 (REQ-4, REQ-5, REQ-8): the same file: `project-update-plan` reports state_root `mixed`, a `go-residue` step in `needs_decision` with the two markers, `tracked` true for both, and the keep folder; the `go-state` step is not `blocked`; `all_unchanged` is false.
   verify: `cargo test --offline --locked --test state_root_resurrected_cli`
-- AC-4 (REQ-6, REQ-7): the same file: the project snapshot before and after the plan is equal; with Go markers and no `moai.json` the verdict is `go`, the plan has no `go-residue` step and the `go-state` step is what it was.
+- AC-4 (REQ-6, REQ-7): the same file: the project snapshot before and after the plan is equal; with Go markers and no `moai.json` the verdict is `go`, the read-only `go-residue` step lists no marker and offers no command or keep folder, and the `go-state` step is what it was.
   verify: `cargo test --offline --locked --test state_root_resurrected_cli`
 - AC-5: at most five mutants of the new code, each turning a test red, are restored.
   verify: manual: the mutant table in the Result.
