@@ -1,7 +1,7 @@
-# The manifest's sha256 lines are rebuilt on merge by tools/merge_driver_manifest.py once a
-# clone registers it (`python3 -I tools/merge_driver_manifest.py --install`); unregistered,
-# git merges the file as text.
-skills/moai/references/source-manifest.json merge=moai-manifest
+# The manifest's sha256 lines are rebuilt on merge by `moai manifest-merge-driver` once a clone
+# registers it with the line in docs/agents-md-maintenance.md; unregistered, git merges the file
+# as text.
+skills/moai/references/source-manifest.json merge=moai-manifest-rs
 
 # The optional-pack assets are a byte snapshot of the Go build's template tree
 # (SPEC-20261120-user-asset-bundles): the installed bytes and their recorded sha256 must
