@@ -2,7 +2,7 @@
 id: SPEC-20261126-hook-write-boundary
 title: "moai hook write-boundary: PreToolUse file-write boundary check (H3) and hook conformance tests"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-26
 ---
 
@@ -55,6 +55,7 @@ created: 2026-11-26
 - REQ-10: When the conformance test runs the three registered names over its fixture set, the entry shall print no `allow` or `ask` decision and leave every card state, note and reservation of the project unchanged · failure: none — a fixture that cannot be run fails the test.
 - REQ-11: The hook set generator of `moai hooks-plan` shall name no `WorktreeCreate`, `WorktreeRemove` or `Stop` event in its default plan.
 - REQ-12: When Claude Code hooks are disabled in a throwaway project (`disableAllHooks` true in its settings, and no hook entry registered), the guards that do not read a hook (the reference-transaction guard of the integration branch, `moai card check` scope, `moai trailer-check`) shall still refuse their violation · failure: none — the two classes that only a hook refuses (REQ-4, REQ-6) are the named gap of R-2.
+- REQ-13: IF the standard input of `moai hook write-boundary` in a MoAI project is larger than 4 MiB, THEN the entry shall print the deny object of REQ-2 with the class `protected-path` and a reason of its own that names the 4 MiB limit and writing in smaller calls as the allowed way, record the `stdin_too_large` receipt line as before and exit 0, while outside a MoAI project it stays silent (D-18); the event check of REQ-8 does not apply, because no event name can be read from a cut input · failure: a receipt that cannot be written is the existing one stderr line, and the deny is printed all the same.
 
 ## Acceptance
 
@@ -72,11 +73,12 @@ created: 2026-11-26
 - AC-12 (REQ-12): in a throwaway project with hooks disabled, a hand move of the integration branch is refused by the installed reference-transaction guard, a path outside the card's reserved scope answers `allowed: false`, a commit message without the trailers fails `moai trailer-check`, and the test prints the two hook-only classes as the named gap · verify: `cargo nextest run --test hook_conformance_cli -E 'test(/^ac12_/)'`
 - AC-13 (REQ-2): the measuring test (D-11) runs the real binary 200 times for an allowed and a denied call in a temporary project, prints p50 and p90 in milliseconds with the build profile and the machine load, and fails only when p90 is over 10 times the target · verify: `cargo nextest run --test hook_write_boundary_cli -E 'test(/^ac13_/)'`
 - AC-14 (REQ-2, REQ-8): the entry skeleton, session-start, latency and dispatch tests still pass, so the other registered names and the non-MoAI answer are unchanged · verify: `cargo nextest run --test hook_entry_cli --test hook_latency_cli --test hook_dispatch_cli --test hook_session_start_cli`
-- AC-15 (REQ-1…REQ-12): the SPEC itself passes the spec check · verify: `moai spec check SPEC-20261126-hook-write-boundary`
+- AC-15 (REQ-1…REQ-13): the SPEC itself passes the spec check · verify: `moai spec check SPEC-20261126-hook-write-boundary`
+- AC-16 (REQ-13): a `Write` call to an allowed path padded to exactly 4194304 bytes prints nothing, the same call of 4194305 bytes prints exactly one deny object with the three fields of REQ-2 and a reason that starts with `moai-boundary/protected-path`, carries no byte of the path or the content, leaves stderr empty and adds one `stdin_too_large` receipt line, outside a MoAI project it prints nothing, and without a project folder under HOME it is still denied · verify: `cargo nextest run --test hook_write_boundary_cli -E 'test(/^ac16_/)'`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261126-hook-write-boundary/**`, `src/hook_write_boundary.rs` (new), `src/hook_entry.rs` (the `write_boundary` call and the event table of REQ-8), `src/lib.rs` (one `pub mod` line, through a line lease), `tests/hook_write_boundary_cli.rs` (new), `tests/hook_conformance_cli.rs` (new), `tests/hook_entry_cli.rs` (the silent write-boundary assertion and the event cases), `tests/hook_session_start_cli.rs` (the two PreToolUse names get a PreToolUse input, REQ-8), `tools/repo_scans.json` (one scan entry, through a line lease), `tests/repo_scans_table.rs` (only an exemption row when a new test walks temporary folders), `tests/areas.toml` (only when a new test-file word needs a line; `hook` is already listed), `docs/later.md` (two lines, D-12 and R-2).
+- write: `.moai/specs/SPEC-20261126-hook-write-boundary/**`, `src/hook_write_boundary.rs` (new), `src/hook_entry.rs` (the `write_boundary` call, the event table of REQ-8 and the over-limit denial of REQ-13), `src/lib.rs` (one `pub mod` line, through a line lease), `tests/hook_write_boundary_cli.rs` (new), `tests/hook_conformance_cli.rs` (new), `tests/hook_entry_cli.rs` (the silent write-boundary assertion, the event cases and the over-limit expectations of REQ-13), `tests/hook_session_start_cli.rs` (the two PreToolUse names get a PreToolUse input, REQ-8), `tools/repo_scans.json` (one scan entry, through a line lease), `tests/repo_scans_table.rs` (only an exemption row when a new test walks temporary folders), `tests/areas.toml` (only when a new test-file word needs a line; `hook` is already listed), `docs/later.md` (three lines: D-12, R-2 and R-10).
 - read-only: `src/hook_bash_boundary.rs`, `src/hook_guards.rs`, `src/hook_engine.rs`, `src/hooks.rs`, `src/hook_latency.rs`, `src/card/guard.rs`, `src/card/work.rs`, `.moai/project.yaml`, the hooks plan and the official hooks documentation.
 - forbidden: any settings file (`.claude/**` of the home and of the project), the installed hooks of this clone, `src/hook_bash_boundary.rs` and `tests/hook_bash_boundary_cli.rs` (the boundary-detail change), `src/hook_guards.rs`, `src/hook_engine.rs`, `src/claim_verify.rs`, `src/main.rs`, `src/help.rs`, the real HOME and its `.moai/projects` folder, and any network call. Tests use temporary HOMEs, folders and repositories.
 
@@ -107,6 +109,8 @@ created: 2026-11-26
 - R-6: Whether a PreToolUse deny holds in `bypassPermissions`, `dontAsk` and `auto` modes is documented for `bypassPermissions` only (Sources); D-5 makes the handler mode-independent, so the handler needs no change either way.
 - R-7: Latency depends on machine load. The numbers are reported with the load; a hard bound would be flaky (D-11).
 - R-8: A registry entry of a removed worktree that was not pruned makes writes under that old folder count as another checkout (D-16) until `git worktree prune`. The handler reads the registry on every judged call, so its cost grows with the number of worktrees.
+- R-9: A legitimate `Write` or `Edit` whose hook input is over 4 MiB is now denied in a MoAI project (D-18). The reason names the allowed way (smaller calls). A hook entry whose matcher also sends another tool to this name would have that tool denied past the same size.
+- R-10: Input that is not UTF-8, not JSON or not a JSON object still passes with one receipt line, for both `PreToolUse` names, and an input over 4 MiB still passes the shell boundary (entry skeleton REQ-5). Named gap with one line in `docs/later.md`.
 
 ## Decisions
 
@@ -129,6 +133,7 @@ created: 2026-11-26
 | D-15 | A `.git` file that cannot be read or parsed names no checkout and the search goes on with the parent folder. | Revision 2: stopping there let a broken file hide the checkout around it. | Stop at the broken file. |
 | D-16 | The other checkouts include the registered worktrees of the common folder (`worktrees/*/gitdir`); the deepest root holding the path decides. | Revision 2: D-3 names every registered linked worktree; walking up alone allowed a registered folder that lost its `.git` file. Same registry as H2. | Walk up only. |
 | D-17 | When `cwd` and the `CLAUDE_PROJECT_DIR` folder lie in checkouts of different repositories, the session checkout is the one of that folder. | Revision 3: the code (and the sibling shell boundary) already judged so while REQ-3 named `cwd` only; a session that stepped into a nested repository keeps the boundary of its own project. Writes into other checkouts of the repository it stepped into are not judged. | Judge by `cwd` only. |
+| D-18 | An input over 4 MiB is denied for `write-boundary` only, in the class `protected-path` (the path that cannot be read cannot be judged, as in D-14); the three class words stay (D-2). | Revision 4: the audit pause note 9855 asked whether a large write passes unjudged, the code showed that it does, and the leader asked for the closed side. This overrides entry skeleton REQ-5 (empty stdout) for this one name and departs from the plan's H3 "fail-open", which stays for a hook that fails to run. | Print nothing for an input over the limit again, as the entry skeleton does. |
 
 ## Result
 
