@@ -123,4 +123,55 @@ created: 2026-11-26
 
 ## Result
 
-구현 전(2026-11-26, 브랜치 `spec/affected-binary-tests-20261126`).
+구현했어요(2026-11-26, 브랜치 `spec/affected-binary-tests-20261126`, 기준 NeXT `75b69200669812ef3ff83aa976b4b649fc6d0180`). 구현 커밋 `1a9d044245`, REQ-6 의 실행 경로 확인을 더한 커밋 `0e5f95f9ac`. 마지막 head 의 검사 영수증은 카드의 READY 노트에 있어요.
+
+### 바뀐 것
+
+- `src/check_affected.rs`: 표시 줄, 명령 이름(자기 소스나 `#[path]` 도움 파일), `tools/` 경로 글자, 선언 줄 규칙을 `binary_rules` 하나에 모아 카드, 전체, 레인 선택에 합집합으로 더해요. 명령 이름 결과는 `read_facts` 가 `TestFile` 에 적고, 읽지 못한 파일은 `list` 와 실행에서 오류가 돼요. 카드 선택이 라이브러리 테스트를 좁힐 때는 바뀐 경로가 범위(scope)에 든 스캔의 `--lib` 테스트 이름을 필터에 더하고, 이름이 없거나 모르는 꼴의 명령이면 라이브러리를 모두 돌려요.
+- 표시 줄 다섯(REQ-2), 선언 줄 넷(REQ-11).
+- `tools/repo_scans.json`: 새 항목 `check-affected-binary-picks`(`always`, 범위는 새 테스트가 읽는 경로).
+
+### 확인 명령(AC-1 에서 AC-5, AC-8 에서 AC-12)
+
+head `0e5f95f9ac` 에서 적힌 명령을 그대로 돌렸어요. AC-1, 2, 3, 4, 8, 9, 10, 11, 12 는 각각 1개 통과(exit 0), AC-5 의 세 대상은 22개 통과(exit 0)예요.
+
+### 전후 비교(AC-6)
+
+전 실행 파일은 `75b6920066`, 후 실행 파일은 `1a9d044245` 에서 `cargo build --bin moai-cli` 로 지었어요(뒤 커밋은 테스트 파일과 이 문서만 바꿔요). 워크트리의 `target/` 아래 임시 clone 에서 각 head 를 체크아웃해 `check affected <base>..<head> --list` 와 `--card ... --list` 를 돌렸어요. 마지막 범위는 clone 의 네 테스트 파일에 선언 줄을 더하고 커밋하지 않은 채 쟀어요(`--list` 는 테스트 파일을 디스크에서 읽고, 바뀐 경로는 범위에서 와요). 테스트는 돌리지 않았어요. 모든 줄에서 빠진 대상 0, 빠진 라이브러리 필터 항 0이에요.
+
+| 범위 | 선택(넓은 / 카드가 답한 것) | 넓은 대상 전→후 | 카드 대상 전→후 | 카드 라이브러리 필터 항 전→후 |
+| --- | --- | --- | --- | --- |
+| `5a6aa857d3..12510df496` | 전체 / 카드 | 112→131 | 3→33 | 1→14 |
+| `9c8b7fb763..3a6c46fc95` | 전체 / 전체 | 83→83 | 83→83 | 전체→전체 |
+| `91dd561a5a..6bb4f8a031` | 전체 / 카드 | 59→69 | 2→12 | 1→14 |
+| `c62f942eea..b3048a821a` | 전체 / 전체 | 248→259 | 248→259 | 전체→전체 |
+| `e946ae8102..4db9be4f90` | 전체 / 카드 | 161→161 | 120→120 | 2→15 |
+| `91dd561a5a..1370d8a9d8`(선언 줄 더함) | 전체 / 카드 | 115→126 | 10→24 | 2→15 |
+
+- `c62f942eea..b3048a821a` 의 후 목록(넓은, 카드)에 `trailer_check_cli` 가 있어요.
+- `e946ae8102..4db9be4f90` 의 후 카드 필터에 `every_rust_written_home_name_is_in_the_table` 이 있어요.
+- 마지막 범위의 후 목록(넓은, 카드)에 `card_wip_limit`, `card_submit_cli`, `orchestrate_cli`, `leader_brief_cli` 가 모두 있어요.
+- 지난 범위의 head 에는 표시 줄이 없어서 위 표에는 REQ-1 이 안 보여요. `9c8b7fb763..3a6c46fc95` 는 head 의 다섯 파일에 표시 줄을 더해 따로 쟀고, 넓은 대상이 83→86(`go_project_real_run_cli`, `go_state_preview_cli`, `project_update_hooks_cli`)이에요.
+
+### 가드 뮤턴트(AC-7)
+
+규칙 코드를 하나씩 지우고 `check_affected_binary_tests` 의 해당 테스트를 돌렸고, 모두 실패했어요(exit 100). 소스는 되돌렸어요.
+
+| 지운 것 | 실패한 테스트 |
+| --- | --- |
+| REQ-1 표시 줄 규칙 | `a_source_change_selects_the_marked_binary_tests` |
+| REQ-3 바뀐 명령 파일 | `a_command_file_change_selects_the_tests_that_name_the_command` |
+| REQ-4 라이브러리에서 명령 파일로 | `a_library_change_selects_the_tests_of_its_own_command_files` |
+| REQ-8 `tools/` 경로 | `a_tools_change_selects_the_tests_that_name_the_path` |
+| REQ-9 라이브러리 스캔 검사 | `a_source_change_in_a_scan_scope_selects_its_library_tests` |
+| REQ-10 선언 줄 | `a_declared_path_change_selects_the_test_that_names_it` |
+| REQ-6 `list` 의 읽기 확인 | `a_command_file_change_selects_the_tests_that_name_the_command` |
+| REQ-6 실행의 읽기 확인 | `a_command_file_change_selects_the_tests_that_name_the_command` |
+
+### 남은 틈
+
+- REQ-6 의 오류는 `check affected` 의 `list` 와 실행에서만 나요. 같은 사실을 읽는 다른 명령(`card submit`, `check fix`, `check fast`)은 멈추지 않아요.
+- `#[path]` 는 그 파일이 있는 폴더를 기준으로 풀어요. 인라인 `mod {}` 블록 안의 `#[path]` 는 지금 저장소에서 확인되지 않았고, 생기면 명령 규칙이 쓰이는 변경에서 읽지 못함 오류가 날 수 있어요.
+- `mod.rs` 라이브러리 파일에는 REQ-4 를 적용하지 않아요(선택기의 기존 모듈 경로 규칙이 `mod.rs` 를 모듈 경로로 보지 않아요).
+- 카드 세트가 커져요(`12510df496` 범위 33개). Risks 에 적은 대로 "20개 안팎" 안내를 넘어요.
+- 새 `always` 항목 때문에 그 범위를 바꾸는 착지는 `check_affected_binary_tests` 도 돌려요.
