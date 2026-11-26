@@ -106,8 +106,10 @@ base `41c16e60ac` 의 동작을 일회용 프로젝트(임시 HOME, `env -i`)에
 | AC-6 | met | `next_step_` exit 0, 1 passed |
 | AC-7 | met | `update_` exit 0, 5 passed |
 
-- 관련 테스트 대상 10개(`go_local_reference_cli`, `project_update_plan_cli`, `go_settings_cli`, `update_end_to_end_cli`, `go_state_cli`, `project_update_go_residue_cli`, `go_project_real_run_cli`, `next_flow_skill_scan`, `state_folder_literal_scan`, `source_manifest_facts`): nextest 331/331 통과.
-- 뮤턴트(합치기 전): `src/go_state.rs` 경로 14/14 를 `10f29528b1` 에서, `src/project_update.rs` 경로 10/10 을 `a3ad057e53` 에서, 다시 미리보기 문장 1/1 을 `d2ccd43e8b` 내용에서 테스트가 잡았어요. 합친 뒤에는 다시 돌리지 않았어요.
+- 합친 커밋에서 관련 테스트 대상 10개(`go_local_reference_cli`, `project_update_plan_cli`, `go_settings_cli`, `update_end_to_end_cli`, `go_state_cli`, `project_update_go_residue_cli`, `go_project_real_run_cli`, `next_flow_skill_scan`, `state_folder_literal_scan`, `source_manifest_facts`): nextest 331/331 통과.
+- 첫 영수증들이 짚은 것(검사 표 줄, 새 플래그의 한국어 도움말, backup ignore 테스트 2건)을 고친 `b559c64f03` 내용에서 대상 14개(`go_state_classes_cli`, `go_state_preview_cli`, `go_local_reference_cli`, `go_project_real_run_cli`, `go_settings_cli`, `go_state_cli`, `project_update_plan_cli`, `update_end_to_end_cli`, `project_update_go_residue_cli`, `state_folder_literal_scan`, `repo_scans_table`, `help_text_names_moai`, `help_layout`, 바이너리 `moai-cli` 의 단위 테스트): nextest 438/438 통과.
+- 뮤턴트: `src/go_state.rs` 경로 14/14 를 `10f29528b1` 에서, `src/project_update.rs` 경로 10/10 을 `a3ad057e53` 에서, 다시 미리보기 문장 1/1 을 `d2ccd43e8b` 내용에서(셋은 합치기 전이고 다시 돌리지 않았어요), 폴더가 남는 갈래의 backup ignore 1/1 을 `b559c64f03` 에서 테스트가 잡았어요.
+- 로컬 설정이 폴더를 묶고 옛 백업 영역의 ignore 파일이 백업을 못 가리는 경우: update 계획은 선택 명령을 내요(REQ-9). 그 apply 의 백업은 새 `.moai/backups/` 로 가고, git 에 새 backup 줄을 내주지 않으며, 사용자의 ignore 파일을 바꾸지 않아요(`go_state_classes_cli`). 선택 없는 apply 의 거절은 그대로예요.
 - 위험 경로(덮어쓰기·옮기기·되돌리기)는 임시 HOME 에서 실제 바이너리를 돌리는 Rust 통합 테스트로 확인했어요.
 
 알아 둘 것:
