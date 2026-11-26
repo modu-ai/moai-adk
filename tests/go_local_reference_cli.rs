@@ -821,13 +821,13 @@ fn next_step_is_named_by_the_update_plan_and_the_project_workflow() {
         );
     }
     let text = fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/project.md"),
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/update.md"),
     )
     .unwrap();
     let line = text
         .lines()
         .find(|l| l.contains(PICK))
-        .expect("project.md names the pick");
+        .expect("update.md names the pick");
     assert!(line.contains("never edit"), "{line}");
 }
 
