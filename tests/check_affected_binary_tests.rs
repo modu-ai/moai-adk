@@ -114,13 +114,19 @@ impl Repo {
 
     /// `check affected <range> --list`: whether it answered `ok`, and the whole answer.
     fn ask(&self, range: &str, flags: &[&str]) -> (bool, Value) {
+        let path = std::env::var_os("PATH").unwrap_or_default();
+        self.ask_on(range, flags, &path.to_string_lossy())
+    }
+
+    /// [`Repo::ask`] under the `PATH` given.
+    fn ask_on(&self, range: &str, flags: &[&str], path: &str) -> (bool, Value) {
         let dir = self.dir.path().to_string_lossy().into_owned();
         let mut args = vec!["check", "affected", range, "--list", "--dir", dir.as_str()];
         args.extend_from_slice(flags);
         let out = self
             .home
             .command(&args)
-            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("PATH", path)
             .stdin(Stdio::null())
             .output()
             .unwrap();
@@ -132,6 +138,14 @@ impl Repo {
             )
         });
         (v["ok"] == Value::Bool(true), v)
+    }
+
+    /// [`Repo::ask`] with nextest as the planned runner, for a selection that must be accepted.
+    fn planned(&self, range: &str, flags: &[&str]) -> Value {
+        let (_tools, path) = nextest_path();
+        let (ok, v) = self.ask_on(range, flags, &path);
+        assert!(ok, "check affected refused the fixture: {v}");
+        v
     }
 
     /// [`Repo::ask`] for a selection that must be accepted.
@@ -150,6 +164,40 @@ impl Repo {
                 .collect(),
         }
     }
+}
+
+/// A folder of a fake `cargo` that exits 0, so the planned runner is nextest and the `test` step
+/// carries a filter, in front of the system's `git`.
+fn nextest_path() -> (tempfile::TempDir, String) {
+    let dir = tempfile::tempdir().unwrap();
+    let cargo = dir.path().join("cargo");
+    fs::write(&cargo, "#!/bin/sh\nexit 0\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&cargo, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let real = std::env::var_os("PATH").unwrap_or_default();
+    let path = format!("{}:{}", dir.path().display(), real.to_string_lossy());
+    (dir, path)
+}
+
+/// The `-E` filter of the planned `test` step; `None` when the step runs everything it builds.
+fn test_filter(answer: &Value) -> Option<String> {
+    let steps = answer["result"]["steps"].as_array().unwrap();
+    let step = steps
+        .iter()
+        .find(|s| s["label"] == "test")
+        .expect("a test step");
+    let args = step["command"].as_array().unwrap();
+    assert!(args.iter().any(|a| a == "nextest"), "{args:?}");
+    let at = args.iter().position(|a| a == "-E")?;
+    args.get(at + 1).and_then(Value::as_str).map(String::from)
+}
+
+/// Whether the filter leaves the library tests whole.
+fn whole_library(filter: Option<&str>) -> bool {
+    filter.is_none_or(|f| f.split(" | ").any(|term| term == "kind(lib)"))
 }
 
 /// A test source that loads `helper` with a [`ATTRIBUTE`] attribute and holds nothing else.
@@ -537,6 +585,76 @@ fn a_tools_change_selects_the_tests_that_name_the_path() {
                 got.selection
             ));
         }
+    }
+    assert!(misses.is_empty(), "{misses:#?}");
+}
+
+// SPEC-20261126-affected-binary-tests AC-10
+#[test]
+fn a_source_change_in_a_scan_scope_selects_its_library_tests() {
+    let repo = Repo::init();
+    // Four scans with a library check, none of whose rule files the changes below touch: a named
+    // test beside an integration target, two names after `--`, one scoped to the documents, and
+    // one that names no test.
+    let scans = r#"{"scans":[
+      {"id":"table","checks":["cargo test --offline --locked --test update_table_cli",
+        "cargo test --offline --locked --lib every_name_is_in_the_table"],
+        "rules":["src/table.rs"],"scope":[{"prefix":"src/","suffixes":[".rs"]}]},
+      {"id":"walk","checks":["cargo test --offline --locked --lib -- first_wide_read second_wide_read"],
+        "rules":["src/walker.rs"],"scope":[{"prefix":"src/","suffixes":[".rs"]}]},
+      {"id":"documents","checks":["cargo test --offline --locked --lib documents_only_read"],
+        "rules":["src/pages.rs"],"scope":[{"prefix":"docs/","suffixes":[".md"]}]},
+      {"id":"all","checks":["cargo test --offline --locked --lib"],
+        "rules":["src/every.rs"],"scope":[{"prefix":"src/deep/","suffixes":[".rs"]}]}
+    ]}"#;
+    repo.put("tools/repo_scans.json", scans);
+    repo.put("tests/update_table_cli.rs", "fn main() {}\n");
+    repo.put("src/widget.rs", "// a\n");
+    repo.put("src/deep/part.rs", "// a\n");
+    repo.commit();
+
+    let mut misses: Vec<String> = Vec::new();
+    let range = repo.change(&["src/widget.rs"]);
+    let card = repo.planned(&range, &["--card"]);
+    assert_eq!(card["result"]["selection"], "card", "{card}");
+    let filter = test_filter(&card).expect("the card set narrows the library tests");
+    assert!(!whole_library(Some(&filter)), "{filter}");
+    for name in [
+        "every_name_is_in_the_table",
+        "first_wide_read",
+        "second_wide_read",
+    ] {
+        if !filter.contains(name) {
+            misses.push(format!("card src/widget.rs: missing {name}"));
+        }
+    }
+    assert!(!filter.contains("documents_only_read"), "{filter}");
+    let targets = card["result"]["rust_targets"].to_string();
+    assert!(!targets.contains("update_table_cli"), "{targets}");
+    // The full and the lane set keep the whole library.
+    for (pick, flags) in [PICKS[0], PICKS[2]] {
+        let got = repo.planned(&range, flags);
+        let filter = test_filter(&got);
+        assert!(whole_library(filter.as_deref()), "{pick}: {filter:?}");
+    }
+    // A library check that names no test asks for the whole library.
+    let range = repo.change(&["src/deep/part.rs"]);
+    let filter = test_filter(&repo.planned(&range, &["--card"]));
+    if !whole_library(filter.as_deref()) {
+        misses.push(format!(
+            "card src/deep/part.rs: the library is narrowed: {filter:?}"
+        ));
+    }
+
+    // The repository's present files: the home name scan reads every source file.
+    let repo = Repo::of_this_repository();
+    let range = repo.change(&["src/update.rs"]);
+    let card = repo.planned(&range, &["--card"]);
+    assert_eq!(card["result"]["selection"], "card", "{card}");
+    let filter = test_filter(&card);
+    let name = "every_rust_written_home_name_is_in_the_table";
+    if !filter.as_deref().is_none_or(|f| f.contains(name)) && !whole_library(filter.as_deref()) {
+        misses.push(format!("card src/update.rs: missing {name}"));
     }
     assert!(misses.is_empty(), "{misses:#?}");
 }
