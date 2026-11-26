@@ -112,7 +112,7 @@ tests/generation_ref_slash.rs	2	0
 tests/git_hooks_cli.rs	0	1
 tests/github_inventory_collect.py	1	0
 tests/github_inventory_test.py	1	0
-tests/gitignore_block_cli.rs	226	74
+tests/gitignore_block_cli.rs	226	81
 tests/go_hooks_migrate.rs	2	1
 tests/go_project_real_run_cli.rs	1	6
 tests/go_settings_cli.rs	10	43
