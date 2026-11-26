@@ -453,6 +453,143 @@ fn moved_former_path_edited_after_the_plan_is_not_removed() {
     assert_eq!(read(r, SKILL_OLD), edited, "the file is not removed");
 }
 
+/// The request with the pick that leaves every conflicting file as it is.
+fn skipping(mut req: Value) -> Value {
+    req["picks"] = json!(["skip-conflicts"]);
+    req
+}
+
+fn put(root: &Path, rel: &str, body: &str) {
+    fs::create_dir_all(root.join(rel).parent().unwrap()).unwrap();
+    fs::write(root.join(rel), body).unwrap();
+}
+
+#[test]
+fn moved_skip_conflicts_keeps_the_former_skill_when_its_new_path_is_taken() {
+    let root = an_earlier_run();
+    let r = root.path();
+    let was = read(r, SKILL_OLD);
+    let mine = "---\nname: moai-prj-checks\ndescription: mine\n---\n\nmine\n";
+    put(r, SKILL, mine);
+    let p = result(&plan(r, &skipping(full_request())));
+    assert_eq!(action(&p, SKILL).as_deref(), Some("skip"), "{p}");
+    assert_eq!(
+        action(&p, SKILL_OLD).as_deref(),
+        Some("skip"),
+        "the former file stays when its new copy is not written: {p}"
+    );
+    let why = entry(&p, SKILL_OLD).unwrap()["detail"]
+        .as_str()
+        .unwrap_or("");
+    assert!(
+        why.contains("not written"),
+        "the kept file says why it is kept: {p}"
+    );
+    // The projection's new path is free, so that move still happens.
+    assert_eq!(action(&p, PROJECTION_OLD).as_deref(), Some("remove"), "{p}");
+    assert_eq!(action(&p, PROJECTION).as_deref(), Some("create"), "{p}");
+    result(&apply(r, &p));
+    assert_eq!(read(r, SKILL_OLD), was, "the former file is kept");
+    assert_eq!(read(r, SKILL), mine, "the user's file is as it was");
+    assert!(!r.join(PROJECTION_OLD).exists(), "the free move left");
+    assert!(r.join(PROJECTION).is_file(), "the free move arrived");
+    // The record still owns the former file: once the new path is free, it moves.
+    let again = result(&plan(r, &full_request()));
+    assert_eq!(
+        action(&again, SKILL_OLD).as_deref(),
+        Some("remove"),
+        "{again}"
+    );
+    assert_eq!(
+        action(&again, SKILL).as_deref(),
+        Some("conflict"),
+        "{again}"
+    );
+    fs::remove_file(r.join(SKILL)).unwrap();
+    fs::remove_dir(r.join(SKILL).parent().unwrap()).unwrap();
+    let free = result(&plan(r, &full_request()));
+    assert_eq!(action(&free, SKILL).as_deref(), Some("create"), "{free}");
+    assert_eq!(
+        action(&free, SKILL_OLD).as_deref(),
+        Some("remove"),
+        "{free}"
+    );
+}
+
+#[test]
+fn moved_skip_conflicts_keeps_the_flat_agent_when_its_nested_path_is_taken() {
+    const FLAT: &str = ".claude/agents/prj-reviewer.md";
+    let root = project();
+    let r = root.path();
+    result(&apply(r, &result(&plan(r, &full_request()))));
+    // An earlier version wrote the agent flat and recorded that path.
+    let was = read(r, AGENT);
+    fs::remove_file(r.join(AGENT)).unwrap();
+    put(r, FLAT, &was);
+    let manifest_path = state(r).join("manifests/generation.json");
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    let mut seeded = 0;
+    for owned in manifest["owned_files"].as_array_mut().unwrap() {
+        if owned["path"] == json!(AGENT) {
+            owned["path"] = json!(FLAT);
+            seeded += 1;
+        }
+    }
+    assert_eq!(seeded, 1, "the agent entry is moved to the flat path");
+    fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&manifest).unwrap(),
+    )
+    .unwrap();
+    let mine = "---\nname: prj-reviewer\ndescription: mine\n---\n\nmine\n";
+    put(r, AGENT, mine);
+    let p = result(&plan(r, &skipping(full_request())));
+    assert_eq!(action(&p, AGENT).as_deref(), Some("skip"), "{p}");
+    assert_eq!(
+        action(&p, FLAT).as_deref(),
+        Some("skip"),
+        "the flat file stays when its nested copy is not written: {p}"
+    );
+    result(&apply(r, &p));
+    assert_eq!(read(r, FLAT), was, "the flat file is kept");
+    assert_eq!(read(r, AGENT), mine, "the user's file is as it was");
+    let again = result(&plan(r, &full_request()));
+    assert_eq!(
+        action(&again, FLAT).as_deref(),
+        Some("remove"),
+        "the record still owns the flat file: {again}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn moved_skip_conflicts_writes_no_second_skill_when_the_former_path_is_a_link() {
+    let root = an_earlier_run();
+    let r = root.path();
+    let was = read(r, SKILL_OLD);
+    let target = r.join("kept-elsewhere.md");
+    fs::write(&target, &was).unwrap();
+    fs::remove_file(r.join(SKILL_OLD)).unwrap();
+    std::os::unix::fs::symlink(&target, r.join(SKILL_OLD)).unwrap();
+    let p = result(&plan(r, &skipping(full_request())));
+    assert_eq!(action(&p, SKILL_OLD).as_deref(), Some("skip"), "{p}");
+    assert_eq!(
+        action(&p, SKILL).as_deref(),
+        Some("skip"),
+        "no copy is written beside a former file that stays: {p}"
+    );
+    result(&apply(r, &p));
+    assert!(!r.join(SKILL).exists(), "no second skill");
+    assert!(
+        fs::symlink_metadata(r.join(SKILL_OLD))
+            .unwrap()
+            .file_type()
+            .is_symlink(),
+        "the link is as it was"
+    );
+    assert_eq!(fs::read_to_string(&target).unwrap(), was);
+}
+
 /// How many words of `text` are a clock time like `21:55:57Z`.
 fn read_times(text: &str) -> usize {
     text.split(|c: char| !(c.is_ascii_alphanumeric() || c == ':'))
