@@ -113,6 +113,17 @@ backup-then-replace(`update-apply --confirm-backup-replace`)는 원래 폴더를
 
 2026-11-26, 기준 `75b69200669812ef3ff83aa976b4b649fc6d0180`. 실행 환경은 Mac 한 대이고 Windows 와 Linux 에서는 돌리지 않았어요.
 
+- AC-1: met — `keep_restore_an_ordinary_apply_keeps_the_backup` 필터 1개 통과(`ba21bbd8a2`), `a91e03fb7b` 에서는 실패
+- AC-2: met — `keep_restore_adds_nothing_without_an_earlier_backup` 필터 1개 통과
+- AC-3: met — `keep_restore_covers_a_baseline_move` 필터 1개 통과, `a91e03fb7b` 에서는 실패
+- AC-4: met — `keep_restore_is_blocked_by_a_kept_user_edit` 필터 1개 통과
+- AC-5: met — `keep_restore_leaves_a_failed_apply_to_per_file_recovery` 필터 1개 통과
+- AC-6: met — `keep_restore_is_not_taken_from_another_installation` 필터 1개 통과
+- AC-7: met — `keep_restore_never_carries_a_used_backup` 필터 1개 통과
+- AC-8: met — 타깃 다섯 개 84개 통과, `every_rust_written_home_name_is_in_the_table` 1개 통과, `src/recovery.rs` 와 영수증 필드는 diff 로 읽어 바뀌지 않음
+- AC-9: met — `grep -n 'keeps the restore offer' docs/rust-product-path.md` 2줄
+- AC-10: met — `keep_restore_covers_what_another_build_wrote` 필터 1개 통과, `a91e03fb7b` 에서는 실패
+
 - 커밋: SPEC `265ff52572`, 빨강 `a91e03fb7b`, 수정 `ffbb84769f`, 문서 `ba21bbd8a2`.
 - 빨강(`a91e03fb7b`): 새 테스트 8개 중 AC-1, AC-3, AC-4, AC-10 의 4개가 단언에서 실패했고 AC-2, AC-5, AC-6, AC-7 의 4개는 통과했어요. Plan 3 은 AC-4 를 통과 쪽으로 적었지만 이 head 에서는 `restore_backup` 행이 없어서 실패해요.
 - 초록: `moai tdd green` 이 빨강 때의 확인 명령을 다시 돌려 exit 0 이었어요.
