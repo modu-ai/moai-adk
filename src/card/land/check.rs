@@ -322,13 +322,14 @@ fn receipt_ok(event: &VerdictEvent) -> bool {
     })
 }
 
-/// One criterion a verdict of the head holds open (SPEC-20261126-land-open-criteria): its
-/// number, the reviewer who holds it and that reviewer's verdict event.
+/// One criterion a verdict holds open (SPEC-20261126-land-open-criteria): its number, the
+/// reviewer who holds it, that reviewer's verdict event and the head the verdict names.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Hold {
     pub seq: i64,
     pub reviewer: String,
     pub event: i64,
+    pub head: String,
 }
 
 impl Hold {
@@ -337,26 +338,29 @@ impl Hold {
     }
 }
 
-/// What the verdicts on `verdict_head` hold open: the union of the `open` numbers of each
-/// reviewer's newest PASS on it, the PASS the landing relies on or not, without the criteria
-/// withdrawn since. A reviewer releases its hold with a newer PASS. Ordered by criterion number,
-/// then event. Read in every mode: a hold only keeps a card open.
-pub fn held(conn: &Connection, card_id: i64, verdict_head: &str) -> Result<Vec<Hold>> {
+/// What the verdicts on `heads` hold open: the union of the `open` numbers of each reviewer's
+/// newest PASS on each of them, the PASS the landing relies on or not, without the criteria
+/// withdrawn since. A reviewer releases its hold with a newer PASS of the same head. Ordered by
+/// criterion number, then event. Read in every mode: a hold only keeps a card open.
+pub fn held(conn: &Connection, card_id: i64, heads: &[&str]) -> Result<Vec<Hold>> {
     let events = workflow::verdict_events(conn, card_id).map_err(|e| e.to_string())?;
-    let mut seen: Vec<&str> = Vec::new();
+    let mut seen: Vec<(&str, &str)> = Vec::new();
     let mut holds = Vec::new();
     for event in events.iter().rev() {
-        if event.head != verdict_head
+        if !heads.contains(&event.head.as_str())
             || !event.pass
-            || seen.iter().any(|r| r.eq_ignore_ascii_case(&event.reviewer))
+            || seen.iter().any(|(head, reviewer)| {
+                *head == event.head && reviewer.eq_ignore_ascii_case(&event.reviewer)
+            })
         {
             continue;
         }
-        seen.push(&event.reviewer);
+        seen.push((&event.head, &event.reviewer));
         holds.extend(event.open.iter().map(|&seq| Hold {
             seq,
             reviewer: event.reviewer.clone(),
             event: event.event_id,
+            head: event.head.clone(),
         }));
     }
     if holds.is_empty() {
@@ -372,6 +376,13 @@ pub fn held(conn: &Connection, card_id: i64, verdict_head: &str) -> Result<Vec<H
     holds.retain(|h| standing.contains(&h.seq));
     holds.sort_by_key(|h| (h.seq, h.event));
     Ok(holds)
+}
+
+/// The second parent of `commit` when it is a merge of two parents.
+pub(crate) fn second_parent(project: &Path, commit: &str) -> Result<Option<String>> {
+    let line = git_text(project, &["rev-list", "--parents", "-n", "1", commit])?;
+    let ids: Vec<&str> = line.split_whitespace().collect();
+    Ok((ids.len() == 3).then(|| ids[2].to_string()))
 }
 
 /// A FAIL on the head recorded after the verdict the landing relied on: `{event, reviewer}` of

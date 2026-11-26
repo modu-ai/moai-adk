@@ -411,34 +411,6 @@ fn land_inner(
     };
     let verdict_head: &str = audited_head.as_deref().unwrap_or(req.head);
 
-    // The criteria the verdicts of that head hold open (SPEC-20261126-land-open-criteria): such a
-    // head lands as a slice, whatever the criteria say, and no --met option goes with it.
-    let holds = check::held(ledger.conn(), card_id, verdict_head).map_err(unchanged)?;
-    if req.keep_open && open.is_empty() && holds.is_empty() {
-        return Err(unchanged(format!(
-            "{name} has no open criterion, so --keep-open has nothing to keep open: land without it"
-        )));
-    }
-    if !holds.is_empty() && !met.is_empty() {
-        let named: Vec<String> = holds
-            .iter()
-            .map(|h| {
-                format!(
-                    "criterion {} (verdict event {} of {})",
-                    h.seq, h.event, h.reviewer
-                )
-            })
-            .collect();
-        return Err(unchanged(format!(
-            "the verdicts of the head hold {} open, so the landing marks no criterion met: leave \
-             --met out, or have each reviewer record a new PASS without --open",
-            named.join(", ")
-        )));
-    }
-    let mut held: Vec<i64> = holds.iter().map(|h| h.seq).collect();
-    held.dedup();
-    let keep_open = req.keep_open || !held.is_empty();
-
     // Git: the branch, the tip, the candidate and where it stands.
     let branch = landed::integration_branch(project).map_err(|why| {
         unchanged(format!(
@@ -457,6 +429,50 @@ fn land_inner(
         Containment::Inside | Containment::Outside => {}
     }
     let standing = landed::standing(project, req.head, &tip).map_err(unchanged)?;
+
+    // The criteria the verdicts hold open (SPEC-20261126-land-open-criteria): such a head lands as
+    // a slice, whatever the criteria say, and no --met option goes with it. A verdict recorded
+    // since the first landing can change which head the check reads, so a rerun of a head the
+    // branch holds also keeps what is held on the head itself and on the second parent of a
+    // merge: the heads a first landing of this commit reads.
+    let second = match standing {
+        Standing::Inside => check::second_parent(project, req.head).map_err(unchanged)?,
+        _ => None,
+    };
+    let mut hold_heads = vec![verdict_head];
+    if standing == Standing::Inside {
+        hold_heads.push(req.head);
+        hold_heads.extend(second.as_deref());
+    }
+    let holds = check::held(ledger.conn(), card_id, &hold_heads).map_err(unchanged)?;
+    if req.keep_open && open.is_empty() && holds.is_empty() {
+        return Err(unchanged(format!(
+            "{name} has no open criterion, so --keep-open has nothing to keep open: land without it"
+        )));
+    }
+    if !holds.is_empty() && !met.is_empty() {
+        let named: Vec<String> = holds
+            .iter()
+            .map(|h| {
+                format!(
+                    "criterion {} (verdict event {} of {} on {})",
+                    h.seq,
+                    h.event,
+                    h.reviewer,
+                    &h.head[..12]
+                )
+            })
+            .collect();
+        return Err(unchanged(format!(
+            "the verdicts of the landing hold {} open, so the landing marks no criterion met: \
+             leave --met out, or have each reviewer record a new PASS of that head without --open",
+            named.join(", ")
+        )));
+    }
+    let mut held: Vec<i64> = holds.iter().map(|h| h.seq).collect();
+    held.dedup();
+    let keep_open = req.keep_open || !held.is_empty();
+
     let mut follow_plan: Option<follow::Plan> = None;
     match standing {
         Standing::Inside => {}

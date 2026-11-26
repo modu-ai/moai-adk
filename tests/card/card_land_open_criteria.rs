@@ -222,7 +222,11 @@ impl World {
             .to_string();
         self.link_spec(&name);
         result(&self.card(None, &["ready", &name]));
-        result(&self.card(Some(S_A), &["take", &name]));
+        // A temporary path that is no worktree: left out, the ledger would record the folder the
+        // test runs in.
+        let tree = self.scripts.path().join(&name);
+        let tree = tree.to_str().unwrap();
+        result(&self.card(Some(S_A), &["take", &name, "--worktree", tree]));
         name
     }
 
@@ -318,6 +322,32 @@ impl World {
             &self.project,
             &["commit-tree", &tree, "-p", &self.c0, "-m", &message],
         )
+    }
+
+    /// A lane head and the clean merge of it onto a moved integration tip, which `integ` points
+    /// at: landing the merge is a fast move whose second parent is the audited head.
+    fn merge_on_a_moved_tip(&self) -> (String, String) {
+        let audited = self.lane("notes/a.md");
+        let tip = self.lane("notes/t.md");
+        git(&self.project, &["update-ref", "refs/heads/integ", &tip]);
+        let tree = git(
+            &self.project,
+            &["merge-tree", "--write-tree", &tip, &audited],
+        );
+        let merge = git(
+            &self.project,
+            &[
+                "commit-tree",
+                &tree,
+                "-p",
+                &tip,
+                "-p",
+                &audited,
+                "-m",
+                "merge",
+            ],
+        );
+        (audited, merge)
     }
 
     /// `card verdict` of `head` by `reviewer` with the `--open` numbers.
@@ -527,19 +557,137 @@ fn card_verdict_stores_only_a_hold_it_can_keep() {
     assert_eq!(repeat["written"], json!(false), "{repeat}");
     assert_eq!(repeat["event"], plain["event"], "{repeat}");
 
+    // 0 is no criterion number: the command line refuses it before the ledger is read.
+    let zero = w.verdict(&card, &head, S_AUD, "pass", &[0]);
+    assert_eq!(zero.status.code(), Some(2));
+    assert_eq!(w.events(&card, "card.verdict"), 2);
+
     // A stored `open` that is no list of positive numbers is no verdict: the head has no PASS.
+    for stored in [json!("1"), json!(["1"]), json!([1.5]), json!([0])] {
+        let w = World::new();
+        let card = w.review_card("apps/a/", 1);
+        let head = w.lane("notes/a.md");
+        w.insert_event(
+            &card,
+            S_AUD,
+            "card.verdict",
+            &json!({"head": head, "base": w.c0, "verdict": "pass", "tier": 0,
+                    "evidence": "hand written", "receipt": null, "reviewer": S_AUD,
+                    "open": stored}),
+        );
+        let why = refusal(&w.land(&card, &head, &[]));
+        assert!(why.contains("no_pass"), "{stored}: {why}");
+        assert_eq!(w.integ(), w.c0, "{stored}");
+    }
+}
+
+/// REQ-3: a verdict recorded after a held landing, on the landed merge or on the audited head,
+/// does not drop the hold on a rerun; a newer PASS of the held head without `--open` releases it.
+#[test]
+fn a_rerun_after_a_later_verdict_keeps_the_hold() {
+    for (on_merge, word) in [(true, "fail"), (true, "pass"), (false, "fail")] {
+        let case = format!("on_merge={on_merge} {word}");
+        let w = World::new();
+        let card = w.review_card("apps/a/", 2);
+        let (audited, merge) = w.merge_on_a_moved_tip();
+        let held_event = w.pass(&card, &audited, S_AUD, &[2]);
+        let held = json!([{"seq": 2, "reviewer": S_AUD, "event": held_event}]);
+
+        let first = result(&w.land(&card, &merge, &[]));
+        assert_eq!(first["held"], held, "{case}: {first}");
+        assert_eq!(first["closed"], json!(false), "{case}: {first}");
+        assert_eq!(w.integ(), merge, "{case}");
+
+        let later = if on_merge { &merge } else { &audited };
+        result(&w.verdict(&card, later, S_AUD, word, &[]));
+
+        let again = result(&w.land(&card, &merge, &[]));
+        assert_eq!(again["closed"], json!(false), "{case}: {again}");
+        assert_eq!(again["held"], held, "{case}: {again}");
+        assert_eq!(again["met"], json!([]), "{case}: {again}");
+        assert_ne!(w.state(&card), "done", "{case}");
+        assert_eq!(w.statuses(&card), ["open", "open"], "{case}");
+        let why = refusal(&w.land(&card, &merge, &["--met", "2=ref"]));
+        assert!(why.contains("criterion 2"), "{case}: {why}");
+        assert_eq!(w.events(&card, "card.finish"), 0, "{case}");
+
+        w.pass(&card, &audited, S_AUD, &[]);
+        let released = result(&w.land(&card, &merge, &[]));
+        assert_eq!(released["closed"], json!(true), "{case}: {released}");
+        assert!(released.get("held").is_none(), "{case}: {released}");
+        assert_eq!(w.state(&card), "done", "{case}");
+    }
+}
+
+/// REQ-5: a held criterion marked met after the landing is open again on a rerun, and the
+/// replaced evidence is recorded although the landing event of the head is already there.
+#[test]
+fn a_rerun_opens_a_held_criterion_marked_met_since() {
     let w = World::new();
-    let card = w.review_card("apps/a/", 1);
+    let card = w.review_card("apps/a/", 2);
     let head = w.lane("notes/a.md");
-    w.insert_event(
-        &card,
-        S_AUD,
-        "card.verdict",
-        &json!({"head": head, "base": w.c0, "verdict": "pass", "tier": 0,
-                "evidence": "hand written", "receipt": null, "reviewer": S_AUD, "open": "1"}),
+    w.pass(&card, &head, S_AUD, &[2]);
+    result(&w.land(&card, &head, &[]));
+    w.met(&card, 2, "after the landing");
+
+    let again = result(&w.land(&card, &head, &[]));
+    assert_eq!(again["closed"], json!(false), "{again}");
+    assert_eq!(again["open_criteria"], json!([1, 2]), "{again}");
+    assert_eq!(w.statuses(&card), ["open", "open"]);
+    let reopened = w.payload(&card, "card.held_reopened");
+    assert_eq!(reopened["head"], json!(head), "{reopened}");
+    assert_eq!(
+        reopened["reopened"],
+        json!([{"seq": 2, "evidence": "after the landing"}]),
+        "{reopened}"
     );
+    assert_eq!(w.events(&card, "card.landed"), 1);
+
+    // With nothing marked met since, another rerun writes no event.
+    result(&w.land(&card, &head, &[]));
+    assert_eq!(w.events(&card, "card.held_reopened"), 1);
+}
+
+/// REQ-3: the same call again changes a reviewer's hold when a newer PASS of that reviewer
+/// changed it in between; a FAIL in between is not undone by repeating an earlier PASS.
+#[test]
+fn a_hold_set_again_after_a_release_applies() {
+    let w = World::new();
+    let card = w.review_card("apps/a/", 2);
+    let head = w.lane("notes/a.md");
+    let first = w.pass(&card, &head, S_AUD, &[2]);
+    let release = w.pass(&card, &head, S_AUD, &[]);
+
+    let again = result(&w.verdict(&card, &head, S_AUD, "pass", &[2]));
+    assert_eq!(again["written"], json!(true), "{again}");
+    let again = again["event"].as_i64().unwrap();
+    assert!(again > release && release > first);
+    let repeat = result(&w.verdict(&card, &head, S_AUD, "pass", &[2]));
+    assert_eq!(repeat["written"], json!(false), "{repeat}");
+    let got = result(&w.land(&card, &head, &[]));
+    assert_eq!(got["closed"], json!(false), "{got}");
+    assert_eq!(
+        got["held"],
+        json!([{"seq": 2, "reviewer": S_AUD, "event": again}]),
+        "{got}"
+    );
+
+    // The release is the same call as the first release, and it is written again.
+    let released = result(&w.verdict(&card, &head, S_AUD, "pass", &[]));
+    assert_eq!(released["written"], json!(true), "{released}");
+    let got = result(&w.land(&card, &head, &[]));
+    assert_eq!(got["closed"], json!(true), "{got}");
+
+    // A FAIL stays the newest verdict when an earlier PASS is repeated.
+    let w = World::new();
+    let card = w.review_card("apps/a/", 2);
+    let head = w.lane("notes/a.md");
+    w.pass(&card, &head, S_AUD, &[2]);
+    result(&w.verdict(&card, &head, S_AUD, "fail", &[]));
+    let repeat = result(&w.verdict(&card, &head, S_AUD, "pass", &[2]));
+    assert_eq!(repeat["written"], json!(false), "{repeat}");
     let why = refusal(&w.land(&card, &head, &[]));
-    assert!(why.contains("no_pass"), "{why}");
+    assert!(why.contains("verdict_fail"), "{why}");
     assert_eq!(w.integ(), w.c0);
 }
 
@@ -607,7 +755,7 @@ fn land_batch_lands_a_held_head_as_a_slice() {
     let clean = w.review_card("apps/b/", 1);
     let held_head = w.lane("notes/a.md");
     let clean_head = w.lane("notes/b.md");
-    w.pass(&held, &held_head, S_AUD, &[1]);
+    let event = w.pass(&held, &held_head, S_AUD, &[1]);
     w.pass(&clean, &clean_head, S_AUD, &[]);
     let check = w.scripts.path().join("check.sh");
     fs::write(&check, "#!/bin/sh\nexit 0\n").unwrap();
@@ -627,6 +775,13 @@ fn land_batch_lands_a_held_head_as_a_slice() {
     assert_eq!(got["landed"][0]["closed"], json!(true), "{got}");
     assert_eq!(got["landed"][1]["card"], json!(held), "{got}");
     assert_eq!(got["landed"][1]["closed"], json!(false), "{got}");
+    assert_eq!(
+        got["landed"][1]["held"],
+        json!([{"seq": 1, "reviewer": S_AUD, "event": event}]),
+        "{got}"
+    );
+    assert_eq!(got["landed"][1]["open_criteria"], json!([1]), "{got}");
+    assert!(got["landed"][0].get("held").is_none(), "{got}");
     assert_ne!(w.state(&held), "done");
     assert_eq!(w.statuses(&held), ["open"]);
     assert_eq!(w.state(&clean), "done");

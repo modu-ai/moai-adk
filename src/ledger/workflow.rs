@@ -2204,9 +2204,25 @@ fn verdict_from_row(event_id: i64, actor: &str, payload: &str) -> Option<Verdict
     })
 }
 
+/// Whether `verdict` is a PASS that holds other criteria than the newest verdict of its reviewer
+/// on its head, that one a PASS too. A FAIL in between is never undone by a repeat.
+fn changes_a_hold(
+    conn: &Connection,
+    card_id: i64,
+    verdict: &NewVerdict<'_>,
+) -> Result<bool, LedgerError> {
+    let events = verdict_events(conn, card_id)?;
+    let newest = events
+        .iter()
+        .rev()
+        .find(|e| e.head == verdict.head && e.reviewer.eq_ignore_ascii_case(verdict.reviewer));
+    Ok(verdict.pass && newest.is_some_and(|e| e.pass && e.open != verdict.open))
+}
+
 /// Appends one `card.verdict` event of the card, or finds the one a repeat of the same call
 /// wrote (the same head, base, verdict, tier, evidence, receipt and reviewer): then nothing is
-/// written. The checks of the values (hex shape, commits, secret screen) are the caller's.
+/// written, unless the call changes the reviewer's hold ([`changes_a_hold`]). The checks of the
+/// values (hex shape, commits, secret screen) are the caller's.
 pub fn record_verdict(
     w: &mut WriteLedger,
     card_id: i64,
@@ -2239,6 +2255,7 @@ pub fn record_verdict(
         let rows = st.query_map(params![card_id, VERDICT_KIND], |r| {
             Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))
         })?;
+        let mut repeated = None;
         for row in rows {
             let (event_id, text) = row?;
             if serde_json::from_str::<serde_json::Value>(&text)
@@ -2246,13 +2263,21 @@ pub fn record_verdict(
                 .as_ref()
                 == Some(&payload)
             {
+                repeated = Some(event_id);
+                break;
+            }
+        }
+        drop(st);
+        // A repeat of an earlier call writes nothing, unless it changes what the reviewer holds
+        // now: a hold set again after a release, or a release repeated after a new hold.
+        if let Some(event_id) = repeated {
+            if !changes_a_hold(tx, card_id, verdict)? {
                 return Ok(Ok(VerdictRecorded {
                     event_id,
                     written: false,
                 }));
             }
         }
-        drop(st);
         // Judged after the repeat above: a repeat writes nothing, so a criterion withdrawn since
         // does not turn it into a refusal.
         if let Some(why) = hold_refusal(tx, card_id, verdict)? {
@@ -2609,6 +2634,17 @@ pub fn finish_naming(
             }
             reservation::add_event(tx, now, actor, card_id, "card.landed", &payload)?;
             events += 1;
+        } else if !held.is_empty() {
+            // The landing event of this head is already recorded, so a held criterion marked met
+            // since is opened again with an event of its own that keeps the replaced evidence.
+            let reopened = reopen_held(tx, card_id, held, now)?;
+            if !reopened.is_empty() {
+                let payload = json!({
+                    "head": head, "held": held, "reopened": reopened, "by": by,
+                });
+                reservation::add_event(tx, now, actor, card_id, HELD_REOPENED_KIND, &payload)?;
+                events += 1;
+            }
         }
         if landing_only {
             return Ok(Ok(Finished {
@@ -2691,8 +2727,11 @@ pub fn finish_naming(
     })?
 }
 
+/// The event of held criteria opened again on a rerun, when the landing event is already there.
+const HELD_REOPENED_KIND: &str = "card.held_reopened";
+
 /// Sets each held criterion that is `met` back to `open` and returns `{seq, evidence}` for each,
-/// the evidence it had. The caller's transaction writes the landing event with it.
+/// the evidence it had. The caller's transaction writes the event that records them with it.
 fn reopen_held(
     conn: &Connection,
     card_id: i64,

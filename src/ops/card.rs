@@ -1237,7 +1237,8 @@ enum Action {
     /// with a `--met` option or on a card with neither an open criterion nor a hold. A head whose
     /// verdicts hold criteria open (`card verdict --open`) lands as such a slice: no criterion is
     /// marked met, a held one that is met is open again, no `--met` is taken and the answer lists
-    /// them under `held`.
+    /// them under `held`. A rerun of a head the branch already holds also reads the holds of the
+    /// head itself and, for a merge, of its second parent.
     Land {
         /// The card to land (`C-12`).
         card: String,
@@ -1334,10 +1335,12 @@ enum Action {
     /// or `fail`, the tier the reviewer judged (0 to 2), the evidence (one line that passes the
     /// secret screen) and, for a PASS above tier 0, the check receipt (`--receipt-head` and
     /// `--receipt-step NAME=EXIT` for each step). The reviewer is the session id the host sets;
-    /// no option names one. The same call again writes nothing and answers the first event.
+    /// no option names one. The same call again writes nothing and answers the first event,
+    /// unless it changes what a PASS of this reviewer holds on the head now.
     /// `card land` reads these events and lands a head only on an independent PASS of it.
     /// `--open N` (PASS only, repeatable) holds criterion N open: the landing marks no criterion
-    /// met and keeps the card open until the same reviewer records a PASS without it.
+    /// met and keeps the card open until the same reviewer records a PASS of that head without
+    /// it.
     Verdict {
         /// The card the audit belongs to (`C-12`).
         card: String,

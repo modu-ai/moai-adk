@@ -598,6 +598,11 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
                         e["candidate"] = json!(cand.commit);
                         e["moved"] = done["moved"].clone();
                         e["closed"] = done["closed"].clone();
+                        // A held head stays open: the batch says which verdicts hold it.
+                        if let Some(held) = done.get("held") {
+                            e["held"] = held.clone();
+                            e["open_criteria"] = done["open_criteria"].clone();
+                        }
                         landed_cards.push(e);
                         pending.retain(|p| p.name != cand.item.name);
                     }
