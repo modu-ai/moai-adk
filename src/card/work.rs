@@ -60,6 +60,12 @@ fn refusal(action: &str, error: WorkflowError) -> String {
 /// the repository without an approved SPEC (SDD-4). Reads only; a project without a ledger
 /// has no cards (exit 0) and nothing is created.
 pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> {
+    // The command reads the repository identity in more than one place; git is asked once.
+    crate::identity::with_memo(|| offer(project, home, holder))
+}
+
+/// The answer of [`next`].
+fn offer(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> {
     let id = ledger::command::project_id_of(project)?;
     let ledger = match ledger::open_read_only(home, &id) {
         Ok(l) => l,

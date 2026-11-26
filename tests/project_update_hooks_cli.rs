@@ -4,6 +4,7 @@
 //! command when the replacement is blocked, and reads `unchanged` when nothing of the Go
 //! generation is left. Every case builds a temporary project with an empty temporary HOME.
 
+// check-affected: every-source-change
 #![cfg(unix)]
 
 mod common;

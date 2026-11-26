@@ -42,6 +42,8 @@ enum Action {
         lane: String,
     },
     /// A `/goal` condition for one card, with a turn limit.
+    ///
+    /// Example: moai lane-run goal --card <card>
     Goal {
         #[arg(long)]
         card: String,
@@ -56,10 +58,13 @@ const DEFAULT_TURNS: u32 = 40;
 const MAX_TURNS: u32 = 200;
 /// The longest `/goal` condition Claude Code takes.
 const GOAL_MAX_CHARS: usize = 4000;
-const FLOORS: &str = "Claude Code 2.1.248 or later for the self-paced loop; 2.1.310 or later \
-                      for Monitor on Bedrock, Claude Platform on AWS, Google Cloud's Agent \
-                      Platform, Microsoft Foundry, or with telemetry or non-essential traffic \
-                      off; Git Bash on Windows";
+/// The host versions the loop and the watch need, each with the condition it holds under. moai
+/// reads no host version: this is text for the user.
+const FLOORS: &str = "Claude Code 2.1.248 or later for the self-paced loop on Amazon Bedrock, \
+                      Claude Platform on AWS, Google Cloud's Agent Platform or Microsoft \
+                      Foundry, or with feature-flag fetching off; 2.1.310 or later for Monitor \
+                      on those providers, or with telemetry or non-essential traffic off; Git \
+                      Bash on Windows; before 2.1.330 a loop ends after 7 days instead of 30";
 
 pub fn run(args: Args) -> Result<Value, String> {
     let root = args.project;
@@ -78,8 +83,8 @@ pub fn run(args: Args) -> Result<Value, String> {
                     "lane": lane, "pick": "nonstop", "started": false,
                     "prompt": prompt(lane),
                     "note": "give this text to the self-paced loop of Claude Code (the loop \
-                             command with no interval); it ends after seven days and is not \
-                             restored by a resume",
+                             command with no interval); it ends 30 days after it starts (7 days \
+                             before Claude Code 2.1.330) and is not restored by a resume",
                 }))
             } else {
                 Ok(json!({
@@ -232,29 +237,45 @@ fn set(root: &Path, value: &str, lane: Option<&str>) -> Result<Value, String> {
     }))
 }
 
-/// The plain text a non-stop lane gives to the self-paced loop: no card, no leader and no
-/// path; the next card is whatever `moai card next` names.
+/// The plain text a non-stop lane gives to the self-paced loop. It names no card and no path.
+/// At every wake the lane reads the leader entry: with a registered leader it waits for a
+/// dispatch, and only a session that has never seen one takes what `moai card next` names. Its
+/// one watch is `moai card wait` under a Monitor.
 fn prompt(lane: &str) -> String {
     format!(
-        "Lane {lane}: keep running cards without stopping, as a self-paced loop with no \
-         interval.\n\
+        "Lane {lane}: keep working without stopping, as a self-paced loop with no interval.\n\
+         At every wake, first run `moai session-register --show --name leader`. held means a \
+         leader is registered. free means there is none, unless this session has already seen a \
+         registered leader or received a dispatch: then the entry has lapsed. On a lapsed \
+         entry, any other answer or a failure, take no new card, continue only the cards you \
+         hold, and write one note that names the answer on the card you worked last.\n\
          1. Keep the current card: if a card is in progress, continue it first.\n\
-         2. After you post a READY note, run `moai card next` and take the card it names; read \
-         its body and notes whole, then write the SPEC and the tests first.\n\
-         3. While you wait for an audit verdict or an answer, keep a Monitor that reads `moai \
-         card show` of each card you hold for new notes, and work the next card meanwhile; \
-         start the watch again when it ends.\n\
-         4. A verdict or a repair request comes first: handle it before anything else.\n\
+         2. With a leader registered: after your READY note, hand the card back, send the one \
+         completion message and wait for the leader's dispatch; never take the next card on \
+         your own. With no leader: when the ledger shows the previous card done or released, \
+         run `moai card next`, take the card it names and read its body and notes whole.\n\
+         3. Watch your cards: those `moai card next` lists under mine, and each card of `moai \
+         card list --state review` whose `moai card show` roles.authors holds the \
+         source_session_id that `moai session-current` prints. Keep a Monitor, with its timeout \
+         at 30 minutes, that runs `moai card wait --card <card> --timeout 25m --not-author \
+         <your session id>`, one --card for each watched card. With no card to watch, start no \
+         watch. On a first start, start it and then read each watched card with `moai card \
+         show`. When it ends, start it again with \
+         --since set to the highest note_id it returned, or to the mark it answered on a \
+         timeout; if it ended with no answer, do a first start again.\n\
+         4. A verdict or a repair request comes first.\n\
          5. A decision you need goes into a LANE-BLOCKED kind=decision note on its card; do not \
          ask the user from the loop.\n\
-         6. never end a turn with neither a card in progress nor a watch: before a turn ends, \
-         schedule the next wake with ScheduleWakeup (1200 to 1800 seconds while a Monitor \
-         runs).\n\
-         7. When `moai card next` names no card and no pull request of this lane is open, print \
-         one idle line (lane {lane} idle: no card to take), stop the watch and end the loop \
-         with ScheduleWakeup and stop: true.\n\
-         Read and write the ledger only through moai commands. The loop ends after seven days \
-         and is not restored by a resume."
+         6. never end a turn with neither a card in progress, a watch nor a scheduled wake: \
+         call ScheduleWakeup (1200 to 1800 seconds while a Monitor runs, 3600 with nothing to \
+         watch).\n\
+         7. When there is no card you can work (a card that waits for a decision does not \
+         count), print one idle line (lane {lane} idle: no card to take) once. If this session \
+         has seen no leader, stop the watch and end the loop with ScheduleWakeup and stop: \
+         true. Otherwise keep one wake pending at 3600 seconds, and end the loop only on the \
+         leader's session-end notice or the user's word.\n\
+         Read and write the ledger only through moai commands. The loop ends 30 days after it \
+         starts (7 days before Claude Code 2.1.330) and is not restored by a resume."
     )
 }
 

@@ -352,6 +352,79 @@ fn absent_language_renders_the_block_without_a_language_line() {
     );
 }
 
+/// SPEC-20261120-reply-language-rule AC-6: a profile that sets `user_chat` gets one imperative
+/// reply sentence right after the writing-language line, in the block's instruction language; a
+/// profile without `user_chat` (or with a code the block has no name for) gets no sentence and
+/// the lines around it are unchanged.
+#[test]
+fn reply_sentence_follows_user_chat_in_both_instruction_languages() {
+    let ko = project(Some(json!({"user_chat": "ko", "instruction_files": "ko"})));
+    plan_then_apply(&ko, "agents", &agents_request("en"));
+    let text = claude_md(&ko);
+    let lines: Vec<&str> = text.lines().collect();
+    let at = lines
+        .iter()
+        .position(|l| l.starts_with("작성 언어: "))
+        .unwrap_or_else(|| panic!("no writing-language line:\n{text}"));
+    assert_eq!(
+        lines[at + 1],
+        "사용자에게는 한국어로 답하고 질문하세요.",
+        "{text}"
+    );
+    assert_eq!(text.matches("답하고 질문하세요").count(), 1, "{text}");
+    // The block of this profile stays within BLOCK_MAX_LINES (15) lines between its markers; the
+    // versioning and flow lines it does not set add two more, so the longest block is 10 lines.
+    let begin = lines
+        .iter()
+        .position(|l| l.contains("moai:managed:begin"))
+        .unwrap();
+    let end = lines
+        .iter()
+        .position(|l| l.contains("moai:managed:end"))
+        .unwrap();
+    assert!(end - begin - 1 <= 15, "{text}");
+
+    let en = project(Some(json!({"user_chat": "ko", "instruction_files": "en"})));
+    plan_then_apply(&en, "agents", &agents_request("en"));
+    let text = claude_md(&en);
+    let lines: Vec<&str> = text.lines().collect();
+    let at = lines
+        .iter()
+        .position(|l| l.starts_with("Writing language: "))
+        .unwrap_or_else(|| panic!("no writing-language line:\n{text}"));
+    assert_eq!(
+        lines[at + 1],
+        "Reply to the user and ask questions in Korean.",
+        "{text}"
+    );
+    assert_eq!(text.matches("Reply to the user").count(), 1, "{text}");
+
+    // `user_chat = en` still states the choice (D-7).
+    let english = project(Some(json!({"user_chat": "en"})));
+    plan_then_apply(&english, "agents", &agents_request("en"));
+    assert!(
+        claude_md(&english).contains("Reply to the user and ask questions in English.\n"),
+        "{}",
+        claude_md(&english)
+    );
+
+    // No `user_chat` (only another item): no sentence, the other lines as before.
+    let other = project(Some(json!({"code_comments": "ja"})));
+    plan_then_apply(&other, "agents", &agents_request("en"));
+    let text = claude_md(&other);
+    assert!(!text.contains("Reply to the user"), "{text}");
+    assert!(text
+        .contains("Writing language: Code comments: Japanese (`ja`); everything else English.\n"));
+
+    // No language at all: the block is byte-identical to the one before this change.
+    let none = project(None);
+    plan_then_apply(&none, "agents", &agents_request("en"));
+    assert_eq!(
+        claude_md(&none),
+        format!("# demo\n\n{}", plain_en(none.path()))
+    );
+}
+
 /// AC-3: two projects with different settings get managed text that states exactly their
 /// settings, through `agents-*` and through `generation-*`.
 #[test]

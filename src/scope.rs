@@ -31,7 +31,7 @@ pub const SHARED_INTERFACE_PATHS: &[&str] = &[
 ];
 
 /// Files that are a pure function of other files and that the repository's merge driver joins
-/// three-way (`merge=moai-manifest` in `.gitattributes`; a test pins the two lists equal, C-118).
+/// three-way (`merge=moai-manifest-rs` in `.gitattributes`; a test pins the two lists equal, C-118).
 /// Two cards may both list one of these in their write scope: [`card_overlap`] ignores a pair in
 /// which one side is exactly such a path, so a regenerated line never locks the second card out.
 pub const GENERATED_SHARED_PATHS: &[&str] = &["skills/moai/references/source-manifest.json"];

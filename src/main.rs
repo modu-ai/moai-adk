@@ -594,22 +594,20 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// Answer a Codex lane's Stop hook
+    /// Answer a removed lane Stop hook
     ///
-    /// The Stop hook a Codex lane installs with `hooks-plan --host codex --lane-loop` (#2904):
-    /// reads the Stop input on stdin (64 KiB, dropped), reads the lane's next task once
-    /// (`lane-next`, or `--snapshot`) and prints only the Codex answer — `{"decision":"block",
-    /// "reason":…}` while the lane has work or open pull requests remain, nothing at the end
-    /// condition, after 48 blocks in a row for one task or 96 blocks since the last pass, or
-    /// on the second unknown reading.
+    /// The lane Stop hook was removed with its host. A hook an earlier release wrote still calls
+    /// this command: it prints one line on standard error saying so, nothing on standard output,
+    /// exits 0 and writes nothing. The flags are accepted and ignored, and standard input is not
+    /// read.
     LaneStopHook {
-        /// The lane name as it appears in claims (`session=<lane>`).
+        /// A lane name an old hook passes; ignored.
         #[arg(long)]
-        lane: String,
-        /// `OWNER/REPO`.
+        lane: Option<String>,
+        /// An `OWNER/REPO` an old hook passes; ignored.
         #[arg(long)]
-        repo: String,
-        /// Decide from a saved `lane-next` snapshot (JSON) instead of reading GitHub.
+        repo: Option<String>,
+        /// A snapshot file an old hook may pass; ignored.
         #[arg(long)]
         snapshot: Option<PathBuf>,
     },
@@ -928,6 +926,10 @@ enum Command {
         /// picks are part of the plan digest.
         #[arg(long = "set-aside", value_name = "ENTRY")]
         set_aside: Vec<String>,
+        /// Local settings that name `.moai/` keep the Go folder: plan to back the file up,
+        /// point those names at the Go backup folder and move the folder.
+        #[arg(long)]
+        rewrite_local_references: bool,
     },
     /// Move a previewed Go-era .moai folder
     ///
@@ -945,6 +947,9 @@ enum Command {
         /// digest stale.
         #[arg(long = "set-aside", value_name = "ENTRY")]
         set_aside: Vec<String>,
+        /// The confirmed preview was made with this pick, which writes the local settings.
+        #[arg(long)]
+        rewrite_local_references: bool,
     },
     /// Preview undoing a Go-era folder move
     ///
@@ -970,6 +975,40 @@ enum Command {
         backup: String,
         #[arg(long)]
         plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Move the chosen Go-generation leftovers to a backup
+    ///
+    /// Moves the files of the chosen bundles of a previewed go-residue step into
+    /// `.moai/backups/<UTC>/go-residue/<same path>` and deletes nothing: the proven bundle
+    /// (`--bundle proven`, files byte-identical to the manifest) and each `--pick <path>` of a
+    /// changed file. Applies only when a fresh preview has the given digest; refuses a path
+    /// that is absolute, holds `..` or passes through a link, and saves a receipt before it
+    /// moves the first file.
+    GoResidueApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+        /// Move the byte-proven files; the only value is `proven`.
+        #[arg(long, value_name = "NAME", value_parser = ["proven"])]
+        bundle: Option<String>,
+        /// A changed Go file to move too (repeat for more).
+        #[arg(long = "pick", value_name = "PATH")]
+        pick: Vec<String>,
+    },
+    /// Put a go-residue move back
+    ///
+    /// Restores the files of one go-residue apply from its receipt: a file goes back only
+    /// when its original place is empty and the backup copy still has the recorded sha256;
+    /// any other item is reported as a conflict and both sides stay as they are.
+    GoResidueRevert {
+        project: PathBuf,
+        /// The apply's receipt stamp (`YYYYMMDDTHHMMSSZ`).
+        #[arg(long)]
+        receipt: String,
         #[arg(long)]
         permission_reference: String,
     },
@@ -1288,6 +1327,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         GoStateApply { .. } => "go_state.apply",
         GoStateRevertPlan { .. } => "go_state.revert_plan",
         GoStateRevert { .. } => "go_state.revert",
+        GoResidueApply { .. } => "go_residue.apply",
+        GoResidueRevert { .. } => "go_residue.revert",
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
         WorktreePlan { .. } => "worktree.plan",
@@ -2079,20 +2120,28 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 other => other,
             }
         }
-        Command::GoStatePlan { project, set_aside } => {
-            serde_json::to_value(moai_cli::go_state::plan_with(&project, &set_aside)?)
-                .map_err(|_| "encode failed".into())
-        }
+        Command::GoStatePlan {
+            project,
+            set_aside,
+            rewrite_local_references,
+        } => serde_json::to_value(moai_cli::go_state::plan_picked(
+            &project,
+            &set_aside,
+            rewrite_local_references,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::GoStateApply {
             project,
             plan_digest,
             permission_reference,
             set_aside,
+            rewrite_local_references,
         } => serde_json::to_value(moai_cli::go_state::apply_picked(
             &project,
             &plan_digest,
             &permission_reference,
             &set_aside,
+            rewrite_local_references,
         )?)
         .map_err(|_| "encode failed".into()),
         Command::GoStateRevertPlan { project, backup } => {
@@ -2111,6 +2160,24 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &permission_reference,
         )?)
         .map_err(|_| "encode failed".into()),
+        Command::GoResidueApply {
+            project,
+            plan_digest,
+            permission_reference,
+            bundle,
+            pick,
+        } => moai_cli::go_residue_apply::apply(
+            &project,
+            &plan_digest,
+            &permission_reference,
+            bundle.as_deref() == Some("proven"),
+            &pick,
+        ),
+        Command::GoResidueRevert {
+            project,
+            receipt,
+            permission_reference,
+        } => moai_cli::go_residue_apply::revert(&project, &receipt, &permission_reference),
         Command::UpdatePlan { home, stage } => {
             let staged = moai_cli::update::stage_package(&stage)?;
             serde_json::to_value(moai_cli::update::plan_update(&home, &staged)?)
@@ -2474,34 +2541,16 @@ fn hook_dispatch_main(host: &str, event: &str) -> ExitCode {
     ExitCode::from(answer.exit)
 }
 
-/// `lane-stop-hook` (#2904): prints exactly the Codex Stop answer — one
-/// `{"decision":"block",…}` line or nothing — and exits 0. The Stop input is read (bounded) and
-/// dropped: `stop_hook_active` is not used (Q1 (a)) and bad JSON changes nothing. A refused
-/// lane or repository is a non-blocking hook error (exit 1, stdout empty).
-fn lane_stop_hook_main(lane: &str, repo: &str, snapshot: Option<&std::path::Path>) -> ExitCode {
-    use moai_cli::lane_loop as l;
-    use std::io::IsTerminal as _;
-    if !l::lane_ok(lane) || !l::repo_ok(repo) {
-        eprintln!(
-            "moai lane-stop-hook: --lane must be 1-64 of A-Z a-z 0-9 . _ - and --repo OWNER/REPO"
-        );
-        return ExitCode::from(HOOK_NON_BLOCKING_ERROR);
-    }
-    if !io::stdin().is_terminal() {
-        let _ = io::copy(&mut io::stdin().take(l::STOP_STDIN_LIMIT), &mut io::sink());
-    }
-    let Ok(cwd) = std::env::current_dir() else {
-        eprintln!("moai lane-stop-hook: working directory unavailable; the turn ends");
-        return ExitCode::SUCCESS;
-    };
-    let reading = match snapshot {
-        Some(file) => l::read_snapshot(file),
-        None => l::read_github(lane, repo),
-    };
-    let answer = l::stop_hook(&cwd, lane, repo, &reading);
-    if !answer.is_empty() {
-        println!("{answer}");
-    }
+/// `lane-stop-hook`: the lane Stop hook was removed with its host, so a hook an earlier release
+/// wrote gets one line on standard error, nothing on standard output and exit 0: it neither
+/// blocks nor fails. Standard input is not read, so a host that leaves it open cannot hold the
+/// hook, and no file or folder is written. A closed standard error changes nothing.
+fn lane_stop_hook_main() -> ExitCode {
+    use std::io::Write as _;
+    let _ = writeln!(
+        io::stderr(),
+        "moai lane-stop-hook: the lane Stop hook was removed; MoAI serves Claude Code only"
+    );
     ExitCode::SUCCESS
 }
 
@@ -2765,13 +2814,8 @@ pub(crate) fn main() -> ExitCode {
     if let Some(Command::HookDispatch { host, event }) = &cli.command {
         return hook_dispatch_main(host, event);
     }
-    if let Some(Command::LaneStopHook {
-        lane,
-        repo,
-        snapshot,
-    }) = &cli.command
-    {
-        return lane_stop_hook_main(lane, repo, snapshot.as_deref());
+    if let Some(Command::LaneStopHook { .. }) = &cli.command {
+        return lane_stop_hook_main();
     }
     if let Some(Command::HeavySlotAcquire {
         max,
@@ -3855,13 +3899,8 @@ mod help_rules {
     }
 
     /// Commands `main` answers before the internal dispatch; each reads standard input there
-    /// (`statusline`, `pr-self-audit-check`, `hook_dispatch_main` and `lane_stop_hook_main`).
-    const READ_BEFORE_DISPATCH: [&str; 4] = [
-        "hook-dispatch",
-        "lane-stop-hook",
-        "pr-self-audit-check",
-        "statusline",
-    ];
+    /// (`statusline`, `pr-self-audit-check` and `hook_dispatch_main`).
+    const READ_BEFORE_DISPATCH: [&str; 3] = ["hook-dispatch", "pr-self-audit-check", "statusline"];
 
     /// Source text that reads standard input: a typed request or plan, or `stdin()` used for
     /// more than asking whether it is a terminal.

@@ -1,7 +1,7 @@
 //! SPEC-20261125-check-affected-rerun: a repeated `moai check affected` run on a head whose earlier
 //! run failed re-runs only the tests that failed, the test step retries a failing test and lists
-//! one that passed on a retry as FLAKY, and a ledger in the project state folder counts the FLAKY
-//! names (`moai check flaky`).
+//! one that passed on a retry as FLAKY, and a ledger in the state folder's `local` folder counts
+//! the FLAKY names (`moai check flaky`).
 //!
 //! The earlier run is read from the check folder it left (`summary.txt` and the test step log);
 //! nothing else is trusted. Anything that cannot be read, or that names no failed test, gives the
@@ -15,12 +15,23 @@ use std::process::Command;
 /// How many times nextest re-runs a failing test (REQ-6).
 pub const RETRIES: u32 = 2;
 
-/// The ledger of FLAKY names, one JSON object per line, in the project state folder (REQ-9).
+/// The file name of the ledger of FLAKY names, one JSON object per line (REQ-9).
 const LEDGER_FILE: &str = "check-flaky.jsonl";
 
-/// The ledger of the project at `root`, in the folder that holds its state now.
+/// The ledger of the project at `root`: the `local` folder of this generation's state folder,
+/// which git ignores. It does not follow [`crate::state_root::dir`]: a checkout that still reads
+/// its earlier state folder would otherwise get an untracked file in a tracked folder
+/// (SPEC-20261126-check-affected-trailers-flaky REQ-5, REQ-6).
 pub fn ledger_path(root: &Path) -> PathBuf {
-    crate::state_root::path(root, LEDGER_FILE)
+    root.join(crate::state_root::MOAI_DIR)
+        .join(crate::state_root::LOCAL_DIR)
+        .join(LEDGER_FILE)
+}
+
+/// The ledger an earlier build wrote in the earlier state folder. It is only read.
+fn earlier_ledger_path(root: &Path) -> PathBuf {
+    root.join(crate::state_root::EARLIER_PROJECT_DIR)
+        .join(LEDGER_FILE)
 }
 
 /// A name seen this many times is marked `fix` by `moai check flaky` (REQ-10).
@@ -454,6 +465,32 @@ pub fn flaky_of(out: &Path) -> Vec<TestName> {
     read_log(&text).1.into_iter().collect()
 }
 
+/// The ledger of the project at `root`, open to append. Only real folders below `root` lead to
+/// it and only a regular file takes a row; a link or anything else is refused with its path
+/// (SPEC-20261126-tracked-state-move REQ-9, REQ-10).
+fn open_ledger(root: &Path) -> Result<std::fs::File, String> {
+    let folder = format!(
+        "{}/{}",
+        crate::state_root::MOAI_DIR,
+        crate::state_root::LOCAL_DIR
+    );
+    crate::go_state::make_dirs(root, &folder)?;
+    let rel = format!("{folder}/{LEDGER_FILE}");
+    if crate::go_state::linked_component(root, &rel) {
+        return Err(format!("{rel}: a path component is a symlink; refused"));
+    }
+    let ledger = ledger_path(root);
+    // A FIFO there would hold the writer until someone reads it.
+    if std::fs::symlink_metadata(&ledger).is_ok_and(|m| !m.is_file()) {
+        return Err(format!("{rel}: not a regular file; refused"));
+    }
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&ledger)
+        .map_err(|e| format!("{rel}: {e}"))
+}
+
 /// Write `flaky.txt` in `out` and append each name to the ledger of the project at `root`
 /// (REQ-7, REQ-9). A failure is returned as text for the caller to put on stderr; it never changes
 /// the result of the run.
@@ -467,15 +504,9 @@ pub fn record(root: &Path, out: &Path, head: &str, names: &[TestName]) -> Result
         problems.push(format!("cannot write flaky.txt: {e}"));
     }
     let ledger = ledger_path(root);
-    let append = || -> std::io::Result<()> {
+    let append = || -> Result<(), String> {
         use std::io::Write;
-        if let Some(parent) = ledger.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        let mut file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&ledger)?;
+        let mut file = open_ledger(root)?;
         let at = crate::audit::utc_now();
         let mut text = String::new();
         for name in &list {
@@ -487,7 +518,7 @@ pub fn record(root: &Path, out: &Path, head: &str, names: &[TestName]) -> Result
             });
             text.push_str(&format!("{row}\n"));
         }
-        file.write_all(text.as_bytes())
+        file.write_all(text.as_bytes()).map_err(|e| e.to_string())
     };
     if let Err(e) = append() {
         problems.push(format!("cannot append to {}: {e}", ledger.display()));
@@ -499,40 +530,52 @@ pub fn record(root: &Path, out: &Path, head: &str, names: &[TestName]) -> Result
     }
 }
 
-/// `moai check flaky`: each ledger name with its count, a name seen twice marked `fix` (REQ-10).
-pub fn report(dir: &Path) -> Result<serde_json::Value, String> {
-    let root = git(dir, &["rev-parse", "--show-toplevel"])
-        .map(PathBuf::from)
-        .unwrap_or_else(|| dir.to_path_buf());
-    let ledger = ledger_path(&root);
-    let mut counts: std::collections::BTreeMap<String, usize> = Default::default();
-    match std::fs::read_to_string(&ledger) {
-        Ok(text) => {
-            for (n, line) in text
-                .lines()
-                .enumerate()
-                .filter(|(_, l)| !l.trim().is_empty())
-            {
-                let name = serde_json::from_str::<serde_json::Value>(line)
-                    .ok()
-                    .and_then(|v| v["name"].as_str().map(str::to_string))
-                    .ok_or_else(|| {
-                        format!(
-                            "check flaky refused: line {} of {} is not a ledger line",
-                            n + 1,
-                            ledger.display()
-                        )
-                    })?;
-                *counts.entry(name).or_default() += 1;
-            }
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+/// Adds the names of one ledger file to `counts`. A file that is not there holds no names; a file
+/// that cannot be read, or a line that is no ledger row, refuses the report.
+fn count_names(
+    ledger: &Path,
+    counts: &mut std::collections::BTreeMap<String, usize>,
+) -> Result<(), String> {
+    let text = match std::fs::read_to_string(ledger) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
         Err(e) => {
             return Err(format!(
                 "check flaky refused: cannot read {}: {e}",
                 ledger.display()
             ))
         }
+    };
+    for (n, line) in text
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| !l.trim().is_empty())
+    {
+        let name = serde_json::from_str::<serde_json::Value>(line)
+            .ok()
+            .and_then(|v| v["name"].as_str().map(str::to_string))
+            .ok_or_else(|| {
+                format!(
+                    "check flaky refused: line {} of {} is not a ledger line",
+                    n + 1,
+                    ledger.display()
+                )
+            })?;
+        *counts.entry(name).or_default() += 1;
+    }
+    Ok(())
+}
+
+/// `moai check flaky`: each ledger name with its count, a name seen twice marked `fix` (REQ-10).
+/// The counts of an earlier ledger are added to those of the current one.
+pub fn report(dir: &Path) -> Result<serde_json::Value, String> {
+    let root = git(dir, &["rev-parse", "--show-toplevel"])
+        .map(PathBuf::from)
+        .unwrap_or_else(|| dir.to_path_buf());
+    let ledger = ledger_path(&root);
+    let mut counts: std::collections::BTreeMap<String, usize> = Default::default();
+    for file in [earlier_ledger_path(&root), ledger.clone()] {
+        count_names(&file, &mut counts)?;
     }
     let mut rows: Vec<(String, usize)> = counts.into_iter().collect();
     rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));

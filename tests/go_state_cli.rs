@@ -1188,7 +1188,8 @@ fn a_file_is_held_by_settings_only_if_those_settings_stay() {
             }
         }
         let folder_reason = action(&p, ".moai").1;
-        if folder_reason == FOLDER_HELD && settings_move {
+        // A hold by the local settings goes on to name the pick that rewrites them.
+        if folder_reason.starts_with(FOLDER_HELD) && settings_move {
             // Only the local settings can hold the folder then, and the preview names them.
             assert_eq!(
                 p["settings_move"]["still_holding"],
@@ -1298,14 +1299,16 @@ fn settings_that_reference_moai_keep_the_whole_folder() {
         fx.record(file, "user_created", &sha(text.as_bytes()));
         fx.manifest();
         let p = plan(&fx);
-        assert_eq!(
-            action(&p, ".moai"),
-            (
-                "leave",
-                "settings reference .moai/; the folder stays until they are cleaned (#2581)"
-            ),
-            "{file}"
-        );
+        // The local settings have a pick that rewrites them, and the reason names it; the
+        // shared settings have none (SPEC-20261126-go-local-settings-reference).
+        let pick = if file.ends_with("settings.local.json") {
+            "; `--rewrite-local-references` on go-state-plan and go-state-apply backs up \
+             .claude/settings.local.json and points it at the Go backup folder"
+        } else {
+            ""
+        };
+        let held = format!("{FOLDER_HELD}{pick}");
+        assert_eq!(action(&p, ".moai"), ("leave", held.as_str()), "{file}");
         assert_eq!(
             action(&p, ".moai/config/sections/a.yaml"),
             ("leave", "the .moai/ folder stays (see the .moai item)")

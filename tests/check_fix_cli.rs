@@ -4,6 +4,7 @@
 //! used.
 mod common;
 use common::git::{git, git_ok};
+use moai_cli::check_affected::{self, Pick};
 use moai_cli::check_fix::{self, Options};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -249,6 +250,87 @@ fn check_fix_writes_what_is_mechanical_and_prints_the_rest() {
     assert_eq!(again["nothing_to_do"], true, "{again}");
 }
 
+/// SPEC-20261125-repo-scans-convert-test-targets: on a `reads-` scan that keeps its targets in
+/// `test_targets` and has a filtered area line, the fix writes the new name into the list. The
+/// check line stays as it was and `check affected --list` selects every target it selected before.
+#[test]
+fn check_fix_adds_to_test_targets_and_the_selection_does_not_shrink() {
+    const LINE: &str = "cargo test --offline --locked --test card mod_a:: -- mod_b::";
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    init(root);
+    put(root, "README.md", b"fixture\n");
+    put(root, "Cargo.toml", b"[package]\nname = \"fixture\"\n");
+    put(root, "src/zz_stub.rs", b"// a\n");
+    put(root, "tests/card/main.rs", b"mod mod_a;\nmod mod_b;\n");
+    for file in ["tests/card/mod_a.rs", "tests/card/mod_b.rs"] {
+        put(root, file, b"#[test]\nfn t() {}\n");
+    }
+    for file in ["tests/zz_base_cli.rs", "tests/zz_zeta_cli.rs"] {
+        put(root, file, b"fn t() {}\n");
+    }
+    let doc = json!({
+        "about": "fixture",
+        "scans": [{
+            "id": "reads-zz",
+            "always": true,
+            "tests": ["tests/zz_new_cli.rs::t"],
+            "test_targets": ["zz_base_cli", "zz_zeta_cli"],
+            "checks": [LINE],
+            "rules": ["tests/zz_new_cli.rs"],
+            "scope": [{"prefix": "src/", "suffixes": [".rs"]}],
+            "rejects": "fixture",
+        }],
+    });
+    let old_registry = serde_json::to_string_pretty(&doc).unwrap() + "\n";
+    put(root, REGISTRY, old_registry.as_bytes());
+    let base = commit_all(root, "base");
+    put(root, "src/zz_stub.rs", b"// b\n");
+    put(root, "tests/zz_new_cli.rs", b"fn t() {}\n");
+    let head = commit_all(root, "change");
+    let selected = |range: &str| -> Vec<String> {
+        let answer = check_affected::list(root, range, Pick::Full, None).unwrap();
+        answer["rust_targets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t.as_str().unwrap().to_string())
+            .collect()
+    };
+    let before = selected(&format!("{base}..{head}"));
+    for want in ["mod_a", "mod_b", "zz_base_cli", "zz_zeta_cli"] {
+        assert!(before.iter().any(|t| t == want), "{want} in {before:?}");
+    }
+
+    let answer = check_fix::run(root, &format!("{base}..{head}"), &area_opts(&[])).unwrap();
+
+    assert_eq!(wrote(&answer), vec![REGISTRY], "{answer}");
+    let new_registry = text(root, REGISTRY);
+    let fixed = commit_all(root, "fix");
+    let after = selected(&format!("{base}..{fixed}"));
+    let lost: Vec<&String> = before.iter().filter(|t| !after.contains(t)).collect();
+    assert!(lost.is_empty(), "lost {lost:?}: {before:?} -> {after:?}");
+    assert!(after.iter().any(|t| t == "zz_new_cli"), "{after:?}");
+    assert!(
+        answer.to_string().contains("to `test_targets` of the scan"),
+        "{answer}"
+    );
+    assert_eq!(
+        new_registry,
+        old_registry.replace(
+            "\"zz_zeta_cli\"",
+            "\"zz_new_cli\",\n        \"zz_zeta_cli\""
+        ),
+        "one new line at its place; the check line is as it was"
+    );
+    assert!(new_registry.contains(LINE), "{new_registry}");
+    assert!(moai_cli::gate::registry_only_grew(
+        REGISTRY,
+        &old_registry,
+        &new_registry
+    ));
+}
+
 /// REQ-13: a registry edit that the registry's own judge would not read as growth is printed and
 /// not written. A name with a capital letter is no target name.
 #[test]
@@ -279,6 +361,94 @@ fn check_fix_prints_a_registry_edit_that_would_not_read_as_growth() {
         "{lines:?}"
     );
     assert_eq!(text(root, REGISTRY), before, "nothing was written");
+}
+
+/// An `always` scan without `test_targets` whose check lines all filter by name is not written:
+/// the lines stay and the answer prints what a person adds, and where. A scan with a line that has
+/// no filter still gets the name on that line.
+#[test]
+fn check_fix_leaves_filtered_lines_and_prints_where_to_add() {
+    // The two filtered lines are those of the scans `include-str-release-suite` and
+    // `test-seams-read-only-in-debug-builds` of this repository's table.
+    const MODULE: &str = "cargo test --offline --locked --test card release_suite::";
+    const NAMED: &str = "cargo test --offline --locked --test state_folder_literal_scan the_test_seams_are_read_only_in_debug_builds";
+    const PLAIN: &str = "cargo test --offline --locked --test card_other";
+    const ADDED: &str = "cargo test --offline --locked --test zz_new_cli";
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    init(root);
+    base_tables(
+        root,
+        "[areas]\ncard = [\"card\"]\nrepo = [\"repo\", \"zz\"]\n\n[solo]\nfiles = []\n",
+    );
+    let scan = |id: &str, check: &str| {
+        json!({
+            "id": id,
+            "always": true,
+            "tests": ["tests/zz_new_cli.rs::t"],
+            "checks": [check],
+            "rules": ["tests/zz_new_cli.rs"],
+            "scope": [{"prefix": "src/", "suffixes": [".rs"]}],
+            "rejects": "fixture",
+        })
+    };
+    let mut doc = json!({
+        "about": "fixture",
+        "scans": [
+            scan("zz-module", MODULE),
+            scan("zz-named", NAMED),
+            scan("zz-plain", PLAIN),
+        ],
+    });
+    let old_registry = serde_json::to_string_pretty(&doc).unwrap() + "\n";
+    put(root, REGISTRY, old_registry.as_bytes());
+    let base = commit_all(root, "base");
+    put(root, "tests/zz_new_cli.rs", b"fn t() {}\n");
+    let head = commit_all(root, "change");
+
+    let answer = check_fix::run(root, &format!("{base}..{head}"), &area_opts(&[])).unwrap();
+
+    assert_eq!(answer["result"], "FAIL", "{answer}");
+    assert_eq!(wrote(&answer), vec![REGISTRY], "{answer}");
+    assert_eq!(
+        text(root, REGISTRY),
+        old_registry.replace(PLAIN, &format!("{PLAIN} --test zz_new_cli")),
+        "only the line without a filter gained the name"
+    );
+    let lines = printed(&answer);
+    assert_eq!(
+        lines.len(),
+        2,
+        "one line for each scan left alone: {lines:?}"
+    );
+    for id in ["zz-module", "zz-named"] {
+        let line = lines
+            .iter()
+            .find(|l| l.starts_with(&format!("{id}: ")))
+            .unwrap_or_else(|| panic!("no line for {id}: {lines:?}"));
+        for part in ["wrote nothing", ADDED, REGISTRY] {
+            assert!(line.contains(part), "{part} in {line}");
+        }
+        assert!(!line.contains("test_targets"), "{line}");
+    }
+
+    // A person adds the printed line to both scans: nothing is left to print.
+    for at in [0, 1] {
+        doc["scans"][at]["checks"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!(ADDED));
+    }
+    doc["scans"][2]["checks"][0] = json!(format!("{PLAIN} --test zz_new_cli"));
+    put(
+        root,
+        REGISTRY,
+        (serde_json::to_string_pretty(&doc).unwrap() + "\n").as_bytes(),
+    );
+    let by_hand = commit_all(root, "by hand");
+    let again = check_fix::run(root, &format!("{base}..{by_hand}"), &area_opts(&[])).unwrap();
+    assert_eq!(again["result"], "PASS", "{again}");
+    assert_eq!(again["wrote"], json!([]), "{again}");
 }
 
 #[cfg(unix)]

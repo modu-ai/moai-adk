@@ -75,6 +75,8 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `effect-intend`
 - `effects-reconcile`
 - `flow-wip-check`
+- `go-residue-apply`
+- `go-residue-revert`
 - `go-state-apply`
 - `go-state-plan`
 - `go-state-revert`

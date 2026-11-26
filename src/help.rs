@@ -90,6 +90,8 @@ pub const GROUPS: &[Group] = &[
             ("go-state-apply", true),
             ("go-state-revert-plan", true),
             ("go-state-revert", true),
+            ("go-residue-apply", true),
+            ("go-residue-revert", true),
             ("home-state-plan", true),
             ("home-state-apply", true),
             ("home-state-revert", true),
@@ -223,6 +225,7 @@ pub const GROUPS: &[Group] = &[
             ("audit-claim", false),
             ("audit-verdict-line", false),
             ("audit-gate", false),
+            ("release-audit-summary", false),
             ("trailers", false),
             ("trailer-check", false),
             ("bundle", false),
@@ -272,6 +275,7 @@ pub const GROUPS: &[Group] = &[
             ("statusline", false),
             ("hook-receipt", false),
             ("hook-dispatch", false),
+            ("manifest-merge-driver", false),
             ("forge-read", false),
             ("forge-links-probe", false),
             ("forge-report", false),
@@ -396,6 +400,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("go-state-apply", &["go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-state-revert-plan", &["go-state-revert-plan --backup <UTC> ."]),
     ("go-state-revert", &["go-state-revert --backup <UTC> --plan-digest <digest> --permission-reference <ref> ."]),
+    ("go-residue-apply", &["go-residue-apply --plan-digest <digest> --permission-reference <ref> --bundle proven .", "go-residue-apply --plan-digest <digest> --permission-reference <ref> --pick <path> ."]),
+    ("go-residue-revert", &["go-residue-revert --receipt <UTC> --permission-reference <ref> ."]),
     ("home-state-plan", &["home-state-plan", "home-state-apply --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-state-apply", &["home-state-apply --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-state-revert", &["home-state-revert --permission-reference <ref>"]),
@@ -503,7 +509,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         "lane-loop-line",
         &[
             "lane-loop-line --host claude --lane agent-1",
-            "lane-loop-line --host codex --lane agent-1 --repo modu-ai/moai-adk",
         ],
     ),
     (
@@ -513,13 +518,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("lane-resume-check", &["lane-resume-check --file comment.md"]),
     (
         "lane-stop-hook",
-        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk < stop.json"],
+        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk"],
     ),
     (
         "lane-duty-line",
         &[
             "lane-duty-line --lane 1",
-            "lane-duty-line --lane 1 --host codex --first <task>",
+            "lane-duty-line --lane 1 --first <task>",
         ],
     ),
     (
@@ -586,6 +591,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         "audit-gate",
         &["audit-gate < input.json", "audit-gate --require-pass < input.json"],
     ),
+    (
+        "release-audit-summary",
+        &[
+            "release-audit-summary . --base <base-sha> --head <head-sha>",
+            "release-audit-summary . --base <base-sha> --head <head-sha> --post --pr 3300 --repo modu-ai/moai-adk --plan-digest <digest> --permission-reference <ref>",
+        ],
+    ),
     ("audit-clone-plan", &["audit-clone-plan --pr 2824 --head <sha> --head-branch <head-branch> --base-branch <base-branch> ."]),
     ("audit-slot", &["audit-slot prep auto --head <sha> --holder agent-2 --lane .claude/worktrees/lane-01", "audit-slot done audit-1 --discard --holder agent-2"]),
     ("audit-prep", &["audit-prep C-1 --head <sha> --lane .claude/worktrees/lane-01 --test audit_slot_cli", "audit-prep C-1 --head <sha>"]),
@@ -619,6 +631,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("statusline", &["statusline < session.json"]),
     ("hook-receipt", &["hook-receipt --host claude < hook.json"]),
     ("hook-dispatch", &["hook-dispatch --host claude --event <event> < hook.json"]),
+    ("manifest-merge-driver", &["manifest-merge-driver %O %A %B %P"]),
     ("forge-read", &["forge-read . < request.json"]),
     ("forge-links-probe", &["forge-links-probe . < request.json"]),
     ("forge-report", &["forge-report --permission-reference <ref> . < request.json"]),
@@ -924,6 +937,11 @@ pub const ABOUT_KO: &[(&str, &str)] = &[
         "Go 세대 폴더 옮기기 되돌리기 미리 보기",
     ),
     ("go-state-revert", "Go 세대 폴더 옮기기 되돌리기"),
+    (
+        "go-residue-apply",
+        "고른 Go 세대 남은 파일을 백업으로 옮기기",
+    ),
+    ("go-residue-revert", "Go 세대 남은 파일 옮기기 되돌리기"),
     ("home-state-plan", "Go 세대 ~/.moai 폴더 옮기기 미리 보기"),
     ("home-state-apply", "미리 본 Go 세대 ~/.moai 폴더 옮기기"),
     ("home-state-revert", "~/.moai 폴더 옮기기 되돌리기"),
@@ -1450,6 +1468,20 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          실행은 옮긴 항목만 옛 루트로 돌려놓고 그 `.moai/` 는 이름 그대로 두며 비켜 두지 않아요. \
          전부 아니면 전무: 원래 경로에 무언가 다시 생겼거나 \
          백업이 바뀌었으면 되돌리기를 거절해요.",
+    ),
+    (
+        "go-residue-apply",
+        "미리 본 go-residue 단계에서 고른 묶음의 파일을 `.moai/backups/<UTC>/go-residue/` 아래로 \
+         옮겨요. 지우지 않아요. `--bundle proven` 은 manifest 와 바이트가 같은 파일이고, \
+         바뀐 파일은 `--pick <경로>` 로 하나씩 골라야 옮겨요. 새로 계산한 미리 보기의 digest 가 \
+         같을 때만 실행하고, 프로젝트 밖을 가리키는 경로(절대 경로, `..`, 링크)는 읽기 전에 거절해요. \
+         첫 파일을 옮기기 전에 영수증을 저장하고 읽어 확인해요.",
+    ),
+    (
+        "go-residue-revert",
+        "go-residue 실행 하나를 영수증으로 되돌려요. 원래 자리가 비어 있고 백업 파일의 sha256 이 \
+         영수증과 같을 때만 파일을 제자리로 옮기고, 그렇지 않은 항목은 conflict 로 알리며 \
+         양쪽을 그대로 둬요. 영수증에 적힌 경로도 같은 검사를 다시 거쳐요.",
     ),
     (
         "home-state-plan",
@@ -2189,6 +2221,32 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "go-state-apply",
         "set_aside",
         "확인한 미리 보기를 만들 때 쓴 `--set-aside` 와 같게 넘기기(다르면 digest 가 달라 거절해요)",
+    ),
+    (
+        "go-state-plan",
+        "rewrite_local_references",
+        "로컬 설정이 `.moai/` 를 가리켜 Go 폴더가 남을 때, 그 파일을 백업하고 참조를 Go 백업 \
+         폴더 이름으로 바꾼 뒤 폴더를 옮기는 계획 세우기",
+    ),
+    (
+        "go-state-apply",
+        "rewrite_local_references",
+        "확인한 미리 보기를 이 선택으로 만들었을 때 넘기기(로컬 설정 파일을 바꿔 써요)",
+    ),
+    (
+        "go-residue-apply",
+        "bundle",
+        "바이트가 manifest 와 같은 파일 묶음 옮기기(값은 `proven` 하나)",
+    ),
+    (
+        "go-residue-apply",
+        "pick",
+        "함께 옮길 바뀐 Go 파일 경로(여러 번 쓸 수 있어요)",
+    ),
+    (
+        "go-residue-revert",
+        "receipt",
+        "적용 영수증의 시각 이름(`YYYYMMDDTHHMMSSZ`)",
     ),
     (
         "language-setup",

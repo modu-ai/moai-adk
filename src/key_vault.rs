@@ -201,7 +201,17 @@ pub fn folder_name(project_id: Option<&str>, primary_dir: &str, clone_hex: &str)
 /// The project scope of `dir` from the workspace identity (`identity`), or `None` outside a
 /// git work tree. No git command is started here beyond the identity's own.
 pub fn project_scope(dir: &Path) -> Result<Option<Scope>> {
-    let id = crate::identity::identity(dir)?;
+    scope_of_identity(&crate::identity::identity(dir)?)
+}
+
+/// [`project_scope`] with the HOME given instead of read from the environment, so a caller that
+/// already holds a HOME (a test's temporary one) resolves the workspace identity against it and
+/// the process HOME stays unread. `None` resolves no home state, as `identity_in` does.
+pub fn project_scope_in(dir: &Path, home: Option<&Path>) -> Result<Option<Scope>> {
+    scope_of_identity(&crate::identity::identity_in(dir, home)?)
+}
+
+fn scope_of_identity(id: &Value) -> Result<Option<Scope>> {
     if id["identity_status"] == "no_git" {
         return Ok(None);
     }
@@ -1265,6 +1275,42 @@ mod tests {
                 "{f}"
             );
         }
+    }
+
+    /// SPEC-20261124-glm-key-scope AC-1 (REQ-1): the project scope of a git work tree comes
+    /// from the HOME that is passed; the folder is `<primary folder>-<8 hex of clone_id>`, the
+    /// name `folder_name` makes from the same identity fields.
+    #[test]
+    fn project_scope_in_names_the_project_of_a_work_tree_from_the_given_home() {
+        let dir = tempfile::tempdir().unwrap();
+        let work = dir.path().join("Key Project");
+        fs::create_dir(&work).unwrap();
+        crate::layout::home_arg_tests::init_repo(&work);
+        let home = tempfile::tempdir().unwrap();
+        let scope = project_scope_in(&work, Some(home.path()))
+            .unwrap()
+            .expect("a work tree has a project scope");
+        let id = crate::identity::identity_in(&work, Some(home.path())).unwrap();
+        let clone = id["clone_id"].as_str().unwrap();
+        let hex = clone.strip_prefix("sha256:").unwrap_or(clone);
+        assert_eq!(
+            scope,
+            Scope::Project(folder_name(id["project_id"].as_str(), "Key Project", hex))
+        );
+        assert!(scope.folder().starts_with("key-project-"), "{scope:?}");
+    }
+
+    /// SPEC-20261124-glm-key-scope AC-1 (REQ-1): a folder that is no git work tree has no
+    /// project scope, whatever HOME is given.
+    #[test]
+    fn project_scope_in_is_none_outside_a_work_tree() {
+        let dir = tempfile::tempdir().unwrap();
+        let home = tempfile::tempdir().unwrap();
+        assert_eq!(
+            project_scope_in(dir.path(), Some(home.path())).unwrap(),
+            None
+        );
+        assert_eq!(project_scope_in(dir.path(), None).unwrap(), None);
     }
 
     #[test]

@@ -187,6 +187,9 @@ enum W {
     KeyImport,
     KeyInVault,
     KeyKeep,
+    Remaining,
+    RemainingNext,
+    NotMatching,
 }
 
 /// Whether a confirmed cleanup, when there is one, ended committed.
@@ -328,6 +331,27 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "그대로 둠"
             } else {
                 "keep"
+            }
+        }
+        Remaining => {
+            if ko {
+                "남은 부분"
+            } else {
+                "left to apply"
+            }
+        }
+        RemainingNext => {
+            if ko {
+                "원인을 고친 뒤 moai update 를 다시 실행하면 남은 부분만 이어서 적용해요"
+            } else {
+                "Fix the cause and run moai update again: it applies only what is left"
+            }
+        }
+        NotMatching => {
+            if ko {
+                "쓴 뒤 다시 읽은 내용이 달라요"
+            } else {
+                "read back differently from what was written"
             }
         }
         UpToDate => {
@@ -819,6 +843,25 @@ fn counted(lang: Lang, word: W, n: usize) -> String {
     } else {
         format!("{n} {}", w(lang, word))
     }
+}
+
+/// The label of a part the run receipt names.
+fn part_label(lang: Lang, part: &str) -> String {
+    let word = match part {
+        "skills" | "extra_skills" => W::Skills,
+        "agents" => W::Agents,
+        "routing" => W::Routing,
+        "style" => W::Style,
+        "bin_names" => W::BinNames,
+        "hooks" => W::Hooks,
+        "keys" => W::Keys,
+        "cleanup" => W::Cleanup,
+        "home" => W::Home,
+        "switch" => W::Switch,
+        "git_hooks" => W::GitHooks,
+        other => return other.to_string(),
+    };
+    w(lang, word).to_string()
 }
 
 // --- rows ----------------------------------------------------------------------------------
@@ -1435,6 +1478,37 @@ impl Out<'_> {
         let line = format!("{}\n", self.p().paint(Token::Strong, w(self.lang(), word)));
         self.buf.push_str(&line);
     }
+    /// C-513 S7: what the run receipt says after the head: the written skill files that read back
+    /// as written, and the parts left to apply with the one command that continues the run.
+    fn run_lines(&mut self, run: &Value) {
+        if !run.is_object() {
+            return;
+        }
+        let lang = self.lang();
+        let checked = run["files_checked"].as_u64().unwrap_or(0) as usize;
+        if checked > 0 && run["files_not_matching"].as_u64() == Some(0) {
+            let line = if lang == Lang::Ko {
+                format!("쓴 스킬 파일 {checked}개를 다시 읽었고 해시가 모두 맞아요")
+            } else {
+                format!("{checked} written skill files read back, every hash matches")
+            };
+            self.muted(&line);
+        }
+        let mut left: Vec<String> = Vec::new();
+        for p in run["remaining"].as_array().into_iter().flatten() {
+            let label = part_label(lang, p.as_str().unwrap_or(""));
+            if !left.contains(&label) {
+                left.push(label);
+            }
+        }
+        if !left.is_empty() {
+            self.status(
+                Mark::Warn,
+                &format!("{}: {}", w(lang, W::Remaining), left.join(", ")),
+            );
+            self.muted(w(lang, W::RemainingNext));
+        }
+    }
     /// A status line at the left edge: mark, then the sentence.
     fn status(&mut self, m: Mark, text: &str) {
         let safe = visible(text);
@@ -1492,8 +1566,10 @@ impl Out<'_> {
         );
         self.buf.push_str(&line);
         let plan = &v["plan"];
-        let from = plan["source_version"]
+        // The version the execution link points to wins over the receipt's source version.
+        let from = v["installed_version"]
             .as_str()
+            .or_else(|| plan["source_version"].as_str())
             .unwrap_or(w(lang, W::NotInstalled));
         let to = plan["target_version"]
             .as_str()
@@ -2494,6 +2570,30 @@ fn applied(v: &Value, view: &View) -> String {
         let (label, text) = skipped_row(lang, s);
         rows.push(row(Mark::Skip, label, text));
     }
+    // C-513 S7: a written skill file that did not read back as written is named by its row.
+    let run = &v["run"];
+    for f in run["files"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|f| f["check"].as_str() != Some("match"))
+    {
+        bad = true;
+        rows.push(row(
+            Mark::Warn,
+            format!(
+                "{} {}",
+                part_label(lang, f["part"].as_str().unwrap_or("skills")),
+                f["host"].as_str().unwrap_or("")
+            ),
+            format!(
+                "{}: {} ({})",
+                f["path"].as_str().unwrap_or(""),
+                w(lang, W::NotMatching),
+                f["check"].as_str().unwrap_or("")
+            ),
+        ));
+    }
     rows.extend(notice_rows(lang, v));
     // A blank line after the answer typed at the question.
     o.blank();
@@ -2505,6 +2605,11 @@ fn applied(v: &Value, view: &View) -> String {
     bad |= !home_ok(v);
     bad |= !switch_ok(v);
     bad |= !git_hooks_ok(v);
+    // The run receipt has the last word on the head: a part left open or a file that does not
+    // read back as written ends the run partly applied.
+    if run.is_object() {
+        bad |= run["status"].as_str() != Some("complete");
+    }
     let head = if bad { W::Partial } else { W::Done };
     let m = if bad { Mark::Warn } else { Mark::Ok };
     let total = if lang == Lang::Ko {
@@ -2513,6 +2618,7 @@ fn applied(v: &Value, view: &View) -> String {
         format!("{total} {}", w(lang, W::Changed))
     };
     o.status(m, &format!("{} — {total}", w(lang, head)));
+    o.run_lines(run);
     // Last applied first, from the one order `update::revert_order` holds; the cleanup and home
     // commands are in it (their status rows follow, without a second revert line).
     let reverts: Vec<String> = crate::update::revert_order(&v["revert"])

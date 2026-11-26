@@ -46,7 +46,7 @@ PLAN hands the draft to one `moai-plan` with the host's agent tool; do not draft
 
 ## Resume
 
-Read the SPEC file afresh, never from memory: run `moai spec check` and `moai spec show <id>`, and continue at the first step of the procedure whose output is missing. The recorded approval still covers the SPEC while its digest matches; only a change to the requirements, the acceptance criteria or the `forbidden:` entries needs a new approval.
+Read the SPEC file afresh, never from memory: run `moai spec check` and `moai spec show <id>`, and continue at the first step of the procedure whose output is missing. The recorded approval still covers the SPEC while its digest matches. A new approval covers the requirements, the acceptance criteria, the `forbidden:` entries and the lines of `## Decisions`, and only a change to those needs another one; a record of an earlier digest keeps its earlier coverage (`internal/sdd` item 6).
 
 ## Exceptions and Permissions
 

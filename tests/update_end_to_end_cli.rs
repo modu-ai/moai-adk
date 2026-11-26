@@ -13,6 +13,7 @@
 //! Every case uses a temporary project, an empty temporary HOME and one fake Rust launcher at
 //! `HOME/.moai-cli/path/moai-cli`; nothing outside the temporary folders is read or written.
 
+// check-affected: every-source-change
 #![cfg(unix)]
 
 mod common;
@@ -84,7 +85,7 @@ fn shape_g() -> GoFx {
     let fx = base_fx();
     fx.manifest();
     fx.write(SETTINGS, &go_settings().to_string());
-    fx.with_profile();
+    fx.with_go_profile();
     fx
 }
 
@@ -313,9 +314,17 @@ fn assert_walks_to_the_end(fx: &GoFx, expected: &[&str]) -> Walk {
     w
 }
 
-/// The order every shape runs: the settings clean-up, the move of the Go folder, then the
-/// install steps that have something to write (the MoAI files and the hook set).
-const ORDER: [&str; 4] = ["go-settings", "go-state", "generation", "hooks"];
+/// The order every shape runs: the settings clean-up, the move of the Go folder, the move of
+/// the byte-proven Go files into a backup, then the install steps that have something to write
+/// (the MoAI files and the hook set). The walk runs every printed command, the optional
+/// residue one included.
+const ORDER: [&str; 5] = [
+    "go-settings",
+    "go-state",
+    "go-residue",
+    "generation",
+    "hooks",
+];
 
 #[test]
 fn shape_g_reaches_all_unchanged() {
@@ -433,68 +442,53 @@ fn shape_e_reaches_all_unchanged() {
 /// The local file that holds Go references (D1 condition 3: it is never written).
 const LOCAL_WITH_GO_REFS: &str = "{\"statusLine\":{\"type\":\"command\",\"command\":\"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"},\"plansDirectory\":\".moai/plans\"}\n";
 
-/// Go references in `settings.local.json` hold the Go folder: the update never edits that file, so
-/// the loop ends with one blocked step whose reason names the file and the keys, says the update
-/// does not edit it and gives the command that follows the user's edit. After the edit the loop
-/// reaches the end.
+/// Go references in `settings.local.json` hold the Go folder: the update never edits that file by
+/// itself. After the settings clean-up the go-state step names the file and offers only the
+/// command that carries the pick. A user who edits the file instead reaches the end by the same
+/// loop.
 #[test]
 fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
     let fx = shape_g();
     fx.write(LOCAL, LOCAL_WITH_GO_REFS);
-    let w = walk(&fx);
-    // The settings clean-up ran first. The other moves (rule files and the like) do not depend on
-    // the folder and went through; the folder itself stays while the local file names it.
-    assert_eq!(w.order, ORDER, "{:?}", open_steps(&w.last));
-    assert_eq!(w.last["all_unchanged"], json!(false), "{}", w.last);
-    let state = step_in(&w.last, 0, "go-state");
-    assert_eq!(state["state"], "blocked", "{state}");
-    assert_eq!(state["apply"], Value::Null, "{state}");
+    let first = fx.update_plan();
+    let cleaned = fx.apply_step(step_in(&first, 0, "go-settings"));
+    assert_eq!(cleaned["ok"], json!(true), "{cleaned}");
+    let held = fx.update_plan();
+    let state = step_in(&held, 0, "go-state");
+    assert_eq!(state["state"], "needs_decision", "{state}");
+    assert!(
+        state["apply"]["argv"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("--rewrite-local-references")),
+        "{state}"
+    );
     let why = state["reason"].as_str().unwrap();
     assert!(
-        why.contains("held by .claude/settings.local.json (plansDirectory, statusLine)")
-            && why.contains(
-                "this update does not edit .claude/settings.local.json; edit or remove these \
-                 keys yourself (plansDirectory, statusLine), then run `moai project-update-plan` \
-                 again"
-            ),
+        why.contains(".claude/settings.local.json holds the Go folder")
+            && why.contains("a session never edits that file by hand"),
         "{why}"
     );
-    // Only the local file holds Go keys, so the sentence about keys "this update does not
-    // change" (for the project settings) is not there.
-    assert!(
-        !why.contains("this update does not change those keys"),
-        "{why}"
-    );
+    // The picked command moves the Go folder, so the residue command waits behind it.
+    let residue = step_in(&held, 0, "go-residue");
+    assert_eq!(residue["apply"], Value::Null, "{residue}");
     // The values are never printed.
-    assert!(
-        !w.last.to_string().contains("CLAUDE_PROJECT_DIR"),
-        "{}",
-        w.last
-    );
-    // The file is byte for byte the user's.
+    assert!(!held.to_string().contains("CLAUDE_PROJECT_DIR"), "{held}");
+    // The file is byte for byte the user's, and the Go folder is where it was.
     assert_eq!(
         fs::read_to_string(fx.root.join(LOCAL)).unwrap(),
         LOCAL_WITH_GO_REFS
     );
-    // That blocked step is the only one left, and the Go folder is where it was.
-    assert_eq!(
-        open_steps(&w.last),
-        [("go-state".to_string(), "blocked".to_string())],
-        "{}",
-        w.last
-    );
     assert!(fx.root.join(".moai/manifest.json").is_file());
 
-    // The user edits the file as the reason says; the same loop now reaches the end.
+    // The user edits the file instead of taking the pick; the same loop now reaches the end.
+    // The residue command waited while the picked command was offered, so it runs in this loop.
     fx.write(LOCAL, LOCAL_BODY);
     let rest = walk(&fx);
     assert_eq!(rest.last["all_unchanged"], json!(true), "{}", rest.last);
-    // The install steps ran while the folder was held, with the workflow reference in the earlier
-    // state folder; once that state moved, the generation step follows it to `.moai/` and
-    // rewrites the managed section instead of waiting for a folder that is gone.
     assert_eq!(
         rest.order,
-        ["go-state", "generation"],
+        ["go-state", "go-residue", "generation", "hooks"],
         "{:?}",
         open_steps(&rest.last)
     );
@@ -509,6 +503,24 @@ fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
     );
     assert!(fx.root.join(".moai/workflows/project").is_dir());
     assert_eq!(rest.last["state_root"]["rust_marker"], json!("valid"));
+}
+
+/// The same project, the user saying yes: the loop runs the printed command with the pick, the
+/// local file points at the Go backup folder, its original bytes are kept and the loop reaches
+/// the end.
+#[test]
+fn go_references_in_the_local_settings_move_with_the_pick() {
+    let fx = shape_g();
+    fx.write(LOCAL, LOCAL_WITH_GO_REFS);
+    let w = walk(&fx);
+    assert_eq!(w.order, ORDER, "{:?}", open_steps(&w.last));
+    assert_eq!(w.last["all_unchanged"], json!(true), "{}", w.last);
+    assert_eq!(
+        fs::read_to_string(fx.root.join(LOCAL)).unwrap(),
+        LOCAL_WITH_GO_REFS.replace(".moai/", ".moai-backup/")
+    );
+    assert!(fx.root.join(".moai-backup/status_line.sh").is_file());
+    assert!(bodies(&fx).contains(LOCAL_WITH_GO_REFS.as_bytes()));
 }
 
 // ---- undo (AUDIT #3117 E1) ----
@@ -581,6 +593,10 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
             "<receipt of the project harness step>",
             id("generation", "receipt"),
         ),
+        (
+            "<receipt of the go-residue step>",
+            id("go-residue", "receipt"),
+        ),
         ("<backup of the go-state step>", id("go-state", "backup")),
         (
             "<receipt of the go-settings step>",
@@ -636,7 +652,10 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
             ran += 1;
         }
     }
-    assert_eq!(ran, 6, "hooks 1, generation 2, go-state 2, go-settings 1");
+    assert_eq!(
+        ran, 7,
+        "hooks 1, generation 2, go-residue 1, go-state 2, go-settings 1"
+    );
 
     let end = project_nodes(&fx);
     for (path, node) in &start {

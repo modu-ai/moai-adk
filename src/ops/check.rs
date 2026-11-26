@@ -51,9 +51,12 @@ enum Action {
     /// `module:<word>` and `units:<module path>` reasons why the set is narrow, or `none`),
     /// `test-threads=<n>` (the cap the
     /// `test` step ran with), the exit status of each step in the order they ran, then
-    /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. A repository with no
-    /// `Cargo.toml` at its top folder and no `.rs` file at the head gets no cargo step: it runs
-    /// `git diff --check`, `bash -n` and one `sh -c` step per entry of `checks` in
+    /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. A run whose slot waited
+    /// for CPU headroom (`min_cpu_free_pct` in the slot folder's `limits.json`) also writes
+    /// `slot_wait=<seconds>` before `result=`; a run that did not wait writes no such word.
+    /// A repository with no `Cargo.toml` at its top folder and no `.rs` file at the head gets no
+    /// cargo step: it runs `git diff --check`, `bash -n` and one `sh -c` step per entry of
+    /// `checks` in
     /// `.moai/project.yaml` (a heavy step each, in the declared order). When it declares none (no
     /// profile, one that cannot be read, or no `checks`) and no step failed, the result is
     /// `not_run`, never `PASS`: the line ends in `result=not_run`, the answer's `not_run.next`
@@ -155,10 +158,13 @@ enum Action {
     ///
     /// Writes files in the checkout: the sha256 values of the skill package's source manifest,
     /// the first word of a new test file in `tests/areas.toml` (only for a word given with
-    /// `--area <word>=<area>`), and a `--test` option on a check line of `tools/repo_scans.json`
-    /// when the result reads as growth of that table. It writes nothing for a choice a person
-    /// makes (an allow-list row, an exemption reason, a manifest entry's origin, an area for a
-    /// first word that no `--area` names): the line to add is printed as it is, in `print`. A
+    /// `--area <word>=<area>`), and a new test target of an `always` scan in
+    /// `tools/repo_scans.json` (a name in its `test_targets` list, or a `--test` option on a
+    /// check line without a name filter) when the result reads as growth of that table. A
+    /// filtered check line is never changed. It writes nothing for a choice a person makes (an
+    /// allow-list row, an exemption reason, a manifest entry's origin, an area for a first word
+    /// that no `--area` names, a scan whose check lines all filter): the line to add is printed
+    /// as it is, in `print`. A
     /// file that is a link, or lies under a linked folder, is not written and is named. After
     /// writing it asks the same checks again: `result` is `PASS` only when nothing is left to
     /// print, `nothing_to_do` is `true` when it wrote nothing and nothing is left, and `FAIL`
@@ -176,11 +182,13 @@ enum Action {
     },
     /// Reads the ledger. Print the tests that passed only on a retry, with their counts
     ///
-    /// Reads `check-flaky.jsonl` in the project's state folder: the test step of `check affected`
-    /// retries a failing test twice (`--retries 2 --flaky-result pass`), lists one that passed on
-    /// a retry as FLAKY in the summary line, in `flaky.txt` of the check folder and in this ledger
-    /// (one line per run). The answer lists each name with its count; a name seen twice has
-    /// `status` `fix`: fix that test. An unreadable ledger answers an error and no counts.
+    /// Reads `check-flaky.jsonl` in the `local` folder of the project's state folder, and adds
+    /// the counts of one an earlier build left in the earlier state folder: the test step of
+    /// `check affected` retries a failing test twice (`--retries 2 --flaky-result pass`), lists
+    /// one that passed on a retry as FLAKY in the summary line, in `flaky.txt` of the check folder
+    /// and in the new ledger (one line per run). The answer lists each name with its count; a name
+    /// seen twice has `status` `fix`: fix that test. An unreadable ledger answers an error and no
+    /// counts.
     Flaky {
         /// The repository (default: the current folder).
         #[arg(long, default_value = ".")]

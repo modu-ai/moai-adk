@@ -14,7 +14,7 @@ use moai_cli::tree_digest;
 use serde_json::{json, Value};
 use std::collections::{BTreeSet, HashMap};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use tempfile::TempDir;
 
@@ -824,7 +824,9 @@ fn scenario_rollback_an_interrupted_update_is_recovered() {
 }
 
 /// REQ-10, REQ-11: the hook entry answers every registered name with exit 0, an empty output or
-/// one JSON document, and writes no file into the project, whatever the input.
+/// one JSON document, and writes no file into the project, whatever the input. In the MoAI project
+/// the two `PreToolUse` names answer bad input with one deny object
+/// (SPEC-20261126-hook-unreadable-input AC-7).
 #[test]
 fn scenario_hook_entry_exits_zero_and_writes_nothing_into_the_project() {
     let w = World::new();
@@ -863,7 +865,36 @@ fn scenario_hook_entry_exits_zero_and_writes_nothing_into_the_project() {
                     assert!(out.stdout.is_empty(), "{at}: printed in a plain project");
                 }
                 if *what != "an event" {
-                    assert!(out.stdout.is_empty(), "{at}: printed for bad input");
+                    if is_moai && name != "session-context" {
+                        let text = String::from_utf8_lossy(&out.stdout);
+                        assert_eq!(
+                            text.lines().count(),
+                            1,
+                            "{at}: no deny object on one line of stdout, got {text:?}"
+                        );
+                        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+                        let reason = v["hookSpecificOutput"]["permissionDecisionReason"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_owned();
+                        let class = if name == "bash-boundary" {
+                            "moai-boundary/unreadable:"
+                        } else {
+                            "moai-boundary/protected-path:"
+                        };
+                        assert!(reason.starts_with(class), "{at}: {reason:?}");
+                        assert_eq!(
+                            v,
+                            json!({"hookSpecificOutput": {
+                                "hookEventName": "PreToolUse",
+                                "permissionDecision": "deny",
+                                "permissionDecisionReason": reason,
+                            }}),
+                            "{at}"
+                        );
+                    } else {
+                        assert!(out.stdout.is_empty(), "{at}: printed for bad input");
+                    }
                 }
                 assert_eq!(
                     tree_digest(project, &[]).unwrap(),
@@ -1103,6 +1134,512 @@ fn scenario_card_cycle_takes_checks_audits_lands_and_names_the_next_card() {
     ));
     assert_eq!(next["next"], json!(second), "{next}");
     assert_eq!(next["next_is"], json!("ready"), "{next}");
+}
+
+// ---- installed result ---------------------------------------------------------------------------
+
+/// The context files Claude Code reads above `start`, nearest first: per folder from `start` up
+/// to and including `ceiling`, the existing ones of `CLAUDE.md`, `CLAUDE.local.md` and
+/// `.claude/CLAUDE.md`.
+fn context_files_above(start: &Path, ceiling: &Path) -> Vec<PathBuf> {
+    let mut found = Vec::new();
+    for dir in start.ancestors() {
+        for rel in ["CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md"] {
+            let file = dir.join(rel);
+            if file.symlink_metadata().is_ok() {
+                found.push(file);
+            }
+        }
+        if dir == ceiling {
+            break;
+        }
+    }
+    found
+}
+
+/// `path` with its `.` and `..` components resolved by text, without touching the disk.
+fn normalized(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for part in path.components() {
+        match part {
+            Component::ParentDir => {
+                out.pop();
+            }
+            Component::CurDir => {}
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
+/// The value of `key` in the front matter (the lines between a first `---` and the next `---`).
+fn front_value(text: &str, key: &str) -> Option<String> {
+    let mut lines = text.lines();
+    if lines.next()? != "---" {
+        return None;
+    }
+    let prefix = format!("{key}: ");
+    for line in lines {
+        if line == "---" {
+            break;
+        }
+        if let Some(value) = line.strip_prefix(&prefix) {
+            return Some(value.to_string());
+        }
+    }
+    None
+}
+
+/// A double-quoted YAML scalar without its quotes; any other text as it is.
+fn unquoted(value: &str) -> String {
+    match value.strip_prefix('"').and_then(|v| v.strip_suffix('"')) {
+        Some(inner) => inner.replace("\\\"", "\"").replace("\\\\", "\\"),
+        None => value.to_string(),
+    }
+}
+
+/// The routes the skill's `routes.json` has to name.
+const ROUTE_NAMES: [&str; 9] = [
+    "AUDIT", "LEADER", "PLAN", "PROJECT", "READ", "RUN", "SYNC", "UPDATE", "WORK",
+];
+
+/// The problem with a path that `routes.json` gives relative to `<skill>/references/`, if any.
+fn reference_problem(skill: &Path, what: &str, value: Option<&str>) -> Option<String> {
+    let Some(value) = value else {
+        return Some(format!("{what}: no path is given"));
+    };
+    let target = normalized(&skill.join("references").join(value));
+    match target.strip_prefix(skill) {
+        Err(_) => Some(format!("{what}: {value} leaves the skill folder")),
+        Ok(rel) if !target.is_file() => Some(format!(
+            "{what}: {value} -> {} is not a file",
+            rel.display()
+        )),
+        Ok(_) => None,
+    }
+}
+
+/// What is wrong with an installed (or packaged) skill folder, one text per problem.
+fn skill_problems(skill: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    match fs::read_to_string(skill.join("SKILL.md")) {
+        Ok(text) => {
+            if front_value(&text, "name").as_deref() != Some("moai") {
+                out.push("SKILL.md: the front matter lacks the line `name: moai`".to_string());
+            }
+        }
+        Err(e) => out.push(format!("SKILL.md cannot be read: {e}")),
+    }
+    let routes = fs::read(skill.join("references/routes.json"))
+        .map_err(|e| e.to_string())
+        .and_then(|b| serde_json::from_slice::<Value>(&b).map_err(|e| e.to_string()));
+    match routes {
+        Err(e) => out.push(format!("references/routes.json cannot be read: {e}")),
+        Ok(v) => {
+            let table = v["routes"].as_object().cloned().unwrap_or_default();
+            let mut names: Vec<&str> = table.keys().map(String::as_str).collect();
+            names.sort_unstable();
+            if names != ROUTE_NAMES {
+                out.push(format!(
+                    "references/routes.json: the routes {names:?} differ from {ROUTE_NAMES:?}"
+                ));
+            }
+            for (name, route) in &table {
+                out.extend(reference_problem(
+                    skill,
+                    &format!("route {name} reference"),
+                    route["reference"].as_str(),
+                ));
+            }
+            for key in ["chains", "core_rules"] {
+                out.extend(reference_problem(skill, key, v[key].as_str()));
+            }
+        }
+    }
+    for rel in [
+        "references/chains/index.md",
+        "references/internal/core-rules.md",
+        "references/flows/next-flow.md",
+        "references/flows/team-messages.md",
+    ] {
+        if !skill.join(rel).is_file() {
+            out.push(format!("the first read {rel} is not a file"));
+        }
+    }
+    out
+}
+
+/// What is wrong with the rules files an update leaves in `home`, one text per problem.
+fn rules_problems(home: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    for name in ["moai.md", "moai-flow.md"] {
+        let rel = format!(".claude/rules/{name}");
+        let Ok(text) = fs::read_to_string(home.join(&rel)) else {
+            out.push(format!("{rel} is not a readable file"));
+            continue;
+        };
+        if text.trim().is_empty() {
+            out.push(format!("{rel} is empty"));
+        }
+        if text.starts_with("---") {
+            out.push(format!("{rel} starts with a front-matter header"));
+        }
+        if name == "moai.md" {
+            if text.contains("{invoke}") {
+                out.push(format!("{rel} holds an unreplaced {{invoke}}"));
+            }
+            if !text.contains("/moai") {
+                out.push(format!("{rel} does not name /moai"));
+            }
+        }
+    }
+    for (rel, label) in [
+        (".claude/rules/moai/flow.md", ".claude/rules/moai/flow.md"),
+        (".claude/CLAUDE.md", ".claude/CLAUDE.md"),
+        ("CLAUDE.md", "CLAUDE.md at the root of the home"),
+    ] {
+        if home.join(rel).symlink_metadata().is_ok() {
+            out.push(format!("{label} must not exist"));
+        }
+    }
+    out
+}
+
+/// What is wrong with the agent files an update leaves in `home`, one text per problem.
+fn agent_problems(home: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let agents = home.join(".claude/agents");
+    let names_in = |dir: &Path| -> Option<Vec<String>> {
+        let mut names: Vec<String> = fs::read_dir(dir)
+            .ok()?
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        Some(names)
+    };
+    let Some(top) = names_in(&agents) else {
+        return vec!["agents is not a folder".to_string()];
+    };
+    for name in top.iter().filter(|n| n.as_str() != "moai") {
+        out.push(format!("agents/{name} is outside the folder agents/moai"));
+    }
+    let Some(nested) = names_in(&agents.join("moai")) else {
+        out.push("agents/moai is not a folder".to_string());
+        return out;
+    };
+    let wanted: Vec<String> = AGENT_FILES.iter().map(|n| format!("{n}.md")).collect();
+    for name in wanted.iter().filter(|n| !nested.contains(n)) {
+        out.push(format!("agents/moai/{name} is missing"));
+    }
+    for name in nested.iter().filter(|n| !wanted.contains(n)) {
+        out.push(format!(
+            "agents/moai/{name} is not one of the five base agents"
+        ));
+    }
+    for name in nested.iter().filter(|n| wanted.contains(n)) {
+        let stem = name.trim_end_matches(".md");
+        let text = fs::read_to_string(agents.join("moai").join(name)).unwrap_or_default();
+        if front_value(&text, "name").as_deref() != Some(stem) {
+            out.push(format!("agents/moai/{name}: the name differs from {stem}"));
+        }
+        let description = front_value(&text, "description").map(|d| unquoted(&d));
+        if description.is_none_or(|d| d.trim().is_empty()) {
+            out.push(format!("agents/moai/{name}: the description is empty"));
+        }
+    }
+    out
+}
+
+fn assert_names(problems: &[String], needle: &str) {
+    assert!(
+        problems.iter().any(|p| p.contains(needle)),
+        "no problem names {needle:?}: {problems:?}"
+    );
+}
+
+/// A made-up tree `<tmp>/fake/a/b/c`; the returned path is `fake`.
+fn fake_tree() -> (TempDir, PathBuf) {
+    let tmp = TempDir::new().unwrap();
+    let fake = tmp.path().join("fake");
+    fs::create_dir_all(fake.join("a/b/c")).unwrap();
+    (tmp, fake)
+}
+
+/// A copy of the package's skill folder in a temporary folder.
+fn skill_copy() -> (TempDir, PathBuf) {
+    let tmp = TempDir::new().unwrap();
+    let skill = tmp.path().join("moai");
+    copy_tree(&repo("skills/moai"), &skill);
+    (tmp, skill)
+}
+
+/// A temporary home that holds the two rules files the way an update writes them.
+fn rules_home() -> (TempDir, PathBuf) {
+    let tmp = TempDir::new().unwrap();
+    let home = tmp.path().join("home");
+    write(
+        &home.join(".claude/rules/moai.md"),
+        "## Rules\n\nUse the skill (/moai).\n",
+    );
+    write(&home.join(".claude/rules/moai-flow.md"), "# Flow\n\ntext\n");
+    (tmp, home)
+}
+
+const AGENT_FILES: [&str; 5] = [
+    "moai-audit",
+    "moai-docs",
+    "moai-impl",
+    "moai-plan",
+    "moai-research",
+];
+
+fn agent_text(name: &str, description: &str) -> String {
+    format!("---\nname: {name}\ndescription: {description}\n---\nbody\n")
+}
+
+/// A temporary home that holds the five base agents in `agents/moai/`.
+fn agents_home() -> (TempDir, PathBuf) {
+    let tmp = TempDir::new().unwrap();
+    let home = tmp.path().join("home");
+    for name in AGENT_FILES {
+        write(
+            &home.join(format!(".claude/agents/moai/{name}.md")),
+            agent_text(name, "\"A role.\""),
+        );
+    }
+    (tmp, home)
+}
+
+/// The checkers of the installed result name what is wrong, on made-up trees only: a clean tree
+/// gives nothing and each planted defect gives a problem that names it.
+#[test]
+fn scenario_installed_checkers_name_what_is_wrong() {
+    // Context files above a folder.
+    let (_t, fake) = fake_tree();
+    let start = fake.join("a/b/c");
+    assert_eq!(context_files_above(&start, &fake), Vec::<PathBuf>::new());
+    write(&fake.join("a/CLAUDE.md"), "x\n");
+    assert_eq!(
+        context_files_above(&start, &fake),
+        vec![fake.join("a/CLAUDE.md")]
+    );
+    write(&fake.join("a/b/.claude/CLAUDE.md"), "x\n");
+    write(&fake.join("CLAUDE.local.md"), "x\n");
+    write(&fake.join("x/CLAUDE.md"), "x\n");
+    assert_eq!(
+        context_files_above(&start, &fake),
+        vec![
+            fake.join("a/b/.claude/CLAUDE.md"),
+            fake.join("a/CLAUDE.md"),
+            fake.join("CLAUDE.local.md"),
+        ],
+        "nearest first, and the sibling folder is not above"
+    );
+    write(&fake.join("CLAUDE.md"), "x\n");
+    assert_eq!(
+        context_files_above(&start, &fake.join("a")),
+        vec![fake.join("a/b/.claude/CLAUDE.md"), fake.join("a/CLAUDE.md")],
+        "the ceiling is included and nothing above it is read"
+    );
+
+    // The skill folder.
+    let (_t, skill) = skill_copy();
+    assert_eq!(skill_problems(&skill), Vec::<String>::new());
+    fs::remove_file(skill.join("workflows/audit.md")).unwrap();
+    assert_names(&skill_problems(&skill), "workflows/audit.md");
+
+    let (_t, skill) = skill_copy();
+    let text = fs::read_to_string(skill.join("SKILL.md")).unwrap();
+    assert!(text.contains("name: moai\n"));
+    fs::write(
+        skill.join("SKILL.md"),
+        text.replacen("name: moai\n", "name: other\n", 1),
+    )
+    .unwrap();
+    assert_names(&skill_problems(&skill), "SKILL.md");
+
+    let routes_path = |skill: &Path| skill.join("references/routes.json");
+    let (_t, skill) = skill_copy();
+    let mut routes: Value =
+        serde_json::from_slice(&fs::read(routes_path(&skill)).unwrap()).unwrap();
+    routes["routes"]["RUN"]["reference"] = json!("../workflows/missing.md");
+    fs::write(
+        routes_path(&skill),
+        serde_json::to_vec_pretty(&routes).unwrap(),
+    )
+    .unwrap();
+    let problems = skill_problems(&skill);
+    assert_names(&problems, "RUN");
+    assert_names(&problems, "workflows/missing.md");
+
+    let (_t, skill) = skill_copy();
+    let mut routes: Value =
+        serde_json::from_slice(&fs::read(routes_path(&skill)).unwrap()).unwrap();
+    routes["routes"]["EXTRA"] = json!({"reference": "../workflows/read.md"});
+    fs::write(
+        routes_path(&skill),
+        serde_json::to_vec_pretty(&routes).unwrap(),
+    )
+    .unwrap();
+    assert_names(&skill_problems(&skill), "EXTRA");
+
+    let (_t, skill) = skill_copy();
+    fs::remove_file(skill.join("references/flows/team-messages.md")).unwrap();
+    assert_names(&skill_problems(&skill), "flows/team-messages.md");
+
+    // The rules files.
+    let (_t, home) = rules_home();
+    assert_eq!(rules_problems(&home), Vec::<String>::new());
+    write(&home.join(".claude/rules/moai-flow.md"), "  \n");
+    assert_names(&rules_problems(&home), "moai-flow.md");
+
+    let (_t, home) = rules_home();
+    write(
+        &home.join(".claude/rules/moai.md"),
+        "## Rules\n\nUse the skill ({invoke}) and /moai.\n",
+    );
+    let problems = rules_problems(&home);
+    assert_names(&problems, "moai.md");
+    assert_names(&problems, "{invoke}");
+
+    let (_t, home) = rules_home();
+    write(
+        &home.join(".claude/rules/moai-flow.md"),
+        "---\nname: flow\n---\ntext\n",
+    );
+    assert_names(&rules_problems(&home), "moai-flow.md");
+
+    let (_t, home) = rules_home();
+    write(&home.join(".claude/rules/moai/flow.md"), "# Flow\n");
+    assert_names(&rules_problems(&home), "rules/moai/flow.md");
+
+    let (_t, home) = rules_home();
+    write(&home.join(".claude/CLAUDE.md"), "x\n");
+    assert_names(&rules_problems(&home), ".claude/CLAUDE.md");
+
+    let (_t, home) = rules_home();
+    write(&home.join("CLAUDE.md"), "x\n");
+    assert_names(&rules_problems(&home), "CLAUDE.md");
+
+    // The agent files.
+    let (_t, home) = agents_home();
+    assert_eq!(agent_problems(&home), Vec::<String>::new());
+    write(
+        &home.join(".claude/agents/moai-plan.md"),
+        agent_text("moai-plan", "\"A role.\""),
+    );
+    assert_names(&agent_problems(&home), "agents/moai-plan.md");
+
+    let (_t, home) = agents_home();
+    write(
+        &home.join(".claude/agents/moai/moai-impl.md"),
+        agent_text("moai-other", "\"A role.\""),
+    );
+    assert_names(&agent_problems(&home), "moai-impl.md");
+
+    let (_t, home) = agents_home();
+    write(
+        &home.join(".claude/agents/moai/moai-docs.md"),
+        agent_text("moai-docs", "\"\""),
+    );
+    assert_names(&agent_problems(&home), "moai-docs.md");
+
+    let (_t, home) = agents_home();
+    fs::remove_file(home.join(".claude/agents/moai/moai-research.md")).unwrap();
+    assert_names(&agent_problems(&home), "moai-research.md");
+
+    let (_t, home) = agents_home();
+    write(
+        &home.join(".claude/agents/moai/moai-extra.md"),
+        agent_text("moai-extra", "\"A role.\""),
+    );
+    assert_names(&agent_problems(&home), "moai-extra.md");
+}
+
+/// A world after its first install: the preview, then its confirmation by digest.
+fn installed() -> World {
+    let w = World::new();
+    let p = w.preview();
+    w.confirm(&digest_of(&p));
+    w
+}
+
+/// The installed skill resolves: its routes and first reads exist, and every file of the package
+/// copy is installed with the same bytes and no file is added.
+#[test]
+fn scenario_installed_skill_routes_and_first_reads_resolve() {
+    let w = installed();
+    let skill = w.home.join(".claude/skills/moai");
+    assert_eq!(skill_problems(&skill), Vec::<String>::new());
+
+    let package = w.pkg("");
+    let package_files = files_under(&package);
+    assert_eq!(
+        files_under(&skill),
+        package_files,
+        "the installed file list differs from the package's"
+    );
+    for rel in &package_files {
+        assert_eq!(
+            fs::read(skill.join(rel)).unwrap(),
+            fs::read(package.join(rel)).unwrap(),
+            "{} differs from the package's file",
+            rel.display()
+        );
+    }
+}
+
+/// The routing text lands in two named files: `moai.md` is the source with its one `{invoke}`
+/// replaced by `/moai`, `moai-flow.md` is the flow source as it is.
+#[test]
+fn scenario_installed_rules_are_the_two_named_files() {
+    let w = installed();
+    assert_eq!(rules_problems(&w.home), Vec::<String>::new());
+    let rules = w.home.join(".claude/rules");
+    let routing = fs::read_to_string(w.pkg("references/home/routing.md")).unwrap();
+    assert_eq!(
+        routing.matches("{invoke}").count(),
+        1,
+        "the source's one slot"
+    );
+    assert_eq!(
+        fs::read_to_string(rules.join("moai.md")).unwrap(),
+        routing.replacen("{invoke}", "/moai", 1)
+    );
+    assert_eq!(
+        fs::read_to_string(rules.join("moai-flow.md")).unwrap(),
+        fs::read_to_string(w.pkg("references/home/flow.md")).unwrap()
+    );
+}
+
+/// The five base agents are installed in `agents/moai/`, each named like its file.
+#[test]
+fn scenario_installed_agents_are_nested_with_matching_names() {
+    let w = installed();
+    assert_eq!(agent_problems(&w.home), Vec::<String>::new());
+}
+
+/// No context file lies above the temporary home or a temporary project, before and after the
+/// install: the update writes none, and no ancestor of the temporary root holds one.
+#[test]
+fn scenario_installed_ancestors_hold_no_context_file() {
+    let w = World::new();
+    let project = w.root.join("work/project");
+    fs::create_dir_all(&project).unwrap();
+    for when in ["before the install", "after the install"] {
+        if when == "after the install" {
+            let p = w.preview();
+            w.confirm(&digest_of(&p));
+        }
+        for start in [&w.home, &project] {
+            let found = context_files_above(start, Path::new("/"));
+            assert!(
+                found.is_empty(),
+                "context files above the temporary root: {found:?} ({when}, from {})",
+                start.display()
+            );
+        }
+    }
 }
 
 // ---- every command the shipped READY and check texts name ---------------------------------------

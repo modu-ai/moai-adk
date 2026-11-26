@@ -20,16 +20,23 @@ use std::path::PathBuf;
 /// verification kind — a commit with several kinds appears in each, a missing line counts as
 /// `none` — and marks the commits a later standard revert message names, so `none` and reverted
 /// commits can be counted together. Reads only.
+///
+/// `--no-spec` is for a card with no SPEC: it prints the `Moai-Session` line (and the
+/// `Moai-Verified` line with `--verified`) and no `Moai-Spec` line. A call with none of `--spec`,
+/// `--no-spec` and `--list` is refused, so a forgotten SPEC is never printed away silently.
 #[derive(clap::Args)]
 pub struct Args {
     /// The SPEC the commit belongs to, `SPEC-<yyyymmdd>-<slug>`
-    #[arg(long)]
+    #[arg(long, conflicts_with = "no_spec")]
     spec: Option<String>,
+    /// Print the session line only, for a card with no SPEC (no `Moai-Spec` line).
+    #[arg(long, conflicts_with_all = ["spec", "list"])]
+    no_spec: bool,
     /// How the commit was verified: tests, mutants, e2e, smoke or none; repeat or comma-separate.
-    #[arg(long, value_delimiter = ',', num_args = 1.., requires = "spec")]
+    #[arg(long, value_delimiter = ',', num_args = 1..)]
     verified: Vec<String>,
     /// List the commits of a range by verification kind instead of printing one commit's trailers.
-    #[arg(long, conflicts_with_all = ["spec", "verified"])]
+    #[arg(long, conflicts_with_all = ["spec", "verified", "no_spec"])]
     list: bool,
     /// The range to list, for example `<base>..HEAD` (with --list).
     #[arg(long, default_value = "HEAD", requires = "list")]
@@ -45,15 +52,22 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     if args.list {
         return moai_cli::trailers::list(&args.dir, &args.range);
     }
-    let Some(spec) = args.spec.clone() else {
-        return Err(
-            "trailers needs --spec <SPEC-<yyyymmdd>-<slug>> (or --list for the by-kind listing)"
-                .into(),
-        );
-    };
     let key = std::env::current_dir()
         .ok()
         .and_then(|dir| moai_cli::trailers::worktree_key(&dir));
+    if args.no_spec {
+        return moai_cli::trailers::format_session_only(
+            &args.verified,
+            |name| std::env::var(name).ok(),
+            key.as_deref(),
+        );
+    }
+    let Some(spec) = args.spec.clone() else {
+        return Err(
+            "trailers needs --spec <SPEC-<yyyymmdd>-<slug>>, --no-spec for a card with no SPEC, or --list for the by-kind listing"
+                .into(),
+        );
+    };
     moai_cli::trailers::format_verified(
         &spec,
         &args.verified,

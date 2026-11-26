@@ -8,6 +8,7 @@
 //! folder and the real session registry are never read or written.
 #![cfg(unix)]
 
+// check-affected: when-changed src/card/work.rs
 use crate::common;
 
 use common::git::git_in;
@@ -546,6 +547,792 @@ fn ac2_a_reservation_held_for_review_with_a_live_lease_still_counts() {
     assert_eq!(kind, "conflict", "{message}");
     assert!(message.contains(&held[0]), "{message}");
     assert!(!message.contains("not counted"), "{message}");
+}
+
+// SPEC-20261126-wip-limit-pass-review: a card in review whose current head has a recorded PASS is
+// left out of the count.
+
+/// The commits that hand-back notes and verdicts name: `base` is the first commit of the fixture
+/// repository, `a` and `b` are two later ones.
+struct Commits {
+    base: String,
+    a: String,
+    b: String,
+}
+
+fn commits(w: &World) -> Commits {
+    let head = || common::git::git(&w.project, &["rev-parse", "HEAD"]);
+    let next = |message: &str| {
+        git_in(
+            &w.project,
+            &["commit", "-q", "--allow-empty", "-m", message],
+        );
+        head()
+    };
+    let base = head();
+    let a = next("change a");
+    let b = next("change b");
+    Commits { base, a, b }
+}
+
+/// The first line of a note that hands `head` of `card` back.
+fn hand_back_line(card: &str, head: &str) -> String {
+    format!("LANE-READY-INTEGRATION {card} head={head}")
+}
+
+/// Adds the lane's hand-back note of `head`, without the receipt gate.
+fn hand_back(w: &World, card: &str, head: &str) {
+    crate::ready_receipt::add_note_unchecked(
+        w.home.path(),
+        "demo",
+        card,
+        &hand_back_line(card, head),
+    );
+}
+
+/// Adds one note of `kind` signed `author`.
+fn note_by(w: &World, card: &str, kind: &str, author: &str, text: &str) {
+    let mut l = ledger::open_write(w.home.path(), "demo").unwrap();
+    ledger::workflow::add_note(&mut l, card_id(card), kind, author, None, text, None).unwrap();
+}
+
+/// `card verdict` of `head` by the session `reviewer`, which never held the card. Each call has
+/// its own evidence, so none is a repeat of an earlier call (a repeat writes nothing).
+fn verdict(w: &World, c: &Commits, reviewer: u64, card: &str, head: &str, word: &str) {
+    static CALLS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let call = CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let evidence = format!("read the diff, call {call}");
+    let got = result(&w.card(
+        Some(&sid(reviewer)),
+        &[
+            "verdict",
+            card,
+            "--head",
+            head,
+            "--base",
+            &c.base,
+            "--verdict",
+            word,
+            "--tier",
+            "1",
+            "--evidence",
+            &evidence,
+        ],
+    ));
+    assert_eq!(got["written"], json!(true), "{got}");
+}
+
+/// Writes one `card.verdict` event row with `payload` as it is: the command cannot write a row
+/// that does not read.
+fn verdict_row(w: &World, card: &str, payload: &Value) {
+    sql(
+        w,
+        &format!(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES (lower(hex(randomblob(16))), unixepoch(), 'by-hand', {}, 'card.verdict', \
+             '{payload}')",
+            card_id(card)
+        ),
+    );
+}
+
+/// `card <verb> <card> --generation <generation>` by the lane session `sid(1)`.
+fn lane_step(w: &World, verb: &str, card: &str, generation: &str) {
+    result(&w.card(Some(&sid(1)), &[verb, card, "--generation", generation]));
+}
+
+/// A card taken by `sid(1)`, handed back with `head` and sent to review (generation 1).
+fn handed_back(w: &World, scope: &str, head: &str) -> String {
+    let card = w.ready_card(scope);
+    result(&w.take(&sid(1), &card));
+    hand_back(w, &card, head);
+    lane_step(w, "review", &card, "1");
+    card
+}
+
+/// The `wip` object of `card next`.
+fn wip(w: &World) -> Value {
+    result(&w.next(&sid(3)))["wip"].clone()
+}
+
+/// The `not_counted` entry of `card` in a `wip` object.
+fn not_counted_entry<'a>(wip: &'a Value, card: &str) -> Option<&'a Value> {
+    wip["not_counted"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no `not_counted` list in wip: {wip}"))
+        .iter()
+        .find(|c| c["name"].as_str() == Some(card))
+}
+
+/// `card` is left out of the count for the PASS on `head`.
+#[track_caller]
+fn assert_passed(w: &World, card: &str, head: &str) {
+    let got = wip(w);
+    let entry = not_counted_entry(&got, card)
+        .unwrap_or_else(|| panic!("{card} is counted, not left out: {got}"));
+    assert_eq!(entry["reason"], json!("pass verdict"), "{got}");
+    assert_eq!(entry["head"], json!(head), "{got}");
+    assert_eq!(entry["lease_until"], Value::Null, "{got}");
+}
+
+/// `card` is not left out, and the count is `count`.
+#[track_caller]
+fn assert_counted(w: &World, card: &str, count: usize) {
+    let got = wip(w);
+    assert!(
+        not_counted_entry(&got, card).is_none(),
+        "{card} is left out, not counted: {got}"
+    );
+    assert_eq!(got["count"], json!(count), "{got}");
+}
+
+/// The positive control of the cases below: one lane, one card in review handed back with head
+/// `a`, passed by the reviewer `sid(7)` and so left out.
+#[track_caller]
+fn passed_world() -> (World, Commits, String) {
+    let w = world(None);
+    let c = commits(&w);
+    w.lane("agent-1", &sid(1));
+    let card = handed_back(&w, "src/passed/", &c.a);
+    verdict(&w, &c, 7, &card, &c.a, "pass");
+    assert_passed(&w, &card, &c.a);
+    (w, c, card)
+}
+
+/// SPEC-20261126-wip-limit-pass-review AC-1 (REQ-1, REQ-6, REQ-7): a passed card in review leaves
+/// room for `card add` and `card take`, `card next` lists it with its head, and the refusal at the
+/// limit names it apart from the counted cards.
+#[test]
+fn pass_review_ac1_a_passed_review_card_leaves_room_and_is_listed_apart() {
+    let w = world(None);
+    let c = commits(&w);
+    w.lane("agent-1", &sid(1));
+    let passed = handed_back(&w, "src/passed/", &c.a);
+    let busy = w.ready_card("src/busy/");
+    result(&w.take(&sid(1), &busy));
+    verdict(&w, &c, 7, &passed, &c.a, "pass");
+
+    let got = wip(&w);
+    assert_eq!(got["count"], json!(1), "{got}");
+    assert_eq!(got["at_limit"], json!(false), "{got}");
+    assert!(not_counted_entry(&got, &busy).is_none(), "{got}");
+    assert_passed(&w, &passed, &c.a);
+    let got = wip(&w);
+    let entry = not_counted_entry(&got, &passed).unwrap();
+    assert_eq!(entry["state"], json!("review"), "{got}");
+
+    result(&add_by(&w, "leader", "more"));
+    let next = w.ready_card("src/next/");
+    result(&w.take(&sid(1), &next));
+
+    // Two cards in work now reach the limit: both commands refuse.
+    let got = wip(&w);
+    assert_eq!(got["count"], json!(2), "{got}");
+    assert_eq!(got["at_limit"], json!(true), "{got}");
+    let last = w.ready_card("src/last/");
+    for out in [add_by(&w, "leader", "full"), w.take(&sid(1), &last)] {
+        let (kind, message) = refusal(&out);
+        assert_eq!(kind, "conflict", "{message}");
+        assert!(message.contains("work-in-progress limit"), "{message}");
+        assert!(!message.contains("(no live lease)"), "{message}");
+        let (counted, left_out) = message
+            .split_once("; not counted")
+            .unwrap_or_else(|| panic!("the refusal has no `not counted` part: {message}"));
+        for card in [&busy, &next] {
+            assert!(counted.contains(card.as_str()), "{card} counted: {message}");
+            assert!(!left_out.contains(card.as_str()), "{card}: {message}");
+        }
+        assert!(!counted.contains(&passed), "{passed}: {message}");
+        assert!(left_out.contains(&passed), "{passed} left out: {message}");
+        let why = format!("PASS on head {}", &c.a[..12]);
+        assert!(left_out.contains(&why), "{message}");
+    }
+}
+
+/// SPEC-20261126-wip-limit-pass-review AC-2 (REQ-1, REQ-4): a head is passed only while it has a
+/// PASS, every reviewer's newest verdict on it is PASS and the card's newest verdict is PASS.
+#[test]
+fn pass_review_ac2_only_a_head_that_is_still_passed_leaves_the_count() {
+    // No verdict: beside a passed card, a card handed back without a verdict counts.
+    let (w, c, passed) = passed_world();
+    let unjudged = handed_back(&w, "src/unjudged/", &c.b);
+    assert_counted(&w, &unjudged, 1);
+    assert_passed(&w, &passed, &c.a);
+    verdict(&w, &c, 7, &unjudged, &c.b, "pass");
+    assert_passed(&w, &unjudged, &c.b);
+
+    // A FAIL after a PASS on the head.
+    let (w, c, card) = passed_world();
+    verdict(&w, &c, 7, &card, &c.a, "fail");
+    assert_counted(&w, &card, 1);
+
+    // One reviewer's FAIL, then another's PASS: the newest verdict is PASS, one reviewer's is not.
+    let (w, c, card) = passed_world();
+    verdict(&w, &c, 8, &card, &c.a, "fail");
+    assert_counted(&w, &card, 1);
+    verdict(&w, &c, 7, &card, &c.a, "pass");
+    assert_counted(&w, &card, 1);
+    verdict(&w, &c, 8, &card, &c.a, "pass");
+    assert_passed(&w, &card, &c.a);
+
+    // A PASS on the head, then a FAIL on another head.
+    let (w, c, card) = passed_world();
+    verdict(&w, &c, 8, &card, &c.b, "fail");
+    assert_counted(&w, &card, 1);
+
+    // A PASS on another head only: the PASS names `b`, then the card is handed back with `a`.
+    let w = world(None);
+    let c = commits(&w);
+    w.lane("agent-1", &sid(1));
+    let card = handed_back(&w, "src/other/", &c.b);
+    verdict(&w, &c, 7, &card, &c.b, "pass");
+    assert_passed(&w, &card, &c.b);
+    hand_back(&w, &card, &c.a);
+    assert_counted(&w, &card, 1);
+
+    // A PASS on the head, then a PASS on another head: still left out for the current head.
+    let (w, c, card) = passed_world();
+    verdict(&w, &c, 8, &card, &c.b, "pass");
+    assert_passed(&w, &card, &c.a);
+}
+
+/// SPEC-20261126-wip-limit-pass-review AC-3 (REQ-2, REQ-3): the current head is the one the newest
+/// hand-back note names, and only while that note is newer than every reopen, take and reclaim.
+#[test]
+fn pass_review_ac3_only_the_head_of_the_current_hand_back_counts_as_passed() {
+    // Reopened and handed back with another head.
+    let (w, c, card) = passed_world();
+    lane_step(&w, "reopen", &card, "1");
+    hand_back(&w, &card, &c.b);
+    lane_step(&w, "review", &card, "1");
+    assert_counted(&w, &card, 1);
+
+    // Reopened and sent to review without a note (`card.reopen` alone follows the note).
+    let (w, c, card) = passed_world();
+    lane_step(&w, "reopen", &card, "1");
+    lane_step(&w, "review", &card, "1");
+    assert_counted(&w, &card, 1);
+    hand_back(&w, &card, &c.a);
+    assert_passed(&w, &card, &c.a);
+
+    // Released, taken again and sent to review without a note (`reserve` alone follows the note).
+    // The leader releases no card whose newest verdict is PASS, so a FAIL comes first and the
+    // PASS is recorded again after the new review.
+    let (w, c, card) = passed_world();
+    verdict(&w, &c, 8, &card, &c.a, "fail");
+    assert_counted(&w, &card, 1);
+    end_lease(&w, &card);
+    w.leader("leader", &sid(9));
+    result(&w.card(
+        Some(&sid(9)),
+        &[
+            "release",
+            &card,
+            "--generation",
+            "1",
+            "--by",
+            "leader",
+            "--reason",
+            "the lane gave the card up",
+        ],
+    ));
+    result(&w.take(&sid(1), &card));
+    lane_step(&w, "review", &card, "2");
+    verdict(&w, &c, 8, &card, &c.a, "pass");
+    assert_counted(&w, &card, 1);
+    hand_back(&w, &card, &c.a);
+    assert_passed(&w, &card, &c.a);
+
+    // Reclaimed in review (`card.reclaim` alone follows the note).
+    let (w, c, card) = passed_world();
+    end_lease(&w, &card);
+    result(&w.card(
+        Some(&sid(1)),
+        &[
+            "reclaim",
+            &card,
+            "--generation",
+            "1",
+            "--by",
+            "leader",
+            "--reason",
+            "the lease ended while the card waited",
+        ],
+    ));
+    assert_counted(&w, &card, 1);
+    hand_back(&w, &card, &c.a);
+    assert_passed(&w, &card, &c.a);
+
+    // No hand-back note: beside a passed card, a card with a PASS and no note counts; the note
+    // is all it lacks.
+    let (w, c, passed) = passed_world();
+    let bare = w.ready_card("src/bare/");
+    result(&w.take(&sid(1), &bare));
+    lane_step(&w, "review", &bare, "1");
+    verdict(&w, &c, 7, &bare, &c.b, "pass");
+    assert_counted(&w, &bare, 1);
+    assert_passed(&w, &passed, &c.a);
+    hand_back(&w, &bare, &c.b);
+    assert_passed(&w, &bare, &c.b);
+
+    // The newest hand-back note does not parse: the older, passed one is not read.
+    let (w, _c, card) = passed_world();
+    let unparsed = hand_back_line(&card, "nothex");
+    note_by(&w, &card, "report", "lane", &unparsed);
+    assert_counted(&w, &card, 1);
+
+    // The newest hand-back note has no `card.note` event: it cannot be placed after the take.
+    let (w, c, card) = passed_world();
+    sql(
+        &w,
+        &format!(
+            "INSERT INTO card_note (card_id, kind, author, body, created_at) \
+             VALUES ({}, 'report', 'lane', '{}', unixepoch())",
+            card_id(&card),
+            hand_back_line(&card, &c.a)
+        ),
+    );
+    assert_counted(&w, &card, 1);
+
+    // A later note by the leader, of kind `decision` or without a marker changes nothing.
+    let (w, c, card) = passed_world();
+    let quoted = hand_back_line(&card, &c.b);
+    note_by(&w, &card, "report", "leader", &quoted);
+    assert_passed(&w, &card, &c.a);
+    note_by(&w, &card, "decision", "lane", &quoted);
+    assert_passed(&w, &card, &c.a);
+    note_by(&w, &card, "comment", "lane", "PLAN wait for the landing");
+    assert_passed(&w, &card, &c.a);
+
+    // The same head handed back again after a reopen keeps its PASS.
+    let (w, c, card) = passed_world();
+    lane_step(&w, "reopen", &card, "1");
+    hand_back(&w, &card, &c.a);
+    lane_step(&w, "review", &card, "1");
+    assert_passed(&w, &card, &c.a);
+}
+
+/// SPEC-20261126-wip-limit-pass-review AC-4 (REQ-5): a verdict row that cannot be read beside a
+/// PASS makes the card count.
+#[test]
+fn pass_review_ac4_a_verdict_row_that_cannot_be_read_makes_the_card_count() {
+    let by_hand = |c: &Commits| {
+        json!({
+            "head": c.a, "base": c.base, "verdict": "pass", "tier": 1,
+            "evidence": "by hand", "receipt": null, "reviewer": sid(8),
+        })
+    };
+
+    // A row written by hand that reads as a PASS changes nothing.
+    let (w, c, card) = passed_world();
+    verdict_row(&w, &card, &by_hand(&c));
+    assert_passed(&w, &card, &c.a);
+
+    // No verdict word, a word that is no verdict, no head.
+    for (field, value) in [
+        ("verdict", None),
+        ("verdict", Some(json!("maybe"))),
+        ("head", None),
+    ] {
+        let (w, c, card) = passed_world();
+        let mut payload = by_hand(&c);
+        match value {
+            Some(v) => payload[field] = v,
+            None => {
+                payload.as_object_mut().unwrap().remove(field);
+            }
+        }
+        verdict_row(&w, &card, &payload);
+        assert_counted(&w, &card, 1);
+        // A later PASS does not hide the older row that cannot be read.
+        verdict(&w, &c, 7, &card, &c.a, "pass");
+        assert_counted(&w, &card, 1);
+    }
+}
+
+/// SPEC-20261126-wip-limit-pass-review AC-5 (REQ-8): only a card in review is left out for a PASS;
+/// the limit's numbers, the off switch and the two lease reasons stay.
+#[test]
+fn pass_review_ac5_only_a_review_card_changes_and_the_rest_stays() {
+    let w = world(None);
+    let c = commits(&w);
+    w.lane("agent-1", &sid(1));
+    let reviewed = handed_back(&w, "src/reviewed/", &c.a);
+    assert_counted(&w, &reviewed, 1);
+    let before = wip(&w);
+    verdict(&w, &c, 7, &reviewed, &c.a, "pass");
+    assert_passed(&w, &reviewed, &c.a);
+    let after = wip(&w);
+    for (key, number) in [("per_lane", 2), ("lanes", 1), ("limit", 2)] {
+        assert_eq!(before[key], json!(number), "{before}");
+        assert_eq!(after[key], json!(number), "{after}");
+    }
+
+    // A card in work that never went to review counts although its head has a PASS.
+    let active = w.ready_card("src/active/");
+    result(&w.take(&sid(1), &active));
+    hand_back(&w, &active, &c.b);
+    verdict(&w, &c, 7, &active, &c.b, "pass");
+    assert_counted(&w, &active, 1);
+    assert_passed(&w, &reviewed, &c.a);
+    lane_step(&w, "review", &active, "1");
+    assert_passed(&w, &active, &c.b);
+
+    // A reopened card counts, also with a new hand-back note of the passed head.
+    lane_step(&w, "reopen", &reviewed, "1");
+    assert_counted(&w, &reviewed, 1);
+    hand_back(&w, &reviewed, &c.a);
+    assert_counted(&w, &reviewed, 1);
+    lane_step(&w, "review", &reviewed, "1");
+    assert_passed(&w, &reviewed, &c.a);
+
+    // An ended lease and a released reservation keep their reasons, a PASS or not.
+    end_lease(&w, &reviewed);
+    sql(
+        &w,
+        &format!(
+            "UPDATE reservation SET status = 'released' WHERE card_id = {}",
+            card_id(&active)
+        ),
+    );
+    let got = wip(&w);
+    assert_eq!(got["count"], json!(0), "{got}");
+    let ended = not_counted_entry(&got, &reviewed).unwrap_or_else(|| panic!("{got}"));
+    assert_eq!(ended["reason"], json!("lease ended"), "{got}");
+    assert!(ended["lease_until"].is_i64(), "{got}");
+    let released = not_counted_entry(&got, &active).unwrap_or_else(|| panic!("{got}"));
+    assert_eq!(released["reason"], json!("no reservation"), "{got}");
+    assert_eq!(released["lease_until"], Value::Null, "{got}");
+
+    // `wip_limit` 0 stays off.
+    let w = world(Some(0));
+    let c = commits(&w);
+    w.lane("agent-1", &sid(1));
+    let card = handed_back(&w, "src/off/", &c.a);
+    verdict(&w, &c, 7, &card, &c.a, "pass");
+    w.working(&sid(1), 3);
+    result(&add_by(&w, "leader", "more"));
+    let got = wip(&w);
+    assert_eq!(got["limit"], json!(0), "{got}");
+    assert_eq!(got["at_limit"], json!(false), "{got}");
+}
+
+// SPEC-20261126-audit-needed-current-head: `card next` leaves a card in review out of the audit
+// list only for a verdict on its current head.
+
+/// The names `card next` lists in `audit_needed` when `session` asks.
+fn audit_names(w: &World, session: &str) -> Vec<String> {
+    let got = result(&w.next(session));
+    got["audit_needed"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no `audit_needed` list: {got}"))
+        .iter()
+        .map(|c| c["name"].as_str().unwrap().to_string())
+        .collect()
+}
+
+/// SPEC-20261126-audit-needed-current-head AC-1 (REQ-1, REQ-2): a card judged on head `a` is
+/// listed again once head `b` is handed back, whether it was reopened or got a `REPAIRED` note.
+#[test]
+fn audit_head_ac1_a_new_head_after_a_verdict_is_listed() {
+    let mut not_listed = Vec::new();
+    for word in ["pass", "fail"] {
+        for reopened in [true, false] {
+            let w = world(Some(0));
+            let c = commits(&w);
+            let card = handed_back(&w, "src/resubmitted/", &c.a);
+            assert_eq!(audit_names(&w, &sid(3)), vec![card.clone()], "unjudged");
+            verdict(&w, &c, 7, &card, &c.a, word);
+            assert_eq!(
+                audit_names(&w, &sid(3)),
+                Vec::<String>::new(),
+                "{word} on a"
+            );
+
+            if reopened {
+                lane_step(&w, "reopen", &card, "1");
+                hand_back(&w, &card, &c.b);
+                lane_step(&w, "review", &card, "1");
+            } else {
+                let repaired = format!("REPAIRED {card} head={}", c.b);
+                note_by(&w, &card, "report", "lane", &repaired);
+            }
+            let got = audit_names(&w, &sid(3));
+            if got != vec![card] {
+                not_listed.push(format!("{word} on a, reopened {reopened}: {got:?}"));
+            }
+        }
+    }
+    assert!(
+        not_listed.is_empty(),
+        "head b has no verdict, yet the card is not listed: {not_listed:#?}"
+    );
+}
+
+/// SPEC-20261126-audit-needed-current-head AC-1 (REQ-1, REQ-2): at the limit `card next` offers
+/// the resubmitted card for an audit.
+#[test]
+fn audit_head_ac1_at_the_limit_next_offers_the_resubmitted_card() {
+    let w = world(None);
+    let c = commits(&w);
+    w.lane("agent-1", &sid(1));
+    let resubmitted = handed_back(&w, "src/resubmitted/", &c.a);
+    let busy = w.ready_card("src/busy/");
+    result(&w.take(&sid(1), &busy));
+    verdict(&w, &c, 7, &resubmitted, &c.a, "fail");
+    lane_step(&w, "reopen", &resubmitted, "1");
+    hand_back(&w, &resubmitted, &c.b);
+    lane_step(&w, "review", &resubmitted, "1");
+
+    let got = result(&w.next(&sid(3)));
+    assert_eq!(got["wip"]["count"], json!(2), "{got}");
+    assert_eq!(got["wip"]["at_limit"], json!(true), "{got}");
+    assert_eq!(got["next_is"], json!("audit"), "{got}");
+    assert_eq!(got["next"], json!(resubmitted), "{got}");
+    assert_eq!(audit_names(&w, &sid(3)), vec![resubmitted], "{got}");
+}
+
+/// SPEC-20261126-audit-needed-current-head AC-2 (REQ-2): any verdict on the current head, of any
+/// reviewer, hides the card, and nothing that leaves the head as it is brings it back. The card
+/// without a verdict beside it stays listed.
+#[test]
+fn audit_head_ac2_a_verdict_on_the_current_head_hides_the_card() {
+    // A card handed back with head `a` and judged on it by each of `verdicts`, beside a card
+    // without a verdict, which alone is listed.
+    let judged_world = |verdicts: &[(u64, &str)]| {
+        let w = world(Some(0));
+        let c = commits(&w);
+        let judged = handed_back(&w, "src/judged/", &c.a);
+        let unjudged = handed_back(&w, "src/unjudged/", &c.b);
+        assert_eq!(
+            audit_names(&w, &sid(3)),
+            vec![judged.clone(), unjudged.clone()],
+            "before any verdict"
+        );
+        for (reviewer, word) in verdicts {
+            verdict(&w, &c, *reviewer, &judged, &c.a, word);
+        }
+        assert_eq!(
+            audit_names(&w, &sid(3)),
+            vec![unjudged.clone()],
+            "{verdicts:?}"
+        );
+        (w, c, judged, unjudged)
+    };
+
+    // PASS, FAIL, and two reviewers who disagree, in both orders.
+    judged_world(&[(7, "pass")]);
+    judged_world(&[(7, "fail")]);
+    judged_world(&[(7, "pass"), (8, "fail")]);
+    judged_world(&[(7, "fail"), (8, "pass")]);
+
+    for (word, later) in [("pass", "fail"), ("fail", "pass")] {
+        // A later verdict on another head.
+        let (w, c, judged, unjudged) = judged_world(&[(7, word)]);
+        verdict(&w, &c, 8, &judged, &c.b, later);
+        assert_eq!(
+            audit_names(&w, &sid(3)),
+            vec![unjudged],
+            "{word} on a, then {later} on b"
+        );
+
+        // A later note by the leader or of kind `decision` that names another head.
+        let (w, c, judged, unjudged) = judged_world(&[(7, word)]);
+        let quoted = hand_back_line(&judged, &c.b);
+        note_by(&w, &judged, "report", "leader", &quoted);
+        assert_eq!(
+            audit_names(&w, &sid(3)),
+            vec![unjudged.clone()],
+            "{word}, then a leader note"
+        );
+        note_by(&w, &judged, "decision", "lane", &quoted);
+        assert_eq!(
+            audit_names(&w, &sid(3)),
+            vec![unjudged],
+            "{word}, then a decision note"
+        );
+
+        // The same head handed back again, after a reopen and by a `REPAIRED` note in review.
+        let (w, c, judged, unjudged) = judged_world(&[(7, word)]);
+        lane_step(&w, "reopen", &judged, "1");
+        hand_back(&w, &judged, &c.a);
+        lane_step(&w, "review", &judged, "1");
+        assert_eq!(
+            audit_names(&w, &sid(3)),
+            vec![unjudged.clone()],
+            "{word}, then head a again after a reopen"
+        );
+        let repaired = format!("REPAIRED {judged} head={}", c.a);
+        note_by(&w, &judged, "report", "lane", &repaired);
+        assert_eq!(
+            audit_names(&w, &sid(3)),
+            vec![unjudged],
+            "{word}, then a REPAIRED note of head a"
+        );
+    }
+}
+
+/// SPEC-20261126-audit-needed-current-head AC-3 (REQ-3): a card whose current head cannot be
+/// confirmed is listed although a verdict names the head it was handed back with.
+#[test]
+fn audit_head_ac3_a_card_whose_current_head_cannot_be_confirmed_is_listed() {
+    // One card handed back with head `a` and passed on it, so hidden.
+    let passed = || {
+        let w = world(Some(0));
+        let c = commits(&w);
+        let card = handed_back(&w, "src/passed/", &c.a);
+        verdict(&w, &c, 7, &card, &c.a, "pass");
+        assert_eq!(audit_names(&w, &sid(3)), Vec::<String>::new(), "pass on a");
+        (w, c, card)
+    };
+    let mut not_listed = Vec::new();
+    let mut expect_listed = |case: &str, w: &World, card: &str| {
+        let got = audit_names(w, &sid(3));
+        if got != vec![card.to_string()] {
+            not_listed.push(format!("{case}: {got:?}"));
+        }
+    };
+
+    let (w, _c, card) = passed();
+    lane_step(&w, "reopen", &card, "1");
+    lane_step(&w, "review", &card, "1");
+    expect_listed("review without a new note after a reopen", &w, &card);
+
+    let (w, _c, card) = passed();
+    let unparsed = hand_back_line(&card, "nothex");
+    note_by(&w, &card, "report", "lane", &unparsed);
+    expect_listed("the newest hand-back note does not parse", &w, &card);
+
+    let (w, c, card) = passed();
+    sql(
+        &w,
+        &format!(
+            "INSERT INTO card_note (card_id, kind, author, body, created_at) \
+             VALUES ({}, 'report', 'lane', '{}', unixepoch())",
+            card_id(&card),
+            hand_back_line(&card, &c.a)
+        ),
+    );
+    expect_listed("a note without its card.note event", &w, &card);
+
+    let w = world(Some(0));
+    let c = commits(&w);
+    let bare = w.ready_card("src/bare/");
+    result(&w.take(&sid(1), &bare));
+    lane_step(&w, "review", &bare, "1");
+    verdict(&w, &c, 7, &bare, &c.a, "pass");
+    expect_listed("no hand-back note", &w, &bare);
+
+    let (w, _c, card) = passed();
+    end_lease(&w, &card);
+    result(&w.card(
+        Some(&sid(1)),
+        &[
+            "reclaim",
+            &card,
+            "--generation",
+            "1",
+            "--by",
+            "leader",
+            "--reason",
+            "the lease ended while the card waited",
+        ],
+    ));
+    expect_listed("after a reclaim", &w, &card);
+
+    assert!(
+        not_listed.is_empty(),
+        "the current head cannot be confirmed, yet the card is not listed: {not_listed:#?}"
+    );
+}
+
+/// SPEC-20261126-audit-needed-current-head AC-4 (REQ-4): a verdict row that cannot be read keeps
+/// the card listed, alone, beside a PASS on the head and before a later PASS.
+#[test]
+fn audit_head_ac4_a_card_with_an_unreadable_verdict_row_is_listed() {
+    let by_hand = |c: &Commits| {
+        json!({
+            "head": c.a, "base": c.base, "verdict": "pass", "tier": 1,
+            "evidence": "by hand", "receipt": null, "reviewer": sid(8),
+        })
+    };
+    // One card handed back with head `a`, without a verdict and so listed.
+    let unjudged = || {
+        let w = world(Some(0));
+        let c = commits(&w);
+        let card = handed_back(&w, "src/judged/", &c.a);
+        assert_eq!(audit_names(&w, &sid(3)), vec![card.clone()], "unjudged");
+        (w, c, card)
+    };
+
+    // A row written by hand that reads as a PASS on the head hides the card.
+    let (w, c, card) = unjudged();
+    verdict_row(&w, &card, &by_hand(&c));
+    assert_eq!(
+        audit_names(&w, &sid(3)),
+        Vec::<String>::new(),
+        "a readable row written by hand"
+    );
+
+    let mut not_listed = Vec::new();
+    let mut expect_listed = |case: String, w: &World, card: &str| {
+        let got = audit_names(w, &sid(3));
+        if got != vec![card.to_string()] {
+            not_listed.push(format!("{case}: {got:?}"));
+        }
+    };
+    // No verdict word, a word that is no verdict, no head.
+    for (defect, field, value) in [
+        ("no verdict word", "verdict", None),
+        ("the word maybe", "verdict", Some(json!("maybe"))),
+        ("no head", "head", None),
+    ] {
+        let unreadable = |c: &Commits| {
+            let mut payload = by_hand(c);
+            match &value {
+                Some(v) => payload[field] = v.clone(),
+                None => {
+                    payload.as_object_mut().unwrap().remove(field);
+                }
+            }
+            payload
+        };
+
+        let (w, c, card) = unjudged();
+        verdict_row(&w, &card, &unreadable(&c));
+        expect_listed(format!("{defect}, alone"), &w, &card);
+
+        let (w, c, card) = unjudged();
+        verdict(&w, &c, 7, &card, &c.a, "pass");
+        assert_eq!(audit_names(&w, &sid(3)), Vec::<String>::new(), "pass on a");
+        verdict_row(&w, &card, &unreadable(&c));
+        expect_listed(format!("{defect}, beside a PASS on the head"), &w, &card);
+
+        let (w, c, card) = unjudged();
+        verdict_row(&w, &card, &unreadable(&c));
+        verdict(&w, &c, 7, &card, &c.a, "pass");
+        expect_listed(format!("{defect}, before a later PASS"), &w, &card);
+    }
+    assert!(
+        not_listed.is_empty(),
+        "a verdict row cannot be read, yet the card is not listed: {not_listed:#?}"
+    );
+}
+
+/// SPEC-20261126-audit-needed-current-head AC-5 (REQ-5): the session that holds a resubmitted
+/// card is not asked to audit it; another session is.
+#[test]
+fn audit_head_ac5_the_holder_is_not_asked_to_audit_its_own_card() {
+    let w = world(Some(0));
+    let c = commits(&w);
+    let card = handed_back(&w, "src/mine/", &c.a);
+    verdict(&w, &c, 7, &card, &c.a, "fail");
+    lane_step(&w, "reopen", &card, "1");
+    hand_back(&w, &card, &c.b);
+    lane_step(&w, "review", &card, "1");
+
+    assert_eq!(audit_names(&w, &sid(1)), Vec::<String>::new(), "the holder");
+    assert_eq!(audit_names(&w, &sid(3)), vec![card], "another session");
 }
 
 // SPEC-20261125-wip-limit-live-lock-lanes: a lane is live while its launcher holds the
