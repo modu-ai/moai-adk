@@ -353,7 +353,7 @@ fn shape_h_plan_apply_replan() {
 #[test]
 fn after_the_go_state_move_claude_settings_leaves_the_new_status_line() {
     let fx = shape_g();
-    fx.with_profile();
+    fx.with_go_profile();
     let up = fx.update_plan();
     // The install steps wait behind the backup phase while a clean-up is to be applied.
     assert_eq!(

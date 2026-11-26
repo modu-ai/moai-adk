@@ -69,3 +69,4 @@ created: 2026-11-26
 - guard-mutant: 멈춤 호출 셋, 조건을 항상 거짓·항상 참(`.moai` 트리까지), 옛 폴더 조건 제거 — 여섯 가지 모두 해당 시험이 실패(exit 100).
 - 다루지 않은 것: `project-apply` 와 첫 초기화 밖의 쓰기 명령(Non-goals).
 - 위험 경로·guard-mutant·resolver 변경 확인은 `2adb6109516617adb51141292429019874de7c55` 에서 돌렸어요. 그 뒤 바뀐 것은 시험의 폴더 이름 표기(resolver 상수)와 이 Result 뿐이고 `src` 는 같아요.
+- 감사 뒤 수리: 이 변경이 뒤집는 옛 동작을 고정하던 기존 테스트 18개가 `12510df496f72e83cc9ec99a46361c9a7daff614` 에서 실패했어요(`go_project_real_run_cli` 10, `update_end_to_end_cli` 5, `go_settings_cli` 1, `state_root_cli` 1, `project_update_plan_cli` 1). 테스트 파일만 고쳤고 `src` 는 같아요. 도우미(`first_launch`, `with_go_profile`)와 `state_root_cli` 의 mixed 테스트에 거절·무작성(REQ-1, REQ-2) 단언을 더했고, 옛 폴더가 있을 때 전처럼 쓰는 기존 단언(REQ-3)은 그대로예요. 테스트 파일로 범위를 넓힌 것은 카드의 리더 결정 노트에 있어요.

@@ -84,7 +84,7 @@ fn shape_g() -> GoFx {
     let fx = base_fx();
     fx.manifest();
     fx.write(SETTINGS, &go_settings().to_string());
-    fx.with_profile();
+    fx.with_go_profile();
     fx
 }
 
