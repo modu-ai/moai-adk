@@ -671,11 +671,24 @@ pub fn glm_key_step<R: BufRead, W: Write>(
     picks: &[Pick],
     hidden: bool,
 ) -> io::Result<()> {
+    let cwd = std::env::current_dir().ok();
+    glm_key_step_in(cwd.as_deref(), input, out, home, picks, hidden)
+}
+
+/// [`glm_key_step`] for the folder it is given; `None` is a current directory that cannot be
+/// read. Tests call this, so no test changes the process's current directory.
+fn glm_key_step_in<R: BufRead, W: Write>(
+    folder: Option<&Path>,
+    input: &mut R,
+    out: &mut W,
+    home: &Path,
+    picks: &[Pick],
+    hidden: bool,
+) -> io::Result<()> {
     if !picks.iter().any(|p| p.tool == "glm") {
         return Ok(());
     }
-    let cwd = std::env::current_dir().ok();
-    let Some(scope) = cwd.as_deref().and_then(|dir| glm_key_scope(dir, home)) else {
+    let Some(scope) = folder.and_then(|dir| glm_key_scope(dir, home)) else {
         writeln!(
             out,
             "The glm key is kept per project and this folder is not inside one; the key entry was skipped (run `moai key-set glm --prompt` inside a project, or add --shared)."
