@@ -78,8 +78,10 @@
 //! those keys, or that sets `max` 0, is refused: acquire exits 125 without running COMMAND.
 //!
 //! The CPU rule (SPEC-20261126-heavy-slot-cpu-free): a caller that could take a slot waits while
-//! the CPU free percentage is below `min_cpu_free_pct` of `limits.json` (default 20; 0 switches
-//! the rule off; a value above 100, a negative number or a text is refused like `max` 0). It is
+//! the CPU free percentage is below `min_cpu_free_pct` of `limits.json` (default 0, which
+//! switches the rule off; a value above 100, a negative number or a text is refused like `max`
+//! 0). An earlier build refuses a file that holds this key, so write it only once every build
+//! that reads the folder knows it. The rule is
 //! a wait, not a refusal like low disk or memory (exit 75). The percentage is the idle share of
 //! the CPU ticks between two readings at least 100 ms apart, so it is the load of now and not an
 //! average since boot; a machine that gives no reading never makes a caller wait, and a slot
@@ -88,7 +90,10 @@
 //! starts and again every 30 seconds while it lasts. The wait has a cap of 300 seconds: after
 //! that COMMAND starts anyway, and the slot line says that the cap ended the wait. A caller that
 //! waited ends its slot line and its exit line with `waited <n>s for CPU headroom` (the seconds
-//! spent held back by the CPU rule, rounded up); a caller that did not wait gets no extra text.
+//! spent held back by the CPU rule, rounded up); a caller that did not wait gets no waiting
+//! text. Whether the rule is on or off, the slot line of a slot this caller took names the
+//! reading when the machine gives one, before any wait text: `cpu free <n>% (limit <m>%)` or
+//! `cpu free <n>% (rule off)`.
 //! `status` reports `cpu_free_pct` (`null` when the machine gives no reading), `cpu_cores`,
 //! `min_cpu_free_pct` and `heavy_runs` (every held slot, one held by a dead pid included).
 
@@ -124,12 +129,13 @@ pub struct Limits {
     pub min_cpu_free_pct: u64,
 }
 
-/// The leader's numbers (comment 6850581277); `min_mem_free_pct` 10 is card C-88's.
+/// The leader's numbers (comment 6850581277); `min_mem_free_pct` 10 is card C-88's. The CPU
+/// rule is off until a limits file names a value (SPEC-20261126-heavy-slot-cpu-free D-7).
 pub const DEFAULT_LIMITS: Limits = Limits {
     min_free_gb: 50,
     max_swap_pct: 80,
     min_mem_free_pct: 10,
-    min_cpu_free_pct: 20,
+    min_cpu_free_pct: 0,
 };
 
 /// The longest a caller waits for CPU headroom; after it COMMAND starts anyway.
@@ -1438,6 +1444,9 @@ mod sys {
         /// `None` for an inherited slot: the descriptor belongs to the process that took it.
         file: Option<File>,
         fd: libc::c_int,
+        /// The CPU free percentage read when this caller took the slot and the limit it was
+        /// held against; `None` when the machine gave no reading or the slot is inherited.
+        cpu_seen: Option<(u64, u64)>,
         /// The wait for CPU headroom this caller went through; `None` when it did not wait.
         cpu_wait: Option<CpuWaited>,
     }
@@ -1466,15 +1475,23 @@ mod sys {
         }
 
         /// The line a caller prints once it has the slot: `heavy-slot: slot <i> taken by <name>`,
-        /// or `heavy-slot: <name> reuses slot <i> it inherited`. A caller that waited for CPU
-        /// headroom ends it with `; waited <n>s for CPU headroom`, with `; cpu wait ended by
-        /// the 300 s cap after <n>s` before that when the cap ended the wait.
+        /// or `heavy-slot: <name> reuses slot <i> it inherited`. A CPU reading follows as
+        /// `; cpu free <n>% (limit <m>%)`, or `(rule off)` for a limit of 0. A caller that
+        /// waited for CPU headroom ends the line with `; waited <n>s for CPU headroom`, with
+        /// `; cpu wait ended by the 300 s cap after <n>s` before that when the cap ended it.
         pub fn taken_line(&self, name: &str) -> String {
             let mut line = if self.inherited() {
                 format!("heavy-slot: {name} reuses slot {} it inherited", self.slot)
             } else {
                 format!("heavy-slot: slot {} taken by {name}", self.slot)
             };
+            if let Some((free, limit)) = self.cpu_seen {
+                let rule = match limit {
+                    0 => "rule off".to_string(),
+                    l => format!("limit {l}%"),
+                };
+                line.push_str(&format!("; cpu free {free}% ({rule})"));
+            }
             if let Some(w) = &self.cpu_wait {
                 if w.capped {
                     line.push_str(&format!(
@@ -1588,6 +1605,7 @@ mod sys {
             path: here,
             file: None,
             fd,
+            cpu_seen: None,
             cpu_wait: None,
         })
     }
@@ -1730,10 +1748,12 @@ mod sys {
         let mut low_since: Option<Instant> = None;
         let mut cpu_said: Option<Instant> = None;
         let mut cpu_capped = false;
+        // The reading of the latest look, for the slot line.
+        let mut cpu_free;
         let taken = loop {
             // Read at every look, so a reading is always the last pause's and not an older one;
             // before the queue is read, since the first reading may wait out the sample gap.
-            let cpu_free = gauge.as_mut().and_then(CpuGauge::read);
+            cpu_free = gauge.as_mut().and_then(CpuGauge::read);
             // One read of the queue per look serves both the turn and the place.
             let live = live_waiters(&waiting, &me);
             let mut cpu_hold = false;
@@ -1851,11 +1871,16 @@ mod sys {
             secs: cpu_waited.as_secs() + u64::from(cpu_waited.subsec_nanos() > 0),
             capped: cpu_capped,
         });
+        // With the rule off no look read the CPU: one reading now, for the slot line.
+        if gauge.is_none() {
+            cpu_free = CpuGauge::new().read();
+        }
         let mut held = Held {
             slot,
             path,
             file: Some(file),
             fd,
+            cpu_seen: cpu_free.map(|f| (f, limits.min_cpu_free_pct)),
             cpu_wait,
         };
         held.write_record(name, command);
@@ -3038,10 +3063,10 @@ intr 12345
     }
 
     #[test]
-    fn the_limit_is_20_without_a_file_and_the_files_value_with_one() {
+    fn the_limit_is_0_without_a_file_and_the_files_value_with_one() {
         let (_, l, notes) = effective(None, None, None, None, None);
-        assert_eq!(l.min_cpu_free_pct, 20);
-        assert_eq!(DEFAULT_LIMITS.min_cpu_free_pct, 20);
+        assert_eq!(l.min_cpu_free_pct, 0);
+        assert_eq!(DEFAULT_LIMITS.min_cpu_free_pct, 0);
         assert!(notes.is_empty());
         let f = LimitsFile {
             min_cpu_free_pct: Some(30),
@@ -3059,6 +3084,6 @@ intr 12345
         };
         assert_eq!(limit(&f), 0);
         // A file without the key keeps the default.
-        assert_eq!(limit(&LimitsFile::default()), 20);
+        assert_eq!(limit(&LimitsFile::default()), 0);
     }
 }
