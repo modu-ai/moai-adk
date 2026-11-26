@@ -622,38 +622,6 @@ pub fn apply(path: &Path, picks: &[Pick], digest: &str) -> Result<Plan, String> 
     Ok(planned)
 }
 
-/// The key vault scope of the project `dir` belongs to, resolved with `home` as the HOME: the
-/// workspace identity then reads the home state of `home` and never the process environment's
-/// HOME, so a run under a temporary home leaves the real one unread. `None` outside a git work
-/// tree or when the identity does not resolve. The folder name is the one
-/// `key_vault::project_scope` makes (same identity fields, same `folder_name`); that function
-/// reads the environment HOME and is not changed here.
-pub fn glm_key_scope(dir: &Path, home: &Path) -> Option<crate::key_vault::Scope> {
-    let id = crate::identity::identity_in(dir, Some(home)).ok()?;
-    if id["identity_status"] != "ok" || id["work_tree"].is_null() {
-        return None;
-    }
-    let clone = id["clone_id"].as_str().unwrap_or("");
-    let clone_hex = clone.strip_prefix("sha256:").unwrap_or(clone);
-    if clone_hex.len() < 8 {
-        return None;
-    }
-    // The primary worktree is the folder that holds the common git directory.
-    let anchor = Path::new(id["clone_anchor"].as_str().unwrap_or(""));
-    let primary = if anchor.file_name().is_some_and(|n| n == ".git") {
-        anchor.parent().unwrap_or(anchor)
-    } else {
-        anchor
-    };
-    let primary_name = primary
-        .file_name()
-        .map(|n| n.to_string_lossy().trim_end_matches(".git").to_string())
-        .unwrap_or_default();
-    Some(crate::key_vault::Scope::Project(
-        crate::key_vault::folder_name(id["project_id"].as_str(), &primary_name, clone_hex),
-    ))
-}
-
 /// The model step's glm key question (SPEC-20261121-glm-key-at-pick): when the picks name glm,
 /// the key is asked right here, before the launcher record. With `hidden` (the caller checked
 /// that stdin and stderr are terminals) the value is read through the hidden prompt and never
@@ -662,8 +630,14 @@ pub fn glm_key_scope(dir: &Path, home: &Path) -> Option<crate::key_vault::Scope>
 /// output. An empty answer skips — the pick stays, and the first glm run keeps asking for the
 /// key. A key the launcher would already find (this project's, then the shared one) is kept
 /// unless the answer names a new one. The key is stored when it is answered, so a later no at
-/// the launcher save question leaves it in the vault. Outside a git work tree the project has
-/// no key folder: the question is skipped with one line saying how to store the key.
+/// the launcher save question leaves it in the vault.
+///
+/// The scope is the one `key_vault::project_scope_in` answers for the current directory with
+/// `home` as the HOME (SPEC-20261124-glm-key-scope). Outside a git work tree there is no project
+/// folder: the key is looked up and stored in the shared scope, and the question says that every
+/// project shares it. When the workspace identity does not resolve, or the current directory
+/// cannot be read, nothing is asked or written: one line says so, because the launcher does not
+/// fall back to the shared key there either.
 pub fn glm_key_step<R: BufRead, W: Write>(
     input: &mut R,
     out: &mut W,
@@ -688,13 +662,24 @@ fn glm_key_step_in<R: BufRead, W: Write>(
     if !picks.iter().any(|p| p.tool == "glm") {
         return Ok(());
     }
-    let Some(scope) = folder.and_then(|dir| glm_key_scope(dir, home)) else {
+    let resolved = folder.map(|dir| crate::key_vault::project_scope_in(dir, Some(home)));
+    let Some(Ok(project)) = resolved else {
         writeln!(
             out,
-            "The glm key is kept per project and this folder is not inside one; the key entry was skipped (run `moai key-set glm --prompt` inside a project, or add --shared)."
+            "The workspace of this folder could not be resolved, so the glm key entry was skipped (once it resolves, run `moai key-set glm --prompt` in the project)."
         )?;
         return Ok(());
     };
+    // What the two questions add when the answer goes to the shared scope.
+    let (shared_new, shared_kept) = if project.is_none() {
+        (
+            " This folder is not inside a project, so the key is shared by every project.",
+            " This folder is not inside a project, so the key, old or new, is shared by every project.",
+        )
+    } else {
+        ("", "")
+    };
+    let scope = project.unwrap_or(crate::key_vault::Scope::Shared);
     // The launcher's order (`key_vault::read`): the project's entry, then the shared one. A
     // project entry that exists but cannot be read (a broken file) ends the search there, as it
     // does for the launcher, and counts as no usable key: the answer then replaces it.
@@ -709,7 +694,7 @@ fn glm_key_step_in<R: BufRead, W: Write>(
     if stored.is_some() {
         writeln!(
             out,
-            "A GLM key is already in the key vault. Press Enter to keep it, or type n to enter a new one."
+            "A GLM key is already in the key vault.{shared_kept} Press Enter to keep it, or type n to enter a new one."
         )?;
         let answer = read_line_bounded(input)?;
         let wants_new = answer.as_deref().is_some_and(|a| {
@@ -722,7 +707,7 @@ fn glm_key_step_in<R: BufRead, W: Write>(
     } else {
         writeln!(
             out,
-            "The glm pick needs a GLM API key. The input is hidden on a terminal and is stored only in the key vault; press Enter to skip."
+            "The glm pick needs a GLM API key.{shared_new} The input is hidden on a terminal and is stored only in the key vault; press Enter to skip."
         )?;
     }
     let value = if hidden {
@@ -752,4 +737,57 @@ fn glm_key_step_in<R: BufRead, W: Write>(
         writeln!(out, "The key could not be stored: {reason}")?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::key_vault::project_scope_in;
+    use std::io::Cursor;
+
+    /// Runs the step for `folder` with a glm pick and one typed line, and checks what a skip
+    /// promises: one line naming the key command, the answer line left unread, and nothing
+    /// written under the temporary `home` (so nothing in its vault).
+    fn assert_skipped(folder: Option<&Path>, home: &Path) {
+        let picks = [Pick {
+            tool: "glm".into(),
+            model: "glm-4".into(),
+            effort: "high".into(),
+        }];
+        let mut input = Cursor::new("FAKE-glm-key-that-must-not-be-read\n");
+        let mut out = Vec::new();
+        glm_key_step_in(folder, &mut input, &mut out, home, &picks, false)
+            .expect("a skip does not end the model step, so the pick is kept");
+        let text = String::from_utf8(out).unwrap();
+        assert_eq!(text.lines().count(), 1, "one line: {text}");
+        assert!(text.contains("`moai key-set glm --prompt`"), "{text}");
+        assert!(text.contains("could not be resolved"), "{text}");
+        // The launcher refuses an unresolved project without reading the shared key.
+        assert!(!text.contains("--shared"), "{text}");
+        assert_eq!(input.position(), 0, "no answer is read");
+        assert_eq!(
+            fs::read_dir(home).unwrap().count(),
+            0,
+            "nothing is written under the home"
+        );
+    }
+
+    /// SPEC-20261124-glm-key-scope AC-6 (REQ-6): a `.git` file git cannot parse is a git failure
+    /// and not "no repository", so the identity does not resolve and the step skips.
+    #[test]
+    fn glm_key_step_skips_when_the_identity_does_not_resolve() {
+        let folder = tempfile::tempdir().unwrap();
+        fs::write(folder.path().join(".git"), "this is no gitfile\n").unwrap();
+        let home = tempfile::tempdir().unwrap();
+        let resolved = project_scope_in(folder.path(), Some(home.path()));
+        assert!(resolved.is_err(), "the premise of the case: {resolved:?}");
+        assert_skipped(Some(folder.path()), home.path());
+    }
+
+    /// SPEC-20261124-glm-key-scope REQ-6: an unreadable current directory skips the same way.
+    #[test]
+    fn glm_key_step_skips_when_the_current_folder_cannot_be_read() {
+        let home = tempfile::tempdir().unwrap();
+        assert_skipped(None, home.path());
+    }
 }
