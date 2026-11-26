@@ -75,7 +75,7 @@ Go 세대에서 올라온 프로젝트는 업데이트 뒤에도 옛 지침이 �
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261126-claude-md-fresh-merge/`, `src/project_update/`(새 `claude_md.rs`, `declined.rs`), `src/project_update.rs`, `src/agents_local_merge/picks.rs`, `src/agents_local_merge.rs`(직접 명령의 비켜서기), `src/agents.rs`(블록 렌더를 이 단계가 쓰게), `src/go_residue.rs`(Go 매니페스트 찾기를 이 단계가 쓰게), `src/main.rs`, `src/ops/`(`claude-md-plan`·`claude-md-apply`·`claude-md-revert`), `src/lib.rs`·`src/help.rs`·도움말 골든·`tools/repo_scans.json`·`skills/moai/references/source-manifest.json`(line-lease), `docs/design-review/appendix/interfaces.md`, `skills/moai/workflows/update.md`, `tests/project_update_claude_md_cli.rs`(새), `tests/update_closing_commit.rs`, 바뀐 단계 목록을 고정한 단언이 있는 테스트와 `tests/fixtures/update_tux/` 의 미리보기 골든
+- write: `.moai/specs/SPEC-20261126-claude-md-fresh-merge/`, `src/project_update/`(새 `claude_md.rs`, `declined.rs`), `src/project_update.rs`, `src/agents_local_merge/picks.rs`, `src/agents_local_merge.rs`(직접 명령의 비켜서기), `src/agents.rs`(블록 렌더를 이 단계가 쓰게), `src/go_residue.rs`(Go 매니페스트 찾기를 이 단계가 쓰게), `src/main.rs`, `src/ops/`(`claude-md-plan`·`claude-md-apply`·`claude-md-revert`), `src/lib.rs`·`src/help.rs`·도움말 골든·`tools/repo_scans.json`·`skills/moai/references/source-manifest.json`(line-lease), `docs/design-review/appendix/interfaces.md`, `docs/design-review/appendix/operations/claude_md_*.md`, `skills/moai/workflows/update.md`, `tests/project_update_claude_md_cli.rs`(새), `tests/update_closing_commit.rs`, 바뀐 단계 목록을 고정한 단언이 있는 테스트와 `tests/fixtures/update_tux/` 의 미리보기 골든
 - read-only: `src/go_state.rs`, `src/go_residue_apply.rs`, `src/generation.rs`, `src/claude.rs`
 - forbidden: 설치된 HOME 과 실제 사용자 설정, mo.ai.kr 을 포함한 실제 프로젝트 쓰기, `moai-adk-go` 쓰기, 사용자 파일 삭제, `replace` 선택 없는 지침 파일 쓰기
 
