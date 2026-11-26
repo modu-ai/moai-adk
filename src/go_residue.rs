@@ -4,10 +4,12 @@
 //! same before and after. Secret-shaped names are counted, never opened; links are never
 //! followed; the walk stops at fixed depth and file-count limits.
 //!
-//! Classes (REQ-3): `go_same` is byte-identical to a `deployed_hash` of the found manifest,
-//! `go_changed` is named by the manifest with different bytes, `go_marker` is one of the Go
-//! markers back after a committed move, `user_data` is surveyed but named by no manifest,
-//! and `leftover_folder` is an earlier-generation folder kept whole. The receipt scan marks
+//! Classes (REQ-3): `go_same` is a `template_managed` entry of the found manifest whose bytes
+//! equal its `deployed_hash`, `go_changed` is a `template_managed` entry with different bytes or
+//! a `user_modified` one, `go_marker` is one of the Go markers back after a committed move,
+//! `user_data` is surveyed but named by no manifest, or named with any other provenance (the
+//! manifest records a `user_created` file's own bytes, so a matching hash proves nothing), and
+//! `leftover_folder` is an earlier-generation folder kept whole. The receipt scan marks
 //! `resurrected` for files a committed go-state receipt says moved and that are back.
 
 use serde_json::{json, Value};
@@ -114,7 +116,7 @@ pub(crate) fn secret_path(rel: &str) -> bool {
 /// with its `files` map. The chain: `.moai/manifest.json`, a `manifest.json` under any
 /// `.moai-backup*` folder, a `manifest.json` under `.moai/backups/go-markers-*`, then the
 /// backup manifest the newest committed go-state receipt names.
-fn find_manifest(project: &Path) -> Option<(String, BTreeMap<String, String>)> {
+fn find_manifest(project: &Path) -> Option<(String, BTreeMap<String, Recorded>)> {
     let live = ".moai/manifest.json";
     if let Some(map) = read_manifest(project, live) {
         return Some((live.into(), map));
@@ -164,9 +166,15 @@ fn find_manifest(project: &Path) -> Option<(String, BTreeMap<String, String>)> {
     None
 }
 
-/// Reads one manifest and flattens it to `path -> deployed_hash`; a manifest that is not a
+/// What one manifest entry records: the bytes of the file and who the Go tool says wrote it.
+struct Recorded {
+    deployed_hash: String,
+    provenance: String,
+}
+
+/// Reads one manifest and flattens it to `path -> Recorded`; a manifest that is not a
 /// real file or does not parse is skipped (the chain moves on).
-fn read_manifest(project: &Path, rel: &str) -> Option<BTreeMap<String, String>> {
+fn read_manifest(project: &Path, rel: &str) -> Option<BTreeMap<String, Recorded>> {
     let meta = fs::symlink_metadata(project.join(rel)).ok()?;
     if !meta.is_file() {
         return None;
@@ -178,8 +186,16 @@ fn read_manifest(project: &Path, rel: &str) -> Option<BTreeMap<String, String>> 
         files
             .iter()
             .filter_map(|(path, e)| {
-                let hash = e.get("deployed_hash")?.as_str()?.to_string();
-                Some((path.clone(), hash))
+                let entry = Recorded {
+                    deployed_hash: e.get("deployed_hash")?.as_str()?.to_string(),
+                    // No provenance reads as none of the template ones.
+                    provenance: e
+                        .get("provenance")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default()
+                        .to_string(),
+                };
+                Some((path.clone(), entry))
             })
             .collect(),
     )
@@ -312,7 +328,7 @@ pub fn survey(project: &Path) -> Survey {
     // outside the state folder is surveyed too (never through a link, never a secret). A named
     // path the guard refuses is counted and never joined to the project, so an absolute path,
     // a `..` or a link cannot make the survey read a file outside it.
-    for (rel, deployed) in &named {
+    for (rel, recorded) in &named {
         if !contained(project, rel) {
             refused += 1;
             continue;
@@ -328,10 +344,14 @@ pub fn survey(project: &Path) -> Survey {
             continue;
         }
         let actual = file_hash(&full);
-        let class = if actual.as_deref() == Some(deployed.as_str()) {
-            "go_same"
-        } else {
-            "go_changed"
+        // The Go manifest records the bytes on disk for a file it did not deploy too, so a
+        // matching hash proves the Go tool wrote them only under `template_managed`. As in
+        // go-state: an edited template file is asked about, anything else is the user's own.
+        let same = actual.as_deref() == Some(recorded.deployed_hash.as_str());
+        let class = match recorded.provenance.as_str() {
+            "template_managed" if same => "go_same",
+            "template_managed" | "user_modified" => "go_changed",
+            _ => "user_data",
         };
         items.push(Item {
             path: rel.clone(),
@@ -339,7 +359,9 @@ pub fn survey(project: &Path) -> Survey {
             sha256: actual,
             tracked: tracked.contains(rel),
             resurrected: moved.contains(rel),
-            suggested_action: if OWNED_ELSEWHERE.contains(&rel.as_str()) {
+            suggested_action: if class == "user_data" {
+                "keep"
+            } else if OWNED_ELSEWHERE.contains(&rel.as_str()) {
                 "owned_elsewhere"
             } else {
                 "archive"

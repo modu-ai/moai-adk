@@ -408,9 +408,13 @@ pub fn revert(project: &Path, stamp: &str, permission_reference: &str) -> Result
         let original_there = fs::symlink_metadata(&original).is_ok();
         let backup_there = fs::symlink_metadata(&backup).is_ok();
         if !backup_there {
-            // Never moved (the original is still there) or lost (neither is there).
+            // Never moved (the original is still there, as the receipt recorded it) or lost
+            // (neither is there). Another file at the original place is a conflict: the
+            // receipt's bytes are nowhere, so nothing was put back there.
             if !original_there {
                 missing.push(m.path.clone());
+            } else if !sha256_file(&original).is_ok_and(|h| h == m.sha256) {
+                conflicts.push(m.path.clone());
             }
             continue;
         }

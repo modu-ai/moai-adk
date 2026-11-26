@@ -106,6 +106,18 @@ impl Fx {
         );
     }
 
+    /// A file on disk that the manifest records with its own bytes under `provenance` (none
+    /// when `None`): what the Go tool writes for a file it found and did not deploy.
+    fn recorded(&mut self, rel: &str, body: &str, provenance: Option<&str>) {
+        self.write(rel, body);
+        let mut entry = json!({"template_hash": sha("# the template\n"),
+                               "deployed_hash": sha(body), "current_hash": sha(body)});
+        if let Some(provenance) = provenance {
+            entry["provenance"] = json!(provenance);
+        }
+        self.files.insert(rel.into(), entry);
+    }
+
     /// Writes the manifest under `rel` (the live one, a backup, or a go-markers copy).
     fn manifest_at(&self, rel: &str) {
         self.write(
@@ -1091,4 +1103,113 @@ fn a_new_file_or_a_changed_backup_leaves_only_that_item_as_a_conflict() {
         "# moai easy style\n",
         "the third file is restored"
     );
+}
+
+/// REQ-11 and the ownership rule of go-state: the Go manifest records the bytes on disk for a
+/// file it did not deploy (`user_created`) and for one the user edited (`user_modified`), so a
+/// matching hash proves who wrote it only under `template_managed`. The proven bundle moves
+/// nothing else, and a file that is the user's own cannot be picked either.
+#[test]
+fn the_proven_bundle_leaves_the_users_own_files() {
+    let own = [
+        ".claude/skills/mine/SKILL.md",
+        st!("rules/mine.md"),
+        st!("rules/unlabelled.md"),
+    ];
+    let edited = st!("rules/edited.md");
+    let mut fx = survey_frame();
+    fx.recorded(own[0], "# my skill\n", Some("user_created"));
+    fx.recorded(own[1], "# my rule\n", Some("user_created"));
+    fx.recorded(own[2], "# who wrote this\n", None);
+    fx.recorded(edited, "# my edit\n", Some("user_modified"));
+    fx.manifest_at(st!("manifest.json"));
+    let plan = fx.update_plan();
+    for rel in own {
+        let item = Fx::residue_item(&plan, rel);
+        assert_eq!(item["class"], json!("user_data"), "{item}");
+        assert_eq!(item["suggested_action"], json!("keep"), "{item}");
+    }
+    assert_eq!(
+        Fx::residue_item(&plan, edited)["class"],
+        json!("go_changed")
+    );
+
+    let done = fx.apply_printed(&plan, &[]);
+    assert_eq!(done["ok"], json!(true), "{done}");
+    let mut moved: Vec<&str> = done["result"]["moved"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(Value::as_str)
+        .collect();
+    moved.sort_unstable();
+    let mut proven = PROVEN.to_vec();
+    proven.sort_unstable();
+    assert_eq!(moved, proven, "{done}");
+    for (rel, body) in [
+        (own[0], "# my skill\n"),
+        (own[1], "# my rule\n"),
+        (own[2], "# who wrote this\n"),
+        (edited, "# my edit\n"),
+    ] {
+        assert_eq!(
+            fs::read_to_string(fx.root.join(rel)).unwrap(),
+            body,
+            "{rel}"
+        );
+    }
+
+    let second = fx.update_plan();
+    let digest = step(&second, "go-residue")["plan_digest"]
+        .as_str()
+        .expect("the plan digest");
+    let before = fx.bytes(true);
+    let refused = fx.run(&[
+        "go-residue-apply",
+        fx.p(),
+        "--plan-digest",
+        digest,
+        "--permission-reference",
+        "test-approval",
+        "--pick",
+        own[0],
+    ]);
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert_eq!(fx.bytes(true), before, "the user's own file moved");
+}
+
+/// REQ-9: with the backup copy gone, another file at the original place is a conflict and the
+/// receipt is not marked reverted; the original bytes back at their place are none.
+#[test]
+fn a_lost_backup_with_another_file_at_the_original_is_a_conflict() {
+    let fx = survey_frame();
+    let plan = fx.update_plan();
+    let done = fx.apply_printed(&plan, &[]);
+    let stamp = done["result"]["receipt"].as_str().unwrap().to_string();
+    for (rel, body) in [
+        (PROVEN[0], "# another file\n"),
+        (PROVEN[1], "# gtd workflow\n"),
+    ] {
+        fs::remove_file(backup_of(&fx, &stamp, rel)).unwrap();
+        fs::write(fx.root.join(rel), body).unwrap();
+    }
+    let back = fx.run(&revert_args(&fx, &stamp));
+    assert_eq!(back["ok"], json!(true), "{back}");
+    assert_eq!(back["result"]["state"], json!("conflict"), "{back}");
+    assert_eq!(back["result"]["conflicts"], json!([PROVEN[0]]), "{back}");
+    assert_eq!(back["result"]["missing"], json!([]), "{back}");
+    assert_eq!(back["result"]["restored"], json!([PROVEN[2]]), "{back}");
+    assert_eq!(
+        fs::read_to_string(fx.root.join(PROVEN[0])).unwrap(),
+        "# another file\n"
+    );
+    let receipt: Value = serde_json::from_slice(
+        &fs::read(
+            fx.root
+                .join(st_at(&format!("backups/{stamp}/go-residue-receipt.json"))),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(receipt["state"], json!("committed"), "{receipt}");
 }
