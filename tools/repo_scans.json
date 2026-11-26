@@ -2594,7 +2594,13 @@
           "prefix": "agents/"
         },
         {
-          "prefix": "docs/"
+          "prefix": "docs/lane-rules.md"
+        },
+        {
+          "prefix": "docs/leader-rules.md"
+        },
+        {
+          "prefix": "docs/design-review/appendix/operations/"
         }
       ],
       "rejects": "a cd or git -C in an audit text under skills/, agents/ or docs/ that the baseline of tests/audit_reads_by_object_id.rs does not cover"
