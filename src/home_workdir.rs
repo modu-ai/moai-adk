@@ -18,6 +18,7 @@
 //! [`location_of`] tells all of them apart. Nothing here creates a folder: the callers create
 //! `worktrees/` or `projects/` when they first need it (D5).
 
+use serde_json::{json, Value};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
@@ -155,15 +156,17 @@ pub fn worktree_name(project_root: &Path, id: &str) -> Result<String> {
     Ok(name)
 }
 
+/// The one place of new worktrees of the checkout `primary`: `<primary>/.claude/worktrees`.
+pub fn place_root(primary: &Path) -> PathBuf {
+    primary.join(".claude").join("worktrees")
+}
+
 /// The folder of a new worktree: `<project_root>/.claude/worktrees/<name>` — the one place
 /// a new worktree is created (the worktree-place decision). The old places keep their names
 /// in [`location_of`] and [`location_in`], and nothing here creates the folder: the callers
 /// create it when they first need it.
 pub fn worktree_dir(project_root: &Path, id: &str) -> Result<PathBuf> {
-    Ok(project_root
-        .join(".claude")
-        .join("worktrees")
-        .join(worktree_name(project_root, id)?))
+    Ok(place_root(project_root).join(worktree_name(project_root, id)?))
 }
 
 /// The ancestor of `folder` that is the primary checkout under another spelling, when `folder`
@@ -267,15 +270,84 @@ pub fn refuse_linked_place(project: &Path, folder: &Path) -> Result<()> {
     } else {
         parts.push(folder.to_path_buf());
     }
-    for path in parts {
-        if std::fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_symlink()) {
-            return Err(format!(
-                "worktree place refused: {} is a link; it is not followed and nothing was changed",
-                path.display()
-            ));
-        }
+    match parts
+        .into_iter()
+        .find(|path| std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()))
+    {
+        Some(path) => Err(format!(
+            "worktree place refused: {} is a link; it is not followed and nothing was changed",
+            path.display()
+        )),
+        None => Ok(()),
     }
-    Ok(())
+}
+
+// ---- observed refusals (a new check starts by reporting; nothing is refused by these) ----
+
+/// The receipt log of the observed place checks: one line per call that creates or moves a
+/// worktree and answers `would_refuse`.
+pub(crate) const PLACE_LOG: &str = "worktree-place.jsonl";
+
+/// The `would_refuse` entry for a new-worktree `path` that is not directly
+/// `<primary>/.claude/worktrees/<name>` (REQ-2); `None` for a path directly in the place. The
+/// owner of the place is compared by what it resolves to, so a linked spelling of the primary
+/// checkout is the same checkout; the two place folders are compared as written.
+pub(crate) fn outside_place_report(primary: &Path, path: &Path) -> Option<Value> {
+    let direct = path.file_name().is_some()
+        && path.parent().is_some_and(|dir| {
+            dir.ends_with(".claude/worktrees")
+                && dir.ancestors().nth(2).is_some_and(|owner| {
+                    crate::worktree::resolve_existing(owner)
+                        == crate::worktree::resolve_existing(primary)
+                })
+        });
+    (!direct).then(|| {
+        json!({
+            "code": "path_outside_place",
+            "why": format!(
+                "{} is not directly inside {}, the place of new worktrees; the call goes on as \
+                 given (observed only, nothing is refused yet)",
+                path.display(),
+                place_root(primary).display()
+            ),
+        })
+    })
+}
+
+/// The `would_refuse` entry for a `.claude` or `.claude/worktrees` of `primary` that is a
+/// symbolic link (REQ-23), judged by [`refuse_linked_place`]; `None` when neither is one.
+pub(crate) fn linked_place_report(primary: &Path) -> Option<Value> {
+    refuse_linked_place(primary, &place_root(primary)).err()?;
+    let claude = primary.join(".claude");
+    let link = if std::fs::symlink_metadata(&claude).is_ok_and(|m| m.file_type().is_symlink()) {
+        claude
+    } else {
+        place_root(primary)
+    };
+    Some(json!({
+        "code": "place_is_a_link",
+        "why": format!(
+            "{} is a link, so the worktree place lies behind it; the call goes on as before \
+             (observed only, nothing is refused yet)",
+            link.display()
+        ),
+    }))
+}
+
+/// The line of [`PLACE_LOG`] for the `report` of a `command` that created or moved.
+pub(crate) fn place_receipt(command: &str, report: &Value) -> Value {
+    let unix_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or_default();
+    json!({
+        "schema_version": 1,
+        "kind": "would_refuse",
+        "command": command,
+        "code": report["code"],
+        "why": report["why"],
+        "unix_ms": unix_ms,
+    })
 }
 
 /// The line this module adds to a repository's local exclude file, anchored at the root.

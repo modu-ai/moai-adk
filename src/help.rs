@@ -788,7 +788,7 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
     (
         "worktree-apply",
         "path",
-        "Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>`",
+        "Worktree path; default `<primary>/.claude/worktrees/<project>-<issue>-<logical_key>`",
     ),
     (
         "worktree-gc-apply",
@@ -1634,9 +1634,11 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     (
         "worktree-move-plan",
         "이 클론의 linked worktree 를 `<root>/<project>-<name>` 으로 옮기는 일을 미리 봐요 — \
-         `worktree-plan` 이 새 worktree 를 만드는 자리예요. worktree 마다 `location` 과 \
+         `--root` 가 없으면 root 는 primary 체크아웃의 `.claude/worktrees`(`worktree-plan` 이 새 \
+         worktree 를 만드는 자리)예요. worktree 마다 `location` 과 \
          `move`·`keep`(이미 root 안, 앞서의 `~/.moai-cli/worktrees/<key>/` 또는 Go 세대의 \
-         `~/.moai/worktrees/projects/` 안)·`blocked` 와 그 까닭을 보여 줘요: main worktree, 없음, \
+         `~/.moai/worktrees/projects/` 안, `--root` 가 없으면 `.claude/worktrees` 와 홈 worktree \
+         폴더 안의 것도)·`blocked` 와 그 까닭을 보여 줘요: main worktree, 없음, \
          잠김, submodule, 커밋 안 한·추적 안 하는 파일, push 안 한 커밋, 그 가지의 stash, 안에서 \
          도는 프로세스, 붙잡힌 가지, 붙잡힘 검사를 안 함(`holds` 관측 없음). 아무것도 쓰지 않고, \
          답에 `plan_digest` 가 있어요.",
@@ -2135,13 +2137,14 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "worktree-move-plan",
         "root",
-        "worktree 를 옮겨 넣을 절대 폴더(기본 `<HOME>/.moai/worktrees`). 모든 worktree \
-         밖이어야 함",
+        "worktree 를 옮겨 넣을 절대 폴더(기본은 primary 체크아웃의 `.claude/worktrees`). 그 \
+         폴더 하나를 빼고는 모든 worktree 밖이어야 함",
     ),
     (
         "worktree-move-apply",
         "root",
-        "미리 보기가 읽은 것과 같은 `--root`(기본도 미리 보기와 같음)",
+        "미리 보기가 읽은 것과 같은 `--root`(기본도 미리 보기와 같은 primary 체크아웃의 \
+         `.claude/worktrees`)",
     ),
     (
         "worktree-move-plan",
