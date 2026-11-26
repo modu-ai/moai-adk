@@ -13,6 +13,7 @@ mod card_cli;
 mod card_criterion_add_cli;
 mod card_dispatch_cli;
 mod card_done_mflow_cli;
+mod card_ended_lease_renew_cli;
 mod card_export_cli;
 mod card_finish_cli;
 mod card_fold_cli;
