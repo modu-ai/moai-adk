@@ -775,6 +775,42 @@ fn key_rules_stay_after_every_negation() {
     assert_eq!(deny_list(&root), deny);
 }
 
+/// A key rule whose name is longer than a shape (`.env.production`, which the preview recommends
+/// for its credential shape) is a key rule too: when a user negation follows it, it moves behind.
+#[test]
+fn a_longer_credential_name_is_a_key_rule_too() {
+    let (_dir, root) = project();
+    put(&root, ".env.production", "x\n");
+    put(&root, ".claudeignore", ".env.production\n");
+    write_settings(
+        &root,
+        &json!({"permissions": {"deny": [
+            "Read(.env.production)",
+            "Read(!.env.example)",
+            "Read(./notes/**)",
+        ]}}),
+    );
+    let picks = ["Read(.env.production)"];
+    let preview = plan_with(&root, &picks, false);
+    assert_eq!(
+        strings(&preview["apply"]["final_deny"]),
+        [
+            "Read(!.env.example)",
+            "Read(.env.production)",
+            "Read(./notes/**)"
+        ]
+    );
+    apply_ok(&root, &picks, false);
+    assert_eq!(
+        deny_list(&root),
+        [
+            "Read(!.env.example)",
+            "Read(.env.production)",
+            "Read(./notes/**)"
+        ]
+    );
+}
+
 /// SPEC-20261122-secret-file-deny-rules AC-6: the apply adds rules to a file that holds other
 /// keys and user permissions, keeps the original, and takes no ownership of `permissions`.
 #[test]
