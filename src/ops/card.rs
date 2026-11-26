@@ -1432,8 +1432,8 @@ enum Action {
     /// Writes the ledger. Extend the lease of a taken card
     ///
     /// Writes the ledger. The lease of this session's reservation at `--generation` ends
-    /// `--lease-secs` from now, never earlier than it already did. Needs a lease that has not
-    /// ended; the generation stays the same.
+    /// `--lease-secs` from now, never earlier than it already did. The holder renews its own reservation whether or not the lease has
+    /// ended, at the same generation, until another session reclaims it or a sweep returns the card.
     Renew {
         /// `C-12`.
         card: String,
