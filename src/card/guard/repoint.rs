@@ -533,8 +533,25 @@ fn revert(project: &Path, stamp: &str, req: &RepointRequest<'_>) -> Result<Value
         )));
     }
     let common = common_dir_of(project).map_err(refused)?;
+    if !is_primary_worktree(project) {
+        return Err(refused(
+            "this is a linked worktree: the record is changed from the primary worktree \
+             only; nothing was changed",
+        ));
+    }
+    if intent_in_flight(&common) {
+        return Err(refused(
+            "a landing is in flight (the file moai/land-intent exists): revert after it \
+             ends; nothing was changed",
+        ));
+    }
     let folder = common.join(RECEIPTS);
     let receipt = read_receipt(&folder.join(format!("{stamp}.json")), stamp)?;
+    if !receipt.old_record.starts_with(HEADS) {
+        return Err(refused(format!(
+            "the receipt of {stamp} keeps an old record that is no branch ref; nothing was changed"
+        )));
+    }
     let revert_path = folder.join(format!("{stamp}.revert.json"));
     if fs::symlink_metadata(&revert_path).is_ok() {
         return Err(refused(format!(
