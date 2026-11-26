@@ -2,7 +2,7 @@
 id: SPEC-20261127-waiting-card-lease
 title: "An ended lease names card renew as the way back, and a waiting lane renews its card"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-27
 ---
 
@@ -59,7 +59,7 @@ review 카드의 임대는 이미 24시간으로 늘어나요(`SPEC-20261125-rev
   verify: `jq -nc -f .moai/specs/SPEC-20261127-waiting-card-lease/reclaim-count.jq --slurpfile ev target/reclaim-measure/events.jsonl --slurpfile cards target/reclaim-cards.jsonl`
 - AC-5 (REQ-5): the neighbour tests of reservation and review hold, and the skill manifest test, pass · verify: `cargo test --locked --offline --test card ledger_reservation`
   verify: `cargo test --locked --offline --test card card_review_lease_hold_cli`
-  verify: `cargo test --locked --offline --test source_manifest`
+  verify: `cargo test --locked --offline --test source_manifest_facts`
 
 ## Scope
 
@@ -91,3 +91,13 @@ review 카드의 임대는 이미 24시간으로 늘어나요(`SPEC-20261125-rev
 
 - D-1 (카드 기준 1 "review 또는 LANE-BLOCKED 카드가 임대를 조용히 잃지 않아요; 테스트가 유지된 임대나 경고 줄을 보여요"): (A, 추천) 만료 거절 문장에 `card renew` 를 넣고(REQ-4, 문장만), AC-1 테스트가 거절 문장 → 같은 generation renew → reclaim 0 을 보여요. review 쪽은 이미 24시간 연장 테스트가 있어요. 이것을 기준 1 로 인정할지는 리더 판단이에요. 끝나기 전 경고나 자동 연장은 아니에요(R-1). (B) 리더가 기준 1 문구를 이 범위에 맞게 바꿔요. (C) REQ-4 를 빼고 기준 1 을 열어 둔 채 `--keep-open` 착지해요.
 - D-2 (측정 도구): (A, 추천) `moai card export` 와 `jq`. (B) sqlite3 읽기 전용(카드 본문과 배정의 말). A 를 추천하는 까닭: sqlite3 는 HOME 아래 원장 파일 경로가 필요한데, 앞서 그 경로를 찾는 명령이 훅에 거절됐고(장부 노트 10049) 답이 없었어요. export 는 원장을 읽기만 해요. export 파일에는 세션 id 가 있어서 `target/` 아래에만 두고 READY 전에 지워요.
+- 리더 결정 2026-11-27 (노트 10454): D-1 은 A, D-2 는 A 로 정했어요. 거절 문장이 경고 줄이라서 카드 기준 1 을 met 로 적어도 돼요.
+- 리비전 3: AC-5 의 세 번째 verify 가 없는 테스트 대상(`source_manifest`)을 가리켜서 실제 대상 `source_manifest_facts` 로 고쳤어요. 요구와 범위는 그대로예요.
+
+## Result
+
+- AC-1: met — `cargo test --locked --offline --test card card_ended_lease_renew_cli::ac1_` 1 passed. 거절 문장에 `moai card renew C-1 --generation 1` 이 들어가고, renew 뒤 같은 generation 으로 `card check` 가 `allowed: true`, `card.reclaim` 이벤트 0, 예약 한 개예요. 뮤턴트(힌트 삭제)는 exit 100 으로 실패해요.
+- AC-2: met — `... card_ended_lease_renew_cli::ac2_` 1 passed. 도움말이 "whether or not the lease has ended" 를 말해요. 뮤턴트(옛 문장)는 exit 100 이에요.
+- AC-3: met — `--test next_flow_skill_scan work_renews_before_waiting` 1 passed, 세 문서의 `grep -n "card renew"` 가 각각 줄을 찾았어요. 뮤턴트(`work.md` 문장 삭제)는 exit 100 이에요.
+- AC-4: met — export 와 `jq` 쿼리를 적힌 그대로 돌려서 Intent 의 표와 같은 값(11-26: reclaim 8, review 0, blocked 5)을 얻었어요. export 파일은 지웠어요. "뒤" 값은 랜딩과 설치 뒤에 재요(카드 기준 2 는 열어 둬요).
+- AC-5: met — `ledger_reservation` 29 passed, `card_review_lease_hold_cli` 10 passed, `source_manifest_facts` 8 passed. `card_reclaim_cli` 와 `ledger_sweep` 은 nextest 묶음(106 passed)에서 통과했어요.
