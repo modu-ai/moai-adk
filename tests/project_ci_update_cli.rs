@@ -41,9 +41,19 @@ fn project(with_ci: bool) -> TempDir {
         "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
     )
     .unwrap();
+    save(&root, &profile(detected(&root), with_ci));
+    root
+}
+
+fn detected(root: &TempDir) -> Value {
     let p = root.path().to_str().unwrap();
-    let detect = envelope(&call(&["project-detect", p], b""));
-    let body = serde_json::to_vec(&profile(detect["detected"].clone(), with_ci)).unwrap();
+    envelope(&call(&["project-detect", p], b""))["detected"].clone()
+}
+
+/// Saves `profile` through `project-plan` and `project-apply`.
+fn save(root: &TempDir, profile: &Value) {
+    let p = root.path().to_str().unwrap();
+    let body = serde_json::to_vec(profile).unwrap();
     let plan = envelope(&call(&["project-plan", p], &body));
     let digest = plan["plan_digest"].as_str().unwrap().to_string();
     let applied = call(
@@ -62,7 +72,13 @@ fn project(with_ci: bool) -> TempDir {
         "{}",
         String::from_utf8_lossy(&applied.stdout)
     );
-    root
+}
+
+/// Whether the list at `pointer` of the update preview names the `ci` step.
+fn names_ci(plan: &Value, pointer: &str) -> bool {
+    plan.pointer(pointer)
+        .and_then(Value::as_array)
+        .is_some_and(|steps| steps.iter().any(|s| s["step"] == "ci"))
 }
 
 fn envelope(out: &Output) -> Value {
@@ -222,4 +238,77 @@ fn a_workflow_file_of_the_user_is_a_conflict_and_is_kept() {
     assert_eq!(step["state"], "conflict", "{step}");
     assert!(step["apply"].is_null(), "{step}");
     assert_eq!(fs::read_to_string(&mine).unwrap(), "name: mine\n");
+}
+
+/// A ready step reads its own sentence, is one of the changes the one question applies and is
+/// not named there as guarded.
+#[test]
+fn the_ready_ci_step_says_what_it_does_and_the_question_runs_it() {
+    let root = project(true);
+    let p = plan(&root);
+    let step = ci(&p).unwrap();
+    assert_eq!(step["next"], "apply", "{step}");
+    assert_eq!(
+        step["say"], "Write or refresh the files that run your project's checks automatically.",
+        "{step}"
+    );
+    let asked = p["ask"]["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["step"] == "ci")
+        .unwrap_or_else(|| panic!("the question does not list the step: {p}"));
+    assert_eq!(asked["guarded"], false, "{asked}");
+    assert!(
+        p["chain"]["apply_order"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("ci")),
+        "{p}"
+    );
+}
+
+/// AC-5 (REQ-9): with a generated file the user edited and a project that changed since, the
+/// update plans again from the saved answers, asks nothing about the step and keeps the file as
+/// a conflict.
+#[test]
+fn an_edited_file_of_a_changed_project_stays_a_conflict_and_nothing_is_asked() {
+    let root = project(true);
+    let step = ci(&plan(&root)).unwrap();
+    let argv: Vec<String> = step["apply"]["argv"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|w| w.as_str().unwrap().replace(PLACEHOLDER, "fixture-approved"))
+        .collect();
+    let args: Vec<&str> = argv[1..].iter().map(String::as_str).collect();
+    envelope(&call(
+        &args,
+        &serde_json::to_vec(&step["apply"]["stdin"]).unwrap(),
+    ));
+    let file = root.path().join(CHECK);
+    let edited = format!("{}# mine\n", fs::read_to_string(&file).unwrap());
+    fs::write(&file, &edited).unwrap();
+    // The project changed since the apply: one more declared check.
+    let mut changed = profile(detected(&root), true);
+    changed["checks"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"id": "lint", "command": "cargo clippy"}));
+    save(&root, &changed);
+    let before = tree(root.path());
+
+    let p = plan(&root);
+    let step = ci(&p).unwrap();
+    assert_eq!(step["state"], "conflict", "{step}");
+    assert_eq!(step["preview"]["files"][0]["path"], CHECK, "{step}");
+    assert_eq!(step["preview"]["files"][0]["action"], "conflict", "{step}");
+    assert_eq!(step["next"], "report", "{step}");
+    assert!(step["apply"].is_null(), "{step}");
+    assert!(step["choices"].is_null(), "{step}");
+    for list in ["/ask/steps", "/ask/follows", "/ask/picks"] {
+        assert!(!names_ci(&p, list), "{list} asks about the step: {p}");
+    }
+    assert_eq!(tree(root.path()), before, "the plan wrote something");
+    assert_eq!(fs::read_to_string(&file).unwrap(), edited);
 }

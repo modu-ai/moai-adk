@@ -3,8 +3,9 @@
 //! local run and the generated workflow are one list. This repository's own `check affected`
 //! and `tools/local_check.sh` are not this: they belong to this repository only.
 //!
-//! Every step runs even when an earlier one failed; a command that hangs is stopped at the
-//! limit; a project with no declared commands gets a plain explanation, never a green result.
+//! Every step runs even when an earlier one failed; a command that hangs, or whose child
+//! still holds its output, is stopped at the limit; a project with no declared commands gets a
+//! plain explanation, never a green result.
 //! The steps are the commands a person confirmed in the profile, run through `sh -c` with
 //! git's repository variables taken out of the environment, so a check that runs `git` sees the
 //! project's own repository.
@@ -17,11 +18,17 @@ type Result<T> = std::result::Result<T, String>;
 
 /// The default stop for one command, in seconds.
 pub const DEFAULT_TIMEOUT_SECS: u64 = 1800;
-/// The last bytes of a step's output kept in the answer.
+/// The last bytes kept of each of a step's two output streams: the answer holds the standard
+/// output's last bytes and then the standard error's.
 const OUTPUT_TAIL: usize = 4096;
+/// How long the output of a stopped step may take to close before the run stops waiting for
+/// it. Only a child that left the step's process group can hold it that long.
+#[cfg(unix)]
+const DRAIN_GRACE: std::time::Duration = std::time::Duration::from_secs(2);
 
 pub struct Options {
-    /// A command still running after this many seconds is stopped and counted as a failure.
+    /// A step whose command still runs, or whose output is still held open, after this many
+    /// seconds is stopped and counted as a failure.
     pub timeout_secs: u64,
 }
 
@@ -82,7 +89,7 @@ pub fn run(root: &Path, options: &Options) -> Result<Value> {
 }
 
 struct Outcome {
-    /// `None` when the command timed out or was killed by a signal.
+    /// `None` when the step timed out or was killed by a signal.
     exit: Option<i32>,
     timed_out: bool,
     seconds: u64,
@@ -93,6 +100,7 @@ struct Outcome {
 fn run_one(root: &Path, command: &str, timeout_secs: u64) -> Outcome {
     use std::os::unix::process::CommandExt;
     use std::process::{Command, Stdio};
+    use std::sync::mpsc;
     use std::time::{Duration, Instant};
 
     let started = Instant::now();
@@ -116,37 +124,62 @@ fn run_one(root: &Path, command: &str, timeout_secs: u64) -> Outcome {
         Ok(c) => c,
         Err(_) => return failed("the command could not be started".into()),
     };
-    let mut readers = Vec::new();
-    if let Some(mut out) = child.stdout.take() {
-        readers.push(std::thread::spawn(move || tail_of(&mut out)));
-    }
-    if let Some(mut err) = child.stderr.take() {
-        readers.push(std::thread::spawn(move || tail_of(&mut err)));
-    }
+    // Each stream is read on its own thread, which says when the stream has closed. The
+    // threads are never joined: a pipe can stay open longer than the step is allowed to run.
+    let (closed, closing) = mpsc::channel();
+    let streams = [
+        child.stdout.take().map(|out| reader(out, closed.clone())),
+        child.stderr.take().map(|err| reader(err, closed.clone())),
+    ];
+    let mut open = streams.iter().flatten().count();
+    drop(closed);
     let limit = Duration::from_secs(timeout_secs);
+    let tick = Duration::from_millis(20);
     let mut timed_out = false;
     let status = loop {
-        match child.try_wait() {
-            Ok(Some(s)) => break Some(s),
-            Ok(None) if started.elapsed() >= limit => {
-                timed_out = true;
-                if let Ok(pid) = i32::try_from(child.id()) {
-                    // SAFETY: kill(2) on the process group this function's spawn created.
-                    unsafe { libc::kill(-pid, libc::SIGKILL) };
-                }
-                let _ = child.kill();
-                let _ = child.wait();
-                break None;
+        // @cc:careful the shell is not reaped while its output is open: until it is, its pid
+        // names its process group and no other process can be given that number, so the group
+        // stop below cannot reach a stranger.
+        if open == 0 {
+            match child.try_wait() {
+                Ok(Some(s)) => break Some(s),
+                Ok(None) => {}
+                Err(_) => break None,
             }
-            Ok(None) => std::thread::sleep(Duration::from_millis(20)),
-            Err(_) => break None,
+        }
+        if started.elapsed() >= limit {
+            timed_out = true;
+            break None;
+        }
+        if open == 0 {
+            std::thread::sleep(tick);
+        } else if closing.recv_timeout(tick).is_ok() {
+            open -= 1;
         }
     };
-    let mut bytes = Vec::new();
-    for r in readers {
-        if let Ok(b) = r.join() {
-            bytes.extend(b);
+    if status.is_none() {
+        if let Ok(pid) = i32::try_from(child.id()) {
+            // SAFETY: kill(2) on the process group this function's spawn created.
+            unsafe { libc::kill(-pid, libc::SIGKILL) };
         }
+        let _ = child.kill();
+        let _ = child.wait();
+        let stopped = Instant::now();
+        while open > 0
+            && closing
+                .recv_timeout(DRAIN_GRACE.saturating_sub(stopped.elapsed()))
+                .is_ok()
+        {
+            open -= 1;
+        }
+    }
+    let mut bytes = Vec::new();
+    for kept in streams.iter().flatten() {
+        bytes.extend_from_slice(
+            &kept
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+        );
     }
     let text = String::from_utf8_lossy(&bytes).into_owned();
     Outcome {
@@ -167,23 +200,35 @@ fn run_one(_root: &Path, _command: &str, _timeout_secs: u64) -> Outcome {
     }
 }
 
-/// Reads a pipe to its end and keeps its last [`OUTPUT_TAIL`] bytes.
+/// Reads `pipe` on a thread of its own, keeping its last [`OUTPUT_TAIL`] bytes in the
+/// returned buffer as they arrive, and sends on `closed` once the pipe has ended.
 #[cfg(unix)]
-fn tail_of(r: &mut impl std::io::Read) -> Vec<u8> {
-    let mut kept: Vec<u8> = Vec::new();
-    let mut buf = [0u8; 4096];
-    loop {
-        match r.read(&mut buf) {
-            Ok(0) | Err(_) => break,
-            Ok(n) => {
-                kept.extend_from_slice(&buf[..n]);
-                if kept.len() > OUTPUT_TAIL {
-                    let cut = kept.len() - OUTPUT_TAIL;
-                    kept.drain(..cut);
+fn reader(
+    mut pipe: impl std::io::Read + Send + 'static,
+    closed: std::sync::mpsc::Sender<()>,
+) -> std::sync::Arc<std::sync::Mutex<Vec<u8>>> {
+    let kept = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let into = kept.clone();
+    std::thread::spawn(move || {
+        let mut buf = [0u8; 4096];
+        loop {
+            match pipe.read(&mut buf) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => {
+                    let mut kept = into
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
+                    kept.extend_from_slice(&buf[..n]);
+                    if kept.len() > OUTPUT_TAIL {
+                        let cut = kept.len() - OUTPUT_TAIL;
+                        kept.drain(..cut);
+                    }
                 }
             }
         }
-    }
+        // The run may have stopped waiting; then nobody receives.
+        let _ = closed.send(());
+    });
     kept
 }
 

@@ -15,7 +15,9 @@ fn project(checks: Value) -> TempDir {
         "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
         "checks": checks
     });
-    let path = root.path().join(".moai-cli/project.yaml");
+    let path = root
+        .path()
+        .join(moai_cli::state_root::rel(root.path(), "project.yaml"));
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(path, serde_json::to_vec_pretty(&profile).unwrap()).unwrap();
     root
@@ -91,6 +93,26 @@ fn a_project_without_declared_checks_is_refused_in_plain_words() {
             .unwrap()
             .contains("no declared checks"),
         "{v}"
+    );
+}
+
+/// The run does not read git's repository variables from the caller's environment: a check
+/// that runs `git` sees the project's own repository. The variable is set on the child only.
+#[test]
+fn the_steps_see_the_project_repository_not_the_callers() {
+    let root = project(json!([
+        {"id": "where", "command": "printf '%s' \"${GIT_DIR-unset}\" > git_dir.txt"}
+    ]));
+    let out = TempHome::new()
+        .command(&["project-check", root.path().to_str().unwrap()])
+        .env("GIT_DIR", "/nonexistent")
+        .output()
+        .unwrap();
+    let v = envelope(&out);
+    assert_eq!(v["result"]["result"], "PASS", "{v}");
+    assert_eq!(
+        fs::read_to_string(root.path().join("git_dir.txt")).unwrap(),
+        "unset"
     );
 }
 

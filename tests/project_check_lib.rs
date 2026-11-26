@@ -22,7 +22,9 @@ fn profile(checks: Value) -> Value {
 
 fn project(checks: Value) -> TempDir {
     let root = TempDir::new().unwrap();
-    let path = root.path().join(".moai-cli/project.yaml");
+    let path = root
+        .path()
+        .join(moai_cli::state_root::rel(root.path(), "project.yaml"));
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(path, serde_json::to_vec_pretty(&profile(checks)).unwrap()).unwrap();
     root
@@ -145,21 +147,126 @@ fn a_command_that_hangs_is_stopped_at_the_limit() {
     assert!(root.path().join("after").exists());
 }
 
-/// The run does not read git's repository variables from the caller's environment: a check
-/// that runs `git` sees the project's own repository.
+/// Stops the background process a test command started, named by the pid it wrote to
+/// `bg.pid`, so no test leaves one running, whether it passes or fails.
+#[cfg(unix)]
+struct Background<'a>(&'a std::path::Path);
+
+#[cfg(unix)]
+impl Background<'_> {
+    fn pid(&self) -> Option<i32> {
+        let text = fs::read_to_string(self.0.join("bg.pid")).ok()?;
+        text.trim().parse::<i32>().ok().filter(|pid| *pid > 1)
+    }
+
+    /// Whether the process is gone, waiting a short while for a stopped one to be reaped.
+    fn gone(&self) -> bool {
+        let pid = self.pid().expect("the command wrote bg.pid");
+        (0..100).any(|_| {
+            // SAFETY: signal 0 only asks whether the process exists; it sends nothing.
+            let alive = unsafe { libc::kill(pid, 0) } == 0;
+            if alive {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            !alive
+        })
+    }
+}
+
+#[cfg(unix)]
+impl Drop for Background<'_> {
+    fn drop(&mut self) {
+        if let Some(pid) = self.pid() {
+            // SAFETY: signal 0 asks first; the pid is the one this test's own command wrote
+            // a moment ago.
+            if unsafe { libc::kill(pid, 0) } == 0 {
+                unsafe { libc::kill(pid, libc::SIGKILL) };
+            }
+        }
+    }
+}
+
+/// The shell ends at once, but what it left in the background still holds the output. The
+/// limit still holds: the process group is stopped, the step is a timed-out failure and the
+/// next step runs.
+#[cfg(unix)]
 #[test]
-fn the_steps_see_the_project_repository_not_the_callers() {
-    let root = project(
-        json!([{"id": "where", "command": "printf '%s' \"${GIT_DIR-unset}\" > git_dir.txt"}]),
+fn a_background_child_that_holds_the_output_is_stopped_at_the_limit() {
+    let root = project(json!([
+        {"id": "bg", "command": "sleep 30 & echo $! > bg.pid; echo started"},
+        {"id": "after", "command": "touch after"}
+    ]));
+    let background = Background(root.path());
+    let started = std::time::Instant::now();
+    let report = run(root.path(), &Options { timeout_secs: 1 }).unwrap();
+    let took = started.elapsed();
+    assert!(took.as_secs() < 10, "the limit did not stop it: {took:?}");
+    assert_eq!(report["result"], "FAIL", "{report}");
+    assert_eq!(report["steps"][0]["timed_out"], true, "{report}");
+    assert_eq!(report["steps"][0]["exit"], Value::Null, "{report}");
+    assert_eq!(report["steps"][0]["output_tail"], "started\n", "{report}");
+    assert_eq!(report["steps"][1]["exit"], 0, "{report}");
+    assert!(root.path().join("after").exists());
+    assert_eq!(
+        report["summary"], "project-check bg=timeout after=0 result=FAIL",
+        "{report}"
     );
-    std::env::set_var("GIT_DIR", "/nonexistent");
+    assert!(background.gone(), "the background child still runs");
+}
+
+/// A child that left the process group (a job-control shell gives each background job a
+/// group of its own) cannot be reached by the group stop. The run does not wait for it: it
+/// gives up on the output after a short grace time and answers.
+#[cfg(unix)]
+#[test]
+fn a_child_outside_the_process_group_does_not_hold_the_run() {
+    let root = project(json!([
+        {"id": "bg", "command": "set -m; sleep 20 & echo $! > bg.pid; echo started"}
+    ]));
+    let _background = Background(root.path());
+    let started = std::time::Instant::now();
+    let report = run(root.path(), &Options { timeout_secs: 1 }).unwrap();
+    let took = started.elapsed();
+    assert!(
+        took.as_secs() < 10,
+        "the run waited for the child: {took:?}"
+    );
+    assert_eq!(report["result"], "FAIL", "{report}");
+    assert_eq!(report["steps"][0]["timed_out"], true, "{report}");
+    assert!(
+        report["steps"][0]["output_tail"]
+            .as_str()
+            .unwrap()
+            .contains("started"),
+        "{report}"
+    );
+}
+
+/// A child that closes its output soon after the shell ends is part of a step that passes:
+/// the run waits for the output within the limit and keeps all of it.
+#[test]
+fn output_written_after_the_shell_ends_is_kept_within_the_limit() {
+    let root = project(json!([
+        {"id": "late", "command": "(sleep 1; echo late) & echo early"}
+    ]));
     let report = run(root.path(), &options()).unwrap();
-    std::env::remove_var("GIT_DIR");
     assert_eq!(report["result"], "PASS", "{report}");
     assert_eq!(
-        fs::read_to_string(root.path().join("git_dir.txt")).unwrap(),
-        "unset"
+        report["steps"][0]["output_tail"], "early\nlate\n",
+        "{report}"
     );
+}
+
+/// The kept tail is per stream: the last 4096 bytes of the standard output, then the last
+/// 4096 bytes of the standard error.
+#[test]
+fn the_output_tail_is_the_last_4096_bytes_of_each_stream() {
+    let root = project(json!([
+        {"id": "loud", "command": "printf 'a%.0s' $(seq 1 4097); printf 'b%.0s' $(seq 1 4097) >&2"}
+    ]));
+    let report = run(root.path(), &options()).unwrap();
+    let tail = report["steps"][0]["output_tail"].as_str().unwrap();
+    assert_eq!(tail, format!("{}{}", "a".repeat(4096), "b".repeat(4096)));
 }
 
 /// `declared` is the profile's list as saved, in order.
