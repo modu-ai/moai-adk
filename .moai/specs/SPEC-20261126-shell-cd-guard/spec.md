@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261126-shell-cd-guard
 title: "A worktree session's shell cd is refused with the other way in one line"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-26
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 GOAL-APPROVAL 노트 10298 (사용자 목표 2026-11-26 \"불포함 카드 까지 모두 다 구현을 해서 릴리즈를 하자. 카드 우선순위도 정해서 계속해서 모든 카드 구현 완료를 하자\" 에 따른 리더 판단, 사용자 직접 선택 아님): 판 2 의 방향은 결정 10265 와 보충 10289 예요"
+  digest: "sha256:3092b8f1d45f47cdf1cb498007cd60c23e1c78741569436810a7a5fdc7c2f219"
 ---
 
 # A worktree session's shell cd is refused with the other way in one line
