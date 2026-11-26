@@ -99,3 +99,9 @@ The lines after the dated ones came from the leader's carry-over of closed cards
 - 카드 정리(2026-11-26): withdraw·fold 한 카드가 원장 state 에 hold 로 남아서, 사용자가 보는 목록과 리더 보고서에서 "보류" 로 읽혀요(회수한 112장을 보류로 잘못 셈). card list·export·보고서가 card.withdraw/card.fold 사건이 있는 카드를 "회수됨/합쳐짐" 으로 보이고 기본 목록에서 빼게 고쳐요(src/card list·export).
 - C-149 (dana 10162): docs/rust-product-path.md:241 의 "같은 portable 검사" 문장이 결정 값에는 이제 틀려요(R-4). 그 파일을 쥔 카드가 고쳐요. 공용 체크아웃 target/leader-agent-quin-cards.json(140바이트, quin 실수)은 정리 목록에 올려요.
 - C-512 다시 감사(jabez 10168): src/home_layout.rs 의 bin 행은 RustUse::None 인데 제품이 이제 ~/.moai/bin/moai 를 읽어요(결정 10106 은 테스트 픽스처만 고침). 표의 bin 행을 Reads 로 맞추고 every_rust_written_home_name_is_in_the_table 이 그 길을 보게 해요. 카드 선택이 home_layout 스캔을 고르지 않는 틈은 C-568 이 다뤄요.
+- C-174 판 6(dana 10222): REQ-19 비밀 파일 이름 30줄은 조사 권고보다 좁게 뺐어요(.my.cnf, .terraformrc, *.p12 등, 노트 10222). 고칠 곳은 그 이름들의 채택 여부를 다시 재는 후속 카드예요.
+- C-566 감사(uma 10229 비차단): 기존 repo_scans 항목에 검사 줄을 더하면 더하기로 읽히지 않아 tools/repo_scans.json 이 tier 2 하한·넓은 선택이 되고, check affected 판정 문구는 아직 test_targets 를 말해요.
+- 승인 머리말 질문이 두 번 나왔어요(2026-11-26 dana C-174, kai C-409): 레인이 승인 노트를 받은 뒤 SPEC 의 status: approved 머리말을 누가 적는지 몰라 물어요. 고칠 곳은 docs/lane-rules.md 와 skills/moai/references/flows/next-flow.md 에 "승인 머리말은 리더가 착지 묶음 커밋에 승인 노트를 인용해 적고, 레인은 draft 그대로 둔다" 한 줄을 넣는 것이에요.
+- C-409 변경 전 관찰(kai 10239): HOME 가드 기준선의 129줄이 변경 전부터 HOME 에 닿지 않아요(목록 .claude/worktrees/c409-identity-home-arg-2b/target/c409/stale-before.tsv, 한 번의 관찰). C-409·C-410 이 착지한 뒤 후속 카드 하나가 다시 관찰해 그 줄을 지우고 상한을 낮춰요.
+- C-348 감사(uma 10244 비차단): 넘김 노트 없이 감사만 받은 head 는 land_queue 에서 착지 줄을 잃어요(C-232 07888afdd6, C-198 06c4c872ff 가 그 꼴; 둘 다 hold). skills/moai/workflows/leader.md:20 의 회전 단계는 superseded 를 읽지 않아요. 후속 안은 노트 10244.
+- C-328 D-10(jared 10246): SPEC-20261122-claude-md-text-and-ignore 개정 1 의 무시 파일 요구(REQ-1~4)와 배너(REQ-7)를 뺐어요. 저장소 .gitignore 허용 목록이 CLAUDE.md 의 ".claude/ 는 스테이징하지 않는다" 와 부딪쳐요. 고칠 곳은 그 요구를 새 SPEC 으로 다시 정하는 후속 카드예요.
