@@ -69,3 +69,19 @@ created: 2026-11-26
 | D-2 | 네 줄의 고정 테스트는 이미 그 글들을 읽는 `tests/next_flow_skill_scan.rs` 에 하나로 둬요. | 새 테스트 파일이나 검사 표 변경이 필요 없어요. | 테스트를 옮겨요. |
 | D-3 | 뮤턴트를 스크립트 없이 돌린다는 문장을 이 카드에 더해요(revision 2). `agents/docs.md` 는 뮤턴트를 돌리지 않아 넣지 않아요. | 리더 메시지 2026-11-26(같은 일이 하루에 두 번 났어요), 결정 노트 10314. | REQ-3, REQ-4 와 그 문장을 되돌려요. |
 | D-4 | git 을 스크립트 파일에 넣으라는 두 글의 행을 고쳐요. `shell-guards.md` 의 행은 리더 결정이고, 같은 말을 하는 `git-safety.md` 의 행은 같은 원인이라 함께 넣자는 구현 레인의 제안이에요(이 revision 의 승인이 포함 여부를 정해요). | 리더 결정 노트 10428, 결정 노트 10314. | REQ-5 와 두 행을 되돌려요. |
+
+## Result
+
+2026-11-27, 기준 `f48ea9d815e7f11787dea9b47b5dc5fa5fb2688e`. 실행 환경은 Mac 한 대예요.
+
+- AC-1: met — `cargo test --locked --offline --test next_flow_skill_scan file_tools_first` 1개 통과(`4342c319e7`), 빨강 `4b15648142` 에서는 exit 101 로 실패
+- AC-2: met — `agents/impl.md`, `agents/docs.md`, `shell-guards.md`, `docs/lane-rules.md` 의 줄을 하나씩 Edit 로 지우고 같은 테스트를 돌리니 네 번 모두 exit 101 이고 지운 파일 이름을 말했어요. 하나씩 Edit 로 되돌린 뒤 통과
+- AC-3: met — `cargo test --locked --offline --test next_flow_skill_scan --test base_agent_contract --test lane_rules_2836 --test source_manifest_facts` 가 78, 8, 2, 8개 통과(`1dce7dad56`). `--lib the_impl_agent_names_the_tools_folder_for_project_scripts` 1개 통과
+- AC-4: met — `cargo test --locked --offline --test next_flow_skill_scan mutants_without_a_script` 1개 통과(`a5b36f3da6`), 빨강 `ebe00c966e` 에서는 exit 101 로 실패
+- AC-5: met — `agents/impl.md`, `shell-guards.md`, `docs/lane-rules.md` 의 줄을 하나씩 Edit 로 지우니 세 번 모두 exit 101 이고 파일 이름을 말했어요. Edit 로 되돌린 뒤 통과
+- AC-6: met — `cargo test --locked --offline --test lane_rules_2836` 2개 통과(`3a18b214bf`), 빨강 `f03d20b95a` 에서는 exit 101 로 실패. 두 행의 새 문구를 옛 문구로 하나씩 되돌리니 두 번 모두 exit 101 이고 파일 이름을 말했어요
+
+- 커밋: SPEC `c1643cb82c`, 빨강 `4b15648142`, 초록 `4342c319e7`, SPEC 개정 `e843bf8060`, 빨강 `ebe00c966e`, 초록 `a5b36f3da6`, SPEC `3e76d55489`, 빨강 `f03d20b95a`, 초록 `3a18b214bf`, manifest `1dce7dad56`.
+- manifest 의 sha256 두 개(`git-safety.md`, `shell-guards.md`)는 `moai check fix` 가 `card line-lease` 안에서 썼고 `shasum -a 256` 으로 두 파일과 맞는 것을 읽었어요.
+- 줄 제거 확인 아홉 번 가운데 한 번(`shell-guards.md` 의 새 행)은 되돌릴 때 Edit 대신 평범한 `git checkout -- <그 파일>` 한 줄을 썼어요. 거절은 없었고 되돌린 파일의 sha256 이 manifest 값과 같았어요. 이 SPEC 이 넣은 규칙("Edit 로 되돌려요")과 어긋나서 적어요.
+- 이 SPEC 은 거절 뒤 우회 예외를 넣지 않았어요(D-1). `CLAUDE.md` 는 바꾸지 않았어요.
