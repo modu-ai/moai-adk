@@ -87,7 +87,7 @@ created: 2026-11-25
 - 저장은 `save_host_receipt` 로만 하고, 결과의 `receipt_status` 는 저장한 영수증의 상태예요(쓰지 않았으면 값이 없어요).
 - blocked 와 pending 호스트는 이 분기에 닿기 전에 건너뛰어요(계획이 pending 영수증을 `preflight: blocked` 로 표시해요).
 
-SPEC 의 verify 명령은 head `164ab233eb` 에서 적힌 그대로 돌렸고 모두 exit 0 이에요.
+SPEC 의 verify 명령은 head `ee2b3c8612` 에서 적힌 그대로 돌렸고 모두 exit 0 이에요.
 
 - AC-1: met — `cargo test --offline --locked --lib -- version_folder_tests` 4 passed, 0 failed (`src/update.rs` 의 `version_folder_tests`).
 - AC-2: met — `the_preview_names_the_version_the_execution_link_points_to` (`tests/update_user_layer_cli.rs`) 1 passed. 링크가 없으면 키가 없고 `plan_digest` 는 그대로예요.
@@ -97,11 +97,13 @@ SPEC 의 verify 명령은 head `164ab233eb` 에서 적힌 그대로 돌렸고 �
 - AC-6: met — `cargo test --offline --locked --test update_backup_replace -- a_no_write_apply` 3 passed: `a_no_write_apply_keeps_the_own_backup_that_recovery_restores`, `a_no_write_apply_going_back_keeps_the_own_backup_and_refreshes_the_receipt`, `a_no_write_apply_never_rewrites_an_own_failed_receipt`.
 - AC-7: met — `a_no_write_apply_over_an_earlier_folders_receipt_writes_this_installations_receipt` (`tests/update_installed_by_name.rs`) 1 passed.
 
-빨강 확인: head `f202e43af4`(`src` 는 감사받은 `bcd2eeb26b` 와 같아요)의 `src` 에 새 테스트를 돌렸어요. `update_backup_replace` 의 새 테스트 3개가 실패했어요(둘은 `restore_backup.action` 이 기대한 `restore_backup` 대신 Null, 셋째는 자기 failed 영수증이 다시 쓰임). `update_installed_by_name` 의 다시 쓴 테스트 2개도 실패했어요. `tests/update_backup_replace.rs` 는 그 뒤에 한 번 더 고쳐서, head `10c927bdef` 에서 `src/update.rs` 만 `bcd2eeb26b` 의 것으로 바꿔 최종판을 다시 돌렸어요. 같은 5개가 실패했고(`update_backup_replace` 0 passed 3 failed, `update_installed_by_name` 2 passed 2 failed, 각각 exit 101), 끝난 뒤 `src` 는 git 으로 되돌렸어요.
+빨강 확인: head `f202e43af4`(`src` 는 감사받은 `bcd2eeb26b` 와 같아요)의 `src` 에 새 테스트를 돌렸어요. `update_backup_replace` 의 새 테스트 3개가 실패했어요(둘은 `restore_backup.action` 이 기대한 `restore_backup` 대신 Null, 셋째는 자기 failed 영수증이 다시 쓰임). `update_installed_by_name` 의 다시 쓴 테스트 2개도 실패했어요. `tests/update_backup_replace.rs` 는 그 뒤에 두 번 더 고쳐서(owned 구분 항목, 이어서 픽스처 패키지), head `ee2b3c8612` 에서 `src/update.rs` 만 `bcd2eeb26b` 의 것으로 바꿔 최종판을 다시 돌렸어요. 같은 5개가 의도한 단언에서 실패했고(`update_backup_replace` 0 passed 3 failed, `update_installed_by_name` 2 passed 2 failed, 각각 exit 101), 끝난 뒤 `src` 는 git 으로 되돌렸어요.
+
+영수증 1차: head `f7c1fa3641` 의 `moai check affected --card` 는 ledger 단계에서 실패했어요. 되돌아가기 테스트가 저장소의 `skills/moai` 와 `agents` 를 복사해 읽었는데 그 파일을 이름 대는 스캔 항목이 없었어요. 커밋 `ee2b3c8612` 는 테스트가 버전 폴더에 픽스처 패키지와 빈 `agents` 폴더를 직접 만들게 해서 고쳤고, `repo_scans_table` 33 passed 와 lib 의 스캔 단계 테스트 2 passed 를 확인했어요. 스캔 표와 가드는 바꾸지 않았어요.
 
 수리 코드의 초록 실행(커밋 `164ab233eb` 직전의 작업 트리): `update_backup_replace` 23, `update_installed_by_name` 10, `update_user_layer_cli` 24, `update_headver` 6, `update_known_good` 4, `state_folder_literal_scan` 10 모두 passed, lib 의 `version_folder_tests` 4 passed. `cargo clippy --offline --locked --lib --tests -- -D warnings` 는 exit 0 이에요.
 
-수리 가드 뮤턴트(`src/update.rs` 를 한 곳씩 바꾸고 해당 테스트만 돌렸어요. 여덟 개 모두 테스트 실패로 exit 101):
+수리 가드 뮤턴트(head `ee2b3c8612` 에서 `src/update.rs` 를 한 곳씩 바꾸고 해당 테스트만 돌렸어요. 여덟 개 모두 테스트 실패로 exit 101):
 
 - (a) 자기 영수증 대신 기준 영수증의 복사본을 고침 — `a_no_write_apply_going_back_keeps_the_own_backup_and_refreshes_the_receipt`
 - (b) `own.backup = None` 추가 — `a_no_write_apply_keeps_the_own_backup_that_recovery_restores`
@@ -112,7 +114,7 @@ SPEC 의 verify 명령은 head `164ab233eb` 에서 적힌 그대로 돌렸고 �
 - (g) `receipt_status` 를 committed 로 고정 — `a_no_write_apply_leaves_this_builds_version_in_the_receipt`
 - (h) 새 영수증(REQ-11)을 저장하지 않고 `None` 반환 — `a_no_write_apply_over_an_earlier_folders_receipt_writes_this_installations_receipt`
 
-위험한 경로: `164ab233eb` 빌드를 `env -i` 아래 임시 HOME 에서 돌렸고 결과는 PASS 예요. 두 길(같은 설치 id 에서 버전만 다른 경우, 버전 폴더 배치에서 `update --allow-older` 로 되돌아가는 경우) 모두 backup-then-replace 뒤 쓰기 없는 적용이 `unchanged` 였고, 자기 영수증의 `backup` 이 남았고, `recovery-plan` 이 `restore_backup` 을 내놓았고, `recovery-apply` 가 원래 바이트와 모드를 되돌렸어요. 버전 차이는 픽스처 영수증의 `package_version` 을 고쳐 만든 테스트 데이터예요.
+위험한 경로: `ee2b3c8612` 빌드를 `env -i` 아래 임시 HOME 에서 돌렸고 결과는 PASS 예요. 두 길(같은 설치 id 에서 버전만 다른 경우, 버전 폴더 배치에서 `update --allow-older` 로 되돌아가는 경우) 모두 backup-then-replace 뒤 쓰기 없는 적용이 `unchanged` 였고, 자기 영수증의 `backup` 이 남았고, `recovery-plan` 이 `restore_backup` 을 내놓았고, `recovery-apply` 가 원래 바이트와 모드를 되돌렸어요. 버전 차이는 픽스처 영수증의 `package_version` 을 고쳐 만든 테스트 데이터예요.
 
 알려진 한계:
 
