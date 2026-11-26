@@ -113,7 +113,7 @@ impl Project {
 
 /// AC-6 (REQ-9): in the three layouts a record leaves the verdict `none` and the update preview's
 /// state step as they were; a project without a state folder can still be adopted. The same holds
-/// for a tracked earlier state whose `.gitignore` hides `.moai/`.
+/// for a tracked earlier state whose `.gitignore` hides the state folder.
 #[test]
 fn a_flaky_record_leaves_the_state_verdict_and_the_update_preview_as_they_were() {
     let mut problems = Vec::new();
@@ -146,26 +146,30 @@ fn a_flaky_record_leaves_the_state_verdict_and_the_update_preview_as_they_were()
             }
         }
     }
-    // The same three kinds of project with tracked files and a rule that hides `.moai/`. Beside a
-    // name the team keeps the move stays blocked, before the record and after it.
+    // The same three kinds of project with tracked files and a rule that hides the state folder.
+    // Beside a name the team keeps the move stays blocked, before the record and after it.
     for (layout, allow, beside, step) in [
-        ("hidden, earlier only", "", None, "needs_decision"),
+        ("hidden, earlier only", None, None, "needs_decision"),
         (
             "hidden, earlier and SPECs",
-            "!/.moai/specs/\n",
+            Some("specs/"),
             Some("specs/SPEC-20260101-a/spec.md"),
             "needs_decision",
         ),
         (
             "hidden, earlier and kept names",
-            "!/.moai/project.yaml\n",
+            Some("project.yaml"),
             Some("project.yaml"),
             "blocked",
         ),
     ] {
         let p = Project::new();
         git_ok(&p.root, &["init", "-q"]);
-        fs::write(p.root.join(".gitignore"), format!("/.moai/*\n{allow}")).unwrap();
+        let mut rules = format!("/{MOAI_DIR}/*\n");
+        if let Some(name) = allow {
+            rules.push_str(&format!("!/{MOAI_DIR}/{name}\n"));
+        }
+        fs::write(p.root.join(".gitignore"), rules).unwrap();
         p.write(EARLIER_PROJECT_DIR, "project.yaml", "schema_version: 2\n");
         p.write(EARLIER_PROJECT_DIR, "index/a.json", "{}\n");
         if let Some(rest) = beside {
