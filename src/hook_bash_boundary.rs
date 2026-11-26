@@ -385,16 +385,37 @@ fn moai_project(checkout: &Checkout) -> bool {
         })
 }
 
+/// Whether every closing parenthesis of the split line has its opening one and none is left
+/// open. The lexer does not read comments, here-documents or `case` patterns inside `$( … )`,
+/// nor nested parentheses inside `$(( … ))`, so it can end one early; the `)` left over then
+/// shows that what looks like a command of the session shell may be none.
+fn parens_balanced(items: &[Item]) -> bool {
+    let mut open = 0usize;
+    for item in items {
+        match item {
+            Item::Open => open += 1,
+            Item::Close => match open.checked_sub(1) {
+                Some(rest) => open = rest,
+                None => return false,
+            },
+            Item::Cmd(_) => {}
+        }
+    }
+    open == 0
+}
+
 /// Whether a command of `src` outside every pair of parentheses is `cd`, `pushd` or `popd`.
 /// Substitutions, here-documents and strings given to another shell run elsewhere and are not
-/// read; a literal `eval` string runs here and is read the same way. A line that holds a
-/// function definition, a `case` or a `coproc` before the move is not judged.
+/// read; a literal `eval` string runs here and is read the same way. A line the lexer cannot
+/// split (arrays, `(( … ))`, `;;`, an unmatched quote, unbalanced parentheses and the like) is
+/// not judged at all, whatever stands before that part. Reading stops, with no deny, at a
+/// function definition, a `case`, a `function` or a `coproc`.
 fn moves_session(src: &str, depth: usize) -> bool {
     if depth > MAX_DEPTH {
         return false;
     }
     let script = lex(src);
-    if script.unsupported {
+    if script.unsupported || !parens_balanced(&script.items) {
         return false;
     }
     let mut parens = 0usize;

@@ -16,7 +16,8 @@ const MODES: [&str; 2] = ["default", "bypassPermissions"];
 const PREFIX: &str = "moai-boundary/session-cd: ";
 
 /// Commands that move the folder of the session shell.
-const MOVES: [&str; 15] = [
+const MOVES: [&str; 16] = [
+    "(ls) && cd src",
     "time cd src",
     "command -- cd src",
     "cd src",
@@ -35,7 +36,12 @@ const MOVES: [&str; 15] = [
 ];
 
 /// Commands that hold the letters or run a `cd` that leaves the session folder where it is.
-const STAYS: [&str; 16] = [
+const STAYS: [&str; 19] = [
+    // A `)` that the lexer takes for the end of a substitution or an arithmetic expansion
+    // leaves the parentheses of the line unbalanced: such a line is not split.
+    "v=$(cat <<'EOF'\n1) a\ncd src\nEOF\n)",
+    "v=$(\n# 1) a\ncd src\n)",
+    "( echo $((2*(1+1))); cd src )",
     "f () { cd src; }",
     "echo \"cd src\"",
     "grep 'cd ' a.txt",
