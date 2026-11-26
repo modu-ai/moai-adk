@@ -2458,6 +2458,7 @@ pub fn record_tip_restored(
 /// checks, run against the ledger as it is now. `Ok(())` is no promise: a call that gets in
 /// between can change the ledger, and the write transaction checks again. `card land` uses it so
 /// that a refusal comes before the integration branch moves.
+#[allow(clippy::too_many_arguments)]
 pub fn finish_preflight(
     conn: &Connection,
     card_id: i64,
