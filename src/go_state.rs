@@ -5206,6 +5206,21 @@ fn top_of(path: &str) -> &str {
         .unwrap_or("")
 }
 
+/// Whether a receipt may name `path` as a restored copy: a plain relative path under a user-data
+/// folder of the new `.moai/` (the moving layouts), or under the earlier root's `specs/`.
+fn restored_path_allowed(path: &str, moving: bool) -> bool {
+    if !plain_relative(path) {
+        return false;
+    }
+    if moving {
+        USER_DATA_FROM
+            .iter()
+            .any(|f| path.starts_with(&format!("{MOAI_DIR}/{f}/")))
+    } else {
+        path.starts_with(&format!("{LEGACY_ROOT}/specs/"))
+    }
+}
+
 fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, String)> {
     if !valid_stamp(backup) {
         return Err("invalid backup name: expected the apply's UTC stamp YYYYMMDDTHHMMSSZ".into());
@@ -5298,21 +5313,14 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, Strin
     }
     // Restored copies land in a user-data folder of the new `.moai/` (#2936 O1), or in the
     // earlier root's `specs/` (the #2561 layouts).
-    let allowed: Vec<String> = if moving {
-        USER_DATA_FROM
-            .iter()
-            .map(|f| format!("{MOAI_DIR}/{f}/"))
-            .collect()
-    } else {
-        vec![format!("{LEGACY_ROOT}/specs/")]
-    };
-    if receipt.restored.iter().any(|r| {
-        !plain_relative(&r.path) || !allowed.iter().any(|a| r.path.starts_with(a.as_str()))
-    }) {
-        return Err(format!(
-            "receipt holds a restored path outside {}; refused",
-            allowed.join(", ")
-        ));
+    if receipt
+        .restored
+        .iter()
+        .any(|r| !restored_path_allowed(&r.path, moving))
+    {
+        return Err(
+            "receipt holds a restored path outside the folders a restore may write; refused".into(),
+        );
     }
     let copies = format!("{MOAI_DIR}/backups/{backup}/root-files/");
     if receipt
@@ -6687,5 +6695,47 @@ mod tests {
             fs::read_dir(over.path()).unwrap().next().is_none(),
             "nothing was created"
         );
+    }
+
+    /// SPEC-20261126-go-state-restore-rule AC-6 (REQ-7): a restored path may lie under any
+    /// folder of the new `.moai/`, not under its backups folder and not on a Go marker.
+    #[test]
+    fn restore_rule_allows_any_folder_but_not_backups_or_a_marker() {
+        for ok in [
+            ".moai/specs/SPEC-1/spec.md",
+            ".moai/design/x.md",
+            ".moai/decisions/user.md",
+            ".moai/school/a/b/c.md",
+            ".moai/config/sections/b.yaml",
+        ] {
+            assert!(restored_path_allowed(ok, true), "{ok}");
+        }
+        for refused in [
+            ".moai/backups/x/y.md",
+            ".moai/backups",
+            ".moai/manifest.json",
+            ".moai/config/config.yaml",
+            ".moai/config/sections/system.yaml",
+            ".moai",
+            ".moai/",
+            ".claude/rules/a.md",
+            "design/x.md",
+            ".moai-cli/specs/a.md",
+        ] {
+            assert!(!restored_path_allowed(refused, true), "{refused}");
+        }
+    }
+
+    /// SPEC-20261126-go-state-restore-rule AC-6: the earlier-root layout restores into its
+    /// `specs/` only, as before.
+    #[test]
+    fn restore_rule_keeps_the_earlier_root_to_its_specs() {
+        let specs = format!("{LEGACY_ROOT}/specs/a/spec.md");
+        assert!(restored_path_allowed(&specs, false));
+        assert!(!restored_path_allowed(".moai/design/x.md", false));
+        assert!(!restored_path_allowed(
+            &format!("{LEGACY_ROOT}/design/x.md"),
+            false
+        ));
     }
 }
