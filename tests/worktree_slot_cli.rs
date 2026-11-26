@@ -10,7 +10,6 @@ use common::home::TempHome;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::{Duration, SystemTime};
 
 const SLOTS: [&str; 14] = [
