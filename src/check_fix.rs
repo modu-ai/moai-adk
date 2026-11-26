@@ -2,8 +2,9 @@
 //! when no human has to choose them, and prints the line of every other violation as it is. The
 //! writes are three: the sha256 values of the skill package manifest, the first word of a new test
 //! file in the area the caller names, and a test target of an `always` scan (a name in its
-//! `test_targets` list, or a `--test` option on an existing check line of a scan without the
-//! list). Every write goes through a temporary file and a rename and is refused when the
+//! `test_targets` list, or, for a scan without the list, a `--test` option on a check line that
+//! has no name filter; with no such line the line to add is printed). Every write goes through a
+//! temporary file and a rename and is refused when the
 //! file or a folder above it is a link. After writing, the same in-process judges that
 //! `check affected` uses are asked again, so the answer is `PASS` only when nothing is left to print.
 
@@ -181,6 +182,8 @@ fn short(sha: &str) -> &str {
 struct Outcome {
     wrote: Vec<(String, String)>,
     print: Vec<String>,
+    /// Judge lines that a line in `print` says more exactly; the rest leaves them out.
+    replaced: Vec<String>,
 }
 
 impl Outcome {
@@ -451,31 +454,58 @@ fn add_target_name(text: &str, id: &str, stem: &str) -> Option<String> {
         })
 }
 
-/// `text` of the scan registry with `stem` added to the targets of the scan `id`. A scan with a
-/// `test_targets` field gets the name there and keeps its check lines as they are: a name put
-/// into a filtered line would cut the module filters behind it out of the selection of
-/// `check affected`. A scan without the field gets ` --test <stem>` on one of its cargo check
-/// lines, edited in place: the JSON text of the line is replaced and nothing else is re-written.
-/// `None` when the scan has no cargo line that already names a `--test` target or the line's text
-/// cannot be found as it is.
-fn add_test_option(text: &str, id: &str, stem: &str) -> Option<String> {
-    if lists_targets(text, id) {
-        return add_target_name(text, id, stem);
+/// A cargo check line that runs whole targets: it names at least one `--test`, and every other
+/// word is a `--bin <name>` pair or one of the flags below, so no name filter stands on it. A
+/// `--test` added to such a line runs all of the new target. A word this reader does not know
+/// counts as a filter.
+fn runs_whole_targets(line: &str) -> bool {
+    let Some(rest) = line.strip_prefix("cargo test ") else {
+        return false;
+    };
+    let mut words = rest.split_whitespace();
+    let mut tests = 0;
+    while let Some(word) = words.next() {
+        match word {
+            "--test" | "--bin" => {
+                if words.next().is_none() {
+                    return false;
+                }
+                tests += usize::from(word == "--test");
+            }
+            "--offline" | "--locked" | "--lib" | "--bins" | "--no-fail-fast" | "--quiet" => {}
+            _ => return false,
+        }
     }
+    tests > 0
+}
+
+/// The first check line of the scan `id` that runs whole targets.
+fn whole_target_line(text: &str, id: &str) -> Option<String> {
     let value: Value = serde_json::from_str(text).ok()?;
-    let scan = scan_of(&value, id)?;
-    let line = scan
+    scan_of(&value, id)?
         .get("checks")?
         .as_array()?
         .iter()
         .filter_map(Value::as_str)
-        .find(|c| c.starts_with("cargo test") && c.contains(" --test "))?;
-    let grown = match line.find(" -- ") {
-        Some(at) => format!("{} --test {stem}{}", &line[..at], &line[at..]),
-        None => format!("{line} --test {stem}"),
-    };
+        .find(|c| runs_whole_targets(c))
+        .map(String::from)
+}
+
+/// `text` of the scan registry with `stem` added to the targets of the scan `id`. A scan with a
+/// `test_targets` field gets the name there and keeps its check lines as they are: a name put
+/// into a filtered line would cut the module filters behind it out of the selection of
+/// `check affected`. A scan without the field gets ` --test <stem>` on a check line without a
+/// name filter ([`runs_whole_targets`]), edited in place: the JSON text of the line is replaced
+/// and nothing else is re-written. A filtered line is never changed. `None` when the scan has no
+/// such line or the line's text cannot be found as it is.
+fn add_test_option(text: &str, id: &str, stem: &str) -> Option<String> {
+    if lists_targets(text, id) {
+        return add_target_name(text, id, stem);
+    }
+    let line = whole_target_line(text, id)?;
+    let grown = format!("{line} --test {stem}");
     let (old_literal, new_literal) = (
-        serde_json::to_string(line).ok()?,
+        serde_json::to_string(&line).ok()?,
         serde_json::to_string(&grown).ok()?,
     );
     // The same line can stand in several scans: keep the replacement that lands in this one.
@@ -500,7 +530,9 @@ fn add_test_option(text: &str, id: &str, stem: &str) -> Option<String> {
 }
 
 /// A registry edit is kept only when `gate::registry_only_grew` reads the whole change as growth;
-/// a finding whose edit is not kept stays, as the judge's line, in the printed rest.
+/// a finding whose edit is not kept stays, as the judge's line, in the printed rest. A scan with
+/// no `test_targets` field and no line that runs whole targets is not written: its judge line is
+/// replaced by the check line a person adds to it.
 fn fix_registry(facts: &Facts, out: &mut Outcome) {
     let rel = crate::gate::SCAN_REGISTRY;
     let findings: Vec<String> = scan_violations(
@@ -530,6 +562,14 @@ fn fix_registry(facts: &Facts, out: &mut Outcome) {
         else {
             continue;
         };
+        if !lists_targets(&current, id) && whole_target_line(&current, id).is_none() {
+            let finding = line.split(';').next().unwrap_or(line);
+            out.print.push(format!(
+                "{finding}; check fix wrote nothing, because no check line of this scan runs whole `--test` targets without a name filter: add the check line `cargo test --offline --locked --test {stem}` to the scan `{id}` in {rel} by hand"
+            ));
+            out.replaced.push(line.clone());
+            continue;
+        }
         if let Some(candidate) = add_test_option(&current, id, stem) {
             if crate::gate::registry_only_grew(rel, &old, &candidate) {
                 what.push(if lists_targets(&candidate, id) {
@@ -620,7 +660,9 @@ pub fn run(dir: &Path, range: &str, opts: &Options) -> Result<Value> {
     fix_areas(&facts, opts, &mut out);
     fix_registry(&facts, &mut out);
     let after = read_facts(root, range)?;
-    out.print.extend(remaining(&after));
+    let replaced = std::mem::take(&mut out.replaced);
+    let rest = remaining(&after).into_iter();
+    out.print.extend(rest.filter(|l| !replaced.contains(l)));
     let mut seen = std::collections::BTreeSet::new();
     out.print.retain(|l| seen.insert(l.clone()));
     let pass = out.print.is_empty();
@@ -667,21 +709,77 @@ mod tests {
     }
 
     #[test]
-    fn the_option_goes_before_the_libtest_separator() {
-        let registry = "{\n  \"scans\": [\n    {\n      \"id\": \"a\",\n      \"checks\": [\n        \"cargo test --offline --locked --test one -- --exact name\"\n      ]\n    }\n  ]\n}\n";
-        let grown = add_test_option(registry, "a", "two").unwrap();
-        assert!(
-            grown.contains("--test one --test two -- --exact name"),
-            "{grown}"
-        );
+    fn only_a_line_without_a_name_filter_gains_the_option() {
+        let registry = |checks: &[&str]| {
+            let doc = json!({"scans": [{"id": "a", "checks": checks}]});
+            serde_json::to_string_pretty(&doc).unwrap() + "\n"
+        };
+        // A name filter before or after `--`, a module filter, a word this reader does not know
+        // and a line that names no `--test` stay as they are.
+        for line in [
+            "cargo test --offline --locked --test one name",
+            "cargo test --offline --locked --test one -- --exact name",
+            "cargo test --offline --locked --test card one:: -- two::",
+            "cargo test --offline --locked --lib -- name",
+            "cargo test --offline --locked --test one --features x",
+            "cargo test --offline --locked",
+        ] {
+            let grown = add_test_option(&registry(&[line]), "a", "two");
+            assert_eq!(grown, None, "{line}");
+        }
+        // The line without a filter gains the name, wherever it stands.
+        let filtered = "cargo test --offline --locked --test one name";
+        let plain = "cargo test --offline --locked --lib --test three";
+        let old = registry(&[filtered, plain]);
+        let grown = add_test_option(&old, "a", "two").unwrap();
+        assert_eq!(grown, old.replace(plain, &format!("{plain} --test two")));
         assert!(crate::gate::registry_only_grew(
             crate::gate::SCAN_REGISTRY,
-            registry,
+            &old,
             &grown
         ));
-        let no_target = registry.replace("--test one ", "");
-        assert_eq!(add_test_option(&no_target, "a", "two"), None);
-        assert_eq!(add_test_option(registry, "b", "two"), None);
+        assert_eq!(add_test_option(&old, "b", "two"), None);
+    }
+
+    /// The scan table of this repository: no scan without `test_targets` gets a name into a line
+    /// with a filter, and these four `always` scans, whose one line is filtered, get no write.
+    #[test]
+    fn no_scan_of_this_repository_gains_a_target_in_a_filtered_line() {
+        const TABLE: &str = include_str!("../tools/repo_scans.json");
+        for id in [
+            "clean-env-only",
+            "test-seams-read-only-in-debug-builds",
+            "include-str-card-generated-scope",
+            "include-str-release-suite",
+        ] {
+            if !lists_targets(TABLE, id) {
+                assert_eq!(add_test_option(TABLE, id, "zz_new_cli"), None, "{id}");
+            }
+        }
+        let value: Value = serde_json::from_str(TABLE).unwrap();
+        for scan in value["scans"].as_array().unwrap() {
+            let id = scan["id"].as_str().unwrap();
+            if lists_targets(TABLE, id) {
+                continue;
+            }
+            let Some(grown) = add_test_option(TABLE, id, "zz_new_cli") else {
+                continue;
+            };
+            let grown: Value = serde_json::from_str(&grown).unwrap();
+            let before = scan["checks"].as_array().unwrap();
+            let after = scan_of(&grown, id).unwrap()["checks"].as_array().unwrap();
+            for (old, _) in before.iter().zip(after).filter(|(o, n)| o != n) {
+                let line = old.as_str().unwrap();
+                let mut words = line.split_whitespace().skip(2);
+                while let Some(word) = words.next() {
+                    if word == "--test" || word == "--bin" {
+                        words.next();
+                    } else {
+                        assert!(word.starts_with("--") && word != "--", "{id}: {line}");
+                    }
+                }
+            }
+        }
     }
 
     #[test]

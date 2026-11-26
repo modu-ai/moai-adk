@@ -155,10 +155,13 @@ enum Action {
     ///
     /// Writes files in the checkout: the sha256 values of the skill package's source manifest,
     /// the first word of a new test file in `tests/areas.toml` (only for a word given with
-    /// `--area <word>=<area>`), and a `--test` option on a check line of `tools/repo_scans.json`
-    /// when the result reads as growth of that table. It writes nothing for a choice a person
-    /// makes (an allow-list row, an exemption reason, a manifest entry's origin, an area for a
-    /// first word that no `--area` names): the line to add is printed as it is, in `print`. A
+    /// `--area <word>=<area>`), and a new test target of an `always` scan in
+    /// `tools/repo_scans.json` (a name in its `test_targets` list, or a `--test` option on a
+    /// check line without a name filter) when the result reads as growth of that table. A
+    /// filtered check line is never changed. It writes nothing for a choice a person makes (an
+    /// allow-list row, an exemption reason, a manifest entry's origin, an area for a first word
+    /// that no `--area` names, a scan whose check lines all filter): the line to add is printed
+    /// as it is, in `print`. A
     /// file that is a link, or lies under a linked folder, is not written and is named. After
     /// writing it asks the same checks again: `result` is `PASS` only when nothing is left to
     /// print, `nothing_to_do` is `true` when it wrote nothing and nothing is left, and `FAIL`
