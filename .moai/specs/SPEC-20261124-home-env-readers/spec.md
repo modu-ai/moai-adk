@@ -66,13 +66,13 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - AC-12 (REQ-6..REQ-12): 조각 2 의 변경 경로는 이 SPEC 의 Scope write 목록 안이에요. · verify: `git diff --stat <base>..<head>`
 - AC-13 (REQ-12): 클레임 연결 테스트 도우미는 HOME 없이 클론 신원을 풀어요. `tests/claim_link_cli.rs` 의 `record()` 가 `identity_in(&self.root, None)` 을 부르고, 되돌리면(`identity(&self.root)`) 기준선에서 지운 스물다섯 테스트가 enforce 에서 실패해요. · verify: `git diff <base>..<head> -- tests/claim_link_cli.rs` 와 `cargo nextest run --offline --locked --test claim_link_cli`
 - AC-14 (REQ-10): 소유자가 다른 저장소에서, 신뢰(`safe.directory`)를 받은 HOME 의 `.config/git/config` 에만 둔 HOME 을 넘기면 `identity_in(path, Some(home))` 이 성공하고, 신뢰가 없는 HOME 은 거절 문구로 실패해요(판 2 의 `GIT_CONFIG_GLOBAL` 고정은 이 파일을 버렸어요). · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_reads_the_xdg)'`
-- AC-15 (REQ-10): 환경이 `$XDG_CONFIG_HOME/git/config` 나 `GIT_CONFIG_GLOBAL` 이 가리키는 파일로만 신뢰를 두면 `identity(path)` 가 성공하고, 그 둘이 없으면 거절 문구로 실패해요; 환경 HOME 과 같은 HOME 을 넘긴 `identity_in` 도 같아요. · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_keeps_the)'`
+- AC-15 (REQ-10): 환경이 `$XDG_CONFIG_HOME/git/config` 나 `GIT_CONFIG_GLOBAL` 이 가리키는 파일로만 신뢰를 두면 환경 HOME 과 같은 HOME 을 넘긴 `identity_in` 이 성공하고, 그 둘이 없으면 거절 문구로 실패해요; 어댑터 `identity(path)` 가 있는 동안은 그것도 같아요. · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_keeps_the)'`
 - AC-16 (REQ-10): 환경이 `.gitconfig`·`$XDG_CONFIG_HOME/git/config`·`GIT_CONFIG_GLOBAL` 로 모두 신뢰해도, 환경 HOME 과 다른 HOME 을 넘기고 그 HOME 이 신뢰를 두지 않으면 `identity_in` 이 거절 문구로 실패해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_leaves_the)'`
 - AC-17 (REQ-13): 목록과 소스가 같으면 통과하고, 목록에 없는 읽기를 더한 가짜 소스에서는 파일과 함수 이름을 말하며 실패해요. 주석 줄과 첫 칸의 `#[cfg(test)]` 모듈은 세지 않아요. · verify: `cargo nextest run --offline --locked --test home_env_readers`
 - AC-18 (REQ-14): 어댑터(`key_vault::home`, `home_workdir::home`, `hooks::env_home`, `layout::environment_home`, `default_home_root`, `switched_dir`, `switched_dir_checked`, `claim::journal_root`, `worktree::open_locked_journal`)의 호출 자리 목록이 소스와 같고, 스캔 표에 등록돼요. 별칭으로 들여온 맨 `home()` 호출과 상수에 담은 이름은 못 보는 것이 한계예요. · verify: `cargo nextest run --offline --locked --test home_env_readers` 와 `cargo nextest run --offline --locked --test repo_scans_table`
 - AC-19 (REQ-15): HOME 이 설정·빈 값·없음 세 경우에 `baseline-inventory` 의 HOME 항목 답이 바뀌기 전과 같아요(옛 코드에서 먼저 통과하는 특성 테스트). · verify: `cargo nextest run --offline --locked --test baseline_git_env -E 'test(baseline_inventory_reports_home_entries)'`
 - AC-20 (REQ-16): `CLAUDE_CONFIG_DIR` 이 있을 때와 없을 때, HOME 이 설정·빈 값·없음일 때 `host-wake` 가 쓰는 설정 폴더가 바뀌기 전과 같아요(자식 프로세스 환경만 바꾸는 특성 테스트). · verify: `cargo nextest run --offline --locked --test host_wake_cli -E 'test(host_wake_default_config_dir)'`
-- AC-21 (REQ-13, REQ-15, REQ-16): 두 읽기가 안쪽에서 가장자리로 옮겨진 목록(가장자리 30, 안쪽 17)이 통과해요. 목록을 먼저 고치면 옛 코드에서 실패해요(RED). · verify: `cargo nextest run --offline --locked --test home_env_readers`
+- AC-21 (REQ-13, REQ-15, REQ-16): `baseline::inventory`·`default_config_dir` 의 읽기가 안쪽 목록에서 빠지고 두 명령 `run` 이 가장자리 목록에 들어간 목록이 통과해요(`b3048a821a` 에 이 묶음만 더하면 가장자리 30, 안쪽 17; 먼저 착지한 카드가 읽기를 바꿨으면 그 tip 의 수에 맞춰요). 목록을 먼저 고치면 옛 코드에서 실패해요(RED). · verify: `cargo nextest run --offline --locked --test home_env_readers`
 
 ## Scope
 
@@ -143,6 +143,7 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - 조각 2: 실험(D-4)을 돌리려면 `HOME`·`GIT_CONFIG_GLOBAL` 을 정한 `git` 명령이 필요한데, 워크트리 격리 훅이 그런 명령을 막았어요(이 세션, 2026-11-23). 그 명령줄 실험은 다시 돌리지 않았고, 리더 결정(노트 7763)대로 자식 프로세스에만 HOME 을 주는 Rust 테스트로 D-8 의 동작을 RED 먼저 확인했어요(Result).
 - 판 5: 목록 검사는 목록과 정확히 같아야 통과해요. 착지 전의 다른 카드가 HOME 읽기나 어댑터 호출을 더하거나 옮기면 그 카드의 착지 묶음 검사가 실패하고, 그 카드가 목록 파일을 함께 고쳐야 해요(D-13). 새 관문이라 승인자가 보고 정해요.
 - 판 5: 목록 검사는 글자 검색이에요. 별칭으로 들여온 맨 `home()` 호출, 상수에 담은 변수 이름, git 같은 자식 프로세스가 HOME 을 읽는 것은 못 봐요.
+- 판 5: identity 를 HOME 인자로 바꾸는 카드의 승인 대기 초안(커밋 `3076d1543d`)은 어댑터 `identity` 를 지우고 `identity` 명령과 audit clone 가장자리의 환경 HOME 읽기를 바꿔요. 목록은 먼저 착지하는 쪽에 뒤 쪽이 맞춰요: 그 카드가 먼저면 이 묶음이 그 tip 에서 목록을 만들고, 이 묶음이 먼저면 그 카드가 `tests/home_env_readers.rs` 를 함께 고쳐요.
 - 판 5: `identity.rs` 가 일부러 `environment_home` 을 부르는 곳(D-8)과 `identity::identity` 는 이 카드만으로는 0 이 되지 않아요. 예외로 남길지는 B13·B15 에서 승인자가 정해요.
 - 판 5: B12·B13 은 호출 사슬의 위쪽(`apply::receipts_dir`, `outbox::outbox_dir`, 워크트리 정리 쪽)을 아직 끝까지 따라가지 않았어요(unverified). 그 묶음을 요구로 올리기 전에 따라가요.
 
