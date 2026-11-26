@@ -103,7 +103,7 @@ parent: SPEC-20261122-home-tidy
 
 - AC-1: met — `home_tidy_cli apply_` exit 0, 5개 통과
 - AC-2: met — `home_tidy_cli archive_` exit 0, 6개 통과
-- AC-3: met — `home_tidy_cli protected_` exit 0, 6개 통과
+- AC-3: met — `home_tidy_cli protected_` exit 0, 8개 통과(감사 뒤 수리 `eca9e19570` 에서 다시 실행)
 - AC-4: met — `home_tidy_cli inuse_` exit 0, 3개 통과
 - AC-5: met — `home_tidy_cli kept_` exit 0, 3개 통과
 - AC-6: met — `home_tidy_cli delete_` exit 0, 3개 통과
@@ -120,3 +120,4 @@ parent: SPEC-20261122-home-tidy
 - not_run: 보관본 쓰기 실패(디스크 가득 등)의 직접 재현(같은 버림 경로는 다시 읽기 실패 테스트가 지나가요), 적용 도중의 시간 한도 초과, 전원 끊김, Linux·Windows. `src/tidy` 는 조각 2 부터 `cfg` 없이 unix API 를 써요: Windows 빌드는 확인하지 않았어요.
 - 남은 위험: 마지막 확인과 삭제 사이의 틈은 0 이 아니에요(위 Risks).
 - 카드 기준 3(`moai update` 미리보기)은 이 SPEC 의 범위 밖이고 후속 카드로 남아요.
+- 감사 10420 의 N3 수리(리더 결정 10422, 커밋 `eca9e19570`): 비밀 이름 규칙을 `go-state` 미리보기와 같게 넓혔어요(`src/go_state.rs` 의 `secret_name`). `.pem`·`.key`·`.p12`·`.pfx` 파일, `.npmrc`·`.netrc`·`.pgpass`·`service-account.json`·`id_rsa`·`id_ecdsa`·`id_ed25519` 가 더해져요. 목록에 없는 이름(`id_dsa`, `.git-credentials` 등)은 여전히 비밀로 보지 않아요. 새 테스트 `protected_private_key_names_skip_their_item_whole`, `protected_private_keys_are_never_opened_by_the_apply`(macOS 전용)는 예전 규칙으로 되돌린 뮤턴트에서 둘 다 exit 101 이었고, `home_tidy_cli` 전체는 54개 통과예요.
