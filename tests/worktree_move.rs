@@ -488,10 +488,11 @@ fn two_worktrees_with_one_name_block_each_other() {
     assert_eq!(p["totals"]["move"], json!(0));
 }
 
-/// #2723, #2835 D3: without `--root` the common root is `<HOME>/.moai/worktrees` — the W2
-/// worktree place — and destinations sit directly in it.
+/// #2723, SPEC-20261122-worktree-place REQ-20 and REQ-22: without `--root` the common root is
+/// the primary checkout's `.claude/worktrees` and destinations sit directly in it; without a
+/// readable HOME no default is used.
 #[test]
-fn without_root_the_home_state_folder_holds_the_worktrees() {
+fn without_root_the_primary_project_place_holds_the_worktrees() {
     let fx = fixture(&["clean"]);
     pushed(&fx.wt("clean"), "issue/1-clean");
     let out = run(&fx, &["worktree-move-plan", fx.repo.to_str().unwrap()]);
@@ -499,7 +500,7 @@ fn without_root_the_home_state_folder_holds_the_worktrees() {
     assert_eq!(v["ok"], json!(true), "{v}");
     let r = &v["result"];
     let root = PathBuf::from(r["root"].as_str().unwrap());
-    assert_eq!(root, fx.home.join(".moai/worktrees"), "{r}");
+    assert_eq!(root, fx.repo.join(".claude/worktrees"), "{r}");
     assert_eq!(PathBuf::from(r["project_root"].as_str().unwrap()), root);
     let clean = fs::canonicalize(fx.wt("clean")).unwrap();
     let c = r["items"]
@@ -529,7 +530,8 @@ fn without_root_the_home_state_folder_holds_the_worktrees() {
     }
 }
 
-/// #2835 D3: worktrees already in the new place, in the earlier common root
+/// #2835 D3, SPEC-20261122-worktree-place REQ-21: without `--root`, worktrees in the home
+/// worktree folder, in the earlier common root
 /// `<HOME>/.moai-cli/worktrees/<project key>/<name>` and in the Go generation's
 /// `<HOME>/.moai/worktrees/projects/<project>/<name>` are judged and kept — never moved.
 #[test]

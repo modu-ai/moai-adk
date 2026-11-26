@@ -263,7 +263,7 @@
         "kind": "design-spec",
         "template_id": "internal-git-safety",
         "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006); new worktrees under `~/.moai/worktrees/<project>-<id>`, existing ones never moved and the Go generation's `~/.moai/worktrees/projects/` never touched (#2811 D3, D8)."
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006); new worktrees in the project's `.claude/worktrees/<name>` (SPEC-20261122-worktree-place, in place of the earlier home folder of #2811 D3), existing ones never moved and the Go generation's `~/.moai/worktrees/projects/` never touched (#2811 D8)."
       }
     },
     "references/internal/interview.md": {
