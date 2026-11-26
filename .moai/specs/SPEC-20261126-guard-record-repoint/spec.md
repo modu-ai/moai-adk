@@ -113,3 +113,53 @@ created: 2026-11-26
 | D-8 | 세션 시작 줄이 낡은 기록을 알리는 일은 이 SPEC 에 넣지 않아요(후속). 선택지 b: `src/hook_session_start.rs` 를 범위에 넣어요. 기본값: a. | 그 파일은 다른 카드의 영역이고, 알림은 `moai update` 와 `guard-repoint` 미리보기가 맡아요. | 후속 카드. |
 | D-9 | `moai update` 의 훅 적용도 `git-hooks-apply` 처럼 비어 있는 기록을 씨앗으로 심어요. 미리보기에는 그 문장이 없고, `git_hooks_apply.md` 에 적고 답의 `guard.record` 로 보여요. 선택지 b: 미리보기에 한 줄을 더해요. 기본값: a. | 같은 `apply_guarded` 와 `seed_record` 를 써서 동작이 같아요. | 문서 문장을 바꾸는 판. |
 | D-10 | 카드 보낸 쪽의 "옛 경로"는 기록의 낡은 브랜치 값을 뜻해요. 설치 경로는 저장되지 않아요. | 리더가 확인했어요(메시지, 같은 날). 코드 읽기에서도 설치 경로를 저장하는 곳이 없었어요. | 해당 없음. |
+
+## Result
+
+구현 레인(moai-adk-agent-uma)이 2026-11-26T23:52Z(date -u)에 채웠어요. macOS(개발 Mac), 빌드 폴더는 이 워크트리의 `target/`, 무거운 명령은 모두 `moai heavy-slot-acquire --name moai-adk-agent-uma --max 2 -- env -u CLAUDE_CODE_SESSION_ID …` 슬롯 안에서 돌렸어요. 기준 NeXT `0d999775156900bca36e7b6163409fc0973d7b0a`(`src/update.rs` 를 고친 다른 카드가 랜딩된 뒤) 위로 옮겼어요. 승인은 레저 노트 10485(사용자가 직접 고름)이고, 이 파일 머리글은 승인 기록 없이 draft 로 남아 있어요.
+
+변경: `src/card/guard/repoint.rs`(새, 미리보기·`--apply`·`--revert`·`stale()`), `src/card/drift.rs`(`reference_ok` 를 `pub(crate)` 로), `src/card/guard.rs`(`pub mod repoint;` 한 줄), `src/ops/card.rs`(`Action::GuardRepoint`, 라인 리스), `src/update.rs`(`guard_answer`·`apply_git_hooks`·`repoint_notice`, 계획과 두 적용 지점), 문서 3곳(`card.md` 라인 리스), `tools/repo_scans.json`(라인 리스, `moai check fix` 가 PASS), 테스트 두 파일.
+
+테스트 (모두 이 레인이 슬롯에서 직접 돌린 결과예요):
+
+| 명령 | 결과 |
+|---|---|
+| `cargo test --locked --offline --test integration_guard_repoint` | 26 통과, 0 실패 (ac1_ 7, ac2_ 12, ac3_ 6, ac7_ 1) |
+| `cargo test --locked --offline --test update_git_hooks_cli` | 16 통과, 0 실패 (새 7개 포함, 기존 9개) |
+| `cargo test --locked --offline --test integration_guard_install ac2_` | 3 통과 (`ac2_the_record_is_written_once_and_never_rewritten` 포함, 수정 없음) |
+| `cargo test --locked --offline --test card -- card_guard_cli card_land_cli` | 88 통과 |
+
+RED 는 두 번 기록했어요: 첫 기록(`4decf2c463`)은 여섯 체크가 모두 단언 실패, 두 번째(보안 리뷰 뒤 `revert` 게이트 테스트 둘)는 두 체크가 모두 단언 실패였고 `moai tdd green` 이 둘 다 통과로 재생했어요. 첫 `tdd red` 시도 하나는 여섯째 체크가 환경 실패(종료 코드 없음, 슬롯 대기 추정)로 거절됐고, 같은 체크를 직접 돌려 단언 실패를 확인한 뒤 다시 기록했어요.
+
+- AC-1: met
+- AC-2: met
+- AC-3: met
+- AC-4: met
+- AC-5: met
+- AC-6: met
+- AC-7: met
+- AC-8: met
+
+가드 뮤턴트 (편집 한 번, 슬롯 안 `cargo test`, 평범한 `git restore` 한 줄, 매번 트리가 깨끗한 것까지 읽었어요):
+
+guard-mutant: ac2_a_wrong_or_absent_digest_writes_nothing | apply 의 digest 비교를 `if false &&` 로 끔 | exit 101
+guard-mutant: ac3_a_changed_record_refuses_the_revert | 잠금 아래 기록 비교가 아무 기록이나 받음 | exit 101
+guard-mutant: ac1_a_linked_worktree_answers_linked_worktree | probe 의 주 워크트리 확인을 끔 | exit 101
+guard-mutant: ac3_a_linked_worktree_cannot_revert | revert 의 주 워크트리 확인을 끔 | exit 101
+guard-mutant: ac3_a_land_intent_file_blocks_the_revert | revert 의 `land-intent` 확인을 끔 | exit 101
+guard-mutant: update_offers_the_guard_hook_not_for_a_stale_record | `guard_answer` 가 낡은 기록을 무시함 | exit 101
+guard-mutant: none | 나머지 가드 테스트(`ac2_a_land_intent_file_blocks_the_apply`, `ac2_a_leftover_lock_…`, `ac2_a_failing_receipt_write_…`, 참조 검사 셋)는 뮤턴트를 돌리지 않았어요(not_run) | 해당 없음
+
+SPEC 이탈과 추가 (모두 더 보수적인 쪽이에요):
+
+- 영수증에 `old_bytes_hex` 필드를 더했어요. `ac3_revert_restores_the_old_bytes…` 가 CRLF 와 둘째 줄까지 정확히 되돌리기를 요구해서, 해시만으로는 되돌릴 수 없어서예요. 되돌릴 때 이 값을 두 해시와 맞춰 보고 다르면 거절해요.
+- 보안 리뷰(자동) 지적으로 `revert` 에도 주 워크트리 확인과 `moai/land-intent` 확인을 더했고, 영수증의 옛 기록이 브랜치 ref 가 아니면 거절해요. REQ-6 의 거절 조건 목록에는 없는 추가예요. 테스트 둘(`ac3_a_linked_worktree_cannot_revert`, `ac3_a_land_intent_file_blocks_the_revert`)이 고정해요.
+- `moai update` 의 적용은 `apply_guarded` 뒤에 `seed_record` 를 불러 답의 `guard.record` 를 채워요(D-9, 테스트가 요구해요). 기존 기록은 다시 쓰지 않아요.
+- 미리보기는 낯선 `--plan-digest`·`--permission-reference` 를 거절하고, `--revert` 는 `--plan-digest` 를 거절해요. 스탬프는 `utc_stamp` 로 검사해서 `../x` 가 영수증 폴더를 벗어나지 못해요.
+
+알려진 빈틈:
+
+- 이 카드는 리더의 노트 10510 의 두 요청을 하지 않았어요. (1) 프로필을 바꾸는 첫 랜딩의 안내와 순서(`guard-repoint` 미리보기 → 확인 → `--apply` → `card drift` → 랜딩)를 next-flow 와 거절 문구에 적기, (2) 기록이 프로필과 다를 때 `card land` 가 거절하기. 둘 다 승인된 SPEC 개정 1 의 범위 밖이에요(REQ-11 은 `card land` 가 기록을 다시 쓰지 않는다고만 해요). SPEC 개정과 사용자 승인이 필요해요.
+- 잠금 아래 비교는 apply 경로에서 digest 검사가 먼저 걸려서 결정적 테스트로 따로 잡히지 않아요(깊은 방어). revert 경로에서는 잡혀요.
+- 옛 브랜치 위에서 랜딩 없이 일하는 카드는 감지하지 못해요(Risks).
+- 서브 에이전트 기록을 읽어 본 결과: 문서 담당의 마지막 `git status` 한 줄이 훅에 거절됐어요(다시 시도하지 않았고 제가 직접 확인했어요). RED 담당이 쓰기 전에 `moai card check` 를 하지 않았고(뒤에 확인하니 `allowed: true`), RED 담당과 구현 담당이 자기 워크트리의 `target/debug` 를 `rm -rf` 로 지웠어요(상대 경로, 규칙 안, 빌드가 느려졌어요).
