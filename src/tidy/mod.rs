@@ -4,6 +4,7 @@
 //! the plan names what could be archived or deleted and why. Neither writes anything, opens a
 //! regular file (but the one memory index the caller names), follows a link or starts a command.
 
+pub mod apply;
 pub mod inventory;
 pub mod memory;
 pub mod plan;
