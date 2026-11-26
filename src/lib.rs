@@ -120,6 +120,7 @@ pub mod leader_round;
 pub mod ledger;
 pub mod ledger_recover;
 pub mod local_build;
+pub mod manifest_merge;
 pub mod message;
 pub mod migrate;
 pub mod model_effort_questions;

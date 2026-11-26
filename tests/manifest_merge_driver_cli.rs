@@ -889,6 +889,39 @@ fn merged_a_side_the_driver_wrote_never_gives_a_later_text_merge_a_key_twice() {
     }
 }
 
+#[test]
+fn refused_a_file_with_its_own_merge_attribute_changed_on_one_side_alone() {
+    // The attribute refuses every skill file the merge changes. Here both sides change A, while
+    // B, which has the attribute, changes on one side: git takes B as it is, and the manifest
+    // is still left to a person.
+    let own_attribute: Step = |r| {
+        let path = r.root.join(".gitattributes");
+        let mut attributes = fs::read_to_string(&path).unwrap();
+        attributes.push_str(&format!("{PACKAGE}/{B} merge=binary\n"));
+        fs::write(path, attributes).unwrap();
+    };
+    for b_changed_by_ours in [true, false] {
+        let r = Repo::registered();
+        let merge = r.branches(
+            |r| {
+                own_attribute(r);
+                ours_first_line(r);
+                if b_changed_by_ours {
+                    r.edit_line(B, 1, "ours");
+                }
+            },
+            |r| {
+                theirs_last_line(r);
+                if !b_changed_by_ours {
+                    r.edit_line(B, 20, "theirs");
+                }
+            },
+        );
+        assert_eq!(r.unmerged(), [MANIFEST], "ours: {b_changed_by_ours}");
+        assert_refused(&r, &merge, &[B, "attribute"]);
+    }
+}
+
 // --- refused: the manifest stays a conflict ---------------------------------------------------
 
 #[test]
@@ -969,6 +1002,17 @@ fn refused_a_diff_algorithm_other_than_histogram() {
     for value in ["myers", "patience"] {
         assert_setting_refused("diff.algorithm", value);
     }
+}
+
+#[test]
+fn refused_a_diff_algorithm_given_on_the_git_command_line() {
+    // `git -c` reaches the command only through the environment git hands the driver.
+    let r = Repo::registered();
+    r.diverge(ours_first_line, theirs_last_line);
+    let myers = "diff.algorithm=myers";
+    let merge = r.run(&["-c", myers, "merge", "-q", "--no-edit", "side"]);
+    assert_eq!(r.unmerged(), [MANIFEST]);
+    assert_refused(&r, &merge, &["diff.algorithm"]);
 }
 
 #[test]
@@ -1104,6 +1148,18 @@ fn refused_a_path_that_is_not_a_package_manifest() {
     let r = Repo::new();
     r.diverge(ours_first_line, theirs_last_line);
     assert_direct_refusal(&r, &r.root, &r.sides(), "docs/other.json", &[]);
+}
+
+#[test]
+fn refused_an_entry_the_common_version_holds_as_null() {
+    // Both sides hold the same entry, so only the common version can refuse it.
+    let r = Repo::new();
+    let held = r.read(IN_PACKAGE);
+    let mut base: Value = serde_json::from_str(&held).unwrap();
+    base["files"][A] = Value::Null;
+    let side = held.into_bytes();
+    let sides = [pretty(&base).into_bytes(), side.clone(), side];
+    assert_direct_refusal(&r, &r.root, &sides, MANIFEST, &[A, "not an object"]);
 }
 
 #[test]
@@ -1590,6 +1646,38 @@ fn order_of_the_entries_never_changes_the_merged_bytes() {
     for case in 0..ORDER_CASES {
         order_case(case);
     }
+}
+
+#[test]
+fn order_rendering_the_merged_manifest_again_moves_no_byte() {
+    let r = Repo::registered();
+    let merge = r.branches(
+        |r| {
+            r.edit_line(A, 1, "ours");
+            r.set_origin(A, "reason", "first — 우리 쪽 \"quoted\"\ttab");
+        },
+        |r| {
+            r.edit_line(A, 20, "theirs");
+            r.add("references/z.md", "z\n");
+        },
+    );
+    assert_clean_and_correct(&r, &merge);
+    let merged = r.blob("HEAD", MANIFEST);
+    assert!(text(&merged).contains("우리 쪽"), "{}", text(&merged));
+
+    // The command given its own output as every side writes it back as it is.
+    let scratch = tempfile::TempDir::new_in(r.dir.path()).unwrap();
+    let files = ["O", "A", "B"].map(|name| scratch.path().join(name));
+    for file in &files {
+        fs::write(file, &merged).unwrap();
+    }
+    let out = drive(&r, &r.root, &files, MANIFEST);
+    assert_eq!(out.status.code(), Some(0), "{}", show(&out));
+    assert_eq!(text(&fs::read(&files[1]).unwrap()), text(&merged));
+
+    // So does `moai check fix` rendering the manifest that holds those bytes.
+    r.put(IN_PACKAGE, &text(&merged));
+    assert_eq!(render_manifest(&r.root).unwrap(), text(&merged));
 }
 
 // --- text: what this repository says -----------------------------------------------------------
