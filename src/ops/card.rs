@@ -20,7 +20,9 @@ enum OrchestrateAction {
     /// Reads the ledger only. Print the plan of one round; nothing is sent, started or landed
     ///
     /// Reads the ledger only. Prints `window`, `lanes`, `actions` (`clear`, `dispatch`, `audit`,
-    /// `blocked`, each with a stable `key`), `land_queue`, `attention` and `host`. Two plans of
+    /// `blocked`, each with a stable `key`), `land_queue`, `superseded`
+    /// (passed heads that are no longer their card's current head, with no `card land` line),
+    /// `attention` and `host`. Two plans of
     /// an unchanged ledger and registry are equal. `--agents-json` reads a file in the shape of
     /// `claude agents --json`; without it the host is `not_read`. A project without a ledger has
     /// an empty plan (`ledger: "absent"`, exit 0) and nothing is created.
