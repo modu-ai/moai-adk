@@ -2292,6 +2292,7 @@
         "help_text_names_moai",
         "home_isolation_scan",
         "hook_bash_boundary_cli",
+        "hook_write_boundary_cli",
         "hot_file_ops_merge",
         "next_flow_skill_scan",
         "orca_optional_3005",
@@ -2325,6 +2326,7 @@
         "tests/help_text_names_moai.rs",
         "tests/home_isolation_scan.rs",
         "tests/hook_bash_boundary_cli.rs",
+        "tests/hook_write_boundary_cli.rs",
         "tests/hot_file_ops_merge.rs",
         "tests/card/ledger_recover.rs",
         "tests/next_flow_skill_scan.rs",
@@ -2438,6 +2440,9 @@
         },
         {
           "prefix": "src/hook_engine.rs"
+        },
+        {
+          "prefix": "src/hook_write_boundary.rs"
         },
         {
           "prefix": "src/hooks.rs"

@@ -88,6 +88,7 @@ pub mod hook_config;
 pub mod hook_engine;
 pub mod hook_guards;
 pub mod hook_legacy;
+pub mod hook_write_boundary;
 pub mod hooks;
 pub mod host_home;
 pub mod host_wake;
