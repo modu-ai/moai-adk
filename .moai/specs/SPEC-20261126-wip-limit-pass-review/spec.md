@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261126-wip-limit-pass-review
 title: "wip 한도: 지금 head 에 PASS 판정이 있는 review 카드는 작업 수 상한에서 빼요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-26
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9797 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:8a89079a596da6fe291a6b398d17c9a2d4f79cfc8fc46b7c4c7768af12a939f4"
 ---
 
 # wip 한도: 지금 head 에 PASS 판정이 있는 review 카드는 작업 수 상한에서 빼요

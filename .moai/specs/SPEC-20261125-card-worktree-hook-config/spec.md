@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-card-worktree-hook-config
 title: "A card take or reclaim says when the hook settings point at files the session's start folder does not have"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-25
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9882 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:285dfdc659a3a821e691c834bb72412523e199dac5df6daa36ed88a21a6970a8"
 ---
 
 # A card take or reclaim says when the hook settings point at files the session's start folder does not have

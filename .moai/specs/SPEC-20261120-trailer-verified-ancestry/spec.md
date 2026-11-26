@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261120-trailer-verified-ancestry
 title: "trailer-check: the Moai-Verified rule covers the descendants of its start commit, not the commits listed after it"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-20
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9925 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:242bf161e1b6bc67ecee44b1250c5fd7c8ba16879af2b486a29811e56f18f420"
 ---
 
 # trailer-check: the Moai-Verified rule covers the descendants of its start commit, not the commits listed after it

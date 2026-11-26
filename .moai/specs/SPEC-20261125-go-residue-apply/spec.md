@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-go-residue-apply
 title: "Go-residue apply moves the byte-proven Go files into a receipted backup and revert puts them back, refusing every path outside the project"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9548 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:a1037dc751827a023e395fab910215637db1c13d827340d6b7513200f2ecceca"
 ---
 
 # Go-residue apply moves the byte-proven Go files into a receipted backup and revert puts them back, refusing every path outside the project
