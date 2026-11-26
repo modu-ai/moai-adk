@@ -271,6 +271,28 @@
       "rejects": "a git fixture call outside the guarded shared helper"
     },
     {
+      "id": "scratch-cargo-helper",
+      "tests": [
+        "tests/test_scratch_cargo.rs::scratch_cargo_starts_go_through_the_shared_helper"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test test_scratch_cargo scratch_cargo_starts_go_through_the_shared_helper"
+      ],
+      "rules": [
+        "tests/test_scratch_cargo.rs",
+        "tests/common/cargo.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a test that starts cargo without the shared helper"
+    },
+    {
       "id": "test-area-layout",
       "always": true,
       "tests": [
