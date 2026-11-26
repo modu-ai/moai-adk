@@ -78,3 +78,22 @@ created: 2026-11-26
 | D-8 | 판정 이력 옵션(`--verdicts N`)은 넣지 않아요 | `card timeline` 이 이력을 줘요; 줄이기가 먼저예요 | 옵션 추가 |
 | D-9 | 문서 글을 고정하는 테스트는 두지 않고 verify 명령과 감사 읽기로 확인해요 | 공용 파일 `tools/repo_scans.json` 을 건드리지 않아요 | 테스트와 scan 줄 추가 |
 | D-10 | 기준 2는 "What a round reads" 에 `card query` 를 더하고 `sqlite` 낱말이 없게 두는 것으로 채워요(그 문서에는 원래 sqlite 줄이 없어요) | 읽은 사실; 리더에게 확인을 요청했어요 | 리더 답에 따라 고침 |
+
+## Result
+
+2026-11-26 기준이에요. REQ-1 부터 REQ-8 까지 구현했어요. 리더가 D-10 과 공용 파일 방식(lease 안에서 직접 Edit)에 "진행해요"라고 답했어요(노트 10436 뒤 메시지).
+
+바뀐 파일: `src/card/query.rs`(새), `src/card/mod.rs`, `src/card/command.rs`, `src/card/wip_limit.rs`, `src/ledger/reservation.rs`, `src/ops/card.rs`, `tests/card/card_query_cli.rs`(새), `tests/card/main.rs`, `docs/leader-rules.md`, `docs/design-review/appendix/operations/card.md`.
+
+AC 의 확인 명령을 적힌 그대로 돌렸어요. head `2e29bfb34d9910f8b19568b23da967fe232a6d9f`, macOS, `--max 2` 슬롯, 로그 `target/keziah/verify582/`, 모든 명령 종료 0.
+
+- AC-1: met — `one_query_` 3 통과
+- AC-2: met — `verdict_` 5 통과
+- AC-3: met — `reservations_` 3 통과
+- AC-4: met — `note_` 4 통과
+- AC-5: met — `refusal_` 6 통과
+- AC-6: met — `readonly_` 3 통과
+- AC-7: met — `grep -n -- "moai card query" docs/leader-rules.md` 종료 0, `sqlite` 낱말 0개
+- AC-8: met — `card_query_cli::` 24 통과
+
+남은 일: 설치된 `moai` 갱신은 착지 뒤 리더의 일이에요(Non-goals). 속도는 재지 않았어요.
