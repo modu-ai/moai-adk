@@ -1,10 +1,19 @@
 ---
 id: SPEC-20261123-temp-home-e2e-regression
 title: "A temp-HOME regression runs the landed Claude Code redesign end to end through the real binary"
-status: draft
+status: approved
 revision: 4
 created: 2026-11-23
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9625 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:6fb85bb5c6f51e29798526781cab718c5fed98a8980171905457511175fbef29"
 ---
+
+## Interview
+
+- none: the regression only replays behaviour that landed SPECs already decided; no new question went to the user.
 
 # A temp-HOME regression runs the landed Claude Code redesign end to end through the real binary
 

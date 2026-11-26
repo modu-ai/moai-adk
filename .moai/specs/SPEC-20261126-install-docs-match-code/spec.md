@@ -1,10 +1,19 @@
 ---
 id: SPEC-20261126-install-docs-match-code
 title: "설치 문서(README, install/README)가 코드와 같은 말을 하고 Rust 시험이 그 어긋남을 막는다"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-26
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9550 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:20063e2e7ff1cc63824d583e1634b1836fb9eee66c050755f9af88a8b2bee55b"
 ---
+
+## Interview
+
+- none: the documents are made to say what the code already does; the one open pick (note 9549) was decided by the leader under the delegation.
 
 # 설치 문서(README, install/README)가 코드와 같은 말을 하고 Rust 시험이 그 어긋남을 막는다
 

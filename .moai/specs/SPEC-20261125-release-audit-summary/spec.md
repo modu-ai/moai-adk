@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261125-release-audit-summary
 title: "One command gathers the release range's verdicts from the ledger into one PR comment, and the audit gate reads that comment"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-25
+approval:
+  by: leader
+  at: 2026-11-26
+  basis: "리더 위임 승인 노트 9479 (사용자 위임 2026-11-25 ~14:50Z \"나머진 네가 알아서 추천 해주는데로 선택해서\", 리더 판단이고 사용자 직접 선택은 아님; Q1 은 사용자 직접 선택, 노트 9473); 리더가 착지 직전 moai spec show 로 digest 를 다시 읽었어요"
+  digest: "sha256:65051388d31a4716cb2a8c27808e02cd8f46125fdc4eb483215039fbbde73953"
 ---
 
 # One command gathers the release range's verdicts from the ledger into one PR comment, and the audit gate reads that comment
