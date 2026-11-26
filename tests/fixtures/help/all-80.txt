@@ -60,6 +60,10 @@ Project
   agents-merge-plan       Preview merging AGENTS.local.md into CLAUDE.local.md
   agents-merge-apply      Merge AGENTS.local.md into CLAUDE.local.md
   agents-merge-revert     Undo an AGENTS.local.md merge
+  claude-md-plan          Preview the old instruction files and their project
+                          lines
+  claude-md-apply         Replace the old instruction files with new ones
+  claude-md-revert        Undo a replacement of the instruction files
 Update and move
   update                  Update MoAI from the installed package
   go-state-plan           Preview moving the Go-era .moai folder
