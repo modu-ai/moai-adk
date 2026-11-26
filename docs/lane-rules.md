@@ -61,6 +61,8 @@ A change that deletes, resets, starts a process or builds a permission rule carr
 
 At tier 2 the READY carries one `guard-mutant: <test> | <code removed> | exit <n>` line per new guard test (`none | <reason>` without one); `exit 0` is repaired first. Below tier 2 none is asked for.
 
+Run each mutant without a script: change the code with Edit, run the test with one command, and change the code back with Edit; never use a script that holds `git apply`, `git checkout` or `sed -i`.
+
 ## Audit clone (release pull request only)
 
 An audit of a release pull request reads the exact head in a clone of its own. `moai audit-clone-plan . --pr <n> --head <40hex> --head-branch <branch> --base-branch <integration branch>` prints the commands: a single-branch, no-checkout clone of the head branch into `/tmp/moai-audit-<pr>-<head8>`, a fetch of the base branch only, a detached checkout of the exact head, `rev-parse HEAD` (must equal the head) and `merge-base` (the verdict's `base`). An audit clone builds in its own `target/` too. Never a linked worktree of the author's clone and never `--reference` or `--shared`. After the verdict is posted and read back, copy the logs to the plan's `evidence_dir` and remove your own clone.

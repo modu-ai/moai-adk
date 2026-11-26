@@ -13,6 +13,7 @@ When to read: when a guard, hook or host refuses a command (RUN "Exceptions and 
 ## Shell and helper rules
 
 - File writes: write tracked files and in-scope files with the host's file tools (Write, Edit) from the first write, never with a shell heredoc, `sed -i` or a redirect.
+- Run each mutant without a script: change the code with Edit, run the test with one command, and change the code back with Edit; never use a script that holds `git apply`, `git checkout` or `sed -i`.
 - Guard refusal: when a guard or hook refuses a command, report the refused command and the guard's name as given, and never reach the same effect by another path. Only when the refusal is confirmed to be about the combined form (the guard says the command is too complex to verify, not that its effect is forbidden) may it be retried split into plain single steps. The refused effect itself stays forbidden, and each step must pass the same guard on its own. Splitting is never a bypass.
 - Host worktree guard: a refusal that names the session as isolated in a worktree comes from the host itself, not from a MoAI hook (whose refusals start with `MoAI tool-preflight:`). The shapes it accepts are in "Host worktree guard"; they only change how a permitted effect is spelled.
 - Helper authentication failure: when a sub-review helper cannot start because its provider answers 401, record that review as `not_run`; if your own review replaced it, say so. Never record a key or token value.
