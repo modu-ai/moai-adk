@@ -7,11 +7,11 @@ use std::path::PathBuf;
 ///
 /// Recompute `tidy-plan` and, only when its `digest` equals `--confirm`, act on the items named
 /// with `--pick`. An archive item is packed into `<HOME>/.moai/archive/<UTC>` as a compressed
-/// archive with a `list.json`, read back and compared with the list and the source, and only then
-/// Removes the listed files one by one (a folder only when empty; never recursively). A delete
-/// item is an empty folder. An item with a secret-shaped name, a link, a special or unreadable
-/// part is skipped whole, as is a retired-tool item while a Go session may be live. Starts no
-/// command and changes nothing outside `<HOME>/.moai`.
+/// archive with a `list.json`, then read back and compared with the list and the source.
+/// Removes the listed files one by one only after that check (a folder only when empty; never
+/// recursively). A delete item is an empty folder. An item with a secret-shaped name, a link, a
+/// special or unreadable part is skipped whole, as is a retired-tool item while a Go session may
+/// be live. Starts no command and changes nothing outside `<HOME>/.moai`.
 #[derive(clap::Args)]
 pub struct Args {
     /// User home root whose `.moai` folder is tidied.

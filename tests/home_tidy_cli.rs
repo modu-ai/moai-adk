@@ -1245,21 +1245,22 @@ fn apply_refuses_before_any_write_and_names_the_cause() {
 
 #[test]
 fn apply_refuses_an_archive_folder_that_is_a_link_or_a_file() {
-    for as_link in [true, false] {
+    for case in ["link_outside", "link_inside", "file"] {
         let fx = apply_fixture();
         let elsewhere = fx.home.join("elsewhere");
         fs::create_dir_all(&elsewhere).unwrap();
-        if as_link {
-            symlink(&elsewhere, fx.moai.join("archive")).unwrap();
-        } else {
-            put(&fx.moai.join("archive"), 3);
+        match case {
+            "link_outside" => symlink(&elsewhere, fx.moai.join("archive")).unwrap(),
+            // A directory handle would follow this one: only the operation's own check stops it.
+            "link_inside" => symlink("handoffs", fx.moai.join("archive")).unwrap(),
+            _ => put(&fx.moai.join("archive"), 3),
         }
         let good = token(&fx);
         let before = snap(&fx.home);
         let out = call(&apply_args(&fx, &["run"], &good, PERMIT));
-        assert!(!out.ok, "{as_link}: {}", all(&out));
-        assert!(all(&out).contains("archive"), "{}", all(&out));
-        assert_eq!(snap(&fx.home), before, "{as_link}");
+        assert!(!out.ok, "{case}: {}", all(&out));
+        assert!(all(&out).contains("archive"), "{case}: {}", all(&out));
+        assert_eq!(snap(&fx.home), before, "{case}");
     }
 }
 
@@ -1269,7 +1270,8 @@ fn apply_refuses_a_moai_folder_that_is_a_link() {
     let good = token(&fx);
     let real = fx.home.join("real");
     fs::rename(&fx.moai, &real).unwrap();
-    symlink(&real, &fx.moai).unwrap();
+    // A relative link: a handle of the home would follow it.
+    symlink("real", &fx.moai).unwrap();
     let before = snap(&fx.home);
     let out = call(&apply_args(&fx, &["run"], &good, PERMIT));
     assert!(!out.ok && all(&out).contains("link"), "{}", all(&out));
@@ -1598,17 +1600,26 @@ fn restore_writes_nothing_of_an_item_whose_list_or_archive_does_not_check() {
 
 #[test]
 fn restore_follows_no_link_that_took_the_place_of_a_parent() {
-    let fx = apply_fixture();
-    let stamp = text(&applied(&fx, &["reports/projA/old2.md"])["archive"]).to_string();
-    let outside = fx.home.join("outside");
-    fs::create_dir_all(&outside).unwrap();
-    fs::rename(fx.moai.join("reports/projA"), fx.home.join("moved")).unwrap();
-    symlink(&outside, fx.moai.join("reports/projA")).unwrap();
-    let before = snap(&fx.home);
-    let r = result(&call(&restore_args(&fx, &stamp, &[], PERMIT)));
-    assert_eq!(r["state"], "partial", "{r}");
-    assert_eq!(item(&r, "reports/projA/old2.md")["state"], "failed", "{r}");
-    assert_eq!(snap(&fx.home), before, "something was written");
+    for inside in [false, true] {
+        let fx = apply_fixture();
+        let stamp = text(&applied(&fx, &["reports/projA/old2.md"])["archive"]).to_string();
+        let outside = fx.home.join("outside");
+        fs::create_dir_all(&outside).unwrap();
+        fs::rename(fx.moai.join("reports/projA"), fx.home.join("moved")).unwrap();
+        // A link to a sibling folder: a directory handle would follow it.
+        let target = if inside {
+            fs::create_dir_all(fx.moai.join("reports/projB")).unwrap();
+            PathBuf::from("projB")
+        } else {
+            outside
+        };
+        symlink(target, fx.moai.join("reports/projA")).unwrap();
+        let before = snap(&fx.home);
+        let r = result(&call(&restore_args(&fx, &stamp, &[], PERMIT)));
+        assert_eq!(r["state"], "partial", "{inside}: {r}");
+        assert_eq!(item(&r, "reports/projA/old2.md")["state"], "failed", "{r}");
+        assert_eq!(snap(&fx.home), before, "{inside}: something was written");
+    }
 }
 
 #[test]
@@ -1781,29 +1792,50 @@ fn archive_a_file_changed_just_before_its_removal_stays() {
 
 #[test]
 fn protected_a_folder_swapped_for_a_link_is_not_followed_at_removal() {
-    let fx = apply_fixture();
-    // Same names, bytes and mode as the listed ones.
-    let outside = fx.home.join("outside");
-    put(&outside.join("tool.sh"), 300);
-    fs::set_permissions(outside.join("tool.sh"), fs::Permissions::from_mode(0o750)).unwrap();
-    fs::create_dir_all(outside.join("empty")).unwrap();
-    let deep = fx.moai.join("run/deep");
-    let moved = fx.home.join("moved");
-    let mut away = Vec::new();
-    let r = stepped(&fx, &["run"], &mut |step| {
-        if let Step::Removing { .. } = step {
-            fs::rename(&deep, &moved).unwrap();
-            symlink(&outside, &deep).unwrap();
-            away = snap(&outside);
-        }
-    });
-    assert_eq!(item(&r, "run")["state"], "partly_removed", "{r}");
-    assert_eq!(snap(&outside), away);
-    assert!(moved.join("tool.sh").exists() && moved.join("empty").exists());
-    assert!(fs::symlink_metadata(&deep)
-        .unwrap()
-        .file_type()
-        .is_symlink());
+    // A link out of the home, and one to a sibling folder that a directory handle would follow.
+    for inside in [false, true] {
+        let fx = apply_fixture();
+        let target = if inside {
+            fx.moai.join("run/copy")
+        } else {
+            fx.home.join("outside")
+        };
+        let deep = fx.moai.join("run/deep");
+        let moved = fx.home.join("moved");
+        let mut away = Vec::new();
+        let r = stepped(&fx, &["run"], &mut |step| {
+            if let Step::Removing { .. } = step {
+                // The same names, bytes, mode and time as the listed ones.
+                fs::rename(&deep, &moved).unwrap();
+                put(&target.join("tool.sh"), 300);
+                fs::set_permissions(target.join("tool.sh"), fs::Permissions::from_mode(0o750))
+                    .unwrap();
+                let time = fs::metadata(moved.join("tool.sh"))
+                    .unwrap()
+                    .modified()
+                    .unwrap();
+                fs::File::open(target.join("tool.sh"))
+                    .unwrap()
+                    .set_modified(time)
+                    .unwrap();
+                fs::create_dir_all(target.join("empty")).unwrap();
+                let to = if inside {
+                    PathBuf::from("copy")
+                } else {
+                    target.clone()
+                };
+                symlink(to, &deep).unwrap();
+                away = snap(&target);
+            }
+        });
+        assert_eq!(item(&r, "run")["state"], "partly_removed", "{inside}: {r}");
+        assert_eq!(snap(&target), away, "{inside}");
+        assert!(moved.join("tool.sh").exists() && moved.join("empty").exists());
+        assert!(fs::symlink_metadata(&deep)
+            .unwrap()
+            .file_type()
+            .is_symlink());
+    }
 }
 
 #[test]
@@ -1840,6 +1872,36 @@ fn receipt_is_pending_before_the_first_removal() {
     });
     assert_eq!(seen, 2);
     assert_ne!(snap_if_present(&run), before);
+}
+
+#[test]
+fn inuse_a_session_that_starts_just_before_the_removal_keeps_the_item() {
+    // One archive item and one delete item.
+    for pick in ["run", "rescue"] {
+        let fx = apply_fixture();
+        let before = snap(&fx.moai.join(pick));
+        let registry = fx.moai.join("state/active-sessions.json");
+        let live = format!("[{{\"pid\": {}}}]", std::process::id());
+        let mut folder = PathBuf::new();
+        let r = stepped(&fx, &[pick], &mut |step| {
+            if let Step::Removing { run, .. } = step {
+                folder = run.to_path_buf();
+                fs::create_dir_all(registry.parent().unwrap()).unwrap();
+                fs::write(&registry, &live).unwrap();
+            }
+        });
+        let i = item(&r, pick);
+        assert_eq!(i["state"], "skipped", "{r}");
+        assert_eq!(i["reason"], "in_use", "{i}");
+        assert!(i.get("archive_item").is_none(), "{i}");
+        assert_eq!(snap(&fx.moai.join(pick)), before);
+        // Nothing of the skipped item stays in the archive.
+        let names: Vec<_> = fs::read_dir(&folder)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, ["receipt.json"], "{names:?}");
+    }
 }
 
 fn snap_if_present(p: &Path) -> Vec<String> {
