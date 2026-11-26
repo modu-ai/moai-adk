@@ -30,9 +30,6 @@ pub fn name_problem(name: &str) -> Option<String> {
     if name.is_empty() {
         return Some("the name is empty".into());
     }
-    if name.chars().count() > MAX_NAME {
-        return Some(format!("the name is longer than {MAX_NAME} characters"));
-    }
     if name.starts_with('-') {
         return Some("the name starts with `-`".into());
     }
@@ -44,7 +41,15 @@ pub fn name_problem(name: &str) -> Option<String> {
             "the name holds {c:?}; only lower-case letters, digits and `-` are allowed, so a path, a `.` or `..` part and a nested place cannot be spelled"
         ));
     }
+    if name.len() > MAX_NAME {
+        return Some(format!("the name is longer than {MAX_NAME} characters"));
+    }
     None
+}
+
+/// A refusal before the add: nothing was made, and the wording marks it as an input refusal.
+fn refused(detail: String) -> String {
+    format!("worktree refused: {detail}; nothing was made")
 }
 
 /// One git call in `dir` with the inherited git variables removed: the exit success, stdout and
@@ -108,48 +113,42 @@ fn branch_name_ok(dir: &Path, branch: &str) -> bool {
 /// any check before the add refuses.
 pub fn make(project: &Path, name: &str, branch: &str, base: Option<&str>) -> Result<Value> {
     if let Some(problem) = name_problem(name) {
-        return Err(format!(
-            "worktree name {name:?} refused: {problem}; nothing was made"
-        ));
+        return Err(refused(format!("the name {name:?}: {problem}")));
     }
     let common = common_dir(project)?;
     let primary = primary_of(&common)?;
     let target = primary.join(SLOT_DIR).join(name);
     crate::home_workdir::place_verdict(&primary, &target).map_err(|r| r.detail)?;
     if fs::symlink_metadata(&target).is_ok() {
-        return Err(format!(
-            "the folder {} already exists; nothing was made",
+        return Err(refused(format!(
+            "the folder {} already exists",
             target.display()
-        ));
+        )));
     }
     if !branch_name_ok(&primary, branch) {
-        return Err(format!(
-            "{branch:?} is not a usable branch name; nothing was made"
-        ));
+        return Err(refused(format!("{branch:?} is not a usable branch name")));
     }
     if commit_of(&primary, &format!("refs/heads/{branch}")).is_some() {
-        return Err(format!(
-            "the branch {branch} already exists; nothing was made"
-        ));
+        return Err(refused(format!("the branch {branch} already exists")));
     }
     let (sha, from) = match base {
         Some(b) => (
             commit_of(&primary, b).ok_or_else(|| {
-                format!("the base {b:?} names no commit of this repository; nothing was made")
+                refused(format!("the base {b:?} names no commit of this repository"))
             })?,
             format!("--base {b}"),
         ),
         None => {
             let integration = crate::card::landed::integration_branch(project).map_err(|e| {
-                format!("no integration branch is known ({e}); give --base <ref>; nothing was made")
+                refused(format!(
+                    "no integration branch is known ({e}); give --base <ref>"
+                ))
             })?;
-            let tip = crate::card::landed::tip_of(project, &integration)
-                .map_err(|e| format!("{e}; nothing was made"))?;
+            let tip = crate::card::landed::tip_of(project, &integration).map_err(refused)?;
             (tip, format!("integration branch {integration}"))
         }
     };
-    crate::home_workdir::ensure_place_ignored(&primary)
-        .map_err(|e| format!("{e}; nothing was made"))?;
+    crate::home_workdir::ensure_place_ignored(&primary).map_err(refused)?;
     let path_arg = target.to_string_lossy().to_string();
     let (added, _, why) = git(
         &primary,

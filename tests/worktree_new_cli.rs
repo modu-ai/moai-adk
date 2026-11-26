@@ -227,6 +227,11 @@ fn ac3_a_taken_name_an_unknown_base_and_a_linked_place_are_refused() {
     let out = r.run(&["lane-taken", "--branch", BRANCH]);
     assert_ne!(out.code, 0, "{}", out.said);
     assert!(out.said.contains("lane-taken"), "{}", out.said);
+    assert_eq!(
+        out.json["error"]["kind"], "invalid_input",
+        "a refusal is not an internal error: {}",
+        out.said
+    );
     // The branch is taken.
     git_ok(&r.root, &["branch", "spec/taken-20261124", "main"]);
     let before_branch = r.state();
