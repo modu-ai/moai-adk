@@ -57,6 +57,7 @@ created: 2026-11-26
 - write: `templates/github/manifest.json` (`license`, `contract` 문장)
 - write: `tests/update_route.rs` (고정 문장 1곳)
 - write: `docs/cli-text-rationale.md` (지운 인용 기록)
+- write: `skills/moai-html-report/references/artifact-contract.md`, `skills/moai-html-report/references/fonts.md` (날짜 붙은 결정 인용 한 줄씩; 감사 FAIL 노트 10196 뒤 리더 지시로 더함)
 - shared (card line-lease): `tools/repo_scans.json`, `skills/moai/references/source-manifest.json` (바뀐 파일의 sha256 줄만)
 - read-only: `src/launcher_init.rs`, `src/self_audit.rs`, `src/pr_link.rs`, `install/moai-switch.sh`
 - forbidden: `src/**`, `tools/*.py`
@@ -81,10 +82,22 @@ created: 2026-11-26
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | 옛 가지 3개는 머지하지 않고 검사 파일의 규칙만 옮겨요 | 옛 head(`b508a4e2cc` 등)는 물러난 흐름의 글 위에 있고 base 와 충돌해요. 원장 머지 드라이버는 python3 을 불러요 | 옛 가지는 그대로 있어요 |
-| D-2 | 원장의 `origin.reason` 29줄은 PENDING 에 두고 후속으로 지워요(리더 결정 대기, 기본값) | 공용 파일이라 문장을 많이 고치면 머지 충돌이 커요 | PENDING 항목을 지우고 문장을 고치면 돼요 |
+| D-2 | 원장(`source-manifest.json`)의 인용 줄 30개(`origin.reason` 29줄과 `status` 1줄)는 PENDING 에 두고 후속 카드가 지워요 | 리더의 위임 결정(원장 노트 9921 (b), 10144). 공용 파일이라 문장을 많이 고치면 머지 충돌이 커요 | PENDING 항목을 지우고 문장을 고치면 돼요 |
 | D-3 | `workflows/audit.md` 의 한국어 표지는 남겨요 | 검사기와 PR 본문 생성기가 그 글자를 읽어요. 글만 바꾸면 안내한 절을 명령이 거절해요 | 검사기가 두 표기를 읽게 하는 카드로 |
 | D-4 | SPEC id 는 대상이 아니에요 | 카드 본문의 대상 목록에 없고, 감사 PASS 였던 검사도 잡지 않았고, `tests/flow_name_scan.rs` 가 하나를 고정해요 | 검사에 종류 하나를 더하면 돼요 |
 | D-5 | `LANE-*` 는 잡지 않아요 | 실행 파일이 읽는 프로토콜 표지예요(리더 결정, 노트 3711) | 검사에 낱말을 더하면 돼요 |
 | D-6 | `templates/bundle-packs/` 는 검사에서 빼요 | 리더 결정, 노트 5089 | `EXEMPT_PREFIXES` 를 비우면 돼요 |
 | D-7 | 지운 인용은 `docs/cli-text-rationale.md` 끝에 적어요 | 새 문서를 검사 표가 이름하면 `tools/ci_scope.py`(Python)를 고쳐야 해요 | 문서 부분을 옮기면 돼요 |
 | D-8 | `references/audit.md` 의 판정 보기 줄(`AUDIT` 로 시작하고 카드 번호 형식을 보여 주는 줄)은 남겨요 | 카드 번호 형식의 예시이고 `tests/gate_collect.rs` 가 그 줄을 읽어요 | `FORMAT_LINES` 를 비우고 줄을 바꾸면 돼요 |
+
+## Result
+
+- 감사 FAIL(head b46308adbb, 원장 노트 10196)의 수리: `moai-html-report` 의 두 파일에 날짜 붙은 결정 인용이 남아 있었고 검사가 놓쳤어요. 검사가 `구절 (날짜·id)` 꼴과 복수형을 잡게 하고 예시 줄을 더한 뒤 두 줄의 인용을 지웠어요(커밋 29f1ddb0f3). 새 예시 7줄은 고치기 전 규칙에서 실패했고, 괄호 처리 줄이나 복수형 처리 줄을 지운 뮤턴트는 각각 exit 101 이었어요.
+- AC-1 met: `scan_flags_each_kind_and_leaves_markers_alone` — 29f1ddb0f3 에서 통과.
+- AC-2 met: `scan_shipped_files_outside_the_pending_list_are_clean` — 새 규칙만 있고 글을 고치기 전에는 두 파일로 실패, 29f1ddb0f3 에서 통과. 예외는 PENDING 의 원장 30줄(D-2).
+- AC-3 met: `scan_exceptions_stay_named_and_needed` — 29f1ddb0f3 에서 통과.
+- AC-4 met: `installer_document_names_the_skill_question_and_the_yes_option` — 29f1ddb0f3 에서 통과.
+- AC-5 met: head f4369b3cba 에서 exit 0. 그 뒤에 바뀐 파일을 읽는 시험은 READY 의 영수증이 다시 골라 돌려요.
+- AC-6 met: head b46308adbb 에서 exit 0(58 passed). 수리는 검사 표를 바꾸지 않았어요.
+- 남은 것(감사가 막지 않는 지적으로 적은 것, 이 수리에서 고치지 않음): 날짜 없는 "by user decision" 두 곳(`skills/moai-html-report/SKILL.md`, `references/craft-fundamentals.md`), 3~5자리 밖의 번호와 `GH-123`·`이슈 123` 표기, PENDING 이 파일 단위인 점, `install/install.ps1` 의 `CLAUDE_CONFIG_DIR`.
+- not_run: `pwsh` 와 Windows 설치기, Python 시험.
