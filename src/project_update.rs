@@ -895,10 +895,24 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
         .iter()
         .map(|f| json!({"path": f.path, "action": f.action, "detail": f.detail}))
         .collect();
+    // The row of a Go-generation `CLAUDE.md` reads `skip` in every plan until the `claude-md`
+    // step has replaced the file, so it is no file to write.
+    let go_file = claude_md::go_claude_md(root).is_some();
+    let kept = |path: &str, action: &str| go_file && path == "CLAUDE.md" && action == "skip";
     let (state, reason) = if plan.files.iter().any(|f| f.action == "conflict") {
         ("conflict", "a managed part was edited by hand; it is kept")
-    } else if plan.files.iter().any(|f| f.action != "unchanged") {
+    } else if plan
+        .files
+        .iter()
+        .any(|f| f.action != "unchanged" && !kept(&f.path, &f.action))
+    {
         ("ready", "managed files to write")
+    } else if go_file {
+        (
+            "unchanged",
+            "every managed file this step writes is current; the claude-md step decides about \
+             CLAUDE.md",
+        )
     } else {
         ("unchanged", "every managed file is current")
     };
@@ -1531,14 +1545,24 @@ fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> V
     // A project without `AGENTS.md` and `AGENTS.local.md` has no pick to wait for.
     let holds_agents = fs::symlink_metadata(root.join("AGENTS.md")).is_ok()
         || fs::symlink_metadata(root.join("AGENTS.local.md")).is_ok();
+    // While `CLAUDE.md` is a Go-generation instruction file the `claude-md` step asks about it,
+    // and neither step that writes instruction files runs or waits to run.
+    let held = claude_md::go_claude_md(root)
+        .is_some()
+        .then_some(agents_local_merge::HELD_BY_CLAUDE_MD);
     if backup_pending(backup) {
         let mut steps = Vec::new();
-        if holds_agents {
-            steps.push(Step::waiting(PICKS, "blocked", AFTER_BACKUP));
+        if let Some(reason) = held {
+            steps.push(Step::waiting(PICKS, "skip", reason));
+            steps.push(Step::waiting(NAME, "skip", reason));
         } else {
-            steps.push(picks_none(root));
+            if holds_agents {
+                steps.push(Step::waiting(PICKS, "blocked", AFTER_BACKUP));
+            } else {
+                steps.push(picks_none(root));
+            }
+            steps.push(Step::waiting(NAME, "blocked", AFTER_BACKUP));
         }
-        steps.push(Step::waiting(NAME, "blocked", AFTER_BACKUP));
         steps.push(Step::waiting(SETTINGS, "blocked", AFTER_BACKUP));
         return steps;
     }
@@ -1550,7 +1574,9 @@ fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> V
     let state_of = |step: &str| install.iter().find(|s| s.name == step).map(|s| s.state);
     // The pick plans the generation writer, whose digest binds the profile and every file the
     // generation step is still to write: with either to run, its digest would be stale.
-    let picks = if !holds_agents {
+    let picks = if let Some(reason) = held {
+        Step::waiting(PICKS, "skip", reason)
+    } else if !holds_agents {
         picks_none(root)
     } else if state_of("generation") == Some("ready") {
         Step::waiting(PICKS, "blocked", AFTER_INSTALL)
@@ -1562,7 +1588,9 @@ fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> V
     // A declined pick still reads as pending below: declining it must not open a new question
     // about the same file, so the merge decision follows the pick as it was before the record.
     let picks_pending = matches!(picks.state, "needs_decision" | "conflict");
-    let agents = if install
+    let agents = if let Some(reason) = held {
+        Step::waiting(NAME, "skip", reason)
+    } else if install
         .iter()
         .any(|s| s.name == "generation" && s.state == "ready")
     {

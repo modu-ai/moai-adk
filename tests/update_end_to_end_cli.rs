@@ -442,13 +442,14 @@ fn shape_e_reaches_all_unchanged() {
 const LOCAL_WITH_GO_REFS: &str = "{\"statusLine\":{\"type\":\"command\",\"command\":\"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"},\"plansDirectory\":\".moai/plans\"}\n";
 
 /// Go references in `settings.local.json` hold the Go folder: the update never edits that file, so
-/// the loop ends with one blocked step whose reason names the file and the keys, says the update
-/// does not edit it and gives the command that follows the user's edit. After the edit the loop
-/// reaches the end.
+/// the loop ends with a blocked step whose reason names the file and the keys, says the update
+/// does not edit it and gives the command that follows the user's edit. The Go `CLAUDE.md` stays
+/// as it is meanwhile and its own step asks about it. After the edit the loop reaches the end.
 #[test]
 fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
     let fx = shape_g();
     fx.write(LOCAL, LOCAL_WITH_GO_REFS);
+    let go_claude_md = fs::read(fx.root.join("CLAUDE.md")).unwrap();
     let w = walk(&fx);
     // The settings clean-up ran first. The other moves (rule files and the like) do not depend on
     // the folder and went through; the folder itself stays while the local file names it.
@@ -484,13 +485,18 @@ fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
         fs::read_to_string(fx.root.join(LOCAL)).unwrap(),
         LOCAL_WITH_GO_REFS
     );
-    // That blocked step is the only one left, and the Go folder is where it was.
+    // That blocked step and the question about the Go `CLAUDE.md`, which no step wrote, are the
+    // ones left, and the Go folder is where it was.
     assert_eq!(
         open_steps(&w.last),
-        [("go-state".to_string(), "blocked".to_string())],
+        [
+            ("go-state".to_string(), "blocked".to_string()),
+            ("claude-md".to_string(), "needs_decision".to_string()),
+        ],
         "{}",
         w.last
     );
+    assert_eq!(fs::read(fx.root.join("CLAUDE.md")).unwrap(), go_claude_md);
     assert!(fx.root.join(".moai/manifest.json").is_file());
 
     // The user edits the file as the reason says; the same loop now reaches the end.

@@ -1406,6 +1406,9 @@ pub(crate) const BLOCK_MISSING: &str = "managed block missing or removed; baseli
 const APPEND_PICKED: &str =
     "append-managed picked: the managed section is added at the end; every other byte is kept";
 const SKIP_PICKED: &str = "skip-conflicts picked: the file is kept as it is";
+/// The detail of the row of a Go-generation `CLAUDE.md`.
+const GO_FILE_KEPT: &str = "a Go-generation instruction file is kept as it is: the claude-md step \
+     of project-update-plan decides what happens to it";
 const HARNESS_ONLY_PICKED: &str =
     "the request is for project agents and skills alone: the file is kept as it is";
 
@@ -1771,7 +1774,20 @@ pub(crate) fn agents_plan_for(
     let carried_pick = carried_by_picks() && picked(&request, "move");
     let block_wanted = !agents_md_exists || settled || carried_pick;
     let mut claude_row = None;
-    if !block_wanted {
+    // A Go-generation `CLAUDE.md` belongs to the `claude-md` step of the update plan, which asks
+    // the user. A block appended or refreshed here would change the file without that answer, and
+    // an appended one would take away the proof the question rests on, so no request writes it.
+    if crate::project_update::claude_md::go_claude_md(&root).is_some() {
+        let current = match &claude {
+            Probe::Text(bytes) => Some(digest(bytes)),
+            Probe::Absent | Probe::Refused(_) => None,
+        };
+        claude_row = Some(FilePlan {
+            action: "skip".into(),
+            expected_sha256: current,
+            ..refused_row(BLOCK_FILE, true, Some(AGENTS_SECTION), GO_FILE_KEPT)
+        });
+    } else if !block_wanted {
         let direct = if picked(&request, "move") {
             format!(
                 "; the pick `move` is carried out only by the project picks step (`--pick` of \

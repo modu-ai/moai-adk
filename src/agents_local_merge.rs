@@ -1192,7 +1192,8 @@ fn merged_into_agents_md(root: &Path, source: &Source) -> Option<String> {
     })
 }
 
-fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
+/// The plan of one kind; a `held` one is blocked whatever the files say.
+fn plan_inner(kind: Kind, root: &Path, held: bool) -> Result<Inner> {
     let target = kind.target();
     // A target that cannot be read as a plain file (a link, a path through one) blocks the plan.
     let located = crate::apply::target(root, target).and_then(|p| crate::apply::read_opt(&p));
@@ -1207,7 +1208,9 @@ fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
         Found::Source(s) => s.suspects(),
         _ => Vec::new(),
     };
+    // A held plan never asks the files: an import line of that `CLAUDE.md` is no finished merge.
     let mut decision = match target_error {
+        _ if held => Decision::of("blocked", HELD_BY_CLAUDE_MD),
         Some(reason) => Decision::of("blocked", reason),
         None => decide_for(kind, before.as_deref(), clone_found(&found), &suspects),
     };
@@ -1394,10 +1397,27 @@ fn clone_found(found: &Found) -> Found {
     }
 }
 
+/// Why no pick and no merge is offered or applied while the root `CLAUDE.md` is a Go-generation
+/// instruction file.
+pub(crate) const HELD_BY_CLAUDE_MD: &str = "the root CLAUDE.md is a Go-generation instruction \
+     file: the claude-md step of project-update-plan decides what happens to it, so no pick and no \
+     merge is offered or applied";
+
+/// `true` while the root `CLAUDE.md` is a Go-generation instruction file. The public previews and
+/// applies ask this before they start. A pick that has started does not ask again between its
+/// parts: the text it copies into `CLAUDE.md` may hold one of the markers that proof reads.
+fn held_by_claude_md(project: &Path) -> bool {
+    crate::project_update::claude_md::go_claude_md(project).is_some()
+}
+
 /// The read-only preview of one kind. Writes nothing.
 pub fn plan_for(kind: Kind, project: &Path) -> Result<Value> {
+    preview_of(kind, project, held_by_claude_md(project))
+}
+
+fn preview_of(kind: Kind, project: &Path, held: bool) -> Result<Value> {
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
-    plan_inner(kind, &root).map(|i| i.json)
+    plan_inner(kind, &root, held).map(|i| i.json)
 }
 
 /// The read-only preview of the personal-file move. Writes nothing.
@@ -1555,12 +1575,27 @@ pub fn apply_confirmed(
     permission: &str,
     confirmation: Option<&str>,
 ) -> Result<Value> {
+    // Asked before the digest, so a digest of an earlier preview gets the same answer.
+    if held_by_claude_md(project) {
+        return Err(format!("{HELD_BY_CLAUDE_MD}; nothing was written"));
+    }
+    merge_confirmed(kind, project, plan_digest, permission, confirmation)
+}
+
+/// The merge itself, for [`apply_confirmed`] and for the parts of a pick.
+fn merge_confirmed(
+    kind: Kind,
+    project: &Path,
+    plan_digest: &str,
+    permission: &str,
+    confirmation: Option<&str>,
+) -> Result<Value> {
     let target = kind.target();
     if !crate::contract::permission_reference_ok(permission) {
         return Err("a permission reference is required; nothing was written".into());
     }
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
-    let inner = plan_inner(kind, &root)?;
+    let inner = plan_inner(kind, &root, false)?;
     if inner.json["plan_digest"].as_str() != Some(plan_digest) {
         return Err("stale or altered plan; re-preview required".into());
     }

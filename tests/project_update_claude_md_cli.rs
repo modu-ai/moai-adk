@@ -4075,3 +4075,367 @@ fn apply_undo_order_takes_the_step_back_first() {
         assert_eq!(after.get(&path), before.get(&path), "{source}");
     }
 }
+
+/// The steps of the merge phase that write or delete instruction files besides [`STEP`].
+const OTHER_WRITERS: [&str; 2] = ["agents-picks", "agents-local-merge"];
+/// The picks of `agents-merge-plan` and `agents-merge-apply`.
+const PICKS: [&str; 3] = ["move", "leave", "remove-originals"];
+/// The generation pick that appends the managed section to a file that lost it.
+const APPEND: &str = "append-managed";
+
+impl Fx {
+    /// A command that only reads: it succeeds and leaves every byte as it was; its `result`.
+    fn answer(&self, args: &[&str]) -> Value {
+        let before = self.snapshot();
+        let out = self.run(args);
+        assert_eq!(self.snapshot(), before, "{args:?} wrote something");
+        assert_eq!(
+            out.code,
+            Some(0),
+            "{args:?}: stdout {} stderr {}",
+            out.stdout,
+            out.stderr
+        );
+        let v: Value = serde_json::from_str(&out.stdout).expect("a JSON answer");
+        assert_eq!(v["ok"], json!(true), "{v}");
+        v["result"].clone()
+    }
+
+    /// A command that is refused and leaves every byte as it was; its error message.
+    fn turned_down(&self, args: &[&str]) -> String {
+        let before = self.snapshot();
+        let out = self.run(args);
+        assert_eq!(
+            out.code,
+            Some(1),
+            "{args:?}: stdout {} stderr {}",
+            out.stdout,
+            out.stderr
+        );
+        assert_eq!(self.snapshot(), before, "a refused {args:?} wrote");
+        let v: Value = serde_json::from_str(&out.stdout).expect("a JSON answer");
+        assert_eq!(v["ok"], json!(false), "{v}");
+        v["error"]["message"].as_str().unwrap().to_string()
+    }
+
+    /// Runs the apply the generation step prints, with the plan it prints on stdin.
+    fn generate(&self, generation: &Value) -> Value {
+        let words = filled(&generation["apply"]["argv"]);
+        self.piped(&strs(&words), &generation["apply"]["stdin"])
+    }
+}
+
+/// A reason or a detail that sends the reader to the step that decides.
+fn assert_names_the_step(text: &Value) {
+    let said = text.as_str().unwrap_or_else(|| panic!("no text: {text}"));
+    assert!(said.contains(&format!("{STEP} step")), "{said}");
+    assert!(!said.contains("already imports"), "{said}");
+}
+
+/// The other writers of the merge phase read `skip`, name the step and offer nothing.
+fn assert_stays_away(plan: &Value) {
+    for name in OTHER_WRITERS {
+        let step = update_step(plan, name);
+        assert_eq!(step["state"], json!("skip"), "{step}");
+        assert_names_the_step(&step["reason"]);
+        for key in ["apply", "plan_digest", "preview", "decline"] {
+            assert_eq!(step[key], Value::Null, "{key}: {step}");
+        }
+    }
+}
+
+/// The `CLAUDE.md` row of a generation plan or of an agents plan: kept as it is, with the reason.
+fn assert_row_kept(files: &Value) {
+    let row = files
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|f| f["path"] == "CLAUDE.md")
+        .unwrap_or_else(|| panic!("no CLAUDE.md row: {files}"));
+    assert_eq!(row["action"], json!("skip"), "{row}");
+    assert_names_the_step(&row["detail"]);
+}
+
+/// Changes the profile, so the managed section a generation renders differs from the recorded
+/// one.
+fn change_tools(fx: &Fx) {
+    let mut profile: Value = serde_json::from_slice(&fx.read(&profile_rel())).unwrap();
+    profile["tools"] = json!(["Rust", "Zig"]);
+    fx.write(&profile_rel(), profile.to_string());
+}
+
+/// A project without a Go manifest whose managed `CLAUDE.md` one `generation-apply` wrote and
+/// recorded, with the request that apply carried.
+fn generated_project() -> (Fx, Value) {
+    let fx = Fx::new();
+    fx.profile(json!(null));
+    fx.settle_profile();
+    let plan = fx.update();
+    let generation = update_step(&plan, "generation");
+    fx.generate(generation);
+    let request = generation["apply"]["stdin"]["request"].clone();
+    assert!(request.is_object(), "{generation}");
+    (fx, request)
+}
+
+#[test]
+fn step_keeps_every_other_writer_off_a_manifest_only_go_file() {
+    let fx = apply_project();
+    fx.settle_profile();
+    let before = fx.read("CLAUDE.md");
+    let plan = fx.update();
+    let generation = update_step(&plan, "generation");
+    assert_eq!(generation["state"], json!("ready"), "{generation}");
+    assert_row_kept(&generation["preview"]["files"]);
+    assert!(
+        !choice_ids(generation).contains(&APPEND.to_string()),
+        "{generation}"
+    );
+    assert_stays_away(&plan);
+
+    // The printed command writes its other files and leaves the Go file.
+    let applied = fx.generate(generation);
+    assert_eq!(fx.read("CLAUDE.md"), before, "{applied}");
+    let merged = words(list(&applied, "files_merged"));
+    assert!(merged.contains(&".gitignore".to_string()), "{applied}");
+    assert!(!merged.contains(&"CLAUDE.md".to_string()), "{applied}");
+
+    // The proof is still there to be asked about, and nothing is left to generate.
+    let plan = fx.update();
+    assert_left_to_the_user(&plan);
+    assert_eq!(
+        update_step(&plan, STEP)["preview"]["go_claude_md"],
+        json!("manifest"),
+        "{plan}"
+    );
+    let generation = update_step(&plan, "generation");
+    assert_eq!(generation["state"], json!("unchanged"), "{generation}");
+    assert_eq!(generation["apply"], Value::Null, "{generation}");
+    assert_names_the_step(&generation["reason"]);
+    assert_row_kept(&generation["preview"]["files"]);
+    assert_stays_away(&plan);
+}
+
+#[test]
+fn step_plans_no_write_into_a_go_file_a_generation_recorded() {
+    // The recorded block is gone, which offers an append; or it stands under a Go marker with
+    // an older text, which would be refreshed.
+    for keeps_block in [false, true] {
+        let (fx, mut request) = generated_project();
+        if keeps_block {
+            let body = String::from_utf8(fx.read("CLAUDE.md")).unwrap();
+            fx.write(
+                "CLAUDE.md",
+                format!("<!-- moai:learned-start -->\n<!-- moai:learned-end -->\n{body}"),
+            );
+        } else {
+            fx.go_marker();
+        }
+        change_tools(&fx);
+        let before = fx.read("CLAUDE.md");
+        let plan = fx.update();
+        let generation = update_step(&plan, "generation");
+        assert_row_kept(&generation["preview"]["files"]);
+        assert!(
+            !choice_ids(generation).contains(&APPEND.to_string()),
+            "{generation}"
+        );
+        assert_stays_away(&plan);
+        if generation["apply"].is_object() {
+            fx.generate(generation);
+            assert_eq!(fx.read("CLAUDE.md"), before, "{keeps_block}");
+        }
+        assert_eq!(
+            update_step(&fx.update(), "generation")["state"],
+            json!("unchanged"),
+            "{keeps_block}"
+        );
+
+        // The direct writers, with and without the pick that appends.
+        let root = fx.root.to_str().unwrap().to_string();
+        for picks in [json!([]), json!([APPEND])] {
+            request["picks"] = picks;
+            let mut agents = serde_json::Map::new();
+            for key in [
+                "protocol_version",
+                "language",
+                "workflow_reference",
+                "local_file",
+                "picks",
+            ] {
+                agents.insert(key.into(), request[key].clone());
+            }
+            for (family, input) in [
+                ("generation", request.clone()),
+                ("agents", Value::Object(agents)),
+            ] {
+                let planned = fx.piped(&[&format!("{family}-plan"), &root], &input);
+                assert_row_kept(&planned["files"]);
+                let digest = planned["plan_digest"].as_str().unwrap().to_string();
+                fx.piped(
+                    &[
+                        &format!("{family}-apply"),
+                        &root,
+                        "--plan-digest",
+                        &digest,
+                        "--permission-reference",
+                        APPROVAL,
+                    ],
+                    &planned,
+                );
+                assert_eq!(fx.read("CLAUDE.md"), before, "{family} {keeps_block}");
+            }
+        }
+    }
+}
+
+#[test]
+fn step_direct_merge_commands_offer_and_apply_nothing_for_a_go_file() {
+    // The Go template imports `AGENTS.md`; a file of Go markers alone does not.
+    for imports in [true, false] {
+        let fx = apply_project();
+        if !imports {
+            fx.go_marker();
+        }
+        fx.settle_profile();
+        let root = fx.root.to_str().unwrap().to_string();
+
+        let plan = fx.answer(&["agents-merge-plan", &root]);
+        assert_eq!(plan["action"], json!("blocked"), "{imports}: {plan}");
+        assert_names_the_step(&plan["reason"]);
+        assert_eq!(plan["body"], Value::Null, "{plan}");
+        assert_eq!(plan["next_actions"], json!([]), "{plan}");
+        let mut applies = vec![(None, plan["plan_digest"].as_str().unwrap().to_string())];
+        for pick in PICKS {
+            let chosen = fx.answer(&["agents-merge-plan", &root, "--pick", pick]);
+            assert_eq!(chosen["state"], json!("blocked"), "{imports}: {chosen}");
+            assert_names_the_step(&chosen["reason"]);
+            for key in ["writes", "deletes", "parts", "choices"] {
+                assert_eq!(chosen[key], Value::Null, "{key}: {chosen}");
+            }
+            let digest = chosen["plan_digest"].as_str().unwrap().to_string();
+            applies.push((Some(pick), digest));
+        }
+
+        // With the digest of the answer above and with one of an earlier preview.
+        for (pick, digest) in applies {
+            for digest in [digest.as_str(), "sha256:0"] {
+                let mut args = vec![
+                    "agents-merge-apply",
+                    root.as_str(),
+                    "--plan-digest",
+                    digest,
+                    "--permission-reference",
+                    APPROVAL,
+                ];
+                if let Some(pick) = pick {
+                    args.extend(["--pick", pick]);
+                }
+                let message = fx.turned_down(&args);
+                assert_names_the_step(&json!(message));
+                assert!(message.contains("nothing was written"), "{message}");
+            }
+        }
+        assert_stays_away(&fx.update());
+    }
+}
+
+#[test]
+fn step_declined_the_writers_stay_away_and_nothing_keeps_asking() {
+    let fx = apply_project();
+    fx.settle_profile();
+    let before = fx.read("CLAUDE.md");
+    let first = fx.update();
+    fx.printed(&choice(update_step(&first, STEP), "leave")["apply"]["argv"]);
+    let plan = fx.update();
+    assert_eq!(update_step(&plan, STEP)["state"], json!("skip"), "{plan}");
+    assert_stays_away(&plan);
+    fx.generate(update_step(&plan, "generation"));
+    assert_eq!(fx.read("CLAUDE.md"), before);
+
+    let plan = fx.update();
+    assert_eq!(update_step(&plan, STEP)["state"], json!("skip"), "{plan}");
+    assert_stays_away(&plan);
+    let generation = update_step(&plan, "generation");
+    assert_eq!(generation["state"], json!("unchanged"), "{generation}");
+    // None of these steps is asked about or waited for.
+    for name in OTHER_WRITERS.into_iter().chain([STEP, "generation"]) {
+        for key in ["picks", "steps", "follows"] {
+            assert!(
+                !named(&plan["ask"][key]).contains(&name.to_string()),
+                "{name} in {key}: {plan}"
+            );
+        }
+    }
+}
+
+#[test]
+fn step_leaves_the_writers_as_before_without_a_go_file() {
+    // No Go manifest and no Go marker: a recorded block that was removed still offers the
+    // append.
+    let (fx, _) = generated_project();
+    fx.write("CLAUDE.md", "# zq-own\n");
+    change_tools(&fx);
+    let plan = fx.update();
+    assert_eq!(
+        update_step(&plan, STEP)["state"],
+        json!("unchanged"),
+        "{plan}"
+    );
+    let generation = update_step(&plan, "generation");
+    assert_eq!(generation["state"], json!("conflict"), "{generation}");
+    assert_eq!(choice_ids(generation), [APPEND, "skip-conflicts"]);
+
+    // The user's own files beside it still get their picks and their merge.
+    let (fx, _) = generated_project();
+    fx.write("AGENTS.md", "# zq team\n\nzq rule\n");
+    fx.write("AGENTS.local.md", "zq mine\n");
+    let plan = fx.update();
+    let picks = update_step(&plan, "agents-picks");
+    assert_eq!(picks["state"], json!("needs_decision"), "{picks}");
+    let root = fx.root.to_str().unwrap().to_string();
+    let chosen = fx.answer(&["agents-merge-plan", &root, "--pick", "move"]);
+    assert_eq!(chosen["state"], json!("ready"), "{chosen}");
+    let merge = fx.answer(&["agents-merge-plan", &root]);
+    assert_eq!(merge["action"], json!("merge"), "{merge}");
+}
+
+#[test]
+fn step_a_move_that_copies_a_go_marker_still_finishes() {
+    // The project has no Go file when the pick starts; the text it copies into `CLAUDE.md`
+    // holds a marker, so the file reads as one before the last part runs.
+    let fx = Fx::new();
+    fx.profile(json!(null));
+    fx.settle_profile();
+    fx.write(
+        "AGENTS.md",
+        "# zq team\n\n<!-- moai:learned-start -->\nzq-learned\n<!-- moai:learned-end -->\n",
+    );
+    fx.write("AGENTS.local.md", "zq mine\n");
+    let root = fx.root.to_str().unwrap().to_string();
+    let chosen = fx.answer(&["agents-merge-plan", &root, "--pick", "move"]);
+    assert_eq!(chosen["state"], json!("ready"), "{chosen}");
+    let digest = chosen["plan_digest"].as_str().unwrap();
+    let out = fx.run(&[
+        "agents-merge-apply",
+        &root,
+        "--pick",
+        "move",
+        "--plan-digest",
+        digest,
+        "--permission-reference",
+        APPROVAL,
+    ]);
+    assert_eq!(out.code, Some(0), "{} {}", out.stdout, out.stderr);
+    let personal = String::from_utf8(fx.read("CLAUDE.local.md")).unwrap();
+    assert!(personal.contains("zq mine"), "{personal}");
+    // The copied marker is there, and from now on the file reads as a Go file.
+    let shared = String::from_utf8(fx.read("CLAUDE.md")).unwrap();
+    assert!(shared.contains("<!-- moai:learned-start -->"), "{shared}");
+    let plan = fx.update();
+    assert_eq!(
+        update_step(&plan, STEP)["state"],
+        json!("needs_decision"),
+        "{plan}"
+    );
+}
