@@ -152,3 +152,23 @@ guard-mutant: card_land_open_criteria::a_withdrawn_criterion_is_held_no_longer |
 
 - RED: 수리 전 코드에서 `card_land_open_criteria` 11개 중 5개 실패(`target/keziah/red-558.log`). 감사의 재현과 같은 모양인 `a_rerun_after_a_later_verdict_keeps_the_hold`가 `closed: true`로 실패했어요. `--open 0` 한 건은 명령 해석기가 먼저 거절하는 것이어서 테스트 기대값을 고쳤어요.
 - GREEN: 11개 통과. 관련 대상 593개 통과(0 실패), `cargo clippy --all-targets -D warnings` 깨끗함.
+
+guard-mutant 15줄이에요(head `5eddc6f982`, 위 9줄을 대신해요. 각 테스트만 실행, 모두 그 테스트의 단언에서 실패, 뒤에 `git checkout`으로 복원, 워크트리 깨끗함).
+
+```
+guard-mutant: card_land_open_criteria::card_verdict_stores_only_a_hold_it_can_keep | src/ledger/workflow.rs record_verdict hold_refusal | exit 100
+guard-mutant: card_land_open_criteria::card_verdict_stores_only_a_hold_it_can_keep | src/ledger/workflow.rs verdict_from_row held_of unreadable-open rejection | exit 100
+guard-mutant: card_land_open_criteria::land_refuses_met_for_a_held_criterion | src/card/land.rs --met refusal while a criterion is held | exit 100
+guard-mutant: card_land_open_criteria::a_held_criterion_the_author_marked_met_is_opened_again | src/ledger/workflow.rs reopen_held on the landing event | exit 100
+guard-mutant: card_land_open_criteria::a_held_criterion_keeps_the_card_open_and_marks_nothing | src/card/land.rs held.is_empty condition around the met fill | exit 100
+guard-mutant: card_land_open_criteria::the_hold_is_the_union_of_each_reviewers_newest_pass | src/card/land/check.rs newest-PASS-per-reviewer dedupe | exit 100
+guard-mutant: card_land_open_criteria::land_batch_lands_a_held_head_as_a_slice | src/card/land.rs holds read on the verdict head (replaced by the landing head) | exit 100
+guard-mutant: card_land_open_criteria::a_hold_asks_for_the_same_pass_as_a_close | src/card/land.rs PASS requirement keyed on the requested keep_open | exit 100
+guard-mutant: card_land_open_criteria::a_withdrawn_criterion_is_held_no_longer | src/card/land/check.rs withdrawn-criterion filter | exit 100
+guard-mutant: card_land_open_criteria::a_rerun_after_a_later_verdict_keeps_the_hold | src/card/land.rs extra hold heads of a rerun | exit 100
+guard-mutant: card_land_open_criteria::a_rerun_after_a_later_verdict_keeps_the_hold | src/card/land/check.rs per-head key of the newest-PASS dedupe | exit 100
+guard-mutant: card_land_open_criteria::a_rerun_opens_a_held_criterion_marked_met_since | src/ledger/workflow.rs reopen on a rerun with a recorded landing | exit 100
+guard-mutant: card_land_open_criteria::a_hold_set_again_after_a_release_applies | src/ledger/workflow.rs changes_a_hold exception to the repeat | exit 100
+guard-mutant: card_land_open_criteria::a_hold_set_again_after_a_release_applies | src/ledger/workflow.rs changes_a_hold newest-verdict-is-PASS condition | exit 100
+guard-mutant: card_land_open_criteria::land_batch_lands_a_held_head_as_a_slice | src/card/land/batch.rs held copied into the batch answer | exit 100
+```
