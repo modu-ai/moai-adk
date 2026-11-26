@@ -2557,6 +2557,7 @@
     },
     {
       "id": "shipped-text-citations",
+      "always": true,
       "tests": [
         "tests/skill_text_citations.rs::scan_shipped_files_outside_the_pending_list_are_clean"
       ],
