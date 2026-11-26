@@ -1378,7 +1378,7 @@ pub fn scan_violations(
                 .filter(|s| !s.contains('/'));
             if let Some(stem) = stem.filter(|s| stems.contains(s) && !scan.targets.contains(*s)) {
                 out.push(format!(
-                    "{}: {rule} is a rule file but no check runs --test {stem}; add `cargo test --offline --locked --test {stem}` to its checks in tools/repo_scans.json",
+                    "{}: {rule} is a rule file but no check runs --test {stem}; add `{stem}` to the scan's `test_targets` array in tools/repo_scans.json (one name per line, sorted)",
                     scan.id
                 ));
             }
@@ -1808,7 +1808,7 @@ fn table_step(facts: &Facts) -> Option<Step> {
     if let Some(list) = facts.scan_list.as_deref() {
         if scan_entries(list).is_none() {
             lines.push(
-                "tools/repo_scans.json: the table exists but cannot be read (it is not JSON with a `scans` list whose entries each have a `checks` list); fix or restore it, it is not treated as absent"
+                "tools/repo_scans.json: the table exists but cannot be read (it is not JSON with a `scans` list whose entries each have a `test_targets` or a `checks` list); fix or restore it, it is not treated as absent"
                     .to_string(),
             );
         }
@@ -1820,8 +1820,14 @@ fn table_step(facts: &Facts) -> Option<Step> {
         facts.tracked.as_deref(),
     ));
     for (table, error) in &facts.unreadable {
+        // The scan list's own file says what its entries hold, as the line above does.
+        let shape = if table == "tools/repo_scans.json" {
+            " (its entries each have a `test_targets` or a `checks` list)"
+        } else {
+            ""
+        };
         lines.push(format!(
-            "{table}: the table exists but cannot be read ({error}); fix or restore it, it is not treated as absent"
+            "{table}: the table exists but cannot be read ({error}){shape}; fix or restore it, it is not treated as absent"
         ));
     }
     let mut s = step(

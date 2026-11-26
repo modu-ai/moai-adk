@@ -92,8 +92,8 @@
         "tests/path_root_direct_sites.rs::the_repository_spells_the_earlier_folder_only_where_the_baseline_lists",
         "tests/path_root_direct_sites.rs::a_new_spelling_outside_the_baseline_fails_the_scan_and_a_lower_count_passes"
       ],
-      "checks": [
-        "cargo test --offline --locked --test path_root_direct_sites"
+      "test_targets": [
+        "path_root_direct_sites"
       ],
       "rules": [
         "tests/path_root_direct_sites.rs"
@@ -113,8 +113,8 @@
       "tests": [
         "tests/cli_text_citations.rs::scan_source_files_outside_the_pending_list_are_clean"
       ],
-      "checks": [
-        "cargo test --offline --locked --test cli_text_citations"
+      "test_targets": [
+        "cli_text_citations"
       ],
       "rules": [
         "tests/cli_text_citations.rs",
@@ -179,8 +179,8 @@
         "tests/home_isolation_scan.rs::no_new_test_runs_the_binary_without_a_home",
         "tests/home_isolation_scan.rs::the_ledger_library_has_no_external_call_names"
       ],
-      "checks": [
-        "cargo test --offline --locked --test home_isolation_scan"
+      "test_targets": [
+        "home_isolation_scan"
       ],
       "rules": [
         "tests/home_isolation_scan.rs",
@@ -212,8 +212,8 @@
         "tests/bundle_user_assets_cli.rs::remove_of_a_lone_pack_deletes_its_files_and_clears_the_journal",
         "tests/bundle_user_assets_cli.rs::a_journal_of_an_interrupted_run_is_reconciled_as_a_collision"
       ],
-      "checks": [
-        "cargo test --offline --locked --test bundle_user_assets_cli"
+      "test_targets": [
+        "bundle_user_assets_cli"
       ],
       "rules": [
         "tests/bundle_user_assets_cli.rs",
@@ -277,8 +277,8 @@
         "tests/test_area_layout.rs::area_table_maps_every_real_test_file",
         "tests/test_area_layout.rs::scan_list_names_only_existing_targets_and_paths"
       ],
-      "checks": [
-        "cargo test --offline --locked --test test_area_layout"
+      "test_targets": [
+        "test_area_layout"
       ],
       "rules": [
         "tests/test_area_layout.rs",
@@ -329,8 +329,8 @@
       "tests": [
         "tests/test_temp_names_scan.rs::temp_names_tree_has_no_pid_names_under_the_temp_folder"
       ],
-      "checks": [
-        "cargo test --offline --locked --test test_temp_names_scan"
+      "test_targets": [
+        "test_temp_names_scan"
       ],
       "rules": [
         "tests/test_temp_names_scan.rs"
@@ -385,8 +385,10 @@
         "src/main.rs::operations_doc_matches_code",
         "src/main.rs::fragment_mutations_are_detected"
       ],
+      "test_targets": [
+        "hot_file_ops_merge"
+      ],
       "checks": [
-        "cargo test --offline --locked --test hot_file_ops_merge",
         "cargo test --offline --locked --bin moai-cli -- operations_doc_matches_code fragment_mutations_are_detected"
       ],
       "rules": [
@@ -444,8 +446,19 @@
         "tests/host_home_cli.rs (plans hash skills/moai and agents/)",
         "tests/update_closing_commit.rs (all 4)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test update_user_layer_cli --test update_hooks_cli --test update_keys_cli --test update_home_layer_cli --test project_update_plan_cli --test update_headver --test update_switch_cli --test update_git_hooks_cli --test host_home_cli --test update_closing_commit"
+      "test_targets": [
+        "agent_defs_package",
+        "agents_home_cli",
+        "host_home_cli",
+        "project_update_plan_cli",
+        "update_closing_commit",
+        "update_git_hooks_cli",
+        "update_headver",
+        "update_home_layer_cli",
+        "update_hooks_cli",
+        "update_keys_cli",
+        "update_switch_cli",
+        "update_user_layer_cli"
       ],
       "rules": [
         "tests/agent_defs_package.rs",
@@ -481,8 +494,11 @@
         "src/claude.rs (2 unit)",
         "src/update.rs::a_skill_copy_that_did_not_apply_gets_no_agents_and_no_section"
       ],
+      "test_targets": [
+        "exe_link_cli",
+        "home_routing_cli"
+      ],
       "checks": [
-        "cargo test --offline --locked --test home_routing_cli --test exe_link_cli",
         "cargo test --offline --locked --lib -- projection_keeps_the_canonical_body_and_records_additions projection_refuses_overrides_grants_and_bad_values a_skill_copy_that_did_not_apply_gets_no_agents_and_no_section"
       ],
       "rules": [
@@ -720,8 +736,8 @@
       "tests": [
         "tests/claude_python_adapter_removed.rs::nothing_tells_anyone_to_run_the_removed_files"
       ],
-      "checks": [
-        "cargo test --offline --locked --test claude_python_adapter_removed"
+      "test_targets": [
+        "claude_python_adapter_removed"
       ],
       "rules": [
         "tests/claude_python_adapter_removed.rs"
@@ -822,8 +838,8 @@
       "tests": [
         "tests/repo_scans_table.rs::every_walking_test_file_is_listed_or_exempt"
       ],
-      "checks": [
-        "cargo test --offline --locked --test repo_scans_table"
+      "test_targets": [
+        "repo_scans_table"
       ],
       "rules": [
         "tests/repo_scans_table.rs",
@@ -916,8 +932,10 @@
         "tests/source_manifest_facts.rs::this_repository_manifest_is_what_the_tool_writes",
         "tests/source_manifest_test.py::test_this_repository_manifest_is_what_the_tool_writes"
       ],
+      "test_targets": [
+        "source_manifest_facts"
+      ],
       "checks": [
-        "cargo test --offline --locked --test source_manifest_facts",
         "python3 -m unittest tests.source_manifest_test"
       ],
       "rules": [
@@ -938,8 +956,8 @@
       "tests": [
         "tests/core_rules_2876.rs (all 3)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test core_rules_2876"
+      "test_targets": [
+        "core_rules_2876"
       ],
       "rules": [
         "tests/core_rules_2876.rs"
@@ -959,8 +977,8 @@
       "tests": [
         "tests/orca_optional_3005.rs (all 5)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test orca_optional_3005"
+      "test_targets": [
+        "orca_optional_3005"
       ],
       "rules": [
         "tests/orca_optional_3005.rs"
@@ -986,8 +1004,8 @@
       "tests": [
         "tests/test_identity_list_2878.rs (all 3)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test test_identity_list_2878"
+      "test_targets": [
+        "test_identity_list_2878"
       ],
       "rules": [
         "tests/test_identity_list_2878.rs",
@@ -1064,8 +1082,8 @@
       "tests": [
         "tests/windows_unix_gate_scan.rs::no_file_under_tests_names_std_os_unix_outside_cfg_unix"
       ],
-      "checks": [
-        "cargo test --offline --locked --test windows_unix_gate_scan"
+      "test_targets": [
+        "windows_unix_gate_scan"
       ],
       "rules": [
         "tests/windows_unix_gate_scan.rs"
@@ -1085,8 +1103,8 @@
       "tests": [
         "tests/style_banner_scan.rs (all 2)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test style_banner_scan"
+      "test_targets": [
+        "style_banner_scan"
       ],
       "rules": [
         "tests/style_banner_scan.rs"
@@ -1128,8 +1146,8 @@
       "tests": [
         "tests/state_folder_literal_scan.rs::the_repository_tests_stay_within_the_state_folder_baseline"
       ],
-      "checks": [
-        "cargo test --offline --locked --test state_folder_literal_scan"
+      "test_targets": [
+        "state_folder_literal_scan"
       ],
       "rules": [
         "tests/state_folder_literal_scan.rs",
@@ -1233,8 +1251,8 @@
       "tests": [
         "tests/flaky_followups.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test flaky_followups"
+      "test_targets": [
+        "flaky_followups"
       ],
       "rules": [
         "tests/flaky_followups.rs"
@@ -1255,8 +1273,8 @@
       "tests": [
         "tests/reports_untracked.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test reports_untracked"
+      "test_targets": [
+        "reports_untracked"
       ],
       "rules": [
         "tests/reports_untracked.rs"
@@ -1280,8 +1298,8 @@
       "tests": [
         "tests/gitignore_block_cli.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test gitignore_block_cli"
+      "test_targets": [
+        "gitignore_block_cli"
       ],
       "rules": [
         "tests/gitignore_block_cli.rs"
@@ -1299,8 +1317,8 @@
       "tests": [
         "tests/go_state_classes_cli.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test go_state_classes_cli"
+      "test_targets": [
+        "go_state_classes_cli"
       ],
       "rules": [
         "tests/go_state_classes_cli.rs"
@@ -1321,8 +1339,8 @@
       "tests": [
         "tests/green_test_lock.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test green_test_lock"
+      "test_targets": [
+        "green_test_lock"
       ],
       "rules": [
         "tests/green_test_lock.rs"
@@ -1343,8 +1361,8 @@
       "tests": [
         "tests/heavy_slot_cli.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test heavy_slot_cli"
+      "test_targets": [
+        "heavy_slot_cli"
       ],
       "rules": [
         "tests/heavy_slot_cli.rs"
@@ -1362,8 +1380,8 @@
       "tests": [
         "tests/hook_entry_cli.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test hook_entry_cli"
+      "test_targets": [
+        "hook_entry_cli"
       ],
       "rules": [
         "tests/hook_entry_cli.rs"
@@ -1381,8 +1399,8 @@
       "tests": [
         "tests/hook_session_start_cli.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test hook_session_start_cli"
+      "test_targets": [
+        "hook_session_start_cli"
       ],
       "rules": [
         "tests/hook_session_start_cli.rs"
@@ -1403,8 +1421,8 @@
       "tests": [
         "tests/host_connector.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test host_connector"
+      "test_targets": [
+        "host_connector"
       ],
       "rules": [
         "tests/host_connector.rs"
@@ -1422,8 +1440,8 @@
       "tests": [
         "tests/project_applied_table.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test project_applied_table"
+      "test_targets": [
+        "project_applied_table"
       ],
       "rules": [
         "tests/project_applied_table.rs"
@@ -1441,8 +1459,8 @@
       "tests": [
         "tests/project_detect_cli.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test project_detect_cli"
+      "test_targets": [
+        "project_detect_cli"
       ],
       "rules": [
         "tests/project_detect_cli.rs"
@@ -1479,8 +1497,8 @@
       "tests": [
         "tests/statusline_numbers_only.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test statusline_numbers_only"
+      "test_targets": [
+        "statusline_numbers_only"
       ],
       "rules": [
         "tests/statusline_numbers_only.rs"
@@ -1504,8 +1522,8 @@
       "tests": [
         "tests/statusline_tag_order.rs (all)"
       ],
-      "checks": [
-        "cargo test --offline --locked --test statusline_tag_order"
+      "test_targets": [
+        "statusline_tag_order"
       ],
       "rules": [
         "tests/statusline_tag_order.rs"
@@ -1526,8 +1544,35 @@
       "tests": [
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
+      "test_targets": [
+        "bundle_body_cli",
+        "bundle_build_cli",
+        "bundle_verify_cli",
+        "check_affected_modes_cli",
+        "check_pipeline_config",
+        "cli_text_citations",
+        "hot_file_ops_merge",
+        "integration_guard_install",
+        "lane_next_rules",
+        "launcher_retire_role_flags",
+        "launcher_role_flags",
+        "launcher_settings_receipt",
+        "leader_reclaim_guidance",
+        "next_flow_skill_scan",
+        "ops_table_gen_cli",
+        "product_cli",
+        "project_layer_follow_ups",
+        "repo_claude_md",
+        "repo_scans_cli",
+        "repo_scans_table",
+        "repo_small_mismatches",
+        "report_rules_core",
+        "retired_host_words",
+        "rule_history_guard",
+        "sdd_guidance",
+        "troubleshooting_doc"
+      ],
       "checks": [
-        "cargo test --offline --locked --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test check_affected_modes_cli --test check_pipeline_config --test cli_text_citations --test hot_file_ops_merge --test integration_guard_install --test lane_next_rules --test launcher_retire_role_flags --test launcher_role_flags --test launcher_settings_receipt --test leader_reclaim_guidance --test next_flow_skill_scan --test ops_table_gen_cli --test product_cli --test project_layer_follow_ups --test repo_claude_md --test repo_scans_cli --test report_rules_core --test retired_host_words --test rule_history_guard --test sdd_guidance --test troubleshooting_doc --test repo_scans_table --test repo_small_mismatches",
         "cargo test --offline --locked --test card card_criterion_add_cli:: -- card_finish_cli:: card_guard_cli:: card_line_lease_cli:: card_ready_leftovers_cli:: card_scope_widen_cli:: card_timeline_cli:: decision_append_cli:: followup_per_spec_rules:: recurring_problems_rule::"
       ],
       "rules": [
@@ -1647,8 +1692,25 @@
       "tests": [
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
+      "test_targets": [
+        "codex_question_tool",
+        "git_hooks_cli",
+        "ops_table_gen_cli",
+        "product_cli",
+        "profile_apply_engine",
+        "project_flow_closing",
+        "project_layer_follow_ups",
+        "repo_claude_md",
+        "repo_scans_table",
+        "retired_hosts_layer",
+        "skill_entry_order",
+        "spec_cli",
+        "switch_script_v2",
+        "update_switch_cli",
+        "update_switch_layer",
+        "worktree_cli"
+      ],
       "checks": [
-        "cargo test --offline --locked --test codex_question_tool --test git_hooks_cli --test ops_table_gen_cli --test product_cli --test profile_apply_engine --test project_flow_closing --test project_layer_follow_ups --test repo_claude_md --test retired_hosts_layer --test skill_entry_order --test spec_cli --test switch_script_v2 --test update_switch_cli --test update_switch_layer --test worktree_cli --test repo_scans_table",
         "cargo test --offline --locked --test card card_finish_cli:: -- card_guard_cli:: recurring_problems_rule::"
       ],
       "rules": [
@@ -1715,8 +1777,46 @@
       "tests": [
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
+      "test_targets": [
+        "ac_command_lint",
+        "agents_choices_step_cli",
+        "atlas_query_cli",
+        "bin_test_once",
+        "boundary_repro",
+        "bundle_body_cli",
+        "bundle_build_cli",
+        "bundle_verify_cli",
+        "cargo_env_developer_dir",
+        "check_pipeline_config",
+        "claude_md_home_cli",
+        "claude_python_adapter_removed",
+        "docs_installer_paths",
+        "e2e_temp_home_cli",
+        "host_small_fixes_cli",
+        "lane_completion_handshake",
+        "lane_next_rules",
+        "launcher_retire_role_flags",
+        "product_cli",
+        "profile_apply_engine",
+        "profile_debug_info",
+        "project_flow_closing",
+        "project_lsp_plugins_cli",
+        "protected_paths_one_list",
+        "repo_claude_md",
+        "repo_scans_table",
+        "repo_small_mismatches",
+        "review_checklist_cli",
+        "review_md_repo",
+        "run_verify",
+        "source_manifest_facts",
+        "spawn_cap_test",
+        "spec_branch_name_first",
+        "test_home_guard",
+        "update_hooks_cli",
+        "worktree_cli",
+        "worktree_report"
+      ],
       "checks": [
-        "cargo test --offline --locked --test ac_command_lint --test agents_choices_step_cli --test atlas_query_cli --test bin_test_once --test boundary_repro --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test cargo_env_developer_dir --test check_pipeline_config --test claude_md_home_cli --test claude_python_adapter_removed --test docs_installer_paths --test e2e_temp_home_cli --test host_small_fixes_cli --test lane_completion_handshake --test lane_next_rules --test launcher_retire_role_flags --test product_cli --test profile_apply_engine --test profile_debug_info --test project_flow_closing --test project_lsp_plugins_cli --test protected_paths_one_list --test repo_claude_md --test repo_small_mismatches --test review_checklist_cli --test review_md_repo --test run_verify --test source_manifest_facts --test spawn_cap_test --test spec_branch_name_first --test test_home_guard --test update_hooks_cli --test worktree_cli --test worktree_report --test repo_scans_table",
         "cargo test --offline --locked --test card card_generated_scope:: -- followup_per_spec_rules:: recurring_problems_rule::"
       ],
       "rules": [
@@ -1804,8 +1904,33 @@
       "tests": [
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
+      "test_targets": [
+        "agent_delegation_text",
+        "agents_choices_step_cli",
+        "audit_gate_cli",
+        "base_agent_contract",
+        "bin_names_signature_cli",
+        "bundle_user_assets_cli",
+        "claude_python_adapter_removed",
+        "docs_installer_paths",
+        "git_hooks_cli",
+        "integration_guard_install",
+        "launcher_reads_models",
+        "launcher_retire_role_flags",
+        "next_flow_skill_scan",
+        "omp_launcher_removed",
+        "optional_browser_refs_cli",
+        "orca_optional_3005",
+        "product_cli",
+        "protected_paths_one_list",
+        "repo_claude_md",
+        "repo_scans_table",
+        "retired_host_words",
+        "sdd_guidance",
+        "style_banner_scan",
+        "worktree_report"
+      ],
       "checks": [
-        "cargo test --offline --locked --test agent_delegation_text --test agents_choices_step_cli --test audit_gate_cli --test base_agent_contract --test integration_guard_install --test bin_names_signature_cli --test bundle_user_assets_cli --test claude_python_adapter_removed --test docs_installer_paths --test git_hooks_cli --test launcher_reads_models --test launcher_retire_role_flags --test next_flow_skill_scan --test omp_launcher_removed --test optional_browser_refs_cli --test orca_optional_3005 --test product_cli --test protected_paths_one_list --test repo_claude_md --test retired_host_words --test sdd_guidance --test style_banner_scan --test worktree_report --test repo_scans_table",
         "cargo test --offline --locked --test card github_cli:: -- labels_check:: labels_sync:: release_branch_version:: release_pr_three_os:: trailer_check_cli:: trailer_paragraph_guard_cli:: verified_trailer_in_use_cli::"
       ],
       "rules": [
@@ -1906,8 +2031,106 @@
       "tests": [
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
+      "test_targets": [
+        "agent_defs_package",
+        "agent_delegation_text",
+        "agents_flat_ownership",
+        "agents_home_cli",
+        "audit_scratch_rule",
+        "audit_text_facts",
+        "base_agent_contract",
+        "base_agents_discovery_record",
+        "base_agents_nested",
+        "bin_names_signature_cli",
+        "build_number_texts",
+        "bundle_body_cli",
+        "bundle_build_cli",
+        "bundle_verify_cli",
+        "claude_md_home_cli",
+        "code_atlas_reference",
+        "codex_home_update_removed",
+        "codex_question_tool",
+        "core_rules_2876",
+        "desktop_folder_rules_cli",
+        "destructive_ops_guidance",
+        "e2e_host_fixture",
+        "e2e_temp_home_cli",
+        "exe_link_cli",
+        "flow_name_scan",
+        "gate_collect",
+        "generation_request_record",
+        "generic_flow_questions",
+        "home_routing_cli",
+        "home_style_cli",
+        "home_style_ownership_cli",
+        "host_home_cli",
+        "html_report_skill",
+        "lane_completion_handshake",
+        "lane_next_rules",
+        "lane_rules_2401",
+        "lane_rules_2836",
+        "lane_rules_2879",
+        "lane_team_names",
+        "leader_route",
+        "mode_cards_53",
+        "mode_workflow_steps",
+        "models_revert_cli",
+        "next_flow_skill_scan",
+        "orca_alignment",
+        "orca_optional_3005",
+        "plan_output_sections",
+        "product_cli",
+        "project_decide_model",
+        "project_flow_closing",
+        "project_harness_label",
+        "project_harness_step",
+        "project_interview_minimal",
+        "project_lsp_plugins_cli",
+        "project_preview_order",
+        "project_worktree_move_choice",
+        "protected_paths_one_list",
+        "question_bank_hosts",
+        "repo_claude_md",
+        "repo_scans_cli",
+        "repo_scans_table",
+        "repo_small_mismatches",
+        "report_rules_core",
+        "retired_hosts_layer",
+        "revert_twice_cli",
+        "review_check_cli",
+        "review_checklist_cli",
+        "rule_history_guard",
+        "run_sync_text",
+        "sdd_guidance",
+        "self_audit_cli",
+        "skill_entry_order",
+        "skill_generalization_scan",
+        "skill_structure",
+        "source_manifest_facts",
+        "spec_approval_digest",
+        "spec_branch_name_first",
+        "style_banner_scan",
+        "test_isolation_rules",
+        "test_weakening",
+        "ui_korean_terminal_cli",
+        "ui_summary_terminal_cli",
+        "update_adopt_cli",
+        "update_always_asks",
+        "update_closing_commit",
+        "update_conflict_baseline_cli",
+        "update_git_hooks_cli",
+        "update_headver",
+        "update_home_layer_cli",
+        "update_hooks_cli",
+        "update_keys_cli",
+        "update_route",
+        "update_switch_cli",
+        "update_user_layer_cli",
+        "versioning_release_texts",
+        "workflow_size_budget",
+        "worktree_include_guard"
+      ],
       "checks": [
-        "cargo test --offline --locked --test agent_defs_package --test agent_delegation_text --test agents_flat_ownership --test agents_home_cli --test audit_scratch_rule --test audit_text_facts --test run_sync_text --test base_agent_contract --test base_agents_discovery_record --test base_agents_nested --test bin_names_signature_cli --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test claude_md_home_cli --test code_atlas_reference --test codex_home_update_removed --test codex_question_tool --test core_rules_2876 --test desktop_folder_rules_cli --test destructive_ops_guidance --test e2e_host_fixture --test e2e_temp_home_cli --test exe_link_cli --test gate_collect --test flow_name_scan --test generation_request_record --test generic_flow_questions --test home_routing_cli --test home_style_cli --test home_style_ownership_cli --test host_home_cli --test html_report_skill --test lane_completion_handshake --test lane_next_rules --test lane_rules_2401 --test lane_rules_2836 --test lane_rules_2879 --test lane_team_names --test leader_route --test mode_cards_53 --test mode_workflow_steps --test models_revert_cli --test next_flow_skill_scan --test orca_alignment --test orca_optional_3005 --test plan_output_sections --test product_cli --test project_decide_model --test project_flow_closing --test project_harness_label --test project_harness_step --test project_interview_minimal --test project_lsp_plugins_cli --test project_preview_order --test project_worktree_move_choice --test protected_paths_one_list --test question_bank_hosts --test repo_claude_md --test repo_scans_cli --test report_rules_core --test retired_hosts_layer --test revert_twice_cli --test review_check_cli --test review_checklist_cli --test rule_history_guard --test sdd_guidance --test self_audit_cli --test skill_entry_order --test skill_structure --test source_manifest_facts --test spec_approval_digest --test spec_branch_name_first --test style_banner_scan --test test_isolation_rules --test ui_korean_terminal_cli --test ui_summary_terminal_cli --test update_adopt_cli --test update_always_asks --test update_closing_commit --test update_conflict_baseline_cli --test update_git_hooks_cli --test update_headver --test update_home_layer_cli --test update_hooks_cli --test update_keys_cli --test update_route --test update_switch_cli --test update_user_layer_cli --test workflow_size_budget --test worktree_include_guard --test build_number_texts --test versioning_release_texts --test skill_generalization_scan --test test_weakening --test repo_scans_table --test repo_small_mismatches",
         "cargo test --offline --locked --test card card_generated_scope:: -- card_ready_leftovers_cli:: card_hold_gate_cli:: card_leader_release_cli:: claim_verify_flags_2838:: followup_per_spec_rules:: trailer_paragraph_guard_cli::"
       ],
       "rules": [
@@ -2038,8 +2261,35 @@
       "tests": [
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
+      "test_targets": [
+        "agent_defs_package",
+        "atlas_query_cli",
+        "check_affected_modes_cli",
+        "cli_text_citations",
+        "codex_home_update_removed",
+        "e2e_temp_home_cli",
+        "gate_collect",
+        "git_hooks_cli",
+        "help_text_names_moai",
+        "home_isolation_scan",
+        "hook_bash_boundary_cli",
+        "hot_file_ops_merge",
+        "next_flow_skill_scan",
+        "orca_optional_3005",
+        "product_cli",
+        "profile_apply_engine",
+        "project_harness_label",
+        "project_layer_follow_ups",
+        "project_preview_order",
+        "project_worktree_move_choice",
+        "repo_scans_cli",
+        "repo_scans_table",
+        "retired_host_words",
+        "retired_hosts_layer",
+        "test_weakening",
+        "worktree_cli"
+      ],
       "checks": [
-        "cargo test --offline --locked --test agent_defs_package --test atlas_query_cli --test check_affected_modes_cli --test cli_text_citations --test codex_home_update_removed --test e2e_temp_home_cli --test gate_collect --test git_hooks_cli --test help_text_names_moai --test home_isolation_scan --test hook_bash_boundary_cli --test hot_file_ops_merge --test next_flow_skill_scan --test orca_optional_3005 --test product_cli --test profile_apply_engine --test project_harness_label --test project_layer_follow_ups --test project_preview_order --test project_worktree_move_choice --test repo_scans_cli --test retired_host_words --test retired_hosts_layer --test worktree_cli --test test_weakening --test repo_scans_table",
         "cargo test --offline --locked --test card board_bundle_link_cli:: -- ledger_recover::"
       ],
       "rules": [
@@ -2304,8 +2554,23 @@
       "tests": [
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
-      "checks": [
-        "cargo test --offline --locked --test ac_command_lint --test atlas_three_arm --test audit_gate_cli --test check_affected_modes_cli --test check_pipeline_config --test claude_python_adapter_removed --test cli_text_citations --test gate_collect --test heavy_slot_cli --test protected_paths_one_list --test repo_scans_cli --test review_checklist_cli --test search_atlas --test test_home_guard --test test_weakening --test repo_scans_table"
+      "test_targets": [
+        "ac_command_lint",
+        "atlas_three_arm",
+        "audit_gate_cli",
+        "check_affected_modes_cli",
+        "check_pipeline_config",
+        "claude_python_adapter_removed",
+        "cli_text_citations",
+        "gate_collect",
+        "heavy_slot_cli",
+        "protected_paths_one_list",
+        "repo_scans_cli",
+        "repo_scans_table",
+        "review_checklist_cli",
+        "search_atlas",
+        "test_home_guard",
+        "test_weakening"
       ],
       "rules": [
         "tests/ac_command_lint.rs",
@@ -2371,8 +2636,9 @@
       "tests": [
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
-      "checks": [
-        "cargo test --offline --locked --test test_home_guard --test repo_scans_table"
+      "test_targets": [
+        "repo_scans_table",
+        "test_home_guard"
       ],
       "rules": [
         "tests/test_home_guard.rs",
@@ -2392,8 +2658,8 @@
         "tests/spec_card_number_observe.rs::the_real_specs_before_the_date_get_no_notice",
         "tests/spec_card_number_observe.rs::rule_10_sentence_is_pinned"
       ],
-      "checks": [
-        "cargo test --offline --locked --test spec_card_number_observe"
+      "test_targets": [
+        "spec_card_number_observe"
       ],
       "rules": [
         "tests/spec_card_number_observe.rs",
@@ -2457,8 +2723,9 @@
         "tests/language_setting.rs",
         "tests/language_three_questions.rs"
       ],
-      "checks": [
-        "cargo test --offline --locked --test language_setting --test language_three_questions"
+      "test_targets": [
+        "language_setting",
+        "language_three_questions"
       ],
       "rules": [
         "src/agents.rs",
@@ -2511,8 +2778,8 @@
         "tests/test_switch_release_scan.rs::the_release_and_dist_profiles_keep_debug_assertions_off",
         "tests/test_switch_release_scan.rs::the_profile_reader_tells_an_on_switch_from_an_off_one"
       ],
-      "checks": [
-        "cargo test --offline --locked --test test_switch_release_scan"
+      "test_targets": [
+        "test_switch_release_scan"
       ],
       "rules": [
         "tests/test_switch_release_scan.rs"
@@ -2542,8 +2809,8 @@
         "tests/flow_name_scan.rs::flow_name_one_old_name_line_only",
         "tests/flow_name_scan.rs::flow_name_a_planted_text_is_refused"
       ],
-      "checks": [
-        "cargo test --offline --locked --test flow_name_scan"
+      "test_targets": [
+        "flow_name_scan"
       ],
       "rules": [
         "tests/flow_name_scan.rs"
@@ -2564,8 +2831,8 @@
       "tests": [
         "tests/skill_generalization_scan.rs::no_shipped_file_names_a_tools_script"
       ],
-      "checks": [
-        "cargo test --offline --locked --test skill_generalization_scan"
+      "test_targets": [
+        "skill_generalization_scan"
       ],
       "rules": [
         "tests/skill_generalization_scan.rs"
