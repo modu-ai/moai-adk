@@ -409,11 +409,6 @@ pub struct SessionRequest {
     /// REQ-8). `None` hands the host nothing.
     #[serde(default)]
     pub first_input: Option<String>,
-    /// The advisor `-a` passes on the `cc` host when neither `--advisor`, `--no-advisor` nor the
-    /// user setting decided one (REQ-9, D-6). It is passed only when it ranks at or above the main
-    /// model; otherwise it is left out with a one-line note (D-14).
-    #[serde(default)]
-    pub default_advisor: Option<String>,
     #[serde(default = "default_claude_bin")]
     pub claude_bin: String,
 }
@@ -718,20 +713,7 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
         argv.push("--effort".into());
         argv.push(e.into());
     }
-    // D-14: the default advisor of `-a` is left out, with a note, when it ranks below the main
-    // model; an advisor given with `--advisor` or the setting is checked below and refused.
-    let advisor: Option<String> = match (&r.advisor, &r.default_advisor) {
-        (Some(a), _) => Some(a.clone()),
-        (None, Some(d)) => match (model.and_then(rank), rank(d)) {
-            (Some(m), Some(x)) if x < m => {
-                notes.push("the default advisor opus of -a is not passed: it ranks below the main model (give --advisor to choose one)");
-                None
-            }
-            _ => Some(d.clone()),
-        },
-        (None, None) => None,
-    };
-    if let Some(a) = &advisor {
+    if let Some(a) = &r.advisor {
         clean("advisor", a)?;
         if !ADVISOR_ALIASES.contains(&a.as_str()) && !a.starts_with("claude-") {
             return Err("advisor must be fable|opus|sonnet or a full claude-* model id".into());
@@ -936,7 +918,7 @@ fn compose_resolved(r: &SessionRequest, saved: Vec<&'static str>) -> Result<Valu
             "no role: a plain host session; no role or session name is added (#2053)"
         });
         if r.first_input.as_deref() == Some(FIRST_INPUT_AGENT) {
-            notes.push("-a model and effort: --model and --effort, else the choice saved for the agent role, else the agent row of the default table (user decision 2026-11-25); the advisor is opus on claude unless --advisor, --no-advisor or launcher.advisor says otherwise, and none on glm");
+            notes.push("-a model and effort: --model and --effort, else the choice saved for the agent role, else the agent row of the default table (user decision 2026-11-25); no advisor unless --advisor [model] or launcher.advisor asks for one, and none on glm (user decision 2026-11-26)");
         } else {
             notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
             if r.host == "glm" {
@@ -969,8 +951,6 @@ fn compose_resolved(r: &SessionRequest, saved: Vec<&'static str>) -> Result<Valu
                 }
             }
             let mut plain = r.clone();
-            // The default advisor of `-a` is a `cc` default (REQ-9, REQ-10): glm drops it silently.
-            plain.default_advisor = None;
             if plain.advisor.take().is_some() {
                 notes.push(NOTE_ADVISOR_OMITTED_GLM);
             }

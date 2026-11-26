@@ -1797,7 +1797,7 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "cc|glm",
         "advisor",
-        "Claude 호스트의 advisor 모델(fable|opus|sonnet 또는 claude-* 전체 id). 기본 없음 — \
+        "Claude 호스트의 advisor 모델(fable|opus|sonnet 또는 claude-* 전체 id, 값을 빼면 opus). 기본 없음, -a 도 같음 — \
          사용자 설정 `launcher.advisor` 로 켤 수 있음. 사용량 크레딧이 청구될 수 있음",
     ),
     (
