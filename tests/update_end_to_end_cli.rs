@@ -313,9 +313,17 @@ fn assert_walks_to_the_end(fx: &GoFx, expected: &[&str]) -> Walk {
     w
 }
 
-/// The order every shape runs: the settings clean-up, the move of the Go folder, then the
-/// install steps that have something to write (the MoAI files and the hook set).
-const ORDER: [&str; 4] = ["go-settings", "go-state", "generation", "hooks"];
+/// The order every shape runs: the settings clean-up, the move of the Go folder, the move of
+/// the byte-proven Go files into a backup, then the install steps that have something to write
+/// (the MoAI files and the hook set). The walk runs every printed command, the optional
+/// residue one included.
+const ORDER: [&str; 5] = [
+    "go-settings",
+    "go-state",
+    "go-residue",
+    "generation",
+    "hooks",
+];
 
 #[test]
 fn shape_g_reaches_all_unchanged() {
@@ -581,6 +589,10 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
             "<receipt of the project harness step>",
             id("generation", "receipt"),
         ),
+        (
+            "<receipt of the go-residue step>",
+            id("go-residue", "receipt"),
+        ),
         ("<backup of the go-state step>", id("go-state", "backup")),
         (
             "<receipt of the go-settings step>",
@@ -636,7 +648,10 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
             ran += 1;
         }
     }
-    assert_eq!(ran, 6, "hooks 1, generation 2, go-state 2, go-settings 1");
+    assert_eq!(
+        ran, 7,
+        "hooks 1, generation 2, go-residue 1, go-state 2, go-settings 1"
+    );
 
     let end = project_nodes(&fx);
     for (path, node) in &start {
