@@ -93,3 +93,30 @@ base `41c16e60ac` 의 동작을 일회용 프로젝트(임시 HOME, `env -i`)에
 | D-8 | 로컬 설정이 폴더를 묶으면 update 길의 `go-state` 단계는 선택 없는 apply 명령을 내지 않아요. 선택을 넣은 미리보기가 폴더를 옮길 때만 그 명령을 내고(단계별 yes 가 그 선택), 아니면 명령 없이 상태를 그대로 둬요. 옮길 것이 없던 갈래에서 선택만 낸 단계 뒤에는 설치·merge 단계가 기다리지 않아요 | 리더 결정(원장 노트 10074 = 질문 10073 의 (가), 노트 10109 = 질문 10107 의 (가): 새 막는 기다림은 관찰부터라는 사용자 규칙). 선택 없는 apply 는 사용자에게 두 번 묻고, 옮길 파일이 있으면 백업 자리가 옛 상태 폴더라서(`src/go_state.rs` `layout_and_backup`, 코드에서 읽음) 그 폴더를 새로 만들 수 있어요(결정 9717 과 반대) | 그 갈래를 지워요 |
 
 ## Result
+
+코드 head `a3ad057e5345ec345b551bb1c6c201db83752d8f`(base `41c16e60ac`)에서 Mac 의 임시 HOME 픽스처로 확인했어요. Windows 와 Linux 는 `not_run` 이에요.
+
+| AC | 상태 | 증거(확인 명령은 적힌 그대로 실행) |
+| --- | --- | --- |
+| AC-1 | met | `plan_` exit 0, 4 passed |
+| AC-2 | met | `home_` exit 0, 1 passed |
+| AC-3 | met | `apply_` exit 0, 2 passed |
+| AC-4 | met | `refuse_` exit 0, 5 passed |
+| AC-5 | met | `revert_` exit 0, 3 passed |
+| AC-6 | met | `next_step_` exit 0, 1 passed |
+| AC-7 | met | `update_` exit 0, 5 passed |
+
+- 관련 테스트 대상 7개(`go_local_reference_cli`, `project_update_plan_cli`, `go_settings_cli`, `update_end_to_end_cli`, `go_state_cli`, `project_update_go_residue_cli`, `go_project_real_run_cli`): nextest 222/222 통과.
+- 뮤턴트: `src/go_state.rs` 경로 14/14 를 `10f29528b1` 에서(그 뒤 이 파일과 `src/main.rs` 는 그대로), `src/project_update.rs` 경로 10/10 을 `a3ad057e53` 에서 테스트가 잡았어요.
+- 위험 경로(덮어쓰기·옮기기·되돌리기)는 임시 HOME 에서 실제 바이너리를 돌리는 Rust 통합 테스트로 확인했어요.
+
+알아 둘 것:
+
+- 원래 `permissions.deny`·`ask` 항목은 남으므로 새 `.moai/` 도 계속 막거나 물어요. 미리보기가 알려요.
+- 바뀐 사본은 `permissions.deny`·`ask` 에만 더해요.
+- `cd`·`pushd` 가 있는 문자열의 상대 참조와 escape 된 표기는 선택으로 바꾸지 않고 거절해요.
+- Go 도구가 상속한 `PATH` 를 `env.PATH` 에 베끼므로, 거기에 HOME 의 `.moai` 가 있으면 선택 뒤에도 폴더가 묶여요(D-5).
+- worktree 나 중첩 체크아웃이 함께 폴더를 묶어도 `.moai` 항목 이유는 선택을 이름 불러요. 로컬 설정이 묶을 때 update 계획은 이동 계획을 두 번 만들어요.
+- 한 번의 update 미리보기에서 선택 apply 를 먼저 하고 다른 `ready` 명령을 이어 돌리면: 지시 파일 생성 명령은 `not_found` 로 거절하고 아무것도 쓰지 않아요. 설정 명령은 성공하고 옛 상태 폴더에 새 파일을 만들지 않아요.
+- `skills/moai/workflows/update.md` 는 새 미리보기 키 `local_references` 를 아직 말하지 않아요(`docs/later.md` 한 줄).
+- 남은 확인: 통합 브랜치를 합친 뒤의 테스트 재실행, `check affected` 영수증, 독립 감사.
