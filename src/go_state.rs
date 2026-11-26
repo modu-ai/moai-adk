@@ -2256,8 +2256,9 @@ fn ignoring_rule(line: &str) -> Option<String> {
 /// The revert-plan action for `.moai/specs`: set aside with `.moai/`, then moved straight back.
 const KEEP_SPECS: &str = "restored_to_moai_specs";
 
-/// The kept names a `.moai/` holds, sorted: the receipt's `kept_before`. Everything else the
-/// folder may hold (`backups/`, Finder's `.DS_Store`) is no kept name.
+/// The names a `.moai/` the apply did not create already holds and the revert leaves, sorted:
+/// the receipt's `kept_before`. Everything else the folder may hold (`backups/`, Finder's
+/// `.DS_Store`) is no such name.
 fn kept_names_in(moai: &Path) -> Vec<String> {
     let mut names: Vec<String> = fs::read_dir(moai)
         .map(|rd| {
@@ -2272,13 +2273,15 @@ fn kept_names_in(moai: &Path) -> Vec<String> {
 }
 
 /// A first-level name the team keeps in git under `.moai/` ([`crate::state_root::KEPT`]) that is
-/// not a generation marker.
+/// not a generation marker, or the machine's local folder
+/// ([`crate::state_root::LOCAL_DIR`]): both were there before an apply that reuses the folder.
 fn kept_name(name: &str) -> bool {
-    name != crate::state_root::RUST_MARKER
-        && name != crate::state_root::LEGACY_MARKER
-        && crate::state_root::KEPT
-            .iter()
-            .any(|k| k.trim_end_matches('/') == name)
+    name == crate::state_root::LOCAL_DIR
+        || (name != crate::state_root::RUST_MARKER
+            && name != crate::state_root::LEGACY_MARKER
+            && crate::state_root::KEPT
+                .iter()
+                .any(|k| k.trim_end_matches('/') == name))
 }
 
 /// `.moai/specs`, the project's tracked SPECs.

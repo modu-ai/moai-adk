@@ -449,8 +449,9 @@ pub fn specs_only(moai: &Path) -> bool {
 /// no Go marker and no unfinished go-state receipt, holds no machine state of either generation.
 /// It reads like an absent `.moai/` (verdict `none`), and a new project adopts it in place.
 /// Besides the kept names it may hold a real `backups/` folder (git ignores it; an earlier
-/// undo leaves it) and Finder's `.DS_Store`. At least one kept name must be there: an empty
-/// folder keeps its own verdict. A link, a kept name of the wrong type or an unlisted name
+/// undo leaves it), the real [`LOCAL_DIR`] folder of this machine's output (git ignores it
+/// too) and Finder's `.DS_Store`. At least one kept name or the local folder must be there: an
+/// empty folder keeps its own verdict. A link, a kept name of the wrong type or an unlisted name
 /// anywhere keeps the folder as it is read today. [`specs_only`] is the narrower case.
 pub fn kept_only(moai: &Path) -> bool {
     if !fs::symlink_metadata(moai).is_ok_and(|m| m.is_dir()) {
@@ -460,6 +461,7 @@ pub fn kept_only(moai: &Path) -> bool {
         return false;
     };
     let mut kept = 0;
+    let mut local = false;
     for e in entries {
         let Ok(e) = e else {
             return false;
@@ -477,6 +479,11 @@ pub fn kept_only(moai: &Path) -> bool {
         if name == "backups" && kind.is_dir() {
             continue;
         }
+        // The entry's own type: a link named like the local folder is not one.
+        if name == LOCAL_DIR && kind.is_dir() {
+            local = true;
+            continue;
+        }
         let listed = KEPT.iter().find_map(|k| {
             let folder = k.ends_with('/');
             (k.trim_end_matches('/') == name).then_some(folder)
@@ -491,7 +498,7 @@ pub fn kept_only(moai: &Path) -> bool {
             _ => return false,
         }
     }
-    kept > 0 && go_markers(moai).is_empty() && !holds_go_state_receipt(moai)
+    (kept > 0 || local) && go_markers(moai).is_empty() && !holds_go_state_receipt(moai)
 }
 
 /// The HOME verdict (#2871 I2 R1): the table above with the HOME's Go markers, plus one row —
