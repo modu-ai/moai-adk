@@ -57,7 +57,7 @@ base `41c16e60ac` 의 동작을 일회용 프로젝트(임시 HOME, `env -i`)에
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261126-go-local-settings-reference/`, `src/go_state.rs`, `src/main.rs`(go-state 두 명령의 플래그), `src/project_update.rs`(D-7), `skills/moai/workflows/project.md`, `skills/moai/references/source-manifest.json`(line-lease), `docs/design-review/appendix/` 의 go-state 설명(있으면), 도움말 골든(바뀌면, line-lease), `tests/go_state_cli.rs`·`tests/go_settings_cli.rs`·`tests/project_update_plan_cli.rs`·`tests/update_end_to_end_cli.rs`(바뀐 이유 문장과 단계를 고정한 단언), `tests/go_local_reference_cli.rs`(새; 다른 `go_*_cli` 처럼 단독 대상이고, 첫 낱말 `go` 는 `tests/areas.toml` 에 이미 있어요. 상태 폴더 이름은 resolver 상수로 써요), `docs/later.md`(D-5 한 줄)
+- write: `.moai/specs/SPEC-20261126-go-local-settings-reference/`, `src/go_state.rs`, `src/main.rs`(go-state 두 명령의 플래그), `src/project_update.rs`(D-7), `skills/moai/workflows/project.md`, `skills/moai/references/source-manifest.json`(line-lease), `docs/design-review/appendix/` 의 go-state 설명(있으면), 도움말 골든(바뀌면, line-lease), `tests/go_state_cli.rs`·`tests/go_settings_cli.rs`·`tests/go_state_classes_cli.rs`·`tests/project_update_plan_cli.rs`·`tests/update_end_to_end_cli.rs`(바뀐 이유 문장과 단계를 고정한 단언), `src/help.rs`(새 플래그의 한국어 도움말 줄, line-lease), `tools/repo_scans.json`(새 테스트의 검사 표 줄, line-lease), `tests/go_local_reference_cli.rs`(새; 다른 `go_*_cli` 처럼 단독 대상이고, 첫 낱말 `go` 는 `tests/areas.toml` 에 이미 있어요. 상태 폴더 이름은 resolver 상수로 써요), `docs/later.md`(D-5 한 줄)
 - read-only: `src/go_settings_clean.rs`, `src/state_root.rs`, `src/ops/project_apply.rs`, `src/launcher_init.rs`, `skills/moai/workflows/update.md`
 - forbidden: 설치된 HOME 과 실제 사용자 설정, `moai-adk-go` 쓰기, `state_root::dir` 판정 변경, 선택 없는 사용자 설정 쓰기
 

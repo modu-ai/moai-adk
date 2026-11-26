@@ -2224,6 +2224,17 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "확인한 미리 보기를 만들 때 쓴 `--set-aside` 와 같게 넘기기(다르면 digest 가 달라 거절해요)",
     ),
     (
+        "go-state-plan",
+        "rewrite_local_references",
+        "로컬 설정이 `.moai/` 를 가리켜 Go 폴더가 남을 때, 그 파일을 백업하고 참조를 Go 백업 \
+         폴더 이름으로 바꾼 뒤 폴더를 옮기는 계획 세우기",
+    ),
+    (
+        "go-state-apply",
+        "rewrite_local_references",
+        "확인한 미리 보기를 이 선택으로 만들었을 때 넘기기(로컬 설정 파일을 바꿔 써요)",
+    ),
+    (
         "go-residue-apply",
         "bundle",
         "바이트가 manifest 와 같은 파일 묶음 옮기기(값은 `proven` 하나)",

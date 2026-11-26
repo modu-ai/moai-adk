@@ -11,6 +11,7 @@
 
 mod common;
 use common::CleanEnv;
+use moai_cli::state_root::MOAI_DIR;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -2677,9 +2678,80 @@ fn a_backups_gitignore_that_does_not_ignore_stops_the_apply_before_any_write() {
     );
 }
 
-/// Condition 1, the preview: `go-state-plan` names the file and a backup path git would offer,
-/// the digest does not depend on it (preview-only), and in `project-update-plan` the `go-state`
-/// step reads `needs_decision` with no command, so every install step waits behind it.
+/// Every step of the project's current `project-update-plan` preview.
+fn update_steps(fx: &Fx) -> Vec<Value> {
+    let update = fx.run(&["project-update-plan", fx.p()]);
+    assert_eq!(update["ok"], json!(true), "{update}");
+    update["result"]["phases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|ph| ph["steps"].as_array().unwrap())
+        .cloned()
+        .collect()
+}
+
+fn go_state_of(steps: &[Value]) -> &Value {
+    steps.iter().find(|s| s["step"] == "go-state").unwrap()
+}
+
+/// The steps behind a blocked one all wait for the backup phase.
+fn assert_install_waits(steps: &[Value]) {
+    let install: Vec<&Value> = steps
+        .iter()
+        .filter(|s| s["step"] != "go-state" && s["state"] == "blocked")
+        .collect();
+    assert!(!install.is_empty(), "{steps:?}");
+    assert!(
+        install
+            .iter()
+            .all(|s| s["reason"] == json!("re-run after the backup phase")),
+        "{steps:?}"
+    );
+}
+
+/// SPEC-20261126-go-local-settings-reference REQ-9: where the local settings hold the Go folder
+/// the step prints the picked command. Its backups go to the new folder's area, so the printed
+/// command succeeds, leaves the ignore file the user wrote as it was and offers git no backup
+/// line that was not offered before.
+fn assert_pick_keeps_backups_from_git(fx: &Fx, go: &Value) {
+    assert_eq!(go["state"], json!("needs_decision"), "{go}");
+    assert_eq!(go["preview"]["backup_ignore"], Value::Null, "{go}");
+    let words: Vec<&str> = go["apply"]["argv"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .skip(1)
+        .map(|w| w.as_str().unwrap())
+        .map(|w| {
+            if w == "<permission-reference>" {
+                REF
+            } else {
+                w
+            }
+        })
+        .collect();
+    assert!(words.contains(&"--rewrite-local-references"), "{go}");
+    let offered = backup_lines_offered_to_git(fx);
+    let ignore = fs::read(fx.root.join(BACKUPS_IGNORE)).unwrap();
+    let local = fs::read(fx.root.join(".claude/settings.local.json")).unwrap();
+    let v = fx.run(&words);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(v["result"]["state"], json!("committed"), "{v}");
+    // The copy exists, so the git question below is about a real file.
+    let backup = v["result"]["backup"].as_str().unwrap();
+    let copy = fx
+        .area(backup)
+        .join("root-files/.claude/settings.local.json");
+    assert_eq!(fs::read(copy).unwrap(), local, "{v}");
+    assert_eq!(backup_lines_offered_to_git(fx), offered, "{v}");
+    assert_eq!(fs::read(fx.root.join(BACKUPS_IGNORE)).unwrap(), ignore);
+}
+
+/// Condition 1, the preview: `go-state-plan` names the file and a backup path git would offer and
+/// the digest does not depend on it (preview-only). The local settings hold the folder here, so
+/// the `go-state` step of `project-update-plan` offers the picked move and every install step
+/// waits behind it.
 #[test]
 fn the_preview_names_the_ignore_file_that_does_not_cover_the_backups() {
     let (fx, _) = staying_with_backups_ignore("# mine\n!keep-me\n");
@@ -2707,16 +2779,36 @@ fn the_preview_names_the_ignore_file_that_does_not_cover_the_backups() {
     );
     let digest = p["plan_digest"].clone();
 
-    let update = fx.run(&["project-update-plan", fx.p()]);
-    assert_eq!(update["ok"], json!(true), "{update}");
-    let update = &update["result"];
-    let steps: Vec<&Value> = update["phases"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .flat_map(|ph| ph["steps"].as_array().unwrap())
-        .collect();
-    let go = steps.iter().find(|s| s["step"] == "go-state").unwrap();
+    // Once the file ignores the area, the field is gone and the digest is the same.
+    fx.write(BACKUPS_IGNORE, "*\n");
+    let ok = fx.plan();
+    assert!(ok.get("backup_ignore").is_none(), "{ok}");
+    assert_eq!(ok["plan_digest"], digest, "the field is preview-only");
+
+    fx.write(BACKUPS_IGNORE, "# mine\n!keep-me\n");
+    let steps = update_steps(&fx);
+    assert_install_waits(&steps);
+    assert_pick_keeps_backups_from_git(&fx, go_state_of(&steps));
+}
+
+/// The same file where something other than the local settings keeps the folder: the `go-state`
+/// step of `project-update-plan` reads `needs_decision` with no command, so every install step
+/// waits behind it.
+#[test]
+fn an_uncovered_backup_area_prints_no_update_command_where_the_folder_stays() {
+    let (fx, _) = cycle_fx(false, false);
+    common::git::git_ok(&fx.root, &["init", "-q"]);
+    fx.write(
+        &format!("{MOAI_DIR}/vendor/.git/HEAD"),
+        "ref: refs/heads/main\n",
+    );
+    fx.write(BACKUPS_IGNORE, "# mine\n!keep-me\n");
+    let p = fx.plan();
+    assert_eq!(p["layout"], json!("folder_stays"), "{p}");
+    assert_eq!(p["backup_ignore"]["state"], json!("not_ignored"), "{p}");
+
+    let steps = update_steps(&fx);
+    let go = go_state_of(&steps);
     assert_eq!(go["state"], json!("needs_decision"), "{go}");
     assert_eq!(go["apply"], Value::Null, "no command is printed: {go}");
     assert_eq!(
@@ -2728,23 +2820,7 @@ fn the_preview_names_the_ignore_file_that_does_not_cover_the_backups() {
         go["reason"].as_str().unwrap().contains(BACKUPS_IGNORE),
         "{go}"
     );
-    let install: Vec<&&Value> = steps
-        .iter()
-        .filter(|s| s["step"] != "go-state" && s["state"] == "blocked")
-        .collect();
-    assert!(!install.is_empty(), "{update}");
-    assert!(
-        install
-            .iter()
-            .all(|s| s["reason"] == json!("re-run after the backup phase")),
-        "{update}"
-    );
-
-    // Once the file ignores the area, the field is gone and the digest is the same.
-    fx.write(BACKUPS_IGNORE, "*\n");
-    let ok = fx.plan();
-    assert!(ok.get("backup_ignore").is_none(), "{ok}");
-    assert_eq!(ok["plan_digest"], digest, "the field is preview-only");
+    assert_install_waits(&steps);
 }
 
 /// Condition 1, the boundary table: git's own rules judge, never a look at the text. Each case
@@ -3084,14 +3160,8 @@ fn an_ignore_file_that_covers_nothing_does_not_stop_a_preview_with_nothing_to_mo
         "nothing is left to move: {p}"
     );
     assert!(p.get("backup_ignore").is_none(), "{p}");
-    let update = fx.run(&["project-update-plan", fx.p()]);
-    let go = update["result"]["phases"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .flat_map(|ph| ph["steps"].as_array().unwrap())
-        .find(|s| s["step"] == "go-state")
-        .unwrap()
-        .clone();
-    assert_ne!(go["state"], json!("needs_decision"), "{go}");
+    // The local settings still hold the folder, so the step offers the picked move; the file
+    // above is not on its way.
+    let steps = update_steps(&fx);
+    assert_pick_keeps_backups_from_git(&fx, go_state_of(&steps));
 }
