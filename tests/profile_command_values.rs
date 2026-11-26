@@ -255,6 +255,192 @@ fn refused_secret_values_are_named_and_write_nothing() {
     }
 }
 
+/// `project-plan` refuses each value as a test command, names the field and repeats neither the
+/// value nor `hidden`.
+fn assert_value_refused(value: &str, hidden: &[&str]) {
+    let mut unseen = vec![value];
+    unseen.extend_from_slice(hidden);
+    assert_refused(
+        &with_decisions(vec![decision("test_command", value)]),
+        &naming("decisions[test_command].value"),
+        &unseen,
+    );
+}
+
+/// `project-plan` takes each value as a test command and keeps it as typed.
+fn assert_values_accepted(values: &[&str]) {
+    for value in values {
+        let home = TempHome::new();
+        let project = TempDir::new().unwrap();
+        let input = with_decisions(vec![decision("test_command", value)]);
+        let out = project_plan(&home, &project, &input);
+        assert!(
+            out.status.success(),
+            "{value}: {}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        assert_eq!(
+            ok_result(&out)["profile"]["decisions"][0]["value"],
+            json!(value)
+        );
+    }
+}
+
+// SPEC-20261126-profile-command-values AC-2
+#[test]
+fn refused_secret_shapes_behind_a_path_or_a_flag_are_named_and_write_nothing() {
+    // Built at run time, so no secret shape is written in this file.
+    let shapes = [
+        format!("{}{}{}", "AK", "IA", "A1".repeat(8)),
+        format!("{}{}{}", "AS", "IA", "A1".repeat(8)),
+        format!("{}{}", "xo", "xb-0123456789abcdef"),
+        format!("{}{}{}", "AI", "za", "a1".repeat(18)),
+        format!("{}{}.{}.{}", "ey", "J0ZXN0", "a1".repeat(8), "b2".repeat(8)),
+    ];
+    for shape in &shapes {
+        // The outgoing screen knows each one when it stands alone.
+        assert_eq!(moai_cli::redact::redact_outgoing(shape).1, 1);
+        for prefix in ["x/", "./", "a/b/", "x//", "./run x/", "./run ./x --key="] {
+            assert_value_refused(&format!("{prefix}{shape}"), &[shape]);
+        }
+    }
+}
+
+// SPEC-20261126-profile-command-values AC-2
+#[test]
+fn refused_short_secret_shape_that_only_the_profile_screen_knows() {
+    // Too short for the outgoing screen, whole or in pieces.
+    let short = format!("{}{}", "s", "k-short");
+    for value in [format!("x/{short}"), format!("./run x/{short}")] {
+        for text in [value.as_str(), short.as_str()] {
+            assert_eq!(moai_cli::redact::redact_outgoing(text).1, 0);
+        }
+        assert_value_refused(&value, &[&short]);
+    }
+}
+
+// SPEC-20261126-profile-command-values AC-2
+#[test]
+fn refused_paths_built_on_the_home_variable_are_named_and_write_nothing() {
+    for value in [
+        "$HOME$X/x",
+        "$HOME.d/x",
+        "${HOME}$X/x",
+        "${HOME}.d/x",
+        "${HOME:-x}.d/y",
+        "cat $hOmE-old/x",
+        "x${Home}y/z",
+        "go test $HOME.d/x ./...",
+        // A later use counts after one that builds no path or names another variable.
+        "echo $HOME $HOME.d/x",
+        "$HOMEBREW_PREFIX:$HOME.d/x",
+        "PATH=$HOME:./bin go test",
+        // A word ends at ASCII white space only, where a shell splits it.
+        "$HOME\u{a0}x/y",
+    ] {
+        assert_value_refused(value, &[]);
+    }
+}
+
+// SPEC-20261126-profile-command-values AC-2
+#[test]
+fn refused_paths_built_on_a_windows_home_variable_are_named_and_write_nothing() {
+    for value in [
+        "$USERPROFILE/x",
+        "${USERPROFILE}.d/x",
+        "$HOMEDRIVE.d/x",
+        "${HomeDrive}x/y",
+        "$homepath/x",
+        "${HOMEPATH:-x}.d/y",
+        "$HOMEDRIVE$HOMEPATH/x",
+    ] {
+        assert_value_refused(value, &[]);
+    }
+}
+
+// SPEC-20261126-profile-command-values AC-1
+#[test]
+fn accept_variable_uses_that_build_no_home_path() {
+    assert_values_accepted(&[
+        "PATH=$HOME:$PATH go test ./...",
+        "echo $HOME && go test ./...",
+        "echo ${HOME} ./x",
+        "echo $USERPROFILE $HOMEDRIVE$HOMEPATH && ./run x/y",
+        // Other variables, whose names only start like a home variable's.
+        "$HOMEBREW_PREFIX/bin/x",
+        "${HOMEBREW_PREFIX}x/y",
+        "$HOME_DIR/x",
+        "$HOME2/x",
+        "$USERPROFILES/x",
+        "$HOMEDRIVE_X/x",
+        "${HOMEPATH2}x/y",
+    ]);
+}
+
+// SPEC-20261126-profile-command-values AC-2
+#[test]
+fn refused_passwords_before_an_at_sign_are_named_and_write_nothing() {
+    // Built at run time, so no address with a password is written in this file.
+    let pair = format!("{}:{}", "user", "fixture-pw");
+    for value in [
+        format!("psql {pair}@host.invalid/db"),
+        format!("x/{pair}@host.invalid/db"),
+        format!("run --url={pair}@host.invalid/db -v"),
+        // Every "@" of a word is read, the first and a later one.
+        format!("psql {pair}@mid@host.invalid/db"),
+        format!("psql a@{pair}@host.invalid/db"),
+        // One character on each side of the ":" is enough, of any alphabet.
+        format!("psql {}:{}@h/x", "a", "b"),
+        format!("psql {}:{}@h/x", "가", "나"),
+        // A cost the SPEC states (R-1): a package specifier of the same form.
+        "npm:cowsay@1.5.0/cli".to_string(),
+    ] {
+        assert_value_refused(&value, &[&pair]);
+    }
+}
+
+// SPEC-20261126-profile-command-values AC-1
+#[test]
+fn accept_at_signs_without_both_a_password_and_a_path() {
+    assert_values_accepted(&[
+        "docker pull ghcr.io/org/img:1.2@sha256:abc",
+        "com.example:lib:1.0@aar",
+        "go test github.com/org/repo/...",
+        "docker run -u 1000:1000 -v ./x img",
+        // No character on one side of the ":".
+        "psql :b@h/x",
+        "psql a:@h/x",
+        "npm i alias@npm:@scope/pkg",
+        // A "/" between the ":" and the "@", and a "/" in a later word only.
+        "run a:b/c@d/e",
+        "run a:b@c d/e",
+    ]);
+}
+
+// SPEC-20261126-profile-command-values AC-1
+#[test]
+fn accept_the_known_limits_of_the_spec() {
+    // Known limits of the SPEC (R-2): no rule of the screen reads these, so they are taken.
+    // The last four are built at run time, so no credential shape is written in this file: a
+    // webhook path without a scheme, a password given to a flag, a secret key with two "/" in the
+    // shape of the AWS documentation's example, and a key shape behind a ":".
+    let key = format!("{}{}", "AK", "IA") + &"A1".repeat(8);
+    let built = [
+        format!("hooks.example.invalid/services/T0/B0/{}", "x".repeat(24)),
+        format!("curl -u {}:{} host.invalid/path", "user", "fixture-pw"),
+        format!("{}/{}/{}", "wJalrXUtnFEMI", "K7MDENG", "bPxRfiCY".repeat(2)),
+        format!("go test x:{key} ./..."),
+    ];
+    let mut values = vec![
+        "../../Users/name",
+        "x/Users/name",
+        "./../../../Users/name",
+        "host.invalid/path",
+    ];
+    values.extend(built.iter().map(String::as_str));
+    assert_values_accepted(&values);
+}
+
 #[test]
 fn other_fields_still_refuse_a_slash() {
     let slashed = "go test ./fixture-slash";

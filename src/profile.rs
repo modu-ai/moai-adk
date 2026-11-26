@@ -495,7 +495,8 @@ fn bounded_decision_string(s: &str) -> bool {
 
 /// The screen of a decision value, which may be a command such as `go test ./...`: a "/" is
 /// taken inside a relative path only. A blank or over-long value, a control character, a
-/// backslash, a secret shape and a home path are refused. Every other profile text keeps
+/// backslash, a secret shape, a home path (by tilde or by a home variable) and a password before
+/// an "@" in a word that goes on to a path are refused. Every other profile text keeps
 /// [`portable`].
 fn command_value(s: &str) -> bool {
     let lower = s.to_ascii_lowercase();
@@ -505,10 +506,43 @@ fn command_value(s: &str) -> bool {
         && !s.contains('\\')
         && !crate::secret_shaped(s)
         && crate::redact::redact_outgoing(s).1 == 0
-        && !["~/", "$home/", "${home}/"]
-            .iter()
-            .any(|x| lower.contains(x))
+        // The outgoing screen reads a key shape at the start of a word only, so it also reads
+        // each piece between "/" and "=" (`x/<key>`, `--key=<key>`).
+        && s.split(['/', '=']).all(|piece| crate::redact::redact_outgoing(piece).1 == 0)
+        && !lower.contains("~/")
+        // A word ends where a shell ends it, at ASCII white space.
+        && !lower
+            .split_ascii_whitespace()
+            .any(|word| home_variable_path(word) || password_before_at(word))
         && relative_paths_only(s)
+}
+
+/// The variables that hold the home folder or a part of its path, in lower case.
+const HOME_VARIABLES: [&str; 4] = ["home", "userprofile", "homedrive", "homepath"];
+
+/// Whether the lower-case `word` builds a path on a home variable: `$name` or `${name` that does
+/// not start a longer variable name, with a "/" later in the word (`$home.d/x`, `${home}$x/y`).
+fn home_variable_path(word: &str) -> bool {
+    word.match_indices('$').any(|(at, _)| {
+        let name = &word[at + 1..];
+        let name = name.strip_prefix('{').unwrap_or(name);
+        HOME_VARIABLES.iter().any(|variable| {
+            name.strip_prefix(variable).is_some_and(|rest| {
+                !rest.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_')
+                    && rest.contains('/')
+            })
+        })
+    })
+}
+
+/// Whether `word` holds a password before an "@" and goes on to a path (`user:pw@host/db`): the
+/// text before the "@", counted from the word start or the last "/", has a ":" with at least one
+/// character on each side, and a "/" follows the "@".
+fn password_before_at(word: &str) -> bool {
+    word.match_indices('@').any(|(at, _)| {
+        let login = word[..at].rsplit('/').next().unwrap_or_default().as_bytes();
+        login.len() > 2 && login[1..login.len() - 1].contains(&b':') && word[at + 1..].contains('/')
+    })
 }
 
 /// A character of a relative path. Only ASCII counts, so no invisible letter passes as one.
